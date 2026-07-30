@@ -1,0 +1,6 @@
+<resources>
+    <style name="Theme.Godstone" parent="android:Theme.Material.NoActionBar">
+        <item name="android:windowBackground">@color/stone_bg</item>
+        <item name="android:statusBarColor">@color/stone_bg</item>
+    </style>
+</resources>

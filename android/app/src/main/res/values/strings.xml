@@ -1,0 +1,39 @@
+<resources>
+    <string name="app_name">Godstone</string>
+
+    <!-- Notification channels for the foreground services -->
+    <string name="channel_mesh">Mesh</string>
+    <string name="channel_mesh_desc">Mesh foreground service</string>
+    <string name="channel_sos">SOS</string>
+    <string name="channel_sos_desc">Emergency SOS alerts</string>
+
+    <!-- Screen titles -->
+    <string name="title_home">Home</string>
+    <string name="title_oracle">Ask</string>
+    <string name="title_browse">Archive</string>
+    <string name="title_mesh">Mesh</string>
+    <string name="title_sos">SOS</string>
+
+    <!-- Home actions -->
+    <string name="action_ask">Ask the Oracle</string>
+    <string name="action_archive">Archive</string>
+    <string name="action_mesh">Mesh</string>
+    <string name="action_sos">SOS</string>
+
+    <!-- Oracle -->
+    <string name="oracle_hint">Question</string>
+    <string name="oracle_ask">Ask</string>
+    <string name="oracle_thinking">Thinking…</string>
+    <string name="oracle_warming">Warming the model…</string>
+    <string name="oracle_refused">Refused</string>
+    <string name="oracle_sources">Sources</string>
+
+    <!-- SOS -->
+    <string name="sos_hold_to_send">Press and hold to broadcast.</string>
+    <string name="sos_sent">SOS broadcast queued.</string>
+    <string name="sos_target_desc">Hold to send SOS</string>
+
+    <!-- Generic placeholders -->
+    <string name="placeholder_offline">Offline first. No network calls.</string>
+    <string name="placeholder_tbd">TODO: wire this up.</string>
+</resources>

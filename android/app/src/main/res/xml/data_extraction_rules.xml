@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Constraint C1: Godstone holds no cloud-synchronized state. allowBackup is
+  false in the manifest; these rules additionally opt out of both cloud-backup
+  and device-transfer so nothing -- not even an empty ruleset -- is copied off
+  the device.
+-->
+<data-extraction-rules>
+    <cloud-backup disableIfNoEncryptionCapabilities="true">
+        <include scheme="content" path="/" />
+        <exclude scheme="content" path="/" />
+    </cloud-backup>
+    <device-transfer>
+        <include scheme="content" path="/" />
+        <exclude scheme="content" path="/" />
+    </device-transfer>
+</data-extraction-rules>

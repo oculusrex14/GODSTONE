@@ -1,0 +1,12 @@
+<resources>
+    <!-- Window / surface backdrop. Matches GodstoneTheme DarkScheme background. -->
+    <color name="stone_bg">#FF0B0D10</color>
+
+    <!-- Brand accents. ember is the warm primary, signal the red critical. -->
+    <color name="ember">#FFE0A030</color>
+    <color name="signal">#FFFF5449</color>
+    <color name="night_red">#FFFF3B30</color>
+
+    <!-- Adaptive launcher background. -->
+    <color name="ic_launcher_background">#FF1A1A1A</color>
+</resources>
