@@ -1,6 +1,7 @@
 import Foundation
 import CryptoKit
 import Security
+import GodstoneCore
 
 /// Long-lived node identity.
 ///

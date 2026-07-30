@@ -1,4 +1,5 @@
 import Foundation
+import GodstoneCore
 
 /// Delay-tolerant epidemic router. Identical policy to the Android Router in
 /// tab 04 — the two must agree or the mesh partitions along platform lines.
@@ -8,7 +9,7 @@ public final class Router {
     public static let maxTtl: UInt8 = 16
     private static let seenCacheCapacity = 16_384
 
-    private var seen = LruSet(capacity: Router.seenCacheCapacity)
+    private var seen = LruSet<Data>(capacity: Router.seenCacheCapacity)
     private var queue: [Frame] = []
     private let lock = NSLock()
 

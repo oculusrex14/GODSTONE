@@ -1,5 +1,6 @@
 import Foundation
 import CryptoKit
+import GodstoneCore
 
 /// Noise_XX_25519_ChaChaPoly_BLAKE2s.
 ///
