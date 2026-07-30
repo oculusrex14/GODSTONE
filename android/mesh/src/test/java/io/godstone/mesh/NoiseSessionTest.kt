@@ -1,5 +1,6 @@
 package io.godstone.mesh
 
+import io.godstone.mesh.crypto.NoiseSession
 import kotlin.test.Test
 import kotlin.test.assertContentEquals
 import kotlin.test.assertFailsWith
@@ -48,7 +49,7 @@ class NoiseSessionTest {
 
         // This is what makes QR contact verification meaningful: the key the
         // user scanned must be the key that completed the handshake.
-        assertContentEquals(bobIdentity.publicKey, alice.remoteStaticKey)
+        assertContentEquals(bobIdentity.identityPub, alice.remoteStaticKey)
     }
 
     @Test

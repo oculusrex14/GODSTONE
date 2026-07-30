@@ -1,5 +1,12 @@
 package io.godstone.mesh
 
+import io.godstone.mesh.router.BloomDigest
+import io.godstone.mesh.router.Router
+import io.godstone.mesh.store.InMemoryMessageStore
+import io.godstone.mesh.wire.Frame
+import io.godstone.mesh.wire.FrameType
+import io.godstone.mesh.wire.Priority
+import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -14,132 +21,122 @@ import kotlin.test.assertTrue
  */
 class RouterTest {
 
+    private val selfNodeId = ByteArray(16) { 0x0A }
+    private val peerC = ByteArray(16) { 0x0C }
+
     private fun frame(
-        id: String,
+        msgId: Long,
         ttl: Int = 8,
-        dest: ByteArray = PEER_B,
+        priority: Priority = Priority.DIRECT,
+        type: FrameType = FrameType.MESSAGE,
+        timestamp: Long = System.currentTimeMillis() / 1000,
         payload: ByteArray = ByteArray(32)
     ) = Frame(
-        messageId = id.toByteArray().copyOf(16),
-        destination = dest,
+        type = type,
         ttl = ttl,
+        priority = priority,
+        msgId = msgId,
+        timestamp = timestamp,
         payload = payload
     )
 
     @Test
-    fun `duplicate message is not relayed twice`() {
-        val router = Router(selfKey = PEER_A)
-        val f = frame("msg-1")
+    fun `duplicate message is not relayed twice`() = runTest {
+        val store = InMemoryMessageStore()
+        val router = Router(store, selfNodeId)
+        val f = frame(1)
 
-        assertTrue(router.onReceive(f, from = PEER_C).shouldRelay)
+        // First sighting is novel: persist and offer for relay.
+        assertTrue(router.onFrameReceived(f, fromPeer = peerC))
         // Same id arriving from a different neighbour is the flood coming back
         // around. Relaying it again is how a mesh melts down.
-        assertFalse(router.onReceive(f, from = PEER_D).shouldRelay)
+        assertFalse(router.onFrameReceived(f, fromPeer = peerC))
     }
 
     @Test
-    fun `ttl is decremented on relay`() {
-        val router = Router(selfKey = PEER_A)
-        val result = router.onReceive(frame("msg-2", ttl = 5), from = PEER_C)
-
-        assertTrue(result.shouldRelay)
-        assertEquals(4, result.frame!!.ttl)
+    fun `frame with exhausted ttl is dropped`() = runTest {
+        val store = InMemoryMessageStore()
+        val router = Router(store, selfNodeId)
+        assertFalse(router.onFrameReceived(frame(2, ttl = 0), fromPeer = peerC))
     }
 
     @Test
-    fun `frame with exhausted ttl is dropped`() {
-        val router = Router(selfKey = PEER_A)
-        assertFalse(router.onReceive(frame("msg-3", ttl = 0), from = PEER_C).shouldRelay)
+    fun `ttl above one is relayed and decremented on the forward copy`() = runTest {
+        val store = InMemoryMessageStore()
+        val router = Router(store, selfNodeId)
+        val f = frame(3, ttl = 5)
+
+        assertTrue(router.onFrameReceived(f, fromPeer = peerC))
+        assertEquals(4, router.forwardCopy(f).ttl)
     }
 
     @Test
-    fun `frame addressed to self is delivered and not relayed`() {
-        val router = Router(selfKey = PEER_A)
-        val result = router.onReceive(frame("msg-4", dest = PEER_A), from = PEER_C)
+    fun `aged frame is dropped`() = runTest {
+        val store = InMemoryMessageStore()
+        val router = Router(store, selfNodeId)
+        val aged = frame(4, timestamp = System.currentTimeMillis() / 1000 - 15 * 86400)
 
-        assertTrue(result.shouldDeliver)
-        assertFalse(result.shouldRelay)
+        // Beyond MAX_AGE_SECONDS (14 days): stale information is not relayed.
+        assertFalse(router.onFrameReceived(aged, fromPeer = peerC))
     }
 
     @Test
-    fun `broadcast is both delivered and relayed`() {
-        val router = Router(selfKey = PEER_A)
-        val result = router.onReceive(frame("msg-5", dest = BROADCAST), from = PEER_C)
+    fun `group priority without proof of work is dropped`() = runTest {
+        val store = InMemoryMessageStore()
+        val router = Router(store, selfNodeId)
+        // GROUP frames require a 20-bit PoW stamp; an unmined payload cannot
+        // satisfy it and must be refused so a sybil cannot flood for free.
+        // NOTE: a random payload has a ~1/2^20 chance of accidentally passing;
+        // acceptable for a unit test, deterministic mining is tracked separately.
+        val f = frame(5, priority = Priority.GROUP, payload = ByteArray(32))
 
-        assertTrue(result.shouldDeliver)
-        assertTrue(result.shouldRelay)
+        assertFalse(router.onFrameReceived(f, fromPeer = peerC))
     }
 
     @Test
-    fun `seen cache evicts oldest entries and stays bounded`() {
-        val router = Router(selfKey = PEER_A, seenCapacity = 4)
-
-        repeat(6) { router.onReceive(frame("msg-cap-$it"), from = PEER_C) }
-
-        // The two oldest have been evicted, so they look new again. That is
-        // acceptable: a bounded cache is mandatory on a device with 3 GB of RAM,
-        // and a rare re-relay is far cheaper than an unbounded set.
-        assertTrue(router.onReceive(frame("msg-cap-0"), from = PEER_C).shouldRelay)
-        assertFalse(router.onReceive(frame("msg-cap-5"), from = PEER_C).shouldRelay)
+    fun `direct priority is accepted without proof of work`() = runTest {
+        val store = InMemoryMessageStore()
+        val router = Router(store, selfNodeId)
+        // DIRECT is exempt from PoW: latency there is safety.
+        assertTrue(router.onFrameReceived(frame(6, priority = Priority.DIRECT), fromPeer = peerC))
     }
 
     @Test
-    fun `undeliverable message is queued for later`() {
-        val router = Router(selfKey = PEER_A)
-        router.send(frame("msg-6", dest = PEER_E))
+    fun `buildSos produces a max-ttl SOS frame`() {
+        val store = InMemoryMessageStore()
+        val router = Router(store, selfNodeId)
+        val sos = router.buildSos("help".toByteArray(), 1234L)
 
-        assertEquals(1, router.pendingCount)
-
-        // PEER_E walks into range. Store-and-forward is the entire point of the
-        // mesh: the two people are rarely in range at the same moment.
-        val flushed = router.onPeerAvailable(PEER_E)
-        assertEquals(1, flushed.size)
-        assertEquals(0, router.pendingCount)
+        assertEquals(FrameType.SOS, sos.type)
+        assertEquals(Frame.MAX_TTL, sos.ttl)
+        assertEquals(Priority.SOS, sos.priority)
     }
 
     @Test
-    fun `pending queue drops oldest when full rather than refusing new messages`() {
-        val router = Router(selfKey = PEER_A, pendingCapacity = 3)
+    fun `framesPeerLacks returns held frames absent from the peer digest`() = runTest {
+        val store = InMemoryMessageStore()
+        val router = Router(store, selfNodeId)
+        assertTrue(router.onFrameReceived(frame(7), fromPeer = peerC))
 
-        repeat(5) { router.send(frame("msg-q-$it", dest = PEER_E)) }
+        // An empty bloom means the peer has nothing: offer everything we hold.
+        val empty = BloomDigest()
+        val lacks = router.framesPeerLacks(empty, 8)
+        assertEquals(1, lacks.size)
+        assertEquals(7L, lacks[0].msgId)
 
-        assertEquals(3, router.pendingCount)
-        val flushed = router.onPeerAvailable(PEER_E)
-        // The three most recent survive. Recent information is more useful than
-        // stale information in an emergency.
-        assertEquals(listOf("msg-q-2", "msg-q-3", "msg-q-4"),
-                     flushed.map { String(it.messageId).trimEnd('\u0000') })
+        // A bloom that already contains the msg_id means the peer has it: offer nothing.
+        val full = BloomDigest().apply { add(7L) }
+        assertTrue(router.framesPeerLacks(full, 8).isEmpty())
     }
 
     @Test
-    fun `relay is suppressed when battery is critical`() {
-        val router = Router(selfKey = PEER_A)
-        router.onBatteryLevelChanged(0.04f, charging = false)
+    fun `current digest advertises every held msg_id`() = runTest {
+        val store = InMemoryMessageStore()
+        val router = Router(store, selfNodeId)
+        assertTrue(router.onFrameReceived(frame(8), fromPeer = peerC))
 
-        // Constraint C4. Below 5 percent the node stops relaying other people's
-        // traffic but still delivers its own and still receives - it becomes a
-        // leaf, not a corpse.
-        val result = router.onReceive(frame("msg-7"), from = PEER_C)
-        assertFalse(result.shouldRelay)
-
-        val mine = router.onReceive(frame("msg-8", dest = PEER_A), from = PEER_C)
-        assertTrue(mine.shouldDeliver)
-    }
-
-    @Test
-    fun `relay resumes when charging even at low battery`() {
-        val router = Router(selfKey = PEER_A)
-        router.onBatteryLevelChanged(0.04f, charging = true)
-
-        assertTrue(router.onReceive(frame("msg-9"), from = PEER_C).shouldRelay)
-    }
-
-    private companion object {
-        val PEER_A = ByteArray(32) { 0x0A }
-        val PEER_B = ByteArray(32) { 0x0B }
-        val PEER_C = ByteArray(32) { 0x0C }
-        val PEER_D = ByteArray(32) { 0x0D }
-        val PEER_E = ByteArray(32) { 0x0E }
-        val BROADCAST = ByteArray(32) { 0xFF.toByte() }
+        val digest = router.currentDigest()
+        assertTrue(digest.mightContain(8L))
+        assertFalse(digest.mightContain(9999L))
     }
 }

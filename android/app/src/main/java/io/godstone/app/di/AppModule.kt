@@ -12,6 +12,7 @@ import io.godstone.llm.rag.RagPipeline
 import io.godstone.llm.rag.Retriever
 import io.godstone.mesh.MeshNode
 import io.godstone.mesh.store.MessageStore
+import io.godstone.mesh.store.SqliteMessageStore
 import javax.inject.Singleton
 
 @Module
@@ -21,7 +22,7 @@ object AppModule {
     @Provides
     @Singleton
     fun provideMessageStore(@ApplicationContext ctx: Context): MessageStore =
-        MessageStore(ctx, maxBytes = 200L * 1024 * 1024)
+        SqliteMessageStore(ctx, maxBytes = 200L * 1024 * 1024)
 
     @Provides
     @Singleton

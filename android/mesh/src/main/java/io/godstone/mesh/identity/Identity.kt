@@ -3,6 +3,8 @@ package io.godstone.mesh.identity
 import android.content.Context
 import androidx.security.crypto.EncryptedSharedPreferences
 import androidx.security.crypto.MasterKey
+import io.godstone.core.crypto.Ed25519Keys
+import io.godstone.core.crypto.X25519Keys
 import org.bouncycastle.crypto.digests.Blake2sDigest
 import java.security.SecureRandom
 
@@ -100,6 +102,17 @@ class Identity private constructor(
         fun panicWipe(ctx: Context) {
             ctx.deleteSharedPreferences(PREFS)
         }
+
+        /**
+         * Build an Identity directly from already-generated key material. Used by
+         * tests and by code paths that source keys outside EncryptedSharedPreferences.
+         */
+        internal fun fromKeyMaterial(
+            edPub: ByteArray,
+            edPriv: ByteArray,
+            dhPub: ByteArray,
+            dhPriv: ByteArray
+        ): Identity = Identity(edPub, edPriv, dhPub, dhPriv, nodeIdOf(edPub))
 
         fun nodeIdOf(identityPub: ByteArray): ByteArray {
             val d = Blake2sDigest(null, 16, null, null)
