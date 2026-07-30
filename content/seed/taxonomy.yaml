@@ -1,0 +1,164 @@
+# Godstone domain taxonomy.
+#
+# The 20 domains the Archive is organised around. tier_min decides which build
+# a domain appears in: the 8 core domains are the ones that keep somebody alive
+# in the first 72 hours and they ship in every tier, including the 1.2 GB LIGHT
+# build that has to fit on a phone somebody already owns.
+#
+# Read by content/ingest/build_archive.py, which rejects any document whose
+# domain is not listed here. Adding a domain is a deliberate act.
+
+version: 3
+
+domains:
+
+  # --- The core 8. Present in LIGHT, MEDIUM and LARGE. -----------------------
+
+  - id: water
+    title: Water
+    tier_min: LIGHT
+    summary: Finding, filtering, disinfecting and storing drinking water.
+    critical: true
+
+  - id: medical_trauma
+    title: Medical - trauma
+    tier_min: LIGHT
+    summary: Bleeding, airway, fractures, burns, shock, wound care.
+    critical: true
+
+  - id: shelter_warmth
+    title: Shelter and warmth
+    tier_min: LIGHT
+    summary: Insulation, improvised shelter, hypothermia and heat illness.
+    critical: true
+
+  - id: fire
+    title: Fire
+    tier_min: LIGHT
+    summary: Ignition, fuel, safe indoor burning, carbon monoxide.
+    critical: true
+
+  - id: food_procurement
+    title: Food procurement
+    tier_min: LIGHT
+    summary: Foraging, trapping, fishing, plant identification cautions.
+    critical: false
+
+  - id: navigation
+    title: Navigation
+    tier_min: LIGHT
+    summary: Map, compass, celestial and terrain navigation without GPS.
+    critical: false
+
+  - id: signalling_rescue
+    title: Signalling and rescue
+    tier_min: LIGHT
+    summary: Ground signals, radio distress, visibility, rescue behaviour.
+    critical: true
+
+  - id: hazard_response
+    title: Immediate hazard response
+    tier_min: LIGHT
+    summary: Gas leaks, structural collapse, live electricity, flooding vehicles.
+    critical: true
+
+  # --- The full 20. MEDIUM and LARGE. ---------------------------------------
+
+  - id: cbrn
+    title: CBRN and fallout
+    tier_min: MEDIUM
+    summary: Sheltering, decontamination, dose limits, iodine prophylaxis.
+    critical: true
+
+  - id: urban_conflict
+    title: Siege and urban conflict
+    tier_min: MEDIUM
+    summary: Cover, movement, rationing, civilian safety in contested areas.
+    critical: false
+
+  - id: flood
+    title: Flood
+    tier_min: MEDIUM
+    summary: Evacuation timing, contamination, drying out, mould.
+    critical: false
+
+  - id: drought
+    title: Drought
+    tier_min: MEDIUM
+    summary: Water rationing, condensation harvesting, livestock and crops.
+    critical: false
+
+  - id: earthquake
+    title: Earthquake
+    tier_min: MEDIUM
+    summary: Immediate actions, aftershocks, structural triage, entrapment.
+    critical: true
+
+  - id: wildfire
+    title: Wildfire
+    tier_min: MEDIUM
+    summary: Defensible space, evacuation, smoke, entrapment survival.
+    critical: true
+
+  - id: pandemic_sanitation
+    title: Pandemic and sanitation
+    tier_min: MEDIUM
+    summary: Isolation, latrines, greywater, disease vectors, burial.
+    critical: true
+
+  - id: food_preservation
+    title: Food preservation
+    tier_min: MEDIUM
+    summary: Drying, salting, smoking, fermenting, canning, root cellars.
+    critical: false
+
+  - id: toolmaking_repair
+    title: Toolmaking and repair
+    tier_min: MEDIUM
+    summary: Cordage, adhesives, sharpening, mending, improvised fasteners.
+    critical: false
+
+  - id: chemistry
+    title: Practical chemistry
+    tier_min: MEDIUM
+    summary: Soap, bleach, alcohol, acids, safe storage and incompatibilities.
+    critical: false
+
+  - id: metallurgy
+    title: Metallurgy
+    tier_min: MEDIUM
+    summary: Charcoal, forge construction, annealing, casting, salvage.
+    critical: false
+
+  - id: agriculture
+    title: Agriculture
+    tier_min: MEDIUM
+    summary: Seed saving, soil, composting, rotation, pests without inputs.
+    critical: false
+
+  - id: power_generation
+    title: Power generation
+    tier_min: MEDIUM
+    summary: Solar, micro-hydro, batteries, charge control, safe wiring.
+    critical: false
+
+  - id: radio_electronics
+    title: Radio and electronics
+    tier_min: MEDIUM
+    summary: Antennas, propagation, receivers, salvaged components.
+    critical: false
+
+# Regional supplements. LARGE only - climate, endemic species and local
+# emergency conventions vary too much to generalise, and getting them wrong is
+# worse than omitting them.
+regions:
+  - id: temperate_maritime
+    tier_min: LARGE
+  - id: continental_cold
+    tier_min: LARGE
+  - id: arid_subtropical
+    tier_min: LARGE
+  - id: humid_tropical
+    tier_min: LARGE
+  - id: montane
+    tier_min: LARGE

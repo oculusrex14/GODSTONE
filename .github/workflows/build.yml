@@ -1,0 +1,228 @@
+name: build
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+
+# No secrets are used anywhere in this workflow. There is no signing key, no
+# store upload and no telemetry endpoint, because there is nothing to upload to
+# and nothing to report (C1, C2). Release artefacts are built and signed on a
+# workstation that is not connected to anything.
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+
+  constraints:
+    name: constraint audit
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # C1. The most important check in this file. If an INTERNET permission or
+      # a URLSession ever appears, the product's central promise is broken and
+      # the build must stop, loudly, before anyone can ship it.
+      - name: no network permission on Android
+        run: |
+          if grep -rn 'android.permission.INTERNET' android/ ; then
+            echo '::error::android.permission.INTERNET is present - violates C1'
+            exit 1
+          fi
+          echo 'ok: no INTERNET permission'
+
+      - name: no networking APIs on iOS
+        run: |
+          if grep -rnE 'URLSession|NSURLConnection|CFStream|Network\\.framework' \
+               ios/ --include='*.swift' --include='*.m' --include='*.mm' ; then
+            echo '::error::iOS networking API referenced - violates C1'
+            exit 1
+          fi
+          echo 'ok: no networking APIs'
+
+      # C2. Analytics SDKs arrive as transitive dependencies far more often than
+      # as deliberate additions, so this greps the lockfiles too.
+      - name: no analytics or crash reporting
+        run: |
+          if grep -rniE 'firebase|crashlytics|sentry|amplitude|mixpanel|appcenter' \
+               android/ ios/ --include='*.kts' --include='*.gradle' \
+               --include='*.plist' --include='*.yml' --include='*.resolved' ; then
+            echo '::error::telemetry dependency found - violates C2'
+            exit 1
+          fi
+          echo 'ok: no telemetry'
+
+      - name: tier tables agree across platforms
+        run: python scripts/check_tiers.py
+
+  content:
+    name: content pipeline
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: install
+        run: pip install -r content/requirements.txt
+
+      # --no-embed skips the model entirely. CI verifies the schema, the
+      # chunker and the SQL; embedding quality is measured offline where the
+      # weights actually live.
+      - name: build a LIGHT archive without embeddings
+        run: |
+          python -m content.ingest.build_archive \
+            --tier LIGHT --out /tmp/archive_light.db --no-embed
+
+      - name: archive is queryable and correctly indexed
+        run: |
+          python - <<'PY'
+          import sqlite3, sys
+          db = sqlite3.connect('/tmp/archive_light.db')
+
+          meta = dict(db.execute('SELECT key, value FROM archive_meta'))
+          print('corpus_sha256', meta['corpus_sha256'])
+          assert meta['tier'] == 'LIGHT'
+
+          docs = db.execute('SELECT COUNT(*) FROM documents').fetchone()[0]
+          chunks = db.execute('SELECT COUNT(*) FROM chunks').fetchone()[0]
+          assert docs > 0 and chunks > 0, 'empty archive'
+
+          # The exact join both retrievers issue. If the FTS content_rowid is
+          # wrong this returns nothing and every semantic-miss query in the app
+          # silently returns no sources.
+          rows = db.execute('''
+              SELECT c.chunk_id, d.title, c.section
+              FROM chunks_fts
+              JOIN chunks c ON c.chunk_id = chunks_fts.rowid
+              JOIN documents d ON d.document_id = c.document_id
+              WHERE chunks_fts MATCH 'tourniquet'
+              ORDER BY bm25(chunks_fts) LIMIT 5
+          ''').fetchall()
+          assert rows, 'FTS join returned nothing'
+          print('fts ok:', rows[0])
+
+          # A LIGHT build must not carry MEDIUM-only material.
+          leaked = db.execute(
+              "SELECT COUNT(*) FROM documents WHERE tier_min != 'LIGHT'"
+          ).fetchone()[0]
+          assert leaked == 0, f'{leaked} non-LIGHT documents in a LIGHT build'
+          print('tier filtering ok')
+          PY
+
+      - name: build is deterministic
+        run: |
+          python -m content.ingest.build_archive \
+            --tier LIGHT --out /tmp/archive_two.db --no-embed
+          a=$(sqlite3 /tmp/archive_light.db \
+                "SELECT value FROM archive_meta WHERE key='corpus_sha256'")
+          b=$(sqlite3 /tmp/archive_two.db \
+                "SELECT value FROM archive_meta WHERE key='corpus_sha256'")
+          if [ "$a" != "$b" ]; then
+            echo "::error::corpus_sha256 not reproducible: $a vs $b"
+            exit 1
+          fi
+          echo "ok: reproducible ($a)"
+
+  meshsim:
+    name: mesh simulation
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      # The reference run from the README. The floor is a regression guard, not
+      # a target: routing changes that quietly halve delivery are otherwise
+      # invisible until somebody needs the mesh.
+      - name: city blackout, 200 nodes
+        run: |
+          python -m meshsim.run --nodes 200 --scenario city_blackout \
+            --ticks 600 --assert-delivery 0.80
+
+      - name: other scenarios
+        run: |
+          for s in rural_sparse crowd_surge partition_heal flat_batteries; do
+            echo "--- $s"
+            python -m meshsim.run --nodes 120 --scenario "$s" --ticks 400
+          done
+
+  android:
+    name: android unit tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: gradle/actions/setup-gradle@v4
+
+      - name: unit tests
+        run: ./gradlew :mesh:test :llm:test :app:testLightDebugUnitTest --no-daemon
+
+      - name: assemble LIGHT debug
+        run: ./gradlew :app:assembleLightDebug --no-daemon
+
+      - name: verify merged manifest has no INTERNET permission
+        run: |
+          manifest=$(find android -name AndroidManifest.xml -path '*merged*' | head -1)
+          if [ -n "$manifest" ] && grep -q 'android.permission.INTERNET' "$manifest"; then
+            echo '::error::INTERNET permission appeared via a library merge'
+            exit 1
+          fi
+          echo 'ok: merged manifest clean'
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: android-test-results
+          path: '**/build/reports/tests/**'
+
+  ios:
+    name: ios unit tests
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: generate project
+        run: |
+          brew install xcodegen
+          cd ios && xcodegen generate
+
+      - name: test
+        run: |
+          cd ios
+          xcodebuild test \
+            -project Godstone.xcodeproj \
+            -scheme GodstoneTests \
+            -destination 'platform=iOS Simulator,name=iPhone 15' \
+            CODE_SIGNING_ALLOWED=NO \
+            | xcpretty && exit ${PIPESTATUS[0]}
+
+  grounding:
+    name: grounding regression
+    runs-on: ubuntu-latest
+    needs: [ content ]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install -r content/requirements.txt
+
+      # C3, checked at the retrieval layer rather than the generation layer so
+      # it needs no model. A question with no supporting document must return
+      # nothing above the confidence floor - that is what makes the app say it
+      # does not know instead of inventing an answer.
+      - name: out-of-corpus questions retrieve nothing
+        run: python -m content.eval.grounding --db /tmp/archive_light.db --strict
+
+    # Note: the eval harness reuses the archive built in the content job.
+    # Rebuilding it here would double the runtime for an identical file.

@@ -1,0 +1,80 @@
+# --- Godstone .gitignore ---
+# The workbook (Godstone.xlsx) IS the canonical source repository and is
+# committed. Everything below is generated artefact and must not be committed.
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# IDE / editors
+.idea/
+.vscode/
+*.iml
+*.swp
+*.swo
+*~
+
+# ---- Python (content pipeline, meshsim) ----
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+.eggs/
+build/
+dist/
+wheels/
+*.egg
+.venv/
+venv/
+env/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+# Built archive databases (produced by content/ingest/build_archive.py)
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
+
+# ---- AI model files (fetched by scripts/fetch_models.sh, never committed) ----
+*.gguf
+*.bin
+models/
+
+# ---- Android / Gradle ----
+.gradle/
+build/
+.cxx/
+captures/
+local.properties
+*.apk
+*.aab
+*.ap_
+*.dex
+.idea/
+# XcodeGen-generated project (we commit project.yml-equivalent Package.swift, not the gen'd project)
+*.xcodeproj/
+*.xcworkspace/
+
+# ---- iOS / Xcode / SPM ----
+DerivedData/
+build/
+*.xcuserstate
+xcuserdata/
+*.xccheckout
+*.moved-aside
+Pods/
+.build/
+Package.resolved
+
+# ---- Mesh simulator outputs ----
+meshsim/out/
+meshsim/logs/
+*.meshlog
+
+# ---- Secrets / local overrides ----
+*.keystore
+*.jks
+secrets.properties
+google-services.json

@@ -1,0 +1,86 @@
+# Media manifest.
+#
+# Media is indexed here and copied into the bundle by the packaging scripts in
+# tab 11. build_archive.py inserts only the rows whose kind is permitted for the
+# tier being built: LIGHT gets diagrams, MEDIUM adds voice and 480p video,
+# LARGE adds 1080p.
+#
+# Diagrams are SVG wherever possible. They scale to any screen, they are a few
+# kilobytes each, and they stay legible at the brightness somebody uses at 3am
+# with a dying battery (C7).
+#
+# Every entry needs a caption. The caption is what a screen reader announces
+# and what the LLM is given when it cites a figure - an uncaptioned diagram is
+# invisible to both.
+
+version: 3
+
+media:
+
+  - path: media/diagrams/tourniquet_placement.svg
+    kind: diagram
+    source: tccc_2024
+    caption: >
+      Tourniquet placed 5 to 7 cm above a mid-thigh wound, clear of the knee,
+      with the windlass locked and the time written on the strap.
+    bytes: 18244
+    sha256: 4f1c9a2ee0b7d3c85a6f0d19b73e2a41c8d5f6027b93ea14dc0f8b25a37e6c19
+
+  - path: media/diagrams/wound_packing.svg
+    kind: diagram
+    source: tccc_2024
+    caption: >
+      Cross-section of a junctional wound being packed with gauze pressed down
+      to the bleeding vessel, then held under direct pressure.
+    bytes: 21077
+    sha256: b82d40e6f19c7a35d2e08b4416fa9c73e5108d6b2fc4a9e7350bd1c8f462a0d3
+
+  - path: media/diagrams/sodis_bottles.svg
+    kind: diagram
+    source: who_water_2011
+    caption: >
+      Clear plastic bottles laid on their sides in full sun on a reflective
+      surface for solar disinfection.
+    bytes: 12903
+    sha256: 2a6f83b0d4e719c5a8730fb26d4c105e9b3f8a7261dc054e8fb2a93d7c610e48
+
+  - path: media/diagrams/fallout_shelter_position.svg
+    kind: diagram
+    source: nrc_fallout
+    caption: >
+      Cutaway of a building showing the safest sheltering positions: basement
+      centre and middle-floor interior rooms, away from roof and outer walls.
+    bytes: 26518
+    sha256: 7d3e1b95c0a284f6e7b91d035c8a4ef2170b6d9328fa5c1e04b7d986a3f2051c
+
+  - path: media/diagrams/mesh_relay_topology.svg
+    kind: diagram
+    source: godstone_editorial
+    caption: >
+      Five phones relaying a message across a blacked-out neighbourhood, each
+      hop within Bluetooth range of the next.
+    bytes: 15660
+    sha256: c14a7f28e0d3b6915ac47de0928b3f61a5d0c7e83b41f962708ad5c31e6b4092
+
+  - path: media/audio/hemorrhage_control_en.opus
+    kind: audio
+    source: tccc_2024
+    caption: >
+      Spoken walkthrough of severe bleeding control, for use in the dark or
+      with bloodied hands.
+    bytes: 486213
+    sha256: e0b47d219cf3a86503d1e7b942a0c58d61f3ba97042e5c81d97b30a6f2148ce5
+
+  - path: media/video/tourniquet_480.mp4
+    kind: video_480
+    source: tccc_2024
+    caption: Applying a windlass tourniquet to a thigh, single rescuer, real time.
+    bytes: 3184992
+    sha256: 91c3fa07e5b82d4160a7e3c9f5b40d82ea16c7593f82b0dc47e159a68d20b3f7
+
+  - path: media/video/tourniquet_1080.mp4
+    kind: video_1080
+    source: tccc_2024
+    caption: Applying a windlass tourniquet to a thigh, single rescuer, real time.
+    bytes: 11840255
+    sha256: 63de10b7a4f2c89501e6bd374a9c05f2e8b1d670c34fa985d2071be6c8a3f419

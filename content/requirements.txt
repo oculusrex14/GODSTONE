@@ -1,0 +1,19 @@
+# Content pipeline dependencies. Pinned exactly: a build that cannot be
+# reproduced in five years is not an offline archive, it is a rumour.
+#
+# Install into a venv:
+#     python -m venv .venv && . .venv/bin/activate
+#     pip install -r content/requirements.txt
+#
+# Nothing here is needed at runtime on a phone. The apps ship only the
+# resulting .db and .gguf files.
+
+llama-cpp-python==0.3.2
+PyYAML==6.0.2
+markdown-it-py==3.0.0
+
+# Readability scoring for the grade-level warning in build_archive.py (C7).
+textstat==0.7.4
+
+# Used only by the offline retrieval evaluation in tab 12.
+numpy==2.1.3

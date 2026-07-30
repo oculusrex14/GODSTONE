@@ -1,0 +1,87 @@
+# Provenance for every document in the Archive.
+#
+# Godstone ships offline and cannot phone home for a licence check, so licence
+# compliance has to be correct at build time and visible to the user in the app.
+# Every source_id referenced by a document's front matter must appear here, and
+# build_archive.py copies the licence string into the documents table so a
+# citation card can display it.
+#
+# Only licences that permit redistribution and offline bundling are acceptable.
+# Non-commercial-only and no-derivatives sources are deliberately excluded: the
+# app is given away, but chunking a document is unambiguously a derivative.
+
+version: 3
+
+licences:
+  CC0-1.0:      { redistribute: true,  modify: true,  attribution: false }
+  CC-BY-4.0:    { redistribute: true,  modify: true,  attribution: true  }
+  CC-BY-SA-4.0: { redistribute: true,  modify: true,  attribution: true, share_alike: true }
+  PUBLIC-DOMAIN-USGOV: { redistribute: true, modify: true, attribution: false }
+  GODSTONE-ORIGINAL:   { redistribute: true, modify: true, attribution: false }
+
+sources:
+
+  - id: who_water_2011
+    title: Guidelines for Drinking-water Quality, 4th edition
+    publisher: World Health Organization
+    licence: CC-BY-SA-4.0
+    retrieved: 2025-11-02
+    local_path: content/seed/vendor/who_water_2011/
+    notes: >
+      Chapters 7 and 9 only. The full guideline is a regulatory document for
+      utilities; the household treatment sections are the relevant part.
+
+  - id: tccc_2024
+    title: Tactical Combat Casualty Care Guidelines
+    publisher: US DoD Joint Trauma System
+    licence: PUBLIC-DOMAIN-USGOV
+    retrieved: 2025-11-02
+    local_path: content/seed/vendor/tccc_2024/
+    notes: >
+      The MARCH sequence and tourniquet guidance are the single most consulted
+      material in the medical domain. US Government work, public domain.
+
+  - id: fema_ready
+    title: Ready.gov hazard preparedness material
+    publisher: FEMA
+    licence: PUBLIC-DOMAIN-USGOV
+    retrieved: 2025-11-05
+    local_path: content/seed/vendor/fema_ready/
+
+  - id: nrc_fallout
+    title: Planning Guidance for Response to a Nuclear Detonation, 3rd edition
+    publisher: US National Security Council / FEMA
+    licence: PUBLIC-DOMAIN-USGOV
+    retrieved: 2025-11-05
+    local_path: content/seed/vendor/nrc_fallout/
+
+  - id: appropedia
+    title: Appropedia appropriate-technology articles
+    publisher: Appropedia Foundation
+    licence: CC-BY-SA-4.0
+    retrieved: 2025-11-09
+    local_path: content/seed/vendor/appropedia/
+    notes: >
+      Community edited. Everything drawn from here is reviewed against a
+      primary source before ingestion; see docs/packaging/STORE.md.
+
+  - id: godstone_editorial
+    title: Godstone editorial content
+    publisher: Godstone contributors
+    licence: GODSTONE-ORIGINAL
+    retrieved: 2026-01-14
+    local_path: content/seed/docs/
+    notes: >
+      Original text written for this project, usually to bridge gaps between
+      sources or to rewrite a procedure at a lower reading level (C7).
+
+# Sources considered and rejected, kept so the decision is not relitigated.
+rejected:
+  - title: Various survival wikis with unclear provenance
+    reason: No verifiable licence and no editorial review.
+  - title: Field manuals under NC-only terms
+    reason: Non-commercial clause is incompatible with unrestricted redistribution.
+  - title: Foraging guides with regional plant photography
+    reason: >
+      Misidentification is lethal and photographic licences did not permit
+      offline bundling. Plant material is text-only and cautious by design.
