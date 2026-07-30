@@ -165,9 +165,11 @@ jobs:
       - uses: gradle/actions/setup-gradle@v4
 
       - name: unit tests
+        working-directory: android
         run: ./gradlew :mesh:test :llm:test :app:testLightDebugUnitTest --no-daemon
 
       - name: assemble LIGHT debug
+        working-directory: android
         run: ./gradlew :app:assembleLightDebug --no-daemon
 
       - name: verify merged manifest has no INTERNET permission
@@ -192,6 +194,9 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: generate project
+        # xcodegen is required: the Godstone.xcodeproj is generated from
+        # project.yml and is not checked in. Without this step there is no
+        # project to build or test.
         run: |
           brew install xcodegen
           cd ios && xcodegen generate

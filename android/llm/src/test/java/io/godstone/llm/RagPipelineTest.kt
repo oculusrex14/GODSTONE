@@ -1,7 +1,8 @@
 package io.godstone.llm
 
-import io.godstone.llm.rag.RetrievedChunk
+import io.godstone.llm.rag.Chunk
 import io.godstone.llm.rag.PromptBuilder
+import io.godstone.llm.rag.RetrievalResult
 import kotlin.test.Test
 import kotlin.test.assertContains
 import kotlin.test.assertEquals
@@ -21,14 +22,12 @@ class RagPipelineTest {
     private fun chunk(
         id: Long,
         title: String,
-        section: String,
         text: String,
-        score: Float
-    ) = RetrievedChunk(
+        score: Double
+    ) = Chunk(
         chunkId = id,
         documentId = id,
         documentTitle = title,
-        section = section,
         domain = "medical_trauma",
         text = text,
         score = score
@@ -37,10 +36,10 @@ class RagPipelineTest {
     @Test
     fun `prompt contains every retrieved chunk`() {
         val chunks = listOf(
-            chunk(1, "Stopping severe bleeding", "Tourniquet",
-                  "Place it 5 to 7 cm above the wound.", 0.81f),
-            chunk(2, "Stopping severe bleeding", "Direct pressure",
-                  "Push hard with the heel of your hand.", 0.64f)
+            chunk(1, "Stopping severe bleeding",
+                  "Place it 5 to 7 cm above the wound.", 0.81),
+            chunk(2, "Stopping severe bleeding",
+                  "Push hard with the heel of your hand.", 0.64)
         )
 
         val prompt = PromptBuilder().build("how do I stop bleeding", chunks)
@@ -52,8 +51,8 @@ class RagPipelineTest {
     @Test
     fun `each chunk is labelled with a citation marker`() {
         val chunks = listOf(
-            chunk(1, "Stopping severe bleeding", "Tourniquet", "text one", 0.8f),
-            chunk(2, "Making water safe to drink", "Boiling", "text two", 0.7f)
+            chunk(1, "Stopping severe bleeding", "text one", 0.8),
+            chunk(2, "Making water safe to drink", "text two", 0.7)
         )
 
         val prompt = PromptBuilder().build("question", chunks)
@@ -69,12 +68,14 @@ class RagPipelineTest {
     @Test
     fun `system rules forbid answering beyond the context`() {
         val prompt = PromptBuilder().build("question", listOf(
-            chunk(1, "Doc", "Section", "text", 0.9f)
+            chunk(1, "Doc", "text", 0.9)
         ))
 
         val lower = prompt.lowercase()
+        // SYSTEM_RULES says "Answer ONLY from" and "The archive does not cover
+        // this. Do not guess." Refusal is the default when the context is silent.
         assertTrue("only" in lower)
-        assertTrue("do not know" in lower || "don't know" in lower)
+        assertTrue("archive does not cover" in lower || "do not guess" in lower)
     }
 
     @Test
@@ -82,13 +83,15 @@ class RagPipelineTest {
         val prompt = PromptBuilder().build("how do I build a nuclear reactor", emptyList())
 
         val lower = prompt.lowercase()
-        assertTrue("do not know" in lower || "don't know" in lower || "no information" in lower)
+        // With no chunks the system rules still bind: the model is told to say
+        // "The archive does not cover this." and not to guess.
+        assertTrue("archive does not cover" in lower || "do not guess" in lower)
     }
 
     @Test
     fun `prompt respects the context budget by dropping the weakest chunks`() {
         val many = (1..40).map {
-            chunk(it.toLong(), "Doc $it", "Section", "word ".repeat(200), 1.0f / it)
+            chunk(it.toLong(), "Doc $it", "word ".repeat(200), 1.0 / it)
         }
 
         val builder = PromptBuilder(contextTokens = 2048, reservedForAnswer = 512)
@@ -105,9 +108,9 @@ class RagPipelineTest {
     @Test
     fun `chunks are ordered by descending score`() {
         val chunks = listOf(
-            chunk(1, "Weak", "S", "weak text", 0.31f),
-            chunk(2, "Strong", "S", "strong text", 0.92f),
-            chunk(3, "Middle", "S", "middle text", 0.55f)
+            chunk(1, "Weak", "weak text", 0.31),
+            chunk(2, "Strong", "strong text", 0.92),
+            chunk(3, "Middle", "middle text", 0.55)
         )
 
         val prompt = PromptBuilder().build("question", chunks.sortedByDescending { it.score })
@@ -143,10 +146,6 @@ class RagPipelineTest {
     fun `confidence floor is identical to the iOS pipeline`() {
         // Tab 08 states the two platforms must not drift. If this constant
         // changes, RagPipeline.swift changes in the same commit.
-        assertEquals(0.35f, CONFIDENCE_THRESHOLD)
-    }
-
-    private companion object {
-        const val CONFIDENCE_THRESHOLD = 0.35f
+        assertEquals(0.35, RetrievalResult.CONFIDENCE_THRESHOLD, 0.0)
     }
 }

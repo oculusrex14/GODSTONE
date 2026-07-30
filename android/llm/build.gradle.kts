@@ -52,4 +52,5 @@ dependencies {
     implementation("androidx.sqlite:sqlite-ktx:2.4.0")
 
     testImplementation("junit:junit:4.13.2")
+    testImplementation("org.jetbrains.kotlin:kotlin-test:2.0.20")
 }

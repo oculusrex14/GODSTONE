@@ -6,7 +6,10 @@ package io.godstone.llm.rag
  * The system rules are the single most safety-critical string in the product.
  * They are written to make refusal the default and invention impossible.
  */
-object PromptBuilder {
+class PromptBuilder(
+    val contextTokens: Int = 2048,
+    val reservedForAnswer: Int = 512
+) {
 
     private val SYSTEM_RULES = """
         You are Godstone, an offline survival reference. You are being used by
@@ -28,7 +31,28 @@ object PromptBuilder {
            no filler. The user does not have time.
     """.trimIndent()
 
-    fun build(question: String, retrieval: RetrievalResult): String {
+    fun build(question: String, retrieval: RetrievalResult): String =
+        build(question, retrieval.chunks)
+
+    fun build(question: String, chunks: List<Chunk>): String {
+        // Strongest first: the model sees the most relevant passage earliest, and
+        // any budget trimming drops the weakest material from the tail.
+        val ranked = chunks.sortedByDescending { it.score }
+
+        // Apply the context budget: drop the weakest chunks from the tail until
+        // the prompt fits. Always keep at least the strongest chunk, even if it
+        // alone exceeds the budget -- an over-budget single source is still safer
+        // than an empty context.
+        val budget = contextTokens - reservedForAnswer
+        val kept = ranked.toMutableList()
+        while (kept.size > 1 && estimateTokens(render(question, kept)) > budget) {
+            kept.removeAt(kept.lastIndex)
+        }
+
+        return render(question, kept)
+    }
+
+    private fun render(question: String, chunks: List<Chunk>): String {
         val sb = StringBuilder()
 
         sb.append("<|im_start|>system\n")
@@ -38,7 +62,7 @@ object PromptBuilder {
         sb.append("<|im_start|>user\n")
         sb.append("CONTEXT:\n")
 
-        retrieval.chunks.forEachIndexed { i, c ->
+        chunks.forEachIndexed { i, c ->
             sb.append("[").append(i + 1).append("] ")
             sb.append("(").append(c.domain).append(" — ").append(c.documentTitle).append(")\n")
             sb.append(c.text.trim()).append("\n\n")
@@ -50,4 +74,11 @@ object PromptBuilder {
 
         return sb.toString()
     }
+
+    /**
+     * Heuristic token estimate. Roughly four characters per token for English.
+     * TODO: route through the model tokenizer via the native bridge so this
+     * matches the model's real vocabulary instead of a length-based guess.
+     */
+    fun estimateTokens(text: String): Int = text.length / 4
 }

@@ -31,7 +31,7 @@ class RagPipeline(
         if (!retrieval.passesConfidenceGate) return emptyFlow()
         if (!models.isLoaded) return emptyFlow()
 
-        val prompt = PromptBuilder.build(question, retrieval)
+        val prompt = PromptBuilder().build(question, retrieval)
         return models.generate(prompt, MAX_ANSWER_TOKENS)
     }
 
