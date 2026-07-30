@@ -22,11 +22,25 @@ public enum RagOutcome: Sendable {
     case notInArchive
 }
 
+/// Staged retrieval result exposed to the UI so the confidence gate can run
+/// BEFORE the model is loaded (C3) and so a refusal can still show near-miss
+/// sources from the Archive (C5). Mirrors `OracleViewModel.State` on Android.
+public struct RetrievalResult: Sendable {
+    public let chunks: [RetrievedChunk]
+    public let bestScore: Double
+    public let nearMisses: [Citation]
+
+    public var passesConfidenceGate: Bool {
+        bestScore >= RagPipeline.confidenceFloor
+    }
+}
+
 public actor RagPipeline {
 
     /// Below this fused score we consider the Archive silent on the question.
     /// Tuned on the offline eval set in tab 12; deliberately conservative.
-    private static let confidenceFloor: Double = 0.28
+    /// PARITY with Android (was 0.28; raised to 0.35 to match tab 05).
+    public static let confidenceFloor: Double = 0.35
 
     /// Reciprocal-rank-fusion constant. Standard value; combines the FTS5 rank
     /// and the vector rank without either having to be calibrated to the other.
@@ -40,52 +54,153 @@ public actor RagPipeline {
         self.builder = builder
     }
 
-    public func answer(question: String,
-                       onToken: @escaping @Sendable (String) -> Void) async throws -> RagOutcome {
+    // MARK: - Staged API (drives OracleViewModel)
 
-        let runner = try await ModelManager.shared.ensureLoaded()
+    /// Best-effort model preload. Returns true when a runner is resident and
+    /// ready, false when the model cannot be loaded (e.g. modelMissing). The UI
+    /// uses this to decide between "generate" and "degrade to Archive browse"
+    /// without ever blocking the gate on a model that may not fit (C5).
+    @discardableResult
+    public func warmUp() async -> Bool {
+        guard let runner = try? await ModelManager.shared.ensureLoaded() else {
+            return false
+        }
         ModelManager.shared.touch()
+        return await runner.isLoaded
+    }
 
+    /// Hybrid retrieval + reciprocal-rank fusion. Runs the gate evaluation but
+    /// does NOT load the model; the embedder lazily touches `ModelManager.shared`
+    /// so a cold Archive query never pays for a model load it may not need.
+    public func retrieve(question: String) async -> RetrievalResult {
         // Hybrid retrieval: FTS5 catches exact terms ("tourniquet", "1:200"),
         // vectors catch paraphrase ("how do I stop bad bleeding"). Neither alone
         // is good enough for a user who is frightened and typing badly.
-        let lexical = try retriever.searchLexical(question, limit: 24)
-        let semantic = try await retriever.searchSemantic(question,
-                                                          embedder: { await runner.embed($0) },
-                                                          limit: 24)
+        let lexical = (try? retriever.searchLexical(question, limit: 24)) ?? []
+        let semantic = (try? await retriever.searchSemantic(
+            question,
+            embedder: { await (try? await ModelManager.shared.ensureLoaded())?.embed($0) },
+            limit: 24)) ?? []
 
         let fused = fuse(lexical: lexical, semantic: semantic)
         let top = Array(fused.prefix(Tier.current.topKChunks))
 
-        guard let best = top.first, best.score >= RagPipeline.confidenceFloor else {
+        let bestScore = top.first?.score ?? 0
+        let nearMisses: [Citation]
+        if bestScore < RagPipeline.confidenceFloor {
+            // Below the floor we surface the three closest calls so the user can
+            // still browse the Archive by hand (C5: degrade, never fail).
+            nearMisses = top.prefix(3).map {
+                Citation(id: $0.chunkId,
+                         documentTitle: $0.documentTitle,
+                         section: $0.section,
+                         score: $0.score)
+            }
+        } else {
+            nearMisses = []
+        }
+
+        return RetrievalResult(chunks: top, bestScore: bestScore, nearMisses: nearMisses)
+    }
+
+    /// Streaming generation gated on the retrieval result. The stream finishes
+    /// immediately (empty) when the gate did not pass, so the UI's `for try await`
+    /// loop simply does nothing and falls through to the refused state.
+    ///
+    /// `nonisolated` because `OracleViewModel` iterates it without `await`-ing the
+    /// call itself: the actor state is only touched inside the stream's detached
+    /// continuation, where isolation is re-acquired at each `await`.
+    public nonisolated func generate(question: String,
+                                     retrieval: RetrievalResult) -> AsyncThrowingStream<String, Error> {
+        AsyncThrowingStream { continuation in
+            Task {
+                // Constraint C3: the gate runs BEFORE the model is ever invoked.
+                guard retrieval.passesConfidenceGate else {
+                    continuation.finish()
+                    return
+                }
+
+                do {
+                    let runner = try await ModelManager.shared.ensureLoaded()
+                    ModelManager.shared.touch()
+
+                    // Budget the context honestly using the model's own tokenizer
+                    // rather than a characters-per-token guess, then drop whole
+                    // chunks from the tail until it fits. A truncated chunk can
+                    // sever a citation from its procedure, which is exactly the
+                    // failure C3 exists to prevent.
+                    let prompt = await self.builder.build(
+                        question: question,
+                        chunks: retrieval.chunks,
+                        budget: Tier.current.contextTokens - 512,
+                        countTokens: { await runner.countTokens($0) }
+                    )
+
+                    let sampling = self.builder.isClinical(question)
+                        ? LlamaRunner.Sampling.clinical
+                        : LlamaRunner.Sampling()
+
+                    for try await token in await runner.generate(prompt: prompt, sampling: sampling) {
+                        continuation.yield(token)
+                    }
+                    continuation.finish()
+                } catch {
+                    continuation.finish(throwing: error)
+                }
+            }
+        }
+    }
+
+    /// Maps `[n]` citation markers in the generated answer back to the chunks
+    /// that were actually placed in the prompt, so the UI can render tappable
+    /// sources instead of bare index numbers. 1-based, matches PromptBuilder.
+    public nonisolated func extractCitations(answer: String,
+                                             retrieval: RetrievalResult) -> [Citation] {
+        guard let regex = try? NSRegularExpression(pattern: #"\[(\d+)\]"#) else {
+            return []
+        }
+        let ns = answer as NSString
+        let matches = regex.matches(in: answer,
+                                    range: NSRange(location: 0, length: ns.length))
+
+        var seen = Set<Int>()
+        var citations: [Citation] = []
+        for match in matches {
+            let n = Int(ns.substring(with: match.range(at: 1))) ?? 0
+            guard n >= 1, n <= retrieval.chunks.count, !seen.contains(n) else { continue }
+            seen.insert(n)
+            let chunk = retrieval.chunks[n - 1]
+            citations.append(Citation(id: chunk.chunkId,
+                                      documentTitle: chunk.documentTitle,
+                                      section: chunk.section,
+                                      score: chunk.score))
+        }
+        return citations
+    }
+
+    /// Release the model back to the OS. Fire-and-forget: the UI calls this on
+    /// background without awaiting, so the eviction runs on its own task.
+    public nonisolated func release() {
+        Task { await ModelManager.shared.evictNow() }
+    }
+
+    // MARK: - Legacy single-shot API (preserved for callers that do not stream)
+
+    public func answer(question: String,
+                       onToken: @escaping @Sendable (String) -> Void) async throws -> RagOutcome {
+        let retrieval = await retrieve(question: question)
+
+        guard retrieval.passesConfidenceGate else {
             return .notInArchive
         }
 
-        // Budget the context honestly using the model's own tokenizer rather
-        // than a characters-per-token guess, then drop whole chunks from the
-        // tail until it fits. A truncated chunk can sever a citation from its
-        // procedure, which is exactly the failure C3 exists to prevent.
-        let prompt = await builder.build(question: question,
-                                         chunks: top,
-                                         budget: Tier.current.contextTokens - 512,
-                                         countTokens: { await runner.countTokens($0) })
-
         var collected = ""
-        let sampling = builder.isClinical(question)
-            ? LlamaRunner.Sampling.clinical
-            : LlamaRunner.Sampling()
-
-        for try await token in await runner.generate(prompt: prompt, sampling: sampling) {
+        for try await token in generate(question: question, retrieval: retrieval) {
             collected += token
             onToken(token)
         }
 
-        let citations = top.map {
-            Citation(id: $0.chunkId,
-                     documentTitle: $0.documentTitle,
-                     section: $0.section,
-                     score: $0.score)
-        }
+        let citations = extractCitations(answer: collected, retrieval: retrieval)
 
         // Post-condition, cheap and worth it: a non-empty answer must carry at
         // least one citation, or we discard it and admit ignorance instead.

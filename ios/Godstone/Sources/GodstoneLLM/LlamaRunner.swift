@@ -1,5 +1,6 @@
 import Foundation
 import GodstoneCore
+import GodstoneLLMBridge
 
 /// Swift-side owner of the model.
 ///

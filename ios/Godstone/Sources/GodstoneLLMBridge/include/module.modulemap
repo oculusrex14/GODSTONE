@@ -1,0 +1,5 @@
+module GodstoneLLMBridge {
+    umbrella header "LlamaBridge.h"
+    export *
+    module * { export * }
+}

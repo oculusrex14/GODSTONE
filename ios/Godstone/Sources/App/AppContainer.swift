@@ -32,13 +32,11 @@ final class AppContainer: ObservableObject {
             databaseName: tier.archiveDatabaseName
         )
 
+        // The pipeline owns its model lifecycle through `ModelManager.shared`
+        // (tier-aware, idle-evicting). Here we only wire the retrieval side.
         self.ragPipeline = RagPipeline(
-            models: ModelManager(
-                modelName: tier.modelFileName,
-                contextTokens: tier.contextTokens
-            ),
             retriever: Retriever(archive: archive),
-            topK: tier.retrievalChunks
+            builder: PromptBuilder()
         )
 
         self.oracleViewModel = OracleViewModel(pipeline: ragPipeline)
