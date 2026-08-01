@@ -1,99 +1,126 @@
 #!/usr/bin/env bash
 #
-# Fetch the base models Godstone quantises and ships.
+# Fetch the exact, pre-quantised GGUF artifacts declared in
+# docs/packaging/MODELS.lock.json.
 #
-# This is the ONLY script in the repository that is allowed to touch the
-# network, and it is a developer tool. It is never invoked by the build, never
-# invoked by CI on a release branch, and no part of either app can reach it.
-# Constraint C1 is about the shipped product; somebody has to download the
-# weights once.
+# This developer-only script is the repository's sole model-network path. It
+# fails closed while the lock is UNPINNED or any checksum is absent. Never
+# replace a missing checksum with a guessed value: verify the upstream artifact,
+# record who verified it and when, then change status to PINNED.
 #
 # Usage:
-#     scripts/fetch_models.sh              # all tiers
-#     scripts/fetch_models.sh LIGHT        # one tier
-#     GODSTONE_MODEL_DIR=/mnt/big scripts/fetch_models.sh
+#     scripts/fetch_models.sh
+#     scripts/fetch_models.sh LIGHT
+#     GODSTONE_MODEL_DIR=/mnt/big scripts/fetch_models.sh MEDIUM
 
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+LOCK="$ROOT/docs/packaging/MODELS.lock.json"
 MODEL_DIR="${GODSTONE_MODEL_DIR:-$ROOT/models}"
-SRC_DIR="$MODEL_DIR/src"
-
-mkdir -p "$SRC_DIR"
-
-# repo | file | sha256 | tiers
-#
-# Pinned by hash, not by tag. A tag can be moved; a hash cannot. If an upstream
-# repository silently republishes different weights the checksum fails and the
-# build stops, which is the correct outcome.
-MODELS=(
-  "Qwen/Qwen3-0.6B-GGUF|Qwen3-0.6B-Q4_K_M.gguf|9f2a4c81d7e0b53628a1fc94d0e7b3a562189cf40b7e2d85a3c016f9b48e7d20|LIGHT"
-  "Qwen/Qwen3-1.7B-GGUF|Qwen3-1.7B-Q4_K_M.gguf|c3e70b18a95d24f6810be3c7d92a05f14e8b6072c5d9a381f0b46e2c7a9d5310|MEDIUM"
-  "Qwen/Qwen3-4B-GGUF|Qwen3-4B-Q5_K_M.gguf|5b1d92e0c874a3f6209d1e7b48c50a3f6e2b91d70c845fa3e17b0d629c4a8f31|LARGE"
-  "BAAI/bge-small-en-v1.5|bge-small-en-v1.5-f16.gguf|a70c5e3182d94b6f051ae8c37b2d940f81e6c5a29d3b074f8e12a6c5093bd748|LIGHT MEDIUM"
-  "BAAI/bge-base-en-v1.5|bge-base-en-v1.5-f16.gguf|18d4b6a09e5c7f231840ba9d6e0c58f37a29b1d40e6c839f5a71b02d4c9e6318|LARGE"
-)
-
 WANT_TIER="${1:-ALL}"
 
-have() { command -v "$1" >/dev/null 2>&1; }
+case "$WANT_TIER" in
+  ALL|LIGHT|MEDIUM|LARGE) ;;
+  *) echo "error: tier must be ALL, LIGHT, MEDIUM or LARGE" >&2; exit 2 ;;
+esac
 
-if have sha256sum; then
-  checksum() { sha256sum "$1" | cut -d' ' -f1; }
-elif have shasum; then
-  checksum() { shasum -a 256 "$1" | cut -d' ' -f1; }
-else
-  echo "error: need sha256sum or shasum" >&2
+command -v python3 >/dev/null 2>&1 || {
+  echo "error: python3 is required to validate the model lock" >&2
   exit 1
-fi
+}
 
-download() {
-  local url="$1" dest="$2"
-  if have curl; then
-    # --fail so an HTML error page is never written to a .gguf file, and
-    # --continue-at so a dropped connection does not restart 3 GB.
-    curl --fail --location --continue-at - --output "$dest" "$url"
-  elif have wget; then
-    wget --continue --output-document="$dest" "$url"
+ROWS_TEXT="$(python3 - "$LOCK" "$WANT_TIER" <<'PY'
+import json, pathlib, re, sys
+
+path = pathlib.Path(sys.argv[1])
+tier = sys.argv[2]
+try:
+    lock = json.loads(path.read_text())
+except Exception as exc:
+    raise SystemExit(f"error: cannot read model lock: {exc}")
+
+if lock.get("schema") != 1:
+    raise SystemExit("error: unsupported model-lock schema")
+if lock.get("status") != "PINNED":
+    raise SystemExit(
+        "error: model lock is UNPINNED; independently verify every upstream "
+        "artifact and SHA-256 before fetching"
+    )
+if not lock.get("verified_on") or not lock.get("verified_by"):
+    raise SystemExit("error: PINNED lock requires verified_on and verified_by")
+
+rows = []
+for item in lock.get("artifacts", []):
+    tiers = item.get("tiers", [])
+    if tier != "ALL" and tier not in tiers:
+        continue
+    sha = item.get("sha256")
+    if not isinstance(sha, str) or not re.fullmatch(r"[0-9a-f]{64}", sha):
+        raise SystemExit(f"error: invalid or missing sha256 for {item.get('id')}")
+    fields = [item.get("repo"), item.get("source_file"), item.get("output_file")]
+    if any(not isinstance(v, str) or not v for v in fields):
+        raise SystemExit(f"error: incomplete coordinates for {item.get('id')}")
+    if "/" in item["output_file"] or item["output_file"] in {".", ".."}:
+        raise SystemExit(f"error: unsafe output_file for {item.get('id')}")
+    rows.append("|".join([item["repo"], item["source_file"], item["output_file"], sha]))
+
+if not rows:
+    raise SystemExit(f"error: no locked artifacts selected for tier {tier}")
+print("\n".join(rows))
+PY
+)"
+mapfile -t ROWS <<< "$ROWS_TEXT"
+
+mkdir -p "$MODEL_DIR"
+
+checksum() {
+  if command -v sha256sum >/dev/null 2>&1; then
+    sha256sum "$1" | cut -d' ' -f1
+  elif command -v shasum >/dev/null 2>&1; then
+    shasum -a 256 "$1" | cut -d' ' -f1
   else
-    echo "error: need curl or wget" >&2
-    exit 1
+    echo "error: need sha256sum or shasum" >&2
+    return 1
   fi
 }
 
-for entry in "${MODELS[@]}"; do
-  IFS='|' read -r repo file want_sha tiers <<< "$entry"
+download() {
+  local url="$1" dest="$2"
+  if command -v curl >/dev/null 2>&1; then
+    curl --fail --location --retry 3 --continue-at - --output "$dest" "$url"
+  elif command -v wget >/dev/null 2>&1; then
+    wget --continue --output-document="$dest" "$url"
+  else
+    echo "error: need curl or wget" >&2
+    return 1
+  fi
+}
 
-  if [[ "$WANT_TIER" != "ALL" && " $tiers " != *" $WANT_TIER "* ]]; then
+for row in "${ROWS[@]}"; do
+  IFS='|' read -r repo source_file output_file want_sha <<< "$row"
+  dest="$MODEL_DIR/$output_file"
+  part="$dest.part"
+
+  if [[ -f "$dest" && "$(checksum "$dest")" == "$want_sha" ]]; then
+    echo "ok       $output_file (already verified)"
     continue
   fi
 
-  dest="$SRC_DIR/$file"
+  rm -f "$part"
+  echo "fetching $source_file from $repo"
+  download "https://huggingface.co/$repo/resolve/main/$source_file" "$part"
 
-  if [[ -f "$dest" ]]; then
-    got="$(checksum "$dest")"
-    if [[ "$got" == "$want_sha" ]]; then
-      echo "ok       $file (already present)"
-      continue
-    fi
-    echo "warning  $file checksum mismatch, re-downloading" >&2
-    rm -f "$dest"
-  fi
-
-  echo "fetching $file from $repo"
-  download "https://huggingface.co/$repo/resolve/main/$file" "$dest"
-
-  got="$(checksum "$dest")"
+  got="$(checksum "$part")"
   if [[ "$got" != "$want_sha" ]]; then
-    echo "error    $file checksum FAILED" >&2
-    echo "         expected $want_sha" >&2
-    echo "         got      $got" >&2
-    rm -f "$dest"
+    echo "error: checksum failed for $output_file" >&2
+    echo "       expected $want_sha" >&2
+    echo "       got      $got" >&2
+    rm -f "$part"
     exit 1
   fi
-  echo "ok       $file"
+  mv "$part" "$dest"
+  echo "ok       $output_file"
 done
 
-echo
-echo "base models are in $SRC_DIR"
-echo "next: scripts/quantise.sh"
+echo "locked model artifacts are in $MODEL_DIR"

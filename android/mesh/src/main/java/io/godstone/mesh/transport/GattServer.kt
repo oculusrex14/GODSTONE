@@ -35,7 +35,8 @@ internal object GattServer {
             close(); return@callbackFlow
         }
 
-        val server = manager.openGattServer(context, object : BluetoothGattServerCallback() {
+        lateinit var server: BluetoothGattServer
+        server = manager.openGattServer(context, object : BluetoothGattServerCallback() {
             override fun onCharacteristicWriteRequest(
                 device: android.bluetooth.BluetoothDevice,
                 requestId: Int,
@@ -46,7 +47,7 @@ internal object GattServer {
                 value: ByteArray
             ) {
                 if (characteristic.uuid == writeCharUuid) {
-                    trySend(device.address.toByteArray() to value)
+                    PeerId.fromAddress(device.address)?.let { trySend(it to value) }
                 }
                 if (responseNeeded) {
                     server.sendResponse(device, requestId, 0 /* GATT_SUCCESS */, offset, value)

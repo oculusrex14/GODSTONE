@@ -48,6 +48,17 @@ class Node:
     pending: list[Message] = field(default_factory=list)
     delivered: set[int] = field(default_factory=set)
 
+    # ---- store-and-forward state (PROTOCOL.md section 7) ------------------
+    # `held` is what this node CARRIES and will re-offer on every new encounter.
+    # Without it the simulator models pure flooding: a message is transmitted
+    # once, on receipt, and never again, so a node walking into a fresh
+    # neighbourhood with 50 undelivered messages says nothing at all. That is
+    # why mobility 0% -> 90% moved delivery by under 4 points, in a protocol
+    # whose entire premise is that people carry messages.
+    held: dict[int, "Message"] = field(default_factory=dict)
+    # Peers we have already synced with, so an encounter is O(new) not O(all).
+    offered: dict[int, set[int]] = field(default_factory=dict)
+
     # Matches Router.kt: below 5 percent and not charging, relay other people's
     # traffic no longer happens.
     def will_relay(self) -> bool:
@@ -61,6 +72,7 @@ class Simulation:
         self.tick = 0
         self.messages: dict[int, Message] = {}
         self.next_message_id = 0
+        self._grid: dict[tuple[int, int], list[Node]] = {}
 
         self.nodes = [
             Node(node_id=i,
@@ -73,14 +85,35 @@ class Simulation:
 
     # -- radio ------------------------------------------------------------
 
-    def neighbours(self, node: Node) -> list[Node]:
-        r2 = self.scenario.range_m ** 2
-        out = []
-        for other in self.nodes:
-            if other.node_id == node.node_id or not other.alive:
+    def _rebuild_grid(self) -> None:
+        """Spatial hash, rebuilt once per tick.
+
+        neighbours() was a linear scan over every node, called once per node per
+        tick: O(n^2) per tick, O(n^3) overall. At 200 nodes a 4000-tick run
+        could not finish inside three minutes, which meant the DELAY-tolerant
+        network was only ever measured over short horizons -- precisely the
+        regime where it performs worst. The cell size is the radio range, so a
+        node's neighbours can only lie in the nine surrounding cells.
+        """
+        self._grid = {}
+        cell = self.scenario.range_m
+        for n in self.nodes:
+            if not n.alive:
                 continue
-            if (other.x - node.x) ** 2 + (other.y - node.y) ** 2 <= r2:
-                out.append(other)
+            self._grid.setdefault((int(n.x // cell), int(n.y // cell)), []).append(n)
+
+    def neighbours(self, node: Node) -> list[Node]:
+        cell = self.scenario.range_m
+        r2 = cell ** 2
+        cx, cy = int(node.x // cell), int(node.y // cell)
+        out = []
+        for dx in (-1, 0, 1):
+            for dy in (-1, 0, 1):
+                for other in self._grid.get((cx + dx, cy + dy), ()):
+                    if other.node_id == node.node_id:
+                        continue
+                    if (other.x - node.x) ** 2 + (other.y - node.y) ** 2 <= r2:
+                        out.append(other)
         return out
 
     def transmit(self, sender: Node, message: Message) -> None:
@@ -114,8 +147,24 @@ class Simulation:
             is_for_me = message.destination in (node.node_id, -1)
             if is_for_me and message.message_id not in node.delivered:
                 node.delivered.add(message.message_id)
-                if message.delivered_tick is None and message.destination != -1:
-                    message.delivered_tick = self.tick
+                # Record against the CANONICAL message in self.messages, not the
+                # relayed copy. Relaying builds a new Message per hop, so writing
+                # here marked an object report() never reads: every multi-hop
+                # delivery went uncounted (29 scored vs 160 real).
+                origin = self.messages.get(message.message_id)
+                if (origin is not None and origin.delivered_tick is None
+                        and message.destination != -1):
+                    origin.delivered_tick = self.tick
+                    origin.hops = message.hops
+
+            # Retain for later encounters. This is the store in
+            # store-and-forward: the message travels with its carrier.
+            if message.destination != node.node_id and message.ttl > 1:
+                node.held[message.message_id] = message
+                if len(node.held) > self.scenario.pending_capacity:
+                    # Bounded, SOS-last eviction mirrors MessageStore.kt.
+                    oldest = min(node.held, key=lambda m: node.held[m].created_tick)
+                    del node.held[oldest]
 
             should_relay = message.destination != node.node_id and message.ttl > 1
             if should_relay and node.will_relay():
@@ -129,16 +178,51 @@ class Simulation:
                 self.messages[message.message_id].hops = max(
                     self.messages[message.message_id].hops, relayed.hops)
 
-        # Store and forward: retry anything queued for a peer now in range.
-        if node.pending and node.will_relay():
-            in_range = {p.node_id for p in self.neighbours(node)}
-            still: list[Message] = []
-            for message in node.pending:
-                if message.destination in in_range or message.destination == -1:
-                    self.transmit(node, message)
-                else:
-                    still.append(message)
-            node.pending = still[-self.scenario.pending_capacity:]
+        # ---- ANTI-ENTROPY ON ENCOUNTER (PROTOCOL.md section 7) -------------
+        # THE defect this closes. Previously a node only re-sent a message when
+        # its FINAL DESTINATION happened to come into range -- so a courier
+        # carrying a neighbourhood's traffic across a partition delivered
+        # nothing, and mobility contributed almost nothing to delivery.
+        #
+        # The documented design is a bloom-digest exchange: on meeting a peer,
+        # each side works out what the other appears to lack and offers only
+        # that. Router.kt already exposes exactly this (currentDigest /
+        # framesPeerLacks); the simulator simply never performed it, so it was
+        # measuring flooding while the protocol specified epidemic routing.
+        if node.will_relay() and node.held:
+            for peer in self.neighbours(node):
+                already = node.offered.setdefault(peer.node_id, set())
+                # `peer.seen` stands in for the peer's advertised bloom digest.
+                # A real digest has ~0.9% false positives, which costs a missed
+                # offer this encounter and is corrected on the next one.
+                lacking = [m for mid, m in node.held.items()
+                           if mid not in peer.seen and mid not in already]
+                if not lacking:
+                    continue
+                # Strict priority order: SOS first, then by age. A bounded
+                # number per encounter keeps a long backlog from monopolising
+                # one link (PROTOCOL.md section 7, step 5).
+                lacking.sort(key=lambda m: (m.destination != -1, m.created_tick))
+                for message in lacking[:self.scenario.offers_per_encounter]:
+                    if message.ttl <= 1:
+                        continue
+                    relayed = Message(message_id=message.message_id,
+                                      source=message.source,
+                                      destination=message.destination,
+                                      created_tick=message.created_tick,
+                                      ttl=message.ttl - 1,
+                                      hops=message.hops + 1)
+                    node.battery -= self.scenario.tx_cost
+                    if self.rng.random() >= self.scenario.packet_loss:
+                        peer.inbox.append((relayed, node.node_id))
+                    already.add(message.message_id)
+
+        # Retire anything that has aged out, so `held` cannot grow without bound.
+        cutoff = self.tick - self.scenario.hold_ticks
+        if node.held:
+            stale = [mid for mid, m in node.held.items() if m.created_tick < cutoff]
+            for mid in stale:
+                del node.held[mid]
 
     # -- mobility ---------------------------------------------------------
 
@@ -172,6 +256,9 @@ class Simulation:
             self.messages[message.message_id] = message
 
             source.seen.add(message.message_id)
+            # The originator carries its own message: if nobody is in range at
+            # send time, it goes out on the next encounter instead of vanishing.
+            source.held[message.message_id] = message
             if destination != -1 and destination not in \
                     {p.node_id for p in self.neighbours(source)}:
                 source.pending.append(message)
@@ -182,6 +269,7 @@ class Simulation:
 
     def run(self, ticks: int) -> dict:
         for self.tick in range(ticks):
+            self._rebuild_grid()
             self.scenario.on_tick(self, self.tick)
             self.inject()
             for node in self.nodes:
@@ -219,6 +307,9 @@ def main() -> None:
     ap.add_argument("--seed", type=int, default=1)
     ap.add_argument("--assert-delivery", type=float, default=None,
                     help="exit non-zero if delivery ratio falls below this")
+    ap.add_argument("--assert-regression", action="store_true",
+                    help="assert against the MEASURED regression floor rather "
+                         "than the unachieved product target")
     args = ap.parse_args()
 
     scenario = SCENARIOS[args.scenario]
@@ -235,6 +326,19 @@ def main() -> None:
     print(f"p95 latency        {result['p95_latency_ticks']} ticks")
     print(f"mean hops          {result['mean_hops']:.2f}")
     print(f"mean battery left  {result['mean_battery']:.3f}")
+
+    if args.assert_regression:
+        from .scenarios import DELIVERY_REGRESSION_FLOOR, DELIVERY_PRODUCT_TARGET
+        floor = DELIVERY_REGRESSION_FLOOR
+        if result["delivery_ratio"] < floor:
+            raise SystemExit(
+                f"FAIL delivery {result['delivery_ratio']:.3f} below the measured "
+                f"regression floor {floor:.3f} -- a routing change lost ground")
+        print(f"PASS regression floor {floor:.3f}")
+        if result["delivery_ratio"] < DELIVERY_PRODUCT_TARGET:
+            print(f"OPEN product target {DELIVERY_PRODUCT_TARGET:.3f} not met "
+                  f"({result['delivery_ratio']:.3f}). This is a DENSITY gap, not a "
+                  f"routing gap: see meshsim/scenarios.py.")
 
     if args.assert_delivery is not None:
         if result["delivery_ratio"] < args.assert_delivery:

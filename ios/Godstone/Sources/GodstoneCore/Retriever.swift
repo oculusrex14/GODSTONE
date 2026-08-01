@@ -19,8 +19,19 @@ public final class Retriever {
 
     private let archive: ArchiveRepository
 
+    private var cachedIndex: SafetyGate.CorpusIndex?
+
     public init(archive: ArchiveRepository) {
         self.archive = archive
+    }
+
+    /// Corpus vocabulary + IDF for the gate. Built once, cached: the gate needs
+    /// to know what the archive DOES contain in order to refuse what it does not.
+    public func corpusIndex() -> SafetyGate.CorpusIndex {
+        if let cachedIndex { return cachedIndex }
+        let idx = SafetyGate.CorpusIndex(chunks: archive.allChunks())
+        cachedIndex = idx
+        return idx
     }
 
     /// FTS5 + BM25 lexical search. Returns ranked chunks (best first).

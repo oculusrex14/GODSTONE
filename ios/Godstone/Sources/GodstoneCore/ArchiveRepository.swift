@@ -1,24 +1,53 @@
-// SYNTHESIZED gap-closure file -- authored to make the project compile; see docs/AUDIT.md.
 import Foundation
 import SQLite3
 
-/// Read-only handle to the bundled Archive SQLite database.
-///
-/// Mirrors `io.godstone.llm.rag.Retriever` (Android): the same schema
-/// (`chunks`, `chunks_fts`, `documents`, `vectors`) and the same query shapes
-/// -- FTS5 MATCH with `bm25()` ranking for lexical search, brute-force int8
-/// cosine similarity for semantic search. Brute force is deliberate: at LARGE
-/// tier it is ~400k int8 dot products over 768 dims, well inside budget, and it
-/// removes an entire class of index-corruption failures.
-///
-/// The database is opened read-only from the app bundle, falling back to
-/// Application Support for the LARGE-tier downloaded pack.
-public final class ArchiveRepository {
+private let sqliteTransient = unsafeBitCast(-1, to: sqlite3_destructor_type.self)
 
+public struct ArchiveDocument: Identifiable, Sendable, Hashable {
+    public let id: Int64
+    public let title: String
+    public let domain: String
+    public let isCritical: Bool
+
+    public init(id: Int64, title: String, domain: String, isCritical: Bool) {
+        self.id = id
+        self.title = title
+        self.domain = domain
+        self.isCritical = isCritical
+    }
+}
+
+public struct ArchivePassage: Identifiable, Sendable, Hashable {
+    public let id: Int64
+    public let documentId: Int64
+    public let documentTitle: String
+    public let domain: String
+    public let section: String
+    public let text: String
+    public let score: Double
+
+    public init(id: Int64, documentId: Int64, documentTitle: String,
+                domain: String, section: String, text: String, score: Double = 0) {
+        self.id = id
+        self.documentId = documentId
+        self.documentTitle = documentTitle
+        self.domain = domain
+        self.section = section
+        self.text = text
+        self.score = score
+    }
+}
+
+/// Read-only handle to the immutable on-device Archive.
+///
+/// Browsing and FTS5 search never load llama.cpp or an embedding model. This is
+/// the system's last surviving capability when inference and every radio fail.
+public final class ArchiveRepository: @unchecked Sendable {
     private var handle: OpaquePointer?
+    private let lock = NSLock()
 
     public init(databaseName: String) {
-        self.handle = openReadOnly(databaseName: databaseName)
+        handle = Self.openReadOnly(databaseName: databaseName)
         if let db = handle {
             sqlite3_exec(db, "PRAGMA query_only = ON", nil, nil, nil)
             sqlite3_exec(db, "PRAGMA mmap_size = 268435456", nil, nil, nil)
@@ -26,222 +55,250 @@ public final class ArchiveRepository {
     }
 
     deinit {
-        if let db = handle {
-            sqlite3_close_v2(db)
-        }
+        if let db = handle { sqlite3_close_v2(db) }
     }
 
-    // MARK: - Lexical (FTS5 + BM25)
+    public var isAvailable: Bool { handle != nil }
 
-    /// FTS5 MATCH with `bm25(chunks_fts)` ranking, weakest relevance first
-    /// (bm25 returns negative values, lower is better -- score is negated so
-    /// higher means more relevant, matching the Android convention).
-    func searchLexical(_ query: String, limit: Int) -> [RetrievedChunk] {
-        guard let db = handle else { return [] }
-        let sql = """
-            SELECT c.chunk_id, c.document_id, d.title, d.domain, c.text,
-                   bm25(chunks_fts) AS rank
-            FROM chunks_fts
-            JOIN chunks c ON c.chunk_id = chunks_fts.rowid
-            JOIN documents d ON d.document_id = c.document_id
-            WHERE chunks_fts MATCH ?
-            ORDER BY rank
-            LIMIT ?
-        """
-
-        var stmt: OpaquePointer?
-        guard sqlite3_prepare_v2(db, sql, -1, &stmt, nil) == SQLITE_OK else {
-            sqlite3_finalize(stmt)
-            return []
-        }
-        defer { sqlite3_finalize(stmt) }
-
-        let ftsQuery = sanitiseFts(query)
-        sqlite3_bind_text(stmt, 1, ftsQuery, -1, unsafeBitCast(-1, to: sqlite3_destructor_type.self))
-        sqlite3_bind_int64(stmt, 2, Int64(limit))
-
-        return collectChunks(from: stmt, scoreColumnIndex: 5, negateScore: true)
-    }
-
-    // MARK: - Semantic (int8 cosine)
-
-    /// All (chunk_id, vec) pairs in the archive, for brute-force vector scan.
-    func allVectors() -> [(id: Int64, blob: Data)] {
-        guard let db = handle else { return [] }
-        let sql = "SELECT chunk_id, vec FROM vectors"
-
-        var stmt: OpaquePointer?
-        guard sqlite3_prepare_v2(db, sql, -1, &stmt, nil) == SQLITE_OK else {
-            sqlite3_finalize(stmt)
-            return []
-        }
-        defer { sqlite3_finalize(stmt) }
-
-        var out: [(id: Int64, blob: Data)] = []
-        while sqlite3_step(stmt) == SQLITE_ROW {
-            let id = sqlite3_column_int64(stmt, 0)
-            let bytes = sqlite3_column_blob(stmt, 1)
-            let count = Int(sqlite3_column_bytes(stmt, 1))
-            if let bytes, count > 0 {
-                out.append((id, Data(bytes: bytes, count: count)))
+    public func listDocuments(domain: String? = nil) -> [ArchiveDocument] {
+        withDatabase { db in
+            var sql = "SELECT document_id, title, domain, is_critical FROM documents"
+            if domain != nil { sql += " WHERE domain = ?" }
+            sql += " ORDER BY is_critical DESC, domain, title"
+            var stmt: OpaquePointer?
+            guard sqlite3_prepare_v2(db, sql, -1, &stmt, nil) == SQLITE_OK else {
+                sqlite3_finalize(stmt); return []
             }
-        }
-        return out
+            defer { sqlite3_finalize(stmt) }
+            if let domain {
+                domain.withCString { sqlite3_bind_text(stmt, 1, $0, -1, sqliteTransient) }
+            }
+            var out: [ArchiveDocument] = []
+            while sqlite3_step(stmt) == SQLITE_ROW {
+                out.append(ArchiveDocument(
+                    id: sqlite3_column_int64(stmt, 0),
+                    title: columnString(stmt, 1),
+                    domain: columnString(stmt, 2),
+                    isCritical: sqlite3_column_int(stmt, 3) != 0
+                ))
+            }
+            return out
+        } ?? []
     }
 
-    /// Brute-force int8 cosine similarity against every stored vector.
+    public func listDomains() -> [String] {
+        withDatabase { db in
+            var stmt: OpaquePointer?
+            guard sqlite3_prepare_v2(db,
+                    "SELECT DISTINCT domain FROM documents ORDER BY domain",
+                    -1, &stmt, nil) == SQLITE_OK else {
+                sqlite3_finalize(stmt); return []
+            }
+            defer { sqlite3_finalize(stmt) }
+            var out: [String] = []
+            while sqlite3_step(stmt) == SQLITE_ROW { out.append(columnString(stmt, 0)) }
+            return out
+        } ?? []
+    }
+
+    public func passages(documentId: Int64) -> [ArchivePassage] {
+        withDatabase { db in
+            let sql = """
+                SELECT c.chunk_id, c.document_id, d.title, d.domain, c.section, c.text
+                FROM chunks c JOIN documents d ON d.document_id = c.document_id
+                WHERE c.document_id = ? ORDER BY c.ordinal
+                """
+            var stmt: OpaquePointer?
+            guard sqlite3_prepare_v2(db, sql, -1, &stmt, nil) == SQLITE_OK else {
+                sqlite3_finalize(stmt); return []
+            }
+            defer { sqlite3_finalize(stmt) }
+            sqlite3_bind_int64(stmt, 1, documentId)
+            var out: [ArchivePassage] = []
+            while sqlite3_step(stmt) == SQLITE_ROW { out.append(passage(stmt)) }
+            return out
+        } ?? []
+    }
+
+    public func search(_ query: String, limit: Int = 40) -> [ArchivePassage] {
+        let fts = sanitiseFts(query)
+        guard !fts.isEmpty else { return [] }
+        return withDatabase { db in
+            let sql = """
+                SELECT c.chunk_id, c.document_id, d.title, d.domain, c.section, c.text,
+                       bm25(chunks_fts) AS rank
+                FROM chunks_fts
+                JOIN chunks c ON c.chunk_id = chunks_fts.rowid
+                JOIN documents d ON d.document_id = c.document_id
+                WHERE chunks_fts MATCH ? ORDER BY rank LIMIT ?
+                """
+            var stmt: OpaquePointer?
+            guard sqlite3_prepare_v2(db, sql, -1, &stmt, nil) == SQLITE_OK else {
+                sqlite3_finalize(stmt); return []
+            }
+            defer { sqlite3_finalize(stmt) }
+            fts.withCString { sqlite3_bind_text(stmt, 1, $0, -1, sqliteTransient) }
+            sqlite3_bind_int64(stmt, 2, Int64(limit))
+            var out: [ArchivePassage] = []
+            while sqlite3_step(stmt) == SQLITE_ROW {
+                out.append(passage(stmt, score: -sqlite3_column_double(stmt, 6)))
+            }
+            return out
+        } ?? []
+    }
+
+    // MARK: - RAG-facing operations
+
+    func searchLexical(_ query: String, limit: Int) -> [RetrievedChunk] {
+        search(query, limit: limit).map {
+            RetrievedChunk(chunkId: $0.id, documentId: $0.documentId,
+                           documentTitle: $0.documentTitle, section: $0.section,
+                           domain: $0.domain, text: $0.text, score: $0.score)
+        }
+    }
+
     func searchSemantic(vector query: [Float], limit: Int) -> [RetrievedChunk] {
-        var scored: [(id: Int64, score: Double)] = []
-        scored.reserveCapacity(256)
-
-        for (id, blob) in allVectors() {
-            scored.append((id, cosineInt8(query, blob)))
-        }
-        scored.sort { $0.score > $1.score }
-
-        let top = scored.prefix(limit)
-        return top.compactMap { (id, score) in loadChunk(id: id, score: score) }
+        var scored: [(Int64, Double)] = []
+        for (id, blob) in allVectors() { scored.append((id, cosineInt8(query, blob))) }
+        scored.sort { $0.1 > $1.1 }
+        return scored.prefix(limit).compactMap { loadChunk(id: $0.0, score: $0.1) }
     }
 
-    // MARK: - Row loading
+    func allChunks() -> [RetrievedChunk] {
+        withDatabase { db in
+            let sql = """
+                SELECT c.chunk_id, c.document_id, d.title, c.section, d.domain, c.text
+                FROM chunks c JOIN documents d ON d.document_id = c.document_id
+                """
+            var stmt: OpaquePointer?
+            guard sqlite3_prepare_v2(db, sql, -1, &stmt, nil) == SQLITE_OK else {
+                sqlite3_finalize(stmt); return []
+            }
+            defer { sqlite3_finalize(stmt) }
+            var out: [RetrievedChunk] = []
+            while sqlite3_step(stmt) == SQLITE_ROW {
+                out.append(RetrievedChunk(
+                    chunkId: sqlite3_column_int64(stmt, 0),
+                    documentId: sqlite3_column_int64(stmt, 1),
+                    documentTitle: columnString(stmt, 2),
+                    section: columnString(stmt, 3),
+                    domain: columnString(stmt, 4),
+                    text: columnString(stmt, 5),
+                    score: 0
+                ))
+            }
+            return out
+        } ?? []
+    }
 
-    func loadChunk(id chunkId: Int64, score: Double) -> RetrievedChunk? {
+    func loadChunk(id: Int64, score: Double) -> RetrievedChunk? {
+        withDatabase { db in
+            let sql = """
+                SELECT c.chunk_id, c.document_id, d.title, c.section, d.domain, c.text
+                FROM chunks c JOIN documents d ON d.document_id = c.document_id
+                WHERE c.chunk_id = ?
+                """
+            var stmt: OpaquePointer?
+            guard sqlite3_prepare_v2(db, sql, -1, &stmt, nil) == SQLITE_OK else {
+                sqlite3_finalize(stmt); return nil
+            }
+            defer { sqlite3_finalize(stmt) }
+            sqlite3_bind_int64(stmt, 1, id)
+            guard sqlite3_step(stmt) == SQLITE_ROW else { return nil }
+            return RetrievedChunk(
+                chunkId: sqlite3_column_int64(stmt, 0),
+                documentId: sqlite3_column_int64(stmt, 1),
+                documentTitle: columnString(stmt, 2),
+                section: columnString(stmt, 3),
+                domain: columnString(stmt, 4),
+                text: columnString(stmt, 5),
+                score: score
+            )
+        } ?? nil
+    }
+
+    private func allVectors() -> [(Int64, Data)] {
+        withDatabase { db in
+            var stmt: OpaquePointer?
+            guard sqlite3_prepare_v2(db, "SELECT chunk_id, vec FROM vectors", -1,
+                                     &stmt, nil) == SQLITE_OK else {
+                sqlite3_finalize(stmt); return []
+            }
+            defer { sqlite3_finalize(stmt) }
+            var out: [(Int64, Data)] = []
+            while sqlite3_step(stmt) == SQLITE_ROW {
+                let count = Int(sqlite3_column_bytes(stmt, 1))
+                if let bytes = sqlite3_column_blob(stmt, 1), count > 0 {
+                    out.append((sqlite3_column_int64(stmt, 0), Data(bytes: bytes, count: count)))
+                }
+            }
+            return out
+        } ?? []
+    }
+
+    private func cosineInt8(_ query: [Float], _ blob: Data) -> Double {
+        guard !query.isEmpty, query.count == blob.count else { return 0 }
+        var dot = 0.0, normA = 0.0, normB = 0.0
+        for i in query.indices {
+            let a = Double(query[i])
+            let b = Double(Int8(bitPattern: blob[i])) / 127.0
+            dot += a * b; normA += a * a; normB += b * b
+        }
+        let denom = (normA * normB).squareRoot()
+        return denom == 0 ? 0 : dot / denom
+    }
+
+    private func withDatabase<T>(_ body: (OpaquePointer) -> T) -> T? {
+        lock.lock(); defer { lock.unlock() }
         guard let db = handle else { return nil }
-        let sql = """
-            SELECT c.chunk_id, c.document_id, d.title, d.domain, c.text
-            FROM chunks c
-            JOIN documents d ON d.document_id = c.document_id
-            WHERE c.chunk_id = ?
-        """
-
-        var stmt: OpaquePointer?
-        guard sqlite3_prepare_v2(db, sql, -1, &stmt, nil) == SQLITE_OK else {
-            sqlite3_finalize(stmt)
-            return nil
-        }
-        defer { sqlite3_finalize(stmt) }
-
-        sqlite3_bind_int64(stmt, 1, chunkId)
-
-        guard sqlite3_step(stmt) == SQLITE_ROW else { return nil }
-        let rowChunkId = sqlite3_column_int64(stmt, 0)
-        let documentId = sqlite3_column_int64(stmt, 1)
-        let title = columnString(stmt, 2)
-        let domain = columnString(stmt, 3)
-        let text = columnString(stmt, 4)
-        // The Android schema has no `section` column; section is derived from the
-        // document title prefix where the iOS citation UI wants it. Default "".
-        return RetrievedChunk(chunkId: rowChunkId,
-                              documentId: documentId,
-                              documentTitle: title,
-                              section: "",
-                              domain: domain,
-                              text: text,
-                              score: score)
+        return body(db)
     }
 
-    // MARK: - Helpers
-
-    private func collectChunks(from stmt: OpaquePointer?,
-                               scoreColumnIndex: Int32,
-                               negateScore: Bool) -> [RetrievedChunk] {
-        var out: [RetrievedChunk] = []
-        while sqlite3_step(stmt) == SQLITE_ROW {
-            let chunkId = sqlite3_column_int64(stmt, 0)
-            let documentId = sqlite3_column_int64(stmt, 1)
-            let title = columnString(stmt, 2)
-            let domain = columnString(stmt, 3)
-            let text = columnString(stmt, 4)
-            var score = sqlite3_column_double(stmt, scoreColumnIndex)
-            if negateScore { score = -score }
-            out.append(RetrievedChunk(chunkId: chunkId,
-                                      documentId: documentId,
-                                      documentTitle: title,
-                                      section: "",
-                                      domain: domain,
-                                      text: text,
-                                      score: score))
-        }
-        return out
+    private func passage(_ stmt: OpaquePointer?, score: Double = 0) -> ArchivePassage {
+        ArchivePassage(
+            id: sqlite3_column_int64(stmt, 0),
+            documentId: sqlite3_column_int64(stmt, 1),
+            documentTitle: columnString(stmt, 2),
+            domain: columnString(stmt, 3),
+            section: columnString(stmt, 4),
+            text: columnString(stmt, 5),
+            score: score
+        )
     }
 
     private func columnString(_ stmt: OpaquePointer?, _ index: Int32) -> String {
-        if let cstr = sqlite3_column_text(stmt, index) {
-            return String(cString: cstr)
-        }
-        return ""
+        guard let value = sqlite3_column_text(stmt, index) else { return "" }
+        return String(cString: value)
     }
 
-    /// Strip FTS5 operators so a plain user question cannot become a syntax
-    /// error, then OR the remaining terms. Identical to the Android sanitiser.
-    private func sanitiseFts(_ q: String) -> String {
-        let stripped = q.unicodeScalars.filter {
-            !"\"*():^-".contains(Character(String($0)))
-        }.map { String($0) }.joined()
-        let terms = stripped.split(whereSeparator: { $0.isWhitespace })
-            .map { String($0) }
+    private func sanitiseFts(_ value: String) -> String {
+        let stripped = value.map { "\"*():^-".contains($0) ? " " : String($0) }.joined()
+        return stripped.split(whereSeparator: { $0.isWhitespace })
             .filter { !$0.isEmpty }
-        if terms.isEmpty { return "\"\"" }
-        return terms.map { "\"\($0)\"" }.joined(separator: " OR ")
+            .map { "\"\($0)\"" }
+            .joined(separator: " OR ")
     }
 
-    /// Cosine similarity between a float query vector and an int8-stored vector,
-    /// where each stored byte is divided by 127.0. Same as the Android routine.
-    private func cosineInt8(_ query: [Float], _ blob: Data) -> Double {
-        let dims = min(query.count, blob.count)
-        guard dims > 0 else { return 0.0 }
-
-        var dot = 0.0
-        var normA = 0.0
-        var normB = 0.0
-        for i in 0..<dims {
-            let a = Double(query[i])
-            let b = Double(blob[i]) / 127.0
-            dot += a * b
-            normA += a * a
-            normB += b * b
-        }
-        let denom = (normA * normB).squareRoot()
-        return denom == 0.0 ? 0.0 : dot / denom
-    }
-
-    // MARK: - Open
-
-    private func openReadOnly(databaseName: String) -> OpaquePointer? {
-        let path = resolveDatabasePath(databaseName: databaseName)
-        guard let path else { return nil }
-
+    private static func openReadOnly(databaseName: String) -> OpaquePointer? {
+        guard let path = resolveDatabasePath(databaseName: databaseName) else { return nil }
         var db: OpaquePointer?
         let flags = SQLITE_OPEN_READONLY | SQLITE_OPEN_FULLMUTEX
         guard sqlite3_open_v2(path, &db, flags, nil) == SQLITE_OK else {
-            sqlite3_close_v2(db)
-            return nil
+            sqlite3_close_v2(db); return nil
         }
         return db
     }
 
-    private func resolveDatabasePath(databaseName: String) -> String? {
-        // Strip a ".db" suffix so Bundle can split resource/ext, but keep the
-        // full name available too for Application Support fallback.
-        let nsName = (databaseName as NSString)
-        let base = nsName.deletingPathExtension
-        let ext = nsName.pathExtension.isEmpty ? "db" : nsName.pathExtension
-
-        if let bundled = Bundle.main.path(forResource: base, ofType: ext) {
-            return bundled
-        }
-        // LARGE tier ships the archive as a downloaded pack in Application Support.
+    private static func resolveDatabasePath(databaseName: String) -> String? {
+        let ns = databaseName as NSString
+        let base = ns.deletingPathExtension
+        let ext = ns.pathExtension.isEmpty ? "db" : ns.pathExtension
+        if let bundled = Bundle.main.path(forResource: base, ofType: ext) { return bundled }
         if let dir = FileManager.default.urls(for: .applicationSupportDirectory,
                                               in: .userDomainMask).first {
             let url = dir.appendingPathComponent("archives").appendingPathComponent(databaseName)
-            if FileManager.default.fileExists(atPath: url.path) {
-                return url.path
-            }
+            if FileManager.default.fileExists(atPath: url.path) { return url.path }
         }
-        // Last resort: try the full name as a bundle resource with no extension.
-        if let bundled = Bundle.main.path(forResource: databaseName, ofType: nil) {
-            return bundled
-        }
-        return nil
+        return Bundle.main.path(forResource: databaseName, ofType: nil)
     }
 }

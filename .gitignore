@@ -1,50 +1,12 @@
-# --- Godstone .gitignore ---
-# The workbook (Godstone.xlsx) IS the canonical source repository and is
-# committed. Everything below is generated artefact and must not be committed.
+# V4: restored. V3 cut this from 80 lines to 27 and dropped load-bearing rules.
+# ios/Godstone/.build/ alone holds ~346 MB across ~3,599 files, and a single
+# `git add .` would have ingested it.
 
-# macOS
-.DS_Store
-.AppleDouble
-.LSOverride
-
-# IDE / editors
-.idea/
-.vscode/
-*.iml
-*.swp
-*.swo
-*~
-
-# ---- Python (content pipeline, meshsim) ----
-__pycache__/
-*.py[cod]
-*$py.class
-*.egg-info/
-.eggs/
-build/
+# --- build output ---
 dist/
-wheels/
-*.egg
-.venv/
-venv/
-env/
-.pytest_cache/
-.mypy_cache/
-.ruff_cache/
-# Built archive databases (produced by content/ingest/build_archive.py)
-*.db
-*.db-journal
-*.db-wal
-*.db-shm
-
-# ---- AI model files (fetched by scripts/fetch_models.sh, never committed) ----
-*.gguf
-*.bin
-models/
-
-# ---- Android / Gradle ----
-.gradle/
 build/
+.build/
+.gradle/
 .cxx/
 captures/
 local.properties
@@ -52,29 +14,55 @@ local.properties
 *.aab
 *.ap_
 *.dex
-.idea/
-# XcodeGen-generated project (we commit project.yml-equivalent Package.swift, not the gen'd project)
-*.xcodeproj/
-*.xcworkspace/
 
-# ---- iOS / Xcode / SPM ----
-DerivedData/
-build/
-*.xcuserstate
-xcuserdata/
-*.xccheckout
-*.moved-aside
-Pods/
-.build/
-Package.resolved
-
-# ---- Mesh simulator outputs ----
-meshsim/out/
-meshsim/logs/
-*.meshlog
-
-# ---- Secrets / local overrides ----
+# --- signing keys and secrets. NEVER commit. ---
 *.keystore
 *.jks
 secrets.properties
 google-services.json
+*.p12
+*.mobileprovision
+
+# --- large binaries, produced by scripts, never committed ---
+models/
+*.gguf
+*.db
+*.db-journal
+*.db-shm
+*.db-wal
+
+# --- native dependency checkout; pinning method is still an open release gate ---
+third_party/llama.cpp/
+
+# --- Xcode: the project is GENERATED from ios/project.yml ---
+*.xcodeproj/
+*.xcworkspace/
+xcuserdata/
+DerivedData/
+*.xcuserstate
+Pods/
+
+# The app currently has no external Swift package dependency graph worth locking.
+# Revisit when a reviewed native-dependency pinning strategy is added.
+Package.resolved
+
+# --- simulator artefacts ---
+meshsim/out/
+meshsim/logs/
+*.meshlog
+
+# --- python ---
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# --- editors ---
+.idea/
+.vscode/
+*.iml
+*.swp
+.DS_Store

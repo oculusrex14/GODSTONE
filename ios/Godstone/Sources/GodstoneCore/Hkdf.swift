@@ -19,13 +19,22 @@ public enum Hkdf {
 
     /// Split `material` under `chainingKey` into (newChainingKey, k).
     public static func split(chainingKey: Data, material: Data) -> (Data, Data) {
-        let temp = hmac(key: chainingKey, message: material)
-
-        var one = material
-        one.append(0x01)
-        let k = hmac(key: temp, message: one)
-
-        return (temp, k)
+        // Noise rev34 s.4.3:
+        //     temp_key = HMAC(ck, ikm)
+        //     output1  = HMAC(temp_key, 0x01)
+        //     output2  = HMAC(temp_key, output1 || 0x02)
+        //
+        // The chaining key is output1, NOT temp_key, and the second HMAC is fed
+        // the single byte 0x01 -- not material || 0x01. The previous code got
+        // both wrong, so the chaining key diverged from noise-java at the FIRST
+        // mixKey and the handshake could never complete. Pinned by
+        // crypto/handshake_vectors.json (Invariant D).
+        let tempKey = hmac(key: chainingKey, message: material)
+        let output1 = hmac(key: tempKey, message: Data([0x01]))
+        var secondInput = output1
+        secondInput.append(0x02)
+        let output2 = hmac(key: tempKey, message: secondInput)
+        return (output1, output2)
     }
 
     /// RFC 2104 HMAC over BLAKE2s. `HMAC(K, m) = H(K ^ opad || H(K ^ ipad || m))`,

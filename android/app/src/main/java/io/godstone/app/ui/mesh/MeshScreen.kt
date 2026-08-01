@@ -1,9 +1,7 @@
-// SYNTHESIZED gap-closure file -- authored to make the project compile; see docs/AUDIT.md.
 package io.godstone.app.ui.mesh
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -13,67 +11,38 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import io.godstone.mesh.MeshNode
 
-/**
- * Mesh status panel. UI-only placeholder with static status fields so the screen
- * compiles and reports a plausible shape.
- *
- * TODO: inject MeshNode and surface live peers / queued messages / duty-cycle.
- */
+/** Honest status surface. Radio enablement remains blocked until M1-wire/M2-link close. */
 @Composable
-fun MeshScreen() {
-    // Placeholder local state until MeshNode is injected.
-    var peers by remember { mutableStateOf(0) }
-    var queued by remember { mutableStateOf(0) }
-    val dutyCycle = "low"
-
+fun MeshScreen(meshNode: MeshNode) {
+    val status by meshNode.statusFlow.collectAsStateWithLifecycle()
     Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(20.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp)
+        modifier = Modifier.fillMaxSize().padding(20.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-        Text(
-            text = "Mesh",
-            style = MaterialTheme.typography.titleLarge,
-            color = MaterialTheme.colorScheme.onBackground
-        )
-        Text(
-            text = "Peer-to-peer. No infrastructure.",
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onBackground
-        )
-
-        StatusRow("Peers in range", peers.toString())
-        StatusRow("Queued messages", queued.toString())
-        StatusRow("Duty cycle", dutyCycle)
-    }
-}
-
-@Composable
-private fun StatusRow(label: String, value: String) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface,
-            contentColor = MaterialTheme.colorScheme.onSurface
-        )
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
+        Text("Mesh", style = MaterialTheme.typography.titleLarge)
+        Card(modifier = Modifier.fillMaxWidth()) {
+            Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text(if (status.linkLayerReady) "Control plane ready" else "Transport not field-ready")
+                Text(status.detail, style = MaterialTheme.typography.bodyLarge)
+                Text("Nearby peers: ${status.peerCount}", style = MaterialTheme.typography.bodyMedium)
+            }
+        }
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            colors = CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.errorContainer,
+                contentColor = MaterialTheme.colorScheme.onErrorContainer
+            )
         ) {
-            Text(label, style = MaterialTheme.typography.bodyLarge)
-            Text(value, style = MaterialTheme.typography.titleLarge)
+            Text(
+                "Godstone will not activate radios or claim encrypted delivery until the canonical GMP/2.1 wire format, BLE record reassembly, and Noise handshake driver pass real two-device tests.",
+                modifier = Modifier.padding(16.dp)
+            )
         }
     }
 }

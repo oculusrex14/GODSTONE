@@ -27,8 +27,8 @@ let package = Package(
         // that GodstoneLLM stays pure-Swift. SwiftPM does not support a single
         // target mixing .swift with .h/.mm, so the split is required for the
         // package to resolve at all (even when GodstoneLLM is not being built).
-        // GodstoneLLMBridge itself only compiles when third_party/llama.cpp is
-        // fetched; until then it is simply never built.
+        // GodstoneLLMBridge only compiles when a reviewed, pinned llama.cpp checkout
+        // exists at third_party/llama.cpp; until then full LLM builds are blocked.
         .target(
             name: "GodstoneLLMBridge",
             dependencies: ["GodstoneCore"],
@@ -44,8 +44,8 @@ let package = Package(
             dependencies: ["GodstoneCore", "GodstoneLLMBridge"]
         ),
         // GodstoneLLMTests is intentionally absent: GodstoneLLM cannot build
-        // without the third_party/llama.cpp submodule, so its test target cannot
-        // build either. The Mesh tests have no such dependency.
+        // without the pinned third_party/llama.cpp dependency, so its test target
+        // cannot build either. The Mesh tests have no such dependency.
         .testTarget(name: "GodstoneMeshTests", dependencies: ["GodstoneMesh", "GodstoneCore"])
     ]
 )

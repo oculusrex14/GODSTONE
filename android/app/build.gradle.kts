@@ -1,6 +1,7 @@
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
+    id("org.jetbrains.kotlin.plugin.compose")
     id("com.google.dagger.hilt.android")
     id("com.google.devtools.ksp")
 }
@@ -31,6 +32,8 @@ android {
             buildConfigField("String", "ARCHIVE_FILE", "\"archive_light.db\"")
             buildConfigField("int", "CTX_TOKENS", "2048")
             buildConfigField("int", "TOP_K_CHUNKS", "4")
+            buildConfigField("String", "EMBED_MODEL_FILE", "\"\"")
+            buildConfigField("int", "EMBED_DIM", "384")
         }
         create("medium") {
             dimension = "tier"
@@ -41,6 +44,8 @@ android {
             buildConfigField("String", "ARCHIVE_FILE", "\"archive_medium.db\"")
             buildConfigField("int", "CTX_TOKENS", "4096")
             buildConfigField("int", "TOP_K_CHUNKS", "6")
+            buildConfigField("String", "EMBED_MODEL_FILE", "\"\"")
+            buildConfigField("int", "EMBED_DIM", "384")
         }
         create("large") {
             dimension = "tier"
@@ -51,6 +56,8 @@ android {
             buildConfigField("String", "ARCHIVE_FILE", "\"archive_large.db\"")
             buildConfigField("int", "CTX_TOKENS", "8192")
             buildConfigField("int", "TOP_K_CHUNKS", "8")
+            buildConfigField("String", "EMBED_MODEL_FILE", "\"\"")
+            buildConfigField("int", "EMBED_DIM", "768")
         }
     }
 
@@ -70,10 +77,6 @@ android {
         buildConfig = true
     }
 
-    composeOptions {
-        kotlinCompilerExtensionVersion = "1.5.15"
-    }
-
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
@@ -86,6 +89,15 @@ android {
     // Model and archive assets must never be compressed: we mmap them at runtime.
     androidResources {
         noCompress += listOf("gguf", "db")
+    }
+
+    // The model and archive are mmap'd from assets at runtime. Without this
+    // sourceSet the app installs, launches, and then cannot find its model on
+    // a device that by definition cannot download it (C1).
+    sourceSets {
+        getByName("light")  { assets.srcDirs("src/light/assets",  "../../models", "../../dist") }
+        getByName("medium") { assets.srcDirs("src/medium/assets", "../../models", "../../dist") }
+        getByName("large")  { assets.srcDirs("src/large/assets",  "../../models", "../../dist") }
     }
 
     packaging {

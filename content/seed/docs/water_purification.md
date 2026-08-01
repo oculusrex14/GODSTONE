@@ -7,6 +7,8 @@ revision: "2026-01-14"
 tier_min: LIGHT
 reading_level: 7
 critical: true
+reviewed_by: UNREVIEWED-EXAMPLE
+reviewed_on: ""
 ---
 
 # Making water safe to drink

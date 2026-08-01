@@ -4,9 +4,14 @@ project("godstone_llm")
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-# llama.cpp is vendored as a git submodule at third_party/llama.cpp so the build
-# is fully reproducible offline. Nothing is fetched at build time.
-set(LLAMA_DIR ${CMAKE_CURRENT_SOURCE_DIR}/../../../../third_party/llama.cpp)
+# llama.cpp must be present at third_party/llama.cpp. V4 has no verified
+# gitlink or source-archive lock yet, so full native builds remain blocked until
+# the dependency is pinned reproducibly. Nothing is fetched by CMake.
+# FIXED: this was ../../../../ which resolves to android/third_party -- a
+# directory that does not exist. The cpp dir is android/llm/src/main/cpp, so
+# reaching the repo root takes FIVE levels, not four. The native build could
+# never have configured.
+set(LLAMA_DIR ${CMAKE_CURRENT_SOURCE_DIR}/../../../../../third_party/llama.cpp)
 
 set(LLAMA_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
 set(LLAMA_BUILD_TESTS    OFF CACHE BOOL "" FORCE)

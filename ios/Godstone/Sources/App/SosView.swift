@@ -1,60 +1,56 @@
 import SwiftUI
 import GodstoneMesh
 
-/// One control. No confirmation dialog chain, no form to fill in first.
-/// Hold to fire, so it cannot go off in a pocket, but nothing more than that.
+/// SOS never labels a local queue or radio write as recipient delivery.
 struct SosView: View {
-
     @EnvironmentObject private var mesh: MeshCoordinator
-    @State private var holdProgress: Double = 0
-    @State private var isBroadcasting = false
+    @State private var holdProgress = 0.0
 
     var body: some View {
         VStack(spacing: 28) {
-
-            Text(isBroadcasting ? "BROADCASTING" : "HOLD TO SEND SOS")
+            Text(mesh.transportAvailable ? "HOLD TO QUEUE SOS" : "MESH SOS UNAVAILABLE")
                 .font(.system(size: 22, weight: .heavy, design: .rounded))
                 .foregroundStyle(.white)
 
             ZStack {
-                Circle()
-                    .fill(isBroadcasting ? GodstoneTheme.danger
-                                         : GodstoneTheme.danger.opacity(0.65))
-                Circle()
-                    .trim(from: 0, to: holdProgress)
+                Circle().fill(mesh.transportAvailable
+                              ? GodstoneTheme.danger.opacity(0.75)
+                              : Color.gray.opacity(0.35))
+                Circle().trim(from: 0, to: holdProgress)
                     .stroke(.white, style: StrokeStyle(lineWidth: 10, lineCap: .round))
                     .rotationEffect(.degrees(-90))
-                Image(systemName: "exclamationmark.triangle.fill")
-                    .font(.system(size: 72))
-                    .foregroundStyle(.white)
+                Image(systemName: mesh.transportAvailable
+                      ? "exclamationmark.triangle.fill" : "antenna.radiowaves.left.and.right.slash")
+                    .font(.system(size: 68)).foregroundStyle(.white)
             }
             .frame(width: 260, height: 260)
-            .accessibilityLabel("Send emergency SOS. Hold for one and a half seconds.")
+            .accessibilityLabel(mesh.transportAvailable ? "Hold to queue emergency SOS" : "Mesh SOS unavailable")
             .gesture(holdGesture)
+            .allowsHitTesting(mesh.transportAvailable)
 
-            if isBroadcasting {
-                VStack(spacing: 6) {
-                    Text("Relayed by \(mesh.peerCount) nearby device(s)")
-                    Text("Repeating every 30 seconds until cancelled")
-                        .font(.footnote)
-                        .foregroundStyle(.secondary)
-                    Button("Cancel SOS") {
-                        mesh.cancelSos()
-                        isBroadcasting = false
-                    }
-                    .buttonStyle(.bordered)
-                    .padding(.top, 8)
-                }
-            } else {
-                Text("Your SOS carries your location and call sign. It is relayed by every Godstone device it reaches, even without internet.")
-                    .font(.footnote)
-                    .multilineTextAlignment(.center)
-                    .foregroundStyle(.secondary)
-                    .padding(.horizontal, 32)
-            }
+            stateText
+                .font(.footnote)
+                .multilineTextAlignment(.center)
+                .foregroundStyle(.secondary)
+                .padding(.horizontal, 28)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(GodstoneTheme.stone)
+    }
+
+    @ViewBuilder private var stateText: some View {
+        switch mesh.sosState {
+        case .idle:
+            Text(mesh.transportAvailable
+                 ? "Queued means stored locally; relayed means a nearby device accepted an encrypted record. Neither means a recipient acknowledged it."
+                 : "The app refuses to show a success state while encrypted cross-platform transport and the durable iOS message store are incomplete. Use another working emergency communication method.")
+        case .unavailable(let reason): Text(reason)
+        case .handedToRelays(let count):
+            Text("Accepted by \(count) nearby relay(s). No recipient acknowledgement has been received.")
+        case .notPersisted:
+            Text("No relay accepted the SOS, and this iOS build has no durable mesh queue. Nothing was sent.")
+        case .failed(let reason): Text("SOS failed: \(reason)")
+        }
     }
 
     private var holdGesture: some Gesture {
@@ -62,7 +58,7 @@ struct SosView: View {
             .onChanged { _ in withAnimation(.linear(duration: 1.5)) { holdProgress = 1 } }
             .onEnded { _ in
                 mesh.broadcastSos()
-                isBroadcasting = true
+                holdProgress = 0
                 UINotificationFeedbackGenerator().notificationOccurred(.warning)
             }
     }

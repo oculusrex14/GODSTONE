@@ -35,7 +35,9 @@ internal object GattClient {
             cont.resume(false); return@suspendCancellableCoroutine
         }
 
-        val mac = macToString(peerId)
+        val mac = PeerId.toAddress(peerId) ?: run {
+            cont.resume(false); return@suspendCancellableCoroutine
+        }
         val device: BluetoothDevice = try {
             adapter.getRemoteDevice(mac)
         } catch (e: IllegalArgumentException) {
@@ -84,14 +86,4 @@ internal object GattClient {
         cont.invokeOnCancellation { gatt?.close() }
     }
 
-    /** Convert 6 raw MAC bytes to the "XX:XX:XX:XX:XX:XX" form the stack expects. */
-    private fun macToString(peerId: ByteArray): String {
-        val n = peerId.size
-        val sb = StringBuilder(n * 3 - 1)
-        for (i in 0 until n) {
-            if (i > 0) sb.append(':')
-            sb.append("%02X".format(peerId[i].toInt() and 0xFF))
-        }
-        return sb.toString()
-    }
 }

@@ -33,7 +33,7 @@
     <string name="sos_sent">SOS broadcast queued.</string>
     <string name="sos_target_desc">Hold to send SOS</string>
 
-    <!-- Generic placeholders -->
+    <!-- Generic strings -->
     <string name="placeholder_offline">Offline first. No network calls.</string>
-    <string name="placeholder_tbd">TODO: wire this up.</string>
+
 </resources>

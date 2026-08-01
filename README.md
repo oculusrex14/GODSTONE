@@ -1,84 +1,108 @@
-# GODSTONE
+# Godstone
 
-**Offline survival + encrypted mesh communications.** A one-time-purchase mobile
-app that keeps a human being alive when the grid, the towers and the internet are
-gone. Inspired by *Dr. Stone*: rebuild capability from first principles, offline,
-on a phone.
+Offline survival archive and local-only disaster communications for Android and iOS.
 
-Targets: **Android** (Kotlin / Jetpack Compose) and **iOS** (Swift / SwiftUI) —
-fully native, twice.
+> **Status: V4 pre-alpha repair baseline — not a release.**
+> The Archive and grounding controls are executable. Mobile mesh transmission,
+> semantic embeddings, bulk transfer, and release packaging remain disabled or
+> incomplete until their acceptance gates pass. Read `BUILD_REPORT.md`,
+> `docs/AUDIT.md`, and `docs/adr/README.md` before changing a feature flag.
 
----
+## Product boundaries
 
-## Three pillars
+Godstone is three isolated subsystems:
 
-| Pillar | What it is |
-|--------|------------|
-| **The Archive** | A curated, indexed corpus of survival knowledge. SQLite + FTS5 + a quantised vector index. 100% on device, zero network calls, usable in airplane mode forever. |
-| **The Oracle** | A tiny dense language model (Qwen3 0.6B–4B class) running locally through llama.cpp. Retrieval-Augmented Generation: it answers **grounded**, citing the source manual, so a hallucinated dosage can never kill someone. |
-| **The Mesh** | Phones talk directly via Bluetooth + Wi-Fi. Encrypted, store-and-forward, multi-hop. No servers, no SIM, no towers. Every install is another relay node. |
+- **Archive:** immutable SQLite/FTS5 reference material that remains usable when
+  every model and radio is unavailable.
+- **Oracle:** an on-device RAG assistant that may answer only when the shipping
+  safety gate accepts the retrieved evidence.
+- **Mesh:** a planned infrastructure-free encrypted DTN. In V4 it is
+  mechanically **fail-closed** because the canonical GMP/2.1 migration and BLE
+  record/handshake driver are accepted designs but not implemented end to end.
 
-## Non-negotiable engineering constraints
+The Oracle may read the Archive. The Mesh owns a separate encrypted message
+store. Neither subsystem may silently fall back to the internet, telemetry, or
+plaintext transport.
 
-- **C1 — No network.** Shipping apps have no internet capability on the critical path.
-- **C2 — No telemetry, no analytics, no accounts.** Ever.
-- **C3 — Grounded answers only.** Every Oracle response cites Archive documents; below-threshold retrieval says "not in the archive" rather than inventing.
-- **C4 — Battery is life.** Mesh duty-cycles aggressively; target < 3%/hour listening.
-- **C5 — Degrade, never fail.** Every subsystem has a defined degraded mode; the Archive stays readable even when the model cannot load.
-- **C6 — Crypto is composed, not invented.** Noise Protocol Framework over X25519 / Ed25519 / ChaCha20-Poly1305 / BLAKE2s.
-- **C7 — Accessible under stress.** High contrast, oversized targets, red night mode, full offline TTS.
+## V4 guarantees
 
-## Workbook-as-repository
+V4 makes the following claims, and no broader ones:
 
-`Godstone.xlsx` is the canonical source. Each tab is a project folder; column A
-holds the verbatim source between `>>> FILE: <path>` and `<<< END FILE` markers
-(column B is human commentary only). Re-extract the whole tree deterministically:
+1. The V4 markdown change-set applies complete files and deletions; it contains
+   no inert `*.patch` pseudo-files.
+2. Android uses one injected `MeshNode` composition root.
+3. Known Android/iOS compile blockers from the V3 reviews are repaired in source.
+4. iOS Noise XX has canonical empty-payload message sizes `[32, 96, 64]`, and
+   both platform ports own vector tests.
+5. The Android and iOS safety-gate formulas agree.
+6. Generated GMP/2.1 codecs regenerate deterministically from
+   `wire/wire_v2.yaml`.
+7. Unfinished radio and bulk paths remain disabled and return truthful UI states.
+8. The Archive browser reads real bundled documents instead of placeholder rows.
+
+These are **not** claims that the mobile apps compile in every toolchain, that
+Android and iOS currently interoperate, that an SOS was delivered, or that the
+content corpus is clinically ready.
+
+## Non-negotiable constraints
+
+`C1` no runtime internet · `C2` no telemetry/accounts · `C3` grounded answers
+only · `C4` battery is life · `C5` degrade honestly · `C6` compose audited
+cryptography · `C7` accessible under stress.
+
+## Verification
+
+From the repository root:
 
 ```bash
-python3 -m pip install openpyxl
-python3 scripts/extract_workbook.py
+python -m venv .venv && . .venv/bin/activate
+pip install -r content/requirements.txt cryptography
+
+python scripts/check_tiers.py --require-swift
+python -m content.ingest.build_archive \
+  --tier MEDIUM --out /tmp/godstone_archive_medium.db --no-embed
+python -m wire.codegen
+python -m crypto.port_vectors
+python -m crypto.gen_vectors
+python -m crypto.test_conformance
+python -m crypto.cacophony --selftest
+python ci/symbols.py --selftest
+python ci/integration.py --selftest
+python -m safety.probes --db /tmp/godstone_archive_medium.db
+python -m content.eval.grounding \
+  --db /tmp/godstone_archive_medium.db --strict
+python ci/check_parity.py \
+  --db /tmp/godstone_archive_medium.db --allow-unpinned
+python -m meshsim.run --nodes 200 --scenario city_blackout \
+  --ticks 600 --assert-regression
 ```
 
-## Repository layout
+`--allow-unpinned` is an explicit acknowledgement that external Noise
+cacophony vectors have not yet been pinned. It must not appear in a release gate.
 
+## Mobile proof still required
+
+A releasable build requires all of the following on a clean checkout:
+
+- Android Gradle/JDK/SDK/NDK compile and tests.
+- macOS/Xcode/Swift tests and app build.
+- a pinned, reproducible llama.cpp dependency and verified model lockfile.
+- Hardware Case 0: Android↔iOS BLE discovery, record reassembly, Noise XX,
+  canonical frame exchange, reconnect, tamper, replay, and timeout behavior.
+- clinician/editorial approval for every shipped chunk.
+- permissions, accessibility, battery, migration, panic-wipe, and data-loss tests.
+
+## Layout
+
+```text
+android/       native app, mesh, archive/RAG and tests
+ios/           SwiftUI app, core, mesh, LLM bridge and tests
+content/       corpus ingestion, schema, examples and evaluation
+safety/        canonical grounding gate and probes
+wire/          GMP/2.1 schema, code generator and golden vectors
+crypto/        reference vectors and cross-port fixtures
+ci/            invariants, symbol checks and mutation controls
+meshsim/       routing simulator
+transport/     hardware role matrix
+docs/adr/      accepted decisions and unresolved architecture
 ```
-docs/                 mesh protocol, threat model, packaging/tier/store docs
-android/              :app, :mesh, :llm  (Gradle modules, Kotlin/Compose + JNI)
-ios/                  Godstone app + GodstoneMesh + GodstoneLLM (SwiftPM)
-content/              db schema, ingestion pipeline, seed corpus, eval
-scripts/              model fetch/quantise, tier checker, workbook extractor
-meshsim/              discrete mesh simulator (200-node city-blackout, etc.)
-.github/workflows/    CI
-```
-
-## Build order
-
-1. **Extract** every file from the workbook (above).
-2. **Content pipeline** (produces the `.db` artifacts both apps embed):
-   ```bash
-   cd content && python -m pip install -r requirements.txt
-   python -m ingest.build_archive --tier light  --out dist/archive_light.db
-   python -m ingest.build_archive --tier medium --out dist/archive_medium.db
-   python -m ingest.build_archive --tier large  --out dist/archive_large.db
-   ```
-3. **Models**: `./scripts/fetch_models.sh && ./scripts/quantise.sh`
-4. **Android**: `cd android && ./gradlew :app:assembleLightRelease`
-5. **iOS**: `cd ios && xcodegen generate && xcodebuild -scheme Godstone-Light -configuration Release`
-6. **Tests**: `./gradlew test`, `xcodebuild test -scheme GodstoneTests`,
-   `python -m meshsim.run --nodes 200 --scenario city_blackout`
-
-## Product tiers
-
-| Tier | Install | Model | Archive |
-|------|---------|-------|---------|
-| LIGHT  | ~1.2 GB | Qwen3-0.6B Q4_K_M | text + diagrams, 8 core domains |
-| MEDIUM | ~4.5 GB | Qwen3-1.7B Q4_K_M | + voice, all 20 domains, 480p video |
-| LARGE  | ~14 GB  | Qwen3-4B   Q5_K_M | + 1080p, regional packs, deep chemistry/metallurgy |
-
-The mesh is **never** tier-limited — a LIGHT user relays for a LARGE user at full
-capability. Communication is a safety function.
-
----
-
-*Derived from the `00_README` and `01_ARCHITECTURE` tabs of `Godstone.xlsx`. See
-those tabs for the full manifest, data-flow walkthroughs, and threat model.*

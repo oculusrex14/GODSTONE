@@ -20,10 +20,15 @@ public struct MeshIdentity: Sendable {
 
     /// BLAKE2s-128 of the agreement public key. 16 bytes. Matches Android.
     public var nodeId: Data {
-        Blake2s.hash(agreementKey.publicKey.rawRepresentation, digestLength: 16)
+        // PROTOCOL.md:49 -- node_id = BLAKE2s-128(identity_pub), the Ed25519
+        // signing key. This previously used agreementKey (X25519), producing a
+        // different node_id, hence a different node_hint, hence a different
+        // Noise prologue -- so h diverged BEFORE the first DH and no transcript
+        // test could have seen it. Pinned by handshake_vectors.json.
+        Blake2s.hash(signingKey.publicKey.rawRepresentation, digestLength: 16)
     }
 
-    /// First 4 bytes, carried in the 26-byte BLE advertisement.
+    /// First 4 bytes, carried in the accepted 13-byte BLE scan response.
     public var nodeHint: Data { nodeId.prefix(4) }
 
     /// Six BIP-39 words derived from the node id, for verbal out-of-band

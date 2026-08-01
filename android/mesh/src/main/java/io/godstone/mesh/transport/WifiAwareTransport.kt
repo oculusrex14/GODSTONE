@@ -27,7 +27,7 @@ class WifiAwareTransport(
 ) : Transport {
 
     override val name = "WiFi-Aware"
-    override val isBulkCapable = true
+    override val isBulkCapable = false
 
     private val manager = context.getSystemService(WifiAwareManager::class.java)
     private var session: WifiAwareSession? = null
@@ -41,15 +41,8 @@ class WifiAwareTransport(
         get() = manager != null && manager.isAvailable
 
     override fun start() {
-        if (!isSupported) return   // caller falls back to Wi-Fi Direct, then BLE
-
-        manager?.attach(object : AttachCallback() {
-            override fun onAttached(s: WifiAwareSession) {
-                session = s
-                publish(s)
-                subscribe(s)
-            }
-        }, null)
+        // ADR-006 is not implemented. Do not publish a service that cannot
+        // authenticate or carry bytes end to end.
     }
 
     override fun stop() {
@@ -86,9 +79,8 @@ class WifiAwareTransport(
     override fun peers(): Flow<PeerEvent> = kotlinx.coroutines.flow.emptyFlow()
 
     override suspend fun send(peerId: ByteArray, bytes: ByteArray): Boolean {
-        val ps = publishSession ?: return false
-        // Chunked as BULK_CHUNK frames by the caller; Aware handles the transfer.
-        return true
+        // Fail closed until the ADR-006 bulk protocol is implemented.
+        return false
     }
 
     override fun received(): Flow<Pair<ByteArray, ByteArray>> = inbound

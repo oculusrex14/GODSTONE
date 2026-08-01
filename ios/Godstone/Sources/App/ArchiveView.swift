@@ -1,91 +1,103 @@
-// SYNTHESIZED gap-closure file -- authored to make the project compile; see docs/AUDIT.md.
 import SwiftUI
+import GodstoneCore
 
-/// The Archive tab. The full-text and vector indexes live in a per-tier SQLite
-/// database (see ArchiveRepository in GodstoneCore); this screen is the
-/// human-facing browser over them.
-///
-/// Constraint C7 drives every layout choice here: large tap targets, generous
-/// body text, and a flat list with no nested disclosure triangles. Someone
-/// scrolling for a tourniquet procedure in the dark does not need a hierarchy
-/// to navigate first.
+/// The always-available browser over the immutable on-device Archive.
 struct ArchiveView: View {
-
-    // TODO: wire ArchiveRepository via an injected model. AppContainer owns an
-    // ArchiveRepository, but it is not currently published as an
-    // EnvironmentObject. Once it is (or an ArchiveViewModel wraps it), replace
-    // the placeholder rows below with the real domain/document tree.
-    @State private var searchText: String = ""
+    @EnvironmentObject private var container: AppContainer
+    @State private var query = ""
+    @State private var documents: [ArchiveDocument] = []
+    @State private var passages: [ArchivePassage] = []
+    @State private var openedTitle: String?
 
     var body: some View {
         NavigationStack {
-            VStack(spacing: 0) {
-                if filteredDomains.isEmpty {
-                    emptyState
+            Group {
+                if !container.archive.isAvailable {
+                    emptyState(
+                        icon: "externaldrive.badge.exclamationmark",
+                        title: "Archive unavailable",
+                        detail: "The tier database is missing or could not be opened read-only."
+                    )
+                } else if documents.isEmpty && passages.isEmpty {
+                    emptyState(
+                        icon: "magnifyingglass",
+                        title: "No matches",
+                        detail: "Try a different word or clear the search to browse every document."
+                    )
                 } else {
-                    List(filteredDomains, id: \.self) { domain in
-                        domainRow(domain)
+                    List {
+                        ForEach(documents) { document in
+                            Button { open(document) } label: {
+                                VStack(alignment: .leading, spacing: 4) {
+                                    Text(document.title).font(.headline).foregroundStyle(.primary)
+                                    Text(document.domain).font(.footnote).foregroundStyle(.secondary)
+                                    if document.isCritical {
+                                        Text("Critical procedure").font(.caption).foregroundStyle(GodstoneTheme.danger)
+                                    }
+                                }
+                                .frame(minHeight: GodstoneTheme.minimumTapTarget, alignment: .leading)
+                            }
+                        }
+                        ForEach(passages) { passage in
+                            VStack(alignment: .leading, spacing: 8) {
+                                Text(passage.documentTitle).font(.headline)
+                                if !passage.section.isEmpty {
+                                    Text(passage.section).font(.subheadline).foregroundStyle(.secondary)
+                                }
+                                Text(passage.text)
+                                    .font(.system(size: GodstoneTheme.bodyTextSize))
+                                    .textSelection(.enabled)
+                            }
+                            .padding(.vertical, 8)
+                        }
                     }
                     .listStyle(.plain)
                 }
             }
-            .navigationTitle("Archive")
-            .searchable(text: $searchText, prompt: "Search the archive")
+            .navigationTitle(openedTitle ?? "Archive")
+            .toolbar {
+                if openedTitle != nil || !passages.isEmpty {
+                    Button("All documents") { loadDocuments() }
+                }
+            }
+            .searchable(text: $query, prompt: "Search every document")
+            .onSubmit(of: .search) { search() }
+            .onChange(of: query) { value in
+                if value.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                    loadDocuments()
+                }
+            }
+            .onAppear { if documents.isEmpty && passages.isEmpty { loadDocuments() } }
         }
-        .background(GodstoneTheme.stone)
     }
 
-    /// Placeholder domains. The real domains come from ArchiveRepository; these
-    /// exist so the screen renders and the search field is testable before the
-    /// repository is wired in.
-    private let placeholderDomains: [String] = [
-        "Trauma & Bleeding",
-        "Medications & Dosing",
-        "Paediatrics",
-        "Environmental",
-        "Navigation & Signals"
-    ]
-
-    private var filteredDomains: [String] {
-        let q = searchText.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
-        guard !q.isEmpty else { return placeholderDomains }
-        return placeholderDomains.filter { $0.lowercased().contains(q) }
+    private func emptyState(icon: String, title: String, detail: String) -> some View {
+        VStack(spacing: 14) {
+            Image(systemName: icon).font(.system(size: 44)).foregroundStyle(.secondary)
+            Text(title).font(.headline)
+            Text(detail).font(.footnote).foregroundStyle(.secondary).multilineTextAlignment(.center)
+        }
+        .padding(32)
     }
 
-    private func domainRow(_ domain: String) -> some View {
-        HStack(spacing: 14) {
-            Image(systemName: "book.closed.fill")
-                .font(.system(size: 22))
-                .foregroundStyle(GodstoneTheme.ember)
-            Text(domain)
-                .font(.system(size: GodstoneTheme.bodyTextSize, weight: .semibold))
-                .foregroundStyle(.white)
-            Spacer()
-            Image(systemName: "chevron.right")
-                .foregroundStyle(.secondary)
-        }
-        .frame(minHeight: GodstoneTheme.minimumTapTarget)
-        .padding(.vertical, 6)
-        // TODO: navigationDestination to a document list once ArchiveRepository
-        // is injected. Until then the chevron is decorative.
-        .accessibilityElement(children: .combine)
-        .accessibilityHint("Browse documents in \(domain).")
+    private func loadDocuments() {
+        query = ""
+        openedTitle = nil
+        passages = []
+        documents = container.archive.listDocuments()
     }
 
-    private var emptyState: some View {
-        VStack(spacing: 16) {
-            Image(systemName: "magnifyingglass")
-                .font(.system(size: 48))
-                .foregroundStyle(.secondary)
-            Text("No matches in the Archive")
-                .font(.system(size: GodstoneTheme.bodyTextSize, weight: .semibold))
-                .foregroundStyle(.white)
-            Text("The Archive is indexed locally. Try a different word, or browse the full list by clearing the search.")
-                .font(.footnote)
-                .multilineTextAlignment(.center)
-                .foregroundStyle(.secondary)
-                .padding(.horizontal, 32)
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
+    private func search() {
+        let q = query.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !q.isEmpty else { loadDocuments(); return }
+        openedTitle = nil
+        documents = []
+        passages = container.archive.search(q)
+    }
+
+    private func open(_ document: ArchiveDocument) {
+        documents = []
+        openedTitle = document.title
+        passages = container.archive.passages(documentId: document.id)
     }
 }

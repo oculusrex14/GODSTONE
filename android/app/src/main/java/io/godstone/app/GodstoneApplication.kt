@@ -5,14 +5,12 @@ import android.app.NotificationChannel
 import android.app.NotificationManager
 import dagger.hilt.android.HiltAndroidApp
 import javax.inject.Inject
-import io.godstone.llm.ModelManager
 import io.godstone.mesh.MeshNode
 
 @HiltAndroidApp
 class GodstoneApplication : Application() {
 
     @Inject lateinit var meshNode: MeshNode
-    @Inject lateinit var modelManager: ModelManager
 
     override fun onCreate() {
         super.onCreate()
@@ -21,9 +19,9 @@ class GodstoneApplication : Application() {
         // Identity must exist before any radio starts. Cheap if already present.
         meshNode.ensureIdentity()
 
-        // The model is NOT loaded here. It is loaded lazily when the Oracle is
-        // opened and released when it is backgrounded, per constraint C4.
-        modelManager.prepareWithoutLoading()
+        // Radios start only after the user explicitly enables the mesh and
+        // grants runtime permissions. Model preparation occurs on first Oracle
+        // use, never as multi-gigabyte main-thread I/O at process startup.
     }
 
     private fun createNotificationChannels() {

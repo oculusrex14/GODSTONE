@@ -33,7 +33,8 @@ dependencies {
 
     // Encrypted local storage for the message store (threat A6).
     implementation("androidx.security:security-crypto:1.1.0-alpha06")
-    implementation("net.zetetic:sqlcipher-android:4.6.0")
+    implementation("net.zetetic:sqlcipher-android:4.17.0")
+    implementation("androidx.sqlite:sqlite:2.6.2")
 
     testImplementation("junit:junit:4.13.2")
     testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.9.0")

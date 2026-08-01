@@ -9,18 +9,26 @@ import CoreBluetooth
 /// single device walking away.
 public final class BleTransport: NSObject {
 
-    public static let serviceUuid = CBUUID(string: "6F0D0001-9A5E-4C7B-B0A1-3E5D8C2F7A10")
-    public static let inboxCharacteristicUuid = CBUUID(string: "6F0D0002-9A5E-4C7B-B0A1-3E5D8C2F7A10")
-    public static let digestCharacteristicUuid = CBUUID(string: "6F0D0003-9A5E-4C7B-B0A1-3E5D8C2F7A10")
+    // GENERATED-SPEC UUIDs. These previously read 6F0D0001-… while Android read
+    // 67640001-… -- the two platforms could not see each other at all, so the
+    // header-size and type-code defects were never even reached. The values now
+    // come from wire/wire_v2.yaml via FrameV2 and cannot drift: Invariant G
+    // fails the build if a literal UUID reappears here.
+    public static let serviceUuid = CBUUID(string: FrameV2.serviceUuidString)
+    public static let inboxCharacteristicUuid = CBUUID(string: FrameV2.inboxUuidString)
+    public static let digestCharacteristicUuid = CBUUID(string: FrameV2.digestUuidString)
 
-    private var central: CBCentralManager!
-    private var peripheral: CBPeripheralManager!
+    private let central: CBCentralManager
+    private let peripheral: CBPeripheralManager
 
     private var connected: [UUID: CBPeripheral] = [:]
     private var inboxCharacteristics: [UUID: CBCharacteristic] = [:]
     private var subscribers: [CBCentral] = []
 
     public weak var delegate: TransportDelegate?
+
+    /// Noise sessions. Without this the transport cannot send -- by design.
+    public var sessions: SessionManager?
 
     /// iOS truncates advertisement data heavily in the background: the service
     /// UUID moves to the "overflow area", which is only visible to other iOS
@@ -30,15 +38,16 @@ public final class BleTransport: NSObject {
     public private(set) var isBackgrounded = false
 
     public override init() {
+        // Both managers are constructed with a nil delegate and stored BEFORE
+        // super.init(), then wired to self. CoreBluetooth dispatches state
+        // callbacks on a global queue and could otherwise fire into a partly
+        // initialised object (audit A-18). The restoration identifiers let iOS
+        // relaunch us into the background when a peer appears.
+        central = CBCentralManager(delegate: nil, queue: .global(qos: .utility), options: [CBCentralManagerOptionRestoreIdentifierKey: "io.godstone.central"])
+        peripheral = CBPeripheralManager(delegate: nil, queue: .global(qos: .utility), options: [CBPeripheralManagerOptionRestoreIdentifierKey: "io.godstone.peripheral"])
         super.init()
-        // Restoration identifiers let iOS relaunch us into the background when a
-        // peer appears — the only way to get any background mesh behaviour at all.
-        central = CBCentralManager(
-            delegate: self, queue: .global(qos: .utility),
-            options: [CBCentralManagerOptionRestoreIdentifierKey: "io.godstone.central"])
-        peripheral = CBPeripheralManager(
-            delegate: self, queue: .global(qos: .utility),
-            options: [CBPeripheralManagerOptionRestoreIdentifierKey: "io.godstone.peripheral"])
+        central.delegate = self
+        peripheral.delegate = self
     }
 
     public func start() {
@@ -74,17 +83,24 @@ public final class BleTransport: NSObject {
         startScanning()
     }
 
-    public func send(_ frame: Frame, to peerId: UUID) {
+    /// Send [frame] to [peerId] THROUGH THE NOISE SESSION.
+    ///
+    /// This previously wrote `frame.encode()` directly to the characteristic.
+    /// NoiseSession existed but nothing constructed it, so the "encrypted mesh"
+    /// transmitted plaintext. There is no plaintext fallback here on purpose.
+    @discardableResult
+    public func send(_ frame: FrameV2, to peerId: UUID) -> Bool {
         guard let p = connected[peerId],
-              let ch = inboxCharacteristics[peerId] else { return }
-        let data = frame.encode()
+              let ch = inboxCharacteristics[peerId] else { return false }
+        guard let data = sessions?.seal(peerId, frame.encode()) else { return false }
 
-        // Fragment to the negotiated ATT MTU. iOS reports the usable payload
-        // directly, so we never have to guess at the 3-byte ATT header.
+        // ADR-002/M2-link owns authenticated record fragmentation. Until that
+        // layer exists, never split one Noise ciphertext into independent ATT
+        // writes: the receiver would try to authenticate each fragment.
         let mtu = p.maximumWriteValueLength(for: .withoutResponse)
-        for chunk in data.chunked(into: mtu) {
-            p.writeValue(chunk, for: ch, type: .withoutResponse)
-        }
+        guard data.count <= mtu else { return false }
+        p.writeValue(data, for: ch, type: .withoutResponse)
+        return true
     }
 }
 
@@ -156,8 +172,11 @@ extension BleTransport: CBCentralManagerDelegate, CBPeripheralDelegate {
     public func peripheral(_ p: CBPeripheral,
                            didUpdateValueFor ch: CBCharacteristic,
                            error: Error?) {
-        guard let data = ch.value else { return }
-        delegate?.transportDidReceive(data: data, peerId: p.identifier)
+        guard let raw = ch.value else { return }
+        // Decrypt before anything downstream sees it. A frame that fails
+        // authentication is corruption or an attacker: drop it silently.
+        guard let clear = sessions?.open(p.identifier, raw) else { return }
+        delegate?.transportDidReceive(data: clear, peerId: p.identifier)
     }
 }
 
@@ -187,12 +206,14 @@ extension BleTransport: CBPeripheralManagerDelegate {
 
     public func peripheralManager(_ pm: CBPeripheralManager,
                                   didReceiveWrite requests: [CBATTRequest]) {
+        guard let first = requests.first else { return }
         for r in requests {
-            if let v = r.value {
-                delegate?.transportDidReceive(data: v, peerId: r.central.identifier)
+            if let v = r.value,
+               let clear = sessions?.open(r.central.identifier, v) {
+                delegate?.transportDidReceive(data: clear, peerId: r.central.identifier)
             }
         }
-        pm.respond(to: requests[0], withResult: .success)
+        pm.respond(to: first, withResult: .success)
     }
 
     public func peripheralManager(_ pm: CBPeripheralManager,

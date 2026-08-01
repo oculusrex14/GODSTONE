@@ -1,0 +1,242 @@
+{
+  "_comment": "Invariant D fixture. Both platforms must reproduce every value here byte-for-byte. Regenerate with `python -m crypto.gen_vectors`.",
+  "_conformance_status": "UNPINNED",
+  "_conformance_note": "noise_ref.py encodes Noise rev34 s.4.3 and s.12.3 as read and is self-consistent: sizes are [32,96,64] and transport round-trips both ways. It has NOT been checked against an EXTERNAL vector. Self-consistency proves nothing -- two implementations can agree and both be wrong, which is exactly the failure this fixture exists to catch. Drop a real vector file into crypto/cacophony_vectors.json and run `python -m crypto.cacophony --check --write-status`. See docs/PINNING_CACOPHONY.md.",
+  "cacophony": null,
+  "protocol_name": "Noise_XX_25519_ChaChaPoly_BLAKE2s",
+  "hash": "BLAKE2s",
+  "rfc7693_vectors": {
+    "blake2s_256_abc": "508c5e8c327c14e2e1a72ba34eeb452f37458b209ed63a294d999b4c86675982",
+    "blake2s_256_empty": "69217a3079908094e11121d042354a7c1f55b6482ca1a51e1b250dfd1ed0eef9"
+  },
+  "test_keys": {
+    "_warning": "TEST ONLY. Deterministic ephemerals are catastrophic in production and are what makes this CI-checkable.",
+    "initiator_static_priv": "1111111111111111111111111111111111111111111111111111111111111111",
+    "initiator_ephemeral_priv": "2222222222222222222222222222222222222222222222222222222222222222",
+    "responder_static_priv": "3333333333333333333333333333333333333333333333333333333333333333",
+    "responder_ephemeral_priv": "4444444444444444444444444444444444444444444444444444444444444444",
+    "initiator_identity_priv": "5555555555555555555555555555555555555555555555555555555555555555",
+    "responder_identity_priv": "6666666666666666666666666666666666666666666666666666666666666666"
+  },
+  "derivation_chain": {
+    "_comment": "PROTOCOL.md:49 node_id = BLAKE2s-128(identity_pub). Pinned because h is seeded from the prologue, which is built from node_hint. A transcript-only fixture cannot see a node_id defect.",
+    "initiator": {
+      "identity_pub": "c6822637c7d310ec57627be00ba259d253749f4aaf644470cffbe53a35f73242",
+      "static_dh_pub": "7b4e909bbe7ffe44c465a220037d608ee35897d31ef972f07f74892cb0f73f13",
+      "node_id": "ff026532242675283356c775be78ead0",
+      "node_hint": "ff026532",
+      "call_sign_indices": [
+        2040,
+        153,
+        612,
+        578,
+        826,
+        1184
+      ]
+    },
+    "responder": {
+      "identity_pub": "34b4d9043156cb6dcf0beb0a2949b7559c940d2bcb6dbe8c53a9b30278e3a746",
+      "static_dh_pub": "7b0d47d93427f8311160781c7c733fd89f88970aef490d8aa0ee19a4cb8a1b14",
+      "node_id": "539f855212b9f3cb4e6cf748a3250925",
+      "node_hint": "539f8552",
+      "call_sign_indices": [
+        668,
+        2017,
+        676,
+        299,
+        1273,
+        1837
+      ]
+    },
+    "prologue": "474d5031ff026532539f8552",
+    "initial_h": "3445582716c4b0bc42d1a0724840e3e147927fc2499265015ac9030ec7ed1df6"
+  },
+  "handshake": {
+    "pattern": "XX",
+    "messages": [
+      "0faa684ed28867b97f4a6a2dee5df8ce974e76b7018e3f22a1c4cf2678570f20",
+      "ff2ee45601ec1b67310c7790404585ae697331eee1c1f8cf2419731c1fff3e6b34844ab378b06d2634652a1eb7d2b6c67c2082af188b41dd5e7da57cf64439f32c12db4cd7c89b73e675484c6f59b8244a941748129ba090d1179184ca4d2009",
+      "75537efbe989fb8406a0dcce52dbec0f832fd70f3c37a8f6efb0d8b74afcc1a5856fb7d84d5e1c0cc4a64162a4479126e6db8a151e87c2ea27946b309c52ffe0"
+    ],
+    "message_sizes": [
+      32,
+      96,
+      64
+    ],
+    "handshake_hash": "e739642de9ee74e42deb15c7dceb41411d8255ab9c6ab5ad6c6ed4e66150ea92",
+    "send_key": "4af63937a457e039e37efc8bf53b1daaf1e7936d69e7d3f778fc99d459459b66",
+    "recv_key": "b8f26c60cb806dbc1a94e91fee3da6a7b099d31311cdcdd08c4242cd096aee5d",
+    "initiator_trace": [
+      {
+        "token": "init",
+        "ck": "1ceedd81c5f458b225923dc2507787bf156f9251fc17c45af63263a929fc1ed2",
+        "h": "1ceedd81c5f458b225923dc2507787bf156f9251fc17c45af63263a929fc1ed2",
+        "k": null
+      },
+      {
+        "token": "prologue",
+        "ck": "1ceedd81c5f458b225923dc2507787bf156f9251fc17c45af63263a929fc1ed2",
+        "h": "3445582716c4b0bc42d1a0724840e3e147927fc2499265015ac9030ec7ed1df6",
+        "k": null
+      },
+      {
+        "token": "w0:e",
+        "ck": "1ceedd81c5f458b225923dc2507787bf156f9251fc17c45af63263a929fc1ed2",
+        "h": "2c8c0a17d77d5e3b0d082deb7792591ca8b852a3562de7b58af39d6657e91ab0",
+        "k": null
+      },
+      {
+        "token": "w0:payload",
+        "ck": "1ceedd81c5f458b225923dc2507787bf156f9251fc17c45af63263a929fc1ed2",
+        "h": "5b64d55f6e998b9b9d6a68bc38ca48e8c910e48f72b3c52893aff6dddafc4351",
+        "k": null
+      },
+      {
+        "token": "r1:e",
+        "ck": "1ceedd81c5f458b225923dc2507787bf156f9251fc17c45af63263a929fc1ed2",
+        "h": "4f9327adf9fd3a32349e5f3d53790abf474cf91009bd74d24d29614bc36cb9ad",
+        "k": null
+      },
+      {
+        "token": "r1:ee",
+        "ck": "d7fd38a20ac2cae0fe05bdb08e00d60d626bfa83062855e3664aa773212876b1",
+        "h": "4f9327adf9fd3a32349e5f3d53790abf474cf91009bd74d24d29614bc36cb9ad",
+        "k": "2ba99b47ce7f9948add4f02a099ae59cb0e6439ccd5158e7ac9b89ec7d832e25"
+      },
+      {
+        "token": "r1:s",
+        "ck": "d7fd38a20ac2cae0fe05bdb08e00d60d626bfa83062855e3664aa773212876b1",
+        "h": "5c951d91d8a5203e87f5c1ffbd25e5de4f29f3ff53dede823ea1bbbaf5368ca0",
+        "k": "2ba99b47ce7f9948add4f02a099ae59cb0e6439ccd5158e7ac9b89ec7d832e25"
+      },
+      {
+        "token": "r1:es",
+        "ck": "fd00d1164055f830542571ed1d1b4abd091ae2e29aa3e9b963feffbec059a3ac",
+        "h": "5c951d91d8a5203e87f5c1ffbd25e5de4f29f3ff53dede823ea1bbbaf5368ca0",
+        "k": "7470b8580d38aafa7b616c6429de8ce6cdf256a69f6944feac88ce324e55626a"
+      },
+      {
+        "token": "r1:payload",
+        "ck": "fd00d1164055f830542571ed1d1b4abd091ae2e29aa3e9b963feffbec059a3ac",
+        "h": "7cb1823044f0b678068f9197af1bcdc3d655aa9f06e7c650abe950b263489632",
+        "k": "7470b8580d38aafa7b616c6429de8ce6cdf256a69f6944feac88ce324e55626a"
+      },
+      {
+        "token": "w2:s",
+        "ck": "fd00d1164055f830542571ed1d1b4abd091ae2e29aa3e9b963feffbec059a3ac",
+        "h": "bd5574d4a68b7fedcc5a0a9bbbf080a99110cd390b7de41ece98cf87659c1065",
+        "k": "7470b8580d38aafa7b616c6429de8ce6cdf256a69f6944feac88ce324e55626a"
+      },
+      {
+        "token": "w2:se",
+        "ck": "8339ad91c0d742ac2c9f1f33ccd62f711f518d202891ffc8d8b1b0913557f608",
+        "h": "bd5574d4a68b7fedcc5a0a9bbbf080a99110cd390b7de41ece98cf87659c1065",
+        "k": "803cd4cf1efce0de5a0d91cf736bed1c6a9e9c3c8fd6725c2da1385031f1f99c"
+      },
+      {
+        "token": "w2:payload",
+        "ck": "8339ad91c0d742ac2c9f1f33ccd62f711f518d202891ffc8d8b1b0913557f608",
+        "h": "e739642de9ee74e42deb15c7dceb41411d8255ab9c6ab5ad6c6ed4e66150ea92",
+        "k": "803cd4cf1efce0de5a0d91cf736bed1c6a9e9c3c8fd6725c2da1385031f1f99c"
+      }
+    ],
+    "responder_trace": [
+      {
+        "token": "init",
+        "ck": "1ceedd81c5f458b225923dc2507787bf156f9251fc17c45af63263a929fc1ed2",
+        "h": "1ceedd81c5f458b225923dc2507787bf156f9251fc17c45af63263a929fc1ed2",
+        "k": null
+      },
+      {
+        "token": "prologue",
+        "ck": "1ceedd81c5f458b225923dc2507787bf156f9251fc17c45af63263a929fc1ed2",
+        "h": "3445582716c4b0bc42d1a0724840e3e147927fc2499265015ac9030ec7ed1df6",
+        "k": null
+      },
+      {
+        "token": "r0:e",
+        "ck": "1ceedd81c5f458b225923dc2507787bf156f9251fc17c45af63263a929fc1ed2",
+        "h": "2c8c0a17d77d5e3b0d082deb7792591ca8b852a3562de7b58af39d6657e91ab0",
+        "k": null
+      },
+      {
+        "token": "r0:payload",
+        "ck": "1ceedd81c5f458b225923dc2507787bf156f9251fc17c45af63263a929fc1ed2",
+        "h": "5b64d55f6e998b9b9d6a68bc38ca48e8c910e48f72b3c52893aff6dddafc4351",
+        "k": null
+      },
+      {
+        "token": "w1:e",
+        "ck": "1ceedd81c5f458b225923dc2507787bf156f9251fc17c45af63263a929fc1ed2",
+        "h": "4f9327adf9fd3a32349e5f3d53790abf474cf91009bd74d24d29614bc36cb9ad",
+        "k": null
+      },
+      {
+        "token": "w1:ee",
+        "ck": "d7fd38a20ac2cae0fe05bdb08e00d60d626bfa83062855e3664aa773212876b1",
+        "h": "4f9327adf9fd3a32349e5f3d53790abf474cf91009bd74d24d29614bc36cb9ad",
+        "k": "2ba99b47ce7f9948add4f02a099ae59cb0e6439ccd5158e7ac9b89ec7d832e25"
+      },
+      {
+        "token": "w1:s",
+        "ck": "d7fd38a20ac2cae0fe05bdb08e00d60d626bfa83062855e3664aa773212876b1",
+        "h": "5c951d91d8a5203e87f5c1ffbd25e5de4f29f3ff53dede823ea1bbbaf5368ca0",
+        "k": "2ba99b47ce7f9948add4f02a099ae59cb0e6439ccd5158e7ac9b89ec7d832e25"
+      },
+      {
+        "token": "w1:es",
+        "ck": "fd00d1164055f830542571ed1d1b4abd091ae2e29aa3e9b963feffbec059a3ac",
+        "h": "5c951d91d8a5203e87f5c1ffbd25e5de4f29f3ff53dede823ea1bbbaf5368ca0",
+        "k": "7470b8580d38aafa7b616c6429de8ce6cdf256a69f6944feac88ce324e55626a"
+      },
+      {
+        "token": "w1:payload",
+        "ck": "fd00d1164055f830542571ed1d1b4abd091ae2e29aa3e9b963feffbec059a3ac",
+        "h": "7cb1823044f0b678068f9197af1bcdc3d655aa9f06e7c650abe950b263489632",
+        "k": "7470b8580d38aafa7b616c6429de8ce6cdf256a69f6944feac88ce324e55626a"
+      },
+      {
+        "token": "r2:s",
+        "ck": "fd00d1164055f830542571ed1d1b4abd091ae2e29aa3e9b963feffbec059a3ac",
+        "h": "bd5574d4a68b7fedcc5a0a9bbbf080a99110cd390b7de41ece98cf87659c1065",
+        "k": "7470b8580d38aafa7b616c6429de8ce6cdf256a69f6944feac88ce324e55626a"
+      },
+      {
+        "token": "r2:se",
+        "ck": "8339ad91c0d742ac2c9f1f33ccd62f711f518d202891ffc8d8b1b0913557f608",
+        "h": "bd5574d4a68b7fedcc5a0a9bbbf080a99110cd390b7de41ece98cf87659c1065",
+        "k": "803cd4cf1efce0de5a0d91cf736bed1c6a9e9c3c8fd6725c2da1385031f1f99c"
+      },
+      {
+        "token": "r2:payload",
+        "ck": "8339ad91c0d742ac2c9f1f33ccd62f711f518d202891ffc8d8b1b0913557f608",
+        "h": "e739642de9ee74e42deb15c7dceb41411d8255ab9c6ab5ad6c6ed4e66150ea92",
+        "k": "803cd4cf1efce0de5a0d91cf736bed1c6a9e9c3c8fd6725c2da1385031f1f99c"
+      }
+    ]
+  },
+  "negative_vectors": {
+    "quirk_hkdf_ios": {
+      "description": "Hkdf.swift returned temp_key as ck and fed material||0x01 instead of 0x01",
+      "must_differ_from_conformant": true,
+      "handshake_hash": "1525ae0a97c4d95849e8853ea544f10d46cdba40852cfd0f31eda23a6a9c4f6e",
+      "send_key": "aefa30c48e2ad4d322bcef3b27226f9c29504f7dd5c4e134055fd6ae8f2f6b68",
+      "differs": true
+    },
+    "quirk_nonce_be": {
+      "description": "NoiseSession.swift used big-endian ChaCha nonces; spec 12.3 is little-endian",
+      "must_differ_from_conformant": true,
+      "handshake_hash": "fe1cdbd7925a02ddf16bfde939f3b0bb157ba38d283e786c5b07ebf5580a22f3",
+      "send_key": "4af63937a457e039e37efc8bf53b1daaf1e7936d69e7d3f778fc99d459459b66",
+      "differs": true
+    },
+    "quirk_nodeid_from_dh_key": {
+      "description": "MeshIdentity.swift derived node_id from the X25519 agreement key; PROTOCOL.md:49 specifies the Ed25519 identity key. Diverges h BEFORE the first DH.",
+      "must_differ_from_conformant": true,
+      "node_hint": "e5daf91a",
+      "prologue": "474d5031e5daf91a539f8552",
+      "initial_h": "69519343203f69b210208f5aca220613e0c710fc0c1cbd48e4e154d1a570d710",
+      "differs": true
+    }
+  }
+}

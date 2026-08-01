@@ -24,18 +24,25 @@ data class Citation(
 data class RetrievalResult(
     val chunks: List<Chunk>,
     val bestScore: Double,
-    val nearMisses: List<Citation>
+    val nearMisses: List<Citation>,
+    /** Verdict from io.godstone.llm.safety.SafetyGate. Null = never gated = refuse. */
+    val gateVerdict: io.godstone.llm.safety.SafetyGate.Result? = null
 ) {
     /**
-     * Constraint C3. Below this threshold the app refuses to answer. A confident
-     * wrong answer about a dosage or a water treatment can kill someone; an
-     * honest refusal cannot.
+     * Constraint C3.
+     *
+     * This used to read `bestScore >= 0.35` over a reciprocal-rank-fusion
+     * score. The repository's own audit proved that rule cannot discriminate --
+     * RRF's entire top-20 spans 0.500..0.381, so ANY BM25 hit passed -- and the
+     * app shipped it anyway while the improved gate sat in the test harness.
+     *
+     * The verdict is now computed by SafetyGate.evaluate, the same logic the
+     * probe suite exercises. `gateVerdict` is populated by Retriever.retrieve;
+     * a result that never went through the gate is refused, so forgetting to
+     * run it fails closed instead of silently allowing.
      */
-    val passesConfidenceGate: Boolean get() = bestScore >= CONFIDENCE_THRESHOLD
-
-    companion object {
-        const val CONFIDENCE_THRESHOLD = 0.35
-    }
+    val passesConfidenceGate: Boolean
+        get() = gateVerdict?.allowsGeneration ?: false
 }
 
 /**
@@ -52,8 +59,26 @@ data class RetrievalResult(
  */
 class Retriever(
     private val context: Context,
-    private val archiveAsset: String
+    private val archiveAsset: String,
+    private val embedder: Embedder? = null
 ) {
+    /** Built once from the archive; drives the gate's vocabulary and IDF. */
+    private val corpusIndex: io.godstone.llm.safety.SafetyGate.CorpusIndex by lazy {
+        io.godstone.llm.safety.SafetyGate.CorpusIndex(allChunks())
+    }
+
+    private fun allChunks(): List<Chunk> {
+        val out = ArrayList<Chunk>()
+        db.rawQuery(
+            "SELECT c.chunk_id, c.document_id, d.title, d.domain, c.text " +
+            "FROM chunks c JOIN documents d ON d.document_id = c.document_id", null
+        ).use { cur ->
+            while (cur.moveToNext()) out.add(Chunk(
+                cur.getLong(0), cur.getLong(1), cur.getString(2),
+                cur.getString(3), cur.getString(4), 0.0))
+        }
+        return out
+    }
 
     private val db: SQLiteDatabase by lazy { openReadOnly() }
 
@@ -79,7 +104,9 @@ class Retriever(
 
         val best = fused.firstOrNull()?.score ?: 0.0
 
-        val nearMisses = if (best < RetrievalResult.CONFIDENCE_THRESHOLD) {
+        val verdict = io.godstone.llm.safety.SafetyGate.evaluate(query, fused, corpusIndex)
+
+        val nearMisses = if (!verdict.allowsGeneration) {
             (lexical + semantic)
                 .distinctBy { it.documentId }
                 .take(3)
@@ -87,7 +114,7 @@ class Retriever(
                                 it.text.take(180)) }
         } else emptyList()
 
-        return RetrievalResult(fused, best, nearMisses)
+        return RetrievalResult(fused, best, nearMisses, verdict)
     }
 
     private fun bm25Search(query: String, limit: Int, domain: String?): List<Chunk> {
@@ -122,7 +149,9 @@ class Retriever(
     }
 
     private fun vectorSearch(query: String, limit: Int, domain: String?): List<Chunk> {
-        val qvec = Embedder.embed(query)
+        // Null when no embedding model is available: degrade to lexical-only
+        // rather than compare against a different vector space (see Embedder).
+        val qvec = embedder?.embed(query) ?: return emptyList()
         val results = ArrayList<Pair<Long, Double>>()
 
         db.rawQuery("SELECT chunk_id, vec FROM vectors", null).use { cur ->
@@ -184,6 +213,11 @@ class Retriever(
     }
 
     private fun cosineInt8(query: FloatArray, blob: ByteArray): Double {
+        // Comparing only a shared prefix silently mixes incompatible embedding
+        // spaces. A dimension mismatch is archive/model corruption, so this
+        // candidate receives the lowest possible score and semantic retrieval
+        // degrades to the lexical path.
+        if (query.isEmpty() || blob.size != query.size) return 0.0
         var dot = 0.0
         var normB = 0.0
         for (i in query.indices) {

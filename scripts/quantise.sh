@@ -1,77 +1,50 @@
 #!/usr/bin/env bash
 #
-# Quantise base models into the exact GGUF files each tier ships.
+# V4 deliberately downloads the exact shipping GGUF quantisations named in the
+# verified model lock. Re-quantising an already-quantised GGUF is neither
+# reproducible nor useful and was a defect in V3's packaging path.
 #
-# Runs entirely offline against whatever scripts/fetch_models.sh already put on
-# disk. Output names must match the model_file values in
-# content/ingest/build_archive.py, the Gradle flavours in tab 03 and Tier.swift
-# in tab 06. A mismatch here produces an app that builds, installs, launches and
-# then cannot find its model.
-#
-# Usage:
-#     scripts/quantise.sh              # all tiers
-#     scripts/quantise.sh MEDIUM
+# This command remains as a compatibility entrypoint for existing build notes.
+# It verifies that the locked outputs are present and match their SHA-256 values;
+# it does not transform model weights.
 
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+LOCK="$ROOT/docs/packaging/MODELS.lock.json"
 MODEL_DIR="${GODSTONE_MODEL_DIR:-$ROOT/models}"
-SRC_DIR="$MODEL_DIR/src"
-LLAMA="${LLAMA_CPP_DIR:-$ROOT/third_party/llama.cpp}"
-QUANTISE="$LLAMA/build/bin/llama-quantize"
-
-if [[ ! -x "$QUANTISE" ]]; then
-  echo "error: llama-quantize not built at $QUANTISE" >&2
-  echo "       cmake -B build -S \"$LLAMA\" && cmake --build build -j" >&2
-  exit 1
-fi
-
-# source file | output file | quant type
-JOBS=(
-  "Qwen3-0.6B-Q4_K_M.gguf|qwen3-0.6b-q4km.gguf|Q4_K_M|LIGHT"
-  "Qwen3-1.7B-Q4_K_M.gguf|qwen3-1.7b-q4km.gguf|Q4_K_M|MEDIUM"
-  "Qwen3-4B-Q5_K_M.gguf|qwen3-4b-q5km.gguf|Q5_K_M|LARGE"
-  "bge-small-en-v1.5-f16.gguf|bge-small-en-v1.5-q8.gguf|Q8_0|LIGHT MEDIUM"
-  "bge-base-en-v1.5-f16.gguf|bge-base-en-v1.5-q8.gguf|Q8_0|LARGE"
-)
-
 WANT_TIER="${1:-ALL}"
 
-for entry in "${JOBS[@]}"; do
-  IFS='|' read -r src out qtype tiers <<< "$entry"
+python3 - "$LOCK" "$MODEL_DIR" "$WANT_TIER" <<'PY'
+import hashlib, json, pathlib, re, sys
 
-  if [[ "$WANT_TIER" != "ALL" && " $tiers " != *" $WANT_TIER "* ]]; then
-    continue
-  fi
+lock_path, model_dir, tier = pathlib.Path(sys.argv[1]), pathlib.Path(sys.argv[2]), sys.argv[3]
+if tier not in {"ALL", "LIGHT", "MEDIUM", "LARGE"}:
+    raise SystemExit("error: tier must be ALL, LIGHT, MEDIUM or LARGE")
+lock = json.loads(lock_path.read_text())
+if lock.get("status") != "PINNED":
+    raise SystemExit("error: model lock is UNPINNED; run no release packaging")
 
-  src_path="$SRC_DIR/$src"
-  out_path="$MODEL_DIR/$out"
-
-  if [[ ! -f "$src_path" ]]; then
-    echo "error: missing $src_path - run scripts/fetch_models.sh first" >&2
-    exit 1
-  fi
-
-  if [[ -f "$out_path" && "$out_path" -nt "$src_path" ]]; then
-    echo "ok       $out (up to date)"
-    continue
-  fi
-
-  echo "quantising $src -> $out ($qtype)"
-
-  # Embedding models keep their output weights at higher precision. The
-  # embedding matrix IS the output for these, and quantising it hard measurably
-  # degrades retrieval, which is the one thing that must not degrade (C3).
-  if [[ "$qtype" == "Q8_0" ]]; then
-    "$QUANTISE" "$src_path" "$out_path" "$qtype"
-  else
-    "$QUANTISE" --leave-output-tensor "$src_path" "$out_path" "$qtype"
-  fi
-
-  size=$(du -h "$out_path" | cut -f1)
-  echo "ok       $out ($size)"
-done
-
-echo
-echo "quantised models are in $MODEL_DIR"
-echo "next: python -m content.ingest.build_archive --tier LIGHT"
+checked = 0
+for item in lock.get("artifacts", []):
+    if tier != "ALL" and tier not in item.get("tiers", []):
+        continue
+    sha = item.get("sha256")
+    if not isinstance(sha, str) or not re.fullmatch(r"[0-9a-f]{64}", sha):
+        raise SystemExit(f"error: invalid sha256 for {item.get('id')}")
+    path = model_dir / item["output_file"]
+    if not path.is_file():
+        raise SystemExit(f"error: missing {path}; run scripts/fetch_models.sh first")
+    h = hashlib.sha256()
+    with path.open("rb") as fh:
+        for block in iter(lambda: fh.read(1024 * 1024), b""):
+            h.update(block)
+    got = h.hexdigest()
+    if got != sha:
+        raise SystemExit(f"error: checksum mismatch for {path.name}: {got}")
+    print(f"ok       {path.name}")
+    checked += 1
+if not checked:
+    raise SystemExit(f"error: no locked artifacts selected for tier {tier}")
+print("model set is verified; no re-quantisation is required")
+PY

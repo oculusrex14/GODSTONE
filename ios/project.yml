@@ -6,15 +6,11 @@
 # (GodstoneCore, GodstoneMesh, GodstoneLLM), mirroring the Android module
 # graph:  app -> (GodstoneMesh, GodstoneLLM) -> GodstoneCore.
 #
-# llama.cpp is vendored at ../../third_party/llama.cpp and fetched as a git
-# submodule (NOT committed to this repo). The GodstoneLLM C++/Objective-C++
-# build needs HEADER_SEARCH_PATHS pointing at that checkout so LlamaBridge.mm
-# and llama.cpp's headers resolve. The path is wired into the GodstoneLLM
-# target's cSettings below; the submodule must be initialised
-# (`git submodule update --init --recursive`) before `xcodegen generate` is
-# followed by a build. If the submodule is absent, generate still succeeds but
-# the compile will fail in GodstoneLLM -- by design, so a missing dependency
-# is never silently skipped.
+# GodstoneLLM requires a reviewed, pinned llama.cpp checkout at
+# ../../third_party/llama.cpp. V4 contains neither a `.gitmodules` gitlink nor a
+# verified source-archive lock, so the complete native app build remains blocked.
+# XcodeGen can still generate the project; the LLM compile must fail loudly until
+# release engineering supplies the dependency described in third_party/README.md.
 
 name: Godstone
 
@@ -48,6 +44,13 @@ targets:
     platform: iOS
     sources:
       - Godstone/Sources/App
+      # The .gguf model and .db archive are mmap'd at runtime. Without a
+      # resources phase they are never copied into the bundle, so
+      # Bundle.main.path(forResource:) returns nil on a device that by
+      # definition cannot download them (C1).
+      - path: Godstone/Resources
+        type: folder
+        optional: true
     dependencies:
       - package: GodstonePackages
         product: GodstoneCore
@@ -111,8 +114,11 @@ schemes:
     test:
       config: light
       targets:
+        # GodstoneLLMTests was listed here and does NOT exist: Package.swift
+        # documents it as intentionally absent, because GodstoneLLM cannot build
+        # without the pinned llama.cpp dependency. Listing a non-existent test target
+        # makes `xcodebuild test` fail before it runs anything.
         - GodstoneMeshTests
-        - GodstoneLLMTests
     profile:
       config: light
     analyze:
@@ -131,8 +137,11 @@ schemes:
     test:
       config: medium
       targets:
+        # GodstoneLLMTests was listed here and does NOT exist: Package.swift
+        # documents it as intentionally absent, because GodstoneLLM cannot build
+        # without the pinned llama.cpp dependency. Listing a non-existent test target
+        # makes `xcodebuild test` fail before it runs anything.
         - GodstoneMeshTests
-        - GodstoneLLMTests
     profile:
       config: medium
     analyze:
@@ -151,8 +160,11 @@ schemes:
     test:
       config: large
       targets:
+        # GodstoneLLMTests was listed here and does NOT exist: Package.swift
+        # documents it as intentionally absent, because GodstoneLLM cannot build
+        # without the pinned llama.cpp dependency. Listing a non-existent test target
+        # makes `xcodebuild test` fail before it runs anything.
         - GodstoneMeshTests
-        - GodstoneLLMTests
     profile:
       config: large
     analyze:

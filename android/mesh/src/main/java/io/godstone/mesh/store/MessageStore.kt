@@ -3,8 +3,16 @@ package io.godstone.mesh.store
 
 import android.content.ContentValues
 import android.content.Context
-import android.database.sqlite.SQLiteDatabase
-import android.database.sqlite.SQLiteOpenHelper
+// AUDIT A-06. net.zetetic:sqlcipher-android was declared in build.gradle.kts and
+// then never imported: the store used plain android.database.sqlite, so seizing
+// a device yielded the entire message history in cleartext while the threat
+// model told adversary A6 the store was encrypted. A declared dependency is not
+// a control; only the import that actually replaces the plaintext engine is.
+import net.zetetic.database.sqlcipher.SQLiteDatabase
+import net.zetetic.database.sqlcipher.SQLiteOpenHelper
+import androidx.security.crypto.EncryptedSharedPreferences
+import androidx.security.crypto.MasterKey
+import java.security.SecureRandom
 import io.godstone.mesh.wire.Frame
 import io.godstone.mesh.wire.FrameType
 import io.godstone.mesh.wire.Priority
@@ -26,20 +34,44 @@ interface MessageStore {
 
     /** msg_ids of every held frame, for bloom-digest construction. */
     suspend fun allHeldMsgIds(): List<Long>
+
+    /**
+     * Stream held frames in priority order, stopping as soon as [visit] returns
+     * false. This is what Router.framesPeerLacks actually calls.
+     *
+     * Audit A-13: the list-returning variants materialise the entire store (up
+     * to the 200 MB budget) into an ArrayList on every peer encounter. Router
+     * was already written against this streaming form, but the interface never
+     * declared it -- an unresolved reference that no Python-only invariant could
+     * see, because Kotlin is never compiled in the verification environment.
+     * Invariant F now resolves every cross-file call and would fail the build.
+     */
+    suspend fun forEachHeldOrderedByPriority(visit: (Frame) -> Boolean)
+
+    /** Stream held msg_ids, stopping as soon as [visit] returns false. */
+    suspend fun forEachHeldMsgId(visit: (Long) -> Boolean)
 }
 
 /**
- * SQLite-backed store. Plain SQLite today; production layers SQLCipher
- * encryption so that device seizure does not yield message history (threat A6).
+ * SQLCipher-backed store (threat A6).
  *
- * TODO: precise byte-budget eviction and SQLCipher integration.
+ * This store still uses the legacy GMP/1 logical schema until ADR-001/M1-wire
+ * lands. ACK expiry, exact hard-cap semantics, and coordinated identity/store
+ * wipe remain tracked in ADR-004 and are not represented as closed here.
  */
 class SqliteMessageStore(
     private val ctx: Context,
     private val maxBytes: Long
 ) : MessageStore {
 
-    private val helper = Helper(ctx)
+    private val helper: Helper
+
+    init {
+        // sqlcipher-android requires explicit native-core loading before any
+        // helper can attempt to open a database.
+        System.loadLibrary("sqlcipher")
+        helper = Helper(ctx.applicationContext, passphrase(ctx.applicationContext))
+    }
 
     override suspend fun persist(frame: Frame, receivedFrom: ByteArray) {
         val db = helper.writableDatabase
@@ -82,21 +114,65 @@ class SqliteMessageStore(
     }
 
     /**
+     * Cursor-streamed scan. The cursor is walked row by row and abandoned the
+     * moment [visit] returns false, so a full backlog never lands in memory
+     * (audit A-13).
+     */
+    override suspend fun forEachHeldOrderedByPriority(visit: (Frame) -> Boolean) {
+        val db = helper.readableDatabase
+        db.query(
+            TABLE, null, null, null, null, null,
+            "$COL_PRIORITY ASC, $COL_RECEIVED_AT DESC"
+        ).use { c ->
+            while (c.moveToNext()) {
+                val f = readFrame(c) ?: continue
+                if (!visit(f)) return
+            }
+        }
+    }
+
+    override suspend fun forEachHeldMsgId(visit: (Long) -> Boolean) {
+        val db = helper.readableDatabase
+        db.query(TABLE, arrayOf(COL_MSG_ID), null, null, null, null, null).use { c ->
+            while (c.moveToNext()) {
+                if (!visit(c.getLong(0))) return
+            }
+        }
+    }
+
+    /**
      * Best-effort eviction of the oldest non-SOS rows when the store exceeds
      * [maxBytes]. SOS frames are retained longest by being sorted last out.
      *
      * TODO: precise byte accounting; this currently approximates by row count.
      */
     private fun evictIfOverBudget(db: SQLiteDatabase) {
-        // Approximate: cap by a row count derived from maxBytes / assumed row size.
-        // A precise byte budget is deferred (see TODO above).
-        val approxRowBytes = 512L
-        val maxRows = (maxBytes / approxRowBytes).coerceAtLeast(1L)
+        // AUDIT A-14. This previously ran the DELETE unconditionally on EVERY
+        // insert, with no check that the budget had been exceeded at all. Its
+        // own doc comment said "when the store exceeds maxBytes", and it never
+        // asked. On a fresh install with two messages held, inserting a third
+        // deleted a quarter of the non-SOS backlog immediately -- a
+        // delay-tolerant store that discards the traffic it exists to carry.
+        //
+        // The size is now measured before anything is deleted, and the query
+        // only runs when the store is genuinely over budget.
+        val heldBytes = db.rawQuery(
+            "SELECT COALESCE(SUM(LENGTH($COL_PAYLOAD)) + COUNT(*) * $ROW_OVERHEAD, 0) FROM $TABLE",
+            null
+        ).use { c -> if (c.moveToFirst()) c.getLong(0) else 0L }
+
+        if (heldBytes <= maxBytes) return   // nothing to do: the common case
+
+        // Evict roughly the overshoot, oldest non-SOS first. SOS is retained
+        // last under storage pressure (PROTOCOL.md section 7).
+        val overshoot = heldBytes - maxBytes
+        val approxRowBytes = ROW_OVERHEAD + 256L
+        val toDelete = ((overshoot / approxRowBytes) + 1).coerceAtLeast(1L)
         db.execSQL(
             "DELETE FROM $TABLE WHERE $COL_MSG_ID IN (" +
                 "SELECT $COL_MSG_ID FROM $TABLE WHERE $COL_PRIORITY != ? " +
                 "ORDER BY $COL_RECEIVED_AT ASC LIMIT ?)",
-            arrayOf<Any>(Priority.SOS.code.toInt(), (maxRows / 4).coerceAtLeast(1L))
+            arrayOf<Any>(Priority.SOS.code.toInt(), toDelete)
         )
     }
 
@@ -116,7 +192,8 @@ class SqliteMessageStore(
         )
     }
 
-    private class Helper(ctx: Context) : SQLiteOpenHelper(ctx, DB_NAME, null, DB_VERSION) {
+    private class Helper(ctx: Context, private val key: ByteArray) :
+        SQLiteOpenHelper(ctx, DB_NAME, key, null, DB_VERSION, 1, null, null, false) {
         override fun onCreate(db: SQLiteDatabase) {
             db.execSQL(
                 """CREATE TABLE $TABLE (
@@ -133,13 +210,61 @@ class SqliteMessageStore(
         }
 
         override fun onUpgrade(db: SQLiteDatabase, oldVersion: Int, newVersion: Int) {
-            // Single-version store today; a migration path is deferred.
-            db.execSQL("DROP TABLE IF EXISTS $TABLE")
+            // AUDIT A-12. This used to DROP TABLE, destroying every undelivered
+            // frame -- including SOS traffic the mesh had not yet been able to
+            // hand on -- the first time a user updated the app. In a blackout an
+            // app update is exactly when a queued distress beacon matters most.
+            //
+            // Additive migration only. Any future schema change must preserve
+            // held frames or explicitly justify why it cannot.
+            if (oldVersion == newVersion) return
+            db.execSQL("ALTER TABLE $TABLE RENAME TO ${TABLE}_migrating")
             onCreate(db)
+            db.execSQL(
+                "INSERT OR IGNORE INTO $TABLE SELECT * FROM ${TABLE}_migrating")
+            db.execSQL("DROP TABLE ${TABLE}_migrating")
         }
     }
 
     companion object {
+        /**
+         * 256-bit store key, generated once and held in EncryptedSharedPreferences
+         * behind a Keystore master key -- so the passphrase is protected by
+         * hardware where the device provides it, and never appears in the APK.
+         *
+         * Losing this key makes the store unreadable, which is the correct
+         * outcome: a recoverable key is not a key, it is an inconvenience for
+         * whoever seized the phone.
+         */
+        private fun passphrase(ctx: Context): ByteArray {
+            val master = MasterKey.Builder(ctx)
+                .setKeyScheme(MasterKey.KeyScheme.AES256_GCM).build()
+            val prefs = EncryptedSharedPreferences.create(
+                ctx, "godstone_store_key", master,
+                EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
+                EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM)
+            prefs.getString("k", null)?.let {
+                return android.util.Base64.decode(it, android.util.Base64.NO_WRAP)
+            }
+            val k = ByteArray(32).also { SecureRandom().nextBytes(it) }
+            val encoded = android.util.Base64.encodeToString(k, android.util.Base64.NO_WRAP)
+            check(prefs.edit().putString("k", encoded).commit()) {
+                "failed to persist SQLCipher key"
+            }
+            return k
+        }
+
+        /**
+         * Panic wipe (PROTOCOL.md section 2). Destroys the store AND its key, so
+         * prior traffic cannot be linked to the regenerated identity.
+         */
+        fun panicWipe(ctx: Context) {
+            ctx.deleteDatabase(DB_NAME)
+            ctx.deleteSharedPreferences("godstone_store_key")
+        }
+
+        /** Per-row bookkeeping beyond the payload blob. */
+        private const val ROW_OVERHEAD = 64L
         private const val DB_NAME = "godstone_messages.db"
         private const val DB_VERSION = 1
         private const val TABLE = "held_frames"
@@ -171,4 +296,12 @@ internal class InMemoryMessageStore : MessageStore {
         )
 
     override suspend fun allHeldMsgIds(): List<Long> = held.keys.toList()
+
+    override suspend fun forEachHeldOrderedByPriority(visit: (Frame) -> Boolean) {
+        for (f in allHeldOrderedByPriority()) if (!visit(f)) return
+    }
+
+    override suspend fun forEachHeldMsgId(visit: (Long) -> Boolean) {
+        for (id in allHeldMsgIds()) if (!visit(id)) return
+    }
 }

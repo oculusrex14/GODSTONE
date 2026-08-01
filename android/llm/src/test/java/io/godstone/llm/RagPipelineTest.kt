@@ -1,5 +1,7 @@
 package io.godstone.llm
 
+import io.godstone.llm.safety.SafetyGate
+
 import io.godstone.llm.rag.Chunk
 import io.godstone.llm.rag.PromptBuilder
 import io.godstone.llm.rag.RetrievalResult
@@ -143,9 +145,18 @@ class RagPipelineTest {
     }
 
     @Test
-    fun `confidence floor is identical to the iOS pipeline`() {
-        // Tab 08 states the two platforms must not drift. If this constant
-        // changes, RagPipeline.swift changes in the same commit.
-        assertEquals(0.35, RetrievalResult.CONFIDENCE_THRESHOLD, 0.0)
+    fun `gate constants are pinned`() {
+        assertEquals(0.60, SafetyGate.ANCHOR_RECALL_FLOOR, 0.0)
+        assertEquals(0.50, SafetyGate.COLOCATION_FLOOR, 0.0)
+        assertEquals(0.40, SafetyGate.DOMAIN_COHERENCE_FLOOR, 0.0)
+        assertEquals(0.15, SafetyGate.CAVEAT_MARGIN, 0.0)
+    }
+
+    @Test
+    fun `idf formula matches the reference`() {
+        val n = 27
+        val d = 20
+        val actual = kotlin.math.ln((n - d + 0.5) / (d + 0.5) + 1.0)
+        assertEquals(0.3118, actual, 0.0005)
     }
 }

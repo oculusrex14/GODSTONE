@@ -30,8 +30,12 @@ public struct RetrievalResult: Sendable {
     public let bestScore: Double
     public let nearMisses: [Citation]
 
+    /// Verdict from `SafetyGate.evaluate` -- the same logic the probe suite
+    /// exercises. Nil means the gate never ran, which fails closed.
+    public let gateVerdict: SafetyGate.Result?
+
     public var passesConfidenceGate: Bool {
-        bestScore >= RagPipeline.confidenceFloor
+        gateVerdict?.allowsGeneration ?? false
     }
 }
 
@@ -40,6 +44,11 @@ public actor RagPipeline {
     /// Below this fused score we consider the Archive silent on the question.
     /// Tuned on the offline eval set in tab 12; deliberately conservative.
     /// PARITY with Android (was 0.28; raised to 0.35 to match tab 05).
+    /// RETAINED ONLY AS A LEGACY CONSTANT. The verdict now comes from
+    /// SafetyGate.evaluate; see `RetrievalResult.passesConfidenceGate`.
+    /// Invariant G fails the build if this value is ever compared against
+    /// again, because the repository's own audit proved it cannot discriminate.
+    @available(*, deprecated, message: "use SafetyGate.evaluate")
     public static let confidenceFloor: Double = 0.35
 
     /// Reciprocal-rank-fusion constant. Standard value; combines the FTS5 rank
@@ -77,30 +86,35 @@ public actor RagPipeline {
         // vectors catch paraphrase ("how do I stop bad bleeding"). Neither alone
         // is good enough for a user who is frightened and typing badly.
         let lexical = (try? retriever.searchLexical(question, limit: 24)) ?? []
+        // The archive's vectors come from bge-small/bge-base (see
+        // content/ingest/embedder.py). This used to embed the query with the
+        // QWEN GENERATION model, putting query and corpus in two completely
+        // different vector spaces -- cosine similarity between them is noise,
+        // so every semantic score was meaningless while looking healthy.
+        //
+        // ModelManager.shared.embedder loads the SAME GGUF the archive was
+        // built with and returns nil on a dimension mismatch, so retrieval
+        // degrades to lexical-only rather than comparing across spaces.
         let semantic = (try? await retriever.searchSemantic(
             question,
-            embedder: { await (try? await ModelManager.shared.ensureLoaded())?.embed($0) },
+            embedder: { await ModelManager.shared.embedQuery($0) },
             limit: 24)) ?? []
 
         let fused = fuse(lexical: lexical, semantic: semantic)
         let top = Array(fused.prefix(Tier.current.topKChunks))
 
         let bestScore = top.first?.score ?? 0
-        let nearMisses: [Citation]
-        if bestScore < RagPipeline.confidenceFloor {
-            // Below the floor we surface the three closest calls so the user can
-            // still browse the Archive by hand (C5: degrade, never fail).
-            nearMisses = top.prefix(3).map {
-                Citation(id: $0.chunkId,
-                         documentTitle: $0.documentTitle,
-                         section: $0.section,
-                         score: $0.score)
-            }
-        } else {
-            nearMisses = []
+        let verdict = SafetyGate.evaluate(question: question,
+                                          chunks: top,
+                                          index: await retriever.corpusIndex())
+        let nearMisses: [Citation] = verdict.allowsGeneration ? [] : top.prefix(3).map {
+            Citation(id: $0.chunkId,
+                     documentTitle: $0.documentTitle,
+                     section: $0.section,
+                     score: $0.score)
         }
-
-        return RetrievalResult(chunks: top, bestScore: bestScore, nearMisses: nearMisses)
+        return RetrievalResult(chunks: top, bestScore: bestScore,
+                               nearMisses: nearMisses, gateVerdict: verdict)
     }
 
     /// Streaming generation gated on the retrieval result. The stream finishes

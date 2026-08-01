@@ -13,6 +13,7 @@ import android.content.Context
 import android.os.ParcelUuid
 import io.godstone.mesh.identity.Identity
 import io.godstone.mesh.router.BloomDigest
+import io.godstone.mesh.wire.v2.FrameV2
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
@@ -20,18 +21,20 @@ import java.nio.ByteBuffer
 import java.util.UUID
 
 /**
- * BLE control plane. Always on, aggressively duty-cycled.
+ * Disabled BLE control-plane scaffold.
  *
- * The most important power optimisation in the system lives here: a peer decides
- * whether to connect purely from the 26-byte advertisement. When the bloom
- * digests show neither side holds anything the other lacks, no connection is
- * made and the encounter costs one scan result and nothing more.
+ * ADR-002 proved the old 26-byte service-data advertisement cannot fit beside a
+ * 128-bit UUID. The accepted target is UUID-only primary advertising plus a
+ * 13-byte scan-response payload. MeshNode keeps this transport unreachable until
+ * the record layer, handshake driver and on-device size tests are complete.
  */
 @SuppressLint("MissingPermission")
 class BleTransport(
     private val context: Context,
     private val identity: Identity,
-    private val digestProvider: suspend () -> BloomDigest
+    private val digestProvider: suspend () -> BloomDigest,
+    /** Noise sessions. Without this the transport cannot send at all -- by design. */
+    private val sessions: io.godstone.mesh.crypto.SessionManager? = null
 ) : Transport {
 
     override val name = "BLE"
@@ -63,30 +66,30 @@ class BleTransport(
     }
 
     /**
-     * 26-byte advertisement payload, protocol section 3.1.
-     *   0  1   version
-     *   1  1   flags
-     *   2  4   node_hint
-     *   6  16  bloom_digest_short
-     *   22 2   queue_depth
-     *   24 2   epoch
+     * Accepted 13-byte scan-response payload from ADR-002.
+     *
+     * This builder is not wired into advertising yet: the complete M2-link
+     * lifecycle must produce it asynchronously from the durable held-message
+     * digest and verify packet sizes on hardware before LINK_LAYER_READY moves.
      */
-    fun buildAdvertisementPayload(
+    fun buildScanResponsePayload(
         digest: ByteArray,
         queueDepth: Int,
-        sosPresent: Boolean
+        sosPresent: Boolean,
+        clockUntrusted: Boolean = false
     ): ByteArray {
-        var flags = FLAG_BULK_CAPABLE
+        require(digest.size >= 6) { "short digest requires at least 6 bytes" }
+        var flags = 0
         if (sosPresent) flags = flags or FLAG_SOS
         if (powerState == PowerState.CRITICAL) flags = flags or FLAG_POWER_CONSTRAINED
+        if (clockUntrusted) flags = flags or FLAG_CLOCK_UNTRUSTED
 
-        return ByteBuffer.allocate(26)
-            .put(0x01)
+        return ByteBuffer.allocate(SCAN_RESPONSE_BYTES)
+            .put(FrameV2.VERSION)
             .put(flags.toByte())
             .put(identity.nodeHint)
-            .put(digest, 0, 16)
-            .putShort(queueDepth.coerceAtMost(65535).toShort())
-            .putShort(((System.currentTimeMillis() / 60000) % 65536).toShort())
+            .put(digest, 0, 6)
+            .put(queueDepth.coerceIn(0, 255).toByte())
             .array()
     }
 
@@ -127,19 +130,19 @@ class BleTransport(
             override fun onScanResult(callbackType: Int, result: ScanResult) {
                 val sd = result.scanRecord
                     ?.getServiceData(ParcelUuid(SERVICE_UUID)) ?: return
-                if (sd.size < 26) return
+                if (sd.size < SCAN_RESPONSE_BYTES) return
 
                 val buf = ByteBuffer.wrap(sd)
-                if (buf.get() != 0x01.toByte()) return   // refuse unknown versions
+                if (buf.get() != 0x02.toByte()) return   // refuse unknown versions
 
                 val flags = buf.get().toInt()
                 val hint = ByteArray(4).also { buf.get(it) }
-                val digest = ByteArray(16).also { buf.get(it) }
-                val queueDepth = buf.getShort().toInt() and 0xFFFF
+                val digest = ByteArray(6).also { buf.get(it) }
+                val queueDepth = buf.get().toInt() and 0xFF
 
                 trySend(
                     PeerEvent.Found(
-                        peerId = result.device.address.toByteArray(),
+                        peerId = PeerId.fromAddress(result.device.address) ?: return,
                         nodeHint = hint,
                         rssi = result.rssi,
                         sosFlag = flags and FLAG_SOS != 0,
@@ -171,24 +174,58 @@ class BleTransport(
         awaitClose { adapter.bluetoothLeScanner?.stopScan(cb) }
     }
 
+    /**
+     * Send [bytes] to [peerId] THROUGH THE NOISE SESSION.
+     *
+     * Audit: this method previously wrote `frame.encode()` directly to the GATT
+     * characteristic. NoiseSession existed and was tested, but nothing in
+     * production ever constructed one, so every byte the mesh sent was
+     * plaintext while the app described itself as encrypted.
+     *
+     * There is deliberately NO plaintext fallback. If no session is established
+     * the send fails and the router carries the frame to the next encounter --
+     * delay is the designed behaviour; leaking is not.
+     */
     override suspend fun send(peerId: ByteArray, bytes: ByteArray): Boolean {
         require(bytes.size <= GATT_MTU) { "use the bulk plane for large payloads" }
-        return GattClient.write(context, peerId, WRITE_CHAR_UUID, bytes)
+        val sealed = sessions?.seal(peerId, bytes) ?: return false
+        return GattClient.write(context, peerId, WRITE_CHAR_UUID, sealed)
     }
+
+    /** Decrypted inbound frames. Anything that fails authentication is dropped. */
+    fun receivedPlaintext(): Flow<Pair<ByteArray, ByteArray>> =
+        kotlinx.coroutines.flow.flow {
+            received().collect { (peer, cipher) ->
+                val clear = try {
+                    sessions?.open(peer, cipher)
+                } catch (e: Exception) {
+                    null   // tamper or replay: refuse to process
+                }
+                if (clear != null) emit(peer to clear)
+            }
+        }
 
     override fun received(): Flow<Pair<ByteArray, ByteArray>> =
         GattServer.incoming(context, SERVICE_UUID, WRITE_CHAR_UUID)
 
     companion object {
-        val SERVICE_UUID: UUID = UUID.fromString("67640001-1000-8000-00805f9b34fb")
-        val WRITE_CHAR_UUID: UUID = UUID.fromString("67640002-1000-8000-00805f9b34fb")
-        val NOTIFY_CHAR_UUID: UUID = UUID.fromString("67640003-1000-8000-00805f9b34fb")
+        // GENERATED-SPEC UUIDs. These previously read 67640001-… while iOS read
+        // 6F0D0001-… -- the two platforms literally could not see each other, so
+        // the header and type-code defects below were never even reached. The
+        // values now come from wire/wire_v2.yaml via FrameV2 and cannot drift:
+        // ci/check_parity.py Invariant G fails the build if a literal UUID
+        // reappears here.
+        val SERVICE_UUID: UUID = FrameV2.SERVICE_UUID
+        val WRITE_CHAR_UUID: UUID = FrameV2.INBOX_UUID
+        val NOTIFY_CHAR_UUID: UUID = FrameV2.DIGEST_UUID
 
         const val GATT_MTU = 512
+        const val SCAN_RESPONSE_BYTES = 13
 
         const val FLAG_SOS = 0x01
         const val FLAG_BULK_CAPABLE = 0x02
         const val FLAG_POWER_CONSTRAINED = 0x04
         const val FLAG_VERIFIED_ONLY = 0x08
+        const val FLAG_CLOCK_UNTRUSTED = 0x10
     }
 }

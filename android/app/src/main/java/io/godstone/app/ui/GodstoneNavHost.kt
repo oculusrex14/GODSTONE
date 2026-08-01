@@ -17,8 +17,12 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import io.godstone.app.ui.browse.BrowseScreen
 import io.godstone.app.ui.home.HomeScreen
+import io.godstone.app.ui.mesh.MeshScreen
 import io.godstone.app.ui.oracle.OracleScreen
+import io.godstone.app.ui.sos.SosScreen
+import io.godstone.mesh.MeshNode
 
 /**
  * Five destinations, flat hierarchy. Under stress nobody navigates a tree.
@@ -33,7 +37,7 @@ sealed class Dest(val route: String, val label: String) {
 }
 
 @Composable
-fun GodstoneNavHost() {
+fun GodstoneNavHost(meshNode: MeshNode) {
     val nav = rememberNavController()
     val backStack by nav.currentBackStackEntryAsState()
     val current = backStack?.destination?.route
@@ -66,8 +70,8 @@ fun GodstoneNavHost() {
             composable(Dest.Home.route) { HomeScreen(onNavigate = { nav.navigate(it) }) }
             composable(Dest.Oracle.route) { OracleScreen() }
             composable(Dest.Browse.route) { BrowseScreen() }
-            composable(Dest.Mesh.route) { MeshScreen() }
-            composable(Dest.Sos.route) { SosScreen() }
+            composable(Dest.Mesh.route) { MeshScreen(meshNode = meshNode) }
+            composable(Dest.Sos.route) { SosScreen(meshNode = meshNode) }
         }
     }
 }

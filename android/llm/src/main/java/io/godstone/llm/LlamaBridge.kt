@@ -49,6 +49,17 @@ class LlamaBridge {
         awaitClose { }
     }.flowOn(Dispatchers.Default)
 
+    /**
+     * Mean-pooled, L2-normalised embedding from the loaded model.
+     * Used ONLY with a BGE embedding model -- see rag/Embedder.kt.
+     */
+    fun embed(text: String): FloatArray? {
+        if (!isLoaded) return null
+        return nativeEmbed(handle, text)
+    }
+
+    private external fun nativeEmbed(handle: Long, text: String): FloatArray?
+
     private external fun nativeLoadModel(
         path: String, nCtx: Int, nThreads: Int
     ): Long

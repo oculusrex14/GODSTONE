@@ -49,7 +49,10 @@ class NoiseSessionTest {
 
         // This is what makes QR contact verification meaningful: the key the
         // user scanned must be the key that completed the handshake.
-        assertContentEquals(bobIdentity.identityPub, alice.remoteStaticKey)
+        // remoteStaticKey comes out of the Noise handshake, whose static is
+        // X25519 (staticDhPriv). identityPub is Ed25519 -- a different key, so
+        // this assertion could never pass. The QR flow must pin staticDhPub.
+        assertContentEquals(bobIdentity.staticDhPub, alice.remoteStaticKey)
     }
 
     @Test

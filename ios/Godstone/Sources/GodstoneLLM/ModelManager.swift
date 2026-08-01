@@ -44,8 +44,8 @@ public final class ModelManager: @unchecked Sendable {
     }
 
     private func modelURLInAppSupport() -> URL? {
-        // LARGE tier ships the weights as a downloadable pack (tab 11), so the
-        // file lives in Application Support rather than the bundle.
+        // A future reviewed offline installation flow may place a verified model in
+        // Application Support. V4 does not download models from the app.
         let fm = FileManager.default
         guard let dir = fm.urls(for: .applicationSupportDirectory,
                                 in: .userDomainMask).first else { return nil }
@@ -117,6 +117,25 @@ public final class ModelManager: @unchecked Sendable {
             guard !Task.isCancelled else { return }
             await self?.evictNow()
         }
+    }
+
+    /// Embedding runner, SEPARATE from the generation runner.
+    ///
+    /// The archive's vectors are bge-small/bge-base. Embedding a query with the
+    /// Qwen generation model puts it in a different vector space entirely, so
+    /// the similarity numbers are noise. Two runners is the cost of not doing
+    /// that; the embedding model is ~30 MB quantised.
+    private let embedRunner = LlamaRunner()
+
+    public func embedQuery(_ text: String) async -> [Float]? {
+        guard let path = Bundle.main.path(
+            forResource: Tier.current.embedModelFile, ofType: nil) else { return nil }
+        try? await embedRunner.load(path: path, contextTokens: 512,
+                                    gpuLayers: 0, threads: 2)
+        guard let v = await embedRunner.embed(text) else { return nil }
+        // Fail closed on a dimension mismatch rather than compare across spaces.
+        guard v.count == Tier.current.embedDim else { return nil }
+        return v
     }
 
     public func evictNow() async {

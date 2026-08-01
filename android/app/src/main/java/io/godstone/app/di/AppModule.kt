@@ -8,6 +8,8 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
 import io.godstone.app.BuildConfig
 import io.godstone.llm.ModelManager
+import io.godstone.llm.archive.ArchiveRepository
+import io.godstone.llm.rag.Embedder
 import io.godstone.llm.rag.RagPipeline
 import io.godstone.llm.rag.Retriever
 import io.godstone.mesh.MeshNode
@@ -33,6 +35,11 @@ object AppModule {
 
     @Provides
     @Singleton
+    fun provideArchiveRepository(@ApplicationContext ctx: Context): ArchiveRepository =
+        ArchiveRepository(ctx, archiveAsset = BuildConfig.ARCHIVE_FILE)
+
+    @Provides
+    @Singleton
     fun provideModelManager(@ApplicationContext ctx: Context): ModelManager =
         ModelManager(
             context = ctx,
@@ -42,8 +49,21 @@ object AppModule {
 
     @Provides
     @Singleton
-    fun provideRetriever(@ApplicationContext ctx: Context): Retriever =
-        Retriever(ctx, archiveAsset = BuildConfig.ARCHIVE_FILE)
+    fun provideEmbedder(@ApplicationContext ctx: Context): Embedder? {
+        if (BuildConfig.EMBED_MODEL_FILE.isEmpty()) return null
+        return Embedder(
+            context = ctx,
+            embedModelAsset = BuildConfig.EMBED_MODEL_FILE,
+            expectedDim = BuildConfig.EMBED_DIM
+        )
+    }
+
+    @Provides
+    @Singleton
+    fun provideRetriever(
+        @ApplicationContext ctx: Context,
+        embedder: Embedder?
+    ): Retriever = Retriever(ctx, archiveAsset = BuildConfig.ARCHIVE_FILE, embedder = embedder)
 
     @Provides
     @Singleton

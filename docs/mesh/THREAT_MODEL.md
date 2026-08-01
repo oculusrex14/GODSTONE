@@ -1,5 +1,11 @@
 # Godstone Mesh — Threat Model
 
+**V4 implementation status:** threat goals, not current guarantees. The radio
+stack is disabled. A2/A7 depend on open ADR-003; A6 depends on open ADR-004;
+SOS authenticity/lifecycle depends on ADR-005; bulk transport depends on
+ADR-006. Statements below describe the intended mitigations after those ADRs
+are implemented and verified. The Archive/Oracle C1-C3 controls are separate.
+
 ## Adversaries considered
 
 **A1 Passive local eavesdropper.** Radio receiver in range, records everything.

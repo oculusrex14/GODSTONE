@@ -63,6 +63,25 @@ public enum Tier: Sendable {
     /// Chunks surfaced to retrieval; equal to `topKChunks` on every tier.
     public var retrievalChunks: Int { topKChunks }
 
+    /// Embedding GGUF the ARCHIVE was built with. Must match
+    /// content/ingest/build_archive.py TIERS[*]["embed_model"], or semantic
+    /// search compares two unrelated vector spaces.
+    public var embedModelFile: String {
+        switch self {
+        case .light:  return "bge-small-en-v1.5-q8.gguf"
+        case .medium: return "bge-small-en-v1.5-q8.gguf"
+        case .large:  return "bge-base-en-v1.5-q8.gguf"
+        }
+    }
+
+    /// Embedding dimension. Cross-checked against archive_meta.embed_dim.
+    public var embedDim: Int {
+        switch self {
+        case .light, .medium: return 384
+        case .large:          return 768
+        }
+    }
+
     /// Archive SQLite database bundled resource name.
     public var archiveDatabaseName: String {
         switch self {

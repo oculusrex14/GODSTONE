@@ -1,0 +1,107 @@
+# GMP/2 wire format -- the SINGLE source of truth.
+#
+# Android and iOS codecs are GENERATED from this file. Hand-editing either
+# generated file makes ci/check_parity.py Invariant A go red. "Byte-for-byte
+# identical" stops being a comment and becomes a build assertion.
+#
+# WHY v2 EXISTS
+# -------------
+# v1 shipped two incompatible layouts that each claimed to be the other:
+#     Android  20-byte header, 8-byte msg_id,  types 0x01..0x0A
+#     iOS      26-byte header, 16-byte msg_id, types 0x01..0x08
+# They failed at three independent layers -- different BLE service UUIDs meant
+# they never discovered each other; different header sizes meant every frame
+# failed to parse; and overlapping type codes meant an Android DIGEST (0x02)
+# would have been read by iOS as an SOS.
+#
+# v2 is a strict superset of both. Android's `priority` and iOS's `routingTag`
+# both survive; msg_id takes iOS's 16-byte width.
+
+version: 2
+magic: 0x4753          # "GS"
+header_size: 32
+
+header:
+  - {name: magic,       offset: 0,  size: 2,  type: u16, note: "0x4753, fail-closed sentinel"}
+  - {name: version,     offset: 2,  size: 1,  type: u8,  note: "0x02"}
+  - {name: type,        offset: 3,  size: 1,  type: u8,  note: "see message_types"}
+  - {name: msg_id,      offset: 4,  size: 16, type: bytes, note: "BLAKE2s-128"}
+  - {name: routing_tag, offset: 20, size: 4,  type: bytes, note: "rotates daily"}
+  - {name: ttl,         offset: 24, size: 1,  type: u8,  note: "initial 12, max 16"}
+  - {name: hop_count,   offset: 25, size: 1,  type: u8,  note: "increments on relay"}
+  - {name: flags,       offset: 26, size: 2,  type: u16}
+  - {name: payload_len, offset: 28, size: 2,  type: u16, note: "max 60000"}
+  - {name: header_crc,  offset: 30, size: 2,  type: u16, note: "CRC-16/CCITT over 0..29"}
+
+# THE SINGLE BLE SERVICE UUID. v1's partition was three defects, and this was
+# the first: Android advertised 67640001-… while iOS scanned 6F0D0001-…, so the
+# two never discovered each other and the header/type defects were never even
+# reached. Generated into both platforms so they CANNOT drift again.
+ble:
+  service_uuid: "6764A001-9A5E-4C7B-B0A1-3E5D8C2F7A10"
+  inbox_uuid:   "6764A002-9A5E-4C7B-B0A1-3E5D8C2F7A10"
+  digest_uuid:  "6764A003-9A5E-4C7B-B0A1-3E5D8C2F7A10"
+
+byte_order: big
+max_payload: 60000
+default_ttl: 12
+max_ttl: 16
+
+# EVERY code has EVEN parity (even popcount). This is a structural guarantee,
+# not hand-picked luck: any single-bit flip changes parity and therefore lands
+# on a code that cannot exist, so pairwise Hamming distance is >= 2 BY
+# CONSTRUCTION. codegen.py verifies parity, pairwise distance and the v1
+# non-reuse rule, and refuses to emit if any of them breaks.
+#
+# The first draft of this table had SOS=0x64 one bit from WANT=0x24 -- a single
+# flip would have fabricated a distress broadcast, the exact property this
+# section claims to provide. The checker caught it. Hand-chosen codes are not
+# trustworthy; the parity rule is.
+#
+# Renumbered so no v2 code reuses any v1 value (v1 used 0x01..0x0A on both
+# platforms). A stray legacy frame now hits the unknown-type branch and is
+# dropped, instead of a DIGEST arriving as an SOS.
+message_types:
+  HELLO:      0x11
+  DIGEST:     0x12
+  WANT:       0x14
+  MESSAGE:    0x18
+  ACK:        0x21
+  BULK_OFFER: 0x22
+  BULK_CHUNK: 0x24
+  PING:       0x28
+  GOODBYE:    0x41
+  SOS:        0xF0
+
+flags:
+  SEALED:     0x0001
+  COMPRESSED: 0x0002
+  FRAGMENTED: 0x0004
+  HAS_POW:    0x0008
+  ACK_REQ:    0x0010
+  RELAY_OK:   0x0020
+  # ADR-001 s.3.1: 0x00C0 is TWO bits = 4 values, and the priority set below
+  # has FIVE. GMP/2 could not encode Android's existing priorities at all.
+  # Widened to three bits (8 values). codegen.py now asserts the mask is wide
+  # enough for the priority table, so this fails the build, not the mesh.
+  PRIORITY_MASK: 0x0700
+
+priority:
+  SOS:       0
+  DIRECT:    1
+  GROUP:     2
+  BROADCAST: 3
+  BULK:      4
+
+# Defence in depth. The renumbering stops a legacy frame being MISREAD as an
+# SOS; these requirements stop a corrupted or truncated frame FABRICATING one.
+# That second property is worth more than the renumbering.
+sos_requirements:
+  payload_magic: "SOS1"
+  required_flags: [ACK_REQ, RELAY_OK]
+  signature: ed25519
+  signature_len: 64
+  note: >
+    An SOS must carry the payload magic, both flags, and a valid Ed25519
+    signature over msg_id || payload. A parse error can no longer fabricate a
+    distress broadcast.

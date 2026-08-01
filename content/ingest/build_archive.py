@@ -79,6 +79,14 @@ TIER_RANK = {"LIGHT": 0, "MEDIUM": 1, "LARGE": 2}
 
 REQUIRED_FRONT_MATTER = ("title", "domain", "source", "licence", "revision")
 
+# Audit A-09. A release archive may not contain clinically unreviewed material.
+# The check lives in the BUILD, not in a checklist, because a checklist is a
+# claim and a build step is a control -- the distinction this whole repository
+# is about. `--release` refuses; the default build warns and continues, so
+# development against worked examples stays possible.
+REVIEW_FIELDS = ("reviewed_by", "reviewed_on")
+UNREVIEWED_SENTINEL = "UNREVIEWED-EXAMPLE"
+
 
 @dataclass
 class Document:
@@ -91,6 +99,8 @@ class Document:
     tier_min: str
     reading_level: int
     is_critical: bool
+    reviewed_by: str
+    reviewed_on: str
     body: str
 
 
@@ -126,6 +136,8 @@ def parse_front_matter(path: Path) -> Document:
         tier_min=str(fm.get("tier_min", "LIGHT")).strip().upper(),
         reading_level=reading_level,
         is_critical=bool(fm.get("critical", False)),
+        reviewed_by=str(fm.get("reviewed_by", UNREVIEWED_SENTINEL)).strip(),
+        reviewed_on=str(fm.get("reviewed_on", "")).strip(),
         body=body.strip(),
     )
 
@@ -173,7 +185,8 @@ def corpus_digest(docs: list[Document], chunks: list[Chunk]) -> str:
     return h.hexdigest()
 
 
-def build(tier: str, out_path: Path, embed: bool = True) -> None:
+def build(tier: str, out_path: Path, embed: bool = True,
+          release: bool = False) -> None:
     cfg = TIERS[tier]
     out_path.parent.mkdir(parents=True, exist_ok=True)
     if out_path.exists():
@@ -181,6 +194,20 @@ def build(tier: str, out_path: Path, embed: bool = True) -> None:
 
     docs = load_corpus(tier)
     print(f"tier {tier}: {len(docs)} documents")
+
+    # ---- editorial gate (A-09) -------------------------------------------
+    unreviewed = [d for d in docs if d.reviewed_by == UNREVIEWED_SENTINEL]
+    if unreviewed:
+        names = ", ".join(d.path.name for d in unreviewed)
+        if release:
+            raise SystemExit(
+                f"::error::REFUSING to build a release archive: {len(unreviewed)} "
+                f"document(s) have no clinical review ({names}). See "
+                f"docs/editorial/REVIEW.md. A release archive may not carry "
+                f"unreviewed medical instructions.")
+        print(f"warning: {len(unreviewed)} document(s) are UNREVIEWED worked "
+              f"examples ({names}). --release would refuse this build.",
+              file=sys.stderr)
 
     conn = sqlite3.connect(out_path)
     conn.executescript((DB_DIR / "schema.sql").read_text(encoding="utf-8"))
@@ -295,6 +322,8 @@ def main() -> None:
     ap.add_argument("--no-embed", action="store_true",
                     help="skip embeddings; lexical search only. Fast smoke test.")
     ap.add_argument("--print-config", action="store_true")
+    ap.add_argument("--release", action="store_true",
+                    help="refuse to build if any document lacks clinical review")
     args = ap.parse_args()
 
     if args.print_config:
@@ -302,7 +331,7 @@ def main() -> None:
         return
 
     out = args.out or (ROOT / "dist" / TIERS[args.tier]["db_name"])
-    build(args.tier, out, embed=not args.no_embed)
+    build(args.tier, out, embed=not args.no_embed, release=args.release)
 
 
 if __name__ == "__main__":

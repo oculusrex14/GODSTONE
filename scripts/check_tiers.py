@@ -140,6 +140,8 @@ def read_gradle(f: Findings) -> dict | None:
             out[current]["db_name"] = value
         elif key == "CTX_TOKENS":
             out[current]["context_tokens"] = int(value)
+        elif key == "EMBED_DIM":
+            out[current]["embed_dim"] = int(value)
 
     for tier in TIERS:
         if tier not in out:
@@ -217,10 +219,27 @@ def read_tier_swift(f: Findings, require: bool) -> dict | None:
                 if tier.lower() in value.lower() or tier.lower() in value:
                     out[tier][field] = value
 
-    ctx = [int(n) for n in re.findall(r"contextTokens[^0-9]{0,20}(\d{3,5})", text)]
-    if len(ctx) == 3:
-        for tier, value in zip(TIERS, ctx):
-            out[tier]["context_tokens"] = value
+    # Parse the switch bodies directly; the tuple regex above is intentionally
+    # not used as data because Swift contains several three-case integer switches.
+    for property_name, field in (("contextTokens", "context_tokens"), ("embedDim", "embed_dim")):
+        m = re.search(rf"var {property_name}: Int \{{(.*?)\n    \}}", text, re.S)
+        if not m:
+            continue
+        body = m.group(1)
+        patterns = {
+            "LIGHT": r"case \.light(?:, \.medium)?:\s*return (\d+)",
+            "MEDIUM": r"case \.medium:\s*return (\d+)",
+            "LARGE": r"case \.large:\s*return (\d+)",
+        }
+        # Combined light/medium case is valid for embedDim.
+        combined = re.search(r"case \.light, \.medium:\s*return (\d+)", body)
+        if combined:
+            out["LIGHT"][field] = int(combined.group(1))
+            out["MEDIUM"][field] = int(combined.group(1))
+        for tier, pattern in patterns.items():
+            found = re.search(pattern, body)
+            if found:
+                out[tier][field] = int(found.group(1))
 
     return out
 

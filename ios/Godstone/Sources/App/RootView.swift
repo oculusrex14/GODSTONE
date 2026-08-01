@@ -13,7 +13,7 @@ struct RootView: View {
     }
 
     var body: some View {
-        TabView(selection: $(selection)) {
+        TabView(selection: $selection) {
 
             ArchiveView()
                 .tabItem { Label("Archive", systemImage: "books.vertical.fill") }

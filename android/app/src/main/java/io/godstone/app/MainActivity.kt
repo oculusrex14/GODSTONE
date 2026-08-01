@@ -25,7 +25,7 @@ class MainActivity : ComponentActivity() {
         setContent {
             val nightMode by meshNode.nightModeFlow.collectAsState(initial = false)
             GodstoneTheme(redNightMode = nightMode) {
-                GodstoneNavHost()
+                GodstoneNavHost(meshNode = meshNode)
             }
         }
     }

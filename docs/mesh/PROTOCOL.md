@@ -1,264 +1,208 @@
-# Godstone Mesh Protocol (GMP/1)
+# Godstone Mesh Protocol — GMP/2.1 design contract
 
-Version: 1.0
-Status: normative
-Applies to: Android and iOS clients, protocol version byte 0x01
+**Decision:** GMP/2.1 (`docs/adr/ADR-001-canonical-wire.md`)  
+**Link design:** `docs/adr/ADR-002-ble-record-layer.md`  
+**Implementation status:** **disabled and incomplete in V4**
 
-## 0. Design rationale
+This document is the target contract for the mesh. It is not a conformance
+claim. Android still contains a disabled legacy router/store path; the BLE record
+layer, deterministic handshake driver, durable iOS store, sealed-sender identity
+binding, authenticated SOS lifecycle and bulk plane remain open. Both apps keep
+the mesh feature flag false until the relevant acceptance tests pass.
 
-Godstone Mesh moves messages between phones with no infrastructure of any kind.
-No servers, no SIM, no towers, no internet. It is designed for the hours and days
-after infrastructure fails, when the only network left is the one people carry.
-
-Three transport strategies were evaluated:
-
-| Option | Verdict |
-|---|---|
-| BLE only | **Rejected.** 1–10 kbps cannot move a voice note or an image. Content sharing, a core feature, dies. |
-| Third-party SDK (Bridgefy, Google Nearby) | **Rejected.** Bridgefy's protocol was broken publicly (Albrecht et al., 2020) with practical impersonation and decryption attacks; Google Nearby is closed source, depends on Play Services and does not exist on iOS. A life-safety application cannot delegate its crypto to an unauditable third party. |
-| **Hybrid BLE control plane + Wi-Fi bulk plane, Noise-based crypto** | **Chosen.** Gets always-on low-power presence from BLE and high throughput from Wi-Fi, with auditable, composed cryptography. |
-
-The cost of the chosen option is complexity: two transports and a session layer to
-maintain. That cost is accepted because the alternative is an app that either
-cannot carry real content or cannot be trusted with a life.
+Accepted ADRs override this summary if they disagree.
 
 ## 1. Layering
 
-    +-------------------------------------------------------------+
-    | L5 APPLICATION   text, voice note, image, SOS, archive chunk |
-    +-------------------------------------------------------------+
-    | L4 SEALED SENDER end-to-end encryption, sender anonymity     |
-    +-------------------------------------------------------------+
-    | L3 ROUTING       DTN store-and-forward, bloom digest sync    |
-    +-------------------------------------------------------------+
-    | L2 SESSION       Noise_XX_25519_ChaChaPoly_BLAKE2s per link  |
-    +-------------------------------------------------------------+
-    | L1 TRANSPORT     BLE GATT (control)  |  Wi-Fi (bulk)         |
-    +-------------------------------------------------------------+
+```
+L5 APPLICATION   text, SOS, future media/archive exchange
+L4 END TO END    sealed sender and authenticated application envelope
+L3 ROUTING       delay-tolerant store-and-forward, DIGEST/WANT anti-entropy
+L2 SESSION       Noise_XX_25519_ChaChaPoly_BLAKE2s
+L1 RECORD        bounded BLE record fragmentation and reassembly
+L0 TRANSPORT     BLE GATT control plane; bulk plane remains undecided
+```
 
-Each layer is independently testable. L3 and above are transport agnostic and run
-unchanged in the simulator (see tab 12_TESTS_CI).
+No application frame may be transmitted before the Noise session reaches
+`READY`. There is no plaintext fallback.
 
 ## 2. Identity
 
-Every install generates, on first launch, inside the platform secure element where
-available:
+Each install has distinct long-term keys:
 
-    identity_key    Ed25519 keypair    long-term, signs and authenticates
-    static_dh_key   X25519 keypair     long-term, Noise static key
-    node_id         BLAKE2s-128(identity_pub)   16 bytes, the node address
+- Ed25519 signing identity;
+- X25519 static Noise key;
+- `node_id = BLAKE2s-128(identity_signing_public_key)`.
 
-The user-visible "call sign" is a 6-word mnemonic derived from node_id, so two
-people can verify each other verbally. Out-of-band verification is by QR code
-containing identity_pub, which marks the contact verified locally.
+The private keys never appear in frames. TOFU/QR verification, key-change
+quarantine and panic wipe remain governed by ADR-003 and ADR-004; they are not
+closed by V4.
 
-Private keys never leave the device and are never transmitted in any frame.
+## 3. BLE discovery target
 
-Panic wipe erases identity_key, static_dh_key, all sessions and the message store,
-and regenerates a fresh identity, making prior traffic unlinkable to the new node.
+The service UUID and characteristics come only from `wire/wire_v2.yaml`.
 
-## 3. Transport layer (L1)
+A legacy BLE advertisement cannot carry a 128-bit UUID plus the old 26-byte
+service-data payload. ADR-002 therefore accepts:
 
-### 3.1 BLE control plane
+- primary advertisement: service UUID only;
+- scan response: 13-byte service data;
+- active scan;
+- first sightings without scan-response data are retained briefly rather than
+  rejected.
 
-Service UUID:            6764-0001-1000-8000-00805f9b34fb
-Characteristic (write):  6764-0002-...   peer -> us, 512 byte MTU target
-Characteristic (notify): 6764-0003-...   us -> peer
+Scan-response payload:
 
-Advertisement payload, 26 bytes in the service data field:
+```
+off size field
+0   1    protocol version, 0x02
+1   1    flags
+2   4    node hint
+6   6    short bloom digest
+12  1    queue depth, saturating
+```
 
-    offset  size  field
-    0       1     protocol_version         0x01
-    1       1     flags                    bit0 SOS_PRESENT
-                                           bit1 BULK_CAPABLE
-                                           bit2 POWER_CONSTRAINED
-                                           bit3 VERIFIED_ONLY
-    2       4     node_hint                first 4 bytes of node_id
-    6       16    bloom_digest_short       truncated bloom of held message ids
-    22      2     queue_depth              held messages, saturating
-    24      2     epoch                    minutes since boot, wraps
+The exact packet sizes must be verified on Android and iOS hardware before the
+radio feature flag can be enabled.
 
-A peer decides whether to connect purely from the advertisement. If the bloom
-digest indicates it holds nothing we lack and we hold nothing it lacks, no
-connection is made. This is the single most important power optimisation in the
-system: most encounters cost one advertisement scan and nothing more.
+## 4. BLE record layer
 
-Duty cycle by power state:
+Handshake and data records use the accepted eight-byte record header from
+ADR-002. Records are encrypted first and fragmented second. Bounds:
 
-    state            advertise interval   scan window / interval
-    NORMAL           1000 ms              300 ms / 2000 ms
-    POWER_SAVE       3000 ms              300 ms / 8000 ms
-    CRITICAL (<15%)  10000 ms             300 ms / 30000 ms
-    SOS_ACTIVE       200 ms               continuous
+- maximum reassembled record: 16,384 bytes;
+- maximum fragments: 64;
+- maximum concurrent records per peer: 4;
+- reassembly timeout: 30 seconds.
 
-### 3.2 Wi-Fi bulk plane
+Malformed, duplicate, expired and allocation-exceeding fragments are rejected
+before application parsing and charged to the peer abuse budget.
 
-Brought up only when a transfer exceeds BULK_THRESHOLD (512 bytes) and both peers
-advertise BULK_CAPABLE. Negotiated over the established BLE session, so the Wi-Fi
-link inherits an already-authenticated Noise session and needs no second handshake.
+## 5. Noise session
 
-    Android: Wi-Fi Aware (NAN), API 26+. Falls back to Wi-Fi Direct, then to BLE.
-    iOS:     MultipeerConnectivity, peer-to-peer Wi-Fi, encrypted session required.
+Pattern: `Noise_XX_25519_ChaChaPoly_BLAKE2s`.
 
-The bulk link is torn down within 5 seconds of the last byte. It is never left up.
+```
+-> e
+<- e, ee, s, es
+-> s, se
+```
 
-### 3.3 iOS background limitations (normative, must be surfaced in UI)
+The canonical prologue after M1-wire is:
 
-In the background iOS restricts BLE advertising to the "overflow" area, service
-UUIDs are not visible to non-iOS scanners, and MultipeerConnectivity does not run
-at all. Consequences that MUST be communicated to the user:
+```
+"GMP2" || initiator_node_hint || responder_node_hint
+```
 
-    * iOS-to-iOS background discovery works but is slower and less reliable.
-    * iOS-to-Android background discovery is unreliable; foreground fixes it.
-    * Bulk transfer requires the app to be foregrounded on the iOS side.
+Role election is deterministic: the lexicographically smaller node hint
+initiates. A hint collision is resolved only after full identity is available;
+an identical full node ID is a cloned-identity security event.
 
-The UI therefore shows a persistent, honest "mesh strength" indicator and, during
-an active emergency, asks the user to keep the app open. Pretending this
-limitation does not exist would be the dangerous choice.
+Session rekeying, TOFU pin enforcement and reconnect behavior require platform
+port tests and the hardware matrix before being called conformant.
 
-## 4. Session layer (L2) — Noise
+## 6. Canonical frame
 
-Pattern: **Noise_XX_25519_ChaChaPoly_BLAKE2s**
+All multi-byte fields are big-endian. The generated 32-byte header is:
 
-XX is chosen because neither party knows the other's static key in advance (any
-stranger may be a relay), it provides mutual authentication, and it gives identity
-hiding for the responder.
+```
+off size field
+0   2    magic          0x4753
+2   1    version        0x02; minor capability 1 is negotiated in HELLO
+3   1    type           generated even-parity type code
+4   16   msg_id         BLAKE2s-128(sender || created_at || payload)
+20  4    routing_tag    rotating recipient hint
+24  1    ttl            maximum 16
+25  1    hop_count      maximum 16
+26  2    flags          feature flags + priority mask 0x0700
+28  2    payload_len    maximum 60,000
+30  2    header_crc     CRC-16/CCITT over bytes 0..29
+```
 
-    -> e
-    <- e, ee, s, es
-    -> s, se
+Priority encoding uses three bits:
 
-Prologue binds the handshake to the protocol version and both advertised node
-hints, preventing cross-protocol and downgrade attacks:
+```
+0 SOS   1 DIRECT   2 GROUP   3 BROADCAST   4 BULK
+```
 
-    prologue = "GMP1" || initiator_node_hint || responder_node_hint
+Generated codecs reject bad magic, version, type, CRC, lengths, TTL and hop
+count before allocating the payload.
 
-After the handshake each direction has its own ChaCha20-Poly1305 cipher state with
-a 64-bit nonce counter. A session rekeys after 2^20 messages or 30 minutes,
-whichever comes first. Sessions are cached per peer for 24 hours and survive
-transport switching from BLE to Wi-Fi.
+## 7. Time, retention and replay
 
-Static keys are pinned on first contact (TOFU). A changed static key for a known
-node_id raises a visible warning and marks the contact unverified. It does not
-silently accept.
+There is no plaintext wall-clock timestamp in the frame header.
 
-## 5. Frame format (L2/L3)
+- retention uses the receiver's monotonic receipt time stored locally;
+- an advisory sender `created_at` belongs inside the authenticated application
+  envelope and may be omitted when the sender clock is untrusted;
+- Noise nonces and the 16-byte message-ID seen cache suppress replay;
+- receipt-relative expiry prevents a bad sender clock from discarding valid
+  traffic or retaining it forever.
 
-All multi-byte integers are big-endian. Every frame is carried inside a Noise
-transport message, so the fields below are the plaintext seen after decryption.
+The Android legacy store does not yet implement this schema, so the radio remains
+disabled.
 
-    offset  size  field
-    0       1     version          0x01
-    1       1     type             see 5.1
-    2       2     length           payload length, max 65535
-    4       1     ttl              remaining hops, initial 12, max 16
-    5       1     priority         0 SOS, 1 DIRECT, 2 GROUP, 3 BROADCAST, 4 BULK
-    6       8     msg_id           BLAKE2s-64 of (payload || sender || timestamp)
-    14      6     timestamp        unix seconds, truncated
-    20      N     payload
+## 8. Routing and anti-entropy
 
-### 5.1 Frame types
+The target is bounded epidemic routing:
 
-    0x01 HELLO           capability and version exchange, post-handshake
-    0x02 DIGEST          bloom filter of held msg_ids
-    0x03 WANT            explicit request for listed msg_ids
-    0x04 MESSAGE         a sealed application message
-    0x05 ACK             end-to-end delivery receipt, itself sealed
-    0x06 BULK_OFFER      announce a large payload, negotiate Wi-Fi
-    0x07 BULK_CHUNK      one chunk of a bulk transfer
-    0x08 SOS             priority emergency broadcast
-    0x09 PING            liveness and RTT probe
-    0x0A GOODBYE         graceful session teardown
+1. discover and elect roles;
+2. complete Noise and TOFU checks;
+3. exchange full 4096-bit bloom digests using the canonical hash input
+   `msg_id[16] || uint32_be(round)` for four rounds;
+4. exchange WANT lists;
+5. send in strict priority order;
+6. persist before forwarding;
+7. decrement TTL and increment hop count without overflow;
+8. never send a frame back to the peer it arrived from.
 
-## 6. Sealed sender (L4)
+A digest describes **held durable frames**, not merely recently seen IDs. iOS
+has no durable mesh store yet, so anti-entropy is not implemented end to end.
 
-Relays must learn nothing beyond "a message exists and needs forwarding". The
-MESSAGE payload is therefore encrypted twice.
+## 9. End-to-end envelope and anti-abuse
 
-    inner  = ChaCha20-Poly1305( K_e2e, plaintext )
-             K_e2e derived from X3DH-style agreement between sender static and
-             recipient static keys, with an ephemeral for forward secrecy
-    sealed = ephemeral_pub || ChaCha20-Poly1305( K_seal, sender_id || inner )
-             K_seal = HKDF(X25519(ephemeral_priv, recipient_static_pub))
+The threat-model goals require:
 
-A relay sees only: ephemeral_pub, ciphertext, and a 4-byte **routing tag**:
+- sender and content sealed from relays;
+- rotating routing tags;
+- signed application envelopes;
+- bounded parsing and storage;
+- per-peer/per-priority token buckets;
+- trust scoring and exponential refusal windows;
+- a proof-of-work design whose nonce placement remains verifiable by relays
+  without breaking sealed-sender privacy.
 
-    routing_tag = BLAKE2s-32(recipient_node_id || epoch_day)
+The last item is still unresolved between ADR-001 and ADR-003. It must be settled
+before GROUP/BROADCAST traffic is enabled. V4 therefore does not claim the
+sealed-sender or anti-abuse design is complete merely because helper classes
+exist.
 
-The tag rotates daily, so long-term traffic analysis by tag is defeated, while a
-recipient can still cheaply recognise messages that may be theirs. Tag collisions
-are expected and harmless: a device attempts decryption of matching messages and
-discards failures. Roughly 1 in 4 billion false positives per message is a
-negligible decryption cost and a real privacy gain.
+## 10. SOS truth states
 
-## 7. Routing (L3) — delay-tolerant store and forward
+UI wording is governed by ADR-005:
 
-There is no routing table. In a disaster the topology changes faster than any
-table converges; assuming otherwise is the standard failure of mesh messengers.
-Godstone uses **epidemic routing with bloom-filter digest exchange**, bounded by
-TTL, priority and storage.
+- `QUEUED_LOCAL` — durable local storage only;
+- `HANDED_TO_RELAY(n)` — bytes accepted by authenticated transport peers;
+- `ACKNOWLEDGED_BY_RECIPIENT` — valid end-to-end receipt;
+- `FAILED` or `UNAVAILABLE`.
 
-Encounter procedure:
+`SENT` or `DELIVERED` is forbidden before a valid recipient ACK. V4 disables SOS
+mesh transmission rather than presenting a false success state.
 
-    1. Read peer advertisement, compare short bloom digest.
-    2. If potential novelty on either side, connect and complete Noise handshake.
-    3. Exchange full DIGEST frames (4096-bit bloom, 4 hashes, ~0.9% FP at 2000 msgs).
-    4. Each side computes what the other appears to lack, sends WANT for gaps.
-    5. Transfer in strict priority order: SOS, then DIRECT, then GROUP, BROADCAST.
-    6. Payloads over 512 bytes negotiate the Wi-Fi bulk plane via BULK_OFFER.
-    7. Decrement TTL on forward, drop at zero, record msg_id in the seen-cache.
+## 11. Conformance gates
 
-Forwarding rules:
+A platform may be called GMP/2.1 conformant only when all of these are green:
 
-    * Never forward a msg_id already in the seen-cache (16k entry LRU).
-    * Never forward back to the peer it was received from.
-    * Drop TTL 0, drop timestamps more than 14 days old, drop malformed frames.
-    * SOS gets TTL 16, extended 30-day retention and is evicted last.
-    * A message addressed to us is decrypted, stored, and still relayed once more
-      to help it reach other recipients in a group.
+- generated codec parity and golden vectors;
+- both routers and stores use the generated frame and 16-byte IDs;
+- no legacy v1 symbol survives;
+- platform Noise ports reproduce pinned external vectors;
+- record-layer property tests cover every fragmentation boundary, reorder,
+  duplicate, drop, timeout and allocation bound;
+- two-device Android↔Android, iOS↔iOS and Android↔iOS encrypted ping tests;
+- radio capture shows no plaintext frame;
+- durable anti-entropy and panic-wipe tests;
+- TOFU key-change quarantine;
+- authenticated SOS lifecycle test through recipient ACK.
 
-Storage budget and eviction, default 200 MB:
-
-    evict order: expired -> BROADCAST oldest -> GROUP oldest -> BULK cache
-                 -> DIRECT oldest -> SOS oldest (last resort only)
-
-## 8. Anti-abuse
-
-An open mesh where anyone can inject anything is a battery-drain weapon. Controls:
-
-    * **Proof of work** on BROADCAST and GROUP frames: 20-bit BLAKE2s partial
-      preimage over msg_id. Costs a sender ~200 ms, costs a flooder everything.
-      SOS and DIRECT frames are exempt, since latency there is a safety property.
-    * **Rate limits** per peer per priority class, token bucket, enforced at the
-      session layer before any parsing of application payload.
-    * **Local trust score** per node_id: increments on well-formed useful traffic,
-      decrements on malformed frames, failed MACs and duplicate floods. Low scores
-      are throttled, then refused connection for an exponentially growing window.
-    * **Bounded parsing**: every length field is validated against the remaining
-      buffer before allocation. No allocation is driven by an attacker-supplied
-      length without a hard cap.
-    * **Replay defence**: msg_id seen-cache plus a per-session monotonic nonce.
-      A replayed frame fails the Noise nonce check before it reaches routing.
-
-## 9. Versioning
-
-The version byte is checked before any other parsing. Unknown major versions are
-refused with GOODBYE rather than best-effort parsed. Capability negotiation in
-HELLO carries a feature bitmap so that additive features do not require a version
-bump, and so a v1 node and a future v2 node degrade to the v1 intersection instead
-of failing to communicate. In an emergency, interoperability is a safety property.
-
-## 10. Conformance checklist
-
-An implementation is GMP/1 conformant if:
-
-    [ ] Refuses any frame whose version byte is not 0x01
-    [ ] Completes Noise_XX with the specified prologue and rejects mismatches
-    [ ] Pins static keys TOFU and warns visibly on change
-    [ ] Enforces TTL decrement and drops at zero
-    [ ] Maintains a seen-cache of at least 16384 msg_ids
-    [ ] Validates every length field against the remaining buffer
-    [ ] Enforces proof of work on BROADCAST and GROUP, exempts SOS and DIRECT
-    [ ] Evicts SOS last under storage pressure
-    [ ] Rotates routing tags daily
-    [ ] Never logs plaintext, keys or peer identifiers to persistent storage
+Until then the product must say **mesh unavailable**, not merely “degraded.”

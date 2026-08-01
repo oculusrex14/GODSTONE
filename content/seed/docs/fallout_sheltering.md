@@ -7,6 +7,8 @@ revision: "2026-01-14"
 tier_min: MEDIUM
 reading_level: 8
 critical: true
+reviewed_by: UNREVIEWED-EXAMPLE
+reviewed_on: ""
 ---
 
 # Sheltering from fallout

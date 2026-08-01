@@ -1,91 +1,68 @@
-// SYNTHESIZED gap-closure file -- authored to make the project compile; see docs/AUDIT.md.
-
 import XCTest
 @testable import GodstoneMesh
 import GodstoneCore
 
-/// iOS mirror of RouterTest.kt.
-///
-/// The two implementations are separate code in separate languages and they
-/// must behave identically, because they are peers on the same mesh. Any
-/// divergence shows up as a message that crosses an Android hop and dies at an
-/// iOS one. These tests are deliberately a direct translation -- exercised
-/// against the shipped `Router` API (`ingest` / `drain` / `bloomDigest`), not
-/// the earlier `selfKey` / `onReceive` sketch that was retired when the Router
-/// was reshaped to its epidemic-relay form.
 final class RouterTests: XCTestCase {
-
     private static let routingTag = Data(repeating: 0x01, count: 4)
 
-    /// Builds a 16-byte message id from a string tag, zero-padded / truncated.
     private func frame(_ id: String,
                        ttl: UInt8 = 8,
-                       type: Frame.FrameType = .direct,
-                       flags: Frame.Flags = []) -> Frame {
+                       type: TypeV2 = .message,
+                       flags: UInt16 = UInt16(FrameV2.Flags.relay_ok)) -> FrameV2 {
         var messageId = Data(id.utf8)
         if messageId.count < 16 {
             messageId.append(Data(repeating: 0, count: 16 - messageId.count))
         }
-        return Frame(type: type,
-                     ttl: ttl,
-                     flags: flags,
-                     messageId: messageId.prefix(16),
-                     routingTag: RouterTests.routingTag,
-                     payload: Data(repeating: 0, count: 32))
+        return FrameV2(
+            type: type,
+            msgId: Data(messageId.prefix(16)),
+            routingTag: Self.routingTag,
+            ttl: ttl,
+            hopCount: 0,
+            flags: flags,
+            payload: Data(repeating: 0, count: 32)
+        )
     }
 
-    func testIngestReturnsTrueFirstTimeFalseOnDuplicate() {
+    func testDuplicateIsSuppressed() {
         let router = Router()
         let f = frame("msg-1")
-
-        XCTAssertTrue(router.ingest(f, isAddressedToMe: false),
-                      "first sighting of a frame must be accepted")
-        XCTAssertFalse(router.ingest(f, isAddressedToMe: false),
-                       "duplicate sighting must be suppressed -- dedup is what " +
-                       "stops an epidemic protocol from melting the network")
+        XCTAssertTrue(router.ingest(f, isAddressedToMe: false))
+        XCTAssertFalse(router.ingest(f, isAddressedToMe: false))
     }
 
-    func testTtlIsDecrementedOnRelay() {
+    func testTtlAndHopCountChangeOnRelay() throws {
         let router = Router()
         XCTAssertTrue(router.ingest(frame("msg-2", ttl: 5), isAddressedToMe: false))
-
-        let drained = router.drain(limit: 1)
-        XCTAssertEqual(drained.count, 1)
-        XCTAssertEqual(drained.first?.ttl, 4,
-                       "a relayed frame must have its ttl decremented by one")
+        let relayed = try XCTUnwrap(router.drain(limit: 1).first)
+        XCTAssertEqual(relayed.ttl, 4)
+        XCTAssertEqual(relayed.hopCount, 1)
     }
 
     func testSosIsDeliveredLocallyAndStillRelayed() {
         let router = Router()
-        var delivered: Frame?
+        var delivered: FrameV2?
         router.onDeliverLocally = { delivered = $0 }
 
-        let sos = frame("msg-sos", ttl: 8, type: .sos)
-        XCTAssertTrue(router.ingest(sos, isAddressedToMe: true),
-                      "SOS addressed to me must be accepted")
-        XCTAssertEqual(delivered?.type, .sos,
-                       "SOS addressed to me must fire onDeliverLocally")
-
-        // SOS is still relayed after local delivery: someone further away may be
-        // the one who can actually help, so the relay queue must not be empty.
-        XCTAssertFalse(router.drain(limit: 8).isEmpty,
-                       "SOS must remain queued for relay after local delivery")
+        let sos = frame("msg-sos", ttl: 8, type: .sos,
+                        flags: UInt16(FrameV2.Flags.ack_req | FrameV2.Flags.relay_ok))
+        XCTAssertTrue(router.ingest(sos, isAddressedToMe: true))
+        XCTAssertEqual(delivered?.type, .sos)
+        XCTAssertFalse(router.drain(limit: 8).isEmpty)
     }
 
-    func testBloomDigestIsNonEmptyAndStableAcrossReingest() {
+    func testNonSosLocalDeliveryDoesNotRelay() {
+        let router = Router()
+        XCTAssertTrue(router.ingest(frame("local"), isAddressedToMe: true))
+        XCTAssertTrue(router.drain(limit: 8).isEmpty)
+    }
+
+    func testBloomDigestIsStableAcrossDuplicate() {
         let router = Router()
         _ = router.ingest(frame("msg-bloom"), isAddressedToMe: false)
-
-        let digest1 = router.bloomDigest()
-        XCTAssertFalse(digest1.isEmpty,
-                       "bloom digest must contain a held frame's message id")
-
-        // Re-ingesting the same id is a no-op against the seen-set, so the
-        // digest must not change -- a drifting digest would cause peers to
-        // needlessly re-send frames we already hold.
+        let first = router.bloomDigest()
+        XCTAssertEqual(first.count, 512)
         _ = router.ingest(frame("msg-bloom"), isAddressedToMe: false)
-        let digest2 = router.bloomDigest()
-        XCTAssertEqual(digest1, digest2,
-                       "re-ingesting a seen id must keep the bloom digest stable")
+        XCTAssertEqual(first, router.bloomDigest())
     }
 }
