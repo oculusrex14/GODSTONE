@@ -23,6 +23,15 @@ options:
   createIntermediateGroups: true
   groupSortPosition: top
 
+# Three tier build configurations (debug-type). XcodeGen only auto-creates
+# Debug/Release; the per-tier configs referenced by the Godstone target's
+# settings.configs and by the schemes below must be declared here or the spec
+# is rejected ("invalid build configuration light/medium/large").
+configs:
+  light: debug
+  medium: debug
+  large: debug
+
 settings:
   base:
     SWIFT_VERSION: "5.9"
@@ -113,12 +122,9 @@ schemes:
       config: light
     test:
       config: light
-      targets:
-        # GodstoneLLMTests was listed here and does NOT exist: Package.swift
-        # documents it as intentionally absent, because GodstoneLLM cannot build
-        # without the pinned llama.cpp dependency. Listing a non-existent test target
-        # makes `xcodebuild test` fail before it runs anything.
-        - GodstoneMeshTests
+      # Test targets omitted: GodstoneMeshTests is an SPM package test target
+      # and XcodeGen 2.46.0 rejects it as a scheme test target ("invalid test
+      # target"). Run mesh tests via `swift test --target GodstoneMeshTests`.
     profile:
       config: light
     analyze:
@@ -136,12 +142,9 @@ schemes:
       config: medium
     test:
       config: medium
-      targets:
-        # GodstoneLLMTests was listed here and does NOT exist: Package.swift
-        # documents it as intentionally absent, because GodstoneLLM cannot build
-        # without the pinned llama.cpp dependency. Listing a non-existent test target
-        # makes `xcodebuild test` fail before it runs anything.
-        - GodstoneMeshTests
+      # Test targets omitted: GodstoneMeshTests is an SPM package test target
+      # and XcodeGen 2.46.0 rejects it as a scheme test target ("invalid test
+      # target"). Run mesh tests via `swift test --target GodstoneMeshTests`.
     profile:
       config: medium
     analyze:
@@ -159,12 +162,9 @@ schemes:
       config: large
     test:
       config: large
-      targets:
-        # GodstoneLLMTests was listed here and does NOT exist: Package.swift
-        # documents it as intentionally absent, because GodstoneLLM cannot build
-        # without the pinned llama.cpp dependency. Listing a non-existent test target
-        # makes `xcodebuild test` fail before it runs anything.
-        - GodstoneMeshTests
+      # Test targets omitted: GodstoneMeshTests is an SPM package test target
+      # and XcodeGen 2.46.0 rejects it as a scheme test target ("invalid test
+      # target"). Run mesh tests via `swift test --target GodstoneMeshTests`.
     profile:
       config: large
     analyze:
