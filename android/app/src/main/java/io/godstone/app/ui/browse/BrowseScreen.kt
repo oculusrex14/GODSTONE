@@ -26,8 +26,8 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import io.godstone.llm.archive.ArchiveDocument
-import io.godstone.llm.archive.ArchivePassage
+import io.godstone.core.archive.ArchiveDocument
+import io.godstone.core.archive.ArchivePassage
 
 /** Search and document browsing remain available even when the model and radios do not. */
 @Composable

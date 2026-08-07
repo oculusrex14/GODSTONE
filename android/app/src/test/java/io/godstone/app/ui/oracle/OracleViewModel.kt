@@ -2,7 +2,6 @@ package io.godstone.app.ui.oracle
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import dagger.hilt.android.lifecycle.HiltViewModel
 import io.godstone.llm.rag.Citation
 import io.godstone.llm.rag.OraclePipeline
 import kotlinx.coroutines.CancellationException
@@ -12,7 +11,6 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
-import javax.inject.Inject
 
 enum class OraclePhase { IDLE, RETRIEVING, GENERATING, ANSWERED, REFUSED, DEGRADED }
 
@@ -40,8 +38,13 @@ data class OracleUiState(
 //     an unfinished draft cannot overwrite it. A new ask() that supersedes an
 //     in-flight run does NOT restore -- it replaces the state with RETRIEVING,
 //     so there is no race between a restored old answer and the new question.
-@HiltViewModel
-class OracleViewModel @Inject constructor(private val rag: OraclePipeline) : ViewModel() {
+//
+// Stage 3 Phase I: the on-device Oracle feature is non-shipping (the LIGHT
+// release links only :core). This ViewModel is therefore compiled ONLY in the
+// test source set (constructed directly by OracleViewModelTest, not via Hilt),
+// and the Oracle UI screen is dormant debt. The Hilt annotations were removed
+// when it left the shipping graph.
+class OracleViewModel(private val rag: OraclePipeline) : ViewModel() {
     private val _state = MutableStateFlow(OracleUiState())
     val state: StateFlow<OracleUiState> = _state.asStateFlow()
     private var generationJob: Job? = null

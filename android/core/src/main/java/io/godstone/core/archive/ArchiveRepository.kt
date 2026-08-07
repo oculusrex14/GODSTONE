@@ -1,10 +1,21 @@
-package io.godstone.llm.archive
+package io.godstone.core.archive
 
 import android.content.Context
 import android.database.sqlite.SQLiteDatabase
 import java.io.File
 
-/** A document that can be opened without loading the language model. */
+/**
+ * Read-only browser over the bundled Archive -- the SHIPPING survival-knowledge
+ * path. Lives in `:core` (the single shipping module the LIGHT app links) so the
+ * Archive-only release reaches it WITHOUT pulling in the non-shipping `:llm`
+ * (on-device model / Oracle / RAG) module. The Swift twin is
+ * `GodstoneCore/ArchiveRepository.swift` (the LIGHT app links only `GodstoneCore`
+ * on iOS too); the two are the cross-platform Archive contract.
+ *
+ * This path deliberately has no dependency on llama.cpp or an embedding model.
+ * If generation, semantic search, or every radio fails, the user can still list
+ * documents, search them with FTS5, and read complete passages.
+ */
 data class ArchiveDocument(
     val id: Long,
     val title: String,
@@ -23,13 +34,6 @@ data class ArchivePassage(
     val score: Double = 0.0
 )
 
-/**
- * Read-only browser over the bundled Archive.
- *
- * This path deliberately has no dependency on llama.cpp or an embedding model.
- * If generation, semantic search, or every radio fails, the user can still list
- * documents, search them with FTS5, and read complete passages.
- */
 class ArchiveRepository(
     context: Context,
     private val archiveAsset: String

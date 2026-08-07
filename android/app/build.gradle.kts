@@ -90,6 +90,12 @@ android {
     // dormant file and fail the gate (selftest sanity control).
     sourceSets.getByName("main").java.exclude("io/godstone/app/ui/mesh/**")
     sourceSets.getByName("main").java.exclude("io/godstone/app/ui/sos/**")
+    // Stage 3 Phase I: the on-device Oracle UI is non-shipping (the LIGHT
+    // release is Archive-only and links only :core -- no :llm model/RAG graph).
+    // OracleScreen.kt lives under src/main/dormant/java and references :llm
+    // symbols, so like Mesh/SOS it cannot compile and is dormant debt; the glob
+    // classifies it as such for the shipping-path gate.
+    sourceSets.getByName("main").java.exclude("io/godstone/app/ui/oracle/**")
     // The dormant Mesh/SOS UI screens physically live under src/main/dormant/java
     // (NOT src/main/java). AGP/KGP auto-wires src/main/java and src/main/kotlin
     // as Kotlin SOURCE DIRECTORIES and this cannot be prevented:
@@ -118,8 +124,17 @@ android {
 }
 
 dependencies {
+    // Stage 3 Phase I: the LIGHT release is Archive-only -- it links ONLY :core
+    // (Archive repository, crypto). The on-device model / Oracle / RAG module
+    // (:llm) is NON-SHIPPING, like :mesh; it is on the TEST classpath only so
+    // the Oracle state-machine safety tests (OracleViewModelTest, which drives
+    // a fake OraclePipeline with no native model) still compile. The
+    // shipping-path gate (ci/check_shipping_path.py) forbids a shipping
+    // project(:llm) edge and any io.godstone.llm reference in :app shipping
+    // sources; the Archive-only APK contract is enforced by
+    // scripts/inspect_android_artifacts.py.
     implementation(project(":core"))
-    implementation(project(":llm"))  // compiled for safety tests; Oracle route is absent
+    testImplementation(project(":llm"))
 
     implementation(platform("androidx.compose:compose-bom:2024.09.02"))
     implementation("androidx.compose.ui:ui")

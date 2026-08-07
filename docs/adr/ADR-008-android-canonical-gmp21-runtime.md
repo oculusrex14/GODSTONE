@@ -82,12 +82,35 @@ tests) plus the Python conformance runners — not static-only:
 ### 2.2 Shipping path is NOT touched
 
 GMP/2.1 is the **dormant `:mesh` runtime**. The LIGHT shipping flavor keeps
-`MESH_ENABLED=false SOS_ENABLED=false BULK_TRANSFER_ENABLED=false`; `:app`
-depends on `:core`+`:llm` only (NOT `:mesh`); the dormant Mesh/SOS UI screens
-stay physically relocated under `src/main/dormant/java` (patch 12). The
-shipping-path gate (`ci/check_shipping_path.py`) continues to prove the LIGHT
-path has no Mesh/GMP dependency edge. Stage 2 enables the canonical wire
-**runtime**; it does **not** enable Mesh/SOS/bulk on the shipping path.
+`MESH_ENABLED=false SOS_ENABLED=false BULK_TRANSFER_ENABLED=false`; the dormant
+Mesh/SOS UI screens stay physically relocated under `src/main/dormant/java`
+(patch 12). The shipping-path gate (`ci/check_shipping_path.py`) continues to
+prove the LIGHT path has no Mesh/GMP dependency edge. Stage 2 enables the
+canonical wire **runtime**; it does **not** enable Mesh/SOS/bulk on the shipping
+path.
+
+**Stage 3 Phase I — the LIGHT release is Archive-only (A-17).** The shipping
+graph was narrowed so `:app` links **only `:core`** (Archive repository + crypto);
+`:llm` (on-device model / Oracle / RAG graph) is **non-shipping, like `:mesh`**
+— it is on the **test** classpath only (`testImplementation(project(":llm"))`)
+so the Oracle state-machine JVM safety test (`OracleViewModelTest`, driving a
+fake `OraclePipeline` with no native model) still compiles. `ArchiveRepository`
+moved from `:llm` to `:core` (mirroring iOS `GodstoneCore/ArchiveRepository.swift`);
+`AppModule` provides only `ArchiveRepository`; the Oracle UI screen is dormant
+debt (`io/godstone/app/ui/oracle/**` exclude glob); `OracleViewModel` is demoted
+to the test source set with its Hilt annotations removed (constructed directly
+by the test, not via Hilt). The shipping-path gate is now **config-aware**
+(`implementation`/`api`/`runtimeOnly`/… are shipping; `testImplementation` is
+not) and forbids a shipping `project(:llm)`/`project(:mesh)` edge **and** any
+`io.godstone.llm` reference in `:app` shipping sources (mutation selftest PASS:
+`add_llm_dep` FAIL, `add_test_llm_dep` PASS, `add_llm_import` FAIL). The
+Archive-only APK contract is enforced repo-side by
+`scripts/inspect_android_artifacts.py` (FAILs `.gguf`/`libgodstone_llm`/
+`libllama`/`libLlamaBridge`/cross-tier assets; `--selftest` PASS). A-17 advances
+to `NONSHIPPING_TESTED` but is **NOT closed**: the actual LIGHT release artifact
+(APK/AAB) is built in a provisioned environment (Phase J / device build) and
+has not yet been binary-inspected; on-device + store-asset-delivery verification
+remains pending.
 
 ### 2.3 Cipher-suite deferral (ADR-007)
 

@@ -7,16 +7,21 @@ build" is decided by BUILD-CONFIG EVIDENCE, not by a blind text scan:
 
   * Android  -- the compiled source set of :app is the union of
                ``android/app/src/main/java`` (shipping sources) and
-               ``android/app/src/main/dormant/java`` (dormant Mesh/SOS sources
-               kept out of the Kotlin compile tree -- KGP auto-wires
+               ``android/app/src/main/dormant/java`` (dormant Mesh/SOS/Oracle
+               sources kept out of the Kotlin compile tree -- KGP auto-wires
                ``src/<sourceSet>/{java,kotlin}`` only, so ``src/main/dormant/java``
                is inert to the compiler while remaining on the gate's scan path),
                MINUS the ``java.exclude(...)`` globs declared in
-               ``android/app/build.gradle.kts``, and the ``project(":...")``
-               dependency edges in the same file. A forbidden reference in an
-               excluded source is NOT a shipping-path violation (it is dormant
-               debt -- see ci/inventory_dormant_wire.py); a forbidden reference
-               in an *included* source, or a ``:mesh`` dependency edge, IS.
+               ``android/app/build.gradle.kts``, and the SHIPPING
+               ``project(":...")`` dependency edges in the same file. A forbidden
+               reference in an excluded source is NOT a shipping-path violation
+               (it is dormant debt -- see ci/inventory_dormant_wire.py); a
+               forbidden reference in an *included* source, or a ``:mesh`` /
+               ``:llm`` dependency edge on a SHIPPING configuration, IS. A
+               ``testImplementation(project(":llm"))`` edge is test-only and is
+               NOT a shipping-path violation (the LIGHT release is Archive-only;
+               :llm is on the test classpath solely for the Oracle state-machine
+               safety tests).
 
   * iOS      -- the compiled source set of the application target is the
                explicit ``sources:`` allowlist in ``ios/project.yml`` (the
@@ -26,9 +31,11 @@ build" is decided by BUILD-CONFIG EVIDENCE, not by a blind text scan:
                reference in an allowlisted source, or a ``GodstoneMesh`` product
                dependency, IS.
 
-Forbidden needles (the legacy wire surface):
+Forbidden needles (the legacy wire surface + the non-shipping LLM module):
     io.godstone.mesh.wire.Frame   GodstoneMesh   MeshNode   MeshCoordinator
     GMP/1 frame                   PROTOCOL_VERSION: Byte = 0x01
+    io.godstone.llm               (the on-device model / Oracle / RAG module --
+                                  non-shipping; the LIGHT release is Archive-only)
 
 This gate does NOT close A-01 (docs/AUDIT.md). A clean shipping path proves the
 shipping app does not depend on legacy Mesh wire; it does NOT prove the Android
@@ -52,11 +59,25 @@ FORBIDDEN_IN_SOURCE = (
     "MeshCoordinator",
     "GMP/1 frame",
     "PROTOCOL_VERSION: Byte = 0x01",
+    "io.godstone.llm",         # the non-shipping on-device model / Oracle / RAG module
 )
 SOURCE_SUFFIXES = {".kt", ".java", ".swift", ".mm", ".m", ".h", ".hpp"}
 
-# Modules whose project() dependency from :app would pull legacy wire into shipping.
-FORBIDDEN_ANDROID_DEP_MODULES = {"mesh"}
+# Modules whose project() dependency from :app would pull non-shipping code into
+# the LIGHT shipping build: :mesh (legacy wire / DTN transport) and :llm (the
+# on-device model / Oracle / RAG -- the LIGHT release is Archive-only).
+FORBIDDEN_ANDROID_DEP_MODULES = {"mesh", "llm"}
+
+# Dependency configurations that put a module on the SHIPPING (main / release)
+# compile + runtime graph. ``testImplementation`` / ``androidTestImplementation``
+# are test-only and do NOT ship, so a ``testImplementation(project(":llm"))``
+# edge (the Oracle state-machine safety tests) is NOT a shipping-path violation.
+SHIPPING_DEP_CONFIGS = {
+    "implementation", "api",
+    "debugImplementation", "releaseImplementation",
+    "runtimeOnly", "debugRuntimeOnly", "releaseRuntimeOnly",
+    "compileOnly", "debugCompileOnly", "releaseCompileOnly",
+}
 
 # Source roots the gate scans for :app. ``src/main/java`` holds the SHIPPING .kt
 # sources (compiled by KGP). ``src/main/dormant/java`` holds the dormant Mesh/SOS
@@ -81,11 +102,24 @@ def android_exclude_globs(gradle_file: Path) -> list[str]:
 
 
 def android_project_deps(gradle_file: Path) -> list[str]:
-    """Module names from ``project(":<mod>")`` dependency edges in :app."""
+    """Module names from SHIPPING ``project(":<mod>")`` dependency edges in :app.
+
+    Only main-graph configurations (``implementation`` / ``api`` / the
+    ``debug*``/``release*`` implementation/runtime/compile-only variants) count:
+    a ``testImplementation(project(":llm"))`` edge is test-only and must NOT
+    register as a shipping dependency. This is the build-config evidence the gate
+    uses to decide whether a module is reachable from a LIGHT shipping build, and
+    it is shared with ci/inventory_dormant_wire.py.
+    """
     if not gradle_file.is_file():
         return []
     text = gradle_file.read_text(encoding="utf-8", errors="replace")
-    return re.findall(r'project\(":(\w+)"\)', text)
+    out: list[str] = []
+    for m in re.finditer(r'(\w+)\s*\(\s*project\(":(\w+)"\)\s*\)', text):
+        config, mod = m.group(1), m.group(2)
+        if config in SHIPPING_DEP_CONFIGS:
+            out.append(mod)
+    return out
 
 
 def glob_to_regex(glob: str) -> re.Pattern[str]:
@@ -311,7 +345,7 @@ def shipping_path_violations(root: Path) -> tuple[list[str], dict]:
 def run_gate(root: Path) -> int:
     violations, evidence = shipping_path_violations(root)
     if violations:
-        print("SHIPPING-PATH GATE: FAIL -- legacy Mesh / GMP-1 wire is reachable from a LIGHT shipping build:")
+        print("SHIPPING-PATH GATE: FAIL -- legacy Mesh / GMP-1 wire or the non-shipping :llm module is reachable from a LIGHT shipping build:")
         for v in violations:
             print("  - " + v)
         print("Build-config evidence used: android excludes=%s deps=%s; ios sources=%s deps=%s"
@@ -319,7 +353,7 @@ def run_gate(root: Path) -> int:
                  evidence["ios_sources"], evidence["ios_deps"]))
         print("This gate does NOT close A-01 (canonical GMP/2.1 frame path); A-01 remains OPEN.")
         return 1
-    print("SHIPPING-PATH GATE: PASS -- LIGHT shipping path has no Mesh/GMP-1 dependency edge.")
+    print("SHIPPING-PATH GATE: PASS -- LIGHT shipping path has no Mesh/GMP-1 or :llm dependency edge.")
     print("  android excludes=%s deps=%s" % (evidence["android_excludes"], evidence["android_deps"]))
     print("  ios sources=%s deps=%s" % (evidence["ios_sources"], evidence["ios_deps"]))
     print("  (A-01 remains OPEN: a clean shipping path is not GMP/2.1 canonical-frame evidence.)")
@@ -344,10 +378,11 @@ def _synth_repo(tmp: Path) -> Path:
         'sourceSets { getByName("main") {\n'
         '  java.exclude("io/godstone/app/ui/mesh/**")\n'
         '  java.exclude("io/godstone/app/ui/sos/**")\n'
+        '  java.exclude("io/godstone/app/ui/oracle/**")\n'
         '} }\n'
         'dependencies {\n'
         '  implementation(project(":core"))\n'
-        '  implementation(project(":llm"))\n'
+        '  testImplementation(project(":llm"))\n'
         '}\n', encoding="utf-8")
     (root / "android/app/src/main/java/io/godstone/app/ui/home/HomeScreen.kt").write_text(
         "package io.godstone.app.ui.home\nfun Home() {}\n", encoding="utf-8")
@@ -411,10 +446,35 @@ def selftest() -> int:
     # Dependency-edge control A: :app depends on :mesh -> FAIL.
     def add_mesh_dep(root: Path) -> None:
         g = (root / "android/app/build.gradle.kts").read_text(encoding="utf-8")
-        g = g.replace('implementation(project(":llm"))',
-                      'implementation(project(":llm"))\n  implementation(project(":mesh"))')
+        g = g.replace('implementation(project(":core"))',
+                      'implementation(project(":core"))\n  implementation(project(":mesh"))')
         (root / "android/app/build.gradle.kts").write_text(g, encoding="utf-8")
     expect_fail("dep-edge: :app -> :mesh", add_mesh_dep)
+
+    # Dependency-edge control A2: :app depends on :llm on a SHIPPING config -> FAIL.
+    def add_llm_dep(root: Path) -> None:
+        g = (root / "android/app/build.gradle.kts").read_text(encoding="utf-8")
+        g = g.replace('implementation(project(":core"))',
+                      'implementation(project(":core"))\n  implementation(project(":llm"))')
+        (root / "android/app/build.gradle.kts").write_text(g, encoding="utf-8")
+    expect_fail("dep-edge: :app -> :llm (non-shipping model)", add_llm_dep)
+
+    # Dependency-edge control A3: testImplementation(project(":llm")) is
+    # test-only -> gate PASSES (the config-aware parser must NOT flag it).
+    def add_test_llm_dep(root: Path) -> None:
+        g = (root / "android/app/build.gradle.kts").read_text(encoding="utf-8")
+        if 'testImplementation(project(":llm"))' not in g:
+            g = g.replace('implementation(project(":core"))',
+                          'implementation(project(":core"))\n  testImplementation(project(":llm"))')
+        (root / "android/app/build.gradle.kts").write_text(g, encoding="utf-8")
+    expect_pass("dep-edge: testImplementation(:llm) is test-only, not shipping", add_test_llm_dep)
+
+    # Control 4: an io.godstone.llm import in an INCLUDED Android source -> FAIL.
+    def add_llm_import_included(root: Path) -> None:
+        (root / "android/app/src/main/java/io/godstone/app/ui/home/HomeScreen.kt").write_text(
+            "import io.godstone.llm.rag.OraclePipeline\n"
+            "fun Home() { val p: OraclePipeline? = null }\n", encoding="utf-8")
+    expect_fail("control-4: io.godstone.llm import in included Android source", add_llm_import_included)
 
     # Dependency-edge control B: iOS app depends on GodstoneMesh -> FAIL.
     def add_godstonemesh_dep(root: Path) -> None:
@@ -446,7 +506,7 @@ def selftest() -> int:
         for f in failures:
             print("  - " + f)
         return 1
-    print("shipping-path selftest PASSED: 3 negative controls + 2 dep-edge + 2 sanity checks all behaved correctly")
+    print("shipping-path selftest PASSED: 4 negative controls + 4 dep-edge (incl. :llm shipping vs test-only) + 2 sanity checks all behaved correctly")
     return 0
 
 

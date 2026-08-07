@@ -3,9 +3,9 @@ package io.godstone.app.ui.browse
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
-import io.godstone.llm.archive.ArchiveDocument
-import io.godstone.llm.archive.ArchivePassage
-import io.godstone.llm.archive.ArchiveRepository
+import io.godstone.core.archive.ArchiveDocument
+import io.godstone.core.archive.ArchivePassage
+import io.godstone.core.archive.ArchiveRepository
 import javax.inject.Inject
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow

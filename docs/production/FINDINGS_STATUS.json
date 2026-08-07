@@ -140,10 +140,10 @@
   {
    "id": "A-17",
    "severity": "High",
-   "status": "PARTIAL",
+   "status": "NONSHIPPING_TESTED",
    "repo_controlled": true,
-   "evidence": "shipping-path dependency guard PASS (mutation selftest); full release binary inspection pending.",
-   "closes_in_phase": "I"
+   "evidence": "Stage 3 Phase I: LIGHT release refactored to Archive-only -- it links ONLY :core (Archive repository + crypto); the on-device model / Oracle / RAG module (:llm) is NON-SHIPPING like :mesh (testImplementation only, so the Oracle state-machine JVM test still compiles). ArchiveRepository moved from :llm to :core (mirrors iOS GodstoneCore/ArchiveRepository.swift); AppModule provides only ArchiveRepository; OracleScreen dormant (excluded via io/godstone/app/ui/oracle/** glob); OracleViewModel demoted to the test source set with Hilt annotations removed (constructed directly by OracleViewModelTest). Config-aware shipping-path gate (ci/check_shipping_path.py) now forbids a shipping project(:llm)/project(:mesh) edge AND any io.godstone.llm reference in :app shipping sources, and is config-aware so testImplementation(:llm) is correctly classified test-only (mutation selftest PASS incl. add_llm_dep FAIL / add_test_llm_dep PASS / add_llm_import FAIL). Archive-only APK inspector (scripts/inspect_android_artifacts.py) FAILS any artifact carrying .gguf / libgodstone_llm / libllama / libLlamaBridge / cross-tier assets, with --selftest PASS (clean Archive-only APK passes; model/:llm/llama/cross-tier all rejected). NOT closed: the actual LIGHT release artifact (APK/AAB) is built in a provisioned environment (Phase J / device build); the inspector is repo-runnable against any build root but has not yet been wired against a real release artifact, and on-device binary inspection / store-asset-delivery verification remains pending.",
+   "closes_in_phase": "I (repo) + J/device"
   },
   {
    "id": "A-18",
@@ -367,7 +367,7 @@
   "A-03 (Phase H)",
   "A-04 (Critical, Phase F+G)",
   "A-10 (Phase E)",
-  "A-17 (Phase I)",
+  "A-17 (Phase I repo done; J/device artifact build)",
   "GST-DATA-001 (Critical, Phase E+G)",
   "GST-DATA-002 (Phase E)",
   "GST-DATA-003 (Phase E)",
