@@ -18,9 +18,8 @@ import javax.inject.Singleton
  * in the NON-SHIPPING `:llm` module (Stage 3 Phase I); its ViewModel
  * (`OracleViewModel`) is compiled only in the test source set for the
  * state-machine safety tests, and the Oracle UI screen is dormant debt (see
- * `src/main/dormant/java/.../ui/oracle/`, excluded by the
- * `io/godstone/app/ui/oracle/**` glob in build.gradle.kts). No Mesh store or
- * radio object is injectable.
+ * `src/main/dormant/java/.../ui/oracle/`, excluded by the oracle UI exclude
+ * glob in build.gradle.kts). No Mesh store or radio object is injectable.
  */
 @Module
 @InstallIn(SingletonComponent::class)
