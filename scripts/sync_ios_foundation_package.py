@@ -34,6 +34,22 @@ MAPPINGS = {
 }
 
 
+# Directory names that are NOT authoritative source and must never be hashed
+# into SOURCE_MANIFEST.json. `.build/` is written by `swift test`/`swift build`
+# under the package root (synthesized runner.swift, derived modules, ...);
+# `.swiftpm/`, `DerivedData/`, `.git/` are tooling state. Ingesting any of them
+# makes the manifest environment-dependent and non-idempotent: a clean checkout
+# has no `.build/`, so a manifest that listed `.build/.../runner.swift` would
+# report drift forever and break the ios verification job's `--check`. Only the
+# committed Package.swift + Sources/ + Tests/ trees are the generated package.
+EXCLUDED_DIRS = {".build", ".swiftpm", "DerivedData", ".git"}
+
+
+def is_manifest_source(path: Path) -> bool:
+    """True if `path` is authoritative package source (not a build artifact)."""
+    return not any(part in EXCLUDED_DIRS for part in path.relative_to(PACKAGE).parts)
+
+
 def digest(path: Path) -> str:
     h = hashlib.sha256()
     h.update(path.relative_to(PACKAGE).as_posix().encode())
@@ -73,6 +89,7 @@ def main() -> int:
         "files": {
             p.relative_to(PACKAGE).as_posix(): digest(p)
             for p in sorted(PACKAGE.rglob("*.swift"))
+            if is_manifest_source(p)
         },
     }
     manifest_path = PACKAGE / "SOURCE_MANIFEST.json"
