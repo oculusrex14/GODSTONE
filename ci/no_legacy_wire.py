@@ -1,59 +1,41 @@
 #!/usr/bin/env python3
+"""DEPRECATED shim -- use ci/check_shipping_path.py (gate) + ci/inventory_dormant_wire.py.
+
+The old monolithic legacy-wire check has been split into two scripts with
+correct build-config semantics:
+
+  * ci/check_shipping_path.py     -- SHIPPING-PATH GATE. Fails iff legacy
+                                      Mesh/GMP-1 wire is reachable from a LIGHT
+                                      shipping build, decided by build-config
+                                      evidence (Gradle java.exclude globs +
+                                      project() deps; ios/project.yml sources
+                                      allowlist + dependencies).
+  * ci/inventory_dormant_wire.py  -- DORMANT-DEBT INVENTORY (non-passing).
+                                      Reports compile-excluded legacy/future
+                                      Mesh/SOS sources as technical debt. Does
+                                      NOT close A-01; does NOT prove GMP/2.1.
+
+This shim preserves the old entry point by delegating to the gate, so existing
+callers keep getting a fail-on-shipping-contamination verdict. It does NOT
+duplicate the inventory here -- run ci/inventory_dormant_wire.py for that.
+"""
 from __future__ import annotations
-import argparse
+
+import sys
 from pathlib import Path
 
-SOURCE_ROOTS = [Path("android/app/src"), Path("ios/Godstone/Sources/App")]
-FORBIDDEN = (
-    "io.godstone.mesh.wire.Frame", "GMP/1 frame", "PROTOCOL_VERSION: Byte = 0x01",
-    "import GodstoneMesh", "MeshNode", "MeshCoordinator",
-)
-EXTENSIONS = {".kt", ".java", ".swift", ".mm", ".m", ".h", ".hpp"}
-
-
-def violations(root: Path) -> list[str]:
-    output: list[str] = []
-    for relative in SOURCE_ROOTS:
-        base = root / relative
-        if not base.exists(): continue
-        for path in base.rglob("*"):
-            if path.is_file() and path.suffix in EXTENSIONS:
-                text = path.read_text(encoding="utf-8", errors="replace")
-                for needle in FORBIDDEN:
-                    if needle in text:
-                        output.append(f"{path.relative_to(root)}: {needle}")
-    gradle = root / "android/app/build.gradle.kts"
-    if gradle.is_file() and 'project(":mesh")' in gradle.read_text(encoding="utf-8"):
-        output.append("android/app/build.gradle.kts: production app depends on :mesh")
-    project = root / "ios/project.yml"
-    if project.is_file() and "product: GodstoneMesh" in project.read_text(encoding="utf-8"):
-        output.append("ios/project.yml: production app depends on GodstoneMesh")
-    return output
+HERE = Path(__file__).resolve().parent
+sys.path.insert(0, str(HERE))
+from check_shipping_path import main as gate_main  # noqa: E402
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--root", type=Path, default=Path.cwd())
-    parser.add_argument("--selftest", action="store_true")
-    args = parser.parse_args()
-    if args.selftest:
-        import tempfile
-        with tempfile.TemporaryDirectory() as tmp:
-            test_root = Path(tmp)
-            path = test_root / "android/app/src/main/Test.kt"
-            path.parent.mkdir(parents=True)
-            path.write_text("import io.godstone.mesh.wire.Frame\n", encoding="utf-8")
-            if not violations(test_root):
-                print("negative control failed")
-                return 1
-        print("negative control detected a reintroduced shipping legacy import")
-        return 0
-    found = violations(args.root.resolve())
-    if found:
-        print("Legacy or disabled Mesh path is reachable from a shipping app:\n" + "\n".join(found))
-        return 1
-    print("shipping applications have no Mesh/GMP/1 dependency edge")
-    return 0
+    print("note: ci/no_legacy_wire.py is deprecated; delegating to ci/check_shipping_path.py",
+          file=sys.stderr)
+    print("note: for the dormant-debt inventory run ci/inventory_dormant_wire.py",
+          file=sys.stderr)
+    return gate_main()
+
 
 if __name__ == "__main__":
     raise SystemExit(main())

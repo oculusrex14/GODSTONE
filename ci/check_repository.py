@@ -8,6 +8,11 @@ CHECKS = [
     [sys.executable, "ci/check_oracle_private_draft.py"],
     [sys.executable, "ci/check_release_surface.py"],
     [sys.executable, "ci/check_content_release_integration.py"],
+    # Shipping-path gate: fails iff legacy Mesh/GMP-1 wire is reachable from a
+    # LIGHT shipping build (build-config evidence). The companion
+    # ci/inventory_dormant_wire.py is intentionally NOT here -- it is a
+    # non-passing technical-debt inventory, not a gate. It does not close A-01.
+    [sys.executable, "ci/check_shipping_path.py"],
 ]
 
 
