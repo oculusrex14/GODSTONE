@@ -1,6 +1,5 @@
 import Foundation
 import CryptoKit
-import Security
 import GodstoneCore
 
 public enum SosDispatchResult: Equatable, Sendable {
@@ -60,11 +59,16 @@ public final class MeshNode {
     /// V4 does not fabricate a successful SOS while ADR-004 and M2-link remain open.
     public func broadcastSos(payload: Data) -> SosDispatchResult {
         guard Self.linkLayerReady else { return .unavailable(Self.linkLayerOpenReason) }
-        var msgId = Data(count: 16)
-        let rc = msgId.withUnsafeMutableBytes {
-            SecRandomCopyBytes(kSecRandomDefault, 16, $0.baseAddress!)
-        }
-        guard rc == errSecSuccess else { return .failed("secure random generation failed") }
+        // GMP/2.1 (ADR-001 §3.3): msg_id is content-derived, not random, so
+        // duplicate SOS submissions collapse in every relay's dedup cache. The
+        // creation time is bound into the id (little-endian) and authenticated
+        // alongside the payload by the signature below. Byte-identical to
+        // Android Router.buildSos / MessageId.derive (see MessageIdTests).
+        let createdAt = Int64(Date().timeIntervalSince1970)
+        let msgId = MessageId.derive(
+            senderNodeId: identity.nodeId,
+            createdAtEpochSeconds: createdAt,
+            payload: payload)
 
         let magic = Data("SOS1".utf8)
         guard let signature = try? identity.signingKey.signature(for: msgId + magic + payload) else {

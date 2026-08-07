@@ -317,7 +317,7 @@ jobs:
       # scheme's test action targets GodstoneMeshTests (test-only; see
       # project.yml). Resolve the highest-numbered available iPhone simulator
       # so the step is robust across Xcode/runner-image versions.
-      - name: xcodebuild test (25 GodstoneMeshTests on iOS Simulator)
+      - name: xcodebuild test (30 GodstoneMeshTests on iOS Simulator)
         run: |
           set -e
           sim=$(xcrun simctl list devices available 2>/dev/null \
@@ -328,8 +328,8 @@ jobs:
             -configuration LightDebug \
             -destination "platform=iOS Simulator,name=${sim}" \
             CODE_SIGNING_ALLOWED=NO test 2>&1 | tee /tmp/xcb-test.log
-          grep -q "Executed 25 tests, with 0 failures" /tmp/xcb-test.log \
-            || { echo "::error::expected 25 GodstoneMeshTests with 0 failures"; exit 1; }
+          grep -q "Executed 30 tests, with 0 failures" /tmp/xcb-test.log \
+            || { echo "::error::expected 30 GodstoneMeshTests with 0 failures"; exit 1; }
       - name: provenance (final -- tree still clean)
         run: python ci/provenance.py --out provenance-final.json
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
