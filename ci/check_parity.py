@@ -149,7 +149,7 @@ def invariant_c(r: Report, db: Path) -> None:
 
 
 # ---------------------------------------------------------------- D
-def invariant_d(r: Report, allow_unpinned: bool) -> None:
+def invariant_d(r: Report) -> None:
     code, out = run(["-m", "crypto.test_conformance"])
     if code != 0:
         bad = [l.strip() for l in out.splitlines() if l.strip().startswith("FAIL")]
@@ -157,15 +157,21 @@ def invariant_d(r: Report, allow_unpinned: bool) -> None:
         return
     checks = next((l for l in out.splitlines() if l.startswith("checks=")), "")
     unpinned = "CONFORMANCE STATUS: UNPINNED" in out
-    if unpinned and not allow_unpinned:
-        r.bad("D", "vectors are UNPINNED. Invariant D currently proves only that "
-                   "Android and iOS agree WITH EACH OTHER; two implementations "
-                   "can agree and both be wrong. Drop a real vector file into "
-                   "crypto/cacophony_vectors.json (see docs/PINNING_CACOPHONY.md), "
-                   "or pass --allow-unpinned to acknowledge the gap.")
+    if unpinned:
+        # FAIL-CLOSED. Two implementations agreeing with each other is not
+        # conformance to an independent standard. The parity job stays red
+        # until an approved EXTERNAL vector file is pinned in
+        # crypto/cacophony_vectors.json and consumed by both platform tests
+        # (A-06). Do not self-generate vectors from the implementation under
+        # test; the conformance gate rejects an unvalidated reference.
+        r.bad("D", "independent vectors unavailable or unapproved: "
+                   "crypto/cacophony_vectors.json holds no approved EXTERNAL "
+                   "Noise fixture. Invariant D proves only that Android and iOS "
+                   "agree WITH EACH OTHER, which is not conformance. Pin and "
+                   "review an independent vector file (see "
+                   "docs/PINNING_CACOPHONY.md); A-06 stays OPEN until then.")
         return
-    note = "  [UNPINNED, acknowledged]" if unpinned else "  [PINNED]"
-    r.ok("D", f"Noise derivation chain + XX transcript reproduced ({checks}){note}")
+    r.ok("D", f"Noise derivation chain + XX transcript reproduced ({checks})  [PINNED]")
 
 
 # ---------------------------------------------------------------- E
@@ -262,9 +268,6 @@ def main() -> int:
     ap = argparse.ArgumentParser(description="Godstone parity and safety gate")
     ap.add_argument("--db", type=Path,
                     default=ROOT / "dist" / "archive_medium.db")
-    ap.add_argument("--allow-unpinned", action="store_true",
-                    help="accept UNPINNED Noise vectors (acknowledges that "
-                         "conformance rests on an unvalidated reference)")
     args = ap.parse_args()
 
     print("Godstone parity + safety gate\n" + "=" * 62)
@@ -272,7 +275,7 @@ def main() -> int:
     invariant_a(r)
     invariant_b(r)
     invariant_c(r, args.db)
-    invariant_d(r, args.allow_unpinned)
+    invariant_d(r)
     invariant_e(r)
     invariant_f(r)
     invariant_g(r)

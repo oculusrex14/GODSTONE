@@ -95,10 +95,11 @@ jobs:
       # computing its own grounding verdict; C is the C3 red/green probe suite;
       # D is Noise conformance incl. the derivation chain; E is C1/C2 + tiers.
       #
-      # --allow-unpinned acknowledges that noise_ref has not been checked
-      # against an EXTERNAL vector. REMOVE THIS FLAG once a real vector file is
-      # dropped into crypto/cacophony_vectors.json -- Invariant D flips to
-      # PINNED automatically. See docs/PINNING_CACOPHONY.md.
+      # D is FAIL-CLOSED on the vector lock: it fails with "independent vectors
+      # unavailable or unapproved" while crypto/cacophony_vectors.json holds no
+      # approved EXTERNAL fixture. There is no permissive escape hatch -- the
+      # parity job stays red until an independent vector file is pinned, reviewed
+      # and consumed by both platform tests (A-06). See docs/PINNING_CACOPHONY.md.
       # Invariant F resolves Kotlin cross-file symbols. Its --selftest is run
       # FIRST: a control that has never been observed failing is not a control,
       # and the first version of F passed while the defect was present.
@@ -110,7 +111,7 @@ jobs:
       - name: integration reachability negative control
         run: python ci/integration.py --selftest
       - name: invariants A-G
-        run: python ci/check_parity.py --allow-unpinned
+        run: python ci/check_parity.py
 
   content:
     name: content pipeline

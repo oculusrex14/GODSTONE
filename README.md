@@ -72,13 +72,16 @@ python -m safety.probes --db /tmp/godstone_archive_medium.db
 python -m content.eval.grounding \
   --db /tmp/godstone_archive_medium.db --strict
 python ci/check_parity.py \
-  --db /tmp/godstone_archive_medium.db --allow-unpinned
+  --db /tmp/godstone_archive_medium.db
 python -m meshsim.run --nodes 200 --scenario city_blackout \
   --ticks 600 --assert-regression
 ```
 
-`--allow-unpinned` is an explicit acknowledgement that external Noise
-cacophony vectors have not yet been pinned. It must not appear in a release gate.
+The parity gate is FAIL-CLOSED on the Noise vector lock: Invariant D fails
+with "independent vectors unavailable or unapproved" while
+`crypto/cacophony_vectors.json` holds no approved EXTERNAL fixture. There is
+no permissive escape hatch -- the gate stays red until an independent vector
+file is pinned, reviewed and consumed by both platform tests (A-06).
 
 ## Mobile proof still required
 
