@@ -12,67 +12,31 @@ import io.godstone.llm.archive.ArchiveRepository
 import io.godstone.llm.rag.Embedder
 import io.godstone.llm.rag.RagPipeline
 import io.godstone.llm.rag.Retriever
-import io.godstone.mesh.MeshNode
-import io.godstone.mesh.store.MessageStore
-import io.godstone.mesh.store.SqliteMessageStore
 import javax.inject.Singleton
 
+/** Archive and test-only Oracle wiring. No Mesh store or radio object is injectable. */
 @Module
 @InstallIn(SingletonComponent::class)
 object AppModule {
-
-    @Provides
-    @Singleton
-    fun provideMessageStore(@ApplicationContext ctx: Context): MessageStore =
-        SqliteMessageStore(ctx, maxBytes = 200L * 1024 * 1024)
-
-    @Provides
-    @Singleton
-    fun provideMeshNode(
-        @ApplicationContext ctx: Context,
-        store: MessageStore
-    ): MeshNode = MeshNode(ctx, store)
-
-    @Provides
-    @Singleton
+    @Provides @Singleton
     fun provideArchiveRepository(@ApplicationContext ctx: Context): ArchiveRepository =
         ArchiveRepository(ctx, archiveAsset = BuildConfig.ARCHIVE_FILE)
 
-    @Provides
-    @Singleton
+    @Provides @Singleton
     fun provideModelManager(@ApplicationContext ctx: Context): ModelManager =
-        ModelManager(
-            context = ctx,
-            modelAsset = BuildConfig.MODEL_FILE,
-            contextTokens = BuildConfig.CTX_TOKENS
-        )
+        ModelManager(ctx, BuildConfig.MODEL_FILE, BuildConfig.CTX_TOKENS)
 
-    @Provides
-    @Singleton
-    fun provideEmbedder(@ApplicationContext ctx: Context): Embedder? {
-        if (BuildConfig.EMBED_MODEL_FILE.isEmpty()) return null
-        return Embedder(
-            context = ctx,
-            embedModelAsset = BuildConfig.EMBED_MODEL_FILE,
-            expectedDim = BuildConfig.EMBED_DIM
-        )
-    }
+    @Provides @Singleton
+    fun provideEmbedder(@ApplicationContext ctx: Context): Embedder? =
+        BuildConfig.EMBED_MODEL_FILE.takeIf { it.isNotEmpty() }?.let {
+            Embedder(ctx, it, BuildConfig.EMBED_DIM)
+        }
 
-    @Provides
-    @Singleton
-    fun provideRetriever(
-        @ApplicationContext ctx: Context,
-        embedder: Embedder?
-    ): Retriever = Retriever(ctx, archiveAsset = BuildConfig.ARCHIVE_FILE, embedder = embedder)
+    @Provides @Singleton
+    fun provideRetriever(@ApplicationContext ctx: Context, embedder: Embedder?): Retriever =
+        Retriever(ctx, archiveAsset = BuildConfig.ARCHIVE_FILE, embedder = embedder)
 
-    @Provides
-    @Singleton
-    fun provideRagPipeline(
-        models: ModelManager,
-        retriever: Retriever
-    ): RagPipeline = RagPipeline(
-        models = models,
-        retriever = retriever,
-        topK = BuildConfig.TOP_K_CHUNKS
-    )
+    @Provides @Singleton
+    fun provideRagPipeline(models: ModelManager, retriever: Retriever): RagPipeline =
+        RagPipeline(models, retriever, BuildConfig.TOP_K_CHUNKS)
 }

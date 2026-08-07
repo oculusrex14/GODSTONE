@@ -1,28 +1,24 @@
-// SYNTHESIZED gap-closure file -- authored to make the project compile; see docs/AUDIT.md.
 package io.godstone.core.crypto
 
 import org.bouncycastle.crypto.generators.Ed25519KeyPairGenerator
 import org.bouncycastle.crypto.params.Ed25519KeyGenerationParameters
+import org.bouncycastle.crypto.params.Ed25519PrivateKeyParameters
+import org.bouncycastle.crypto.params.Ed25519PublicKeyParameters
 import java.security.SecureRandom
 
-/**
- * Minimal holder for a generated public/private key pair. Both arrays are the
- * raw encoded forms (no ASN.1 wrapping) so callers can persist or transmit them
- * directly.
- */
+/** Raw Ed25519 public/private key material (32 bytes each). */
 class KeyPair(val pub: ByteArray, val priv: ByteArray)
 
-/**
- * Ed25519 key generation backed by BouncyCastle, used for the long-term
- * identity signing key.
- */
+/** Long-term identity signing-key generation backed by Bouncy Castle. */
 object Ed25519Keys {
     fun generate(rng: SecureRandom): KeyPair {
-        val gen = Ed25519KeyPairGenerator()
-        gen.init(Ed25519KeyGenerationParameters(rng))
-        val pair = gen.generateKeyPair()
-        val pub = pair.public.encoded    // Ed25519PublicKeyParameters, 32 bytes
-        val priv = pair.private.encoded  // Ed25519PrivateKeyParameters, 32 bytes
-        return KeyPair(pub, priv)
+        val generator = Ed25519KeyPairGenerator().apply {
+            init(Ed25519KeyGenerationParameters(rng))
+        }
+        val pair = generator.generateKeyPair()
+        val publicKey = (pair.public as Ed25519PublicKeyParameters).encoded
+        val privateKey = (pair.private as Ed25519PrivateKeyParameters).encoded
+        check(publicKey.size == 32 && privateKey.size == 32)
+        return KeyPair(publicKey.copyOf(), privateKey.copyOf())
     }
 }

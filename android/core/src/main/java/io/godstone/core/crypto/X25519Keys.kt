@@ -1,21 +1,21 @@
-// SYNTHESIZED gap-closure file -- authored to make the project compile; see docs/AUDIT.md.
 package io.godstone.core.crypto
 
 import org.bouncycastle.crypto.generators.X25519KeyPairGenerator
 import org.bouncycastle.crypto.params.X25519KeyGenerationParameters
+import org.bouncycastle.crypto.params.X25519PrivateKeyParameters
+import org.bouncycastle.crypto.params.X25519PublicKeyParameters
 import java.security.SecureRandom
 
-/**
- * X25519 key generation backed by BouncyCastle, used for the static Noise
- * Diffie-Hellman key.
- */
+/** Static Noise agreement-key generation backed by Bouncy Castle. */
 object X25519Keys {
     fun generate(rng: SecureRandom): KeyPair {
-        val gen = X25519KeyPairGenerator()
-        gen.init(X25519KeyGenerationParameters(rng))
-        val pair = gen.generateKeyPair()
-        val pub = pair.public.encoded    // X25519PublicKeyParameters, 32 bytes
-        val priv = pair.private.encoded  // X25519PrivateKeyParameters, 32 bytes
-        return KeyPair(pub, priv)
+        val generator = X25519KeyPairGenerator().apply {
+            init(X25519KeyGenerationParameters(rng))
+        }
+        val pair = generator.generateKeyPair()
+        val publicKey = (pair.public as X25519PublicKeyParameters).encoded
+        val privateKey = (pair.private as X25519PrivateKeyParameters).encoded
+        check(publicKey.size == 32 && privateKey.size == 32)
+        return KeyPair(publicKey.copyOf(), privateKey.copyOf())
     }
 }

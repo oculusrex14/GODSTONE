@@ -19,14 +19,13 @@ android {
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
-    // Tier flavors. Each ships a different model and archive database.
+    // One application identity and one initially shippable tier. MEDIUM and
+    // LARGE remain source-level research configurations until independently
+    // measured and given a store-compatible asset delivery design.
     flavorDimensions += "tier"
-
     productFlavors {
         create("light") {
             dimension = "tier"
-            applicationIdSuffix = ".light"
-            versionNameSuffix = "-light"
             buildConfigField("String", "TIER", "\"LIGHT\"")
             buildConfigField("String", "MODEL_FILE", "\"qwen3-0.6b-q4km.gguf\"")
             buildConfigField("String", "ARCHIVE_FILE", "\"archive_light.db\"")
@@ -34,34 +33,18 @@ android {
             buildConfigField("int", "TOP_K_CHUNKS", "4")
             buildConfigField("String", "EMBED_MODEL_FILE", "\"\"")
             buildConfigField("int", "EMBED_DIM", "384")
-        }
-        create("medium") {
-            dimension = "tier"
-            applicationIdSuffix = ".medium"
-            versionNameSuffix = "-medium"
-            buildConfigField("String", "TIER", "\"MEDIUM\"")
-            buildConfigField("String", "MODEL_FILE", "\"qwen3-1.7b-q4km.gguf\"")
-            buildConfigField("String", "ARCHIVE_FILE", "\"archive_medium.db\"")
-            buildConfigField("int", "CTX_TOKENS", "4096")
-            buildConfigField("int", "TOP_K_CHUNKS", "6")
-            buildConfigField("String", "EMBED_MODEL_FILE", "\"\"")
-            buildConfigField("int", "EMBED_DIM", "384")
-        }
-        create("large") {
-            dimension = "tier"
-            applicationIdSuffix = ".large"
-            versionNameSuffix = "-large"
-            buildConfigField("String", "TIER", "\"LARGE\"")
-            buildConfigField("String", "MODEL_FILE", "\"qwen3-4b-q5km.gguf\"")
-            buildConfigField("String", "ARCHIVE_FILE", "\"archive_large.db\"")
-            buildConfigField("int", "CTX_TOKENS", "8192")
-            buildConfigField("int", "TOP_K_CHUNKS", "8")
-            buildConfigField("String", "EMBED_MODEL_FILE", "\"\"")
-            buildConfigField("int", "EMBED_DIM", "768")
+            buildConfigField("boolean", "ORACLE_ENABLED", "false")
+            buildConfigField("boolean", "MESH_ENABLED", "false")
+            buildConfigField("boolean", "SOS_ENABLED", "false")
+            buildConfigField("boolean", "BULK_TRANSFER_ENABLED", "false")
         }
     }
 
     buildTypes {
+        debug {
+            // Disabled features stay disabled in debug unless a developer uses
+            // a separate, nonshipping experimental source set.
+        }
         release {
             isMinifyEnabled = true
             isShrinkResources = true
@@ -81,34 +64,35 @@ android {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
     }
+    kotlinOptions { jvmTarget = "17" }
 
-    kotlinOptions {
-        jvmTarget = "17"
-    }
+    androidResources { noCompress += listOf("gguf", "db") }
 
-    // Model and archive assets must never be compressed: we mmap them at runtime.
-    androidResources {
-        noCompress += listOf("gguf", "db")
-    }
-
-    // The model and archive are mmap'd from assets at runtime. Without this
-    // sourceSet the app installs, launches, and then cannot find its model on
-    // a device that by definition cannot download it (C1).
+    // Assets are staged into this single variant directory only by
+    // scripts/prepare_release_assets.py after hash/tier/review verification.
     sourceSets {
-        getByName("light")  { assets.srcDirs("src/light/assets",  "../../models", "../../dist") }
-        getByName("medium") { assets.srcDirs("src/medium/assets", "../../models", "../../dist") }
-        getByName("large")  { assets.srcDirs("src/large/assets",  "../../models", "../../dist") }
+        getByName("main") {
+            // Disabled transport UI is not compiled into the production app.
+            java.exclude("io/godstone/app/ui/mesh/**")
+            java.exclude("io/godstone/app/ui/sos/**")
+        }
+        getByName("light") { assets.setSrcDirs(listOf("src/light/assets")) }
     }
 
     packaging {
         resources.excludes += "/META-INF/{AL2.0,LGPL2.1}"
     }
+
+    lint {
+        abortOnError = true
+        checkReleaseBuilds = true
+        warningsAsErrors = true
+    }
 }
 
 dependencies {
     implementation(project(":core"))
-    implementation(project(":mesh"))
-    implementation(project(":llm"))
+    implementation(project(":llm"))  // compiled for safety tests; Oracle route is absent
 
     implementation(platform("androidx.compose:compose-bom:2024.09.02"))
     implementation("androidx.compose.ui:ui")
