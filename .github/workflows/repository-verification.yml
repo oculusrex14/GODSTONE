@@ -256,6 +256,7 @@ jobs:
             :mesh:testDebugUnitTest \
             :llm:testDebugUnitTest \
             :app:compileLightDebugKotlin \
+            :app:testLightDebugUnitTest --tests '*OracleViewModelTest*' \
             --no-daemon
       - name: verify merged manifest has no INTERNET permission
         run: |
