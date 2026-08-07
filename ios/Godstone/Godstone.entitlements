@@ -1,19 +1,4 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"
   "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-<plist version="1.0">
-<dict>
-    <!-- Multicast is required for MultipeerConnectivity peer discovery on
-         iOS 14+. This entitlement must be requested from Apple with a written
-         justification; see docs/store/APPLE_MULTICAST_REQUEST.md. -->
-    <key>com.apple.developer.networking.multicast</key>
-    <true/>
-
-    <!-- No push, no iCloud, no background fetch, no App Groups beyond the
-         shared archive container. The smaller the surface, the safer. -->
-    <key>com.apple.security.application-groups</key>
-    <array>
-        <string>group.io.godstone.archive</string>
-    </array>
-</dict>
-</plist>
+<plist version="1.0"><dict/></plist>

@@ -3,77 +3,16 @@
   "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-    <key>CFBundleDisplayName</key>
-    <string>Godstone</string>
-
-    <key>CFBundleIdentifier</key>
-    <string>$(PRODUCT_BUNDLE_IDENTIFIER)</string>
-
-    <key>CFBundleShortVersionString</key>
-    <string>1.0.0</string>
-
-    <key>LSRequiresIPhoneOS</key>
-    <true/>
-
+    <key>CFBundleDisplayName</key><string>Godstone</string>
+    <key>CFBundleIdentifier</key><string>$(PRODUCT_BUNDLE_IDENTIFIER)</string>
+    <key>CFBundleShortVersionString</key><string>1.0.0</string>
+    <key>CFBundleVersion</key><string>1</string>
+    <key>LSRequiresIPhoneOS</key><true/>
     <key>UIRequiredDeviceCapabilities</key>
-    <array>
-        <string>arm64</string>
-        <string>bluetooth-le</string>
-    </array>
-
-    <!-- Background execution. Constraint: BLE central+peripheral only.
-         MultipeerConnectivity has NO background mode and stops when the app is
-         suspended. This is documented in the UI rather than hidden. -->
-    <key>UIBackgroundModes</key>
-    <array>
-        <string>bluetooth-central</string>
-        <string>bluetooth-peripheral</string>
-    </array>
-
-    <!-- Bonjour services for MultipeerConnectivity (iOS 14+ requirement). -->
-    <key>NSBonjourServices</key>
-    <array>
-        <string>_godstone-mesh._tcp</string>
-        <string>_godstone-mesh._udp</string>
-    </array>
-
-    <!-- Purpose strings. These are read by frightened people; they are written
-         plainly and they are true. -->
-    <key>NSBluetoothAlwaysUsageDescription</key>
-    <string>Godstone uses Bluetooth to find nearby phones so you can send and receive messages when there is no cell service or internet. Nothing is ever sent to a server.</string>
-
-    <key>NSLocalNetworkUsageDescription</key>
-    <string>Godstone uses the local Wi-Fi radio to pass larger messages, photos and voice notes directly between nearby phones. It never connects to the internet.</string>
-
-    <key>NSMicrophoneUsageDescription</key>
-    <string>Godstone records voice notes so you can send a message when typing is not possible.</string>
-
-    <key>NSCameraUsageDescription</key>
-    <string>Godstone lets you photograph an injury, a map or a location to send to people nearby.</string>
-
-    <key>NSLocationWhenInUseUsageDescription</key>
-    <string>Godstone attaches your coordinates to an SOS so people nearby can find you. Your location is never uploaded anywhere.</string>
-
-    <!-- App Transport Security: block everything. Constraint C1: the app makes
-         no network requests at all, and this makes that enforceable. -->
+    <array><string>arm64</string></array>
     <key>NSAppTransportSecurity</key>
-    <dict>
-        <key>NSAllowsArbitraryLoads</key>
-        <false/>
-        <key>NSAllowsLocalNetworking</key>
-        <true/>
-    </dict>
-
-    <key>UIApplicationSupportsIndirectInputEvents</key>
-    <true/>
-
-    <key>UILaunchScreen</key>
-    <dict>
-        <key>UIColorName</key>
-        <string>LaunchBackground</string>
-    </dict>
-
-    <key>UIUserInterfaceStyle</key>
-    <string>Dark</string>
+    <dict><key>NSAllowsArbitraryLoads</key><false/></dict>
+    <key>UIApplicationSupportsIndirectInputEvents</key><true/>
+    <key>UILaunchScreen</key><dict/>
 </dict>
 </plist>

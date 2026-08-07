@@ -1,36 +1,14 @@
-# SYNTHESIZED gap-closure file -- authored to make the project compile; see docs/AUDIT.md.
-#
-# XcodeGen project specification for the Godstone iOS app.
-#
-# The app is assembled from the three local SwiftPM products in ./Godstone
-# (GodstoneCore, GodstoneMesh, GodstoneLLM), mirroring the Android module
-# graph:  app -> (GodstoneMesh, GodstoneLLM) -> GodstoneCore.
-#
-# GodstoneLLM requires a reviewed, pinned llama.cpp checkout at
-# ../../third_party/llama.cpp. V4 contains neither a `.gitmodules` gitlink nor a
-# verified source-archive lock, so the complete native app build remains blocked.
-# XcodeGen can still generate the project; the LLM compile must fail loudly until
-# release engineering supplies the dependency described in third_party/README.md.
-
 name: Godstone
-
 options:
   bundleIdPrefix: io.godstone
   deploymentTarget:
     iOS: "16.0"
-  # XcodeGen should create the .xcodeproj next to this spec; the package is
-  # referenced relatively so the spec is portable across checkouts.
   createIntermediateGroups: true
   groupSortPosition: top
 
-# Three tier build configurations (debug-type). XcodeGen only auto-creates
-# Debug/Release; the per-tier configs referenced by the Godstone target's
-# settings.configs and by the schemes below must be declared here or the spec
-# is rejected ("invalid build configuration light/medium/large").
 configs:
-  light: debug
-  medium: debug
-  large: debug
+  LightDebug: debug
+  LightRelease: release
 
 settings:
   base:
@@ -38,10 +16,6 @@ settings:
     DEVELOPMENT_TEAM: ""
     CODE_SIGN_STYLE: Automatic
     ENABLE_BITCODE: NO
-    # llama.cpp lives outside the package; the GodstoneLLM target also sets
-    # this, but the search path is repeated here so the app target's header
-    # map can see it when bridging is needed.
-    # HEADER_SEARCH_PATHS: $(inherited) $(SRCROOT)/../third_party/llama.cpp
 
 packages:
   GodstonePackages:
@@ -52,142 +26,57 @@ targets:
     type: application
     platform: iOS
     sources:
-      - Godstone/Sources/App
-      # The .gguf model and .db archive are mmap'd at runtime. Without a
-      # resources phase they are never copied into the bundle, so
-      # Bundle.main.path(forResource:) returns nil on a device that by
-      # definition cannot download them (C1).
-      - path: Godstone/Resources
-        type: folder
-        optional: true
+      - path: Godstone/Sources/App/AppContainer.swift
+      - path: Godstone/Sources/App/ArchiveView.swift
+      - path: Godstone/Sources/App/GodstoneApp.swift
+      - path: Godstone/Sources/App/GodstoneTheme.swift
+      - path: Godstone/Sources/App/RootView.swift
+      - path: Godstone/PrivacyInfo.xcprivacy
+        buildPhase: resources
+      # NOTE: The Archive (.db) and model (.gguf) assets are intentionally NOT
+      # bundled as static folder resources here. They are mmap'd at runtime via
+      # Bundle.main.path(forResource:) keyed off INFOPLIST_KEY_GodstoneArchiveFile
+      # / GodstoneModelFile. When an approved asset is absent, the lookup returns
+      # nil and the app enters a truthful unavailable/degraded state
+      # (ArchiveRepository.isAvailable == false) rather than failing the build.
+      # Adding a per-tier Resources/<tier> folder reference caused xcodebuild to
+      # emit a CpResource for a nonexistent directory and fail; that reference is
+      # removed so the app compiles with zero production content present.
+      # A staging task that verifies approved assets (see content/release_gate.py)
+      # is the gate before any resource phase is reintroduced.
     dependencies:
       - package: GodstonePackages
         product: GodstoneCore
-      - package: GodstonePackages
-        product: GodstoneMesh
-      - package: GodstonePackages
-        product: GodstoneLLM
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: io.godstone.app
+        PRODUCT_NAME: Godstone
         INFOPLIST_FILE: Godstone/Info.plist
         CODE_SIGN_ENTITLEMENTS: Godstone/Godstone.entitlements
-        # No app-level bridging header is required: LlamaBridge.h is a public
-        # header inside the GodstoneLLM SwiftPM target, which exports its own
-        # module. SWIFT_OBJC_BRIDGING_HEADER is intentionally omitted.
-        # SWIFT_OBJC_BRIDGING_HEADER: ""
-        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         TARGETED_DEVICE_FAMILY: "1,2"
+        INFOPLIST_KEY_GodstoneTier: LIGHT
+        INFOPLIST_KEY_GodstoneArchiveFile: archive_light.db
       configs:
-        # Per-tier config overrides. Each scheme below selects one of these
-        # build configurations, which fixes the Info.plist GodstoneTier value,
-        # the bundle-id suffix, and the model/archive resources to copy.
-        # The model and archive assets must not be compressed (they are mmap'd
-        # at runtime, exactly as on Android); the resources build phase below
-        # copies them verbatim.
-        light:
-          PRODUCT_BUNDLE_IDENTIFIER: io.godstone.app.light
-          PRODUCT_NAME: Godstone-Light
-          INFOPLIST_KEY_GodstoneTier: LIGHT
-          INFOPLIST_KEY_GodstoneModelFile: qwen3-0.6b-q4km.gguf
-          INFOPLIST_KEY_GodstoneArchiveFile: archive_light.db
-          ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
-        medium:
-          PRODUCT_BUNDLE_IDENTIFIER: io.godstone.app.medium
-          PRODUCT_NAME: Godstone-Medium
-          INFOPLIST_KEY_GodstoneTier: MEDIUM
-          INFOPLIST_KEY_GodstoneModelFile: qwen3-1.7b-q4km.gguf
-          INFOPLIST_KEY_GodstoneArchiveFile: archive_medium.db
-        large:
-          PRODUCT_BUNDLE_IDENTIFIER: io.godstone.app.large
-          PRODUCT_NAME: Godstone-Large
-          INFOPLIST_KEY_GodstoneTier: LARGE
-          INFOPLIST_KEY_GodstoneModelFile: qwen3-4b-q5km.gguf
-          INFOPLIST_KEY_GodstoneArchiveFile: archive_large.db
+        LightDebug:
+          SWIFT_ACTIVE_COMPILATION_CONDITIONS: DEBUG ARCHIVE_ONLY
+        LightRelease:
+          SWIFT_COMPILATION_MODE: wholemodule
+          SWIFT_OPTIMIZATION_LEVEL: -O
+          ENABLE_TESTABILITY: NO
+          SWIFT_ACTIVE_COMPILATION_CONDITIONS: ARCHIVE_ONLY
 
-# ---------------------------------------------------------------------------
-# Schemes: one per tier. Each scheme pins the build configuration so the
-# correct GodstoneTier, bundle id suffix, and bundled model/archive resources
-# are selected. This mirrors the Android `tier` flavor dimension in
-# android/app/build.gradle.kts.
-# ---------------------------------------------------------------------------
 schemes:
   Godstone-Light:
     build:
       targets:
         Godstone: all
-      configs:
-        - light
     run:
-      config: light
+      config: LightDebug
     test:
-      config: light
-      # Test targets omitted: GodstoneMeshTests is an SPM package test target
-      # and XcodeGen 2.46.0 rejects it as a scheme test target ("invalid test
-      # target"). Run mesh tests via `swift test --target GodstoneMeshTests`.
-    profile:
-      config: light
+      config: LightDebug
     analyze:
-      config: light
-    archive:
-      config: light
-
-  Godstone-Medium:
-    build:
-      targets:
-        Godstone: all
-      configs:
-        - medium
-    run:
-      config: medium
-    test:
-      config: medium
-      # Test targets omitted: GodstoneMeshTests is an SPM package test target
-      # and XcodeGen 2.46.0 rejects it as a scheme test target ("invalid test
-      # target"). Run mesh tests via `swift test --target GodstoneMeshTests`.
+      config: LightRelease
     profile:
-      config: medium
-    analyze:
-      config: medium
+      config: LightRelease
     archive:
-      config: medium
-
-  Godstone-Large:
-    build:
-      targets:
-        Godstone: all
-      configs:
-        - large
-    run:
-      config: large
-    test:
-      config: large
-      # Test targets omitted: GodstoneMeshTests is an SPM package test target
-      # and XcodeGen 2.46.0 rejects it as a scheme test target ("invalid test
-      # target"). Run mesh tests via `swift test --target GodstoneMeshTests`.
-    profile:
-      config: large
-    analyze:
-      config: large
-    archive:
-      config: large
-
-# ---------------------------------------------------------------------------
-# Notes for whoever drives `xcodegen generate`:
-#
-#  * The GodstoneMeshTests and GodstoneLLMTests schemes above are defined in
-#    the local Package.swift; XcodeGen will surface them once the package is
-#    resolved. If a test target is renamed upstream, update the entries here.
-#
-#  * The model (.gguf) and archive (.db) resources are NOT listed as explicit
-#    sources because they are tier-specific. Ship them as Copy Bundle
-#    Resources entries keyed off the active config, or -- simplest -- add a
-#    per-tier folder reference (Godstone/Resources/light, .../medium,
-#    .../large) and include the matching folder in each config's sources.
-#    TODO: add folder references once the resource layout is finalised.
-#
-#  * HEADER_SEARCH_PATHS for llama.cpp is the responsibility of the
-#    GodstoneLLM SwiftPM target (see Package.swift's cSettings). The app
-#    target itself never imports llama.cpp directly, so no app-level search
-#    path is required. The commented value above is kept for reference.
-# ---------------------------------------------------------------------------
+      config: LightRelease

@@ -1,44 +1,15 @@
 import Foundation
 import Combine
 import GodstoneCore
-import GodstoneMesh
-import GodstoneLLM
 
-/// Composition root. Everything is constructed here, once, and injected down.
-/// No singletons, no service locators: dependencies are visible and testable.
+/// Archive-only production composition root.
 @MainActor
 final class AppContainer: ObservableObject {
-
     let tier: Tier
-    let identity: MeshIdentity
-    let meshNode: MeshNode
-    let meshCoordinator: MeshCoordinator
-    let ragPipeline: RagPipeline
-    let oracleViewModel: OracleViewModel
     let archive: ArchiveRepository
 
     init() {
-        self.tier = Tier.current
-
-        // Identity is generated once and stored in the Secure Enclave-backed
-        // Keychain with kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly.
-        self.identity = (try? MeshIdentity.loadFromKeychain())
-            ?? MeshIdentity.generateAndStore()
-
-        self.meshNode = MeshNode(identity: identity)
-        self.meshCoordinator = MeshCoordinator(node: meshNode)
-
-        self.archive = ArchiveRepository(
-            databaseName: tier.archiveDatabaseName
-        )
-
-        // The pipeline owns its model lifecycle through `ModelManager.shared`
-        // (tier-aware, idle-evicting). Here we only wire the retrieval side.
-        self.ragPipeline = RagPipeline(
-            retriever: Retriever(archive: archive),
-            builder: PromptBuilder()
-        )
-
-        self.oracleViewModel = OracleViewModel(pipeline: ragPipeline)
+        tier = Tier.current
+        archive = ArchiveRepository(databaseName: tier.archiveDatabaseName)
     }
 }

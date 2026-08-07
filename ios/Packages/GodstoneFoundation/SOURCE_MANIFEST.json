@@ -1,0 +1,31 @@
+{
+  "files": {
+    ".build/arm64-apple-macosx/debug/GodstoneFoundationPackageTests.derived/runner.swift": "162311a67ec8a6b0941cf747f645a7ddca245771654f639f6a61a4e508a94255",
+    "Package.swift": "a2946020fe2eba176b451d29438c8028535c392b711cd855471cd7f3a91f913c",
+    "Sources/GodstoneCore/ArchiveRepository.swift": "222b4116875f19d05321cfbf9afb42dc382812fa80e0ad8f9b0d81db6d941e7e",
+    "Sources/GodstoneCore/Bip39.swift": "257bb27f26f19d2410a0e5f13a258b031d75bdc8e647c05205fb0060ea5a87a4",
+    "Sources/GodstoneCore/Blake2s.swift": "45f06f51b8bbed97787d56b834df5ebb2730e140c9e4723dfe0da6cc993febcc",
+    "Sources/GodstoneCore/BloomDigest.swift": "ea99ede1e41b04557f254d9efafd9227ed7e26706056fd052ddecf5e5fb07995",
+    "Sources/GodstoneCore/Hkdf.swift": "2e956a5001407c3d932a57fc2a3f258ef77c31b9592c622602180519ddbafc38",
+    "Sources/GodstoneCore/LruSet.swift": "7f6f26bcca6a50ed63c65b79db1b6558d2f3f6b1e502c6071fe0b3ff45a075ad",
+    "Sources/GodstoneCore/OracleAnswerValidator.swift": "8dcaf3e2bd76fe71642ba4ccdcdd713880620d560df5942e1c9c5c16d4d5d7f3",
+    "Sources/GodstoneCore/PromptBuilder.swift": "512fc93fd0b7f21dd0f189e575ac499038e66186681a2068e4aaebcd8679fa89",
+    "Sources/GodstoneCore/RetrievedChunk.swift": "0ab4a04803feb0214a2376ebc05bd74d8f46371b6e834f07dfc334b97a79c1bb",
+    "Sources/GodstoneCore/Retriever.swift": "8521f1850cca8be0edadf3810fead1c2787e613e84ec05a319dc17b9802ea44b",
+    "Sources/GodstoneCore/SafetyGate.swift": "7c318f9d86eedc458df56cf1fc12f781aa3b92979efc9968bf98be5c1bed5ff8",
+    "Sources/GodstoneCore/Tier.swift": "50b674e81c024a66d03a5e2beef46f00299bfdba68ed5a982ed3d8bf5a9e8bc3",
+    "Sources/GodstoneMesh/BleTransport.swift": "41b7ec8f287b3d925f7931550a5ff4e7bb23b5b481721c265c36805c4d9f11b7",
+    "Sources/GodstoneMesh/BulkTransport.swift": "c2be42952af4055bc7abea67fa0a2377b044a78435e0919702773cd838232bb0",
+    "Sources/GodstoneMesh/MeshCoordinator.swift": "40def33a3aaf47f769a6d7b5107cba055d0f3e50c25416854fb1873bf9ff5f7c",
+    "Sources/GodstoneMesh/MeshIdentity.swift": "5f4690490a6bb6406f074d79b596eb0ca5e85f2a1f05f768cc201816db49bbf6",
+    "Sources/GodstoneMesh/MeshNode.swift": "30d4bd5e4d3bdb0f79e081c5c3cefd0d54cb6339182286a71b020c28bad3067c",
+    "Sources/GodstoneMesh/NoiseSession.swift": "4d578d6a643c72ed0e54af5cdc18b798159caac073da1089579c4b707cd7472a",
+    "Sources/GodstoneMesh/Router.swift": "922816aa72db972203fa4d7457b67a8c3b7f75f11a88116302031f8849f54c7b",
+    "Sources/GodstoneMesh/SessionManager.swift": "dbd0e466b8fd02de35f5eda449c9b77ff1b310231668365dbde889db5ad18212",
+    "Sources/GodstoneMesh/WireV2.swift": "4abb723d9d6761477ff8fccf5262349a9d7befd168516f72ec144fd6b8f97a7a",
+    "Tests/GodstoneCoreTests/OracleAnswerValidatorTests.swift": "7568184482727be1f07e78761b53f11adfa565893f51f7ad217eac95031f476a",
+    "Tests/GodstoneMeshTests/PortVectorTests.swift": "08e4d81add95ada220f4bcc6d14a3b2acc0232b69064d376481390bbc10c9fb9",
+    "Tests/GodstoneMeshTests/RouterTests.swift": "68f448d5b3d72df89dbf1dfd08df96e7e78518c9b9037cc7a1ed231aac13e532"
+  },
+  "schema": 1
+}
