@@ -98,8 +98,14 @@ schemes:
   Godstone-Light:
     build:
       targets:
+        # Only the app target is built for build/run/archive. The
+        # GodstoneMeshTests bundle is built ONLY for the test action (see
+        # test.targets below), so `xcodebuild build`/`archive` do not pull in
+        # the test target -- which imports GodstoneMesh, a module not in the
+        # LIGHT app graph. Building it under LightRelease/generic/platform=iOS
+        # fails to resolve that module; keeping it test-only makes the
+        # Archive-only release build green on a clean checkout.
         Godstone: all
-        GodstoneMeshTests: test
     run:
       config: LightDebug
     test:
