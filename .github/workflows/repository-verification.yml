@@ -291,6 +291,16 @@ jobs:
       # byte-identical to what sync_ios_foundation_package.py would regenerate.
       - run: python scripts/sync_ios_foundation_package.py --check
       - run: swift test --package-path ios/Packages/GodstoneFoundation
+      # xcodegen is a HOST build tool, not a production dependency: it generates
+      # the .xcodeproj (gitignored) from ios/project.yml. It is not preinstalled
+      # on macos runners, so install it via Homebrew. Unlike the Gradle wrapper
+      # (A2: pinned, committed, checksum-verified) this is a regenerator whose
+      # output is drift-gated (sync --check) and never ships; provenance records
+      # the exact version used so the regenerator is identifiable per run.
+      - name: install xcodegen (project regenerator)
+        run: |
+          brew install xcodegen
+          xcodegen --version
       # xcodegen + xcodebuild Archive-only (LightRelease) is repo-owned green:
       # the app starts with a truthful local "Archive unavailable" state and
       # needs no model/native stack to build.
