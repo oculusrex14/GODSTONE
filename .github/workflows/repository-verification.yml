@@ -311,13 +311,15 @@ jobs:
           xcodebuild -project ios/Godstone.xcodeproj -scheme Godstone-Light
           -configuration LightRelease -destination 'generic/platform=iOS'
           CODE_SIGNING_ALLOWED=NO build
-      # Execute the 50 GodstoneMeshTests (GMP/2.1 wire vectors, Blake2s port
-      # vectors, router, Noise_XX handshake, GMP/2.1 msg-id/Bloom/PoW KAT parity)
-      # via xcodebuild on a simulator -- the real iOS test execution, not just the
-      # host swift-test mirror. The scheme's test action targets GodstoneMeshTests
-      # (test-only; see project.yml). Resolve the highest-numbered available
-      # iPhone simulator so the step is robust across Xcode/runner-image versions.
-      - name: xcodebuild test (50 GodstoneMeshTests on iOS Simulator)
+      # Execute the GodstoneMeshTests (GMP/2.1 wire vectors, Blake2s port
+      # vectors, router, Noise_XX handshake, GMP/2.1 msg-id/Bloom/PoW KAT parity,
+      # + Phase F PanicWipe state-machine tests) via xcodebuild on a simulator --
+      # the real iOS test execution, not just the host swift-test mirror. The
+      # scheme's test action targets GodstoneMeshTests (test-only; see
+      # project.yml). Resolve the highest-numbered available iPhone simulator so
+      # the step is robust across Xcode/runner-image versions. The count guard
+      # below is a >=50 regression floor, not an exact pin.
+      - name: xcodebuild test (GodstoneMeshTests on iOS Simulator)
         run: |
           set -e
           sim=$(xcrun simctl list devices available 2>/dev/null \
@@ -328,8 +330,20 @@ jobs:
             -configuration LightDebug \
             -destination "platform=iOS Simulator,name=${sim}" \
             CODE_SIGNING_ALLOWED=NO test 2>&1 | tee /tmp/xcb-test.log
-          grep -q "Executed 50 tests, with 0 failures" /tmp/xcb-test.log \
-            || { echo "::error::expected 50 GodstoneMeshTests with 0 failures"; exit 1; }
+          # Truthful, non-brittle guard: assert the run succeeded with 0
+          # failures and at least 50 executed tests (a regression below 50 --
+          # e.g. a compile failure silently dropping the suite -- fails this).
+          # The exact count is intentionally not pinned so adding tests (Phase F
+          # added 7 -> 57; Phase G will add more) does not break the gate.
+          grep -q "\*\* TEST SUCCEEDED \*\*" /tmp/xcb-test.log \
+            || { echo "::error::xcodebuild test did not report TEST SUCCEEDED"; exit 1; }
+          line=$(grep -oE "Executed [0-9]+ tests, with 0 failures" /tmp/xcb-test.log | tail -1)
+          [ -n "$line" ] \
+            || { echo "::error::no '0 failures' summary line found in xcodebuild output"; exit 1; }
+          n=$(printf '%s' "$line" | grep -oE "[0-9]+" | head -1)
+          [ "$n" -ge 50 ] \
+            || { echo "::error::expected at least 50 GodstoneMeshTests with 0 failures, got $n"; exit 1; }
+          echo "GodstoneMeshTests: $n executed, 0 failures (>=50 guard)"
       - name: provenance (final -- tree still clean)
         run: python ci/provenance.py --out provenance-final.json
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
