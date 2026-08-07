@@ -106,9 +106,13 @@ class Router(
      * is talking to whom.
      *
      * The sealed inner content carries the PoW nonce and created_at alongside the
-     * plaintext (ADR-001 §3): sealedInner = powNonce(8) || created_at_be(4) ||
-     * plaintext. SealedSender packs sender_node_id before that, so the AEAD
-     * authenticates sender + nonce + created_at + plaintext together.
+     * plaintext (ADR-001 §3): sealedInner = powNonce(8) || created_at_le(4) ||
+     * plaintext. created_at is the SAME uint32 epoch-second count used in msg_id
+     * derivation, serialised LITTLE-ENDIAN (ADR-001 §3.3) so there is one
+     * canonical created_at encoding across msg_id + PoW preimage + sealed payload
+     * and the recipient reconstructs the PoW preimage from the sealed bytes without
+     * any byte-order conversion. SealedSender packs sender_node_id before that, so
+     * the AEAD authenticates sender + nonce + created_at + plaintext together.
      *
      * msg_id = BLAKE2s-128(selfNodeId || created_at || plaintext) (MessageId.derive),
      * sender-computed and carried in the header. GROUP/BROADCAST mine the nonce
@@ -121,13 +125,13 @@ class Router(
         priority: Priority = Priority.DIRECT
     ): FrameV2 {
         val createdAt = System.currentTimeMillis() / 1000
-        val createdAtBe = MessageId.uint32Be(createdAt)
+        val createdAtLe = MessageId.uint32Le(createdAt)
         val powNonce = if (priority.requiresProofOfWork) {
-            ProofOfWork.mine(selfNodeId, createdAtBe, TypeV2.MESSAGE.code, plaintext)
+            ProofOfWork.mine(selfNodeId, createdAtLe, TypeV2.MESSAGE.code, plaintext)
         } else {
             ByteArray(ProofOfWork.NONCE_BYTES)
         }
-        val sealedInner = powNonce + createdAtBe + plaintext
+        val sealedInner = powNonce + createdAtLe + plaintext
         val sealed = io.godstone.mesh.seal.SealedSender.seal(
             sealedInner, selfNodeId, recipientStaticPub)
         val msgId = MessageId.derive(selfNodeId, createdAt, plaintext)
@@ -159,16 +163,16 @@ class Router(
     fun openSealedMessage(frame: FrameV2, ourStaticDhPriv: ByteArray): OpenedSealedMessage? {
         val opened = io.godstone.mesh.seal.SealedSender.open(frame.payload, ourStaticDhPriv)
             ?: return null
-        // opened.plaintext is the sealedInner we packed: powNonce(8) + created_at_be(4) + plaintext
+        // opened.plaintext is the sealedInner we packed: powNonce(8) + created_at_le(4) + plaintext
         val inner = opened.plaintext
         if (inner.size < ProofOfWork.NONCE_BYTES + 4) return null
         val powNonce = inner.copyOfRange(0, ProofOfWork.NONCE_BYTES)
-        val createdAtBe = inner.copyOfRange(ProofOfWork.NONCE_BYTES, ProofOfWork.NONCE_BYTES + 4)
+        val createdAtLe = inner.copyOfRange(ProofOfWork.NONCE_BYTES, ProofOfWork.NONCE_BYTES + 4)
         val plaintext = inner.copyOfRange(ProofOfWork.NONCE_BYTES + 4, inner.size)
         return OpenedSealedMessage(
             senderNodeId = opened.senderNodeId,
             powNonce = powNonce,
-            createdAtBe = createdAtBe,
+            createdAtLe = createdAtLe,
             plaintext = plaintext,
             frame = frame
         )
@@ -213,7 +217,7 @@ class Router(
 data class OpenedSealedMessage(
     val senderNodeId: ByteArray,
     val powNonce: ByteArray,
-    val createdAtBe: ByteArray,
+    val createdAtLe: ByteArray,
     val plaintext: ByteArray,
     val frame: FrameV2
 )

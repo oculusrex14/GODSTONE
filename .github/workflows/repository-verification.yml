@@ -311,13 +311,13 @@ jobs:
           xcodebuild -project ios/Godstone.xcodeproj -scheme Godstone-Light
           -configuration LightRelease -destination 'generic/platform=iOS'
           CODE_SIGNING_ALLOWED=NO build
-      # Execute the 25 GodstoneMeshTests (GMP/2.1 wire vectors, Blake2s port
-      # vectors, router, Noise_XX handshake) via xcodebuild on a simulator --
-      # the real iOS test execution, not just the host swift-test mirror. The
-      # scheme's test action targets GodstoneMeshTests (test-only; see
-      # project.yml). Resolve the highest-numbered available iPhone simulator
-      # so the step is robust across Xcode/runner-image versions.
-      - name: xcodebuild test (40 GodstoneMeshTests on iOS Simulator)
+      # Execute the 49 GodstoneMeshTests (GMP/2.1 wire vectors, Blake2s port
+      # vectors, router, Noise_XX handshake, GMP/2.1 msg-id/Bloom/PoW KAT parity)
+      # via xcodebuild on a simulator -- the real iOS test execution, not just the
+      # host swift-test mirror. The scheme's test action targets GodstoneMeshTests
+      # (test-only; see project.yml). Resolve the highest-numbered available
+      # iPhone simulator so the step is robust across Xcode/runner-image versions.
+      - name: xcodebuild test (49 GodstoneMeshTests on iOS Simulator)
         run: |
           set -e
           sim=$(xcrun simctl list devices available 2>/dev/null \
@@ -328,8 +328,8 @@ jobs:
             -configuration LightDebug \
             -destination "platform=iOS Simulator,name=${sim}" \
             CODE_SIGNING_ALLOWED=NO test 2>&1 | tee /tmp/xcb-test.log
-          grep -q "Executed 40 tests, with 0 failures" /tmp/xcb-test.log \
-            || { echo "::error::expected 40 GodstoneMeshTests with 0 failures"; exit 1; }
+          grep -q "Executed 49 tests, with 0 failures" /tmp/xcb-test.log \
+            || { echo "::error::expected 49 GodstoneMeshTests with 0 failures"; exit 1; }
       - name: provenance (final -- tree still clean)
         run: python ci/provenance.py --out provenance-final.json
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02

@@ -12,6 +12,7 @@
     "Sources/GodstoneCore/OracleOrchestration.swift": "7e0b12ffd1404987b246a062032cda6a8a07570fcf24dd6560a5aca89cac41e2",
     "Sources/GodstoneCore/OracleViewModel.swift": "b958ab9989e324805d21efc585b4069ac2e257d26a02cf7bd64fdfe85b90c3de",
     "Sources/GodstoneCore/PromptBuilder.swift": "512fc93fd0b7f21dd0f189e575ac499038e66186681a2068e4aaebcd8679fa89",
+    "Sources/GodstoneCore/ProofOfWork.swift": "21101cfcbc2438167c72a65e1a0f0956eaf179bc4a4e313efac98e31f6531664",
     "Sources/GodstoneCore/RetrievedChunk.swift": "0ab4a04803feb0214a2376ebc05bd74d8f46371b6e834f07dfc334b97a79c1bb",
     "Sources/GodstoneCore/Retriever.swift": "8521f1850cca8be0edadf3810fead1c2787e613e84ec05a319dc17b9802ea44b",
     "Sources/GodstoneCore/SafetyGate.swift": "7c318f9d86eedc458df56cf1fc12f781aa3b92979efc9968bf98be5c1bed5ff8",
@@ -32,6 +33,7 @@
     "Tests/GodstoneMeshTests/MessageIdTests.swift": "dc7ffdd66a4235d137b3ac09764d9a7bcdc5bca4b971c9ad64b715d61fd6725f",
     "Tests/GodstoneMeshTests/NoiseSessionTests.swift": "0ec84dbb480a9799c192873b18b719c9856bb62cdae7ee32495b86aab3e1af1f",
     "Tests/GodstoneMeshTests/PortVectorTests.swift": "08e4d81add95ada220f4bcc6d14a3b2acc0232b69064d376481390bbc10c9fb9",
+    "Tests/GodstoneMeshTests/ProofOfWorkTests.swift": "36c812c2321c2b12cd7577dd854862c05dc8ee1ca18277f83171724020ff6f1c",
     "Tests/GodstoneMeshTests/RouterTests.swift": "68f448d5b3d72df89dbf1dfd08df96e7e78518c9b9037cc7a1ed231aac13e532",
     "Tests/GodstoneMeshTests/WireV2VectorTests.swift": "49099a1535aa501763df0c2949949b76f14ee8b6e0f585abf4306a2f70e23c70"
   },
