@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.godstone.llm.rag.AnswerValidatorTest" tests="9" skipped="0" failures="0" errors="0" timestamp="2026-08-06T17:11:06" hostname="Naraharikripas-Mac-mini.local" time="0.014">
+  <properties/>
+  <testcase name="wrongUnitIsRejectedEvenWhenBareNumberMatches" classname="io.godstone.llm.rag.AnswerValidatorTest" time="0.008"/>
+  <testcase name="exactQuantityAndCitationAreAccepted" classname="io.godstone.llm.rag.AnswerValidatorTest" time="0.002"/>
+  <testcase name="invalidCitationIsRejected" classname="io.godstone.llm.rag.AnswerValidatorTest" time="0.0"/>
+  <testcase name="invalidOutputIsDiscardedInFull" classname="io.godstone.llm.rag.AnswerValidatorTest" time="0.001"/>
+  <testcase name="requiredWarningMustBePreserved" classname="io.godstone.llm.rag.AnswerValidatorTest" time="0.002"/>
+  <testcase name="wrongTimeUnitIsRejectedEvenWhenNumberMatches" classname="io.godstone.llm.rag.AnswerValidatorTest" time="0.0"/>
+  <testcase name="uncitedAnswerIsRejectedInFull" classname="io.godstone.llm.rag.AnswerValidatorTest" time="0.0"/>
+  <testcase name="uncitedHighRiskInstructionIsRejected" classname="io.godstone.llm.rag.AnswerValidatorTest" time="0.0"/>
+  <testcase name="denominatorOmissionIsRejected" classname="io.godstone.llm.rag.AnswerValidatorTest" time="0.0"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

@@ -1,0 +1,609 @@
+From source-exclusion fix: physically relocate dormant Mesh/SOS UI
+screens out of KGP's auto-wired src/main/java tree, and teach the
+shipping-path gate + dormant-wire inventory to scan src/main/dormant/java
+(which KGP does NOT auto-wire, so its .kt files never reach the compiler).
+
+diff --git a/android/app/build.gradle.kts b/android/app/build.gradle.kts
+--- a/android/app/build.gradle.kts
++++ b/android/app/build.gradle.kts
+@@ -71,18 +71,42 @@
+     // Assets are staged into this single variant directory only by
+     // scripts/prepare_release_assets.py after hash/tier/review verification.
+     sourceSets {
+-        getByName("main") {
+-            // Disabled transport UI is not compiled into the production app.
+-            java.exclude("io/godstone/app/ui/mesh/**")
+-            java.exclude("io/godstone/app/ui/sos/**")
+-        }
+-        getByName("light") { assets.setSrcDirs(listOf("src/light/assets")) }
++        named("light") { assets.setSrcDirs(listOf("src/light/assets")) }
+     }
+-
++    // Disabled transport UI (Mesh/SOS) is not compiled into the production app.
++    // These `java.exclude(...)` globs are BUILD-CONFIG EVIDENCE consumed by the
++    // shipping-path gate (ci/check_shipping_path.py): it reads them to decide
++    // which sources are dormant debt (excluded) vs. shipping (included). The
++    // bare `java` accessor is shadowed by a project-scope extension inside a
++    // `named("main") { ... }` lambda (Gradle Kotlin DSL resolves it to a
++    // Configuration, not the sourceSet's java directory set), so the excludes
++    // are applied through a typed sourceSet reference, where member access
++    // wins. The gate applies these globs to BOTH src/main/java (shipping
++    // sources) and src/main/dormant/java (where the dormant Mesh/SOS .kt
++    // files physically live) so that dropping a glob would re-include the
++    // dormant file and fail the gate (selftest sanity control).
++    sourceSets.getByName("main").java.exclude("io/godstone/app/ui/mesh/**")
++    sourceSets.getByName("main").java.exclude("io/godstone/app/ui/sos/**")
++    // The dormant Mesh/SOS UI screens physically live under src/main/dormant/java
++    // (NOT src/main/java). AGP/KGP auto-wires src/main/java and src/main/kotlin
++    // as Kotlin SOURCE DIRECTORIES and this cannot be prevented:
++    // KotlinCompile.getSources() (KGP; no longer extends AbstractCompile since
++    // Gradle 7) enumerates those directories with a **/*.kt include and IGNORES
++    // SourceDirectorySet.exclude() metadata (verified empirically: excludes
++    // registered on AGP's AndroidSourceSet.kotlin and on KGP's
++    // KotlinSourceSet.kotlin were both ignored, and setSrcDirs on either was
++    // overridden -- KGP re-adds src/main/java after evaluation). The dormant
++    // screens reference symbols only present in the non-shipping :mesh module,
++    // so they CANNOT compile. The only deterministic lever KGP/AGP honours is
++    // which directories are source directories at all: KGP auto-wires
++    // src/<sourceSet>/{java,kotlin} only, so src/main/dormant/java is NOT a
++    // source directory and its .kt files are never compiled. The gate still
++    // scans src/main/dormant/java and the java.exclude globs above classify
++    // those files as dormant debt, so the gate's evidence and sanity control
++    // are preserved while the build finally honours the exclusion.
+     packaging {
+         resources.excludes += "/META-INF/{AL2.0,LGPL2.1}"
+     }
+-
+     lint {
+         abortOnError = true
+         checkReleaseBuilds = true
+diff --git a/ci/check_shipping_path.py b/ci/check_shipping_path.py
+--- a/ci/check_shipping_path.py
++++ b/ci/check_shipping_path.py
+@@ -5,7 +5,12 @@
+ dependency is reachable from a LIGHT *shipping* build. "Reachable from a shipping
+ build" is decided by BUILD-CONFIG EVIDENCE, not by a blind text scan:
+ 
+-  * Android  -- the compiled source set of :app is ``android/app/src/main/**``
++  * Android  -- the compiled source set of :app is the union of
++               ``android/app/src/main/java`` (shipping sources) and
++               ``android/app/src/main/dormant/java`` (dormant Mesh/SOS sources
++               kept out of the Kotlin compile tree -- KGP auto-wires
++               ``src/<sourceSet>/{java,kotlin}`` only, so ``src/main/dormant/java``
++               is inert to the compiler while remaining on the gate's scan path),
+                MINUS the ``java.exclude(...)`` globs declared in
+                ``android/app/build.gradle.kts``, and the ``project(":...")``
+                dependency edges in the same file. A forbidden reference in an
+@@ -52,6 +57,15 @@
+ 
+ # Modules whose project() dependency from :app would pull legacy wire into shipping.
+ FORBIDDEN_ANDROID_DEP_MODULES = {"mesh"}
++
++# Source roots the gate scans for :app. ``src/main/java`` holds the SHIPPING .kt
++# sources (compiled by KGP). ``src/main/dormant/java`` holds the dormant Mesh/SOS
++# .kt files that KGP must NOT compile -- they reference :mesh-only symbols, and
++# AGP/KGP ignores SourceDirectorySet.exclude() metadata, so the only way to keep
++# them out of the compile is to keep them out of a source directory KGP auto-wires
++# (KGP auto-wires src/<sourceSet>/{java,kotlin} only). The java.exclude globs in
++# build.gradle.kts classify the dormant files as dormant debt on this scan path.
++ANDROID_SOURCE_ROOTS = ("java", "dormant/java")
+ 
+ 
+ # ---------------------------------------------------------------------------
+@@ -94,21 +108,54 @@
+     return re.compile("^" + "".join(out) + "$")
+ 
+ 
++def _android_source_files(app_src_main: Path):
++    """Yield (root, path) for each source file under each Android source root.
++
++    ``root`` is the per-root directory (e.g. src/main/java or src/main/dormant/java)
++    so callers compute the glob-relative path against the right root.
++    """
++    for rel_root in ANDROID_SOURCE_ROOTS:
++        root = app_src_main / rel_root
++        if not root.is_dir():
++            continue
++        for path in sorted(root.rglob("*")):
++            if path.is_file() and path.suffix in SOURCE_SUFFIXES:
++                yield root, path
++
++
+ def android_included_sources(app_src_main: Path, excludes: list[str]) -> list[Path]:
+-    """Source files compiled into :app: under src/main minus the exclude globs."""
+-    java_root = app_src_main / "java"
+-    if not java_root.is_dir():
+-        return []
++    """Source files compiled into :app: under src/main minus the exclude globs.
++
++    Scans both src/main/java (shipping) and src/main/dormant/java (dormant
++    Mesh/SOS); the java.exclude globs are applied to each root so glob-matched
++    files are dormant debt, not shipping path.
++    """
+     patterns = [glob_to_regex(g) for g in excludes]
+     included: list[Path] = []
+-    for path in sorted(java_root.rglob("*")):
+-        if not path.is_file() or path.suffix not in SOURCE_SUFFIXES:
+-            continue
+-        rel = path.relative_to(java_root).as_posix()
++    for root, path in _android_source_files(app_src_main):
++        rel = path.relative_to(root).as_posix()
+         if any(p.match(rel) for p in patterns):
+             continue  # compile-excluded -> dormant debt, not shipping path
+         included.append(path)
+     return included
++
++
++def android_excluded_sources(app_src_main: Path, excludes: list[str]) -> list[tuple[Path, str]]:
++    """:app sources a java.exclude glob removes from the LIGHT build (dormant debt).
++
++    Complementary to android_included_sources: the files MATCHING a glob. Shared
++    with ci/inventory_dormant_wire.py so "included" vs "excluded" is decided by
++    the same build-config evidence (single source of truth).
++    """
++    patterns = [glob_to_regex(g) for g in excludes]
++    excluded: list[tuple[Path, str]] = []
++    for root, path in _android_source_files(app_src_main):
++        rel = path.relative_to(root).as_posix()
++        for g, p in zip(excludes, patterns):
++            if p.match(rel):
++                excluded.append((path, g))
++                break
++    return excluded
+ 
+ 
+ # ---------------------------------------------------------------------------
+@@ -288,7 +335,11 @@
+     root = tmp / "repo"
+     # Android
+     (root / "android/app/src/main/java/io/godstone/app/ui/home").mkdir(parents=True)
+-    (root / "android/app/src/main/java/io/godstone/app/ui/mesh").mkdir(parents=True)
++    # Dormant Mesh source lives under src/main/dormant/java (NOT compiled by
++    # KGP, which auto-wires src/main/{java,kotlin} only), but on the gate's scan
++    # path so the java.exclude glob classifies it as dormant debt and the sanity
++    # control (drop the glob -> it becomes shipping) still fires.
++    (root / "android/app/src/main/dormant/java/io/godstone/app/ui/mesh").mkdir(parents=True)
+     (root / "android/app/build.gradle.kts").write_text(
+         'sourceSets { getByName("main") {\n'
+         '  java.exclude("io/godstone/app/ui/mesh/**")\n'
+@@ -301,7 +352,7 @@
+     (root / "android/app/src/main/java/io/godstone/app/ui/home/HomeScreen.kt").write_text(
+         "package io.godstone.app.ui.home\nfun Home() {}\n", encoding="utf-8")
+     # excluded source carrying a forbidden import (must NOT fail the gate)
+-    (root / "android/app/src/main/java/io/godstone/app/ui/mesh/MeshScreen.kt").write_text(
++    (root / "android/app/src/main/dormant/java/io/godstone/app/ui/mesh/MeshScreen.kt").write_text(
+         "import io.godstone.mesh.MeshNode\nfun MeshScreen(n: MeshNode) {}\n", encoding="utf-8")
+     # iOS
+     (root / "ios/Godstone/Sources/App").mkdir(parents=True)
+diff --git a/ci/inventory_dormant_wire.py b/ci/inventory_dormant_wire.py
+--- a/ci/inventory_dormant_wire.py
++++ b/ci/inventory_dormant_wire.py
+@@ -16,7 +16,9 @@
+ Dormant sources reported:
+   Android:
+     - :app main sources matching a ``java.exclude(...)`` glob (mesh/sos) -- not
+-      compiled into the LIGHT :app.
++      compiled into the LIGHT :app. These live under ``src/main/dormant/java``
++      (KGP auto-wires ``src/main/{java,kotlin}`` only, so that directory is not
++      a compile source), and the gate scans it as dormant debt.
+     - the separate ``:mesh`` module main sources -- not a dependency of :app.
+   iOS:
+     - ``.swift`` files under ios/Godstone/Sources/App/ that are NOT on the
+@@ -39,8 +41,8 @@
+ from check_shipping_path import (  # noqa: E402  (sibling module in ci/)
+     SOURCE_SUFFIXES,
+     android_exclude_globs,
++    android_excluded_sources,
+     android_project_deps,
+-    glob_to_regex,
+     parse_ios_app_target,
+ )
+ 
+@@ -48,23 +50,17 @@
+ 
+ 
+ def android_excluded_app_sources(root: Path) -> list[tuple[Path, str]]:
+-    """:app main sources that a java.exclude glob removes from the LIGHT build."""
++    """:app main sources that a java.exclude glob removes from the LIGHT build.
++
++    Delegates to check_shipping_path.android_excluded_sources so "included" vs
++    "excluded" is decided by the same build-config evidence (single source of
++    truth). The dormant files live under src/main/dormant/java (see
++    ANDROID_SOURCE_ROOTS in check_shipping_path).
++    """
+     gradle = root / "android/app/build.gradle.kts"
+     excludes = android_exclude_globs(gradle)
+-    patterns = [glob_to_regex(g) for g in excludes]
+-    java_root = root / "android/app/src/main/java"
+-    out: list[tuple[Path, str]] = []
+-    if not java_root.is_dir():
+-        return out
+-    for path in sorted(java_root.rglob("*")):
+-        if not path.is_file() or path.suffix not in SOURCE_SUFFIXES:
+-            continue
+-        rel = path.relative_to(java_root).as_posix()
+-        for g, p in zip(excludes, patterns):
+-            if p.match(rel):
+-                out.append((path, f"excluded from :app LIGHT by java.exclude(\"{g}\")"))
+-                break
+-    return out
++    excluded = android_excluded_sources(root / "android/app/src/main", excludes)
++    return [(p, f'excluded from :app LIGHT by java.exclude("{g}")') for p, g in excluded]
+ 
+ 
+ def android_mesh_module_sources(root: Path) -> list[tuple[Path, str]]:
+@@ -156,8 +152,10 @@
+ def _synth_repo(tmp: Path) -> Path:
+     root = tmp / "repo"
+     (root / "android/app/src/main/java/io/godstone/app/ui/home").mkdir(parents=True)
+-    (root / "android/app/src/main/java/io/godstone/app/ui/mesh").mkdir(parents=True)
+-    (root / "android/app/src/main/java/io/godstone/app/ui/sos").mkdir(parents=True)
++    # Dormant mesh/sos live under src/main/dormant/java (not compiled by KGP;
++    # see check_shipping_path.ANDROID_SOURCE_ROOTS), excluded by the globs.
++    (root / "android/app/src/main/dormant/java/io/godstone/app/ui/mesh").mkdir(parents=True)
++    (root / "android/app/src/main/dormant/java/io/godstone/app/ui/sos").mkdir(parents=True)
+     (root / "android/mesh/src/main/java/io/godstone/mesh").mkdir(parents=True)
+     (root / "android/app/build.gradle.kts").write_text(
+         'sourceSets { getByName("main") {\n'
+@@ -166,8 +164,8 @@
+         '} }\ndependencies {\n  implementation(project(":core"))\n  implementation(project(":llm"))\n}\n',
+         encoding="utf-8")
+     (root / "android/app/src/main/java/io/godstone/app/ui/home/HomeScreen.kt").write_text("fun Home() {}\n", encoding="utf-8")
+-    (root / "android/app/src/main/java/io/godstone/app/ui/mesh/MeshScreen.kt").write_text("import io.godstone.mesh.MeshNode\n", encoding="utf-8")
+-    (root / "android/app/src/main/java/io/godstone/app/ui/sos/SosScreen.kt").write_text("import io.godstone.mesh.MeshNode\n", encoding="utf-8")
++    (root / "android/app/src/main/dormant/java/io/godstone/app/ui/mesh/MeshScreen.kt").write_text("import io.godstone.mesh.MeshNode\n", encoding="utf-8")
++    (root / "android/app/src/main/dormant/java/io/godstone/app/ui/sos/SosScreen.kt").write_text("import io.godstone.mesh.MeshNode\n", encoding="utf-8")
+     (root / "android/mesh/src/main/java/io/godstone/mesh/MeshNode.kt").write_text("class MeshNode\n", encoding="utf-8")
+     (root / "ios/Godstone/Sources/App").mkdir(parents=True)
+     (root / "ios/Godstone/Sources/GodstoneMesh").mkdir(parents=True)
+@@ -189,8 +187,8 @@
+         items = build_inventory(root)
+         paths = {p for _c, p, _r in items}
+         # Must list the excluded/dormant files...
+-        for expected in ("android/app/src/main/java/io/godstone/app/ui/mesh/MeshScreen.kt",
+-                         "android/app/src/main/java/io/godstone/app/ui/sos/SosScreen.kt",
++        for expected in ("android/app/src/main/dormant/java/io/godstone/app/ui/mesh/MeshScreen.kt",
++                         "android/app/src/main/dormant/java/io/godstone/app/ui/sos/SosScreen.kt",
+                          "android/mesh/src/main/java/io/godstone/mesh/MeshNode.kt",
+                          "ios/Godstone/Sources/App/MeshView.swift",
+                          "ios/Godstone/Sources/App/SosView.swift",
+diff --git a/android/app/src/main/java/io/godstone/app/ui/mesh/MeshScreen.kt b/android/app/src/main/java/io/godstone/app/ui/mesh/MeshScreen.kt
+deleted file mode 100644
+--- a/android/app/src/main/java/io/godstone/app/ui/mesh/MeshScreen.kt
++++ /dev/null
+@@ -1,48 +0,0 @@
+-package io.godstone.app.ui.mesh
+-
+-import androidx.compose.foundation.layout.Arrangement
+-import androidx.compose.foundation.layout.Column
+-import androidx.compose.foundation.layout.fillMaxSize
+-import androidx.compose.foundation.layout.fillMaxWidth
+-import androidx.compose.foundation.layout.padding
+-import androidx.compose.material3.Card
+-import androidx.compose.material3.CardDefaults
+-import androidx.compose.material3.MaterialTheme
+-import androidx.compose.material3.Text
+-import androidx.compose.runtime.Composable
+-import androidx.compose.runtime.getValue
+-import androidx.compose.ui.Modifier
+-import androidx.compose.ui.unit.dp
+-import androidx.lifecycle.compose.collectAsStateWithLifecycle
+-import io.godstone.mesh.MeshNode
+-
+-/** Honest status surface. Radio enablement remains blocked until M1-wire/M2-link close. */
+-@Composable
+-fun MeshScreen(meshNode: MeshNode) {
+-    val status by meshNode.statusFlow.collectAsStateWithLifecycle()
+-    Column(
+-        modifier = Modifier.fillMaxSize().padding(20.dp),
+-        verticalArrangement = Arrangement.spacedBy(16.dp)
+-    ) {
+-        Text("Mesh", style = MaterialTheme.typography.titleLarge)
+-        Card(modifier = Modifier.fillMaxWidth()) {
+-            Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+-                Text(if (status.linkLayerReady) "Control plane ready" else "Transport not field-ready")
+-                Text(status.detail, style = MaterialTheme.typography.bodyLarge)
+-                Text("Nearby peers: ${status.peerCount}", style = MaterialTheme.typography.bodyMedium)
+-            }
+-        }
+-        Card(
+-            modifier = Modifier.fillMaxWidth(),
+-            colors = CardDefaults.cardColors(
+-                containerColor = MaterialTheme.colorScheme.errorContainer,
+-                contentColor = MaterialTheme.colorScheme.onErrorContainer
+-            )
+-        ) {
+-            Text(
+-                "Godstone will not activate radios or claim encrypted delivery until the canonical GMP/2.1 wire format, BLE record reassembly, and Noise handshake driver pass real two-device tests.",
+-                modifier = Modifier.padding(16.dp)
+-            )
+-        }
+-    }
+-}
+diff --git a/android/app/src/main/dormant/java/io/godstone/app/ui/mesh/MeshScreen.kt b/android/app/src/main/dormant/java/io/godstone/app/ui/mesh/MeshScreen.kt
+new file mode 100644
+--- /dev/null
++++ b/android/app/src/main/dormant/java/io/godstone/app/ui/mesh/MeshScreen.kt
+@@ -0,0 +1,48 @@
++package io.godstone.app.ui.mesh
++
++import androidx.compose.foundation.layout.Arrangement
++import androidx.compose.foundation.layout.Column
++import androidx.compose.foundation.layout.fillMaxSize
++import androidx.compose.foundation.layout.fillMaxWidth
++import androidx.compose.foundation.layout.padding
++import androidx.compose.material3.Card
++import androidx.compose.material3.CardDefaults
++import androidx.compose.material3.MaterialTheme
++import androidx.compose.material3.Text
++import androidx.compose.runtime.Composable
++import androidx.compose.runtime.getValue
++import androidx.compose.ui.Modifier
++import androidx.compose.ui.unit.dp
++import androidx.lifecycle.compose.collectAsStateWithLifecycle
++import io.godstone.mesh.MeshNode
++
++/** Honest status surface. Radio enablement remains blocked until M1-wire/M2-link close. */
++@Composable
++fun MeshScreen(meshNode: MeshNode) {
++    val status by meshNode.statusFlow.collectAsStateWithLifecycle()
++    Column(
++        modifier = Modifier.fillMaxSize().padding(20.dp),
++        verticalArrangement = Arrangement.spacedBy(16.dp)
++    ) {
++        Text("Mesh", style = MaterialTheme.typography.titleLarge)
++        Card(modifier = Modifier.fillMaxWidth()) {
++            Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
++                Text(if (status.linkLayerReady) "Control plane ready" else "Transport not field-ready")
++                Text(status.detail, style = MaterialTheme.typography.bodyLarge)
++                Text("Nearby peers: ${status.peerCount}", style = MaterialTheme.typography.bodyMedium)
++            }
++        }
++        Card(
++            modifier = Modifier.fillMaxWidth(),
++            colors = CardDefaults.cardColors(
++                containerColor = MaterialTheme.colorScheme.errorContainer,
++                contentColor = MaterialTheme.colorScheme.onErrorContainer
++            )
++        ) {
++            Text(
++                "Godstone will not activate radios or claim encrypted delivery until the canonical GMP/2.1 wire format, BLE record reassembly, and Noise handshake driver pass real two-device tests.",
++                modifier = Modifier.padding(16.dp)
++            )
++        }
++    }
++}
+diff --git a/android/app/src/main/java/io/godstone/app/ui/sos/SosScreen.kt b/android/app/src/main/java/io/godstone/app/ui/sos/SosScreen.kt
+deleted file mode 100644
+--- a/android/app/src/main/java/io/godstone/app/ui/sos/SosScreen.kt
++++ /dev/null
+@@ -1,112 +0,0 @@
+-package io.godstone.app.ui.sos
+-
+-import androidx.compose.foundation.gestures.detectTapGestures
+-import androidx.compose.foundation.layout.Arrangement
+-import androidx.compose.foundation.layout.Box
+-import androidx.compose.foundation.layout.Column
+-import androidx.compose.foundation.layout.Spacer
+-import androidx.compose.foundation.layout.fillMaxSize
+-import androidx.compose.foundation.layout.height
+-import androidx.compose.foundation.layout.padding
+-import androidx.compose.foundation.layout.size
+-import androidx.compose.material3.MaterialTheme
+-import androidx.compose.material3.Text
+-import androidx.compose.runtime.Composable
+-import androidx.compose.runtime.getValue
+-import androidx.compose.runtime.mutableStateOf
+-import androidx.compose.runtime.remember
+-import androidx.compose.runtime.rememberCoroutineScope
+-import androidx.compose.runtime.setValue
+-import androidx.compose.ui.Alignment
+-import androidx.compose.ui.Modifier
+-import androidx.compose.ui.input.pointer.pointerInput
+-import androidx.compose.ui.semantics.contentDescription
+-import androidx.compose.ui.semantics.semantics
+-import androidx.compose.ui.unit.dp
+-import io.godstone.mesh.MeshNode
+-import io.godstone.mesh.SosDispatchResult
+-import kotlinx.coroutines.launch
+-
+-sealed interface SosUiState {
+-    data object Idle : SosUiState
+-    data object Sending : SosUiState
+-    data class Unavailable(val reason: String) : SosUiState
+-    data object QueuedLocally : SosUiState
+-    data class HandedToRelays(val count: Int) : SosUiState
+-    data class Failed(val reason: String) : SosUiState
+-}
+-
+-/** A transport write is never labelled recipient delivery. */
+-@Composable
+-fun SosScreen(meshNode: MeshNode) {
+-    var state by remember { mutableStateOf<SosUiState>(SosUiState.Idle) }
+-    val scope = rememberCoroutineScope()
+-    val linkReady = MeshNode.LINK_LAYER_READY
+-    val buttonColor = if (linkReady) MaterialTheme.colorScheme.error
+-        else MaterialTheme.colorScheme.surfaceVariant
+-
+-    Column(
+-        modifier = Modifier.fillMaxSize().padding(20.dp),
+-        verticalArrangement = Arrangement.Center,
+-        horizontalAlignment = Alignment.CenterHorizontally
+-    ) {
+-        Text("SOS", style = MaterialTheme.typography.titleLarge)
+-        Text(
+-            if (linkReady) "Press and hold to queue a distress message."
+-            else "Mesh SOS is unavailable in this pre-alpha build.",
+-            style = MaterialTheme.typography.bodyLarge
+-        )
+-        Spacer(Modifier.height(24.dp))
+-        Box(
+-            modifier = Modifier
+-                .size(220.dp)
+-                .semantics { contentDescription = if (linkReady) "Hold to queue SOS" else "SOS unavailable" }
+-                .pointerInput(linkReady) {
+-                    if (linkReady) detectTapGestures(onLongPress = {
+-                        if (state is SosUiState.Sending) return@detectTapGestures
+-                        state = SosUiState.Sending
+-                        scope.launch {
+-                            state = when (val result = meshNode.broadcastSos("SOS".toByteArray())) {
+-                                is SosDispatchResult.Unavailable -> SosUiState.Unavailable(result.reason)
+-                                SosDispatchResult.QueuedLocally -> SosUiState.QueuedLocally
+-                                is SosDispatchResult.HandedToRelays -> SosUiState.HandedToRelays(result.count)
+-                                is SosDispatchResult.Failed -> SosUiState.Failed(result.reason)
+-                            }
+-                        }
+-                    })
+-                },
+-            contentAlignment = Alignment.Center
+-        ) {
+-            androidx.compose.foundation.Canvas(Modifier.fillMaxSize()) {
+-                drawCircle(color = buttonColor)
+-            }
+-            Text(
+-                when (state) {
+-                    SosUiState.Idle -> if (linkReady) "HOLD" else "DISABLED"
+-                    SosUiState.Sending -> "QUEUING"
+-                    is SosUiState.Unavailable -> "DISABLED"
+-                    SosUiState.QueuedLocally -> "QUEUED"
+-                    is SosUiState.HandedToRelays -> "RELAYED"
+-                    is SosUiState.Failed -> "RETRY"
+-                },
+-                style = MaterialTheme.typography.titleLarge
+-            )
+-        }
+-        Spacer(Modifier.height(24.dp))
+-        Text(
+-            when (val current = state) {
+-                SosUiState.Idle -> if (linkReady) {
+-                    "Queued means stored on this phone. Relayed means a nearby device accepted the encrypted record. Neither means a recipient acknowledged it."
+-                } else {
+-                    "The app refuses to show a success state while cross-platform encrypted transport is incomplete. Use local emergency services or another working communication method."
+-                }
+-                SosUiState.Sending -> "Writing to the local queue…"
+-                is SosUiState.Unavailable -> current.reason
+-                SosUiState.QueuedLocally -> "Stored on this phone; no relay accepted it yet."
+-                is SosUiState.HandedToRelays -> "Accepted by ${current.count} nearby relay(s); recipient acknowledgement has not been received."
+-                is SosUiState.Failed -> "Could not queue SOS: ${current.reason}"
+-            },
+-            style = MaterialTheme.typography.bodyMedium
+-        )
+-    }
+-}
+diff --git a/android/app/src/main/dormant/java/io/godstone/app/ui/sos/SosScreen.kt b/android/app/src/main/dormant/java/io/godstone/app/ui/sos/SosScreen.kt
+new file mode 100644
+--- /dev/null
++++ b/android/app/src/main/dormant/java/io/godstone/app/ui/sos/SosScreen.kt
+@@ -0,0 +1,112 @@
++package io.godstone.app.ui.sos
++
++import androidx.compose.foundation.gestures.detectTapGestures
++import androidx.compose.foundation.layout.Arrangement
++import androidx.compose.foundation.layout.Box
++import androidx.compose.foundation.layout.Column
++import androidx.compose.foundation.layout.Spacer
++import androidx.compose.foundation.layout.fillMaxSize
++import androidx.compose.foundation.layout.height
++import androidx.compose.foundation.layout.padding
++import androidx.compose.foundation.layout.size
++import androidx.compose.material3.MaterialTheme
++import androidx.compose.material3.Text
++import androidx.compose.runtime.Composable
++import androidx.compose.runtime.getValue
++import androidx.compose.runtime.mutableStateOf
++import androidx.compose.runtime.remember
++import androidx.compose.runtime.rememberCoroutineScope
++import androidx.compose.runtime.setValue
++import androidx.compose.ui.Alignment
++import androidx.compose.ui.Modifier
++import androidx.compose.ui.input.pointer.pointerInput
++import androidx.compose.ui.semantics.contentDescription
++import androidx.compose.ui.semantics.semantics
++import androidx.compose.ui.unit.dp
++import io.godstone.mesh.MeshNode
++import io.godstone.mesh.SosDispatchResult
++import kotlinx.coroutines.launch
++
++sealed interface SosUiState {
++    data object Idle : SosUiState
++    data object Sending : SosUiState
++    data class Unavailable(val reason: String) : SosUiState
++    data object QueuedLocally : SosUiState
++    data class HandedToRelays(val count: Int) : SosUiState
++    data class Failed(val reason: String) : SosUiState
++}
++
++/** A transport write is never labelled recipient delivery. */
++@Composable
++fun SosScreen(meshNode: MeshNode) {
++    var state by remember { mutableStateOf<SosUiState>(SosUiState.Idle) }
++    val scope = rememberCoroutineScope()
++    val linkReady = MeshNode.LINK_LAYER_READY
++    val buttonColor = if (linkReady) MaterialTheme.colorScheme.error
++        else MaterialTheme.colorScheme.surfaceVariant
++
++    Column(
++        modifier = Modifier.fillMaxSize().padding(20.dp),
++        verticalArrangement = Arrangement.Center,
++        horizontalAlignment = Alignment.CenterHorizontally
++    ) {
++        Text("SOS", style = MaterialTheme.typography.titleLarge)
++        Text(
++            if (linkReady) "Press and hold to queue a distress message."
++            else "Mesh SOS is unavailable in this pre-alpha build.",
++            style = MaterialTheme.typography.bodyLarge
++        )
++        Spacer(Modifier.height(24.dp))
++        Box(
++            modifier = Modifier
++                .size(220.dp)
++                .semantics { contentDescription = if (linkReady) "Hold to queue SOS" else "SOS unavailable" }
++                .pointerInput(linkReady) {
++                    if (linkReady) detectTapGestures(onLongPress = {
++                        if (state is SosUiState.Sending) return@detectTapGestures
++                        state = SosUiState.Sending
++                        scope.launch {
++                            state = when (val result = meshNode.broadcastSos("SOS".toByteArray())) {
++                                is SosDispatchResult.Unavailable -> SosUiState.Unavailable(result.reason)
++                                SosDispatchResult.QueuedLocally -> SosUiState.QueuedLocally
++                                is SosDispatchResult.HandedToRelays -> SosUiState.HandedToRelays(result.count)
++                                is SosDispatchResult.Failed -> SosUiState.Failed(result.reason)
++                            }
++                        }
++                    })
++                },
++            contentAlignment = Alignment.Center
++        ) {
++            androidx.compose.foundation.Canvas(Modifier.fillMaxSize()) {
++                drawCircle(color = buttonColor)
++            }
++            Text(
++                when (state) {
++                    SosUiState.Idle -> if (linkReady) "HOLD" else "DISABLED"
++                    SosUiState.Sending -> "QUEUING"
++                    is SosUiState.Unavailable -> "DISABLED"
++                    SosUiState.QueuedLocally -> "QUEUED"
++                    is SosUiState.HandedToRelays -> "RELAYED"
++                    is SosUiState.Failed -> "RETRY"
++                },
++                style = MaterialTheme.typography.titleLarge
++            )
++        }
++        Spacer(Modifier.height(24.dp))
++        Text(
++            when (val current = state) {
++                SosUiState.Idle -> if (linkReady) {
++                    "Queued means stored on this phone. Relayed means a nearby device accepted the encrypted record. Neither means a recipient acknowledged it."
++                } else {
++                    "The app refuses to show a success state while cross-platform encrypted transport is incomplete. Use local emergency services or another working communication method."
++                }
++                SosUiState.Sending -> "Writing to the local queue…"
++                is SosUiState.Unavailable -> current.reason
++                SosUiState.QueuedLocally -> "Stored on this phone; no relay accepted it yet."
++                is SosUiState.HandedToRelays -> "Accepted by ${current.count} nearby relay(s); recipient acknowledgement has not been received."
++                is SosUiState.Failed -> "Could not queue SOS: ${current.reason}"
++            },
++            style = MaterialTheme.typography.bodyMedium
++        )
++    }
++}

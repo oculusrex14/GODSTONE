@@ -1,0 +1,108 @@
+diff --git a/android/mesh/build.gradle.kts b/android/mesh/build.gradle.kts
+index 6be7e67..1eca5ba 100644
+--- a/android/mesh/build.gradle.kts
++++ b/android/mesh/build.gradle.kts
+@@ -1,6 +1,12 @@
+ plugins {
+     id("com.android.library")
+     id("org.jetbrains.kotlin.android")
++    // MeshService is @AndroidEntryPoint-injected (audit P0-02: the node is
++    // injected, not fetched from a holder). The :mesh module therefore needs
++    // Hilt + KSP, mirroring :app. Plugin versions are pinned once in the root
++    // build.gradle.kts (apply false); here they are applied unversioned.
++    id("com.google.dagger.hilt.android")
++    id("com.google.devtools.ksp")
+ }
+ 
+ android {
+@@ -25,8 +31,27 @@ dependencies {
+     implementation("androidx.core:core-ktx:1.13.1")
+     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.9.0")
+ 
+-    // Noise Protocol Framework, Java reference implementation.
+-    implementation("com.southernstorm:noise-java:1.0")
++    // Hilt for MeshService's @AndroidEntryPoint + @Inject (javax.inject.Inject
++    // arrives transitively via dagger). Versions match :app (Hilt 2.52).
++    implementation("com.google.dagger:hilt-android:2.52")
++    ksp("com.google.dagger:hilt-compiler:2.52")
++
++    // Noise Protocol Framework, Java reference implementation (Rhys Weatherley,
++    // Southern Storm Software; MIT). The original coordinate
++    // "com.southernstorm:noise-java" was NEVER published to Maven Central or any
++    // public Maven repository (the author distributed source only -- see
++    // rweather/noise-java issues #5 and #9). The build therefore could not
++    // resolve :mesh:debugCompileClasspath (ModuleVersionNotFoundException,
++    // demonstrated by evidence/android-phase0-online/gradle-phase0.log). The
++    // re-published fork com.github.auties00:noise-java:1.0 is the same rweather
++    // source, byte-compatible at the API surface -- it keeps the original
++    // com.southernstorm.noise.{crypto,protocol} packages verbatim (verified by
++    // inspecting the jar: CipherStatePair.class and HandshakeState.class live at
++    // com/southernstorm/noise/protocol/), so NoiseSession.kt's imports resolve
++    // unchanged. It is on Maven Central, so no new repository is required
++    // (settings.gradle.kts already declares mavenCentral()). sha256 of the jar:
++    // cd74c31ac946b1c83f4b27743cc5fd7178b2f61ef586590a2d9140b408c08246.
++    implementation("com.github.auties00:noise-java:1.0")
+ 
+     // BouncyCastle for BLAKE2s and Ed25519 where the platform lacks them.
+     implementation("org.bouncycastle:bcprov-jdk18on:1.78.1")
+diff --git a/android/mesh/src/main/java/io/godstone/mesh/crypto/NoiseSession.kt b/android/mesh/src/main/java/io/godstone/mesh/crypto/NoiseSession.kt
+index 32d9120..c367ad1 100644
+--- a/android/mesh/src/main/java/io/godstone/mesh/crypto/NoiseSession.kt
++++ b/android/mesh/src/main/java/io/godstone/mesh/crypto/NoiseSession.kt
+@@ -169,6 +169,14 @@ class NoiseSession private constructor(
+         handshake.destroy()
+     }
+ 
++    /** Authentication or replay-window failure on a transport message.
++     *  Nested directly on NoiseSession (NOT inside the companion object) so the
++     *  documented public name NoiseSession.AuthenticationException resolves
++     *  from other files; a class nested in a companion is not promoted to the
++     *  enclosing class name in Kotlin, which left the test's
++     *  assertFailsWith<NoiseSession.AuthenticationException> unresolved. */
++    class AuthenticationException : Exception("noise authentication failed")
++
+     companion object {
+         const val PATTERN = "Noise_XX_25519_ChaChaPoly_BLAKE2s"
+         private const val MAX_HANDSHAKE = 2048
+@@ -177,9 +185,6 @@ class NoiseSession private constructor(
+         private const val REKEY_MESSAGE_LIMIT = 1L shl 20
+         private const val REKEY_TIME_LIMIT_MS = 30 * 60 * 1000L
+ 
+-        /** Authentication or replay-window failure on a transport message. */
+-        class AuthenticationException : Exception("noise authentication failed")
+-
+         /**
+          * One-arg overloads: both peers bind the prologue with zero hints so the
+          * handshake completes without out-of-band hint exchange. The 3-arg
+diff --git a/android/app/src/test/java/io/godstone/app/ui/oracle/OracleViewModelTest.kt b/android/app/src/test/java/io/godstone/app/ui/oracle/OracleViewModelTest.kt
+index 198a187..5b5fea5 100644
+--- a/android/app/src/test/java/io/godstone/app/ui/oracle/OracleViewModelTest.kt
++++ b/android/app/src/test/java/io/godstone/app/ui/oracle/OracleViewModelTest.kt
+@@ -18,7 +18,9 @@ import kotlinx.coroutines.launch
+ import kotlinx.coroutines.test.StandardTestDispatcher
+ import kotlinx.coroutines.test.TestScope
+ import kotlinx.coroutines.test.advanceUntilIdle
++import kotlinx.coroutines.test.resetMain
+ import kotlinx.coroutines.test.runTest
++import kotlinx.coroutines.test.setMain
+ import kotlinx.coroutines.Dispatchers
+ import org.junit.Assert.assertEquals
+ import org.junit.Assert.assertFalse
+diff --git a/scripts/verify_android_phase0.sh b/scripts/verify_android_phase0.sh
+old mode 100644
+new mode 100755
+index 61193fa..50e7daa
+--- a/scripts/verify_android_phase0.sh
++++ b/scripts/verify_android_phase0.sh
+@@ -55,6 +55,11 @@ TIMESTAMP="$(date -u +%Y%m%dT%H%M%SZ)"
+ EVIDENCE_DIR="${EVIDENCE_DIR:-evidence/android-phase0-${TIMESTAMP}}"
+ mkdir -p "${EVIDENCE_DIR}"
+ STEPS_TSV="${EVIDENCE_DIR}/steps.tsv"
++# Truncate the per-step TSV at startup. run_step_shell appends (>>) to it, so
++# without this reset a rerun into the same evidence dir would carry stale rows
++# from every prior iteration and the summary writer would emit a misleading
++# multi-iteration steps array (including old FAILED entries) under a PASS verdict.
++: >"${STEPS_TSV}"
+ SUMMARY_JSON="${EVIDENCE_DIR}/summary.json"
+ META_TXT="${EVIDENCE_DIR}/environment.txt"
+ GIT_TXT="${EVIDENCE_DIR}/git.txt"

@@ -1,0 +1,8 @@
+xml	android/mesh/build/test-results/testDebugUnitTest/TEST-io.godstone.mesh.RouterTest.xml	sha256=2ea095b40d32e31b3838adcba6cbd1d18e46461e9cdeaeecf1a216796cfcd1be
+xml	android/mesh/build/test-results/testDebugUnitTest/TEST-io.godstone.mesh.ProofOfWorkTest.xml	sha256=61e577e39c7cb06bd60ab61455b25923b307ba11abf4d710c9a7a24e2236c74c
+xml	android/mesh/build/test-results/testDebugUnitTest/TEST-io.godstone.mesh.wire.v2.WireV2VectorTest.xml	sha256=315a379c15512353e21701ea0dfed3da276151c4bfa860d56048b9d31300c906
+xml	android/mesh/build/test-results/testDebugUnitTest/TEST-io.godstone.mesh.NoiseSessionTest.xml	sha256=1285cc6fbcbd29a5bec6fa1cf11ba8a3d99baca2f9939a5917b3c59c9b1a9a23
+xml	android/mesh/build/test-results/testDebugUnitTest/TEST-io.godstone.mesh.PortVectorTest.xml	sha256=7e8decae8a859a8563812dfc8e15f6db7962ab6594ca2e7033aeaa5ee8dac898
+xml	android/llm/build/test-results/testDebugUnitTest/TEST-io.godstone.llm.RagPipelineTest.xml	sha256=56dfdee9b0fc4df8640b8559c29d1ce9aea7235dd232aad1912f7af84799a46c
+xml	android/llm/build/test-results/testDebugUnitTest/TEST-io.godstone.llm.rag.AnswerValidatorTest.xml	sha256=703f2b3fd2cc8e42d61aec8028e9c509460b1782bdcfff81a473758d57ed17cf
+xml	android/app/build/test-results/testLightDebugUnitTest/TEST-io.godstone.app.ui.oracle.OracleViewModelTest.xml	sha256=165eb426b63948fddb76e49d7a6de5164ad679769addf391a92aeb930711bbc8

@@ -1,0 +1,412 @@
+diff --git a/android/mesh/src/main/java/io/godstone/mesh/crypto/NoiseSession.kt b/android/mesh/src/main/java/io/godstone/mesh/crypto/NoiseSession.kt
+index c367ad1..19f33cf 100644
+--- a/android/mesh/src/main/java/io/godstone/mesh/crypto/NoiseSession.kt
++++ b/android/mesh/src/main/java/io/godstone/mesh/crypto/NoiseSession.kt
+@@ -208,8 +208,8 @@ class NoiseSession private constructor(
+         ): NoiseSession {
+             val hs = HandshakeState(PATTERN, role)
+ 
+-            // prologue = "GMP1" || initiator_hint || responder_hint
+-            val prologue = "GMP1".toByteArray() + initiatorHint + responderHint
++            // prologue = "GMP2" || initiator_hint || responder_hint
++            val prologue = "GMP2".toByteArray() + initiatorHint + responderHint
+             hs.setPrologue(prologue, 0, prologue.size)
+ 
+             hs.localKeyPair.setPrivateKey(identity.staticDhPriv, 0)
+diff --git a/ci/check_parity.py b/ci/check_parity.py
+index 97f34bb..117e379 100644
+--- a/ci/check_parity.py
++++ b/ci/check_parity.py
+@@ -239,6 +239,44 @@ def invariant_f(r: Report) -> None:
+                    "see because Kotlin is never compiled:\n        "
+               + "\n        ".join(found))
+ 
++# ---------------------------------------------------------------- H
++def invariant_h(r: Report) -> None:
++    """The GMP/1 wire symbol is gone from every compiled Kotlin source (ADR-008).
++
++    A-01 cannot stay IMPLEMENTED_LOCAL_VERIFIED if the legacy GMP/1 frame type can
++    be re-introduced silently. The cutover (patch 16) deleted ``wire/Frame.kt``;
++    this invariant makes that deletion a merge block: it fails if the file
++    returns OR if any ``.kt`` source in any module references the GMP/1 frame
++    type by its FQN / bare import / the GMP/1 ``FrameType`` enum (the GMP/2.1
++    codec uses ``TypeV2``, so ``FrameType`` is GMP/1-only). The GMP/2.1 type
++    ``io.godstone.mesh.wire.v2.FrameV2`` is NOT matched: ``wire.Frame`` is not a
++    substring of ``wire.v2.FrameV2`` and the regexes anchor on ``wire.Frame`` /
++    ``\bFrameType\b``.
++    """
++    android = ROOT / "android"
++    frame_file = (android / "mesh/src/main/java/io/godstone/mesh"
++                  "/wire/Frame.kt")
++    needles = {
++        "io.godstone.mesh.wire.Frame": re.compile(r"\bio\.godstone\.mesh\.wire\.Frame\b"),
++        "FrameType (GMP/1 enum)": re.compile(r"\bFrameType\b"),
++        "import io.godstone.mesh.wire.Frame": re.compile(
++            r"import\s+io\.godstone\.mesh\.wire\.Frame\b"),
++    }
++    hits: list[str] = []
++    if frame_file.exists():
++        hits.append(f"{frame_file.relative_to(ROOT)}: GMP/1 frame source still present")
++    for f in sorted(android.rglob("*.kt")):
++        src = f.read_text(encoding="utf-8", errors="ignore")
++        for label, rx in needles.items():
++            if rx.search(src):
++                hits.append(f"{f.relative_to(ROOT)}: GMP/1 symbol `{label}` survives")
++    if hits:
++        r.bad("H", "GMP/1 wire symbol survives the cutover -- A-01 cannot hold:\n        "
++              + "\n        ".join(hits))
++        return
++    r.ok("H", "no GMP/1 wire symbol (Frame/FrameType) in any Kotlin source")
++
++
+ # ---------------------------------------------------------------- G
+ def invariant_g(r: Report) -> None:
+     """Integration reachability (ci/integration.py).
+@@ -279,6 +317,7 @@ def main() -> int:
+     invariant_e(r)
+     invariant_f(r)
+     invariant_g(r)
++    invariant_h(r)
+ 
+     print("=" * 62)
+     print(f"passed={len(r.passed)} failed={len(r.failed)}")
+diff --git a/ci/symbols.py b/ci/symbols.py
+index 5ff0cc2..4928dac 100644
+--- a/ci/symbols.py
++++ b/ci/symbols.py
+@@ -56,6 +56,17 @@ TYPE_DECL = re.compile(
+     r"(?:\s*:\s*([^{]+))?",
+     re.M)
+ 
++# `data class Name` -- a data class synthesises copy(), equals(), hashCode(),
++# toString() and componentN() that never appear as `fun` in source. Without this,
++# R2 flags `frame.copy(...)` as unresolved -- a false positive the GMP/2.1 cutover
++# exposed (Router.openSealedMessage holds `val frame: FrameV2`, so the receiver
++# `frame` in `forwardCopy` is type-resolved against the FrameV2 data class). The
++# compiler accepts the call; this resolver must too.
++DATA_CLASS = re.compile(
++    r"^\s*(?:public\s+|internal\s+|private\s+|abstract\s+|open\s+|sealed\s+)*"
++    r"data\s+class\s+([A-Z][\w]*)", re.M)
++DATA_SYNTHETIC = {"copy", "equals", "hashCode", "toString"}
++
+ FUN_DECL = re.compile(
+     r"^\s*(?:@\w+\s+)*(?:public\s+|internal\s+|private\s+|protected\s+)?"
+     r"(?P<override>override\s+)?(?:abstract\s+|open\s+|suspend\s+|inline\s+)*"
+@@ -115,6 +126,12 @@ def parse_types(files: list[Path]) -> tuple[dict, dict]:
+                          for b in m.group(2).split(",")]
+                 supers.setdefault(name, []).extend(
+                     b for b in bases if b and b[0].isupper())
++    # A data class synthesises copy()/equals()/hashCode()/toString() that are
++    # never written as `fun` in source; add them so R2 does not flag valid
++    # `x.copy(...)` calls as unresolved (see DATA_CLASS docstring).
++    for dm in DATA_CLASS.finditer("\n".join(f.read_text(encoding="utf-8", errors="ignore")
++                                           for f in files)):
++        members.setdefault(dm.group(1), set()).update(DATA_SYNTHETIC)
+     return members, supers
+ 
+ 
+@@ -184,10 +201,10 @@ def selftest(root: Path) -> int:
+     print("SELFTEST -- reintroducing the inherited Router/MessageStore defect\n")
+     try:
+         broken = original.replace(
+-            "    suspend fun forEachHeldOrderedByPriority(visit: (Frame) -> Boolean)\n",
++            "    suspend fun forEachHeldOrderedByPriority(visit: (FrameV2) -> Boolean)\n",
+             "", 1).replace(
+             "    /** Stream held msg_ids, stopping as soon as [visit] returns false. */\n"
+-            "    suspend fun forEachHeldMsgId(visit: (Long) -> Boolean)\n", "", 1)
++            "    suspend fun forEachHeldMsgId(visit: (ByteArray) -> Boolean)\n", "", 1)
+         if broken == original:
+             print("  BROKEN -- could not reintroduce the defect; anchors moved")
+             return 1
+diff --git a/crypto/derivation.py b/crypto/derivation.py
+index cca0148..91f1c6b 100644
+--- a/crypto/derivation.py
++++ b/crypto/derivation.py
+@@ -29,7 +29,7 @@ from dataclasses import dataclass
+ 
+ NODE_ID_BYTES = 16
+ NODE_HINT_BYTES = 4
+-PROLOGUE_MAGIC = b"GMP1"
++PROLOGUE_MAGIC = b"GMP2"
+ PROTOCOL_NAME = b"Noise_XX_25519_ChaChaPoly_BLAKE2s"
+ HASHLEN = 32
+ 
+@@ -59,7 +59,7 @@ def node_hint(nid: bytes) -> bytes:
+ 
+ 
+ def prologue(initiator_hint: bytes, responder_hint: bytes) -> bytes:
+-    """prologue = "GMP1" || initiator_hint || responder_hint."""
++    """prologue = "GMP2" || initiator_hint || responder_hint."""
+     if len(initiator_hint) != NODE_HINT_BYTES or len(responder_hint) != NODE_HINT_BYTES:
+         raise ValueError("node hints are 4 bytes each")
+     return PROLOGUE_MAGIC + initiator_hint + responder_hint
+diff --git a/crypto/handshake_vectors.json b/crypto/handshake_vectors.json
+index 76c5b76..b8cd05c 100644
+--- a/crypto/handshake_vectors.json
++++ b/crypto/handshake_vectors.json
+@@ -48,22 +48,22 @@
+         1837
+       ]
+     },
+-    "prologue": "474d5031ff026532539f8552",
+-    "initial_h": "3445582716c4b0bc42d1a0724840e3e147927fc2499265015ac9030ec7ed1df6"
++    "prologue": "474d5032ff026532539f8552",
++    "initial_h": "3fde6bd8f2598bbc3670a49895a07aacf832a03e1af6b86f0a7374dd7e472a7b"
+   },
+   "handshake": {
+     "pattern": "XX",
+     "messages": [
+       "0faa684ed28867b97f4a6a2dee5df8ce974e76b7018e3f22a1c4cf2678570f20",
+-      "ff2ee45601ec1b67310c7790404585ae697331eee1c1f8cf2419731c1fff3e6b34844ab378b06d2634652a1eb7d2b6c67c2082af188b41dd5e7da57cf64439f32c12db4cd7c89b73e675484c6f59b8244a941748129ba090d1179184ca4d2009",
+-      "75537efbe989fb8406a0dcce52dbec0f832fd70f3c37a8f6efb0d8b74afcc1a5856fb7d84d5e1c0cc4a64162a4479126e6db8a151e87c2ea27946b309c52ffe0"
++      "ff2ee45601ec1b67310c7790404585ae697331eee1c1f8cf2419731c1fff3e6b34844ab378b06d2634652a1eb7d2b6c67c2082af188b41dd5e7da57cf64439f37c55bc52fd5fe08b835cbff24fc1525881252ffa2c72625924ec515cac382fdb",
++      "75537efbe989fb8406a0dcce52dbec0f832fd70f3c37a8f6efb0d8b74afcc1a542a99e983a449149d4aada1d042eba241e6b676967959974944d0147faf1e635"
+     ],
+     "message_sizes": [
+       32,
+       96,
+       64
+     ],
+-    "handshake_hash": "e739642de9ee74e42deb15c7dceb41411d8255ab9c6ab5ad6c6ed4e66150ea92",
++    "handshake_hash": "e5d0c20cf40f969075308f3c263e7d45c22d8215c90d826348bec3dec0a34de3",
+     "send_key": "4af63937a457e039e37efc8bf53b1daaf1e7936d69e7d3f778fc99d459459b66",
+     "recv_key": "b8f26c60cb806dbc1a94e91fee3da6a7b099d31311cdcdd08c4242cd096aee5d",
+     "initiator_trace": [
+@@ -76,67 +76,67 @@
+       {
+         "token": "prologue",
+         "ck": "1ceedd81c5f458b225923dc2507787bf156f9251fc17c45af63263a929fc1ed2",
+-        "h": "3445582716c4b0bc42d1a0724840e3e147927fc2499265015ac9030ec7ed1df6",
++        "h": "3fde6bd8f2598bbc3670a49895a07aacf832a03e1af6b86f0a7374dd7e472a7b",
+         "k": null
+       },
+       {
+         "token": "w0:e",
+         "ck": "1ceedd81c5f458b225923dc2507787bf156f9251fc17c45af63263a929fc1ed2",
+-        "h": "2c8c0a17d77d5e3b0d082deb7792591ca8b852a3562de7b58af39d6657e91ab0",
++        "h": "acfe7be7dd581d269220f707ede816353d1f21b79592cb12dfd543eb3c646023",
+         "k": null
+       },
+       {
+         "token": "w0:payload",
+         "ck": "1ceedd81c5f458b225923dc2507787bf156f9251fc17c45af63263a929fc1ed2",
+-        "h": "5b64d55f6e998b9b9d6a68bc38ca48e8c910e48f72b3c52893aff6dddafc4351",
++        "h": "029b8344fdad558f0574676d8debc5340aebb8d39ef5ea17553fca1e1c71d985",
+         "k": null
+       },
+       {
+         "token": "r1:e",
+         "ck": "1ceedd81c5f458b225923dc2507787bf156f9251fc17c45af63263a929fc1ed2",
+-        "h": "4f9327adf9fd3a32349e5f3d53790abf474cf91009bd74d24d29614bc36cb9ad",
++        "h": "ee0bcac12c782cc30f08e2ced008f9004883a5412fe5b4f0e8f039a7386e8af1",
+         "k": null
+       },
+       {
+         "token": "r1:ee",
+         "ck": "d7fd38a20ac2cae0fe05bdb08e00d60d626bfa83062855e3664aa773212876b1",
+-        "h": "4f9327adf9fd3a32349e5f3d53790abf474cf91009bd74d24d29614bc36cb9ad",
++        "h": "ee0bcac12c782cc30f08e2ced008f9004883a5412fe5b4f0e8f039a7386e8af1",
+         "k": "2ba99b47ce7f9948add4f02a099ae59cb0e6439ccd5158e7ac9b89ec7d832e25"
+       },
+       {
+         "token": "r1:s",
+         "ck": "d7fd38a20ac2cae0fe05bdb08e00d60d626bfa83062855e3664aa773212876b1",
+-        "h": "5c951d91d8a5203e87f5c1ffbd25e5de4f29f3ff53dede823ea1bbbaf5368ca0",
++        "h": "eff1ce73e9df860f27598fdab513bfb699d405040f655cd2e6ac9bdc39d0071e",
+         "k": "2ba99b47ce7f9948add4f02a099ae59cb0e6439ccd5158e7ac9b89ec7d832e25"
+       },
+       {
+         "token": "r1:es",
+         "ck": "fd00d1164055f830542571ed1d1b4abd091ae2e29aa3e9b963feffbec059a3ac",
+-        "h": "5c951d91d8a5203e87f5c1ffbd25e5de4f29f3ff53dede823ea1bbbaf5368ca0",
++        "h": "eff1ce73e9df860f27598fdab513bfb699d405040f655cd2e6ac9bdc39d0071e",
+         "k": "7470b8580d38aafa7b616c6429de8ce6cdf256a69f6944feac88ce324e55626a"
+       },
+       {
+         "token": "r1:payload",
+         "ck": "fd00d1164055f830542571ed1d1b4abd091ae2e29aa3e9b963feffbec059a3ac",
+-        "h": "7cb1823044f0b678068f9197af1bcdc3d655aa9f06e7c650abe950b263489632",
++        "h": "bd87607fd46ebfd1a4b6683e5e4b9fc1c1097d22a7fb5f10a3e4af338cca9679",
+         "k": "7470b8580d38aafa7b616c6429de8ce6cdf256a69f6944feac88ce324e55626a"
+       },
+       {
+         "token": "w2:s",
+         "ck": "fd00d1164055f830542571ed1d1b4abd091ae2e29aa3e9b963feffbec059a3ac",
+-        "h": "bd5574d4a68b7fedcc5a0a9bbbf080a99110cd390b7de41ece98cf87659c1065",
++        "h": "50c8f8db92cb8be1b3e2a44953b4260b0ee8c04bfd15d875c97bb720ddd363b0",
+         "k": "7470b8580d38aafa7b616c6429de8ce6cdf256a69f6944feac88ce324e55626a"
+       },
+       {
+         "token": "w2:se",
+         "ck": "8339ad91c0d742ac2c9f1f33ccd62f711f518d202891ffc8d8b1b0913557f608",
+-        "h": "bd5574d4a68b7fedcc5a0a9bbbf080a99110cd390b7de41ece98cf87659c1065",
++        "h": "50c8f8db92cb8be1b3e2a44953b4260b0ee8c04bfd15d875c97bb720ddd363b0",
+         "k": "803cd4cf1efce0de5a0d91cf736bed1c6a9e9c3c8fd6725c2da1385031f1f99c"
+       },
+       {
+         "token": "w2:payload",
+         "ck": "8339ad91c0d742ac2c9f1f33ccd62f711f518d202891ffc8d8b1b0913557f608",
+-        "h": "e739642de9ee74e42deb15c7dceb41411d8255ab9c6ab5ad6c6ed4e66150ea92",
++        "h": "e5d0c20cf40f969075308f3c263e7d45c22d8215c90d826348bec3dec0a34de3",
+         "k": "803cd4cf1efce0de5a0d91cf736bed1c6a9e9c3c8fd6725c2da1385031f1f99c"
+       }
+     ],
+@@ -150,67 +150,67 @@
+       {
+         "token": "prologue",
+         "ck": "1ceedd81c5f458b225923dc2507787bf156f9251fc17c45af63263a929fc1ed2",
+-        "h": "3445582716c4b0bc42d1a0724840e3e147927fc2499265015ac9030ec7ed1df6",
++        "h": "3fde6bd8f2598bbc3670a49895a07aacf832a03e1af6b86f0a7374dd7e472a7b",
+         "k": null
+       },
+       {
+         "token": "r0:e",
+         "ck": "1ceedd81c5f458b225923dc2507787bf156f9251fc17c45af63263a929fc1ed2",
+-        "h": "2c8c0a17d77d5e3b0d082deb7792591ca8b852a3562de7b58af39d6657e91ab0",
++        "h": "acfe7be7dd581d269220f707ede816353d1f21b79592cb12dfd543eb3c646023",
+         "k": null
+       },
+       {
+         "token": "r0:payload",
+         "ck": "1ceedd81c5f458b225923dc2507787bf156f9251fc17c45af63263a929fc1ed2",
+-        "h": "5b64d55f6e998b9b9d6a68bc38ca48e8c910e48f72b3c52893aff6dddafc4351",
++        "h": "029b8344fdad558f0574676d8debc5340aebb8d39ef5ea17553fca1e1c71d985",
+         "k": null
+       },
+       {
+         "token": "w1:e",
+         "ck": "1ceedd81c5f458b225923dc2507787bf156f9251fc17c45af63263a929fc1ed2",
+-        "h": "4f9327adf9fd3a32349e5f3d53790abf474cf91009bd74d24d29614bc36cb9ad",
++        "h": "ee0bcac12c782cc30f08e2ced008f9004883a5412fe5b4f0e8f039a7386e8af1",
+         "k": null
+       },
+       {
+         "token": "w1:ee",
+         "ck": "d7fd38a20ac2cae0fe05bdb08e00d60d626bfa83062855e3664aa773212876b1",
+-        "h": "4f9327adf9fd3a32349e5f3d53790abf474cf91009bd74d24d29614bc36cb9ad",
++        "h": "ee0bcac12c782cc30f08e2ced008f9004883a5412fe5b4f0e8f039a7386e8af1",
+         "k": "2ba99b47ce7f9948add4f02a099ae59cb0e6439ccd5158e7ac9b89ec7d832e25"
+       },
+       {
+         "token": "w1:s",
+         "ck": "d7fd38a20ac2cae0fe05bdb08e00d60d626bfa83062855e3664aa773212876b1",
+-        "h": "5c951d91d8a5203e87f5c1ffbd25e5de4f29f3ff53dede823ea1bbbaf5368ca0",
++        "h": "eff1ce73e9df860f27598fdab513bfb699d405040f655cd2e6ac9bdc39d0071e",
+         "k": "2ba99b47ce7f9948add4f02a099ae59cb0e6439ccd5158e7ac9b89ec7d832e25"
+       },
+       {
+         "token": "w1:es",
+         "ck": "fd00d1164055f830542571ed1d1b4abd091ae2e29aa3e9b963feffbec059a3ac",
+-        "h": "5c951d91d8a5203e87f5c1ffbd25e5de4f29f3ff53dede823ea1bbbaf5368ca0",
++        "h": "eff1ce73e9df860f27598fdab513bfb699d405040f655cd2e6ac9bdc39d0071e",
+         "k": "7470b8580d38aafa7b616c6429de8ce6cdf256a69f6944feac88ce324e55626a"
+       },
+       {
+         "token": "w1:payload",
+         "ck": "fd00d1164055f830542571ed1d1b4abd091ae2e29aa3e9b963feffbec059a3ac",
+-        "h": "7cb1823044f0b678068f9197af1bcdc3d655aa9f06e7c650abe950b263489632",
++        "h": "bd87607fd46ebfd1a4b6683e5e4b9fc1c1097d22a7fb5f10a3e4af338cca9679",
+         "k": "7470b8580d38aafa7b616c6429de8ce6cdf256a69f6944feac88ce324e55626a"
+       },
+       {
+         "token": "r2:s",
+         "ck": "fd00d1164055f830542571ed1d1b4abd091ae2e29aa3e9b963feffbec059a3ac",
+-        "h": "bd5574d4a68b7fedcc5a0a9bbbf080a99110cd390b7de41ece98cf87659c1065",
++        "h": "50c8f8db92cb8be1b3e2a44953b4260b0ee8c04bfd15d875c97bb720ddd363b0",
+         "k": "7470b8580d38aafa7b616c6429de8ce6cdf256a69f6944feac88ce324e55626a"
+       },
+       {
+         "token": "r2:se",
+         "ck": "8339ad91c0d742ac2c9f1f33ccd62f711f518d202891ffc8d8b1b0913557f608",
+-        "h": "bd5574d4a68b7fedcc5a0a9bbbf080a99110cd390b7de41ece98cf87659c1065",
++        "h": "50c8f8db92cb8be1b3e2a44953b4260b0ee8c04bfd15d875c97bb720ddd363b0",
+         "k": "803cd4cf1efce0de5a0d91cf736bed1c6a9e9c3c8fd6725c2da1385031f1f99c"
+       },
+       {
+         "token": "r2:payload",
+         "ck": "8339ad91c0d742ac2c9f1f33ccd62f711f518d202891ffc8d8b1b0913557f608",
+-        "h": "e739642de9ee74e42deb15c7dceb41411d8255ab9c6ab5ad6c6ed4e66150ea92",
++        "h": "e5d0c20cf40f969075308f3c263e7d45c22d8215c90d826348bec3dec0a34de3",
+         "k": "803cd4cf1efce0de5a0d91cf736bed1c6a9e9c3c8fd6725c2da1385031f1f99c"
+       }
+     ]
+@@ -219,14 +219,14 @@
+     "quirk_hkdf_ios": {
+       "description": "Hkdf.swift returned temp_key as ck and fed material||0x01 instead of 0x01",
+       "must_differ_from_conformant": true,
+-      "handshake_hash": "1525ae0a97c4d95849e8853ea544f10d46cdba40852cfd0f31eda23a6a9c4f6e",
++      "handshake_hash": "4f40792a71da18a099421fbe8264044dde86516e951294d1040615d998d9a818",
+       "send_key": "aefa30c48e2ad4d322bcef3b27226f9c29504f7dd5c4e134055fd6ae8f2f6b68",
+       "differs": true
+     },
+     "quirk_nonce_be": {
+       "description": "NoiseSession.swift used big-endian ChaCha nonces; spec 12.3 is little-endian",
+       "must_differ_from_conformant": true,
+-      "handshake_hash": "fe1cdbd7925a02ddf16bfde939f3b0bb157ba38d283e786c5b07ebf5580a22f3",
++      "handshake_hash": "a3bd0c2f1b6de9223023c1dd1172e52b7883efa5f97d90e6da17d7a1513c39ed",
+       "send_key": "4af63937a457e039e37efc8bf53b1daaf1e7936d69e7d3f778fc99d459459b66",
+       "differs": true
+     },
+@@ -234,8 +234,8 @@
+       "description": "MeshIdentity.swift derived node_id from the X25519 agreement key; PROTOCOL.md:49 specifies the Ed25519 identity key. Diverges h BEFORE the first DH.",
+       "must_differ_from_conformant": true,
+       "node_hint": "e5daf91a",
+-      "prologue": "474d5031e5daf91a539f8552",
+-      "initial_h": "69519343203f69b210208f5aca220613e0c710fc0c1cbd48e4e154d1a570d710",
++      "prologue": "474d5032e5daf91a539f8552",
++      "initial_h": "00f2e7fc613e0681fa8de4eb6797f9e303b5fd5500b419bfcf171ac1f2be0298",
+       "differs": true
+     }
+   }
+diff --git a/crypto/noise_ref.py b/crypto/noise_ref.py
+index 6c528c3..f87574f 100644
+--- a/crypto/noise_ref.py
++++ b/crypto/noise_ref.py
+@@ -42,7 +42,7 @@ HASHLEN = 32
+ DHLEN = 32
+ TAGLEN = 16
+ BLOCKLEN = 64          # BLAKE2s block, for HMAC
+-PROLOGUE_MAGIC = b"GMP1"
++PROLOGUE_MAGIC = b"GMP2"
+ EMPTY = b""
+ 
+ 
+diff --git a/crypto/test_conformance.py b/crypto/test_conformance.py
+index e997596..ef49328 100644
+--- a/crypto/test_conformance.py
++++ b/crypto/test_conformance.py
+@@ -97,7 +97,7 @@ def main() -> int:
+ 
+     pro = D.prologue(bytes.fromhex(dc["initiator"]["node_hint"]),
+                      bytes.fromhex(dc["responder"]["node_hint"]))
+-    r.check(pro.hex() == dc["prologue"], "prologue = GMP1||i_hint||r_hint")
++    r.check(pro.hex() == dc["prologue"], "prologue = GMP2||i_hint||r_hint")
+     r.check(D.initial_h(pro).hex() == dc["initial_h"], "initial h")
+ 
+     print("\n3. XX transcript  (per-token ck / h / k, both sides)")
+diff --git a/ios/Godstone/Sources/GodstoneMesh/NoiseSession.swift b/ios/Godstone/Sources/GodstoneMesh/NoiseSession.swift
+index 783c5c0..7c03bbb 100644
+--- a/ios/Godstone/Sources/GodstoneMesh/NoiseSession.swift
++++ b/ios/Godstone/Sources/GodstoneMesh/NoiseSession.swift
+@@ -86,7 +86,7 @@ public final class NoiseSession {
+         self.staticKey = staticKey
+         self.ephemeral = Curve25519.KeyAgreement.PrivateKey()
+ 
+-        var prologue = Data("GMP1".utf8)
++        var prologue = Data("GMP2".utf8)
+         // Canonical ordering: initiator hint first, both sides agree.
+         if role == .initiator {
+             prologue.append(localHint); prologue.append(remoteHint)
+diff --git a/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/NoiseSession.swift b/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/NoiseSession.swift
+index 783c5c0..7c03bbb 100644
+--- a/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/NoiseSession.swift
++++ b/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/NoiseSession.swift
+@@ -86,7 +86,7 @@ public final class NoiseSession {
+         self.staticKey = staticKey
+         self.ephemeral = Curve25519.KeyAgreement.PrivateKey()
+ 
+-        var prologue = Data("GMP1".utf8)
++        var prologue = Data("GMP2".utf8)
+         // Canonical ordering: initiator hint first, both sides agree.
+         if role == .initiator {
+             prologue.append(localHint); prologue.append(remoteHint)

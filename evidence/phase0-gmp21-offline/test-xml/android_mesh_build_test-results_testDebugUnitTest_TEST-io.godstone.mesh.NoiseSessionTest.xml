@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.godstone.mesh.NoiseSessionTest" tests="10" skipped="0" failures="0" errors="0" timestamp="2026-08-07T00:54:11" hostname="Naraharikripas-Mac-mini.local" time="0.149">
+  <properties/>
+  <testcase name="transport messages round trip" classname="io.godstone.mesh.NoiseSessionTest" time="0.099"/>
+  <testcase name="each side learns the other's static key" classname="io.godstone.mesh.NoiseSessionTest" time="0.003"/>
+  <testcase name="handshake completes and both sides derive the same keys" classname="io.godstone.mesh.NoiseSessionTest" time="0.003"/>
+  <testcase name="sessions with different peers do not interoperate" classname="io.godstone.mesh.NoiseSessionTest" time="0.012"/>
+  <testcase name="replayed message is rejected" classname="io.godstone.mesh.NoiseSessionTest" time="0.003"/>
+  <testcase name="transport use before handshake completes is refused" classname="io.godstone.mesh.NoiseSessionTest" time="0.0"/>
+  <testcase name="message far outside the replay window is rejected" classname="io.godstone.mesh.NoiseSessionTest" time="0.02"/>
+  <testcase name="out of order delivery within the window is accepted" classname="io.godstone.mesh.NoiseSessionTest" time="0.002"/>
+  <testcase name="tampered ciphertext is rejected" classname="io.godstone.mesh.NoiseSessionTest" time="0.003"/>
+  <testcase name="ciphertext is not plaintext and repeats differ" classname="io.godstone.mesh.NoiseSessionTest" time="0.004"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

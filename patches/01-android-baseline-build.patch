@@ -1,0 +1,885 @@
+diff --git a/android/app/build.gradle.kts b/android/app/build.gradle.kts
+index ee0bbaa..565185a 100644
+--- a/android/app/build.gradle.kts
++++ b/android/app/build.gradle.kts
+@@ -19,14 +19,13 @@ android {
+         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+     }
+ 
+-    // Tier flavors. Each ships a different model and archive database.
++    // One application identity and one initially shippable tier. MEDIUM and
++    // LARGE remain source-level research configurations until independently
++    // measured and given a store-compatible asset delivery design.
+     flavorDimensions += "tier"
+-
+     productFlavors {
+         create("light") {
+             dimension = "tier"
+-            applicationIdSuffix = ".light"
+-            versionNameSuffix = "-light"
+             buildConfigField("String", "TIER", "\"LIGHT\"")
+             buildConfigField("String", "MODEL_FILE", "\"qwen3-0.6b-q4km.gguf\"")
+             buildConfigField("String", "ARCHIVE_FILE", "\"archive_light.db\"")
+@@ -34,34 +33,18 @@ android {
+             buildConfigField("int", "TOP_K_CHUNKS", "4")
+             buildConfigField("String", "EMBED_MODEL_FILE", "\"\"")
+             buildConfigField("int", "EMBED_DIM", "384")
+-        }
+-        create("medium") {
+-            dimension = "tier"
+-            applicationIdSuffix = ".medium"
+-            versionNameSuffix = "-medium"
+-            buildConfigField("String", "TIER", "\"MEDIUM\"")
+-            buildConfigField("String", "MODEL_FILE", "\"qwen3-1.7b-q4km.gguf\"")
+-            buildConfigField("String", "ARCHIVE_FILE", "\"archive_medium.db\"")
+-            buildConfigField("int", "CTX_TOKENS", "4096")
+-            buildConfigField("int", "TOP_K_CHUNKS", "6")
+-            buildConfigField("String", "EMBED_MODEL_FILE", "\"\"")
+-            buildConfigField("int", "EMBED_DIM", "384")
+-        }
+-        create("large") {
+-            dimension = "tier"
+-            applicationIdSuffix = ".large"
+-            versionNameSuffix = "-large"
+-            buildConfigField("String", "TIER", "\"LARGE\"")
+-            buildConfigField("String", "MODEL_FILE", "\"qwen3-4b-q5km.gguf\"")
+-            buildConfigField("String", "ARCHIVE_FILE", "\"archive_large.db\"")
+-            buildConfigField("int", "CTX_TOKENS", "8192")
+-            buildConfigField("int", "TOP_K_CHUNKS", "8")
+-            buildConfigField("String", "EMBED_MODEL_FILE", "\"\"")
+-            buildConfigField("int", "EMBED_DIM", "768")
++            buildConfigField("boolean", "ORACLE_ENABLED", "false")
++            buildConfigField("boolean", "MESH_ENABLED", "false")
++            buildConfigField("boolean", "SOS_ENABLED", "false")
++            buildConfigField("boolean", "BULK_TRANSFER_ENABLED", "false")
+         }
+     }
+ 
+     buildTypes {
++        debug {
++            // Disabled features stay disabled in debug unless a developer uses
++            // a separate, nonshipping experimental source set.
++        }
+         release {
+             isMinifyEnabled = true
+             isShrinkResources = true
+@@ -81,34 +64,35 @@ android {
+         sourceCompatibility = JavaVersion.VERSION_17
+         targetCompatibility = JavaVersion.VERSION_17
+     }
++    kotlinOptions { jvmTarget = "17" }
+ 
+-    kotlinOptions {
+-        jvmTarget = "17"
+-    }
+-
+-    // Model and archive assets must never be compressed: we mmap them at runtime.
+-    androidResources {
+-        noCompress += listOf("gguf", "db")
+-    }
++    androidResources { noCompress += listOf("gguf", "db") }
+ 
+-    // The model and archive are mmap'd from assets at runtime. Without this
+-    // sourceSet the app installs, launches, and then cannot find its model on
+-    // a device that by definition cannot download it (C1).
++    // Assets are staged into this single variant directory only by
++    // scripts/prepare_release_assets.py after hash/tier/review verification.
+     sourceSets {
+-        getByName("light")  { assets.srcDirs("src/light/assets",  "../../models", "../../dist") }
+-        getByName("medium") { assets.srcDirs("src/medium/assets", "../../models", "../../dist") }
+-        getByName("large")  { assets.srcDirs("src/large/assets",  "../../models", "../../dist") }
++        getByName("main") {
++            // Disabled transport UI is not compiled into the production app.
++            java.exclude("io/godstone/app/ui/mesh/**")
++            java.exclude("io/godstone/app/ui/sos/**")
++        }
++        getByName("light") { assets.setSrcDirs(listOf("src/light/assets")) }
+     }
+ 
+     packaging {
+         resources.excludes += "/META-INF/{AL2.0,LGPL2.1}"
+     }
++
++    lint {
++        abortOnError = true
++        checkReleaseBuilds = true
++        warningsAsErrors = true
++    }
+ }
+ 
+ dependencies {
+     implementation(project(":core"))
+-    implementation(project(":mesh"))
+-    implementation(project(":llm"))
++    implementation(project(":llm"))  // compiled for safety tests; Oracle route is absent
+ 
+     implementation(platform("androidx.compose:compose-bom:2024.09.02"))
+     implementation("androidx.compose.ui:ui")
+diff --git a/android/app/src/main/AndroidManifest.xml b/android/app/src/main/AndroidManifest.xml
+index b0eccf3..2044763 100644
+--- a/android/app/src/main/AndroidManifest.xml
++++ b/android/app/src/main/AndroidManifest.xml
+@@ -2,43 +2,9 @@
+ <manifest xmlns:android="http://schemas.android.com/apk/res/android"
+     xmlns:tools="http://schemas.android.com/tools">
+ 
+-    <!--
+-      CONSTRAINT C1: android.permission.INTERNET is deliberately ABSENT and must
+-      never be added. Godstone makes no network calls. tools:node="remove" below
+-      strips it if any transitive dependency tries to merge it in.
+-    -->
++    <!-- Archive-only release. A transitive manifest cannot add Internet. -->
+     <uses-permission android:name="android.permission.INTERNET" tools:node="remove" />
+-
+-    <!-- Mesh: Bluetooth Low Energy, Android 12+ split permissions -->
+-    <uses-permission android:name="android.permission.BLUETOOTH_ADVERTISE" />
+-    <uses-permission android:name="android.permission.BLUETOOTH_SCAN"
+-        android:usesPermissionFlags="neverForLocation" />
+-    <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
+-
+-    <!-- Legacy BLE permissions for API 26..30 -->
+-    <uses-permission android:name="android.permission.BLUETOOTH"
+-        android:maxSdkVersion="30" />
+-    <uses-permission android:name="android.permission.BLUETOOTH_ADMIN"
+-        android:maxSdkVersion="30" />
+-
+-    <!-- Mesh: Wi-Fi Aware / Wi-Fi Direct bulk plane -->
+-    <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
+-    <uses-permission android:name="android.permission.CHANGE_WIFI_STATE" />
+-    <uses-permission android:name="android.permission.NEARBY_WIFI_DEVICES"
+-        android:usesPermissionFlags="neverForLocation" />
+-
+-    <!-- SOS position comes from the GNSS chip, which needs no network -->
+-    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+-
+-    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+-    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_CONNECTED_DEVICE" />
+-    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+-    <uses-permission android:name="android.permission.WAKE_LOCK" />
+-    <uses-permission android:name="android.permission.VIBRATE" />
+-    <uses-permission android:name="android.permission.RECORD_AUDIO" />
+-
+-    <uses-feature android:name="android.hardware.bluetooth_le" android:required="true" />
+-    <uses-feature android:name="android.hardware.wifi.aware" android:required="false" />
++    <uses-feature android:name="android.hardware.bluetooth_le" android:required="false" />
+ 
+     <application
+         android:name=".GodstoneApplication"
+@@ -47,25 +13,18 @@
+         android:icon="@mipmap/ic_launcher"
+         android:label="@string/app_name"
+         android:supportsRtl="true"
+-        android:largeHeap="true"
++        android:usesCleartextTraffic="false"
+         android:theme="@style/Theme.Godstone">
+ 
+         <activity
+             android:name=".MainActivity"
+             android:exported="true"
+             android:launchMode="singleTask"
+-            android:screenOrientation="portrait"
+             android:theme="@style/Theme.Godstone">
+             <intent-filter>
+                 <action android:name="android.intent.action.MAIN" />
+                 <category android:name="android.intent.category.LAUNCHER" />
+             </intent-filter>
+         </activity>
+-
+-        <service
+-            android:name="io.godstone.mesh.MeshService"
+-            android:exported="false"
+-            android:foregroundServiceType="connectedDevice" />
+-
+     </application>
+ </manifest>
+diff --git a/android/app/src/main/java/io/godstone/app/GodstoneApplication.kt b/android/app/src/main/java/io/godstone/app/GodstoneApplication.kt
+index 96de7ac..b65882d 100644
+--- a/android/app/src/main/java/io/godstone/app/GodstoneApplication.kt
++++ b/android/app/src/main/java/io/godstone/app/GodstoneApplication.kt
+@@ -1,55 +1,8 @@
+ package io.godstone.app
+ 
+ import android.app.Application
+-import android.app.NotificationChannel
+-import android.app.NotificationManager
+ import dagger.hilt.android.HiltAndroidApp
+-import javax.inject.Inject
+-import io.godstone.mesh.MeshNode
+ 
++/** Archive-only production composition root. No radio, SOS, or model work starts. */
+ @HiltAndroidApp
+-class GodstoneApplication : Application() {
+-
+-    @Inject lateinit var meshNode: MeshNode
+-
+-    override fun onCreate() {
+-        super.onCreate()
+-        createNotificationChannels()
+-
+-        // Identity must exist before any radio starts. Cheap if already present.
+-        meshNode.ensureIdentity()
+-
+-        // Radios start only after the user explicitly enables the mesh and
+-        // grants runtime permissions. Model preparation occurs on first Oracle
+-        // use, never as multi-gigabyte main-thread I/O at process startup.
+-    }
+-
+-    private fun createNotificationChannels() {
+-        val nm = getSystemService(NotificationManager::class.java)
+-
+-        nm.createNotificationChannel(
+-            NotificationChannel(
+-                CHANNEL_MESH,
+-                getString(R.string.channel_mesh),
+-                NotificationManager.IMPORTANCE_LOW
+-            ).apply { description = getString(R.string.channel_mesh_desc) }
+-        )
+-
+-        nm.createNotificationChannel(
+-            NotificationChannel(
+-                CHANNEL_SOS,
+-                getString(R.string.channel_sos),
+-                NotificationManager.IMPORTANCE_HIGH
+-            ).apply {
+-                description = getString(R.string.channel_sos_desc)
+-                enableVibration(true)
+-                setBypassDnd(true)
+-            }
+-        )
+-    }
+-
+-    companion object {
+-        const val CHANNEL_MESH = "godstone.mesh"
+-        const val CHANNEL_SOS = "godstone.sos"
+-    }
+-}
++class GodstoneApplication : Application()
+diff --git a/android/app/src/main/java/io/godstone/app/MainActivity.kt b/android/app/src/main/java/io/godstone/app/MainActivity.kt
+index 2b99651..8d81fc6 100644
+--- a/android/app/src/main/java/io/godstone/app/MainActivity.kt
++++ b/android/app/src/main/java/io/godstone/app/MainActivity.kt
+@@ -4,40 +4,17 @@ import android.os.Bundle
+ import androidx.activity.ComponentActivity
+ import androidx.activity.compose.setContent
+ import androidx.activity.enableEdgeToEdge
+-import androidx.compose.runtime.collectAsState
+-import androidx.compose.runtime.getValue
+-import androidx.lifecycle.lifecycleScope
+ import dagger.hilt.android.AndroidEntryPoint
+ import io.godstone.app.ui.GodstoneNavHost
+ import io.godstone.app.ui.theme.GodstoneTheme
+-import io.godstone.mesh.MeshNode
+-import javax.inject.Inject
+ 
+ @AndroidEntryPoint
+ class MainActivity : ComponentActivity() {
+-
+-    @Inject lateinit var meshNode: MeshNode
+-
+     override fun onCreate(savedInstanceState: Bundle?) {
+         super.onCreate(savedInstanceState)
+         enableEdgeToEdge()
+-
+         setContent {
+-            val nightMode by meshNode.nightModeFlow.collectAsState(initial = false)
+-            GodstoneTheme(redNightMode = nightMode) {
+-                GodstoneNavHost(meshNode = meshNode)
+-            }
++            GodstoneTheme(redNightMode = false) { GodstoneNavHost() }
+         }
+     }
+-
+-    override fun onStart() {
+-        super.onStart()
+-        // Foreground raises the mesh duty cycle; background lowers it.
+-        meshNode.onAppForegrounded()
+-    }
+-
+-    override fun onStop() {
+-        super.onStop()
+-        meshNode.onAppBackgrounded()
+-    }
+ }
+diff --git a/android/app/src/main/java/io/godstone/app/di/AppModule.kt b/android/app/src/main/java/io/godstone/app/di/AppModule.kt
+index 3d0749b..91d79eb 100644
+--- a/android/app/src/main/java/io/godstone/app/di/AppModule.kt
++++ b/android/app/src/main/java/io/godstone/app/di/AppModule.kt
+@@ -12,67 +12,31 @@ import io.godstone.llm.archive.ArchiveRepository
+ import io.godstone.llm.rag.Embedder
+ import io.godstone.llm.rag.RagPipeline
+ import io.godstone.llm.rag.Retriever
+-import io.godstone.mesh.MeshNode
+-import io.godstone.mesh.store.MessageStore
+-import io.godstone.mesh.store.SqliteMessageStore
+ import javax.inject.Singleton
+ 
++/** Archive and test-only Oracle wiring. No Mesh store or radio object is injectable. */
+ @Module
+ @InstallIn(SingletonComponent::class)
+ object AppModule {
+-
+-    @Provides
+-    @Singleton
+-    fun provideMessageStore(@ApplicationContext ctx: Context): MessageStore =
+-        SqliteMessageStore(ctx, maxBytes = 200L * 1024 * 1024)
+-
+-    @Provides
+-    @Singleton
+-    fun provideMeshNode(
+-        @ApplicationContext ctx: Context,
+-        store: MessageStore
+-    ): MeshNode = MeshNode(ctx, store)
+-
+-    @Provides
+-    @Singleton
++    @Provides @Singleton
+     fun provideArchiveRepository(@ApplicationContext ctx: Context): ArchiveRepository =
+         ArchiveRepository(ctx, archiveAsset = BuildConfig.ARCHIVE_FILE)
+ 
+-    @Provides
+-    @Singleton
++    @Provides @Singleton
+     fun provideModelManager(@ApplicationContext ctx: Context): ModelManager =
+-        ModelManager(
+-            context = ctx,
+-            modelAsset = BuildConfig.MODEL_FILE,
+-            contextTokens = BuildConfig.CTX_TOKENS
+-        )
++        ModelManager(ctx, BuildConfig.MODEL_FILE, BuildConfig.CTX_TOKENS)
+ 
+-    @Provides
+-    @Singleton
+-    fun provideEmbedder(@ApplicationContext ctx: Context): Embedder? {
+-        if (BuildConfig.EMBED_MODEL_FILE.isEmpty()) return null
+-        return Embedder(
+-            context = ctx,
+-            embedModelAsset = BuildConfig.EMBED_MODEL_FILE,
+-            expectedDim = BuildConfig.EMBED_DIM
+-        )
+-    }
++    @Provides @Singleton
++    fun provideEmbedder(@ApplicationContext ctx: Context): Embedder? =
++        BuildConfig.EMBED_MODEL_FILE.takeIf { it.isNotEmpty() }?.let {
++            Embedder(ctx, it, BuildConfig.EMBED_DIM)
++        }
+ 
+-    @Provides
+-    @Singleton
+-    fun provideRetriever(
+-        @ApplicationContext ctx: Context,
+-        embedder: Embedder?
+-    ): Retriever = Retriever(ctx, archiveAsset = BuildConfig.ARCHIVE_FILE, embedder = embedder)
++    @Provides @Singleton
++    fun provideRetriever(@ApplicationContext ctx: Context, embedder: Embedder?): Retriever =
++        Retriever(ctx, archiveAsset = BuildConfig.ARCHIVE_FILE, embedder = embedder)
+ 
+-    @Provides
+-    @Singleton
+-    fun provideRagPipeline(
+-        models: ModelManager,
+-        retriever: Retriever
+-    ): RagPipeline = RagPipeline(
+-        models = models,
+-        retriever = retriever,
+-        topK = BuildConfig.TOP_K_CHUNKS
+-    )
++    @Provides @Singleton
++    fun provideRagPipeline(models: ModelManager, retriever: Retriever): RagPipeline =
++        RagPipeline(models, retriever, BuildConfig.TOP_K_CHUNKS)
+ }
+diff --git a/android/app/src/main/java/io/godstone/app/ui/GodstoneNavHost.kt b/android/app/src/main/java/io/godstone/app/ui/GodstoneNavHost.kt
+index 08b94cd..b0fb92e 100644
+--- a/android/app/src/main/java/io/godstone/app/ui/GodstoneNavHost.kt
++++ b/android/app/src/main/java/io/godstone/app/ui/GodstoneNavHost.kt
+@@ -3,9 +3,7 @@ package io.godstone.app.ui
+ import androidx.compose.foundation.layout.padding
+ import androidx.compose.material.icons.Icons
+ import androidx.compose.material.icons.filled.Book
+-import androidx.compose.material.icons.filled.Chat
+ import androidx.compose.material.icons.filled.Home
+-import androidx.compose.material.icons.filled.Warning
+ import androidx.compose.material3.Icon
+ import androidx.compose.material3.NavigationBar
+ import androidx.compose.material3.NavigationBarItem
+@@ -19,67 +17,49 @@ import androidx.navigation.compose.currentBackStackEntryAsState
+ import androidx.navigation.compose.rememberNavController
+ import io.godstone.app.ui.browse.BrowseScreen
+ import io.godstone.app.ui.home.HomeScreen
+-import io.godstone.app.ui.mesh.MeshScreen
+-import io.godstone.app.ui.oracle.OracleScreen
+-import io.godstone.app.ui.sos.SosScreen
+-import io.godstone.mesh.MeshNode
+ 
+-/**
+- * Five destinations, flat hierarchy. Under stress nobody navigates a tree.
+- * Every screen is reachable in at most two taps from anywhere.
+- */
++/** Production navigation exposes only repository-supported Archive behavior. */
+ sealed class Dest(val route: String, val label: String) {
+     data object Home : Dest("home", "Home")
+-    data object Oracle : Dest("oracle", "Ask")
+     data object Browse : Dest("browse", "Archive")
+-    data object Mesh : Dest("mesh", "Mesh")
+-    data object Sos : Dest("sos", "SOS")
+ }
+ 
+ @Composable
+-fun GodstoneNavHost(meshNode: MeshNode) {
++fun GodstoneNavHost() {
+     val nav = rememberNavController()
+     val backStack by nav.currentBackStackEntryAsState()
+     val current = backStack?.destination?.route
++    val destinations = listOf(Dest.Home, Dest.Browse)
+ 
+-    Scaffold(
+-        bottomBar = {
+-            NavigationBar {
+-                listOf(Dest.Home, Dest.Oracle, Dest.Browse, Dest.Mesh, Dest.Sos)
+-                    .forEach { dest ->
+-                        NavigationBarItem(
+-                            selected = current == dest.route,
+-                            onClick = {
+-                                nav.navigate(dest.route) {
+-                                    popUpTo(Dest.Home.route)
+-                                    launchSingleTop = true
+-                                }
+-                            },
+-                            icon = { Icon(iconFor(dest), contentDescription = dest.label) },
+-                            label = { Text(dest.label) }
++    Scaffold(bottomBar = {
++        NavigationBar {
++            destinations.forEach { dest ->
++                NavigationBarItem(
++                    selected = current == dest.route,
++                    onClick = {
++                        nav.navigate(dest.route) {
++                            popUpTo(Dest.Home.route)
++                            launchSingleTop = true
++                        }
++                    },
++                    icon = {
++                        Icon(
++                            if (dest == Dest.Home) Icons.Filled.Home else Icons.Filled.Book,
++                            contentDescription = dest.label
+                         )
+-                    }
++                    },
++                    label = { Text(dest.label) }
++                )
+             }
+         }
+-    ) { padding ->
++    }) { padding ->
+         NavHost(
+             navController = nav,
+             startDestination = Dest.Home.route,
+             modifier = androidx.compose.ui.Modifier.padding(padding)
+         ) {
+-            composable(Dest.Home.route) { HomeScreen(onNavigate = { nav.navigate(it) }) }
+-            composable(Dest.Oracle.route) { OracleScreen() }
++            composable(Dest.Home.route) { HomeScreen(onOpenArchive = { nav.navigate(Dest.Browse.route) }) }
+             composable(Dest.Browse.route) { BrowseScreen() }
+-            composable(Dest.Mesh.route) { MeshScreen(meshNode = meshNode) }
+-            composable(Dest.Sos.route) { SosScreen(meshNode = meshNode) }
+         }
+     }
+ }
+-
+-private fun iconFor(dest: Dest) = when (dest) {
+-    Dest.Home -> Icons.Filled.Home
+-    Dest.Oracle -> Icons.Filled.Chat
+-    Dest.Browse -> Icons.Filled.Book
+-    Dest.Mesh -> Icons.Filled.Chat
+-    Dest.Sos -> Icons.Filled.Warning
+-}
+diff --git a/android/app/src/main/java/io/godstone/app/ui/home/HomeScreen.kt b/android/app/src/main/java/io/godstone/app/ui/home/HomeScreen.kt
+index 993c8b4..d53c92a 100644
+--- a/android/app/src/main/java/io/godstone/app/ui/home/HomeScreen.kt
++++ b/android/app/src/main/java/io/godstone/app/ui/home/HomeScreen.kt
+@@ -1,4 +1,3 @@
+-// SYNTHESIZED gap-closure file -- authored to make the project compile; see docs/AUDIT.md.
+ package io.godstone.app.ui.home
+ 
+ import androidx.compose.foundation.layout.Arrangement
+@@ -7,102 +6,44 @@ import androidx.compose.foundation.layout.Spacer
+ import androidx.compose.foundation.layout.fillMaxSize
+ import androidx.compose.foundation.layout.height
+ import androidx.compose.foundation.layout.padding
+-import androidx.compose.foundation.layout.size
+ import androidx.compose.foundation.layout.widthIn
+ import androidx.compose.foundation.rememberScrollState
+ import androidx.compose.foundation.verticalScroll
+ import androidx.compose.material.icons.Icons
+ import androidx.compose.material.icons.filled.Book
+-import androidx.compose.material.icons.filled.Chat
+-import androidx.compose.material.icons.filled.Warning
+-import androidx.compose.material.icons.filled.Hub
+ import androidx.compose.material3.Button
+-import androidx.compose.material3.ButtonDefaults
+ import androidx.compose.material3.Icon
+ import androidx.compose.material3.MaterialTheme
+ import androidx.compose.material3.Text
+ import androidx.compose.runtime.Composable
+ import androidx.compose.ui.Alignment
+ import androidx.compose.ui.Modifier
+-import androidx.compose.ui.semantics.contentDescription
++import androidx.compose.ui.semantics.heading
+ import androidx.compose.ui.semantics.semantics
++import androidx.compose.ui.text.style.TextAlign
+ import androidx.compose.ui.unit.dp
+-import io.godstone.app.ui.Dest
+ 
+-/**
+- * Constraint C7: large tap targets, generous type, no nested menus. The four
+- * primary actions are each one tap away; SOS is visually distinct and red.
+- */
+ @Composable
+-fun HomeScreen(onNavigate: (String) -> Unit) {
++fun HomeScreen(onOpenArchive: () -> Unit) {
+     Column(
+-        modifier = Modifier
+-            .fillMaxSize()
+-            .verticalScroll(rememberScrollState())
+-            .padding(24.dp),
+-        verticalArrangement = Arrangement.spacedBy(16.dp),
++        modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(24.dp),
++        verticalArrangement = Arrangement.spacedBy(18.dp),
+         horizontalAlignment = Alignment.CenterHorizontally
+     ) {
+-        // Short status header -- intentionally free of live data for now.
++        Text("Godstone Archive", style = MaterialTheme.typography.headlineMedium,
++            modifier = Modifier.semantics { heading() })
+         Text(
+-            text = "Godstone",
+-            style = MaterialTheme.typography.titleLarge,
+-            color = MaterialTheme.colorScheme.onBackground
++            "Offline reference browsing. Oracle, Mesh, bulk transfer, and SOS are unavailable in this release until their safety and device gates pass.",
++            style = MaterialTheme.typography.bodyLarge,
++            textAlign = TextAlign.Center
+         )
+-        Text(
+-            text = "Offline first. No network calls.",
+-            style = MaterialTheme.typography.bodyMedium,
+-            color = MaterialTheme.colorScheme.onBackground
+-        )
+-
+         Spacer(Modifier.height(8.dp))
+-
+-        HomeAction(
+-            label = "Ask the Oracle",
+-            icon = { Icon(Icons.Filled.Chat, contentDescription = null) },
+-            onClick = { onNavigate(Dest.Oracle.route) }
+-        )
+-        HomeAction(
+-            label = "Archive",
+-            icon = { Icon(Icons.Filled.Book, contentDescription = null) },
+-            onClick = { onNavigate(Dest.Browse.route) }
+-        )
+-        HomeAction(
+-            label = "Mesh",
+-            icon = { Icon(Icons.Filled.Hub, contentDescription = null) },
+-            onClick = { onNavigate(Dest.Mesh.route) }
+-        )
+-        HomeAction(
+-            label = "SOS",
+-            icon = { Icon(Icons.Filled.Warning, contentDescription = null) },
+-            containerColor = MaterialTheme.colorScheme.error,
+-            contentColor = MaterialTheme.colorScheme.onError,
+-            onClick = { onNavigate(Dest.Sos.route) }
+-        )
+-    }
+-}
+-
+-@Composable
+-private fun HomeAction(
+-    label: String,
+-    icon: @Composable () -> Unit,
+-    containerColor: androidx.compose.ui.graphics.Color = MaterialTheme.colorScheme.primary,
+-    contentColor: androidx.compose.ui.graphics.Color = MaterialTheme.colorScheme.onPrimary,
+-    onClick: () -> Unit
+-) {
+-    Button(
+-        onClick = onClick,
+-        modifier = Modifier
+-            .widthIn(min = 280.dp)
+-            .height(72.dp) // C7: large tap target
+-            .semantics { contentDescription = label },
+-        colors = ButtonDefaults.buttonColors(
+-            containerColor = containerColor,
+-            contentColor = contentColor
+-        )
+-    ) {
+-        icon()
+-        Spacer(Modifier.size(12.dp))
+-        Text(label, style = MaterialTheme.typography.titleLarge)
++        Button(
++            onClick = onOpenArchive,
++            modifier = Modifier.widthIn(min = 280.dp).height(64.dp)
++        ) {
++            Icon(Icons.Filled.Book, contentDescription = null)
++            Text("Open Archive", modifier = Modifier.padding(start = 12.dp))
++        }
+     }
+ }
+diff --git a/android/core/src/main/java/io/godstone/core/crypto/Ed25519Keys.kt b/android/core/src/main/java/io/godstone/core/crypto/Ed25519Keys.kt
+index 1457263..f69ce0c 100644
+--- a/android/core/src/main/java/io/godstone/core/crypto/Ed25519Keys.kt
++++ b/android/core/src/main/java/io/godstone/core/crypto/Ed25519Keys.kt
+@@ -1,28 +1,24 @@
+-// SYNTHESIZED gap-closure file -- authored to make the project compile; see docs/AUDIT.md.
+ package io.godstone.core.crypto
+ 
+ import org.bouncycastle.crypto.generators.Ed25519KeyPairGenerator
+ import org.bouncycastle.crypto.params.Ed25519KeyGenerationParameters
++import org.bouncycastle.crypto.params.Ed25519PrivateKeyParameters
++import org.bouncycastle.crypto.params.Ed25519PublicKeyParameters
+ import java.security.SecureRandom
+ 
+-/**
+- * Minimal holder for a generated public/private key pair. Both arrays are the
+- * raw encoded forms (no ASN.1 wrapping) so callers can persist or transmit them
+- * directly.
+- */
++/** Raw Ed25519 public/private key material (32 bytes each). */
+ class KeyPair(val pub: ByteArray, val priv: ByteArray)
+ 
+-/**
+- * Ed25519 key generation backed by BouncyCastle, used for the long-term
+- * identity signing key.
+- */
++/** Long-term identity signing-key generation backed by Bouncy Castle. */
+ object Ed25519Keys {
+     fun generate(rng: SecureRandom): KeyPair {
+-        val gen = Ed25519KeyPairGenerator()
+-        gen.init(Ed25519KeyGenerationParameters(rng))
+-        val pair = gen.generateKeyPair()
+-        val pub = pair.public.encoded    // Ed25519PublicKeyParameters, 32 bytes
+-        val priv = pair.private.encoded  // Ed25519PrivateKeyParameters, 32 bytes
+-        return KeyPair(pub, priv)
++        val generator = Ed25519KeyPairGenerator().apply {
++            init(Ed25519KeyGenerationParameters(rng))
++        }
++        val pair = generator.generateKeyPair()
++        val publicKey = (pair.public as Ed25519PublicKeyParameters).encoded
++        val privateKey = (pair.private as Ed25519PrivateKeyParameters).encoded
++        check(publicKey.size == 32 && privateKey.size == 32)
++        return KeyPair(publicKey.copyOf(), privateKey.copyOf())
+     }
+ }
+diff --git a/android/core/src/main/java/io/godstone/core/crypto/X25519Keys.kt b/android/core/src/main/java/io/godstone/core/crypto/X25519Keys.kt
+index 124fcfd..3ef504c 100644
+--- a/android/core/src/main/java/io/godstone/core/crypto/X25519Keys.kt
++++ b/android/core/src/main/java/io/godstone/core/crypto/X25519Keys.kt
+@@ -1,21 +1,21 @@
+-// SYNTHESIZED gap-closure file -- authored to make the project compile; see docs/AUDIT.md.
+ package io.godstone.core.crypto
+ 
+ import org.bouncycastle.crypto.generators.X25519KeyPairGenerator
+ import org.bouncycastle.crypto.params.X25519KeyGenerationParameters
++import org.bouncycastle.crypto.params.X25519PrivateKeyParameters
++import org.bouncycastle.crypto.params.X25519PublicKeyParameters
+ import java.security.SecureRandom
+ 
+-/**
+- * X25519 key generation backed by BouncyCastle, used for the static Noise
+- * Diffie-Hellman key.
+- */
++/** Static Noise agreement-key generation backed by Bouncy Castle. */
+ object X25519Keys {
+     fun generate(rng: SecureRandom): KeyPair {
+-        val gen = X25519KeyPairGenerator()
+-        gen.init(X25519KeyGenerationParameters(rng))
+-        val pair = gen.generateKeyPair()
+-        val pub = pair.public.encoded    // X25519PublicKeyParameters, 32 bytes
+-        val priv = pair.private.encoded  // X25519PrivateKeyParameters, 32 bytes
+-        return KeyPair(pub, priv)
++        val generator = X25519KeyPairGenerator().apply {
++            init(X25519KeyGenerationParameters(rng))
++        }
++        val pair = generator.generateKeyPair()
++        val publicKey = (pair.public as X25519PublicKeyParameters).encoded
++        val privateKey = (pair.private as X25519PrivateKeyParameters).encoded
++        check(publicKey.size == 32 && privateKey.size == 32)
++        return KeyPair(publicKey.copyOf(), privateKey.copyOf())
+     }
+ }
+diff --git a/android/gradle.properties b/android/gradle.properties
+new file mode 100644
+index 0000000..298db82
+--- /dev/null
++++ b/android/gradle.properties
+@@ -0,0 +1,9 @@
++android.useAndroidX=true
++android.nonTransitiveRClass=true
++android.nonFinalResIds=true
++android.enableJetifier=false
++kotlin.code.style=official
++org.gradle.jvmargs=-Xmx4g -Dfile.encoding=UTF-8
++org.gradle.parallel=false
++org.gradle.caching=true
++org.gradle.configuration-cache=true
+diff --git a/scripts/inspect_android_artifacts.py b/scripts/inspect_android_artifacts.py
+new file mode 100644
+index 0000000..10148b1
+--- /dev/null
++++ b/scripts/inspect_android_artifacts.py
+@@ -0,0 +1,37 @@
++#!/usr/bin/env python3
++from __future__ import annotations
++import argparse
++import hashlib
++import json
++import zipfile
++from pathlib import Path
++
++
++def digest(path: Path) -> str:
++    return hashlib.sha256(path.read_bytes()).hexdigest()
++
++
++def main() -> int:
++    parser = argparse.ArgumentParser()
++    parser.add_argument("build_root", type=Path)
++    parser.add_argument("out", type=Path)
++    args = parser.parse_args()
++    artifacts = sorted(list(args.build_root.rglob("*.apk")) + list(args.build_root.rglob("*.aab")))
++    if not artifacts:
++        print("no APK/AAB artifacts found")
++        return 1
++    args.out.mkdir(parents=True, exist_ok=True)
++    inventory = []
++    for artifact in artifacts:
++        with zipfile.ZipFile(artifact) as zf:
++            names = sorted(zf.namelist())
++        forbidden = [n for n in names if any(t in n.lower() for t in ("archive_medium", "archive_large", "qwen3-1.7", "qwen3-4b"))]
++        if forbidden:
++            print(f"cross-tier asset contamination in {artifact}: {forbidden}")
++            return 1
++        inventory.append({"path": str(artifact), "bytes": artifact.stat().st_size, "sha256": digest(artifact), "entries": names})
++    (args.out / "artifact-inventory.json").write_text(json.dumps(inventory, indent=2, sort_keys=True) + "\n", encoding="utf-8")
++    return 0
++
++if __name__ == "__main__":
++    raise SystemExit(main())
+diff --git a/scripts/prepare_release_assets.py b/scripts/prepare_release_assets.py
+new file mode 100644
+index 0000000..03ca506
+--- /dev/null
++++ b/scripts/prepare_release_assets.py
+@@ -0,0 +1,116 @@
++#!/usr/bin/env python3
++"""Verify and stage exactly one LIGHT release asset set.
++
++The command never downloads assets. It rejects examples, missing hashes,
++cross-tier names, unexpected files, and archives without a trusted signed
++manifest. The destination is cleaned before copying to prevent contamination.
++"""
++from __future__ import annotations
++import argparse
++import hashlib
++import json
++import shutil
++import sys
++from pathlib import Path
++from typing import Any, Mapping
++
++REPOSITORY_ROOT = Path(__file__).resolve().parents[1]
++if str(REPOSITORY_ROOT) not in sys.path:
++    sys.path.insert(0, str(REPOSITORY_ROOT))
++
++from content.archive_manifest import load_trust_store, verify_manifest
++
++ALLOWED_NAMES = {"archive_light.db", "generation.gguf", "embedding.gguf"}
++ALLOWED_ROLES = {"archive", "generation_model", "embedding_model"}
++
++
++def sha256(path: Path) -> str:
++    h = hashlib.sha256()
++    with path.open("rb") as stream:
++        for block in iter(lambda: stream.read(1024 * 1024), b""):
++            h.update(block)
++    return h.hexdigest()
++
++
++def validate(manifest_path: Path) -> tuple[dict[str, Any], list[tuple[Path, str]]]:
++    root = manifest_path.resolve().parent
++    data = json.loads(manifest_path.read_text(encoding="utf-8"))
++    if not isinstance(data, Mapping):
++        raise ValueError("asset manifest root must be an object")
++    errors: list[str] = []
++    if data.get("schema") != 1: errors.append("schema must be 1")
++    if data.get("tier") != "LIGHT": errors.append("only LIGHT is an approved initial tier")
++    if data.get("application_id") != "io.godstone.app": errors.append("application identity mismatch")
++    if data.get("status") != "approved" or data.get("production_ready") is not True:
++        errors.append("asset manifest is not approved for production")
++    assets = data.get("assets")
++    if not isinstance(assets, list):
++        errors.append("assets must be an array"); assets = []
++    staged: list[tuple[Path, str]] = []
++    roles: set[str] = set()
++    names: set[str] = set()
++    archive_path: Path | None = None
++    for index, item in enumerate(assets):
++        if not isinstance(item, Mapping):
++            errors.append(f"assets[{index}] is not an object"); continue
++        role, name = str(item.get("role", "")), str(item.get("name", ""))
++        if role not in ALLOWED_ROLES: errors.append(f"assets[{index}].role is invalid")
++        if role in roles: errors.append(f"duplicate asset role: {role}")
++        roles.add(role)
++        if name not in ALLOWED_NAMES: errors.append(f"assets[{index}].name is invalid or cross-tier")
++        if name in names: errors.append(f"duplicate asset name: {name}")
++        names.add(name)
++        source = (root / str(item.get("source", ""))).resolve()
++        try: source.relative_to(root)
++        except ValueError: errors.append(f"assets[{index}].source escapes manifest directory"); continue
++        if not source.is_file(): errors.append(f"missing asset: {source}"); continue
++        if int(item.get("bytes", -1)) != source.stat().st_size: errors.append(f"size mismatch: {name}")
++        expected = str(item.get("sha256", ""))
++        if len(expected) != 64 or sha256(source) != expected: errors.append(f"SHA-256 mismatch: {name}")
++        staged.append((source, name))
++        if role == "archive": archive_path = source
++    if roles != {"archive"} and "archive" not in roles:
++        errors.append("exactly one Archive is mandatory")
++    if archive_path is not None:
++        manifest_ref = data.get("archive_manifest")
++        trust_ref = data.get("archive_trust_store")
++        if not manifest_ref or not trust_ref:
++            errors.append("signed archive manifest and trust store are required")
++        else:
++            result = verify_manifest(
++                (root / str(manifest_ref)).resolve(), archive_path,
++                load_trust_store((root / str(trust_ref)).resolve()),
++                expected_tier="LIGHT", expected_archive_schema=3,
++            )
++            errors.extend(result.errors)
++    if errors:
++        raise ValueError("release assets rejected:\n- " + "\n- ".join(errors))
++    return dict(data), staged
++
++
++def main() -> int:
++    parser = argparse.ArgumentParser()
++    parser.add_argument("--manifest", type=Path, required=True)
++    parser.add_argument("--out", type=Path, required=True)
++    parser.add_argument("--check-only", action="store_true")
++    args = parser.parse_args()
++    try:
++        _, staged = validate(args.manifest)
++    except (OSError, ValueError, json.JSONDecodeError) as exc:
++        print(exc)
++        return 1
++    if not args.check_only:
++        if args.out.exists(): shutil.rmtree(args.out)
++        args.out.mkdir(parents=True)
++        for source, name in staged:
++            shutil.copyfile(source, args.out / name)
++        actual = {path.name for path in args.out.iterdir() if path.is_file()}
++        expected = {name for _, name in staged}
++        if actual != expected:
++            print("staged asset set differs from manifest")
++            return 1
++    print("release assets verified" if args.check_only else f"staged {len(staged)} verified asset(s)")
++    return 0
++
++if __name__ == "__main__":
++    raise SystemExit(main())

@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.godstone.llm.RagPipelineTest" tests="9" skipped="0" failures="0" errors="0" timestamp="2026-08-06T17:11:06" hostname="Naraharikripas-Mac-mini.local" time="0.022">
+  <properties/>
+  <testcase name="chunks are ordered by descending score" classname="io.godstone.llm.RagPipelineTest" time="0.011"/>
+  <testcase name="gate constants are pinned" classname="io.godstone.llm.RagPipelineTest" time="0.001"/>
+  <testcase name="each chunk is labelled with a citation marker" classname="io.godstone.llm.RagPipelineTest" time="0.0"/>
+  <testcase name="idf formula matches the reference" classname="io.godstone.llm.RagPipelineTest" time="0.0"/>
+  <testcase name="prompt respects the context budget by dropping the weakest chunks" classname="io.godstone.llm.RagPipelineTest" time="0.006"/>
+  <testcase name="reciprocal rank fusion favours chunks found by both retrievers" classname="io.godstone.llm.RagPipelineTest" time="0.001"/>
+  <testcase name="empty retrieval produces a refusal prompt and never a free answer" classname="io.godstone.llm.RagPipelineTest" time="0.001"/>
+  <testcase name="system rules forbid answering beyond the context" classname="io.godstone.llm.RagPipelineTest" time="0.0"/>
+  <testcase name="prompt contains every retrieved chunk" classname="io.godstone.llm.RagPipelineTest" time="0.0"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

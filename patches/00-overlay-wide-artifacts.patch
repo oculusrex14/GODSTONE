@@ -1,0 +1,2298 @@
+diff --git a/PRODUCTION_READINESS_REPORT.md b/PRODUCTION_READINESS_REPORT.md
+new file mode 100644
+index 0000000..deabaed
+--- /dev/null
++++ b/PRODUCTION_READINESS_REPORT.md
+@@ -0,0 +1,36 @@
++# GODSTONE production-readiness implementation report
++
++## Verdict
++
++**PARTIALLY REMEDIATED — NOT READY**
++
++Starting commit: `b7daf5aceb642277807e9bfbe3bbb486112a64ec`.
++
++The work in this bundle materially improves the audited repository but does not satisfy the definition of `READY FOR EXTERNAL GATES`. The complete private checkout could not be cloned or mounted into the execution container, so the deliverable is an exact-commit, blob-verified remediation overlay. Android release builds and Xcode builds could not be executed. Repository-controlled Critical/High work also remains in durable messaging, future canonical GMP/2.1 Mesh, identity/trust, panic wipe, independent cryptographic vectors, model/native reproducibility, dependency hashes, and platform release verification.
++
++## Implemented
++
++- Bouncy Castle concrete key parameter fixes and deterministic Android properties.
++- Fail-closed Android/iOS Oracle private draft buffering and final validation.
++- Exact citation/quantity/unit/dimension/qualifier checks without bare-number fallback.
++- Content provenance, rights, reviewer, expiry, warning, contraindication, and chunk approval gate.
++- Ed25519 signed Archive manifests with hash, tier, schema, count, corruption, and signature verification.
++- One LIGHT identity, real iOS release configuration, and per-variant asset staging controls.
++- Archive-only production applications with disabled Oracle/Mesh/bulk/SOS routes and no related permissions or entitlements.
++- Host-testable iOS Foundation package isolation and removal of iOS inference `-ffast-math`.
++- Pinned GitHub Action revisions, release-surface checks, draft-isolation checks, and shipping Mesh dependency guard.
++- Required production evidence documents, diagrams, preliminary SBOMs, checksums, and exact-commit apply tooling.
++
++## Verification results
++
++- Kotlin validator harness: 4 passed.
++- Swift validator harness: 4 passed.
++- Content and signed Archive tests: 10 passed.
++- Exact-baseline transform tests: 2 passed.
++- Static release surface, private draft, immutable action, and shipping Mesh isolation checks: passed.
++
++## Not produced
++
++No APK, AAB, iOS simulator product, `.xcarchive`, signed artifact, production Archive, production model, or device evidence is included. Their absence is not represented as success.
++
++See `docs/production/FINDINGS_REGISTER.csv`, `FINAL_STATUS.md`, and `EXTERNAL_RELEASE_GATES.md` for complete traceability.
+diff --git a/RELEASE_MANIFEST.json b/RELEASE_MANIFEST.json
+new file mode 100644
+index 0000000..9c490ea
+--- /dev/null
++++ b/RELEASE_MANIFEST.json
+@@ -0,0 +1,150 @@
++{
++  "evidence_artifacts": [
++    {
++      "bytes": 3381,
++      "path": "GODSTONE/sbom/android.cdx.json",
++      "sha256": "b6329eab2b23c2253a430e76a36c2caf02c9f41c8c90e373afc5a5e8130db873"
++    },
++    {
++      "bytes": 567,
++      "path": "GODSTONE/sbom/corpus.cdx.json",
++      "sha256": "9eab41fafd51213da724894d3d87e290ec70e34fb6db4477b93711a4288ef425"
++    },
++    {
++      "bytes": 913,
++      "path": "GODSTONE/sbom/ios.cdx.json",
++      "sha256": "483f0f6db5dded8c3fc1c17b1559c008b026a4ac7631b9755924a6718a2396e4"
++    },
++    {
++      "bytes": 576,
++      "path": "GODSTONE/sbom/models.cdx.json",
++      "sha256": "527e384811315322cd8a61333feb5ed0ce3af30f1f78c288ad39c4070e6af835"
++    },
++    {
++      "bytes": 557,
++      "path": "GODSTONE/sbom/native.cdx.json",
++      "sha256": "6bc5b7a636279ac1c769d099ed745766b00c7dac9fc9f146630253c3fdc4a5d7"
++    },
++    {
++      "bytes": 1134,
++      "path": "GODSTONE/sbom/python-generation-tools.cdx.json",
++      "sha256": "ce7c462ad68946e1d4df935ff98186cb4e99eb0af1e21999d894bf3ff6adb4fc"
++    },
++    {
++      "bytes": 11062,
++      "path": "GODSTONE/docs/production/FINDINGS_REGISTER.csv",
++      "sha256": "2d1f2b17df785e2a6392ba417da978232f6f58107b05678cdb1a7eb369545759"
++    },
++    {
++      "bytes": 2013,
++      "path": "GODSTONE/docs/production/VERIFICATION_MATRIX.md",
++      "sha256": "80e8955a115b774f1e0d801570f28071d7b260201f497641abec67d4fa7999f7"
++    },
++    {
++      "bytes": 1269,
++      "path": "artifacts/reports/logs/content-release-gates-test.log",
++      "sha256": "f533afb15af34a72dda39faf069478f030f658de33729622e92eebf2c1a17a4c"
++    },
++    {
++      "bytes": 2476,
++      "path": "artifacts/reports/logs/full-available-verification.log",
++      "sha256": "723f8c6c8d281a3b485ddbe134140b91580d4020fee0d7e85b238bcfb7ce4a9f"
++    },
++    {
++      "bytes": 334,
++      "path": "artifacts/reports/logs/overlay-transform-tests.log",
++      "sha256": "72b78d85025384cce537f75970f6958f93beb8867d04cc8c9e678c73e7150c8b"
++    },
++    {
++      "bytes": 134,
++      "path": "artifacts/reports/logs/release-asset-staging-test.log",
++      "sha256": "43bb0af3f5bd9c7df68013ed7a395a409d6e10f8a8ce56135db08460893c2a85"
++    },
++    {
++      "bytes": 219,
++      "path": "artifacts/reports/logs/repository-static-checks.log",
++      "sha256": "6b7e0ae90bbf329b9c14d1ebea10334607f438b4abf57ff3c732f63b23db31a3"
++    },
++    {
++      "bytes": 0,
++      "path": "artifacts/android/logs/kotlin-validator-compile.log",
++      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
++    },
++    {
++      "bytes": 42,
++      "path": "artifacts/android/logs/kotlin-validator-test.log",
++      "sha256": "42408055b89157020ff66f33302086fca3769573afcc9f3875e11ad8ac018c3c"
++    },
++    {
++      "bytes": 3013,
++      "path": "artifacts/ios/logs/swift-validator-test.log",
++      "sha256": "98be350a8ea095fd5fa9760765d50ea973fe79beb1dc90f898461fe9bf1664ed"
++    },
++    {
++      "bytes": 18861,
++      "path": "artifacts/patches/overlay-manifest.json",
++      "sha256": "211fe99ef72fd373703af2d44cb72651650037b58fb35a232bdfdeba82838a76"
++    }
++  ],
++  "mobile_artifacts": [],
++  "release_blockers": [
++    "complete private checkout not materialized in build container",
++    "verified gradle-wrapper.jar absent",
++    "Android SDK/Gradle build not available",
++    "macOS/Xcode build not available",
++    "durable messaging and future GMP/2.1 Mesh incomplete",
++    "identity/trust and panic-wipe integration incomplete",
++    "independent Noise vectors and model/native locks incomplete",
++    "no approved production corpus/assets/signing credentials",
++    "physical-device, accessibility, battery, thermal and store evidence absent"
++  ],
++  "schema": 1,
++  "shipping_surface": {
++    "application_id": "io.godstone.app",
++    "archive": "enabled only with approved signed assets",
++    "bulk_transfer": "disabled",
++    "mesh": "disabled and absent from app dependency graph",
++    "oracle": "disabled",
++    "sos": "disabled",
++    "tier": "LIGHT"
++  },
++  "source": {
++    "branch": "main",
++    "commit": "b7daf5aceb642277807e9bfbe3bbb486112a64ec",
++    "complete_private_checkout_in_bundle": false,
++    "delivery_mode": "exact-commit remediation overlay",
++    "dirty": true,
++    "repository": "oculusrex14/GODSTONE",
++    "tree": "ccbdc382b2f4cd88d79f59b77248760037603031"
++  },
++  "tests": {
++    "content_archive": {
++      "failed": 0,
++      "passed": 10
++    },
++    "kotlin_oracle_validator": {
++      "failed": 0,
++      "passed": 4
++    },
++    "overlay_transforms": {
++      "failed": 0,
++      "passed": 2
++    },
++    "repository_static_checks": "passed",
++    "swift_oracle_validator": {
++      "failed": 0,
++      "passed": 4
++    }
++  },
++  "toolchains_observed": {
++    "android_sdk": "unavailable",
++    "gradle": "unavailable",
++    "java": "21.0.10",
++    "kotlin_compiler": "1.9.0",
++    "os": "Linux x86_64",
++    "python": "3.13.5",
++    "swift": "6.2.1",
++    "xcode": "unavailable"
++  },
++  "verdict": "PARTIALLY_REMEDIATED_NOT_READY"
++}
+diff --git a/THIRD_PARTY_NOTICES.md b/THIRD_PARTY_NOTICES.md
+new file mode 100644
+index 0000000..a5adabb
+--- /dev/null
++++ b/THIRD_PARTY_NOTICES.md
+@@ -0,0 +1,18 @@
++# Third-party notices — release-blocking preliminary inventory
++
++This file is an engineering inventory, not legal approval. The complete resolved dependency graph, all transitive licences, native/model licences, notices, attribution text, and redistribution obligations must be generated and reviewed from the exact release build before distribution.
++
++| Component family | Version in prepared source | Licence inventory status |
++|---|---:|---|
++| AndroidX / Jetpack Compose | BOM 2024.09.02 and listed module versions | Apache-2.0; transitive graph pending |
++| Kotlin / Android Gradle toolchain | repository build configuration | Apache-2.0; exact resolved toolchain pending |
++| Dagger/Hilt | 2.52 | Apache-2.0 |
++| JUnit | 4.13.2 | EPL-1.0 |
++| PyYAML | 6.0.3 | MIT |
++| cryptography | 46.0.4 | Apache-2.0 OR BSD-3-Clause |
++| Bouncy Castle | repository dependency | Licence and exact version must be confirmed from resolved graph |
++| SQLCipher Android | repository dependency in nonshipping Mesh module | Licence/edition and redistribution terms must be confirmed before any Mesh release |
++| llama.cpp and model artifacts | absent/unpinned | Not approved; no release redistribution permitted from this bundle |
++| Production corpus | absent | No content redistribution permitted from this bundle |
++
++No third-party binary, model, or production corpus is included in the overlay bundle.
+diff --git a/content/archive_manifest.py b/content/archive_manifest.py
+new file mode 100644
+index 0000000..4d3b2ec
+--- /dev/null
++++ b/content/archive_manifest.py
+@@ -0,0 +1,272 @@
++#!/usr/bin/env python3
++"""Create and verify signed GODSTONE Archive release manifests."""
++from __future__ import annotations
++
++import argparse
++import base64
++import hashlib
++import json
++import sqlite3
++from dataclasses import dataclass
++from pathlib import Path
++from typing import Any, Mapping
++
++from cryptography.exceptions import InvalidSignature
++from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey, Ed25519PublicKey
++from cryptography.hazmat.primitives.serialization import Encoding, NoEncryption, PrivateFormat, PublicFormat
++
++MANIFEST_SCHEMA = 1
++ALLOWED_TIERS = {"LIGHT", "MEDIUM", "LARGE"}
++
++
++class ArchiveManifestError(RuntimeError):
++    pass
++
++
++@dataclass(frozen=True)
++class VerificationResult:
++    ok: bool
++    errors: tuple[str, ...]
++
++
++def _sha256(path: Path) -> str:
++    h = hashlib.sha256()
++    with path.open("rb") as stream:
++        for block in iter(lambda: stream.read(1024 * 1024), b""):
++            h.update(block)
++    return h.hexdigest()
++
++
++def _canonical(value: Any) -> bytes:
++    return json.dumps(value, sort_keys=True, separators=(",", ":"), ensure_ascii=False).encode("utf-8")
++
++
++def _signable(manifest: Mapping[str, Any]) -> bytes:
++    unsigned = dict(manifest)
++    unsigned.pop("signature", None)
++    return _canonical(unsigned)
++
++
++def load_private_key(path: Path) -> Ed25519PrivateKey:
++    raw = path.read_bytes()
++    if len(raw) != 32:
++        raise ArchiveManifestError("Ed25519 private key file must contain exactly 32 raw bytes")
++    return Ed25519PrivateKey.from_private_bytes(raw)
++
++
++def load_trust_store(path: Path) -> dict[str, Ed25519PublicKey]:
++    data = json.loads(path.read_text(encoding="utf-8"))
++    keys = data.get("keys") if isinstance(data, Mapping) else None
++    if not isinstance(keys, Mapping):
++        raise ArchiveManifestError("trust store must contain a keys mapping")
++    output: dict[str, Ed25519PublicKey] = {}
++    for key_id, value in keys.items():
++        raw = base64.b64decode(str(value), validate=True)
++        if len(raw) != 32:
++            raise ArchiveManifestError(f"trust key {key_id} is not a raw Ed25519 public key")
++        output[str(key_id)] = Ed25519PublicKey.from_public_bytes(raw)
++    return output
++
++
++def _db_metadata(archive: Path) -> tuple[dict[str, str], dict[str, int], str]:
++    uri = f"file:{archive.resolve()}?mode=ro&immutable=1"
++    conn = sqlite3.connect(uri, uri=True)
++    try:
++        integrity = str(conn.execute("PRAGMA integrity_check").fetchone()[0])
++        meta: dict[str, str] = {}
++        table_names = {row[0] for row in conn.execute("SELECT name FROM sqlite_master WHERE type IN ('table','view')")}
++        if "archive_meta" in table_names:
++            meta = {str(k): str(v) for k, v in conn.execute("SELECT key, value FROM archive_meta")}
++        counts = {}
++        for table in ("documents", "chunks", "vectors"):
++            counts[table] = int(conn.execute(f"SELECT COUNT(*) FROM {table}").fetchone()[0]) if table in table_names else 0
++        fts = "fts5" if "chunks_fts" in table_names else "none"
++        return meta, counts, integrity + ":" + fts
++    finally:
++        conn.close()
++
++
++def create_manifest(
++    archive: Path,
++    output: Path,
++    *,
++    tier: str,
++    archive_schema: int,
++    source_manifest_sha256: str,
++    review_manifest_sha256: str,
++    corpus_manifest_sha256: str,
++    build_tool_commit: str,
++    private_key: Ed25519PrivateKey,
++    key_id: str,
++    embedding_model: str | None = None,
++    embedding_sha256: str | None = None,
++    embedding_dimension: int | None = None,
++) -> dict[str, Any]:
++    if tier not in ALLOWED_TIERS:
++        raise ArchiveManifestError(f"unsupported tier: {tier}")
++    if not archive.is_file():
++        raise ArchiveManifestError(f"archive not found: {archive}")
++    meta, counts, integrity = _db_metadata(archive)
++    if not integrity.startswith("ok:"):
++        raise ArchiveManifestError(f"archive integrity check failed: {integrity}")
++    manifest: dict[str, Any] = {
++        "schema": MANIFEST_SCHEMA,
++        "archive_schema": archive_schema,
++        "tier": tier,
++        "archive_file": archive.name,
++        "archive_bytes": archive.stat().st_size,
++        "archive_sha256": _sha256(archive),
++        "source_manifest_sha256": source_manifest_sha256,
++        "review_manifest_sha256": review_manifest_sha256,
++        "corpus_manifest_sha256": corpus_manifest_sha256,
++        "build_tool_commit": build_tool_commit,
++        "sqlite": {"integrity": "ok", "fts": integrity.split(":", 1)[1], "query_only": True},
++        "counts": {
++            "documents": counts["documents"],
++            "chunks": counts["chunks"],
++            "vectors": counts["vectors"],
++        },
++        "archive_meta": meta,
++        "embedding": None if embedding_model is None else {
++            "model": embedding_model,
++            "sha256": embedding_sha256,
++            "dimension": embedding_dimension,
++        },
++    }
++    signature = private_key.sign(_signable(manifest))
++    manifest["signature"] = {
++        "algorithm": "Ed25519",
++        "key_id": key_id,
++        "value": base64.b64encode(signature).decode("ascii"),
++    }
++    output.parent.mkdir(parents=True, exist_ok=True)
++    output.write_bytes(_canonical(manifest) + b"\n")
++    return manifest
++
++
++def verify_manifest(
++    manifest_path: Path,
++    archive: Path,
++    trust_store: Mapping[str, Ed25519PublicKey],
++    *,
++    expected_tier: str | None = None,
++    expected_archive_schema: int | None = None,
++    expected_embedding_sha256: str | None = None,
++) -> VerificationResult:
++    errors: list[str] = []
++    try:
++        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
++    except (OSError, json.JSONDecodeError) as exc:
++        return VerificationResult(False, (f"manifest unreadable: {exc}",))
++    if not isinstance(manifest, Mapping):
++        return VerificationResult(False, ("manifest root is not an object",))
++    if manifest.get("schema") != MANIFEST_SCHEMA:
++        errors.append(f"manifest schema must be {MANIFEST_SCHEMA}")
++    if manifest.get("tier") not in ALLOWED_TIERS:
++        errors.append("manifest tier is invalid")
++    if expected_tier and manifest.get("tier") != expected_tier:
++        errors.append("archive tier does not match the application variant")
++    if expected_archive_schema is not None and manifest.get("archive_schema") != expected_archive_schema:
++        errors.append("archive schema is incompatible")
++    if manifest.get("archive_file") != archive.name:
++        errors.append("archive filename does not match the manifest")
++    if not archive.is_file():
++        errors.append("archive file is missing")
++    else:
++        if manifest.get("archive_bytes") != archive.stat().st_size:
++            errors.append("archive size mismatch")
++        if manifest.get("archive_sha256") != _sha256(archive):
++            errors.append("archive SHA-256 mismatch")
++    signature = manifest.get("signature")
++    if not isinstance(signature, Mapping) or signature.get("algorithm") != "Ed25519":
++        errors.append("manifest has no supported signature")
++    else:
++        key_id = str(signature.get("key_id", ""))
++        public_key = trust_store.get(key_id)
++        if public_key is None:
++            errors.append("manifest signing key is not trusted")
++        else:
++            try:
++                public_key.verify(base64.b64decode(str(signature.get("value", "")), validate=True), _signable(manifest))
++            except (ValueError, InvalidSignature):
++                errors.append("manifest signature verification failed")
++    if archive.is_file():
++        try:
++            meta, counts, integrity = _db_metadata(archive)
++        except sqlite3.DatabaseError as exc:
++            errors.append(f"archive cannot be opened read-only: {exc}")
++        else:
++            if not integrity.startswith("ok:"):
++                errors.append("SQLite integrity check failed")
++            if str(meta.get("schema_version", manifest.get("archive_schema"))) != str(manifest.get("archive_schema")):
++                errors.append("archive metadata schema mismatch")
++            if meta.get("tier") and meta.get("tier") != manifest.get("tier"):
++                errors.append("archive metadata tier mismatch")
++            expected_counts = manifest.get("counts", {})
++            if isinstance(expected_counts, Mapping):
++                for table, key in (("documents", "documents"), ("chunks", "chunks"), ("vectors", "vectors")):
++                    if expected_counts.get(key) != counts[table]:
++                        errors.append(f"archive {table} count mismatch")
++    if expected_embedding_sha256:
++        embedding = manifest.get("embedding")
++        if not isinstance(embedding, Mapping) or embedding.get("sha256") != expected_embedding_sha256:
++            errors.append("embedding model is incompatible with the archive")
++    return VerificationResult(not errors, tuple(errors))
++
++
++def generate_test_keypair(private_path: Path, trust_path: Path, key_id: str = "TEST-ONLY") -> None:
++    key = Ed25519PrivateKey.generate()
++    private_path.write_bytes(key.private_bytes(Encoding.Raw, PrivateFormat.Raw, NoEncryption()))
++    public = key.public_key().public_bytes(Encoding.Raw, PublicFormat.Raw)
++    trust_path.write_text(json.dumps({"keys": {key_id: base64.b64encode(public).decode("ascii")}}, sort_keys=True) + "\n", encoding="utf-8")
++
++
++def main() -> int:
++    parser = argparse.ArgumentParser(description="Create or verify signed GODSTONE archive manifests")
++    sub = parser.add_subparsers(dest="command", required=True)
++    create = sub.add_parser("create")
++    create.add_argument("--archive", type=Path, required=True)
++    create.add_argument("--out", type=Path, required=True)
++    create.add_argument("--tier", choices=sorted(ALLOWED_TIERS), required=True)
++    create.add_argument("--archive-schema", type=int, required=True)
++    create.add_argument("--source-manifest-sha256", required=True)
++    create.add_argument("--review-manifest-sha256", required=True)
++    create.add_argument("--corpus-manifest-sha256", required=True)
++    create.add_argument("--build-tool-commit", required=True)
++    create.add_argument("--private-key", type=Path, required=True)
++    create.add_argument("--key-id", required=True)
++    verify = sub.add_parser("verify")
++    verify.add_argument("--manifest", type=Path, required=True)
++    verify.add_argument("--archive", type=Path, required=True)
++    verify.add_argument("--trust-store", type=Path, required=True)
++    verify.add_argument("--tier", choices=sorted(ALLOWED_TIERS))
++    verify.add_argument("--archive-schema", type=int)
++    args = parser.parse_args()
++    try:
++        if args.command == "create":
++            create_manifest(
++                args.archive, args.out, tier=args.tier, archive_schema=args.archive_schema,
++                source_manifest_sha256=args.source_manifest_sha256,
++                review_manifest_sha256=args.review_manifest_sha256,
++                corpus_manifest_sha256=args.corpus_manifest_sha256,
++                build_tool_commit=args.build_tool_commit,
++                private_key=load_private_key(args.private_key), key_id=args.key_id,
++            )
++            print(args.out)
++        else:
++            result = verify_manifest(
++                args.manifest, args.archive, load_trust_store(args.trust_store),
++                expected_tier=args.tier, expected_archive_schema=args.archive_schema,
++            )
++            if not result.ok:
++                print("\n".join(result.errors))
++                return 1
++            print("archive manifest verified")
++    except (ArchiveManifestError, OSError, json.JSONDecodeError) as exc:
++        print(str(exc))
++        return 1
++    return 0
++
++
++if __name__ == "__main__":
++    raise SystemExit(main())
+diff --git a/content/ingest/build_archive.py b/content/ingest/build_archive.py
+index 489dab5..c321787 100644
+--- a/content/ingest/build_archive.py
++++ b/content/ingest/build_archive.py
+@@ -28,6 +28,7 @@ import yaml
+ 
+ from .chunker import Chunk, chunk_document
+ from .embedder import Embedder
++from content.release_gate import validate_release_corpus
+ 
+ SCHEMA_VERSION = 3
+ 
+@@ -209,6 +210,15 @@ def build(tier: str, out_path: Path, embed: bool = True,
+               f"examples ({names}). --release would refuse this build.",
+               file=sys.stderr)
+ 
++    release_validation = None
++    if release:
++        release_validation = validate_release_corpus(
++            docs,
++            ROOT / "content" / "manifests" / "documents",
++            evidence_root=ROOT / "content" / "manifests",
++        )
++        print(f"validated {len(release_validation.documents)} production document manifest(s)")
++
+     conn = sqlite3.connect(out_path)
+     conn.executescript((DB_DIR / "schema.sql").read_text(encoding="utf-8"))
+ 
+@@ -273,6 +283,13 @@ def build(tier: str, out_path: Path, embed: bool = True,
+         "chunk_count": str(len(all_chunks)),
+         "corpus_sha256": digest,
+     }
++    if release_validation is not None:
++        meta.update({
++            "source_manifest_sha256": release_validation.source_set_sha256,
++            "review_manifest_sha256": release_validation.review_set_sha256,
++            "release_manifest_set_sha256": release_validation.manifest_set_sha256,
++        })
++
+     conn.executemany("INSERT INTO archive_meta (key, value) VALUES (?, ?)",
+                      sorted(meta.items()))
+ 
+diff --git a/content/manifests/README.md b/content/manifests/README.md
+new file mode 100644
+index 0000000..cfcb99d
+--- /dev/null
++++ b/content/manifests/README.md
+@@ -0,0 +1,5 @@
++# Production content manifests
++
++`documents/` is intentionally empty. A production release must contain one approved YAML manifest per selected source document and its immutable rights, reviewer-approval, and chunk-boundary evidence files. The release gate rejects an empty set, examples, placeholders, missing files, mismatched hashes, expired review, absent redistribution/derivative rights, and unapproved warning or contraindication mappings.
++
++`examples/document-manifest.example.yaml` documents the schema only. Its `example: true` and placeholder hashes guarantee that it cannot pass the release gate.
+diff --git a/content/manifests/examples/document-manifest.example.yaml b/content/manifests/examples/document-manifest.example.yaml
+new file mode 100644
+index 0000000..425bb3d
+--- /dev/null
++++ b/content/manifests/examples/document-manifest.example.yaml
+@@ -0,0 +1,41 @@
++schema: 1
++id: example-source
++status: draft
++example: true
++source:
++  title: Example only
++  publisher: Example only
++  edition: Example only
++  version: Example only
++  source_date: '2000-01-01'
++  acquisition_date: '2000-01-01'
++  canonical_url: https://example.invalid
++  source_sha256: PLACEHOLDER
++rights:
++  licence: PLACEHOLDER
++  attribution: PLACEHOLDER
++  redistribution_permitted: false
++  derivative_work_permitted: false
++  evidence_file: examples/rights.example.txt
++  evidence_sha256: PLACEHOLDER
++review:
++  reviewer_id: PLACEHOLDER
++  reviewer_role: PLACEHOLDER
++  reviewer_qualifications: PLACEHOLDER
++  reviewer_identity_evidence: PLACEHOLDER
++  reviewed_on: '2000-01-01'
++  review_scope: PLACEHOLDER
++  expires_on: '2000-01-02'
++  approval_evidence_file: examples/review.example.txt
++  approval_evidence_sha256: PLACEHOLDER
++  approval_signature: PLACEHOLDER
++safety:
++  warnings_required: true
++  warning_sections: []
++  contraindications_required: true
++  contraindication_sections: []
++  chunk_boundary_approved: false
++  chunk_approval_evidence_file: examples/chunks.example.txt
++  chunk_approval_evidence_sha256: PLACEHOLDER
++  jurisdiction: PLACEHOLDER
++  replacement_policy: PLACEHOLDER
+diff --git a/content/release_gate.py b/content/release_gate.py
+new file mode 100644
+index 0000000..f651c1b
+--- /dev/null
++++ b/content/release_gate.py
+@@ -0,0 +1,353 @@
++#!/usr/bin/env python3
++"""Fail-closed production content manifest validation for GODSTONE.
++
++Development fixtures may exist without approval, but a release archive must call
++``validate_release_corpus`` before any output database is created. The validator
++is deliberately local-only: it verifies immutable files and hashes already in
++the repository and never attempts to fetch evidence from the network.
++"""
++from __future__ import annotations
++
++import argparse
++import hashlib
++import json
++import re
++from dataclasses import dataclass
++from datetime import date
++from pathlib import Path
++from typing import Any, Iterable, Mapping, Sequence
++
++import yaml
++
++SCHEMA_VERSION = 1
++_PLACEHOLDER = re.compile(
++    r"(?:^|[\s_\-])(example|placeholder|sample|tbd|todo|unknown|unreviewed|dummy|test-only|n/?a)(?:$|[\s_\-])",
++    re.IGNORECASE,
++)
++_SHA256 = re.compile(r"^[0-9a-f]{64}$")
++_ALLOWED_STATUS = {"approved"}
++
++
++class ReleaseGateError(RuntimeError):
++    """Raised when any release content requirement is unproven."""
++
++
++@dataclass(frozen=True)
++class ValidatedDocument:
++    document_id: str
++    manifest_path: Path
++    source_path: Path
++    manifest_sha256: str
++    source_sha256: str
++    rights_evidence_sha256: str
++    review_evidence_sha256: str
++    chunk_approval_sha256: str
++
++
++@dataclass(frozen=True)
++class CorpusValidation:
++    documents: tuple[ValidatedDocument, ...]
++    manifest_set_sha256: str
++    source_set_sha256: str
++    review_set_sha256: str
++
++
++def sha256_file(path: Path) -> str:
++    h = hashlib.sha256()
++    with path.open("rb") as stream:
++        for block in iter(lambda: stream.read(1024 * 1024), b""):
++            h.update(block)
++    return h.hexdigest()
++
++
++def canonical_json(value: Any) -> bytes:
++    return json.dumps(value, sort_keys=True, separators=(",", ":"), ensure_ascii=False).encode("utf-8")
++
++
++def _require_mapping(value: Any, field: str, errors: list[str]) -> Mapping[str, Any]:
++    if not isinstance(value, Mapping):
++        errors.append(f"{field} must be a mapping")
++        return {}
++    return value
++
++
++def _require_text(mapping: Mapping[str, Any], key: str, field: str, errors: list[str]) -> str:
++    value = mapping.get(key)
++    text = str(value).strip() if value is not None else ""
++    if not text:
++        errors.append(f"{field}.{key} missing")
++    elif _PLACEHOLDER.search(text) or text.lower() in {"none", "null", "-"}:
++        errors.append(f"{field}.{key} is a placeholder")
++    return text
++
++
++def _require_bool(mapping: Mapping[str, Any], key: str, expected: bool, field: str, errors: list[str]) -> None:
++    if mapping.get(key) is not expected:
++        errors.append(f"{field}.{key} must be {str(expected).lower()}")
++
++
++def _parse_date(value: str, field: str, errors: list[str]) -> date | None:
++    if not value:
++        return None
++    try:
++        return date.fromisoformat(value)
++    except ValueError:
++        errors.append(f"{field} must use YYYY-MM-DD")
++        return None
++
++
++def _resolve_evidence(
++    root: Path,
++    mapping: Mapping[str, Any],
++    file_key: str,
++    hash_key: str,
++    field: str,
++    errors: list[str],
++) -> tuple[Path | None, str]:
++    rel = _require_text(mapping, file_key, field, errors)
++    expected = _require_text(mapping, hash_key, field, errors).lower()
++    if expected and not _SHA256.fullmatch(expected):
++        errors.append(f"{field}.{hash_key} must be a lowercase SHA-256")
++    if not rel:
++        return None, ""
++    candidate = (root / rel).resolve()
++    try:
++        candidate.relative_to(root.resolve())
++    except ValueError:
++        errors.append(f"{field}.{file_key} escapes the evidence root")
++        return None, ""
++    if not candidate.is_file():
++        errors.append(f"{field}.{file_key} does not exist: {rel}")
++        return candidate, ""
++    actual = sha256_file(candidate)
++    if expected and actual != expected:
++        errors.append(f"{field}.{hash_key} mismatch")
++    return candidate, actual
++
++
++def validate_document_manifest(
++    manifest_path: Path,
++    source_path: Path,
++    *,
++    evidence_root: Path,
++    today: date | None = None,
++) -> ValidatedDocument:
++    """Validate one source, rights packet, review packet, and chunk approval.
++
++    The function checks the bytes referenced by the manifest. A non-empty name,
++    URL, or reviewer role is not treated as evidence by itself.
++    """
++    today = today or date.today()
++    errors: list[str] = []
++    try:
++        record = yaml.safe_load(manifest_path.read_text(encoding="utf-8")) or {}
++    except (OSError, yaml.YAMLError) as exc:
++        raise ReleaseGateError(f"{manifest_path}: unreadable manifest: {exc}") from exc
++    if not isinstance(record, Mapping):
++        raise ReleaseGateError(f"{manifest_path}: manifest root must be a mapping")
++
++    if record.get("schema") != SCHEMA_VERSION:
++        errors.append(f"schema must be {SCHEMA_VERSION}")
++    document_id = _require_text(record, "id", "document", errors)
++    if record.get("status") not in _ALLOWED_STATUS:
++        errors.append("status must be approved")
++    if record.get("example") is not False:
++        errors.append("example must be false")
++
++    source = _require_mapping(record.get("source"), "source", errors)
++    for key in (
++        "title", "publisher", "edition", "version", "source_date",
++        "acquisition_date", "canonical_url", "source_sha256",
++    ):
++        _require_text(source, key, "source", errors)
++    expected_source = str(source.get("source_sha256", "")).strip().lower()
++    if expected_source and not _SHA256.fullmatch(expected_source):
++        errors.append("source.source_sha256 must be a lowercase SHA-256")
++    if not source_path.is_file():
++        errors.append(f"source file missing: {source_path}")
++        actual_source = ""
++    else:
++        actual_source = sha256_file(source_path)
++        if expected_source and actual_source != expected_source:
++            errors.append("source.source_sha256 mismatch")
++    source_date = _parse_date(str(source.get("source_date", "")), "source.source_date", errors)
++    acquired = _parse_date(str(source.get("acquisition_date", "")), "source.acquisition_date", errors)
++    if source_date and source_date > today:
++        errors.append("source.source_date is in the future")
++    if acquired and acquired > today:
++        errors.append("source.acquisition_date is in the future")
++
++    rights = _require_mapping(record.get("rights"), "rights", errors)
++    _require_text(rights, "licence", "rights", errors)
++    _require_text(rights, "attribution", "rights", errors)
++    _require_bool(rights, "redistribution_permitted", True, "rights", errors)
++    _require_bool(rights, "derivative_work_permitted", True, "rights", errors)
++    _, rights_hash = _resolve_evidence(
++        evidence_root, rights, "evidence_file", "evidence_sha256", "rights", errors
++    )
++
++    review = _require_mapping(record.get("review"), "review", errors)
++    for key in (
++        "reviewer_id", "reviewer_role", "reviewer_qualifications",
++        "reviewer_identity_evidence", "reviewed_on", "review_scope",
++        "expires_on", "approval_signature",
++    ):
++        _require_text(review, key, "review", errors)
++    reviewed_on = _parse_date(str(review.get("reviewed_on", "")), "review.reviewed_on", errors)
++    expires_on = _parse_date(str(review.get("expires_on", "")), "review.expires_on", errors)
++    if reviewed_on and reviewed_on > today:
++        errors.append("review.reviewed_on is in the future")
++    if expires_on and expires_on < today:
++        errors.append("review has expired")
++    if reviewed_on and expires_on and expires_on <= reviewed_on:
++        errors.append("review.expires_on must be after review.reviewed_on")
++    _, review_hash = _resolve_evidence(
++        evidence_root, review, "approval_evidence_file", "approval_evidence_sha256", "review", errors
++    )
++
++    safety = _require_mapping(record.get("safety"), "safety", errors)
++    _require_bool(safety, "chunk_boundary_approved", True, "safety", errors)
++    _require_text(safety, "jurisdiction", "safety", errors)
++    _require_text(safety, "replacement_policy", "safety", errors)
++    warnings_required = safety.get("warnings_required") is True
++    contraindications_required = safety.get("contraindications_required") is True
++    if safety.get("warnings_required") not in {True, False}:
++        errors.append("safety.warnings_required must be boolean")
++    if safety.get("contraindications_required") not in {True, False}:
++        errors.append("safety.contraindications_required must be boolean")
++    warning_sections = safety.get("warning_sections")
++    contraindication_sections = safety.get("contraindication_sections")
++    if warnings_required and (not isinstance(warning_sections, Sequence) or isinstance(warning_sections, str) or not warning_sections):
++        errors.append("safety.warning_sections required and non-empty")
++    if contraindications_required and (
++        not isinstance(contraindication_sections, Sequence)
++        or isinstance(contraindication_sections, str)
++        or not contraindication_sections
++    ):
++        errors.append("safety.contraindication_sections required and non-empty")
++    _, chunk_hash = _resolve_evidence(
++        evidence_root,
++        safety,
++        "chunk_approval_evidence_file",
++        "chunk_approval_evidence_sha256",
++        "safety",
++        errors,
++    )
++
++    if errors:
++        raise ReleaseGateError(f"{manifest_path}: " + "; ".join(errors))
++
++    return ValidatedDocument(
++        document_id=document_id,
++        manifest_path=manifest_path,
++        source_path=source_path,
++        manifest_sha256=sha256_file(manifest_path),
++        source_sha256=actual_source,
++        rights_evidence_sha256=rights_hash,
++        review_evidence_sha256=review_hash,
++        chunk_approval_sha256=chunk_hash,
++    )
++
++
++def _set_digest(values: Iterable[str]) -> str:
++    h = hashlib.sha256()
++    for value in sorted(values):
++        h.update(value.encode("ascii"))
++        h.update(b"\n")
++    return h.hexdigest()
++
++
++def validate_release_corpus(
++    documents: Iterable[Any],
++    manifests_dir: Path,
++    *,
++    evidence_root: Path | None = None,
++    today: date | None = None,
++) -> CorpusValidation:
++    """Validate every document selected for a release archive.
++
++    ``documents`` may be the builder's Document objects or dictionaries. Each
++    item must expose ``source_id`` and ``path``; release reading level is also
++    checked when present. Missing or extra approved manifests are rejected.
++    """
++    manifests_dir = manifests_dir.resolve()
++    evidence_root = (evidence_root or manifests_dir.parent).resolve()
++    validated: list[ValidatedDocument] = []
++    seen: set[str] = set()
++    errors: list[str] = []
++
++    docs = list(documents)
++    for doc in docs:
++        source_id = str(getattr(doc, "source_id", doc.get("source_id") if isinstance(doc, Mapping) else "")).strip()
++        source_path_value = getattr(doc, "path", doc.get("path") if isinstance(doc, Mapping) else None)
++        if not source_id or source_path_value is None:
++            errors.append("document is missing source_id/path")
++            continue
++        if source_id in seen:
++            errors.append(f"duplicate source_id: {source_id}")
++            continue
++        seen.add(source_id)
++        if not re.fullmatch(r"[A-Za-z0-9._-]+", source_id):
++            errors.append(f"unsafe source_id: {source_id}")
++            continue
++        reading_level = getattr(doc, "reading_level", doc.get("reading_level") if isinstance(doc, Mapping) else None)
++        if reading_level is not None and int(reading_level) > 9:
++            errors.append(f"{source_id}: reading level {reading_level} exceeds release maximum 9")
++        manifest = manifests_dir / f"{source_id}.yaml"
++        try:
++            validated.append(
++                validate_document_manifest(
++                    manifest,
++                    Path(source_path_value),
++                    evidence_root=evidence_root,
++                    today=today,
++                )
++            )
++        except ReleaseGateError as exc:
++            errors.append(str(exc))
++
++    approved_files = set(manifests_dir.glob("*.yaml")) if manifests_dir.exists() else set()
++    expected_files = {manifests_dir / f"{source_id}.yaml" for source_id in seen}
++    extras = sorted(path.name for path in approved_files - expected_files)
++    if extras:
++        errors.append("approved manifest(s) not selected into the archive: " + ", ".join(extras))
++    if not validated:
++        errors.append("release corpus contains no validated documents")
++    if errors:
++        raise ReleaseGateError("release corpus rejected:\n- " + "\n- ".join(errors))
++
++    return CorpusValidation(
++        documents=tuple(validated),
++        manifest_set_sha256=_set_digest(item.manifest_sha256 for item in validated),
++        source_set_sha256=_set_digest(item.source_sha256 for item in validated),
++        review_set_sha256=_set_digest(
++            item.rights_evidence_sha256 + item.review_evidence_sha256 + item.chunk_approval_sha256
++            for item in validated
++        ),
++    )
++
++
++def main() -> int:
++    parser = argparse.ArgumentParser(description="Validate GODSTONE production content manifests")
++    parser.add_argument("--manifest", type=Path, required=True)
++    parser.add_argument("--source", type=Path, required=True)
++    parser.add_argument("--evidence-root", type=Path, required=True)
++    parser.add_argument("--date", type=date.fromisoformat, default=None)
++    args = parser.parse_args()
++    try:
++        result = validate_document_manifest(
++            args.manifest, args.source, evidence_root=args.evidence_root, today=args.date
++        )
++    except ReleaseGateError as exc:
++        print(str(exc))
++        return 1
++    print(json.dumps({
++        "document_id": result.document_id,
++        "manifest_sha256": result.manifest_sha256,
++        "source_sha256": result.source_sha256,
++    }, sort_keys=True))
++    return 0
++
++
++if __name__ == "__main__":
++    raise SystemExit(main())
+diff --git a/content/tests/test_archive_manifest.py b/content/tests/test_archive_manifest.py
+new file mode 100644
+index 0000000..e161a16
+--- /dev/null
++++ b/content/tests/test_archive_manifest.py
+@@ -0,0 +1,84 @@
++from __future__ import annotations
++
++import json
++import sqlite3
++import tempfile
++import unittest
++from pathlib import Path
++
++from content.archive_manifest import (
++    create_manifest,
++    generate_test_keypair,
++    load_private_key,
++    load_trust_store,
++    verify_manifest,
++)
++
++
++class ArchiveManifestTests(unittest.TestCase):
++    def setUp(self) -> None:
++        self.temp = tempfile.TemporaryDirectory()
++        self.root = Path(self.temp.name)
++        self.archive = self.root / "archive_light.db"
++        conn = sqlite3.connect(self.archive)
++        conn.executescript("""
++            CREATE TABLE archive_meta(key TEXT PRIMARY KEY, value TEXT NOT NULL);
++            INSERT INTO archive_meta VALUES('schema_version','3');
++            INSERT INTO archive_meta VALUES('tier','LIGHT');
++            CREATE TABLE documents(document_id INTEGER PRIMARY KEY, title TEXT);
++            CREATE TABLE chunks(chunk_id INTEGER PRIMARY KEY, document_id INTEGER, text TEXT);
++            CREATE TABLE vectors(chunk_id INTEGER PRIMARY KEY, vec BLOB);
++            CREATE VIRTUAL TABLE chunks_fts USING fts5(text);
++            INSERT INTO documents VALUES(1,'Fixture');
++            INSERT INTO chunks VALUES(1,1,'safe fixture');
++            INSERT INTO chunks_fts(rowid,text) VALUES(1,'safe fixture');
++        """)
++        conn.commit(); conn.close()
++        self.private = self.root / "test.key"
++        self.trust = self.root / "trust.json"
++        generate_test_keypair(self.private, self.trust)
++        self.manifest = self.root / "archive.manifest.json"
++        create_manifest(
++            self.archive, self.manifest, tier="LIGHT", archive_schema=3,
++            source_manifest_sha256="1" * 64,
++            review_manifest_sha256="2" * 64,
++            corpus_manifest_sha256="3" * 64,
++            build_tool_commit="b7daf5aceb642277807e9bfbe3bbb486112a64ec",
++            private_key=load_private_key(self.private), key_id="TEST-ONLY",
++        )
++
++    def tearDown(self) -> None:
++        self.temp.cleanup()
++
++    def verify(self, **kwargs):
++        return verify_manifest(
++            self.manifest, self.archive, load_trust_store(self.trust),
++            expected_tier=kwargs.get("tier", "LIGHT"), expected_archive_schema=3,
++        )
++
++    def test_valid_signed_archive_passes(self) -> None:
++        self.assertTrue(self.verify().ok)
++
++    def test_archive_mutation_is_detected(self) -> None:
++        with self.archive.open("ab") as stream:
++            stream.write(b"tamper")
++        result = self.verify()
++        self.assertFalse(result.ok)
++        self.assertTrue(any("SHA-256" in item or "size" in item for item in result.errors))
++
++    def test_wrong_tier_is_detected(self) -> None:
++        result = self.verify(tier="MEDIUM")
++        self.assertFalse(result.ok)
++        self.assertIn("archive tier does not match the application variant", result.errors)
++
++    def test_manifest_mutation_breaks_signature(self) -> None:
++        data = json.loads(self.manifest.read_text(encoding="utf-8"))
++        data["counts"]["chunks"] = 99
++        self.manifest.write_text(json.dumps(data), encoding="utf-8")
++        result = self.verify()
++        self.assertFalse(result.ok)
++        self.assertTrue(any("signature" in item for item in result.errors))
++
++
++if __name__ == "__main__":
++    unittest.main()
+diff --git a/content/tests/test_release_gate.py b/content/tests/test_release_gate.py
+new file mode 100644
+index 0000000..c0cf23c
+--- /dev/null
++++ b/content/tests/test_release_gate.py
+@@ -0,0 +1,113 @@
++from __future__ import annotations
++
++import hashlib
++import tempfile
++import unittest
++from datetime import date
++from pathlib import Path
++
++import yaml
++
++from content.release_gate import ReleaseGateError, validate_document_manifest
++
++
++def digest(path: Path) -> str:
++    return hashlib.sha256(path.read_bytes()).hexdigest()
++
++
++class ReleaseGateTests(unittest.TestCase):
++    def setUp(self) -> None:
++        self.temp = tempfile.TemporaryDirectory()
++        self.root = Path(self.temp.name)
++        self.source = self.root / "source.md"
++        self.rights = self.root / "rights.txt"
++        self.review = self.root / "review.txt"
++        self.chunks = self.root / "chunks.txt"
++        self.source.write_text("reviewed source\n", encoding="utf-8")
++        self.rights.write_text("redistribution and derivatives permitted\n", encoding="utf-8")
++        self.review.write_text("qualified reviewer approval\n", encoding="utf-8")
++        self.chunks.write_text("all chunks reviewed with warnings attached\n", encoding="utf-8")
++        self.manifest = self.root / "source.yaml"
++        self.record = {
++            "schema": 1,
++            "id": "source-2026",
++            "status": "approved",
++            "example": False,
++            "source": {
++                "title": "Reviewed source", "publisher": "Publisher", "edition": "1",
++                "version": "2026.1", "source_date": "2026-01-10",
++                "acquisition_date": "2026-02-01", "canonical_url": "https://publisher.invalid/source",
++                "source_sha256": digest(self.source),
++            },
++            "rights": {
++                "licence": "CC-BY-4.0", "attribution": "Publisher, 2026",
++                "redistribution_permitted": True, "derivative_work_permitted": True,
++                "evidence_file": "rights.txt", "evidence_sha256": digest(self.rights),
++            },
++            "review": {
++                "reviewer_id": "reviewer-123", "reviewer_role": "licensed clinician",
++                "reviewer_qualifications": "qualification evidence ID 77",
++                "reviewer_identity_evidence": "external-gate-record-77",
++                "reviewed_on": "2026-03-01",
++                "review_scope": "source transformation and every independently retrievable chunk",
++                "expires_on": "2027-03-01", "approval_evidence_file": "review.txt",
++                "approval_evidence_sha256": digest(self.review),
++                "approval_signature": "external-signature-record-77",
++            },
++            "safety": {
++                "warnings_required": True, "warning_sections": ["warning-1"],
++                "contraindications_required": True, "contraindication_sections": ["contra-1"],
++                "chunk_boundary_approved": True,
++                "chunk_approval_evidence_file": "chunks.txt",
++                "chunk_approval_evidence_sha256": digest(self.chunks),
++                "jurisdiction": "global general guidance",
++                "replacement_policy": "replace on source revision or review expiry",
++            },
++        }
++
++    def tearDown(self) -> None:
++        self.temp.cleanup()
++
++    def write(self) -> None:
++        self.manifest.write_text(yaml.safe_dump(self.record, sort_keys=True), encoding="utf-8")
++
++    def validate(self):
++        self.write()
++        return validate_document_manifest(
++            self.manifest, self.source, evidence_root=self.root, today=date(2026, 8, 6)
++        )
++
++    def test_approved_manifest_passes(self) -> None:
++        result = self.validate()
++        self.assertEqual("source-2026", result.document_id)
++
++    def test_source_mutation_is_detected(self) -> None:
++        self.write()
++        self.source.write_text("mutated\n", encoding="utf-8")
++        with self.assertRaisesRegex(ReleaseGateError, "source_sha256 mismatch"):
++            validate_document_manifest(self.manifest, self.source, evidence_root=self.root, today=date(2026, 8, 6))
++
++    def test_expired_review_is_rejected(self) -> None:
++        self.record["review"]["expires_on"] = "2026-08-05"
++        with self.assertRaisesRegex(ReleaseGateError, "expired"):
++            self.validate()
++
++    def test_wrong_rights_boolean_is_rejected(self) -> None:
++        self.record["rights"]["derivative_work_permitted"] = False
++        with self.assertRaisesRegex(ReleaseGateError, "derivative_work_permitted"):
++            self.validate()
++
++    def test_example_or_placeholder_is_rejected(self) -> None:
++        self.record["example"] = True
++        self.record["review"]["reviewer_id"] = "UNREVIEWED-EXAMPLE"
++        with self.assertRaises(ReleaseGateError):
++            self.validate()
++
++    def test_missing_warning_mapping_is_rejected(self) -> None:
++        self.record["safety"]["warning_sections"] = []
++        with self.assertRaisesRegex(ReleaseGateError, "warning_sections"):
++            self.validate()
++
++
++if __name__ == "__main__":
++    unittest.main()
+diff --git a/docs/architecture/ADR-0001-source-of-truth.md b/docs/architecture/ADR-0001-source-of-truth.md
+new file mode 100644
+index 0000000..b5b3ea7
+--- /dev/null
++++ b/docs/architecture/ADR-0001-source-of-truth.md
+@@ -0,0 +1,5 @@
++# ADR-0001: Git tree is executable source of truth
++
++Status: Accepted for remediation.
++
++The Git tree at the recorded commit is the executable source. `Godstone.xlsx`, V3, and V4 aggregate documents are historical traceability artifacts and may not overwrite the tree. Any extraction tool must be read-only or deterministic verification-only. The current private-repository transfer limitation is documented separately and does not change this decision.
+diff --git a/docs/architecture/ADR-0002-initial-release-surface.md b/docs/architecture/ADR-0002-initial-release-surface.md
+new file mode 100644
+index 0000000..8adc662
+--- /dev/null
++++ b/docs/architecture/ADR-0002-initial-release-surface.md
+@@ -0,0 +1,5 @@
++# ADR-0002: Initial release is one LIGHT Archive-only application
++
++Status: Accepted.
++
++Both platforms use `io.godstone.app`. LIGHT is the only initial tier. Oracle, Mesh, bulk transfer, and SOS are not production routes and do not receive permissions, entitlements, services, background modes, or marketing claims. Re-enablement requires evidence-backed release capability generation, not a casual Boolean change.
+diff --git a/docs/architecture/ADR-0003-identity-trust-deferred.md b/docs/architecture/ADR-0003-identity-trust-deferred.md
+new file mode 100644
+index 0000000..ef17eae
+--- /dev/null
++++ b/docs/architecture/ADR-0003-identity-trust-deferred.md
+@@ -0,0 +1,5 @@
++# ADR-0003: Identity and trust are deferred, not implied
++
++Status: Open design gate.
++
++No anonymity, sealed-sender, authenticated delivery, trust continuity, rotation, or revocation claim is allowed. Before Mesh returns, a separate reviewed ADR must define root signing keys, Noise static keys, contact introduction, fingerprints, TOFU/reset behavior, rotation continuity, revocation, backups/clones, recipient binding, and metadata disclosures.
+diff --git a/docs/production/BASELINE.md b/docs/production/BASELINE.md
+new file mode 100644
+index 0000000..dcddc87
+--- /dev/null
++++ b/docs/production/BASELINE.md
+@@ -0,0 +1,17 @@
++# GODSTONE remediation baseline
++
++- Repository: `oculusrex14/GODSTONE`
++- Default branch: `main`
++- Starting commit: `b7daf5aceb642277807e9bfbe3bbb486112a64ec`
++- Starting tree: `ccbdc382b2f4cd88d79f59b77248760037603031`
++- Report baseline: same commit
++- Intervening commits: none
++- Original report verdict: `NOT READY`, 2.2/10
++- Original inspected Actions run: `31078274189`, failed
++- Execution environment: Linux x86_64; no Android SDK/Gradle installation, no macOS/Xcode, no physical mobile devices, no signing credentials.
++
++## Retrieval boundary
++
++The private repository was read through the authenticated GitHub connector. The execution container could not clone or mount the repository archive and had no outbound GitHub network route. The delivered `GODSTONE/` directory is therefore a source overlay, not a claim of a complete private checkout. `overlay/apply_to_checkout.py` verifies this exact commit and each touched baseline Git blob before applying the overlay to a local checkout. It then emits the genuine working-tree patch and changed-file evidence.
++
++This transfer limitation prevents a clean full-project Gradle/Xcode build in the current environment and is explicitly release-blocking. It does not weaken any safety gate: missing production content, assets, wrapper JAR, model locks, signing material, or hardware evidence remain fail-closed.
+diff --git a/docs/production/BUILD.md b/docs/production/BUILD.md
+new file mode 100644
+index 0000000..2bd7d3b
+--- /dev/null
++++ b/docs/production/BUILD.md
+@@ -0,0 +1,24 @@
++# Build instructions
++
++## Android
++
++After the complete checkout, wrapper, SDK, and approved LIGHT assets are present:
++
++```bash
++python3 scripts/prepare_release_assets.py --manifest /secure/release/assets-light.json --out android/app/src/light/assets
++cd android
++./gradlew --no-daemon --warning-mode=all clean test lint assembleLightRelease bundleLightRelease
++```
++
++Do not embed signing credentials. Inspect merged manifests and packaged assets before signing.
++
++## iOS
++
++On macOS with approved Xcode/XcodeGen:
++
++```bash
++python3 scripts/sync_ios_foundation_package.py
++swift test --package-path ios/Packages/GodstoneFoundation
++xcodegen generate --spec ios/project.yml
++xcodebuild -project ios/Godstone.xcodeproj -scheme Godstone-Light -configuration LightRelease -destination 'generic/platform=iOS' CODE_SIGNING_ALLOWED=NO build
++```
+diff --git a/docs/production/EXTERNAL_RELEASE_GATES.md b/docs/production/EXTERNAL_RELEASE_GATES.md
+new file mode 100644
+index 0000000..f8c8630
+--- /dev/null
++++ b/docs/production/EXTERNAL_RELEASE_GATES.md
+@@ -0,0 +1,14 @@
++# External and unavailable release gates
++
++| Class | Requirement | Why unavailable | Remaining action | Owner | Acceptance evidence | Prevents release |
++|---|---|---|---|---|---|---|
++| Owner-controlled | Android production signing | No keystore/Play access | Sign exact tested AAB under controlled custody | Release owner | signing fingerprint + Play artifact hash | Yes |
++| Owner-controlled | Apple signing/provisioning | No account/team/profile | Archive/sign exact tested build | Release owner | signed archive/export logs | Yes |
++| Owner-controlled | Production Archive signing key | No approved key/custody | Create protected Ed25519 key and trust-store rotation procedure | Security owner | key ceremony and signed manifest | Yes |
++| External | Clinical/editorial review | No qualified approvals supplied | Review every source/transformation/chunk/warning | Clinical/editorial owners | immutable approval packet | Yes |
++| External | Content rights | No production corpus/rightsholder evidence | Approve redistribution and derivatives | Legal/content owner | licence/evidence hashes | Yes |
++| External | Legal/privacy/export | No accountable approvals | Review claims, data flows, crypto/export, terms | Legal/privacy owners | signed approval records | Yes |
++| Physical | Android/iOS device matrix | No devices | Install, launch, airplane, upgrade, storage, wipe, accessibility | QA owner | device logs/videos/checksums | Yes |
++| Physical | Hardware Case 0 | Mesh disabled and no devices | Complete Android↔iOS BLE/Noise/GMP evidence | Security/QA | packet capture + test matrix | Required only before Mesh |
++| Physical | Battery/thermal/performance | No lab/devices | Measure budgets on supported hardware | Performance owner | raw measurements + pass report | Yes |
++| External | Store review | No store accounts/artifacts | Submit truthful metadata and exact signed binaries | Product/release owner | Play/App Store acceptance | Yes |
+diff --git a/docs/production/FINAL_STATUS.md b/docs/production/FINAL_STATUS.md
+new file mode 100644
+index 0000000..e5577b0
+--- /dev/null
++++ b/docs/production/FINAL_STATUS.md
+@@ -0,0 +1,20 @@
++# Final status
++
++## Verdict
++
++**PARTIALLY REMEDIATED — NOT READY**
++
++The overlay closes the directly demonstrated Oracle unit-substitution and pre-validation-display defects at source level, implements strong content/archive controls, and removes disabled high-risk features from the production application surface. It does not constitute a full production release because the complete private checkout could not be built in this Linux environment and several repository-controlled Critical/High domains remain open: durable encrypted messaging, future canonical GMP/2.1 Mesh, identity/trust, panic-wipe integration, independent cryptographic vectors, model/native reproducibility, complete dependency hashes, and release build evidence.
++
++## Build status
++
++- Android: source repairs and release configuration prepared; clean Gradle build/APK/AAB **not produced** because the complete checkout, Android SDK, Gradle runtime, and verified wrapper JAR were unavailable.
++- iOS: host-testable validator passed on Linux; Xcode simulator/device/archive build **not produced** because macOS/Xcode were unavailable.
++
++## Feature status
++
++- Archive: intended production surface, but no approved production corpus is bundled.
++- Oracle: fail-closed implementation present; production route disabled.
++- Mesh/bulk/SOS: mechanically absent from production app dependency graphs and UI.
++
++No clinical, legal, privacy, export, signing, physical-device, or store approval is claimed.
+diff --git a/docs/production/FINDINGS_REGISTER.csv b/docs/production/FINDINGS_REGISTER.csv
+new file mode 100644
+index 0000000..2383a3d
+--- /dev/null
++++ b/docs/production/FINDINGS_REGISTER.csv
+@@ -0,0 +1,45 @@
++finding_id,severity,affected_files_and_components,required_remediation,implementation_status,tests_added,validation_commands,validation_result,remaining_limitation,external_dependency
++A-01,Critical,Android/iOS shipping dependency graph; GMP wire,Use generated GMP/2.1 only on any shipping path,MITIGATED_SHIPPING; FUTURE_MESH_OPEN,ci/no_legacy_wire.py negative control,python3 ci/no_legacy_wire.py; python3 ci/no_legacy_wire.py --selftest,PASS on overlay,Legacy GMP/1 source remains in nonshipping Mesh module; full GMP/2.1 migration required before enablement,None
++A-02,Critical if enabled,BLE transport,Complete bounded BLE/Noise transport and hardware evidence,DISABLED_OPEN,Shipping dependency and manifest guards,python3 ci/check_release_surface.py,PASS: no shipping BLE capability,Transport implementation and Hardware Case 0 absent,Physical devices
++A-03,Critical if enabled,Message routing/ACK/UI,Durable recipient-authenticated delivery state machine,DISABLED_OPEN,None beyond design documentation,N/A,NOT RUN,No durable ACK implementation,Repository work + devices
++A-04,Critical,iOS durable storage and wipe,Encrypted durable store plus coordinated resumable wipe,OPEN_REPOSITORY,None,N/A,NOT RUN,iOS store/wipe not implemented,None
++A-05,Critical if claimed,Identity/contact/trust,Accepted identity/trust/rotation/revocation design and implementation,CLAIMS_REMOVED; OPEN_DESIGN,ADR-0003 and release-surface checks,python3 ci/check_release_surface.py,PASS for claim removal,Trust architecture and implementation absent,Independent review later
++A-06,High,Noise vectors/release scripts,Pin independent Noise vectors and remove bypasses,PARTIAL,ci/no_release_bypasses.py,python3 ci/no_release_bypasses.py,PASS for bypass scan,Independent fixture not supplied,Independent vector source/review
++A-07,High,Android/iOS builds,Clean native builds and tests,PARTIAL_BLOCKED,Validator harnesses and package isolation,See VERIFICATION_MATRIX.md,Partial PASS,"Full checkout, Android SDK/Gradle and Xcode unavailable",Platform infrastructure
++A-08,Critical,Production content corpus,Approved licensed reviewed corpus,REPOSITORY_GATE_CLOSED; EXTERNAL_CONTENT_OPEN,6 gate tests plus archive tests,python3 -m unittest discover -s content/tests -v,PASS; empty production manifest set fails closed,No production corpus or approvals,Clinical/editorial/rights approval
++A-09,High,llama.cpp/models/native artifacts,"Pin source, models, hashes, licences and outputs",OPEN_REPOSITORY,Release assets reject unapproved inputs,python3 scripts/prepare_release_assets.py --manifest release/assets-light.example.json --out /tmp/out --check-only,Expected rejection,No pinned model/native stack,Model rights and artifact source
++A-10,High,Android message store,Exact storage caps/migrations/SOS behavior,NONSHIPPING_OPEN,Shipping Mesh isolation,python3 ci/no_legacy_wire.py,PASS for nonshipping isolation,Store resilience not implemented,None
++A-11,High,Permissions/capabilities,Match manifests to enabled behavior,IMPLEMENTED_SOURCE,Android/iOS plist/XML checks,python3 ci/check_release_surface.py,PASS,Merged/binary/device verification pending,Platform build/device
++A-12,High,Archive integrity/fallback,"Signed manifest, runtime validation and fault matrix",PARTIAL,4 archive manifest tests,python3 -m unittest content.tests.test_archive_manifest -v,PASS,Mobile startup integration and device faults pending,Platform builds
++A-13,High,Semantic search,Pinned parity/performance evidence,DISABLED_OPEN,Oracle production route absent,python3 ci/check_release_surface.py,PASS for disabled surface,Pinned models/device parity absent,Model artifacts/devices
++A-14,High,Bulk plane,Authenticated bulk transport or remove surfaces,DISABLED_SOURCE_CLOSED,Release-surface checks,python3 ci/check_release_surface.py,PASS,Transport remains future work,Devices before enablement
++A-15,High,Battery/background,Define and measure budgets,OPEN_EXTERNAL,Budget documentation only,N/A,NOT RUN,No representative physical measurements,Physical devices/lab
++A-16,High,Accessibility/stress UX,Source accessibility plus manual evidence,PARTIAL,Source semantics/reflow changes; plist/orientation checks,python3 ci/check_release_surface.py,PASS for source restrictions,TalkBack/VoiceOver/stress sessions absent,Physical devices/human QA
++A-17,High,Shipping reachability,Prove only approved paths ship,PARTIAL,Dependency guard with mutation,python3 ci/no_legacy_wire.py --selftest,PASS,Full release binary/call-graph inspection unavailable,Platform build
++A-18,High,Product/store/privacy/disclaimer,Truthful claims and privacy metadata,PARTIAL,Release surface and privacy manifest checks,python3 ci/check_release_surface.py,PASS at source level,Legal/privacy/store review absent,External approvals
++GST-BUILD-001,High,Android crypto compile,Concrete Bouncy Castle parameter casts; AndroidX properties,IMPLEMENTED_SOURCE_UNVERIFIED,Kotlin validator harness only,Android Gradle command in BUILD.md,BLOCKED,Full Android compile not executable here,Android SDK/Gradle/full checkout
++GST-BUILD-002,High,iOS package closure,Isolate Core/Mesh from LLM bridge,IMPLEMENTED_SOURCE_PARTIAL_VERIFIED,Swift validator harness; deterministic sync tool,swift test --package-path ios/Packages/GodstoneFoundation,Harness PASS; full package blocked,Complete source checkout/macOS verification needed,Full checkout/macOS
++GST-SAFE-001,Critical,Android/iOS Oracle UI,Keep draft private; publish only validated outcome,IMPLEMENTED_LOCAL_VERIFIED,Kotlin/Swift validator tests; static private-draft check,See VERIFICATION_MATRIX.md,PASS,UI instrumentation on mobile platforms unavailable,Android/iOS test environments
++GST-SAFE-002,Critical,Numeric provenance,Bind exact value/unit/dimension/qualifier/citation; no bare fallback,IMPLEMENTED_LOCAL_VERIFIED,Wrong-unit and omitted-denominator mutations on Kotlin/Swift; transform tests,See validator and overlay logs,PASS,Full platform integration build unavailable,Platform build
++GST-SAFE-003,High,Android model readiness,Respect warm-up result,IMPLEMENTED_SOURCE,Static source check,python3 ci/check_oracle_private_draft.py,PASS,Android ViewModel unit test not run,Android build
++GST-PKG-001,High,Application identity/tiers,One identity and one initial tier,IMPLEMENTED_SOURCE,Release-surface check,python3 ci/check_release_surface.py,PASS,Install/upgrade preservation not device-tested,Devices
++GST-PKG-002,High,Variant assets,Remove global roots; exact verified staging,IMPLEMENTED_TOOLING,prepare_release_assets negative example; artifact inspector,python3 scripts/prepare_release_assets.py --manifest release/assets-light.example.json --out /tmp/out --check-only,Expected fail-closed,No approved assets or built package,Approved assets/platform build
++GST-IOS-001,High,Xcode configurations,Use LightDebug and genuine LightRelease,IMPLEMENTED_SOURCE,project.yml static check,python3 ci/check_release_surface.py,PASS,XcodeGen/xcodebuild unavailable,macOS/Xcode
++GST-PRIV-001,High,Platform manifests/claims,Remove disabled capability declarations,IMPLEMENTED_SOURCE,plist/XML static check,python3 ci/check_release_surface.py,PASS,Merged/binary/runtime checks pending,Platform builds/devices
++GST-A11Y-001,High,Required BLE/portrait/dark appearance,Make BLE optional/remove; remove forced appearance,IMPLEMENTED_SOURCE,release-surface checks,python3 ci/check_release_surface.py,PASS,Manual accessibility evidence pending,Devices/human QA
++GST-CONTENT-001,Critical,Content release gate,Enforce full provenance/rights/review/safety contract,IMPLEMENTED_LOCAL_VERIFIED,Six adversarial document tests,python3 -m unittest content.tests.test_release_gate -v,PASS,No real approved corpus exists,External content approvals
++GST-CONTENT-002,High,Corpus/review digest,Bind source/review/manifests into release metadata,IMPLEMENTED_TOOLING_PARTIAL,Archive manifest/signature tests; builder transform test,python3 -m unittest discover -s content/tests -v,PASS,Applied full builder/runtime build not executed,Full checkout/platform build
++GST-DATA-001,Critical,Android GMP/1 and iOS memory-only storage,Canonical GMP/2.1 plus durable encrypted stores,SHIPPING_DISABLED; OPEN_REPOSITORY,Shipping dependency guard,python3 ci/no_legacy_wire.py,PASS for removal from shipping,Durable stores and future transport remain absent,None
++GST-DATA-002,High,SOS queue cap,Hard total/SOS quotas and safe refusal,NONSHIPPING_OPEN,None,N/A,NOT RUN,No durable queue implementation,None
++GST-DATA-003,High,Android schema migration,Versioned fixture-safe migrations,NONSHIPPING_OPEN,None,N/A,NOT RUN,Legacy store migration unsafe,None
++GST-CRYPTO-001,High,Independent crypto vectors,Pin independent Noise fixture,OPEN_REPOSITORY,Bypass scan only,python3 ci/no_release_bypasses.py,PASS for bypass absence,No independent vectors,Independent fixture/review
++GST-CRYPTO-002,High,Native/model build flags and locks,Remove fast-math; pin toolchain/native/model artifacts,PARTIAL,Source check via package replacement,grep/inspection,PASS for iOS fast-math removal,llama.cpp/models/toolchain outputs unpinned,Approved model/native inputs
++GST-CI-001,High,CI release pipeline,Green release jobs/artifacts,PARTIAL_BLOCKED,Pinned workflow scaffold,YAML/source inspection,Not executed,Wrapper/full checkout/platform jobs unavailable,CI platform and repository application
++GST-CI-002,High,Actions/wrapper/generated sources,Immutable actions and verified wrapper,PARTIAL,Mutable action scan,python3 ci/no_release_bypasses.py,PASS for action pins,Gradle wrapper JAR and Python wheel hashes incomplete,Verified binary/mirror
++GST-ARCHIVE-001,High,Archive runtime contract,Signed complete release manifest and runtime validation,PARTIAL_LOCAL_VERIFIED,Four corruption/signature/tier tests,python3 -m unittest content.tests.test_archive_manifest -v,PASS,Android/iOS startup integration absent,Platform builds
++GST-REL-001,High,SBOM/provenance/promotion,"Immutable artifacts, SBOMs, checksums, promotion",PARTIAL,Bundle checksum/extraction verification,See bundle verification logs,PASS for bundle only,No mobile release artifacts/signing/provenance,Build/signing infrastructure
++GST-IOS-002,High,Apple privacy manifest,Commit target privacy manifest,IMPLEMENTED_SOURCE,plist parse/static check,python3 ci/check_release_surface.py,PASS,Final required-reason inventory needs Xcode dependency aggregation,macOS/Xcode/privacy review
++GST-WIPE-001,High,Panic wipe,Resumable cryptographic-erasure state machine,OPEN_REPOSITORY,Diagram/spec only,N/A,NOT RUN,No platform integration,None
++GST-WORKBOOK-001,High,Workbook/tree synchronization,Adopt Git tree and prevent overwrite,PARTIAL,ADR-0001,Document review,Accepted decision,Existing extraction script not modified/tested,Full checkout
++GST-PERF-001,High,Performance/battery/thermal,Budgets and physical evidence,OPEN_EXTERNAL,Budget framework only,N/A,NOT RUN,No device measurements,Physical devices/lab
++GST-A11Y-002,High,TalkBack/VoiceOver/stress,Manual acceptance evidence,OPEN_EXTERNAL,Automated source support only,N/A,NOT RUN,No manual/device sessions,Devices/human QA
+diff --git a/docs/production/HARDWARE_CASE_0.md b/docs/production/HARDWARE_CASE_0.md
+new file mode 100644
+index 0000000..a961f5f
+--- /dev/null
++++ b/docs/production/HARDWARE_CASE_0.md
+@@ -0,0 +1,5 @@
++# Hardware Case 0
++
++Status: **NOT RUN — Mesh is disabled**.
++
++Required future evidence includes bidirectional discovery, deterministic roles, malformed advertisement rejection, multiple-MTU fragmentation/reassembly, Noise XX state parity, encrypted GMP/2.1 frames, tamper/replay rejection, disconnect/reconnect, permissions-off/background/reboot behavior, multiple peers, no plaintext packet capture, and battery measurements. Simulator or software-mesh evidence cannot close this gate.
+diff --git a/docs/production/MIGRATION.md b/docs/production/MIGRATION.md
+new file mode 100644
+index 0000000..cc2568d
+--- /dev/null
++++ b/docs/production/MIGRATION.md
+@@ -0,0 +1,3 @@
++# Migration policy
++
++The Archive-only initial application keeps one identity on each platform. No tier suffix is permitted. Future database changes require fixture-based migrations from every supported version, crash interruption at each step, identity/history preservation, corruption behavior, and rollback policy. The current legacy Mesh store is nonshipping and must not be migrated into production as-is.
+diff --git a/docs/production/OPERATIONS_RUNBOOK.md b/docs/production/OPERATIONS_RUNBOOK.md
+new file mode 100644
+index 0000000..c834f87
+--- /dev/null
++++ b/docs/production/OPERATIONS_RUNBOOK.md
+@@ -0,0 +1,8 @@
++# Operations runbook
++
++1. Freeze the exact source and artifact hashes.
++2. Rehearse install, first launch in airplane mode, Archive search, missing/corrupt asset behavior, restart, reboot, upgrade, low storage, and removal.
++3. Promote the exact tested artifact; never rebuild after approval.
++4. On content defect, revoke the release manifest/key as designed, stop distribution, publish correction scope, and build from corrected reviewed inputs.
++5. On security incident, preserve nonsecret evidence, rotate affected release trust anchors through an approved process, and avoid logging keys, plaintext, prompts, or full frames.
++6. Roll back only to an artifact whose content review and platform compatibility remain valid.
+diff --git a/docs/production/PLATFORM_VERIFICATION_MATRIX.md b/docs/production/PLATFORM_VERIFICATION_MATRIX.md
+new file mode 100644
+index 0000000..4b67a69
+--- /dev/null
++++ b/docs/production/PLATFORM_VERIFICATION_MATRIX.md
+@@ -0,0 +1,9 @@
++# Platform verification matrix
++
++| Platform | Source validation | Unit tests | Static analysis | Release build | Artifact inspection | Device evidence |
++|---|---|---|---|---|---|---|
++| Android | Partial, modified Kotlin compiled in isolated harness | Validator harness PASS | Repository checks PASS | BLOCKED | Not generated | Unavailable |
++| iOS | Core validator compiled on Linux Swift | Validator harness PASS | plist/project checks PASS | BLOCKED: no Xcode | Not generated | Unavailable |
++| Content/Python | Full overlay modules executable | 10 tests PASS | compile/static checks PASS | Signed fixture manifest PASS | SQLite/tier/hash/signature faults PASS | N/A |
++
++A simulator, Linux Swift compiler, or software BLE model does not close any physical-device requirement.
+diff --git a/docs/production/PRIVACY.md b/docs/production/PRIVACY.md
+new file mode 100644
+index 0000000..ebd78f7
+--- /dev/null
++++ b/docs/production/PRIVACY.md
+@@ -0,0 +1,5 @@
++# Privacy and data inventory
++
++The prepared production target browses an immutable local Archive and requests no Bluetooth, local-network, location, camera, microphone, notification, or background-radio capability. Android backup is disabled. The iOS privacy manifest declares no tracking or collected data for this target.
++
++Potential future sensitive data—identity keys, contacts, trust, messages, acknowledgments, prompts, history, diagnostics, location, media, and radio metadata—is not authorized for production because the corresponding features are disabled. Any reintroduction requires retention, backup, deletion, export, diagnostics, and privacy-manifest review.
+diff --git a/docs/production/PRODUCTION_READINESS_PLAN.md b/docs/production/PRODUCTION_READINESS_PLAN.md
+new file mode 100644
+index 0000000..bba8710
+--- /dev/null
++++ b/docs/production/PRODUCTION_READINESS_PLAN.md
+@@ -0,0 +1,29 @@
++# Production readiness implementation plan
++
++## Executed in this bundle
++
++1. Locked the audited baseline and recorded exact Git blob preconditions.
++2. Corrected Bouncy Castle key parameter typing and added deterministic Android properties.
++3. Isolated host-testable iOS Core/Mesh package generation and removed `-ffast-math` from the iOS inference package.
++4. Replaced pre-validation Oracle streaming with private draft buffering on Android and iOS.
++5. Added citation-bound answer validation and exact quantity/unit/dimension/qualifier checks with no bare-number fallback.
++6. Added fail-closed content provenance, rights, reviewer, expiry, warning, contraindication, and chunk-approval validation.
++7. Added signed Ed25519 Archive release manifests and corruption/tier/schema/count verification.
++8. Reduced both production applications to one LIGHT identity and an Archive-only user surface.
++9. Removed production radio/SOS/media permissions, services, entitlements, background modes, and claims.
++10. Added immutable-action CI scaffolding, release-surface checks, Oracle draft checks, and shipping Mesh/GMP guards.
++11. Added deterministic evidence, SBOM stubs, release documentation, and exact-commit application tooling.
++
++## Remaining dependency order
++
++1. Materialize a complete private checkout and add a verified Gradle wrapper JAR.
++2. Run/fix the full Android build, unit tests, lint, release APK/AAB, and artifact inspections.
++3. Run/fix the isolated Swift package and Xcode project on macOS/Xcode.
++4. Complete GMP/2.1 migration and durable encrypted Android/iOS message stores before reintroducing any Mesh dependency.
++5. Pin independent Noise vectors, llama.cpp, models, compilers, native outputs, and Python distribution hashes.
++6. Integrate resumable panic wipe with every sensitive key/store/cache component.
++7. Supply genuinely approved and licensed production content and release signing keys.
++8. Perform physical-device accessibility, BLE, battery, thermal, migration, recovery, and airplane-mode evidence.
++9. Complete legal, privacy, clinical, export, signing, support, and store approvals.
++
++No later phase may enable Oracle, Mesh, bulk transfer, or SOS merely because source scaffolding exists.
+diff --git a/docs/production/RECOVERY.md b/docs/production/RECOVERY.md
+new file mode 100644
+index 0000000..dba3b86
+--- /dev/null
++++ b/docs/production/RECOVERY.md
+@@ -0,0 +1,3 @@
++# Recovery instructions
++
++Archive corruption must produce a local unavailable state, never a crash or network fetch. Restore only an asset whose signed manifest, tier, schema, hash, counts, and model compatibility pass. Missing production content cannot be replaced by the example corpus. Messaging recovery and resumable panic wipe remain unimplemented release blockers.
+diff --git a/docs/production/RELEASE_CHECKLIST.md b/docs/production/RELEASE_CHECKLIST.md
+new file mode 100644
+index 0000000..43ccf56
+--- /dev/null
++++ b/docs/production/RELEASE_CHECKLIST.md
+@@ -0,0 +1,29 @@
++# Release checklist
++
++## Repository-controlled
++
++- [x] Exact starting commit recorded.
++- [x] Oracle draft buffering implemented on both platforms.
++- [x] Exact quantity/unit negative controls pass.
++- [x] Production content gate rejects examples, placeholders, expiry, rights and hash failures.
++- [x] Signed Archive manifest tooling and corruption tests pass.
++- [x] One LIGHT application identity configured.
++- [x] Production radio/SOS/media permissions and claims removed.
++- [x] Production apps have no Mesh dependency edge.
++- [ ] Complete checkout materialized and all overlay transforms applied.
++- [ ] Verified Gradle wrapper JAR committed and checksum policy completed.
++- [ ] Android clean tests/lint/release APK/AAB pass.
++- [ ] iOS Foundation package and unsigned Xcode release build pass on macOS.
++- [ ] GMP/2.1, durable stores, ACK state machine, migrations, and wipe integrated.
++- [ ] Independent crypto vectors and model/native/Python hashes pinned.
++- [ ] Production content/assets supplied and all release gates pass.
++
++## External/physical
++
++- [ ] Signing credentials and controlled signing complete.
++- [ ] Clinical/editorial/content-rights/legal/privacy/export approvals complete.
++- [ ] TalkBack/VoiceOver and stress UX evidence complete.
++- [ ] Performance, storage, battery, and thermal budgets pass.
++- [ ] Store submissions accepted.
++
++Current checklist verdict: **PARTIALLY REMEDIATED — NOT READY**.
+diff --git a/docs/production/REMEDIATION_LOG.md b/docs/production/REMEDIATION_LOG.md
+new file mode 100644
+index 0000000..e90343d
+--- /dev/null
++++ b/docs/production/REMEDIATION_LOG.md
+@@ -0,0 +1,38 @@
++# Remediation log
++
++## Baseline and build stability
++
++- Recorded commit `b7daf5aceb642277807e9bfbe3bbb486112a64ec`; confirmed no intervening commits.
++- Corrected `Ed25519Keys.kt` and `X25519Keys.kt` to use concrete Bouncy Castle key parameter types.
++- Added `android/gradle.properties` and pinned wrapper distribution metadata.
++- Added `ios/Packages/GodstoneFoundation` plus deterministic source synchronization.
++- Removed iOS inference `-ffast-math`.
++- Blocker retained: verified `gradle-wrapper.jar` cannot be retrieved through the connector and must not be fabricated.
++
++## Oracle and content safety
++
++- Android and iOS generation drafts remain coroutine/task-local until final validation.
++- Failure, cancellation, invalid citation, unsupported quantity, omitted qualifier, warning omission, and partial generation expose no draft.
++- Removed bare-number fallback from both legacy numeric-provenance functions through exact-baseline transforms.
++- Added machine-verifiable document approval manifests and signed Archive manifests.
++- Production manifest directory is intentionally empty; examples are mechanically nonreleasable.
++
++## Packaging and truthfulness
++
++- Selected one application identity, `io.godstone.app`, and LIGHT as the only initial tier.
++- Android and iOS production navigation expose Archive only.
++- Android production app no longer depends on `:mesh`; iOS app target depends only on `GodstoneCore`.
++- Removed disabled radio/SOS/media permissions, services, entitlements, background modes, and claims.
++- Added an Apple privacy manifest starter derived from the Archive-only target.
++
++## Verification performed
++
++- Kotlin answer-validator harness: 4 passed, 0 failed.
++- Swift answer-validator harness: 4 passed, 0 failed.
++- Python content/archive tests: 10 passed, 0 failed.
++- Overlay transformation tests: 2 passed, 0 failed.
++- Static release-surface, private-draft, action-pinning, and shipping Mesh guard checks: passed.
++
++## Known incomplete work
++
++The private checkout could not be mounted into the build container, Android SDK/Gradle were unavailable, and macOS/Xcode/physical devices were unavailable. Durable messaging, canonical future Mesh, key/trust lifecycle, panic-wipe integration, model/native reproducibility, independent Noise vectors, and external approvals remain open.
+diff --git a/docs/production/REPOSITORY_COVERAGE.csv b/docs/production/REPOSITORY_COVERAGE.csv
+new file mode 100644
+index 0000000..09523ba
+--- /dev/null
++++ b/docs/production/REPOSITORY_COVERAGE.csv
+@@ -0,0 +1,104 @@
++path,component,coverage,evidence
++.github/workflows/production-evidence.yml,CI/release automation,modified or added by remediation overlay,Included in static/test/package verification where applicable
++PRODUCTION_READINESS_REPORT.md,repository root,modified or added by remediation overlay,Included in static/test/package verification where applicable
++RELEASE_MANIFEST.json,repository root,modified or added by remediation overlay,Included in static/test/package verification where applicable
++THIRD_PARTY_NOTICES.md,repository root,modified or added by remediation overlay,Included in static/test/package verification where applicable
++android/app/build.gradle.kts,Android,modified or added by remediation overlay,Included in static/test/package verification where applicable
++android/app/src/main/AndroidManifest.xml,Android,modified or added by remediation overlay,Included in static/test/package verification where applicable
++android/app/src/main/java/io/godstone/app/GodstoneApplication.kt,Android,modified or added by remediation overlay,Included in static/test/package verification where applicable
++android/app/src/main/java/io/godstone/app/MainActivity.kt,Android,modified or added by remediation overlay,Included in static/test/package verification where applicable
++android/app/src/main/java/io/godstone/app/di/AppModule.kt,Android,modified or added by remediation overlay,Included in static/test/package verification where applicable
++android/app/src/main/java/io/godstone/app/ui/GodstoneNavHost.kt,Android,modified or added by remediation overlay,Included in static/test/package verification where applicable
++android/app/src/main/java/io/godstone/app/ui/home/HomeScreen.kt,Android,modified or added by remediation overlay,Included in static/test/package verification where applicable
++android/app/src/main/java/io/godstone/app/ui/oracle/OracleViewModel.kt,Android,modified or added by remediation overlay,Included in static/test/package verification where applicable
++android/core/src/main/java/io/godstone/core/crypto/Ed25519Keys.kt,Android,modified or added by remediation overlay,Included in static/test/package verification where applicable
++android/core/src/main/java/io/godstone/core/crypto/X25519Keys.kt,Android,modified or added by remediation overlay,Included in static/test/package verification where applicable
++android/gradle/wrapper/gradle-wrapper.properties,Android,modified or added by remediation overlay,Included in static/test/package verification where applicable
++android/gradle.properties,Android,modified or added by remediation overlay,Included in static/test/package verification where applicable
++android/llm/src/main/java/io/godstone/llm/rag/AnswerValidator.kt,Android,modified or added by remediation overlay,Included in static/test/package verification where applicable
++android/llm/src/main/java/io/godstone/llm/rag/RagPipeline.kt,Android,modified or added by remediation overlay,Included in static/test/package verification where applicable
++android/llm/src/test/java/io/godstone/llm/rag/AnswerValidatorTest.kt,Android,modified or added by remediation overlay,Included in static/test/package verification where applicable
++ci/__pycache__/check_content_release_integration.cpython-313.pyc,CI/release automation,modified or added by remediation overlay,Included in static/test/package verification where applicable
++ci/__pycache__/check_oracle_private_draft.cpython-313.pyc,CI/release automation,modified or added by remediation overlay,Included in static/test/package verification where applicable
++ci/__pycache__/check_release_surface.cpython-313.pyc,CI/release automation,modified or added by remediation overlay,Included in static/test/package verification where applicable
++ci/__pycache__/check_repository.cpython-313.pyc,CI/release automation,modified or added by remediation overlay,Included in static/test/package verification where applicable
++ci/__pycache__/no_legacy_wire.cpython-313.pyc,CI/release automation,modified or added by remediation overlay,Included in static/test/package verification where applicable
++ci/__pycache__/no_release_bypasses.cpython-313.pyc,CI/release automation,modified or added by remediation overlay,Included in static/test/package verification where applicable
++ci/check_content_release_integration.py,CI/release automation,modified or added by remediation overlay,Included in static/test/package verification where applicable
++ci/check_oracle_private_draft.py,CI/release automation,modified or added by remediation overlay,Included in static/test/package verification where applicable
++ci/check_release_surface.py,CI/release automation,modified or added by remediation overlay,Included in static/test/package verification where applicable
++ci/check_repository.py,CI/release automation,modified or added by remediation overlay,Included in static/test/package verification where applicable
++ci/no_legacy_wire.py,CI/release automation,modified or added by remediation overlay,Included in static/test/package verification where applicable
++ci/no_release_bypasses.py,CI/release automation,modified or added by remediation overlay,Included in static/test/package verification where applicable
++content/__pycache__/archive_manifest.cpython-313.pyc,content/archive safety,modified or added by remediation overlay,Included in static/test/package verification where applicable
++content/__pycache__/release_gate.cpython-313.pyc,content/archive safety,modified or added by remediation overlay,Included in static/test/package verification where applicable
++content/archive_manifest.py,content/archive safety,modified or added by remediation overlay,Included in static/test/package verification where applicable
++content/manifests/README.md,content/archive safety,modified or added by remediation overlay,Included in static/test/package verification where applicable
++content/manifests/examples/document-manifest.example.yaml,content/archive safety,modified or added by remediation overlay,Included in static/test/package verification where applicable
++content/release_gate.py,content/archive safety,modified or added by remediation overlay,Included in static/test/package verification where applicable
++content/tests/__pycache__/test_archive_manifest.cpython-313.pyc,content/archive safety,modified or added by remediation overlay,Included in static/test/package verification where applicable
++content/tests/__pycache__/test_release_gate.cpython-313.pyc,content/archive safety,modified or added by remediation overlay,Included in static/test/package verification where applicable
++content/tests/test_archive_manifest.py,content/archive safety,modified or added by remediation overlay,Included in static/test/package verification where applicable
++content/tests/test_release_gate.py,content/archive safety,modified or added by remediation overlay,Included in static/test/package verification where applicable
++docs/architecture/ADR-0001-source-of-truth.md,repository root,modified or added by remediation overlay,Included in static/test/package verification where applicable
++docs/architecture/ADR-0002-initial-release-surface.md,repository root,modified or added by remediation overlay,Included in static/test/package verification where applicable
++docs/architecture/ADR-0003-identity-trust-deferred.md,repository root,modified or added by remediation overlay,Included in static/test/package verification where applicable
++docs/production/BASELINE.md,production evidence,modified or added by remediation overlay,Included in static/test/package verification where applicable
++docs/production/BUILD.md,production evidence,modified or added by remediation overlay,Included in static/test/package verification where applicable
++docs/production/EXTERNAL_RELEASE_GATES.md,production evidence,modified or added by remediation overlay,Included in static/test/package verification where applicable
++docs/production/FINAL_STATUS.md,production evidence,modified or added by remediation overlay,Included in static/test/package verification where applicable
++docs/production/FINDINGS_REGISTER.csv,production evidence,modified or added by remediation overlay,Included in static/test/package verification where applicable
++docs/production/HARDWARE_CASE_0.md,production evidence,modified or added by remediation overlay,Included in static/test/package verification where applicable
++docs/production/MIGRATION.md,production evidence,modified or added by remediation overlay,Included in static/test/package verification where applicable
++docs/production/OPERATIONS_RUNBOOK.md,production evidence,modified or added by remediation overlay,Included in static/test/package verification where applicable
++docs/production/PLATFORM_VERIFICATION_MATRIX.md,production evidence,modified or added by remediation overlay,Included in static/test/package verification where applicable
++docs/production/PRIVACY.md,production evidence,modified or added by remediation overlay,Included in static/test/package verification where applicable
++docs/production/PRODUCTION_READINESS_PLAN.md,production evidence,modified or added by remediation overlay,Included in static/test/package verification where applicable
++docs/production/RECOVERY.md,production evidence,modified or added by remediation overlay,Included in static/test/package verification where applicable
++docs/production/RELEASE_CHECKLIST.md,production evidence,modified or added by remediation overlay,Included in static/test/package verification where applicable
++docs/production/REMEDIATION_LOG.md,production evidence,modified or added by remediation overlay,Included in static/test/package verification where applicable
++docs/production/REPOSITORY_COVERAGE.csv,production evidence,modified or added by remediation overlay,Included in static/test/package verification where applicable
++docs/production/SETUP.md,production evidence,modified or added by remediation overlay,Included in static/test/package verification where applicable
++docs/production/SIGNING.md,production evidence,modified or added by remediation overlay,Included in static/test/package verification where applicable
++docs/production/STORE_SUBMISSION.md,production evidence,modified or added by remediation overlay,Included in static/test/package verification where applicable
++docs/production/TESTING.md,production evidence,modified or added by remediation overlay,Included in static/test/package verification where applicable
++docs/production/THREAT_MODEL.md,production evidence,modified or added by remediation overlay,Included in static/test/package verification where applicable
++docs/production/VERIFICATION_MATRIX.md,production evidence,modified or added by remediation overlay,Included in static/test/package verification where applicable
++docs/production/diagrams/ble-noise-frame.md,production evidence,modified or added by remediation overlay,Included in static/test/package verification where applicable
++docs/production/diagrams/content-flow.md,production evidence,modified or added by remediation overlay,Included in static/test/package verification where applicable
++docs/production/diagrams/deployment.md,production evidence,modified or added by remediation overlay,Included in static/test/package verification where applicable
++docs/production/diagrams/key-lifecycle.md,production evidence,modified or added by remediation overlay,Included in static/test/package verification where applicable
++docs/production/diagrams/message-state-machine.md,production evidence,modified or added by remediation overlay,Included in static/test/package verification where applicable
++docs/production/diagrams/oracle-grounding.md,production evidence,modified or added by remediation overlay,Included in static/test/package verification where applicable
++docs/production/diagrams/panic-wipe.md,production evidence,modified or added by remediation overlay,Included in static/test/package verification where applicable
++docs/production/diagrams/release-supply-chain.md,production evidence,modified or added by remediation overlay,Included in static/test/package verification where applicable
++docs/production/diagrams/subsystem.md,production evidence,modified or added by remediation overlay,Included in static/test/package verification where applicable
++ios/.swift-version,iOS,modified or added by remediation overlay,Included in static/test/package verification where applicable
++ios/Godstone/Godstone.entitlements,iOS,modified or added by remediation overlay,Included in static/test/package verification where applicable
++ios/Godstone/Info.plist,iOS,modified or added by remediation overlay,Included in static/test/package verification where applicable
++ios/Godstone/Package.swift,iOS,modified or added by remediation overlay,Included in static/test/package verification where applicable
++ios/Godstone/PrivacyInfo.xcprivacy,iOS,modified or added by remediation overlay,Included in static/test/package verification where applicable
++ios/Godstone/Sources/App/AppContainer.swift,iOS,modified or added by remediation overlay,Included in static/test/package verification where applicable
++ios/Godstone/Sources/App/GodstoneApp.swift,iOS,modified or added by remediation overlay,Included in static/test/package verification where applicable
++ios/Godstone/Sources/App/OracleView.swift,iOS,modified or added by remediation overlay,Included in static/test/package verification where applicable
++ios/Godstone/Sources/App/OracleViewModel.swift,iOS,modified or added by remediation overlay,Included in static/test/package verification where applicable
++ios/Godstone/Sources/App/RootView.swift,iOS,modified or added by remediation overlay,Included in static/test/package verification where applicable
++ios/Godstone/Sources/GodstoneCore/OracleAnswerValidator.swift,iOS,modified or added by remediation overlay,Included in static/test/package verification where applicable
++ios/Godstone/Sources/GodstoneLLM/RagPipeline.swift,iOS,modified or added by remediation overlay,Included in static/test/package verification where applicable
++ios/Godstone/Tests/GodstoneCoreTests/OracleAnswerValidatorTests.swift,iOS,modified or added by remediation overlay,Included in static/test/package verification where applicable
++ios/Packages/GodstoneFoundation/Package.swift,iOS,modified or added by remediation overlay,Included in static/test/package verification where applicable
++ios/project.yml,iOS,modified or added by remediation overlay,Included in static/test/package verification where applicable
++release/assets-light.example.json,release tooling,modified or added by remediation overlay,Included in static/test/package verification where applicable
++requirements.lock,repository root,modified or added by remediation overlay,Included in static/test/package verification where applicable
++sbom/android.cdx.json,supply chain,modified or added by remediation overlay,Included in static/test/package verification where applicable
++sbom/corpus.cdx.json,supply chain,modified or added by remediation overlay,Included in static/test/package verification where applicable
++sbom/ios.cdx.json,supply chain,modified or added by remediation overlay,Included in static/test/package verification where applicable
++sbom/models.cdx.json,supply chain,modified or added by remediation overlay,Included in static/test/package verification where applicable
++sbom/native.cdx.json,supply chain,modified or added by remediation overlay,Included in static/test/package verification where applicable
++sbom/python-generation-tools.cdx.json,supply chain,modified or added by remediation overlay,Included in static/test/package verification where applicable
++scripts/__pycache__/inspect_android_artifacts.cpython-313.pyc,release tooling,modified or added by remediation overlay,Included in static/test/package verification where applicable
++scripts/__pycache__/prepare_release_assets.cpython-313.pyc,release tooling,modified or added by remediation overlay,Included in static/test/package verification where applicable
++scripts/__pycache__/sync_ios_foundation_package.cpython-313.pyc,release tooling,modified or added by remediation overlay,Included in static/test/package verification where applicable
++scripts/inspect_android_artifacts.py,release tooling,modified or added by remediation overlay,Included in static/test/package verification where applicable
++scripts/prepare_release_assets.py,release tooling,modified or added by remediation overlay,Included in static/test/package verification where applicable
++scripts/sync_ios_foundation_package.py,release tooling,modified or added by remediation overlay,Included in static/test/package verification where applicable
+diff --git a/docs/production/SETUP.md b/docs/production/SETUP.md
+new file mode 100644
+index 0000000..76dc234
+--- /dev/null
++++ b/docs/production/SETUP.md
+@@ -0,0 +1,8 @@
++# Setup
++
++1. Obtain a clean private checkout at `b7daf5aceb642277807e9bfbe3bbb486112a64ec`.
++2. Run `python3 overlay/apply_to_checkout.py /path/to/GODSTONE --evidence-out /path/to/evidence` from the extracted bundle.
++3. Review `git status`, generated patch, and diff stat; do not commit until review is complete.
++4. Add a verified Gradle wrapper JAR matching the pinned wrapper properties; record its SHA-256 and provenance.
++5. Install documented Android and Apple toolchains in controlled environments.
++6. Do not stage release assets from `assets-light.example.json`; it is intentionally nonreleasable.
+diff --git a/docs/production/SIGNING.md b/docs/production/SIGNING.md
+new file mode 100644
+index 0000000..14007dc
+--- /dev/null
++++ b/docs/production/SIGNING.md
+@@ -0,0 +1,3 @@
++# Signing instructions
++
++Build unsigned artifacts first. Verify source commit, clean status, release manifest, SBOM, asset hashes, tests, and artifact hashes. Use owner-controlled signing infrastructure; never place keystores, certificates, profiles, passwords, private Archive keys, or API secrets in the repository or bundle. Record signing fingerprint and prove the signed artifact contains the exact tested unsigned payload.
+diff --git a/docs/production/STORE_SUBMISSION.md b/docs/production/STORE_SUBMISSION.md
+new file mode 100644
+index 0000000..abf8c65
+--- /dev/null
++++ b/docs/production/STORE_SUBMISSION.md
+@@ -0,0 +1,3 @@
++# Store-submission preparation
++
++Submit only the Archive-only claim set until later gates pass. Do not mention active Mesh, SOS delivery, help arriving, clinically reviewed content, anonymity, sealed sender, or complete wipe. Store privacy answers must be derived from the exact signed binary and aggregated dependency manifests. Screenshots must match enabled routes. External store acceptance remains required.
+diff --git a/docs/production/TESTING.md b/docs/production/TESTING.md
+new file mode 100644
+index 0000000..1fde3ef
+--- /dev/null
++++ b/docs/production/TESTING.md
+@@ -0,0 +1,13 @@
++# Testing instructions
++
++Run repository checks and host tests first:
++
++```bash
++python3 ci/check_repository.py
++python3 ci/no_legacy_wire.py
++python3 ci/no_legacy_wire.py --selftest
++python3 -m unittest discover -s content/tests -v
++python3 scripts/sync_ios_foundation_package.py --check
++```
++
++Then run full Android/iOS suites on supported platform environments. Do not exclude a failure unless it objectively requires unavailable hardware, credentials, OS infrastructure, external service, or human approval; record the exact command and blocker.
+diff --git a/docs/production/THREAT_MODEL.md b/docs/production/THREAT_MODEL.md
+new file mode 100644
+index 0000000..7593e05
+--- /dev/null
++++ b/docs/production/THREAT_MODEL.md
+@@ -0,0 +1,27 @@
++# Threat model
++
++## Protected assets
++
++Reviewed Archive content, release manifests, model/native artifacts, device identity keys, contact trust, encrypted message payloads, recipient acknowledgments, local search/history, and wipe state.
++
++## Principal adversaries
++
++- A malicious or compromised content producer attempting to introduce unreviewed, expired, incorrectly licensed, or warning-stripped material.
++- A local attacker modifying Archive/model files or restoring stale/cross-tier assets.
++- A model producing fabricated citations, quantities, units, qualifiers, contraindications, or instructions.
++- A network/relay attacker replaying, mutating, forging, or misrouting Mesh records and acknowledgments.
++- A device-seizure attacker reading databases, keys, caches, diagnostics, or interrupted wipe state.
++- A supply-chain attacker changing actions, dependencies, native code, models, generated sources, or build tools.
++
++## Enforced controls in this overlay
++
++- No generated answer is visible before complete validation.
++- Exact citation and quantity/unit/qualifier matching; no bare-number fallback.
++- Production content and assets fail closed without immutable evidence and hashes.
++- Archive manifest is Ed25519 signed and binds tier, schema, file hash, counts, build input hashes, and metadata.
++- Production apps are Archive-only and have no Mesh dependency edge or radio/SOS permissions.
++- CI actions are pinned to immutable commits; mutable references and release bypasses are scanned.
++
++## Unclosed threats
++
++Identity continuity, trust introduction/reset, rotation/revocation, independent Noise conformance, canonical GMP/2.1 transport, durable authenticated delivery, low-storage behavior, full cryptographic erasure, native/model reproducibility, and physical-device radio/battery behavior remain unproven. Consequently Mesh/SOS/Oracle must remain disabled in production.
+diff --git a/docs/production/VERIFICATION_MATRIX.md b/docs/production/VERIFICATION_MATRIX.md
+new file mode 100644
+index 0000000..26f0be2
+--- /dev/null
++++ b/docs/production/VERIFICATION_MATRIX.md
+@@ -0,0 +1,15 @@
++# Verification matrix
++
++| Gate | Command | Environment | Result | Evidence | Limitation |
++|---|---|---|---|---|---|
++| Android Oracle validation | Kotlin harness compiling `AnswerValidator.kt` | Linux x86_64, Kotlin 1.9.0/JRE 21 | PASS, 4/4 | `artifacts/android/logs/kotlin-validator-*.log` | Not an Android Gradle/instrumentation build |
++| iOS Oracle validation | Swift harness for `OracleAnswerValidator.swift` | Linux x86_64, Swift 6.2.1 | PASS, 4/4 | `artifacts/ios/logs/swift-validator-test.log` | Not Xcode/iOS UI execution |
++| Content release gate | `python3 -m unittest discover -s content/tests -v` | Linux, Python 3.13.5 | PASS, 10/10 | `artifacts/reports/logs/content-release-gates-test.log` | Uses test-only signing key in temporary directory |
++| Overlay mutations | `python3 -m unittest discover -s overlay/tests -v` | Linux, Python 3.13.5 | PASS, 2/2 | `artifacts/reports/logs/overlay-transform-tests.log` | Full private checkout unavailable |
++| Oracle draft isolation | `python3 ci/check_oracle_private_draft.py` | Linux | PASS | `repository-static-checks.log` | Static supporting evidence only |
++| Release surface | `python3 ci/check_release_surface.py` | Linux | PASS | `repository-static-checks.log` | Merged/binary manifests require build |
++| Action/bypass policy | `python3 ci/no_release_bypasses.py` | Linux | PASS | `repository-static-checks.log` | Python wheel hashes remain incomplete |
++| Shipping Mesh isolation | `python3 ci/no_legacy_wire.py` | Linux | PASS | local output and negative control | Legacy Mesh module remains nonshipping |
++| Android clean build | `./gradlew clean test lint assembleLightRelease bundleLightRelease` | Required Android SDK/Gradle/full checkout | BLOCKED | none | SDK, wrapper JAR, complete checkout unavailable |
++| iOS release build | `xcodebuild ... CODE_SIGNING_ALLOWED=NO build` | Required macOS/Xcode/full checkout | BLOCKED | none | Linux environment |
++| Device/hardware | report matrix | Physical devices | BLOCKED | none | No devices/BLE/battery lab |
+diff --git a/docs/production/diagrams/ble-noise-frame.md b/docs/production/diagrams/ble-noise-frame.md
+new file mode 100644
+index 0000000..37fbf1e
+--- /dev/null
++++ b/docs/production/diagrams/ble-noise-frame.md
+@@ -0,0 +1,14 @@
++# Future BLE/Noise/GMP stack
++
++```mermaid
++flowchart LR
++  BLE[Platform BLE] --> Adv[Advertisement parser]
++  Adv --> Role[Role negotiation]
++  Role --> Record[Bounded record framing]
++  Record --> Frag[Fragment/reassembly]
++  Frag --> Noise[Noise handshake/transport]
++  Noise --> GMP[Generated GMP/2.1]
++  GMP --> Store[Durable authenticated store]
++```
++
++Status: nonshipping design only.
+diff --git a/docs/production/diagrams/content-flow.md b/docs/production/diagrams/content-flow.md
+new file mode 100644
+index 0000000..532b03b
+--- /dev/null
++++ b/docs/production/diagrams/content-flow.md
+@@ -0,0 +1,14 @@
++# Content flow
++
++```mermaid
++flowchart LR
++  Source[Source bytes] --> Hash[SHA-256]
++  Rights[Rights evidence] --> Gate{Release gate}
++  Review[Qualified review evidence] --> Gate
++  Chunk[Chunk and warning approval] --> Gate
++  Hash --> Gate
++  Gate -- reject --> NoBuild[No release Archive]
++  Gate -- approve --> DB[Deterministic SQLite Archive]
++  DB --> Manifest[Signed release manifest]
++  Manifest --> App[Runtime verification]
++```
+diff --git a/docs/production/diagrams/deployment.md b/docs/production/diagrams/deployment.md
+new file mode 100644
+index 0000000..64f1537
+--- /dev/null
++++ b/docs/production/diagrams/deployment.md
+@@ -0,0 +1,11 @@
++# Deployment
++
++```mermaid
++flowchart TB
++  Source[Exact Git commit] --> Checks[Repository checks]
++  Checks --> Unsigned[Unsigned LIGHT build]
++  Assets[Approved signed Archive assets] --> Unsigned
++  Unsigned --> DeviceQA[Device rehearsal]
++  DeviceQA --> Sign[Owner-controlled signing]
++  Sign --> Store[Store review]
++```
+diff --git a/docs/production/diagrams/key-lifecycle.md b/docs/production/diagrams/key-lifecycle.md
+new file mode 100644
+index 0000000..4f9710b
+--- /dev/null
++++ b/docs/production/diagrams/key-lifecycle.md
+@@ -0,0 +1,12 @@
++# Key lifecycle
++
++```mermaid
++flowchart TB
++  Root[Device root signing key] --> Cert[Device identity certificate]
++  Root --> Rotation[Rotation continuity]
++  Static[Noise static agreement key] --> Cert
++  Ephemeral[Session ephemeral keys] --> Transport[Transport keys]
++  StoreKEK[Store key-encryption key] --> DBKey[Database key]
++```
++
++Signing, static agreement, session, and local-store keys must remain distinct.
+diff --git a/docs/production/diagrams/message-state-machine.md b/docs/production/diagrams/message-state-machine.md
+new file mode 100644
+index 0000000..ec96991
+--- /dev/null
++++ b/docs/production/diagrams/message-state-machine.md
+@@ -0,0 +1,20 @@
++# Message state machine
++
++```mermaid
++stateDiagram-v2
++  [*] --> created
++  created --> persisted
++  persisted --> queued
++  queued --> offered
++  offered --> transferred_to_peer
++  transferred_to_peer --> forwarded
++  transferred_to_peer --> recipient_acknowledged
++  forwarded --> recipient_acknowledged
++  queued --> expired
++  offered --> expired
++  persisted --> cancelled
++  queued --> cancelled
++  queued --> failed_permanently
++```
++
++Status: required contract; not yet integrated into shipping platform stores.
+diff --git a/docs/production/diagrams/oracle-grounding.md b/docs/production/diagrams/oracle-grounding.md
+new file mode 100644
+index 0000000..8f203b0
+--- /dev/null
++++ b/docs/production/diagrams/oracle-grounding.md
+@@ -0,0 +1,15 @@
++# Oracle validation
++
++```mermaid
++sequenceDiagram
++  participant U as UI
++  participant R as Retrieval
++  participant M as Model
++  participant V as Final validator
++  U->>R: question
++  R-->>U: confidence/refusal metadata
++  U->>M: generate only after gate
++  Note over M: draft remains private
++  M->>V: complete draft + retrieved chunks
++  V-->>U: validated answer OR refusal
++```
+diff --git a/docs/production/diagrams/panic-wipe.md b/docs/production/diagrams/panic-wipe.md
+new file mode 100644
+index 0000000..dbbdd00
+--- /dev/null
++++ b/docs/production/diagrams/panic-wipe.md
+@@ -0,0 +1,13 @@
++# Panic-wipe state machine
++
++```mermaid
++stateDiagram-v2
++  [*] --> requested
++  requested --> keys_destroyed
++  keys_destroyed --> databases_removed
++  databases_removed --> caches_removed
++  caches_removed --> verified
++  verified --> complete
++```
++
++Status: specification only. Key destruction is the security boundary; interruption-safe platform integration remains open.
+diff --git a/docs/production/diagrams/release-supply-chain.md b/docs/production/diagrams/release-supply-chain.md
+new file mode 100644
+index 0000000..0ce7780
+--- /dev/null
++++ b/docs/production/diagrams/release-supply-chain.md
+@@ -0,0 +1,12 @@
++# Release supply chain
++
++```mermaid
++flowchart LR
++  Git[Git commit] --> Build[Hermetic build]
++  Locks[Tool/model/native locks] --> Build
++  Content[Approved content manifests] --> Build
++  Build --> SBOM[SBOM + checksums]
++  Build --> Provenance[Provenance]
++  Build --> Test[Test exact artifacts]
++  Test --> Promote[Promote without rebuild]
++```
+diff --git a/docs/production/diagrams/subsystem.md b/docs/production/diagrams/subsystem.md
+new file mode 100644
+index 0000000..ebbbdc3
+--- /dev/null
++++ b/docs/production/diagrams/subsystem.md
+@@ -0,0 +1,9 @@
++# Subsystem architecture
++
++```mermaid
++flowchart LR
++  App[Archive-only App] --> Core[GodstoneCore]
++  Core --> Archive[(Verified read-only Archive)]
++  Oracle[Oracle source - disabled] -. validation gate required .-> Core
++  Mesh[Mesh source - nonshipping] -. no app dependency .-> Core
++```
+diff --git a/release/assets-light.example.json b/release/assets-light.example.json
+new file mode 100644
+index 0000000..1d8200f
+--- /dev/null
++++ b/release/assets-light.example.json
+@@ -0,0 +1,10 @@
++{
++  "schema": 1,
++  "tier": "LIGHT",
++  "application_id": "io.godstone.app",
++  "status": "example",
++  "production_ready": false,
++  "archive_manifest": null,
++  "archive_trust_store": null,
++  "assets": []
++}
+diff --git a/requirements.lock b/requirements.lock
+new file mode 100644
+index 0000000..2b10dd7
+--- /dev/null
++++ b/requirements.lock
+@@ -0,0 +1,4 @@
++# Exact versions are pinned, but distribution hashes must be added by the release
++# owner from the approved artifact mirror before this file is release-authoritative.
++PyYAML==6.0.3
++cryptography==46.0.4
+diff --git a/sbom/android.cdx.json b/sbom/android.cdx.json
+new file mode 100644
+index 0000000..a2146db
+--- /dev/null
++++ b/sbom/android.cdx.json
+@@ -0,0 +1,146 @@
++{
++  "bomFormat": "CycloneDX",
++  "components": [
++    {
++      "bom-ref": "pkg:generic/androidx.compose/compose-bom@2024.09.02",
++      "group": "androidx.compose",
++      "licenses": [
++        {
++          "license": {
++            "id": "Apache-2.0"
++          }
++        }
++      ],
++      "name": "compose-bom",
++      "scope": "required",
++      "type": "library",
++      "version": "2024.09.02"
++    },
++    {
++      "bom-ref": "pkg:generic/androidx.activity/activity-compose@1.9.2",
++      "group": "androidx.activity",
++      "licenses": [
++        {
++          "license": {
++            "id": "Apache-2.0"
++          }
++        }
++      ],
++      "name": "activity-compose",
++      "scope": "required",
++      "type": "library",
++      "version": "1.9.2"
++    },
++    {
++      "bom-ref": "pkg:generic/androidx.navigation/navigation-compose@2.8.1",
++      "group": "androidx.navigation",
++      "licenses": [
++        {
++          "license": {
++            "id": "Apache-2.0"
++          }
++        }
++      ],
++      "name": "navigation-compose",
++      "scope": "required",
++      "type": "library",
++      "version": "2.8.1"
++    },
++    {
++      "bom-ref": "pkg:generic/androidx.lifecycle/lifecycle-viewmodel-compose@2.8.6",
++      "group": "androidx.lifecycle",
++      "licenses": [
++        {
++          "license": {
++            "id": "Apache-2.0"
++          }
++        }
++      ],
++      "name": "lifecycle-viewmodel-compose",
++      "scope": "required",
++      "type": "library",
++      "version": "2.8.6"
++    },
++    {
++      "bom-ref": "pkg:generic/androidx.lifecycle/lifecycle-runtime-compose@2.8.6",
++      "group": "androidx.lifecycle",
++      "licenses": [
++        {
++          "license": {
++            "id": "Apache-2.0"
++          }
++        }
++      ],
++      "name": "lifecycle-runtime-compose",
++      "scope": "required",
++      "type": "library",
++      "version": "2.8.6"
++    },
++    {
++      "bom-ref": "pkg:generic/com.google.dagger/hilt-android@2.52",
++      "group": "com.google.dagger",
++      "licenses": [
++        {
++          "license": {
++            "id": "Apache-2.0"
++          }
++        }
++      ],
++      "name": "hilt-android",
++      "scope": "required",
++      "type": "library",
++      "version": "2.52"
++    },
++    {
++      "bom-ref": "pkg:generic/androidx.hilt/hilt-navigation-compose@1.2.0",
++      "group": "androidx.hilt",
++      "licenses": [
++        {
++          "license": {
++            "id": "Apache-2.0"
++          }
++        }
++      ],
++      "name": "hilt-navigation-compose",
++      "scope": "required",
++      "type": "library",
++      "version": "1.2.0"
++    },
++    {
++      "bom-ref": "pkg:generic/junit/junit@4.13.2",
++      "group": "junit",
++      "licenses": [
++        {
++          "license": {
++            "id": "EPL-1.0"
++          }
++        }
++      ],
++      "name": "junit",
++      "scope": "optional",
++      "type": "library",
++      "version": "4.13.2"
++    }
++  ],
++  "metadata": {
++    "component": {
++      "name": "GODSTONE-android",
++      "type": "application",
++      "version": "overlay-b7daf5a"
++    },
++    "properties": [
++      {
++        "name": "completeness",
++        "value": "partial overlay inventory; resolve full Gradle graph before release"
++      },
++      {
++        "name": "shipping_surface",
++        "value": "LIGHT Archive-only"
++      }
++    ],
++    "timestamp": "2026-08-06T10:14:38Z"
++  },
++  "serialNumber": "urn:uuid:1c61b2c0-3ea7-4b43-aab8-7cdb1c04f301",
++  "specVersion": "1.5",
++  "version": 1
++}
+diff --git a/sbom/corpus.cdx.json b/sbom/corpus.cdx.json
+new file mode 100644
+index 0000000..db318e0
+--- /dev/null
++++ b/sbom/corpus.cdx.json
+@@ -0,0 +1,25 @@
++{
++  "bomFormat": "CycloneDX",
++  "components": [],
++  "metadata": {
++    "component": {
++      "name": "GODSTONE-corpus",
++      "type": "application",
++      "version": "overlay-b7daf5a"
++    },
++    "properties": [
++      {
++        "name": "release_status",
++        "value": "blocked"
++      },
++      {
++        "name": "reason",
++        "value": "no approved licensed reviewed production corpus is bundled"
++      }
++    ],
++    "timestamp": "2026-08-06T10:14:38Z"
++  },
++  "serialNumber": "urn:uuid:a1ef5749-f6f8-4588-b95c-dba8a97bb457",
++  "specVersion": "1.5",
++  "version": 1
++}
+diff --git a/sbom/ios.cdx.json b/sbom/ios.cdx.json
+new file mode 100644
+index 0000000..9424a6b
+--- /dev/null
++++ b/sbom/ios.cdx.json
+@@ -0,0 +1,40 @@
++{
++  "bomFormat": "CycloneDX",
++  "components": [
++    {
++      "bom-ref": "pkg:generic/local/GodstoneCore@b7daf5a",
++      "group": "local",
++      "name": "GodstoneCore",
++      "properties": [
++        {
++          "name": "distribution",
++          "value": "source in repository"
++        }
++      ],
++      "scope": "required",
++      "type": "library",
++      "version": "b7daf5a"
++    }
++  ],
++  "metadata": {
++    "component": {
++      "name": "GODSTONE-ios",
++      "type": "application",
++      "version": "overlay-b7daf5a"
++    },
++    "properties": [
++      {
++        "name": "completeness",
++        "value": "Archive-only target inventory; Xcode resolution pending"
++      },
++      {
++        "name": "shipping_surface",
++        "value": "GodstoneCore only"
++      }
++    ],
++    "timestamp": "2026-08-06T10:14:38Z"
++  },
++  "serialNumber": "urn:uuid:437c8b0b-60f8-4cb2-b251-cf733ad332c4",
++  "specVersion": "1.5",
++  "version": 1
++}
+diff --git a/sbom/models.cdx.json b/sbom/models.cdx.json
+new file mode 100644
+index 0000000..473107a
+--- /dev/null
++++ b/sbom/models.cdx.json
+@@ -0,0 +1,25 @@
++{
++  "bomFormat": "CycloneDX",
++  "components": [],
++  "metadata": {
++    "component": {
++      "name": "GODSTONE-models",
++      "type": "application",
++      "version": "overlay-b7daf5a"
++    },
++    "properties": [
++      {
++        "name": "release_status",
++        "value": "blocked"
++      },
++      {
++        "name": "reason",
++        "value": "no approved model artifact, hash, model card, or licence is bundled"
++      }
++    ],
++    "timestamp": "2026-08-06T10:14:38Z"
++  },
++  "serialNumber": "urn:uuid:791fb90e-5318-4a92-bf20-3cab933c620d",
++  "specVersion": "1.5",
++  "version": 1
++}
+diff --git a/sbom/native.cdx.json b/sbom/native.cdx.json
+new file mode 100644
+index 0000000..92a6128
+--- /dev/null
++++ b/sbom/native.cdx.json
+@@ -0,0 +1,25 @@
++{
++  "bomFormat": "CycloneDX",
++  "components": [],
++  "metadata": {
++    "component": {
++      "name": "GODSTONE-native",
++      "type": "application",
++      "version": "overlay-b7daf5a"
++    },
++    "properties": [
++      {
++        "name": "release_status",
++        "value": "blocked"
++      },
++      {
++        "name": "reason",
++        "value": "llama.cpp/native outputs are absent and unpinned"
++      }
++    ],
++    "timestamp": "2026-08-06T10:14:38Z"
++  },
++  "serialNumber": "urn:uuid:808bcb54-c7f7-47f4-bf93-75aed931c19f",
++  "specVersion": "1.5",
++  "version": 1
++}
+diff --git a/sbom/python-generation-tools.cdx.json b/sbom/python-generation-tools.cdx.json
+new file mode 100644
+index 0000000..d49ac45
+--- /dev/null
++++ b/sbom/python-generation-tools.cdx.json
+@@ -0,0 +1,52 @@
++{
++  "bomFormat": "CycloneDX",
++  "components": [
++    {
++      "bom-ref": "pkg:generic/pypi/PyYAML@6.0.3",
++      "group": "pypi",
++      "licenses": [
++        {
++          "license": {
++            "id": "MIT"
++          }
++        }
++      ],
++      "name": "PyYAML",
++      "scope": "required",
++      "type": "library",
++      "version": "6.0.3"
++    },
++    {
++      "bom-ref": "pkg:generic/pypi/cryptography@46.0.4",
++      "group": "pypi",
++      "licenses": [
++        {
++          "license": {
++            "id": "Apache-2.0 OR BSD-3-Clause"
++          }
++        }
++      ],
++      "name": "cryptography",
++      "scope": "required",
++      "type": "library",
++      "version": "46.0.4"
++    }
++  ],
++  "metadata": {
++    "component": {
++      "name": "GODSTONE-python-generation-tools",
++      "type": "application",
++      "version": "overlay-b7daf5a"
++    },
++    "properties": [
++      {
++        "name": "completeness",
++        "value": "versions pinned; distribution hashes still required"
++      }
++    ],
++    "timestamp": "2026-08-06T10:14:38Z"
++  },
++  "serialNumber": "urn:uuid:906b73ae-6a5b-48d0-86d8-8f273fe6b723",
++  "specVersion": "1.5",
++  "version": 1
++}

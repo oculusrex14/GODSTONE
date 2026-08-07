@@ -1,0 +1,8 @@
+  ok   JDK: Java 17 at /opt/homebrew/opt/openjdk@17/libexec/openjdk.jdk/Contents/Home
+  ok   SDK: SDK at /opt/homebrew/share/android-commandlinetools
+  ok   platform/build-tools: platform android-35 + build-tools 35.0.0
+  ok   wrapper properties: Gradle 8.9 distribution pinned (https://services.gradle.org/distributions/gradle-8.9-bin.zip)
+  ok   wrapper JAR: gradle-wrapper.jar checksum matches
+  ok   native tools: cmake 3.22.1 + ndk 27.0.12077973
+  ok   dist (offline): Gradle 8.9 distribution present in local cache
+ENV: toolchain preflight passed

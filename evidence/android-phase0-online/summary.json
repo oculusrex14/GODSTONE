@@ -1,0 +1,100 @@
+{
+  "verdict": "PASS",
+  "mode": "online-bootstrap",
+  "timestamp": "20260806T173302Z",
+  "evidence_dir": "evidence/android-phase0-online",
+  "overall_exit_code": 0,
+  "required_steps": [
+    "toolchain-preflight",
+    "shipping-path-gate",
+    "gradle-version",
+    "gradle-phase0",
+    "gradle-oracle-vm",
+    "test-xml"
+  ],
+  "steps": [
+    {
+      "name": "toolchain-preflight",
+      "rc": "0",
+      "log": "toolchain-preflight.log",
+      "passed": true
+    },
+    {
+      "name": "shipping-path-gate",
+      "rc": "0",
+      "sha256": "2b8e32770b5deaf40aca86b8c6af1e3d6c69289b44659eef6ebf10bbc51f61a3",
+      "log": "shipping-path-gate.log",
+      "passed": true
+    },
+    {
+      "name": "gradle-version",
+      "rc": "0",
+      "sha256": "6b4b8a6d7ab033d59f8bcbab88eb7cdc137116338a0edcbd87e12a6584b77bc1",
+      "log": "gradle-version.log",
+      "passed": true
+    },
+    {
+      "name": "gradle-phase0",
+      "rc": "0",
+      "sha256": "fd7c90dbf10ce608cd12aa3e8cf1d742d67e89024ffddbbd88d8e59e3812887c",
+      "log": "gradle-phase0.log",
+      "passed": true
+    },
+    {
+      "name": "gradle-oracle-vm",
+      "rc": "0",
+      "sha256": "3ab504bc97979f21b4b7bce1a2b806981a7cb86415e4889bdb216facf4063c84",
+      "log": "gradle-oracle-vm.log",
+      "passed": true
+    },
+    {
+      "name": "test-xml",
+      "rc": "0",
+      "xml_count": "7",
+      "manifest": "test-xml.log",
+      "passed": true
+    }
+  ],
+  "evidence_files": [
+    {
+      "file": "environment.txt",
+      "sha256": "74a1220fc090eea80c436ad237042b9a068daac42436ff79056457a127be8768"
+    },
+    {
+      "file": "git.txt",
+      "sha256": "b0fafec7e917e749a59f8b04302980ca3ca3f10558b5d7351dd80e8833b9d56d"
+    },
+    {
+      "file": "gradle-oracle-vm.log",
+      "sha256": "3ab504bc97979f21b4b7bce1a2b806981a7cb86415e4889bdb216facf4063c84"
+    },
+    {
+      "file": "gradle-phase0.log",
+      "sha256": "fd7c90dbf10ce608cd12aa3e8cf1d742d67e89024ffddbbd88d8e59e3812887c"
+    },
+    {
+      "file": "gradle-version.log",
+      "sha256": "6b4b8a6d7ab033d59f8bcbab88eb7cdc137116338a0edcbd87e12a6584b77bc1"
+    },
+    {
+      "file": "shipping-path-gate.log",
+      "sha256": "2b8e32770b5deaf40aca86b8c6af1e3d6c69289b44659eef6ebf10bbc51f61a3"
+    },
+    {
+      "file": "steps.tsv",
+      "sha256": "f11f1293d4ce7dec9fbad522544d8937f852b79024c6e77942c27b39ee3c4f20"
+    },
+    {
+      "file": "summary.json",
+      "sha256": "ebbfd51fc5c14efaec0ee8041b4f8983bacb3998b7f51a4f3938ebfec70563d5"
+    },
+    {
+      "file": "test-xml.log",
+      "sha256": "71ba26c2ebb9f7bf687a812fed353ae24e3eb52f6d7e79e5a2b4fa1a07525967"
+    },
+    {
+      "file": "toolchain-preflight.log",
+      "sha256": "5b4ca88d59d7732fed6689f6a76887cf4816e8ba591670555098d7b534e2b0be"
+    }
+  ]
+}

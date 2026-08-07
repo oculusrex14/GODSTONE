@@ -1,0 +1,49 @@
+DORMANT-WIRE TECHNICAL-DEBT INVENTORY (non-passing; informational)
+========================================================================
+This is technical debt. It is NOT proof of GMP/2.1.
+It does NOT close A-01 (docs/AUDIT.md) -- A-01 remains OPEN.
+A-01 closure requires: generated GMP/2.1 routers/stores + golden cross-device round trip.
+------------------------------------------------------------------------
+
+[android: excluded :app source]  (2 file(s))
+  - android/app/src/main/dormant/java/io/godstone/app/ui/mesh/MeshScreen.kt  (excluded from :app LIGHT by java.exclude("io/godstone/app/ui/mesh/**"))
+  - android/app/src/main/dormant/java/io/godstone/app/ui/sos/SosScreen.kt  (excluded from :app LIGHT by java.exclude("io/godstone/app/ui/sos/**"))
+
+[android: :mesh module]  (19 file(s))
+  - android/mesh/src/main/java/io/godstone/mesh/MeshNode.kt  (:mesh module main source (not a dependency of :app))
+  - android/mesh/src/main/java/io/godstone/mesh/MeshService.kt  (:mesh module main source (not a dependency of :app))
+  - android/mesh/src/main/java/io/godstone/mesh/abuse/PeerGovernor.kt  (:mesh module main source (not a dependency of :app))
+  - android/mesh/src/main/java/io/godstone/mesh/crypto/NoiseSession.kt  (:mesh module main source (not a dependency of :app))
+  - android/mesh/src/main/java/io/godstone/mesh/crypto/SessionManager.kt  (:mesh module main source (not a dependency of :app))
+  - android/mesh/src/main/java/io/godstone/mesh/identity/Identity.kt  (:mesh module main source (not a dependency of :app))
+  - android/mesh/src/main/java/io/godstone/mesh/router/BloomDigest.kt  (:mesh module main source (not a dependency of :app))
+  - android/mesh/src/main/java/io/godstone/mesh/router/ProofOfWork.kt  (:mesh module main source (not a dependency of :app))
+  - android/mesh/src/main/java/io/godstone/mesh/router/Router.kt  (:mesh module main source (not a dependency of :app))
+  - android/mesh/src/main/java/io/godstone/mesh/seal/SealedSender.kt  (:mesh module main source (not a dependency of :app))
+  - android/mesh/src/main/java/io/godstone/mesh/store/MessageStore.kt  (:mesh module main source (not a dependency of :app))
+  - android/mesh/src/main/java/io/godstone/mesh/transport/BleTransport.kt  (:mesh module main source (not a dependency of :app))
+  - android/mesh/src/main/java/io/godstone/mesh/transport/GattClient.kt  (:mesh module main source (not a dependency of :app))
+  - android/mesh/src/main/java/io/godstone/mesh/transport/GattServer.kt  (:mesh module main source (not a dependency of :app))
+  - android/mesh/src/main/java/io/godstone/mesh/transport/PeerId.kt  (:mesh module main source (not a dependency of :app))
+  - android/mesh/src/main/java/io/godstone/mesh/transport/Transport.kt  (:mesh module main source (not a dependency of :app))
+  - android/mesh/src/main/java/io/godstone/mesh/transport/WifiAwareTransport.kt  (:mesh module main source (not a dependency of :app))
+  - android/mesh/src/main/java/io/godstone/mesh/wire/Frame.kt  (:mesh module main source (not a dependency of :app))
+  - android/mesh/src/main/java/io/godstone/mesh/wire/v2/WireV2.kt  (:mesh module main source (not a dependency of :app))
+
+[ios: excluded App source]  (3 file(s))
+  - ios/Godstone/Sources/App/MeshView.swift  (not on application target sources allowlist (ios/project.yml))
+  - ios/Godstone/Sources/App/OracleView.swift  (not on application target sources allowlist (ios/project.yml))
+  - ios/Godstone/Sources/App/SosView.swift  (not on application target sources allowlist (ios/project.yml))
+
+[ios: GodstoneMesh product]  (9 file(s))
+  - ios/Godstone/Sources/GodstoneMesh/BleTransport.swift  (GodstoneMesh product source (not a dependency of the LIGHT app))
+  - ios/Godstone/Sources/GodstoneMesh/BulkTransport.swift  (GodstoneMesh product source (not a dependency of the LIGHT app))
+  - ios/Godstone/Sources/GodstoneMesh/MeshCoordinator.swift  (GodstoneMesh product source (not a dependency of the LIGHT app))
+  - ios/Godstone/Sources/GodstoneMesh/MeshIdentity.swift  (GodstoneMesh product source (not a dependency of the LIGHT app))
+  - ios/Godstone/Sources/GodstoneMesh/MeshNode.swift  (GodstoneMesh product source (not a dependency of the LIGHT app))
+  - ios/Godstone/Sources/GodstoneMesh/NoiseSession.swift  (GodstoneMesh product source (not a dependency of the LIGHT app))
+  - ios/Godstone/Sources/GodstoneMesh/Router.swift  (GodstoneMesh product source (not a dependency of the LIGHT app))
+  - ios/Godstone/Sources/GodstoneMesh/SessionManager.swift  (GodstoneMesh product source (not a dependency of the LIGHT app))
+  - ios/Godstone/Sources/GodstoneMesh/WireV2.swift  (GodstoneMesh product source (not a dependency of the LIGHT app))
+------------------------------------------------------------------------
+Total dormant items: 33. A-01 status: OPEN.

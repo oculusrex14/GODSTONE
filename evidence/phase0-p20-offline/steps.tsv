@@ -1,0 +1,6 @@
+step	toolchain-preflight	rc=0	log=toolchain-preflight.log
+step	shipping-path-gate	rc=0	sha256=2b8e32770b5deaf40aca86b8c6af1e3d6c69289b44659eef6ebf10bbc51f61a3	log=shipping-path-gate.log
+step	gradle-version	rc=0	sha256=6b4b8a6d7ab033d59f8bcbab88eb7cdc137116338a0edcbd87e12a6584b77bc1	log=gradle-version.log
+step	gradle-phase0	rc=0	sha256=49cf0a46dcda86758dbb2dac576a768a2252ef88bec9fd2853f6a9a519cca3d2	log=gradle-phase0.log
+step	gradle-oracle-vm	rc=0	sha256=c18ddcb1eceb8da391cc480ce9ce376933a7a9aa0cdaad845e0926a37d04927c	log=gradle-oracle-vm.log
+step	test-xml	rc=0	xml_count=8	manifest=test-xml.log

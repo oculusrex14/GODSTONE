@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.godstone.mesh.PortVectorTest" tests="4" skipped="0" failures="0" errors="0" timestamp="2026-08-07T00:54:11" hostname="Naraharikripas-Mac-mini.local" time="0.007">
+  <properties/>
+  <testcase name="blake2s known answers" classname="io.godstone.mesh.PortVectorTest" time="0.003"/>
+  <testcase name="blake2s mutation changes digest" classname="io.godstone.mesh.PortVectorTest" time="0.001"/>
+  <testcase name="bouncycastle port matches generated vectors" classname="io.godstone.mesh.PortVectorTest" time="0.0"/>
+  <testcase name="noise xx emits canonical empty-payload message sizes" classname="io.godstone.mesh.PortVectorTest" time="0.003"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

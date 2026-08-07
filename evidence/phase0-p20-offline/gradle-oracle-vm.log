@@ -1,0 +1,83 @@
+To honour the JVM settings for this build a single-use Daemon process will be forked. For more on this, please refer to https://docs.gradle.org/8.9/userguide/gradle_daemon.html#sec:disabling_the_daemon in the Gradle documentation.
+Daemon will be stopped at the end of the build 
+Reusing configuration cache.
+> Task :app:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :llm:preBuild UP-TO-DATE
+> Task :core:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :core:preBuild UP-TO-DATE
+> Task :llm:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :app:preBuild UP-TO-DATE
+> Task :core:preDebugBuild UP-TO-DATE
+> Task :llm:preDebugBuild UP-TO-DATE
+> Task :app:preLightDebugBuild UP-TO-DATE
+> Task :llm:writeDebugAarMetadata UP-TO-DATE
+> Task :llm:generateDebugResValues UP-TO-DATE
+> Task :core:generateDebugResValues UP-TO-DATE
+> Task :core:javaPreCompileDebug UP-TO-DATE
+> Task :app:generateLightDebugResValues UP-TO-DATE
+> Task :core:writeDebugAarMetadata UP-TO-DATE
+> Task :app:generateLightDebugBuildConfig UP-TO-DATE
+> Task :app:createLightDebugCompatibleScreenManifests UP-TO-DATE
+> Task :core:processDebugManifest UP-TO-DATE
+> Task :llm:processDebugManifest UP-TO-DATE
+> Task :app:preLightDebugUnitTestBuild UP-TO-DATE
+> Task :core:extractDeepLinksDebug UP-TO-DATE
+> Task :llm:javaPreCompileDebug UP-TO-DATE
+> Task :llm:extractDeepLinksDebug UP-TO-DATE
+> Task :llm:generateDebugResources UP-TO-DATE
+> Task :app:extractDeepLinksLightDebug UP-TO-DATE
+> Task :core:generateDebugResources UP-TO-DATE
+> Task :app:generateLightDebugResources UP-TO-DATE
+> Task :app:packageLightDebugResources UP-TO-DATE
+> Task :llm:packageDebugResources UP-TO-DATE
+> Task :core:packageDebugResources UP-TO-DATE
+> Task :app:javaPreCompileLightDebugUnitTest FROM-CACHE
+> Task :app:javaPreCompileLightDebug FROM-CACHE
+> Task :core:parseDebugLocalResources UP-TO-DATE
+> Task :app:parseLightDebugLocalResources UP-TO-DATE
+> Task :core:compileDebugLibraryResources UP-TO-DATE
+> Task :llm:compileDebugLibraryResources UP-TO-DATE
+> Task :llm:parseDebugLocalResources UP-TO-DATE
+> Task :llm:generateDebugRFile UP-TO-DATE
+> Task :core:generateDebugRFile UP-TO-DATE
+> Task :app:mapLightDebugSourceSetPaths UP-TO-DATE
+> Task :app:checkLightDebugAarMetadata UP-TO-DATE
+> Task :app:mergeLightDebugResources UP-TO-DATE
+> Task :core:compileDebugKotlin UP-TO-DATE
+> Task :app:processLightDebugMainManifest UP-TO-DATE
+> Task :core:processDebugJavaRes UP-TO-DATE
+> Task :app:processLightDebugManifest UP-TO-DATE
+> Task :app:processLightDebugManifestForPackage UP-TO-DATE
+> Task :core:compileDebugJavaWithJavac NO-SOURCE
+> Task :core:bundleLibRuntimeToJarDebug UP-TO-DATE
+> Task :core:bundleLibCompileToJarDebug UP-TO-DATE
+> Task :llm:compileDebugKotlin UP-TO-DATE
+> Task :llm:compileDebugJavaWithJavac NO-SOURCE
+> Task :llm:processDebugJavaRes UP-TO-DATE
+> Task :llm:bundleLibCompileToJarDebug UP-TO-DATE
+> Task :llm:bundleLibRuntimeToJarDebug UP-TO-DATE
+
+> Task :app:processLightDebugResources UP-TO-DATE
+Warning: SDK processing. This version only understands SDK XML versions up to 3 but an SDK XML file of version 4 was encountered. This can happen if you use versions of Android Studio and the command-line tools that were released at different times.
+
+> Task :app:kspLightDebugKotlin UP-TO-DATE
+> Task :app:compileLightDebugKotlin UP-TO-DATE
+> Task :app:compileLightDebugJavaWithJavac FROM-CACHE
+> Task :app:hiltAggregateDepsLightDebug FROM-CACHE
+> Task :app:hiltJavaCompileLightDebug FROM-CACHE
+> Task :app:processLightDebugJavaRes
+> Task :app:transformLightDebugClassesWithAsm FROM-CACHE
+> Task :app:bundleLightDebugClassesToRuntimeJar
+> Task :app:bundleLightDebugClassesToCompileJar
+> Task :app:kspLightDebugUnitTestKotlin FROM-CACHE
+> Task :app:compileLightDebugUnitTestKotlin FROM-CACHE
+> Task :app:compileLightDebugUnitTestJavaWithJavac NO-SOURCE
+> Task :app:hiltAggregateDepsLightDebugUnitTest FROM-CACHE
+> Task :app:hiltJavaCompileLightDebugUnitTest NO-SOURCE
+> Task :app:processLightDebugUnitTestJavaRes
+> Task :app:transformLightDebugUnitTestClassesWithAsm FROM-CACHE
+> Task :app:testLightDebugUnitTest FROM-CACHE
+
+BUILD SUCCESSFUL in 2s
+59 actionable tasks: 4 executed, 11 from cache, 44 up-to-date
+Configuration cache entry reused.

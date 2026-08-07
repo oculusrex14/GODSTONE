@@ -1,0 +1,16 @@
+{
+  "gate": "ios-xcodebuild-test",
+  "scheme": "Godstone-Light",
+  "destination": "platform=iOS Simulator,name=iPhone 17 Pro (iOS 26.5)",
+  "verdict": "PASS",
+  "test_targets_executed": [
+    "NoiseSessionTests (3)",
+    "PortVectorTests (4)",
+    "RouterTests (5)",
+    "WireV2VectorTests (13)"
+  ],
+  "tests": 25,
+  "failures": 0,
+  "unexpected_failures": 0,
+  "notes": "patch 21 cross-platform-conformance gate. iOS executes GMP/2.1 wire golden vectors (13), GMP2 Noise_XX handshake (3 NoiseSessionTests + PortVectorTests.testNoiseXXEmptyPayloadMessageSizesAndTransport), Blake2s port vectors, and the router. Codegen fix: Swift Flags typed UInt16 (was untyped Int -> never compiled on iOS before)."
+}

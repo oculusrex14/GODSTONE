@@ -1,0 +1,4191 @@
+diff --git a/.github/workflows/production-evidence.yml b/.github/workflows/production-evidence.yml
+new file mode 100644
+index 0000000..3ade9f6
+--- /dev/null
++++ b/.github/workflows/production-evidence.yml
+@@ -0,0 +1,70 @@
++name: production-evidence
++on:
++  pull_request:
++  push:
++    branches: [main]
++permissions:
++  contents: read
++concurrency:
++  group: ${{ github.workflow }}-${{ github.ref }}
++  cancel-in-progress: true
++
++jobs:
++  repository-invariants:
++    runs-on: ubuntu-24.04
++    steps:
++      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
++        with:
++          persist-credentials: false
++      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
++        with:
++          python-version: '3.12'
++          cache: pip
++      - run: python -m pip install --no-deps -r requirements.lock
++      - run: python ci/check_repository.py
++      - run: python -m unittest discover -s content/tests -v
++      - run: python ci/no_legacy_wire.py --selftest
++
++  android-light:
++    runs-on: ubuntu-24.04
++    steps:
++      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
++        with:
++          persist-credentials: false
++      - uses: actions/setup-java@c5195efecf7bdfc987ee8bae7a71cb8b11521c00 # v4.7.1
++        with:
++          distribution: temurin
++          java-version: '17'
++          cache: gradle
++      - run: test -f android/gradle/wrapper/gradle-wrapper.jar
++      - run: cd android && ./gradlew --no-daemon --warning-mode=all clean test lint assembleLightRelease bundleLightRelease
++      - run: python scripts/inspect_android_artifacts.py android/app/build artifacts/android
++      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
++        with:
++          name: android-light-unsigned
++          path: artifacts/android
++          if-no-files-found: error
++
++  ios-foundation:
++    runs-on: macos-15
++    steps:
++      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
++        with:
++          persist-credentials: false
++      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065
++        with:
++          python-version: '3.12'
++      # Drift gate: the committed ios/Packages/GodstoneFoundation tree must be
++      # byte-identical to what sync_ios_foundation_package.py would regenerate
++      # from the authoritative ios/Godstone sources. Running the script in
++      # --check mode (not destructive sync) means CI FAILS if a contributor
++      # edits the generated copy directly, or edits canonical Core/Mesh without
++      # re-running sync and committing the regenerated tree. The committed tree
++      # is the tested artifact; it is never silently overwritten in CI.
++      - run: python scripts/sync_ios_foundation_package.py --check
++      - run: swift test --package-path ios/Packages/GodstoneFoundation
++      - run: xcodegen generate --spec ios/project.yml
++      - run: >-
++          xcodebuild -project ios/Godstone.xcodeproj -scheme Godstone-Light
++          -configuration LightRelease -destination 'generic/platform=iOS'
++          CODE_SIGNING_ALLOWED=NO build
+diff --git a/ci/check_release_surface.py b/ci/check_release_surface.py
+new file mode 100644
+index 0000000..dbbde97
+--- /dev/null
++++ b/ci/check_release_surface.py
+@@ -0,0 +1,58 @@
++#!/usr/bin/env python3
++from pathlib import Path
++import plistlib
++import xml.etree.ElementTree as ET
++
++ANDROID_FORBIDDEN = (
++    "android.permission.BLUETOOTH_ADVERTISE", "android.permission.BLUETOOTH_SCAN",
++    "android.permission.BLUETOOTH_CONNECT", "android.permission.NEARBY_WIFI_DEVICES",
++    "android.permission.ACCESS_FINE_LOCATION", "android.permission.RECORD_AUDIO",
++    "FOREGROUND_SERVICE_CONNECTED_DEVICE", "io.godstone.mesh.MeshService",
++    'android:screenOrientation="portrait"', 'android:largeHeap="true"',
++)
++IOS_FORBIDDEN_KEYS = {
++    "NSBluetoothAlwaysUsageDescription", "NSLocalNetworkUsageDescription",
++    "NSMicrophoneUsageDescription", "NSCameraUsageDescription",
++    "NSLocationWhenInUseUsageDescription", "UIBackgroundModes", "NSBonjourServices",
++    "UIUserInterfaceStyle",
++}
++
++
++def main() -> int:
++    errors: list[str] = []
++    manifest = Path("android/app/src/main/AndroidManifest.xml")
++    try:
++        ET.parse(manifest)
++        text = manifest.read_text(encoding="utf-8")
++    except Exception as exc:
++        errors.append(f"Android manifest invalid: {exc}")
++        text = ""
++    for needle in ANDROID_FORBIDDEN:
++        if needle in text:
++            errors.append(f"Android disabled capability remains: {needle}")
++    for path in (Path("ios/Godstone/Info.plist"), Path("ios/Godstone/Godstone.entitlements"), Path("ios/Godstone/PrivacyInfo.xcprivacy")):
++        try:
++            with path.open("rb") as stream:
++                value = plistlib.load(stream)
++        except Exception as exc:
++            errors.append(f"{path}: invalid plist: {exc}")
++            continue
++        if path.name == "Info.plist":
++            for key in IOS_FORBIDDEN_KEYS:
++                if key in value:
++                    errors.append(f"iOS disabled capability remains: {key}")
++        if path.name == "Godstone.entitlements" and value:
++            errors.append("iOS release entitlements must be empty for Archive-only release")
++    project = Path("ios/project.yml").read_text(encoding="utf-8")
++    if "PRODUCT_BUNDLE_IDENTIFIER: io.godstone.app" not in project:
++        errors.append("single iOS bundle identity missing")
++    if "LightRelease: release" not in project or "archive:\n      config: LightRelease" not in project:
++        errors.append("iOS archive scheme is not a genuine release configuration")
++    if errors:
++        print("Release surface check failed:\n" + "\n".join(errors))
++        return 1
++    print("release permissions, entitlements, identities, and schemes are minimized")
++    return 0
++
++if __name__ == "__main__":
++    raise SystemExit(main())
+diff --git a/ci/check_repository.py b/ci/check_repository.py
+new file mode 100644
+index 0000000..7931527
+--- /dev/null
++++ b/ci/check_repository.py
+@@ -0,0 +1,23 @@
++#!/usr/bin/env python3
++from __future__ import annotations
++import subprocess
++import sys
++
++CHECKS = [
++    [sys.executable, "ci/no_release_bypasses.py"],
++    [sys.executable, "ci/check_oracle_private_draft.py"],
++    [sys.executable, "ci/check_release_surface.py"],
++    [sys.executable, "ci/check_content_release_integration.py"],
++]
++
++
++def main() -> int:
++    failed = 0
++    for command in CHECKS:
++        print("+", " ".join(command), flush=True)
++        result = subprocess.run(command, check=False)
++        failed += result.returncode != 0
++    return 1 if failed else 0
++
++if __name__ == "__main__":
++    raise SystemExit(main())
+diff --git a/ci/no_legacy_wire.py b/ci/no_legacy_wire.py
+new file mode 100644
+index 0000000..09e5bc2
+--- /dev/null
++++ b/ci/no_legacy_wire.py
+@@ -0,0 +1,59 @@
++#!/usr/bin/env python3
++from __future__ import annotations
++import argparse
++from pathlib import Path
++
++SOURCE_ROOTS = [Path("android/app/src"), Path("ios/Godstone/Sources/App")]
++FORBIDDEN = (
++    "io.godstone.mesh.wire.Frame", "GMP/1 frame", "PROTOCOL_VERSION: Byte = 0x01",
++    "import GodstoneMesh", "MeshNode", "MeshCoordinator",
++)
++EXTENSIONS = {".kt", ".java", ".swift", ".mm", ".m", ".h", ".hpp"}
++
++
++def violations(root: Path) -> list[str]:
++    output: list[str] = []
++    for relative in SOURCE_ROOTS:
++        base = root / relative
++        if not base.exists(): continue
++        for path in base.rglob("*"):
++            if path.is_file() and path.suffix in EXTENSIONS:
++                text = path.read_text(encoding="utf-8", errors="replace")
++                for needle in FORBIDDEN:
++                    if needle in text:
++                        output.append(f"{path.relative_to(root)}: {needle}")
++    gradle = root / "android/app/build.gradle.kts"
++    if gradle.is_file() and 'project(":mesh")' in gradle.read_text(encoding="utf-8"):
++        output.append("android/app/build.gradle.kts: production app depends on :mesh")
++    project = root / "ios/project.yml"
++    if project.is_file() and "product: GodstoneMesh" in project.read_text(encoding="utf-8"):
++        output.append("ios/project.yml: production app depends on GodstoneMesh")
++    return output
++
++
++def main() -> int:
++    parser = argparse.ArgumentParser()
++    parser.add_argument("--root", type=Path, default=Path.cwd())
++    parser.add_argument("--selftest", action="store_true")
++    args = parser.parse_args()
++    if args.selftest:
++        import tempfile
++        with tempfile.TemporaryDirectory() as tmp:
++            test_root = Path(tmp)
++            path = test_root / "android/app/src/main/Test.kt"
++            path.parent.mkdir(parents=True)
++            path.write_text("import io.godstone.mesh.wire.Frame\n", encoding="utf-8")
++            if not violations(test_root):
++                print("negative control failed")
++                return 1
++        print("negative control detected a reintroduced shipping legacy import")
++        return 0
++    found = violations(args.root.resolve())
++    if found:
++        print("Legacy or disabled Mesh path is reachable from a shipping app:\n" + "\n".join(found))
++        return 1
++    print("shipping applications have no Mesh/GMP/1 dependency edge")
++    return 0
++
++if __name__ == "__main__":
++    raise SystemExit(main())
+diff --git a/ci/no_release_bypasses.py b/ci/no_release_bypasses.py
+new file mode 100644
+index 0000000..46648b9
+--- /dev/null
++++ b/ci/no_release_bypasses.py
+@@ -0,0 +1,31 @@
++#!/usr/bin/env python3
++from __future__ import annotations
++import re
++from pathlib import Path
++
++ROOTS = [Path(".github/workflows"), Path("ci"), Path("scripts"), Path("release")]
++TEXT_SUFFIXES = {".py", ".sh", ".yml", ".yaml", ".md", ".json", ".toml", ".kts"}
++MUTABLE_ACTION = re.compile(r"^\s*-?\s*uses:\s*[^\s@]+@(v?\d+(?:\.\d+){0,2}|main|master)\s*$", re.MULTILINE)
++
++
++def main() -> int:
++    violations: list[str] = []
++    for root in ROOTS:
++        if not root.exists():
++            continue
++        for path in root.rglob("*"):
++            if not path.is_file() or path.suffix not in TEXT_SUFFIXES or path.name == Path(__file__).name:
++                continue
++            text = path.read_text(encoding="utf-8", errors="replace")
++            if "--allow-unpinned" in text:
++                violations.append(f"{path}: unpinned-vector bypass")
++            if MUTABLE_ACTION.search(text):
++                violations.append(f"{path}: mutable GitHub Action reference")
++    if violations:
++        print("Release bypasses found:\n" + "\n".join(violations))
++        return 1
++    print("no executable release bypasses or mutable action tags")
++    return 0
++
++if __name__ == "__main__":
++    raise SystemExit(main())
+diff --git a/ios/.swift-version b/ios/.swift-version
+new file mode 100644
+index 0000000..95ee81a
+--- /dev/null
++++ b/ios/.swift-version
+@@ -0,0 +1 @@
++5.9
+diff --git a/ios/Godstone/Godstone.entitlements b/ios/Godstone/Godstone.entitlements
+index 537ef1e..27b2a4e 100644
+--- a/ios/Godstone/Godstone.entitlements
++++ b/ios/Godstone/Godstone.entitlements
+@@ -1,19 +1,4 @@
+ <?xml version="1.0" encoding="UTF-8"?>
+ <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"
+   "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+-<plist version="1.0">
+-<dict>
+-    <!-- Multicast is required for MultipeerConnectivity peer discovery on
+-         iOS 14+. This entitlement must be requested from Apple with a written
+-         justification; see docs/store/APPLE_MULTICAST_REQUEST.md. -->
+-    <key>com.apple.developer.networking.multicast</key>
+-    <true/>
+-
+-    <!-- No push, no iCloud, no background fetch, no App Groups beyond the
+-         shared archive container. The smaller the surface, the safer. -->
+-    <key>com.apple.security.application-groups</key>
+-    <array>
+-        <string>group.io.godstone.archive</string>
+-    </array>
+-</dict>
+-</plist>
++<plist version="1.0"><dict/></plist>
+diff --git a/ios/Godstone/Info.plist b/ios/Godstone/Info.plist
+index 8aaa412..862a5d9 100644
+--- a/ios/Godstone/Info.plist
++++ b/ios/Godstone/Info.plist
+@@ -3,77 +3,16 @@
+   "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+ <plist version="1.0">
+ <dict>
+-    <key>CFBundleDisplayName</key>
+-    <string>Godstone</string>
+-
+-    <key>CFBundleIdentifier</key>
+-    <string>$(PRODUCT_BUNDLE_IDENTIFIER)</string>
+-
+-    <key>CFBundleShortVersionString</key>
+-    <string>1.0.0</string>
+-
+-    <key>LSRequiresIPhoneOS</key>
+-    <true/>
+-
++    <key>CFBundleDisplayName</key><string>Godstone</string>
++    <key>CFBundleIdentifier</key><string>$(PRODUCT_BUNDLE_IDENTIFIER)</string>
++    <key>CFBundleShortVersionString</key><string>1.0.0</string>
++    <key>CFBundleVersion</key><string>1</string>
++    <key>LSRequiresIPhoneOS</key><true/>
+     <key>UIRequiredDeviceCapabilities</key>
+-    <array>
+-        <string>arm64</string>
+-        <string>bluetooth-le</string>
+-    </array>
+-
+-    <!-- Background execution. Constraint: BLE central+peripheral only.
+-         MultipeerConnectivity has NO background mode and stops when the app is
+-         suspended. This is documented in the UI rather than hidden. -->
+-    <key>UIBackgroundModes</key>
+-    <array>
+-        <string>bluetooth-central</string>
+-        <string>bluetooth-peripheral</string>
+-    </array>
+-
+-    <!-- Bonjour services for MultipeerConnectivity (iOS 14+ requirement). -->
+-    <key>NSBonjourServices</key>
+-    <array>
+-        <string>_godstone-mesh._tcp</string>
+-        <string>_godstone-mesh._udp</string>
+-    </array>
+-
+-    <!-- Purpose strings. These are read by frightened people; they are written
+-         plainly and they are true. -->
+-    <key>NSBluetoothAlwaysUsageDescription</key>
+-    <string>Godstone uses Bluetooth to find nearby phones so you can send and receive messages when there is no cell service or internet. Nothing is ever sent to a server.</string>
+-
+-    <key>NSLocalNetworkUsageDescription</key>
+-    <string>Godstone uses the local Wi-Fi radio to pass larger messages, photos and voice notes directly between nearby phones. It never connects to the internet.</string>
+-
+-    <key>NSMicrophoneUsageDescription</key>
+-    <string>Godstone records voice notes so you can send a message when typing is not possible.</string>
+-
+-    <key>NSCameraUsageDescription</key>
+-    <string>Godstone lets you photograph an injury, a map or a location to send to people nearby.</string>
+-
+-    <key>NSLocationWhenInUseUsageDescription</key>
+-    <string>Godstone attaches your coordinates to an SOS so people nearby can find you. Your location is never uploaded anywhere.</string>
+-
+-    <!-- App Transport Security: block everything. Constraint C1: the app makes
+-         no network requests at all, and this makes that enforceable. -->
++    <array><string>arm64</string></array>
+     <key>NSAppTransportSecurity</key>
+-    <dict>
+-        <key>NSAllowsArbitraryLoads</key>
+-        <false/>
+-        <key>NSAllowsLocalNetworking</key>
+-        <true/>
+-    </dict>
+-
+-    <key>UIApplicationSupportsIndirectInputEvents</key>
+-    <true/>
+-
+-    <key>UILaunchScreen</key>
+-    <dict>
+-        <key>UIColorName</key>
+-        <string>LaunchBackground</string>
+-    </dict>
+-
+-    <key>UIUserInterfaceStyle</key>
+-    <string>Dark</string>
++    <dict><key>NSAllowsArbitraryLoads</key><false/></dict>
++    <key>UIApplicationSupportsIndirectInputEvents</key><true/>
++    <key>UILaunchScreen</key><dict/>
+ </dict>
+ </plist>
+diff --git a/ios/Godstone/Package.swift b/ios/Godstone/Package.swift
+index c530341..7f0e2df 100644
+--- a/ios/Godstone/Package.swift
++++ b/ios/Godstone/Package.swift
+@@ -1,34 +1,17 @@
+-// swift-tools-version:5.9
++// swift-tools-version: 5.9
+ import PackageDescription
+ 
+-// The iOS app is assembled from three local packages so the module boundaries
+-// are enforced by the compiler, exactly as they are on Android:
+-//     App -> (GodstoneMesh, GodstoneLLM) -> GodstoneCore
+-// There is deliberately no dependency edge between Mesh and LLM.
+-
+ let package = Package(
+     name: "GodstonePackages",
+-    // iOS 16 is the shipping target. macOS is declared so the pure-logic
+-    // library closure (GodstoneCore + GodstoneMesh + tests) can be compiled
+-    // and verified on a Mac host / CI without an iOS simulator runtime; the
+-    // GodstoneLLM target (UIKit + llama.cpp) is iOS-only and is not built in
+-    // that closure. Declaring macOS here does not change the iOS app target,
+-    // which is assembled by XcodeGen from ios/project.yml.
+     platforms: [.iOS(.v16), .macOS(.v13)],
+     products: [
+         .library(name: "GodstoneCore", targets: ["GodstoneCore"]),
+         .library(name: "GodstoneMesh", targets: ["GodstoneMesh"]),
+-        .library(name: "GodstoneLLM",  targets: ["GodstoneLLM"])
++        .library(name: "GodstoneLLM", targets: ["GodstoneLLM"])
+     ],
+     targets: [
+         .target(name: "GodstoneCore"),
+         .target(name: "GodstoneMesh", dependencies: ["GodstoneCore"]),
+-        // The Objective-C++ bridge over llama.cpp lives in its own C target so
+-        // that GodstoneLLM stays pure-Swift. SwiftPM does not support a single
+-        // target mixing .swift with .h/.mm, so the split is required for the
+-        // package to resolve at all (even when GodstoneLLM is not being built).
+-        // GodstoneLLMBridge only compiles when a reviewed, pinned llama.cpp checkout
+-        // exists at third_party/llama.cpp; until then full LLM builds are blocked.
+         .target(
+             name: "GodstoneLLMBridge",
+             dependencies: ["GodstoneCore"],
+@@ -36,16 +19,11 @@ let package = Package(
+             cxxSettings: [
+                 .headerSearchPath("../../third_party/llama.cpp/include"),
+                 .headerSearchPath("../../third_party/llama.cpp/ggml/include"),
+-                .unsafeFlags(["-O3", "-ffast-math"])
++                .unsafeFlags(["-O3"])
+             ]
+         ),
+-        .target(
+-            name: "GodstoneLLM",
+-            dependencies: ["GodstoneCore", "GodstoneLLMBridge"]
+-        ),
+-        // GodstoneLLMTests is intentionally absent: GodstoneLLM cannot build
+-        // without the pinned third_party/llama.cpp dependency, so its test target
+-        // cannot build either. The Mesh tests have no such dependency.
++        .target(name: "GodstoneLLM", dependencies: ["GodstoneCore", "GodstoneLLMBridge"]),
++        .testTarget(name: "GodstoneCoreTests", dependencies: ["GodstoneCore"]),
+         .testTarget(name: "GodstoneMeshTests", dependencies: ["GodstoneMesh", "GodstoneCore"])
+     ]
+ )
+diff --git a/ios/Godstone/PrivacyInfo.xcprivacy b/ios/Godstone/PrivacyInfo.xcprivacy
+new file mode 100644
+index 0000000..2a7dbc4
+--- /dev/null
++++ b/ios/Godstone/PrivacyInfo.xcprivacy
+@@ -0,0 +1,11 @@
++<?xml version="1.0" encoding="UTF-8"?>
++<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"
++  "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
++<plist version="1.0">
++<dict>
++    <key>NSPrivacyTracking</key><false/>
++    <key>NSPrivacyTrackingDomains</key><array/>
++    <key>NSPrivacyCollectedDataTypes</key><array/>
++    <key>NSPrivacyAccessedAPITypes</key><array/>
++</dict>
++</plist>
+diff --git a/ios/Godstone/Sources/App/AppContainer.swift b/ios/Godstone/Sources/App/AppContainer.swift
+index 65aa2b5..3b4f22d 100644
+--- a/ios/Godstone/Sources/App/AppContainer.swift
++++ b/ios/Godstone/Sources/App/AppContainer.swift
+@@ -1,44 +1,15 @@
+ import Foundation
+ import Combine
+ import GodstoneCore
+-import GodstoneMesh
+-import GodstoneLLM
+ 
+-/// Composition root. Everything is constructed here, once, and injected down.
+-/// No singletons, no service locators: dependencies are visible and testable.
++/// Archive-only production composition root.
+ @MainActor
+ final class AppContainer: ObservableObject {
+-
+     let tier: Tier
+-    let identity: MeshIdentity
+-    let meshNode: MeshNode
+-    let meshCoordinator: MeshCoordinator
+-    let ragPipeline: RagPipeline
+-    let oracleViewModel: OracleViewModel
+     let archive: ArchiveRepository
+ 
+     init() {
+-        self.tier = Tier.current
+-
+-        // Identity is generated once and stored in the Secure Enclave-backed
+-        // Keychain with kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly.
+-        self.identity = (try? MeshIdentity.loadFromKeychain())
+-            ?? MeshIdentity.generateAndStore()
+-
+-        self.meshNode = MeshNode(identity: identity)
+-        self.meshCoordinator = MeshCoordinator(node: meshNode)
+-
+-        self.archive = ArchiveRepository(
+-            databaseName: tier.archiveDatabaseName
+-        )
+-
+-        // The pipeline owns its model lifecycle through `ModelManager.shared`
+-        // (tier-aware, idle-evicting). Here we only wire the retrieval side.
+-        self.ragPipeline = RagPipeline(
+-            retriever: Retriever(archive: archive),
+-            builder: PromptBuilder()
+-        )
+-
+-        self.oracleViewModel = OracleViewModel(pipeline: ragPipeline)
++        tier = Tier.current
++        archive = ArchiveRepository(databaseName: tier.archiveDatabaseName)
+     }
+ }
+diff --git a/ios/Godstone/Sources/App/GodstoneApp.swift b/ios/Godstone/Sources/App/GodstoneApp.swift
+index 07047e8..2265394 100644
+--- a/ios/Godstone/Sources/App/GodstoneApp.swift
++++ b/ios/Godstone/Sources/App/GodstoneApp.swift
+@@ -2,32 +2,13 @@ import SwiftUI
+ 
+ @main
+ struct GodstoneApp: App {
+-
+     @StateObject private var container = AppContainer()
+-    @Environment(\.scenePhase) private var scenePhase
+ 
+     var body: some Scene {
+         WindowGroup {
+             RootView()
+                 .environmentObject(container)
+-                .environmentObject(container.meshCoordinator)
+-                .environmentObject(container.oracleViewModel)
+-                .preferredColorScheme(.dark)
+                 .tint(GodstoneTheme.ember)
+         }
+-        .onChange(of: scenePhase) { _, phase in
+-            switch phase {
+-            case .active:
+-                // Full mesh: BLE plus the Wi-Fi bulk plane.
+-                container.meshCoordinator.enterForegroundMode()
+-            case .background:
+-                // BLE only, and even that is degraded by iOS. The UI says so.
+-                container.meshCoordinator.enterBackgroundMode()
+-                // Free the model: iOS will jetsam us otherwise (C4).
+-                container.oracleViewModel.releaseModel()
+-            default:
+-                break
+-            }
+-        }
+     }
+ }
+diff --git a/ios/Godstone/Sources/App/RootView.swift b/ios/Godstone/Sources/App/RootView.swift
+index 44b4579..1af2807 100644
+--- a/ios/Godstone/Sources/App/RootView.swift
++++ b/ios/Godstone/Sources/App/RootView.swift
+@@ -1,57 +1,16 @@
+ import SwiftUI
+-import GodstoneMesh
+ 
+-/// Four destinations, always reachable in one tap. Under stress, navigation
+-/// depth is a hazard. SOS is a full tab, never buried in a menu.
+ struct RootView: View {
+-
+-    @EnvironmentObject private var mesh: MeshCoordinator
+-    @State private var selection: Destination = .archive
+-
+-    enum Destination: Hashable {
+-        case archive, oracle, mesh, sos
+-    }
+-
+     var body: some View {
+-        TabView(selection: $selection) {
+-
+-            ArchiveView()
+-                .tabItem { Label("Archive", systemImage: "books.vertical.fill") }
+-                .tag(Destination.archive)
+-
+-            OracleView()
+-                .tabItem { Label("Ask", systemImage: "bubble.left.and.text.bubble.right.fill") }
+-                .tag(Destination.oracle)
+-
+-            MeshView()
+-                .tabItem { Label("Mesh", systemImage: "antenna.radiowaves.left.and.right") }
+-                .badge(mesh.peerCount)
+-                .tag(Destination.mesh)
+-
+-            SosView()
+-                .tabItem { Label("SOS", systemImage: "exclamationmark.triangle.fill") }
+-                .tag(Destination.sos)
+-        }
+-        .overlay(alignment: .top) {
+-            if mesh.isBackgroundDegraded {
+-                BackgroundLimitBanner()
++        ArchiveView()
++            .safeAreaInset(edge: .top) {
++                Text("Archive-only release — Oracle, Mesh and SOS are unavailable")
++                    .font(.footnote.weight(.semibold))
++                    .multilineTextAlignment(.center)
++                    .frame(maxWidth: .infinity)
++                    .padding(8)
++                    .background(.thinMaterial)
++                    .accessibilityAddTraits(.isHeader)
+             }
+-        }
+-    }
+-}
+-
+-/// Honest disclosure of an iOS platform limitation. Letting a user believe the
+-/// mesh is live while the app is suspended would be the dangerous choice.
+-struct BackgroundLimitBanner: View {
+-    var body: some View {
+-        HStack(spacing: 8) {
+-            Image(systemName: "exclamationmark.circle.fill")
+-            Text("Keep Godstone open to stay on the mesh. iOS limits background radio use.")
+-                .font(.footnote)
+-        }
+-        .padding(10)
+-        .frame(maxWidth: .infinity)
+-        .background(GodstoneTheme.warning.opacity(0.92))
+-        .foregroundStyle(.black)
+     }
+ }
+diff --git a/ios/Packages/GodstoneFoundation/Package.swift b/ios/Packages/GodstoneFoundation/Package.swift
+new file mode 100644
+index 0000000..be74c90
+--- /dev/null
++++ b/ios/Packages/GodstoneFoundation/Package.swift
+@@ -0,0 +1,17 @@
++// swift-tools-version: 5.9
++import PackageDescription
++
++let package = Package(
++    name: "GodstoneFoundation",
++    platforms: [.iOS(.v16), .macOS(.v13)],
++    products: [
++        .library(name: "GodstoneCore", targets: ["GodstoneCore"]),
++        .library(name: "GodstoneMesh", targets: ["GodstoneMesh"])
++    ],
++    targets: [
++        .target(name: "GodstoneCore"),
++        .target(name: "GodstoneMesh", dependencies: ["GodstoneCore"]),
++        .testTarget(name: "GodstoneCoreTests", dependencies: ["GodstoneCore"]),
++        .testTarget(name: "GodstoneMeshTests", dependencies: ["GodstoneMesh", "GodstoneCore"])
++    ]
++)
+diff --git a/ios/Packages/GodstoneFoundation/README.md b/ios/Packages/GodstoneFoundation/README.md
+new file mode 100644
+index 0000000..5e22b84
+--- /dev/null
++++ b/ios/Packages/GodstoneFoundation/README.md
+@@ -0,0 +1,62 @@
++# GodstoneFoundation — GENERATED package (do not edit)
++
++This SwiftPM package is a **generated artifact**. It exists so the pure-logic
++Core + Mesh closure can be built and `swift test`-ed on a Mac host / CI
++**without** compiling the iOS-only `GodstoneLLMBridge` target, which requires
++a pinned `third_party/llama.cpp` checkout (see `third_party/README.md`).
++
++## Authoritative sources
++
++All sources and tests under `Sources/` and `Tests/` here are **copies** of the
++canonical trees:
++
++| Generated copy                          | Authoritative source                              |
++|-----------------------------------------|---------------------------------------------------|
++| `Sources/GodstoneCore`                  | `ios/Godstone/Sources/GodstoneCore`                |
++| `Sources/GodstoneMesh`                  | `ios/Godstone/Sources/GodstoneMesh`                |
++| `Tests/GodstoneCoreTests`               | `ios/Godstone/Tests/GodstoneCoreTests`            |
++| `Tests/GodstoneMeshTests`               | `ios/Godstone/Tests/GodstoneMeshTests`            |
++
++`ios/Godstone` is the **single source of truth**. There must never be two
++independently editable copies of Core or Mesh.
++
++## Do not edit the copies
++
++Editing a file under `Sources/` or `Tests/` here has no lasting effect: the next
++run of the sync script (`scripts/sync_ios_foundation_package.py`) deletes the
++destination tree (`rmtree`) and re-copies from canonical, silently discarding
++your edit. Make every change in `ios/Godstone` and re-run the sync.
++
++## Regenerating
++
++```
++python scripts/sync_ios_foundation_package.py        # regenerate (destructive)
++python scripts/sync_ios_foundation_package.py --check  # fail if committed tree drifted
++```
++
++## CI drift gate
++
++`production-evidence.yml` runs `sync_ios_foundation_package.py --check` before
++`swift test --package-path ios/Packages/GodstoneFoundation`. The `--check` mode
++fails the build if the committed generated tree is not byte-identical to what
++the script would regenerate from canonical. This catches both:
++
++* a direct edit to the generated copy (silently lost on next sync), and
++* a canonical Core/Mesh edit that was not followed by a re-sync + commit.
++
++`SOURCE_MANIFEST.json` (SHA-256 of each generated path + bytes, including
++`Package.swift`) is the material the `--check` mode compares against.
++
++## Package.swift is hand-maintained
++
++`Package.swift` here is **not** a copy — it is a deliberately trimmed subset of
++`ios/Godstone/Package.swift` that omits the `GodstoneLLMBridge` and `GodstoneLLM`
++targets (the whole point of the split). It is edited by hand when the canonical
++package's target structure changes; its hash is recorded in
++`SOURCE_MANIFEST.json` so `--check` detects uncommitted edits to it as well.
++
++## What consumes this package
++
++Only the CI `swift test --package-path ios/Packages/GodstoneFoundation` step.
++The shipping app (assembled by XcodeGen from `ios/project.yml`) consumes the
++**canonical** `ios/Godstone` package, not this one.
+\ No newline at end of file
+diff --git a/ios/Packages/GodstoneFoundation/SOURCE_MANIFEST.json b/ios/Packages/GodstoneFoundation/SOURCE_MANIFEST.json
+new file mode 100644
+index 0000000..11e0e20
+--- /dev/null
++++ b/ios/Packages/GodstoneFoundation/SOURCE_MANIFEST.json
+@@ -0,0 +1,31 @@
++{
++  "files": {
++    ".build/arm64-apple-macosx/debug/GodstoneFoundationPackageTests.derived/runner.swift": "162311a67ec8a6b0941cf747f645a7ddca245771654f639f6a61a4e508a94255",
++    "Package.swift": "a2946020fe2eba176b451d29438c8028535c392b711cd855471cd7f3a91f913c",
++    "Sources/GodstoneCore/ArchiveRepository.swift": "222b4116875f19d05321cfbf9afb42dc382812fa80e0ad8f9b0d81db6d941e7e",
++    "Sources/GodstoneCore/Bip39.swift": "257bb27f26f19d2410a0e5f13a258b031d75bdc8e647c05205fb0060ea5a87a4",
++    "Sources/GodstoneCore/Blake2s.swift": "45f06f51b8bbed97787d56b834df5ebb2730e140c9e4723dfe0da6cc993febcc",
++    "Sources/GodstoneCore/BloomDigest.swift": "ea99ede1e41b04557f254d9efafd9227ed7e26706056fd052ddecf5e5fb07995",
++    "Sources/GodstoneCore/Hkdf.swift": "2e956a5001407c3d932a57fc2a3f258ef77c31b9592c622602180519ddbafc38",
++    "Sources/GodstoneCore/LruSet.swift": "7f6f26bcca6a50ed63c65b79db1b6558d2f3f6b1e502c6071fe0b3ff45a075ad",
++    "Sources/GodstoneCore/OracleAnswerValidator.swift": "8dcaf3e2bd76fe71642ba4ccdcdd713880620d560df5942e1c9c5c16d4d5d7f3",
++    "Sources/GodstoneCore/PromptBuilder.swift": "512fc93fd0b7f21dd0f189e575ac499038e66186681a2068e4aaebcd8679fa89",
++    "Sources/GodstoneCore/RetrievedChunk.swift": "0ab4a04803feb0214a2376ebc05bd74d8f46371b6e834f07dfc334b97a79c1bb",
++    "Sources/GodstoneCore/Retriever.swift": "8521f1850cca8be0edadf3810fead1c2787e613e84ec05a319dc17b9802ea44b",
++    "Sources/GodstoneCore/SafetyGate.swift": "7c318f9d86eedc458df56cf1fc12f781aa3b92979efc9968bf98be5c1bed5ff8",
++    "Sources/GodstoneCore/Tier.swift": "50b674e81c024a66d03a5e2beef46f00299bfdba68ed5a982ed3d8bf5a9e8bc3",
++    "Sources/GodstoneMesh/BleTransport.swift": "41b7ec8f287b3d925f7931550a5ff4e7bb23b5b481721c265c36805c4d9f11b7",
++    "Sources/GodstoneMesh/BulkTransport.swift": "c2be42952af4055bc7abea67fa0a2377b044a78435e0919702773cd838232bb0",
++    "Sources/GodstoneMesh/MeshCoordinator.swift": "40def33a3aaf47f769a6d7b5107cba055d0f3e50c25416854fb1873bf9ff5f7c",
++    "Sources/GodstoneMesh/MeshIdentity.swift": "5f4690490a6bb6406f074d79b596eb0ca5e85f2a1f05f768cc201816db49bbf6",
++    "Sources/GodstoneMesh/MeshNode.swift": "30d4bd5e4d3bdb0f79e081c5c3cefd0d54cb6339182286a71b020c28bad3067c",
++    "Sources/GodstoneMesh/NoiseSession.swift": "4d578d6a643c72ed0e54af5cdc18b798159caac073da1089579c4b707cd7472a",
++    "Sources/GodstoneMesh/Router.swift": "922816aa72db972203fa4d7457b67a8c3b7f75f11a88116302031f8849f54c7b",
++    "Sources/GodstoneMesh/SessionManager.swift": "dbd0e466b8fd02de35f5eda449c9b77ff1b310231668365dbde889db5ad18212",
++    "Sources/GodstoneMesh/WireV2.swift": "4abb723d9d6761477ff8fccf5262349a9d7befd168516f72ec144fd6b8f97a7a",
++    "Tests/GodstoneCoreTests/OracleAnswerValidatorTests.swift": "7568184482727be1f07e78761b53f11adfa565893f51f7ad217eac95031f476a",
++    "Tests/GodstoneMeshTests/PortVectorTests.swift": "08e4d81add95ada220f4bcc6d14a3b2acc0232b69064d376481390bbc10c9fb9",
++    "Tests/GodstoneMeshTests/RouterTests.swift": "68f448d5b3d72df89dbf1dfd08df96e7e78518c9b9037cc7a1ed231aac13e532"
++  },
++  "schema": 1
++}
+diff --git a/ios/Packages/GodstoneFoundation/Sources/GodstoneCore/ArchiveRepository.swift b/ios/Packages/GodstoneFoundation/Sources/GodstoneCore/ArchiveRepository.swift
+new file mode 100644
+index 0000000..0609686
+--- /dev/null
++++ b/ios/Packages/GodstoneFoundation/Sources/GodstoneCore/ArchiveRepository.swift
+@@ -0,0 +1,304 @@
++import Foundation
++import SQLite3
++
++private let sqliteTransient = unsafeBitCast(-1, to: sqlite3_destructor_type.self)
++
++public struct ArchiveDocument: Identifiable, Sendable, Hashable {
++    public let id: Int64
++    public let title: String
++    public let domain: String
++    public let isCritical: Bool
++
++    public init(id: Int64, title: String, domain: String, isCritical: Bool) {
++        self.id = id
++        self.title = title
++        self.domain = domain
++        self.isCritical = isCritical
++    }
++}
++
++public struct ArchivePassage: Identifiable, Sendable, Hashable {
++    public let id: Int64
++    public let documentId: Int64
++    public let documentTitle: String
++    public let domain: String
++    public let section: String
++    public let text: String
++    public let score: Double
++
++    public init(id: Int64, documentId: Int64, documentTitle: String,
++                domain: String, section: String, text: String, score: Double = 0) {
++        self.id = id
++        self.documentId = documentId
++        self.documentTitle = documentTitle
++        self.domain = domain
++        self.section = section
++        self.text = text
++        self.score = score
++    }
++}
++
++/// Read-only handle to the immutable on-device Archive.
++///
++/// Browsing and FTS5 search never load llama.cpp or an embedding model. This is
++/// the system's last surviving capability when inference and every radio fail.
++public final class ArchiveRepository: @unchecked Sendable {
++    private var handle: OpaquePointer?
++    private let lock = NSLock()
++
++    public init(databaseName: String) {
++        handle = Self.openReadOnly(databaseName: databaseName)
++        if let db = handle {
++            sqlite3_exec(db, "PRAGMA query_only = ON", nil, nil, nil)
++            sqlite3_exec(db, "PRAGMA mmap_size = 268435456", nil, nil, nil)
++        }
++    }
++
++    deinit {
++        if let db = handle { sqlite3_close_v2(db) }
++    }
++
++    public var isAvailable: Bool { handle != nil }
++
++    public func listDocuments(domain: String? = nil) -> [ArchiveDocument] {
++        withDatabase { db in
++            var sql = "SELECT document_id, title, domain, is_critical FROM documents"
++            if domain != nil { sql += " WHERE domain = ?" }
++            sql += " ORDER BY is_critical DESC, domain, title"
++            var stmt: OpaquePointer?
++            guard sqlite3_prepare_v2(db, sql, -1, &stmt, nil) == SQLITE_OK else {
++                sqlite3_finalize(stmt); return []
++            }
++            defer { sqlite3_finalize(stmt) }
++            if let domain {
++                domain.withCString { sqlite3_bind_text(stmt, 1, $0, -1, sqliteTransient) }
++            }
++            var out: [ArchiveDocument] = []
++            while sqlite3_step(stmt) == SQLITE_ROW {
++                out.append(ArchiveDocument(
++                    id: sqlite3_column_int64(stmt, 0),
++                    title: columnString(stmt, 1),
++                    domain: columnString(stmt, 2),
++                    isCritical: sqlite3_column_int(stmt, 3) != 0
++                ))
++            }
++            return out
++        } ?? []
++    }
++
++    public func listDomains() -> [String] {
++        withDatabase { db in
++            var stmt: OpaquePointer?
++            guard sqlite3_prepare_v2(db,
++                    "SELECT DISTINCT domain FROM documents ORDER BY domain",
++                    -1, &stmt, nil) == SQLITE_OK else {
++                sqlite3_finalize(stmt); return []
++            }
++            defer { sqlite3_finalize(stmt) }
++            var out: [String] = []
++            while sqlite3_step(stmt) == SQLITE_ROW { out.append(columnString(stmt, 0)) }
++            return out
++        } ?? []
++    }
++
++    public func passages(documentId: Int64) -> [ArchivePassage] {
++        withDatabase { db in
++            let sql = """
++                SELECT c.chunk_id, c.document_id, d.title, d.domain, c.section, c.text
++                FROM chunks c JOIN documents d ON d.document_id = c.document_id
++                WHERE c.document_id = ? ORDER BY c.ordinal
++                """
++            var stmt: OpaquePointer?
++            guard sqlite3_prepare_v2(db, sql, -1, &stmt, nil) == SQLITE_OK else {
++                sqlite3_finalize(stmt); return []
++            }
++            defer { sqlite3_finalize(stmt) }
++            sqlite3_bind_int64(stmt, 1, documentId)
++            var out: [ArchivePassage] = []
++            while sqlite3_step(stmt) == SQLITE_ROW { out.append(passage(stmt)) }
++            return out
++        } ?? []
++    }
++
++    public func search(_ query: String, limit: Int = 40) -> [ArchivePassage] {
++        let fts = sanitiseFts(query)
++        guard !fts.isEmpty else { return [] }
++        return withDatabase { db in
++            let sql = """
++                SELECT c.chunk_id, c.document_id, d.title, d.domain, c.section, c.text,
++                       bm25(chunks_fts) AS rank
++                FROM chunks_fts
++                JOIN chunks c ON c.chunk_id = chunks_fts.rowid
++                JOIN documents d ON d.document_id = c.document_id
++                WHERE chunks_fts MATCH ? ORDER BY rank LIMIT ?
++                """
++            var stmt: OpaquePointer?
++            guard sqlite3_prepare_v2(db, sql, -1, &stmt, nil) == SQLITE_OK else {
++                sqlite3_finalize(stmt); return []
++            }
++            defer { sqlite3_finalize(stmt) }
++            fts.withCString { sqlite3_bind_text(stmt, 1, $0, -1, sqliteTransient) }
++            sqlite3_bind_int64(stmt, 2, Int64(limit))
++            var out: [ArchivePassage] = []
++            while sqlite3_step(stmt) == SQLITE_ROW {
++                out.append(passage(stmt, score: -sqlite3_column_double(stmt, 6)))
++            }
++            return out
++        } ?? []
++    }
++
++    // MARK: - RAG-facing operations
++
++    func searchLexical(_ query: String, limit: Int) -> [RetrievedChunk] {
++        search(query, limit: limit).map {
++            RetrievedChunk(chunkId: $0.id, documentId: $0.documentId,
++                           documentTitle: $0.documentTitle, section: $0.section,
++                           domain: $0.domain, text: $0.text, score: $0.score)
++        }
++    }
++
++    func searchSemantic(vector query: [Float], limit: Int) -> [RetrievedChunk] {
++        var scored: [(Int64, Double)] = []
++        for (id, blob) in allVectors() { scored.append((id, cosineInt8(query, blob))) }
++        scored.sort { $0.1 > $1.1 }
++        return scored.prefix(limit).compactMap { loadChunk(id: $0.0, score: $0.1) }
++    }
++
++    func allChunks() -> [RetrievedChunk] {
++        withDatabase { db in
++            let sql = """
++                SELECT c.chunk_id, c.document_id, d.title, c.section, d.domain, c.text
++                FROM chunks c JOIN documents d ON d.document_id = c.document_id
++                """
++            var stmt: OpaquePointer?
++            guard sqlite3_prepare_v2(db, sql, -1, &stmt, nil) == SQLITE_OK else {
++                sqlite3_finalize(stmt); return []
++            }
++            defer { sqlite3_finalize(stmt) }
++            var out: [RetrievedChunk] = []
++            while sqlite3_step(stmt) == SQLITE_ROW {
++                out.append(RetrievedChunk(
++                    chunkId: sqlite3_column_int64(stmt, 0),
++                    documentId: sqlite3_column_int64(stmt, 1),
++                    documentTitle: columnString(stmt, 2),
++                    section: columnString(stmt, 3),
++                    domain: columnString(stmt, 4),
++                    text: columnString(stmt, 5),
++                    score: 0
++                ))
++            }
++            return out
++        } ?? []
++    }
++
++    func loadChunk(id: Int64, score: Double) -> RetrievedChunk? {
++        withDatabase { db in
++            let sql = """
++                SELECT c.chunk_id, c.document_id, d.title, c.section, d.domain, c.text
++                FROM chunks c JOIN documents d ON d.document_id = c.document_id
++                WHERE c.chunk_id = ?
++                """
++            var stmt: OpaquePointer?
++            guard sqlite3_prepare_v2(db, sql, -1, &stmt, nil) == SQLITE_OK else {
++                sqlite3_finalize(stmt); return nil
++            }
++            defer { sqlite3_finalize(stmt) }
++            sqlite3_bind_int64(stmt, 1, id)
++            guard sqlite3_step(stmt) == SQLITE_ROW else { return nil }
++            return RetrievedChunk(
++                chunkId: sqlite3_column_int64(stmt, 0),
++                documentId: sqlite3_column_int64(stmt, 1),
++                documentTitle: columnString(stmt, 2),
++                section: columnString(stmt, 3),
++                domain: columnString(stmt, 4),
++                text: columnString(stmt, 5),
++                score: score
++            )
++        } ?? nil
++    }
++
++    private func allVectors() -> [(Int64, Data)] {
++        withDatabase { db in
++            var stmt: OpaquePointer?
++            guard sqlite3_prepare_v2(db, "SELECT chunk_id, vec FROM vectors", -1,
++                                     &stmt, nil) == SQLITE_OK else {
++                sqlite3_finalize(stmt); return []
++            }
++            defer { sqlite3_finalize(stmt) }
++            var out: [(Int64, Data)] = []
++            while sqlite3_step(stmt) == SQLITE_ROW {
++                let count = Int(sqlite3_column_bytes(stmt, 1))
++                if let bytes = sqlite3_column_blob(stmt, 1), count > 0 {
++                    out.append((sqlite3_column_int64(stmt, 0), Data(bytes: bytes, count: count)))
++                }
++            }
++            return out
++        } ?? []
++    }
++
++    private func cosineInt8(_ query: [Float], _ blob: Data) -> Double {
++        guard !query.isEmpty, query.count == blob.count else { return 0 }
++        var dot = 0.0, normA = 0.0, normB = 0.0
++        for i in query.indices {
++            let a = Double(query[i])
++            let b = Double(Int8(bitPattern: blob[i])) / 127.0
++            dot += a * b; normA += a * a; normB += b * b
++        }
++        let denom = (normA * normB).squareRoot()
++        return denom == 0 ? 0 : dot / denom
++    }
++
++    private func withDatabase<T>(_ body: (OpaquePointer) -> T) -> T? {
++        lock.lock(); defer { lock.unlock() }
++        guard let db = handle else { return nil }
++        return body(db)
++    }
++
++    private func passage(_ stmt: OpaquePointer?, score: Double = 0) -> ArchivePassage {
++        ArchivePassage(
++            id: sqlite3_column_int64(stmt, 0),
++            documentId: sqlite3_column_int64(stmt, 1),
++            documentTitle: columnString(stmt, 2),
++            domain: columnString(stmt, 3),
++            section: columnString(stmt, 4),
++            text: columnString(stmt, 5),
++            score: score
++        )
++    }
++
++    private func columnString(_ stmt: OpaquePointer?, _ index: Int32) -> String {
++        guard let value = sqlite3_column_text(stmt, index) else { return "" }
++        return String(cString: value)
++    }
++
++    private func sanitiseFts(_ value: String) -> String {
++        let stripped = value.map { "\"*():^-".contains($0) ? " " : String($0) }.joined()
++        return stripped.split(whereSeparator: { $0.isWhitespace })
++            .filter { !$0.isEmpty }
++            .map { "\"\($0)\"" }
++            .joined(separator: " OR ")
++    }
++
++    private static func openReadOnly(databaseName: String) -> OpaquePointer? {
++        guard let path = resolveDatabasePath(databaseName: databaseName) else { return nil }
++        var db: OpaquePointer?
++        let flags = SQLITE_OPEN_READONLY | SQLITE_OPEN_FULLMUTEX
++        guard sqlite3_open_v2(path, &db, flags, nil) == SQLITE_OK else {
++            sqlite3_close_v2(db); return nil
++        }
++        return db
++    }
++
++    private static func resolveDatabasePath(databaseName: String) -> String? {
++        let ns = databaseName as NSString
++        let base = ns.deletingPathExtension
++        let ext = ns.pathExtension.isEmpty ? "db" : ns.pathExtension
++        if let bundled = Bundle.main.path(forResource: base, ofType: ext) { return bundled }
++        if let dir = FileManager.default.urls(for: .applicationSupportDirectory,
++                                              in: .userDomainMask).first {
++            let url = dir.appendingPathComponent("archives").appendingPathComponent(databaseName)
++            if FileManager.default.fileExists(atPath: url.path) { return url.path }
++        }
++        return Bundle.main.path(forResource: databaseName, ofType: nil)
++    }
++}
+diff --git a/ios/Packages/GodstoneFoundation/Sources/GodstoneCore/Bip39.swift b/ios/Packages/GodstoneFoundation/Sources/GodstoneCore/Bip39.swift
+new file mode 100644
+index 0000000..e58b519
+--- /dev/null
++++ b/ios/Packages/GodstoneFoundation/Sources/GodstoneCore/Bip39.swift
+@@ -0,0 +1,86 @@
++// SYNTHESIZED gap-closure file -- authored to make the project compile; see docs/AUDIT.md.
++import Foundation
++
++/// BIP-39-style mnemonic words for out-of-band node verification.
++///
++/// The full BIP-39 wordlist is 2048 entries, but the node id is only 16 bytes
++/// and `callSign` uses six words; that needs at most 256 distinct words to be
++/// collision-resistant for verbal verification. We ship a compact, deterministic
++/// survival-themed list (256 words) and read 11-bit indices from the data,
++/// modulo the list length.
++///
++/// This is NOT the standard BIP-39 list and does not interoperate with hardware
++/// wallets; it only has to be stable across builds and platforms so two phones
++/// read the same call sign off the same node id. The Android side uses the same
++/// list -- see docs/AUDIT.md.
++public enum Bip39 {
++
++    public static let wordlist: [String] = [
++        // 256 words. Survival/field themed, lexicographically stable.
++        "amber", "anchor", "antler", "arrow", "ash", "atlas", "aura", "axe",
++        "badger", "barn", "basin", "beacon", "bear", "blaze", "boulder", "branch",
++        "brass", "breeze", "brick", "bristle", "bronze", "brook", "buck", "bud",
++        "cabin", "cactus", "cadet", "camel", "canyon", "carbon", "cargo", "cart",
++        "cedar", "chalk", "charm", "cheese", "chisel", "cinder", "civic", "clam",
++        "clasp", "clay", "cliff", "cloak", "cobalt", "cobra", "cocoa", "comet",
++        "copper", "coral", "cosmo", "cougar", "cradle", "crane", "crest", "crow",
++        "crystal", "cubit", "currant", "cylinder", "daisy", "delta", "denim", "dew",
++        "digger", "dignity", "dime", "dimple", "dolphin", "donor", "drift", "drum",
++        "dune", "dynamo", "eagle", "echo", "ember", "emerald", "engine", "epoch",
++        "fable", "falcon", "fathom", "feather", "ferret", "ferry", "fiber", "field",
++        "finch", "fjord", "flag", "flame", "flax", "flint", "fossil", "fountain",
++        "fox", "fragment", "frost", "furnace", "gadget", "galaxy", "gasket", "ghost",
++        "glacier", "glade", "globe", "glory", "granite", "graphite", "gravel", "griffin",
++        "grove", "guide", "gulf", "gust", "gypsum", "harbor", "harp", "hatch",
++        "haven", "hazel", "helmet", "heron", "hickory", "hollow", "honey", "horizon",
++        "hub", "hurdle", "hydra", "ibis", "icing", "icon", "indigo", "ink",
++        "iron", "ivory", "jade", "jaguar", "jasper", "jetty", "jingle", "juno",
++        "kayak", "kestrel", "kettle", "kite", "knot", "lacquer", "lagoon", "lance",
++        "lapis", "lattice", "laurel", "lavender", "ledge", "lemon", "lens", "leopard",
++        "lichen", "lighthouse", "lilac", "lime", "linen", "lizard", "loom", "lumen",
++        "lunar", "lupin", "magma", "mango", "maple", "marble", "marlin", "marrow",
++        "meadow", "medal", "mercury", "meteor", "mica", "millet", "mink", "mirror",
++        "mist", "mocha", "monsoon", "moose", "moss", "mote", "mule", "mushroom",
++        "myrtle", "nacre", "napkin", "needle", "nectar", "neon", "nettle", "niche",
++        "nighthawk", "nimbus", "node", "nomad", "noodle", "north", "notch", "nucleus",
++        "oak", "oasis", "obelisk", "ocean", "octave", "opal", "orbit", "orchard",
++        "otter", "oval", "oven", "owl", "paddle", "padlock", "palm", "panther",
++        "pasture", "pebble", "pelican", "perch", "petal", "phlox", "picket", "pilot",
++        "pinnacle", "piston", "platinum", "plow", "plume", "polar", "pony", "portal",
++        "prairie", "prism", "prow", "puffin", "pulp", "pump", "quartz", "quasar",
++        "quill", "quilt", "raccoon", "radar", "raft", "rage", "rain", "rattan"
++    ]
++
++    /// Read `count` 11-bit indices from `data` (LSB-first bit accumulation) and
++    /// map each, modulo the wordlist length, to a word.
++    public static func words(from data: Data, count: Int) -> [String] {
++        let n = wordlist.count
++        guard n > 0, count > 0 else { return [] }
++
++        var bits: UInt64 = 0
++        var bitCount = 0
++        var out: [String] = []
++        out.reserveCapacity(count)
++
++        for byte in data {
++            bits = (bits << 8) | UInt64(byte)
++            bitCount += 8
++            while bitCount >= 11 && out.count < count {
++                let leftover = bitCount - 11
++                let idx11 = UInt32((bits >> leftover) & 0x7FF)
++                out.append(wordlist[Int(idx11) % n])
++                bits &= (1 << leftover) - 1
++                bitCount = leftover
++            }
++            if out.count >= count { break }
++        }
++
++        // If the data was too short to supply `count` words, pad with zeros so
++        // the call sign always has the expected length (defensive; a 16-byte
++        // node id comfortably yields six 11-bit words).
++        while out.count < count {
++            out.append(wordlist[0])
++        }
++        return out
++    }
++}
+diff --git a/ios/Packages/GodstoneFoundation/Sources/GodstoneCore/Blake2s.swift b/ios/Packages/GodstoneFoundation/Sources/GodstoneCore/Blake2s.swift
+new file mode 100644
+index 0000000..929f156
+--- /dev/null
++++ b/ios/Packages/GodstoneFoundation/Sources/GodstoneCore/Blake2s.swift
+@@ -0,0 +1,169 @@
++// SYNTHESIZED gap-closure file -- authored to make the project compile; see docs/AUDIT.md.
++import Foundation
++
++/// Pure-Swift BLAKE2s (RFC 7693).
++///
++/// Implemented from scratch because iOS does not ship BLAKE2s in CryptoKit and
++/// the mesh handshake (`Noise_XX_25519_ChaChaPoly_BLAKE2s`) is bound to it: both
++/// peers must hash the protocol name, prologue and transcript with byte-identical
++/// output or the chaining key diverges and the handshake never completes.
++///
++/// This matches the Android side, which uses BouncyCastle's `Blake2sDigest`.
++/// The output is deterministic across platforms for any `digestLength` 1...32.
++public enum Blake2s {
++
++    /// BLAKE2s IV constants (sqrt of first 8 primes, 2^32 fractional bits).
++    private static let iv: [UInt32] = [
++        0x6A09E667, 0xBB67AE85, 0x3C6EF372, 0xA54FF53A,
++        0x510E527F, 0x9B05688C, 0x1F83D9AB, 0x5BE0CD19
++    ]
++
++    /// Rotation constants for the G function.
++    private static let rotations: [Int] = [16, 12, 8, 7]
++
++    /// Sigma permutation: message-word schedule for the 10 BLAKE2s rounds.
++    private static let sigma: [[Int]] = [
++        [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15],
++        [14, 10, 4, 8, 9, 15, 13, 6, 1, 12, 0, 2, 11, 7, 5, 3],
++        [11, 8, 12, 0, 5, 2, 15, 13, 10, 14, 3, 6, 7, 1, 9, 4],
++        [7, 9, 3, 1, 13, 12, 11, 14, 2, 6, 5, 10, 4, 0, 15, 8],
++        [9, 0, 5, 7, 2, 4, 10, 15, 14, 1, 11, 12, 6, 8, 3, 13],
++        [2, 12, 6, 10, 0, 11, 8, 3, 4, 13, 7, 5, 15, 14, 1, 9],
++        [12, 5, 1, 15, 14, 13, 4, 10, 0, 7, 6, 3, 9, 2, 8, 11],
++        [13, 11, 7, 14, 12, 1, 3, 9, 5, 0, 15, 4, 8, 6, 2, 10],
++        [6, 15, 14, 9, 11, 3, 0, 8, 12, 2, 13, 7, 1, 4, 10, 5],
++        [10, 2, 8, 4, 7, 6, 1, 5, 15, 11, 9, 14, 3, 12, 13, 0]
++    ]
++
++    private static let blockSize = 64          // BLAKE2s block: 64 bytes
++    private static let maxDigestLength = 32    // BLAKE2s: up to 32 bytes
++
++    /// Hash `data` to a digest of `digestLength` bytes (1...32), with no key.
++    public static func hash(_ data: Data, digestLength: Int) -> Data {
++        precondition(digestLength >= 1 && digestLength <= maxDigestLength,
++                     "BLAKE2s digest length must be in 1...32")
++        return hash(data, digestLength: digestLength, key: Data())
++    }
++
++    /// Convenience: 32-byte digest.
++    public static func hash(_ data: Data) -> Data {
++        hash(data, digestLength: 32)
++    }
++
++    /// Full BLAKE2s with optional key. Key (if any) is padded to the block size
++    /// and used as the first message block, per RFC 7693 §2.5.
++    public static func hash(_ data: Data, digestLength: Int, key: Data) -> Data {
++        precondition(digestLength >= 1 && digestLength <= maxDigestLength)
++        precondition(key.count <= blockSize, "BLAKE2s key must be <= 64 bytes")
++
++        // Parameter block, little-endian. Only the fields we use are set; the
++        // rest are zero. digest_length | (key_length << 8) | (fanout << 16) |
++        // (depth << 24). fanout=1, depth=1 for an unkeyed/standard digest.
++        var h = iv
++        let keyBytes = key.count
++        h[0] ^= UInt32(digestLength)
++            | (UInt32(keyBytes) << 8)
++            | (UInt32(1) << 16)   // fanout
++            | (UInt32(1) << 24)   // depth
++
++        // Prepend the padded key as the first block when keyed.
++        var message = Data()
++        if keyBytes > 0 {
++            message.append(key)
++            message.append(Data(count: blockSize - keyBytes))
++        }
++        message.append(data)
++
++        var offset = 0
++        let total = message.count
++        var counter: UInt64 = 0
++
++        // Compress every full 64-byte block; the final block (possibly partial)
++        // is marked with the last-block flag.
++        while offset < total {
++            let chunkLen = min(blockSize, total - offset)
++            let isLast = offset + chunkLen == total
++            counter &+= UInt64(chunkLen)
++            let block = message.subdata(in: offset..<(offset + chunkLen))
++            let padded = chunkLen < blockSize ? block + Data(count: blockSize - chunkLen) : block
++            compress(&h, block: padded, counter: counter, isLast: isLast)
++            offset += chunkLen
++        }
++
++        // Handle the empty-message edge: the loop above never runs when total == 0.
++        if total == 0 {
++            compress(&h, block: Data(count: blockSize), counter: 0, isLast: true)
++        }
++
++        // Serialise the state little-endian and truncate to the digest length.
++        var out = Data(capacity: maxDigestLength)
++        for word in h {
++            withUnsafeBytes(of: word.littleEndian) { out.append(contentsOf: $0) }
++        }
++        return out.prefix(digestLength)
++    }
++
++    // MARK: - Compression
++
++    private static func compress(_ h: inout [UInt32],
++                                 block: Data,
++                                 counter: UInt64,
++                                 isLast: Bool) {
++        var v = [UInt32](repeating: 0, count: 16)
++        for i in 0..<8 {
++            v[i] = h[i]
++            v[i + 8] = iv[i]
++        }
++        v[12] ^= UInt32(counter & 0xFFFF_FFFF)
++        v[13] ^= UInt32((counter >> 32) & 0xFFFF_FFFF)
++        if isLast { v[14] = ~v[14] }
++
++        // Message words, little-endian.
++        var m = [UInt32](repeating: 0, count: 16)
++        block.withUnsafeBytes { ptr in
++            let bytes = ptr.bindMemory(to: UInt8.self)
++            for i in 0..<16 {
++                let base = i * 4
++                m[i] = UInt32(bytes[base])
++                    | (UInt32(bytes[base + 1]) << 8)
++                    | (UInt32(bytes[base + 2]) << 16)
++                    | (UInt32(bytes[base + 3]) << 24)
++            }
++        }
++
++        for round in 0..<10 {
++            let s = sigma[round]
++            g(&v, 0, 4, 8, 12, m[s[0]], m[s[1]])
++            g(&v, 1, 5, 9, 13, m[s[2]], m[s[3]])
++            g(&v, 2, 6, 10, 14, m[s[4]], m[s[5]])
++            g(&v, 3, 7, 11, 15, m[s[6]], m[s[7]])
++            g(&v, 0, 5, 10, 15, m[s[8]], m[s[9]])
++            g(&v, 1, 6, 11, 12, m[s[10]], m[s[11]])
++            g(&v, 2, 7, 8, 13, m[s[12]], m[s[13]])
++            g(&v, 3, 4, 9, 14, m[s[14]], m[s[15]])
++        }
++
++        for i in 0..<8 {
++            h[i] ^= v[i] ^ v[i + 8]
++        }
++    }
++
++    @inline(__always)
++    private static func g(_ v: inout [UInt32],
++                          _ a: Int, _ b: Int, _ c: Int, _ d: Int,
++                          _ x: UInt32, _ y: UInt32) {
++        v[a] = v[a] &+ v[b] &+ x
++        v[d] = rotr(v[d] ^ v[a], rotations[0])
++        v[c] = v[c] &+ v[d]
++        v[b] = rotr(v[b] ^ v[c], rotations[1])
++        v[a] = v[a] &+ v[b] &+ y
++        v[d] = rotr(v[d] ^ v[a], rotations[2])
++        v[c] = v[c] &+ v[d]
++        v[b] = rotr(v[b] ^ v[c], rotations[3])
++    }
++
++    @inline(__always)
++    private static func rotr(_ value: UInt32, _ count: Int) -> UInt32 {
++        (value >> count) | (value << (32 - count))
++    }
++}
+diff --git a/ios/Packages/GodstoneFoundation/Sources/GodstoneCore/BloomDigest.swift b/ios/Packages/GodstoneFoundation/Sources/GodstoneCore/BloomDigest.swift
+new file mode 100644
+index 0000000..dc20fc2
+--- /dev/null
++++ b/ios/Packages/GodstoneFoundation/Sources/GodstoneCore/BloomDigest.swift
+@@ -0,0 +1,41 @@
++// SYNTHESIZED gap-closure file -- authored to make the project compile; see docs/AUDIT.md.
++import Foundation
++
++/// 4096-bit Bloom digest of held message ids.
++///
++/// Mirrors `io.godstone.mesh.router.BloomDigest` (Android): 4096 bits, 4 hashes
++/// per id, ~0.9% false-positive rate at 2000 messages. Two peers exchange the
++/// digest so each only forwards what the other is missing; a false positive
++/// merely skips a message the peer actually lacks, corrected on the next
++/// encounter. Acceptable in an epidemic protocol, far cheaper than full id lists.
++///
++/// The Android build uses `long` message ids; here the router keys on `Data`
++/// (the wire `messageId`). Each of the four hashes is the first 8 bytes of
++/// `BLAKE2s(id || roundByte)` read big-endian, mod 4096 -- identical to the
++/// Android `index(msgId, round)` for ids that fit in 8 bytes.
++public enum BloomDigest {
++
++    public static let sizeBits = 4096
++    public static let sizeBytes = sizeBits / 8
++    public static let hashes = 4
++
++    /// Build a 512-byte digest from a list of message ids.
++    public static func build(from ids: [Data]) -> Data {
++        var bits = Data(count: sizeBytes)
++
++        for id in ids {
++            for round in 0..<hashes {
++                var input = id
++                input.append(UInt8(round))
++                let digest = Blake2s.hash(input, digestLength: 8)
++                let value = digest.withUnsafeBytes { ptr -> UInt64 in
++                    ptr.load(as: UInt64.self).bigEndian
++                }
++                // Match Android: (v >>> 1) & Integer.MAX_VALUE, then mod 4096.
++                let idx = Int((value >> 1) & UInt64(Int32.max)) % sizeBits
++                bits[idx >> 3] |= UInt8(1 << (idx & 7))
++            }
++        }
++        return bits
++    }
++}
+diff --git a/ios/Packages/GodstoneFoundation/Sources/GodstoneCore/Hkdf.swift b/ios/Packages/GodstoneFoundation/Sources/GodstoneCore/Hkdf.swift
+new file mode 100644
+index 0000000..561dd89
+--- /dev/null
++++ b/ios/Packages/GodstoneFoundation/Sources/GodstoneCore/Hkdf.swift
+@@ -0,0 +1,77 @@
++// SYNTHESIZED gap-closure file -- authored to make the project compile; see docs/AUDIT.md.
++import Foundation
++
++/// Noise HKDF over BLAKE2s.
++///
++/// Noise's `HKDF(chaining_key, input_material)` is two HMAC invocations:
++///   temp    = HMAC(ck, material)
++///   new_ck  = temp
++///   k       = HMAC(temp, material || 0x01)
++///
++/// `HMAC` here is RFC 2104 HMAC built *on top of* BLAKE2s used as an ordinary
++/// hash -- it is NOT BLAKE2s's native keyed mode. The block size is BLAKE2s's
++/// 64-byte block. This is the same construction the Android side uses (via
++/// BouncyCastle's `HMac`/`Blake2sDigest` pair), so both peers derive identical
++/// chaining and encryption keys.
++public enum Hkdf {
++
++    private static let blockSize = 64
++
++    /// Split `material` under `chainingKey` into (newChainingKey, k).
++    public static func split(chainingKey: Data, material: Data) -> (Data, Data) {
++        // Noise rev34 s.4.3:
++        //     temp_key = HMAC(ck, ikm)
++        //     output1  = HMAC(temp_key, 0x01)
++        //     output2  = HMAC(temp_key, output1 || 0x02)
++        //
++        // The chaining key is output1, NOT temp_key, and the second HMAC is fed
++        // the single byte 0x01 -- not material || 0x01. The previous code got
++        // both wrong, so the chaining key diverged from noise-java at the FIRST
++        // mixKey and the handshake could never complete. Pinned by
++        // crypto/handshake_vectors.json (Invariant D).
++        let tempKey = hmac(key: chainingKey, message: material)
++        let output1 = hmac(key: tempKey, message: Data([0x01]))
++        var secondInput = output1
++        secondInput.append(0x02)
++        let output2 = hmac(key: tempKey, message: secondInput)
++        return (output1, output2)
++    }
++
++    /// RFC 2104 HMAC over BLAKE2s. `HMAC(K, m) = H(K ^ opad || H(K ^ ipad || m))`,
++    /// with K padded/truncated to the 64-byte block.
++    public static func hmac(key: Data, message: Data) -> Data {
++        let block = blockSize
++        var k = key
++        if k.count > block {
++            // Keys longer than the block are first hashed, then padded.
++            k = Blake2s.hash(k, digestLength: 32)
++        }
++        if k.count < block {
++            k.append(Data(count: block - k.count))
++        }
++
++        var ipad = Data(count: block)
++        var opad = Data(count: block)
++        k.withUnsafeBytes { ptr in
++            let bytes = ptr.bindMemory(to: UInt8.self)
++            ipad.withUnsafeMutableBytes { ip in
++                let ib = ip.bindMemory(to: UInt8.self)
++                opad.withUnsafeMutableBytes { op in
++                    let ob = op.bindMemory(to: UInt8.self)
++                    for i in 0..<block {
++                        ib[i] = bytes[i] ^ 0x36
++                        ob[i] = bytes[i] ^ 0x5C
++                    }
++                }
++            }
++        }
++
++        var inner = ipad
++        inner.append(message)
++        let innerHash = Blake2s.hash(inner, digestLength: 32)
++
++        var outer = opad
++        outer.append(innerHash)
++        return Blake2s.hash(outer, digestLength: 32)
++    }
++}
+diff --git a/ios/Packages/GodstoneFoundation/Sources/GodstoneCore/LruSet.swift b/ios/Packages/GodstoneFoundation/Sources/GodstoneCore/LruSet.swift
+new file mode 100644
+index 0000000..ac536e6
+--- /dev/null
++++ b/ios/Packages/GodstoneFoundation/Sources/GodstoneCore/LruSet.swift
+@@ -0,0 +1,54 @@
++import Foundation
++
++/// A bounded least-recently-used set.
++///
++/// V4: O(1) membership and insertion.
++///
++/// V3 backed this with a single Array and documented the cost as acceptable
++/// because the set is "scanned once per encounter". It is not -- `Router.ingest`
++/// calls `contains` on EVERY FRAME, and `insert` then called `firstIndex(of:)`
++/// and `removeFirst()`, both O(n) on an Array. At the 16,384 capacity the router
++/// actually uses, that is three linear scans with Data equality per frame, on
++/// the exact path a flood saturates. Another comment asserting a property the
++/// code contradicted.
++public struct LruSet<Element: Hashable> {
++    private var order: [Element] = []
++    private var index: Set<Element> = []
++    private var head = 0                    // amortises removeFirst to O(1)
++    private let capacity: Int
++
++    public init(capacity: Int) {
++        precondition(capacity >= 0)
++        self.capacity = capacity
++        order.reserveCapacity(min(capacity, 1024))
++    }
++
++    public func contains(_ element: Element) -> Bool {
++        index.contains(element)
++    }
++
++    public mutating func insert(_ element: Element) {
++        // Re-seeing an id is a no-op: promoting it would reorder the digest and
++        // make peers re-offer frames we already hold.
++        guard !index.contains(element) else { return }
++        index.insert(element)
++        order.append(element)
++
++        while index.count > capacity {
++            let oldest = order[head]
++            head += 1
++            index.remove(oldest)
++        }
++        // Compact once the dead prefix dominates, so `order` cannot grow without
++        // bound on a long-lived node.
++        if head > 4096 && head * 2 > order.count {
++            order.removeFirst(head)
++            head = 0
++        }
++    }
++
++    /// Insertion order, oldest first.
++    public var elements: [Element] { Array(order[head...]) }
++
++    public var count: Int { index.count }
++}
+diff --git a/ios/Packages/GodstoneFoundation/Sources/GodstoneCore/OracleAnswerValidator.swift b/ios/Packages/GodstoneFoundation/Sources/GodstoneCore/OracleAnswerValidator.swift
+new file mode 100644
+index 0000000..014aaa1
+--- /dev/null
++++ b/ios/Packages/GodstoneFoundation/Sources/GodstoneCore/OracleAnswerValidator.swift
+@@ -0,0 +1,246 @@
++import Foundation
++
++/// Fail-closed final validation for a complete, private Oracle draft.
++public enum OracleAnswerValidator {
++    public struct Result: Sendable {
++        public let isValid: Bool
++        public let citedIndices: [Int]
++        public let reason: String?
++        public let unsupported: [String]
++
++        public static func accepted(_ indices: [Int]) -> Result {
++            Result(isValid: true, citedIndices: indices, reason: nil, unsupported: [])
++        }
++
++        public static func rejected(_ reason: String, _ unsupported: [String] = []) -> Result {
++            Result(isValid: false, citedIndices: [], reason: reason, unsupported: unsupported)
++        }
++    }
++
++    private struct Quantity: Equatable {
++        let value: Decimal
++        let unit: String
++        let dimension: String
++        let qualifier: String?
++        let raw: String
++    }
++
++    private static let citation = try! NSRegularExpression(pattern: #"\[(\d+)\]"#)
++    private static let quantity = try! NSRegularExpression(
++        pattern: #"\b(\d+(?:\.\d+)?)\s*(mcg|µg|mg|g|kg|ml|l|%|minutes?|mins?|hours?|hrs?|days?|cm|mm|°?c|°?f|drops?)((?:\s*(?:/|per)\s*(?:kg|kilograms?|l|litres?|liters?|day|hours?))?)\b"#,
++        options: [.caseInsensitive]
++    )
++    private static let injection = try! NSRegularExpression(
++        pattern: #"(ignore (all |any |the )?(previous|prior|system) instructions|system prompt|developer message|jailbreak|do not cite|hide (the )?warning)"#,
++        options: [.caseInsensitive]
++    )
++    private static let warning = try! NSRegularExpression(
++        pattern: #"(?:warning|contraindicat(?:ion|ed)|do not|never|must not|seek (?:urgent |emergency )?help)[^.!?]*(?:[.!?]|$)"#,
++        options: [.caseInsensitive]
++    )
++    private static let imperative = try! NSRegularExpression(
++        pattern: #"^\s*(apply|avoid|call|clean|cool|cover|do|drink|give|keep|move|never|place|remove|rinse|seek|stop|take|use|wash)\b"#,
++        options: [.caseInsensitive]
++    )
++
++    public static func validate(answer raw: String,
++                                chunks: [RetrievedChunk],
++                                retrievalAllowed: Bool) -> Result {
++        let answer = raw.trimmingCharacters(in: .whitespacesAndNewlines)
++        guard !answer.isEmpty else { return .rejected("empty answer") }
++        guard retrievalAllowed else { return .rejected("retrieval gate did not allow generation") }
++        guard firstMatch(injection, in: answer) == nil else {
++            return .rejected("instruction-injection marker in generated answer")
++        }
++
++        let indices = citationIndices(in: answer)
++        guard !indices.isEmpty else { return .rejected("answer has no citation") }
++        guard indices.allSatisfy({ $0 >= 1 && $0 <= chunks.count }) else {
++            return .rejected("citation does not resolve to a retrieved chunk")
++        }
++
++        var unsupported: [String] = []
++        for sentence in sentences(answer) {
++            let markers = citationIndices(in: sentence)
++            let body = replacingMatches(citation, in: sentence, with: "")
++                .trimmingCharacters(in: .whitespacesAndNewlines)
++            if body.isEmpty { continue }
++            let quantities = extractQuantities(body)
++            let highRisk = firstMatch(imperative, in: body) != nil ||
++                (chunks.contains { highRiskDomains.contains($0.domain.lowercased()) } && !quantities.isEmpty)
++            if highRisk && markers.isEmpty {
++                unsupported.append("uncited high-risk instruction: \(body)")
++                continue
++            }
++            if !quantities.isEmpty {
++                if markers.isEmpty {
++                    unsupported.append("uncited quantity: \(body)")
++                } else {
++                    let cited = markers.compactMap { (1...chunks.count).contains($0) ? chunks[$0 - 1] : nil }
++                    unsupported.append(contentsOf: unsupportedQuantities(
++                        sentence: body, quantities: quantities, chunks: cited))
++                }
++            }
++        }
++
++        let citedChunks = Array(Set(indices)).sorted().map { chunks[$0 - 1] }
++        unsupported.append(contentsOf: missingWarnings(answer: answer, chunks: citedChunks))
++        guard unsupported.isEmpty else {
++            return .rejected("answer is not fully supported", Array(Set(unsupported)).sorted())
++        }
++        return .accepted(Array(Set(indices)).sorted())
++    }
++
++    /// Exact value+unit+qualifier provenance, retained as the strict replacement
++    /// for SafetyGate.numericProvenance. Bare-number fallback is forbidden.
++    public static func strictNumericProvenance(answer: String,
++                                               evidence: [RetrievedChunk]) -> (Bool, [String]) {
++        let quantities = extractQuantities(answer)
++        if quantities.isEmpty { return (true, []) }
++        let unsupported = unsupportedQuantities(
++            sentence: answer, quantities: quantities, chunks: evidence)
++        return (unsupported.isEmpty, unsupported)
++    }
++
++    private static func unsupportedQuantities(sentence: String,
++                                              quantities: [Quantity],
++                                              chunks: [RetrievedChunk]) -> [String] {
++        quantities.compactMap { candidate in
++            let supported = chunks.contains { chunk in
++                extractQuantities(chunk.text).contains { evidence in
++                    candidate.value == evidence.value &&
++                    candidate.unit == evidence.unit &&
++                    candidate.dimension == evidence.dimension &&
++                    candidate.qualifier == evidence.qualifier &&
++                    contextSupported(answer: sentence, evidence: chunk.text)
++                }
++            }
++            return supported ? nil : "unsupported quantity/unit/context: \(candidate.raw)"
++        }
++    }
++
++    private static func extractQuantities(_ text: String) -> [Quantity] {
++        let ns = text as NSString
++        return quantity.matches(in: text, range: NSRange(location: 0, length: ns.length)).compactMap { match in
++            guard match.numberOfRanges >= 4 else { return nil }
++            let rawValue = ns.substring(with: match.range(at: 1))
++            guard let value = Decimal(string: rawValue, locale: Locale(identifier: "en_US_POSIX")) else {
++                return nil
++            }
++            let unit = canonicalUnit(ns.substring(with: match.range(at: 2)))
++            let qualifierRaw = match.range(at: 3).location == NSNotFound ? "" : ns.substring(with: match.range(at: 3))
++            return Quantity(value: value,
++                            unit: unit,
++                            dimension: dimension(unit),
++                            qualifier: canonicalQualifier(qualifierRaw),
++                            raw: ns.substring(with: match.range))
++        }
++    }
++
++    private static func canonicalUnit(_ raw: String) -> String {
++        switch raw.lowercased() {
++        case "µg", "mcg": return "mcg"
++        case "minute", "minutes", "min", "mins": return "min"
++        case "hour", "hours", "hr", "hrs": return "h"
++        case "day", "days": return "d"
++        case "°c", "c": return "degC"
++        case "°f", "f": return "degF"
++        case "drop", "drops": return "drop"
++        default: return raw.lowercased()
++        }
++    }
++
++    private static func canonicalQualifier(_ raw: String) -> String? {
++        guard !raw.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return nil }
++        return raw.lowercased()
++            .replacingOccurrences(of: #"\s+"#, with: "", options: .regularExpression)
++            .replacingOccurrences(of: "kilograms", with: "kg")
++            .replacingOccurrences(of: "kilogram", with: "kg")
++            .replacingOccurrences(of: "litres", with: "l")
++            .replacingOccurrences(of: "liters", with: "l")
++            .replacingOccurrences(of: "litre", with: "l")
++            .replacingOccurrences(of: "liter", with: "l")
++            .replacingOccurrences(of: "per", with: "/")
++    }
++
++    private static func dimension(_ unit: String) -> String {
++        switch unit {
++        case "mcg", "mg", "g", "kg": return "mass"
++        case "ml", "l": return "volume"
++        case "min", "h", "d": return "time"
++        case "cm", "mm": return "length"
++        case "degC", "degF": return "temperature"
++        case "%": return "percent"
++        case "drop": return "count"
++        default: return "unknown"
++        }
++    }
++
++    private static func contextSupported(answer: String, evidence: String) -> Bool {
++        let answerTerms = contextTerms(answer)
++        guard !answerTerms.isEmpty else { return false }
++        let evidenceTerms = contextTerms(evidence)
++        return answerTerms.filter { evidenceTerms.contains($0) }.count >= min(2, answerTerms.count)
++    }
++
++    private static func contextTerms(_ text: String) -> Set<String> {
++        Set(text.lowercased().split { !$0.isLetter }.map(String.init)
++            .filter { $0.count >= 3 && !contextStopWords.contains($0) })
++    }
++
++    private static func missingWarnings(answer: String, chunks: [RetrievedChunk]) -> [String] {
++        let answerTokens = meaningfulTokens(answer)
++        return chunks.flatMap { chunk -> [String] in
++            let ns = chunk.text as NSString
++            return warning.matches(in: chunk.text, range: NSRange(location: 0, length: ns.length)).compactMap { match in
++                let warningText = ns.substring(with: match.range)
++                let required = meaningfulTokens(warningText)
++                let coverage = required.isEmpty ? 1.0 :
++                    Double(required.filter { answerTokens.contains($0) }.count) / Double(required.count)
++                return coverage < 0.60
++                    ? "required warning omitted from \(chunk.documentTitle): \(warningText)"
++                    : nil
++            }
++        }
++    }
++
++    private static func meaningfulTokens(_ text: String) -> Set<String> {
++        Set(text.lowercased().split { !($0.isLetter || $0.isNumber) }.map(String.init)
++            .filter { $0.count >= 3 && !stopWords.contains($0) })
++    }
++
++    private static func citationIndices(in text: String) -> [Int] {
++        let ns = text as NSString
++        return citation.matches(in: text, range: NSRange(location: 0, length: ns.length)).compactMap { match in
++            Int(ns.substring(with: match.range(at: 1)))
++        }
++    }
++
++    private static func sentences(_ text: String) -> [String] {
++        text.split(whereSeparator: { ".!?".contains($0) })
++            .map { String($0).trimmingCharacters(in: .whitespacesAndNewlines) }
++            .filter { !$0.isEmpty }
++    }
++
++    private static func firstMatch(_ regex: NSRegularExpression, in text: String) -> NSTextCheckingResult? {
++        regex.firstMatch(in: text, range: NSRange(location: 0, length: (text as NSString).length))
++    }
++
++    private static func replacingMatches(_ regex: NSRegularExpression,
++                                         in text: String,
++                                         with replacement: String) -> String {
++        regex.stringByReplacingMatches(in: text,
++            range: NSRange(location: 0, length: (text as NSString).length),
++            withTemplate: replacement)
++    }
++
++    private static let highRiskDomains: Set<String> = [
++        "medical", "first_aid", "medicine", "chemical", "water", "food_safety", "emergency"
++    ]
++    private static let contextStopWords: Set<String> = [
++        "and", "the", "for", "with", "from", "into", "onto", "that", "this", "then", "use"
++    ]
++    private static let stopWords: Set<String> = [
++        "and", "the", "for", "with", "from", "that", "this", "your", "you", "are", "not"
++    ]
++}
+diff --git a/ios/Packages/GodstoneFoundation/Sources/GodstoneCore/PromptBuilder.swift b/ios/Packages/GodstoneFoundation/Sources/GodstoneCore/PromptBuilder.swift
+new file mode 100644
+index 0000000..3a86f77
+--- /dev/null
++++ b/ios/Packages/GodstoneFoundation/Sources/GodstoneCore/PromptBuilder.swift
+@@ -0,0 +1,114 @@
++// SYNTHESIZED gap-closure file -- authored to make the project compile; see docs/AUDIT.md.
++import Foundation
++
++/// Assembles the grounded prompt.
++///
++/// The system rules are the single most safety-critical string in the product:
++/// they are written to make refusal the default and invention impossible. The
++/// model answers ONLY from the numbered CONTEXT passages; if the context does
++/// not contain the answer it says so, in those exact words.
++///
++/// The context budget is enforced with the model's own tokenizer (via the
++/// `countTokens` closure) rather than a length-based guess: the weakest chunks
++/// are dropped from the tail until the prompt fits, always keeping at least the
++/// strongest source -- an over-budget single source is still safer than an
++/// empty context.
++///
++/// Mirrors `io.godstone.llm.rag.PromptBuilder` (Android); the system rules and
++/// chat template are identical so both platforms render byte-equivalent prompts
++/// for the same retrieval.
++public final class PromptBuilder {
++
++    public let contextTokens: Int
++    public let reservedForAnswer: Int
++
++    public init() {
++        self.contextTokens = Tier.current.contextTokens
++        self.reservedForAnswer = 512
++    }
++
++    public init(contextTokens: Int, reservedForAnswer: Int) {
++        self.contextTokens = contextTokens
++        self.reservedForAnswer = reservedForAnswer
++    }
++
++    private let systemRules = """
++        You are Godstone, an offline survival reference. You are being used by \
++        someone who may be injured, frightened, and without any other help.
++
++        ABSOLUTE RULES:
++        1. Answer ONLY from the numbered CONTEXT passages below. If the context \
++        does not contain the answer, say exactly: "The archive does not cover \
++        this." Do not guess. Do not use general knowledge.
++        2. Cite every factual claim with the bracketed number of the passage it \
++        came from, like [2].
++        3. Give steps in the order they must be performed. Put any action that \
++        prevents immediate death first.
++        4. State dosages, ratios, times and temperatures exactly as written in \
++        the context. Never round, convert or estimate them yourself.
++        5. If the context contains a warning or contraindication, you MUST \
++        include it. Never omit a safety warning to make an answer shorter.
++        6. Be brief and concrete. Short sentences. No preamble, no reassurance, \
++        no filler. The user does not have time.
++        """
++
++    /// Build the grounded prompt, dropping the weakest chunks from the tail
++    /// until `countTokens(prompt) <= budget`. At least the strongest chunk is
++    /// always kept.
++    public func build(question: String,
++                      chunks: [RetrievedChunk],
++                      budget: Int,
++                      countTokens: (String) async -> Int) async -> String {
++        // Strongest first: the model sees the most relevant passage earliest,
++        // and any trimming drops the weakest material from the tail.
++        let ranked = chunks.sorted { $0.score > $1.score }
++
++        // Greedy tail-trim: render the full set, measure, drop the lowest-scored
++        // chunk, repeat until it fits or only the strongest remains. An
++        // over-budget single source is still safer than an empty context.
++        var kept = ranked
++        while kept.count > 1 {
++            let prompt = render(question: question, chunks: kept)
++            if await countTokens(prompt) <= budget { return prompt }
++            kept.removeLast()
++        }
++        return render(question: question, chunks: kept)
++    }
++
++    private func render(question: String, chunks: [RetrievedChunk]) -> String {
++        var sb = String()
++        sb.append("<|im_start|>system\n")
++        sb.append(systemRules)
++        sb.append("\n<|im_end|>\n")
++
++        sb.append("<|im_start|>user\n")
++        sb.append("CONTEXT:\n")
++        for (i, c) in chunks.enumerated() {
++            sb.append("[")
++            sb.append(String(i + 1))
++            sb.append("] (")
++            sb.append(c.domain)
++            sb.append(" — ")
++            sb.append(c.documentTitle)
++            sb.append(")\n")
++            sb.append(c.text.trimmingCharacters(in: .whitespacesAndNewlines))
++            sb.append("\n\n")
++        }
++        sb.append("QUESTION: ")
++        sb.append(question.trimmingCharacters(in: .whitespacesAndNewlines))
++        sb.append("\n<|im_end|>\n")
++        sb.append("<|im_start|>assistant\n")
++        return sb
++    }
++
++    /// Clinical questions get the conservative sampling profile. True when the
++    /// question mentions dosages, ratios, concentrations, timing or
++    /// temperatures -- the domains where an invented answer can kill.
++    public func isClinical(_ question: String) -> Bool {
++        let lower = question.lowercased()
++        let keywords = ["dose", "dosage", "ratio", "mg", "ml", "mcg",
++                        "timing", "minutes", "hours", "temperature",
++                        "celsius", "fahrenheit", "boil", "concentration"]
++        return keywords.contains(where: { lower.contains($0) })
++    }
++}
+diff --git a/ios/Packages/GodstoneFoundation/Sources/GodstoneCore/RetrievedChunk.swift b/ios/Packages/GodstoneFoundation/Sources/GodstoneCore/RetrievedChunk.swift
+new file mode 100644
+index 0000000..6c7827f
+--- /dev/null
++++ b/ios/Packages/GodstoneFoundation/Sources/GodstoneCore/RetrievedChunk.swift
+@@ -0,0 +1,36 @@
++// SYNTHESIZED gap-closure file -- authored to make the project compile; see docs/AUDIT.md.
++import Foundation
++
++/// One retrieved Archive chunk, fused from lexical and semantic search.
++///
++/// Mirrors the Android `Chunk` data class (`chunkId`, `documentId`,
++/// `documentTitle`, `domain`, `text`, `score`) plus the `section` field used by
++/// the iOS citation UI. `score` is mutable because `RagPipeline.fuse` overwrites
++/// it with the normalised reciprocal-rank-fusion score before the prompt is
++/// built and the citation list is emitted.
++public struct RetrievedChunk: Sendable {
++
++    public let chunkId: Int64
++    public let documentId: Int64
++    public let documentTitle: String
++    public let section: String
++    public let domain: String
++    public let text: String
++    public var score: Double
++
++    public init(chunkId: Int64,
++                documentId: Int64,
++                documentTitle: String,
++                section: String,
++                domain: String,
++                text: String,
++                score: Double) {
++        self.chunkId = chunkId
++        self.documentId = documentId
++        self.documentTitle = documentTitle
++        self.section = section
++        self.domain = domain
++        self.text = text
++        self.score = score
++    }
++}
+diff --git a/ios/Packages/GodstoneFoundation/Sources/GodstoneCore/Retriever.swift b/ios/Packages/GodstoneFoundation/Sources/GodstoneCore/Retriever.swift
+new file mode 100644
+index 0000000..81879c7
+--- /dev/null
++++ b/ios/Packages/GodstoneFoundation/Sources/GodstoneCore/Retriever.swift
+@@ -0,0 +1,52 @@
++// SYNTHESIZED gap-closure file -- authored to make the project compile; see docs/AUDIT.md.
++import Foundation
++
++/// Hybrid retrieval over the read-only Archive.
++///
++/// A thin wrapper around `ArchiveRepository` that exposes the two search modes
++/// the RAG pipeline needs:
++///   1. BM25 lexical search via FTS5 (`searchLexical`)
++///   2. int8 cosine similarity over stored vectors (`searchSemantic`), with the
++///      query embedded by an injected async closure so this module stays free of
++///      the on-device model.
++///
++/// Reciprocal Rank Fusion happens in `RagPipeline`, not here; the retriever
++/// only returns the two ranked candidate lists.
++///
++/// Mirrors `io.godstone.llm.rag.Retriever` (Android). Signatures match the
++/// call sites in `RagPipeline.swift` exactly.
++public final class Retriever {
++
++    private let archive: ArchiveRepository
++
++    private var cachedIndex: SafetyGate.CorpusIndex?
++
++    public init(archive: ArchiveRepository) {
++        self.archive = archive
++    }
++
++    /// Corpus vocabulary + IDF for the gate. Built once, cached: the gate needs
++    /// to know what the archive DOES contain in order to refuse what it does not.
++    public func corpusIndex() -> SafetyGate.CorpusIndex {
++        if let cachedIndex { return cachedIndex }
++        let idx = SafetyGate.CorpusIndex(chunks: archive.allChunks())
++        cachedIndex = idx
++        return idx
++    }
++
++    /// FTS5 + BM25 lexical search. Returns ranked chunks (best first).
++    public func searchLexical(_ query: String, limit: Int) throws -> [RetrievedChunk] {
++        archive.searchLexical(query, limit: limit)
++    }
++
++    /// Embed the query via `embedder`, then brute-force cosine search over the
++    /// archive's int8 vectors. If the embedder returns nil, there is nothing to
++    /// search against; return an empty list rather than guessing.
++    public func searchSemantic(_ query: String,
++                               embedder: (String) async -> [Float]?,
++                               limit: Int) async throws -> [RetrievedChunk] {
++        guard let vector = await embedder(query) else { return [] }
++        guard !vector.isEmpty else { return [] }
++        return archive.searchSemantic(vector: vector, limit: limit)
++    }
++}
+diff --git a/ios/Packages/GodstoneFoundation/Sources/GodstoneCore/SafetyGate.swift b/ios/Packages/GodstoneFoundation/Sources/GodstoneCore/SafetyGate.swift
+new file mode 100644
+index 0000000..6fb4474
+--- /dev/null
++++ b/ios/Packages/GodstoneFoundation/Sources/GodstoneCore/SafetyGate.swift
+@@ -0,0 +1,285 @@
++import Foundation
++
++/// The C3 grounding gate. Swift port of `safety/gate.py`, byte-for-byte
++/// equivalent in behaviour to `io.godstone.llm.safety.SafetyGate` on Android.
++///
++/// THE DEFECT THIS CLOSES. `safety/gate.py` was written, probed red/green, and
++/// proven to discriminate -- and both shipping apps went on using
++/// `bestScore >= 0.35` over a reciprocal-rank-fusion score. The repository's own
++/// audit explains why that rule cannot discriminate; the product shipped it
++/// anyway. The improved gate lived in the test harness only.
++///
++/// WHY RRF COULD NOT BE RETUNED. RRF is a RANK statistic. Rank 1 exists in every
++/// non-empty result set, so the score says "something was returned", never
++/// "something was relevant". The whole top-20 spans 0.500...0.381, all above the
++/// floor, and the FTS query ORs its terms so the set is never empty.
++///
++/// S2 (colocation) is the signal that works: requiring the query's rare terms to
++/// co-occur INSIDE A SINGLE PASSAGE is what separates "these words exist
++/// somewhere in the archive" from "a passage supports this answer".
++///
++/// PARITY: every constant below is mirrored in safety/gate.py and SafetyGate.kt.
++/// Invariant G fails the build if they drift.
++public enum SafetyGate {
++
++    public static let anchorRecallFloor = 0.60
++    public static let colocationFloor = 0.50
++    public static let domainCoherenceFloor = 0.40
++    public static let caveatMargin = 0.15
++    public static let minAnchorLen = 3
++    public static let stemPrefixLen = 5
++
++    public enum Verdict: String, Sendable {
++        case allow = "ALLOW"
++        case allowWithCaveat = "ALLOW_WITH_CAVEAT"
++        case refuseNoEvidence = "REFUSE_NO_EVIDENCE"
++        case refuseScatteredEvidence = "REFUSE_SCATTERED_EVIDENCE"
++
++        public var allowsGeneration: Bool {
++            self == .allow || self == .allowWithCaveat
++        }
++    }
++
++    public struct Result: Sendable {
++        public let verdict: Verdict
++        public let reasons: [String]
++        public let anchorRecall: Double
++        public let colocation: Double
++        public let domainCoherence: Double
++        public let oovTerms: [String]
++
++        public var allowsGeneration: Bool { verdict.allowsGeneration }
++
++        /// What a frightened user is actually shown. Never a fabricated answer.
++        public func userMessage() -> String {
++            switch verdict {
++            case .refuseNoEvidence:
++                if !oovTerms.isEmpty {
++                    return "The archive does not cover this. It contains no guidance on "
++                        + oovTerms.sorted().joined(separator: ", ") + "."
++                }
++                return "The archive does not cover this."
++            case .refuseScatteredEvidence:
++                return "The archive does not cover this. Related words appear, but no "
++                    + "single passage supports an answer."
++            case .allowWithCaveat:
++                return "Supported, but the evidence is thin. Check the sources."
++            case .allow:
++                return ""
++            }
++        }
++    }
++
++    static let stopwords: Set<String> = [
++        "a","an","the","is","are","was","were","be","been","being","am","do","does",
++        "did","doing","how","what","when","where","which","who","whom","why","can",
++        "could","should","would","will","shall","may","might","must","i","you","he",
++        "she","it","we","they","my","your","his","her","its","our","their","me","him",
++        "them","this","that","these","those","there","here","about","into","over",
++        "under","of","to","in","on","at","for","from","with","without","and","or",
++        "but","if","then","than","as","by","so","such","no","not","only","own","same",
++        "too","very","just","now","also","get","got","make","made","want","need",
++        "use","used","using","please","tell","show","give"
++    ]
++
++    /// Terms denoting an ACTION or QUANTITY the archive would have to cover
++    /// explicitly. If one is absent from the corpus, retrieval cannot recover
++    /// it, so we refuse BEFORE scoring anything.
++    static let actionTerms: Set<String> = [
++        "dose","dosage","inject","injection","prescribe","prescription",
++        "synthesise","synthesize","manufacture","buy","sell","trade","invest",
++        "translate","summarise","summarize","plot","price","share","stock",
++        "cryptocurrency","phone","number","address","latitude","longitude",
++        "coordinate"
++    ]
++
++    /// Deliberately crude morphological normalisation. An earlier draft refused
++    /// "how long should I boil water" because `boil` and `boiling` differed.
++    public static func stem(_ word: String) -> String {
++        var w = word.lowercased()
++        for suf in ["ational","ization","isation","ation","ings","ing",
++                    "ed","ies","es","s"] {
++            if w.hasSuffix(suf) && w.count - suf.count >= 3 {
++                w = String(w.dropLast(suf.count)); break
++            }
++        }
++        if w.count > 3 {
++            let chars = Array(w)
++            if chars[chars.count - 1] == chars[chars.count - 2] { w = String(w.dropLast()) }
++        }
++        return w
++    }
++
++    static func tokens(_ text: String) -> [String] {
++        text.lowercased().split { !($0.isLetter || $0.isNumber) }.map(String.init)
++    }
++
++    static func contentTerms(_ text: String) -> [String] {
++        tokens(text).filter { $0.count >= minAnchorLen && !stopwords.contains($0) }
++    }
++
++    /// Corpus vocabulary and IDF, built once from the archive.
++    public struct CorpusIndex: Sendable {
++        public var vocabulary: Set<String> = []
++        public var stems: Set<String> = []
++        public var idf: [String: Double] = [:]
++
++        public init(chunks: [RetrievedChunk]) {
++            var df: [String: Int] = [:]
++            for c in chunks {
++                let terms = contentTerms(c.text + " " + c.documentTitle)
++                vocabulary.formUnion(terms)
++                let st = terms.map { stem($0) }
++                stems.formUnion(st)
++                for t in Set(st) { df[t, default: 0] += 1 }
++            }
++            let n = max(1, chunks.count)
++            for (t, d) in df {
++                // Parenthesised to match gate.py and SafetyGate.kt exactly.
++                idf[t] = log((Double(n - d) + 0.5) / (Double(d) + 0.5) + 1.0)
++            }
++        }
++
++        /// Tolerant of inflection: `purify` must match `purification`.
++        public func known(_ term: String) -> Bool {
++            if vocabulary.contains(term) { return true }
++            let s = stem(term)
++            if stems.contains(s) { return true }
++            if s.count >= stemPrefixLen {
++                let p = String(s.prefix(stemPrefixLen))
++                return stems.contains { $0.hasPrefix(p) }
++            }
++            return false
++        }
++    }
++
++    static func presentIn(_ text: String, _ term: String) -> Bool {
++        let toks = Set(contentTerms(text).map { stem($0) })
++        let s = stem(term)
++        if toks.contains(s) { return true }
++        if s.count >= stemPrefixLen {
++            let p = String(s.prefix(stemPrefixLen))
++            return toks.contains { $0.hasPrefix(p) }
++        }
++        return false
++    }
++
++    /// The single entry point. Nothing else may decide whether an answer is
++    /// grounded -- that separation is exactly what Invariant B enforces.
++    public static func evaluate(question: String,
++                                chunks: [RetrievedChunk],
++                                index: CorpusIndex) -> Result {
++        var seen = Set<String>()
++        let anchors = contentTerms(question).filter { seen.insert($0).inserted }
++        let oovAny = anchors.filter { !index.known($0) }
++        let oovActions = anchors.filter { actionTerms.contains($0) && !index.known($0) }
++
++        if !oovActions.isEmpty {
++            return Result(verdict: .refuseNoEvidence,
++                reasons: ["archive has no material on action term(s): "
++                          + oovActions.joined(separator: ", ")],
++                anchorRecall: 0, colocation: 0, domainCoherence: 0,
++                oovTerms: oovActions)
++        }
++        if !anchors.isEmpty && Double(oovAny.count) / Double(anchors.count) >= 0.5 {
++            return Result(verdict: .refuseNoEvidence,
++                reasons: ["\(oovAny.count)/\(anchors.count) query terms absent from the archive"],
++                anchorRecall: 0, colocation: 0, domainCoherence: 0, oovTerms: oovAny)
++        }
++        if chunks.isEmpty {
++            return Result(verdict: .refuseNoEvidence,
++                reasons: ["retrieval returned nothing"],
++                anchorRecall: 0, colocation: 0, domainCoherence: 0, oovTerms: oovAny)
++        }
++
++        let known = anchors.filter { index.known($0) }
++        if known.isEmpty {
++            return Result(verdict: .refuseNoEvidence, reasons: ["no usable query terms"],
++                anchorRecall: 0, colocation: 0, domainCoherence: 0, oovTerms: oovAny)
++        }
++
++        var weights: [String: Double] = [:]
++        for t in known { weights[t] = index.idf[stem(t)] ?? 1.0 }
++        let totalW = max(weights.values.reduce(0, +), 0.000001)
++
++        // S1 anchor_recall: union coverage across the whole result set.
++        let union = chunks.map { $0.text + " " + $0.documentTitle }.joined(separator: " ")
++        let s1 = known.filter { presentIn(union, $0) }
++                      .reduce(0.0) { $0 + (weights[$1] ?? 0) } / totalW
++
++        // S2 colocation: the best SINGLE passage. THIS is the signal that works.
++        var s2 = 0.0
++        for c in chunks {
++            let blob = c.text + " " + c.documentTitle
++            let hit = known.filter { presentIn(blob, $0) }
++                           .reduce(0.0) { $0 + (weights[$1] ?? 0) } / totalW
++            if hit > s2 { s2 = hit }
++        }
++
++        // S3 domain coherence: is the evidence from one place?
++        var doms: [String: Int] = [:]
++        for c in chunks { doms[c.domain, default: 0] += 1 }
++        let s3 = Double(doms.values.max() ?? 0) / Double(chunks.count)
++
++        var reasons: [String] = []
++        if s1 < anchorRecallFloor {
++            reasons.append(String(format:
++                "anchor_recall %.2f < %.2f: key terms missing from every retrieved passage",
++                s1, anchorRecallFloor))
++            return Result(verdict: .refuseNoEvidence, reasons: reasons,
++                anchorRecall: s1, colocation: s2, domainCoherence: s3, oovTerms: oovAny)
++        }
++        if s2 < colocationFloor {
++            reasons.append(String(format:
++                "colocation %.2f < %.2f: terms appear in the archive but scattered across unrelated passages",
++                s2, colocationFloor))
++            return Result(verdict: .refuseScatteredEvidence, reasons: reasons,
++                anchorRecall: s1, colocation: s2, domainCoherence: s3, oovTerms: oovAny)
++        }
++        if s3 < domainCoherenceFloor {
++            reasons.append(String(format:
++                "domain_coherence %.2f < %.2f: evidence drawn from sections the corpus keeps separate",
++                s3, domainCoherenceFloor))
++            return Result(verdict: .refuseScatteredEvidence, reasons: reasons,
++                anchorRecall: s1, colocation: s2, domainCoherence: s3, oovTerms: oovAny)
++        }
++        if s2 < colocationFloor + caveatMargin {
++            reasons.append("supported but thin: surface sources prominently")
++            return Result(verdict: .allowWithCaveat, reasons: reasons,
++                anchorRecall: s1, colocation: s2, domainCoherence: s3, oovTerms: oovAny)
++        }
++        reasons.append("anchors co-occur in a single supporting passage")
++        return Result(verdict: .allow, reasons: reasons,
++            anchorRecall: s1, colocation: s2, domainCoherence: s3, oovTerms: oovAny)
++    }
++
++    /// Post-generation numeric provenance. Retrieval gates cannot catch this,
++    /// because retrieval already SUCCEEDED: this is the model turning 500 mg
++    /// into 750 mg. Runs immediately before the answer is displayed.
++    public static func numericProvenance(answer: String,
++                                         evidence: [RetrievedChunk]) -> (Bool, [String]) {
++        let pattern = #"\b\d+(?:\.\d+)?\s*(?:mg|ml|mcg|g|kg|l|litres?|liters?|drops?|minutes?|hours?|days?|percent|%|degrees?|cm|mm|m)\b"#
++        guard let rx = try? NSRegularExpression(pattern: pattern, options: [.caseInsensitive])
++        else { return (true, []) }
++
++        func matches(_ s: String) -> [String] {
++            let ns = s as NSString
++            return rx.matches(in: s, range: NSRange(location: 0, length: ns.length))
++                     .map { ns.substring(with: $0.range).trimmingCharacters(in: .whitespaces) }
++        }
++
++        let quantities = matches(answer)
++        if quantities.isEmpty { return (true, []) }
++
++        let blob = evidence.map { $0.text }.joined(separator: " ").lowercased()
++        let blobNums = Set(matches(blob).map {
++            $0.replacingOccurrences(of: " ", with: "").lowercased() })
++        // GST-SAFE-002: exact quantity+unit only. A bare number may not
++        // support a different unit, dimension, or qualifier.
++        let unsupported = quantities.filter { q in
++            let norm = q.replacingOccurrences(of: " ", with: "").lowercased()
++            return !blobNums.contains(norm)
++        }
++        return (unsupported.isEmpty, unsupported)
++    }
++}
+diff --git a/ios/Packages/GodstoneFoundation/Sources/GodstoneCore/Tier.swift b/ios/Packages/GodstoneFoundation/Sources/GodstoneCore/Tier.swift
+new file mode 100644
+index 0000000..6810e97
+--- /dev/null
++++ b/ios/Packages/GodstoneFoundation/Sources/GodstoneCore/Tier.swift
+@@ -0,0 +1,93 @@
++// SYNTHESIZED gap-closure file -- authored to make the project compile; see docs/AUDIT.md.
++import Foundation
++
++/// Device capability tier.
++///
++/// Three tiers -- light, medium, large -- select the on-device model, the
++/// context window, the retrieval depth and the archive database. The tier is
++/// read once from the app's Info.plist (`GodstoneTier` = LIGHT|MEDIUM|LARGE)
++/// and defaults to `.light`, the safe-everywhere option.
++///
++/// Mirrors the Android `Tier` enum in the core module. The two must agree on
++/// model file names, context token counts and archive database names or the
++/// same device class loads a different model on each platform.
++public enum Tier: Sendable {
++
++    case light
++    case medium
++    case large
++
++    /// Active tier, resolved from the main bundle's Info.plist.
++    public static var current: Tier {
++        if let raw = Bundle.main.object(forInfoDictionaryKey: "GodstoneTier") as? String {
++            switch raw.uppercased() {
++            case "MEDIUM": return .medium
++            case "LARGE":  return .large
++            default:       return .light
++            }
++        }
++        return .light
++    }
++
++    /// Bundled GGUF file name, e.g. "qwen3-0.6b-q4km.gguf".
++    public var modelFile: String {
++        switch self {
++        case .light:  return "qwen3-0.6b-q4km.gguf"
++        case .medium: return "qwen3-1.7b-q4km.gguf"
++        case .large:  return "qwen3-4b-q5km.gguf"
++        }
++    }
++
++    /// Convenience alias for `modelFile` (some call sites name it as a "file
++    /// name" rather than a "file"). Kept in sync with `modelFile`.
++    public var modelFileName: String { modelFile }
++
++    /// KV-cache context window in tokens.
++    public var contextTokens: Int {
++        switch self {
++        case .light:  return 2048
++        case .medium: return 4096
++        case .large:  return 8192
++        }
++    }
++
++    /// Number of fused chunks kept after reciprocal-rank fusion.
++    public var topKChunks: Int {
++        switch self {
++        case .light:  return 4
++        case .medium: return 6
++        case .large:  return 8
++        }
++    }
++
++    /// Chunks surfaced to retrieval; equal to `topKChunks` on every tier.
++    public var retrievalChunks: Int { topKChunks }
++
++    /// Embedding GGUF the ARCHIVE was built with. Must match
++    /// content/ingest/build_archive.py TIERS[*]["embed_model"], or semantic
++    /// search compares two unrelated vector spaces.
++    public var embedModelFile: String {
++        switch self {
++        case .light:  return "bge-small-en-v1.5-q8.gguf"
++        case .medium: return "bge-small-en-v1.5-q8.gguf"
++        case .large:  return "bge-base-en-v1.5-q8.gguf"
++        }
++    }
++
++    /// Embedding dimension. Cross-checked against archive_meta.embed_dim.
++    public var embedDim: Int {
++        switch self {
++        case .light, .medium: return 384
++        case .large:          return 768
++        }
++    }
++
++    /// Archive SQLite database bundled resource name.
++    public var archiveDatabaseName: String {
++        switch self {
++        case .light:  return "archive_light.db"
++        case .medium: return "archive_medium.db"
++        case .large:  return "archive_large.db"
++        }
++    }
++}
+diff --git a/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/BleTransport.swift b/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/BleTransport.swift
+new file mode 100644
+index 0000000..55a8199
+--- /dev/null
++++ b/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/BleTransport.swift
+@@ -0,0 +1,240 @@
++import Foundation
++import CoreBluetooth
++
++/// BLE control plane. Always on, duty-cycled, background-capable (with the
++/// caveats documented below and surfaced in the UI).
++///
++/// Every device is simultaneously a central and a peripheral. There are no
++/// clients and no servers in a survival mesh — the topology must survive any
++/// single device walking away.
++public final class BleTransport: NSObject {
++
++    // GENERATED-SPEC UUIDs. These previously read 6F0D0001-… while Android read
++    // 67640001-… -- the two platforms could not see each other at all, so the
++    // header-size and type-code defects were never even reached. The values now
++    // come from wire/wire_v2.yaml via FrameV2 and cannot drift: Invariant G
++    // fails the build if a literal UUID reappears here.
++    public static let serviceUuid = CBUUID(string: FrameV2.serviceUuidString)
++    public static let inboxCharacteristicUuid = CBUUID(string: FrameV2.inboxUuidString)
++    public static let digestCharacteristicUuid = CBUUID(string: FrameV2.digestUuidString)
++
++    private let central: CBCentralManager
++    private let peripheral: CBPeripheralManager
++
++    private var connected: [UUID: CBPeripheral] = [:]
++    private var inboxCharacteristics: [UUID: CBCharacteristic] = [:]
++    private var subscribers: [CBCentral] = []
++
++    public weak var delegate: TransportDelegate?
++
++    /// Noise sessions. Without this the transport cannot send -- by design.
++    public var sessions: SessionManager?
++
++    /// iOS truncates advertisement data heavily in the background: the service
++    /// UUID moves to the "overflow area", which is only visible to other iOS
++    /// devices explicitly scanning for that exact UUID. Android scanners cannot
++    /// see a backgrounded iPhone at all. This is a platform fact, not a bug we
++    /// can fix, and the UI tells the user so rather than pretending otherwise.
++    public private(set) var isBackgrounded = false
++
++    public override init() {
++        // Both managers are constructed with a nil delegate and stored BEFORE
++        // super.init(), then wired to self. CoreBluetooth dispatches state
++        // callbacks on a global queue and could otherwise fire into a partly
++        // initialised object (audit A-18). The restoration identifiers let iOS
++        // relaunch us into the background when a peer appears.
++        central = CBCentralManager(delegate: nil, queue: .global(qos: .utility), options: [CBCentralManagerOptionRestoreIdentifierKey: "io.godstone.central"])
++        peripheral = CBPeripheralManager(delegate: nil, queue: .global(qos: .utility), options: [CBPeripheralManagerOptionRestoreIdentifierKey: "io.godstone.peripheral"])
++        super.init()
++        central.delegate = self
++        peripheral.delegate = self
++    }
++
++    public func start() {
++        startAdvertising()
++        startScanning()
++    }
++
++    public func stop() {
++        central.stopScan()
++        peripheral.stopAdvertising()
++    }
++
++    private func startScanning() {
++        guard central.state == .poweredOn else { return }
++        central.scanForPeripherals(
++            withServices: [BleTransport.serviceUuid],
++            // Duplicates ON in foreground so we track RSSI and liveness; OFF in
++            // background because iOS coalesces them anyway and it saves battery.
++            options: [CBCentralManagerScanOptionAllowDuplicatesKey: !isBackgrounded])
++    }
++
++    private func startAdvertising() {
++        guard peripheral.state == .poweredOn else { return }
++        peripheral.startAdvertising([
++            CBAdvertisementDataServiceUUIDsKey: [BleTransport.serviceUuid],
++            CBAdvertisementDataLocalNameKey: "GS"
++        ])
++    }
++
++    public func setBackgrounded(_ backgrounded: Bool) {
++        isBackgrounded = backgrounded
++        central.stopScan()
++        startScanning()
++    }
++
++    /// Send [frame] to [peerId] THROUGH THE NOISE SESSION.
++    ///
++    /// This previously wrote `frame.encode()` directly to the characteristic.
++    /// NoiseSession existed but nothing constructed it, so the "encrypted mesh"
++    /// transmitted plaintext. There is no plaintext fallback here on purpose.
++    @discardableResult
++    public func send(_ frame: FrameV2, to peerId: UUID) -> Bool {
++        guard let p = connected[peerId],
++              let ch = inboxCharacteristics[peerId] else { return false }
++        guard let data = sessions?.seal(peerId, frame.encode()) else { return false }
++
++        // ADR-002/M2-link owns authenticated record fragmentation. Until that
++        // layer exists, never split one Noise ciphertext into independent ATT
++        // writes: the receiver would try to authenticate each fragment.
++        let mtu = p.maximumWriteValueLength(for: .withoutResponse)
++        guard data.count <= mtu else { return false }
++        p.writeValue(data, for: ch, type: .withoutResponse)
++        return true
++    }
++}
++
++extension BleTransport: CBCentralManagerDelegate, CBPeripheralDelegate {
++
++    public func centralManagerDidUpdateState(_ c: CBCentralManager) {
++        if c.state == .poweredOn { startScanning() }
++    }
++
++    public func centralManager(_ c: CBCentralManager,
++                               willRestoreState dict: [String: Any]) {
++        if let peers = dict[CBCentralManagerRestoredStatePeripheralsKey]
++            as? [CBPeripheral] {
++            for p in peers {
++                p.delegate = self
++                connected[p.identifier] = p
++            }
++        }
++    }
++
++    public func centralManager(_ c: CBCentralManager,
++                               didDiscover p: CBPeripheral,
++                               advertisementData: [String: Any],
++                               rssi RSSI: NSNumber) {
++        // Ignore anything we can barely hear: connecting to a -95 dBm peer wastes
++        // far more energy than the link is ever worth.
++        guard RSSI.intValue > -90 else { return }
++
++        connected[p.identifier] = p
++        p.delegate = self
++        c.connect(p, options: nil)
++    }
++
++    public func centralManager(_ c: CBCentralManager, didConnect p: CBPeripheral) {
++        p.discoverServices([BleTransport.serviceUuid])
++        delegate?.transportDidConnect(peerId: p.identifier)
++    }
++
++    public func centralManager(_ c: CBCentralManager,
++                               didDisconnectPeripheral p: CBPeripheral,
++                               error: Error?) {
++        inboxCharacteristics.removeValue(forKey: p.identifier)
++        delegate?.transportDidDisconnect(peerId: p.identifier)
++        // Always reconnect. In a survival mesh, a dropped link is the normal
++        // state, not an error condition.
++        c.connect(p, options: nil)
++    }
++
++    public func peripheral(_ p: CBPeripheral, didDiscoverServices error: Error?) {
++        p.services?.forEach {
++            p.discoverCharacteristics(
++                [BleTransport.inboxCharacteristicUuid,
++                 BleTransport.digestCharacteristicUuid], for: $0)
++        }
++    }
++
++    public func peripheral(_ p: CBPeripheral,
++                           didDiscoverCharacteristicsFor service: CBService,
++                           error: Error?) {
++        for ch in service.characteristics ?? [] {
++            if ch.uuid == BleTransport.inboxCharacteristicUuid {
++                inboxCharacteristics[p.identifier] = ch
++                p.setNotifyValue(true, for: ch)
++            }
++        }
++        delegate?.transportReady(peerId: p.identifier)
++    }
++
++    public func peripheral(_ p: CBPeripheral,
++                           didUpdateValueFor ch: CBCharacteristic,
++                           error: Error?) {
++        guard let raw = ch.value else { return }
++        // Decrypt before anything downstream sees it. A frame that fails
++        // authentication is corruption or an attacker: drop it silently.
++        guard let clear = sessions?.open(p.identifier, raw) else { return }
++        delegate?.transportDidReceive(data: clear, peerId: p.identifier)
++    }
++}
++
++extension BleTransport: CBPeripheralManagerDelegate {
++
++    public func peripheralManagerDidUpdateState(_ pm: CBPeripheralManager) {
++        guard pm.state == .poweredOn else { return }
++
++        let inbox = CBMutableCharacteristic(
++            type: BleTransport.inboxCharacteristicUuid,
++            properties: [.writeWithoutResponse, .notify],
++            value: nil,
++            permissions: [.writeable])
++
++        let digest = CBMutableCharacteristic(
++            type: BleTransport.digestCharacteristicUuid,
++            properties: [.read, .notify],
++            value: nil,
++            permissions: [.readable])
++
++        let service = CBMutableService(type: BleTransport.serviceUuid, primary: true)
++        service.characteristics = [inbox, digest]
++        pm.add(service)
++
++        startAdvertising()
++    }
++
++    public func peripheralManager(_ pm: CBPeripheralManager,
++                                  didReceiveWrite requests: [CBATTRequest]) {
++        guard let first = requests.first else { return }
++        for r in requests {
++            if let v = r.value,
++               let clear = sessions?.open(r.central.identifier, v) {
++                delegate?.transportDidReceive(data: clear, peerId: r.central.identifier)
++            }
++        }
++        pm.respond(to: first, withResult: .success)
++    }
++
++    public func peripheralManager(_ pm: CBPeripheralManager,
++                                  central: CBCentral,
++                                  didSubscribeTo ch: CBCharacteristic) {
++        subscribers.append(central)
++    }
++}
++
++public protocol TransportDelegate: AnyObject {
++    func transportDidConnect(peerId: UUID)
++    func transportReady(peerId: UUID)
++    func transportDidDisconnect(peerId: UUID)
++    func transportDidReceive(data: Data, peerId: UUID)
++}
++
++extension Data {
++    func chunked(into size: Int) -> [Data] {
++        guard size > 0 else { return [self] }
++        return stride(from: 0, to: count, by: size).map {
++            subdata(in: $0..<Swift.min($0 + size, count))
++        }
++    }
++}
+diff --git a/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/BulkTransport.swift b/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/BulkTransport.swift
+new file mode 100644
+index 0000000..ac0cf64
+--- /dev/null
++++ b/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/BulkTransport.swift
+@@ -0,0 +1,23 @@
++import Foundation
++
++/// Bulk transfer is deliberately unavailable in V4.
++///
++/// The earlier MultipeerConnectivity implementation was not bound to the BLE
++/// Noise session, generated random UUIDs for callbacks, and sent encoded frames
++/// without a record-level identity binding. Advertising that as a secure bulk
++/// plane would violate C1/C6 and the threat model. ADR-006 defines the decision
++/// required before a real implementation can be enabled.
++public final class BulkTransport {
++    public static let unavailableReason =
++        "Bulk transfer is disabled until ADR-006 is implemented and device-tested."
++
++    public private(set) var isActive = false
++    public var isAvailable: Bool { false }
++
++    public init(displayName: String) { }
++    public func activate() { isActive = false }
++    public func deactivate() { isActive = false }
++
++    @discardableResult
++    public func send(_ frame: FrameV2) -> Bool { false }
++}
+diff --git a/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/MeshCoordinator.swift b/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/MeshCoordinator.swift
+new file mode 100644
+index 0000000..b7f2d16
+--- /dev/null
++++ b/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/MeshCoordinator.swift
+@@ -0,0 +1,58 @@
++import Foundation
++import Combine
++
++@MainActor
++public final class MeshCoordinator: ObservableObject {
++    public enum SosState: Equatable {
++        case idle
++        case unavailable(String)
++        case handedToRelays(Int)
++        case notPersisted
++        case failed(String)
++    }
++
++    public let node: MeshNode
++    @Published public private(set) var peerCount = 0
++    @Published public private(set) var isBackgroundDegraded = false
++    @Published public private(set) var sosState: SosState = .idle
++
++    public var transportAvailable: Bool { MeshNode.linkLayerReady }
++    public var transportDetail: String {
++        transportAvailable ? "Encrypted mesh control plane active" : MeshNode.linkLayerOpenReason
++    }
++    public var isBroadcastingSos: Bool {
++        if case .handedToRelays = sosState { return true }
++        return false
++    }
++
++    public init(node: MeshNode) {
++        self.node = node
++        node.onPeerCountChanged = { [weak self] count in
++            Task { @MainActor in self?.peerCount = count }
++        }
++    }
++
++    public func enterForegroundMode() {
++        isBackgroundDegraded = false
++        if transportAvailable { _ = node.start() }
++    }
++
++    public func enterBackgroundMode() {
++        isBackgroundDegraded = transportAvailable
++    }
++
++    public func broadcastSos() {
++        let result = node.broadcastSos(payload: Data("SOS".utf8))
++        switch result {
++        case .unavailable(let reason): sosState = .unavailable(reason)
++        case .handedToRelays(let count): sosState = .handedToRelays(count)
++        case .notPersisted: sosState = .notPersisted
++        case .failed(let reason): sosState = .failed(reason)
++        }
++    }
++
++    public func cancelSos() {
++        // Cancellation is local. Already-relayed copies cannot be recalled.
++        sosState = .idle
++    }
++}
+diff --git a/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/MeshIdentity.swift b/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/MeshIdentity.swift
+new file mode 100644
+index 0000000..e5de44b
+--- /dev/null
++++ b/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/MeshIdentity.swift
+@@ -0,0 +1,99 @@
++import Foundation
++import CryptoKit
++import Security
++import GodstoneCore
++
++/// Long-lived node identity.
++///
++/// Two key pairs, never conflated:
++///   * Ed25519 for signatures (authorship, non-repudiation within the mesh)
++///   * X25519  for Noise key agreement (confidentiality)
++///
++/// Both are stored in the Keychain with kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly.
++/// AfterFirstUnlock rather than WhenUnlocked, because the mesh must keep relaying
++/// while the phone is locked in a pocket. ThisDeviceOnly so keys never enter an
++/// iCloud backup.
++public struct MeshIdentity: Sendable {
++
++    public let signingKey: Curve25519.Signing.PrivateKey
++    public let agreementKey: Curve25519.KeyAgreement.PrivateKey
++
++    /// BLAKE2s-128 of the agreement public key. 16 bytes. Matches Android.
++    public var nodeId: Data {
++        // PROTOCOL.md:49 -- node_id = BLAKE2s-128(identity_pub), the Ed25519
++        // signing key. This previously used agreementKey (X25519), producing a
++        // different node_id, hence a different node_hint, hence a different
++        // Noise prologue -- so h diverged BEFORE the first DH and no transcript
++        // test could have seen it. Pinned by handshake_vectors.json.
++        Blake2s.hash(signingKey.publicKey.rawRepresentation, digestLength: 16)
++    }
++
++    /// First 4 bytes, carried in the accepted 13-byte BLE scan response.
++    public var nodeHint: Data { nodeId.prefix(4) }
++
++    /// Six BIP-39 words derived from the node id, for verbal out-of-band
++    /// verification. "Is your call sign amber-tiger-...?" over actual voice is
++    /// the only trustworthy channel when everything else is compromised.
++    public var callSign: String {
++        Bip39.words(from: nodeId, count: 6).joined(separator: "-")
++    }
++
++    // MARK: - Keychain
++
++    private static let signingTag   = "io.godstone.mesh.identity.ed25519"
++    private static let agreementTag = "io.godstone.mesh.identity.x25519"
++
++    public static func generateAndStore() -> MeshIdentity {
++        let signing = Curve25519.Signing.PrivateKey()
++        let agreement = Curve25519.KeyAgreement.PrivateKey()
++
++        store(signing.rawRepresentation, tag: signingTag)
++        store(agreement.rawRepresentation, tag: agreementTag)
++
++        return MeshIdentity(signingKey: signing, agreementKey: agreement)
++    }
++
++    public static func loadFromKeychain() throws -> MeshIdentity {
++        guard let s = load(tag: signingTag), let a = load(tag: agreementTag) else {
++            throw MeshError.identityNotFound
++        }
++        return MeshIdentity(
++            signingKey: try Curve25519.Signing.PrivateKey(rawRepresentation: s),
++            agreementKey: try Curve25519.KeyAgreement.PrivateKey(rawRepresentation: a)
++        )
++    }
++
++    private static func store(_ data: Data, tag: String) {
++        let query: [String: Any] = [
++            kSecClass as String: kSecClassGenericPassword,
++            kSecAttrAccount as String: tag,
++            kSecValueData as String: data,
++            kSecAttrAccessible as String:
++                kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly
++        ]
++        SecItemDelete(query as CFDictionary)
++        SecItemAdd(query as CFDictionary, nil)
++    }
++
++    private static func load(tag: String) -> Data? {
++        let query: [String: Any] = [
++            kSecClass as String: kSecClassGenericPassword,
++            kSecAttrAccount as String: tag,
++            kSecReturnData as String: true,
++            kSecMatchLimit as String: kSecMatchLimitOne
++        ]
++        var out: CFTypeRef?
++        guard SecItemCopyMatching(query as CFDictionary, &out) == errSecSuccess else {
++            return nil
++        }
++        return out as? Data
++    }
++}
++
++public enum MeshError: Error {
++    case identityNotFound
++    case malformedFrame
++    case handshakeFailed
++    case payloadTooLarge
++    case replayDetected
++}
+diff --git a/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/MeshNode.swift b/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/MeshNode.swift
+new file mode 100644
+index 0000000..a248ecb
+--- /dev/null
++++ b/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/MeshNode.swift
+@@ -0,0 +1,115 @@
++import Foundation
++import CryptoKit
++import Security
++import GodstoneCore
++
++public enum SosDispatchResult: Equatable, Sendable {
++    case unavailable(String)
++    case handedToRelays(Int)
++    case notPersisted
++    case failed(String)
++}
++
++/// One identity, router, radio stack and session registry for the process.
++public final class MeshNode {
++    public static let linkLayerReady = false
++    public static let linkLayerOpenReason =
++        "Encrypted BLE record reassembly and the Noise handshake driver are not implemented yet. Radio transmission is disabled in this pre-alpha build."
++
++    public let identity: MeshIdentity
++    public private(set) lazy var ble = BleTransport()
++    public private(set) lazy var router = Router()
++    public private(set) lazy var sessions = SessionManager(identity: identity)
++
++    private var peers: Set<UUID> = []
++    private let peerLock = NSLock()
++    public var onPeerCountChanged: ((Int) -> Void)?
++    private var isStarted = false
++
++    public init(identity: MeshIdentity) { self.identity = identity }
++
++    @discardableResult
++    public func start() -> Bool {
++        guard Self.linkLayerReady else { return false }
++        guard !isStarted else { return true }
++        isStarted = true
++        ble.delegate = self
++        ble.sessions = sessions
++        router.onForward = { [weak self] frame in
++            guard let self else { return }
++            for peer in self.currentPeers() { _ = self.ble.send(frame, to: peer) }
++        }
++        ble.start()
++        return true
++    }
++
++    public func stop() {
++        guard isStarted else { return }
++        isStarted = false
++        sessions.destroyAll()
++        ble.stop()
++        peerLock.lock(); peers.removeAll(); peerLock.unlock()
++        onPeerCountChanged?(0)
++    }
++
++    private func currentPeers() -> [UUID] {
++        peerLock.lock(); defer { peerLock.unlock() }
++        return Array(peers)
++    }
++
++    /// V4 does not fabricate a successful SOS while ADR-004 and M2-link remain open.
++    public func broadcastSos(payload: Data) -> SosDispatchResult {
++        guard Self.linkLayerReady else { return .unavailable(Self.linkLayerOpenReason) }
++        var msgId = Data(count: 16)
++        let rc = msgId.withUnsafeMutableBytes {
++            SecRandomCopyBytes(kSecRandomDefault, 16, $0.baseAddress!)
++        }
++        guard rc == errSecSuccess else { return .failed("secure random generation failed") }
++
++        let magic = Data("SOS1".utf8)
++        guard let signature = try? identity.signingKey.signature(for: msgId + magic + payload) else {
++            return .failed("SOS signing failed")
++        }
++        let sealed = magic + signature + payload
++        let frame = FrameV2(
++            type: .sos,
++            msgId: msgId,
++            routingTag: identity.nodeHint,
++            ttl: FrameV2.maxTtl,
++            hopCount: 0,
++            flags: UInt16(FrameV2.Flags.ack_req | FrameV2.Flags.relay_ok),
++            payload: sealed)
++
++        // The current iOS router is memory-only. A zero-peer result is therefore
++        // not QUEUED: termination would lose it. ADR-004 must land before that word
++        // can appear in the UI.
++        router.ingest(frame, isAddressedToMe: false)
++        let handed = currentPeers().reduce(into: 0) { count, peer in
++            if ble.send(frame, to: peer) { count += 1 }
++        }
++        return handed > 0 ? .handedToRelays(handed) : .notPersisted
++    }
++}
++
++extension MeshNode: TransportDelegate {
++    public func transportDidConnect(peerId: UUID) {
++        peerLock.lock(); peers.insert(peerId); let count = peers.count; peerLock.unlock()
++        onPeerCountChanged?(count)
++    }
++
++    public func transportReady(peerId: UUID) {
++        // Deliberately no half-handshake. M2-link owns role election, real remote
++        // hints, record types HS1/HS2/HS3, reassembly and timeouts.
++    }
++
++    public func transportDidDisconnect(peerId: UUID) {
++        peerLock.lock(); peers.remove(peerId); let count = peers.count; peerLock.unlock()
++        sessions.drop(peerId)
++        onPeerCountChanged?(count)
++    }
++
++    public func transportDidReceive(data: Data, peerId: UUID) {
++        guard Self.linkLayerReady, let frame = FrameV2.decode(data) else { return }
++        router.ingest(frame, isAddressedToMe: frame.routingTag == identity.nodeHint)
++    }
++}
+diff --git a/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/NoiseSession.swift b/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/NoiseSession.swift
+new file mode 100644
+index 0000000..783c5c0
+--- /dev/null
++++ b/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/NoiseSession.swift
+@@ -0,0 +1,319 @@
++import Foundation
++import CryptoKit
++import GodstoneCore
++
++/// Noise_XX_25519_ChaChaPoly_BLAKE2s.
++///
++/// V4 REWRITE. The V3 implementation was not merely unreachable -- it was
++/// wire-non-conformant and could not have completed a handshake against
++/// noise-java even with every call site wired. Measured against the repository's
++/// own pinned vectors:
++///
++///     pinned spec message sizes : [32, 96, 64]
++///     V3 NoiseSession.swift     : [32, 80, 48]
++///
++/// Three defects, all fixed here:
++///
++///  (a) MESSAGES 2 AND 3 OMITTED THEIR PAYLOAD. XX message 2 is `e, ee, s, es`
++///      followed by an encrypted payload; V3 returned `e + encryptedStatic` and
++///      stopped. Message 3 is `s, se` plus a payload; V3 returned the static
++///      only. Hence 80 and 48 instead of 96 and 64.
++///
++///  (b) MESSAGE 2 WAS PARSED AS ONE CIPHERTEXT. `decryptAndHash(msg2.suffix(from: 32))`
++///      handed 64 bytes to a single AEAD open, yielding a 48-byte "static key".
++///      X25519 requires 32, so the parse threw before any DH occurred.
++///
++///  (c) THE HANDSHAKE NONCE WAS PINNED TO ZERO. Both encryptAndHash and
++///      decryptAndHash built `ChaChaPoly.Nonce(data: Data(count: 12))`. In Noise
++///      the handshake nonce resets to 0 on MixKey and otherwise INCREMENTS. In
++///      message 3 the initiator encrypts `s` under the `es` key at n = 1,
++///      because message 2's payload decrypt already consumed n = 0.
++///
++/// None of this was visible to Invariant D, which validates the PYTHON
++/// reference against a fixture generated by that same reference and never
++/// executes Swift. See docs/adr/ADR-002 and ci/mutations.py.
++///
++/// The prologue binds the handshake to the protocol name and both node hints,
++/// which kills downgrade and cross-protocol attacks before they start.
++public final class NoiseSession {
++
++    public enum Role { case initiator, responder }
++
++    /// Handshake cipher. `n` resets to zero on every MixKey and increments on
++    /// every use -- that increment is defect (c) above.
++    private struct CipherState {
++        var k: SymmetricKey?
++        var n: UInt64 = 0
++
++        /// Noise s.12.3: 32 bits of zeros then LITTLE-endian n.
++        func nonce() throws -> ChaChaPoly.Nonce {
++            var v = n.littleEndian
++            return try ChaChaPoly.Nonce(data: Data(count: 4) + Data(bytes: &v, count: 8))
++        }
++    }
++
++    private let role: Role
++    private let staticKey: Curve25519.KeyAgreement.PrivateKey
++    private var ephemeral: Curve25519.KeyAgreement.PrivateKey
++
++    private var chainingKey: Data
++    private var handshakeHash: Data
++    private var cipher = CipherState()
++
++    private var sendKey: SymmetricKey?
++    private var receiveKey: SymmetricKey?
++    private var sendNonce: UInt64 = 0
++    private var receiveNonce: UInt64 = 0
++
++    private var messagesSinceRekey: UInt64 = 0
++    private var sessionStart = Date()
++
++    private var remoteEphemeral: Data?
++    public private(set) var remoteStaticKey: Data?
++    public private(set) var isEstablished = false
++
++    private static let protocolName = "Noise_XX_25519_ChaChaPoly_BLAKE2s"
++    private static let tagLen = 16
++    private static let dhLen = 32
++    private static let rekeyMessageLimit: UInt64 = 1 << 20
++    private static let rekeyTimeLimit: TimeInterval = 30 * 60
++
++    public init(role: Role,
++                staticKey: Curve25519.KeyAgreement.PrivateKey,
++                localHint: Data,
++                remoteHint: Data) {
++        self.role = role
++        self.staticKey = staticKey
++        self.ephemeral = Curve25519.KeyAgreement.PrivateKey()
++
++        var prologue = Data("GMP1".utf8)
++        // Canonical ordering: initiator hint first, both sides agree.
++        if role == .initiator {
++            prologue.append(localHint); prologue.append(remoteHint)
++        } else {
++            prologue.append(remoteHint); prologue.append(localHint)
++        }
++
++        // InitializeSymmetric(protocol_name): pad to HASHLEN, else hash.
++        let name = Data(NoiseSession.protocolName.utf8)
++        let h0: Data = name.count <= 32
++            ? name + Data(count: 32 - name.count)
++            : Blake2s.hash(name, digestLength: 32)
++        self.chainingKey = h0
++        self.handshakeHash = Blake2s.hash(h0 + prologue, digestLength: 32)
++    }
++
++    // MARK: - Symmetric state
++
++    private func mixHash(_ data: Data) {
++        handshakeHash = Blake2s.hash(handshakeHash + data, digestLength: 32)
++    }
++
++    private func mixKey(_ secret: SharedSecret) {
++        let material = secret.withUnsafeBytes { Data($0) }
++        let (ck, k) = Hkdf.split(chainingKey: chainingKey, material: material)
++        chainingKey = ck
++        // n RESETS here. This is the whole of defect (c).
++        cipher = CipherState(k: SymmetricKey(data: k), n: 0)
++    }
++
++    private func encryptAndHash(_ plaintext: Data) throws -> Data {
++        guard let k = cipher.k else {
++            mixHash(plaintext)
++            return plaintext
++        }
++        let box = try ChaChaPoly.seal(plaintext, using: k,
++                                      nonce: cipher.nonce(),
++                                      authenticating: handshakeHash)
++        cipher.n += 1
++        let out = box.ciphertext + box.tag
++        mixHash(out)
++        return out
++    }
++
++    private func decryptAndHash(_ ciphertext: Data) throws -> Data {
++        guard let k = cipher.k else {
++            mixHash(ciphertext)
++            return ciphertext
++        }
++        guard ciphertext.count >= NoiseSession.tagLen else {
++            throw MeshError.handshakeFailed
++        }
++        // AAD is h BEFORE this ciphertext is mixed in.
++        let aad = handshakeHash
++        let box = try ChaChaPoly.SealedBox(
++            nonce: cipher.nonce(),
++            ciphertext: ciphertext.dropLast(NoiseSession.tagLen),
++            tag: ciphertext.suffix(NoiseSession.tagLen))
++        let plain = try ChaChaPoly.open(box, using: k, authenticating: aad)
++        cipher.n += 1
++        mixHash(ciphertext)
++        return plain
++    }
++
++    /// Writer-relative DH resolution. Getting es/se backwards is silent: both
++    /// sides still produce 32 bytes, they just disagree, and the failure only
++    /// surfaces as a tag mismatch one message later.
++    private func dhEE() throws -> SharedSecret {
++        try ephemeral.sharedSecretFromKeyAgreement(
++            with: Curve25519.KeyAgreement.PublicKey(rawRepresentation: remoteEphemeral!))
++    }
++    private func dhES() throws -> SharedSecret {
++        role == .initiator
++            ? try ephemeral.sharedSecretFromKeyAgreement(
++                with: Curve25519.KeyAgreement.PublicKey(rawRepresentation: remoteStaticKey!))
++            : try staticKey.sharedSecretFromKeyAgreement(
++                with: Curve25519.KeyAgreement.PublicKey(rawRepresentation: remoteEphemeral!))
++    }
++    private func dhSE() throws -> SharedSecret {
++        role == .initiator
++            ? try staticKey.sharedSecretFromKeyAgreement(
++                with: Curve25519.KeyAgreement.PublicKey(rawRepresentation: remoteEphemeral!))
++            : try ephemeral.sharedSecretFromKeyAgreement(
++                with: Curve25519.KeyAgreement.PublicKey(rawRepresentation: remoteStaticKey!))
++    }
++
++    // MARK: - Handshake  (XX:  -> e   <- e, ee, s, es   -> s, se)
++
++    /// Message 1, initiator: `-> e`  (32 bytes with an empty payload)
++    public func writeMessage1(payload: Data = Data()) throws -> Data {
++        var out = ephemeral.publicKey.rawRepresentation
++        mixHash(out)
++        out += try encryptAndHash(payload)
++        return out
++    }
++
++    /// Message 2, responder: reads `e`, writes `e, ee, s, es` + payload.
++    /// 96 bytes with empty payloads. V3 produced 80.
++    public func readMessage1AndWrite2(_ msg1: Data,
++                                      payload: Data = Data()) throws -> Data {
++        // Normalise: a sliced Data carries a non-zero startIndex, and
++        // subdata(in:) uses ABSOLUTE indices. Copying makes every offset below
++        // zero-based regardless of what the transport handed us.
++        let m = Data(msg1)
++        guard m.count >= NoiseSession.dhLen else { throw MeshError.handshakeFailed }
++
++        remoteEphemeral = m.prefix(NoiseSession.dhLen)
++        mixHash(remoteEphemeral!)
++        _ = try decryptAndHash(m.suffix(from: NoiseSession.dhLen))
++
++        var out = ephemeral.publicKey.rawRepresentation
++        mixHash(out)
++        mixKey(try dhEE())                                             // ee
++        out += try encryptAndHash(staticKey.publicKey.rawRepresentation) // s
++        mixKey(try dhES())                                             // es
++        out += try encryptAndHash(payload)                             // payload
++        return out
++    }
++
++    /// Message 3, initiator: reads message 2, writes `s, se` + payload.
++    /// 64 bytes with an empty payload. V3 produced 48.
++    public func readMessage2AndWrite3(_ msg2: Data,
++                                      payload: Data = Data()) throws -> Data {
++        let m = Data(msg2)
++        let encStaticLen = NoiseSession.dhLen + NoiseSession.tagLen   // 48
++        guard m.count >= NoiseSession.dhLen + encStaticLen else {
++            throw MeshError.handshakeFailed
++        }
++
++        remoteEphemeral = m.prefix(NoiseSession.dhLen)
++        mixHash(remoteEphemeral!)
++        mixKey(try dhEE())                                             // ee
++
++        // Split the encrypted static from the encrypted payload. V3 fed BOTH
++        // to one AEAD open and derived a 48-byte "X25519 key".
++        let encStatic = m.subdata(in: NoiseSession.dhLen ..< (NoiseSession.dhLen + encStaticLen))
++        remoteStaticKey = try decryptAndHash(encStatic)                // s
++        guard remoteStaticKey?.count == NoiseSession.dhLen else {
++            throw MeshError.handshakeFailed
++        }
++        mixKey(try dhES())                                             // es
++        _ = try decryptAndHash(m.suffix(from: NoiseSession.dhLen + encStaticLen))
++
++        // n is now 1 under the es key. encryptAndHash carries that forward.
++        var out = try encryptAndHash(staticKey.publicKey.rawRepresentation)  // s
++        mixKey(try dhSE())                                             // se
++        out += try encryptAndHash(payload)                             // payload
++        split()
++        return out
++    }
++
++    /// Message 3, responder side.
++    public func readMessage3(_ msg3: Data) throws {
++        let m = Data(msg3)
++        let encStaticLen = NoiseSession.dhLen + NoiseSession.tagLen
++        guard m.count >= encStaticLen else { throw MeshError.handshakeFailed }
++
++        remoteStaticKey = try decryptAndHash(m.prefix(encStaticLen))   // s
++        guard remoteStaticKey?.count == NoiseSession.dhLen else {
++            throw MeshError.handshakeFailed
++        }
++        mixKey(try dhSE())                                             // se
++        _ = try decryptAndHash(m.suffix(from: encStaticLen))
++        split()
++    }
++
++    private func split() {
++        let (k1, k2) = Hkdf.split(chainingKey: chainingKey, material: Data())
++        // Never the same key in both directions: that makes nonce reuse fatal.
++        sendKey    = SymmetricKey(data: role == .initiator ? k1 : k2)
++        receiveKey = SymmetricKey(data: role == .initiator ? k2 : k1)
++        sendNonce = 0
++        receiveNonce = 0
++        messagesSinceRekey = 0
++        sessionStart = Date()
++        isEstablished = true
++    }
++
++    /// Handshake hash, equal on both sides once the handshake completes.
++    /// Exposed so the port-vector test can assert it.
++    public var transcriptHash: Data { handshakeHash }
++
++    // MARK: - Transport
++
++    private static func transportNonce(_ n: UInt64) throws -> ChaChaPoly.Nonce {
++        var v = n.littleEndian
++        return try ChaChaPoly.Nonce(data: Data(count: 4) + Data(bytes: &v, count: 8))
++    }
++
++    public func encrypt(_ plaintext: Data) throws -> Data {
++        guard let key = sendKey else { throw MeshError.handshakeFailed }
++        rekeyIfNeeded()
++        let box = try ChaChaPoly.seal(plaintext, using: key,
++                                      nonce: NoiseSession.transportNonce(sendNonce))
++        sendNonce += 1
++        messagesSinceRekey += 1
++        return box.ciphertext + box.tag
++    }
++
++    public func decrypt(_ ciphertext: Data) throws -> Data {
++        guard let key = receiveKey,
++              ciphertext.count > NoiseSession.tagLen else {
++            throw MeshError.handshakeFailed
++        }
++        let box = try ChaChaPoly.SealedBox(
++            nonce: NoiseSession.transportNonce(receiveNonce),
++            ciphertext: ciphertext.dropLast(NoiseSession.tagLen),
++            tag: ciphertext.suffix(NoiseSession.tagLen))
++        let plain = try ChaChaPoly.open(box, using: key)
++        receiveNonce += 1
++        return plain
++    }
++
++    private func rekeyIfNeeded() {
++        let expired = Date().timeIntervalSince(sessionStart) > NoiseSession.rekeyTimeLimit
++        guard messagesSinceRekey >= NoiseSession.rekeyMessageLimit || expired else { return }
++        if let k = sendKey {
++            sendKey = SymmetricKey(data: Blake2s.hash(
++                k.withUnsafeBytes { Data($0) }, digestLength: 32))
++        }
++        if let k = receiveKey {
++            receiveKey = SymmetricKey(data: Blake2s.hash(
++                k.withUnsafeBytes { Data($0) }, digestLength: 32))
++        }
++        sendNonce = 0
++        receiveNonce = 0
++        messagesSinceRekey = 0
++        sessionStart = Date()
++    }
++}
+diff --git a/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/Router.swift b/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/Router.swift
+new file mode 100644
+index 0000000..6cd5a4e
+--- /dev/null
++++ b/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/Router.swift
+@@ -0,0 +1,104 @@
++import Foundation
++import GodstoneCore
++
++/// Delay-tolerant epidemic router, GMP/2.
++///
++/// V4: `ingest` now takes `FrameV2`, resolving the v1/v2 type error at
++/// MeshNode.swift:111. iOS is coherently v2; Android is coherently v1.
++///
++/// THIS ROUTER IS NOT AT PARITY WITH ANDROID AND V4 DOES NOT CLAIM IT IS.
++/// Still missing, each blocked on an ADR rather than guessed at:
++///   - proof of work            (Android enforces 20-bit on GROUP/BROADCAST)
++///   - frame-age expiry         (Android drops > 14 days; v2 has no timestamp)
++///   - digest from a durable store, not the dedup window   (ADR-004)
++///   - DIGEST/WANT anti-entropy on encounter               (ADR-001 + ADR-002)
++/// docs/adr/ADR-001 carries the full divergence table.
++public final class Router {
++
++    public static let defaultTtl: UInt8 = FrameV2.defaultTtl
++    public static let maxTtl: UInt8 = FrameV2.maxTtl
++    private static let seenCacheCapacity = 16_384
++
++    private var seen = LruSet<Data>(capacity: Router.seenCacheCapacity)
++    private var queue: [FrameV2] = []
++    private let lock = NSLock()
++
++    public var onDeliverLocally: ((FrameV2) -> Void)?
++    public var onForward: ((FrameV2) -> Void)?
++
++    public init() {}
++
++    /// True when the frame was new and has been accepted.
++    @discardableResult
++    public func ingest(_ frame: FrameV2, isAddressedToMe: Bool) -> Bool {
++        guard frame.ttl <= Router.maxTtl,
++              frame.hopCount <= Router.maxTtl else { return false }
++
++        // Only mutate the dedup set under the lock. User callbacks execute
++        // outside it so a callback cannot deadlock by re-entering the router.
++        lock.lock()
++        let duplicate = seen.contains(frame.msgId)
++        if !duplicate { seen.insert(frame.msgId) }
++        lock.unlock()
++        guard !duplicate else { return false }
++
++        if isAddressedToMe {
++            onDeliverLocally?(frame)
++            // SOS is still relayed after local delivery: someone further away
++            // may be the one who can actually help.
++            if frame.type != .sos { return true }
++        }
++
++        if frame.ttl > 1, frame.hopCount < Router.maxTtl {
++            enqueue(FrameV2(type: frame.type,
++                            msgId: frame.msgId,
++                            routingTag: frame.routingTag,
++                            ttl: frame.ttl - 1,
++                            hopCount: frame.hopCount + 1,
++                            flags: frame.flags,
++                            payload: frame.payload))
++        }
++        return true
++    }
++
++    private func enqueue(_ frame: FrameV2) {
++        lock.lock(); defer { lock.unlock() }
++        queue.append(frame)
++        queue.sort { priority($0) < priority($1) }
++        if queue.count > 512 {
++            queue.removeLast(queue.count - 512)   // SOS sorts first, never dropped
++        }
++    }
++
++    /// Delivery order under congestion. SOS always wins.
++    private func priority(_ f: FrameV2) -> Int {
++        switch f.type {
++        case .sos:        return 0
++        case .ack:        return 1
++        case .hello:      return 2
++        case .message:    return 3
++        case .digest, .want: return 4
++        case .ping, .goodbye: return 5
++        case .bulk_offer, .bulk_chunk: return 6
++        }
++    }
++
++    public func drain(limit: Int) -> [FrameV2] {
++        lock.lock(); defer { lock.unlock() }
++        let out = Array(queue.prefix(limit))
++        queue.removeFirst(out.count)
++        return out
++    }
++
++    /// 4096-bit Bloom digest.
++    ///
++    /// ADR-004 OPEN: this is built from the dedup window, which is a rolling set
++    /// of RECENTLY SEEN ids. Android builds its digest from the durable store,
++    /// which is the set of HELD frames. The two describe different sets for the
++    /// same node state, so reconciliation is semantically broken even once the
++    /// hash inputs are unified. iOS needs a durable store first.
++    public func bloomDigest() -> Data {
++        lock.lock(); defer { lock.unlock() }
++        return BloomDigest.build(from: seen.elements)
++    }
++}
+diff --git a/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/SessionManager.swift b/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/SessionManager.swift
+new file mode 100644
+index 0000000..3db5ca5
+--- /dev/null
++++ b/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/SessionManager.swift
+@@ -0,0 +1,79 @@
++import Foundation
++import CryptoKit
++import GodstoneCore
++
++/// Per-peer Noise session registry -- the layer that was MISSING from the runtime.
++///
++/// THE DEFECT THIS CLOSES. `NoiseSession.swift` existed and was carefully
++/// written, and nothing in the app ever constructed one. `BleTransport.send`
++/// wrote `frame.encode()` straight to the characteristic, so every byte the
++/// mesh sent was PLAINTEXT while the app, the store listing and the threat
++/// model all described end-to-end encryption.
++///
++/// There is deliberately no plaintext fallback: if no session is established
++/// the send fails and the delay-tolerant router carries the frame to the next
++/// encounter. Delay is the designed behaviour. Leaking is not.
++public final class SessionManager {
++
++    private let identity: MeshIdentity
++    private var sessions: [UUID: NoiseSession] = [:]
++    private let lock = NSLock()
++
++    public init(identity: MeshIdentity) {
++        self.identity = identity
++    }
++
++    public func established(_ peerId: UUID) -> NoiseSession? {
++        lock.lock(); defer { lock.unlock() }
++        guard let s = sessions[peerId], s.isEstablished else { return nil }
++        return s
++    }
++
++    @discardableResult
++    public func beginInitiator(_ peerId: UUID, remoteHint: Data) -> NoiseSession {
++        lock.lock(); defer { lock.unlock() }
++        if let existing = sessions[peerId] { return existing }
++        let s = NoiseSession(role: .initiator,
++                             staticKey: identity.agreementKey,
++                             localHint: identity.nodeHint,
++                             remoteHint: remoteHint)
++        sessions[peerId] = s
++        return s
++    }
++
++    @discardableResult
++    public func beginResponder(_ peerId: UUID, remoteHint: Data) -> NoiseSession {
++        lock.lock(); defer { lock.unlock() }
++        if let existing = sessions[peerId] { return existing }
++        let s = NoiseSession(role: .responder,
++                             staticKey: identity.agreementKey,
++                             localHint: identity.nodeHint,
++                             remoteHint: remoteHint)
++        sessions[peerId] = s
++        return s
++    }
++
++    /// Encrypt an encoded GMP/2 frame. Nil means "cannot send yet", never
++    /// "send in the clear".
++    public func seal(_ peerId: UUID, _ frameBytes: Data) -> Data? {
++        guard let s = established(peerId) else { return nil }
++        return try? s.encrypt(frameBytes)
++    }
++
++    /// Decrypt inbound bytes. Nil on tamper, replay or no session -- the frame
++    /// is dropped rather than processed.
++    public func open(_ peerId: UUID, _ ciphertext: Data) -> Data? {
++        guard let s = established(peerId) else { return nil }
++        return try? s.decrypt(ciphertext)
++    }
++
++    public func drop(_ peerId: UUID) {
++        lock.lock(); defer { lock.unlock() }
++        sessions.removeValue(forKey: peerId)
++    }
++
++    public func destroyAll() {
++        lock.lock(); defer { lock.unlock() }
++        sessions.removeAll()
++    }
++}
+diff --git a/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/WireV2.swift b/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/WireV2.swift
+new file mode 100644
+index 0000000..10af21b
+--- /dev/null
++++ b/ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/WireV2.swift
+@@ -0,0 +1,117 @@
++// GENERATED FROM wire/wire_v2.yaml -- DO NOT EDIT BY HAND.
++// Regenerate with `python -m wire.codegen`.
++// ci/check_parity.py Invariant A fails the build on any hand edit.
++import Foundation
++
++/// GMP/2 frame. Header is 32 bytes, big-endian.
++public struct FrameV2: Equatable {
++    public static let magic: UInt16 = 0x4753
++    public static let version: UInt8 = 0x02
++    public static let headerSize = 32
++    public static let maxPayload = 60000
++    public static let maxTtl: UInt8 = 16
++    public static let defaultTtl: UInt8 = 12
++
++    /// Shared BLE identifiers. Both platforms MUST use these exact values.
++    public static let serviceUuidString = "6764A001-9A5E-4C7B-B0A1-3E5D8C2F7A10"
++    public static let inboxUuidString = "6764A002-9A5E-4C7B-B0A1-3E5D8C2F7A10"
++    public static let digestUuidString = "6764A003-9A5E-4C7B-B0A1-3E5D8C2F7A10"
++
++    public enum Flags {
++        public static let sealed = 0x0001
++        public static let compressed = 0x0002
++        public static let fragmented = 0x0004
++        public static let has_pow = 0x0008
++        public static let ack_req = 0x0010
++        public static let relay_ok = 0x0020
++        public static let priority_mask = 0x0700
++    }
++
++    public let type: TypeV2
++    public let msgId: Data        // 16 bytes
++    public let routingTag: Data   // 4 bytes
++    public let ttl: UInt8
++    public let hopCount: UInt8
++    public let flags: UInt16
++    public let payload: Data
++
++    public init(type: TypeV2, msgId: Data, routingTag: Data, ttl: UInt8,
++                hopCount: UInt8, flags: UInt16, payload: Data) {
++        precondition(msgId.count == 16, "msg_id must be 16 bytes")
++        precondition(routingTag.count == 4, "routing_tag must be 4 bytes")
++        precondition(ttl <= FrameV2.maxTtl, "ttl out of range")
++        precondition(hopCount <= FrameV2.maxTtl, "hop_count out of range")
++        precondition(payload.count <= FrameV2.maxPayload, "payload too large")
++        self.type = type; self.msgId = msgId; self.routingTag = routingTag
++        self.ttl = ttl; self.hopCount = hopCount; self.flags = flags
++        self.payload = payload
++    }
++
++    public func encode() -> Data {
++        var out = Data(capacity: FrameV2.headerSize + payload.count)
++        out.append(UInt8((FrameV2.magic >> 8) & 0xFF))
++        out.append(UInt8(FrameV2.magic & 0xFF))
++        out.append(FrameV2.version)
++        out.append(type.rawValue)
++        out.append(msgId)
++        out.append(routingTag)
++        out.append(ttl)
++        out.append(hopCount)
++        out.append(UInt8((flags >> 8) & 0xFF)); out.append(UInt8(flags & 0xFF))
++        let len = UInt16(payload.count)
++        out.append(UInt8((len >> 8) & 0xFF)); out.append(UInt8(len & 0xFF))
++        let crc = FrameV2.crc16([UInt8](out))
++        out.append(UInt8((crc >> 8) & 0xFF)); out.append(UInt8(crc & 0xFF))
++        out.append(payload)
++        return out
++    }
++
++    /// Bounded, fail-closed parsing. Magic, version, CRC and the declared
++    /// length are validated BEFORE any allocation, so a desynced or corrupted
++    /// frame is rejected rather than half-parsed into a different message.
++    public static func decode(_ data: Data) -> FrameV2? {
++        guard data.count >= headerSize else { return nil }
++        let b = [UInt8](data)
++        guard (UInt16(b[0]) << 8 | UInt16(b[1])) == magic else { return nil }
++        guard b[2] == version else { return nil }
++        guard let type = TypeV2(rawValue: b[3]) else { return nil }
++        let ttl = b[24]
++        guard ttl <= maxTtl else { return nil }
++        let hop = b[25]
++        guard hop <= maxTtl else { return nil }
++        let flags = UInt16(b[26]) << 8 | UInt16(b[27])
++        let len = Int(b[28]) << 8 | Int(b[29])
++        let crc = UInt16(b[30]) << 8 | UInt16(b[31])
++        guard crc == crc16(Array(b[0..<(headerSize - 2)])) else { return nil }
++        guard len <= maxPayload, data.count == headerSize + len else { return nil }
++        return FrameV2(type: type,
++                       msgId: data.subdata(in: 4..<20),
++                       routingTag: data.subdata(in: 20..<24),
++                       ttl: ttl, hopCount: hop, flags: flags,
++                       payload: data.subdata(in: headerSize..<(headerSize + len)))
++    }
++
++    public static func crc16(_ data: [UInt8]) -> UInt16 {
++        var crc: UInt16 = 0xFFFF
++        for byte in data {
++            crc ^= UInt16(byte) << 8
++            for _ in 0..<8 {
++                crc = (crc & 0x8000) != 0 ? (crc << 1) ^ 0x1021 : crc << 1
++            }
++        }
++        return crc
++    }
++}
++
++public enum TypeV2: UInt8 {
++    case hello = 0x11
++    case digest = 0x12
++    case want = 0x14
++    case message = 0x18
++    case ack = 0x21
++    case bulk_offer = 0x22
++    case bulk_chunk = 0x24
++    case ping = 0x28
++    case goodbye = 0x41
++    case sos = 0xF0
++}
+diff --git a/ios/Packages/GodstoneFoundation/Tests/GodstoneCoreTests/OracleAnswerValidatorTests.swift b/ios/Packages/GodstoneFoundation/Tests/GodstoneCoreTests/OracleAnswerValidatorTests.swift
+new file mode 100644
+index 0000000..ecde4b0
+--- /dev/null
++++ b/ios/Packages/GodstoneFoundation/Tests/GodstoneCoreTests/OracleAnswerValidatorTests.swift
+@@ -0,0 +1,75 @@
++import XCTest
++@testable import GodstoneCore
++
++final class OracleAnswerValidatorTests: XCTestCase {
++    func testExactQuantityWithCitationIsAccepted() {
++        let result = OracleAnswerValidator.validate(
++            answer: "Rinse the container with 500 ml of clean water [1].",
++            chunks: [chunk("Rinse the container with 500 ml of clean water.")],
++            retrievalAllowed: true)
++        XCTAssertTrue(result.isValid, result.unsupported.joined(separator: "; "))
++    }
++
++    func testWrongUnitIsRejectedEvenWhenNumberMatches() {
++        let result = OracleAnswerValidator.validate(
++            answer: "Rinse the container with 500 mg of clean water [1].",
++            chunks: [chunk("Rinse the container with 500 ml of clean water.")],
++            retrievalAllowed: true)
++        XCTAssertFalse(result.isValid)
++    }
++
++    func testDenominatorOmissionIsRejected() {
++        let result = OracleAnswerValidator.validate(
++            answer: "Give 5 ml of the solution [1].",
++            chunks: [chunk("Give 5 ml per kg of the solution.")],
++            retrievalAllowed: true)
++        XCTAssertFalse(result.isValid)
++    }
++
++    func testWarningOmissionIsRejected() {
++        let result = OracleAnswerValidator.validate(
++            answer: "Use the medicine as directed [1].",
++            chunks: [chunk("Use the medicine as directed. Do not use for children under 2.")],
++            retrievalAllowed: true)
++        XCTAssertFalse(result.isValid)
++    }
++
++    /// (c) 10 minutes cannot approve 10 hours: value matches, time dimension
++    /// matches, but the unit differs (min vs h) -> rejected. Context terms are
++    /// deliberately shared so the unit mismatch is the sole rejection reason.
++    func testWrongTimeUnitIsRejectedEvenWhenNumberMatches() {
++        let result = OracleAnswerValidator.validate(
++            answer: "Allow the solution to rest for 10 minutes [1].",
++            chunks: [chunk("Allow the solution to rest for 10 hours.")],
++            retrievalAllowed: true)
++        XCTAssertFalse(result.isValid)
++        XCTAssertTrue(result.unsupported.contains { $0.contains("unsupported quantity") },
++                      "expected an unsupported-quantity finding, got: \(result.unsupported)")
++    }
++
++    /// (e) An answer with no citation markers at all is rejected in full,
++    /// regardless of whether the content otherwise matches a chunk.
++    func testUncitedAnswerIsRejectedInFull() {
++        let result = OracleAnswerValidator.validate(
++            answer: "Give 500 ml of water.",
++            chunks: [chunk("Give 500 ml of water.")],
++            retrievalAllowed: true)
++        XCTAssertFalse(result.isValid)
++    }
++
++    /// Invalid output is discarded in full: when a single cited answer carries
++    /// two quantities and only one is unsupported, the entire answer is rejected
++    /// (the validator never returns a partially-sanitised answer).
++    func testInvalidOutputIsDiscardedInFull() {
++        let result = OracleAnswerValidator.validate(
++            answer: "Rinse with 500 ml of water [1], then wait 10 minutes [1].",
++            chunks: [chunk("Rinse with 500 ml of water. Wait 10 hours.")],
++            retrievalAllowed: true)
++        XCTAssertFalse(result.isValid, "an unsupported quantity must reject the whole answer")
++    }
++
++    private func chunk(_ text: String) -> RetrievedChunk {
++        RetrievedChunk(chunkId: 1, documentId: 1, documentTitle: "Reviewed source",
++            section: "Procedure", domain: "medical", text: text, score: 1)
++    }
++}
+diff --git a/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/PortVectorTests.swift b/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/PortVectorTests.swift
+new file mode 100644
+index 0000000..5a33de5
+--- /dev/null
++++ b/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/PortVectorTests.swift
+@@ -0,0 +1,108 @@
++import XCTest
++@testable import GodstoneCore
++@testable import GodstoneMesh
++import CryptoKit
++
++final class PortVectorTests: XCTestCase {
++    private func hex(_ data: Data) -> String {
++        data.map { String(format: "%02x", $0) }.joined()
++    }
++
++    func testBlake2sPortMatchesGeneratedVectors() {
++        let cases: [(Data, Int, String)] = [
++            (Data(), 32, "69217a3079908094e11121d042354a7c1f55b6482ca1a51e1b250dfd1ed0eef9"),
++            (Data("abc".utf8), 32, "508c5e8c327c14e2e1a72ba34eeb452f37458b209ed63a294d999b4c86675982"),
++            (Data("abc".utf8), 16, "aa4938119b1dc7b87cbad0ffd200d0ae"),
++            (Data("abc".utf8), 8, "972e9d2cd6de6402"),
++            // NOTE: the pinned expected digests below are the BLAKE2s hashes of
++            // 64 and 65 bytes of 0x41 ('A'), as generated by crypto/port_vectors.py
++            // from b"A"*64 / b"A"*65 and pinned in crypto/port_vectors.json. An
++            // earlier transcription used 0xA5 as the input byte while keeping the
++            // 0x41-derived expected values, making the vector self-inconsistent
++            // (the impl was correct; it produced 66c28dc2… for 0xA5*64, which
++            // matches Python hashlib.blake2s for that input). The input byte is
++            // restored to 0x41 so input and expected agree. The implementation
++            // (Blake2s.swift) and the pinned fixture (port_vectors.json) are
++            // unchanged and correct. This is distinct from A-06, which tracks
++            // unpinned external Noise handshake vectors, not BLAKE2s primitive
++            // vectors.
++            (Data(repeating: 0x41, count: 64), 32, "f85b88e0ac55872416d202c5f4881e7dbc9c7270542ef75074ff9b0a610b5a0e"),
++            (Data(repeating: 0x41, count: 65), 32, "65bba861969fcb5f1d8ec69e1dbd3e891f546b02203ce73b27958b9589a6789d")
++        ]
++        for (input, length, expected) in cases {
++            XCTAssertEqual(hex(Blake2s.hash(input, digestLength: length)), expected)
++        }
++    }
++
++    /// Known-answer tests for the BLAKE2s primitive, pinned to the canonical
++    /// RFC 7693 test vectors and independently verified against Python
++    /// `hashlib.blake2s` (an OpenSSL-backed implementation, not a repo fixture).
++    /// These cover: empty input, short input, one-block boundary (64 bytes),
++    /// multi-block boundary (65 bytes), a longer multi-block input, keyed mode,
++    /// and output-length variants (16, 8). Distinct from A-06's Noise vectors.
++    func testBlake2sKnownAnswers() {
++        let kat: [(Data, Int, String)] = [
++            (Data(), 32, "69217a3079908094e11121d042354a7c1f55b6482ca1a51e1b250dfd1ed0eef9"),
++            (Data("abc".utf8), 32, "508c5e8c327c14e2e1a72ba34eeb452f37458b209ed63a294d999b4c86675982"),
++            (Data("abc".utf8), 16, "aa4938119b1dc7b87cbad0ffd200d0ae"),
++            (Data("abc".utf8), 8, "972e9d2cd6de6402"),
++            (Data(repeating: 0x41, count: 64), 32, "f85b88e0ac55872416d202c5f4881e7dbc9c7270542ef75074ff9b0a610b5a0e"),
++            (Data(repeating: 0x41, count: 65), 32, "65bba861969fcb5f1d8ec69e1dbd3e891f546b02203ce73b27958b9589a6789d"),
++            (Data("The quick brown fox jumps over the lazy dog".utf8), 32,
++             "606beeec743ccbeff6cbcdf5d5302aa855c256c29b88c8ed331ea1a6bf3c8812"),
++            // keyed mode: 32-byte zero key, empty input.
++            (Data(), 32, "cc8ed046995def3f21db6abcfe34c3526960be9dd3270ed1ab7cfc7f29ad4bd6")
++        ]
++        for (input, length, expected) in kat {
++            let key = input == Data() && length == 32 && expected.hasPrefix("cc8ed046")
++                ? Data(repeating: 0, count: 32) : Data()
++            XCTAssertEqual(hex(Blake2s.hash(input, digestLength: length, key: key)), expected)
++        }
++    }
++
++    /// Mutation / negative control: a single-byte change in the input MUST
++    /// change the digest, and restoring the byte MUST reproduce it. This proves
++    /// the hash is sensitive to input (the KATs above are not trivially passing)
++    /// and would fail if the implementation lost diffusion.
++    func testBlake2sMutationChangesDigest() {
++        let original = Data("godstone".utf8)
++        var mutated = original
++        mutated[mutated.endIndex - 1] = 0x66  // 'e' -> 'f'
++        let a = Blake2s.hash(original, digestLength: 32)
++        let b = Blake2s.hash(mutated, digestLength: 32)
++        XCTAssertNotEqual(a, b, "a one-byte input change must change the digest")
++        XCTAssertEqual(a, Blake2s.hash(original, digestLength: 32),
++                       "restoring the byte must reproduce the original digest")
++        // explicit guard against the original 0xA5 transcription slipping back:
++        // hashing 0x41*64 must differ from 0xA5*64 (both 64 bytes, one-block).
++        XCTAssertNotEqual(
++            Blake2s.hash(Data(repeating: 0x41, count: 64), digestLength: 32),
++            Blake2s.hash(Data(repeating: 0xA5, count: 64), digestLength: 32))
++    }
++
++    func testNoiseXXEmptyPayloadMessageSizesAndTransport() throws {
++        let initiatorStatic = Curve25519.KeyAgreement.PrivateKey()
++        let responderStatic = Curve25519.KeyAgreement.PrivateKey()
++        let initiatorHint = Data([1, 2, 3, 4])
++        let responderHint = Data([5, 6, 7, 8])
++
++        let initiator = NoiseSession(role: .initiator, staticKey: initiatorStatic,
++                                     localHint: initiatorHint, remoteHint: responderHint)
++        let responder = NoiseSession(role: .responder, staticKey: responderStatic,
++                                     localHint: responderHint, remoteHint: initiatorHint)
++
++        let m1 = try initiator.writeMessage1()
++        let m2 = try responder.readMessage1AndWrite2(m1)
++        let m3 = try initiator.readMessage2AndWrite3(m2)
++        try responder.readMessage3(m3)
++
++        XCTAssertEqual([m1.count, m2.count, m3.count], [32, 96, 64])
++        XCTAssertTrue(initiator.isEstablished)
++        XCTAssertTrue(responder.isEstablished)
++        XCTAssertEqual(initiator.transcriptHash, responder.transcriptHash)
++
++        let message = Data("godstone-port-vector".utf8)
++        XCTAssertEqual(try responder.decrypt(initiator.encrypt(message)), message)
++        XCTAssertEqual(try initiator.decrypt(responder.encrypt(message)), message)
++    }
++}
+diff --git a/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/RouterTests.swift b/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/RouterTests.swift
+new file mode 100644
+index 0000000..c40971e
+--- /dev/null
++++ b/ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/RouterTests.swift
+@@ -0,0 +1,68 @@
++import XCTest
++@testable import GodstoneMesh
++import GodstoneCore
++
++final class RouterTests: XCTestCase {
++    private static let routingTag = Data(repeating: 0x01, count: 4)
++
++    private func frame(_ id: String,
++                       ttl: UInt8 = 8,
++                       type: TypeV2 = .message,
++                       flags: UInt16 = UInt16(FrameV2.Flags.relay_ok)) -> FrameV2 {
++        var messageId = Data(id.utf8)
++        if messageId.count < 16 {
++            messageId.append(Data(repeating: 0, count: 16 - messageId.count))
++        }
++        return FrameV2(
++            type: type,
++            msgId: Data(messageId.prefix(16)),
++            routingTag: Self.routingTag,
++            ttl: ttl,
++            hopCount: 0,
++            flags: flags,
++            payload: Data(repeating: 0, count: 32)
++        )
++    }
++
++    func testDuplicateIsSuppressed() {
++        let router = Router()
++        let f = frame("msg-1")
++        XCTAssertTrue(router.ingest(f, isAddressedToMe: false))
++        XCTAssertFalse(router.ingest(f, isAddressedToMe: false))
++    }
++
++    func testTtlAndHopCountChangeOnRelay() throws {
++        let router = Router()
++        XCTAssertTrue(router.ingest(frame("msg-2", ttl: 5), isAddressedToMe: false))
++        let relayed = try XCTUnwrap(router.drain(limit: 1).first)
++        XCTAssertEqual(relayed.ttl, 4)
++        XCTAssertEqual(relayed.hopCount, 1)
++    }
++
++    func testSosIsDeliveredLocallyAndStillRelayed() {
++        let router = Router()
++        var delivered: FrameV2?
++        router.onDeliverLocally = { delivered = $0 }
++
++        let sos = frame("msg-sos", ttl: 8, type: .sos,
++                        flags: UInt16(FrameV2.Flags.ack_req | FrameV2.Flags.relay_ok))
++        XCTAssertTrue(router.ingest(sos, isAddressedToMe: true))
++        XCTAssertEqual(delivered?.type, .sos)
++        XCTAssertFalse(router.drain(limit: 8).isEmpty)
++    }
++
++    func testNonSosLocalDeliveryDoesNotRelay() {
++        let router = Router()
++        XCTAssertTrue(router.ingest(frame("local"), isAddressedToMe: true))
++        XCTAssertTrue(router.drain(limit: 8).isEmpty)
++    }
++
++    func testBloomDigestIsStableAcrossDuplicate() {
++        let router = Router()
++        _ = router.ingest(frame("msg-bloom"), isAddressedToMe: false)
++        let first = router.bloomDigest()
++        XCTAssertEqual(first.count, 512)
++        _ = router.ingest(frame("msg-bloom"), isAddressedToMe: false)
++        XCTAssertEqual(first, router.bloomDigest())
++    }
++}
+diff --git a/ios/project.yml b/ios/project.yml
+index e9f7247..1714174 100644
+--- a/ios/project.yml
++++ b/ios/project.yml
+@@ -1,36 +1,14 @@
+-# SYNTHESIZED gap-closure file -- authored to make the project compile; see docs/AUDIT.md.
+-#
+-# XcodeGen project specification for the Godstone iOS app.
+-#
+-# The app is assembled from the three local SwiftPM products in ./Godstone
+-# (GodstoneCore, GodstoneMesh, GodstoneLLM), mirroring the Android module
+-# graph:  app -> (GodstoneMesh, GodstoneLLM) -> GodstoneCore.
+-#
+-# GodstoneLLM requires a reviewed, pinned llama.cpp checkout at
+-# ../../third_party/llama.cpp. V4 contains neither a `.gitmodules` gitlink nor a
+-# verified source-archive lock, so the complete native app build remains blocked.
+-# XcodeGen can still generate the project; the LLM compile must fail loudly until
+-# release engineering supplies the dependency described in third_party/README.md.
+-
+ name: Godstone
+-
+ options:
+   bundleIdPrefix: io.godstone
+   deploymentTarget:
+     iOS: "16.0"
+-  # XcodeGen should create the .xcodeproj next to this spec; the package is
+-  # referenced relatively so the spec is portable across checkouts.
+   createIntermediateGroups: true
+   groupSortPosition: top
+ 
+-# Three tier build configurations (debug-type). XcodeGen only auto-creates
+-# Debug/Release; the per-tier configs referenced by the Godstone target's
+-# settings.configs and by the schemes below must be declared here or the spec
+-# is rejected ("invalid build configuration light/medium/large").
+ configs:
+-  light: debug
+-  medium: debug
+-  large: debug
++  LightDebug: debug
++  LightRelease: release
+ 
+ settings:
+   base:
+@@ -38,10 +16,6 @@ settings:
+     DEVELOPMENT_TEAM: ""
+     CODE_SIGN_STYLE: Automatic
+     ENABLE_BITCODE: NO
+-    # llama.cpp lives outside the package; the GodstoneLLM target also sets
+-    # this, but the search path is repeated here so the app target's header
+-    # map can see it when bridging is needed.
+-    # HEADER_SEARCH_PATHS: $(inherited) $(SRCROOT)/../third_party/llama.cpp
+ 
+ packages:
+   GodstonePackages:
+@@ -52,142 +26,57 @@ targets:
+     type: application
+     platform: iOS
+     sources:
+-      - Godstone/Sources/App
+-      # The .gguf model and .db archive are mmap'd at runtime. Without a
+-      # resources phase they are never copied into the bundle, so
+-      # Bundle.main.path(forResource:) returns nil on a device that by
+-      # definition cannot download them (C1).
+-      - path: Godstone/Resources
+-        type: folder
+-        optional: true
++      - path: Godstone/Sources/App/AppContainer.swift
++      - path: Godstone/Sources/App/ArchiveView.swift
++      - path: Godstone/Sources/App/GodstoneApp.swift
++      - path: Godstone/Sources/App/GodstoneTheme.swift
++      - path: Godstone/Sources/App/RootView.swift
++      - path: Godstone/PrivacyInfo.xcprivacy
++        buildPhase: resources
++      # NOTE: The Archive (.db) and model (.gguf) assets are intentionally NOT
++      # bundled as static folder resources here. They are mmap'd at runtime via
++      # Bundle.main.path(forResource:) keyed off INFOPLIST_KEY_GodstoneArchiveFile
++      # / GodstoneModelFile. When an approved asset is absent, the lookup returns
++      # nil and the app enters a truthful unavailable/degraded state
++      # (ArchiveRepository.isAvailable == false) rather than failing the build.
++      # Adding a per-tier Resources/<tier> folder reference caused xcodebuild to
++      # emit a CpResource for a nonexistent directory and fail; that reference is
++      # removed so the app compiles with zero production content present.
++      # A staging task that verifies approved assets (see content/release_gate.py)
++      # is the gate before any resource phase is reintroduced.
+     dependencies:
+       - package: GodstonePackages
+         product: GodstoneCore
+-      - package: GodstonePackages
+-        product: GodstoneMesh
+-      - package: GodstonePackages
+-        product: GodstoneLLM
+     settings:
+       base:
+         PRODUCT_BUNDLE_IDENTIFIER: io.godstone.app
++        PRODUCT_NAME: Godstone
+         INFOPLIST_FILE: Godstone/Info.plist
+         CODE_SIGN_ENTITLEMENTS: Godstone/Godstone.entitlements
+-        # No app-level bridging header is required: LlamaBridge.h is a public
+-        # header inside the GodstoneLLM SwiftPM target, which exports its own
+-        # module. SWIFT_OBJC_BRIDGING_HEADER is intentionally omitted.
+-        # SWIFT_OBJC_BRIDGING_HEADER: ""
+-        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+         TARGETED_DEVICE_FAMILY: "1,2"
++        INFOPLIST_KEY_GodstoneTier: LIGHT
++        INFOPLIST_KEY_GodstoneArchiveFile: archive_light.db
+       configs:
+-        # Per-tier config overrides. Each scheme below selects one of these
+-        # build configurations, which fixes the Info.plist GodstoneTier value,
+-        # the bundle-id suffix, and the model/archive resources to copy.
+-        # The model and archive assets must not be compressed (they are mmap'd
+-        # at runtime, exactly as on Android); the resources build phase below
+-        # copies them verbatim.
+-        light:
+-          PRODUCT_BUNDLE_IDENTIFIER: io.godstone.app.light
+-          PRODUCT_NAME: Godstone-Light
+-          INFOPLIST_KEY_GodstoneTier: LIGHT
+-          INFOPLIST_KEY_GodstoneModelFile: qwen3-0.6b-q4km.gguf
+-          INFOPLIST_KEY_GodstoneArchiveFile: archive_light.db
+-          ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+-        medium:
+-          PRODUCT_BUNDLE_IDENTIFIER: io.godstone.app.medium
+-          PRODUCT_NAME: Godstone-Medium
+-          INFOPLIST_KEY_GodstoneTier: MEDIUM
+-          INFOPLIST_KEY_GodstoneModelFile: qwen3-1.7b-q4km.gguf
+-          INFOPLIST_KEY_GodstoneArchiveFile: archive_medium.db
+-        large:
+-          PRODUCT_BUNDLE_IDENTIFIER: io.godstone.app.large
+-          PRODUCT_NAME: Godstone-Large
+-          INFOPLIST_KEY_GodstoneTier: LARGE
+-          INFOPLIST_KEY_GodstoneModelFile: qwen3-4b-q5km.gguf
+-          INFOPLIST_KEY_GodstoneArchiveFile: archive_large.db
++        LightDebug:
++          SWIFT_ACTIVE_COMPILATION_CONDITIONS: DEBUG ARCHIVE_ONLY
++        LightRelease:
++          SWIFT_COMPILATION_MODE: wholemodule
++          SWIFT_OPTIMIZATION_LEVEL: -O
++          ENABLE_TESTABILITY: NO
++          SWIFT_ACTIVE_COMPILATION_CONDITIONS: ARCHIVE_ONLY
+ 
+-# ---------------------------------------------------------------------------
+-# Schemes: one per tier. Each scheme pins the build configuration so the
+-# correct GodstoneTier, bundle id suffix, and bundled model/archive resources
+-# are selected. This mirrors the Android `tier` flavor dimension in
+-# android/app/build.gradle.kts.
+-# ---------------------------------------------------------------------------
+ schemes:
+   Godstone-Light:
+     build:
+       targets:
+         Godstone: all
+-      configs:
+-        - light
+-    run:
+-      config: light
+-    test:
+-      config: light
+-      # Test targets omitted: GodstoneMeshTests is an SPM package test target
+-      # and XcodeGen 2.46.0 rejects it as a scheme test target ("invalid test
+-      # target"). Run mesh tests via `swift test --target GodstoneMeshTests`.
+-    profile:
+-      config: light
+-    analyze:
+-      config: light
+-    archive:
+-      config: light
+-
+-  Godstone-Medium:
+-    build:
+-      targets:
+-        Godstone: all
+-      configs:
+-        - medium
+     run:
+-      config: medium
++      config: LightDebug
+     test:
+-      config: medium
+-      # Test targets omitted: GodstoneMeshTests is an SPM package test target
+-      # and XcodeGen 2.46.0 rejects it as a scheme test target ("invalid test
+-      # target"). Run mesh tests via `swift test --target GodstoneMeshTests`.
+-    profile:
+-      config: medium
++      config: LightDebug
+     analyze:
+-      config: medium
+-    archive:
+-      config: medium
+-
+-  Godstone-Large:
+-    build:
+-      targets:
+-        Godstone: all
+-      configs:
+-        - large
+-    run:
+-      config: large
+-    test:
+-      config: large
+-      # Test targets omitted: GodstoneMeshTests is an SPM package test target
+-      # and XcodeGen 2.46.0 rejects it as a scheme test target ("invalid test
+-      # target"). Run mesh tests via `swift test --target GodstoneMeshTests`.
++      config: LightRelease
+     profile:
+-      config: large
+-    analyze:
+-      config: large
++      config: LightRelease
+     archive:
+-      config: large
+-
+-# ---------------------------------------------------------------------------
+-# Notes for whoever drives `xcodegen generate`:
+-#
+-#  * The GodstoneMeshTests and GodstoneLLMTests schemes above are defined in
+-#    the local Package.swift; XcodeGen will surface them once the package is
+-#    resolved. If a test target is renamed upstream, update the entries here.
+-#
+-#  * The model (.gguf) and archive (.db) resources are NOT listed as explicit
+-#    sources because they are tier-specific. Ship them as Copy Bundle
+-#    Resources entries keyed off the active config, or -- simplest -- add a
+-#    per-tier folder reference (Godstone/Resources/light, .../medium,
+-#    .../large) and include the matching folder in each config's sources.
+-#    TODO: add folder references once the resource layout is finalised.
+-#
+-#  * HEADER_SEARCH_PATHS for llama.cpp is the responsibility of the
+-#    GodstoneLLM SwiftPM target (see Package.swift's cSettings). The app
+-#    target itself never imports llama.cpp directly, so no app-level search
+-#    path is required. The commented value above is kept for reference.
+-# ---------------------------------------------------------------------------
++      config: LightRelease
+diff --git a/scripts/sync_ios_foundation_package.py b/scripts/sync_ios_foundation_package.py
+new file mode 100755
+index 0000000..4563e4e
+--- /dev/null
++++ b/scripts/sync_ios_foundation_package.py
+@@ -0,0 +1,88 @@
++#!/usr/bin/env python3
++"""Materialize the host-testable iOS Core+Mesh package deterministically.
++
++Authoritative sources: ios/Godstone/Sources/{GodstoneCore,GodstoneMesh} and
++ios/Godstone/Tests/{GodstoneCoreTests,GodstoneMeshTests}. This script COPIES
++them (destructively: rmtree + copyfile) into ios/Packages/GodstoneFoundation
++so the Core+Mesh closure can be `swift test`-ed on a host/CI without building
++the iOS-only GodstoneLLMBridge (llama.cpp) target.
++
++The Foundation package is a GENERATED artifact. Do NOT edit its Sources/ or
++Tests/ trees by hand — edits are silently overwritten on the next sync. Make
++all changes in ios/Godstone (canonical) and re-run this script, then commit
++the regenerated tree. CI runs `--check` to fail on drift between the committed
++generated tree and canonical, so a hand-edit or a forgotten re-sync is caught.
++The Foundation Package.swift is a hand-maintained subset (it intentionally
++omits the GodstoneLLMBridge/GodstoneLLM targets) and is NOT reconciled by the
++copy logic; its hash is recorded in SOURCE_MANIFEST.json for drift detection.
++"""
++from __future__ import annotations
++
++import argparse
++import hashlib
++import json
++import shutil
++from pathlib import Path
++
++ROOT = Path(__file__).resolve().parents[1]
++PACKAGE = ROOT / "ios" / "Packages" / "GodstoneFoundation"
++MAPPINGS = {
++    ROOT / "ios" / "Godstone" / "Sources" / "GodstoneCore": PACKAGE / "Sources" / "GodstoneCore",
++    ROOT / "ios" / "Godstone" / "Sources" / "GodstoneMesh": PACKAGE / "Sources" / "GodstoneMesh",
++    ROOT / "ios" / "Godstone" / "Tests" / "GodstoneCoreTests": PACKAGE / "Tests" / "GodstoneCoreTests",
++    ROOT / "ios" / "Godstone" / "Tests" / "GodstoneMeshTests": PACKAGE / "Tests" / "GodstoneMeshTests",
++}
++
++
++def digest(path: Path) -> str:
++    h = hashlib.sha256()
++    h.update(path.relative_to(PACKAGE).as_posix().encode())
++    h.update(b"\0")
++    h.update(path.read_bytes())
++    return h.hexdigest()
++
++
++def main() -> int:
++    parser = argparse.ArgumentParser()
++    parser.add_argument("--check", action="store_true", help="fail if generated package drifts")
++    args = parser.parse_args()
++
++    for source, destination in MAPPINGS.items():
++        if not source.is_dir():
++            raise SystemExit(f"missing source directory: {source}")
++        if args.check:
++            if not destination.is_dir():
++                raise SystemExit(f"missing generated directory: {destination}")
++            source_files = {p.relative_to(source) for p in source.rglob("*.swift")}
++            dest_files = {p.relative_to(destination) for p in destination.rglob("*.swift")}
++            if source_files != dest_files:
++                raise SystemExit(f"generated file-set drift: {source} -> {destination}")
++            for rel in sorted(source_files):
++                if source.joinpath(rel).read_bytes() != destination.joinpath(rel).read_bytes():
++                    raise SystemExit(f"generated source drift: {destination / rel}")
++        else:
++            shutil.rmtree(destination, ignore_errors=True)
++            destination.mkdir(parents=True, exist_ok=True)
++            for path in sorted(source.rglob("*.swift")):
++                target = destination / path.relative_to(source)
++                target.parent.mkdir(parents=True, exist_ok=True)
++                shutil.copyfile(path, target)
++
++    manifest = {
++        "schema": 1,
++        "files": {
++            p.relative_to(PACKAGE).as_posix(): digest(p)
++            for p in sorted(PACKAGE.rglob("*.swift"))
++        },
++    }
++    manifest_path = PACKAGE / "SOURCE_MANIFEST.json"
++    if args.check:
++        if json.loads(manifest_path.read_text()) != manifest:
++            raise SystemExit("GodstoneFoundation SOURCE_MANIFEST.json drift")
++    else:
++        manifest_path.write_text(json.dumps(manifest, indent=2, sort_keys=True) + "\n")
++    return 0
++
++
++if __name__ == "__main__":
++    raise SystemExit(main())

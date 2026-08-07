@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.godstone.mesh.wire.v2.WireV2VectorTest" tests="13" skipped="0" failures="0" errors="0" timestamp="2026-08-06T17:32:45" hostname="Naraharikripas-Mac-mini.local" time="0.004">
+  <properties/>
+  <testcase name="reject_hop_count_over_max is rejected at the wire layer" classname="io.godstone.mesh.wire.v2.WireV2VectorTest" time="0.001"/>
+  <testcase name="reject_v1_frame is rejected at the wire layer" classname="io.godstone.mesh.wire.v2.WireV2VectorTest" time="0.0"/>
+  <testcase name="encode_hello reproduces golden vector" classname="io.godstone.mesh.wire.v2.WireV2VectorTest" time="0.0"/>
+  <testcase name="reject_sos_missing_flags parses as a frame but is refused by the SOS validator" classname="io.godstone.mesh.wire.v2.WireV2VectorTest" time="0.002"/>
+  <testcase name="decode round-trips every positive golden vector" classname="io.godstone.mesh.wire.v2.WireV2VectorTest" time="0.0"/>
+  <testcase name="encode_digest reproduces golden vector" classname="io.godstone.mesh.wire.v2.WireV2VectorTest" time="0.0"/>
+  <testcase name="sos validator rejects a non-sos type" classname="io.godstone.mesh.wire.v2.WireV2VectorTest" time="0.0"/>
+  <testcase name="reject_bad_crc is rejected at the wire layer" classname="io.godstone.mesh.wire.v2.WireV2VectorTest" time="0.0"/>
+  <testcase name="encode_sos reproduces golden vector" classname="io.godstone.mesh.wire.v2.WireV2VectorTest" time="0.001"/>
+  <testcase name="reject_sos_missing_payload_magic parses as a frame but is refused by the SOS validator" classname="io.godstone.mesh.wire.v2.WireV2VectorTest" time="0.0"/>
+  <testcase name="encode_message reproduces golden vector" classname="io.godstone.mesh.wire.v2.WireV2VectorTest" time="0.0"/>
+  <testcase name="sos validator accepts the golden sos vector" classname="io.godstone.mesh.wire.v2.WireV2VectorTest" time="0.0"/>
+  <testcase name="reject_legacy_type_0x02 is rejected at the wire layer" classname="io.godstone.mesh.wire.v2.WireV2VectorTest" time="0.0"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

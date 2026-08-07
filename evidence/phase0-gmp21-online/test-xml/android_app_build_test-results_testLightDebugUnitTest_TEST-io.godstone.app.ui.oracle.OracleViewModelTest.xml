@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.godstone.app.ui.oracle.OracleViewModelTest" tests="6" skipped="0" failures="0" errors="0" timestamp="2026-08-06T17:13:51" hostname="Naraharikripas-Mac-mini.local" time="0.071">
+  <properties/>
+  <testcase name="testFakeGeneratorMismatchesAreRejected" classname="io.godstone.app.ui.oracle.OracleViewModelTest" time="0.057"/>
+  <testcase name="testMutationPublishingPartialTokensIsDetected" classname="io.godstone.app.ui.oracle.OracleViewModelTest" time="0.003"/>
+  <testcase name="testValidationAcceptsCompletedDraftPublishesExactlyOnce" classname="io.godstone.app.ui.oracle.OracleViewModelTest" time="0.003"/>
+  <testcase name="testValidationRejectsCompletedDraftDiscardsItInFull" classname="io.godstone.app.ui.oracle.OracleViewModelTest" time="0.001"/>
+  <testcase name="testCancellationHidesPartialAndRestoresPriorAnswer" classname="io.godstone.app.ui.oracle.OracleViewModelTest" time="0.006"/>
+  <testcase name="testGenerationThrowingExposesNoTokenAndDegrades" classname="io.godstone.app.ui.oracle.OracleViewModelTest" time="0.001"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

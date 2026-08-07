@@ -1,0 +1,25 @@
+## Android Phase 0 verification environment
+mode=offline-preprovisioned
+timestamp=20260807T005459Z
+repo_root=/tmp/gs-remediate
+evidence_dir=evidence/phase0-gmp21-offline
+
+## host
+Darwin Naraharikripas-Mac-mini.local 25.5.0 Darwin Kernel Version 25.5.0: Tue Jun  9 22:26:22 PDT 2026; root:xnu-12377.121.10~1/RELEASE_ARM64_T8132 arm64
+26.5.2
+
+## ANDROID_HOME=/opt/homebrew/share/android-commandlinetools  ANDROID_SDK_ROOT=/opt/homebrew/share/android-commandlinetools
+## JAVA_HOME=/opt/homebrew/opt/openjdk@17/libexec/openjdk.jdk/Contents/Home  GRADLE_USER_HOME=<default>
+
+## tool versions
+--- java -version ---
+openjdk version "17.0.20" 2026-07-21
+OpenJDK Runtime Environment Homebrew (build 17.0.20+0)
+OpenJDK 64-Bit Server VM Homebrew (build 17.0.20+0, mixed mode, sharing)
+--- python3 --version ---
+Python 3.14.4
+--- adb version (best-effort) ---
+Android Debug Bridge version 1.0.41
+Version 37.0.1-15733141
+Installed as /opt/homebrew/share/android-commandlinetools/platform-tools/adb
+Running on Darwin 25.5.0 (arm64)

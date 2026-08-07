@@ -1,0 +1,1712 @@
+diff --git a/android/app/src/main/java/io/godstone/app/ui/oracle/OracleViewModel.kt b/android/app/src/main/java/io/godstone/app/ui/oracle/OracleViewModel.kt
+index 89f520b..2615745 100644
+--- a/android/app/src/main/java/io/godstone/app/ui/oracle/OracleViewModel.kt
++++ b/android/app/src/main/java/io/godstone/app/ui/oracle/OracleViewModel.kt
+@@ -5,12 +5,17 @@ import androidx.lifecycle.viewModelScope
+ import dagger.hilt.android.lifecycle.HiltViewModel
+ import io.godstone.llm.rag.Citation
+ import io.godstone.llm.rag.RagPipeline
++import kotlinx.coroutines.CancellationException
++import kotlinx.coroutines.Job
+ import kotlinx.coroutines.flow.MutableStateFlow
+ import kotlinx.coroutines.flow.StateFlow
+ import kotlinx.coroutines.flow.asStateFlow
++import kotlinx.coroutines.flow.collect
+ import kotlinx.coroutines.launch
+ import javax.inject.Inject
+ 
++enum class OraclePhase { IDLE, RETRIEVING, GENERATING, ANSWERED, REFUSED, DEGRADED }
++
+ data class OracleUiState(
+     val question: String = "",
+     val answer: String = "",
+@@ -18,21 +23,20 @@ data class OracleUiState(
+     val streaming: Boolean = false,
+     val refused: Boolean = false,
+     val refusalReason: String? = null,
+-    val modelReady: Boolean = false
++    val modelReady: Boolean = false,
++    val phase: OraclePhase = OraclePhase.IDLE
+ )
+ 
+ @HiltViewModel
+-class OracleViewModel @Inject constructor(
+-    private val rag: RagPipeline
+-) : ViewModel() {
+-
++class OracleViewModel @Inject constructor(private val rag: RagPipeline) : ViewModel() {
+     private val _state = MutableStateFlow(OracleUiState())
+     val state: StateFlow<OracleUiState> = _state.asStateFlow()
++    private var generationJob: Job? = null
+ 
+     init {
+         viewModelScope.launch {
+-            rag.warmUp()
+-            _state.value = _state.value.copy(modelReady = true)
++            val ready = runCatching { rag.warmUp() }.getOrDefault(false)
++            _state.value = _state.value.copy(modelReady = ready)
+         }
+     }
+ 
+@@ -41,49 +45,86 @@ class OracleViewModel @Inject constructor(
+     }
+ 
+     fun ask() {
+-        val q = _state.value.question.trim()
+-        if (q.isEmpty()) return
+-
+-        _state.value = _state.value.copy(
+-            answer = "",
+-            citations = emptyList(),
+-            streaming = true,
+-            refused = false,
+-            refusalReason = null
+-        )
++        val question = _state.value.question.trim()
++        if (question.isEmpty()) return
++        generationJob?.cancel()
++        generationJob = viewModelScope.launch {
++            _state.value = OracleUiState(
++                question = question,
++                modelReady = _state.value.modelReady,
++                streaming = true,
++                phase = OraclePhase.RETRIEVING
++            )
++            try {
++                val retrieval = rag.retrieve(question)
++                if (!retrieval.passesConfidenceGate) {
++                    refuse(
++                        question,
++                        retrieval.gateVerdict?.userMessage()
++                            ?: "The archive does not support an answer.",
++                        retrieval.nearMisses
++                    )
++                    return@launch
++                }
++                if (!_state.value.modelReady) {
++                    degrade(question, "The model is unavailable. Browse the Archive sources directly.")
++                    return@launch
++                }
+ 
+-        viewModelScope.launch {
+-            // Constraint C3: retrieval gate runs BEFORE generation. If the archive
+-            // does not cover the question we refuse rather than invent.
+-            val retrieval = rag.retrieve(q)
++                // Critical safety boundary: draft bytes remain local to this coroutine.
++                _state.value = _state.value.copy(phase = OraclePhase.GENERATING)
++                val draft = StringBuilder()
++                rag.generate(question, retrieval).collect { token -> draft.append(token) }
++                val validation = rag.validate(draft.toString(), retrieval)
++                if (!validation.isValid) {
++                    refuse(
++                        question,
++                        "I could not verify the generated answer against the Archive.",
++                        retrieval.nearMisses
++                    )
++                    return@launch
++                }
+ 
+-            if (!retrieval.passesConfidenceGate) {
+-                _state.value = _state.value.copy(
+-                    streaming = false,
+-                    refused = true,
+-                    refusalReason = "The archive does not cover this. " +
+-                        "Closest related material is listed below.",
+-                    citations = retrieval.nearMisses
++                _state.value = OracleUiState(
++                    question = question,
++                    answer = draft.toString().trim(),
++                    citations = validation.citations,
++                    modelReady = true,
++                    phase = OraclePhase.ANSWERED
+                 )
+-                return@launch
++            } catch (cancelled: CancellationException) {
++                // No partial answer was ever published or persisted.
++                throw cancelled
++            } catch (_: Throwable) {
++                degrade(question, "Generation stopped. Browse the Archive sources directly.")
+             }
++        }
++    }
+ 
+-            val sb = StringBuilder()
+-            rag.generate(q, retrieval).collect { token ->
+-                sb.append(token)
+-                _state.value = _state.value.copy(answer = sb.toString())
+-            }
++    private fun refuse(question: String, reason: String, nearMisses: List<Citation>) {
++        _state.value = OracleUiState(
++            question = question,
++            citations = nearMisses,
++            refused = true,
++            refusalReason = reason,
++            modelReady = _state.value.modelReady,
++            phase = OraclePhase.REFUSED
++        )
++    }
+ 
+-            _state.value = _state.value.copy(
+-                streaming = false,
+-                citations = rag.extractCitations(sb.toString(), retrieval)
+-            )
+-        }
++    private fun degrade(question: String, reason: String) {
++        _state.value = OracleUiState(
++            question = question,
++            refused = true,
++            refusalReason = reason,
++            modelReady = false,
++            phase = OraclePhase.DEGRADED
++        )
+     }
+ 
+     override fun onCleared() {
+-        super.onCleared()
+-        // Return RAM to the system as soon as the Oracle is gone.
++        generationJob?.cancel()
+         rag.release()
++        super.onCleared()
+     }
+ }
+diff --git a/android/llm/src/main/java/io/godstone/llm/rag/AnswerValidator.kt b/android/llm/src/main/java/io/godstone/llm/rag/AnswerValidator.kt
+new file mode 100644
+index 0000000..426f33f
+--- /dev/null
++++ b/android/llm/src/main/java/io/godstone/llm/rag/AnswerValidator.kt
+@@ -0,0 +1,241 @@
++package io.godstone.llm.rag
++
++import java.math.BigDecimal
++import java.util.Locale
++
++data class AnswerValidationResult(
++    val isValid: Boolean,
++    val citations: List<Citation> = emptyList(),
++    val reason: String? = null,
++    val unsupported: List<String> = emptyList()
++) {
++    companion object {
++        fun accepted(citations: List<Citation>) = AnswerValidationResult(true, citations)
++        fun rejected(reason: String, unsupported: List<String> = emptyList()) =
++            AnswerValidationResult(false, reason = reason, unsupported = unsupported)
++    }
++}
++
++/**
++ * Final, fail-closed validation for generated Oracle answers.
++ *
++ * The validator intentionally operates on the complete private draft. Callers must not
++ * expose any draft bytes before this returns [AnswerValidationResult.isValid] == true.
++ */
++class AnswerValidator {
++    private val citationPattern = Regex("\\[(\\d+)]")
++    private val sentencePattern = Regex("(?s)(.*?(?:[.!?](?=\\s|$)|$))")
++    private val imperativePattern = Regex(
++        "(?i)^\\s*(apply|avoid|call|clean|cool|cover|do|drink|give|keep|move|never|" +
++            "place|remove|rinse|seek|stop|take|use|wash)\\b"
++    )
++    private val injectionPattern = Regex(
++        "(?i)(ignore (all |any |the )?(previous|prior|system) instructions|" +
++            "system prompt|developer message|jailbreak|do not cite|hide (the )?warning)"
++    )
++    private val warningPattern = Regex(
++        "(?i)(?:warning|contraindicat(?:ion|ed)|do not|never|must not|seek (?:urgent |emergency )?help)[^.!?]*(?:[.!?]|$)"
++    )
++
++    fun validate(draft: String, retrieval: RetrievalResult): AnswerValidationResult {
++        val answer = draft.trim()
++        if (answer.isEmpty()) return AnswerValidationResult.rejected("empty answer")
++        if (!retrieval.passesConfidenceGate) {
++            return AnswerValidationResult.rejected("retrieval confidence gate did not allow generation")
++        }
++        if (injectionPattern.containsMatchIn(answer)) {
++            return AnswerValidationResult.rejected("instruction-injection marker in generated answer")
++        }
++
++        val markerNumbers = citationPattern.findAll(answer)
++            .mapNotNull { it.groupValues[1].toIntOrNull() }
++            .toList()
++        if (markerNumbers.isEmpty()) return AnswerValidationResult.rejected("answer has no citation")
++        if (markerNumbers.any { it !in 1..retrieval.chunks.size }) {
++            return AnswerValidationResult.rejected("citation does not resolve to a retrieved chunk")
++        }
++
++        val unsupported = mutableListOf<String>()
++        sentences(answer).forEach { sentence ->
++            val body = citationPattern.replace(sentence, "").trim()
++            if (body.isEmpty()) return@forEach
++            val sentenceMarkers = citationPattern.findAll(sentence)
++                .mapNotNull { it.groupValues[1].toIntOrNull() }
++                .distinct()
++                .toList()
++            val highRisk = isHighRiskSentence(body, retrieval)
++            if (highRisk && sentenceMarkers.isEmpty()) {
++                unsupported += "uncited high-risk instruction: $body"
++                return@forEach
++            }
++
++            val quantities = QuantityValidator.extract(body)
++            if (quantities.isNotEmpty()) {
++                if (sentenceMarkers.isEmpty()) {
++                    unsupported += "uncited quantity: $body"
++                } else {
++                    val cited = sentenceMarkers.map { retrieval.chunks[it - 1] }
++                    unsupported += QuantityValidator.unsupported(body, quantities, cited)
++                }
++            }
++        }
++
++        val citedChunks = markerNumbers.distinct().map { retrieval.chunks[it - 1] }
++        unsupported += missingWarnings(answer, citedChunks)
++        if (unsupported.isNotEmpty()) {
++            return AnswerValidationResult.rejected("answer is not fully supported", unsupported)
++        }
++
++        val citations = markerNumbers.distinct().map { number ->
++            val chunk = retrieval.chunks[number - 1]
++            Citation(chunk.documentId, chunk.documentTitle, chunk.domain, chunk.text.take(180))
++        }
++        return AnswerValidationResult.accepted(citations)
++    }
++
++    private fun sentences(text: String): List<String> = sentencePattern.findAll(text)
++        .map { it.value.trim() }
++        .filter { it.isNotEmpty() }
++        .toList()
++
++    private fun isHighRiskSentence(sentence: String, retrieval: RetrievalResult): Boolean {
++        if (imperativePattern.containsMatchIn(sentence)) return true
++        val highRiskDomain = retrieval.chunks.any {
++            it.domain.lowercase(Locale.ROOT) in HIGH_RISK_DOMAINS
++        }
++        return highRiskDomain && QuantityValidator.extract(sentence).isNotEmpty()
++    }
++
++    private fun missingWarnings(answer: String, citedChunks: List<Chunk>): List<String> {
++        val answerTokens = meaningfulTokens(answer)
++        return citedChunks.flatMap { chunk ->
++            warningPattern.findAll(chunk.text).mapNotNull { match ->
++                val warning = match.value.trim()
++                val required = meaningfulTokens(warning)
++                // Warning preservation is semantic-token based and intentionally strict.
++                val overlap = if (required.isEmpty()) 1.0 else {
++                    required.count { it in answerTokens }.toDouble() / required.size
++                }
++                if (overlap < WARNING_TOKEN_COVERAGE) {
++                    "required warning omitted from ${chunk.documentTitle}: $warning"
++                } else null
++            }.toList()
++        }.distinct()
++    }
++
++    private fun meaningfulTokens(text: String): Set<String> = TOKEN.findAll(text.lowercase(Locale.ROOT))
++        .map { it.value }
++        .filter { it.length >= 3 && it !in STOP_WORDS }
++        .toSet()
++
++    companion object {
++        private val TOKEN = Regex("[a-z0-9]+")
++        private const val WARNING_TOKEN_COVERAGE = 0.60
++        private val HIGH_RISK_DOMAINS = setOf(
++            "medical", "first_aid", "medicine", "chemical", "water", "food_safety", "emergency"
++        )
++        private val STOP_WORDS = setOf(
++            "and", "the", "for", "with", "from", "that", "this", "your", "you", "are", "not"
++        )
++    }
++}
++
++enum class UnitDimension { MASS, VOLUME, TIME, LENGTH, TEMPERATURE, PERCENT, COUNT }
++
++data class CanonicalQuantity(
++    val value: BigDecimal,
++    val unit: String,
++    val dimension: UnitDimension,
++    val qualifier: String?,
++    val raw: String
++)
++
++/** Exact quantity provenance. Bare-number support is deliberately forbidden. */
++object QuantityValidator {
++    private val pattern = Regex(
++        "(?i)\\b(\\d+(?:\\.\\d+)?)\\s*(mcg|µg|mg|g|kg|ml|mL|l|L|%|" +
++            "minutes?|mins?|hours?|hrs?|days?|cm|mm|°?c|°?f|drops?)" +
++            "((?:\\s*(?:/|per)\\s*(?:kg|kilograms?|l|litres?|liters?|day|hours?))?)\\b"
++    )
++
++    fun extract(text: String): List<CanonicalQuantity> = pattern.findAll(text).map { match ->
++        val value = match.groupValues[1].toBigDecimal().stripTrailingZeros()
++        val unit = canonicalUnit(match.groupValues[2])
++        val qualifier = canonicalQualifier(match.groupValues[3])
++        CanonicalQuantity(value, unit, dimension(unit), qualifier, match.value)
++    }.toList()
++
++    fun unsupported(
++        sentence: String,
++        quantities: List<CanonicalQuantity>,
++        citedChunks: List<Chunk>
++    ): List<String> {
++        if (citedChunks.isEmpty()) return quantities.map { "uncited quantity: ${it.raw}" }
++        return quantities.mapNotNull { answerQuantity ->
++            val supported = citedChunks.any { chunk ->
++                extract(chunk.text).any { evidence ->
++                    answerQuantity.value.compareTo(evidence.value) == 0 &&
++                        answerQuantity.unit == evidence.unit &&
++                        answerQuantity.dimension == evidence.dimension &&
++                        answerQuantity.qualifier == evidence.qualifier &&
++                        contextSupported(sentence, chunk.text)
++                }
++            }
++            if (supported) null else "unsupported quantity/unit/context: ${answerQuantity.raw}"
++        }
++    }
++
++    private fun contextSupported(sentence: String, evidence: String): Boolean {
++        val answerTerms = contextTerms(sentence)
++        if (answerTerms.isEmpty()) return false
++        val evidenceTerms = contextTerms(evidence)
++        return answerTerms.count { it in evidenceTerms } >= minOf(2, answerTerms.size)
++    }
++
++    private fun contextTerms(text: String): Set<String> = Regex("[a-zA-Z]{3,}")
++        .findAll(text.lowercase(Locale.ROOT))
++        .map { it.value }
++        .filter { it !in CONTEXT_STOP_WORDS }
++        .toSet()
++
++    private fun canonicalUnit(raw: String): String = when (raw.lowercase(Locale.ROOT)) {
++        "µg", "mcg" -> "mcg"
++        "ml" -> "ml"
++        "l" -> "l"
++        "minute", "minutes", "min", "mins" -> "min"
++        "hour", "hours", "hr", "hrs" -> "h"
++        "day", "days" -> "d"
++        "°c", "c" -> "degC"
++        "°f", "f" -> "degF"
++        "drop", "drops" -> "drop"
++        else -> raw.lowercase(Locale.ROOT)
++    }
++
++    private fun canonicalQualifier(raw: String): String? {
++        if (raw.isBlank()) return null
++        return raw.lowercase(Locale.ROOT)
++            .replace(Regex("\\s+"), "")
++            .replace("kilogram", "kg")
++            .replace("kilograms", "kg")
++            .replace("litres", "l")
++            .replace("liters", "l")
++            .replace("litre", "l")
++            .replace("liter", "l")
++            .replace("per", "/")
++    }
++
++    private fun dimension(unit: String): UnitDimension = when (unit) {
++        "mcg", "mg", "g", "kg" -> UnitDimension.MASS
++        "ml", "l" -> UnitDimension.VOLUME
++        "min", "h", "d" -> UnitDimension.TIME
++        "cm", "mm" -> UnitDimension.LENGTH
++        "degC", "degF" -> UnitDimension.TEMPERATURE
++        "%" -> UnitDimension.PERCENT
++        "drop" -> UnitDimension.COUNT
++        else -> error("unhandled unit: $unit")
++    }
++
++    private val CONTEXT_STOP_WORDS = setOf(
++        "and", "the", "for", "with", "from", "into", "onto", "that", "this", "then", "use"
++    )
++}
+diff --git a/android/llm/src/main/java/io/godstone/llm/rag/RagPipeline.kt b/android/llm/src/main/java/io/godstone/llm/rag/RagPipeline.kt
+index 1743c85..e3bdbea 100644
+--- a/android/llm/src/main/java/io/godstone/llm/rag/RagPipeline.kt
++++ b/android/llm/src/main/java/io/godstone/llm/rag/RagPipeline.kt
+@@ -6,52 +6,31 @@ import kotlinx.coroutines.flow.Flow
+ import kotlinx.coroutines.flow.emptyFlow
+ import kotlinx.coroutines.withContext
+ 
+-/**
+- * Retrieval-Augmented Generation pipeline.
+- *
+- * Order matters and is enforced here: RETRIEVE, then GATE, then GENERATE.
+- * Generation is never reached when the archive does not support an answer.
+- */
++/** Retrieval, confidence gating, private generation, and final validation. */
+ class RagPipeline(
+     private val models: ModelManager,
+     private val retriever: Retriever,
+-    private val topK: Int
++    private val topK: Int,
++    private val answerValidator: AnswerValidator = AnswerValidator()
+ ) {
++    suspend fun warmUp(): Boolean = withContext(Dispatchers.IO) { models.load() }
+ 
+-    suspend fun warmUp(): Boolean = withContext(Dispatchers.IO) {
+-        models.load()
++    suspend fun retrieve(question: String): RetrievalResult = withContext(Dispatchers.IO) {
++        retriever.retrieve(question, topK)
+     }
+ 
+-    suspend fun retrieve(question: String): RetrievalResult =
+-        withContext(Dispatchers.IO) {
+-            retriever.retrieve(question, topK)
+-        }
+-
++    /** The returned flow is private draft material and must never be bound to visible UI. */
+     fun generate(question: String, retrieval: RetrievalResult): Flow<String> {
+-        if (!retrieval.passesConfidenceGate) return emptyFlow()
+-        if (!models.isLoaded) return emptyFlow()
+-
+-        val prompt = PromptBuilder().build(question, retrieval)
+-        return models.generate(prompt, MAX_ANSWER_TOKENS)
++        if (!retrieval.passesConfidenceGate || !models.isLoaded) return emptyFlow()
++        return models.generate(PromptBuilder().build(question, retrieval), MAX_ANSWER_TOKENS)
+     }
+ 
+-    /**
+-     * Map the bracketed markers the model produced back to real documents, so
+-     * every claim on screen is tappable through to its source manual.
+-     */
+-    fun extractCitations(answer: String, retrieval: RetrievalResult): List<Citation> {
+-        val used = Regex("\\[(\\d+)]")
+-            .findAll(answer)
+-            .mapNotNull { it.groupValues[1].toIntOrNull() }
+-            .filter { it in 1..retrieval.chunks.size }
+-            .distinct()
+-            .toList()
+-
+-        return used.map { n ->
+-            val c = retrieval.chunks[n - 1]
+-            Citation(c.documentId, c.documentTitle, c.domain, c.text.take(180))
+-        }
+-    }
++    fun validate(answer: String, retrieval: RetrievalResult): AnswerValidationResult =
++        answerValidator.validate(answer, retrieval)
++
++    /** Retained for source browsing; validated UI paths use [AnswerValidationResult.citations]. */
++    fun extractCitations(answer: String, retrieval: RetrievalResult): List<Citation> =
++        validate(answer, retrieval).takeIf { it.isValid }?.citations ?: emptyList()
+ 
+     fun release() = models.release()
+ 
+diff --git a/android/llm/src/main/java/io/godstone/llm/safety/SafetyGate.kt b/android/llm/src/main/java/io/godstone/llm/safety/SafetyGate.kt
+index 3230794..f6679d9 100644
+--- a/android/llm/src/main/java/io/godstone/llm/safety/SafetyGate.kt
++++ b/android/llm/src/main/java/io/godstone/llm/safety/SafetyGate.kt
+@@ -252,11 +252,10 @@ object SafetyGate {
+         if (quantities.isEmpty()) return true to emptyList()
+         val blob = evidence.joinToString(" ") { it.text }.lowercase()
+         val blobNums = NUMERIC.findAll(blob).map { it.value.replace(Regex("\\s+"), "").lowercase() }.toSet()
+-        val blobBare = Regex("""\d+(?:\.\d+)?""").findAll(blob).map { it.value }.toSet()
++        // Exact quantity+unit only. A matching bare number in a different
++        // unit or dimension is never evidence (GST-SAFE-002).
+         val unsupported = quantities.filter { q ->
+-            val norm = q.replace(Regex("\\s+"), "").lowercase()
+-            val num = Regex("""\d+(?:\.\d+)?""").find(q)?.value
+-            norm !in blobNums && (num == null || num !in blobBare)
++            q.replace(Regex("\\s+"), "").lowercase() !in blobNums
+         }
+         return unsupported.isEmpty() to unsupported
+     }
+diff --git a/android/llm/src/test/java/io/godstone/llm/rag/AnswerValidatorTest.kt b/android/llm/src/test/java/io/godstone/llm/rag/AnswerValidatorTest.kt
+new file mode 100644
+index 0000000..930f6ca
+--- /dev/null
++++ b/android/llm/src/test/java/io/godstone/llm/rag/AnswerValidatorTest.kt
+@@ -0,0 +1,89 @@
++package io.godstone.llm.rag
++
++import io.godstone.llm.safety.SafetyGate
++import kotlin.test.Test
++import kotlin.test.assertFalse
++import kotlin.test.assertTrue
++
++class AnswerValidatorTest {
++    private val validator = AnswerValidator()
++
++    @Test fun exactQuantityAndCitationAreAccepted() {
++        val result = validator.validate(
++            "Rinse the container with 500 ml of clean water [1].",
++            retrieval("Rinse the container with 500 ml of clean water.")
++        )
++        assertTrue(result.isValid, result.unsupported.joinToString())
++    }
++
++    @Test fun wrongUnitIsRejectedEvenWhenBareNumberMatches() {
++        val result = validator.validate(
++            "Rinse the container with 500 mg of clean water [1].",
++            retrieval("Rinse the container with 500 ml of clean water.")
++        )
++        assertFalse(result.isValid)
++    }
++
++    @Test fun denominatorOmissionIsRejected() {
++        val result = validator.validate(
++            "Give 5 ml of the solution [1].",
++            retrieval("Give 5 ml per kg of the solution.")
++        )
++        assertFalse(result.isValid)
++    }
++
++    @Test fun invalidCitationIsRejected() {
++        assertFalse(validator.validate("Use 5 ml of water [2].", retrieval("Use 5 ml of water.")).isValid)
++    }
++
++    @Test fun uncitedHighRiskInstructionIsRejected() {
++        assertFalse(validator.validate("Apply pressure to the wound.", retrieval("Apply pressure to the wound.")).isValid)
++    }
++
++    @Test fun requiredWarningMustBePreserved() {
++        val result = validator.validate(
++            "Use the medicine as directed [1].",
++            retrieval("Use the medicine as directed. Do not use for children under 2.")
++        )
++        assertFalse(result.isValid)
++    }
++
++    /// (c) 10 minutes cannot approve 10 hours: value matches, time dimension
++    /// matches, unit differs (min vs h) -> rejected.
++    @Test fun wrongTimeUnitIsRejectedEvenWhenNumberMatches() {
++        val result = validator.validate(
++            "Allow the solution to rest for 10 minutes [1].",
++            retrieval("Allow the solution to rest for 10 hours.")
++        )
++        assertFalse(result.isValid)
++    }
++
++    /// (e) An answer with no citation markers is rejected in full.
++    @Test fun uncitedAnswerIsRejectedInFull() {
++        assertFalse(validator.validate("Give 500 ml of water.", retrieval("Give 500 ml of water.")).isValid)
++    }
++
++    /// Invalid output is discarded in full: one unsupported quantity among two
++    /// rejects the entire answer, never a partially-sanitised one.
++    @Test fun invalidOutputIsDiscardedInFull() {
++        val result = validator.validate(
++            "Rinse with 500 ml of water [1], then wait 10 minutes [1].",
++            retrieval("Rinse with 500 ml of water. Wait 10 hours.")
++        )
++        assertFalse(result.isValid)
++    }
++
++    private fun retrieval(text: String): RetrievalResult = RetrievalResult(
++        chunks = listOf(Chunk(1, 1, "Reviewed source", "medical", text, 1.0)),
++        bestScore = 1.0,
++        nearMisses = emptyList(),
++        gateVerdict = SafetyGate.Result(
++            verdict = SafetyGate.Verdict.ALLOW,
++            reasons = listOf("test fixture"),
++            anchorRecall = 1.0,
++            colocation = 1.0,
++            domainCoherence = 1.0,
++            oovTerms = emptyList()
++        )
++    )
++}
+diff --git a/ci/check_content_release_integration.py b/ci/check_content_release_integration.py
+new file mode 100644
+index 0000000..8ddf79c
+--- /dev/null
++++ b/ci/check_content_release_integration.py
+@@ -0,0 +1,24 @@
++#!/usr/bin/env python3
++from pathlib import Path
++
++
++def main() -> int:
++    path = Path("content/ingest/build_archive.py")
++    if not path.is_file():
++        print("content/ingest/build_archive.py missing")
++        return 1
++    text = path.read_text(encoding="utf-8")
++    required = (
++        "from content.release_gate import validate_release_corpus",
++        "validate_release_corpus(",
++        'ROOT / "content" / "manifests" / "documents"',
++    )
++    missing = [item for item in required if item not in text]
++    if missing:
++        print("release builder is not wired to the complete content gate: " + ", ".join(missing))
++        return 1
++    print("release archive builder invokes the complete content gate")
++    return 0
++
++if __name__ == "__main__":
++    raise SystemExit(main())
+diff --git a/ci/check_oracle_private_draft.py b/ci/check_oracle_private_draft.py
+new file mode 100644
+index 0000000..202cdf8
+--- /dev/null
++++ b/ci/check_oracle_private_draft.py
+@@ -0,0 +1,42 @@
++#!/usr/bin/env python3
++from pathlib import Path
++
++checks = {
++    Path("android/app/src/main/java/io/godstone/app/ui/oracle/OracleViewModel.kt"): [
++        "val draft = StringBuilder()", "rag.validate(draft.toString(), retrieval)", "answer = draft.toString().trim()",
++    ],
++    Path("ios/Godstone/Sources/App/OracleViewModel.swift"): [
++        "case generating", "var draft = \"\"", "pipeline.validate(answer: draft",
++    ],
++}
++forbidden = {
++    Path("android/app/src/main/java/io/godstone/app/ui/oracle/OracleViewModel.kt"): [
++        "copy(answer = sb.toString())", "collect { token ->\n                sb.append(token)\n                _state",
++    ],
++    Path("ios/Godstone/Sources/App/OracleViewModel.swift"): [
++        ".generating(partial:", "state = .generating(partial:",
++    ],
++}
++
++
++def main() -> int:
++    errors: list[str] = []
++    for path, needles in checks.items():
++        if not path.is_file():
++            errors.append(f"missing {path}")
++            continue
++        text = path.read_text(encoding="utf-8")
++        for needle in needles:
++            if needle not in text:
++                errors.append(f"{path}: missing private-draft control {needle!r}")
++        for needle in forbidden.get(path, []):
++            if needle in text:
++                errors.append(f"{path}: pre-validation output pattern {needle!r}")
++    if errors:
++        print("Oracle draft isolation failed:\n" + "\n".join(errors))
++        return 1
++    print("Oracle drafts remain private until final validation")
++    return 0
++
++if __name__ == "__main__":
++    raise SystemExit(main())
+diff --git a/ios/Godstone/Sources/App/OracleView.swift b/ios/Godstone/Sources/App/OracleView.swift
+index c3e8dd8..3d34b35 100644
+--- a/ios/Godstone/Sources/App/OracleView.swift
++++ b/ios/Godstone/Sources/App/OracleView.swift
+@@ -1,221 +1,90 @@
+-// SYNTHESIZED gap-closure file -- authored to make the project compile; see docs/AUDIT.md.
+ import SwiftUI
+ import GodstoneLLM
+ 
+-/// The Ask tab. The Oracle only ever answers from the Archive; when the
+-/// Archive is silent it says so (refused), and when the model cannot load it
+-/// degrades gracefully (degraded). This view renders every state in
+-/// OracleViewModel.State honestly -- no spinning indeterminate that resolves
+-/// into a fabricated answer.
+-///
+-/// Styling mirrors SosView: dark stone field, heavy rounded type, ember as the
+-/// action colour. Constraint C7: large text and a 56pt-minimum Ask button.
+ struct OracleView: View {
+-
+     @EnvironmentObject private var oracle: OracleViewModel
+ 
+     var body: some View {
+         VStack(spacing: 20) {
+-
+-            questionField
++            TextField("Ask the Archive", text: $oracle.question, axis: .vertical)
++                .font(.body)
++                .lineLimit(1...6)
++                .padding(14)
++                .background(.secondary.opacity(0.12))
++                .cornerRadius(12)
++                .accessibilityLabel("Question for the Archive")
+                 .padding(.horizontal, 20)
+                 .padding(.top, 24)
+ 
+-            askButton
++            Button("Ask") { oracle.ask() }
++                .font(.headline)
++                .frame(maxWidth: .infinity, minHeight: 56)
++                .disabled(isBusy || oracle.question.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
++                .padding(.horizontal, 20)
++                .accessibilityHint("Searches reviewed Archive sources and validates the complete answer before showing it")
+ 
+             stateView
+                 .frame(maxWidth: .infinity, maxHeight: .infinity)
+                 .padding(.horizontal, 20)
+-
+-            Spacer(minLength: 0)
+         }
+         .frame(maxWidth: .infinity, maxHeight: .infinity)
+-        .background(GodstoneTheme.stone)
+-    }
+-
+-    // MARK: - Input
+-
+-    private var questionField: some View {
+-        TextField("Ask the Archive", text: $oracle.question, axis: .vertical)
+-            .font(.system(size: GodstoneTheme.bodyTextSize))
+-            .foregroundStyle(.white)
+-            .lineLimit(1...4)
+-            .padding(14)
+-            .background(Color.white.opacity(0.06))
+-            .cornerRadius(12)
+-            .tint(GodstoneTheme.ember)
+-            .accessibilityLabel("Question for the Archive")
+-    }
+-
+-    private var askButton: some View {
+-        Button {
+-            oracle.ask()
+-        } label: {
+-            Text("Ask")
+-                .font(.system(size: GodstoneTheme.bodyTextSize, weight: .bold, design: .rounded))
+-                .foregroundStyle(.white)
+-                .frame(maxWidth: .infinity, minHeight: GodstoneTheme.minimumTapTarget)
+-                .background(isBusy ? GodstoneTheme.ember.opacity(0.4)
+-                                   : GodstoneTheme.ember)
+-                .cornerRadius(12)
+-        }
+-        .disabled(isBusy || oracle.question.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+-        .padding(.horizontal, 20)
+-        .accessibilityHint("Search the Archive and answer from it.")
+     }
+ 
+-    /// Retrieving and generating are both non-interruptible from the user's
+-    /// perspective: the Ask button is disabled so a second tap cannot spawn a
+-    /// racing Task.
+     private var isBusy: Bool {
+         switch oracle.state {
+-        case .retrieving, .generating: return true
+-        default: return false
++        case .retrieving, .generating: true
++        default: false
+         }
+     }
+ 
+-    // MARK: - State
+-
+-    @ViewBuilder
+-    private var stateView: some View {
++    @ViewBuilder private var stateView: some View {
+         switch oracle.state {
+         case .idle:
+-            idlePrompt
++            ContentUnavailableView("Ask the Archive", systemImage: "books.vertical",
++                description: Text("Unsupported questions are refused rather than guessed."))
+         case .retrieving:
+-            progressView("Searching the Archive\u{2026}")
+-        case .generating(let partial):
+-            streamingView(partial)
++            progress("Searching the Archive…")
++        case .generating:
++            progress("Generating and verifying privately…")
+         case .answered(let text, let citations):
+-            answeredView(text: text, citations: citations)
+-        case .refused(let nearMisses):
+-            refusedView(nearMisses: nearMisses)
+-        case .degraded(let reason):
+-            degradedView(reason: reason)
+-        }
+-    }
+-
+-    private var idlePrompt: some View {
+-        VStack(spacing: 14) {
+-            Image(systemName: "bubble.left.and.text.bubble.right.fill")
+-                .font(.system(size: 44))
+-                .foregroundStyle(GodstoneTheme.ember.opacity(0.8))
+-            Text("Ask a clinical or practical question.")
+-                .font(.system(size: GodstoneTheme.bodyTextSize, weight: .semibold))
+-                .foregroundStyle(.white)
+-                .multilineTextAlignment(.center)
+-            Text("Answers come only from the documents on this phone. If the Archive has nothing relevant, the Oracle will say so rather than guess.")
+-                .font(.footnote)
+-                .multilineTextAlignment(.center)
+-                .foregroundStyle(.secondary)
+-                .padding(.horizontal, 24)
+-        }
+-    }
+-
+-    private func progressView(_ label: String) -> some View {
+-        VStack(spacing: 16) {
+-            ProgressView()
+-                .tint(GodstoneTheme.ember)
+-                .scaleEffect(1.4)
+-            Text(label)
+-                .font(.system(size: GodstoneTheme.bodyTextSize, weight: .semibold))
+-                .foregroundStyle(.white)
+-        }
+-    }
+-
+-    private func streamingView(_ partial: String) -> some View {
+-        ScrollView {
+-            Text(partial.isEmpty ? "\u{2026}" : partial)
+-                .font(.system(size: GodstoneTheme.bodyTextSize))
+-                .foregroundStyle(.white)
+-                .frame(maxWidth: .infinity, alignment: .leading)
+-                .textSelection(.enabled)
+-        }
+-    }
+-
+-    private func answeredView(text: String, citations: [Citation]) -> some View {
+-        ScrollView {
+-            VStack(alignment: .leading, spacing: 18) {
+-                Text(text)
+-                    .font(.system(size: GodstoneTheme.bodyTextSize))
+-                    .foregroundStyle(.white)
+-                    .textSelection(.enabled)
+-
+-                if !citations.isEmpty {
+-                    Text("Sources")
+-                        .font(.system(size: 15, weight: .heavy, design: .rounded))
+-                        .foregroundStyle(GodstoneTheme.ember)
+-                    VStack(spacing: 10) {
++            ScrollView {
++                VStack(alignment: .leading, spacing: 18) {
++                    Text(text).textSelection(.enabled)
++                    if !citations.isEmpty {
++                        Text("Sources").font(.headline)
+                         ForEach(citations) { citation in
+-                            citationCard(citation)
++                            VStack(alignment: .leading) {
++                                Text(citation.documentTitle).font(.headline)
++                                Text(citation.section).font(.footnote)
++                            }
++                            .accessibilityElement(children: .combine)
+                         }
+                     }
+-                }
++                }.frame(maxWidth: .infinity, alignment: .leading)
+             }
+-            .frame(maxWidth: .infinity, alignment: .leading)
+-        }
+-    }
+-
+-    private func citationCard(_ citation: Citation) -> some View {
+-        // TODO: tapping a source should open the document at its section in the
+-        // Archive tab. Deferred until ArchiveView is wired to ArchiveRepository.
+-        VStack(alignment: .leading, spacing: 4) {
+-            Text(citation.documentTitle)
+-                .font(.system(size: 16, weight: .semibold))
+-                .foregroundStyle(.white)
+-            Text(citation.section)
+-                .font(.footnote)
+-                .foregroundStyle(.secondary)
+-            Text("relevance \(String(format: "%.0f%%", citation.score * 100))")
+-                .font(.caption2)
+-                .foregroundStyle(GodstoneTheme.ember)
+-        }
+-        .frame(maxWidth: .infinity, minHeight: GodstoneTheme.minimumTapTarget / 1.5,
+-               alignment: .leading)
+-        .padding(12)
+-        .background(Color.white.opacity(0.06))
+-        .cornerRadius(10)
+-        .accessibilityElement(children: .combine)
+-    }
+-
+-    private func refusedView(nearMisses: [Citation]) -> some View {
+-        ScrollView {
+-            VStack(alignment: .leading, spacing: 16) {
+-                HStack(spacing: 10) {
+-                    Image(systemName: "hand.raised.fill")
+-                        .foregroundStyle(GodstoneTheme.warning)
+-                    Text("Not in the Archive")
+-                        .font(.system(size: GodstoneTheme.bodyTextSize, weight: .bold))
+-                        .foregroundStyle(.white)
+-                }
+-                Text("The Oracle will not answer from memory. The closest documents it found are below, but they did not clear the confidence floor.")
+-                    .font(.footnote)
+-                    .foregroundStyle(.secondary)
+-
+-                if !nearMisses.isEmpty {
+-                    VStack(spacing: 10) {
+-                        ForEach(nearMisses) { citation in
+-                            citationCard(citation)
+-                        }
++        case .refused(let nearMisses):
++            ScrollView {
++                VStack(alignment: .leading, spacing: 12) {
++                    Label("Not verified by the Archive", systemImage: "hand.raised.fill")
++                        .font(.headline)
++                    Text("No generated answer was shown. Browse the related sources below.")
++                    ForEach(nearMisses) { citation in
++                        Text("\(citation.documentTitle) — \(citation.section)")
+                     }
+-                }
++                }.frame(maxWidth: .infinity, alignment: .leading)
+             }
+-            .frame(maxWidth: .infinity, alignment: .leading)
++        case .degraded(let reason):
++            ContentUnavailableView("Generation unavailable", systemImage: "exclamationmark.triangle",
++                description: Text(reason))
+         }
+     }
+ 
+-    private func degradedView(reason: String) -> some View {
+-        VStack(spacing: 14) {
+-            Image(systemName: "exclamationmark.triangle.fill")
+-                .font(.system(size: 40))
+-                .foregroundStyle(GodstoneTheme.warning)
+-            Text("Generation unavailable")
+-                .font(.system(size: GodstoneTheme.bodyTextSize, weight: .bold))
+-                .foregroundStyle(.white)
+-            Text(reason)
+-                .font(.footnote)
+-                .multilineTextAlignment(.center)
+-                .foregroundStyle(.secondary)
+-                .padding(.horizontal, 24)
++    private func progress(_ label: String) -> some View {
++        VStack(spacing: 16) {
++            ProgressView()
++            Text(label).font(.headline)
+         }
++        .accessibilityElement(children: .combine)
++        .accessibilityLabel(label)
+     }
+ }
+diff --git a/ios/Godstone/Sources/App/OracleViewModel.swift b/ios/Godstone/Sources/App/OracleViewModel.swift
+index 37990a5..90a9ef9 100644
+--- a/ios/Godstone/Sources/App/OracleViewModel.swift
++++ b/ios/Godstone/Sources/App/OracleViewModel.swift
+@@ -2,15 +2,12 @@ import Foundation
+ import Combine
+ import GodstoneLLM
+ 
+-/// Drives the Ask screen. Mirrors the Android OracleViewModel one-for-one so
+-/// the two platforms cannot drift in safety behaviour.
+ @MainActor
+ final class OracleViewModel: ObservableObject {
+-
+     enum State: Equatable {
+         case idle
+         case retrieving
+-        case generating(partial: String)
++        case generating
+         case answered(text: String, citations: [Citation])
+         case refused(nearMisses: [Citation])
+         case degraded(reason: String)
+@@ -18,55 +15,49 @@ final class OracleViewModel: ObservableObject {
+ 
+     @Published private(set) var state: State = .idle
+     @Published var question: String = ""
+-
+     private let pipeline: RagPipeline
+     private var task: Task<Void, Never>?
+ 
+-    init(pipeline: RagPipeline) {
+-        self.pipeline = pipeline
+-    }
++    init(pipeline: RagPipeline) { self.pipeline = pipeline }
+ 
+     func ask() {
+         let q = question.trimmingCharacters(in: .whitespacesAndNewlines)
+         guard !q.isEmpty else { return }
+-
+         task?.cancel()
+         task = Task {
+             state = .retrieving
+-
+             let retrieval = await pipeline.retrieve(question: q)
+-
+-            // Constraint C3: the gate runs BEFORE the model is ever invoked.
++            guard !Task.isCancelled else { return }
+             guard retrieval.passesConfidenceGate else {
+                 state = .refused(nearMisses: retrieval.nearMisses)
+                 return
+             }
+-
+             guard await pipeline.warmUp() else {
+-                // C5: degrade, never fail. The Archive is still fully readable.
+-                state = .degraded(
+-                    reason: "Not enough free memory to load the model. "
+-                          + "Browse the Archive directly."
+-                )
++                state = .degraded(reason: "The model is unavailable. Browse the Archive directly.")
+                 return
+             }
+ 
+-            var accumulated = ""
++            // Critical safety boundary: no draft text is associated with this state.
++            state = .generating
++            var draft = ""
+             do {
+                 for try await token in pipeline.generate(question: q, retrieval: retrieval) {
+-                    accumulated += token
+-                    state = .generating(partial: accumulated)
++                    try Task.checkCancellation()
++                    draft += token
+                 }
++            } catch is CancellationError {
++                return
+             } catch {
+-                state = .degraded(reason: "Generation stopped. Showing sources instead.")
++                state = .degraded(reason: "Generation stopped. Browse the sources instead.")
+                 return
+             }
+ 
+-            state = .answered(
+-                text: accumulated,
+-                citations: pipeline.extractCitations(answer: accumulated,
+-                                                     retrieval: retrieval)
+-            )
++            switch pipeline.validate(answer: draft, retrieval: retrieval) {
++            case .accepted(let text, let citations):
++                state = .answered(text: text, citations: citations)
++            case .rejected:
++                state = .refused(nearMisses: retrieval.nearMisses)
++            }
+         }
+     }
+ 
+diff --git a/ios/Godstone/Sources/GodstoneCore/OracleAnswerValidator.swift b/ios/Godstone/Sources/GodstoneCore/OracleAnswerValidator.swift
+new file mode 100644
+index 0000000..014aaa1
+--- /dev/null
++++ b/ios/Godstone/Sources/GodstoneCore/OracleAnswerValidator.swift
+@@ -0,0 +1,246 @@
++import Foundation
++
++/// Fail-closed final validation for a complete, private Oracle draft.
++public enum OracleAnswerValidator {
++    public struct Result: Sendable {
++        public let isValid: Bool
++        public let citedIndices: [Int]
++        public let reason: String?
++        public let unsupported: [String]
++
++        public static func accepted(_ indices: [Int]) -> Result {
++            Result(isValid: true, citedIndices: indices, reason: nil, unsupported: [])
++        }
++
++        public static func rejected(_ reason: String, _ unsupported: [String] = []) -> Result {
++            Result(isValid: false, citedIndices: [], reason: reason, unsupported: unsupported)
++        }
++    }
++
++    private struct Quantity: Equatable {
++        let value: Decimal
++        let unit: String
++        let dimension: String
++        let qualifier: String?
++        let raw: String
++    }
++
++    private static let citation = try! NSRegularExpression(pattern: #"\[(\d+)\]"#)
++    private static let quantity = try! NSRegularExpression(
++        pattern: #"\b(\d+(?:\.\d+)?)\s*(mcg|µg|mg|g|kg|ml|l|%|minutes?|mins?|hours?|hrs?|days?|cm|mm|°?c|°?f|drops?)((?:\s*(?:/|per)\s*(?:kg|kilograms?|l|litres?|liters?|day|hours?))?)\b"#,
++        options: [.caseInsensitive]
++    )
++    private static let injection = try! NSRegularExpression(
++        pattern: #"(ignore (all |any |the )?(previous|prior|system) instructions|system prompt|developer message|jailbreak|do not cite|hide (the )?warning)"#,
++        options: [.caseInsensitive]
++    )
++    private static let warning = try! NSRegularExpression(
++        pattern: #"(?:warning|contraindicat(?:ion|ed)|do not|never|must not|seek (?:urgent |emergency )?help)[^.!?]*(?:[.!?]|$)"#,
++        options: [.caseInsensitive]
++    )
++    private static let imperative = try! NSRegularExpression(
++        pattern: #"^\s*(apply|avoid|call|clean|cool|cover|do|drink|give|keep|move|never|place|remove|rinse|seek|stop|take|use|wash)\b"#,
++        options: [.caseInsensitive]
++    )
++
++    public static func validate(answer raw: String,
++                                chunks: [RetrievedChunk],
++                                retrievalAllowed: Bool) -> Result {
++        let answer = raw.trimmingCharacters(in: .whitespacesAndNewlines)
++        guard !answer.isEmpty else { return .rejected("empty answer") }
++        guard retrievalAllowed else { return .rejected("retrieval gate did not allow generation") }
++        guard firstMatch(injection, in: answer) == nil else {
++            return .rejected("instruction-injection marker in generated answer")
++        }
++
++        let indices = citationIndices(in: answer)
++        guard !indices.isEmpty else { return .rejected("answer has no citation") }
++        guard indices.allSatisfy({ $0 >= 1 && $0 <= chunks.count }) else {
++            return .rejected("citation does not resolve to a retrieved chunk")
++        }
++
++        var unsupported: [String] = []
++        for sentence in sentences(answer) {
++            let markers = citationIndices(in: sentence)
++            let body = replacingMatches(citation, in: sentence, with: "")
++                .trimmingCharacters(in: .whitespacesAndNewlines)
++            if body.isEmpty { continue }
++            let quantities = extractQuantities(body)
++            let highRisk = firstMatch(imperative, in: body) != nil ||
++                (chunks.contains { highRiskDomains.contains($0.domain.lowercased()) } && !quantities.isEmpty)
++            if highRisk && markers.isEmpty {
++                unsupported.append("uncited high-risk instruction: \(body)")
++                continue
++            }
++            if !quantities.isEmpty {
++                if markers.isEmpty {
++                    unsupported.append("uncited quantity: \(body)")
++                } else {
++                    let cited = markers.compactMap { (1...chunks.count).contains($0) ? chunks[$0 - 1] : nil }
++                    unsupported.append(contentsOf: unsupportedQuantities(
++                        sentence: body, quantities: quantities, chunks: cited))
++                }
++            }
++        }
++
++        let citedChunks = Array(Set(indices)).sorted().map { chunks[$0 - 1] }
++        unsupported.append(contentsOf: missingWarnings(answer: answer, chunks: citedChunks))
++        guard unsupported.isEmpty else {
++            return .rejected("answer is not fully supported", Array(Set(unsupported)).sorted())
++        }
++        return .accepted(Array(Set(indices)).sorted())
++    }
++
++    /// Exact value+unit+qualifier provenance, retained as the strict replacement
++    /// for SafetyGate.numericProvenance. Bare-number fallback is forbidden.
++    public static func strictNumericProvenance(answer: String,
++                                               evidence: [RetrievedChunk]) -> (Bool, [String]) {
++        let quantities = extractQuantities(answer)
++        if quantities.isEmpty { return (true, []) }
++        let unsupported = unsupportedQuantities(
++            sentence: answer, quantities: quantities, chunks: evidence)
++        return (unsupported.isEmpty, unsupported)
++    }
++
++    private static func unsupportedQuantities(sentence: String,
++                                              quantities: [Quantity],
++                                              chunks: [RetrievedChunk]) -> [String] {
++        quantities.compactMap { candidate in
++            let supported = chunks.contains { chunk in
++                extractQuantities(chunk.text).contains { evidence in
++                    candidate.value == evidence.value &&
++                    candidate.unit == evidence.unit &&
++                    candidate.dimension == evidence.dimension &&
++                    candidate.qualifier == evidence.qualifier &&
++                    contextSupported(answer: sentence, evidence: chunk.text)
++                }
++            }
++            return supported ? nil : "unsupported quantity/unit/context: \(candidate.raw)"
++        }
++    }
++
++    private static func extractQuantities(_ text: String) -> [Quantity] {
++        let ns = text as NSString
++        return quantity.matches(in: text, range: NSRange(location: 0, length: ns.length)).compactMap { match in
++            guard match.numberOfRanges >= 4 else { return nil }
++            let rawValue = ns.substring(with: match.range(at: 1))
++            guard let value = Decimal(string: rawValue, locale: Locale(identifier: "en_US_POSIX")) else {
++                return nil
++            }
++            let unit = canonicalUnit(ns.substring(with: match.range(at: 2)))
++            let qualifierRaw = match.range(at: 3).location == NSNotFound ? "" : ns.substring(with: match.range(at: 3))
++            return Quantity(value: value,
++                            unit: unit,
++                            dimension: dimension(unit),
++                            qualifier: canonicalQualifier(qualifierRaw),
++                            raw: ns.substring(with: match.range))
++        }
++    }
++
++    private static func canonicalUnit(_ raw: String) -> String {
++        switch raw.lowercased() {
++        case "µg", "mcg": return "mcg"
++        case "minute", "minutes", "min", "mins": return "min"
++        case "hour", "hours", "hr", "hrs": return "h"
++        case "day", "days": return "d"
++        case "°c", "c": return "degC"
++        case "°f", "f": return "degF"
++        case "drop", "drops": return "drop"
++        default: return raw.lowercased()
++        }
++    }
++
++    private static func canonicalQualifier(_ raw: String) -> String? {
++        guard !raw.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return nil }
++        return raw.lowercased()
++            .replacingOccurrences(of: #"\s+"#, with: "", options: .regularExpression)
++            .replacingOccurrences(of: "kilograms", with: "kg")
++            .replacingOccurrences(of: "kilogram", with: "kg")
++            .replacingOccurrences(of: "litres", with: "l")
++            .replacingOccurrences(of: "liters", with: "l")
++            .replacingOccurrences(of: "litre", with: "l")
++            .replacingOccurrences(of: "liter", with: "l")
++            .replacingOccurrences(of: "per", with: "/")
++    }
++
++    private static func dimension(_ unit: String) -> String {
++        switch unit {
++        case "mcg", "mg", "g", "kg": return "mass"
++        case "ml", "l": return "volume"
++        case "min", "h", "d": return "time"
++        case "cm", "mm": return "length"
++        case "degC", "degF": return "temperature"
++        case "%": return "percent"
++        case "drop": return "count"
++        default: return "unknown"
++        }
++    }
++
++    private static func contextSupported(answer: String, evidence: String) -> Bool {
++        let answerTerms = contextTerms(answer)
++        guard !answerTerms.isEmpty else { return false }
++        let evidenceTerms = contextTerms(evidence)
++        return answerTerms.filter { evidenceTerms.contains($0) }.count >= min(2, answerTerms.count)
++    }
++
++    private static func contextTerms(_ text: String) -> Set<String> {
++        Set(text.lowercased().split { !$0.isLetter }.map(String.init)
++            .filter { $0.count >= 3 && !contextStopWords.contains($0) })
++    }
++
++    private static func missingWarnings(answer: String, chunks: [RetrievedChunk]) -> [String] {
++        let answerTokens = meaningfulTokens(answer)
++        return chunks.flatMap { chunk -> [String] in
++            let ns = chunk.text as NSString
++            return warning.matches(in: chunk.text, range: NSRange(location: 0, length: ns.length)).compactMap { match in
++                let warningText = ns.substring(with: match.range)
++                let required = meaningfulTokens(warningText)
++                let coverage = required.isEmpty ? 1.0 :
++                    Double(required.filter { answerTokens.contains($0) }.count) / Double(required.count)
++                return coverage < 0.60
++                    ? "required warning omitted from \(chunk.documentTitle): \(warningText)"
++                    : nil
++            }
++        }
++    }
++
++    private static func meaningfulTokens(_ text: String) -> Set<String> {
++        Set(text.lowercased().split { !($0.isLetter || $0.isNumber) }.map(String.init)
++            .filter { $0.count >= 3 && !stopWords.contains($0) })
++    }
++
++    private static func citationIndices(in text: String) -> [Int] {
++        let ns = text as NSString
++        return citation.matches(in: text, range: NSRange(location: 0, length: ns.length)).compactMap { match in
++            Int(ns.substring(with: match.range(at: 1)))
++        }
++    }
++
++    private static func sentences(_ text: String) -> [String] {
++        text.split(whereSeparator: { ".!?".contains($0) })
++            .map { String($0).trimmingCharacters(in: .whitespacesAndNewlines) }
++            .filter { !$0.isEmpty }
++    }
++
++    private static func firstMatch(_ regex: NSRegularExpression, in text: String) -> NSTextCheckingResult? {
++        regex.firstMatch(in: text, range: NSRange(location: 0, length: (text as NSString).length))
++    }
++
++    private static func replacingMatches(_ regex: NSRegularExpression,
++                                         in text: String,
++                                         with replacement: String) -> String {
++        regex.stringByReplacingMatches(in: text,
++            range: NSRange(location: 0, length: (text as NSString).length),
++            withTemplate: replacement)
++    }
++
++    private static let highRiskDomains: Set<String> = [
++        "medical", "first_aid", "medicine", "chemical", "water", "food_safety", "emergency"
++    ]
++    private static let contextStopWords: Set<String> = [
++        "and", "the", "for", "with", "from", "into", "onto", "that", "this", "then", "use"
++    ]
++    private static let stopWords: Set<String> = [
++        "and", "the", "for", "with", "from", "that", "this", "your", "you", "are", "not"
++    ]
++}
+diff --git a/ios/Godstone/Sources/GodstoneCore/SafetyGate.swift b/ios/Godstone/Sources/GodstoneCore/SafetyGate.swift
+index 244711b..6fb4474 100644
+--- a/ios/Godstone/Sources/GodstoneCore/SafetyGate.swift
++++ b/ios/Godstone/Sources/GodstoneCore/SafetyGate.swift
+@@ -274,21 +274,11 @@ public enum SafetyGate {
+         let blob = evidence.map { $0.text }.joined(separator: " ").lowercased()
+         let blobNums = Set(matches(blob).map {
+             $0.replacingOccurrences(of: " ", with: "").lowercased() })
+-        let digits = try? NSRegularExpression(pattern: #"\d+(?:\.\d+)?"#)
+-        let nsBlob = blob as NSString
+-        let blobBare = Set((digits?.matches(in: blob,
+-            range: NSRange(location: 0, length: nsBlob.length)) ?? [])
+-            .map { nsBlob.substring(with: $0.range) })
+-
++        // GST-SAFE-002: exact quantity+unit only. A bare number may not
++        // support a different unit, dimension, or qualifier.
+         let unsupported = quantities.filter { q in
+             let norm = q.replacingOccurrences(of: " ", with: "").lowercased()
+-            if blobNums.contains(norm) { return false }
+-            let nsQ = q as NSString
+-            let n = (digits?.firstMatch(in: q,
+-                range: NSRange(location: 0, length: nsQ.length)))
+-                .map { nsQ.substring(with: $0.range) }
+-            if let n, blobBare.contains(n) { return false }
+-            return true
++            return !blobNums.contains(norm)
+         }
+         return (unsupported.isEmpty, unsupported)
+     }
+diff --git a/ios/Godstone/Sources/GodstoneLLM/RagPipeline.swift b/ios/Godstone/Sources/GodstoneLLM/RagPipeline.swift
+index 4226b65..eb228db 100644
+--- a/ios/Godstone/Sources/GodstoneLLM/RagPipeline.swift
++++ b/ios/Godstone/Sources/GodstoneLLM/RagPipeline.swift
+@@ -1,15 +1,6 @@
+ import Foundation
+ import GodstoneCore
+ 
+-/// Retrieval-Augmented Generation over the Archive.
+-///
+-/// This file is the enforcement point for constraint C3: the Oracle NEVER
+-/// answers from parametric memory. If retrieval returns nothing above the
+-/// confidence floor, the pipeline refuses and says so. A 0.6B model inventing a
+-/// paediatric dose is not a quality problem, it is a fatality.
+-///
+-/// Policy is identical to the Android RagPipeline in tab 05. The two must not
+-/// drift, or the same question answers differently on two phones in the same room.
+ public struct Citation: Sendable, Identifiable, Hashable {
+     public let id: Int64
+     public let documentTitle: String
+@@ -22,39 +13,23 @@ public enum RagOutcome: Sendable {
+     case notInArchive
+ }
+ 
+-/// Staged retrieval result exposed to the UI so the confidence gate can run
+-/// BEFORE the model is loaded (C3) and so a refusal can still show near-miss
+-/// sources from the Archive (C5). Mirrors `OracleViewModel.State` on Android.
++public enum FinalAnswerOutcome: Sendable {
++    case accepted(text: String, citations: [Citation])
++    case rejected(reason: String)
++}
++
+ public struct RetrievalResult: Sendable {
+     public let chunks: [RetrievedChunk]
+     public let bestScore: Double
+     public let nearMisses: [Citation]
+-
+-    /// Verdict from `SafetyGate.evaluate` -- the same logic the probe suite
+-    /// exercises. Nil means the gate never ran, which fails closed.
+     public let gateVerdict: SafetyGate.Result?
+-
+-    public var passesConfidenceGate: Bool {
+-        gateVerdict?.allowsGeneration ?? false
+-    }
++    public var passesConfidenceGate: Bool { gateVerdict?.allowsGeneration ?? false }
+ }
+ 
+ public actor RagPipeline {
+-
+-    /// Below this fused score we consider the Archive silent on the question.
+-    /// Tuned on the offline eval set in tab 12; deliberately conservative.
+-    /// PARITY with Android (was 0.28; raised to 0.35 to match tab 05).
+-    /// RETAINED ONLY AS A LEGACY CONSTANT. The verdict now comes from
+-    /// SafetyGate.evaluate; see `RetrievalResult.passesConfidenceGate`.
+-    /// Invariant G fails the build if this value is ever compared against
+-    /// again, because the repository's own audit proved it cannot discriminate.
+     @available(*, deprecated, message: "use SafetyGate.evaluate")
+     public static let confidenceFloor: Double = 0.35
+-
+-    /// Reciprocal-rank-fusion constant. Standard value; combines the FTS5 rank
+-    /// and the vector rank without either having to be calibrated to the other.
+     private static let rrfK: Double = 60.0
+-
+     private let retriever: Retriever
+     private let builder: PromptBuilder
+ 
+@@ -63,97 +38,51 @@ public actor RagPipeline {
+         self.builder = builder
+     }
+ 
+-    // MARK: - Staged API (drives OracleViewModel)
+-
+-    /// Best-effort model preload. Returns true when a runner is resident and
+-    /// ready, false when the model cannot be loaded (e.g. modelMissing). The UI
+-    /// uses this to decide between "generate" and "degrade to Archive browse"
+-    /// without ever blocking the gate on a model that may not fit (C5).
+     @discardableResult
+     public func warmUp() async -> Bool {
+-        guard let runner = try? await ModelManager.shared.ensureLoaded() else {
+-            return false
+-        }
++        guard let runner = try? await ModelManager.shared.ensureLoaded() else { return false }
+         ModelManager.shared.touch()
+         return await runner.isLoaded
+     }
+ 
+-    /// Hybrid retrieval + reciprocal-rank fusion. Runs the gate evaluation but
+-    /// does NOT load the model; the embedder lazily touches `ModelManager.shared`
+-    /// so a cold Archive query never pays for a model load it may not need.
+     public func retrieve(question: String) async -> RetrievalResult {
+-        // Hybrid retrieval: FTS5 catches exact terms ("tourniquet", "1:200"),
+-        // vectors catch paraphrase ("how do I stop bad bleeding"). Neither alone
+-        // is good enough for a user who is frightened and typing badly.
+         let lexical = (try? retriever.searchLexical(question, limit: 24)) ?? []
+-        // The archive's vectors come from bge-small/bge-base (see
+-        // content/ingest/embedder.py). This used to embed the query with the
+-        // QWEN GENERATION model, putting query and corpus in two completely
+-        // different vector spaces -- cosine similarity between them is noise,
+-        // so every semantic score was meaningless while looking healthy.
+-        //
+-        // ModelManager.shared.embedder loads the SAME GGUF the archive was
+-        // built with and returns nil on a dimension mismatch, so retrieval
+-        // degrades to lexical-only rather than comparing across spaces.
+         let semantic = (try? await retriever.searchSemantic(
+             question,
+             embedder: { await ModelManager.shared.embedQuery($0) },
+             limit: 24)) ?? []
+-
+-        let fused = fuse(lexical: lexical, semantic: semantic)
+-        let top = Array(fused.prefix(Tier.current.topKChunks))
+-
+-        let bestScore = top.first?.score ?? 0
++        let top = Array(fuse(lexical: lexical, semantic: semantic).prefix(Tier.current.topKChunks))
+         let verdict = SafetyGate.evaluate(question: question,
+                                           chunks: top,
+                                           index: await retriever.corpusIndex())
+         let nearMisses: [Citation] = verdict.allowsGeneration ? [] : top.prefix(3).map {
+-            Citation(id: $0.chunkId,
+-                     documentTitle: $0.documentTitle,
+-                     section: $0.section,
+-                     score: $0.score)
++            Citation(id: $0.chunkId, documentTitle: $0.documentTitle,
++                     section: $0.section, score: $0.score)
+         }
+-        return RetrievalResult(chunks: top, bestScore: bestScore,
++        return RetrievalResult(chunks: top, bestScore: top.first?.score ?? 0,
+                                nearMisses: nearMisses, gateVerdict: verdict)
+     }
+ 
+-    /// Streaming generation gated on the retrieval result. The stream finishes
+-    /// immediately (empty) when the gate did not pass, so the UI's `for try await`
+-    /// loop simply does nothing and falls through to the refused state.
+-    ///
+-    /// `nonisolated` because `OracleViewModel` iterates it without `await`-ing the
+-    /// call itself: the actor state is only touched inside the stream's detached
+-    /// continuation, where isolation is re-acquired at each `await`.
++    /// The stream contains private draft bytes. UI code must never publish it directly.
+     public nonisolated func generate(question: String,
+                                      retrieval: RetrievalResult) -> AsyncThrowingStream<String, Error> {
+         AsyncThrowingStream { continuation in
+             Task {
+-                // Constraint C3: the gate runs BEFORE the model is ever invoked.
+                 guard retrieval.passesConfidenceGate else {
+-                    continuation.finish()
+-                    return
++                    continuation.finish(); return
+                 }
+-
+                 do {
+                     let runner = try await ModelManager.shared.ensureLoaded()
+                     ModelManager.shared.touch()
+-
+-                    // Budget the context honestly using the model's own tokenizer
+-                    // rather than a characters-per-token guess, then drop whole
+-                    // chunks from the tail until it fits. A truncated chunk can
+-                    // sever a citation from its procedure, which is exactly the
+-                    // failure C3 exists to prevent.
+                     let prompt = await self.builder.build(
+                         question: question,
+                         chunks: retrieval.chunks,
+                         budget: Tier.current.contextTokens - 512,
+                         countTokens: { await runner.countTokens($0) }
+                     )
+-
+                     let sampling = self.builder.isClinical(question)
+                         ? LlamaRunner.Sampling.clinical
+                         : LlamaRunner.Sampling()
+-
+                     for try await token in await runner.generate(prompt: prompt, sampling: sampling) {
+                         continuation.yield(token)
+                     }
+@@ -165,75 +94,55 @@ public actor RagPipeline {
+         }
+     }
+ 
+-    /// Maps `[n]` citation markers in the generated answer back to the chunks
+-    /// that were actually placed in the prompt, so the UI can render tappable
+-    /// sources instead of bare index numbers. 1-based, matches PromptBuilder.
+-    public nonisolated func extractCitations(answer: String,
+-                                             retrieval: RetrievalResult) -> [Citation] {
+-        guard let regex = try? NSRegularExpression(pattern: #"\[(\d+)\]"#) else {
+-            return []
++    public nonisolated func validate(answer: String,
++                                     retrieval: RetrievalResult) -> FinalAnswerOutcome {
++        let result = OracleAnswerValidator.validate(
++            answer: answer,
++            chunks: retrieval.chunks,
++            retrievalAllowed: retrieval.passesConfidenceGate
++        )
++        guard result.isValid else {
++            return .rejected(reason: result.reason ?? "answer validation failed")
+         }
+-        let ns = answer as NSString
+-        let matches = regex.matches(in: answer,
+-                                    range: NSRange(location: 0, length: ns.length))
+-
+-        var seen = Set<Int>()
+-        var citations: [Citation] = []
+-        for match in matches {
+-            let n = Int(ns.substring(with: match.range(at: 1))) ?? 0
+-            guard n >= 1, n <= retrieval.chunks.count, !seen.contains(n) else { continue }
+-            seen.insert(n)
++        let citations = result.citedIndices.map { n -> Citation in
+             let chunk = retrieval.chunks[n - 1]
+-            citations.append(Citation(id: chunk.chunkId,
+-                                      documentTitle: chunk.documentTitle,
+-                                      section: chunk.section,
+-                                      score: chunk.score))
++            return Citation(id: chunk.chunkId, documentTitle: chunk.documentTitle,
++                            section: chunk.section, score: chunk.score)
+         }
++        return .accepted(text: answer.trimmingCharacters(in: .whitespacesAndNewlines),
++                         citations: citations)
++    }
++
++    public nonisolated func extractCitations(answer: String,
++                                             retrieval: RetrievalResult) -> [Citation] {
++        guard case .accepted(_, let citations) = validate(answer: answer, retrieval: retrieval)
++        else { return [] }
+         return citations
+     }
+ 
+-    /// Release the model back to the OS. Fire-and-forget: the UI calls this on
+-    /// background without awaiting, so the eviction runs on its own task.
+     public nonisolated func release() {
+         Task { await ModelManager.shared.evictNow() }
+     }
+ 
+-    // MARK: - Legacy single-shot API (preserved for callers that do not stream)
+-
++    /// Compatibility API: callback receives one complete validated answer, never draft tokens.
+     public func answer(question: String,
+                        onToken: @escaping @Sendable (String) -> Void) async throws -> RagOutcome {
+         let retrieval = await retrieve(question: question)
+-
+-        guard retrieval.passesConfidenceGate else {
+-            return .notInArchive
+-        }
+-
++        guard retrieval.passesConfidenceGate else { return .notInArchive }
+         var collected = ""
+         for try await token in generate(question: question, retrieval: retrieval) {
++            try Task.checkCancellation()
+             collected += token
+-            onToken(token)
+         }
+-
+-        let citations = extractCitations(answer: collected, retrieval: retrieval)
+-
+-        // Post-condition, cheap and worth it: a non-empty answer must carry at
+-        // least one citation, or we discard it and admit ignorance instead.
+-        guard !collected.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
+-              !citations.isEmpty else {
+-            return .notInArchive
+-        }
+-
+-        return .answer(text: collected, citations: citations)
++        guard case .accepted(let text, let citations) = validate(
++            answer: collected, retrieval: retrieval) else { return .notInArchive }
++        onToken(text)
++        return .answer(text: text, citations: citations)
+     }
+ 
+-    /// Reciprocal rank fusion. Rank-based, so the wildly different scales of
+-    /// BM25 and cosine similarity never have to be reconciled.
+-    private func fuse(lexical: [RetrievedChunk],
+-                      semantic: [RetrievedChunk]) -> [RetrievedChunk] {
+-
++    private func fuse(lexical: [RetrievedChunk], semantic: [RetrievedChunk]) -> [RetrievedChunk] {
+         var scores: [Int64: Double] = [:]
+         var byId: [Int64: RetrievedChunk] = [:]
+-
+         for (rank, chunk) in lexical.enumerated() {
+             scores[chunk.chunkId, default: 0] += 1.0 / (RagPipeline.rrfK + Double(rank + 1))
+             byId[chunk.chunkId] = chunk
+@@ -242,17 +151,11 @@ public actor RagPipeline {
+             scores[chunk.chunkId, default: 0] += 1.0 / (RagPipeline.rrfK + Double(rank + 1))
+             byId[chunk.chunkId] = chunk
+         }
+-
+-        // Normalise to 0...1 against the best possible fused score so the
+-        // confidence floor means the same thing regardless of result count.
+         let ceiling = 2.0 / (RagPipeline.rrfK + 1.0)
+-
+-        return scores
+-            .compactMap { (id, raw) -> RetrievedChunk? in
+-                guard var c = byId[id] else { return nil }
+-                c.score = min(1.0, raw / ceiling)
+-                return c
+-            }
+-            .sorted { $0.score > $1.score }
++        return scores.compactMap { id, raw -> RetrievedChunk? in
++            guard var chunk = byId[id] else { return nil }
++            chunk.score = min(1.0, raw / ceiling)
++            return chunk
++        }.sorted { $0.score > $1.score }
+     }
+ }
+diff --git a/ios/Godstone/Tests/GodstoneCoreTests/OracleAnswerValidatorTests.swift b/ios/Godstone/Tests/GodstoneCoreTests/OracleAnswerValidatorTests.swift
+new file mode 100644
+index 0000000..ecde4b0
+--- /dev/null
++++ b/ios/Godstone/Tests/GodstoneCoreTests/OracleAnswerValidatorTests.swift
+@@ -0,0 +1,75 @@
++import XCTest
++@testable import GodstoneCore
++
++final class OracleAnswerValidatorTests: XCTestCase {
++    func testExactQuantityWithCitationIsAccepted() {
++        let result = OracleAnswerValidator.validate(
++            answer: "Rinse the container with 500 ml of clean water [1].",
++            chunks: [chunk("Rinse the container with 500 ml of clean water.")],
++            retrievalAllowed: true)
++        XCTAssertTrue(result.isValid, result.unsupported.joined(separator: "; "))
++    }
++
++    func testWrongUnitIsRejectedEvenWhenNumberMatches() {
++        let result = OracleAnswerValidator.validate(
++            answer: "Rinse the container with 500 mg of clean water [1].",
++            chunks: [chunk("Rinse the container with 500 ml of clean water.")],
++            retrievalAllowed: true)
++        XCTAssertFalse(result.isValid)
++    }
++
++    func testDenominatorOmissionIsRejected() {
++        let result = OracleAnswerValidator.validate(
++            answer: "Give 5 ml of the solution [1].",
++            chunks: [chunk("Give 5 ml per kg of the solution.")],
++            retrievalAllowed: true)
++        XCTAssertFalse(result.isValid)
++    }
++
++    func testWarningOmissionIsRejected() {
++        let result = OracleAnswerValidator.validate(
++            answer: "Use the medicine as directed [1].",
++            chunks: [chunk("Use the medicine as directed. Do not use for children under 2.")],
++            retrievalAllowed: true)
++        XCTAssertFalse(result.isValid)
++    }
++
++    /// (c) 10 minutes cannot approve 10 hours: value matches, time dimension
++    /// matches, but the unit differs (min vs h) -> rejected. Context terms are
++    /// deliberately shared so the unit mismatch is the sole rejection reason.
++    func testWrongTimeUnitIsRejectedEvenWhenNumberMatches() {
++        let result = OracleAnswerValidator.validate(
++            answer: "Allow the solution to rest for 10 minutes [1].",
++            chunks: [chunk("Allow the solution to rest for 10 hours.")],
++            retrievalAllowed: true)
++        XCTAssertFalse(result.isValid)
++        XCTAssertTrue(result.unsupported.contains { $0.contains("unsupported quantity") },
++                      "expected an unsupported-quantity finding, got: \(result.unsupported)")
++    }
++
++    /// (e) An answer with no citation markers at all is rejected in full,
++    /// regardless of whether the content otherwise matches a chunk.
++    func testUncitedAnswerIsRejectedInFull() {
++        let result = OracleAnswerValidator.validate(
++            answer: "Give 500 ml of water.",
++            chunks: [chunk("Give 500 ml of water.")],
++            retrievalAllowed: true)
++        XCTAssertFalse(result.isValid)
++    }
++
++    /// Invalid output is discarded in full: when a single cited answer carries
++    /// two quantities and only one is unsupported, the entire answer is rejected
++    /// (the validator never returns a partially-sanitised answer).
++    func testInvalidOutputIsDiscardedInFull() {
++        let result = OracleAnswerValidator.validate(
++            answer: "Rinse with 500 ml of water [1], then wait 10 minutes [1].",
++            chunks: [chunk("Rinse with 500 ml of water. Wait 10 hours.")],
++            retrievalAllowed: true)
++        XCTAssertFalse(result.isValid, "an unsupported quantity must reject the whole answer")
++    }
++
++    private func chunk(_ text: String) -> RetrievedChunk {
++        RetrievedChunk(chunkId: 1, documentId: 1, documentTitle: "Reviewed source",
++            section: "Procedure", domain: "medical", text: text, score: 1)
++    }
++}

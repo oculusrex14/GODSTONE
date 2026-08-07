@@ -1,0 +1,113 @@
+is_git_repo=yes
+head=b7daf5aceb642277807e9bfbe3bbb486112a64ec
+branch=remediate-overlay
+describe=b7daf5a
+worktree=/private/tmp/gs-remediate
+--- status --porcelain ---
+ M .github/workflows/build.yml
+ M README.md
+ M android/app/build.gradle.kts
+ M android/app/src/main/AndroidManifest.xml
+ M android/app/src/main/java/io/godstone/app/GodstoneApplication.kt
+ M android/app/src/main/java/io/godstone/app/MainActivity.kt
+ M android/app/src/main/java/io/godstone/app/di/AppModule.kt
+ M android/app/src/main/java/io/godstone/app/ui/GodstoneNavHost.kt
+ M android/app/src/main/java/io/godstone/app/ui/home/HomeScreen.kt
+ D android/app/src/main/java/io/godstone/app/ui/mesh/MeshScreen.kt
+ M android/app/src/main/java/io/godstone/app/ui/oracle/OracleViewModel.kt
+ D android/app/src/main/java/io/godstone/app/ui/sos/SosScreen.kt
+ M android/core/src/main/java/io/godstone/core/crypto/Ed25519Keys.kt
+ M android/core/src/main/java/io/godstone/core/crypto/X25519Keys.kt
+ M android/gradle/wrapper/gradle-wrapper.properties
+ M android/llm/build.gradle.kts
+ M android/llm/src/main/java/io/godstone/llm/rag/RagPipeline.kt
+ M android/llm/src/main/java/io/godstone/llm/safety/SafetyGate.kt
+ M android/mesh/build.gradle.kts
+ M android/mesh/src/main/java/io/godstone/mesh/MeshNode.kt
+ M android/mesh/src/main/java/io/godstone/mesh/abuse/PeerGovernor.kt
+ M android/mesh/src/main/java/io/godstone/mesh/crypto/NoiseSession.kt
+ M android/mesh/src/main/java/io/godstone/mesh/router/BloomDigest.kt
+ M android/mesh/src/main/java/io/godstone/mesh/router/ProofOfWork.kt
+ M android/mesh/src/main/java/io/godstone/mesh/router/Router.kt
+ M android/mesh/src/main/java/io/godstone/mesh/store/MessageStore.kt
+ D android/mesh/src/main/java/io/godstone/mesh/wire/Frame.kt
+ A android/mesh/src/main/java/io/godstone/mesh/wire/v2/MessageId.kt
+ A android/mesh/src/main/java/io/godstone/mesh/wire/v2/Priority.kt
+ M android/mesh/src/test/java/io/godstone/mesh/PortVectorTest.kt
+ A android/mesh/src/test/java/io/godstone/mesh/ProofOfWorkTest.kt
+ M android/mesh/src/test/java/io/godstone/mesh/RouterTest.kt
+ M ci/check_parity.py
+ M ci/symbols.py
+ M content/ingest/build_archive.py
+ M crypto/derivation.py
+ M crypto/handshake_vectors.json
+ M crypto/noise_ref.py
+ M crypto/test_conformance.py
+ M ios/Godstone/Godstone.entitlements
+ M ios/Godstone/Info.plist
+ M ios/Godstone/Package.swift
+ M ios/Godstone/Sources/App/AppContainer.swift
+ M ios/Godstone/Sources/App/GodstoneApp.swift
+ M ios/Godstone/Sources/App/OracleView.swift
+ D ios/Godstone/Sources/App/OracleViewModel.swift
+ M ios/Godstone/Sources/App/RootView.swift
+ M ios/Godstone/Sources/GodstoneCore/SafetyGate.swift
+ M ios/Godstone/Sources/GodstoneLLM/RagPipeline.swift
+ M ios/Godstone/Sources/GodstoneMesh/NoiseSession.swift
+ M ios/Godstone/Sources/GodstoneMesh/WireV2.swift
+ M ios/Godstone/Tests/GodstoneMeshTests/PortVectorTests.swift
+ M ios/project.yml
+ M wire/codegen.py
+ M wire/gen/WireV2.swift
+?? .github/workflows/production-evidence.yml
+?? PRODUCTION_READINESS_REPORT.md
+?? RELEASE_MANIFEST.json
+?? THIRD_PARTY_NOTICES.md
+?? android/.kotlin/
+?? android/app/src/main/dormant/
+?? android/app/src/test/
+?? android/gradle.properties
+?? android/llm/src/main/java/io/godstone/llm/rag/AnswerValidator.kt
+?? android/llm/src/main/java/io/godstone/llm/rag/OraclePipeline.kt
+?? android/llm/src/test/java/io/godstone/llm/rag/
+?? android/mesh/src/main/java/io/godstone/mesh/wire/v2/SosFrameValidator.kt
+?? android/mesh/src/test/java/io/godstone/mesh/wire/
+?? ci/check_content_release_integration.py
+?? ci/check_oracle_private_draft.py
+?? ci/check_release_surface.py
+?? ci/check_repository.py
+?? ci/check_shipping_path.py
+?? ci/inventory_dormant_wire.py
+?? ci/no_legacy_wire.py
+?? ci/no_release_bypasses.py
+?? content/archive_manifest.py
+?? content/manifests/
+?? content/release_gate.py
+?? content/tests/
+?? docs/adr/ADR-008-android-canonical-gmp21-runtime.md
+?? docs/architecture/
+?? docs/production/
+?? evidence/
+?? ios/.swift-version
+?? ios/.xcd-derived/
+?? ios/Godstone/PrivacyInfo.xcprivacy
+?? ios/Godstone/Sources/GodstoneCore/OracleAnswerValidator.swift
+?? ios/Godstone/Sources/GodstoneCore/OracleOrchestration.swift
+?? ios/Godstone/Sources/GodstoneCore/OracleViewModel.swift
+?? ios/Godstone/Sources/GodstoneMesh/SosFrameValidator.swift
+?? ios/Godstone/Tests/GodstoneCoreTests/
+?? ios/Godstone/Tests/GodstoneMeshTests/NoiseSessionTests.swift
+?? ios/Godstone/Tests/GodstoneMeshTests/WireV2VectorTests.swift
+?? ios/Packages/
+?? patches/
+?? release/
+?? requirements.lock
+?? sbom/
+?? scripts/check_android_toolchain.py
+?? scripts/inspect_android_artifacts.py
+?? scripts/prepare_release_assets.py
+?? scripts/sync_ios_foundation_package.py
+?? scripts/verify_android_phase0.sh
+--- worktree list ---
+/Users/oculus/Projects/GODSTONE b7daf5a [main]
+/private/tmp/gs-remediate       b7daf5a [remediate-overlay]

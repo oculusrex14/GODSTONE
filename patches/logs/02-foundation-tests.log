@@ -1,0 +1,21 @@
+=== 02 Foundation package tests ===
+Test Case '-[GodstoneMeshTests.RouterTests testBloomDigestIsStableAcrossDuplicate]' started.
+Test Case '-[GodstoneMeshTests.RouterTests testBloomDigestIsStableAcrossDuplicate]' passed (0.000 seconds).
+Test Case '-[GodstoneMeshTests.RouterTests testDuplicateIsSuppressed]' started.
+Test Case '-[GodstoneMeshTests.RouterTests testDuplicateIsSuppressed]' passed (0.000 seconds).
+Test Case '-[GodstoneMeshTests.RouterTests testNonSosLocalDeliveryDoesNotRelay]' started.
+Test Case '-[GodstoneMeshTests.RouterTests testNonSosLocalDeliveryDoesNotRelay]' passed (0.000 seconds).
+Test Case '-[GodstoneMeshTests.RouterTests testSosIsDeliveredLocallyAndStillRelayed]' started.
+Test Case '-[GodstoneMeshTests.RouterTests testSosIsDeliveredLocallyAndStillRelayed]' passed (0.000 seconds).
+Test Case '-[GodstoneMeshTests.RouterTests testTtlAndHopCountChangeOnRelay]' started.
+Test Case '-[GodstoneMeshTests.RouterTests testTtlAndHopCountChangeOnRelay]' passed (0.000 seconds).
+Test Suite 'RouterTests' passed at 2026-08-06 17:16:48.047.
+	 Executed 5 tests, with 0 failures (0 unexpected) in 0.001 (0.001) seconds
+Test Suite 'GodstoneFoundationPackageTests.xctest' passed at 2026-08-06 17:16:48.047.
+	 Executed 16 tests, with 0 failures (0 unexpected) in 0.008 (0.008) seconds
+Test Suite 'All tests' passed at 2026-08-06 17:16:48.047.
+	 Executed 16 tests, with 0 failures (0 unexpected) in 0.008 (0.014) seconds
+◇ Test run started.
+↳ Testing Library Version: 1902
+↳ Target Platform: arm64e-apple-macos14.0
+✔ Test run with 0 tests in 0 suites passed after 0.001 seconds.

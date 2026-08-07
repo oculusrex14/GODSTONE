@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.godstone.mesh.RouterTest" tests="9" skipped="0" failures="0" errors="0" timestamp="2026-08-07T01:14:30" hostname="Naraharikripas-Mac-mini.local" time="0.028">
+  <properties/>
+  <testcase name="buildSos msg_id is content-derived - distinct payloads get distinct ids" classname="io.godstone.mesh.RouterTest" time="0.003"/>
+  <testcase name="group priority is accepted by the relay - PoW is recipient-side not a relay gate" classname="io.godstone.mesh.RouterTest" time="0.02"/>
+  <testcase name="duplicate message is not relayed twice" classname="io.godstone.mesh.RouterTest" time="0.001"/>
+  <testcase name="buildSos produces a max-ttl structurally-valid SOS frame with a 16-byte content-derived msg_id" classname="io.godstone.mesh.RouterTest" time="0.0"/>
+  <testcase name="current digest advertises every held msg_id" classname="io.godstone.mesh.RouterTest" time="0.001"/>
+  <testcase name="frame with exhausted ttl is dropped" classname="io.godstone.mesh.RouterTest" time="0.001"/>
+  <testcase name="framesPeerLack returns held frames absent from the peer digest" classname="io.godstone.mesh.RouterTest" time="0.001"/>
+  <testcase name="ttl above one is relayed and decremented on the forward copy" classname="io.godstone.mesh.RouterTest" time="0.001"/>
+  <testcase name="direct priority is accepted" classname="io.godstone.mesh.RouterTest" time="0.0"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

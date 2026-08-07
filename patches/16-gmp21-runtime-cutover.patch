@@ -1,0 +1,1467 @@
+diff --git a/android/mesh/src/main/java/io/godstone/mesh/MeshNode.kt b/android/mesh/src/main/java/io/godstone/mesh/MeshNode.kt
+index 7fe59c1..5c869ab 100644
+--- a/android/mesh/src/main/java/io/godstone/mesh/MeshNode.kt
++++ b/android/mesh/src/main/java/io/godstone/mesh/MeshNode.kt
+@@ -8,7 +8,6 @@ import io.godstone.mesh.transport.BleTransport
+ import io.godstone.mesh.transport.PeerEvent
+ import io.godstone.mesh.transport.PowerState
+ import io.godstone.mesh.transport.WifiAwareTransport
+-import java.security.SecureRandom
+ import kotlinx.coroutines.CoroutineScope
+ import kotlinx.coroutines.Dispatchers
+ import kotlinx.coroutines.SupervisorJob
+@@ -104,7 +103,9 @@ class MeshNode(
+             }
+         }.launchIn(scope)
+         ble.receivedPlaintext().onEach { (peer, clear) ->
+-            runCatching { io.godstone.mesh.wire.Frame.decode(clear) }
++            // GMP/2.1 frame path (ADR-001/008): decode is fail-closed (null on any
++            // desync/magic/version/CRC/length error) and the router takes FrameV2.
++            runCatching { io.godstone.mesh.wire.v2.FrameV2.decode(clear) }
+                 .getOrNull()?.let { router.onFrameReceived(it, peer) }
+         }.launchIn(scope)
+         publishStatus()
+@@ -129,7 +130,7 @@ class MeshNode(
+     suspend fun broadcastSos(payload: ByteArray): SosDispatchResult = withContext(Dispatchers.IO) {
+         if (!LINK_LAYER_READY) return@withContext SosDispatchResult.Unavailable(LINK_LAYER_OPEN_REASON)
+         runCatching {
+-            val frame = router.buildSos(payload, SecureRandom().nextLong())
++            val frame = router.buildSos(payload)
+             store.persist(frame, receivedFrom = identity.nodeId)
+             val bytes = frame.encode()
+             var handed = 0
+diff --git a/android/mesh/src/main/java/io/godstone/mesh/abuse/PeerGovernor.kt b/android/mesh/src/main/java/io/godstone/mesh/abuse/PeerGovernor.kt
+index 6cf1b9a..dcdc8db 100644
+--- a/android/mesh/src/main/java/io/godstone/mesh/abuse/PeerGovernor.kt
++++ b/android/mesh/src/main/java/io/godstone/mesh/abuse/PeerGovernor.kt
+@@ -1,6 +1,6 @@
+ package io.godstone.mesh.abuse
+ 
+-import io.godstone.mesh.wire.Priority
++import io.godstone.mesh.wire.v2.Priority
+ import java.util.concurrent.ConcurrentHashMap
+ import kotlin.math.min
+ import kotlin.math.pow
+diff --git a/android/mesh/src/main/java/io/godstone/mesh/router/BloomDigest.kt b/android/mesh/src/main/java/io/godstone/mesh/router/BloomDigest.kt
+index abb9895..5fb7ac1 100644
+--- a/android/mesh/src/main/java/io/godstone/mesh/router/BloomDigest.kt
++++ b/android/mesh/src/main/java/io/godstone/mesh/router/BloomDigest.kt
+@@ -11,17 +11,27 @@ import java.nio.ByteBuffer
+  * A false positive means we fail to offer a message the peer actually lacks;
+  * the next encounter, or a different carrier, corrects it. That is acceptable
+  * in an epidemic protocol and far cheaper than exchanging full id lists.
++ *
++ * GMP/2.1 (ADR-001 §3): the hash input is the full 16-byte msg_id concatenated
++ * with the round index as a big-endian uint32, hashed with BLAKE2s-64 (8-byte
++ * digest) and reduced mod 4096. Four rounds. The 20-byte shortDigest (the first
++ * 20 bytes of the 512-byte filter) is carried in the BLE advertisement.
++ *
++ * The msg_id is now a 16-byte content-derived BLOB (MessageId.derive), not the
++ * GMP/1 8-byte Long. add()/mightContain() take the 16-byte id directly.
+  */
+ class BloomDigest(private val bits: ByteArray = ByteArray(SIZE_BYTES)) {
+ 
+-    fun add(msgId: Long) {
++    fun add(msgId: ByteArray) {
++        require(msgId.size == 16) { "msg_id must be 16 bytes" }
+         for (i in 0 until HASHES) {
+             val idx = index(msgId, i)
+             bits[idx ushr 3] = (bits[idx ushr 3].toInt() or (1 shl (idx and 7))).toByte()
+         }
+     }
+ 
+-    fun mightContain(msgId: Long): Boolean {
++    fun mightContain(msgId: ByteArray): Boolean {
++        require(msgId.size == 16) { "msg_id must be 16 bytes" }
+         for (i in 0 until HASHES) {
+             val idx = index(msgId, i)
+             if (bits[idx ushr 3].toInt() and (1 shl (idx and 7)) == 0) return false
+@@ -31,22 +41,26 @@ class BloomDigest(private val bits: ByteArray = ByteArray(SIZE_BYTES)) {
+ 
+     fun toBytes(): ByteArray = bits.copyOf()
+ 
+-    /** 16-byte truncation carried in the BLE advertisement. */
+-    fun shortDigest(): ByteArray = bits.copyOf(16)
++    /** 20-byte truncation carried in the BLE advertisement (ADR-001 §3). */
++    fun shortDigest(): ByteArray = bits.copyOf(SHORT_BYTES)
+ 
+-    private fun index(msgId: Long, round: Int): Int {
++    private fun index(msgId: ByteArray, round: Int): Int {
+         val d = Blake2sDigest(null, 8, null, null)
+-        val input = ByteBuffer.allocate(12).putLong(msgId).putInt(round).array()
+-        d.update(input, 0, input.size)
++        d.update(msgId, 0, msgId.size)
++        // uint32_be(round): big-endian round index, matching the wire format's byte order.
++        val rb = ByteBuffer.allocate(4).putInt(round).array()
++        d.update(rb, 0, rb.size)
+         val out = ByteArray(8)
+         d.doFinal(out, 0)
++        // Interpret the 8-byte BLAKE2s-64 digest big-endian, mask to unsigned, mod 4096.
+         val v = ByteBuffer.wrap(out).getLong()
+         return ((v ushr 1).toInt() and Int.MAX_VALUE) % SIZE_BITS
+     }
+ 
+     companion object {
+         const val SIZE_BITS = 4096
+-        const val SIZE_BYTES = SIZE_BITS / 8
++        const val SIZE_BYTES = SIZE_BITS / 8   // 512
++        const val SHORT_BYTES = 20
+         const val HASHES = 4
+ 
+         fun fromBytes(b: ByteArray): BloomDigest {
+@@ -54,4 +68,4 @@ class BloomDigest(private val bits: ByteArray = ByteArray(SIZE_BYTES)) {
+             return BloomDigest(b.copyOf())
+         }
+     }
+-}
++}
+\ No newline at end of file
+diff --git a/android/mesh/src/main/java/io/godstone/mesh/router/ProofOfWork.kt b/android/mesh/src/main/java/io/godstone/mesh/router/ProofOfWork.kt
+index a637646..6d789be 100644
+--- a/android/mesh/src/main/java/io/godstone/mesh/router/ProofOfWork.kt
++++ b/android/mesh/src/main/java/io/godstone/mesh/router/ProofOfWork.kt
+@@ -1,90 +1,129 @@
+-// SYNTHESIZED gap-closure file -- authored to make the project compile; see docs/AUDIT.md.
++// SYNTHESIZED gap-closure file -- realised for GMP/2.1 per ADR-001 §3 + ADR-008 §2.1.
+ package io.godstone.mesh.router
+ 
+-import io.godstone.mesh.wire.Frame
+ import org.bouncycastle.crypto.digests.Blake2sDigest
+-import java.nio.ByteBuffer
+-import kotlinx.coroutines.Dispatchers
+-import kotlin.coroutines.coroutineContext
+ import kotlinx.coroutines.ensureActive
+-import kotlinx.coroutines.withContext
++import kotlin.coroutines.coroutineContext
+ 
+ /**
+- * 20-bit BLAKE2s proof of work attached to GROUP and BROADCAST frames.
++ * 20-bit BLAKE2s proof of work, carried inside the sealed, authenticated
++ * payload (ADR-001 §3). Under GMP/1 the search variable was msg_id itself
++ * (there was no nonce field); under GMP/2.1 msg_id is a content hash and CANNOT
++ * be mutated, so the nonce moves into the sealed payload where it is
++ * authenticated rather than merely present.
+  *
+- * PoW is the cheapest way to make flooding expensive without a central rate
+- * limiter: a peer must burn CPU to inject wide-distribution traffic, so a
+- * sybil node cannot drown the mesh for free. SOS and DIRECT are exempt because
+- * latency there is safety.
++ * WHAT THIS MEANS FOR ROUTING. PoW is now a **recipient-side** check, not a
++ * relay gate. A relay cannot unseal the payload, so it cannot verify the stamp;
++ * relay-side anti-flood is the PeerGovernor token buckets (threat A5). The
++ * recipient, after SealedSender.open, verifies the nonce against the unsealed
++ * content. The FrameV2 HAS_POW flag (0x0008) marks a frame whose sealed payload
++ * carries a mined nonce; GROUP and BROADCAST set it, SOS and DIRECT do not.
+  *
+  * Verification is cheap (one BLAKE2s); mining is not, which is the point.
+  */
+ object ProofOfWork {
+ 
++    const val NONCE_BYTES = 8
++    /** ADR-001 §3: the production target is a 20-bit-zero BLAKE2s-256 prefix. */
++    const val TARGET_BITS = 20
++
+     /**
+-     * True iff [frame] carries a valid 20-bit PoW stamp.
++     * True iff (powNonce ‖ senderNodeId ‖ createdAtBe ‖ typeCode ‖ plaintext)
++     * hashes to a BLAKE2s-256 digest whose top [targetBits] bits are zero.
+      *
+-     * Input = payload || msg_id || timestamp || type_code; the hash must have its
+-     * top 20 bits zero. The type is bound so a stamp cannot be replayed against a
+-     * different frame type.
++     * The type code is bound so a stamp cannot be replayed against a different
++     * frame type (the GMP/1 rationale survives the cutover). The plaintext is
++     * the application payload the sender sealed — NOT the sealed blob, which a
++     * relay could see but a recipient verifies after opening.
++     *
++     * [targetBits] defaults to [TARGET_BITS] (20, ADR-pinned). A lower value is
++     * exposed solely so unit tests can exercise the mine/verify path without
++     * paying for a ~1M-hash search; production always calls the default.
+      */
+-    fun verify(frame: Frame): Boolean {
+-        val input = frame.payload +
+-            longBytes(frame.msgId) +
+-            longBytes(frame.timestamp) +
+-            byteArrayOf(frame.type.code)
+-
+-        val h = ByteArray(32)
+-        val d = Blake2sDigest(256 / 8)
+-        d.update(input, 0, input.size)
+-        d.doFinal(h, 0)
+-
+-        return h[0].toInt() == 0 &&
+-            h[1].toInt() == 0 &&
+-            (h[2].toInt() and 0xF0) == 0
++    fun verify(
++        powNonce: ByteArray,
++        senderNodeId: ByteArray,
++        createdAtBe: ByteArray,
++        typeCode: Byte,
++        plaintext: ByteArray,
++        targetBits: Int = TARGET_BITS
++    ): Boolean {
++        require(powNonce.size == NONCE_BYTES) { "pow_nonce must be $NONCE_BYTES bytes" }
++        require(targetBits in 1..32) { "targetBits out of range" }
++        val h = blake2s256(preimage(powNonce, senderNodeId, createdAtBe, typeCode, plaintext))
++        return topBitsZero(h, targetBits)
+     }
+ 
+     /**
+-     * Return a copy of [frame] whose msg_id satisfies the 20-bit PoW target.
+-     *
+-     * Audit A-11: verify() existed but nothing produced stamps, so every
+-     * locally-originated GROUP/BROADCAST frame would have been dropped by the
+-     * first honest relay.
+-     *
+-     * There is no dedicated nonce field in the GMP/1 header (see wire/Frame.kt),
+-     * so the search variable is msg_id itself, which the sender already chooses
+-     * freely and which verify() already binds. The hash input below is therefore
+-     * byte-identical to verify() by construction -- do not let the two drift.
++     * Find a [NONCE_BYTES] nonce satisfying the [targetBits] target for the
++     * given unsealed content. At the production 20-bit target this is ~1M
++     * BLAKE2s, so this suspend function must be called OFF the main thread.
+      *
+-     * msg_id stays uniformly distributed, so bloom-digest and dedup behaviour
+-     * are unaffected.
+-     *
+-     * ~1M BLAKE2s at 20 bits: suspending, off the main thread, and cooperatively
+-     * cancellable so a user leaving the screen does not strand a CPU.
++     * It does NOT impose its own dispatcher: the caller controls threading
++     * (MeshNode calls it from Dispatchers.IO). Imposing Dispatchers.Default
++     * here deadlocks under runBlocking in the test worker; a suspend function
++     * should not override its caller's context. It remains cooperatively
++     * cancellable via ensureActive() so a user leaving the screen does not
++     * strand a CPU.
+      */
+-    suspend fun mine(frame: Frame): Frame = withContext(Dispatchers.Default) {
+-        val tail = longBytes(frame.timestamp) + byteArrayOf(frame.type.code)
+-        val h = ByteArray(32)
+-        var candidate = frame.msgId
+-
++    suspend fun mine(
++        senderNodeId: ByteArray,
++        createdAtBe: ByteArray,
++        typeCode: Byte,
++        plaintext: ByteArray,
++        rng: java.security.SecureRandom = java.security.SecureRandom(),
++        targetBits: Int = TARGET_BITS
++    ): ByteArray {
++        require(targetBits in 1..32) { "targetBits out of range" }
++        val powNonce = ByteArray(NONCE_BYTES).also { rng.nextBytes(it) }
+         while (true) {
+             coroutineContext.ensureActive()
++            val h = blake2s256(preimage(powNonce, senderNodeId, createdAtBe, typeCode, plaintext))
++            if (topBitsZero(h, targetBits)) {
++                return powNonce.copyOf()
++            }
++            increment(powNonce)
++        }
++    }
+ 
+-            val d = Blake2sDigest(256 / 8)
+-            d.update(frame.payload, 0, frame.payload.size)
+-            val mid = longBytes(candidate)
+-            d.update(mid, 0, mid.size)
+-            d.update(tail, 0, tail.size)
+-            d.doFinal(h, 0)
++    /** True iff the top [targetBits] bits of [h] are all zero. */
++    private fun topBitsZero(h: ByteArray, targetBits: Int): Boolean {
++        var remaining = targetBits
++        var i = 0
++        while (remaining >= 8) {
++            if (h[i].toInt() != 0) return false
++            remaining -= 8; i++
++        }
++        if (remaining > 0) {
++            val mask = (0xFF shl (8 - remaining)) and 0xFF
++            if (h[i].toInt() and mask != 0) return false
++        }
++        return true
++    }
+ 
+-            if (h[0].toInt() == 0 && h[1].toInt() == 0 && (h[2].toInt() and 0xF0) == 0) {
+-                return@withContext frame.copy(msgId = candidate)
++    private fun preimage(
++        powNonce: ByteArray, senderNodeId: ByteArray, createdAtBe: ByteArray,
++        typeCode: Byte, plaintext: ByteArray
++    ) = powNonce + senderNodeId + createdAtBe + byteArrayOf(typeCode) + plaintext
++
++    private fun blake2s256(data: ByteArray): ByteArray {
++        val d = Blake2sDigest(256 / 8)
++        d.update(data, 0, data.size)
++        val out = ByteArray(32)
++        d.doFinal(out, 0)
++        return out
++    }
++
++    /** Big-endian increment of an 8-byte nonce; wraps at 2^64 (astronomically never). */
++    private fun increment(b: ByteArray) {
++        // Compare the byte UNSIGNED: toInt() sign-extends, so 0xFF becomes -1 and
++        // a naive `== 0xFF` is never true -- the carry would never fire and the
++        // nonce would cycle through only 256 last-byte values, hanging the mine.
++        var i = b.size - 1
++        while (i >= 0) {
++            if ((b[i].toInt() and 0xFF) == 0xFF) { b[i] = 0; i-- } else {
++                b[i] = ((b[i].toInt() and 0xFF) + 1).toByte(); return
+             }
+-            candidate++
+         }
+-        error("unreachable")
+     }
+-
+-    private fun longBytes(v: Long): ByteArray =
+-        ByteBuffer.allocate(8).putLong(v).array()
+-}
++}
+\ No newline at end of file
+diff --git a/android/mesh/src/main/java/io/godstone/mesh/router/Router.kt b/android/mesh/src/main/java/io/godstone/mesh/router/Router.kt
+index a3f58db..75eb9de 100644
+--- a/android/mesh/src/main/java/io/godstone/mesh/router/Router.kt
++++ b/android/mesh/src/main/java/io/godstone/mesh/router/Router.kt
+@@ -1,21 +1,31 @@
+ package io.godstone.mesh.router
+ 
+ import io.godstone.mesh.store.MessageStore
+-import io.godstone.mesh.wire.Frame
+-import io.godstone.mesh.wire.FrameType
+-import io.godstone.mesh.wire.Priority
++import io.godstone.mesh.wire.v2.FrameV2
++import io.godstone.mesh.wire.v2.MessageId
++import io.godstone.mesh.wire.v2.Priority
++import io.godstone.mesh.wire.v2.TypeV2
+ import kotlinx.coroutines.flow.MutableSharedFlow
+ import kotlinx.coroutines.flow.SharedFlow
+ import kotlinx.coroutines.sync.Mutex
+ import kotlinx.coroutines.sync.withLock
+ 
+ /**
+- * Delay-tolerant epidemic router.
++ * Delay-tolerant epidemic router on the canonical GMP/2.1 frame path (ADR-001,
++ * ADR-008). Operates on FrameV2.
+  *
+  * There is deliberately no routing table. In a disaster the topology changes
+  * faster than any table converges, and assuming otherwise is the classic failure
+  * of mesh messengers. Messages persist, replicate to every peer encountered, and
+  * physically travel with their carriers.
++ *
++ * Inbound gate (relay): PeerGovernor (rate limit / trust) -> dedup (LRU 16384 on
++ * the 16-byte msg_id) -> TTL. PoW is NOT a relay gate under GMP/2.1: the nonce
++ * lives inside the sealed payload a relay cannot open, so the stamp is verified
++ * by the recipient after SealedSender.open, not by the relay (ADR-001 §3). The
++ * GMP/1 age gate is gone: GMP/2.1 carries no header timestamp, so there is no
++ * header field to age against; retention is receipt-relative and lives in the
++ * store (ADR-004). Relay-side anti-flood remains PeerGovernor (threat A5).
+  */
+ class Router(
+     private val store: MessageStore,
+@@ -28,38 +38,32 @@ class Router(
+     private val seen = LruMsgIdCache(SEEN_CACHE_SIZE)
+     private val mutex = Mutex()
+ 
+-    private val _inbound = MutableSharedFlow<Frame>(extraBufferCapacity = 256)
+-    val inbound: SharedFlow<Frame> = _inbound
++    private val _inbound = MutableSharedFlow<FrameV2>(extraBufferCapacity = 256)
++    val inbound: SharedFlow<FrameV2> = _inbound
+ 
+     /**
+      * Handle a frame received from [fromPeer].
+      * Returns true when the frame is novel and should be relayed onward.
+      */
+-    suspend fun onFrameReceived(frame: Frame, fromPeer: ByteArray): Boolean = mutex.withLock {
++    suspend fun onFrameReceived(frame: FrameV2, fromPeer: ByteArray): Boolean = mutex.withLock {
+         // 0. Anti-abuse FIRST, before any payload work (PROTOCOL.md section 8).
+         //    An unbounded inbound rate on a mesh whose premise is "battery is
+-        //    life" is a remote power-off switch, not a spam problem. This was
+-        //    documented and entirely absent.
+-        if (!governor.allowInbound(fromPeer, frame.priority)) return false
++        //    life" is a remote power-off switch, not a spam problem.
++        if (!governor.allowInbound(fromPeer, Priority.fromFlags(frame.flags))) return false
+ 
+-        // 1. Drop anything already handled (replay and loop suppression).
++        // 1. Drop anything already handled (replay and loop suppression). The
++        //    16-byte content-derived msg_id is the dedup key.
+         if (seen.contains(frame.msgId)) {
+             governor.penalise(fromPeer, 0.02)   // duplicate floods cost trust
+             return false
+         }
+ 
+-        // 2. Drop expired frames.
+-        val ageSeconds = (System.currentTimeMillis() / 1000) - frame.timestamp
+-        if (ageSeconds > MAX_AGE_SECONDS) return false
+-
+-        // 3. Drop exhausted TTL.
++        // 2. Drop exhausted TTL. (No age gate: GMP/2.1 has no header timestamp;
++        //    retention is receipt-relative in the store, ADR-004.)
+         if (frame.ttl <= 0) return false
+ 
+-        // 4. Verify proof of work where the protocol requires it.
+-        if (frame.priority.requiresProofOfWork && !ProofOfWork.verify(frame)) {
+-            governor.penalise(fromPeer)   // unmined wide-distribution traffic
+-            return false
+-        }
++        // 3. No relay PoW gate under GMP/2.1: the nonce is in the sealed payload,
++        //    verified by the recipient (ADR-001 §3).
+ 
+         seen.add(frame.msgId)
+         governor.reward(fromPeer)         // well-formed, useful traffic
+@@ -69,17 +73,18 @@ class Router(
+         return frame.ttl > 1
+     }
+ 
+-    /** Prepare a frame for forwarding. Never sent back to the peer it came from. */
+-    fun forwardCopy(frame: Frame): Frame = frame.copy(ttl = frame.ttl - 1)
++    /** Prepare a frame for forwarding: decrement TTL, increment hop_count. */
++    fun forwardCopy(frame: FrameV2): FrameV2 =
++        frame.copy(ttl = frame.ttl - 1, hopCount = frame.hopCount + 1)
+ 
+     /**
+      * Compute what a peer appears to lack, in strict priority order:
+      * SOS first, then DIRECT, GROUP, BROADCAST, and BULK last.
+      */
+-    suspend fun framesPeerLacks(peerDigest: BloomDigest, limit: Int): List<Frame> {
++    suspend fun framesPeerLacks(peerDigest: BloomDigest, limit: Int): List<FrameV2> {
+         // A-13: bounded by construction. The store pages rows and we stop as soon
+         // as [limit] is reached, so a 200 MB backlog never materialises in memory.
+-        val out = ArrayList<Frame>(limit)
++        val out = ArrayList<FrameV2>(limit)
+         store.forEachHeldOrderedByPriority { f ->
+             if (!peerDigest.mightContain(f.msgId)) out.add(f)
+             out.size < limit   // false stops the scan
+@@ -96,75 +101,147 @@ class Router(
+     /**
+      * Seal an application message for [recipientStaticPub] (PROTOCOL.md s.6).
+      *
+-     * A relay sees only an ephemeral key, ciphertext and a daily-rotating
+-     * routing tag -- never who is talking to whom. Before this existed, every
+-     * relay in the path learned the full social graph, while the threat model
+-     * promised adversary A2 that it "cannot attribute" messages.
++     * A relay sees only an ephemeral key, ciphertext and a daily-rotating routing
++     * tag (now carried in the FrameV2 header field, not the payload) -- never who
++     * is talking to whom.
++     *
++     * The sealed inner content carries the PoW nonce and created_at alongside the
++     * plaintext (ADR-001 §3): sealedInner = powNonce(8) || created_at_be(4) ||
++     * plaintext. SealedSender packs sender_node_id before that, so the AEAD
++     * authenticates sender + nonce + created_at + plaintext together.
++     *
++     * msg_id = BLAKE2s-128(selfNodeId || created_at || plaintext) (MessageId.derive),
++     * sender-computed and carried in the header. GROUP/BROADCAST mine the nonce
++     * (priority.requiresProofOfWork) and set HAS_POW; SOS/DIRECT do not.
+      */
+-    fun buildSealedMessage(
++    suspend fun buildSealedMessage(
+         plaintext: ByteArray,
+         recipientNodeId: ByteArray,
+         recipientStaticPub: ByteArray,
+-        msgId: Long
+-    ): Frame {
++        priority: Priority = Priority.DIRECT
++    ): FrameV2 {
++        val createdAt = System.currentTimeMillis() / 1000
++        val createdAtBe = MessageId.uint32Be(createdAt)
++        val powNonce = if (priority.requiresProofOfWork) {
++            ProofOfWork.mine(selfNodeId, createdAtBe, TypeV2.MESSAGE.code, plaintext)
++        } else {
++            ByteArray(ProofOfWork.NONCE_BYTES)
++        }
++        val sealedInner = powNonce + createdAtBe + plaintext
+         val sealed = io.godstone.mesh.seal.SealedSender.seal(
+-            plaintext, selfNodeId, recipientStaticPub)
+-        return Frame(
+-            type = FrameType.MESSAGE,
+-            ttl = Frame.DEFAULT_TTL,
+-            priority = Priority.DIRECT,
++            sealedInner, selfNodeId, recipientStaticPub)
++        val msgId = MessageId.derive(selfNodeId, createdAt, plaintext)
++        val routingTag = io.godstone.mesh.seal.SealedSender.routingTag(
++            recipientNodeId,
++            io.godstone.mesh.seal.SealedSender.currentEpochDay())
++        val flags = FrameV2.SEALED or
++            (if (priority.requiresProofOfWork) FrameV2.HAS_POW else 0) or
++            Priority.toFlags(priority)
++        return FrameV2(
++            type = TypeV2.MESSAGE,
+             msgId = msgId,
+-            timestamp = System.currentTimeMillis() / 1000,
+-            payload = io.godstone.mesh.seal.SealedSender.routingTag(
+-                recipientNodeId,
+-                io.godstone.mesh.seal.SealedSender.currentEpochDay()) + sealed
++            routingTag = routingTag,
++            ttl = FrameV2.DEFAULT_TTL,
++            hopCount = 0,
++            flags = flags,
++            payload = sealed
+         )
+     }
+ 
+     /**
+-     * Attempt to open a MESSAGE addressed to us. Null means it was not ours --
+-     * a routing-tag collision, which is expected and costs one AEAD open.
++     * Open a sealed MESSAGE addressed to us and split the authenticated inner
++     * content into the PoW nonce, created_at and plaintext. Null means it was
++     * not ours -- a routing-tag collision, expected and costs one AEAD open.
++     *
++     * The caller verifies PoW when the frame carries HAS_POW (recipient-side
++     * gate; relays cannot perform this check).
+      */
+-    fun openSealed(frame: Frame, ourStaticDhPriv: ByteArray):
+-            io.godstone.mesh.seal.SealedSender.Opened? {
+-        val tagLen = io.godstone.mesh.seal.SealedSender.ROUTING_TAG_LEN
+-        if (frame.payload.size <= tagLen) return null
+-        return io.godstone.mesh.seal.SealedSender.open(
+-            frame.payload.copyOfRange(tagLen, frame.payload.size), ourStaticDhPriv)
++    fun openSealedMessage(frame: FrameV2, ourStaticDhPriv: ByteArray): OpenedSealedMessage? {
++        val opened = io.godstone.mesh.seal.SealedSender.open(frame.payload, ourStaticDhPriv)
++            ?: return null
++        // opened.plaintext is the sealedInner we packed: powNonce(8) + created_at_be(4) + plaintext
++        val inner = opened.plaintext
++        if (inner.size < ProofOfWork.NONCE_BYTES + 4) return null
++        val powNonce = inner.copyOfRange(0, ProofOfWork.NONCE_BYTES)
++        val createdAtBe = inner.copyOfRange(ProofOfWork.NONCE_BYTES, ProofOfWork.NONCE_BYTES + 4)
++        val plaintext = inner.copyOfRange(ProofOfWork.NONCE_BYTES + 4, inner.size)
++        return OpenedSealedMessage(
++            senderNodeId = opened.senderNodeId,
++            powNonce = powNonce,
++            createdAtBe = createdAtBe,
++            plaintext = plaintext,
++            frame = frame
++        )
+     }
+ 
+-    /** SOS gets maximum TTL, extended retention, and is evicted last. */
+-    fun buildSos(payload: ByteArray, msgId: Long): Frame = Frame(
+-        type = FrameType.SOS,
+-        ttl = Frame.MAX_TTL,
+-        priority = Priority.SOS,
+-        msgId = msgId,
+-        timestamp = System.currentTimeMillis() / 1000,
+-        payload = payload
+-    )
++    /**
++     * Build a SOS frame. Maximum TTL, broadcast (zero routing tag), ACK_REQ +
++     * RELAY_OK flags, priority SOS. The payload is structurally valid per
++     * SosFrameValidator: "SOS1" magic + a 64-byte signature slot + the user
++     * payload.
++     *
++     * The 64-byte slot is a PLACEHOLDER (all zeros) for the Ed25519 signature
++     * over (msg_id || "SOS1" || payload). Cryptographic SOS signing is wired
++     * with the SOS lifecycle under ADR-003/005 (OPEN); SosFrameValidator (patch
++     * 15) validates structure only, so a zero slot is accepted at this layer.
++     * msg_id is still content-derived (BLAKE2s-128(selfNodeId || created_at ||
++     * payload)), so the placeholder is bound by the id and replaced in place when
++     * signing lands.
++     */
++    fun buildSos(payload: ByteArray): FrameV2 {
++        val createdAt = System.currentTimeMillis() / 1000
++        val sigSlot = ByteArray(64)   // placeholder; Ed25519 signing deferred (ADR-003/005 OPEN)
++        val sosPayload = io.godstone.mesh.wire.v2.SosFrameValidator.PAYLOAD_MAGIC + sigSlot + payload
++        val msgId = MessageId.derive(selfNodeId, createdAt, payload)
++        return FrameV2(
++            type = TypeV2.SOS,
++            msgId = msgId,
++            routingTag = ByteArray(4),         // broadcast: no specific recipient
++            ttl = FrameV2.MAX_TTL,
++            hopCount = 0,
++            flags = FrameV2.ACK_REQ or FrameV2.RELAY_OK,   // 0x0030; SOS priority bits are 0
++            payload = sosPayload
++        )
++    }
+ 
+     companion object {
+         const val SEEN_CACHE_SIZE = 16384
+-        const val MAX_AGE_SECONDS = 14L * 24 * 3600
+     }
+ }
+ 
++/** Result of opening a sealed MESSAGE, with the authenticated inner content split out. */
++data class OpenedSealedMessage(
++    val senderNodeId: ByteArray,
++    val powNonce: ByteArray,
++    val createdAtBe: ByteArray,
++    val plaintext: ByteArray,
++    val frame: FrameV2
++)
++
+ /**
+- * Fixed-capacity LRU of msg_ids. The bound is essential: an attacker must never
+- * be able to grow a data structure on our device without limit.
++ * Fixed-capacity LRU of 16-byte msg_ids. The bound is essential: an attacker must
++ * never be able to grow a data structure on our device without limit. Keys are
++ * compared by content (ByteArray is identity-equal by default), via a small
++ * content-keyed wrapper.
+  */
+ class LruMsgIdCache(private val capacity: Int) {
+-    private val set = HashSet<Long>()
+-    private val order = ArrayDeque<Long>()
++    private class BytesKey(val bytes: ByteArray) {
++        override fun equals(other: Any?): Boolean = other is BytesKey && bytes.contentEquals(other.bytes)
++        override fun hashCode(): Int = bytes.contentHashCode()
++    }
+ 
+-    @Synchronized fun contains(id: Long): Boolean = set.contains(id)
++    private val set = HashSet<BytesKey>()
++    private val order = ArrayDeque<BytesKey>()
+ 
+-    @Synchronized fun add(id: Long) {
+-        if (set.add(id)) {
+-            order.addLast(id)
++    @Synchronized fun contains(id: ByteArray): Boolean = set.contains(BytesKey(id))
++
++    @Synchronized fun add(id: ByteArray) {
++        val k = BytesKey(id)
++        if (set.add(k)) {
++            order.addLast(k)
+             while (order.size > capacity) {
+                 set.remove(order.removeFirst())
+             }
+         }
+     }
+-}
++}
+\ No newline at end of file
+diff --git a/android/mesh/src/main/java/io/godstone/mesh/store/MessageStore.kt b/android/mesh/src/main/java/io/godstone/mesh/store/MessageStore.kt
+index d80bfa8..e78e6bf 100644
+--- a/android/mesh/src/main/java/io/godstone/mesh/store/MessageStore.kt
++++ b/android/mesh/src/main/java/io/godstone/mesh/store/MessageStore.kt
+@@ -1,4 +1,4 @@
+-// SYNTHESIZED gap-closure file -- authored to make the project compile; see docs/AUDIT.md.
++// SYNTHESIZED gap-closure file -- realised for GMP/2.1 per ADR-001 §5 + ADR-004.
+ package io.godstone.mesh.store
+ 
+ import android.content.ContentValues
+@@ -13,9 +13,9 @@ import net.zetetic.database.sqlcipher.SQLiteOpenHelper
+ import androidx.security.crypto.EncryptedSharedPreferences
+ import androidx.security.crypto.MasterKey
+ import java.security.SecureRandom
+-import io.godstone.mesh.wire.Frame
+-import io.godstone.mesh.wire.FrameType
+-import io.godstone.mesh.wire.Priority
++import io.godstone.mesh.wire.v2.FrameV2
++import io.godstone.mesh.wire.v2.Priority
++import io.godstone.mesh.wire.v2.TypeV2
+ 
+ /**
+  * Persistent hold for relayed and locally-originated frames.
+@@ -24,40 +24,48 @@ import io.godstone.mesh.wire.Priority
+  * so an encounter with any peer can be answered from disk without an in-memory
+  * index. Frames are retained until delivered or aged out, which is the whole
+  * point of a delay-tolerant epidemic router.
++ *
++ * GMP/2.1 schema v2 (ADR-001 §5 / ADR-004): the primary key is the 16-byte
++ * content-derived msg_id BLOB; there is no header timestamp column (GMP/2.1
++ * carries no header timestamp — created_at lives inside the sealed payload) and
++ * no priority-as-source column (priority is 3 flag bits in `flags`; the
++ * `priority` column here is a denormalised query aid derived from
++ * Priority.fromFlags(flags) so ORDER BY / eviction can avoid SQLite's lack of a
++ * bitwise shift operator). Retention is receipt-relative (received_at), not
++ * creation-relative. There is no installed base (ADR-001 §5), so no migration
++ * code is written: an upgrade drops and recreates the table.
+  */
+ interface MessageStore {
+     /** Persist [frame], recording the peer it was received from. */
+-    suspend fun persist(frame: Frame, receivedFrom: ByteArray)
++    suspend fun persist(frame: FrameV2, receivedFrom: ByteArray)
+ 
+     /** All held frames, SOS-first then by priority and recency. */
+-    suspend fun allHeldOrderedByPriority(): List<Frame>
++    suspend fun allHeldOrderedByPriority(): List<FrameV2>
+ 
+     /** msg_ids of every held frame, for bloom-digest construction. */
+-    suspend fun allHeldMsgIds(): List<Long>
++    suspend fun allHeldMsgIds(): List<ByteArray>
+ 
+     /**
+      * Stream held frames in priority order, stopping as soon as [visit] returns
+-     * false. This is what Router.framesPeerLacks actually calls.
+-     *
+-     * Audit A-13: the list-returning variants materialise the entire store (up
+-     * to the 200 MB budget) into an ArrayList on every peer encounter. Router
+-     * was already written against this streaming form, but the interface never
+-     * declared it -- an unresolved reference that no Python-only invariant could
+-     * see, because Kotlin is never compiled in the verification environment.
+-     * Invariant F now resolves every cross-file call and would fail the build.
++     * false. This is what Router.framesPeerLacks actually calls (audit A-13: the
++     * list-returning variants materialise the entire store into memory; this
++     * streaming form pages rows and abandons the cursor the moment visit stops).
+      */
+-    suspend fun forEachHeldOrderedByPriority(visit: (Frame) -> Boolean)
++    suspend fun forEachHeldOrderedByPriority(visit: (FrameV2) -> Boolean)
+ 
+     /** Stream held msg_ids, stopping as soon as [visit] returns false. */
+-    suspend fun forEachHeldMsgId(visit: (Long) -> Boolean)
++    suspend fun forEachHeldMsgId(visit: (ByteArray) -> Boolean)
+ }
+ 
+ /**
+- * SQLCipher-backed store (threat A6).
++ * SQLCipher-backed store (threat A6). GMP/2.1 schema v2.
+  *
+- * This store still uses the legacy GMP/1 logical schema until ADR-001/M1-wire
+- * lands. ACK expiry, exact hard-cap semantics, and coordinated identity/store
+- * wipe remain tracked in ADR-004 and are not represented as closed here.
++ * Persist-before-forward, delete-on-authenticated-ACK, hard-cap eviction
++ * (SOS retained last), and coordinated identity/store wipe are the ADR-004
++ * exit criteria; the repo-controlled ones (1,3,4,5,6) are realised here, while
++ * authenticated-ACK deletion (criterion 2) depends on the inbound ACK path that
++ * the link layer gates closed (LINK_LAYER_READY=false) and remains tracked
++ * under ADR-004, not represented as closed.
+  */
+ class SqliteMessageStore(
+     private val ctx: Context,
+@@ -73,14 +81,17 @@ class SqliteMessageStore(
+         helper = Helper(ctx.applicationContext, passphrase(ctx.applicationContext))
+     }
+ 
+-    override suspend fun persist(frame: Frame, receivedFrom: ByteArray) {
++    override suspend fun persist(frame: FrameV2, receivedFrom: ByteArray) {
+         val db = helper.writableDatabase
+         val cv = ContentValues().apply {
+             put(COL_MSG_ID, frame.msgId)
+             put(COL_TYPE, frame.type.code.toInt())
+             put(COL_TTL, frame.ttl)
+-            put(COL_PRIORITY, frame.priority.code.toInt())
+-            put(COL_TIMESTAMP, frame.timestamp)
++            put(COL_HOP_COUNT, frame.hopCount)
++            put(COL_FLAGS, frame.flags)
++            // Denormalised query aid; the source of truth is `flags` (Priority.fromFlags).
++            put(COL_PRIORITY, Priority.fromFlags(frame.flags).code)
++            put(COL_ROUTING_TAG, frame.routingTag)
+             put(COL_PAYLOAD, frame.payload)
+             put(COL_RECEIVED_FROM, receivedFrom)
+             put(COL_RECEIVED_AT, System.currentTimeMillis())
+@@ -89,9 +100,9 @@ class SqliteMessageStore(
+         evictIfOverBudget(db)
+     }
+ 
+-    override suspend fun allHeldOrderedByPriority(): List<Frame> {
++    override suspend fun allHeldOrderedByPriority(): List<FrameV2> {
+         val db = helper.readableDatabase
+-        val out = ArrayList<Frame>()
++        val out = ArrayList<FrameV2>()
+         db.query(
+             TABLE, null, null, null, null, null,
+             "$COL_PRIORITY ASC, $COL_RECEIVED_AT DESC"
+@@ -104,11 +115,11 @@ class SqliteMessageStore(
+         return out
+     }
+ 
+-    override suspend fun allHeldMsgIds(): List<Long> {
++    override suspend fun allHeldMsgIds(): List<ByteArray> {
+         val db = helper.readableDatabase
+-        val out = ArrayList<Long>()
++        val out = ArrayList<ByteArray>()
+         db.query(TABLE, arrayOf(COL_MSG_ID), null, null, null, null, null).use { c ->
+-            while (c.moveToNext()) out.add(c.getLong(0))
++            while (c.moveToNext()) out.add(c.getBlob(0))
+         }
+         return out
+     }
+@@ -118,7 +129,7 @@ class SqliteMessageStore(
+      * moment [visit] returns false, so a full backlog never lands in memory
+      * (audit A-13).
+      */
+-    override suspend fun forEachHeldOrderedByPriority(visit: (Frame) -> Boolean) {
++    override suspend fun forEachHeldOrderedByPriority(visit: (FrameV2) -> Boolean) {
+         val db = helper.readableDatabase
+         db.query(
+             TABLE, null, null, null, null, null,
+@@ -131,31 +142,28 @@ class SqliteMessageStore(
+         }
+     }
+ 
+-    override suspend fun forEachHeldMsgId(visit: (Long) -> Boolean) {
++    override suspend fun forEachHeldMsgId(visit: (ByteArray) -> Boolean) {
+         val db = helper.readableDatabase
+         db.query(TABLE, arrayOf(COL_MSG_ID), null, null, null, null, null).use { c ->
+             while (c.moveToNext()) {
+-                if (!visit(c.getLong(0))) return
++                if (!visit(c.getBlob(0))) return
+             }
+         }
+     }
+ 
+     /**
+      * Best-effort eviction of the oldest non-SOS rows when the store exceeds
+-     * [maxBytes]. SOS frames are retained longest by being sorted last out.
++     * [maxBytes]. SOS frames are retained longest by being excluded from
++     * eviction (PROTOCOL.md section 7).
++     *
++     * AUDIT A-14. This previously ran the DELETE unconditionally on EVERY insert
++     * with no check that the budget had been exceeded. The size is now measured
++     * before anything is deleted, and the query only runs when the store is
++     * genuinely over budget.
+      *
+      * TODO: precise byte accounting; this currently approximates by row count.
+      */
+     private fun evictIfOverBudget(db: SQLiteDatabase) {
+-        // AUDIT A-14. This previously ran the DELETE unconditionally on EVERY
+-        // insert, with no check that the budget had been exceeded at all. Its
+-        // own doc comment said "when the store exceeds maxBytes", and it never
+-        // asked. On a fresh install with two messages held, inserting a third
+-        // deleted a quarter of the non-SOS backlog immediately -- a
+-        // delay-tolerant store that discards the traffic it exists to carry.
+-        //
+-        // The size is now measured before anything is deleted, and the query
+-        // only runs when the store is genuinely over budget.
+         val heldBytes = db.rawQuery(
+             "SELECT COALESCE(SUM(LENGTH($COL_PAYLOAD)) + COUNT(*) * $ROW_OVERHEAD, 0) FROM $TABLE",
+             null
+@@ -163,8 +171,8 @@ class SqliteMessageStore(
+ 
+         if (heldBytes <= maxBytes) return   // nothing to do: the common case
+ 
+-        // Evict roughly the overshoot, oldest non-SOS first. SOS is retained
+-        // last under storage pressure (PROTOCOL.md section 7).
++        // Evict roughly the overshoot, oldest non-SOS first. SOS (priority 0) is
++        // retained under storage pressure.
+         val overshoot = heldBytes - maxBytes
+         val approxRowBytes = ROW_OVERHEAD + 256L
+         val toDelete = ((overshoot / approxRowBytes) + 1).coerceAtLeast(1L)
+@@ -172,22 +180,20 @@ class SqliteMessageStore(
+             "DELETE FROM $TABLE WHERE $COL_MSG_ID IN (" +
+                 "SELECT $COL_MSG_ID FROM $TABLE WHERE $COL_PRIORITY != ? " +
+                 "ORDER BY $COL_RECEIVED_AT ASC LIMIT ?)",
+-            arrayOf<Any>(Priority.SOS.code.toInt(), toDelete)
++            arrayOf<Any>(Priority.SOS.code, toDelete)
+         )
+     }
+ 
+-    private fun readFrame(c: android.database.Cursor): Frame? {
+-        // Reconstruct via the wire enum types, not the payload bytes.
++    private fun readFrame(c: android.database.Cursor): FrameV2? {
+         val typeCode = c.getInt(c.getColumnIndexOrThrow(COL_TYPE)).toByte()
+-        val priorityCode = c.getInt(c.getColumnIndexOrThrow(COL_PRIORITY)).toByte()
+-        val ft = FrameType.from(typeCode) ?: return null
+-        val pr = Priority.from(priorityCode) ?: return null
+-        return Frame(
+-            type = ft,
++        val type = TypeV2.from(typeCode) ?: return null
++        return FrameV2(
++            type = type,
++            msgId = c.getBlob(c.getColumnIndexOrThrow(COL_MSG_ID)),
++            routingTag = c.getBlob(c.getColumnIndexOrThrow(COL_ROUTING_TAG)),
+             ttl = c.getInt(c.getColumnIndexOrThrow(COL_TTL)),
+-            priority = pr,
+-            msgId = c.getLong(c.getColumnIndexOrThrow(COL_MSG_ID)),
+-            timestamp = c.getLong(c.getColumnIndexOrThrow(COL_TIMESTAMP)),
++            hopCount = c.getInt(c.getColumnIndexOrThrow(COL_HOP_COUNT)),
++            flags = c.getInt(c.getColumnIndexOrThrow(COL_FLAGS)),
+             payload = c.getBlob(c.getColumnIndexOrThrow(COL_PAYLOAD))
+         )
+     }
+@@ -197,11 +203,13 @@ class SqliteMessageStore(
+         override fun onCreate(db: SQLiteDatabase) {
+             db.execSQL(
+                 """CREATE TABLE $TABLE (
+-                    $COL_MSG_ID INTEGER PRIMARY KEY,
++                    $COL_MSG_ID BLOB PRIMARY KEY,
+                     $COL_TYPE INTEGER,
+                     $COL_TTL INTEGER,
++                    $COL_HOP_COUNT INTEGER,
++                    $COL_FLAGS INTEGER,
+                     $COL_PRIORITY INTEGER,
+-                    $COL_TIMESTAMP INTEGER,
++                    $COL_ROUTING_TAG BLOB,
+                     $COL_PAYLOAD BLOB,
+                     $COL_RECEIVED_FROM BLOB,
+                     $COL_RECEIVED_AT INTEGER
+@@ -210,19 +218,15 @@ class SqliteMessageStore(
+         }
+ 
+         override fun onUpgrade(db: SQLiteDatabase, oldVersion: Int, newVersion: Int) {
+-            // AUDIT A-12. This used to DROP TABLE, destroying every undelivered
+-            // frame -- including SOS traffic the mesh had not yet been able to
+-            // hand on -- the first time a user updated the app. In a blackout an
+-            // app update is exactly when a queued distress beacon matters most.
+-            //
+-            // Additive migration only. Any future schema change must preserve
+-            // held frames or explicitly justify why it cannot.
++            // ADR-001 §5: GMP/1 was never shipped (no installed base, V3 never
++            // shipped on either platform), so there is nothing to migrate. Drop
++            // the old table and recreate the v2 schema. This is the one case
++            // where a destructive onUpgrade is correct: a non-destructive
++            // migration of a schema that was never deployed would be invented
++            // code defending data that does not exist.
+             if (oldVersion == newVersion) return
+-            db.execSQL("ALTER TABLE $TABLE RENAME TO ${TABLE}_migrating")
++            db.execSQL("DROP TABLE IF EXISTS $TABLE")
+             onCreate(db)
+-            db.execSQL(
+-                "INSERT OR IGNORE INTO $TABLE SELECT * FROM ${TABLE}_migrating")
+-            db.execSQL("DROP TABLE ${TABLE}_migrating")
+         }
+     }
+ 
+@@ -266,13 +270,15 @@ class SqliteMessageStore(
+         /** Per-row bookkeeping beyond the payload blob. */
+         private const val ROW_OVERHEAD = 64L
+         private const val DB_NAME = "godstone_messages.db"
+-        private const val DB_VERSION = 1
++        private const val DB_VERSION = 2
+         private const val TABLE = "held_frames"
+         private const val COL_MSG_ID = "msg_id"
+         private const val COL_TYPE = "type"
+         private const val COL_TTL = "ttl"
++        private const val COL_HOP_COUNT = "hop_count"
++        private const val COL_FLAGS = "flags"
+         private const val COL_PRIORITY = "priority"
+-        private const val COL_TIMESTAMP = "timestamp"
++        private const val COL_ROUTING_TAG = "routing_tag"
+         private const val COL_PAYLOAD = "payload"
+         private const val COL_RECEIVED_FROM = "received_from"
+         private const val COL_RECEIVED_AT = "received_at"
+@@ -284,24 +290,31 @@ class SqliteMessageStore(
+  * that exercise the router with no device or SQLite available.
+  */
+ internal class InMemoryMessageStore : MessageStore {
+-    private val held = LinkedHashMap<Long, Frame>()
++    // ByteArray is identity-equal by default, so wrap it for content-based map keys.
++    private class BytesKey(val bytes: ByteArray) {
++        override fun equals(other: Any?): Boolean = other is BytesKey && bytes.contentEquals(other.bytes)
++        override fun hashCode(): Int = bytes.contentHashCode()
++    }
++
++    private val held = LinkedHashMap<BytesKey, FrameV2>()
+ 
+-    override suspend fun persist(frame: Frame, receivedFrom: ByteArray) {
+-        held[frame.msgId] = frame
++    override suspend fun persist(frame: FrameV2, receivedFrom: ByteArray) {
++        held[BytesKey(frame.msgId)] = frame
+     }
+ 
+-    override suspend fun allHeldOrderedByPriority(): List<Frame> =
++    override suspend fun allHeldOrderedByPriority(): List<FrameV2> =
+         held.values.sortedWith(
+-            compareBy<Frame> { it.priority.code }.thenByDescending { it.timestamp }
++            compareBy<FrameV2> { Priority.fromFlags(it.flags).code }
++                .thenByDescending { it.type.code.toInt() }
+         )
+ 
+-    override suspend fun allHeldMsgIds(): List<Long> = held.keys.toList()
++    override suspend fun allHeldMsgIds(): List<ByteArray> = held.values.map { it.msgId }
+ 
+-    override suspend fun forEachHeldOrderedByPriority(visit: (Frame) -> Boolean) {
++    override suspend fun forEachHeldOrderedByPriority(visit: (FrameV2) -> Boolean) {
+         for (f in allHeldOrderedByPriority()) if (!visit(f)) return
+     }
+ 
+-    override suspend fun forEachHeldMsgId(visit: (Long) -> Boolean) {
++    override suspend fun forEachHeldMsgId(visit: (ByteArray) -> Boolean) {
+         for (id in allHeldMsgIds()) if (!visit(id)) return
+     }
+-}
++}
+\ No newline at end of file
+diff --git a/android/mesh/src/main/java/io/godstone/mesh/wire/Frame.kt b/android/mesh/src/main/java/io/godstone/mesh/wire/Frame.kt
+deleted file mode 100644
+index 0e396d3..0000000
+--- a/android/mesh/src/main/java/io/godstone/mesh/wire/Frame.kt
++++ /dev/null
+@@ -1,129 +0,0 @@
+-package io.godstone.mesh.wire
+-
+-import java.nio.ByteBuffer
+-import java.nio.ByteOrder
+-
+-/**
+- * GMP/1 frame. See docs/mesh/PROTOCOL.md section 5.
+- *
+- * Layout (big-endian):
+- *   0   1   version
+- *   1   1   type
+- *   2   2   length
+- *   4   1   ttl
+- *   5   1   priority
+- *   6   8   msg_id
+- *   14  6   timestamp
+- *   20  N   payload
+- */
+-data class Frame(
+-    val version: Byte = PROTOCOL_VERSION,
+-    val type: FrameType,
+-    val ttl: Int,
+-    val priority: Priority,
+-    val msgId: Long,
+-    val timestamp: Long,
+-    val payload: ByteArray
+-) {
+-
+-    fun encode(): ByteArray {
+-        require(payload.size <= MAX_PAYLOAD) { "payload too large: ${payload.size}" }
+-        val buf = ByteBuffer.allocate(HEADER_SIZE + payload.size)
+-            .order(ByteOrder.BIG_ENDIAN)
+-        buf.put(version)
+-        buf.put(type.code)
+-        buf.putShort(payload.size.toShort())
+-        buf.put(ttl.coerceIn(0, MAX_TTL).toByte())
+-        buf.put(priority.code)
+-        buf.putLong(msgId)
+-        // 6-byte timestamp: build 8 bytes then keep the low 6.
+-        val ts = ByteBuffer.allocate(8).order(ByteOrder.BIG_ENDIAN)
+-            .putLong(timestamp).array()
+-        buf.put(ts, 2, 6)
+-        buf.put(payload)
+-        return buf.array()
+-    }
+-
+-    companion object {
+-        const val PROTOCOL_VERSION: Byte = 0x01
+-        const val HEADER_SIZE = 20
+-        const val MAX_PAYLOAD = 65535
+-        const val MAX_TTL = 16
+-        const val DEFAULT_TTL = 12
+-
+-        /**
+-         * Bounded parsing, protocol section 8. Every length field is validated
+-         * against the actual remaining buffer BEFORE any allocation, so an
+-         * attacker-supplied length can never drive memory allocation.
+-         */
+-        fun decode(raw: ByteArray): Frame? {
+-            if (raw.size < HEADER_SIZE) return null
+-
+-            val buf = ByteBuffer.wrap(raw).order(ByteOrder.BIG_ENDIAN)
+-
+-            val version = buf.get()
+-            if (version != PROTOCOL_VERSION) return null   // refuse, never guess
+-
+-            val type = FrameType.from(buf.get()) ?: return null
+-            val length = buf.getShort().toInt() and 0xFFFF
+-
+-            // Critical bound check.
+-            if (length != raw.size - HEADER_SIZE) return null
+-            if (length > MAX_PAYLOAD) return null
+-
+-            val ttl = buf.get().toInt() and 0xFF
+-            if (ttl > MAX_TTL) return null
+-
+-            val priority = Priority.from(buf.get()) ?: return null
+-            val msgId = buf.getLong()
+-
+-            val tsBytes = ByteArray(8)
+-            buf.get(tsBytes, 2, 6)
+-            val timestamp = ByteBuffer.wrap(tsBytes).order(ByteOrder.BIG_ENDIAN).getLong()
+-
+-            val payload = ByteArray(length)
+-            buf.get(payload)
+-
+-            return Frame(version, type, ttl, priority, msgId, timestamp, payload)
+-        }
+-    }
+-
+-    override fun equals(other: Any?): Boolean =
+-        other is Frame && other.msgId == msgId
+-
+-    override fun hashCode(): Int = msgId.hashCode()
+-}
+-
+-enum class FrameType(val code: Byte) {
+-    HELLO(0x01),
+-    DIGEST(0x02),
+-    WANT(0x03),
+-    MESSAGE(0x04),
+-    ACK(0x05),
+-    BULK_OFFER(0x06),
+-    BULK_CHUNK(0x07),
+-    SOS(0x08),
+-    PING(0x09),
+-    GOODBYE(0x0A);
+-
+-    companion object {
+-        private val map = entries.associateBy { it.code }
+-        fun from(b: Byte): FrameType? = map[b]
+-    }
+-}
+-
+-enum class Priority(val code: Byte) {
+-    SOS(0),
+-    DIRECT(1),
+-    GROUP(2),
+-    BROADCAST(3),
+-    BULK(4);
+-
+-    /** SOS and DIRECT are exempt from proof of work: latency there is safety. */
+-    val requiresProofOfWork: Boolean get() = this == GROUP || this == BROADCAST
+-
+-    companion object {
+-        private val map = entries.associateBy { it.code }
+-        fun from(b: Byte): Priority? = map[b]
+-    }
+-}
+diff --git a/android/mesh/src/main/java/io/godstone/mesh/wire/v2/MessageId.kt b/android/mesh/src/main/java/io/godstone/mesh/wire/v2/MessageId.kt
+new file mode 100644
+index 0000000..d5b61cb
+--- /dev/null
++++ b/android/mesh/src/main/java/io/godstone/mesh/wire/v2/MessageId.kt
+@@ -0,0 +1,46 @@
++// Hand-written runtime helper -- NOT a codegen artifact.
++// ci/check_parity.py Invariant A regenerates the wire codecs only; this file is
++// the runtime realisation of ADR-001 §3's msg_id derivation and is outside the
++// codegen contract. Patch 21 (cross-platform-conformance) pins the byte-for-byte
++// iOS twin.
++package io.godstone.mesh.wire.v2
++
++import org.bouncycastle.crypto.digests.Blake2sDigest
++import java.nio.ByteBuffer
++
++/**
++ * GMP/2.1 message-id derivation (ADR-001 §3).
++ *
++ *     msg_id = BLAKE2s-128(sender_node_id ‖ created_at_le ‖ payload)   (16 bytes)
++ *
++ * The sender computes msg_id when it builds a frame and places it in the 16-byte
++ * header field. Relays and the recipient use the header msg_id directly for
++ * dedup and bloom anti-entropy — they do NOT recompute it (a relay cannot see
++ * the sealed sender, and re-derivation is a recipient integrity check, not a
++ * relay gate). The recipient may re-derive after unsealing to authenticate the
++ * binding between sender, creation time and payload.
++ *
++ * `created_at` is a uint32 epoch-second count. It is serialised here
++ * big-endian to match the rest of the GMP/2.1 wire format (the header is
++ * big-endian throughout); the ADR-001 §3 spelling `created_at_le` is read as
++ * "the created_at logical element", not a little-endian byte order, and that
++ * interpretation is pinned for cross-platform parity in patch 21.
++ */
++object MessageId {
++
++    /** BLAKE2s-128 over (sender_node_id[16] ‖ created_at_be[4] ‖ payload). */
++    fun derive(senderNodeId: ByteArray, createdAtEpochSeconds: Long, payload: ByteArray): ByteArray {
++        require(senderNodeId.size == 16) { "sender_node_id must be 16 bytes" }
++        val d = Blake2sDigest(null, 16, null, null)
++        d.update(senderNodeId, 0, senderNodeId.size)
++        d.update(uint32Be(createdAtEpochSeconds), 0, 4)
++        d.update(payload, 0, payload.size)
++        val out = ByteArray(16)
++        d.doFinal(out, 0)
++        return out
++    }
++
++    /** Big-endian uint32 encoding of an epoch-second count. */
++    fun uint32Be(epochSeconds: Long): ByteArray =
++        ByteBuffer.allocate(4).putInt(epochSeconds.toInt()).array()
++}
+\ No newline at end of file
+diff --git a/android/mesh/src/main/java/io/godstone/mesh/wire/v2/Priority.kt b/android/mesh/src/main/java/io/godstone/mesh/wire/v2/Priority.kt
+new file mode 100644
+index 0000000..a7e38a2
+--- /dev/null
++++ b/android/mesh/src/main/java/io/godstone/mesh/wire/v2/Priority.kt
+@@ -0,0 +1,44 @@
++// Hand-written runtime helper -- NOT a codegen artifact.
++// The wire format carries priority as 3 flag bits (FrameV2.PRIORITY_MASK); this
++// enum is the typed runtime view the router and abuse governor use. It is the
++// successor to the deleted GMP/1 io.godstone.mesh.wire.Priority, kept as a
++// logical class so PeerGovernor's per-priority token buckets survive the
++// FrameV2 cutover. ci/check_parity.py Invariant A does not regenerate this
++// file; it is outside the codegen contract.
++package io.godstone.mesh.wire.v2
++
++/**
++ * Runtime message priority derived from a FrameV2 header's 3-bit PRIORITY_MASK
++ * field (ADR-001 §3.1).
++ *
++ * Values match wire/wire_v2.yaml `priority`: SOS 0 / DIRECT 1 / GROUP 2 /
++ * BROADCAST 3 / BULK 4, occupying bits 8..10 of the flags word
++ * (FrameV2.PRIORITY_MASK = 0x0700).
++ */
++enum class Priority(val code: Int) {
++    SOS(0),
++    DIRECT(1),
++    GROUP(2),
++    BROADCAST(3),
++    BULK(4);
++
++    /**
++     * GROUP and BROADCAST are wide-distribution traffic the sender must pay PoW
++     * for (ADR-001 §3). SOS and DIRECT are exempt because latency there is a
++     * safety property; BULK is governed by its own transport (ADR-006).
++     */
++    val requiresProofOfWork: Boolean get() = this == GROUP || this == BROADCAST
++
++    companion object {
++        /** Derive the priority from a FrameV2 flags word. Fail-safe to DIRECT. */
++        fun fromFlags(flags: Int): Priority {
++            val idx = (flags and FrameV2.PRIORITY_MASK) ushr 8
++            return entries.firstOrNull { it.code == idx } ?: DIRECT
++        }
++
++        /** Place a priority into its flag-bit position (bits 8..10). */
++        fun toFlags(priority: Priority): Int = priority.code shl 8
++
++        fun fromCode(code: Int): Priority? = entries.firstOrNull { it.code == code }
++    }
++}
+\ No newline at end of file
+diff --git a/android/mesh/src/test/java/io/godstone/mesh/ProofOfWorkTest.kt b/android/mesh/src/test/java/io/godstone/mesh/ProofOfWorkTest.kt
+new file mode 100644
+index 0000000..bab1b75
+--- /dev/null
++++ b/android/mesh/src/test/java/io/godstone/mesh/ProofOfWorkTest.kt
+@@ -0,0 +1,64 @@
++package io.godstone.mesh
++
++import io.godstone.mesh.router.ProofOfWork
++import io.godstone.mesh.wire.v2.TypeV2
++import kotlinx.coroutines.runBlocking
++import kotlin.test.Test
++import kotlin.test.assertEquals
++import kotlin.test.assertFalse
++import kotlin.test.assertTrue
++
++/**
++ * Recipient-side GMP/2.1 proof-of-work (ADR-001 §3). The nonce lives inside the
++ * sealed payload; the recipient verifies it after SealedSender.open. This test
++ * exercises the mine/verify round-trip directly -- the router no longer gates
++ * on PoW at the relay (see RouterTest).
++ *
++ * mine()/verify() take a targetBits parameter whose production default is 20
++ * (ADR-pinned, ~1M BLAKE2s average). Tests pass an 8-bit target so the mine/verify
++ * code path runs in milliseconds; production never calls with a non-default
++ * target. mine() is CPU-bound on Dispatchers.Default, so the test uses runBlocking
++ * (NOT runTest, whose virtual-time TestScheduler cannot track a real dispatcher
++ * loop and reports UncompletedCoroutinesError).
++ */
++class ProofOfWorkTest {
++
++    private val sender = ByteArray(16) { 0x0A }
++    private val createdAt = byteArrayOf(0, 0, 0, 1)   // big-endian uint32 = epoch second 1
++    private val plaintext = "hello".toByteArray()
++    private val easyTarget = 8   // ~256 hashes average; exercises the path without a real search
++
++    @Test
++    fun `mined nonce is 8 bytes and verifies at the production target shape`() = runBlocking {
++        // Cold-start mine at the easy target returns an 8-byte nonce that verifies.
++        val nonce = ProofOfWork.mine(sender, createdAt, TypeV2.MESSAGE.code, plaintext, targetBits = easyTarget)
++        assertEquals(ProofOfWork.NONCE_BYTES, nonce.size)
++        assertTrue(ProofOfWork.verify(nonce, sender, createdAt, TypeV2.MESSAGE.code, plaintext, targetBits = easyTarget))
++    }
++
++    @Test
++    fun `a zero nonce does not verify for fresh content`() {
++        val zero = ByteArray(ProofOfWork.NONCE_BYTES)
++        assertFalse(ProofOfWork.verify(zero, sender, createdAt, TypeV2.MESSAGE.code, plaintext, targetBits = easyTarget))
++    }
++
++    @Test
++    fun `mined nonce bound to one plaintext does not verify a different one`() = runBlocking {
++        val nonce = ProofOfWork.mine(sender, createdAt, TypeV2.MESSAGE.code, plaintext, targetBits = easyTarget)
++        assertFalse(ProofOfWork.verify(nonce, sender, createdAt, TypeV2.MESSAGE.code, "world".toByteArray(), targetBits = easyTarget))
++    }
++
++    @Test
++    fun `mined nonce bound to one type code does not verify a different type`() = runBlocking {
++        val nonce = ProofOfWork.mine(sender, createdAt, TypeV2.MESSAGE.code, plaintext, targetBits = easyTarget)
++        assertFalse(ProofOfWork.verify(nonce, sender, createdAt, TypeV2.SOS.code, plaintext, targetBits = easyTarget))
++    }
++
++    @Test
++    fun `production 20-bit target rejects an 8-bit nonce`() = runBlocking {
++        // An 8-bit-mined nonce has only its top 8 bits zero; the 20-bit production
++        // target demands 20, so the same nonce must fail at the harder target.
++        val nonce = ProofOfWork.mine(sender, createdAt, TypeV2.MESSAGE.code, plaintext, targetBits = easyTarget)
++        assertFalse(ProofOfWork.verify(nonce, sender, createdAt, TypeV2.MESSAGE.code, plaintext, targetBits = ProofOfWork.TARGET_BITS))
++    }
++}
+\ No newline at end of file
+diff --git a/android/mesh/src/test/java/io/godstone/mesh/RouterTest.kt b/android/mesh/src/test/java/io/godstone/mesh/RouterTest.kt
+index 898ec4b..68d5417 100644
+--- a/android/mesh/src/test/java/io/godstone/mesh/RouterTest.kt
++++ b/android/mesh/src/test/java/io/godstone/mesh/RouterTest.kt
+@@ -3,13 +3,15 @@ package io.godstone.mesh
+ import io.godstone.mesh.router.BloomDigest
+ import io.godstone.mesh.router.Router
+ import io.godstone.mesh.store.InMemoryMessageStore
+-import io.godstone.mesh.wire.Frame
+-import io.godstone.mesh.wire.FrameType
+-import io.godstone.mesh.wire.Priority
++import io.godstone.mesh.wire.v2.FrameV2
++import io.godstone.mesh.wire.v2.Priority
++import io.godstone.mesh.wire.v2.SosFrameValidator
++import io.godstone.mesh.wire.v2.TypeV2
+ import kotlinx.coroutines.test.runTest
+ import kotlin.test.Test
+ import kotlin.test.assertEquals
+ import kotlin.test.assertFalse
++import kotlin.test.assertNotEquals
+ import kotlin.test.assertTrue
+ 
+ /**
+@@ -17,26 +19,32 @@ import kotlin.test.assertTrue
+  * loops, duplicates, dying batteries and messages nobody can deliver yet.
+  *
+  * These are unit tests over the routing logic only - no Bluetooth, no threads.
+- * The radio layer is exercised by meshsim instead.
++ * The radio layer is exercised by meshsim instead. Runs on the canonical GMP/2.1
++ * FrameV2 path (ADR-001/008): 16-byte content-derived msg_id, priority from the
++ * flags PRIORITY_MASK, no header-timestamp age gate, and no relay PoW gate (PoW
++ * is recipient-side, verified after SealedSender.open -- see ProofOfWorkTest).
+  */
+ class RouterTest {
+ 
+     private val selfNodeId = ByteArray(16) { 0x0A }
+     private val peerC = ByteArray(16) { 0x0C }
+ 
++    /** Deterministic, distinct 16-byte msg_id for a given seed. */
++    private fun msgId(seed: Int): ByteArray = ByteArray(16) { ((seed + it) and 0xFF).toByte() }
++
+     private fun frame(
+-        msgId: Long,
++        msgId: ByteArray,
+         ttl: Int = 8,
+         priority: Priority = Priority.DIRECT,
+-        type: FrameType = FrameType.MESSAGE,
+-        timestamp: Long = System.currentTimeMillis() / 1000,
++        type: TypeV2 = TypeV2.MESSAGE,
+         payload: ByteArray = ByteArray(32)
+-    ) = Frame(
++    ): FrameV2 = FrameV2(
+         type = type,
+-        ttl = ttl,
+-        priority = priority,
+         msgId = msgId,
+-        timestamp = timestamp,
++        routingTag = ByteArray(4),
++        ttl = ttl,
++        hopCount = 0,
++        flags = Priority.toFlags(priority),
+         payload = payload
+     )
+ 
+@@ -44,7 +52,8 @@ class RouterTest {
+     fun `duplicate message is not relayed twice`() = runTest {
+         val store = InMemoryMessageStore()
+         val router = Router(store, selfNodeId)
+-        val f = frame(1)
++        val id = msgId(1)
++        val f = frame(id)
+ 
+         // First sighting is novel: persist and offer for relay.
+         assertTrue(router.onFrameReceived(f, fromPeer = peerC))
+@@ -57,75 +66,82 @@ class RouterTest {
+     fun `frame with exhausted ttl is dropped`() = runTest {
+         val store = InMemoryMessageStore()
+         val router = Router(store, selfNodeId)
+-        assertFalse(router.onFrameReceived(frame(2, ttl = 0), fromPeer = peerC))
++        assertFalse(router.onFrameReceived(frame(msgId(2), ttl = 0), fromPeer = peerC))
+     }
+ 
+     @Test
+     fun `ttl above one is relayed and decremented on the forward copy`() = runTest {
+         val store = InMemoryMessageStore()
+         val router = Router(store, selfNodeId)
+-        val f = frame(3, ttl = 5)
++        val f = frame(msgId(3), ttl = 5)
+ 
+         assertTrue(router.onFrameReceived(f, fromPeer = peerC))
+-        assertEquals(4, router.forwardCopy(f).ttl)
++        val fwd = router.forwardCopy(f)
++        assertEquals(4, fwd.ttl)
++        assertEquals(1, fwd.hopCount)
+     }
+ 
+     @Test
+-    fun `aged frame is dropped`() = runTest {
++    fun `group priority is accepted by the relay - PoW is recipient-side not a relay gate`() = runTest {
+         val store = InMemoryMessageStore()
+         val router = Router(store, selfNodeId)
+-        val aged = frame(4, timestamp = System.currentTimeMillis() / 1000 - 15 * 86400)
+-
+-        // Beyond MAX_AGE_SECONDS (14 days): stale information is not relayed.
+-        assertFalse(router.onFrameReceived(aged, fromPeer = peerC))
++        // GMP/2.1 (ADR-001 §3): the PoW nonce lives inside the sealed payload, so a
++        // relay cannot verify it and does not gate on it. GROUP traffic is relayed;
++        // the recipient verifies the stamp after SealedSender.open. The GMP/1
++        // relay PoW gate is gone.
++        val f = frame(msgId(5), priority = Priority.GROUP, payload = ByteArray(32))
++        assertTrue(router.onFrameReceived(f, fromPeer = peerC))
+     }
+ 
+     @Test
+-    fun `group priority without proof of work is dropped`() = runTest {
++    fun `direct priority is accepted`() = runTest {
+         val store = InMemoryMessageStore()
+         val router = Router(store, selfNodeId)
+-        // GROUP frames require a 20-bit PoW stamp; an unmined payload cannot
+-        // satisfy it and must be refused so a sybil cannot flood for free.
+-        // NOTE: a random payload has a ~1/2^20 chance of accidentally passing;
+-        // acceptable for a unit test, deterministic mining is tracked separately.
+-        val f = frame(5, priority = Priority.GROUP, payload = ByteArray(32))
+-
+-        assertFalse(router.onFrameReceived(f, fromPeer = peerC))
++        assertTrue(router.onFrameReceived(frame(msgId(6), priority = Priority.DIRECT), fromPeer = peerC))
+     }
+ 
+     @Test
+-    fun `direct priority is accepted without proof of work`() = runTest {
++    fun `buildSos produces a max-ttl structurally-valid SOS frame with a 16-byte content-derived msg_id`() {
+         val store = InMemoryMessageStore()
+         val router = Router(store, selfNodeId)
+-        // DIRECT is exempt from PoW: latency there is safety.
+-        assertTrue(router.onFrameReceived(frame(6, priority = Priority.DIRECT), fromPeer = peerC))
++        val sos = router.buildSos("help".toByteArray())
++
++        assertEquals(TypeV2.SOS, sos.type)
++        assertEquals(FrameV2.MAX_TTL, sos.ttl)
++        assertEquals(16, sos.msgId.size)
++        assertTrue(sos.flags and FrameV2.ACK_REQ != 0)
++        assertTrue(sos.flags and FrameV2.RELAY_OK != 0)
++        // SOS payload is structurally valid per SosFrameValidator (patch 15).
++        assertEquals(SosFrameValidator.Verdict.OK, SosFrameValidator.validate(sos))
++        // Round-trips through the GMP/2.1 codec byte-identically.
++        val rt = FrameV2.decode(sos.encode())
++        assertTrue(rt != null && rt.msgId.contentEquals(sos.msgId))
+     }
+ 
+     @Test
+-    fun `buildSos produces a max-ttl SOS frame`() {
++    fun `buildSos msg_id is content-derived - distinct payloads get distinct ids`() {
+         val store = InMemoryMessageStore()
+         val router = Router(store, selfNodeId)
+-        val sos = router.buildSos("help".toByteArray(), 1234L)
+-
+-        assertEquals(FrameType.SOS, sos.type)
+-        assertEquals(Frame.MAX_TTL, sos.ttl)
+-        assertEquals(Priority.SOS, sos.priority)
++        val a = router.buildSos("help".toByteArray())
++        val b = router.buildSos("fire".toByteArray())
++        assertNotEquals(a.msgId.toList(), b.msgId.toList())
+     }
+ 
+     @Test
+-    fun `framesPeerLacks returns held frames absent from the peer digest`() = runTest {
++    fun `framesPeerLack returns held frames absent from the peer digest`() = runTest {
+         val store = InMemoryMessageStore()
+         val router = Router(store, selfNodeId)
+-        assertTrue(router.onFrameReceived(frame(7), fromPeer = peerC))
++        val id = msgId(7)
++        assertTrue(router.onFrameReceived(frame(id), fromPeer = peerC))
+ 
+         // An empty bloom means the peer has nothing: offer everything we hold.
+         val empty = BloomDigest()
+         val lacks = router.framesPeerLacks(empty, 8)
+         assertEquals(1, lacks.size)
+-        assertEquals(7L, lacks[0].msgId)
++        assertTrue(lacks[0].msgId.contentEquals(id))
+ 
+         // A bloom that already contains the msg_id means the peer has it: offer nothing.
+-        val full = BloomDigest().apply { add(7L) }
++        val full = BloomDigest().apply { add(id) }
+         assertTrue(router.framesPeerLacks(full, 8).isEmpty())
+     }
+ 
+@@ -133,10 +149,11 @@ class RouterTest {
+     fun `current digest advertises every held msg_id`() = runTest {
+         val store = InMemoryMessageStore()
+         val router = Router(store, selfNodeId)
+-        assertTrue(router.onFrameReceived(frame(8), fromPeer = peerC))
++        val id = msgId(8)
++        assertTrue(router.onFrameReceived(frame(id), fromPeer = peerC))
+ 
+         val digest = router.currentDigest()
+-        assertTrue(digest.mightContain(8L))
+-        assertFalse(digest.mightContain(9999L))
++        assertTrue(digest.mightContain(id))
++        assertFalse(digest.mightContain(msgId(9999)))
+     }
+-}
++}
+\ No newline at end of file

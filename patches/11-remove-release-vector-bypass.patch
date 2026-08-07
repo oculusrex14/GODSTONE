@@ -1,0 +1,206 @@
+diff --git a/.github/workflows/build.yml b/.github/workflows/build.yml
+--- a/.github/workflows/build.yml
++++ b/.github/workflows/build.yml
+@@ -95,10 +95,11 @@ jobs:
+       # computing its own grounding verdict; C is the C3 red/green probe suite;
+       # D is Noise conformance incl. the derivation chain; E is C1/C2 + tiers.
+       #
+-      # --allow-unpinned acknowledges that noise_ref has not been checked
+-      # against an EXTERNAL vector. REMOVE THIS FLAG once a real vector file is
+-      # dropped into crypto/cacophony_vectors.json -- Invariant D flips to
+-      # PINNED automatically. See docs/PINNING_CACOPHONY.md.
++      # D is FAIL-CLOSED on the vector lock: it fails with "independent vectors
++      # unavailable or unapproved" while crypto/cacophony_vectors.json holds no
++      # approved EXTERNAL fixture. There is no permissive escape hatch -- the
++      # parity job stays red until an independent vector file is pinned, reviewed
++      # and consumed by both platform tests (A-06). See docs/PINNING_CACOPHONY.md.
+       # Invariant F resolves Kotlin cross-file symbols. Its --selftest is run
+       # FIRST: a control that has never been observed failing is not a control,
+       # and the first version of F passed while the defect was present.
+@@ -110,7 +111,7 @@ jobs:
+       - name: integration reachability negative control
+         run: python ci/integration.py --selftest
+       - name: invariants A-G
+-        run: python ci/check_parity.py --allow-unpinned
++        run: python ci/check_parity.py
+ 
+   content:
+     name: content pipeline
+
+diff --git a/ci/check_parity.py b/ci/check_parity.py
+--- a/ci/check_parity.py
++++ b/ci/check_parity.py
+@@ -149,7 +149,7 @@ def invariant_c(r: Report, db: Path) -> None:
+ 
+ 
+ # ---------------------------------------------------------------- D
+-def invariant_d(r: Report, allow_unpinned: bool) -> None:
++def invariant_d(r: Report) -> None:
+     code, out = run(["-m", "crypto.test_conformance"])
+     if code != 0:
+         bad = [l.strip() for l in out.splitlines() if l.strip().startswith("FAIL")]
+@@ -157,15 +157,21 @@ def invariant_d(r: Report, allow_unpinned: bool) -> None:
+         return
+     checks = next((l for l in out.splitlines() if l.startswith("checks=")), "")
+     unpinned = "CONFORMANCE STATUS: UNPINNED" in out
+-    if unpinned and not allow_unpinned:
+-        r.bad("D", "vectors are UNPINNED. Invariant D currently proves only that "
+-                   "Android and iOS agree WITH EACH OTHER; two implementations "
+-                   "can agree and both be wrong. Drop a real vector file into "
+-                   "crypto/cacophony_vectors.json (see docs/PINNING_CACOPHONY.md), "
+-                   "or pass --allow-unpinned to acknowledge the gap.")
++    if unpinned:
++        # FAIL-CLOSED. Two implementations agreeing with each other is not
++        # conformance to an independent standard. The parity job stays red
++        # until an approved EXTERNAL vector file is pinned in
++        # crypto/cacophony_vectors.json and consumed by both platform tests
++        # (A-06). Do not self-generate vectors from the implementation under
++        # test; the conformance gate rejects an unvalidated reference.
++        r.bad("D", "independent vectors unavailable or unapproved: "
++                   "crypto/cacophony_vectors.json holds no approved EXTERNAL "
++                   "Noise fixture. Invariant D proves only that Android and iOS "
++                   "agree WITH EACH OTHER, which is not conformance. Pin and "
++                   "review an independent vector file (see "
++                   "docs/PINNING_CACOPHONY.md); A-06 stays OPEN until then.")
+         return
+-    note = "  [UNPINNED, acknowledged]" if unpinned else "  [PINNED]"
+-    r.ok("D", f"Noise derivation chain + XX transcript reproduced ({checks}){note}")
++    r.ok("D", f"Noise derivation chain + XX transcript reproduced ({checks})  [PINNED]")
+ 
+ 
+ # ---------------------------------------------------------------- E
+@@ -262,9 +268,6 @@ def main() -> int:
+     ap = argparse.ArgumentParser(description="Godstone parity and safety gate")
+     ap.add_argument("--db", type=Path,
+                     default=ROOT / "dist" / "archive_medium.db")
+-    ap.add_argument("--allow-unpinned", action="store_true",
+-                    help="accept UNPINNED Noise vectors (acknowledges that "
+-                         "conformance rests on an unvalidated reference)")
+     args = ap.parse_args()
+ 
+     print("Godstone parity + safety gate\n" + "=" * 62)
+@@ -272,7 +275,7 @@ def main() -> int:
+     invariant_a(r)
+     invariant_b(r)
+     invariant_c(r, args.db)
+-    invariant_d(r, args.allow_unpinned)
++    invariant_d(r)
+     invariant_e(r)
+     invariant_f(r)
+     invariant_g(r)
+
+diff --git a/ci/no_release_bypasses.py b/ci/no_release_bypasses.py
+--- a/ci/no_release_bypasses.py
++++ b/ci/no_release_bypasses.py
+@@ -1,6 +1,20 @@
+ #!/usr/bin/env python3
++"""Fail-closed scan for executable release bypasses.
++
++No executable CI/release command under ``.github/workflows``, ``ci``,
++``scripts`` or ``release`` may carry the ``--allow-unpinned`` vector-lock
++bypass or a mutable GitHub Action reference (``@vN`` / ``@main`` / ``@master``).
++
++This file is the *detection guard*, so it legitimately contains the literal
++``--allow-unpinned`` string -- but only to match it. ``--selftest`` proves the
++detection has teeth: it synthesises files carrying each bypass and requires the
++scanner to flag them. A control that has never been observed firing is not a
++control.
++"""
+ from __future__ import annotations
++import argparse
+ import re
++import tempfile
+ from pathlib import Path
+ 
+ ROOTS = [Path(".github/workflows"), Path("ci"), Path("scripts"), Path("release")]
+@@ -8,19 +22,63 @@ TEXT_SUFFIXES = {".py", ".sh", ".yml", ".yaml", ".md", ".json", ".toml", ".kts"}
+ MUTABLE_ACTION = re.compile(r"^\s*-?\s*uses:\s*[^\s@]+@(v?\d+(?:\.\d+){0,2}|main|master)\s*$", re.MULTILINE)
+ 
+ 
+-def main() -> int:
++def scan(roots: list[Path], exclude_self: str | None) -> list[str]:
+     violations: list[str] = []
+-    for root in ROOTS:
++    for root in roots:
+         if not root.exists():
+             continue
+         for path in root.rglob("*"):
+-            if not path.is_file() or path.suffix not in TEXT_SUFFIXES or path.name == Path(__file__).name:
++            if not path.is_file() or path.suffix not in TEXT_SUFFIXES:
++                continue
++            if exclude_self is not None and path.name == exclude_self:
+                 continue
+             text = path.read_text(encoding="utf-8", errors="replace")
+             if "--allow-unpinned" in text:
+                 violations.append(f"{path}: unpinned-vector bypass")
+             if MUTABLE_ACTION.search(text):
+                 violations.append(f"{path}: mutable GitHub Action reference")
++    return violations
++
++
++def selftest() -> int:
++    """Prove the scanner detects each bypass class against synthetic inputs."""
++    fired: list[str] = []
++    with tempfile.TemporaryDirectory() as d:
++        root = Path(d)
++        # unpinned-vector bypass
++        (root / "bad.yml").write_text("run: python ci/check_parity.py --allow-unpinned\n")
++        # mutable action reference
++        (root / "bad2.yml").write_text("    uses: actions/checkout@v4\n")
++        v = scan([root], exclude_self=None)
++        if any("unpinned-vector bypass" in s for s in v):
++            fired.append("unpinned-vector bypass")
++        if any("mutable GitHub Action reference" in s for s in v):
++            fired.append("mutable action reference")
++        # negative: a clean file must NOT be flagged
++        (root / "clean.yml").write_text("run: python ci/check_parity.py\n")
++        v2 = scan([root / "clean.yml"], exclude_self=None)
++        if not v2:
++            fired.append("clean-file not flagged")
++    expected = {"unpinned-vector bypass", "mutable action reference", "clean-file not flagged"}
++    missing = expected - set(fired)
++    print("selftest fired:")
++    for f in fired:
++        print(f"  - {f}")
++    if missing:
++        print(f"selftest: branches did NOT fire: {sorted(missing)}")
++        return 1
++    print("selftest: all detection branches fire correctly")
++    return 0
++
++
++def main() -> int:
++    ap = argparse.ArgumentParser(description=__doc__.splitlines()[1] if __doc__ else "")
++    ap.add_argument("--selftest", action="store_true",
++                    help="prove the scanner detects each bypass against synthetic inputs")
++    args = ap.parse_args()
++    if args.selftest:
++        return selftest()
++    violations = scan(ROOTS, exclude_self=Path(__file__).name)
+     if violations:
+         print("Release bypasses found:\n" + "\n".join(violations))
+         return 1
+
+diff --git a/README.md b/README.md
+--- a/README.md
++++ b/README.md
+@@ -72,13 +72,16 @@ python -m safety.probes --db /tmp/godstone_archive_medium.db
+ python -m content.eval.grounding \
+   --db /tmp/godstone_archive_medium.db --strict
+ python ci/check_parity.py \
+-  --db /tmp/godstone_archive_medium.db --allow-unpinned
++  --db /tmp/godstone_archive_medium.db
+ python -m meshsim.run --nodes 200 --scenario city_blackout \
+   --ticks 600 --assert-regression
+ ```
+ 
+-`--allow-unpinned` is an explicit acknowledgement that external Noise
+-cacophony vectors have not yet been pinned. It must not appear in a release gate.
++The parity gate is FAIL-CLOSED on the Noise vector lock: Invariant D fails
++with "independent vectors unavailable or unapproved" while
++`crypto/cacophony_vectors.json` holds no approved EXTERNAL fixture. There is
++no permissive escape hatch -- the gate stays red until an independent vector
++file is pinned, reviewed and consumed by both platform tests (A-06).
+ 
+ ## Mobile proof still required
+ 

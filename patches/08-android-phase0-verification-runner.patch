@@ -1,0 +1,507 @@
+diff --git a/.github/workflows/build.yml b/.github/workflows/build.yml
+index 91974bb..82c6cd2 100644
+--- a/.github/workflows/build.yml
++++ b/.github/workflows/build.yml
+@@ -16,13 +16,22 @@ concurrency:
+   group: ${{ github.workflow }}-${{ github.ref }}
+   cancel-in-progress: true
+ 
++# All GitHub Actions are pinned to immutable commit SHAs (resolved via
++# `git ls-remote` against the v4/v5 refs at pin time) so a compromised or
++# silently-changed action cannot enter the build. ci/no_release_bypasses.py
++# enforces this: mutable @vN / @main / @master references fail the gate.
++#   actions/checkout            @11d5960a326750d5838078e36cf38b85af677262
++#   actions/setup-python        @a26af69be951a213d495a4c3e4e4022e16d87065
++#   actions/setup-java          @cf277c60eb25467037889841efdb72551f06f6c3
++#   gradle/actions/setup-gradle @0b6dd653ba04f4f93bf581ec31e66cbd7dcb644d
++#   actions/upload-artifact     @ea165f8d65b6e75b540449e92b4886f43607fa02
+ jobs:
+ 
+   constraints:
+     name: constraint audit
+     runs-on: ubuntu-latest
+     steps:
+-      - uses: actions/checkout@v4
++      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+ 
+       # C1. The most important check in this file. If an INTERNET permission or
+       # a URLSession ever appears, the product's central promise is broken and
+@@ -68,8 +77,8 @@ jobs:
+     name: parity + safety invariants
+     runs-on: ubuntu-latest
+     steps:
+-      - uses: actions/checkout@v4
+-      - uses: actions/setup-python@v5
++      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
++      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065
+         with:
+           python-version: '3.12'
+       - run: pip install -r content/requirements.txt cryptography
+@@ -107,8 +116,8 @@ jobs:
+     name: content pipeline
+     runs-on: ubuntu-latest
+     steps:
+-      - uses: actions/checkout@v4
+-      - uses: actions/setup-python@v5
++      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
++      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065
+         with:
+           python-version: '3.12'
+ 
+@@ -177,8 +186,8 @@ jobs:
+     name: mesh simulation
+     runs-on: ubuntu-latest
+     steps:
+-      - uses: actions/checkout@v4
+-      - uses: actions/setup-python@v5
++      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
++      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065
+         with:
+           python-version: '3.12'
+ 
+@@ -206,12 +215,12 @@ jobs:
+     name: android source compile + unit tests
+     runs-on: ubuntu-latest
+     steps:
+-      - uses: actions/checkout@v4
+-      - uses: actions/setup-java@v4
++      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
++      - uses: actions/setup-java@cf277c60eb25467037889841efdb72551f06f6c3
+         with:
+           distribution: temurin
+           java-version: '17'
+-      - uses: gradle/actions/setup-gradle@v4
++      - uses: gradle/actions/setup-gradle@0b6dd653ba04f4f93bf581ec31e66cbd7dcb644d
+ 
+       # The text-distributed repository cannot carry gradle-wrapper.jar. Restore
+       # it deterministically before invoking the wrapper.
+@@ -242,7 +251,7 @@ jobs:
+           fi
+           echo 'ok: merged manifest clean'
+ 
+-      - uses: actions/upload-artifact@v4
++      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+         if: always()
+         with:
+           name: android-test-results
+@@ -252,7 +261,7 @@ jobs:
+     name: ios core + mesh compile and tests
+     runs-on: macos-14
+     steps:
+-      - uses: actions/checkout@v4
++      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+ 
+       - name: compile the host-buildable closure
+         run: swift build --package-path ios/Godstone --target GodstoneMesh
+diff --git a/scripts/verify_android_phase0.sh b/scripts/verify_android_phase0.sh
+new file mode 100755
+index 0000000..dbca67f
+--- /dev/null
++++ b/scripts/verify_android_phase0.sh
+@@ -0,0 +1,278 @@
++#!/usr/bin/env bash
++# Portable Android Phase 0 verification runner.
++#
++# Runs the full Android Phase 0 evidence set with build-config-evidence gates,
++# records every command's log + SHA-256, captures test XML, and emits a
++# machine-readable summary. Returns nonzero if any REQUIRED command fails or is
++# skipped. Two modes:
++#
++#   online-bootstrap      Gradle distribution may be downloaded (verified against
++#                         distributionSha256Sum). Use on a clean, online machine.
++#   offline-preprovisioned  No network. The Gradle 8.9 distribution AND the SDK
++#                         packages must already be cached locally; the toolchain
++#                         preflight (--offline) fails clearly if they are not,
++#                         and Gradle is invoked with --offline so it can NEVER
++#                         silently switch to online.
++#
++# Required commands (any failure => nonzero exit):
++#   * toolchain preflight  (scripts/check_android_toolchain.py)
++#   * shipping-path gate   (ci/check_shipping_path.py)
++#   * wrapper + dist verify (./gradlew --version)
++#   * gradle clean + :core/:mesh/:llm unit tests + :app:compileLightDebugKotlin
++#   * Android Oracle ViewModel runtime-state tests (:app:testLightDebugUnitTest)
++#
++# Usage:
++#   scripts/verify_android_phase0.sh online-bootstrap [--evidence-dir DIR]
++#   scripts/verify_android_phase0.sh offline-preprovisioned [--evidence-dir DIR]
++#
++# Exit codes: 0 = all required steps passed; 1 = at least one required step
++# failed; 2 = bad usage / unknown mode; 3 = preflight environment failure.
++set -euo pipefail
++
++# ---------------------------------------------------------------------------
++MODE="${1:-}"
++if [[ -z "${MODE}" ]]; then
++  echo "usage: $0 <online-bootstrap|offline-preprovisioned> [--evidence-dir DIR]" >&2
++  exit 2
++fi
++shift || true
++EVIDENCE_DIR=""
++while [[ $# -gt 0 ]]; do
++  case "$1" in
++    --evidence-dir) EVIDENCE_DIR="$2"; shift 2 ;;
++    *) echo "unknown arg: $1" >&2; exit 2 ;;
++  esac
++done
++case "${MODE}" in
++  online-bootstrap|offline-preprovisioned) ;;
++  *) echo "unknown mode: ${MODE} (expected online-bootstrap|offline-preprovisioned)" >&2; exit 2 ;;
++esac
++
++REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
++cd "${REPO_ROOT}"
++
++TIMESTAMP="$(date -u +%Y%m%dT%H%M%SZ)"
++EVIDENCE_DIR="${EVIDENCE_DIR:-evidence/android-phase0-${TIMESTAMP}}"
++mkdir -p "${EVIDENCE_DIR}"
++STEPS_TSV="${EVIDENCE_DIR}/steps.tsv"
++SUMMARY_JSON="${EVIDENCE_DIR}/summary.json"
++META_TXT="${EVIDENCE_DIR}/environment.txt"
++GIT_TXT="${EVIDENCE_DIR}/git.txt"
++OVERALL=0
++GRADLE_ARGS=("--no-daemon" "--stacktrace" "--warning-mode=all")
++if [[ "${MODE}" == "offline-preprovisioned" ]]; then
++  GRADLE_ARGS+=("--offline")
++fi
++
++echo "==> Android Phase 0 verification"
++echo "    mode:         ${MODE}"
++echo "    repo root:     ${REPO_ROOT}"
++echo "    evidence dir:  ${EVIDENCE_DIR}"
++
++# ---------------------------------------------------------------------------
++# run_step_shell NAME "shell command"
++#   Runs the command, captures stdout+stderr to a log, records rc + SHA-256 of
++#   the log, and updates OVERALL. Never triggers `set -e` (uses `|| rc=$?`).
++# ---------------------------------------------------------------------------
++run_step_shell() {
++  local name="$1"; shift
++  local log="${EVIDENCE_DIR}/${name}.log"
++  echo "+ STEP ${name}: $*"
++  local rc=0
++  ( bash -c "$*" ) >"${log}" 2>&1 || rc=$?
++  local sha=""
++  if [[ -s "${log}" ]]; then
++    sha="$(shasum -a 256 "${log}" | awk '{print $1}')"
++  fi
++  printf 'step\t%s\trc=%d\tsha256=%s\tlog=%s\n' "${name}" "${rc}" "${sha}" "${name}.log" >>"${STEPS_TSV}"
++  if [[ "${rc}" -ne 0 ]]; then
++    echo "    FAIL ${name} (rc=${rc}); log: ${log}"
++    OVERALL=1
++  else
++    echo "    ok   ${name}"
++  fi
++  return 0
++}
++
++# ---------------------------------------------------------------------------
++# Record environment + tool versions + git state (best-effort; never fatal).
++# ---------------------------------------------------------------------------
++record_environment() {
++  {
++    echo "## Android Phase 0 verification environment"
++    echo "mode=${MODE}"
++    echo "timestamp=${TIMESTAMP}"
++    echo "repo_root=${REPO_ROOT}"
++    echo "evidence_dir=${EVIDENCE_DIR}"
++    echo
++    echo "## host"
++    uname -a 2>&1 || true
++    sw_vers -productVersion 2>/dev/null || true
++    echo
++    echo "## ANDROID_HOME=${ANDROID_HOME:-<unset>}  ANDROID_SDK_ROOT=${ANDROID_SDK_ROOT:-<unset>}"
++    echo "## JAVA_HOME=${JAVA_HOME:-<unset>}  GRADLE_USER_HOME=${GRADLE_USER_HOME:-<default>}"
++    echo
++    echo "## tool versions"
++    echo "--- java -version ---"; java -version 2>&1 || true
++    echo "--- python3 --version ---"; python3 --version 2>&1 || true
++    echo "--- adb version (best-effort) ---"; adb version 2>&1 || true
++  } >"${META_TXT}" 2>&1
++  shasum -a 256 "${META_TXT}" | awk '{print "environment.txt.sha256=" $1}'
++}
++
++record_git() {
++  : >"${GIT_TXT}"
++  if git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
++    {
++      echo "is_git_repo=yes"
++      echo "head=$(git rev-parse HEAD 2>&1)"
++      echo "branch=$(git rev-parse --abbrev-ref HEAD 2>&1)"
++      echo "describe=$(git describe --tags --always 2>&1 || true)"
++      echo "worktree=$(git rev-parse --show-toplevel 2>&1)"
++      echo "--- status --porcelain ---"
++      git status --porcelain 2>&1 || true
++      echo "--- worktree list ---"
++      git worktree list 2>&1 || true
++    } >>"${GIT_TXT}" 2>&1
++  else
++    echo "is_git_repo=no (not a git repository at ${REPO_ROOT})" >>"${GIT_TXT}"
++  fi
++  shasum -a 256 "${GIT_TXT}" | awk '{print "git.txt.sha256=" $1}'
++}
++
++collect_test_xml() {
++  local name="test-xml"
++  local dest="${EVIDENCE_DIR}/test-xml"
++  rm -rf "${dest}"; mkdir -p "${dest}"
++  local manifest="${EVIDENCE_DIR}/${name}.log"
++  : >"${manifest}"
++  local count=0
++  # Gradle JUnit XML lives under <module>/build/test-results/<variant>/*.xml
++  while IFS= read -r xml; do
++    local rel
++    rel="$(echo "${xml}" | sed "s#^${REPO_ROOT}/##")"
++    cp "${xml}" "${dest}/$(echo "${rel}" | tr '/' '_')"
++    local sha
++    sha="$(shasum -a 256 "${xml}" | awk '{print $1}')"
++    printf 'xml\t%s\tsha256=%s\n' "${rel}" "${sha}" >>"${manifest}"
++    count=$((count + 1))
++  done < <(find android -path '*/build/test-results/*' -name '*.xml' -type f 2>/dev/null)
++  printf 'step\t%s\trc=0\txml_count=%d\tmanifest=%s\n' "${name}" "${count}" "${name}.log" >>"${STEPS_TSV}"
++  echo "    ok   ${name} (${count} JUnit XML file(s) collected)"
++}
++
++# ---------------------------------------------------------------------------
++echo "==> recording environment + git state"
++record_environment
++record_git
++
++# ---------------------------------------------------------------------------
++# Step 1: toolchain preflight (fail-fast; environment failure, not a test fail)
++#   In BOTH modes a preflight failure is an environment problem (missing/wrong
++#   JDK, missing SDK/platform/build-tools, wrapper or distribution checksum
++#   failure, or -- in offline mode -- the Gradle distribution not cached). We
++#   stop BEFORE Gradle so an environment failure is never mislabelled as a
++#   source-code test failure, and offline mode can never silently fall back to
++#   downloading the distribution.
++# ---------------------------------------------------------------------------
++echo "==> step 1: toolchain preflight"
++preflight_cmd=(python3 scripts/check_android_toolchain.py)
++if [[ "${MODE}" == "offline-preprovisioned" ]]; then
++  preflight_cmd+=(--offline)
++fi
++if ! "${preflight_cmd[@]}" >"${EVIDENCE_DIR}/toolchain-preflight.log" 2>&1; then
++  cat "${EVIDENCE_DIR}/toolchain-preflight.log" >&2
++  shasum -a 256 "${EVIDENCE_DIR}/toolchain-preflight.log" | awk '{print "toolchain-preflight.log.sha256=" $1}'
++  printf 'step\ttoolchain-preflight\trc=3\tlog=toolchain-preflight.log\n' >>"${STEPS_TSV}"
++  echo "ENV: toolchain preflight failed; aborting before Gradle (environment failure, not a source-code test failure; no silent online switch)." >&2
++  exit 3
++fi
++shasum -a 256 "${EVIDENCE_DIR}/toolchain-preflight.log" | awk '{print "toolchain-preflight.log.sha256=" $1}'
++printf 'step\ttoolchain-preflight\trc=0\tlog=toolchain-preflight.log\n' >>"${STEPS_TSV}"
++echo "    ok   toolchain-preflight"
++
++# ---------------------------------------------------------------------------
++# Step 2: shipping-path gate (build-config evidence; A-01 stays OPEN)
++# ---------------------------------------------------------------------------
++echo "==> step 2: shipping-path gate"
++run_step_shell shipping-path-gate "python3 ci/check_shipping_path.py --root ."
++
++# ---------------------------------------------------------------------------
++# Step 3: wrapper + distribution verification (exercises the pinned wrapper)
++# ---------------------------------------------------------------------------
++echo "==> step 3: wrapper + gradle distribution verification"
++if [[ "${MODE}" == "offline-preprovisioned" ]]; then
++  run_step_shell gradle-version "cd android && ./gradlew --offline --version"
++else
++  run_step_shell gradle-version "cd android && ./gradlew --version"
++fi
++
++# ---------------------------------------------------------------------------
++# Step 4: gradle clean + core/mesh/llm unit tests + app LIGHT Kotlin compile
++#   :core:testDebugUnitTest  -- core (incl. Blake2s conformance)
++#   :mesh:testDebugUnitTest  -- mesh (incl. port-vector tests, Noise session)
++#   :llm:testDebugUnitTest   -- llm (incl. Android Oracle AnswerValidator tests)
++#   :app:compileLightDebugKotlin -- LIGHT shipping Kotlin compile (no native)
++# ---------------------------------------------------------------------------
++echo "==> step 4: gradle clean + unit tests + LIGHT compile"
++run_step_shell gradle-phase0 \
++  "cd android && ./gradlew ${GRADLE_ARGS[*]} clean :core:testDebugUnitTest :mesh:testDebugUnitTest :llm:testDebugUnitTest :app:compileLightDebugKotlin"
++
++# ---------------------------------------------------------------------------
++# Step 5: Android Oracle ViewModel runtime-state tests (no native model)
++# ---------------------------------------------------------------------------
++echo "==> step 5: Android Oracle ViewModel runtime-state tests"
++run_step_shell gradle-oracle-vm \
++  "cd android && ./gradlew ${GRADLE_ARGS[*]} :app:testLightDebugUnitTest --tests '*OracleViewModelTest*'"
++
++# ---------------------------------------------------------------------------
++# Step 6: collect JUnit XML evidence + SHA-256
++# ---------------------------------------------------------------------------
++echo "==> step 6: collect test XML"
++collect_test_xml
++
++# ---------------------------------------------------------------------------
++# Step 7: machine-readable summary (JSON)
++# ---------------------------------------------------------------------------
++echo "==> step 7: machine-readable summary"
++python3 - "${STEPS_TSV}" "${SUMMARY_JSON}" "${MODE}" "${TIMESTAMP}" "${EVIDENCE_DIR}" "${OVERALL}" <<'PY'
++import json, sys, pathlib, hashlib
++steps_tsv, out_json, mode, ts, edir, overall = sys.argv[1:7]
++steps = []
++for line in pathlib.Path(steps_tsv).read_text().splitlines():
++    if not line.startswith("step\t"):
++        continue
++    parts = line.split("\t")
++    name = parts[1]
++    info = {"name": name}
++    for p in parts[2:]:
++        if "=" in p:
++            k, v = p.split("=", 1)
++            info[k] = v
++    info["passed"] = (info.get("rc") == "0")
++    steps.append(info)
++evidence_files = []
++base = pathlib.Path(edir)
++for f in sorted(base.iterdir()):
++    if f.is_file():
++        evidence_files.append({"file": f.name, "sha256": hashlib.sha256(f.read_bytes()).hexdigest()})
++summary = {
++    "verdict": "PASS" if overall == "0" else "FAIL",
++    "mode": mode,
++    "timestamp": ts,
++    "evidence_dir": edir,
++    "overall_exit_code": int(overall),
++    "required_steps": [s["name"] for s in steps],
++    "steps": steps,
++    "evidence_files": evidence_files,
++}
++pathlib.Path(out_json).write_text(json.dumps(summary, indent=2) + "\n")
++print("    wrote " + out_json)
++PY
++shasum -a 256 "${SUMMARY_JSON}" | awk '{print "summary.json.sha256=" $1}'
++
++# ---------------------------------------------------------------------------
++echo "==> done"
++echo "    verdict: $(python3 -c "import json,sys;print(json.load(open(sys.argv[1]))['verdict'])" "${SUMMARY_JSON}")"
++echo "    evidence: ${EVIDENCE_DIR}"
++exit "${OVERALL}"
+\ No newline at end of file
+diff --git a/docs/production/ANDROID_PHASE0_VERIFICATION.md b/docs/production/ANDROID_PHASE0_VERIFICATION.md
+new file mode 100644
+index 0000000..a060bb4
+--- /dev/null
++++ b/docs/production/ANDROID_PHASE0_VERIFICATION.md
+@@ -0,0 +1,120 @@
++# Android Phase 0 Verification (Portable Runner)
++
++`scripts/verify_android_phase0.sh` is the portable, self-contained Android
++Phase 0 evidence runner. It runs the toolchain preflight, the shipping-path
++gate, the Gradle wrapper/distribution verification, the core/mesh/llm host
++unit tests, the LIGHT Kotlin compile, and the Android Oracle ViewModel
++runtime-state tests; records every command's log and SHA-256; collects the
++JUnit XML; and emits a machine-readable `summary.json`. It returns nonzero if
++any required step fails or is skipped.
++
++It does **not** build the full APK (that remains a release gate: llama.cpp,
++model weights and the archive must be pinned and restored first), and it does
++**not** run on this macOS development host, which has no JDK 17 / Android SDK
++provisioned (see `scripts/check_android_toolchain.py`). Run it on a correctly
++provisioned machine.
++
++## Prerequisites
++
++The exact toolchain is defined in
++[`ANDROID_TOOLCHAIN_CONTRACT.md`](./ANDROID_TOOLCHAIN_CONTRACT.md): Gradle 8.9
++(pinned `distributionSha256Sum`), AGP 8.6.0, Kotlin 2.0.20, JDK 17, compileSdk
++35, build-tools 35.0.0, CMake 3.22.1 (native only). Required environment:
++
++- `JAVA_HOME` — JDK 17
++- `ANDROID_HOME` (or `ANDROID_SDK_ROOT`) — Android SDK with
++  `platforms;android-35`, `build-tools;35.0.0` (and `cmake;3.22.1` + an NDK for
++  native builds)
++- `GRADLE_USER_HOME` — optional (defaults to `~/.gradle`)
++
++The runner verifies all of this up front via the fail-fast preflight.
++
++## Two modes
++
++### `online-bootstrap`
++
++Use on a clean, online machine. The Gradle 8.9 distribution may be downloaded
++on first wrapper invocation; the wrapper verifies it against
++`distributionSha256Sum` before use, so a tampered distribution fails the build
++rather than silently executing.
++
++```
++scripts/verify_android_phase0.sh online-bootstrap
++```
++
++### `offline-preprovisioned`
++
++Use on an air-gapped or pre-provisioned machine. No network is used. The Gradle
++8.9 distribution **and** the SDK packages must already be cached locally. The
++preflight is run with `--offline` and **fails clearly** (exit 3) if the
++distribution is not in the local cache; Gradle is invoked with `--offline` so it
++can **never silently switch to online** to download a missing distribution.
++
++```
++scripts/verify_android_phase0.sh offline-preprovisioned
++```
++
++Provision the offline cache beforehand by running once online (which populates
++`GRADLE_USER_HOME/wrapper/dists/gradle-8.9-bin/...`), then copy that cache and
++the SDK packages to the offline machine.
++
++## What it runs (required steps)
++
++| Step | Command | What it proves |
++|---|---|---|
++| 1. toolchain preflight | `python3 scripts/check_android_toolchain.py [--offline]` | JDK 17, SDK, platform/build-tools, wrapper JAR SHA-256, pinned distribution checksum; (offline) distribution cached. Environment failure, not a source failure. |
++| 2. shipping-path gate | `python3 ci/check_shipping_path.py --root .` | LIGHT shipping path has no Mesh/GMP-1 dependency edge (build-config evidence). A-01 stays OPEN. |
++| 3. wrapper + dist verify | `./gradlew [--offline] --version` | The pinned wrapper + distribution actually run. |
++| 4. gradle Phase 0 | `./gradlew --no-daemon --stacktrace --warning-mode=all [--offline] clean :core:testDebugUnitTest :mesh:testDebugUnitTest :llm:testDebugUnitTest :app:compileLightDebugKotlin` | core (Blake2s conformance), mesh (port-vector + Noise session), llm (Android Oracle AnswerValidator), LIGHT Kotlin compile. |
++| 5. Oracle VM tests | `./gradlew ... :app:testLightDebugUnitTest --tests '*OracleViewModelTest*'` | Android Oracle ViewModel runtime-state tests (no native model). |
++| 6. collect test XML | (internal) | JUnit XML gathered + SHA-256'd. |
++| 7. summary | (internal) | `summary.json` written. |
++
++If step 1 fails, the runner stops before Gradle (exit 3) so an environment
++failure is never mislabelled as a source-code test failure.
++
++## Evidence
++
++All evidence is written under `evidence/android-phase0-<UTC-timestamp>/`
++(override with `--evidence-dir DIR`):
++
++- `environment.txt` — host, tool versions (`java -version`, `python3 --version`,
++  `adb version`), `ANDROID_HOME`/`JAVA_HOME`/`GRADLE_USER_HOME`.
++- `git.txt` — `git rev-parse HEAD`, branch, `git status --porcelain`, worktree
++  list (or `is_git_repo=no`).
++- `<step>.log` — full stdout+stderr of each step, with a `.sha256` sidecar
++  where applicable (every log is hashed).
++- `test-xml/` — collected JUnit XML, with `<step>.log` listing each XML file
++  and its SHA-256.
++- `steps.tsv` — per-step `rc`, log SHA-256, and XML counts.
++- `summary.json` — machine-readable verdict:
++  ```json
++  {
++    "verdict": "PASS | FAIL",
++    "mode": "online-bootstrap | offline-preprovisioned",
++    "timestamp": "...",
++    "overall_exit_code": 0 | 1,
++    "required_steps": ["toolchain-preflight", "shipping-path-gate", ...],
++    "steps": [{"name": "...", "rc": "...", "sha256": "...", "passed": true}],
++    "evidence_files": [{"file": "...", "sha256": "..."}]
++  }
++  ```
++
++## Exit codes
++
++| Code | Meaning |
++|---|---|
++| 0 | every required step passed |
++| 1 | at least one required step failed (after the preflight passed) |
++| 2 | bad usage / unknown mode |
++| 3 | toolchain preflight failed (environment failure) — Gradle was not invoked |
++
++## Reading a run
++
++```
++jq '.verdict, .steps[] | {name, passed}' evidence/android-phase0-<ts>/summary.json
++```
++
++A `PASS` verdict with every step `passed: true` is the Phase 0 green signal for
++Android. Anything else is a regression or an environment gap; consult the
++per-step `.log` (and its SHA-256) for the detail.
+\ No newline at end of file

@@ -1,0 +1,113 @@
+To honour the JVM settings for this build a single-use Daemon process will be forked. For more on this, please refer to https://docs.gradle.org/8.9/userguide/gradle_daemon.html#sec:disabling_the_daemon in the Gradle documentation.
+Daemon will be stopped at the end of the build 
+Reusing configuration cache.
+> Task :core:preBuild UP-TO-DATE
+> Task :mesh:preBuild UP-TO-DATE
+> Task :core:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :mesh:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :mesh:preDebugBuild UP-TO-DATE
+> Task :mesh:preDebugUnitTestBuild UP-TO-DATE
+> Task :core:preDebugUnitTestBuild UP-TO-DATE
+> Task :core:preDebugBuild UP-TO-DATE
+> Task :llm:preBuild UP-TO-DATE
+> Task :llm:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :app:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :llm:preDebugBuild UP-TO-DATE
+> Task :llm:preDebugUnitTestBuild UP-TO-DATE
+> Task :app:preBuild UP-TO-DATE
+> Task :app:preLightDebugBuild UP-TO-DATE
+> Task :clean
+> Task :core:clean
+> Task :mesh:clean
+> Task :llm:externalNativeBuildCleanDebug
+> Task :llm:externalNativeBuildCleanRelease
+> Task :app:clean
+> Task :llm:clean
+> Task :app:generateLightDebugResValues FROM-CACHE
+> Task :mesh:generateDebugResValues FROM-CACHE
+> Task :core:generateDebugResValues FROM-CACHE
+> Task :llm:generateDebugResValues FROM-CACHE
+> Task :app:generateLightDebugBuildConfig FROM-CACHE
+> Task :mesh:javaPreCompileDebugUnitTest FROM-CACHE
+> Task :core:javaPreCompileDebugUnitTest FROM-CACHE
+> Task :core:javaPreCompileDebug FROM-CACHE
+> Task :mesh:javaPreCompileDebug FROM-CACHE
+> Task :llm:javaPreCompileDebugUnitTest FROM-CACHE
+> Task :llm:javaPreCompileDebug FROM-CACHE
+> Task :core:extractDeepLinksDebug FROM-CACHE
+> Task :core:writeDebugAarMetadata
+> Task :llm:writeDebugAarMetadata
+> Task :app:extractDeepLinksLightDebug FROM-CACHE
+> Task :core:generateDebugResources FROM-CACHE
+> Task :llm:generateDebugResources FROM-CACHE
+> Task :app:createLightDebugCompatibleScreenManifests
+> Task :llm:extractDeepLinksDebug FROM-CACHE
+> Task :mesh:generateDebugResources FROM-CACHE
+> Task :app:generateLightDebugResources FROM-CACHE
+> Task :core:processDebugManifest FROM-CACHE
+> Task :llm:processDebugManifest FROM-CACHE
+> Task :mesh:packageDebugResources FROM-CACHE
+> Task :core:packageDebugResources FROM-CACHE
+> Task :app:packageLightDebugResources FROM-CACHE
+> Task :llm:packageDebugResources FROM-CACHE
+> Task :app:parseLightDebugLocalResources FROM-CACHE
+> Task :core:parseDebugLocalResources FROM-CACHE
+> Task :llm:parseDebugLocalResources FROM-CACHE
+> Task :mesh:parseDebugLocalResources FROM-CACHE
+> Task :mesh:generateDebugRFile FROM-CACHE
+> Task :llm:generateDebugRFile FROM-CACHE
+> Task :core:generateDebugRFile FROM-CACHE
+> Task :core:generateDebugUnitTestStubRFile FROM-CACHE
+> Task :llm:generateDebugUnitTestStubRFile FROM-CACHE
+> Task :llm:compileDebugLibraryResources FROM-CACHE
+> Task :core:compileDebugLibraryResources FROM-CACHE
+> Task :mesh:generateDebugUnitTestStubRFile FROM-CACHE
+> Task :app:mapLightDebugSourceSetPaths
+> Task :core:compileDebugKotlin FROM-CACHE
+> Task :app:processLightDebugMainManifest FROM-CACHE
+> Task :core:compileDebugJavaWithJavac NO-SOURCE
+> Task :app:processLightDebugManifest FROM-CACHE
+> Task :app:checkLightDebugAarMetadata
+> Task :app:processLightDebugManifestForPackage FROM-CACHE
+> Task :core:processDebugJavaRes
+> Task :core:bundleLibRuntimeToJarDebug
+> Task :app:mergeLightDebugResources FROM-CACHE
+> Task :core:bundleLibCompileToJarDebug
+> Task :core:compileDebugUnitTestKotlin NO-SOURCE
+> Task :core:compileDebugUnitTestJavaWithJavac NO-SOURCE
+> Task :core:processDebugUnitTestJavaRes NO-SOURCE
+> Task :core:testDebugUnitTest NO-SOURCE
+> Task :mesh:kspDebugKotlin FROM-CACHE
+> Task :llm:compileDebugKotlin FROM-CACHE
+> Task :llm:compileDebugJavaWithJavac NO-SOURCE
+> Task :llm:processDebugJavaRes
+> Task :llm:bundleLibCompileToJarDebug
+> Task :llm:bundleLibRuntimeToJarDebug
+> Task :mesh:compileDebugKotlin FROM-CACHE
+> Task :mesh:compileDebugJavaWithJavac FROM-CACHE
+> Task :mesh:processDebugJavaRes
+> Task :llm:compileDebugUnitTestKotlin FROM-CACHE
+> Task :llm:compileDebugUnitTestJavaWithJavac NO-SOURCE
+> Task :llm:processDebugUnitTestJavaRes
+> Task :llm:testDebugUnitTest FROM-CACHE
+> Task :mesh:transformDebugClassesWithAsm FROM-CACHE
+> Task :mesh:bundleLibRuntimeToJarDebug
+> Task :mesh:bundleLibCompileToJarDebug
+> Task :mesh:kspDebugUnitTestKotlin FROM-CACHE
+> Task :mesh:compileDebugUnitTestKotlin FROM-CACHE
+> Task :mesh:compileDebugUnitTestJavaWithJavac NO-SOURCE
+> Task :mesh:hiltAggregateDepsDebugUnitTest FROM-CACHE
+> Task :mesh:hiltJavaCompileDebugUnitTest NO-SOURCE
+> Task :mesh:processDebugUnitTestJavaRes
+> Task :mesh:transformDebugUnitTestClassesWithAsm FROM-CACHE
+> Task :mesh:testDebugUnitTest FROM-CACHE
+
+> Task :app:processLightDebugResources FROM-CACHE
+Warning: SDK processing. This version only understands SDK XML versions up to 3 but an SDK XML file of version 4 was encountered. This can happen if you use versions of Android Studio and the command-line tools that were released at different times.
+
+> Task :app:kspLightDebugKotlin FROM-CACHE
+> Task :app:compileLightDebugKotlin FROM-CACHE
+
+BUILD SUCCESSFUL in 2s
+79 actionable tasks: 23 executed, 56 from cache
+Configuration cache entry reused.

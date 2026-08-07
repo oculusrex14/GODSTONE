@@ -41,6 +41,13 @@ xcuserdata/
 DerivedData/
 *.xcuserstate
 Pods/
+# xcodegen/xcodebuild writes the derived-data tree here (SYNCDIR), not under
+# DerivedData/, so the rule above does not catch it. Keep it out of the repo.
+ios/.xcd-derived/
+
+# --- Kotlin/Gradle compiler caches written next to the build ---
+.android/.kotlin/
+android/.kotlin/
 
 # The app currently has no external Swift package dependency graph worth locking.
 # Revisit when a reviewed native-dependency pinning strategy is added.

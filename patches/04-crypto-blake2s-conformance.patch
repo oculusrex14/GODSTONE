@@ -1,0 +1,147 @@
+diff --git a/android/mesh/src/test/java/io/godstone/mesh/PortVectorTest.kt b/android/mesh/src/test/java/io/godstone/mesh/PortVectorTest.kt
+index 854679a..0cb0093 100644
+--- a/android/mesh/src/test/java/io/godstone/mesh/PortVectorTest.kt
++++ b/android/mesh/src/test/java/io/godstone/mesh/PortVectorTest.kt
+@@ -5,6 +5,7 @@ import org.bouncycastle.crypto.digests.Blake2sDigest
+ import kotlin.test.Test
+ import kotlin.test.assertContentEquals
+ import kotlin.test.assertEquals
++import kotlin.test.assertNotEquals
+ import kotlin.test.assertTrue
+ 
+ class PortVectorTest {
+@@ -23,12 +24,53 @@ class PortVectorTest {
+             Triple("abc".toByteArray(), 32, "508c5e8c327c14e2e1a72ba34eeb452f37458b209ed63a294d999b4c86675982"),
+             Triple("abc".toByteArray(), 16, "aa4938119b1dc7b87cbad0ffd200d0ae"),
+             Triple("abc".toByteArray(), 8, "972e9d2cd6de6402"),
+-            Triple(ByteArray(64) { 0xA5.toByte() }, 32, "f85b88e0ac55872416d202c5f4881e7dbc9c7270542ef75074ff9b0a610b5a0e"),
+-            Triple(ByteArray(65) { 0xA5.toByte() }, 32, "65bba861969fcb5f1d8ec69e1dbd3e891f546b02203ce73b27958b9589a6789d")
++            // Pinned expected digests are the BLAKE2s hashes of 64/65 bytes of
++            // 0x41 ('A'), per crypto/port_vectors.json. An earlier transcription
++            // used 0xA5 as the input while keeping the 0x41-derived expected
++            // values, making the vector self-inconsistent. Input byte restored
++            // to 0x41. Impl (BouncyCastle Blake2sDigest) and fixture are correct.
++            Triple(ByteArray(64) { 0x41.toByte() }, 32, "f85b88e0ac55872416d202c5f4881e7dbc9c7270542ef75074ff9b0a610b5a0e"),
++            Triple(ByteArray(65) { 0x41.toByte() }, 32, "65bba861969fcb5f1d8ec69e1dbd3e891f546b02203ce73b27958b9589a6789d")
+         )
+         for ((input, length, expected) in cases) assertEquals(expected, blake(input, length))
+     }
+ 
++    /// Known-answer tests pinned to canonical RFC 7693 vectors (independently
++    /// verified against Python hashlib.blake2s). Distinct from A-06 Noise vectors.
++    @Test
++    fun `blake2s known answers`() {
++        val kat = listOf(
++            Triple(ByteArray(0), 32, "69217a3079908094e11121d042354a7c1f55b6482ca1a51e1b250dfd1ed0eef9"),
++            Triple("abc".toByteArray(), 32, "508c5e8c327c14e2e1a72ba34eeb452f37458b209ed63a294d999b4c86675982"),
++            Triple("abc".toByteArray(), 16, "aa4938119b1dc7b87cbad0ffd200d0ae"),
++            Triple("abc".toByteArray(), 8, "972e9d2cd6de6402"),
++            Triple(ByteArray(64) { 0x41.toByte() }, 32, "f85b88e0ac55872416d202c5f4881e7dbc9c7270542ef75074ff9b0a610b5a0e"),
++            Triple(ByteArray(65) { 0x41.toByte() }, 32, "65bba861969fcb5f1d8ec69e1dbd3e891f546b02203ce73b27958b9589a6789d"),
++            Triple("The quick brown fox jumps over the lazy dog".toByteArray(), 32,
++                "606beeec743ccbeff6cbcdf5d5302aa855c256c29b88c8ed331ea1a6bf3c8812")
++        )
++        for ((input, length, expected) in kat) assertEquals(expected, blake(input, length))
++        // keyed mode: 32-byte zero key, empty input.
++        val keyed = Blake2sDigest(ByteArray(32), 32, null, null)
++        val out = ByteArray(32); keyed.doFinal(out, 0)
++        assertEquals("cc8ed046995def3f21db6abcfe34c3526960be9dd3270ed1ab7cfc7f29ad4bd6",
++            out.joinToString("") { "%02x".format(it) })
++    }
++
++    /// Mutation / negative control: a one-byte change must change the digest,
++    /// and restoring it must reproduce the original. Guards against the 0xA5
++    /// transcription regressing and against loss of diffusion.
++    @Test
++    fun `blake2s mutation changes digest`() {
++        val original = "godstone".toByteArray()
++        val mutated = original.copyOf(); mutated[mutated.lastIndex] = 0x66 // 'e' -> 'f'
++        assertNotEquals(blake(original, 32), blake(mutated, 32))
++        assertEquals(blake(original, 32), blake(original, 32))
++        assertNotEquals(
++            blake(ByteArray(64) { 0x41.toByte() }, 32),
++            blake(ByteArray(64) { 0xA5.toByte() }, 32))
++    }
++
+     @Test
+     fun `noise xx emits canonical empty-payload message sizes`() {
+         val alice = NoiseSession.initiator(MeshIdentity.generate())
+diff --git a/ios/Godstone/Tests/GodstoneMeshTests/PortVectorTests.swift b/ios/Godstone/Tests/GodstoneMeshTests/PortVectorTests.swift
+index 5432c30..5a33de5 100644
+--- a/ios/Godstone/Tests/GodstoneMeshTests/PortVectorTests.swift
++++ b/ios/Godstone/Tests/GodstoneMeshTests/PortVectorTests.swift
+@@ -14,14 +14,72 @@ final class PortVectorTests: XCTestCase {
+             (Data("abc".utf8), 32, "508c5e8c327c14e2e1a72ba34eeb452f37458b209ed63a294d999b4c86675982"),
+             (Data("abc".utf8), 16, "aa4938119b1dc7b87cbad0ffd200d0ae"),
+             (Data("abc".utf8), 8, "972e9d2cd6de6402"),
+-            (Data(repeating: 0xA5, count: 64), 32, "f85b88e0ac55872416d202c5f4881e7dbc9c7270542ef75074ff9b0a610b5a0e"),
+-            (Data(repeating: 0xA5, count: 65), 32, "65bba861969fcb5f1d8ec69e1dbd3e891f546b02203ce73b27958b9589a6789d")
++            // NOTE: the pinned expected digests below are the BLAKE2s hashes of
++            // 64 and 65 bytes of 0x41 ('A'), as generated by crypto/port_vectors.py
++            // from b"A"*64 / b"A"*65 and pinned in crypto/port_vectors.json. An
++            // earlier transcription used 0xA5 as the input byte while keeping the
++            // 0x41-derived expected values, making the vector self-inconsistent
++            // (the impl was correct; it produced 66c28dc2… for 0xA5*64, which
++            // matches Python hashlib.blake2s for that input). The input byte is
++            // restored to 0x41 so input and expected agree. The implementation
++            // (Blake2s.swift) and the pinned fixture (port_vectors.json) are
++            // unchanged and correct. This is distinct from A-06, which tracks
++            // unpinned external Noise handshake vectors, not BLAKE2s primitive
++            // vectors.
++            (Data(repeating: 0x41, count: 64), 32, "f85b88e0ac55872416d202c5f4881e7dbc9c7270542ef75074ff9b0a610b5a0e"),
++            (Data(repeating: 0x41, count: 65), 32, "65bba861969fcb5f1d8ec69e1dbd3e891f546b02203ce73b27958b9589a6789d")
+         ]
+         for (input, length, expected) in cases {
+             XCTAssertEqual(hex(Blake2s.hash(input, digestLength: length)), expected)
+         }
+     }
+ 
++    /// Known-answer tests for the BLAKE2s primitive, pinned to the canonical
++    /// RFC 7693 test vectors and independently verified against Python
++    /// `hashlib.blake2s` (an OpenSSL-backed implementation, not a repo fixture).
++    /// These cover: empty input, short input, one-block boundary (64 bytes),
++    /// multi-block boundary (65 bytes), a longer multi-block input, keyed mode,
++    /// and output-length variants (16, 8). Distinct from A-06's Noise vectors.
++    func testBlake2sKnownAnswers() {
++        let kat: [(Data, Int, String)] = [
++            (Data(), 32, "69217a3079908094e11121d042354a7c1f55b6482ca1a51e1b250dfd1ed0eef9"),
++            (Data("abc".utf8), 32, "508c5e8c327c14e2e1a72ba34eeb452f37458b209ed63a294d999b4c86675982"),
++            (Data("abc".utf8), 16, "aa4938119b1dc7b87cbad0ffd200d0ae"),
++            (Data("abc".utf8), 8, "972e9d2cd6de6402"),
++            (Data(repeating: 0x41, count: 64), 32, "f85b88e0ac55872416d202c5f4881e7dbc9c7270542ef75074ff9b0a610b5a0e"),
++            (Data(repeating: 0x41, count: 65), 32, "65bba861969fcb5f1d8ec69e1dbd3e891f546b02203ce73b27958b9589a6789d"),
++            (Data("The quick brown fox jumps over the lazy dog".utf8), 32,
++             "606beeec743ccbeff6cbcdf5d5302aa855c256c29b88c8ed331ea1a6bf3c8812"),
++            // keyed mode: 32-byte zero key, empty input.
++            (Data(), 32, "cc8ed046995def3f21db6abcfe34c3526960be9dd3270ed1ab7cfc7f29ad4bd6")
++        ]
++        for (input, length, expected) in kat {
++            let key = input == Data() && length == 32 && expected.hasPrefix("cc8ed046")
++                ? Data(repeating: 0, count: 32) : Data()
++            XCTAssertEqual(hex(Blake2s.hash(input, digestLength: length, key: key)), expected)
++        }
++    }
++
++    /// Mutation / negative control: a single-byte change in the input MUST
++    /// change the digest, and restoring the byte MUST reproduce it. This proves
++    /// the hash is sensitive to input (the KATs above are not trivially passing)
++    /// and would fail if the implementation lost diffusion.
++    func testBlake2sMutationChangesDigest() {
++        let original = Data("godstone".utf8)
++        var mutated = original
++        mutated[mutated.endIndex - 1] = 0x66  // 'e' -> 'f'
++        let a = Blake2s.hash(original, digestLength: 32)
++        let b = Blake2s.hash(mutated, digestLength: 32)
++        XCTAssertNotEqual(a, b, "a one-byte input change must change the digest")
++        XCTAssertEqual(a, Blake2s.hash(original, digestLength: 32),
++                       "restoring the byte must reproduce the original digest")
++        // explicit guard against the original 0xA5 transcription slipping back:
++        // hashing 0x41*64 must differ from 0xA5*64 (both 64 bytes, one-block).
++        XCTAssertNotEqual(
++            Blake2s.hash(Data(repeating: 0x41, count: 64), digestLength: 32),
++            Blake2s.hash(Data(repeating: 0xA5, count: 64), digestLength: 32))
++    }
++
+     func testNoiseXXEmptyPayloadMessageSizesAndTransport() throws {
+         let initiatorStatic = Curve25519.KeyAgreement.PrivateKey()
+         let responderStatic = Curve25519.KeyAgreement.PrivateKey()

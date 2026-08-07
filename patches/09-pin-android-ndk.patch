@@ -1,0 +1,219 @@
+diff --git a/scripts/check_android_toolchain.py b/scripts/check_android_toolchain.py
+--- a/scripts/check_android_toolchain.py
++++ b/scripts/check_android_toolchain.py
+@@ -17,6 +17,9 @@ Distinguished failures (exit codes):
+     9  missing CMake / NDK                       (--require-native only)
+    10  wrapper properties missing / unreadable
+ 
++The NDK is pinned to an exact version (``EXPECTED_NDK``); a present-but-wrong
++NDK version is reported as ``missing_native_tools``, not accepted.
++
+ Usage:
+     python3 scripts/check_android_toolchain.py [--offline] [--require-native]
+                                                [--selftest]
+@@ -25,9 +28,11 @@ Usage:
+                       locally (offline-preprovisioned mode). Without it, a missing
+                       distribution is a NOTE, not a failure (online bootstrap will
+                       download it).
+-``--require-native``  treat a missing CMake/NDK as a failure (needed only when the
+-                      native :llm build is assembled). By default it is a warning,
+-                      because the Phase 0 JVM test path does not compile native code.
++``--require-native``  treat a missing/wrong CMake/NDK as a failure (needed when the
++                      native :llm build is assembled, and by the Phase 0 runner so
++                      the pinned NDK is verified on every provisioned machine). By
++                      default it is a warning, because the Phase 0 JVM test path
++                      does not compile native code.
+ ``--selftest``        exercise every failure branch against synthetic inputs and
+                       report which fire, then exit 0. Proves the branches have teeth.
+ """
+@@ -52,6 +57,9 @@ EXPECTED_JAVA_MAJOR = 17
+ EXPECTED_COMPILE_SDK = 35
+ EXPECTED_BUILD_TOOLS = "35.0.0"
+ EXPECTED_CMAKE = "3.22.1"
++# NDK r27b; the exact version AGP 8.6.0 selects as its bundled default on this
++# host. Pinned so the native build is reproducible across local + CI machines.
++EXPECTED_NDK = "27.0.12077973"
+ 
+ EXIT = {
+     "ok": 0,
+@@ -222,15 +230,23 @@ def check_dist_offline() -> tuple[bool, str | None, str]:
+ 
+ def check_native_tools(sdk: Path) -> tuple[bool, str | None, str]:
+     cmake = sdk / "cmake" / EXPECTED_CMAKE / "bin" / "cmake"
+-    ndk_dirs = list((sdk / "ndk").glob("*")) if (sdk / "ndk").is_dir() else []
++    ndk_dir = sdk / "ndk" / EXPECTED_NDK
+     missing = []
+     if not cmake.exists():
+         missing.append(f"cmake;{EXPECTED_CMAKE} ({cmake})")
+-    if not ndk_dirs:
+-        missing.append("ndk;<any> (no sdk/ndk/<version> directory)")
++    if not ndk_dir.is_dir():
++        # Report any other NDK versions present so a wrong-version host is
++        # diagnosed as a pin mismatch, not a silent acceptance.
++        others = sorted(p.name for p in (sdk / "ndk").glob("*")) if (sdk / "ndk").is_dir() else []
++        if others:
++            missing.append(
++                f"ndk;{EXPECTED_NDK} (found {', '.join(others)} -- version pin mismatch)"
++            )
++        else:
++            missing.append(f"ndk;{EXPECTED_NDK} (no sdk/ndk/{EXPECTED_NDK} directory)")
+     if missing:
+         return False, "missing_native_tools", "; ".join(missing)
+-    return True, None, f"cmake {EXPECTED_CMAKE} + ndk {ndk_dirs[0].name}"
++    return True, None, f"cmake {EXPECTED_CMAKE} + ndk {EXPECTED_NDK}"
+ 
+ 
+ # --- Driver -------------------------------------------------------------------
+@@ -335,6 +351,13 @@ def selftest() -> int:
+         ok, cat, _ = check_native_tools(sdk)
+         if not ok and cat == "missing_native_tools":
+             fired.append("missing_native_tools")
++        # wrong NDK version: an ndk dir with a different version name must
++        # fire missing_native_tools (version pin mismatch), not pass.
++        wrong_ndk = sdk / "ndk" / "99.0.00000000"
++        wrong_ndk.mkdir(parents=True)
++        ok, cat, detail = check_native_tools(sdk)
++        if not ok and cat == "missing_native_tools" and "pin mismatch" in detail:
++            fired.append("missing_native_tools (wrong ndk version)")
+ 
+     # dist_not_pinned: feed a properties blob without distributionSha256Sum
+     global WRAPPER_PROPS
+
+diff --git a/scripts/verify_android_phase0.sh b/scripts/verify_android_phase0.sh
+--- a/scripts/verify_android_phase0.sh
++++ b/scripts/verify_android_phase0.sh
+@@ -176,7 +176,10 @@ record_git
+ #   downloading the distribution.
+ # ---------------------------------------------------------------------------
+ echo "==> step 1: toolchain preflight"
+-preflight_cmd=(python3 scripts/check_android_toolchain.py)
++# --require-native: the pinned NDK (EXPECTED_NDK) and CMake must be present and
++# exact on every provisioned machine. A wrong/missing NDK is an environment
++# failure (exit 9), surfaced before Gradle, never mislabelled as a test failure.
++preflight_cmd=(python3 scripts/check_android_toolchain.py --require-native)
+ if [[ "${MODE}" == "offline-preprovisioned" ]]; then
+   preflight_cmd+=(--offline)
+ fi
+
+diff --git a/docs/production/ANDROID_TOOLCHAIN_CONTRACT.md b/docs/production/ANDROID_TOOLCHAIN_CONTRACT.md
+--- a/docs/production/ANDROID_TOOLCHAIN_CONTRACT.md
++++ b/docs/production/ANDROID_TOOLCHAIN_CONTRACT.md
+@@ -56,9 +56,14 @@ platform-tools
+ platforms;android-35
+ build-tools;35.0.0
+ cmake;3.22.1
+-ndk;<AGP-8.6 default NDK version>   # see NDK note below
++ndk;27.0.12077973
+ ```
+ 
++The NDK version `27.0.12077973` is pinned in `:llm` via `ndkVersion` and asserted
++by the preflight (`scripts/check_android_toolchain.py`, `EXPECTED_NDK`). A
++present-but-wrong NDK version is a pin mismatch, reported as an environment
++failure (`missing_native_tools`), never silently accepted.
++
+ ## Native build (llm module — llama.cpp/ggml bridge)
+ 
+ | Item | Value |
+@@ -66,18 +71,20 @@ ndk;<AGP-8.6 default NDK version>   # see NDK note below
+ | Module | `:llm` (`android/llm/build.gradle.kts`) |
+ | CMake | **3.22.1** (pinned via `externalNativeBuild.cmake.version`) |
+ | CMakeLists | `android/llm/src/main/cpp/CMakeLists.txt` |
++| NDK | **27.0.12077973** (pinned via `ndkVersion` in `:llm`; asserted by preflight `EXPECTED_NDK`) |
+ | ABI | `arm64-v8a` only (`ndk.abiFilters`) |
+ | cppFlags | `-O3 -fno-exceptions -fno-rtti` |
+ | CMake args | `-DGGML_LLAMAFILE=ON -DGGML_OPENMP=OFF -DLLAMA_BUILD_EXAMPLES=OFF -DLLAMA_BUILD_TESTS=OFF` |
+ 
+-### NDK note (reproducibility gap)
++### NDK pin
+ 
+-No `ndkVersion` is declared in any module, so AGP 8.6 selects its bundled
+-default NDK. That makes the NDK version machine-dependent. **Pin `ndkVersion` in
+-`:llm` (and any future native module) for a fully reproducible native build.**
+-This is recorded as an open High finding (see patch 06 report, item 10). The
+-preflight script reports a missing NDK but does not assert a specific NDK
+-version until it is pinned.
++`ndkVersion = "27.0.12077973"` is declared in `:llm` (the only native module).
++This is the exact version AGP 8.6.0 selects as its bundled default on the
++provisioned host; pinning it makes the native build reproducible across local
++and CI machines. The preflight asserts this exact version is installed under
++`$ANDROID_HOME/ndk/27.0.12077973`; any other NDK version present is reported as
++a pin mismatch (environment failure), not accepted. Any future native module
++must declare the same `ndkVersion`.
+ 
+ ## Accepted environment variables
+ 
+@@ -86,7 +93,7 @@ version until it is pinned.
+ | `ANDROID_HOME` (or `ANDROID_SDK_ROOT`) | **yes** (one of) | SDK root; the wrapper/AGP locate `platforms`, `build-tools`, `cmake`, `ndk` here |
+ | `JAVA_HOME` | **yes** | JDK 17 used by Gradle and `kotlinOptions.jvmTarget` |
+ | `GRADLE_USER_HOME` | no | Override the Gradle cache/distribution store (defaults to `~/.gradle`) |
+-| `ANDROID_NDK_HOME` | no | Override the NDK path (otherwise AGP's bundled default) |
++| `ANDROID_NDK_HOME` | no | Override the NDK path (otherwise the pinned `ndkVersion = 27.0.12077973`) |
+ | `ORG_GRADLE_PROJECT_*` | no | Optional Gradle project properties |
+ 
+ ## Verification
+
+diff --git a/docs/production/ANDROID_PHASE0_VERIFICATION.md b/docs/production/ANDROID_PHASE0_VERIFICATION.md
+--- a/docs/production/ANDROID_PHASE0_VERIFICATION.md
++++ b/docs/production/ANDROID_PHASE0_VERIFICATION.md
+@@ -9,25 +9,28 @@ JUnit XML; and emits a machine-readable `summary.json`. It returns nonzero if
+ any required step fails or is skipped.
+ 
+ It does **not** build the full APK (that remains a release gate: llama.cpp,
+-model weights and the archive must be pinned and restored first), and it does
+-**not** run on this macOS development host, which has no JDK 17 / Android SDK
+-provisioned (see `scripts/check_android_toolchain.py`). Run it on a correctly
+-provisioned machine.
++model weights and the archive must be pinned and restored first). Run it on a
++correctly provisioned machine (see `scripts/check_android_toolchain.py` and
++`docs/production/ANDROID_TOOLCHAIN_CONTRACT.md`); the preflight fails fast with
++a distinct exit code if the toolchain is missing or the NDK version is wrong.
+ 
+ ## Prerequisites
+ 
+ The exact toolchain is defined in
+ [`ANDROID_TOOLCHAIN_CONTRACT.md`](./ANDROID_TOOLCHAIN_CONTRACT.md): Gradle 8.9
+ (pinned `distributionSha256Sum`), AGP 8.6.0, Kotlin 2.0.20, JDK 17, compileSdk
+-35, build-tools 35.0.0, CMake 3.22.1 (native only). Required environment:
++35, build-tools 35.0.0, CMake 3.22.1, NDK 27.0.12077973 (both pinned and asserted
++by the preflight). Required environment:
+ 
+ - `JAVA_HOME` — JDK 17
+ - `ANDROID_HOME` (or `ANDROID_SDK_ROOT`) — Android SDK with
+-  `platforms;android-35`, `build-tools;35.0.0` (and `cmake;3.22.1` + an NDK for
+-  native builds)
++  `platforms;android-35`, `build-tools;35.0.0`, `cmake;3.22.1`,
++  `ndk;27.0.12077973`
+ - `GRADLE_USER_HOME` — optional (defaults to `~/.gradle`)
+ 
+-The runner verifies all of this up front via the fail-fast preflight.
++The runner verifies all of this up front via the fail-fast preflight, run with
++`--require-native` so the pinned NDK version is asserted (a wrong or missing NDK
++is an environment failure, exit 3, reported before Gradle).
+ 
+ ## Two modes
+ 
+@@ -62,7 +65,7 @@ the SDK packages to the offline machine.
+ 
+ | Step | Command | What it proves |
+ |---|---|---|
+-| 1. toolchain preflight | `python3 scripts/check_android_toolchain.py [--offline]` | JDK 17, SDK, platform/build-tools, wrapper JAR SHA-256, pinned distribution checksum; (offline) distribution cached. Environment failure, not a source failure. |
++| 1. toolchain preflight | `python3 scripts/check_android_toolchain.py --require-native [--offline]` | JDK 17, SDK, platform/build-tools, wrapper JAR SHA-256, pinned distribution checksum, CMake 3.22.1, NDK 27.0.12077973 (exact version pin); (offline) distribution cached. Environment failure, not a source failure. |
+ | 2. shipping-path gate | `python3 ci/check_shipping_path.py --root .` | LIGHT shipping path has no Mesh/GMP-1 dependency edge (build-config evidence). A-01 stays OPEN. |
+ | 3. wrapper + dist verify | `./gradlew [--offline] --version` | The pinned wrapper + distribution actually run. |
+ | 4. gradle Phase 0 | `./gradlew --no-daemon --stacktrace --warning-mode=all [--offline] clean :core:testDebugUnitTest :mesh:testDebugUnitTest :llm:testDebugUnitTest :app:compileLightDebugKotlin` | core (Blake2s conformance), mesh (port-vector + Noise session), llm (Android Oracle AnswerValidator), LIGHT Kotlin compile. |
+
+diff --git a/android/llm/build.gradle.kts b/android/llm/build.gradle.kts
+--- a/android/llm/build.gradle.kts
++++ b/android/llm/build.gradle.kts
+@@ -7,6 +7,11 @@ android {
+     namespace = "io.godstone.llm"
+     compileSdk = 35
+ 
++    // Pinned NDK for a reproducible native build (see
++    // docs/production/ANDROID_TOOLCHAIN_CONTRACT.md). Without this AGP 8.6
++    // selects its bundled default, which is machine-dependent.
++    ndkVersion = "27.0.12077973"
++
+     defaultConfig {
+         minSdk = 26
+ 

@@ -1,0 +1,49 @@
+=== bundle contents ===
+total 1000
+drwxr-xr-x  6 oculus  staff     192 Aug  6 17:17 .
+drwxr-xr-x@ 8 oculus  staff     256 Aug  6 17:17 ..
+-rwxr-xr-x  1 oculus  staff  499096 Aug  6 17:17 Godstone
+-rw-r--r--  1 oculus  staff     784 Aug  6 17:17 Info.plist
+-rw-r--r--  1 oculus  staff       8 Aug  6 17:17 PkgInfo
+-rw-r--r--  1 oculus  staff     379 Aug  6 17:17 PrivacyInfo.xcprivacy
+
+=== Info.plist (key fields) ===
+Print: Entry, ":CFBundleExecutable", Does Not Exist
+io.godstone.app
+1.0.0
+16.0
+
+=== entitlements ===
+ls: /Users/oculus/Library/Developer/Xcode/DerivedData/Godstone-hgvpfyftzfrtvpbwquddqavehdmv/Build/Products/LightRelease-iphoneos/Godstone.app/Godstone.entitlements: No such file or directory
+(no embedded entitlements file in bundle)
+
+=== linked products (otool -L) ===
+/Users/oculus/Library/Developer/Xcode/DerivedData/Godstone-hgvpfyftzfrtvpbwquddqavehdmv/Build/Products/LightRelease-iphoneos/Godstone.app/Godstone:
+	/System/Library/Frameworks/Foundation.framework/Foundation (compatibility version 300.0.0, current version 5026.5.4)
+	/usr/lib/libobjc.A.dylib (compatibility version 1.0.0, current version 228.0.0)
+	/usr/lib/libSystem.B.dylib (compatibility version 1.0.0, current version 1356.0.0)
+	/System/Library/Frameworks/Combine.framework/Combine (compatibility version 1.0.0, current version 3023.0.0)
+	/System/Library/Frameworks/SwiftUI.framework/SwiftUI (compatibility version 1.0.0, current version 7.5.3)
+	/usr/lib/libsqlite3.dylib (compatibility version 9.0.0, current version 382.0.0)
+	/usr/lib/swift/libswiftCore.dylib (compatibility version 0.0.0, current version 0.0.0)
+	/usr/lib/swift/libswiftCoreFoundation.dylib (compatibility version 1.0.0, current version 120.100.0, weak)
+	/usr/lib/swift/libswiftCoreImage.dylib (compatibility version 1.0.0, current version 2.2.0, weak)
+	/usr/lib/swift/libswiftDarwin.dylib (compatibility version 1.0.0, current version 377.120.8, weak)
+	/usr/lib/swift/libswiftDispatch.dylib (compatibility version 1.0.0, current version 1542.100.32, weak)
+	/usr/lib/swift/libswiftMetal.dylib (compatibility version 1.0.0, current version 373.2.0, weak)
+	/usr/lib/swift/libswiftOSLog.dylib (compatibility version 1.0.0, current version 10.0.0, weak)
+	/usr/lib/swift/libswiftObjectiveC.dylib (compatibility version 1.0.0, current version 951.7.0, weak)
+	/usr/lib/swift/libswiftQuartzCore.dylib (compatibility version 1.0.0, current version 5.0.0, weak)
+	/usr/lib/swift/libswiftSpatial.dylib (compatibility version 1.0.0, current version 1.0.0, weak)
+	/usr/lib/swift/libswiftUniformTypeIdentifiers.dylib (compatibility version 1.0.0, current version 879.5.1, weak)
+	/usr/lib/swift/libswiftXPC.dylib (compatibility version 1.0.0, current version 128.120.2, weak)
+	/usr/lib/swift/libswift_Concurrency.dylib (compatibility version 0.0.0, current version 0.0.0)
+
+=== resource build phase in project (xcodegen output) ===
+12:		411070D525BE5D2ABB491E4F /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 439901A3401DC8E1027B39A4 /* PrivacyInfo.xcprivacy */; };
+104:				185A281FF716502754D52050 /* Resources */,
+156:/* Begin PBXResourcesBuildPhase section */
+157:		185A281FF716502754D52050 /* Resources */ = {
+158:			isa = PBXResourcesBuildPhase;
+161:				411070D525BE5D2ABB491E4F /* PrivacyInfo.xcprivacy in Resources */,
+165:/* End PBXResourcesBuildPhase section */

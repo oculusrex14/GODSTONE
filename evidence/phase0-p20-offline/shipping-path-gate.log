@@ -1,0 +1,4 @@
+SHIPPING-PATH GATE: PASS -- LIGHT shipping path has no Mesh/GMP-1 dependency edge.
+  android excludes=['io/godstone/app/ui/mesh/**', 'io/godstone/app/ui/sos/**'] deps=['core', 'llm']
+  ios sources=['Godstone/Sources/App/AppContainer.swift', 'Godstone/Sources/App/ArchiveView.swift', 'Godstone/Sources/App/GodstoneApp.swift', 'Godstone/Sources/App/GodstoneTheme.swift', 'Godstone/Sources/App/RootView.swift', 'Godstone/PrivacyInfo.xcprivacy'] deps=[('GodstonePackages', 'GodstoneCore')]
+  (A-01 remains OPEN: a clean shipping path is not GMP/2.1 canonical-frame evidence.)

@@ -1,0 +1,16 @@
+{
+  "gate": "ios-xcodebuild-test",
+  "verdict": "PASS",
+  "tests": 25,
+  "failures": 0,
+  "test_targets": {
+    "NoiseSessionTests": 3,
+    "PortVectorTests": 4,
+    "RouterTests": 5,
+    "WireV2VectorTests": 13
+  },
+  "scheme": "Godstone-Light",
+  "simulator": "iPhone 17 Pro",
+  "config": "LightDebug",
+  "note": "gold-standard fresh baseline b7daf5a + 00-13 + 14 + 15 + 16 + 20 + 21"
+}

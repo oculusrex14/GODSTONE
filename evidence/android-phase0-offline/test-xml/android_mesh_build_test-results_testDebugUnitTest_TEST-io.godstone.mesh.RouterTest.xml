@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.godstone.mesh.RouterTest" tests="9" skipped="0" failures="0" errors="0" timestamp="2026-08-06T17:32:45" hostname="Naraharikripas-Mac-mini.local" time="0.048">
+  <properties/>
+  <testcase name="framesPeerLacks returns held frames absent from the peer digest" classname="io.godstone.mesh.RouterTest" time="0.043"/>
+  <testcase name="duplicate message is not relayed twice" classname="io.godstone.mesh.RouterTest" time="0.001"/>
+  <testcase name="aged frame is dropped" classname="io.godstone.mesh.RouterTest" time="0.001"/>
+  <testcase name="buildSos produces a max-ttl SOS frame" classname="io.godstone.mesh.RouterTest" time="0.0"/>
+  <testcase name="current digest advertises every held msg_id" classname="io.godstone.mesh.RouterTest" time="0.001"/>
+  <testcase name="direct priority is accepted without proof of work" classname="io.godstone.mesh.RouterTest" time="0.001"/>
+  <testcase name="frame with exhausted ttl is dropped" classname="io.godstone.mesh.RouterTest" time="0.0"/>
+  <testcase name="ttl above one is relayed and decremented on the forward copy" classname="io.godstone.mesh.RouterTest" time="0.001"/>
+  <testcase name="group priority without proof of work is dropped" classname="io.godstone.mesh.RouterTest" time="0.0"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

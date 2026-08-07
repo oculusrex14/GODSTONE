@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.godstone.mesh.ProofOfWorkTest" tests="5" skipped="0" failures="0" errors="0" timestamp="2026-08-07T01:14:30" hostname="Naraharikripas-Mac-mini.local" time="0.014">
+  <properties/>
+  <testcase name="mined nonce bound to one plaintext does not verify a different one" classname="io.godstone.mesh.ProofOfWorkTest" time="0.01"/>
+  <testcase name="mined nonce is 8 bytes and verifies at the production target shape" classname="io.godstone.mesh.ProofOfWorkTest" time="0.001"/>
+  <testcase name="mined nonce bound to one type code does not verify a different type" classname="io.godstone.mesh.ProofOfWorkTest" time="0.001"/>
+  <testcase name="production 20-bit target rejects an 8-bit nonce" classname="io.godstone.mesh.ProofOfWorkTest" time="0.002"/>
+  <testcase name="a zero nonce does not verify for fresh content" classname="io.godstone.mesh.ProofOfWorkTest" time="0.0"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>
