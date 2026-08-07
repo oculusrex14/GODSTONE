@@ -38,8 +38,8 @@
    "severity": "Critical",
    "status": "OPEN_REPOSITORY",
    "repo_controlled": true,
-   "evidence": "iOS durable store + coordinated wipe not implemented.",
-   "closes_in_phase": "F + G"
+   "evidence": "iOS durable store not implemented (Phase G). Coordinated resumable wipe now repo-tested on both platforms (Phase F: PanicWipe state machine + crypto-erasure-first + crash-resume, 7 host tests each on Android/iOS; see GST-WIPE-001). On-device Keystore/Keychain deletion + shipping-path integration + iOS durable store remain. NOT closed.",
+   "closes_in_phase": "F (wipe repo) + G (iOS store) + device"
   },
   {
    "id": "A-05",
@@ -332,10 +332,10 @@
   {
    "id": "GST-WIPE-001",
    "severity": "High",
-   "status": "OPEN_REPOSITORY",
+   "status": "NONSHIPPING_TESTED",
    "repo_controlled": true,
-   "evidence": "diagram/spec only; no platform integration.",
-   "closes_in_phase": "F"
+   "evidence": "Coordinated resumable cryptographic-erasure panic wipe now implemented + repo-tested on BOTH platforms (Phase F). PanicWipe is a persisted state machine (IDLE->REQUESTED->KEY_ERASED->ARTIFACTS_DELETED->NEW_IDENTITY->IDLE) with a durable WipeJournal written AFTER each idempotent step, so a crash-then-resume re-runs at most the one interrupted step. Crypto-erasure FIRST: eraseKeys() destroys the KEK before any file is deleted -- AndroidKeystore master key (_androidx_security_master_key_) on Android (invalidates every EncryptedSharedPreferences ciphertext for identity + store key), MeshIdentity.deleteFromKeychain() (both Keychain items) on iOS -- so prior data is unrecoverable once KEY_ERASED is persisted regardless of later cleanup. deleteArtifacts reuses SqliteMessageStore.panicWipe + Identity.panicWipe on Android; reserved Phase G store hook on iOS. regenerateIdentity builds a fresh identity. Pure state machine + injected glue => host-testable: PanicWipeTest (Android, 7 tests) + PanicWipeTests (iOS, 7 tests via swift test + xcodebuild simulator) prove no-crash ordering (eraseKeys before deleteArtifacts before regenerate), crash-before-any-step resumes to completion with the journal at the last COMPLETED step, no destroying step double-run or skipped, resumeIfPending no-op when idle. :mesh:testDebugUnitTest 80 PASS; ios swift test 70 PASS + xcodebuild 57 PASS. NOT closed: wipe is non-shipping (:mesh / test-only GodstoneMesh, not on LIGHT path); actual Keystore/Keychain deletion + shipping-path integration are on-device; iOS durable-store coordination is Phase G.",
+   "closes_in_phase": "F (repo evidence) + device"
   },
   {
    "id": "GST-WORKBOOK-001",

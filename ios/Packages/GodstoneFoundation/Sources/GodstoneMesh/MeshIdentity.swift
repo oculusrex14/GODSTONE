@@ -88,6 +88,27 @@ public struct MeshIdentity: Sendable {
         }
         return out as? Data
     }
+
+    /// Delete both identity key items from the Keychain.
+    ///
+    /// This is the cryptographic-erasure primitive for the iOS panic-wipe path
+    /// (ADR-004 criterion 5, GST-WIPE-001). The private keys ARE the secret here
+    /// -- unlike Android, where a KEK wraps ciphertext files, on iOS the keys
+    /// live directly in the Keychain -- so deleting them is both key destruction
+    /// and artifact deletion in one step. Idempotent: `errSecItemNotFound` is
+    /// treated as success. Used by `KeychainWipeArtifacts.eraseKeys()`.
+    @discardableResult
+    public static func deleteFromKeychain() -> OSStatus {
+        var query: [String: Any] = [
+            kSecClass as String: kSecClassGenericPassword,
+            kSecAttrAccount as String: signingTag
+        ]
+        let r1 = SecItemDelete(query as CFDictionary)
+        query[kSecAttrAccount as String] = agreementTag
+        let r2 = SecItemDelete(query as CFDictionary)
+        // errSecItemNotFound (-25300) means already gone -- fine for a wipe.
+        return [r1, r2].first { $0 != errSecSuccess && $0 != errSecItemNotFound } ?? errSecSuccess
+    }
 }
 
 public enum MeshError: Error {

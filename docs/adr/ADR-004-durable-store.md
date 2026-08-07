@@ -47,7 +47,8 @@ Criterion coverage after Phase E (repo-controlled subset only):
    migrate from. The v2 schema is centralised in `StoreSchema` and exercised.
 4. **Met at the store layer**: all-SOS flooding stays inside the cap (tested).
 5. `panicWipe` deletes the store file + key prefs atomically; the **coordinated
-   resumable** wipe across store/identity/contacts is Phase F.
+   resumable** wipe across store/identity/keys is Phase F (repo-tested, see the
+   Phase F section below; on-device + shipping-path pending).
 6. Anti-entropy digest from the held set is built from `allHeldMsgIds`; Android
    side is testable. iOS parity is Phase G.
 
@@ -56,6 +57,57 @@ Criterion coverage after Phase E (repo-controlled subset only):
 verified on device only (the SQLCipher native core + Keystore are not exercised
 host-side), authenticated-ACK deletion (criterion 2) depends on the inbound ACK
 path the link layer gates closed, and iOS has no durable store yet (Phase G).
+
+### Stage 3 Phase F — coordinated resumable panic wipe, repo-owned evidence (NOT closed)
+
+The coordinated, crash-safe wipe across store + identity + the key material that
+protects them (`PanicWipe` in `:mesh` on Android, `PanicWipe` in `GodstoneMesh`
+on iOS) now has repo-owned executable evidence for the coordination, ordering
+and resumability invariants, without a device and without putting the wipe on a
+shipping path:
+
+- It is a small persisted state machine: `IDLE → REQUESTED → KEY_ERASED →
+  ARTIFACTS_DELETED → NEW_IDENTITY → IDLE`. The state is written to a durable
+  `WipeJournal` AFTER each step completes, and every step is idempotent, so a
+  crash-then-resume re-runs at most the one interrupted step and then continues
+  forward. `resumeIfPending()` on the next launch finishes any interrupted wipe.
+- **Crypto-erasure-first**: `eraseKeys()` destroys the KEK before any file is
+  deleted. On Android that is the AndroidKeystore master key
+  (`_androidx_security_master_key_`) that both the identity prefs and the store
+  key prefs are encrypted under, so deleting it renders every
+  EncryptedSharedPreferences ciphertext undecryptable even if its file still sits
+  on disk. On iOS the private keys ARE the secret (no separate KEK), so
+  `MeshIdentity.deleteFromKeychain()` deleting both Keychain items is both key
+  destruction and artifact deletion in one step. After `KEY_ERASED`, prior data
+  is unrecoverable regardless of whether the later cleanup steps ever run.
+- `deleteArtifacts()` reuses the existing, tested store + identity panic-wipe
+  methods on Android (`SqliteMessageStore.panicWipe` + `Identity.panicWipe`);
+  on iOS it is a reserved hook for the Phase G durable store (a no-op today, but
+  the state machine already runs it so Phase G only registers a store-wipe
+  there). `regenerateIdentity()` builds a fresh identity on both platforms.
+
+The machine itself is pure (no Context / no Keychain) with the platform glue
+injected, so it is host-testable. `PanicWipeTest` (Android, 7 tests) and
+`PanicWipeTests` (iOS, 7 tests) drive it with fakes that simulate a crash before
+each step and assert: a no-crash wipe runs every step once in the
+crypto-erasure-first order; a crash before any step leaves the journal at the
+last COMPLETED step and resumes to full completion; a destroying step is never
+double-run nor skipped; `resumeIfPending` is a no-op when idle and completes a
+pending wipe. The production glue (Keystore entry delete, Keychain `SecItemDelete`,
+file deletion) is thin and is an on-device verification, not host-testable.
+
+Criterion coverage after Phase F:
+
+5. **Coordinated resumable wipe is repo-tested** (state machine + crypto-erasure
+   ordering + crash-resume on both platforms). On-device Keystore/Keychain
+   actual deletion + shipping-path integration remain pending. NOT closed.
+
+**Not closed.** The wipe is non-shipping (`:mesh` on Android, test-only
+`GodstoneMesh` on iOS — neither is on the LIGHT shipping path), the actual
+Keystore master-key deletion / Keychain item deletion is verified on device
+only, and the iOS durable-store artifacts that `deleteArtifacts()` will
+coordinate are Phase G. A-04's "coordinated wipe" half advances to
+NONSHIPPING_TESTED; its "iOS durable store" half remains open until Phase G.
 
 ## Decisions still required
 
