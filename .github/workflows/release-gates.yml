@@ -47,7 +47,7 @@ jobs:
           python-version: '3.12'
       - name: provenance (start -- clean checkout)
         run: python ci/provenance.py --out provenance-start.json
-      - run: pip install -r content/requirements.txt cryptography
+      - run: pip install -r content/requirements.txt
       # Invariant D under --scope all: fails "independent vectors unavailable
       # or unapproved" while crypto/cacophony_vectors.json holds no approved
       # EXTERNAL fixture. Stays red until A-06 is closed (Phase K).

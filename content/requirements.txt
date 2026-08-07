@@ -17,3 +17,9 @@ textstat==0.7.4
 
 # Used only by the offline retrieval evaluation in tab 12.
 numpy==2.1.3
+
+# Ed25519 signing/verification for content/archive_manifest.py (the signed
+# archive manifest that lets a phone verify an offline .db came from an
+# approved build). Imported transitively by content/tests/test_archive_manifest,
+# so any job that runs the content unittest suite must install this.
+cryptography==50.0.0
