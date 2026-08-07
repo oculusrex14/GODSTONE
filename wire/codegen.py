@@ -17,9 +17,19 @@ build assertion rather than a comment that was wrong for the entire v1 lifetime.
 Also VERIFIES the spec's own safety claims: every type code must have even
 parity, pairwise Hamming distance must be >= 2, and no v2 code may reuse a v1
 value. Asserted here, never trusted from the YAML.
+
+    python -m wire.codegen --selftest
+
+Fired negative control (ADR-008 patch 14): injects a deliberately broken spec
+and asserts each assertion fires, then asserts the real spec passes all three.
+A build gate that has never been observed to fire is a claim, not a control --
+this is the repository's own root cause ("a claim lived in a test instead of an
+executable check"). Mirrors `ci/symbols.py --selftest`.
 """
 from __future__ import annotations
 
+import argparse
+import copy
 import filecmp
 import json
 from pathlib import Path
@@ -515,7 +525,88 @@ def build_vectors(spec: dict, codec) -> dict:
     }
 
 
+def run_selftest() -> int:
+    """Fired negative control for the spec assertions (ADR-008 patch 14).
+
+    verify_hamming / verify_no_v1_reuse / verify_priority_mask are a build gate:
+    main() returns 1 if any fires, so Invariant A goes red. But a gate that has
+    never been observed to fire is a claim, not a control -- this is the
+    repository's own root cause ("a claim about the system lived in a test
+    instead of an executable check"). --selftest injects a deliberately broken
+    spec and asserts each assertion fires, then asserts the real spec passes
+    all three. Mirrors `ci/symbols.py --selftest`.
+    """
+    spec = yaml.safe_load(SPEC.read_text())
+    base_types = dict(spec["message_types"])
+    failures: list[str] = []
+
+    def expect(label: str, problems: list[str], must_mention: str) -> None:
+        if not problems:
+            failures.append(
+                f"{label}: expected a problem mentioning '{must_mention}', got none")
+            return
+        if not any(must_mention in p for p in problems):
+            failures.append(
+                f"{label}: problem did not mention '{must_mention}': {problems}")
+
+    # The real spec passes all three -- a regression here is a real defect.
+    if (verify_hamming(base_types)
+            or verify_no_v1_reuse(base_types)
+            or verify_priority_mask(spec)):
+        failures.append("real spec failed an assertion (regression in wire_v2.yaml)")
+
+    # (1a) even parity: flip one bit -> the even-parity rule fires. (This is the
+    # structural property that guarantees single-bit-flip safety.)
+    odd = dict(base_types)
+    odd["HELLO"] = base_types["HELLO"] ^ 0x01
+    expect("odd-parity", verify_hamming(odd), "ODD parity")
+
+    # (1b) pairwise distance < 2: two distinct codes 1 bit apart (necessarily
+    # odd-parity, so the distance branch and the parity branch fire together;
+    # the distance message is what we assert).
+    close = dict(base_types)
+    close["DIGEST"] = base_types["HELLO"] ^ 0x01
+    expect("hamming<2", verify_hamming(close), "bit(s)")
+
+    # (1c) SOS within 2 bits of another code -> no manufactured distress broadcast.
+    sos_close = dict(base_types)
+    sos_close["HELLO"] = base_types["SOS"] ^ 0x01
+    expect("sos-too-close", verify_hamming(sos_close), "too close")
+
+    # (2) no v1 reuse: a code in the legacy 0x01..0x0A range collides.
+    v1 = dict(base_types)
+    v1["HELLO"] = 0x05
+    expect("v1-reuse", verify_no_v1_reuse(v1), "collides with the v1 range")
+
+    # (3a) priority mask too narrow for the table -> fails the build, not the mesh.
+    narrow = copy.deepcopy(spec)
+    narrow["flags"]["PRIORITY_MASK"] = 0x0040  # 1 bit = 2 slots < 5 priorities
+    expect("priority-narrow", verify_priority_mask(narrow), "slot(s)")
+
+    # (3b) priority mask non-contiguous -> cannot be shifted out in one op.
+    split = copy.deepcopy(spec)
+    split["flags"]["PRIORITY_MASK"] = 0x08C0  # 0b100011000000: two groups, 3 bits
+    expect("priority-split", verify_priority_mask(split), "not contiguous")
+
+    if failures:
+        for f in failures:
+            print(f"::error::codegen selftest: {f}")
+        print(f"codegen selftest FAILED ({len(failures)} check(s) did not fire)")
+        return 1
+    print("codegen selftest ok: all spec assertions fire on a broken spec "
+          "(6 negative + 1 positive check)")
+    return 0
+
+
 def main() -> int:
+    ap = argparse.ArgumentParser(description=__doc__.splitlines()[1])
+    ap.add_argument("--selftest", action="store_true",
+                    help="fired negative control: prove the spec assertions fire, "
+                         "then exit (does not regenerate; see ADR-008 patch 14)")
+    args = ap.parse_args()
+    if args.selftest:
+        return run_selftest()
+
     spec = yaml.safe_load(SPEC.read_text())
 
     problems = (verify_hamming(spec["message_types"])

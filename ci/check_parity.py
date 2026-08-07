@@ -82,6 +82,19 @@ def invariant_a(r: Report) -> None:
     if not gen.exists():
         r.bad("A", "wire/gen missing; run python -m wire.codegen")
         return
+    # The fired negative control FIRST (ADR-008 patch 14). The codegen asserts
+    # even parity, pairwise Hamming >= 2, no v1 reuse, and the priority mask --
+    # and main() returns 1 if any fires, so Invariant A would go red. But a gate
+    # that has never been observed to fire is a claim, not a control. --selftest
+    # injects a broken spec and asserts each assertion fires, then asserts the
+    # real spec passes. If this regresses, the assertions have been silenced and
+    # the byte-identical check below is proving nothing.
+    code, out = run(["-m", "wire.codegen", "--selftest"])
+    if code != 0:
+        r.bad("A", "codegen --selftest failed: a spec assertion no longer fires "
+                   "(the safety gate has been silenced):\n        "
+              + "\n        ".join(l for l in out.splitlines() if "::error::" in l))
+        return
     with tempfile.TemporaryDirectory() as td:
         backup = Path(td) / "gen"
         shutil.copytree(gen, backup)
