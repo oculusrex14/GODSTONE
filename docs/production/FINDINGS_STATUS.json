@@ -28,10 +28,10 @@
   {
    "id": "A-03",
    "severity": "Critical if enabled",
-   "status": "DISABLED_OPEN",
+   "status": "NONSHIPPING_TESTED",
    "repo_controlled": true,
-   "evidence": "no durable ACK implementation.",
-   "closes_in_phase": "H"
+   "evidence": "Durable recipient-authenticated delivery state machine + authenticated-ACK verification implemented and repo-tested on BOTH platforms (no device/radio): DeliveryTracker truth-table + idempotent terminal semantics + reboot recovery over a real FileDeliveryJournal; Ed25519 ACK binds msgId AND recipientNodeId so unsigned/tampered/wrong-recipient/replay-across-msgs all rejected. Android :mesh DeliveryTrackerTest 12 tests (mesh=92); iOS DeliveryTrackerTests 12 tests (swift test=94, xcodebuild GodstoneMeshTests=81). NOT closed: radio/link disabled, on-device delivery + multi-recipient/retry/timeout + production RecipientKeyResolver binding (Noise_XX/contact registry) + SOS UI-phrase-vs-evidence pending.",
+   "closes_in_phase": "H (repo) + device"
   },
   {
    "id": "A-04",

@@ -313,7 +313,8 @@ jobs:
           CODE_SIGNING_ALLOWED=NO build
       # Execute the GodstoneMeshTests (GMP/2.1 wire vectors, Blake2s port
       # vectors, router, Noise_XX handshake, GMP/2.1 msg-id/Bloom/PoW KAT parity,
-      # + Phase F PanicWipe state-machine tests + Phase G durable-store tests)
+      # + Phase F PanicWipe state-machine tests + Phase G durable-store tests
+      # + Phase H authenticated-ACK delivery state-machine tests)
       # via xcodebuild on a simulator --
       # the real iOS test execution, not just the host swift-test mirror. The
       # scheme's test action targets GodstoneMeshTests (test-only; see
@@ -335,7 +336,7 @@ jobs:
           # failures and at least 50 executed tests (a regression below 50 --
           # e.g. a compile failure silently dropping the suite -- fails this).
           # The exact count is intentionally not pinned so adding tests (Phase F
-          # added 7 -> 57; Phase G added 12 -> 69) does not break the gate.
+          # added 7 -> 57; Phase G added 12 -> 69; Phase H added 12 -> 81) does not break the gate.
           grep -q "\*\* TEST SUCCEEDED \*\*" /tmp/xcb-test.log \
             || { echo "::error::xcodebuild test did not report TEST SUCCEEDED"; exit 1; }
           line=$(grep -oE "Executed [0-9]+ tests, with 0 failures" /tmp/xcb-test.log | tail -1)

@@ -13,6 +13,7 @@ local.properties
 *.apk
 *.aab
 *.ap_
+*.xcresult/
 *.dex
 
 # --- signing keys and secrets. NEVER commit. ---
