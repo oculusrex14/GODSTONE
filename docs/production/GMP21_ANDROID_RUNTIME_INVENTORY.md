@@ -10,11 +10,31 @@ It is an inventory, **not** a verdict. It does not close A-01. A-01 advances onl
 per the §20 rule in ADR-008 (OPEN → IMPLEMENTED_LOCAL_VERIFIED on repo-controlled
 execution evidence; short of CLOSED until real Android↔iOS device interop).
 
+> **Stage 3 reconciliation note.** This inventory was written **before** the
+> Stage 2 patch series (14–21) was applied, so the "current" column below is the
+> **pre-Stage-2 baseline**, not the present state. On `remediation/stage-2-gmp21`
+> and continued on `remediation/stage-3-durability`, the patches are applied:
+> `wire/Frame.kt` is **deleted** (patch 20) — the Android runtime is **not** live
+> on GMP/1; it routes on the generated `FrameV2` (`Router.kt` imports
+> `io.godstone.mesh.wire.v2.FrameV2`, `MeshNode` decodes `FrameV2`); the Noise
+> prologue is `"GMP2"` (`NoiseSession.kt:212`). The "target (patch)" column is
+> therefore realized for the frame path and prologue. The msg_id byte-order,
+> iOS msg_id construction, Bloom digest parity, and cross-platform PoW semantics
+> are being made byte-identical in Stage 3 Phase C; until that lands and both
+> production-path builders execute the locked vectors, those rows stay
+> "target/in-progress" and ADR-008 criteria 4–6 are not ticked green. A-01
+> remains OPEN (clean shipping path is not GMP/2.1 canonical-frame device
+> evidence).
+
 ---
 
 ## 1. Current Android mesh runtime (`android/mesh/src/main/java/io/godstone/mesh/`)
 
-The Android runtime is **GMP/1**, live on `wire/Frame.kt`. `LINK_LAYER_READY =
+> Pre-Stage-2 baseline (see reconciliation note above). On the remediation
+> branches `wire/Frame.kt` is **deleted** and the runtime routes on `FrameV2`;
+> this section is retained as the baseline-of-record for the patch series.
+
+The Android runtime **was** **GMP/1**, live on `wire/Frame.kt`. `LINK_LAYER_READY =
 false` in `MeshNode`, so the radio is off; but the code path compiles and is unit-
 tested on the GMP/1 frame.
 

@@ -1,5 +1,21 @@
 # GODSTONE Phase 0 Patch Manifest
 
+> **Historical-status note (Stage 3 reconciliation).** The statement below —
+> "No commit, cherry-pick, push, or PR has been made — patches are reviewable
+> artifacts only" — described the **original Stage 0 overlay state** when this
+> manifest was generated in the `/tmp/gs-remediate` worktree. It is **historical,
+> not current.** The patch series has since been committed and pushed: the Stage 2
+> realization lands on branch `remediation/stage-2-gmp21` (frozen tip
+> `b7bac64341c1214e05d0436fcb29c5b671d710e9`) and Stage 3 continues on
+> `remediation/stage-3-durability`, branched from that tip. `main` was not
+> modified and no PR was opened. The patches remain reviewable artifacts (unified
+> diffs rooted at the repo top level), now also represented as committed history
+> on the remediation branches. The per-patch "NOT RUN — INFEASIBLE OFFLINE"
+> verdicts below reflect the Stage 0 worktree environment; the repository-owned
+> CI on `remediation/stage-3-durability` now executes the Android Gradle source
+> compile + unit tests and the Xcode LightRelease build + 25 GodstoneMeshTests
+> (see `docs/production/VERIFICATION_MATRIX.md`).
+
 Generated in the remediation worktree `/tmp/gs-remediate` (branch: remediation, baseline
 `b7daf5a`). **No commit, cherry-pick, push, or PR has been made** — patches are
 reviewable artifacts only. Worktree left in unstaged/untracked state.
