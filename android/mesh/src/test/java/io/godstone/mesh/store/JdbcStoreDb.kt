@@ -1,0 +1,105 @@
+package io.godstone.mesh.store
+
+import io.godstone.mesh.wire.v2.FrameV2
+import io.godstone.mesh.wire.v2.Priority
+import java.io.File
+import java.sql.Connection
+import java.sql.DriverManager
+
+/**
+ * Test-only [StoreDb] backed by a REAL on-disk SQLite via sqlite-jdbc.
+ *
+ * sqlite-jdbc ships native SQLite inside the jar (linux/mac/windows), so this is
+ * a genuine SQLite engine -- not a mock, not Robolectric's shadowed
+ * android.database.sqlite. The schema, `INSERT OR IGNORE`, the window-function
+ * eviction and `SUM(LENGTH(blob))` byte accounting run as real SQL on real disk,
+ * the same statements the production SQLCipher engine runs (StoreSchema is
+ * shared). SQLCipher is SQLite plus page encryption, so the SQL semantics here
+ * are identical to production; what this engine does NOT verify is the at-rest
+ * encryption, which is a device/instrumented concern (the SQLCipher engine is
+ * pinned structurally in StoreEngineTest).
+ *
+ * Lives in the test source set so it never reaches the shipping classpath (:mesh
+ * is non-shipping regardless; this is belt-and-braces).
+ */
+internal class JdbcStoreDb(file: File) : StoreDb {
+    private val conn: Connection
+
+    init {
+        Class.forName("org.sqlite.JDBC")
+        conn = DriverManager.getConnection("jdbc:sqlite:" + file.absolutePath)
+        // IF NOT EXISTS so a test can pre-seed the file (e.g. a bad-type row)
+        // and reopen it without "table already exists" failing the open.
+        conn.createStatement().use { it.execute(StoreSchema.CREATE_SQL_IF_NOT_EXISTS) }
+    }
+
+    override fun insert(frame: FrameV2, receivedFrom: ByteArray, receivedAt: Long): Long {
+        val sql = "INSERT OR IGNORE INTO ${StoreSchema.TABLE} (" +
+            "${StoreSchema.COL_MSG_ID}, ${StoreSchema.COL_TYPE}, ${StoreSchema.COL_TTL}, " +
+            "${StoreSchema.COL_HOP_COUNT}, ${StoreSchema.COL_FLAGS}, ${StoreSchema.COL_PRIORITY}, " +
+            "${StoreSchema.COL_ROUTING_TAG}, ${StoreSchema.COL_PAYLOAD}, " +
+            "${StoreSchema.COL_RECEIVED_FROM}, ${StoreSchema.COL_RECEIVED_AT}) " +
+            "VALUES (?,?,?,?,?,?,?,?,?,?)"
+        conn.prepareStatement(sql).use { ps ->
+            ps.setBytes(1, frame.msgId)
+            ps.setInt(2, frame.type.code.toInt())
+            ps.setInt(3, frame.ttl)
+            ps.setInt(4, frame.hopCount)
+            ps.setInt(5, frame.flags)
+            ps.setInt(6, Priority.fromFlags(frame.flags).code)
+            ps.setBytes(7, frame.routingTag)
+            ps.setBytes(8, frame.payload)
+            ps.setBytes(9, receivedFrom)
+            ps.setLong(10, receivedAt)
+            return if (ps.executeUpdate() > 0) 1L else -1L   // IGNORE -> -1
+        }
+    }
+
+    override fun heldBytes(): Long {
+        conn.prepareStatement(StoreSchema.heldBytesSql()).use { ps ->
+            ps.executeQuery().use { rs -> return if (rs.next()) rs.getLong(1) else 0L }
+        }
+    }
+
+    override fun evictOldestPrefix(overshoot: Long) {
+        conn.prepareStatement(StoreSchema.evictPrefixSql()).use { ps ->
+            ps.setLong(1, overshoot)
+            ps.executeUpdate()
+        }
+    }
+
+    override fun forEachRowOrderedByPriority(visit: (StoreRow) -> Boolean) {
+        val sql = "SELECT ${StoreSchema.COL_TYPE}, ${StoreSchema.COL_MSG_ID}, " +
+            "${StoreSchema.COL_ROUTING_TAG}, ${StoreSchema.COL_TTL}, ${StoreSchema.COL_HOP_COUNT}, " +
+            "${StoreSchema.COL_FLAGS}, ${StoreSchema.COL_PAYLOAD} FROM ${StoreSchema.TABLE} " +
+            "ORDER BY ${StoreSchema.PRIORITY_ORDER}"
+        conn.prepareStatement(sql).use { ps ->
+            ps.executeQuery().use { rs ->
+                while (rs.next()) {
+                    val row = StoreRow(
+                        typeCode = rs.getInt(1),
+                        msgId = rs.getBytes(2),
+                        routingTag = rs.getBytes(3),
+                        ttl = rs.getInt(4),
+                        hopCount = rs.getInt(5),
+                        flags = rs.getInt(6),
+                        payload = rs.getBytes(7),
+                    )
+                    if (!visit(row)) return
+                }
+            }
+        }
+    }
+
+    override fun forEachMsgId(visit: (ByteArray) -> Boolean) {
+        conn.prepareStatement("SELECT ${StoreSchema.COL_MSG_ID} FROM ${StoreSchema.TABLE}").use { ps ->
+            ps.executeQuery().use { rs ->
+                while (rs.next()) {
+                    if (!visit(rs.getBytes(1))) return
+                }
+            }
+        }
+    }
+
+    override fun close() = conn.close()
+}

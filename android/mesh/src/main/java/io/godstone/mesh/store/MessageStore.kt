@@ -8,6 +8,11 @@ import android.content.Context
 // a device yielded the entire message history in cleartext while the threat
 // model told adversary A6 the store was encrypted. A declared dependency is not
 // a control; only the import that actually replaces the plaintext engine is.
+// Stage 3 Phase E pins that closure with executable evidence: the production
+// engine is SqlcipherStoreDb, whose helper extends
+// net.zetetic.database.sqlcipher.SQLiteOpenHelper (not android.database.sqlite),
+// and StoreEngineTest reflects on that type so a regression to plaintext is a
+// test failure, not a silent reversion.
 import net.zetetic.database.sqlcipher.SQLiteDatabase
 import net.zetetic.database.sqlcipher.SQLiteOpenHelper
 import androidx.security.crypto.EncryptedSharedPreferences
@@ -58,6 +63,137 @@ interface MessageStore {
 }
 
 /**
+ * Schema + SQL shared by the production SQLCipher engine ([SqlcipherStoreDb])
+ * and the host-test engine ([JdbcStoreDb] in the test source set). Keeping the
+ * SQL in one place means the bounded-capacity eviction, the INSERT OR IGNORE
+ * dedup and the priority ORDER BY are exercised against a REAL on-disk SQLite
+ * in CI (sqlite-jdbc ships native SQLite in the jar) with the same statements
+ * the SQLCipher engine runs -- SQLCipher is SQLite plus page encryption, so the
+ * dialect and semantics are identical. The encryption itself is verified on
+ * device (instrumented); the SQL invariants are verified here, repo-owned.
+ */
+internal object StoreSchema {
+    const val DB_NAME = "godstone_messages.db"
+    const val DB_VERSION = 2
+    const val TABLE = "held_frames"
+    const val COL_MSG_ID = "msg_id"
+    const val COL_TYPE = "type"
+    const val COL_TTL = "ttl"
+    const val COL_HOP_COUNT = "hop_count"
+    const val COL_FLAGS = "flags"
+    const val COL_PRIORITY = "priority"
+    const val COL_ROUTING_TAG = "routing_tag"
+    const val COL_PAYLOAD = "payload"
+    const val COL_RECEIVED_FROM = "received_from"
+    const val COL_RECEIVED_AT = "received_at"
+
+    /** Per-row bookkeeping beyond the payload blob (columns + page overhead). */
+    const val ROW_OVERHEAD = 64L
+
+    val CREATE_SQL: String = """
+        CREATE TABLE $TABLE (
+            $COL_MSG_ID BLOB PRIMARY KEY,
+            $COL_TYPE INTEGER,
+            $COL_TTL INTEGER,
+            $COL_HOP_COUNT INTEGER,
+            $COL_FLAGS INTEGER,
+            $COL_PRIORITY INTEGER,
+            $COL_ROUTING_TAG BLOB,
+            $COL_PAYLOAD BLOB,
+            $COL_RECEIVED_FROM BLOB,
+            $COL_RECEIVED_AT INTEGER
+        )
+    """.trimIndent()
+
+    /** Idempotent create for test engines that reopen an existing file. */
+    val CREATE_SQL_IF_NOT_EXISTS: String =
+        CREATE_SQL.replace("CREATE TABLE ", "CREATE TABLE IF NOT EXISTS ")
+
+    /**
+     * Total stored bytes: the sum of every payload plus a fixed per-row
+     * bookkeeping allowance. This is the precise measure the bounded-capacity
+     * invariant is enforced against (ADR-004 §4).
+     */
+    fun heldBytesSql(): String =
+        "SELECT COALESCE(SUM(LENGTH($COL_PAYLOAD)) + COUNT(*) * $ROW_OVERHEAD, 0) FROM $TABLE"
+
+    /**
+     * Precise bounded-capacity eviction (Stage 3 Phase E, replacing the
+     * approximate row-count form). Deletes the SMALLEST prefix of rows, ordered
+     * NON-SOS-FIRST then oldest-received, whose cumulative (payload +
+     * ROW_OVERHEAD) byte cost meets or exceeds the overshoot -- not a rough row
+     * count divided by a guessed average row size. The window function walks
+     * candidates in eviction order, `cum` is the running total INCLUDING the
+     * current row, `cum - sz` is the running total BEFORE it; a row is selected
+     * while the total before it was still short of the overshoot, so the
+     * selected prefix is exactly what is needed to return under the cap.
+     *
+     * Ordering: `(priority = 0) ASC` puts non-SOS (0) before SOS (1), so SOS is
+     * evicted LAST ("retained last", PROTOCOL.md §7) -- only after every non-SOS
+     * row has been evicted. Because the candidate set is ALL rows, the prefix
+     * always reaches the overshoot, so the store ALWAYS returns to or under the
+     * cap: all-SOS flooding stays inside the configured hard cap (ADR-004
+     * criterion 4). Bind: (1) overshoot bytes.
+     */
+    fun evictPrefixSql(): String =
+        "DELETE FROM $TABLE WHERE $COL_MSG_ID IN (" +
+            "SELECT $COL_MSG_ID FROM (" +
+            "SELECT $COL_MSG_ID, (LENGTH($COL_PAYLOAD) + $ROW_OVERHEAD) AS sz, " +
+            "SUM(LENGTH($COL_PAYLOAD) + $ROW_OVERHEAD) OVER (" +
+            "ORDER BY ($COL_PRIORITY = 0) ASC, $COL_RECEIVED_AT ASC) AS cum " +
+            "FROM $TABLE" +
+            ") WHERE cum - sz < ?)"
+
+    /** Priority-order clause: SOS-first (priority 0), then priority asc, then
+     *  newest-received first (recency tie-break). */
+    const val PRIORITY_ORDER = "$COL_PRIORITY ASC, $COL_RECEIVED_AT DESC"
+}
+
+/** A stored row before it is typed into a [FrameV2] (the type code may be unknown). */
+internal class StoreRow(
+    val typeCode: Int,
+    val msgId: ByteArray,
+    val routingTag: ByteArray,
+    val ttl: Int,
+    val hopCount: Int,
+    val flags: Int,
+    val payload: ByteArray,
+) {
+    /** Resolve to a FrameV2, or null if the type code is not a known TypeV2. */
+    fun toFrame(): FrameV2? {
+        val type = TypeV2.from(typeCode.toByte()) ?: return null
+        return FrameV2(type, msgId, routingTag, ttl, hopCount, flags, payload)
+    }
+}
+
+/**
+ * The storage operations the store logic needs, independent of the SQL engine.
+ * Two implementations ship: [SqlcipherStoreDb] (production, encrypted at rest
+ * via SQLCipher + Keystore-held key) and `JdbcStoreDb` (test source set, real
+ * on-disk SQLite via sqlite-jdbc). The bounded-capacity eviction, dedup and
+ * ordering logic in [SqliteMessageStore] runs against this interface, so it is
+ * the same code path in production and in CI.
+ */
+internal interface StoreDb {
+    /** Insert [frame] (or ignore on a duplicate msg_id). Returns the rowid, or -1 if ignored. */
+    fun insert(frame: FrameV2, receivedFrom: ByteArray, receivedAt: Long): Long
+
+    /** Total stored bytes (payloads + per-row overhead). */
+    fun heldBytes(): Long
+
+    /** Delete the oldest prefix (non-SOS first, then SOS) whose cumulative size meets [overshoot] bytes. */
+    fun evictOldestPrefix(overshoot: Long)
+
+    /** Stream rows in priority order, stopping as soon as [visit] returns false. */
+    fun forEachRowOrderedByPriority(visit: (StoreRow) -> Boolean)
+
+    /** Stream msg_ids, stopping as soon as [visit] returns false. */
+    fun forEachMsgId(visit: (ByteArray) -> Boolean)
+
+    fun close()
+}
+
+/**
  * SQLCipher-backed store (threat A6). GMP/2.1 schema v2.
  *
  * Persist-before-forward, delete-on-authenticated-ACK, hard-cap eviction
@@ -66,61 +202,75 @@ interface MessageStore {
  * authenticated-ACK deletion (criterion 2) depends on the inbound ACK path that
  * the link layer gates closed (LINK_LAYER_READY=false) and remains tracked
  * under ADR-004, not represented as closed.
+ *
+ * The bounded-capacity eviction (criterion 4) is precise byte accounting: the
+ * oldest non-SOS rows are deleted until the measured byte total is at or under
+ * [maxBytes], or only SOS rows remain (SOS retention wins over the cap). This
+ * is verified repo-owned in SqliteMessageStoreTest against a real on-disk
+ * SQLite engine; the at-rest encryption is verified on device (instrumented).
  */
-class SqliteMessageStore(
-    private val ctx: Context,
-    private val maxBytes: Long
+class SqliteMessageStore internal constructor(
+    private val engine: StoreDb,
+    private val maxBytes: Long,
 ) : MessageStore {
 
-    private val helper: Helper
+    /** Production constructor: open the SQLCipher engine with a Keystore-held key. */
+    constructor(ctx: Context, maxBytes: Long) : this(SqlcipherStoreDb(ctx.applicationContext), maxBytes)
 
-    init {
-        // sqlcipher-android requires explicit native-core loading before any
-        // helper can attempt to open a database.
-        System.loadLibrary("sqlcipher")
-        helper = Helper(ctx.applicationContext, passphrase(ctx.applicationContext))
+    override suspend fun persist(frame: FrameV2, receivedFrom: ByteArray) =
+        persistAt(frame, receivedFrom, System.currentTimeMillis())
+
+    /**
+     * Persist with an explicit receipt timestamp. [persist] stamps "now"; this
+     * internal form lets the bounded-capacity and ordering tests control
+     * received_at deterministically instead of racing the wall clock.
+     */
+    internal suspend fun persistAt(frame: FrameV2, receivedFrom: ByteArray, receivedAt: Long) {
+        engine.insert(frame, receivedFrom, receivedAt)
+        evictIfOverBudget()
     }
 
-    override suspend fun persist(frame: FrameV2, receivedFrom: ByteArray) {
-        val db = helper.writableDatabase
-        val cv = ContentValues().apply {
-            put(COL_MSG_ID, frame.msgId)
-            put(COL_TYPE, frame.type.code.toInt())
-            put(COL_TTL, frame.ttl)
-            put(COL_HOP_COUNT, frame.hopCount)
-            put(COL_FLAGS, frame.flags)
-            // Denormalised query aid; the source of truth is `flags` (Priority.fromFlags).
-            put(COL_PRIORITY, Priority.fromFlags(frame.flags).code)
-            put(COL_ROUTING_TAG, frame.routingTag)
-            put(COL_PAYLOAD, frame.payload)
-            put(COL_RECEIVED_FROM, receivedFrom)
-            put(COL_RECEIVED_AT, System.currentTimeMillis())
-        }
-        db.insertWithOnConflict(TABLE, null, cv, SQLiteDatabase.CONFLICT_IGNORE)
-        evictIfOverBudget(db)
+    /** Current stored byte total (payloads + per-row overhead). */
+    internal fun heldBytes(): Long = engine.heldBytes()
+
+    /**
+     * Best-effort eviction when the store exceeds [maxBytes]. Candidates are
+     * evicted oldest non-SOS first; SOS is evicted LAST ("retained last",
+     * PROTOCOL.md §7), only after every non-SOS row has gone. Because the
+     * candidate set is all rows, the store always returns to or under the cap:
+     * all-SOS flooding stays inside the configured hard cap (ADR-004 criterion 4).
+     *
+     * AUDIT A-14. This previously ran the DELETE unconditionally on EVERY insert
+     * with no check that the budget had been exceeded, and then deleted a row
+     * COUNT approximated from the overshoot divided by a guessed average row
+     * size. Both defects are closed: the size is measured before anything is
+     * deleted and the DELETE only runs when genuinely over budget, and the
+     * deletion is now precise byte accounting (StoreSchema.evictPrefixSql) --
+     * the smallest oldest (non-SOS-first) prefix whose cumulative byte cost
+     * meets the overshoot.
+     */
+    private fun evictIfOverBudget() {
+        val heldBytes = engine.heldBytes()
+        if (heldBytes <= maxBytes) return   // nothing to do: the common case
+        engine.evictOldestPrefix(heldBytes - maxBytes)
+        // Single pass: evictOldestPrefix removes >= overshoot bytes from the
+        // non-SOS-first-then-SOS oldest ordering, so the store is at or under
+        // maxBytes afterwards (the candidate set is all rows, so the prefix
+        // always reaches the overshoot).
     }
 
     override suspend fun allHeldOrderedByPriority(): List<FrameV2> {
-        val db = helper.readableDatabase
         val out = ArrayList<FrameV2>()
-        db.query(
-            TABLE, null, null, null, null, null,
-            "$COL_PRIORITY ASC, $COL_RECEIVED_AT DESC"
-        ).use { c ->
-            while (c.moveToNext()) {
-                val f = readFrame(c)
-                if (f != null) out.add(f)
-            }
+        engine.forEachRowOrderedByPriority { row ->
+            row.toFrame()?.let(out::add)
+            true   // keep scanning; this variant materialises the whole store
         }
         return out
     }
 
     override suspend fun allHeldMsgIds(): List<ByteArray> {
-        val db = helper.readableDatabase
         val out = ArrayList<ByteArray>()
-        db.query(TABLE, arrayOf(COL_MSG_ID), null, null, null, null, null).use { c ->
-            while (c.moveToNext()) out.add(c.getBlob(0))
-        }
+        engine.forEachMsgId { out.add(it); true }
         return out
     }
 
@@ -130,91 +280,109 @@ class SqliteMessageStore(
      * (audit A-13).
      */
     override suspend fun forEachHeldOrderedByPriority(visit: (FrameV2) -> Boolean) {
-        val db = helper.readableDatabase
-        db.query(
-            TABLE, null, null, null, null, null,
-            "$COL_PRIORITY ASC, $COL_RECEIVED_AT DESC"
-        ).use { c ->
-            while (c.moveToNext()) {
-                val f = readFrame(c) ?: continue
-                if (!visit(f)) return
-            }
+        engine.forEachRowOrderedByPriority { row ->
+            val f = row.toFrame() ?: return@forEachRowOrderedByPriority true   // unknown type: skip, continue
+            visit(f)
         }
     }
 
     override suspend fun forEachHeldMsgId(visit: (ByteArray) -> Boolean) {
-        val db = helper.readableDatabase
-        db.query(TABLE, arrayOf(COL_MSG_ID), null, null, null, null, null).use { c ->
+        engine.forEachMsgId(visit)
+    }
+
+    companion object {
+        /**
+         * Panic wipe (PROTOCOL.md section 2). Destroys the store AND its key, so
+         * prior traffic cannot be linked to the regenerated identity. The
+         * coordinated, resumable form lands in Stage 3 Phase F; this is the
+         * atomic store+key deletion it composes with [Identity.panicWipe].
+         */
+        fun panicWipe(ctx: Context) = SqlcipherStoreDb.panicWipe(ctx)
+    }
+}
+
+/**
+ * Production [StoreDb]: SQLCipher (encrypted at rest) with the database key held
+ * behind an Android Keystore-backed preference. The native sqlcipher core is
+ * loaded once per process here, before any helper opens a database.
+ */
+internal class SqlcipherStoreDb(ctx: Context) : StoreDb {
+    private val helper: SQLiteOpenHelper
+
+    init {
+        // sqlcipher-android requires explicit native-core loading before any
+        // helper can attempt to open a database.
+        System.loadLibrary("sqlcipher")
+        helper = Helper(ctx, passphrase(ctx))
+    }
+
+    override fun insert(frame: FrameV2, receivedFrom: ByteArray, receivedAt: Long): Long {
+        val d = helper.writableDatabase
+        val cv = ContentValues().apply {
+            put(StoreSchema.COL_MSG_ID, frame.msgId)
+            put(StoreSchema.COL_TYPE, frame.type.code.toInt())
+            put(StoreSchema.COL_TTL, frame.ttl)
+            put(StoreSchema.COL_HOP_COUNT, frame.hopCount)
+            put(StoreSchema.COL_FLAGS, frame.flags)
+            // Denormalised query aid; the source of truth is `flags` (Priority.fromFlags).
+            put(StoreSchema.COL_PRIORITY, Priority.fromFlags(frame.flags).code)
+            put(StoreSchema.COL_ROUTING_TAG, frame.routingTag)
+            put(StoreSchema.COL_PAYLOAD, frame.payload)
+            put(StoreSchema.COL_RECEIVED_FROM, receivedFrom)
+            put(StoreSchema.COL_RECEIVED_AT, receivedAt)
+        }
+        return d.insertWithOnConflict(
+            StoreSchema.TABLE, null, cv, SQLiteDatabase.CONFLICT_IGNORE
+        )
+    }
+
+    override fun heldBytes(): Long =
+        helper.readableDatabase.rawQuery(StoreSchema.heldBytesSql(), null).use { c ->
+            if (c.moveToFirst()) c.getLong(0) else 0L
+        }
+
+    override fun evictOldestPrefix(overshoot: Long) {
+        helper.writableDatabase.execSQL(
+            StoreSchema.evictPrefixSql(),
+            arrayOf<Any>(overshoot)
+        )
+    }
+
+    override fun forEachRowOrderedByPriority(visit: (StoreRow) -> Boolean) {
+        helper.readableDatabase.query(
+            StoreSchema.TABLE, null, null, null, null, null, StoreSchema.PRIORITY_ORDER
+        ).use { c ->
+            while (c.moveToNext()) {
+                val row = StoreRow(
+                    typeCode = c.getInt(c.getColumnIndexOrThrow(StoreSchema.COL_TYPE)),
+                    msgId = c.getBlob(c.getColumnIndexOrThrow(StoreSchema.COL_MSG_ID)),
+                    routingTag = c.getBlob(c.getColumnIndexOrThrow(StoreSchema.COL_ROUTING_TAG)),
+                    ttl = c.getInt(c.getColumnIndexOrThrow(StoreSchema.COL_TTL)),
+                    hopCount = c.getInt(c.getColumnIndexOrThrow(StoreSchema.COL_HOP_COUNT)),
+                    flags = c.getInt(c.getColumnIndexOrThrow(StoreSchema.COL_FLAGS)),
+                    payload = c.getBlob(c.getColumnIndexOrThrow(StoreSchema.COL_PAYLOAD)),
+                )
+                if (!visit(row)) return
+            }
+        }
+    }
+
+    override fun forEachMsgId(visit: (ByteArray) -> Boolean) {
+        helper.readableDatabase.query(
+            StoreSchema.TABLE, arrayOf(StoreSchema.COL_MSG_ID), null, null, null, null, null
+        ).use { c ->
             while (c.moveToNext()) {
                 if (!visit(c.getBlob(0))) return
             }
         }
     }
 
-    /**
-     * Best-effort eviction of the oldest non-SOS rows when the store exceeds
-     * [maxBytes]. SOS frames are retained longest by being excluded from
-     * eviction (PROTOCOL.md section 7).
-     *
-     * AUDIT A-14. This previously ran the DELETE unconditionally on EVERY insert
-     * with no check that the budget had been exceeded. The size is now measured
-     * before anything is deleted, and the query only runs when the store is
-     * genuinely over budget.
-     *
-     * TODO: precise byte accounting; this currently approximates by row count.
-     */
-    private fun evictIfOverBudget(db: SQLiteDatabase) {
-        val heldBytes = db.rawQuery(
-            "SELECT COALESCE(SUM(LENGTH($COL_PAYLOAD)) + COUNT(*) * $ROW_OVERHEAD, 0) FROM $TABLE",
-            null
-        ).use { c -> if (c.moveToFirst()) c.getLong(0) else 0L }
+    override fun close() = helper.close()
 
-        if (heldBytes <= maxBytes) return   // nothing to do: the common case
-
-        // Evict roughly the overshoot, oldest non-SOS first. SOS (priority 0) is
-        // retained under storage pressure.
-        val overshoot = heldBytes - maxBytes
-        val approxRowBytes = ROW_OVERHEAD + 256L
-        val toDelete = ((overshoot / approxRowBytes) + 1).coerceAtLeast(1L)
-        db.execSQL(
-            "DELETE FROM $TABLE WHERE $COL_MSG_ID IN (" +
-                "SELECT $COL_MSG_ID FROM $TABLE WHERE $COL_PRIORITY != ? " +
-                "ORDER BY $COL_RECEIVED_AT ASC LIMIT ?)",
-            arrayOf<Any>(Priority.SOS.code, toDelete)
-        )
-    }
-
-    private fun readFrame(c: android.database.Cursor): FrameV2? {
-        val typeCode = c.getInt(c.getColumnIndexOrThrow(COL_TYPE)).toByte()
-        val type = TypeV2.from(typeCode) ?: return null
-        return FrameV2(
-            type = type,
-            msgId = c.getBlob(c.getColumnIndexOrThrow(COL_MSG_ID)),
-            routingTag = c.getBlob(c.getColumnIndexOrThrow(COL_ROUTING_TAG)),
-            ttl = c.getInt(c.getColumnIndexOrThrow(COL_TTL)),
-            hopCount = c.getInt(c.getColumnIndexOrThrow(COL_HOP_COUNT)),
-            flags = c.getInt(c.getColumnIndexOrThrow(COL_FLAGS)),
-            payload = c.getBlob(c.getColumnIndexOrThrow(COL_PAYLOAD))
-        )
-    }
-
-    private class Helper(ctx: Context, private val key: ByteArray) :
-        SQLiteOpenHelper(ctx, DB_NAME, key, null, DB_VERSION, 1, null, null, false) {
+    private class Helper(ctx: Context, key: ByteArray) :
+        SQLiteOpenHelper(ctx, StoreSchema.DB_NAME, key, null, StoreSchema.DB_VERSION, 1, null, null, false) {
         override fun onCreate(db: SQLiteDatabase) {
-            db.execSQL(
-                """CREATE TABLE $TABLE (
-                    $COL_MSG_ID BLOB PRIMARY KEY,
-                    $COL_TYPE INTEGER,
-                    $COL_TTL INTEGER,
-                    $COL_HOP_COUNT INTEGER,
-                    $COL_FLAGS INTEGER,
-                    $COL_PRIORITY INTEGER,
-                    $COL_ROUTING_TAG BLOB,
-                    $COL_PAYLOAD BLOB,
-                    $COL_RECEIVED_FROM BLOB,
-                    $COL_RECEIVED_AT INTEGER
-                )""".trimIndent()
-            )
+            db.execSQL(StoreSchema.CREATE_SQL)
         }
 
         override fun onUpgrade(db: SQLiteDatabase, oldVersion: Int, newVersion: Int) {
@@ -225,7 +393,7 @@ class SqliteMessageStore(
             // migration of a schema that was never deployed would be invented
             // code defending data that does not exist.
             if (oldVersion == newVersion) return
-            db.execSQL("DROP TABLE IF EXISTS $TABLE")
+            db.execSQL("DROP TABLE IF EXISTS ${StoreSchema.TABLE}")
             onCreate(db)
         }
     }
@@ -244,7 +412,7 @@ class SqliteMessageStore(
             val master = MasterKey.Builder(ctx)
                 .setKeyScheme(MasterKey.KeyScheme.AES256_GCM).build()
             val prefs = EncryptedSharedPreferences.create(
-                ctx, "godstone_store_key", master,
+                ctx, KEY_PREFS, master,
                 EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
                 EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM)
             prefs.getString("k", null)?.let {
@@ -258,30 +426,18 @@ class SqliteMessageStore(
             return k
         }
 
+        private const val KEY_PREFS = "godstone_store_key"
+
         /**
          * Panic wipe (PROTOCOL.md section 2). Destroys the store AND its key, so
-         * prior traffic cannot be linked to the regenerated identity.
+         * prior traffic cannot be linked to the regenerated identity. The
+         * coordinated, resumable form lands in Stage 3 Phase F; this is the
+         * atomic store+key deletion it builds on.
          */
         fun panicWipe(ctx: Context) {
-            ctx.deleteDatabase(DB_NAME)
-            ctx.deleteSharedPreferences("godstone_store_key")
+            ctx.deleteDatabase(StoreSchema.DB_NAME)
+            ctx.deleteSharedPreferences(KEY_PREFS)
         }
-
-        /** Per-row bookkeeping beyond the payload blob. */
-        private const val ROW_OVERHEAD = 64L
-        private const val DB_NAME = "godstone_messages.db"
-        private const val DB_VERSION = 2
-        private const val TABLE = "held_frames"
-        private const val COL_MSG_ID = "msg_id"
-        private const val COL_TYPE = "type"
-        private const val COL_TTL = "ttl"
-        private const val COL_HOP_COUNT = "hop_count"
-        private const val COL_FLAGS = "flags"
-        private const val COL_PRIORITY = "priority"
-        private const val COL_ROUTING_TAG = "routing_tag"
-        private const val COL_PAYLOAD = "payload"
-        private const val COL_RECEIVED_FROM = "received_from"
-        private const val COL_RECEIVED_AT = "received_at"
     }
 }
 

@@ -64,4 +64,12 @@ dependencies {
     testImplementation("junit:junit:4.13.2")
     testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.9.0")
     testImplementation("org.jetbrains.kotlin:kotlin-test:2.0.20")
+    // Real on-disk SQLite for the durable-store tests (Stage 3 Phase E). The jar
+    // ships native SQLite for the host OS, so SqliteMessageStoreTest runs the
+    // real schema/eviction/dedup SQL in CI host unit tests with no device. The
+    // same SQL is shared with the production SQLCipher engine via StoreSchema;
+    // SQLCipher == SQLite + page encryption, so the SQL semantics are identical.
+    // Test-only (testImplementation), in a non-shipping module -- never reaches
+    // a shipping classpath.
+    testImplementation("org.xerial:sqlite-jdbc:3.46.1.3")
 }
