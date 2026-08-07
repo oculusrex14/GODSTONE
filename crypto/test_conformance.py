@@ -97,7 +97,7 @@ def main() -> int:
 
     pro = D.prologue(bytes.fromhex(dc["initiator"]["node_hint"]),
                      bytes.fromhex(dc["responder"]["node_hint"]))
-    r.check(pro.hex() == dc["prologue"], "prologue = GMP1||i_hint||r_hint")
+    r.check(pro.hex() == dc["prologue"], "prologue = GMP2||i_hint||r_hint")
     r.check(D.initial_h(pro).hex() == dc["initial_h"], "initial h")
 
     print("\n3. XX transcript  (per-token ck / h / k, both sides)")

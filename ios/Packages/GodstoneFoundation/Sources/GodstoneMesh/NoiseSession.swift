@@ -86,7 +86,7 @@ public final class NoiseSession {
         self.staticKey = staticKey
         self.ephemeral = Curve25519.KeyAgreement.PrivateKey()
 
-        var prologue = Data("GMP1".utf8)
+        var prologue = Data("GMP2".utf8)
         // Canonical ordering: initiator hint first, both sides agree.
         if role == .initiator {
             prologue.append(localHint); prologue.append(remoteHint)

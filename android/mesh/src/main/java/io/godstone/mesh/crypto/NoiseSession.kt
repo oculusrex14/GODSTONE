@@ -208,8 +208,8 @@ class NoiseSession private constructor(
         ): NoiseSession {
             val hs = HandshakeState(PATTERN, role)
 
-            // prologue = "GMP1" || initiator_hint || responder_hint
-            val prologue = "GMP1".toByteArray() + initiatorHint + responderHint
+            // prologue = "GMP2" || initiator_hint || responder_hint
+            val prologue = "GMP2".toByteArray() + initiatorHint + responderHint
             hs.setPrologue(prologue, 0, prologue.size)
 
             hs.localKeyPair.setPrivateKey(identity.staticDhPriv, 0)

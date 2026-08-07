@@ -252,6 +252,44 @@ def invariant_f(r: Report) -> None:
                    "see because Kotlin is never compiled:\n        "
               + "\n        ".join(found))
 
+# ---------------------------------------------------------------- H
+def invariant_h(r: Report) -> None:
+    """The GMP/1 wire symbol is gone from every compiled Kotlin source (ADR-008).
+
+    A-01 cannot stay IMPLEMENTED_LOCAL_VERIFIED if the legacy GMP/1 frame type can
+    be re-introduced silently. The cutover (patch 16) deleted ``wire/Frame.kt``;
+    this invariant makes that deletion a merge block: it fails if the file
+    returns OR if any ``.kt`` source in any module references the GMP/1 frame
+    type by its FQN / bare import / the GMP/1 ``FrameType`` enum (the GMP/2.1
+    codec uses ``TypeV2``, so ``FrameType`` is GMP/1-only). The GMP/2.1 type
+    ``io.godstone.mesh.wire.v2.FrameV2`` is NOT matched: ``wire.Frame`` is not a
+    substring of ``wire.v2.FrameV2`` and the regexes anchor on ``wire.Frame`` /
+    ``\bFrameType\b``.
+    """
+    android = ROOT / "android"
+    frame_file = (android / "mesh/src/main/java/io/godstone/mesh"
+                  "/wire/Frame.kt")
+    needles = {
+        "io.godstone.mesh.wire.Frame": re.compile(r"\bio\.godstone\.mesh\.wire\.Frame\b"),
+        "FrameType (GMP/1 enum)": re.compile(r"\bFrameType\b"),
+        "import io.godstone.mesh.wire.Frame": re.compile(
+            r"import\s+io\.godstone\.mesh\.wire\.Frame\b"),
+    }
+    hits: list[str] = []
+    if frame_file.exists():
+        hits.append(f"{frame_file.relative_to(ROOT)}: GMP/1 frame source still present")
+    for f in sorted(android.rglob("*.kt")):
+        src = f.read_text(encoding="utf-8", errors="ignore")
+        for label, rx in needles.items():
+            if rx.search(src):
+                hits.append(f"{f.relative_to(ROOT)}: GMP/1 symbol `{label}` survives")
+    if hits:
+        r.bad("H", "GMP/1 wire symbol survives the cutover -- A-01 cannot hold:\n        "
+              + "\n        ".join(hits))
+        return
+    r.ok("H", "no GMP/1 wire symbol (Frame/FrameType) in any Kotlin source")
+
+
 # ---------------------------------------------------------------- G
 def invariant_g(r: Report) -> None:
     """Integration reachability (ci/integration.py).
@@ -292,6 +330,7 @@ def main() -> int:
     invariant_e(r)
     invariant_f(r)
     invariant_g(r)
+    invariant_h(r)
 
     print("=" * 62)
     print(f"passed={len(r.passed)} failed={len(r.failed)}")

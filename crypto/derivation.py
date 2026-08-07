@@ -29,7 +29,7 @@ from dataclasses import dataclass
 
 NODE_ID_BYTES = 16
 NODE_HINT_BYTES = 4
-PROLOGUE_MAGIC = b"GMP1"
+PROLOGUE_MAGIC = b"GMP2"
 PROTOCOL_NAME = b"Noise_XX_25519_ChaChaPoly_BLAKE2s"
 HASHLEN = 32
 
@@ -59,7 +59,7 @@ def node_hint(nid: bytes) -> bytes:
 
 
 def prologue(initiator_hint: bytes, responder_hint: bytes) -> bytes:
-    """prologue = "GMP1" || initiator_hint || responder_hint."""
+    """prologue = "GMP2" || initiator_hint || responder_hint."""
     if len(initiator_hint) != NODE_HINT_BYTES or len(responder_hint) != NODE_HINT_BYTES:
         raise ValueError("node hints are 4 bytes each")
     return PROLOGUE_MAGIC + initiator_hint + responder_hint

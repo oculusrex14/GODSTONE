@@ -56,6 +56,17 @@ TYPE_DECL = re.compile(
     r"(?:\s*:\s*([^{]+))?",
     re.M)
 
+# `data class Name` -- a data class synthesises copy(), equals(), hashCode(),
+# toString() and componentN() that never appear as `fun` in source. Without this,
+# R2 flags `frame.copy(...)` as unresolved -- a false positive the GMP/2.1 cutover
+# exposed (Router.openSealedMessage holds `val frame: FrameV2`, so the receiver
+# `frame` in `forwardCopy` is type-resolved against the FrameV2 data class). The
+# compiler accepts the call; this resolver must too.
+DATA_CLASS = re.compile(
+    r"^\s*(?:public\s+|internal\s+|private\s+|abstract\s+|open\s+|sealed\s+)*"
+    r"data\s+class\s+([A-Z][\w]*)", re.M)
+DATA_SYNTHETIC = {"copy", "equals", "hashCode", "toString"}
+
 FUN_DECL = re.compile(
     r"^\s*(?:@\w+\s+)*(?:public\s+|internal\s+|private\s+|protected\s+)?"
     r"(?P<override>override\s+)?(?:abstract\s+|open\s+|suspend\s+|inline\s+)*"
@@ -115,6 +126,12 @@ def parse_types(files: list[Path]) -> tuple[dict, dict]:
                          for b in m.group(2).split(",")]
                 supers.setdefault(name, []).extend(
                     b for b in bases if b and b[0].isupper())
+    # A data class synthesises copy()/equals()/hashCode()/toString() that are
+    # never written as `fun` in source; add them so R2 does not flag valid
+    # `x.copy(...)` calls as unresolved (see DATA_CLASS docstring).
+    for dm in DATA_CLASS.finditer("\n".join(f.read_text(encoding="utf-8", errors="ignore")
+                                           for f in files)):
+        members.setdefault(dm.group(1), set()).update(DATA_SYNTHETIC)
     return members, supers
 
 
@@ -184,10 +201,10 @@ def selftest(root: Path) -> int:
     print("SELFTEST -- reintroducing the inherited Router/MessageStore defect\n")
     try:
         broken = original.replace(
-            "    suspend fun forEachHeldOrderedByPriority(visit: (Frame) -> Boolean)\n",
+            "    suspend fun forEachHeldOrderedByPriority(visit: (FrameV2) -> Boolean)\n",
             "", 1).replace(
             "    /** Stream held msg_ids, stopping as soon as [visit] returns false. */\n"
-            "    suspend fun forEachHeldMsgId(visit: (Long) -> Boolean)\n", "", 1)
+            "    suspend fun forEachHeldMsgId(visit: (ByteArray) -> Boolean)\n", "", 1)
         if broken == original:
             print("  BROKEN -- could not reintroduce the defect; anchors moved")
             return 1
