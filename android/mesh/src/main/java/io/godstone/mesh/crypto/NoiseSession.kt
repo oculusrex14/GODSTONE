@@ -169,6 +169,14 @@ class NoiseSession private constructor(
         handshake.destroy()
     }
 
+    /** Authentication or replay-window failure on a transport message.
+     *  Nested directly on NoiseSession (NOT inside the companion object) so the
+     *  documented public name NoiseSession.AuthenticationException resolves
+     *  from other files; a class nested in a companion is not promoted to the
+     *  enclosing class name in Kotlin, which left the test's
+     *  assertFailsWith<NoiseSession.AuthenticationException> unresolved. */
+    class AuthenticationException : Exception("noise authentication failed")
+
     companion object {
         const val PATTERN = "Noise_XX_25519_ChaChaPoly_BLAKE2s"
         private const val MAX_HANDSHAKE = 2048
@@ -176,9 +184,6 @@ class NoiseSession private constructor(
         private const val WINDOW = 2048
         private const val REKEY_MESSAGE_LIMIT = 1L shl 20
         private const val REKEY_TIME_LIMIT_MS = 30 * 60 * 1000L
-
-        /** Authentication or replay-window failure on a transport message. */
-        class AuthenticationException : Exception("noise authentication failed")
 
         /**
          * One-arg overloads: both peers bind the prologue with zero hints so the

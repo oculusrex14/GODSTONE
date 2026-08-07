@@ -55,6 +55,11 @@ TIMESTAMP="$(date -u +%Y%m%dT%H%M%SZ)"
 EVIDENCE_DIR="${EVIDENCE_DIR:-evidence/android-phase0-${TIMESTAMP}}"
 mkdir -p "${EVIDENCE_DIR}"
 STEPS_TSV="${EVIDENCE_DIR}/steps.tsv"
+# Truncate the per-step TSV at startup. run_step_shell appends (>>) to it, so
+# without this reset a rerun into the same evidence dir would carry stale rows
+# from every prior iteration and the summary writer would emit a misleading
+# multi-iteration steps array (including old FAILED entries) under a PASS verdict.
+: >"${STEPS_TSV}"
 SUMMARY_JSON="${EVIDENCE_DIR}/summary.json"
 META_TXT="${EVIDENCE_DIR}/environment.txt"
 GIT_TXT="${EVIDENCE_DIR}/git.txt"
