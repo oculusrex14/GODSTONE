@@ -4,7 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import io.godstone.llm.rag.Citation
-import io.godstone.llm.rag.RagPipeline
+import io.godstone.llm.rag.OraclePipeline
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -27,11 +27,26 @@ data class OracleUiState(
     val phase: OraclePhase = OraclePhase.IDLE
 )
 
+// OracleViewModel depends on OraclePipeline (a small interface), not on the
+// concrete llama.cpp-backed RagPipeline, so the retrieve -> generate -> validate
+// state machine compiles and JVM-unit-tests with a deterministic fake and NO
+// native model on the classpath. Safety invariants enforced here, and asserted
+// by OracleViewModelTest:
+//   * generated tokens are accumulated into a LOCAL StringBuilder and never
+//     present in _state (the GENERATING phase carries no answer payload);
+//   * the whole draft is private until validate() returns isValid;
+//   * a cancelled generation never publishes a partial answer; an explicit
+//     cancel (cancelGeneration) restores the last validator-approved answer so
+//     an unfinished draft cannot overwrite it. A new ask() that supersedes an
+//     in-flight run does NOT restore -- it replaces the state with RETRIEVING,
+//     so there is no race between a restored old answer and the new question.
 @HiltViewModel
-class OracleViewModel @Inject constructor(private val rag: RagPipeline) : ViewModel() {
+class OracleViewModel @Inject constructor(private val rag: OraclePipeline) : ViewModel() {
     private val _state = MutableStateFlow(OracleUiState())
     val state: StateFlow<OracleUiState> = _state.asStateFlow()
     private var generationJob: Job? = null
+    private var lastAnswered: OracleUiState? = null
+    private var restoreOnCancel = false
 
     init {
         viewModelScope.launch {
@@ -47,6 +62,10 @@ class OracleViewModel @Inject constructor(private val rag: RagPipeline) : ViewMo
     fun ask() {
         val question = _state.value.question.trim()
         if (question.isEmpty()) return
+        // A new question supersedes any in-flight run. Do NOT restore on this
+        // cancel: the new run publishes RETRIEVING below, and a restored old
+        // answer must not race that transition.
+        restoreOnCancel = false
         generationJob?.cancel()
         generationJob = viewModelScope.launch {
             _state.value = OracleUiState(
@@ -92,13 +111,29 @@ class OracleViewModel @Inject constructor(private val rag: RagPipeline) : ViewMo
                     modelReady = true,
                     phase = OraclePhase.ANSWERED
                 )
+                lastAnswered = _state.value
             } catch (cancelled: CancellationException) {
-                // No partial answer was ever published or persisted.
+                // No partial answer was ever published or persisted. An explicit
+                // cancel restores the last approved answer; a superseding ask
+                // leaves the new run's state in place.
+                if (restoreOnCancel) restore()
+                restoreOnCancel = false
                 throw cancelled
             } catch (_: Throwable) {
                 degrade(question, "Generation stopped. Browse the Archive sources directly.")
             }
         }
+    }
+
+    /** Cancel an in-flight generation and restore the last approved answer (UI back). */
+    fun cancelGeneration() {
+        restoreOnCancel = true
+        generationJob?.cancel()
+    }
+
+    private fun restore() {
+        val prior = lastAnswered
+        if (prior != null) _state.value = prior
     }
 
     private fun refuse(question: String, reason: String, nearMisses: List<Citation>) {

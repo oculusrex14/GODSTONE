@@ -10,6 +10,7 @@ import io.godstone.app.BuildConfig
 import io.godstone.llm.ModelManager
 import io.godstone.llm.archive.ArchiveRepository
 import io.godstone.llm.rag.Embedder
+import io.godstone.llm.rag.OraclePipeline
 import io.godstone.llm.rag.RagPipeline
 import io.godstone.llm.rag.Retriever
 import javax.inject.Singleton
@@ -39,4 +40,10 @@ object AppModule {
     @Provides @Singleton
     fun provideRagPipeline(models: ModelManager, retriever: Retriever): RagPipeline =
         RagPipeline(models, retriever, BuildConfig.TOP_K_CHUNKS)
+
+    // OracleViewModel depends on the OraclePipeline seam, not the concrete
+    // RagPipeline, so the state machine is testable with a fake. The production
+    // binding is the llama.cpp-backed RagPipeline; tests bypass Hilt entirely.
+    @Provides @Singleton
+    fun provideOraclePipeline(impl: RagPipeline): OraclePipeline = impl
 }

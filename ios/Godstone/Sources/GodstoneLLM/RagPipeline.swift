@@ -1,32 +1,21 @@
 import Foundation
 import GodstoneCore
 
-public struct Citation: Sendable, Identifiable, Hashable {
-    public let id: Int64
-    public let documentTitle: String
-    public let section: String
-    public let score: Double
-}
+// Citation, RetrievalResult, FinalAnswerOutcome and the Oracle seams
+// (OracleRetriever / OracleGenerator / OracleAnswerValidating /
+// OraclePipelineProtocol) now live in GodstoneCore (OracleOrchestration.swift)
+// so the Oracle state machine compiles and tests without this llama.cpp-backed
+// module. This module imports GodstoneCore for those types and conforms
+// RagPipeline to OraclePipelineProtocol. Final-answer validation is provided
+// by the OracleAnswerValidating protocol default, which reuses
+// OracleAnswerValidator (the single source of the fail-closed rules).
 
 public enum RagOutcome: Sendable {
     case answer(text: String, citations: [Citation])
     case notInArchive
 }
 
-public enum FinalAnswerOutcome: Sendable {
-    case accepted(text: String, citations: [Citation])
-    case rejected(reason: String)
-}
-
-public struct RetrievalResult: Sendable {
-    public let chunks: [RetrievedChunk]
-    public let bestScore: Double
-    public let nearMisses: [Citation]
-    public let gateVerdict: SafetyGate.Result?
-    public var passesConfidenceGate: Bool { gateVerdict?.allowsGeneration ?? false }
-}
-
-public actor RagPipeline {
+public actor RagPipeline: OraclePipelineProtocol {
     @available(*, deprecated, message: "use SafetyGate.evaluate")
     public static let confidenceFloor: Double = 0.35
     private static let rrfK: Double = 60.0
@@ -92,25 +81,6 @@ public actor RagPipeline {
                 }
             }
         }
-    }
-
-    public nonisolated func validate(answer: String,
-                                     retrieval: RetrievalResult) -> FinalAnswerOutcome {
-        let result = OracleAnswerValidator.validate(
-            answer: answer,
-            chunks: retrieval.chunks,
-            retrievalAllowed: retrieval.passesConfidenceGate
-        )
-        guard result.isValid else {
-            return .rejected(reason: result.reason ?? "answer validation failed")
-        }
-        let citations = result.citedIndices.map { n -> Citation in
-            let chunk = retrieval.chunks[n - 1]
-            return Citation(id: chunk.chunkId, documentTitle: chunk.documentTitle,
-                            section: chunk.section, score: chunk.score)
-        }
-        return .accepted(text: answer.trimmingCharacters(in: .whitespacesAndNewlines),
-                         citations: citations)
     }
 
     public nonisolated func extractCitations(answer: String,

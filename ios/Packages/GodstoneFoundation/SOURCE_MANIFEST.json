@@ -9,6 +9,8 @@
     "Sources/GodstoneCore/Hkdf.swift": "2e956a5001407c3d932a57fc2a3f258ef77c31b9592c622602180519ddbafc38",
     "Sources/GodstoneCore/LruSet.swift": "7f6f26bcca6a50ed63c65b79db1b6558d2f3f6b1e502c6071fe0b3ff45a075ad",
     "Sources/GodstoneCore/OracleAnswerValidator.swift": "8dcaf3e2bd76fe71642ba4ccdcdd713880620d560df5942e1c9c5c16d4d5d7f3",
+    "Sources/GodstoneCore/OracleOrchestration.swift": "7e0b12ffd1404987b246a062032cda6a8a07570fcf24dd6560a5aca89cac41e2",
+    "Sources/GodstoneCore/OracleViewModel.swift": "b958ab9989e324805d21efc585b4069ac2e257d26a02cf7bd64fdfe85b90c3de",
     "Sources/GodstoneCore/PromptBuilder.swift": "512fc93fd0b7f21dd0f189e575ac499038e66186681a2068e4aaebcd8679fa89",
     "Sources/GodstoneCore/RetrievedChunk.swift": "0ab4a04803feb0214a2376ebc05bd74d8f46371b6e834f07dfc334b97a79c1bb",
     "Sources/GodstoneCore/Retriever.swift": "8521f1850cca8be0edadf3810fead1c2787e613e84ec05a319dc17b9802ea44b",
@@ -24,6 +26,7 @@
     "Sources/GodstoneMesh/SessionManager.swift": "dbd0e466b8fd02de35f5eda449c9b77ff1b310231668365dbde889db5ad18212",
     "Sources/GodstoneMesh/WireV2.swift": "4abb723d9d6761477ff8fccf5262349a9d7befd168516f72ec144fd6b8f97a7a",
     "Tests/GodstoneCoreTests/OracleAnswerValidatorTests.swift": "7568184482727be1f07e78761b53f11adfa565893f51f7ad217eac95031f476a",
+    "Tests/GodstoneCoreTests/OracleViewModelRuntimeTests.swift": "a04c5ac5186c28686c6767e8f3b89bf905bf936d5cb42eebad65bb455b6ddab0",
     "Tests/GodstoneMeshTests/PortVectorTests.swift": "08e4d81add95ada220f4bcc6d14a3b2acc0232b69064d376481390bbc10c9fb9",
     "Tests/GodstoneMeshTests/RouterTests.swift": "68f448d5b3d72df89dbf1dfd08df96e7e78518c9b9037cc7a1ed231aac13e532"
   },

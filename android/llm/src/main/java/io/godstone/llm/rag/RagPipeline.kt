@@ -12,27 +12,27 @@ class RagPipeline(
     private val retriever: Retriever,
     private val topK: Int,
     private val answerValidator: AnswerValidator = AnswerValidator()
-) {
-    suspend fun warmUp(): Boolean = withContext(Dispatchers.IO) { models.load() }
+) : OraclePipeline {
+    override suspend fun warmUp(): Boolean = withContext(Dispatchers.IO) { models.load() }
 
-    suspend fun retrieve(question: String): RetrievalResult = withContext(Dispatchers.IO) {
+    override suspend fun retrieve(question: String): RetrievalResult = withContext(Dispatchers.IO) {
         retriever.retrieve(question, topK)
     }
 
     /** The returned flow is private draft material and must never be bound to visible UI. */
-    fun generate(question: String, retrieval: RetrievalResult): Flow<String> {
+    override fun generate(question: String, retrieval: RetrievalResult): Flow<String> {
         if (!retrieval.passesConfidenceGate || !models.isLoaded) return emptyFlow()
         return models.generate(PromptBuilder().build(question, retrieval), MAX_ANSWER_TOKENS)
     }
 
-    fun validate(answer: String, retrieval: RetrievalResult): AnswerValidationResult =
+    override fun validate(answer: String, retrieval: RetrievalResult): AnswerValidationResult =
         answerValidator.validate(answer, retrieval)
 
     /** Retained for source browsing; validated UI paths use [AnswerValidationResult.citations]. */
     fun extractCitations(answer: String, retrieval: RetrievalResult): List<Citation> =
         validate(answer, retrieval).takeIf { it.isValid }?.citations ?: emptyList()
 
-    fun release() = models.release()
+    override fun release() = models.release()
 
     companion object {
         const val MAX_ANSWER_TOKENS = 512

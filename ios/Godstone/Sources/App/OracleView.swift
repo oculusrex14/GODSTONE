@@ -1,5 +1,5 @@
 import SwiftUI
-import GodstoneLLM
+import GodstoneCore
 
 struct OracleView: View {
     @EnvironmentObject private var oracle: OracleViewModel

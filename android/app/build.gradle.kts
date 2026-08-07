@@ -108,5 +108,9 @@ dependencies {
     implementation("androidx.hilt:hilt-navigation-compose:1.2.0")
 
     testImplementation("junit:junit:4.13.2")
+    // JVM unit tests for the Oracle state machine: drive OracleViewModel against
+    // a fake OraclePipeline with no native model on the classpath.
+    testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.9.0")
+    testImplementation("androidx.lifecycle:lifecycle-viewmodel-ktx:2.8.6")
     androidTestImplementation("androidx.test.ext:junit:1.2.1")
 }

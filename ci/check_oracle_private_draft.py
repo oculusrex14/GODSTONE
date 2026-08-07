@@ -5,7 +5,11 @@ checks = {
     Path("android/app/src/main/java/io/godstone/app/ui/oracle/OracleViewModel.kt"): [
         "val draft = StringBuilder()", "rag.validate(draft.toString(), retrieval)", "answer = draft.toString().trim()",
     ],
-    Path("ios/Godstone/Sources/App/OracleViewModel.swift"): [
+    # OracleViewModel moved from App to GodstoneCore so the state machine can
+    # be compiled and tested without the llama.cpp bridge (OracleOrchestration.swift
+    # defines the OraclePipelineProtocol seam). The private-draft invariants move
+    # with it; the tripwire follows the new location.
+    Path("ios/Godstone/Sources/GodstoneCore/OracleViewModel.swift"): [
         "case generating", "var draft = \"\"", "pipeline.validate(answer: draft",
     ],
 }
@@ -13,7 +17,7 @@ forbidden = {
     Path("android/app/src/main/java/io/godstone/app/ui/oracle/OracleViewModel.kt"): [
         "copy(answer = sb.toString())", "collect { token ->\n                sb.append(token)\n                _state",
     ],
-    Path("ios/Godstone/Sources/App/OracleViewModel.swift"): [
+    Path("ios/Godstone/Sources/GodstoneCore/OracleViewModel.swift"): [
         ".generating(partial:", "state = .generating(partial:",
     ],
 }
