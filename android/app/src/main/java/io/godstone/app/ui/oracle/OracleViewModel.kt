@@ -5,11 +5,16 @@ import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import io.godstone.llm.rag.Citation
 import io.godstone.llm.rag.RagPipeline
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
 import javax.inject.Inject
+
+enum class OraclePhase { IDLE, RETRIEVING, GENERATING, ANSWERED, REFUSED, DEGRADED }
 
 data class OracleUiState(
     val question: String = "",
@@ -18,21 +23,20 @@ data class OracleUiState(
     val streaming: Boolean = false,
     val refused: Boolean = false,
     val refusalReason: String? = null,
-    val modelReady: Boolean = false
+    val modelReady: Boolean = false,
+    val phase: OraclePhase = OraclePhase.IDLE
 )
 
 @HiltViewModel
-class OracleViewModel @Inject constructor(
-    private val rag: RagPipeline
-) : ViewModel() {
-
+class OracleViewModel @Inject constructor(private val rag: RagPipeline) : ViewModel() {
     private val _state = MutableStateFlow(OracleUiState())
     val state: StateFlow<OracleUiState> = _state.asStateFlow()
+    private var generationJob: Job? = null
 
     init {
         viewModelScope.launch {
-            rag.warmUp()
-            _state.value = _state.value.copy(modelReady = true)
+            val ready = runCatching { rag.warmUp() }.getOrDefault(false)
+            _state.value = _state.value.copy(modelReady = ready)
         }
     }
 
@@ -41,49 +45,86 @@ class OracleViewModel @Inject constructor(
     }
 
     fun ask() {
-        val q = _state.value.question.trim()
-        if (q.isEmpty()) return
-
-        _state.value = _state.value.copy(
-            answer = "",
-            citations = emptyList(),
-            streaming = true,
-            refused = false,
-            refusalReason = null
-        )
-
-        viewModelScope.launch {
-            // Constraint C3: retrieval gate runs BEFORE generation. If the archive
-            // does not cover the question we refuse rather than invent.
-            val retrieval = rag.retrieve(q)
-
-            if (!retrieval.passesConfidenceGate) {
-                _state.value = _state.value.copy(
-                    streaming = false,
-                    refused = true,
-                    refusalReason = "The archive does not cover this. " +
-                        "Closest related material is listed below.",
-                    citations = retrieval.nearMisses
-                )
-                return@launch
-            }
-
-            val sb = StringBuilder()
-            rag.generate(q, retrieval).collect { token ->
-                sb.append(token)
-                _state.value = _state.value.copy(answer = sb.toString())
-            }
-
-            _state.value = _state.value.copy(
-                streaming = false,
-                citations = rag.extractCitations(sb.toString(), retrieval)
+        val question = _state.value.question.trim()
+        if (question.isEmpty()) return
+        generationJob?.cancel()
+        generationJob = viewModelScope.launch {
+            _state.value = OracleUiState(
+                question = question,
+                modelReady = _state.value.modelReady,
+                streaming = true,
+                phase = OraclePhase.RETRIEVING
             )
+            try {
+                val retrieval = rag.retrieve(question)
+                if (!retrieval.passesConfidenceGate) {
+                    refuse(
+                        question,
+                        retrieval.gateVerdict?.userMessage()
+                            ?: "The archive does not support an answer.",
+                        retrieval.nearMisses
+                    )
+                    return@launch
+                }
+                if (!_state.value.modelReady) {
+                    degrade(question, "The model is unavailable. Browse the Archive sources directly.")
+                    return@launch
+                }
+
+                // Critical safety boundary: draft bytes remain local to this coroutine.
+                _state.value = _state.value.copy(phase = OraclePhase.GENERATING)
+                val draft = StringBuilder()
+                rag.generate(question, retrieval).collect { token -> draft.append(token) }
+                val validation = rag.validate(draft.toString(), retrieval)
+                if (!validation.isValid) {
+                    refuse(
+                        question,
+                        "I could not verify the generated answer against the Archive.",
+                        retrieval.nearMisses
+                    )
+                    return@launch
+                }
+
+                _state.value = OracleUiState(
+                    question = question,
+                    answer = draft.toString().trim(),
+                    citations = validation.citations,
+                    modelReady = true,
+                    phase = OraclePhase.ANSWERED
+                )
+            } catch (cancelled: CancellationException) {
+                // No partial answer was ever published or persisted.
+                throw cancelled
+            } catch (_: Throwable) {
+                degrade(question, "Generation stopped. Browse the Archive sources directly.")
+            }
         }
     }
 
+    private fun refuse(question: String, reason: String, nearMisses: List<Citation>) {
+        _state.value = OracleUiState(
+            question = question,
+            citations = nearMisses,
+            refused = true,
+            refusalReason = reason,
+            modelReady = _state.value.modelReady,
+            phase = OraclePhase.REFUSED
+        )
+    }
+
+    private fun degrade(question: String, reason: String) {
+        _state.value = OracleUiState(
+            question = question,
+            refused = true,
+            refusalReason = reason,
+            modelReady = false,
+            phase = OraclePhase.DEGRADED
+        )
+    }
+
     override fun onCleared() {
-        super.onCleared()
-        // Return RAM to the system as soon as the Oracle is gone.
+        generationJob?.cancel()
         rag.release()
+        super.onCleared()
     }
 }

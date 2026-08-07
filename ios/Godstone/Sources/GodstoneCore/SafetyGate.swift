@@ -274,21 +274,11 @@ public enum SafetyGate {
         let blob = evidence.map { $0.text }.joined(separator: " ").lowercased()
         let blobNums = Set(matches(blob).map {
             $0.replacingOccurrences(of: " ", with: "").lowercased() })
-        let digits = try? NSRegularExpression(pattern: #"\d+(?:\.\d+)?"#)
-        let nsBlob = blob as NSString
-        let blobBare = Set((digits?.matches(in: blob,
-            range: NSRange(location: 0, length: nsBlob.length)) ?? [])
-            .map { nsBlob.substring(with: $0.range) })
-
+        // GST-SAFE-002: exact quantity+unit only. A bare number may not
+        // support a different unit, dimension, or qualifier.
         let unsupported = quantities.filter { q in
             let norm = q.replacingOccurrences(of: " ", with: "").lowercased()
-            if blobNums.contains(norm) { return false }
-            let nsQ = q as NSString
-            let n = (digits?.firstMatch(in: q,
-                range: NSRange(location: 0, length: nsQ.length)))
-                .map { nsQ.substring(with: $0.range) }
-            if let n, blobBare.contains(n) { return false }
-            return true
+            return !blobNums.contains(norm)
         }
         return (unsupported.isEmpty, unsupported)
     }

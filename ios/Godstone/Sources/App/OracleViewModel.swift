@@ -2,15 +2,12 @@ import Foundation
 import Combine
 import GodstoneLLM
 
-/// Drives the Ask screen. Mirrors the Android OracleViewModel one-for-one so
-/// the two platforms cannot drift in safety behaviour.
 @MainActor
 final class OracleViewModel: ObservableObject {
-
     enum State: Equatable {
         case idle
         case retrieving
-        case generating(partial: String)
+        case generating
         case answered(text: String, citations: [Citation])
         case refused(nearMisses: [Citation])
         case degraded(reason: String)
@@ -18,55 +15,49 @@ final class OracleViewModel: ObservableObject {
 
     @Published private(set) var state: State = .idle
     @Published var question: String = ""
-
     private let pipeline: RagPipeline
     private var task: Task<Void, Never>?
 
-    init(pipeline: RagPipeline) {
-        self.pipeline = pipeline
-    }
+    init(pipeline: RagPipeline) { self.pipeline = pipeline }
 
     func ask() {
         let q = question.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !q.isEmpty else { return }
-
         task?.cancel()
         task = Task {
             state = .retrieving
-
             let retrieval = await pipeline.retrieve(question: q)
-
-            // Constraint C3: the gate runs BEFORE the model is ever invoked.
+            guard !Task.isCancelled else { return }
             guard retrieval.passesConfidenceGate else {
                 state = .refused(nearMisses: retrieval.nearMisses)
                 return
             }
-
             guard await pipeline.warmUp() else {
-                // C5: degrade, never fail. The Archive is still fully readable.
-                state = .degraded(
-                    reason: "Not enough free memory to load the model. "
-                          + "Browse the Archive directly."
-                )
+                state = .degraded(reason: "The model is unavailable. Browse the Archive directly.")
                 return
             }
 
-            var accumulated = ""
+            // Critical safety boundary: no draft text is associated with this state.
+            state = .generating
+            var draft = ""
             do {
                 for try await token in pipeline.generate(question: q, retrieval: retrieval) {
-                    accumulated += token
-                    state = .generating(partial: accumulated)
+                    try Task.checkCancellation()
+                    draft += token
                 }
+            } catch is CancellationError {
+                return
             } catch {
-                state = .degraded(reason: "Generation stopped. Showing sources instead.")
+                state = .degraded(reason: "Generation stopped. Browse the sources instead.")
                 return
             }
 
-            state = .answered(
-                text: accumulated,
-                citations: pipeline.extractCitations(answer: accumulated,
-                                                     retrieval: retrieval)
-            )
+            switch pipeline.validate(answer: draft, retrieval: retrieval) {
+            case .accepted(let text, let citations):
+                state = .answered(text: text, citations: citations)
+            case .rejected:
+                state = .refused(nearMisses: retrieval.nearMisses)
+            }
         }
     }
 

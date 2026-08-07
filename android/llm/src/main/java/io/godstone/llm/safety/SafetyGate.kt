@@ -252,11 +252,10 @@ object SafetyGate {
         if (quantities.isEmpty()) return true to emptyList()
         val blob = evidence.joinToString(" ") { it.text }.lowercase()
         val blobNums = NUMERIC.findAll(blob).map { it.value.replace(Regex("\\s+"), "").lowercase() }.toSet()
-        val blobBare = Regex("""\d+(?:\.\d+)?""").findAll(blob).map { it.value }.toSet()
+        // Exact quantity+unit only. A matching bare number in a different
+        // unit or dimension is never evidence (GST-SAFE-002).
         val unsupported = quantities.filter { q ->
-            val norm = q.replace(Regex("\\s+"), "").lowercase()
-            val num = Regex("""\d+(?:\.\d+)?""").find(q)?.value
-            norm !in blobNums && (num == null || num !in blobBare)
+            q.replace(Regex("\\s+"), "").lowercase() !in blobNums
         }
         return unsupported.isEmpty() to unsupported
     }
