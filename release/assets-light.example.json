@@ -1,0 +1,10 @@
+{
+  "schema": 1,
+  "tier": "LIGHT",
+  "application_id": "io.godstone.app",
+  "status": "example",
+  "production_ready": false,
+  "archive_manifest": null,
+  "archive_trust_store": null,
+  "assets": []
+}

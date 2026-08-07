@@ -28,6 +28,7 @@ import yaml
 
 from .chunker import Chunk, chunk_document
 from .embedder import Embedder
+from content.release_gate import validate_release_corpus
 
 SCHEMA_VERSION = 3
 
@@ -209,6 +210,15 @@ def build(tier: str, out_path: Path, embed: bool = True,
               f"examples ({names}). --release would refuse this build.",
               file=sys.stderr)
 
+    release_validation = None
+    if release:
+        release_validation = validate_release_corpus(
+            docs,
+            ROOT / "content" / "manifests" / "documents",
+            evidence_root=ROOT / "content" / "manifests",
+        )
+        print(f"validated {len(release_validation.documents)} production document manifest(s)")
+
     conn = sqlite3.connect(out_path)
     conn.executescript((DB_DIR / "schema.sql").read_text(encoding="utf-8"))
 
@@ -273,6 +283,13 @@ def build(tier: str, out_path: Path, embed: bool = True,
         "chunk_count": str(len(all_chunks)),
         "corpus_sha256": digest,
     }
+    if release_validation is not None:
+        meta.update({
+            "source_manifest_sha256": release_validation.source_set_sha256,
+            "review_manifest_sha256": release_validation.review_set_sha256,
+            "release_manifest_set_sha256": release_validation.manifest_set_sha256,
+        })
+
     conn.executemany("INSERT INTO archive_meta (key, value) VALUES (?, ?)",
                      sorted(meta.items()))
 

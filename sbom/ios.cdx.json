@@ -1,0 +1,40 @@
+{
+  "bomFormat": "CycloneDX",
+  "components": [
+    {
+      "bom-ref": "pkg:generic/local/GodstoneCore@b7daf5a",
+      "group": "local",
+      "name": "GodstoneCore",
+      "properties": [
+        {
+          "name": "distribution",
+          "value": "source in repository"
+        }
+      ],
+      "scope": "required",
+      "type": "library",
+      "version": "b7daf5a"
+    }
+  ],
+  "metadata": {
+    "component": {
+      "name": "GODSTONE-ios",
+      "type": "application",
+      "version": "overlay-b7daf5a"
+    },
+    "properties": [
+      {
+        "name": "completeness",
+        "value": "Archive-only target inventory; Xcode resolution pending"
+      },
+      {
+        "name": "shipping_surface",
+        "value": "GodstoneCore only"
+      }
+    ],
+    "timestamp": "2026-08-06T10:14:38Z"
+  },
+  "serialNumber": "urn:uuid:437c8b0b-60f8-4cb2-b251-cf733ad332c4",
+  "specVersion": "1.5",
+  "version": 1
+}

@@ -1,0 +1,25 @@
+{
+  "bomFormat": "CycloneDX",
+  "components": [],
+  "metadata": {
+    "component": {
+      "name": "GODSTONE-models",
+      "type": "application",
+      "version": "overlay-b7daf5a"
+    },
+    "properties": [
+      {
+        "name": "release_status",
+        "value": "blocked"
+      },
+      {
+        "name": "reason",
+        "value": "no approved model artifact, hash, model card, or licence is bundled"
+      }
+    ],
+    "timestamp": "2026-08-06T10:14:38Z"
+  },
+  "serialNumber": "urn:uuid:791fb90e-5318-4a92-bf20-3cab933c620d",
+  "specVersion": "1.5",
+  "version": 1
+}

@@ -1,0 +1,146 @@
+{
+  "bomFormat": "CycloneDX",
+  "components": [
+    {
+      "bom-ref": "pkg:generic/androidx.compose/compose-bom@2024.09.02",
+      "group": "androidx.compose",
+      "licenses": [
+        {
+          "license": {
+            "id": "Apache-2.0"
+          }
+        }
+      ],
+      "name": "compose-bom",
+      "scope": "required",
+      "type": "library",
+      "version": "2024.09.02"
+    },
+    {
+      "bom-ref": "pkg:generic/androidx.activity/activity-compose@1.9.2",
+      "group": "androidx.activity",
+      "licenses": [
+        {
+          "license": {
+            "id": "Apache-2.0"
+          }
+        }
+      ],
+      "name": "activity-compose",
+      "scope": "required",
+      "type": "library",
+      "version": "1.9.2"
+    },
+    {
+      "bom-ref": "pkg:generic/androidx.navigation/navigation-compose@2.8.1",
+      "group": "androidx.navigation",
+      "licenses": [
+        {
+          "license": {
+            "id": "Apache-2.0"
+          }
+        }
+      ],
+      "name": "navigation-compose",
+      "scope": "required",
+      "type": "library",
+      "version": "2.8.1"
+    },
+    {
+      "bom-ref": "pkg:generic/androidx.lifecycle/lifecycle-viewmodel-compose@2.8.6",
+      "group": "androidx.lifecycle",
+      "licenses": [
+        {
+          "license": {
+            "id": "Apache-2.0"
+          }
+        }
+      ],
+      "name": "lifecycle-viewmodel-compose",
+      "scope": "required",
+      "type": "library",
+      "version": "2.8.6"
+    },
+    {
+      "bom-ref": "pkg:generic/androidx.lifecycle/lifecycle-runtime-compose@2.8.6",
+      "group": "androidx.lifecycle",
+      "licenses": [
+        {
+          "license": {
+            "id": "Apache-2.0"
+          }
+        }
+      ],
+      "name": "lifecycle-runtime-compose",
+      "scope": "required",
+      "type": "library",
+      "version": "2.8.6"
+    },
+    {
+      "bom-ref": "pkg:generic/com.google.dagger/hilt-android@2.52",
+      "group": "com.google.dagger",
+      "licenses": [
+        {
+          "license": {
+            "id": "Apache-2.0"
+          }
+        }
+      ],
+      "name": "hilt-android",
+      "scope": "required",
+      "type": "library",
+      "version": "2.52"
+    },
+    {
+      "bom-ref": "pkg:generic/androidx.hilt/hilt-navigation-compose@1.2.0",
+      "group": "androidx.hilt",
+      "licenses": [
+        {
+          "license": {
+            "id": "Apache-2.0"
+          }
+        }
+      ],
+      "name": "hilt-navigation-compose",
+      "scope": "required",
+      "type": "library",
+      "version": "1.2.0"
+    },
+    {
+      "bom-ref": "pkg:generic/junit/junit@4.13.2",
+      "group": "junit",
+      "licenses": [
+        {
+          "license": {
+            "id": "EPL-1.0"
+          }
+        }
+      ],
+      "name": "junit",
+      "scope": "optional",
+      "type": "library",
+      "version": "4.13.2"
+    }
+  ],
+  "metadata": {
+    "component": {
+      "name": "GODSTONE-android",
+      "type": "application",
+      "version": "overlay-b7daf5a"
+    },
+    "properties": [
+      {
+        "name": "completeness",
+        "value": "partial overlay inventory; resolve full Gradle graph before release"
+      },
+      {
+        "name": "shipping_surface",
+        "value": "LIGHT Archive-only"
+      }
+    ],
+    "timestamp": "2026-08-06T10:14:38Z"
+  },
+  "serialNumber": "urn:uuid:1c61b2c0-3ea7-4b43-aab8-7cdb1c04f301",
+  "specVersion": "1.5",
+  "version": 1
+}

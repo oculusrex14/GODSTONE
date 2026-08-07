@@ -1,0 +1,52 @@
+{
+  "bomFormat": "CycloneDX",
+  "components": [
+    {
+      "bom-ref": "pkg:generic/pypi/PyYAML@6.0.3",
+      "group": "pypi",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ],
+      "name": "PyYAML",
+      "scope": "required",
+      "type": "library",
+      "version": "6.0.3"
+    },
+    {
+      "bom-ref": "pkg:generic/pypi/cryptography@46.0.4",
+      "group": "pypi",
+      "licenses": [
+        {
+          "license": {
+            "id": "Apache-2.0 OR BSD-3-Clause"
+          }
+        }
+      ],
+      "name": "cryptography",
+      "scope": "required",
+      "type": "library",
+      "version": "46.0.4"
+    }
+  ],
+  "metadata": {
+    "component": {
+      "name": "GODSTONE-python-generation-tools",
+      "type": "application",
+      "version": "overlay-b7daf5a"
+    },
+    "properties": [
+      {
+        "name": "completeness",
+        "value": "versions pinned; distribution hashes still required"
+      }
+    ],
+    "timestamp": "2026-08-06T10:14:38Z"
+  },
+  "serialNumber": "urn:uuid:906b73ae-6a5b-48d0-86d8-8f273fe6b723",
+  "specVersion": "1.5",
+  "version": 1
+}

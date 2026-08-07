@@ -1,0 +1,150 @@
+{
+  "evidence_artifacts": [
+    {
+      "bytes": 3381,
+      "path": "GODSTONE/sbom/android.cdx.json",
+      "sha256": "b6329eab2b23c2253a430e76a36c2caf02c9f41c8c90e373afc5a5e8130db873"
+    },
+    {
+      "bytes": 567,
+      "path": "GODSTONE/sbom/corpus.cdx.json",
+      "sha256": "9eab41fafd51213da724894d3d87e290ec70e34fb6db4477b93711a4288ef425"
+    },
+    {
+      "bytes": 913,
+      "path": "GODSTONE/sbom/ios.cdx.json",
+      "sha256": "483f0f6db5dded8c3fc1c17b1559c008b026a4ac7631b9755924a6718a2396e4"
+    },
+    {
+      "bytes": 576,
+      "path": "GODSTONE/sbom/models.cdx.json",
+      "sha256": "527e384811315322cd8a61333feb5ed0ce3af30f1f78c288ad39c4070e6af835"
+    },
+    {
+      "bytes": 557,
+      "path": "GODSTONE/sbom/native.cdx.json",
+      "sha256": "6bc5b7a636279ac1c769d099ed745766b00c7dac9fc9f146630253c3fdc4a5d7"
+    },
+    {
+      "bytes": 1134,
+      "path": "GODSTONE/sbom/python-generation-tools.cdx.json",
+      "sha256": "ce7c462ad68946e1d4df935ff98186cb4e99eb0af1e21999d894bf3ff6adb4fc"
+    },
+    {
+      "bytes": 11062,
+      "path": "GODSTONE/docs/production/FINDINGS_REGISTER.csv",
+      "sha256": "2d1f2b17df785e2a6392ba417da978232f6f58107b05678cdb1a7eb369545759"
+    },
+    {
+      "bytes": 2013,
+      "path": "GODSTONE/docs/production/VERIFICATION_MATRIX.md",
+      "sha256": "80e8955a115b774f1e0d801570f28071d7b260201f497641abec67d4fa7999f7"
+    },
+    {
+      "bytes": 1269,
+      "path": "artifacts/reports/logs/content-release-gates-test.log",
+      "sha256": "f533afb15af34a72dda39faf069478f030f658de33729622e92eebf2c1a17a4c"
+    },
+    {
+      "bytes": 2476,
+      "path": "artifacts/reports/logs/full-available-verification.log",
+      "sha256": "723f8c6c8d281a3b485ddbe134140b91580d4020fee0d7e85b238bcfb7ce4a9f"
+    },
+    {
+      "bytes": 334,
+      "path": "artifacts/reports/logs/overlay-transform-tests.log",
+      "sha256": "72b78d85025384cce537f75970f6958f93beb8867d04cc8c9e678c73e7150c8b"
+    },
+    {
+      "bytes": 134,
+      "path": "artifacts/reports/logs/release-asset-staging-test.log",
+      "sha256": "43bb0af3f5bd9c7df68013ed7a395a409d6e10f8a8ce56135db08460893c2a85"
+    },
+    {
+      "bytes": 219,
+      "path": "artifacts/reports/logs/repository-static-checks.log",
+      "sha256": "6b7e0ae90bbf329b9c14d1ebea10334607f438b4abf57ff3c732f63b23db31a3"
+    },
+    {
+      "bytes": 0,
+      "path": "artifacts/android/logs/kotlin-validator-compile.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "bytes": 42,
+      "path": "artifacts/android/logs/kotlin-validator-test.log",
+      "sha256": "42408055b89157020ff66f33302086fca3769573afcc9f3875e11ad8ac018c3c"
+    },
+    {
+      "bytes": 3013,
+      "path": "artifacts/ios/logs/swift-validator-test.log",
+      "sha256": "98be350a8ea095fd5fa9760765d50ea973fe79beb1dc90f898461fe9bf1664ed"
+    },
+    {
+      "bytes": 18861,
+      "path": "artifacts/patches/overlay-manifest.json",
+      "sha256": "211fe99ef72fd373703af2d44cb72651650037b58fb35a232bdfdeba82838a76"
+    }
+  ],
+  "mobile_artifacts": [],
+  "release_blockers": [
+    "complete private checkout not materialized in build container",
+    "verified gradle-wrapper.jar absent",
+    "Android SDK/Gradle build not available",
+    "macOS/Xcode build not available",
+    "durable messaging and future GMP/2.1 Mesh incomplete",
+    "identity/trust and panic-wipe integration incomplete",
+    "independent Noise vectors and model/native locks incomplete",
+    "no approved production corpus/assets/signing credentials",
+    "physical-device, accessibility, battery, thermal and store evidence absent"
+  ],
+  "schema": 1,
+  "shipping_surface": {
+    "application_id": "io.godstone.app",
+    "archive": "enabled only with approved signed assets",
+    "bulk_transfer": "disabled",
+    "mesh": "disabled and absent from app dependency graph",
+    "oracle": "disabled",
+    "sos": "disabled",
+    "tier": "LIGHT"
+  },
+  "source": {
+    "branch": "main",
+    "commit": "b7daf5aceb642277807e9bfbe3bbb486112a64ec",
+    "complete_private_checkout_in_bundle": false,
+    "delivery_mode": "exact-commit remediation overlay",
+    "dirty": true,
+    "repository": "oculusrex14/GODSTONE",
+    "tree": "ccbdc382b2f4cd88d79f59b77248760037603031"
+  },
+  "tests": {
+    "content_archive": {
+      "failed": 0,
+      "passed": 10
+    },
+    "kotlin_oracle_validator": {
+      "failed": 0,
+      "passed": 4
+    },
+    "overlay_transforms": {
+      "failed": 0,
+      "passed": 2
+    },
+    "repository_static_checks": "passed",
+    "swift_oracle_validator": {
+      "failed": 0,
+      "passed": 4
+    }
+  },
+  "toolchains_observed": {
+    "android_sdk": "unavailable",
+    "gradle": "unavailable",
+    "java": "21.0.10",
+    "kotlin_compiler": "1.9.0",
+    "os": "Linux x86_64",
+    "python": "3.13.5",
+    "swift": "6.2.1",
+    "xcode": "unavailable"
+  },
+  "verdict": "PARTIALLY_REMEDIATED_NOT_READY"
+}

@@ -1,0 +1,25 @@
+{
+  "bomFormat": "CycloneDX",
+  "components": [],
+  "metadata": {
+    "component": {
+      "name": "GODSTONE-corpus",
+      "type": "application",
+      "version": "overlay-b7daf5a"
+    },
+    "properties": [
+      {
+        "name": "release_status",
+        "value": "blocked"
+      },
+      {
+        "name": "reason",
+        "value": "no approved licensed reviewed production corpus is bundled"
+      }
+    ],
+    "timestamp": "2026-08-06T10:14:38Z"
+  },
+  "serialNumber": "urn:uuid:a1ef5749-f6f8-4588-b95c-dba8a97bb457",
+  "specVersion": "1.5",
+  "version": 1
+}

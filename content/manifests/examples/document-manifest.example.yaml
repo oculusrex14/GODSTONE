@@ -1,0 +1,41 @@
+schema: 1
+id: example-source
+status: draft
+example: true
+source:
+  title: Example only
+  publisher: Example only
+  edition: Example only
+  version: Example only
+  source_date: '2000-01-01'
+  acquisition_date: '2000-01-01'
+  canonical_url: https://example.invalid
+  source_sha256: PLACEHOLDER
+rights:
+  licence: PLACEHOLDER
+  attribution: PLACEHOLDER
+  redistribution_permitted: false
+  derivative_work_permitted: false
+  evidence_file: examples/rights.example.txt
+  evidence_sha256: PLACEHOLDER
+review:
+  reviewer_id: PLACEHOLDER
+  reviewer_role: PLACEHOLDER
+  reviewer_qualifications: PLACEHOLDER
+  reviewer_identity_evidence: PLACEHOLDER
+  reviewed_on: '2000-01-01'
+  review_scope: PLACEHOLDER
+  expires_on: '2000-01-02'
+  approval_evidence_file: examples/review.example.txt
+  approval_evidence_sha256: PLACEHOLDER
+  approval_signature: PLACEHOLDER
+safety:
+  warnings_required: true
+  warning_sections: []
+  contraindications_required: true
+  contraindication_sections: []
+  chunk_boundary_approved: false
+  chunk_approval_evidence_file: examples/chunks.example.txt
+  chunk_approval_evidence_sha256: PLACEHOLDER
+  jurisdiction: PLACEHOLDER
+  replacement_policy: PLACEHOLDER

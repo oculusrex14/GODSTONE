@@ -1,0 +1,25 @@
+{
+  "bomFormat": "CycloneDX",
+  "components": [],
+  "metadata": {
+    "component": {
+      "name": "GODSTONE-native",
+      "type": "application",
+      "version": "overlay-b7daf5a"
+    },
+    "properties": [
+      {
+        "name": "release_status",
+        "value": "blocked"
+      },
+      {
+        "name": "reason",
+        "value": "llama.cpp/native outputs are absent and unpinned"
+      }
+    ],
+    "timestamp": "2026-08-06T10:14:38Z"
+  },
+  "serialNumber": "urn:uuid:808bcb54-c7f7-47f4-bf93-75aed931c19f",
+  "specVersion": "1.5",
+  "version": 1
+}

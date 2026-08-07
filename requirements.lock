@@ -1,0 +1,4 @@
+# Exact versions are pinned, but distribution hashes must be added by the release
+# owner from the approved artifact mirror before this file is release-authoritative.
+PyYAML==6.0.3
+cryptography==46.0.4

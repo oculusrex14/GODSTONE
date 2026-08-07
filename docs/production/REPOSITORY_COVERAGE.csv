@@ -1,0 +1,104 @@
+path,component,coverage,evidence
+.github/workflows/production-evidence.yml,CI/release automation,modified or added by remediation overlay,Included in static/test/package verification where applicable
+PRODUCTION_READINESS_REPORT.md,repository root,modified or added by remediation overlay,Included in static/test/package verification where applicable
+RELEASE_MANIFEST.json,repository root,modified or added by remediation overlay,Included in static/test/package verification where applicable
+THIRD_PARTY_NOTICES.md,repository root,modified or added by remediation overlay,Included in static/test/package verification where applicable
+android/app/build.gradle.kts,Android,modified or added by remediation overlay,Included in static/test/package verification where applicable
+android/app/src/main/AndroidManifest.xml,Android,modified or added by remediation overlay,Included in static/test/package verification where applicable
+android/app/src/main/java/io/godstone/app/GodstoneApplication.kt,Android,modified or added by remediation overlay,Included in static/test/package verification where applicable
+android/app/src/main/java/io/godstone/app/MainActivity.kt,Android,modified or added by remediation overlay,Included in static/test/package verification where applicable
+android/app/src/main/java/io/godstone/app/di/AppModule.kt,Android,modified or added by remediation overlay,Included in static/test/package verification where applicable
+android/app/src/main/java/io/godstone/app/ui/GodstoneNavHost.kt,Android,modified or added by remediation overlay,Included in static/test/package verification where applicable
+android/app/src/main/java/io/godstone/app/ui/home/HomeScreen.kt,Android,modified or added by remediation overlay,Included in static/test/package verification where applicable
+android/app/src/main/java/io/godstone/app/ui/oracle/OracleViewModel.kt,Android,modified or added by remediation overlay,Included in static/test/package verification where applicable
+android/core/src/main/java/io/godstone/core/crypto/Ed25519Keys.kt,Android,modified or added by remediation overlay,Included in static/test/package verification where applicable
+android/core/src/main/java/io/godstone/core/crypto/X25519Keys.kt,Android,modified or added by remediation overlay,Included in static/test/package verification where applicable
+android/gradle/wrapper/gradle-wrapper.properties,Android,modified or added by remediation overlay,Included in static/test/package verification where applicable
+android/gradle.properties,Android,modified or added by remediation overlay,Included in static/test/package verification where applicable
+android/llm/src/main/java/io/godstone/llm/rag/AnswerValidator.kt,Android,modified or added by remediation overlay,Included in static/test/package verification where applicable
+android/llm/src/main/java/io/godstone/llm/rag/RagPipeline.kt,Android,modified or added by remediation overlay,Included in static/test/package verification where applicable
+android/llm/src/test/java/io/godstone/llm/rag/AnswerValidatorTest.kt,Android,modified or added by remediation overlay,Included in static/test/package verification where applicable
+ci/__pycache__/check_content_release_integration.cpython-313.pyc,CI/release automation,modified or added by remediation overlay,Included in static/test/package verification where applicable
+ci/__pycache__/check_oracle_private_draft.cpython-313.pyc,CI/release automation,modified or added by remediation overlay,Included in static/test/package verification where applicable
+ci/__pycache__/check_release_surface.cpython-313.pyc,CI/release automation,modified or added by remediation overlay,Included in static/test/package verification where applicable
+ci/__pycache__/check_repository.cpython-313.pyc,CI/release automation,modified or added by remediation overlay,Included in static/test/package verification where applicable
+ci/__pycache__/no_legacy_wire.cpython-313.pyc,CI/release automation,modified or added by remediation overlay,Included in static/test/package verification where applicable
+ci/__pycache__/no_release_bypasses.cpython-313.pyc,CI/release automation,modified or added by remediation overlay,Included in static/test/package verification where applicable
+ci/check_content_release_integration.py,CI/release automation,modified or added by remediation overlay,Included in static/test/package verification where applicable
+ci/check_oracle_private_draft.py,CI/release automation,modified or added by remediation overlay,Included in static/test/package verification where applicable
+ci/check_release_surface.py,CI/release automation,modified or added by remediation overlay,Included in static/test/package verification where applicable
+ci/check_repository.py,CI/release automation,modified or added by remediation overlay,Included in static/test/package verification where applicable
+ci/no_legacy_wire.py,CI/release automation,modified or added by remediation overlay,Included in static/test/package verification where applicable
+ci/no_release_bypasses.py,CI/release automation,modified or added by remediation overlay,Included in static/test/package verification where applicable
+content/__pycache__/archive_manifest.cpython-313.pyc,content/archive safety,modified or added by remediation overlay,Included in static/test/package verification where applicable
+content/__pycache__/release_gate.cpython-313.pyc,content/archive safety,modified or added by remediation overlay,Included in static/test/package verification where applicable
+content/archive_manifest.py,content/archive safety,modified or added by remediation overlay,Included in static/test/package verification where applicable
+content/manifests/README.md,content/archive safety,modified or added by remediation overlay,Included in static/test/package verification where applicable
+content/manifests/examples/document-manifest.example.yaml,content/archive safety,modified or added by remediation overlay,Included in static/test/package verification where applicable
+content/release_gate.py,content/archive safety,modified or added by remediation overlay,Included in static/test/package verification where applicable
+content/tests/__pycache__/test_archive_manifest.cpython-313.pyc,content/archive safety,modified or added by remediation overlay,Included in static/test/package verification where applicable
+content/tests/__pycache__/test_release_gate.cpython-313.pyc,content/archive safety,modified or added by remediation overlay,Included in static/test/package verification where applicable
+content/tests/test_archive_manifest.py,content/archive safety,modified or added by remediation overlay,Included in static/test/package verification where applicable
+content/tests/test_release_gate.py,content/archive safety,modified or added by remediation overlay,Included in static/test/package verification where applicable
+docs/architecture/ADR-0001-source-of-truth.md,repository root,modified or added by remediation overlay,Included in static/test/package verification where applicable
+docs/architecture/ADR-0002-initial-release-surface.md,repository root,modified or added by remediation overlay,Included in static/test/package verification where applicable
+docs/architecture/ADR-0003-identity-trust-deferred.md,repository root,modified or added by remediation overlay,Included in static/test/package verification where applicable
+docs/production/BASELINE.md,production evidence,modified or added by remediation overlay,Included in static/test/package verification where applicable
+docs/production/BUILD.md,production evidence,modified or added by remediation overlay,Included in static/test/package verification where applicable
+docs/production/EXTERNAL_RELEASE_GATES.md,production evidence,modified or added by remediation overlay,Included in static/test/package verification where applicable
+docs/production/FINAL_STATUS.md,production evidence,modified or added by remediation overlay,Included in static/test/package verification where applicable
+docs/production/FINDINGS_REGISTER.csv,production evidence,modified or added by remediation overlay,Included in static/test/package verification where applicable
+docs/production/HARDWARE_CASE_0.md,production evidence,modified or added by remediation overlay,Included in static/test/package verification where applicable
+docs/production/MIGRATION.md,production evidence,modified or added by remediation overlay,Included in static/test/package verification where applicable
+docs/production/OPERATIONS_RUNBOOK.md,production evidence,modified or added by remediation overlay,Included in static/test/package verification where applicable
+docs/production/PLATFORM_VERIFICATION_MATRIX.md,production evidence,modified or added by remediation overlay,Included in static/test/package verification where applicable
+docs/production/PRIVACY.md,production evidence,modified or added by remediation overlay,Included in static/test/package verification where applicable
+docs/production/PRODUCTION_READINESS_PLAN.md,production evidence,modified or added by remediation overlay,Included in static/test/package verification where applicable
+docs/production/RECOVERY.md,production evidence,modified or added by remediation overlay,Included in static/test/package verification where applicable
+docs/production/RELEASE_CHECKLIST.md,production evidence,modified or added by remediation overlay,Included in static/test/package verification where applicable
+docs/production/REMEDIATION_LOG.md,production evidence,modified or added by remediation overlay,Included in static/test/package verification where applicable
+docs/production/REPOSITORY_COVERAGE.csv,production evidence,modified or added by remediation overlay,Included in static/test/package verification where applicable
+docs/production/SETUP.md,production evidence,modified or added by remediation overlay,Included in static/test/package verification where applicable
+docs/production/SIGNING.md,production evidence,modified or added by remediation overlay,Included in static/test/package verification where applicable
+docs/production/STORE_SUBMISSION.md,production evidence,modified or added by remediation overlay,Included in static/test/package verification where applicable
+docs/production/TESTING.md,production evidence,modified or added by remediation overlay,Included in static/test/package verification where applicable
+docs/production/THREAT_MODEL.md,production evidence,modified or added by remediation overlay,Included in static/test/package verification where applicable
+docs/production/VERIFICATION_MATRIX.md,production evidence,modified or added by remediation overlay,Included in static/test/package verification where applicable
+docs/production/diagrams/ble-noise-frame.md,production evidence,modified or added by remediation overlay,Included in static/test/package verification where applicable
+docs/production/diagrams/content-flow.md,production evidence,modified or added by remediation overlay,Included in static/test/package verification where applicable
+docs/production/diagrams/deployment.md,production evidence,modified or added by remediation overlay,Included in static/test/package verification where applicable
+docs/production/diagrams/key-lifecycle.md,production evidence,modified or added by remediation overlay,Included in static/test/package verification where applicable
+docs/production/diagrams/message-state-machine.md,production evidence,modified or added by remediation overlay,Included in static/test/package verification where applicable
+docs/production/diagrams/oracle-grounding.md,production evidence,modified or added by remediation overlay,Included in static/test/package verification where applicable
+docs/production/diagrams/panic-wipe.md,production evidence,modified or added by remediation overlay,Included in static/test/package verification where applicable
+docs/production/diagrams/release-supply-chain.md,production evidence,modified or added by remediation overlay,Included in static/test/package verification where applicable
+docs/production/diagrams/subsystem.md,production evidence,modified or added by remediation overlay,Included in static/test/package verification where applicable
+ios/.swift-version,iOS,modified or added by remediation overlay,Included in static/test/package verification where applicable
+ios/Godstone/Godstone.entitlements,iOS,modified or added by remediation overlay,Included in static/test/package verification where applicable
+ios/Godstone/Info.plist,iOS,modified or added by remediation overlay,Included in static/test/package verification where applicable
+ios/Godstone/Package.swift,iOS,modified or added by remediation overlay,Included in static/test/package verification where applicable
+ios/Godstone/PrivacyInfo.xcprivacy,iOS,modified or added by remediation overlay,Included in static/test/package verification where applicable
+ios/Godstone/Sources/App/AppContainer.swift,iOS,modified or added by remediation overlay,Included in static/test/package verification where applicable
+ios/Godstone/Sources/App/GodstoneApp.swift,iOS,modified or added by remediation overlay,Included in static/test/package verification where applicable
+ios/Godstone/Sources/App/OracleView.swift,iOS,modified or added by remediation overlay,Included in static/test/package verification where applicable
+ios/Godstone/Sources/App/OracleViewModel.swift,iOS,modified or added by remediation overlay,Included in static/test/package verification where applicable
+ios/Godstone/Sources/App/RootView.swift,iOS,modified or added by remediation overlay,Included in static/test/package verification where applicable
+ios/Godstone/Sources/GodstoneCore/OracleAnswerValidator.swift,iOS,modified or added by remediation overlay,Included in static/test/package verification where applicable
+ios/Godstone/Sources/GodstoneLLM/RagPipeline.swift,iOS,modified or added by remediation overlay,Included in static/test/package verification where applicable
+ios/Godstone/Tests/GodstoneCoreTests/OracleAnswerValidatorTests.swift,iOS,modified or added by remediation overlay,Included in static/test/package verification where applicable
+ios/Packages/GodstoneFoundation/Package.swift,iOS,modified or added by remediation overlay,Included in static/test/package verification where applicable
+ios/project.yml,iOS,modified or added by remediation overlay,Included in static/test/package verification where applicable
+release/assets-light.example.json,release tooling,modified or added by remediation overlay,Included in static/test/package verification where applicable
+requirements.lock,repository root,modified or added by remediation overlay,Included in static/test/package verification where applicable
+sbom/android.cdx.json,supply chain,modified or added by remediation overlay,Included in static/test/package verification where applicable
+sbom/corpus.cdx.json,supply chain,modified or added by remediation overlay,Included in static/test/package verification where applicable
+sbom/ios.cdx.json,supply chain,modified or added by remediation overlay,Included in static/test/package verification where applicable
+sbom/models.cdx.json,supply chain,modified or added by remediation overlay,Included in static/test/package verification where applicable
+sbom/native.cdx.json,supply chain,modified or added by remediation overlay,Included in static/test/package verification where applicable
+sbom/python-generation-tools.cdx.json,supply chain,modified or added by remediation overlay,Included in static/test/package verification where applicable
+scripts/__pycache__/inspect_android_artifacts.cpython-313.pyc,release tooling,modified or added by remediation overlay,Included in static/test/package verification where applicable
+scripts/__pycache__/prepare_release_assets.cpython-313.pyc,release tooling,modified or added by remediation overlay,Included in static/test/package verification where applicable
+scripts/__pycache__/sync_ios_foundation_package.cpython-313.pyc,release tooling,modified or added by remediation overlay,Included in static/test/package verification where applicable
+scripts/inspect_android_artifacts.py,release tooling,modified or added by remediation overlay,Included in static/test/package verification where applicable
+scripts/prepare_release_assets.py,release tooling,modified or added by remediation overlay,Included in static/test/package verification where applicable
+scripts/sync_ios_foundation_package.py,release tooling,modified or added by remediation overlay,Included in static/test/package verification where applicable
