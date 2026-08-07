@@ -99,6 +99,7 @@ jobs:
           python -m wire.codegen
           python -m crypto.port_vectors
           python -m crypto.gen_vectors
+          python -m crypto.gen_gmp21_vectors
       # F and G selftests FIRST: a control that has never fired is not a control.
       - name: symbol resolver negative control
         run: python ci/symbols.py --selftest

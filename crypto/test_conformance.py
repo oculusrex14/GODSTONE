@@ -37,11 +37,13 @@ from pathlib import Path
 from cryptography.hazmat.primitives.asymmetric.x25519 import X25519PrivateKey
 
 from . import derivation as D
+from . import gmp21 as G
 from .cacophony import DEFAULT_FILE as CACOPHONY_FILE
 from .cacophony import check as cacophony_check
 from .noise_ref import run_handshake
 
 VECTORS = Path(__file__).resolve().parent / "handshake_vectors.json"
+GMP21_VECTORS = Path(__file__).resolve().parent / "gmp21_vectors.json"
 
 
 class Result:
@@ -63,6 +65,65 @@ class Result:
 
 def x(hexs: str) -> X25519PrivateKey:
     return X25519PrivateKey.from_private_bytes(bytes.fromhex(hexs))
+
+
+def check_gmp21(r: Result) -> None:
+    """GMP/2.1 derivation vectors (ADR-001 §3): msg_id, bloom, PoW.
+
+    Self-consistency: the Python reference (crypto/gmp21.py, hashlib.blake2s)
+    must reproduce every locked value in crypto/gmp21_vectors.json. This is
+    necessary but NOT sufficient -- the fixture is produced by this same
+    reference, so this check cannot detect a reference that is wrong in the
+    same way twice. The real parity proof is that the Android (Kotlin/Bouncy
+    Castle) and iOS (Swift/Blake2s) test suites each transcribe these hex
+    literals and assert their runtimes reproduce them byte-for-byte. This
+    check guards the fixture against silent drift / hand-edits.
+    """
+    print("\n6. GMP/2.1 derivation vectors  (msg_id / bloom / PoW)")
+    if not GMP21_VECTORS.exists():
+        print(f"::error::missing {GMP21_VECTORS}. Run: "
+              "python -m crypto.gen_gmp21_vectors", file=sys.stderr)
+        r.failures.append("gmp21 vectors missing")
+        return
+    g = json.loads(GMP21_VECTORS.read_text())
+
+    for c in g["msg_id"]["cases"]:
+        got = G.msg_id(bytes.fromhex(c["sender_node_id"]),
+                       c["created_at_epoch_seconds"],
+                       bytes.fromhex(c["payload"])).hex()
+        r.check(got == c["msg_id"], f"msg_id {c['name']}",
+                f"want {c['msg_id']} got {got}")
+
+    neg = g["msg_id"]["negative"]
+    r.check(neg["differs"], f"msg_id negative {neg['name']} (BE != LE)")
+
+    for case in g["bloom"]["cases"]:
+        ids = [bytes.fromhex(i["msg_id"]) for i in case["ids"]]
+        filt = G.bloom_build(ids)
+        r.check(filt.hex() == case["filter"], f"bloom {case['name']} filter")
+        r.check(G.bloom_short_digest(filt).hex() == case["short_digest"],
+                f"bloom {case['name']} shortDigest")
+        for i in case["ids"]:
+            mid = bytes.fromhex(i["msg_id"])
+            got_idx = [G.bloom_index(mid, r2) for r2 in range(G.BLOOM_HASHES)]
+            r.check(got_idx == i["round_indices"],
+                    f"bloom {case['name']} indices {i['msg_id'][:8]}",
+                    f"want {i['round_indices']} got {got_idx}")
+
+    for c in g["pow"]["cases"]:
+        nonce = bytes.fromhex(c["pow_nonce"])
+        sender = bytes.fromhex(c["sender_node_id"])
+        created_le = bytes.fromhex(c["created_at_le"])
+        pt = bytes.fromhex(c["plaintext"])
+        digest = G.pow_digest(nonce, sender, created_le, c["type_code"], pt)
+        r.check(digest.hex() == c["blake2s_256"], f"pow {c['name']} digest")
+        r.check(G.pow_top_bits_zero(digest, c["target_bits"]),
+                f"pow {c['name']} top-{c['target_bits']} bits zero")
+        # A wrong nonce (all zeros) must NOT satisfy the production target.
+        if c["target_bits"] == G.POW_TARGET_BITS:
+            r.check(not G.pow_verify(bytes(G.POW_NONCE_BYTES), sender, created_le,
+                                     c["type_code"], pt, c["target_bits"]),
+                    f"pow {c['name']} zero-nonce rejected")
 
 
 def main() -> int:
@@ -165,7 +226,9 @@ def main() -> int:
     for name, spec in v["negative_vectors"].items():
         r.check(spec["differs"], f"{name} diverges from conformant")
 
-    print("\n6. External conformance  (breaks the circularity of 1-5)")
+    check_gmp21(r)
+
+    print("\n7. External conformance  (breaks the circularity of 1-5)")
     pinned, detail = cacophony_check(CACOPHONY_FILE, verbose=False)
     if pinned:
         r.check(True, f"cacophony vectors reproduced -- {detail}")

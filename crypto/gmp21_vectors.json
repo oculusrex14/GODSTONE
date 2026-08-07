@@ -1,0 +1,147 @@
+{
+  "_comment": "GMP/2.1 locked byte-parity fixture (ADR-001 \u00a73). Both platforms must reproduce every value here byte-for-byte. Regenerate with `python -m crypto.gen_gmp21_vectors`. The platform tests transcribe these as hex literals; this file is the single source of truth.",
+  "reference": "crypto/gmp21.py (hashlib.blake2s, RFC 7693)",
+  "constants": {
+    "msg_id_bytes": 16,
+    "bloom_size_bits": 4096,
+    "bloom_size_bytes": 512,
+    "bloom_short_bytes": 20,
+    "bloom_hashes": 4,
+    "pow_nonce_bytes": 8,
+    "pow_target_bits": 20,
+    "type_message": 24,
+    "type_sos": 240
+  },
+  "msg_id": {
+    "spec": "msg_id = BLAKE2s-128(sender[16] \u2016 created_at_le[4] \u2016 payload)",
+    "cases": [
+      {
+        "name": "empty_payload_zero_time",
+        "sender_node_id": "000102030405060708090a0b0c0d0e0f",
+        "created_at_epoch_seconds": 0,
+        "created_at_le": "00000000",
+        "payload": "",
+        "payload_utf8": "",
+        "msg_id": "fe9c55924a94692c6721d13c3d06ca5a"
+      },
+      {
+        "name": "help_epoch_1",
+        "sender_node_id": "000102030405060708090a0b0c0d0e0f",
+        "created_at_epoch_seconds": 1,
+        "created_at_le": "01000000",
+        "payload": "68656c70",
+        "payload_utf8": "help",
+        "msg_id": "b0fcd6858d4a0e24b434dfcf273ff20c"
+      },
+      {
+        "name": "sos_payload_real_epoch",
+        "sender_node_id": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "created_at_epoch_seconds": 1700000000,
+        "created_at_le": "00f15365",
+        "payload": "534f53207061796c6f6164",
+        "payload_utf8": "SOS payload",
+        "msg_id": "ea5260efb0ab65829f02042a7237a2cb"
+      }
+    ],
+    "negative": {
+      "name": "help_epoch_1_big_endian_created_at_must_differ",
+      "description": "same (sender, created_at=1, 'help') as help_epoch_1 but created_at encoded uint32_be. ADR-001 \u00a73.3 requires _le; a runtime emitting this digest has the byte order backwards.",
+      "sender_node_id": "000102030405060708090a0b0c0d0e0f",
+      "created_at_be": "00000001",
+      "payload": "68656c70",
+      "msg_id_be": "e10707c3ca4f77761420396d83b2a367",
+      "must_differ_from": "b0fcd6858d4a0e24b434dfcf273ff20c",
+      "differs": true
+    }
+  },
+  "bloom": {
+    "spec": "index = BLAKE2s-64(msg_id[16] \u2016 uint32_be(round)) mod 4096; 4 rounds; 512-byte filter; 20-byte shortDigest",
+    "cases": [
+      {
+        "name": "single_id",
+        "ids": [
+          {
+            "msg_id": "b0fcd6858d4a0e24b434dfcf273ff20c",
+            "round_indices": [
+              2523,
+              2404,
+              87,
+              3945
+            ]
+          }
+        ],
+        "filter": "0000000000000000000080000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000001000000000000000000000000000000800000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000002000000000000000000000000000000000000",
+        "short_digest": "0000000000000000000080000000000000000000",
+        "size_bytes": 512,
+        "hashes": 4
+      },
+      {
+        "name": "three_ids",
+        "ids": [
+          {
+            "msg_id": "fe9c55924a94692c6721d13c3d06ca5a",
+            "round_indices": [
+              1382,
+              2642,
+              146,
+              1866
+            ]
+          },
+          {
+            "msg_id": "b0fcd6858d4a0e24b434dfcf273ff20c",
+            "round_indices": [
+              2523,
+              2404,
+              87,
+              3945
+            ]
+          },
+          {
+            "msg_id": "ea5260efb0ab65829f02042a7237a2cb",
+            "round_indices": [
+              1899,
+              3452,
+              3561,
+              2086
+            ]
+          }
+        ],
+        "filter": "0000000000000000000080000000000000000400000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000040000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000040000000800000000000000000000000000000000000000000000400000000000000000000000000000000000000000000000000000000000000000000000000000001000000000000000000000000000000800000000000000000000000000000400000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000100000000000000000000000000002000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000002000000000000000000000000000000000000",
+        "short_digest": "0000000000000000000080000000000000000400",
+        "size_bytes": 512,
+        "hashes": 4
+      }
+    ]
+  },
+  "pow": {
+    "spec": "BLAKE2s-256(pow_nonce[8] \u2016 sender[16] \u2016 created_at_le[4] \u2016 type_code[1] \u2016 plaintext); top target_bits bits zero",
+    "cases": [
+      {
+        "name": "pow_20bit_message_help",
+        "sender_node_id": "000102030405060708090a0b0c0d0e0f",
+        "created_at_epoch_seconds": 1,
+        "created_at_le": "01000000",
+        "type_code": 24,
+        "plaintext": "68656c70",
+        "plaintext_utf8": "help",
+        "target_bits": 20,
+        "pow_nonce": "00000000000a40d7",
+        "blake2s_256": "00000c2aa22402bcc4040a3fb91c95e54495c18f86c4eae5c37aef702e7f8963",
+        "verified": true
+      },
+      {
+        "name": "pow_8bit_message_help",
+        "sender_node_id": "000102030405060708090a0b0c0d0e0f",
+        "created_at_epoch_seconds": 1,
+        "created_at_le": "01000000",
+        "type_code": 24,
+        "plaintext": "68656c70",
+        "plaintext_utf8": "help",
+        "target_bits": 8,
+        "pow_nonce": "0000000000000142",
+        "blake2s_256": "00513306e730855b5c2547a43ea20e4172f09622841ec34806feb96d69294e61",
+        "verified": true
+      }
+    ]
+  }
+}
