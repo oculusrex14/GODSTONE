@@ -33,7 +33,7 @@
     "Tests/GodstoneMeshTests/MessageIdTests.swift": "dc7ffdd66a4235d137b3ac09764d9a7bcdc5bca4b971c9ad64b715d61fd6725f",
     "Tests/GodstoneMeshTests/NoiseSessionTests.swift": "0ec84dbb480a9799c192873b18b719c9856bb62cdae7ee32495b86aab3e1af1f",
     "Tests/GodstoneMeshTests/PortVectorTests.swift": "08e4d81add95ada220f4bcc6d14a3b2acc0232b69064d376481390bbc10c9fb9",
-    "Tests/GodstoneMeshTests/ProofOfWorkTests.swift": "36c812c2321c2b12cd7577dd854862c05dc8ee1ca18277f83171724020ff6f1c",
+    "Tests/GodstoneMeshTests/ProofOfWorkTests.swift": "55f96b38f4b5dbd70f15d2c09c0a6310b4dccd6901c4a13b1d3d23414cf10609",
     "Tests/GodstoneMeshTests/RouterTests.swift": "68f448d5b3d72df89dbf1dfd08df96e7e78518c9b9037cc7a1ed231aac13e532",
     "Tests/GodstoneMeshTests/WireV2VectorTests.swift": "49099a1535aa501763df0c2949949b76f14ee8b6e0f585abf4306a2f70e23c70"
   },

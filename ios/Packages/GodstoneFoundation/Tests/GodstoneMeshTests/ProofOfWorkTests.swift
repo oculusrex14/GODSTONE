@@ -10,12 +10,20 @@ import GodstoneCore
 ///     BLAKE2s-256(pow_nonce[8] ‖ sender_node_id[16] ‖ created_at_le[4] ‖
 ///                 type_code[1] ‖ plaintext)
 ///
-/// The KAT tests below transcribe the locked (sender, created_at_le, type_code,
-/// plaintext, nonce, blake2s_256) tuples verbatim and assert both the digest
-/// literal AND the boolean verify(), which is true cross-platform byte-for-byte
-/// parity with Python / Android. The Android twin (ProofOfWorkTest.kt)
-/// transcribes the same literals. created_at is LITTLE-ENDIAN -- the same
-/// canonical encoding used by MessageId.derive (§3.3) and the sealed payload.
+/// created_at is LITTLE-ENDIAN -- the same canonical encoding used by
+/// MessageId.derive (§3.3) and the sealed payload.
+///
+/// DETERMINISM. Every assertion here is deterministic -- none rely on a weak
+/// target coincidentally rejecting content. The KAT tests transcribe the locked
+/// (sender, created_at_le, type_code, plaintext, nonce, blake2s_256) tuples and
+/// assert both the digest literal AND verify(). The binding tests assert
+/// `digest(field=X) != digest(field=Y)` -- BLAKE2s collision resistance makes
+/// this certain, and it proves the field is part of the preimage without any
+/// 1/2^target coin flip. The zero-nonce test uses the locked KAT content: the
+/// Python mine search is a deterministic big-endian increment from zero, so the
+/// locked 20-bit solution 0x0a40d7 PROVES nonces 0..0x0a40d6 (including zero) all
+/// fail at 20 bits. The Android twin (ProofOfWorkTest.kt) transcribes the same
+/// literals and is identical in structure.
 final class ProofOfWorkTests: XCTestCase {
 
     private func data(fromHex hex: String) -> Data {
@@ -47,11 +55,10 @@ final class ProofOfWorkTests: XCTestCase {
     private var katNonce8: Data { data(fromHex: "0000000000000142") }
     private let katDigest8 = "00513306e730855b5c2547a43ea20e4172f09622841ec34806feb96d69294e61"
 
-    // round-trip inputs (LE created_at = epoch 1).
-    private var rtSender: Data { data(fromHex: "0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a") }
-    private var rtCreatedAtLe: Data { data(fromHex: "01000000") }
-    private var rtPlaintext: Data { data(fromHex: "68656c6c6f") }     // "hello"
-    private let easyTarget = 8
+    // A second sender / created_at / plaintext for the binding tests.
+    private var altSender: Data { data(fromHex: "0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a") }
+    private var altCreatedAtLe: Data { data(fromHex: "02000000") }   // LE epoch 2
+    private var altPlaintext: Data { data(fromHex: "776f726c64") }   // "world"
 
     func testLocked20BitKatDigestReproducesPythonReference() {
         XCTAssertEqual(
@@ -82,7 +89,9 @@ final class ProofOfWorkTests: XCTestCase {
             ProofOfWork.verify(powNonce: katNonce8, senderNodeId: katSender,
                                createdAtLe: katCreatedAtLe, typeCode: TypeV2.message.rawValue,
                                plaintext: katPlaintext, targetBits: 8))
-        // Only the top 8 bits are zero; the 20-bit production target rejects it.
+        // The locked 8-bit digest is 00513306... -- top 8 bits zero, but bits
+        // 8-19 (0x513...) are nonzero, so the 20-bit production target rejects
+        // it. Deterministic: the digest literal fixes this.
         XCTAssertFalse(
             ProofOfWork.verify(powNonce: katNonce8, senderNodeId: katSender,
                                createdAtLe: katCreatedAtLe, typeCode: TypeV2.message.rawValue,
@@ -90,66 +99,73 @@ final class ProofOfWorkTests: XCTestCase {
                                targetBits: ProofOfWork.targetBits))
     }
 
-    // --- mine/verify round-trip (LE created_at) ---
-
-    func testMinedNonceIs8BytesAndVerifiesAtEasyTarget() async throws {
-        let nonce = try await ProofOfWork.mine(senderNodeId: rtSender,
-                                               createdAtLe: rtCreatedAtLe,
-                                               typeCode: TypeV2.message.rawValue,
-                                               plaintext: rtPlaintext,
-                                               targetBits: easyTarget)
-        XCTAssertEqual(ProofOfWork.nonceBytes, nonce.count)
-        XCTAssertTrue(
-            ProofOfWork.verify(powNonce: nonce, senderNodeId: rtSender,
-                               createdAtLe: rtCreatedAtLe, typeCode: TypeV2.message.rawValue,
-                               plaintext: rtPlaintext, targetBits: easyTarget))
-    }
-
-    func testZeroNonceDoesNotVerifyForFreshContent() {
+    func testZeroNonceFailsAtProductionTargetForKatContent() {
+        // The Python mine is a deterministic big-endian increment from zero. The
+        // locked 20-bit solution is 0x00000000000a40d7, which PROVES nonces
+        // 0x0 .. 0x0a40d6 (including the all-zero nonce) all fail at 20 bits for
+        // this content. So verify(zeroNonce, ..., 20) is deterministically false.
         let zero = Data(count: ProofOfWork.nonceBytes)
         XCTAssertFalse(
-            ProofOfWork.verify(powNonce: zero, senderNodeId: rtSender,
-                               createdAtLe: rtCreatedAtLe, typeCode: TypeV2.message.rawValue,
-                               plaintext: rtPlaintext, targetBits: easyTarget))
-    }
-
-    func testMinedNonceBoundToPlaintextDoesNotVerifyDifferentPlaintext() async throws {
-        let nonce = try await ProofOfWork.mine(senderNodeId: rtSender,
-                                               createdAtLe: rtCreatedAtLe,
-                                               typeCode: TypeV2.message.rawValue,
-                                               plaintext: rtPlaintext,
-                                               targetBits: easyTarget)
-        let other = data(fromHex: "776f726c64")  // "world"
-        XCTAssertFalse(
-            ProofOfWork.verify(powNonce: nonce, senderNodeId: rtSender,
-                               createdAtLe: rtCreatedAtLe, typeCode: TypeV2.message.rawValue,
-                               plaintext: other, targetBits: easyTarget))
-    }
-
-    func testMinedNonceBoundToTypeCodeDoesNotVerifyDifferentType() async throws {
-        let nonce = try await ProofOfWork.mine(senderNodeId: rtSender,
-                                               createdAtLe: rtCreatedAtLe,
-                                               typeCode: TypeV2.message.rawValue,
-                                               plaintext: rtPlaintext,
-                                               targetBits: easyTarget)
-        XCTAssertFalse(
-            ProofOfWork.verify(powNonce: nonce, senderNodeId: rtSender,
-                               createdAtLe: rtCreatedAtLe, typeCode: TypeV2.sos.rawValue,
-                               plaintext: rtPlaintext, targetBits: easyTarget))
-    }
-
-    func testProduction20BitTargetRejects8BitNonce() async throws {
-        // An 8-bit-mined nonce has only its top 8 bits zero; the 20-bit production
-        // target demands 20, so the same nonce must fail at the harder target.
-        let nonce = try await ProofOfWork.mine(senderNodeId: rtSender,
-                                               createdAtLe: rtCreatedAtLe,
-                                               typeCode: TypeV2.message.rawValue,
-                                               plaintext: rtPlaintext,
-                                               targetBits: easyTarget)
-        XCTAssertFalse(
-            ProofOfWork.verify(powNonce: nonce, senderNodeId: rtSender,
-                               createdAtLe: rtCreatedAtLe, typeCode: TypeV2.message.rawValue,
-                               plaintext: rtPlaintext,
+            ProofOfWork.verify(powNonce: zero, senderNodeId: katSender,
+                               createdAtLe: katCreatedAtLe, typeCode: TypeV2.message.rawValue,
+                               plaintext: katPlaintext,
                                targetBits: ProofOfWork.targetBits))
+    }
+
+    // --- binding (deterministic via digest inequality; no weak-target coin flip) ---
+
+    func testDigestBindsTypeCode() {
+        let m = ProofOfWork.digest(powNonce: katNonce20, senderNodeId: katSender,
+                                   createdAtLe: katCreatedAtLe, typeCode: TypeV2.message.rawValue,
+                                   plaintext: katPlaintext)
+        let s = ProofOfWork.digest(powNonce: katNonce20, senderNodeId: katSender,
+                                   createdAtLe: katCreatedAtLe, typeCode: TypeV2.sos.rawValue,
+                                   plaintext: katPlaintext)
+        XCTAssertNotEqual(m, s)
+    }
+
+    func testDigestBindsPlaintext() {
+        let a = ProofOfWork.digest(powNonce: katNonce20, senderNodeId: katSender,
+                                   createdAtLe: katCreatedAtLe, typeCode: TypeV2.message.rawValue,
+                                   plaintext: katPlaintext)
+        let b = ProofOfWork.digest(powNonce: katNonce20, senderNodeId: katSender,
+                                   createdAtLe: katCreatedAtLe, typeCode: TypeV2.message.rawValue,
+                                   plaintext: altPlaintext)
+        XCTAssertNotEqual(a, b)
+    }
+
+    func testDigestBindsSender() {
+        let a = ProofOfWork.digest(powNonce: katNonce20, senderNodeId: katSender,
+                                   createdAtLe: katCreatedAtLe, typeCode: TypeV2.message.rawValue,
+                                   plaintext: katPlaintext)
+        let b = ProofOfWork.digest(powNonce: katNonce20, senderNodeId: altSender,
+                                   createdAtLe: katCreatedAtLe, typeCode: TypeV2.message.rawValue,
+                                   plaintext: katPlaintext)
+        XCTAssertNotEqual(a, b)
+    }
+
+    func testDigestBindsCreatedAt() {
+        let a = ProofOfWork.digest(powNonce: katNonce20, senderNodeId: katSender,
+                                   createdAtLe: katCreatedAtLe, typeCode: TypeV2.message.rawValue,
+                                   plaintext: katPlaintext)
+        let b = ProofOfWork.digest(powNonce: katNonce20, senderNodeId: katSender,
+                                   createdAtLe: altCreatedAtLe, typeCode: TypeV2.message.rawValue,
+                                   plaintext: katPlaintext)
+        XCTAssertNotEqual(a, b)
+    }
+
+    // --- mine/verify round-trip (deterministic: mine guarantees verify) ---
+
+    func testMinedNonceIs8BytesAndVerifiesAtEasyTarget() async throws {
+        let nonce = try await ProofOfWork.mine(senderNodeId: altSender,
+                                               createdAtLe: katCreatedAtLe,
+                                               typeCode: TypeV2.message.rawValue,
+                                               plaintext: altPlaintext,
+                                               targetBits: 8)
+        XCTAssertEqual(ProofOfWork.nonceBytes, nonce.count)
+        XCTAssertTrue(
+            ProofOfWork.verify(powNonce: nonce, senderNodeId: altSender,
+                               createdAtLe: katCreatedAtLe, typeCode: TypeV2.message.rawValue,
+                               plaintext: altPlaintext, targetBits: 8))
     }
 }
