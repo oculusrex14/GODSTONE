@@ -319,6 +319,18 @@ def main() -> int:
     ap = argparse.ArgumentParser(description="Godstone parity and safety gate")
     ap.add_argument("--db", type=Path,
                     default=ROOT / "dist" / "archive_medium.db")
+    ap.add_argument("--scope", choices=("all", "repo"), default="all",
+                    help="'all' (default) runs every invariant including the "
+                         "fail-closed EXTERNAL Noise gate D (A-06); 'repo' runs "
+                         "only the repository-controlled invariants "
+                         "A,B,C,E,F,G,H and reports D as an external gate "
+                         "tracked separately in the release-gates workflow. "
+                         "Use 'repo' for the green-capable repository-"
+                         "verification job (it must not depend on an approved "
+                         "external Noise fixture); use 'all' for the fail-closed "
+                         "release-gates job. D is never silently skipped: in "
+                         "'repo' scope it is explicitly reported as OPEN and "
+                         "exercised under 'all'.")
     args = ap.parse_args()
 
     print("Godstone parity + safety gate\n" + "=" * 62)
@@ -326,7 +338,20 @@ def main() -> int:
     invariant_a(r)
     invariant_b(r)
     invariant_c(r, args.db)
-    invariant_d(r)
+    if args.scope == "all":
+        invariant_d(r)
+    else:
+        # D is an EXTERNAL gate (independent Noise conformance, A-06). It is
+        # fail-closed on the vector lock and is exercised under --scope all in
+        # the release-gates workflow. It is not part of the repo-owned scope: a
+        # green repository-verification run must not depend on an approved
+        # external Noise fixture existing. Reporting it OPEN here (rather than
+        # running it) keeps it visible without turning an unavailable external
+        # gate into a green repo-owned result.
+        print("  open  [D] external Noise conformance gate (A-06) -- not in the "
+              "repo-owned scope; tracked fail-closed under `--scope all` in the "
+              "release-gates workflow. crypto/cacophony_vectors.json holds no "
+              "approved EXTERNAL fixture yet.")
     invariant_e(r)
     invariant_f(r)
     invariant_g(r)

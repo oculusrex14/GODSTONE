@@ -1,0 +1,308 @@
+name: repository-verification
+
+# The canonical, green-capable, repository-owned verification workflow. It must
+# be able to go GREEN with NO production corpus, model, native stack or signing
+# asset -- everything it needs is in the repo. External/fail-closed gates
+# (independent Noise vectors / A-06, production corpus, model/native stack,
+# device interop, accessibility, battery/thermal, signing) live in
+# release-gates.yml and docs/production/RELEASE_GATES_STATUS.json.
+on:
+  push:
+    branches:
+      - main
+      - 'remediation/**'
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+# All actions pinned to immutable 40-char SHAs (ci/no_release_bypasses.py
+# rejects mutable @vN / @main / @master refs).
+#   actions/checkout            @11bd71901bbe5b1630ceea73d27597364c9af683
+#   actions/setup-python        @a26af69be951a213d495a4c3e4e4022e16d87065
+#   actions/setup-java          @c5195efecf7bdfc987ee8bae7a71cb8b11521c00
+#   gradle/actions/setup-gradle @0b6dd653ba04f4f93bf581ec31e66cbd7dcb644d
+#   actions/upload-artifact     @ea165f8d65b6e75b540449e92b4886f43607fa02
+
+jobs:
+
+  constraints:
+    name: constraint audit (C1/C2 + tiers + release-gate status)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - name: provenance (start -- clean checkout)
+        run: python ci/provenance.py --out provenance-start.json
+      - name: no network permission on Android
+        run: |
+          if grep -rn 'uses-permission' android/ --include='*.xml' \
+               | grep 'android.permission.INTERNET' \
+               | grep -v 'tools:node="remove"' ; then
+            echo '::error::android.permission.INTERNET is granted - violates C1'
+            exit 1
+          fi
+          echo 'ok: no INTERNET permission granted'
+      - name: no networking APIs on iOS
+        run: |
+          if grep -rnE 'URLSession|NSURLConnection|CFStream|Network\.framework' \
+               ios/ --include='*.swift' --include='*.m' --include='*.mm' ; then
+            echo '::error::iOS networking API referenced - violates C1'
+            exit 1
+          fi
+          echo 'ok: no networking APIs'
+      - name: no analytics or crash reporting
+        run: |
+          if grep -rniE 'firebase|crashlytics|sentry|amplitude|mixpanel|appcenter' \
+               android/ ios/ --include='*.kts' --include='*.gradle' \
+               --include='*.plist' --include='*.yml' --include='*.resolved' ; then
+            echo '::error::telemetry dependency found - violates C2'
+            exit 1
+          fi
+          echo 'ok: no telemetry'
+      - name: tier tables agree across platforms
+        run: python scripts/check_tiers.py
+      - name: release-gate status represented (no skipped external gates)
+        run: python ci/check_release_gates_status.py
+      - name: provenance (final -- tree still clean)
+        run: python ci/provenance.py --out provenance-final.json
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: provenance-constraints
+          path: provenance-*.json
+
+  invariants:
+    name: repo-owned parity + safety invariants (A,B,C,E,F,G,H)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065
+        with:
+          python-version: '3.12'
+      - name: provenance (start -- clean checkout)
+        run: python ci/provenance.py --out provenance-start.json
+      - run: pip install -r content/requirements.txt cryptography
+      - name: build archive for the gate (no embeddings -- repo-owned)
+        run: |
+          python -m content.ingest.build_archive \
+            --tier MEDIUM --out dist/archive_medium.db --no-embed
+      - name: regenerate wire codecs and crypto vectors
+        run: |
+          python -m wire.codegen
+          python -m crypto.port_vectors
+          python -m crypto.gen_vectors
+      # F and G selftests FIRST: a control that has never fired is not a control.
+      - name: symbol resolver negative control
+        run: python ci/symbols.py --selftest
+      - name: integration reachability negative control
+        run: python ci/integration.py --selftest
+      # --scope repo runs A,B,C,E,F,G,H and reports D (external Noise / A-06)
+      # as OPEN. D is exercised fail-closed under --scope all in release-gates.
+      - name: invariants A,B,C,E,F,G,H (repo scope; D is an external gate)
+        run: python ci/check_parity.py --scope repo
+      - name: no release bypasses / oracle private draft / shipping path
+        run: python ci/check_repository.py
+      - name: no legacy GMP/1 wire symbol
+        run: python ci/no_legacy_wire.py --selftest
+      - name: provenance (final -- tree still clean)
+        run: python ci/provenance.py --out provenance-final.json
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: provenance-invariants
+          path: provenance-*.json
+
+  content:
+    name: content pipeline (LIGHT archive, no model)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065
+        with:
+          python-version: '3.12'
+      - name: provenance (start -- clean checkout)
+        run: python ci/provenance.py --out provenance-start.json
+      - name: install
+        run: pip install -r content/requirements.txt
+      - name: build a LIGHT archive without embeddings
+        run: |
+          python -m content.ingest.build_archive \
+            --tier LIGHT --out /tmp/archive_light.db --no-embed
+      - name: archive is queryable and correctly indexed
+        run: |
+          python - <<'PY'
+          import sqlite3, sys
+          db = sqlite3.connect('/tmp/archive_light.db')
+          meta = dict(db.execute('SELECT key, value FROM archive_meta'))
+          print('corpus_sha256', meta['corpus_sha256'])
+          assert meta['tier'] == 'LIGHT'
+          docs = db.execute('SELECT COUNT(*) FROM documents').fetchone()[0]
+          chunks = db.execute('SELECT COUNT(*) FROM chunks').fetchone()[0]
+          assert docs > 0 and chunks > 0, 'empty archive'
+          rows = db.execute('''
+              SELECT c.chunk_id, d.title, c.section
+              FROM chunks_fts
+              JOIN chunks c ON c.chunk_id = chunks_fts.rowid
+              JOIN documents d ON d.document_id = c.document_id
+              WHERE chunks_fts MATCH 'tourniquet'
+              ORDER BY bm25(chunks_fts) LIMIT 5
+          ''').fetchall()
+          assert rows, 'FTS join returned nothing'
+          print('fts ok:', rows[0])
+          leaked = db.execute(
+              "SELECT COUNT(*) FROM documents WHERE tier_min != 'LIGHT'"
+          ).fetchone()[0]
+          assert leaked == 0, f'{leaked} non-LIGHT documents in a LIGHT build'
+          print('tier filtering ok')
+          PY
+      - name: build is deterministic
+        run: |
+          python -m content.ingest.build_archive \
+            --tier LIGHT --out /tmp/archive_two.db --no-embed
+          a=$(sqlite3 /tmp/archive_light.db \
+                "SELECT value FROM archive_meta WHERE key='corpus_sha256'")
+          b=$(sqlite3 /tmp/archive_two.db \
+                "SELECT value FROM archive_meta WHERE key='corpus_sha256'")
+          if [ "$a" != "$b" ]; then
+            echo "::error::corpus_sha256 not reproducible: $a vs $b"
+            exit 1
+          fi
+          echo "ok: reproducible ($a)"
+      - run: python -m unittest discover -s content/tests -v
+      - name: provenance (final -- tree still clean)
+        run: python ci/provenance.py --out provenance-final.json
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: provenance-content
+          path: provenance-*.json
+
+  meshsim:
+    name: mesh simulation (regression guard)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065
+        with:
+          python-version: '3.12'
+      - name: provenance (start -- clean checkout)
+        run: python ci/provenance.py --out provenance-start.json
+      - name: city blackout, 200 nodes
+        run: |
+          python -m meshsim.run --nodes 200 --scenario city_blackout \
+            --ticks 600 --assert-regression
+      - name: other scenarios
+        run: |
+          for s in rural_sparse crowd_surge partition_heal flat_batteries; do
+            echo "--- $s"
+            python -m meshsim.run --nodes 120 --scenario "$s" --ticks 400
+          done
+      - name: provenance (final -- tree still clean)
+        run: python ci/provenance.py --out provenance-final.json
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: provenance-meshsim
+          path: provenance-*.json
+
+  android:
+    name: android source compile + unit tests (committed wrapper)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - uses: actions/setup-java@c5195efecf7bdfc987ee8bae7a71cb8b11521c00
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: gradle/actions/setup-gradle@0b6dd653ba04f4f93bf581ec31e66cbd7dcb644d
+      - name: provenance (start -- clean checkout)
+        run: python ci/provenance.py --out provenance-start.json
+      # A2: CI must use the COMMITTED wrapper. Never `gradle wrapper` to
+      # regenerate it -- that contradicts the pinned-wrapper policy. Verify the
+      # wrapper jar + properties + gradlew are present and the jar matches its
+      # pinned SHA-256, and that distributionSha256Sum is present so the
+      # wrapper itself verifies the downloaded Gradle distribution.
+      - name: verify committed Gradle wrapper (no dynamic generation)
+        working-directory: android
+        run: |
+          test -f gradle/wrapper/gradle-wrapper.jar
+          test -f gradle/wrapper/gradle-wrapper.properties
+          test -f gradlew
+          jar_sha=$(python3 -c "import hashlib,sys;print(hashlib.sha256(open('gradle/wrapper/gradle-wrapper.jar','rb').read()).hexdigest())")
+          want="498495120a03b9a6ab5d155f5de3c8f0d986a449153702fb80fc80e134484f17"
+          [ "$jar_sha" = "$want" ] || { echo "::error::gradle-wrapper.jar sha256 mismatch: got $jar_sha want $want"; exit 1; }
+          grep -q distributionSha256Sum gradle/wrapper/gradle-wrapper.properties \
+            || { echo "::error::distributionSha256Sum missing from gradle-wrapper.properties"; exit 1; }
+          echo "ok: committed wrapper verified (jar+properties+gradlew, distributionSha256Sum pinned)"
+      - name: compile Kotlin surfaces and run host unit tests
+        working-directory: android
+        run: |
+          ./gradlew \
+            :core:assembleDebug \
+            :mesh:testDebugUnitTest \
+            :llm:testDebugUnitTest \
+            :app:compileLightDebugKotlin \
+            --no-daemon
+      - name: verify merged manifest has no INTERNET permission
+        run: |
+          manifest=$(find android -name AndroidManifest.xml -path '*merged*' | head -1)
+          if [ -n "$manifest" ] && grep -q 'android.permission.INTERNET' "$manifest"; then
+            echo '::error::INTERNET permission appeared via a library merge'
+            exit 1
+          fi
+          echo 'ok: merged manifest clean'
+      - name: provenance (final -- tree still clean)
+        run: python ci/provenance.py --out provenance-final.json
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: android-test-results
+          path: |
+            **/build/reports/tests/**
+            provenance-*.json
+
+  ios:
+    name: ios core + mesh tests + Archive-only xcodebuild
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065
+        with:
+          python-version: '3.12'
+      - name: provenance (start -- clean checkout)
+        run: python ci/provenance.py --out provenance-start.json
+      # Drift gate: the committed ios/Packages/GodstoneFoundation tree must be
+      # byte-identical to what sync_ios_foundation_package.py would regenerate.
+      - run: python scripts/sync_ios_foundation_package.py --check
+      - run: swift test --package-path ios/Packages/GodstoneFoundation
+      # xcodegen + xcodebuild Archive-only (LightRelease) is repo-owned green:
+      # the app starts with a truthful local "Archive unavailable" state and
+      # needs no model/native stack to build.
+      - run: xcodegen generate --spec ios/project.yml
+      - run: >-
+          xcodebuild -project ios/Godstone.xcodeproj -scheme Godstone-Light
+          -configuration LightRelease -destination 'generic/platform=iOS'
+          CODE_SIGNING_ALLOWED=NO build
+      - name: provenance (final -- tree still clean)
+        run: python ci/provenance.py --out provenance-final.json
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: provenance-ios
+          path: provenance-*.json

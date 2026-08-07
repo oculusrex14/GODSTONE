@@ -1,0 +1,62 @@
+{
+  "_comment": "Authoritative release-gate status (ADR-008 Stage 3). External gates that CANNOT run in repository-verification are represented here explicitly as OPEN/BLOCKED with their closure requirement -- they are never turned green by being skipped. ci/check_release_gates_status.py validates this file: a gate may be marked CLOSED only with an evidence_commit pointer to executable evidence. Repository-verification (the green-capable, repo-owned job) and the runnable fail-closed jobs live in .github/workflows/release-gates.yml.",
+  "generated_from_branch": "remediation/stage-3-durability",
+  "gates": [
+    {
+      "gate": "A-06-independent-noise-vectors",
+      "status": "OPEN",
+      "reason": "No approved EXTERNAL Noise fixture pinned in crypto/cacophony_vectors.json. Android and iOS agreeing with each other is not conformance.",
+      "closure_requirement": "Pin an independently maintained Noise implementation/vector source (immutable upstream commit, licence, source SHA-256, fixture SHA-256, reviewer, review date) for Noise_XX_25519_ChaChaPoly_BLAKE2s with the GMP2 prologue; require external==Python==Android==Swift; add a one-byte mutation proving the gate fails; then flip crypto.test_conformance _conformance_status from UNPINNED.",
+      "evidence_commit": null,
+      "ci_job": "release-gates.yml / noise-conformance"
+    },
+    {
+      "gate": "production-corpus",
+      "status": "OPEN",
+      "reason": "The full embedded archive requires model weights that are not committed and not network-fetched on the shipping critical path.",
+      "closure_requirement": "Pin and reproducibly restore the approved model + corpus; build the MEDIUM archive with embeddings; record corpus_sha256.",
+      "evidence_commit": null,
+      "ci_job": "release-gates.yml / production-corpus"
+    },
+    {
+      "gate": "model-native-stack",
+      "status": "OPEN",
+      "reason": "llama.cpp revision and native build must be pinned and reproducibly restored before the full app/LLM release build is evidence.",
+      "closure_requirement": "Pin llama.cpp revision; vendor/restore the XCFramework/JNI binary reproducibly; no placeholder framework.",
+      "evidence_commit": null,
+      "ci_job": "release-gates.yml / android-release-artifact"
+    },
+    {
+      "gate": "device-interoperability",
+      "status": "BLOCKED",
+      "reason": "Requires real Android and iOS device hardware over the BLE/Wi-Fi Aware link layer. Not runnable in CI. A-01 cannot CLOSE on unit tests alone.",
+      "closure_requirement": "Implement ADR-002 link layer (bounded BLE framing, fragmentation/reassembly, HS1/HS2/HS3 handshake driver, replay rejection, no plaintext fallback); then Hardware Case 0: Android<->iOS encrypted GMP/2.1 frame round-trip, authentication, same held-set digest, disconnect/reconnect safety, tamper+replay rejection, packet capture with no application plaintext.",
+      "evidence_commit": null,
+      "ci_job": "not-runnable-in-ci"
+    },
+    {
+      "gate": "accessibility",
+      "status": "BLOCKED",
+      "reason": "Requires on-device accessibility audit (VoiceOver/TalkBack) and is not part of repository-verification.",
+      "closure_requirement": "On-device accessibility review against the shipping UI; record findings and remediation.",
+      "evidence_commit": null,
+      "ci_job": "not-runnable-in-ci"
+    },
+    {
+      "gate": "battery-thermal",
+      "status": "BLOCKED",
+      "reason": "Requires on-device battery/thermal profiling under sustained mesh/Oracle load.",
+      "closure_requirement": "On-device battery/thermal measurements against agreed budgets.",
+      "evidence_commit": null,
+      "ci_job": "not-runnable-in-ci"
+    },
+    {
+      "gate": "signing-store-approval",
+      "status": "BLOCKED",
+      "reason": "Release signing keys and store submission are offline, non-network operations performed on a sealed workstation; not part of CI.",
+      "closure_requirement": "Offline signing with committed (non-secret) signing-config metadata + store review approval.",
+      "evidence_commit": null,
+      "ci_job": "not-runnable-in-ci"
+    }
+  ]
+}
