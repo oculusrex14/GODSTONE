@@ -71,18 +71,42 @@ android {
     // Assets are staged into this single variant directory only by
     // scripts/prepare_release_assets.py after hash/tier/review verification.
     sourceSets {
-        getByName("main") {
-            // Disabled transport UI is not compiled into the production app.
-            java.exclude("io/godstone/app/ui/mesh/**")
-            java.exclude("io/godstone/app/ui/sos/**")
-        }
-        getByName("light") { assets.setSrcDirs(listOf("src/light/assets")) }
+        named("light") { assets.setSrcDirs(listOf("src/light/assets")) }
     }
-
+    // Disabled transport UI (Mesh/SOS) is not compiled into the production app.
+    // These `java.exclude(...)` globs are BUILD-CONFIG EVIDENCE consumed by the
+    // shipping-path gate (ci/check_shipping_path.py): it reads them to decide
+    // which sources are dormant debt (excluded) vs. shipping (included). The
+    // bare `java` accessor is shadowed by a project-scope extension inside a
+    // `named("main") { ... }` lambda (Gradle Kotlin DSL resolves it to a
+    // Configuration, not the sourceSet's java directory set), so the excludes
+    // are applied through a typed sourceSet reference, where member access
+    // wins. The gate applies these globs to BOTH src/main/java (shipping
+    // sources) and src/main/dormant/java (where the dormant Mesh/SOS .kt
+    // files physically live) so that dropping a glob would re-include the
+    // dormant file and fail the gate (selftest sanity control).
+    sourceSets.getByName("main").java.exclude("io/godstone/app/ui/mesh/**")
+    sourceSets.getByName("main").java.exclude("io/godstone/app/ui/sos/**")
+    // The dormant Mesh/SOS UI screens physically live under src/main/dormant/java
+    // (NOT src/main/java). AGP/KGP auto-wires src/main/java and src/main/kotlin
+    // as Kotlin SOURCE DIRECTORIES and this cannot be prevented:
+    // KotlinCompile.getSources() (KGP; no longer extends AbstractCompile since
+    // Gradle 7) enumerates those directories with a **/*.kt include and IGNORES
+    // SourceDirectorySet.exclude() metadata (verified empirically: excludes
+    // registered on AGP's AndroidSourceSet.kotlin and on KGP's
+    // KotlinSourceSet.kotlin were both ignored, and setSrcDirs on either was
+    // overridden -- KGP re-adds src/main/java after evaluation). The dormant
+    // screens reference symbols only present in the non-shipping :mesh module,
+    // so they CANNOT compile. The only deterministic lever KGP/AGP honours is
+    // which directories are source directories at all: KGP auto-wires
+    // src/<sourceSet>/{java,kotlin} only, so src/main/dormant/java is NOT a
+    // source directory and its .kt files are never compiled. The gate still
+    // scans src/main/dormant/java and the java.exclude globs above classify
+    // those files as dormant debt, so the gate's evidence and sanity control
+    // are preserved while the build finally honours the exclusion.
     packaging {
         resources.excludes += "/META-INF/{AL2.0,LGPL2.1}"
     }
-
     lint {
         abortOnError = true
         checkReleaseBuilds = true

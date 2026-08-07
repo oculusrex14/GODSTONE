@@ -16,7 +16,9 @@ IMPORTANT -- what this inventory is NOT:
 Dormant sources reported:
   Android:
     - :app main sources matching a ``java.exclude(...)`` glob (mesh/sos) -- not
-      compiled into the LIGHT :app.
+      compiled into the LIGHT :app. These live under ``src/main/dormant/java``
+      (KGP auto-wires ``src/main/{java,kotlin}`` only, so that directory is not
+      a compile source), and the gate scans it as dormant debt.
     - the separate ``:mesh`` module main sources -- not a dependency of :app.
   iOS:
     - ``.swift`` files under ios/Godstone/Sources/App/ that are NOT on the
@@ -39,8 +41,8 @@ from pathlib import Path
 from check_shipping_path import (  # noqa: E402  (sibling module in ci/)
     SOURCE_SUFFIXES,
     android_exclude_globs,
+    android_excluded_sources,
     android_project_deps,
-    glob_to_regex,
     parse_ios_app_target,
 )
 
@@ -48,23 +50,17 @@ MESH_DIR_NAMES = {"mesh", "sos"}
 
 
 def android_excluded_app_sources(root: Path) -> list[tuple[Path, str]]:
-    """:app main sources that a java.exclude glob removes from the LIGHT build."""
+    """:app main sources that a java.exclude glob removes from the LIGHT build.
+
+    Delegates to check_shipping_path.android_excluded_sources so "included" vs
+    "excluded" is decided by the same build-config evidence (single source of
+    truth). The dormant files live under src/main/dormant/java (see
+    ANDROID_SOURCE_ROOTS in check_shipping_path).
+    """
     gradle = root / "android/app/build.gradle.kts"
     excludes = android_exclude_globs(gradle)
-    patterns = [glob_to_regex(g) for g in excludes]
-    java_root = root / "android/app/src/main/java"
-    out: list[tuple[Path, str]] = []
-    if not java_root.is_dir():
-        return out
-    for path in sorted(java_root.rglob("*")):
-        if not path.is_file() or path.suffix not in SOURCE_SUFFIXES:
-            continue
-        rel = path.relative_to(java_root).as_posix()
-        for g, p in zip(excludes, patterns):
-            if p.match(rel):
-                out.append((path, f"excluded from :app LIGHT by java.exclude(\"{g}\")"))
-                break
-    return out
+    excluded = android_excluded_sources(root / "android/app/src/main", excludes)
+    return [(p, f'excluded from :app LIGHT by java.exclude("{g}")') for p, g in excluded]
 
 
 def android_mesh_module_sources(root: Path) -> list[tuple[Path, str]]:
@@ -156,8 +152,10 @@ def run_inventory(root: Path) -> int:
 def _synth_repo(tmp: Path) -> Path:
     root = tmp / "repo"
     (root / "android/app/src/main/java/io/godstone/app/ui/home").mkdir(parents=True)
-    (root / "android/app/src/main/java/io/godstone/app/ui/mesh").mkdir(parents=True)
-    (root / "android/app/src/main/java/io/godstone/app/ui/sos").mkdir(parents=True)
+    # Dormant mesh/sos live under src/main/dormant/java (not compiled by KGP;
+    # see check_shipping_path.ANDROID_SOURCE_ROOTS), excluded by the globs.
+    (root / "android/app/src/main/dormant/java/io/godstone/app/ui/mesh").mkdir(parents=True)
+    (root / "android/app/src/main/dormant/java/io/godstone/app/ui/sos").mkdir(parents=True)
     (root / "android/mesh/src/main/java/io/godstone/mesh").mkdir(parents=True)
     (root / "android/app/build.gradle.kts").write_text(
         'sourceSets { getByName("main") {\n'
@@ -166,8 +164,8 @@ def _synth_repo(tmp: Path) -> Path:
         '} }\ndependencies {\n  implementation(project(":core"))\n  implementation(project(":llm"))\n}\n',
         encoding="utf-8")
     (root / "android/app/src/main/java/io/godstone/app/ui/home/HomeScreen.kt").write_text("fun Home() {}\n", encoding="utf-8")
-    (root / "android/app/src/main/java/io/godstone/app/ui/mesh/MeshScreen.kt").write_text("import io.godstone.mesh.MeshNode\n", encoding="utf-8")
-    (root / "android/app/src/main/java/io/godstone/app/ui/sos/SosScreen.kt").write_text("import io.godstone.mesh.MeshNode\n", encoding="utf-8")
+    (root / "android/app/src/main/dormant/java/io/godstone/app/ui/mesh/MeshScreen.kt").write_text("import io.godstone.mesh.MeshNode\n", encoding="utf-8")
+    (root / "android/app/src/main/dormant/java/io/godstone/app/ui/sos/SosScreen.kt").write_text("import io.godstone.mesh.MeshNode\n", encoding="utf-8")
     (root / "android/mesh/src/main/java/io/godstone/mesh/MeshNode.kt").write_text("class MeshNode\n", encoding="utf-8")
     (root / "ios/Godstone/Sources/App").mkdir(parents=True)
     (root / "ios/Godstone/Sources/GodstoneMesh").mkdir(parents=True)
@@ -189,8 +187,8 @@ def selftest() -> int:
         items = build_inventory(root)
         paths = {p for _c, p, _r in items}
         # Must list the excluded/dormant files...
-        for expected in ("android/app/src/main/java/io/godstone/app/ui/mesh/MeshScreen.kt",
-                         "android/app/src/main/java/io/godstone/app/ui/sos/SosScreen.kt",
+        for expected in ("android/app/src/main/dormant/java/io/godstone/app/ui/mesh/MeshScreen.kt",
+                         "android/app/src/main/dormant/java/io/godstone/app/ui/sos/SosScreen.kt",
                          "android/mesh/src/main/java/io/godstone/mesh/MeshNode.kt",
                          "ios/Godstone/Sources/App/MeshView.swift",
                          "ios/Godstone/Sources/App/SosView.swift",

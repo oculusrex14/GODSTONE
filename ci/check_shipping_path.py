@@ -5,7 +5,12 @@ This is a GATE: it fails (exit 1) iff a forbidden legacy Mesh / GMP-1 type or
 dependency is reachable from a LIGHT *shipping* build. "Reachable from a shipping
 build" is decided by BUILD-CONFIG EVIDENCE, not by a blind text scan:
 
-  * Android  -- the compiled source set of :app is ``android/app/src/main/**``
+  * Android  -- the compiled source set of :app is the union of
+               ``android/app/src/main/java`` (shipping sources) and
+               ``android/app/src/main/dormant/java`` (dormant Mesh/SOS sources
+               kept out of the Kotlin compile tree -- KGP auto-wires
+               ``src/<sourceSet>/{java,kotlin}`` only, so ``src/main/dormant/java``
+               is inert to the compiler while remaining on the gate's scan path),
                MINUS the ``java.exclude(...)`` globs declared in
                ``android/app/build.gradle.kts``, and the ``project(":...")``
                dependency edges in the same file. A forbidden reference in an
@@ -53,6 +58,15 @@ SOURCE_SUFFIXES = {".kt", ".java", ".swift", ".mm", ".m", ".h", ".hpp"}
 # Modules whose project() dependency from :app would pull legacy wire into shipping.
 FORBIDDEN_ANDROID_DEP_MODULES = {"mesh"}
 
+# Source roots the gate scans for :app. ``src/main/java`` holds the SHIPPING .kt
+# sources (compiled by KGP). ``src/main/dormant/java`` holds the dormant Mesh/SOS
+# .kt files that KGP must NOT compile -- they reference :mesh-only symbols, and
+# AGP/KGP ignores SourceDirectorySet.exclude() metadata, so the only way to keep
+# them out of the compile is to keep them out of a source directory KGP auto-wires
+# (KGP auto-wires src/<sourceSet>/{java,kotlin} only). The java.exclude globs in
+# build.gradle.kts classify the dormant files as dormant debt on this scan path.
+ANDROID_SOURCE_ROOTS = ("java", "dormant/java")
+
 
 # ---------------------------------------------------------------------------
 # Android build-config evidence
@@ -94,21 +108,54 @@ def glob_to_regex(glob: str) -> re.Pattern[str]:
     return re.compile("^" + "".join(out) + "$")
 
 
+def _android_source_files(app_src_main: Path):
+    """Yield (root, path) for each source file under each Android source root.
+
+    ``root`` is the per-root directory (e.g. src/main/java or src/main/dormant/java)
+    so callers compute the glob-relative path against the right root.
+    """
+    for rel_root in ANDROID_SOURCE_ROOTS:
+        root = app_src_main / rel_root
+        if not root.is_dir():
+            continue
+        for path in sorted(root.rglob("*")):
+            if path.is_file() and path.suffix in SOURCE_SUFFIXES:
+                yield root, path
+
+
 def android_included_sources(app_src_main: Path, excludes: list[str]) -> list[Path]:
-    """Source files compiled into :app: under src/main minus the exclude globs."""
-    java_root = app_src_main / "java"
-    if not java_root.is_dir():
-        return []
+    """Source files compiled into :app: under src/main minus the exclude globs.
+
+    Scans both src/main/java (shipping) and src/main/dormant/java (dormant
+    Mesh/SOS); the java.exclude globs are applied to each root so glob-matched
+    files are dormant debt, not shipping path.
+    """
     patterns = [glob_to_regex(g) for g in excludes]
     included: list[Path] = []
-    for path in sorted(java_root.rglob("*")):
-        if not path.is_file() or path.suffix not in SOURCE_SUFFIXES:
-            continue
-        rel = path.relative_to(java_root).as_posix()
+    for root, path in _android_source_files(app_src_main):
+        rel = path.relative_to(root).as_posix()
         if any(p.match(rel) for p in patterns):
             continue  # compile-excluded -> dormant debt, not shipping path
         included.append(path)
     return included
+
+
+def android_excluded_sources(app_src_main: Path, excludes: list[str]) -> list[tuple[Path, str]]:
+    """:app sources a java.exclude glob removes from the LIGHT build (dormant debt).
+
+    Complementary to android_included_sources: the files MATCHING a glob. Shared
+    with ci/inventory_dormant_wire.py so "included" vs "excluded" is decided by
+    the same build-config evidence (single source of truth).
+    """
+    patterns = [glob_to_regex(g) for g in excludes]
+    excluded: list[tuple[Path, str]] = []
+    for root, path in _android_source_files(app_src_main):
+        rel = path.relative_to(root).as_posix()
+        for g, p in zip(excludes, patterns):
+            if p.match(rel):
+                excluded.append((path, g))
+                break
+    return excluded
 
 
 # ---------------------------------------------------------------------------
@@ -288,7 +335,11 @@ def _synth_repo(tmp: Path) -> Path:
     root = tmp / "repo"
     # Android
     (root / "android/app/src/main/java/io/godstone/app/ui/home").mkdir(parents=True)
-    (root / "android/app/src/main/java/io/godstone/app/ui/mesh").mkdir(parents=True)
+    # Dormant Mesh source lives under src/main/dormant/java (NOT compiled by
+    # KGP, which auto-wires src/main/{java,kotlin} only), but on the gate's scan
+    # path so the java.exclude glob classifies it as dormant debt and the sanity
+    # control (drop the glob -> it becomes shipping) still fires.
+    (root / "android/app/src/main/dormant/java/io/godstone/app/ui/mesh").mkdir(parents=True)
     (root / "android/app/build.gradle.kts").write_text(
         'sourceSets { getByName("main") {\n'
         '  java.exclude("io/godstone/app/ui/mesh/**")\n'
@@ -301,7 +352,7 @@ def _synth_repo(tmp: Path) -> Path:
     (root / "android/app/src/main/java/io/godstone/app/ui/home/HomeScreen.kt").write_text(
         "package io.godstone.app.ui.home\nfun Home() {}\n", encoding="utf-8")
     # excluded source carrying a forbidden import (must NOT fail the gate)
-    (root / "android/app/src/main/java/io/godstone/app/ui/mesh/MeshScreen.kt").write_text(
+    (root / "android/app/src/main/dormant/java/io/godstone/app/ui/mesh/MeshScreen.kt").write_text(
         "import io.godstone.mesh.MeshNode\nfun MeshScreen(n: MeshNode) {}\n", encoding="utf-8")
     # iOS
     (root / "ios/Godstone/Sources/App").mkdir(parents=True)
