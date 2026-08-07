@@ -65,15 +65,47 @@ targets:
           ENABLE_TESTABILITY: NO
           SWIFT_ACTIVE_COMPILATION_CONDITIONS: ARCHIVE_ONLY
 
+  # ADR-008 patch 21: the iOS cross-platform-conformance gate. A real
+  # `xcodebuild test` target that EXECUTES the GMP/2.1 wire vectors, the
+  # Blake2s port vectors, the router, and -- added in patch 21 -- the Noise_XX
+  # handshake under the GMP2 prologue. The shipping app links only GodstoneCore
+  # (LIGHT: Mesh/SOS/Bulk disabled); this test target links GodstoneMesh too so
+  # the mesh codec is executed on iOS, but it is a hostless logic-test bundle
+  # that never ships. It deliberately depends ONLY on GodstoneCore + GodstoneMesh
+  # (never GodstoneLLM / the llama.cpp C++ bridge), so the gate runs without any
+  # model binary or third-party native dependency.
+  GodstoneMeshTests:
+    type: bundle.unit-test
+    platform: iOS
+    sources:
+      - path: Godstone/Tests/GodstoneMeshTests
+    dependencies:
+      - package: GodstonePackages
+        product: GodstoneMesh
+      - package: GodstonePackages
+        product: GodstoneCore
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: io.godstone.meshtests
+        PRODUCT_NAME: GodstoneMeshTests
+        GENERATE_INFOPLIST_FILE: YES
+        TARGETED_DEVICE_FAMILY: "1,2"
+      configs:
+        LightDebug:
+          SWIFT_ACTIVE_COMPILATION_CONDITIONS: DEBUG
+
 schemes:
   Godstone-Light:
     build:
       targets:
         Godstone: all
+        GodstoneMeshTests: test
     run:
       config: LightDebug
     test:
       config: LightDebug
+      targets:
+        - GodstoneMeshTests
     analyze:
       config: LightRelease
     profile:

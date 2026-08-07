@@ -18,13 +18,13 @@ public struct FrameV2: Equatable {
     public static let digestUuidString = "6764A003-9A5E-4C7B-B0A1-3E5D8C2F7A10"
 
     public enum Flags {
-        public static let sealed = 0x0001
-        public static let compressed = 0x0002
-        public static let fragmented = 0x0004
-        public static let has_pow = 0x0008
-        public static let ack_req = 0x0010
-        public static let relay_ok = 0x0020
-        public static let priority_mask = 0x0700
+        public static let sealed: UInt16 = 0x0001
+        public static let compressed: UInt16 = 0x0002
+        public static let fragmented: UInt16 = 0x0004
+        public static let has_pow: UInt16 = 0x0008
+        public static let ack_req: UInt16 = 0x0010
+        public static let relay_ok: UInt16 = 0x0020
+        public static let priority_mask: UInt16 = 0x0700
     }
 
     public let type: TypeV2

@@ -262,7 +262,13 @@ enum class TypeV2(val code: Byte) {{
 
 def emit_swift(s: dict) -> str:
     t = "\n".join(f"    case {n.lower()} = 0x{c:02X}" for n, c in s["message_types"].items())
-    f = "\n".join(f"        public static let {n.lower()} = 0x{c:04X}" for n, c in s["flags"].items())
+    # Typed UInt16: FrameV2.flags is UInt16, so the flag constants must be too.
+    # Untyped literals default to Int, which made `ack_req | relay_ok` an Int and
+    # broke every iOS consumer that assigned/compared against a UInt16 field
+    # (SosFrameValidator, WireV2VectorTests) -- a defect the iOS execution gate
+    # (patch 21 xcodebuild) surfaced, since the mesh source was never compiled
+    # on iOS before (the shipping app links only GodstoneCore).
+    f = "\n".join(f"        public static let {n.lower()}: UInt16 = 0x{c:04X}" for n, c in s["flags"].items())
     return f'''// {BANNER.replace(chr(10), chr(10) + "// ")}
 import Foundation
 
