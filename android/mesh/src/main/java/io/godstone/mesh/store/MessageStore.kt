@@ -1,4 +1,4 @@
-// SYNTHESIZED gap-closure file -- authored to make the project compile; see docs/AUDIT.md.
+// SYNTHESIZED gap-closure file -- realised for GMP/2.1 per ADR-001 §5 + ADR-004.
 package io.godstone.mesh.store
 
 import android.content.ContentValues
@@ -13,9 +13,9 @@ import net.zetetic.database.sqlcipher.SQLiteOpenHelper
 import androidx.security.crypto.EncryptedSharedPreferences
 import androidx.security.crypto.MasterKey
 import java.security.SecureRandom
-import io.godstone.mesh.wire.Frame
-import io.godstone.mesh.wire.FrameType
-import io.godstone.mesh.wire.Priority
+import io.godstone.mesh.wire.v2.FrameV2
+import io.godstone.mesh.wire.v2.Priority
+import io.godstone.mesh.wire.v2.TypeV2
 
 /**
  * Persistent hold for relayed and locally-originated frames.
@@ -24,40 +24,48 @@ import io.godstone.mesh.wire.Priority
  * so an encounter with any peer can be answered from disk without an in-memory
  * index. Frames are retained until delivered or aged out, which is the whole
  * point of a delay-tolerant epidemic router.
+ *
+ * GMP/2.1 schema v2 (ADR-001 §5 / ADR-004): the primary key is the 16-byte
+ * content-derived msg_id BLOB; there is no header timestamp column (GMP/2.1
+ * carries no header timestamp — created_at lives inside the sealed payload) and
+ * no priority-as-source column (priority is 3 flag bits in `flags`; the
+ * `priority` column here is a denormalised query aid derived from
+ * Priority.fromFlags(flags) so ORDER BY / eviction can avoid SQLite's lack of a
+ * bitwise shift operator). Retention is receipt-relative (received_at), not
+ * creation-relative. There is no installed base (ADR-001 §5), so no migration
+ * code is written: an upgrade drops and recreates the table.
  */
 interface MessageStore {
     /** Persist [frame], recording the peer it was received from. */
-    suspend fun persist(frame: Frame, receivedFrom: ByteArray)
+    suspend fun persist(frame: FrameV2, receivedFrom: ByteArray)
 
     /** All held frames, SOS-first then by priority and recency. */
-    suspend fun allHeldOrderedByPriority(): List<Frame>
+    suspend fun allHeldOrderedByPriority(): List<FrameV2>
 
     /** msg_ids of every held frame, for bloom-digest construction. */
-    suspend fun allHeldMsgIds(): List<Long>
+    suspend fun allHeldMsgIds(): List<ByteArray>
 
     /**
      * Stream held frames in priority order, stopping as soon as [visit] returns
-     * false. This is what Router.framesPeerLacks actually calls.
-     *
-     * Audit A-13: the list-returning variants materialise the entire store (up
-     * to the 200 MB budget) into an ArrayList on every peer encounter. Router
-     * was already written against this streaming form, but the interface never
-     * declared it -- an unresolved reference that no Python-only invariant could
-     * see, because Kotlin is never compiled in the verification environment.
-     * Invariant F now resolves every cross-file call and would fail the build.
+     * false. This is what Router.framesPeerLacks actually calls (audit A-13: the
+     * list-returning variants materialise the entire store into memory; this
+     * streaming form pages rows and abandons the cursor the moment visit stops).
      */
-    suspend fun forEachHeldOrderedByPriority(visit: (Frame) -> Boolean)
+    suspend fun forEachHeldOrderedByPriority(visit: (FrameV2) -> Boolean)
 
     /** Stream held msg_ids, stopping as soon as [visit] returns false. */
-    suspend fun forEachHeldMsgId(visit: (Long) -> Boolean)
+    suspend fun forEachHeldMsgId(visit: (ByteArray) -> Boolean)
 }
 
 /**
- * SQLCipher-backed store (threat A6).
+ * SQLCipher-backed store (threat A6). GMP/2.1 schema v2.
  *
- * This store still uses the legacy GMP/1 logical schema until ADR-001/M1-wire
- * lands. ACK expiry, exact hard-cap semantics, and coordinated identity/store
- * wipe remain tracked in ADR-004 and are not represented as closed here.
+ * Persist-before-forward, delete-on-authenticated-ACK, hard-cap eviction
+ * (SOS retained last), and coordinated identity/store wipe are the ADR-004
+ * exit criteria; the repo-controlled ones (1,3,4,5,6) are realised here, while
+ * authenticated-ACK deletion (criterion 2) depends on the inbound ACK path that
+ * the link layer gates closed (LINK_LAYER_READY=false) and remains tracked
+ * under ADR-004, not represented as closed.
  */
 class SqliteMessageStore(
     private val ctx: Context,
@@ -73,14 +81,17 @@ class SqliteMessageStore(
         helper = Helper(ctx.applicationContext, passphrase(ctx.applicationContext))
     }
 
-    override suspend fun persist(frame: Frame, receivedFrom: ByteArray) {
+    override suspend fun persist(frame: FrameV2, receivedFrom: ByteArray) {
         val db = helper.writableDatabase
         val cv = ContentValues().apply {
             put(COL_MSG_ID, frame.msgId)
             put(COL_TYPE, frame.type.code.toInt())
             put(COL_TTL, frame.ttl)
-            put(COL_PRIORITY, frame.priority.code.toInt())
-            put(COL_TIMESTAMP, frame.timestamp)
+            put(COL_HOP_COUNT, frame.hopCount)
+            put(COL_FLAGS, frame.flags)
+            // Denormalised query aid; the source of truth is `flags` (Priority.fromFlags).
+            put(COL_PRIORITY, Priority.fromFlags(frame.flags).code)
+            put(COL_ROUTING_TAG, frame.routingTag)
             put(COL_PAYLOAD, frame.payload)
             put(COL_RECEIVED_FROM, receivedFrom)
             put(COL_RECEIVED_AT, System.currentTimeMillis())
@@ -89,9 +100,9 @@ class SqliteMessageStore(
         evictIfOverBudget(db)
     }
 
-    override suspend fun allHeldOrderedByPriority(): List<Frame> {
+    override suspend fun allHeldOrderedByPriority(): List<FrameV2> {
         val db = helper.readableDatabase
-        val out = ArrayList<Frame>()
+        val out = ArrayList<FrameV2>()
         db.query(
             TABLE, null, null, null, null, null,
             "$COL_PRIORITY ASC, $COL_RECEIVED_AT DESC"
@@ -104,11 +115,11 @@ class SqliteMessageStore(
         return out
     }
 
-    override suspend fun allHeldMsgIds(): List<Long> {
+    override suspend fun allHeldMsgIds(): List<ByteArray> {
         val db = helper.readableDatabase
-        val out = ArrayList<Long>()
+        val out = ArrayList<ByteArray>()
         db.query(TABLE, arrayOf(COL_MSG_ID), null, null, null, null, null).use { c ->
-            while (c.moveToNext()) out.add(c.getLong(0))
+            while (c.moveToNext()) out.add(c.getBlob(0))
         }
         return out
     }
@@ -118,7 +129,7 @@ class SqliteMessageStore(
      * moment [visit] returns false, so a full backlog never lands in memory
      * (audit A-13).
      */
-    override suspend fun forEachHeldOrderedByPriority(visit: (Frame) -> Boolean) {
+    override suspend fun forEachHeldOrderedByPriority(visit: (FrameV2) -> Boolean) {
         val db = helper.readableDatabase
         db.query(
             TABLE, null, null, null, null, null,
@@ -131,31 +142,28 @@ class SqliteMessageStore(
         }
     }
 
-    override suspend fun forEachHeldMsgId(visit: (Long) -> Boolean) {
+    override suspend fun forEachHeldMsgId(visit: (ByteArray) -> Boolean) {
         val db = helper.readableDatabase
         db.query(TABLE, arrayOf(COL_MSG_ID), null, null, null, null, null).use { c ->
             while (c.moveToNext()) {
-                if (!visit(c.getLong(0))) return
+                if (!visit(c.getBlob(0))) return
             }
         }
     }
 
     /**
      * Best-effort eviction of the oldest non-SOS rows when the store exceeds
-     * [maxBytes]. SOS frames are retained longest by being sorted last out.
+     * [maxBytes]. SOS frames are retained longest by being excluded from
+     * eviction (PROTOCOL.md section 7).
+     *
+     * AUDIT A-14. This previously ran the DELETE unconditionally on EVERY insert
+     * with no check that the budget had been exceeded. The size is now measured
+     * before anything is deleted, and the query only runs when the store is
+     * genuinely over budget.
      *
      * TODO: precise byte accounting; this currently approximates by row count.
      */
     private fun evictIfOverBudget(db: SQLiteDatabase) {
-        // AUDIT A-14. This previously ran the DELETE unconditionally on EVERY
-        // insert, with no check that the budget had been exceeded at all. Its
-        // own doc comment said "when the store exceeds maxBytes", and it never
-        // asked. On a fresh install with two messages held, inserting a third
-        // deleted a quarter of the non-SOS backlog immediately -- a
-        // delay-tolerant store that discards the traffic it exists to carry.
-        //
-        // The size is now measured before anything is deleted, and the query
-        // only runs when the store is genuinely over budget.
         val heldBytes = db.rawQuery(
             "SELECT COALESCE(SUM(LENGTH($COL_PAYLOAD)) + COUNT(*) * $ROW_OVERHEAD, 0) FROM $TABLE",
             null
@@ -163,8 +171,8 @@ class SqliteMessageStore(
 
         if (heldBytes <= maxBytes) return   // nothing to do: the common case
 
-        // Evict roughly the overshoot, oldest non-SOS first. SOS is retained
-        // last under storage pressure (PROTOCOL.md section 7).
+        // Evict roughly the overshoot, oldest non-SOS first. SOS (priority 0) is
+        // retained under storage pressure.
         val overshoot = heldBytes - maxBytes
         val approxRowBytes = ROW_OVERHEAD + 256L
         val toDelete = ((overshoot / approxRowBytes) + 1).coerceAtLeast(1L)
@@ -172,22 +180,20 @@ class SqliteMessageStore(
             "DELETE FROM $TABLE WHERE $COL_MSG_ID IN (" +
                 "SELECT $COL_MSG_ID FROM $TABLE WHERE $COL_PRIORITY != ? " +
                 "ORDER BY $COL_RECEIVED_AT ASC LIMIT ?)",
-            arrayOf<Any>(Priority.SOS.code.toInt(), toDelete)
+            arrayOf<Any>(Priority.SOS.code, toDelete)
         )
     }
 
-    private fun readFrame(c: android.database.Cursor): Frame? {
-        // Reconstruct via the wire enum types, not the payload bytes.
+    private fun readFrame(c: android.database.Cursor): FrameV2? {
         val typeCode = c.getInt(c.getColumnIndexOrThrow(COL_TYPE)).toByte()
-        val priorityCode = c.getInt(c.getColumnIndexOrThrow(COL_PRIORITY)).toByte()
-        val ft = FrameType.from(typeCode) ?: return null
-        val pr = Priority.from(priorityCode) ?: return null
-        return Frame(
-            type = ft,
+        val type = TypeV2.from(typeCode) ?: return null
+        return FrameV2(
+            type = type,
+            msgId = c.getBlob(c.getColumnIndexOrThrow(COL_MSG_ID)),
+            routingTag = c.getBlob(c.getColumnIndexOrThrow(COL_ROUTING_TAG)),
             ttl = c.getInt(c.getColumnIndexOrThrow(COL_TTL)),
-            priority = pr,
-            msgId = c.getLong(c.getColumnIndexOrThrow(COL_MSG_ID)),
-            timestamp = c.getLong(c.getColumnIndexOrThrow(COL_TIMESTAMP)),
+            hopCount = c.getInt(c.getColumnIndexOrThrow(COL_HOP_COUNT)),
+            flags = c.getInt(c.getColumnIndexOrThrow(COL_FLAGS)),
             payload = c.getBlob(c.getColumnIndexOrThrow(COL_PAYLOAD))
         )
     }
@@ -197,11 +203,13 @@ class SqliteMessageStore(
         override fun onCreate(db: SQLiteDatabase) {
             db.execSQL(
                 """CREATE TABLE $TABLE (
-                    $COL_MSG_ID INTEGER PRIMARY KEY,
+                    $COL_MSG_ID BLOB PRIMARY KEY,
                     $COL_TYPE INTEGER,
                     $COL_TTL INTEGER,
+                    $COL_HOP_COUNT INTEGER,
+                    $COL_FLAGS INTEGER,
                     $COL_PRIORITY INTEGER,
-                    $COL_TIMESTAMP INTEGER,
+                    $COL_ROUTING_TAG BLOB,
                     $COL_PAYLOAD BLOB,
                     $COL_RECEIVED_FROM BLOB,
                     $COL_RECEIVED_AT INTEGER
@@ -210,19 +218,15 @@ class SqliteMessageStore(
         }
 
         override fun onUpgrade(db: SQLiteDatabase, oldVersion: Int, newVersion: Int) {
-            // AUDIT A-12. This used to DROP TABLE, destroying every undelivered
-            // frame -- including SOS traffic the mesh had not yet been able to
-            // hand on -- the first time a user updated the app. In a blackout an
-            // app update is exactly when a queued distress beacon matters most.
-            //
-            // Additive migration only. Any future schema change must preserve
-            // held frames or explicitly justify why it cannot.
+            // ADR-001 §5: GMP/1 was never shipped (no installed base, V3 never
+            // shipped on either platform), so there is nothing to migrate. Drop
+            // the old table and recreate the v2 schema. This is the one case
+            // where a destructive onUpgrade is correct: a non-destructive
+            // migration of a schema that was never deployed would be invented
+            // code defending data that does not exist.
             if (oldVersion == newVersion) return
-            db.execSQL("ALTER TABLE $TABLE RENAME TO ${TABLE}_migrating")
+            db.execSQL("DROP TABLE IF EXISTS $TABLE")
             onCreate(db)
-            db.execSQL(
-                "INSERT OR IGNORE INTO $TABLE SELECT * FROM ${TABLE}_migrating")
-            db.execSQL("DROP TABLE ${TABLE}_migrating")
         }
     }
 
@@ -266,13 +270,15 @@ class SqliteMessageStore(
         /** Per-row bookkeeping beyond the payload blob. */
         private const val ROW_OVERHEAD = 64L
         private const val DB_NAME = "godstone_messages.db"
-        private const val DB_VERSION = 1
+        private const val DB_VERSION = 2
         private const val TABLE = "held_frames"
         private const val COL_MSG_ID = "msg_id"
         private const val COL_TYPE = "type"
         private const val COL_TTL = "ttl"
+        private const val COL_HOP_COUNT = "hop_count"
+        private const val COL_FLAGS = "flags"
         private const val COL_PRIORITY = "priority"
-        private const val COL_TIMESTAMP = "timestamp"
+        private const val COL_ROUTING_TAG = "routing_tag"
         private const val COL_PAYLOAD = "payload"
         private const val COL_RECEIVED_FROM = "received_from"
         private const val COL_RECEIVED_AT = "received_at"
@@ -284,24 +290,31 @@ class SqliteMessageStore(
  * that exercise the router with no device or SQLite available.
  */
 internal class InMemoryMessageStore : MessageStore {
-    private val held = LinkedHashMap<Long, Frame>()
-
-    override suspend fun persist(frame: Frame, receivedFrom: ByteArray) {
-        held[frame.msgId] = frame
+    // ByteArray is identity-equal by default, so wrap it for content-based map keys.
+    private class BytesKey(val bytes: ByteArray) {
+        override fun equals(other: Any?): Boolean = other is BytesKey && bytes.contentEquals(other.bytes)
+        override fun hashCode(): Int = bytes.contentHashCode()
     }
 
-    override suspend fun allHeldOrderedByPriority(): List<Frame> =
+    private val held = LinkedHashMap<BytesKey, FrameV2>()
+
+    override suspend fun persist(frame: FrameV2, receivedFrom: ByteArray) {
+        held[BytesKey(frame.msgId)] = frame
+    }
+
+    override suspend fun allHeldOrderedByPriority(): List<FrameV2> =
         held.values.sortedWith(
-            compareBy<Frame> { it.priority.code }.thenByDescending { it.timestamp }
+            compareBy<FrameV2> { Priority.fromFlags(it.flags).code }
+                .thenByDescending { it.type.code.toInt() }
         )
 
-    override suspend fun allHeldMsgIds(): List<Long> = held.keys.toList()
+    override suspend fun allHeldMsgIds(): List<ByteArray> = held.values.map { it.msgId }
 
-    override suspend fun forEachHeldOrderedByPriority(visit: (Frame) -> Boolean) {
+    override suspend fun forEachHeldOrderedByPriority(visit: (FrameV2) -> Boolean) {
         for (f in allHeldOrderedByPriority()) if (!visit(f)) return
     }
 
-    override suspend fun forEachHeldMsgId(visit: (Long) -> Boolean) {
+    override suspend fun forEachHeldMsgId(visit: (ByteArray) -> Boolean) {
         for (id in allHeldMsgIds()) if (!visit(id)) return
     }
 }

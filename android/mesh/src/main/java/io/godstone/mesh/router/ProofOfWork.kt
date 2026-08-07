@@ -1,90 +1,129 @@
-// SYNTHESIZED gap-closure file -- authored to make the project compile; see docs/AUDIT.md.
+// SYNTHESIZED gap-closure file -- realised for GMP/2.1 per ADR-001 §3 + ADR-008 §2.1.
 package io.godstone.mesh.router
 
-import io.godstone.mesh.wire.Frame
 import org.bouncycastle.crypto.digests.Blake2sDigest
-import java.nio.ByteBuffer
-import kotlinx.coroutines.Dispatchers
-import kotlin.coroutines.coroutineContext
 import kotlinx.coroutines.ensureActive
-import kotlinx.coroutines.withContext
+import kotlin.coroutines.coroutineContext
 
 /**
- * 20-bit BLAKE2s proof of work attached to GROUP and BROADCAST frames.
+ * 20-bit BLAKE2s proof of work, carried inside the sealed, authenticated
+ * payload (ADR-001 §3). Under GMP/1 the search variable was msg_id itself
+ * (there was no nonce field); under GMP/2.1 msg_id is a content hash and CANNOT
+ * be mutated, so the nonce moves into the sealed payload where it is
+ * authenticated rather than merely present.
  *
- * PoW is the cheapest way to make flooding expensive without a central rate
- * limiter: a peer must burn CPU to inject wide-distribution traffic, so a
- * sybil node cannot drown the mesh for free. SOS and DIRECT are exempt because
- * latency there is safety.
+ * WHAT THIS MEANS FOR ROUTING. PoW is now a **recipient-side** check, not a
+ * relay gate. A relay cannot unseal the payload, so it cannot verify the stamp;
+ * relay-side anti-flood is the PeerGovernor token buckets (threat A5). The
+ * recipient, after SealedSender.open, verifies the nonce against the unsealed
+ * content. The FrameV2 HAS_POW flag (0x0008) marks a frame whose sealed payload
+ * carries a mined nonce; GROUP and BROADCAST set it, SOS and DIRECT do not.
  *
  * Verification is cheap (one BLAKE2s); mining is not, which is the point.
  */
 object ProofOfWork {
 
+    const val NONCE_BYTES = 8
+    /** ADR-001 §3: the production target is a 20-bit-zero BLAKE2s-256 prefix. */
+    const val TARGET_BITS = 20
+
     /**
-     * True iff [frame] carries a valid 20-bit PoW stamp.
+     * True iff (powNonce ‖ senderNodeId ‖ createdAtBe ‖ typeCode ‖ plaintext)
+     * hashes to a BLAKE2s-256 digest whose top [targetBits] bits are zero.
      *
-     * Input = payload || msg_id || timestamp || type_code; the hash must have its
-     * top 20 bits zero. The type is bound so a stamp cannot be replayed against a
-     * different frame type.
+     * The type code is bound so a stamp cannot be replayed against a different
+     * frame type (the GMP/1 rationale survives the cutover). The plaintext is
+     * the application payload the sender sealed — NOT the sealed blob, which a
+     * relay could see but a recipient verifies after opening.
+     *
+     * [targetBits] defaults to [TARGET_BITS] (20, ADR-pinned). A lower value is
+     * exposed solely so unit tests can exercise the mine/verify path without
+     * paying for a ~1M-hash search; production always calls the default.
      */
-    fun verify(frame: Frame): Boolean {
-        val input = frame.payload +
-            longBytes(frame.msgId) +
-            longBytes(frame.timestamp) +
-            byteArrayOf(frame.type.code)
-
-        val h = ByteArray(32)
-        val d = Blake2sDigest(256 / 8)
-        d.update(input, 0, input.size)
-        d.doFinal(h, 0)
-
-        return h[0].toInt() == 0 &&
-            h[1].toInt() == 0 &&
-            (h[2].toInt() and 0xF0) == 0
+    fun verify(
+        powNonce: ByteArray,
+        senderNodeId: ByteArray,
+        createdAtBe: ByteArray,
+        typeCode: Byte,
+        plaintext: ByteArray,
+        targetBits: Int = TARGET_BITS
+    ): Boolean {
+        require(powNonce.size == NONCE_BYTES) { "pow_nonce must be $NONCE_BYTES bytes" }
+        require(targetBits in 1..32) { "targetBits out of range" }
+        val h = blake2s256(preimage(powNonce, senderNodeId, createdAtBe, typeCode, plaintext))
+        return topBitsZero(h, targetBits)
     }
 
     /**
-     * Return a copy of [frame] whose msg_id satisfies the 20-bit PoW target.
+     * Find a [NONCE_BYTES] nonce satisfying the [targetBits] target for the
+     * given unsealed content. At the production 20-bit target this is ~1M
+     * BLAKE2s, so this suspend function must be called OFF the main thread.
      *
-     * Audit A-11: verify() existed but nothing produced stamps, so every
-     * locally-originated GROUP/BROADCAST frame would have been dropped by the
-     * first honest relay.
-     *
-     * There is no dedicated nonce field in the GMP/1 header (see wire/Frame.kt),
-     * so the search variable is msg_id itself, which the sender already chooses
-     * freely and which verify() already binds. The hash input below is therefore
-     * byte-identical to verify() by construction -- do not let the two drift.
-     *
-     * msg_id stays uniformly distributed, so bloom-digest and dedup behaviour
-     * are unaffected.
-     *
-     * ~1M BLAKE2s at 20 bits: suspending, off the main thread, and cooperatively
-     * cancellable so a user leaving the screen does not strand a CPU.
+     * It does NOT impose its own dispatcher: the caller controls threading
+     * (MeshNode calls it from Dispatchers.IO). Imposing Dispatchers.Default
+     * here deadlocks under runBlocking in the test worker; a suspend function
+     * should not override its caller's context. It remains cooperatively
+     * cancellable via ensureActive() so a user leaving the screen does not
+     * strand a CPU.
      */
-    suspend fun mine(frame: Frame): Frame = withContext(Dispatchers.Default) {
-        val tail = longBytes(frame.timestamp) + byteArrayOf(frame.type.code)
-        val h = ByteArray(32)
-        var candidate = frame.msgId
-
+    suspend fun mine(
+        senderNodeId: ByteArray,
+        createdAtBe: ByteArray,
+        typeCode: Byte,
+        plaintext: ByteArray,
+        rng: java.security.SecureRandom = java.security.SecureRandom(),
+        targetBits: Int = TARGET_BITS
+    ): ByteArray {
+        require(targetBits in 1..32) { "targetBits out of range" }
+        val powNonce = ByteArray(NONCE_BYTES).also { rng.nextBytes(it) }
         while (true) {
             coroutineContext.ensureActive()
-
-            val d = Blake2sDigest(256 / 8)
-            d.update(frame.payload, 0, frame.payload.size)
-            val mid = longBytes(candidate)
-            d.update(mid, 0, mid.size)
-            d.update(tail, 0, tail.size)
-            d.doFinal(h, 0)
-
-            if (h[0].toInt() == 0 && h[1].toInt() == 0 && (h[2].toInt() and 0xF0) == 0) {
-                return@withContext frame.copy(msgId = candidate)
+            val h = blake2s256(preimage(powNonce, senderNodeId, createdAtBe, typeCode, plaintext))
+            if (topBitsZero(h, targetBits)) {
+                return powNonce.copyOf()
             }
-            candidate++
+            increment(powNonce)
         }
-        error("unreachable")
     }
 
-    private fun longBytes(v: Long): ByteArray =
-        ByteBuffer.allocate(8).putLong(v).array()
+    /** True iff the top [targetBits] bits of [h] are all zero. */
+    private fun topBitsZero(h: ByteArray, targetBits: Int): Boolean {
+        var remaining = targetBits
+        var i = 0
+        while (remaining >= 8) {
+            if (h[i].toInt() != 0) return false
+            remaining -= 8; i++
+        }
+        if (remaining > 0) {
+            val mask = (0xFF shl (8 - remaining)) and 0xFF
+            if (h[i].toInt() and mask != 0) return false
+        }
+        return true
+    }
+
+    private fun preimage(
+        powNonce: ByteArray, senderNodeId: ByteArray, createdAtBe: ByteArray,
+        typeCode: Byte, plaintext: ByteArray
+    ) = powNonce + senderNodeId + createdAtBe + byteArrayOf(typeCode) + plaintext
+
+    private fun blake2s256(data: ByteArray): ByteArray {
+        val d = Blake2sDigest(256 / 8)
+        d.update(data, 0, data.size)
+        val out = ByteArray(32)
+        d.doFinal(out, 0)
+        return out
+    }
+
+    /** Big-endian increment of an 8-byte nonce; wraps at 2^64 (astronomically never). */
+    private fun increment(b: ByteArray) {
+        // Compare the byte UNSIGNED: toInt() sign-extends, so 0xFF becomes -1 and
+        // a naive `== 0xFF` is never true -- the carry would never fire and the
+        // nonce would cycle through only 256 last-byte values, hanging the mine.
+        var i = b.size - 1
+        while (i >= 0) {
+            if ((b[i].toInt() and 0xFF) == 0xFF) { b[i] = 0; i-- } else {
+                b[i] = ((b[i].toInt() and 0xFF) + 1).toByte(); return
+            }
+        }
+    }
 }

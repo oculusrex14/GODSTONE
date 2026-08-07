@@ -1,6 +1,6 @@
 package io.godstone.mesh.abuse
 
-import io.godstone.mesh.wire.Priority
+import io.godstone.mesh.wire.v2.Priority
 import java.util.concurrent.ConcurrentHashMap
 import kotlin.math.min
 import kotlin.math.pow

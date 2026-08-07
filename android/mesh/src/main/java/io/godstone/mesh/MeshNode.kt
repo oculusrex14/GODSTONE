@@ -8,7 +8,6 @@ import io.godstone.mesh.transport.BleTransport
 import io.godstone.mesh.transport.PeerEvent
 import io.godstone.mesh.transport.PowerState
 import io.godstone.mesh.transport.WifiAwareTransport
-import java.security.SecureRandom
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -104,7 +103,9 @@ class MeshNode(
             }
         }.launchIn(scope)
         ble.receivedPlaintext().onEach { (peer, clear) ->
-            runCatching { io.godstone.mesh.wire.Frame.decode(clear) }
+            // GMP/2.1 frame path (ADR-001/008): decode is fail-closed (null on any
+            // desync/magic/version/CRC/length error) and the router takes FrameV2.
+            runCatching { io.godstone.mesh.wire.v2.FrameV2.decode(clear) }
                 .getOrNull()?.let { router.onFrameReceived(it, peer) }
         }.launchIn(scope)
         publishStatus()
@@ -129,7 +130,7 @@ class MeshNode(
     suspend fun broadcastSos(payload: ByteArray): SosDispatchResult = withContext(Dispatchers.IO) {
         if (!LINK_LAYER_READY) return@withContext SosDispatchResult.Unavailable(LINK_LAYER_OPEN_REASON)
         runCatching {
-            val frame = router.buildSos(payload, SecureRandom().nextLong())
+            val frame = router.buildSos(payload)
             store.persist(frame, receivedFrom = identity.nodeId)
             val bytes = frame.encode()
             var handed = 0

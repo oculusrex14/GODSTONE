@@ -3,13 +3,15 @@ package io.godstone.mesh
 import io.godstone.mesh.router.BloomDigest
 import io.godstone.mesh.router.Router
 import io.godstone.mesh.store.InMemoryMessageStore
-import io.godstone.mesh.wire.Frame
-import io.godstone.mesh.wire.FrameType
-import io.godstone.mesh.wire.Priority
+import io.godstone.mesh.wire.v2.FrameV2
+import io.godstone.mesh.wire.v2.Priority
+import io.godstone.mesh.wire.v2.SosFrameValidator
+import io.godstone.mesh.wire.v2.TypeV2
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
+import kotlin.test.assertNotEquals
 import kotlin.test.assertTrue
 
 /**
@@ -17,26 +19,32 @@ import kotlin.test.assertTrue
  * loops, duplicates, dying batteries and messages nobody can deliver yet.
  *
  * These are unit tests over the routing logic only - no Bluetooth, no threads.
- * The radio layer is exercised by meshsim instead.
+ * The radio layer is exercised by meshsim instead. Runs on the canonical GMP/2.1
+ * FrameV2 path (ADR-001/008): 16-byte content-derived msg_id, priority from the
+ * flags PRIORITY_MASK, no header-timestamp age gate, and no relay PoW gate (PoW
+ * is recipient-side, verified after SealedSender.open -- see ProofOfWorkTest).
  */
 class RouterTest {
 
     private val selfNodeId = ByteArray(16) { 0x0A }
     private val peerC = ByteArray(16) { 0x0C }
 
+    /** Deterministic, distinct 16-byte msg_id for a given seed. */
+    private fun msgId(seed: Int): ByteArray = ByteArray(16) { ((seed + it) and 0xFF).toByte() }
+
     private fun frame(
-        msgId: Long,
+        msgId: ByteArray,
         ttl: Int = 8,
         priority: Priority = Priority.DIRECT,
-        type: FrameType = FrameType.MESSAGE,
-        timestamp: Long = System.currentTimeMillis() / 1000,
+        type: TypeV2 = TypeV2.MESSAGE,
         payload: ByteArray = ByteArray(32)
-    ) = Frame(
+    ): FrameV2 = FrameV2(
         type = type,
-        ttl = ttl,
-        priority = priority,
         msgId = msgId,
-        timestamp = timestamp,
+        routingTag = ByteArray(4),
+        ttl = ttl,
+        hopCount = 0,
+        flags = Priority.toFlags(priority),
         payload = payload
     )
 
@@ -44,7 +52,8 @@ class RouterTest {
     fun `duplicate message is not relayed twice`() = runTest {
         val store = InMemoryMessageStore()
         val router = Router(store, selfNodeId)
-        val f = frame(1)
+        val id = msgId(1)
+        val f = frame(id)
 
         // First sighting is novel: persist and offer for relay.
         assertTrue(router.onFrameReceived(f, fromPeer = peerC))
@@ -57,75 +66,82 @@ class RouterTest {
     fun `frame with exhausted ttl is dropped`() = runTest {
         val store = InMemoryMessageStore()
         val router = Router(store, selfNodeId)
-        assertFalse(router.onFrameReceived(frame(2, ttl = 0), fromPeer = peerC))
+        assertFalse(router.onFrameReceived(frame(msgId(2), ttl = 0), fromPeer = peerC))
     }
 
     @Test
     fun `ttl above one is relayed and decremented on the forward copy`() = runTest {
         val store = InMemoryMessageStore()
         val router = Router(store, selfNodeId)
-        val f = frame(3, ttl = 5)
+        val f = frame(msgId(3), ttl = 5)
 
         assertTrue(router.onFrameReceived(f, fromPeer = peerC))
-        assertEquals(4, router.forwardCopy(f).ttl)
+        val fwd = router.forwardCopy(f)
+        assertEquals(4, fwd.ttl)
+        assertEquals(1, fwd.hopCount)
     }
 
     @Test
-    fun `aged frame is dropped`() = runTest {
+    fun `group priority is accepted by the relay - PoW is recipient-side not a relay gate`() = runTest {
         val store = InMemoryMessageStore()
         val router = Router(store, selfNodeId)
-        val aged = frame(4, timestamp = System.currentTimeMillis() / 1000 - 15 * 86400)
-
-        // Beyond MAX_AGE_SECONDS (14 days): stale information is not relayed.
-        assertFalse(router.onFrameReceived(aged, fromPeer = peerC))
+        // GMP/2.1 (ADR-001 §3): the PoW nonce lives inside the sealed payload, so a
+        // relay cannot verify it and does not gate on it. GROUP traffic is relayed;
+        // the recipient verifies the stamp after SealedSender.open. The GMP/1
+        // relay PoW gate is gone.
+        val f = frame(msgId(5), priority = Priority.GROUP, payload = ByteArray(32))
+        assertTrue(router.onFrameReceived(f, fromPeer = peerC))
     }
 
     @Test
-    fun `group priority without proof of work is dropped`() = runTest {
+    fun `direct priority is accepted`() = runTest {
         val store = InMemoryMessageStore()
         val router = Router(store, selfNodeId)
-        // GROUP frames require a 20-bit PoW stamp; an unmined payload cannot
-        // satisfy it and must be refused so a sybil cannot flood for free.
-        // NOTE: a random payload has a ~1/2^20 chance of accidentally passing;
-        // acceptable for a unit test, deterministic mining is tracked separately.
-        val f = frame(5, priority = Priority.GROUP, payload = ByteArray(32))
-
-        assertFalse(router.onFrameReceived(f, fromPeer = peerC))
+        assertTrue(router.onFrameReceived(frame(msgId(6), priority = Priority.DIRECT), fromPeer = peerC))
     }
 
     @Test
-    fun `direct priority is accepted without proof of work`() = runTest {
+    fun `buildSos produces a max-ttl structurally-valid SOS frame with a 16-byte content-derived msg_id`() {
         val store = InMemoryMessageStore()
         val router = Router(store, selfNodeId)
-        // DIRECT is exempt from PoW: latency there is safety.
-        assertTrue(router.onFrameReceived(frame(6, priority = Priority.DIRECT), fromPeer = peerC))
+        val sos = router.buildSos("help".toByteArray())
+
+        assertEquals(TypeV2.SOS, sos.type)
+        assertEquals(FrameV2.MAX_TTL, sos.ttl)
+        assertEquals(16, sos.msgId.size)
+        assertTrue(sos.flags and FrameV2.ACK_REQ != 0)
+        assertTrue(sos.flags and FrameV2.RELAY_OK != 0)
+        // SOS payload is structurally valid per SosFrameValidator (patch 15).
+        assertEquals(SosFrameValidator.Verdict.OK, SosFrameValidator.validate(sos))
+        // Round-trips through the GMP/2.1 codec byte-identically.
+        val rt = FrameV2.decode(sos.encode())
+        assertTrue(rt != null && rt.msgId.contentEquals(sos.msgId))
     }
 
     @Test
-    fun `buildSos produces a max-ttl SOS frame`() {
+    fun `buildSos msg_id is content-derived - distinct payloads get distinct ids`() {
         val store = InMemoryMessageStore()
         val router = Router(store, selfNodeId)
-        val sos = router.buildSos("help".toByteArray(), 1234L)
-
-        assertEquals(FrameType.SOS, sos.type)
-        assertEquals(Frame.MAX_TTL, sos.ttl)
-        assertEquals(Priority.SOS, sos.priority)
+        val a = router.buildSos("help".toByteArray())
+        val b = router.buildSos("fire".toByteArray())
+        assertNotEquals(a.msgId.toList(), b.msgId.toList())
     }
 
     @Test
-    fun `framesPeerLacks returns held frames absent from the peer digest`() = runTest {
+    fun `framesPeerLack returns held frames absent from the peer digest`() = runTest {
         val store = InMemoryMessageStore()
         val router = Router(store, selfNodeId)
-        assertTrue(router.onFrameReceived(frame(7), fromPeer = peerC))
+        val id = msgId(7)
+        assertTrue(router.onFrameReceived(frame(id), fromPeer = peerC))
 
         // An empty bloom means the peer has nothing: offer everything we hold.
         val empty = BloomDigest()
         val lacks = router.framesPeerLacks(empty, 8)
         assertEquals(1, lacks.size)
-        assertEquals(7L, lacks[0].msgId)
+        assertTrue(lacks[0].msgId.contentEquals(id))
 
         // A bloom that already contains the msg_id means the peer has it: offer nothing.
-        val full = BloomDigest().apply { add(7L) }
+        val full = BloomDigest().apply { add(id) }
         assertTrue(router.framesPeerLacks(full, 8).isEmpty())
     }
 
@@ -133,10 +149,11 @@ class RouterTest {
     fun `current digest advertises every held msg_id`() = runTest {
         val store = InMemoryMessageStore()
         val router = Router(store, selfNodeId)
-        assertTrue(router.onFrameReceived(frame(8), fromPeer = peerC))
+        val id = msgId(8)
+        assertTrue(router.onFrameReceived(frame(id), fromPeer = peerC))
 
         val digest = router.currentDigest()
-        assertTrue(digest.mightContain(8L))
-        assertFalse(digest.mightContain(9999L))
+        assertTrue(digest.mightContain(id))
+        assertFalse(digest.mightContain(msgId(9999)))
     }
 }
