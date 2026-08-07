@@ -1,0 +1,300 @@
+import XCTest
+import SQLite3
+@testable import GodstoneMesh
+import GodstoneCore
+
+/// iOS durable message store -- bounded capacity + real-SQL invariants
+/// (ADR-004 §1,3,4,5,6; Stage 3 Phase G).
+///
+/// These tests drive the REAL `SqliteMessageStore` against a REAL on-disk
+/// sqlite3 engine -- the SAME engine production uses (sqlite3 is auto-linked on
+/// Apple platforms; there is no SQLCipher/sqlite-jdbc seam as on Android). The
+/// SQL the store runs -- schema, INSERT OR IGNORE, the window-function
+/// eviction, SUM(LENGTH(payload)) byte accounting, priority ORDER BY -- is
+/// byte-identical to the Android `StoreSchema`, so the invariants proven here
+/// are the invariants production enforces. (At-rest encryption is a device
+/// concern -- `FileProtectionType.complete` is accepted but not enforced on the
+/// macOS host; the production default is pinned structurally in
+/// `testFileProtectionDefaultIsComplete`.)
+///
+/// Every assertion is deterministic. `receivedAt` is injected through
+/// `persistAt` so eviction oldest-first and priority tie-breaks do not race the
+/// wall clock. Mirrors `SqliteMessageStoreTest` on Android one-for-one.
+final class SqliteMessageStoreTests: XCTestCase {
+
+    private var tmpURL: URL!
+    private var store: SqliteMessageStore!
+
+    /// Open a fresh real-sqlite3 store against a temp file with a `maxBytes` cap.
+    private func open(maxBytes: Int64) -> SqliteMessageStore {
+        let url = URL(fileURLWithPath: NSTemporaryDirectory())
+            .appendingPathComponent("godstone-store-\(UUID().uuidString).db")
+        tmpURL = url
+        let s = SqliteMessageStore(url: url, maxBytes: maxBytes)
+        store = s
+        return s
+    }
+
+    override func tearDown() {
+        store = nil
+        if let url = tmpURL { SqliteMessageStore.panicWipe(at: url) }
+        tmpURL = nil
+        super.tearDown()
+    }
+
+    private func msgId(_ seed: UInt8) -> Data {
+        Data((0..<16).map { UInt8(truncatingIfNeeded: $0 &+ seed) })
+    }
+    private let routingTag = Data([0, 1, 2, 3])
+
+    /// A frame with `priority` (encoded into flags bits 8..10) and a
+    /// `payloadSize`-byte payload.
+    private func frame(_ seed: UInt8, _ priority: Priority, _ payloadSize: Int,
+                       type: TypeV2 = .message) -> FrameV2 {
+        FrameV2(type: type,
+                msgId: msgId(seed),
+                routingTag: routingTag,
+                ttl: 12,
+                hopCount: 0,
+                flags: Priority.toFlags(priority),
+                payload: Data(repeating: seed, count: payloadSize))
+    }
+
+    private func heldIds() -> [Data] { store.allHeldMsgIds() }
+    private func held() -> [FrameV2] { store.allHeldOrderedByPriority() }
+    private func bytes() -> Int64 { store.heldBytes }
+    private func heldPriorities() -> [Priority] { held().map { Priority.fromFlags($0.flags) } }
+    private func containsId(_ ids: [Data], _ id: Data) -> Bool { ids.contains(id) }
+
+    // --- ADR-004 §1: persist + read-back preserves a frame and its fields ---
+
+    func testPersistThenReadBackPreservesAllFields() {
+        _ = open(maxBytes: Int64.max)
+        let f = frame(7, .direct, 64, type: .sos)
+        store.persist(f, receivedFrom: Data([0, 1, 2, 3, 4, 5]))
+        let out = store.allHeldOrderedByPriority()
+        XCTAssertEqual(out.count, 1)
+        let r = out[0]
+        XCTAssertEqual(f.type, r.type)
+        XCTAssertEqual(f.msgId, r.msgId)
+        XCTAssertEqual(f.routingTag, r.routingTag)
+        XCTAssertEqual(f.ttl, r.ttl)
+        XCTAssertEqual(f.hopCount, r.hopCount)
+        XCTAssertEqual(f.flags, r.flags)
+        XCTAssertEqual(f.payload, r.payload)
+    }
+
+    // --- dedup: duplicate msg_id is ignored (INSERT OR IGNORE) ---
+
+    func testDuplicateMsgIdIsIgnored() {
+        _ = open(maxBytes: Int64.max)
+        let f = frame(1, .group, 32)
+        store.persist(f, receivedFrom: Data())
+        store.persist(f, receivedFrom: Data())
+        XCTAssertEqual(heldIds().count, 1)
+    }
+
+    // --- ordering: SOS first, then priority asc, recency desc on ties ---
+
+    func testPriorityOrderIsSosFirstThenAscendingWithRecencyTieBreak() {
+        _ = open(maxBytes: Int64.max)
+        // received_at injected so ties are deterministic: GROUP@t=300, GROUP@t=100
+        // (newer-received first within a priority), DIRECT@t=200, SOS@t=50.
+        store.persistAt(frame(1, .group, 8), receivedFrom: Data(), receivedAt: 300)
+        store.persistAt(frame(2, .group, 8), receivedFrom: Data(), receivedAt: 100)
+        store.persistAt(frame(3, .direct, 8), receivedFrom: Data(), receivedAt: 200)
+        store.persistAt(frame(4, .sos, 8), receivedFrom: Data(), receivedAt: 50)
+        // Expected: SOS(4), DIRECT(3), GROUP newer-first -> frame(1)@300 then frame(2)@100
+        XCTAssertEqual(
+            [.sos, .direct, .group, .group],
+            heldPriorities())
+        // The ordered frame list's msg_ids confirm the recency tie-break within
+        // GROUP (newer-received frame(1)@300 before frame(2)@100).
+        XCTAssertEqual(
+            [msgId(4), msgId(3), msgId(1), msgId(2)],
+            held().map { $0.msgId })
+    }
+
+    // --- ADR-004 §4 / A-14: eviction only when over budget ---
+
+    func testEvictionDoesNotRunWhileUnderBudget() {
+        // Cap generous enough that three small frames stay well under it.
+        _ = open(maxBytes: 4096)
+        store.persistAt(frame(1, .group, 64), receivedFrom: Data(), receivedAt: 100)
+        store.persistAt(frame(2, .group, 64), receivedFrom: Data(), receivedAt: 200)
+        store.persistAt(frame(3, .group, 64), receivedFrom: Data(), receivedAt: 300)
+        XCTAssertEqual(heldIds().count, 3)
+        XCTAssertLessThanOrEqual(bytes(), 4096)
+    }
+
+    // --- ADR-004 §4: bounded capacity evicts oldest non-SOS first (precise) ---
+
+    func testBoundedCapacityEvictsOldestNonSosFirstAndReturnsUnderCap() {
+        // Each frame: 400-byte payload + 64-byte overhead = 464 bytes. Cap = 1024.
+        // Two frames (928) fit; the third (1392) overshoots by 368, so the oldest
+        // non-SOS frame (frame(1), 464 >= 368) is deleted -> 928 bytes, under cap.
+        _ = open(maxBytes: 1024)
+        store.persistAt(frame(1, .group, 400), receivedFrom: Data(), receivedAt: 100)
+        store.persistAt(frame(2, .group, 400), receivedFrom: Data(), receivedAt: 200)
+        XCTAssertLessThanOrEqual(bytes(), 1024)
+        store.persistAt(frame(3, .group, 400), receivedFrom: Data(), receivedAt: 300)
+        // Precise byte accounting: the store is at or under the cap after eviction.
+        XCTAssertLessThanOrEqual(bytes(), 1024, "over cap after eviction: \(bytes())")
+        let ids = heldIds()
+        XCTAssertFalse(containsId(ids, msgId(1)), "oldest non-SOS should be evicted")
+        XCTAssertTrue(containsId(ids, msgId(2)))
+        XCTAssertTrue(containsId(ids, msgId(3)))
+        XCTAssertEqual(ids.count, 2)
+    }
+
+    func testPreciseEvictionDeletesSmallestPrefixThatMeetsOvershoot() {
+        // Cap = 1024. Insert one large non-SOS frame (payload 800 -> 864) then a
+        // small one (payload 100 -> 164): total 1028, overshoot = 4 bytes. The
+        // oldest non-SOS prefix whose cumulative cost >= 4 is just frame(1)
+        // (864 >= 4), so ONLY the large old frame is deleted -- not both. The
+        // approximate row-count form could over-delete; the precise form does not.
+        _ = open(maxBytes: 1024)
+        store.persistAt(frame(1, .group, 800), receivedFrom: Data(), receivedAt: 100)
+        store.persistAt(frame(2, .broadcast, 100), receivedFrom: Data(), receivedAt: 200)
+        XCTAssertLessThanOrEqual(bytes(), 1024, "over cap: \(bytes())")
+        let ids = heldIds()
+        XCTAssertFalse(containsId(ids, msgId(1)))
+        XCTAssertTrue(containsId(ids, msgId(2)))
+        XCTAssertEqual(ids.count, 1)
+    }
+
+    // --- ADR-004 §4: SOS retained under budget pressure (never evicted) ---
+
+    func testSosFramesRetainedEvenWhenOldestRows() {
+        // Cap = 1024. SOS@t=50 (464), non-SOS X@t=100 (464), non-SOS Y@t=200 (464)
+        // -> 1392, overshoot 368. Oldest non-SOS is X (464 >= 368) -> deleted.
+        // SOS, though oldest overall, is never considered -> retained.
+        _ = open(maxBytes: 1024)
+        store.persistAt(frame(1, .sos, 400), receivedFrom: Data(), receivedAt: 50)
+        store.persistAt(frame(2, .group, 400), receivedFrom: Data(), receivedAt: 100)
+        store.persistAt(frame(3, .group, 400), receivedFrom: Data(), receivedAt: 200)
+        let ids = heldIds()
+        XCTAssertTrue(containsId(ids, msgId(1)), "SOS must be retained")
+        XCTAssertFalse(containsId(ids, msgId(2)), "oldest non-SOS evicted")
+        XCTAssertTrue(containsId(ids, msgId(3)))
+    }
+
+    func testAllSosFloodingStaysInsideHardCapNewestRetained() {
+        // ADR-004 criterion 4: "All-SOS flooding remains inside the configured
+        // hard cap." Cap = 512; each SOS frame is 464 bytes.
+        //  - after 2nd SOS: 928 > 512, overshoot 416 -> evict oldest SOS (frame1)
+        //    -> 464 (frame2), under cap.
+        //  - after 3rd SOS: 928 > 512, overshoot 416 -> evict oldest SOS (frame2)
+        //    -> 464 (frame3), under cap.
+        // SOS is evicted LAST (only because there is no non-SOS to evict), and
+        // the bounded FIFO keeps the NEWEST SOS -- it never lets the backlog
+        // grow past the cap.
+        _ = open(maxBytes: 512)
+        store.persistAt(frame(1, .sos, 400), receivedFrom: Data(), receivedAt: 100)
+        store.persistAt(frame(2, .sos, 400), receivedFrom: Data(), receivedAt: 200)
+        store.persistAt(frame(3, .sos, 400), receivedFrom: Data(), receivedAt: 300)
+        XCTAssertLessThanOrEqual(bytes(), 512, "all-SOS flooding must stay inside the cap: \(bytes())")
+        let ids = heldIds()
+        XCTAssertEqual(ids.count, 1, "only the newest SOS is retained under all-SOS pressure")
+        XCTAssertTrue(containsId(ids, msgId(3)), "newest SOS retained")
+        XCTAssertFalse(containsId(ids, msgId(1)), "oldest SOS evicted")
+        XCTAssertTrue(heldPriorities().allSatisfy { $0 == .sos })
+    }
+
+    // --- A-13: streaming stops as soon as visit returns false ---
+
+    func testForEachHeldOrderedByPriorityStopsWhenVisitReturnsFalse() {
+        _ = open(maxBytes: Int64.max)
+        store.persistAt(frame(1, .sos, 8), receivedFrom: Data(), receivedAt: 100)
+        store.persistAt(frame(2, .direct, 8), receivedFrom: Data(), receivedAt: 200)
+        store.persistAt(frame(3, .group, 8), receivedFrom: Data(), receivedAt: 300)
+        var seen = 0
+        store.forEachHeldOrderedByPriority { _ in
+            seen += 1
+            return false   // stop after the first (SOS, highest priority)
+        }
+        XCTAssertEqual(seen, 1)
+    }
+
+    func testForEachHeldMsgIdStreamsAllIdsWhileVisitReturnsTrue() {
+        _ = open(maxBytes: Int64.max)
+        store.persistAt(frame(1, .group, 8), receivedFrom: Data(), receivedAt: 100)
+        store.persistAt(frame(2, .group, 8), receivedFrom: Data(), receivedAt: 200)
+        var seen: [Data] = []
+        store.forEachHeldMsgId { seen.append($0); return true }
+        XCTAssertEqual(seen.count, 2)
+    }
+
+    // --- forward-compat: rows with an unknown type code are skipped, not crashed ---
+
+    func testRowsWithUnknownTypeCodeAreSkippedNotThrown() {
+        // Pre-seed the file with a row whose type code (0x77) is not a known
+        // TypeV2 via a direct sqlite3 connection, then open the store over it.
+        // The store must skip the row when listing frames (toFrame() -> nil) but
+        // still report its msg_id (allHeldMsgIds does not type-check).
+        let url = URL(fileURLWithPath: NSTemporaryDirectory())
+            .appendingPathComponent("godstone-store-seed-\(UUID().uuidString).db")
+        tmpURL = url
+        seedUnknownTypeRow(at: url, msgId: msgId(9))
+        // Reopen the seeded file (IF NOT EXISTS is a no-op on the existing table).
+        let seeded = SqliteMessageStore(url: url, maxBytes: Int64.max)
+        store = seeded
+        XCTAssertEqual(seeded.allHeldOrderedByPriority().count, 0, "unknown-type row skipped")
+        XCTAssertEqual(seeded.allHeldMsgIds().count, 1, "msg_id still reported")
+    }
+
+    // --- at-rest encryption intent pinned structurally (device enforces it) ---
+
+    func testFileProtectionDefaultIsComplete() {
+        // The production default for the DB file is complete data protection
+        // (encrypted at rest with a device-passcode-derived key). A regression
+        // to a weaker class is a test failure, not a silent weakening. The
+        // macOS host accepts but does not enforce the attribute, so this pins
+        // INTENT; the device verifies enforcement.
+        _ = open(maxBytes: Int64.max)
+        XCTAssertEqual(store.fileProtection, FileProtectionType.complete)
+    }
+
+    // MARK: - helpers
+
+    /// Insert a row with an unknown type code (0x77) directly via sqlite3.
+    private func seedUnknownTypeRow(at url: URL, msgId: Data) {
+        var db: OpaquePointer?
+        guard sqlite3_open_v2(url.path, &db,
+                              SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE,
+                              nil) == SQLITE_OK else {
+            sqlite3_close_v2(db); return
+        }
+        sqlite3_exec(db, StoreSchema.createSqlIfNotExists, nil, nil, nil)
+        let sql = "INSERT INTO \(StoreSchema.table) (" +
+            "\(StoreSchema.colMsgId), \(StoreSchema.colType), \(StoreSchema.colTtl), " +
+            "\(StoreSchema.colHopCount), \(StoreSchema.colFlags), \(StoreSchema.colPriority), " +
+            "\(StoreSchema.colRoutingTag), \(StoreSchema.colPayload), " +
+            "\(StoreSchema.colReceivedFrom), \(StoreSchema.colReceivedAt)) VALUES (?,?,?,?,?,?,?,?,?,?)"
+        var stmt: OpaquePointer?
+        guard sqlite3_prepare_v2(db, sql, -1, &stmt, nil) == SQLITE_OK else {
+            sqlite3_finalize(stmt); sqlite3_close_v2(db); return
+        }
+        let transient = unsafeBitCast(-1, to: sqlite3_destructor_type.self)
+        msgId.withUnsafeBytes { r in
+            sqlite3_bind_blob(stmt, 1, r.baseAddress, Int32(msgId.count), transient)
+        }
+        sqlite3_bind_int(stmt, 2, 0x77)   // not a TypeV2
+        sqlite3_bind_int(stmt, 3, 12)
+        sqlite3_bind_int(stmt, 4, 0)
+        sqlite3_bind_int(stmt, 5, Int32(Priority.toFlags(.group)))
+        sqlite3_bind_int(stmt, 6, Int32(Priority.group.rawValue))
+        routingTag.withUnsafeBytes { r in
+            sqlite3_bind_blob(stmt, 7, r.baseAddress, Int32(routingTag.count), transient)
+        }
+        let payload = Data(repeating: 0, count: 8)
+        payload.withUnsafeBytes { r in
+            sqlite3_bind_blob(stmt, 8, r.baseAddress, Int32(payload.count), transient)
+        }
+        sqlite3_bind_zeroblob(stmt, 9, 0)
+        sqlite3_bind_int64(stmt, 10, 100)
+        sqlite3_step(stmt)
+        sqlite3_finalize(stmt)
+        sqlite3_close_v2(db)
+    }
+}

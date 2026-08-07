@@ -22,9 +22,11 @@
     "Sources/GodstoneMesh/MeshCoordinator.swift": "40def33a3aaf47f769a6d7b5107cba055d0f3e50c25416854fb1873bf9ff5f7c",
     "Sources/GodstoneMesh/MeshIdentity.swift": "2540f259e773cf6c52b180d2e1676ed70781ccf8e5a7e5929a918471f14a721f",
     "Sources/GodstoneMesh/MeshNode.swift": "26667d17d4d51b0ea9ec99465ca3c940be3a82c7f359b47cb9146c52d604e5f8",
+    "Sources/GodstoneMesh/MessageStore.swift": "c9d586442f6d049a316cfe37f96704c6f3f1ae0532b12e03cbae3cc338e99756",
     "Sources/GodstoneMesh/NoiseSession.swift": "4373724d7a65740af74eefb623d6a950eeddfd8becb91a7ac3e9a347151cfd54",
-    "Sources/GodstoneMesh/PanicWipe.swift": "fb0a093867ab71b637539bff77637a3feaf3cedb9aa0d8e738f496d29d333439",
-    "Sources/GodstoneMesh/Router.swift": "922816aa72db972203fa4d7457b67a8c3b7f75f11a88116302031f8849f54c7b",
+    "Sources/GodstoneMesh/PanicWipe.swift": "6f6b265a6df3d8760cb7fc3395afa16603371f12257b3002e71c6e3a937c276f",
+    "Sources/GodstoneMesh/Priority.swift": "2e9241e0d08ee2f0d832e152b28731daf257957286462572550e1f925ce47391",
+    "Sources/GodstoneMesh/Router.swift": "dec8a7f97e39e3317a07d3dee9316875b883fefb2a2dd0d0eea0ee607bacd6dc",
     "Sources/GodstoneMesh/SessionManager.swift": "dbd0e466b8fd02de35f5eda449c9b77ff1b310231668365dbde889db5ad18212",
     "Sources/GodstoneMesh/SosFrameValidator.swift": "40da66c6cb8e6321733094655cc56c280e1fbd111fbbccb38eb392ee682c521a",
     "Sources/GodstoneMesh/WireV2.swift": "98a75a58716bacd7d33a3472d063fc0821e96cf8cae24497d8e91450c0e8c74d",
@@ -37,6 +39,7 @@
     "Tests/GodstoneMeshTests/PortVectorTests.swift": "08e4d81add95ada220f4bcc6d14a3b2acc0232b69064d376481390bbc10c9fb9",
     "Tests/GodstoneMeshTests/ProofOfWorkTests.swift": "55f96b38f4b5dbd70f15d2c09c0a6310b4dccd6901c4a13b1d3d23414cf10609",
     "Tests/GodstoneMeshTests/RouterTests.swift": "68f448d5b3d72df89dbf1dfd08df96e7e78518c9b9037cc7a1ed231aac13e532",
+    "Tests/GodstoneMeshTests/SqliteMessageStoreTests.swift": "ac3872bb4366befad80306c061baf27b5314a7c649cc7e30456ad95a5aa6efd8",
     "Tests/GodstoneMeshTests/WireV2VectorTests.swift": "49099a1535aa501763df0c2949949b76f14ee8b6e0f585abf4306a2f70e23c70"
   },
   "schema": 1

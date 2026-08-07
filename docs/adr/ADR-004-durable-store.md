@@ -8,9 +8,10 @@ Android opens SQLCipher through the current `net.zetetic.database.sqlcipher`
 API and stores its database key behind an Android Keystore-backed preference.
 That closes the V3 plaintext/import defect, but does not finish durability.
 
-iOS has no durable DTN store. Its router queue and dedup set are in memory, so
-termination, jetsam or reboot loses carried traffic. The radio feature remains
-disabled; V4 does not present this queue as durable.
+iOS had no durable DTN store. Its router queue and dedup set were in memory, so
+termination, jetsam or reboot lost carried traffic. The radio feature remains
+disabled; V4 does not present this queue as durable. Phase G gives iOS the same
+durable hold Android gained in Phase E (see the Phase G section below).
 
 ### Stage 3 Phase E — Android store, repo-owned evidence (NOT closed)
 
@@ -50,7 +51,8 @@ Criterion coverage after Phase E (repo-controlled subset only):
    resumable** wipe across store/identity/keys is Phase F (repo-tested, see the
    Phase F section below; on-device + shipping-path pending).
 6. Anti-entropy digest from the held set is built from `allHeldMsgIds`; Android
-   side is testable. iOS parity is Phase G.
+   side is testable. iOS parity is Phase G (repo-tested; see the Phase G section
+   below; on-device + shipping-path pending).
 
 **Not closed.** The store is in the non-shipping `:mesh` module (LIGHT has no
 `:mesh` dependency edge; `check_shipping_path.py` PASS), at-rest encryption is
@@ -108,6 +110,73 @@ Keystore master-key deletion / Keychain item deletion is verified on device
 only, and the iOS durable-store artifacts that `deleteArtifacts()` will
 coordinate are Phase G. A-04's "coordinated wipe" half advances to
 NONSHIPPING_TESTED; its "iOS durable store" half remains open until Phase G.
+
+### Stage 3 Phase G — iOS durable DTN store, repo-owned evidence (NOT closed)
+
+The iOS router queue and dedup set were in memory (see "Current state"). Phase G
+gives iOS the same durable hold Android gained in Phase E, so a termination,
+jetsam or reboot no longer loses carried traffic and the anti-entropy digest is
+built from the held set, not the rolling dedup window.
+
+Implementation (mirrors the Android Phase E store so the two are query-compatible;
+all repo-owned evidence below runs in CI on a real on-disk sqlite3 file):
+
+- A `MessageStore` protocol in `GodstoneMesh` with the same surface as the
+  Android interface: persist, `allHeldOrderedByPriority`, `allHeldMsgIds`,
+  `forEachHeldOrderedByPriority`, `forEachHeldMsgId`, `heldBytes`, `panicWipe`.
+- `SqliteMessageStore` backed by the system `sqlite3` C API (the same library
+  `GodstoneCore/ArchiveRepository` already links — `import SQLite3`, no extra
+  dependency, auto-linked on Apple platforms). The schema, `INSERT OR IGNORE`
+  dedup, window-function eviction, `SUM(LENGTH(payload))` byte accounting and
+  priority `ORDER BY` are byte-identical to Android `StoreSchema` (same table
+  `held_frames`, same columns, `ROW_OVERHEAD = 64`, same `evictPrefixSql`,
+  `PRIORITY_ORDER`). A hand-written `Priority` twin derives the `priority`
+  column from the flags bits 8..10 exactly as Android `Priority.fromFlags`
+  (SOS 0 / DIRECT 1 / GROUP 2 / BROADCAST 3 / BULK 4, fail-safe to DIRECT).
+- **At-rest encryption** is iOS Data Protection, not SQLCipher: the DB file is
+  created with `FileProtectionType.complete` (encrypted at rest with a
+  device-passcode-derived key, unreadable when the device is locked). On the
+  macOS host this attribute is accepted but not enforced, so the SQL invariants
+  run in CI while the encryption is device-verified — the SAME split as
+  Android's SQLCipher (page encryption not exercised host-side). Because iOS
+  uses the real `sqlite3` for both production and tests (no SQLCipher/sqlite-jdbc
+  seam as on Android), the production engine itself executes in CI. The
+  `.complete` default is pinned structurally (`SqliteMessageStoreTests.
+  testFileProtectionDefaultIsComplete`), so a regression to a weaker class is a
+  test failure, not a silent weakening.
+- No installed base on iOS either (GMP/1 never shipped) → `onUpgrade`
+  drop+recreate, same as Android; no migration code by design.
+- **Anti-entropy digest (criterion 6)**: `Router.bloomDigest()` builds from
+  `store.allHeldMsgIds()` when a store is attached (was: the dedup window, which
+  describes recently-seen ids, not held frames). `BloomDigest` itself is already
+  byte-identical cross-platform (Phase C KAT), so the two platforms now build the
+  same digest from the same held set.
+- **Panic-wipe integration (Phase F hook)**: `KeychainWipeArtifacts.deleteArtifacts()`
+  calls `SqliteMessageStore.panicWipe(at:)` to delete the DB file alongside the
+  Keychain key erasure, so the resumable wipe coordinates store + identity on
+  iOS as it does on Android.
+- `SqliteMessageStoreTests` (12 tests via `swift test` + `xcodebuild` on the iOS
+  Simulator) mirror the Android `SqliteMessageStoreTest` one-for-one: persist +
+  read-back field preservation, `INSERT OR IGNORE` dedup, SOS-first priority
+  ordering with recency tie-break, no-eviction-under-budget, precise
+  smallest-prefix byte eviction, SOS-retained-when-oldest, all-SOS flooding
+  stays inside the hard cap (criterion 4), streaming early-exit, unknown-type
+  rows skipped not thrown, and the `.complete` protection default pinned.
+
+Criterion coverage after Phase G (repo-controlled subset):
+
+6. **Android and iOS build the same anti-entropy digest from the same held
+   set**: both expose `allHeldMsgIds` over the same schema and feed it to the
+   byte-identical `BloomDigest` (Phase C KAT). iOS store-backed digest is
+   repo-tested; on-device + shipping-path pending. NOT closed.
+
+**Not closed.** The store is in the test-only `GodstoneMesh` module (not on the
+LIGHT shipping path — the shipping app links only `GodstoneCore`), at-rest
+encryption is device-only (Data Protection is not enforced on the macOS host),
+authenticated-ACK deletion (criterion 2) depends on the inbound ACK path the
+link layer gates closed, and the carrier-partition mobility (criterion 2) needs
+the disabled link layer. A-04's "iOS durable store" half advances to
+NONSHIPPING_TESTED; on-device + transport remain.
 
 ## Decisions still required
 

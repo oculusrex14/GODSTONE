@@ -26,6 +26,16 @@ public final class Router {
     public var onDeliverLocally: ((FrameV2) -> Void)?
     public var onForward: ((FrameV2) -> Void)?
 
+    /// Optional durable hold. When attached, the anti-entropy digest is built
+    /// from the store's held msg_ids (the set of frames this node CARRIES),
+    /// matching Android -- not from the rolling dedup window (the set of ids
+    /// this node has RECENTLY SEEN). The two describe different sets for the
+    /// same node state, so before this was attached reconciliation was
+    /// semantically broken even with identical hash inputs (ADR-004 criterion 6,
+    /// closed in Phase G). The in-memory `queue`/`seen` remain the routing
+    /// buffer; the store is the durable source of truth for the digest.
+    public var store: MessageStore?
+
     public init() {}
 
     /// True when the frame was new and has been accepted.
@@ -92,13 +102,18 @@ public final class Router {
 
     /// 4096-bit Bloom digest.
     ///
-    /// ADR-004 OPEN: this is built from the dedup window, which is a rolling set
-    /// of RECENTLY SEEN ids. Android builds its digest from the durable store,
-    /// which is the set of HELD frames. The two describe different sets for the
-    /// same node state, so reconciliation is semantically broken even once the
-    /// hash inputs are unified. iOS needs a durable store first.
+    /// Built from the durable store's held msg_ids when a `store` is attached
+    /// (the set of frames this node CARRIES) -- matching Android, so the two
+    /// platforms build the same digest from the same held set (ADR-004 criterion
+    /// 6, Phase G). Falls back to the rolling dedup window (`seen.elements`,
+    /// the set of ids this node has RECENTLY SEEN) only when no durable store is
+    /// attached; that fallback describes a different set and is retained solely
+    /// for the in-memory router used outside a durable configuration.
     public func bloomDigest() -> Data {
         lock.lock(); defer { lock.unlock() }
+        if let store = store {
+            return BloomDigest.build(from: store.allHeldMsgIds())
+        }
         return BloomDigest.build(from: seen.elements)
     }
 }

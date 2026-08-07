@@ -33,8 +33,8 @@ public protocol WipeArtifacts: AnyObject {
     /// `resumeIfPending()` retries it.
     func eraseKeys() throws
     /// Delete the now-useless artifact containers (ciphertext files, DBs,
-    /// prefs). Idempotent. Reserved for the durable store (Phase G) on iOS;
-    /// the Keychain keys themselves are removed by `eraseKeys`.
+    /// prefs). Idempotent. On iOS this deletes the durable DTN store DB file
+    /// (Phase G); the Keychain keys themselves are removed by `eraseKeys`.
     func deleteArtifacts() throws
     /// Generate + store a fresh identity.
     func regenerateIdentity() throws
@@ -169,15 +169,24 @@ public final class UserDefaultsWipeJournal: WipeJournal {
 /// `MeshIdentity.deleteFromKeychain()` -- on iOS the private keys ARE the
 /// secret (there is no separate KEK wrapping ciphertext files as on Android),
 /// so this is both key destruction and artifact deletion in one step.
-/// `deleteArtifacts` is reserved for the durable store (Phase G); it is a no-op
-/// today but the state machine still runs it so Phase G only needs to register
-/// a store-wipe here. `regenerateIdentity` builds a fresh identity via
-/// `MeshIdentity.generateAndStore()`.
+/// `deleteArtifacts` deletes the durable DTN store DB file (Phase G) when a
+/// `storeUrl` is registered; the Keychain keys are already gone by this point
+/// (eraseKeys), so this is cleanup of now-useless artifacts, coordinated with
+/// the store + identity wipe as on Android. `regenerateIdentity` builds a fresh
+/// identity via `MeshIdentity.generateAndStore()`.
 ///
-/// Each step is idempotent: `SecItemDelete` on an absent item is a no-op, and
+/// Each step is idempotent: `SecItemDelete` on an absent item is a no-op,
+/// `SqliteMessageStore.panicWipe(at:)` on an absent file is a no-op, and
 /// `generateAndStore` creates fresh keys (deleting any same-tag item first).
 public final class KeychainWipeArtifacts: WipeArtifacts {
-    public init() {}
+    /// URL of the durable store DB file to wipe in `deleteArtifacts`. Nil when
+    /// no durable store is configured (the wipe then only touches the Keychain).
+    private let storeUrl: URL?
+
+    /// `storeUrl` registers the durable DTN store for coordinated wipe.
+    public init(storeUrl: URL? = nil) {
+        self.storeUrl = storeUrl
+    }
 
     public func eraseKeys() {
         // Crypto erasure: the keys are the secret. Deleting them makes prior
@@ -186,8 +195,12 @@ public final class KeychainWipeArtifacts: WipeArtifacts {
     }
 
     public func deleteArtifacts() {
-        // Reserved for the durable DTN store (Phase G). The Keychain keys are
-        // already gone (eraseKeys); a future store registers its wipe here.
+        // Delete the durable store DB file (+ WAL/SHM). The Keychain keys are
+        // already gone (eraseKeys); this is cleanup of the now-useless artifact
+        // container, coordinated with the identity wipe. Idempotent.
+        if let url = storeUrl {
+            SqliteMessageStore.panicWipe(at: url)
+        }
     }
 
     public func regenerateIdentity() {
