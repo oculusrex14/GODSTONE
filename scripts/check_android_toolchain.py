@@ -17,6 +17,9 @@ Distinguished failures (exit codes):
     9  missing CMake / NDK                       (--require-native only)
    10  wrapper properties missing / unreadable
 
+The NDK is pinned to an exact version (``EXPECTED_NDK``); a present-but-wrong
+NDK version is reported as ``missing_native_tools``, not accepted.
+
 Usage:
     python3 scripts/check_android_toolchain.py [--offline] [--require-native]
                                                [--selftest]
@@ -25,9 +28,11 @@ Usage:
                       locally (offline-preprovisioned mode). Without it, a missing
                       distribution is a NOTE, not a failure (online bootstrap will
                       download it).
-``--require-native``  treat a missing CMake/NDK as a failure (needed only when the
-                      native :llm build is assembled). By default it is a warning,
-                      because the Phase 0 JVM test path does not compile native code.
+``--require-native``  treat a missing/wrong CMake/NDK as a failure (needed when the
+                      native :llm build is assembled, and by the Phase 0 runner so
+                      the pinned NDK is verified on every provisioned machine). By
+                      default it is a warning, because the Phase 0 JVM test path
+                      does not compile native code.
 ``--selftest``        exercise every failure branch against synthetic inputs and
                       report which fire, then exit 0. Proves the branches have teeth.
 """
@@ -52,6 +57,9 @@ EXPECTED_JAVA_MAJOR = 17
 EXPECTED_COMPILE_SDK = 35
 EXPECTED_BUILD_TOOLS = "35.0.0"
 EXPECTED_CMAKE = "3.22.1"
+# NDK r27b; the exact version AGP 8.6.0 selects as its bundled default on this
+# host. Pinned so the native build is reproducible across local + CI machines.
+EXPECTED_NDK = "27.0.12077973"
 
 EXIT = {
     "ok": 0,
@@ -222,15 +230,23 @@ def check_dist_offline() -> tuple[bool, str | None, str]:
 
 def check_native_tools(sdk: Path) -> tuple[bool, str | None, str]:
     cmake = sdk / "cmake" / EXPECTED_CMAKE / "bin" / "cmake"
-    ndk_dirs = list((sdk / "ndk").glob("*")) if (sdk / "ndk").is_dir() else []
+    ndk_dir = sdk / "ndk" / EXPECTED_NDK
     missing = []
     if not cmake.exists():
         missing.append(f"cmake;{EXPECTED_CMAKE} ({cmake})")
-    if not ndk_dirs:
-        missing.append("ndk;<any> (no sdk/ndk/<version> directory)")
+    if not ndk_dir.is_dir():
+        # Report any other NDK versions present so a wrong-version host is
+        # diagnosed as a pin mismatch, not a silent acceptance.
+        others = sorted(p.name for p in (sdk / "ndk").glob("*")) if (sdk / "ndk").is_dir() else []
+        if others:
+            missing.append(
+                f"ndk;{EXPECTED_NDK} (found {', '.join(others)} -- version pin mismatch)"
+            )
+        else:
+            missing.append(f"ndk;{EXPECTED_NDK} (no sdk/ndk/{EXPECTED_NDK} directory)")
     if missing:
         return False, "missing_native_tools", "; ".join(missing)
-    return True, None, f"cmake {EXPECTED_CMAKE} + ndk {ndk_dirs[0].name}"
+    return True, None, f"cmake {EXPECTED_CMAKE} + ndk {EXPECTED_NDK}"
 
 
 # --- Driver -------------------------------------------------------------------
@@ -335,6 +351,13 @@ def selftest() -> int:
         ok, cat, _ = check_native_tools(sdk)
         if not ok and cat == "missing_native_tools":
             fired.append("missing_native_tools")
+        # wrong NDK version: an ndk dir with a different version name must
+        # fire missing_native_tools (version pin mismatch), not pass.
+        wrong_ndk = sdk / "ndk" / "99.0.00000000"
+        wrong_ndk.mkdir(parents=True)
+        ok, cat, detail = check_native_tools(sdk)
+        if not ok and cat == "missing_native_tools" and "pin mismatch" in detail:
+            fired.append("missing_native_tools (wrong ndk version)")
 
     # dist_not_pinned: feed a properties blob without distributionSha256Sum
     global WRAPPER_PROPS

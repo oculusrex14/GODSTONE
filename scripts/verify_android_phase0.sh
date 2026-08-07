@@ -176,7 +176,10 @@ record_git
 #   downloading the distribution.
 # ---------------------------------------------------------------------------
 echo "==> step 1: toolchain preflight"
-preflight_cmd=(python3 scripts/check_android_toolchain.py)
+# --require-native: the pinned NDK (EXPECTED_NDK) and CMake must be present and
+# exact on every provisioned machine. A wrong/missing NDK is an environment
+# failure (exit 9), surfaced before Gradle, never mislabelled as a test failure.
+preflight_cmd=(python3 scripts/check_android_toolchain.py --require-native)
 if [[ "${MODE}" == "offline-preprovisioned" ]]; then
   preflight_cmd+=(--offline)
 fi

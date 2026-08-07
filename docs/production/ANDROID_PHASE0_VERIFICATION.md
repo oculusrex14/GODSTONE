@@ -9,25 +9,28 @@ JUnit XML; and emits a machine-readable `summary.json`. It returns nonzero if
 any required step fails or is skipped.
 
 It does **not** build the full APK (that remains a release gate: llama.cpp,
-model weights and the archive must be pinned and restored first), and it does
-**not** run on this macOS development host, which has no JDK 17 / Android SDK
-provisioned (see `scripts/check_android_toolchain.py`). Run it on a correctly
-provisioned machine.
+model weights and the archive must be pinned and restored first). Run it on a
+correctly provisioned machine (see `scripts/check_android_toolchain.py` and
+`docs/production/ANDROID_TOOLCHAIN_CONTRACT.md`); the preflight fails fast with
+a distinct exit code if the toolchain is missing or the NDK version is wrong.
 
 ## Prerequisites
 
 The exact toolchain is defined in
 [`ANDROID_TOOLCHAIN_CONTRACT.md`](./ANDROID_TOOLCHAIN_CONTRACT.md): Gradle 8.9
 (pinned `distributionSha256Sum`), AGP 8.6.0, Kotlin 2.0.20, JDK 17, compileSdk
-35, build-tools 35.0.0, CMake 3.22.1 (native only). Required environment:
+35, build-tools 35.0.0, CMake 3.22.1, NDK 27.0.12077973 (both pinned and asserted
+by the preflight). Required environment:
 
 - `JAVA_HOME` — JDK 17
 - `ANDROID_HOME` (or `ANDROID_SDK_ROOT`) — Android SDK with
-  `platforms;android-35`, `build-tools;35.0.0` (and `cmake;3.22.1` + an NDK for
-  native builds)
+  `platforms;android-35`, `build-tools;35.0.0`, `cmake;3.22.1`,
+  `ndk;27.0.12077973`
 - `GRADLE_USER_HOME` — optional (defaults to `~/.gradle`)
 
-The runner verifies all of this up front via the fail-fast preflight.
+The runner verifies all of this up front via the fail-fast preflight, run with
+`--require-native` so the pinned NDK version is asserted (a wrong or missing NDK
+is an environment failure, exit 3, reported before Gradle).
 
 ## Two modes
 
@@ -62,7 +65,7 @@ the SDK packages to the offline machine.
 
 | Step | Command | What it proves |
 |---|---|---|
-| 1. toolchain preflight | `python3 scripts/check_android_toolchain.py [--offline]` | JDK 17, SDK, platform/build-tools, wrapper JAR SHA-256, pinned distribution checksum; (offline) distribution cached. Environment failure, not a source failure. |
+| 1. toolchain preflight | `python3 scripts/check_android_toolchain.py --require-native [--offline]` | JDK 17, SDK, platform/build-tools, wrapper JAR SHA-256, pinned distribution checksum, CMake 3.22.1, NDK 27.0.12077973 (exact version pin); (offline) distribution cached. Environment failure, not a source failure. |
 | 2. shipping-path gate | `python3 ci/check_shipping_path.py --root .` | LIGHT shipping path has no Mesh/GMP-1 dependency edge (build-config evidence). A-01 stays OPEN. |
 | 3. wrapper + dist verify | `./gradlew [--offline] --version` | The pinned wrapper + distribution actually run. |
 | 4. gradle Phase 0 | `./gradlew --no-daemon --stacktrace --warning-mode=all [--offline] clean :core:testDebugUnitTest :mesh:testDebugUnitTest :llm:testDebugUnitTest :app:compileLightDebugKotlin` | core (Blake2s conformance), mesh (port-vector + Noise session), llm (Android Oracle AnswerValidator), LIGHT Kotlin compile. |

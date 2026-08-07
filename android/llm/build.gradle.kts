@@ -7,6 +7,11 @@ android {
     namespace = "io.godstone.llm"
     compileSdk = 35
 
+    // Pinned NDK for a reproducible native build (see
+    // docs/production/ANDROID_TOOLCHAIN_CONTRACT.md). Without this AGP 8.6
+    // selects its bundled default, which is machine-dependent.
+    ndkVersion = "27.0.12077973"
+
     defaultConfig {
         minSdk = 26
 

@@ -56,8 +56,13 @@ platform-tools
 platforms;android-35
 build-tools;35.0.0
 cmake;3.22.1
-ndk;<AGP-8.6 default NDK version>   # see NDK note below
+ndk;27.0.12077973
 ```
+
+The NDK version `27.0.12077973` is pinned in `:llm` via `ndkVersion` and asserted
+by the preflight (`scripts/check_android_toolchain.py`, `EXPECTED_NDK`). A
+present-but-wrong NDK version is a pin mismatch, reported as an environment
+failure (`missing_native_tools`), never silently accepted.
 
 ## Native build (llm module — llama.cpp/ggml bridge)
 
@@ -66,18 +71,20 @@ ndk;<AGP-8.6 default NDK version>   # see NDK note below
 | Module | `:llm` (`android/llm/build.gradle.kts`) |
 | CMake | **3.22.1** (pinned via `externalNativeBuild.cmake.version`) |
 | CMakeLists | `android/llm/src/main/cpp/CMakeLists.txt` |
+| NDK | **27.0.12077973** (pinned via `ndkVersion` in `:llm`; asserted by preflight `EXPECTED_NDK`) |
 | ABI | `arm64-v8a` only (`ndk.abiFilters`) |
 | cppFlags | `-O3 -fno-exceptions -fno-rtti` |
 | CMake args | `-DGGML_LLAMAFILE=ON -DGGML_OPENMP=OFF -DLLAMA_BUILD_EXAMPLES=OFF -DLLAMA_BUILD_TESTS=OFF` |
 
-### NDK note (reproducibility gap)
+### NDK pin
 
-No `ndkVersion` is declared in any module, so AGP 8.6 selects its bundled
-default NDK. That makes the NDK version machine-dependent. **Pin `ndkVersion` in
-`:llm` (and any future native module) for a fully reproducible native build.**
-This is recorded as an open High finding (see patch 06 report, item 10). The
-preflight script reports a missing NDK but does not assert a specific NDK
-version until it is pinned.
+`ndkVersion = "27.0.12077973"` is declared in `:llm` (the only native module).
+This is the exact version AGP 8.6.0 selects as its bundled default on the
+provisioned host; pinning it makes the native build reproducible across local
+and CI machines. The preflight asserts this exact version is installed under
+`$ANDROID_HOME/ndk/27.0.12077973`; any other NDK version present is reported as
+a pin mismatch (environment failure), not accepted. Any future native module
+must declare the same `ndkVersion`.
 
 ## Accepted environment variables
 
@@ -86,7 +93,7 @@ version until it is pinned.
 | `ANDROID_HOME` (or `ANDROID_SDK_ROOT`) | **yes** (one of) | SDK root; the wrapper/AGP locate `platforms`, `build-tools`, `cmake`, `ndk` here |
 | `JAVA_HOME` | **yes** | JDK 17 used by Gradle and `kotlinOptions.jvmTarget` |
 | `GRADLE_USER_HOME` | no | Override the Gradle cache/distribution store (defaults to `~/.gradle`) |
-| `ANDROID_NDK_HOME` | no | Override the NDK path (otherwise AGP's bundled default) |
+| `ANDROID_NDK_HOME` | no | Override the NDK path (otherwise the pinned `ndkVersion = 27.0.12077973`) |
 | `ORG_GRADLE_PROJECT_*` | no | Optional Gradle project properties |
 
 ## Verification
