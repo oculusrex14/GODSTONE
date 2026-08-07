@@ -1,0 +1,27 @@
+{
+  "_comment": "Canonical Godstone tier table. SINGLE SOURCE OF TRUTH for the tier invariant (check_parity Invariant E / scripts/check_tiers.py). 'shipping' marks tiers that the Android product flavours (android/app/build.gradle.kts) are permitted to declare and that may be installed by a store build. MEDIUM and LARGE are source-level research configurations only -- they are built (content/ingest/build_archive.py builds their archives, e.g. dist/archive_medium.db for the Invariant C archive probe) and modelled in the Tier.swift enum and TIERS.md, but they have no store-compatible asset delivery design and MUST NOT ship as product flavours until that lands. The four derived files (build_archive.py, build.gradle.kts, Tier.swift, docs/packaging/TIERS.md) are checked against this table by scripts/check_tiers.py.",
+  "fields_compared": ["model_file", "db_name", "context_tokens", "embed_dim"],
+  "tiers": {
+    "LIGHT": {
+      "model_file": "qwen3-0.6b-q4km.gguf",
+      "db_name": "archive_light.db",
+      "context_tokens": 2048,
+      "embed_dim": 384,
+      "shipping": true
+    },
+    "MEDIUM": {
+      "model_file": "qwen3-1.7b-q4km.gguf",
+      "db_name": "archive_medium.db",
+      "context_tokens": 4096,
+      "embed_dim": 384,
+      "shipping": false
+    },
+    "LARGE": {
+      "model_file": "qwen3-4b-q5km.gguf",
+      "db_name": "archive_large.db",
+      "context_tokens": 8192,
+      "embed_dim": 768,
+      "shipping": false
+    }
+  }
+}

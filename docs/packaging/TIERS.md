@@ -1,8 +1,12 @@
 # Godstone tiers
 
-Godstone ships as three builds from one codebase. The tier decides how much
-knowledge and how large a model the device carries. It never decides what the
-app is allowed to do.
+Godstone defines three tiers from one codebase. **Only LIGHT ships today.**
+MEDIUM and LARGE are source-level research configurations: their archives are
+buildable (and `archive_medium.db` is built in CI as the Invariant C archive
+probe), and they are modelled in the `Tier` enum below, but they have no
+store-compatible asset delivery design and are not product flavours until that
+lands. The tier decides how much knowledge and how large a model the device
+carries. It never decides what the app is allowed to do.
 
 **The mesh is never tier-limited.** A phone running LIGHT relays, routes and
 decrypts exactly as a phone running LARGE does. Restricting emergency
@@ -25,14 +29,23 @@ have different capabilities is a mesh with silent dead spots.
 | Minimum storage | 3 GB | 8 GB | 22 GB |
 | Minimum RAM | 3 GB | 6 GB | 8 GB |
 
-These numbers are duplicated in three places that must agree:
+These numbers have one canonical source and are mirrored in four derived files
+that must agree with it:
 
-- `content/ingest/build_archive.py` - the `TIERS` dict
-- `android/app/build.gradle.kts` - the product flavours (tab 03)
-- `ios/Godstone/Sources/GodstoneCore/Tier.swift` - the `Tier` enum (tab 06)
+- `config/tiers.json` - the canonical table (source of truth, with a `shipping`
+  flag per tier)
+- `content/ingest/build_archive.py` - the `TIERS` dict (builds archives for every tier)
+- `ios/Godstone/Sources/GodstoneCore/Tier.swift` - the `Tier` enum (models every tier)
+- `docs/packaging/TIERS.md` - this published table
+- `android/app/build.gradle.kts` - the product flavours (**ships only the
+  `shipping: true` tiers**; declaring a research-only flavour is a brickable
+  install no over-the-air fix can reach)
 
-If you change a tier, change all three or the app will look for a model file
-that was never built.
+`scripts/check_tiers.py` enforces all of this: the derived files must match
+`config/tiers.json`, and Gradle must declare exactly the shipping tiers. It runs
+in the constraint-audit CI job and as check_parity Invariant E. If you change a
+tier, change `config/tiers.json` and the derived files or the app will look for
+a model file that was never built.
 
 ## The core 8 domains
 

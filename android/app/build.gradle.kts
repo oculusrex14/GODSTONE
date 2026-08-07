@@ -19,9 +19,12 @@ android {
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
-    // One application identity and one initially shippable tier. MEDIUM and
-    // LARGE remain source-level research configurations until independently
-    // measured and given a store-compatible asset delivery design.
+    // One application identity and one shippable tier. Only the tiers marked
+    // `shipping: true` in config/tiers.json may be declared here; MEDIUM and
+    // LARGE are source-level research configurations (buildable archives, no
+    // store-compatible asset delivery design) and must NOT become product
+    // flavours until that lands. scripts/check_tiers.py (check_parity Invariant
+    // E) enforces that Gradle declares exactly the shipping tiers.
     flavorDimensions += "tier"
     productFlavors {
         create("light") {
