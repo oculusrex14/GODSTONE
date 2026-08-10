@@ -30,6 +30,7 @@ data class MeshStatus(
 sealed interface SosDispatchResult {
     data class Unavailable(val reason: String) : SosDispatchResult
     data object QueuedLocally : SosDispatchResult
+    data object NotPersisted : SosDispatchResult
     data class HandedToRelays(val count: Int) : SosDispatchResult
     data class Failed(val reason: String) : SosDispatchResult
 }
@@ -131,7 +132,16 @@ class MeshNode(
         if (!LINK_LAYER_READY) return@withContext SosDispatchResult.Unavailable(LINK_LAYER_OPEN_REASON)
         runCatching {
             val frame = router.buildSos(payload)
-            store.persist(frame, receivedFrom = identity.nodeId)
+            // Stage 4B: QueuedLocally only after durable success (ADR-004). The
+            // SOS must be durably held before the UI calls it queued -- a
+            // queued-but-not-persisted SOS is one process death from gone. If the
+            // store cannot hold it we report NotPersisted so the UI does not lie.
+            // This body is unreachable while LINK_LAYER_READY=false (it returns
+            // Unavailable first); the SosDispatchResult shapes are aligned with
+            // iOS `.notPersisted` for parity all the same.
+            if (!store.persist(frame, receivedFrom = identity.nodeId)) {
+                return@runCatching SosDispatchResult.NotPersisted
+            }
             val bytes = frame.encode()
             var handed = 0
             for (peerId in knownPeers()) if (ble.send(peerId, bytes)) handed++

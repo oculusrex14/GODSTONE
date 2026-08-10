@@ -34,13 +34,20 @@ public final class Router {
     /// semantically broken even with identical hash inputs (ADR-004 criterion 6,
     /// closed in Phase G). The in-memory `queue`/`seen` remain the routing
     /// buffer; the store is the durable source of truth for the digest.
+    ///
+    /// Stage 4B: the store is now injected before `MeshNode.start()` (see
+    /// `MeshNode.init(identity:store:)`), so a production router always carries
+    /// one. The `store` remains optional here only so the storeless unit-test
+    /// router (no durable configuration) can still exercise the routing buffer;
+    /// such a router builds an empty digest and skips persist-before-forward.
     public var store: MessageStore?
 
     public init() {}
 
-    /// True when the frame was new and has been accepted.
+    /// True when the frame was new and has been accepted (and, when a durable
+    /// store is attached, durably held before it was forwarded).
     @discardableResult
-    public func ingest(_ frame: FrameV2, isAddressedToMe: Bool) -> Bool {
+    public func ingest(_ frame: FrameV2, isAddressedToMe: Bool, receivedFrom: Data) -> Bool {
         guard frame.ttl <= Router.maxTtl,
               frame.hopCount <= Router.maxTtl else { return false }
 
@@ -51,6 +58,16 @@ public final class Router {
         if !duplicate { seen.insert(frame.msgId) }
         lock.unlock()
         guard !duplicate else { return false }
+
+        // Stage 4B: persist before forward (ADR-004). A frame that this node
+        // cannot durably hold is NOT delivered locally or relayed -- forwarding
+        // (or accepting for delivery) what this node cannot itself carry would
+        // let the only copy be dropped. The store is the durable source of
+        // truth; `persist` returns false only on a store failure (a duplicate
+        // msg_id is INSERT OR IGNORE, i.e. already held -> true). A storeless
+        // router (unit-test routing buffer) skips this gate and forwards as
+        // before. Mirrors Android Router.onFrameReceived.
+        if let store, !store.persist(frame, receivedFrom: receivedFrom) { return false }
 
         if isAddressedToMe {
             onDeliverLocally?(frame)
@@ -102,18 +119,18 @@ public final class Router {
 
     /// 4096-bit Bloom digest.
     ///
-    /// Built from the durable store's held msg_ids when a `store` is attached
-    /// (the set of frames this node CARRIES) -- matching Android, so the two
-    /// platforms build the same digest from the same held set (ADR-004 criterion
-    /// 6, Phase G). Falls back to the rolling dedup window (`seen.elements`,
-    /// the set of ids this node has RECENTLY SEEN) only when no durable store is
-    /// attached; that fallback describes a different set and is retained solely
-    /// for the in-memory router used outside a durable configuration.
+    /// Built from the durable store's held msg_ids (the set of frames this node
+    /// CARRIES) -- matching Android, so the two platforms build the same digest
+    /// from the same held set (ADR-004 criterion 6, Phase G). Stage 4B removed
+    /// the previous `seen.elements` fallback: that fallback described a
+    /// different set (ids this node has RECENTLY SEEN, not ids CARRIED), so it
+    /// was semantically broken even with identical hash inputs, and it is no
+    /// longer reachable in production now the store is injected before start.
+    /// A storeless (unit-test) router returns an empty digest rather than a
+    /// semantically-wrong one.
     public func bloomDigest() -> Data {
         lock.lock(); defer { lock.unlock() }
-        if let store = store {
-            return BloomDigest.build(from: store.allHeldMsgIds())
-        }
-        return BloomDigest.build(from: seen.elements)
+        guard let store else { return BloomDigest.build(from: []) }
+        return BloomDigest.build(from: store.allHeldMsgIds())
     }
 }

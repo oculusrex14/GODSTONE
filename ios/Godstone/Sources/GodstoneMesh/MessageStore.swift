@@ -30,8 +30,14 @@ private let storeSqliteTransient = unsafeBitCast(-1, to: sqlite3_destructor_type
 /// §5), so no migration code is written: an upgrade drops and recreates the
 /// table.
 public protocol MessageStore: AnyObject {
-    /// Persist `frame`, recording the peer it was received from.
-    func persist(_ frame: FrameV2, receivedFrom: Data)
+    /// Durably hold `frame`, recording the peer it was received from.
+    ///
+    /// Returns true when the frame is held after the call (newly inserted, or
+    /// already present on a duplicate msg_id via INSERT OR IGNORE); false only
+    /// on a store failure, so a caller can gate "queued / relayed" on durable
+    /// success and refuse to forward what it could not hold (ADR-004 / Stage 4B).
+    /// Mirrors Android `MessageStore.persist`.
+    func persist(_ frame: FrameV2, receivedFrom: Data) -> Bool
     /// All held frames, SOS-first then by priority and recency.
     func allHeldOrderedByPriority() -> [FrameV2]
     /// msg_ids of every held frame, for bloom-digest construction (order-agnostic).
@@ -204,7 +210,7 @@ public final class SqliteMessageStore: MessageStore {
 
     // MARK: - MessageStore
 
-    public func persist(_ frame: FrameV2, receivedFrom: Data) {
+    public func persist(_ frame: FrameV2, receivedFrom: Data) -> Bool {
         persistAt(frame, receivedFrom: receivedFrom,
                   receivedAt: Int64(Date().timeIntervalSince1970 * 1000))
     }
@@ -276,9 +282,12 @@ public final class SqliteMessageStore: MessageStore {
     // MARK: - Internals (test-exposed for deterministic eviction)
 
     /// Persist with an explicit received_at (millis), so eviction oldest-first
-    /// and priority tie-breaks do not race the wall clock in tests.
-    internal func persistAt(_ frame: FrameV2, receivedFrom: Data, receivedAt: Int64) {
-        withDb { db in
+    /// and priority tie-breaks do not race the wall clock in tests. Returns true
+    /// when the INSERT OR IGNORE step completed (frame held, newly or as a
+    /// duplicate no-op); false on a prepare/step failure or a nil DB handle.
+    @discardableResult
+    internal func persistAt(_ frame: FrameV2, receivedFrom: Data, receivedAt: Int64) -> Bool {
+        let inserted = withDb { db -> Bool in
             let sql = "INSERT OR IGNORE INTO \(StoreSchema.table) (" +
                 "\(StoreSchema.colMsgId), \(StoreSchema.colType), \(StoreSchema.colTtl), " +
                 "\(StoreSchema.colHopCount), \(StoreSchema.colFlags), \(StoreSchema.colPriority), " +
@@ -287,7 +296,7 @@ public final class SqliteMessageStore: MessageStore {
                 "VALUES (?,?,?,?,?,?,?,?,?,?)"
             var stmt: OpaquePointer?
             guard sqlite3_prepare_v2(db, sql, -1, &stmt, nil) == SQLITE_OK else {
-                sqlite3_finalize(stmt); return
+                sqlite3_finalize(stmt); return false
             }
             defer { sqlite3_finalize(stmt) }
             bindBlob(stmt, 1, frame.msgId)
@@ -300,9 +309,10 @@ public final class SqliteMessageStore: MessageStore {
             bindBlob(stmt, 8, frame.payload)
             bindBlob(stmt, 9, receivedFrom)
             sqlite3_bind_int64(stmt, 10, receivedAt)
-            sqlite3_step(stmt)
-        }
-        evictIfOverBudget()
+            return sqlite3_step(stmt) == SQLITE_DONE
+        } ?? false
+        if inserted { evictIfOverBudget() }
+        return inserted
     }
 
     /// Evict the smallest oldest (non-SOS-first) prefix that brings the store
@@ -359,5 +369,63 @@ public final class SqliteMessageStore: MessageStore {
         let count = Int(sqlite3_column_bytes(stmt, index))
         guard let ptr = sqlite3_column_blob(stmt, index), count > 0 else { return Data() }
         return Data(bytes: ptr, count: count)
+    }
+}
+
+/// In-memory `MessageStore` for unit tests that need a durable-shaped store
+/// without touching sqlite3 -- the iOS twin of Android's `InMemoryMessageStore`.
+/// `persist` always succeeds (returns true): a real durable-failure path is
+/// exercised with a bespoke fake in the test that needs it. INSERT OR IGNORE
+/// dedup and SOS-first priority ordering mirror `StoreSchema`, so a router
+/// wired to this store behaves as it would against `SqliteMessageStore`.
+internal final class InMemoryMessageStore: MessageStore {
+    private struct Held { let frame: FrameV2; let receivedAt: Int64 }
+    private let lock = NSLock()
+    private var rows: [Data: Held] = [:]
+
+    internal init() {}
+
+    func persist(_ frame: FrameV2, receivedFrom: Data) -> Bool {
+        lock.lock(); defer { lock.unlock() }
+        if rows[frame.msgId] != nil { return true }   // duplicate: already held
+        rows[frame.msgId] = Held(frame: frame, receivedAt: Int64(Date().timeIntervalSince1970 * 1000))
+        return true
+    }
+
+    private var sorted: [(frame: FrameV2, receivedAt: Int64)] {
+        rows.values.sorted { a, b in
+            let pa = Priority.fromFlags(a.frame.flags).rawValue
+            let pb = Priority.fromFlags(b.frame.flags).rawValue
+            if pa != pb { return pa < pb }            // SOS (0) first
+            return a.receivedAt > b.receivedAt        // newest-received first
+        }.map { ($0.frame, $0.receivedAt) }
+    }
+
+    func allHeldOrderedByPriority() -> [FrameV2] {
+        lock.lock(); defer { lock.unlock() }
+        return sorted.map { $0.frame }
+    }
+
+    func allHeldMsgIds() -> [Data] {
+        lock.lock(); defer { lock.unlock() }
+        return Array(rows.keys)
+    }
+
+    func forEachHeldOrderedByPriority(_ visit: (FrameV2) -> Bool) {
+        let ordered: [FrameV2]
+        lock.lock(); ordered = sorted.map { $0.frame }; lock.unlock()
+        for frame in ordered where !visit(frame) { return }
+    }
+
+    func forEachHeldMsgId(_ visit: (Data) -> Bool) {
+        let ids: [Data]
+        lock.lock(); ids = Array(rows.keys); lock.unlock()
+        for id in ids where !visit(id) { return }
+    }
+
+    var heldBytes: Int64 {
+        lock.lock(); defer { lock.unlock() }
+        // Per-row bookkeeping allowance matches StoreSchema.rowOverhead (64).
+        return rows.values.reduce(Int64(0)) { $0 + Int64($1.frame.payload.count) + 64 }
     }
 }

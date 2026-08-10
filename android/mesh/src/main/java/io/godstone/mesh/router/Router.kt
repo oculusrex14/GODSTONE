@@ -67,7 +67,15 @@ class Router(
 
         seen.add(frame.msgId)
         governor.reward(fromPeer)         // well-formed, useful traffic
-        store.persist(frame, receivedFrom = fromPeer)
+        // Stage 4B: persist BEFORE forward (ADR-004). A frame this node cannot
+        // durably hold is NOT emitted to inbound or relayed onward -- forwarding
+        // what this node cannot itself carry would let the only copy be dropped.
+        // `persist` returns true when held (newly, or as a duplicate via INSERT OR
+        // IGNORE); false only on a durable failure, so the gate refuses to relay
+        // what it could not hold. Mirrors iOS `Router.ingest`. seen.add precedes
+        // persist: the in-memory dedup window is the fast path, the store is the
+        // durable source of truth.
+        if (!store.persist(frame, receivedFrom = fromPeer)) return false
         _inbound.emit(frame)
 
         return frame.ttl > 1

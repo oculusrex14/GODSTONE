@@ -41,8 +41,15 @@ import io.godstone.mesh.wire.v2.TypeV2
  * code is written: an upgrade drops and recreates the table.
  */
 interface MessageStore {
-    /** Persist [frame], recording the peer it was received from. */
-    suspend fun persist(frame: FrameV2, receivedFrom: ByteArray)
+    /**
+     * Durably hold [frame], recording the peer it was received from.
+     *
+     * Returns true when the frame is held after the call (newly inserted, or
+     * already present on a duplicate msg_id via INSERT OR IGNORE); the router
+     * gates "queued / relayed" on durable success and refuses to forward what
+     * it could not hold (ADR-004 / Stage 4B). Mirrors iOS `MessageStore.persist`.
+     */
+    suspend fun persist(frame: FrameV2, receivedFrom: ByteArray): Boolean
 
     /** All held frames, SOS-first then by priority and recency. */
     suspend fun allHeldOrderedByPriority(): List<FrameV2>
@@ -217,17 +224,28 @@ class SqliteMessageStore internal constructor(
     /** Production constructor: open the SQLCipher engine with a Keystore-held key. */
     constructor(ctx: Context, maxBytes: Long) : this(SqlcipherStoreDb(ctx.applicationContext), maxBytes)
 
-    override suspend fun persist(frame: FrameV2, receivedFrom: ByteArray) =
+    override suspend fun persist(frame: FrameV2, receivedFrom: ByteArray): Boolean =
         persistAt(frame, receivedFrom, System.currentTimeMillis())
 
     /**
      * Persist with an explicit receipt timestamp. [persist] stamps "now"; this
      * internal form lets the bounded-capacity and ordering tests control
      * received_at deterministically instead of racing the wall clock.
+     *
+     * Returns true when the frame is held after the call: a newly inserted row
+     * (rowId >= 1) or a duplicate msg_id ignored via CONFLICT_IGNORE (rowId -1 --
+     * the row was already held; the in-memory dedup LRU may have aged the id out
+     * while the durable PK still holds it). A genuine engine failure throws
+     * rather than returns false, so a -1 here is a duplicate, not an error.
+     * Matches iOS `SqliteMessageStore.persistAt` (INSERT OR IGNORE step DONE ->
+     * true) for byte-identical persist-result semantics (Stage 4B).
      */
-    internal suspend fun persistAt(frame: FrameV2, receivedFrom: ByteArray, receivedAt: Long) {
-        engine.insert(frame, receivedFrom, receivedAt)
-        evictIfOverBudget()
+    internal suspend fun persistAt(
+        frame: FrameV2, receivedFrom: ByteArray, receivedAt: Long
+    ): Boolean {
+        val rowId = engine.insert(frame, receivedFrom, receivedAt)
+        if (rowId != -1L) evictIfOverBudget()   // newly inserted -> enforce the hard cap
+        return true   // held: newly inserted, or already present (CONFLICT_IGNORE)
     }
 
     /** Current stored byte total (payloads + per-row overhead). */
@@ -454,8 +472,9 @@ internal class InMemoryMessageStore : MessageStore {
 
     private val held = LinkedHashMap<BytesKey, FrameV2>()
 
-    override suspend fun persist(frame: FrameV2, receivedFrom: ByteArray) {
+    override suspend fun persist(frame: FrameV2, receivedFrom: ByteArray): Boolean {
         held[BytesKey(frame.msgId)] = frame
+        return true   // always held (in-memory); a durable-failure path is exercised via a bespoke fake
     }
 
     override suspend fun allHeldOrderedByPriority(): List<FrameV2> =

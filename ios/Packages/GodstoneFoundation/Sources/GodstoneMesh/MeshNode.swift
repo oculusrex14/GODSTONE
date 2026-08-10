@@ -16,6 +16,12 @@ public final class MeshNode {
         "Encrypted BLE record reassembly and the Noise handshake driver are not implemented yet. Radio transmission is disabled in this pre-alpha build."
 
     public let identity: MeshIdentity
+    /// Durable hold, injected before `start()` (ADR-004 / Stage 4B). The router
+    /// builds its anti-entropy digest from this store's held msg_ids and
+    /// persists every accepted frame before forwarding, so a node cannot start
+    /// without the durable source of truth it relays from. Mirrors Android
+    /// `MeshNode(ctx, store)`.
+    public let store: MessageStore
     public private(set) lazy var ble = BleTransport()
     public private(set) lazy var router = Router()
     public private(set) lazy var sessions = SessionManager(identity: identity)
@@ -25,7 +31,12 @@ public final class MeshNode {
     public var onPeerCountChanged: ((Int) -> Void)?
     private var isStarted = false
 
-    public init(identity: MeshIdentity) { self.identity = identity }
+    public init(identity: MeshIdentity, store: MessageStore) {
+        self.identity = identity
+        self.store = store
+        // Inject the durable store into the router before start (Stage 4B).
+        self.router.store = store
+    }
 
     @discardableResult
     public func start() -> Bool {
@@ -87,7 +98,11 @@ public final class MeshNode {
         // The current iOS router is memory-only. A zero-peer result is therefore
         // not QUEUED: termination would lose it. ADR-004 must land before that word
         // can appear in the UI.
-        router.ingest(frame, isAddressedToMe: false)
+        // Stage 4B: ingest now persists before forwarding (the durable store is
+        // injected at init), so the SOS is durably held even with zero peers; the
+        // result wording below is unchanged only because this whole body is
+        // unreachable while linkLayerReady=false (it returns .unavailable first).
+        router.ingest(frame, isAddressedToMe: false, receivedFrom: identity.nodeId)
         let handed = currentPeers().reduce(into: 0) { count, peer in
             if ble.send(frame, to: peer) { count += 1 }
         }
@@ -114,6 +129,15 @@ extension MeshNode: TransportDelegate {
 
     public func transportDidReceive(data: Data, peerId: UUID) {
         guard Self.linkLayerReady, let frame = FrameV2.decode(data) else { return }
-        router.ingest(frame, isAddressedToMe: frame.routingTag == identity.nodeHint)
+        // Stage 4B: persist before forward. The authenticated sender node_id is
+        // not available in the v2 header (the sealed sender lives inside the
+        // encrypted payload) and the iOS BLE transport exposes only a local
+        // peer UUID, not the remote node_id; the real `receivedFrom` is wired
+        // when the M2-link layer (ADR-002, Stage 4H) exposes the authenticated
+        // peer node_id. Until then an empty `receivedFrom` records "sender not
+        // yet identified" -- honest, and this path is unreachable while
+        // linkLayerReady=false in any case.
+        router.ingest(frame, isAddressedToMe: frame.routingTag == identity.nodeHint,
+                     receivedFrom: Data())
     }
 }

@@ -3,6 +3,7 @@ package io.godstone.mesh
 import io.godstone.mesh.router.BloomDigest
 import io.godstone.mesh.router.Router
 import io.godstone.mesh.store.InMemoryMessageStore
+import io.godstone.mesh.store.MessageStore
 import io.godstone.mesh.wire.v2.FrameV2
 import io.godstone.mesh.wire.v2.Priority
 import io.godstone.mesh.wire.v2.SosFrameValidator
@@ -156,4 +157,37 @@ class RouterTest {
         assertTrue(digest.mightContain(id))
         assertFalse(digest.mightContain(msgId(9999)))
     }
+
+    // --- Stage 4B: persist result checked before forward (ADR-004) ---
+
+    @Test
+    fun `persist failure prevents relay and inbound emit`() = runTest {
+        // A store whose persist always fails exercises the persist gate in
+        // onFrameReceived without a real engine. The frame is novel and its TTL
+        // is healthy, so the only thing that can return false here is the
+        // persist-before-forward gate: a frame this node cannot durably hold is
+        // NOT relayed (false) and NOT emitted to inbound -- forwarding what this
+        // node cannot itself carry would let the only copy be dropped.
+        val router = Router(FailingMessageStore(), selfNodeId)
+        val f = frame(msgId(11), ttl = 5)
+
+        assertFalse(router.onFrameReceived(f, fromPeer = peerC))
+        // onFrameReceived returned before `_inbound.emit`, so nothing reached the
+        // inbound flow (contrast the working-store tests above, which return true
+        // and advertise the held id in the digest).
+        assertFalse(router.currentDigest().mightContain(f.msgId))
+    }
+}
+
+/**
+ * A [MessageStore] whose `persist` always fails -- exercises the persist gate in
+ * `Router.onFrameReceived` (ADR-004 / Stage 4B) without a real engine. The other
+ * methods report an empty store, which is consistent with "nothing was held".
+ */
+private class FailingMessageStore : MessageStore {
+    override suspend fun persist(frame: FrameV2, receivedFrom: ByteArray): Boolean = false
+    override suspend fun allHeldOrderedByPriority(): List<FrameV2> = emptyList()
+    override suspend fun allHeldMsgIds(): List<ByteArray> = emptyList()
+    override suspend fun forEachHeldOrderedByPriority(visit: (FrameV2) -> Boolean) {}
+    override suspend fun forEachHeldMsgId(visit: (ByteArray) -> Boolean) {}
 }
