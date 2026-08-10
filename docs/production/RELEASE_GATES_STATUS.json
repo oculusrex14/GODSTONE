@@ -20,10 +20,10 @@
     },
     {
       "gate": "android-archive-only-release",
-      "status": "OPEN",
-      "reason": "Stage 4A split the Android gate. The Archive-only LIGHT binary (links only :core; :llm is testImplementation-only) does NOT need llama.cpp/model/Oracle. This repo-owned shipping-artifact gate runs the scoped :app:lintLightRelease/:app:assembleLightRelease/:app:bundleLightRelease, captures the resolved lightRelease classpath (rejecting :llm/:mesh/llama/ggml/godstone_llm), and inspects the real APK/AAB + merged manifest. OPEN until a green run is recorded below as evidence.",
+      "status": "CLOSED",
+      "reason": "Stage 4A split the Android gate. The Archive-only LIGHT binary (links only :core; :llm is testImplementation-only) does NOT need llama.cpp/model/Oracle. This repo-owned shipping-artifact gate runs the scoped :app:lintLightRelease/:app:assembleLightRelease/:app:bundleLightRelease, captures the resolved lightRelease classpath (rejecting :llm/:mesh/llama/ggml/godstone_llm), and inspects the real APK/AAB + merged manifest. GREEN: release-gates.yml / android-archive-only-release run 31384944062 @ 3ddb6f6 SUCCEEDED. APK SHA-256 e1b8211714bcbbbddee2f70c3be3b703ebe1dc4c3906375a4e40c2e0dcc107ae (2,381,429 B); AAB SHA-256 b77411487af3b672aeff10755db87231b7a2bff7cad0323fed700fb6acc2bb97 (4,045,846 B); lightRelease runtime+compile classpath has no :llm/:mesh/llama/ggml/godstone_llm edge; merged lightRelease manifest grants no INTERNET/BLE/radio/location permission; APK/AAB namelist contains no .gguf/libllama/libggml/libgodstone_llm/LlamaBridge/:mesh/Oracle/cross-tier asset. This gate covers the repo-owned archive-only build + binary inspection only; the binary is UNSIGNED and on-device/signing evidence are separate external gates (signing-store-approval BLOCKED, device-interoperability BLOCKED).",
       "closure_requirement": "Green release-gates.yml / android-archive-only-release run on the branch tip; record the run ID, commit SHA, APK SHA-256, AAB SHA-256, the resolved lightRelease dependency graph artifact, and the binary+manifest inspection result. The merged lightRelease manifest must grant no INTERNET/BLE/radio/location permission and the APK/AAB must contain no .gguf/libllama/libggml/libgodstone_llm/LlamaBridge/:mesh/Oracle/cross-tier asset.",
-      "evidence_commit": null,
+      "evidence_commit": "3ddb6f68368a3877afacc189d348b0dde8a9941e",
       "ci_job": "release-gates.yml / android-archive-only-release"
     },
     {
