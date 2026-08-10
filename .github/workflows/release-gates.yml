@@ -124,13 +124,23 @@ jobs:
             > ../artifacts/android/deps/lightReleaseRuntimeClasspath.txt
           ./gradlew --no-daemon :app:dependencies --configuration lightReleaseCompileClasspath \
             > ../artifacts/android/deps/lightReleaseCompileClasspath.txt
-          if grep -E 'project :llm|project :mesh|llama|ggml|godstone_llm' \
+          # Gradle CONFIGURES every included project (settings.gradle includes
+          # :llm and :mesh) even for a scoped :app:dependencies task, emitting
+          # "> Configure project :llm" banners and NDK-install noise. Those are
+          # configuration-time log lines, NOT dependency edges -- and crucially
+          # configuring :llm only installs the NDK; it does NOT run CMake /
+          # add_subdirectory(third_party/llama.cpp) (that needs :llm:assembleRelease,
+          # which :app:assembleLightRelease never depends on). Strip lines
+          # beginning with ">" (Gradle log banners) and blanks so the scan sees
+          # only the resolved dependency tree, then fail closed on a real edge.
+          if grep -hvE '^>|^$' \
               ../artifacts/android/deps/lightReleaseRuntimeClasspath.txt \
-              ../artifacts/android/deps/lightReleaseCompileClasspath.txt; then
+              ../artifacts/android/deps/lightReleaseCompileClasspath.txt \
+            | grep -E 'project :llm|project :mesh|llama|ggml|godstone_llm'; then
             echo "::error::forbidden dependency on the LIGHT shipping classpath (see deps/*.txt)"
             exit 1
           fi
-          echo "ok: LIGHT shipping classpath is Archive-only (no :llm/:mesh/llama/ggml/godstone_llm)"
+          echo "ok: LIGHT shipping classpath is Archive-only (no :llm/:mesh/llama/ggml/godstone_llm edge)"
       # A1: scoped :app tasks ONLY. A fresh GitHub checkout is already a clean
       # source tree, so there is NO root `clean test lint` here -- those root
       # tasks would configure :llm and trigger its CMake
