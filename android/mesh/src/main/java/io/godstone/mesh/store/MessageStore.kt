@@ -41,15 +41,42 @@ import io.godstone.mesh.wire.v2.TypeV2
  * code is written: an upgrade drops and recreates the table.
  */
 interface MessageStore {
+
+    /**
+     * The outcome of a durable persist, shared semantically with iOS (Stage 4B.1).
+     *
+     * The router must distinguish these to keep the durable `UNIQUE(msg_id)` the
+     * authoritative dedup decision (B1) and to refuse to forward what it does not
+     * durably hold (B2): only [HELD_NEW] is forwarded/delivered; [HELD_DUPLICATE]
+     * is suppressed (already held, do not re-relay); [REJECTED_CAPACITY] and
+     * [FAILED_STORAGE] leave the in-memory dedup window untouched so the same
+     * msg_id may be re-offered after the store recovers or has room.
+     */
+    enum class PersistResult {
+        /** Newly inserted and still present after capacity enforcement. */
+        HELD_NEW,
+        /** Already held on a duplicate msg_id (INSERT OR IGNORE no-op) and still present. */
+        HELD_DUPLICATE,
+        /** Inserted but then evicted by the hard cap (or a duplicate whose row was evicted): not durably held. */
+        REJECTED_CAPACITY,
+        /** A storage exception occurred inside the transaction; it was rolled back. */
+        FAILED_STORAGE,
+    }
+
     /**
      * Durably hold [frame], recording the peer it was received from.
      *
-     * Returns true when the frame is held after the call (newly inserted, or
-     * already present on a duplicate msg_id via INSERT OR IGNORE); the router
-     * gates "queued / relayed" on durable success and refuses to forward what
-     * it could not hold (ADR-004 / Stage 4B). Mirrors iOS `MessageStore.persist`.
+     * Returns a [PersistResult]. The row is present in the durable store at or
+     * before the moment this returns for [HELD_NEW] / [HELD_DUPLICATE]; for
+     * [REJECTED_CAPACITY] / [FAILED_STORAGE] the row is NOT durably held and the
+     * caller MUST NOT forward, deliver or permanently mark the id seen (B1/B2,
+     * ADR-004 / Stage 4B.1). The insert, hard-cap enforcement and final
+     * membership check run in one transaction (B3); a storage exception is
+     * rolled back and reported as [FAILED_STORAGE] rather than thrown, so one
+     * bad operation cannot kill the inbound receive collector. Mirrors iOS
+     * `MessageStore.persist`.
      */
-    suspend fun persist(frame: FrameV2, receivedFrom: ByteArray): Boolean
+    suspend fun persist(frame: FrameV2, receivedFrom: ByteArray): PersistResult
 
     /** All held frames, SOS-first then by priority and recency. */
     suspend fun allHeldOrderedByPriority(): List<FrameV2>
@@ -154,6 +181,13 @@ internal object StoreSchema {
     /** Priority-order clause: SOS-first (priority 0), then priority asc, then
      *  newest-received first (recency tie-break). */
     const val PRIORITY_ORDER = "$COL_PRIORITY ASC, $COL_RECEIVED_AT DESC"
+
+    /** Membership check: true iff a row with [msg_id] is present. The
+     *  load-bearing final-presence query run AFTER capacity enforcement inside
+     *  the persist transaction (B2/B3): `persist` is truthful only when this
+     *  confirms the row survived eviction. Bind: (1) msg_id. */
+    fun containsSql(): String =
+        "SELECT 1 FROM $TABLE WHERE $COL_MSG_ID = ? LIMIT 1"
 }
 
 /** A stored row before it is typed into a [FrameV2] (the type code may be unknown). */
@@ -185,6 +219,9 @@ internal interface StoreDb {
     /** Insert [frame] (or ignore on a duplicate msg_id). Returns the rowid, or -1 if ignored. */
     fun insert(frame: FrameV2, receivedFrom: ByteArray, receivedAt: Long): Long
 
+    /** True iff a row with [msgId] is present. Used for the final-presence check (B2/B3). */
+    fun contains(msgId: ByteArray): Boolean
+
     /** Total stored bytes (payloads + per-row overhead). */
     fun heldBytes(): Long
 
@@ -196,6 +233,19 @@ internal interface StoreDb {
 
     /** Stream msg_ids, stopping as soon as [visit] returns false. */
     fun forEachMsgId(visit: (ByteArray) -> Boolean)
+
+    /**
+     * Run [block] in ONE transaction (BEGIN IMMEDIATE ... COMMIT / ROLLBACK) on
+     * the engine's single connection (B3). `insert` / `contains` / `heldBytes` /
+     * `evictOldestPrefix` called on the receiver inside [block] participate in
+     * that transaction (read-your-writes on the same connection). If [block]
+     * throws, the transaction is rolled back and the exception rethrown; the
+     * caller converts it to [MessageStore.PersistResult.FAILED_STORAGE]. Shared
+     * by the production SQLCipher engine and the host-test JDBC engine so the
+     * insert/evict/final-membership logic is the SAME code path in CI as in
+     * production.
+     */
+    fun <T> inTransaction(block: (StoreDb) -> T): T
 
     fun close()
 }
@@ -219,12 +269,24 @@ internal interface StoreDb {
 class SqliteMessageStore internal constructor(
     private val engine: StoreDb,
     private val maxBytes: Long,
+    /**
+     * Test-only fault-injection seam (B3). When non-null it is invoked between
+     * the insert/evict/contains phases of the persist transaction; throwing from
+     * it aborts the transaction (ROLLBACK) and yields [PersistResult.FAILED_STORAGE],
+     * so a test can prove the store reopens in a valid, bounded state after a
+     * mid-transaction fault. MUST stay null in production -- the public
+     * constructor does not expose it.
+     */
+    private val faultInjector: ((String) -> Unit)? = null,
 ) : MessageStore {
 
     /** Production constructor: open the SQLCipher engine with a Keystore-held key. */
-    constructor(ctx: Context, maxBytes: Long) : this(SqlcipherStoreDb(ctx.applicationContext), maxBytes)
+    constructor(ctx: Context, maxBytes: Long) : this(SqlcipherStoreDb(ctx.applicationContext), maxBytes, null)
 
-    override suspend fun persist(frame: FrameV2, receivedFrom: ByteArray): Boolean =
+    /** Internal test constructor without a fault seam (kept for existing callers). */
+    internal constructor(engine: StoreDb, maxBytes: Long) : this(engine, maxBytes, null)
+
+    override suspend fun persist(frame: FrameV2, receivedFrom: ByteArray): PersistResult =
         persistAt(frame, receivedFrom, System.currentTimeMillis())
 
     /**
@@ -232,50 +294,57 @@ class SqliteMessageStore internal constructor(
      * internal form lets the bounded-capacity and ordering tests control
      * received_at deterministically instead of racing the wall clock.
      *
-     * Returns true when the frame is held after the call: a newly inserted row
-     * (rowId >= 1) or a duplicate msg_id ignored via CONFLICT_IGNORE (rowId -1 --
-     * the row was already held; the in-memory dedup LRU may have aged the id out
-     * while the durable PK still holds it). A genuine engine failure throws
-     * rather than returns false, so a -1 here is a duplicate, not an error.
-     * Matches iOS `SqliteMessageStore.persistAt` (INSERT OR IGNORE step DONE ->
-     * true) for byte-identical persist-result semantics (Stage 4B).
+     * Stage 4B.1 (B2/B3): insert, hard-cap enforcement and the final membership
+     * check run in ONE transaction (`engine.inTransaction`). `persist` is
+     * truthful about holding: it returns [PersistResult.HELD_NEW] /
+     * [PersistResult.HELD_DUPLICATE] only when `contains(msg_id)` confirms the
+     * row is still present AFTER capacity enforcement, and
+     * [PersistResult.REJECTED_CAPACITY] when the just-inserted row (or a
+     * duplicate's row) was evicted by the hard cap. A storage exception inside
+     * the transaction is rolled back and reported as
+     * [PersistResult.FAILED_STORAGE] -- never thrown -- so one bad DB operation
+     * cannot kill the inbound receive collector (B2/B3). Matches iOS
+     * `SqliteMessageStore.persistAt` for shared persist-result semantics.
      */
     internal suspend fun persistAt(
         frame: FrameV2, receivedFrom: ByteArray, receivedAt: Long
-    ): Boolean {
-        val rowId = engine.insert(frame, receivedFrom, receivedAt)
-        if (rowId != -1L) evictIfOverBudget()   // newly inserted -> enforce the hard cap
-        return true   // held: newly inserted, or already present (CONFLICT_IGNORE)
+    ): PersistResult = persistAtWithFault(frame, receivedFrom, receivedAt, faultInjector)
+
+    /**
+     * [persistAt] with an explicit per-call fault seam (B3). Tests pass a one-shot
+     * injector that throws between the insert/evict/contains phases to prove the
+     * transaction rolls back and the store reopens valid + bounded; production
+     * always passes the constructor's [faultInjector] (null) via [persistAt].
+     */
+    internal suspend fun persistAtWithFault(
+        frame: FrameV2, receivedFrom: ByteArray, receivedAt: Long,
+        fault: ((String) -> Unit)?,
+    ): PersistResult {
+        return try {
+            engine.inTransaction { db ->
+                val rowId = db.insert(frame, receivedFrom, receivedAt)
+                val isNew = rowId != -1L   // -1 == CONFLICT_IGNORE duplicate
+                if (isNew) {
+                    fault?.invoke("after_insert")
+                    val held = db.heldBytes()
+                    if (held > maxBytes) db.evictOldestPrefix(held - maxBytes)
+                    fault?.invoke("after_evict")
+                }
+                fault?.invoke("before_contains")
+                val present = db.contains(frame.msgId)
+                when {
+                    present && isNew -> PersistResult.HELD_NEW
+                    present -> PersistResult.HELD_DUPLICATE
+                    else -> PersistResult.REJECTED_CAPACITY
+                }
+            }
+        } catch (e: Exception) {
+            PersistResult.FAILED_STORAGE
+        }
     }
 
     /** Current stored byte total (payloads + per-row overhead). */
     internal fun heldBytes(): Long = engine.heldBytes()
-
-    /**
-     * Best-effort eviction when the store exceeds [maxBytes]. Candidates are
-     * evicted oldest non-SOS first; SOS is evicted LAST ("retained last",
-     * PROTOCOL.md §7), only after every non-SOS row has gone. Because the
-     * candidate set is all rows, the store always returns to or under the cap:
-     * all-SOS flooding stays inside the configured hard cap (ADR-004 criterion 4).
-     *
-     * AUDIT A-14. This previously ran the DELETE unconditionally on EVERY insert
-     * with no check that the budget had been exceeded, and then deleted a row
-     * COUNT approximated from the overshoot divided by a guessed average row
-     * size. Both defects are closed: the size is measured before anything is
-     * deleted and the DELETE only runs when genuinely over budget, and the
-     * deletion is now precise byte accounting (StoreSchema.evictPrefixSql) --
-     * the smallest oldest (non-SOS-first) prefix whose cumulative byte cost
-     * meets the overshoot.
-     */
-    private fun evictIfOverBudget() {
-        val heldBytes = engine.heldBytes()
-        if (heldBytes <= maxBytes) return   // nothing to do: the common case
-        engine.evictOldestPrefix(heldBytes - maxBytes)
-        // Single pass: evictOldestPrefix removes >= overshoot bytes from the
-        // non-SOS-first-then-SOS oldest ordering, so the store is at or under
-        // maxBytes afterwards (the candidate set is all rows, so the prefix
-        // always reaches the overshoot).
-    }
 
     override suspend fun allHeldOrderedByPriority(): List<FrameV2> {
         val out = ArrayList<FrameV2>()
@@ -354,6 +423,11 @@ internal class SqlcipherStoreDb(ctx: Context) : StoreDb {
         )
     }
 
+    override fun contains(msgId: ByteArray): Boolean =
+        helper.readableDatabase.rawQuery(
+            StoreSchema.containsSql(), arrayOf(msgId)
+        ).use { it.moveToFirst() }
+
     override fun heldBytes(): Long =
         helper.readableDatabase.rawQuery(StoreSchema.heldBytesSql(), null).use { c ->
             if (c.moveToFirst()) c.getLong(0) else 0L
@@ -364,6 +438,31 @@ internal class SqlcipherStoreDb(ctx: Context) : StoreDb {
             StoreSchema.evictPrefixSql(),
             arrayOf<Any>(overshoot)
         )
+    }
+
+    /**
+     * One transaction (B3). Uses the framework `beginTransaction` /
+     * `setTransactionSuccessful` / `endTransaction` API (an EXCLUSIVE write
+     * lock -- the "or equivalent sqlite transaction API" the directive allows;
+     * semantically serializes writers exactly as BEGIN IMMEDIATE does).
+     * `insert` / `contains` / `heldBytes` / `evictOldestPrefix` called inside
+     * [block] participate in this transaction: `readableDatabase` and
+     * `writableDatabase` share one underlying connection, so reads see
+     * uncommitted writes (read-your-writes). If [block] throws,
+     * `setTransactionSuccessful` is never called and `endTransaction` rolls
+     * back; the exception propagates to the caller, which reports
+     * `PersistResult.FAILED_STORAGE`.
+     */
+    override fun <T> inTransaction(block: (StoreDb) -> T): T {
+        val db = helper.writableDatabase
+        db.beginTransaction()
+        try {
+            val result = block(this)
+            db.setTransactionSuccessful()
+            return result
+        } finally {
+            db.endTransaction()
+        }
     }
 
     override fun forEachRowOrderedByPriority(visit: (StoreRow) -> Boolean) {
@@ -462,28 +561,63 @@ internal class SqlcipherStoreDb(ctx: Context) : StoreDb {
 /**
  * Pure-Kotlin in-memory store with no Android dependency. Used by unit tests
  * that exercise the router with no device or SQLite available.
+ *
+ * Stage 4B.1: contract-parity with [SqliteMessageStore]. `persist` reports the
+ * same [PersistResult] distinctions (HELD_NEW / HELD_DUPLICATE / REJECTED_CAPACITY)
+ * so router-level at-most-once and capacity-rejection tests can run without
+ * sqlite3. The hard cap defaults to unlimited so existing router tests that
+ * never approach a cap compile unchanged; a tight cap exercises the same
+ * eviction ordering (non-SOS first, then SOS, newest retained) as the SQL store.
  */
-internal class InMemoryMessageStore : MessageStore {
+internal class InMemoryMessageStore(
+    private val maxBytes: Long = Long.MAX_VALUE,
+) : MessageStore {
     // ByteArray is identity-equal by default, so wrap it for content-based map keys.
     private class BytesKey(val bytes: ByteArray) {
         override fun equals(other: Any?): Boolean = other is BytesKey && bytes.contentEquals(other.bytes)
         override fun hashCode(): Int = bytes.contentHashCode()
     }
 
-    private val held = LinkedHashMap<BytesKey, FrameV2>()
+    private data class Held(val frame: FrameV2, val receivedAt: Long)
 
-    override suspend fun persist(frame: FrameV2, receivedFrom: ByteArray): Boolean {
-        held[BytesKey(frame.msgId)] = frame
-        return true   // always held (in-memory); a durable-failure path is exercised via a bespoke fake
+    private val held = LinkedHashMap<BytesKey, Held>()
+
+    private fun bytesOf(f: FrameV2): Long = f.payload.size.toLong() + StoreSchema.ROW_OVERHEAD
+
+    override suspend fun persist(frame: FrameV2, receivedFrom: ByteArray): PersistResult {
+        val key = BytesKey(frame.msgId)
+        val isNew = !held.containsKey(key)
+        if (isNew) held[key] = Held(frame, System.currentTimeMillis())
+        if (held.values.sumOf { bytesOf(it.frame) } > maxBytes) evictUntilUnderCap()
+        return when {
+            held.containsKey(key) && isNew -> PersistResult.HELD_NEW
+            held.containsKey(key) -> PersistResult.HELD_DUPLICATE
+            else -> PersistResult.REJECTED_CAPACITY   // the just-inserted frame was evicted
+        }
+    }
+
+    /** Evict oldest non-SOS first (then SOS, oldest first) until <= maxBytes. */
+    private fun evictUntilUnderCap() {
+        // Eviction order: non-SOS (priority != 0) first, oldest received; then SOS, oldest.
+        val order = held.entries.sortedWith(
+            compareBy<Map.Entry<BytesKey, Held>> { if (Priority.fromFlags(it.value.frame.flags) == Priority.SOS) 1 else 0 }
+                .thenBy { it.value.receivedAt }
+        )
+        var total = held.values.sumOf { bytesOf(it.frame) }
+        for (e in order) {
+            if (total <= maxBytes) break
+            held.remove(e.key)
+            total -= bytesOf(e.value.frame)
+        }
     }
 
     override suspend fun allHeldOrderedByPriority(): List<FrameV2> =
-        held.values.sortedWith(
+        held.values.map { it.frame }.sortedWith(
             compareBy<FrameV2> { Priority.fromFlags(it.flags).code }
                 .thenByDescending { it.type.code.toInt() }
         )
 
-    override suspend fun allHeldMsgIds(): List<ByteArray> = held.values.map { it.msgId }
+    override suspend fun allHeldMsgIds(): List<ByteArray> = held.values.map { it.frame.msgId }
 
     override suspend fun forEachHeldOrderedByPriority(visit: (FrameV2) -> Boolean) {
         for (f in allHeldOrderedByPriority()) if (!visit(f)) return

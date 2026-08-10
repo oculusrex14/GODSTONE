@@ -37,10 +37,18 @@ class SqliteMessageStoreTest {
     private lateinit var store: SqliteMessageStore
 
     /** Open a fresh real-SQLite store against a temp file with a [maxBytes] cap. */
-    private fun open(maxBytes: Long): SqliteMessageStore {
+    private fun open(maxBytes: Long): SqliteMessageStore = open(maxBytes, faultInjector = null)
+
+    /**
+     * Open a store with a B3 fault-injection seam. The [faultInjector] is invoked
+     * between the insert/evict/contains phases of the persist transaction;
+     * throwing from it aborts the transaction (ROLLBACK) and yields
+     * `FAILED_STORAGE`, proving the store reopens in a valid, bounded state.
+     */
+    private fun open(maxBytes: Long, faultInjector: (String) -> Unit): SqliteMessageStore {
         val db = JdbcStoreDb(tmp)
         engine = db
-        store = SqliteMessageStore(db, maxBytes)
+        store = SqliteMessageStore(db, maxBytes, faultInjector)
         return store
     }
 
@@ -290,5 +298,182 @@ class SqliteMessageStoreTest {
         open(Long.MAX_VALUE)   // reopens the existing file (IF NOT EXISTS = no-op)
         assertEquals(0, store.allHeldOrderedByPriority().size, "unknown-type row skipped")
         assertEquals(1, store.allHeldMsgIds().size, "msg_id still reported")
+    }
+
+    // --- Stage 4B.1 / B2: persist means HELD AFTER cap enforcement ---
+
+    @Test
+    fun `ordinary frame evicted under all-SOS pressure reports REJECTED_CAPACITY and is absent`() = runBlocking {
+        // Fill the store to the cap with SOS frames. An incoming ORDINARY frame is
+        // the first eviction candidate (non-SOS evicted before SOS), so it is
+        // inserted then immediately evicted: persist MUST report
+        // REJECTED_CAPACITY (NOT HELD_NEW), the row MUST be absent, and the cap
+        // MUST remain satisfied. The router must not forward/emit a frame it does
+        // not durably hold -- the truthful REJECTED_CAPACITY result is what lets
+        // the router refuse to relay without poisoning retry (B1).
+        open(maxBytes = 512L)
+        // One SOS frame is 464 bytes (400 payload + 64 overhead) -> under the 512 cap.
+        store.persistAt(frame(1, Priority.SOS, 400), ByteArray(0), receivedAt = 100L)
+        assertTrue(bytes() <= 512L)
+        // An ordinary (GROUP) frame: inserted, overshoots, evicted first (non-SOS).
+        val result = store.persistAt(frame(2, Priority.GROUP, 400), ByteArray(0), receivedAt = 200L)
+        assertEquals(MessageStore.PersistResult.REJECTED_CAPACITY, result)
+        val ids = heldIds()
+        assertFalse(ids.containsId(msgId(2)), "evicted ordinary frame must be absent")
+        assertTrue(ids.containsId(msgId(1)), "SOS retained under pressure")
+        assertTrue(bytes() <= 512L, "cap still satisfied after rejected persist")
+    }
+
+    @Test
+    fun `new SOS under all-SOS pressure keeps cap satisfied and newest SOS retained with truthful result`() = runBlocking {
+        // B2: "new SOS under all-SOS pressure, hard cap remains satisfied, newest
+        // SOS retention deterministic, persist result exactly matches final row
+        // presence." Cap = 512; each SOS is 464 bytes. Each new SOS overshoots and
+        // evicts the oldest SOS, so the NEWEST is always retained and the cap holds.
+        // The persist result MUST match `contains`: HELD_NEW when present & new,
+        // HELD_DUPLICATE when present & already held, REJECTED_CAPACITY when absent.
+        open(maxBytes = 512L)
+        // frame1 SOS: alone, under cap -> HELD_NEW, present.
+        assertEquals(MessageStore.PersistResult.HELD_NEW,
+            store.persistAt(frame(1, Priority.SOS, 400), ByteArray(0), receivedAt = 100L))
+        // frame2 SOS: 928 > 512 -> evict oldest SOS (frame1) -> frame2 HELD_NEW.
+        assertEquals(MessageStore.PersistResult.HELD_NEW,
+            store.persistAt(frame(2, Priority.SOS, 400), ByteArray(0), receivedAt = 200L))
+        // frame3 SOS: 928 > 512 -> evict oldest SOS (frame2) -> frame3 HELD_NEW.
+        assertEquals(MessageStore.PersistResult.HELD_NEW,
+            store.persistAt(frame(3, Priority.SOS, 400), ByteArray(0), receivedAt = 300L))
+        assertTrue(bytes() <= 512L, "all-SOS pressure stays inside the cap: ${bytes()}")
+        val ids = heldIds()
+        assertEquals(1, ids.size)
+        assertTrue(ids.containsId(msgId(3)), "newest SOS retained deterministically")
+        assertFalse(ids.containsId(msgId(2)))
+
+        // "persist result exactly matches final row presence":
+        //  (a) re-offer the HELD frame3 -> row exists -> HELD_DUPLICATE, present.
+        assertEquals(MessageStore.PersistResult.HELD_DUPLICATE,
+            store.persistAt(frame(3, Priority.SOS, 400), ByteArray(0), receivedAt = 400L))
+        assertTrue(heldIds().containsId(msgId(3)))
+        //  (b) re-offer the evicted frame2 as the OLDEST (t=50) -> re-inserted then
+        //      evicted (oldest SOS under all-SOS pressure) -> REJECTED_CAPACITY, absent.
+        assertEquals(MessageStore.PersistResult.REJECTED_CAPACITY,
+            store.persistAt(frame(2, Priority.SOS, 400), ByteArray(0), receivedAt = 50L))
+        assertFalse(heldIds().containsId(msgId(2)), "evicted frame absent -- result matches presence")
+        assertTrue(heldIds().containsId(msgId(3)), "newest SOS still retained")
+    }
+
+    @Test
+    fun `capacity-rejected frame may be retried later after room is freed - dedup window not poisoned`() = runBlocking {
+        // B1+B2 interaction: a REJECTED_CAPACITY persist must NOT permanently mark
+        // the id seen/deduped. After room is freed (simulating delivery/age-out of a
+        // held SOS), the SAME ordinary msg_id MUST be accepted as HELD_NEW. This is
+        // the store-boundary half of "the same frame may be retried later".
+        open(maxBytes = 512L)
+        store.persistAt(frame(1, Priority.SOS, 400), ByteArray(0), receivedAt = 100L)
+        // Ordinary frame evicted under SOS pressure -> REJECTED_CAPACITY.
+        val ordinary = frame(2, Priority.GROUP, 400)
+        assertEquals(MessageStore.PersistResult.REJECTED_CAPACITY,
+            store.persistAt(ordinary, ByteArray(0), receivedAt = 200L))
+        assertFalse(heldIds().containsId(msgId(2)))
+        // Free room: delete the SOS directly via a side JDBC connection
+        // (simulates authenticated-ACK delivery deleting a held frame, which is
+        // the production path that makes room). The store engine and this side
+        // connection see the same on-disk file.
+        engine?.close()
+        engine = null
+        val direct = DriverManager.getConnection("jdbc:sqlite:" + tmp.absolutePath)
+        direct.prepareStatement(
+            "DELETE FROM ${StoreSchema.TABLE} WHERE ${StoreSchema.COL_MSG_ID} = ?"
+        ).use { it.setBytes(1, msgId(1)); it.executeUpdate() }
+        direct.close()
+        open(maxBytes = 512L)   // reopen over the mutated file
+        assertTrue(bytes() <= 512L)
+        // Retry the SAME ordinary msg_id: now there is room -> HELD_NEW, present.
+        assertEquals(MessageStore.PersistResult.HELD_NEW,
+            store.persistAt(ordinary, ByteArray(0), receivedAt = 300L))
+        assertTrue(heldIds().containsId(msgId(2)), "retried frame accepted after room freed")
+    }
+
+    // --- Stage 4B.1 / B3: insert + eviction + final-held check is atomic ---
+
+    @Test
+    fun `fault after insert rolls back the transaction and leaves a valid bounded store`() = runBlocking {
+        // B3: a fault between insert and eviction must ROLL BACK the whole
+        // transaction (the inserted row is NOT committed), persist reports
+        // FAILED_STORAGE, and the store reopens in a valid, bounded state (the
+        // pre-fault rows are intact, the faulted row is gone, byte total is
+        // unchanged from before the faulted persist).
+        open(maxBytes = 1024L)
+        store.persistAt(frame(1, Priority.GROUP, 100), ByteArray(0), receivedAt = 100L)
+        val bytesBefore = bytes()
+        val rowsBefore = heldIds().size
+
+        val fault = { phase: String ->
+            if (phase == "after_insert") throw java.sql.SQLException("injected fault after insert")
+        }
+        val result = store.persistAtWithFault(frame(2, Priority.GROUP, 100), ByteArray(0), receivedAt = 200L, fault)
+        assertEquals(MessageStore.PersistResult.FAILED_STORAGE, result)
+        // The faulted insert was rolled back: byte total + row count unchanged.
+        assertEquals(bytesBefore, bytes(), "faulted insert rolled back -- byte total unchanged")
+        assertEquals(rowsBefore, heldIds().size, "faulted insert rolled back -- row count unchanged")
+        assertFalse(heldIds().containsId(msgId(2)), "faulted row absent")
+
+        // Reopen the store over the same file: the on-disk state is valid + bounded.
+        engine?.close()
+        engine = null
+        open(maxBytes = 1024L)
+        assertEquals(rowsBefore, heldIds().size, "store reopens valid after fault")
+        assertTrue(bytes() <= 1024L, "store reopens bounded after fault")
+        assertTrue(heldIds().containsId(msgId(1)), "pre-fault row survives reopen")
+    }
+
+    @Test
+    fun `fault after eviction rolls back and the evicted rows are restored`() = runBlocking {
+        // B3: a fault AFTER eviction (but before the final-contains check / commit)
+        // rolls back the ENTIRE transaction -- the rows the eviction deleted are
+        // RESTORED and the inserted row is gone. This is the guarantee that a
+        // mid-transaction fault never leaves the store in a half-evicted state.
+        open(maxBytes = 1024L)
+        store.persistAt(frame(1, Priority.GROUP, 400), ByteArray(0), receivedAt = 100L)
+        store.persistAt(frame(2, Priority.GROUP, 400), ByteArray(0), receivedAt = 200L)
+        val bytesBefore = bytes()
+        val rowsBefore = heldIds().size
+
+        val fault = { phase: String ->
+            if (phase == "after_evict") throw java.sql.SQLException("injected fault after evict")
+        }
+        // A third 400-byte frame overshoots (928 -> 1392 > 1024) and triggers
+        // eviction; the fault fires after eviction, before commit -> ROLLBACK.
+        val result = store.persistAtWithFault(frame(3, Priority.GROUP, 400), ByteArray(0), receivedAt = 300L, fault)
+        assertEquals(MessageStore.PersistResult.FAILED_STORAGE, result)
+        // Everything rolled back: both pre-existing rows restored, new row gone,
+        // byte total identical to before the faulted persist.
+        assertEquals(bytesBefore, bytes(), "evicted rows restored after rollback")
+        assertEquals(rowsBefore, heldIds().size, "row count restored after rollback")
+        assertTrue(heldIds().containsId(msgId(1)))
+        assertTrue(heldIds().containsId(msgId(2)))
+        assertFalse(heldIds().containsId(msgId(3)))
+    }
+
+    @Test
+    fun `fault before contains rolls back and reopens valid`() = runBlocking {
+        // B3: the final-contains check is the last phase; faulting just before it
+        // still rolls back the whole transaction (insert + any eviction), proving
+        // the atomic boundary wraps the entire insert/evict/contains sequence.
+        open(maxBytes = 2048L)
+        store.persistAt(frame(1, Priority.GROUP, 100), ByteArray(0), receivedAt = 100L)
+        val bytesBefore = bytes()
+
+        val fault = { phase: String ->
+            if (phase == "before_contains") throw java.sql.SQLException("injected fault before contains")
+        }
+        val result = store.persistAtWithFault(frame(2, Priority.GROUP, 100), ByteArray(0), receivedAt = 200L, fault)
+        assertEquals(MessageStore.PersistResult.FAILED_STORAGE, result)
+        assertEquals(bytesBefore, bytes(), "rolled back to pre-fault byte total")
+        assertFalse(heldIds().containsId(msgId(2)))
+        // Reopen valid.
+        engine?.close(); engine = null
+        open(maxBytes = 2048L)
+        assertTrue(heldIds().containsId(msgId(1)))
+        assertEquals(1, heldIds().size)
     }
 }

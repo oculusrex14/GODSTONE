@@ -132,15 +132,23 @@ class MeshNode(
         if (!LINK_LAYER_READY) return@withContext SosDispatchResult.Unavailable(LINK_LAYER_OPEN_REASON)
         runCatching {
             val frame = router.buildSos(payload)
-            // Stage 4B: QueuedLocally only after durable success (ADR-004). The
+            // Stage 4B.1: QueuedLocally only after durable success (ADR-004). The
             // SOS must be durably held before the UI calls it queued -- a
             // queued-but-not-persisted SOS is one process death from gone. If the
             // store cannot hold it we report NotPersisted so the UI does not lie.
             // This body is unreachable while LINK_LAYER_READY=false (it returns
             // Unavailable first); the SosDispatchResult shapes are aligned with
-            // iOS `.notPersisted` for parity all the same.
-            if (!store.persist(frame, receivedFrom = identity.nodeId)) {
-                return@runCatching SosDispatchResult.NotPersisted
+            // iOS `.notPersisted` for parity all the same. HELD_NEW or
+            // HELD_DUPLICATE both mean the SOS is durably held (a duplicate SOS
+            // was already queued), so either proceeds to transport; only a
+            // capacity rejection or storage failure reports NotPersisted and
+            // exits before any BLE write.
+            when (store.persist(frame, receivedFrom = identity.nodeId)) {
+                MessageStore.PersistResult.HELD_NEW,
+                MessageStore.PersistResult.HELD_DUPLICATE -> Unit
+                MessageStore.PersistResult.REJECTED_CAPACITY,
+                MessageStore.PersistResult.FAILED_STORAGE ->
+                    return@runCatching SosDispatchResult.NotPersisted
             }
             val bytes = frame.encode()
             var handed = 0

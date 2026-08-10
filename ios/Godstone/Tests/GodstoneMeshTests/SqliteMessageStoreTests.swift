@@ -255,7 +255,168 @@ final class SqliteMessageStoreTests: XCTestCase {
         XCTAssertEqual(store.fileProtection, FileProtectionType.complete)
     }
 
+    // MARK: - Stage 4B.1 / B2: persist means HELD AFTER cap enforcement
+
+    func testOrdinaryFrameEvictedUnderAllSosPressureReportsRejectedCapacityAndIsAbsent() {
+        // Fill the store to the cap with SOS frames. An incoming ORDINARY frame is
+        // the first eviction candidate (non-SOS evicted before SOS), so it is
+        // inserted then immediately evicted: persist MUST report `.rejectedCapacity`
+        // (NOT `.heldNew`), the row MUST be absent, and the cap MUST remain
+        // satisfied. The truthful result is what lets the router refuse to relay
+        // without poisoning retry (B1).
+        _ = open(maxBytes: 512)
+        store.persistAt(frame(1, .sos, 400), receivedFrom: Data(), receivedAt: 100)
+        XCTAssertLessThanOrEqual(bytes(), 512)
+        let result = store.persistAt(frame(2, .group, 400), receivedFrom: Data(), receivedAt: 200)
+        XCTAssertEqual(result, .rejectedCapacity)
+        let ids = heldIds()
+        XCTAssertFalse(containsId(ids, msgId(2)), "evicted ordinary frame must be absent")
+        XCTAssertTrue(containsId(ids, msgId(1)), "SOS retained under pressure")
+        XCTAssertLessThanOrEqual(bytes(), 512, "cap still satisfied after rejected persist")
+    }
+
+    func testNewSosUnderAllSosPressureKeepsCapSatisfiedAndNewestRetainedWithTruthfulResult() {
+        // B2: "new SOS under all-SOS pressure, hard cap remains satisfied, newest
+        // SOS retention deterministic, persist result exactly matches final row
+        // presence." Each new SOS overshoots and evicts the oldest SOS, so the
+        // NEWEST is always retained and the cap holds. The result MUST match
+        // `contains`: `.heldNew` when present & new, `.heldDuplicate` when present
+        // & already held, `.rejectedCapacity` when absent.
+        _ = open(maxBytes: 512)
+        XCTAssertEqual(.heldNew, store.persistAt(frame(1, .sos, 400), receivedFrom: Data(), receivedAt: 100))
+        XCTAssertEqual(.heldNew, store.persistAt(frame(2, .sos, 400), receivedFrom: Data(), receivedAt: 200))
+        XCTAssertEqual(.heldNew, store.persistAt(frame(3, .sos, 400), receivedFrom: Data(), receivedAt: 300))
+        XCTAssertLessThanOrEqual(bytes(), 512, "all-SOS pressure stays inside the cap: \(bytes())")
+        let ids = heldIds()
+        XCTAssertEqual(ids.count, 1)
+        XCTAssertTrue(containsId(ids, msgId(3)), "newest SOS retained deterministically")
+        XCTAssertFalse(containsId(ids, msgId(2)))
+        // (a) re-offer the HELD frame3 -> row exists -> .heldDuplicate, present.
+        XCTAssertEqual(.heldDuplicate, store.persistAt(frame(3, .sos, 400), receivedFrom: Data(), receivedAt: 400))
+        XCTAssertTrue(containsId(heldIds(), msgId(3)))
+        // (b) re-offer the evicted frame2 as the OLDEST (t=50) -> re-inserted then
+        //     evicted (oldest SOS under all-SOS pressure) -> .rejectedCapacity, absent.
+        XCTAssertEqual(.rejectedCapacity, store.persistAt(frame(2, .sos, 400), receivedFrom: Data(), receivedAt: 50))
+        XCTAssertFalse(containsId(heldIds(), msgId(2)), "evicted frame absent -- result matches presence")
+        XCTAssertTrue(containsId(heldIds(), msgId(3)), "newest SOS still retained")
+    }
+
+    func testCapacityRejectedFrameMayBeRetriedLaterAfterRoomFreed() {
+        // B1+B2: a `.rejectedCapacity` persist must NOT permanently mark the id
+        // seen/deduped. After room is freed (simulating delivery deleting a held
+        // SOS), the SAME ordinary msg_id MUST be accepted as `.heldNew`. This is
+        // the store-boundary half of "the same frame may be retried later".
+        _ = open(maxBytes: 512)
+        store.persistAt(frame(1, .sos, 400), receivedFrom: Data(), receivedAt: 100)
+        let ordinary = frame(2, .group, 400)
+        XCTAssertEqual(.rejectedCapacity, store.persistAt(ordinary, receivedFrom: Data(), receivedAt: 200))
+        XCTAssertFalse(containsId(heldIds(), msgId(2)))
+        // Free room: delete the SOS directly (simulates authenticated-ACK delivery).
+        deleteHeldRow(msgId: msgId(1))
+        XCTAssertLessThanOrEqual(bytes(), 512)
+        // Retry the SAME ordinary msg_id: now there is room -> .heldNew, present.
+        XCTAssertEqual(.heldNew, store.persistAt(ordinary, receivedFrom: Data(), receivedAt: 300))
+        XCTAssertTrue(containsId(heldIds(), msgId(2)), "retried frame accepted after room freed")
+    }
+
+    // MARK: - Stage 4B.1 / B3: insert + eviction + final-held check is atomic
+
+    private enum Fault: Error { case injected }
+
+    func testFaultAfterInsertRollsBackAndReopensValidBounded() {
+        // B3: a fault between insert and eviction ROLLs BACK the transaction
+        // (the inserted row is NOT committed), persist reports `.failedStorage`,
+        // and the store reopens valid + bounded.
+        _ = open(maxBytes: 1024)
+        store.persistAt(frame(1, .group, 100), receivedFrom: Data(), receivedAt: 100)
+        let bytesBefore = bytes()
+        let rowsBefore = heldIds().count
+        let fault = { (phase: String) in if phase == "after_insert" { throw Fault.injected } }
+        let result = store.persistAtWithFault(frame(2, .group, 100), receivedFrom: Data(), receivedAt: 200, fault: fault)
+        XCTAssertEqual(result, .failedStorage)
+        XCTAssertEqual(bytes(), bytesBefore, "faulted insert rolled back -- byte total unchanged")
+        XCTAssertEqual(heldIds().count, rowsBefore, "row count unchanged")
+        XCTAssertFalse(containsId(heldIds(), msgId(2)))
+        // Reopen over the same file: valid + bounded.
+        store = nil
+        _ = reopen(maxBytes: 1024)
+        XCTAssertEqual(heldIds().count, rowsBefore, "store reopens valid after fault")
+        XCTAssertLessThanOrEqual(bytes(), 1024, "store reopens bounded after fault")
+        XCTAssertTrue(containsId(heldIds(), msgId(1)), "pre-fault row survives reopen")
+    }
+
+    func testFaultAfterEvictRollsBackAndEvictedRowsRestored() {
+        // B3: a fault AFTER eviction (before the final-contains check / commit)
+        // rolls back the ENTIRE transaction -- the rows the eviction deleted are
+        // RESTORED and the inserted row is gone. A mid-transaction fault never
+        // leaves the store in a half-evicted state.
+        _ = open(maxBytes: 1024)
+        store.persistAt(frame(1, .group, 400), receivedFrom: Data(), receivedAt: 100)
+        store.persistAt(frame(2, .group, 400), receivedFrom: Data(), receivedAt: 200)
+        let bytesBefore = bytes()
+        let rowsBefore = heldIds().count
+        let fault = { (phase: String) in if phase == "after_evict" { throw Fault.injected } }
+        // A third 400-byte frame overshoots (928 -> 1392 > 1024) and triggers
+        // eviction; the fault fires after eviction, before commit -> ROLLBACK.
+        let result = store.persistAtWithFault(frame(3, .group, 400), receivedFrom: Data(), receivedAt: 300, fault: fault)
+        XCTAssertEqual(result, .failedStorage)
+        XCTAssertEqual(bytes(), bytesBefore, "evicted rows restored after rollback")
+        XCTAssertEqual(heldIds().count, rowsBefore, "row count restored after rollback")
+        XCTAssertTrue(containsId(heldIds(), msgId(1)))
+        XCTAssertTrue(containsId(heldIds(), msgId(2)))
+        XCTAssertFalse(containsId(heldIds(), msgId(3)))
+    }
+
+    func testFaultBeforeContainsRollsBackAndReopensValid() {
+        // B3: the final-contains check is the last phase; faulting just before it
+        // still rolls back the whole transaction (insert + any eviction).
+        _ = open(maxBytes: 2048)
+        store.persistAt(frame(1, .group, 100), receivedFrom: Data(), receivedAt: 100)
+        let bytesBefore = bytes()
+        let fault = { (phase: String) in if phase == "before_contains" { throw Fault.injected } }
+        let result = store.persistAtWithFault(frame(2, .group, 100), receivedFrom: Data(), receivedAt: 200, fault: fault)
+        XCTAssertEqual(result, .failedStorage)
+        XCTAssertEqual(bytes(), bytesBefore, "rolled back to pre-fault byte total")
+        XCTAssertFalse(containsId(heldIds(), msgId(2)))
+        store = nil
+        _ = reopen(maxBytes: 2048)
+        XCTAssertTrue(containsId(heldIds(), msgId(1)))
+        XCTAssertEqual(heldIds().count, 1)
+    }
+
     // MARK: - helpers
+
+    /// Reopen the store over the existing [tmpURL] (B3 reopen-after-fault tests).
+    @discardableResult
+    private func reopen(maxBytes: Int64) -> SqliteMessageStore {
+        let s = SqliteMessageStore(url: tmpURL, maxBytes: maxBytes)
+        store = s
+        return s
+    }
+
+    /// Delete a held row directly via a side sqlite3 connection (B2 retry test:
+    /// simulates authenticated-ACK delivery deleting a held frame to make room).
+    private func deleteHeldRow(msgId id: Data) {
+        store = nil   // close the store handle so the side connection has the file
+        var db: OpaquePointer?
+        guard sqlite3_open_v2(tmpURL.path, &db,
+                              SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE, nil) == SQLITE_OK else {
+            sqlite3_close_v2(db); return
+        }
+        var stmt: OpaquePointer?
+        let sql = "DELETE FROM \(StoreSchema.table) WHERE \(StoreSchema.colMsgId) = ?"
+        guard sqlite3_prepare_v2(db, sql, -1, &stmt, nil) == SQLITE_OK else {
+            sqlite3_finalize(stmt); sqlite3_close_v2(db); return
+        }
+        let transient = unsafeBitCast(-1, to: sqlite3_destructor_type.self)
+        id.withUnsafeBytes { r in
+            sqlite3_bind_blob(stmt, 1, r.baseAddress, Int32(id.count), transient)
+        }
+        sqlite3_step(stmt)
+        sqlite3_finalize(stmt)
+        sqlite3_close_v2(db)
+        _ = reopen(maxBytes: 512)
+    }
 
     /// Insert a row with an unknown type code (0x77) directly via sqlite3.
     private func seedUnknownTypeRow(at url: URL, msgId: Data) {

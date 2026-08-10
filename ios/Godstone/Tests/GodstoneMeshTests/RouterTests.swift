@@ -131,15 +131,130 @@ final class RouterTests: XCTestCase {
         XCTAssertEqual(store.allHeldMsgIds(), [f.msgId])           // durably held
         XCTAssertTrue(router.drain(limit: 8).isEmpty)              // not relayed
     }
+
+    // MARK: - Stage 4B.1 / B1: a persist failure must NOT poison retry
+
+    /// B1: the durable store is the dedup authority and `seen` is only an
+    /// optimisation populated AFTER durable acceptance. A frame whose first
+    /// persist FAILS must not be permanently marked seen -- after the store
+    /// recovers the same msg_id must be accepted, held and forwarded exactly
+    /// once, and a third (now-duplicate) arrival must be suppressed.
+    func testPersistFailureDoesNotPoisonRetry() {
+        let store = FailThenSucceedStore()
+        let router = Router()
+        router.store = store
+        var delivered = 0
+        router.onDeliverLocally = { _ in delivered += 1 }
+        let f = frame("msg-retry", ttl: 5)
+
+        // 1st arrival: store fails -> .failedStorage -> NOT marked seen, NOT
+        // forwarded, NOT delivered, NOT held. The msg_id is NOT poisoned.
+        XCTAssertFalse(router.ingest(f, isAddressedToMe: false, receivedFrom: Data()))
+        XCTAssertTrue(router.drain(limit: 8).isEmpty, "failed persist must not forward")
+        XCTAssertEqual(delivered, 0)
+        XCTAssertEqual(store.allHeldMsgIds(), [], "failed persist must not hold the frame")
+
+        // 2nd arrival, SAME msg_id: store now succeeds -> .heldNew -> held,
+        // forwarded exactly once. This is the retry B1 guarantees is possible.
+        XCTAssertTrue(router.ingest(f, isAddressedToMe: false, receivedFrom: Data()))
+        XCTAssertEqual(router.drain(limit: 8).count, 1, "recovered retry forwarded exactly once")
+        XCTAssertEqual(delivered, 0)
+        XCTAssertEqual(store.allHeldMsgIds(), [f.msgId], "recovered retry durably held once")
+
+        // 3rd arrival, SAME msg_id: now a duplicate (seen hit) -> suppressed.
+        XCTAssertFalse(router.ingest(f, isAddressedToMe: false, receivedFrom: Data()))
+        XCTAssertTrue(router.drain(limit: 8).isEmpty, "duplicate not forwarded again")
+        XCTAssertEqual(store.allHeldMsgIds(), [f.msgId], "still held exactly once")
+    }
+
+    /// B1: with the durable store as authority, a duplicate whose id has aged out
+    /// of the small in-memory LRU (but is still durably held) MUST be caught by the
+    /// durable UNIQUE(msg_id) and reported `.heldDuplicate` -- not re-forwarded.
+    func testDurableUniqueCatchesDuplicateAgedOutOfLru() {
+        let store = InMemoryMessageStore()
+        let router = Router(seenCacheCapacity: 2)
+        router.store = store
+        let f = frame("msg-aged", ttl: 5)
+
+        // Persist f -> .heldNew, seen=[f], forwarded.
+        XCTAssertTrue(router.ingest(f, isAddressedToMe: false, receivedFrom: Data()))
+        XCTAssertEqual(router.drain(limit: 8).count, 1)   // clear f's forward
+        // Two distinct ids evict f from the 2-entry LRU: seen=[other-1,other-2].
+        XCTAssertTrue(router.ingest(frame("other-1", ttl: 5), isAddressedToMe: false, receivedFrom: Data()))
+        XCTAssertTrue(router.ingest(frame("other-2", ttl: 5), isAddressedToMe: false, receivedFrom: Data()))
+        _ = router.drain(limit: 8)                          // clear their forwards
+        // f is gone from the LRU but still durably held. Re-offering it is a LRU
+        // MISS -> persist -> .heldDuplicate -> suppressed (NOT re-forwarded).
+        XCTAssertFalse(router.ingest(f, isAddressedToMe: false, receivedFrom: Data()))
+        XCTAssertTrue(router.drain(limit: 8).isEmpty, "aged-out duplicate must not re-forward")
+        // Still held exactly once among the three.
+        XCTAssertEqual(store.allHeldMsgIds().count, 3)
+    }
+
+    /// B1: at-most-once forwarding under concurrency. N "simultaneous" arrivals
+    /// of the same msg_id must result in exactly one accept, one forward and one
+    /// durable hold. The router lock serialises the accept decision; the first
+    /// persist returns .heldNew (forward + seen.insert), the rest are duplicates.
+    func testConcurrentSameMsgIdForwardsAtMostOnce() {
+        let store = InMemoryMessageStore()
+        let router = Router()
+        router.store = store
+        let f = frame("msg-concurrent", ttl: 5)
+        let n = 8
+        let group = DispatchGroup()
+        let queue = DispatchQueue.global()
+        let counterLock = NSLock()
+        var acceptedCount = 0
+        for _ in 0..<n {
+            group.enter()
+            queue.async {
+                let r = router.ingest(f, isAddressedToMe: false, receivedFrom: Data())
+                counterLock.lock(); if r { acceptedCount += 1 }; counterLock.unlock()
+                group.leave()
+            }
+        }
+        group.wait()
+        XCTAssertEqual(acceptedCount, 1, "exactly one of N concurrent arrivals accepted")
+        XCTAssertEqual(router.drain(limit: 8).count, 1, "forwarded exactly once")
+        XCTAssertEqual(store.allHeldMsgIds(), [f.msgId], "held exactly once")
+    }
 }
 
 /// A `MessageStore` whose `persist` always fails -- exercises the persist-result
 /// gate in `Router.ingest` without touching sqlite3.
 private final class FailingStore: MessageStore {
-    func persist(_ frame: FrameV2, receivedFrom: Data) -> Bool { false }
+    func persist(_ frame: FrameV2, receivedFrom: Data) -> PersistResult { .failedStorage }
     func allHeldOrderedByPriority() -> [FrameV2] { [] }
     func allHeldMsgIds() -> [Data] { [] }
     func forEachHeldOrderedByPriority(_ visit: (FrameV2) -> Bool) {}
     func forEachHeldMsgId(_ visit: (Data) -> Bool) {}
     var heldBytes: Int64 { 0 }
+}
+
+/// B1 test fake: the first persist of a given msg_id FAILS (`.failedStorage`),
+/// subsequent ones delegate to a backing [InMemoryMessageStore] (`.heldNew` then
+/// `.heldDuplicate`). Mirrors a store that recovers after a transient failure:
+/// the same msg_id must be re-acceptable, proving the failed first attempt did
+/// not poison the dedup window.
+private final class FailThenSucceedStore: MessageStore {
+    private let backing = InMemoryMessageStore()
+    private let lock = NSLock()
+    private var attempts: [Data: Int] = [:]
+
+    func persist(_ frame: FrameV2, receivedFrom: Data) -> PersistResult {
+        lock.lock()
+        let n = (attempts[frame.msgId] ?? 0) + 1
+        attempts[frame.msgId] = n
+        lock.unlock()
+        if n == 1 { return .failedStorage }   // first attempt: storage unavailable
+        return backing.persist(frame, receivedFrom: receivedFrom)   // retry: held
+    }
+
+    func allHeldOrderedByPriority() -> [FrameV2] { backing.allHeldOrderedByPriority() }
+    func allHeldMsgIds() -> [Data] { backing.allHeldMsgIds() }
+    func forEachHeldOrderedByPriority(_ visit: (FrameV2) -> Bool) {
+        backing.forEachHeldOrderedByPriority(visit)
+    }
+    func forEachHeldMsgId(_ visit: (Data) -> Bool) { backing.forEachHeldMsgId(visit) }
+    var heldBytes: Int64 { backing.heldBytes }
 }

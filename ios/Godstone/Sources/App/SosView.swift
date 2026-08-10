@@ -45,10 +45,12 @@ struct SosView: View {
                  ? "Queued means stored locally; relayed means a nearby device accepted an encrypted record. Neither means a recipient acknowledged it."
                  : "The app refuses to show a success state while encrypted cross-platform transport and the durable iOS message store are incomplete. Use another working emergency communication method.")
         case .unavailable(let reason): Text(reason)
+        case .queuedDurably:
+            Text("SOS stored durably on this device; it will reach a nearby relay on the next encounter. No recipient acknowledgement has been received.")
         case .handedToRelays(let count):
             Text("Accepted by \(count) nearby relay(s). No recipient acknowledgement has been received.")
         case .notPersisted:
-            Text("No relay accepted the SOS, and this iOS build has no durable mesh queue. Nothing was sent.")
+            Text("The SOS could not be durably stored, so it was not sent. Nothing was queued.")
         case .failed(let reason): Text("SOS failed: \(reason)")
         }
     }

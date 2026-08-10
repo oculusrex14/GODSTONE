@@ -1,6 +1,7 @@
 package io.godstone.mesh.router
 
 import io.godstone.mesh.store.MessageStore
+import io.godstone.mesh.store.MessageStore.PersistResult
 import io.godstone.mesh.wire.v2.FrameV2
 import io.godstone.mesh.wire.v2.MessageId
 import io.godstone.mesh.wire.v2.Priority
@@ -32,10 +33,17 @@ class Router(
     private val selfNodeId: ByteArray,
     /** PROTOCOL.md section 8. Rate limits and trust, enforced before parsing. */
     private val governor: io.godstone.mesh.abuse.PeerGovernor =
-        io.godstone.mesh.abuse.PeerGovernor()
+        io.godstone.mesh.abuse.PeerGovernor(),
+    /**
+     * In-memory dedup window size. Defaults to the production 16384; test-only
+     * smaller values let a test age an id OUT of the window while it is still
+     * durably held, exercising the durable-UNIQUE-authority duplicate path (B1)
+     * -- a path unreachable at the production cache size without 16384+ frames.
+     */
+    private val seenCacheSize: Int = SEEN_CACHE_SIZE,
 ) {
 
-    private val seen = LruMsgIdCache(SEEN_CACHE_SIZE)
+    private val seen = LruMsgIdCache(seenCacheSize)
     private val mutex = Mutex()
 
     private val _inbound = MutableSharedFlow<FrameV2>(extraBufferCapacity = 256)
@@ -51,8 +59,14 @@ class Router(
         //    life" is a remote power-off switch, not a spam problem.
         if (!governor.allowInbound(fromPeer, Priority.fromFlags(frame.flags))) return false
 
-        // 1. Drop anything already handled (replay and loop suppression). The
-        //    16-byte content-derived msg_id is the dedup key.
+        // 1. Fast duplicate path (B1). The in-memory LRU is an OPTIMISATION only:
+        //    a hit means this id was durably accepted at some point (or is a
+        //    within-window duplicate), so we short-circuit without touching the
+        //    store. A miss MUST fall through to the durable store, whose
+        //    UNIQUE(msg_id) result is the authoritative dedup decision. The LRU
+        //    is populated only AFTER durable acceptance below, so a persist
+        //    failure never poisons retry (the same id can be re-offered after the
+        //    store recovers -- B1).
         if (seen.contains(frame.msgId)) {
             governor.penalise(fromPeer, 0.02)   // duplicate floods cost trust
             return false
@@ -65,20 +79,45 @@ class Router(
         // 3. No relay PoW gate under GMP/2.1: the nonce is in the sealed payload,
         //    verified by the recipient (ADR-001 §3).
 
-        seen.add(frame.msgId)
-        governor.reward(fromPeer)         // well-formed, useful traffic
-        // Stage 4B: persist BEFORE forward (ADR-004). A frame this node cannot
-        // durably hold is NOT emitted to inbound or relayed onward -- forwarding
-        // what this node cannot itself carry would let the only copy be dropped.
-        // `persist` returns true when held (newly, or as a duplicate via INSERT OR
-        // IGNORE); false only on a durable failure, so the gate refuses to relay
-        // what it could not hold. Mirrors iOS `Router.ingest`. seen.add precedes
-        // persist: the in-memory dedup window is the fast path, the store is the
-        // durable source of truth.
-        if (!store.persist(frame, receivedFrom = fromPeer)) return false
-        _inbound.emit(frame)
-
-        return frame.ttl > 1
+        // 4. Durable authority (B1/B2). persist runs the insert, hard-cap
+        //    enforcement and final-presence check in one transaction (B3) and
+        //    reports the result. The relay/deliver decision is taken ONLY from
+        //    this result -- never from the in-memory dedup window -- so the
+        //    durable store is the authority and the LRU is only a cache.
+        //    Storage exceptions are converted to FAILED_STORAGE at the store
+        //    boundary (not thrown here), so one bad DB operation cannot kill the
+        //    inbound receive collector.
+        when (store.persist(frame, receivedFrom = fromPeer)) {
+            PersistResult.HELD_NEW -> {
+                // Durably held: mark seen (cache hint for future arrivals), reward
+                // the peer for useful traffic, emit to inbound, offer for relay.
+                seen.add(frame.msgId)
+                governor.reward(fromPeer)
+                _inbound.emit(frame)
+                return frame.ttl > 1
+            }
+            PersistResult.HELD_DUPLICATE -> {
+                // Already durably held (LRU aged the id out but the durable PK
+                // still carries it): suppress re-relay, penalise the duplicate
+                // flood, cache the id so future arrivals fast-path. seen.add is
+                // safe here -- the frame IS durably held, so suppressing a retry
+                // is correct (it already had its delivery/relay chance).
+                seen.add(frame.msgId)
+                governor.penalise(fromPeer, 0.02)
+                return false
+            }
+            PersistResult.REJECTED_CAPACITY, PersistResult.FAILED_STORAGE -> {
+                // NOT durably held (the just-inserted row was evicted by the cap,
+                // or a storage exception rolled the transaction back). Do NOT
+                // mark seen -- the same msg_id may be re-offered after the store
+                // has room or recovers (B1: retry not poisoned). Do NOT reward
+                // (the failure is not useful traffic) and do NOT penalise (a
+                // durable failure is not the peer's fault). No inbound emit, no
+                // relay: forwarding what this node cannot itself carry would let
+                // the only copy be dropped.
+                return false
+            }
+        }
     }
 
     /** Prepare a frame for forwarding: decrement TTL, increment hop_count. */

@@ -4,10 +4,14 @@ import io.godstone.mesh.router.BloomDigest
 import io.godstone.mesh.router.Router
 import io.godstone.mesh.store.InMemoryMessageStore
 import io.godstone.mesh.store.MessageStore
+import io.godstone.mesh.store.MessageStore.PersistResult
 import io.godstone.mesh.wire.v2.FrameV2
 import io.godstone.mesh.wire.v2.Priority
 import io.godstone.mesh.wire.v2.SosFrameValidator
 import io.godstone.mesh.wire.v2.TypeV2
+import kotlinx.coroutines.async
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -177,6 +181,102 @@ class RouterTest {
         // and advertise the held id in the digest).
         assertFalse(router.currentDigest().mightContain(f.msgId))
     }
+
+    // --- Stage 4B.1 / B1: a persist failure must NOT poison retry ---
+
+    @Test
+    fun `persist failure does not poison retry - same msg_id accepted exactly once after recovery`() =
+        runTest(UnconfinedTestDispatcher()) {
+        // B1: the durable store is the authority and the in-memory dedup window
+        // is only an optimisation populated AFTER durable acceptance. So a frame
+        // whose first persist FAILS must not be permanently marked seen -- after
+        // the store recovers the same msg_id must be accepted, held, forwarded
+        // and emitted exactly once, and a third (now-duplicate) arrival must be
+        // suppressed.
+        val store = FailThenSucceedStore()
+        val router = Router(store, selfNodeId)
+        val received = ArrayList<FrameV2>()
+        // UnconfinedTestDispatcher: the collector runs eagerly, so each `emit`
+        // inside onFrameReceived is delivered to `received` synchronously (no
+        // manual runCurrent flush needed, and no virtual-time hang from the
+        // infinite collect before it is cancelled).
+        val collector = launch { router.inbound.collect { received.add(it) } }
+        val id = msgId(21)
+        val f = frame(id, ttl = 5)
+
+        // 1st arrival: store fails -> FAILED_STORAGE -> NOT marked seen, NOT
+        // emitted, NOT relayed. Critically the msg_id is NOT poisoned into seen.
+        assertFalse(router.onFrameReceived(f, fromPeer = peerC))
+        assertFalse(router.currentDigest().mightContain(id), "failed persist must not hold the frame")
+        assertTrue(received.isEmpty(), "failed persist must not emit to inbound")
+
+        // 2nd arrival, SAME msg_id: store now succeeds -> HELD_NEW -> held,
+        // emitted, relayed. This is the retry that B1 guarantees is possible.
+        assertTrue(router.onFrameReceived(f, fromPeer = peerC))
+        assertEquals(1, received.size, "the recovered retry emitted to inbound exactly once")
+
+        // 3rd arrival, SAME msg_id: now a duplicate (seen hit) -> suppressed.
+        assertFalse(router.onFrameReceived(f, fromPeer = peerC))
+
+        collector.cancel()
+        assertEquals(1, received.size, "inbound emitted exactly once (the recovered retry)")
+        assertTrue(received[0].msgId.contentEquals(id))
+        assertTrue(store.persistCalls >= 2, "the failed first attempt did not satisfy the durable UNIQUE")
+    }
+
+    @Test
+    fun `durable UNIQUE catches a duplicate the LRU aged out - authoritative dedup`() = runTest {
+        // B1: with the durable store as authority, a duplicate whose id has aged
+        // out of the small in-memory LRU (but is still durably held) MUST be
+        // caught by the durable UNIQUE(msg_id) and reported HELD_DUPLICATE -- not
+        // re-forwarded. Uses a tiny seen cache so the id evicts without 16384
+        // frames.
+        val store = InMemoryMessageStore()
+        val router = Router(store, selfNodeId, seenCacheSize = 2)
+        val id = msgId(31)
+        val f = frame(id, ttl = 5)
+
+        // Persist id -> HELD_NEW, seen=[id].
+        assertTrue(router.onFrameReceived(f, fromPeer = peerC))
+        // Two distinct ids evict `id` from the 2-entry LRU: seen=[other1,other2].
+        assertTrue(router.onFrameReceived(frame(msgId(32), ttl = 5), fromPeer = peerC))
+        assertTrue(router.onFrameReceived(frame(msgId(33), ttl = 5), fromPeer = peerC))
+        // `id` is gone from the LRU but still durably held. Re-offering it is a
+        // LRU MISS -> persist -> HELD_DUPLICATE -> suppressed (NOT re-forwarded).
+        assertFalse(router.onFrameReceived(f, fromPeer = peerC))
+        // Still held exactly once.
+        val digest = router.currentDigest()
+        assertTrue(digest.mightContain(id))
+        assertFalse(digest.mightContain(msgId(999)))
+    }
+
+    @Test
+    fun `two concurrent same-msg_id arrivals forward at most once`() =
+        runTest(UnconfinedTestDispatcher()) {
+        // B1: at-most-once forwarding under concurrency. Two "simultaneous"
+        // arrivals of the same msg_id must result in exactly one forward and one
+        // inbound emission. The Router mutex serialises the bodies; the first
+        // persist returns HELD_NEW (forward) and marks seen, the second is then a
+        // duplicate (caught by the LRU fast-path or the durable UNIQUE) and is
+        // suppressed. UnconfinedTestDispatcher runs each `async` body eagerly up
+        // to its first suspension, so the two arrivals execute deterministically
+        // (r1 completes its non-suspending body before r2 starts) while still
+        // exercising the mutex gate that would serialise truly concurrent arrivals.
+        val store = InMemoryMessageStore()
+        val router = Router(store, selfNodeId)
+        val received = ArrayList<FrameV2>()
+        val collector = launch { router.inbound.collect { received.add(it) } }
+        val id = msgId(22)
+        val f = frame(id, ttl = 5)
+
+        val r1 = async { router.onFrameReceived(f, fromPeer = peerC) }
+        val r2 = async { router.onFrameReceived(f, fromPeer = ByteArray(16) { 0x0D }) }
+        val results = listOf(r1.await(), r2.await())
+
+        collector.cancel()
+        assertEquals(1, results.count { it }, "exactly one of the two arrivals forwarded")
+        assertEquals(1, received.size, "inbound emitted exactly once")
+    }
 }
 
 /**
@@ -185,9 +285,51 @@ class RouterTest {
  * methods report an empty store, which is consistent with "nothing was held".
  */
 private class FailingMessageStore : MessageStore {
-    override suspend fun persist(frame: FrameV2, receivedFrom: ByteArray): Boolean = false
+    override suspend fun persist(frame: FrameV2, receivedFrom: ByteArray): PersistResult =
+        PersistResult.FAILED_STORAGE
     override suspend fun allHeldOrderedByPriority(): List<FrameV2> = emptyList()
     override suspend fun allHeldMsgIds(): List<ByteArray> = emptyList()
     override suspend fun forEachHeldOrderedByPriority(visit: (FrameV2) -> Boolean) {}
     override suspend fun forEachHeldMsgId(visit: (ByteArray) -> Boolean) {}
+}
+
+/**
+ * B1 test fake: the first persist of a given msg_id FAILS (FAILED_STORAGE), the
+ * second SUCCEEDS (HELD_NEW), subsequent ones are HELD_DUPLICATE. Mirrors a
+ * store that recovers after a transient failure: the same msg_id must be
+ * re-acceptable, proving the failed first attempt did not poison the dedup
+ * window. Backed by an [InMemoryMessageStore] so the recovered row is actually
+ * held and reported in the digest.
+ */
+private class FailThenSucceedStore : MessageStore {
+    private val backing = InMemoryMessageStore()
+    // ConcurrentHashMap needs content-equal ByteArray keys -> wrap them (ByteArray
+    // is identity-equal by default, which would let the same msg_id be retried as a
+    // "first attempt" forever and defeat the test).
+    private val attempted = java.util.concurrent.ConcurrentHashMap<BytesKey, Int>()
+    var persistCalls = 0
+        private set
+
+    override suspend fun persist(frame: FrameV2, receivedFrom: ByteArray): PersistResult {
+        persistCalls++
+        val key = frame.msgId
+        val count = attempted.merge(BytesKey(key), 1) { a, b -> a + b } ?: 1
+        return if (count == 1) {
+            PersistResult.FAILED_STORAGE   // first attempt: storage unavailable
+        } else {
+            backing.persist(frame, receivedFrom)   // retry: durably held (NEW then DUPLICATE)
+        }
+    }
+
+    private class BytesKey(val bytes: ByteArray) {
+        override fun equals(other: Any?): Boolean = other is BytesKey && bytes.contentEquals(other.bytes)
+        override fun hashCode(): Int = bytes.contentHashCode()
+    }
+
+    override suspend fun allHeldOrderedByPriority(): List<FrameV2> = backing.allHeldOrderedByPriority()
+    override suspend fun allHeldMsgIds(): List<ByteArray> = backing.allHeldMsgIds()
+    override suspend fun forEachHeldOrderedByPriority(visit: (FrameV2) -> Boolean) =
+        backing.forEachHeldOrderedByPriority(visit)
+    override suspend fun forEachHeldMsgId(visit: (ByteArray) -> Boolean) =
+        backing.forEachHeldMsgId(visit)
 }

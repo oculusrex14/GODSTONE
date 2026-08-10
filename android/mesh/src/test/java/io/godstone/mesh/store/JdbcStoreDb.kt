@@ -55,6 +55,13 @@ internal class JdbcStoreDb(file: File) : StoreDb {
         }
     }
 
+    override fun contains(msgId: ByteArray): Boolean {
+        conn.prepareStatement(StoreSchema.containsSql()).use { ps ->
+            ps.setBytes(1, msgId)
+            ps.executeQuery().use { rs -> return rs.next() }
+        }
+    }
+
     override fun heldBytes(): Long {
         conn.prepareStatement(StoreSchema.heldBytesSql()).use { ps ->
             ps.executeQuery().use { rs -> return if (rs.next()) rs.getLong(1) else 0L }
@@ -65,6 +72,28 @@ internal class JdbcStoreDb(file: File) : StoreDb {
         conn.prepareStatement(StoreSchema.evictPrefixSql()).use { ps ->
             ps.setLong(1, overshoot)
             ps.executeUpdate()
+        }
+    }
+
+    /**
+     * One transaction on the single shared JDBC connection (B3). `insert` /
+     * `contains` / `heldBytes` / `evictOldestPrefix` called inside [block]
+     * participate (autoCommit=false -> sqlite-jdbc maps commit() to COMMIT). If
+     * [block] throws, rollback and rethrow so the caller reports
+     * `PersistResult.FAILED_STORAGE` and the store reopens in a valid state.
+     */
+    override fun <T> inTransaction(block: (StoreDb) -> T): T {
+        val wasAuto = conn.autoCommit
+        conn.autoCommit = false
+        try {
+            val result = block(this)
+            conn.commit()
+            return result
+        } catch (e: Throwable) {
+            runCatching { conn.rollback() }
+            throw e
+        } finally {
+            conn.autoCommit = wasAuto
         }
     }
 

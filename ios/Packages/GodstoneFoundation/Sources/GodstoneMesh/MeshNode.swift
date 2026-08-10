@@ -4,6 +4,10 @@ import GodstoneCore
 
 public enum SosDispatchResult: Equatable, Sendable {
     case unavailable(String)
+    /// Durably held but no peer was connected to hand it to -- it will reach a
+    /// peer on the next encounter via anti-entropy. Reported only AFTER durable
+    /// success, so the UI never calls a one-process-death-from-gone SOS "queued".
+    case queuedDurably
     case handedToRelays(Int)
     case notPersisted
     case failed(String)
@@ -70,6 +74,28 @@ public final class MeshNode {
     /// V4 does not fabricate a successful SOS while ADR-004 and M2-link remain open.
     public func broadcastSos(payload: Data) -> SosDispatchResult {
         guard Self.linkLayerReady else { return .unavailable(Self.linkLayerOpenReason) }
+        return dispatchSos(payload: payload) { [weak self] frame, peer in
+            guard let self else { return false }
+            return self.ble.send(frame, to: peer)
+        }
+    }
+
+    /// Stage 4B.1 (B4): the SOS dispatch logic, ungated so it is unit-testable
+    /// without the link layer. Persists BEFORE any transport operation: a SOS
+    /// this node cannot durably hold is NOT sent (zero sends) and reported
+    /// `.notPersisted` so the UI does not lie. `.heldNew` or `.heldDuplicate` both
+    /// mean durably held (a duplicate SOS was already queued), so either proceeds
+    /// to transport; only a capacity rejection or storage failure exits before
+    /// any BLE write. With durable success and zero connected peers the SOS is
+    /// `.queuedDurably` (it reaches a peer on the next encounter via
+    /// anti-entropy); with N successful sends, `.handedToRelays(N)`. The previous
+    /// iOS `broadcastSos` ignored `router.ingest`'s return and could attempt BLE
+    /// sends after a persistence failure -- this gate fixes that (Android
+    /// `SosDispatchResult` parity). Calls `store.persist` directly (Android
+    /// parity), avoiding the double-relay that routing the locally-originated
+    /// SOS through `router.ingest` would cause.
+    @discardableResult
+    internal func dispatchSos(payload: Data, send: (FrameV2, UUID) -> Bool) -> SosDispatchResult {
         // GMP/2.1 (ADR-001 §3.3): msg_id is content-derived, not random, so
         // duplicate SOS submissions collapse in every relay's dedup cache. The
         // creation time is bound into the id (little-endian) and authenticated
@@ -95,18 +121,16 @@ public final class MeshNode {
             flags: UInt16(FrameV2.Flags.ack_req | FrameV2.Flags.relay_ok),
             payload: sealed)
 
-        // The current iOS router is memory-only. A zero-peer result is therefore
-        // not QUEUED: termination would lose it. ADR-004 must land before that word
-        // can appear in the UI.
-        // Stage 4B: ingest now persists before forwarding (the durable store is
-        // injected at init), so the SOS is durably held even with zero peers; the
-        // result wording below is unchanged only because this whole body is
-        // unreachable while linkLayerReady=false (it returns .unavailable first).
-        router.ingest(frame, isAddressedToMe: false, receivedFrom: identity.nodeId)
-        let handed = currentPeers().reduce(into: 0) { count, peer in
-            if ble.send(frame, to: peer) { count += 1 }
+        switch store.persist(frame, receivedFrom: identity.nodeId) {
+        case .heldNew, .heldDuplicate:
+            let handed = currentPeers().reduce(into: 0) { count, peer in
+                if send(frame, peer) { count += 1 }
+            }
+            return handed == 0 ? .queuedDurably : .handedToRelays(handed)
+        case .rejectedCapacity, .failedStorage:
+            // Persistence failed: exit BEFORE any transport operation. Zero sends.
+            return .notPersisted
         }
-        return handed > 0 ? .handedToRelays(handed) : .notPersisted
     }
 }
 

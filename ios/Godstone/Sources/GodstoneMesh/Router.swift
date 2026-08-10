@@ -42,7 +42,15 @@ public final class Router {
     /// such a router builds an empty digest and skips persist-before-forward.
     public var store: MessageStore?
 
-    public init() {}
+    public convenience init() { self.init(seenCacheCapacity: Router.seenCacheCapacity) }
+
+    /// Test-only init with a smaller dedup window so a test can age an id OUT of
+    /// the window while it is still durably held, exercising the durable-UNIQUE-
+    /// authority duplicate path (B1) -- unreachable at the production cache size
+    /// without 16384+ frames.
+    internal init(seenCacheCapacity: Int) {
+        self.seen = LruSet<Data>(capacity: seenCacheCapacity)
+    }
 
     /// True when the frame was new and has been accepted (and, when a durable
     /// store is attached, durably held before it was forwarded).
@@ -51,41 +59,81 @@ public final class Router {
         guard frame.ttl <= Router.maxTtl,
               frame.hopCount <= Router.maxTtl else { return false }
 
-        // Only mutate the dedup set under the lock. User callbacks execute
-        // outside it so a callback cannot deadlock by re-entering the router.
-        lock.lock()
-        let duplicate = seen.contains(frame.msgId)
-        if !duplicate { seen.insert(frame.msgId) }
-        lock.unlock()
-        guard !duplicate else { return false }
-
-        // Stage 4B: persist before forward (ADR-004). A frame that this node
-        // cannot durably hold is NOT delivered locally or relayed -- forwarding
-        // (or accepting for delivery) what this node cannot itself carry would
-        // let the only copy be dropped. The store is the durable source of
-        // truth; `persist` returns false only on a store failure (a duplicate
-        // msg_id is INSERT OR IGNORE, i.e. already held -> true). A storeless
-        // router (unit-test routing buffer) skips this gate and forwards as
-        // before. Mirrors Android Router.onFrameReceived.
-        if let store, !store.persist(frame, receivedFrom: receivedFrom) { return false }
-
-        if isAddressedToMe {
-            onDeliverLocally?(frame)
-            // SOS is still relayed after local delivery: someone further away
-            // may be the one who can actually help.
-            if frame.type != .sos { return true }
-        }
-
-        if frame.ttl > 1, frame.hopCount < Router.maxTtl {
-            enqueue(FrameV2(type: frame.type,
-                            msgId: frame.msgId,
-                            routingTag: frame.routingTag,
-                            ttl: frame.ttl - 1,
-                            hopCount: frame.hopCount + 1,
-                            flags: frame.flags,
-                            payload: frame.payload))
-        }
+        // Stage 4B.1 (B1): the durable store is the dedup authority and the
+        // in-memory `seen` LRU is only an optimisation populated AFTER durable
+        // acceptance. The accept/deliver/forward decision is taken under the
+        // router lock so two concurrent same-msg_id arrivals cannot both pass
+        // the dedup gate (at-most-once); user callbacks and `enqueue` run AFTER
+        // the lock is released so they cannot deadlock re-entering the router or
+        // the non-recursive queue lock. The store lock is acquired AFTER the
+        // router lock here and in `bloomDigest` -- consistent ordering, no
+        // deadlock.
+        let d = accept(frame, isAddressedToMe: isAddressedToMe, receivedFrom: receivedFrom)
+        guard d.accepted else { return false }
+        if d.deliver { onDeliverLocally?(frame) }
+        if let fwd = d.forwardCopy { enqueue(fwd) }
         return true
+    }
+
+    private struct IngestDecision {
+        let accepted: Bool
+        let deliver: Bool
+        let forwardCopy: FrameV2?
+    }
+
+    /// Dedup + durable persist + deliver/forward decision under the router lock.
+    /// `seen` is populated only AFTER durable acceptance, so a persist failure
+    /// never poisons retry (B1): the same msg_id can be re-offered after the
+    /// store recovers. A duplicate (LRU hit, or durable `.heldDuplicate`) is
+    /// suppressed without re-relay. `.rejectedCapacity` / `.failedStorage` leave
+    /// `seen` untouched so the retry path stays open. A storeless router uses
+    /// `seen` as the authority (unit-test routing buffer).
+    private func accept(_ frame: FrameV2, isAddressedToMe: Bool, receivedFrom: Data) -> IngestDecision {
+        let none = IngestDecision(accepted: false, deliver: false, forwardCopy: nil)
+        lock.lock()
+        defer { lock.unlock() }
+        // 1. Fast duplicate path (B1): the LRU is an OPTIMISATION only. A hit means
+        //    this id was durably accepted at some point (or is a within-window
+        //    duplicate), so short-circuit without touching the store.
+        if seen.contains(frame.msgId) { return none }
+        // 2. Durable authority (B1/B2). persist runs insert, hard-cap enforcement
+        //    and the final-presence check in one transaction (B3) and reports the
+        //    result; the relay/deliver decision is taken ONLY from this result.
+        if let store {
+            switch store.persist(frame, receivedFrom: receivedFrom) {
+            case .heldNew:
+                seen.insert(frame.msgId)
+            case .heldDuplicate:
+                // Already durably held (LRU aged the id out but the durable PK
+                // still carries it): suppress re-relay, cache the id for fast-path.
+                seen.insert(frame.msgId)
+                return none
+            case .rejectedCapacity, .failedStorage:
+                // NOT durably held. Do NOT mark seen -- the same msg_id may be
+                // re-offered after the store has room or recovers (B1: retry not
+                // poisoned). No deliver, no relay.
+                return none
+            }
+        } else {
+            seen.insert(frame.msgId)   // storeless: dedup window is the authority
+        }
+        // 3. Accepted (HELD_NEW / storeless novel). Decide deliver + forward.
+        let deliver = isAddressedToMe
+        // SOS is still relayed after local delivery: someone further away may be
+        // the one who can actually help. Non-SOS addressed-to-me is delivered and
+        // NOT relayed further.
+        let shouldRelay = !(isAddressedToMe && frame.type != .sos)
+        var forwardCopy: FrameV2? = nil
+        if shouldRelay && frame.ttl > 1 && frame.hopCount < Router.maxTtl {
+            forwardCopy = FrameV2(type: frame.type,
+                                  msgId: frame.msgId,
+                                  routingTag: frame.routingTag,
+                                  ttl: frame.ttl - 1,
+                                  hopCount: frame.hopCount + 1,
+                                  flags: frame.flags,
+                                  payload: frame.payload)
+        }
+        return IngestDecision(accepted: true, deliver: deliver, forwardCopy: forwardCopy)
     }
 
     private func enqueue(_ frame: FrameV2) {

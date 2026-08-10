@@ -29,15 +29,39 @@ private let storeSqliteTransient = unsafeBitCast(-1, to: sqlite3_destructor_type
 /// (`received_at`), not creation-relative. There is no installed base (ADR-001
 /// §5), so no migration code is written: an upgrade drops and recreates the
 /// table.
+/// The outcome of a durable persist, shared semantically with Android (Stage
+/// 4B.1). Mirrors `io.godstone.mesh.store.MessageStore.PersistResult`.
+///
+/// The router must distinguish these to keep the durable `UNIQUE(msg_id)` the
+/// authoritative dedup decision (B1) and to refuse to forward what it does not
+/// durably hold (B2): only `heldNew` is forwarded/delivered; `heldDuplicate`
+/// is suppressed (already held, do not re-relay); `rejectedCapacity` and
+/// `failedStorage` leave the in-memory dedup window untouched so the same
+/// msg_id may be re-offered after the store recovers or has room.
+public enum PersistResult: Sendable, Equatable {
+    /// Newly inserted and still present after capacity enforcement.
+    case heldNew
+    /// Already held on a duplicate msg_id (INSERT OR IGNORE no-op) and still present.
+    case heldDuplicate
+    /// Inserted but then evicted by the hard cap (or a duplicate whose row was evicted): not durably held.
+    case rejectedCapacity
+    /// A storage exception occurred inside the transaction; it was rolled back.
+    case failedStorage
+}
+
 public protocol MessageStore: AnyObject {
     /// Durably hold `frame`, recording the peer it was received from.
     ///
-    /// Returns true when the frame is held after the call (newly inserted, or
-    /// already present on a duplicate msg_id via INSERT OR IGNORE); false only
-    /// on a store failure, so a caller can gate "queued / relayed" on durable
-    /// success and refuse to forward what it could not hold (ADR-004 / Stage 4B).
-    /// Mirrors Android `MessageStore.persist`.
-    func persist(_ frame: FrameV2, receivedFrom: Data) -> Bool
+    /// Returns a [PersistResult]. The row is present in the durable store at or
+    /// before the moment this returns for `.heldNew` / `.heldDuplicate`; for
+    /// `.rejectedCapacity` / `.failedStorage` the row is NOT durably held and the
+    /// caller MUST NOT forward, deliver or permanently mark the id seen (B1/B2,
+    /// ADR-004 / Stage 4B.1). The insert, hard-cap enforcement and final
+    /// membership check run in one transaction (B3); a storage exception is
+    /// rolled back and reported as `.failedStorage` rather than thrown, so one
+    /// bad operation cannot kill the inbound receive collector. Mirrors Android
+    /// `MessageStore.persist`.
+    func persist(_ frame: FrameV2, receivedFrom: Data) -> PersistResult
     /// All held frames, SOS-first then by priority and recency.
     func allHeldOrderedByPriority() -> [FrameV2]
     /// msg_ids of every held frame, for bloom-digest construction (order-agnostic).
@@ -131,6 +155,12 @@ internal enum StoreSchema {
     /// Priority-order clause: SOS-first (priority 0), then priority asc, then
     /// newest-received first (recency tie-break). Byte-identical to Android.
     static let priorityOrder = "\(colPriority) ASC, \(colReceivedAt) DESC"
+
+    /// Membership check: true iff a row with `msg_id` is present. The load-bearing
+    /// final-presence query run AFTER capacity enforcement inside the persist
+    /// transaction (B2/B3): `persist` is truthful only when this confirms the row
+    /// survived eviction. Bind: (1) msg_id. Byte-identical to Android.
+    static let containsSql = "SELECT 1 FROM \(table) WHERE \(colMsgId) = ? LIMIT 1"
 }
 
 /// A stored row before it is typed into a FrameV2 (the type code may be
@@ -210,20 +240,13 @@ public final class SqliteMessageStore: MessageStore {
 
     // MARK: - MessageStore
 
-    public func persist(_ frame: FrameV2, receivedFrom: Data) -> Bool {
+    public func persist(_ frame: FrameV2, receivedFrom: Data) -> PersistResult {
         persistAt(frame, receivedFrom: receivedFrom,
                   receivedAt: Int64(Date().timeIntervalSince1970 * 1000))
     }
 
     public var heldBytes: Int64 {
-        withDb { db in
-            var stmt: OpaquePointer?
-            guard sqlite3_prepare_v2(db, StoreSchema.heldBytesSql, -1, &stmt, nil) == SQLITE_OK else {
-                sqlite3_finalize(stmt); return 0
-            }
-            defer { sqlite3_finalize(stmt) }
-            return sqlite3_step(stmt) == SQLITE_ROW ? sqlite3_column_int64(stmt, 0) : 0
-        } ?? 0
+        withDb { db in heldBytesNoLock(db) } ?? 0
     }
 
     public func allHeldOrderedByPriority() -> [FrameV2] {
@@ -282,41 +305,54 @@ public final class SqliteMessageStore: MessageStore {
     // MARK: - Internals (test-exposed for deterministic eviction)
 
     /// Persist with an explicit received_at (millis), so eviction oldest-first
-    /// and priority tie-breaks do not race the wall clock in tests. Returns true
-    /// when the INSERT OR IGNORE step completed (frame held, newly or as a
-    /// duplicate no-op); false on a prepare/step failure or a nil DB handle.
+    /// and priority tie-breaks do not race the wall clock in tests. Inserts,
+    /// enforces the hard cap and checks final membership in ONE transaction
+    /// (B2/B3), returning a truthful [PersistResult]. A storage exception inside
+    /// the transaction is rolled back and reported as `.failedStorage` -- never
+    /// thrown -- so one bad operation cannot kill the inbound receive collector.
     @discardableResult
-    internal func persistAt(_ frame: FrameV2, receivedFrom: Data, receivedAt: Int64) -> Bool {
-        let inserted = withDb { db -> Bool in
-            let sql = "INSERT OR IGNORE INTO \(StoreSchema.table) (" +
-                "\(StoreSchema.colMsgId), \(StoreSchema.colType), \(StoreSchema.colTtl), " +
-                "\(StoreSchema.colHopCount), \(StoreSchema.colFlags), \(StoreSchema.colPriority), " +
-                "\(StoreSchema.colRoutingTag), \(StoreSchema.colPayload), " +
-                "\(StoreSchema.colReceivedFrom), \(StoreSchema.colReceivedAt)) " +
-                "VALUES (?,?,?,?,?,?,?,?,?,?)"
-            var stmt: OpaquePointer?
-            guard sqlite3_prepare_v2(db, sql, -1, &stmt, nil) == SQLITE_OK else {
-                sqlite3_finalize(stmt); return false
+    internal func persistAt(_ frame: FrameV2, receivedFrom: Data, receivedAt: Int64) -> PersistResult {
+        persistAtWithFault(frame, receivedFrom: receivedFrom, receivedAt: receivedAt, fault: nil)
+    }
+
+    /// [persistAt] with an explicit per-call fault seam (B3). Tests pass a
+    /// one-shot injector that throws between the insert/evict/contains phases to
+    /// prove the transaction rolls back and the store reopens valid + bounded;
+    /// production always passes `nil` via [persistAt].
+    @discardableResult
+    internal func persistAtWithFault(
+        _ frame: FrameV2, receivedFrom: Data, receivedAt: Int64,
+        fault: ((String) throws -> Void)?
+    ) -> PersistResult {
+        do {
+            return try withTransaction { db in
+                let ins = insertRowNoLock(db, frame, receivedFrom: receivedFrom, receivedAt: receivedAt)
+                guard ins.ok else { return PersistResult.failedStorage }
+                if ins.isNew {
+                    try fault?("after_insert")
+                    let held = heldBytesNoLock(db)
+                    if held > maxBytes {
+                        evictOldestPrefixNoLock(db, overshoot: held - maxBytes)
+                    }
+                    try fault?("after_evict")
+                }
+                try fault?("before_contains")
+                let present = containsNoLock(db, frame.msgId)
+                switch (present, ins.isNew) {
+                case (true, true):   return .heldNew
+                case (true, false):  return .heldDuplicate
+                default:             return .rejectedCapacity
+                }
             }
-            defer { sqlite3_finalize(stmt) }
-            bindBlob(stmt, 1, frame.msgId)
-            sqlite3_bind_int(stmt, 2, Int32(frame.type.rawValue))
-            sqlite3_bind_int(stmt, 3, Int32(frame.ttl))
-            sqlite3_bind_int(stmt, 4, Int32(frame.hopCount))
-            sqlite3_bind_int(stmt, 5, Int32(frame.flags))
-            sqlite3_bind_int(stmt, 6, Int32(Priority.fromFlags(frame.flags).rawValue))
-            bindBlob(stmt, 7, frame.routingTag)
-            bindBlob(stmt, 8, frame.payload)
-            bindBlob(stmt, 9, receivedFrom)
-            sqlite3_bind_int64(stmt, 10, receivedAt)
-            return sqlite3_step(stmt) == SQLITE_DONE
-        } ?? false
-        if inserted { evictIfOverBudget() }
-        return inserted
+        } catch {
+            return .failedStorage
+        }
     }
 
     /// Evict the smallest oldest (non-SOS-first) prefix that brings the store
-    /// back to or under the cap. No-op while under budget.
+    /// back to or under the cap. No-op while under budget. Used outside a
+    /// transaction by tests that pre-seed the store; the persist path runs
+    /// eviction inside [withTransaction] via [evictOldestPrefixNoLock].
     internal func evictIfOverBudget() {
         let bytes = heldBytes
         guard bytes > maxBytes else { return }
@@ -324,15 +360,114 @@ public final class SqliteMessageStore: MessageStore {
     }
 
     internal func evictOldestPrefix(overshoot: Int64) {
-        withDb { db in
-            var stmt: OpaquePointer?
-            guard sqlite3_prepare_v2(db, StoreSchema.evictPrefixSql, -1, &stmt, nil) == SQLITE_OK else {
-                sqlite3_finalize(stmt); return
-            }
-            defer { sqlite3_finalize(stmt) }
-            sqlite3_bind_int64(stmt, 1, overshoot)
-            sqlite3_step(stmt)
+        withDb { db in evictOldestPrefixNoLock(db, overshoot: overshoot) }
+    }
+
+    // MARK: - Transaction + non-locking SQL helpers (B3)
+    //
+    // The existing `withDb` is a non-recursive NSLock: it MUST NOT be nested
+    // (deadlock). The persist transaction therefore holds the connection lock
+    // ONCE via `withTransaction` and calls these non-locking helpers inside that
+    // critical section, so insert + eviction + final-contains are atomic without
+    // re-acquiring the lock.
+
+    private enum StoreTxnError: Error { case openFailed, beginFailed, commitFailed }
+
+    /// Run [body] in ONE transaction holding the connection lock once (B3):
+    /// `BEGIN IMMEDIATE` -> body -> `COMMIT`, or `ROLLBACK` if body throws. The
+    /// non-locking SQL helpers called inside [body] operate on the locked
+    /// connection directly. Mirrors Android `StoreDb.inTransaction` (framework
+    /// `beginTransaction`, an EXCLUSIVE write lock -- the "or equivalent sqlite
+    /// transaction API" the directive allows).
+    private func withTransaction<T>(_ body: (OpaquePointer) throws -> T) throws -> T {
+        lock.lock()
+        defer { lock.unlock() }
+        guard let db = handle else { throw StoreTxnError.openFailed }
+        if sqlite3_exec(db, "BEGIN IMMEDIATE", nil, nil, nil) != SQLITE_OK {
+            throw StoreTxnError.beginFailed
         }
+        do {
+            let result = try body(db)
+            if sqlite3_exec(db, "COMMIT", nil, nil, nil) != SQLITE_OK {
+                sqlite3_exec(db, "ROLLBACK", nil, nil, nil)
+                throw StoreTxnError.commitFailed
+            }
+            return result
+        } catch {
+            sqlite3_exec(db, "ROLLBACK", nil, nil, nil)
+            throw error
+        }
+    }
+
+    /// INSERT OR IGNORE the row. Returns `(ok, isNew)`: `ok` is false on a
+    /// prepare/step failure; `isNew` is true only when a row was actually
+    /// inserted (sqlite3_changes == 1), false when the duplicate was IGNORE'd.
+    /// `sqlite3_step == SQLITE_DONE` is true for BOTH a real insert and an
+    /// IGNORE no-op, so `sqlite3_changes` is the only way to tell them apart
+    /// (Stage 4B.1 / B2 -- mirrors Android's rowId != -1 distinction).
+    @inline(__always)
+    private func insertRowNoLock(
+        _ db: OpaquePointer, _ frame: FrameV2, receivedFrom: Data, receivedAt: Int64
+    ) -> (ok: Bool, isNew: Bool) {
+        let sql = "INSERT OR IGNORE INTO \(StoreSchema.table) (" +
+            "\(StoreSchema.colMsgId), \(StoreSchema.colType), \(StoreSchema.colTtl), " +
+            "\(StoreSchema.colHopCount), \(StoreSchema.colFlags), \(StoreSchema.colPriority), " +
+            "\(StoreSchema.colRoutingTag), \(StoreSchema.colPayload), " +
+            "\(StoreSchema.colReceivedFrom), \(StoreSchema.colReceivedAt)) " +
+            "VALUES (?,?,?,?,?,?,?,?,?,?)"
+        var stmt: OpaquePointer?
+        guard sqlite3_prepare_v2(db, sql, -1, &stmt, nil) == SQLITE_OK else {
+            sqlite3_finalize(stmt); return (false, false)
+        }
+        defer { sqlite3_finalize(stmt) }
+        bindBlob(stmt, 1, frame.msgId)
+        sqlite3_bind_int(stmt, 2, Int32(frame.type.rawValue))
+        sqlite3_bind_int(stmt, 3, Int32(frame.ttl))
+        sqlite3_bind_int(stmt, 4, Int32(frame.hopCount))
+        sqlite3_bind_int(stmt, 5, Int32(frame.flags))
+        sqlite3_bind_int(stmt, 6, Int32(Priority.fromFlags(frame.flags).rawValue))
+        bindBlob(stmt, 7, frame.routingTag)
+        bindBlob(stmt, 8, frame.payload)
+        bindBlob(stmt, 9, receivedFrom)
+        sqlite3_bind_int64(stmt, 10, receivedAt)
+        guard sqlite3_step(stmt) == SQLITE_DONE else { return (false, false) }
+        return (true, sqlite3_changes(db) == 1)
+    }
+
+    /// Final-presence check (B2/B3): true iff a row with `msgId` is present.
+    @inline(__always)
+    private func containsNoLock(_ db: OpaquePointer, _ msgId: Data) -> Bool {
+        var stmt: OpaquePointer?
+        guard sqlite3_prepare_v2(db, StoreSchema.containsSql, -1, &stmt, nil) == SQLITE_OK else {
+            sqlite3_finalize(stmt); return false
+        }
+        defer { sqlite3_finalize(stmt) }
+        bindBlob(stmt, 1, msgId)
+        return sqlite3_step(stmt) == SQLITE_ROW
+    }
+
+    /// Total stored bytes on the locked connection.
+    @inline(__always)
+    private func heldBytesNoLock(_ db: OpaquePointer) -> Int64 {
+        var stmt: OpaquePointer?
+        guard sqlite3_prepare_v2(db, StoreSchema.heldBytesSql, -1, &stmt, nil) == SQLITE_OK else {
+            sqlite3_finalize(stmt); return 0
+        }
+        defer { sqlite3_finalize(stmt) }
+        return sqlite3_step(stmt) == SQLITE_ROW ? sqlite3_column_int64(stmt, 0) : 0
+    }
+
+    /// Delete the oldest non-SOS-first prefix meeting [overshoot] bytes, on the
+    /// locked connection.
+    @inline(__always)
+    private func evictOldestPrefixNoLock(_ db: OpaquePointer, overshoot: Int64) {
+        var stmt: OpaquePointer?
+        guard sqlite3_prepare_v2(db, StoreSchema.evictPrefixSql, -1, &stmt, nil) == SQLITE_OK else {
+            sqlite3_finalize(stmt); return
+        }
+        defer { sqlite3_finalize(stmt) }
+        sqlite3_bind_int64(stmt, 1, overshoot)
+        sqlite3_step(stmt)
     }
 
     // MARK: - Panic wipe
@@ -374,22 +509,57 @@ public final class SqliteMessageStore: MessageStore {
 
 /// In-memory `MessageStore` for unit tests that need a durable-shaped store
 /// without touching sqlite3 -- the iOS twin of Android's `InMemoryMessageStore`.
-/// `persist` always succeeds (returns true): a real durable-failure path is
-/// exercised with a bespoke fake in the test that needs it. INSERT OR IGNORE
-/// dedup and SOS-first priority ordering mirror `StoreSchema`, so a router
-/// wired to this store behaves as it would against `SqliteMessageStore`.
+///
+/// Stage 4B.1: contract-parity with `SqliteMessageStore`. `persist` reports the
+/// same `PersistResult` distinctions (`.heldNew` / `.heldDuplicate` /
+/// `.rejectedCapacity`) so router-level at-most-once and capacity-rejection
+/// tests can run without sqlite3. The hard cap defaults to unlimited so existing
+/// router tests that never approach a cap compile unchanged; a tight cap
+/// exercises the same eviction ordering (non-SOS first, then SOS, newest
+/// retained) as the SQL store. A bespoke fake (e.g. `FailingStore`) exercises the
+/// `.failedStorage` path.
 internal final class InMemoryMessageStore: MessageStore {
     private struct Held { let frame: FrameV2; let receivedAt: Int64 }
     private let lock = NSLock()
+    private let maxBytes: Int64
     private var rows: [Data: Held] = [:]
 
-    internal init() {}
+    internal init(maxBytes: Int64 = .max) { self.maxBytes = maxBytes }
 
-    func persist(_ frame: FrameV2, receivedFrom: Data) -> Bool {
+    func persist(_ frame: FrameV2, receivedFrom: Data) -> PersistResult {
         lock.lock(); defer { lock.unlock() }
-        if rows[frame.msgId] != nil { return true }   // duplicate: already held
-        rows[frame.msgId] = Held(frame: frame, receivedAt: Int64(Date().timeIntervalSince1970 * 1000))
-        return true
+        let isNew = rows[frame.msgId] == nil
+        if isNew {
+            rows[frame.msgId] = Held(frame: frame, receivedAt: Int64(Date().timeIntervalSince1970 * 1000))
+        }
+        if totalBytesNoLock > maxBytes { evictUntilUnderCapNoLock() }
+        if rows[frame.msgId] != nil && isNew { return .heldNew }
+        if rows[frame.msgId] != nil { return .heldDuplicate }
+        return .rejectedCapacity   // the just-inserted frame was evicted by the cap
+    }
+
+    private var totalBytesNoLock: Int64 {
+        // Per-row bookkeeping allowance matches StoreSchema.rowOverhead (64).
+        rows.values.reduce(Int64(0)) { $0 + Int64($1.frame.payload.count) + 64 }
+    }
+
+    /// Evict oldest non-SOS first (then SOS, oldest first) until <= maxBytes.
+    private func evictUntilUnderCapNoLock() {
+        // Eviction order: non-SOS (priority != .sos) first, oldest received; then
+        // SOS, oldest. `isSos` is 0 for non-SOS and 1 for SOS so ascending puts
+        // non-SOS first (evicted before SOS), matching StoreSchema.evictPrefixSql.
+        let order = rows.sorted { a, b in
+            let aSos = Priority.fromFlags(a.value.frame.flags) == .sos ? 1 : 0
+            let bSos = Priority.fromFlags(b.value.frame.flags) == .sos ? 1 : 0
+            if aSos != bSos { return aSos < bSos }
+            return a.value.receivedAt < b.value.receivedAt
+        }
+        var total = totalBytesNoLock
+        for (id, held) in order {
+            if total <= maxBytes { break }
+            rows.removeValue(forKey: id)
+            total -= Int64(held.frame.payload.count) + 64
+        }
     }
 
     private var sorted: [(frame: FrameV2, receivedAt: Int64)] {
@@ -425,7 +595,6 @@ internal final class InMemoryMessageStore: MessageStore {
 
     var heldBytes: Int64 {
         lock.lock(); defer { lock.unlock() }
-        // Per-row bookkeeping allowance matches StoreSchema.rowOverhead (64).
-        return rows.values.reduce(Int64(0)) { $0 + Int64($1.frame.payload.count) + 64 }
+        return totalBytesNoLock
     }
 }

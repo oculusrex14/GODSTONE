@@ -6,6 +6,7 @@ public final class MeshCoordinator: ObservableObject {
     public enum SosState: Equatable {
         case idle
         case unavailable(String)
+        case queuedDurably
         case handedToRelays(Int)
         case notPersisted
         case failed(String)
@@ -22,6 +23,7 @@ public final class MeshCoordinator: ObservableObject {
     }
     public var isBroadcastingSos: Bool {
         if case .handedToRelays = sosState { return true }
+        if case .queuedDurably = sosState { return true }
         return false
     }
 
@@ -45,6 +47,7 @@ public final class MeshCoordinator: ObservableObject {
         let result = node.broadcastSos(payload: Data("SOS".utf8))
         switch result {
         case .unavailable(let reason): sosState = .unavailable(reason)
+        case .queuedDurably: sosState = .queuedDurably
         case .handedToRelays(let count): sosState = .handedToRelays(count)
         case .notPersisted: sosState = .notPersisted
         case .failed(let reason): sosState = .failed(reason)
