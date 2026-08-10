@@ -21,13 +21,37 @@ import GodstoneCore
 /// tests in `SqliteMessageStoreTests`.
 final class MeshNodeSosDispatchTests: XCTestCase {
 
+    /// In-memory `DeliveryJournal` + `ExpectedRecipientStore` for tests that
+    /// construct a `MeshNode` but do not exercise the ACK path (the SOS dispatch
+    /// tests). The tracker is fail-closed regardless -- the authenticator is the
+    /// production `UnresolvedRecipientKeyResolver` -- so no delivery is claimed.
+    private final class InMemoryDeliveryJournal: DeliveryJournal, ExpectedRecipientStore {
+        var state: [Data: DeliveryState] = [:]
+        var recipient: [Data: Data] = [:]
+        func read(_ msgId: Data) -> DeliveryState { state[msgId] ?? .unavailable }
+        func write(_ msgId: Data, _ s: DeliveryState) { state[msgId] = s }
+        func clear(_ msgId: Data) { state.removeValue(forKey: msgId); recipient.removeValue(forKey: msgId) }
+        func expectedRecipient(_ msgId: Data) -> Data? { recipient[msgId] }
+        func recordExpectedRecipient(_ msgId: Data, _ r: Data?) {
+            if let r { recipient[msgId] = r } else { recipient.removeValue(forKey: msgId) }
+        }
+    }
+
     /// Build a node with a fresh in-memory identity (CryptoKit default inits
     /// generate fresh keys on the macOS host -- no Keychain needed) and [store].
+    /// A fail-closed `DeliveryTracker` (production `UnresolvedRecipientKeyResolver`
+    /// over an in-memory journal) is injected so the node owns its tracker without
+    /// touching SQLite -- the SOS dispatch path does not drive it (C6/C7 do).
     private func makeNode(store: MessageStore) -> MeshNode {
         let identity = MeshIdentity(
             signingKey: Curve25519.Signing.PrivateKey(),
             agreementKey: Curve25519.KeyAgreement.PrivateKey())
-        return MeshNode(identity: identity, store: store)
+        let journal = InMemoryDeliveryJournal()
+        let tracker = DeliveryTracker(
+            journal: journal,
+            authenticator: Ed25519AckAuthenticator(resolver: UnresolvedRecipientKeyResolver()),
+            expectedRecipientStore: journal)
+        return MeshNode(identity: identity, store: store, deliveryTracker: tracker)
     }
 
     /// B4: persist fails -> `.notPersisted`, ZERO sends. The previous iOS

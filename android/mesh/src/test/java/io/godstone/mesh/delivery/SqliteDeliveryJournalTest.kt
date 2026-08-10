@@ -215,4 +215,41 @@ class SqliteDeliveryJournalTest {
             file.delete()
         }
     }
+
+    @Test
+    fun `production composition is fail-closed under the unresolved resolver`() {
+        // C5 production composition recipe (mirrors MeshModule.provideDeliveryTracker,
+        // but over the test JdbcStoreDb engine instead of SqlcipherStoreDb since the
+        // unit test JVM has no SQLCipher native): a SqliteDeliveryJournal over a real
+        // on-disk SQLite is BOTH the journal and the expected-recipient store, and an
+        // Ed25519AckAuthenticator over the production UnresolvedRecipientKeyResolver
+        // rejects every ACK. No delivery is claimed until M2-link binds real keys.
+        val file = Files.createTempFile("godstone-delivery", ".db").toFile()
+        try {
+            val journal = open(file)
+            val tracker = DeliveryTracker(
+                journal,
+                Ed25519AckAuthenticator(UnresolvedRecipientKeyResolver),
+                journal,
+            )
+            val (pub, priv) = realKeypair()
+            val recipient = ByteArray(16) { 0x07 }
+            val mid = msgId(40)
+            // Outbound: enqueue binds the expected recipient + advances to handed.
+            assertTrue(tracker.enqueue(mid, expectedRecipient = recipient))
+            assertTrue(tracker.markHandedToRelay(mid))
+            // A real, well-formed ACK signed by the recipient is STILL rejected,
+            // because the production resolver resolves no key. State unchanged.
+            val ack = AckFrame.build(mid, priv, recipient, routingTag)
+            assertFalse(tracker.acknowledge(mid, ack),
+                "unresolved production resolver must reject every ACK -- no delivery claimed without a bound key")
+            assertEquals(DeliveryState.HANDED_TO_RELAY, tracker.state(mid))
+            // The durable expected recipient is preserved (state-only writes do not
+            // clobber it), so the binding substrate is intact for when M2-link wires
+            // a real resolver -- but until then the tracker is fail-closed.
+            assertEquals(recipient.toList(), journal.expectedRecipient(mid)?.toList())
+        } finally {
+            file.delete()
+        }
+    }
 }

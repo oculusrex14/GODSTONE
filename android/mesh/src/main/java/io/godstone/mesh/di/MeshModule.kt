@@ -7,12 +7,17 @@ import dagger.hilt.InstallIn
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
 import io.godstone.mesh.MeshNode
+import io.godstone.mesh.delivery.DeliveryTracker
+import io.godstone.mesh.delivery.Ed25519AckAuthenticator
+import io.godstone.mesh.delivery.SqliteDeliveryJournal
+import io.godstone.mesh.delivery.UnresolvedRecipientKeyResolver
 import io.godstone.mesh.store.MessageStore
 import io.godstone.mesh.store.SqliteMessageStore
 import javax.inject.Singleton
 
 /**
- * The ONE composition root for the mesh subsystem (Stage 4B / audit P0-02).
+ * The ONE composition root for the mesh subsystem (Stage 4B / audit P0-02;
+ * Stage 4C / C5 wires the delivery tracker).
  *
  * `MeshService` is `@AndroidEntryPoint` with `@Inject lateinit var meshNode:
  * MeshNode`; before this module existed that injection was unsatisfied (no
@@ -24,6 +29,17 @@ import javax.inject.Singleton
  * same durable store. Mirrors iOS `AppContainer`-style composition (the iOS
  * archive-only root wires no mesh today; the mesh ships behind
  * `LINK_LAYER_READY=false` on both platforms).
+ *
+ * Stage 4C / C5: the same `SqliteMessageStore` singleton's `engine` (the ONE
+ * process-wide `StoreDb`) also feeds a `SqliteDeliveryJournal`, which is BOTH
+ * the `DeliveryJournal` and the `ExpectedRecipientStore` for the
+ * `DeliveryTracker`. The authenticator is `Ed25519AckAuthenticator` over the
+ * production `UnresolvedRecipientKeyResolver` -- UNRESOLVED (M2-link identity
+ * binding not wired), so it resolves no recipient key and rejects every ACK.
+ * This is the fail-closed production state: the tracker owns the durable
+ * delivery state + expected-recipient binding, but no delivery is claimed
+ * until real recipient keys are bound (A-03 / ADR-005 OPEN). The outbound (C6)
+ * and inbound-ACK (C7) paths in `MeshNode` drive this tracker.
  *
  * `:mesh` is non-shipping (the LIGHT release links only `:core`), so this
  * module is compiled as part of `:mesh` and reaches an app graph only when the
@@ -44,13 +60,42 @@ object MeshModule {
     /** Production durable message-store hard cap (ADR-004 §4). */
     private const val STORE_MAX_BYTES = 64L * 1024 * 1024
 
+    /**
+     * The ONE process-wide `SqliteMessageStore`. Provided as the concrete type so
+     * [provideDeliveryTracker] can reuse its `engine` (the shared `StoreDb`
+     * connection) for the delivery journal -- one connection feeds both the
+     * held-frames store and the `delivery_state` table.
+     */
     @Provides @Singleton
-    fun provideMessageStore(@ApplicationContext ctx: Context): MessageStore =
+    fun provideSqliteMessageStore(@ApplicationContext ctx: Context): SqliteMessageStore =
         SqliteMessageStore(ctx, STORE_MAX_BYTES)
+
+    /// Re-expose the store as its `MessageStore` interface for `MeshNode` injection.
+    @Provides @Singleton
+    fun provideMessageStore(store: SqliteMessageStore): MessageStore = store
+
+    /**
+     * The production `DeliveryTracker` (Stage 4C / C5). The `SqliteDeliveryJournal`
+     * wraps `store.engine` (the SAME `StoreDb` as the message store) and is passed
+     * as BOTH the journal and the expected-recipient store -- one row holds the
+     * delivery state + the intended recipient. The authenticator uses the
+     * production `UnresolvedRecipientKeyResolver`, which resolves no key, so every
+     * ACK is rejected (fail-closed until M2-link binds real recipient keys).
+     */
+    @Provides @Singleton
+    fun provideDeliveryTracker(store: SqliteMessageStore): DeliveryTracker {
+        val journal = SqliteDeliveryJournal(store.engine)
+        return DeliveryTracker(
+            journal,
+            Ed25519AckAuthenticator(UnresolvedRecipientKeyResolver),
+            journal,
+        )
+    }
 
     @Provides @Singleton
     fun provideMeshNode(
         @ApplicationContext ctx: Context,
         store: MessageStore,
-    ): MeshNode = MeshNode(ctx, store)
+        deliveryTracker: DeliveryTracker,
+    ): MeshNode = MeshNode(ctx, store, deliveryTracker)
 }

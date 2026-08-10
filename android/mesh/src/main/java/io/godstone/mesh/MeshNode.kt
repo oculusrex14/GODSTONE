@@ -1,6 +1,7 @@
 package io.godstone.mesh
 
 import android.content.Context
+import io.godstone.mesh.delivery.DeliveryTracker
 import io.godstone.mesh.identity.Identity
 import io.godstone.mesh.router.Router
 import io.godstone.mesh.store.MessageStore
@@ -49,7 +50,21 @@ const val LINK_LAYER_OPEN_REASON =
  */
 class MeshNode(
     private val ctx: Context,
-    private val store: MessageStore
+    private val store: MessageStore,
+    /**
+     * Durable, recipient-authenticated delivery state machine (ADR-005; A-03;
+     * Stage 4C / C5). Constructed by [di.MeshModule] from the SAME `StoreDb`
+     * engine as `store`: a [io.godstone.mesh.delivery.SqliteDeliveryJournal] is
+     * BOTH the journal and the expected-recipient store, and an
+     * [io.godstone.mesh.delivery.Ed25519AckAuthenticator] over the production
+     * [io.godstone.mesh.delivery.UnresolvedRecipientKeyResolver] rejects every
+     * ACK until the M2-link identity binding wires real recipient keys
+     * (fail-closed). The outbound path (C6) records the expected recipient +
+     * advances state on a successful relay hand-off; the inbound ACK path (C7)
+     * binds the ACK to the durable expected recipient. No delivery is claimed
+     * on host-only evidence -- A-03 / ADR-005 stay OPEN.
+     */
+    internal val deliveryTracker: DeliveryTracker,
 ) {
     private val identity: Identity by lazy { Identity.loadOrCreate(ctx) }
     private val router: Router by lazy { Router(store, identity.nodeId) }

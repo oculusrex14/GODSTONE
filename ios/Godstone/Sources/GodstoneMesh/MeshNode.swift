@@ -26,6 +26,18 @@ public final class MeshNode {
     /// without the durable source of truth it relays from. Mirrors Android
     /// `MeshNode(ctx, store)`.
     public let store: MessageStore
+    /// Durable, recipient-authenticated delivery state machine (ADR-005; A-03;
+    /// Stage 4C / C5). Constructed by the composition root from the SAME
+    /// `SqliteMessageStore` as `store`: a `SqliteDeliveryJournal` is BOTH the
+    /// journal and the expected-recipient store, and an
+    /// `Ed25519AckAuthenticator` over the production
+    /// `UnresolvedRecipientKeyResolver` rejects every ACK until the M2-link
+    /// identity binding wires real recipient keys (fail-closed). The outbound
+    /// path (C6) records the expected recipient + advances state on a successful
+    /// relay hand-off; the inbound ACK path (C7) binds the ACK to the durable
+    /// expected recipient. No delivery is claimed on host-only evidence --
+    /// A-03 / ADR-005 stay OPEN. Mirrors Android `MeshNode.deliveryTracker`.
+    public let deliveryTracker: DeliveryTracker
     public private(set) lazy var ble = BleTransport()
     public private(set) lazy var router = Router()
     public private(set) lazy var sessions = SessionManager(identity: identity)
@@ -35,9 +47,16 @@ public final class MeshNode {
     public var onPeerCountChanged: ((Int) -> Void)?
     private var isStarted = false
 
-    public init(identity: MeshIdentity, store: MessageStore) {
+    /// Production initializer: a node owns its durable store AND its durable
+    /// delivery tracker (Stage 4C / C5). The tracker is constructed by the
+    /// composition root from the same `SqliteMessageStore` so the delivery_state
+    /// row lives in the same DB as the held frames. Mirrors Android
+    /// `MeshNode(ctx, store, deliveryTracker)`.
+    public init(identity: MeshIdentity, store: MessageStore,
+                deliveryTracker: DeliveryTracker) {
         self.identity = identity
         self.store = store
+        self.deliveryTracker = deliveryTracker
         // Inject the durable store into the router before start (Stage 4B).
         self.router.store = store
     }

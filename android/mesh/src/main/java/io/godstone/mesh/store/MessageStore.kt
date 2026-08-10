@@ -346,7 +346,17 @@ internal interface StoreDb {
  * SQLite engine; the at-rest encryption is verified on device (instrumented).
  */
 class SqliteMessageStore internal constructor(
-    private val engine: StoreDb,
+    /**
+     * The underlying SQLite/SQLCipher engine. Exposed `internal` so the
+     * production composition root (`MeshModule`, Stage 4C / C5) can build a
+     * [SqliteDeliveryJournal] over the SAME engine/connection the held-frames
+     * store uses -- one process-wide `StoreDb` feeds both the message store and
+     * the delivery journal, so the delivery_state row lives in the same DB as
+     * the held frames and shares the same connection. `internal` keeps this
+     * within the `:mesh` module (non-shipping); it never reaches the
+     * archive-only `lightRelease` classpath (Stage 4A forbidden-edge gate).
+     */
+    internal val engine: StoreDb,
     private val maxBytes: Long,
     /**
      * Test-only fault-injection seam (B3). When non-null it is invoked between

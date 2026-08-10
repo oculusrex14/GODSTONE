@@ -202,4 +202,50 @@ final class SqliteDeliveryJournalTests: XCTestCase {
                        "ACK from a valid but unintended recipient must not verify over the durable journal")
         XCTAssertEqual(.handedToRelay, tracker.state(mid2))
     }
+
+    // MARK: - C5 production composition (fail-closed under the unresolved resolver)
+
+    func testProductionCompositionIsFailClosedUnderUnresolvedResolver() throws {
+        // C5 production composition recipe (mirrors Android MeshModule's
+        // provideDeliveryTracker): a SqliteDeliveryJournal over a REAL on-disk
+        // SqliteMessageStore is BOTH the journal and the expected-recipient store,
+        // and an Ed25519AckAuthenticator over the production
+        // UnresolvedRecipientKeyResolver rejects every ACK. No delivery is claimed
+        // until M2-link binds real keys. The node owns the tracker (Stage 4C / C5).
+        let url = URL(fileURLWithPath: NSTemporaryDirectory())
+            .appendingPathComponent("godstone-delivery-\(UUID().uuidString).db")
+        defer { try? FileManager.default.removeItem(at: url) }
+
+        let store = SqliteMessageStore(url: url, maxBytes: .max, fileProtection: .complete)
+        let journal = SqliteDeliveryJournal(store)
+        let tracker = DeliveryTracker(
+            journal: journal,
+            authenticator: Ed25519AckAuthenticator(resolver: UnresolvedRecipientKeyResolver()),
+            expectedRecipientStore: journal)
+        let identity = MeshIdentity(
+            signingKey: Curve25519.Signing.PrivateKey(),
+            agreementKey: Curve25519.KeyAgreement.PrivateKey())
+        let node = MeshNode(identity: identity, store: store, deliveryTracker: tracker)
+
+        // The node carries the live fail-closed tracker (C5: composition owns it).
+        XCTAssertTrue(node.deliveryTracker === tracker)
+
+        let (_, priv) = realKeypair()
+        let recipient = Data(repeating: 0x07, count: 16)
+        let mid = msgId(40)
+        // Outbound: enqueue binds the expected recipient + advances to handed.
+        XCTAssertTrue(tracker.enqueue(mid, expectedRecipient: recipient))
+        XCTAssertTrue(tracker.markHandedToRelay(mid))
+        // A real, well-formed ACK signed by the recipient is STILL rejected,
+        // because the production resolver resolves no key. State unchanged.
+        let ack = try AckFrame.build(msgId: mid, recipientSigningPrivKey: priv,
+                                     recipientNodeId: recipient, routingTag: routingTag)
+        XCTAssertFalse(tracker.acknowledge(mid, ack),
+                       "unresolved production resolver must reject every ACK -- no delivery claimed without a bound key")
+        XCTAssertEqual(.handedToRelay, tracker.state(mid))
+        // The durable expected recipient is preserved (state-only writes do not
+        // clobber it), so the binding substrate is intact for when M2-link wires a
+        // real resolver -- but until then the tracker (and the node) is fail-closed.
+        XCTAssertEqual(recipient, journal.expectedRecipient(mid) ?? Data())
+    }
 }
