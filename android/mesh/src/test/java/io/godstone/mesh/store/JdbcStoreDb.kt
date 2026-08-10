@@ -5,6 +5,7 @@ import io.godstone.mesh.wire.v2.Priority
 import java.io.File
 import java.sql.Connection
 import java.sql.DriverManager
+import java.sql.Types
 
 /**
  * Test-only [StoreDb] backed by a REAL on-disk SQLite via sqlite-jdbc.
@@ -31,6 +32,8 @@ internal class JdbcStoreDb(file: File) : StoreDb {
         // IF NOT EXISTS so a test can pre-seed the file (e.g. a bad-type row)
         // and reopen it without "table already exists" failing the open.
         conn.createStatement().use { it.execute(StoreSchema.CREATE_SQL_IF_NOT_EXISTS) }
+        // Stage 4C / C4: delivery_state table, idempotent (same as held_frames).
+        conn.createStatement().use { it.execute(StoreSchema.CREATE_DELIVERY_SQL_IF_NOT_EXISTS) }
     }
 
     override fun insert(frame: FrameV2, receivedFrom: ByteArray, receivedAt: Long): Long {
@@ -127,6 +130,45 @@ internal class JdbcStoreDb(file: File) : StoreDb {
                     if (!visit(rs.getBytes(1))) return
                 }
             }
+        }
+    }
+
+    // --- Stage 4C / C4 -- delivery_state row (single atomic statements) ---
+
+    override fun readDelivery(msgId: ByteArray): Pair<Int, ByteArray?>? {
+        conn.prepareStatement(StoreSchema.readDeliverySql()).use { ps ->
+            ps.setBytes(1, msgId)
+            ps.executeQuery().use { rs ->
+                if (!rs.next()) return null
+                val state = rs.getInt(1)
+                val expected = rs.getBytes(2)   // null when the SQL column is NULL
+                return state to expected
+            }
+        }
+    }
+
+    override fun upsertDeliveryState(msgId: ByteArray, stateOrdinal: Int) {
+        conn.prepareStatement(StoreSchema.upsertDeliveryStateSql()).use { ps ->
+            ps.setBytes(1, msgId)
+            ps.setInt(2, stateOrdinal)
+            ps.setBytes(3, msgId)   // subquery reads the pre-REPLACE recipient
+            ps.executeUpdate()
+        }
+    }
+
+    override fun upsertDeliveryRecipient(msgId: ByteArray, expectedRecipient: ByteArray?) {
+        conn.prepareStatement(StoreSchema.upsertDeliveryRecipientSql()).use { ps ->
+            ps.setBytes(1, msgId)
+            ps.setBytes(2, msgId)   // subquery reads the pre-REPLACE state
+            if (expectedRecipient == null) ps.setNull(3, Types.BLOB) else ps.setBytes(3, expectedRecipient)
+            ps.executeUpdate()
+        }
+    }
+
+    override fun clearDelivery(msgId: ByteArray) {
+        conn.prepareStatement(StoreSchema.clearDeliverySql()).use { ps ->
+            ps.setBytes(1, msgId)
+            ps.executeUpdate()
         }
     }
 

@@ -110,7 +110,7 @@ interface MessageStore {
  */
 internal object StoreSchema {
     const val DB_NAME = "godstone_messages.db"
-    const val DB_VERSION = 2
+    const val DB_VERSION = 3
     const val TABLE = "held_frames"
     const val COL_MSG_ID = "msg_id"
     const val COL_TYPE = "type"
@@ -190,6 +190,68 @@ internal object StoreSchema {
      *  confirms the row survived eviction. Bind: (1) msg_id. */
     fun containsSql(): String =
         "SELECT 1 FROM $TABLE WHERE $COL_MSG_ID = ? LIMIT 1"
+
+    // ------------------------------------------------------------------
+    // Stage 4C / C4 -- delivery_state table (byte-identical cross-platform).
+    //
+    // Holds the delivery lifecycle state AND the intended recipient for a
+    // message id in ONE row keyed by msg_id, in the SAME DB file as the held
+    // frames, so the ACK authenticity decision (C2) binds to the recipient
+    // recorded in durable outbound state INDEPENDENT of the ACK frame. Each
+    // operation is a single atomic SQL statement -- no read-modify-write, no
+    // nested transaction -- so the non-recursive connection lock is acquired
+    // once per call (iOS) and no transaction seam is needed:
+    //   * a state-only write preserves any bound expected recipient via a
+    //     subquery (the subquery reads the pre-REPLACE row);
+    //   * a recipient-only write preserves the current state via COALESCE,
+    //     defaulting to 0 (UNAVAILABLE) if no row exists yet.
+    // The int state code is the cross-platform persistence contract
+    // (DeliveryState.code), NOT the Kotlin enum ordinal, so the two platforms
+    // agree even if their enum orders ever diverge. Mirrors iOS StoreSchema.
+    // ------------------------------------------------------------------
+    const val DELIVERY_TABLE = "delivery_state"
+    const val COL_D_MSG_ID = "msg_id"
+    const val COL_D_STATE = "state"
+    const val COL_D_EXPECTED = "expected_recipient"
+
+    val CREATE_DELIVERY_SQL: String = """
+        CREATE TABLE $DELIVERY_TABLE (
+            $COL_D_MSG_ID BLOB PRIMARY KEY,
+            $COL_D_STATE INTEGER,
+            $COL_D_EXPECTED BLOB
+        )
+    """.trimIndent()
+
+    /** Idempotent create for test engines that reopen an existing file. */
+    val CREATE_DELIVERY_SQL_IF_NOT_EXISTS: String =
+        CREATE_DELIVERY_SQL.replace("CREATE TABLE ", "CREATE TABLE IF NOT EXISTS ")
+
+    /** Read the delivery row: (state code, expected recipient or NULL). Bind: (1) msg_id. */
+    fun readDeliverySql(): String =
+        "SELECT $COL_D_STATE, $COL_D_EXPECTED FROM $DELIVERY_TABLE WHERE $COL_D_MSG_ID = ?"
+
+    /**
+     * Persist the state for msg_id, preserving any bound expected recipient. The
+     * subquery reads the pre-REPLACE row so the recipient survives the
+     * state-only update (a HANDED_TO_RELAY / ACKNOWLEDGED write must not clobber
+     * the recipient bound at enqueue). Bind: (1) msg_id, (2) state, (3) msg_id.
+     */
+    fun upsertDeliveryStateSql(): String =
+        "INSERT OR REPLACE INTO $DELIVERY_TABLE ($COL_D_MSG_ID, $COL_D_STATE, $COL_D_EXPECTED) " +
+            "VALUES (?, ?, (SELECT $COL_D_EXPECTED FROM $DELIVERY_TABLE WHERE $COL_D_MSG_ID = ?))"
+
+    /**
+     * Persist the expected recipient for msg_id (or clear it with NULL),
+     * preserving the current state (defaults to 0 / UNAVAILABLE if no row).
+     * Bind: (1) msg_id, (2) msg_id, (3) expected_recipient (NULL clears).
+     */
+    fun upsertDeliveryRecipientSql(): String =
+        "INSERT OR REPLACE INTO $DELIVERY_TABLE ($COL_D_MSG_ID, $COL_D_STATE, $COL_D_EXPECTED) " +
+            "VALUES (?, COALESCE((SELECT $COL_D_STATE FROM $DELIVERY_TABLE WHERE $COL_D_MSG_ID = ?), 0), ?)"
+
+    /** Drop the delivery row for msg_id. Bind: (1) msg_id. */
+    fun clearDeliverySql(): String =
+        "DELETE FROM $DELIVERY_TABLE WHERE $COL_D_MSG_ID = ?"
 }
 
 /** A stored row before it is typed into a [FrameV2] (the type code may be unknown). */
@@ -248,6 +310,21 @@ internal interface StoreDb {
      * production.
      */
     fun inTransaction(block: (StoreDb) -> PersistResult): PersistResult
+
+    // --- Stage 4C / C4 -- delivery_state row for the delivery journal ---
+    // Single atomic statements (see StoreSchema); no transaction seam needed.
+
+    /** Read the delivery row for [msgId]: (state code, expected recipient or null), or null if no row. */
+    fun readDelivery(msgId: ByteArray): Pair<Int, ByteArray?>?
+
+    /** Persist the state for [msgId], preserving any bound expected recipient. */
+    fun upsertDeliveryState(msgId: ByteArray, stateOrdinal: Int)
+
+    /** Persist (or clear with null) the expected recipient for [msgId], preserving the state. */
+    fun upsertDeliveryRecipient(msgId: ByteArray, expectedRecipient: ByteArray?)
+
+    /** Drop the delivery row for [msgId]. */
+    fun clearDelivery(msgId: ByteArray)
 
     fun close()
 }
@@ -496,23 +573,57 @@ internal class SqlcipherStoreDb(ctx: Context) : StoreDb {
         }
     }
 
+    // --- Stage 4C / C4 -- delivery_state row (single atomic statements) ---
+
+    override fun readDelivery(msgId: ByteArray): Pair<Int, ByteArray?>? =
+        helper.readableDatabase.rawQuery(StoreSchema.readDeliverySql(), arrayOf(msgId)).use { c ->
+            if (!c.moveToFirst()) null
+            else c.getInt(0) to (if (c.isNull(1)) null else c.getBlob(1))
+        }
+
+    override fun upsertDeliveryState(msgId: ByteArray, stateOrdinal: Int) {
+        helper.writableDatabase.execSQL(
+            StoreSchema.upsertDeliveryStateSql(),
+            arrayOf<Any>(msgId, stateOrdinal, msgId)
+        )
+    }
+
+    override fun upsertDeliveryRecipient(msgId: ByteArray, expectedRecipient: ByteArray?) {
+        // execSQL binds NULL for a null arg (clears the recipient).
+        helper.writableDatabase.execSQL(
+            StoreSchema.upsertDeliveryRecipientSql(),
+            arrayOf<Any?>(msgId, msgId, expectedRecipient)
+        )
+    }
+
+    override fun clearDelivery(msgId: ByteArray) {
+        helper.writableDatabase.execSQL(StoreSchema.clearDeliverySql(), arrayOf<Any>(msgId))
+    }
+
     override fun close() = helper.close()
 
     private class Helper(ctx: Context, key: ByteArray) :
         SQLiteOpenHelper(ctx, StoreSchema.DB_NAME, key, null, StoreSchema.DB_VERSION, 1, null, null, false) {
         override fun onCreate(db: SQLiteDatabase) {
             db.execSQL(StoreSchema.CREATE_SQL)
+            // Stage 4C / C4: delivery_state holds the lifecycle state + expected
+            // recipient in one row, in the same DB. onCreate creates both tables
+            // on first open; onUpgrade drops held_frames then calls onCreate, so
+            // a version bump recreates both (no installed base -> destructive
+            // recreate is correct, ADR-001 §5).
+            db.execSQL(StoreSchema.CREATE_DELIVERY_SQL)
         }
 
         override fun onUpgrade(db: SQLiteDatabase, oldVersion: Int, newVersion: Int) {
             // ADR-001 §5: GMP/1 was never shipped (no installed base, V3 never
             // shipped on either platform), so there is nothing to migrate. Drop
-            // the old table and recreate the v2 schema. This is the one case
-            // where a destructive onUpgrade is correct: a non-destructive
-            // migration of a schema that was never deployed would be invented
-            // code defending data that does not exist.
+            // the old table and recreate the schema. This is the one case where
+            // a destructive onUpgrade is correct: a non-destructive migration of
+            // a schema that was never deployed would be invented code defending
+            // data that does not exist.
             if (oldVersion == newVersion) return
             db.execSQL("DROP TABLE IF EXISTS ${StoreSchema.TABLE}")
+            db.execSQL("DROP TABLE IF EXISTS ${StoreSchema.DELIVERY_TABLE}")
             onCreate(db)
         }
     }
