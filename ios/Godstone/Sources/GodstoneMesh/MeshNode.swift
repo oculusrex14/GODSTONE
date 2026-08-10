@@ -142,14 +142,44 @@ public final class MeshNode {
 
         switch store.persist(frame, receivedFrom: identity.nodeId) {
         case .heldNew, .heldDuplicate:
+            // Stage 4C / C6: record the delivery lifecycle AFTER durable hold
+            // (persist-before-tracker, extending the 4B.1 persist-before-forward
+            // gate to the delivery state). SOS is a broadcast (no single intended
+            // recipient), so `expectedRecipient = nil` -- the unbound path, no
+            // recipient binding. Each successful relay hand-off calls
+            // `markHandedToRelay` (idempotent: first transitions queued -> handed).
+            deliveryTracker.enqueue(frame.msgId, expectedRecipient: nil)
             let handed = currentPeers().reduce(into: 0) { count, peer in
-                if send(frame, peer) { count += 1 }
+                if send(frame, peer) {
+                    count += 1
+                    deliveryTracker.markHandedToRelay(frame.msgId)
+                }
             }
             return handed == 0 ? .queuedDurably : .handedToRelays(handed)
         case .rejectedCapacity, .failedStorage:
             // Persistence failed: exit BEFORE any transport operation. Zero sends.
+            // The delivery tracker is NOT touched -- no delivery is claimed for a
+            // message this node does not durably hold (persist-before-tracker).
             return .notPersisted
         }
+    }
+
+    /// Stage 4C / C7 -- the inbound frame dispatch, ungated so it is unit-testable
+    /// without the link layer. An inbound ACK frame (`.ack`) is a point-to-point
+    /// delivery confirmation for a message THIS node sent, NOT epidemic content to
+    /// relay -- it goes to the `DeliveryTracker` (which binds it to the durable
+    /// expected recipient and advances the state only on cryptographic proof).
+    /// Every other frame type goes to the epidemic `Router` (persist + relay).
+    /// Mirrors Android `ingestInbound`. The production authenticator is fail-closed
+    /// (`UnresolvedRecipientKeyResolver`), so no ACK verifies until M2-link binds
+    /// real recipient keys -- A-03 / ADR-005 stay OPEN.
+    @discardableResult
+    internal func ingestInbound(_ frame: FrameV2, receivedFrom: Data) -> Bool {
+        if frame.type == .ack {
+            return deliveryTracker.acknowledge(frame.msgId, frame)
+        }
+        return router.ingest(frame, isAddressedToMe: frame.routingTag == identity.nodeHint,
+                             receivedFrom: receivedFrom)
     }
 }
 
@@ -172,15 +202,15 @@ extension MeshNode: TransportDelegate {
 
     public func transportDidReceive(data: Data, peerId: UUID) {
         guard Self.linkLayerReady, let frame = FrameV2.decode(data) else { return }
-        // Stage 4B: persist before forward. The authenticated sender node_id is
-        // not available in the v2 header (the sealed sender lives inside the
-        // encrypted payload) and the iOS BLE transport exposes only a local
-        // peer UUID, not the remote node_id; the real `receivedFrom` is wired
-        // when the M2-link layer (ADR-002, Stage 4H) exposes the authenticated
-        // peer node_id. Until then an empty `receivedFrom` records "sender not
-        // yet identified" -- honest, and this path is unreachable while
-        // linkLayerReady=false in any case.
-        router.ingest(frame, isAddressedToMe: frame.routingTag == identity.nodeHint,
-                     receivedFrom: Data())
+        // Stage 4C / C7: route ACK frames to the delivery tracker, all other
+        // frames to the epidemic router, via the ungated `ingestInbound` seam.
+        // The authenticated sender node_id is not available in the v2 header
+        // (the sealed sender lives inside the encrypted payload) and the iOS BLE
+        // transport exposes only a local peer UUID, not the remote node_id; the
+        // real `receivedFrom` is wired when the M2-link layer (ADR-002, Stage 4H)
+        // exposes the authenticated peer node_id. Until then an empty
+        // `receivedFrom` records "sender not yet identified" -- honest, and this
+        // path is unreachable while linkLayerReady=false in any case.
+        ingestInbound(frame, receivedFrom: Data())
     }
 }
