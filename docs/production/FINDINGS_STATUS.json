@@ -292,10 +292,10 @@
   {
    "id": "GST-CI-001",
    "severity": "High",
-   "status": "PARTIAL_VERIFIED",
+   "status": "REPOSITORY_GATE_CLOSED_EXTERNAL_CONTENT_OPEN",
    "repo_controlled": true,
-   "evidence": "repository-owned repository-verification now EXECUTES on every push (was 'not executed'); release jobs fail-closed.",
-   "closes_in_phase": "J"
+   "evidence": "Stage 3 Phase J: CI tells the truth. repository-verification EXECUTES on every push and is GREEN (run 31205199234, all 6 jobs: constraints, invariants A,B,C,E,F,G,H, content, meshsim, android compileLightDebugKotlin + testLightDebugUnitTest, ios swift + xcodebuild). The release-gates workflow fails CLOSED for the VERIFIED TRUTHFUL reason on each of its 3 external gates (not a spurious bug): (1) noise-conformance -- check_parity --scope all fails on Invariant D (no approved EXTERNAL Noise fixture; A-06), after a build_archive step was added so it no longer dies spuriously on Invariant C (missing dist/archive_medium.db) before reaching D; (2) production-corpus -- scripts/fetch_models.sh now executes (mode 100755) and fails closed with exit 1 on 'model lock is UNPINNED' (a bash var=$(cmd) gotcha previously swallowed the Python SystemExit into exit 0 -- a FALSE GREEN that the Permission-denied was masking); (3) android-release -- assembleLightRelease/bundleLightRelease fails at :llm cmake add_subdirectory(third_party/llama.cpp) because the pinned native (llama.cpp) stack is not restored (already truthful). Red on a release-gates job is the truthful state, not a bug to fix. NOT closed: the 3 release jobs turn GREEN only when their external inputs are pinned + reviewed (model lock -> PINNED, llama.cpp native stack restored, A-06 external Noise fixture approved); those are external/device/pinning actions outside CI.",
+   "closes_in_phase": "J (repo truthfulness) + external pin (model/native/A-06)"
   },
   {
    "id": "GST-CI-002",
@@ -372,7 +372,7 @@
   "GST-DATA-002 (Phase E)",
   "GST-DATA-003 (Phase E)",
   "GST-WIPE-001 (Phase F)",
-  "GST-CI-001 (Phase J)",
+  "GST-CI-001 (Phase J repo truthfulness verified; external green pending model/native/A-06 pin)",
   "GST-WORKBOOK-001"
  ],
  "note": "Do not read 'repo-controlled Critical/High findings are closed' unless this open_repository_critical_or_high list is empty AND the corresponding executable evidence exists. It is not empty."

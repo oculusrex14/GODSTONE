@@ -48,6 +48,17 @@ jobs:
       - name: provenance (start -- clean checkout)
         run: python ci/provenance.py --out provenance-start.json
       - run: pip install -r content/requirements.txt
+      # Build the archive so Invariant C (C3 probe suite) has dist/archive_medium.db
+      # to run against. WITHOUT this, --scope all dies on Invariant C ("missing
+      # dist/archive_medium.db") BEFORE reaching Invariant D, which makes the job
+      # red for a SPURIOUS reason and masks the truthful fail-closed signal
+      # (Invariant D: no approved EXTERNAL Noise fixture). --no-embed keeps this
+      # repo-owned (no model fetch); the embedded corpus is the separate
+      # production-corpus gate below.
+      - name: build archive for the gate (no embeddings -- repo-owned)
+        run: |
+          python -m content.ingest.build_archive \
+            --tier MEDIUM --out dist/archive_medium.db --no-embed
       # Invariant D under --scope all: fails "independent vectors unavailable
       # or unapproved" while crypto/cacophony_vectors.json holds no approved
       # EXTERNAL fixture. Stays red until A-06 is closed (Phase K).

@@ -70,7 +70,19 @@ if not rows:
 print("\n".join(rows))
 PY
 )"
+# `var=$(cmd)` does NOT trigger `set -e` when cmd fails (a bash gotcha), so the
+# Python SystemExit above (UNPINNED / missing checksum / bad coordinates) would
+# otherwise be swallowed into an empty ROWS list and the script would exit 0 --
+# a FALSE GREEN on the fail-closed production-corpus gate. Guard it explicitly.
+rc=$?
+if [ "$rc" -ne 0 ]; then
+  exit "$rc"
+fi
 mapfile -t ROWS <<< "$ROWS_TEXT"
+if [ "${#ROWS[@]}" -eq 0 ]; then
+  echo "error: model lock produced no fetchable artifacts for tier $WANT_TIER" >&2
+  exit 1
+fi
 
 mkdir -p "$MODEL_DIR"
 
