@@ -62,3 +62,13 @@ Noise vectors/A-06, production corpus, model/native stack, device
 interoperability, accessibility, battery/thermal, signing). Full APK/AAB
 assembly and on-device evidence remain fail-closed release gates, not
 repo-owned greens.
+
+### Stage 3 checkpoint — Phases A–J
+
+Phases C–J are complete and CI-verified. See
+[`STAGE3_CHECKPOINT_A_J.md`](STAGE3_CHECKPOINT_A_J.md) for the 20-item
+checkpoint report (branch + provenance, verdict, each phase with commit + test
+evidence, repository-verification green, release-gates fail-closed truthfully,
+open Critical/High findings, findings advanced-but-not-closed, ADR-008
+criteria 4–6 still unticked, and the Phase K / Phase L work that remains out of
+checkpoint). Verdict unchanged: PARTIALLY REMEDIATED — NOT READY.
