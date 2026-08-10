@@ -8,10 +8,25 @@ name: release-gates
 # interop, accessibility, battery/thermal, signing) in
 # docs/production/RELEASE_GATES_STATUS.json, validated by repository-verification.
 #
-# These jobs are EXPECTED TO BE RED until their external inputs are pinned and
-# reviewed. A red release-gates job is the truthful state, not a failure to fix.
-# Triggers include remediation/** so the fail-closed state is visible on the
-# branch rather than silently skipped.
+# Stage 4A split the former combined `android-release-artifact` job into two:
+#
+#   * android-archive-only-release is REPO-OWNED and goes GREEN. The LIGHT
+#     release links only :core (Archive repository + crypto); :llm is
+#     testImplementation-only and :mesh is not a dependency, so the scoped
+#     :app:lintLightRelease / :app:assembleLightRelease / :app:bundleLightRelease
+#     tasks configure ONLY :app + :core and NEVER configure :llm's CMake
+#     add_subdirectory(third_party/llama.cpp). An Archive-only LIGHT binary does
+#     NOT need llama.cpp, model weights, or Oracle. This is a shipping-artifact
+#     gate, not an external-content gate.
+#   * llm-native-stack stays RED until the approved pinned llama.cpp native
+#     stack is restored. It deliberately exercises :llm and must NOT block the
+#     Archive-only binary above.
+#
+# The remaining external jobs (noise-conformance, production-corpus,
+# llm-native-stack) are EXPECTED TO BE RED until their external inputs are
+# pinned and reviewed. A red external release-gates job is the truthful state,
+# not a failure to fix. Triggers include remediation/** so the fail-closed state
+# is visible on the branch rather than silently skipped.
 on:
   push:
     branches:
@@ -72,8 +87,8 @@ jobs:
           name: provenance-noise-conformance
           path: provenance-*.json
 
-  android-release-artifact:
-    name: Android LIGHT release artifact (fail-closed until native stack pinned)
+  android-archive-only-release:
+    name: Android Archive-only LIGHT release (repo-owned; green without llama.cpp/model/Oracle)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
@@ -95,18 +110,81 @@ jobs:
           [ "$jar_sha" = "498495120a03b9a6ab5d155f5de3c8f0d986a449153702fb80fc80e134484f17" ] || { echo "::error::wrapper jar sha mismatch: $jar_sha"; exit 1; }
           grep -q distributionSha256Sum gradle/wrapper/gradle-wrapper.properties || { echo "::error::distributionSha256Sum missing"; exit 1; }
           echo "ok: committed wrapper verified"
-      # Full APK/AAB assembly is a RELEASE gate: it requires the llama.cpp native
-      # stack and approved archive to be pinned and reproducibly restored. CI
-      # must not manufacture a false green by omitting them. Red here is truthful.
-      - name: assemble + bundle LIGHT release
+      # A2: prove the LIGHT SHIPPING classpath is Archive-only by resolving
+      # Gradle's actual lightRelease runtime + compile graphs (not just the
+      # static scanner) and failing closed if they contain :llm / :mesh /
+      # llama / ggml / godstone_llm. :llm is testImplementation-only, so it is
+      # absent from these configs; the scoped :app tasks below therefore never
+      # configure :llm's CMake build.
+      - name: capture LIGHT release dependency graph (shipping classpath must exclude :llm/:mesh/llama/ggml/godstone_llm)
         working-directory: android
-        run: ./gradlew --no-daemon --warning-mode=all clean test lint assembleLightRelease bundleLightRelease
-      - name: inspect release artifacts (no cross-tier / model / mesh contamination)
-        run: python scripts/inspect_android_artifacts.py android/app/build artifacts/android
+        run: |
+          mkdir -p ../artifacts/android/deps
+          ./gradlew --no-daemon :app:dependencies --configuration lightReleaseRuntimeClasspath \
+            > ../artifacts/android/deps/lightReleaseRuntimeClasspath.txt
+          ./gradlew --no-daemon :app:dependencies --configuration lightReleaseCompileClasspath \
+            > ../artifacts/android/deps/lightReleaseCompileClasspath.txt
+          if grep -E 'project :llm|project :mesh|llama|ggml|godstone_llm' \
+              ../artifacts/android/deps/lightReleaseRuntimeClasspath.txt \
+              ../artifacts/android/deps/lightReleaseCompileClasspath.txt; then
+            echo "::error::forbidden dependency on the LIGHT shipping classpath (see deps/*.txt)"
+            exit 1
+          fi
+          echo "ok: LIGHT shipping classpath is Archive-only (no :llm/:mesh/llama/ggml/godstone_llm)"
+      # A1: scoped :app tasks ONLY. A fresh GitHub checkout is already a clean
+      # source tree, so there is NO root `clean test lint` here -- those root
+      # tasks would configure :llm and trigger its CMake
+      # add_subdirectory(third_party/llama.cpp) failure on the missing native
+      # stack. lintLightRelease + assembleLightRelease + bundleLightRelease
+      # configure only :app + :core.
+      - name: assemble + bundle LIGHT release (Archive-only; scoped to :app)
+        working-directory: android
+        run: ./gradlew --no-daemon --warning-mode=all :app:assembleLightRelease :app:bundleLightRelease
+      # Upload the unsigned APK/AAB immediately so the binary evidence is
+      # preserved even if a later step (lint/inspect) fails.
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         if: always()
         with:
-          name: android-light-unsigned
+          name: android-archive-only-unsigned
+          path: |
+            android/app/build/outputs/apk/**/*.apk
+            android/app/build/outputs/bundle/**/*.aab
+          if-no-files-found: error
+      - name: lint LIGHT release (Archive-only; scoped to :app)
+        working-directory: android
+        run: ./gradlew --no-daemon --warning-mode=all :app:lintLightRelease
+      # A3: inspect the REAL APK and AAB (not just the static scanner).
+      - name: inspect release artifacts (no cross-tier / model / mesh / :llm contamination)
+        run: python scripts/inspect_android_artifacts.py android/app/build artifacts/android
+      - name: record artifact namelists, merged manifest, and checksums
+        run: |
+          set -e
+          mkdir -p artifacts/android/inspection
+          for a in $(find android/app/build -name '*.apk' -o -name '*.aab' | sort); do
+            base=$(basename "$a")
+            unzip -l "$a" > "artifacts/android/inspection/${base}.namelist.txt"
+            sha256sum "$a" | tee "artifacts/android/inspection/${base}.sha256.txt"
+          done
+          manifest=$(find android/app/build/intermediates -path '*lightRelease*' -name AndroidManifest.xml | head -n1 || true)
+          if [ -n "$manifest" ]; then
+            cp "$manifest" artifacts/android/inspection/AndroidManifest-merged.xml
+            # Archive-only: the merged manifest must grant no radio/BLE/location
+            # permission. A uses-permission carrying tools:node="remove" is the
+            # removal directive (consumed by the manifest merger), not a grant.
+            if grep -E '<uses-permission android:name="android.permission.(INTERNET|BLUETOOTH|BLUETOOTH_ADMIN|BLUETOOTH_SCAN|BLUETOOTH_CONNECT|ACCESS_FINE_LOCATION|ACCESS_COARSE_LOCATION|ACCESS_BACKGROUND_LOCATION)"' \
+                artifacts/android/inspection/AndroidManifest-merged.xml \
+                | grep -v 'tools:node="remove"'; then
+              echo "::error::Archive-only manifest grants a radio/BLE/location permission"
+              exit 1
+            fi
+            echo "ok: merged lightRelease manifest grants no radio/BLE/location permission"
+          else
+            echo "::warning::merged lightRelease AndroidManifest.xml not found (AGP intermediates path may differ)"
+          fi
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: android-archive-only-inspection
           path: artifacts/android
           if-no-files-found: error
       - name: provenance (final -- tree still clean)
@@ -114,7 +192,38 @@ jobs:
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         if: always()
         with:
-          name: provenance-android-release
+          name: provenance-android-archive-only
+          path: provenance-*.json
+
+  llm-native-stack:
+    name: LLM native stack (:llm release; fail-closed until pinned llama.cpp restored)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - uses: actions/setup-java@c5195efecf7bdfc987ee8bae7a71cb8b11521c00
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: gradle/actions/setup-gradle@0b6dd653ba04f4f93bf581ec31e66cbd7dcb644d
+      - name: provenance (start -- clean checkout)
+        run: python ci/provenance.py --out provenance-start.json
+      # A4: the separate native-stack gate. This deliberately exercises :llm,
+      # whose CMake add_subdirectory(third_party/llama.cpp) fails until the
+      # approved pinned llama.cpp native stack is restored. It may stay RED.
+      # It MUST NOT block the Archive-only LIGHT binary above, which links only
+      # :core and never configures :llm. (No root clean/test/lint -- those would
+      # be configuration-scope, not the native build under test here.)
+      - name: assemble :llm release (requires restored pinned llama.cpp native stack)
+        working-directory: android
+        run: ./gradlew --no-daemon --warning-mode=all :llm:assembleRelease
+      - name: provenance (final -- tree still clean)
+        run: python ci/provenance.py --out provenance-final.json
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: provenance-llm-native-stack
           path: provenance-*.json
 
   production-corpus:

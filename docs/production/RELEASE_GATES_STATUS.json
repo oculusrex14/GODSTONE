@@ -1,6 +1,6 @@
 {
   "_comment": "Authoritative release-gate status (ADR-008 Stage 3). External gates that CANNOT run in repository-verification are represented here explicitly as OPEN/BLOCKED with their closure requirement -- they are never turned green by being skipped. ci/check_release_gates_status.py validates this file: a gate may be marked CLOSED only with an evidence_commit pointer to executable evidence. Repository-verification (the green-capable, repo-owned job) and the runnable fail-closed jobs live in .github/workflows/release-gates.yml.",
-  "generated_from_branch": "remediation/stage-3-durability",
+  "generated_from_branch": "remediation/stage-4-link-release",
   "gates": [
     {
       "gate": "A-06-independent-noise-vectors",
@@ -19,12 +19,20 @@
       "ci_job": "release-gates.yml / production-corpus"
     },
     {
+      "gate": "android-archive-only-release",
+      "status": "OPEN",
+      "reason": "Stage 4A split the Android gate. The Archive-only LIGHT binary (links only :core; :llm is testImplementation-only) does NOT need llama.cpp/model/Oracle. This repo-owned shipping-artifact gate runs the scoped :app:lintLightRelease/:app:assembleLightRelease/:app:bundleLightRelease, captures the resolved lightRelease classpath (rejecting :llm/:mesh/llama/ggml/godstone_llm), and inspects the real APK/AAB + merged manifest. OPEN until a green run is recorded below as evidence.",
+      "closure_requirement": "Green release-gates.yml / android-archive-only-release run on the branch tip; record the run ID, commit SHA, APK SHA-256, AAB SHA-256, the resolved lightRelease dependency graph artifact, and the binary+manifest inspection result. The merged lightRelease manifest must grant no INTERNET/BLE/radio/location permission and the APK/AAB must contain no .gguf/libllama/libggml/libgodstone_llm/LlamaBridge/:mesh/Oracle/cross-tier asset.",
+      "evidence_commit": null,
+      "ci_job": "release-gates.yml / android-archive-only-release"
+    },
+    {
       "gate": "model-native-stack",
       "status": "OPEN",
       "reason": "llama.cpp revision and native build must be pinned and reproducibly restored before the full app/LLM release build is evidence.",
       "closure_requirement": "Pin llama.cpp revision; vendor/restore the XCFramework/JNI binary reproducibly; no placeholder framework.",
       "evidence_commit": null,
-      "ci_job": "release-gates.yml / android-release-artifact"
+      "ci_job": "release-gates.yml / llm-native-stack"
     },
     {
       "gate": "device-interoperability",
