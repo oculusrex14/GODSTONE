@@ -10,6 +10,12 @@ build/
 .cxx/
 captures/
 local.properties
+# CI evidence scratch: release-gates.yml / android-archive-only-release writes
+# the resolved lightRelease dep graph + APK/AAB namelist/SHA-256/merged-manifest
+# inspection here, then uploads it as a workflow artifact. It is never committed;
+# gitignoring it keeps the final clean-tree (git status --porcelain) provenance
+# check green after the build produces it.
+artifacts/
 *.apk
 *.aab
 *.ap_
