@@ -181,6 +181,25 @@ jobs:
       - name: lint LIGHT release (Archive-only; scoped to :app)
         working-directory: android
         run: ./gradlew --no-daemon --warning-mode=all :app:lintLightRelease
+      # Dump the lint text report to the log (and upload it) so the full set of
+      # lint findings is diagnosable without a separate download. lintLightRelease
+      # runs the full strict lint (abortOnError + warningsAsErrors) on the SHIPPING
+      # sources; before the ignoreTestSources fix this step never ran (it died at
+      # :llm's CMake configure), so these findings are the real full-lint signal.
+      - name: dump lint text report (diagnosis)
+        if: always()
+        working-directory: android
+        run: |
+          f="app/build/intermediates/lint_intermediate_text_report/lightRelease/lintReportLightRelease/lint-results-lightRelease.txt"
+          if [ -f "$f" ]; then echo "--- lint-results-lightRelease.txt ---"; cat "$f"; else echo "no lint text report at $f"; fi
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: android-archive-only-lint-report
+          path: |
+            android/app/build/reports/lint-results-lightRelease.*
+            android/app/build/intermediates/lint_intermediate_text_report/**/lint-results-lightRelease.txt
+          if-no-files-found: warn
       # A3: inspect the REAL APK and AAB (not just the static scanner).
       - name: inspect release artifacts (no cross-tier / model / mesh / :llm contamination)
         run: python scripts/inspect_android_artifacts.py android/app/build artifacts/android
