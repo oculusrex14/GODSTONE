@@ -167,9 +167,13 @@ class MeshNode(
 
     suspend fun broadcastSos(payload: ByteArray): SosDispatchResult = withContext(Dispatchers.IO) {
         if (!LINK_LAYER_READY) return@withContext SosDispatchResult.Unavailable(LINK_LAYER_OPEN_REASON)
-        runCatching {
+        // try/catch (not runCatching) so the suspend dispatchSos call stays in the
+        // coroutine body -- runCatching's lambda is non-suspend and cannot host it.
+        try {
             dispatchSos(payload) { peerId, bytes -> ble.send(peerId, bytes) }
-        }.getOrElse { SosDispatchResult.Failed(it.message ?: "unknown mesh error") }
+        } catch (t: Throwable) {
+            SosDispatchResult.Failed(t.message ?: "unknown mesh error")
+        }
     }
 
     /**
@@ -196,7 +200,7 @@ class MeshNode(
      */
     internal suspend fun dispatchSos(
         payload: ByteArray,
-        send: (peerId: ByteArray, bytes: ByteArray) -> Boolean,
+        send: suspend (peerId: ByteArray, bytes: ByteArray) -> Boolean,
     ): SosDispatchResult {
         val frame = router.buildSos(payload)
         when (store.persist(frame, receivedFrom = identity.nodeId)) {
@@ -232,8 +236,14 @@ class MeshNode(
      * fail-closed (UnresolvedRecipientKeyResolver), so no ACK verifies until
      * M2-link binds real recipient keys -- A-03 / ADR-005 stay OPEN.
      */
-    internal fun ingestInbound(frame: io.godstone.mesh.wire.v2.FrameV2, fromPeer: ByteArray) {
-        if (frame.type == io.godstone.mesh.wire.v2.TypeV2.ACK) {
+    internal suspend fun ingestInbound(
+        frame: io.godstone.mesh.wire.v2.FrameV2,
+        fromPeer: ByteArray,
+    ): Boolean {
+        // ACK -> point-to-point delivery confirmation (tracker.acknowledge returns
+        // whether the ACK was accepted); non-ACK -> epidemic router (returns whether
+        // the frame was accepted for persist+relay). Mirrors iOS `ingestInbound -> Bool`.
+        return if (frame.type == io.godstone.mesh.wire.v2.TypeV2.ACK) {
             deliveryTracker.acknowledge(frame.msgId, frame)
         } else {
             router.onFrameReceived(frame, fromPeer)

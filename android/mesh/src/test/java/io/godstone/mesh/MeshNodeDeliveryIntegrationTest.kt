@@ -177,7 +177,7 @@ class MeshNodeDeliveryIntegrationTest {
      *  ACKNOWLEDGED_BY_RECIPIENT. The expected recipient was bound in durable
      *  outbound state INDEPENDENT of the ACK (C1/C2). */
     @Test
-    fun `C7 ingestInbound ack from bound recipient reaches ACKNOWLEDGED`() {
+    fun `C7 ingestInbound ack from bound recipient reaches ACKNOWLEDGED`() = runTest {
         val (pubA, privA) = realKeypair()
         val a = nodeA()
         val resolver = TwoRecipientResolver(a, pubA, nodeB(), ByteArray(32) { 0 })
@@ -198,7 +198,7 @@ class MeshNodeDeliveryIntegrationTest {
      *  durable state is independent of the ACK, so a stranger's ACK cannot advance
      *  delivery. State stays HANDED_TO_RELAY. */
     @Test
-    fun `C7 ingestInbound ack from wrong recipient is rejected`() {
+    fun `C7 ingestInbound ack from wrong recipient is rejected`() = runTest {
         val (pubA, _) = realKeypair()
         val (pubB, privB) = realKeypair()
         val a = nodeA(); val b = nodeB()
@@ -220,7 +220,7 @@ class MeshNodeDeliveryIntegrationTest {
      *  HANDED_TO_RELAY -- no delivery is claimed until M2-link binds real
      *  recipient keys (A-03 / ADR-005 OPEN). */
     @Test
-    fun `C7 production ingestInbound ack is fail-closed under the unresolved resolver`() {
+    fun `C7 production ingestInbound ack is fail-closed under the unresolved resolver`() = runTest {
         val (pubA, privA) = realKeypair()
         val a = nodeA()
         val (node, _) = makeNode(InMemoryMessageStore(), UnresolvedRecipientKeyResolver)
