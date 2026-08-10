@@ -40,7 +40,7 @@ class DeliveryTrackerTest {
 
     /** Authenticator that returns a fixed verdict (for the truth-table). */
     private class FakeAuthenticator(val ok: Boolean) : AckAuthenticator {
-        override fun verify(originalMsgId: ByteArray, ackFrame: FrameV2) = ok
+        override fun verify(originalMsgId: ByteArray, expectedRecipientNodeId: ByteArray?, ackFrame: FrameV2) = ok
     }
 
     /** Resolver backed by a single recipient keypair. */
@@ -50,6 +50,28 @@ class DeliveryTrackerTest {
     ) : RecipientKeyResolver {
         override fun publicSigningKey(nodeId: ByteArray): ByteArray? =
             if (nodeId.contentEquals(this.nodeId)) pub else null
+    }
+
+    /** Resolver binding two distinct node ids to two distinct keys (C2 test). */
+    private class TwoRecipientResolver(
+        val a: ByteArray, val pubA: ByteArray,
+        val b: ByteArray, val pubB: ByteArray,
+    ) : RecipientKeyResolver {
+        override fun publicSigningKey(nodeId: ByteArray): ByteArray? = when {
+            nodeId.contentEquals(a) -> pubA
+            nodeId.contentEquals(b) -> pubB
+            else -> null
+        }
+    }
+
+    /** In-memory [ExpectedRecipientStore] for the C2 binding tests. */
+    private class FakeExpectedRecipientStore : ExpectedRecipientStore {
+        val map = mutableMapOf<List<Byte>, ByteArray>()
+        private fun key(m: ByteArray) = m.toList()
+        override fun expectedRecipient(msgId: ByteArray): ByteArray? = map[key(msgId)]
+        override fun recordExpectedRecipient(msgId: ByteArray, recipient: ByteArray?) {
+            if (recipient != null) map[key(msgId)] = recipient else map.remove(key(msgId))
+        }
     }
 
     private fun realKeypair(): Pair<ByteArray, ByteArray> {
@@ -273,5 +295,100 @@ class DeliveryTrackerTest {
         // wrong key -> false
         val (otherPub, _) = realKeypair()
         assertFalse(Ed25519Keys.verify(msg, sig, otherPub))
+    }
+
+    // --- Stage 4C / C2: two valid identities, ACK bound to the expected recipient ---
+
+    @Test
+    fun `two valid identities - ACK verifies only for the expected recipient bound at enqueue`() {
+        // C2 (ADR-005): the expected recipient is bound at ENQUEUE time from
+        // durable outbound state, INDEPENDENT of the ACK. Two equally valid
+        // recipients A and B each have their own key. An ACK from the bound
+        // recipient verifies; an ACK from the other valid recipient does NOT,
+        // because the ACK's recipientNodeId must equal the expected recipient
+        // recorded at send time. This is the adversarial test the directive
+        // mandates: two valid identities, wrong-recipient ACK rejected.
+        val (pubA, privA) = realKeypair()
+        val (pubB, privB) = realKeypair()
+        val nodeA = ByteArray(16) { 0x01 }
+        val nodeB = ByteArray(16) { 0x02 }
+        val resolver = TwoRecipientResolver(nodeA, pubA, nodeB, pubB)
+        val store = FakeExpectedRecipientStore()
+        val tracker = DeliveryTracker(FakeJournal(), Ed25519AckAuthenticator(resolver), store)
+
+        // Message intended for A: enqueue binds expectedRecipient = nodeA.
+        val mid = msgId(30)
+        assertTrue(tracker.enqueue(mid, expectedRecipient = nodeA))
+        tracker.markHandedToRelay(mid)
+        // ACK from A (signed by A, claiming A) verifies.
+        val ackA = AckFrame.build(mid, privA, nodeA, routingTag)
+        assertTrue(tracker.acknowledge(mid, ackA), "ACK from the bound recipient A must verify")
+        assertEquals(DeliveryState.ACKNOWLEDGED_BY_RECIPIENT, tracker.state(mid))
+
+        // A second message intended for A: ACK from B (signed by B, claiming B)
+        // must NOT verify -- B is valid but NOT the expected recipient.
+        val mid2 = msgId(31)
+        assertTrue(tracker.enqueue(mid2, expectedRecipient = nodeA))
+        tracker.markHandedToRelay(mid2)
+        val ackB = AckFrame.build(mid2, privB, nodeB, routingTag)
+        assertFalse(tracker.acknowledge(mid2, ackB), "ACK from a valid but unintended recipient must not verify")
+        assertEquals(DeliveryState.HANDED_TO_RELAY, tracker.state(mid2))
+
+        // Symmetric: a message intended for B is acked by A -> rejected, then by B -> accepted.
+        val mid3 = msgId(32)
+        assertTrue(tracker.enqueue(mid3, expectedRecipient = nodeB))
+        tracker.markHandedToRelay(mid3)
+        val ackAforB = AckFrame.build(mid3, privA, nodeA, routingTag)
+        assertFalse(tracker.acknowledge(mid3, ackAforB), "ACK from A for a message intended for B must not verify")
+        val ackBforB = AckFrame.build(mid3, privB, nodeB, routingTag)
+        assertTrue(tracker.acknowledge(mid3, ackBforB), "ACK from the bound recipient B must verify")
+        assertEquals(DeliveryState.ACKNOWLEDGED_BY_RECIPIENT, tracker.state(mid3))
+    }
+
+    @Test
+    fun `an ACK whose claimed recipient differs from the expected recipient is rejected`() {
+        // C2 edge: the ACK names a recipient that the resolver CAN resolve (a
+        // real, valid recipient) but which differs from the expected recipient
+        // bound at enqueue. This must be rejected -- the binding is to the
+        // durable expected recipient, not to whoever the ACK claims to be.
+        val (pubA, privA) = realKeypair()
+        val (pubB, _) = realKeypair()
+        val nodeA = ByteArray(16) { 0x0A }
+        val nodeB = ByteArray(16) { 0x0B }
+        val resolver = TwoRecipientResolver(nodeA, pubA, nodeB, pubB)
+        val store = FakeExpectedRecipientStore()
+        val tracker = DeliveryTracker(FakeJournal(), Ed25519AckAuthenticator(resolver), store)
+        val mid = msgId(33)
+        assertTrue(tracker.enqueue(mid, expectedRecipient = nodeA))
+        tracker.markHandedToRelay(mid)
+        // ACK signed by A but claiming nodeB in its payload (recipientNodeId field).
+        // The signature is over preimage(mid, nodeB) -- valid under A's key only
+        // if A signed it, which A did not sign for nodeB's preimage. Either way it
+        // must be rejected: claimed recipient (B) != expected recipient (A).
+        val mismatched = AckFrame.build(mid, privA, nodeB, routingTag)
+        assertFalse(tracker.acknowledge(mid, mismatched), "ACK claiming a recipient other than the expected one must be rejected")
+        assertEquals(DeliveryState.HANDED_TO_RELAY, tracker.state(mid))
+    }
+
+    // --- Stage 4C / C3: production resolver is UNRESOLVED -> fail-closed ---
+
+    @Test
+    fun `an unresolved production resolver fail-closes - no ACK is ever accepted`() {
+        // C3: the production RecipientKeyResolver is UNRESOLVED (M2-link identity
+        // binding not wired). It returns null for every node id, so the
+        // Ed25519AckAuthenticator can resolve no key and rejects every ACK. This
+        // is the fail-closed production state: no delivery is claimed until real
+        // keys are bound -- A-03 / ADR-005 stay OPEN.
+        val (_, priv) = realKeypair()
+        val recipientNodeId = ByteArray(16) { 0x50 }
+        val store = FakeExpectedRecipientStore()
+        val tracker = DeliveryTracker(
+            FakeJournal(), Ed25519AckAuthenticator(UnresolvedRecipientKeyResolver), store)
+        val mid = msgId(40)
+        assertTrue(tracker.enqueue(mid, expectedRecipient = recipientNodeId))
+        tracker.markHandedToRelay(mid)
+        val ack = AckFrame.build(mid, priv, recipientNodeId, routingTag)
+        assertFalse(tracker.acknowledge(mid, ack), "unresolved resolver must reject every ACK")
+        assertEquals(DeliveryState.HANDED_TO_RELAY, tracker.state(mid), "no delivery claimed without a bound key")
     }
 }

@@ -36,6 +36,21 @@ interface RecipientKeyResolver {
     fun publicSigningKey(nodeId: ByteArray): ByteArray?
 }
 
+/**
+ * Production fail-closed [RecipientKeyResolver] (Stage 4C / C3). The M2-link
+ * identity binding that would map a peer node id to its long-term Ed25519
+ * public signing key (via the Noise_XX handshake / contact registry) is NOT
+ * wired yet (ADR-005 OPEN). Until it is, this resolver resolves NO key for ANY
+ * node id, so [Ed25519AckAuthenticator] rejects every ACK: no delivery is
+ * claimed without a bound recipient key. This is the UNRESOLVED production
+ * state -- a real resolver replaces this object when M2-link contact identity
+ * is wired, and the fail-closed behaviour flips to real verification at that
+ * point (not before). Mirrors `UnresolvedRecipientKeyResolver` on iOS.
+ */
+object UnresolvedRecipientKeyResolver : RecipientKeyResolver {
+    override fun publicSigningKey(nodeId: ByteArray): ByteArray? = null
+}
+
 /** Builds and verifies authenticated ACK frames (see file header for the model). */
 object AckFrame {
 
@@ -72,9 +87,24 @@ object AckFrame {
 /**
  * Verifies an ACK frame using Ed25519 over the canonical preimage, resolving
  * the recipient's public key via [resolver]. Pure + injected -> host-testable.
+ *
+ * Stage 4C / C2: when [expectedRecipientNodeId] is supplied (read from durable
+ * outbound state at enqueue time, INDEPENDENT of the ACK), the ACK is accepted
+ * only if it names THAT recipient in its payload and the signature verifies
+ * under the key bound to that expected recipient. This binds the ACK to the
+ * intended recipient recorded at send time, so an ACK from a valid-but-
+ * unintended recipient cannot ack a message not addressed to them. A null
+ * [expectedRecipientNodeId] (storeless test tracker, or the legacy unbound
+ * path) falls back to binding against the recipient the ACK names -- the
+ * Phase H behaviour, preserved so the existing truth-table / negative matrix
+ * stays green.
  */
 class Ed25519AckAuthenticator(private val resolver: RecipientKeyResolver) : AckAuthenticator {
-    override fun verify(originalMsgId: ByteArray, ackFrame: FrameV2): Boolean {
+    override fun verify(
+        originalMsgId: ByteArray,
+        expectedRecipientNodeId: ByteArray?,
+        ackFrame: FrameV2,
+    ): Boolean {
         // 1. type must be ACK
         if (ackFrame.type != TypeV2.ACK) return false
         // 2. the ACK must name the EXACT message id being acknowledged
@@ -83,11 +113,19 @@ class Ed25519AckAuthenticator(private val resolver: RecipientKeyResolver) : AckA
         val payload = ackFrame.payload
         if (payload.size != 80) return false
         val signature = payload.copyOfRange(0, 64)
-        val recipientNodeId = payload.copyOfRange(64, 80)
-        // 4. resolve the recipient's public key bound to that node id
-        val pub = resolver.publicSigningKey(recipientNodeId) ?: return false
+        val ackRecipientNodeId = payload.copyOfRange(64, 80)
+        // 4. C2: when an expected recipient is bound (from durable outbound
+        //    state, independent of the ACK), the ACK's claimed recipient MUST
+        //    equal it; the key is resolved for the EXPECTED recipient, so a
+        //    signature made by another recipient does not verify. Null expected
+        //    = unbound -> bind against the ACK-claimed recipient (legacy path).
+        val boundNodeId = expectedRecipientNodeId ?: ackRecipientNodeId
+        if (expectedRecipientNodeId != null &&
+            !ackRecipientNodeId.contentEquals(expectedRecipientNodeId)) return false
+        // 5. resolve the recipient's public key bound to the (expected | claimed) node id
+        val pub = resolver.publicSigningKey(boundNodeId) ?: return false
         if (pub.size != 32) return false
-        // 5. verify the signature over the canonical preimage
-        return Ed25519Keys.verify(AckFrame.preimage(originalMsgId, recipientNodeId), signature, pub)
+        // 6. verify the signature over the canonical preimage for that recipient
+        return Ed25519Keys.verify(AckFrame.preimage(originalMsgId, boundNodeId), signature, pub)
     }
 }

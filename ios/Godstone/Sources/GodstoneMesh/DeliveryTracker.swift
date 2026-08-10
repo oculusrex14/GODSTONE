@@ -46,8 +46,33 @@ public protocol DeliveryJournal: AnyObject {
 /// the binding model. A return of false means the ACK is rejected and the
 /// delivery state MUST NOT advance to acknowledged -- no UI phrase stronger
 /// than the cryptographic evidence is permitted (ADR-005).
+///
+/// Stage 4C / C2: `expectedRecipientNodeId` is the intended recipient bound in
+/// durable outbound state at enqueue time, INDEPENDENT of the ACK. When non-nil
+/// the ACK is accepted only if it is from THAT recipient; when nil (storeless
+/// test tracker, or a legacy unbound path) the authenticator binds against the
+/// recipient the ACK names (Phase H behaviour, preserved for the existing tests).
 public protocol AckAuthenticator: AnyObject {
-    func verify(originalMsgId: Data, ackFrame: FrameV2) -> Bool
+    func verify(originalMsgId: Data, expectedRecipientNodeId: Data?, ackFrame: FrameV2) -> Bool
+}
+
+/// Durable store of the intended recipient bound to a message id at enqueue
+/// time (Stage 4C / C1). The expected recipient is recorded when an outbound
+/// frame is created and read when an inbound ACK is verified, so the
+/// authenticity decision binds the ACK to the recipient recorded in durable
+/// outbound state -- INDEPENDENT of the ACK frame itself (ADR-005: do not claim
+/// an ACK is from the intended recipient unless the expected recipient comes
+/// from durable outbound state). A nil expected recipient (broadcast SOS, or a
+/// storeless test tracker with no store attached) means no recipient is bound
+/// and `DeliveryTracker` falls back to the legacy unbound verify path. The
+/// production implementation (SqliteDeliveryJournal, C4) holds this alongside
+/// the delivery state in one transactional row; an in-memory fake backs the
+/// host tests. Mirrors `ExpectedRecipientStore` on Android.
+public protocol ExpectedRecipientStore: AnyObject {
+    /// The intended recipient bound at enqueue, or nil if none is bound.
+    func expectedRecipient(_ msgId: Data) -> Data?
+    /// Record (or clear with nil) the intended recipient for `msgId`.
+    func recordExpectedRecipient(_ msgId: Data, _ recipient: Data?)
 }
 
 /// Durable delivery state machine. Every successful transition is persisted to
@@ -58,10 +83,14 @@ public protocol AckAuthenticator: AnyObject {
 public final class DeliveryTracker {
     private let journal: DeliveryJournal
     private let authenticator: AckAuthenticator
+    private let expectedRecipientStore: ExpectedRecipientStore?
 
-    public init(journal: DeliveryJournal, authenticator: AckAuthenticator) {
+    public init(journal: DeliveryJournal,
+                authenticator: AckAuthenticator,
+                expectedRecipientStore: ExpectedRecipientStore? = nil) {
         self.journal = journal
         self.authenticator = authenticator
+        self.expectedRecipientStore = expectedRecipientStore
     }
 
     /// Current persisted state for `msgId` (unavailable if never tracked).
@@ -69,12 +98,21 @@ public final class DeliveryTracker {
 
     /// Begin tracking: unavailable -> queuedDurably. Idempotent: already-queued
     /// stays queued. Returns false from any non-queueable state.
+    ///
+    /// Stage 4C / C1: when `expectedRecipient` is non-nil and an
+    /// `ExpectedRecipientStore` is attached, the intended recipient is durably
+    /// recorded so a later ACK can be bound to it (C2). Broadcast frames (SOS)
+    /// pass nil and bind no recipient.
     @discardableResult
-    public func enqueue(_ msgId: Data) -> Bool {
+    public func enqueue(_ msgId: Data, expectedRecipient: Data? = nil) -> Bool {
         let s = journal.read(msgId)
-        if s == .queuedDurably { return true }
+        if s == .queuedDurably {
+            if let r = expectedRecipient { expectedRecipientStore?.recordExpectedRecipient(msgId, r) }
+            return true
+        }
         if s != .unavailable { return false }
         journal.write(msgId, .queuedDurably)
+        if let r = expectedRecipient { expectedRecipientStore?.recordExpectedRecipient(msgId, r) }
         return true
     }
 
@@ -100,7 +138,13 @@ public final class DeliveryTracker {
         let s = journal.read(msgId)
         if s == .acknowledgedByRecipient { return true }   // idempotent re-ack
         if s != .queuedDurably && s != .handedToRelay { return false }
-        if !authenticator.verify(originalMsgId: msgId, ackFrame: ackFrame) { return false }
+        // C2: bind the ACK to the expected recipient from durable outbound state
+        // (independent of the ACK). Nil store / nil recipient -> unbound -> the
+        // authenticator falls back to the ACK-claimed recipient (legacy/test path).
+        let expected = expectedRecipientStore?.expectedRecipient(msgId)
+        if !authenticator.verify(originalMsgId: msgId,
+                                 expectedRecipientNodeId: expected,
+                                 ackFrame: ackFrame) { return false }
         journal.write(msgId, .acknowledgedByRecipient)
         return true
     }

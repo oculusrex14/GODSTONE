@@ -32,7 +32,7 @@ final class DeliveryTrackerTests: XCTestCase {
     private final class FakeAuthenticator: AckAuthenticator {
         let ok: Bool
         init(_ ok: Bool) { self.ok = ok }
-        func verify(originalMsgId: Data, ackFrame: FrameV2) -> Bool { ok }
+        func verify(originalMsgId: Data, expectedRecipientNodeId: Data?, ackFrame: FrameV2) -> Bool { ok }
     }
 
     /// Resolver backed by a single recipient keypair.
@@ -42,6 +42,28 @@ final class DeliveryTrackerTests: XCTestCase {
         init(_ nodeId: Data, _ pub: Data) { self.nodeId = nodeId; self.pub = pub }
         func publicSigningKey(forNodeId nodeId: Data) -> Data? {
             nodeId == self.nodeId ? pub : nil
+        }
+    }
+
+    /// Resolver binding two distinct node ids to two distinct keys (C2 test).
+    private final class TwoRecipientResolver: RecipientKeyResolver {
+        let a: Data, pubA: Data, b: Data, pubB: Data
+        init(_ a: Data, _ pubA: Data, _ b: Data, _ pubB: Data) {
+            self.a = a; self.pubA = pubA; self.b = b; self.pubB = pubB
+        }
+        func publicSigningKey(forNodeId nodeId: Data) -> Data? {
+            if nodeId == a { return pubA }
+            if nodeId == b { return pubB }
+            return nil
+        }
+    }
+
+    /// In-memory `ExpectedRecipientStore` for the C2 binding tests.
+    private final class FakeExpectedRecipientStore: ExpectedRecipientStore {
+        var map: [Data: Data] = [:]
+        func expectedRecipient(_ msgId: Data) -> Data? { map[msgId] }
+        func recordExpectedRecipient(_ msgId: Data, _ recipient: Data?) {
+            if let r = recipient { map[msgId] = r } else { map.removeValue(forKey: msgId) }
         }
     }
 
@@ -273,5 +295,109 @@ final class DeliveryTrackerTests: XCTestCase {
         let (otherPub, _) = realKeypair()
         let otherKey = try Curve25519.Signing.PublicKey(rawRepresentation: otherPub)
         XCTAssertFalse(otherKey.isValidSignature(sig, for: msg))
+    }
+
+    // --- Stage 4C / C2: two valid identities, ACK bound to the expected recipient ---
+
+    func testTwoValidIdentitiesAckVerifiesOnlyForExpectedRecipient() throws {
+        // C2 (ADR-005): the expected recipient is bound at ENQUEUE time from durable
+        // outbound state, INDEPENDENT of the ACK. Two equally valid recipients A and
+        // B each have their own key. An ACK from the bound recipient verifies; an ACK
+        // from the other valid recipient does NOT, because the ACK's recipientNodeId
+        // must equal the expected recipient recorded at send time. This is the
+        // adversarial test the directive mandates: two valid identities,
+        // wrong-recipient ACK rejected. Mirrors the Android C2 test one-for-one.
+        let (pubA, privA) = realKeypair()
+        let (pubB, privB) = realKeypair()
+        let nodeA = Data(repeating: 0x01, count: 16)
+        let nodeB = Data(repeating: 0x02, count: 16)
+        let resolver = TwoRecipientResolver(nodeA, pubA, nodeB, pubB)
+        let store = FakeExpectedRecipientStore()
+        let tracker = DeliveryTracker(journal: FakeJournal(),
+                                      authenticator: Ed25519AckAuthenticator(resolver: resolver),
+                                      expectedRecipientStore: store)
+
+        // Message intended for A: enqueue binds expectedRecipient = nodeA.
+        let mid = msgId(30)
+        XCTAssertTrue(tracker.enqueue(mid, expectedRecipient: nodeA))
+        tracker.markHandedToRelay(mid)
+        // ACK from A (signed by A, claiming A) verifies.
+        let ackA = try AckFrame.build(msgId: mid, recipientSigningPrivKey: privA,
+                                      recipientNodeId: nodeA, routingTag: routingTag)
+        XCTAssertTrue(tracker.acknowledge(mid, ackA), "ACK from the bound recipient A must verify")
+        XCTAssertEqual(.acknowledgedByRecipient, tracker.state(mid))
+
+        // A second message intended for A: ACK from B (signed by B, claiming B) must
+        // NOT verify -- B is valid but NOT the expected recipient.
+        let mid2 = msgId(31)
+        XCTAssertTrue(tracker.enqueue(mid2, expectedRecipient: nodeA))
+        tracker.markHandedToRelay(mid2)
+        let ackB = try AckFrame.build(msgId: mid2, recipientSigningPrivKey: privB,
+                                      recipientNodeId: nodeB, routingTag: routingTag)
+        XCTAssertFalse(tracker.acknowledge(mid2, ackB), "ACK from a valid but unintended recipient must not verify")
+        XCTAssertEqual(.handedToRelay, tracker.state(mid2))
+
+        // Symmetric: a message intended for B is acked by A -> rejected, then by B -> accepted.
+        let mid3 = msgId(32)
+        XCTAssertTrue(tracker.enqueue(mid3, expectedRecipient: nodeB))
+        tracker.markHandedToRelay(mid3)
+        let ackAforB = try AckFrame.build(msgId: mid3, recipientSigningPrivKey: privA,
+                                         recipientNodeId: nodeA, routingTag: routingTag)
+        XCTAssertFalse(tracker.acknowledge(mid3, ackAforB), "ACK from A for a message intended for B must not verify")
+        let ackBforB = try AckFrame.build(msgId: mid3, recipientSigningPrivKey: privB,
+                                         recipientNodeId: nodeB, routingTag: routingTag)
+        XCTAssertTrue(tracker.acknowledge(mid3, ackBforB), "ACK from the bound recipient B must verify")
+        XCTAssertEqual(.acknowledgedByRecipient, tracker.state(mid3))
+    }
+
+    func testAckClaimingRecipientOtherThanExpectedIsRejected() throws {
+        // C2 edge: the ACK names a recipient that the resolver CAN resolve (a real,
+        // valid recipient) but which differs from the expected recipient bound at
+        // enqueue. This must be rejected -- the binding is to the durable expected
+        // recipient, not to whoever the ACK claims to be.
+        let (pubA, privA) = realKeypair()
+        let (pubB, _) = realKeypair()
+        let nodeA = Data(repeating: 0x0A, count: 16)
+        let nodeB = Data(repeating: 0x0B, count: 16)
+        let resolver = TwoRecipientResolver(nodeA, pubA, nodeB, pubB)
+        let store = FakeExpectedRecipientStore()
+        let tracker = DeliveryTracker(journal: FakeJournal(),
+                                      authenticator: Ed25519AckAuthenticator(resolver: resolver),
+                                      expectedRecipientStore: store)
+        let mid = msgId(33)
+        XCTAssertTrue(tracker.enqueue(mid, expectedRecipient: nodeA))
+        tracker.markHandedToRelay(mid)
+        // ACK signed by A but claiming nodeB in its payload (recipientNodeId field).
+        // The signature is over preimage(mid, nodeB) -- valid under A's key only if A
+        // signed it, which A did not sign for nodeB's preimage. Either way it must be
+        // rejected: claimed recipient (B) != expected recipient (A).
+        let mismatched = try AckFrame.build(msgId: mid, recipientSigningPrivKey: privA,
+                                           recipientNodeId: nodeB, routingTag: routingTag)
+        XCTAssertFalse(tracker.acknowledge(mid, mismatched),
+                       "ACK claiming a recipient other than the expected one must be rejected")
+        XCTAssertEqual(.handedToRelay, tracker.state(mid))
+    }
+
+    // --- Stage 4C / C3: production resolver is UNRESOLVED -> fail-closed ---
+
+    func testUnresolvedProductionResolverFailCloses() throws {
+        // C3: the production RecipientKeyResolver is UNRESOLVED (M2-link identity
+        // binding not wired). It returns nil for every node id, so the
+        // Ed25519AckAuthenticator can resolve no key and rejects every ACK. This is
+        // the fail-closed production state: no delivery is claimed until real keys
+        // are bound -- A-03 / ADR-005 stay OPEN.
+        let (_, priv) = realKeypair()
+        let recipientNodeId = Data(repeating: 0x50, count: 16)
+        let store = FakeExpectedRecipientStore()
+        let tracker = DeliveryTracker(journal: FakeJournal(),
+                                      authenticator: Ed25519AckAuthenticator(resolver: UnresolvedRecipientKeyResolver()),
+                                      expectedRecipientStore: store)
+        let mid = msgId(40)
+        XCTAssertTrue(tracker.enqueue(mid, expectedRecipient: recipientNodeId))
+        tracker.markHandedToRelay(mid)
+        let ack = try AckFrame.build(msgId: mid, recipientSigningPrivKey: priv,
+                                     recipientNodeId: recipientNodeId, routingTag: routingTag)
+        XCTAssertFalse(tracker.acknowledge(mid, ack), "unresolved resolver must reject every ACK")
+        XCTAssertEqual(.handedToRelay, tracker.state(mid), "no delivery claimed without a bound key")
     }
 }
