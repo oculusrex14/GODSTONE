@@ -120,6 +120,23 @@ android {
         abortOnError = true
         checkReleaseBuilds = true
         warningsAsErrors = true
+        // Stage 4A: the Archive-only release gate (release-gates.yml /
+        // android-archive-only-release) runs :app:lintLightRelease WITHOUT the
+        // native stack. AGP's full release lint analyzes the unit-test component,
+        // whose testImplementation(project(":llm")) resolves :llm:release and
+        // builds the :llm AAR -> :llm:configureCMakeRelWithDebInfo[arm64-v8a] ->
+        // add_subdirectory(third_party/llama.cpp), failing on the absent pinned
+        // native stack. The LIGHT SHIPPING classpath (lightRelease{Runtime,Compile}
+        // Classpath, captured by the gate) contains NO :llm/:mesh edge -- :llm is
+        // testImplementation-only -- so the unit-test component is the SOLE path to
+        // :llm. Test sources are not a shipping surface (the LIGHT APK links only
+        // :core), so the archive-only shipping gate ignores test sources in lint
+        // and keeps full strict lint (abortOnError + warningsAsErrors) on the
+        // shipping (main) sources. assembleLightRelease/bundleLightRelease already
+        // run lintVitalLightRelease (release-vital lint, no test component) and do
+        // NOT configure :llm's CMake; this flag makes the full :app:lintLightRelease
+        // behave the same way regarding :llm. (AGP 8.6 Lint.ignoreTestSources.)
+        ignoreTestSources = true
     }
 }
 

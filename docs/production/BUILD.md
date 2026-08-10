@@ -22,6 +22,17 @@ fail on the missing native stack. The native stack is a SEPARATE gate
 fail-closed until llama.cpp is pinned and restored; it must not block the
 Archive-only binary.
 
+`assembleLightRelease`/`bundleLightRelease` (and the `lintVitalLightRelease`
+they pull in) configure only `:app` + `:core`. The full `:app:lintLightRelease`
+would otherwise analyze the unit-test component -- whose
+`testImplementation(project(":llm"))` resolves `:llm:release` and builds the
+`:llm` AAR (`:llm:configureCMakeRelWithDebInfo` -> `add_subdirectory(third_party/
+llama.cpp)`, failing on the absent native stack) -- so `:app`'s `lint` block sets
+`ignoreTestSources = true` to keep strict lint on the SHIPPING sources only and
+let `:app:lintLightRelease` run green without the native stack. Do not remove
+that flag without a replacement or the Archive-only lint step will fail on
+llama.cpp.
+
 Verify the shipping classpath is Archive-only before relying on it:
 
 ```bash

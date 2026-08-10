@@ -13,11 +13,23 @@ name: release-gates
 #   * android-archive-only-release is REPO-OWNED and goes GREEN. The LIGHT
 #     release links only :core (Archive repository + crypto); :llm is
 #     testImplementation-only and :mesh is not a dependency, so the scoped
-#     :app:lintLightRelease / :app:assembleLightRelease / :app:bundleLightRelease
-#     tasks configure ONLY :app + :core and NEVER configure :llm's CMake
-#     add_subdirectory(third_party/llama.cpp). An Archive-only LIGHT binary does
-#     NOT need llama.cpp, model weights, or Oracle. This is a shipping-artifact
-#     gate, not an external-content gate.
+#     :app:assembleLightRelease / :app:bundleLightRelease tasks (and the
+#     lintVitalLightRelease that assemble pulls in) configure ONLY :app + :core
+#     and do NOT configure :llm's CMake add_subdirectory(third_party/llama.cpp).
+#     An Archive-only LIGHT binary does NOT need llama.cpp, model weights, or
+#     Oracle. This is a shipping-artifact gate, not an external-content gate.
+#
+#     One AGP subtlety the gate handles: the FULL :app:lintLightRelease (unlike
+#     lintVitalLightRelease) analyzes the unit-test component, whose
+#     testImplementation(project(":llm")) resolves :llm:release and builds the
+#     :llm AAR -> :llm:configureCMakeRelWithDebInfo[arm64-v8a] -> fails on the
+#     absent native stack. That is a lint-analysis scope pulling the NON-SHIPPING
+#     test-only :llm module -- NOT a shipping-artifact dependency (the scoped
+#     assemble+bundle build itself succeeds without llama.cpp, per A2's resolved
+#     lightRelease classpath containing no :llm edge). :app's lint is therefore
+#     configured with ignoreTestSources=true (see app/build.gradle.kts) so the
+#     full release lint skips the test component and keeps strict lint
+#     (abortOnError + warningsAsErrors) on the SHIPPING sources only.
 #   * llm-native-stack stays RED until the approved pinned llama.cpp native
 #     stack is restored. It deliberately exercises :llm and must NOT block the
 #     Archive-only binary above.
@@ -145,8 +157,14 @@ jobs:
       # source tree, so there is NO root `clean test lint` here -- those root
       # tasks would configure :llm and trigger its CMake
       # add_subdirectory(third_party/llama.cpp) failure on the missing native
-      # stack. lintLightRelease + assembleLightRelease + bundleLightRelease
-      # configure only :app + :core.
+      # stack. assembleLightRelease + bundleLightRelease (and the
+      # lintVitalLightRelease assemble pulls in) configure only :app + :core.
+      # The separate :app:lintLightRelease below likewise configures only
+      # :app + :core because :app's lint is configured with ignoreTestSources=true
+      # (see app/build.gradle.kts) -- without it, AGP's full release lint analyzes
+      # the unit-test component (testImplementation(project(":llm"))) and builds
+      # :llm:release -> :llm:configureCMakeRelWithDebInfo -> fails on the absent
+      # native stack.
       - name: assemble + bundle LIGHT release (Archive-only; scoped to :app)
         working-directory: android
         run: ./gradlew --no-daemon --warning-mode=all :app:assembleLightRelease :app:bundleLightRelease
