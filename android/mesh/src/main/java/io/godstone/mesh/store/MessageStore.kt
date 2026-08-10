@@ -23,6 +23,29 @@ import io.godstone.mesh.wire.v2.Priority
 import io.godstone.mesh.wire.v2.TypeV2
 
 /**
+ * The outcome of a durable persist, shared semantically with iOS (Stage 4B.1).
+ *
+ * Top-level (not nested in [MessageStore]) to mirror iOS, where `PersistResult`
+ * is a top-level enum -- the two platforms reference the same name at the same
+ * scope. The router must distinguish these to keep the durable `UNIQUE(msg_id)`
+ * the authoritative dedup decision (B1) and to refuse to forward what it does not
+ * durably hold (B2): only [HELD_NEW] is forwarded/delivered; [HELD_DUPLICATE] is
+ * suppressed (already held, do not re-relay); [REJECTED_CAPACITY] and
+ * [FAILED_STORAGE] leave the in-memory dedup window untouched so the same
+ * msg_id may be re-offered after the store recovers or has room.
+ */
+enum class PersistResult {
+    /** Newly inserted and still present after capacity enforcement. */
+    HELD_NEW,
+    /** Already held on a duplicate msg_id (INSERT OR IGNORE no-op) and still present. */
+    HELD_DUPLICATE,
+    /** Inserted but then evicted by the hard cap (or a duplicate whose row was evicted): not durably held. */
+    REJECTED_CAPACITY,
+    /** A storage exception occurred inside the transaction; it was rolled back. */
+    FAILED_STORAGE,
+}
+
+/**
  * Persistent hold for relayed and locally-originated frames.
  *
  * The router treats the store as the source of truth for what this node carries,
@@ -41,27 +64,6 @@ import io.godstone.mesh.wire.v2.TypeV2
  * code is written: an upgrade drops and recreates the table.
  */
 interface MessageStore {
-
-    /**
-     * The outcome of a durable persist, shared semantically with iOS (Stage 4B.1).
-     *
-     * The router must distinguish these to keep the durable `UNIQUE(msg_id)` the
-     * authoritative dedup decision (B1) and to refuse to forward what it does not
-     * durably hold (B2): only [HELD_NEW] is forwarded/delivered; [HELD_DUPLICATE]
-     * is suppressed (already held, do not re-relay); [REJECTED_CAPACITY] and
-     * [FAILED_STORAGE] leave the in-memory dedup window untouched so the same
-     * msg_id may be re-offered after the store recovers or has room.
-     */
-    enum class PersistResult {
-        /** Newly inserted and still present after capacity enforcement. */
-        HELD_NEW,
-        /** Already held on a duplicate msg_id (INSERT OR IGNORE no-op) and still present. */
-        HELD_DUPLICATE,
-        /** Inserted but then evicted by the hard cap (or a duplicate whose row was evicted): not durably held. */
-        REJECTED_CAPACITY,
-        /** A storage exception occurred inside the transaction; it was rolled back. */
-        FAILED_STORAGE,
-    }
 
     /**
      * Durably hold [frame], recording the peer it was received from.
@@ -240,12 +242,12 @@ internal interface StoreDb {
      * `evictOldestPrefix` called on the receiver inside [block] participate in
      * that transaction (read-your-writes on the same connection). If [block]
      * throws, the transaction is rolled back and the exception rethrown; the
-     * caller converts it to [MessageStore.PersistResult.FAILED_STORAGE]. Shared
+     * caller converts it to [PersistResult.FAILED_STORAGE]. Shared
      * by the production SQLCipher engine and the host-test JDBC engine so the
      * insert/evict/final-membership logic is the SAME code path in CI as in
      * production.
      */
-    fun <T> inTransaction(block: (StoreDb) -> T): T
+    fun inTransaction(block: (StoreDb) -> PersistResult): PersistResult
 
     fun close()
 }
@@ -453,7 +455,7 @@ internal class SqlcipherStoreDb(ctx: Context) : StoreDb {
      * back; the exception propagates to the caller, which reports
      * `PersistResult.FAILED_STORAGE`.
      */
-    override fun <T> inTransaction(block: (StoreDb) -> T): T {
+    override fun inTransaction(block: (StoreDb) -> PersistResult): PersistResult {
         val db = helper.writableDatabase
         db.beginTransaction()
         try {

@@ -30,7 +30,8 @@ private let storeSqliteTransient = unsafeBitCast(-1, to: sqlite3_destructor_type
 /// §5), so no migration code is written: an upgrade drops and recreates the
 /// table.
 /// The outcome of a durable persist, shared semantically with Android (Stage
-/// 4B.1). Mirrors `io.godstone.mesh.store.MessageStore.PersistResult`.
+/// 4B.1). Mirrors `io.godstone.mesh.store.PersistResult` (top-level on both
+/// platforms).
 ///
 /// The router must distinguish these to keep the durable `UNIQUE(msg_id)` the
 /// authoritative dedup decision (B1) and to refuse to forward what it does not

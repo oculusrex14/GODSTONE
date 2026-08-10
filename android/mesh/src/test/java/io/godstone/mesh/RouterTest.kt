@@ -4,7 +4,7 @@ import io.godstone.mesh.router.BloomDigest
 import io.godstone.mesh.router.Router
 import io.godstone.mesh.store.InMemoryMessageStore
 import io.godstone.mesh.store.MessageStore
-import io.godstone.mesh.store.MessageStore.PersistResult
+import io.godstone.mesh.store.PersistResult
 import io.godstone.mesh.wire.v2.FrameV2
 import io.godstone.mesh.wire.v2.Priority
 import io.godstone.mesh.wire.v2.SosFrameValidator

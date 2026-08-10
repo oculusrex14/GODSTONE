@@ -4,6 +4,7 @@ import android.content.Context
 import io.godstone.mesh.identity.Identity
 import io.godstone.mesh.router.Router
 import io.godstone.mesh.store.MessageStore
+import io.godstone.mesh.store.PersistResult
 import io.godstone.mesh.transport.BleTransport
 import io.godstone.mesh.transport.PeerEvent
 import io.godstone.mesh.transport.PowerState
@@ -144,10 +145,10 @@ class MeshNode(
             // capacity rejection or storage failure reports NotPersisted and
             // exits before any BLE write.
             when (store.persist(frame, receivedFrom = identity.nodeId)) {
-                MessageStore.PersistResult.HELD_NEW,
-                MessageStore.PersistResult.HELD_DUPLICATE -> Unit
-                MessageStore.PersistResult.REJECTED_CAPACITY,
-                MessageStore.PersistResult.FAILED_STORAGE ->
+                PersistResult.HELD_NEW,
+                PersistResult.HELD_DUPLICATE -> Unit
+                PersistResult.REJECTED_CAPACITY,
+                PersistResult.FAILED_STORAGE ->
                     return@runCatching SosDispatchResult.NotPersisted
             }
             val bytes = frame.encode()
