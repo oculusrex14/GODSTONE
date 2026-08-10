@@ -45,7 +45,7 @@ class SqliteMessageStoreTest {
      * throwing from it aborts the transaction (ROLLBACK) and yields
      * `FAILED_STORAGE`, proving the store reopens in a valid, bounded state.
      */
-    private fun open(maxBytes: Long, faultInjector: (String) -> Unit): SqliteMessageStore {
+    private fun open(maxBytes: Long, faultInjector: ((String) -> Unit)? = null): SqliteMessageStore {
         val db = JdbcStoreDb(tmp)
         engine = db
         store = SqliteMessageStore(db, maxBytes, faultInjector)
