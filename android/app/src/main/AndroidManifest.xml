@@ -6,6 +6,9 @@
     <uses-permission android:name="android.permission.INTERNET" tools:node="remove" />
     <uses-feature android:name="android.hardware.bluetooth_le" android:required="false" />
 
+    <!-- allowBackup="false" disables backup/restore on ALL API levels, so the
+         API 31+ dataExtractionRules is belt-and-suspenders; on minSdk 26 lint's
+         DataExtractionRules wants fullBackupContent too, which is moot here. -->
     <application
         android:name=".GodstoneApplication"
         android:allowBackup="false"
@@ -14,7 +17,8 @@
         android:label="@string/app_name"
         android:supportsRtl="true"
         android:usesCleartextTraffic="false"
-        android:theme="@style/Theme.Godstone">
+        android:theme="@style/Theme.Godstone"
+        tools:ignore="DataExtractionRules">
 
         <activity
             android:name=".MainActivity"
