@@ -303,7 +303,7 @@ class MeshNodeDeliveryIntegrationTest {
         // Pre-bind the outbound state (a directed message's enqueue), then hand it.
         assertEquals(EnqueueResult.Created, node.deliveryTracker.enqueue(mid, AckMode.SINGLE_RECIPIENT, a))
         assertEquals(TransitionResult.Applied, node.deliveryTracker.markHandedToRelay(mid))
-        assertEquals(a, rec(journal, mid).expectedRecipientNodeId)
+        assertEquals(a.toList(), rec(journal, mid).expectedRecipientNodeId?.toList())
         val ack = AckFrame.build(mid, privA, a, routingTag)
         val accepted = node.ingestInbound(ack, fromPeer = a)
         assertTrue(accepted, "an ACK from the bound recipient must be accepted (Applied -> true)")

@@ -411,7 +411,7 @@ class DeliveryTrackerTest {
         assertEquals(EnqueueResult.ConflictRecipient, tracker.enqueue(mid, AckMode.SINGLE_RECIPIENT, nodeB))
         // The historical send intent (nodeA) is preserved -- not overwritten.
         val rec = (journal.get(mid) as DeliveryLookup.Found).record
-        assertEquals(nodeA, rec.expectedRecipientNodeId)
+        assertEquals(nodeA.toList(), rec.expectedRecipientNodeId?.toList())
         assertEquals(DeliveryState.QUEUED_DURABLY, rec.state)
         // NONE vs SINGLE for the same msg_id is also a conflict.
         assertEquals(EnqueueResult.ConflictRecipient, tracker.enqueue(mid, AckMode.NONE, expectedRecipient = null))

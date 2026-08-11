@@ -102,6 +102,24 @@ class SqliteDeliveryRepositoryTest {
         }
 
     /**
+     * Raw persisted state code straight from the row, BYPASSING the repository's
+     * binding-consistency guard. A corrupt-binding row (ack_mode mutated past the
+     * CHECK so NONE carries a non-null recipient) is still a row with a `state`
+     * column; the production [SqliteDeliveryRepository.get] correctly fails it
+     * closed to [DeliveryLookup.Corrupt], so [found] (which force-casts `get`)
+     * CANNOT read it. The C6.4-M mode-guard mutation-control test asserts the raw
+     * `state` column on such a row to prove the guarded CAS did (or, under the
+     * weakened guard, did NOT) mutate it -- mirroring the iOS twin, which asserts
+     * only ACK outcomes on the corrupt row and never routes its raw state through
+     * the guarded `get`.
+     */
+    private fun rawStateOf(db: StoreDb, mid: ByteArray): DeliveryState {
+        val row = db.readDelivery(mid) ?: error("row ${mid.toList()} absent")
+        return DeliveryState.fromPersistedCode(row.state)
+            ?: error("row ${mid.toList()} state code ${row.state} not a legal durable state")
+    }
+
+    /**
      * Plant a bad state code past the `CHECK (state IN (1,2,3,4,5))` (C6.4-C).
      * The CHECK rejects a plain `UPDATE ... SET state = <bad>`; the
      * `PRAGMA ignore_check_constraints` test seam lets the bad write through so
@@ -1019,7 +1037,7 @@ class SqliteDeliveryRepositoryTest {
             // recipient) -> Corrupt. Fail closed.
             assertEquals(AckResult.Corrupt, j.acknowledgeBound(mid, AckMode.SINGLE_RECIPIENT, nodeA()),
                 "with the mode guard ON, an ACK on a NONE-mode (corrupt) row fails closed to Corrupt")
-            assertEquals(DeliveryState.HANDED_TO_RELAY, found(j, mid).state, "state unchanged")
+            assertEquals(DeliveryState.HANDED_TO_RELAY, rawStateOf(db, mid), "state unchanged")
 
             // Weakened repo (mode guard OFF): the ACK CAS no longer checks ack_mode,
             // so it matches on msg_id + state + recipient and acknowledges the
@@ -1032,7 +1050,7 @@ class SqliteDeliveryRepositoryTest {
             assertEquals(AckResult.Applied,
                 jWeak.acknowledgeBound(mid2, AckMode.SINGLE_RECIPIENT, nodeA()),
                 "with the mode guard OFF, an ACK lands on a NONE-mode row -> Applied (WRONG)")
-            assertEquals(DeliveryState.ACKNOWLEDGED_BY_RECIPIENT, found(jWeak, mid2).state,
+            assertEquals(DeliveryState.ACKNOWLEDGED_BY_RECIPIENT, rawStateOf(db, mid2),
                 "the weakened guard let a NONE-mode row be acknowledged (WRONG)")
         } finally {
             file.delete()
