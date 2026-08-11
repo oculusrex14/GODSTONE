@@ -120,17 +120,19 @@ class MeshNodeDeliveryIntegrationTest {
             msgId: ByteArray,
             ackMode: AckMode,
             expectedRecipient: ByteArray?,
-        ): AckResult = when (val l = get(msgId)) {
-            DeliveryLookup.NotFound -> AckResult.UnknownMessage
-            DeliveryLookup.Corrupt -> AckResult.Corrupt
-            DeliveryLookup.StorageFailure -> AckResult.StorageFailure
-            is DeliveryLookup.Found -> {
-                val rec = l.record
-                if (rec.ackMode != ackMode ||
-                    !rec.expectedRecipientNodeId.contentEquals(expectedRecipient)
-                ) return AckResult.UnknownMessage
-                records[k(msgId)] = rec.copy(state = DeliveryState.ACKNOWLEDGED_BY_RECIPIENT)
-                AckResult.Applied
+        ): AckResult {
+            return when (val l = get(msgId)) {
+                DeliveryLookup.NotFound -> AckResult.UnknownMessage
+                DeliveryLookup.Corrupt -> AckResult.Corrupt
+                DeliveryLookup.StorageFailure -> AckResult.StorageFailure
+                is DeliveryLookup.Found -> {
+                    val rec = l.record
+                    if (rec.ackMode != ackMode ||
+                        !rec.expectedRecipientNodeId.contentEquals(expectedRecipient)
+                    ) return AckResult.UnknownMessage
+                    records[k(msgId)] = rec.copy(state = DeliveryState.ACKNOWLEDGED_BY_RECIPIENT)
+                    AckResult.Applied
+                }
             }
         }
         override fun clear(msgId: ByteArray) { records.remove(k(msgId)) }
