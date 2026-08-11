@@ -98,8 +98,9 @@ internal class SqliteDeliveryRepository(private val db: StoreDb) : DeliveryRepos
             // mismatch means the row is not the message the tracker verified.
             if (rec.ackMode != ackMode ||
                 !rec.expectedRecipientNodeId.contentEquals(expectedRecipient)
-            ) return AckResult.UnknownMessage
-            if (db.updateDeliveryState(msgId, DeliveryState.ACKNOWLEDGED_BY_RECIPIENT.code) == 1) {
+            ) {
+                AckResult.UnknownMessage
+            } else if (db.updateDeliveryState(msgId, DeliveryState.ACKNOWLEDGED_BY_RECIPIENT.code) == 1) {
                 AckResult.Applied
             } else {
                 AckResult.UnknownMessage // row vanished mid-call (raced expire/cancel/forget)
