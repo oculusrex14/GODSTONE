@@ -13,6 +13,7 @@ import io.godstone.mesh.delivery.DeliveryTracker
 import io.godstone.mesh.delivery.Ed25519AckAuthenticator
 import io.godstone.mesh.delivery.EnqueueResult
 import io.godstone.mesh.delivery.RecipientKeyResolver
+import io.godstone.mesh.delivery.TransitionResult
 import io.godstone.mesh.delivery.UnresolvedRecipientKeyResolver
 import io.godstone.mesh.identity.Identity
 import io.godstone.mesh.store.InMemoryMessageStore
@@ -211,7 +212,7 @@ class MeshNodeDeliveryIntegrationTest {
         val mid = msgId(1)
         // Pre-bind the outbound state (a directed message's enqueue), then hand it.
         assertEquals(EnqueueResult.Created, node.deliveryTracker.enqueue(mid, AckMode.SINGLE_RECIPIENT, a))
-        assertTrue(node.deliveryTracker.markHandedToRelay(mid))
+        assertEquals(TransitionResult.Applied, node.deliveryTracker.markHandedToRelay(mid))
         assertEquals(a, rec(journal, mid).expectedRecipientNodeId)
         val ack = AckFrame.build(mid, privA, a, routingTag)
         val accepted = node.ingestInbound(ack, fromPeer = a)
@@ -233,7 +234,7 @@ class MeshNodeDeliveryIntegrationTest {
         val (node, _) = makeNode(InMemoryMessageStore(), resolver)
         val mid = msgId(2)
         assertEquals(EnqueueResult.Created, node.deliveryTracker.enqueue(mid, AckMode.SINGLE_RECIPIENT, a))
-        assertTrue(node.deliveryTracker.markHandedToRelay(mid))
+        assertEquals(TransitionResult.Applied, node.deliveryTracker.markHandedToRelay(mid))
         // ACK claims B and is signed by B -- but the bound recipient is A.
         val wrongAck = AckFrame.build(mid, privB, b, routingTag)
         val accepted = node.ingestInbound(wrongAck, fromPeer = b)
@@ -253,7 +254,7 @@ class MeshNodeDeliveryIntegrationTest {
         val (node, _) = makeNode(InMemoryMessageStore(), UnresolvedRecipientKeyResolver)
         val mid = msgId(3)
         assertEquals(EnqueueResult.Created, node.deliveryTracker.enqueue(mid, AckMode.SINGLE_RECIPIENT, a))
-        assertTrue(node.deliveryTracker.markHandedToRelay(mid))
+        assertEquals(TransitionResult.Applied, node.deliveryTracker.markHandedToRelay(mid))
         val ack = AckFrame.build(mid, privA, a, routingTag)
         val accepted = node.ingestInbound(ack, fromPeer = a)
         assertFalse(accepted, "fail-closed: the unresolved resolver rejects every ACK")
@@ -272,7 +273,7 @@ class MeshNodeDeliveryIntegrationTest {
         val mid = msgId(4)
         // A broadcast enqueued with AckMode.NONE, then handed.
         assertEquals(EnqueueResult.Created, node.deliveryTracker.enqueue(mid, AckMode.NONE, expectedRecipient = null))
-        assertTrue(node.deliveryTracker.markHandedToRelay(mid))
+        assertEquals(TransitionResult.Applied, node.deliveryTracker.markHandedToRelay(mid))
         // A valid ACK from A -> the tracker returns NotAckEligible (authenticator
         // NOT invoked); the seam maps that to false; state stays HANDED_TO_RELAY.
         val ack = AckFrame.build(mid, privA, a, routingTag)

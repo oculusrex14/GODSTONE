@@ -135,7 +135,7 @@ class DeliveryTrackerTest {
         assertEquals(DeliveryState.UNAVAILABLE, tracker.state(mid))
         assertEquals(EnqueueResult.Created, tracker.enqueue(mid, AckMode.SINGLE_RECIPIENT, recipientNodeId))
         assertEquals(DeliveryState.QUEUED_DURABLY, tracker.state(mid))
-        assertTrue(tracker.markHandedToRelay(mid))
+        assertEquals(TransitionResult.Applied, tracker.markHandedToRelay(mid))
         assertEquals(DeliveryState.HANDED_TO_RELAY, tracker.state(mid))
         val ack = AckFrame.build(mid, priv, recipientNodeId, routingTag)
         assertEquals(AckResult.Applied, tracker.acknowledge(mid, ack))
@@ -159,7 +159,7 @@ class DeliveryTrackerTest {
         val tracker = DeliveryTracker(FakeJournal(), auth)
         val mid = msgId(50)
         assertEquals(EnqueueResult.Created, tracker.enqueue(mid, AckMode.NONE, expectedRecipient = null))
-        assertTrue(tracker.markHandedToRelay(mid))
+        assertEquals(TransitionResult.Applied, tracker.markHandedToRelay(mid))
         assertEquals(DeliveryState.HANDED_TO_RELAY, tracker.state(mid))
 
         // A valid, trusted ACK from Alice -> NotAckEligible, state unchanged, auth NOT invoked.
@@ -314,45 +314,45 @@ class DeliveryTrackerTest {
         assertEquals(DeliveryState.UNAVAILABLE, tracker.state(mid))
     }
 
-    // --- truth-table: markHandedToRelay / expire / cancel (Bool) ---
+    // --- truth-table: markHandedToRelay / expire / cancel (TransitionResult) ---
 
     @Test
     fun `truth table -- markHandedToRelay only from QUEUED or HANDED`() {
         val tracker = DeliveryTracker(FakeJournal(), FakeAuthenticator(true))
         val mid = msgId(21)
-        assertFalse(tracker.markHandedToRelay(mid), "cannot hand over before enqueue")
+        assertEquals(TransitionResult.UnknownMessage, tracker.markHandedToRelay(mid), "cannot hand over before enqueue")
         tracker.enqueue(mid, AckMode.SINGLE_RECIPIENT, ByteArray(16) { 0x21 })
-        assertTrue(tracker.markHandedToRelay(mid))
-        assertTrue(tracker.markHandedToRelay(mid), "idempotent from HANDED")
+        assertEquals(TransitionResult.Applied, tracker.markHandedToRelay(mid))
+        assertEquals(TransitionResult.AlreadyInTarget, tracker.markHandedToRelay(mid), "idempotent from HANDED")
         tracker.acknowledge(mid, rawAckFrame(mid))
-        assertFalse(tracker.markHandedToRelay(mid), "cannot hand over after acknowledged")
+        assertEquals(TransitionResult.RejectedState, tracker.markHandedToRelay(mid), "cannot hand over after acknowledged")
     }
 
     @Test
     fun `truth table -- expire and cancel only from QUEUED or HANDED and terminal states reject all`() {
         val tracker = DeliveryTracker(FakeJournal(), FakeAuthenticator(true))
         val mid = msgId(22)
-        assertFalse(tracker.expire(mid))
-        assertFalse(tracker.cancel(mid))
+        assertEquals(TransitionResult.UnknownMessage, tracker.expire(mid))
+        assertEquals(TransitionResult.UnknownMessage, tracker.cancel(mid))
         tracker.enqueue(mid, AckMode.SINGLE_RECIPIENT, ByteArray(16) { 0x22 })
-        assertTrue(tracker.cancel(mid))
+        assertEquals(TransitionResult.Applied, tracker.cancel(mid))
         assertEquals(DeliveryState.CANCELLED_LOCALLY, tracker.state(mid))
         // terminal: a DIFFERENT transition is rejected; re-calling the SAME one
         // is idempotent (a crash-then-resume that re-issues cancel still succeeds).
         assertEquals(EnqueueResult.RejectedTerminalState, tracker.enqueue(mid, AckMode.SINGLE_RECIPIENT, ByteArray(16) { 0x22 }))
-        assertFalse(tracker.markHandedToRelay(mid))
+        assertEquals(TransitionResult.RejectedState, tracker.markHandedToRelay(mid))
         assertEquals(AckResult.RejectedState, tracker.acknowledge(mid, rawAckFrame(mid)))
-        assertFalse(tracker.expire(mid), "cannot expire a CANCELLED message")
-        assertTrue(tracker.cancel(mid), "re-cancel is idempotent from CANCELLED")
+        assertEquals(TransitionResult.RejectedState, tracker.expire(mid), "cannot expire a CANCELLED message")
+        assertEquals(TransitionResult.AlreadyInTarget, tracker.cancel(mid), "re-cancel is idempotent from CANCELLED")
 
         val mid2 = msgId(23)
         tracker.enqueue(mid2, AckMode.SINGLE_RECIPIENT, ByteArray(16) { 0x23 }); tracker.markHandedToRelay(mid2)
-        assertTrue(tracker.expire(mid2))
+        assertEquals(TransitionResult.Applied, tracker.expire(mid2))
         assertEquals(DeliveryState.EXPIRED, tracker.state(mid2))
         assertEquals(AckResult.RejectedState, tracker.acknowledge(mid2, rawAckFrame(mid2)),
             "cannot ack an EXPIRED message")
-        assertFalse(tracker.cancel(mid2), "cannot cancel an EXPIRED message")
-        assertTrue(tracker.expire(mid2), "re-expire is idempotent from EXPIRED")
+        assertEquals(TransitionResult.RejectedState, tracker.cancel(mid2), "cannot cancel an EXPIRED message")
+        assertEquals(TransitionResult.AlreadyInTarget, tracker.expire(mid2), "re-expire is idempotent from EXPIRED")
     }
 
     // --- acknowledge idempotency: AlreadyAcknowledged is NOT a verification ---

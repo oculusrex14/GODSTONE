@@ -269,7 +269,7 @@ class SqliteDeliveryJournalTest {
             assertEquals(EnqueueResult.Corrupt, tracker.enqueue(mid, AckMode.SINGLE_RECIPIENT, nodeA()))
             assertEquals(AckResult.Corrupt, tracker.acknowledge(mid,
                 io.godstone.mesh.wire.v2.FrameV2(io.godstone.mesh.wire.v2.TypeV2.ACK, mid, routingTag, 4, 0, 0, ByteArray(80))))
-            assertFalse(tracker.markHandedToRelay(mid))
+            assertEquals(TransitionResult.Corrupt, tracker.markHandedToRelay(mid))
         } finally {
             file.delete()
         }
@@ -292,7 +292,7 @@ class SqliteDeliveryJournalTest {
 
             val mid = msgId(30)
             assertEquals(EnqueueResult.Created, tracker.enqueue(mid, AckMode.SINGLE_RECIPIENT, nodeA()))
-            assertTrue(tracker.markHandedToRelay(mid))
+            assertEquals(TransitionResult.Applied, tracker.markHandedToRelay(mid))
             // ACK from A verifies -- the durable expected recipient == nodeA.
             val ackA = AckFrame.build(mid, privA, nodeA(), routingTag)
             assertEquals(AckResult.Applied, tracker.acknowledge(mid, ackA),
@@ -329,7 +329,7 @@ class SqliteDeliveryJournalTest {
             val mid = msgId(40)
             // Outbound: enqueue binds the expected recipient + advances to handed.
             assertEquals(EnqueueResult.Created, tracker.enqueue(mid, AckMode.SINGLE_RECIPIENT, recipient))
-            assertTrue(tracker.markHandedToRelay(mid))
+            assertEquals(TransitionResult.Applied, tracker.markHandedToRelay(mid))
             // A real, well-formed ACK signed by the recipient is STILL rejected,
             // because the production resolver resolves no key. State unchanged.
             val ack = AckFrame.build(mid, priv, recipient, routingTag)

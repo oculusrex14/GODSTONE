@@ -187,7 +187,7 @@ final class MeshNodeDeliveryIntegrationTests: XCTestCase {
         let mid = msgId(1)
         // Pre-bind the outbound state (a directed message's enqueue), then hand it.
         XCTAssertEqual(EnqueueResult.created, node.deliveryTracker.enqueue(mid, ackMode: .singleRecipient, expectedRecipient: a))
-        XCTAssertTrue(node.deliveryTracker.markHandedToRelay(mid))
+        XCTAssertEqual(TransitionResult.applied, node.deliveryTracker.markHandedToRelay(mid))
         let ack = try AckFrame.build(msgId: mid, recipientSigningPrivKey: privA,
                                      recipientNodeId: a, routingTag: routingTag)
         let accepted = node.ingestInbound(ack, receivedFrom: a)
@@ -207,7 +207,7 @@ final class MeshNodeDeliveryIntegrationTests: XCTestCase {
         let (node, _) = makeNode(store: InMemoryMessageStore(), resolver: resolver)
         let mid = msgId(2)
         XCTAssertEqual(EnqueueResult.created, node.deliveryTracker.enqueue(mid, ackMode: .singleRecipient, expectedRecipient: a))
-        XCTAssertTrue(node.deliveryTracker.markHandedToRelay(mid))
+        XCTAssertEqual(TransitionResult.applied, node.deliveryTracker.markHandedToRelay(mid))
         // ACK claims B and is signed by B -- but the bound recipient is A.
         let wrongAck = try AckFrame.build(msgId: mid, recipientSigningPrivKey: privB,
                                           recipientNodeId: b, routingTag: routingTag)
@@ -227,7 +227,7 @@ final class MeshNodeDeliveryIntegrationTests: XCTestCase {
         let (node, _) = makeNode(store: InMemoryMessageStore(), resolver: UnresolvedRecipientKeyResolver())
         let mid = msgId(3)
         XCTAssertEqual(EnqueueResult.created, node.deliveryTracker.enqueue(mid, ackMode: .singleRecipient, expectedRecipient: a))
-        XCTAssertTrue(node.deliveryTracker.markHandedToRelay(mid))
+        XCTAssertEqual(TransitionResult.applied, node.deliveryTracker.markHandedToRelay(mid))
         let ack = try AckFrame.build(msgId: mid, recipientSigningPrivKey: privA,
                                      recipientNodeId: a, routingTag: routingTag)
         let accepted = node.ingestInbound(ack, receivedFrom: a)

@@ -186,6 +186,31 @@ public enum AckResult: Sendable, Equatable {
     case corrupt
 }
 
+/// Outcome of a non-ACK lifecycle transition (`markHandedToRelay` / `expire` /
+/// `cancel`). Sealed (C6.2): like `AckResult`, a delivery-security outcome is
+/// never a Bool the caller can misread as "ok". The caller MUST branch and can
+/// NEVER translate `alreadyInTarget` into "this transition just happened" -- it
+/// means the record was already in the target state (idempotent re-issue, e.g.
+/// a crash-then-resume that re-marks handed), NOT a fresh transition. Only
+/// `applied` means the state advanced on this call.
+public enum TransitionResult: Sendable, Equatable {
+    /// The state advanced to the target on this call (fresh transition persisted).
+    case applied
+    /// The record was already in the target state -- idempotent, NO mutation. Not
+    /// a fresh transition.
+    case alreadyInTarget
+    /// A record exists but its current state disallows this transition (e.g.
+    /// marking handed an acknowledged / expired / cancelled record). No mutation.
+    case rejectedState
+    /// No durable record exists for the msg_id (never tracked, or it vanished
+    /// mid-call via a raced expire / cancel / forget).
+    case unknownMessage
+    /// The store returned a corrupt / inconsistent record. Fail closed.
+    case corrupt
+    /// The underlying store failed to read / write.
+    case storageFailure
+}
+
 /// Crash-safe persisted delivery state per message id. Implementations must
 /// persist across a reboot/jetsam so a fresh `DeliveryTracker` over the same
 /// journal recovers the record (reboot recovery, ADR-005 exit criteria). The
@@ -313,21 +338,13 @@ public final class DeliveryTracker {
     }
 
     /// Record that the frame was handed to a relay (a successful GATT write).
-    /// queuedDurably -> handedToRelay. Idempotent from handedToRelay. Returns
-    /// false from any other state (this is NOT "sent" -- only `acknowledge` can
-    /// reach acknowledgedByRecipient).
+    /// queuedDurably -> handedToRelay. Idempotent from handedToRelay
+    /// (`.alreadyInTarget` -- NOT a fresh hand-off). Returns `.rejectedState` from
+    /// any other state (this is NOT "sent" -- only `acknowledge` can reach
+    /// acknowledgedByRecipient).
     @discardableResult
-    public func markHandedToRelay(_ msgId: Data) -> Bool {
-        switch journal.read(msgId) {
-        case .found(let rec):
-            switch rec.state {
-            case .handedToRelay: return true
-            case .queuedDurably: return journal.updateState(msgId, .handedToRelay) == 1
-            default: return false
-            }
-        default:
-            return false
-        }
+    public func markHandedToRelay(_ msgId: Data) -> TransitionResult {
+        transition(msgId, target: .handedToRelay, validFroms: [.queuedDurably])
     }
 
     /// Apply an authenticated recipient ACK (C6.1). The outcome is typed
@@ -371,35 +388,44 @@ public final class DeliveryTracker {
         }
     }
 
-    /// TTL expiry: queuedDurably or handedToRelay -> expired. Terminal/idempotent.
+    /// TTL expiry: queuedDurably or handedToRelay -> expired. Idempotent from
+    /// expired (`.alreadyInTarget`); `.rejectedState` from a terminal non-target
+    /// state (acknowledged / cancelled).
     @discardableResult
-    public func expire(_ msgId: Data) -> Bool {
-        switch journal.read(msgId) {
-        case .found(let rec):
-            switch rec.state {
-            case .expired: return true
-            case .queuedDurably, .handedToRelay: return journal.updateState(msgId, .expired) == 1
-            default: return false
-            }
-        default:
-            return false
-        }
+    public func expire(_ msgId: Data) -> TransitionResult {
+        transition(msgId, target: .expired, validFroms: [.queuedDurably, .handedToRelay])
     }
 
     /// Local cancellation: queuedDurably or handedToRelay -> cancelledLocally.
-    /// Terminal/idempotent. Cancellation cannot recall already relayed copies --
-    /// the caller gives the truthful UI; the state machine records the intent.
+    /// Idempotent from cancelledLocally (`.alreadyInTarget`); `.rejectedState`
+    /// from a terminal non-target state (acknowledged / expired). Cancellation
+    /// cannot recall already relayed copies -- the caller gives the truthful UI;
+    /// the state machine records the intent.
     @discardableResult
-    public func cancel(_ msgId: Data) -> Bool {
+    public func cancel(_ msgId: Data) -> TransitionResult {
+        transition(msgId, target: .cancelledLocally, validFroms: [.queuedDurably, .handedToRelay])
+    }
+
+    /// Shared truth-table for `markHandedToRelay` / `expire` / `cancel`. Advances
+    /// the state to `target` only from one of `validFroms`; a record already in
+    /// `target` is `.alreadyInTarget` (idempotent, NO mutation -- not a fresh
+    /// transition); any other existing state is `.rejectedState`. A missing /
+    /// corrupt / failed read is `.unknownMessage` / `.corrupt` / `.storageFailure`.
+    /// If the row vanishes between the read and the state-only write (a raced
+    /// expire / cancel / forget), the update touches 0 rows -> `.unknownMessage`.
+    private func transition(_ msgId: Data, target: DeliveryState,
+                            validFroms: Set<DeliveryState>) -> TransitionResult {
         switch journal.read(msgId) {
+        case .notFound: return .unknownMessage
+        case .corrupt: return .corrupt
+        case .storageFailure: return .storageFailure
         case .found(let rec):
-            switch rec.state {
-            case .cancelledLocally: return true
-            case .queuedDurably, .handedToRelay: return journal.updateState(msgId, .cancelledLocally) == 1
-            default: return false
+            let s = rec.state
+            if s == target { return .alreadyInTarget }
+            if validFroms.contains(s) {
+                return journal.updateState(msgId, target) == 1 ? .applied : .unknownMessage
             }
-        default:
-            return false
+            return .rejectedState
         }
     }
 

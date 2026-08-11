@@ -196,6 +196,33 @@ sealed interface AckResult {
 }
 
 /**
+ * Outcome of a non-ACK lifecycle transition ([markHandedToRelay] / [expire] /
+ * [cancel]). Sealed (C6.2): like [AckResult], a delivery-security outcome is
+ * never a Bool the caller can misread as "ok". The caller MUST branch and can
+ * NEVER translate [AlreadyInTarget] into "this transition just happened" -- it
+ * means the record was already in the target state (idempotent re-issue, e.g. a
+ * crash-then-resume that re-marks handed), NOT a fresh transition. Only [Applied]
+ * means the state advanced on this call.
+ */
+sealed interface TransitionResult {
+    /** The state advanced to the target on this call (fresh transition persisted). */
+    data object Applied : TransitionResult
+    /** The record was already in the target state -- idempotent, NO mutation. Not
+     *  a fresh transition. */
+    data object AlreadyInTarget : TransitionResult
+    /** A record exists but its current state disallows this transition (e.g.
+     *  marking handed an ACKNOWLEDGED / EXPIRED / CANCELLED record). No mutation. */
+    data object RejectedState : TransitionResult
+    /** No durable record exists for the msg_id (never tracked, or it vanished
+     *  mid-call via a raced expire / cancel / forget). */
+    data object UnknownMessage : TransitionResult
+    /** The store returned a corrupt / inconsistent record. Fail closed. */
+    data object Corrupt : TransitionResult
+    /** The underlying store failed to read / write. */
+    data object StorageFailure : TransitionResult
+}
+
+/**
  * Crash-safe persisted delivery state per message id. Implementations must
  * persist across a reboot/jetsam so a fresh [DeliveryTracker] over the same
  * journal recovers the record (reboot recovery, ADR-005 exit criteria). The
@@ -330,20 +357,13 @@ class DeliveryTracker(
 
     /**
      * Record that the frame was handed to a relay (a successful GATT write).
-     * QUEUED_DURABLY -> HANDED_TO_RELAY. Idempotent from HANDED_TO_RELAY.
-     * Returns false from any other state (this is NOT "sent" -- only
-     * [acknowledge] can reach ACKNOWLEDGED_BY_RECIPIENT).
+     * QUEUED_DURABLY -> HANDED_TO_RELAY. Idempotent from HANDED_TO_RELAY
+     * ([TransitionResult.AlreadyInTarget] -- NOT a fresh hand-off). Returns
+     * [TransitionResult.RejectedState] from any other state (this is NOT "sent"
+     * -- only [acknowledge] can reach ACKNOWLEDGED_BY_RECIPIENT).
      */
-    fun markHandedToRelay(msgId: ByteArray): Boolean {
-        return when (val l = journal.read(msgId)) {
-            is DeliveryLookup.Found -> when (l.record.state) {
-                DeliveryState.HANDED_TO_RELAY -> true
-                DeliveryState.QUEUED_DURABLY -> journal.updateState(msgId, DeliveryState.HANDED_TO_RELAY) == 1
-                else -> false
-            }
-            else -> false
-        }
-    }
+    fun markHandedToRelay(msgId: ByteArray): TransitionResult =
+        transition(msgId, DeliveryState.HANDED_TO_RELAY, setOf(DeliveryState.QUEUED_DURABLY))
 
     /**
      * Apply an authenticated recipient ACK (C6.1). The outcome is typed
@@ -386,33 +406,51 @@ class DeliveryTracker(
         }
     }
 
-    /** TTL expiry: QUEUED_DURABLY or HANDED_TO_RELAY -> EXPIRED. Terminal/idempotent. */
-    fun expire(msgId: ByteArray): Boolean {
-        return when (val l = journal.read(msgId)) {
-            is DeliveryLookup.Found -> when (l.record.state) {
-                DeliveryState.EXPIRED -> true
-                DeliveryState.QUEUED_DURABLY, DeliveryState.HANDED_TO_RELAY ->
-                    journal.updateState(msgId, DeliveryState.EXPIRED) == 1
-                else -> false
-            }
-            else -> false
-        }
-    }
+    /** TTL expiry: QUEUED_DURABLY or HANDED_TO_RELAY -> EXPIRED. Idempotent from
+     *  EXPIRED ([TransitionResult.AlreadyInTarget]); [TransitionResult.RejectedState]
+     *  from a terminal non-target state (ACKNOWLEDGED / CANCELLED). */
+    fun expire(msgId: ByteArray): TransitionResult =
+        transition(msgId, DeliveryState.EXPIRED,
+            setOf(DeliveryState.QUEUED_DURABLY, DeliveryState.HANDED_TO_RELAY))
 
     /**
      * Local cancellation: QUEUED_DURABLY or HANDED_TO_RELAY -> CANCELLED_LOCALLY.
-     * Terminal/idempotent. Cancellation cannot recall already relayed copies --
-     * the caller gives the truthful UI; the state machine records the intent.
+     * Idempotent from CANCELLED_LOCALLY ([TransitionResult.AlreadyInTarget]);
+     * [TransitionResult.RejectedState] from a terminal non-target state
+     * (ACKNOWLEDGED / EXPIRED). Cancellation cannot recall already relayed copies
+     * -- the caller gives the truthful UI; the state machine records the intent.
      */
-    fun cancel(msgId: ByteArray): Boolean {
-        return when (val l = journal.read(msgId)) {
-            is DeliveryLookup.Found -> when (l.record.state) {
-                DeliveryState.CANCELLED_LOCALLY -> true
-                DeliveryState.QUEUED_DURABLY, DeliveryState.HANDED_TO_RELAY ->
-                    journal.updateState(msgId, DeliveryState.CANCELLED_LOCALLY) == 1
-                else -> false
+    fun cancel(msgId: ByteArray): TransitionResult =
+        transition(msgId, DeliveryState.CANCELLED_LOCALLY,
+            setOf(DeliveryState.QUEUED_DURABLY, DeliveryState.HANDED_TO_RELAY))
+
+    /**
+     * Shared truth-table for [markHandedToRelay] / [expire] / [cancel]. Advances
+     * the state to [target] only from one of [validFroms]; a record already in
+     * [target] is [TransitionResult.AlreadyInTarget] (idempotent, NO mutation --
+     * not a fresh transition); any other existing state is
+     * [TransitionResult.RejectedState]. A missing / corrupt / failed read is
+     * [TransitionResult.UnknownMessage] / [Corrupt] / [StorageFailure]. If the
+     * row vanishes between the read and the state-only write (a raced
+     * expire / cancel / forget), the update touches 0 rows -> [UnknownMessage].
+     */
+    private fun transition(
+        msgId: ByteArray,
+        target: DeliveryState,
+        validFroms: Set<DeliveryState>,
+    ): TransitionResult = when (val l = journal.read(msgId)) {
+        DeliveryLookup.NotFound -> TransitionResult.UnknownMessage
+        DeliveryLookup.Corrupt -> TransitionResult.Corrupt
+        DeliveryLookup.StorageFailure -> TransitionResult.StorageFailure
+        is DeliveryLookup.Found -> {
+            val s = l.record.state
+            when {
+                s == target -> TransitionResult.AlreadyInTarget
+                s in validFroms ->
+                    if (journal.updateState(msgId, target) == 1) TransitionResult.Applied
+                    else TransitionResult.UnknownMessage // row vanished mid-call
+                else -> TransitionResult.RejectedState
             }
-            else -> false
         }
     }
 

@@ -251,7 +251,7 @@ final class SqliteDeliveryJournalTests: XCTestCase {
         XCTAssertEqual(.unavailable, tracker.state(mid), "corrupt reads as UNAVAILABLE at the state seam")
         XCTAssertEqual(EnqueueResult.corrupt, tracker.enqueue(mid, ackMode: .singleRecipient, expectedRecipient: nodeA()))
         XCTAssertEqual(AckResult.corrupt, tracker.acknowledge(mid, rawAck(mid)))
-        XCTAssertFalse(tracker.markHandedToRelay(mid))
+        XCTAssertEqual(TransitionResult.corrupt, tracker.markHandedToRelay(mid))
     }
 
     // MARK: - C1/C2 integration + fail-closed production composition
@@ -271,7 +271,7 @@ final class SqliteDeliveryJournalTests: XCTestCase {
 
         let mid = msgId(30)
         XCTAssertEqual(EnqueueResult.created, tracker.enqueue(mid, ackMode: .singleRecipient, expectedRecipient: nodeA()))
-        XCTAssertTrue(tracker.markHandedToRelay(mid))
+        XCTAssertEqual(TransitionResult.applied, tracker.markHandedToRelay(mid))
         // ACK from A verifies -- the durable expected recipient == nodeA.
         let ackA = try AckFrame.build(msgId: mid, recipientSigningPrivKey: privA,
                                       recipientNodeId: nodeA(), routingTag: routingTag)
@@ -305,7 +305,7 @@ final class SqliteDeliveryJournalTests: XCTestCase {
         let mid = msgId(40)
         // Outbound: enqueue binds the expected recipient + advances to handed.
         XCTAssertEqual(EnqueueResult.created, tracker.enqueue(mid, ackMode: .singleRecipient, expectedRecipient: recipient))
-        XCTAssertTrue(tracker.markHandedToRelay(mid))
+        XCTAssertEqual(TransitionResult.applied, tracker.markHandedToRelay(mid))
         // A real, well-formed ACK signed by the recipient is STILL rejected,
         // because the production resolver resolves no key. State unchanged.
         let ack = try AckFrame.build(msgId: mid, recipientSigningPrivKey: priv,

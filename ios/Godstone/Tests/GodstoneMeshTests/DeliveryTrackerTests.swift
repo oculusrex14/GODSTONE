@@ -137,7 +137,7 @@ final class DeliveryTrackerTests: XCTestCase {
         XCTAssertEqual(.unavailable, tracker.state(mid))
         XCTAssertEqual(EnqueueResult.created, tracker.enqueue(mid, ackMode: .singleRecipient, expectedRecipient: recipientNodeId))
         XCTAssertEqual(.queuedDurably, tracker.state(mid))
-        XCTAssertTrue(tracker.markHandedToRelay(mid))
+        XCTAssertEqual(TransitionResult.applied, tracker.markHandedToRelay(mid))
         XCTAssertEqual(.handedToRelay, tracker.state(mid))
         let ack = try AckFrame.build(msgId: mid, recipientSigningPrivKey: priv,
                                      recipientNodeId: recipientNodeId, routingTag: routingTag)
@@ -161,7 +161,7 @@ final class DeliveryTrackerTests: XCTestCase {
         let tracker = DeliveryTracker(journal: FakeJournal(), authenticator: auth)
         let mid = msgId(50)
         XCTAssertEqual(EnqueueResult.created, tracker.enqueue(mid, ackMode: .none, expectedRecipient: nil))
-        XCTAssertTrue(tracker.markHandedToRelay(mid))
+        XCTAssertEqual(TransitionResult.applied, tracker.markHandedToRelay(mid))
         XCTAssertEqual(.handedToRelay, tracker.state(mid))
 
         // A valid, trusted ACK from Alice -> .notAckEligible, state unchanged, auth NOT invoked.
@@ -316,43 +316,43 @@ final class DeliveryTrackerTests: XCTestCase {
         XCTAssertEqual(.unavailable, tracker.state(mid))
     }
 
-    // --- truth-table: markHandedToRelay / expire / cancel (Bool) ---
+    // --- truth-table: markHandedToRelay / expire / cancel (TransitionResult) ---
 
     func testTruthTableMarkHandedOnlyFromQueuedOrHanded() {
         let tracker = DeliveryTracker(journal: FakeJournal(), authenticator: FakeAuthenticator(true))
         let mid = msgId(21)
-        XCTAssertFalse(tracker.markHandedToRelay(mid), "cannot hand over before enqueue")
+        XCTAssertEqual(TransitionResult.unknownMessage, tracker.markHandedToRelay(mid), "cannot hand over before enqueue")
         _ = tracker.enqueue(mid, ackMode: .singleRecipient, expectedRecipient: Data(repeating: 0x21, count: 16))
-        XCTAssertTrue(tracker.markHandedToRelay(mid))
-        XCTAssertTrue(tracker.markHandedToRelay(mid), "idempotent from HANDED")
+        XCTAssertEqual(TransitionResult.applied, tracker.markHandedToRelay(mid))
+        XCTAssertEqual(TransitionResult.alreadyInTarget, tracker.markHandedToRelay(mid), "idempotent from HANDED")
         _ = tracker.acknowledge(mid, rawAckFrame(mid))
-        XCTAssertFalse(tracker.markHandedToRelay(mid), "cannot hand over after acknowledged")
+        XCTAssertEqual(TransitionResult.rejectedState, tracker.markHandedToRelay(mid), "cannot hand over after acknowledged")
     }
 
     func testTruthTableExpireCancelAndTerminalRejection() {
         let tracker = DeliveryTracker(journal: FakeJournal(), authenticator: FakeAuthenticator(true))
         let mid = msgId(22)
-        XCTAssertFalse(tracker.expire(mid))
-        XCTAssertFalse(tracker.cancel(mid))
+        XCTAssertEqual(TransitionResult.unknownMessage, tracker.expire(mid))
+        XCTAssertEqual(TransitionResult.unknownMessage, tracker.cancel(mid))
         _ = tracker.enqueue(mid, ackMode: .singleRecipient, expectedRecipient: Data(repeating: 0x22, count: 16))
-        XCTAssertTrue(tracker.cancel(mid))
+        XCTAssertEqual(TransitionResult.applied, tracker.cancel(mid))
         XCTAssertEqual(.cancelledLocally, tracker.state(mid))
         // terminal: a DIFFERENT transition is rejected; re-calling the SAME one
         // is idempotent (a crash-then-resume that re-issues cancel still succeeds).
         XCTAssertEqual(EnqueueResult.rejectedTerminalState, tracker.enqueue(mid, ackMode: .singleRecipient, expectedRecipient: Data(repeating: 0x22, count: 16)))
-        XCTAssertFalse(tracker.markHandedToRelay(mid))
+        XCTAssertEqual(TransitionResult.rejectedState, tracker.markHandedToRelay(mid))
         XCTAssertEqual(AckResult.rejectedState, tracker.acknowledge(mid, rawAckFrame(mid)))
-        XCTAssertFalse(tracker.expire(mid), "cannot expire a CANCELLED message")
-        XCTAssertTrue(tracker.cancel(mid), "re-cancel is idempotent from CANCELLED")
+        XCTAssertEqual(TransitionResult.rejectedState, tracker.expire(mid), "cannot expire a CANCELLED message")
+        XCTAssertEqual(TransitionResult.alreadyInTarget, tracker.cancel(mid), "re-cancel is idempotent from CANCELLED")
 
         let mid2 = msgId(23)
         _ = tracker.enqueue(mid2, ackMode: .singleRecipient, expectedRecipient: Data(repeating: 0x23, count: 16)); tracker.markHandedToRelay(mid2)
-        XCTAssertTrue(tracker.expire(mid2))
+        XCTAssertEqual(TransitionResult.applied, tracker.expire(mid2))
         XCTAssertEqual(.expired, tracker.state(mid2))
         XCTAssertEqual(AckResult.rejectedState, tracker.acknowledge(mid2, rawAckFrame(mid2)),
                        "cannot ack an EXPIRED message")
-        XCTAssertFalse(tracker.cancel(mid2), "cannot cancel an EXPIRED message")
-        XCTAssertTrue(tracker.expire(mid2), "re-expire is idempotent from EXPIRED")
+        XCTAssertEqual(TransitionResult.rejectedState, tracker.cancel(mid2), "cannot cancel an EXPIRED message")
+        XCTAssertEqual(TransitionResult.alreadyInTarget, tracker.expire(mid2), "re-expire is idempotent from EXPIRED")
     }
 
     // --- acknowledge idempotency: alreadyAcknowledged is NOT a verification ---
