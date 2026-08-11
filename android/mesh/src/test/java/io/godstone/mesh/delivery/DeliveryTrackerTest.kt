@@ -560,8 +560,8 @@ class DeliveryTrackerTest {
         // The durable binding held by the record is the ORIGINAL bytes (C6.4-K
         // defensive copy) -- not a live reference to the caller's mutable array.
         val rec = (journal.get(mid) as DeliveryLookup.Found).record
-        assertEquals(0x70.toByte(), rec.expectedRecipientNodeId[0], "durable binding is defensively copied")
-        assertNotEquals(recipient[0], rec.expectedRecipientNodeId[0], "the record does not alias the caller's array")
+        assertEquals(0x70.toByte(), rec.expectedRecipientNodeId!![0], "durable binding is defensively copied")
+        assertNotEquals(recipient[0], rec.expectedRecipientNodeId!![0], "the record does not alias the caller's array")
     }
 
     @Test

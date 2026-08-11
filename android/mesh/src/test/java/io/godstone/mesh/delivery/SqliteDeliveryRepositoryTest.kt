@@ -718,7 +718,7 @@ class SqliteDeliveryRepositoryTest {
     }
 
     @Test
-    fun `concurrency - ACK vs cancel: cancel wins, ACK is RejectedState, final is CANCELLED`() {
+    fun `concurrency - ACK vs cancel - cancel wins, ACK is RejectedState, final is CANCELLED`() {
         val file = Files.createTempFile("godstone-delivery", ".db").toFile()
         try {
             val (wrapped, j) = newSyncRepo(file)
@@ -750,7 +750,7 @@ class SqliteDeliveryRepositoryTest {
     }
 
     @Test
-    fun `concurrency - ACK vs expire: expire wins, ACK is RejectedState, final is EXPIRED`() {
+    fun `concurrency - ACK vs expire - expire wins, ACK is RejectedState, final is EXPIRED`() {
         val file = Files.createTempFile("godstone-delivery", ".db").toFile()
         try {
             val (wrapped, j) = newSyncRepo(file)
@@ -777,7 +777,7 @@ class SqliteDeliveryRepositoryTest {
     }
 
     @Test
-    fun `concurrency - two authenticated ACKs: exactly one Applied, one DuplicateAuthenticatedAck, final ACKNOWLEDGED`() {
+    fun `concurrency - two authenticated ACKs - exactly one Applied, one DuplicateAuthenticatedAck, final ACKNOWLEDGED`() {
         val file = Files.createTempFile("godstone-delivery", ".db").toFile()
         try {
             val (wrapped, j) = newSyncRepo(file)
@@ -805,7 +805,7 @@ class SqliteDeliveryRepositoryTest {
     }
 
     @Test
-    fun `concurrency - old Alice ACK vs recipient rebinding to Bob: ACK is UnknownMessage, Bob row unchanged`() {
+    fun `concurrency - old Alice ACK vs recipient rebinding to Bob - ACK is UnknownMessage, Bob row unchanged`() {
         val file = Files.createTempFile("godstone-delivery", ".db").toFile()
         try {
             val (wrapped, j) = newSyncRepo(file)
@@ -836,7 +836,7 @@ class SqliteDeliveryRepositoryTest {
     }
 
     @Test
-    fun `concurrency - ACK vs storage failure: auth succeeds, CAS faults, state NOT acknowledged`() {
+    fun `concurrency - ACK vs storage failure - auth succeeds, CAS faults, state NOT acknowledged`() {
         val file = Files.createTempFile("godstone-delivery", ".db").toFile()
         try {
             val (wrapped, j) = newSyncRepo(file)
@@ -867,7 +867,7 @@ class SqliteDeliveryRepositoryTest {
     }
 
     @Test
-    fun `concurrency - cancel vs expire: exactly one terminal CAS Applied, other RejectedState, final is one terminal`() {
+    fun `concurrency - cancel vs expire - exactly one terminal CAS Applied, other RejectedState, final is one terminal`() {
         val file = Files.createTempFile("godstone-delivery", ".db").toFile()
         try {
             val (_, j) = newSyncRepo(file)
@@ -894,7 +894,7 @@ class SqliteDeliveryRepositoryTest {
     }
 
     @Test
-    fun `concurrency - markHanded vs cancel: either order legal, no transition moves OUT of terminal`() {
+    fun `concurrency - markHanded vs cancel - either order legal, no transition moves OUT of terminal`() {
         val file = Files.createTempFile("godstone-delivery", ".db").toFile()
         try {
             val j = open(file)
