@@ -5,11 +5,13 @@ import io.godstone.core.crypto.X25519Keys
 import io.godstone.mesh.delivery.AckFrame
 import io.godstone.mesh.delivery.AckMode
 import io.godstone.mesh.delivery.AckResult
+import io.godstone.mesh.delivery.ClearResult
 import io.godstone.mesh.delivery.DeliveryRepository
 import io.godstone.mesh.delivery.DeliveryLookup
 import io.godstone.mesh.delivery.DeliveryRecord
 import io.godstone.mesh.delivery.DeliveryState
 import io.godstone.mesh.delivery.DeliveryTracker
+import io.godstone.mesh.delivery.DeliveryTransition
 import io.godstone.mesh.delivery.Ed25519AckAuthenticator
 import io.godstone.mesh.delivery.EnqueueResult
 import io.godstone.mesh.delivery.RecipientKeyResolver
@@ -74,17 +76,20 @@ class MeshNodeDeliveryIntegrationTest {
     /**
      * In-memory [DeliveryRepository] mirroring [io.godstone.mesh.delivery
      * .SqliteDeliveryRepository] over a real DB: one [DeliveryRecord] per msg_id
-     * holding state + ack mode + recipient; [compareAndSet] /
-     * [acknowledgeAndRetire] preserve the binding (state-only advance).
+     * holding state + ack mode + recipient; [transition] / [acknowledgeBound]
+     * preserve the binding (state-only advance). C6.4: implements the new
+     * [DeliveryTransition] + typed [ClearResult] + 16-byte [InvalidArgument] guard.
      */
     private class InMemoryDeliveryRepository : DeliveryRepository {
         val records = mutableMapOf<List<Byte>, DeliveryRecord>()
         private fun k(m: ByteArray) = m.toList()
         override fun get(msgId: ByteArray): DeliveryLookup {
+            if (msgId.size != 16) return DeliveryLookup.InvalidArgument
             val rec = records[k(msgId)] ?: return DeliveryLookup.NotFound
             return DeliveryLookup.Found(rec)
         }
         override fun enqueue(msgId: ByteArray, ackMode: AckMode, expectedRecipient: ByteArray?): EnqueueResult {
+            if (msgId.size != 16) return EnqueueResult.InvalidArgument
             if (!bindingConsistent(ackMode, expectedRecipient)) return EnqueueResult.Corrupt
             return when (val l = get(msgId)) {
                 DeliveryLookup.NotFound -> {
@@ -94,48 +99,70 @@ class MeshNodeDeliveryIntegrationTest {
                 is DeliveryLookup.Found -> classifyExisting(l.record, ackMode, expectedRecipient)
                 DeliveryLookup.Corrupt -> EnqueueResult.Corrupt
                 DeliveryLookup.StorageFailure -> EnqueueResult.StorageFailure
+                DeliveryLookup.InvalidArgument -> EnqueueResult.InvalidArgument
             }
         }
-        override fun compareAndSet(
-            msgId: ByteArray,
-            validFroms: Set<DeliveryState>,
-            target: DeliveryState,
-        ): TransitionResult = when (val l = get(msgId)) {
-            DeliveryLookup.NotFound -> TransitionResult.UnknownMessage
-            DeliveryLookup.Corrupt -> TransitionResult.Corrupt
-            DeliveryLookup.StorageFailure -> TransitionResult.StorageFailure
-            is DeliveryLookup.Found -> {
-                val s = l.record.state
-                when {
-                    s == target -> TransitionResult.AlreadyInTarget
-                    s in validFroms -> {
-                        records[k(msgId)] = l.record.copy(state = target) // preserve ackMode + recipient
-                        TransitionResult.Applied
+        override fun transition(msgId: ByteArray, transition: DeliveryTransition): TransitionResult {
+            if (msgId.size != 16) return TransitionResult.InvalidArgument
+            val (target, validFroms) = transitionMapping(transition)
+            return when (val l = get(msgId)) {
+                DeliveryLookup.NotFound -> TransitionResult.UnknownMessage
+                DeliveryLookup.Corrupt -> TransitionResult.Corrupt
+                DeliveryLookup.StorageFailure -> TransitionResult.StorageFailure
+                DeliveryLookup.InvalidArgument -> TransitionResult.InvalidArgument
+                is DeliveryLookup.Found -> {
+                    val s = l.record.state
+                    when {
+                        s == target -> TransitionResult.AlreadyInTarget
+                        s in validFroms -> {
+                            records[k(msgId)] = l.record.copy(state = target) // preserve ackMode + recipient
+                            TransitionResult.Applied
+                        }
+                        else -> TransitionResult.RejectedState
                     }
-                    else -> TransitionResult.RejectedState
                 }
             }
         }
-        override fun acknowledgeAndRetire(
+        override fun acknowledgeBound(
             msgId: ByteArray,
             ackMode: AckMode,
             expectedRecipient: ByteArray?,
         ): AckResult {
+            if (msgId.size != 16) return AckResult.InvalidArgument
+            if (ackMode != AckMode.SINGLE_RECIPIENT) return AckResult.InvalidArgument
+            if (expectedRecipient == null || expectedRecipient.size != 16) return AckResult.InvalidArgument
             return when (val l = get(msgId)) {
                 DeliveryLookup.NotFound -> AckResult.UnknownMessage
                 DeliveryLookup.Corrupt -> AckResult.Corrupt
                 DeliveryLookup.StorageFailure -> AckResult.StorageFailure
+                DeliveryLookup.InvalidArgument -> AckResult.InvalidArgument
                 is DeliveryLookup.Found -> {
                     val rec = l.record
                     if (rec.ackMode != ackMode ||
                         !rec.expectedRecipientNodeId.contentEquals(expectedRecipient)
                     ) return AckResult.UnknownMessage
-                    records[k(msgId)] = rec.copy(state = DeliveryState.ACKNOWLEDGED_BY_RECIPIENT)
-                    AckResult.Applied
+                    if (rec.state == DeliveryState.ACKNOWLEDGED_BY_RECIPIENT) AckResult.DuplicateAuthenticatedAck
+                    else {
+                        records[k(msgId)] = rec.copy(state = DeliveryState.ACKNOWLEDGED_BY_RECIPIENT)
+                        AckResult.Applied
+                    }
                 }
             }
         }
-        override fun clear(msgId: ByteArray) { records.remove(k(msgId)) }
+        override fun clear(msgId: ByteArray): ClearResult {
+            if (msgId.size != 16) return ClearResult.InvalidArgument
+            return if (records.remove(k(msgId)) != null) ClearResult.Cleared else ClearResult.AlreadyAbsent
+        }
+
+        private fun transitionMapping(t: DeliveryTransition): Pair<DeliveryState, Set<DeliveryState>> =
+            when (t) {
+                DeliveryTransition.MARK_HANDED ->
+                    DeliveryState.HANDED_TO_RELAY to setOf(DeliveryState.QUEUED_DURABLY)
+                DeliveryTransition.EXPIRE ->
+                    DeliveryState.EXPIRED to setOf(DeliveryState.QUEUED_DURABLY, DeliveryState.HANDED_TO_RELAY)
+                DeliveryTransition.CANCEL ->
+                    DeliveryState.CANCELLED_LOCALLY to setOf(DeliveryState.QUEUED_DURABLY, DeliveryState.HANDED_TO_RELAY)
+            }
 
         private fun classifyExisting(rec: DeliveryRecord, ackMode: AckMode, expectedRecipient: ByteArray?): EnqueueResult {
             if (rec.state.isTerminal) return EnqueueResult.RejectedTerminalState
@@ -188,6 +215,14 @@ class MeshNodeDeliveryIntegrationTest {
 
     private fun rec(j: InMemoryDeliveryRepository, mid: ByteArray): DeliveryRecord =
         (j.get(mid) as DeliveryLookup.Found).record
+
+    /** C6.4-B: the lossy `state(mid)` seam is gone; extract the state from
+     *  [DeliveryTracker.lookup] for a valid-state assertion. */
+    private fun stateOf(tracker: DeliveryTracker, mid: ByteArray): DeliveryState? =
+        when (val l = tracker.lookup(mid)) {
+            is DeliveryLookup.Found -> l.record.state
+            else -> null
+        }
 
     /** Build a node over [store] + an in-memory repository/tracker with the
      *  supplied resolver. Returns the node + the repository so tests can assert
@@ -272,7 +307,7 @@ class MeshNodeDeliveryIntegrationTest {
         val ack = AckFrame.build(mid, privA, a, routingTag)
         val accepted = node.ingestInbound(ack, fromPeer = a)
         assertTrue(accepted, "an ACK from the bound recipient must be accepted (Applied -> true)")
-        assertEquals(DeliveryState.ACKNOWLEDGED_BY_RECIPIENT, node.deliveryTracker.state(mid))
+        assertEquals(DeliveryState.ACKNOWLEDGED_BY_RECIPIENT, stateOf(node.deliveryTracker, mid))
     }
 
     /** C7: an ACK from a DIFFERENT recipient (bound recipient was A, ACK claims
@@ -294,7 +329,7 @@ class MeshNodeDeliveryIntegrationTest {
         val wrongAck = AckFrame.build(mid, privB, b, routingTag)
         val accepted = node.ingestInbound(wrongAck, fromPeer = b)
         assertFalse(accepted, "an ACK from a recipient other than the bound one must be rejected")
-        assertEquals(DeliveryState.HANDED_TO_RELAY, node.deliveryTracker.state(mid))
+        assertEquals(DeliveryState.HANDED_TO_RELAY, stateOf(node.deliveryTracker, mid))
     }
 
     /** C7: the PRODUCTION authenticator is fail-closed
@@ -313,7 +348,7 @@ class MeshNodeDeliveryIntegrationTest {
         val ack = AckFrame.build(mid, privA, a, routingTag)
         val accepted = node.ingestInbound(ack, fromPeer = a)
         assertFalse(accepted, "fail-closed: the unresolved resolver rejects every ACK")
-        assertEquals(DeliveryState.HANDED_TO_RELAY, node.deliveryTracker.state(mid))
+        assertEquals(DeliveryState.HANDED_TO_RELAY, stateOf(node.deliveryTracker, mid))
     }
 
     /** C7: an ACK for a NONE-mode (broadcast) message is NotAckEligible even when
@@ -335,7 +370,7 @@ class MeshNodeDeliveryIntegrationTest {
         assertEquals(AckResult.NotAckEligible, node.deliveryTracker.acknowledge(mid, ack))
         val accepted = node.ingestInbound(ack, fromPeer = a)
         assertFalse(accepted, "an ACK for a NONE-mode broadcast must not be accepted")
-        assertEquals(DeliveryState.HANDED_TO_RELAY, node.deliveryTracker.state(mid))
+        assertEquals(DeliveryState.HANDED_TO_RELAY, stateOf(node.deliveryTracker, mid))
     }
 
     /** C7: a non-ACK frame is routed to the epidemic router, NOT the delivery

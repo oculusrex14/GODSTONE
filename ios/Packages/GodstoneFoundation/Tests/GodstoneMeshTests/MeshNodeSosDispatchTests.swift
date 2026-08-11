@@ -25,10 +25,10 @@ final class MeshNodeSosDispatchTests: XCTestCase {
     /// do not exercise the ACK path (the SOS dispatch tests). The tracker is
     /// fail-closed regardless -- the authenticator is the production
     /// `UnresolvedRecipientKeyResolver` -- so no delivery is claimed. C6.1 /
-    /// C6.3: `dispatchSos` enqueues with `AckMode.none` (SOS broadcast) then
-    /// `markHandedToRelay` (a `compareAndSet`), so this fake implements the full
-    /// typed `DeliveryRepository` (get / enqueue / compareAndSet /
-    /// acknowledgeAndRetire / clear); the recipient is IMMUTABLE post-creation
+    /// C6.3 / C6.4: `dispatchSos` enqueues with `AckMode.none` (SOS broadcast) then
+    /// `markHandedToRelay` (a `transition(.markHanded)`), so this fake implements
+    /// the full typed `DeliveryRepository` (get / enqueue / transition /
+    /// acknowledgeBound / clear); the recipient is IMMUTABLE post-creation
     /// (state-only advance), mirroring `SqliteDeliveryRepository`.
     private final class InMemoryDeliveryRepository: DeliveryRepository {
         var map: [Data: DeliveryRecord] = [:]
@@ -50,14 +50,22 @@ final class MeshNodeSosDispatchTests: XCTestCase {
                 return .corrupt
             case .storageFailure:
                 return .storageFailure
+            case .invalidArgument:
+                return .invalidArgument
             }
         }
-        func compareAndSet(_ msgId: Data, validFroms: Set<DeliveryState>,
-                           target: DeliveryState) -> TransitionResult {
+        func transition(_ msgId: Data, _ transition: DeliveryTransition) -> TransitionResult {
+            let target: DeliveryState, validFroms: Set<DeliveryState>
+            switch transition {
+            case .markHanded: target = .handedToRelay; validFroms = [.queuedDurably]
+            case .expire:     target = .expired;        validFroms = [.queuedDurably, .handedToRelay]
+            case .cancel:     target = .cancelledLocally; validFroms = [.queuedDurably, .handedToRelay]
+            }
             switch get(msgId) {
             case .notFound: return .unknownMessage
             case .corrupt: return .corrupt
             case .storageFailure: return .storageFailure
+            case .invalidArgument: return .invalidArgument
             case .found(let rec):
                 let s = rec.state
                 if s == target { return .alreadyInTarget }
@@ -70,23 +78,33 @@ final class MeshNodeSosDispatchTests: XCTestCase {
                 return .rejectedState
             }
         }
-        func acknowledgeAndRetire(_ msgId: Data, ackMode: AckMode,
-                                  expectedRecipient: Data?) -> AckResult {
+        func acknowledgeBound(_ msgId: Data, ackMode: AckMode,
+                              expectedRecipient: Data?) -> AckResult {
             switch get(msgId) {
             case .notFound: return .unknownMessage
             case .corrupt: return .corrupt
             case .storageFailure: return .storageFailure
+            case .invalidArgument: return .invalidArgument
             case .found(let rec):
                 if rec.ackMode != ackMode || rec.expectedRecipientNodeId != expectedRecipient {
                     return .unknownMessage
                 }
-                map[msgId] = DeliveryRecord(msgId: msgId, state: .acknowledgedByRecipient,
-                                             ackMode: rec.ackMode,
-                                             expectedRecipientNodeId: rec.expectedRecipientNodeId)
-                return .applied
+                switch rec.state {
+                case .acknowledgedByRecipient: return .duplicateAuthenticatedAck
+                case .expired, .cancelledLocally: return .rejectedState
+                case .queuedDurably, .handedToRelay:
+                    map[msgId] = DeliveryRecord(msgId: msgId, state: .acknowledgedByRecipient,
+                                                 ackMode: rec.ackMode,
+                                                 expectedRecipientNodeId: rec.expectedRecipientNodeId)
+                    return .applied
+                default: return .rejectedState
+                }
             }
         }
-        func clear(_ msgId: Data) { map.removeValue(forKey: msgId) }
+        func clear(_ msgId: Data) -> ClearResult {
+            if map.removeValue(forKey: msgId) != nil { return .cleared }
+            return .alreadyAbsent
+        }
 
         private func classifyExisting(rec: DeliveryRecord, ackMode: AckMode,
                                       expectedRecipient: Data?) -> EnqueueResult {

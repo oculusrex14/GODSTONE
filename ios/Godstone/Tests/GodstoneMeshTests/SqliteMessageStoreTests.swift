@@ -456,6 +456,13 @@ final class SqliteMessageStoreTests: XCTestCase {
         sqlite3_bind_int64(stmt, 10, 100)
         sqlite3_step(stmt)
         sqlite3_finalize(stmt)
+        // C6.4-E: stamp PRAGMA user_version = dbVersion so the store, on reopen,
+        // sees a CURRENT-version file and takes the idempotent `IF NOT EXISTS`
+        // path (no drop+recreate). Without this, runMigrations reads user_version=0
+        // (fresh) and destructively recreates both tables -- destroying the seeded
+        // forward-type row. The seed models a current-schema file that already
+        // contains a future-type row (forward-compat: skip, do not crash).
+        sqlite3_exec(db, "PRAGMA user_version = \(StoreSchema.dbVersion)", nil, nil, nil)
         sqlite3_close_v2(db)
     }
 }

@@ -43,10 +43,21 @@ final class MeshNodeDeliveryIntegrationTests: XCTestCase {
     private func nodeA() -> Data { Data(repeating: 0x01, count: 16) }
     private func nodeB() -> Data { Data(repeating: 0x02, count: 16) }
 
+    /// C6.4-B helper: the state inside a `.found` lookup (fail the test otherwise).
+    /// Replaces the lossy `tracker.state(mid)` seam, which collapsed notFound /
+    /// corrupt / storageFailure all to `.unavailable`.
+    private func stateOf(_ tracker: DeliveryTracker, _ mid: Data) -> DeliveryState {
+        if case .found(let rec) = tracker.lookup(mid) { return rec.state }
+        XCTFail("expected .found(\(mid))"); return .unavailable
+    }
+
     /// In-memory `DeliveryRepository` (mirroring `SqliteDeliveryRepository` over
     /// a real DB). Stores the full `DeliveryRecord` so the binding is preserved
-    /// across state transitions; `compareAndSet` / `acknowledgeAndRetire` advance
-    /// only the state column (recipient is IMMUTABLE post-creation).
+    /// across state transitions; `transition` / `acknowledgeBound` advance only
+    /// the state column (recipient is IMMUTABLE post-creation). C6.4: the public
+    /// `compareAndSet(validFroms,target)` / `acknowledgeAndRetire` seams were
+    /// replaced by the truth-table-owned `transition(msgId, DeliveryTransition)`
+    /// and the binding-CAS `acknowledgeBound`; `clear` is typed (`ClearResult`).
     private final class InMemoryDeliveryRepository: DeliveryRepository {
         var map: [Data: DeliveryRecord] = [:]
 
@@ -67,14 +78,22 @@ final class MeshNodeDeliveryIntegrationTests: XCTestCase {
                 return .corrupt
             case .storageFailure:
                 return .storageFailure
+            case .invalidArgument:
+                return .invalidArgument
             }
         }
-        func compareAndSet(_ msgId: Data, validFroms: Set<DeliveryState>,
-                           target: DeliveryState) -> TransitionResult {
+        func transition(_ msgId: Data, _ transition: DeliveryTransition) -> TransitionResult {
+            let target: DeliveryState, validFroms: Set<DeliveryState>
+            switch transition {
+            case .markHanded: target = .handedToRelay; validFroms = [.queuedDurably]
+            case .expire:     target = .expired;        validFroms = [.queuedDurably, .handedToRelay]
+            case .cancel:     target = .cancelledLocally; validFroms = [.queuedDurably, .handedToRelay]
+            }
             switch get(msgId) {
             case .notFound: return .unknownMessage
             case .corrupt: return .corrupt
             case .storageFailure: return .storageFailure
+            case .invalidArgument: return .invalidArgument
             case .found(let rec):
                 let s = rec.state
                 if s == target { return .alreadyInTarget }
@@ -87,23 +106,33 @@ final class MeshNodeDeliveryIntegrationTests: XCTestCase {
                 return .rejectedState
             }
         }
-        func acknowledgeAndRetire(_ msgId: Data, ackMode: AckMode,
-                                  expectedRecipient: Data?) -> AckResult {
+        func acknowledgeBound(_ msgId: Data, ackMode: AckMode,
+                              expectedRecipient: Data?) -> AckResult {
             switch get(msgId) {
             case .notFound: return .unknownMessage
             case .corrupt: return .corrupt
             case .storageFailure: return .storageFailure
+            case .invalidArgument: return .invalidArgument
             case .found(let rec):
                 if rec.ackMode != ackMode || rec.expectedRecipientNodeId != expectedRecipient {
                     return .unknownMessage
                 }
-                map[msgId] = DeliveryRecord(msgId: msgId, state: .acknowledgedByRecipient,
-                                             ackMode: rec.ackMode,
-                                             expectedRecipientNodeId: rec.expectedRecipientNodeId)
-                return .applied
+                switch rec.state {
+                case .acknowledgedByRecipient: return .duplicateAuthenticatedAck
+                case .expired, .cancelledLocally: return .rejectedState
+                case .queuedDurably, .handedToRelay:
+                    map[msgId] = DeliveryRecord(msgId: msgId, state: .acknowledgedByRecipient,
+                                                 ackMode: rec.ackMode,
+                                                 expectedRecipientNodeId: rec.expectedRecipientNodeId)
+                    return .applied
+                default: return .rejectedState
+                }
             }
         }
-        func clear(_ msgId: Data) { map.removeValue(forKey: msgId) }
+        func clear(_ msgId: Data) -> ClearResult {
+            if map.removeValue(forKey: msgId) != nil { return .cleared }
+            return .alreadyAbsent
+        }
 
         private func classifyExisting(rec: DeliveryRecord, ackMode: AckMode,
                                       expectedRecipient: Data?) -> EnqueueResult {
@@ -186,7 +215,7 @@ final class MeshNodeDeliveryIntegrationTests: XCTestCase {
         }
         XCTAssertEqual(result, .handedToRelays(1))
         guard let mid = sentFrame?.msgId else { return XCTFail("send must receive the frame") }
-        XCTAssertEqual(node.deliveryTracker.state(mid), .handedToRelay)
+        XCTAssertEqual(stateOf(node.deliveryTracker, mid), .handedToRelay)
         // SOS broadcast is AckMode.none and binds NO recipient (C6.1).
         guard let rec = journal.map[mid] else { return XCTFail("tracker must record the handed SOS") }
         XCTAssertEqual(rec.ackMode, .none)
@@ -208,7 +237,7 @@ final class MeshNodeDeliveryIntegrationTests: XCTestCase {
         XCTAssertEqual(sendCalls, 0, "no peers -> no sends, but durably held")
         XCTAssertEqual(store.allHeldMsgIds().count, 1, "SOS durably held")
         let mid = store.allHeldMsgIds().first!
-        XCTAssertEqual(node.deliveryTracker.state(mid), .queuedDurably)
+        XCTAssertEqual(stateOf(node.deliveryTracker, mid), .queuedDurably)
         guard let rec = journal.map[mid] else { return XCTFail("tracker must record the queued SOS") }
         XCTAssertEqual(rec.ackMode, .none)
     }
@@ -249,7 +278,7 @@ final class MeshNodeDeliveryIntegrationTests: XCTestCase {
                                      recipientNodeId: a, routingTag: routingTag)
         let accepted = node.ingestInbound(ack, receivedFrom: a)
         XCTAssertTrue(accepted, "an ACK from the bound recipient must be accepted")
-        XCTAssertEqual(node.deliveryTracker.state(mid), .acknowledgedByRecipient)
+        XCTAssertEqual(stateOf(node.deliveryTracker, mid), .acknowledgedByRecipient)
     }
 
     /// C7: an ACK from a DIFFERENT recipient (bound recipient was A, ACK claims
@@ -270,7 +299,7 @@ final class MeshNodeDeliveryIntegrationTests: XCTestCase {
                                           recipientNodeId: b, routingTag: routingTag)
         let accepted = node.ingestInbound(wrongAck, receivedFrom: b)
         XCTAssertFalse(accepted, "an ACK from a recipient other than the bound one must be rejected")
-        XCTAssertEqual(node.deliveryTracker.state(mid), .handedToRelay)
+        XCTAssertEqual(stateOf(node.deliveryTracker, mid), .handedToRelay)
     }
 
     /// C7: the PRODUCTION authenticator is fail-closed
@@ -289,7 +318,7 @@ final class MeshNodeDeliveryIntegrationTests: XCTestCase {
                                      recipientNodeId: a, routingTag: routingTag)
         let accepted = node.ingestInbound(ack, receivedFrom: a)
         XCTAssertFalse(accepted, "fail-closed: the unresolved resolver rejects every ACK")
-        XCTAssertEqual(node.deliveryTracker.state(mid), .handedToRelay)
+        XCTAssertEqual(stateOf(node.deliveryTracker, mid), .handedToRelay)
     }
 
     /// C7: a non-ACK frame is routed to the epidemic router, NOT the delivery

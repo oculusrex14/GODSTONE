@@ -1,44 +1,88 @@
 package io.godstone.mesh.delivery
 
 import io.godstone.mesh.store.StoreDb
+import io.godstone.mesh.store.StoreSchema
 
-// Stage 4C.1 / C6.3 -- production [DeliveryRepository] backed by the SAME SQLite
-// DB as the held-frames store. Folds the C6.1 `DeliveryJournal` plus the
-// enqueue / transition / retire classification into ONE atomic aggregate over
-// the `delivery_state` row keyed by msg_id, so the ACK authenticity decision
-// (C2) binds to the recipient recorded in durable outbound state INDEPENDENT of
-// the ACK frame (ADR-005: do not claim an ACK is from the intended recipient
-// unless the expected recipient comes from durable outbound state).
+// Stage 4C.1 / C6.3 / **C6.4** -- production [DeliveryRepository] backed by the
+// SAME SQLite DB as the held-frames store. Folds the C6.1 `DeliveryJournal` plus
+// the enqueue / transition / retire classification into ONE atomic aggregate over
+// the `delivery_state` row keyed by msg_id, so the ACK authenticity decision (C2)
+// binds to the recipient recorded in durable outbound state INDEPENDENT of the
+// ACK frame (ADR-005: do not claim an ACK is from the intended recipient unless
+// the expected recipient comes from durable outbound state).
 //
-// Each mutation is a single atomic SQL statement (see StoreSchema): [enqueue]
-// creates the row (INSERT ... ON CONFLICT DO NOTHING -- a conflict is classified
-// by re-reading), [compareAndSet] / [acknowledgeAndRetire] advance only the
-// state column (UPDATE SET state WHERE msg_id, preserving ack_mode +
-// expected_recipient), [clear] drops the row. The expected recipient is IMMUTABLE
-// post-creation -- there is no recipient-only write. A crash between the
-// repository's read and write leaves the LAST persisted state on disk (the
-// write did not commit), which is the crash-safe semantics ADR-005 requires.
-// (CAS-hardened WHERE-clause transitions arrive in C6.4.)
+// C6.4 hardening (see [DeliveryRepository] / [DeliveryTracker] doc):
+//  * StorageFailure is REAL (C6.4-A): every StoreDb call is wrapped in
+//    `try { ... } catch (e: Exception) { ... StorageFailure }` (NOT Throwable).
+//    Absence / conflict / no-match use their own sentinels (null / false / 0 row
+//    count) and are NEVER folded into a thrown failure.
+//  * 16-byte msg_id (C6.4-D): every method rejects a non-16-byte msg_id with
+//    `InvalidArgument` BEFORE any SQL (the GMP/2.1 msg_id is BLAKE2s-128 = 16
+//    bytes; the schema `CHECK (length(msg_id) = 16)` is defense-in-depth).
+//  * Real SQL CAS (C6.4-F): [transition] runs a guarded
+//    `UPDATE ... SET state WHERE msg_id AND state IN (...)` and decides [Applied]
+//    by the affected row count (1), NOT a stale pre-read; a 0-row CAS is re-read
+//    ONCE to classify.
+//  * Lifecycle truth-table owned here (C6.4-G): [transition] takes a
+//    [DeliveryTransition] (the fixed validFroms/target mapping lives here, not in
+//    the caller). The old public `compareAndSet(validFroms, target)` is GONE.
+//  * ACK CAS (C6.4-H): [acknowledgeBound] runs
+//    `UPDATE ... SET acknowledged WHERE msg_id AND state IN (queued,handed) AND
+//    ack_mode = SINGLE_RECIPIENT AND expected_recipient = ?` -- state + mode + the
+//    EXACT durable recipient in ONE WHERE clause; a 0-row CAS is re-read and
+//    classified ([DuplicateAuthenticatedAck] / [RejectedState] / [UnknownMessage]
+//    / [StorageFailure]).
+//  * `acknowledgeBound` performs delivery-state retirement ONLY; held-frame
+//    retirement is C7.4 (NOT yet implemented -- C6.4-I; ADR-004 delete-on-ACK is
+//    NOT closed by this method).
+//  * [clear] is typed (C6.4-J): a failed destructive operation is never
+//    indistinguishable from success.
 //
-// The int state / ack_mode codes are the cross-platform persistence contract
-// (NOT the Kotlin enum ordinals), so Android and iOS agree even if their enum
-// orders ever diverge. An unknown state or ack_mode code, or a row that
-// violates the C6.1 binding invariant, decodes to [DeliveryLookup.Corrupt] --
-// fail closed (C6.5), never silently to UNAVAILABLE. Mirrors
-// `SqliteDeliveryRepository` on iOS (byte-identical schema + SQL + codes).
-internal class SqliteDeliveryRepository(private val db: StoreDb) : DeliveryRepository {
+// C6.4-M mutation controls: the [stateGuard] / [modeGuard] / [recipientGuard]
+// flags (default true) build the ACK / transition WHERE clause. Tests flip a
+// guard to false to weaken the predicate and PROVE the concurrency tests fail --
+// i.e. the state / mode / recipient WHERE clauses are load-bearing, not
+// decorative. Production always constructs with all guards on (the public
+// constructor does not expose them).
+//
+// C6.4-N: row-atomicity here is the `delivery_state` row only. It does NOT yet
+// make `persist held frame` + `enqueue delivery record` atomic -- that
+// cross-table outbound transaction is C6.6. The int state / ack_mode codes are
+// the cross-platform persistence contract (NOT enum ordinals). An unknown state
+// or ack_mode code, or a row that violates the C6.1 binding invariant, or a
+// persisted state code 0 (UNAVAILABLE -- not a legal durable row, C6.4-C),
+// decodes to [DeliveryLookup.Corrupt] -- fail closed (C6.5), never silently to
+// UNAVAILABLE. Mirrors `SqliteDeliveryRepository` on iOS (byte-identical schema
+// + SQL + codes).
+internal class SqliteDeliveryRepository(
+    private val db: StoreDb,
+    // C6.4-M mutation controls. Production always constructs with all three
+    // true (the single-arg public constructor below). Tests pass false to weaken
+    // the WHERE clause and prove the concurrency tests fail.
+    private val stateGuard: Boolean = true,
+    private val modeGuard: Boolean = true,
+    private val recipientGuard: Boolean = true,
+) : DeliveryRepository {
+
+    /** Production constructor: all CAS guards on. */
+    constructor(db: StoreDb) : this(db, stateGuard = true, modeGuard = true, recipientGuard = true)
 
     override fun get(msgId: ByteArray): DeliveryLookup {
-        val row = db.readDelivery(msgId) ?: return DeliveryLookup.NotFound
-        val state = DeliveryState.fromCode(row.state) ?: return DeliveryLookup.Corrupt
-        val ackMode = AckMode.fromCode(row.ackMode) ?: return DeliveryLookup.Corrupt
-        // C6.1 binding invariant (mirrors the schema CHECK): NONE -> null
-        // recipient; SINGLE_RECIPIENT -> 16-byte recipient. A row that violates
-        // it (e.g. manually mutated) is corrupt -- fail closed.
-        if (!bindingConsistent(ackMode, row.expectedRecipient)) return DeliveryLookup.Corrupt
-        return DeliveryLookup.Found(
-            DeliveryRecord(msgId, state, ackMode, row.expectedRecipient),
-        )
+        if (msgId.size != 16) return DeliveryLookup.InvalidArgument // C6.4-D
+        return try {
+            val row = db.readDelivery(msgId) ?: return DeliveryLookup.NotFound
+            // C6.4-C: fromPersistedCode rejects code 0 (UNAVAILABLE) -- a persisted
+            // UNAVAILABLE is corrupt, NOT a legal durable row.
+            val state = DeliveryState.fromPersistedCode(row.state) ?: return DeliveryLookup.Corrupt
+            val ackMode = AckMode.fromCode(row.ackMode) ?: return DeliveryLookup.Corrupt
+            // C6.1 binding invariant (mirrors the schema CHECK): NONE -> null
+            // recipient; SINGLE_RECIPIENT -> 16-byte recipient. A row that violates
+            // it (e.g. directly mutated) is corrupt -- fail closed.
+            if (!bindingConsistent(ackMode, row.expectedRecipient)) return DeliveryLookup.Corrupt
+            DeliveryLookup.Found(DeliveryRecord(msgId, state, ackMode, row.expectedRecipient))
+        } catch (e: Exception) {
+            DeliveryLookup.StorageFailure // C6.4-A: absence (null) != failure (throw)
+        }
     }
 
     override fun enqueue(
@@ -46,71 +90,215 @@ internal class SqliteDeliveryRepository(private val db: StoreDb) : DeliveryRepos
         ackMode: AckMode,
         expectedRecipient: ByteArray?,
     ): EnqueueResult {
+        // C6.4-D: reject a non-16-byte msg_id before any SQL.
+        if (msgId.size != 16) return EnqueueResult.InvalidArgument
         // C6.1 invariant: NONE -> no recipient; SINGLE_RECIPIENT -> 16-byte recipient.
         if (!bindingConsistent(ackMode, expectedRecipient)) return EnqueueResult.Corrupt
-        return when (val l = get(msgId)) {
-            DeliveryLookup.NotFound -> {
-                if (db.insertDelivery(msgId, DeliveryState.QUEUED_DURABLY.code, ackMode.code, expectedRecipient)) {
-                    EnqueueResult.Created
-                } else {
-                    classifyExisting(msgId, ackMode, expectedRecipient) // row appeared mid-call
+        return try {
+            when (val l = get(msgId)) {
+                DeliveryLookup.NotFound -> {
+                    if (db.insertDelivery(
+                            msgId, DeliveryState.QUEUED_DURABLY.code, ackMode.code, expectedRecipient,
+                        )
+                    ) {
+                        EnqueueResult.Created
+                    } else {
+                        // ON CONFLICT DO NOTHING -> a row appeared mid-call; re-read to classify.
+                        classifyExisting(msgId, ackMode, expectedRecipient)
+                    }
                 }
+                is DeliveryLookup.Found -> classifyExisting(l.record, ackMode, expectedRecipient)
+                DeliveryLookup.Corrupt -> EnqueueResult.Corrupt
+                DeliveryLookup.StorageFailure -> EnqueueResult.StorageFailure
+                DeliveryLookup.InvalidArgument -> EnqueueResult.InvalidArgument // unreachable (msgId validated)
             }
-            is DeliveryLookup.Found -> classifyExisting(l.record, ackMode, expectedRecipient)
-            DeliveryLookup.Corrupt -> EnqueueResult.Corrupt
-            DeliveryLookup.StorageFailure -> EnqueueResult.StorageFailure
+        } catch (e: Exception) {
+            EnqueueResult.StorageFailure // C6.4-A
         }
     }
 
-    override fun compareAndSet(
+    override fun transition(msgId: ByteArray, transition: DeliveryTransition): TransitionResult {
+        if (msgId.size != 16) return TransitionResult.InvalidArgument // C6.4-D
+        val (target, validFroms) = transitionMapping(transition)
+        val sql = transitionSql(target, validFroms)
+        return try {
+            val affected = db.execDeliveryUpdate(sql, arrayOf(msgId))
+            when (affected) {
+                1 -> TransitionResult.Applied
+                0 -> classifyZeroRowTransition(msgId, target, validFroms)
+                else -> TransitionResult.StorageFailure // affected > 1: invariant violation (PK is msg_id)
+            }
+        } catch (e: Exception) {
+            TransitionResult.StorageFailure // C6.4-A
+        }
+    }
+
+    override fun acknowledgeBound(
         msgId: ByteArray,
-        validFroms: Set<DeliveryState>,
+        ackMode: AckMode,
+        expectedRecipient: ByteArray?,
+    ): AckResult {
+        // C6.4-D + binding guard: the authenticated binding must be a valid
+        // SINGLE_RECIPIENT binding. The tracker only calls this for a
+        // SINGLE_RECIPIENT record with a non-null 16-byte recipient; a malformed
+        // call fails closed before any SQL.
+        if (msgId.size != 16) return AckResult.InvalidArgument
+        if (ackMode != AckMode.SINGLE_RECIPIENT) return AckResult.InvalidArgument
+        if (expectedRecipient == null || expectedRecipient.size != 16) return AckResult.InvalidArgument
+        val sql = acknowledgeBoundSql()
+        val bindArgs = if (recipientGuard) arrayOf(msgId, expectedRecipient) else arrayOf(msgId)
+        return try {
+            val affected = db.execDeliveryUpdate(sql, bindArgs)
+            when (affected) {
+                1 -> AckResult.Applied
+                0 -> classifyZeroRowAck(msgId, expectedRecipient)
+                else -> AckResult.StorageFailure // affected > 1: invariant violation
+            }
+        } catch (e: Exception) {
+            AckResult.StorageFailure // C6.4-A
+        }
+    }
+
+    override fun clear(msgId: ByteArray): ClearResult {
+        if (msgId.size != 16) return ClearResult.InvalidArgument // C6.4-D
+        return try {
+            val affected = db.execDeliveryUpdate(StoreSchema.clearDeliverySql(), arrayOf(msgId))
+            when (affected) {
+                1 -> ClearResult.Cleared
+                0 -> ClearResult.AlreadyAbsent
+                else -> ClearResult.StorageFailure
+            }
+        } catch (e: Exception) {
+            ClearResult.StorageFailure // C6.4-A
+        }
+    }
+
+    // --- C6.4-F/G: guarded SQL CAS builders ---------------------------------
+
+    /** The fixed (validFroms, target) mapping the repository owns (C6.4-G). */
+    private fun transitionMapping(t: DeliveryTransition): Pair<DeliveryState, Set<DeliveryState>> =
+        when (t) {
+            DeliveryTransition.MARK_HANDED ->
+                DeliveryState.HANDED_TO_RELAY to setOf(DeliveryState.QUEUED_DURABLY)
+            DeliveryTransition.EXPIRE ->
+                DeliveryState.EXPIRED to setOf(DeliveryState.QUEUED_DURABLY, DeliveryState.HANDED_TO_RELAY)
+            DeliveryTransition.CANCEL ->
+                DeliveryState.CANCELLED_LOCALLY to setOf(DeliveryState.QUEUED_DURABLY, DeliveryState.HANDED_TO_RELAY)
+        }
+
+    /**
+     * `UPDATE delivery_state SET state = target WHERE msg_id = ? [AND state IN (...)]`.
+     * C6.4-F: the state predicate is the load-bearing CAS guard. C6.4-M:
+     * [stateGuard]=false drops it (mutation control) so a test can prove the
+     * concurrency tests fail without it.
+     */
+    private fun transitionSql(target: DeliveryState, validFroms: Set<DeliveryState>): String {
+        val sb = StringBuilder("UPDATE ${StoreSchema.DELIVERY_TABLE} ")
+            .append("SET ${StoreSchema.COL_D_STATE} = ").append(target.code)
+            .append(" WHERE ${StoreSchema.COL_D_MSG_ID} = ?")
+        if (stateGuard) {
+            sb.append(" AND ").append(COL_D_STATE).append(" IN (")
+                .append(validFroms.joinToString(",") { it.code.toString() }).append(")")
+        }
+        return sb.toString()
+    }
+
+    /**
+     * `UPDATE delivery_state SET state = ACKNOWLEDGED WHERE msg_id = ? [AND state
+     * IN (QUEUED, HANDED)] [AND ack_mode = SINGLE_RECIPIENT] [AND expected_recipient = ?]`.
+     * C6.4-H: state + mode + the EXACT durable recipient in ONE WHERE clause. The
+     * recipient is bound ONLY when [recipientGuard] is on (its bind slot is then
+     * position 2). C6.4-M: each guard can be dropped independently to prove the
+     * predicate is load-bearing.
+     */
+    private fun acknowledgeBoundSql(): String {
+        val sb = StringBuilder("UPDATE ${StoreSchema.DELIVERY_TABLE} ")
+            .append("SET ${StoreSchema.COL_D_STATE} = ").append(DeliveryState.ACKNOWLEDGED_BY_RECIPIENT.code)
+            .append(" WHERE ${StoreSchema.COL_D_MSG_ID} = ?")
+        if (stateGuard) {
+            sb.append(" AND ").append(COL_D_STATE).append(" IN (")
+                .append(DeliveryState.QUEUED_DURABLY.code).append(", ")
+                .append(DeliveryState.HANDED_TO_RELAY.code).append(")")
+        }
+        if (modeGuard) {
+            sb.append(" AND ").append(COL_D_ACK_MODE).append(" = ").append(AckMode.SINGLE_RECIPIENT.code)
+        }
+        if (recipientGuard) {
+            sb.append(" AND ").append(COL_D_EXPECTED).append(" = ?")
+        }
+        return sb.toString()
+    }
+
+    // --- C6.4-F/H: zero-row CAS reclassification ----------------------------
+
+    /**
+     * Classify a 0-row transition CAS (C6.4-F): re-read ONCE.
+     *  * NotFound -> [UnknownMessage];
+     *  * Corrupt -> [Corrupt]; StorageFailure -> [StorageFailure];
+     *  * state == target -> [AlreadyInTarget];
+     *  * state in validFroms -> [StorageFailure] (invariant violation -- the
+     *    guarded SQL should have matched; only reachable under a weakened
+     *    [stateGuard] mutation or a raced same-microsecond write);
+     *  * any other legal durable state -> [RejectedState].
+     */
+    private fun classifyZeroRowTransition(
+        msgId: ByteArray,
         target: DeliveryState,
+        validFroms: Set<DeliveryState>,
     ): TransitionResult = when (val l = get(msgId)) {
         DeliveryLookup.NotFound -> TransitionResult.UnknownMessage
         DeliveryLookup.Corrupt -> TransitionResult.Corrupt
         DeliveryLookup.StorageFailure -> TransitionResult.StorageFailure
+        DeliveryLookup.InvalidArgument -> TransitionResult.InvalidArgument // unreachable
         is DeliveryLookup.Found -> {
             val s = l.record.state
             when {
                 s == target -> TransitionResult.AlreadyInTarget
-                s in validFroms ->
-                    if (db.updateDeliveryState(msgId, target.code) == 1) TransitionResult.Applied
-                    else TransitionResult.UnknownMessage // row vanished mid-call
+                s in validFroms -> TransitionResult.StorageFailure // SQL should have matched
                 else -> TransitionResult.RejectedState
             }
         }
     }
 
-    override fun acknowledgeAndRetire(
-        msgId: ByteArray,
-        ackMode: AckMode,
-        expectedRecipient: ByteArray?,
-    ): AckResult = when (val l = get(msgId)) {
-        DeliveryLookup.NotFound -> AckResult.UnknownMessage
-        DeliveryLookup.Corrupt -> AckResult.Corrupt
-        DeliveryLookup.StorageFailure -> AckResult.StorageFailure
-        is DeliveryLookup.Found -> {
-            val rec = l.record
-            // The durable binding (ack mode + expected recipient) MUST still match
-            // the values the tracker authenticated against -- the recipient identity
-            // comes from durable outbound state, INDEPENDENT of the ACK frame. A
-            // mismatch means the row is not the message the tracker verified.
-            if (rec.ackMode != ackMode ||
-                !rec.expectedRecipientNodeId.contentEquals(expectedRecipient)
-            ) {
-                AckResult.UnknownMessage
-            } else if (db.updateDeliveryState(msgId, DeliveryState.ACKNOWLEDGED_BY_RECIPIENT.code) == 1) {
-                AckResult.Applied
-            } else {
-                AckResult.UnknownMessage // row vanished mid-call (raced expire/cancel/forget)
+    /**
+     * Classify a 0-row ACK CAS (C6.4-H): re-read ONCE. The tracker ALREADY
+     * authenticated this ACK before calling [acknowledgeBound], so a same-binding
+     * ACKNOWLEDGED row is a legitimate [DuplicateAuthenticatedAck] (the ACK lost
+     * the CAS to another authenticated ACK), NOT a re-verification.
+     *  * NotFound -> [UnknownMessage];
+     *  * Corrupt -> [Corrupt]; StorageFailure -> [StorageFailure];
+     *  * binding changed (ack_mode or recipient differ) -> [UnknownMessage]
+     *    (an old ACK must NEVER bind to a re-bound row);
+     *  * state == ACKNOWLEDGED + same binding -> [DuplicateAuthenticatedAck];
+     *  * state == EXPIRED / CANCELLED -> [RejectedState];
+     *  * same binding + QUEUED/HANDED still present -> [StorageFailure]
+     *    (invariant violation -- the guarded SQL should have matched; only
+     *    reachable under a weakened-guard mutation);
+     *  * any other state -> [RejectedState].
+     */
+    private fun classifyZeroRowAck(msgId: ByteArray, expectedRecipient: ByteArray): AckResult =
+        when (val l = get(msgId)) {
+            DeliveryLookup.NotFound -> AckResult.UnknownMessage
+            DeliveryLookup.Corrupt -> AckResult.Corrupt
+            DeliveryLookup.StorageFailure -> AckResult.StorageFailure
+            DeliveryLookup.InvalidArgument -> AckResult.InvalidArgument // unreachable
+            is DeliveryLookup.Found -> {
+                val rec = l.record
+                val sameBinding = rec.ackMode == AckMode.SINGLE_RECIPIENT &&
+                    rec.expectedRecipientNodeId.contentEquals(expectedRecipient)
+                if (!sameBinding) {
+                    AckResult.UnknownMessage // old ACK must never bind to a re-bound row
+                } else when (rec.state) {
+                    DeliveryState.ACKNOWLEDGED_BY_RECIPIENT -> AckResult.DuplicateAuthenticatedAck
+                    DeliveryState.EXPIRED, DeliveryState.CANCELLED_LOCALLY -> AckResult.RejectedState
+                    DeliveryState.QUEUED_DURABLY, DeliveryState.HANDED_TO_RELAY ->
+                        AckResult.StorageFailure // SQL should have matched
+                    else -> AckResult.RejectedState
+                }
             }
         }
-    }
 
-    override fun clear(msgId: ByteArray) {
-        db.clearDelivery(msgId)
-    }
+    // --- enqueue classification ---------------------------------------------
 
     private fun classifyExisting(
         msgId: ByteArray,
@@ -121,6 +309,7 @@ internal class SqliteDeliveryRepository(private val db: StoreDb) : DeliveryRepos
         DeliveryLookup.NotFound -> EnqueueResult.StorageFailure // row vanished -- storage anomaly
         DeliveryLookup.Corrupt -> EnqueueResult.Corrupt
         DeliveryLookup.StorageFailure -> EnqueueResult.StorageFailure
+        DeliveryLookup.InvalidArgument -> EnqueueResult.InvalidArgument // unreachable
     }
 
     private fun classifyExisting(
@@ -142,4 +331,11 @@ internal class SqliteDeliveryRepository(private val db: StoreDb) : DeliveryRepos
             AckMode.NONE -> expectedRecipient == null
             AckMode.SINGLE_RECIPIENT -> expectedRecipient != null && expectedRecipient.size == 16
         }
+
+    private companion object {
+        // Column-name shortcuts so the built CAS SQL reads as it would in a literal.
+        private const val COL_D_STATE = StoreSchema.COL_D_STATE
+        private const val COL_D_ACK_MODE = StoreSchema.COL_D_ACK_MODE
+        private const val COL_D_EXPECTED = StoreSchema.COL_D_EXPECTED
+    }
 }

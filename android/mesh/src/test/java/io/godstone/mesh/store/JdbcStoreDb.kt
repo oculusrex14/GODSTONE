@@ -163,19 +163,24 @@ internal class JdbcStoreDb(file: File) : StoreDb {
         }
     }
 
-    override fun updateDeliveryState(msgId: ByteArray, stateOrdinal: Int): Int {
-        conn.prepareStatement(StoreSchema.updateDeliveryStateSql()).use { ps ->
-            ps.setInt(1, stateOrdinal)
-            ps.setBytes(2, msgId)
-            return ps.executeUpdate()   // 1 if a row existed, 0 otherwise
-        }
-    }
-
-    override fun clearDelivery(msgId: ByteArray) {
-        conn.prepareStatement(StoreSchema.clearDeliverySql()).use { ps ->
-            ps.setBytes(1, msgId)
+    /**
+     * Execute a guarded delivery UPDATE / DELETE (C6.4-F/G/H/J). Returns the
+     * affected row count; THROWS SQLException on a storage failure -> the
+     * repository maps it to the typed StorageFailure variant. The repository
+     * builds the SQL (fixed transition mapping / ACK CAS / clear) and binds the
+     * BLOB args in order (null -> SQL NULL).
+     */
+    override fun execDeliveryUpdate(sql: String, bytesArgs: Array<ByteArray?>): Int =
+        conn.prepareStatement(sql).use { ps ->
+            bytesArgs.forEachIndexed { i, b ->
+                if (b == null) ps.setNull(i + 1, Types.BLOB) else ps.setBytes(i + 1, b)
+            }
             ps.executeUpdate()
         }
+
+    /** Raw no-arg SQL (C6.4 test seam -- `PRAGMA ignore_check_constraints`). */
+    override fun execRawSql(sql: String) {
+        conn.createStatement().use { it.execute(sql) }
     }
 
     override fun close() = conn.close()
@@ -184,7 +189,10 @@ internal class JdbcStoreDb(file: File) : StoreDb {
      * Test seam: run a raw UPDATE against the SAME connection (C6.5 corrupt-write
      * tests mutate the state / ack_mode columns to unknown codes, then re-read via
      * [readDelivery] to assert [DeliveryLookup.Corrupt]). Using the shared
-     * connection avoids any cross-connection file-lock issue.
+     * connection avoids any cross-connection file-lock issue. C6.4-C: with the new
+     * `CHECK (state IN (1..5))`, planting a bad state code requires
+     * `PRAGMA ignore_check_constraints = ON` first (see [execRawSql]); a plain
+     * bad-state UPDATE is now rejected by the schema CHECK, which is the point.
      */
     internal fun execRawUpdate(sql: String, vararg bytesArgs: ByteArray): Int =
         conn.prepareStatement(sql).use { ps ->

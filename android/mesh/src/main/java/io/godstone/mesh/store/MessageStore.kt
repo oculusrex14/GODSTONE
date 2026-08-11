@@ -110,7 +110,7 @@ interface MessageStore {
  */
 internal object StoreSchema {
     const val DB_NAME = "godstone_messages.db"
-    const val DB_VERSION = 4
+    const val DB_VERSION = 5
     const val TABLE = "held_frames"
     const val COL_MSG_ID = "msg_id"
     const val COL_TYPE = "type"
@@ -137,7 +137,8 @@ internal object StoreSchema {
             $COL_ROUTING_TAG BLOB,
             $COL_PAYLOAD BLOB,
             $COL_RECEIVED_FROM BLOB,
-            $COL_RECEIVED_AT INTEGER
+            $COL_RECEIVED_AT INTEGER,
+            CHECK (length($COL_MSG_ID) = 16)
         )
     """.trimIndent()
 
@@ -214,8 +215,23 @@ internal object StoreSchema {
     // (C6.5 fail-closed). The int state + ack_mode codes are the cross-platform
     // persistence contract (DeliveryState.code / AckMode.code), NOT the Kotlin
     // enum ordinals, so the two platforms agree even if their enum orders ever
-    // diverge. Mirrors iOS StoreSchema. DB_VERSION bumped 3 -> 4 (no installed
-    // base -> destructive onUpgrade recreate, ADR-001 §5).
+    // diverge. Mirrors iOS StoreSchema.
+    //
+    // C6.4-C/D hardening (DB_VERSION bumped 4 -> 5; no installed base -> destructive
+    // onUpgrade recreate, ADR-001 §5): two further schema CHECKs --
+    //  * `CHECK (length(msg_id) = 16)` -- the GMP/2.1 msg_id is EXACTLY 16 bytes
+    //    (BLAKE2s-128, ADR-001). The FrameV2 constructor already requires 16 bytes,
+    //    so held_frames rows always carry a 16-byte msg_id in the normal path; the
+    //    DB CHECK is defense-in-depth against a directly-written / legacy / corrupt
+    //    row (the constructor is not assumed to be the only writer). delivery_state
+    //    gets the same CHECK at the delivery boundary.
+    //  * `CHECK (state IN (1,2,3,4,5))` -- a persisted state code 0 (UNAVAILABLE) is
+    //    NOT a legal durable row (UNAVAILABLE is an in-memory / lifecycle concept
+    //    only); the only legal durable states are QUEUED_DURABLY(1),
+    //    HANDED_TO_RELAY(2), ACKNOWLEDGED_BY_RECIPIENT(3), EXPIRED(4),
+    //    CANCELLED_LOCALLY(5). The CHECK rejects a write of 0/unknown; the decode
+    //    guard ([DeliveryState.fromPersistedCode], rejects 0) catches a row that
+    //    bypassed the CHECK (legacy / ignore_check_constraints / corrupt file).
     // ------------------------------------------------------------------
     const val DELIVERY_TABLE = "delivery_state"
     const val COL_D_MSG_ID = "msg_id"
@@ -229,6 +245,8 @@ internal object StoreSchema {
             $COL_D_STATE INTEGER NOT NULL,
             $COL_D_ACK_MODE INTEGER NOT NULL DEFAULT 0,
             $COL_D_EXPECTED BLOB,
+            CHECK (length($COL_D_MSG_ID) = 16),
+            CHECK ($COL_D_STATE IN (1, 2, 3, 4, 5)),
             CHECK (
                 ($COL_D_ACK_MODE = 0 AND $COL_D_EXPECTED IS NULL) OR
                 ($COL_D_ACK_MODE = 1 AND $COL_D_EXPECTED IS NOT NULL AND length($COL_D_EXPECTED) = 16)
@@ -256,15 +274,19 @@ internal object StoreSchema {
         "INSERT INTO $DELIVERY_TABLE ($COL_D_MSG_ID, $COL_D_STATE, $COL_D_ACK_MODE, $COL_D_EXPECTED) " +
             "VALUES (?, ?, ?, ?) ON CONFLICT($COL_D_MSG_ID) DO NOTHING"
 
-    /**
-     * Advance ONLY the state column for msg_id, preserving ack_mode and
-     * expected_recipient (the binding is immutable post-creation). Returns row
-     * count 1 if a row existed and was updated, 0 otherwise. Bind: (1) state, (2) msg_id.
-     */
-    fun updateDeliveryStateSql(): String =
-        "UPDATE $DELIVERY_TABLE SET $COL_D_STATE = ? WHERE $COL_D_MSG_ID = ?"
+    // C6.4-F/G/H: lifecycle transitions and the authenticated ACK are guarded SQL
+    // CAS statements -- `UPDATE ... SET state WHERE msg_id AND state IN (...)` and
+    // (for ACK) `... AND ack_mode = 1 AND expected_recipient = ?` -- built by
+    // [io.godstone.mesh.delivery.SqliteDeliveryRepository] from the fixed
+    // [DeliveryTransition] mapping (the repo owns the truth-table; the caller
+    // cannot pass an arbitrary validFroms/target pair). The affected row count (1
+    // == Applied) decides the write, NOT a stale pre-read. See
+    // [SqliteDeliveryRepository.transitionSql] / [acknowledgeBoundSql]. The old
+    // msg_id-only `UPDATE ... WHERE msg_id = ?` (which let a cancel/expire win after
+    // a pre-read) is REMOVED -- a transition is no longer decided by a stale read.
 
-    /** Drop the delivery row for msg_id. Bind: (1) msg_id. */
+    /** Drop the delivery row for msg_id. Bind: (1) msg_id. Returns the affected
+     *  row count via [StoreDb.execDeliveryUpdate] (1 dropped, 0 already absent). */
     fun clearDeliverySql(): String =
         "DELETE FROM $DELIVERY_TABLE WHERE $COL_D_MSG_ID = ?"
 }
@@ -334,17 +356,31 @@ internal interface StoreDb {
      */
     fun inTransaction(block: (StoreDb) -> PersistResult): PersistResult
 
-    // --- Stage 4C.1 / C6.1 -- delivery_state row for the delivery journal ---
+    // --- Stage 4C.1 / C6.1 / C6.4 -- delivery_state row ---
     // Single atomic statements (see StoreSchema); no transaction seam needed.
+    // C6.4: the msg_id-only state advance was REMOVED -- transitions and the
+    // authenticated ACK are guarded SQL CAS statements built by the repository
+    // ([DeliveryRepository.transition] / [acknowledgeBound]) and executed via
+    // [execDeliveryUpdate], which returns the affected row count. A storage
+    // failure (SQL / IO error) is THROWN by these primitives and caught at the
+    // repository boundary -> typed StorageFailure (C6.4-A: absence / conflict /
+    // no-match are NEVER folded into a thrown failure; they use their own
+    // sentinels -- null / false / 0 row count).
 
-    /** Read the delivery row for [msgId], or null if no row. */
+    /** Read the delivery row for [msgId], or null if no row exists. THROWS on a
+     *  storage failure (SQL / IO) -- the repository catches `Exception` (not
+     *  `Throwable`) and maps it to [DeliveryLookup.StorageFailure]. null is ONLY
+     *  absence (C6.4-A). */
     fun readDelivery(msgId: ByteArray): DeliveryRow?
 
     /**
      * Atomically create a delivery row in state [stateOrdinal] with ack_mode
      * [ackModeOrdinal] and [expectedRecipient] (null for NONE, 16 bytes for
      * SINGLE_RECIPIENT). Returns true iff a NEW row was inserted; false if a row
-     * already exists for [msgId] (ON CONFLICT DO NOTHING).
+     * already exists for [msgId] (ON CONFLICT DO NOTHING). THROWS on a storage
+     * failure (incl. a CHECK violation -- the repository validates the C6.1
+     * binding + 16-byte msg_id BEFORE this call, so a CHECK violation here is an
+     * invariant breach -> StorageFailure, not a conflict).
      */
     fun insertDelivery(
         msgId: ByteArray,
@@ -354,13 +390,27 @@ internal interface StoreDb {
     ): Boolean
 
     /**
-     * Advance only the state column for [msgId], preserving ack_mode +
-     * expected_recipient. Returns the row count (1 if a row existed, 0 otherwise).
+     * Execute a guarded delivery UPDATE / DELETE and return the affected row
+     * count (C6.4-F/G/H/J). Used by the repository for the CAS transitions, the
+     * authenticated ACK CAS, and [StoreSchema.clearDeliverySql]. [sql] is built
+     * by the repository from the fixed [DeliveryTransition] mapping (or the fixed
+     * ACK / clear SQL); [bytesArgs] binds the BLOB parameters in order (msg_id,
+     * and for the ACK CAS the expected recipient; null entries bind NULL). The
+     * affected row count decides the outcome (1 == Applied / Cleared; 0 == no
+     * match -> the repository re-reads ONCE to classify). THROWS on a storage
+     * failure -> the repository maps it to the typed StorageFailure variant.
      */
-    fun updateDeliveryState(msgId: ByteArray, stateOrdinal: Int): Int
+    fun execDeliveryUpdate(sql: String, bytesArgs: Array<ByteArray?>): Int
 
-    /** Drop the delivery row for [msgId]. */
-    fun clearDelivery(msgId: ByteArray)
+    /**
+     * Execute a raw SQL statement with no parameters and no result (C6.4 test
+     * seam). Used by the C6.4-C/C6.5 corrupt-state tests to run
+     * `PRAGMA ignore_check_constraints = ON/OFF` so a bad state code (0 / 999)
+     * can be planted past the `CHECK (state IN (1..5))` to prove the decode guard
+     * fails closed to Corrupt. MUST stay a no-op for non-pragma statements in
+     * production paths (the repository never calls this).
+     */
+    fun execRawSql(sql: String)
 
     fun close()
 }
@@ -646,16 +696,23 @@ internal class SqlcipherStoreDb(ctx: Context) : StoreDb {
             stmt.executeUpdateDelete() > 0   // 1 inserted, 0 on conflict (DO NOTHING)
         }
 
-    override fun updateDeliveryState(msgId: ByteArray, stateOrdinal: Int): Int =
-        helper.writableDatabase
-            .compileStatement(StoreSchema.updateDeliveryStateSql()).use { stmt ->
-                stmt.bindLong(1, stateOrdinal.toLong())
-                stmt.bindBlob(2, msgId)
-                stmt.executeUpdateDelete()   // 1 if a row existed, 0 otherwise
+    /**
+     * Execute a guarded delivery UPDATE / DELETE (C6.4-F/G/H/J). Built SQL +
+     * BLOB bind args come from the repository (the fixed transition mapping / ACK
+     * CAS / clear). Returns the affected row count; THROWS SQLiteDatabaseException
+     * on a SQL / IO failure -> the repository maps it to StorageFailure.
+     */
+    override fun execDeliveryUpdate(sql: String, bytesArgs: Array<ByteArray?>): Int =
+        helper.writableDatabase.compileStatement(sql).use { stmt ->
+            bytesArgs.forEachIndexed { i, b ->
+                if (b == null) stmt.bindNull(i + 1) else stmt.bindBlob(i + 1, b)
             }
+            stmt.executeUpdateDelete()
+        }
 
-    override fun clearDelivery(msgId: ByteArray) {
-        helper.writableDatabase.execSQL(StoreSchema.clearDeliverySql(), arrayOf<Any>(msgId))
+    /** Raw no-arg SQL (C6.4 test seam -- `PRAGMA ignore_check_constraints`). */
+    override fun execRawSql(sql: String) {
+        helper.writableDatabase.execSQL(sql)
     }
 
     override fun close() = helper.close()
@@ -664,12 +721,12 @@ internal class SqlcipherStoreDb(ctx: Context) : StoreDb {
         SQLiteOpenHelper(ctx, StoreSchema.DB_NAME, key, null, StoreSchema.DB_VERSION, 1, null, null, false) {
         override fun onCreate(db: SQLiteDatabase) {
             db.execSQL(StoreSchema.CREATE_SQL)
-            // Stage 4C.1 / C6.1: delivery_state holds the lifecycle state, ack
-            // mode, and expected recipient in one row, in the same DB. onCreate
+            // Stage 4C.1 / C6.1 / C6.4: delivery_state holds the lifecycle state,
+            // ack mode, and expected recipient in one row, in the same DB. onCreate
             // creates both tables on first open; onUpgrade drops both then calls
-            // onCreate, so a version bump (3 -> 4) recreates both with the
-            // ack_mode column + CHECK (no installed base -> destructive recreate
-            // is correct, ADR-001 §5).
+            // onCreate, so a version bump (4 -> 5) recreates both with the C6.4
+            // CHECK invariants (length(msg_id)=16; state IN (1..5)) plus the C6.1
+            // binding CHECK (no installed base -> destructive recreate, ADR-001 §5).
             db.execSQL(StoreSchema.CREATE_DELIVERY_SQL)
         }
 

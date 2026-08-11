@@ -84,9 +84,38 @@ public protocol MessageStore: AnyObject {
 /// are the invariants production enforces. At-rest encryption is iOS Data
 /// Protection (a device concern, not exercised host-side), the same split as
 /// Android's SQLCipher page encryption.
+/// Durable delivery primitives the `SqliteDeliveryRepository` depends on (C6.4-A
+/// iOS mirror of Android `StoreDb`). The repository is constructed against this
+/// protocol, not the concrete `SqliteMessageStore`, so the C6.4-A storage-failure
+/// tests can supply a `FaultingDeliveryStore` (a controlled failing handle /
+/// selective fault seam -- NOT a corrupt random temp file). Every method is
+/// `throws`: a SQL / IO / missing-handle failure is thrown and mapped by the
+/// repository to a typed `.storageFailure`, NEVER folded into nil / false / 0
+/// (absence / conflict / no-match use those sentinels). `SqliteMessageStore`
+/// conforms in production.
+internal protocol DeliveryStore: AnyObject {
+    /// Read the delivery row for `msgId`, or nil if no row exists. Throws on a
+    /// storage failure (distinct from the nil absence result).
+    func readDelivery(_ msgId: Data) throws -> DeliveryRow?
+    /// Atomically create the delivery row. Returns true iff a NEW row was
+    /// inserted (ON CONFLICT DO NOTHING -> false). Throws on storage failure.
+    func insertDelivery(_ msgId: Data, stateOrdinal: Int32, ackModeOrdinal: Int32,
+                        expectedRecipient: Data?) throws -> Bool
+    /// Run a guarded delivery UPDATE (the C6.4-F/H CAS). Returns the affected
+    /// row count (0/1; >1 is an invariant violation). `bytesArgs` are the BLOB
+    /// binds in order, with nil for a SQL NULL. Throws on storage failure.
+    func execDeliveryUpdate(_ sql: String, bytesArgs: [Data?]) throws -> Int
+}
+
 internal enum StoreSchema {
     static let dbName = "godstone_messages.db"
-    static let dbVersion = 4
+    /// Schema logical revision (C6.4-E). Mirrors Android `StoreSchema.DB_VERSION`.
+    /// Bumped 4 -> 5 by C6.4 (added `CHECK (length(msg_id) = 16)` on both tables and
+    /// `CHECK (state IN (1,2,3,4,5))` on delivery_state). The store stamps this into
+    /// `PRAGMA user_version` and recreates the tables when a file's user_version is
+    /// older -- the iOS twin of Android's `SQLiteOpenHelper.onUpgrade`
+    /// (destructive drop+recreate; no installed base to preserve per ADR-001 §5).
+    static let dbVersion: Int32 = 5
     static let table = "held_frames"
     static let colMsgId = "msg_id"
     static let colType = "type"
@@ -102,6 +131,11 @@ internal enum StoreSchema {
     /// Per-row bookkeeping beyond the payload blob (columns + page overhead).
     static let rowOverhead: Int64 = 64
 
+    /// C6.4-D: the 16-byte msg_id invariant is enforced at the DB level on BOTH
+    /// tables (`CHECK (length(msg_id) = 16)`). The GMP/2.1 msg_id is BLAKE2s-128 =
+    /// 16 bytes; `FrameV2.init` already preconditions `msgId.count == 16`, so this
+    /// is defense-in-depth (a row can only be created via the wire path, which
+    /// guards first). Mirrors Android `StoreSchema.CREATE_SQL`.
     static let createSql = """
         CREATE TABLE \(table) (
             \(colMsgId) BLOB PRIMARY KEY,
@@ -113,7 +147,8 @@ internal enum StoreSchema {
             \(colRoutingTag) BLOB,
             \(colPayload) BLOB,
             \(colReceivedFrom) BLOB,
-            \(colReceivedAt) INTEGER
+            \(colReceivedAt) INTEGER,
+            CHECK (length(\(colMsgId)) = 16)
         )
         """
 
@@ -194,12 +229,19 @@ internal enum StoreSchema {
     static let colDAckMode = "ack_mode"
     static let colDExpected = "expected_recipient"
 
+    /// C6.4-C/D: the delivery row enforces (a) the 16-byte msg_id invariant, (b)
+    /// the legal durable-state set (state IN (1,2,3,4,5) -- UNAVAILABLE/code 0 is
+    /// NOT a legal durable row, only an in-memory concept), and (c) the C6.1
+    /// binding invariant (none -> null recipient; singleRecipient -> 16-byte
+    /// recipient). Mirrors Android `StoreSchema.CREATE_DELIVERY_SQL`.
     static let createDeliverySql = """
         CREATE TABLE \(deliveryTable) (
             \(colDMsgId) BLOB PRIMARY KEY,
             \(colDState) INTEGER NOT NULL,
             \(colDAckMode) INTEGER NOT NULL DEFAULT 0,
             \(colDExpected) BLOB,
+            CHECK (length(\(colDMsgId)) = 16),
+            CHECK (\(colDState) IN (1, 2, 3, 4, 5)),
             CHECK ((\(colDAckMode) = 0 AND \(colDExpected) IS NULL) OR
                    (\(colDAckMode) = 1 AND \(colDExpected) IS NOT NULL AND length(\(colDExpected)) = 16))
         )
@@ -223,13 +265,10 @@ internal enum StoreSchema {
         "INSERT INTO \(deliveryTable) (\(colDMsgId), \(colDState), \(colDAckMode), \(colDExpected)) " +
         "VALUES (?, ?, ?, ?) ON CONFLICT(\(colDMsgId)) DO NOTHING"
 
-    /// Advance ONLY the state column for msg_id, preserving ack_mode and
-    /// expected_recipient (a handedToRelay / acknowledged write must not clobber
-    /// the recipient bound at enqueue). Bind: (1) state, (2) msg_id.
-    static let updateDeliveryStateSql =
-        "UPDATE \(deliveryTable) SET \(colDState) = ? WHERE \(colDMsgId) = ?"
-
-    /// Drop the delivery row for msg_id. Bind: (1) msg_id.
+    /// Drop the delivery row for msg_id. Bind: (1) msg_id. (C6.4: the state column
+    /// is advanced via a guarded CAS built in the repository
+    /// `execDeliveryUpdate`, NOT via a stale `updateDeliveryStateSql` pre-read
+    /// seam; that SQL was removed.)
     static let clearDeliverySql = "DELETE FROM \(deliveryTable) WHERE \(colDMsgId) = ?"
 }
 
@@ -306,18 +345,22 @@ public final class SqliteMessageStore: MessageStore {
             sqlite3_close_v2(db)
             return
         }
+        // `sqlite3_open_v2` returns SQLITE_OK with a non-nil handle on success;
+        // unwrap once so the migration helpers receive a non-optional `OpaquePointer`.
+        guard let db = db else { return }
         handle = db
-        sqlite3_exec(db, StoreSchema.createSqlIfNotExists, nil, nil, nil)
-        // Stage 4C.1 / C6.1: delivery_state holds the lifecycle state, ack mode,
-        // and expected recipient in one row, in the same DB. iOS has no PRAGMA
-        // user_version migration hook (it relies on idempotent IF NOT EXISTS
-        // creates), and there is NO installed base (ADR-001 §5: GMP/1 was never
-        // shipped), so every DB file is created fresh with the ack_mode column +
-        // the C6.1 binding CHECK -- there is no v3-era file to migrate, and a
-        // stale file from an earlier dev build is simply recreated (the
-        // IF NOT EXISTS create is a no-op on a table that already has the new
-        // columns; a pre-ack_mode dev file is wiped on reset, not migrated).
-        sqlite3_exec(db, StoreSchema.createDeliverySqlIfNotExists, nil, nil, nil)
+        // C6.4-E: PRAGMA user_version schema versioning -- the iOS twin of
+        // Android's `SQLiteOpenHelper.onUpgrade` (destructive drop+recreate). The
+        // store stamps `StoreSchema.dbVersion` into `PRAGMA user_version`; on open,
+        // a file whose user_version is older (or 0 -- fresh) has BOTH tables
+        // dropped and recreated with the current schema (incl. the C6.4 CHECKs),
+        // then user_version is stamped. A current-version file is left untouched
+        // (belt-and-suspenders `IF NOT EXISTS` creates are harmless no-ops on
+        // tables that already match). There is NO installed base (ADR-001 §5:
+        // GMP/1 was never shipped), so a version mismatch is a stale dev build --
+        // destructive recreation is correct, no data to preserve. The logical
+        // revision number (dbVersion) is documented to match Android DB_VERSION.
+        runMigrations(db)
         // At-rest encryption: mark the file complete-protection. Best-effort --
         // on the macOS host this is accepted but not enforced (device concern).
         try? FileManager.default.setAttributes(
@@ -558,96 +601,168 @@ public final class SqliteMessageStore: MessageStore {
         sqlite3_step(stmt)
     }
 
-    // MARK: - Stage 4C.1 / C6.1 delivery_state row (single atomic statements)
+    // MARK: - C6.4-E: PRAGMA user_version schema versioning
     //
-    // Each operation is one SQL statement under the connection lock (via
-    // `withDb`), so the non-recursive NSLock is acquired once per call and never
-    // nested. `insert` creates the row (ON CONFLICT DO NOTHING -- the caller
-    // detects a conflict by re-reading); `updateState` advances ONLY the state
-    // column (preserving ack_mode + expected_recipient); `clear` drops the row.
-    // The expected recipient is NEVER updated on an existing row. Row counts come
-    // from `sqlite3_changes(db)` (Android uses executeUpdateDelete(); JDBC uses
+    // The iOS twin of Android's `SQLiteOpenHelper.onUpgrade`. On open, read
+    // `PRAGMA user_version`; if it is older than `StoreSchema.dbVersion` (or 0 --
+    // fresh file), drop+recreate BOTH tables with the current schema (incl. the
+    // C6.4 CHECKs) and stamp `user_version = dbVersion`. If current, leave the
+    // file untouched (the `IF NOT EXISTS` creates are harmless no-ops on tables
+    // that already match). No installed base (ADR-001 §5) -> destructive
+    // recreation is correct. Documented logical revision matches Android
+    // `StoreSchema.DB_VERSION`.
+
+    private enum StoreError: Error { case handleMissing, prepareFailed, stepFailed, execFailed }
+
+    /// Read `PRAGMA user_version` (one int row), or 0 if the read fails.
+    @inline(__always)
+    private func readUserVersion(_ db: OpaquePointer) -> Int32 {
+        var stmt: OpaquePointer?
+        guard sqlite3_prepare_v2(db, "PRAGMA user_version", -1, &stmt, nil) == SQLITE_OK else {
+            sqlite3_finalize(stmt); return 0
+        }
+        defer { sqlite3_finalize(stmt) }
+        guard sqlite3_step(stmt) == SQLITE_ROW else { return 0 }
+        return sqlite3_column_int(stmt, 0)
+    }
+
+    /// Stamp `PRAGMA user_version = version` (persists in the DB header).
+    @inline(__always)
+    private func setUserVersion(_ db: OpaquePointer, _ version: Int32) {
+        sqlite3_exec(db, "PRAGMA user_version = \(version)", nil, nil, nil)
+    }
+
+    /// C6.4-E migration: drop+recreate both tables on a stale/fresh file;
+    /// no-op (idempotent IF NOT EXISTS) on a current file.
+    private func runMigrations(_ db: OpaquePointer) {
+        if readUserVersion(db) >= StoreSchema.dbVersion {
+            sqlite3_exec(db, StoreSchema.createSqlIfNotExists, nil, nil, nil)
+            sqlite3_exec(db, StoreSchema.createDeliverySqlIfNotExists, nil, nil, nil)
+            return
+        }
+        sqlite3_exec(db, "DROP TABLE IF EXISTS \(StoreSchema.deliveryTable)", nil, nil, nil)
+        sqlite3_exec(db, "DROP TABLE IF EXISTS \(StoreSchema.table)", nil, nil, nil)
+        sqlite3_exec(db, StoreSchema.createSql, nil, nil, nil)
+        sqlite3_exec(db, StoreSchema.createDeliverySql, nil, nil, nil)
+        setUserVersion(db, StoreSchema.dbVersion)
+    }
+
+    // MARK: - Stage 4C.1 / C6.1 / C6.4 delivery_state row (throwing primitives)
+    //
+    // C6.4-A: every delivery primitive is `throws` -- a SQL / IO / missing-handle
+    // failure is THROWN and mapped by `SqliteDeliveryRepository` to a typed
+    // `.storageFailure`, NEVER folded into nil / false / 0 (absence / conflict /
+    // no-match use those sentinels). This is the "throwing strict primitives"
+    // directive for iOS (Android catches `Exception` at the boundary; iOS throws
+    // from the primitive and catches at the repository). Each operation is one SQL
+    // statement under the connection lock; row counts come from
+    // `sqlite3_changes(db)` (Android uses executeUpdateDelete(); JDBC uses
     // executeUpdate()). Mirrors the Android `StoreDb` delivery methods
-    // byte-identically.
+    // byte-identically. The stale pre-read `updateDeliveryState` / `clearDelivery`
+    // seams were REMOVED (C6.4-F/J): state advances via a guarded CAS built in the
+    // repository and run through `execDeliveryUpdate`; clear is
+    // `execDeliveryUpdate(clearDeliverySql)`.
+
+    /// Throwing connection accessor (C6.4-A): throws `StoreError.handleMissing`
+    /// when the DB handle is nil, otherwise runs `body` under the connection lock.
+    /// Distinct from the non-throwing `withDb` (used by the held-frames surface that
+    /// reports failure as nil / 0 / false -- NOT part of the C6.4-A delivery
+    /// surface).
+    private func withDbThrowing<T>(_ body: (OpaquePointer) throws -> T) throws -> T {
+        lock.lock(); defer { lock.unlock() }
+        guard let db = handle else { throw StoreError.handleMissing }
+        return try body(db)
+    }
 
     /// Read the delivery row for `msgId`: (state code, ack_mode code, expected
-    /// recipient), or nil if no row exists. The expected recipient is nil when the
-    /// column is SQL NULL (no recipient bound), distinct from an empty blob.
-    internal func readDelivery(_ msgId: Data) -> DeliveryRow? {
-        withDb { db in
+    /// recipient), or nil if NO row exists (absence). Throws on a storage failure
+    /// (prepare/step error or missing handle) -- distinct from the nil absence
+    /// result (C6.4-A). The expected recipient is nil when the column is SQL NULL
+    /// (no recipient bound), distinct from an empty blob.
+    internal func readDelivery(_ msgId: Data) throws -> DeliveryRow? {
+        try withDbThrowing { db in
             var stmt: OpaquePointer?
             guard sqlite3_prepare_v2(db, StoreSchema.readDeliverySql, -1, &stmt, nil) == SQLITE_OK else {
-                sqlite3_finalize(stmt); return nil
+                sqlite3_finalize(stmt); throw StoreError.prepareFailed
             }
             defer { sqlite3_finalize(stmt) }
             bindBlob(stmt, 1, msgId)
-            guard sqlite3_step(stmt) == SQLITE_ROW else { return nil }
+            let rc = sqlite3_step(stmt)
+            if rc == SQLITE_DONE { return nil } // no row -- absence, NOT failure
+            guard rc == SQLITE_ROW else { throw StoreError.stepFailed }
             let state = sqlite3_column_int(stmt, 0)
             let ackMode = sqlite3_column_int(stmt, 1)
             // Distinguish SQL NULL (no recipient) from a zero-length blob.
             let expected: Data? =
                 sqlite3_column_type(stmt, 2) == SQLITE_NULL ? nil : readBlob(stmt, 2)
             return DeliveryRow(state: state, ackMode: ackMode, expectedRecipient: expected)
-        } ?? nil
+        }
     }
 
     /// Atomically create the delivery row in QUEUED_DURABLY with the ack mode and
     /// expected recipient. Returns true iff a NEW row was inserted; false if a row
     /// already exists (ON CONFLICT DO NOTHING) -- the caller re-reads to classify
     /// the conflict. The expected recipient is NEVER updated on an existing row.
+    /// Throws on a storage failure (C6.4-A).
     internal func insertDelivery(_ msgId: Data, stateOrdinal: Int32, ackModeOrdinal: Int32,
-                                 expectedRecipient: Data?) -> Bool {
-        withDb { db in
+                                 expectedRecipient: Data?) throws -> Bool {
+        try withDbThrowing { db in
             var stmt: OpaquePointer?
             guard sqlite3_prepare_v2(db, StoreSchema.insertDeliverySql, -1, &stmt, nil) == SQLITE_OK else {
-                sqlite3_finalize(stmt); return false
+                sqlite3_finalize(stmt); throw StoreError.prepareFailed
             }
             defer { sqlite3_finalize(stmt) }
             bindBlob(stmt, 1, msgId)
             sqlite3_bind_int(stmt, 2, stateOrdinal)
             sqlite3_bind_int(stmt, 3, ackModeOrdinal)
             if let r = expectedRecipient { bindBlob(stmt, 4, r) } else { sqlite3_bind_null(stmt, 4) }
-            sqlite3_step(stmt)
+            guard sqlite3_step(stmt) == SQLITE_DONE else { throw StoreError.stepFailed }
             return sqlite3_changes(db) > 0   // 1 inserted, 0 on conflict (DO NOTHING)
-        } ?? false
+        }
     }
 
-    /// Advance ONLY the state column for `msgId`, preserving ack_mode and
-    /// expected_recipient. Returns the row count (1 if a row existed and was
-    /// updated, 0 otherwise).
-    internal func updateDeliveryState(_ msgId: Data, stateOrdinal: Int32) -> Int {
-        withDb { db in
+    /// Run a guarded delivery UPDATE (the C6.4-F/H CAS). Returns the affected row
+    /// count (0/1; >1 is an invariant violation the repository maps to
+    /// `.storageFailure`). `bytesArgs` are the BLOB binds in order, with nil for a
+    /// SQL NULL. Throws on a storage failure (C6.4-A). This REPLACES the stale
+    /// `updateDeliveryState` pre-read seam: the repository builds the guarded
+    /// `UPDATE ... WHERE msg_id AND state IN (...) [AND ack_mode ...] [AND
+    /// expected_recipient = ?]` and decides `.applied` by the affected count, not a
+    /// pre-read. Mirrors Android `StoreDb.execDeliveryUpdate`.
+    internal func execDeliveryUpdate(_ sql: String, bytesArgs: [Data?]) throws -> Int {
+        try withDbThrowing { db in
             var stmt: OpaquePointer?
-            guard sqlite3_prepare_v2(db, StoreSchema.updateDeliveryStateSql, -1, &stmt, nil) == SQLITE_OK else {
-                sqlite3_finalize(stmt); return 0
+            guard sqlite3_prepare_v2(db, sql, -1, &stmt, nil) == SQLITE_OK else {
+                sqlite3_finalize(stmt); throw StoreError.prepareFailed
             }
             defer { sqlite3_finalize(stmt) }
-            sqlite3_bind_int(stmt, 1, stateOrdinal)
-            bindBlob(stmt, 2, msgId)
-            sqlite3_step(stmt)
-            return Int(sqlite3_changes(db))   // 1 if a row existed, 0 otherwise
-        } ?? 0
+            for (i, arg) in bytesArgs.enumerated() {
+                if let d = arg { bindBlob(stmt, Int32(i + 1), d) } else { sqlite3_bind_null(stmt, Int32(i + 1)) }
+            }
+            guard sqlite3_step(stmt) == SQLITE_DONE else { throw StoreError.stepFailed }
+            return Int(sqlite3_changes(db))
+        }
     }
 
-    /// Drop the delivery row for `msgId`.
-    internal func clearDelivery(_ msgId: Data) {
-        withDb { db in
-            var stmt: OpaquePointer?
-            guard sqlite3_prepare_v2(db, StoreSchema.clearDeliverySql, -1, &stmt, nil) == SQLITE_OK else {
-                sqlite3_finalize(stmt); return
-            }
-            defer { sqlite3_finalize(stmt) }
-            bindBlob(stmt, 1, msgId)
-            sqlite3_step(stmt)
+    /// Test seam (C6.5/C6.4-C): run a raw statement with NO BLOB binds on the SAME
+    /// locked connection -- used to flip `PRAGMA ignore_check_constraints` so the
+    /// corrupt-state tests can plant a `state = 0` / `state = 999` / mismatched
+    /// binding row past the new schema CHECKs (the CHECK would otherwise reject
+    /// the write). Production never calls this. Mirrors Android `StoreDb.execRawSql`.
+    internal func execRawSql(_ sql: String) throws {
+        try withDbThrowing { db in
+            if sqlite3_exec(db, sql, nil, nil, nil) != SQLITE_OK { throw StoreError.execFailed }
         }
     }
 
     /// Test seam (C6.5): run a raw UPDATE on the SAME locked connection the
-    /// journal uses, so the corrupt-state tests can mutate `state` / `ack_mode`
-    /// to an unknown code WITHOUT opening a second connection (SQLite
+    /// delivery table uses, so the corrupt-state tests can mutate `state` /
+    /// `ack_mode` to an unknown code WITHOUT opening a second connection (SQLite
     /// cross-connection file contention). Mirrors `JdbcStoreDb.execRawUpdate` on
     /// Android. Binds one BLOB parameter per `bytesArgs` entry (`?`, in order) and
-    /// returns `sqlite3_changes(db)`. Production never calls this.
+    /// returns `sqlite3_changes(db)` (0 if the CHECK rejected the write -- wrap the
+    /// caller in `PRAGMA ignore_check_constraints` via `execRawSql` to plant past
+    /// the CHECK). Production never calls this.
     @discardableResult
     internal func execRawUpdate(_ sql: String, _ bytesArgs: [Data]) -> Int {
         withDb { db in
@@ -700,6 +815,12 @@ public final class SqliteMessageStore: MessageStore {
         return Data(bytes: ptr, count: count)
     }
 }
+
+/// C6.4-A: `SqliteMessageStore` conforms to `DeliveryStore` so the production
+/// repository is constructed against the throwing-primitive protocol (and tests
+/// can supply a `FaultingDeliveryStore`). The witnesses are the `internal throws`
+/// methods above; the conformance is internal.
+extension SqliteMessageStore: DeliveryStore {}
 
 /// In-memory `MessageStore` for unit tests that need a durable-shaped store
 /// without touching sqlite3 -- the iOS twin of Android's `InMemoryMessageStore`.
