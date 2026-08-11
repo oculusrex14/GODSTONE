@@ -278,8 +278,11 @@ class DeliveryTrackerTest {
         val journal = FakeJournal()
         val tracker = DeliveryTracker(journal, FakeAuthenticator(true))
         val mid = msgId(24)
-        val nodeA = ByteArray(16) { 0xA1 }
-        val nodeB = ByteArray(16) { 0xB1 }
+        // 0xA1 / 0xB1 exceed signed Byte (-128..127), so they must be widened
+        // to Int then narrowed with .toByte() -- Kotlin constant-narrows only
+        // in-range literals (e.g. 0x20), not out-of-range ones.
+        val nodeA = ByteArray(16) { 0xA1.toByte() }
+        val nodeB = ByteArray(16) { 0xB1.toByte() }
         assertEquals(EnqueueResult.Created, tracker.enqueue(mid, AckMode.SINGLE_RECIPIENT, nodeA))
         // Different intended recipient for the SAME msg_id -> ConflictRecipient.
         assertEquals(EnqueueResult.ConflictRecipient, tracker.enqueue(mid, AckMode.SINGLE_RECIPIENT, nodeB))
