@@ -146,7 +146,14 @@ internal class SqliteDeliveryRepository(
         if (ackMode != AckMode.SINGLE_RECIPIENT) return AckResult.InvalidArgument
         if (expectedRecipient == null || expectedRecipient.size != 16) return AckResult.InvalidArgument
         val sql = acknowledgeBoundSql()
-        val bindArgs = if (recipientGuard) arrayOf(msgId, expectedRecipient) else arrayOf(msgId)
+        // C6.4-H: declared `Array<ByteArray?>` (mirrors the iOS twin's
+        // `bindArgs: [Data?]`) so expected-type inference flows into both
+        // `if/else` branches. Without it the smart-cast `expectedRecipient`
+        // (non-null past the line-147 guard) makes each branch infer the
+        // INVARIANT `Array<ByteArray>` (non-null), which is not assignable to
+        // `execDeliveryUpdate`'s `Array<ByteArray?>` parameter.
+        val bindArgs: Array<ByteArray?> =
+            if (recipientGuard) arrayOf(msgId, expectedRecipient) else arrayOf(msgId)
         return try {
             val affected = db.execDeliveryUpdate(sql, bindArgs)
             when (affected) {
