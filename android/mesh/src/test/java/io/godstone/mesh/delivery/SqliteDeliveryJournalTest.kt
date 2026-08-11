@@ -185,7 +185,7 @@ class SqliteDeliveryJournalTest {
     }
 
     @Test
-    fun `the schema CHECK enforces the C6.1 binding invariant at the DB level`() {
+    fun `the schema CHECK enforces the C6-1 binding invariant at the DB level`() {
         val file = Files.createTempFile("godstone-delivery", ".db").toFile()
         try {
             val j = open(file)
