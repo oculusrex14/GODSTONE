@@ -86,7 +86,7 @@ public protocol MessageStore: AnyObject {
 /// Android's SQLCipher page encryption.
 internal enum StoreSchema {
     static let dbName = "godstone_messages.db"
-    static let dbVersion = 3
+    static let dbVersion = 4
     static let table = "held_frames"
     static let colMsgId = "msg_id"
     static let colType = "type"
@@ -164,33 +164,44 @@ internal enum StoreSchema {
     static let containsSql = "SELECT 1 FROM \(table) WHERE \(colMsgId) = ? LIMIT 1"
 
     // ------------------------------------------------------------------
-    // Stage 4C / C4 -- delivery_state table (byte-identical cross-platform).
+    // Stage 4C.1 / C6.1 -- delivery_state table (byte-identical cross-platform).
     //
-    // Holds the delivery lifecycle state AND the intended recipient for a
-    // message id in ONE row keyed by msg_id, in the SAME DB file as the held
-    // frames, so the ACK authenticity decision (C2) binds to the recipient
-    // recorded in durable outbound state INDEPENDENT of the ACK frame. Each
-    // operation is a single atomic SQL statement -- no read-modify-write, no
-    // nested transaction -- so the non-recursive connection lock is acquired
-    // once per call (iOS) and no transaction seam is needed:
-    //   * a state-only write preserves any bound expected recipient via a
-    //     subquery (the subquery reads the pre-REPLACE row);
-    //   * a recipient-only write preserves the current state via COALESCE,
-    //     defaulting to 0 (unavailable) if no row exists yet.
-    // The int state code is the cross-platform persistence contract
-    // (DeliveryState.code), NOT the enum order, so the two platforms agree even
-    // if their enum orders ever diverge. Mirrors Android StoreSchema.
+    // Holds the delivery lifecycle state, the ACK mode, AND the intended
+    // recipient for a message id in ONE row keyed by msg_id, in the SAME DB file
+    // as the held frames, so the ACK authenticity decision (C2) binds to the
+    // recipient recorded in durable outbound state INDEPENDENT of the ACK frame.
+    // The expected recipient is IMMUTABLE post-creation (C6.1/C6.3): there is no
+    // recipient-only write, and a duplicate insert is ON CONFLICT DO NOTHING (it
+    // does NOT overwrite the bound recipient). Each mutation is a single atomic
+    // SQL statement -- no read-modify-write, no nested transaction -- so the
+    // non-recursive connection lock is acquired once per call (iOS) and no
+    // transaction seam is needed. A crash between DeliveryTracker's read and
+    // write leaves the LAST persisted state on disk (the write did not commit) --
+    // the crash-safe semantics ADR-005 requires. (CAS-hardened transitions arrive
+    // in C6.4.)
+    //
+    // The schema CHECK enforces the C6.1 binding invariant at the DB level:
+    //   (ack_mode = 0 AND expected_recipient IS NULL) OR
+    //   (ack_mode = 1 AND expected_recipient IS NOT NULL AND length = 16)
+    // The int state / ack_mode codes are the cross-platform persistence contract
+    // (DeliveryState.code / AckMode.rawValue), NOT the enum order, so the two
+    // platforms agree even if their enum orders ever diverge. Mirrors Android
+    // StoreSchema.
     // ------------------------------------------------------------------
     static let deliveryTable = "delivery_state"
     static let colDMsgId = "msg_id"
     static let colDState = "state"
+    static let colDAckMode = "ack_mode"
     static let colDExpected = "expected_recipient"
 
     static let createDeliverySql = """
         CREATE TABLE \(deliveryTable) (
             \(colDMsgId) BLOB PRIMARY KEY,
-            \(colDState) INTEGER,
-            \(colDExpected) BLOB
+            \(colDState) INTEGER NOT NULL,
+            \(colDAckMode) INTEGER NOT NULL DEFAULT 0,
+            \(colDExpected) BLOB,
+            CHECK ((\(colDAckMode) = 0 AND \(colDExpected) IS NULL) OR
+                   (\(colDAckMode) = 1 AND \(colDExpected) IS NOT NULL AND length(\(colDExpected)) = 16))
         )
         """
 
@@ -198,27 +209,36 @@ internal enum StoreSchema {
     static let createDeliverySqlIfNotExists =
         createDeliverySql.replacingOccurrences(of: "CREATE TABLE ", with: "CREATE TABLE IF NOT EXISTS ")
 
-    /// Read the delivery row: (state code, expected recipient or NULL). Bind: (1) msg_id.
+    /// Read the delivery row: (state code, ack_mode code, expected recipient or
+    /// NULL). Bind: (1) msg_id.
     static let readDeliverySql =
-        "SELECT \(colDState), \(colDExpected) FROM \(deliveryTable) WHERE \(colDMsgId) = ?"
+        "SELECT \(colDState), \(colDAckMode), \(colDExpected) FROM \(deliveryTable) WHERE \(colDMsgId) = ?"
 
-    /// Persist the state for msg_id, preserving any bound expected recipient. The
-    /// subquery reads the pre-REPLACE row so the recipient survives the
-    /// state-only update (a handedToRelay / acknowledged write must not clobber
-    /// the recipient bound at enqueue). Bind: (1) msg_id, (2) state, (3) msg_id.
-    static let upsertDeliveryStateSql =
-        "INSERT OR REPLACE INTO \(deliveryTable) (\(colDMsgId), \(colDState), \(colDExpected)) " +
-        "VALUES (?, ?, (SELECT \(colDExpected) FROM \(deliveryTable) WHERE \(colDMsgId) = ?))"
+    /// Create the delivery row in QUEUED_DURABLY with the ack mode and expected
+    /// recipient. ON CONFLICT DO NOTHING: a duplicate insert returns 0 rows (the
+    /// caller re-reads to classify the conflict) and does NOT mutate the bound
+    /// recipient (C6.1: the historical send intent is never overwritten).
+    /// Bind: (1) msg_id, (2) state, (3) ack_mode, (4) expected_recipient.
+    static let insertDeliverySql =
+        "INSERT INTO \(deliveryTable) (\(colDMsgId), \(colDState), \(colDAckMode), \(colDExpected)) " +
+        "VALUES (?, ?, ?, ?) ON CONFLICT(\(colDMsgId)) DO NOTHING"
 
-    /// Persist the expected recipient for msg_id (or clear it with NULL),
-    /// preserving the current state (defaults to 0 / unavailable if no row).
-    /// Bind: (1) msg_id, (2) msg_id, (3) expected_recipient (NULL clears).
-    static let upsertDeliveryRecipientSql =
-        "INSERT OR REPLACE INTO \(deliveryTable) (\(colDMsgId), \(colDState), \(colDExpected)) " +
-        "VALUES (?, COALESCE((SELECT \(colDState) FROM \(deliveryTable) WHERE \(colDMsgId) = ?), 0), ?)"
+    /// Advance ONLY the state column for msg_id, preserving ack_mode and
+    /// expected_recipient (a handedToRelay / acknowledged write must not clobber
+    /// the recipient bound at enqueue). Bind: (1) state, (2) msg_id.
+    static let updateDeliveryStateSql =
+        "UPDATE \(deliveryTable) SET \(colDState) = ? WHERE \(colDMsgId) = ?"
 
     /// Drop the delivery row for msg_id. Bind: (1) msg_id.
     static let clearDeliverySql = "DELETE FROM \(deliveryTable) WHERE \(colDMsgId) = ?"
+}
+
+/// One `delivery_state` row before it is typed into a `DeliveryRecord` (the
+/// state / ack_mode codes may be unknown / corrupt). Mirrors Android `DeliveryRow`.
+internal struct DeliveryRow {
+    let state: Int32
+    let ackMode: Int32
+    let expectedRecipient: Data?
 }
 
 /// A stored row before it is typed into a FrameV2 (the type code may be
@@ -288,11 +308,15 @@ public final class SqliteMessageStore: MessageStore {
         }
         handle = db
         sqlite3_exec(db, StoreSchema.createSqlIfNotExists, nil, nil, nil)
-        // Stage 4C / C4: delivery_state holds the lifecycle state + expected
-        // recipient in one row, in the same DB. iOS has no PRAGMA user_version
-        // migration hook (it relies on idempotent IF NOT EXISTS creates), so an
-        // existing v2 file gains the delivery_state table on next open -- there
-        // is no installed base (ADR-001 §5), so this is correct.
+        // Stage 4C.1 / C6.1: delivery_state holds the lifecycle state, ack mode,
+        // and expected recipient in one row, in the same DB. iOS has no PRAGMA
+        // user_version migration hook (it relies on idempotent IF NOT EXISTS
+        // creates), and there is NO installed base (ADR-001 §5: GMP/1 was never
+        // shipped), so every DB file is created fresh with the ack_mode column +
+        // the C6.1 binding CHECK -- there is no v3-era file to migrate, and a
+        // stale file from an earlier dev build is simply recreated (the
+        // IF NOT EXISTS create is a no-op on a table that already has the new
+        // columns; a pre-ack_mode dev file is wiped on reset, not migrated).
         sqlite3_exec(db, StoreSchema.createDeliverySqlIfNotExists, nil, nil, nil)
         // At-rest encryption: mark the file complete-protection. Best-effort --
         // on the macOS host this is accepted but not enforced (device concern).
@@ -534,18 +558,22 @@ public final class SqliteMessageStore: MessageStore {
         sqlite3_step(stmt)
     }
 
-    // MARK: - Stage 4C / C4 delivery_state row (single atomic statements)
+    // MARK: - Stage 4C.1 / C6.1 delivery_state row (single atomic statements)
     //
     // Each operation is one SQL statement under the connection lock (via
     // `withDb`), so the non-recursive NSLock is acquired once per call and never
-    // nested. A state-only write preserves any bound expected recipient via a
-    // subquery; a recipient-only write preserves the state via COALESCE. Mirrors
-    // the Android `StoreDb` delivery methods byte-identically.
+    // nested. `insert` creates the row (ON CONFLICT DO NOTHING -- the caller
+    // detects a conflict by re-reading); `updateState` advances ONLY the state
+    // column (preserving ack_mode + expected_recipient); `clear` drops the row.
+    // The expected recipient is NEVER updated on an existing row. Row counts come
+    // from `sqlite3_changes(db)` (Android uses executeUpdateDelete(); JDBC uses
+    // executeUpdate()). Mirrors the Android `StoreDb` delivery methods
+    // byte-identically.
 
-    /// Read the delivery row for `msgId`: (state code, expected recipient), or nil
-    /// if no row exists. The expected recipient is nil when the column is SQL NULL
-    /// (no recipient bound), distinct from an empty blob.
-    internal func readDelivery(_ msgId: Data) -> (state: Int32, expectedRecipient: Data?)? {
+    /// Read the delivery row for `msgId`: (state code, ack_mode code, expected
+    /// recipient), or nil if no row exists. The expected recipient is nil when the
+    /// column is SQL NULL (no recipient bound), distinct from an empty blob.
+    internal func readDelivery(_ msgId: Data) -> DeliveryRow? {
         withDb { db in
             var stmt: OpaquePointer?
             guard sqlite3_prepare_v2(db, StoreSchema.readDeliverySql, -1, &stmt, nil) == SQLITE_OK else {
@@ -555,47 +583,50 @@ public final class SqliteMessageStore: MessageStore {
             bindBlob(stmt, 1, msgId)
             guard sqlite3_step(stmt) == SQLITE_ROW else { return nil }
             let state = sqlite3_column_int(stmt, 0)
+            let ackMode = sqlite3_column_int(stmt, 1)
             // Distinguish SQL NULL (no recipient) from a zero-length blob.
             let expected: Data? =
-                sqlite3_column_type(stmt, 1) == SQLITE_NULL ? nil : readBlob(stmt, 1)
-            return (state, expected)
+                sqlite3_column_type(stmt, 2) == SQLITE_NULL ? nil : readBlob(stmt, 2)
+            return DeliveryRow(state: state, ackMode: ackMode, expectedRecipient: expected)
         } ?? nil
     }
 
-    /// Persist the delivery state for `msgId`, preserving any bound expected
-    /// recipient (the subquery reads the pre-REPLACE row).
-    internal func upsertDeliveryState(_ msgId: Data, stateOrdinal: Int32) {
+    /// Atomically create the delivery row in QUEUED_DURABLY with the ack mode and
+    /// expected recipient. Returns true iff a NEW row was inserted; false if a row
+    /// already exists (ON CONFLICT DO NOTHING) -- the caller re-reads to classify
+    /// the conflict. The expected recipient is NEVER updated on an existing row.
+    internal func insertDelivery(_ msgId: Data, stateOrdinal: Int32, ackModeOrdinal: Int32,
+                                 expectedRecipient: Data?) -> Bool {
         withDb { db in
             var stmt: OpaquePointer?
-            guard sqlite3_prepare_v2(db, StoreSchema.upsertDeliveryStateSql, -1, &stmt, nil) == SQLITE_OK else {
-                sqlite3_finalize(stmt); return
+            guard sqlite3_prepare_v2(db, StoreSchema.insertDeliverySql, -1, &stmt, nil) == SQLITE_OK else {
+                sqlite3_finalize(stmt); return false
             }
             defer { sqlite3_finalize(stmt) }
             bindBlob(stmt, 1, msgId)
             sqlite3_bind_int(stmt, 2, stateOrdinal)
-            bindBlob(stmt, 3, msgId)   // subquery reads the pre-REPLACE recipient
+            sqlite3_bind_int(stmt, 3, ackModeOrdinal)
+            if let r = expectedRecipient { bindBlob(stmt, 4, r) } else { sqlite3_bind_null(stmt, 4) }
             sqlite3_step(stmt)
-        }
+            return sqlite3_changes(db) > 0   // 1 inserted, 0 on conflict (DO NOTHING)
+        } ?? false
     }
 
-    /// Persist (or clear with nil) the expected recipient for `msgId`, preserving
-    /// the current state (defaults to 0 / unavailable if no row).
-    internal func upsertDeliveryRecipient(_ msgId: Data, expectedRecipient: Data?) {
+    /// Advance ONLY the state column for `msgId`, preserving ack_mode and
+    /// expected_recipient. Returns the row count (1 if a row existed and was
+    /// updated, 0 otherwise).
+    internal func updateDeliveryState(_ msgId: Data, stateOrdinal: Int32) -> Int {
         withDb { db in
             var stmt: OpaquePointer?
-            guard sqlite3_prepare_v2(db, StoreSchema.upsertDeliveryRecipientSql, -1, &stmt, nil) == SQLITE_OK else {
-                sqlite3_finalize(stmt); return
+            guard sqlite3_prepare_v2(db, StoreSchema.updateDeliveryStateSql, -1, &stmt, nil) == SQLITE_OK else {
+                sqlite3_finalize(stmt); return 0
             }
             defer { sqlite3_finalize(stmt) }
-            bindBlob(stmt, 1, msgId)
-            bindBlob(stmt, 2, msgId)   // subquery reads the pre-REPLACE state
-            if let r = expectedRecipient {
-                bindBlob(stmt, 3, r)
-            } else {
-                sqlite3_bind_null(stmt, 3)
-            }
+            sqlite3_bind_int(stmt, 1, stateOrdinal)
+            bindBlob(stmt, 2, msgId)
             sqlite3_step(stmt)
-        }
+            return Int(sqlite3_changes(db))   // 1 if a row existed, 0 otherwise
+        } ?? 0
     }
 
     /// Drop the delivery row for `msgId`.
@@ -609,6 +640,28 @@ public final class SqliteMessageStore: MessageStore {
             bindBlob(stmt, 1, msgId)
             sqlite3_step(stmt)
         }
+    }
+
+    /// Test seam (C6.5): run a raw UPDATE on the SAME locked connection the
+    /// journal uses, so the corrupt-state tests can mutate `state` / `ack_mode`
+    /// to an unknown code WITHOUT opening a second connection (SQLite
+    /// cross-connection file contention). Mirrors `JdbcStoreDb.execRawUpdate` on
+    /// Android. Binds one BLOB parameter per `bytesArgs` entry (`?`, in order) and
+    /// returns `sqlite3_changes(db)`. Production never calls this.
+    @discardableResult
+    internal func execRawUpdate(_ sql: String, _ bytesArgs: [Data]) -> Int {
+        withDb { db in
+            var stmt: OpaquePointer?
+            guard sqlite3_prepare_v2(db, sql, -1, &stmt, nil) == SQLITE_OK else {
+                sqlite3_finalize(stmt); return 0
+            }
+            defer { sqlite3_finalize(stmt) }
+            for (i, arg) in bytesArgs.enumerated() {
+                bindBlob(stmt, Int32(i + 1), arg)
+            }
+            sqlite3_step(stmt)
+            return Int(sqlite3_changes(db))
+        } ?? 0
     }
 
     // MARK: - Panic wipe

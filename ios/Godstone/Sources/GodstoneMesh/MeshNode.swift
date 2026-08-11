@@ -27,15 +27,19 @@ public final class MeshNode {
     /// `MeshNode(ctx, store)`.
     public let store: MessageStore
     /// Durable, recipient-authenticated delivery state machine (ADR-005; A-03;
-    /// Stage 4C / C5). Constructed by the composition root from the SAME
-    /// `SqliteMessageStore` as `store`: a `SqliteDeliveryJournal` is BOTH the
-    /// journal and the expected-recipient store, and an
-    /// `Ed25519AckAuthenticator` over the production
+    /// Stage 4C / C6.1). Constructed by the composition root from the SAME
+    /// `SqliteMessageStore` as `store`: a `SqliteDeliveryJournal` is the durable
+    /// record -- one row holds the delivery state, the ACK mode, and the intended
+    /// recipient (the separate `ExpectedRecipientStore` seam was removed in
+    /// C6.1), and an `Ed25519AckAuthenticator` over the production
     /// `UnresolvedRecipientKeyResolver` rejects every ACK until the M2-link
     /// identity binding wires real recipient keys (fail-closed). The outbound
-    /// path (C6) records the expected recipient + advances state on a successful
-    /// relay hand-off; the inbound ACK path (C7) binds the ACK to the durable
-    /// expected recipient. No delivery is claimed on host-only evidence --
+    /// path (C6) records the ACK mode (SOS is a broadcast -> `AckMode.none`, no
+    /// recipient binding; a directed message is `AckMode.singleRecipient`) +
+    /// advances state on a successful relay hand-off; the inbound ACK path (C7)
+    /// binds the ACK to the durable expected recipient (authenticator invoked
+    /// ONLY for singleRecipient -- a none-mode message can never be
+    /// acknowledged). No delivery is claimed on host-only evidence --
     /// A-03 / ADR-005 stay OPEN. Mirrors Android `MeshNode.deliveryTracker`.
     public let deliveryTracker: DeliveryTracker
     public private(set) lazy var ble = BleTransport()
@@ -142,13 +146,23 @@ public final class MeshNode {
 
         switch store.persist(frame, receivedFrom: identity.nodeId) {
         case .heldNew, .heldDuplicate:
-            // Stage 4C / C6: record the delivery lifecycle AFTER durable hold
+            // Stage 4C.1 / C6.1: record the delivery lifecycle AFTER durable hold
             // (persist-before-tracker, extending the 4B.1 persist-before-forward
             // gate to the delivery state). SOS is a broadcast (no single intended
-            // recipient), so `expectedRecipient = nil` -- the unbound path, no
-            // recipient binding. Each successful relay hand-off calls
-            // `markHandedToRelay` (idempotent: first transitions queued -> handed).
-            deliveryTracker.enqueue(frame.msgId, expectedRecipient: nil)
+            // recipient), so it is enqueued with `AckMode.none` and no expected
+            // recipient binding -- a none-mode message can NEVER be acknowledged
+            // via this tracker (an inbound ACK for it yields `.notAckEligible` and
+            // the authenticator is not invoked). Idempotent: a re-dispatch of the
+            // same SOS is `.alreadyQueuedSameBinding`; only a genuine enqueue
+            // rejection aborts before any BLE write. Each successful relay
+            // hand-off calls `markHandedToRelay` (idempotent: first transitions
+            // queued -> handed).
+            switch deliveryTracker.enqueue(frame.msgId, ackMode: .none, expectedRecipient: nil) {
+            case .created, .alreadyQueuedSameBinding:
+                break
+            default:
+                return .failed("delivery enqueue rejected")
+            }
             let handed = currentPeers().reduce(into: 0) { count, peer in
                 if send(frame, peer) {
                     count += 1
@@ -173,10 +187,22 @@ public final class MeshNode {
     /// Mirrors Android `ingestInbound`. The production authenticator is fail-closed
     /// (`UnresolvedRecipientKeyResolver`), so no ACK verifies until M2-link binds
     /// real recipient keys -- A-03 / ADR-005 stay OPEN.
+    ///
+    /// C6.1: the Bool this seam returns is true only for `.applied` (this ACK
+    /// newly verified the intended recipient), `.alreadyAcknowledged`, and
+    /// `.duplicateAuthenticatedAck` (the message was already terminal -- an
+    /// idempotent accept, NOT a new verification; this path does NOT call
+    /// `onSosAcknowledgedByRecipient`, so no UI "delivered" claim is made from
+    /// host-only evidence). Every other `AckResult` is a rejection -> false.
     @discardableResult
     internal func ingestInbound(_ frame: FrameV2, receivedFrom: Data) -> Bool {
         if frame.type == .ack {
-            return deliveryTracker.acknowledge(frame.msgId, frame)
+            switch deliveryTracker.acknowledge(frame.msgId, frame) {
+            case .applied, .alreadyAcknowledged, .duplicateAuthenticatedAck:
+                return true
+            default:
+                return false
+            }
         }
         return router.ingest(frame, isAddressedToMe: frame.routingTag == identity.nodeHint,
                              receivedFrom: receivedFrom)

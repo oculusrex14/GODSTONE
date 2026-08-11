@@ -21,27 +21,42 @@ import GodstoneCore
 /// tests in `SqliteMessageStoreTests`.
 final class MeshNodeSosDispatchTests: XCTestCase {
 
-    /// In-memory `DeliveryJournal` + `ExpectedRecipientStore` for tests that
-    /// construct a `MeshNode` but do not exercise the ACK path (the SOS dispatch
-    /// tests). The tracker is fail-closed regardless -- the authenticator is the
-    /// production `UnresolvedRecipientKeyResolver` -- so no delivery is claimed.
-    private final class InMemoryDeliveryJournal: DeliveryJournal, ExpectedRecipientStore {
-        var state: [Data: DeliveryState] = [:]
-        var recipient: [Data: Data] = [:]
-        func read(_ msgId: Data) -> DeliveryState { state[msgId] ?? .unavailable }
-        func write(_ msgId: Data, _ s: DeliveryState) { state[msgId] = s }
-        func clear(_ msgId: Data) { state.removeValue(forKey: msgId); recipient.removeValue(forKey: msgId) }
-        func expectedRecipient(_ msgId: Data) -> Data? { recipient[msgId] }
-        func recordExpectedRecipient(_ msgId: Data, _ r: Data?) {
-            if let r { recipient[msgId] = r } else { recipient.removeValue(forKey: msgId) }
+    /// In-memory `DeliveryJournal` for tests that construct a `MeshNode` but do
+    /// not exercise the ACK path (the SOS dispatch tests). The tracker is
+    /// fail-closed regardless -- the authenticator is the production
+    /// `UnresolvedRecipientKeyResolver` -- so no delivery is claimed. C6.1:
+    /// `dispatchSos` enqueues with `AckMode.none` (SOS broadcast), so this journal
+    /// must implement the typed `DeliveryJournal` (read -> DeliveryLookup, insert
+    /// with ack mode + recipient, updateState, clear).
+    private final class InMemoryDeliveryJournal: DeliveryJournal {
+        var map: [Data: DeliveryRecord] = [:]
+
+        func read(_ msgId: Data) -> DeliveryLookup {
+            if let rec = map[msgId] { return .found(rec) }
+            return .notFound
         }
+        func insert(_ msgId: Data, ackMode: AckMode, expectedRecipient: Data?) -> Bool {
+            if map[msgId] != nil { return false }
+            map[msgId] = DeliveryRecord(msgId: msgId, state: .queuedDurably,
+                                         ackMode: ackMode, expectedRecipientNodeId: expectedRecipient)
+            return true
+        }
+        func updateState(_ msgId: Data, _ state: DeliveryState) -> Int {
+            guard let rec = map[msgId] else { return 0 }
+            map[msgId] = DeliveryRecord(msgId: msgId, state: state,
+                                         ackMode: rec.ackMode,
+                                         expectedRecipientNodeId: rec.expectedRecipientNodeId)
+            return 1
+        }
+        func clear(_ msgId: Data) { map.removeValue(forKey: msgId) }
     }
 
     /// Build a node with a fresh in-memory identity (CryptoKit default inits
     /// generate fresh keys on the macOS host -- no Keychain needed) and [store].
     /// A fail-closed `DeliveryTracker` (production `UnresolvedRecipientKeyResolver`
     /// over an in-memory journal) is injected so the node owns its tracker without
-    /// touching SQLite -- the SOS dispatch path does not drive it (C6/C7 do).
+    /// touching SQLite -- the SOS dispatch path does not drive the ACK path
+    /// (C6/C7 do); it only enqueues with `AckMode.none` + `markHandedToRelay`.
     private func makeNode(store: MessageStore) -> MeshNode {
         let identity = MeshIdentity(
             signingKey: Curve25519.Signing.PrivateKey(),
@@ -49,8 +64,7 @@ final class MeshNodeSosDispatchTests: XCTestCase {
         let journal = InMemoryDeliveryJournal()
         let tracker = DeliveryTracker(
             journal: journal,
-            authenticator: Ed25519AckAuthenticator(resolver: UnresolvedRecipientKeyResolver()),
-            expectedRecipientStore: journal)
+            authenticator: Ed25519AckAuthenticator(resolver: UnresolvedRecipientKeyResolver()))
         return MeshNode(identity: identity, store: store, deliveryTracker: tracker)
     }
 

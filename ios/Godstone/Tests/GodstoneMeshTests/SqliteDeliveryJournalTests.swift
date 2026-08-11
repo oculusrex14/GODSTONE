@@ -3,19 +3,33 @@ import CryptoKit
 @testable import GodstoneMesh
 import GodstoneCore
 
-/// Stage 4C / C4 -- the production `SqliteDeliveryJournal` over a REAL on-disk
-/// SQLite (`SqliteMessageStore`, the same engine the store tests use). Asserts
-/// the durability + preservation invariants that make the C2 ACK binding
-/// trustworthy when the expected recipient comes from durable outbound state:
-///   - a state-only write (handedToRelay / acknowledgedByRecipient) MUST preserve
-///     a recipient bound at enqueue -- otherwise the binding the C2 adversarial
-///     test relies on would be silently clobbered by every state transition;
-///   - a recipient-only write MUST preserve the state;
+/// Stage 4C.1 / C6.1 -- the production `SqliteDeliveryJournal` over a REAL
+/// on-disk SQLite (`SqliteMessageStore`, the same engine the store tests use).
+/// The delivery state, ack mode and intended recipient live in ONE row keyed by
+/// msg_id; the expected recipient is IMMUTABLE post-creation (there is no
+/// recipient-only write). Asserts the durability + preservation invariants that
+/// make the C2 ACK binding trustworthy when the expected recipient comes from
+/// durable outbound state:
+///   - `insert` creates the row (QUEUED_DURABLY + ack mode + recipient); a
+///     second insert for the same msg_id is ON CONFLICT DO NOTHING (returns
+///     false) and does NOT mutate the recipient (C6.1: the historical send
+///     intent is never overwritten);
+///   - `updateState` advances ONLY the state column, preserving ack_mode +
+///     expected_recipient (the C4 invariant the C2 binding relies on);
 ///   - the row survives a "reboot" (a fresh store + journal over the same file);
 ///   - a real `DeliveryTracker` over the real journal binds the ACK to the
-///     durable expected recipient (C1/C2 integration over SQLite, not a fake).
+///     durable expected recipient (C1/C2 integration over SQLite, not a fake);
+///   - the schema CHECK enforces the C6.1 binding invariant at the DB level;
+///   - C6.5: an unknown persisted state / ack_mode fails closed to
+///     `DeliveryLookup.corrupt` (NOT UNAVAILABLE), and a tracker over it rejects
+///     every mutation.
 ///
-/// Mirrors `SqliteDeliveryJournalTest` on Android one-for-one.
+/// Mirrors `SqliteDeliveryJournalTest` on Android one-for-one. One platform
+/// difference is documented inline: Android's JDBC engine RAISES
+/// `java.sql.SQLException` on a CHECK violation, whereas the iOS sqlite3 C API
+/// returns `SQLITE_CONSTRAINT` from `sqlite3_step`, which `insertDelivery` folds
+/// to a `false` (0-row) result. Both reject the row -- the test asserts the
+/// iOS-honest "no row written" form.
 final class SqliteDeliveryJournalTests: XCTestCase {
 
     private func msgId(_ seed: UInt8) -> Data {
@@ -44,208 +58,271 @@ final class SqliteDeliveryJournalTests: XCTestCase {
         return (priv.publicKey.rawRepresentation, priv.rawRepresentation)
     }
 
-    /// A fresh on-disk store + journal at a unique temp URL.
-    private func openJournal() -> (SqliteDeliveryJournal, URL) {
+    /// A fresh on-disk store + journal at a unique temp URL. Returns the store
+    /// too so the C6.5 corrupt tests can `execRawUpdate` on the SAME connection.
+    private func openJournal() -> (journal: SqliteDeliveryJournal, store: SqliteMessageStore, url: URL) {
         let url = URL(fileURLWithPath: NSTemporaryDirectory())
             .appendingPathComponent("godstone-delivery-\(UUID().uuidString).db")
-        let store = SqliteMessageStore(url: url, maxBytes: .max,
-                                       fileProtection: .complete)
-        return (SqliteDeliveryJournal(store), url)
+        let store = SqliteMessageStore(url: url, maxBytes: .max, fileProtection: .complete)
+        return (SqliteDeliveryJournal(store), store, url)
     }
 
-    // MARK: - state read/write
+    /// Extract the record from a `.found` lookup (fail the test otherwise).
+    private func found(_ j: SqliteDeliveryJournal, _ mid: Data) -> DeliveryRecord {
+        if case .found(let rec) = j.read(mid) { return rec }
+        XCTFail("expected .found(\(mid))"); return DeliveryRecord(
+            msgId: mid, state: .unavailable, ackMode: .none, expectedRecipientNodeId: nil)
+    }
 
-    func testWriteAndReadRecoverTheState() throws {
-        let (j, url) = openJournal()
+    // MARK: - insert / read
+
+    func testInsertCreatesQueuedDurablyRowWithAckModeAndRecipient() throws {
+        let (j, _, url) = openJournal()
         defer { try? FileManager.default.removeItem(at: url) }
         let mid = msgId(1)
-        XCTAssertEqual(.unavailable, j.read(mid))
-        j.write(mid, .queuedDurably)
-        XCTAssertEqual(.queuedDurably, j.read(mid))
-        j.write(mid, .handedToRelay)
-        XCTAssertEqual(.handedToRelay, j.read(mid))
-        j.write(mid, .acknowledgedByRecipient)
-        XCTAssertEqual(.acknowledgedByRecipient, j.read(mid))
+        XCTAssertEqual(DeliveryLookup.notFound, j.read(mid))
+        XCTAssertTrue(j.insert(mid, ackMode: .singleRecipient, expectedRecipient: nodeA()))
+        let rec = found(j, mid)
+        XCTAssertEqual(.queuedDurably, rec.state)
+        XCTAssertEqual(.singleRecipient, rec.ackMode)
+        XCTAssertEqual(rec.expectedRecipientNodeId ?? Data(), nodeA())
     }
 
-    func testRecordExpectedRecipientAndExpectedRecipientRecoverTheRecipient() throws {
-        let (j, url) = openJournal()
+    func testNoneModeInsertBindsNoRecipient() throws {
+        let (j, _, url) = openJournal()
         defer { try? FileManager.default.removeItem(at: url) }
         let mid = msgId(2)
-        XCTAssertNil(j.expectedRecipient(mid))
-        j.recordExpectedRecipient(mid, nodeA())
-        XCTAssertEqual(nodeA(), j.expectedRecipient(mid))
+        XCTAssertTrue(j.insert(mid, ackMode: .none, expectedRecipient: nil))
+        let rec = found(j, mid)
+        XCTAssertEqual(.none, rec.ackMode)
+        XCTAssertNil(rec.expectedRecipientNodeId)
     }
 
-    // MARK: - the load-bearing preservation invariants
-
-    func testStateOnlyWritePreservesBoundExpectedRecipient() throws {
-        // The load-bearing C4 invariant for C2: enqueue writes queuedDurably
-        // then records the expected recipient. Later state transitions
-        // (handedToRelay, acknowledgedByRecipient) call write() with the new
-        // state but NO recipient. If that clobbered the bound recipient, the
-        // ACK binding the C2 test relies on would be gone before the ACK arrives.
-        let (j, url) = openJournal()
+    func testSecondInsertForSameMsgIdIsOnConflictDoNothingAndDoesNotMutateRecipient() throws {
+        let (j, _, url) = openJournal()
         defer { try? FileManager.default.removeItem(at: url) }
         let mid = msgId(3)
-        j.write(mid, .queuedDurably)
-        j.recordExpectedRecipient(mid, nodeA())
-        XCTAssertEqual(nodeA(), j.expectedRecipient(mid))
-        // State advances; the recipient MUST survive.
-        j.write(mid, .handedToRelay)
-        XCTAssertEqual(.handedToRelay, j.read(mid))
-        XCTAssertEqual(nodeA(), j.expectedRecipient(mid),
-                       "state-only write must preserve the bound expected recipient")
-        j.write(mid, .acknowledgedByRecipient)
-        XCTAssertEqual(.acknowledgedByRecipient, j.read(mid))
-        XCTAssertEqual(nodeA(), j.expectedRecipient(mid),
-                       "acknowledged write must preserve the bound expected recipient")
+        XCTAssertTrue(j.insert(mid, ackMode: .singleRecipient, expectedRecipient: nodeA()))
+        // A second insert (e.g. a retry, or an attempt to rebind) returns false
+        // and MUST NOT overwrite the bound recipient with nodeB.
+        XCTAssertFalse(j.insert(mid, ackMode: .singleRecipient, expectedRecipient: nodeB()))
+        let rec = found(j, mid)
+        XCTAssertEqual(rec.expectedRecipientNodeId ?? Data(), nodeA(),
+                       "duplicate insert must not mutate the bound recipient")
+        XCTAssertEqual(.queuedDurably, rec.state)
     }
 
-    func testRecipientOnlyWritePreservesTheState() throws {
-        let (j, url) = openJournal()
+    // MARK: - the load-bearing preservation invariant
+
+    func testUpdateStateAdvancesOnlyStateColumnPreservingAckModeAndRecipient() throws {
+        // The load-bearing C4 invariant for C2: enqueue binds the expected
+        // recipient; later state transitions (HANDED_TO_RELAY, ACKNOWLEDGED) call
+        // updateState with the new state but NO recipient. If that clobbered the
+        // bound recipient, the ACK binding the C2 test relies on would be gone
+        // before the ACK arrives.
+        let (j, _, url) = openJournal()
         defer { try? FileManager.default.removeItem(at: url) }
         let mid = msgId(4)
-        j.write(mid, .queuedDurably)
-        j.recordExpectedRecipient(mid, nodeA())
-        // Re-bind the recipient (e.g. a re-enqueue); the state MUST survive.
-        j.recordExpectedRecipient(mid, nodeB())
-        XCTAssertEqual(nodeB(), j.expectedRecipient(mid))
-        XCTAssertEqual(.queuedDurably, j.read(mid),
-                       "recipient-only write must preserve the state")
-        // Clearing the recipient (nil) MUST NOT reset the state.
-        j.recordExpectedRecipient(mid, nil)
-        XCTAssertNil(j.expectedRecipient(mid))
-        XCTAssertEqual(.queuedDurably, j.read(mid),
-                       "clearing the recipient must not reset the state")
+        XCTAssertTrue(j.insert(mid, ackMode: .singleRecipient, expectedRecipient: nodeA()))
+        XCTAssertEqual(1, j.updateState(mid, .handedToRelay))
+        XCTAssertEqual(.handedToRelay, found(j, mid).state)
+        XCTAssertEqual(found(j, mid).expectedRecipientNodeId ?? Data(), nodeA(),
+                       "state-only write must preserve the bound expected recipient")
+        XCTAssertEqual(.singleRecipient, found(j, mid).ackMode,
+                       "state-only write must preserve the ack mode")
+        XCTAssertEqual(1, j.updateState(mid, .acknowledgedByRecipient))
+        XCTAssertEqual(.acknowledgedByRecipient, found(j, mid).state)
+        XCTAssertEqual(found(j, mid).expectedRecipientNodeId ?? Data(), nodeA(),
+                       "ACKNOWLEDGED write must preserve the bound expected recipient")
+        // updateState for an unknown msg_id returns 0.
+        XCTAssertEqual(0, j.updateState(msgId(99), .handedToRelay))
     }
 
     // MARK: - clear + reboot recovery
 
     func testClearDropsTheRow() throws {
-        let (j, url) = openJournal()
+        let (j, _, url) = openJournal()
         defer { try? FileManager.default.removeItem(at: url) }
         let mid = msgId(5)
-        j.write(mid, .queuedDurably)
-        j.recordExpectedRecipient(mid, nodeA())
+        XCTAssertTrue(j.insert(mid, ackMode: .singleRecipient, expectedRecipient: nodeA()))
         j.clear(mid)
-        XCTAssertEqual(.unavailable, j.read(mid))
-        XCTAssertNil(j.expectedRecipient(mid))
+        XCTAssertEqual(DeliveryLookup.notFound, j.read(mid))
     }
 
-    func testRebootRecoveryFreshJournalOverSameFileRecoversStateAndRecipient() throws {
+    func testRebootRecoveryFreshJournalOverSameFileRecoversStateAckModeAndRecipient() throws {
         // A "crash" is simulated by dropping the first store (its deinit calls
         // sqlite3_close_v2, which flushes), then reopening the same file with a
-        // fresh store + journal and recovering the persisted state + recipient.
+        // fresh store + journal and recovering the persisted record.
         let url = URL(fileURLWithPath: NSTemporaryDirectory())
             .appendingPathComponent("godstone-delivery-\(UUID().uuidString).db")
         defer { try? FileManager.default.removeItem(at: url) }
 
-        // First "boot": queue + bind recipient + hand to relay, then "crash".
+        // First "boot": insert + bind recipient + hand to relay, then "crash".
         var boot1: SqliteDeliveryJournal? = {
-            let store = SqliteMessageStore(url: url, maxBytes: .max,
-                                           fileProtection: .complete)
+            let store = SqliteMessageStore(url: url, maxBytes: .max, fileProtection: .complete)
             return SqliteDeliveryJournal(store)
         }()
         let mid = msgId(6)
-        boot1!.write(mid, .queuedDurably)
-        boot1!.recordExpectedRecipient(mid, nodeA())
-        boot1!.write(mid, .handedToRelay)
-        XCTAssertEqual(.handedToRelay, boot1!.read(mid))
-        XCTAssertEqual(nodeA(), boot1!.expectedRecipient(mid))
+        XCTAssertTrue(boot1!.insert(mid, ackMode: .singleRecipient, expectedRecipient: nodeA()))
+        XCTAssertEqual(1, boot1!.updateState(mid, .handedToRelay))
+        XCTAssertEqual(.handedToRelay, found(boot1!, mid).state)
         boot1 = nil   // "crash": deinit closes + flushes the SQLite file.
 
-        // Second "boot": a fresh store + journal over the same file recovers.
-        let store2 = SqliteMessageStore(url: url, maxBytes: .max,
-                                        fileProtection: .complete)
+        // Second "boot": a fresh store + journal over the same file recovers the
+        // full record -- state, ack mode and the bound expected recipient.
+        let store2 = SqliteMessageStore(url: url, maxBytes: .max, fileProtection: .complete)
         let boot2 = SqliteDeliveryJournal(store2)
-        XCTAssertEqual(.handedToRelay, boot2.read(mid), "state recovered after reboot")
-        XCTAssertEqual(nodeA(), boot2.expectedRecipient(mid),
+        let rec = found(boot2, mid)
+        XCTAssertEqual(.handedToRelay, rec.state, "state recovered after reboot")
+        XCTAssertEqual(.singleRecipient, rec.ackMode, "ack mode recovered after reboot")
+        XCTAssertEqual(rec.expectedRecipientNodeId ?? Data(), nodeA(),
                        "expected recipient recovered after reboot")
     }
 
-    // MARK: - C1/C2 integration over the REAL durable store
+    // MARK: - schema CHECK enforces the C6.1 binding invariant at the DB level
+
+    func testSchemaCheckEnforcesC6_1BindingInvariantAtDbLevel() throws {
+        // Platform note: Android's JDBC engine RAISES java.sql.SQLException on a
+        // CHECK violation; the iOS sqlite3 C API returns SQLITE_CONSTRAINT from
+        // sqlite3_step, which SqliteMessageStore.insertDelivery folds to a false
+        // (0-row) result. Both reject the row -- assert the iOS-honest "no row
+        // written" form (insertDelivery == false AND read == .notFound).
+        let (j, store, url) = openJournal()
+        defer { try? FileManager.default.removeItem(at: url) }
+        let mid = msgId(7)
+        // SINGLE_RECIPIENT with a NULL recipient violates the CHECK -> rejected.
+        XCTAssertFalse(store.insertDelivery(mid, stateOrdinal: DeliveryState.queuedDurably.code,
+                                            ackModeOrdinal: AckMode.singleRecipient.rawValue,
+                                            expectedRecipient: nil),
+                       "SINGLE_RECIPIENT + null recipient must violate the CHECK")
+        XCTAssertEqual(DeliveryLookup.notFound, j.read(mid), "no row written on CHECK violation")
+        // NONE with a recipient also violates the CHECK.
+        XCTAssertFalse(store.insertDelivery(mid, stateOrdinal: DeliveryState.queuedDurably.code,
+                                            ackModeOrdinal: AckMode.none.rawValue,
+                                            expectedRecipient: Data(count: 16)),
+                       "NONE + recipient must violate the CHECK")
+        // A short (non-16-byte) recipient violates the CHECK for SINGLE_RECIPIENT.
+        XCTAssertFalse(store.insertDelivery(mid, stateOrdinal: DeliveryState.queuedDurably.code,
+                                            ackModeOrdinal: AckMode.singleRecipient.rawValue,
+                                            expectedRecipient: Data(count: 8)),
+                       "a short recipient must violate the CHECK")
+        XCTAssertEqual(DeliveryLookup.notFound, j.read(mid))
+    }
+
+    // MARK: - C6.5: unknown persisted states fail closed (NOT UNAVAILABLE)
+
+    func testUnknownPersistedStateCodeReadsAsCorruptNotUnavailable() throws {
+        let (j, store, url) = openJournal()
+        defer { try? FileManager.default.removeItem(at: url) }
+        let mid = msgId(8)
+        XCTAssertTrue(j.insert(mid, ackMode: .singleRecipient, expectedRecipient: nodeA()))
+        // Corrupt the state column to an unknown code (999) on the same connection.
+        _ = store.execRawUpdate("UPDATE delivery_state SET state = 999 WHERE msg_id = ?", [mid])
+        XCTAssertEqual(DeliveryLookup.corrupt, j.read(mid),
+                       "an unknown state code must fail closed to Corrupt, NOT UNAVAILABLE")
+    }
+
+    func testUnknownAckModeCodeDecodesToNilFailClosed() {
+        // C6.5: an unknown persisted ack_mode code must fail closed. The schema
+        // CHECK makes an invalid ack_mode UNREACHABLE in the DB -- it rejects any
+        // ack_mode outside {0,1} paired with a compatible recipient binding, so
+        // `UPDATE ... SET ack_mode = 999` is itself rejected (the row stays
+        // valid). The fail-closed guard is therefore the `AckMode.fromCode`
+        // decoder, which `SqliteDeliveryJournal.read` consults. This test pins the
+        // decoder directly (and guards the Swift pitfall where a bare `.none`
+        // return would map AckMode.none to Optional.none / nil).
+        XCTAssertNil(AckMode.fromCode(999))
+        XCTAssertNil(AckMode.fromCode(-1))
+        XCTAssertEqual(AckMode.fromCode(0), .some(AckMode.none))
+        XCTAssertEqual(AckMode.fromCode(1), .some(.singleRecipient))
+    }
+
+    func testTrackerOverCorruptRecordRejectsEveryMutation() throws {
+        let (j, store, url) = openJournal()
+        defer { try? FileManager.default.removeItem(at: url) }
+        let mid = msgId(10)
+        XCTAssertTrue(j.insert(mid, ackMode: .singleRecipient, expectedRecipient: nodeA()))
+        _ = store.execRawUpdate("UPDATE delivery_state SET state = 999 WHERE msg_id = ?", [mid])
+        let tracker = DeliveryTracker(
+            journal: j,
+            authenticator: Ed25519AckAuthenticator(
+                resolver: TwoRecipientResolver(nodeA(), Data(count: 32), nodeB(), Data(count: 32))))
+        // A corrupt row does NOT silently become UNAVAILABLE; every seam fails closed.
+        XCTAssertEqual(.unavailable, tracker.state(mid), "corrupt reads as UNAVAILABLE at the state seam")
+        XCTAssertEqual(EnqueueResult.corrupt, tracker.enqueue(mid, ackMode: .singleRecipient, expectedRecipient: nodeA()))
+        XCTAssertEqual(AckResult.corrupt, tracker.acknowledge(mid, rawAck(mid)))
+        XCTAssertFalse(tracker.markHandedToRelay(mid))
+    }
+
+    // MARK: - C1/C2 integration + fail-closed production composition
 
     func testDeliveryTrackerOverSqliteDeliveryJournalBindsAckToDurableExpectedRecipient() throws {
         // C1/C2 integration over the REAL durable store (not a fake). Two valid
-        // recipients A and B. A message intended for A is acked by A (accepted)
-        // and by B (rejected) -- because the expected recipient is read from the
-        // SQLite journal at acknowledge time, independent of the ACK frame.
-        let (j, url) = openJournal()
+        // recipients A and B. A message intended for A is acked by A (.applied)
+        // and by B (.rejectedAuthentication) -- because the expected recipient
+        // is read from the SQLite journal at acknowledge time, independent of
+        // the ACK frame.
+        let (j, _, url) = openJournal()
         defer { try? FileManager.default.removeItem(at: url) }
         let (pubA, privA) = realKeypair()
         let (pubB, privB) = realKeypair()
         let resolver = TwoRecipientResolver(nodeA(), pubA, nodeB(), pubB)
-        // The SAME SqliteDeliveryJournal is BOTH the journal and the expected
-        // recipient store (one row holds both), as it will be in production.
-        let tracker = DeliveryTracker(journal: j,
-                                      authenticator: Ed25519AckAuthenticator(resolver: resolver),
-                                      expectedRecipientStore: j)
+        let tracker = DeliveryTracker(journal: j, authenticator: Ed25519AckAuthenticator(resolver: resolver))
 
         let mid = msgId(30)
-        XCTAssertTrue(tracker.enqueue(mid, expectedRecipient: nodeA()))
+        XCTAssertEqual(EnqueueResult.created, tracker.enqueue(mid, ackMode: .singleRecipient, expectedRecipient: nodeA()))
         XCTAssertTrue(tracker.markHandedToRelay(mid))
         // ACK from A verifies -- the durable expected recipient == nodeA.
         let ackA = try AckFrame.build(msgId: mid, recipientSigningPrivKey: privA,
                                       recipientNodeId: nodeA(), routingTag: routingTag)
-        XCTAssertTrue(tracker.acknowledge(mid, ackA),
+        XCTAssertEqual(AckResult.applied, tracker.acknowledge(mid, ackA),
                        "ACK from the bound recipient A must verify over the durable journal")
         XCTAssertEqual(.acknowledgedByRecipient, tracker.state(mid))
 
         // A second message intended for A: ACK from B must NOT verify.
         let mid2 = msgId(31)
-        XCTAssertTrue(tracker.enqueue(mid2, expectedRecipient: nodeA()))
+        XCTAssertEqual(EnqueueResult.created, tracker.enqueue(mid2, ackMode: .singleRecipient, expectedRecipient: nodeA()))
         tracker.markHandedToRelay(mid2)
         let ackB = try AckFrame.build(msgId: mid2, recipientSigningPrivKey: privB,
                                       recipientNodeId: nodeB(), routingTag: routingTag)
-        XCTAssertFalse(tracker.acknowledge(mid2, ackB),
+        XCTAssertEqual(AckResult.rejectedAuthentication, tracker.acknowledge(mid2, ackB),
                        "ACK from a valid but unintended recipient must not verify over the durable journal")
         XCTAssertEqual(.handedToRelay, tracker.state(mid2))
     }
 
-    // MARK: - C5 production composition (fail-closed under the unresolved resolver)
-
     func testProductionCompositionIsFailClosedUnderUnresolvedResolver() throws {
-        // C5 production composition recipe (mirrors Android MeshModule's
-        // provideDeliveryTracker): a SqliteDeliveryJournal over a REAL on-disk
-        // SqliteMessageStore is BOTH the journal and the expected-recipient store,
-        // and an Ed25519AckAuthenticator over the production
-        // UnresolvedRecipientKeyResolver rejects every ACK. No delivery is claimed
-        // until M2-link binds real keys. The node owns the tracker (Stage 4C / C5).
-        let url = URL(fileURLWithPath: NSTemporaryDirectory())
-            .appendingPathComponent("godstone-delivery-\(UUID().uuidString).db")
+        // C5 production composition recipe (mirrors MeshModule.provideDeliveryTracker):
+        // a SqliteDeliveryJournal over a REAL on-disk SqliteMessageStore is the
+        // durable record, and an Ed25519AckAuthenticator over the production
+        // UnresolvedRecipientKeyResolver rejects every ACK. No delivery is
+        // claimed until M2-link binds real keys.
+        let (journal, _, url) = openJournal()
         defer { try? FileManager.default.removeItem(at: url) }
-
-        let store = SqliteMessageStore(url: url, maxBytes: .max, fileProtection: .complete)
-        let journal = SqliteDeliveryJournal(store)
-        let tracker = DeliveryTracker(
-            journal: journal,
-            authenticator: Ed25519AckAuthenticator(resolver: UnresolvedRecipientKeyResolver()),
-            expectedRecipientStore: journal)
-        let identity = MeshIdentity(
-            signingKey: Curve25519.Signing.PrivateKey(),
-            agreementKey: Curve25519.KeyAgreement.PrivateKey())
-        let node = MeshNode(identity: identity, store: store, deliveryTracker: tracker)
-
-        // The node carries the live fail-closed tracker (C5: composition owns it).
-        XCTAssertTrue(node.deliveryTracker === tracker)
-
+        let tracker = DeliveryTracker(journal: journal,
+                                      authenticator: Ed25519AckAuthenticator(resolver: UnresolvedRecipientKeyResolver()))
         let (_, priv) = realKeypair()
         let recipient = Data(repeating: 0x07, count: 16)
         let mid = msgId(40)
         // Outbound: enqueue binds the expected recipient + advances to handed.
-        XCTAssertTrue(tracker.enqueue(mid, expectedRecipient: recipient))
+        XCTAssertEqual(EnqueueResult.created, tracker.enqueue(mid, ackMode: .singleRecipient, expectedRecipient: recipient))
         XCTAssertTrue(tracker.markHandedToRelay(mid))
         // A real, well-formed ACK signed by the recipient is STILL rejected,
         // because the production resolver resolves no key. State unchanged.
         let ack = try AckFrame.build(msgId: mid, recipientSigningPrivKey: priv,
                                      recipientNodeId: recipient, routingTag: routingTag)
-        XCTAssertFalse(tracker.acknowledge(mid, ack),
+        XCTAssertEqual(AckResult.rejectedAuthentication, tracker.acknowledge(mid, ack),
                        "unresolved production resolver must reject every ACK -- no delivery claimed without a bound key")
         XCTAssertEqual(.handedToRelay, tracker.state(mid))
         // The durable expected recipient is preserved (state-only writes do not
-        // clobber it), so the binding substrate is intact for when M2-link wires a
-        // real resolver -- but until then the tracker (and the node) is fail-closed.
-        XCTAssertEqual(recipient, journal.expectedRecipient(mid) ?? Data())
+        // clobber it), so the binding substrate is intact for when M2-link wires
+        // a real resolver -- but until then the tracker is fail-closed.
+        XCTAssertEqual(found(journal, mid).expectedRecipientNodeId ?? Data(), recipient)
+    }
+
+    // MARK: - helpers
+
+    private func rawAck(_ mid: Data) -> FrameV2 {
+        FrameV2(type: .ack, msgId: mid, routingTag: routingTag,
+                ttl: 4, hopCount: 0, flags: 0, payload: Data(count: 80))
     }
 }

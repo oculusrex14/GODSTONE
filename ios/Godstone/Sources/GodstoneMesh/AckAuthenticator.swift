@@ -83,16 +83,18 @@ public enum AckFrame {
 /// Verifies an ACK frame using Ed25519 over the canonical preimage, resolving
 /// the recipient's public key via `resolver`. Pure + injected -> host-testable.
 ///
-/// Stage 4C / C2: when `expectedRecipientNodeId` is supplied (read from durable
-/// outbound state at enqueue time, INDEPENDENT of the ACK), the ACK is accepted
-/// only if it names THAT recipient in its payload and the signature verifies
-/// under the key bound to that expected recipient. This binds the ACK to the
-/// intended recipient recorded at send time, so an ACK from a valid-but-
-/// unintended recipient cannot ack a message not addressed to them. A nil
-/// `expectedRecipientNodeId` (storeless test tracker, or the legacy unbound
-/// path) falls back to binding against the recipient the ACK names -- the
-/// Phase H behaviour, preserved so the existing truth-table / negative matrix
-/// stays green. Mirrors `Ed25519AckAuthenticator.verify` on Android.
+/// Stage 4C.1 / C6.1: `expectedRecipientNodeId` is NON-optional and always comes
+/// from durable outbound state (the delivery record bound at enqueue time),
+/// INDEPENDENT of the ACK. The ACK is accepted only if its payload names THAT
+/// recipient and the signature verifies under the key bound to THAT recipient.
+/// The unbound fallback (`expectedRecipientNodeId ?? ackRecipientNodeId`) is
+/// REMOVED -- a recipient identity may never become trusted merely because the
+/// ACK packet names it. This binds the ACK to the intended recipient recorded at
+/// send time, so an ACK from a valid-but-unintended recipient cannot ack a
+/// message not addressed to them. The authenticator is only ever invoked for an
+/// AckMode.singleRecipient record; AckMode.none records never reach it
+/// (`DeliveryTracker.acknowledge` returns `.notAckEligible` first). Mirrors
+/// `Ed25519AckAuthenticator.verify` on Android.
 public final class Ed25519AckAuthenticator: AckAuthenticator {
     private let resolver: RecipientKeyResolver
 
@@ -100,7 +102,7 @@ public final class Ed25519AckAuthenticator: AckAuthenticator {
         self.resolver = resolver
     }
 
-    public func verify(originalMsgId: Data, expectedRecipientNodeId: Data?, ackFrame: FrameV2) -> Bool {
+    public func verify(originalMsgId: Data, expectedRecipientNodeId: Data, ackFrame: FrameV2) -> Bool {
         // 1. type must be ack
         guard ackFrame.type == .ack else { return false }
         // 2. the ACK must name the EXACT message id being acknowledged
@@ -110,18 +112,19 @@ public final class Ed25519AckAuthenticator: AckAuthenticator {
         guard payload.count == 80 else { return false }
         let signature = payload.prefix(64)
         let ackRecipientNodeId = Data(payload.suffix(16))
-        // 4. C2: when an expected recipient is bound (from durable outbound
-        //    state, independent of the ACK), the ACK's claimed recipient MUST
-        //    equal it; the key is resolved for the EXPECTED recipient, so a
-        //    signature made by another recipient does not verify. Nil expected
-        //    = unbound -> bind against the ACK-claimed recipient (legacy path).
-        let boundNodeId = expectedRecipientNodeId ?? ackRecipientNodeId
-        if let expected = expectedRecipientNodeId, ackRecipientNodeId != expected { return false }
-        // 5. resolve the recipient's public key bound to the (expected | claimed) node id
-        guard let pub = resolver.publicSigningKey(forNodeId: boundNodeId), pub.count == 32 else { return false }
-        // 6. verify the signature over the canonical preimage for that recipient
+        // 4. C6.1: the ACK's claimed recipient MUST equal the durable expected
+        //    recipient (independent of the ACK). No unbound fallback: a stranger
+        //    naming themselves in the ACK cannot become the trusted recipient.
+        guard ackRecipientNodeId == expectedRecipientNodeId else { return false }
+        // 5. resolve the public key bound to the EXPECTED recipient node id
+        guard let pub = resolver.publicSigningKey(forNodeId: expectedRecipientNodeId), pub.count == 32 else {
+            return false
+        }
+        // 6. verify the signature over the canonical preimage for the EXPECTED
+        //    recipient (the one the recipient themselves signed, since for a
+        //    legitimate ACK their own node id == the expected recipient).
         guard let key = try? Curve25519.Signing.PublicKey(rawRepresentation: pub) else { return false }
         return key.isValidSignature(signature, for: AckFrame.preimage(msgId: originalMsgId,
-                                                                      recipientNodeId: boundNodeId))
+                                                                      recipientNodeId: expectedRecipientNodeId))
     }
 }

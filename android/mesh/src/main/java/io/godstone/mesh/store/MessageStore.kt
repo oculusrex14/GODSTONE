@@ -110,7 +110,7 @@ interface MessageStore {
  */
 internal object StoreSchema {
     const val DB_NAME = "godstone_messages.db"
-    const val DB_VERSION = 3
+    const val DB_VERSION = 4
     const val TABLE = "held_frames"
     const val COL_MSG_ID = "msg_id"
     const val COL_TYPE = "type"
@@ -192,33 +192,47 @@ internal object StoreSchema {
         "SELECT 1 FROM $TABLE WHERE $COL_MSG_ID = ? LIMIT 1"
 
     // ------------------------------------------------------------------
-    // Stage 4C / C4 -- delivery_state table (byte-identical cross-platform).
+    // Stage 4C.1 / C6.1 -- delivery_state table (byte-identical cross-platform).
     //
-    // Holds the delivery lifecycle state AND the intended recipient for a
-    // message id in ONE row keyed by msg_id, in the SAME DB file as the held
-    // frames, so the ACK authenticity decision (C2) binds to the recipient
-    // recorded in durable outbound state INDEPENDENT of the ACK frame. Each
-    // operation is a single atomic SQL statement -- no read-modify-write, no
-    // nested transaction -- so the non-recursive connection lock is acquired
-    // once per call (iOS) and no transaction seam is needed:
-    //   * a state-only write preserves any bound expected recipient via a
-    //     subquery (the subquery reads the pre-REPLACE row);
-    //   * a recipient-only write preserves the current state via COALESCE,
-    //     defaulting to 0 (UNAVAILABLE) if no row exists yet.
-    // The int state code is the cross-platform persistence contract
-    // (DeliveryState.code), NOT the Kotlin enum ordinal, so the two platforms
-    // agree even if their enum orders ever diverge. Mirrors iOS StoreSchema.
+    // Holds the delivery lifecycle state, the ACK mode, AND the intended
+    // recipient for a message id in ONE row keyed by msg_id, in the SAME DB
+    // file as the held frames, so the ACK authenticity decision (C2) binds to
+    // the recipient recorded in durable outbound state INDEPENDENT of the ACK
+    // frame. Each mutation is a single atomic SQL statement -- no read-modify-
+    // write, no nested transaction -- so the non-recursive connection lock is
+    // acquired once per call (iOS) and no transaction seam is needed:
+    //   * [insertDeliverySql] creates the row (INSERT ... ON CONFLICT DO
+    //     NOTHING); the expected recipient is IMMUTABLE post-creation (there is
+    //     no recipient-only write -- the historical send intent is not mutable);
+    //   * [updateDeliveryStateSql] advances ONLY the state column (preserving
+    //     ack_mode + expected_recipient);
+    //   * [clearDeliverySql] drops the row.
+    //
+    // The C6.1 invariant is enforced by a schema CHECK: a NONE-mode row has no
+    // recipient; a SINGLE_RECIPIENT-mode row has a 16-byte recipient. A row that
+    // violates it is rejected at write time and decodes to Corrupt at read time
+    // (C6.5 fail-closed). The int state + ack_mode codes are the cross-platform
+    // persistence contract (DeliveryState.code / AckMode.code), NOT the Kotlin
+    // enum ordinals, so the two platforms agree even if their enum orders ever
+    // diverge. Mirrors iOS StoreSchema. DB_VERSION bumped 3 -> 4 (no installed
+    // base -> destructive onUpgrade recreate, ADR-001 §5).
     // ------------------------------------------------------------------
     const val DELIVERY_TABLE = "delivery_state"
     const val COL_D_MSG_ID = "msg_id"
     const val COL_D_STATE = "state"
+    const val COL_D_ACK_MODE = "ack_mode"
     const val COL_D_EXPECTED = "expected_recipient"
 
     val CREATE_DELIVERY_SQL: String = """
         CREATE TABLE $DELIVERY_TABLE (
             $COL_D_MSG_ID BLOB PRIMARY KEY,
-            $COL_D_STATE INTEGER,
-            $COL_D_EXPECTED BLOB
+            $COL_D_STATE INTEGER NOT NULL,
+            $COL_D_ACK_MODE INTEGER NOT NULL DEFAULT 0,
+            $COL_D_EXPECTED BLOB,
+            CHECK (
+                ($COL_D_ACK_MODE = 0 AND $COL_D_EXPECTED IS NULL) OR
+                ($COL_D_ACK_MODE = 1 AND $COL_D_EXPECTED IS NOT NULL AND length($COL_D_EXPECTED) = 16)
+            )
         )
     """.trimIndent()
 
@@ -226,33 +240,42 @@ internal object StoreSchema {
     val CREATE_DELIVERY_SQL_IF_NOT_EXISTS: String =
         CREATE_DELIVERY_SQL.replace("CREATE TABLE ", "CREATE TABLE IF NOT EXISTS ")
 
-    /** Read the delivery row: (state code, expected recipient or NULL). Bind: (1) msg_id. */
+    /** Read the delivery row: (state code, ack_mode code, expected recipient or
+     *  NULL). Bind: (1) msg_id. */
     fun readDeliverySql(): String =
-        "SELECT $COL_D_STATE, $COL_D_EXPECTED FROM $DELIVERY_TABLE WHERE $COL_D_MSG_ID = ?"
+        "SELECT $COL_D_STATE, $COL_D_ACK_MODE, $COL_D_EXPECTED FROM $DELIVERY_TABLE WHERE $COL_D_MSG_ID = ?"
 
     /**
-     * Persist the state for msg_id, preserving any bound expected recipient. The
-     * subquery reads the pre-REPLACE row so the recipient survives the
-     * state-only update (a HANDED_TO_RELAY / ACKNOWLEDGED write must not clobber
-     * the recipient bound at enqueue). Bind: (1) msg_id, (2) state, (3) msg_id.
+     * Create a delivery row in QUEUED_DURABLY with the given ack_mode + expected
+     * recipient. ON CONFLICT(msg_id) DO NOTHING: returns row count 1 if a new
+     * row was inserted, 0 if a row already exists (the caller re-reads to
+     * classify the conflict). The expected recipient is NEVER updated on an
+     * existing row. Bind: (1) msg_id, (2) state, (3) ack_mode, (4) expected_recipient.
      */
-    fun upsertDeliveryStateSql(): String =
-        "INSERT OR REPLACE INTO $DELIVERY_TABLE ($COL_D_MSG_ID, $COL_D_STATE, $COL_D_EXPECTED) " +
-            "VALUES (?, ?, (SELECT $COL_D_EXPECTED FROM $DELIVERY_TABLE WHERE $COL_D_MSG_ID = ?))"
+    fun insertDeliverySql(): String =
+        "INSERT INTO $DELIVERY_TABLE ($COL_D_MSG_ID, $COL_D_STATE, $COL_D_ACK_MODE, $COL_D_EXPECTED) " +
+            "VALUES (?, ?, ?, ?) ON CONFLICT($COL_D_MSG_ID) DO NOTHING"
 
     /**
-     * Persist the expected recipient for msg_id (or clear it with NULL),
-     * preserving the current state (defaults to 0 / UNAVAILABLE if no row).
-     * Bind: (1) msg_id, (2) msg_id, (3) expected_recipient (NULL clears).
+     * Advance ONLY the state column for msg_id, preserving ack_mode and
+     * expected_recipient (the binding is immutable post-creation). Returns row
+     * count 1 if a row existed and was updated, 0 otherwise. Bind: (1) state, (2) msg_id.
      */
-    fun upsertDeliveryRecipientSql(): String =
-        "INSERT OR REPLACE INTO $DELIVERY_TABLE ($COL_D_MSG_ID, $COL_D_STATE, $COL_D_EXPECTED) " +
-            "VALUES (?, COALESCE((SELECT $COL_D_STATE FROM $DELIVERY_TABLE WHERE $COL_D_MSG_ID = ?), 0), ?)"
+    fun updateDeliveryStateSql(): String =
+        "UPDATE $DELIVERY_TABLE SET $COL_D_STATE = ? WHERE $COL_D_MSG_ID = ?"
 
     /** Drop the delivery row for msg_id. Bind: (1) msg_id. */
     fun clearDeliverySql(): String =
         "DELETE FROM $DELIVERY_TABLE WHERE $COL_D_MSG_ID = ?"
 }
+
+/** A persisted `delivery_state` row before it is typed into a [DeliveryRecord]
+ *  (the state / ack_mode codes may be unknown / corrupt). */
+internal class DeliveryRow(
+    val state: Int,
+    val ackMode: Int,
+    val expectedRecipient: ByteArray?,
+)
 
 /** A stored row before it is typed into a [FrameV2] (the type code may be unknown). */
 internal class StoreRow(
@@ -311,17 +334,30 @@ internal interface StoreDb {
      */
     fun inTransaction(block: (StoreDb) -> PersistResult): PersistResult
 
-    // --- Stage 4C / C4 -- delivery_state row for the delivery journal ---
+    // --- Stage 4C.1 / C6.1 -- delivery_state row for the delivery journal ---
     // Single atomic statements (see StoreSchema); no transaction seam needed.
 
-    /** Read the delivery row for [msgId]: (state code, expected recipient or null), or null if no row. */
-    fun readDelivery(msgId: ByteArray): Pair<Int, ByteArray?>?
+    /** Read the delivery row for [msgId], or null if no row. */
+    fun readDelivery(msgId: ByteArray): DeliveryRow?
 
-    /** Persist the state for [msgId], preserving any bound expected recipient. */
-    fun upsertDeliveryState(msgId: ByteArray, stateOrdinal: Int)
+    /**
+     * Atomically create a delivery row in state [stateOrdinal] with ack_mode
+     * [ackModeOrdinal] and [expectedRecipient] (null for NONE, 16 bytes for
+     * SINGLE_RECIPIENT). Returns true iff a NEW row was inserted; false if a row
+     * already exists for [msgId] (ON CONFLICT DO NOTHING).
+     */
+    fun insertDelivery(
+        msgId: ByteArray,
+        stateOrdinal: Int,
+        ackModeOrdinal: Int,
+        expectedRecipient: ByteArray?,
+    ): Boolean
 
-    /** Persist (or clear with null) the expected recipient for [msgId], preserving the state. */
-    fun upsertDeliveryRecipient(msgId: ByteArray, expectedRecipient: ByteArray?)
+    /**
+     * Advance only the state column for [msgId], preserving ack_mode +
+     * expected_recipient. Returns the row count (1 if a row existed, 0 otherwise).
+     */
+    fun updateDeliveryState(msgId: ByteArray, stateOrdinal: Int): Int
 
     /** Drop the delivery row for [msgId]. */
     fun clearDelivery(msgId: ByteArray)
@@ -583,28 +619,39 @@ internal class SqlcipherStoreDb(ctx: Context) : StoreDb {
         }
     }
 
-    // --- Stage 4C / C4 -- delivery_state row (single atomic statements) ---
+    // --- Stage 4C.1 / C6.1 -- delivery_state row (single atomic statements) ---
 
-    override fun readDelivery(msgId: ByteArray): Pair<Int, ByteArray?>? =
+    override fun readDelivery(msgId: ByteArray): DeliveryRow? =
         helper.readableDatabase.rawQuery(StoreSchema.readDeliverySql(), arrayOf(msgId)).use { c ->
             if (!c.moveToFirst()) null
-            else c.getInt(0) to (if (c.isNull(1)) null else c.getBlob(1))
+            else DeliveryRow(
+                state = c.getInt(0),
+                ackMode = c.getInt(1),
+                expectedRecipient = if (c.isNull(2)) null else c.getBlob(2),
+            )
         }
 
-    override fun upsertDeliveryState(msgId: ByteArray, stateOrdinal: Int) {
-        helper.writableDatabase.execSQL(
-            StoreSchema.upsertDeliveryStateSql(),
-            arrayOf<Any>(msgId, stateOrdinal, msgId)
-        )
-    }
+    override fun insertDelivery(
+        msgId: ByteArray,
+        stateOrdinal: Int,
+        ackModeOrdinal: Int,
+        expectedRecipient: ByteArray?,
+    ): Boolean = helper.writableDatabase
+        .compileStatement(StoreSchema.insertDeliverySql()).use { stmt ->
+            stmt.bindBlob(1, msgId)
+            stmt.bindLong(2, stateOrdinal.toLong())
+            stmt.bindLong(3, ackModeOrdinal.toLong())
+            if (expectedRecipient == null) stmt.bindNull(4) else stmt.bindBlob(4, expectedRecipient)
+            stmt.executeUpdateDelete() > 0   // 1 inserted, 0 on conflict (DO NOTHING)
+        }
 
-    override fun upsertDeliveryRecipient(msgId: ByteArray, expectedRecipient: ByteArray?) {
-        // execSQL binds NULL for a null arg (clears the recipient).
-        helper.writableDatabase.execSQL(
-            StoreSchema.upsertDeliveryRecipientSql(),
-            arrayOf<Any?>(msgId, msgId, expectedRecipient)
-        )
-    }
+    override fun updateDeliveryState(msgId: ByteArray, stateOrdinal: Int): Int =
+        helper.writableDatabase
+            .compileStatement(StoreSchema.updateDeliveryStateSql()).use { stmt ->
+                stmt.bindLong(1, stateOrdinal.toLong())
+                stmt.bindBlob(2, msgId)
+                stmt.executeUpdateDelete()   // 1 if a row existed, 0 otherwise
+            }
 
     override fun clearDelivery(msgId: ByteArray) {
         helper.writableDatabase.execSQL(StoreSchema.clearDeliverySql(), arrayOf<Any>(msgId))
@@ -616,11 +663,12 @@ internal class SqlcipherStoreDb(ctx: Context) : StoreDb {
         SQLiteOpenHelper(ctx, StoreSchema.DB_NAME, key, null, StoreSchema.DB_VERSION, 1, null, null, false) {
         override fun onCreate(db: SQLiteDatabase) {
             db.execSQL(StoreSchema.CREATE_SQL)
-            // Stage 4C / C4: delivery_state holds the lifecycle state + expected
-            // recipient in one row, in the same DB. onCreate creates both tables
-            // on first open; onUpgrade drops held_frames then calls onCreate, so
-            // a version bump recreates both (no installed base -> destructive
-            // recreate is correct, ADR-001 §5).
+            // Stage 4C.1 / C6.1: delivery_state holds the lifecycle state, ack
+            // mode, and expected recipient in one row, in the same DB. onCreate
+            // creates both tables on first open; onUpgrade drops both then calls
+            // onCreate, so a version bump (3 -> 4) recreates both with the
+            // ack_mode column + CHECK (no installed base -> destructive recreate
+            // is correct, ADR-001 §5).
             db.execSQL(StoreSchema.CREATE_DELIVERY_SQL)
         }
 

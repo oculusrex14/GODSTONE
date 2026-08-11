@@ -133,35 +133,41 @@ internal class JdbcStoreDb(file: File) : StoreDb {
         }
     }
 
-    // --- Stage 4C / C4 -- delivery_state row (single atomic statements) ---
+    // --- Stage 4C.1 / C6.1 -- delivery_state row (single atomic statements) ---
 
-    override fun readDelivery(msgId: ByteArray): Pair<Int, ByteArray?>? {
+    override fun readDelivery(msgId: ByteArray): DeliveryRow? {
         conn.prepareStatement(StoreSchema.readDeliverySql()).use { ps ->
             ps.setBytes(1, msgId)
             ps.executeQuery().use { rs ->
                 if (!rs.next()) return null
                 val state = rs.getInt(1)
-                val expected = rs.getBytes(2)   // null when the SQL column is NULL
-                return state to expected
+                val ackMode = rs.getInt(2)
+                val expected = rs.getBytes(3)   // null when the SQL column is NULL
+                return DeliveryRow(state, ackMode, expected)
             }
         }
     }
 
-    override fun upsertDeliveryState(msgId: ByteArray, stateOrdinal: Int) {
-        conn.prepareStatement(StoreSchema.upsertDeliveryStateSql()).use { ps ->
+    override fun insertDelivery(
+        msgId: ByteArray,
+        stateOrdinal: Int,
+        ackModeOrdinal: Int,
+        expectedRecipient: ByteArray?,
+    ): Boolean {
+        conn.prepareStatement(StoreSchema.insertDeliverySql()).use { ps ->
             ps.setBytes(1, msgId)
             ps.setInt(2, stateOrdinal)
-            ps.setBytes(3, msgId)   // subquery reads the pre-REPLACE recipient
-            ps.executeUpdate()
+            ps.setInt(3, ackModeOrdinal)
+            if (expectedRecipient == null) ps.setNull(4, Types.BLOB) else ps.setBytes(4, expectedRecipient)
+            return ps.executeUpdate() > 0   // 1 inserted, 0 on conflict (DO NOTHING)
         }
     }
 
-    override fun upsertDeliveryRecipient(msgId: ByteArray, expectedRecipient: ByteArray?) {
-        conn.prepareStatement(StoreSchema.upsertDeliveryRecipientSql()).use { ps ->
-            ps.setBytes(1, msgId)
-            ps.setBytes(2, msgId)   // subquery reads the pre-REPLACE state
-            if (expectedRecipient == null) ps.setNull(3, Types.BLOB) else ps.setBytes(3, expectedRecipient)
-            ps.executeUpdate()
+    override fun updateDeliveryState(msgId: ByteArray, stateOrdinal: Int): Int {
+        conn.prepareStatement(StoreSchema.updateDeliveryStateSql()).use { ps ->
+            ps.setInt(1, stateOrdinal)
+            ps.setBytes(2, msgId)
+            return ps.executeUpdate()   // 1 if a row existed, 0 otherwise
         }
     }
 
@@ -173,4 +179,16 @@ internal class JdbcStoreDb(file: File) : StoreDb {
     }
 
     override fun close() = conn.close()
+
+    /**
+     * Test seam: run a raw UPDATE against the SAME connection (C6.5 corrupt-write
+     * tests mutate the state / ack_mode columns to unknown codes, then re-read via
+     * [readDelivery] to assert [DeliveryLookup.Corrupt]). Using the shared
+     * connection avoids any cross-connection file-lock issue.
+     */
+    internal fun execRawUpdate(sql: String, vararg bytesArgs: ByteArray): Int =
+        conn.prepareStatement(sql).use { ps ->
+            bytesArgs.forEachIndexed { i, b -> ps.setBytes(i + 1, b) }
+            ps.executeUpdate()
+        }
 }

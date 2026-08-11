@@ -9,8 +9,9 @@ import GodstoneCore
 ///
 /// C6 (outbound): `dispatchSos` persists BEFORE driving the delivery tracker
 /// (persist-before-tracker, extending the 4B.1 persist-before-forward gate), then
-/// `enqueue(msgId, expectedRecipient: nil)` (SOS broadcast -> unbound) and
-/// `markHandedToRelay` per successful send. Asserts:
+/// `enqueue(msgId, ackMode: .none, expectedRecipient: nil)` (SOS broadcast ->
+/// AckMode.none, no recipient binding) and `markHandedToRelay` per successful
+/// send. Asserts:
 ///   - persist succeeds + N successful sends -> .handedToRelays(N) + .handedToRelay
 ///   - persist succeeds + 0 peers -> .queuedDurably + .queuedDurably
 ///   - persist fails -> .notPersisted + tracker UNTOUCHED (no delivery claimed for
@@ -18,7 +19,11 @@ import GodstoneCore
 ///
 /// C7 (inbound ACK): `ingestInbound` routes an ACK frame to `deliveryTracker
 /// .acknowledge`, which binds it to the durable expected recipient (C2) and
-/// advances to .acknowledgedByRecipient only on cryptographic proof. Asserts:
+/// advances to .acknowledgedByRecipient only on cryptographic proof. The Bool
+/// this seam returns is true only for `.applied` / `.alreadyAcknowledged` /
+/// `.duplicateAuthenticatedAck` (the latter two are idempotent accepts, NOT new
+/// verifications -- this path does NOT call `onSosAcknowledgedByRecipient`, so
+/// no UI "delivered" claim is made from host-only evidence). Asserts:
 ///   - ACK from the bound recipient -> .acknowledgedByRecipient
 ///   - ACK from a different recipient -> rejected, stays .handedToRelay
 ///   - production fail-closed (UnresolvedRecipientKeyResolver) -> rejected,
@@ -37,18 +42,30 @@ final class MeshNodeDeliveryIntegrationTests: XCTestCase {
     private func nodeA() -> Data { Data(repeating: 0x01, count: 16) }
     private func nodeB() -> Data { Data(repeating: 0x02, count: 16) }
 
-    /// In-memory `DeliveryJournal` + `ExpectedRecipientStore` (both roles in one
-    /// object, mirroring `SqliteDeliveryJournal` over a real DB).
-    private final class InMemoryDeliveryJournal: DeliveryJournal, ExpectedRecipientStore {
-        var state: [Data: DeliveryState] = [:]
-        var recipient: [Data: Data] = [:]
-        func read(_ msgId: Data) -> DeliveryState { state[msgId] ?? .unavailable }
-        func write(_ msgId: Data, _ s: DeliveryState) { state[msgId] = s }
-        func clear(_ msgId: Data) { state.removeValue(forKey: msgId); recipient.removeValue(forKey: msgId) }
-        func expectedRecipient(_ msgId: Data) -> Data? { recipient[msgId] }
-        func recordExpectedRecipient(_ msgId: Data, _ r: Data?) {
-            if let r { recipient[msgId] = r } else { recipient.removeValue(forKey: msgId) }
+    /// In-memory `DeliveryJournal` (mirroring `SqliteDeliveryJournal` over a real
+    /// DB). Stores the full `DeliveryRecord` so the binding is preserved across
+    /// `updateState`.
+    private final class InMemoryDeliveryJournal: DeliveryJournal {
+        var map: [Data: DeliveryRecord] = [:]
+
+        func read(_ msgId: Data) -> DeliveryLookup {
+            if let rec = map[msgId] { return .found(rec) }
+            return .notFound
         }
+        func insert(_ msgId: Data, ackMode: AckMode, expectedRecipient: Data?) -> Bool {
+            if map[msgId] != nil { return false } // ON CONFLICT DO NOTHING
+            map[msgId] = DeliveryRecord(msgId: msgId, state: .queuedDurably,
+                                         ackMode: ackMode, expectedRecipientNodeId: expectedRecipient)
+            return true
+        }
+        func updateState(_ msgId: Data, _ state: DeliveryState) -> Int {
+            guard let rec = map[msgId] else { return 0 }
+            map[msgId] = DeliveryRecord(msgId: msgId, state: state,
+                                         ackMode: rec.ackMode,
+                                         expectedRecipientNodeId: rec.expectedRecipientNodeId)
+            return 1
+        }
+        func clear(_ msgId: Data) { map.removeValue(forKey: msgId) }
     }
 
     /// Resolver binding two distinct node ids to two distinct keys (C2 binding).
@@ -90,10 +107,8 @@ final class MeshNodeDeliveryIntegrationTests: XCTestCase {
             signingKey: Curve25519.Signing.PrivateKey(),
             agreementKey: Curve25519.KeyAgreement.PrivateKey())
         let journal = InMemoryDeliveryJournal()
-        let tracker = DeliveryTracker(
-            journal: journal,
-            authenticator: Ed25519AckAuthenticator(resolver: resolver),
-            expectedRecipientStore: journal)
+        let tracker = DeliveryTracker(journal: journal,
+                                      authenticator: Ed25519AckAuthenticator(resolver: resolver))
         let node = MeshNode(identity: identity, store: store, deliveryTracker: tracker)
         return (node, journal)
     }
@@ -114,9 +129,11 @@ final class MeshNodeDeliveryIntegrationTests: XCTestCase {
         }
         XCTAssertEqual(result, .handedToRelays(1))
         guard let mid = sentFrame?.msgId else { return XCTFail("send must receive the frame") }
-        XCTAssertEqual(journal.read(mid), .handedToRelay)
-        // SOS broadcast binds NO recipient (unbound path).
-        XCTAssertNil(journal.expectedRecipient(mid))
+        XCTAssertEqual(node.deliveryTracker.state(mid), .handedToRelay)
+        // SOS broadcast is AckMode.none and binds NO recipient (C6.1).
+        guard let rec = journal.map[mid] else { return XCTFail("tracker must record the handed SOS") }
+        XCTAssertEqual(rec.ackMode, .none)
+        XCTAssertNil(rec.expectedRecipientNodeId)
         XCTAssertEqual(store.allHeldMsgIds().count, 1, "SOS durably held before the send")
     }
 
@@ -134,7 +151,9 @@ final class MeshNodeDeliveryIntegrationTests: XCTestCase {
         XCTAssertEqual(sendCalls, 0, "no peers -> no sends, but durably held")
         XCTAssertEqual(store.allHeldMsgIds().count, 1, "SOS durably held")
         let mid = store.allHeldMsgIds().first!
-        XCTAssertEqual(journal.read(mid), .queuedDurably)
+        XCTAssertEqual(node.deliveryTracker.state(mid), .queuedDurably)
+        guard let rec = journal.map[mid] else { return XCTFail("tracker must record the queued SOS") }
+        XCTAssertEqual(rec.ackMode, .none)
     }
 
     /// C6: persist fails -> .notPersisted, ZERO sends, and the tracker is NOT
@@ -151,7 +170,7 @@ final class MeshNodeDeliveryIntegrationTests: XCTestCase {
         }
         XCTAssertEqual(result, .notPersisted)
         XCTAssertEqual(sendCalls, 0, "persistence failure must exit before any transport operation")
-        XCTAssertTrue(journal.state.isEmpty, "tracker must not record a message that was not durably held")
+        XCTAssertTrue(journal.map.isEmpty, "tracker must not record a message that was not durably held")
         XCTAssertTrue(store.allHeldMsgIds().isEmpty)
     }
 
@@ -164,12 +183,11 @@ final class MeshNodeDeliveryIntegrationTests: XCTestCase {
         let (pubA, privA) = realKeypair()
         let a = nodeA()
         let resolver = TwoRecipientResolver(a, pubA, nodeB(), Data(count: 32))
-        let (node, journal) = makeNode(store: InMemoryMessageStore(), resolver: resolver)
+        let (node, _) = makeNode(store: InMemoryMessageStore(), resolver: resolver)
         let mid = msgId(1)
         // Pre-bind the outbound state (a directed message's enqueue), then hand it.
-        XCTAssertTrue(node.deliveryTracker.enqueue(mid, expectedRecipient: a))
+        XCTAssertEqual(EnqueueResult.created, node.deliveryTracker.enqueue(mid, ackMode: .singleRecipient, expectedRecipient: a))
         XCTAssertTrue(node.deliveryTracker.markHandedToRelay(mid))
-        XCTAssertEqual(journal.expectedRecipient(mid), a)
         let ack = try AckFrame.build(msgId: mid, recipientSigningPrivKey: privA,
                                      recipientNodeId: a, routingTag: routingTag)
         let accepted = node.ingestInbound(ack, receivedFrom: a)
@@ -188,7 +206,7 @@ final class MeshNodeDeliveryIntegrationTests: XCTestCase {
         let resolver = TwoRecipientResolver(a, pubA, b, pubB)
         let (node, _) = makeNode(store: InMemoryMessageStore(), resolver: resolver)
         let mid = msgId(2)
-        XCTAssertTrue(node.deliveryTracker.enqueue(mid, expectedRecipient: a))
+        XCTAssertEqual(EnqueueResult.created, node.deliveryTracker.enqueue(mid, ackMode: .singleRecipient, expectedRecipient: a))
         XCTAssertTrue(node.deliveryTracker.markHandedToRelay(mid))
         // ACK claims B and is signed by B -- but the bound recipient is A.
         let wrongAck = try AckFrame.build(msgId: mid, recipientSigningPrivKey: privB,
@@ -208,7 +226,7 @@ final class MeshNodeDeliveryIntegrationTests: XCTestCase {
         let a = nodeA()
         let (node, _) = makeNode(store: InMemoryMessageStore(), resolver: UnresolvedRecipientKeyResolver())
         let mid = msgId(3)
-        XCTAssertTrue(node.deliveryTracker.enqueue(mid, expectedRecipient: a))
+        XCTAssertEqual(EnqueueResult.created, node.deliveryTracker.enqueue(mid, ackMode: .singleRecipient, expectedRecipient: a))
         XCTAssertTrue(node.deliveryTracker.markHandedToRelay(mid))
         let ack = try AckFrame.build(msgId: mid, recipientSigningPrivKey: privA,
                                      recipientNodeId: a, routingTag: routingTag)
@@ -237,7 +255,7 @@ final class MeshNodeDeliveryIntegrationTests: XCTestCase {
         XCTAssertTrue(accepted, "the router must accept a fresh epidemic SOS")
         // The router persists the SOS (epidemic); the delivery tracker does not
         // track it (an inbound SOS is not a delivery confirmation for THIS node).
-        XCTAssertTrue(journal.state.isEmpty, "the tracker must not track an inbound non-ACK frame")
+        XCTAssertTrue(journal.map.isEmpty, "the tracker must not track an inbound non-ACK frame")
         XCTAssertEqual(store.allHeldMsgIds().count, 1, "the router durably held the epidemic SOS")
     }
 }

@@ -88,21 +88,22 @@ object AckFrame {
  * Verifies an ACK frame using Ed25519 over the canonical preimage, resolving
  * the recipient's public key via [resolver]. Pure + injected -> host-testable.
  *
- * Stage 4C / C2: when [expectedRecipientNodeId] is supplied (read from durable
- * outbound state at enqueue time, INDEPENDENT of the ACK), the ACK is accepted
- * only if it names THAT recipient in its payload and the signature verifies
- * under the key bound to that expected recipient. This binds the ACK to the
- * intended recipient recorded at send time, so an ACK from a valid-but-
- * unintended recipient cannot ack a message not addressed to them. A null
- * [expectedRecipientNodeId] (storeless test tracker, or the legacy unbound
- * path) falls back to binding against the recipient the ACK names -- the
- * Phase H behaviour, preserved so the existing truth-table / negative matrix
- * stays green.
+ * Stage 4C.1 / C6.1: [expectedRecipientNodeId] is NON-NULL and always comes
+ * from durable outbound state (the delivery record bound at enqueue time),
+ * INDEPENDENT of the ACK. The ACK is accepted only if its payload names THAT
+ * recipient and the signature verifies under the key bound to THAT recipient.
+ * The unbound fallback (`expectedRecipientNodeId ?: ackRecipientNodeId`) is
+ * REMOVED -- a recipient identity may never become trusted merely because the
+ * ACK packet names it. This binds the ACK to the intended recipient recorded at
+ * send time, so an ACK from a valid-but-unintended recipient cannot ack a
+ * message not addressed to them. The authenticator is only ever invoked for an
+ * AckMode.SINGLE_RECIPIENT record; AckMode.NONE records never reach it
+ * (DeliveryTracker.acknowledge returns NotAckEligible first).
  */
 class Ed25519AckAuthenticator(private val resolver: RecipientKeyResolver) : AckAuthenticator {
     override fun verify(
         originalMsgId: ByteArray,
-        expectedRecipientNodeId: ByteArray?,
+        expectedRecipientNodeId: ByteArray,
         ackFrame: FrameV2,
     ): Boolean {
         // 1. type must be ACK
@@ -114,18 +115,18 @@ class Ed25519AckAuthenticator(private val resolver: RecipientKeyResolver) : AckA
         if (payload.size != 80) return false
         val signature = payload.copyOfRange(0, 64)
         val ackRecipientNodeId = payload.copyOfRange(64, 80)
-        // 4. C2: when an expected recipient is bound (from durable outbound
-        //    state, independent of the ACK), the ACK's claimed recipient MUST
-        //    equal it; the key is resolved for the EXPECTED recipient, so a
-        //    signature made by another recipient does not verify. Null expected
-        //    = unbound -> bind against the ACK-claimed recipient (legacy path).
-        val boundNodeId = expectedRecipientNodeId ?: ackRecipientNodeId
-        if (expectedRecipientNodeId != null &&
-            !ackRecipientNodeId.contentEquals(expectedRecipientNodeId)) return false
-        // 5. resolve the recipient's public key bound to the (expected | claimed) node id
-        val pub = resolver.publicSigningKey(boundNodeId) ?: return false
+        // 4. C6.1: the ACK's claimed recipient MUST equal the durable expected
+        //    recipient (independent of the ACK). No unbound fallback: a stranger
+        //    naming themselves in the ACK cannot become the trusted recipient.
+        if (!ackRecipientNodeId.contentEquals(expectedRecipientNodeId)) return false
+        // 5. resolve the public key bound to the EXPECTED recipient node id
+        val pub = resolver.publicSigningKey(expectedRecipientNodeId) ?: return false
         if (pub.size != 32) return false
-        // 6. verify the signature over the canonical preimage for that recipient
-        return Ed25519Keys.verify(AckFrame.preimage(originalMsgId, boundNodeId), signature, pub)
+        // 6. verify the signature over the canonical preimage for the EXPECTED
+        //    recipient (the one the recipient themselves signed, since for a
+        //    legitimate ACK their own node id == the expected recipient).
+        return Ed25519Keys.verify(
+            AckFrame.preimage(originalMsgId, expectedRecipientNodeId), signature, pub,
+        )
     }
 }

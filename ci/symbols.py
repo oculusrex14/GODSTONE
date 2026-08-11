@@ -48,12 +48,24 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 
 # `class A : B(), C` / `interface A : B` / `object A : B`
+#
+# The supertype clause is captured up to the first `{` OR end-of-line
+# (`[^\n{]+`), NOT `[^{]+`. A bare `[^{]+` runs past a BRACELESS member such
+# as `data object Found(val record: DeliveryRecord) : DeliveryLookup()` (no
+# `{` body) and swallows every following declaration up to the next `{` --
+# including a later `interface DeliveryJournal {`, which then never registers
+# as its own type, so its `fun insert` / `fun updateState` are never collected
+# and R1 falsely flags every override of them. Capping at the newline keeps the
+# supertype on its own line (Kotlin convention here; there are no genuine
+# multi-line comma supertype lists in the tree) and lets each braceless
+# `data object X : Y` register independently. Verified: zero genuine
+# `class X : Y,\n    Z {` lists exist under android/.
 TYPE_DECL = re.compile(
     r"^\s*(?:public\s+|internal\s+|private\s+|abstract\s+|open\s+|sealed\s+|data\s+)*"
     r"(?:class|interface|object)\s+([A-Z][\w]*)"
     r"(?:\s*<[^>]*>)?"
     r"(?:\s*\([^)]*\))?"
-    r"(?:\s*:\s*([^{]+))?",
+    r"(?:\s*:\s*([^\n{]+))?",
     re.M)
 
 # `data class Name` -- a data class synthesises copy(), equals(), hashCode(),

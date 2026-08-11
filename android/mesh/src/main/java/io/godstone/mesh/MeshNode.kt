@@ -1,7 +1,10 @@
 package io.godstone.mesh
 
 import android.content.Context
+import io.godstone.mesh.delivery.AckMode
+import io.godstone.mesh.delivery.AckResult
 import io.godstone.mesh.delivery.DeliveryTracker
+import io.godstone.mesh.delivery.EnqueueResult
 import io.godstone.mesh.identity.Identity
 import io.godstone.mesh.router.Router
 import io.godstone.mesh.store.MessageStore
@@ -61,16 +64,20 @@ class MeshNode(
     private val store: MessageStore,
     /**
      * Durable, recipient-authenticated delivery state machine (ADR-005; A-03;
-     * Stage 4C / C5). Constructed by [di.MeshModule] from the SAME `StoreDb`
+     * Stage 4C / C6.1). Constructed by [di.MeshModule] from the SAME `StoreDb`
      * engine as `store`: a [io.godstone.mesh.delivery.SqliteDeliveryJournal] is
-     * BOTH the journal and the expected-recipient store, and an
-     * [io.godstone.mesh.delivery.Ed25519AckAuthenticator] over the production
-     * [io.godstone.mesh.delivery.UnresolvedRecipientKeyResolver] rejects every
-     * ACK until the M2-link identity binding wires real recipient keys
-     * (fail-closed). The outbound path (C6) records the expected recipient +
-     * advances state on a successful relay hand-off; the inbound ACK path (C7)
-     * binds the ACK to the durable expected recipient. No delivery is claimed
-     * on host-only evidence -- A-03 / ADR-005 stay OPEN.
+     * the durable record -- one row holds the delivery state, the ACK mode, and
+     * the intended recipient (the separate `ExpectedRecipientStore` seam was
+     * removed in C6.1), and an [io.godstone.mesh.delivery.Ed25519AckAuthenticator]
+     * over the production [io.godstone.mesh.delivery.UnresolvedRecipientKeyResolver]
+     * rejects every ACK until the M2-link identity binding wires real recipient
+     * keys (fail-closed). The outbound path (C6) records the ACK mode (SOS is a
+     * broadcast -> [AckMode.NONE], no recipient binding; a directed message is
+     * [AckMode.SINGLE_RECIPIENT]) + advances state on a successful relay
+     * hand-off; the inbound ACK path (C7) binds the ACK to the durable expected
+     * recipient (authenticator invoked ONLY for SINGLE_RECIPIENT -- a NONE-mode
+     * message can never be acknowledged). No delivery is claimed on host-only
+     * evidence -- A-03 / ADR-005 stay OPEN.
      */
     internal val deliveryTracker: DeliveryTracker,
 ) {
@@ -188,15 +195,18 @@ class MeshNode(
      * next encounter via anti-entropy); with N successful sends,
      * `HandedToRelays(N)`.
      *
-     * Stage 4C / C6: the delivery tracker is driven AFTER durable hold -- the
+     * Stage 4C / C6.1: the delivery tracker is driven AFTER durable hold -- the
      * `enqueue` that records `QUEUED_DURABLY` runs only once `store.persist` has
      * succeeded (persist-before-tracker, extending the 4B.1 persist-before-forward
      * gate to the delivery state). SOS is a broadcast (no single intended
-     * recipient), so `expectedRecipient = null` -- the unbound path, no recipient
-     * binding. Each successful relay hand-off calls `markHandedToRelay`
-     * (idempotent: the first transitions queued -> handed; further sends no-op).
-     * The body is unreachable while `LINK_LAYER_READY=false` via `broadcastSos`;
-     * tests drive it directly through this seam.
+     * recipient), so it is enqueued with [AckMode.NONE] and no expected recipient
+     * binding -- a NONE-mode message can NEVER be acknowledged via this tracker
+     * (an inbound ACK for it yields [AckResult.NotAckEligible] and the
+     * authenticator is not invoked). Each successful relay hand-off calls
+     * `markHandedToRelay` (idempotent: the first transitions queued -> handed;
+     * further sends no-op). The body is unreachable while
+     * `LINK_LAYER_READY=false` via `broadcastSos`; tests drive it directly through
+     * this seam.
      */
     internal suspend fun dispatchSos(
         payload: ByteArray,
@@ -209,9 +219,15 @@ class MeshNode(
             PersistResult.REJECTED_CAPACITY,
             PersistResult.FAILED_STORAGE -> return SosDispatchResult.NotPersisted
         }
-        // C6: record the delivery lifecycle AFTER durable hold. expectedRecipient
-        // = null (broadcast SOS -> unbound path, no recipient binding).
-        deliveryTracker.enqueue(frame.msgId, expectedRecipient = null)
+        // C6.1: record the delivery lifecycle AFTER durable hold. SOS is a
+        // broadcast -> AckMode.NONE, no recipient binding (a NONE-mode message can
+        // never be acknowledged). Idempotent: a re-dispatch of the same SOS is
+        // AlreadyQueuedSameBinding; only a genuine enqueue rejection (terminal
+        // state / conflict / storage failure) aborts before any BLE write.
+        when (val er = deliveryTracker.enqueue(frame.msgId, AckMode.NONE, expectedRecipient = null)) {
+            EnqueueResult.Created, EnqueueResult.AlreadyQueuedSameBinding -> Unit
+            else -> return SosDispatchResult.Failed("delivery enqueue rejected: $er")
+        }
         val bytes = frame.encode()
         var handed = 0
         for (peerId in knownPeers()) {
@@ -241,10 +257,21 @@ class MeshNode(
         fromPeer: ByteArray,
     ): Boolean {
         // ACK -> point-to-point delivery confirmation (tracker.acknowledge returns
-        // whether the ACK was accepted); non-ACK -> epidemic router (returns whether
-        // the frame was accepted for persist+relay). Mirrors iOS `ingestInbound -> Bool`.
+        // a typed AckResult); non-ACK -> epidemic router (returns whether the frame
+        // was accepted for persist+relay). Mirrors iOS `ingestInbound -> Bool`.
+        //
+        // C6.1: only [AckResult.Applied] means "this ACK newly verified the
+        // intended recipient". AlreadyAcknowledged / DuplicateAuthenticatedAck mean
+        // the message was already terminal (idempotent accept -- NOT a new
+        // verification; this path does NOT call onSosAcknowledgedByRecipient, so no
+        // UI "delivered" claim is made from host-only evidence). Every other
+        // AckResult (NotAckEligible / UnknownMessage / RejectedAuthentication /
+        // RejectedState / StorageFailure / Corrupt) is a rejection.
         return if (frame.type == io.godstone.mesh.wire.v2.TypeV2.ACK) {
-            deliveryTracker.acknowledge(frame.msgId, frame)
+            when (deliveryTracker.acknowledge(frame.msgId, frame)) {
+                AckResult.Applied, AckResult.AlreadyAcknowledged, AckResult.DuplicateAuthenticatedAck -> true
+                else -> false
+            }
         } else {
             router.onFrameReceived(frame, fromPeer)
         }
