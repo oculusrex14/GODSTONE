@@ -64,10 +64,10 @@ class MeshNode(
     private val store: MessageStore,
     /**
      * Durable, recipient-authenticated delivery state machine (ADR-005; A-03;
-     * Stage 4C / C6.1). Constructed by [di.MeshModule] from the SAME `StoreDb`
-     * engine as `store`: a [io.godstone.mesh.delivery.SqliteDeliveryJournal] is
-     * the durable record -- one row holds the delivery state, the ACK mode, and
-     * the intended recipient (the separate `ExpectedRecipientStore` seam was
+     * Stage 4C / C6.1; C6.3). Constructed by [di.MeshModule] from the SAME
+     * `StoreDb` engine as `store`: a [io.godstone.mesh.delivery.SqliteDeliveryRepository]
+     * is the durable record -- one row holds the delivery state, the ACK mode,
+     * and the intended recipient (the separate `ExpectedRecipientStore` seam was
      * removed in C6.1), and an [io.godstone.mesh.delivery.Ed25519AckAuthenticator]
      * over the production [io.godstone.mesh.delivery.UnresolvedRecipientKeyResolver]
      * rejects every ACK until the M2-link identity binding wires real recipient

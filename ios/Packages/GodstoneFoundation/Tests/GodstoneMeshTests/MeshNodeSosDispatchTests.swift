@@ -21,49 +21,106 @@ import GodstoneCore
 /// tests in `SqliteMessageStoreTests`.
 final class MeshNodeSosDispatchTests: XCTestCase {
 
-    /// In-memory `DeliveryJournal` for tests that construct a `MeshNode` but do
-    /// not exercise the ACK path (the SOS dispatch tests). The tracker is
+    /// In-memory `DeliveryRepository` for tests that construct a `MeshNode` but
+    /// do not exercise the ACK path (the SOS dispatch tests). The tracker is
     /// fail-closed regardless -- the authenticator is the production
-    /// `UnresolvedRecipientKeyResolver` -- so no delivery is claimed. C6.1:
-    /// `dispatchSos` enqueues with `AckMode.none` (SOS broadcast), so this journal
-    /// must implement the typed `DeliveryJournal` (read -> DeliveryLookup, insert
-    /// with ack mode + recipient, updateState, clear).
-    private final class InMemoryDeliveryJournal: DeliveryJournal {
+    /// `UnresolvedRecipientKeyResolver` -- so no delivery is claimed. C6.1 /
+    /// C6.3: `dispatchSos` enqueues with `AckMode.none` (SOS broadcast) then
+    /// `markHandedToRelay` (a `compareAndSet`), so this fake implements the full
+    /// typed `DeliveryRepository` (get / enqueue / compareAndSet /
+    /// acknowledgeAndRetire / clear); the recipient is IMMUTABLE post-creation
+    /// (state-only advance), mirroring `SqliteDeliveryRepository`.
+    private final class InMemoryDeliveryRepository: DeliveryRepository {
         var map: [Data: DeliveryRecord] = [:]
 
-        func read(_ msgId: Data) -> DeliveryLookup {
+        func get(_ msgId: Data) -> DeliveryLookup {
             if let rec = map[msgId] { return .found(rec) }
             return .notFound
         }
-        func insert(_ msgId: Data, ackMode: AckMode, expectedRecipient: Data?) -> Bool {
-            if map[msgId] != nil { return false }
-            map[msgId] = DeliveryRecord(msgId: msgId, state: .queuedDurably,
-                                         ackMode: ackMode, expectedRecipientNodeId: expectedRecipient)
-            return true
+        func enqueue(_ msgId: Data, ackMode: AckMode, expectedRecipient: Data?) -> EnqueueResult {
+            guard bindingConsistent(ackMode: ackMode, expectedRecipient: expectedRecipient) else { return .corrupt }
+            switch get(msgId) {
+            case .notFound:
+                map[msgId] = DeliveryRecord(msgId: msgId, state: .queuedDurably,
+                                             ackMode: ackMode, expectedRecipientNodeId: expectedRecipient)
+                return .created
+            case .found(let rec):
+                return classifyExisting(rec: rec, ackMode: ackMode, expectedRecipient: expectedRecipient)
+            case .corrupt:
+                return .corrupt
+            case .storageFailure:
+                return .storageFailure
+            }
         }
-        func updateState(_ msgId: Data, _ state: DeliveryState) -> Int {
-            guard let rec = map[msgId] else { return 0 }
-            map[msgId] = DeliveryRecord(msgId: msgId, state: state,
-                                         ackMode: rec.ackMode,
-                                         expectedRecipientNodeId: rec.expectedRecipientNodeId)
-            return 1
+        func compareAndSet(_ msgId: Data, validFroms: Set<DeliveryState>,
+                           target: DeliveryState) -> TransitionResult {
+            switch get(msgId) {
+            case .notFound: return .unknownMessage
+            case .corrupt: return .corrupt
+            case .storageFailure: return .storageFailure
+            case .found(let rec):
+                let s = rec.state
+                if s == target { return .alreadyInTarget }
+                if validFroms.contains(s) {
+                    map[msgId] = DeliveryRecord(msgId: msgId, state: target,
+                                                 ackMode: rec.ackMode,
+                                                 expectedRecipientNodeId: rec.expectedRecipientNodeId)
+                    return .applied
+                }
+                return .rejectedState
+            }
+        }
+        func acknowledgeAndRetire(_ msgId: Data, ackMode: AckMode,
+                                  expectedRecipient: Data?) -> AckResult {
+            switch get(msgId) {
+            case .notFound: return .unknownMessage
+            case .corrupt: return .corrupt
+            case .storageFailure: return .storageFailure
+            case .found(let rec):
+                if rec.ackMode != ackMode || rec.expectedRecipientNodeId != expectedRecipient {
+                    return .unknownMessage
+                }
+                map[msgId] = DeliveryRecord(msgId: msgId, state: .acknowledgedByRecipient,
+                                             ackMode: rec.ackMode,
+                                             expectedRecipientNodeId: rec.expectedRecipientNodeId)
+                return .applied
+            }
         }
         func clear(_ msgId: Data) { map.removeValue(forKey: msgId) }
+
+        private func classifyExisting(rec: DeliveryRecord, ackMode: AckMode,
+                                      expectedRecipient: Data?) -> EnqueueResult {
+            if rec.state.isTerminal { return .rejectedTerminalState }
+            if rec.ackMode == ackMode && rec.expectedRecipientNodeId == expectedRecipient {
+                return .alreadyQueuedSameBinding
+            }
+            return .conflictRecipient
+        }
+
+        private func bindingConsistent(ackMode: AckMode, expectedRecipient: Data?) -> Bool {
+            switch ackMode {
+            case .none: return expectedRecipient == nil
+            case .singleRecipient:
+                guard let r = expectedRecipient else { return false }
+                return r.count == 16
+            }
+        }
     }
 
     /// Build a node with a fresh in-memory identity (CryptoKit default inits
     /// generate fresh keys on the macOS host -- no Keychain needed) and [store].
     /// A fail-closed `DeliveryTracker` (production `UnresolvedRecipientKeyResolver`
-    /// over an in-memory journal) is injected so the node owns its tracker without
-    /// touching SQLite -- the SOS dispatch path does not drive the ACK path
-    /// (C6/C7 do); it only enqueues with `AckMode.none` + `markHandedToRelay`.
+    /// over an in-memory repository) is injected so the node owns its tracker
+    /// without touching SQLite -- the SOS dispatch path does not drive the ACK
+    /// path (C6/C7 do); it only enqueues with `AckMode.none` +
+    /// `markHandedToRelay`.
     private func makeNode(store: MessageStore) -> MeshNode {
         let identity = MeshIdentity(
             signingKey: Curve25519.Signing.PrivateKey(),
             agreementKey: Curve25519.KeyAgreement.PrivateKey())
-        let journal = InMemoryDeliveryJournal()
+        let journal = InMemoryDeliveryRepository()
         let tracker = DeliveryTracker(
-            journal: journal,
+            repo: journal,
             authenticator: Ed25519AckAuthenticator(resolver: UnresolvedRecipientKeyResolver()))
         return MeshNode(identity: identity, store: store, deliveryTracker: tracker)
     }

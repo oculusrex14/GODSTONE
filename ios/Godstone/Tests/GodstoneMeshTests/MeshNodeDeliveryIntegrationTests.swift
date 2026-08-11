@@ -31,8 +31,9 @@ import GodstoneCore
 ///   - a non-ACK frame is routed to the epidemic router, NOT the tracker
 ///
 /// The DeliveryTracker truth-table / negative-ACK matrix / reboot recovery are
-/// covered in `DeliveryTrackerTests` / `SqliteDeliveryJournalTests`; these tests
-/// pin the MeshNode CALL-SITE wiring (the C6/C7 seams) on top of that machine.
+/// covered in `DeliveryTrackerTests` / `SqliteDeliveryRepositoryTests`; these
+/// tests pin the MeshNode CALL-SITE wiring (the C6/C7 seams) on top of that
+/// machine.
 final class MeshNodeDeliveryIntegrationTests: XCTestCase {
 
     private func msgId(_ seed: UInt8) -> Data {
@@ -42,30 +43,85 @@ final class MeshNodeDeliveryIntegrationTests: XCTestCase {
     private func nodeA() -> Data { Data(repeating: 0x01, count: 16) }
     private func nodeB() -> Data { Data(repeating: 0x02, count: 16) }
 
-    /// In-memory `DeliveryJournal` (mirroring `SqliteDeliveryJournal` over a real
-    /// DB). Stores the full `DeliveryRecord` so the binding is preserved across
-    /// `updateState`.
-    private final class InMemoryDeliveryJournal: DeliveryJournal {
+    /// In-memory `DeliveryRepository` (mirroring `SqliteDeliveryRepository` over
+    /// a real DB). Stores the full `DeliveryRecord` so the binding is preserved
+    /// across state transitions; `compareAndSet` / `acknowledgeAndRetire` advance
+    /// only the state column (recipient is IMMUTABLE post-creation).
+    private final class InMemoryDeliveryRepository: DeliveryRepository {
         var map: [Data: DeliveryRecord] = [:]
 
-        func read(_ msgId: Data) -> DeliveryLookup {
+        func get(_ msgId: Data) -> DeliveryLookup {
             if let rec = map[msgId] { return .found(rec) }
             return .notFound
         }
-        func insert(_ msgId: Data, ackMode: AckMode, expectedRecipient: Data?) -> Bool {
-            if map[msgId] != nil { return false } // ON CONFLICT DO NOTHING
-            map[msgId] = DeliveryRecord(msgId: msgId, state: .queuedDurably,
-                                         ackMode: ackMode, expectedRecipientNodeId: expectedRecipient)
-            return true
+        func enqueue(_ msgId: Data, ackMode: AckMode, expectedRecipient: Data?) -> EnqueueResult {
+            guard bindingConsistent(ackMode: ackMode, expectedRecipient: expectedRecipient) else { return .corrupt }
+            switch get(msgId) {
+            case .notFound:
+                map[msgId] = DeliveryRecord(msgId: msgId, state: .queuedDurably,
+                                             ackMode: ackMode, expectedRecipientNodeId: expectedRecipient)
+                return .created
+            case .found(let rec):
+                return classifyExisting(rec: rec, ackMode: ackMode, expectedRecipient: expectedRecipient)
+            case .corrupt:
+                return .corrupt
+            case .storageFailure:
+                return .storageFailure
+            }
         }
-        func updateState(_ msgId: Data, _ state: DeliveryState) -> Int {
-            guard let rec = map[msgId] else { return 0 }
-            map[msgId] = DeliveryRecord(msgId: msgId, state: state,
-                                         ackMode: rec.ackMode,
-                                         expectedRecipientNodeId: rec.expectedRecipientNodeId)
-            return 1
+        func compareAndSet(_ msgId: Data, validFroms: Set<DeliveryState>,
+                           target: DeliveryState) -> TransitionResult {
+            switch get(msgId) {
+            case .notFound: return .unknownMessage
+            case .corrupt: return .corrupt
+            case .storageFailure: return .storageFailure
+            case .found(let rec):
+                let s = rec.state
+                if s == target { return .alreadyInTarget }
+                if validFroms.contains(s) {
+                    map[msgId] = DeliveryRecord(msgId: msgId, state: target,
+                                                 ackMode: rec.ackMode,
+                                                 expectedRecipientNodeId: rec.expectedRecipientNodeId)
+                    return .applied
+                }
+                return .rejectedState
+            }
+        }
+        func acknowledgeAndRetire(_ msgId: Data, ackMode: AckMode,
+                                  expectedRecipient: Data?) -> AckResult {
+            switch get(msgId) {
+            case .notFound: return .unknownMessage
+            case .corrupt: return .corrupt
+            case .storageFailure: return .storageFailure
+            case .found(let rec):
+                if rec.ackMode != ackMode || rec.expectedRecipientNodeId != expectedRecipient {
+                    return .unknownMessage
+                }
+                map[msgId] = DeliveryRecord(msgId: msgId, state: .acknowledgedByRecipient,
+                                             ackMode: rec.ackMode,
+                                             expectedRecipientNodeId: rec.expectedRecipientNodeId)
+                return .applied
+            }
         }
         func clear(_ msgId: Data) { map.removeValue(forKey: msgId) }
+
+        private func classifyExisting(rec: DeliveryRecord, ackMode: AckMode,
+                                      expectedRecipient: Data?) -> EnqueueResult {
+            if rec.state.isTerminal { return .rejectedTerminalState }
+            if rec.ackMode == ackMode && rec.expectedRecipientNodeId == expectedRecipient {
+                return .alreadyQueuedSameBinding
+            }
+            return .conflictRecipient
+        }
+
+        private func bindingConsistent(ackMode: AckMode, expectedRecipient: Data?) -> Bool {
+            switch ackMode {
+            case .none: return expectedRecipient == nil
+            case .singleRecipient:
+                guard let r = expectedRecipient else { return false }
+                return r.count == 16
+            }
+        }
     }
 
     /// Resolver binding two distinct node ids to two distinct keys (C2 binding).
@@ -98,16 +154,17 @@ final class MeshNodeDeliveryIntegrationTests: XCTestCase {
         return (priv.publicKey.rawRepresentation, priv.rawRepresentation)
     }
 
-    /// Build a node over `store` + an in-memory journal/tracker with the supplied
-    /// resolver. Returns the node + the journal so tests can assert on the
-    /// durable delivery state. The caller retains its own `store` reference.
+    /// Build a node over `store` + an in-memory repository/tracker with the
+    /// supplied resolver. Returns the node + the repository so tests can assert
+    /// on the durable delivery state. The caller retains its own `store`
+    /// reference.
     private func makeNode(store: MessageStore,
-                          resolver: RecipientKeyResolver) -> (MeshNode, InMemoryDeliveryJournal) {
+                          resolver: RecipientKeyResolver) -> (MeshNode, InMemoryDeliveryRepository) {
         let identity = MeshIdentity(
             signingKey: Curve25519.Signing.PrivateKey(),
             agreementKey: Curve25519.KeyAgreement.PrivateKey())
-        let journal = InMemoryDeliveryJournal()
-        let tracker = DeliveryTracker(journal: journal,
+        let journal = InMemoryDeliveryRepository()
+        let tracker = DeliveryTracker(repo: journal,
                                       authenticator: Ed25519AckAuthenticator(resolver: resolver))
         let node = MeshNode(identity: identity, store: store, deliveryTracker: tracker)
         return (node, journal)

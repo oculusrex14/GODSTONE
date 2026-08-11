@@ -5,7 +5,7 @@ import io.godstone.core.crypto.X25519Keys
 import io.godstone.mesh.delivery.AckFrame
 import io.godstone.mesh.delivery.AckMode
 import io.godstone.mesh.delivery.AckResult
-import io.godstone.mesh.delivery.DeliveryJournal
+import io.godstone.mesh.delivery.DeliveryRepository
 import io.godstone.mesh.delivery.DeliveryLookup
 import io.godstone.mesh.delivery.DeliveryRecord
 import io.godstone.mesh.delivery.DeliveryState
@@ -59,7 +59,7 @@ import kotlin.test.assertTrue
  *
  * The DeliveryTracker truth-table / negative-ACK matrix / reboot recovery are
  * covered in [io.godstone.mesh.delivery.DeliveryTrackerTest] and
- * [io.godstone.mesh.delivery.SqliteDeliveryJournalTest]; these tests pin the
+ * [io.godstone.mesh.delivery.SqliteDeliveryRepositoryTest]; these tests pin the
  * MeshNode CALL-SITE wiring (the C6/C7 seams) on top of that proven machine.
  */
 class MeshNodeDeliveryIntegrationTest {
@@ -72,30 +72,82 @@ class MeshNodeDeliveryIntegrationTest {
     private fun nodeB() = ByteArray(16) { 0x02 }
 
     /**
-     * In-memory [DeliveryJournal] mirroring [io.godstone.mesh.delivery
-     * .SqliteDeliveryJournal] over a real DB: one [DeliveryRecord] per msg_id
-     * holding state + ack mode + recipient; [updateState] preserves the binding.
+     * In-memory [DeliveryRepository] mirroring [io.godstone.mesh.delivery
+     * .SqliteDeliveryRepository] over a real DB: one [DeliveryRecord] per msg_id
+     * holding state + ack mode + recipient; [compareAndSet] /
+     * [acknowledgeAndRetire] preserve the binding (state-only advance).
      */
-    private class InMemoryDeliveryJournal : DeliveryJournal {
+    private class InMemoryDeliveryRepository : DeliveryRepository {
         val records = mutableMapOf<List<Byte>, DeliveryRecord>()
         private fun k(m: ByteArray) = m.toList()
-        override fun read(msgId: ByteArray): DeliveryLookup {
+        override fun get(msgId: ByteArray): DeliveryLookup {
             val rec = records[k(msgId)] ?: return DeliveryLookup.NotFound
             return DeliveryLookup.Found(rec)
         }
-        override fun insert(msgId: ByteArray, ackMode: AckMode, expectedRecipient: ByteArray?): Boolean {
-            val key = k(msgId)
-            if (records.containsKey(key)) return false // ON CONFLICT DO NOTHING
-            records[key] = DeliveryRecord(msgId, DeliveryState.QUEUED_DURABLY, ackMode, expectedRecipient)
-            return true
+        override fun enqueue(msgId: ByteArray, ackMode: AckMode, expectedRecipient: ByteArray?): EnqueueResult {
+            if (!bindingConsistent(ackMode, expectedRecipient)) return EnqueueResult.Corrupt
+            return when (val l = get(msgId)) {
+                DeliveryLookup.NotFound -> {
+                    records[k(msgId)] = DeliveryRecord(msgId, DeliveryState.QUEUED_DURABLY, ackMode, expectedRecipient)
+                    EnqueueResult.Created
+                }
+                is DeliveryLookup.Found -> classifyExisting(l.record, ackMode, expectedRecipient)
+                DeliveryLookup.Corrupt -> EnqueueResult.Corrupt
+                DeliveryLookup.StorageFailure -> EnqueueResult.StorageFailure
+            }
         }
-        override fun updateState(msgId: ByteArray, state: DeliveryState): Int {
-            val key = k(msgId)
-            val rec = records[key] ?: return 0
-            records[key] = rec.copy(state = state) // preserve ackMode + recipient
-            return 1
+        override fun compareAndSet(
+            msgId: ByteArray,
+            validFroms: Set<DeliveryState>,
+            target: DeliveryState,
+        ): TransitionResult = when (val l = get(msgId)) {
+            DeliveryLookup.NotFound -> TransitionResult.UnknownMessage
+            DeliveryLookup.Corrupt -> TransitionResult.Corrupt
+            DeliveryLookup.StorageFailure -> TransitionResult.StorageFailure
+            is DeliveryLookup.Found -> {
+                val s = l.record.state
+                when {
+                    s == target -> TransitionResult.AlreadyInTarget
+                    s in validFroms -> {
+                        records[k(msgId)] = l.record.copy(state = target) // preserve ackMode + recipient
+                        TransitionResult.Applied
+                    }
+                    else -> TransitionResult.RejectedState
+                }
+            }
+        }
+        override fun acknowledgeAndRetire(
+            msgId: ByteArray,
+            ackMode: AckMode,
+            expectedRecipient: ByteArray?,
+        ): AckResult = when (val l = get(msgId)) {
+            DeliveryLookup.NotFound -> AckResult.UnknownMessage
+            DeliveryLookup.Corrupt -> AckResult.Corrupt
+            DeliveryLookup.StorageFailure -> AckResult.StorageFailure
+            is DeliveryLookup.Found -> {
+                val rec = l.record
+                if (rec.ackMode != ackMode ||
+                    !rec.expectedRecipientNodeId.contentEquals(expectedRecipient)
+                ) return AckResult.UnknownMessage
+                records[k(msgId)] = rec.copy(state = DeliveryState.ACKNOWLEDGED_BY_RECIPIENT)
+                AckResult.Applied
+            }
         }
         override fun clear(msgId: ByteArray) { records.remove(k(msgId)) }
+
+        private fun classifyExisting(rec: DeliveryRecord, ackMode: AckMode, expectedRecipient: ByteArray?): EnqueueResult {
+            if (rec.state.isTerminal) return EnqueueResult.RejectedTerminalState
+            return if (rec.ackMode == ackMode &&
+                rec.expectedRecipientNodeId.contentEquals(expectedRecipient)
+            ) EnqueueResult.AlreadyQueuedSameBinding
+            else EnqueueResult.ConflictRecipient
+        }
+
+        private fun bindingConsistent(ackMode: AckMode, expectedRecipient: ByteArray?): Boolean =
+            when (ackMode) {
+                AckMode.NONE -> expectedRecipient == null
+                AckMode.SINGLE_RECIPIENT -> expectedRecipient != null && expectedRecipient.size == 16
+            }
     }
 
     /** Resolver binding two distinct node ids to two distinct keys (C2 binding). */
@@ -132,17 +184,18 @@ class MeshNodeDeliveryIntegrationTest {
         return Identity.fromKeyMaterial(ed.pub, ed.priv, dh.pub, dh.priv)
     }
 
-    private fun rec(j: InMemoryDeliveryJournal, mid: ByteArray): DeliveryRecord =
-        (j.read(mid) as DeliveryLookup.Found).record
+    private fun rec(j: InMemoryDeliveryRepository, mid: ByteArray): DeliveryRecord =
+        (j.get(mid) as DeliveryLookup.Found).record
 
-    /** Build a node over [store] + an in-memory journal/tracker with the supplied
-     *  resolver. Returns the node + the journal so tests can assert on the
-     *  durable delivery state. The caller retains its own [store] reference. */
+    /** Build a node over [store] + an in-memory repository/tracker with the
+     *  supplied resolver. Returns the node + the repository so tests can assert
+     *  on the durable delivery state. The caller retains its own [store]
+     *  reference. */
     private fun makeNode(
         store: MessageStore,
         resolver: RecipientKeyResolver,
-    ): Pair<MeshNode, InMemoryDeliveryJournal> {
-        val journal = InMemoryDeliveryJournal()
+    ): Pair<MeshNode, InMemoryDeliveryRepository> {
+        val journal = InMemoryDeliveryRepository()
         val tracker = DeliveryTracker(journal, Ed25519AckAuthenticator(resolver))
         val node = MeshNode(ctx = null, identity = freshIdentity(), store = store, deliveryTracker = tracker)
         return node to journal

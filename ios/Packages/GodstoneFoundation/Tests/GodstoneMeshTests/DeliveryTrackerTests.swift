@@ -4,11 +4,12 @@ import CryptoKit
 import GodstoneCore
 
 /// Durable recipient-authenticated delivery state machine (ADR-005; A-03; Stage
-/// 4C / C6.1). Drives the REAL `DeliveryTracker` + `Ed25519AckAuthenticator`
-/// with a REAL Ed25519 keypair and an in-memory `DeliveryJournal` fake for the
+/// 4C / C6.1; C6.3). Drives the REAL `DeliveryTracker` + `Ed25519AckAuthenticator`
+/// with a REAL Ed25519 keypair and an in-memory `DeliveryRepository` fake for the
 /// truth-table / negative-ACK matrix, plus a SQLite-backed reboot test in
-/// `SqliteDeliveryJournalTests` (the file-backed journal was removed in C6.1 --
-/// it could not store the recipient binding). Mirrors `DeliveryTrackerTest` on
+/// `SqliteDeliveryRepositoryTests` (the file-backed journal was removed in C6.1 --
+/// it could not store the recipient binding; C6.3 folded the journal + retire
+/// logic into one atomic `DeliveryRepository`). Mirrors `DeliveryTrackerTest` on
 /// Android one-for-one.
 ///
 /// C6.1 invariants asserted here:
@@ -30,13 +31,17 @@ final class DeliveryTrackerTests: XCTestCase {
     }
     private let routingTag = Data([0, 1, 2, 3])
 
-    /// In-memory `DeliveryJournal` for the truth-table / negative matrix. Stores
-    /// the full `DeliveryRecord` (state + ackMode + recipient) so the binding is
-    /// preserved across `updateState`. `corruptIds` forces a `.corrupt` read for
-    /// the listed msg ids (the C6.5 fail-closed path at the tracker level).
-    /// `insertReturnsFalse` forces `insert` to report "no new row" so the re-read
+    /// In-memory `DeliveryRepository` for the truth-table / negative matrix.
+    /// Stores the full `DeliveryRecord` (state + ackMode + recipient) so the
+    /// binding is preserved across state transitions. Mirrors the production
+    /// `SqliteDeliveryRepository` over a real DB: `enqueue` /
+    /// `compareAndSet` / `acknowledgeAndRetire` are the atomic aggregates
+    /// (recipient is IMMUTABLE post-creation -- there is no recipient-only write).
+    /// `corruptIds` forces a `.corrupt` read for the listed msg ids (the C6.5
+    /// fail-closed path at the repository level). `insertReturnsFalse` forces
+    /// `enqueue`'s underlying insert to report "no new row" so the re-read
     /// classification branch is exercised.
-    private final class FakeJournal: DeliveryJournal {
+    private final class FakeRepository: DeliveryRepository {
         var map: [Data: DeliveryRecord] = [:]
         var corruptIds: Set<Data> = []
         let insertReturnsFalse: Bool
@@ -48,29 +53,105 @@ final class DeliveryTrackerTests: XCTestCase {
         /// Test seam: plant a record (bypassing the queuedDurably insert).
         func plant(_ rec: DeliveryRecord) { map[rec.msgId] = rec }
 
-        func read(_ msgId: Data) -> DeliveryLookup {
+        func get(_ msgId: Data) -> DeliveryLookup {
             if corruptIds.contains(msgId) { return .corrupt }
             guard let rec = map[msgId] else { return .notFound }
             return .found(rec)
         }
 
-        func insert(_ msgId: Data, ackMode: AckMode, expectedRecipient: Data?) -> Bool {
-            if insertReturnsFalse { return false }
-            if map[msgId] != nil { return false } // ON CONFLICT DO NOTHING
-            map[msgId] = DeliveryRecord(msgId: msgId, state: .queuedDurably,
-                                         ackMode: ackMode, expectedRecipientNodeId: expectedRecipient)
-            return true
+        func enqueue(_ msgId: Data, ackMode: AckMode, expectedRecipient: Data?) -> EnqueueResult {
+            guard bindingConsistent(ackMode: ackMode, expectedRecipient: expectedRecipient) else {
+                return .corrupt
+            }
+            switch get(msgId) {
+            case .notFound:
+                if insertReturnsFalse {
+                    return classifyExisting(msgId: msgId, ackMode: ackMode, expectedRecipient: expectedRecipient)
+                }
+                if map[msgId] != nil { // ON CONFLICT DO NOTHING -- row appeared mid-call
+                    return classifyExisting(msgId: msgId, ackMode: ackMode, expectedRecipient: expectedRecipient)
+                }
+                map[msgId] = DeliveryRecord(msgId: msgId, state: .queuedDurably,
+                                             ackMode: ackMode, expectedRecipientNodeId: expectedRecipient)
+                return .created
+            case .found(let rec):
+                return classifyExisting(rec: rec, ackMode: ackMode, expectedRecipient: expectedRecipient)
+            case .corrupt:
+                return .corrupt
+            case .storageFailure:
+                return .storageFailure
+            }
         }
 
-        func updateState(_ msgId: Data, _ state: DeliveryState) -> Int {
-            guard let rec = map[msgId] else { return 0 }
-            map[msgId] = DeliveryRecord(msgId: msgId, state: state,
-                                         ackMode: rec.ackMode,
-                                         expectedRecipientNodeId: rec.expectedRecipientNodeId)
-            return 1
+        func compareAndSet(_ msgId: Data, validFroms: Set<DeliveryState>,
+                           target: DeliveryState) -> TransitionResult {
+            switch get(msgId) {
+            case .notFound: return .unknownMessage
+            case .corrupt: return .corrupt
+            case .storageFailure: return .storageFailure
+            case .found(let rec):
+                let s = rec.state
+                if s == target { return .alreadyInTarget }
+                if validFroms.contains(s) {
+                    map[msgId] = DeliveryRecord(msgId: msgId, state: target,
+                                                 ackMode: rec.ackMode,
+                                                 expectedRecipientNodeId: rec.expectedRecipientNodeId)
+                    return .applied
+                }
+                return .rejectedState
+            }
+        }
+
+        func acknowledgeAndRetire(_ msgId: Data, ackMode: AckMode,
+                                  expectedRecipient: Data?) -> AckResult {
+            switch get(msgId) {
+            case .notFound: return .unknownMessage
+            case .corrupt: return .corrupt
+            case .storageFailure: return .storageFailure
+            case .found(let rec):
+                if rec.ackMode != ackMode || rec.expectedRecipientNodeId != expectedRecipient {
+                    return .unknownMessage
+                }
+                map[msgId] = DeliveryRecord(msgId: msgId, state: .acknowledgedByRecipient,
+                                             ackMode: rec.ackMode,
+                                             expectedRecipientNodeId: rec.expectedRecipientNodeId)
+                return .applied
+            }
         }
 
         func clear(_ msgId: Data) { map.removeValue(forKey: msgId) }
+
+        private func classifyExisting(msgId: Data, ackMode: AckMode,
+                                      expectedRecipient: Data?) -> EnqueueResult {
+            switch get(msgId) {
+            case .found(let rec):
+                return classifyExisting(rec: rec, ackMode: ackMode, expectedRecipient: expectedRecipient)
+            case .notFound:
+                return .storageFailure // row vanished -- storage anomaly
+            case .corrupt:
+                return .corrupt
+            case .storageFailure:
+                return .storageFailure
+            }
+        }
+
+        private func classifyExisting(rec: DeliveryRecord, ackMode: AckMode,
+                                      expectedRecipient: Data?) -> EnqueueResult {
+            if rec.state.isTerminal { return .rejectedTerminalState }
+            if rec.ackMode == ackMode && rec.expectedRecipientNodeId == expectedRecipient {
+                return .alreadyQueuedSameBinding
+            }
+            return .conflictRecipient
+        }
+
+        private func bindingConsistent(ackMode: AckMode, expectedRecipient: Data?) -> Bool {
+            switch ackMode {
+            case .none: return expectedRecipient == nil
+            case .singleRecipient:
+                guard let r = expectedRecipient else { return false }
+                return r.count == 16
+            }
+        }
     }
 
     /// Authenticator returning a fixed verdict, recording whether it was invoked.
@@ -119,8 +200,8 @@ final class DeliveryTrackerTests: XCTestCase {
     }
 
     /// Extract the record from a `.found` lookup (fail the test otherwise).
-    private func foundRecord(_ journal: DeliveryJournal, _ mid: Data) -> DeliveryRecord {
-        if case .found(let rec) = journal.read(mid) { return rec }
+    private func foundRecord(_ journal: DeliveryRepository, _ mid: Data) -> DeliveryRecord {
+        if case .found(let rec) = journal.get(mid) { return rec }
         XCTFail("expected .found(\(mid))"); return DeliveryRecord(
             msgId: mid, state: .unavailable, ackMode: .none, expectedRecipientNodeId: nil)
     }
@@ -131,7 +212,7 @@ final class DeliveryTrackerTests: XCTestCase {
         let (pub, priv) = realKeypair()
         let recipientNodeId = Data(repeating: 0x42, count: 16)
         let resolver = SingleRecipientResolver(recipientNodeId, pub)
-        let tracker = DeliveryTracker(journal: FakeJournal(),
+        let tracker = DeliveryTracker(repo: FakeRepository(),
                                       authenticator: Ed25519AckAuthenticator(resolver: resolver))
         let mid = msgId(1)
         XCTAssertEqual(.unavailable, tracker.state(mid))
@@ -158,7 +239,7 @@ final class DeliveryTrackerTests: XCTestCase {
         let nodeB = Data(repeating: 0x02, count: 16)
         _ = TwoRecipientResolver(nodeA, pubA, nodeB, pubB) // two valid keys exist
         let auth = FakeAuthenticator(true) // would say "yes" -- must never be asked
-        let tracker = DeliveryTracker(journal: FakeJournal(), authenticator: auth)
+        let tracker = DeliveryTracker(repo: FakeRepository(), authenticator: auth)
         let mid = msgId(50)
         XCTAssertEqual(EnqueueResult.created, tracker.enqueue(mid, ackMode: .none, expectedRecipient: nil))
         XCTAssertEqual(TransitionResult.applied, tracker.markHandedToRelay(mid))
@@ -182,7 +263,7 @@ final class DeliveryTrackerTests: XCTestCase {
     // --- no delivery claimed without cryptographic evidence (ADR-005) ---
 
     func testRejectedAckDoesNotAdvanceState() {
-        let tracker = DeliveryTracker(journal: FakeJournal(), authenticator: FakeAuthenticator(false))
+        let tracker = DeliveryTracker(repo: FakeRepository(), authenticator: FakeAuthenticator(false))
         let mid = msgId(2)
         _ = tracker.enqueue(mid, ackMode: .singleRecipient, expectedRecipient: Data(repeating: 0x02, count: 16))
         tracker.markHandedToRelay(mid)
@@ -194,7 +275,7 @@ final class DeliveryTrackerTests: XCTestCase {
         let (pub, priv) = realKeypair()
         let recipientNodeId = Data(repeating: 0x43, count: 16)
         let tracker = DeliveryTracker(
-            journal: FakeJournal(),
+            repo: FakeRepository(),
             authenticator: Ed25519AckAuthenticator(resolver: SingleRecipientResolver(recipientNodeId, pub)))
         let midX = msgId(10), midY = msgId(11)
         _ = tracker.enqueue(midX, ackMode: .singleRecipient, expectedRecipient: recipientNodeId); tracker.markHandedToRelay(midX)
@@ -214,7 +295,7 @@ final class DeliveryTrackerTests: XCTestCase {
         let (pub, priv) = realKeypair()
         let recipientNodeId = Data(repeating: 0x44, count: 16)
         let tracker = DeliveryTracker(
-            journal: FakeJournal(),
+            repo: FakeRepository(),
             authenticator: Ed25519AckAuthenticator(resolver: SingleRecipientResolver(recipientNodeId, pub)))
         let mid = msgId(3)
         _ = tracker.enqueue(mid, ackMode: .singleRecipient, expectedRecipient: recipientNodeId); tracker.markHandedToRelay(mid)
@@ -234,7 +315,7 @@ final class DeliveryTrackerTests: XCTestCase {
         let recipientNodeId = Data(repeating: 0x45, count: 16)
         // Resolver binds recipientNodeId -> A's pub, but the ACK is signed by B.
         let tracker = DeliveryTracker(
-            journal: FakeJournal(),
+            repo: FakeRepository(),
             authenticator: Ed25519AckAuthenticator(resolver: SingleRecipientResolver(recipientNodeId, pubA)))
         let mid = msgId(4)
         _ = tracker.enqueue(mid, ackMode: .singleRecipient, expectedRecipient: recipientNodeId); tracker.markHandedToRelay(mid)
@@ -249,7 +330,7 @@ final class DeliveryTrackerTests: XCTestCase {
         let (pub, priv) = realKeypair()
         let recipientNodeId = Data(repeating: 0x46, count: 16)
         let tracker = DeliveryTracker(
-            journal: FakeJournal(),
+            repo: FakeRepository(),
             authenticator: Ed25519AckAuthenticator(resolver: SingleRecipientResolver(recipientNodeId, pub)))
         let mid = msgId(5)
         _ = tracker.enqueue(mid, ackMode: .singleRecipient, expectedRecipient: recipientNodeId); tracker.markHandedToRelay(mid)
@@ -265,7 +346,7 @@ final class DeliveryTrackerTests: XCTestCase {
     // --- truth-table: enqueue ---
 
     func testTruthTableEnqueueFromUnavailableCreatesSameBindingIdempotentTerminalRejects() {
-        let tracker = DeliveryTracker(journal: FakeJournal(), authenticator: FakeAuthenticator(true))
+        let tracker = DeliveryTracker(repo: FakeRepository(), authenticator: FakeAuthenticator(true))
         let mid = msgId(20)
         let recipient = Data(repeating: 0x20, count: 16)
         // from UNAVAILABLE -> .created
@@ -282,8 +363,8 @@ final class DeliveryTrackerTests: XCTestCase {
     }
 
     func testReEnqueueWithDifferentBindingIsConflictRecipientAndPreservesOriginalBinding() {
-        let journal = FakeJournal()
-        let tracker = DeliveryTracker(journal: journal, authenticator: FakeAuthenticator(true))
+        let journal = FakeRepository()
+        let tracker = DeliveryTracker(repo: journal, authenticator: FakeAuthenticator(true))
         let mid = msgId(24)
         let nodeA = Data(repeating: 0xA1, count: 16)
         let nodeB = Data(repeating: 0xB1, count: 16)
@@ -299,14 +380,14 @@ final class DeliveryTrackerTests: XCTestCase {
     }
 
     func testNoneModeEnqueueIsIdempotentOnSameNullBinding() {
-        let tracker = DeliveryTracker(journal: FakeJournal(), authenticator: FakeAuthenticator(true))
+        let tracker = DeliveryTracker(repo: FakeRepository(), authenticator: FakeAuthenticator(true))
         let mid = msgId(25)
         XCTAssertEqual(EnqueueResult.created, tracker.enqueue(mid, ackMode: .none, expectedRecipient: nil))
         XCTAssertEqual(EnqueueResult.alreadyQueuedSameBinding, tracker.enqueue(mid, ackMode: .none, expectedRecipient: nil))
     }
 
     func testInconsistentBindingIsRejectedAsCorruptBeforeJournalIsTouched() {
-        let tracker = DeliveryTracker(journal: FakeJournal(), authenticator: FakeAuthenticator(true))
+        let tracker = DeliveryTracker(repo: FakeRepository(), authenticator: FakeAuthenticator(true))
         let mid = msgId(26)
         // SINGLE_RECIPIENT with no recipient violates the C6.1 invariant.
         XCTAssertEqual(EnqueueResult.corrupt, tracker.enqueue(mid, ackMode: .singleRecipient, expectedRecipient: nil))
@@ -319,7 +400,7 @@ final class DeliveryTrackerTests: XCTestCase {
     // --- truth-table: markHandedToRelay / expire / cancel (TransitionResult) ---
 
     func testTruthTableMarkHandedOnlyFromQueuedOrHanded() {
-        let tracker = DeliveryTracker(journal: FakeJournal(), authenticator: FakeAuthenticator(true))
+        let tracker = DeliveryTracker(repo: FakeRepository(), authenticator: FakeAuthenticator(true))
         let mid = msgId(21)
         XCTAssertEqual(TransitionResult.unknownMessage, tracker.markHandedToRelay(mid), "cannot hand over before enqueue")
         _ = tracker.enqueue(mid, ackMode: .singleRecipient, expectedRecipient: Data(repeating: 0x21, count: 16))
@@ -330,7 +411,7 @@ final class DeliveryTrackerTests: XCTestCase {
     }
 
     func testTruthTableExpireCancelAndTerminalRejection() {
-        let tracker = DeliveryTracker(journal: FakeJournal(), authenticator: FakeAuthenticator(true))
+        let tracker = DeliveryTracker(repo: FakeRepository(), authenticator: FakeAuthenticator(true))
         let mid = msgId(22)
         XCTAssertEqual(TransitionResult.unknownMessage, tracker.expire(mid))
         XCTAssertEqual(TransitionResult.unknownMessage, tracker.cancel(mid))
@@ -361,7 +442,7 @@ final class DeliveryTrackerTests: XCTestCase {
         let (pub, priv) = realKeypair()
         let recipientNodeId = Data(repeating: 0x47, count: 16)
         let tracker = DeliveryTracker(
-            journal: FakeJournal(),
+            repo: FakeRepository(),
             authenticator: Ed25519AckAuthenticator(resolver: SingleRecipientResolver(recipientNodeId, pub)))
         let mid = msgId(6)
         _ = tracker.enqueue(mid, ackMode: .singleRecipient, expectedRecipient: recipientNodeId); tracker.markHandedToRelay(mid)
@@ -378,8 +459,8 @@ final class DeliveryTrackerTests: XCTestCase {
     // --- corrupt / unknown message lookup fail closed ---
 
     func testUnknownMessageAckIsUnknownMessageAndCorruptRecordIsCorrupt() {
-        let journal = FakeJournal()
-        let tracker = DeliveryTracker(journal: journal, authenticator: FakeAuthenticator(true))
+        let journal = FakeRepository()
+        let tracker = DeliveryTracker(repo: journal, authenticator: FakeAuthenticator(true))
         let mid = msgId(60)
         XCTAssertEqual(AckResult.unknownMessage, tracker.acknowledge(mid, rawAckFrame(mid)))
         // A corrupt row -> .corrupt (NOT UNAVAILABLE / NOT authenticated).
@@ -390,13 +471,13 @@ final class DeliveryTrackerTests: XCTestCase {
     }
 
     func testForgetClearsTheDeliveryRecord() {
-        let journal = FakeJournal()
-        let tracker = DeliveryTracker(journal: journal, authenticator: FakeAuthenticator(true))
+        let journal = FakeRepository()
+        let tracker = DeliveryTracker(repo: journal, authenticator: FakeAuthenticator(true))
         let mid = msgId(61)
         _ = tracker.enqueue(mid, ackMode: .none, expectedRecipient: nil)
         tracker.forget(mid)
         XCTAssertEqual(.unavailable, tracker.state(mid))
-        XCTAssertEqual(DeliveryLookup.notFound, journal.read(mid))
+        XCTAssertEqual(DeliveryLookup.notFound, journal.get(mid))
     }
 
     // --- cross-platform parity: a signature made here verifies here ---
@@ -431,7 +512,7 @@ final class DeliveryTrackerTests: XCTestCase {
         let nodeA = Data(repeating: 0x01, count: 16)
         let nodeB = Data(repeating: 0x02, count: 16)
         let resolver = TwoRecipientResolver(nodeA, pubA, nodeB, pubB)
-        let tracker = DeliveryTracker(journal: FakeJournal(),
+        let tracker = DeliveryTracker(repo: FakeRepository(),
                                       authenticator: Ed25519AckAuthenticator(resolver: resolver))
 
         // Message intended for A: enqueue binds expectedRecipient = nodeA.
@@ -477,7 +558,7 @@ final class DeliveryTrackerTests: XCTestCase {
         let nodeA = Data(repeating: 0x0A, count: 16)
         let nodeB = Data(repeating: 0x0B, count: 16)
         let resolver = TwoRecipientResolver(nodeA, pubA, nodeB, pubB)
-        let tracker = DeliveryTracker(journal: FakeJournal(),
+        let tracker = DeliveryTracker(repo: FakeRepository(),
                                       authenticator: Ed25519AckAuthenticator(resolver: resolver))
         let mid = msgId(33)
         _ = tracker.enqueue(mid, ackMode: .singleRecipient, expectedRecipient: nodeA); tracker.markHandedToRelay(mid)
@@ -500,7 +581,7 @@ final class DeliveryTrackerTests: XCTestCase {
         // keys are bound -- A-03 / ADR-005 stay OPEN.
         let (_, priv) = realKeypair()
         let recipientNodeId = Data(repeating: 0x50, count: 16)
-        let tracker = DeliveryTracker(journal: FakeJournal(),
+        let tracker = DeliveryTracker(repo: FakeRepository(),
                                       authenticator: Ed25519AckAuthenticator(resolver: UnresolvedRecipientKeyResolver()))
         let mid = msgId(40)
         _ = tracker.enqueue(mid, ackMode: .singleRecipient, expectedRecipient: recipientNodeId); tracker.markHandedToRelay(mid)

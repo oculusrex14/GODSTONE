@@ -385,11 +385,12 @@ class SqliteMessageStore internal constructor(
     /**
      * The underlying SQLite/SQLCipher engine. Exposed `internal` so the
      * production composition root (`MeshModule`, Stage 4C / C5) can build a
-     * [SqliteDeliveryJournal] over the SAME engine/connection the held-frames
-     * store uses -- one process-wide `StoreDb` feeds both the message store and
-     * the delivery journal, so the delivery_state row lives in the same DB as
-     * the held frames and shares the same connection. `internal` keeps this
-     * within the `:mesh` module (non-shipping); it never reaches the
+     * [io.godstone.mesh.delivery.SqliteDeliveryRepository] over the SAME
+     * engine/connection the held-frames store uses -- one process-wide `StoreDb`
+     * feeds both the message store and the delivery repository, so the
+     * delivery_state row lives in the same DB as the held frames and shares the
+     * same connection. `internal` keeps this within the `:mesh` module
+     * (non-shipping); it never reaches the
      * archive-only `lightRelease` classpath (Stage 4A forbidden-edge gate).
      */
     internal val engine: StoreDb,

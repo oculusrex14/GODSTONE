@@ -27,11 +27,11 @@ public final class MeshNode {
     /// `MeshNode(ctx, store)`.
     public let store: MessageStore
     /// Durable, recipient-authenticated delivery state machine (ADR-005; A-03;
-    /// Stage 4C / C6.1). Constructed by the composition root from the SAME
-    /// `SqliteMessageStore` as `store`: a `SqliteDeliveryJournal` is the durable
-    /// record -- one row holds the delivery state, the ACK mode, and the intended
-    /// recipient (the separate `ExpectedRecipientStore` seam was removed in
-    /// C6.1), and an `Ed25519AckAuthenticator` over the production
+    /// Stage 4C / C6.1; C6.3). Constructed by the composition root from the SAME
+    /// `SqliteMessageStore` as `store`: a `SqliteDeliveryRepository` is the
+    /// durable record -- one row holds the delivery state, the ACK mode, and the
+    /// intended recipient (the separate `ExpectedRecipientStore` seam was removed
+    /// in C6.1), and an `Ed25519AckAuthenticator` over the production
     /// `UnresolvedRecipientKeyResolver` rejects every ACK until the M2-link
     /// identity binding wires real recipient keys (fail-closed). The outbound
     /// path (C6) records the ACK mode (SOS is a broadcast -> `AckMode.none`, no

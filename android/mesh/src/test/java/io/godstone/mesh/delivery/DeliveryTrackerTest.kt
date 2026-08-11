@@ -11,11 +11,11 @@ import kotlin.test.assertTrue
 
 /**
  * Durable recipient-authenticated delivery state machine (ADR-005; A-03; Stage 4C
- * / C6.1). Drives the REAL [DeliveryTracker] + [Ed25519AckAuthenticator] with a
- * REAL Ed25519 keypair and an in-memory [DeliveryJournal] fake for the
+ * / C6.1; C6.3). Drives the REAL [DeliveryTracker] + [Ed25519AckAuthenticator]
+ * with a REAL Ed25519 keypair and an in-memory [DeliveryRepository] fake for the
  * truth-table / negative-ACK matrix, plus a SQLite-backed reboot test in
- * [SqliteDeliveryJournalTest] (the file-backed journal was removed in C6.1 -- it
- * could not store the recipient binding).
+ * [SqliteDeliveryRepositoryTest] (the file-backed journal was removed in C6.1 --
+ * it could not store the recipient binding).
  *
  * C6.1 invariants asserted here:
  *  * [AckMode.NONE] messages can NEVER be acknowledged -- a valid trusted ACK
@@ -39,46 +39,121 @@ class DeliveryTrackerTest {
     private val routingTag = ByteArray(4) { it.toByte() }
 
     /**
-     * In-memory [DeliveryJournal] for the truth-table / negative matrix. Stores
-     * the full [DeliveryRecord] (state + ackMode + recipient) so the binding is
-     * preserved across [updateState]. [corruptIds] forces a [DeliveryLookup.Corrupt]
-     * read for the listed msg ids (the C6.5 fail-closed path at the tracker
-     * level). [insertReturnsFalse] forces [insert] to report "no new row" so the
-     * re-read classification branch is exercised.
+     * In-memory [DeliveryRepository] for the truth-table / negative matrix.
+     * Stores the full [DeliveryRecord] (state + ackMode + recipient) so the
+     * binding is preserved across [compareAndSet] / [acknowledgeAndRetire].
+     * [corruptIds] forces a [DeliveryLookup.Corrupt] read for the listed msg ids
+     * (the C6.5 fail-closed path at the tracker level). [insertReturnsFalse]
+     * forces the NotFound -> insert branch to behave as an ON-CONFLICT so the
+     * re-read classification branch is exercised. Mirrors the real
+     * [SqliteDeliveryRepository] truth-table one-for-one.
      */
-    private class FakeJournal(
+    private class FakeRepository(
         private val insertReturnsFalse: Boolean = false,
-    ) : DeliveryJournal {
+    ) : DeliveryRepository {
         val map = mutableMapOf<List<Byte>, DeliveryRecord>()
         val corruptIds = mutableSetOf<List<Byte>>()
         private fun key(m: ByteArray) = m.toList()
 
-        /** Test seam: plant a record (bypassing the QUEUED_DURABLY insert). */
+        /** Test seam: plant a record (bypassing the QUEUED_DURABLY enqueue). */
         fun plant(rec: DeliveryRecord) { map[key(rec.msgId)] = rec }
 
-        override fun read(msgId: ByteArray): DeliveryLookup {
+        override fun get(msgId: ByteArray): DeliveryLookup {
             val k = key(msgId)
             if (corruptIds.contains(k)) return DeliveryLookup.Corrupt
             val rec = map[k] ?: return DeliveryLookup.NotFound
             return DeliveryLookup.Found(rec)
         }
 
-        override fun insert(msgId: ByteArray, ackMode: AckMode, expectedRecipient: ByteArray?): Boolean {
-            if (insertReturnsFalse) return false
-            val k = key(msgId)
-            if (map.containsKey(k)) return false // ON CONFLICT DO NOTHING
-            map[k] = DeliveryRecord(msgId, DeliveryState.QUEUED_DURABLY, ackMode, expectedRecipient)
-            return true
+        override fun enqueue(
+            msgId: ByteArray,
+            ackMode: AckMode,
+            expectedRecipient: ByteArray?,
+        ): EnqueueResult {
+            if (!bindingConsistent(ackMode, expectedRecipient)) return EnqueueResult.Corrupt
+            return when (val l = get(msgId)) {
+                DeliveryLookup.NotFound -> {
+                    if (insertReturnsFalse) return classifyExisting(msgId, ackMode, expectedRecipient)
+                    val k = key(msgId)
+                    if (map.containsKey(k)) return classifyExisting(msgId, ackMode, expectedRecipient)
+                    map[k] = DeliveryRecord(msgId, DeliveryState.QUEUED_DURABLY, ackMode, expectedRecipient)
+                    EnqueueResult.Created
+                }
+                is DeliveryLookup.Found -> classifyExisting(l.record, ackMode, expectedRecipient)
+                DeliveryLookup.Corrupt -> EnqueueResult.Corrupt
+                DeliveryLookup.StorageFailure -> EnqueueResult.StorageFailure
+            }
         }
 
-        override fun updateState(msgId: ByteArray, state: DeliveryState): Int {
-            val k = key(msgId)
-            val rec = map[k] ?: return 0
-            map[k] = rec.copy(state = state) // preserve ackMode + recipient
-            return 1
+        override fun compareAndSet(
+            msgId: ByteArray,
+            validFroms: Set<DeliveryState>,
+            target: DeliveryState,
+        ): TransitionResult = when (val l = get(msgId)) {
+            DeliveryLookup.NotFound -> TransitionResult.UnknownMessage
+            DeliveryLookup.Corrupt -> TransitionResult.Corrupt
+            DeliveryLookup.StorageFailure -> TransitionResult.StorageFailure
+            is DeliveryLookup.Found -> {
+                val s = l.record.state
+                when {
+                    s == target -> TransitionResult.AlreadyInTarget
+                    s in validFroms -> {
+                        map[key(msgId)] = l.record.copy(state = target) // preserve ackMode + recipient
+                        TransitionResult.Applied
+                    }
+                    else -> TransitionResult.RejectedState
+                }
+            }
+        }
+
+        override fun acknowledgeAndRetire(
+            msgId: ByteArray,
+            ackMode: AckMode,
+            expectedRecipient: ByteArray?,
+        ): AckResult = when (val l = get(msgId)) {
+            DeliveryLookup.NotFound -> AckResult.UnknownMessage
+            DeliveryLookup.Corrupt -> AckResult.Corrupt
+            DeliveryLookup.StorageFailure -> AckResult.StorageFailure
+            is DeliveryLookup.Found -> {
+                val rec = l.record
+                if (rec.ackMode != ackMode ||
+                    !rec.expectedRecipientNodeId.contentEquals(expectedRecipient)
+                ) return AckResult.UnknownMessage
+                map[key(msgId)] = rec.copy(state = DeliveryState.ACKNOWLEDGED_BY_RECIPIENT)
+                AckResult.Applied
+            }
         }
 
         override fun clear(msgId: ByteArray) { map.remove(key(msgId)) }
+
+        private fun classifyExisting(
+            msgId: ByteArray,
+            ackMode: AckMode,
+            expectedRecipient: ByteArray?,
+        ): EnqueueResult = when (val l = get(msgId)) {
+            is DeliveryLookup.Found -> classifyExisting(l.record, ackMode, expectedRecipient)
+            DeliveryLookup.NotFound -> EnqueueResult.StorageFailure // row vanished -- storage anomaly
+            DeliveryLookup.Corrupt -> EnqueueResult.Corrupt
+            DeliveryLookup.StorageFailure -> EnqueueResult.StorageFailure
+        }
+
+        private fun classifyExisting(
+            rec: DeliveryRecord,
+            ackMode: AckMode,
+            expectedRecipient: ByteArray?,
+        ): EnqueueResult {
+            if (rec.state.isTerminal) return EnqueueResult.RejectedTerminalState
+            return if (rec.ackMode == ackMode &&
+                rec.expectedRecipientNodeId.contentEquals(expectedRecipient)
+            ) EnqueueResult.AlreadyQueuedSameBinding
+            else EnqueueResult.ConflictRecipient
+        }
+
+        private fun bindingConsistent(ackMode: AckMode, expectedRecipient: ByteArray?): Boolean =
+            when (ackMode) {
+                AckMode.NONE -> expectedRecipient == null
+                AckMode.SINGLE_RECIPIENT -> expectedRecipient != null && expectedRecipient.size == 16
+            }
     }
 
     /** Authenticator returning a fixed verdict, recording whether it was invoked. */
@@ -130,7 +205,7 @@ class DeliveryTrackerTest {
         val (pub, priv) = realKeypair()
         val recipientNodeId = ByteArray(16) { 0x42 }
         val resolver = SingleRecipientResolver(recipientNodeId, pub)
-        val tracker = DeliveryTracker(FakeJournal(), Ed25519AckAuthenticator(resolver))
+        val tracker = DeliveryTracker(FakeRepository(), Ed25519AckAuthenticator(resolver))
         val mid = msgId(1)
         assertEquals(DeliveryState.UNAVAILABLE, tracker.state(mid))
         assertEquals(EnqueueResult.Created, tracker.enqueue(mid, AckMode.SINGLE_RECIPIENT, recipientNodeId))
@@ -156,7 +231,7 @@ class DeliveryTrackerTest {
         val nodeB = ByteArray(16) { 0x02 }
         val resolver = TwoRecipientResolver(nodeA, pubA, nodeB, pubB)
         val auth = FakeAuthenticator(ok = true) // would say "yes" -- must never be asked
-        val tracker = DeliveryTracker(FakeJournal(), auth)
+        val tracker = DeliveryTracker(FakeRepository(), auth)
         val mid = msgId(50)
         assertEquals(EnqueueResult.Created, tracker.enqueue(mid, AckMode.NONE, expectedRecipient = null))
         assertEquals(TransitionResult.Applied, tracker.markHandedToRelay(mid))
@@ -179,7 +254,7 @@ class DeliveryTrackerTest {
 
     @Test
     fun `an ACK that fails authentication returns RejectedAuthentication and does not advance state`() {
-        val tracker = DeliveryTracker(FakeJournal(), FakeAuthenticator(ok = false))
+        val tracker = DeliveryTracker(FakeRepository(), FakeAuthenticator(ok = false))
         val mid = msgId(2)
         tracker.enqueue(mid, AckMode.SINGLE_RECIPIENT, ByteArray(16) { 0x02 })
         tracker.markHandedToRelay(mid)
@@ -192,7 +267,7 @@ class DeliveryTrackerTest {
         val (pub, priv) = realKeypair()
         val recipientNodeId = ByteArray(16) { 0x43 }
         val tracker = DeliveryTracker(
-            FakeJournal(), Ed25519AckAuthenticator(SingleRecipientResolver(recipientNodeId, pub)))
+            FakeRepository(), Ed25519AckAuthenticator(SingleRecipientResolver(recipientNodeId, pub)))
         val midX = msgId(10)
         val midY = msgId(11)
         tracker.enqueue(midX, AckMode.SINGLE_RECIPIENT, recipientNodeId); tracker.markHandedToRelay(midX)
@@ -212,7 +287,7 @@ class DeliveryTrackerTest {
         val (pub, priv) = realKeypair()
         val recipientNodeId = ByteArray(16) { 0x44 }
         val tracker = DeliveryTracker(
-            FakeJournal(), Ed25519AckAuthenticator(SingleRecipientResolver(recipientNodeId, pub)))
+            FakeRepository(), Ed25519AckAuthenticator(SingleRecipientResolver(recipientNodeId, pub)))
         val mid = msgId(3)
         tracker.enqueue(mid, AckMode.SINGLE_RECIPIENT, recipientNodeId); tracker.markHandedToRelay(mid)
         val ack = AckFrame.build(mid, priv, recipientNodeId, routingTag)
@@ -229,7 +304,7 @@ class DeliveryTrackerTest {
         val recipientNodeId = ByteArray(16) { 0x45 }
         // Resolver binds recipientNodeId -> A's pub, but the ACK is signed by B.
         val tracker = DeliveryTracker(
-            FakeJournal(), Ed25519AckAuthenticator(SingleRecipientResolver(recipientNodeId, pubA)))
+            FakeRepository(), Ed25519AckAuthenticator(SingleRecipientResolver(recipientNodeId, pubA)))
         val mid = msgId(4)
         tracker.enqueue(mid, AckMode.SINGLE_RECIPIENT, recipientNodeId); tracker.markHandedToRelay(mid)
         val forged = AckFrame.build(mid, privB, recipientNodeId, routingTag)
@@ -243,7 +318,7 @@ class DeliveryTrackerTest {
         val (pub, priv) = realKeypair()
         val recipientNodeId = ByteArray(16) { 0x46 }
         val tracker = DeliveryTracker(
-            FakeJournal(), Ed25519AckAuthenticator(SingleRecipientResolver(recipientNodeId, pub)))
+            FakeRepository(), Ed25519AckAuthenticator(SingleRecipientResolver(recipientNodeId, pub)))
         val mid = msgId(5)
         tracker.enqueue(mid, AckMode.SINGLE_RECIPIENT, recipientNodeId); tracker.markHandedToRelay(mid)
         // Same payload layout but the wrong type -- must be rejected on type.
@@ -257,7 +332,7 @@ class DeliveryTrackerTest {
 
     @Test
     fun `truth table -- enqueue from UNAVAILABLE creates, same binding is idempotent, terminal rejects`() {
-        val tracker = DeliveryTracker(FakeJournal(), FakeAuthenticator(true))
+        val tracker = DeliveryTracker(FakeRepository(), FakeAuthenticator(true))
         val mid = msgId(20)
         val recipient = ByteArray(16) { 0x20 }
         // from UNAVAILABLE -> Created
@@ -275,7 +350,7 @@ class DeliveryTrackerTest {
 
     @Test
     fun `truth table -- re-enqueue with a different binding is ConflictRecipient and preserves the original binding`() {
-        val journal = FakeJournal()
+        val journal = FakeRepository()
         val tracker = DeliveryTracker(journal, FakeAuthenticator(true))
         val mid = msgId(24)
         // 0xA1 / 0xB1 exceed signed Byte (-128..127), so they must be widened
@@ -287,7 +362,7 @@ class DeliveryTrackerTest {
         // Different intended recipient for the SAME msg_id -> ConflictRecipient.
         assertEquals(EnqueueResult.ConflictRecipient, tracker.enqueue(mid, AckMode.SINGLE_RECIPIENT, nodeB))
         // The historical send intent (nodeA) is preserved -- not overwritten.
-        val rec = (journal.read(mid) as DeliveryLookup.Found).record
+        val rec = (journal.get(mid) as DeliveryLookup.Found).record
         assertEquals(nodeA, rec.expectedRecipientNodeId)
         assertEquals(DeliveryState.QUEUED_DURABLY, rec.state)
         // NONE vs SINGLE for the same msg_id is also a conflict.
@@ -296,7 +371,7 @@ class DeliveryTrackerTest {
 
     @Test
     fun `NONE-mode enqueue is idempotent on the same (null) binding`() {
-        val tracker = DeliveryTracker(FakeJournal(), FakeAuthenticator(true))
+        val tracker = DeliveryTracker(FakeRepository(), FakeAuthenticator(true))
         val mid = msgId(25)
         assertEquals(EnqueueResult.Created, tracker.enqueue(mid, AckMode.NONE, expectedRecipient = null))
         assertEquals(EnqueueResult.AlreadyQueuedSameBinding, tracker.enqueue(mid, AckMode.NONE, expectedRecipient = null))
@@ -304,7 +379,7 @@ class DeliveryTrackerTest {
 
     @Test
     fun `an inconsistent binding is rejected as Corrupt before the journal is touched`() {
-        val tracker = DeliveryTracker(FakeJournal(), FakeAuthenticator(true))
+        val tracker = DeliveryTracker(FakeRepository(), FakeAuthenticator(true))
         val mid = msgId(26)
         // SINGLE_RECIPIENT with no recipient violates the C6.1 invariant.
         assertEquals(EnqueueResult.Corrupt, tracker.enqueue(mid, AckMode.SINGLE_RECIPIENT, expectedRecipient = null))
@@ -318,7 +393,7 @@ class DeliveryTrackerTest {
 
     @Test
     fun `truth table -- markHandedToRelay only from QUEUED or HANDED`() {
-        val tracker = DeliveryTracker(FakeJournal(), FakeAuthenticator(true))
+        val tracker = DeliveryTracker(FakeRepository(), FakeAuthenticator(true))
         val mid = msgId(21)
         assertEquals(TransitionResult.UnknownMessage, tracker.markHandedToRelay(mid), "cannot hand over before enqueue")
         tracker.enqueue(mid, AckMode.SINGLE_RECIPIENT, ByteArray(16) { 0x21 })
@@ -330,7 +405,7 @@ class DeliveryTrackerTest {
 
     @Test
     fun `truth table -- expire and cancel only from QUEUED or HANDED and terminal states reject all`() {
-        val tracker = DeliveryTracker(FakeJournal(), FakeAuthenticator(true))
+        val tracker = DeliveryTracker(FakeRepository(), FakeAuthenticator(true))
         val mid = msgId(22)
         assertEquals(TransitionResult.UnknownMessage, tracker.expire(mid))
         assertEquals(TransitionResult.UnknownMessage, tracker.cancel(mid))
@@ -362,7 +437,7 @@ class DeliveryTrackerTest {
         val (pub, priv) = realKeypair()
         val recipientNodeId = ByteArray(16) { 0x47 }
         val auth = Ed25519AckAuthenticator(SingleRecipientResolver(recipientNodeId, pub))
-        val tracker = DeliveryTracker(FakeJournal(), auth)
+        val tracker = DeliveryTracker(FakeRepository(), auth)
         val mid = msgId(6)
         tracker.enqueue(mid, AckMode.SINGLE_RECIPIENT, recipientNodeId); tracker.markHandedToRelay(mid)
         val ack = AckFrame.build(mid, priv, recipientNodeId, routingTag)
@@ -378,7 +453,7 @@ class DeliveryTrackerTest {
 
     @Test
     fun `an unknown message ACK is UnknownMessage and a corrupt record is Corrupt`() {
-        val journal = FakeJournal()
+        val journal = FakeRepository()
         val tracker = DeliveryTracker(journal, FakeAuthenticator(true))
         val mid = msgId(60)
         assertEquals(AckResult.UnknownMessage, tracker.acknowledge(mid, rawAckFrame(mid)))
@@ -391,13 +466,13 @@ class DeliveryTrackerTest {
 
     @Test
     fun `forget clears the delivery record`() {
-        val journal = FakeJournal()
+        val journal = FakeRepository()
         val tracker = DeliveryTracker(journal, FakeAuthenticator(true))
         val mid = msgId(61)
         tracker.enqueue(mid, AckMode.NONE, expectedRecipient = null)
         tracker.forget(mid)
         assertEquals(DeliveryState.UNAVAILABLE, tracker.state(mid))
-        assertEquals(DeliveryLookup.NotFound, journal.read(mid))
+        assertEquals(DeliveryLookup.NotFound, journal.get(mid))
     }
 
     // --- cross-platform parity: a signature made here verifies here ---
@@ -431,7 +506,7 @@ class DeliveryTrackerTest {
         val nodeA = ByteArray(16) { 0x01 }
         val nodeB = ByteArray(16) { 0x02 }
         val resolver = TwoRecipientResolver(nodeA, pubA, nodeB, pubB)
-        val tracker = DeliveryTracker(FakeJournal(), Ed25519AckAuthenticator(resolver))
+        val tracker = DeliveryTracker(FakeRepository(), Ed25519AckAuthenticator(resolver))
 
         // Message intended for A: enqueue binds expectedRecipient = nodeA.
         val mid = msgId(30)
@@ -473,7 +548,7 @@ class DeliveryTrackerTest {
         val nodeA = ByteArray(16) { 0x0A }
         val nodeB = ByteArray(16) { 0x0B }
         val resolver = TwoRecipientResolver(nodeA, pubA, nodeB, pubB)
-        val tracker = DeliveryTracker(FakeJournal(), Ed25519AckAuthenticator(resolver))
+        val tracker = DeliveryTracker(FakeRepository(), Ed25519AckAuthenticator(resolver))
         val mid = msgId(33)
         tracker.enqueue(mid, AckMode.SINGLE_RECIPIENT, nodeA); tracker.markHandedToRelay(mid)
         // ACK signed by A but claiming nodeB in its payload (recipientNodeId field).
@@ -495,7 +570,7 @@ class DeliveryTrackerTest {
         // keys are bound -- A-03 / ADR-005 stay OPEN.
         val (_, priv) = realKeypair()
         val recipientNodeId = ByteArray(16) { 0x50 }
-        val tracker = DeliveryTracker(FakeJournal(), Ed25519AckAuthenticator(UnresolvedRecipientKeyResolver))
+        val tracker = DeliveryTracker(FakeRepository(), Ed25519AckAuthenticator(UnresolvedRecipientKeyResolver))
         val mid = msgId(40)
         tracker.enqueue(mid, AckMode.SINGLE_RECIPIENT, recipientNodeId); tracker.markHandedToRelay(mid)
         val ack = AckFrame.build(mid, priv, recipientNodeId, routingTag)

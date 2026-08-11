@@ -9,7 +9,7 @@ import dagger.hilt.components.SingletonComponent
 import io.godstone.mesh.MeshNode
 import io.godstone.mesh.delivery.DeliveryTracker
 import io.godstone.mesh.delivery.Ed25519AckAuthenticator
-import io.godstone.mesh.delivery.SqliteDeliveryJournal
+import io.godstone.mesh.delivery.SqliteDeliveryRepository
 import io.godstone.mesh.delivery.UnresolvedRecipientKeyResolver
 import io.godstone.mesh.store.MessageStore
 import io.godstone.mesh.store.SqliteMessageStore
@@ -30,11 +30,12 @@ import javax.inject.Singleton
  * archive-only root wires no mesh today; the mesh ships behind
  * `LINK_LAYER_READY=false` on both platforms).
  *
- * Stage 4C / C5 (C6.1): the same `SqliteMessageStore` singleton's `engine` (the
- * ONE process-wide `StoreDb`) also feeds a `SqliteDeliveryJournal`, which is the
- * `DeliveryJournal` for the `DeliveryTracker` -- one row holds the delivery
- * state, ack mode, and intended recipient (the separate `ExpectedRecipientStore`
- * seam was removed in C6.1; the journal IS the durable record). The
+ * Stage 4C / C5 (C6.1; C6.3): the same `SqliteMessageStore` singleton's `engine`
+ * (the ONE process-wide `StoreDb`) also feeds a `SqliteDeliveryRepository`,
+ * which is the `DeliveryRepository` for the `DeliveryTracker` -- one row holds
+ * the delivery state, ack mode, and intended recipient (the separate
+ * `ExpectedRecipientStore` seam was removed in C6.1; the repository IS the
+ * durable record). The
  * authenticator is `Ed25519AckAuthenticator` over the production
  * `UnresolvedRecipientKeyResolver` -- UNRESOLVED (M2-link identity binding not
  * wired), so it resolves no recipient key and rejects every ACK. This is the
@@ -77,18 +78,18 @@ object MeshModule {
     fun provideMessageStore(store: SqliteMessageStore): MessageStore = store
 
     /**
-     * The production `DeliveryTracker` (Stage 4C / C5; C6.1). The
-     * `SqliteDeliveryJournal` wraps `store.engine` (the SAME `StoreDb` as the
+     * The production `DeliveryTracker` (Stage 4C / C5; C6.1; C6.3). The
+     * `SqliteDeliveryRepository` wraps `store.engine` (the SAME `StoreDb` as the
      * message store) -- one row holds the delivery state, ack mode, and intended
      * recipient (the `ExpectedRecipientStore` seam was removed in C6.1; the
-     * journal IS the durable record). The authenticator uses the production
+     * repository IS the durable record). The authenticator uses the production
      * `UnresolvedRecipientKeyResolver`, which resolves no key, so every ACK is
      * rejected (fail-closed until M2-link binds real recipient keys).
      */
     @Provides @Singleton
     fun provideDeliveryTracker(store: SqliteMessageStore): DeliveryTracker {
-        val journal = SqliteDeliveryJournal(store.engine)
-        return DeliveryTracker(journal, Ed25519AckAuthenticator(UnresolvedRecipientKeyResolver))
+        val repo = SqliteDeliveryRepository(store.engine)
+        return DeliveryTracker(repo, Ed25519AckAuthenticator(UnresolvedRecipientKeyResolver))
     }
 
     @Provides @Singleton

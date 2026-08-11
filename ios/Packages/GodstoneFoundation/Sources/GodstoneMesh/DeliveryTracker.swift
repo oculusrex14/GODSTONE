@@ -9,11 +9,11 @@ import Foundation
 // A successful GATT write is only HANDED_TO_RELAY. ACKNOWLEDGED_BY_RECIPIENT is
 // forbidden unless an AUTHENTICATED intended recipient ACKs the EXACT message id
 // (see AckAuthenticator), AND the message was enqueued with AckMode
-// SINGLE_RECIPIENT -- a broadcast (AckMode.NONE) can NEVER be acknowledged via
+// SINGLE_RECIPIENT -- a broadcast (AckMode.none) can NEVER be acknowledged via
 // this path (no recipient is bound, so no recipient identity may become trusted
 // merely because an ACK packet names it). Cancellation cannot recall already
 // relayed copies and the state says so. The machine is pure (no Keychain / no
-// disk) with the journal + authenticator injected, so it is host-testable
+// disk) with the repository + authenticator injected, so it is host-testable
 // without a device or radio. The radio/link layer remains disabled (M2-link), so
 // this is repo-owned evidence for the state machine + authenticated-ACK
 // verification, not an on-device delivery proof. The Swift twin of
@@ -190,8 +190,8 @@ public enum AckResult: Sendable, Equatable {
 /// `cancel`). Sealed (C6.2): like `AckResult`, a delivery-security outcome is
 /// never a Bool the caller can misread as "ok". The caller MUST branch and can
 /// NEVER translate `alreadyInTarget` into "this transition just happened" -- it
-/// means the record was already in the target state (idempotent re-issue, e.g.
-/// a crash-then-resume that re-marks handed), NOT a fresh transition. Only
+/// means the record was already in the target state (idempotent re-issue, e.g. a
+/// crash-then-resume that re-marks handed), NOT a fresh transition. Only
 /// `applied` means the state advanced on this call.
 public enum TransitionResult: Sendable, Equatable {
     /// The state advanced to the target on this call (fresh transition persisted).
@@ -211,34 +211,68 @@ public enum TransitionResult: Sendable, Equatable {
     case storageFailure
 }
 
-/// Crash-safe persisted delivery state per message id. Implementations must
-/// persist across a reboot/jetsam so a fresh `DeliveryTracker` over the same
-/// journal recovers the record (reboot recovery, ADR-005 exit criteria). The
-/// state, ack mode and expected recipient live in ONE logical row keyed by
-/// msg_id; the expected recipient is IMMUTABLE post-creation (C6.1/C6.3).
+/// Atomic durable delivery aggregate per message id (C6.3). Folds the C6.1
+/// `DeliveryJournal` plus the enqueue / transition / retire classification that
+/// lived in `DeliveryTracker` into ONE repository whose every mutation is a
+/// single atomic SQL statement over the SAME `delivery_state` row keyed by
+/// msg_id. The state, ack mode and expected recipient live in that one row; the
+/// expected recipient is IMMUTABLE post-creation (C6.1/C6.3) -- no method here
+/// updates it, so a re-enqueue with a different binding is
+/// `EnqueueResult.conflictRecipient`, not a mutation.
 ///
-/// Each mutation is a single atomic SQL statement (see StoreSchema): `insert`
-/// creates the row (ON CONFLICT DO NOTHING -- the caller detects a conflict by
-/// re-reading), `updateState` advances only the state column (preserving ack_mode
-/// + expected_recipient), `clear` drops the row. No read-modify-write seam, so a
-/// crash between operations leaves the LAST persisted state on disk -- the
-/// crash-safe semantics ADR-005 requires. (CAS-hardened transitions arrive in
-/// C6.4; this commit establishes the typed, fail-closed semantics.)
-public protocol DeliveryJournal: AnyObject {
+/// The repository is the single place that maps a durable row to the typed
+/// delivery outcomes (`DeliveryLookup` / `EnqueueResult` / `TransitionResult` /
+/// `AckResult`) -- the truth-tables C6.1/C6.2 established now live here, not in
+/// the tracker, so the tracker is a thin policy layer over `get` / `enqueue` /
+/// `compareAndSet` / `acknowledgeAndRetire` / `clear`. Each mutation is one
+/// atomic SQL statement (see StoreSchema): `enqueue` creates the row (INSERT ...
+/// ON CONFLICT DO NOTHING -- a conflict is classified by re-reading),
+/// `compareAndSet` / `acknowledgeAndRetire` advance only the state column
+/// (preserving ack_mode + expected_recipient), `clear` drops the row. No
+/// read-modify-write seam, so a crash between operations leaves the LAST
+/// persisted state on disk -- the crash-safe semantics ADR-005 requires.
+/// (CAS-hardened WHERE-clause transitions arrive in C6.4; this commit
+/// establishes the single typed aggregate and the fail-closed semantics.)
+///
+/// Implementations must persist across a reboot/jetsam so a fresh
+/// `DeliveryTracker` over the same repository recovers the record (reboot
+/// recovery, ADR-005 exit criteria).
+public protocol DeliveryRepository: AnyObject {
     /// Read the delivery record for `msgId`, or `.notFound`.
-    func read(_ msgId: Data) -> DeliveryLookup
+    func get(_ msgId: Data) -> DeliveryLookup
 
-    /// Atomically create a delivery record in queuedDurably with `ackMode` and
-    /// `expectedRecipient` (nil for AckMode.none, 16 bytes for singleRecipient).
-    /// Returns true iff a NEW row was inserted; false if a row already exists for
-    /// `msgId` (the caller re-reads to classify the conflict). The expected
-    /// recipient is NEVER updated on an existing row (historical send intent).
-    func insert(_ msgId: Data, ackMode: AckMode, expectedRecipient: Data?) -> Bool
+    /// Atomically create / classify a delivery record for `msgId` with `ackMode`
+    /// and `expectedRecipient` (nil for AckMode.none, 16 bytes for
+    /// singleRecipient). A NEW row in queuedDurably -> `.created`; a non-terminal
+    /// row with the SAME binding -> `.alreadyQueuedSameBinding` (idempotent, no
+    /// mutation); a row with a DIFFERENT binding -> `.conflictRecipient` (the
+    /// historical send intent is NEVER overwritten); a terminal row ->
+    /// `.rejectedTerminalState`. The expected recipient is NEVER updated on an
+    /// existing row. A binding that violates the C6.1 invariant -> `.corrupt`.
+    func enqueue(_ msgId: Data, ackMode: AckMode, expectedRecipient: Data?) -> EnqueueResult
 
-    /// Advance only the state column for `msgId`, preserving ack_mode and
-    /// expected_recipient. Returns the row count (1 if a row existed and was
-    /// updated, 0 otherwise).
-    func updateState(_ msgId: Data, _ state: DeliveryState) -> Int
+    /// Compare-and-set the state column: advance to `target` only if the current
+    /// state is one of `validFroms`; a record already in `target` is
+    /// `.alreadyInTarget` (idempotent, NO mutation); any other existing state is
+    /// `.rejectedState`; a missing / corrupt / failed read is `.unknownMessage` /
+    /// `.corrupt` / `.storageFailure`. If the row vanishes between the read and
+    /// the state-only write (a raced expire / cancel / forget), the update touches
+    /// 0 rows -> `.unknownMessage`. (The WHERE-clause state guard that makes this
+    /// a true SQL CAS arrives in C6.4.)
+    func compareAndSet(_ msgId: Data, validFroms: Set<DeliveryState>, target: DeliveryState) -> TransitionResult
+
+    /// Atomic authenticated ACK retirement (C6.3). Re-reads the row for `msgId`
+    /// and advances it to acknowledgedByRecipient ONLY if the durable binding
+    /// matches (`ackMode` + `expectedRecipient` equal the row's bound values) --
+    /// the recipient identity comes from durable outbound state, INDEPENDENT of
+    /// the ACK frame (ADR-005). A binding mismatch (the row is not the message
+    /// the tracker verified) -> `.unknownMessage`; a vanished row ->
+    /// `.unknownMessage`; a corrupt / failed read -> `.corrupt` / `.storageFailure`.
+    /// The tracker invokes this ONLY after `AckAuthenticator.verify` has
+    /// authenticated the ACK against the same expected recipient; this method
+    /// persists the retirement atomically. (Only `.applied` means "verified and
+    /// advanced".)
+    func acknowledgeAndRetire(_ msgId: Data, ackMode: AckMode, expectedRecipient: Data?) -> AckResult
 
     /// Drop the delivery row for `msgId`.
     func clear(_ msgId: Data)
@@ -260,23 +294,27 @@ public protocol AckAuthenticator: AnyObject {
     func verify(originalMsgId: Data, expectedRecipientNodeId: Data, ackFrame: FrameV2) -> Bool
 }
 
-/// Durable delivery state machine. Every successful transition is persisted to
-/// `journal` AFTER it is applied, so a crash-then-resume re-reads the last
-/// persisted state. Transitions that are illegal for the current state (or an
-/// ACK that fails authentication) do not mutate state -- the truth-table is
-/// enforced, not advisory.
+/// Durable delivery state machine -- a thin policy layer over a
+/// `DeliveryRepository` (C6.3) plus an `AckAuthenticator`. Every successful
+/// transition is persisted by the repository AFTER it is applied, so a
+/// crash-then-resume re-reads the last persisted state. Transitions that are
+/// illegal for the current state (or an ACK that fails authentication) do not
+/// mutate state -- the truth-table is enforced, not advisory. The repository
+/// owns the typed durable-row mapping (get / enqueue / compareAndSet /
+/// acknowledgeAndRetire / clear); the tracker owns the ACK policy: the terminal
+/// short-circuit (option B), the AckMode.none gate, and the authenticator call.
 public final class DeliveryTracker {
-    private let journal: DeliveryJournal
+    private let repo: DeliveryRepository
     private let authenticator: AckAuthenticator
 
-    public init(journal: DeliveryJournal, authenticator: AckAuthenticator) {
-        self.journal = journal
+    public init(repo: DeliveryRepository, authenticator: AckAuthenticator) {
+        self.repo = repo
         self.authenticator = authenticator
     }
 
     /// Current persisted state for `msgId` (unavailable if never tracked / corrupt).
     public func state(_ msgId: Data) -> DeliveryState {
-        switch journal.read(msgId) {
+        switch repo.get(msgId) {
         case .found(let rec): return rec.state
         case .notFound, .corrupt, .storageFailure: return .unavailable
         }
@@ -285,56 +323,15 @@ public final class DeliveryTracker {
     /// Begin tracking a message: unavailable -> queuedDurably with `ackMode` and
     /// (for singleRecipient) the durably-bound intended recipient. The binding
     /// (ack mode + recipient) is IMMUTABLE post-creation: a re-enqueue of the
-    /// SAME logical message (same msg_id, same binding) is idempotent
-    /// (`.alreadyQueuedSameBinding`); a re-enqueue with a DIFFERENT binding fails
-    /// closed (`.conflictRecipient`) -- the historical send intent is never
-    /// overwritten. A terminal record rejects re-enqueue.
-    ///
-    /// C6.1: AckMode.none binds no recipient (broadcast SOS / group). The ack
-    /// mode + recipient are validated against the C6.1 invariant (none -> nil;
-    /// singleRecipient -> 16-byte recipient) before the journal is touched.
+    /// SAME logical message is idempotent (`.alreadyQueuedSameBinding`); a
+    /// re-enqueue with a DIFFERENT binding fails closed (`.conflictRecipient`);
+    /// a terminal record rejects re-enqueue (`.rejectedTerminalState`). Delegates
+    /// to `DeliveryRepository.enqueue`, which validates the C6.1 binding invariant
+    /// (none -> nil; singleRecipient -> 16-byte recipient) before touching the
+    /// store.
     @discardableResult
     public func enqueue(_ msgId: Data, ackMode: AckMode, expectedRecipient: Data? = nil) -> EnqueueResult {
-        // C6.1 invariant: none -> no recipient; singleRecipient -> 16-byte recipient.
-        guard bindingConsistent(ackMode: ackMode, expectedRecipient: expectedRecipient) else {
-            return .corrupt
-        }
-        switch journal.read(msgId) {
-        case .notFound:
-            if journal.insert(msgId, ackMode: ackMode, expectedRecipient: expectedRecipient) {
-                return .created
-            }
-            // Row appeared mid-call -- re-read to classify the conflict.
-            return classifyExisting(msgId: msgId, ackMode: ackMode, expectedRecipient: expectedRecipient)
-        case .found(let rec):
-            return classifyExisting(rec: rec, ackMode: ackMode, expectedRecipient: expectedRecipient)
-        case .corrupt:
-            return .corrupt
-        case .storageFailure:
-            return .storageFailure
-        }
-    }
-
-    private func classifyExisting(msgId: Data, ackMode: AckMode, expectedRecipient: Data?) -> EnqueueResult {
-        switch journal.read(msgId) {
-        case .found(let rec):
-            return classifyExisting(rec: rec, ackMode: ackMode, expectedRecipient: expectedRecipient)
-        case .notFound:
-            return .storageFailure // row vanished -- storage anomaly
-        case .corrupt:
-            return .corrupt
-        case .storageFailure:
-            return .storageFailure
-        }
-    }
-
-    private func classifyExisting(rec: DeliveryRecord, ackMode: AckMode, expectedRecipient: Data?) -> EnqueueResult {
-        if rec.state.isTerminal { return .rejectedTerminalState }
-        // Non-terminal (queued / handed): same binding -> idempotent; else conflict.
-        if rec.ackMode == ackMode && rec.expectedRecipientNodeId == expectedRecipient {
-            return .alreadyQueuedSameBinding
-        }
-        return .conflictRecipient
+        repo.enqueue(msgId, ackMode: ackMode, expectedRecipient: expectedRecipient)
     }
 
     /// Record that the frame was handed to a relay (a successful GATT write).
@@ -344,7 +341,7 @@ public final class DeliveryTracker {
     /// acknowledgedByRecipient).
     @discardableResult
     public func markHandedToRelay(_ msgId: Data) -> TransitionResult {
-        transition(msgId, target: .handedToRelay, validFroms: [.queuedDurably])
+        repo.compareAndSet(msgId, validFroms: [.queuedDurably], target: .handedToRelay)
     }
 
     /// Apply an authenticated recipient ACK (C6.1). The outcome is typed
@@ -355,10 +352,12 @@ public final class DeliveryTracker {
     /// replayed ACK floods; NOT a verification). expired / cancelled records are
     /// `.rejectedState`. A singleRecipient record authenticates the ACK against
     /// the durable expected recipient; failure is `.rejectedAuthentication` and
-    /// the state is unchanged.
+    /// the state is unchanged. On a verified ACK the retirement is persisted
+    /// atomically by `DeliveryRepository.acknowledgeAndRetire`, which re-reads
+    /// the row and requires the durable binding to still match.
     @discardableResult
     public func acknowledge(_ msgId: Data, _ ackFrame: FrameV2) -> AckResult {
-        switch journal.read(msgId) {
+        switch repo.get(msgId) {
         case .notFound:
             return .unknownMessage
         case .corrupt:
@@ -381,10 +380,9 @@ public final class DeliveryTracker {
             if !authenticator.verify(originalMsgId: msgId, expectedRecipientNodeId: expected, ackFrame: ackFrame) {
                 return .rejectedAuthentication
             }
-            if journal.updateState(msgId, .acknowledgedByRecipient) == 1 {
-                return .applied
-            }
-            return .unknownMessage // row vanished mid-call (raced expire/cancel/forget)
+            // Atomic retirement: re-reads the row and requires the durable binding
+            // (ack mode + expected recipient) to still match before advancing.
+            return repo.acknowledgeAndRetire(msgId, ackMode: rec.ackMode, expectedRecipient: expected)
         }
     }
 
@@ -393,7 +391,7 @@ public final class DeliveryTracker {
     /// state (acknowledged / cancelled).
     @discardableResult
     public func expire(_ msgId: Data) -> TransitionResult {
-        transition(msgId, target: .expired, validFroms: [.queuedDurably, .handedToRelay])
+        repo.compareAndSet(msgId, validFroms: [.queuedDurably, .handedToRelay], target: .expired)
     }
 
     /// Local cancellation: queuedDurably or handedToRelay -> cancelledLocally.
@@ -403,40 +401,9 @@ public final class DeliveryTracker {
     /// the state machine records the intent.
     @discardableResult
     public func cancel(_ msgId: Data) -> TransitionResult {
-        transition(msgId, target: .cancelledLocally, validFroms: [.queuedDurably, .handedToRelay])
-    }
-
-    /// Shared truth-table for `markHandedToRelay` / `expire` / `cancel`. Advances
-    /// the state to `target` only from one of `validFroms`; a record already in
-    /// `target` is `.alreadyInTarget` (idempotent, NO mutation -- not a fresh
-    /// transition); any other existing state is `.rejectedState`. A missing /
-    /// corrupt / failed read is `.unknownMessage` / `.corrupt` / `.storageFailure`.
-    /// If the row vanishes between the read and the state-only write (a raced
-    /// expire / cancel / forget), the update touches 0 rows -> `.unknownMessage`.
-    private func transition(_ msgId: Data, target: DeliveryState,
-                            validFroms: Set<DeliveryState>) -> TransitionResult {
-        switch journal.read(msgId) {
-        case .notFound: return .unknownMessage
-        case .corrupt: return .corrupt
-        case .storageFailure: return .storageFailure
-        case .found(let rec):
-            let s = rec.state
-            if s == target { return .alreadyInTarget }
-            if validFroms.contains(s) {
-                return journal.updateState(msgId, target) == 1 ? .applied : .unknownMessage
-            }
-            return .rejectedState
-        }
+        repo.compareAndSet(msgId, validFroms: [.queuedDurably, .handedToRelay], target: .cancelledLocally)
     }
 
     /// Drop tracking for `msgId` (e.g. after it ages out of the store).
-    public func forget(_ msgId: Data) { journal.clear(msgId) }
-
-    /// C6.1 invariant: none -> nil recipient; singleRecipient -> 16-byte recipient.
-    private func bindingConsistent(ackMode: AckMode, expectedRecipient: Data?) -> Bool {
-        switch ackMode {
-        case .none: return expectedRecipient == nil
-        case .singleRecipient: return expectedRecipient != nil && expectedRecipient!.count == 16
-        }
-    }
+    public func forget(_ msgId: Data) { repo.clear(msgId) }
 }
