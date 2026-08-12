@@ -127,21 +127,20 @@ internal class SqliteDeliveryRepository(
 
     override fun acknowledgeBound(
         msgId: ByteArray,
-        ackMode: AckMode,
-        expectedRecipient: ByteArray?,
+        expectedRecipient: ByteArray,
     ): AckResult {
-        // C6.4-D + binding guard: the authenticated binding must be a valid
-        // SINGLE_RECIPIENT binding. The tracker only calls this for a
-        // SINGLE_RECIPIENT record with a non-null 16-byte recipient; a malformed
-        // call fails closed before any SQL.
+        // C6.4-D + binding guard: the authenticated binding is a SINGLE_RECIPIENT
+        // binding with a 16-byte recipient. The tracker only calls this for such a
+        // record (it gates `none` / null first); a malformed call fails closed
+        // before any SQL. C6.4.1-I: `ackMode` + optionality are removed -- the SQL
+        // hard-codes `ack_mode = 1` and the recipient is always bound.
         if (msgId.size != 16) return AckResult.InvalidArgument
-        if (ackMode != AckMode.SINGLE_RECIPIENT) return AckResult.InvalidArgument
-        if (expectedRecipient == null || expectedRecipient.size != 16) return AckResult.InvalidArgument
+        if (expectedRecipient.size != 16) return AckResult.InvalidArgument
         val sql = acknowledgeBoundSql()
         // C6.4.1-A: recipient is ALWAYS bound (bind slot 2); production CAS is
         // unconditional. Declared `Array<ByteArray?>` so expected-type inference
-        // drives `arrayOf<ByteArray?>` (the smart-cast non-null `expectedRecipient`
-        // would otherwise infer the invariant `Array<ByteArray>`).
+        // drives `arrayOf<ByteArray?>` (the non-null `expectedRecipient` would
+        // otherwise infer the invariant `Array<ByteArray>`).
         val bindArgs: Array<ByteArray?> = arrayOf(msgId, expectedRecipient)
         return try {
             val affected = db.execDeliveryUpdate(sql, bindArgs)

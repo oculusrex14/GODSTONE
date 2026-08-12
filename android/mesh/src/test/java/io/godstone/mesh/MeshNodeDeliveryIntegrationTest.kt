@@ -125,12 +125,10 @@ class MeshNodeDeliveryIntegrationTest {
         }
         override fun acknowledgeBound(
             msgId: ByteArray,
-            ackMode: AckMode,
-            expectedRecipient: ByteArray?,
+            expectedRecipient: ByteArray,
         ): AckResult {
             if (msgId.size != 16) return AckResult.InvalidArgument
-            if (ackMode != AckMode.SINGLE_RECIPIENT) return AckResult.InvalidArgument
-            if (expectedRecipient == null || expectedRecipient.size != 16) return AckResult.InvalidArgument
+            if (expectedRecipient.size != 16) return AckResult.InvalidArgument
             return when (val l = get(msgId)) {
                 DeliveryLookup.NotFound -> AckResult.UnknownMessage
                 DeliveryLookup.Corrupt -> AckResult.Corrupt
@@ -138,7 +136,7 @@ class MeshNodeDeliveryIntegrationTest {
                 DeliveryLookup.InvalidArgument -> AckResult.InvalidArgument
                 is DeliveryLookup.Found -> {
                     val rec = l.record
-                    if (rec.ackMode != ackMode ||
+                    if (rec.ackMode != AckMode.SINGLE_RECIPIENT ||
                         !rec.expectedRecipientNodeId.contentEquals(expectedRecipient)
                     ) return AckResult.UnknownMessage
                     if (rec.state == DeliveryState.ACKNOWLEDGED_BY_RECIPIENT) AckResult.DuplicateAuthenticatedAck

@@ -161,10 +161,17 @@ class DeliveryRecord(
     val ackMode: AckMode,
     expectedRecipientNodeId: ByteArray?,
 ) {
-    /** Defensive copy (C6.4-K); mutability of the source array cannot reach the record. */
-    val msgId: ByteArray = msgId.copyOf()
-    /** Defensive copy (C6.4-K); the immutable historical send intent. */
-    val expectedRecipientNodeId: ByteArray? = expectedRecipientNodeId?.copyOf()
+    /** C6.4-K + C6.4.1-J: defensive copy on construction AND a fresh copy on
+     *  every read -- a caller cannot mutate the record's internal storage via
+     *  the constructor input nor via the exported id. */
+    private val _msgId: ByteArray = msgId.copyOf()
+    val msgId: ByteArray
+        get() = _msgId.copyOf()
+    /** C6.4-K + C6.4.1-J: defensive copy on construction AND a fresh copy on
+     *  every read -- the immutable historical send intent. */
+    private val _expectedRecipientNodeId: ByteArray? = expectedRecipientNodeId?.copyOf()
+    val expectedRecipientNodeId: ByteArray?
+        get() = _expectedRecipientNodeId?.copyOf()
 
     /** Copy with overridden fields (re-copies the byte arrays). */
     fun copy(
@@ -331,8 +338,6 @@ sealed interface ClearResult {
     data object AlreadyAbsent : ClearResult
     /** The underlying store failed (C6.4-A). */
     data object StorageFailure : ClearResult
-    /** The store returned a corrupt / inconsistent record. */
-    data object Corrupt : ClearResult
     /** The msg_id is not exactly 16 bytes -- rejected before any SQL (C6.4-D). */
     data object InvalidArgument : ClearResult
 }
@@ -465,15 +470,19 @@ interface DeliveryRepository {
      * authenticated the ACK against the same expected recipient. This method
      * performs delivery-state retirement ONLY; held-frame retirement is C7.4
      * (NOT yet implemented -- do not claim ADR-004 delete-on-ACK is closed).
-     * C6.4-D: a non-16-byte msg_id is [InvalidArgument].
+     * C6.4-D: a non-16-byte msg_id is [InvalidArgument]. C6.4.1-I: the binding
+     * is ALWAYS [AckMode.SINGLE_RECIPIENT] with a non-null 16-byte recipient (the
+     * tracker gates `none` / null before this call), so `ackMode` + optionality
+     * are removed from the signature -- the SQL hard-codes `ack_mode = 1`.
      */
-    fun acknowledgeBound(msgId: ByteArray, ackMode: AckMode, expectedRecipient: ByteArray?): AckResult
+    fun acknowledgeBound(msgId: ByteArray, expectedRecipient: ByteArray): AckResult
 
     /**
      * Drop the delivery row for `msgId` (C6.4-J). Typed -- a failed destructive
      * operation is never indistinguishable from success: [Cleared] (a row was
      * dropped), [AlreadyAbsent] (no row), [StorageFailure] (C6.4-A),
-     * [Corrupt], [InvalidArgument] (C6.4-D).
+     * [InvalidArgument] (C6.4-D). C6.4.1-K: [Corrupt] is removed -- `clear` is a
+     * single DELETE; a corrupt read is impossible (no row is decoded).
      */
     fun clear(msgId: ByteArray): ClearResult
 }
@@ -602,7 +611,7 @@ class DeliveryTracker(
                 // exact durable recipient in one WHERE clause. The tracker
                 // authenticated before this call; a lost CAS is classified by the
                 // repository (DuplicateAuthenticatedAck / RejectedState / UnknownMessage).
-                return repo.acknowledgeBound(msgId, rec.ackMode, expected)
+                return repo.acknowledgeBound(msgId, expected)
             }
         }
     }

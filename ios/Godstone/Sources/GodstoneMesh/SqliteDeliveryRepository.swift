@@ -147,20 +147,20 @@ public final class SqliteDeliveryRepository: DeliveryRepository {
         }
     }
 
-    public func acknowledgeBound(_ msgId: Data, ackMode: AckMode, expectedRecipient: Data?) -> AckResult {
-        // C6.4-D + binding guard: the authenticated binding must be a valid
-        // SINGLE_RECIPIENT binding. The tracker only calls this for a
-        // SINGLE_RECIPIENT record with a non-nil 16-byte recipient; a malformed
-        // call fails closed before any SQL.
+    public func acknowledgeBound(_ msgId: Data, expectedRecipient: Data) -> AckResult {
+        // C6.4-D + binding guard: the authenticated binding is a SINGLE_RECIPIENT
+        // binding with a 16-byte recipient. The tracker only calls this for such a
+        // record (it gates `none` / nil first); a malformed call fails closed
+        // before any SQL. C6.4.1-I: `ackMode` + optionality are removed -- the SQL
+        // hard-codes `ack_mode = SINGLE_RECIPIENT` and the recipient is always bound.
         guard msgId.count == 16 else { return .invalidArgument }
-        guard ackMode == .singleRecipient else { return .invalidArgument }
-        guard let recipient = expectedRecipient, recipient.count == 16 else { return .invalidArgument }
+        guard expectedRecipient.count == 16 else { return .invalidArgument }
         let sql = acknowledgeBoundSql()
         do {
-            let affected = try store.execDeliveryUpdate(sql, bytesArgs: [msgId, recipient])
+            let affected = try store.execDeliveryUpdate(sql, bytesArgs: [msgId, expectedRecipient])
             switch affected {
             case 1: return .applied
-            case 0: return classifyZeroRowAck(msgId: msgId, expectedRecipient: recipient)
+            case 0: return classifyZeroRowAck(msgId: msgId, expectedRecipient: expectedRecipient)
             default: return .storageFailure // affected > 1: invariant violation
             }
         } catch {

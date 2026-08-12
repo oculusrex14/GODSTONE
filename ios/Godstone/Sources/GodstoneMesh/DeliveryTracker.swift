@@ -307,8 +307,6 @@ public enum ClearResult: Sendable, Equatable {
     case alreadyAbsent
     /// The underlying store failed (C6.4-A).
     case storageFailure
-    /// The store returned a corrupt / inconsistent record.
-    case corrupt
     /// The msg_id is not exactly 16 bytes -- rejected before any SQL (C6.4-D).
     case invalidArgument
 }
@@ -431,13 +429,17 @@ public protocol DeliveryRepository: AnyObject {
     /// authenticated the ACK against the same expected recipient. This method
     /// performs delivery-state retirement ONLY; held-frame retirement is C7.4
     /// (NOT yet implemented -- do not claim ADR-004 delete-on-ACK is closed).
-    /// C6.4-D: a non-16-byte msg_id is `.invalidArgument`.
-    func acknowledgeBound(_ msgId: Data, ackMode: AckMode, expectedRecipient: Data?) -> AckResult
+    /// C6.4-D: a non-16-byte msg_id is `.invalidArgument`. C6.4.1-I: the binding
+    /// is ALWAYS `AckMode.singleRecipient` with a non-nil 16-byte recipient (the
+    /// tracker gates `none` / nil before this call), so `ackMode` + optionality are
+    /// removed from the signature -- the SQL hard-codes `ack_mode = SINGLE_RECIPIENT`.
+    func acknowledgeBound(_ msgId: Data, expectedRecipient: Data) -> AckResult
 
     /// Drop the delivery row for `msgId` (C6.4-J). Typed -- a failed destructive
     /// operation is never indistinguishable from success: `.cleared` (a row was
     /// dropped), `.alreadyAbsent` (no row), `.storageFailure` (C6.4-A),
-    /// `.corrupt`, `.invalidArgument` (C6.4-D).
+    /// `.invalidArgument` (C6.4-D). C6.4.1-K: `.corrupt` is removed -- `clear` is a
+    /// single DELETE; a corrupt read is impossible (no row is decoded).
     func clear(_ msgId: Data) -> ClearResult
 }
 
@@ -558,7 +560,7 @@ public final class DeliveryTracker {
             // durable recipient in one WHERE clause. The tracker authenticated
             // before this call; a lost CAS is classified by the repository
             // (duplicateAuthenticatedAck / rejectedState / unknownMessage).
-            return repo.acknowledgeBound(msgId, ackMode: rec.ackMode, expectedRecipient: expected)
+            return repo.acknowledgeBound(msgId, expectedRecipient: expected)
         }
     }
 

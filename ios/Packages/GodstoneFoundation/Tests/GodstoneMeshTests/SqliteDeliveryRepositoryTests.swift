@@ -276,7 +276,7 @@ final class SqliteDeliveryRepositoryTests: XCTestCase {
                        "state-only write must preserve the bound expected recipient")
         XCTAssertEqual(.singleRecipient, found(j, mid).ackMode,
                        "state-only write must preserve the ack mode")
-        XCTAssertEqual(AckResult.applied, j.acknowledgeBound(mid, ackMode: .singleRecipient, expectedRecipient: nodeA()))
+        XCTAssertEqual(AckResult.applied, j.acknowledgeBound(mid, expectedRecipient: nodeA()))
         XCTAssertEqual(.acknowledgedByRecipient, found(j, mid).state)
         XCTAssertEqual(found(j, mid).expectedRecipientNodeId ?? Data(), nodeA(),
                        "ACKNOWLEDGED write must preserve the bound expected recipient")
@@ -344,7 +344,7 @@ final class SqliteDeliveryRepositoryTests: XCTestCase {
             XCTAssertEqual(DeliveryLookup.invalidArgument, j.get(bad), "get rejects non-16-byte msg_id")
             XCTAssertEqual(EnqueueResult.invalidArgument, j.enqueue(bad, ackMode: .none, expectedRecipient: nil))
             XCTAssertEqual(TransitionResult.invalidArgument, j.transition(bad, .markHanded))
-            XCTAssertEqual(AckResult.invalidArgument, j.acknowledgeBound(bad, ackMode: .singleRecipient, expectedRecipient: nodeA()))
+            XCTAssertEqual(AckResult.invalidArgument, j.acknowledgeBound(bad, expectedRecipient: nodeA()))
             XCTAssertEqual(ClearResult.invalidArgument, j.clear(bad))
         }
         // exactly 16 bytes is accepted (smoke).
@@ -416,7 +416,7 @@ final class SqliteDeliveryRepositoryTests: XCTestCase {
         // tracked state.
         XCTAssertEqual(EnqueueResult.corrupt, j.enqueue(mid, ackMode: .singleRecipient, expectedRecipient: nodeA()))
         XCTAssertEqual(TransitionResult.corrupt, j.transition(mid, .markHanded))
-        XCTAssertEqual(AckResult.corrupt, j.acknowledgeBound(mid, ackMode: .singleRecipient, expectedRecipient: nodeA()))
+        XCTAssertEqual(AckResult.corrupt, j.acknowledgeBound(mid, expectedRecipient: nodeA()))
     }
 
     func testUnknownAckModeCodeDecodesToNilFailClosed() {
@@ -475,7 +475,7 @@ final class SqliteDeliveryRepositoryTests: XCTestCase {
         _ = repo.enqueue(msgId(14), ackMode: .singleRecipient, expectedRecipient: nodeA())
         faulting.faultExecDeliveryUpdate = true
         XCTAssertEqual(AckResult.storageFailure,
-                       repo.acknowledgeBound(msgId(14), ackMode: .singleRecipient, expectedRecipient: nodeA()),
+                       repo.acknowledgeBound(msgId(14), expectedRecipient: nodeA()),
                        "ACK exec failure -> StorageFailure")
     }
 
@@ -496,14 +496,14 @@ final class SqliteDeliveryRepositoryTests: XCTestCase {
         XCTAssertEqual(.applied, j.transition(mid, .cancel))
         // The ACK lost the CAS to a cancel -> 0-row -> re-read CANCELLED -> RejectedState.
         XCTAssertEqual(AckResult.rejectedState,
-                       j.acknowledgeBound(mid, ackMode: .singleRecipient, expectedRecipient: nodeA()))
+                       j.acknowledgeBound(mid, expectedRecipient: nodeA()))
     }
 
     func testCancelAfterAckIsRejectedState() throws {
         let (j, _, url) = openRepo(); defer { try? FileManager.default.removeItem(at: url) }
         let mid = msgId(17)
         _ = j.enqueue(mid, ackMode: .singleRecipient, expectedRecipient: nodeA())
-        XCTAssertEqual(AckResult.applied, j.acknowledgeBound(mid, ackMode: .singleRecipient, expectedRecipient: nodeA()))
+        XCTAssertEqual(AckResult.applied, j.acknowledgeBound(mid, expectedRecipient: nodeA()))
         // cancel on an ACKNOWLEDGED row -> 0-row -> cancel's validFroms are
         // {queued,handed}, so RejectedState.
         XCTAssertEqual(TransitionResult.rejectedState, j.transition(mid, .cancel))
@@ -516,18 +516,18 @@ final class SqliteDeliveryRepositoryTests: XCTestCase {
         // ACK with a recipient that does not match the bound row -> 0-row -> re-read
         // -> binding changed -> UnknownMessage (an old ACK must never bind to a row).
         XCTAssertEqual(AckResult.unknownMessage,
-                       j.acknowledgeBound(mid, ackMode: .singleRecipient, expectedRecipient: nodeB()))
+                       j.acknowledgeBound(mid, expectedRecipient: nodeB()))
     }
 
     func testDuplicateAuthenticatedAckIsReachableViaZeroRowCas() throws {
         let (j, _, url) = openRepo(); defer { try? FileManager.default.removeItem(at: url) }
         let mid = msgId(19)
         _ = j.enqueue(mid, ackMode: .singleRecipient, expectedRecipient: nodeA())
-        XCTAssertEqual(AckResult.applied, j.acknowledgeBound(mid, ackMode: .singleRecipient, expectedRecipient: nodeA()))
+        XCTAssertEqual(AckResult.applied, j.acknowledgeBound(mid, expectedRecipient: nodeA()))
         // A second ACK with the SAME binding -> 0-row (state is ACKNOWLEDGED, not in
         // {queued,handed}) -> re-read ACKNOWLEDGED same binding -> DuplicateAuthenticatedAck.
         XCTAssertEqual(AckResult.duplicateAuthenticatedAck,
-                       j.acknowledgeBound(mid, ackMode: .singleRecipient, expectedRecipient: nodeA()),
+                       j.acknowledgeBound(mid, expectedRecipient: nodeA()),
                        "same-binding ACK that lost the CAS to a prior ACK -> DuplicateAuthenticatedAck")
     }
 
@@ -786,13 +786,13 @@ final class SqliteDeliveryRepositoryTests: XCTestCase {
         // so it matches the CANCELLED row -> .applied (WRONG -- an ACK overwrote a
         // CANCELLED row; the guard is load-bearing).
         let weak = newRepo(store, stateGuard: false)
-        XCTAssertEqual(AckResult.applied, weak.acknowledgeBound(mid, ackMode: .singleRecipient, expectedRecipient: nodeA()),
+        XCTAssertEqual(AckResult.applied, weak.acknowledgeBound(mid, expectedRecipient: nodeA()),
                        "without the state guard, an ACK overwrites a CANCELLED row (guard is load-bearing)")
         // A SEPARATE cancelled row: the all-guards-on repo correctly rejects.
         let mid2 = msgId(201)
         _ = strong.enqueue(mid2, ackMode: .singleRecipient, expectedRecipient: nodeA())
         XCTAssertEqual(.applied, strong.transition(mid2, .cancel))
-        XCTAssertEqual(AckResult.rejectedState, strong.acknowledgeBound(mid2, ackMode: .singleRecipient, expectedRecipient: nodeA()),
+        XCTAssertEqual(AckResult.rejectedState, strong.acknowledgeBound(mid2, expectedRecipient: nodeA()),
                        "with all guards on, an ACK on a CANCELLED row is RejectedState")
     }
 
@@ -808,13 +808,13 @@ final class SqliteDeliveryRepositoryTests: XCTestCase {
         // the Bob-bound row because the `expected_recipient = ?` predicate is gone
         // -> .applied (WRONG -- Alice's ACK bound a Bob row; the guard is load-bearing).
         let weak = newRepo(store, recipientGuard: false)
-        XCTAssertEqual(AckResult.applied, weak.acknowledgeBound(mid, ackMode: .singleRecipient, expectedRecipient: nodeA()),
+        XCTAssertEqual(AckResult.applied, weak.acknowledgeBound(mid, expectedRecipient: nodeA()),
                        "without the recipient guard, Alice's ACK binds a Bob row (guard is load-bearing)")
         // A SEPARATE Bob-bound row: the all-guards-on repo correctly rejects Alice.
         let mid2 = msgId(203)
         _ = strong.enqueue(mid2, ackMode: .singleRecipient, expectedRecipient: nodeB())
         XCTAssertEqual(.applied, strong.transition(mid2, .markHanded))
-        XCTAssertEqual(AckResult.unknownMessage, strong.acknowledgeBound(mid2, ackMode: .singleRecipient, expectedRecipient: nodeA()),
+        XCTAssertEqual(AckResult.unknownMessage, strong.acknowledgeBound(mid2, expectedRecipient: nodeA()),
                        "with all guards on, Alice's ACK on a Bob row is UnknownMessage")
     }
 
@@ -831,14 +831,14 @@ final class SqliteDeliveryRepositoryTests: XCTestCase {
         // `ack_mode = SINGLE_RECIPIENT` predicate misses it -> 0-row -> re-read ->
         // corrupt (binding inconsistent: NONE + recipient) -> .corrupt.
         try plantCorruptBinding(store, mid, nodeA())
-        XCTAssertEqual(AckResult.corrupt, strong.acknowledgeBound(mid, ackMode: .singleRecipient, expectedRecipient: nodeA()),
+        XCTAssertEqual(AckResult.corrupt, strong.acknowledgeBound(mid, expectedRecipient: nodeA()),
                        "with mode guard on, the NONE-mode row is rejected (corrupt)")
         // Weaken only the mode guard: the ACK CAS drops `ack_mode = SINGLE_RECIPIENT`,
         // so it matches the NONE-mode row (state is still HANDED -- the strong ACK
         // above did not mutate it; recipient matches) -> .applied (WRONG -- an ACK
         // landed on a NONE-mode row; the guard is load-bearing).
         let weak = newRepo(store, modeGuard: false)
-        XCTAssertEqual(AckResult.applied, weak.acknowledgeBound(mid, ackMode: .singleRecipient, expectedRecipient: nodeA()),
+        XCTAssertEqual(AckResult.applied, weak.acknowledgeBound(mid, expectedRecipient: nodeA()),
                        "without the mode guard, an ACK lands on a NONE-mode row (guard is load-bearing)")
         // C6.4-M symmetry: a SEPARATE clean SINGLE_RECIPIENT HANDED row -> the
         // all-guards-on repo ACKs it normally (.applied), the happy path the mode
@@ -848,7 +848,7 @@ final class SqliteDeliveryRepositoryTests: XCTestCase {
         let midClean = msgId(207)
         _ = strong.enqueue(midClean, ackMode: .singleRecipient, expectedRecipient: nodeA())
         XCTAssertEqual(.applied, strong.transition(midClean, .markHanded))
-        XCTAssertEqual(AckResult.applied, strong.acknowledgeBound(midClean, ackMode: .singleRecipient, expectedRecipient: nodeA()),
+        XCTAssertEqual(AckResult.applied, strong.acknowledgeBound(midClean, expectedRecipient: nodeA()),
                        "with all guards on, a clean SINGLE_RECIPIENT HANDED row ACKs (happy path)")
     }
 
@@ -859,7 +859,7 @@ final class SqliteDeliveryRepositoryTests: XCTestCase {
         let strong = SqliteDeliveryRepository(store)
         let mid = msgId(205)
         _ = strong.enqueue(mid, ackMode: .singleRecipient, expectedRecipient: nodeA())
-        XCTAssertEqual(.applied, strong.acknowledgeBound(mid, ackMode: .singleRecipient, expectedRecipient: nodeA())) // ACKNOWLEDGED
+        XCTAssertEqual(.applied, strong.acknowledgeBound(mid, expectedRecipient: nodeA())) // ACKNOWLEDGED
         // Weaken the transition state guard: cancel's `state IN (queued,handed)`
         // predicate drops, so cancel matches the ACKNOWLEDGED row -> .applied (WRONG
         // -- cancel overwrote an ACKNOWLEDGED row; the guard is load-bearing).
@@ -869,7 +869,7 @@ final class SqliteDeliveryRepositoryTests: XCTestCase {
         // A SEPARATE acknowledged row: the all-guards-on repo correctly rejects.
         let mid2 = msgId(206)
         _ = strong.enqueue(mid2, ackMode: .singleRecipient, expectedRecipient: nodeA())
-        XCTAssertEqual(.applied, strong.acknowledgeBound(mid2, ackMode: .singleRecipient, expectedRecipient: nodeA()))
+        XCTAssertEqual(.applied, strong.acknowledgeBound(mid2, expectedRecipient: nodeA()))
         XCTAssertEqual(TransitionResult.rejectedState, strong.transition(mid2, .cancel),
                        "with all guards on, cancel on an ACKNOWLEDGED row is RejectedState")
     }

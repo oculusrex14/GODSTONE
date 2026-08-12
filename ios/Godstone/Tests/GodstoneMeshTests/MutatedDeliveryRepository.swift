@@ -61,19 +61,18 @@ final class MutatedDeliveryRepository: DeliveryRepository {
         }
     }
 
-    public func acknowledgeBound(_ msgId: Data, ackMode: AckMode, expectedRecipient: Data?) -> AckResult {
+    public func acknowledgeBound(_ msgId: Data, expectedRecipient: Data) -> AckResult {
         guard msgId.count == 16 else { return .invalidArgument }
-        guard ackMode == .singleRecipient else { return .invalidArgument }
-        guard let recipient = expectedRecipient, recipient.count == 16 else { return .invalidArgument }
+        guard expectedRecipient.count == 16 else { return .invalidArgument }
         let sql = acknowledgeBoundSql()
         // Recipient bind slot is present ONLY when recipientGuard is on (mirrors the
         // pre-C6.4.1 guarded builder).
-        let bindArgs: [Data?] = recipientGuard ? [msgId, recipient] : [msgId]
+        let bindArgs: [Data?] = recipientGuard ? [msgId, expectedRecipient] : [msgId]
         do {
             let affected = try store.execDeliveryUpdate(sql, bytesArgs: bindArgs)
             switch affected {
             case 1: return .applied
-            case 0: return strong.classifyZeroRowAck(msgId: msgId, expectedRecipient: recipient)
+            case 0: return strong.classifyZeroRowAck(msgId: msgId, expectedRecipient: expectedRecipient)
             default: return .storageFailure
             }
         } catch {

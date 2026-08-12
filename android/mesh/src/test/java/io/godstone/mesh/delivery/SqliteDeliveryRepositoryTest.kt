@@ -224,7 +224,7 @@ class SqliteDeliveryRepositoryTest {
             assertEquals(AckMode.SINGLE_RECIPIENT, found(j, mid).ackMode,
                 "state-only write must preserve the ack mode")
             // ACK: HANDED -> ACKNOWLEDGED (guarded CAS binding state+mode+recipient).
-            assertEquals(AckResult.Applied, j.acknowledgeBound(mid, AckMode.SINGLE_RECIPIENT, nodeA()))
+            assertEquals(AckResult.Applied, j.acknowledgeBound(mid, nodeA()))
             assertEquals(DeliveryState.ACKNOWLEDGED_BY_RECIPIENT, found(j, mid).state)
             assertEquals(nodeA().toList(), found(j, mid).expectedRecipientNodeId?.toList(),
                 "ACKNOWLEDGED write must preserve the bound expected recipient")
@@ -345,7 +345,7 @@ class SqliteDeliveryRepositoryTest {
                     "expire with a $size-byte msg_id must be InvalidArgument")
                 assertEquals(TransitionResult.InvalidArgument, j.transition(bad, DeliveryTransition.CANCEL),
                     "cancel with a $size-byte msg_id must be InvalidArgument")
-                assertEquals(AckResult.InvalidArgument, j.acknowledgeBound(bad, AckMode.SINGLE_RECIPIENT, recipient),
+                assertEquals(AckResult.InvalidArgument, j.acknowledgeBound(bad, recipient),
                     "acknowledgeBound with a $size-byte msg_id must be InvalidArgument")
                 assertEquals(ClearResult.InvalidArgument, j.clear(bad),
                     "clear with a $size-byte msg_id must be InvalidArgument")
@@ -353,12 +353,8 @@ class SqliteDeliveryRepositoryTest {
             // And a 16-byte recipient is required for acknowledgeBound (a non-16
             // recipient is InvalidArgument too, NOT a SQL error).
             val mid = msgId(11)
-            assertEquals(AckResult.InvalidArgument, j.acknowledgeBound(mid, AckMode.SINGLE_RECIPIENT, ByteArray(8)),
+            assertEquals(AckResult.InvalidArgument, j.acknowledgeBound(mid, ByteArray(8)),
                 "acknowledgeBound with a non-16-byte recipient must be InvalidArgument")
-            assertEquals(AckResult.InvalidArgument, j.acknowledgeBound(mid, AckMode.SINGLE_RECIPIENT, null),
-                "acknowledgeBound with a null recipient must be InvalidArgument")
-            assertEquals(AckResult.InvalidArgument, j.acknowledgeBound(mid, AckMode.NONE, recipient),
-                "acknowledgeBound for NONE mode must be InvalidArgument")
         } finally {
             file.delete()
         }
@@ -537,7 +533,7 @@ class SqliteDeliveryRepositoryTest {
             // enqueue over a corrupt row cannot silently revive it.
             assertEquals(EnqueueResult.Corrupt, j.enqueue(mid, AckMode.SINGLE_RECIPIENT, nodeA()))
             // ACK / transition over a corrupt row fail closed.
-            assertEquals(AckResult.Corrupt, j.acknowledgeBound(mid, AckMode.SINGLE_RECIPIENT, nodeA()))
+            assertEquals(AckResult.Corrupt, j.acknowledgeBound(mid, nodeA()))
             assertEquals(TransitionResult.Corrupt, j.transition(mid, DeliveryTransition.MARK_HANDED))
         } finally {
             file.delete()
@@ -697,7 +693,7 @@ class SqliteDeliveryRepositoryTest {
             val j = SqliteDeliveryRepository(wrapped)
             wrapped.faultExecDeliveryUpdate = true
             assertEquals(AckResult.StorageFailure,
-                j.acknowledgeBound(msgId(24), AckMode.SINGLE_RECIPIENT, nodeA()),
+                j.acknowledgeBound(msgId(24), nodeA()),
                 "an ACK CAS SQL failure must be StorageFailure")
         } finally {
             file.delete()
@@ -771,7 +767,7 @@ class SqliteDeliveryRepositoryTest {
             j.transition(mid, DeliveryTransition.CANCEL)      // CANCELLED
             // The ACK CAS requires state IN (QUEUED, HANDED); CANCELLED(5) is not -> 0
             // rows -> re-read CANCELLED -> RejectedState. The terminal state survives.
-            assertEquals(AckResult.RejectedState, j.acknowledgeBound(mid, AckMode.SINGLE_RECIPIENT, nodeA()))
+            assertEquals(AckResult.RejectedState, j.acknowledgeBound(mid, nodeA()))
             assertEquals(DeliveryState.CANCELLED_LOCALLY, found(j, mid).state)
         } finally {
             file.delete()
@@ -786,7 +782,7 @@ class SqliteDeliveryRepositoryTest {
             val mid = msgId(33)
             j.enqueue(mid, AckMode.SINGLE_RECIPIENT, nodeA())
             j.transition(mid, DeliveryTransition.MARK_HANDED)
-            assertEquals(AckResult.Applied, j.acknowledgeBound(mid, AckMode.SINGLE_RECIPIENT, nodeA()))
+            assertEquals(AckResult.Applied, j.acknowledgeBound(mid, nodeA()))
             // ACKNOWLEDGED(3) not in (QUEUED, HANDED) -> cancel CAS 0 rows -> RejectedState.
             assertEquals(TransitionResult.RejectedState, j.transition(mid, DeliveryTransition.CANCEL))
             assertEquals(TransitionResult.RejectedState, j.transition(mid, DeliveryTransition.EXPIRE))
@@ -809,7 +805,7 @@ class SqliteDeliveryRepositoryTest {
             assertEquals(EnqueueResult.Created, j.enqueue(mid, AckMode.SINGLE_RECIPIENT, nodeB()))
             // Alice's old ACK CAS: expected=nodeA but row is nodeB -> 0 rows -> re-read
             // -> binding changed -> UnknownMessage. Bob's row is untouched.
-            assertEquals(AckResult.UnknownMessage, j.acknowledgeBound(mid, AckMode.SINGLE_RECIPIENT, nodeA()))
+            assertEquals(AckResult.UnknownMessage, j.acknowledgeBound(mid, nodeA()))
             val rec = found(j, mid)
             assertEquals(nodeB().toList(), rec.expectedRecipientNodeId?.toList())
             assertEquals(DeliveryState.QUEUED_DURABLY, rec.state, "Bob's fresh row stays QUEUED")
@@ -826,11 +822,11 @@ class SqliteDeliveryRepositoryTest {
             val mid = msgId(35)
             j.enqueue(mid, AckMode.SINGLE_RECIPIENT, nodeA())
             j.transition(mid, DeliveryTransition.MARK_HANDED)
-            assertEquals(AckResult.Applied, j.acknowledgeBound(mid, AckMode.SINGLE_RECIPIENT, nodeA()))
+            assertEquals(AckResult.Applied, j.acknowledgeBound(mid, nodeA()))
             // A second authenticated ACK: state is already ACKNOWLEDGED with the SAME
             // binding -> CAS 0 rows -> re-read ACKNOWLEDGED same binding -> Duplicate.
             assertEquals(AckResult.DuplicateAuthenticatedAck,
-                j.acknowledgeBound(mid, AckMode.SINGLE_RECIPIENT, nodeA()))
+                j.acknowledgeBound(mid, nodeA()))
             assertEquals(DeliveryState.ACKNOWLEDGED_BY_RECIPIENT, found(j, mid).state)
         } finally {
             file.delete()
@@ -1093,7 +1089,7 @@ class SqliteDeliveryRepositoryTest {
             j.enqueue(mid, AckMode.SINGLE_RECIPIENT, nodeA())
             j.transition(mid, DeliveryTransition.MARK_HANDED)
             j.transition(mid, DeliveryTransition.CANCEL) // CANCELLED
-            assertEquals(AckResult.RejectedState, j.acknowledgeBound(mid, AckMode.SINGLE_RECIPIENT, nodeA()),
+            assertEquals(AckResult.RejectedState, j.acknowledgeBound(mid, nodeA()),
                 "with the state guard ON, an ACK after cancel is RejectedState")
             assertEquals(DeliveryState.CANCELLED_LOCALLY, found(j, mid).state)
 
@@ -1107,7 +1103,7 @@ class SqliteDeliveryRepositoryTest {
             jWeak.transition(mid2, DeliveryTransition.MARK_HANDED)
             jWeak.transition(mid2, DeliveryTransition.CANCEL) // CANCELLED
             assertEquals(AckResult.Applied,
-                jWeak.acknowledgeBound(mid2, AckMode.SINGLE_RECIPIENT, nodeA()),
+                jWeak.acknowledgeBound(mid2, nodeA()),
                 "with the state guard OFF, the ACK overwrites CANCELLED -> Applied (WRONG)")
             assertEquals(DeliveryState.ACKNOWLEDGED_BY_RECIPIENT, found(jWeak, mid2).state,
                 "the weakened guard let the ACK reverse a terminal state (WRONG)")
@@ -1127,7 +1123,7 @@ class SqliteDeliveryRepositoryTest {
             j.transition(mid, DeliveryTransition.MARK_HANDED)
             j.clear(mid)
             j.enqueue(mid, AckMode.SINGLE_RECIPIENT, nodeB()) // re-bound to Bob, QUEUED
-            assertEquals(AckResult.UnknownMessage, j.acknowledgeBound(mid, AckMode.SINGLE_RECIPIENT, nodeA()),
+            assertEquals(AckResult.UnknownMessage, j.acknowledgeBound(mid, nodeA()),
                 "with the recipient guard ON, Alice's ACK does not bind to Bob's row")
             assertEquals(DeliveryState.QUEUED_DURABLY, found(j, mid).state)
 
@@ -1142,7 +1138,7 @@ class SqliteDeliveryRepositoryTest {
             jWeak.clear(mid2)
             jWeak.enqueue(mid2, AckMode.SINGLE_RECIPIENT, nodeB()) // re-bound to Bob
             assertEquals(AckResult.Applied,
-                jWeak.acknowledgeBound(mid2, AckMode.SINGLE_RECIPIENT, nodeA()),
+                jWeak.acknowledgeBound(mid2, nodeA()),
                 "with the recipient guard OFF, Alice's ACK binds to Bob's row -> Applied (WRONG)")
             val rec = found(jWeak, mid2)
             assertEquals(DeliveryState.ACKNOWLEDGED_BY_RECIPIENT, rec.state,
@@ -1171,7 +1167,7 @@ class SqliteDeliveryRepositoryTest {
             // Production repo (mode guard ON): the ACK CAS requires ack_mode=1, but
             // the row is 0 -> 0 rows -> re-read -> binding inconsistent (NONE + non-null
             // recipient) -> Corrupt. Fail closed.
-            assertEquals(AckResult.Corrupt, j.acknowledgeBound(mid, AckMode.SINGLE_RECIPIENT, nodeA()),
+            assertEquals(AckResult.Corrupt, j.acknowledgeBound(mid, nodeA()),
                 "with the mode guard ON, an ACK on a NONE-mode (corrupt) row fails closed to Corrupt")
             assertEquals(DeliveryState.HANDED_TO_RELAY, rawStateOf(db, mid), "state unchanged")
 
@@ -1184,7 +1180,7 @@ class SqliteDeliveryRepositoryTest {
             jWeak.transition(mid2, DeliveryTransition.MARK_HANDED)
             plantCorruptBinding(db, mid2, nodeA())
             assertEquals(AckResult.Applied,
-                jWeak.acknowledgeBound(mid2, AckMode.SINGLE_RECIPIENT, nodeA()),
+                jWeak.acknowledgeBound(mid2, nodeA()),
                 "with the mode guard OFF, an ACK lands on a NONE-mode row -> Applied (WRONG)")
             assertEquals(DeliveryState.ACKNOWLEDGED_BY_RECIPIENT, rawStateOf(db, mid2),
                 "the weakened guard let a NONE-mode row be acknowledged (WRONG)")
@@ -1202,7 +1198,7 @@ class SqliteDeliveryRepositoryTest {
             val mid = msgId(56)
             j.enqueue(mid, AckMode.SINGLE_RECIPIENT, nodeA())
             j.transition(mid, DeliveryTransition.MARK_HANDED)
-            j.acknowledgeBound(mid, AckMode.SINGLE_RECIPIENT, nodeA()) // ACKNOWLEDGED
+            j.acknowledgeBound(mid, nodeA()) // ACKNOWLEDGED
             assertEquals(TransitionResult.RejectedState, j.transition(mid, DeliveryTransition.CANCEL),
                 "with the state guard ON, cancel after ACK is RejectedState")
             assertEquals(DeliveryState.ACKNOWLEDGED_BY_RECIPIENT, found(j, mid).state)
@@ -1214,7 +1210,7 @@ class SqliteDeliveryRepositoryTest {
             val mid2 = msgId(57)
             jWeak.enqueue(mid2, AckMode.SINGLE_RECIPIENT, nodeA())
             jWeak.transition(mid2, DeliveryTransition.MARK_HANDED)
-            jWeak.acknowledgeBound(mid2, AckMode.SINGLE_RECIPIENT, nodeA()) // ACKNOWLEDGED
+            jWeak.acknowledgeBound(mid2, nodeA()) // ACKNOWLEDGED
             assertEquals(TransitionResult.Applied, jWeak.transition(mid2, DeliveryTransition.CANCEL),
                 "with the state guard OFF, cancel overwrites ACKNOWLEDGED -> Applied (WRONG)")
             assertEquals(DeliveryState.CANCELLED_LOCALLY, found(jWeak, mid2).state,

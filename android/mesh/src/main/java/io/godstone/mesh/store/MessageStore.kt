@@ -351,8 +351,15 @@ internal object StoreSchema {
 internal class DeliveryRow(
     val state: Int,
     val ackMode: Int,
-    val expectedRecipient: ByteArray?,
-)
+    expectedRecipient: ByteArray?,
+) {
+    /** C6.4.1-J: defensive copy on construction AND a fresh copy on every read --
+     *  a caller cannot mutate the row's internal storage via the constructor input
+     *  nor via the exported id. */
+    private val _expectedRecipient: ByteArray? = expectedRecipient?.copyOf()
+    val expectedRecipient: ByteArray?
+        get() = _expectedRecipient?.copyOf()
+}
 
 /** A stored row before it is typed into a [FrameV2] (the type code may be unknown). */
 internal class StoreRow(

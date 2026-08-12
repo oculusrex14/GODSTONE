@@ -116,8 +116,7 @@ final class DeliveryTrackerTests: XCTestCase {
             }
         }
 
-        func acknowledgeBound(_ msgId: Data, ackMode: AckMode,
-                               expectedRecipient: Data?) -> AckResult {
+        func acknowledgeBound(_ msgId: Data, expectedRecipient: Data) -> AckResult {
             switch get(msgId) {
             case .notFound: return .unknownMessage
             case .corrupt: return .corrupt
@@ -125,7 +124,7 @@ final class DeliveryTrackerTests: XCTestCase {
             case .invalidArgument: return .invalidArgument
             case .found(let rec):
                 let sameBinding = rec.ackMode == .singleRecipient &&
-                    rec.expectedRecipientNodeId == expectedRecipient
+                    rec.expectedRecipientNodeId == .some(expectedRecipient)
                 if !sameBinding { return .unknownMessage }
                 switch rec.state {
                 case .acknowledgedByRecipient: return .duplicateAuthenticatedAck

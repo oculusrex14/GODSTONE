@@ -106,15 +106,14 @@ final class MeshNodeDeliveryIntegrationTests: XCTestCase {
                 return .rejectedState
             }
         }
-        func acknowledgeBound(_ msgId: Data, ackMode: AckMode,
-                              expectedRecipient: Data?) -> AckResult {
+        func acknowledgeBound(_ msgId: Data, expectedRecipient: Data) -> AckResult {
             switch get(msgId) {
             case .notFound: return .unknownMessage
             case .corrupt: return .corrupt
             case .storageFailure: return .storageFailure
             case .invalidArgument: return .invalidArgument
             case .found(let rec):
-                if rec.ackMode != ackMode || rec.expectedRecipientNodeId != expectedRecipient {
+                if rec.ackMode != .singleRecipient || rec.expectedRecipientNodeId != .some(expectedRecipient) {
                     return .unknownMessage
                 }
                 switch rec.state {

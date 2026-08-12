@@ -60,16 +60,14 @@ internal class MutatedDeliveryRepository(
 
     override fun acknowledgeBound(
         msgId: ByteArray,
-        ackMode: AckMode,
-        expectedRecipient: ByteArray?,
+        expectedRecipient: ByteArray,
     ): AckResult {
         if (msgId.size != 16) return AckResult.InvalidArgument
-        if (ackMode != AckMode.SINGLE_RECIPIENT) return AckResult.InvalidArgument
-        if (expectedRecipient == null || expectedRecipient.size != 16) return AckResult.InvalidArgument
+        if (expectedRecipient.size != 16) return AckResult.InvalidArgument
         val sql = acknowledgeBoundSql()
         // Recipient bind slot is present ONLY when recipientGuard is on (mirrors the
         // pre-C6.4.1 guarded builder). Declared `Array<ByteArray?>` so expected-type
-        // inference flows into both branches (smart-cast non-null `expectedRecipient`).
+        // inference flows into both branches.
         val bindArgs: Array<ByteArray?> =
             if (recipientGuard) arrayOf(msgId, expectedRecipient) else arrayOf(msgId)
         return try {
