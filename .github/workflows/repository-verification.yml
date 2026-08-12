@@ -115,6 +115,10 @@ jobs:
         run: |
           python ci/no_delivery_guard_bypass.py --selftest
           python ci/no_delivery_guard_bypass.py
+      - name: store schema/persist negative controls present (C6.4.1-BCDEFGH)
+        run: |
+          python ci/check_store_schema_controls.py --selftest
+          python ci/check_store_schema_controls.py
       - name: no legacy GMP/1 wire symbol
         run: python ci/no_legacy_wire.py --selftest
       - name: provenance (final -- tree still clean)
