@@ -12,6 +12,7 @@ import org.junit.Test
 import java.io.File
 import java.nio.file.Files
 import java.security.SecureRandom
+import java.sql.DriverManager
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.CyclicBarrier
 import java.util.concurrent.atomic.AtomicReference
@@ -358,6 +359,141 @@ class SqliteDeliveryRepositoryTest {
                 "acknowledgeBound with a null recipient must be InvalidArgument")
             assertEquals(AckResult.InvalidArgument, j.acknowledgeBound(mid, AckMode.NONE, recipient),
                 "acknowledgeBound for NONE mode must be InvalidArgument")
+        } finally {
+            file.delete()
+        }
+    }
+
+    // ------------------------------------------------------------------
+    // C6.4.1-BCDEFG: fail-closed store schema version + migration. Mirrors the
+    // iOS StoreSchema runMigrations tests. The JDBC engine now version-gates
+    // the open (no unconditional CREATE IF NOT EXISTS): a FUTURE user_version
+    // throws (no silent downgrade); a current-version file is DDL-fingerprint
+    // validated (a tampered / hand-edited file with the right stamp but wrong
+    // DDL is rejected); a stale version is transactionally recreated.
+    // ------------------------------------------------------------------
+
+    @Test
+    fun `a future user_version is rejected fail-closed and left untouched`() {
+        val file = Files.createTempFile("godstone-delivery-future", ".db").toFile()
+        try {
+            // Pre-stamp a FUTURE version (999 > DB_VERSION=6) and create the
+            // current tables so the only rejection reason is the version.
+            val direct = DriverManager.getConnection("jdbc:sqlite:" + file.absolutePath)
+            direct.createStatement().use { it.execute(StoreSchema.CREATE_SQL) }
+            direct.createStatement().use { it.execute(StoreSchema.CREATE_DELIVERY_SQL) }
+            direct.createStatement().use { it.execute("PRAGMA user_version = 999") }
+            direct.close()
+            // Opening must FAIL CLOSED (no silent downgrade to DB_VERSION).
+            try {
+                JdbcStoreDb(file)
+                error("expected future-version open to fail closed")
+            } catch (e: IllegalStateException) {
+                // expected: refusing to open future store schema
+            }
+            // The file is NOT touched by the failed open: user_version is still
+            // 999 (no silent downgrade / no recreate).
+            val check = DriverManager.getConnection("jdbc:sqlite:" + file.absolutePath)
+            check.prepareStatement("PRAGMA user_version").use { ps ->
+                ps.executeQuery().use { rs ->
+                    assertEquals(999, rs.getInt(1), "future user_version must be left untouched")
+                }
+            }
+            check.close()
+        } finally {
+            file.delete()
+        }
+    }
+
+    @Test
+    fun `a malformed current-version schema is rejected fail-closed`() {
+        val file = Files.createTempFile("godstone-delivery-malformed", ".db").toFile()
+        try {
+            // Stamp the CURRENT version but create held_frames with the WRONG
+            // DDL (no NOT NULL, no CHECK) -- a tampered / hand-edited file with
+            // the right version stamp but the wrong schema. delivery_state is
+            // created correctly so the failure is specifically the held_frames
+            // DDL-fingerprint mismatch.
+            val direct = DriverManager.getConnection("jdbc:sqlite:" + file.absolutePath)
+            direct.createStatement().use {
+                it.execute("CREATE TABLE ${StoreSchema.TABLE} (${StoreSchema.COL_MSG_ID} BLOB PRIMARY KEY, ${StoreSchema.COL_TYPE} INTEGER)")
+            }
+            direct.createStatement().use { it.execute(StoreSchema.CREATE_DELIVERY_SQL) }
+            direct.createStatement().use { it.execute("PRAGMA user_version = ${StoreSchema.DB_VERSION}") }
+            direct.close()
+            // Opening must FAIL CLOSED: validateSchema reads sqlite_master and
+            // the held_frames DDL fingerprint does not match CREATE_SQL.
+            try {
+                JdbcStoreDb(file)
+                error("expected malformed-current-version open to fail closed")
+            } catch (e: IllegalStateException) {
+                // expected: store schema validation: DDL mismatch for held_frames
+            }
+        } finally {
+            file.delete()
+        }
+    }
+
+    @Test
+    fun `msg_id NULL and length boundaries are rejected by both tables at the raw SQL level`() {
+        val file = Files.createTempFile("godstone-delivery-msgid", ".db").toFile()
+        try {
+            val db = JdbcStoreDb(file)
+            // C6.4.1-G: the explicit NOT NULL on msg_id (plus the existing
+            // CHECK (length(msg_id) = 16)) rejects a NULL msg_id at the raw
+            // SQL level on BOTH tables. execRawSql runs literal SQL (no
+            // binding); a NULL insert throws a SQLException.
+            try {
+                db.execRawSql("INSERT INTO ${StoreSchema.TABLE} (${StoreSchema.COL_MSG_ID}, ${StoreSchema.COL_TYPE}) VALUES (NULL, 1)")
+                error("expected NOT NULL violation for a NULL held_frames msg_id")
+            } catch (e: java.sql.SQLException) {
+                // expected: msg_id NOT NULL / length(NULL) = NULL != 16
+            }
+            try {
+                db.execRawSql(
+                    "INSERT INTO ${StoreSchema.DELIVERY_TABLE} (${StoreSchema.COL_D_MSG_ID}, ${StoreSchema.COL_D_STATE}, ${StoreSchema.COL_D_ACK_MODE}, ${StoreSchema.COL_D_EXPECTED}) " +
+                        "VALUES (NULL, 1, 0, NULL)"
+                )
+                error("expected NOT NULL violation for a NULL delivery_state msg_id")
+            } catch (e: java.sql.SQLException) {
+                // expected
+            }
+            // C6.4-D: non-16-byte msg_id is rejected by the length CHECK on
+            // BOTH tables (execRawUpdate throws on the constraint violation).
+            val badSizes = listOf(0, 8, 15, 17, 64)
+            for (size in badSizes) {
+                val bad = ByteArray(size)
+                try {
+                    db.execRawUpdate(
+                        "INSERT INTO ${StoreSchema.TABLE} (${StoreSchema.COL_MSG_ID}, ${StoreSchema.COL_TYPE}) VALUES (?, 1)",
+                        bad,
+                    )
+                    error("expected length CHECK violation for a $size-byte held_frames msg_id")
+                } catch (e: java.sql.SQLException) {
+                    // expected
+                }
+                try {
+                    db.execRawUpdate(
+                        "INSERT INTO ${StoreSchema.DELIVERY_TABLE} (${StoreSchema.COL_D_MSG_ID}, ${StoreSchema.COL_D_STATE}, ${StoreSchema.COL_D_ACK_MODE}, ${StoreSchema.COL_D_EXPECTED}) " +
+                            "VALUES (?, 1, 0, NULL)",
+                        bad,
+                    )
+                    error("expected length CHECK violation for a $size-byte delivery_state msg_id")
+                } catch (e: java.sql.SQLException) {
+                    // expected
+                }
+            }
+            // A 16-byte msg_id is accepted on BOTH tables (raw insert into
+            // held_frames succeeds; enqueue creates a delivery_state row).
+            val ok = ByteArray(16) { (it + 42).toByte() }
+            assertEquals(1, db.execRawUpdate(
+                "INSERT INTO ${StoreSchema.TABLE} (${StoreSchema.COL_MSG_ID}, ${StoreSchema.COL_TYPE}) VALUES (?, 1)",
+                ok,
+            ), "16-byte held_frames msg_id accepted")
+            val j = SqliteDeliveryRepository(db)
+            assertEquals(EnqueueResult.Created, j.enqueue(ok, AckMode.NONE, null),
+                "16-byte delivery_state msg_id accepted")
+            db.close()
         } finally {
             file.delete()
         }

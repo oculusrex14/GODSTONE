@@ -110,7 +110,12 @@ interface MessageStore {
  */
 internal object StoreSchema {
     const val DB_NAME = "godstone_messages.db"
-    const val DB_VERSION = 5
+    // C6.4.1-G: bumped 5 -> 6 to force a destructive recreate that adds the
+    // explicit `NOT NULL` to msg_id on BOTH tables (see CREATE_SQL /
+    // CREATE_DELIVERY_SQL). No installed base (GMP/1 + V3 never shipped) so the
+    // onUpgrade recreate is correct (ADR-001 §5). iOS StoreSchema.dbVersion is
+    // the same 6 (byte-identical schema contract).
+    const val DB_VERSION = 6
     const val TABLE = "held_frames"
     const val COL_MSG_ID = "msg_id"
     const val COL_TYPE = "type"
@@ -128,7 +133,7 @@ internal object StoreSchema {
 
     val CREATE_SQL: String = """
         CREATE TABLE $TABLE (
-            $COL_MSG_ID BLOB PRIMARY KEY,
+            $COL_MSG_ID BLOB PRIMARY KEY NOT NULL,
             $COL_TYPE INTEGER,
             $COL_TTL INTEGER,
             $COL_HOP_COUNT INTEGER,
@@ -217,8 +222,8 @@ internal object StoreSchema {
     // enum ordinals, so the two platforms agree even if their enum orders ever
     // diverge. Mirrors iOS StoreSchema.
     //
-    // C6.4-C/D hardening (DB_VERSION bumped 4 -> 5; no installed base -> destructive
-    // onUpgrade recreate, ADR-001 §5): two further schema CHECKs --
+    // C6.4-C/D hardening (no installed base -> destructive onUpgrade recreate,
+    // ADR-001 §5): two schema CHECKs --
     //  * `CHECK (length(msg_id) = 16)` -- the GMP/2.1 msg_id is EXACTLY 16 bytes
     //    (BLAKE2s-128, ADR-001). The FrameV2 constructor already requires 16 bytes,
     //    so held_frames rows always carry a 16-byte msg_id in the normal path; the
@@ -241,7 +246,7 @@ internal object StoreSchema {
 
     val CREATE_DELIVERY_SQL: String = """
         CREATE TABLE $DELIVERY_TABLE (
-            $COL_D_MSG_ID BLOB PRIMARY KEY,
+            $COL_D_MSG_ID BLOB PRIMARY KEY NOT NULL,
             $COL_D_STATE INTEGER NOT NULL,
             $COL_D_ACK_MODE INTEGER NOT NULL DEFAULT 0,
             $COL_D_EXPECTED BLOB,
@@ -289,6 +294,56 @@ internal object StoreSchema {
      *  row count via [StoreDb.execDeliveryUpdate] (1 dropped, 0 already absent). */
     fun clearDeliverySql(): String =
         "DELETE FROM $DELIVERY_TABLE WHERE $COL_D_MSG_ID = ?"
+
+    // ------------------------------------------------------------------
+    // C6.4.1-E/F: schema-integrity validation. A current-version file is NOT
+    // trusted to be well-formed just because user_version matches -- a tampered
+    // / partially-migrated / hand-edited file could carry the right version
+    // stamp but the wrong DDL. `validateSchema` reads `sqlite_master.sql` for
+    // BOTH tables and compares the NORMALISED DDL fingerprint to the expected
+    // `CREATE_SQL` / `CREATE_DELIVERY_SQL` (SQLite strips `IF NOT EXISTS` from
+    // the stored `sqlite_master.sql`, so the fingerprint matches a table
+    // created by either the `CREATE_SQL` or the `CREATE_SQL_IF_NOT_EXISTS`
+    // form). On a mismatch (missing table / wrong DDL) it throws -- the caller
+    // ([Helper.onOpen] in production, [JdbcStoreDb] in the test engine) fails
+    // CLOSED instead of opening a malformed store. A FUTURE version
+    // (user_version > DB_VERSION) is rejected separately by the version logic
+    // (production: SQLiteOpenHelper's default `onDowngrade` throws; JDBC: the
+    // `runMigrations` `else` branch throws) -- never a silent downgrade.
+    // ------------------------------------------------------------------
+
+    /** Normalise a DDL string to a single-spaced token sequence for fingerprint
+     *  comparison (whitespace-only differences are not schema differences). */
+    fun normalizeSql(sql: String): String =
+        sql.split(Regex("\\s+")).filter { it.isNotEmpty() }.joinToString(" ")
+
+    /**
+     * Production schema-integrity check (C6.4.1-E/F). Reads `sqlite_master`
+     * for BOTH tables and compares the normalised DDL to the expected
+     * [CREATE_SQL] / [CREATE_DELIVERY_SQL]. Throws `IllegalStateException` on
+     * a missing table or DDL mismatch -- the caller ([Helper.onOpen]) lets it
+     * propagate so the open fails closed (no writable handle to a malformed
+     * store). Called on every open of a current-version file.
+     */
+    fun validateSchema(db: SQLiteDatabase) {
+        checkTableDdl(db, TABLE, CREATE_SQL)
+        checkTableDdl(db, DELIVERY_TABLE, CREATE_DELIVERY_SQL)
+    }
+
+    private fun checkTableDdl(db: SQLiteDatabase, name: String, expected: String) {
+        db.rawQuery(
+            "SELECT sql FROM sqlite_master WHERE type = 'table' AND name = ?",
+            arrayOf(name),
+        ).use { c ->
+            if (!c.moveToFirst() || c.isNull(0)) {
+                throw IllegalStateException("store schema validation: missing table $name")
+            }
+            val actual = c.getString(0)
+            if (normalizeSql(actual) != normalizeSql(expected)) {
+                throw IllegalStateException("store schema validation: DDL mismatch for $name")
+            }
+        }
+    }
 }
 
 /** A persisted `delivery_state` row before it is typed into a [DeliveryRecord]
@@ -721,12 +776,13 @@ internal class SqlcipherStoreDb(ctx: Context) : StoreDb {
         SQLiteOpenHelper(ctx, StoreSchema.DB_NAME, key, null, StoreSchema.DB_VERSION, 1, null, null, false) {
         override fun onCreate(db: SQLiteDatabase) {
             db.execSQL(StoreSchema.CREATE_SQL)
-            // Stage 4C.1 / C6.1 / C6.4: delivery_state holds the lifecycle state,
-            // ack mode, and expected recipient in one row, in the same DB. onCreate
-            // creates both tables on first open; onUpgrade drops both then calls
-            // onCreate, so a version bump (4 -> 5) recreates both with the C6.4
-            // CHECK invariants (length(msg_id)=16; state IN (1..5)) plus the C6.1
-            // binding CHECK (no installed base -> destructive recreate, ADR-001 §5).
+            // Stage 4C.1 / C6.1 / C6.4 / C6.4.1: delivery_state holds the lifecycle
+            // state, ack mode, and expected recipient in one row, in the same DB.
+            // onCreate creates both tables on first open; onUpgrade drops both
+            // then calls onCreate, so a version bump (5 -> 6) recreates both with
+            // the C6.4 CHECK invariants (length(msg_id)=16; state IN (1..5)) plus
+            // the C6.1 binding CHECK and the C6.4.1-G explicit `NOT NULL` on
+            // msg_id (no installed base -> destructive recreate, ADR-001 §5).
             db.execSQL(StoreSchema.CREATE_DELIVERY_SQL)
         }
 
@@ -741,6 +797,25 @@ internal class SqlcipherStoreDb(ctx: Context) : StoreDb {
             db.execSQL("DROP TABLE IF EXISTS ${StoreSchema.TABLE}")
             db.execSQL("DROP TABLE IF EXISTS ${StoreSchema.DELIVERY_TABLE}")
             onCreate(db)
+        }
+
+        // C6.4.1-C/F: a FUTURE user_version (oldVersion > newVersion) is
+        // rejected by the SQLiteOpenHelper default `onDowngrade`, which throws
+        // a SQLiteException -- the open fails CLOSED, no silent downgrade. We
+        // deliberately do NOT override `onDowngrade` (an override risks a
+        // compile error against the SQLCipher signature and would weaken the
+        // fail-closed default). The version logic mirrors iOS StoreSchema.
+
+        override fun onOpen(db: SQLiteDatabase) {
+            // C6.4.1-E/F: a current-version file is not trusted to be well-formed
+            // just because user_version matches -- validate BOTH tables' DDL
+            // fingerprints against StoreSchema on every open. A tampered /
+            // partially-migrated / hand-edited file with the right version stamp
+            // but wrong DDL throws here, so the open fails CLOSED instead of
+            // handing out a writable handle to a malformed store. onCreate /
+            // onUpgrade already created the correct schema, so a freshly-created
+            // or freshly-recreated file validates trivially.
+            StoreSchema.validateSchema(db)
         }
     }
 

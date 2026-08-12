@@ -109,13 +109,20 @@ internal protocol DeliveryStore: AnyObject {
 
 internal enum StoreSchema {
     static let dbName = "godstone_messages.db"
-    /// Schema logical revision (C6.4-E). Mirrors Android `StoreSchema.DB_VERSION`.
-    /// Bumped 4 -> 5 by C6.4 (added `CHECK (length(msg_id) = 16)` on both tables and
-    /// `CHECK (state IN (1,2,3,4,5))` on delivery_state). The store stamps this into
-    /// `PRAGMA user_version` and recreates the tables when a file's user_version is
-    /// older -- the iOS twin of Android's `SQLiteOpenHelper.onUpgrade`
-    /// (destructive drop+recreate; no installed base to preserve per ADR-001 §5).
-    static let dbVersion: Int32 = 5
+    /// Schema logical revision (C6.4-E / C6.4.1). Mirrors Android
+    /// `StoreSchema.DB_VERSION`. Bumped 4 -> 5 by C6.4 (added
+    /// `CHECK (length(msg_id) = 16)` on both tables and
+    /// `CHECK (state IN (1,2,3,4,5))` on delivery_state). Bumped 5 -> 6 by C6.4.1-G
+    /// (added explicit `NOT NULL` to `msg_id` on both tables -- `BLOB PRIMARY KEY`
+    /// alone does NOT enforce NOT NULL for a non-INTEGER-PK column in a rowid
+    /// table; the `CHECK(length=16)` already rejects NULL, but the explicit
+    /// `NOT NULL` makes the invariant legible in the DDL fingerprint and forces a
+    /// destructive recreate of any v5 file). The store stamps this into
+    /// `PRAGMA user_version`; on open a file whose user_version is OLDER is
+    /// transactionally recreated (C6.4.1-D), a CURRENT file is DDL-fingerprint
+    /// validated (C6.4.1-E), and a FUTURE file is rejected fail-closed untouched
+    /// (C6.4.1-C). No installed base to preserve (ADR-001 §5).
+    static let dbVersion: Int32 = 6
     static let table = "held_frames"
     static let colMsgId = "msg_id"
     static let colType = "type"
@@ -131,14 +138,15 @@ internal enum StoreSchema {
     /// Per-row bookkeeping beyond the payload blob (columns + page overhead).
     static let rowOverhead: Int64 = 64
 
-    /// C6.4-D: the 16-byte msg_id invariant is enforced at the DB level on BOTH
-    /// tables (`CHECK (length(msg_id) = 16)`). The GMP/2.1 msg_id is BLAKE2s-128 =
-    /// 16 bytes; `FrameV2.init` already preconditions `msgId.count == 16`, so this
+    /// C6.4-D / C6.4.1-G: the 16-byte msg_id invariant is enforced at the DB
+    /// level on BOTH tables (`msg_id BLOB PRIMARY KEY NOT NULL` +
+    /// `CHECK (length(msg_id) = 16)`). The GMP/2.1 msg_id is BLAKE2s-128 = 16
+    /// bytes; `FrameV2.init` already preconditions `msgId.count == 16`, so this
     /// is defense-in-depth (a row can only be created via the wire path, which
     /// guards first). Mirrors Android `StoreSchema.CREATE_SQL`.
     static let createSql = """
         CREATE TABLE \(table) (
-            \(colMsgId) BLOB PRIMARY KEY,
+            \(colMsgId) BLOB PRIMARY KEY NOT NULL,
             \(colType) INTEGER,
             \(colTtl) INTEGER,
             \(colHopCount) INTEGER,
@@ -236,7 +244,7 @@ internal enum StoreSchema {
     /// recipient). Mirrors Android `StoreSchema.CREATE_DELIVERY_SQL`.
     static let createDeliverySql = """
         CREATE TABLE \(deliveryTable) (
-            \(colDMsgId) BLOB PRIMARY KEY,
+            \(colDMsgId) BLOB PRIMARY KEY NOT NULL,
             \(colDState) INTEGER NOT NULL,
             \(colDAckMode) INTEGER NOT NULL DEFAULT 0,
             \(colDExpected) BLOB,
@@ -349,18 +357,24 @@ public final class SqliteMessageStore: MessageStore {
         // unwrap once so the migration helpers receive a non-optional `OpaquePointer`.
         guard let db = db else { return }
         handle = db
-        // C6.4-E: PRAGMA user_version schema versioning -- the iOS twin of
-        // Android's `SQLiteOpenHelper.onUpgrade` (destructive drop+recreate). The
-        // store stamps `StoreSchema.dbVersion` into `PRAGMA user_version`; on open,
-        // a file whose user_version is older (or 0 -- fresh) has BOTH tables
-        // dropped and recreated with the current schema (incl. the C6.4 CHECKs),
-        // then user_version is stamped. A current-version file is left untouched
-        // (belt-and-suspenders `IF NOT EXISTS` creates are harmless no-ops on
-        // tables that already match). There is NO installed base (ADR-001 §5:
-        // GMP/1 was never shipped), so a version mismatch is a stale dev build --
-        // destructive recreation is correct, no data to preserve. The logical
-        // revision number (dbVersion) is documented to match Android DB_VERSION.
-        runMigrations(db)
+        // C6.4-E / C6.4.1-B/C/D/E: PRAGMA user_version schema versioning -- the
+        // iOS twin of Android's `SQLiteOpenHelper.onUpgrade`. The store reads
+        // `PRAGMA user_version` (THROWS on a read failure, C6.4.1-B -- never
+        // 0-on-failure); an OLDER file is transactionally drop+recreated and
+        // stamped (C6.4.1-D); a CURRENT file is DDL-fingerprint validated
+        // (C6.4.1-E); a FUTURE file is rejected fail-closed untouched
+        // (C6.4.1-C). On ANY migration/validation failure the handle is closed
+        // and `handle` is set nil so the store is unusable (every op fails
+        // closed) rather than opened against a half-migrated / wrong schema. No
+        // installed base (ADR-001 §5: GMP/1 was never shipped). The logical
+        // revision number (dbVersion) matches Android DB_VERSION.
+        do {
+            try runMigrations(db)
+        } catch {
+            sqlite3_close_v2(db)
+            handle = nil
+            return
+        }
         // At-rest encryption: mark the file complete-protection. Best-effort --
         // on the macOS host this is accepted but not enforced (device concern).
         try? FileManager.default.setAttributes(
@@ -601,50 +615,124 @@ public final class SqliteMessageStore: MessageStore {
         sqlite3_step(stmt)
     }
 
-    // MARK: - C6.4-E: PRAGMA user_version schema versioning
+    // MARK: - C6.4-E / C6.4.1-B/C/D/E: PRAGMA user_version schema versioning
     //
-    // The iOS twin of Android's `SQLiteOpenHelper.onUpgrade`. On open, read
-    // `PRAGMA user_version`; if it is older than `StoreSchema.dbVersion` (or 0 --
-    // fresh file), drop+recreate BOTH tables with the current schema (incl. the
-    // C6.4 CHECKs) and stamp `user_version = dbVersion`. If current, leave the
-    // file untouched (the `IF NOT EXISTS` creates are harmless no-ops on tables
-    // that already match). No installed base (ADR-001 §5) -> destructive
-    // recreation is correct. Documented logical revision matches Android
-    // `StoreSchema.DB_VERSION`.
+    // The iOS twin of Android's `SQLiteOpenHelper.onUpgrade` + onOpen validation.
+    // On open, read `PRAGMA user_version` (C6.4.1-B: THROWS on a read failure --
+    // never 0-on-failure, which would masquerade as a fresh file and trigger a
+    // destructive recreate that destroys real data on an I/O error). Then:
+    //   * v < dbVersion (older or fresh=0): transactional drop+recreate both
+    //     tables (C6.4.1-D: execStrict on every statement, BEGIN/COMMIT, ROLLBACK
+    //     on any failure, no half-migrated handle) and stamp user_version.
+    //   * v == dbVersion (current): DDL-fingerprint validate (C6.4.1-E) and open;
+    //     a mismatch is rejected fail-closed.
+    //   * v > dbVersion (future): reject fail-closed UNTOUCHED (C6.4.1-C) -- a
+    //     newer schema this build cannot read is never silently downgraded.
+    // No installed base (ADR-001 §5) -> destructive recreate is correct. The
+    // logical revision matches Android `StoreSchema.DB_VERSION`.
 
-    private enum StoreError: Error { case handleMissing, prepareFailed, stepFailed, execFailed }
+    private enum StoreError: Error { case handleMissing, prepareFailed, stepFailed, execFailed, schemaMismatch }
 
-    /// Read `PRAGMA user_version` (one int row), or 0 if the read fails.
+    /// C6.4.1-B: read `PRAGMA user_version`. THROWS on a prepare/step failure --
+    /// never returns 0-on-failure (a read that silently returns 0 looks like a
+    /// fresh file and triggers a destructive recreate, destroying data on a real
+    /// I/O error). Absent a successful read the version is unknowable, so fail
+    /// closed instead of guessing.
     @inline(__always)
-    private func readUserVersion(_ db: OpaquePointer) -> Int32 {
+    private func readUserVersion(_ db: OpaquePointer) throws -> Int32 {
         var stmt: OpaquePointer?
         guard sqlite3_prepare_v2(db, "PRAGMA user_version", -1, &stmt, nil) == SQLITE_OK else {
-            sqlite3_finalize(stmt); return 0
+            sqlite3_finalize(stmt); throw StoreError.prepareFailed
         }
         defer { sqlite3_finalize(stmt) }
-        guard sqlite3_step(stmt) == SQLITE_ROW else { return 0 }
+        guard sqlite3_step(stmt) == SQLITE_ROW else { throw StoreError.stepFailed }
         return sqlite3_column_int(stmt, 0)
     }
 
-    /// Stamp `PRAGMA user_version = version` (persists in the DB header).
+    /// C6.4.1-D: execute one SQL statement and THROW on any non-OK result so a
+    /// migration DDL failure cannot be silently swallowed into a half-migrated
+    /// handle. Every migration statement runs through this.
     @inline(__always)
-    private func setUserVersion(_ db: OpaquePointer, _ version: Int32) {
-        sqlite3_exec(db, "PRAGMA user_version = \(version)", nil, nil, nil)
+    private func execStrict(_ db: OpaquePointer, _ sql: String) throws {
+        if sqlite3_exec(db, sql, nil, nil, nil) != SQLITE_OK { throw StoreError.execFailed }
     }
 
-    /// C6.4-E migration: drop+recreate both tables on a stale/fresh file;
-    /// no-op (idempotent IF NOT EXISTS) on a current file.
-    private func runMigrations(_ db: OpaquePointer) {
-        if readUserVersion(db) >= StoreSchema.dbVersion {
-            sqlite3_exec(db, StoreSchema.createSqlIfNotExists, nil, nil, nil)
-            sqlite3_exec(db, StoreSchema.createDeliverySqlIfNotExists, nil, nil, nil)
+    /// Stamp `PRAGMA user_version = version` (persists in the DB header). Strict:
+    /// a failed stamp leaves the file with a stale version, so throw (C6.4.1-D).
+    @inline(__always)
+    private func setUserVersion(_ db: OpaquePointer, _ version: Int32) throws {
+        try execStrict(db, "PRAGMA user_version = \(version)")
+    }
+
+    /// C6.4.1-E: fingerprint the current-version schema by EXACT DDL match, NOT
+    /// substring. `sqlite_master.sql` stores the CREATE text verbatim (SQLite
+    /// strips `IF NOT EXISTS`); we compare its whitespace-normalized form to the
+    /// expected `StoreSchema` DDL. A file that claims the current user_version
+    /// but was created with a different DDL (hand-edited, partially-migrated,
+    /// or silently-downgraded) fails this check and is rejected fail-closed.
+    /// Mirrors Android `StoreSchema.validateSchema`.
+    private func validateSchema(_ db: OpaquePointer) throws {
+        try checkTableDdl(db, name: StoreSchema.table, expected: StoreSchema.createSql)
+        try checkTableDdl(db, name: StoreSchema.deliveryTable, expected: StoreSchema.createDeliverySql)
+    }
+
+    private func checkTableDdl(_ db: OpaquePointer, name: String, expected: String) throws {
+        // name is an internal constant, not user input -> string interpolation is safe.
+        let sql = "SELECT sql FROM sqlite_master WHERE type = 'table' AND name = '\(name)'"
+        var stmt: OpaquePointer?
+        guard sqlite3_prepare_v2(db, sql, -1, &stmt, nil) == SQLITE_OK else {
+            sqlite3_finalize(stmt); throw StoreError.prepareFailed
+        }
+        defer { sqlite3_finalize(stmt) }
+        guard sqlite3_step(stmt) == SQLITE_ROW, let raw = sqlite3_column_text(stmt, 0) else {
+            throw StoreError.schemaMismatch
+        }
+        let actual = String(cString: raw)
+        guard normalizeSql(actual) == normalizeSql(expected) else { throw StoreError.schemaMismatch }
+    }
+
+    /// Collapse runs of whitespace to a single space and trim, so the DDL
+    /// compare is a fingerprint of the SCHEMA, not of its formatting.
+    @inline(__always)
+    private func normalizeSql(_ sql: String) -> String {
+        sql.split(whereSeparator: { $0.isWhitespace }).joined(separator: " ")
+    }
+
+    /// C6.4.1-B/C/D: schema versioning + migration. See the MARK comment above.
+    /// Throws on any failure; the init closes the handle on throw so the store
+    /// is unusable rather than half-migrated.
+    private func runMigrations(_ db: OpaquePointer) throws {
+        let v = try readUserVersion(db)
+        if v < StoreSchema.dbVersion {
+            // Older (or fresh, v=0): destructive recreate. No installed base
+            // (ADR-001 §5) -> dropping data is correct. Transactional so a
+            // mid-migration crash leaves the file on the OLD schema, not a
+            // half-migrated one; every statement runs through execStrict.
+            try execStrict(db, "BEGIN")
+            do {
+                try execStrict(db, "DROP TABLE IF EXISTS \(StoreSchema.deliveryTable)")
+                try execStrict(db, "DROP TABLE IF EXISTS \(StoreSchema.table)")
+                try execStrict(db, StoreSchema.createSql)
+                try execStrict(db, StoreSchema.createDeliverySql)
+                try setUserVersion(db, StoreSchema.dbVersion)
+                try execStrict(db, "COMMIT")
+            } catch {
+                sqlite3_exec(db, "ROLLBACK", nil, nil, nil)
+                throw error
+            }
             return
         }
-        sqlite3_exec(db, "DROP TABLE IF EXISTS \(StoreSchema.deliveryTable)", nil, nil, nil)
-        sqlite3_exec(db, "DROP TABLE IF EXISTS \(StoreSchema.table)", nil, nil, nil)
-        sqlite3_exec(db, StoreSchema.createSql, nil, nil, nil)
-        sqlite3_exec(db, StoreSchema.createDeliverySql, nil, nil, nil)
-        setUserVersion(db, StoreSchema.dbVersion)
+        if v == StoreSchema.dbVersion {
+            // Current: validate the DDL fingerprint. A current-version file
+            // with a non-matching schema is rejected fail-closed -- the belt-
+            // and-suspenders IF NOT EXISTS creates are NOT run here, so a
+            // mismatch is never papered over.
+            try validateSchema(db)
+            return
+        }
+        // v > current: a FUTURE schema. Fail closed, leave the file untouched.
+        // No invented downgrade of a schema this build cannot read.
+        throw StoreError.schemaMismatch
     }
 
     // MARK: - Stage 4C.1 / C6.1 / C6.4 delivery_state row (throwing primitives)

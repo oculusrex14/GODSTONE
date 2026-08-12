@@ -427,6 +427,10 @@ final class SqliteMessageStoreTests: XCTestCase {
             sqlite3_close_v2(db); return
         }
         sqlite3_exec(db, StoreSchema.createSqlIfNotExists, nil, nil, nil)
+        // C6.4.1-E: the store now DDL-fingerprint-validates BOTH tables on a
+        // current-version reopen, so the seed must create delivery_state too
+        // (otherwise validateSchema rejects the file as malformed fail-closed).
+        sqlite3_exec(db, StoreSchema.createDeliverySqlIfNotExists, nil, nil, nil)
         let sql = "INSERT INTO \(StoreSchema.table) (" +
             "\(StoreSchema.colMsgId), \(StoreSchema.colType), \(StoreSchema.colTtl), " +
             "\(StoreSchema.colHopCount), \(StoreSchema.colFlags), \(StoreSchema.colPriority), " +

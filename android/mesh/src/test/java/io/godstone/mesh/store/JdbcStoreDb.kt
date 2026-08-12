@@ -29,11 +29,83 @@ internal class JdbcStoreDb(file: File) : StoreDb {
     init {
         Class.forName("org.sqlite.JDBC")
         conn = DriverManager.getConnection("jdbc:sqlite:" + file.absolutePath)
-        // IF NOT EXISTS so a test can pre-seed the file (e.g. a bad-type row)
-        // and reopen it without "table already exists" failing the open.
-        conn.createStatement().use { it.execute(StoreSchema.CREATE_SQL_IF_NOT_EXISTS) }
-        // Stage 4C / C4: delivery_state table, idempotent (same as held_frames).
-        conn.createStatement().use { it.execute(StoreSchema.CREATE_DELIVERY_SQL_IF_NOT_EXISTS) }
+        // C6.4.1-BCDEFG: fail-closed version + schema-integrity logic, mirroring
+        // the iOS StoreSchema runMigrations and the production Helper. The old
+        // unconditional `CREATE ... IF NOT EXISTS` open is GONE: a file is now
+        // rejected (throws) on a future version, a stale version is transactionally
+        // dropped+recreated (no installed base -> destructive, ADR-001 §5), and a
+        // current-version file is DDL-fingerprint-validated (a tampered /
+        // partially-migrated file with the right version stamp but wrong DDL is
+        // rejected, never silently opened).
+        runMigrations()
+    }
+
+    // --- C6.4.1-BCDEFG: version + schema-integrity (mirrors iOS runMigrations) ---
+
+    /** Current PRAGMA user_version (0 on a fresh file). */
+    private fun readUserVersion(): Int =
+        conn.prepareStatement("PRAGMA user_version").use { ps ->
+            ps.executeQuery().use { rs -> if (rs.next()) rs.getInt(1) else 0 }
+        }
+
+    /**
+     * Stale (< DB_VERSION) -> transactional DROP + CREATE both tables, then stamp
+     * DB_VERSION AFTER the commit (a `PRAGMA user_version = N` inside a
+     * sqlite-jdbc transaction is not guaranteed to be durable, so it runs outside
+     * the txn; if the stamp fails the file simply re-migrates idempotently on the
+     * next open -- no half-migrated schema, since the tables are already current).
+     * Current (== DB_VERSION) -> DDL-fingerprint validate (throws on mismatch).
+     * Future (> DB_VERSION) -> throw (fail closed, no silent downgrade).
+     */
+    private fun runMigrations() {
+        val v = readUserVersion()
+        when {
+            v < StoreSchema.DB_VERSION -> {
+                val wasAuto = conn.autoCommit
+                conn.autoCommit = false
+                try {
+                    conn.createStatement().use { it.execute("DROP TABLE IF EXISTS ${StoreSchema.DELIVERY_TABLE}") }
+                    conn.createStatement().use { it.execute("DROP TABLE IF EXISTS ${StoreSchema.TABLE}") }
+                    conn.createStatement().use { it.execute(StoreSchema.CREATE_SQL) }
+                    conn.createStatement().use { it.execute(StoreSchema.CREATE_DELIVERY_SQL) }
+                    conn.commit()
+                } catch (e: Throwable) {
+                    runCatching { conn.rollback() }
+                    throw e
+                } finally {
+                    conn.autoCommit = wasAuto
+                }
+                // Stamp outside the txn (see method doc).
+                conn.createStatement().use { it.execute("PRAGMA user_version = ${StoreSchema.DB_VERSION}") }
+            }
+            v == StoreSchema.DB_VERSION -> validateSchema()
+            else -> throw IllegalStateException(
+                "refusing to open future store schema: user_version=$v > DB_VERSION=${StoreSchema.DB_VERSION}"
+            )
+        }
+    }
+
+    /** DDL-fingerprint validation against `sqlite_master` for BOTH tables
+     *  (C6.4.1-E/F). Throws on a missing table or DDL mismatch. */
+    private fun validateSchema() {
+        checkTableDdl(StoreSchema.TABLE, StoreSchema.CREATE_SQL)
+        checkTableDdl(StoreSchema.DELIVERY_TABLE, StoreSchema.CREATE_DELIVERY_SQL)
+    }
+
+    private fun checkTableDdl(name: String, expected: String) {
+        conn.prepareStatement(
+            "SELECT sql FROM sqlite_master WHERE type = 'table' AND name = ?"
+        ).use { ps ->
+            ps.setString(1, name)
+            ps.executeQuery().use { rs ->
+                if (!rs.next() || rs.getString(1) == null) {
+                    throw IllegalStateException("store schema validation: missing table $name")
+                }
+                if (StoreSchema.normalizeSql(rs.getString(1)) != StoreSchema.normalizeSql(expected)) {
+                    throw IllegalStateException("store schema validation: DDL mismatch for $name")
+                }
+            }
+        }
     }
 
     override fun insert(frame: FrameV2, receivedFrom: ByteArray, receivedAt: Long): Long {

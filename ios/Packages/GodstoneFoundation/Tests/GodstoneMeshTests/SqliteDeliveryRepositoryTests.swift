@@ -1,5 +1,6 @@
 import XCTest
 import CryptoKit
+import SQLite3
 @testable import GodstoneMesh
 import GodstoneCore
 
@@ -878,7 +879,7 @@ final class SqliteDeliveryRepositoryTests: XCTestCase {
     func testPragmaUserVersionMigrationDropsAndRecreatesOnStaleVersion() throws {
         let url = URL(fileURLWithPath: NSTemporaryDirectory()).appendingPathComponent("godstone-d-\(UUID().uuidString).db")
         defer { try? FileManager.default.removeItem(at: url) }
-        // boot 1: current schema, stamp user_version=5, insert a row.
+        // boot 1: current schema, stamp user_version=6, insert a row.
         var s1: SqliteMessageStore? = SqliteMessageStore(url: url, maxBytes: .max, fileProtection: .complete)
         var r1: SqliteDeliveryRepository? = SqliteDeliveryRepository(s1!)
         let mid = msgId(70)
@@ -888,7 +889,7 @@ final class SqliteDeliveryRepositoryTests: XCTestCase {
         // prior schema revision -- pre-C6.4 CHECKs).
         try s1!.execRawSql("PRAGMA user_version = 4")
         r1 = nil; s1 = nil // close + flush
-        // boot 2: current code sees user_version 4 < 5 -> drop+recreate -> stamp 5.
+        // boot 2: current code sees user_version 4 < 6 -> drop+recreate -> stamp 6.
         let s2 = SqliteMessageStore(url: url, maxBytes: .max, fileProtection: .complete)
         let r2 = SqliteDeliveryRepository(s2)
         // The row was dropped by the destructive migration.
@@ -900,6 +901,102 @@ final class SqliteDeliveryRepositoryTests: XCTestCase {
         let changed = s2.execRawUpdate("UPDATE delivery_state SET state = 0 WHERE msg_id = ?", [mid])
         XCTAssertEqual(0, changed, "new state CHECK rejects state=0 without ignore_check_constraints")
         XCTAssertEqual(.queuedDurably, found(r2, mid).state, "row unchanged after rejected plant")
+    }
+
+    // MARK: - C6.4.1-B/C/D/E: fail-closed schema version + migration + fingerprint
+
+    /// C6.4.1-C: a FUTURE user_version (> current) is rejected fail-closed and
+    /// left UNTOUCHED. The store must not silently downgrade a schema this build
+    /// cannot read; on reopen the handle is closed (no half-migrated handle) and
+    /// every primitive throws handleMissing.
+    func testFutureUserVersionIsRejectedFailClosedAndUntouched() throws {
+        let url = URL(fileURLWithPath: NSTemporaryDirectory()).appendingPathComponent("godstone-d-\(UUID().uuidString).db")
+        defer { try? FileManager.default.removeItem(at: url) }
+        // boot 1: current schema, stamp user_version=6, insert a row.
+        var s1: SqliteMessageStore? = SqliteMessageStore(url: url, maxBytes: .max, fileProtection: .complete)
+        let mid = msgId(71)
+        _ = SqliteDeliveryRepository(s1!).enqueue(mid, ackMode: .singleRecipient, expectedRecipient: nodeA())
+        // Simulate a file written by a FUTURE build (user_version 999).
+        try s1!.execRawSql("PRAGMA user_version = 999")
+        s1 = nil
+        // boot 2: current code sees 999 > 6 -> fail-closed. The store is unusable
+        // (handle nil); a delivery primitive throws rather than touching the file.
+        let s2 = SqliteMessageStore(url: url, maxBytes: .max, fileProtection: .complete)
+        XCTAssertThrowsError(try s2.insertDelivery(mid, stateOrdinal: DeliveryState.queuedDurably.code,
+                                                    ackModeOrdinal: AckMode.none.rawValue,
+                                                    expectedRecipient: nil),
+                             "future-version file must fail-closed, not open")
+        // The file is untouched: a raw reopen at the current version would recreate,
+        // but we prove fail-closed by confirming the future stamp survived (the
+        // store did NOT rewrite user_version down to 6).
+        var db: OpaquePointer?
+        sqlite3_open_v2(url.path, &db, SQLITE_OPEN_READONLY, nil)
+        var stmt: OpaquePointer?
+        sqlite3_prepare_v2(db, "PRAGMA user_version", -1, &stmt, nil)
+        sqlite3_step(stmt)
+        XCTAssertEqual(999, sqlite3_column_int(stmt, 0),
+                       "future-version file is left untouched (no silent downgrade)")
+        sqlite3_finalize(stmt); sqlite3_close_v2(db)
+    }
+
+    /// C6.4.1-E: a file that CLAIMS the current user_version but whose DDL does
+    /// NOT match the fingerprint (hand-edited / partially-migrated / downgraded)
+    /// is rejected fail-closed on open.
+    func testMalformedCurrentVersionSchemaIsRejectedFailClosed() throws {
+        let url = URL(fileURLWithPath: NSTemporaryDirectory()).appendingPathComponent("godstone-d-\(UUID().uuidString).db")
+        defer { try? FileManager.default.removeItem(at: url) }
+        // boot 1: current schema (stamps user_version=6).
+        var s1: SqliteMessageStore? = SqliteMessageStore(url: url, maxBytes: .max, fileProtection: .complete)
+        let mid = msgId(72)
+        _ = SqliteDeliveryRepository(s1!).enqueue(mid, ackMode: .singleRecipient, expectedRecipient: nodeA())
+        // Tamper: drop held_frames and recreate it WITHOUT the msg_id CHECK (a
+        // malformed current-version file). user_version stays 6.
+        try s1!.execRawSql("DROP TABLE IF EXISTS \(StoreSchema.table)")
+        try s1!.execRawSql("CREATE TABLE \(StoreSchema.table) (\(StoreSchema.colMsgId) BLOB PRIMARY KEY, \(StoreSchema.colType) INTEGER)")
+        s1 = nil
+        // boot 2: user_version == 6 but the held_frames DDL fingerprint does NOT
+        // match StoreSchema.createSql -> validateSchema throws -> fail-closed.
+        let s2 = SqliteMessageStore(url: url, maxBytes: .max, fileProtection: .complete)
+        XCTAssertThrowsError(try s2.insertDelivery(mid, stateOrdinal: DeliveryState.queuedDurably.code,
+                                                    ackModeOrdinal: AckMode.none.rawValue,
+                                                    expectedRecipient: nil),
+                             "malformed current-version schema must fail-closed, not open")
+    }
+
+    /// C6.4.1-G: a NULL msg_id is rejected by BOTH tables (explicit NOT NULL +
+    /// CHECK(length=16)) at the raw-SQL level, and the 16-byte boundary holds
+    /// (0/8/15/17/64 rejected, 16 accepted). Defense-in-depth below the wire guard.
+    func testMsgIdNullAndLengthBoundaryRejectedByBothTablesRawSql() throws {
+        let (j, store, url) = openRepo(); defer { try? FileManager.default.removeItem(at: url) }
+        // NULL msg_id rejected on held_frames (NOT NULL + CHECK). A NULL cannot be
+        // bound as a BLOB, so use the literal-NULL execRawSql path and assert it
+        // throws (sqlite3_exec returns non-OK on the constraint).
+        XCTAssertThrowsError(try store.execRawSql(
+            "INSERT INTO \(StoreSchema.table) (\(StoreSchema.colMsgId), \(StoreSchema.colType)) VALUES (NULL, 1)"),
+            "NULL msg_id must be rejected by held_frames")
+        XCTAssertThrowsError(try store.execRawSql(
+            "INSERT INTO \(StoreSchema.deliveryTable) (\(StoreSchema.colDMsgId), \(StoreSchema.colDState), \(StoreSchema.colDAckMode)) VALUES (NULL, 1, 0)"),
+            "NULL msg_id must be rejected by delivery_state")
+        // Non-16-byte msg_id rejected on BOTH tables for every boundary size.
+        // execRawUpdate binds a BLOB and returns sqlite3_changes -- 0 when the
+        // CHECK(length=16) rejects the write (sqlite3_step -> SQLITE_CONSTRAINT).
+        for n in [0, 8, 15, 17, 64] {
+            let bad = Data(repeating: 0xAA, count: n)
+            XCTAssertEqual(0, store.execRawUpdate(
+                "INSERT INTO \(StoreSchema.table) (\(StoreSchema.colMsgId), \(StoreSchema.colType)) VALUES (?, 1)", [bad]),
+                "held_frames must reject \(n)-byte msg_id")
+            XCTAssertEqual(0, store.execRawUpdate(
+                "INSERT INTO \(StoreSchema.deliveryTable) (\(StoreSchema.colDMsgId), \(StoreSchema.colDState), \(StoreSchema.colDAckMode)) VALUES (?, 1, 0)", [bad]),
+                "delivery_state must reject \(n)-byte msg_id")
+        }
+        // A 16-byte msg_id is accepted on BOTH tables (sanity).
+        XCTAssertEqual(1, store.execRawUpdate(
+            "INSERT INTO \(StoreSchema.table) (\(StoreSchema.colMsgId), \(StoreSchema.colType)) VALUES (?, 1)", [msgId(73)]),
+            "held_frames accepts a 16-byte msg_id")
+        let ok = msgId(74)
+        XCTAssertEqual(EnqueueResult.created, j.enqueue(ok, ackMode: .singleRecipient, expectedRecipient: nodeA()),
+                       "delivery_state accepts a 16-byte msg_id")
+        XCTAssertEqual(.queuedDurably, found(j, ok).state)
     }
 
     // MARK: - C1/C2 integration + fail-closed production composition

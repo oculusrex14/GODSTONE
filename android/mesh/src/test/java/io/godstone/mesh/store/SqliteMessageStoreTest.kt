@@ -273,8 +273,17 @@ class SqliteMessageStoreTest {
         // TypeV2 via a direct JDBC connection, then open the store over it. The
         // store must skip the row when listing frames (toFrame() -> null) but
         // still report its msg_id (allHeldMsgIds does not type-check).
+        //
+        // C6.4.1-BCDEFG: the JDBC engine now runs version + DDL-fingerprint
+        // validation on open. A fresh file (user_version=0) would be
+        // drop+recreated, destroying the seed. So the seed stamps the CURRENT
+        // version and creates BOTH tables (validateSchema checks both DDL
+        // fingerprints), making the open a current-version validate path that
+        // preserves the seeded bad-type row.
         val direct = DriverManager.getConnection("jdbc:sqlite:" + tmp.absolutePath)
-        direct.createStatement().use { it.execute(StoreSchema.CREATE_SQL_IF_NOT_EXISTS) }
+        direct.createStatement().use { it.execute(StoreSchema.CREATE_SQL) }
+        direct.createStatement().use { it.execute(StoreSchema.CREATE_DELIVERY_SQL) }
+        direct.createStatement().use { it.execute("PRAGMA user_version = ${StoreSchema.DB_VERSION}") }
         direct.prepareStatement(
             "INSERT INTO ${StoreSchema.TABLE} (" +
                 "${StoreSchema.COL_MSG_ID}, ${StoreSchema.COL_TYPE}, ${StoreSchema.COL_TTL}, " +

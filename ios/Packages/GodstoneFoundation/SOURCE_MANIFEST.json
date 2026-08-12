@@ -24,7 +24,7 @@
     "Sources/GodstoneMesh/MeshCoordinator.swift": "29f20d444c3143dbcc74a56a16a2524411268e60e2855b021d0883231e6b383d",
     "Sources/GodstoneMesh/MeshIdentity.swift": "2540f259e773cf6c52b180d2e1676ed70781ccf8e5a7e5929a918471f14a721f",
     "Sources/GodstoneMesh/MeshNode.swift": "e201bbaf7bbb8e46443731fb5200959f0fc80d01b5feb8720aa5f44178bff17a",
-    "Sources/GodstoneMesh/MessageStore.swift": "d8e334cbf1e8d80ab1d842e138d9af9a4db9f000e3e43c606dfb1714ec0461bf",
+    "Sources/GodstoneMesh/MessageStore.swift": "34c6cf66c6e4f5d369c06cd5fccb525c9b2810a7021c422bd4e46bfa4b16c507",
     "Sources/GodstoneMesh/NoiseSession.swift": "4373724d7a65740af74eefb623d6a950eeddfd8becb91a7ac3e9a347151cfd54",
     "Sources/GodstoneMesh/PanicWipe.swift": "6f6b265a6df3d8760cb7fc3395afa16603371f12257b3002e71c6e3a937c276f",
     "Sources/GodstoneMesh/Priority.swift": "2e9241e0d08ee2f0d832e152b28731daf257957286462572550e1f925ce47391",
@@ -46,8 +46,8 @@
     "Tests/GodstoneMeshTests/PortVectorTests.swift": "08e4d81add95ada220f4bcc6d14a3b2acc0232b69064d376481390bbc10c9fb9",
     "Tests/GodstoneMeshTests/ProofOfWorkTests.swift": "55f96b38f4b5dbd70f15d2c09c0a6310b4dccd6901c4a13b1d3d23414cf10609",
     "Tests/GodstoneMeshTests/RouterTests.swift": "7119dbfc994496c1ae3b092c2d1e06971bc6ca87f4606dab8fc658060eff8e33",
-    "Tests/GodstoneMeshTests/SqliteDeliveryRepositoryTests.swift": "29d1657cf804d90087242cfb5b921b5469611197a08d6e82c0e8e5db182ce357",
-    "Tests/GodstoneMeshTests/SqliteMessageStoreTests.swift": "52f93afbc74f70d655ea848df8cf7a682bc6cd938601bb7503e9a02a3d16769d",
+    "Tests/GodstoneMeshTests/SqliteDeliveryRepositoryTests.swift": "7444af470893b4e715eea0dcc7fe25420b15e7f0612bcdf87ed875aab357ae81",
+    "Tests/GodstoneMeshTests/SqliteMessageStoreTests.swift": "e2d56f8238be6cff9792d03cfe7fd6e34346281e0e3b96d418dffa8769f55eb3",
     "Tests/GodstoneMeshTests/WireV2VectorTests.swift": "49099a1535aa501763df0c2949949b76f14ee8b6e0f585abf4306a2f70e23c70"
   },
   "schema": 1
