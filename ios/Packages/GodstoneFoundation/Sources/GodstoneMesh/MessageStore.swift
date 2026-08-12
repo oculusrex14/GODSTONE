@@ -464,26 +464,45 @@ public final class SqliteMessageStore: MessageStore {
     /// one-shot injector that throws between the insert/evict/contains phases to
     /// prove the transaction rolls back and the store reopens valid + bounded;
     /// production always passes `nil` via [persistAt].
+    ///
+    /// C6.4.1-H: the persist path now uses STRICT throwing helpers
+    /// (`insertRowNoLockStrict` / `heldBytesNoLockStrict` /
+    /// `evictOldestPrefixNoLockStrict` / `containsNoLockStrict`). Pre-H, the
+    /// non-throwing helpers masked a SQL/IO failure as 0 / false / silent, so a
+    /// real storage error in heldBytes (reported 0 -> skipped eviction -> over-
+    /// cap store silently committed) or in contains (reported false ->
+    /// `.rejectedCapacity` for a row that IS held) was CONFLATED with the normal
+    /// absence / no-match result and committed. The strict helpers THROW on a
+    /// SQL failure; the throw unwinds to `withTransaction` -> ROLLBACK ->
+    /// `.failedStorage`, so a storage fault never leaves a half-applied store.
+    ///
+    /// The fault seam now receives the locked db handle so a test can inject a
+    /// REAL SQL failure at a phase (e.g. `DROP TABLE` so the next strict helper's
+    /// prepare fails), proving the strict throw -> ROLLBACK path (not just the
+    /// phase-boundary throw the B3 tests already cover). Phases: `after_insert`,
+    /// `after_heldbytes`, `after_evict`, `before_contains`.
     @discardableResult
     internal func persistAtWithFault(
         _ frame: FrameV2, receivedFrom: Data, receivedAt: Int64,
-        fault: ((String) throws -> Void)?
+        fault: ((String, OpaquePointer?) throws -> Void)?
     ) -> PersistResult {
         do {
             return try withTransaction { db in
-                let ins = insertRowNoLock(db, frame, receivedFrom: receivedFrom, receivedAt: receivedAt)
-                guard ins.ok else { return PersistResult.failedStorage }
-                if ins.isNew {
-                    try fault?("after_insert")
-                    let held = heldBytesNoLock(db)
+                // A duplicate (INSERT OR IGNORE no-op) is NOT an error: returns
+                // isNew=false without throwing. A real SQL/IO failure throws.
+                let isNew = try insertRowNoLockStrict(db, frame, receivedFrom: receivedFrom, receivedAt: receivedAt)
+                try fault?("after_insert", db)
+                if isNew {
+                    let held = try heldBytesNoLockStrict(db)
+                    try fault?("after_heldbytes", db)
                     if held > maxBytes {
-                        evictOldestPrefixNoLock(db, overshoot: held - maxBytes)
+                        try evictOldestPrefixNoLockStrict(db, overshoot: held - maxBytes)
                     }
-                    try fault?("after_evict")
+                    try fault?("after_evict", db)
                 }
-                try fault?("before_contains")
-                let present = containsNoLock(db, frame.msgId)
-                switch (present, ins.isNew) {
+                try fault?("before_contains", db)
+                let present = try containsNoLockStrict(db, frame.msgId)
+                switch (present, isNew) {
                 case (true, true):   return .heldNew
                 case (true, false):  return .heldDuplicate
                 default:             return .rejectedCapacity
@@ -544,16 +563,18 @@ public final class SqliteMessageStore: MessageStore {
         }
     }
 
-    /// INSERT OR IGNORE the row. Returns `(ok, isNew)`: `ok` is false on a
-    /// prepare/step failure; `isNew` is true only when a row was actually
-    /// inserted (sqlite3_changes == 1), false when the duplicate was IGNORE'd.
-    /// `sqlite3_step == SQLITE_DONE` is true for BOTH a real insert and an
-    /// IGNORE no-op, so `sqlite3_changes` is the only way to tell them apart
-    /// (Stage 4B.1 / B2 -- mirrors Android's rowId != -1 distinction).
+    /// C6.4.1-H: strict INSERT OR IGNORE. THROWS `StoreError.prepareFailed` /
+    /// `stepFailed` on a SQL/IO failure (no 0/false conflation). Returns `isNew`
+    /// (sqlite3_changes == 1); a duplicate (IGNORE no-op) returns false WITHOUT
+    /// throwing -- absence is not failure. `sqlite3_step == SQLITE_DONE` is true
+    /// for BOTH a real insert and an IGNORE no-op, so `sqlite3_changes` is the
+    /// only way to tell them apart (Stage 4B.1 / B2 -- mirrors Android's
+    /// rowId != -1 distinction). Used inside `withTransaction` so a throw
+    /// unwinds to ROLLBACK -> `.failedStorage`.
     @inline(__always)
-    private func insertRowNoLock(
+    private func insertRowNoLockStrict(
         _ db: OpaquePointer, _ frame: FrameV2, receivedFrom: Data, receivedAt: Int64
-    ) -> (ok: Bool, isNew: Bool) {
+    ) throws -> Bool {
         let sql = "INSERT OR IGNORE INTO \(StoreSchema.table) (" +
             "\(StoreSchema.colMsgId), \(StoreSchema.colType), \(StoreSchema.colTtl), " +
             "\(StoreSchema.colHopCount), \(StoreSchema.colFlags), \(StoreSchema.colPriority), " +
@@ -562,7 +583,7 @@ public final class SqliteMessageStore: MessageStore {
             "VALUES (?,?,?,?,?,?,?,?,?,?)"
         var stmt: OpaquePointer?
         guard sqlite3_prepare_v2(db, sql, -1, &stmt, nil) == SQLITE_OK else {
-            sqlite3_finalize(stmt); return (false, false)
+            sqlite3_finalize(stmt); throw StoreError.prepareFailed
         }
         defer { sqlite3_finalize(stmt) }
         bindBlob(stmt, 1, frame.msgId)
@@ -575,23 +596,63 @@ public final class SqliteMessageStore: MessageStore {
         bindBlob(stmt, 8, frame.payload)
         bindBlob(stmt, 9, receivedFrom)
         sqlite3_bind_int64(stmt, 10, receivedAt)
-        guard sqlite3_step(stmt) == SQLITE_DONE else { return (false, false) }
-        return (true, sqlite3_changes(db) == 1)
+        guard sqlite3_step(stmt) == SQLITE_DONE else { throw StoreError.stepFailed }
+        return sqlite3_changes(db) == 1
     }
 
-    /// Final-presence check (B2/B3): true iff a row with `msgId` is present.
+    /// C6.4.1-H: strict final-presence check (B2/B3). THROWS
+    /// `StoreError.prepareFailed` on a prepare failure; a step of DONE means
+    /// "not present" (not an error), so it returns false without throwing. Used
+    /// inside `withTransaction` so a SQL failure unwinds to ROLLBACK.
     @inline(__always)
-    private func containsNoLock(_ db: OpaquePointer, _ msgId: Data) -> Bool {
+    private func containsNoLockStrict(_ db: OpaquePointer, _ msgId: Data) throws -> Bool {
         var stmt: OpaquePointer?
         guard sqlite3_prepare_v2(db, StoreSchema.containsSql, -1, &stmt, nil) == SQLITE_OK else {
-            sqlite3_finalize(stmt); return false
+            sqlite3_finalize(stmt); throw StoreError.prepareFailed
         }
         defer { sqlite3_finalize(stmt) }
         bindBlob(stmt, 1, msgId)
         return sqlite3_step(stmt) == SQLITE_ROW
     }
 
-    /// Total stored bytes on the locked connection.
+    /// C6.4.1-H: strict total-bytes. THROWS on a prepare/step failure. Used
+    /// inside `withTransaction`; a throw unwinds to ROLLBACK -> `.failedStorage`.
+    /// The non-throwing `heldBytesNoLock` below is kept for the non-transaction
+    /// getter `heldBytes` (which swallows via `withDb`); the persist path must
+    /// NOT swallow -- a heldBytes failure masked as 0 would skip eviction and
+    /// silently commit an over-cap store (the conflation C6.4.1-H closes).
+    @inline(__always)
+    private func heldBytesNoLockStrict(_ db: OpaquePointer) throws -> Int64 {
+        var stmt: OpaquePointer?
+        guard sqlite3_prepare_v2(db, StoreSchema.heldBytesSql, -1, &stmt, nil) == SQLITE_OK else {
+            sqlite3_finalize(stmt); throw StoreError.prepareFailed
+        }
+        defer { sqlite3_finalize(stmt) }
+        guard sqlite3_step(stmt) == SQLITE_ROW else { throw StoreError.stepFailed }
+        return sqlite3_column_int64(stmt, 0)
+    }
+
+    /// C6.4.1-H: strict eviction. THROWS on a prepare/step failure. Used inside
+    /// `withTransaction`; a throw unwinds to ROLLBACK -> `.failedStorage`. The
+    /// non-throwing `evictOldestPrefixNoLock` below is kept for the
+    /// non-transaction `evictOldestPrefix` (which swallows via `withDb`); the
+    /// persist path must NOT swallow -- an eviction failure masked as a no-op
+    /// would silently commit an over-cap store.
+    @inline(__always)
+    private func evictOldestPrefixNoLockStrict(_ db: OpaquePointer, overshoot: Int64) throws {
+        var stmt: OpaquePointer?
+        guard sqlite3_prepare_v2(db, StoreSchema.evictPrefixSql, -1, &stmt, nil) == SQLITE_OK else {
+            sqlite3_finalize(stmt); throw StoreError.prepareFailed
+        }
+        defer { sqlite3_finalize(stmt) }
+        sqlite3_bind_int64(stmt, 1, overshoot)
+        guard sqlite3_step(stmt) == SQLITE_DONE else { throw StoreError.stepFailed }
+    }
+
+    /// Total stored bytes on the locked connection. Non-throwing (swallows a
+    /// SQL failure as 0) -- used by the `heldBytes` getter outside a
+    /// transaction. The persist path uses the strict
+    /// `heldBytesNoLockStrict` variant (C6.4.1-H).
     @inline(__always)
     private func heldBytesNoLock(_ db: OpaquePointer) -> Int64 {
         var stmt: OpaquePointer?
@@ -603,7 +664,9 @@ public final class SqliteMessageStore: MessageStore {
     }
 
     /// Delete the oldest non-SOS-first prefix meeting [overshoot] bytes, on the
-    /// locked connection.
+    /// locked connection. Non-throwing (swallows a SQL failure as a no-op) --
+    /// used by `evictOldestPrefix` outside a transaction. The persist path uses
+    /// the strict `evictOldestPrefixNoLockStrict` variant (C6.4.1-H).
     @inline(__always)
     private func evictOldestPrefixNoLock(_ db: OpaquePointer, overshoot: Int64) {
         var stmt: OpaquePointer?

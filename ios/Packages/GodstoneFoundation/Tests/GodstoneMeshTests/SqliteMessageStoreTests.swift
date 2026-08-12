@@ -331,7 +331,7 @@ final class SqliteMessageStoreTests: XCTestCase {
         store.persistAt(frame(1, .group, 100), receivedFrom: Data(), receivedAt: 100)
         let bytesBefore = bytes()
         let rowsBefore = heldIds().count
-        let fault = { (phase: String) in if phase == "after_insert" { throw Fault.injected } }
+        let fault = { (phase: String, db: OpaquePointer?) in if phase == "after_insert" { throw Fault.injected } }
         let result = store.persistAtWithFault(frame(2, .group, 100), receivedFrom: Data(), receivedAt: 200, fault: fault)
         XCTAssertEqual(result, .failedStorage)
         XCTAssertEqual(bytes(), bytesBefore, "faulted insert rolled back -- byte total unchanged")
@@ -355,7 +355,7 @@ final class SqliteMessageStoreTests: XCTestCase {
         store.persistAt(frame(2, .group, 400), receivedFrom: Data(), receivedAt: 200)
         let bytesBefore = bytes()
         let rowsBefore = heldIds().count
-        let fault = { (phase: String) in if phase == "after_evict" { throw Fault.injected } }
+        let fault = { (phase: String, db: OpaquePointer?) in if phase == "after_evict" { throw Fault.injected } }
         // A third 400-byte frame overshoots (928 -> 1392 > 1024) and triggers
         // eviction; the fault fires after eviction, before commit -> ROLLBACK.
         let result = store.persistAtWithFault(frame(3, .group, 400), receivedFrom: Data(), receivedAt: 300, fault: fault)
@@ -373,9 +373,97 @@ final class SqliteMessageStoreTests: XCTestCase {
         _ = open(maxBytes: 2048)
         store.persistAt(frame(1, .group, 100), receivedFrom: Data(), receivedAt: 100)
         let bytesBefore = bytes()
-        let fault = { (phase: String) in if phase == "before_contains" { throw Fault.injected } }
+        let fault = { (phase: String, db: OpaquePointer?) in if phase == "before_contains" { throw Fault.injected } }
         let result = store.persistAtWithFault(frame(2, .group, 100), receivedFrom: Data(), receivedAt: 200, fault: fault)
         XCTAssertEqual(result, .failedStorage)
+        XCTAssertEqual(bytes(), bytesBefore, "rolled back to pre-fault byte total")
+        XCTAssertFalse(containsId(heldIds(), msgId(2)))
+        store = nil
+        _ = reopen(maxBytes: 2048)
+        XCTAssertTrue(containsId(heldIds(), msgId(1)))
+        XCTAssertEqual(heldIds().count, 1)
+    }
+
+    // MARK: - C6.4.1-H: strict persist helpers -- a real SQL failure rolls back
+
+    /// C6.4.1-H: pre-H, `heldBytesNoLock` returned 0 on a SQL failure, so a
+    /// storage fault in the capacity read was masked as "0 bytes stored" --
+    /// eviction was skipped and an over-cap store was silently COMMITTED. The
+    /// strict `heldBytesNoLockStrict` now THROWS; the throw unwinds to
+    /// `withTransaction` -> ROLLBACK -> `.failedStorage`. This test injects a
+    /// REAL SQL failure (drops `held_frames` at `after_insert`, before the
+    /// capacity read) so `heldBytesNoLockStrict`'s prepare fails on a missing
+    /// table, and proves the transaction rolls back + reopens valid (the DDL
+    /// drop is rolled back too -- DDL is transactional in SQLite).
+    func testHeldBytesStrictSqlFailureRollsBackAndReopensValid() {
+        _ = open(maxBytes: 1024)
+        store.persistAt(frame(1, .group, 100), receivedFrom: Data(), receivedAt: 100)
+        let bytesBefore = bytes()
+        let rowsBefore = heldIds().count
+        let fault = { (phase: String, db: OpaquePointer?) in
+            guard phase == "after_insert", let db = db else { return }
+            sqlite3_exec(db, "DROP TABLE IF EXISTS \(StoreSchema.table)", nil, nil, nil)
+        }
+        let result = store.persistAtWithFault(frame(2, .group, 100), receivedFrom: Data(), receivedAt: 200, fault: fault)
+        XCTAssertEqual(result, .failedStorage, "heldBytes strict SQL failure -> failedStorage, not silent over-cap commit")
+        XCTAssertEqual(bytes(), bytesBefore, "rolled back to pre-fault byte total")
+        XCTAssertEqual(heldIds().count, rowsBefore, "row count unchanged")
+        XCTAssertFalse(containsId(heldIds(), msgId(2)))
+        // Reopen over the same file: the DDL drop was rolled back, so the store
+        // reopens valid + bounded (the table is restored by ROLLBACK).
+        store = nil
+        _ = reopen(maxBytes: 1024)
+        XCTAssertEqual(heldIds().count, rowsBefore, "store reopens valid after heldBytes SQL failure")
+        XCTAssertLessThanOrEqual(bytes(), 1024, "store reopens bounded")
+        XCTAssertTrue(containsId(heldIds(), msgId(1)), "pre-fault row survives reopen")
+    }
+
+    /// C6.4.1-H: a real SQL failure in `evictOldestPrefixNoLockStrict` rolls the
+    /// whole transaction back. Pre-H, `evictOldestPrefixNoLock` swallowed a
+    /// prepare/step failure as a no-op, so a failed eviction left the store
+    /// over-cap AND committed the new row. The strict variant throws. This
+    /// test overshoots the cap (so eviction runs), drops `held_frames` at
+    /// `after_heldbytes` (after the capacity read succeeded, before eviction)
+    /// so `evictOldestPrefixNoLockStrict`'s prepare fails, and proves the
+    /// evicted rows are RESTORED and the inserted row is gone.
+    func testEvictStrictSqlFailureRollsBackAndEvictedRowsRestored() {
+        _ = open(maxBytes: 512)
+        store.persistAt(frame(1, .group, 100), receivedFrom: Data(), receivedAt: 100)
+        store.persistAt(frame(2, .group, 100), receivedFrom: Data(), receivedAt: 200)
+        let bytesBefore = bytes()
+        let rowsBefore = heldIds().count
+        // A third 100-byte frame overshoots the 512 cap -> eviction runs. The
+        // fault drops the table after the heldBytes read, so the evict prepare
+        // fails on a missing table -> throw -> ROLLBACK.
+        let fault = { (phase: String, db: OpaquePointer?) in
+            guard phase == "after_heldbytes", let db = db else { return }
+            sqlite3_exec(db, "DROP TABLE IF EXISTS \(StoreSchema.table)", nil, nil, nil)
+        }
+        let result = store.persistAtWithFault(frame(3, .group, 100), receivedFrom: Data(), receivedAt: 300, fault: fault)
+        XCTAssertEqual(result, .failedStorage, "evict strict SQL failure -> failedStorage, not silent over-cap commit")
+        XCTAssertEqual(bytes(), bytesBefore, "evicted rows restored after rollback")
+        XCTAssertEqual(heldIds().count, rowsBefore, "row count restored after rollback")
+        XCTAssertTrue(containsId(heldIds(), msgId(1)))
+        XCTAssertTrue(containsId(heldIds(), msgId(2)))
+        XCTAssertFalse(containsId(heldIds(), msgId(3)))
+    }
+
+    /// C6.4.1-H: a real SQL failure in `containsNoLockStrict` rolls back. Pre-H,
+    /// `containsNoLock` returned false on a prepare failure, so a storage fault
+    /// in the final-presence check was masked as `.rejectedCapacity` for a row
+    /// that WAS durably inserted (the router would refuse to forward a frame
+    /// that is in fact held, AND the over-cap / commit state was inconsistent).
+    /// The strict variant throws -> ROLLBACK -> `.failedStorage`.
+    func testContainsStrictSqlFailureRollsBackAndReopensValid() {
+        _ = open(maxBytes: 2048)
+        store.persistAt(frame(1, .group, 100), receivedFrom: Data(), receivedAt: 100)
+        let bytesBefore = bytes()
+        let fault = { (phase: String, db: OpaquePointer?) in
+            guard phase == "before_contains", let db = db else { return }
+            sqlite3_exec(db, "DROP TABLE IF EXISTS \(StoreSchema.table)", nil, nil, nil)
+        }
+        let result = store.persistAtWithFault(frame(2, .group, 100), receivedFrom: Data(), receivedAt: 200, fault: fault)
+        XCTAssertEqual(result, .failedStorage, "contains strict SQL failure -> failedStorage, not masked rejectedCapacity")
         XCTAssertEqual(bytes(), bytesBefore, "rolled back to pre-fault byte total")
         XCTAssertFalse(containsId(heldIds(), msgId(2)))
         store = nil
