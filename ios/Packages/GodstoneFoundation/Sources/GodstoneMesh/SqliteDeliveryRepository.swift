@@ -38,12 +38,13 @@ import Foundation
 //  * `clear` is typed (C6.4-J): a failed destructive operation is never
 //    indistinguishable from success.
 //
-// C6.4-M mutation controls: the `stateGuard` / `modeGuard` / `recipientGuard`
-// flags (default true) build the ACK / transition WHERE clause. Tests flip a
-// guard to false to weaken the predicate and PROVE the concurrency tests fail --
-// i.e. the state / mode / recipient WHERE clauses are load-bearing, not
-// decorative. Production always constructs with all guards on (the public
-// constructor does not expose them).
+// C6.4.1-A: production CAS is UNCONDITIONAL. The state / mode / recipient WHERE
+// predicates are ALWAYS present -- there is no production API to drop a
+// predicate. The C6.4-M mutation controls were REMOVED from this class; mutation
+// testing moved to the TEST-ONLY `MutatedDeliveryRepository` (test source), which
+// rebuilds the WEAKENED SQL to prove each predicate is load-bearing.
+// `ci/no_delivery_guard_bypass.py` fails the build if a guard-bypass token
+// re-enters production source.
 //
 // C6.4-N: row-atomicity here is the `delivery_state` row only. It does NOT yet
 // make `persist held frame` + `enqueue delivery record` atomic -- that
@@ -62,28 +63,22 @@ import Foundation
 /// repository IS the durable record.
 public final class SqliteDeliveryRepository: DeliveryRepository {
     private let store: DeliveryStore
-    // C6.4-M mutation controls. Production always constructs with all three true
-    // (the public `init(_ store: SqliteMessageStore)`). Tests pass false to weaken
-    // the WHERE clause and prove the concurrency tests fail.
-    private let stateGuard: Bool
-    private let modeGuard: Bool
-    private let recipientGuard: Bool
 
-    /// Test constructor: all CAS guards configurable. Internal so only
-    /// `@testable` tests can weaken the predicate; production uses the public
-    /// single-arg init.
-    internal init(_ store: DeliveryStore,
-                  stateGuard: Bool = true, modeGuard: Bool = true, recipientGuard: Bool = true) {
+    /// Internal designated init over the abstract store protocol (C6.4.1-A: NO
+    /// guard parameters -- production CAS is unconditional). Reachable by
+    /// `@testable` tests that need a `DeliveryStore` which is not a
+    /// `SqliteMessageStore` (e.g. `FaultingDeliveryStore`).
+    internal init(_ store: DeliveryStore) {
         self.store = store
-        self.stateGuard = stateGuard
-        self.modeGuard = modeGuard
-        self.recipientGuard = recipientGuard
     }
 
-    /// Production constructor: all CAS guards on. Takes the concrete store; the
-    /// internal `DeliveryStore`-typed init is reached via the conformance.
+    /// Production constructor over the concrete store (all CAS predicates on).
+    /// Delegates to the designated `DeliveryStore` init via an explicit upcast:
+    /// without `as DeliveryStore`, overload resolution picks THIS convenience
+    /// init (most-specific match on the `SqliteMessageStore` parameter) and
+    /// recurses infinitely (stack overflow -> SIGSEGV).
     public convenience init(_ store: SqliteMessageStore) {
-        self.init(store, stateGuard: true, modeGuard: true, recipientGuard: true)
+        self.init(store as DeliveryStore)
     }
 
     public func get(_ msgId: Data) -> DeliveryLookup {
@@ -161,9 +156,8 @@ public final class SqliteDeliveryRepository: DeliveryRepository {
         guard ackMode == .singleRecipient else { return .invalidArgument }
         guard let recipient = expectedRecipient, recipient.count == 16 else { return .invalidArgument }
         let sql = acknowledgeBoundSql()
-        let bindArgs: [Data?] = recipientGuard ? [msgId, recipient] : [msgId]
         do {
-            let affected = try store.execDeliveryUpdate(sql, bytesArgs: bindArgs)
+            let affected = try store.execDeliveryUpdate(sql, bytesArgs: [msgId, recipient])
             switch affected {
             case 1: return .applied
             case 0: return classifyZeroRowAck(msgId: msgId, expectedRecipient: recipient)
@@ -191,7 +185,9 @@ public final class SqliteDeliveryRepository: DeliveryRepository {
     // --- C6.4-F/G: guarded SQL CAS builders ---------------------------------
 
     /// The fixed (target, validFroms) mapping the repository owns (C6.4-G).
-    private func transitionMapping(_ t: DeliveryTransition)
+    /// C6.4.1-A: `internal` so the TEST-ONLY `MutatedDeliveryRepository` can reuse
+    /// the exact lifecycle truth-table without duplicating it.
+    internal func transitionMapping(_ t: DeliveryTransition)
         -> (target: DeliveryState, validFroms: [DeliveryState]) {
         switch t {
         case .markHanded:
@@ -203,41 +199,31 @@ public final class SqliteDeliveryRepository: DeliveryRepository {
         }
     }
 
-    /// `UPDATE delivery_state SET state = target WHERE msg_id = ? [AND state IN (...)]`.
-    /// C6.4-F: the state predicate is the load-bearing CAS guard. C6.4-M:
-    /// `stateGuard`=false drops it (mutation control) so a test can prove the
-    /// concurrency tests fail without it.
+    /// `UPDATE delivery_state SET state = target WHERE msg_id = ? AND state IN (...)`.
+    /// C6.4-F: the state predicate is the load-bearing CAS guard. C6.4.1-A:
+    /// production builds this UNCONDITIONALLY; the test-only
+    /// `MutatedDeliveryRepository` rebuilds it without the state predicate to
+    /// prove it is load-bearing.
     private func transitionSql(target: DeliveryState, validFroms: [DeliveryState]) -> String {
-        var sql = "UPDATE \(StoreSchema.deliveryTable) " +
+        let codes = validFroms.map { String($0.code) }.joined(separator: ",")
+        return "UPDATE \(StoreSchema.deliveryTable) " +
             "SET \(StoreSchema.colDState) = \(target.code) " +
-            "WHERE \(StoreSchema.colDMsgId) = ?"
-        if stateGuard {
-            let codes = validFroms.map { String($0.code) }.joined(separator: ",")
-            sql += " AND \(StoreSchema.colDState) IN (\(codes))"
-        }
-        return sql
+            "WHERE \(StoreSchema.colDMsgId) = ? AND \(StoreSchema.colDState) IN (\(codes))"
     }
 
-    /// `UPDATE delivery_state SET state = ACKNOWLEDGED WHERE msg_id = ? [AND state
-    /// IN (QUEUED, HANDED)] [AND ack_mode = SINGLE_RECIPIENT] [AND expected_recipient = ?]`.
-    /// C6.4-H: state + mode + the EXACT durable recipient in ONE WHERE clause. The
-    /// recipient is bound ONLY when `recipientGuard` is on (its bind slot is then
-    /// position 2). C6.4-M: each guard can be dropped independently to prove the
-    /// predicate is load-bearing.
+    /// `UPDATE delivery_state SET state = ACKNOWLEDGED WHERE msg_id = ? AND state
+    /// IN (QUEUED, HANDED) AND ack_mode = SINGLE_RECIPIENT AND expected_recipient = ?`.
+    /// C6.4-H: state + mode + the EXACT durable recipient in ONE WHERE clause; the
+    /// recipient is ALWAYS bound (bind slot 2). C6.4.1-A: production builds this
+    /// UNCONDITIONALLY; the test-only `MutatedDeliveryRepository` rebuilds it minus
+    /// a predicate to prove each is load-bearing.
     private func acknowledgeBoundSql() -> String {
-        var sql = "UPDATE \(StoreSchema.deliveryTable) " +
+        return "UPDATE \(StoreSchema.deliveryTable) " +
             "SET \(StoreSchema.colDState) = \(DeliveryState.acknowledgedByRecipient.code) " +
-            "WHERE \(StoreSchema.colDMsgId) = ?"
-        if stateGuard {
-            sql += " AND \(StoreSchema.colDState) IN (\(DeliveryState.queuedDurably.code), \(DeliveryState.handedToRelay.code))"
-        }
-        if modeGuard {
-            sql += " AND \(StoreSchema.colDAckMode) = \(AckMode.singleRecipient.rawValue)"
-        }
-        if recipientGuard {
-            sql += " AND \(StoreSchema.colDExpected) = ?"
-        }
-        return sql
+            "WHERE \(StoreSchema.colDMsgId) = ? " +
+            "AND \(StoreSchema.colDState) IN (\(DeliveryState.queuedDurably.code), \(DeliveryState.handedToRelay.code)) " +
+            "AND \(StoreSchema.colDAckMode) = \(AckMode.singleRecipient.rawValue) " +
+            "AND \(StoreSchema.colDExpected) = ?"
     }
 
     // --- C6.4-F/H: zero-row CAS reclassification ----------------------------
@@ -247,11 +233,13 @@ public final class SqliteDeliveryRepository: DeliveryRepository {
     ///  * corrupt -> `.corrupt`; storageFailure -> `.storageFailure`;
     ///  * state == target -> `.alreadyInTarget`;
     ///  * state in validFroms -> `.storageFailure` (invariant violation -- the
-    ///    guarded SQL should have matched; only reachable under a weakened
-    ///    `stateGuard` mutation or a raced same-microsecond write);
+    ///    guarded SQL should have matched; only reachable under a weakened-state
+    ///    mutation (test-only) or a raced same-microsecond write);
     ///  * any other legal durable state -> `.rejectedState`.
-    private func classifyZeroRowTransition(msgId: Data, target: DeliveryState,
-                                           validFroms: [DeliveryState]) -> TransitionResult {
+    /// C6.4.1-A: `internal` so the test-only `MutatedDeliveryRepository` reuses
+    /// the exact reclassification (no duplication / no drift).
+    internal func classifyZeroRowTransition(msgId: Data, target: DeliveryState,
+                                            validFroms: [DeliveryState]) -> TransitionResult {
         switch get(msgId) {
         case .notFound: return .unknownMessage
         case .corrupt: return .corrupt
@@ -277,9 +265,11 @@ public final class SqliteDeliveryRepository: DeliveryRepository {
     ///  * state == expired / cancelled -> `.rejectedState`;
     ///  * same binding + queued/handed still present -> `.storageFailure`
     ///    (invariant violation -- the guarded SQL should have matched; only
-    ///    reachable under a weakened-guard mutation);
+    ///    reachable under a weakened-predicate mutation (test-only));
     ///  * any other state -> `.rejectedState`.
-    private func classifyZeroRowAck(msgId: Data, expectedRecipient: Data) -> AckResult {
+    /// C6.4.1-A: `internal` so the test-only `MutatedDeliveryRepository` reuses
+    /// the exact reclassification (no duplication / no drift).
+    internal func classifyZeroRowAck(msgId: Data, expectedRecipient: Data) -> AckResult {
         switch get(msgId) {
         case .notFound: return .unknownMessage
         case .corrupt: return .corrupt

@@ -86,14 +86,15 @@ final class SqliteDeliveryRepositoryTests: XCTestCase {
         return (SqliteDeliveryRepository(store), store, url)
     }
 
-    /// Repository with configurable CAS guards (C6.4-M mutation controls) over the
-    /// SAME store -- a row planted via the all-guards-on repo can be mutated by the
-    /// weakened repo to prove a predicate is load-bearing.
+    /// Weakened (mutation-control) repository over the SAME store (C6.4-M /
+    /// C6.4.1-A). Production `SqliteDeliveryRepository` builds its CAS WHERE
+    /// clause UNCONDITIONALLY; the test-only `MutatedDeliveryRepository` rebuilds
+    /// the WEAKENED SQL (a guard dropped) to prove a predicate is load-bearing.
     private func newRepo(_ store: SqliteMessageStore,
                           stateGuard: Bool = true, modeGuard: Bool = true,
-                          recipientGuard: Bool = true) -> SqliteDeliveryRepository {
-        SqliteDeliveryRepository(store, stateGuard: stateGuard, modeGuard: modeGuard,
-                                  recipientGuard: recipientGuard)
+                          recipientGuard: Bool = true) -> MutatedDeliveryRepository {
+        MutatedDeliveryRepository(store, stateGuard: stateGuard, modeGuard: modeGuard,
+                                   recipientGuard: recipientGuard)
     }
 
     /// Extract the record from a `.found` lookup (fail the test otherwise).

@@ -38,12 +38,13 @@ import io.godstone.mesh.store.StoreSchema
 //  * [clear] is typed (C6.4-J): a failed destructive operation is never
 //    indistinguishable from success.
 //
-// C6.4-M mutation controls: the [stateGuard] / [modeGuard] / [recipientGuard]
-// flags (default true) build the ACK / transition WHERE clause. Tests flip a
-// guard to false to weaken the predicate and PROVE the concurrency tests fail --
-// i.e. the state / mode / recipient WHERE clauses are load-bearing, not
-// decorative. Production always constructs with all guards on (the public
-// constructor does not expose them).
+// C6.4.1-A: production CAS is UNCONDITIONAL. The state / mode / recipient WHERE
+// predicates are ALWAYS present -- there is no production API to drop a
+// predicate. The C6.4-M mutation controls were REMOVED from this class; mutation
+// testing moved to the TEST-ONLY `MutatedDeliveryRepository` (test source),
+// which rebuilds the WEAKENED SQL to prove each predicate is load-bearing.
+// `ci/no_delivery_guard_bypass.py` fails the build if a guard-bypass token
+// re-enters production source.
 //
 // C6.4-N: row-atomicity here is the `delivery_state` row only. It does NOT yet
 // make `persist held frame` + `enqueue delivery record` atomic -- that
@@ -56,16 +57,7 @@ import io.godstone.mesh.store.StoreSchema
 // + SQL + codes).
 internal class SqliteDeliveryRepository(
     private val db: StoreDb,
-    // C6.4-M mutation controls. Production always constructs with all three
-    // true (the single-arg public constructor below). Tests pass false to weaken
-    // the WHERE clause and prove the concurrency tests fail.
-    private val stateGuard: Boolean = true,
-    private val modeGuard: Boolean = true,
-    private val recipientGuard: Boolean = true,
 ) : DeliveryRepository {
-
-    /** Production constructor: all CAS guards on. */
-    constructor(db: StoreDb) : this(db, stateGuard = true, modeGuard = true, recipientGuard = true)
 
     override fun get(msgId: ByteArray): DeliveryLookup {
         if (msgId.size != 16) return DeliveryLookup.InvalidArgument // C6.4-D
@@ -146,14 +138,11 @@ internal class SqliteDeliveryRepository(
         if (ackMode != AckMode.SINGLE_RECIPIENT) return AckResult.InvalidArgument
         if (expectedRecipient == null || expectedRecipient.size != 16) return AckResult.InvalidArgument
         val sql = acknowledgeBoundSql()
-        // C6.4-H: declared `Array<ByteArray?>` (mirrors the iOS twin's
-        // `bindArgs: [Data?]`) so expected-type inference flows into both
-        // `if/else` branches. Without it the smart-cast `expectedRecipient`
-        // (non-null past the line-147 guard) makes each branch infer the
-        // INVARIANT `Array<ByteArray>` (non-null), which is not assignable to
-        // `execDeliveryUpdate`'s `Array<ByteArray?>` parameter.
-        val bindArgs: Array<ByteArray?> =
-            if (recipientGuard) arrayOf(msgId, expectedRecipient) else arrayOf(msgId)
+        // C6.4.1-A: recipient is ALWAYS bound (bind slot 2); production CAS is
+        // unconditional. Declared `Array<ByteArray?>` so expected-type inference
+        // drives `arrayOf<ByteArray?>` (the smart-cast non-null `expectedRecipient`
+        // would otherwise infer the invariant `Array<ByteArray>`).
+        val bindArgs: Array<ByteArray?> = arrayOf(msgId, expectedRecipient)
         return try {
             val affected = db.execDeliveryUpdate(sql, bindArgs)
             when (affected) {
@@ -182,8 +171,10 @@ internal class SqliteDeliveryRepository(
 
     // --- C6.4-F/G: guarded SQL CAS builders ---------------------------------
 
-    /** The fixed (validFroms, target) mapping the repository owns (C6.4-G). */
-    private fun transitionMapping(t: DeliveryTransition): Pair<DeliveryState, Set<DeliveryState>> =
+    /** The fixed (validFroms, target) mapping the repository owns (C6.4-G).
+     *  C6.4.1-A: `internal` so the test-only `MutatedDeliveryRepository` reuses
+     *  the exact lifecycle truth-table without duplicating it. */
+    internal fun transitionMapping(t: DeliveryTransition): Pair<DeliveryState, Set<DeliveryState>> =
         when (t) {
             DeliveryTransition.MARK_HANDED ->
                 DeliveryState.HANDED_TO_RELAY to setOf(DeliveryState.QUEUED_DURABLY)
@@ -194,47 +185,34 @@ internal class SqliteDeliveryRepository(
         }
 
     /**
-     * `UPDATE delivery_state SET state = target WHERE msg_id = ? [AND state IN (...)]`.
-     * C6.4-F: the state predicate is the load-bearing CAS guard. C6.4-M:
-     * [stateGuard]=false drops it (mutation control) so a test can prove the
-     * concurrency tests fail without it.
+     * `UPDATE delivery_state SET state = target WHERE msg_id = ? AND state IN (...)`.
+     * C6.4-F: the state predicate is the load-bearing CAS guard. C6.4.1-A:
+     * production builds this UNCONDITIONALLY; the test-only
+     * `MutatedDeliveryRepository` rebuilds it without the state predicate to
+     * prove it is load-bearing.
      */
     private fun transitionSql(target: DeliveryState, validFroms: Set<DeliveryState>): String {
-        val sb = StringBuilder("UPDATE ${StoreSchema.DELIVERY_TABLE} ")
-            .append("SET ${StoreSchema.COL_D_STATE} = ").append(target.code)
-            .append(" WHERE ${StoreSchema.COL_D_MSG_ID} = ?")
-        if (stateGuard) {
-            sb.append(" AND ").append(COL_D_STATE).append(" IN (")
-                .append(validFroms.joinToString(",") { it.code.toString() }).append(")")
-        }
-        return sb.toString()
+        val codes = validFroms.joinToString(",") { it.code.toString() }
+        return "UPDATE ${StoreSchema.DELIVERY_TABLE} " +
+            "SET ${StoreSchema.COL_D_STATE} = ${target.code} " +
+            "WHERE ${StoreSchema.COL_D_MSG_ID} = ? AND ${StoreSchema.COL_D_STATE} IN ($codes)"
     }
 
     /**
-     * `UPDATE delivery_state SET state = ACKNOWLEDGED WHERE msg_id = ? [AND state
-     * IN (QUEUED, HANDED)] [AND ack_mode = SINGLE_RECIPIENT] [AND expected_recipient = ?]`.
-     * C6.4-H: state + mode + the EXACT durable recipient in ONE WHERE clause. The
-     * recipient is bound ONLY when [recipientGuard] is on (its bind slot is then
-     * position 2). C6.4-M: each guard can be dropped independently to prove the
-     * predicate is load-bearing.
+     * `UPDATE delivery_state SET state = ACKNOWLEDGED WHERE msg_id = ? AND state
+     * IN (QUEUED, HANDED) AND ack_mode = SINGLE_RECIPIENT AND expected_recipient = ?`.
+     * C6.4-H: state + mode + the EXACT durable recipient in ONE WHERE clause; the
+     * recipient is ALWAYS bound (bind slot 2). C6.4.1-A: production builds this
+     * UNCONDITIONALLY; the test-only `MutatedDeliveryRepository` rebuilds it minus
+     * a predicate to prove each is load-bearing.
      */
-    private fun acknowledgeBoundSql(): String {
-        val sb = StringBuilder("UPDATE ${StoreSchema.DELIVERY_TABLE} ")
-            .append("SET ${StoreSchema.COL_D_STATE} = ").append(DeliveryState.ACKNOWLEDGED_BY_RECIPIENT.code)
-            .append(" WHERE ${StoreSchema.COL_D_MSG_ID} = ?")
-        if (stateGuard) {
-            sb.append(" AND ").append(COL_D_STATE).append(" IN (")
-                .append(DeliveryState.QUEUED_DURABLY.code).append(", ")
-                .append(DeliveryState.HANDED_TO_RELAY.code).append(")")
-        }
-        if (modeGuard) {
-            sb.append(" AND ").append(COL_D_ACK_MODE).append(" = ").append(AckMode.SINGLE_RECIPIENT.code)
-        }
-        if (recipientGuard) {
-            sb.append(" AND ").append(COL_D_EXPECTED).append(" = ?")
-        }
-        return sb.toString()
-    }
+    private fun acknowledgeBoundSql(): String =
+        "UPDATE ${StoreSchema.DELIVERY_TABLE} " +
+            "SET ${StoreSchema.COL_D_STATE} = ${DeliveryState.ACKNOWLEDGED_BY_RECIPIENT.code} " +
+            "WHERE ${StoreSchema.COL_D_MSG_ID} = ? " +
+            "AND ${StoreSchema.COL_D_STATE} IN (${DeliveryState.QUEUED_DURABLY.code}, ${DeliveryState.HANDED_TO_RELAY.code}) " +
+            "AND ${StoreSchema.COL_D_ACK_MODE} = ${AckMode.SINGLE_RECIPIENT.code} " +
+            "AND ${StoreSchema.COL_D_EXPECTED} = ?"
 
     // --- C6.4-F/H: zero-row CAS reclassification ----------------------------
 
@@ -244,11 +222,13 @@ internal class SqliteDeliveryRepository(
      *  * Corrupt -> [Corrupt]; StorageFailure -> [StorageFailure];
      *  * state == target -> [AlreadyInTarget];
      *  * state in validFroms -> [StorageFailure] (invariant violation -- the
-     *    guarded SQL should have matched; only reachable under a weakened
-     *    [stateGuard] mutation or a raced same-microsecond write);
+     *    guarded SQL should have matched; only reachable under a weakened-state
+     *    mutation (test-only) or a raced same-microsecond write);
      *  * any other legal durable state -> [RejectedState].
+     * C6.4.1-A: `internal` so the test-only `MutatedDeliveryRepository` reuses
+     * the exact reclassification (no duplication / no drift).
      */
-    private fun classifyZeroRowTransition(
+    internal fun classifyZeroRowTransition(
         msgId: ByteArray,
         target: DeliveryState,
         validFroms: Set<DeliveryState>,
@@ -280,10 +260,12 @@ internal class SqliteDeliveryRepository(
      *  * state == EXPIRED / CANCELLED -> [RejectedState];
      *  * same binding + QUEUED/HANDED still present -> [StorageFailure]
      *    (invariant violation -- the guarded SQL should have matched; only
-     *    reachable under a weakened-guard mutation);
+     *    reachable under a weakened-predicate mutation (test-only));
      *  * any other state -> [RejectedState].
+     * C6.4.1-A: `internal` so the test-only `MutatedDeliveryRepository` reuses
+     * the exact reclassification (no duplication / no drift).
      */
-    private fun classifyZeroRowAck(msgId: ByteArray, expectedRecipient: ByteArray): AckResult =
+    internal fun classifyZeroRowAck(msgId: ByteArray, expectedRecipient: ByteArray): AckResult =
         when (val l = get(msgId)) {
             DeliveryLookup.NotFound -> AckResult.UnknownMessage
             DeliveryLookup.Corrupt -> AckResult.Corrupt
@@ -338,11 +320,4 @@ internal class SqliteDeliveryRepository(
             AckMode.NONE -> expectedRecipient == null
             AckMode.SINGLE_RECIPIENT -> expectedRecipient != null && expectedRecipient.size == 16
         }
-
-    private companion object {
-        // Column-name shortcuts so the built CAS SQL reads as it would in a literal.
-        private const val COL_D_STATE = StoreSchema.COL_D_STATE
-        private const val COL_D_ACK_MODE = StoreSchema.COL_D_ACK_MODE
-        private const val COL_D_EXPECTED = StoreSchema.COL_D_EXPECTED
-    }
 }

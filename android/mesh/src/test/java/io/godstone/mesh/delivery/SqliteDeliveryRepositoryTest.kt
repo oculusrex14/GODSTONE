@@ -965,7 +965,7 @@ class SqliteDeliveryRepositoryTest {
             // so it matches on msg_id + mode + recipient only and OVERWRITES CANCELLED
             // with ACKNOWLEDGED. This is the WRONG outcome the guard prevents.
             val dbWeak = JdbcStoreDb(file)
-            val jWeak = SqliteDeliveryRepository(dbWeak, stateGuard = false, modeGuard = true, recipientGuard = true)
+            val jWeak = MutatedDeliveryRepository(dbWeak, stateGuard = false, modeGuard = true, recipientGuard = true)
             val mid2 = msgId(51)
             jWeak.enqueue(mid2, AckMode.SINGLE_RECIPIENT, nodeA())
             jWeak.transition(mid2, DeliveryTransition.MARK_HANDED)
@@ -999,7 +999,7 @@ class SqliteDeliveryRepositoryTest {
             // expected_recipient, so Alice's ACK matches Bob's row (msg_id + state +
             // mode) and acknowledges it -> Applied (WRONG: Alice acked Bob's message).
             val dbWeak = JdbcStoreDb(file)
-            val jWeak = SqliteDeliveryRepository(dbWeak, stateGuard = true, modeGuard = true, recipientGuard = false)
+            val jWeak = MutatedDeliveryRepository(dbWeak, stateGuard = true, modeGuard = true, recipientGuard = false)
             val mid2 = msgId(53)
             jWeak.enqueue(mid2, AckMode.SINGLE_RECIPIENT, nodeA())
             jWeak.transition(mid2, DeliveryTransition.MARK_HANDED)
@@ -1042,7 +1042,7 @@ class SqliteDeliveryRepositoryTest {
             // Weakened repo (mode guard OFF): the ACK CAS no longer checks ack_mode,
             // so it matches on msg_id + state + recipient and acknowledges the
             // NONE-mode row -> Applied (WRONG: a NONE/broadcast row was acknowledged).
-            val jWeak = SqliteDeliveryRepository(db, stateGuard = true, modeGuard = false, recipientGuard = true)
+            val jWeak = MutatedDeliveryRepository(db, stateGuard = true, modeGuard = false, recipientGuard = true)
             val mid2 = msgId(55)
             jWeak.enqueue(mid2, AckMode.SINGLE_RECIPIENT, nodeA())
             jWeak.transition(mid2, DeliveryTransition.MARK_HANDED)
@@ -1074,7 +1074,7 @@ class SqliteDeliveryRepositoryTest {
             // Weakened repo (state guard OFF): cancel's CAS no longer guards state, so
             // it overwrites ACKNOWLEDGED with CANCELLED (WRONG: reversed a terminal).
             val dbWeak = JdbcStoreDb(file)
-            val jWeak = SqliteDeliveryRepository(dbWeak, stateGuard = false, modeGuard = true, recipientGuard = true)
+            val jWeak = MutatedDeliveryRepository(dbWeak, stateGuard = false, modeGuard = true, recipientGuard = true)
             val mid2 = msgId(57)
             jWeak.enqueue(mid2, AckMode.SINGLE_RECIPIENT, nodeA())
             jWeak.transition(mid2, DeliveryTransition.MARK_HANDED)
