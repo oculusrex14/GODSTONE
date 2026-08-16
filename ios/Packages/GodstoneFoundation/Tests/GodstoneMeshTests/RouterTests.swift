@@ -359,6 +359,10 @@ final class RouterTests: XCTestCase {
     /// CRITICAL SECURITY TEST: Downgrade attack
     /// Attacker mutates header priority to DIRECT and clears HAS_POW.
     /// Recipient MUST reject with .policyMismatch because authenticated sealed priority is GROUP.
+    /// CRITICAL SECURITY TEST: Downgrade attack
+    /// Starts from a genuine valid GROUP message (with 20-bit PoW), mutates header priority
+    /// to DIRECT, clears HAS_POW, re-encodes through WireV2 encoder (CRC recomputed),
+    /// and proves recipient rejects with .policyMismatch.
     func testDowngradeAttackOnGroupMessageToDirectHeaderIsRejectedWithPolicyMismatch() async throws {
         let senderNodeId = Data((0..<16).map { UInt8($0) })
         let router = Router(selfNodeId: senderNodeId)
@@ -366,77 +370,138 @@ final class RouterTests: XCTestCase {
         let recipientPrivKey = Curve25519.KeyAgreement.PrivateKey()
         let recipientPriv = recipientPrivKey.rawRepresentation
         let recipientPub = recipientPrivKey.publicKey.rawRepresentation
+        let recipientNodeId = Data(repeating: 0x77, count: 16)
 
-        let identity = LogicalMessageIdentity.createNew()
-        let dummyPowNonce = Data(repeating: 0x01, count: 8)
         let plaintext = Data("High-priority group alert".utf8)
-        var sealedInner = Data()
-        sealedInner.append(identity.messageNonce)
-        sealedInner.append(dummyPowNonce)
-        sealedInner.append(identity.createdAtLe())
-        sealedInner.append(UInt8(Priority.group.rawValue))
-        sealedInner.append(plaintext)
-
-        let sealed = try SealedSender.seal(
-            plaintext: sealedInner,
-            senderNodeId: senderNodeId,
-            recipientStaticPub: recipientPub
+        let original = try await router.authorSealedMessage(
+            plaintext: plaintext,
+            recipientNodeId: recipientNodeId,
+            recipientStaticPub: recipientPub,
+            priority: .group
         )
-        let msgId = MessageId.derive(senderNodeId: senderNodeId, identity: identity, plaintext: plaintext)
 
-        // Attacker frames with DIRECT header and NO has_pow flag
+        // 1. Verify original valid message is Accepted
+        let origResult = router.openSealedMessage(original, ourStaticDhPriv: recipientPriv)
+        guard case .accepted(let opened) = origResult else {
+            XCTFail("Original valid GROUP message must be accepted")
+            return
+        }
+        XCTAssertEqual(opened.priority, .group)
+        XCTAssertTrue(original.flags & UInt16(FrameV2.Flags.has_pow) != 0)
+
+        // 2. Attacker mutates header: clears HAS_POW, sets DIRECT priority
+        let downgradedFlags = (original.flags & ~UInt16(FrameV2.Flags.has_pow) & ~UInt16(FrameV2.Flags.priority_mask)) |
+            Priority.toFlags(.direct)
         let downgradedFrame = FrameV2(
-            type: .message,
-            msgId: msgId,
-            routingTag: Data(count: 4),
-            ttl: 8,
-            hopCount: 0,
-            flags: UInt16(FrameV2.Flags.sealed) | Priority.toFlags(.direct),
-            payload: sealed
+            type: original.type,
+            msgId: original.msgId,
+            routingTag: original.routingTag,
+            ttl: original.ttl,
+            hopCount: original.hopCount,
+            flags: downgradedFlags,
+            payload: original.payload
         )
 
-        let result = router.openSealedMessage(downgradedFrame, ourStaticDhPriv: recipientPriv)
+        // 3. Encode to wire bytes (CRC recomputed) and decode back
+        let encoded = downgradedFrame.encode()
+        let decoded = try XCTUnwrap(FrameV2.decode(encoded))
+        XCTAssertEqual(decoded.msgId, original.msgId)
+        XCTAssertEqual(decoded.payload, original.payload)
+
+        // 4. Recipient open MUST reject with .policyMismatch
+        let result = router.openSealedMessage(decoded, ourStaticDhPriv: recipientPriv)
         XCTAssertEqual(result, OpenMessageResult.policyMismatch)
     }
 
-    func testHeaderPriorityMismatchAgainstSealedPriorityIsRejectedWithPolicyMismatch() async throws {
+    func testGroupToDirectHeaderDowngradeRetainingHasPowIsRejectedWithPolicyMismatch() async throws {
         let senderNodeId = Data((0..<16).map { UInt8($0) })
         let router = Router(selfNodeId: senderNodeId)
-
         let recipientPrivKey = Curve25519.KeyAgreement.PrivateKey()
         let recipientPriv = recipientPrivKey.rawRepresentation
         let recipientPub = recipientPrivKey.publicKey.rawRepresentation
+        let recipientNodeId = Data(repeating: 0x77, count: 16)
 
-        let identity = LogicalMessageIdentity.createNew()
-        let dummyPowNonce = Data(repeating: 0x01, count: 8)
-        let plaintext = Data("Policy check message".utf8)
-        var sealedInner = Data()
-        sealedInner.append(identity.messageNonce)
-        sealedInner.append(dummyPowNonce)
-        sealedInner.append(identity.createdAtLe())
-        sealedInner.append(UInt8(Priority.group.rawValue))
-        sealedInner.append(plaintext)
-
-        let sealed = try SealedSender.seal(
-            plaintext: sealedInner,
-            senderNodeId: senderNodeId,
-            recipientStaticPub: recipientPub
-        )
-        let msgId = MessageId.derive(senderNodeId: senderNodeId, identity: identity, plaintext: plaintext)
-
-        // Mutate header priority to BROADCAST while leaving HAS_POW
-        let mutatedFlags = UInt16(FrameV2.Flags.sealed) | Priority.toFlags(.broadcast) | UInt16(FrameV2.Flags.has_pow)
-        let mutatedFrame = FrameV2(
-            type: .message,
-            msgId: msgId,
-            routingTag: Data(count: 4),
-            ttl: 8,
-            hopCount: 0,
-            flags: mutatedFlags,
-            payload: sealed
+        let original = try await router.authorSealedMessage(
+            plaintext: Data("test".utf8),
+            recipientNodeId: recipientNodeId,
+            recipientStaticPub: recipientPub,
+            priority: .group
         )
 
-        let result = router.openSealedMessage(mutatedFrame, ourStaticDhPriv: recipientPriv)
+        let mutatedFlags = (original.flags & ~UInt16(FrameV2.Flags.priority_mask)) | Priority.toFlags(.direct)
+        let mutated = FrameV2(type: original.type, msgId: original.msgId, routingTag: original.routingTag,
+                             ttl: original.ttl, hopCount: original.hopCount, flags: mutatedFlags, payload: original.payload)
+        let decoded = try XCTUnwrap(FrameV2.decode(mutated.encode()))
+        let result = router.openSealedMessage(decoded, ourStaticDhPriv: recipientPriv)
+        XCTAssertEqual(result, OpenMessageResult.policyMismatch)
+    }
+
+    func testGroupMessageWithStrippedHasPowFlagIsRejectedWithPolicyMismatch() async throws {
+        let senderNodeId = Data((0..<16).map { UInt8($0) })
+        let router = Router(selfNodeId: senderNodeId)
+        let recipientPrivKey = Curve25519.KeyAgreement.PrivateKey()
+        let recipientPriv = recipientPrivKey.rawRepresentation
+        let recipientPub = recipientPrivKey.publicKey.rawRepresentation
+        let recipientNodeId = Data(repeating: 0x77, count: 16)
+
+        let original = try await router.authorSealedMessage(
+            plaintext: Data("test".utf8),
+            recipientNodeId: recipientNodeId,
+            recipientStaticPub: recipientPub,
+            priority: .group
+        )
+
+        let mutatedFlags = original.flags & ~UInt16(FrameV2.Flags.has_pow)
+        let mutated = FrameV2(type: original.type, msgId: original.msgId, routingTag: original.routingTag,
+                             ttl: original.ttl, hopCount: original.hopCount, flags: mutatedFlags, payload: original.payload)
+        let decoded = try XCTUnwrap(FrameV2.decode(mutated.encode()))
+        let result = router.openSealedMessage(decoded, ourStaticDhPriv: recipientPriv)
+        XCTAssertEqual(result, OpenMessageResult.policyMismatch)
+    }
+
+    func testDirectMessageWithHasPowFlagInjectedIsRejectedWithPolicyMismatch() async throws {
+        let senderNodeId = Data((0..<16).map { UInt8($0) })
+        let router = Router(selfNodeId: senderNodeId)
+        let recipientPrivKey = Curve25519.KeyAgreement.PrivateKey()
+        let recipientPriv = recipientPrivKey.rawRepresentation
+        let recipientPub = recipientPrivKey.publicKey.rawRepresentation
+        let recipientNodeId = Data(repeating: 0x55, count: 16)
+
+        let original = try await router.authorSealedMessage(
+            plaintext: Data("test".utf8),
+            recipientNodeId: recipientNodeId,
+            recipientStaticPub: recipientPub,
+            priority: .direct
+        )
+
+        let mutatedFlags = original.flags | UInt16(FrameV2.Flags.has_pow)
+        let mutated = FrameV2(type: original.type, msgId: original.msgId, routingTag: original.routingTag,
+                             ttl: original.ttl, hopCount: original.hopCount, flags: mutatedFlags, payload: original.payload)
+        let decoded = try XCTUnwrap(FrameV2.decode(mutated.encode()))
+        let result = router.openSealedMessage(decoded, ourStaticDhPriv: recipientPriv)
+        XCTAssertEqual(result, OpenMessageResult.policyMismatch)
+    }
+
+    func testGroupHeaderChangedToBroadcastWhileSealedPriorityIsGroupIsRejectedWithPolicyMismatch() async throws {
+        let senderNodeId = Data((0..<16).map { UInt8($0) })
+        let router = Router(selfNodeId: senderNodeId)
+        let recipientPrivKey = Curve25519.KeyAgreement.PrivateKey()
+        let recipientPriv = recipientPrivKey.rawRepresentation
+        let recipientPub = recipientPrivKey.publicKey.rawRepresentation
+        let recipientNodeId = Data(repeating: 0x77, count: 16)
+
+        let original = try await router.authorSealedMessage(
+            plaintext: Data("test".utf8),
+            recipientNodeId: recipientNodeId,
+            recipientStaticPub: recipientPub,
+            priority: .group
+        )
+
+        let mutatedFlags = (original.flags & ~UInt16(FrameV2.Flags.priority_mask)) | Priority.toFlags(.broadcast)
+        let mutated = FrameV2(type: original.type, msgId: original.msgId, routingTag: original.routingTag,
+                             ttl: original.ttl, hopCount: original.hopCount, flags: mutatedFlags, payload: original.payload)
+        let decoded = try XCTUnwrap(FrameV2.decode(mutated.encode()))
+        let result = router.openSealedMessage(decoded, ourStaticDhPriv: recipientPriv)
         XCTAssertEqual(result, OpenMessageResult.policyMismatch)
     }
 
@@ -496,35 +561,6 @@ final class RouterTests: XCTestCase {
         XCTAssertEqual(result, OpenMessageResult.wrongFrameType)
     }
 
-    func testDirectMessageWithHasPowFlagIsRejectedWithPolicyMismatch() async throws {
-        let senderNodeId = Data((0..<16).map { UInt8($0) })
-        let router = Router(selfNodeId: senderNodeId)
-
-        let recipientPrivKey = Curve25519.KeyAgreement.PrivateKey()
-        let recipientPriv = recipientPrivKey.rawRepresentation
-        let recipientPub = recipientPrivKey.publicKey.rawRepresentation
-        let recipientNodeId = Data(repeating: 0x55, count: 16)
-
-        let frame = try await router.authorSealedMessage(
-            plaintext: Data("test".utf8),
-            recipientNodeId: recipientNodeId,
-            recipientStaticPub: recipientPub,
-            priority: .direct
-        )
-        let invalidFrame = FrameV2(
-            type: frame.type,
-            msgId: frame.msgId,
-            routingTag: frame.routingTag,
-            ttl: frame.ttl,
-            hopCount: frame.hopCount,
-            flags: frame.flags | UInt16(FrameV2.Flags.has_pow),
-            payload: frame.payload
-        )
-
-        let result = router.openSealedMessage(invalidFrame, ourStaticDhPriv: recipientPriv)
-        XCTAssertEqual(result, OpenMessageResult.policyMismatch)
-    }
-
     func testDirectMessageWithNonZeroPowNonceIsRejectedWithPolicyMismatch() async throws {
         let senderNodeId = Data((0..<16).map { UInt8($0) })
         let router = Router(selfNodeId: senderNodeId)
@@ -563,10 +599,82 @@ final class RouterTests: XCTestCase {
         XCTAssertEqual(result, OpenMessageResult.policyMismatch)
     }
 
-    func testInvalidSealedPriorityCodeIsRejectedWithPolicyMismatch() async throws {
+    func testUnknownHeaderPriorityCodesAreRejectedWithPolicyMismatch() async throws {
+        for code in [UInt16(5), UInt16(6), UInt16(7)] {
+            let senderNodeId = Data((0..<16).map { UInt8($0) })
+            let router = Router(selfNodeId: senderNodeId)
+            let recipientPrivKey = Curve25519.KeyAgreement.PrivateKey()
+            let recipientPriv = recipientPrivKey.rawRepresentation
+            let recipientPub = recipientPrivKey.publicKey.rawRepresentation
+            let recipientNodeId = Data(repeating: 0x55, count: 16)
+
+            let validDirect = try await router.authorSealedMessage(
+                plaintext: Data("test".utf8),
+                recipientNodeId: recipientNodeId,
+                recipientStaticPub: recipientPub,
+                priority: .direct
+            )
+
+            let unknownFlags = (validDirect.flags & ~UInt16(FrameV2.Flags.priority_mask)) | (code << 8)
+            let mutatedFrame = FrameV2(
+                type: validDirect.type,
+                msgId: validDirect.msgId,
+                routingTag: validDirect.routingTag,
+                ttl: validDirect.ttl,
+                hopCount: validDirect.hopCount,
+                flags: unknownFlags,
+                payload: validDirect.payload
+            )
+            let encoded = mutatedFrame.encode()
+            let decoded = try XCTUnwrap(FrameV2.decode(encoded))
+
+            let result = router.openSealedMessage(decoded, ourStaticDhPriv: recipientPriv)
+            XCTAssertEqual(result, OpenMessageResult.policyMismatch, "Header priority code \(code) must be rejected with policyMismatch")
+        }
+    }
+
+    func testInvalidSealedPriorityCodesAreRejectedWithPolicyMismatch() async throws {
+        for code in [UInt8(0), UInt8(4), UInt8(5), UInt8(6), UInt8(7)] {
+            let senderNodeId = Data((0..<16).map { UInt8($0) })
+            let router = Router(selfNodeId: senderNodeId)
+            let recipientPrivKey = Curve25519.KeyAgreement.PrivateKey()
+            let recipientPriv = recipientPrivKey.rawRepresentation
+            let recipientPub = recipientPrivKey.publicKey.rawRepresentation
+
+            let identity = LogicalMessageIdentity.createNew()
+            let powNonce = Data(count: 8)
+            let plaintext = Data("test".utf8)
+            var sealedInner = Data()
+            sealedInner.append(identity.messageNonce)
+            sealedInner.append(powNonce)
+            sealedInner.append(identity.createdAtLe())
+            sealedInner.append(code)
+            sealedInner.append(plaintext)
+
+            let sealed = try SealedSender.seal(
+                plaintext: sealedInner,
+                senderNodeId: senderNodeId,
+                recipientStaticPub: recipientPub
+            )
+            let msgId = MessageId.derive(senderNodeId: senderNodeId, identity: identity, plaintext: plaintext)
+            let frame = FrameV2(
+                type: .message,
+                msgId: msgId,
+                routingTag: Data(count: 4),
+                ttl: 8,
+                hopCount: 0,
+                flags: UInt16(FrameV2.Flags.sealed) | Priority.toFlags(.direct),
+                payload: sealed
+            )
+
+            let result = router.openSealedMessage(frame, ourStaticDhPriv: recipientPriv)
+            XCTAssertEqual(result, OpenMessageResult.policyMismatch, "Sealed priority code \(code) must be rejected with policyMismatch")
+        }
+    }
+
+    func testExactOld28ByteSealedInnerPrefixWithoutPriorityByteIsRejectedWithMalformed() async throws {
         let senderNodeId = Data((0..<16).map { UInt8($0) })
         let router = Router(selfNodeId: senderNodeId)
-
         let recipientPrivKey = Curve25519.KeyAgreement.PrivateKey()
         let recipientPriv = recipientPrivKey.rawRepresentation
         let recipientPub = recipientPrivKey.publicKey.rawRepresentation
@@ -574,15 +682,14 @@ final class RouterTests: XCTestCase {
         let identity = LogicalMessageIdentity.createNew()
         let powNonce = Data(count: 8)
         let plaintext = Data("test".utf8)
-        var sealedInner = Data()
-        sealedInner.append(identity.messageNonce)
-        sealedInner.append(powNonce)
-        sealedInner.append(identity.createdAtLe())
-        sealedInner.append(UInt8(0)) // SOS priority code 0 (invalid for sealed MESSAGE)
-        sealedInner.append(plaintext)
+        var oldPrefixInner = Data()
+        oldPrefixInner.append(identity.messageNonce)
+        oldPrefixInner.append(powNonce)
+        oldPrefixInner.append(identity.createdAtLe())
+        // Exactly 28 bytes total inner payload (old C6.7.1 prefix with 0-byte plaintext)
 
         let sealed = try SealedSender.seal(
-            plaintext: sealedInner,
+            plaintext: oldPrefixInner,
             senderNodeId: senderNodeId,
             recipientStaticPub: recipientPub
         )
@@ -598,7 +705,7 @@ final class RouterTests: XCTestCase {
         )
 
         let result = router.openSealedMessage(frame, ourStaticDhPriv: recipientPriv)
-        XCTAssertEqual(result, OpenMessageResult.policyMismatch)
+        XCTAssertEqual(result, OpenMessageResult.malformed)
     }
 
     func testTruncatedSealedInnerPayloadIsRejectedWithMalformed() async throws {
@@ -627,6 +734,46 @@ final class RouterTests: XCTestCase {
 
         let result = router.openSealedMessage(frame, ourStaticDhPriv: recipientPriv)
         XCTAssertEqual(result, OpenMessageResult.malformed)
+    }
+
+    private final class TestDeliveryRepository: DeliveryRepository {
+        func get(_ msgId: Data) -> DeliveryLookup { .notFound }
+        func enqueue(_ msgId: Data, ackMode: AckMode, expectedRecipient: Data?) -> EnqueueResult { .created }
+        func transition(_ msgId: Data, _ transition: DeliveryTransition) -> TransitionResult { .applied }
+        func acknowledgeBound(_ msgId: Data, expectedRecipient: Data) -> AckResult { .applied }
+        func clear(_ msgId: Data) -> ClearResult { .cleared }
+    }
+
+    func testMeshNodeCompositionBindsIdentityNodeIdToRouter() async throws {
+        let identity = MeshIdentity(
+            signingKey: Curve25519.Signing.PrivateKey(),
+            agreementKey: Curve25519.KeyAgreement.PrivateKey()
+        )
+        let store = InMemoryMessageStore()
+        let tracker = DeliveryTracker(repo: TestDeliveryRepository(), authenticator: Ed25519AckAuthenticator(resolver: UnresolvedRecipientKeyResolver()))
+        let node = MeshNode(identity: identity, store: store, deliveryTracker: tracker)
+
+        XCTAssertEqual(node.router.selfNodeId, node.identity.nodeId)
+        XCTAssertNotEqual(node.router.selfNodeId, Data(repeating: 0, count: 16))
+
+        let recipientPrivKey = Curve25519.KeyAgreement.PrivateKey()
+        let recipientPriv = recipientPrivKey.rawRepresentation
+        let recipientPub = recipientPrivKey.publicKey.rawRepresentation
+        let recipientNodeId = Data(repeating: 0x99, count: 16)
+
+        let authoredFrame = try await node.router.authorSealedMessage(
+            plaintext: Data("composition check".utf8),
+            recipientNodeId: recipientNodeId,
+            recipientStaticPub: recipientPub,
+            priority: Priority.direct
+        )
+
+        let openResult = node.router.openSealedMessage(authoredFrame, ourStaticDhPriv: recipientPriv)
+        guard case .accepted(let msg) = openResult else {
+            XCTFail("Authored frame through MeshNode.router must be Accepted")
+            return
+        }
+        XCTAssertEqual(msg.senderNodeId, node.identity.nodeId)
     }
 
     func testAuthorSealedMessageConcurrentSendsToAliceAndBob() async throws {

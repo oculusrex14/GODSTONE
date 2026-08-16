@@ -1,4 +1,4 @@
-"""GMP/2.1 cross-platform byte-parity reference (ADR-001 §3, C6.7.1).
+"""GMP/2.1 cross-platform byte-parity reference (ADR-001 §3, C6.7.2).
 
 The three content-derived primitives that MUST be byte-identical across the
 Android (Kotlin/Bouncy Castle) and iOS (Swift/Blake2s) runtimes:
@@ -6,7 +6,7 @@ Android (Kotlin/Bouncy Castle) and iOS (Swift/Blake2s) runtimes:
     msg_id   = BLAKE2s-128(b"GMP2-MSGID" ‖ sender[16] ‖ created_at_le[4] ‖ message_nonce[16] ‖ payload)   §3.3
     bloom    = index = BLAKE2s-64(msg_id[16] ‖ uint32_be(round)) mod 4096     §3.4
     pow      = BLAKE2s-256(b"GMP2-POW" ‖ pow_nonce[8] ‖ sender[16] ‖ created_at_le[4] ‖
-                            message_nonce[16] ‖ type_code[1] ‖ plaintext), top TARGET_BITS bits 0  §3.3
+                            message_nonce[16] ‖ priority_code[1] ‖ type_code[1] ‖ plaintext), top TARGET_BITS bits 0  §3.3
 
 This module is the INDEPENDENT Python reference (hashlib.blake2s, RFC 7693).
 crypto/gmp21_vectors.json is generated from it by crypto.gen_gmp21_vectors;

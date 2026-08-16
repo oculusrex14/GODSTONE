@@ -25,10 +25,10 @@ import kotlin.coroutines.coroutineContext
  *
  * Verification is cheap (one BLAKE2s); mining is not, which is the point.
  *
- * CANONICAL PREIMAGE (ADR-001 §3.3, Stage 3 Phase C / Stage 4 C6.7.1):
+ * CANONICAL PREIMAGE (ADR-001 §3.3, Stage 3 Phase C / Stage 4 C6.7.2):
  *
  *     BLAKE2s-256(ASCII("GMP2-POW") ‖ pow_nonce[8] ‖ sender_node_id[16] ‖ created_at_le[4] ‖
- *                 message_nonce[16] ‖ type_code[1] ‖ plaintext)
+ *                 message_nonce[16] ‖ priority_code[1] ‖ type_code[1] ‖ plaintext)
  *
  * `created_at` is the same uint32 epoch-second count used in msg_id derivation
  * (§3.3 `created_at_le`), serialised LITTLE-ENDIAN so there is ONE canonical

@@ -133,14 +133,15 @@ count before allocating the payload.
 There is no plaintext wall-clock timestamp in the frame header.
 
 - retention uses the receiver's monotonic receipt time stored locally;
-- an advisory sender `created_at` belongs inside the authenticated application
-  envelope and may be omitted when the sender clock is untrusted;
+- `created_at` is currently present as a required uint32 field inside the authenticated
+  MESSAGE envelope (ADR-001 §3.3). `CLOCK_UNTRUSTED` representation is unresolved
+  and must be frozen before link enablement;
 - Noise nonces and the 16-byte message-ID seen cache suppress replay;
 - receipt-relative expiry prevents a bad sender clock from discarding valid
   traffic or retaining it forever.
 
-The Android legacy store does not yet implement this schema, so the radio remains
-disabled.
+Android and iOS both contain repo-tested canonical/nonshipping FrameV2 router/store
+scaffolding, but the radio and mesh remain disabled.
 
 ## 8. Routing and anti-entropy
 
@@ -156,8 +157,9 @@ The target is bounded epidemic routing:
 7. decrement TTL and increment hop count without overflow;
 8. never send a frame back to the peer it arrived from.
 
-A digest describes **held durable frames**, not merely recently seen IDs. iOS
-has no durable mesh store yet, so anti-entropy is not implemented end to end.
+A digest describes **held durable frames**, not merely recently seen IDs.
+Inbound verified-message delivery integration, ADR-002 link layer, ADR-003 sender
+authentication, and physical-device interop remain incomplete, so the radio remains disabled.
 
 ## 9. End-to-end envelope and anti-abuse
 

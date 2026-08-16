@@ -125,21 +125,31 @@ class Router(
         }
     }
 
-    /** Prepare a frame for forwarding: decrement TTL, increment hop_count. */
-    fun forwardCopy(frame: FrameV2): FrameV2 =
-        frame.copy(ttl = frame.ttl - 1, hopCount = frame.hopCount + 1)
+    /** Returns the copy of [frame] ready to be relayed: TTL decremented, hop count incremented. */
+    fun forwardCopy(frame: FrameV2): FrameV2 {
+        require(frame.ttl > 1) { "cannot forward a frame with ttl <= 1" }
+        return frame.copy(
+            ttl = frame.ttl - 1,
+            hopCount = frame.hopCount + 1
+        )
+    }
 
     /**
      * Compute what a peer appears to lack, in strict priority order:
      * SOS first, then DIRECT, GROUP, BROADCAST, and BULK last.
      */
-    suspend fun framesPeerLacks(peerDigest: BloomDigest, limit: Int): List<FrameV2> {
+    suspend fun framesPeerLacks(peerDigest: BloomDigest, limit: Int = 32): List<FrameV2> {
+        require(limit >= 0) { "limit must be non-negative" }
+        if (limit == 0) return emptyList()
         // A-13: bounded by construction. The store pages rows and we stop as soon
         // as [limit] is reached, so a 200 MB backlog never materialises in memory.
-        val out = ArrayList<FrameV2>(limit)
-        store.forEachHeldOrderedByPriority { f ->
-            if (!peerDigest.mightContain(f.msgId)) out.add(f)
-            out.size < limit   // false stops the scan
+        val out = ArrayList<FrameV2>()
+        store.forEachHeldOrderedByPriority { frame ->
+            if (!peerDigest.mightContain(frame.msgId)) {
+                out.add(frame)
+                if (out.size >= limit) return@forEachHeldOrderedByPriority false
+            }
+            true
         }
         return out
     }
@@ -149,6 +159,8 @@ class Router(
         store.forEachHeldMsgId { d.add(it); true }
         return d
     }
+
+    suspend fun bloomDigest(): BloomDigest = currentDigest()
 
     /**
      * Build a sealed MESSAGE frame with an explicit [LogicalMessageIdentity].
@@ -352,36 +364,58 @@ sealed class OpenMessageResult {
 }
 
 /** Result of opening a verified sealed MESSAGE. */
-data class PolicyCheckedOpenedMessage(
-    val senderNodeId: ByteArray,
+class PolicyCheckedOpenedMessage(
+    senderNodeId: ByteArray,
     val identity: LogicalMessageIdentity,
-    val powNonce: ByteArray,
+    powNonce: ByteArray,
     val priority: Priority,
-    val plaintext: ByteArray,
-    val frame: FrameV2
+    plaintext: ByteArray,
+    frame: FrameV2
 ) {
+    private val rawSenderNodeId = senderNodeId.copyOf()
+    private val rawPowNonce = powNonce.copyOf()
+    private val rawPlaintext = plaintext.copyOf()
+    private val rawFrame = deepCopyFrame(frame)
+
+    val senderNodeId: ByteArray get() = rawSenderNodeId.copyOf()
+    val powNonce: ByteArray get() = rawPowNonce.copyOf()
+    val plaintext: ByteArray get() = rawPlaintext.copyOf()
+    val frame: FrameV2 get() = deepCopyFrame(rawFrame)
+
     val createdAtEpochSeconds: Long get() = identity.createdAtEpochSeconds
     val messageNonce: ByteArray get() = identity.messageNonce
 
     override fun equals(other: Any?): Boolean {
         if (this === other) return true
         if (other !is PolicyCheckedOpenedMessage) return false
-        return senderNodeId.contentEquals(other.senderNodeId) &&
+        return rawSenderNodeId.contentEquals(other.rawSenderNodeId) &&
             identity == other.identity &&
-            powNonce.contentEquals(other.powNonce) &&
+            rawPowNonce.contentEquals(other.rawPowNonce) &&
             priority == other.priority &&
-            plaintext.contentEquals(other.plaintext) &&
-            frame == other.frame
+            rawPlaintext.contentEquals(other.rawPlaintext) &&
+            rawFrame == other.rawFrame
     }
 
     override fun hashCode(): Int {
-        var result = senderNodeId.contentHashCode()
+        var result = rawSenderNodeId.contentHashCode()
         result = 31 * result + identity.hashCode()
-        result = 31 * result + powNonce.contentHashCode()
+        result = 31 * result + rawPowNonce.contentHashCode()
         result = 31 * result + priority.hashCode()
-        result = 31 * result + plaintext.contentHashCode()
-        result = 31 * result + frame.hashCode()
+        result = 31 * result + rawPlaintext.contentHashCode()
+        result = 31 * result + rawFrame.hashCode()
         return result
+    }
+
+    companion object {
+        private fun deepCopyFrame(frame: FrameV2): FrameV2 = FrameV2(
+            type = frame.type,
+            msgId = frame.msgId.copyOf(),
+            routingTag = frame.routingTag.copyOf(),
+            ttl = frame.ttl,
+            hopCount = frame.hopCount,
+            flags = frame.flags,
+            payload = frame.payload.copyOf()
+        )
     }
 }
 
