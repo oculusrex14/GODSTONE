@@ -818,7 +818,7 @@ final class RouterTests: XCTestCase {
 /// gate in `Router.ingest` without touching sqlite3.
 private final class FailingStore: MessageStore {
     func persist(_ frame: FrameV2, receivedFrom: Data) -> PersistResult { .failedStorage }
-    func enqueueDirectOutbound(_ frame: FrameV2, expectedRecipient: Data) -> OutboundEnqueueResult { .storageFailure }
+    func enqueueDirectOutbound(_ frame: FrameV2, expectedRecipient: Data, localOriginNodeId: Data) -> OutboundEnqueueResult { .storageFailure }
     func allHeldOrderedByPriority() -> [FrameV2] { [] }
     func allHeldMsgIds() -> [Data] { [] }
     func forEachHeldOrderedByPriority(_ visit: (FrameV2) -> Bool) {}
@@ -845,8 +845,8 @@ private final class FailThenSucceedStore: MessageStore {
         return backing.persist(frame, receivedFrom: receivedFrom)   // retry: held
     }
 
-    func enqueueDirectOutbound(_ frame: FrameV2, expectedRecipient: Data) -> OutboundEnqueueResult {
-        backing.enqueueDirectOutbound(frame, expectedRecipient: expectedRecipient)
+    func enqueueDirectOutbound(_ frame: FrameV2, expectedRecipient: Data, localOriginNodeId: Data) -> OutboundEnqueueResult {
+        backing.enqueueDirectOutbound(frame, expectedRecipient: expectedRecipient, localOriginNodeId: localOriginNodeId)
     }
 
     func allHeldOrderedByPriority() -> [FrameV2] { backing.allHeldOrderedByPriority() }

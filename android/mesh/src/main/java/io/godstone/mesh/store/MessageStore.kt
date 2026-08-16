@@ -25,27 +25,29 @@ import io.godstone.mesh.wire.v2.TypeV2
 import java.security.SecureRandom
 
 /**
- * Outcome of an atomic DIRECT outbound enqueue operation (C6.6).
+ * Outcome of an atomic DIRECT outbound enqueue operation (C6.6 / C6.6.1).
  *
  * Commits canonical FrameV2 durable hold in `held_frames` and initial
  * `delivery_state` record in ONE transaction on the underlying database connection.
  */
 sealed interface OutboundEnqueueResult {
     /** A new DIRECT message was atomically persisted in held_frames and delivery_state (QUEUED_DURABLY). */
-    data object Created : OutboundEnqueueResult
-    /** An idempotent retry of the SAME logical message with matching SINGLE_RECIPIENT binding. */
-    data object AlreadyQueuedSameBinding : OutboundEnqueueResult
+    data class Created(val canonicalFrame: FrameV2) : OutboundEnqueueResult
+    /** An idempotent retry of the SAME logical message with matching SINGLE_RECIPIENT binding and exact canonical frame. */
+    data class AlreadyQueuedSameBinding(val canonicalFrame: FrameV2) : OutboundEnqueueResult
+    /** A held frame exists with matching msg_id but its fields/content differ from requested frame. */
+    data object CanonicalFrameMismatch : OutboundEnqueueResult
     /** The new frame was evicted during capacity enforcement; transaction rolled back, 0 rows added. */
     data object RejectedCapacity : OutboundEnqueueResult
     /** A delivery record exists with a DIFFERENT recipient or ack mode; transaction rolled back. */
     data object ConflictRecipient : OutboundEnqueueResult
     /** The delivery record is already in a terminal state (ACKED, EXPIRED, CANCELLED); transaction rolled back. */
     data object RejectedTerminalState : OutboundEnqueueResult
-    /** Pre-existing state was inconsistent (held without delivery, or delivery without held, or corrupt); transaction rolled back. */
+    /** Pre-existing state was inconsistent (held without delivery, delivery without held, wrong provenance, or corrupt); transaction rolled back. */
     data object InconsistentState : OutboundEnqueueResult
     /** A real SQL / IO failure occurred during the transaction; rolled back. */
     data object StorageFailure : OutboundEnqueueResult
-    /** The frame or recipient violates DIRECT policy / length / flags before SQL. */
+    /** The frame, recipient, or localOriginNodeId violates DIRECT policy / length / flags before SQL. */
     data object InvalidArgument : OutboundEnqueueResult
 }
 
@@ -110,21 +112,23 @@ interface MessageStore {
     suspend fun persist(frame: FrameV2, receivedFrom: ByteArray): PersistResult
 
     /**
-     * Atomically enqueue a canonical DIRECT outbound [frame] for [expectedRecipient] (C6.6).
+     * Atomically enqueue a canonical DIRECT outbound [frame] for [expectedRecipient]
+     * originating from [localOriginNodeId] (C6.6 / C6.6.1).
      *
      * In ONE transaction:
-     * - Inserts [frame] into held_frames;
+     * - Inserts [frame] into held_frames with received_from = [localOriginNodeId];
      * - Enforces bounded capacity;
-     * - Verifies [frame] survived capacity enforcement;
+     * - Verifies exact canonical [frame] survived capacity enforcement;
      * - Inserts delivery_state with state QUEUED_DURABLY, ackMode SINGLE_RECIPIENT, and [expectedRecipient];
      * - Commits only if all succeed.
      *
      * Validates DIRECT policy (type == MESSAGE, priority == DIRECT, SEALED present, HAS_POW absent,
-     * 16-byte msg_id, 16-byte expectedRecipient) before transaction.
+     * 16-byte msg_id, 16-byte expectedRecipient, 16-byte localOriginNodeId) before transaction.
      */
     suspend fun enqueueDirectOutbound(
         frame: FrameV2,
-        expectedRecipient: ByteArray
+        expectedRecipient: ByteArray,
+        localOriginNodeId: ByteArray,
     ): OutboundEnqueueResult
 
     /** All held frames, SOS-first then by priority and recency. */
@@ -243,6 +247,10 @@ internal object StoreSchema {
      *  confirms the row survived eviction. Bind: (1) msg_id. */
     fun containsSql(): String =
         "SELECT 1 FROM $TABLE WHERE $COL_MSG_ID = ? LIMIT 1"
+
+    /** Read the exact held frame row for [msg_id]. Bind: (1) msg_id. */
+    fun readHeldSql(): String =
+        "SELECT $COL_TYPE, $COL_MSG_ID, $COL_ROUTING_TAG, $COL_TTL, $COL_HOP_COUNT, $COL_FLAGS, $COL_PAYLOAD, $COL_RECEIVED_FROM, $COL_RECEIVED_AT FROM $TABLE WHERE $COL_MSG_ID = ?"
 
     // ------------------------------------------------------------------
     // Stage 4C.1 / C6.1 -- delivery_state table (byte-identical cross-platform).
@@ -417,7 +425,13 @@ internal class StoreRow(
     val hopCount: Int,
     val flags: Int,
     val payload: ByteArray,
+    receivedFrom: ByteArray = ByteArray(0),
+    val receivedAt: Long = 0L,
 ) {
+    private val _receivedFrom: ByteArray = receivedFrom.copyOf()
+    val receivedFrom: ByteArray
+        get() = _receivedFrom.copyOf()
+
     /** Resolve to a FrameV2, or null if the type code is not a known TypeV2. */
     fun toFrame(): FrameV2? {
         val type = TypeV2.from(typeCode.toByte()) ?: return null
@@ -439,6 +453,9 @@ internal interface StoreDb {
 
     /** True iff a row with [msgId] is present. Used for the final-presence check (B2/B3). */
     fun contains(msgId: ByteArray): Boolean
+
+    /** Read the exact held frame row for [msgId], or null if absent. */
+    fun readHeld(msgId: ByteArray): StoreRow?
 
     /** Total stored bytes (payloads + per-row overhead). */
     fun heldBytes(): Long
@@ -631,32 +648,35 @@ class SqliteMessageStore internal constructor(
     override suspend fun enqueueDirectOutbound(
         frame: FrameV2,
         expectedRecipient: ByteArray,
+        localOriginNodeId: ByteArray,
     ): OutboundEnqueueResult =
-        enqueueDirectOutboundAtWithFault(frame, expectedRecipient, System.currentTimeMillis(), faultInjector)
+        enqueueDirectOutboundAtWithFault(frame, expectedRecipient, localOriginNodeId, System.currentTimeMillis(), faultInjector)
 
     /**
-     * Atomic outbound DIRECT enqueue with explicit received_at and fault injection (C6.6).
+     * Atomic outbound DIRECT enqueue with explicit received_at and fault injection (C6.6 / C6.6.1).
      *
      * In ONE transaction:
      * 1. Inspects existing delivery_state and held_frames presence.
      * 2. Checks consistency:
-     *    - If delivery row exists: validates binding, terminal state, and held frame presence.
+     *    - If delivery row exists: validates binding, terminal state, local provenance, and canonical frame equality.
      *    - If held exists without delivery row: fails closed as InconsistentState.
      * 3. Fresh insert:
-     *    - Inserts frame into held_frames;
+     *    - Inserts frame into held_frames with received_from = [localOriginNodeId];
      *    - Enforces hard capacity (evicts non-SOS prefix);
-     *    - Proves THIS frame survived capacity enforcement;
+     *    - Reads back the exact persisted frame and proves it survived capacity enforcement and matches authored frame;
      *    - Inserts initial delivery_state (QUEUED_DURABLY, SINGLE_RECIPIENT, expectedRecipient).
      * 4. Commits all operations together. Any exception rolls back all changes.
      */
     internal suspend fun enqueueDirectOutboundAtWithFault(
         frame: FrameV2,
         expectedRecipient: ByteArray,
+        localOriginNodeId: ByteArray,
         receivedAt: Long,
         fault: ((String) -> Unit)?,
     ): OutboundEnqueueResult {
         if (frame.msgId.size != 16) return OutboundEnqueueResult.InvalidArgument
         if (expectedRecipient.size != 16) return OutboundEnqueueResult.InvalidArgument
+        if (localOriginNodeId.size != 16) return OutboundEnqueueResult.InvalidArgument
         if (frame.type != TypeV2.MESSAGE) return OutboundEnqueueResult.InvalidArgument
         val prio = Priority.fromFlagsStrict(frame.flags) ?: return OutboundEnqueueResult.InvalidArgument
         if (prio != Priority.DIRECT) return OutboundEnqueueResult.InvalidArgument
@@ -666,7 +686,7 @@ class SqliteMessageStore internal constructor(
         return try {
             engine.inTransaction { db ->
                 val existingDelivery = db.readDelivery(frame.msgId)
-                val hasHeld = db.contains(frame.msgId)
+                val heldRow = db.readHeld(frame.msgId)
 
                 if (existingDelivery != null) {
                     val state = DeliveryState.fromPersistedCode(existingDelivery.state)
@@ -674,7 +694,12 @@ class SqliteMessageStore internal constructor(
                     if (state == null || ackMode == null || existingDelivery.expectedRecipient?.size != 16) {
                         return@inTransaction OutboundEnqueueResult.InconsistentState
                     }
-                    if (!hasHeld) {
+                    if (heldRow == null) {
+                        return@inTransaction OutboundEnqueueResult.InconsistentState
+                    }
+                    val heldFrame = heldRow.toFrame()
+                        ?: return@inTransaction OutboundEnqueueResult.InconsistentState
+                    if (!heldRow.receivedFrom.contentEquals(localOriginNodeId)) {
                         return@inTransaction OutboundEnqueueResult.InconsistentState
                     }
                     if (state.isTerminal) {
@@ -685,14 +710,17 @@ class SqliteMessageStore internal constructor(
                     ) {
                         return@inTransaction OutboundEnqueueResult.ConflictRecipient
                     }
-                    return@inTransaction OutboundEnqueueResult.AlreadyQueuedSameBinding
+                    if (heldFrame != frame) {
+                        return@inTransaction OutboundEnqueueResult.CanonicalFrameMismatch
+                    }
+                    return@inTransaction OutboundEnqueueResult.AlreadyQueuedSameBinding(heldFrame)
                 }
 
-                if (hasHeld) {
+                if (heldRow != null) {
                     return@inTransaction OutboundEnqueueResult.InconsistentState
                 }
 
-                val rowId = db.insert(frame, receivedFrom = frame.msgId, receivedAt = receivedAt)
+                val rowId = db.insert(frame, receivedFrom = localOriginNodeId, receivedAt = receivedAt)
                 if (rowId == -1L) {
                     return@inTransaction OutboundEnqueueResult.InconsistentState
                 }
@@ -706,8 +734,10 @@ class SqliteMessageStore internal constructor(
 
                 fault?.invoke("after_evict")
 
-                if (!db.contains(frame.msgId)) {
-                    throw DirectCapacityEvictedException()
+                val persistedRow = db.readHeld(frame.msgId) ?: throw DirectCapacityEvictedException()
+                val persistedFrame = persistedRow.toFrame()
+                if (persistedFrame == null || persistedFrame != frame || !persistedRow.receivedFrom.contentEquals(localOriginNodeId)) {
+                    throw IllegalStateException("persisted held frame mismatch on fresh insert")
                 }
 
                 fault?.invoke("before_delivery_insert")
@@ -724,7 +754,7 @@ class SqliteMessageStore internal constructor(
 
                 fault?.invoke("after_delivery_insert")
 
-                OutboundEnqueueResult.Created
+                OutboundEnqueueResult.Created(persistedFrame)
             }
         } catch (e: DirectCapacityEvictedException) {
             OutboundEnqueueResult.RejectedCapacity
@@ -817,6 +847,22 @@ internal class SqlcipherStoreDb(ctx: Context) : StoreDb {
         helper.readableDatabase.rawQuery(
             StoreSchema.containsSql(), arrayOf(msgId)
         ).use { it.moveToFirst() }
+
+    override fun readHeld(msgId: ByteArray): StoreRow? =
+        helper.readableDatabase.rawQuery(StoreSchema.readHeldSql(), arrayOf(msgId)).use { c ->
+            if (!c.moveToFirst()) null
+            else StoreRow(
+                typeCode = c.getInt(0),
+                msgId = c.getBlob(1),
+                routingTag = c.getBlob(2),
+                ttl = c.getInt(3),
+                hopCount = c.getInt(4),
+                flags = c.getInt(5),
+                payload = c.getBlob(6),
+                receivedFrom = c.getBlob(7),
+                receivedAt = c.getLong(8),
+            )
+        }
 
     override fun heldBytes(): Long =
         helper.readableDatabase.rawQuery(StoreSchema.heldBytesSql(), null).use { c ->
@@ -1042,7 +1088,19 @@ internal class InMemoryMessageStore(
         override fun hashCode(): Int = bytes.contentHashCode()
     }
 
-    private data class Held(val frame: FrameV2, val receivedAt: Long)
+    private data class Held(val frame: FrameV2, val receivedFrom: ByteArray, val receivedAt: Long) {
+        override fun equals(other: Any?): Boolean {
+            if (this === other) return true
+            if (other !is Held) return false
+            return frame == other.frame && receivedFrom.contentEquals(other.receivedFrom) && receivedAt == other.receivedAt
+        }
+        override fun hashCode(): Int {
+            var result = frame.hashCode()
+            result = 31 * result + receivedFrom.contentHashCode()
+            result = 31 * result + receivedAt.hashCode()
+            return result
+        }
+    }
 
     private val held = LinkedHashMap<BytesKey, Held>()
     private val deliveryRows = LinkedHashMap<BytesKey, DeliveryRow>()
@@ -1052,7 +1110,7 @@ internal class InMemoryMessageStore(
     override suspend fun persist(frame: FrameV2, receivedFrom: ByteArray): PersistResult {
         val key = BytesKey(frame.msgId)
         val isNew = !held.containsKey(key)
-        if (isNew) held[key] = Held(frame, System.currentTimeMillis())
+        if (isNew) held[key] = Held(frame, receivedFrom.copyOf(), System.currentTimeMillis())
         if (held.values.sumOf { bytesOf(it.frame) } > maxBytes) evictUntilUnderCap()
         return when {
             held.containsKey(key) && isNew -> PersistResult.HELD_NEW
@@ -1064,9 +1122,11 @@ internal class InMemoryMessageStore(
     override suspend fun enqueueDirectOutbound(
         frame: FrameV2,
         expectedRecipient: ByteArray,
+        localOriginNodeId: ByteArray,
     ): OutboundEnqueueResult {
         if (frame.msgId.size != 16) return OutboundEnqueueResult.InvalidArgument
         if (expectedRecipient.size != 16) return OutboundEnqueueResult.InvalidArgument
+        if (localOriginNodeId.size != 16) return OutboundEnqueueResult.InvalidArgument
         if (frame.type != TypeV2.MESSAGE) return OutboundEnqueueResult.InvalidArgument
         val prio = Priority.fromFlagsStrict(frame.flags) ?: return OutboundEnqueueResult.InvalidArgument
         if (prio != Priority.DIRECT) return OutboundEnqueueResult.InvalidArgument
@@ -1074,7 +1134,7 @@ internal class InMemoryMessageStore(
         if ((frame.flags and FrameV2.HAS_POW) != 0) return OutboundEnqueueResult.InvalidArgument
 
         val key = BytesKey(frame.msgId)
-        val hasHeld = held.containsKey(key)
+        val heldEntry = held[key]
         val deliveryRow = deliveryRows[key]
 
         if (deliveryRow != null) {
@@ -1083,7 +1143,10 @@ internal class InMemoryMessageStore(
             if (state == null || ackMode == null || deliveryRow.expectedRecipient?.size != 16) {
                 return OutboundEnqueueResult.InconsistentState
             }
-            if (!hasHeld) {
+            if (heldEntry == null) {
+                return OutboundEnqueueResult.InconsistentState
+            }
+            if (!heldEntry.receivedFrom.contentEquals(localOriginNodeId)) {
                 return OutboundEnqueueResult.InconsistentState
             }
             if (state.isTerminal) {
@@ -1094,24 +1157,34 @@ internal class InMemoryMessageStore(
             ) {
                 return OutboundEnqueueResult.ConflictRecipient
             }
-            return OutboundEnqueueResult.AlreadyQueuedSameBinding
+            if (heldEntry.frame != frame) {
+                return OutboundEnqueueResult.CanonicalFrameMismatch
+            }
+            return OutboundEnqueueResult.AlreadyQueuedSameBinding(heldEntry.frame)
         }
 
-        if (hasHeld) {
+        if (heldEntry != null) {
             return OutboundEnqueueResult.InconsistentState
         }
 
         val backupHeld = LinkedHashMap(held)
         val now = System.currentTimeMillis()
-        held[key] = Held(frame, now)
+        held[key] = Held(frame, localOriginNodeId.copyOf(), now)
         if (held.values.sumOf { bytesOf(it.frame) } > maxBytes) {
             evictUntilUnderCap()
         }
 
-        if (!held.containsKey(key)) {
+        val persisted = held[key]
+        if (persisted == null) {
             held.clear()
             held.putAll(backupHeld)
             return OutboundEnqueueResult.RejectedCapacity
+        }
+
+        if (persisted.frame != frame || !persisted.receivedFrom.contentEquals(localOriginNodeId)) {
+            held.clear()
+            held.putAll(backupHeld)
+            return OutboundEnqueueResult.InconsistentState
         }
 
         deliveryRows[key] = DeliveryRow(
@@ -1119,7 +1192,7 @@ internal class InMemoryMessageStore(
             AckMode.SINGLE_RECIPIENT.code,
             expectedRecipient.copyOf()
         )
-        return OutboundEnqueueResult.Created
+        return OutboundEnqueueResult.Created(persisted.frame)
     }
 
     fun readDeliveryRow(msgId: ByteArray): DeliveryRow? = deliveryRows[BytesKey(msgId)]

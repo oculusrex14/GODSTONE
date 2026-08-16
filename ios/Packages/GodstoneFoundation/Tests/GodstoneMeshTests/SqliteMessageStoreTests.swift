@@ -478,6 +478,10 @@ final class SqliteMessageStoreTests: XCTestCase {
         Data((0..<16).map { UInt8(($0 + Int(seed)) & 0xFF) })
     }
 
+    private func localNode(_ seed: UInt8 = 0x10) -> Data {
+        Data((0..<16).map { UInt8(($0 + Int(seed)) & 0xFF) })
+    }
+
     private func directFrame(
         _ seed: UInt8,
         payloadSize: Int = 64,
@@ -509,9 +513,10 @@ final class SqliteMessageStoreTests: XCTestCase {
         _ = open(maxBytes: 4096)
         let f = directFrame(1, payloadSize: 100)
         let rec = recipient(1)
+        let origin = localNode(1)
 
-        let result = store.enqueueDirectOutbound(f, expectedRecipient: rec)
-        XCTAssertEqual(result, .created)
+        let result = store.enqueueDirectOutbound(f, expectedRecipient: rec, localOriginNodeId: origin)
+        XCTAssertEqual(result, .created(f))
 
         XCTAssertTrue(containsId(heldIds(), f.msgId))
         guard let d = readDeliveryRow(f.msgId) else {
@@ -529,13 +534,14 @@ final class SqliteMessageStoreTests: XCTestCase {
         _ = open(maxBytes: 4096)
         let f = directFrame(1, payloadSize: 100)
         let rec = recipient(1)
+        let origin = localNode(1)
 
         let fault = { (phase: String, db: OpaquePointer?) throws -> Void in
             if phase == "after_held_insert" {
                 throw InjectedFault()
             }
         }
-        let result = store.enqueueDirectOutboundAtWithFault(f, expectedRecipient: rec, receivedAt: 100, fault: fault)
+        let result = store.enqueueDirectOutboundAtWithFault(f, expectedRecipient: rec, localOriginNodeId: origin, receivedAt: 100, fault: fault)
         XCTAssertEqual(result, OutboundEnqueueResult.storageFailure)
 
         XCTAssertFalse(containsId(heldIds(), f.msgId))
@@ -551,13 +557,14 @@ final class SqliteMessageStoreTests: XCTestCase {
 
         let f = directFrame(3, payloadSize: 400)
         let rec = recipient(3)
+        let origin = localNode(1)
 
         let fault = { (phase: String, db: OpaquePointer?) throws -> Void in
             if phase == "after_evict" {
                 throw InjectedFault()
             }
         }
-        let result = store.enqueueDirectOutboundAtWithFault(f, expectedRecipient: rec, receivedAt: 300, fault: fault)
+        let result = store.enqueueDirectOutboundAtWithFault(f, expectedRecipient: rec, localOriginNodeId: origin, receivedAt: 300, fault: fault)
         XCTAssertEqual(result, OutboundEnqueueResult.storageFailure)
 
         XCTAssertEqual(bytes(), bytesBefore)
@@ -572,13 +579,14 @@ final class SqliteMessageStoreTests: XCTestCase {
         _ = open(maxBytes: 4096)
         let f = directFrame(1, payloadSize: 100)
         let rec = recipient(1)
+        let origin = localNode(1)
 
         let fault = { (phase: String, db: OpaquePointer?) throws -> Void in
             if phase == "before_delivery_insert" {
                 throw InjectedFault()
             }
         }
-        let result = store.enqueueDirectOutboundAtWithFault(f, expectedRecipient: rec, receivedAt: 100, fault: fault)
+        let result = store.enqueueDirectOutboundAtWithFault(f, expectedRecipient: rec, localOriginNodeId: origin, receivedAt: 100, fault: fault)
         XCTAssertEqual(result, OutboundEnqueueResult.storageFailure)
 
         XCTAssertFalse(containsId(heldIds(), f.msgId))
@@ -589,13 +597,14 @@ final class SqliteMessageStoreTests: XCTestCase {
         _ = open(maxBytes: 4096)
         let f = directFrame(1, payloadSize: 100)
         let rec = recipient(1)
+        let origin = localNode(1)
 
         let fault = { (phase: String, db: OpaquePointer?) throws -> Void in
             if phase == "after_delivery_insert" {
                 throw InjectedFault()
             }
         }
-        let result = store.enqueueDirectOutboundAtWithFault(f, expectedRecipient: rec, receivedAt: 100, fault: fault)
+        let result = store.enqueueDirectOutboundAtWithFault(f, expectedRecipient: rec, localOriginNodeId: origin, receivedAt: 100, fault: fault)
         XCTAssertEqual(result, OutboundEnqueueResult.storageFailure)
 
         XCTAssertFalse(containsId(heldIds(), f.msgId))
@@ -606,8 +615,9 @@ final class SqliteMessageStoreTests: XCTestCase {
         _ = open(maxBytes: 200)
         let f = directFrame(1, payloadSize: 250)
         let rec = recipient(1)
+        let origin = localNode(1)
 
-        let result = store.enqueueDirectOutbound(f, expectedRecipient: rec)
+        let result = store.enqueueDirectOutbound(f, expectedRecipient: rec, localOriginNodeId: origin)
         XCTAssertEqual(result, .rejectedCapacity)
 
         XCTAssertFalse(containsId(heldIds(), f.msgId))
@@ -619,12 +629,22 @@ final class SqliteMessageStoreTests: XCTestCase {
         _ = open(maxBytes: 4096)
         let f = directFrame(1, payloadSize: 100)
         let rec = recipient(1)
+        let origin = localNode(1)
 
-        let r1 = store.enqueueDirectOutbound(f, expectedRecipient: rec)
-        XCTAssertEqual(r1, .created)
+        let r1 = store.enqueueDirectOutbound(f, expectedRecipient: rec, localOriginNodeId: origin)
+        XCTAssertEqual(r1, .created(f))
 
-        let r2 = store.enqueueDirectOutbound(f, expectedRecipient: rec)
-        XCTAssertEqual(r2, .alreadyQueuedSameBinding)
+        let f2 = FrameV2(
+            type: f.type,
+            msgId: f.msgId,
+            routingTag: f.routingTag,
+            ttl: f.ttl,
+            hopCount: f.hopCount,
+            flags: f.flags,
+            payload: f.payload
+        )
+        let r2 = store.enqueueDirectOutbound(f2, expectedRecipient: rec, localOriginNodeId: origin)
+        XCTAssertEqual(r2, .alreadyQueuedSameBinding(f))
 
         XCTAssertEqual(heldIds().count, 1)
         guard let d = readDeliveryRow(f.msgId) else {
@@ -635,16 +655,156 @@ final class SqliteMessageStoreTests: XCTestCase {
         XCTAssertEqual(d.expectedRecipient, rec)
     }
 
+    func testC661EnqueueDirectOutboundSameMsgIdDifferentPayloadFailsClosedWithCanonicalFrameMismatch() {
+        _ = open(maxBytes: 4096)
+        let f = directFrame(1, payloadSize: 100)
+        let rec = recipient(1)
+        let origin = localNode(1)
+
+        let r1 = store.enqueueDirectOutbound(f, expectedRecipient: rec, localOriginNodeId: origin)
+        XCTAssertEqual(r1, .created(f))
+
+        let fDiffPayload = FrameV2(
+            type: f.type,
+            msgId: f.msgId,
+            routingTag: f.routingTag,
+            ttl: f.ttl,
+            hopCount: f.hopCount,
+            flags: f.flags,
+            payload: Data(repeating: 0x55, count: 120)
+        )
+        let r2 = store.enqueueDirectOutbound(fDiffPayload, expectedRecipient: rec, localOriginNodeId: origin)
+        XCTAssertEqual(r2, .canonicalFrameMismatch)
+    }
+
+    func testC661EnqueueDirectOutboundSameMsgIdDifferentRoutingTagFailsClosedWithCanonicalFrameMismatch() {
+        _ = open(maxBytes: 4096)
+        let f = directFrame(1, payloadSize: 100)
+        let rec = recipient(1)
+        let origin = localNode(1)
+
+        let r1 = store.enqueueDirectOutbound(f, expectedRecipient: rec, localOriginNodeId: origin)
+        XCTAssertEqual(r1, .created(f))
+
+        let fDiffTag = FrameV2(
+            type: f.type,
+            msgId: f.msgId,
+            routingTag: Data([0x77, 0x88, 0x99, 0xAA]),
+            ttl: f.ttl,
+            hopCount: f.hopCount,
+            flags: f.flags,
+            payload: f.payload
+        )
+        let r2 = store.enqueueDirectOutbound(fDiffTag, expectedRecipient: rec, localOriginNodeId: origin)
+        XCTAssertEqual(r2, .canonicalFrameMismatch)
+    }
+
+    func testC661EnqueueDirectOutboundSameMsgIdDifferentValidFlagsFailsClosedWithCanonicalFrameMismatch() {
+        _ = open(maxBytes: 4096)
+        let f = directFrame(1, payloadSize: 100)
+        let rec = recipient(1)
+        let origin = localNode(1)
+
+        let r1 = store.enqueueDirectOutbound(f, expectedRecipient: rec, localOriginNodeId: origin)
+        XCTAssertEqual(r1, .created(f))
+
+        let validModifiedFlags = f.flags | UInt16(FrameV2.Flags.relay_ok)
+        let fDiffFlags = FrameV2(
+            type: f.type,
+            msgId: f.msgId,
+            routingTag: f.routingTag,
+            ttl: f.ttl,
+            hopCount: f.hopCount,
+            flags: validModifiedFlags,
+            payload: f.payload
+        )
+        let r2 = store.enqueueDirectOutbound(fDiffFlags, expectedRecipient: rec, localOriginNodeId: origin)
+        XCTAssertEqual(r2, .canonicalFrameMismatch)
+    }
+
+    func testC661EnqueueDirectOutboundSameMsgIdDifferentTtlFailsClosedWithCanonicalFrameMismatch() {
+        _ = open(maxBytes: 4096)
+        let f = directFrame(1, payloadSize: 100)
+        let rec = recipient(1)
+        let origin = localNode(1)
+
+        let r1 = store.enqueueDirectOutbound(f, expectedRecipient: rec, localOriginNodeId: origin)
+        XCTAssertEqual(r1, .created(f))
+
+        let fDiffTtl = FrameV2(
+            type: f.type,
+            msgId: f.msgId,
+            routingTag: f.routingTag,
+            ttl: 10,
+            hopCount: f.hopCount,
+            flags: f.flags,
+            payload: f.payload
+        )
+        let r2 = store.enqueueDirectOutbound(fDiffTtl, expectedRecipient: rec, localOriginNodeId: origin)
+        XCTAssertEqual(r2, .canonicalFrameMismatch)
+    }
+
+    func testC661EnqueueDirectOutboundSameMsgIdDifferentHopCountFailsClosedWithCanonicalFrameMismatch() {
+        _ = open(maxBytes: 4096)
+        let f = directFrame(1, payloadSize: 100)
+        let rec = recipient(1)
+        let origin = localNode(1)
+
+        let r1 = store.enqueueDirectOutbound(f, expectedRecipient: rec, localOriginNodeId: origin)
+        XCTAssertEqual(r1, .created(f))
+
+        let fDiffHop = FrameV2(
+            type: f.type,
+            msgId: f.msgId,
+            routingTag: f.routingTag,
+            ttl: f.ttl,
+            hopCount: 1,
+            flags: f.flags,
+            payload: f.payload
+        )
+        let r2 = store.enqueueDirectOutbound(fDiffHop, expectedRecipient: rec, localOriginNodeId: origin)
+        XCTAssertEqual(r2, .canonicalFrameMismatch)
+    }
+
+    func testC661EnqueueDirectOutboundLocalOriginProvenanceIsLocalOriginNodeIdNotMsgId() {
+        _ = open(maxBytes: 4096)
+        let f = directFrame(1, payloadSize: 100)
+        let rec = recipient(1)
+        let origin = localNode(2)
+
+        XCTAssertNotEqual(origin, f.msgId, "origin node ID must be distinct from msgId")
+
+        let r1 = store.enqueueDirectOutbound(f, expectedRecipient: rec, localOriginNodeId: origin)
+        XCTAssertEqual(r1, .created(f))
+    }
+
+    func testC661EnqueueDirectOutboundWrongPreexistingProvenanceFailsClosedWithInconsistentState() {
+        _ = open(maxBytes: 4096)
+        let f = directFrame(1, payloadSize: 100)
+        let rec = recipient(1)
+        let originA = localNode(1)
+        let foreignNode = localNode(9)
+
+        // Seed held frame with foreignNode provenance
+        XCTAssertEqual(store.persist(f, receivedFrom: foreignNode), .heldNew)
+        try? store.insertDelivery(f.msgId, stateOrdinal: DeliveryState.queuedDurably.code, ackModeOrdinal: AckMode.singleRecipient.rawValue, expectedRecipient: rec)
+
+        // Retry from local node A
+        let r = store.enqueueDirectOutbound(f, expectedRecipient: rec, localOriginNodeId: originA)
+        XCTAssertEqual(r, .inconsistentState)
+    }
+
     func testC66EnqueueDirectOutboundConflictingRecipientFailsClosedWithConflictRecipient() {
         _ = open(maxBytes: 4096)
         let f = directFrame(1, payloadSize: 100)
         let rec1 = recipient(1)
         let rec2 = recipient(2)
+        let origin = localNode(1)
 
-        let r1 = store.enqueueDirectOutbound(f, expectedRecipient: rec1)
-        XCTAssertEqual(r1, .created)
+        let r1 = store.enqueueDirectOutbound(f, expectedRecipient: rec1, localOriginNodeId: origin)
+        XCTAssertEqual(r1, .created(f))
 
-        let r2 = store.enqueueDirectOutbound(f, expectedRecipient: rec2)
+        let r2 = store.enqueueDirectOutbound(f, expectedRecipient: rec2, localOriginNodeId: origin)
         XCTAssertEqual(r2, .conflictRecipient)
 
         guard let d = readDeliveryRow(f.msgId) else {
@@ -658,13 +818,14 @@ final class SqliteMessageStoreTests: XCTestCase {
         _ = open(maxBytes: 4096)
         let f = directFrame(1, payloadSize: 100)
         let rec = recipient(1)
+        let origin = localNode(1)
 
-        XCTAssertEqual(store.enqueueDirectOutbound(f, expectedRecipient: rec), .created)
+        XCTAssertEqual(store.enqueueDirectOutbound(f, expectedRecipient: rec, localOriginNodeId: origin), .created(f))
 
         let updateSql = "UPDATE delivery_state SET state = \(DeliveryState.acknowledgedByRecipient.code) WHERE msg_id = ?"
         _ = store.execRawUpdate(updateSql, [f.msgId])
 
-        let r2 = store.enqueueDirectOutbound(f, expectedRecipient: rec)
+        let r2 = store.enqueueDirectOutbound(f, expectedRecipient: rec, localOriginNodeId: origin)
         XCTAssertEqual(r2, .rejectedTerminalState)
     }
 
@@ -672,11 +833,12 @@ final class SqliteMessageStoreTests: XCTestCase {
         _ = open(maxBytes: 4096)
         let f = directFrame(1, payloadSize: 100)
         let rec = recipient(1)
+        let origin = localNode(1)
 
-        XCTAssertEqual(store.persist(f, receivedFrom: Data()), .heldNew)
+        XCTAssertEqual(store.persist(f, receivedFrom: origin), .heldNew)
         XCTAssertNil(readDeliveryRow(f.msgId))
 
-        let result = store.enqueueDirectOutbound(f, expectedRecipient: rec)
+        let result = store.enqueueDirectOutbound(f, expectedRecipient: rec, localOriginNodeId: origin)
         XCTAssertEqual(result, .inconsistentState)
     }
 
@@ -684,11 +846,12 @@ final class SqliteMessageStoreTests: XCTestCase {
         _ = open(maxBytes: 4096)
         let f = directFrame(1, payloadSize: 100)
         let rec = recipient(1)
+        let origin = localNode(1)
 
         try? store.insertDelivery(f.msgId, stateOrdinal: DeliveryState.queuedDurably.code, ackModeOrdinal: AckMode.singleRecipient.rawValue, expectedRecipient: rec)
         XCTAssertFalse(containsId(heldIds(), f.msgId))
 
-        let result = store.enqueueDirectOutbound(f, expectedRecipient: rec)
+        let result = store.enqueueDirectOutbound(f, expectedRecipient: rec, localOriginNodeId: origin)
         XCTAssertEqual(result, .inconsistentState)
     }
 
@@ -696,8 +859,9 @@ final class SqliteMessageStoreTests: XCTestCase {
         _ = open(maxBytes: 4096)
         let f = directFrame(1, payloadSize: 100)
         let rec = recipient(1)
+        let origin = localNode(1)
 
-        XCTAssertEqual(store.enqueueDirectOutbound(f, expectedRecipient: rec), .created)
+        XCTAssertEqual(store.enqueueDirectOutbound(f, expectedRecipient: rec, localOriginNodeId: origin), .created(f))
 
         store = nil
         _ = reopen(maxBytes: 4096)
@@ -715,18 +879,22 @@ final class SqliteMessageStoreTests: XCTestCase {
     func testC66EnqueueDirectOutboundPolicyRejectionOnNonDirectOrUnsealedOrInvalidMsgId() {
         _ = open(maxBytes: 4096)
         let rec = recipient(1)
+        let origin = localNode(1)
 
         let groupFrame = directFrame(1, priority: .group)
-        XCTAssertEqual(store.enqueueDirectOutbound(groupFrame, expectedRecipient: rec), .invalidArgument)
+        XCTAssertEqual(store.enqueueDirectOutbound(groupFrame, expectedRecipient: rec, localOriginNodeId: origin), .invalidArgument)
 
         let unsealedFrame = directFrame(2, sealed: false)
-        XCTAssertEqual(store.enqueueDirectOutbound(unsealedFrame, expectedRecipient: rec), .invalidArgument)
+        XCTAssertEqual(store.enqueueDirectOutbound(unsealedFrame, expectedRecipient: rec, localOriginNodeId: origin), .invalidArgument)
 
         let powFrame = directFrame(3, hasPow: true)
-        XCTAssertEqual(store.enqueueDirectOutbound(powFrame, expectedRecipient: rec), .invalidArgument)
+        XCTAssertEqual(store.enqueueDirectOutbound(powFrame, expectedRecipient: rec, localOriginNodeId: origin), .invalidArgument)
 
         let validFrame = directFrame(4)
-        XCTAssertEqual(store.enqueueDirectOutbound(validFrame, expectedRecipient: Data(repeating: 2, count: 15)), .invalidArgument)
+        XCTAssertEqual(store.enqueueDirectOutbound(validFrame, expectedRecipient: Data(repeating: 2, count: 15), localOriginNodeId: origin), .invalidArgument)
+
+        // Invalid localOriginNodeId length
+        XCTAssertEqual(store.enqueueDirectOutbound(validFrame, expectedRecipient: rec, localOriginNodeId: Data(repeating: 2, count: 15)), .invalidArgument)
     }
 
     // MARK: - helpers

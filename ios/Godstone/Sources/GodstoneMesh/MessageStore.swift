@@ -50,26 +50,28 @@ public enum PersistResult: Sendable, Equatable {
     case failedStorage
 }
 
-/// Outcome of an atomic DIRECT outbound enqueue operation (C6.6).
+/// Outcome of an atomic DIRECT outbound enqueue operation (C6.6 / C6.6.1).
 ///
 /// Commits canonical FrameV2 durable hold in `held_frames` and initial
 /// `delivery_state` record in ONE transaction on the underlying SQLite connection.
 public enum OutboundEnqueueResult: Sendable, Equatable {
     /// A new DIRECT message was atomically persisted in held_frames and delivery_state (QUEUED_DURABLY).
-    case created
-    /// An idempotent retry of the SAME logical message with matching SINGLE_RECIPIENT binding.
-    case alreadyQueuedSameBinding
+    case created(FrameV2)
+    /// An idempotent retry of the SAME logical message with matching SINGLE_RECIPIENT binding and exact canonical frame.
+    case alreadyQueuedSameBinding(FrameV2)
+    /// A held frame exists with matching msg_id but its fields/content differ from requested frame.
+    case canonicalFrameMismatch
     /// The new frame was evicted during capacity enforcement; transaction rolled back, 0 rows added.
     case rejectedCapacity
     /// A delivery record exists with a DIFFERENT recipient or ack mode; transaction rolled back.
     case conflictRecipient
     /// The delivery record is already in a terminal state (ACKED, EXPIRED, CANCELLED); transaction rolled back.
     case rejectedTerminalState
-    /// Pre-existing state was inconsistent (held without delivery, or delivery without held, or corrupt); transaction rolled back.
+    /// Pre-existing state was inconsistent (held without delivery, delivery without held, wrong provenance, or corrupt); transaction rolled back.
     case inconsistentState
     /// A real SQL / IO failure occurred during the transaction; rolled back.
     case storageFailure
-    /// The frame or recipient violates DIRECT policy / length / flags before SQL.
+    /// The frame, recipient, or localOriginNodeId violates DIRECT policy / length / flags before SQL.
     case invalidArgument
 }
 
@@ -87,18 +89,19 @@ public protocol MessageStore: AnyObject {
     /// `MessageStore.persist`.
     func persist(_ frame: FrameV2, receivedFrom: Data) -> PersistResult
 
-    /// Atomically enqueue a canonical DIRECT outbound `frame` for `expectedRecipient` (C6.6).
+    /// Atomically enqueue a canonical DIRECT outbound `frame` for `expectedRecipient`
+    /// originating from `localOriginNodeId` (C6.6 / C6.6.1).
     ///
     /// In ONE transaction:
-    /// - Inserts `frame` into held_frames;
+    /// - Inserts `frame` into held_frames with received_from = `localOriginNodeId`;
     /// - Enforces bounded capacity;
-    /// - Verifies `frame` survived capacity enforcement;
+    /// - Verifies exact canonical `frame` survived capacity enforcement;
     /// - Inserts delivery_state with state QUEUED_DURABLY, ackMode SINGLE_RECIPIENT, and `expectedRecipient`;
     /// - Commits only if all succeed.
     ///
     /// Validates DIRECT policy (type == .message, priority == .direct, SEALED present, HAS_POW absent,
-    /// 16-byte msg_id, 16-byte expectedRecipient) before transaction.
-    func enqueueDirectOutbound(_ frame: FrameV2, expectedRecipient: Data) -> OutboundEnqueueResult
+    /// 16-byte msg_id, 16-byte expectedRecipient, 16-byte localOriginNodeId) before transaction.
+    func enqueueDirectOutbound(_ frame: FrameV2, expectedRecipient: Data, localOriginNodeId: Data) -> OutboundEnqueueResult
 
     /// All held frames, SOS-first then by priority and recency.
     func allHeldOrderedByPriority() -> [FrameV2]
@@ -552,11 +555,13 @@ public final class SqliteMessageStore: MessageStore {
 
     public func enqueueDirectOutbound(
         _ frame: FrameV2,
-        expectedRecipient: Data
+        expectedRecipient: Data,
+        localOriginNodeId: Data
     ) -> OutboundEnqueueResult {
         enqueueDirectOutboundAtWithFault(
             frame,
             expectedRecipient: expectedRecipient,
+            localOriginNodeId: localOriginNodeId,
             receivedAt: Int64(Date().timeIntervalSince1970 * 1000),
             fault: nil
         )
@@ -566,27 +571,29 @@ public final class SqliteMessageStore: MessageStore {
         case capacityEvicted
     }
 
-    /// [enqueueDirectOutbound] with an explicit per-call fault seam (C6.6).
+    /// [enqueueDirectOutbound] with an explicit per-call fault seam (C6.6 / C6.6.1).
     ///
     /// In ONE transaction:
     /// 1. Inspects existing delivery_state and held_frames presence.
     /// 2. Checks consistency:
-    ///    - If delivery row exists: validates binding, terminal state, and held frame presence.
+    ///    - If delivery row exists: validates binding, terminal state, local provenance, and canonical frame equality.
     ///    - If held exists without delivery row: fails closed as InconsistentState.
     /// 3. Fresh insert:
-    ///    - Inserts frame into held_frames;
+    ///    - Inserts frame into held_frames with received_from = `localOriginNodeId`;
     ///    - Enforces hard capacity (evicts non-SOS prefix);
-    ///    - Proves THIS frame survived capacity enforcement;
+    ///    - Reads back the exact persisted frame and proves it survived capacity enforcement and matches authored frame;
     ///    - Inserts initial delivery_state (QUEUED_DURABLY, SINGLE_RECIPIENT, expectedRecipient).
     /// 4. Commits all operations together. Any exception rolls back all changes.
     internal func enqueueDirectOutboundAtWithFault(
         _ frame: FrameV2,
         expectedRecipient: Data,
+        localOriginNodeId: Data,
         receivedAt: Int64,
         fault: ((String, OpaquePointer?) throws -> Void)?
     ) -> OutboundEnqueueResult {
         guard frame.msgId.count == 16,
               expectedRecipient.count == 16,
+              localOriginNodeId.count == 16,
               frame.type == .message,
               Priority.fromFlagsStrict(frame.flags) == .direct,
               (frame.flags & FrameV2.Flags.sealed) != 0,
@@ -598,7 +605,7 @@ public final class SqliteMessageStore: MessageStore {
         do {
             return try withTransaction { db in
                 let existingDelivery = try readDeliveryNoLockStrict(db, frame.msgId)
-                let hasHeld = try containsNoLockStrict(db, frame.msgId)
+                let heldRow = try readHeldNoLockStrict(db, frame.msgId)
 
                 if let existing = existingDelivery {
                     guard let state = DeliveryState.fromPersistedCode(existing.state),
@@ -607,7 +614,10 @@ public final class SqliteMessageStore: MessageStore {
                     else {
                         return .inconsistentState
                     }
-                    if !hasHeld {
+                    guard let held = heldRow else {
+                        return .inconsistentState
+                    }
+                    guard held.receivedFrom == localOriginNodeId else {
                         return .inconsistentState
                     }
                     if state.isTerminal {
@@ -616,14 +626,17 @@ public final class SqliteMessageStore: MessageStore {
                     if ackMode != .singleRecipient || expectedRecipient != existing.expectedRecipient {
                         return .conflictRecipient
                     }
-                    return .alreadyQueuedSameBinding
+                    if held.frame != frame {
+                        return .canonicalFrameMismatch
+                    }
+                    return .alreadyQueuedSameBinding(held.frame)
                 }
 
-                if hasHeld {
+                if heldRow != nil {
                     return .inconsistentState
                 }
 
-                let isNew = try insertRowNoLockStrict(db, frame, receivedFrom: frame.msgId, receivedAt: receivedAt)
+                let isNew = try insertRowNoLockStrict(db, frame, receivedFrom: localOriginNodeId, receivedAt: receivedAt)
                 guard isNew else { return .inconsistentState }
 
                 try fault?("after_held_insert", db)
@@ -635,8 +648,11 @@ public final class SqliteMessageStore: MessageStore {
 
                 try fault?("after_evict", db)
 
-                if try !containsNoLockStrict(db, frame.msgId) {
+                guard let persisted = try readHeldNoLockStrict(db, frame.msgId) else {
                     throw DirectEnqueueError.capacityEvicted
+                }
+                guard persisted.frame == frame && persisted.receivedFrom == localOriginNodeId else {
+                    throw StoreError.stepFailed
                 }
 
                 try fault?("before_delivery_insert", db)
@@ -652,7 +668,7 @@ public final class SqliteMessageStore: MessageStore {
 
                 try fault?("after_delivery_insert", db)
 
-                return .created
+                return .created(persisted.frame)
             }
         } catch DirectEnqueueError.capacityEvicted {
             return .rejectedCapacity
@@ -761,6 +777,44 @@ public final class SqliteMessageStore: MessageStore {
         defer { sqlite3_finalize(stmt) }
         bindBlob(stmt, 1, msgId)
         return sqlite3_step(stmt) == SQLITE_ROW
+    }
+
+    /// C6.6.1: strict held-row read. THROWS on a prepare/step error or malformed data.
+    @inline(__always)
+    private func readHeldNoLockStrict(_ db: OpaquePointer, _ msgId: Data) throws -> (frame: FrameV2, receivedFrom: Data, receivedAt: Int64)? {
+        let sql = "SELECT \(StoreSchema.colType), \(StoreSchema.colMsgId), \(StoreSchema.colRoutingTag), " +
+            "\(StoreSchema.colTtl), \(StoreSchema.colHopCount), \(StoreSchema.colFlags), " +
+            "\(StoreSchema.colPayload), \(StoreSchema.colReceivedFrom), \(StoreSchema.colReceivedAt) " +
+            "FROM \(StoreSchema.table) WHERE \(StoreSchema.colMsgId) = ?"
+        var stmt: OpaquePointer?
+        guard sqlite3_prepare_v2(db, sql, -1, &stmt, nil) == SQLITE_OK else {
+            sqlite3_finalize(stmt); throw StoreError.prepareFailed
+        }
+        defer { sqlite3_finalize(stmt) }
+        bindBlob(stmt, 1, msgId)
+        guard sqlite3_step(stmt) == SQLITE_ROW else { return nil }
+        let typeCode = sqlite3_column_int(stmt, 0)
+        let rowMsgId = readBlob(stmt, 1)
+        let routingTag = readBlob(stmt, 2)
+        let ttl = sqlite3_column_int(stmt, 3)
+        let hopCount = sqlite3_column_int(stmt, 4)
+        let flags = sqlite3_column_int(stmt, 5)
+        let payload = readBlob(stmt, 6)
+        let receivedFrom = readBlob(stmt, 7)
+        let receivedAt = sqlite3_column_int64(stmt, 8)
+        let storeRow = StoreRow(
+            typeCode: typeCode,
+            msgId: rowMsgId,
+            routingTag: routingTag,
+            ttl: ttl,
+            hopCount: hopCount,
+            flags: flags,
+            payload: payload
+        )
+        guard let frame = storeRow.toFrame() else {
+            throw StoreError.stepFailed
+        }
+        return (frame: frame, receivedFrom: receivedFrom, receivedAt: receivedAt)
     }
 
     /// C6.4.1-H: strict total-bytes. THROWS on a prepare/step failure. Used
@@ -1151,7 +1205,7 @@ extension SqliteMessageStore: DeliveryStore {}
 /// retained) as the SQL store. A bespoke fake (e.g. `FailingStore`) exercises the
 /// `.failedStorage` path.
 internal final class InMemoryMessageStore: MessageStore {
-    private struct Held { let frame: FrameV2; let receivedAt: Int64 }
+    private struct Held { let frame: FrameV2; let receivedFrom: Data; let receivedAt: Int64 }
     private let lock = NSLock()
     private let maxBytes: Int64
     private var rows: [Data: Held] = [:]
@@ -1163,7 +1217,7 @@ internal final class InMemoryMessageStore: MessageStore {
         lock.lock(); defer { lock.unlock() }
         let isNew = rows[frame.msgId] == nil
         if isNew {
-            rows[frame.msgId] = Held(frame: frame, receivedAt: Int64(Date().timeIntervalSince1970 * 1000))
+            rows[frame.msgId] = Held(frame: frame, receivedFrom: receivedFrom, receivedAt: Int64(Date().timeIntervalSince1970 * 1000))
         }
         if totalBytesNoLock > maxBytes { evictUntilUnderCapNoLock() }
         if rows[frame.msgId] != nil && isNew { return .heldNew }
@@ -1171,9 +1225,10 @@ internal final class InMemoryMessageStore: MessageStore {
         return .rejectedCapacity   // the just-inserted frame was evicted by the cap
     }
 
-    func enqueueDirectOutbound(_ frame: FrameV2, expectedRecipient: Data) -> OutboundEnqueueResult {
+    func enqueueDirectOutbound(_ frame: FrameV2, expectedRecipient: Data, localOriginNodeId: Data) -> OutboundEnqueueResult {
         guard frame.msgId.count == 16,
               expectedRecipient.count == 16,
+              localOriginNodeId.count == 16,
               frame.type == .message,
               Priority.fromFlagsStrict(frame.flags) == .direct,
               (frame.flags & FrameV2.Flags.sealed) != 0,
@@ -1184,7 +1239,7 @@ internal final class InMemoryMessageStore: MessageStore {
 
         lock.lock(); defer { lock.unlock() }
 
-        let hasHeld = rows[frame.msgId] != nil
+        let heldEntry = rows[frame.msgId]
         let existingDelivery = deliveryRows[frame.msgId]
 
         if let existing = existingDelivery {
@@ -1194,7 +1249,10 @@ internal final class InMemoryMessageStore: MessageStore {
             else {
                 return .inconsistentState
             }
-            if !hasHeld {
+            guard let held = heldEntry else {
+                return .inconsistentState
+            }
+            guard held.receivedFrom == localOriginNodeId else {
                 return .inconsistentState
             }
             if state.isTerminal {
@@ -1203,23 +1261,31 @@ internal final class InMemoryMessageStore: MessageStore {
             if ackMode != .singleRecipient || expectedRecipient != existing.expectedRecipient {
                 return .conflictRecipient
             }
-            return .alreadyQueuedSameBinding
+            if held.frame != frame {
+                return .canonicalFrameMismatch
+            }
+            return .alreadyQueuedSameBinding(held.frame)
         }
 
-        if hasHeld {
+        if heldEntry != nil {
             return .inconsistentState
         }
 
         let backupRows = rows
         let now = Int64(Date().timeIntervalSince1970 * 1000)
-        rows[frame.msgId] = Held(frame: frame, receivedAt: now)
+        rows[frame.msgId] = Held(frame: frame, receivedFrom: localOriginNodeId, receivedAt: now)
         if totalBytesNoLock > maxBytes {
             evictUntilUnderCapNoLock()
         }
 
-        if rows[frame.msgId] == nil {
+        guard let persisted = rows[frame.msgId] else {
             rows = backupRows
             return .rejectedCapacity
+        }
+
+        guard persisted.frame == frame && persisted.receivedFrom == localOriginNodeId else {
+            rows = backupRows
+            return .inconsistentState
         }
 
         deliveryRows[frame.msgId] = DeliveryRow(
@@ -1227,7 +1293,7 @@ internal final class InMemoryMessageStore: MessageStore {
             ackMode: AckMode.singleRecipient.rawValue,
             expectedRecipient: expectedRecipient
         )
-        return .created
+        return .created(persisted.frame)
     }
 
     internal func readDeliveryRow(_ msgId: Data) -> DeliveryRow? {

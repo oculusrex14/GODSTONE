@@ -188,7 +188,7 @@ final class MeshNodeDeliveryIntegrationTests: XCTestCase {
     /// persist-failure gate.
     private final class AlwaysFailingStore: MessageStore {
         func persist(_ frame: FrameV2, receivedFrom: Data) -> PersistResult { .failedStorage }
-        func enqueueDirectOutbound(_ frame: FrameV2, expectedRecipient: Data) -> OutboundEnqueueResult { .storageFailure }
+        func enqueueDirectOutbound(_ frame: FrameV2, expectedRecipient: Data, localOriginNodeId: Data) -> OutboundEnqueueResult { .storageFailure }
         func allHeldOrderedByPriority() -> [FrameV2] { [] }
         func allHeldMsgIds() -> [Data] { [] }
         func forEachHeldOrderedByPriority(_ visit: (FrameV2) -> Bool) {}
@@ -458,5 +458,131 @@ final class MeshNodeDeliveryIntegrationTests: XCTestCase {
 
         XCTAssertEqual(result, DirectDispatchResult.queuedLocally)
         XCTAssertEqual(stateOf(node.deliveryTracker, frame.msgId), .queuedDurably)
+    }
+
+    func testC661DispatchDirectTransmitsStoreReturnedCanonicalFrameAndNotCallerModifiedFrame() async throws {
+        let (pubA, _) = realDhKeypair()
+        let a = nodeA()
+        let flags = UInt16(Priority.direct.rawValue << 8) | UInt16(FrameV2.Flags.sealed)
+        let canonicalFrame = FrameV2(
+            type: .message,
+            msgId: msgId(1),
+            routingTag: routingTag,
+            ttl: 12,
+            hopCount: 0,
+            flags: flags,
+            payload: Data(repeating: 0xAA, count: 32)
+        )
+
+        final class CanonicalMockStore: MessageStore {
+            let canonical: FrameV2
+            init(canonical: FrameV2) { self.canonical = canonical }
+            func persist(_ frame: FrameV2, receivedFrom: Data) -> PersistResult { .heldNew }
+            func enqueueDirectOutbound(_ frame: FrameV2, expectedRecipient: Data, localOriginNodeId: Data) -> OutboundEnqueueResult {
+                .created(canonical)
+            }
+            func allHeldOrderedByPriority() -> [FrameV2] { [canonical] }
+            func allHeldMsgIds() -> [Data] { [canonical.msgId] }
+            func forEachHeldOrderedByPriority(_ visit: (FrameV2) -> Bool) { _ = visit(canonical) }
+            func forEachHeldMsgId(_ visit: (Data) -> Bool) { _ = visit(canonical.msgId) }
+            var heldBytes: Int64 { Int64(canonical.payload.count + 64) }
+        }
+
+        let (node, _) = makeNode(store: CanonicalMockStore(canonical: canonicalFrame), resolver: UnresolvedRecipientKeyResolver())
+        node.transportDidConnect(peerId: UUID())
+
+        let callerFrame = FrameV2(
+            type: .message,
+            msgId: msgId(1),
+            routingTag: routingTag,
+            ttl: 12,
+            hopCount: 0,
+            flags: flags,
+            payload: Data(repeating: 0xBB, count: 32)
+        )
+
+        var sentFrame: FrameV2?
+        let result = node.dispatchDirect(callerFrame, expectedRecipient: a) { frame, _ in
+            sentFrame = frame
+            return true
+        }
+
+        XCTAssertEqual(result, DirectDispatchResult.handedToRelays(1))
+        XCTAssertNotNil(sentFrame)
+        XCTAssertEqual(sentFrame, canonicalFrame)
+        XCTAssertEqual(sentFrame?.payload, canonicalFrame.payload)
+        XCTAssertNotEqual(sentFrame?.payload, callerFrame.payload)
+    }
+
+    func testC661DispatchDirectOnCanonicalFrameMismatchAttempts0SendsAndReturnsRejected() async throws {
+        let (pubA, _) = realDhKeypair()
+        let a = nodeA()
+        let (node, _) = makeNode(store: InMemoryMessageStore(), resolver: UnresolvedRecipientKeyResolver())
+        node.transportDidConnect(peerId: UUID())
+
+        let frame1 = try await node.router.authorSealedMessage(
+            plaintext: Data("canonical payload".utf8),
+            recipientNodeId: a,
+            recipientStaticPub: pubA,
+            priority: .direct
+        )
+        let res1 = node.dispatchDirect(frame1, expectedRecipient: a) { _, _ in true }
+        XCTAssertEqual(res1, DirectDispatchResult.handedToRelays(1))
+
+        // Same msgId with different payload
+        let flags = UInt16(Priority.direct.rawValue << 8) | UInt16(FrameV2.Flags.sealed)
+        let frameMismatch = FrameV2(
+            type: .message,
+            msgId: frame1.msgId,
+            routingTag: frame1.routingTag,
+            ttl: frame1.ttl,
+            hopCount: frame1.hopCount,
+            flags: flags,
+            payload: Data(repeating: 0x77, count: frame1.payload.count + 10)
+        )
+
+        var sends = 0
+        let res2 = node.dispatchDirect(frameMismatch, expectedRecipient: a) { _, _ in
+            sends += 1
+            return true
+        }
+
+        XCTAssertEqual(res2, DirectDispatchResult.rejected(.canonicalFrameMismatch))
+        XCTAssertEqual(sends, 0, "0 sends on canonical frame mismatch")
+    }
+
+    func testC661DispatchDirectExactRetryTransmitsPersistedCanonicalFrame() async throws {
+        let (pubA, _) = realDhKeypair()
+        let a = nodeA()
+        let (node, _) = makeNode(store: InMemoryMessageStore(), resolver: UnresolvedRecipientKeyResolver())
+        node.transportDidConnect(peerId: UUID())
+
+        let frame1 = try await node.router.authorSealedMessage(
+            plaintext: Data("test payload".utf8),
+            recipientNodeId: a,
+            recipientStaticPub: pubA,
+            priority: .direct
+        )
+        let res1 = node.dispatchDirect(frame1, expectedRecipient: a) { _, _ in true }
+        XCTAssertEqual(res1, DirectDispatchResult.handedToRelays(1))
+
+        let frameRetry = FrameV2(
+            type: .message,
+            msgId: frame1.msgId,
+            routingTag: frame1.routingTag,
+            ttl: frame1.ttl,
+            hopCount: frame1.hopCount,
+            flags: frame1.flags,
+            payload: frame1.payload
+        )
+
+        var sentFrame: FrameV2?
+        let res2 = node.dispatchDirect(frameRetry, expectedRecipient: a) { frame, _ in
+            sentFrame = frame
+            return true
+        }
+
+        XCTAssertEqual(res2, DirectDispatchResult.handedToRelays(1))
+        XCTAssertEqual(sentFrame, frame1)
     }
 }

@@ -210,7 +210,11 @@ class MeshNodeDeliveryIntegrationTest {
     private class FailingMessageStore : MessageStore {
         override suspend fun persist(frame: FrameV2, receivedFrom: ByteArray): PersistResult =
             PersistResult.FAILED_STORAGE
-        override suspend fun enqueueDirectOutbound(frame: FrameV2, expectedRecipient: ByteArray): OutboundEnqueueResult =
+        override suspend fun enqueueDirectOutbound(
+            frame: FrameV2,
+            expectedRecipient: ByteArray,
+            localOriginNodeId: ByteArray,
+        ): OutboundEnqueueResult =
             OutboundEnqueueResult.StorageFailure
         override suspend fun allHeldOrderedByPriority(): List<FrameV2> = emptyList()
         override suspend fun allHeldMsgIds(): List<ByteArray> = emptyList()
@@ -425,14 +429,12 @@ class MeshNodeDeliveryIntegrationTest {
     }
 
     @Test
-    fun `C6_6 dispatchDirect on successful enqueue with connected peers yields HandedToRelays and transitions to HANDED_TO_RELAY`() = runTest {
+    fun `C6_6 dispatchDirect on success with active peers hands to relays and transitions state`() = runTest {
         val (node, _) = makeNode(InMemoryMessageStore(), UnresolvedRecipientKeyResolver)
         val (pubA, _) = realKeypair()
         val a = nodeA()
-        val peer1 = ByteArray(16) { 0x31 }
-        val peer2 = ByteArray(16) { 0x32 }
-        node.injectPeerForTest(peer1)
-        node.injectPeerForTest(peer2)
+        node.injectPeerForTest(ByteArray(16) { 0x31 })
+        node.injectPeerForTest(ByteArray(16) { 0x32 })
 
         val frame = node.router.authorSealedMessage("test payload".toByteArray(), a, pubA, priority = Priority.DIRECT)
         var sends = 0
@@ -447,7 +449,11 @@ class MeshNodeDeliveryIntegrationTest {
     fun `C6_6 dispatchDirect on atomic enqueue failure attempts 0 sends and yields Rejected`() = runTest {
         val failingStore = object : MessageStore {
             override suspend fun persist(frame: FrameV2, receivedFrom: ByteArray): PersistResult = PersistResult.FAILED_STORAGE
-            override suspend fun enqueueDirectOutbound(frame: FrameV2, expectedRecipient: ByteArray): io.godstone.mesh.store.OutboundEnqueueResult =
+            override suspend fun enqueueDirectOutbound(
+                frame: FrameV2,
+                expectedRecipient: ByteArray,
+                localOriginNodeId: ByteArray,
+            ): io.godstone.mesh.store.OutboundEnqueueResult =
                 io.godstone.mesh.store.OutboundEnqueueResult.StorageFailure
             override suspend fun allHeldOrderedByPriority(): List<FrameV2> = emptyList()
             override suspend fun allHeldMsgIds(): List<ByteArray> = emptyList()
@@ -479,5 +485,109 @@ class MeshNodeDeliveryIntegrationTest {
 
         assertEquals(DirectDispatchResult.QueuedLocally, result)
         assertEquals(DeliveryState.QUEUED_DURABLY, stateOf(node.deliveryTracker, frame.msgId))
+    }
+
+    @Test
+    fun `C6_6_1 dispatchDirect transmits store-returned canonical frame and not caller modified frame`() = runTest {
+        val (pubA, _) = realKeypair()
+        val a = nodeA()
+        val flags = (Priority.DIRECT.code shl 8) or FrameV2.SEALED
+        val canonicalFrame = FrameV2(TypeV2.MESSAGE, msgId(1), routingTag, ttl = 12, hopCount = 0, flags = flags, payload = ByteArray(32) { 0xAA.toByte() })
+
+        val fakeStore = object : MessageStore {
+            override suspend fun persist(frame: FrameV2, receivedFrom: ByteArray): PersistResult = PersistResult.HELD_NEW
+            override suspend fun enqueueDirectOutbound(
+                frame: FrameV2,
+                expectedRecipient: ByteArray,
+                localOriginNodeId: ByteArray,
+            ): OutboundEnqueueResult = OutboundEnqueueResult.Created(canonicalFrame)
+            override suspend fun allHeldOrderedByPriority(): List<FrameV2> = listOf(canonicalFrame)
+            override suspend fun allHeldMsgIds(): List<ByteArray> = listOf(canonicalFrame.msgId)
+            override suspend fun forEachHeldOrderedByPriority(visit: (FrameV2) -> Boolean) { visit(canonicalFrame) }
+            override suspend fun forEachHeldMsgId(visit: (ByteArray) -> Boolean) { visit(canonicalFrame.msgId) }
+        }
+
+        val (node, _) = makeNode(fakeStore, UnresolvedRecipientKeyResolver)
+        node.injectPeerForTest(ByteArray(16) { 0x31 })
+
+        val callerFrame = FrameV2(TypeV2.MESSAGE, msgId(1), routingTag, ttl = 12, hopCount = 0, flags = flags, payload = ByteArray(32) { 0xBB.toByte() })
+        var sentBytes: ByteArray? = null
+
+        val result = node.dispatchDirect(callerFrame, expectedRecipient = a) { _, bytes ->
+            sentBytes = bytes
+            true
+        }
+
+        assertEquals(DirectDispatchResult.HandedToRelays(1), result)
+        assertNotNull(sentBytes)
+        val decoded = FrameV2.decode(sentBytes!!)
+        assertNotNull(decoded)
+        assertEquals(canonicalFrame, decoded)
+        assertTrue(canonicalFrame.payload.contentEquals(decoded!!.payload))
+        assertFalse(callerFrame.payload.contentEquals(decoded.payload))
+    }
+
+    @Test
+    fun `C6_6_1 dispatchDirect on canonical frame mismatch attempts 0 sends and returns Rejected`() = runTest {
+        val (node, _) = makeNode(InMemoryMessageStore(), UnresolvedRecipientKeyResolver)
+        val (pubA, _) = realKeypair()
+        val a = nodeA()
+        node.injectPeerForTest(ByteArray(16) { 0x31 })
+
+        val frame1 = node.router.authorSealedMessage("canonical payload".toByteArray(), a, pubA, priority = Priority.DIRECT)
+        val res1 = node.dispatchDirect(frame1, expectedRecipient = a) { _, _ -> true }
+        assertEquals(DirectDispatchResult.HandedToRelays(1), res1)
+
+        // Same msgId but different payload
+        val flags = (Priority.DIRECT.code shl 8) or FrameV2.SEALED
+        val frameMismatch = FrameV2(
+            TypeV2.MESSAGE,
+            frame1.msgId,
+            frame1.routingTag,
+            ttl = frame1.ttl,
+            hopCount = frame1.hopCount,
+            flags = flags,
+            payload = ByteArray(frame1.payload.size + 10) { 0x77 },
+        )
+
+        var sends = 0
+        val res2 = node.dispatchDirect(frameMismatch, expectedRecipient = a) { _, _ -> sends++; true }
+
+        assertEquals(DirectDispatchResult.Rejected(OutboundEnqueueResult.CanonicalFrameMismatch), res2)
+        assertEquals(0, sends, "0 sends on canonical frame mismatch")
+    }
+
+    @Test
+    fun `C6_6_1 dispatchDirect exact retry transmits persisted canonical frame`() = runTest {
+        val (node, _) = makeNode(InMemoryMessageStore(), UnresolvedRecipientKeyResolver)
+        val (pubA, _) = realKeypair()
+        val a = nodeA()
+        node.injectPeerForTest(ByteArray(16) { 0x31 })
+
+        val frame1 = node.router.authorSealedMessage("test payload".toByteArray(), a, pubA, priority = Priority.DIRECT)
+        val res1 = node.dispatchDirect(frame1, expectedRecipient = a) { _, _ -> true }
+        assertEquals(DirectDispatchResult.HandedToRelays(1), res1)
+
+        // Retry with an independently allocated duplicate frame
+        val frameRetry = FrameV2(
+            TypeV2.MESSAGE,
+            frame1.msgId.copyOf(),
+            frame1.routingTag.copyOf(),
+            ttl = frame1.ttl,
+            hopCount = frame1.hopCount,
+            flags = frame1.flags,
+            payload = frame1.payload.copyOf(),
+        )
+
+        var sentBytes: ByteArray? = null
+        val res2 = node.dispatchDirect(frameRetry, expectedRecipient = a) { _, bytes ->
+            sentBytes = bytes
+            true
+        }
+
+        assertEquals(DirectDispatchResult.HandedToRelays(1), res2)
+        assertNotNull(sentBytes)
+        val decoded = FrameV2.decode(sentBytes!!)
+        assertEquals(frame1, decoded)
     }
 }

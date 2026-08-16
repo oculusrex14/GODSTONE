@@ -103,6 +103,26 @@ CONTROLS: list[tuple[str, str, str]] = [
     ("ios/Godstone/Tests/GodstoneMeshTests/SqliteMessageStoreTests.swift",
      "testC66EnqueueDirectOutboundDeliveryOnlyInconsistencyFailsClosedWithInconsistentState",
      "iOS direct enqueue delivery-only inconsistency -> fail closed"),
+    # --- Android: C6.6.1 canonical frame binding and local provenance controls ---
+    ("android/mesh/src/test/java/io/godstone/mesh/store/SqliteMessageStoreTest.kt",
+     "same msgId different payload fails closed with CanonicalFrameMismatch",
+     "Android direct enqueue payload mismatch -> fail closed"),
+    ("android/mesh/src/test/java/io/godstone/mesh/store/SqliteMessageStoreTest.kt",
+     "same msgId different routingTag fails closed with CanonicalFrameMismatch",
+     "Android direct enqueue routingTag mismatch -> fail closed"),
+    ("android/mesh/src/test/java/io/godstone/mesh/store/SqliteMessageStoreTest.kt",
+     "wrong preexisting provenance fails closed with InconsistentState",
+     "Android direct enqueue wrong provenance -> fail closed"),
+    # --- iOS: C6.6.1 canonical frame binding and local provenance controls ---
+    ("ios/Godstone/Tests/GodstoneMeshTests/SqliteMessageStoreTests.swift",
+     "testC661EnqueueDirectOutboundSameMsgIdDifferentPayloadFailsClosedWithCanonicalFrameMismatch",
+     "iOS direct enqueue payload mismatch -> fail closed"),
+    ("ios/Godstone/Tests/GodstoneMeshTests/SqliteMessageStoreTests.swift",
+     "testC661EnqueueDirectOutboundSameMsgIdDifferentRoutingTagFailsClosedWithCanonicalFrameMismatch",
+     "iOS direct enqueue routingTag mismatch -> fail closed"),
+    ("ios/Godstone/Tests/GodstoneMeshTests/SqliteMessageStoreTests.swift",
+     "testC661EnqueueDirectOutboundWrongPreexistingProvenanceFailsClosedWithInconsistentState",
+     "iOS direct enqueue wrong provenance -> fail closed"),
 ]
 
 

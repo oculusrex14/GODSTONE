@@ -204,18 +204,23 @@ public final class MeshNode {
         expectedRecipient: Data,
         send: (FrameV2, UUID) -> Bool
     ) -> DirectDispatchResult {
-        let enqueueRes = store.enqueueDirectOutbound(frame, expectedRecipient: expectedRecipient)
+        let enqueueRes = store.enqueueDirectOutbound(
+            frame,
+            expectedRecipient: expectedRecipient,
+            localOriginNodeId: identity.nodeId
+        )
+        let canonicalFrame: FrameV2
         switch enqueueRes {
-        case .created, .alreadyQueuedSameBinding:
-            break
+        case .created(let f), .alreadyQueuedSameBinding(let f):
+            canonicalFrame = f
         default:
             return .rejected(enqueueRes)
         }
 
         let handed = currentPeers().reduce(into: 0) { count, peer in
-            if send(frame, peer) {
+            if send(canonicalFrame, peer) {
                 count += 1
-                deliveryTracker.markHandedToRelay(frame.msgId)
+                deliveryTracker.markHandedToRelay(canonicalFrame.msgId)
             }
         }
         return handed == 0 ? .queuedLocally : .handedToRelays(handed)

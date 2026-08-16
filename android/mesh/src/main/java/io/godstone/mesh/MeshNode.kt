@@ -267,19 +267,19 @@ class MeshNode(
         expectedRecipient: ByteArray,
         send: suspend (peerId: ByteArray, bytes: ByteArray) -> Boolean,
     ): DirectDispatchResult {
-        val enqueueRes = store.enqueueDirectOutbound(frame, expectedRecipient)
-        when (enqueueRes) {
-            OutboundEnqueueResult.Created,
-            OutboundEnqueueResult.AlreadyQueuedSameBinding -> Unit
+        val enqueueRes = store.enqueueDirectOutbound(frame, expectedRecipient, identity.nodeId)
+        val canonicalFrame = when (enqueueRes) {
+            is OutboundEnqueueResult.Created -> enqueueRes.canonicalFrame
+            is OutboundEnqueueResult.AlreadyQueuedSameBinding -> enqueueRes.canonicalFrame
             else -> return DirectDispatchResult.Rejected(enqueueRes)
         }
 
-        val bytes = frame.encode()
+        val bytes = canonicalFrame.encode()
         var handed = 0
         for (peerId in knownPeers()) {
             if (send(peerId, bytes)) {
                 handed++
-                deliveryTracker.markHandedToRelay(frame.msgId)
+                deliveryTracker.markHandedToRelay(canonicalFrame.msgId)
             }
         }
         return if (handed == 0) DirectDispatchResult.QueuedLocally

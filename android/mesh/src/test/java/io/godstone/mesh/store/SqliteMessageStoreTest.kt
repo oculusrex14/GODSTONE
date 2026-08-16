@@ -518,14 +518,17 @@ class SqliteMessageStoreTest {
 
     private fun readDelivery(mid: ByteArray): DeliveryRow? = engine?.readDelivery(mid)
 
+    private fun localNode(seed: Byte = 0x10): ByteArray = ByteArray(16) { (seed.toInt() + it).toByte() }
+
     @Test
     fun `C6_6 enqueueDirectOutbound happy path atomically creates held frame and QUEUED_DURABLY single-recipient delivery row`() = runBlocking {
         open(maxBytes = 4096L)
         val f = directFrame(1, payloadSize = 100)
         val rec = recipient(1)
+        val origin = localNode(1)
 
-        val result = store.enqueueDirectOutbound(f, expectedRecipient = rec)
-        assertEquals(OutboundEnqueueResult.Created, result)
+        val result = store.enqueueDirectOutbound(f, expectedRecipient = rec, localOriginNodeId = origin)
+        assertEquals(OutboundEnqueueResult.Created(f), result)
 
         // Verifies both tables have the committed state
         assertTrue(heldIds().containsId(f.msgId), "frame must be present in held_frames")
@@ -534,6 +537,10 @@ class SqliteMessageStoreTest {
         assertEquals(io.godstone.mesh.delivery.DeliveryState.QUEUED_DURABLY.code, d!!.state)
         assertEquals(io.godstone.mesh.delivery.AckMode.SINGLE_RECIPIENT.code, d.ackMode)
         assertTrue(rec.contentEquals(d.expectedRecipient), "expected recipient must match")
+
+        val heldRow = engine?.readHeld(f.msgId)
+        assertNotNull(heldRow)
+        assertTrue(origin.contentEquals(heldRow!!.receivedFrom), "received_from must match localOriginNodeId")
     }
 
     @Test
@@ -541,11 +548,12 @@ class SqliteMessageStoreTest {
         open(maxBytes = 4096L)
         val f = directFrame(1, payloadSize = 100)
         val rec = recipient(1)
+        val origin = localNode(1)
 
         val fault: ((String) -> Unit) = { phase: String ->
             if (phase == "after_held_insert") throw java.sql.SQLException("injected fault after held insert")
         }
-        val result = store.enqueueDirectOutboundAtWithFault(f, rec, receivedAt = 100L, fault = fault)
+        val result = store.enqueueDirectOutboundAtWithFault(f, rec, localOriginNodeId = origin, receivedAt = 100L, fault = fault)
         assertEquals(OutboundEnqueueResult.StorageFailure, result)
 
         // Full rollback: 0 held rows, 0 delivery rows
@@ -564,11 +572,12 @@ class SqliteMessageStoreTest {
 
         val f = directFrame(3, payloadSize = 400)
         val rec = recipient(3)
+        val origin = localNode(1)
 
         val fault: ((String) -> Unit) = { phase: String ->
             if (phase == "after_evict") throw java.sql.SQLException("injected fault after evict")
         }
-        val result = store.enqueueDirectOutboundAtWithFault(f, rec, receivedAt = 300L, fault = fault)
+        val result = store.enqueueDirectOutboundAtWithFault(f, rec, localOriginNodeId = origin, receivedAt = 300L, fault = fault)
         assertEquals(OutboundEnqueueResult.StorageFailure, result)
 
         // Rollback restores evicted rows and creates no new held or delivery rows
@@ -585,11 +594,12 @@ class SqliteMessageStoreTest {
         open(maxBytes = 4096L)
         val f = directFrame(1, payloadSize = 100)
         val rec = recipient(1)
+        val origin = localNode(1)
 
         val fault: ((String) -> Unit) = { phase: String ->
             if (phase == "before_delivery_insert") throw java.sql.SQLException("injected fault before delivery insert")
         }
-        val result = store.enqueueDirectOutboundAtWithFault(f, rec, receivedAt = 100L, fault = fault)
+        val result = store.enqueueDirectOutboundAtWithFault(f, rec, localOriginNodeId = origin, receivedAt = 100L, fault = fault)
         assertEquals(OutboundEnqueueResult.StorageFailure, result)
 
         assertFalse(heldIds().containsId(f.msgId))
@@ -601,11 +611,12 @@ class SqliteMessageStoreTest {
         open(maxBytes = 4096L)
         val f = directFrame(1, payloadSize = 100)
         val rec = recipient(1)
+        val origin = localNode(1)
 
         val fault: ((String) -> Unit) = { phase: String ->
             if (phase == "after_delivery_insert") throw java.sql.SQLException("injected fault after delivery insert")
         }
-        val result = store.enqueueDirectOutboundAtWithFault(f, rec, receivedAt = 100L, fault = fault)
+        val result = store.enqueueDirectOutboundAtWithFault(f, rec, localOriginNodeId = origin, receivedAt = 100L, fault = fault)
         assertEquals(OutboundEnqueueResult.StorageFailure, result)
 
         assertFalse(heldIds().containsId(f.msgId))
@@ -618,8 +629,9 @@ class SqliteMessageStoreTest {
         open(maxBytes = 200L)
         val f = directFrame(1, payloadSize = 250)
         val rec = recipient(1)
+        val origin = localNode(1)
 
-        val result = store.enqueueDirectOutbound(f, expectedRecipient = rec)
+        val result = store.enqueueDirectOutbound(f, expectedRecipient = rec, localOriginNodeId = origin)
         assertEquals(OutboundEnqueueResult.RejectedCapacity, result)
 
         // Neither held frame nor delivery record exists
@@ -633,12 +645,22 @@ class SqliteMessageStoreTest {
         open(maxBytes = 4096L)
         val f = directFrame(1, payloadSize = 100)
         val rec = recipient(1)
+        val origin = localNode(1)
 
-        val r1 = store.enqueueDirectOutbound(f, expectedRecipient = rec)
-        assertEquals(OutboundEnqueueResult.Created, r1)
+        val r1 = store.enqueueDirectOutbound(f, expectedRecipient = rec, localOriginNodeId = origin)
+        assertEquals(OutboundEnqueueResult.Created(f), r1)
 
-        val r2 = store.enqueueDirectOutbound(f, expectedRecipient = rec)
-        assertEquals(OutboundEnqueueResult.AlreadyQueuedSameBinding, r2)
+        val f2 = FrameV2(
+            f.type,
+            f.msgId.copyOf(),
+            f.routingTag.copyOf(),
+            f.ttl,
+            f.hopCount,
+            f.flags,
+            f.payload.copyOf(),
+        )
+        val r2 = store.enqueueDirectOutbound(f2, expectedRecipient = rec, localOriginNodeId = origin)
+        assertEquals(OutboundEnqueueResult.AlreadyQueuedSameBinding(f), r2)
 
         assertEquals(1, heldIds().size)
         val d = readDelivery(f.msgId)
@@ -648,17 +670,134 @@ class SqliteMessageStoreTest {
     }
 
     @Test
+    fun `C6_6_1 enqueueDirectOutbound same msgId different payload fails closed with CanonicalFrameMismatch`() = runBlocking {
+        open(maxBytes = 4096L)
+        val f = directFrame(1, payloadSize = 100)
+        val rec = recipient(1)
+        val origin = localNode(1)
+
+        val r1 = store.enqueueDirectOutbound(f, expectedRecipient = rec, localOriginNodeId = origin)
+        assertEquals(OutboundEnqueueResult.Created(f), r1)
+
+        val fDiffPayload = FrameV2(f.type, f.msgId, f.routingTag, f.ttl, f.hopCount, f.flags, ByteArray(120) { 0x55 })
+        val r2 = store.enqueueDirectOutbound(fDiffPayload, expectedRecipient = rec, localOriginNodeId = origin)
+        assertEquals(OutboundEnqueueResult.CanonicalFrameMismatch, r2)
+
+        val heldRow = engine?.readHeld(f.msgId)
+        assertNotNull(heldRow)
+        assertEquals(f, heldRow!!.toFrame())
+    }
+
+    @Test
+    fun `C6_6_1 enqueueDirectOutbound same msgId different routingTag fails closed with CanonicalFrameMismatch`() = runBlocking {
+        open(maxBytes = 4096L)
+        val f = directFrame(1, payloadSize = 100)
+        val rec = recipient(1)
+        val origin = localNode(1)
+
+        val r1 = store.enqueueDirectOutbound(f, expectedRecipient = rec, localOriginNodeId = origin)
+        assertEquals(OutboundEnqueueResult.Created(f), r1)
+
+        val fDiffTag = FrameV2(f.type, f.msgId, byteArrayOf(0x77, 0x88.toByte()), f.ttl, f.hopCount, f.flags, f.payload)
+        val r2 = store.enqueueDirectOutbound(fDiffTag, expectedRecipient = rec, localOriginNodeId = origin)
+        assertEquals(OutboundEnqueueResult.CanonicalFrameMismatch, r2)
+    }
+
+    @Test
+    fun `C6_6_1 enqueueDirectOutbound same msgId different valid flags fails closed with CanonicalFrameMismatch`() = runBlocking {
+        open(maxBytes = 4096L)
+        val f = directFrame(1, payloadSize = 100)
+        val rec = recipient(1)
+        val origin = localNode(1)
+
+        val r1 = store.enqueueDirectOutbound(f, expectedRecipient = rec, localOriginNodeId = origin)
+        assertEquals(OutboundEnqueueResult.Created(f), r1)
+
+        val validModifiedFlags = f.flags or FrameV2.RELAY_OK
+        val fDiffFlags = FrameV2(f.type, f.msgId, f.routingTag, f.ttl, f.hopCount, validModifiedFlags, f.payload)
+        val r2 = store.enqueueDirectOutbound(fDiffFlags, expectedRecipient = rec, localOriginNodeId = origin)
+        assertEquals(OutboundEnqueueResult.CanonicalFrameMismatch, r2)
+    }
+
+    @Test
+    fun `C6_6_1 enqueueDirectOutbound same msgId different ttl fails closed with CanonicalFrameMismatch`() = runBlocking {
+        open(maxBytes = 4096L)
+        val f = directFrame(1, payloadSize = 100)
+        val rec = recipient(1)
+        val origin = localNode(1)
+
+        val r1 = store.enqueueDirectOutbound(f, expectedRecipient = rec, localOriginNodeId = origin)
+        assertEquals(OutboundEnqueueResult.Created(f), r1)
+
+        val fDiffTtl = FrameV2(f.type, f.msgId, f.routingTag, ttl = 10, hopCount = f.hopCount, flags = f.flags, payload = f.payload)
+        val r2 = store.enqueueDirectOutbound(fDiffTtl, expectedRecipient = rec, localOriginNodeId = origin)
+        assertEquals(OutboundEnqueueResult.CanonicalFrameMismatch, r2)
+    }
+
+    @Test
+    fun `C6_6_1 enqueueDirectOutbound same msgId different hopCount fails closed with CanonicalFrameMismatch`() = runBlocking {
+        open(maxBytes = 4096L)
+        val f = directFrame(1, payloadSize = 100)
+        val rec = recipient(1)
+        val origin = localNode(1)
+
+        val r1 = store.enqueueDirectOutbound(f, expectedRecipient = rec, localOriginNodeId = origin)
+        assertEquals(OutboundEnqueueResult.Created(f), r1)
+
+        val fDiffHop = FrameV2(f.type, f.msgId, f.routingTag, ttl = f.ttl, hopCount = 1, flags = f.flags, payload = f.payload)
+        val r2 = store.enqueueDirectOutbound(fDiffHop, expectedRecipient = rec, localOriginNodeId = origin)
+        assertEquals(OutboundEnqueueResult.CanonicalFrameMismatch, r2)
+    }
+
+    @Test
+    fun `C6_6_1 enqueueDirectOutbound local origin provenance is localOriginNodeId not msgId`() = runBlocking {
+        open(maxBytes = 4096L)
+        val f = directFrame(1, payloadSize = 100)
+        val rec = recipient(1)
+        val origin = localNode(2)
+
+        assertFalse(origin.contentEquals(f.msgId), "origin node ID must be distinct from msgId")
+
+        val r1 = store.enqueueDirectOutbound(f, expectedRecipient = rec, localOriginNodeId = origin)
+        assertEquals(OutboundEnqueueResult.Created(f), r1)
+
+        val heldRow = engine?.readHeld(f.msgId)
+        assertNotNull(heldRow)
+        assertTrue(origin.contentEquals(heldRow!!.receivedFrom), "persisted received_from must equal localOriginNodeId")
+        assertFalse(f.msgId.contentEquals(heldRow.receivedFrom), "persisted received_from must not equal msgId")
+    }
+
+    @Test
+    fun `C6_6_1 enqueueDirectOutbound wrong preexisting provenance fails closed with InconsistentState`() = runBlocking {
+        open(maxBytes = 4096L)
+        val f = directFrame(1, payloadSize = 100)
+        val rec = recipient(1)
+        val originA = localNode(1)
+        val foreignNode = localNode(9)
+
+        // Seed held frame with foreignNode provenance
+        val rowId = engine!!.insert(f, receivedFrom = foreignNode, receivedAt = 100L)
+        assertTrue(rowId != -1L)
+        engine!!.insertDelivery(f.msgId, io.godstone.mesh.delivery.DeliveryState.QUEUED_DURABLY.code, io.godstone.mesh.delivery.AckMode.SINGLE_RECIPIENT.code, rec)
+
+        // Retry from local node A
+        val r = store.enqueueDirectOutbound(f, expectedRecipient = rec, localOriginNodeId = originA)
+        assertEquals(OutboundEnqueueResult.InconsistentState, r)
+    }
+
+    @Test
     fun `C6_6 enqueueDirectOutbound conflicting recipient fails closed with ConflictRecipient`() = runBlocking {
         open(maxBytes = 4096L)
         val f = directFrame(1, payloadSize = 100)
         val rec1 = recipient(1)
         val rec2 = recipient(2)
+        val origin = localNode(1)
 
-        val r1 = store.enqueueDirectOutbound(f, expectedRecipient = rec1)
-        assertEquals(OutboundEnqueueResult.Created, r1)
+        val r1 = store.enqueueDirectOutbound(f, expectedRecipient = rec1, localOriginNodeId = origin)
+        assertEquals(OutboundEnqueueResult.Created(f), r1)
 
         // Retry same frame / msgId but different expected recipient
-        val r2 = store.enqueueDirectOutbound(f, expectedRecipient = rec2)
+        val r2 = store.enqueueDirectOutbound(f, expectedRecipient = rec2, localOriginNodeId = origin)
         assertEquals(OutboundEnqueueResult.ConflictRecipient, r2)
 
         // Historical binding untouched
@@ -672,14 +811,15 @@ class SqliteMessageStoreTest {
         open(maxBytes = 4096L)
         val f = directFrame(1, payloadSize = 100)
         val rec = recipient(1)
+        val origin = localNode(1)
 
-        assertEquals(OutboundEnqueueResult.Created, store.enqueueDirectOutbound(f, expectedRecipient = rec))
+        assertEquals(OutboundEnqueueResult.Created(f), store.enqueueDirectOutbound(f, expectedRecipient = rec, localOriginNodeId = origin))
 
         // Transition delivery state to ACKNOWLEDGED_BY_RECIPIENT (terminal)
         val updateSql = "UPDATE delivery_state SET state = ${io.godstone.mesh.delivery.DeliveryState.ACKNOWLEDGED_BY_RECIPIENT.code} WHERE msg_id = ?"
         engine!!.execDeliveryUpdate(updateSql, arrayOf(f.msgId))
 
-        val r2 = store.enqueueDirectOutbound(f, expectedRecipient = rec)
+        val r2 = store.enqueueDirectOutbound(f, expectedRecipient = rec, localOriginNodeId = origin)
         assertEquals(OutboundEnqueueResult.RejectedTerminalState, r2)
     }
 
@@ -688,12 +828,13 @@ class SqliteMessageStoreTest {
         open(maxBytes = 4096L)
         val f = directFrame(1, payloadSize = 100)
         val rec = recipient(1)
+        val origin = localNode(1)
 
         // Persist frame into held_frames only (no delivery_state row)
-        assertEquals(PersistResult.HELD_NEW, store.persist(f, receivedFrom = ByteArray(0)))
+        assertEquals(PersistResult.HELD_NEW, store.persist(f, receivedFrom = origin))
         assertNull(readDelivery(f.msgId))
 
-        val result = store.enqueueDirectOutbound(f, expectedRecipient = rec)
+        val result = store.enqueueDirectOutbound(f, expectedRecipient = rec, localOriginNodeId = origin)
         assertEquals(OutboundEnqueueResult.InconsistentState, result)
     }
 
@@ -702,12 +843,13 @@ class SqliteMessageStoreTest {
         open(maxBytes = 4096L)
         val f = directFrame(1, payloadSize = 100)
         val rec = recipient(1)
+        val origin = localNode(1)
 
         // Plant delivery row only (no held frame)
         engine!!.insertDelivery(f.msgId, io.godstone.mesh.delivery.DeliveryState.QUEUED_DURABLY.code, io.godstone.mesh.delivery.AckMode.SINGLE_RECIPIENT.code, rec)
         assertFalse(heldIds().containsId(f.msgId))
 
-        val result = store.enqueueDirectOutbound(f, expectedRecipient = rec)
+        val result = store.enqueueDirectOutbound(f, expectedRecipient = rec, localOriginNodeId = origin)
         assertEquals(OutboundEnqueueResult.InconsistentState, result)
     }
 
@@ -716,8 +858,9 @@ class SqliteMessageStoreTest {
         open(maxBytes = 4096L)
         val f = directFrame(1, payloadSize = 100)
         val rec = recipient(1)
+        val origin = localNode(1)
 
-        assertEquals(OutboundEnqueueResult.Created, store.enqueueDirectOutbound(f, expectedRecipient = rec))
+        assertEquals(OutboundEnqueueResult.Created(f), store.enqueueDirectOutbound(f, expectedRecipient = rec, localOriginNodeId = origin))
 
         // Close store and reopen from same file
         engine?.close()
@@ -736,25 +879,29 @@ class SqliteMessageStoreTest {
     fun `C6_6 enqueueDirectOutbound policy rejection on non-direct or unsealed or invalid msg_id`() = runBlocking {
         open(maxBytes = 4096L)
         val rec = recipient(1)
+        val origin = localNode(1)
 
         // Non-direct priority
         val groupFrame = directFrame(1, priority = Priority.GROUP)
-        assertEquals(OutboundEnqueueResult.InvalidArgument, store.enqueueDirectOutbound(groupFrame, rec))
+        assertEquals(OutboundEnqueueResult.InvalidArgument, store.enqueueDirectOutbound(groupFrame, rec, origin))
 
         // Unsealed
         val unsealedFrame = directFrame(2, sealed = false)
-        assertEquals(OutboundEnqueueResult.InvalidArgument, store.enqueueDirectOutbound(unsealedFrame, rec))
+        assertEquals(OutboundEnqueueResult.InvalidArgument, store.enqueueDirectOutbound(unsealedFrame, rec, origin))
 
         // Has POW
         val powFrame = directFrame(3, hasPow = true)
-        assertEquals(OutboundEnqueueResult.InvalidArgument, store.enqueueDirectOutbound(powFrame, rec))
+        assertEquals(OutboundEnqueueResult.InvalidArgument, store.enqueueDirectOutbound(powFrame, rec, origin))
 
         // Invalid msg_id length
         val badIdFrame = directFrame(4, msgIdOverride = ByteArray(15))
-        assertEquals(OutboundEnqueueResult.InvalidArgument, store.enqueueDirectOutbound(badIdFrame, rec))
+        assertEquals(OutboundEnqueueResult.InvalidArgument, store.enqueueDirectOutbound(badIdFrame, rec, origin))
 
         // Invalid recipient length
         val validFrame = directFrame(5)
-        assertEquals(OutboundEnqueueResult.InvalidArgument, store.enqueueDirectOutbound(validFrame, ByteArray(15)))
+        assertEquals(OutboundEnqueueResult.InvalidArgument, store.enqueueDirectOutbound(validFrame, ByteArray(15), origin))
+
+        // Invalid localOriginNodeId length
+        assertEquals(OutboundEnqueueResult.InvalidArgument, store.enqueueDirectOutbound(validFrame, rec, ByteArray(15)))
     }
 }

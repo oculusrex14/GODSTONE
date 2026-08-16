@@ -1045,7 +1045,8 @@ private class FailingMessageStore : MessageStore {
         PersistResult.FAILED_STORAGE
     override suspend fun enqueueDirectOutbound(
         frame: FrameV2,
-        expectedRecipient: ByteArray
+        expectedRecipient: ByteArray,
+        localOriginNodeId: ByteArray,
     ): io.godstone.mesh.store.OutboundEnqueueResult =
         io.godstone.mesh.store.OutboundEnqueueResult.StorageFailure
     override suspend fun allHeldOrderedByPriority(): List<FrameV2> = emptyList()
@@ -1084,9 +1085,10 @@ private class FailThenSucceedStore : MessageStore {
 
     override suspend fun enqueueDirectOutbound(
         frame: FrameV2,
-        expectedRecipient: ByteArray
+        expectedRecipient: ByteArray,
+        localOriginNodeId: ByteArray,
     ): io.godstone.mesh.store.OutboundEnqueueResult =
-        backing.enqueueDirectOutbound(frame, expectedRecipient)
+        backing.enqueueDirectOutbound(frame, expectedRecipient, localOriginNodeId)
 
     private class BytesKey(val bytes: ByteArray) {
         override fun equals(other: Any?): Boolean = other is BytesKey && bytes.contentEquals(other.bytes)

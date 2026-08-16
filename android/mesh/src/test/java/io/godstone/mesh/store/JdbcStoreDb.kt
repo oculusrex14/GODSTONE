@@ -137,6 +137,26 @@ internal class JdbcStoreDb(file: File) : StoreDb {
         }
     }
 
+    override fun readHeld(msgId: ByteArray): StoreRow? {
+        conn.prepareStatement(StoreSchema.readHeldSql()).use { ps ->
+            ps.setBytes(1, msgId)
+            ps.executeQuery().use { rs ->
+                if (!rs.next()) return null
+                return StoreRow(
+                    typeCode = rs.getInt(1),
+                    msgId = rs.getBytes(2),
+                    routingTag = rs.getBytes(3),
+                    ttl = rs.getInt(4),
+                    hopCount = rs.getInt(5),
+                    flags = rs.getInt(6),
+                    payload = rs.getBytes(7),
+                    receivedFrom = rs.getBytes(8),
+                    receivedAt = rs.getLong(9),
+                )
+            }
+        }
+    }
+
     override fun heldBytes(): Long {
         conn.prepareStatement(StoreSchema.heldBytesSql()).use { ps ->
             ps.executeQuery().use { rs -> return if (rs.next()) rs.getLong(1) else 0L }
