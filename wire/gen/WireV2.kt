@@ -7,36 +7,94 @@ import java.nio.ByteBuffer
 import java.nio.ByteOrder
 
 /** GMP/2 frame. Header is 32 bytes, big-endian. */
-data class FrameV2(
+class FrameV2(
     val type: TypeV2,
-    val msgId: ByteArray,        // 16 bytes
-    val routingTag: ByteArray,   // 4 bytes
+    msgId: ByteArray,        // 16 bytes
+    routingTag: ByteArray,   // 4 bytes
     val ttl: Int,
     val hopCount: Int,
     val flags: Int,
-    val payload: ByteArray
+    payload: ByteArray
 ) {
+    private val rawMsgId = msgId.copyOf()
+    private val rawRoutingTag = routingTag.copyOf()
+    private val rawPayload = payload.copyOf()
+
+    val msgId: ByteArray
+        get() = rawMsgId.copyOf()
+
+    val routingTag: ByteArray
+        get() = rawRoutingTag.copyOf()
+
+    val payload: ByteArray
+        get() = rawPayload.copyOf()
+
+    fun copy(
+        type: TypeV2 = this.type,
+        msgId: ByteArray = this.rawMsgId,
+        routingTag: ByteArray = this.rawRoutingTag,
+        ttl: Int = this.ttl,
+        hopCount: Int = this.hopCount,
+        flags: Int = this.flags,
+        payload: ByteArray = this.rawPayload
+    ): FrameV2 = FrameV2(
+        type = type,
+        msgId = msgId,
+        routingTag = routingTag,
+        ttl = ttl,
+        hopCount = hopCount,
+        flags = flags,
+        payload = payload
+    )
+
     fun encode(): ByteArray {
-        require(msgId.size == 16) { "msg_id must be 16 bytes" }
-        require(routingTag.size == 4) { "routing_tag must be 4 bytes" }
+        require(rawMsgId.size == 16) { "msg_id must be 16 bytes" }
+        require(rawRoutingTag.size == 4) { "routing_tag must be 4 bytes" }
         require(ttl in 0..MAX_TTL) { "ttl out of range" }
         require(hopCount in 0..MAX_TTL) { "hop_count out of range" }
-        require(payload.size <= MAX_PAYLOAD) { "payload too large" }
-        val buf = ByteBuffer.allocate(HEADER_SIZE + payload.size).order(ByteOrder.BIG_ENDIAN)
+        require(rawPayload.size <= MAX_PAYLOAD) { "payload too large" }
+        val buf = ByteBuffer.allocate(HEADER_SIZE + rawPayload.size).order(ByteOrder.BIG_ENDIAN)
         buf.putShort(MAGIC.toShort())
         buf.put(VERSION)
         buf.put(type.code)
-        buf.put(msgId)
-        buf.put(routingTag)
+        buf.put(rawMsgId)
+        buf.put(rawRoutingTag)
         buf.put(ttl.toByte())
         buf.put(hopCount.toByte())
         buf.putShort(flags.toShort())
-        buf.putShort(payload.size.toShort())
+        buf.putShort(rawPayload.size.toShort())
         val header = buf.array()
         buf.putShort(crc16(header, 0, HEADER_SIZE - 2).toShort())
-        buf.put(payload)
+        buf.put(rawPayload)
         return buf.array()
     }
+
+    override fun equals(other: Any?): Boolean {
+        if (this === other) return true
+        if (other !is FrameV2) return false
+        if (type != other.type) return false
+        if (!rawMsgId.contentEquals(other.rawMsgId)) return false
+        if (!rawRoutingTag.contentEquals(other.rawRoutingTag)) return false
+        if (ttl != other.ttl) return false
+        if (hopCount != other.hopCount) return false
+        if (flags != other.flags) return false
+        if (!rawPayload.contentEquals(other.rawPayload)) return false
+        return true
+    }
+
+    override fun hashCode(): Int {
+        var result = type.hashCode()
+        result = 31 * result + rawMsgId.contentHashCode()
+        result = 31 * result + rawRoutingTag.contentHashCode()
+        result = 31 * result + ttl
+        result = 31 * result + hopCount
+        result = 31 * result + flags
+        result = 31 * result + rawPayload.contentHashCode()
+        return result
+    }
+
+    override fun toString(): String =
+        "FrameV2(type=$type, msgId=${rawMsgId.joinToString("") { "%02x".format(it) }}, routingTag=${rawRoutingTag.joinToString("") { "%02x".format(it) }}, ttl=$ttl, hopCount=$hopCount, flags=$flags, payload=${rawPayload.size}B)"
 
     companion object {
         const val MAGIC = 0x4753

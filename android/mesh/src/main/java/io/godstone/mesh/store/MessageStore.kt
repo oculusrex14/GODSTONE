@@ -884,7 +884,8 @@ internal class InMemoryMessageStore(
     private val maxBytes: Long = Long.MAX_VALUE,
 ) : MessageStore {
     // ByteArray is identity-equal by default, so wrap it for content-based map keys.
-    private class BytesKey(val bytes: ByteArray) {
+    private class BytesKey(input: ByteArray) {
+        private val bytes = input.copyOf()
         override fun equals(other: Any?): Boolean = other is BytesKey && bytes.contentEquals(other.bytes)
         override fun hashCode(): Int = bytes.contentHashCode()
     }

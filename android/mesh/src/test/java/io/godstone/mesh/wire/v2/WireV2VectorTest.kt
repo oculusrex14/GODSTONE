@@ -220,4 +220,169 @@ class WireV2VectorTest {
         )
         assertEquals(SosFrameValidator.Verdict.WRONG_TYPE, SosFrameValidator.validate(f))
     }
+
+    // ---- C6.7.4: FrameV2 immutable value semantics & negative mutation tests ----
+
+    @Test
+    fun `constructor input mutation does not alter FrameV2 state`() {
+        val inputMsgId = hexToBytes("000102030405060708090a0b0c0d0e0f")
+        val inputTag = hexToBytes("deadbeef")
+        val inputPayload = hexToBytes("7061796c6f61642d4d455353414745")
+        val frame = FrameV2(
+            type = TypeV2.MESSAGE,
+            msgId = inputMsgId,
+            routingTag = inputTag,
+            ttl = 12,
+            hopCount = 0,
+            flags = FrameV2.SEALED,
+            payload = inputPayload
+        )
+
+        // Mutate original constructor input arrays
+        inputMsgId[0] = 0xFF.toByte()
+        inputTag[0] = 0x00.toByte()
+        inputPayload[0] = 0x55.toByte()
+
+        // Frame must retain original values
+        assertEquals(0x00.toByte(), frame.msgId[0])
+        assertEquals(0xDE.toByte(), frame.routingTag[0])
+        assertEquals(0x70.toByte(), frame.payload[0])
+    }
+
+    @Test
+    fun `getter array mutation does not leak or alter FrameV2 state`() {
+        val frame = FrameV2(
+            type = TypeV2.MESSAGE,
+            msgId = hexToBytes("000102030405060708090a0b0c0d0e0f"),
+            routingTag = hexToBytes("deadbeef"),
+            ttl = 12,
+            hopCount = 0,
+            flags = FrameV2.SEALED,
+            payload = hexToBytes("7061796c6f61642d4d455353414745")
+        )
+
+        val exportedMsgId = frame.msgId
+        val exportedTag = frame.routingTag
+        val exportedPayload = frame.payload
+
+        exportedMsgId[0] = 0xAA.toByte()
+        exportedTag[0] = 0xBB.toByte()
+        exportedPayload[0] = 0xCC.toByte()
+
+        // Subsequent getter reads must return clean copies of the original data
+        assertEquals(0x00.toByte(), frame.msgId[0])
+        assertEquals(0xDE.toByte(), frame.routingTag[0])
+        assertEquals(0x70.toByte(), frame.payload[0])
+    }
+
+    @Test
+    fun `copy method does not alias mutable arrays between original and copy`() {
+        val original = FrameV2(
+            type = TypeV2.MESSAGE,
+            msgId = hexToBytes("000102030405060708090a0b0c0d0e0f"),
+            routingTag = hexToBytes("deadbeef"),
+            ttl = 12,
+            hopCount = 0,
+            flags = FrameV2.SEALED,
+            payload = hexToBytes("7061796c6f61642d4d455353414745")
+        )
+
+        val copy = original.copy(ttl = 11, hopCount = 1)
+        kotlin.test.assertTrue(original !== copy)
+        assertEquals(original.msgId.toList(), copy.msgId.toList())
+
+        // Mutate array from copy
+        val copyPayload = copy.payload
+        copyPayload[0] = 0x11.toByte()
+
+        // Original and copy must remain unaffected
+        assertEquals(0x70.toByte(), original.payload[0])
+        assertEquals(0x70.toByte(), copy.payload[0])
+    }
+
+    @Test
+    fun `content-based equals and hashCode work across distinct allocations`() {
+        val a = FrameV2(
+            type = TypeV2.MESSAGE,
+            msgId = hexToBytes("000102030405060708090a0b0c0d0e0f"),
+            routingTag = hexToBytes("deadbeef"),
+            ttl = 12,
+            hopCount = 0,
+            flags = FrameV2.SEALED,
+            payload = hexToBytes("7061796c6f61642d4d455353414745")
+        )
+        val b = FrameV2(
+            type = TypeV2.MESSAGE,
+            msgId = hexToBytes("000102030405060708090a0b0c0d0e0f"),
+            routingTag = hexToBytes("deadbeef"),
+            ttl = 12,
+            hopCount = 0,
+            flags = FrameV2.SEALED,
+            payload = hexToBytes("7061796c6f61642d4d455353414745")
+        )
+
+        kotlin.test.assertTrue(a !== b, "Must be distinct allocations")
+        assertEquals(a, b, "Identical content must be equal")
+        assertEquals(a.hashCode(), b.hashCode(), "Identical content must have identical hashCode")
+
+        // Single byte mutations in byte arrays make them unequal
+        val diffMsgId = a.copy(msgId = hexToBytes("ff0102030405060708090a0b0c0d0e0f"))
+        kotlin.test.assertNotEquals(a, diffMsgId)
+
+        val diffTag = a.copy(routingTag = hexToBytes("cafebabe"))
+        kotlin.test.assertNotEquals(a, diffTag)
+
+        val diffPayload = a.copy(payload = hexToBytes("0061796c6f61642d4d455353414745"))
+        kotlin.test.assertNotEquals(a, diffPayload)
+
+        // Scalar differences make them unequal
+        kotlin.test.assertNotEquals(a, a.copy(ttl = 5))
+        kotlin.test.assertNotEquals(a, a.copy(hopCount = 1))
+        kotlin.test.assertNotEquals(a, a.copy(flags = 0))
+        kotlin.test.assertNotEquals(a, a.copy(type = TypeV2.HELLO))
+    }
+
+    @Test
+    fun `encode output is stable against attempted external mutation`() {
+        val inputMsgId = hexToBytes("000102030405060708090a0b0c0d0e0f")
+        val inputTag = hexToBytes("deadbeef")
+        val inputPayload = hexToBytes("7061796c6f61642d4d455353414745")
+        val frame = FrameV2(
+            type = TypeV2.MESSAGE,
+            msgId = inputMsgId,
+            routingTag = inputTag,
+            ttl = 12,
+            hopCount = 0,
+            flags = FrameV2.SEALED,
+            payload = inputPayload
+        )
+
+        val encodedBefore = bytesToHex(frame.encode())
+
+        // Attempt mutations
+        inputMsgId[0] = 0x99.toByte()
+        frame.msgId[0] = 0x88.toByte()
+        frame.payload[0] = 0x77.toByte()
+
+        val encodedAfter = bytesToHex(frame.encode())
+        assertEquals(encodedBefore, encodedAfter)
+    }
+
+    @Test
+    fun `decoded frame equals original frame by content`() {
+        val frame = FrameV2(
+            type = TypeV2.MESSAGE,
+            msgId = hexToBytes("000102030405060708090a0b0c0d0e0f"),
+            routingTag = hexToBytes("deadbeef"),
+            ttl = 12,
+            hopCount = 0,
+            flags = FrameV2.SEALED,
+            payload = hexToBytes("7061796c6f61642d4d455353414745")
+        )
+
+        val decoded = FrameV2.decode(frame.encode())
+        assertNotNull(decoded)
+        assertEquals(frame, decoded)
+        assertEquals(frame.hashCode(), decoded.hashCode())
+    }
 }

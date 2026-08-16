@@ -18,8 +18,10 @@ import kotlinx.coroutines.test.runTest
 import java.security.SecureRandom
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
 import kotlin.test.assertFalse
 import kotlin.test.assertNotEquals
+import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
 
 /**
@@ -849,6 +851,180 @@ class RouterTest {
         assertEquals(1, held.size)
         assertTrue(held[0].msgId.contentEquals(frame.msgId))
         assertTrue(held[0].payload.contentEquals(frame.payload))
+    }
+
+    // ---- C6.7.4: Immutability, Store & LRU hardening, and Hop-Count Bounds ----
+
+    @Test
+    fun `LruMsgIdCache key mutation cannot alter cache lookup`() {
+        val cache = io.godstone.mesh.router.LruMsgIdCache(16)
+        val id = ByteArray(16) { it.toByte() }
+        cache.add(id)
+
+        // Mutate caller array
+        id[0] = 0x7F.toByte()
+
+        // Original key must still be contained
+        val originalId = ByteArray(16) { it.toByte() }
+        assertTrue(cache.contains(originalId))
+        // Mutated key must not be contained
+        assertFalse(cache.contains(id))
+    }
+
+    @Test
+    fun `InMemoryMessageStore held frame and keys cannot be mutated by caller`() = runTest {
+        val store = InMemoryMessageStore()
+        val msgId = ByteArray(16) { (it + 1).toByte() }
+        val tag = ByteArray(4) { 0x01 }
+        val payload = ByteArray(32) { 0x42 }
+        val frame = FrameV2(
+            type = TypeV2.MESSAGE,
+            msgId = msgId,
+            routingTag = tag,
+            ttl = 8,
+            hopCount = 0,
+            flags = FrameV2.SEALED or Priority.toFlags(Priority.DIRECT),
+            payload = payload
+        )
+
+        assertEquals(PersistResult.HELD_NEW, store.persist(frame, ByteArray(16)))
+
+        // Mutate inputs
+        msgId[0] = 0xFF.toByte()
+        tag[0] = 0xFF.toByte()
+        payload[0] = 0xFF.toByte()
+
+        // Held frame in store must retain original values
+        val held = store.allHeldOrderedByPriority()
+        assertEquals(1, held.size)
+        assertEquals(1.toByte(), held[0].msgId[0])
+        assertEquals(0x42.toByte(), held[0].payload[0])
+
+        // Re-persisting with original content must classify as duplicate
+        val freshQueryFrame = FrameV2(
+            type = TypeV2.MESSAGE,
+            msgId = ByteArray(16) { (it + 1).toByte() },
+            routingTag = ByteArray(4) { 0x01 },
+            ttl = 8,
+            hopCount = 0,
+            flags = FrameV2.SEALED or Priority.toFlags(Priority.DIRECT),
+            payload = ByteArray(32) { 0x42 }
+        )
+        assertEquals(PersistResult.HELD_DUPLICATE, store.persist(freshQueryFrame, ByteArray(16)))
+
+        // Mutating exported allHeldMsgIds must not mutate store
+        val heldIds = store.allHeldMsgIds()
+        heldIds[0][0] = 0xAA.toByte()
+        val heldIdsAfter = store.allHeldMsgIds()
+        assertEquals(1.toByte(), heldIdsAfter[0][0])
+    }
+
+    @Test
+    fun `PolicyCheckedOpenedMessage content-value equality and hashCode across distinct allocations`() {
+        val identity1 = io.godstone.mesh.wire.v2.LogicalMessageIdentity.createNew()
+        val identity2 = io.godstone.mesh.wire.v2.LogicalMessageIdentity(identity1.messageNonce.copyOf(), identity1.createdAtEpochSeconds)
+
+        val frame1 = FrameV2(TypeV2.MESSAGE, ByteArray(16) { 0x01 }, ByteArray(4) { 0x02 }, 8, 0, FrameV2.SEALED, ByteArray(16) { 0x03 })
+        val frame2 = FrameV2(TypeV2.MESSAGE, ByteArray(16) { 0x01 }, ByteArray(4) { 0x02 }, 8, 0, FrameV2.SEALED, ByteArray(16) { 0x03 })
+
+        val a = io.godstone.mesh.router.PolicyCheckedOpenedMessage(
+            senderNodeId = ByteArray(16) { 0x10 },
+            identity = identity1,
+            powNonce = ByteArray(8) { 0x20 },
+            priority = Priority.DIRECT,
+            plaintext = "test message".toByteArray(),
+            frame = frame1
+        )
+        val b = io.godstone.mesh.router.PolicyCheckedOpenedMessage(
+            senderNodeId = ByteArray(16) { 0x10 },
+            identity = identity2,
+            powNonce = ByteArray(8) { 0x20 },
+            priority = Priority.DIRECT,
+            plaintext = "test message".toByteArray(),
+            frame = frame2
+        )
+
+        assertTrue(a !== b)
+        assertEquals(a, b)
+        assertEquals(a.hashCode(), b.hashCode())
+        assertEquals(io.godstone.mesh.router.OpenMessageResult.Accepted(a), io.godstone.mesh.router.OpenMessageResult.Accepted(b))
+
+        // Difference in any field breaks equality
+        val diffPlaintext = io.godstone.mesh.router.PolicyCheckedOpenedMessage(
+            senderNodeId = ByteArray(16) { 0x10 },
+            identity = identity1,
+            powNonce = ByteArray(8) { 0x20 },
+            priority = Priority.DIRECT,
+            plaintext = "diff message".toByteArray(),
+            frame = frame1
+        )
+        assertNotEquals(a, diffPlaintext)
+    }
+
+    @Test
+    fun `frame with hopCount equal to MAX_TTL is durably held but not advertised for relay`() = runTest {
+        val store = InMemoryMessageStore()
+        val router = Router(store, selfNodeId)
+        val frameMaxHop = FrameV2(
+            type = TypeV2.MESSAGE,
+            msgId = ByteArray(16) { (it + 1).toByte() },
+            routingTag = ByteArray(4),
+            ttl = 8,
+            hopCount = FrameV2.MAX_TTL, // 16
+            flags = Priority.toFlags(Priority.DIRECT),
+            payload = ByteArray(16)
+        )
+
+        // onFrameReceived returns false (relay budget exhausted)
+        val relayEligible = router.onFrameReceived(frameMaxHop, fromPeer = ByteArray(16))
+        assertFalse(relayEligible, "Frame at MAX_TTL must not be relay-eligible")
+
+        // But it is durably held in the store
+        assertEquals(1, store.allHeldMsgIds().size)
+        assertTrue(store.allHeldMsgIds()[0].contentEquals(frameMaxHop.msgId))
+    }
+
+    @Test
+    fun `forwardCopy rejects frame with hopCount equal to or exceeding MAX_TTL`() {
+        val store = InMemoryMessageStore()
+        val router = Router(store, selfNodeId)
+        val frameMaxHop = FrameV2(
+            type = TypeV2.MESSAGE,
+            msgId = ByteArray(16) { 0x01 },
+            routingTag = ByteArray(4),
+            ttl = 8,
+            hopCount = FrameV2.MAX_TTL,
+            flags = Priority.toFlags(Priority.DIRECT),
+            payload = ByteArray(16)
+        )
+
+        assertFailsWith<IllegalArgumentException> {
+            router.forwardCopy(frameMaxHop)
+        }
+    }
+
+    @Test
+    fun `forwardCopy on frame at MAX_TTL minus 1 produces frame at MAX_TTL which encodes successfully`() {
+        val store = InMemoryMessageStore()
+        val router = Router(store, selfNodeId)
+        val frameNearMax = FrameV2(
+            type = TypeV2.MESSAGE,
+            msgId = ByteArray(16) { 0x01 },
+            routingTag = ByteArray(4),
+            ttl = 8,
+            hopCount = FrameV2.MAX_TTL - 1, // 15
+            flags = Priority.toFlags(Priority.DIRECT),
+            payload = ByteArray(16)
+        )
+
+        val forwarded = router.forwardCopy(frameNearMax)
+        assertEquals(7, forwarded.ttl)
+        assertEquals(FrameV2.MAX_TTL, forwarded.hopCount)
+
+        val encoded = forwarded.encode()
+        val decoded = FrameV2.decode(encoded)
+        assertNotNull(decoded)
+        assertEquals(forwarded, decoded)
     }
 }
 

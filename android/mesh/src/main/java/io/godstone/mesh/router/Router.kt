@@ -99,7 +99,7 @@ class Router(
                 seen.add(frame.msgId)
                 governor.reward(fromPeer)
                 _inbound.emit(frame)
-                return frame.ttl > 1
+                return frame.ttl > 1 && frame.hopCount < FrameV2.MAX_TTL
             }
             PersistResult.HELD_DUPLICATE -> {
                 // Already durably held (LRU aged the id out but the durable PK
@@ -128,6 +128,7 @@ class Router(
     /** Returns the copy of [frame] ready to be relayed: TTL decremented, hop count incremented. */
     fun forwardCopy(frame: FrameV2): FrameV2 {
         require(frame.ttl > 1) { "cannot forward a frame with ttl <= 1" }
+        require(frame.hopCount < FrameV2.MAX_TTL) { "cannot forward a frame with hopCount >= MAX_TTL" }
         return frame.copy(
             ttl = frame.ttl - 1,
             hopCount = frame.hopCount + 1
@@ -426,7 +427,8 @@ class PolicyCheckedOpenedMessage(
  * content-keyed wrapper.
  */
 class LruMsgIdCache(private val capacity: Int) {
-    private class BytesKey(val bytes: ByteArray) {
+    private class BytesKey(input: ByteArray) {
+        private val bytes = input.copyOf()
         override fun equals(other: Any?): Boolean = other is BytesKey && bytes.contentEquals(other.bytes)
         override fun hashCode(): Int = bytes.contentHashCode()
     }

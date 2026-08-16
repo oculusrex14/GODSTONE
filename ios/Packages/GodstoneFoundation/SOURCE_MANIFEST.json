@@ -13,7 +13,7 @@
     "Sources/GodstoneCore/OracleOrchestration.swift": "7e0b12ffd1404987b246a062032cda6a8a07570fcf24dd6560a5aca89cac41e2",
     "Sources/GodstoneCore/OracleViewModel.swift": "b958ab9989e324805d21efc585b4069ac2e257d26a02cf7bd64fdfe85b90c3de",
     "Sources/GodstoneCore/PromptBuilder.swift": "512fc93fd0b7f21dd0f189e575ac499038e66186681a2068e4aaebcd8679fa89",
-    "Sources/GodstoneCore/ProofOfWork.swift": "0786f10cab8b7555d9bb1ce61d7a5671a5d75e2d1672048ace6d45764885a88e",
+    "Sources/GodstoneCore/ProofOfWork.swift": "6f628e58ab0e27bc1293dc7d06db40cbc2660ca53593cbfe6f2dd144e9cb3973",
     "Sources/GodstoneCore/RetrievedChunk.swift": "0ab4a04803feb0214a2376ebc05bd74d8f46371b6e834f07dfc334b97a79c1bb",
     "Sources/GodstoneCore/Retriever.swift": "8521f1850cca8be0edadf3810fead1c2787e613e84ec05a319dc17b9802ea44b",
     "Sources/GodstoneCore/SafetyGate.swift": "7c318f9d86eedc458df56cf1fc12f781aa3b92979efc9968bf98be5c1bed5ff8",
