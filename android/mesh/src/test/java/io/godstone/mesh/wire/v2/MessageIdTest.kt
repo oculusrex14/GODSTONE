@@ -3,6 +3,7 @@ package io.godstone.mesh.wire.v2
 import org.bouncycastle.crypto.digests.Blake2sDigest
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertNotEquals
 import kotlin.test.assertTrue
 

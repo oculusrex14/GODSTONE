@@ -363,7 +363,7 @@ class RouterTest {
         val recipientKeys = X25519Keys.generate(SecureRandom())
         val recipientPriv = recipientKeys.priv
         val recipientPub = recipientKeys.pub
-        val recipientNodeId = ByteArray(16) { 0x88 }
+        val recipientNodeId = ByteArray(16) { 0x88.toByte() }
 
         val plaintext = "Broadcast flood notice".toByteArray()
         val identity = io.godstone.mesh.wire.v2.LogicalMessageIdentity.createNew()
