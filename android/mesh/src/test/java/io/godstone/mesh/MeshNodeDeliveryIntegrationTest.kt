@@ -20,6 +20,7 @@ import io.godstone.mesh.delivery.UnresolvedRecipientKeyResolver
 import io.godstone.mesh.identity.Identity
 import io.godstone.mesh.store.InMemoryMessageStore
 import io.godstone.mesh.store.MessageStore
+import io.godstone.mesh.store.OutboundEnqueueResult
 import io.godstone.mesh.store.PersistResult
 import io.godstone.mesh.wire.v2.FrameV2
 import io.godstone.mesh.wire.v2.Priority
