@@ -922,7 +922,7 @@ class RouterTest {
     @Test
     fun `PolicyCheckedOpenedMessage content-value equality and hashCode across distinct allocations`() {
         val identity1 = io.godstone.mesh.wire.v2.LogicalMessageIdentity.createNew()
-        val identity2 = io.godstone.mesh.wire.v2.LogicalMessageIdentity(identity1.messageNonce.copyOf(), identity1.createdAtEpochSeconds)
+        val identity2 = io.godstone.mesh.wire.v2.LogicalMessageIdentity.of(identity1.createdAtEpochSeconds, identity1.messageNonce)
 
         val frame1 = FrameV2(TypeV2.MESSAGE, ByteArray(16) { 0x01 }, ByteArray(4) { 0x02 }, 8, 0, FrameV2.SEALED, ByteArray(16) { 0x03 })
         val frame2 = FrameV2(TypeV2.MESSAGE, ByteArray(16) { 0x01 }, ByteArray(4) { 0x02 }, 8, 0, FrameV2.SEALED, ByteArray(16) { 0x03 })
