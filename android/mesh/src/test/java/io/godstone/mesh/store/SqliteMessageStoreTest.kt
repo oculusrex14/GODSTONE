@@ -14,6 +14,7 @@ import java.nio.file.Files
 import java.sql.DriverManager
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
+import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 /**
@@ -541,7 +542,7 @@ class SqliteMessageStoreTest {
         val f = directFrame(1, payloadSize = 100)
         val rec = recipient(1)
 
-        val fault = { phase: String ->
+        val fault: ((String) -> Unit) = { phase: String ->
             if (phase == "after_held_insert") throw java.sql.SQLException("injected fault after held insert")
         }
         val result = store.enqueueDirectOutboundAtWithFault(f, rec, receivedAt = 100L, fault = fault)
@@ -564,7 +565,7 @@ class SqliteMessageStoreTest {
         val f = directFrame(3, payloadSize = 400)
         val rec = recipient(3)
 
-        val fault = { phase: String ->
+        val fault: ((String) -> Unit) = { phase: String ->
             if (phase == "after_evict") throw java.sql.SQLException("injected fault after evict")
         }
         val result = store.enqueueDirectOutboundAtWithFault(f, rec, receivedAt = 300L, fault = fault)
@@ -585,7 +586,7 @@ class SqliteMessageStoreTest {
         val f = directFrame(1, payloadSize = 100)
         val rec = recipient(1)
 
-        val fault = { phase: String ->
+        val fault: ((String) -> Unit) = { phase: String ->
             if (phase == "before_delivery_insert") throw java.sql.SQLException("injected fault before delivery insert")
         }
         val result = store.enqueueDirectOutboundAtWithFault(f, rec, receivedAt = 100L, fault = fault)
@@ -601,7 +602,7 @@ class SqliteMessageStoreTest {
         val f = directFrame(1, payloadSize = 100)
         val rec = recipient(1)
 
-        val fault = { phase: String ->
+        val fault: ((String) -> Unit) = { phase: String ->
             if (phase == "after_delivery_insert") throw java.sql.SQLException("injected fault after delivery insert")
         }
         val result = store.enqueueDirectOutboundAtWithFault(f, rec, receivedAt = 100L, fault = fault)

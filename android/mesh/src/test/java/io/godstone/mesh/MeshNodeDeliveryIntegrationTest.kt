@@ -209,6 +209,8 @@ class MeshNodeDeliveryIntegrationTest {
     private class FailingMessageStore : MessageStore {
         override suspend fun persist(frame: FrameV2, receivedFrom: ByteArray): PersistResult =
             PersistResult.FAILED_STORAGE
+        override suspend fun enqueueDirectOutbound(frame: FrameV2, expectedRecipient: ByteArray): OutboundEnqueueResult =
+            OutboundEnqueueResult.StorageFailure
         override suspend fun allHeldOrderedByPriority(): List<FrameV2> = emptyList()
         override suspend fun allHeldMsgIds(): List<ByteArray> = emptyList()
         override suspend fun forEachHeldOrderedByPriority(visit: (FrameV2) -> Boolean) {}
