@@ -119,15 +119,16 @@ public final class MeshNode {
     /// SOS through `router.ingest` would cause.
     @discardableResult
     internal func dispatchSos(payload: Data, send: (FrameV2, UUID) -> Bool) -> SosDispatchResult {
-        // GMP/2.1 (ADR-001 §3.3): msg_id is content-derived, not random, so
-        // duplicate SOS submissions collapse in every relay's dedup cache. The
-        // creation time is bound into the id (little-endian) and authenticated
-        // alongside the payload by the signature below. Byte-identical to
+        // GMP/2.1 (ADR-001 §3.3, C6.7): msg_id is content-and-nonce derived.
+        // The creation time and message_nonce are bound into the id (little-endian)
+        // and authenticated alongside the payload by the signature below. Byte-identical to
         // Android Router.buildSos / MessageId.derive (see MessageIdTests).
         let createdAt = Int64(Date().timeIntervalSince1970)
+        let messageNonce = MessageId.generateNonce()
         let msgId = MessageId.derive(
             senderNodeId: identity.nodeId,
             createdAtEpochSeconds: createdAt,
+            messageNonce: messageNonce,
             payload: payload)
 
         let magic = Data("SOS1".utf8)

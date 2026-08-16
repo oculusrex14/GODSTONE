@@ -86,18 +86,73 @@ ordering within a single sender.
 A device whose clock is untrusted (no time source since boot) sets a
 `CLOCK_UNTRUSTED` flag and omits `created_at` rather than asserting a wrong one.
 
-### 3.3 Message id derivation
+### 3.3 Logical message identity and msg_id derivation (C6.7)
 
-`PROTOCOL.md` says ids are content-derived; Android uses a random `Long`, iOS 16
-random bytes. Neither matches, and a random id lets one sender flood distinct ids
-for identical content.
+#### 3.3.1 The collision defect in pure content-hash identity
 
-**Decision.** `msg_id = BLAKE2s-128(sender_node_id ‖ created_at_le ‖ payload)`,
-16 bytes. Content-derived means duplicate submissions collapse in the dedup
-cache. Proof-of-work still searches a nonce, but the nonce moves into the sealed
-payload rather than being the id itself — V3's `ProofOfWork.mine` mutated
-`msg_id`, which is fine when the id is random and **breaks the moment the id is a
-content hash**.
+`PROTOCOL.md` previously specified `msg_id = BLAKE2s-128(sender_node_id ‖ created_at_le ‖ payload)`.
+While deterministic content hashing was intended to collapse identical submissions in dedup caches,
+content equality is fundamentally **not** identical to logical send intent. This created critical
+identity collision defects:
+
+1. **Multi-recipient collision (Alice vs Bob):** If sender $S$ authors a message ("meet at clinic")
+   and sends it independently to Alice and Bob in the same second $T$, both messages receive the exact
+   same `msg_id`. In `delivery_state`, `PRIMARY KEY = msg_id` with an immutable `expected_recipient`.
+   A single `msg_id` cannot represent both Alice and Bob delivery tracks, causing the second enqueue
+   to be rejected or corrupt the expected recipient.
+2. **Repeated send collision:** If sender $S$ sends "yes" to Alice twice in the same second $T$, both
+   logical sends collapse into the same `msg_id`, causing the second message to be dropped as a duplicate.
+3. **Retries vs distinct sends:** A transmission retry of an *existing* message must preserve its
+   `msg_id` so relays and recipient deduplicate it; but two separately created logical messages must
+   receive distinct identities even when sender, content, and timestamp coincide.
+
+#### 3.3.2 Design options evaluated
+
+- **Option A (Include recipient in hash):** `BLAKE2s-128(sender ‖ recipient ‖ created_at_le ‖ payload)`.
+  *Rejected.* Does not solve same-recipient same-second repeats; tightly couples message identity to
+  transport addressing; breaks multi-recipient forwarding, broadcast re-addressing, and leaks routing
+  context into the message identity layer.
+- **Option B (Accepted — Sender-generated per-logical-message nonce):**
+  When a node creates a new logical message, it generates a 16-byte cryptographic random nonce
+  (`message_nonce` via CSPRNG). Retries reuse the same `message_nonce` and `msg_id`; newly authored
+  sends generate a fresh `message_nonce`.
+
+#### 3.3.3 Canonical `msg_id` preimage and domain separation
+
+`msg_id` is derived using BLAKE2s-128 with domain separator `b"GMP2-MSGID"` (10 ASCII bytes):
+
+```text
+preimage = ASCII("GMP2-MSGID") ‖ sender_node_id[16] ‖ uint32_le(created_at) ‖ message_nonce[16] ‖ plaintext
+msg_id   = BLAKE2s-128(preimage)   (16 bytes)
+```
+
+- `MSG_ID_DOMAIN`: `b"GMP2-MSGID"` (10 bytes: `0x47, 0x4d, 0x50, 0x32, 0x2d, 0x4d, 0x53, 0x47, 0x49, 0x44`)
+- `sender_node_id`: 16 bytes
+- `created_at`: uint32 little-endian epoch seconds (4 bytes)
+- `message_nonce`: 16 bytes (CSPRNG generated once at creation)
+- `plaintext`: variable-length unsealed application payload bytes
+
+#### 3.3.4 Canonical sealed inner layout & recipient rederivation
+
+To allow the recipient to authenticate the logical identity upon unsealing, `message_nonce` is placed
+inside the authenticated sealed envelope:
+
+```text
+sealed_inner = message_nonce[16] ‖ pow_nonce[8] ‖ created_at_le[4] ‖ plaintext
+```
+
+Fixed prefix length = $16 + 8 + 4 = 28$ bytes.
+
+**Recipient verification:** Upon unsealing with `SealedSender.open`, the recipient extracts
+`message_nonce`, `pow_nonce`, `created_at_le`, and `plaintext`. The recipient then computes
+`MessageId.derive(sender_node_id, created_at, message_nonce, plaintext)` and asserts that the derived
+ID matches the 16-byte `frame.msg_id` in the header. If it mismatches, the frame is rejected.
+
+#### 3.3.5 Abuse and flood resistance separation
+
+`msg_id` is an **identity primitive**, not an abuse-control primitive. Flood resistance is enforced
+orthogonally by `PeerGovernor` token buckets, connection rate limits, bounded durable storage caps,
+and Proof-of-Work (`HAS_POW`) on applicable priorities (GROUP / BROADCAST).
 
 ### 3.4 Bloom digest hash input
 

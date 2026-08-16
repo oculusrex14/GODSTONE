@@ -1,9 +1,9 @@
-"""GMP/2.1 cross-platform byte-parity reference (ADR-001 §3).
+"""GMP/2.1 cross-platform byte-parity reference (ADR-001 §3, C6.7).
 
 The three content-derived primitives that MUST be byte-identical across the
 Android (Kotlin/Bouncy Castle) and iOS (Swift/Blake2s) runtimes:
 
-    msg_id   = BLAKE2s-128(sender_node_id[16] ‖ created_at_le[4] ‖ payload)   §3.3
+    msg_id   = BLAKE2s-128(b"GMP2-MSGID" ‖ sender[16] ‖ created_at_le[4] ‖ message_nonce[16] ‖ payload)   §3.3
     bloom    = index = BLAKE2s-64(msg_id[16] ‖ uint32_be(round)) mod 4096     §3.4
     pow      = BLAKE2s-256(pow_nonce[8] ‖ sender[16] ‖ created_at_le[4] ‖
                             type_code[1] ‖ plaintext), top TARGET_BITS bits 0  §3.3
@@ -30,6 +30,8 @@ from __future__ import annotations
 
 import hashlib
 
+MSG_ID_DOMAIN = b"GMP2-MSGID"
+MESSAGE_NONCE_BYTES = 16
 NODE_ID_BYTES = 16
 MSG_ID_BYTES = 16
 BLOOM_SIZE_BITS = 4096
@@ -54,11 +56,13 @@ def uint32_be(value: int) -> bytes:
     return (value & 0xFFFFFFFF).to_bytes(4, "big")
 
 
-def msg_id(sender_node_id: bytes, created_at_epoch_seconds: int, payload: bytes) -> bytes:
-    """§3.3: BLAKE2s-128(sender[16] ‖ created_at_le[4] ‖ payload). 16 bytes."""
+def msg_id(sender_node_id: bytes, created_at_epoch_seconds: int, message_nonce: bytes, payload: bytes) -> bytes:
+    """§3.3: BLAKE2s-128(b"GMP2-MSGID" ‖ sender[16] ‖ created_at_le[4] ‖ message_nonce[16] ‖ payload). 16 bytes."""
     if len(sender_node_id) != NODE_ID_BYTES:
         raise ValueError("sender_node_id must be 16 bytes")
-    return blake2s(sender_node_id + uint32_le(created_at_epoch_seconds) + payload,
+    if len(message_nonce) != MESSAGE_NONCE_BYTES:
+        raise ValueError("message_nonce must be 16 bytes")
+    return blake2s(MSG_ID_DOMAIN + sender_node_id + uint32_le(created_at_epoch_seconds) + message_nonce + payload,
                    MSG_ID_BYTES)
 
 

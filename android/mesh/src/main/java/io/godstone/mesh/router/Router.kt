@@ -152,25 +152,27 @@ class Router(
      * tag (now carried in the FrameV2 header field, not the payload) -- never who
      * is talking to whom.
      *
-     * The sealed inner content carries the PoW nonce and created_at alongside the
-     * plaintext (ADR-001 §3): sealedInner = powNonce(8) || created_at_le(4) ||
-     * plaintext. created_at is the SAME uint32 epoch-second count used in msg_id
-     * derivation, serialised LITTLE-ENDIAN (ADR-001 §3.3) so there is one
-     * canonical created_at encoding across msg_id + PoW preimage + sealed payload
-     * and the recipient reconstructs the PoW preimage from the sealed bytes without
-     * any byte-order conversion. SealedSender packs sender_node_id before that, so
-     * the AEAD authenticates sender + nonce + created_at + plaintext together.
+     * The sealed inner content carries the message nonce, PoW nonce, and created_at alongside
+     * the plaintext (ADR-001 §3.3.4, C6.7):
+     *     sealedInner = messageNonce(16) || powNonce(8) || created_at_le(4) || plaintext.
+     * created_at is the SAME uint32 epoch-second count used in msg_id derivation, serialised
+     * LITTLE-ENDIAN so there is one canonical created_at encoding across msg_id + PoW preimage
+     * + sealed payload and the recipient reconstructs preimages from the sealed bytes without
+     * any byte-order conversion. SealedSender packs sender_node_id before that, so the AEAD
+     * authenticates sender + message nonce + PoW nonce + created_at + plaintext together.
      *
-     * msg_id = BLAKE2s-128(selfNodeId || created_at || plaintext) (MessageId.derive),
-     * sender-computed and carried in the header. GROUP/BROADCAST mine the nonce
-     * (priority.requiresProofOfWork) and set HAS_POW; SOS/DIRECT do not.
+     * msg_id = BLAKE2s-128(b"GMP2-MSGID" || selfNodeId || created_at || message_nonce || plaintext)
+     * (MessageId.derive), sender-computed and carried in the header. GROUP/BROADCAST mine the
+     * nonce (priority.requiresProofOfWork) and set HAS_POW; SOS/DIRECT do not.
      */
     suspend fun buildSealedMessage(
         plaintext: ByteArray,
         recipientNodeId: ByteArray,
         recipientStaticPub: ByteArray,
-        priority: Priority = Priority.DIRECT
+        priority: Priority = Priority.DIRECT,
+        messageNonce: ByteArray = MessageId.generateNonce()
     ): FrameV2 {
+        require(messageNonce.size == MessageId.NONCE_BYTES) { "messageNonce must be 16 bytes" }
         val createdAt = System.currentTimeMillis() / 1000
         val createdAtLe = MessageId.uint32Le(createdAt)
         val powNonce = if (priority.requiresProofOfWork) {
@@ -178,10 +180,10 @@ class Router(
         } else {
             ByteArray(ProofOfWork.NONCE_BYTES)
         }
-        val sealedInner = powNonce + createdAtLe + plaintext
+        val sealedInner = messageNonce + powNonce + createdAtLe + plaintext
         val sealed = io.godstone.mesh.seal.SealedSender.seal(
             sealedInner, selfNodeId, recipientStaticPub)
-        val msgId = MessageId.derive(selfNodeId, createdAt, plaintext)
+        val msgId = MessageId.derive(selfNodeId, createdAt, messageNonce, plaintext)
         val routingTag = io.godstone.mesh.seal.SealedSender.routingTag(
             recipientNodeId,
             io.godstone.mesh.seal.SealedSender.currentEpochDay())
@@ -201,7 +203,7 @@ class Router(
 
     /**
      * Open a sealed MESSAGE addressed to us and split the authenticated inner
-     * content into the PoW nonce, created_at and plaintext. Null means it was
+     * content into the message nonce, PoW nonce, created_at and plaintext. Null means it was
      * not ours -- a routing-tag collision, expected and costs one AEAD open.
      *
      * The caller verifies PoW when the frame carries HAS_POW (recipient-side
@@ -210,14 +212,17 @@ class Router(
     fun openSealedMessage(frame: FrameV2, ourStaticDhPriv: ByteArray): OpenedSealedMessage? {
         val opened = io.godstone.mesh.seal.SealedSender.open(frame.payload, ourStaticDhPriv)
             ?: return null
-        // opened.plaintext is the sealedInner we packed: powNonce(8) + created_at_le(4) + plaintext
+        // opened.plaintext is the sealedInner: messageNonce(16) + powNonce(8) + created_at_le(4) + plaintext
         val inner = opened.plaintext
-        if (inner.size < ProofOfWork.NONCE_BYTES + 4) return null
-        val powNonce = inner.copyOfRange(0, ProofOfWork.NONCE_BYTES)
-        val createdAtLe = inner.copyOfRange(ProofOfWork.NONCE_BYTES, ProofOfWork.NONCE_BYTES + 4)
-        val plaintext = inner.copyOfRange(ProofOfWork.NONCE_BYTES + 4, inner.size)
+        val prefixLen = MessageId.NONCE_BYTES + ProofOfWork.NONCE_BYTES + 4 // 28 bytes
+        if (inner.size < prefixLen) return null
+        val messageNonce = inner.copyOfRange(0, MessageId.NONCE_BYTES)
+        val powNonce = inner.copyOfRange(MessageId.NONCE_BYTES, MessageId.NONCE_BYTES + ProofOfWork.NONCE_BYTES)
+        val createdAtLe = inner.copyOfRange(MessageId.NONCE_BYTES + ProofOfWork.NONCE_BYTES, prefixLen)
+        val plaintext = inner.copyOfRange(prefixLen, inner.size)
         return OpenedSealedMessage(
             senderNodeId = opened.senderNodeId,
+            messageNonce = messageNonce,
             powNonce = powNonce,
             createdAtLe = createdAtLe,
             plaintext = plaintext,
@@ -235,15 +240,17 @@ class Router(
      * over (msg_id || "SOS1" || payload). Cryptographic SOS signing is wired
      * with the SOS lifecycle under ADR-003/005 (OPEN); SosFrameValidator (patch
      * 15) validates structure only, so a zero slot is accepted at this layer.
-     * msg_id is still content-derived (BLAKE2s-128(selfNodeId || created_at ||
-     * payload)), so the placeholder is bound by the id and replaced in place when
-     * signing lands.
+     * msg_id is content-and-nonce derived (MessageId.derive).
      */
-    fun buildSos(payload: ByteArray): FrameV2 {
+    fun buildSos(
+        payload: ByteArray,
+        messageNonce: ByteArray = MessageId.generateNonce()
+    ): FrameV2 {
+        require(messageNonce.size == MessageId.NONCE_BYTES) { "messageNonce must be 16 bytes" }
         val createdAt = System.currentTimeMillis() / 1000
         val sigSlot = ByteArray(64)   // placeholder; Ed25519 signing deferred (ADR-003/005 OPEN)
         val sosPayload = io.godstone.mesh.wire.v2.SosFrameValidator.PAYLOAD_MAGIC + sigSlot + payload
-        val msgId = MessageId.derive(selfNodeId, createdAt, payload)
+        val msgId = MessageId.derive(selfNodeId, createdAt, messageNonce, payload)
         return FrameV2(
             type = TypeV2.SOS,
             msgId = msgId,
@@ -263,11 +270,26 @@ class Router(
 /** Result of opening a sealed MESSAGE, with the authenticated inner content split out. */
 data class OpenedSealedMessage(
     val senderNodeId: ByteArray,
+    val messageNonce: ByteArray,
     val powNonce: ByteArray,
     val createdAtLe: ByteArray,
     val plaintext: ByteArray,
     val frame: FrameV2
-)
+) {
+    /**
+     * Recipient-side logical message identity verification (C6.7 / ADR-001 §3.3).
+     * Re-derives msg_id from unsealed components and asserts it matches frame.msgId.
+     */
+    fun verifyMessageId(): Boolean {
+        if (senderNodeId.size != MessageId.NODE_ID_BYTES ||
+            messageNonce.size != MessageId.NONCE_BYTES ||
+            createdAtLe.size != 4) return false
+        val createdAt = java.nio.ByteBuffer.wrap(createdAtLe)
+            .order(java.nio.ByteOrder.LITTLE_ENDIAN).int.toLong() and 0xFFFFFFFFL
+        val derived = MessageId.derive(senderNodeId, createdAt, messageNonce, plaintext)
+        return derived.contentEquals(frame.msgId)
+    }
+}
 
 /**
  * Fixed-capacity LRU of 16-byte msg_ids. The bound is essential: an attacker must

@@ -1,11 +1,13 @@
 package io.godstone.mesh
 
+import io.godstone.core.crypto.X25519Keys
 import io.godstone.mesh.router.BloomDigest
 import io.godstone.mesh.router.Router
 import io.godstone.mesh.store.InMemoryMessageStore
 import io.godstone.mesh.store.MessageStore
 import io.godstone.mesh.store.PersistResult
 import io.godstone.mesh.wire.v2.FrameV2
+import io.godstone.mesh.wire.v2.MessageId
 import io.godstone.mesh.wire.v2.Priority
 import io.godstone.mesh.wire.v2.SosFrameValidator
 import io.godstone.mesh.wire.v2.TypeV2
@@ -13,6 +15,7 @@ import kotlinx.coroutines.async
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.runTest
+import java.security.SecureRandom
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -276,6 +279,81 @@ class RouterTest {
         collector.cancel()
         assertEquals(1, results.count { it }, "exactly one of the two arrivals forwarded")
         assertEquals(1, received.size, "inbound emitted exactly once")
+    }
+
+    @Test
+    fun `buildSealedMessage packs message_nonce and openSealedMessage rederives and verifies msgId`() = runTest {
+        val store = InMemoryMessageStore()
+        val router = Router(store, selfNodeId)
+
+        // Generate static DH keypair for recipient
+        val recipientKeys = X25519Keys.generate(SecureRandom())
+        val recipientPriv = recipientKeys.priv
+        val recipientPub = recipientKeys.pub
+        val recipientNodeId = ByteArray(16) { 0x55 }
+
+        val plaintext = "Hello secure mesh".toByteArray()
+        val nonce = MessageId.generateNonce()
+        val frame = router.buildSealedMessage(
+            plaintext = plaintext,
+            recipientNodeId = recipientNodeId,
+            recipientStaticPub = recipientPub,
+            priority = Priority.DIRECT,
+            messageNonce = nonce
+        )
+
+        assertEquals(TypeV2.MESSAGE, frame.type)
+        assertEquals(16, frame.msgId.size)
+
+        val opened = router.openSealedMessage(frame, recipientPriv)
+        assertTrue(opened != null, "Recipient failed to open sealed message")
+        assertTrue(selfNodeId.contentEquals(opened.senderNodeId))
+        assertTrue(nonce.contentEquals(opened.messageNonce))
+        assertTrue(plaintext.contentEquals(opened.plaintext))
+        assertTrue(opened.verifyMessageId(), "Recipient-side message identity verification failed")
+
+        // Tampering negative controls:
+        // 1. Mutated header msg_id fails verification
+        val tamperedMsgId = frame.copy(msgId = ByteArray(16) { 0x99.toByte() })
+        val openedTamperedId = router.openSealedMessage(tamperedMsgId, recipientPriv)
+        assertTrue(openedTamperedId != null)
+        assertFalse(openedTamperedId.verifyMessageId(), "Tampered header msg_id must fail verification")
+
+        // 2. Mutated plaintext fails verification
+        val openedWithTamperedPt = opened.copy(plaintext = "tampered text".toByteArray())
+        assertFalse(openedWithTamperedPt.verifyMessageId(), "Tampered plaintext must fail verification")
+
+        // 3. Mutated messageNonce fails verification
+        val openedWithTamperedNonce = opened.copy(messageNonce = ByteArray(16) { 0x00 })
+        assertFalse(openedWithTamperedNonce.verifyMessageId(), "Tampered message_nonce must fail verification")
+    }
+
+    @Test
+    fun `concurrent sends to alice and bob with same content produce distinct msg_ids and both verify`() = runTest {
+        val store = InMemoryMessageStore()
+        val router = Router(store, selfNodeId)
+
+        val aliceKeys = X25519Keys.generate(SecureRandom())
+        val alicePriv = aliceKeys.priv
+        val alicePub = aliceKeys.pub
+        val aliceNodeId = ByteArray(16) { 0x11 }
+
+        val bobKeys = X25519Keys.generate(SecureRandom())
+        val bobPriv = bobKeys.priv
+        val bobPub = bobKeys.pub
+        val bobNodeId = ByteArray(16) { 0x22 }
+
+        val content = "rendezvous at checkpoint 4".toByteArray()
+        val frameAlice = router.buildSealedMessage(content, aliceNodeId, alicePub)
+        val frameBob = router.buildSealedMessage(content, bobNodeId, bobPub)
+
+        assertNotEquals(frameAlice.msgId.toList(), frameBob.msgId.toList())
+
+        val openedAlice = router.openSealedMessage(frameAlice, alicePriv)
+        val openedBob = router.openSealedMessage(frameBob, bobPriv)
+
+        assertTrue(openedAlice != null && openedAlice.verifyMessageId())
+        assertTrue(openedBob != null && openedBob.verifyMessageId())
     }
 }
 

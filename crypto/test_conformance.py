@@ -90,12 +90,15 @@ def check_gmp21(r: Result) -> None:
     for c in g["msg_id"]["cases"]:
         got = G.msg_id(bytes.fromhex(c["sender_node_id"]),
                        c["created_at_epoch_seconds"],
+                       bytes.fromhex(c["message_nonce"]),
                        bytes.fromhex(c["payload"])).hex()
         r.check(got == c["msg_id"], f"msg_id {c['name']}",
                 f"want {c['msg_id']} got {got}")
 
     neg = g["msg_id"]["negative"]
     r.check(neg["differs"], f"msg_id negative {neg['name']} (BE != LE)")
+    neg_nonce = g["msg_id"]["negative_nonce"]
+    r.check(neg_nonce["differs"], f"msg_id negative {neg_nonce['name']} (distinct nonce)")
 
     for case in g["bloom"]["cases"]:
         ids = [bytes.fromhex(i["msg_id"]) for i in case["ids"]]
