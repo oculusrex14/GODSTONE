@@ -22,6 +22,7 @@ import io.godstone.mesh.delivery.DeliveryState
 import io.godstone.mesh.wire.v2.FrameV2
 import io.godstone.mesh.wire.v2.Priority
 import io.godstone.mesh.wire.v2.TypeV2
+import java.security.SecureRandom
 
 /**
  * Outcome of an atomic DIRECT outbound enqueue operation (C6.6).
