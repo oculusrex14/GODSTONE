@@ -125,19 +125,9 @@ class Router(
         }
     }
 
-    /** Returns the copy of [frame] ready to be relayed: TTL decremented, hop count incremented. */
-    fun forwardCopy(frame: FrameV2): FrameV2 {
-        val nextHop = if (frame.hopCount >= 0xFF.toByte()) 0xFF.toByte() else (frame.hopCount + 1).toByte()
-        return FrameV2(
-            type = frame.type,
-            msgId = frame.msgId.copyOf(),
-            routingTag = frame.routingTag.copyOf(),
-            ttl = (frame.ttl - 1).toByte(),
-            hopCount = nextHop,
-            flags = frame.flags,
-            payload = frame.payload.copyOf()
-        )
-    }
+    /** Prepare a frame for forwarding: decrement TTL, increment hop_count. */
+    fun forwardCopy(frame: FrameV2): FrameV2 =
+        frame.copy(ttl = frame.ttl - 1, hopCount = frame.hopCount + 1)
 
     /**
      * Compute what a peer appears to lack, in strict priority order:
@@ -158,88 +148,6 @@ class Router(
         val d = BloomDigest()
         store.forEachHeldMsgId { d.add(it); true }
         return d
-    }
-
-    /**
-     * Build an anti-entropy WANT response frame (criterion 6, ADR-004).
-     * Carries requested message IDs concatenated in the payload.
-     */
-    fun buildWant(msgIds: List<ByteArray>, routingTag: ByteArray): FrameV2 {
-        require(msgIds.isNotEmpty()) { "WANT frame must carry at least one msg_id" }
-        require(routingTag.size == 4) { "routingTag must be 4 bytes" }
-        val payload = ByteArray(msgIds.size * MessageId.MSG_ID_BYTES)
-        for (i in msgIds.indices) {
-            val id = msgIds[i]
-            require(id.size == MessageId.MSG_ID_BYTES) { "Each msg_id must be ${MessageId.MSG_ID_BYTES} bytes" }
-            System.arraycopy(id, 0, payload, i * MessageId.MSG_ID_BYTES, MessageId.MSG_ID_BYTES)
-        }
-        val ephemeralIdentity = LogicalMessageIdentity.createNew()
-        val msgId = MessageId.derive(selfNodeId, ephemeralIdentity, payload)
-        return FrameV2(
-            type = TypeV2.WANT,
-            msgId = msgId,
-            routingTag = routingTag,
-            ttl = 1,
-            hopCount = 0,
-            flags = 0,
-            payload = payload
-        )
-    }
-
-    /**
-     * Build an anti-entropy IAVE (I-Have) bloom digest frame (criterion 6, ADR-004).
-     * Contains the full 4096-bit (512-byte) bloom filter of all held message IDs.
-     */
-    fun buildIHave(bloomFilter: ByteArray, routingTag: ByteArray): FrameV2 {
-        require(bloomFilter.size == BloomFilter.FILTER_BYTES) {
-            "IAVE bloomFilter must be ${BloomFilter.FILTER_BYTES} bytes"
-        }
-        require(routingTag.size == 4) { "routingTag must be 4 bytes" }
-        val ephemeralIdentity = LogicalMessageIdentity.createNew()
-        val msgId = MessageId.derive(selfNodeId, ephemeralIdentity, bloomFilter)
-        return FrameV2(
-            type = TypeV2.IAVE,
-            msgId = msgId,
-            routingTag = routingTag,
-            ttl = 1,
-            hopCount = 0,
-            flags = 0,
-            payload = bloomFilter.copyOf()
-        )
-    }
-
-    /**
-     * Build an authenticated recipient ACK frame (ADR-004, C6.1/C6.4.1).
-     * Signs (b"GMP2-ACK" || msgId[16] || recipientNodeId[16]) under recipient's Ed25519 key.
-     */
-    fun buildAck(
-        ackedMsgId: ByteArray,
-        ourIdentityPriv: ByteArray,
-        routingTag: ByteArray
-    ): FrameV2 {
-        require(ackedMsgId.size == MessageId.MSG_ID_BYTES) { "ackedMsgId must be 16 bytes" }
-        require(ourIdentityPriv.size == 32 || ourIdentityPriv.size == 64) { "ourIdentityPriv must be Ed25519 private key bytes" }
-        require(routingTag.size == 4) { "routingTag must be 4 bytes" }
-
-        val signature = io.godstone.mesh.delivery.DeliveryAck.sign(
-            ackedMsgId = ackedMsgId,
-            recipientNodeId = selfNodeId,
-            recipientIdentityPriv = ourIdentityPriv
-        )
-        val payload = ackedMsgId + selfNodeId + signature // 16 + 16 + 64 = 96 bytes
-
-        val ephemeralIdentity = LogicalMessageIdentity.createNew()
-        val ackMsgId = MessageId.derive(selfNodeId, ephemeralIdentity, payload)
-
-        return FrameV2(
-            type = TypeV2.ACK,
-            msgId = ackMsgId,
-            routingTag = routingTag,
-            ttl = FrameV2.DEFAULT_TTL,
-            hopCount = 0,
-            flags = FrameV2.ACK_REQ or FrameV2.RELAY_OK or Priority.toFlags(Priority.DIRECT),
-            payload = payload
-        )
     }
 
     /**
