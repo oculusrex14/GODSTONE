@@ -753,14 +753,18 @@ class RouterTest {
 
         // 2. Mutate exported frame fields
         val exportedFrame = opened.frame
-        exportedFrame.msgId.fill(0xEE.toByte())
-        exportedFrame.routingTag.fill(0xEE.toByte())
-        exportedFrame.payload.fill(0xEE.toByte())
+        val mutatedMsgId = exportedFrame.msgId
+        mutatedMsgId.fill(0xEE.toByte())
+        val mutatedTag = exportedFrame.routingTag
+        mutatedTag.fill(0xEE.toByte())
+        val mutatedPayload = exportedFrame.payload
+        mutatedPayload.fill(0xEE.toByte())
 
         val reReadFrame = opened.frame
-        assertFalse(reReadFrame.msgId.contentEquals(exportedFrame.msgId), "frame.msgId must not be mutated externally")
-        assertFalse(reReadFrame.routingTag.contentEquals(exportedFrame.routingTag), "frame.routingTag must not be mutated externally")
-        assertFalse(reReadFrame.payload.contentEquals(exportedFrame.payload), "frame.payload must not be mutated externally")
+        assertFalse(reReadFrame.msgId.contentEquals(mutatedMsgId), "frame.msgId must not be mutated externally")
+        assertFalse(reReadFrame.routingTag.contentEquals(mutatedTag), "frame.routingTag must not be mutated externally")
+        assertFalse(reReadFrame.payload.contentEquals(mutatedPayload), "frame.payload must not be mutated externally")
+        assertFalse(exportedFrame.msgId.contentEquals(mutatedMsgId), "exportedFrame.msgId must not be mutated externally")
         assertTrue(reReadFrame.msgId.contentEquals(frame.msgId))
 
         // 3. Mutate constructor input arrays
@@ -768,7 +772,10 @@ class RouterTest {
         val rawIdentity = io.godstone.mesh.wire.v2.LogicalMessageIdentity.createNew()
         val rawPow = ByteArray(8) { 0x34 }
         val rawPlain = ByteArray(32) { 0x56 }
-        val testFrame = FrameV2(TypeV2.MESSAGE, ByteArray(16), ByteArray(4), 5, 1, FrameV2.SEALED, ByteArray(64))
+        val testMsgId = ByteArray(16)
+        val testTag = ByteArray(4)
+        val testPayload = ByteArray(64)
+        val testFrame = FrameV2(TypeV2.MESSAGE, testMsgId, testTag, 5, 1, FrameV2.SEALED, testPayload)
 
         val msg = io.godstone.mesh.router.PolicyCheckedOpenedMessage(
             rawSender, rawIdentity, rawPow, Priority.DIRECT, rawPlain, testFrame
@@ -777,7 +784,7 @@ class RouterTest {
         rawSender.fill(0xFF.toByte())
         rawPow.fill(0xFF.toByte())
         rawPlain.fill(0xFF.toByte())
-        testFrame.msgId.fill(0xFF.toByte())
+        testMsgId.fill(0xFF.toByte())
 
         assertEquals(0x12.toByte(), msg.senderNodeId[0])
         assertEquals(0x34.toByte(), msg.powNonce[0])
