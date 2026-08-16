@@ -4,10 +4,11 @@
 
 ## Why the current construction cannot be shipped as specified
 
-`SealedSender.kt` exists on Android only, is called by nothing, and does not
-implement the documented construction:
+`SealedSender` now exists on both Android (`SealedSender.kt`) and iOS (`SealedSender.swift`)
+as nonshipping parity scaffolding. However, parity across platforms does NOT resolve
+the underlying architectural defects:
 
-| PROTOCOL.md §6 | SealedSender.kt |
+| PROTOCOL.md §6 | Current SealedSender Scaffolding |
 |---|---|
 | two layers (`inner` under `K_e2e`, then sealed) | one AEAD pass |
 | `HKDF` | `BLAKE2s(shared ‖ label)` |
@@ -18,6 +19,7 @@ No associated data binds the routing tag, frame type, message id, version or TTL
 to the ciphertext. There is no forward secrecy against later compromise of the
 recipient's static key: recorded ephemerals plus that key recover past sealing
 keys. "X3DH-style" should not be claimed without signed and one-time prekeys.
+ADR-003 remains OPEN.
 
 ## The binding nobody has specified
 

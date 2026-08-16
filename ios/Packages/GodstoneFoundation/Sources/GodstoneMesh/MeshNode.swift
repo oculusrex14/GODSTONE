@@ -43,7 +43,7 @@ public final class MeshNode {
     /// A-03 / ADR-005 stay OPEN. Mirrors Android `MeshNode.deliveryTracker`.
     public let deliveryTracker: DeliveryTracker
     public private(set) lazy var ble = BleTransport()
-    public private(set) lazy var router = Router()
+    public let router: Router
     public private(set) lazy var sessions = SessionManager(identity: identity)
 
     private var peers: Set<UUID> = []
@@ -61,6 +61,7 @@ public final class MeshNode {
         self.identity = identity
         self.store = store
         self.deliveryTracker = deliveryTracker
+        self.router = Router(selfNodeId: identity.nodeId)
         // Inject the durable store into the router before start (Stage 4B).
         self.router.store = store
     }

@@ -5,6 +5,7 @@ import GodstoneCore
 
 final class RouterTests: XCTestCase {
     private static let routingTag = Data(repeating: 0x01, count: 4)
+    private static let testSelfNodeId = Data(repeating: 0x0A, count: 16)
 
     private func frame(_ id: String,
                        ttl: UInt8 = 8,
@@ -26,14 +27,14 @@ final class RouterTests: XCTestCase {
     }
 
     func testDuplicateIsSuppressed() {
-        let router = Router()
+        let router = Router(selfNodeId: Self.testSelfNodeId)
         let f = frame("msg-1")
         XCTAssertTrue(router.ingest(f, isAddressedToMe: false, receivedFrom: Data()))
         XCTAssertFalse(router.ingest(f, isAddressedToMe: false, receivedFrom: Data()))
     }
 
     func testTtlAndHopCountChangeOnRelay() throws {
-        let router = Router()
+        let router = Router(selfNodeId: Self.testSelfNodeId)
         XCTAssertTrue(router.ingest(frame("msg-2", ttl: 5), isAddressedToMe: false, receivedFrom: Data()))
         let relayed = try XCTUnwrap(router.drain(limit: 1).first)
         XCTAssertEqual(relayed.ttl, 4)
@@ -41,7 +42,7 @@ final class RouterTests: XCTestCase {
     }
 
     func testSosIsDeliveredLocallyAndStillRelayed() {
-        let router = Router()
+        let router = Router(selfNodeId: Self.testSelfNodeId)
         var delivered: FrameV2?
         router.onDeliverLocally = { delivered = $0 }
 
@@ -53,7 +54,7 @@ final class RouterTests: XCTestCase {
     }
 
     func testNonSosLocalDeliveryDoesNotRelay() {
-        let router = Router()
+        let router = Router(selfNodeId: Self.testSelfNodeId)
         XCTAssertTrue(router.ingest(frame("local"), isAddressedToMe: true, receivedFrom: Data()))
         XCTAssertTrue(router.drain(limit: 8).isEmpty)
     }
@@ -63,7 +64,7 @@ final class RouterTests: XCTestCase {
     /// duplicate ingest does not change the held set, so the digest is stable,
     /// and the held msg_id is present in the 512-byte filter.
     func testBloomDigestIsStableAcrossDuplicate() {
-        let router = Router()
+        let router = Router(selfNodeId: Self.testSelfNodeId)
         let store = InMemoryMessageStore()
         router.store = store
         let f = frame("msg-bloom")
@@ -78,7 +79,7 @@ final class RouterTests: XCTestCase {
     /// Stage 4B: a storeless router returns an empty digest (the previous
     /// `seen.elements` fallback is removed -- it described a different set).
     func testStorelessBloomDigestIsEmpty() {
-        let router = Router()
+        let router = Router(selfNodeId: Self.testSelfNodeId)
         let digest = router.bloomDigest()
         XCTAssertEqual(digest.count, 512)
         XCTAssertEqual(digest, Data(repeating: 0, count: 512))
@@ -87,7 +88,7 @@ final class RouterTests: XCTestCase {
     /// Stage 4B: persist before forward (ADR-004). A novel accepted frame is
     /// durably held AND forwarded to the relay queue.
     func testIngestPersistsBeforeForwardWhenStoreAttached() {
-        let router = Router()
+        let router = Router(selfNodeId: Self.testSelfNodeId)
         let store = InMemoryMessageStore()
         router.store = store
         var delivered = 0
@@ -105,7 +106,7 @@ final class RouterTests: XCTestCase {
     /// frame, the router does NOT forward or deliver it -- relaying what this
     /// node cannot itself carry would let the only copy be dropped.
     func testIngestDoesNotForwardWhenPersistFails() {
-        let router = Router()
+        let router = Router(selfNodeId: Self.testSelfNodeId)
         router.store = FailingStore()
         var delivered = 0
         router.onDeliverLocally = { _ in delivered += 1 }
@@ -120,7 +121,7 @@ final class RouterTests: XCTestCase {
     /// Stage 4B: an addressed non-SOS frame is delivered locally and is NOT
     /// relayed, but it IS durably held (persist before forward/delivery).
     func testAddressedNonSosIsPersistedAndDeliveredButNotRelayed() {
-        let router = Router()
+        let router = Router(selfNodeId: Self.testSelfNodeId)
         let store = InMemoryMessageStore()
         router.store = store
         var delivered: FrameV2?
@@ -142,7 +143,7 @@ final class RouterTests: XCTestCase {
     /// once, and a third (now-duplicate) arrival must be suppressed.
     func testPersistFailureDoesNotPoisonRetry() {
         let store = FailThenSucceedStore()
-        let router = Router()
+        let router = Router(selfNodeId: Self.testSelfNodeId)
         router.store = store
         var delivered = 0
         router.onDeliverLocally = { _ in delivered += 1 }
@@ -173,7 +174,7 @@ final class RouterTests: XCTestCase {
     /// durable UNIQUE(msg_id) and reported `.heldDuplicate` -- not re-forwarded.
     func testDurableUniqueCatchesDuplicateAgedOutOfLru() {
         let store = InMemoryMessageStore()
-        let router = Router(seenCacheCapacity: 2)
+        let router = Router(selfNodeId: Self.testSelfNodeId, seenCacheCapacity: 2)
         router.store = store
         let f = frame("msg-aged", ttl: 5)
 
@@ -192,13 +193,35 @@ final class RouterTests: XCTestCase {
         XCTAssertEqual(store.allHeldMsgIds().count, 3)
     }
 
-    /// B1: at-most-once forwarding under concurrency. N "simultaneous" arrivals
-    /// of the same msg_id must result in exactly one accept, one forward and one
-    /// durable hold. The router lock serialises the accept decision; the first
-    /// persist returns .heldNew (forward + seen.insert), the rest are duplicates.
-    func testConcurrentSameMsgIdForwardsAtMostOnce() {
+    func testIngestForwardCopyPreservesCanonicalFields() throws {
+        let router = Router(selfNodeId: Self.testSelfNodeId)
+        let original = frame("msg-fwd-fields", ttl: 7, flags: UInt16(FrameV2.Flags.relay_ok))
+        XCTAssertTrue(router.ingest(original, isAddressedToMe: false, receivedFrom: Data()))
+        let forwarded = try XCTUnwrap(router.drain(limit: 1).first)
+        XCTAssertEqual(forwarded.type, original.type)
+        XCTAssertEqual(forwarded.msgId, original.msgId)
+        XCTAssertEqual(forwarded.routingTag, original.routingTag)
+        XCTAssertEqual(forwarded.flags, original.flags)
+        XCTAssertEqual(forwarded.payload, original.payload)
+        XCTAssertEqual(forwarded.ttl, 6)
+        XCTAssertEqual(forwarded.hopCount, 1)
+    }
+
+    func testDedupLRUEvictionUnderCapacity() {
+        let router = Router(selfNodeId: Self.testSelfNodeId, seenCacheCapacity: 2)
+        let f1 = frame("msg-1")
+        let f2 = frame("msg-2")
+        let f3 = frame("msg-3")
+
+        XCTAssertTrue(router.ingest(f1, isAddressedToMe: false, receivedFrom: Data()))
+        XCTAssertTrue(router.ingest(f2, isAddressedToMe: false, receivedFrom: Data()))
+        XCTAssertTrue(router.ingest(f3, isAddressedToMe: false, receivedFrom: Data()))
+        XCTAssertTrue(router.ingest(f1, isAddressedToMe: false, receivedFrom: Data()))
+    }
+
+    func testConcurrentIngestOfSameMsgIdForwardsAtMostOnce() {
         let store = InMemoryMessageStore()
-        let router = Router()
+        let router = Router(selfNodeId: Self.testSelfNodeId)
         router.store = store
         let f = frame("msg-concurrent", ttl: 5)
         let n = 8
@@ -220,7 +243,7 @@ final class RouterTests: XCTestCase {
         XCTAssertEqual(store.allHeldMsgIds(), [f.msgId], "held exactly once")
     }
 
-    // MARK: - C6.7.1 Sealed Message Authoring & Verified Open Tests
+    // MARK: - C6.7.2 Sealed Message Policy & Verified Open Tests
 
     func testBuildSealedMessageAndOpenSealedMessageAccepted() async throws {
         let senderNodeId = Data((0..<16).map { UInt8($0) })
@@ -253,6 +276,8 @@ final class RouterTests: XCTestCase {
 
         XCTAssertEqual(opened.senderNodeId, senderNodeId)
         XCTAssertEqual(opened.identity, identity)
+        XCTAssertEqual(opened.priority, .direct)
+        XCTAssertTrue(opened.powNonce.allSatisfy { $0 == 0 })
         XCTAssertEqual(opened.plaintext, plaintext)
 
         // Tampering negative control 1: Mutated header msg_id -> messageIdMismatch
@@ -276,7 +301,7 @@ final class RouterTests: XCTestCase {
         XCTAssertEqual(resWrongKey, OpenMessageResult.notForUs)
     }
 
-    func testGroupMessageWithHasPowMinesPowAndVerifiesOnOpen() async throws {
+    func testGroupMessageWithLockedPowKatVerifiesOnOpen() async throws {
         let senderNodeId = Data((0..<16).map { UInt8($0) })
         let router = Router(selfNodeId: senderNodeId)
 
@@ -285,25 +310,323 @@ final class RouterTests: XCTestCase {
         let recipientPub = recipientPrivKey.publicKey.rawRepresentation
         let recipientNodeId = Data(repeating: 0x77, count: 16)
 
-        let plaintext = Data("Group message with PoW on iOS".utf8)
-        let identity = LogicalMessageIdentity.createNew()
+        // Construct sealed inner with locked 20-bit PoW KAT
+        let plaintext = Data("help".utf8)
+        let identity = LogicalMessageIdentity.of(createdAtEpochSeconds: 1, messageNonce: Data(repeating: 0x01, count: 16))
+        var powNonceBytes = [UInt8]()
+        let powNonceHex = "00000000000fe48c"
+        var idx = powNonceHex.startIndex
+        while idx < powNonceHex.endIndex {
+            let next = powNonceHex.index(idx, offsetBy: 2)
+            powNonceBytes.append(UInt8(powNonceHex[idx..<next], radix: 16)!)
+            idx = next
+        }
+        let powNonce = Data(powNonceBytes)
 
-        let frame = try await router.buildSealedMessage(
-            plaintext: plaintext,
-            recipientNodeId: recipientNodeId,
-            recipientStaticPub: recipientPub,
-            identity: identity,
-            priority: .group
+        var sealedInner = Data()
+        sealedInner.append(identity.messageNonce)
+        sealedInner.append(powNonce)
+        sealedInner.append(identity.createdAtLe())
+        sealedInner.append(UInt8(Priority.group.rawValue))
+        sealedInner.append(plaintext)
+
+        let sealed = try SealedSender.seal(
+            plaintext: sealedInner,
+            senderNodeId: senderNodeId,
+            recipientStaticPub: recipientPub
         )
-
-        XCTAssertNotEqual(frame.flags & UInt16(FrameV2.Flags.has_pow), 0, "HAS_POW must be set for group priority")
+        let msgId = MessageId.derive(senderNodeId: senderNodeId, identity: identity, plaintext: plaintext)
+        let frame = FrameV2(
+            type: .message,
+            msgId: msgId,
+            routingTag: SealedSender.routingTag(recipientNodeId: recipientNodeId, epochDay: SealedSender.currentEpochDay()),
+            ttl: 8,
+            hopCount: 0,
+            flags: UInt16(FrameV2.Flags.sealed) | Priority.toFlags(.group) | UInt16(FrameV2.Flags.has_pow),
+            payload: sealed
+        )
 
         let result = router.openSealedMessage(frame, ourStaticDhPriv: recipientPriv)
         guard case let .accepted(opened) = result else {
             XCTFail("Expected .accepted for valid PoW message, got \(result)")
             return
         }
+        XCTAssertEqual(opened.priority, .group)
+        XCTAssertEqual(opened.powNonce, powNonce)
         XCTAssertEqual(opened.plaintext, plaintext)
+    }
+
+    /// CRITICAL SECURITY TEST: Downgrade attack
+    /// Attacker mutates header priority to DIRECT and clears HAS_POW.
+    /// Recipient MUST reject with .policyMismatch because authenticated sealed priority is GROUP.
+    func testDowngradeAttackOnGroupMessageToDirectHeaderIsRejectedWithPolicyMismatch() async throws {
+        let senderNodeId = Data((0..<16).map { UInt8($0) })
+        let router = Router(selfNodeId: senderNodeId)
+
+        let recipientPrivKey = Curve25519.KeyAgreement.PrivateKey()
+        let recipientPriv = recipientPrivKey.rawRepresentation
+        let recipientPub = recipientPrivKey.publicKey.rawRepresentation
+
+        let identity = LogicalMessageIdentity.createNew()
+        let dummyPowNonce = Data(repeating: 0x01, count: 8)
+        let plaintext = Data("High-priority group alert".utf8)
+        var sealedInner = Data()
+        sealedInner.append(identity.messageNonce)
+        sealedInner.append(dummyPowNonce)
+        sealedInner.append(identity.createdAtLe())
+        sealedInner.append(UInt8(Priority.group.rawValue))
+        sealedInner.append(plaintext)
+
+        let sealed = try SealedSender.seal(
+            plaintext: sealedInner,
+            senderNodeId: senderNodeId,
+            recipientStaticPub: recipientPub
+        )
+        let msgId = MessageId.derive(senderNodeId: senderNodeId, identity: identity, plaintext: plaintext)
+
+        // Attacker frames with DIRECT header and NO has_pow flag
+        let downgradedFrame = FrameV2(
+            type: .message,
+            msgId: msgId,
+            routingTag: Data(count: 4),
+            ttl: 8,
+            hopCount: 0,
+            flags: UInt16(FrameV2.Flags.sealed) | Priority.toFlags(.direct),
+            payload: sealed
+        )
+
+        let result = router.openSealedMessage(downgradedFrame, ourStaticDhPriv: recipientPriv)
+        XCTAssertEqual(result, OpenMessageResult.policyMismatch)
+    }
+
+    func testHeaderPriorityMismatchAgainstSealedPriorityIsRejectedWithPolicyMismatch() async throws {
+        let senderNodeId = Data((0..<16).map { UInt8($0) })
+        let router = Router(selfNodeId: senderNodeId)
+
+        let recipientPrivKey = Curve25519.KeyAgreement.PrivateKey()
+        let recipientPriv = recipientPrivKey.rawRepresentation
+        let recipientPub = recipientPrivKey.publicKey.rawRepresentation
+
+        let identity = LogicalMessageIdentity.createNew()
+        let dummyPowNonce = Data(repeating: 0x01, count: 8)
+        let plaintext = Data("Policy check message".utf8)
+        var sealedInner = Data()
+        sealedInner.append(identity.messageNonce)
+        sealedInner.append(dummyPowNonce)
+        sealedInner.append(identity.createdAtLe())
+        sealedInner.append(UInt8(Priority.group.rawValue))
+        sealedInner.append(plaintext)
+
+        let sealed = try SealedSender.seal(
+            plaintext: sealedInner,
+            senderNodeId: senderNodeId,
+            recipientStaticPub: recipientPub
+        )
+        let msgId = MessageId.derive(senderNodeId: senderNodeId, identity: identity, plaintext: plaintext)
+
+        // Mutate header priority to BROADCAST while leaving HAS_POW
+        let mutatedFlags = UInt16(FrameV2.Flags.sealed) | Priority.toFlags(.broadcast) | UInt16(FrameV2.Flags.has_pow)
+        let mutatedFrame = FrameV2(
+            type: .message,
+            msgId: msgId,
+            routingTag: Data(count: 4),
+            ttl: 8,
+            hopCount: 0,
+            flags: mutatedFlags,
+            payload: sealed
+        )
+
+        let result = router.openSealedMessage(mutatedFrame, ourStaticDhPriv: recipientPriv)
+        XCTAssertEqual(result, OpenMessageResult.policyMismatch)
+    }
+
+    func testMissingSealedFlagIsRejectedWithMissingSealedFlag() async throws {
+        let senderNodeId = Data((0..<16).map { UInt8($0) })
+        let router = Router(selfNodeId: senderNodeId)
+
+        let recipientPrivKey = Curve25519.KeyAgreement.PrivateKey()
+        let recipientPriv = recipientPrivKey.rawRepresentation
+        let recipientPub = recipientPrivKey.publicKey.rawRepresentation
+        let recipientNodeId = Data(repeating: 0x55, count: 16)
+
+        let frame = try await router.authorSealedMessage(
+            plaintext: Data("test".utf8),
+            recipientNodeId: recipientNodeId,
+            recipientStaticPub: recipientPub
+        )
+        let unsealedFrame = FrameV2(
+            type: frame.type,
+            msgId: frame.msgId,
+            routingTag: frame.routingTag,
+            ttl: frame.ttl,
+            hopCount: frame.hopCount,
+            flags: frame.flags & ~UInt16(FrameV2.Flags.sealed),
+            payload: frame.payload
+        )
+
+        let result = router.openSealedMessage(unsealedFrame, ourStaticDhPriv: recipientPriv)
+        XCTAssertEqual(result, OpenMessageResult.missingSealedFlag)
+    }
+
+    func testWrongFrameTypeIsRejectedWithWrongFrameType() async throws {
+        let senderNodeId = Data((0..<16).map { UInt8($0) })
+        let router = Router(selfNodeId: senderNodeId)
+
+        let recipientPrivKey = Curve25519.KeyAgreement.PrivateKey()
+        let recipientPriv = recipientPrivKey.rawRepresentation
+        let recipientPub = recipientPrivKey.publicKey.rawRepresentation
+        let recipientNodeId = Data(repeating: 0x55, count: 16)
+
+        let frame = try await router.authorSealedMessage(
+            plaintext: Data("test".utf8),
+            recipientNodeId: recipientNodeId,
+            recipientStaticPub: recipientPub
+        )
+        let sosFrame = FrameV2(
+            type: .sos,
+            msgId: frame.msgId,
+            routingTag: frame.routingTag,
+            ttl: frame.ttl,
+            hopCount: frame.hopCount,
+            flags: frame.flags,
+            payload: frame.payload
+        )
+
+        let result = router.openSealedMessage(sosFrame, ourStaticDhPriv: recipientPriv)
+        XCTAssertEqual(result, OpenMessageResult.wrongFrameType)
+    }
+
+    func testDirectMessageWithHasPowFlagIsRejectedWithPolicyMismatch() async throws {
+        let senderNodeId = Data((0..<16).map { UInt8($0) })
+        let router = Router(selfNodeId: senderNodeId)
+
+        let recipientPrivKey = Curve25519.KeyAgreement.PrivateKey()
+        let recipientPriv = recipientPrivKey.rawRepresentation
+        let recipientPub = recipientPrivKey.publicKey.rawRepresentation
+        let recipientNodeId = Data(repeating: 0x55, count: 16)
+
+        let frame = try await router.authorSealedMessage(
+            plaintext: Data("test".utf8),
+            recipientNodeId: recipientNodeId,
+            recipientStaticPub: recipientPub,
+            priority: .direct
+        )
+        let invalidFrame = FrameV2(
+            type: frame.type,
+            msgId: frame.msgId,
+            routingTag: frame.routingTag,
+            ttl: frame.ttl,
+            hopCount: frame.hopCount,
+            flags: frame.flags | UInt16(FrameV2.Flags.has_pow),
+            payload: frame.payload
+        )
+
+        let result = router.openSealedMessage(invalidFrame, ourStaticDhPriv: recipientPriv)
+        XCTAssertEqual(result, OpenMessageResult.policyMismatch)
+    }
+
+    func testDirectMessageWithNonZeroPowNonceIsRejectedWithPolicyMismatch() async throws {
+        let senderNodeId = Data((0..<16).map { UInt8($0) })
+        let router = Router(selfNodeId: senderNodeId)
+
+        let recipientPrivKey = Curve25519.KeyAgreement.PrivateKey()
+        let recipientPriv = recipientPrivKey.rawRepresentation
+        let recipientPub = recipientPrivKey.publicKey.rawRepresentation
+
+        let identity = LogicalMessageIdentity.createNew()
+        let badPowNonce = Data(repeating: 0x01, count: 8)
+        let plaintext = Data("test".utf8)
+        var sealedInner = Data()
+        sealedInner.append(identity.messageNonce)
+        sealedInner.append(badPowNonce)
+        sealedInner.append(identity.createdAtLe())
+        sealedInner.append(UInt8(Priority.direct.rawValue))
+        sealedInner.append(plaintext)
+
+        let sealed = try SealedSender.seal(
+            plaintext: sealedInner,
+            senderNodeId: senderNodeId,
+            recipientStaticPub: recipientPub
+        )
+        let msgId = MessageId.derive(senderNodeId: senderNodeId, identity: identity, plaintext: plaintext)
+        let frame = FrameV2(
+            type: .message,
+            msgId: msgId,
+            routingTag: Data(count: 4),
+            ttl: 8,
+            hopCount: 0,
+            flags: UInt16(FrameV2.Flags.sealed) | Priority.toFlags(.direct),
+            payload: sealed
+        )
+
+        let result = router.openSealedMessage(frame, ourStaticDhPriv: recipientPriv)
+        XCTAssertEqual(result, OpenMessageResult.policyMismatch)
+    }
+
+    func testInvalidSealedPriorityCodeIsRejectedWithPolicyMismatch() async throws {
+        let senderNodeId = Data((0..<16).map { UInt8($0) })
+        let router = Router(selfNodeId: senderNodeId)
+
+        let recipientPrivKey = Curve25519.KeyAgreement.PrivateKey()
+        let recipientPriv = recipientPrivKey.rawRepresentation
+        let recipientPub = recipientPrivKey.publicKey.rawRepresentation
+
+        let identity = LogicalMessageIdentity.createNew()
+        let powNonce = Data(count: 8)
+        let plaintext = Data("test".utf8)
+        var sealedInner = Data()
+        sealedInner.append(identity.messageNonce)
+        sealedInner.append(powNonce)
+        sealedInner.append(identity.createdAtLe())
+        sealedInner.append(UInt8(0)) // SOS priority code 0 (invalid for sealed MESSAGE)
+        sealedInner.append(plaintext)
+
+        let sealed = try SealedSender.seal(
+            plaintext: sealedInner,
+            senderNodeId: senderNodeId,
+            recipientStaticPub: recipientPub
+        )
+        let msgId = MessageId.derive(senderNodeId: senderNodeId, identity: identity, plaintext: plaintext)
+        let frame = FrameV2(
+            type: .message,
+            msgId: msgId,
+            routingTag: Data(count: 4),
+            ttl: 8,
+            hopCount: 0,
+            flags: UInt16(FrameV2.Flags.sealed) | Priority.toFlags(.direct),
+            payload: sealed
+        )
+
+        let result = router.openSealedMessage(frame, ourStaticDhPriv: recipientPriv)
+        XCTAssertEqual(result, OpenMessageResult.policyMismatch)
+    }
+
+    func testTruncatedSealedInnerPayloadIsRejectedWithMalformed() async throws {
+        let senderNodeId = Data((0..<16).map { UInt8($0) })
+        let router = Router(selfNodeId: senderNodeId)
+
+        let recipientPrivKey = Curve25519.KeyAgreement.PrivateKey()
+        let recipientPriv = recipientPrivKey.rawRepresentation
+        let recipientPub = recipientPrivKey.publicKey.rawRepresentation
+
+        let shortInner = Data(count: 20) // < 29 bytes
+        let sealed = try SealedSender.seal(
+            plaintext: shortInner,
+            senderNodeId: senderNodeId,
+            recipientStaticPub: recipientPub
+        )
+        let frame = FrameV2(
+            type: .message,
+            msgId: Data(count: 16),
+            routingTag: Data(count: 4),
+            ttl: 8,
+            hopCount: 0,
+            flags: UInt16(FrameV2.Flags.sealed) | Priority.toFlags(.direct),
+            payload: sealed
+        )
+
+        let result = router.openSealedMessage(frame, ourStaticDhPriv: recipientPriv)
+        XCTAssertEqual(result, OpenMessageResult.malformed)
     }
 
     func testAuthorSealedMessageConcurrentSendsToAliceAndBob() async throws {

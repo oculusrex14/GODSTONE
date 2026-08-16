@@ -36,6 +36,15 @@ enum class Priority(val code: Int) {
             return entries.firstOrNull { it.code == idx } ?: DIRECT
         }
 
+        /**
+         * Strictly decode priority from FrameV2 flags. Fails closed (null) on unknown codes
+         * (codes 5..7 or unmapped). Used in security validation and abuse gating.
+         */
+        fun fromFlagsStrict(flags: Int): Priority? {
+            val idx = (flags and FrameV2.PRIORITY_MASK) ushr 8
+            return entries.firstOrNull { it.code == idx }
+        }
+
         /** Place a priority into its flag-bit position (bits 8..10). */
         fun toFlags(priority: Priority): Int = priority.code shl 8
 

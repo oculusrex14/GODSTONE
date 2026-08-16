@@ -33,6 +33,13 @@ public enum Priority: Int, Sendable {
         return Priority(rawValue: idx) ?? .direct
     }
 
+    /// Strictly decode priority from FrameV2 flags. Fails closed (nil) on unknown codes
+    /// (codes 5..7 or unmapped). Used in security validation and abuse gating.
+    public static func fromFlagsStrict(_ flags: UInt16) -> Priority? {
+        let idx = Int((flags & FrameV2.Flags.priority_mask) >> 8)
+        return Priority(rawValue: idx)
+    }
+
     /// Place a priority into its flag-bit position (bits 8..10).
     public static func toFlags(_ priority: Priority) -> UInt16 {
         UInt16(priority.rawValue) << 8

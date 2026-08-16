@@ -152,6 +152,16 @@ class MessageIdTest {
         assertEquals(0x42.toByte(), ident.messageNonce[0])
     }
 
+    @Test
+    fun `logical message identity toString redacts message nonce`() {
+        val nonce = ByteArray(16) { 0x42 }
+        val ident = LogicalMessageIdentity.of(100L, nonce)
+        val s = ident.toString()
+        assertTrue(s.contains("createdAt=100"))
+        assertTrue(s.contains("nonce=<redacted>"))
+        assertFalse(s.contains("424242"))
+    }
+
     private fun blake2s128(data: ByteArray): ByteArray {
         val d = Blake2sDigest(null, 16, null, null)
         d.update(data, 0, data.size)

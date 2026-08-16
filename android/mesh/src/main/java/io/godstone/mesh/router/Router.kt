@@ -31,7 +31,7 @@ import kotlinx.coroutines.sync.withLock
  */
 class Router(
     private val store: MessageStore,
-    private val selfNodeId: ByteArray,
+    selfNodeId: ByteArray,
     /** PROTOCOL.md section 8. Rate limits and trust, enforced before parsing. */
     private val governor: io.godstone.mesh.abuse.PeerGovernor =
         io.godstone.mesh.abuse.PeerGovernor(),
@@ -44,6 +44,9 @@ class Router(
     private val seenCacheSize: Int = SEEN_CACHE_SIZE,
 ) {
 
+    private val selfNodeId = selfNodeId.copyOf().also {
+        require(it.size == MessageId.NODE_ID_BYTES) { "selfNodeId must be ${MessageId.NODE_ID_BYTES} bytes" }
+    }
     private val seen = LruMsgIdCache(seenCacheSize)
     private val mutex = Mutex()
 
@@ -58,7 +61,8 @@ class Router(
         // 0. Anti-abuse FIRST, before any payload work (PROTOCOL.md section 8).
         //    An unbounded inbound rate on a mesh whose premise is "battery is
         //    life" is a remote power-off switch, not a spam problem.
-        if (!governor.allowInbound(fromPeer, Priority.fromFlags(frame.flags))) return false
+        val priority = Priority.fromFlagsStrict(frame.flags) ?: return false
+        if (!governor.allowInbound(fromPeer, priority)) return false
 
         // 1. Fast duplicate path (B1). The in-memory LRU is an OPTIMISATION only:
         //    a hit means this id was durably accepted at some point (or is a
@@ -123,29 +127,29 @@ class Router(
 
     /** Returns the copy of [frame] ready to be relayed: TTL decremented, hop count incremented. */
     fun forwardCopy(frame: FrameV2): FrameV2 {
-        require(frame.ttl > 1) { "cannot forward a frame with ttl <= 1" }
-        return frame.copy(
-            ttl = frame.ttl - 1,
-            hopCount = frame.hopCount + 1
+        val nextHop = if (frame.hopCount >= 0xFF.toByte()) 0xFF.toByte() else (frame.hopCount + 1).toByte()
+        return FrameV2(
+            type = frame.type,
+            msgId = frame.msgId.copyOf(),
+            routingTag = frame.routingTag.copyOf(),
+            ttl = (frame.ttl - 1).toByte(),
+            hopCount = nextHop,
+            flags = frame.flags,
+            payload = frame.payload.copyOf()
         )
     }
 
     /**
-     * Difference reconciliation against a peer's Bloom digest (ADR-004 criterion 6).
-     *
-     * Iterates durably-held frames in descending priority order and yields
-     * those whose msg_id is ABSENT from [peerDigest], up to [limit]. Empty
-     * when the peer already holds everything we hold (or Bloom false-positives,
-     * which costs one round of convergence, never correctness).
+     * Compute what a peer appears to lack, in strict priority order:
+     * SOS first, then DIRECT, GROUP, BROADCAST, and BULK last.
      */
-    suspend fun framesPeerLacks(peerDigest: BloomDigest, limit: Int = 32): List<FrameV2> {
-        val out = ArrayList<FrameV2>()
-        store.forEachHeldOrderedByPriority { frame ->
-            if (!peerDigest.mightContain(frame.msgId)) {
-                out.add(frame)
-                if (out.size >= limit) return@forEachHeldOrderedByPriority false
-            }
-            true
+    suspend fun framesPeerLacks(peerDigest: BloomDigest, limit: Int): List<FrameV2> {
+        // A-13: bounded by construction. The store pages rows and we stop as soon
+        // as [limit] is reached, so a 200 MB backlog never materialises in memory.
+        val out = ArrayList<FrameV2>(limit)
+        store.forEachHeldOrderedByPriority { f ->
+            if (!peerDigest.mightContain(f.msgId)) out.add(f)
+            out.size < limit   // false stops the scan
         }
         return out
     }
@@ -156,24 +160,92 @@ class Router(
         return d
     }
 
-    suspend fun bloomDigest(): BloomDigest = currentDigest()
+    /**
+     * Build an anti-entropy WANT response frame (criterion 6, ADR-004).
+     * Carries requested message IDs concatenated in the payload.
+     */
+    fun buildWant(msgIds: List<ByteArray>, routingTag: ByteArray): FrameV2 {
+        require(msgIds.isNotEmpty()) { "WANT frame must carry at least one msg_id" }
+        require(routingTag.size == 4) { "routingTag must be 4 bytes" }
+        val payload = ByteArray(msgIds.size * MessageId.MSG_ID_BYTES)
+        for (i in msgIds.indices) {
+            val id = msgIds[i]
+            require(id.size == MessageId.MSG_ID_BYTES) { "Each msg_id must be ${MessageId.MSG_ID_BYTES} bytes" }
+            System.arraycopy(id, 0, payload, i * MessageId.MSG_ID_BYTES, MessageId.MSG_ID_BYTES)
+        }
+        val ephemeralIdentity = LogicalMessageIdentity.createNew()
+        val msgId = MessageId.derive(selfNodeId, ephemeralIdentity, payload)
+        return FrameV2(
+            type = TypeV2.WANT,
+            msgId = msgId,
+            routingTag = routingTag,
+            ttl = 1,
+            hopCount = 0,
+            flags = 0,
+            payload = payload
+        )
+    }
 
     /**
-     * Deterministically build a sealed MESSAGE frame around an explicit [identity].
-     *
-     * The sealed inner content carries the message nonce, PoW nonce, and created_at alongside
-     * the plaintext (ADR-001 §3.3.4, C6.7.1):
-     *     sealedInner = messageNonce(16) || powNonce(8) || created_at_le(4) || plaintext.
-     *
-     * Canonical created_at is serialised LITTLE-ENDIAN so there is one canonical created_at
-     * encoding across msg_id + PoW preimage + sealed payload and the recipient reconstructs
-     * preimages from the sealed bytes without any byte-order conversion.
-     *
-     * PoW binds the SAME message_nonce as msg_id, preventing PoW reuse across logical sends.
-     *
-     * IMPORTANT RETRY RULE:
-     * Author once via [authorSealedMessage]; retries MUST retransmit the exact persisted
-     * FrameV2 rather than resealing.
+     * Build an anti-entropy IAVE (I-Have) bloom digest frame (criterion 6, ADR-004).
+     * Contains the full 4096-bit (512-byte) bloom filter of all held message IDs.
+     */
+    fun buildIHave(bloomFilter: ByteArray, routingTag: ByteArray): FrameV2 {
+        require(bloomFilter.size == BloomFilter.FILTER_BYTES) {
+            "IAVE bloomFilter must be ${BloomFilter.FILTER_BYTES} bytes"
+        }
+        require(routingTag.size == 4) { "routingTag must be 4 bytes" }
+        val ephemeralIdentity = LogicalMessageIdentity.createNew()
+        val msgId = MessageId.derive(selfNodeId, ephemeralIdentity, bloomFilter)
+        return FrameV2(
+            type = TypeV2.IAVE,
+            msgId = msgId,
+            routingTag = routingTag,
+            ttl = 1,
+            hopCount = 0,
+            flags = 0,
+            payload = bloomFilter.copyOf()
+        )
+    }
+
+    /**
+     * Build an authenticated recipient ACK frame (ADR-004, C6.1/C6.4.1).
+     * Signs (b"GMP2-ACK" || msgId[16] || recipientNodeId[16]) under recipient's Ed25519 key.
+     */
+    fun buildAck(
+        ackedMsgId: ByteArray,
+        ourIdentityPriv: ByteArray,
+        routingTag: ByteArray
+    ): FrameV2 {
+        require(ackedMsgId.size == MessageId.MSG_ID_BYTES) { "ackedMsgId must be 16 bytes" }
+        require(ourIdentityPriv.size == 32 || ourIdentityPriv.size == 64) { "ourIdentityPriv must be Ed25519 private key bytes" }
+        require(routingTag.size == 4) { "routingTag must be 4 bytes" }
+
+        val signature = io.godstone.mesh.delivery.DeliveryAck.sign(
+            ackedMsgId = ackedMsgId,
+            recipientNodeId = selfNodeId,
+            recipientIdentityPriv = ourIdentityPriv
+        )
+        val payload = ackedMsgId + selfNodeId + signature // 16 + 16 + 64 = 96 bytes
+
+        val ephemeralIdentity = LogicalMessageIdentity.createNew()
+        val ackMsgId = MessageId.derive(selfNodeId, ephemeralIdentity, payload)
+
+        return FrameV2(
+            type = TypeV2.ACK,
+            msgId = ackMsgId,
+            routingTag = routingTag,
+            ttl = FrameV2.DEFAULT_TTL,
+            hopCount = 0,
+            flags = FrameV2.ACK_REQ or FrameV2.RELAY_OK or Priority.toFlags(Priority.DIRECT),
+            payload = payload
+        )
+    }
+
+    /**
+     * Build a sealed MESSAGE frame with an explicit [LogicalMessageIdentity].
+     * Canonical 29-byte sealed inner payload prefix (ADR-001 §3.3):
+     * message_nonce[16] || pow_nonce[8] || created_at_le[4] || priority_code[1] || plaintext
      */
     suspend fun buildSealedMessage(
         plaintext: ByteArray,
@@ -184,6 +256,9 @@ class Router(
     ): FrameV2 {
         require(recipientNodeId.size == MessageId.NODE_ID_BYTES) { "recipientNodeId must be 16 bytes" }
         require(recipientStaticPub.size == 32) { "recipientStaticPub must be 32 bytes" }
+        require(priority == Priority.DIRECT || priority == Priority.GROUP || priority == Priority.BROADCAST) {
+            "Invalid priority $priority for sealed MESSAGE frame"
+        }
 
         val createdAtLe = identity.createdAtLe()
         val powNonce = if (priority.requiresProofOfWork) {
@@ -191,6 +266,7 @@ class Router(
                 senderNodeId = selfNodeId,
                 createdAtLe = createdAtLe,
                 messageNonce = identity.messageNonce,
+                priorityCode = priority.code.toByte(),
                 typeCode = TypeV2.MESSAGE.code,
                 plaintext = plaintext
             )
@@ -198,7 +274,7 @@ class Router(
             ByteArray(ProofOfWork.NONCE_BYTES)
         }
 
-        val sealedInner = identity.messageNonce + powNonce + createdAtLe + plaintext
+        val sealedInner = identity.messageNonce + powNonce + createdAtLe + byteArrayOf(priority.code.toByte()) + plaintext
         val sealed = io.godstone.mesh.seal.SealedSender.seal(
             sealedInner, selfNodeId, recipientStaticPub)
         val msgId = MessageId.derive(selfNodeId, identity, plaintext)
@@ -232,29 +308,57 @@ class Router(
     }
 
     /**
-     * Open a sealed MESSAGE addressed to us and split the authenticated inner
-     * content into verified components.
-     *
-     * Verification is MANDATORY before returning [OpenMessageResult.Accepted]:
-     * 1. SealedSender/AEAD open succeeds (otherwise [OpenMessageResult.NotForUs]).
-     * 2. Length valid (>= 28 bytes prefix + sender node ID 16 bytes; otherwise [OpenMessageResult.Malformed]).
-     * 3. Rederived msg_id matches frame.msgId; otherwise [OpenMessageResult.MessageIdMismatch].
-     * 4. If frame has HAS_POW, ProofOfWork.verify passes with message_nonce (otherwise [OpenMessageResult.InvalidProofOfWork]).
+     * Open a sealed MESSAGE addressed to us and verify authenticated message policy
+     * and identity against frame headers (ADR-001 §3.3, C6.7.2).
      */
     fun openSealedMessage(frame: FrameV2, ourStaticDhPriv: ByteArray): OpenMessageResult {
+        if (frame.type != TypeV2.MESSAGE) {
+            return OpenMessageResult.WrongFrameType
+        }
+        if (frame.flags and FrameV2.SEALED == 0) {
+            return OpenMessageResult.MissingSealedFlag
+        }
+
         val opened = io.godstone.mesh.seal.SealedSender.open(frame.payload, ourStaticDhPriv)
             ?: return OpenMessageResult.NotForUs
 
         val inner = opened.plaintext
-        val prefixLen = MessageId.NONCE_BYTES + ProofOfWork.NONCE_BYTES + 4 // 28 bytes
+        val prefixLen = MessageId.NONCE_BYTES + ProofOfWork.NONCE_BYTES + 4 + 1 // 29 bytes
         if (inner.size < prefixLen || opened.senderNodeId.size != MessageId.NODE_ID_BYTES) {
             return OpenMessageResult.Malformed
         }
 
         val messageNonce = inner.copyOfRange(0, MessageId.NONCE_BYTES)
         val powNonce = inner.copyOfRange(MessageId.NONCE_BYTES, MessageId.NONCE_BYTES + ProofOfWork.NONCE_BYTES)
-        val createdAtLe = inner.copyOfRange(MessageId.NONCE_BYTES + ProofOfWork.NONCE_BYTES, prefixLen)
+        val createdAtLe = inner.copyOfRange(MessageId.NONCE_BYTES + ProofOfWork.NONCE_BYTES, MessageId.NONCE_BYTES + ProofOfWork.NONCE_BYTES + 4)
+        val priorityCode = inner[MessageId.NONCE_BYTES + ProofOfWork.NONCE_BYTES + 4].toInt() and 0xFF
         val plaintext = inner.copyOfRange(prefixLen, inner.size)
+
+        val sealedPriority = Priority.fromCode(priorityCode)
+            ?: return OpenMessageResult.PolicyMismatch
+        if (sealedPriority != Priority.DIRECT && sealedPriority != Priority.GROUP && sealedPriority != Priority.BROADCAST) {
+            return OpenMessageResult.PolicyMismatch
+        }
+
+        val headerPriority = Priority.fromFlagsStrict(frame.flags)
+            ?: return OpenMessageResult.PolicyMismatch
+
+        if (headerPriority != sealedPriority) {
+            return OpenMessageResult.PolicyMismatch
+        }
+
+        if (sealedPriority == Priority.DIRECT) {
+            if (frame.flags and FrameV2.HAS_POW != 0) {
+                return OpenMessageResult.PolicyMismatch
+            }
+            if (!powNonce.all { it == 0.toByte() }) {
+                return OpenMessageResult.PolicyMismatch
+            }
+        } else {
+            if (frame.flags and FrameV2.HAS_POW == 0) {
+                return OpenMessageResult.PolicyMismatch
+            }
+        }
 
         val createdAt = java.nio.ByteBuffer.wrap(createdAtLe)
             .order(java.nio.ByteOrder.LITTLE_ENDIAN).int.toLong() and 0xFFFFFFFFL
@@ -265,12 +369,13 @@ class Router(
             return OpenMessageResult.MessageIdMismatch
         }
 
-        if (frame.flags and FrameV2.HAS_POW != 0) {
+        if (sealedPriority.requiresProofOfWork) {
             val powValid = ProofOfWork.verify(
                 powNonce = powNonce,
                 senderNodeId = opened.senderNodeId,
                 createdAtLe = createdAtLe,
                 messageNonce = messageNonce,
+                priorityCode = sealedPriority.code.toByte(),
                 typeCode = frame.type.code,
                 plaintext = plaintext
             )
@@ -280,10 +385,11 @@ class Router(
         }
 
         return OpenMessageResult.Accepted(
-            VerifiedOpenedMessage(
+            PolicyCheckedOpenedMessage(
                 senderNodeId = opened.senderNodeId,
                 identity = identity,
                 powNonce = powNonce,
+                priority = sealedPriority,
                 plaintext = plaintext,
                 frame = frame
             )
@@ -327,18 +433,22 @@ class Router(
 
 /** Typed outcome of [Router.openSealedMessage]. */
 sealed class OpenMessageResult {
-    data class Accepted(val message: VerifiedOpenedMessage) : OpenMessageResult()
+    data class Accepted(val message: PolicyCheckedOpenedMessage) : OpenMessageResult()
     data object NotForUs : OpenMessageResult()
     data object Malformed : OpenMessageResult()
+    data object WrongFrameType : OpenMessageResult()
+    data object MissingSealedFlag : OpenMessageResult()
+    data object PolicyMismatch : OpenMessageResult()
     data object MessageIdMismatch : OpenMessageResult()
     data object InvalidProofOfWork : OpenMessageResult()
 }
 
 /** Result of opening a verified sealed MESSAGE. */
-data class VerifiedOpenedMessage(
+data class PolicyCheckedOpenedMessage(
     val senderNodeId: ByteArray,
     val identity: LogicalMessageIdentity,
     val powNonce: ByteArray,
+    val priority: Priority,
     val plaintext: ByteArray,
     val frame: FrameV2
 ) {
@@ -347,10 +457,11 @@ data class VerifiedOpenedMessage(
 
     override fun equals(other: Any?): Boolean {
         if (this === other) return true
-        if (other !is VerifiedOpenedMessage) return false
+        if (other !is PolicyCheckedOpenedMessage) return false
         return senderNodeId.contentEquals(other.senderNodeId) &&
             identity == other.identity &&
             powNonce.contentEquals(other.powNonce) &&
+            priority == other.priority &&
             plaintext.contentEquals(other.plaintext) &&
             frame == other.frame
     }
@@ -359,6 +470,7 @@ data class VerifiedOpenedMessage(
         var result = senderNodeId.contentHashCode()
         result = 31 * result + identity.hashCode()
         result = 31 * result + powNonce.contentHashCode()
+        result = 31 * result + priority.hashCode()
         result = 31 * result + plaintext.contentHashCode()
         result = 31 * result + frame.hashCode()
         return result

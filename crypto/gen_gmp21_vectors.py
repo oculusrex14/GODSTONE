@@ -34,6 +34,11 @@ TYPE_MESSAGE = 0x18
 TYPE_SOS = 0xF0
 
 
+PRIORITY_DIRECT = 1
+PRIORITY_GROUP = 2
+PRIORITY_BROADCAST = 3
+
+
 def _msg_id_case(name: str, sender: bytes, created_at: int, nonce: bytes, payload: bytes) -> dict:
     mid = G.msg_id(sender, created_at, nonce, payload)
     return {
@@ -67,9 +72,9 @@ def _bloom_case(name: str, msg_ids: list[bytes]) -> dict:
 
 
 def _pow_kat(name: str, sender: bytes, created_at: int, message_nonce: bytes,
-             type_code: int, plaintext: bytes, target_bits: int) -> dict:
+             priority_code: int, type_code: int, plaintext: bytes, target_bits: int) -> dict:
     created_le = G.uint32_le(created_at)
-    nonce, digest = G.pow_mine(sender, created_le, message_nonce, type_code, plaintext,
+    nonce, digest = G.pow_mine(sender, created_le, message_nonce, priority_code, type_code, plaintext,
                                target_bits=target_bits)
     return {
         "name": name,
@@ -77,13 +82,14 @@ def _pow_kat(name: str, sender: bytes, created_at: int, message_nonce: bytes,
         "created_at_epoch_seconds": created_at,
         "created_at_le": created_le.hex(),
         "message_nonce": message_nonce.hex(),
+        "priority_code": priority_code,
         "type_code": type_code,
         "plaintext": plaintext.hex(),
         "plaintext_utf8": plaintext.decode("utf-8", "replace"),
         "target_bits": target_bits,
         "pow_nonce": nonce.hex(),
         "blake2s_256": digest.hex(),
-        "verified": G.pow_verify(nonce, sender, created_le, message_nonce, type_code, plaintext,
+        "verified": G.pow_verify(nonce, sender, created_le, message_nonce, priority_code, type_code, plaintext,
                                  target_bits),
     }
 
@@ -131,25 +137,54 @@ def build() -> dict:
     bloom_single = _bloom_case("single_id", [mid2])
     bloom_triple = _bloom_case("three_ids", [mid1, mid2, mid3])
 
-    # ---- PoW: production 20-bit KAT + a fast 8-bit KAT ----
-    pow_20 = _pow_kat("pow_20bit_message_help", SENDER_A, 1, NONCE_ONE, TYPE_MESSAGE,
+    # ---- PoW: production 20-bit KAT + a fast 8-bit KAT (GROUP priority = 2) ----
+    pow_20 = _pow_kat("pow_20bit_message_help_group", SENDER_A, 1, NONCE_ONE, PRIORITY_GROUP, TYPE_MESSAGE,
                       PAYLOAD_HELP, G.POW_TARGET_BITS)
-    pow_8 = _pow_kat("pow_8bit_message_help", SENDER_A, 1, NONCE_ONE, TYPE_MESSAGE,
-                      PAYLOAD_HELP, 8)
+    pow_8 = _pow_kat("pow_8bit_message_help_group", SENDER_A, 1, NONCE_ONE, PRIORITY_GROUP, TYPE_MESSAGE,
+                     PAYLOAD_HELP, 8)
 
     # PoW nonce-mutation negative control: verify with mutated message_nonce (NONCE_ZERO) fails
     pow_negative_nonce = {
         "name": "pow_20bit_distinct_message_nonce_must_fail",
         "description": "valid pow_nonce for message_nonce all-ones must fail verification when tested against message_nonce zero.",
         "pow_nonce": pow_20["pow_nonce"],
+        "priority_code": PRIORITY_GROUP,
         "message_nonce_original": NONCE_ONE.hex(),
         "message_nonce_mutated": NONCE_ZERO.hex(),
-        "valid_with_original": G.pow_verify(bytes.fromhex(pow_20["pow_nonce"]), SENDER_A, G.uint32_le(1), NONCE_ONE, TYPE_MESSAGE, PAYLOAD_HELP, G.POW_TARGET_BITS),
-        "valid_with_mutated": G.pow_verify(bytes.fromhex(pow_20["pow_nonce"]), SENDER_A, G.uint32_le(1), NONCE_ZERO, TYPE_MESSAGE, PAYLOAD_HELP, G.POW_TARGET_BITS),
+        "valid_with_original": G.pow_verify(bytes.fromhex(pow_20["pow_nonce"]), SENDER_A, G.uint32_le(1), NONCE_ONE, PRIORITY_GROUP, TYPE_MESSAGE, PAYLOAD_HELP, G.POW_TARGET_BITS),
+        "valid_with_mutated": G.pow_verify(bytes.fromhex(pow_20["pow_nonce"]), SENDER_A, G.uint32_le(1), NONCE_ZERO, PRIORITY_GROUP, TYPE_MESSAGE, PAYLOAD_HELP, G.POW_TARGET_BITS),
+    }
+
+    # PoW priority-mutation negative control: verify with mutated priority_code (BROADCAST or DIRECT) fails
+    pow_negative_priority = {
+        "name": "pow_20bit_mutated_priority_must_fail",
+        "description": "valid pow_nonce for GROUP priority (2) must fail verification when tested against BROADCAST priority (3) or DIRECT (1).",
+        "pow_nonce": pow_20["pow_nonce"],
+        "priority_code_original": PRIORITY_GROUP,
+        "priority_code_mutated": PRIORITY_BROADCAST,
+        "valid_with_original": G.pow_verify(bytes.fromhex(pow_20["pow_nonce"]), SENDER_A, G.uint32_le(1), NONCE_ONE, PRIORITY_GROUP, TYPE_MESSAGE, PAYLOAD_HELP, G.POW_TARGET_BITS),
+        "valid_with_mutated": G.pow_verify(bytes.fromhex(pow_20["pow_nonce"]), SENDER_A, G.uint32_le(1), NONCE_ONE, PRIORITY_BROADCAST, TYPE_MESSAGE, PAYLOAD_HELP, G.POW_TARGET_BITS),
+    }
+
+    # ---- raw sealed_inner fixture: 29-byte prefix layout ----
+    # sealed_inner = message_nonce[16] || pow_nonce[8] || created_at_le[4] || priority_code[1] || plaintext
+    sealed_inner_raw = NONCE_ONE + bytes.fromhex(pow_20["pow_nonce"]) + G.uint32_le(1) + bytes([PRIORITY_GROUP]) + PAYLOAD_HELP
+    sealed_inner_case = {
+        "name": "sealed_inner_29byte_prefix_help_group",
+        "description": "canonical 29-byte prefix layout: message_nonce[16] || pow_nonce[8] || created_at_le[4] || priority_code[1] || plaintext",
+        "message_nonce": NONCE_ONE.hex(),
+        "pow_nonce": pow_20["pow_nonce"],
+        "created_at_epoch_seconds": 1,
+        "created_at_le": G.uint32_le(1).hex(),
+        "priority_code": PRIORITY_GROUP,
+        "plaintext": PAYLOAD_HELP.hex(),
+        "plaintext_utf8": PAYLOAD_HELP.decode("utf-8"),
+        "prefix_bytes": 29,
+        "sealed_inner": sealed_inner_raw.hex(),
     }
 
     return {
-        "_comment": "GMP/2.1 locked byte-parity fixture (ADR-001 §3, C6.7.1). Both "
+        "_comment": "GMP/2.1 locked byte-parity fixture (ADR-001 §3, C6.7.2). Both "
                     "platforms must reproduce every value here byte-for-byte. "
                     "Regenerate with `python -m crypto.gen_gmp21_vectors`. The "
                     "platform tests transcribe these as hex literals; this file "
@@ -168,6 +203,10 @@ def build() -> dict:
             "bloom_hashes": G.BLOOM_HASHES,
             "pow_nonce_bytes": G.POW_NONCE_BYTES,
             "pow_target_bits": G.POW_TARGET_BITS,
+            "priority_direct": PRIORITY_DIRECT,
+            "priority_group": PRIORITY_GROUP,
+            "priority_broadcast": PRIORITY_BROADCAST,
+            "sealed_inner_prefix_bytes": 29,
             "type_message": TYPE_MESSAGE,
             "type_sos": TYPE_SOS,
         },
@@ -184,9 +223,14 @@ def build() -> dict:
         },
         "pow": {
             "spec": "BLAKE2s-256(b'GMP2-POW' ‖ pow_nonce[8] ‖ sender[16] ‖ created_at_le[4] ‖ "
-                    "message_nonce[16] ‖ type_code[1] ‖ plaintext); top target_bits bits zero",
+                    "message_nonce[16] ‖ priority_code[1] ‖ type_code[1] ‖ plaintext); top target_bits bits zero",
             "cases": [pow_20, pow_8],
             "negative_nonce": pow_negative_nonce,
+            "negative_priority": pow_negative_priority,
+        },
+        "sealed_inner": {
+            "spec": "sealed_inner = message_nonce[16] ‖ pow_nonce[8] ‖ created_at_le[4] ‖ priority_code[1] ‖ plaintext (29-byte prefix)",
+            "case": sealed_inner_case,
         },
     }
 
@@ -201,8 +245,11 @@ def main() -> int:
     print(f"  pow cases       {len(data['pow']['cases'])} "
           f"(20-bit nonce={data['pow']['cases'][0]['pow_nonce']}, "
           f"8-bit nonce={data['pow']['cases'][1]['pow_nonce']})")
-    print(f"  pow neg control valid_orig={data['pow']['negative_nonce']['valid_with_original']}, "
+    print(f"  pow neg control nonce valid_orig={data['pow']['negative_nonce']['valid_with_original']}, "
           f"valid_mut={data['pow']['negative_nonce']['valid_with_mutated']}")
+    print(f"  pow neg control priority valid_orig={data['pow']['negative_priority']['valid_with_original']}, "
+          f"valid_mut={data['pow']['negative_priority']['valid_with_mutated']}")
+    print(f"  sealed_inner fixture prefix_bytes={data['sealed_inner']['case']['prefix_bytes']}")
     return 0
 
 

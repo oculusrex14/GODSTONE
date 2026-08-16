@@ -110,7 +110,7 @@ off size field
 0   2    magic          0x4753
 2   1    version        0x02; minor capability 1 is negotiated in HELLO
 3   1    type           generated even-parity type code
-4   16   msg_id         BLAKE2s-128(sender || created_at || payload)
+4   16   msg_id         BLAKE2s-128(b"GMP2-MSGID" || sender || created_at_le || message_nonce || plaintext) (ADR-001 §3.3)
 20  4    routing_tag    rotating recipient hint
 24  1    ttl            maximum 16
 25  1    hop_count      maximum 16
@@ -169,13 +169,15 @@ The threat-model goals require:
 - bounded parsing and storage;
 - per-peer/per-priority token buckets;
 - trust scoring and exponential refusal windows;
-- a proof-of-work design whose nonce placement remains verifiable by relays
-  without breaking sealed-sender privacy.
+- recipient-side Proof-of-Work verification for GROUP/BROADCAST upon unsealing
+  (ADR-001 §3.3);
+- relay-side anti-abuse via PeerGovernor token buckets, connection quotas,
+  and bounded durable storage caps.
 
-The last item is still unresolved between ADR-001 and ADR-003. It must be settled
-before GROUP/BROADCAST traffic is enabled. V4 therefore does not claim the
-sealed-sender or anti-abuse design is complete merely because helper classes
-exist.
+Relays cannot verify the sealed PoW or authenticate relay-visible priority headers,
+so priority-aware relay abuse resistance remains an open protocol design problem
+governed by ADR-003. GROUP/BROADCAST traffic remains nonshipping. V4 does not claim
+the sealed-sender or anti-abuse design is complete merely because scaffolding exists.
 
 ## 10. SOS truth states
 

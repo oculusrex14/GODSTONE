@@ -84,9 +84,11 @@ by a phone with a broken clock still expires correctly on every relay.
 ordering within a single sender.
 
 A device whose clock is untrusted (no time source since boot) sets a
-`CLOCK_UNTRUSTED` flag and omits `created_at` rather than asserting a wrong one.
+`CLOCK_UNTRUSTED` flag. Representation of `CLOCK_UNTRUSTED` inside the C6.7
+authenticated application message format remains unresolved before link
+enablement (the runtime currently requires a uint32 `created_at`).
 
-### 3.3 Logical message identity and msg_id derivation (C6.7)
+### 3.3 Logical message identity, msg_id derivation, and authenticated policy (C6.7 / C6.7.2)
 
 #### 3.3.1 The collision defect in pure content-hash identity
 
@@ -132,27 +134,70 @@ msg_id   = BLAKE2s-128(preimage)   (16 bytes)
 - `message_nonce`: 16 bytes (CSPRNG generated once at creation)
 - `plaintext`: variable-length unsealed application payload bytes
 
-#### 3.3.4 Canonical sealed inner layout & recipient rederivation
+**Why priority is NOT part of `msg_id`:**
+- `message_nonce` already guarantees unique logical message identity.
+- Priority is immutable delivery policy for that authored frame.
+- Transmission retries reuse the exact persisted `FrameV2`.
+- Changing priority for a new user-intent send requires authoring a new logical identity/frame.
+- Avoiding unnecessary `msg_id` formula churn keeps message identity stable.
 
-To allow the recipient to authenticate the logical identity upon unsealing, `message_nonce` is placed
-inside the authenticated sealed envelope:
+#### 3.3.4 Canonical sealed inner layout & authenticated message policy (C6.7.2)
+
+To authenticate logical identity and delivery policy upon unsealing, `message_nonce`, `pow_nonce`,
+`created_at_le`, and `priority_code` are placed inside the authenticated sealed envelope:
 
 ```text
-sealed_inner = message_nonce[16] ‖ pow_nonce[8] ‖ created_at_le[4] ‖ plaintext
+sealed_inner = message_nonce[16] ‖ pow_nonce[8] ‖ created_at_le[4] ‖ priority_code[1] ‖ plaintext
 ```
 
-Fixed prefix length = $16 + 8 + 4 = 28$ bytes.
+Fixed prefix length = $16 + 8 + 4 + 1 = 29$ bytes.
 
-**Recipient verification:** Upon unsealing with `SealedSender.open`, the recipient extracts
-`message_nonce`, `pow_nonce`, `created_at_le`, and `plaintext`. The recipient then computes
-`MessageId.derive(sender_node_id, created_at, message_nonce, plaintext)` and asserts that the derived
-ID matches the 16-byte `frame.msg_id` in the header. If it mismatches, the frame is rejected.
+Canonical priority numeric codes for FrameV2 type `MESSAGE`:
+- `DIRECT = 1`
+- `GROUP = 2`
+- `BROADCAST = 3`
 
-#### 3.3.5 Abuse and flood resistance separation
+Any other priority codes (`SOS = 0`, `BULK = 4`, `5`, `6`, `7`) for type `MESSAGE` are rejected fail-closed.
+
+#### 3.3.5 PoW preimage binding authenticated priority
+
+To prevent an authenticated relay from downgrading `GROUP`/`BROADCAST` to `DIRECT` to bypass PoW verification,
+the PoW preimage binds `message_nonce` and `priority_code`:
+
+```text
+pow_preimage = ASCII("GMP2-POW") ‖ pow_nonce[8] ‖ sender_node_id[16] ‖ created_at_le[4] ‖ message_nonce[16] ‖ priority_code[1] ‖ type_code[1] ‖ plaintext
+pow_digest   = BLAKE2s-256(pow_preimage)   (production target: top 20 bits zero)
+```
+
+For DIRECT messages, no PoW is required, and `pow_nonce` in `sealed_inner` is canonically encoded as 8 zero bytes.
+
+#### 3.3.6 Recipient open policy validation order
+
+Header policy fields (`priority_mask` and `HAS_POW`) are **untrusted** until compared against the sealed envelope:
+
+1. Require `frame.type == MESSAGE`.
+2. Require `SEALED` flag on frame.
+3. AEAD/open sealed envelope (`SealedSender.open`).
+4. Validate inner length $\ge 29$ bytes and sender node ID $== 16$ bytes.
+5. Parse `message_nonce`, `pow_nonce`, `created_at_le`, `priority_code`, and `plaintext`.
+6. Strictly validate `priority_code` $\in \{1(\text{DIRECT}), 2(\text{GROUP}), 3(\text{BROADCAST})\}$.
+7. Strictly decode header priority bits (`Priority.fromFlagsStrict`).
+8. Require `header_priority == authenticated_priority`.
+9. Determine PoW requirement from `authenticated_priority.requiresProofOfWork`.
+10. Require canonical `HAS_POW` consistency:
+    - If DIRECT: `HAS_POW` must be absent and `pow_nonce` must be 8 zero bytes.
+    - If GROUP/BROADCAST: `HAS_POW` must be present.
+11. Re-derive `msg_id = MessageId.derive(sender_node_id, identity, plaintext)` and match against `frame.msg_id`.
+12. If `authenticated_priority` requires PoW, verify PoW using `priority_code`.
+13. Only when all checks pass is the frame accepted (`OpenMessageResult.Accepted`).
+
+#### 3.3.7 Abuse and flood resistance separation
 
 `msg_id` is an **identity primitive**, not an abuse-control primitive. Flood resistance is enforced
 orthogonally by `PeerGovernor` token buckets, connection rate limits, bounded durable storage caps,
-and Proof-of-Work (`HAS_POW`) on applicable priorities (GROUP / BROADCAST).
+and Proof-of-Work (`HAS_POW`) on applicable priorities (GROUP / BROADCAST). Note: Claimed priority
+in relay-visible headers cannot be end-to-end authenticated by intermediate relays; priority-aware
+relay abuse resistance remains an open protocol design area under ADR-003.
 
 ### 3.4 Bloom digest hash input
 

@@ -52,12 +52,13 @@ object ProofOfWork {
     private val POW_DOMAIN_BYTES = DOMAIN_SEPARATOR_TEXT.toByteArray(Charsets.US_ASCII)
 
     /**
-     * True iff (ASCII("GMP2-POW") ‖ powNonce ‖ senderNodeId ‖ createdAtLe ‖ messageNonce ‖ typeCode ‖ plaintext)
+     * True iff (ASCII("GMP2-POW") ‖ powNonce ‖ senderNodeId ‖ createdAtLe ‖ messageNonce ‖ priorityCode ‖ typeCode ‖ plaintext)
      * hashes to a BLAKE2s-256 digest whose top [targetBits] bits are zero.
      *
      * [createdAtLe] is the 4-byte LITTLE-ENDIAN created_at carried inside the
      * sealed payload; the recipient passes the sealed bytes straight through.
      * [messageNonce] is the 16-byte message nonce from the sealed payload.
+     * [priorityCode] is the authenticated priority numeric code from the sealed payload.
      * The type code is bound so a stamp cannot be replayed against a different
      * frame type. The plaintext is the application payload the sender sealed —
      * NOT the sealed blob, which a relay could see but a recipient verifies
@@ -72,6 +73,7 @@ object ProofOfWork {
         senderNodeId: ByteArray,
         createdAtLe: ByteArray,
         messageNonce: ByteArray,
+        priorityCode: Byte,
         typeCode: Byte,
         plaintext: ByteArray,
         targetBits: Int = TARGET_BITS
@@ -81,7 +83,7 @@ object ProofOfWork {
         require(createdAtLe.size == 4) { "created_at must be 4 bytes" }
         require(messageNonce.size == MessageId.NONCE_BYTES) { "message_nonce must be 16 bytes" }
         require(targetBits in 1..32) { "targetBits out of range" }
-        val h = blake2s256(preimage(powNonce, senderNodeId, createdAtLe, messageNonce, typeCode, plaintext))
+        val h = blake2s256(preimage(powNonce, senderNodeId, createdAtLe, messageNonce, priorityCode, typeCode, plaintext))
         return topBitsZero(h, targetBits)
     }
 
@@ -97,6 +99,7 @@ object ProofOfWork {
         senderNodeId: ByteArray,
         createdAtLe: ByteArray,
         messageNonce: ByteArray,
+        priorityCode: Byte,
         typeCode: Byte,
         plaintext: ByteArray
     ): ByteArray {
@@ -104,7 +107,7 @@ object ProofOfWork {
         require(senderNodeId.size == MessageId.NODE_ID_BYTES) { "sender_node_id must be 16 bytes" }
         require(createdAtLe.size == 4) { "created_at must be 4 bytes" }
         require(messageNonce.size == MessageId.NONCE_BYTES) { "message_nonce must be 16 bytes" }
-        return blake2s256(preimage(powNonce, senderNodeId, createdAtLe, messageNonce, typeCode, plaintext))
+        return blake2s256(preimage(powNonce, senderNodeId, createdAtLe, messageNonce, priorityCode, typeCode, plaintext))
     }
 
     /**
@@ -123,6 +126,7 @@ object ProofOfWork {
         senderNodeId: ByteArray,
         createdAtLe: ByteArray,
         messageNonce: ByteArray,
+        priorityCode: Byte,
         typeCode: Byte,
         plaintext: ByteArray,
         rng: java.security.SecureRandom = java.security.SecureRandom(),
@@ -135,7 +139,7 @@ object ProofOfWork {
         val powNonce = ByteArray(NONCE_BYTES).also { rng.nextBytes(it) }
         while (true) {
             coroutineContext.ensureActive()
-            val h = blake2s256(preimage(powNonce, senderNodeId, createdAtLe, messageNonce, typeCode, plaintext))
+            val h = blake2s256(preimage(powNonce, senderNodeId, createdAtLe, messageNonce, priorityCode, typeCode, plaintext))
             if (topBitsZero(h, targetBits)) {
                 return powNonce.copyOf()
             }
@@ -160,8 +164,8 @@ object ProofOfWork {
 
     private fun preimage(
         powNonce: ByteArray, senderNodeId: ByteArray, createdAtLe: ByteArray,
-        messageNonce: ByteArray, typeCode: Byte, plaintext: ByteArray
-    ) = POW_DOMAIN_BYTES + powNonce + senderNodeId + createdAtLe + messageNonce + byteArrayOf(typeCode) + plaintext
+        messageNonce: ByteArray, priorityCode: Byte, typeCode: Byte, plaintext: ByteArray
+    ) = POW_DOMAIN_BYTES + powNonce + senderNodeId + createdAtLe + messageNonce + byteArrayOf(priorityCode, typeCode) + plaintext
 
     private fun blake2s256(data: ByteArray): ByteArray {
         val d = Blake2sDigest(null, 256 / 8, null, null)

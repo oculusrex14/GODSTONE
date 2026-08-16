@@ -1,16 +1,16 @@
 import Foundation
 import GodstoneCore
 
-/// Delay-tolerant epidemic router, GMP/2 (ADR-001, ADR-008, C6.7.1).
+/// Delay-tolerant epidemic router, GMP/2 (ADR-001, ADR-008, C6.7.2).
 ///
 /// V4: `ingest` now takes `FrameV2`.
 public final class Router {
 
     public static let defaultTtl: UInt8 = FrameV2.defaultTtl
     public static let maxTtl: UInt8 = FrameV2.maxTtl
-    private static let seenCacheCapacity = 16_384
+    public static let seenCacheCapacity = 16_384
 
-    public var selfNodeId: Data
+    public let selfNodeId: Data
     private var seen: LruSet<Data>
     private var queue: [FrameV2] = []
     private let lock = NSLock()
@@ -23,16 +23,8 @@ public final class Router {
     /// matching Android.
     public var store: MessageStore?
 
-    public convenience init() {
-        self.init(selfNodeId: Data(repeating: 0, count: 16), seenCacheCapacity: Router.seenCacheCapacity)
-    }
-
-    public convenience init(selfNodeId: Data) {
-        self.init(selfNodeId: selfNodeId, seenCacheCapacity: Router.seenCacheCapacity)
-    }
-
-    /// Test-only init with a smaller dedup window.
-    internal init(selfNodeId: Data = Data(repeating: 0, count: 16), seenCacheCapacity: Int) {
+    public init(selfNodeId: Data, seenCacheCapacity: Int = Router.seenCacheCapacity) {
+        precondition(selfNodeId.count == MessageId.nodeIdBytes, "selfNodeId must be \(MessageId.nodeIdBytes) bytes")
         self.selfNodeId = selfNodeId
         self.seen = LruSet<Data>(capacity: seenCacheCapacity)
     }
@@ -126,27 +118,28 @@ public final class Router {
         return BloomDigest.build(from: store.allHeldMsgIds())
     }
 
-    /// Deterministically build a sealed MESSAGE frame around an explicit [identity] (C6.7.1).
+    /// Deterministically build a sealed MESSAGE frame around an explicit [identity] (C6.7.2).
+    /// Canonical 29-byte sealed payload prefix: message_nonce[16] || pow_nonce[8] || created_at_le[4] || priority_code[1] || plaintext
     public func buildSealedMessage(
         plaintext: Data,
         recipientNodeId: Data,
         recipientStaticPub: Data,
-        senderNodeId: Data? = nil,
         identity: LogicalMessageIdentity,
         priority: Priority = .direct
     ) async throws -> FrameV2 {
-        let sender = senderNodeId ?? selfNodeId
         precondition(recipientNodeId.count == MessageId.nodeIdBytes, "recipientNodeId must be 16 bytes")
         precondition(recipientStaticPub.count == 32, "recipientStaticPub must be 32 bytes")
-        precondition(sender.count == MessageId.nodeIdBytes, "senderNodeId must be 16 bytes")
+        precondition(priority == .direct || priority == .group || priority == .broadcast,
+                     "Invalid priority for sealed MESSAGE frame")
 
         let createdAtLe = identity.createdAtLe()
         let powNonce: Data
         if priority.requiresProofOfWork {
             powNonce = try await ProofOfWork.mine(
-                senderNodeId: sender,
+                senderNodeId: selfNodeId,
                 createdAtLe: createdAtLe,
                 messageNonce: identity.messageNonce,
+                priorityCode: UInt8(priority.rawValue),
                 typeCode: TypeV2.message.rawValue,
                 plaintext: plaintext
             )
@@ -154,18 +147,19 @@ public final class Router {
             powNonce = Data(count: ProofOfWork.nonceBytes)
         }
 
-        var sealedInner = Data(capacity: MessageId.messageNonceBytes + ProofOfWork.nonceBytes + 4 + plaintext.count)
+        var sealedInner = Data(capacity: MessageId.messageNonceBytes + ProofOfWork.nonceBytes + 4 + 1 + plaintext.count)
         sealedInner.append(identity.messageNonce)
         sealedInner.append(powNonce)
         sealedInner.append(createdAtLe)
+        sealedInner.append(UInt8(priority.rawValue))
         sealedInner.append(plaintext)
 
         let sealed = try SealedSender.seal(
             plaintext: sealedInner,
-            senderNodeId: sender,
+            senderNodeId: selfNodeId,
             recipientStaticPub: recipientStaticPub
         )
-        let msgId = MessageId.derive(senderNodeId: sender, identity: identity, plaintext: plaintext)
+        let msgId = MessageId.derive(senderNodeId: selfNodeId, identity: identity, plaintext: plaintext)
         let routingTag = SealedSender.routingTag(
             recipientNodeId: recipientNodeId,
             epochDay: SealedSender.currentEpochDay()
@@ -191,7 +185,6 @@ public final class Router {
         plaintext: Data,
         recipientNodeId: Data,
         recipientStaticPub: Data,
-        senderNodeId: Data? = nil,
         priority: Priority = .direct
     ) async throws -> FrameV2 {
         let identity = LogicalMessageIdentity.createNew()
@@ -199,30 +192,65 @@ public final class Router {
             plaintext: plaintext,
             recipientNodeId: recipientNodeId,
             recipientStaticPub: recipientStaticPub,
-            senderNodeId: senderNodeId,
             identity: identity,
             priority: priority
         )
     }
 
-    /// Open a sealed MESSAGE addressed to us and split the authenticated inner
-    /// content into verified components.
+    /// Open a sealed MESSAGE addressed to us and verify authenticated message policy
+    /// and identity against frame headers (ADR-001 §3.3, C6.7.2).
     public func openSealedMessage(
         _ frame: FrameV2,
         ourStaticDhPriv: Data
     ) -> OpenMessageResult {
+        guard frame.type == .message else {
+            return .wrongFrameType
+        }
+        guard (frame.flags & UInt16(FrameV2.Flags.sealed)) != 0 else {
+            return .missingSealedFlag
+        }
+
         guard let opened = SealedSender.open(sealedPayload: frame.payload, recipientStaticPriv: ourStaticDhPriv) else {
             return .notForUs
         }
         let inner = Data(opened.plaintext)
-        let prefixLen = MessageId.messageNonceBytes + ProofOfWork.nonceBytes + 4 // 28 bytes
+        let prefixLen = MessageId.messageNonceBytes + ProofOfWork.nonceBytes + 4 + 1 // 29 bytes
         guard inner.count >= prefixLen, opened.senderNodeId.count == MessageId.nodeIdBytes else {
             return .malformed
         }
         let messageNonce = Data(inner.prefix(MessageId.messageNonceBytes))
         let powNonce = Data(inner.subdata(in: MessageId.messageNonceBytes..<(MessageId.messageNonceBytes + ProofOfWork.nonceBytes)))
-        let createdAtLe = Data(inner.subdata(in: (MessageId.messageNonceBytes + ProofOfWork.nonceBytes)..<prefixLen))
+        let createdAtLe = Data(inner.subdata(in: (MessageId.messageNonceBytes + ProofOfWork.nonceBytes)..<(MessageId.messageNonceBytes + ProofOfWork.nonceBytes + 4)))
+        let priorityCode = inner[MessageId.messageNonceBytes + ProofOfWork.nonceBytes + 4]
         let plaintext = Data(inner.suffix(from: prefixLen))
+
+        guard let sealedPriority = Priority.fromCode(Int(priorityCode)) else {
+            return .policyMismatch
+        }
+        guard sealedPriority == .direct || sealedPriority == .group || sealedPriority == .broadcast else {
+            return .policyMismatch
+        }
+
+        guard let headerPriority = Priority.fromFlagsStrict(frame.flags) else {
+            return .policyMismatch
+        }
+
+        guard headerPriority == sealedPriority else {
+            return .policyMismatch
+        }
+
+        if sealedPriority == .direct {
+            guard (frame.flags & UInt16(FrameV2.Flags.has_pow)) == 0 else {
+                return .policyMismatch
+            }
+            guard powNonce.allSatisfy({ $0 == 0 }) else {
+                return .policyMismatch
+            }
+        } else {
+            guard (frame.flags & UInt16(FrameV2.Flags.has_pow)) != 0 else {
+                return .policyMismatch
+            }
+        }
 
         let createdAt = Int64(createdAtLe[0]) |
                         (Int64(createdAtLe[1]) << 8) |
@@ -235,12 +263,13 @@ public final class Router {
             return .messageIdMismatch
         }
 
-        if (frame.flags & UInt16(FrameV2.Flags.has_pow)) != 0 {
+        if sealedPriority.requiresProofOfWork {
             let powValid = ProofOfWork.verify(
                 powNonce: powNonce,
                 senderNodeId: opened.senderNodeId,
                 createdAtLe: createdAtLe,
                 messageNonce: messageNonce,
+                priorityCode: UInt8(sealedPriority.rawValue),
                 typeCode: frame.type.rawValue,
                 plaintext: plaintext
             )
@@ -249,10 +278,11 @@ public final class Router {
             }
         }
 
-        return .accepted(VerifiedOpenedMessage(
+        return .accepted(PolicyCheckedOpenedMessage(
             senderNodeId: opened.senderNodeId,
             identity: identity,
             powNonce: powNonce,
+            priority: sealedPriority,
             plaintext: plaintext,
             frame: frame
         ))
@@ -261,18 +291,22 @@ public final class Router {
 
 /// Typed outcome of `Router.openSealedMessage`.
 public enum OpenMessageResult: Equatable {
-    case accepted(VerifiedOpenedMessage)
+    case accepted(PolicyCheckedOpenedMessage)
     case notForUs
     case malformed
+    case wrongFrameType
+    case missingSealedFlag
+    case policyMismatch
     case messageIdMismatch
     case invalidProofOfWork
 }
 
 /// Result of opening a verified sealed MESSAGE.
-public struct VerifiedOpenedMessage: Equatable {
+public struct PolicyCheckedOpenedMessage: Equatable {
     public let senderNodeId: Data
     public let identity: LogicalMessageIdentity
     public let powNonce: Data
+    public let priority: Priority
     public let plaintext: Data
     public let frame: FrameV2
 
@@ -283,12 +317,14 @@ public struct VerifiedOpenedMessage: Equatable {
         senderNodeId: Data,
         identity: LogicalMessageIdentity,
         powNonce: Data,
+        priority: Priority,
         plaintext: Data,
         frame: FrameV2
     ) {
         self.senderNodeId = senderNodeId
         self.identity = identity
         self.powNonce = powNonce
+        self.priority = priority
         self.plaintext = plaintext
         self.frame = frame
     }

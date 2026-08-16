@@ -130,15 +130,16 @@ def check_gmp21(r: Result) -> None:
         sender = bytes.fromhex(c["sender_node_id"])
         created_le = bytes.fromhex(c["created_at_le"])
         msg_nonce = bytes.fromhex(c["message_nonce"])
+        priority_code = c["priority_code"]
         pt = bytes.fromhex(c["plaintext"])
-        digest = G.pow_digest(nonce, sender, created_le, msg_nonce, c["type_code"], pt)
+        digest = G.pow_digest(nonce, sender, created_le, msg_nonce, priority_code, c["type_code"], pt)
         r.check(digest.hex() == c["blake2s_256"], f"pow {c['name']} digest")
         r.check(G.pow_top_bits_zero(digest, c["target_bits"]),
                 f"pow {c['name']} top-{c['target_bits']} bits zero")
         # A wrong nonce (all zeros) must NOT satisfy the production target.
         if c["target_bits"] == G.POW_TARGET_BITS:
             r.check(not G.pow_verify(bytes(G.POW_NONCE_BYTES), sender, created_le, msg_nonce,
-                                     c["type_code"], pt, c["target_bits"]),
+                                     priority_code, c["type_code"], pt, c["target_bits"]),
                     f"pow {c['name']} zero-nonce rejected")
 
     # Recompute PoW nonce-mutation negative control directly
@@ -146,14 +147,32 @@ def check_gmp21(r: Result) -> None:
     pow_nonce_20 = bytes.fromhex(pow_neg["pow_nonce"])
     msg_nonce_orig = bytes.fromhex(pow_neg["message_nonce_original"])
     msg_nonce_mut = bytes.fromhex(pow_neg["message_nonce_mutated"])
+    prio_group = pow_neg["priority_code"]
     pt_help = bytes.fromhex(g["pow"]["cases"][0]["plaintext"])
     created_le_1 = bytes.fromhex(g["pow"]["cases"][0]["created_at_le"])
     type_msg = g["pow"]["cases"][0]["type_code"]
 
-    orig_valid = G.pow_verify(pow_nonce_20, sender_a, created_le_1, msg_nonce_orig, type_msg, pt_help, 20)
-    mut_valid = G.pow_verify(pow_nonce_20, sender_a, created_le_1, msg_nonce_mut, type_msg, pt_help, 20)
+    orig_valid = G.pow_verify(pow_nonce_20, sender_a, created_le_1, msg_nonce_orig, prio_group, type_msg, pt_help, 20)
+    mut_valid = G.pow_verify(pow_nonce_20, sender_a, created_le_1, msg_nonce_mut, prio_group, type_msg, pt_help, 20)
     r.check(orig_valid and not mut_valid,
             f"pow negative {pow_neg['name']} (recomputed message_nonce binding)")
+
+    # Recompute PoW priority-mutation negative control directly
+    pow_prio_neg = g["pow"]["negative_priority"]
+    prio_orig = pow_prio_neg["priority_code_original"]
+    prio_mut = pow_prio_neg["priority_code_mutated"]
+    prio_orig_valid = G.pow_verify(pow_nonce_20, sender_a, created_le_1, msg_nonce_orig, prio_orig, type_msg, pt_help, 20)
+    prio_mut_valid = G.pow_verify(pow_nonce_20, sender_a, created_le_1, msg_nonce_orig, prio_mut, type_msg, pt_help, 20)
+    r.check(prio_orig_valid and not prio_mut_valid,
+            f"pow negative {pow_prio_neg['name']} (recomputed priority binding)")
+
+    # Check raw sealed_inner fixture
+    si = g["sealed_inner"]["case"]
+    expected_si = (bytes.fromhex(si["message_nonce"]) + bytes.fromhex(si["pow_nonce"]) +
+                   bytes.fromhex(si["created_at_le"]) + bytes([si["priority_code"]]) +
+                   bytes.fromhex(si["plaintext"]))
+    r.check(expected_si.hex() == si["sealed_inner"] and len(expected_si) == 29 + len(bytes.fromhex(si["plaintext"])),
+            f"sealed_inner {si['name']} raw 29-byte prefix layout")
 
 
 def main() -> int:

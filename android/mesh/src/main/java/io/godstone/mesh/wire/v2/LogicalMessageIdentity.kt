@@ -48,8 +48,7 @@ class LogicalMessageIdentity private constructor(
     }
 
     override fun toString(): String {
-        val nonceHex = rawNonce.joinToString("") { "%02x".format(it) }
-        return "LogicalMessageIdentity(createdAt=$createdAtEpochSeconds, nonce=$nonceHex)"
+        return "LogicalMessageIdentity(createdAt=$createdAtEpochSeconds, nonce=<redacted>)"
     }
 
     companion object {

@@ -36,20 +36,23 @@ class ProofOfWorkTest {
 
     // --- locked KAT (crypto/gmp21_vectors.json pow cases) ---
 
-    // pow_20bit_message_help: sender 00..0f, created_at_le = epoch 1, type MESSAGE,
-    // message_nonce 0101...01, plaintext "help", target 20 bits.
+    // pow_20bit_message_help_group: sender 00..0f, created_at_le = epoch 1, priority GROUP (2),
+    // type MESSAGE, message_nonce 0101...01, plaintext "help", target 20 bits.
     private val katSender = hex("000102030405060708090a0b0c0d0e0f")
     private val katCreatedAtLe = byteArrayOf(1, 0, 0, 0)   // 01000000 = LE epoch 1
     private val katMessageNonce = hex("01010101010101010101010101010101")
     private val katPlaintext = hex("68656c70")             // "help"
-    private val katNonce20 = hex("00000000000f7ca6")
-    private val katDigest20 = "00000a423fecc011777adba990e5b1bf0556b1e5ab81b1c9028bdf020c4348a5"
+    private val katPriorityGroup: Byte = 2                 // GROUP
+    private val katNonce20 = hex("00000000000fe48c")
+    private val katDigest20 = "00000f3615a49552df8cb9941dc1a7316ba5de36a79089b84a4d26d9a8036cea"
 
-    // pow_8bit_message_help: same inputs, target 8 bits.
-    private val katNonce8 = hex("0000000000000038")
-    private val katDigest8 = "0084658c84b1a33256d27a4414839a3fee2562948aaea88ab692dd747d620d1a"
+    // pow_8bit_message_help_group: same inputs, target 8 bits.
+    private val katNonce8 = hex("00000000000000c2")
+    private val katDigest8 = "00737167d06eef12d0bab941a4ac8529b91ed7768408527f5d47d02c229fec51"
 
-    // Mutated nonces and second values for binding tests.
+    // Mutated nonces, priorities, and second values for binding tests.
+    private val altPriorityBroadcast: Byte = 3             // BROADCAST
+    private val altPriorityDirect: Byte = 1                // DIRECT
     private val altMessageNonce = hex("00000000000000000000000000000000")
     private val altSender = hex("0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a")
     private val altCreatedAtLe = byteArrayOf(2, 0, 0, 0)   // 02000000 = LE epoch 2
@@ -57,21 +60,21 @@ class ProofOfWorkTest {
 
     private fun digest(
         nonce: ByteArray, sender: ByteArray, createdAt: ByteArray,
-        msgNonce: ByteArray, type: Byte, plain: ByteArray
-    ) = ProofOfWork.digest(nonce, sender, createdAt, msgNonce, type, plain)
+        msgNonce: ByteArray, priority: Byte, type: Byte, plain: ByteArray
+    ) = ProofOfWork.digest(nonce, sender, createdAt, msgNonce, priority, type, plain)
 
     @Test
     fun `locked 20-bit KAT digest reproduces the Python reference`() {
         assertEquals(
             katDigest20,
-            hex(digest(katNonce20, katSender, katCreatedAtLe, katMessageNonce, TypeV2.MESSAGE.code, katPlaintext)),
+            hex(digest(katNonce20, katSender, katCreatedAtLe, katMessageNonce, katPriorityGroup, TypeV2.MESSAGE.code, katPlaintext)),
         )
     }
 
     @Test
     fun `locked 20-bit KAT nonce verifies at the production target`() {
         assertTrue(
-            ProofOfWork.verify(katNonce20, katSender, katCreatedAtLe, katMessageNonce, TypeV2.MESSAGE.code, katPlaintext,
+            ProofOfWork.verify(katNonce20, katSender, katCreatedAtLe, katMessageNonce, katPriorityGroup, TypeV2.MESSAGE.code, katPlaintext,
                 targetBits = ProofOfWork.TARGET_BITS),
         )
     }
@@ -80,18 +83,18 @@ class ProofOfWorkTest {
     fun `locked 8-bit KAT digest reproduces the Python reference`() {
         assertEquals(
             katDigest8,
-            hex(digest(katNonce8, katSender, katCreatedAtLe, katMessageNonce, TypeV2.MESSAGE.code, katPlaintext)),
+            hex(digest(katNonce8, katSender, katCreatedAtLe, katMessageNonce, katPriorityGroup, TypeV2.MESSAGE.code, katPlaintext)),
         )
     }
 
     @Test
     fun `locked 8-bit KAT nonce verifies at 8-bit and fails at 20-bit`() {
         assertTrue(
-            ProofOfWork.verify(katNonce8, katSender, katCreatedAtLe, katMessageNonce, TypeV2.MESSAGE.code, katPlaintext,
+            ProofOfWork.verify(katNonce8, katSender, katCreatedAtLe, katMessageNonce, katPriorityGroup, TypeV2.MESSAGE.code, katPlaintext,
                 targetBits = 8),
         )
         assertFalse(
-            ProofOfWork.verify(katNonce8, katSender, katCreatedAtLe, katMessageNonce, TypeV2.MESSAGE.code, katPlaintext,
+            ProofOfWork.verify(katNonce8, katSender, katCreatedAtLe, katMessageNonce, katPriorityGroup, TypeV2.MESSAGE.code, katPlaintext,
                 targetBits = ProofOfWork.TARGET_BITS),
         )
     }
@@ -100,7 +103,7 @@ class ProofOfWorkTest {
     fun `zero nonce fails at the production target for KAT content`() {
         val zero = ByteArray(ProofOfWork.NONCE_BYTES)
         assertFalse(
-            ProofOfWork.verify(zero, katSender, katCreatedAtLe, katMessageNonce, TypeV2.MESSAGE.code, katPlaintext,
+            ProofOfWork.verify(zero, katSender, katCreatedAtLe, katMessageNonce, katPriorityGroup, TypeV2.MESSAGE.code, katPlaintext,
                 targetBits = ProofOfWork.TARGET_BITS),
         )
     }
@@ -112,11 +115,30 @@ class ProofOfWorkTest {
     fun `pow nonce mined for message_nonce A fails verification when evaluated against message_nonce B`() {
         // katNonce20 is valid for katMessageNonce at 20 bits
         assertTrue(
-            ProofOfWork.verify(katNonce20, katSender, katCreatedAtLe, katMessageNonce, TypeV2.MESSAGE.code, katPlaintext, 20)
+            ProofOfWork.verify(katNonce20, katSender, katCreatedAtLe, katMessageNonce, katPriorityGroup, TypeV2.MESSAGE.code, katPlaintext, 20)
         )
         // With altMessageNonce (zero), verification MUST fail
         assertFalse(
-            ProofOfWork.verify(katNonce20, katSender, katCreatedAtLe, altMessageNonce, TypeV2.MESSAGE.code, katPlaintext, 20)
+            ProofOfWork.verify(katNonce20, katSender, katCreatedAtLe, altMessageNonce, katPriorityGroup, TypeV2.MESSAGE.code, katPlaintext, 20)
+        )
+    }
+
+    /**
+     * LOAD-BEARING: PoW mined for GROUP priority MUST fail verification when evaluated against BROADCAST or DIRECT.
+     */
+    @Test
+    fun `pow nonce mined for GROUP priority fails verification when evaluated against BROADCAST or DIRECT priority`() {
+        // katNonce20 is valid for katPriorityGroup at 20 bits
+        assertTrue(
+            ProofOfWork.verify(katNonce20, katSender, katCreatedAtLe, katMessageNonce, katPriorityGroup, TypeV2.MESSAGE.code, katPlaintext, 20)
+        )
+        // With altPriorityBroadcast (3), verification MUST fail
+        assertFalse(
+            ProofOfWork.verify(katNonce20, katSender, katCreatedAtLe, katMessageNonce, altPriorityBroadcast, TypeV2.MESSAGE.code, katPlaintext, 20)
+        )
+        // With altPriorityDirect (1), verification MUST fail
+        assertFalse(
+            ProofOfWork.verify(katNonce20, katSender, katCreatedAtLe, katMessageNonce, altPriorityDirect, TypeV2.MESSAGE.code, katPlaintext, 20)
         )
     }
 
@@ -124,36 +146,45 @@ class ProofOfWorkTest {
 
     @Test
     fun `digest binds the message_nonce`() {
-        val a = digest(katNonce20, katSender, katCreatedAtLe, katMessageNonce, TypeV2.MESSAGE.code, katPlaintext)
-        val b = digest(katNonce20, katSender, katCreatedAtLe, altMessageNonce, TypeV2.MESSAGE.code, katPlaintext)
+        val a = digest(katNonce20, katSender, katCreatedAtLe, katMessageNonce, katPriorityGroup, TypeV2.MESSAGE.code, katPlaintext)
+        val b = digest(katNonce20, katSender, katCreatedAtLe, altMessageNonce, katPriorityGroup, TypeV2.MESSAGE.code, katPlaintext)
         assertNotEquals(a.toList(), b.toList())
     }
 
     @Test
+    fun `digest binds the priorityCode`() {
+        val g = digest(katNonce20, katSender, katCreatedAtLe, katMessageNonce, katPriorityGroup, TypeV2.MESSAGE.code, katPlaintext)
+        val bc = digest(katNonce20, katSender, katCreatedAtLe, katMessageNonce, altPriorityBroadcast, TypeV2.MESSAGE.code, katPlaintext)
+        val d = digest(katNonce20, katSender, katCreatedAtLe, katMessageNonce, altPriorityDirect, TypeV2.MESSAGE.code, katPlaintext)
+        assertNotEquals(g.toList(), bc.toList())
+        assertNotEquals(g.toList(), d.toList())
+    }
+
+    @Test
     fun `digest binds the type code`() {
-        val m = digest(katNonce20, katSender, katCreatedAtLe, katMessageNonce, TypeV2.MESSAGE.code, katPlaintext)
-        val s = digest(katNonce20, katSender, katCreatedAtLe, katMessageNonce, TypeV2.SOS.code, katPlaintext)
+        val m = digest(katNonce20, katSender, katCreatedAtLe, katMessageNonce, katPriorityGroup, TypeV2.MESSAGE.code, katPlaintext)
+        val s = digest(katNonce20, katSender, katCreatedAtLe, katMessageNonce, katPriorityGroup, TypeV2.SOS.code, katPlaintext)
         assertNotEquals(m.toList(), s.toList())
     }
 
     @Test
     fun `digest binds the plaintext`() {
-        val a = digest(katNonce20, katSender, katCreatedAtLe, katMessageNonce, TypeV2.MESSAGE.code, katPlaintext)
-        val b = digest(katNonce20, katSender, katCreatedAtLe, katMessageNonce, TypeV2.MESSAGE.code, altPlaintext)
+        val a = digest(katNonce20, katSender, katCreatedAtLe, katMessageNonce, katPriorityGroup, TypeV2.MESSAGE.code, katPlaintext)
+        val b = digest(katNonce20, katSender, katCreatedAtLe, katMessageNonce, katPriorityGroup, TypeV2.MESSAGE.code, altPlaintext)
         assertNotEquals(a.toList(), b.toList())
     }
 
     @Test
     fun `digest binds the sender`() {
-        val a = digest(katNonce20, katSender, katCreatedAtLe, katMessageNonce, TypeV2.MESSAGE.code, katPlaintext)
-        val b = digest(katNonce20, altSender, katCreatedAtLe, katMessageNonce, TypeV2.MESSAGE.code, katPlaintext)
+        val a = digest(katNonce20, katSender, katCreatedAtLe, katMessageNonce, katPriorityGroup, TypeV2.MESSAGE.code, katPlaintext)
+        val b = digest(katNonce20, altSender, katCreatedAtLe, katMessageNonce, katPriorityGroup, TypeV2.MESSAGE.code, katPlaintext)
         assertNotEquals(a.toList(), b.toList())
     }
 
     @Test
     fun `digest binds created_at`() {
-        val a = digest(katNonce20, katSender, katCreatedAtLe, katMessageNonce, TypeV2.MESSAGE.code, katPlaintext)
-        val b = digest(katNonce20, katSender, altCreatedAtLe, katMessageNonce, TypeV2.MESSAGE.code, katPlaintext)
+        val a = digest(katNonce20, katSender, katCreatedAtLe, katMessageNonce, katPriorityGroup, TypeV2.MESSAGE.code, katPlaintext)
+        val b = digest(katNonce20, katSender, altCreatedAtLe, katMessageNonce, katPriorityGroup, TypeV2.MESSAGE.code, katPlaintext)
         assertNotEquals(a.toList(), b.toList())
     }
 
@@ -161,8 +192,8 @@ class ProofOfWorkTest {
 
     @Test
     fun `mined nonce is 8 bytes and verifies at the easy target`() = runBlocking {
-        val nonce = ProofOfWork.mine(altSender, katCreatedAtLe, altMessageNonce, TypeV2.MESSAGE.code, altPlaintext, targetBits = 8)
+        val nonce = ProofOfWork.mine(altSender, katCreatedAtLe, altMessageNonce, katPriorityGroup, TypeV2.MESSAGE.code, altPlaintext, targetBits = 8)
         assertEquals(ProofOfWork.NONCE_BYTES, nonce.size)
-        assertTrue(ProofOfWork.verify(nonce, altSender, katCreatedAtLe, altMessageNonce, TypeV2.MESSAGE.code, altPlaintext, targetBits = 8))
+        assertTrue(ProofOfWork.verify(nonce, altSender, katCreatedAtLe, altMessageNonce, katPriorityGroup, TypeV2.MESSAGE.code, altPlaintext, targetBits = 8))
     }
 }

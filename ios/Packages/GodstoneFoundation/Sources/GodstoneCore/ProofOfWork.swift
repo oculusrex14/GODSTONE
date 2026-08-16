@@ -14,10 +14,10 @@ import Security
 /// anti-flood is the PeerGovernor token buckets. The recipient, after
 /// SealedSender.open, verifies the nonce against the unsealed content.
 ///
-/// CANONICAL PREIMAGE (ADR-001 §3.3, Stage 3 Phase C / Stage 4 C6.7.1):
+/// CANONICAL PREIMAGE (ADR-001 §3.3, Stage 3 Phase C / Stage 4 C6.7.2):
 ///
 ///     BLAKE2s-256(ASCII("GMP2-POW") ‖ pow_nonce[8] ‖ sender_node_id[16] ‖ created_at_le[4] ‖
-///                 message_nonce[16] ‖ type_code[1] ‖ plaintext)
+///                 message_nonce[16] ‖ priority_code[1] ‖ type_code[1] ‖ plaintext)
 ///
 /// `created_at` is the same uint32 epoch-second count used in msg_id derivation
 /// (§3.3 `created_at_le`), serialised LITTLE-ENDIAN so there is ONE canonical
@@ -27,6 +27,9 @@ import Security
 ///
 /// `message_nonce` binds the PoW stamp to the unique logical message identity,
 /// preventing PoW reuse across distinct logical sends.
+///
+/// `priority_code` binds the authenticated priority numeric code into the preimage,
+/// preventing priority header downgrade attacks.
 ///
 /// The byte-for-byte parity with Android (ProofOfWork.kt) and the Python reference
 /// (crypto/gmp21.py) is pinned by ProofOfWorkTests against gmp21_vectors.json.
@@ -38,7 +41,7 @@ public enum ProofOfWork {
     public static let domainSeparatorText = "GMP2-POW"
     public static let powDomain = Data(domainSeparatorText.utf8)
 
-    /// True iff (ASCII("GMP2-POW") ‖ powNonce ‖ senderNodeId ‖ createdAtLe ‖ messageNonce ‖ typeCode ‖ plaintext)
+    /// True iff (ASCII("GMP2-POW") ‖ powNonce ‖ senderNodeId ‖ createdAtLe ‖ messageNonce ‖ priorityCode ‖ typeCode ‖ plaintext)
     /// hashes to a BLAKE2s-256 digest whose top `targetBits` bits are zero.
     ///
     /// `createdAtLe` is the 4-byte LITTLE-ENDIAN created_at carried inside the
@@ -51,6 +54,7 @@ public enum ProofOfWork {
         senderNodeId: Data,
         createdAtLe: Data,
         messageNonce: Data,
+        priorityCode: UInt8,
         typeCode: UInt8,
         plaintext: Data,
         targetBits: Int = ProofOfWork.targetBits
@@ -62,7 +66,7 @@ public enum ProofOfWork {
         precondition(targetBits >= 1 && targetBits <= 32, "targetBits out of range")
         let h = digest(powNonce: powNonce, senderNodeId: senderNodeId,
                        createdAtLe: createdAtLe, messageNonce: messageNonce,
-                       typeCode: typeCode, plaintext: plaintext)
+                       priorityCode: priorityCode, typeCode: typeCode, plaintext: plaintext)
         return topBitsZero(h, targetBits: targetBits)
     }
 
@@ -76,6 +80,7 @@ public enum ProofOfWork {
         senderNodeId: Data,
         createdAtLe: Data,
         messageNonce: Data,
+        priorityCode: UInt8,
         typeCode: UInt8,
         plaintext: Data
     ) -> Data {
@@ -83,12 +88,13 @@ public enum ProofOfWork {
         precondition(senderNodeId.count == 16, "sender_node_id must be 16 bytes")
         precondition(createdAtLe.count == 4, "created_at must be 4 bytes")
         precondition(messageNonce.count == MessageId.messageNonceBytes, "message_nonce must be 16 bytes")
-        var input = Data(capacity: powDomain.count + nonceBytes + 16 + 4 + messageNonce.count + 1 + plaintext.count)
+        var input = Data(capacity: powDomain.count + nonceBytes + 16 + 4 + messageNonce.count + 2 + plaintext.count)
         input.append(powDomain)
         input.append(powNonce)
         input.append(senderNodeId)
         input.append(createdAtLe)
         input.append(messageNonce)
+        input.append(priorityCode)
         input.append(typeCode)
         input.append(plaintext)
         return Blake2s.hash(input, digestLength: 32)
@@ -104,6 +110,7 @@ public enum ProofOfWork {
         senderNodeId: Data,
         createdAtLe: Data,
         messageNonce: Data,
+        priorityCode: UInt8,
         typeCode: UInt8,
         plaintext: Data,
         targetBits: Int = ProofOfWork.targetBits
@@ -117,7 +124,7 @@ public enum ProofOfWork {
             try Task.checkCancellation()
             let h = digest(powNonce: powNonce, senderNodeId: senderNodeId,
                            createdAtLe: createdAtLe, messageNonce: messageNonce,
-                           typeCode: typeCode, plaintext: plaintext)
+                           priorityCode: priorityCode, typeCode: typeCode, plaintext: plaintext)
             if topBitsZero(h, targetBits: targetBits) {
                 return powNonce
             }

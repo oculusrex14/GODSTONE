@@ -282,7 +282,7 @@ class RouterTest {
     }
 
     @Test
-    fun `buildSealedMessage with LogicalMessageIdentity and openSealedMessage returns Accepted with verified message`() = runTest {
+    fun `buildSealedMessage with LogicalMessageIdentity and openSealedMessage returns Accepted with PolicyCheckedOpenedMessage`() = runTest {
         val store = InMemoryMessageStore()
         val router = Router(store, selfNodeId)
 
@@ -309,6 +309,8 @@ class RouterTest {
         val opened = res.message
         assertTrue(selfNodeId.contentEquals(opened.senderNodeId))
         assertEquals(identity, opened.identity)
+        assertEquals(Priority.DIRECT, opened.priority)
+        assertTrue(opened.powNonce.all { it == 0.toByte() })
         assertTrue(plaintext.contentEquals(opened.plaintext))
 
         // Tampering negative control 1: Mutated header msg_id -> MessageIdMismatch
@@ -349,7 +351,276 @@ class RouterTest {
         val res = router.openSealedMessage(frame, recipientPriv)
         assertTrue(res is io.godstone.mesh.router.OpenMessageResult.Accepted, "Valid PoW message must be Accepted")
         val opened = res.message
+        assertEquals(Priority.GROUP, opened.priority)
         assertTrue(opened.plaintext.contentEquals(plaintext))
+    }
+
+    @Test
+    fun `broadcast message with HAS_POW mines pow and verifies on open`() = runTest {
+        val store = InMemoryMessageStore()
+        val router = Router(store, selfNodeId)
+
+        val recipientKeys = X25519Keys.generate(SecureRandom())
+        val recipientPriv = recipientKeys.priv
+        val recipientPub = recipientKeys.pub
+        val recipientNodeId = ByteArray(16) { 0x88 }
+
+        val plaintext = "Broadcast flood notice".toByteArray()
+        val identity = io.godstone.mesh.wire.v2.LogicalMessageIdentity.createNew()
+
+        val frame = router.buildSealedMessage(
+            plaintext = plaintext,
+            recipientNodeId = recipientNodeId,
+            recipientStaticPub = recipientPub,
+            identity = identity,
+            priority = Priority.BROADCAST
+        )
+
+        assertTrue(frame.flags and FrameV2.HAS_POW != 0)
+        val res = router.openSealedMessage(frame, recipientPriv)
+        assertTrue(res is io.godstone.mesh.router.OpenMessageResult.Accepted)
+        val opened = res.message
+        assertEquals(Priority.BROADCAST, opened.priority)
+    }
+
+    /**
+     * CRITICAL SECURITY TEST: Downgrade attack
+     * Attacker changes header priority from GROUP to DIRECT and strips HAS_POW to bypass PoW verification.
+     * Recipient MUST reject with PolicyMismatch because the authenticated sealed priority is GROUP.
+     */
+    @Test
+    fun `downgrade attack on GROUP message to DIRECT header is rejected with PolicyMismatch`() = runTest {
+        val store = InMemoryMessageStore()
+        val router = Router(store, selfNodeId)
+
+        val recipientKeys = X25519Keys.generate(SecureRandom())
+        val recipientPriv = recipientKeys.priv
+        val recipientPub = recipientKeys.pub
+        val recipientNodeId = ByteArray(16) { 0x77 }
+
+        val plaintext = "High-priority group alert".toByteArray()
+        val frame = router.authorSealedMessage(plaintext, recipientNodeId, recipientPub, priority = Priority.GROUP)
+
+        // Attacker mutates header: clears HAS_POW, sets DIRECT priority
+        val downgradedFlags = (frame.flags and FrameV2.HAS_POW.inv() and FrameV2.PRIORITY_MASK.inv()) or
+            Priority.toFlags(Priority.DIRECT)
+        val downgradedFrame = frame.copy(flags = downgradedFlags)
+
+        val res = router.openSealedMessage(downgradedFrame, recipientPriv)
+        assertTrue(res is io.godstone.mesh.router.OpenMessageResult.PolicyMismatch,
+            "Downgraded priority header must be rejected with PolicyMismatch, got $res")
+    }
+
+    @Test
+    fun `header priority mismatch against sealed priority is rejected with PolicyMismatch`() = runTest {
+        val store = InMemoryMessageStore()
+        val router = Router(store, selfNodeId)
+
+        val recipientKeys = X25519Keys.generate(SecureRandom())
+        val recipientPriv = recipientKeys.priv
+        val recipientPub = recipientKeys.pub
+        val recipientNodeId = ByteArray(16) { 0x77 }
+
+        val plaintext = "Policy check message".toByteArray()
+        val frame = router.authorSealedMessage(plaintext, recipientNodeId, recipientPub, priority = Priority.GROUP)
+
+        // Mutate header priority to BROADCAST while leaving HAS_POW
+        val mutatedFlags = (frame.flags and FrameV2.PRIORITY_MASK.inv()) or Priority.toFlags(Priority.BROADCAST)
+        val mutatedFrame = frame.copy(flags = mutatedFlags)
+
+        val res = router.openSealedMessage(mutatedFrame, recipientPriv)
+        assertTrue(res is io.godstone.mesh.router.OpenMessageResult.PolicyMismatch)
+    }
+
+    @Test
+    fun `missing SEALED flag is rejected with MissingSealedFlag`() = runTest {
+        val store = InMemoryMessageStore()
+        val router = Router(store, selfNodeId)
+
+        val recipientKeys = X25519Keys.generate(SecureRandom())
+        val recipientPriv = recipientKeys.priv
+        val recipientPub = recipientKeys.pub
+        val recipientNodeId = ByteArray(16) { 0x55 }
+
+        val frame = router.authorSealedMessage("test".toByteArray(), recipientNodeId, recipientPub)
+        val unsealedFrame = frame.copy(flags = frame.flags and FrameV2.SEALED.inv())
+
+        val res = router.openSealedMessage(unsealedFrame, recipientPriv)
+        assertTrue(res is io.godstone.mesh.router.OpenMessageResult.MissingSealedFlag)
+    }
+
+    @Test
+    fun `wrong frame type is rejected with WrongFrameType`() = runTest {
+        val store = InMemoryMessageStore()
+        val router = Router(store, selfNodeId)
+
+        val recipientKeys = X25519Keys.generate(SecureRandom())
+        val recipientPriv = recipientKeys.priv
+        val recipientPub = recipientKeys.pub
+        val recipientNodeId = ByteArray(16) { 0x55 }
+
+        val frame = router.authorSealedMessage("test".toByteArray(), recipientNodeId, recipientPub)
+        val sosFrame = frame.copy(type = TypeV2.SOS)
+
+        val res = router.openSealedMessage(sosFrame, recipientPriv)
+        assertTrue(res is io.godstone.mesh.router.OpenMessageResult.WrongFrameType)
+    }
+
+    @Test
+    fun `direct message with HAS_POW flag is rejected with PolicyMismatch`() = runTest {
+        val store = InMemoryMessageStore()
+        val router = Router(store, selfNodeId)
+
+        val recipientKeys = X25519Keys.generate(SecureRandom())
+        val recipientPriv = recipientKeys.priv
+        val recipientPub = recipientKeys.pub
+        val recipientNodeId = ByteArray(16) { 0x55 }
+
+        val frame = router.authorSealedMessage("test".toByteArray(), recipientNodeId, recipientPub, priority = Priority.DIRECT)
+        val invalidFrame = frame.copy(flags = frame.flags or FrameV2.HAS_POW)
+
+        val res = router.openSealedMessage(invalidFrame, recipientPriv)
+        assertTrue(res is io.godstone.mesh.router.OpenMessageResult.PolicyMismatch)
+    }
+
+    @Test
+    fun `group message with stripped HAS_POW flag is rejected with PolicyMismatch`() = runTest {
+        val store = InMemoryMessageStore()
+        val router = Router(store, selfNodeId)
+
+        val recipientKeys = X25519Keys.generate(SecureRandom())
+        val recipientPriv = recipientKeys.priv
+        val recipientPub = recipientKeys.pub
+        val recipientNodeId = ByteArray(16) { 0x77 }
+
+        val frame = router.authorSealedMessage("test".toByteArray(), recipientNodeId, recipientPub, priority = Priority.GROUP)
+        val invalidFrame = frame.copy(flags = frame.flags and FrameV2.HAS_POW.inv())
+
+        val res = router.openSealedMessage(invalidFrame, recipientPriv)
+        assertTrue(res is io.godstone.mesh.router.OpenMessageResult.PolicyMismatch)
+    }
+
+    @Test
+    fun `direct message with non-zero powNonce is rejected with PolicyMismatch`() = runTest {
+        val store = InMemoryMessageStore()
+        val router = Router(store, selfNodeId)
+
+        val recipientKeys = X25519Keys.generate(SecureRandom())
+        val recipientPriv = recipientKeys.priv
+        val recipientPub = recipientKeys.pub
+        val recipientNodeId = ByteArray(16) { 0x55 }
+
+        // Manually seal a DIRECT message with non-zero powNonce
+        val identity = io.godstone.mesh.wire.v2.LogicalMessageIdentity.createNew()
+        val badPowNonce = ByteArray(8) { 0x01 }
+        val plaintext = "test".toByteArray()
+        val sealedInner = identity.messageNonce + badPowNonce + identity.createdAtLe() + byteArrayOf(Priority.DIRECT.code.toByte()) + plaintext
+        val sealed = io.godstone.mesh.seal.SealedSender.seal(sealedInner, selfNodeId, recipientPub)
+        val msgId = MessageId.derive(selfNodeId, identity, plaintext)
+        val frame = FrameV2(
+            type = TypeV2.MESSAGE,
+            msgId = msgId,
+            routingTag = ByteArray(4),
+            ttl = 8,
+            hopCount = 0,
+            flags = FrameV2.SEALED or Priority.toFlags(Priority.DIRECT),
+            payload = sealed
+        )
+
+        val res = router.openSealedMessage(frame, recipientPriv)
+        assertTrue(res is io.godstone.mesh.router.OpenMessageResult.PolicyMismatch)
+    }
+
+    @Test
+    fun `invalid sealed priority code is rejected with PolicyMismatch`() = runTest {
+        val store = InMemoryMessageStore()
+        val router = Router(store, selfNodeId)
+
+        val recipientKeys = X25519Keys.generate(SecureRandom())
+        val recipientPriv = recipientKeys.priv
+        val recipientPub = recipientKeys.pub
+        val recipientNodeId = ByteArray(16) { 0x55 }
+
+        // Sealed inner with priority byte 0 (SOS, invalid for MESSAGE) or 99
+        val identity = io.godstone.mesh.wire.v2.LogicalMessageIdentity.createNew()
+        val powNonce = ByteArray(8)
+        val plaintext = "test".toByteArray()
+        val sealedInner = identity.messageNonce + powNonce + identity.createdAtLe() + byteArrayOf(0.toByte()) + plaintext
+        val sealed = io.godstone.mesh.seal.SealedSender.seal(sealedInner, selfNodeId, recipientPub)
+        val msgId = MessageId.derive(selfNodeId, identity, plaintext)
+        val frame = FrameV2(
+            type = TypeV2.MESSAGE,
+            msgId = msgId,
+            routingTag = ByteArray(4),
+            ttl = 8,
+            hopCount = 0,
+            flags = FrameV2.SEALED or Priority.toFlags(Priority.DIRECT),
+            payload = sealed
+        )
+
+        val res = router.openSealedMessage(frame, recipientPriv)
+        assertTrue(res is io.godstone.mesh.router.OpenMessageResult.PolicyMismatch)
+    }
+
+    @Test
+    fun `unknown header priority fails closed on receive and open`() = runTest {
+        val store = InMemoryMessageStore()
+        val router = Router(store, selfNodeId)
+
+        // Priority code 5 in flags (bits 8..10 = 0x0500)
+        val unknownFlags = 5 shl 8
+        val f = frame(msgId(30), priority = Priority.DIRECT).copy(flags = unknownFlags)
+
+        // onFrameReceived must fail closed and drop frame
+        assertFalse(router.onFrameReceived(f, fromPeer = peerC))
+
+        val recipientKeys = X25519Keys.generate(SecureRandom())
+        val res = router.openSealedMessage(f.copy(flags = unknownFlags or FrameV2.SEALED), recipientKeys.priv)
+        assertTrue(res is io.godstone.mesh.router.OpenMessageResult.PolicyMismatch || res is io.godstone.mesh.router.OpenMessageResult.NotForUs)
+    }
+
+    @Test
+    fun `truncated sealed inner payload is rejected with Malformed`() = runTest {
+        val store = InMemoryMessageStore()
+        val router = Router(store, selfNodeId)
+
+        val recipientKeys = X25519Keys.generate(SecureRandom())
+        val recipientPriv = recipientKeys.priv
+        val recipientPub = recipientKeys.pub
+
+        // Seal an inner payload of only 20 bytes (< 29 bytes prefix)
+        val shortInner = ByteArray(20)
+        val sealed = io.godstone.mesh.seal.SealedSender.seal(shortInner, selfNodeId, recipientPub)
+        val frame = FrameV2(
+            type = TypeV2.MESSAGE,
+            msgId = ByteArray(16),
+            routingTag = ByteArray(4),
+            ttl = 8,
+            hopCount = 0,
+            flags = FrameV2.SEALED or Priority.toFlags(Priority.DIRECT),
+            payload = sealed
+        )
+
+        val res = router.openSealedMessage(frame, recipientPriv)
+        assertTrue(res is io.godstone.mesh.router.OpenMessageResult.Malformed)
+    }
+
+    @Test
+    fun `router constructor defensively copies selfNodeId`() = runTest {
+        val mutableNodeId = ByteArray(16) { 0x44 }
+        val store = InMemoryMessageStore()
+        val router = Router(store, mutableNodeId)
+
+        // Mutate original array
+        mutableNodeId.fill(0xFF.toByte())
+
+        val recipientKeys = X25519Keys.generate(SecureRandom())
+        val frame = router.authorSealedMessage("test".toByteArray(), ByteArray(16) { 0x55 }, recipientKeys.pub)
+
+        val res = router.openSealedMessage(frame, recipientKeys.priv)
+        assertTrue(res is io.godstone.mesh.router.OpenMessageResult.Accepted)
+        val opened = res.message
+        assertTrue(opened.senderNodeId.all { it == 0x44.toByte() }, "Router selfNodeId must not be mutated from external array")
     }
 
     @Test
