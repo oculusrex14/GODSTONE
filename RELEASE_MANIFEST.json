@@ -3,12 +3,13 @@
   "verdict": "PARTIALLY_REMEDIATED_NOT_READY",
   "source": {
     "repository": "oculusrex14/GODSTONE",
-    "authoritative": "pushed GitHub repository (Stage 3); the Stage 0/2 'exact-commit remediation overlay' delivery framing is historical",
-    "branch": "remediation/stage-3-durability",
+    "authoritative": "pushed GitHub repository (Stage 4); branch remediation/stage-4-link-release",
+    "branch": "remediation/stage-4-link-release",
     "baseline_commit_main": "b7daf5aceb642277807e9bfbe3bbb486112a64ec",
     "stage2_frozen_tip": "b7bac64341c1214e05d0436fcb29c5b671d710e9",
-    "branch_base": "created from stage2_frozen_tip (b7bac64); main is not modified and no PR is opened",
-    "live_tip": "recorded per-run in the provenance-start.json / provenance-final.json workflow artifacts emitted by repository-verification.yml and in the Stage 3 checkpoint report",
+    "stage3_frozen_tip": "ce265e26ecbce9a0f4a8e2ee2d80d463d1cb58e4",
+    "branch_base": "created from stage3_frozen_tip (ce265e2); main is not modified and no PR is opened",
+    "live_tip": "recorded per-run in the provenance-start.json / provenance-final.json workflow artifacts emitted by repository-verification.yml and in the Stage 4 checkpoint reports",
     "delivery_mode": "github-authoritative",
     "dirty": false,
     "complete_private_checkout_in_bundle": false,
@@ -28,11 +29,11 @@
     "runs_on": "every push to main and remediation/**",
     "jobs": {
       "constraints": "C1/C2 + check_tiers.py + check_release_gates_status.py",
-      "invariants": "check_parity.py --scope repo (A,B,C,E,F,G,H; D reported OPEN)",
+      "invariants": "check_parity.py --scope repo (A,B,C,E,F,G,H; D reported OPEN) + check_status_consistency.py + no_delivery_guard_bypass.py + check_store_schema_controls.py",
       "content": "content/tests 10/10",
       "meshsim": "meshsim regression guard",
       "android": ":core:assembleDebug :mesh:testDebugUnitTest :llm:testDebugUnitTest :app:compileLightDebugKotlin :app:testLightDebugUnitTest --tests '*OracleViewModelTest*' (committed wrapper verified)",
-      "ios": "sync_ios_foundation_package.py --check; swift test 38/38; xcodegen; xcodebuild LightRelease build; xcodebuild test GodstoneMeshTests 25/25"
+      "ios": "sync_ios_foundation_package.py --check; swift test (172 tests); xcodegen; xcodebuild LightRelease build; xcodebuild test GodstoneMeshTests"
     },
     "provenance_artifacts": "provenance-{start,final}.json per job (git HEAD/tree, status, diff --check, toolchain matrix)"
   },
@@ -43,7 +44,7 @@
       "A-06 independent Noise vectors (UNPINNED)",
       "production corpus + embedded archive (model UNPINNED)",
       "model/native stack (llama.cpp UNPINNED)",
-      "Android LIGHT release artifact (assembleLightRelease + bundleLightRelease)",
+      "android-archive-only-release (assembleLightRelease + bundleLightRelease + lintLightRelease - CLOSED with evidence in release-gates)",
       "device-interoperability (not-runnable-in-ci)",
       "accessibility (not-runnable-in-ci)",
       "battery-thermal (not-runnable-in-ci)",
@@ -61,16 +62,17 @@
     "exact_per_run_toolchain": "recorded in provenance-*.json (jdk, gradle, agp, kotlin, android_sdk, ndk, cmake, xcode, swift, xcodegen)"
   },
   "release_blockers": [
-    "Invariant E: tier tables disagree across platforms (Phase D, repo-controlled)",
-    "GMP/2.1 msg-id byte-order, iOS msg-id, Bloom digest, and PoW cross-platform byte parity not yet enforced (Phase C)",
-    "durable encrypted message stores + bounded capacity (Phase E/G)",
-    "coordinated resumable panic wipe (Phase F)",
-    "authenticated ACK delivery state (Phase H)",
-    "Archive-only Android release artifact with :llm out of the LIGHT graph (Phase I)",
-    "independent Noise vectors (A-06) and model/native locks unpinned (release gate)",
-    "no approved production corpus/assets/signing credentials (release gate)",
-    "physical-device, accessibility, battery, thermal and store evidence absent (release gate)"
+    "independent Noise vectors (A-06) unpinned (release gate)",
+    "production corpus + approved embedded archive unpinned (release gate)",
+    "model/native stack (llama.cpp) unpinned (release gate)",
+    "device interoperability / Hardware Case 0 over BLE link layer (release gate)",
+    "accessibility on-device verification (release gate)",
+    "battery and thermal profiling under sustained load (release gate)",
+    "production release signing and store submission approval (release gate)",
+    "production RecipientKeyResolver / contact identity binding (ADR-003, open design)",
+    "BLE record layer / Noise handshake driver (ADR-002 M2, open implementation)",
+    "on-device durability / at-rest encryption enforcement (ADR-004)"
   ],
   "mobile_artifacts": [],
-  "superseded_bundle_evidence": "The Stage 0/2 evidence_artifacts array (GODSTONE/sbom/*.cdx.json, artifacts/reports/logs/*.log, artifacts/android|ios/logs/*.log, artifacts/patches/overlay-manifest.json) referenced an overlay bundle layout that is not in the repository and is no longer authoritative. It is intentionally removed; live evidence is the repository-owned CI above."
+  "superseded_bundle_evidence": "The Stage 0/2 evidence_artifacts array referenced an overlay bundle layout that is not in the repository and is no longer authoritative. It is intentionally removed; live evidence is the repository-owned CI above."
 }

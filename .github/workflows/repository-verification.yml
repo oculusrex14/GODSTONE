@@ -119,6 +119,10 @@ jobs:
         run: |
           python ci/check_store_schema_controls.py --selftest
           python ci/check_store_schema_controls.py
+      - name: production-readiness status consistency (Stage 4E0)
+        run: |
+          python ci/check_status_consistency.py --selftest
+          python ci/check_status_consistency.py
       - name: no legacy GMP/1 wire symbol
         run: python ci/no_legacy_wire.py --selftest
       - name: provenance (final -- tree still clean)
