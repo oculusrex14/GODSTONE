@@ -596,6 +596,7 @@ class SqliteDeliveryRepositoryTest {
 
         override fun insert(frame: FrameV2, receivedFrom: ByteArray, receivedAt: Long): Long =
             inner.insert(frame, receivedFrom, receivedAt)
+        override fun readHeld(msgId: ByteArray): io.godstone.mesh.store.StoreRow? = inner.readHeld(msgId)
         override fun contains(msgId: ByteArray): Boolean = inner.contains(msgId)
         override fun heldBytes(): Long = inner.heldBytes()
         override fun evictOldestPrefix(overshoot: Long) = inner.evictOldestPrefix(overshoot)
