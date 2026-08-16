@@ -117,7 +117,7 @@ internal class JdbcStoreDb(file: File) : StoreDb {
             "VALUES (?,?,?,?,?,?,?,?,?,?)"
         conn.prepareStatement(sql).use { ps ->
             ps.setBytes(1, frame.msgId)
-            ps.setInt(2, frame.type.code.toInt())
+            ps.setInt(2, frame.type.code.toInt() and 0xFF)
             ps.setInt(3, frame.ttl)
             ps.setInt(4, frame.hopCount)
             ps.setInt(5, frame.flags)

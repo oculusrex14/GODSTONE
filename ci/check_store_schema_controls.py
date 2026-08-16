@@ -111,8 +111,14 @@ CONTROLS: list[tuple[str, str, str]] = [
      "same msgId different routingTag fails closed with CanonicalFrameMismatch",
      "Android direct enqueue routingTag mismatch -> fail closed"),
     ("android/mesh/src/test/java/io/godstone/mesh/store/SqliteMessageStoreTest.kt",
+     "local origin provenance is localOriginNodeId not msgId",
+     "Android direct enqueue local origin provenance -> local node ID"),
+    ("android/mesh/src/test/java/io/godstone/mesh/store/SqliteMessageStoreTest.kt",
      "wrong preexisting provenance fails closed with InconsistentState",
      "Android direct enqueue wrong provenance -> fail closed"),
+    ("android/mesh/src/test/java/io/godstone/mesh/MeshNodeDeliveryIntegrationTest.kt",
+     "dispatchDirect transmits store-returned canonical frame and not caller modified frame",
+     "Android dispatchDirect transports canonical store frame"),
     # --- iOS: C6.6.1 canonical frame binding and local provenance controls ---
     ("ios/Godstone/Tests/GodstoneMeshTests/SqliteMessageStoreTests.swift",
      "testC661EnqueueDirectOutboundSameMsgIdDifferentPayloadFailsClosedWithCanonicalFrameMismatch",
@@ -121,8 +127,43 @@ CONTROLS: list[tuple[str, str, str]] = [
      "testC661EnqueueDirectOutboundSameMsgIdDifferentRoutingTagFailsClosedWithCanonicalFrameMismatch",
      "iOS direct enqueue routingTag mismatch -> fail closed"),
     ("ios/Godstone/Tests/GodstoneMeshTests/SqliteMessageStoreTests.swift",
+     "testC661EnqueueDirectOutboundLocalOriginProvenanceIsLocalOriginNodeIdNotMsgId",
+     "iOS direct enqueue local origin provenance -> local node ID"),
+    ("ios/Godstone/Tests/GodstoneMeshTests/SqliteMessageStoreTests.swift",
      "testC661EnqueueDirectOutboundWrongPreexistingProvenanceFailsClosedWithInconsistentState",
      "iOS direct enqueue wrong provenance -> fail closed"),
+    ("ios/Godstone/Tests/GodstoneMeshTests/MeshNodeDeliveryIntegrationTests.swift",
+     "testC661DispatchDirectTransmitsStoreReturnedCanonicalFrameAndNotCallerModifiedFrame",
+     "iOS dispatchDirect transports canonical store frame"),
+    # --- Android: C6.6.2 capacity safety and strict decoding controls ---
+    ("android/mesh/src/test/java/io/godstone/mesh/store/SqliteMessageStoreTest.kt",
+     "capacity eviction protects QUEUED_DURABLY active direct frame from new direct pressure",
+     "Android capacity eviction protects active QUEUED_DURABLY frame"),
+    ("android/mesh/src/test/java/io/godstone/mesh/store/SqliteMessageStoreTest.kt",
+     "inbound persist cannot orphan local active direct delivery row",
+     "Android inbound persist cannot orphan active delivery row"),
+    ("android/mesh/src/test/java/io/godstone/mesh/store/SqliteMessageStoreTest.kt",
+     "terminal delivery row without held frame returns RejectedTerminalState",
+     "Android terminal delivery without held frame -> RejectedTerminalState"),
+    ("android/mesh/src/test/java/io/godstone/mesh/store/SqliteMessageStoreTest.kt",
+     "raw SQL corrupted type integer does not alias TypeV2 and fails closed",
+     "Android raw SQL corrupted type integer does not alias -> fail closed"),
+    # --- iOS: C6.6.2 capacity safety and strict decoding controls ---
+    ("ios/Godstone/Tests/GodstoneMeshTests/SqliteMessageStoreTests.swift",
+     "testC662CapacityEvictionProtectsQueuedDurablyActiveDirectFrameFromNewDirectPressure",
+     "iOS capacity eviction protects active QUEUED_DURABLY frame"),
+    ("ios/Godstone/Tests/GodstoneMeshTests/SqliteMessageStoreTests.swift",
+     "testC662InboundPersistCannotOrphanLocalActiveDirectDeliveryRow",
+     "iOS inbound persist cannot orphan active delivery row"),
+    ("ios/Godstone/Tests/GodstoneMeshTests/SqliteMessageStoreTests.swift",
+     "testC662TerminalDeliveryRowWithoutHeldFrameReturnsRejectedTerminalState",
+     "iOS terminal delivery without held frame -> RejectedTerminalState"),
+    ("ios/Godstone/Tests/GodstoneMeshTests/SqliteMessageStoreTests.swift",
+     "testC662RawSqlCorruptedTypeIntegerFailsClosedWithoutTrapping",
+     "iOS raw SQL corrupted type integer fails closed without trapping"),
+    ("ios/Godstone/Tests/GodstoneMeshTests/SqliteMessageStoreTests.swift",
+     "testC662ReadHeldNoLockStrictStepErrorYieldsStorageFailureAndRollsBack",
+     "iOS readHeld sqlite step error -> StorageFailure and rollback"),
 ]
 
 
@@ -140,6 +181,21 @@ def scan(root: Path) -> list[str]:
                 f"{rel}: marker MISSING -- control removed: {label} "
                 f"(looked for: {marker!r})"
             )
+
+    # Structural check: Android MeshNode.dispatchDirect encodes canonicalFrame
+    android_mesh_node = root / "android/mesh/src/main/java/io/godstone/mesh/MeshNode.kt"
+    if android_mesh_node.is_file():
+        text = android_mesh_node.read_text(encoding="utf-8", errors="replace")
+        if "val bytes = canonicalFrame.encode()" not in text:
+            missing.append("android/mesh/src/main/java/io/godstone/mesh/MeshNode.kt: dispatchDirect must encode canonicalFrame")
+
+    # Structural check: iOS MeshNode.dispatchDirect sends canonicalFrame
+    ios_mesh_node = root / "ios/Godstone/Sources/GodstoneMesh/MeshNode.swift"
+    if ios_mesh_node.is_file():
+        text = ios_mesh_node.read_text(encoding="utf-8", errors="replace")
+        if "send(canonicalFrame, peer)" not in text:
+            missing.append("ios/Godstone/Sources/GodstoneMesh/MeshNode.swift: dispatchDirect must transport canonicalFrame")
+
     return missing
 
 

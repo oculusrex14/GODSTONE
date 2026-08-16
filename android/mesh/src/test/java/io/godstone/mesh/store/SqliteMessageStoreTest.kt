@@ -699,7 +699,7 @@ class SqliteMessageStoreTest {
         val r1 = store.enqueueDirectOutbound(f, expectedRecipient = rec, localOriginNodeId = origin)
         assertEquals(OutboundEnqueueResult.Created(f), r1)
 
-        val fDiffTag = FrameV2(f.type, f.msgId, byteArrayOf(0x77, 0x88.toByte()), f.ttl, f.hopCount, f.flags, f.payload)
+        val fDiffTag = FrameV2(f.type, f.msgId, byteArrayOf(0x77, 0x88.toByte(), 0x99.toByte(), 0xAA.toByte()), f.ttl, f.hopCount, f.flags, f.payload)
         val r2 = store.enqueueDirectOutbound(fDiffTag, expectedRecipient = rec, localOriginNodeId = origin)
         assertEquals(OutboundEnqueueResult.CanonicalFrameMismatch, r2)
     }
@@ -876,33 +876,257 @@ class SqliteMessageStoreTest {
         assertTrue(rec.contentEquals(d.expectedRecipient))
     }
 
+    // ==================================================================
+    // Stage 4 Phase C6.6.2 -- Capacity-safe delivery binding + strict row decoding
+    // ==================================================================
+
+    private fun assertNoOrphanActiveDeliveries() {
+        val conn = DriverManager.getConnection("jdbc:sqlite:${tmp.absolutePath}")
+        conn.use { c ->
+            val stmt = c.createStatement()
+            val rs = stmt.executeQuery(
+                "SELECT d.msg_id, d.state FROM delivery_state d " +
+                "WHERE d.state IN (1, 2) " +
+                "AND NOT EXISTS (SELECT 1 FROM held_frames h WHERE h.msg_id = d.msg_id)"
+            )
+            val orphans = mutableListOf<Int>()
+            while (rs.next()) {
+                orphans.add(rs.getInt("state"))
+            }
+            assertTrue(orphans.isEmpty(), "Found orphan active delivery rows without held frames: $orphans")
+        }
+    }
+
     @Test
-    fun `C6_6 enqueueDirectOutbound policy rejection on non-direct or unsealed or invalid msg_id`() = runBlocking {
+    fun `C6_6_2 capacity eviction protects QUEUED_DURABLY active direct frame from new direct pressure`() = runBlocking {
+        // Frame A is 100 bytes payload + 64 overhead = 164 bytes.
+        // Cap is 200 bytes, so A fits alone, but A + B (328 bytes) exceeds cap.
+        open(maxBytes = 200L)
+        val fa = directFrame(1, payloadSize = 100)
+        val fb = directFrame(2, payloadSize = 100)
+        val rec = recipient(1)
+        val origin = localNode(1)
+
+        val ra = store.enqueueDirectOutbound(fa, expectedRecipient = rec, localOriginNodeId = origin)
+        assertEquals(OutboundEnqueueResult.Created(fa), ra)
+        assertNoOrphanActiveDeliveries()
+
+        // Enqueue B: A is protected (QUEUED_DURABLY). B cannot fit without evicting A, so B is evicted and rejected.
+        val rb = store.enqueueDirectOutbound(fb, expectedRecipient = rec, localOriginNodeId = origin)
+        assertEquals(OutboundEnqueueResult.RejectedCapacity, rb)
+
+        // Frame A held + delivery row remain intact; Frame B is absent.
+        assertTrue(heldIds().containsId(fa.msgId))
+        val da = readDelivery(fa.msgId)
+        assertNotNull(da)
+        assertEquals(io.godstone.mesh.delivery.DeliveryState.QUEUED_DURABLY.code, da!!.state)
+
+        assertFalse(heldIds().containsId(fb.msgId))
+        assertNull(readDelivery(fb.msgId))
+        assertTrue(bytes() <= 200L)
+        assertNoOrphanActiveDeliveries()
+    }
+
+    @Test
+    fun `C6_6_2 capacity eviction protects HANDED_TO_RELAY active direct frame under pressure`() = runBlocking {
+        open(maxBytes = 200L)
+        val fa = directFrame(1, payloadSize = 100)
+        val fb = directFrame(2, payloadSize = 100)
+        val rec = recipient(1)
+        val origin = localNode(1)
+
+        val ra = store.enqueueDirectOutbound(fa, expectedRecipient = rec, localOriginNodeId = origin)
+        assertEquals(OutboundEnqueueResult.Created(fa), ra)
+
+        // Advance A to HANDED_TO_RELAY (state = 2)
+        engine!!.execRawSql("UPDATE delivery_state SET state = ${io.godstone.mesh.delivery.DeliveryState.HANDED_TO_RELAY.code}")
+
+        // Enqueue B under capacity pressure
+        val rb = store.enqueueDirectOutbound(fb, expectedRecipient = rec, localOriginNodeId = origin)
+        assertEquals(OutboundEnqueueResult.RejectedCapacity, rb)
+
+        // A is still held and in HANDED_TO_RELAY
+        assertTrue(heldIds().containsId(fa.msgId))
+        val da = readDelivery(fa.msgId)
+        assertNotNull(da)
+        assertEquals(io.godstone.mesh.delivery.DeliveryState.HANDED_TO_RELAY.code, da!!.state)
+        assertTrue(bytes() <= 200L)
+        assertNoOrphanActiveDeliveries()
+    }
+
+    @Test
+    fun `C6_6_2 inbound persist cannot orphan local active direct delivery row`() = runBlocking {
+        open(maxBytes = 200L)
+        val fa = directFrame(1, payloadSize = 100)
+        val rec = recipient(1)
+        val origin = localNode(1)
+
+        val ra = store.enqueueDirectOutbound(fa, expectedRecipient = rec, localOriginNodeId = origin)
+        assertEquals(OutboundEnqueueResult.Created(fa), ra)
+
+        // Inbound/unbound relay frame arrives
+        val inboundB = frame(2, Priority.GROUP, payloadSize = 100)
+        val persistResult = store.persist(inboundB, receivedFrom = localNode(2))
+        assertEquals(PersistResult.REJECTED_CAPACITY, persistResult)
+
+        // A is still held and delivery is still QUEUED_DURABLY
+        assertTrue(heldIds().containsId(fa.msgId))
+        val da = readDelivery(fa.msgId)
+        assertNotNull(da)
+        assertEquals(io.godstone.mesh.delivery.DeliveryState.QUEUED_DURABLY.code, da!!.state)
+        assertTrue(bytes() <= 200L)
+        assertNoOrphanActiveDeliveries()
+    }
+
+    @Test
+    fun `C6_6_2 unbound relay frames evict before active delivery bound frames`() = runBlocking {
+        // Cap is 350 bytes.
+        // Relay R (50 bytes payload + 64 = 114 bytes)
+        // Direct A (50 bytes payload + 64 = 114 bytes)
+        // Total = 228 <= 350.
+        open(maxBytes = 350L)
+        val relayR = frame(10, Priority.GROUP, payloadSize = 50)
+        val persistR = store.persistAt(relayR, receivedFrom = localNode(9), receivedAt = 100L)
+        assertEquals(PersistResult.HELD_NEW, persistR)
+
+        val directA = directFrame(1, payloadSize = 50)
+        val recA = recipient(1)
+        val origin = localNode(1)
+        val enqueueA = store.enqueueDirectOutboundAtWithFault(directA, expectedRecipient = recA, localOriginNodeId = origin, receivedAt = 200L, fault = null)
+        assertEquals(OutboundEnqueueResult.Created(directA), enqueueA)
+
+        // Now add Direct B (100 bytes payload + 64 = 164 bytes).
+        // Total would be 114 + 114 + 164 = 392 > 350 (overshoot = 42 bytes).
+        // R is evictable (unbound); A is protected (active delivery). R should be evicted.
+        val directB = directFrame(2, payloadSize = 100)
+        val enqueueB = store.enqueueDirectOutboundAtWithFault(directB, expectedRecipient = recipient(2), localOriginNodeId = origin, receivedAt = 300L, fault = null)
+        assertEquals(OutboundEnqueueResult.Created(directB), enqueueB)
+
+        // R was evicted
+        assertFalse(heldIds().containsId(relayR.msgId))
+        // A is still held and active
+        assertTrue(heldIds().containsId(directA.msgId))
+        val da = readDelivery(directA.msgId)
+        assertNotNull(da)
+        assertEquals(io.godstone.mesh.delivery.DeliveryState.QUEUED_DURABLY.code, da!!.state)
+        // B is held and active
+        assertTrue(heldIds().containsId(directB.msgId))
+        val db = readDelivery(directB.msgId)
+        assertNotNull(db)
+        assertEquals(io.godstone.mesh.delivery.DeliveryState.QUEUED_DURABLY.code, db!!.state)
+
+        assertTrue(bytes() <= 350L)
+        assertNoOrphanActiveDeliveries()
+    }
+
+    @Test
+    fun `C6_6_2 terminal delivery row without held frame returns RejectedTerminalState`() = runBlocking {
         open(maxBytes = 4096L)
         val rec = recipient(1)
         val origin = localNode(1)
 
-        // Non-direct priority
-        val groupFrame = directFrame(1, priority = Priority.GROUP)
-        assertEquals(OutboundEnqueueResult.InvalidArgument, store.enqueueDirectOutbound(groupFrame, rec, origin))
+        val terminalStates = listOf(
+            io.godstone.mesh.delivery.DeliveryState.ACKNOWLEDGED_BY_RECIPIENT,
+            io.godstone.mesh.delivery.DeliveryState.EXPIRED,
+            io.godstone.mesh.delivery.DeliveryState.CANCELLED_LOCALLY,
+        )
 
-        // Unsealed
-        val unsealedFrame = directFrame(2, sealed = false)
-        assertEquals(OutboundEnqueueResult.InvalidArgument, store.enqueueDirectOutbound(unsealedFrame, rec, origin))
+        for ((idx, termState) in terminalStates.withIndex()) {
+            val f = directFrame((idx + 10).toByte(), payloadSize = 100)
+            // Plant delivery row directly with terminal state and NO held frame
+            val inserted = engine!!.insertDelivery(
+                f.msgId,
+                termState.code,
+                io.godstone.mesh.delivery.AckMode.SINGLE_RECIPIENT.code,
+                rec
+            )
+            assertTrue(inserted)
+            assertFalse(heldIds().containsId(f.msgId))
 
-        // Has POW
-        val powFrame = directFrame(3, hasPow = true)
-        assertEquals(OutboundEnqueueResult.InvalidArgument, store.enqueueDirectOutbound(powFrame, rec, origin))
+            // Retry same message
+            val result = store.enqueueDirectOutbound(f, expectedRecipient = rec, localOriginNodeId = origin)
+            assertEquals(OutboundEnqueueResult.RejectedTerminalState, result)
+            // Zero writes to held_frames
+            assertFalse(heldIds().containsId(f.msgId))
+        }
+    }
 
-        // Invalid msg_id length
-        val badIdFrame = directFrame(4, msgIdOverride = ByteArray(15))
-        assertEquals(OutboundEnqueueResult.InvalidArgument, store.enqueueDirectOutbound(badIdFrame, rec, origin))
+    @Test
+    fun `C6_6_2 raw SQL corrupted type integer does not alias TypeV2 and fails closed`() = runBlocking {
+        open(maxBytes = 4096L)
+        val f = directFrame(1, payloadSize = 100)
+        val rec = recipient(1)
+        val origin = localNode(1)
 
-        // Invalid recipient length
-        val validFrame = directFrame(5)
-        assertEquals(OutboundEnqueueResult.InvalidArgument, store.enqueueDirectOutbound(validFrame, ByteArray(15), origin))
+        val created = store.enqueueDirectOutbound(f, expectedRecipient = rec, localOriginNodeId = origin)
+        assertEquals(OutboundEnqueueResult.Created(f), created)
 
-        // Invalid localOriginNodeId length
-        assertEquals(OutboundEnqueueResult.InvalidArgument, store.enqueueDirectOutbound(validFrame, rec, ByteArray(15)))
+        // Corrupt type in held_frames to 257 (257.toByte() is 1, which aliases TypeV2.MESSAGE)
+        val conn = DriverManager.getConnection("jdbc:sqlite:${tmp.absolutePath}")
+        conn.use { c ->
+            val stmt = c.prepareStatement("UPDATE held_frames SET type = 257 WHERE msg_id = ?")
+            stmt.setBytes(1, f.msgId)
+            val n = stmt.executeUpdate()
+            assertEquals(1, n)
+        }
+
+        // Retry must fail closed as InconsistentState, NOT alias as AlreadyQueuedSameBinding
+        val retry = store.enqueueDirectOutbound(f, expectedRecipient = rec, localOriginNodeId = origin)
+        assertEquals(OutboundEnqueueResult.InconsistentState, retry)
+    }
+
+    @Test
+    fun `C6_6_2 raw SQL corrupted ttl or flags fails closed`() = runBlocking {
+        open(maxBytes = 4096L)
+        val f = directFrame(1, payloadSize = 100)
+        val rec = recipient(1)
+        val origin = localNode(1)
+
+        val created = store.enqueueDirectOutbound(f, expectedRecipient = rec, localOriginNodeId = origin)
+        assertEquals(OutboundEnqueueResult.Created(f), created)
+
+        // Corrupt ttl to -1
+        val conn = DriverManager.getConnection("jdbc:sqlite:${tmp.absolutePath}")
+        conn.use { c ->
+            val stmt = c.prepareStatement("UPDATE held_frames SET ttl = -1 WHERE msg_id = ?")
+            stmt.setBytes(1, f.msgId)
+            val n = stmt.executeUpdate()
+            assertEquals(1, n)
+        }
+
+        val retry = store.enqueueDirectOutbound(f, expectedRecipient = rec, localOriginNodeId = origin)
+        assertEquals(OutboundEnqueueResult.InconsistentState, retry)
+    }
+
+    @Test
+    fun `C6_6_2 pre-SQL outbound validation rejects malformed fields before database mutation`() = runBlocking {
+        open(maxBytes = 4096L)
+        val rec = recipient(1)
+        val origin = localNode(1)
+        val validF = directFrame(1)
+
+        // 1. Invalid routing tag length
+        val badTag = FrameV2(validF.type, validF.msgId, byteArrayOf(1, 2, 3), validF.ttl, validF.hopCount, validF.flags, validF.payload)
+        assertEquals(OutboundEnqueueResult.InvalidArgument, store.enqueueDirectOutbound(badTag, rec, origin))
+
+        // 2. Invalid ttl (> MAX_TTL)
+        val badTtl = FrameV2(validF.type, validF.msgId, validF.routingTag, ttl = 17, hopCount = validF.hopCount, flags = validF.flags, payload = validF.payload)
+        assertEquals(OutboundEnqueueResult.InvalidArgument, store.enqueueDirectOutbound(badTtl, rec, origin))
+
+        // 3. Invalid hopCount (> MAX_TTL)
+        val badHop = FrameV2(validF.type, validF.msgId, validF.routingTag, ttl = validF.ttl, hopCount = 17, flags = validF.flags, payload = validF.payload)
+        assertEquals(OutboundEnqueueResult.InvalidArgument, store.enqueueDirectOutbound(badHop, rec, origin))
+
+        // 4. Invalid flags (> 0xFFFF or negative)
+        val badFlags = FrameV2(validF.type, validF.msgId, validF.routingTag, ttl = validF.ttl, hopCount = validF.hopCount, flags = 0x10000, payload = validF.payload)
+        assertEquals(OutboundEnqueueResult.InvalidArgument, store.enqueueDirectOutbound(badFlags, rec, origin))
+
+        // 5. Oversized payload (> MAX_PAYLOAD)
+        val badPayload = FrameV2(validF.type, validF.msgId, validF.routingTag, ttl = validF.ttl, hopCount = validF.hopCount, flags = validF.flags, payload = ByteArray(FrameV2.MAX_PAYLOAD + 1))
+        assertEquals(OutboundEnqueueResult.InvalidArgument, store.enqueueDirectOutbound(badPayload, rec, origin))
+
+        // Database must remain completely empty
+        assertEquals(0L, bytes())
+        assertTrue(heldIds().isEmpty())
     }
 }

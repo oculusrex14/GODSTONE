@@ -234,7 +234,12 @@ internal object StoreSchema {
             "SELECT $COL_MSG_ID, (LENGTH($COL_PAYLOAD) + $ROW_OVERHEAD) AS sz, " +
             "SUM(LENGTH($COL_PAYLOAD) + $ROW_OVERHEAD) OVER (" +
             "ORDER BY ($COL_PRIORITY = 0) ASC, $COL_RECEIVED_AT ASC) AS cum " +
-            "FROM $TABLE" +
+            "FROM $TABLE " +
+            "WHERE NOT EXISTS (" +
+            "SELECT 1 FROM $DELIVERY_TABLE " +
+            "WHERE $DELIVERY_TABLE.$COL_D_MSG_ID = $TABLE.$COL_MSG_ID " +
+            "AND $DELIVERY_TABLE.$COL_D_STATE IN (1, 2)" +
+            ")" +
             ") WHERE cum - sz < ?)"
 
     /** Priority-order clause: SOS-first (priority 0), then priority asc, then
@@ -432,9 +437,20 @@ internal class StoreRow(
     val receivedFrom: ByteArray
         get() = _receivedFrom.copyOf()
 
-    /** Resolve to a FrameV2, or null if the type code is not a known TypeV2. */
+    /** Resolve to a FrameV2, or null if the row fails wire invariants or has an unknown type code. */
     fun toFrame(): FrameV2? {
-        val type = TypeV2.from(typeCode.toByte()) ?: return null
+        val byteVal = when (typeCode) {
+            in 0..255 -> typeCode.toByte()
+            in -128..-1 -> typeCode.toByte()
+            else -> return null
+        }
+        val type = TypeV2.from(byteVal) ?: return null
+        if (msgId.size != 16) return null
+        if (routingTag.size != 4) return null
+        if (ttl !in 0..FrameV2.MAX_TTL) return null
+        if (hopCount !in 0..FrameV2.MAX_TTL) return null
+        if (flags !in 0..0xFFFF) return null
+        if (payload.size > FrameV2.MAX_PAYLOAD) return null
         return FrameV2(type, msgId, routingTag, ttl, hopCount, flags, payload)
     }
 }
@@ -675,6 +691,11 @@ class SqliteMessageStore internal constructor(
         fault: ((String) -> Unit)?,
     ): OutboundEnqueueResult {
         if (frame.msgId.size != 16) return OutboundEnqueueResult.InvalidArgument
+        if (frame.routingTag.size != 4) return OutboundEnqueueResult.InvalidArgument
+        if (frame.ttl !in 0..FrameV2.MAX_TTL) return OutboundEnqueueResult.InvalidArgument
+        if (frame.hopCount !in 0..FrameV2.MAX_TTL) return OutboundEnqueueResult.InvalidArgument
+        if (frame.flags !in 0..0xFFFF) return OutboundEnqueueResult.InvalidArgument
+        if (frame.payload.size > FrameV2.MAX_PAYLOAD) return OutboundEnqueueResult.InvalidArgument
         if (expectedRecipient.size != 16) return OutboundEnqueueResult.InvalidArgument
         if (localOriginNodeId.size != 16) return OutboundEnqueueResult.InvalidArgument
         if (frame.type != TypeV2.MESSAGE) return OutboundEnqueueResult.InvalidArgument
@@ -694,6 +715,9 @@ class SqliteMessageStore internal constructor(
                     if (state == null || ackMode == null || existingDelivery.expectedRecipient?.size != 16) {
                         return@inTransaction OutboundEnqueueResult.InconsistentState
                     }
+                    if (state.isTerminal) {
+                        return@inTransaction OutboundEnqueueResult.RejectedTerminalState
+                    }
                     if (heldRow == null) {
                         return@inTransaction OutboundEnqueueResult.InconsistentState
                     }
@@ -701,9 +725,6 @@ class SqliteMessageStore internal constructor(
                         ?: return@inTransaction OutboundEnqueueResult.InconsistentState
                     if (!heldRow.receivedFrom.contentEquals(localOriginNodeId)) {
                         return@inTransaction OutboundEnqueueResult.InconsistentState
-                    }
-                    if (state.isTerminal) {
-                        return@inTransaction OutboundEnqueueResult.RejectedTerminalState
                     }
                     if (ackMode != AckMode.SINGLE_RECIPIENT ||
                         !expectedRecipient.contentEquals(existingDelivery.expectedRecipient)
@@ -827,7 +848,7 @@ internal class SqlcipherStoreDb(ctx: Context) : StoreDb {
         val d = helper.writableDatabase
         val cv = ContentValues().apply {
             put(StoreSchema.COL_MSG_ID, frame.msgId)
-            put(StoreSchema.COL_TYPE, frame.type.code.toInt())
+            put(StoreSchema.COL_TYPE, frame.type.code.toInt() and 0xFF)
             put(StoreSchema.COL_TTL, frame.ttl)
             put(StoreSchema.COL_HOP_COUNT, frame.hopCount)
             put(StoreSchema.COL_FLAGS, frame.flags)
@@ -1125,6 +1146,11 @@ internal class InMemoryMessageStore(
         localOriginNodeId: ByteArray,
     ): OutboundEnqueueResult {
         if (frame.msgId.size != 16) return OutboundEnqueueResult.InvalidArgument
+        if (frame.routingTag.size != 4) return OutboundEnqueueResult.InvalidArgument
+        if (frame.ttl !in 0..FrameV2.MAX_TTL) return OutboundEnqueueResult.InvalidArgument
+        if (frame.hopCount !in 0..FrameV2.MAX_TTL) return OutboundEnqueueResult.InvalidArgument
+        if (frame.flags !in 0..0xFFFF) return OutboundEnqueueResult.InvalidArgument
+        if (frame.payload.size > FrameV2.MAX_PAYLOAD) return OutboundEnqueueResult.InvalidArgument
         if (expectedRecipient.size != 16) return OutboundEnqueueResult.InvalidArgument
         if (localOriginNodeId.size != 16) return OutboundEnqueueResult.InvalidArgument
         if (frame.type != TypeV2.MESSAGE) return OutboundEnqueueResult.InvalidArgument
@@ -1143,14 +1169,14 @@ internal class InMemoryMessageStore(
             if (state == null || ackMode == null || deliveryRow.expectedRecipient?.size != 16) {
                 return OutboundEnqueueResult.InconsistentState
             }
+            if (state.isTerminal) {
+                return OutboundEnqueueResult.RejectedTerminalState
+            }
             if (heldEntry == null) {
                 return OutboundEnqueueResult.InconsistentState
             }
             if (!heldEntry.receivedFrom.contentEquals(localOriginNodeId)) {
                 return OutboundEnqueueResult.InconsistentState
-            }
-            if (state.isTerminal) {
-                return OutboundEnqueueResult.RejectedTerminalState
             }
             if (ackMode != AckMode.SINGLE_RECIPIENT ||
                 !expectedRecipient.contentEquals(deliveryRow.expectedRecipient)
@@ -1203,10 +1229,14 @@ internal class InMemoryMessageStore(
         deliveryRows[key] = DeliveryRow(state, existing.ackMode, existing.expectedRecipient)
     }
 
-    /** Evict oldest non-SOS first (then SOS, oldest first) until <= maxBytes. */
+    /** Evict oldest non-SOS first (then SOS, oldest first) until <= maxBytes, protecting active delivery rows. */
     private fun evictUntilUnderCap() {
         // Eviction order: non-SOS (priority != 0) first, oldest received; then SOS, oldest.
-        val order = held.entries.sortedWith(
+        // Candidate set excludes rows whose delivery state is QUEUED_DURABLY (1) or HANDED_TO_RELAY (2).
+        val order = held.entries.filter { e ->
+            val d = deliveryRows[e.key]
+            d == null || (d.state != DeliveryState.QUEUED_DURABLY.code && d.state != DeliveryState.HANDED_TO_RELAY.code)
+        }.sortedWith(
             compareBy<Map.Entry<BytesKey, Held>> { if (Priority.fromFlags(it.value.frame.flags) == Priority.SOS) 1 else 0 }
                 .thenBy { it.value.receivedAt }
         )

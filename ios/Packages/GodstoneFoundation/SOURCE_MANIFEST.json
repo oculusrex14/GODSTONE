@@ -25,7 +25,7 @@
     "Sources/GodstoneMesh/MeshCoordinator.swift": "29f20d444c3143dbcc74a56a16a2524411268e60e2855b021d0883231e6b383d",
     "Sources/GodstoneMesh/MeshIdentity.swift": "2540f259e773cf6c52b180d2e1676ed70781ccf8e5a7e5929a918471f14a721f",
     "Sources/GodstoneMesh/MeshNode.swift": "4e36a2c94be8a4e32a054505b95d8f8e305e69f7307166226a7d932177ef2d4c",
-    "Sources/GodstoneMesh/MessageStore.swift": "c3e2ff7a3fddfaf744ccc64d4697b628139217baddb607fb36c774a417038cec",
+    "Sources/GodstoneMesh/MessageStore.swift": "59d8a97b700292853743a97e7db0b4ccbdad72a4a545840e105d7e7069886f28",
     "Sources/GodstoneMesh/NoiseSession.swift": "4373724d7a65740af74eefb623d6a950eeddfd8becb91a7ac3e9a347151cfd54",
     "Sources/GodstoneMesh/PanicWipe.swift": "6f6b265a6df3d8760cb7fc3395afa16603371f12257b3002e71c6e3a937c276f",
     "Sources/GodstoneMesh/Priority.swift": "c6d739221a893c0551ca4228c30d5d8e82c39179fa559614fcd18d9f81690048",
@@ -49,7 +49,7 @@
     "Tests/GodstoneMeshTests/ProofOfWorkTests.swift": "211617a5d9139e2f88cba17ff7e32ebc38169bacec7837db7e7df14f8be31c59",
     "Tests/GodstoneMeshTests/RouterTests.swift": "924a69597cf0e7dffd8851e1e9fa3ceee253d8f7e524cef6609d8242b159d6c2",
     "Tests/GodstoneMeshTests/SqliteDeliveryRepositoryTests.swift": "595ead1d4b18fb4c36c0c1081c054add5ba176064d963990408fd7ea56396d80",
-    "Tests/GodstoneMeshTests/SqliteMessageStoreTests.swift": "9970419ad68076881f5ce93737264531c4c345fbe565139e61b9693d97768051",
+    "Tests/GodstoneMeshTests/SqliteMessageStoreTests.swift": "e147a551b5c0442a9e43eb783cd33e61d3a0464fb42bd8745080813173e4dca6",
     "Tests/GodstoneMeshTests/WireV2VectorTests.swift": "49099a1535aa501763df0c2949949b76f14ee8b6e0f585abf4306a2f70e23c70"
   },
   "schema": 1

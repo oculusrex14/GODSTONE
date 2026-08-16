@@ -776,6 +776,11 @@ final class SqliteMessageStoreTests: XCTestCase {
 
         let r1 = store.enqueueDirectOutbound(f, expectedRecipient: rec, localOriginNodeId: origin)
         XCTAssertEqual(r1, .created(f))
+
+        // C6.6.2 / Section 15: Read actual persisted received_from column via raw SQL
+        let storedProvenance = readHeldReceivedFrom(msgId: f.msgId)
+        XCTAssertEqual(storedProvenance, origin)
+        XCTAssertNotEqual(storedProvenance, f.msgId)
     }
 
     func testC661EnqueueDirectOutboundWrongPreexistingProvenanceFailsClosedWithInconsistentState() {
@@ -895,6 +900,269 @@ final class SqliteMessageStoreTests: XCTestCase {
 
         // Invalid localOriginNodeId length
         XCTAssertEqual(store.enqueueDirectOutbound(validFrame, expectedRecipient: rec, localOriginNodeId: Data(repeating: 2, count: 15)), .invalidArgument)
+    }
+
+    // ==================================================================
+    // Stage 4 Phase C6.6.2 -- Capacity-safe delivery binding + strict row decoding
+    // ==================================================================
+
+    private func assertNoOrphanActiveDeliveries() {
+        var db: OpaquePointer?
+        guard sqlite3_open_v2(tmpURL.path, &db, SQLITE_OPEN_READONLY, nil) == SQLITE_OK else {
+            XCTFail("failed to open db")
+            return
+        }
+        defer { sqlite3_close_v2(db) }
+        var stmt: OpaquePointer?
+        let sql = "SELECT d.msg_id, d.state FROM \(StoreSchema.deliveryTable) d " +
+            "WHERE d.state IN (1, 2) " +
+            "AND NOT EXISTS (SELECT 1 FROM \(StoreSchema.table) h WHERE h.msg_id = d.msg_id)"
+        guard sqlite3_prepare_v2(db, sql, -1, &stmt, nil) == SQLITE_OK else {
+            XCTFail("failed to prepare query")
+            return
+        }
+        defer { sqlite3_finalize(stmt) }
+        var orphans: [Int32] = []
+        while sqlite3_step(stmt) == SQLITE_ROW {
+            orphans.append(sqlite3_column_int(stmt, 1))
+        }
+        XCTAssertTrue(orphans.isEmpty, "Found orphan active delivery rows without held frames: \(orphans)")
+    }
+
+    private func readHeldReceivedFrom(msgId: Data) -> Data? {
+        var db: OpaquePointer?
+        guard sqlite3_open_v2(tmpURL.path, &db, SQLITE_OPEN_READONLY, nil) == SQLITE_OK else {
+            return nil
+        }
+        defer { sqlite3_close_v2(db) }
+        var stmt: OpaquePointer?
+        let sql = "SELECT \(StoreSchema.colReceivedFrom) FROM \(StoreSchema.table) WHERE \(StoreSchema.colMsgId) = ?"
+        guard sqlite3_prepare_v2(db, sql, -1, &stmt, nil) == SQLITE_OK else {
+            return nil
+        }
+        defer { sqlite3_finalize(stmt) }
+        let transient = unsafeBitCast(-1, to: sqlite3_destructor_type.self)
+        msgId.withUnsafeBytes { r in
+            sqlite3_bind_blob(stmt, 1, r.baseAddress, Int32(msgId.count), transient)
+        }
+        guard sqlite3_step(stmt) == SQLITE_ROW else { return nil }
+        guard let ptr = sqlite3_column_blob(stmt, 0) else { return nil }
+        let count = Int(sqlite3_column_bytes(stmt, 0))
+        return Data(bytes: ptr, count: count)
+    }
+
+    func testC662CapacityEvictionProtectsQueuedDurablyActiveDirectFrameFromNewDirectPressure() {
+        // Frame A is 100 bytes payload + 64 overhead = 164 bytes.
+        // Cap is 200 bytes, so A fits alone, but A + B (328 bytes) exceeds cap.
+        _ = open(maxBytes: 200)
+        let fa = directFrame(1, payloadSize: 100)
+        let fb = directFrame(2, payloadSize: 100)
+        let rec = recipient(1)
+        let origin = localNode(1)
+
+        let ra = store.enqueueDirectOutbound(fa, expectedRecipient: rec, localOriginNodeId: origin)
+        XCTAssertEqual(ra, .created(fa))
+        assertNoOrphanActiveDeliveries()
+
+        // Enqueue B: A is protected (QUEUED_DURABLY). B cannot fit without evicting A, so B is evicted and rejected.
+        let rb = store.enqueueDirectOutbound(fb, expectedRecipient: rec, localOriginNodeId: origin)
+        XCTAssertEqual(rb, .rejectedCapacity)
+
+        // Frame A held + delivery row remain intact; Frame B is absent.
+        XCTAssertTrue(containsId(heldIds(), fa.msgId))
+        let da = readDeliveryRow(fa.msgId)
+        XCTAssertNotNil(da)
+        XCTAssertEqual(da?.state, DeliveryState.queuedDurably.code)
+
+        XCTAssertFalse(containsId(heldIds(), fb.msgId))
+        XCTAssertNil(readDeliveryRow(fb.msgId))
+        XCTAssertLessThanOrEqual(bytes(), 200)
+        assertNoOrphanActiveDeliveries()
+    }
+
+    func testC662CapacityEvictionProtectsHandedToRelayActiveDirectFrameUnderPressure() {
+        _ = open(maxBytes: 200)
+        let fa = directFrame(1, payloadSize: 100)
+        let fb = directFrame(2, payloadSize: 100)
+        let rec = recipient(1)
+        let origin = localNode(1)
+
+        let ra = store.enqueueDirectOutbound(fa, expectedRecipient: rec, localOriginNodeId: origin)
+        XCTAssertEqual(ra, .created(fa))
+
+        // Advance A to HANDED_TO_RELAY (state = 2)
+        let updated = store.execRawUpdate("UPDATE \(StoreSchema.deliveryTable) SET \(StoreSchema.colDState) = \(DeliveryState.handedToRelay.code) WHERE \(StoreSchema.colDMsgId) = ?", [fa.msgId])
+        XCTAssertEqual(updated, 1)
+
+        // Enqueue B under capacity pressure
+        let rb = store.enqueueDirectOutbound(fb, expectedRecipient: rec, localOriginNodeId: origin)
+        XCTAssertEqual(rb, .rejectedCapacity)
+
+        // A is still held and in HANDED_TO_RELAY
+        XCTAssertTrue(containsId(heldIds(), fa.msgId))
+        let da = readDeliveryRow(fa.msgId)
+        XCTAssertNotNil(da)
+        XCTAssertEqual(da?.state, DeliveryState.handedToRelay.code)
+        XCTAssertLessThanOrEqual(bytes(), 200)
+        assertNoOrphanActiveDeliveries()
+    }
+
+    func testC662InboundPersistCannotOrphanLocalActiveDirectDeliveryRow() {
+        _ = open(maxBytes: 200)
+        let fa = directFrame(1, payloadSize: 100)
+        let rec = recipient(1)
+        let origin = localNode(1)
+
+        let ra = store.enqueueDirectOutbound(fa, expectedRecipient: rec, localOriginNodeId: origin)
+        XCTAssertEqual(ra, .created(fa))
+
+        // Inbound/unbound relay frame arrives
+        let inboundB = frame(2, .group, 100)
+        let persistResult = store.persist(inboundB, receivedFrom: localNode(2))
+        XCTAssertEqual(persistResult, .rejectedCapacity)
+
+        // A is still held and delivery is still QUEUED_DURABLY
+        XCTAssertTrue(containsId(heldIds(), fa.msgId))
+        let da = readDeliveryRow(fa.msgId)
+        XCTAssertNotNil(da)
+        XCTAssertEqual(da?.state, DeliveryState.queuedDurably.code)
+        XCTAssertLessThanOrEqual(bytes(), 200)
+        assertNoOrphanActiveDeliveries()
+    }
+
+    func testC662UnboundRelayFramesEvictBeforeActiveDeliveryBoundFrames() {
+        // Cap is 350 bytes.
+        // Relay R (50 bytes payload + 64 = 114 bytes)
+        // Direct A (50 bytes payload + 64 = 114 bytes)
+        // Total = 228 <= 350.
+        _ = open(maxBytes: 350)
+        let relayR = frame(10, .group, 50)
+        let persistR = store.persistAt(relayR, receivedFrom: localNode(9), receivedAt: 100)
+        XCTAssertEqual(persistR, .heldNew)
+
+        let directA = directFrame(1, payloadSize: 50)
+        let recA = recipient(1)
+        let origin = localNode(1)
+        let enqueueA = store.enqueueDirectOutboundAtWithFault(directA, expectedRecipient: recA, localOriginNodeId: origin, receivedAt: 200)
+        XCTAssertEqual(enqueueA, .created(directA))
+
+        // Now add Direct B (100 bytes payload + 64 = 164 bytes).
+        // Total would be 114 + 114 + 164 = 392 > 350 (overshoot = 42 bytes).
+        // R is evictable (unbound); A is protected (active delivery). R should be evicted.
+        let directB = directFrame(2, payloadSize: 100)
+        let enqueueB = store.enqueueDirectOutboundAtWithFault(directB, expectedRecipient: recipient(2), localOriginNodeId: origin, receivedAt: 300)
+        XCTAssertEqual(enqueueB, .created(directB))
+
+        // R was evicted
+        XCTAssertFalse(containsId(heldIds(), relayR.msgId))
+        // A is still held and active
+        XCTAssertTrue(containsId(heldIds(), directA.msgId))
+        let da = readDeliveryRow(directA.msgId)
+        XCTAssertNotNil(da)
+        XCTAssertEqual(da?.state, DeliveryState.queuedDurably.code)
+        // B is held and active
+        XCTAssertTrue(containsId(heldIds(), directB.msgId))
+        let db = readDeliveryRow(directB.msgId)
+        XCTAssertNotNil(db)
+        XCTAssertEqual(db?.state, DeliveryState.queuedDurably.code)
+
+        XCTAssertLessThanOrEqual(bytes(), 350)
+        assertNoOrphanActiveDeliveries()
+    }
+
+    func testC662TerminalDeliveryRowWithoutHeldFrameReturnsRejectedTerminalState() {
+        _ = open(maxBytes: 4096)
+        let rec = recipient(1)
+        let origin = localNode(1)
+
+        let terminalStates: [DeliveryState] = [
+            .acknowledgedByRecipient,
+            .expired,
+            .cancelledLocally
+        ]
+
+        for (idx, termState) in terminalStates.enumerated() {
+            let f = directFrame(UInt8(idx + 10), payloadSize: 100)
+            // Plant delivery row directly with terminal state and NO held frame
+            try? store.insertDelivery(
+                f.msgId,
+                stateOrdinal: termState.code,
+                ackModeOrdinal: AckMode.singleRecipient.rawValue,
+                expectedRecipient: rec
+            )
+            XCTAssertFalse(containsId(heldIds(), f.msgId))
+
+            // Retry same message
+            let result = store.enqueueDirectOutbound(f, expectedRecipient: rec, localOriginNodeId: origin)
+            XCTAssertEqual(result, .rejectedTerminalState)
+            // Zero writes to held_frames
+            XCTAssertFalse(containsId(heldIds(), f.msgId))
+        }
+    }
+
+    func testC662RawSqlCorruptedTypeIntegerFailsClosedWithoutTrapping() {
+        _ = open(maxBytes: 4096)
+        let f = directFrame(1, payloadSize: 100)
+        let rec = recipient(1)
+        let origin = localNode(1)
+
+        let created = store.enqueueDirectOutbound(f, expectedRecipient: rec, localOriginNodeId: origin)
+        XCTAssertEqual(created, .created(f))
+
+        // Corrupt type in held_frames to 257 (or -1) via raw SQL
+        let updateSql = "UPDATE \(StoreSchema.table) SET \(StoreSchema.colType) = 257 WHERE \(StoreSchema.colMsgId) = ?"
+        let n = store.execRawUpdate(updateSql, [f.msgId])
+        XCTAssertEqual(n, 1)
+
+        // Retry must fail closed as .inconsistentState without trapping
+        let retry = store.enqueueDirectOutbound(f, expectedRecipient: rec, localOriginNodeId: origin)
+        XCTAssertEqual(retry, .inconsistentState)
+    }
+
+    func testC662RawSqlCorruptedTtlOrFlagsFailsClosedWithoutTrapping() {
+        _ = open(maxBytes: 4096)
+        let f = directFrame(1, payloadSize: 100)
+        let rec = recipient(1)
+        let origin = localNode(1)
+
+        let created = store.enqueueDirectOutbound(f, expectedRecipient: rec, localOriginNodeId: origin)
+        XCTAssertEqual(created, .created(f))
+
+        // Corrupt ttl to -1 via raw SQL
+        let updateSql = "UPDATE \(StoreSchema.table) SET \(StoreSchema.colTtl) = -1 WHERE \(StoreSchema.colMsgId) = ?"
+        let n = store.execRawUpdate(updateSql, [f.msgId])
+        XCTAssertEqual(n, 1)
+
+        // Retry must fail closed as .inconsistentState without trapping
+        let retry = store.enqueueDirectOutbound(f, expectedRecipient: rec, localOriginNodeId: origin)
+        XCTAssertEqual(retry, .inconsistentState)
+    }
+
+    func testC662ReadHeldNoLockStrictStepErrorYieldsStorageFailureAndRollsBack() {
+        _ = open(maxBytes: 4096)
+        let f = directFrame(1, payloadSize: 100)
+        let rec = recipient(1)
+        let origin = localNode(1)
+
+        // Use fault hook after capacity eviction to install a progress handler that interrupts the step
+        let result = store.enqueueDirectOutboundAtWithFault(
+            f,
+            expectedRecipient: rec,
+            localOriginNodeId: origin,
+            receivedAt: 100
+        ) { hook, db in
+            if hook == "after_evict", let db = db {
+                sqlite3_progress_handler(db, 1, { _ in 1 }, nil)
+            }
+        }
+
+        XCTAssertEqual(result, .storageFailure)
+        XCTAssertNotEqual(result, .rejectedCapacity)
+        XCTAssertNotEqual(result, .inconsistentState)
+
+        // Transaction must have rolled back completely
+        XCTAssertFalse(containsId(heldIds(), f.msgId))
+        XCTAssertNil(readDeliveryRow(f.msgId))
     }
 
     // MARK: - helpers

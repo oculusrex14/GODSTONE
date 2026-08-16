@@ -232,6 +232,11 @@ internal enum StoreSchema {
                        SUM(LENGTH(\(colPayload)) + \(rowOverhead)) OVER (
                            ORDER BY (\(colPriority) = 0) ASC, \(colReceivedAt) ASC) AS cum
                 FROM \(table)
+                WHERE NOT EXISTS (
+                    SELECT 1 FROM \(deliveryTable)
+                    WHERE \(deliveryTable).\(colDMsgId) = \(table).\(colMsgId)
+                      AND \(deliveryTable).\(colDState) IN (1, 2)
+                )
             ) WHERE cum - sz < ?
         )
         """
@@ -342,11 +347,13 @@ internal struct StoreRow {
     /// Reconstruct a FrameV2, or nil if the row has an unknown type code or
     /// fails the FrameV2 invariants (skipped, not crashed -- forward-compat).
     func toFrame() -> FrameV2? {
-        guard let type = TypeV2(rawValue: UInt8(typeCode)),
+        guard typeCode >= 0, typeCode <= 255,
+              let type = TypeV2(rawValue: UInt8(typeCode)),
               msgId.count == 16,
               routingTag.count == 4,
-              ttl <= Int32(FrameV2.maxTtl),
-              hopCount <= Int32(FrameV2.maxTtl),
+              ttl >= 0, ttl <= Int32(FrameV2.maxTtl),
+              hopCount >= 0, hopCount <= Int32(FrameV2.maxTtl),
+              flags >= 0, flags <= 0xFFFF,
               payload.count <= FrameV2.maxPayload else { return nil }
         return FrameV2(type: type,
                        msgId: msgId,
@@ -588,10 +595,15 @@ public final class SqliteMessageStore: MessageStore {
         _ frame: FrameV2,
         expectedRecipient: Data,
         localOriginNodeId: Data,
-        receivedAt: Int64,
-        fault: ((String, OpaquePointer?) throws -> Void)?
+        receivedAt: Int64 = Int64(Date().timeIntervalSince1970 * 1000),
+        fault: ((String, OpaquePointer?) throws -> Void)? = nil
     ) -> OutboundEnqueueResult {
         guard frame.msgId.count == 16,
+              frame.routingTag.count == 4,
+              frame.ttl <= FrameV2.maxTtl,
+              frame.hopCount <= FrameV2.maxTtl,
+              frame.flags <= 0xFFFF,
+              frame.payload.count <= FrameV2.maxPayload,
               expectedRecipient.count == 16,
               localOriginNodeId.count == 16,
               frame.type == .message,
@@ -614,22 +626,22 @@ public final class SqliteMessageStore: MessageStore {
                     else {
                         return .inconsistentState
                     }
-                    guard let held = heldRow else {
+                    if state.isTerminal {
+                        return .rejectedTerminalState
+                    }
+                    guard let held = heldRow, let heldFrame = held.frame else {
                         return .inconsistentState
                     }
                     guard held.receivedFrom == localOriginNodeId else {
                         return .inconsistentState
                     }
-                    if state.isTerminal {
-                        return .rejectedTerminalState
-                    }
                     if ackMode != .singleRecipient || expectedRecipient != existing.expectedRecipient {
                         return .conflictRecipient
                     }
-                    if held.frame != frame {
+                    if heldFrame != frame {
                         return .canonicalFrameMismatch
                     }
-                    return .alreadyQueuedSameBinding(held.frame)
+                    return .alreadyQueuedSameBinding(heldFrame)
                 }
 
                 if heldRow != nil {
@@ -651,7 +663,8 @@ public final class SqliteMessageStore: MessageStore {
                 guard let persisted = try readHeldNoLockStrict(db, frame.msgId) else {
                     throw DirectEnqueueError.capacityEvicted
                 }
-                guard persisted.frame == frame && persisted.receivedFrom == localOriginNodeId else {
+                guard let persistedFrame = persisted.frame,
+                      persistedFrame == frame && persisted.receivedFrom == localOriginNodeId else {
                     throw StoreError.stepFailed
                 }
 
@@ -668,7 +681,7 @@ public final class SqliteMessageStore: MessageStore {
 
                 try fault?("after_delivery_insert", db)
 
-                return .created(persisted.frame)
+                return .created(persistedFrame)
             }
         } catch DirectEnqueueError.capacityEvicted {
             return .rejectedCapacity
@@ -779,9 +792,10 @@ public final class SqliteMessageStore: MessageStore {
         return sqlite3_step(stmt) == SQLITE_ROW
     }
 
-    /// C6.6.1: strict held-row read. THROWS on a prepare/step error or malformed data.
+    /// C6.6.1 / C6.6.2: strict held-row read. THROWS on a prepare/step error.
+    /// Only SQLITE_DONE indicates absence; any non-ROW error throws to trigger ROLLBACK.
     @inline(__always)
-    private func readHeldNoLockStrict(_ db: OpaquePointer, _ msgId: Data) throws -> (frame: FrameV2, receivedFrom: Data, receivedAt: Int64)? {
+    private func readHeldNoLockStrict(_ db: OpaquePointer, _ msgId: Data) throws -> (frame: FrameV2?, receivedFrom: Data, receivedAt: Int64)? {
         let sql = "SELECT \(StoreSchema.colType), \(StoreSchema.colMsgId), \(StoreSchema.colRoutingTag), " +
             "\(StoreSchema.colTtl), \(StoreSchema.colHopCount), \(StoreSchema.colFlags), " +
             "\(StoreSchema.colPayload), \(StoreSchema.colReceivedFrom), \(StoreSchema.colReceivedAt) " +
@@ -792,7 +806,9 @@ public final class SqliteMessageStore: MessageStore {
         }
         defer { sqlite3_finalize(stmt) }
         bindBlob(stmt, 1, msgId)
-        guard sqlite3_step(stmt) == SQLITE_ROW else { return nil }
+        let rc = sqlite3_step(stmt)
+        if rc == SQLITE_DONE { return nil }
+        guard rc == SQLITE_ROW else { throw StoreError.stepFailed }
         let typeCode = sqlite3_column_int(stmt, 0)
         let rowMsgId = readBlob(stmt, 1)
         let routingTag = readBlob(stmt, 2)
@@ -811,10 +827,7 @@ public final class SqliteMessageStore: MessageStore {
             flags: flags,
             payload: payload
         )
-        guard let frame = storeRow.toFrame() else {
-            throw StoreError.stepFailed
-        }
-        return (frame: frame, receivedFrom: receivedFrom, receivedAt: receivedAt)
+        return (frame: storeRow.toFrame(), receivedFrom: receivedFrom, receivedAt: receivedAt)
     }
 
     /// C6.4.1-H: strict total-bytes. THROWS on a prepare/step failure. Used
@@ -1227,6 +1240,11 @@ internal final class InMemoryMessageStore: MessageStore {
 
     func enqueueDirectOutbound(_ frame: FrameV2, expectedRecipient: Data, localOriginNodeId: Data) -> OutboundEnqueueResult {
         guard frame.msgId.count == 16,
+              frame.routingTag.count == 4,
+              frame.ttl <= FrameV2.maxTtl,
+              frame.hopCount <= FrameV2.maxTtl,
+              frame.flags <= 0xFFFF,
+              frame.payload.count <= FrameV2.maxPayload,
               expectedRecipient.count == 16,
               localOriginNodeId.count == 16,
               frame.type == .message,
@@ -1249,14 +1267,14 @@ internal final class InMemoryMessageStore: MessageStore {
             else {
                 return .inconsistentState
             }
+            if state.isTerminal {
+                return .rejectedTerminalState
+            }
             guard let held = heldEntry else {
                 return .inconsistentState
             }
             guard held.receivedFrom == localOriginNodeId else {
                 return .inconsistentState
-            }
-            if state.isTerminal {
-                return .rejectedTerminalState
             }
             if ackMode != .singleRecipient || expectedRecipient != existing.expectedRecipient {
                 return .conflictRecipient
@@ -1317,12 +1335,15 @@ internal final class InMemoryMessageStore: MessageStore {
         rows.values.reduce(Int64(0)) { $0 + Int64($1.frame.payload.count) + 64 }
     }
 
-    /// Evict oldest non-SOS first (then SOS, oldest first) until <= maxBytes.
+    /// Evict oldest non-SOS first (then SOS, oldest first) until <= maxBytes, protecting active delivery rows.
     private func evictUntilUnderCapNoLock() {
         // Eviction order: non-SOS (priority != .sos) first, oldest received; then
-        // SOS, oldest. `isSos` is 0 for non-SOS and 1 for SOS so ascending puts
-        // non-SOS first (evicted before SOS), matching StoreSchema.evictPrefixSql.
-        let order = rows.sorted { a, b in
+        // SOS, oldest. Candidate set excludes rows with nonterminal delivery_state (state 1 or 2).
+        let candidates = rows.filter { (id, _) in
+            guard let d = deliveryRows[id] else { return true }
+            return d.state != DeliveryState.queuedDurably.code && d.state != DeliveryState.handedToRelay.code
+        }
+        let order = candidates.sorted { a, b in
             let aSos = Priority.fromFlags(a.value.frame.flags) == .sos ? 1 : 0
             let bSos = Priority.fromFlags(b.value.frame.flags) == .sos ? 1 : 0
             if aSos != bSos { return aSos < bSos }
