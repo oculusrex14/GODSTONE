@@ -1054,6 +1054,115 @@ final class SqliteDeliveryRepositoryTests: XCTestCase {
                        "the durable expected recipient is preserved for when M2-link wires a real resolver")
     }
 
+    // ==================================================================
+    // C6.7.1 Logical Message Identity & Delivery State Collision Tests
+    // ==================================================================
+
+    func testCase1AliceAndBobConcurrentSendsCoexistAsDistinctRows() throws {
+        let (repo, _, url) = openRepo(); defer { try? FileManager.default.removeItem(at: url) }
+
+        let sender = Data(repeating: 0x01, count: 16)
+        let timestamp: Int64 = 1700000000
+        let plaintext = Data("medical supply update".utf8)
+
+        let nonceA = Data(repeating: 0x11, count: 16)
+        let nonceB = Data(repeating: 0x22, count: 16)
+        let aliceNode = Data(repeating: 0xAA, count: 16)
+        let bobNode = Data(repeating: 0xBB, count: 16)
+
+        let msgIdA = MessageId.derive(senderNodeId: sender, createdAtEpochSeconds: timestamp, messageNonce: nonceA, plaintext: plaintext)
+        let msgIdB = MessageId.derive(senderNodeId: sender, createdAtEpochSeconds: timestamp, messageNonce: nonceB, plaintext: plaintext)
+
+        XCTAssertNotEqual(msgIdA, msgIdB)
+
+        XCTAssertEqual(EnqueueResult.created, repo.enqueue(msgIdA, ackMode: .singleRecipient, expectedRecipient: aliceNode))
+        XCTAssertEqual(EnqueueResult.created, repo.enqueue(msgIdB, ackMode: .singleRecipient, expectedRecipient: bobNode))
+
+        let recA = found(repo, msgIdA)
+        let recB = found(repo, msgIdB)
+
+        XCTAssertEqual(recA.expectedRecipientNodeId, aliceNode)
+        XCTAssertEqual(recB.expectedRecipientNodeId, bobNode)
+        XCTAssertEqual(recA.state, .queuedDurably)
+        XCTAssertEqual(recB.state, .queuedDurably)
+    }
+
+    func testCase2TwoDistinctLogicalSendsToSameRecipientCoexist() throws {
+        let (repo, _, url) = openRepo(); defer { try? FileManager.default.removeItem(at: url) }
+
+        let sender = Data(repeating: 0x01, count: 16)
+        let timestamp: Int64 = 1700000000
+        let plaintext = Data("repeated status report".utf8)
+        let recipientAlice = Data(repeating: 0xAA, count: 16)
+
+        let nonce1 = Data(repeating: 0x33, count: 16)
+        let nonce2 = Data(repeating: 0x44, count: 16)
+
+        let msgId1 = MessageId.derive(senderNodeId: sender, createdAtEpochSeconds: timestamp, messageNonce: nonce1, plaintext: plaintext)
+        let msgId2 = MessageId.derive(senderNodeId: sender, createdAtEpochSeconds: timestamp, messageNonce: nonce2, plaintext: plaintext)
+
+        XCTAssertNotEqual(msgId1, msgId2)
+
+        XCTAssertEqual(EnqueueResult.created, repo.enqueue(msgId1, ackMode: .singleRecipient, expectedRecipient: recipientAlice))
+        XCTAssertEqual(EnqueueResult.created, repo.enqueue(msgId2, ackMode: .singleRecipient, expectedRecipient: recipientAlice))
+
+        let rec1 = found(repo, msgId1)
+        let rec2 = found(repo, msgId2)
+
+        XCTAssertEqual(rec1.expectedRecipientNodeId, recipientAlice)
+        XCTAssertEqual(rec2.expectedRecipientNodeId, recipientAlice)
+    }
+
+    func testCase3RetryWithSameLogicalIdentityIsIdempotent() throws {
+        let (repo, _, url) = openRepo(); defer { try? FileManager.default.removeItem(at: url) }
+
+        let sender = Data(repeating: 0x01, count: 16)
+        let timestamp: Int64 = 1700000000
+        let plaintext = Data("idempotent retry message".utf8)
+        let nonce = Data(repeating: 0x55, count: 16)
+        let recipient = Data(repeating: 0xCC, count: 16)
+
+        let msgIdOriginal = MessageId.derive(senderNodeId: sender, createdAtEpochSeconds: timestamp, messageNonce: nonce, plaintext: plaintext)
+        let msgIdRetry = MessageId.derive(senderNodeId: sender, createdAtEpochSeconds: timestamp, messageNonce: nonce, plaintext: plaintext)
+
+        XCTAssertEqual(msgIdOriginal, msgIdRetry)
+
+        XCTAssertEqual(EnqueueResult.created, repo.enqueue(msgIdOriginal, ackMode: .singleRecipient, expectedRecipient: recipient))
+        XCTAssertEqual(EnqueueResult.alreadyQueuedSameBinding, repo.enqueue(msgIdRetry, ackMode: .singleRecipient, expectedRecipient: recipient))
+
+        let rec = found(repo, msgIdOriginal)
+        XCTAssertEqual(rec.state, .queuedDurably)
+        XCTAssertEqual(rec.expectedRecipientNodeId, recipient)
+    }
+
+    func testCase4AckIsolationBetweenMessages() throws {
+        let (repo, _, url) = openRepo(); defer { try? FileManager.default.removeItem(at: url) }
+
+        let (pubA, privA) = realKeypair()
+        let (pubB, privB) = realKeypair()
+        let resolver = TwoRecipientResolver(nodeA(), pubA, nodeB(), pubB)
+        let tracker = DeliveryTracker(repo: repo, authenticator: Ed25519AckAuthenticator(resolver: resolver))
+
+        let sender = Data(repeating: 0x01, count: 16)
+        let timestamp: Int64 = 1700000000
+        let plaintext = Data("coordinated delivery message".utf8)
+
+        let msgIdA = MessageId.derive(senderNodeId: sender, createdAtEpochSeconds: timestamp, messageNonce: Data(repeating: 0x66, count: 16), plaintext: plaintext)
+        let msgIdB = MessageId.derive(senderNodeId: sender, createdAtEpochSeconds: timestamp, messageNonce: Data(repeating: 0x77, count: 16), plaintext: plaintext)
+
+        XCTAssertEqual(EnqueueResult.created, tracker.enqueue(msgIdA, ackMode: AckMode.singleRecipient, expectedRecipient: nodeA()))
+        XCTAssertEqual(EnqueueResult.created, tracker.enqueue(msgIdB, ackMode: AckMode.singleRecipient, expectedRecipient: nodeB()))
+
+        XCTAssertEqual(TransitionResult.applied, tracker.markHandedToRelay(msgIdA))
+        XCTAssertEqual(TransitionResult.applied, tracker.markHandedToRelay(msgIdB))
+
+        let ackA = try AckFrame.build(msgId: msgIdA, recipientSigningPrivKey: privA, recipientNodeId: nodeA(), routingTag: routingTag)
+        XCTAssertEqual(AckResult.applied, tracker.acknowledge(msgIdA, ackA))
+
+        XCTAssertEqual(DeliveryState.acknowledgedByRecipient, stateOf(tracker, msgIdA))
+        XCTAssertEqual(DeliveryState.handedToRelay, stateOf(tracker, msgIdB))
+    }
+
     // MARK: - helpers
 
     private func rawAck(_ mid: Data) -> FrameV2 {

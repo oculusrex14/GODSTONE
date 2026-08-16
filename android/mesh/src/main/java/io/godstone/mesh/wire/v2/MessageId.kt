@@ -11,14 +11,14 @@ import java.nio.ByteOrder
 import java.security.SecureRandom
 
 /**
- * GMP/2.1 logical message-id derivation (ADR-001 §3.3, C6.7).
+ * GMP/2.1 logical message-id derivation (ADR-001 §3.3, C6.7.1).
  *
  *     msg_id = BLAKE2s-128(ASCII("GMP2-MSGID") ‖ sender_node_id[16] ‖ created_at_le[4] ‖ message_nonce[16] ‖ plaintext)
  *
- * The sender generates a 16-byte random `message_nonce` (CSPRNG) when authoring a new
+ * The sender generates an immutable [LogicalMessageIdentity] when authoring a new
  * logical message, computes msg_id, and places it in the 16-byte header field.
- * Retries reuse the same `message_nonce` and `msg_id`; newly authored sends generate
- * a fresh `message_nonce` to guarantee unique logical message identities even for
+ * Retries re-transmit the exact persisted FrameV2; newly authored sends generate
+ * a fresh [LogicalMessageIdentity] to guarantee unique logical message identities even for
  * identical content, identical timestamps, or multiple simultaneous recipients.
  *
  * `message_nonce` is sealed inside the authenticated payload prefix (ADR-001 §3.3.4):
@@ -35,7 +35,8 @@ object MessageId {
     const val MSG_ID_BYTES = 16
     const val NONCE_BYTES = 16
 
-    val MSG_ID_DOMAIN: ByteArray = "GMP2-MSGID".toByteArray(Charsets.US_ASCII)
+    const val DOMAIN_SEPARATOR_TEXT = "GMP2-MSGID"
+    private val MSG_ID_DOMAIN_BYTES = DOMAIN_SEPARATOR_TEXT.toByteArray(Charsets.US_ASCII)
 
     /**
      * BLAKE2s-128 over:
@@ -50,7 +51,7 @@ object MessageId {
         require(senderNodeId.size == NODE_ID_BYTES) { "sender_node_id must be 16 bytes" }
         require(messageNonce.size == NONCE_BYTES) { "message_nonce must be 16 bytes" }
         val d = Blake2sDigest(null, MSG_ID_BYTES, null, null)
-        d.update(MSG_ID_DOMAIN, 0, MSG_ID_DOMAIN.size)
+        d.update(MSG_ID_DOMAIN_BYTES, 0, MSG_ID_DOMAIN_BYTES.size)
         d.update(senderNodeId, 0, senderNodeId.size)
         val leBytes = uint32Le(createdAtEpochSeconds)
         d.update(leBytes, 0, leBytes.size)
@@ -60,6 +61,13 @@ object MessageId {
         d.doFinal(out, 0)
         return out
     }
+
+    /** Convenience overload using an immutable [LogicalMessageIdentity]. */
+    fun derive(
+        senderNodeId: ByteArray,
+        identity: LogicalMessageIdentity,
+        plaintext: ByteArray
+    ): ByteArray = derive(senderNodeId, identity.createdAtEpochSeconds, identity.messageNonce, plaintext)
 
     /** Generate a 16-byte CSPRNG message nonce for a new logical send. */
     fun generateNonce(rng: SecureRandom = SecureRandom()): ByteArray =

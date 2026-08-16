@@ -68,7 +68,7 @@ def x(hexs: str) -> X25519PrivateKey:
 
 
 def check_gmp21(r: Result) -> None:
-    """GMP/2.1 derivation vectors (ADR-001 §3): msg_id, bloom, PoW.
+    """GMP/2.1 derivation vectors (ADR-001 §3, C6.7.1): msg_id, bloom, PoW.
 
     Self-consistency: the Python reference (crypto/gmp21.py, hashlib.blake2s)
     must reproduce every locked value in crypto/gmp21_vectors.json. This is
@@ -93,12 +93,24 @@ def check_gmp21(r: Result) -> None:
                        bytes.fromhex(c["message_nonce"]),
                        bytes.fromhex(c["payload"])).hex()
         r.check(got == c["msg_id"], f"msg_id {c['name']}",
-                f"want {c['msg_id']} got {got}")
+                 f"want {c['msg_id']} got {got}")
 
+    # Recompute msg_id negative controls directly:
     neg = g["msg_id"]["negative"]
-    r.check(neg["differs"], f"msg_id negative {neg['name']} (BE != LE)")
+    sender_a = bytes.fromhex(neg["sender_node_id"])
+    payload_help = bytes.fromhex(neg["payload"])
+    nonce_one = bytes.fromhex(neg["message_nonce"])
+    be_recomputed = hashlib.blake2s(
+        G.MSG_ID_DOMAIN + sender_a + G.uint32_be(1) + nonce_one + payload_help, digest_size=16).hexdigest()
+    r.check(be_recomputed == neg["msg_id_be"] and be_recomputed != g["msg_id"]["cases"][1]["msg_id"],
+            f"msg_id negative {neg['name']} (recomputed BE != LE)")
+
     neg_nonce = g["msg_id"]["negative_nonce"]
-    r.check(neg_nonce["differs"], f"msg_id negative {neg_nonce['name']} (distinct nonce)")
+    nonce_zero = bytes.fromhex(neg_nonce["message_nonce"])
+    zero_nonce_recomputed = G.msg_id(sender_a, 1, nonce_zero, payload_help).hex()
+    r.check(zero_nonce_recomputed == neg_nonce["msg_id_zero_nonce"] and
+            zero_nonce_recomputed != g["msg_id"]["cases"][1]["msg_id"],
+            f"msg_id negative {neg_nonce['name']} (recomputed distinct nonce)")
 
     for case in g["bloom"]["cases"]:
         ids = [bytes.fromhex(i["msg_id"]) for i in case["ids"]]
@@ -117,16 +129,31 @@ def check_gmp21(r: Result) -> None:
         nonce = bytes.fromhex(c["pow_nonce"])
         sender = bytes.fromhex(c["sender_node_id"])
         created_le = bytes.fromhex(c["created_at_le"])
+        msg_nonce = bytes.fromhex(c["message_nonce"])
         pt = bytes.fromhex(c["plaintext"])
-        digest = G.pow_digest(nonce, sender, created_le, c["type_code"], pt)
+        digest = G.pow_digest(nonce, sender, created_le, msg_nonce, c["type_code"], pt)
         r.check(digest.hex() == c["blake2s_256"], f"pow {c['name']} digest")
         r.check(G.pow_top_bits_zero(digest, c["target_bits"]),
                 f"pow {c['name']} top-{c['target_bits']} bits zero")
         # A wrong nonce (all zeros) must NOT satisfy the production target.
         if c["target_bits"] == G.POW_TARGET_BITS:
-            r.check(not G.pow_verify(bytes(G.POW_NONCE_BYTES), sender, created_le,
+            r.check(not G.pow_verify(bytes(G.POW_NONCE_BYTES), sender, created_le, msg_nonce,
                                      c["type_code"], pt, c["target_bits"]),
                     f"pow {c['name']} zero-nonce rejected")
+
+    # Recompute PoW nonce-mutation negative control directly
+    pow_neg = g["pow"]["negative_nonce"]
+    pow_nonce_20 = bytes.fromhex(pow_neg["pow_nonce"])
+    msg_nonce_orig = bytes.fromhex(pow_neg["message_nonce_original"])
+    msg_nonce_mut = bytes.fromhex(pow_neg["message_nonce_mutated"])
+    pt_help = bytes.fromhex(g["pow"]["cases"][0]["plaintext"])
+    created_le_1 = bytes.fromhex(g["pow"]["cases"][0]["created_at_le"])
+    type_msg = g["pow"]["cases"][0]["type_code"]
+
+    orig_valid = G.pow_verify(pow_nonce_20, sender_a, created_le_1, msg_nonce_orig, type_msg, pt_help, 20)
+    mut_valid = G.pow_verify(pow_nonce_20, sender_a, created_le_1, msg_nonce_mut, type_msg, pt_help, 20)
+    r.check(orig_valid and not mut_valid,
+            f"pow negative {pow_neg['name']} (recomputed message_nonce binding)")
 
 
 def main() -> int:

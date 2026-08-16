@@ -49,6 +49,8 @@ FINAL_STATUS_PATH = ROOT / "docs" / "production" / "FINAL_STATUS.md"
 
 EXPECTED_VERDICT = "PARTIALLY_REMEDIATED_NOT_READY"
 EXPECTED_BRANCH = "remediation/stage-4-link-release"
+EXPECTED_STAGE2_TIP = "b7bac64341c1214e05d0436fcb29c5b671d710e9"
+EXPECTED_STAGE3_TIP = "ce265e2e2b9a8e01d9851bde9baefbae0c72c993"
 STALE_BRANCHES = ["remediation/stage-3-durability", "remediation/stage-2-gmp21", "remediate-overlay"]
 
 
@@ -119,8 +121,9 @@ def check_consistency(
         if "PARTIALLY REMEDIATED — NOT READY" not in final_status_text and "PARTIALLY_REMEDIATED_NOT_READY" not in final_status_text:
             errors.append("FINAL_STATUS.md does not contain required verdict 'PARTIALLY REMEDIATED — NOT READY'")
 
-    # 3. Check Branch Identity
-    manifest_branch = manifest_data.get("source", {}).get("branch", "")
+    # 3. Check Branch Identity and Immutable Frozen Tips
+    manifest_source = manifest_data.get("source", {})
+    manifest_branch = manifest_source.get("branch", "")
     if manifest_branch != EXPECTED_BRANCH:
         errors.append(
             f"RELEASE_MANIFEST.json branch is {manifest_branch!r}; expected {EXPECTED_BRANCH!r}"
@@ -128,6 +131,18 @@ def check_consistency(
     for stale in STALE_BRANCHES:
         if stale in manifest_branch:
             errors.append(f"RELEASE_MANIFEST.json references stale branch: {stale}")
+
+    manifest_stage2 = manifest_source.get("stage2_frozen_tip", "")
+    if manifest_stage2 != EXPECTED_STAGE2_TIP:
+        errors.append(
+            f"RELEASE_MANIFEST.json stage2_frozen_tip is {manifest_stage2!r}; expected {EXPECTED_STAGE2_TIP!r}"
+        )
+
+    manifest_stage3 = manifest_source.get("stage3_frozen_tip", "")
+    if manifest_stage3 != EXPECTED_STAGE3_TIP:
+        errors.append(
+            f"RELEASE_MANIFEST.json stage3_frozen_tip is {manifest_stage3!r}; expected {EXPECTED_STAGE3_TIP!r}"
+        )
 
     findings_branch = findings_data.get("generated_for_branch", "")
     if findings_branch != EXPECTED_BRANCH:
@@ -373,12 +388,23 @@ def selftest() -> int:
             failures.append("Mutation 6 (MEDIUM tier shipping=true) was NOT detected")
         f_tiers.write_text(TIERS_CONFIG_PATH.read_text(encoding="utf-8"), encoding="utf-8")
 
+        # Mutation 7: Stage 3 frozen tip corrupted
+        m7 = json.loads(f_manifest.read_text(encoding="utf-8"))
+        m7["source"]["stage3_frozen_tip"] = "0000000000000000000000000000000000000000"
+        f_manifest.write_text(json.dumps(m7), encoding="utf-8")
+        errs = check_consistency(f_findings, f_gates, f_tiers, f_manifest, f_status)
+        if any("stage3_frozen_tip" in e for e in errs):
+            passed_mutations += 1
+        else:
+            failures.append("Mutation 7 (stage3_frozen_tip corrupted) was NOT detected")
+        f_manifest.write_text(json.dumps(manifest_clean, indent=2), encoding="utf-8")
+
     if failures:
         for f in failures:
             print(f"::error::selftest failure: {f}")
         return 1
 
-    print(f"check_status_consistency selftest PASSED ({passed_mutations}/6 mutations caught deterministically).")
+    print(f"check_status_consistency selftest PASSED ({passed_mutations}/7 mutations caught deterministically).")
     return 0
 
 

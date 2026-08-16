@@ -175,7 +175,7 @@ off  size  field
 0    2     magic          0x4753
 2    1     version        0x02   (minor 1 signalled in HELLO capabilities)
 3    1     type           even-parity code, >= 2 Hamming from every other
-4    16    msg_id         BLAKE2s-128(sender ‖ created_at ‖ payload)
+4    16    msg_id         BLAKE2s-128(b"GMP2-MSGID" ‖ sender ‖ created_at_le ‖ message_nonce ‖ plaintext)
 20   4     routing_tag    BLAKE2s-32(recipient_node_id ‖ epoch_day)
 24   1     ttl            initial 12, max 16
 25   1     hop_count      increments on relay

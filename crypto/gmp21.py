@@ -1,12 +1,12 @@
-"""GMP/2.1 cross-platform byte-parity reference (ADR-001 §3, C6.7).
+"""GMP/2.1 cross-platform byte-parity reference (ADR-001 §3, C6.7.1).
 
 The three content-derived primitives that MUST be byte-identical across the
 Android (Kotlin/Bouncy Castle) and iOS (Swift/Blake2s) runtimes:
 
     msg_id   = BLAKE2s-128(b"GMP2-MSGID" ‖ sender[16] ‖ created_at_le[4] ‖ message_nonce[16] ‖ payload)   §3.3
     bloom    = index = BLAKE2s-64(msg_id[16] ‖ uint32_be(round)) mod 4096     §3.4
-    pow      = BLAKE2s-256(pow_nonce[8] ‖ sender[16] ‖ created_at_le[4] ‖
-                            type_code[1] ‖ plaintext), top TARGET_BITS bits 0  §3.3
+    pow      = BLAKE2s-256(b"GMP2-POW" ‖ pow_nonce[8] ‖ sender[16] ‖ created_at_le[4] ‖
+                            message_nonce[16] ‖ type_code[1] ‖ plaintext), top TARGET_BITS bits 0  §3.3
 
 This module is the INDEPENDENT Python reference (hashlib.blake2s, RFC 7693).
 crypto/gmp21_vectors.json is generated from it by crypto.gen_gmp21_vectors;
@@ -31,6 +31,7 @@ from __future__ import annotations
 import hashlib
 
 MSG_ID_DOMAIN = b"GMP2-MSGID"
+POW_DOMAIN = b"GMP2-POW"
 MESSAGE_NONCE_BYTES = 16
 NODE_ID_BYTES = 16
 MSG_ID_BYTES = 16
@@ -98,22 +99,25 @@ def bloom_short_digest(filter_bytes: bytes) -> bytes:
 
 
 def pow_preimage(pow_nonce: bytes, sender_node_id: bytes,
-                 created_at_le: bytes, type_code: int, plaintext: bytes) -> bytes:
-    """§3.3: pow_nonce[8] ‖ sender[16] ‖ created_at_le[4] ‖ type_code[1] ‖ plaintext."""
+                 created_at_le: bytes, message_nonce: bytes,
+                 type_code: int, plaintext: bytes) -> bytes:
+    """§3.3: b"GMP2-POW" ‖ pow_nonce[8] ‖ sender[16] ‖ created_at_le[4] ‖ message_nonce[16] ‖ type_code[1] ‖ plaintext."""
     if len(pow_nonce) != POW_NONCE_BYTES:
         raise ValueError("pow_nonce must be 8 bytes")
     if len(sender_node_id) != NODE_ID_BYTES:
         raise ValueError("sender_node_id must be 16 bytes")
     if len(created_at_le) != 4:
         raise ValueError("created_at must be 4 bytes")
-    return (pow_nonce + sender_node_id + created_at_le
-            + bytes([type_code & 0xFF]) + plaintext)
+    if len(message_nonce) != MESSAGE_NONCE_BYTES:
+        raise ValueError("message_nonce must be 16 bytes")
+    return (POW_DOMAIN + pow_nonce + sender_node_id + created_at_le
+            + message_nonce + bytes([type_code & 0xFF]) + plaintext)
 
 
 def pow_digest(pow_nonce: bytes, sender_node_id: bytes, created_at_le: bytes,
-               type_code: int, plaintext: bytes) -> bytes:
+               message_nonce: bytes, type_code: int, plaintext: bytes) -> bytes:
     return blake2s(pow_preimage(pow_nonce, sender_node_id, created_at_le,
-                                type_code, plaintext), 32)
+                                message_nonce, type_code, plaintext), 32)
 
 
 def pow_top_bits_zero(digest: bytes, target_bits: int) -> bool:
@@ -134,14 +138,15 @@ def pow_top_bits_zero(digest: bytes, target_bits: int) -> bool:
 
 
 def pow_verify(pow_nonce: bytes, sender_node_id: bytes, created_at_le: bytes,
-               type_code: int, plaintext: bytes, target_bits: int = POW_TARGET_BITS) -> bool:
+               message_nonce: bytes, type_code: int, plaintext: bytes,
+               target_bits: int = POW_TARGET_BITS) -> bool:
     return pow_top_bits_zero(
-        pow_digest(pow_nonce, sender_node_id, created_at_le, type_code, plaintext),
+        pow_digest(pow_nonce, sender_node_id, created_at_le, message_nonce, type_code, plaintext),
         target_bits)
 
 
-def pow_mine(sender_node_id: bytes, created_at_le: bytes, type_code: int,
-             plaintext: bytes, target_bits: int = POW_TARGET_BITS,
+def pow_mine(sender_node_id: bytes, created_at_le: bytes, message_nonce: bytes,
+             type_code: int, plaintext: bytes, target_bits: int = POW_TARGET_BITS,
              start_nonce: bytes = bytes(POW_NONCE_BYTES)) -> tuple[bytes, bytes]:
     """Deterministic nonce search (big-endian increment from start_nonce).
 
@@ -154,7 +159,7 @@ def pow_mine(sender_node_id: bytes, created_at_le: bytes, type_code: int,
     if len(nonce) != POW_NONCE_BYTES:
         raise ValueError("start_nonce must be 8 bytes")
     while True:
-        digest = pow_digest(nonce, sender_node_id, created_at_le, type_code, plaintext)
+        digest = pow_digest(nonce, sender_node_id, created_at_le, message_nonce, type_code, plaintext)
         if pow_top_bits_zero(digest, target_bits):
             return bytes(nonce), digest
         # big-endian unsigned increment

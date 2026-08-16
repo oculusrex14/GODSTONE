@@ -1281,4 +1281,149 @@ class SqliteDeliveryRepositoryTest {
             file.delete()
         }
     }
+
+    // ==================================================================
+    // C6.7.1 Logical Message Identity & Delivery State Collision Tests
+    // ==================================================================
+
+    @Test
+    fun `case 1 - alice and bob concurrent sends with same content and time coexist as distinct rows`() {
+        val file = Files.createTempFile("godstone-delivery", ".db").toFile()
+        try {
+            val db = JdbcStoreDb(file)
+            val repo = SqliteDeliveryRepository(db)
+
+            val sender = ByteArray(16) { 0x01 }
+            val timestamp = 1700000000L
+            val plaintext = "medical supply update".toByteArray()
+
+            val nonceA = ByteArray(16) { 0x11 }
+            val nonceB = ByteArray(16) { 0x22 }
+            val aliceNode = ByteArray(16) { 0xAA.toByte() }
+            val bobNode = ByteArray(16) { 0xBB.toByte() }
+
+            val msgIdA = io.godstone.mesh.wire.v2.MessageId.derive(sender, timestamp, nonceA, plaintext)
+            val msgIdB = io.godstone.mesh.wire.v2.MessageId.derive(sender, timestamp, nonceB, plaintext)
+
+            // Distinct logical msg_ids
+            kotlin.test.assertNotEquals(msgIdA.toList(), msgIdB.toList())
+
+            // Enqueue both
+            assertEquals(EnqueueResult.Created, repo.enqueue(msgIdA, AckMode.SINGLE_RECIPIENT, aliceNode))
+            assertEquals(EnqueueResult.Created, repo.enqueue(msgIdB, AckMode.SINGLE_RECIPIENT, bobNode))
+
+            // Both rows exist independently with their respective recipient bindings
+            val recA = (repo.get(msgIdA) as DeliveryLookup.Found).record
+            val recB = (repo.get(msgIdB) as DeliveryLookup.Found).record
+
+            assertEquals(aliceNode.toList(), recA.expectedRecipientNodeId?.toList())
+            assertEquals(bobNode.toList(), recB.expectedRecipientNodeId?.toList())
+            assertEquals(DeliveryState.QUEUED_DURABLY, recA.state)
+            assertEquals(DeliveryState.QUEUED_DURABLY, recB.state)
+        } finally {
+            file.delete()
+        }
+    }
+
+    @Test
+    fun `case 2 - two distinct logical sends to same recipient with same content coexist`() {
+        val file = Files.createTempFile("godstone-delivery", ".db").toFile()
+        try {
+            val db = JdbcStoreDb(file)
+            val repo = SqliteDeliveryRepository(db)
+
+            val sender = ByteArray(16) { 0x01 }
+            val timestamp = 1700000000L
+            val plaintext = "repeated status report".toByteArray()
+            val recipientAlice = ByteArray(16) { 0xAA.toByte() }
+
+            val nonce1 = ByteArray(16) { 0x33 }
+            val nonce2 = ByteArray(16) { 0x44 }
+
+            val msgId1 = io.godstone.mesh.wire.v2.MessageId.derive(sender, timestamp, nonce1, plaintext)
+            val msgId2 = io.godstone.mesh.wire.v2.MessageId.derive(sender, timestamp, nonce2, plaintext)
+
+            kotlin.test.assertNotEquals(msgId1.toList(), msgId2.toList())
+
+            assertEquals(EnqueueResult.Created, repo.enqueue(msgId1, AckMode.SINGLE_RECIPIENT, recipientAlice))
+            assertEquals(EnqueueResult.Created, repo.enqueue(msgId2, AckMode.SINGLE_RECIPIENT, recipientAlice))
+
+            val rec1 = (repo.get(msgId1) as DeliveryLookup.Found).record
+            val rec2 = (repo.get(msgId2) as DeliveryLookup.Found).record
+
+            assertEquals(recipientAlice.toList(), rec1.expectedRecipientNodeId?.toList())
+            assertEquals(recipientAlice.toList(), rec2.expectedRecipientNodeId?.toList())
+        } finally {
+            file.delete()
+        }
+    }
+
+    @Test
+    fun `case 3 - retry with same logical identity produces same msg_id and is idempotent`() {
+        val file = Files.createTempFile("godstone-delivery", ".db").toFile()
+        try {
+            val db = JdbcStoreDb(file)
+            val repo = SqliteDeliveryRepository(db)
+
+            val sender = ByteArray(16) { 0x01 }
+            val timestamp = 1700000000L
+            val plaintext = "idempotent retry message".toByteArray()
+            val nonce = ByteArray(16) { 0x55 }
+            val recipient = ByteArray(16) { 0xCC.toByte() }
+
+            val msgIdOriginal = io.godstone.mesh.wire.v2.MessageId.derive(sender, timestamp, nonce, plaintext)
+            val msgIdRetry = io.godstone.mesh.wire.v2.MessageId.derive(sender, timestamp, nonce, plaintext)
+
+            assertEquals(msgIdOriginal.toList(), msgIdRetry.toList())
+
+            // Initial enqueue creates the row
+            assertEquals(EnqueueResult.Created, repo.enqueue(msgIdOriginal, AckMode.SINGLE_RECIPIENT, recipient))
+
+            // Re-enqueue for the same logical message is idempotent
+            assertEquals(EnqueueResult.AlreadyQueuedSameBinding, repo.enqueue(msgIdRetry, AckMode.SINGLE_RECIPIENT, recipient))
+
+            val rec = (repo.get(msgIdOriginal) as DeliveryLookup.Found).record
+            assertEquals(DeliveryState.QUEUED_DURABLY, rec.state)
+            assertEquals(recipient.toList(), rec.expectedRecipientNodeId?.toList())
+        } finally {
+            file.delete()
+        }
+    }
+
+    @Test
+    fun `case 4 - ack isolation acknowledging msgIdA does not alter delivery state of msgIdB`() {
+        val file = Files.createTempFile("godstone-delivery", ".db").toFile()
+        try {
+            val db = JdbcStoreDb(file)
+            val repo = SqliteDeliveryRepository(db)
+
+            val (pubA, privA) = realKeypair()
+            val (pubB, privB) = realKeypair()
+            val resolver = TwoRecipientResolver(nodeA(), pubA, nodeB(), pubB)
+            val tracker = DeliveryTracker(repo, Ed25519AckAuthenticator(resolver))
+
+            val sender = ByteArray(16) { 0x01 }
+            val timestamp = 1700000000L
+            val plaintext = "coordinated delivery message".toByteArray()
+
+            val msgIdA = io.godstone.mesh.wire.v2.MessageId.derive(sender, timestamp, ByteArray(16) { 0x66 }, plaintext)
+            val msgIdB = io.godstone.mesh.wire.v2.MessageId.derive(sender, timestamp, ByteArray(16) { 0x77 }, plaintext)
+
+            assertEquals(EnqueueResult.Created, tracker.enqueue(msgIdA, AckMode.SINGLE_RECIPIENT, nodeA()))
+            assertEquals(EnqueueResult.Created, tracker.enqueue(msgIdB, AckMode.SINGLE_RECIPIENT, nodeB()))
+
+            tracker.markHandedToRelay(msgIdA)
+            tracker.markHandedToRelay(msgIdB)
+
+            // Acknowledge msgIdA
+            val ackA = AckFrame.build(msgIdA, privA, nodeA(), routingTag)
+            assertEquals(AckResult.Applied, tracker.acknowledge(msgIdA, ackA))
+
+            // msgIdA is ACKNOWLEDGED_BY_RECIPIENT, but msgIdB MUST still be HANDED_TO_RELAY
+            assertEquals(DeliveryState.ACKNOWLEDGED_BY_RECIPIENT, stateOf(tracker, msgIdA))
+            assertEquals(DeliveryState.HANDED_TO_RELAY, stateOf(tracker, msgIdB))
+        } finally {
+            file.delete()
+        }
+    }
 }

@@ -1,25 +1,17 @@
 import Foundation
 import GodstoneCore
 
-/// Delay-tolerant epidemic router, GMP/2.
+/// Delay-tolerant epidemic router, GMP/2 (ADR-001, ADR-008, C6.7.1).
 ///
-/// V4: `ingest` now takes `FrameV2`, resolving the v1/v2 type error at
-/// MeshNode.swift:111. iOS is coherently v2; Android is coherently v1.
-///
-/// THIS ROUTER IS NOT AT PARITY WITH ANDROID AND V4 DOES NOT CLAIM IT IS.
-/// Still missing, each blocked on an ADR rather than guessed at:
-///   - proof of work            (Android enforces 20-bit on GROUP/BROADCAST)
-///   - frame-age expiry         (Android drops > 14 days; v2 has no timestamp)
-///   - digest from a durable store, not the dedup window   (ADR-004)
-///   - DIGEST/WANT anti-entropy on encounter               (ADR-001 + ADR-002)
-/// docs/adr/ADR-001 carries the full divergence table.
+/// V4: `ingest` now takes `FrameV2`.
 public final class Router {
 
     public static let defaultTtl: UInt8 = FrameV2.defaultTtl
     public static let maxTtl: UInt8 = FrameV2.maxTtl
     private static let seenCacheCapacity = 16_384
 
-    private var seen = LruSet<Data>(capacity: Router.seenCacheCapacity)
+    public var selfNodeId: Data
+    private var seen: LruSet<Data>
     private var queue: [FrameV2] = []
     private let lock = NSLock()
 
@@ -28,46 +20,29 @@ public final class Router {
 
     /// Optional durable hold. When attached, the anti-entropy digest is built
     /// from the store's held msg_ids (the set of frames this node CARRIES),
-    /// matching Android -- not from the rolling dedup window (the set of ids
-    /// this node has RECENTLY SEEN). The two describe different sets for the
-    /// same node state, so before this was attached reconciliation was
-    /// semantically broken even with identical hash inputs (ADR-004 criterion 6,
-    /// closed in Phase G). The in-memory `queue`/`seen` remain the routing
-    /// buffer; the store is the durable source of truth for the digest.
-    ///
-    /// Stage 4B: the store is now injected before `MeshNode.start()` (see
-    /// `MeshNode.init(identity:store:)`), so a production router always carries
-    /// one. The `store` remains optional here only so the storeless unit-test
-    /// router (no durable configuration) can still exercise the routing buffer;
-    /// such a router builds an empty digest and skips persist-before-forward.
+    /// matching Android.
     public var store: MessageStore?
 
-    public convenience init() { self.init(seenCacheCapacity: Router.seenCacheCapacity) }
+    public convenience init() {
+        self.init(selfNodeId: Data(repeating: 0, count: 16), seenCacheCapacity: Router.seenCacheCapacity)
+    }
 
-    /// Test-only init with a smaller dedup window so a test can age an id OUT of
-    /// the window while it is still durably held, exercising the durable-UNIQUE-
-    /// authority duplicate path (B1) -- unreachable at the production cache size
-    /// without 16384+ frames.
-    internal init(seenCacheCapacity: Int) {
+    public convenience init(selfNodeId: Data) {
+        self.init(selfNodeId: selfNodeId, seenCacheCapacity: Router.seenCacheCapacity)
+    }
+
+    /// Test-only init with a smaller dedup window.
+    internal init(selfNodeId: Data = Data(repeating: 0, count: 16), seenCacheCapacity: Int) {
+        self.selfNodeId = selfNodeId
         self.seen = LruSet<Data>(capacity: seenCacheCapacity)
     }
 
-    /// True when the frame was new and has been accepted (and, when a durable
-    /// store is attached, durably held before it was forwarded).
+    /// True when the frame was new and has been accepted.
     @discardableResult
     public func ingest(_ frame: FrameV2, isAddressedToMe: Bool, receivedFrom: Data) -> Bool {
         guard frame.ttl <= Router.maxTtl,
               frame.hopCount <= Router.maxTtl else { return false }
 
-        // Stage 4B.1 (B1): the durable store is the dedup authority and the
-        // in-memory `seen` LRU is only an optimisation populated AFTER durable
-        // acceptance. The accept/deliver/forward decision is taken under the
-        // router lock so two concurrent same-msg_id arrivals cannot both pass
-        // the dedup gate (at-most-once); user callbacks and `enqueue` run AFTER
-        // the lock is released so they cannot deadlock re-entering the router or
-        // the non-recursive queue lock. The store lock is acquired AFTER the
-        // router lock here and in `bloomDigest` -- consistent ordering, no
-        // deadlock.
         let d = accept(frame, isAddressedToMe: isAddressedToMe, receivedFrom: receivedFrom)
         guard d.accepted else { return false }
         if d.deliver { onDeliverLocally?(frame) }
@@ -81,47 +56,28 @@ public final class Router {
         let forwardCopy: FrameV2?
     }
 
-    /// Dedup + durable persist + deliver/forward decision under the router lock.
-    /// `seen` is populated only AFTER durable acceptance, so a persist failure
-    /// never poisons retry (B1): the same msg_id can be re-offered after the
-    /// store recovers. A duplicate (LRU hit, or durable `.heldDuplicate`) is
-    /// suppressed without re-relay. `.rejectedCapacity` / `.failedStorage` leave
-    /// `seen` untouched so the retry path stays open. A storeless router uses
-    /// `seen` as the authority (unit-test routing buffer).
     private func accept(_ frame: FrameV2, isAddressedToMe: Bool, receivedFrom: Data) -> IngestDecision {
         let none = IngestDecision(accepted: false, deliver: false, forwardCopy: nil)
         lock.lock()
         defer { lock.unlock() }
-        // 1. Fast duplicate path (B1): the LRU is an OPTIMISATION only. A hit means
-        //    this id was durably accepted at some point (or is a within-window
-        //    duplicate), so short-circuit without touching the store.
+
         if seen.contains(frame.msgId) { return none }
-        // 2. Durable authority (B1/B2). persist runs insert, hard-cap enforcement
-        //    and the final-presence check in one transaction (B3) and reports the
-        //    result; the relay/deliver decision is taken ONLY from this result.
+
         if let store {
             switch store.persist(frame, receivedFrom: receivedFrom) {
             case .heldNew:
                 seen.insert(frame.msgId)
             case .heldDuplicate:
-                // Already durably held (LRU aged the id out but the durable PK
-                // still carries it): suppress re-relay, cache the id for fast-path.
                 seen.insert(frame.msgId)
                 return none
             case .rejectedCapacity, .failedStorage:
-                // NOT durably held. Do NOT mark seen -- the same msg_id may be
-                // re-offered after the store has room or recovers (B1: retry not
-                // poisoned). No deliver, no relay.
                 return none
             }
         } else {
-            seen.insert(frame.msgId)   // storeless: dedup window is the authority
+            seen.insert(frame.msgId)
         }
-        // 3. Accepted (HELD_NEW / storeless novel). Decide deliver + forward.
+
         let deliver = isAddressedToMe
-        // SOS is still relayed after local delivery: someone further away may be
-        // the one who can actually help. Non-SOS addressed-to-me is delivered and
-        // NOT relayed further.
         let shouldRelay = !(isAddressedToMe && frame.type != .sos)
         var forwardCopy: FrameV2? = nil
         if shouldRelay && frame.ttl > 1 && frame.hopCount < Router.maxTtl {
@@ -141,11 +97,10 @@ public final class Router {
         queue.append(frame)
         queue.sort { priority($0) < priority($1) }
         if queue.count > 512 {
-            queue.removeLast(queue.count - 512)   // SOS sorts first, never dropped
+            queue.removeLast(queue.count - 512)
         }
     }
 
-    /// Delivery order under congestion. SOS always wins.
     private func priority(_ f: FrameV2) -> Int {
         switch f.type {
         case .sos:        return 0
@@ -165,20 +120,176 @@ public final class Router {
         return out
     }
 
-    /// 4096-bit Bloom digest.
-    ///
-    /// Built from the durable store's held msg_ids (the set of frames this node
-    /// CARRIES) -- matching Android, so the two platforms build the same digest
-    /// from the same held set (ADR-004 criterion 6, Phase G). Stage 4B removed
-    /// the previous `seen.elements` fallback: that fallback described a
-    /// different set (ids this node has RECENTLY SEEN, not ids CARRIED), so it
-    /// was semantically broken even with identical hash inputs, and it is no
-    /// longer reachable in production now the store is injected before start.
-    /// A storeless (unit-test) router returns an empty digest rather than a
-    /// semantically-wrong one.
     public func bloomDigest() -> Data {
         lock.lock(); defer { lock.unlock() }
         guard let store else { return BloomDigest.build(from: []) }
         return BloomDigest.build(from: store.allHeldMsgIds())
+    }
+
+    /// Deterministically build a sealed MESSAGE frame around an explicit [identity] (C6.7.1).
+    public func buildSealedMessage(
+        plaintext: Data,
+        recipientNodeId: Data,
+        recipientStaticPub: Data,
+        senderNodeId: Data? = nil,
+        identity: LogicalMessageIdentity,
+        priority: Priority = .direct
+    ) async throws -> FrameV2 {
+        let sender = senderNodeId ?? selfNodeId
+        precondition(recipientNodeId.count == MessageId.nodeIdBytes, "recipientNodeId must be 16 bytes")
+        precondition(recipientStaticPub.count == 32, "recipientStaticPub must be 32 bytes")
+        precondition(sender.count == MessageId.nodeIdBytes, "senderNodeId must be 16 bytes")
+
+        let createdAtLe = identity.createdAtLe()
+        let powNonce: Data
+        if priority.requiresProofOfWork {
+            powNonce = try await ProofOfWork.mine(
+                senderNodeId: sender,
+                createdAtLe: createdAtLe,
+                messageNonce: identity.messageNonce,
+                typeCode: TypeV2.message.rawValue,
+                plaintext: plaintext
+            )
+        } else {
+            powNonce = Data(count: ProofOfWork.nonceBytes)
+        }
+
+        var sealedInner = Data(capacity: MessageId.messageNonceBytes + ProofOfWork.nonceBytes + 4 + plaintext.count)
+        sealedInner.append(identity.messageNonce)
+        sealedInner.append(powNonce)
+        sealedInner.append(createdAtLe)
+        sealedInner.append(plaintext)
+
+        let sealed = try SealedSender.seal(
+            plaintext: sealedInner,
+            senderNodeId: sender,
+            recipientStaticPub: recipientStaticPub
+        )
+        let msgId = MessageId.derive(senderNodeId: sender, identity: identity, plaintext: plaintext)
+        let routingTag = SealedSender.routingTag(
+            recipientNodeId: recipientNodeId,
+            epochDay: SealedSender.currentEpochDay()
+        )
+        var flags: UInt16 = UInt16(FrameV2.Flags.sealed) | Priority.toFlags(priority)
+        if priority.requiresProofOfWork {
+            flags |= UInt16(FrameV2.Flags.has_pow)
+        }
+
+        return FrameV2(
+            type: .message,
+            msgId: msgId,
+            routingTag: routingTag,
+            ttl: Router.defaultTtl,
+            hopCount: 0,
+            flags: flags,
+            payload: sealed
+        )
+    }
+
+    /// Author a NEW sealed message by creating an explicit [LogicalMessageIdentity] once.
+    public func authorSealedMessage(
+        plaintext: Data,
+        recipientNodeId: Data,
+        recipientStaticPub: Data,
+        senderNodeId: Data? = nil,
+        priority: Priority = .direct
+    ) async throws -> FrameV2 {
+        let identity = LogicalMessageIdentity.createNew()
+        return try await buildSealedMessage(
+            plaintext: plaintext,
+            recipientNodeId: recipientNodeId,
+            recipientStaticPub: recipientStaticPub,
+            senderNodeId: senderNodeId,
+            identity: identity,
+            priority: priority
+        )
+    }
+
+    /// Open a sealed MESSAGE addressed to us and split the authenticated inner
+    /// content into verified components.
+    public func openSealedMessage(
+        _ frame: FrameV2,
+        ourStaticDhPriv: Data
+    ) -> OpenMessageResult {
+        guard let opened = SealedSender.open(sealedPayload: frame.payload, recipientStaticPriv: ourStaticDhPriv) else {
+            return .notForUs
+        }
+        let inner = Data(opened.plaintext)
+        let prefixLen = MessageId.messageNonceBytes + ProofOfWork.nonceBytes + 4 // 28 bytes
+        guard inner.count >= prefixLen, opened.senderNodeId.count == MessageId.nodeIdBytes else {
+            return .malformed
+        }
+        let messageNonce = Data(inner.prefix(MessageId.messageNonceBytes))
+        let powNonce = Data(inner.subdata(in: MessageId.messageNonceBytes..<(MessageId.messageNonceBytes + ProofOfWork.nonceBytes)))
+        let createdAtLe = Data(inner.subdata(in: (MessageId.messageNonceBytes + ProofOfWork.nonceBytes)..<prefixLen))
+        let plaintext = Data(inner.suffix(from: prefixLen))
+
+        let createdAt = Int64(createdAtLe[0]) |
+                        (Int64(createdAtLe[1]) << 8) |
+                        (Int64(createdAtLe[2]) << 16) |
+                        (Int64(createdAtLe[3]) << 24)
+        let identity = LogicalMessageIdentity.of(createdAtEpochSeconds: createdAt, messageNonce: messageNonce)
+
+        let expectedMsgId = MessageId.derive(senderNodeId: opened.senderNodeId, identity: identity, plaintext: plaintext)
+        guard expectedMsgId == frame.msgId else {
+            return .messageIdMismatch
+        }
+
+        if (frame.flags & UInt16(FrameV2.Flags.has_pow)) != 0 {
+            let powValid = ProofOfWork.verify(
+                powNonce: powNonce,
+                senderNodeId: opened.senderNodeId,
+                createdAtLe: createdAtLe,
+                messageNonce: messageNonce,
+                typeCode: frame.type.rawValue,
+                plaintext: plaintext
+            )
+            guard powValid else {
+                return .invalidProofOfWork
+            }
+        }
+
+        return .accepted(VerifiedOpenedMessage(
+            senderNodeId: opened.senderNodeId,
+            identity: identity,
+            powNonce: powNonce,
+            plaintext: plaintext,
+            frame: frame
+        ))
+    }
+}
+
+/// Typed outcome of `Router.openSealedMessage`.
+public enum OpenMessageResult: Equatable {
+    case accepted(VerifiedOpenedMessage)
+    case notForUs
+    case malformed
+    case messageIdMismatch
+    case invalidProofOfWork
+}
+
+/// Result of opening a verified sealed MESSAGE.
+public struct VerifiedOpenedMessage: Equatable {
+    public let senderNodeId: Data
+    public let identity: LogicalMessageIdentity
+    public let powNonce: Data
+    public let plaintext: Data
+    public let frame: FrameV2
+
+    public var createdAtEpochSeconds: Int64 { identity.createdAtEpochSeconds }
+    public var messageNonce: Data { identity.messageNonce }
+
+    public init(
+        senderNodeId: Data,
+        identity: LogicalMessageIdentity,
+        powNonce: Data,
+        plaintext: Data,
+        frame: FrameV2
+    ) {
+        self.senderNodeId = senderNodeId
+        self.identity = identity
+        self.powNonce = powNonce
+        self.plaintext = plaintext
+        self.frame = frame
     }
 }

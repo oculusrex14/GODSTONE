@@ -282,54 +282,78 @@ class RouterTest {
     }
 
     @Test
-    fun `buildSealedMessage packs message_nonce and openSealedMessage rederives and verifies msgId`() = runTest {
+    fun `buildSealedMessage with LogicalMessageIdentity and openSealedMessage returns Accepted with verified message`() = runTest {
         val store = InMemoryMessageStore()
         val router = Router(store, selfNodeId)
 
-        // Generate static DH keypair for recipient
         val recipientKeys = X25519Keys.generate(SecureRandom())
         val recipientPriv = recipientKeys.priv
         val recipientPub = recipientKeys.pub
         val recipientNodeId = ByteArray(16) { 0x55 }
 
         val plaintext = "Hello secure mesh".toByteArray()
-        val nonce = MessageId.generateNonce()
+        val identity = io.godstone.mesh.wire.v2.LogicalMessageIdentity.of(1700000000L, ByteArray(16) { 0x01 })
         val frame = router.buildSealedMessage(
             plaintext = plaintext,
             recipientNodeId = recipientNodeId,
             recipientStaticPub = recipientPub,
-            priority = Priority.DIRECT,
-            messageNonce = nonce
+            identity = identity,
+            priority = Priority.DIRECT
         )
 
         assertEquals(TypeV2.MESSAGE, frame.type)
         assertEquals(16, frame.msgId.size)
 
-        val opened = router.openSealedMessage(frame, recipientPriv)
-        assertTrue(opened != null, "Recipient failed to open sealed message")
+        val res = router.openSealedMessage(frame, recipientPriv)
+        assertTrue(res is io.godstone.mesh.router.OpenMessageResult.Accepted, "Expected OpenMessageResult.Accepted")
+        val opened = res.message
         assertTrue(selfNodeId.contentEquals(opened.senderNodeId))
-        assertTrue(nonce.contentEquals(opened.messageNonce))
+        assertEquals(identity, opened.identity)
         assertTrue(plaintext.contentEquals(opened.plaintext))
-        assertTrue(opened.verifyMessageId(), "Recipient-side message identity verification failed")
 
-        // Tampering negative controls:
-        // 1. Mutated header msg_id fails verification
+        // Tampering negative control 1: Mutated header msg_id -> MessageIdMismatch
         val tamperedMsgId = frame.copy(msgId = ByteArray(16) { 0x99.toByte() })
-        val openedTamperedId = router.openSealedMessage(tamperedMsgId, recipientPriv)
-        assertTrue(openedTamperedId != null)
-        assertFalse(openedTamperedId.verifyMessageId(), "Tampered header msg_id must fail verification")
+        val resTamperedId = router.openSealedMessage(tamperedMsgId, recipientPriv)
+        assertTrue(resTamperedId is io.godstone.mesh.router.OpenMessageResult.MessageIdMismatch)
 
-        // 2. Mutated plaintext fails verification
-        val openedWithTamperedPt = opened.copy(plaintext = "tampered text".toByteArray())
-        assertFalse(openedWithTamperedPt.verifyMessageId(), "Tampered plaintext must fail verification")
-
-        // 3. Mutated messageNonce fails verification
-        val openedWithTamperedNonce = opened.copy(messageNonce = ByteArray(16) { 0x00 })
-        assertFalse(openedWithTamperedNonce.verifyMessageId(), "Tampered message_nonce must fail verification")
+        // Tampering negative control 2: Wrong recipient private key -> NotForUs
+        val wrongPriv = X25519Keys.generate(SecureRandom()).priv
+        val resWrongKey = router.openSealedMessage(frame, wrongPriv)
+        assertTrue(resWrongKey is io.godstone.mesh.router.OpenMessageResult.NotForUs)
     }
 
     @Test
-    fun `concurrent sends to alice and bob with same content produce distinct msg_ids and both verify`() = runTest {
+    fun `group message with HAS_POW mines pow with message_nonce and verifies on open`() = runTest {
+        val store = InMemoryMessageStore()
+        val router = Router(store, selfNodeId)
+
+        val recipientKeys = X25519Keys.generate(SecureRandom())
+        val recipientPriv = recipientKeys.priv
+        val recipientPub = recipientKeys.pub
+        val recipientNodeId = ByteArray(16) { 0x77 }
+
+        val plaintext = "Group message with PoW".toByteArray()
+        val identity = io.godstone.mesh.wire.v2.LogicalMessageIdentity.createNew()
+
+        // GROUP priority sets HAS_POW and mines 20-bit PoW
+        val frame = router.buildSealedMessage(
+            plaintext = plaintext,
+            recipientNodeId = recipientNodeId,
+            recipientStaticPub = recipientPub,
+            identity = identity,
+            priority = Priority.GROUP
+        )
+
+        assertTrue(frame.flags and FrameV2.HAS_POW != 0, "HAS_POW must be set for GROUP priority")
+
+        val res = router.openSealedMessage(frame, recipientPriv)
+        assertTrue(res is io.godstone.mesh.router.OpenMessageResult.Accepted, "Valid PoW message must be Accepted")
+        val opened = res.message
+        assertTrue(opened.plaintext.contentEquals(plaintext))
+    }
+
+    @Test
+    fun `concurrent authorSealedMessage to alice and bob produce distinct msg_ids and both are Accepted`() = runTest {
         val store = InMemoryMessageStore()
         val router = Router(store, selfNodeId)
 
@@ -344,16 +368,38 @@ class RouterTest {
         val bobNodeId = ByteArray(16) { 0x22 }
 
         val content = "rendezvous at checkpoint 4".toByteArray()
-        val frameAlice = router.buildSealedMessage(content, aliceNodeId, alicePub)
-        val frameBob = router.buildSealedMessage(content, bobNodeId, bobPub)
+        val frameAlice = router.authorSealedMessage(content, aliceNodeId, alicePub)
+        val frameBob = router.authorSealedMessage(content, bobNodeId, bobPub)
 
         assertNotEquals(frameAlice.msgId.toList(), frameBob.msgId.toList())
 
-        val openedAlice = router.openSealedMessage(frameAlice, alicePriv)
-        val openedBob = router.openSealedMessage(frameBob, bobPriv)
+        val resAlice = router.openSealedMessage(frameAlice, alicePriv)
+        val resBob = router.openSealedMessage(frameBob, bobPriv)
 
-        assertTrue(openedAlice != null && openedAlice.verifyMessageId())
-        assertTrue(openedBob != null && openedBob.verifyMessageId())
+        assertTrue(resAlice is io.godstone.mesh.router.OpenMessageResult.Accepted)
+        assertTrue(resBob is io.godstone.mesh.router.OpenMessageResult.Accepted)
+    }
+
+    @Test
+    fun `retry semantics retransmit the exact persisted FrameV2 without altering msg_id`() = runTest {
+        val store = InMemoryMessageStore()
+        val router = Router(store, selfNodeId)
+
+        val recipientKeys = X25519Keys.generate(SecureRandom())
+        val recipientPub = recipientKeys.pub
+        val recipientNodeId = ByteArray(16) { 0x33 }
+
+        val content = "durable broadcast packet".toByteArray()
+        val frame = router.authorSealedMessage(content, recipientNodeId, recipientPub)
+
+        // Persist frame
+        store.persist(frame, selfNodeId)
+
+        // Retry re-reads the held frame and preserves exact msg_id
+        val held = store.allHeldOrderedByPriority()
+        assertEquals(1, held.size)
+        assertTrue(held[0].msgId.contentEquals(frame.msgId))
+        assertTrue(held[0].payload.contentEquals(frame.payload))
     }
 }
 

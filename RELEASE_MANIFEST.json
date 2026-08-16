@@ -7,7 +7,7 @@
     "branch": "remediation/stage-4-link-release",
     "baseline_commit_main": "b7daf5aceb642277807e9bfbe3bbb486112a64ec",
     "stage2_frozen_tip": "b7bac64341c1214e05d0436fcb29c5b671d710e9",
-    "stage3_frozen_tip": "ce265e26ecbce9a0f4a8e2ee2d80d463d1cb58e4",
+    "stage3_frozen_tip": "ce265e2e2b9a8e01d9851bde9baefbae0c72c993",
     "branch_base": "created from stage3_frozen_tip (ce265e2); main is not modified and no PR is opened",
     "live_tip": "recorded per-run in the provenance-start.json / provenance-final.json workflow artifacts emitted by repository-verification.yml and in the Stage 4 checkpoint reports",
     "delivery_mode": "github-authoritative",

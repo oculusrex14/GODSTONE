@@ -3,6 +3,7 @@ package io.godstone.mesh.router
 import io.godstone.mesh.store.MessageStore
 import io.godstone.mesh.store.PersistResult
 import io.godstone.mesh.wire.v2.FrameV2
+import io.godstone.mesh.wire.v2.LogicalMessageIdentity
 import io.godstone.mesh.wire.v2.MessageId
 import io.godstone.mesh.wire.v2.Priority
 import io.godstone.mesh.wire.v2.TypeV2
@@ -13,7 +14,7 @@ import kotlinx.coroutines.sync.withLock
 
 /**
  * Delay-tolerant epidemic router on the canonical GMP/2.1 frame path (ADR-001,
- * ADR-008). Operates on FrameV2.
+ * ADR-008, C6.7.1). Operates on FrameV2.
  *
  * There is deliberately no routing table. In a disaster the topology changes
  * faster than any table converges, and assuming otherwise is the classic failure
@@ -120,21 +121,31 @@ class Router(
         }
     }
 
-    /** Prepare a frame for forwarding: decrement TTL, increment hop_count. */
-    fun forwardCopy(frame: FrameV2): FrameV2 =
-        frame.copy(ttl = frame.ttl - 1, hopCount = frame.hopCount + 1)
+    /** Returns the copy of [frame] ready to be relayed: TTL decremented, hop count incremented. */
+    fun forwardCopy(frame: FrameV2): FrameV2 {
+        require(frame.ttl > 1) { "cannot forward a frame with ttl <= 1" }
+        return frame.copy(
+            ttl = frame.ttl - 1,
+            hopCount = frame.hopCount + 1
+        )
+    }
 
     /**
-     * Compute what a peer appears to lack, in strict priority order:
-     * SOS first, then DIRECT, GROUP, BROADCAST, and BULK last.
+     * Difference reconciliation against a peer's Bloom digest (ADR-004 criterion 6).
+     *
+     * Iterates durably-held frames in descending priority order and yields
+     * those whose msg_id is ABSENT from [peerDigest], up to [limit]. Empty
+     * when the peer already holds everything we hold (or Bloom false-positives,
+     * which costs one round of convergence, never correctness).
      */
-    suspend fun framesPeerLacks(peerDigest: BloomDigest, limit: Int): List<FrameV2> {
-        // A-13: bounded by construction. The store pages rows and we stop as soon
-        // as [limit] is reached, so a 200 MB backlog never materialises in memory.
-        val out = ArrayList<FrameV2>(limit)
-        store.forEachHeldOrderedByPriority { f ->
-            if (!peerDigest.mightContain(f.msgId)) out.add(f)
-            out.size < limit   // false stops the scan
+    suspend fun framesPeerLacks(peerDigest: BloomDigest, limit: Int = 32): List<FrameV2> {
+        val out = ArrayList<FrameV2>()
+        store.forEachHeldOrderedByPriority { frame ->
+            if (!peerDigest.mightContain(frame.msgId)) {
+                out.add(frame)
+                if (out.size >= limit) return@forEachHeldOrderedByPriority false
+            }
+            true
         }
         return out
     }
@@ -145,51 +156,59 @@ class Router(
         return d
     }
 
+    suspend fun bloomDigest(): BloomDigest = currentDigest()
+
     /**
-     * Seal an application message for [recipientStaticPub] (PROTOCOL.md s.6).
-     *
-     * A relay sees only an ephemeral key, ciphertext and a daily-rotating routing
-     * tag (now carried in the FrameV2 header field, not the payload) -- never who
-     * is talking to whom.
+     * Deterministically build a sealed MESSAGE frame around an explicit [identity].
      *
      * The sealed inner content carries the message nonce, PoW nonce, and created_at alongside
-     * the plaintext (ADR-001 §3.3.4, C6.7):
+     * the plaintext (ADR-001 §3.3.4, C6.7.1):
      *     sealedInner = messageNonce(16) || powNonce(8) || created_at_le(4) || plaintext.
-     * created_at is the SAME uint32 epoch-second count used in msg_id derivation, serialised
-     * LITTLE-ENDIAN so there is one canonical created_at encoding across msg_id + PoW preimage
-     * + sealed payload and the recipient reconstructs preimages from the sealed bytes without
-     * any byte-order conversion. SealedSender packs sender_node_id before that, so the AEAD
-     * authenticates sender + message nonce + PoW nonce + created_at + plaintext together.
      *
-     * msg_id = BLAKE2s-128(b"GMP2-MSGID" || selfNodeId || created_at || message_nonce || plaintext)
-     * (MessageId.derive), sender-computed and carried in the header. GROUP/BROADCAST mine the
-     * nonce (priority.requiresProofOfWork) and set HAS_POW; SOS/DIRECT do not.
+     * Canonical created_at is serialised LITTLE-ENDIAN so there is one canonical created_at
+     * encoding across msg_id + PoW preimage + sealed payload and the recipient reconstructs
+     * preimages from the sealed bytes without any byte-order conversion.
+     *
+     * PoW binds the SAME message_nonce as msg_id, preventing PoW reuse across logical sends.
+     *
+     * IMPORTANT RETRY RULE:
+     * Author once via [authorSealedMessage]; retries MUST retransmit the exact persisted
+     * FrameV2 rather than resealing.
      */
     suspend fun buildSealedMessage(
         plaintext: ByteArray,
         recipientNodeId: ByteArray,
         recipientStaticPub: ByteArray,
-        priority: Priority = Priority.DIRECT,
-        messageNonce: ByteArray = MessageId.generateNonce()
+        identity: LogicalMessageIdentity,
+        priority: Priority = Priority.DIRECT
     ): FrameV2 {
-        require(messageNonce.size == MessageId.NONCE_BYTES) { "messageNonce must be 16 bytes" }
-        val createdAt = System.currentTimeMillis() / 1000
-        val createdAtLe = MessageId.uint32Le(createdAt)
+        require(recipientNodeId.size == MessageId.NODE_ID_BYTES) { "recipientNodeId must be 16 bytes" }
+        require(recipientStaticPub.size == 32) { "recipientStaticPub must be 32 bytes" }
+
+        val createdAtLe = identity.createdAtLe()
         val powNonce = if (priority.requiresProofOfWork) {
-            ProofOfWork.mine(selfNodeId, createdAtLe, TypeV2.MESSAGE.code, plaintext)
+            ProofOfWork.mine(
+                senderNodeId = selfNodeId,
+                createdAtLe = createdAtLe,
+                messageNonce = identity.messageNonce,
+                typeCode = TypeV2.MESSAGE.code,
+                plaintext = plaintext
+            )
         } else {
             ByteArray(ProofOfWork.NONCE_BYTES)
         }
-        val sealedInner = messageNonce + powNonce + createdAtLe + plaintext
+
+        val sealedInner = identity.messageNonce + powNonce + createdAtLe + plaintext
         val sealed = io.godstone.mesh.seal.SealedSender.seal(
             sealedInner, selfNodeId, recipientStaticPub)
-        val msgId = MessageId.derive(selfNodeId, createdAt, messageNonce, plaintext)
+        val msgId = MessageId.derive(selfNodeId, identity, plaintext)
         val routingTag = io.godstone.mesh.seal.SealedSender.routingTag(
             recipientNodeId,
             io.godstone.mesh.seal.SealedSender.currentEpochDay())
         val flags = FrameV2.SEALED or
             (if (priority.requiresProofOfWork) FrameV2.HAS_POW else 0) or
             Priority.toFlags(priority)
+
         return FrameV2(
             type = TypeV2.MESSAGE,
             msgId = msgId,
@@ -201,37 +220,78 @@ class Router(
         )
     }
 
+    /** Author a NEW sealed message by creating an explicit [LogicalMessageIdentity] once. */
+    suspend fun authorSealedMessage(
+        plaintext: ByteArray,
+        recipientNodeId: ByteArray,
+        recipientStaticPub: ByteArray,
+        priority: Priority = Priority.DIRECT
+    ): FrameV2 {
+        val identity = LogicalMessageIdentity.createNew()
+        return buildSealedMessage(plaintext, recipientNodeId, recipientStaticPub, identity, priority)
+    }
+
     /**
      * Open a sealed MESSAGE addressed to us and split the authenticated inner
-     * content into the message nonce, PoW nonce, created_at and plaintext. Null means it was
-     * not ours -- a routing-tag collision, expected and costs one AEAD open.
+     * content into verified components.
      *
-     * The caller verifies PoW when the frame carries HAS_POW (recipient-side
-     * gate; relays cannot perform this check).
+     * Verification is MANDATORY before returning [OpenMessageResult.Accepted]:
+     * 1. SealedSender/AEAD open succeeds (otherwise [OpenMessageResult.NotForUs]).
+     * 2. Length valid (>= 28 bytes prefix + sender node ID 16 bytes; otherwise [OpenMessageResult.Malformed]).
+     * 3. Rederived msg_id matches frame.msgId; otherwise [OpenMessageResult.MessageIdMismatch].
+     * 4. If frame has HAS_POW, ProofOfWork.verify passes with message_nonce (otherwise [OpenMessageResult.InvalidProofOfWork]).
      */
-    fun openSealedMessage(frame: FrameV2, ourStaticDhPriv: ByteArray): OpenedSealedMessage? {
+    fun openSealedMessage(frame: FrameV2, ourStaticDhPriv: ByteArray): OpenMessageResult {
         val opened = io.godstone.mesh.seal.SealedSender.open(frame.payload, ourStaticDhPriv)
-            ?: return null
-        // opened.plaintext is the sealedInner: messageNonce(16) + powNonce(8) + created_at_le(4) + plaintext
+            ?: return OpenMessageResult.NotForUs
+
         val inner = opened.plaintext
         val prefixLen = MessageId.NONCE_BYTES + ProofOfWork.NONCE_BYTES + 4 // 28 bytes
-        if (inner.size < prefixLen) return null
+        if (inner.size < prefixLen || opened.senderNodeId.size != MessageId.NODE_ID_BYTES) {
+            return OpenMessageResult.Malformed
+        }
+
         val messageNonce = inner.copyOfRange(0, MessageId.NONCE_BYTES)
         val powNonce = inner.copyOfRange(MessageId.NONCE_BYTES, MessageId.NONCE_BYTES + ProofOfWork.NONCE_BYTES)
         val createdAtLe = inner.copyOfRange(MessageId.NONCE_BYTES + ProofOfWork.NONCE_BYTES, prefixLen)
         val plaintext = inner.copyOfRange(prefixLen, inner.size)
-        return OpenedSealedMessage(
-            senderNodeId = opened.senderNodeId,
-            messageNonce = messageNonce,
-            powNonce = powNonce,
-            createdAtLe = createdAtLe,
-            plaintext = plaintext,
-            frame = frame
+
+        val createdAt = java.nio.ByteBuffer.wrap(createdAtLe)
+            .order(java.nio.ByteOrder.LITTLE_ENDIAN).int.toLong() and 0xFFFFFFFFL
+        val identity = LogicalMessageIdentity.of(createdAt, messageNonce)
+
+        val expectedMsgId = MessageId.derive(opened.senderNodeId, identity, plaintext)
+        if (!expectedMsgId.contentEquals(frame.msgId)) {
+            return OpenMessageResult.MessageIdMismatch
+        }
+
+        if (frame.flags and FrameV2.HAS_POW != 0) {
+            val powValid = ProofOfWork.verify(
+                powNonce = powNonce,
+                senderNodeId = opened.senderNodeId,
+                createdAtLe = createdAtLe,
+                messageNonce = messageNonce,
+                typeCode = frame.type.code,
+                plaintext = plaintext
+            )
+            if (!powValid) {
+                return OpenMessageResult.InvalidProofOfWork
+            }
+        }
+
+        return OpenMessageResult.Accepted(
+            VerifiedOpenedMessage(
+                senderNodeId = opened.senderNodeId,
+                identity = identity,
+                powNonce = powNonce,
+                plaintext = plaintext,
+                frame = frame
+            )
         )
     }
 
     /**
-     * Build a SOS frame. Maximum TTL, broadcast (zero routing tag), ACK_REQ +
+     * Build an SOS frame. Maximum TTL, broadcast (zero routing tag), ACK_REQ +
      * RELAY_OK flags, priority SOS. The payload is structurally valid per
      * SosFrameValidator: "SOS1" magic + a 64-byte signature slot + the user
      * payload.
@@ -240,17 +300,15 @@ class Router(
      * over (msg_id || "SOS1" || payload). Cryptographic SOS signing is wired
      * with the SOS lifecycle under ADR-003/005 (OPEN); SosFrameValidator (patch
      * 15) validates structure only, so a zero slot is accepted at this layer.
-     * msg_id is content-and-nonce derived (MessageId.derive).
+     * msg_id is content-and-identity derived (MessageId.derive).
      */
     fun buildSos(
         payload: ByteArray,
-        messageNonce: ByteArray = MessageId.generateNonce()
+        identity: LogicalMessageIdentity = LogicalMessageIdentity.createNew()
     ): FrameV2 {
-        require(messageNonce.size == MessageId.NONCE_BYTES) { "messageNonce must be 16 bytes" }
-        val createdAt = System.currentTimeMillis() / 1000
         val sigSlot = ByteArray(64)   // placeholder; Ed25519 signing deferred (ADR-003/005 OPEN)
         val sosPayload = io.godstone.mesh.wire.v2.SosFrameValidator.PAYLOAD_MAGIC + sigSlot + payload
-        val msgId = MessageId.derive(selfNodeId, createdAt, messageNonce, payload)
+        val msgId = MessageId.derive(selfNodeId, identity, payload)
         return FrameV2(
             type = TypeV2.SOS,
             msgId = msgId,
@@ -267,27 +325,43 @@ class Router(
     }
 }
 
-/** Result of opening a sealed MESSAGE, with the authenticated inner content split out. */
-data class OpenedSealedMessage(
+/** Typed outcome of [Router.openSealedMessage]. */
+sealed class OpenMessageResult {
+    data class Accepted(val message: VerifiedOpenedMessage) : OpenMessageResult()
+    data object NotForUs : OpenMessageResult()
+    data object Malformed : OpenMessageResult()
+    data object MessageIdMismatch : OpenMessageResult()
+    data object InvalidProofOfWork : OpenMessageResult()
+}
+
+/** Result of opening a verified sealed MESSAGE. */
+data class VerifiedOpenedMessage(
     val senderNodeId: ByteArray,
-    val messageNonce: ByteArray,
+    val identity: LogicalMessageIdentity,
     val powNonce: ByteArray,
-    val createdAtLe: ByteArray,
     val plaintext: ByteArray,
     val frame: FrameV2
 ) {
-    /**
-     * Recipient-side logical message identity verification (C6.7 / ADR-001 §3.3).
-     * Re-derives msg_id from unsealed components and asserts it matches frame.msgId.
-     */
-    fun verifyMessageId(): Boolean {
-        if (senderNodeId.size != MessageId.NODE_ID_BYTES ||
-            messageNonce.size != MessageId.NONCE_BYTES ||
-            createdAtLe.size != 4) return false
-        val createdAt = java.nio.ByteBuffer.wrap(createdAtLe)
-            .order(java.nio.ByteOrder.LITTLE_ENDIAN).int.toLong() and 0xFFFFFFFFL
-        val derived = MessageId.derive(senderNodeId, createdAt, messageNonce, plaintext)
-        return derived.contentEquals(frame.msgId)
+    val createdAtEpochSeconds: Long get() = identity.createdAtEpochSeconds
+    val messageNonce: ByteArray get() = identity.messageNonce
+
+    override fun equals(other: Any?): Boolean {
+        if (this === other) return true
+        if (other !is VerifiedOpenedMessage) return false
+        return senderNodeId.contentEquals(other.senderNodeId) &&
+            identity == other.identity &&
+            powNonce.contentEquals(other.powNonce) &&
+            plaintext.contentEquals(other.plaintext) &&
+            frame == other.frame
+    }
+
+    override fun hashCode(): Int {
+        var result = senderNodeId.contentHashCode()
+        result = 31 * result + identity.hashCode()
+        result = 31 * result + powNonce.contentHashCode()
+        result = 31 * result + plaintext.contentHashCode()
+        result = 31 * result + frame.hashCode()
+        return result
     }
 }
 

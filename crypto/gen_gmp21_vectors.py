@@ -66,23 +66,24 @@ def _bloom_case(name: str, msg_ids: list[bytes]) -> dict:
     }
 
 
-def _pow_kat(name: str, sender: bytes, created_at: int, type_code: int,
-             plaintext: bytes, target_bits: int) -> dict:
+def _pow_kat(name: str, sender: bytes, created_at: int, message_nonce: bytes,
+             type_code: int, plaintext: bytes, target_bits: int) -> dict:
     created_le = G.uint32_le(created_at)
-    nonce, digest = G.pow_mine(sender, created_le, type_code, plaintext,
+    nonce, digest = G.pow_mine(sender, created_le, message_nonce, type_code, plaintext,
                                target_bits=target_bits)
     return {
         "name": name,
         "sender_node_id": sender.hex(),
         "created_at_epoch_seconds": created_at,
         "created_at_le": created_le.hex(),
+        "message_nonce": message_nonce.hex(),
         "type_code": type_code,
         "plaintext": plaintext.hex(),
         "plaintext_utf8": plaintext.decode("utf-8", "replace"),
         "target_bits": target_bits,
         "pow_nonce": nonce.hex(),
         "blake2s_256": digest.hex(),
-        "verified": G.pow_verify(nonce, sender, created_le, type_code, plaintext,
+        "verified": G.pow_verify(nonce, sender, created_le, message_nonce, type_code, plaintext,
                                  target_bits),
     }
 
@@ -131,13 +132,24 @@ def build() -> dict:
     bloom_triple = _bloom_case("three_ids", [mid1, mid2, mid3])
 
     # ---- PoW: production 20-bit KAT + a fast 8-bit KAT ----
-    pow_20 = _pow_kat("pow_20bit_message_help", SENDER_A, 1, TYPE_MESSAGE,
+    pow_20 = _pow_kat("pow_20bit_message_help", SENDER_A, 1, NONCE_ONE, TYPE_MESSAGE,
                       PAYLOAD_HELP, G.POW_TARGET_BITS)
-    pow_8 = _pow_kat("pow_8bit_message_help", SENDER_A, 1, TYPE_MESSAGE,
+    pow_8 = _pow_kat("pow_8bit_message_help", SENDER_A, 1, NONCE_ONE, TYPE_MESSAGE,
                       PAYLOAD_HELP, 8)
 
+    # PoW nonce-mutation negative control: verify with mutated message_nonce (NONCE_ZERO) fails
+    pow_negative_nonce = {
+        "name": "pow_20bit_distinct_message_nonce_must_fail",
+        "description": "valid pow_nonce for message_nonce all-ones must fail verification when tested against message_nonce zero.",
+        "pow_nonce": pow_20["pow_nonce"],
+        "message_nonce_original": NONCE_ONE.hex(),
+        "message_nonce_mutated": NONCE_ZERO.hex(),
+        "valid_with_original": G.pow_verify(bytes.fromhex(pow_20["pow_nonce"]), SENDER_A, G.uint32_le(1), NONCE_ONE, TYPE_MESSAGE, PAYLOAD_HELP, G.POW_TARGET_BITS),
+        "valid_with_mutated": G.pow_verify(bytes.fromhex(pow_20["pow_nonce"]), SENDER_A, G.uint32_le(1), NONCE_ZERO, TYPE_MESSAGE, PAYLOAD_HELP, G.POW_TARGET_BITS),
+    }
+
     return {
-        "_comment": "GMP/2.1 locked byte-parity fixture (ADR-001 §3). Both "
+        "_comment": "GMP/2.1 locked byte-parity fixture (ADR-001 §3, C6.7.1). Both "
                     "platforms must reproduce every value here byte-for-byte. "
                     "Regenerate with `python -m crypto.gen_gmp21_vectors`. The "
                     "platform tests transcribe these as hex literals; this file "
@@ -146,6 +158,8 @@ def build() -> dict:
         "constants": {
             "msg_id_domain": G.MSG_ID_DOMAIN.decode("ascii"),
             "msg_id_domain_bytes": len(G.MSG_ID_DOMAIN),
+            "pow_domain": G.POW_DOMAIN.decode("ascii"),
+            "pow_domain_bytes": len(G.POW_DOMAIN),
             "message_nonce_bytes": G.MESSAGE_NONCE_BYTES,
             "msg_id_bytes": G.MSG_ID_BYTES,
             "bloom_size_bits": G.BLOOM_SIZE_BITS,
@@ -169,9 +183,10 @@ def build() -> dict:
             "cases": [bloom_single, bloom_triple],
         },
         "pow": {
-            "spec": "BLAKE2s-256(pow_nonce[8] ‖ sender[16] ‖ created_at_le[4] ‖ "
-                    "type_code[1] ‖ plaintext); top target_bits bits zero",
+            "spec": "BLAKE2s-256(b'GMP2-POW' ‖ pow_nonce[8] ‖ sender[16] ‖ created_at_le[4] ‖ "
+                    "message_nonce[16] ‖ type_code[1] ‖ plaintext); top target_bits bits zero",
             "cases": [pow_20, pow_8],
+            "negative_nonce": pow_negative_nonce,
         },
     }
 
@@ -186,6 +201,8 @@ def main() -> int:
     print(f"  pow cases       {len(data['pow']['cases'])} "
           f"(20-bit nonce={data['pow']['cases'][0]['pow_nonce']}, "
           f"8-bit nonce={data['pow']['cases'][1]['pow_nonce']})")
+    print(f"  pow neg control valid_orig={data['pow']['negative_nonce']['valid_with_original']}, "
+          f"valid_mut={data['pow']['negative_nonce']['valid_with_mutated']}")
     return 0
 
 

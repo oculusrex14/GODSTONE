@@ -1,9 +1,11 @@
 {
-  "_comment": "GMP/2.1 locked byte-parity fixture (ADR-001 \u00a73). Both platforms must reproduce every value here byte-for-byte. Regenerate with `python -m crypto.gen_gmp21_vectors`. The platform tests transcribe these as hex literals; this file is the single source of truth.",
+  "_comment": "GMP/2.1 locked byte-parity fixture (ADR-001 \u00a73, C6.7.1). Both platforms must reproduce every value here byte-for-byte. Regenerate with `python -m crypto.gen_gmp21_vectors`. The platform tests transcribe these as hex literals; this file is the single source of truth.",
   "reference": "crypto/gmp21.py (hashlib.blake2s, RFC 7693)",
   "constants": {
     "msg_id_domain": "GMP2-MSGID",
     "msg_id_domain_bytes": 10,
+    "pow_domain": "GMP2-POW",
+    "pow_domain_bytes": 8,
     "message_nonce_bytes": 16,
     "msg_id_bytes": 16,
     "bloom_size_bits": 4096,
@@ -132,19 +134,20 @@
     ]
   },
   "pow": {
-    "spec": "BLAKE2s-256(pow_nonce[8] \u2016 sender[16] \u2016 created_at_le[4] \u2016 type_code[1] \u2016 plaintext); top target_bits bits zero",
+    "spec": "BLAKE2s-256(b'GMP2-POW' \u2016 pow_nonce[8] \u2016 sender[16] \u2016 created_at_le[4] \u2016 message_nonce[16] \u2016 type_code[1] \u2016 plaintext); top target_bits bits zero",
     "cases": [
       {
         "name": "pow_20bit_message_help",
         "sender_node_id": "000102030405060708090a0b0c0d0e0f",
         "created_at_epoch_seconds": 1,
         "created_at_le": "01000000",
+        "message_nonce": "01010101010101010101010101010101",
         "type_code": 24,
         "plaintext": "68656c70",
         "plaintext_utf8": "help",
         "target_bits": 20,
-        "pow_nonce": "00000000000a40d7",
-        "blake2s_256": "00000c2aa22402bcc4040a3fb91c95e54495c18f86c4eae5c37aef702e7f8963",
+        "pow_nonce": "00000000000f7ca6",
+        "blake2s_256": "00000a423fecc011777adba990e5b1bf0556b1e5ab81b1c9028bdf020c4348a5",
         "verified": true
       },
       {
@@ -152,14 +155,24 @@
         "sender_node_id": "000102030405060708090a0b0c0d0e0f",
         "created_at_epoch_seconds": 1,
         "created_at_le": "01000000",
+        "message_nonce": "01010101010101010101010101010101",
         "type_code": 24,
         "plaintext": "68656c70",
         "plaintext_utf8": "help",
         "target_bits": 8,
-        "pow_nonce": "0000000000000142",
-        "blake2s_256": "00513306e730855b5c2547a43ea20e4172f09622841ec34806feb96d69294e61",
+        "pow_nonce": "0000000000000038",
+        "blake2s_256": "0084658c84b1a33256d27a4414839a3fee2562948aaea88ab692dd747d620d1a",
         "verified": true
       }
-    ]
+    ],
+    "negative_nonce": {
+      "name": "pow_20bit_distinct_message_nonce_must_fail",
+      "description": "valid pow_nonce for message_nonce all-ones must fail verification when tested against message_nonce zero.",
+      "pow_nonce": "00000000000f7ca6",
+      "message_nonce_original": "01010101010101010101010101010101",
+      "message_nonce_mutated": "00000000000000000000000000000000",
+      "valid_with_original": true,
+      "valid_with_mutated": false
+    }
   }
 }

@@ -1,4 +1,5 @@
 import XCTest
+import CryptoKit
 @testable import GodstoneMesh
 import GodstoneCore
 
@@ -217,6 +218,129 @@ final class RouterTests: XCTestCase {
         XCTAssertEqual(acceptedCount, 1, "exactly one of N concurrent arrivals accepted")
         XCTAssertEqual(router.drain(limit: 8).count, 1, "forwarded exactly once")
         XCTAssertEqual(store.allHeldMsgIds(), [f.msgId], "held exactly once")
+    }
+
+    // MARK: - C6.7.1 Sealed Message Authoring & Verified Open Tests
+
+    func testBuildSealedMessageAndOpenSealedMessageAccepted() async throws {
+        let senderNodeId = Data((0..<16).map { UInt8($0) })
+        let router = Router(selfNodeId: senderNodeId)
+
+        let recipientPrivKey = Curve25519.KeyAgreement.PrivateKey()
+        let recipientPriv = recipientPrivKey.rawRepresentation
+        let recipientPub = recipientPrivKey.publicKey.rawRepresentation
+        let recipientNodeId = Data(repeating: 0x55, count: 16)
+
+        let plaintext = Data("Hello secure mesh on iOS".utf8)
+        let identity = LogicalMessageIdentity.of(createdAtEpochSeconds: 1700000000, messageNonce: Data(repeating: 0x01, count: 16))
+
+        let frame = try await router.buildSealedMessage(
+            plaintext: plaintext,
+            recipientNodeId: recipientNodeId,
+            recipientStaticPub: recipientPub,
+            identity: identity,
+            priority: .direct
+        )
+
+        XCTAssertEqual(frame.type, TypeV2.message)
+        XCTAssertEqual(frame.msgId.count, 16)
+
+        let result = router.openSealedMessage(frame, ourStaticDhPriv: recipientPriv)
+        guard case let .accepted(opened) = result else {
+            XCTFail("Expected .accepted result, got \(result)")
+            return
+        }
+
+        XCTAssertEqual(opened.senderNodeId, senderNodeId)
+        XCTAssertEqual(opened.identity, identity)
+        XCTAssertEqual(opened.plaintext, plaintext)
+
+        // Tampering negative control 1: Mutated header msg_id -> messageIdMismatch
+        var tamperedMsgId = frame
+        let tamperedBytes = Data(repeating: 0x99, count: 16)
+        tamperedMsgId = FrameV2(
+            type: frame.type,
+            msgId: tamperedBytes,
+            routingTag: frame.routingTag,
+            ttl: frame.ttl,
+            hopCount: frame.hopCount,
+            flags: frame.flags,
+            payload: frame.payload
+        )
+        let resTamperedId = router.openSealedMessage(tamperedMsgId, ourStaticDhPriv: recipientPriv)
+        XCTAssertEqual(resTamperedId, OpenMessageResult.messageIdMismatch)
+
+        // Tampering negative control 2: Wrong DH private key -> notForUs
+        let wrongPriv = Curve25519.KeyAgreement.PrivateKey().rawRepresentation
+        let resWrongKey = router.openSealedMessage(frame, ourStaticDhPriv: wrongPriv)
+        XCTAssertEqual(resWrongKey, OpenMessageResult.notForUs)
+    }
+
+    func testGroupMessageWithHasPowMinesPowAndVerifiesOnOpen() async throws {
+        let senderNodeId = Data((0..<16).map { UInt8($0) })
+        let router = Router(selfNodeId: senderNodeId)
+
+        let recipientPrivKey = Curve25519.KeyAgreement.PrivateKey()
+        let recipientPriv = recipientPrivKey.rawRepresentation
+        let recipientPub = recipientPrivKey.publicKey.rawRepresentation
+        let recipientNodeId = Data(repeating: 0x77, count: 16)
+
+        let plaintext = Data("Group message with PoW on iOS".utf8)
+        let identity = LogicalMessageIdentity.createNew()
+
+        let frame = try await router.buildSealedMessage(
+            plaintext: plaintext,
+            recipientNodeId: recipientNodeId,
+            recipientStaticPub: recipientPub,
+            identity: identity,
+            priority: .group
+        )
+
+        XCTAssertNotEqual(frame.flags & UInt16(FrameV2.Flags.has_pow), 0, "HAS_POW must be set for group priority")
+
+        let result = router.openSealedMessage(frame, ourStaticDhPriv: recipientPriv)
+        guard case let .accepted(opened) = result else {
+            XCTFail("Expected .accepted for valid PoW message, got \(result)")
+            return
+        }
+        XCTAssertEqual(opened.plaintext, plaintext)
+    }
+
+    func testAuthorSealedMessageConcurrentSendsToAliceAndBob() async throws {
+        let senderNodeId = Data((0..<16).map { UInt8($0) })
+        let router = Router(selfNodeId: senderNodeId)
+
+        let alicePrivKey = Curve25519.KeyAgreement.PrivateKey()
+        let alicePriv = alicePrivKey.rawRepresentation
+        let alicePub = alicePrivKey.publicKey.rawRepresentation
+        let aliceNodeId = Data(repeating: 0x11, count: 16)
+
+        let bobPrivKey = Curve25519.KeyAgreement.PrivateKey()
+        let bobPriv = bobPrivKey.rawRepresentation
+        let bobPub = bobPrivKey.publicKey.rawRepresentation
+        let bobNodeId = Data(repeating: 0x22, count: 16)
+
+        let content = Data("rendezvous at checkpoint 4".utf8)
+        let frameAlice = try await router.authorSealedMessage(
+            plaintext: content,
+            recipientNodeId: aliceNodeId,
+            recipientStaticPub: alicePub
+        )
+        let frameBob = try await router.authorSealedMessage(
+            plaintext: content,
+            recipientNodeId: bobNodeId,
+            recipientStaticPub: bobPub
+        )
+
+        XCTAssertNotEqual(frameAlice.msgId, frameBob.msgId)
+
+        let resAlice = router.openSealedMessage(frameAlice, ourStaticDhPriv: alicePriv)
+        let resBob = router.openSealedMessage(frameBob, ourStaticDhPriv: bobPriv)
+
+        guard case .accepted = resAlice, case .accepted = resBob else {
+            XCTFail("Both Alice and Bob messages must be Accepted")
+            return
+        }
     }
 }
 
