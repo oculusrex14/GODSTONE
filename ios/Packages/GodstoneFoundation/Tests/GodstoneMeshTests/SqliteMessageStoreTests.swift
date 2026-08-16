@@ -472,6 +472,263 @@ final class SqliteMessageStoreTests: XCTestCase {
         XCTAssertEqual(heldIds().count, 1)
     }
 
+    // MARK: - C6.6: Atomic outbound DIRECT enqueue real-SQL tests
+
+    private func recipient(_ seed: UInt8 = 0x55) -> Data {
+        Data((0..<16).map { UInt8(($0 + Int(seed)) & 0xFF) })
+    }
+
+    private func directFrame(
+        _ seed: UInt8,
+        payloadSize: Int = 64,
+        type: TypeV2 = .message,
+        priority: Priority = .direct,
+        sealed: Bool = true,
+        hasPow: Bool = false,
+        msgIdOverride: Data? = nil
+    ) -> FrameV2 {
+        var flags = UInt16(priority.rawValue << 8)
+        if sealed { flags |= UInt16(FrameV2.Flags.sealed) }
+        if hasPow { flags |= UInt16(FrameV2.Flags.has_pow) }
+        return FrameV2(
+            type: type,
+            msgId: msgIdOverride ?? msgId(seed),
+            routingTag: routingTag,
+            ttl: 12,
+            hopCount: 0,
+            flags: flags,
+            payload: Data(repeating: seed, count: payloadSize)
+        )
+    }
+
+    private func readDeliveryRow(_ mid: Data) -> DeliveryRow? {
+        try? store.readDelivery(mid)
+    }
+
+    func testC66EnqueueDirectOutboundHappyPathAtomicallyCreatesHeldAndDeliveryRows() {
+        _ = open(maxBytes: 4096)
+        let f = directFrame(1, payloadSize: 100)
+        let rec = recipient(1)
+
+        let result = store.enqueueDirectOutbound(f, expectedRecipient: rec)
+        XCTAssertEqual(result, .created)
+
+        XCTAssertTrue(containsId(heldIds(), f.msgId))
+        guard let d = readDeliveryRow(f.msgId) else {
+            XCTFail("delivery row missing")
+            return
+        }
+        XCTAssertEqual(d.state, DeliveryState.queuedDurably.code)
+        XCTAssertEqual(d.ackMode, AckMode.singleRecipient.rawValue)
+        XCTAssertEqual(d.expectedRecipient, rec)
+    }
+
+    private struct InjectedFault: Error {}
+
+    func testC66EnqueueDirectOutboundFaultAfterHeldInsertRollsBackBothHeldAndDeliveryRows() {
+        _ = open(maxBytes: 4096)
+        let f = directFrame(1, payloadSize: 100)
+        let rec = recipient(1)
+
+        let fault = { (phase: String, db: OpaquePointer?) throws -> Void in
+            if phase == "after_held_insert" {
+                throw InjectedFault()
+            }
+        }
+        let result = store.enqueueDirectOutboundAtWithFault(f, expectedRecipient: rec, receivedAt: 100, fault: fault)
+        XCTAssertEqual(result, OutboundEnqueueResult.storageFailure)
+
+        XCTAssertFalse(containsId(heldIds(), f.msgId))
+        XCTAssertNil(readDeliveryRow(f.msgId))
+        XCTAssertEqual(heldIds().count, 0)
+    }
+
+    func testC66EnqueueDirectOutboundFaultAfterEvictRollsBackAndRestoresEvictedRows() {
+        _ = open(maxBytes: 1024)
+        store.persistAt(frame(1, .group, 400), receivedFrom: Data(), receivedAt: 100)
+        store.persistAt(frame(2, .group, 400), receivedFrom: Data(), receivedAt: 200)
+        let bytesBefore = bytes()
+
+        let f = directFrame(3, payloadSize: 400)
+        let rec = recipient(3)
+
+        let fault = { (phase: String, db: OpaquePointer?) throws -> Void in
+            if phase == "after_evict" {
+                throw InjectedFault()
+            }
+        }
+        let result = store.enqueueDirectOutboundAtWithFault(f, expectedRecipient: rec, receivedAt: 300, fault: fault)
+        XCTAssertEqual(result, OutboundEnqueueResult.storageFailure)
+
+        XCTAssertEqual(bytes(), bytesBefore)
+        XCTAssertEqual(heldIds().count, 2)
+        XCTAssertTrue(containsId(heldIds(), msgId(1)))
+        XCTAssertTrue(containsId(heldIds(), msgId(2)))
+        XCTAssertFalse(containsId(heldIds(), f.msgId))
+        XCTAssertNil(readDeliveryRow(f.msgId))
+    }
+
+    func testC66EnqueueDirectOutboundFaultBeforeDeliveryInsertRollsBackHeldInsert() {
+        _ = open(maxBytes: 4096)
+        let f = directFrame(1, payloadSize: 100)
+        let rec = recipient(1)
+
+        let fault = { (phase: String, db: OpaquePointer?) throws -> Void in
+            if phase == "before_delivery_insert" {
+                throw InjectedFault()
+            }
+        }
+        let result = store.enqueueDirectOutboundAtWithFault(f, expectedRecipient: rec, receivedAt: 100, fault: fault)
+        XCTAssertEqual(result, OutboundEnqueueResult.storageFailure)
+
+        XCTAssertFalse(containsId(heldIds(), f.msgId))
+        XCTAssertNil(readDeliveryRow(f.msgId))
+    }
+
+    func testC66EnqueueDirectOutboundFaultAfterDeliveryInsertRollsBackWholeTransaction() {
+        _ = open(maxBytes: 4096)
+        let f = directFrame(1, payloadSize: 100)
+        let rec = recipient(1)
+
+        let fault = { (phase: String, db: OpaquePointer?) throws -> Void in
+            if phase == "after_delivery_insert" {
+                throw InjectedFault()
+            }
+        }
+        let result = store.enqueueDirectOutboundAtWithFault(f, expectedRecipient: rec, receivedAt: 100, fault: fault)
+        XCTAssertEqual(result, OutboundEnqueueResult.storageFailure)
+
+        XCTAssertFalse(containsId(heldIds(), f.msgId))
+        XCTAssertNil(readDeliveryRow(f.msgId))
+    }
+
+    func testC66EnqueueDirectOutboundUnderTightCapacityRejectsAndLeavesZeroDeliveryAndZeroHeldRows() {
+        _ = open(maxBytes: 200)
+        let f = directFrame(1, payloadSize: 250)
+        let rec = recipient(1)
+
+        let result = store.enqueueDirectOutbound(f, expectedRecipient: rec)
+        XCTAssertEqual(result, .rejectedCapacity)
+
+        XCTAssertFalse(containsId(heldIds(), f.msgId))
+        XCTAssertNil(readDeliveryRow(f.msgId))
+        XCTAssertEqual(heldIds().count, 0)
+    }
+
+    func testC66EnqueueDirectOutboundSameExactRetryIsIdempotentAndReturnsAlreadyQueuedSameBinding() {
+        _ = open(maxBytes: 4096)
+        let f = directFrame(1, payloadSize: 100)
+        let rec = recipient(1)
+
+        let r1 = store.enqueueDirectOutbound(f, expectedRecipient: rec)
+        XCTAssertEqual(r1, .created)
+
+        let r2 = store.enqueueDirectOutbound(f, expectedRecipient: rec)
+        XCTAssertEqual(r2, .alreadyQueuedSameBinding)
+
+        XCTAssertEqual(heldIds().count, 1)
+        guard let d = readDeliveryRow(f.msgId) else {
+            XCTFail("missing row")
+            return
+        }
+        XCTAssertEqual(d.state, DeliveryState.queuedDurably.code)
+        XCTAssertEqual(d.expectedRecipient, rec)
+    }
+
+    func testC66EnqueueDirectOutboundConflictingRecipientFailsClosedWithConflictRecipient() {
+        _ = open(maxBytes: 4096)
+        let f = directFrame(1, payloadSize: 100)
+        let rec1 = recipient(1)
+        let rec2 = recipient(2)
+
+        let r1 = store.enqueueDirectOutbound(f, expectedRecipient: rec1)
+        XCTAssertEqual(r1, .created)
+
+        let r2 = store.enqueueDirectOutbound(f, expectedRecipient: rec2)
+        XCTAssertEqual(r2, .conflictRecipient)
+
+        guard let d = readDeliveryRow(f.msgId) else {
+            XCTFail("missing row")
+            return
+        }
+        XCTAssertEqual(d.expectedRecipient, rec1)
+    }
+
+    func testC66EnqueueDirectOutboundTerminalDeliveryStateFailsClosedWithRejectedTerminalState() {
+        _ = open(maxBytes: 4096)
+        let f = directFrame(1, payloadSize: 100)
+        let rec = recipient(1)
+
+        XCTAssertEqual(store.enqueueDirectOutbound(f, expectedRecipient: rec), .created)
+
+        let updateSql = "UPDATE delivery_state SET state = \(DeliveryState.acknowledgedByRecipient.code) WHERE msg_id = ?"
+        _ = store.execRawUpdate(updateSql, [f.msgId])
+
+        let r2 = store.enqueueDirectOutbound(f, expectedRecipient: rec)
+        XCTAssertEqual(r2, .rejectedTerminalState)
+    }
+
+    func testC66EnqueueDirectOutboundHeldOnlyInconsistencyFailsClosedWithInconsistentState() {
+        _ = open(maxBytes: 4096)
+        let f = directFrame(1, payloadSize: 100)
+        let rec = recipient(1)
+
+        XCTAssertEqual(store.persist(f, receivedFrom: Data()), .heldNew)
+        XCTAssertNil(readDeliveryRow(f.msgId))
+
+        let result = store.enqueueDirectOutbound(f, expectedRecipient: rec)
+        XCTAssertEqual(result, .inconsistentState)
+    }
+
+    func testC66EnqueueDirectOutboundDeliveryOnlyInconsistencyFailsClosedWithInconsistentState() {
+        _ = open(maxBytes: 4096)
+        let f = directFrame(1, payloadSize: 100)
+        let rec = recipient(1)
+
+        try? store.insertDelivery(f.msgId, stateOrdinal: DeliveryState.queuedDurably.code, ackModeOrdinal: AckMode.singleRecipient.rawValue, expectedRecipient: rec)
+        XCTAssertFalse(containsId(heldIds(), f.msgId))
+
+        let result = store.enqueueDirectOutbound(f, expectedRecipient: rec)
+        XCTAssertEqual(result, .inconsistentState)
+    }
+
+    func testC66EnqueueDirectOutboundStoreReopenPreservesBothHeldFramesAndDeliveryRowsOnDisk() {
+        _ = open(maxBytes: 4096)
+        let f = directFrame(1, payloadSize: 100)
+        let rec = recipient(1)
+
+        XCTAssertEqual(store.enqueueDirectOutbound(f, expectedRecipient: rec), .created)
+
+        store = nil
+        _ = reopen(maxBytes: 4096)
+
+        XCTAssertTrue(containsId(heldIds(), f.msgId))
+        guard let d = readDeliveryRow(f.msgId) else {
+            XCTFail("missing row")
+            return
+        }
+        XCTAssertEqual(d.state, DeliveryState.queuedDurably.code)
+        XCTAssertEqual(d.ackMode, AckMode.singleRecipient.rawValue)
+        XCTAssertEqual(d.expectedRecipient, rec)
+    }
+
+    func testC66EnqueueDirectOutboundPolicyRejectionOnNonDirectOrUnsealedOrInvalidMsgId() {
+        _ = open(maxBytes: 4096)
+        let rec = recipient(1)
+
+        let groupFrame = directFrame(1, priority: .group)
+        XCTAssertEqual(store.enqueueDirectOutbound(groupFrame, expectedRecipient: rec), .invalidArgument)
+
+        let unsealedFrame = directFrame(2, sealed: false)
+        XCTAssertEqual(store.enqueueDirectOutbound(unsealedFrame, expectedRecipient: rec), .invalidArgument)
+
+        let powFrame = directFrame(3, hasPow: true)
+        XCTAssertEqual(store.enqueueDirectOutbound(powFrame, expectedRecipient: rec), .invalidArgument)
+
+        let validFrame = directFrame(4)
+        XCTAssertEqual(store.enqueueDirectOutbound(validFrame, expectedRecipient: Data(repeating: 2, count: 15)), .invalidArgument)
+    }
+
     // MARK: - helpers
 
     /// Reopen the store over the existing [tmpURL] (B3 reopen-after-fault tests).

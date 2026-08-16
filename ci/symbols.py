@@ -82,7 +82,7 @@ DATA_SYNTHETIC = {"copy", "equals", "hashCode", "toString"}
 FUN_DECL = re.compile(
     r"^\s*(?:@\w+\s+)*(?:public\s+|internal\s+|private\s+|protected\s+)?"
     r"(?P<override>override\s+)?(?:abstract\s+|open\s+|suspend\s+|inline\s+)*"
-    r"fun\s+(?P<name>[a-zA-Z_][\w]*)", re.M)
+    r"fun\s+(?:<[^>]*>\s+)?(?P<name>[a-zA-Z_][\w]*)", re.M)
 
 # `val x: T` / `private val x: T` / constructor `private val x: T,`
 TYPED_VAL = re.compile(

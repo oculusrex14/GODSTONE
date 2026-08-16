@@ -602,7 +602,7 @@ class SqliteDeliveryRepositoryTest {
         override fun forEachRowOrderedByPriority(visit: (io.godstone.mesh.store.StoreRow) -> Boolean) =
             inner.forEachRowOrderedByPriority(visit)
         override fun forEachMsgId(visit: (ByteArray) -> Boolean) = inner.forEachMsgId(visit)
-        override fun inTransaction(block: (StoreDb) -> PersistResult): PersistResult = inner.inTransaction(block)
+        override fun <T> inTransaction(block: (StoreDb) -> T): T = inner.inTransaction(block)
 
         override fun readDelivery(msgId: ByteArray): DeliveryRow? = synchronized(lock) {
             if (faultReadDelivery) throw java.sql.SQLException("injected readDelivery fault")

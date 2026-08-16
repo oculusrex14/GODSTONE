@@ -157,7 +157,7 @@ internal class JdbcStoreDb(file: File) : StoreDb {
      * [block] throws, rollback and rethrow so the caller reports
      * `PersistResult.FAILED_STORAGE` and the store reopens in a valid state.
      */
-    override fun inTransaction(block: (StoreDb) -> PersistResult): PersistResult {
+    override fun <T> inTransaction(block: (StoreDb) -> T): T {
         val wasAuto = conn.autoCommit
         conn.autoCommit = false
         try {

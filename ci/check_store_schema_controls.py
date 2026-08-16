@@ -71,6 +71,38 @@ CONTROLS: list[tuple[str, str, str]] = [
     ("ios/Godstone/Tests/GodstoneMeshTests/SqliteMessageStoreTests.swift",
      "testContainsStrictSqlFailureRollsBackAndReopensValid",
      "iOS persist contains strict-SQL failure -> ROLLBACK"),
+    # --- Android: C6.6 atomic outbound DIRECT enqueue fail-closed controls ---
+    ("android/mesh/src/test/java/io/godstone/mesh/store/SqliteMessageStoreTest.kt",
+     "enqueueDirectOutbound fault after held insert rolls back both held and delivery rows",
+     "Android direct enqueue fault after held insert -> ROLLBACK"),
+    ("android/mesh/src/test/java/io/godstone/mesh/store/SqliteMessageStoreTest.kt",
+     "enqueueDirectOutbound under tight capacity rejects and leaves zero delivery and zero held rows",
+     "Android direct enqueue capacity rejection -> 0 delivery rows"),
+    ("android/mesh/src/test/java/io/godstone/mesh/store/SqliteMessageStoreTest.kt",
+     "enqueueDirectOutbound conflicting recipient fails closed with ConflictRecipient",
+     "Android direct enqueue conflicting recipient -> fail closed"),
+    ("android/mesh/src/test/java/io/godstone/mesh/store/SqliteMessageStoreTest.kt",
+     "enqueueDirectOutbound held-only inconsistency fails closed with InconsistentState",
+     "Android direct enqueue held-only inconsistency -> fail closed"),
+    ("android/mesh/src/test/java/io/godstone/mesh/store/SqliteMessageStoreTest.kt",
+     "enqueueDirectOutbound delivery-only inconsistency fails closed with InconsistentState",
+     "Android direct enqueue delivery-only inconsistency -> fail closed"),
+    # --- iOS: C6.6 atomic outbound DIRECT enqueue fail-closed controls ---
+    ("ios/Godstone/Tests/GodstoneMeshTests/SqliteMessageStoreTests.swift",
+     "testC66EnqueueDirectOutboundFaultAfterHeldInsertRollsBackBothHeldAndDeliveryRows",
+     "iOS direct enqueue fault after held insert -> ROLLBACK"),
+    ("ios/Godstone/Tests/GodstoneMeshTests/SqliteMessageStoreTests.swift",
+     "testC66EnqueueDirectOutboundUnderTightCapacityRejectsAndLeavesZeroDeliveryAndZeroHeldRows",
+     "iOS direct enqueue capacity rejection -> 0 delivery rows"),
+    ("ios/Godstone/Tests/GodstoneMeshTests/SqliteMessageStoreTests.swift",
+     "testC66EnqueueDirectOutboundConflictingRecipientFailsClosedWithConflictRecipient",
+     "iOS direct enqueue conflicting recipient -> fail closed"),
+    ("ios/Godstone/Tests/GodstoneMeshTests/SqliteMessageStoreTests.swift",
+     "testC66EnqueueDirectOutboundHeldOnlyInconsistencyFailsClosedWithInconsistentState",
+     "iOS direct enqueue held-only inconsistency -> fail closed"),
+    ("ios/Godstone/Tests/GodstoneMeshTests/SqliteMessageStoreTests.swift",
+     "testC66EnqueueDirectOutboundDeliveryOnlyInconsistencyFailsClosedWithInconsistentState",
+     "iOS direct enqueue delivery-only inconsistency -> fail closed"),
 ]
 
 
@@ -94,7 +126,7 @@ def scan(root: Path) -> list[str]:
 def run_gate(root: Path) -> int:
     missing = scan(root)
     if missing:
-        print("STORE-SCHEMA-CONTROLS GATE: FAIL -- a C6.4.1 schema/persist "
+        print("STORE-SCHEMA-CONTROLS GATE: FAIL -- a C6.4.1/C6.6 schema/persist "
               "fail-closed negative control is MISSING from the test sources:")
         for m in missing:
             print("  - " + m)
@@ -104,9 +136,8 @@ def run_gate(root: Path) -> int:
         print("(A-03 / A-04 / A-10 / ADR-004 / ADR-005 remain OPEN: this is "
               "test-presence evidence, not device evidence.)")
         return 1
-    print("STORE-SCHEMA-CONTROLS GATE: PASS -- all 9 C6.4.1 schema/persist "
-          "fail-closed negative controls present in the test sources "
-          "(3 Android schema + 3 iOS schema + 3 iOS persist).")
+    print(f"STORE-SCHEMA-CONTROLS GATE: PASS -- all {len(CONTROLS)} C6.4.1/C6.6 schema/persist/enqueue "
+          "fail-closed negative controls present in the test sources.")
     return 0
 
 

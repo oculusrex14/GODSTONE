@@ -13,6 +13,16 @@ public enum SosDispatchResult: Equatable, Sendable {
     case failed(String)
 }
 
+/// Typed outcome of a DIRECT outbound send dispatch (C6.6).
+public enum DirectDispatchResult: Equatable, Sendable {
+    /// Handed to connected relays. State advanced to HANDED_TO_RELAY.
+    case handedToRelays(Int)
+    /// Persisted and queued locally (0 connected relays). State remains QUEUED_DURABLY.
+    case queuedLocally
+    /// Atomic enqueue was rejected; 0 sends attempted.
+    case rejected(OutboundEnqueueResult)
+}
+
 /// One identity, router, radio stack and session registry for the process.
 public final class MeshNode {
     public static let linkLayerReady = false
@@ -178,6 +188,37 @@ public final class MeshNode {
             // message this node does not durably hold (persist-before-tracker).
             return .notPersisted
         }
+    }
+
+    /// Stage 4C / C6.6 -- atomic DIRECT outbound enqueue and dispatch.
+    ///
+    /// In ONE transaction, persists `frame` in held_frames and creates the initial
+    /// delivery_state (QUEUED_DURABLY, SINGLE_RECIPIENT, `expectedRecipient`).
+    /// Only upon successful commit is the transport `send` callback invoked.
+    ///
+    /// Each successful relay hand-off calls `deliveryTracker.markHandedToRelay`
+    /// (advancing QUEUED_DURABLY -> HANDED_TO_RELAY; never ACKNOWLEDGED_BY_RECIPIENT).
+    @discardableResult
+    internal func dispatchDirect(
+        _ frame: FrameV2,
+        expectedRecipient: Data,
+        send: (FrameV2, UUID) -> Bool
+    ) -> DirectDispatchResult {
+        let enqueueRes = store.enqueueDirectOutbound(frame, expectedRecipient: expectedRecipient)
+        switch enqueueRes {
+        case .created, .alreadyQueuedSameBinding:
+            break
+        default:
+            return .rejected(enqueueRes)
+        }
+
+        let handed = currentPeers().reduce(into: 0) { count, peer in
+            if send(frame, peer) {
+                count += 1
+                deliveryTracker.markHandedToRelay(frame.msgId)
+            }
+        }
+        return handed == 0 ? .queuedLocally : .handedToRelays(handed)
     }
 
     /// Stage 4C / C7 -- the inbound frame dispatch, ungated so it is unit-testable

@@ -60,9 +60,26 @@ final class MeshNodeDeliveryIntegrationTests: XCTestCase {
     /// and the binding-CAS `acknowledgeBound`; `clear` is typed (`ClearResult`).
     private final class InMemoryDeliveryRepository: DeliveryRepository {
         var map: [Data: DeliveryRecord] = [:]
+        private let store: InMemoryMessageStore?
+
+        init(store: MessageStore? = nil) {
+            self.store = store as? InMemoryMessageStore
+        }
 
         func get(_ msgId: Data) -> DeliveryLookup {
             if let rec = map[msgId] { return .found(rec) }
+            if let d = store?.readDeliveryRow(msgId),
+               let s = DeliveryState.fromPersistedCode(d.state),
+               let a = AckMode.fromCode(d.ackMode) {
+                let rec = DeliveryRecord(
+                    msgId: msgId,
+                    state: s,
+                    ackMode: a,
+                    expectedRecipientNodeId: d.expectedRecipient
+                )
+                map[msgId] = rec
+                return .found(rec)
+            }
             return .notFound
         }
         func enqueue(_ msgId: Data, ackMode: AckMode, expectedRecipient: Data?) -> EnqueueResult {
@@ -101,6 +118,7 @@ final class MeshNodeDeliveryIntegrationTests: XCTestCase {
                     map[msgId] = DeliveryRecord(msgId: msgId, state: target,
                                                  ackMode: rec.ackMode,
                                                  expectedRecipientNodeId: rec.expectedRecipientNodeId)
+                    store?.updateDeliveryState(msgId, state: target.code)
                     return .applied
                 }
                 return .rejectedState
@@ -123,6 +141,7 @@ final class MeshNodeDeliveryIntegrationTests: XCTestCase {
                     map[msgId] = DeliveryRecord(msgId: msgId, state: .acknowledgedByRecipient,
                                                  ackMode: rec.ackMode,
                                                  expectedRecipientNodeId: rec.expectedRecipientNodeId)
+                    store?.updateDeliveryState(msgId, state: DeliveryState.acknowledgedByRecipient.code)
                     return .applied
                 default: return .rejectedState
                 }
@@ -169,6 +188,7 @@ final class MeshNodeDeliveryIntegrationTests: XCTestCase {
     /// persist-failure gate.
     private final class AlwaysFailingStore: MessageStore {
         func persist(_ frame: FrameV2, receivedFrom: Data) -> PersistResult { .failedStorage }
+        func enqueueDirectOutbound(_ frame: FrameV2, expectedRecipient: Data) -> OutboundEnqueueResult { .storageFailure }
         func allHeldOrderedByPriority() -> [FrameV2] { [] }
         func allHeldMsgIds() -> [Data] { [] }
         func forEachHeldOrderedByPriority(_ visit: (FrameV2) -> Bool) {}
@@ -191,7 +211,7 @@ final class MeshNodeDeliveryIntegrationTests: XCTestCase {
         let identity = MeshIdentity(
             signingKey: Curve25519.Signing.PrivateKey(),
             agreementKey: Curve25519.KeyAgreement.PrivateKey())
-        let journal = InMemoryDeliveryRepository()
+        let journal = InMemoryDeliveryRepository(store: store)
         let tracker = DeliveryTracker(repo: journal,
                                       authenticator: Ed25519AckAuthenticator(resolver: resolver))
         let node = MeshNode(identity: identity, store: store, deliveryTracker: tracker)
@@ -342,5 +362,101 @@ final class MeshNodeDeliveryIntegrationTests: XCTestCase {
         // track it (an inbound SOS is not a delivery confirmation for THIS node).
         XCTAssertTrue(journal.map.isEmpty, "the tracker must not track an inbound non-ACK frame")
         XCTAssertEqual(store.allHeldMsgIds().count, 1, "the router durably held the epidemic SOS")
+    }
+
+    // MARK: - C6.6: dispatchDirect and transport eligibility tests
+
+    private func realDhKeypair() -> (pub: Data, priv: Data) {
+        let priv = Curve25519.KeyAgreement.PrivateKey()
+        return (priv.publicKey.rawRepresentation, priv.rawRepresentation)
+    }
+
+    func testC66DispatchDirectOnSuccessfulEnqueueWithZeroConnectedPeersYieldsQueuedLocallyAndStateRemainsQueuedDurably() async throws {
+        let (pubA, _) = realDhKeypair()
+        let a = nodeA()
+        let (node, _) = makeNode(store: InMemoryMessageStore(), resolver: UnresolvedRecipientKeyResolver())
+
+        let frame = try await node.router.authorSealedMessage(
+            plaintext: Data("test payload".utf8),
+            recipientNodeId: a,
+            recipientStaticPub: pubA,
+            priority: .direct
+        )
+        var sends = 0
+        let result = node.dispatchDirect(frame, expectedRecipient: a) { _, _ in
+            sends += 1
+            return true
+        }
+
+        XCTAssertEqual(result, DirectDispatchResult.queuedLocally)
+        XCTAssertEqual(sends, 0)
+        XCTAssertEqual(stateOf(node.deliveryTracker, frame.msgId), .queuedDurably)
+    }
+
+    func testC66DispatchDirectOnSuccessfulEnqueueWithConnectedPeersYieldsHandedToRelaysAndTransitionsToHandedToRelay() async throws {
+        let (pubA, _) = realDhKeypair()
+        let a = nodeA()
+        let (node, _) = makeNode(store: InMemoryMessageStore(), resolver: UnresolvedRecipientKeyResolver())
+        node.transportDidConnect(peerId: UUID())
+        node.transportDidConnect(peerId: UUID())
+
+        let frame = try await node.router.authorSealedMessage(
+            plaintext: Data("test payload".utf8),
+            recipientNodeId: a,
+            recipientStaticPub: pubA,
+            priority: .direct
+        )
+        var sends = 0
+        let result = node.dispatchDirect(frame, expectedRecipient: a) { _, _ in
+            sends += 1
+            return true
+        }
+
+        XCTAssertEqual(result, DirectDispatchResult.handedToRelays(2))
+        XCTAssertEqual(sends, 2)
+        XCTAssertEqual(stateOf(node.deliveryTracker, frame.msgId), .handedToRelay)
+    }
+
+    func testC66DispatchDirectOnAtomicEnqueueFailureAttempts0SendsAndYieldsRejected() {
+        let (node, _) = makeNode(store: AlwaysFailingStore(), resolver: UnresolvedRecipientKeyResolver())
+        node.transportDidConnect(peerId: UUID())
+
+        let flags = UInt16(Priority.direct.rawValue << 8) | UInt16(FrameV2.Flags.sealed)
+        let frame = FrameV2(
+            type: .message,
+            msgId: msgId(1),
+            routingTag: routingTag,
+            ttl: 12,
+            hopCount: 0,
+            flags: flags,
+            payload: Data(count: 32)
+        )
+
+        var sends = 0
+        let result = node.dispatchDirect(frame, expectedRecipient: nodeA()) { _, _ in
+            sends += 1
+            return true
+        }
+
+        XCTAssertEqual(result, DirectDispatchResult.rejected(.storageFailure))
+        XCTAssertEqual(sends, 0)
+    }
+
+    func testC66DispatchDirectTransportFailureLeavesStateInQueuedDurably() async throws {
+        let (pubA, _) = realDhKeypair()
+        let a = nodeA()
+        let (node, _) = makeNode(store: InMemoryMessageStore(), resolver: UnresolvedRecipientKeyResolver())
+        node.transportDidConnect(peerId: UUID())
+
+        let frame = try await node.router.authorSealedMessage(
+            plaintext: Data("test payload".utf8),
+            recipientNodeId: a,
+            recipientStaticPub: pubA,
+            priority: .direct
+        )
+        let result = node.dispatchDirect(frame, expectedRecipient: a) { _, _ in false }
+
+        XCTAssertEqual(result, DirectDispatchResult.queuedLocally)
+        XCTAssertEqual(stateOf(node.deliveryTracker, frame.msgId), .queuedDurably)
     }
 }

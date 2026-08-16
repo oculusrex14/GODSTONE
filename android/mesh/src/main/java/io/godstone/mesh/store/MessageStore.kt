@@ -17,10 +17,38 @@ import net.zetetic.database.sqlcipher.SQLiteDatabase
 import net.zetetic.database.sqlcipher.SQLiteOpenHelper
 import androidx.security.crypto.EncryptedSharedPreferences
 import androidx.security.crypto.MasterKey
-import java.security.SecureRandom
+import io.godstone.mesh.delivery.AckMode
+import io.godstone.mesh.delivery.DeliveryState
 import io.godstone.mesh.wire.v2.FrameV2
 import io.godstone.mesh.wire.v2.Priority
 import io.godstone.mesh.wire.v2.TypeV2
+
+/**
+ * Outcome of an atomic DIRECT outbound enqueue operation (C6.6).
+ *
+ * Commits canonical FrameV2 durable hold in `held_frames` and initial
+ * `delivery_state` record in ONE transaction on the underlying database connection.
+ */
+sealed interface OutboundEnqueueResult {
+    /** A new DIRECT message was atomically persisted in held_frames and delivery_state (QUEUED_DURABLY). */
+    data object Created : OutboundEnqueueResult
+    /** An idempotent retry of the SAME logical message with matching SINGLE_RECIPIENT binding. */
+    data object AlreadyQueuedSameBinding : OutboundEnqueueResult
+    /** The new frame was evicted during capacity enforcement; transaction rolled back, 0 rows added. */
+    data object RejectedCapacity : OutboundEnqueueResult
+    /** A delivery record exists with a DIFFERENT recipient or ack mode; transaction rolled back. */
+    data object ConflictRecipient : OutboundEnqueueResult
+    /** The delivery record is already in a terminal state (ACKED, EXPIRED, CANCELLED); transaction rolled back. */
+    data object RejectedTerminalState : OutboundEnqueueResult
+    /** Pre-existing state was inconsistent (held without delivery, or delivery without held, or corrupt); transaction rolled back. */
+    data object InconsistentState : OutboundEnqueueResult
+    /** A real SQL / IO failure occurred during the transaction; rolled back. */
+    data object StorageFailure : OutboundEnqueueResult
+    /** The frame or recipient violates DIRECT policy / length / flags before SQL. */
+    data object InvalidArgument : OutboundEnqueueResult
+}
+
+private class DirectCapacityEvictedException : RuntimeException()
 
 /**
  * The outcome of a durable persist, shared semantically with iOS (Stage 4B.1).
@@ -79,6 +107,24 @@ interface MessageStore {
      * `MessageStore.persist`.
      */
     suspend fun persist(frame: FrameV2, receivedFrom: ByteArray): PersistResult
+
+    /**
+     * Atomically enqueue a canonical DIRECT outbound [frame] for [expectedRecipient] (C6.6).
+     *
+     * In ONE transaction:
+     * - Inserts [frame] into held_frames;
+     * - Enforces bounded capacity;
+     * - Verifies [frame] survived capacity enforcement;
+     * - Inserts delivery_state with state QUEUED_DURABLY, ackMode SINGLE_RECIPIENT, and [expectedRecipient];
+     * - Commits only if all succeed.
+     *
+     * Validates DIRECT policy (type == MESSAGE, priority == DIRECT, SEALED present, HAS_POW absent,
+     * 16-byte msg_id, 16-byte expectedRecipient) before transaction.
+     */
+    suspend fun enqueueDirectOutbound(
+        frame: FrameV2,
+        expectedRecipient: ByteArray
+    ): OutboundEnqueueResult
 
     /** All held frames, SOS-first then by priority and recency. */
     suspend fun allHeldOrderedByPriority(): List<FrameV2>
@@ -411,12 +457,12 @@ internal interface StoreDb {
      * `evictOldestPrefix` called on the receiver inside [block] participate in
      * that transaction (read-your-writes on the same connection). If [block]
      * throws, the transaction is rolled back and the exception rethrown; the
-     * caller converts it to [PersistResult.FAILED_STORAGE]. Shared
-     * by the production SQLCipher engine and the host-test JDBC engine so the
+     * caller converts it to [PersistResult.FAILED_STORAGE] or [OutboundEnqueueResult.StorageFailure].
+     * Shared by the production SQLCipher engine and the host-test JDBC engine so the
      * insert/evict/final-membership logic is the SAME code path in CI as in
      * production.
      */
-    fun inTransaction(block: (StoreDb) -> PersistResult): PersistResult
+    fun <T> inTransaction(block: (StoreDb) -> T): T
 
     // --- Stage 4C.1 / C6.1 / C6.4 -- delivery_state row ---
     // Single atomic statements (see StoreSchema); no transaction seam needed.
@@ -581,6 +627,111 @@ class SqliteMessageStore internal constructor(
         }
     }
 
+    override suspend fun enqueueDirectOutbound(
+        frame: FrameV2,
+        expectedRecipient: ByteArray,
+    ): OutboundEnqueueResult =
+        enqueueDirectOutboundAtWithFault(frame, expectedRecipient, System.currentTimeMillis(), faultInjector)
+
+    /**
+     * Atomic outbound DIRECT enqueue with explicit received_at and fault injection (C6.6).
+     *
+     * In ONE transaction:
+     * 1. Inspects existing delivery_state and held_frames presence.
+     * 2. Checks consistency:
+     *    - If delivery row exists: validates binding, terminal state, and held frame presence.
+     *    - If held exists without delivery row: fails closed as InconsistentState.
+     * 3. Fresh insert:
+     *    - Inserts frame into held_frames;
+     *    - Enforces hard capacity (evicts non-SOS prefix);
+     *    - Proves THIS frame survived capacity enforcement;
+     *    - Inserts initial delivery_state (QUEUED_DURABLY, SINGLE_RECIPIENT, expectedRecipient).
+     * 4. Commits all operations together. Any exception rolls back all changes.
+     */
+    internal suspend fun enqueueDirectOutboundAtWithFault(
+        frame: FrameV2,
+        expectedRecipient: ByteArray,
+        receivedAt: Long,
+        fault: ((String) -> Unit)?,
+    ): OutboundEnqueueResult {
+        if (frame.msgId.size != 16) return OutboundEnqueueResult.InvalidArgument
+        if (expectedRecipient.size != 16) return OutboundEnqueueResult.InvalidArgument
+        if (frame.type != TypeV2.MESSAGE) return OutboundEnqueueResult.InvalidArgument
+        val prio = Priority.fromFlagsStrict(frame.flags) ?: return OutboundEnqueueResult.InvalidArgument
+        if (prio != Priority.DIRECT) return OutboundEnqueueResult.InvalidArgument
+        if ((frame.flags and FrameV2.SEALED) == 0) return OutboundEnqueueResult.InvalidArgument
+        if ((frame.flags and FrameV2.HAS_POW) != 0) return OutboundEnqueueResult.InvalidArgument
+
+        return try {
+            engine.inTransaction { db ->
+                val existingDelivery = db.readDelivery(frame.msgId)
+                val hasHeld = db.contains(frame.msgId)
+
+                if (existingDelivery != null) {
+                    val state = DeliveryState.fromPersistedCode(existingDelivery.state)
+                    val ackMode = AckMode.fromCode(existingDelivery.ackMode)
+                    if (state == null || ackMode == null || existingDelivery.expectedRecipient?.size != 16) {
+                        return@inTransaction OutboundEnqueueResult.InconsistentState
+                    }
+                    if (!hasHeld) {
+                        return@inTransaction OutboundEnqueueResult.InconsistentState
+                    }
+                    if (state.isTerminal) {
+                        return@inTransaction OutboundEnqueueResult.RejectedTerminalState
+                    }
+                    if (ackMode != AckMode.SINGLE_RECIPIENT ||
+                        !expectedRecipient.contentEquals(existingDelivery.expectedRecipient)
+                    ) {
+                        return@inTransaction OutboundEnqueueResult.ConflictRecipient
+                    }
+                    return@inTransaction OutboundEnqueueResult.AlreadyQueuedSameBinding
+                }
+
+                if (hasHeld) {
+                    return@inTransaction OutboundEnqueueResult.InconsistentState
+                }
+
+                val rowId = db.insert(frame, receivedFrom = frame.msgId, receivedAt = receivedAt)
+                if (rowId == -1L) {
+                    return@inTransaction OutboundEnqueueResult.InconsistentState
+                }
+
+                fault?.invoke("after_held_insert")
+
+                val held = db.heldBytes()
+                if (held > maxBytes) {
+                    db.evictOldestPrefix(held - maxBytes)
+                }
+
+                fault?.invoke("after_evict")
+
+                if (!db.contains(frame.msgId)) {
+                    throw DirectCapacityEvictedException()
+                }
+
+                fault?.invoke("before_delivery_insert")
+
+                val inserted = db.insertDelivery(
+                    frame.msgId,
+                    DeliveryState.QUEUED_DURABLY.code,
+                    AckMode.SINGLE_RECIPIENT.code,
+                    expectedRecipient
+                )
+                if (!inserted) {
+                    throw IllegalStateException("insertDelivery conflict on fresh row")
+                }
+
+                fault?.invoke("after_delivery_insert")
+
+                OutboundEnqueueResult.Created
+            }
+        } catch (e: DirectCapacityEvictedException) {
+            OutboundEnqueueResult.RejectedCapacity
+        } catch (e: Exception) {
+            OutboundEnqueueResult.StorageFailure
+        }
+    }
+
     /** Current stored byte total (payloads + per-row overhead). */
     internal fun heldBytes(): Long = engine.heldBytes()
 
@@ -691,7 +842,7 @@ internal class SqlcipherStoreDb(ctx: Context) : StoreDb {
      * back; the exception propagates to the caller, which reports
      * `PersistResult.FAILED_STORAGE`.
      */
-    override fun inTransaction(block: (StoreDb) -> PersistResult): PersistResult {
+    override fun <T> inTransaction(block: (StoreDb) -> T): T {
         val db = helper.writableDatabase
         db.beginTransaction()
         try {
@@ -893,6 +1044,7 @@ internal class InMemoryMessageStore(
     private data class Held(val frame: FrameV2, val receivedAt: Long)
 
     private val held = LinkedHashMap<BytesKey, Held>()
+    private val deliveryRows = LinkedHashMap<BytesKey, DeliveryRow>()
 
     private fun bytesOf(f: FrameV2): Long = f.payload.size.toLong() + StoreSchema.ROW_OVERHEAD
 
@@ -906,6 +1058,75 @@ internal class InMemoryMessageStore(
             held.containsKey(key) -> PersistResult.HELD_DUPLICATE
             else -> PersistResult.REJECTED_CAPACITY   // the just-inserted frame was evicted
         }
+    }
+
+    override suspend fun enqueueDirectOutbound(
+        frame: FrameV2,
+        expectedRecipient: ByteArray,
+    ): OutboundEnqueueResult {
+        if (frame.msgId.size != 16) return OutboundEnqueueResult.InvalidArgument
+        if (expectedRecipient.size != 16) return OutboundEnqueueResult.InvalidArgument
+        if (frame.type != TypeV2.MESSAGE) return OutboundEnqueueResult.InvalidArgument
+        val prio = Priority.fromFlagsStrict(frame.flags) ?: return OutboundEnqueueResult.InvalidArgument
+        if (prio != Priority.DIRECT) return OutboundEnqueueResult.InvalidArgument
+        if ((frame.flags and FrameV2.SEALED) == 0) return OutboundEnqueueResult.InvalidArgument
+        if ((frame.flags and FrameV2.HAS_POW) != 0) return OutboundEnqueueResult.InvalidArgument
+
+        val key = BytesKey(frame.msgId)
+        val hasHeld = held.containsKey(key)
+        val deliveryRow = deliveryRows[key]
+
+        if (deliveryRow != null) {
+            val state = DeliveryState.fromPersistedCode(deliveryRow.state)
+            val ackMode = AckMode.fromCode(deliveryRow.ackMode)
+            if (state == null || ackMode == null || deliveryRow.expectedRecipient?.size != 16) {
+                return OutboundEnqueueResult.InconsistentState
+            }
+            if (!hasHeld) {
+                return OutboundEnqueueResult.InconsistentState
+            }
+            if (state.isTerminal) {
+                return OutboundEnqueueResult.RejectedTerminalState
+            }
+            if (ackMode != AckMode.SINGLE_RECIPIENT ||
+                !expectedRecipient.contentEquals(deliveryRow.expectedRecipient)
+            ) {
+                return OutboundEnqueueResult.ConflictRecipient
+            }
+            return OutboundEnqueueResult.AlreadyQueuedSameBinding
+        }
+
+        if (hasHeld) {
+            return OutboundEnqueueResult.InconsistentState
+        }
+
+        val backupHeld = LinkedHashMap(held)
+        val now = System.currentTimeMillis()
+        held[key] = Held(frame, now)
+        if (held.values.sumOf { bytesOf(it.frame) } > maxBytes) {
+            evictUntilUnderCap()
+        }
+
+        if (!held.containsKey(key)) {
+            held.clear()
+            held.putAll(backupHeld)
+            return OutboundEnqueueResult.RejectedCapacity
+        }
+
+        deliveryRows[key] = DeliveryRow(
+            DeliveryState.QUEUED_DURABLY.code,
+            AckMode.SINGLE_RECIPIENT.code,
+            expectedRecipient.copyOf()
+        )
+        return OutboundEnqueueResult.Created
+    }
+
+    fun readDeliveryRow(msgId: ByteArray): DeliveryRow? = deliveryRows[BytesKey(msgId)]
+
+    fun updateDeliveryState(msgId: ByteArray, state: Int) {
+        val key = BytesKey(msgId)
+        val existing = deliveryRows[key] ?: return
+        deliveryRows[key] = DeliveryRow(state, existing.ackMode, existing.expectedRecipient)
     }
 
     /** Evict oldest non-SOS first (then SOS, oldest first) until <= maxBytes. */

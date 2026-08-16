@@ -50,6 +50,29 @@ public enum PersistResult: Sendable, Equatable {
     case failedStorage
 }
 
+/// Outcome of an atomic DIRECT outbound enqueue operation (C6.6).
+///
+/// Commits canonical FrameV2 durable hold in `held_frames` and initial
+/// `delivery_state` record in ONE transaction on the underlying SQLite connection.
+public enum OutboundEnqueueResult: Sendable, Equatable {
+    /// A new DIRECT message was atomically persisted in held_frames and delivery_state (QUEUED_DURABLY).
+    case created
+    /// An idempotent retry of the SAME logical message with matching SINGLE_RECIPIENT binding.
+    case alreadyQueuedSameBinding
+    /// The new frame was evicted during capacity enforcement; transaction rolled back, 0 rows added.
+    case rejectedCapacity
+    /// A delivery record exists with a DIFFERENT recipient or ack mode; transaction rolled back.
+    case conflictRecipient
+    /// The delivery record is already in a terminal state (ACKED, EXPIRED, CANCELLED); transaction rolled back.
+    case rejectedTerminalState
+    /// Pre-existing state was inconsistent (held without delivery, or delivery without held, or corrupt); transaction rolled back.
+    case inconsistentState
+    /// A real SQL / IO failure occurred during the transaction; rolled back.
+    case storageFailure
+    /// The frame or recipient violates DIRECT policy / length / flags before SQL.
+    case invalidArgument
+}
+
 public protocol MessageStore: AnyObject {
     /// Durably hold `frame`, recording the peer it was received from.
     ///
@@ -63,6 +86,20 @@ public protocol MessageStore: AnyObject {
     /// bad operation cannot kill the inbound receive collector. Mirrors Android
     /// `MessageStore.persist`.
     func persist(_ frame: FrameV2, receivedFrom: Data) -> PersistResult
+
+    /// Atomically enqueue a canonical DIRECT outbound `frame` for `expectedRecipient` (C6.6).
+    ///
+    /// In ONE transaction:
+    /// - Inserts `frame` into held_frames;
+    /// - Enforces bounded capacity;
+    /// - Verifies `frame` survived capacity enforcement;
+    /// - Inserts delivery_state with state QUEUED_DURABLY, ackMode SINGLE_RECIPIENT, and `expectedRecipient`;
+    /// - Commits only if all succeed.
+    ///
+    /// Validates DIRECT policy (type == .message, priority == .direct, SEALED present, HAS_POW absent,
+    /// 16-byte msg_id, 16-byte expectedRecipient) before transaction.
+    func enqueueDirectOutbound(_ frame: FrameV2, expectedRecipient: Data) -> OutboundEnqueueResult
+
     /// All held frames, SOS-first then by priority and recency.
     func allHeldOrderedByPriority() -> [FrameV2]
     /// msg_ids of every held frame, for bloom-digest construction (order-agnostic).
@@ -513,6 +550,117 @@ public final class SqliteMessageStore: MessageStore {
         }
     }
 
+    public func enqueueDirectOutbound(
+        _ frame: FrameV2,
+        expectedRecipient: Data
+    ) -> OutboundEnqueueResult {
+        enqueueDirectOutboundAtWithFault(
+            frame,
+            expectedRecipient: expectedRecipient,
+            receivedAt: Int64(Date().timeIntervalSince1970 * 1000),
+            fault: nil
+        )
+    }
+
+    private enum DirectEnqueueError: Error {
+        case capacityEvicted
+    }
+
+    /// [enqueueDirectOutbound] with an explicit per-call fault seam (C6.6).
+    ///
+    /// In ONE transaction:
+    /// 1. Inspects existing delivery_state and held_frames presence.
+    /// 2. Checks consistency:
+    ///    - If delivery row exists: validates binding, terminal state, and held frame presence.
+    ///    - If held exists without delivery row: fails closed as InconsistentState.
+    /// 3. Fresh insert:
+    ///    - Inserts frame into held_frames;
+    ///    - Enforces hard capacity (evicts non-SOS prefix);
+    ///    - Proves THIS frame survived capacity enforcement;
+    ///    - Inserts initial delivery_state (QUEUED_DURABLY, SINGLE_RECIPIENT, expectedRecipient).
+    /// 4. Commits all operations together. Any exception rolls back all changes.
+    internal func enqueueDirectOutboundAtWithFault(
+        _ frame: FrameV2,
+        expectedRecipient: Data,
+        receivedAt: Int64,
+        fault: ((String, OpaquePointer?) throws -> Void)?
+    ) -> OutboundEnqueueResult {
+        guard frame.msgId.count == 16,
+              expectedRecipient.count == 16,
+              frame.type == .message,
+              Priority.fromFlagsStrict(frame.flags) == .direct,
+              (frame.flags & FrameV2.Flags.sealed) != 0,
+              (frame.flags & FrameV2.Flags.has_pow) == 0
+        else {
+            return .invalidArgument
+        }
+
+        do {
+            return try withTransaction { db in
+                let existingDelivery = try readDeliveryNoLockStrict(db, frame.msgId)
+                let hasHeld = try containsNoLockStrict(db, frame.msgId)
+
+                if let existing = existingDelivery {
+                    guard let state = DeliveryState.fromPersistedCode(existing.state),
+                          let ackMode = AckMode.fromCode(existing.ackMode),
+                          existing.expectedRecipient?.count == 16
+                    else {
+                        return .inconsistentState
+                    }
+                    if !hasHeld {
+                        return .inconsistentState
+                    }
+                    if state.isTerminal {
+                        return .rejectedTerminalState
+                    }
+                    if ackMode != .singleRecipient || expectedRecipient != existing.expectedRecipient {
+                        return .conflictRecipient
+                    }
+                    return .alreadyQueuedSameBinding
+                }
+
+                if hasHeld {
+                    return .inconsistentState
+                }
+
+                let isNew = try insertRowNoLockStrict(db, frame, receivedFrom: frame.msgId, receivedAt: receivedAt)
+                guard isNew else { return .inconsistentState }
+
+                try fault?("after_held_insert", db)
+
+                let held = try heldBytesNoLockStrict(db)
+                if held > maxBytes {
+                    try evictOldestPrefixNoLockStrict(db, overshoot: held - maxBytes)
+                }
+
+                try fault?("after_evict", db)
+
+                if try !containsNoLockStrict(db, frame.msgId) {
+                    throw DirectEnqueueError.capacityEvicted
+                }
+
+                try fault?("before_delivery_insert", db)
+
+                let inserted = try insertDeliveryNoLockStrict(
+                    db,
+                    msgId: frame.msgId,
+                    stateOrdinal: DeliveryState.queuedDurably.code,
+                    ackModeOrdinal: AckMode.singleRecipient.rawValue,
+                    expectedRecipient: expectedRecipient
+                )
+                guard inserted else { throw StoreError.stepFailed }
+
+                try fault?("after_delivery_insert", db)
+
+                return .created
+            }
+        } catch DirectEnqueueError.capacityEvicted {
+            return .rejectedCapacity
+        } catch {
+            return .storageFailure
+        }
+    }
+
     /// Evict the smallest oldest (non-SOS-first) prefix that brings the store
     /// back to or under the cap. No-op while under budget. Used outside a
     /// transaction by tests that pre-seed the store; the persist path runs
@@ -825,29 +973,51 @@ public final class SqliteMessageStore: MessageStore {
         return try body(db)
     }
 
+    private func readDeliveryNoLockStrict(_ db: OpaquePointer, _ msgId: Data) throws -> DeliveryRow? {
+        var stmt: OpaquePointer?
+        guard sqlite3_prepare_v2(db, StoreSchema.readDeliverySql, -1, &stmt, nil) == SQLITE_OK else {
+            sqlite3_finalize(stmt); throw StoreError.prepareFailed
+        }
+        defer { sqlite3_finalize(stmt) }
+        bindBlob(stmt, 1, msgId)
+        let rc = sqlite3_step(stmt)
+        if rc == SQLITE_DONE { return nil } // no row -- absence, NOT failure
+        guard rc == SQLITE_ROW else { throw StoreError.stepFailed }
+        let state = sqlite3_column_int(stmt, 0)
+        let ackMode = sqlite3_column_int(stmt, 1)
+        // Distinguish SQL NULL (no recipient) from a zero-length blob.
+        let expected: Data? =
+            sqlite3_column_type(stmt, 2) == SQLITE_NULL ? nil : readBlob(stmt, 2)
+        return DeliveryRow(state: state, ackMode: ackMode, expectedRecipient: expected)
+    }
+
+    private func insertDeliveryNoLockStrict(
+        _ db: OpaquePointer,
+        msgId: Data,
+        stateOrdinal: Int32,
+        ackModeOrdinal: Int32,
+        expectedRecipient: Data?
+    ) throws -> Bool {
+        var stmt: OpaquePointer?
+        guard sqlite3_prepare_v2(db, StoreSchema.insertDeliverySql, -1, &stmt, nil) == SQLITE_OK else {
+            sqlite3_finalize(stmt); throw StoreError.prepareFailed
+        }
+        defer { sqlite3_finalize(stmt) }
+        bindBlob(stmt, 1, msgId)
+        sqlite3_bind_int(stmt, 2, stateOrdinal)
+        sqlite3_bind_int(stmt, 3, ackModeOrdinal)
+        if let r = expectedRecipient { bindBlob(stmt, 4, r) } else { sqlite3_bind_null(stmt, 4) }
+        guard sqlite3_step(stmt) == SQLITE_DONE else { throw StoreError.stepFailed }
+        return sqlite3_changes(db) > 0   // 1 inserted, 0 on conflict (DO NOTHING)
+    }
+
     /// Read the delivery row for `msgId`: (state code, ack_mode code, expected
     /// recipient), or nil if NO row exists (absence). Throws on a storage failure
     /// (prepare/step error or missing handle) -- distinct from the nil absence
     /// result (C6.4-A). The expected recipient is nil when the column is SQL NULL
     /// (no recipient bound), distinct from an empty blob.
     internal func readDelivery(_ msgId: Data) throws -> DeliveryRow? {
-        try withDbThrowing { db in
-            var stmt: OpaquePointer?
-            guard sqlite3_prepare_v2(db, StoreSchema.readDeliverySql, -1, &stmt, nil) == SQLITE_OK else {
-                sqlite3_finalize(stmt); throw StoreError.prepareFailed
-            }
-            defer { sqlite3_finalize(stmt) }
-            bindBlob(stmt, 1, msgId)
-            let rc = sqlite3_step(stmt)
-            if rc == SQLITE_DONE { return nil } // no row -- absence, NOT failure
-            guard rc == SQLITE_ROW else { throw StoreError.stepFailed }
-            let state = sqlite3_column_int(stmt, 0)
-            let ackMode = sqlite3_column_int(stmt, 1)
-            // Distinguish SQL NULL (no recipient) from a zero-length blob.
-            let expected: Data? =
-                sqlite3_column_type(stmt, 2) == SQLITE_NULL ? nil : readBlob(stmt, 2)
-            return DeliveryRow(state: state, ackMode: ackMode, expectedRecipient: expected)
-        }
+        try withDbThrowing { db in try readDeliveryNoLockStrict(db, msgId) }
     }
 
     /// Atomically create the delivery row in QUEUED_DURABLY with the ack mode and
@@ -858,17 +1028,13 @@ public final class SqliteMessageStore: MessageStore {
     internal func insertDelivery(_ msgId: Data, stateOrdinal: Int32, ackModeOrdinal: Int32,
                                  expectedRecipient: Data?) throws -> Bool {
         try withDbThrowing { db in
-            var stmt: OpaquePointer?
-            guard sqlite3_prepare_v2(db, StoreSchema.insertDeliverySql, -1, &stmt, nil) == SQLITE_OK else {
-                sqlite3_finalize(stmt); throw StoreError.prepareFailed
-            }
-            defer { sqlite3_finalize(stmt) }
-            bindBlob(stmt, 1, msgId)
-            sqlite3_bind_int(stmt, 2, stateOrdinal)
-            sqlite3_bind_int(stmt, 3, ackModeOrdinal)
-            if let r = expectedRecipient { bindBlob(stmt, 4, r) } else { sqlite3_bind_null(stmt, 4) }
-            guard sqlite3_step(stmt) == SQLITE_DONE else { throw StoreError.stepFailed }
-            return sqlite3_changes(db) > 0   // 1 inserted, 0 on conflict (DO NOTHING)
+            try insertDeliveryNoLockStrict(
+                db,
+                msgId: msgId,
+                stateOrdinal: stateOrdinal,
+                ackModeOrdinal: ackModeOrdinal,
+                expectedRecipient: expectedRecipient
+            )
         }
     }
 
@@ -989,6 +1155,7 @@ internal final class InMemoryMessageStore: MessageStore {
     private let lock = NSLock()
     private let maxBytes: Int64
     private var rows: [Data: Held] = [:]
+    private var deliveryRows: [Data: DeliveryRow] = [:]
 
     internal init(maxBytes: Int64 = .max) { self.maxBytes = maxBytes }
 
@@ -1002,6 +1169,81 @@ internal final class InMemoryMessageStore: MessageStore {
         if rows[frame.msgId] != nil && isNew { return .heldNew }
         if rows[frame.msgId] != nil { return .heldDuplicate }
         return .rejectedCapacity   // the just-inserted frame was evicted by the cap
+    }
+
+    func enqueueDirectOutbound(_ frame: FrameV2, expectedRecipient: Data) -> OutboundEnqueueResult {
+        guard frame.msgId.count == 16,
+              expectedRecipient.count == 16,
+              frame.type == .message,
+              Priority.fromFlagsStrict(frame.flags) == .direct,
+              (frame.flags & FrameV2.Flags.sealed) != 0,
+              (frame.flags & FrameV2.Flags.has_pow) == 0
+        else {
+            return .invalidArgument
+        }
+
+        lock.lock(); defer { lock.unlock() }
+
+        let hasHeld = rows[frame.msgId] != nil
+        let existingDelivery = deliveryRows[frame.msgId]
+
+        if let existing = existingDelivery {
+            guard let state = DeliveryState.fromPersistedCode(existing.state),
+                  let ackMode = AckMode.fromCode(existing.ackMode),
+                  existing.expectedRecipient?.count == 16
+            else {
+                return .inconsistentState
+            }
+            if !hasHeld {
+                return .inconsistentState
+            }
+            if state.isTerminal {
+                return .rejectedTerminalState
+            }
+            if ackMode != .singleRecipient || expectedRecipient != existing.expectedRecipient {
+                return .conflictRecipient
+            }
+            return .alreadyQueuedSameBinding
+        }
+
+        if hasHeld {
+            return .inconsistentState
+        }
+
+        let backupRows = rows
+        let now = Int64(Date().timeIntervalSince1970 * 1000)
+        rows[frame.msgId] = Held(frame: frame, receivedAt: now)
+        if totalBytesNoLock > maxBytes {
+            evictUntilUnderCapNoLock()
+        }
+
+        if rows[frame.msgId] == nil {
+            rows = backupRows
+            return .rejectedCapacity
+        }
+
+        deliveryRows[frame.msgId] = DeliveryRow(
+            state: DeliveryState.queuedDurably.code,
+            ackMode: AckMode.singleRecipient.rawValue,
+            expectedRecipient: expectedRecipient
+        )
+        return .created
+    }
+
+    internal func readDeliveryRow(_ msgId: Data) -> DeliveryRow? {
+        lock.lock(); defer { lock.unlock() }
+        return deliveryRows[msgId]
+    }
+
+    internal func updateDeliveryState(_ msgId: Data, state: Int32) {
+        lock.lock(); defer { lock.unlock() }
+        if let existing = deliveryRows[msgId] {
+            deliveryRows[msgId] = DeliveryRow(
+                state: state,
+                ackMode: existing.ackMode,
+                expectedRecipient: existing.expectedRecipient
+            )
+        }
     }
 
     private var totalBytesNoLock: Int64 {

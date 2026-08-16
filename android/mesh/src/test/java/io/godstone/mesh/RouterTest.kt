@@ -1043,6 +1043,11 @@ class RouterTest {
 private class FailingMessageStore : MessageStore {
     override suspend fun persist(frame: FrameV2, receivedFrom: ByteArray): PersistResult =
         PersistResult.FAILED_STORAGE
+    override suspend fun enqueueDirectOutbound(
+        frame: FrameV2,
+        expectedRecipient: ByteArray
+    ): io.godstone.mesh.store.OutboundEnqueueResult =
+        io.godstone.mesh.store.OutboundEnqueueResult.StorageFailure
     override suspend fun allHeldOrderedByPriority(): List<FrameV2> = emptyList()
     override suspend fun allHeldMsgIds(): List<ByteArray> = emptyList()
     override suspend fun forEachHeldOrderedByPriority(visit: (FrameV2) -> Boolean) {}
@@ -1076,6 +1081,12 @@ private class FailThenSucceedStore : MessageStore {
             backing.persist(frame, receivedFrom)   // retry: durably held (NEW then DUPLICATE)
         }
     }
+
+    override suspend fun enqueueDirectOutbound(
+        frame: FrameV2,
+        expectedRecipient: ByteArray
+    ): io.godstone.mesh.store.OutboundEnqueueResult =
+        backing.enqueueDirectOutbound(frame, expectedRecipient)
 
     private class BytesKey(val bytes: ByteArray) {
         override fun equals(other: Any?): Boolean = other is BytesKey && bytes.contentEquals(other.bytes)

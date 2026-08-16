@@ -8,6 +8,7 @@ import io.godstone.mesh.delivery.EnqueueResult
 import io.godstone.mesh.identity.Identity
 import io.godstone.mesh.router.Router
 import io.godstone.mesh.store.MessageStore
+import io.godstone.mesh.store.OutboundEnqueueResult
 import io.godstone.mesh.store.PersistResult
 import io.godstone.mesh.transport.BleTransport
 import io.godstone.mesh.transport.PeerEvent
@@ -38,6 +39,16 @@ sealed interface SosDispatchResult {
     data object NotPersisted : SosDispatchResult
     data class HandedToRelays(val count: Int) : SosDispatchResult
     data class Failed(val reason: String) : SosDispatchResult
+}
+
+/** Typed outcome of a DIRECT outbound send dispatch (C6.6). */
+sealed interface DirectDispatchResult {
+    /** Handed to [count] connected relays. State advanced to HANDED_TO_RELAY. */
+    data class HandedToRelays(val count: Int) : DirectDispatchResult
+    /** Persisted and queued locally (0 connected relays). State remains QUEUED_DURABLY. */
+    data object QueuedLocally : DirectDispatchResult
+    /** Atomic enqueue was rejected; 0 sends attempted. */
+    data class Rejected(val result: OutboundEnqueueResult) : DirectDispatchResult
 }
 
 const val LINK_LAYER_OPEN_REASON =
@@ -239,6 +250,40 @@ class MeshNode(
         _status.value = _status.value.copy(activeSos = true)
         return if (handed == 0) SosDispatchResult.QueuedLocally
         else SosDispatchResult.HandedToRelays(handed)
+    }
+
+    /**
+     * Stage 4C / C6.6 -- atomic DIRECT outbound enqueue and dispatch.
+     *
+     * In ONE transaction, persists [frame] in held_frames and creates the initial
+     * delivery_state (QUEUED_DURABLY, SINGLE_RECIPIENT, [expectedRecipient]).
+     * Only upon successful commit is the transport [send] callback invoked.
+     *
+     * Each successful relay hand-off calls [deliveryTracker.markHandedToRelay]
+     * (advancing QUEUED_DURABLY -> HANDED_TO_RELAY; never ACKNOWLEDGED_BY_RECIPIENT).
+     */
+    internal suspend fun dispatchDirect(
+        frame: io.godstone.mesh.wire.v2.FrameV2,
+        expectedRecipient: ByteArray,
+        send: suspend (peerId: ByteArray, bytes: ByteArray) -> Boolean,
+    ): DirectDispatchResult {
+        val enqueueRes = store.enqueueDirectOutbound(frame, expectedRecipient)
+        when (enqueueRes) {
+            OutboundEnqueueResult.Created,
+            OutboundEnqueueResult.AlreadyQueuedSameBinding -> Unit
+            else -> return DirectDispatchResult.Rejected(enqueueRes)
+        }
+
+        val bytes = frame.encode()
+        var handed = 0
+        for (peerId in knownPeers()) {
+            if (send(peerId, bytes)) {
+                handed++
+                deliveryTracker.markHandedToRelay(frame.msgId)
+            }
+        }
+        return if (handed == 0) DirectDispatchResult.QueuedLocally
+        else DirectDispatchResult.HandedToRelays(handed)
     }
 
     /**

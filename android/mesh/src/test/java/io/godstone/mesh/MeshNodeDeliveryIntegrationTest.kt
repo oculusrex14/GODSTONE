@@ -22,6 +22,7 @@ import io.godstone.mesh.store.InMemoryMessageStore
 import io.godstone.mesh.store.MessageStore
 import io.godstone.mesh.store.PersistResult
 import io.godstone.mesh.wire.v2.FrameV2
+import io.godstone.mesh.wire.v2.Priority
 import io.godstone.mesh.wire.v2.TypeV2
 import kotlinx.coroutines.test.runTest
 import org.junit.Test
@@ -80,13 +81,26 @@ class MeshNodeDeliveryIntegrationTest {
      * preserve the binding (state-only advance). C6.4: implements the new
      * [DeliveryTransition] + typed [ClearResult] + 16-byte [InvalidArgument] guard.
      */
-    private class InMemoryDeliveryRepository : DeliveryRepository {
+    private class InMemoryDeliveryRepository(
+        private val store: InMemoryMessageStore? = null,
+    ) : DeliveryRepository {
         val records = mutableMapOf<List<Byte>, DeliveryRecord>()
         private fun k(m: ByteArray) = m.toList()
         override fun get(msgId: ByteArray): DeliveryLookup {
             if (msgId.size != 16) return DeliveryLookup.InvalidArgument
-            val rec = records[k(msgId)] ?: return DeliveryLookup.NotFound
-            return DeliveryLookup.Found(rec)
+            val rec = records[k(msgId)]
+            if (rec != null) return DeliveryLookup.Found(rec)
+            val d = store?.readDeliveryRow(msgId)
+            if (d != null) {
+                val s = DeliveryState.fromPersistedCode(d.state)
+                val a = AckMode.fromCode(d.ackMode)
+                if (s != null && a != null) {
+                    val newRec = DeliveryRecord(msgId, s, a, d.expectedRecipient)
+                    records[k(msgId)] = newRec
+                    return DeliveryLookup.Found(newRec)
+                }
+            }
+            return DeliveryLookup.NotFound
         }
         override fun enqueue(msgId: ByteArray, ackMode: AckMode, expectedRecipient: ByteArray?): EnqueueResult {
             if (msgId.size != 16) return EnqueueResult.InvalidArgument
@@ -116,6 +130,7 @@ class MeshNodeDeliveryIntegrationTest {
                         s == target -> TransitionResult.AlreadyInTarget
                         s in validFroms -> {
                             records[k(msgId)] = l.record.copy(state = target) // preserve ackMode + recipient
+                            store?.updateDeliveryState(msgId, target.code)
                             TransitionResult.Applied
                         }
                         else -> TransitionResult.RejectedState
@@ -142,6 +157,7 @@ class MeshNodeDeliveryIntegrationTest {
                     if (rec.state == DeliveryState.ACKNOWLEDGED_BY_RECIPIENT) AckResult.DuplicateAuthenticatedAck
                     else {
                         records[k(msgId)] = rec.copy(state = DeliveryState.ACKNOWLEDGED_BY_RECIPIENT)
+                        store?.updateDeliveryState(msgId, DeliveryState.ACKNOWLEDGED_BY_RECIPIENT.code)
                         AckResult.Applied
                     }
                 }
@@ -230,7 +246,7 @@ class MeshNodeDeliveryIntegrationTest {
         store: MessageStore,
         resolver: RecipientKeyResolver,
     ): Pair<MeshNode, InMemoryDeliveryRepository> {
-        val journal = InMemoryDeliveryRepository()
+        val journal = InMemoryDeliveryRepository(store as? InMemoryMessageStore)
         val tracker = DeliveryTracker(journal, Ed25519AckAuthenticator(resolver))
         val node = MeshNode(ctx = null, identity = freshIdentity(), store = store, deliveryTracker = tracker)
         return node to journal
@@ -386,5 +402,79 @@ class MeshNodeDeliveryIntegrationTest {
         // track it (an inbound SOS is not a delivery confirmation for THIS node).
         assertTrue(journal.records.isEmpty(), "the tracker must not track an inbound non-ACK frame")
         assertEquals(1, store.allHeldMsgIds().size, "the router durably held the epidemic SOS")
+    }
+
+    // --- C6.6: dispatchDirect and transport eligibility tests ---
+
+    @Test
+    fun `C6_6 dispatchDirect on successful enqueue with zero connected peers yields QueuedLocally and state remains QUEUED_DURABLY`() = runTest {
+        val (node, _) = makeNode(InMemoryMessageStore(), UnresolvedRecipientKeyResolver)
+        val (pubA, _) = realKeypair()
+        val a = nodeA()
+
+        val frame = node.router.authorSealedMessage("test payload".toByteArray(), a, pubA, priority = Priority.DIRECT)
+        var sends = 0
+        val result = node.dispatchDirect(frame, expectedRecipient = a) { _, _ -> sends++; true }
+
+        assertEquals(DirectDispatchResult.QueuedLocally, result)
+        assertEquals(0, sends, "0 sends when 0 peers connected")
+        assertEquals(DeliveryState.QUEUED_DURABLY, stateOf(node.deliveryTracker, frame.msgId))
+    }
+
+    @Test
+    fun `C6_6 dispatchDirect on successful enqueue with connected peers yields HandedToRelays and transitions to HANDED_TO_RELAY`() = runTest {
+        val (node, _) = makeNode(InMemoryMessageStore(), UnresolvedRecipientKeyResolver)
+        val (pubA, _) = realKeypair()
+        val a = nodeA()
+        val peer1 = ByteArray(16) { 0x31 }
+        val peer2 = ByteArray(16) { 0x32 }
+        node.injectPeerForTest(peer1)
+        node.injectPeerForTest(peer2)
+
+        val frame = node.router.authorSealedMessage("test payload".toByteArray(), a, pubA, priority = Priority.DIRECT)
+        var sends = 0
+        val result = node.dispatchDirect(frame, expectedRecipient = a) { _, _ -> sends++; true }
+
+        assertEquals(DirectDispatchResult.HandedToRelays(2), result)
+        assertEquals(2, sends)
+        assertEquals(DeliveryState.HANDED_TO_RELAY, stateOf(node.deliveryTracker, frame.msgId))
+    }
+
+    @Test
+    fun `C6_6 dispatchDirect on atomic enqueue failure attempts 0 sends and yields Rejected`() = runTest {
+        val failingStore = object : MessageStore {
+            override suspend fun persist(frame: FrameV2, receivedFrom: ByteArray): PersistResult = PersistResult.FAILED_STORAGE
+            override suspend fun enqueueDirectOutbound(frame: FrameV2, expectedRecipient: ByteArray): io.godstone.mesh.store.OutboundEnqueueResult =
+                io.godstone.mesh.store.OutboundEnqueueResult.StorageFailure
+            override suspend fun allHeldOrderedByPriority(): List<FrameV2> = emptyList()
+            override suspend fun allHeldMsgIds(): List<ByteArray> = emptyList()
+            override suspend fun forEachHeldOrderedByPriority(visit: (FrameV2) -> Boolean) {}
+            override suspend fun forEachHeldMsgId(visit: (ByteArray) -> Boolean) {}
+        }
+        val (node, _) = makeNode(failingStore, UnresolvedRecipientKeyResolver)
+        node.injectPeerForTest(ByteArray(16) { 0x31 })
+
+        val flags = (Priority.DIRECT.code shl 8) or FrameV2.SEALED
+        val frame = FrameV2(TypeV2.MESSAGE, msgId(1), routingTag, ttl = 12, hopCount = 0, flags = flags, payload = ByteArray(32))
+
+        var sends = 0
+        val result = node.dispatchDirect(frame, expectedRecipient = nodeA()) { _, _ -> sends++; true }
+
+        assertEquals(DirectDispatchResult.Rejected(io.godstone.mesh.store.OutboundEnqueueResult.StorageFailure), result)
+        assertEquals(0, sends, "0 sends on atomic enqueue failure")
+    }
+
+    @Test
+    fun `C6_6 dispatchDirect transport failure leaves state in QUEUED_DURABLY`() = runTest {
+        val (node, _) = makeNode(InMemoryMessageStore(), UnresolvedRecipientKeyResolver)
+        val (pubA, _) = realKeypair()
+        val a = nodeA()
+        node.injectPeerForTest(ByteArray(16) { 0x31 })
+
+        val frame = node.router.authorSealedMessage("test payload".toByteArray(), a, pubA, priority = Priority.DIRECT)
+        val result = node.dispatchDirect(frame, expectedRecipient = a) { _, _ -> false }
+
+        assertEquals(DirectDispatchResult.QueuedLocally, result)
+        assertEquals(DeliveryState.QUEUED_DURABLY, stateOf(node.deliveryTracker, frame.msgId))
     }
 }

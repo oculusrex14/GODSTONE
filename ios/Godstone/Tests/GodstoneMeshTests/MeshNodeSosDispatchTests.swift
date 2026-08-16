@@ -205,6 +205,7 @@ final class MeshNodeSosDispatchTests: XCTestCase {
 /// the B4 "persist fails -> notPersisted, zero sends" gate without sqlite3.
 private final class AlwaysFailingStore: MessageStore {
     func persist(_ frame: FrameV2, receivedFrom: Data) -> PersistResult { .failedStorage }
+    func enqueueDirectOutbound(_ frame: FrameV2, expectedRecipient: Data) -> OutboundEnqueueResult { .storageFailure }
     func allHeldOrderedByPriority() -> [FrameV2] { [] }
     func allHeldMsgIds() -> [Data] { [] }
     func forEachHeldOrderedByPriority(_ visit: (FrameV2) -> Bool) {}
