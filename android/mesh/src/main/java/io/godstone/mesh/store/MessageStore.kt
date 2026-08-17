@@ -223,10 +223,9 @@ internal object StoreSchema {
      *
      * Ordering: `(priority = 0) ASC` puts non-SOS (0) before SOS (1), so SOS is
      * evicted LAST ("retained last", PROTOCOL.md §7) -- only after every non-SOS
-     * row has been evicted. Because the candidate set is ALL rows, the prefix
-     * always reaches the overshoot, so the store ALWAYS returns to or under the
-     * cap: all-SOS flooding stays inside the configured hard cap (ADR-004
-     * criterion 4). Bind: (1) overshoot bytes.
+     * row has been evicted. Active delivery-bound rows in QUEUED_DURABLY/HANDED_TO_RELAY
+     * are excluded from normal capacity eviction (C6.6.2); remaining eligible candidates
+     * are evicted in policy order (non-SOS first, then SOS). Bind: (1) overshoot bytes.
      */
     fun evictPrefixSql(): String =
         "DELETE FROM $TABLE WHERE $COL_MSG_ID IN (" +
@@ -502,13 +501,12 @@ internal interface StoreDb {
      */
     fun <T> inTransaction(block: (StoreDb) -> T): T
 
-    // --- Stage 4C.1 / C6.1 / C6.4 -- delivery_state row ---
-    // Single atomic statements (see StoreSchema); no transaction seam needed.
-    // C6.4: the msg_id-only state advance was REMOVED -- transitions and the
-    // authenticated ACK are guarded SQL CAS statements built by the repository
-    // ([DeliveryRepository.transition] / [acknowledgeBound]) and executed via
-    // [execDeliveryUpdate], which returns the affected row count. A storage
-    // failure (SQL / IO error) is THROWN by these primitives and caught at the
+    // --- Stage 4C.1 / C6.1 / C6.4 / C7.4 -- delivery_state row ---
+    // Transitions are guarded SQL CAS statements built by the repository
+    // ([DeliveryRepository.transition]); authenticated ACK retirement is a
+    // guarded delivery CAS + exact held deletion inside one cross-table transaction
+    // ([DeliveryRepository.acknowledgeBoundAndRetire]).
+    // A storage failure (SQL / IO error) is THROWN by these primitives and caught at the
     // repository boundary -> typed StorageFailure (C6.4-A: absence / conflict /
     // no-match are NEVER folded into a thrown failure; they use their own
     // sentinels -- null / false / 0 row count).

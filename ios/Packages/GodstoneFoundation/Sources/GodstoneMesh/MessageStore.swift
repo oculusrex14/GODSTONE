@@ -237,10 +237,10 @@ internal enum StoreSchema {
     /// under the cap.
     ///
     /// Ordering: `(priority = 0) ASC` puts non-SOS (0) before SOS (1), so SOS is
-    /// evicted LAST -- only after every non-SOS row has been evicted. Because
-    /// the candidate set is ALL rows, the prefix always reaches the overshoot,
-    /// so the store ALWAYS returns to or under the cap: all-SOS flooding stays
-    /// inside the configured hard cap (ADR-004 criterion 4). Bind: (1) overshoot.
+    /// evicted LAST -- only after every non-SOS row has been evicted. Active
+    /// delivery-bound rows in QUEUED_DURABLY/HANDED_TO_RELAY are excluded from
+    /// normal capacity eviction (C6.6.2); remaining eligible candidates are evicted
+    /// in policy order (non-SOS first, then SOS). Bind: (1) overshoot.
     static let evictPrefixSql = """
         DELETE FROM \(table) WHERE \(colMsgId) IN (
             SELECT \(colMsgId) FROM (
@@ -1049,13 +1049,12 @@ public final class SqliteMessageStore: MessageStore {
     // `.storageFailure`, NEVER folded into nil / false / 0 (absence / conflict /
     // no-match use those sentinels). This is the "throwing strict primitives"
     // directive for iOS (Android catches `Exception` at the boundary; iOS throws
-    // from the primitive and catches at the repository). Each operation is one SQL
-    // statement under the connection lock; row counts come from
-    // `sqlite3_changes(db)` (Android uses executeUpdateDelete(); JDBC uses
-    // executeUpdate()). Mirrors the Android `StoreDb` delivery methods
-    // byte-identically. The stale pre-read `updateDeliveryState` / `clearDelivery`
-    // seams were REMOVED (C6.4-F/J): state advances via a guarded CAS built in the
-    // repository and run through `execDeliveryUpdate`; clear is
+    // from the primitive and catches at the repository). Each operation is executed
+    // under the connection lock; row counts come from `sqlite3_changes(db)` (Android
+    // uses executeUpdateDelete(); JDBC uses executeUpdate()). Transitions are guarded
+    // SQL CAS statements built by the repository and run through `execDeliveryUpdate`;
+    // authenticated ACK retirement is a guarded delivery CAS + exact held deletion
+    // in one atomic transaction (`atomicAcknowledgeAndRetire`). Clear is
     // `execDeliveryUpdate(clearDeliverySql)`.
 
     /// Throwing connection accessor (C6.4-A): throws `StoreError.handleMissing`

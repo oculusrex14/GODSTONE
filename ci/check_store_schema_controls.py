@@ -173,44 +173,86 @@ CONTROLS: list[tuple[str, str, str]] = [
     ("ios/Godstone/Tests/GodstoneMeshTests/SqliteMessageStoreTests.swift",
      "testC663ContainsNoLockStrictStepErrorYieldsFailedStorageAndRollsBack",
      "iOS containsNoLockStrict step error -> failedStorage and rollback"),
-    # --- Android: C7.4 atomic authenticated ACK commit and held-frame retirement controls ---
+    # --- Android: C7.4.1 atomic authenticated ACK commit, held-frame retirement, and mutation controls ---
     ("android/mesh/src/test/java/io/godstone/mesh/delivery/SqliteDeliveryRepositoryTest.kt",
-     "C7_4 queued ACK state ACK and held deleted",
-     "Android C7.4 queued ACK state ACK and held deleted"),
+     "C7_4_1 production-shaped queued C6_6 to C7_4 success",
+     "Android C7.4.1 production-shaped queued C6.6 to C7.4 success"),
     ("android/mesh/src/test/java/io/godstone/mesh/delivery/SqliteDeliveryRepositoryTest.kt",
-     "C7_4 handed ACK state ACK and held deleted",
-     "Android C7.4 handed ACK state ACK and held deleted"),
+     "C7_4_1 production-shaped handed C6_6 to C7_4 success",
+     "Android C7.4.1 production-shaped handed C6.6 to C7.4 success"),
     ("android/mesh/src/test/java/io/godstone/mesh/delivery/SqliteDeliveryRepositoryTest.kt",
-     "C7_4 missing-held active row rollback and Corrupt",
-     "Android C7.4 missing held active row rollback and Corrupt"),
+     "C7_4_1 rejected authentication held retained",
+     "Android C7.4.1 rejected authentication held retained"),
     ("android/mesh/src/test/java/io/godstone/mesh/delivery/SqliteDeliveryRepositoryTest.kt",
-     "C7_4 fault after ACK CAS both restored",
-     "Android C7.4 fault after ACK CAS both restored"),
+     "C7_4_1 not ack eligible NONE mode held retained",
+     "Android C7.4.1 not ack eligible NONE mode held retained"),
     ("android/mesh/src/test/java/io/godstone/mesh/delivery/SqliteDeliveryRepositoryTest.kt",
-     "C7_4 fault after held DELETE both restored",
-     "Android C7.4 fault after held delete both restored"),
+     "C7_4_1 missing-held active row rollback and Corrupt",
+     "Android C7.4.1 missing held active row rollback and Corrupt"),
     ("android/mesh/src/test/java/io/godstone/mesh/delivery/SqliteDeliveryRepositoryTest.kt",
-     "C7_4 held delete SQL failure yields StorageFailure and rolls back",
-     "Android C7.4 held delete SQL failure -> StorageFailure and rollback"),
-    # --- iOS: C7.4 atomic authenticated ACK commit and held-frame retirement controls ---
+     "C7_4_1 fault after ACK CAS both restored",
+     "Android C7.4.1 fault after ACK CAS both restored"),
+    ("android/mesh/src/test/java/io/godstone/mesh/delivery/SqliteDeliveryRepositoryTest.kt",
+     "C7_4_1 fault after held DELETE both restored",
+     "Android C7.4.1 fault after held delete both restored"),
+    ("android/mesh/src/test/java/io/godstone/mesh/delivery/SqliteDeliveryRepositoryTest.kt",
+     "C7_4_1 held delete SQL failure yields StorageFailure and rolls back",
+     "Android C7.4.1 held delete SQL failure -> StorageFailure and rollback"),
+    ("android/mesh/src/test/java/io/godstone/mesh/delivery/SqliteDeliveryRepositoryTest.kt",
+     "C7_4_1 sequential duplicate ACK short-circuits without re-auth",
+     "Android C7.4.1 sequential duplicate ACK short-circuits without re-auth"),
+    ("android/mesh/src/test/java/io/godstone/mesh/delivery/SqliteDeliveryRepositoryTest.kt",
+     "C7_4_1 duplicate authenticated race one Applied one Duplicate",
+     "Android C7.4.1 duplicate authenticated race one Applied one Duplicate"),
+    ("android/mesh/src/test/java/io/godstone/mesh/delivery/SqliteDeliveryRepositoryTest.kt",
+     "C7_4_1 production enqueueDirectOutbound after ACK returns RejectedTerminalState",
+     "Android C7.4.1 direct enqueue after ACK returns RejectedTerminalState"),
+    ("android/mesh/src/test/java/io/godstone/mesh/delivery/SqliteDeliveryRepositoryTest.kt",
+     "C7_4_1 capacity released on authenticated ACK is reusable by new frame",
+     "Android C7.4.1 capacity released on ACK is reusable"),
+    ("android/mesh/src/test/java/io/godstone/mesh/delivery/SqliteDeliveryRepositoryTest.kt",
+     "skipping held retirement leaves split state",
+     "Android cross-table mutation control - skipping held retirement leaves split state"),
+    # --- iOS: C7.4.1 atomic authenticated ACK commit, held-frame retirement, and mutation controls ---
     ("ios/Godstone/Tests/GodstoneMeshTests/SqliteDeliveryRepositoryTests.swift",
-     "testC74QueuedAckStateAckAndHeldDeleted",
-     "iOS C7.4 queued ACK state ACK and held deleted"),
+     "testC741ProductionShapedQueuedC66ToC74Success",
+     "iOS C7.4.1 production-shaped queued C6.6 to C7.4 success"),
     ("ios/Godstone/Tests/GodstoneMeshTests/SqliteDeliveryRepositoryTests.swift",
-     "testC74HandedAckStateAckAndHeldDeleted",
-     "iOS C7.4 handed ACK state ACK and held deleted"),
+     "testC741ProductionShapedHandedC66ToC74Success",
+     "iOS C7.4.1 production-shaped handed C6.6 to C7.4 success"),
     ("ios/Godstone/Tests/GodstoneMeshTests/SqliteDeliveryRepositoryTests.swift",
-     "testC74MissingHeldActiveRowRollbackAndCorrupt",
-     "iOS C7.4 missing held active row rollback and Corrupt"),
+     "testC741RejectedAuthenticationHeldRetained",
+     "iOS C7.4.1 rejected authentication held retained"),
     ("ios/Godstone/Tests/GodstoneMeshTests/SqliteDeliveryRepositoryTests.swift",
-     "testC74FaultAfterAckCasBothRestored",
-     "iOS C7.4 fault after ACK CAS both restored"),
+     "testC741NotAckEligibleNoneModeHeldRetained",
+     "iOS C7.4.1 not ack eligible NONE mode held retained"),
     ("ios/Godstone/Tests/GodstoneMeshTests/SqliteDeliveryRepositoryTests.swift",
-     "testC74FaultAfterHeldDeleteBothRestored",
-     "iOS C7.4 fault after held delete both restored"),
+     "testC741MissingHeldActiveRowRollbackAndCorrupt",
+     "iOS C7.4.1 missing held active row rollback and Corrupt"),
     ("ios/Godstone/Tests/GodstoneMeshTests/SqliteDeliveryRepositoryTests.swift",
-     "testC74HeldDeleteSqlFailureYieldsStorageFailureAndRollsBack",
-     "iOS C7.4 held delete SQL failure -> StorageFailure and rollback"),
+     "testC741FaultAfterAckCasBothRestored",
+     "iOS C7.4.1 fault after ACK CAS both restored"),
+    ("ios/Godstone/Tests/GodstoneMeshTests/SqliteDeliveryRepositoryTests.swift",
+     "testC741FaultAfterHeldDeleteBothRestored",
+     "iOS C7.4.1 fault after held delete both restored"),
+    ("ios/Godstone/Tests/GodstoneMeshTests/SqliteDeliveryRepositoryTests.swift",
+     "testC741HeldDeleteSqlFailureYieldsStorageFailureAndRollsBack",
+     "iOS C7.4.1 held delete SQL failure -> StorageFailure and rollback"),
+    ("ios/Godstone/Tests/GodstoneMeshTests/SqliteDeliveryRepositoryTests.swift",
+     "testC741SequentialDuplicateAckShortCircuitsWithoutReAuth",
+     "iOS C7.4.1 sequential duplicate ACK short-circuits without re-auth"),
+    ("ios/Godstone/Tests/GodstoneMeshTests/SqliteDeliveryRepositoryTests.swift",
+     "testC741DuplicateAuthenticatedRaceOneAppliedOneDuplicate",
+     "iOS C7.4.1 duplicate authenticated race one Applied one Duplicate"),
+    ("ios/Godstone/Tests/GodstoneMeshTests/SqliteDeliveryRepositoryTests.swift",
+     "testC741ProductionEnqueueDirectOutboundAfterAckReturnsRejectedTerminalState",
+     "iOS C7.4.1 direct enqueue after ACK returns RejectedTerminalState"),
+    ("ios/Godstone/Tests/GodstoneMeshTests/SqliteDeliveryRepositoryTests.swift",
+     "testC741CapacityReleasedOnAuthenticatedAckIsReusableByNewFrame",
+     "iOS C7.4.1 capacity released on ACK is reusable"),
+    ("ios/Godstone/Tests/GodstoneMeshTests/SqliteDeliveryRepositoryTests.swift",
+     "testSkipHeldRetirementLeavesSplitStateProvingAtomicRetirementIsLoadBearing",
+     "iOS cross-table mutation control - skipping held retirement leaves split state"),
 ]
 
 
@@ -271,6 +313,26 @@ def scan(root: Path) -> list[str]:
         text = ios_delivery_repo.read_text(encoding="utf-8", errors="replace")
         if "func acknowledgeBound(" in text:
             missing.append("iOS DeliveryRepository must not expose state-only acknowledgeBound (must use acknowledgeBoundAndRetire)")
+
+    # Structural check: Android SqliteDeliveryRepository acknowledgeBoundAndRetire must use inTransaction + deleteHeld
+    android_sqlite_repo = root / "android/mesh/src/main/java/io/godstone/mesh/delivery/SqliteDeliveryRepository.kt"
+    if android_sqlite_repo.is_file():
+        text = android_sqlite_repo.read_text(encoding="utf-8", errors="replace")
+        if "class SqliteDeliveryRepository" in text:
+            if "inTransaction" not in text:
+                missing.append("android/mesh/src/main/java/io/godstone/mesh/delivery/SqliteDeliveryRepository.kt: acknowledgeBoundAndRetire must execute inside inTransaction")
+            if "deleteHeld" not in text:
+                missing.append("android/mesh/src/main/java/io/godstone/mesh/delivery/SqliteDeliveryRepository.kt: acknowledgeBoundAndRetire must call deleteHeld")
+
+    # Structural check: iOS MessageStore atomicAcknowledgeAndRetire must use withTransaction + deleteHeldSql
+    ios_message_store = root / "ios/Godstone/Sources/GodstoneMesh/MessageStore.swift"
+    if ios_message_store.is_file():
+        text = ios_message_store.read_text(encoding="utf-8", errors="replace")
+        if "class SqliteMessageStore" in text:
+            if "func atomicAcknowledgeAndRetire(" not in text:
+                missing.append("ios/Godstone/Sources/GodstoneMesh/MessageStore.swift: SqliteMessageStore must implement atomicAcknowledgeAndRetire")
+            if "deleteHeldSql" not in text:
+                missing.append("ios/Godstone/Sources/GodstoneMesh/MessageStore.swift: atomicAcknowledgeAndRetire must use deleteHeldSql")
 
     return missing
 
