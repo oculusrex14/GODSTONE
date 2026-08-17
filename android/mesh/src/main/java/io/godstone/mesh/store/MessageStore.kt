@@ -421,7 +421,11 @@ internal class DeliveryRow(
         get() = _expectedRecipient?.copyOf()
 }
 
-/** A stored row before it is typed into a [FrameV2] (the type code may be unknown). */
+/**
+ * A stored row before it is typed into a FrameV2 (the type code may be unknown / corrupt).
+ * Canonical representation: `held_frames.type` stores the unsigned GMP/2 type octet
+ * as INTEGER 0...255 (Android: Byte is normalized with & 0xFF before persistence).
+ */
 internal class StoreRow(
     val typeCode: Int,
     val msgId: ByteArray,
@@ -439,12 +443,8 @@ internal class StoreRow(
 
     /** Resolve to a FrameV2, or null if the row fails wire invariants or has an unknown type code. */
     fun toFrame(): FrameV2? {
-        val byteVal = when (typeCode) {
-            in 0..255 -> typeCode.toByte()
-            in -128..-1 -> typeCode.toByte()
-            else -> return null
-        }
-        val type = TypeV2.from(byteVal) ?: return null
+        if (typeCode !in 0..255) return null
+        val type = TypeV2.from(typeCode.toByte()) ?: return null
         if (msgId.size != 16) return null
         if (routingTag.size != 4) return null
         if (ttl !in 0..FrameV2.MAX_TTL) return null

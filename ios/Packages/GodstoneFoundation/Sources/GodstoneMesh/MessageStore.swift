@@ -335,6 +335,8 @@ internal struct DeliveryRow {
 
 /// A stored row before it is typed into a FrameV2 (the type code may be
 /// unknown / corrupt).
+/// Canonical representation: `held_frames.type` stores the unsigned GMP/2 type octet
+/// as INTEGER 0...255 (iOS: UInt8 rawValue is persisted as Int32).
 internal struct StoreRow {
     let typeCode: Int32
     let msgId: Data
@@ -777,10 +779,11 @@ public final class SqliteMessageStore: MessageStore {
         return sqlite3_changes(db) == 1
     }
 
-    /// C6.4.1-H: strict final-presence check (B2/B3). THROWS
-    /// `StoreError.prepareFailed` on a prepare failure; a step of DONE means
-    /// "not present" (not an error), so it returns false without throwing. Used
-    /// inside `withTransaction` so a SQL failure unwinds to ROLLBACK.
+    /// C6.4.1-H / C6.6.3: strict final-presence check. THROWS on prepare failure or
+    /// any step error (SQLITE_INTERRUPT, SQLITE_BUSY, SQLITE_IOERR).
+    /// ONLY SQLITE_DONE indicates absence (returns false).
+    /// SQLITE_ROW indicates presence (returns true).
+    /// A step error throws StoreError.stepFailed to trigger transaction ROLLBACK and failedStorage.
     @inline(__always)
     private func containsNoLockStrict(_ db: OpaquePointer, _ msgId: Data) throws -> Bool {
         var stmt: OpaquePointer?
@@ -789,7 +792,14 @@ public final class SqliteMessageStore: MessageStore {
         }
         defer { sqlite3_finalize(stmt) }
         bindBlob(stmt, 1, msgId)
-        return sqlite3_step(stmt) == SQLITE_ROW
+        let rc = sqlite3_step(stmt)
+        if rc == SQLITE_ROW {
+            return true
+        }
+        if rc == SQLITE_DONE {
+            return false
+        }
+        throw StoreError.stepFailed
     }
 
     /// C6.6.1 / C6.6.2: strict held-row read. THROWS on a prepare/step error.

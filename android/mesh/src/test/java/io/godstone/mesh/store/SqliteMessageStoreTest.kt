@@ -2,6 +2,9 @@ package io.godstone.mesh.store
 
 import io.godstone.mesh.delivery.AckMode
 import io.godstone.mesh.delivery.DeliveryState
+import io.godstone.mesh.delivery.DeliveryTransition
+import io.godstone.mesh.delivery.SqliteDeliveryRepository
+import io.godstone.mesh.delivery.TransitionResult
 import io.godstone.mesh.wire.v2.FrameV2
 import io.godstone.mesh.wire.v2.Priority
 import io.godstone.mesh.wire.v2.TypeV2
@@ -938,8 +941,10 @@ class SqliteMessageStoreTest {
         val ra = store.enqueueDirectOutbound(fa, expectedRecipient = rec, localOriginNodeId = origin)
         assertEquals(OutboundEnqueueResult.Created(fa), ra)
 
-        // Advance A to HANDED_TO_RELAY (state = 2)
-        engine!!.execRawSql("UPDATE delivery_state SET state = ${io.godstone.mesh.delivery.DeliveryState.HANDED_TO_RELAY.code}")
+        // Advance A to HANDED_TO_RELAY (state = 2) via production SqliteDeliveryRepository
+        val repo = SqliteDeliveryRepository(engine!!)
+        val tr = repo.transition(fa.msgId, DeliveryTransition.MARK_HANDED)
+        assertEquals(TransitionResult.Applied, tr)
 
         // Enqueue B under capacity pressure
         val rb = store.enqueueDirectOutbound(fb, expectedRecipient = rec, localOriginNodeId = origin)
@@ -1128,5 +1133,70 @@ class SqliteMessageStoreTest {
         // Database must remain completely empty
         assertEquals(0L, bytes())
         assertTrue(heldIds().isEmpty())
+    }
+
+    @Test
+    fun `C6_6_3 raw SQL corrupted type negative 16 does not alias SOS and fails closed`() = runBlocking {
+        open(maxBytes = 4096L)
+        val f = directFrame(1, payloadSize = 100)
+        val rec = recipient(1)
+        val origin = localNode(1)
+
+        val created = store.enqueueDirectOutbound(f, expectedRecipient = rec, localOriginNodeId = origin)
+        assertEquals(OutboundEnqueueResult.Created(f), created)
+
+        // Corrupt type in held_frames to -16 (0xF0 as signed byte, which would alias TypeV2.SOS if signed bytes were accepted)
+        val conn = DriverManager.getConnection("jdbc:sqlite:${tmp.absolutePath}")
+        conn.use { c ->
+            val stmt = c.prepareStatement("UPDATE held_frames SET type = -16 WHERE msg_id = ?")
+            stmt.setBytes(1, f.msgId)
+            val n = stmt.executeUpdate()
+            assertEquals(1, n)
+        }
+
+        // Direct retry must fail closed as InconsistentState (StoreRow.toFrame() returns null)
+        val retry = store.enqueueDirectOutbound(f, expectedRecipient = rec, localOriginNodeId = origin)
+        assertEquals(OutboundEnqueueResult.InconsistentState, retry)
+
+        // Directly reading the row proves toFrame() returns null for negative typeCode
+        val row = engine!!.readHeld(f.msgId)
+        assertNotNull(row)
+        assertEquals(-16, row!!.typeCode)
+        assertNull(row.toFrame())
+    }
+
+    @Test
+    fun `C6_6 enqueueDirectOutbound policy rejection on non-direct or unsealed or invalid msg_id`() = runBlocking {
+        open(maxBytes = 4096L)
+        val rec = recipient(1)
+        val origin = localNode(1)
+
+        // Non-direct priority
+        val groupFrame = directFrame(1, priority = Priority.GROUP)
+        assertEquals(OutboundEnqueueResult.InvalidArgument, store.enqueueDirectOutbound(groupFrame, rec, origin))
+
+        // Unsealed
+        val unsealedFrame = directFrame(2, sealed = false)
+        assertEquals(OutboundEnqueueResult.InvalidArgument, store.enqueueDirectOutbound(unsealedFrame, rec, origin))
+
+        // Has POW
+        val powFrame = directFrame(3, hasPow = true)
+        assertEquals(OutboundEnqueueResult.InvalidArgument, store.enqueueDirectOutbound(powFrame, rec, origin))
+
+        // Invalid msg_id length
+        val badIdFrame = directFrame(4, msgIdOverride = ByteArray(15))
+        assertEquals(OutboundEnqueueResult.InvalidArgument, store.enqueueDirectOutbound(badIdFrame, rec, origin))
+
+        // Invalid recipient length
+        val validFrame = directFrame(5)
+        assertEquals(OutboundEnqueueResult.InvalidArgument, store.enqueueDirectOutbound(validFrame, ByteArray(15), origin))
+
+        // Invalid localOriginNodeId length
+        assertEquals(OutboundEnqueueResult.InvalidArgument, store.enqueueDirectOutbound(validFrame, rec, ByteArray(15)))
+
+        // Database must remain unchanged (zero held and zero delivery rows)
+        assertEquals(0L, bytes())
+        assertTrue(heldIds().isEmpty())
+        assertNull(readDelivery(validFrame.msgId))
     }
 }

@@ -990,9 +990,10 @@ final class SqliteMessageStoreTests: XCTestCase {
         let ra = store.enqueueDirectOutbound(fa, expectedRecipient: rec, localOriginNodeId: origin)
         XCTAssertEqual(ra, .created(fa))
 
-        // Advance A to HANDED_TO_RELAY (state = 2)
-        let updated = store.execRawUpdate("UPDATE \(StoreSchema.deliveryTable) SET \(StoreSchema.colDState) = \(DeliveryState.handedToRelay.code) WHERE \(StoreSchema.colDMsgId) = ?", [fa.msgId])
-        XCTAssertEqual(updated, 1)
+        // Advance A to HANDED_TO_RELAY (state = 2) via production SqliteDeliveryRepository
+        let repo = SqliteDeliveryRepository(store)
+        let tr = repo.transition(fa.msgId, .markHanded)
+        XCTAssertEqual(tr, TransitionResult.applied)
 
         // Enqueue B under capacity pressure
         let rb = store.enqueueDirectOutbound(fb, expectedRecipient: rec, localOriginNodeId: origin)
@@ -1140,19 +1141,26 @@ final class SqliteMessageStoreTests: XCTestCase {
 
     func testC662ReadHeldNoLockStrictStepErrorYieldsStorageFailureAndRollsBack() {
         _ = open(maxBytes: 4096)
-        let f = directFrame(1, payloadSize: 100)
+        let priorFrame = directFrame(99, payloadSize: 50)
         let rec = recipient(1)
         let origin = localNode(1)
 
-        // Use fault hook after capacity eviction to install a progress handler that interrupts the step
+        // Preseed a prior frame
+        let priorEnqueue = store.enqueueDirectOutbound(priorFrame, expectedRecipient: recipient(99), localOriginNodeId: origin)
+        XCTAssertEqual(priorEnqueue, .created(priorFrame))
+
+        let f = directFrame(1, payloadSize: 100)
+        let oneShot = OneShotProgressInterrupt()
+
+        // Use fault hook after capacity eviction to install a ONE-SHOT progress handler that interrupts readHeld
         let result = store.enqueueDirectOutboundAtWithFault(
             f,
             expectedRecipient: rec,
             localOriginNodeId: origin,
             receivedAt: 100
         ) { hook, db in
-            if hook == "after_evict", let db = db {
-                sqlite3_progress_handler(db, 1, { _ in 1 }, nil)
+            if hook == "after_evict" {
+                oneShot.arm(db: db)
             }
         }
 
@@ -1160,9 +1168,82 @@ final class SqliteMessageStoreTests: XCTestCase {
         XCTAssertNotEqual(result, .rejectedCapacity)
         XCTAssertNotEqual(result, .inconsistentState)
 
-        // Transaction must have rolled back completely
+        // Close and reopen store to independently verify rollback
+        _ = reopen(maxBytes: 4096)
         XCTAssertFalse(containsId(heldIds(), f.msgId))
         XCTAssertNil(readDeliveryRow(f.msgId))
+
+        // Preseeded frame remains intact and active
+        XCTAssertTrue(containsId(heldIds(), priorFrame.msgId))
+        let priorDelivery = readDeliveryRow(priorFrame.msgId)
+        XCTAssertNotNil(priorDelivery)
+        XCTAssertEqual(priorDelivery?.state, DeliveryState.queuedDurably.code)
+
+        // Database remains usable for subsequent enqueue
+        let validF = directFrame(2, payloadSize: 50)
+        let validResult = store.enqueueDirectOutbound(validF, expectedRecipient: rec, localOriginNodeId: origin)
+        XCTAssertEqual(validResult, .created(validF))
+        XCTAssertTrue(containsId(heldIds(), validF.msgId))
+    }
+
+    func testC663ContainsNoLockStrictStepErrorYieldsFailedStorageAndRollsBack() {
+        _ = open(maxBytes: 4096)
+        let f = frame(1, .group, 50)
+        let origin = localNode(1)
+
+        let oneShot = OneShotProgressInterrupt()
+        let result = store.persistAtWithFault(f, receivedFrom: origin, receivedAt: 100) { hook, db in
+            if hook == "before_contains" {
+                oneShot.arm(db: db)
+            }
+        }
+
+        // Must fail with failedStorage (thrown stepFailed unwound transaction to ROLLBACK)
+        XCTAssertEqual(result, .failedStorage)
+        XCTAssertNotEqual(result, .rejectedCapacity)
+        XCTAssertNotEqual(result, .heldNew)
+        XCTAssertNotEqual(result, .heldDuplicate)
+
+        // Close and reopen store over the same database to independently verify rollback
+        _ = reopen(maxBytes: 4096)
+        XCTAssertFalse(containsId(heldIds(), f.msgId))
+
+        // Database remains fully usable after the failure
+        let f2 = frame(2, .group, 50)
+        let res2 = store.persist(f2, receivedFrom: origin)
+        XCTAssertEqual(res2, .heldNew)
+        XCTAssertTrue(containsId(heldIds(), f2.msgId))
+    }
+
+    private final class OneShotProgressInterrupt {
+        private let rawPtr: UnsafeMutablePointer<Int32>
+
+        init() {
+            rawPtr = UnsafeMutablePointer<Int32>.allocate(capacity: 1)
+            rawPtr.pointee = 0
+        }
+
+        deinit {
+            rawPtr.deallocate()
+        }
+
+        func arm(db: OpaquePointer?) {
+            guard let db = db else { return }
+            rawPtr.pointee = 0
+            sqlite3_progress_handler(db, 1, { ptr in
+                guard let p = ptr?.assumingMemoryBound(to: Int32.self) else { return 0 }
+                if p.pointee == 0 {
+                    p.pointee = 1
+                    return 1 // interrupt first operation
+                }
+                return 0 // allow subsequent operations (ROLLBACK, verification, etc.)
+            }, rawPtr)
+        }
+
+        func disarm(db: OpaquePointer?) {
+            guard let db = db else { return }
+            sqlite3_progress_handler(db, 0, nil, nil)
+        }
     }
 
     // MARK: - helpers

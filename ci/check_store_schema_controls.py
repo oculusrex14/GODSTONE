@@ -135,7 +135,7 @@ CONTROLS: list[tuple[str, str, str]] = [
     ("ios/Godstone/Tests/GodstoneMeshTests/MeshNodeDeliveryIntegrationTests.swift",
      "testC661DispatchDirectTransmitsStoreReturnedCanonicalFrameAndNotCallerModifiedFrame",
      "iOS dispatchDirect transports canonical store frame"),
-    # --- Android: C6.6.2 capacity safety and strict decoding controls ---
+    # --- Android: C6.6.2 & C6.6.3 capacity safety, strict decoding, and policy controls ---
     ("android/mesh/src/test/java/io/godstone/mesh/store/SqliteMessageStoreTest.kt",
      "capacity eviction protects QUEUED_DURABLY active direct frame from new direct pressure",
      "Android capacity eviction protects active QUEUED_DURABLY frame"),
@@ -148,7 +148,13 @@ CONTROLS: list[tuple[str, str, str]] = [
     ("android/mesh/src/test/java/io/godstone/mesh/store/SqliteMessageStoreTest.kt",
      "raw SQL corrupted type integer does not alias TypeV2 and fails closed",
      "Android raw SQL corrupted type integer does not alias -> fail closed"),
-    # --- iOS: C6.6.2 capacity safety and strict decoding controls ---
+    ("android/mesh/src/test/java/io/godstone/mesh/store/SqliteMessageStoreTest.kt",
+     "C6_6_3 raw SQL corrupted type negative 16 does not alias SOS and fails closed",
+     "Android raw SQL type=-16 does not alias SOS -> fail closed"),
+    ("android/mesh/src/test/java/io/godstone/mesh/store/SqliteMessageStoreTest.kt",
+     "C6_6 enqueueDirectOutbound policy rejection on non-direct or unsealed or invalid msg_id",
+     "Android direct enqueue policy rejection matrix -> InvalidArgument"),
+    # --- iOS: C6.6.2 & C6.6.3 capacity safety, strict decoding, and error handling controls ---
     ("ios/Godstone/Tests/GodstoneMeshTests/SqliteMessageStoreTests.swift",
      "testC662CapacityEvictionProtectsQueuedDurablyActiveDirectFrameFromNewDirectPressure",
      "iOS capacity eviction protects active QUEUED_DURABLY frame"),
@@ -164,6 +170,9 @@ CONTROLS: list[tuple[str, str, str]] = [
     ("ios/Godstone/Tests/GodstoneMeshTests/SqliteMessageStoreTests.swift",
      "testC662ReadHeldNoLockStrictStepErrorYieldsStorageFailureAndRollsBack",
      "iOS readHeld sqlite step error -> StorageFailure and rollback"),
+    ("ios/Godstone/Tests/GodstoneMeshTests/SqliteMessageStoreTests.swift",
+     "testC663ContainsNoLockStrictStepErrorYieldsFailedStorageAndRollsBack",
+     "iOS containsNoLockStrict step error -> failedStorage and rollback"),
 ]
 
 
@@ -182,19 +191,35 @@ def scan(root: Path) -> list[str]:
                 f"(looked for: {marker!r})"
             )
 
-    # Structural check: Android MeshNode.dispatchDirect encodes canonicalFrame
+    # Structural check: Android MeshNode.dispatchDirect encodes canonicalFrame and never frame.encode()
     android_mesh_node = root / "android/mesh/src/main/java/io/godstone/mesh/MeshNode.kt"
     if android_mesh_node.is_file():
         text = android_mesh_node.read_text(encoding="utf-8", errors="replace")
-        if "val bytes = canonicalFrame.encode()" not in text:
-            missing.append("android/mesh/src/main/java/io/godstone/mesh/MeshNode.kt: dispatchDirect must encode canonicalFrame")
+        if "fun dispatchDirect(" in text:
+            idx = text.find("fun dispatchDirect(")
+            end_idx = text.find("fun ingestInbound(", idx)
+            if end_idx == -1:
+                end_idx = len(text)
+            fn_body = text[idx:end_idx]
+            if "val bytes = canonicalFrame.encode()" not in fn_body:
+                missing.append("android/mesh/src/main/java/io/godstone/mesh/MeshNode.kt: dispatchDirect must encode canonicalFrame")
+            if "frame.encode()" in fn_body:
+                missing.append("android/mesh/src/main/java/io/godstone/mesh/MeshNode.kt: dispatchDirect must not call frame.encode()")
 
-    # Structural check: iOS MeshNode.dispatchDirect sends canonicalFrame
+    # Structural check: iOS MeshNode.dispatchDirect sends canonicalFrame and never send(frame,
     ios_mesh_node = root / "ios/Godstone/Sources/GodstoneMesh/MeshNode.swift"
     if ios_mesh_node.is_file():
         text = ios_mesh_node.read_text(encoding="utf-8", errors="replace")
-        if "send(canonicalFrame, peer)" not in text:
-            missing.append("ios/Godstone/Sources/GodstoneMesh/MeshNode.swift: dispatchDirect must transport canonicalFrame")
+        if "func dispatchDirect(" in text:
+            idx = text.find("func dispatchDirect(")
+            end_idx = text.find("func ingestInbound(", idx)
+            if end_idx == -1:
+                end_idx = len(text)
+            fn_body = text[idx:end_idx]
+            if "send(canonicalFrame, peer)" not in fn_body:
+                missing.append("ios/Godstone/Sources/GodstoneMesh/MeshNode.swift: dispatchDirect must transport canonicalFrame")
+            if "send(frame," in fn_body:
+                missing.append("ios/Godstone/Sources/GodstoneMesh/MeshNode.swift: dispatchDirect must not transport frame directly")
 
     return missing
 
