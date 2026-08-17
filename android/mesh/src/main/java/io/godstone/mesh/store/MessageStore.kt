@@ -355,6 +355,10 @@ internal object StoreSchema {
     fun clearDeliverySql(): String =
         "DELETE FROM $DELIVERY_TABLE WHERE $COL_D_MSG_ID = ?"
 
+    /** Drop the held frame for msg_id (C7.4 atomic ACK retirement). Bind: (1) msg_id. */
+    fun deleteHeldSql(): String =
+        "DELETE FROM $TABLE WHERE $COL_MSG_ID = ?"
+
     // ------------------------------------------------------------------
     // C6.4.1-E/F: schema-integrity validation. A current-version file is NOT
     // trusted to be well-formed just because user_version matches -- a tampered
@@ -553,6 +557,12 @@ internal interface StoreDb {
      * production paths (the repository never calls this).
      */
     fun execRawSql(sql: String)
+
+    /**
+     * Delete the exact held frame for [msgId] (C7.4). Returns the affected row count
+     * (1 = deleted, 0 = missing). THROWS on a storage failure (SQL / IO).
+     */
+    fun deleteHeld(msgId: ByteArray): Int
 
     fun close()
 }
@@ -995,6 +1005,12 @@ internal class SqlcipherStoreDb(ctx: Context) : StoreDb {
     override fun execRawSql(sql: String) {
         helper.writableDatabase.execSQL(sql)
     }
+
+    override fun deleteHeld(msgId: ByteArray): Int =
+        helper.writableDatabase.compileStatement(StoreSchema.deleteHeldSql()).use { stmt ->
+            stmt.bindBlob(1, msgId)
+            stmt.executeUpdateDelete()
+        }
 
     override fun close() = helper.close()
 

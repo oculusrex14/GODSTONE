@@ -69,9 +69,18 @@ class SqliteDeliveryRepositoryTest {
     private val rng = SecureRandom()
 
     private fun msgId(seed: Byte) = ByteArray(16) { (it + seed).toByte() }
+    private fun msgId(seed: Int) = ByteArray(16) { (it + seed).toByte() }
     private val routingTag = ByteArray(4) { it.toByte() }
     private fun nodeA() = ByteArray(16) { 0x01 }
     private fun nodeB() = ByteArray(16) { 0x02 }
+
+    /** Resolver binding a single node id to a key. */
+    private class SingleRecipientResolver(
+        val expectedNodeId: ByteArray, val pubKey: ByteArray,
+    ) : RecipientKeyResolver {
+        override fun publicSigningKey(nodeId: ByteArray): ByteArray? =
+            if (nodeId.contentEquals(expectedNodeId)) pubKey else null
+    }
 
     /** Resolver binding two distinct node ids to two distinct keys (C2 test). */
     private class TwoRecipientResolver(
@@ -94,6 +103,21 @@ class SqliteDeliveryRepositoryTest {
 
     private fun found(j: DeliveryRepository, mid: ByteArray): DeliveryRecord =
         (j.get(mid) as DeliveryLookup.Found).record
+
+    private fun plantHeld(file: File, mid: ByteArray) {
+        val db = JdbcStoreDb(file)
+        try {
+            val f = FrameV2(TypeV2.MESSAGE, mid, routingTag, 10, 0, 0, ByteArray(32))
+            db.insert(f, ByteArray(0), 100L)
+        } finally {
+            db.close()
+        }
+    }
+
+    private fun plantHeld(db: StoreDb, mid: ByteArray) {
+        val f = FrameV2(TypeV2.MESSAGE, mid, routingTag, 10, 0, 0, ByteArray(32))
+        db.insert(f, ByteArray(0), 100L)
+    }
 
     /** State via the typed [DeliveryTracker.lookup] seam (C6.4-B: state() is gone). */
     private fun stateOf(tracker: DeliveryTracker, mid: ByteArray): DeliveryState? =
@@ -223,8 +247,9 @@ class SqliteDeliveryRepositoryTest {
                 "state-only write must preserve the bound expected recipient")
             assertEquals(AckMode.SINGLE_RECIPIENT, found(j, mid).ackMode,
                 "state-only write must preserve the ack mode")
-            // ACK: HANDED -> ACKNOWLEDGED (guarded CAS binding state+mode+recipient).
-            assertEquals(AckResult.Applied, j.acknowledgeBound(mid, nodeA()))
+            // ACK: HANDED -> ACKNOWLEDGED (guarded CAS binding state+mode+recipient + held retirement).
+            plantHeld(file, mid)
+            assertEquals(AckResult.Applied, j.acknowledgeBoundAndRetire(mid, nodeA()))
             assertEquals(DeliveryState.ACKNOWLEDGED_BY_RECIPIENT, found(j, mid).state)
             assertEquals(nodeA().toList(), found(j, mid).expectedRecipientNodeId?.toList(),
                 "ACKNOWLEDGED write must preserve the bound expected recipient")
@@ -345,16 +370,16 @@ class SqliteDeliveryRepositoryTest {
                     "expire with a $size-byte msg_id must be InvalidArgument")
                 assertEquals(TransitionResult.InvalidArgument, j.transition(bad, DeliveryTransition.CANCEL),
                     "cancel with a $size-byte msg_id must be InvalidArgument")
-                assertEquals(AckResult.InvalidArgument, j.acknowledgeBound(bad, recipient),
-                    "acknowledgeBound with a $size-byte msg_id must be InvalidArgument")
+                assertEquals(AckResult.InvalidArgument, j.acknowledgeBoundAndRetire(bad, recipient),
+                    "acknowledgeBoundAndRetire with a $size-byte msg_id must be InvalidArgument")
                 assertEquals(ClearResult.InvalidArgument, j.clear(bad),
                     "clear with a $size-byte msg_id must be InvalidArgument")
             }
-            // And a 16-byte recipient is required for acknowledgeBound (a non-16
+            // And a 16-byte recipient is required for acknowledgeBoundAndRetire (a non-16
             // recipient is InvalidArgument too, NOT a SQL error).
             val mid = msgId(11)
-            assertEquals(AckResult.InvalidArgument, j.acknowledgeBound(mid, ByteArray(8)),
-                "acknowledgeBound with a non-16-byte recipient must be InvalidArgument")
+            assertEquals(AckResult.InvalidArgument, j.acknowledgeBoundAndRetire(mid, ByteArray(8)),
+                "acknowledgeBoundAndRetire with a non-16-byte recipient must be InvalidArgument")
         } finally {
             file.delete()
         }
@@ -533,7 +558,7 @@ class SqliteDeliveryRepositoryTest {
             // enqueue over a corrupt row cannot silently revive it.
             assertEquals(EnqueueResult.Corrupt, j.enqueue(mid, AckMode.SINGLE_RECIPIENT, nodeA()))
             // ACK / transition over a corrupt row fail closed.
-            assertEquals(AckResult.Corrupt, j.acknowledgeBound(mid, nodeA()))
+            assertEquals(AckResult.Corrupt, j.acknowledgeBoundAndRetire(mid, nodeA()))
             assertEquals(TransitionResult.Corrupt, j.transition(mid, DeliveryTransition.MARK_HANDED))
         } finally {
             file.delete()
@@ -593,6 +618,9 @@ class SqliteDeliveryRepositoryTest {
         @Volatile var faultReadDelivery = false
         @Volatile var faultInsertDelivery = false
         @Volatile var faultExecDeliveryUpdate = false
+        @Volatile var faultDeleteHeld = false
+        @Volatile var faultAfterAckCas: (() -> Unit)? = null
+        @Volatile var faultAfterHeldDelete: (() -> Unit)? = null
 
         override fun insert(frame: FrameV2, receivedFrom: ByteArray, receivedAt: Long): Long =
             inner.insert(frame, receivedFrom, receivedAt)
@@ -603,7 +631,7 @@ class SqliteDeliveryRepositoryTest {
         override fun forEachRowOrderedByPriority(visit: (io.godstone.mesh.store.StoreRow) -> Boolean) =
             inner.forEachRowOrderedByPriority(visit)
         override fun forEachMsgId(visit: (ByteArray) -> Boolean) = inner.forEachMsgId(visit)
-        override fun <T> inTransaction(block: (StoreDb) -> T): T = inner.inTransaction(block)
+        override fun <T> inTransaction(block: (StoreDb) -> T): T = inner.inTransaction { block(this) }
 
         override fun readDelivery(msgId: ByteArray): DeliveryRow? = synchronized(lock) {
             if (faultReadDelivery) throw java.sql.SQLException("injected readDelivery fault")
@@ -619,7 +647,16 @@ class SqliteDeliveryRepositoryTest {
 
         override fun execDeliveryUpdate(sql: String, bytesArgs: Array<ByteArray?>): Int = synchronized(lock) {
             if (faultExecDeliveryUpdate) throw java.sql.SQLException("injected execDeliveryUpdate fault")
-            inner.execDeliveryUpdate(sql, bytesArgs)
+            val res = inner.execDeliveryUpdate(sql, bytesArgs)
+            faultAfterAckCas?.invoke()
+            res
+        }
+
+        override fun deleteHeld(msgId: ByteArray): Int = synchronized(lock) {
+            if (faultDeleteHeld) throw java.sql.SQLException("injected deleteHeld fault")
+            val res = inner.deleteHeld(msgId)
+            faultAfterHeldDelete?.invoke()
+            res
         }
 
         override fun execRawSql(sql: String) = synchronized(lock) { inner.execRawSql(sql) }
@@ -694,7 +731,7 @@ class SqliteDeliveryRepositoryTest {
             val j = SqliteDeliveryRepository(wrapped)
             wrapped.faultExecDeliveryUpdate = true
             assertEquals(AckResult.StorageFailure,
-                j.acknowledgeBound(msgId(24), nodeA()),
+                j.acknowledgeBoundAndRetire(msgId(24), nodeA()),
                 "an ACK CAS SQL failure must be StorageFailure")
         } finally {
             file.delete()
@@ -768,7 +805,7 @@ class SqliteDeliveryRepositoryTest {
             j.transition(mid, DeliveryTransition.CANCEL)      // CANCELLED
             // The ACK CAS requires state IN (QUEUED, HANDED); CANCELLED(5) is not -> 0
             // rows -> re-read CANCELLED -> RejectedState. The terminal state survives.
-            assertEquals(AckResult.RejectedState, j.acknowledgeBound(mid, nodeA()))
+            assertEquals(AckResult.RejectedState, j.acknowledgeBoundAndRetire(mid, nodeA()))
             assertEquals(DeliveryState.CANCELLED_LOCALLY, found(j, mid).state)
         } finally {
             file.delete()
@@ -783,7 +820,8 @@ class SqliteDeliveryRepositoryTest {
             val mid = msgId(33)
             j.enqueue(mid, AckMode.SINGLE_RECIPIENT, nodeA())
             j.transition(mid, DeliveryTransition.MARK_HANDED)
-            assertEquals(AckResult.Applied, j.acknowledgeBound(mid, nodeA()))
+            plantHeld(file, mid)
+            assertEquals(AckResult.Applied, j.acknowledgeBoundAndRetire(mid, nodeA()))
             // ACKNOWLEDGED(3) not in (QUEUED, HANDED) -> cancel CAS 0 rows -> RejectedState.
             assertEquals(TransitionResult.RejectedState, j.transition(mid, DeliveryTransition.CANCEL))
             assertEquals(TransitionResult.RejectedState, j.transition(mid, DeliveryTransition.EXPIRE))
@@ -806,7 +844,7 @@ class SqliteDeliveryRepositoryTest {
             assertEquals(EnqueueResult.Created, j.enqueue(mid, AckMode.SINGLE_RECIPIENT, nodeB()))
             // Alice's old ACK CAS: expected=nodeA but row is nodeB -> 0 rows -> re-read
             // -> binding changed -> UnknownMessage. Bob's row is untouched.
-            assertEquals(AckResult.UnknownMessage, j.acknowledgeBound(mid, nodeA()))
+            assertEquals(AckResult.UnknownMessage, j.acknowledgeBoundAndRetire(mid, nodeA()))
             val rec = found(j, mid)
             assertEquals(nodeB().toList(), rec.expectedRecipientNodeId?.toList())
             assertEquals(DeliveryState.QUEUED_DURABLY, rec.state, "Bob's fresh row stays QUEUED")
@@ -823,11 +861,12 @@ class SqliteDeliveryRepositoryTest {
             val mid = msgId(35)
             j.enqueue(mid, AckMode.SINGLE_RECIPIENT, nodeA())
             j.transition(mid, DeliveryTransition.MARK_HANDED)
-            assertEquals(AckResult.Applied, j.acknowledgeBound(mid, nodeA()))
+            plantHeld(file, mid)
+            assertEquals(AckResult.Applied, j.acknowledgeBoundAndRetire(mid, nodeA()))
             // A second authenticated ACK: state is already ACKNOWLEDGED with the SAME
             // binding -> CAS 0 rows -> re-read ACKNOWLEDGED same binding -> Duplicate.
             assertEquals(AckResult.DuplicateAuthenticatedAck,
-                j.acknowledgeBound(mid, nodeA()))
+                j.acknowledgeBoundAndRetire(mid, nodeA()))
             assertEquals(DeliveryState.ACKNOWLEDGED_BY_RECIPIENT, found(j, mid).state)
         } finally {
             file.delete()
@@ -937,6 +976,7 @@ class SqliteDeliveryRepositoryTest {
             val mid = msgId(42)
             tracker.enqueue(mid, AckMode.SINGLE_RECIPIENT, nodeA())
             tracker.markHandedToRelay(mid)
+            plantHeld(wrapped, mid)
             val (_, privA) = realKeypair()
             val ack = AckFrame.build(mid, privA, nodeA(), routingTag)
             val r1 = AtomicReference<AckResult?>(null)
@@ -996,7 +1036,8 @@ class SqliteDeliveryRepositoryTest {
             val mid = msgId(44)
             tracker.enqueue(mid, AckMode.SINGLE_RECIPIENT, nodeA())
             tracker.markHandedToRelay(mid) // succeeds (no fault yet)
-            // Arm the CAS fault so the ACK's acknowledgeBound throws -> StorageFailure.
+            plantHeld(wrapped, mid)
+            // Arm the CAS fault so the ACK's acknowledgeBoundAndRetire throws -> StorageFailure.
             wrapped.faultExecDeliveryUpdate = true
             val (_, privA) = realKeypair()
             val ack = AckFrame.build(mid, privA, nodeA(), routingTag)
@@ -1090,7 +1131,7 @@ class SqliteDeliveryRepositoryTest {
             j.enqueue(mid, AckMode.SINGLE_RECIPIENT, nodeA())
             j.transition(mid, DeliveryTransition.MARK_HANDED)
             j.transition(mid, DeliveryTransition.CANCEL) // CANCELLED
-            assertEquals(AckResult.RejectedState, j.acknowledgeBound(mid, nodeA()),
+            assertEquals(AckResult.RejectedState, j.acknowledgeBoundAndRetire(mid, nodeA()),
                 "with the state guard ON, an ACK after cancel is RejectedState")
             assertEquals(DeliveryState.CANCELLED_LOCALLY, found(j, mid).state)
 
@@ -1104,7 +1145,7 @@ class SqliteDeliveryRepositoryTest {
             jWeak.transition(mid2, DeliveryTransition.MARK_HANDED)
             jWeak.transition(mid2, DeliveryTransition.CANCEL) // CANCELLED
             assertEquals(AckResult.Applied,
-                jWeak.acknowledgeBound(mid2, nodeA()),
+                jWeak.acknowledgeBoundAndRetire(mid2, nodeA()),
                 "with the state guard OFF, the ACK overwrites CANCELLED -> Applied (WRONG)")
             assertEquals(DeliveryState.ACKNOWLEDGED_BY_RECIPIENT, found(jWeak, mid2).state,
                 "the weakened guard let the ACK reverse a terminal state (WRONG)")
@@ -1124,7 +1165,7 @@ class SqliteDeliveryRepositoryTest {
             j.transition(mid, DeliveryTransition.MARK_HANDED)
             j.clear(mid)
             j.enqueue(mid, AckMode.SINGLE_RECIPIENT, nodeB()) // re-bound to Bob, QUEUED
-            assertEquals(AckResult.UnknownMessage, j.acknowledgeBound(mid, nodeA()),
+            assertEquals(AckResult.UnknownMessage, j.acknowledgeBoundAndRetire(mid, nodeA()),
                 "with the recipient guard ON, Alice's ACK does not bind to Bob's row")
             assertEquals(DeliveryState.QUEUED_DURABLY, found(j, mid).state)
 
@@ -1139,7 +1180,7 @@ class SqliteDeliveryRepositoryTest {
             jWeak.clear(mid2)
             jWeak.enqueue(mid2, AckMode.SINGLE_RECIPIENT, nodeB()) // re-bound to Bob
             assertEquals(AckResult.Applied,
-                jWeak.acknowledgeBound(mid2, nodeA()),
+                jWeak.acknowledgeBoundAndRetire(mid2, nodeA()),
                 "with the recipient guard OFF, Alice's ACK binds to Bob's row -> Applied (WRONG)")
             val rec = found(jWeak, mid2)
             assertEquals(DeliveryState.ACKNOWLEDGED_BY_RECIPIENT, rec.state,
@@ -1168,7 +1209,7 @@ class SqliteDeliveryRepositoryTest {
             // Production repo (mode guard ON): the ACK CAS requires ack_mode=1, but
             // the row is 0 -> 0 rows -> re-read -> binding inconsistent (NONE + non-null
             // recipient) -> Corrupt. Fail closed.
-            assertEquals(AckResult.Corrupt, j.acknowledgeBound(mid, nodeA()),
+            assertEquals(AckResult.Corrupt, j.acknowledgeBoundAndRetire(mid, nodeA()),
                 "with the mode guard ON, an ACK on a NONE-mode (corrupt) row fails closed to Corrupt")
             assertEquals(DeliveryState.HANDED_TO_RELAY, rawStateOf(db, mid), "state unchanged")
 
@@ -1181,7 +1222,7 @@ class SqliteDeliveryRepositoryTest {
             jWeak.transition(mid2, DeliveryTransition.MARK_HANDED)
             plantCorruptBinding(db, mid2, nodeA())
             assertEquals(AckResult.Applied,
-                jWeak.acknowledgeBound(mid2, nodeA()),
+                jWeak.acknowledgeBoundAndRetire(mid2, nodeA()),
                 "with the mode guard OFF, an ACK lands on a NONE-mode row -> Applied (WRONG)")
             assertEquals(DeliveryState.ACKNOWLEDGED_BY_RECIPIENT, rawStateOf(db, mid2),
                 "the weakened guard let a NONE-mode row be acknowledged (WRONG)")
@@ -1199,7 +1240,8 @@ class SqliteDeliveryRepositoryTest {
             val mid = msgId(56)
             j.enqueue(mid, AckMode.SINGLE_RECIPIENT, nodeA())
             j.transition(mid, DeliveryTransition.MARK_HANDED)
-            j.acknowledgeBound(mid, nodeA()) // ACKNOWLEDGED
+            plantHeld(file, mid)
+            assertEquals(AckResult.Applied, j.acknowledgeBoundAndRetire(mid, nodeA()))
             assertEquals(TransitionResult.RejectedState, j.transition(mid, DeliveryTransition.CANCEL),
                 "with the state guard ON, cancel after ACK is RejectedState")
             assertEquals(DeliveryState.ACKNOWLEDGED_BY_RECIPIENT, found(j, mid).state)
@@ -1211,7 +1253,7 @@ class SqliteDeliveryRepositoryTest {
             val mid2 = msgId(57)
             jWeak.enqueue(mid2, AckMode.SINGLE_RECIPIENT, nodeA())
             jWeak.transition(mid2, DeliveryTransition.MARK_HANDED)
-            jWeak.acknowledgeBound(mid2, nodeA()) // ACKNOWLEDGED
+            jWeak.acknowledgeBoundAndRetire(mid2, nodeA()) // ACKNOWLEDGED
             assertEquals(TransitionResult.Applied, jWeak.transition(mid2, DeliveryTransition.CANCEL),
                 "with the state guard OFF, cancel overwrites ACKNOWLEDGED -> Applied (WRONG)")
             assertEquals(DeliveryState.CANCELLED_LOCALLY, found(jWeak, mid2).state,
@@ -1237,6 +1279,7 @@ class SqliteDeliveryRepositoryTest {
             val mid = msgId(70)
             assertEquals(EnqueueResult.Created, tracker.enqueue(mid, AckMode.SINGLE_RECIPIENT, nodeA()))
             assertEquals(TransitionResult.Applied, tracker.markHandedToRelay(mid))
+            plantHeld(file, mid)
             val ackA = AckFrame.build(mid, privA, nodeA(), routingTag)
             assertEquals(AckResult.Applied, tracker.acknowledge(mid, ackA),
                 "ACK from the bound recipient A must verify over the durable repository")
@@ -1417,12 +1460,351 @@ class SqliteDeliveryRepositoryTest {
             tracker.markHandedToRelay(msgIdB)
 
             // Acknowledge msgIdA
+            plantHeld(db, msgIdA)
             val ackA = AckFrame.build(msgIdA, privA, nodeA(), routingTag)
             assertEquals(AckResult.Applied, tracker.acknowledge(msgIdA, ackA))
 
             // msgIdA is ACKNOWLEDGED_BY_RECIPIENT, but msgIdB MUST still be HANDED_TO_RELAY
             assertEquals(DeliveryState.ACKNOWLEDGED_BY_RECIPIENT, stateOf(tracker, msgIdA))
             assertEquals(DeliveryState.HANDED_TO_RELAY, stateOf(tracker, msgIdB))
+        } finally {
+            file.delete()
+        }
+    }
+
+    // ==================================================================
+    // C7.4: Atomic Authenticated ACK Commit + Held-Frame Retirement Matrix
+    // ==================================================================
+
+    @Test
+    fun `C7_4 queued ACK state ACK and held deleted`() {
+        val file = Files.createTempFile("godstone-delivery", ".db").toFile()
+        try {
+            val db = JdbcStoreDb(file)
+            val repo = SqliteDeliveryRepository(db)
+            val (pub, priv) = realKeypair()
+            val tracker = DeliveryTracker(repo, Ed25519AckAuthenticator(SingleRecipientResolver(nodeA(), pub)))
+            val mid = msgId(150)
+
+            assertEquals(EnqueueResult.Created, tracker.enqueue(mid, AckMode.SINGLE_RECIPIENT, nodeA()))
+            plantHeld(db, mid)
+            assertEquals(true, db.contains(mid))
+            assertEquals(DeliveryState.QUEUED_DURABLY, stateOf(tracker, mid))
+
+            val ack = AckFrame.build(mid, priv, nodeA(), routingTag)
+            assertEquals(AckResult.Applied, tracker.acknowledge(mid, ack))
+
+            assertEquals(DeliveryState.ACKNOWLEDGED_BY_RECIPIENT, stateOf(tracker, mid))
+            assertEquals(false, db.contains(mid), "held frame must be atomically deleted")
+        } finally {
+            file.delete()
+        }
+    }
+
+    @Test
+    fun `C7_4 handed ACK state ACK and held deleted`() {
+        val file = Files.createTempFile("godstone-delivery", ".db").toFile()
+        try {
+            val db = JdbcStoreDb(file)
+            val repo = SqliteDeliveryRepository(db)
+            val (pub, priv) = realKeypair()
+            val tracker = DeliveryTracker(repo, Ed25519AckAuthenticator(SingleRecipientResolver(nodeA(), pub)))
+            val mid = msgId(151)
+
+            assertEquals(EnqueueResult.Created, tracker.enqueue(mid, AckMode.SINGLE_RECIPIENT, nodeA()))
+            plantHeld(db, mid)
+            assertEquals(TransitionResult.Applied, tracker.markHandedToRelay(mid))
+            assertEquals(true, db.contains(mid))
+            assertEquals(DeliveryState.HANDED_TO_RELAY, stateOf(tracker, mid))
+
+            val ack = AckFrame.build(mid, priv, nodeA(), routingTag)
+            assertEquals(AckResult.Applied, tracker.acknowledge(mid, ack))
+
+            assertEquals(DeliveryState.ACKNOWLEDGED_BY_RECIPIENT, stateOf(tracker, mid))
+            assertEquals(false, db.contains(mid), "held frame must be atomically deleted")
+        } finally {
+            file.delete()
+        }
+    }
+
+    @Test
+    fun `C7_4 rejected authentication held retained`() {
+        val file = Files.createTempFile("godstone-delivery", ".db").toFile()
+        try {
+            val db = JdbcStoreDb(file)
+            val repo = SqliteDeliveryRepository(db)
+            val (pubA, _) = realKeypair()
+            val (_, privB) = realKeypair()
+            val tracker = DeliveryTracker(repo, Ed25519AckAuthenticator(SingleRecipientResolver(nodeA(), pubA)))
+            val mid = msgId(152)
+
+            assertEquals(EnqueueResult.Created, tracker.enqueue(mid, AckMode.SINGLE_RECIPIENT, nodeA()))
+            plantHeld(db, mid)
+            assertEquals(TransitionResult.Applied, tracker.markHandedToRelay(mid))
+
+            val badAck = AckFrame.build(mid, privB, nodeA(), routingTag) // signed with wrong key
+            assertEquals(AckResult.RejectedAuthentication, tracker.acknowledge(mid, badAck))
+
+            assertEquals(DeliveryState.HANDED_TO_RELAY, stateOf(tracker, mid))
+            assertEquals(true, db.contains(mid), "held frame must be retained on auth rejection")
+        } finally {
+            file.delete()
+        }
+    }
+
+    @Test
+    fun `C7_4 not ack eligible NONE mode held retained`() {
+        val file = Files.createTempFile("godstone-delivery", ".db").toFile()
+        try {
+            val db = JdbcStoreDb(file)
+            val repo = SqliteDeliveryRepository(db)
+            val tracker = DeliveryTracker(repo, Ed25519AckAuthenticator(UnresolvedRecipientKeyResolver))
+            val mid = msgId(153)
+
+            assertEquals(EnqueueResult.Created, tracker.enqueue(mid, AckMode.NONE, null))
+            plantHeld(db, mid)
+            assertEquals(TransitionResult.Applied, tracker.markHandedToRelay(mid))
+
+            val dummyAck = FrameV2(TypeV2.ACK, mid, routingTag, 4, 0, 0, ByteArray(80))
+            assertEquals(AckResult.NotAckEligible, tracker.acknowledge(mid, dummyAck))
+
+            assertEquals(DeliveryState.HANDED_TO_RELAY, stateOf(tracker, mid))
+            assertEquals(true, db.contains(mid), "held frame must be retained for NONE mode")
+        } finally {
+            file.delete()
+        }
+    }
+
+    @Test
+    fun `C7_4 missing-held active row rollback and Corrupt`() {
+        val file = Files.createTempFile("godstone-delivery", ".db").toFile()
+        try {
+            val db = JdbcStoreDb(file)
+            val repo = SqliteDeliveryRepository(db)
+            val (pub, priv) = realKeypair()
+            val tracker = DeliveryTracker(repo, Ed25519AckAuthenticator(SingleRecipientResolver(nodeA(), pub)))
+            val mid = msgId(154)
+
+            assertEquals(EnqueueResult.Created, tracker.enqueue(mid, AckMode.SINGLE_RECIPIENT, nodeA()))
+            assertEquals(TransitionResult.Applied, tracker.markHandedToRelay(mid))
+            // Note: NO plantHeld(db, mid) -- held frame is missing!
+
+            val ack = AckFrame.build(mid, priv, nodeA(), routingTag)
+            assertEquals(AckResult.Corrupt, tracker.acknowledge(mid, ack))
+
+            // Transaction rolled back -> state remains HANDED_TO_RELAY
+            assertEquals(DeliveryState.HANDED_TO_RELAY, stateOf(tracker, mid))
+        } finally {
+            file.delete()
+        }
+    }
+
+    @Test
+    fun `C7_4 fault after ACK CAS both restored`() {
+        val file = Files.createTempFile("godstone-delivery", ".db").toFile()
+        try {
+            val rawDb = JdbcStoreDb(file)
+            val faulting = FaultingStoreDb(rawDb)
+            val repo = SqliteDeliveryRepository(faulting)
+            val (pub, priv) = realKeypair()
+            val tracker = DeliveryTracker(repo, Ed25519AckAuthenticator(SingleRecipientResolver(nodeA(), pub)))
+            val mid = msgId(155)
+
+            assertEquals(EnqueueResult.Created, tracker.enqueue(mid, AckMode.SINGLE_RECIPIENT, nodeA()))
+            plantHeld(rawDb, mid)
+            assertEquals(TransitionResult.Applied, tracker.markHandedToRelay(mid))
+
+            faulting.faultAfterAckCas = { throw java.sql.SQLException("simulated fault after ACK CAS") }
+
+            val ack = AckFrame.build(mid, priv, nodeA(), routingTag)
+            assertEquals(AckResult.StorageFailure, tracker.acknowledge(mid, ack))
+
+            // Both restored
+            assertEquals(DeliveryState.HANDED_TO_RELAY, stateOf(tracker, mid))
+            assertEquals(true, rawDb.contains(mid))
+        } finally {
+            file.delete()
+        }
+    }
+
+    @Test
+    fun `C7_4 fault after held DELETE both restored`() {
+        val file = Files.createTempFile("godstone-delivery", ".db").toFile()
+        try {
+            val rawDb = JdbcStoreDb(file)
+            val faulting = FaultingStoreDb(rawDb)
+            val repo = SqliteDeliveryRepository(faulting)
+            val (pub, priv) = realKeypair()
+            val tracker = DeliveryTracker(repo, Ed25519AckAuthenticator(SingleRecipientResolver(nodeA(), pub)))
+            val mid = msgId(156)
+
+            assertEquals(EnqueueResult.Created, tracker.enqueue(mid, AckMode.SINGLE_RECIPIENT, nodeA()))
+            plantHeld(rawDb, mid)
+            assertEquals(TransitionResult.Applied, tracker.markHandedToRelay(mid))
+
+            faulting.faultAfterHeldDelete = { throw java.sql.SQLException("simulated fault after held delete") }
+
+            val ack = AckFrame.build(mid, priv, nodeA(), routingTag)
+            assertEquals(AckResult.StorageFailure, tracker.acknowledge(mid, ack))
+
+            // Both restored
+            assertEquals(DeliveryState.HANDED_TO_RELAY, stateOf(tracker, mid))
+            assertEquals(true, rawDb.contains(mid))
+        } finally {
+            file.delete()
+        }
+    }
+
+    @Test
+    fun `C7_4 held delete SQL failure yields StorageFailure and rolls back`() {
+        val file = Files.createTempFile("godstone-delivery", ".db").toFile()
+        try {
+            val rawDb = JdbcStoreDb(file)
+            val faulting = FaultingStoreDb(rawDb)
+            val repo = SqliteDeliveryRepository(faulting)
+            val (pub, priv) = realKeypair()
+            val tracker = DeliveryTracker(repo, Ed25519AckAuthenticator(SingleRecipientResolver(nodeA(), pub)))
+            val mid = msgId(157)
+
+            assertEquals(EnqueueResult.Created, tracker.enqueue(mid, AckMode.SINGLE_RECIPIENT, nodeA()))
+            plantHeld(rawDb, mid)
+            assertEquals(TransitionResult.Applied, tracker.markHandedToRelay(mid))
+
+            faulting.faultDeleteHeld = true
+
+            val ack = AckFrame.build(mid, priv, nodeA(), routingTag)
+            assertEquals(AckResult.StorageFailure, tracker.acknowledge(mid, ack))
+
+            assertEquals(DeliveryState.HANDED_TO_RELAY, stateOf(tracker, mid))
+            assertEquals(true, rawDb.contains(mid))
+        } finally {
+            file.delete()
+        }
+    }
+
+    @Test
+    fun `C7_4 sequential duplicate ACK short-circuits without re-auth`() {
+        val file = Files.createTempFile("godstone-delivery", ".db").toFile()
+        try {
+            val db = JdbcStoreDb(file)
+            val repo = SqliteDeliveryRepository(db)
+            val (pub, priv) = realKeypair()
+            var authCallCount = 0
+            val countingAuth = object : AckAuthenticator {
+                val delegate = Ed25519AckAuthenticator(SingleRecipientResolver(nodeA(), pub))
+                override fun verify(originalMsgId: ByteArray, expectedRecipientNodeId: ByteArray, ackFrame: FrameV2): Boolean {
+                    authCallCount++
+                    return delegate.verify(originalMsgId, expectedRecipientNodeId, ackFrame)
+                }
+            }
+            val tracker = DeliveryTracker(repo, countingAuth)
+            val mid = msgId(158)
+
+            assertEquals(EnqueueResult.Created, tracker.enqueue(mid, AckMode.SINGLE_RECIPIENT, nodeA()))
+            plantHeld(db, mid)
+            assertEquals(TransitionResult.Applied, tracker.markHandedToRelay(mid))
+
+            val ack = AckFrame.build(mid, priv, nodeA(), routingTag)
+            assertEquals(AckResult.Applied, tracker.acknowledge(mid, ack))
+            assertEquals(1, authCallCount)
+            assertEquals(false, db.contains(mid))
+
+            // Second ACK short-circuits without re-invoking authenticator
+            val bogusAck = FrameV2(TypeV2.ACK, mid, routingTag, 4, 0, 0, ByteArray(80))
+            assertEquals(AckResult.AlreadyAcknowledged, tracker.acknowledge(mid, bogusAck))
+            assertEquals(1, authCallCount, "authenticator must not be invoked for already acknowledged record")
+            assertEquals(DeliveryState.ACKNOWLEDGED_BY_RECIPIENT, stateOf(tracker, mid))
+        } finally {
+            file.delete()
+        }
+    }
+
+    @Test
+    fun `C7_4 duplicate authenticated race one Applied one Duplicate`() {
+        val file = Files.createTempFile("godstone-delivery", ".db").toFile()
+        try {
+            val db = JdbcStoreDb(file)
+            val faulting = FaultingStoreDb(db)
+            val repo = SqliteDeliveryRepository(faulting)
+            val (pub, priv) = realKeypair()
+            val recipient = nodeA()
+            val auth = DualAckAuthenticator()
+            val tracker = DeliveryTracker(repo, auth)
+            val mid = msgId(159)
+
+            assertEquals(EnqueueResult.Created, tracker.enqueue(mid, AckMode.SINGLE_RECIPIENT, recipient))
+            plantHeld(db, mid)
+            assertEquals(TransitionResult.Applied, tracker.markHandedToRelay(mid))
+
+            val ack = AckFrame.build(mid, priv, recipient, routingTag)
+            val res1 = AtomicReference<AckResult>()
+            val res2 = AtomicReference<AckResult>()
+
+            val t1 = Thread { res1.set(tracker.acknowledge(mid, ack)) }
+            val t2 = Thread { res2.set(tracker.acknowledge(mid, ack)) }
+            t1.start(); t2.start()
+
+            t1.join(5000); t2.join(5000)
+
+            val appliedCount = (if (res1.get() == AckResult.Applied) 1 else 0) + (if (res2.get() == AckResult.Applied) 1 else 0)
+            val dupCount = (if (res1.get() == AckResult.DuplicateAuthenticatedAck) 1 else 0) + (if (res2.get() == AckResult.DuplicateAuthenticatedAck) 1 else 0)
+
+            assertEquals(1, appliedCount, "exactly one ACK wins CAS and applies")
+            assertEquals(1, dupCount, "the racing duplicate gets DuplicateAuthenticatedAck")
+            assertEquals(DeliveryState.ACKNOWLEDGED_BY_RECIPIENT, stateOf(tracker, mid))
+            assertEquals(false, db.contains(mid), "held frame must be deleted by winner")
+        } finally {
+            file.delete()
+        }
+    }
+
+    @Test
+    fun `C7_4 re-enqueue after ACK terminal rejection`() {
+        val file = Files.createTempFile("godstone-delivery", ".db").toFile()
+        try {
+            val db = JdbcStoreDb(file)
+            val repo = SqliteDeliveryRepository(db)
+            val (pub, priv) = realKeypair()
+            val tracker = DeliveryTracker(repo, Ed25519AckAuthenticator(SingleRecipientResolver(nodeA(), pub)))
+            val mid = msgId(160)
+
+            assertEquals(EnqueueResult.Created, tracker.enqueue(mid, AckMode.SINGLE_RECIPIENT, nodeA()))
+            plantHeld(db, mid)
+            assertEquals(TransitionResult.Applied, tracker.markHandedToRelay(mid))
+
+            val ack = AckFrame.build(mid, priv, nodeA(), routingTag)
+            assertEquals(AckResult.Applied, tracker.acknowledge(mid, ack))
+
+            // Re-enqueue for an ACKNOWLEDGED record fails closed
+            assertEquals(EnqueueResult.RejectedTerminalState, tracker.enqueue(mid, AckMode.SINGLE_RECIPIENT, nodeA()))
+            assertEquals(false, db.contains(mid))
+            assertEquals(DeliveryState.ACKNOWLEDGED_BY_RECIPIENT, stateOf(tracker, mid))
+        } finally {
+            file.delete()
+        }
+    }
+
+    @Test
+    fun `C7_4 capacity released on authenticated ACK retirement`() {
+        val file = Files.createTempFile("godstone-delivery", ".db").toFile()
+        try {
+            val db = JdbcStoreDb(file)
+            val repo = SqliteDeliveryRepository(db)
+            val (pub, priv) = realKeypair()
+            val tracker = DeliveryTracker(repo, Ed25519AckAuthenticator(SingleRecipientResolver(nodeA(), pub)))
+            val mid = msgId(161)
+
+            assertEquals(EnqueueResult.Created, tracker.enqueue(mid, AckMode.SINGLE_RECIPIENT, nodeA()))
+            val initialBytes = db.heldBytes()
+            plantHeld(db, mid)
+            val withHeldBytes = db.heldBytes()
+            assertTrue(withHeldBytes > initialBytes, "heldBytes must increase when held frame planted")
+
+            val ack = AckFrame.build(mid, priv, nodeA(), routingTag)
+            assertEquals(AckResult.Applied, tracker.acknowledge(mid, ack))
+
+            assertEquals(initialBytes, db.heldBytes(), "heldBytes must return to initial value after retirement")
+            assertEquals(false, db.contains(mid))
         } finally {
             file.delete()
         }

@@ -173,6 +173,44 @@ CONTROLS: list[tuple[str, str, str]] = [
     ("ios/Godstone/Tests/GodstoneMeshTests/SqliteMessageStoreTests.swift",
      "testC663ContainsNoLockStrictStepErrorYieldsFailedStorageAndRollsBack",
      "iOS containsNoLockStrict step error -> failedStorage and rollback"),
+    # --- Android: C7.4 atomic authenticated ACK commit and held-frame retirement controls ---
+    ("android/mesh/src/test/java/io/godstone/mesh/delivery/SqliteDeliveryRepositoryTest.kt",
+     "C7_4 queued ACK state ACK and held deleted",
+     "Android C7.4 queued ACK state ACK and held deleted"),
+    ("android/mesh/src/test/java/io/godstone/mesh/delivery/SqliteDeliveryRepositoryTest.kt",
+     "C7_4 handed ACK state ACK and held deleted",
+     "Android C7.4 handed ACK state ACK and held deleted"),
+    ("android/mesh/src/test/java/io/godstone/mesh/delivery/SqliteDeliveryRepositoryTest.kt",
+     "C7_4 missing-held active row rollback and Corrupt",
+     "Android C7.4 missing held active row rollback and Corrupt"),
+    ("android/mesh/src/test/java/io/godstone/mesh/delivery/SqliteDeliveryRepositoryTest.kt",
+     "C7_4 fault after ACK CAS both restored",
+     "Android C7.4 fault after ACK CAS both restored"),
+    ("android/mesh/src/test/java/io/godstone/mesh/delivery/SqliteDeliveryRepositoryTest.kt",
+     "C7_4 fault after held DELETE both restored",
+     "Android C7.4 fault after held delete both restored"),
+    ("android/mesh/src/test/java/io/godstone/mesh/delivery/SqliteDeliveryRepositoryTest.kt",
+     "C7_4 held delete SQL failure yields StorageFailure and rolls back",
+     "Android C7.4 held delete SQL failure -> StorageFailure and rollback"),
+    # --- iOS: C7.4 atomic authenticated ACK commit and held-frame retirement controls ---
+    ("ios/Godstone/Tests/GodstoneMeshTests/SqliteDeliveryRepositoryTests.swift",
+     "testC74QueuedAckStateAckAndHeldDeleted",
+     "iOS C7.4 queued ACK state ACK and held deleted"),
+    ("ios/Godstone/Tests/GodstoneMeshTests/SqliteDeliveryRepositoryTests.swift",
+     "testC74HandedAckStateAckAndHeldDeleted",
+     "iOS C7.4 handed ACK state ACK and held deleted"),
+    ("ios/Godstone/Tests/GodstoneMeshTests/SqliteDeliveryRepositoryTests.swift",
+     "testC74MissingHeldActiveRowRollbackAndCorrupt",
+     "iOS C7.4 missing held active row rollback and Corrupt"),
+    ("ios/Godstone/Tests/GodstoneMeshTests/SqliteDeliveryRepositoryTests.swift",
+     "testC74FaultAfterAckCasBothRestored",
+     "iOS C7.4 fault after ACK CAS both restored"),
+    ("ios/Godstone/Tests/GodstoneMeshTests/SqliteDeliveryRepositoryTests.swift",
+     "testC74FaultAfterHeldDeleteBothRestored",
+     "iOS C7.4 fault after held delete both restored"),
+    ("ios/Godstone/Tests/GodstoneMeshTests/SqliteDeliveryRepositoryTests.swift",
+     "testC74HeldDeleteSqlFailureYieldsStorageFailureAndRollsBack",
+     "iOS C7.4 held delete SQL failure -> StorageFailure and rollback"),
 ]
 
 
@@ -220,6 +258,19 @@ def scan(root: Path) -> list[str]:
                 missing.append("ios/Godstone/Sources/GodstoneMesh/MeshNode.swift: dispatchDirect must transport canonicalFrame")
             if "send(frame," in fn_body:
                 missing.append("ios/Godstone/Sources/GodstoneMesh/MeshNode.swift: dispatchDirect must not transport frame directly")
+
+    # Structural check: C7.4 DeliveryRepository must NOT expose state-only acknowledgeBound
+    android_delivery_repo = root / "android/mesh/src/main/java/io/godstone/mesh/delivery/DeliveryTracker.kt"
+    if android_delivery_repo.is_file():
+        text = android_delivery_repo.read_text(encoding="utf-8", errors="replace")
+        if "fun acknowledgeBound(" in text:
+            missing.append("android DeliveryRepository must not expose state-only acknowledgeBound (must use acknowledgeBoundAndRetire)")
+
+    ios_delivery_repo = root / "ios/Godstone/Sources/GodstoneMesh/DeliveryTracker.swift"
+    if ios_delivery_repo.is_file():
+        text = ios_delivery_repo.read_text(encoding="utf-8", errors="replace")
+        if "func acknowledgeBound(" in text:
+            missing.append("iOS DeliveryRepository must not expose state-only acknowledgeBound (must use acknowledgeBoundAndRetire)")
 
     return missing
 

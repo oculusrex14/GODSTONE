@@ -422,18 +422,16 @@ public protocol DeliveryRepository: AnyObject {
     ///  * state == acknowledged with the SAME binding -> `.duplicateAuthenticatedAck`
     ///    (the tracker authenticated before losing the CAS -- a real race);
     ///  * state == expired / cancelled -> `.rejectedState`;
-    ///  * same binding + queued/handed still present -> `.storageFailure`
-    ///    (invariant violation -- the SQL should have matched);
-    ///  * corrupt / storage failure -> `.corrupt` / `.storageFailure`.
-    /// The tracker invokes this ONLY after `AckAuthenticator.verify` has
-    /// authenticated the ACK against the same expected recipient. This method
-    /// performs delivery-state retirement ONLY; held-frame retirement is C7.4
-    /// (NOT yet implemented -- do not claim ADR-004 delete-on-ACK is closed).
-    /// C6.4-D: a non-16-byte msg_id is `.invalidArgument`. C6.4.1-I: the binding
-    /// is ALWAYS `AckMode.singleRecipient` with a non-nil 16-byte recipient (the
-    /// tracker gates `none` / nil before this call), so `ackMode` + optionality are
-    /// removed from the signature -- the SQL hard-codes `ack_mode = SINGLE_RECIPIENT`.
-    func acknowledgeBound(_ msgId: Data, expectedRecipient: Data) -> AckResult
+    /// Atomic authenticated ACK state commit + held-frame retirement (C7.4; ADR-004).
+    /// Runs the guarded CAS `UPDATE delivery_state SET state = ACKNOWLEDGED WHERE
+    /// msg_id = ? AND state IN (QUEUED, HANDED) AND ack_mode = SINGLE_RECIPIENT AND
+    /// expected_recipient = ?` AND deletes the exact held frame `DELETE FROM held_frames
+    /// WHERE msg_id = ?` in ONE atomic transaction. `.applied` iff both mutations
+    /// succeed and commit. If the held frame is missing while the delivery row is active,
+    /// the transaction rolls back and returns `.corrupt`. A 0-row CAS is re-read ONCE
+    /// and classified without deleting held frames.
+    /// C6.4-D: a non-16-byte msg_id or recipient is `.invalidArgument`.
+    func acknowledgeBoundAndRetire(_ msgId: Data, expectedRecipient: Data) -> AckResult
 
     /// Drop the delivery row for `msgId` (C6.4-J). Typed -- a failed destructive
     /// operation is never indistinguishable from success: `.cleared` (a row was
@@ -443,38 +441,31 @@ public protocol DeliveryRepository: AnyObject {
     func clear(_ msgId: Data) -> ClearResult
 }
 
-/// Verifies that an inbound ACK frame is an authentic acknowledgment of
-/// `originalMsgId` by the intended recipient `expectedRecipientNodeId`. The
-/// expected recipient is NON-optional: it always comes from durable outbound
-/// state (the delivery record bound at enqueue), INDEPENDENT of the ACK frame. A
-/// return of false means the ACK is rejected and the delivery state MUST NOT
-/// advance -- no UI phrase stronger than the cryptographic evidence is permitted
-/// (ADR-005).
-///
-/// C6.1: the nullable / unbound verify path is removed. A recipient identity may
-/// NEVER become trusted merely because the ACK packet names it; the
-/// authenticator is only ever invoked for an AckMode.singleRecipient record,
-/// with the expected recipient read from durable state.
 public protocol AckAuthenticator: AnyObject {
     func verify(originalMsgId: Data, expectedRecipientNodeId: Data, ackFrame: FrameV2) -> Bool
 }
 
-/// Durable delivery state machine -- a thin policy layer over a
-/// `DeliveryRepository` (C6.3; hardened C6.4) plus an `AckAuthenticator`. Every
-/// successful transition is persisted by the repository as a guarded SQL CAS, so
-/// a crash-then-resume re-reads the last persisted state. Transitions that are
-/// illegal for the current state (or an ACK that fails authentication) do not
-/// mutate state -- the truth-table is enforced, not advisory. The repository
-/// owns the typed durable-row mapping (get / enqueue / transition /
-/// acknowledgeBound / clear); the tracker owns the ACK policy: the terminal
-/// short-circuit (option B), the AckMode.none gate, and the authenticator call.
+/// High-level delivery state machine (ADR-004; ADR-005). Coordinates
+/// authenticated ACK verification against the durable `DeliveryRepository`.
 ///
-/// C6.4-B: the lossy `state(msgId)` seam is REMOVED -- it collapsed notFound /
-/// corrupt / storageFailure all to `.unavailable`, hiding a corrupt or
-/// inaccessible record behind "never tracked / eligible for fresh creation". Use
-/// `lookup` for the raw typed outcome; a corrupt record fails closed, it is NOT
-/// reported as `.unavailable`. (A lossy `displayState` convenience is intentionally
-/// NOT provided for mutation / security decisions.)
+/// Sits ABOVE the atomic repository primitives (get / enqueue / transition /
+/// acknowledgeBoundAndRetire / clear); the tracker owns the ACK policy: the terminal
+/// short-circuit (option B), the NONE-mode rejection, and the cryptographic
+/// authentication against the durable expected recipient. The repository owns
+/// the atomic SQL CAS (guarded transitions) and the 0-row CAS reclassification.
+///
+/// Inbound ACK flow:
+///   `acknowledge`
+///     ↓
+///   durable record read (`DeliveryRepository.get`)
+///     ↓
+///   terminal / NONE checks (option B: acknowledged -> alreadyAcknowledged, no auth)
+///     ↓
+///   cryptographic verification (`AckAuthenticator.verify` against durable recipient)
+///     ↓
+///   atomic commit + held retirement (`DeliveryRepository.acknowledgeBoundAndRetire`)
+///     ↓
+///   durable ACK state + held deletion committed
 public final class DeliveryTracker {
     private let repo: DeliveryRepository
     private let authenticator: AckAuthenticator
@@ -484,50 +475,46 @@ public final class DeliveryTracker {
         self.authenticator = authenticator
     }
 
-    /// Typed lookup for `msgId` (C6.4-B). Replaces the lossy `state(msgId)` seam:
-    /// the caller sees `.found` / `.notFound` / `.corrupt` / `.storageFailure` /
-    /// `.invalidArgument` and MUST branch. A corrupt record is `.corrupt` -- NOT
-    /// `.unavailable` -- and a caller MUST NOT treat it as "never tracked /
-    /// eligible for fresh creation".
-    public func lookup(_ msgId: Data) -> DeliveryLookup { repo.get(msgId) }
+    /// Read the delivery state for `msgId` (reboot recovery / outbound state
+    /// inspection). Typed outcome: `.found` / `.notFound` / `.corrupt` /
+    /// `.storageFailure` / `.invalidArgument`.
+    public func get(_ msgId: Data) -> DeliveryLookup { repo.get(msgId) }
 
-    /// Begin tracking a message: queuedDurably with `ackMode` and (for
-    /// singleRecipient) the durably-bound intended recipient. The binding
-    /// (ack mode + recipient) is IMMUTABLE post-creation: a re-enqueue of the
-    /// SAME logical message is idempotent (`.alreadyQueuedSameBinding`); a
-    /// re-enqueue with a DIFFERENT binding fails closed (`.conflictRecipient`);
-    /// a terminal record rejects re-enqueue (`.rejectedTerminalState`). Delegates
-    /// to `DeliveryRepository.enqueue`, which validates the C6.1 binding invariant
-    /// (none -> nil; singleRecipient -> 16-byte recipient) before touching the
-    /// store, and the C6.4-D 16-byte msg_id invariant before that.
+    public func lookup(_ msgId: Data) -> DeliveryLookup { get(msgId) }
+
+    /// Enqueue a new delivery record. Called during the atomic outbound enqueue
+    /// path (`MessageStore.enqueueDirectOutbound`).
     @discardableResult
-    public func enqueue(_ msgId: Data, ackMode: AckMode, expectedRecipient: Data? = nil) -> EnqueueResult {
+    public func enqueue(_ msgId: Data, ackMode: AckMode, expectedRecipient: Data?) -> EnqueueResult {
         repo.enqueue(msgId, ackMode: ackMode, expectedRecipient: expectedRecipient)
     }
 
-    /// Record that the frame was handed to a relay (a successful GATT write).
-    /// queuedDurably -> handedToRelay via a guarded SQL CAS (C6.4-F/G). Idempotent
-    /// from handedToRelay (`.alreadyInTarget` -- NOT a fresh hand-off). Returns
-    /// `.rejectedState` from any other state (this is NOT "sent" -- only
-    /// `acknowledge` can reach acknowledgedByRecipient).
+    /// Advance a delivery record from queuedDurably -> handedToRelay via a
+    /// guarded SQL CAS (C6.4-F/G).
     @discardableResult
-    public func markHandedToRelay(_ msgId: Data) -> TransitionResult {
+    public func markHanded(_ msgId: Data) -> TransitionResult {
         repo.transition(msgId, .markHanded)
     }
 
-    /// Apply an authenticated recipient ACK (C6.1; C6.4-H). The outcome is typed
-    /// (`AckResult`); only `.applied` means "this ACK verified and the state
-    /// advanced". A none-mode message is `.notAckEligible` and the authenticator
-    /// is NOT invoked. A terminal acknowledged record short-circuits to
+    @discardableResult
+    public func markHandedToRelay(_ msgId: Data) -> TransitionResult {
+        markHanded(msgId)
+    }
+
+    /// Apply an authenticated recipient ACK (C6.1; C6.4-H; C7.4). The outcome is typed
+    /// (`AckResult`); only `.applied` means "this ACK verified, state advanced,
+    /// and held frame was retired". A none-mode message is `.notAckEligible` and the
+    /// authenticator is NOT invoked. A terminal acknowledged record short-circuits to
     /// `.alreadyAcknowledged` WITHOUT authenticating (option B: bound CPU under
     /// replayed ACK floods; NOT a verification). expired / cancelled records are
     /// `.rejectedState`. A singleRecipient record authenticates the ACK against
     /// the durable expected recipient; failure is `.rejectedAuthentication` and
-    /// the state is unchanged. On a verified ACK the state commit is persisted
-    /// atomically by `DeliveryRepository.acknowledgeBound`, whose guarded CAS
-    /// binds state + mode + the exact durable recipient in one WHERE clause -- so
-    /// a verified ACK that loses the race to another verified ACK yields
-    /// `.duplicateAuthenticatedAck`, to a cancel/expire yields `.rejectedState`,
+    /// the state is unchanged. On a verified ACK the state commit and held-frame
+    /// retirement are persisted atomically by
+    /// `DeliveryRepository.acknowledgeBoundAndRetire`, whose guarded CAS
+    /// binds state + mode + the exact durable recipient in one WHERE clause and deletes
+    /// the held frame -- so a verified ACK that loses the race to another verified ACK
+    /// yields `.duplicateAuthenticatedAck`, to a cancel/expire yields `.rejectedState`,
     /// and to a recipient rebinding yields `.unknownMessage`.
     @discardableResult
     public func acknowledge(_ msgId: Data, _ ackFrame: FrameV2) -> AckResult {
@@ -556,11 +543,11 @@ public final class DeliveryTracker {
             if !authenticator.verify(originalMsgId: msgId, expectedRecipientNodeId: expected, ackFrame: ackFrame) {
                 return .rejectedAuthentication
             }
-            // Atomic state commit: a guarded CAS binds state + mode + the exact
-            // durable recipient in one WHERE clause. The tracker authenticated
-            // before this call; a lost CAS is classified by the repository
+            // Atomic state commit + held retirement: a guarded CAS binds state + mode + the exact
+            // durable recipient in one WHERE clause and deletes held_frames in ONE transaction.
+            // The tracker authenticated before this call; a lost CAS is classified by the repository
             // (duplicateAuthenticatedAck / rejectedState / unknownMessage).
-            return repo.acknowledgeBound(msgId, expectedRecipient: expected)
+            return repo.acknowledgeBoundAndRetire(msgId, expectedRecipient: expected)
         }
     }
 

@@ -147,21 +147,48 @@ public final class SqliteDeliveryRepository: DeliveryRepository {
         }
     }
 
-    public func acknowledgeBound(_ msgId: Data, expectedRecipient: Data) -> AckResult {
+    public func acknowledgeBoundAndRetire(_ msgId: Data, expectedRecipient: Data) -> AckResult {
+        acknowledgeBoundAndRetireWithFault(msgId, expectedRecipient: expectedRecipient, fault: nil)
+    }
+
+    internal func acknowledgeBoundAndRetireWithFault(
+        _ msgId: Data,
+        expectedRecipient: Data,
+        fault: ((String, OpaquePointer) throws -> Void)? = nil
+    ) -> AckResult {
         // C6.4-D + binding guard: the authenticated binding is a SINGLE_RECIPIENT
         // binding with a 16-byte recipient. The tracker only calls this for such a
         // record (it gates `none` / nil first); a malformed call fails closed
         // before any SQL. C6.4.1-I: `ackMode` + optionality are removed -- the SQL
         // hard-codes `ack_mode = SINGLE_RECIPIENT` and the recipient is always bound.
+        // C7.4: runs guarded ACK CAS AND exact held frame deletion in ONE atomic
+        // transaction. Missing held row triggers rollback and yields .corrupt.
         guard msgId.count == 16 else { return .invalidArgument }
         guard expectedRecipient.count == 16 else { return .invalidArgument }
         let sql = acknowledgeBoundSql()
         do {
-            let affected = try store.execDeliveryUpdate(sql, bytesArgs: [msgId, expectedRecipient])
-            switch affected {
-            case 1: return .applied
-            case 0: return classifyZeroRowAck(msgId: msgId, expectedRecipient: expectedRecipient)
-            default: return .storageFailure // affected > 1: invariant violation
+            let res: AckRetireMutationResult
+            if let sms = store as? SqliteMessageStore {
+                res = try sms.atomicAcknowledgeAndRetireWithFault(
+                    guardedAckSql: sql,
+                    msgId: msgId,
+                    expectedRecipient: expectedRecipient,
+                    fault: fault
+                )
+            } else {
+                res = try store.atomicAcknowledgeAndRetire(
+                    guardedAckSql: sql,
+                    msgId: msgId,
+                    expectedRecipient: expectedRecipient
+                )
+            }
+            switch res {
+            case .applied:
+                return .applied
+            case .noMatch:
+                return classifyZeroRowAck(msgId: msgId, expectedRecipient: expectedRecipient)
+            case .missingHeld:
+                return .corrupt
             }
         } catch {
             return .storageFailure // C6.4-A

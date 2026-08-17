@@ -84,6 +84,14 @@ object AckFrame {
         ACK_MAGIC.toByteArray(Charsets.US_ASCII) + msgId + recipientNodeId
 }
 
+interface AckAuthenticator {
+    fun verify(
+        originalMsgId: ByteArray,
+        expectedRecipientNodeId: ByteArray,
+        ackFrame: FrameV2,
+    ): Boolean
+}
+
 /**
  * Verifies an ACK frame using Ed25519 over the canonical preimage, resolving
  * the recipient's public key via [resolver]. Pure + injected -> host-testable.

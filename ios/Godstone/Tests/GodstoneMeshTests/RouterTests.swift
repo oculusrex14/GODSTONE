@@ -740,7 +740,7 @@ final class RouterTests: XCTestCase {
         func get(_ msgId: Data) -> DeliveryLookup { .notFound }
         func enqueue(_ msgId: Data, ackMode: AckMode, expectedRecipient: Data?) -> EnqueueResult { .created }
         func transition(_ msgId: Data, _ transition: DeliveryTransition) -> TransitionResult { .applied }
-        func acknowledgeBound(_ msgId: Data, expectedRecipient: Data) -> AckResult { .applied }
+        func acknowledgeBoundAndRetire(_ msgId: Data, expectedRecipient: Data) -> AckResult { .applied }
         func clear(_ msgId: Data) -> ClearResult { .cleared }
     }
 

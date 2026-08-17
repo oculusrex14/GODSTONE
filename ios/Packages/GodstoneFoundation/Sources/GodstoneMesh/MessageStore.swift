@@ -133,6 +133,12 @@ public protocol MessageStore: AnyObject {
 /// repository to a typed `.storageFailure`, NEVER folded into nil / false / 0
 /// (absence / conflict / no-match use those sentinels). `SqliteMessageStore`
 /// conforms in production.
+internal enum AckRetireMutationResult {
+    case applied
+    case noMatch
+    case missingHeld
+}
+
 internal protocol DeliveryStore: AnyObject {
     /// Read the delivery row for `msgId`, or nil if no row exists. Throws on a
     /// storage failure (distinct from the nil absence result).
@@ -145,6 +151,16 @@ internal protocol DeliveryStore: AnyObject {
     /// row count (0/1; >1 is an invariant violation). `bytesArgs` are the BLOB
     /// binds in order, with nil for a SQL NULL. Throws on storage failure.
     func execDeliveryUpdate(_ sql: String, bytesArgs: [Data?]) throws -> Int
+    /// Atomically run the guarded ACK CAS and delete the exact held frame in
+    /// ONE transaction (C7.4). Returns .applied if both mutations succeeded, .noMatch
+    /// if the delivery row was absent or did not match CAS predicates, or .missingHeld
+    /// if the active delivery row matched but the held frame was missing (which rolls
+    /// back the transaction and maps outside to .corrupt).
+    func atomicAcknowledgeAndRetire(
+        guardedAckSql: String,
+        msgId: Data,
+        expectedRecipient: Data
+    ) throws -> AckRetireMutationResult
 }
 
 internal enum StoreSchema {
@@ -323,6 +339,9 @@ internal enum StoreSchema {
     /// `execDeliveryUpdate`, NOT via a stale `updateDeliveryStateSql` pre-read
     /// seam; that SQL was removed.)
     static let clearDeliverySql = "DELETE FROM \(deliveryTable) WHERE \(colDMsgId) = ?"
+
+    /// Drop the held frame for msg_id (C7.4 atomic ACK retirement). Bind: (1) msg_id.
+    static let deleteHeldSql = "DELETE FROM \(table) WHERE \(colMsgId) = ?"
 }
 
 /// One `delivery_state` row before it is typed into a `DeliveryRecord` (the
@@ -714,7 +733,7 @@ public final class SqliteMessageStore: MessageStore {
     // critical section, so insert + eviction + final-contains are atomic without
     // re-acquiring the lock.
 
-    private enum StoreTxnError: Error { case openFailed, beginFailed, commitFailed }
+    private enum StoreTxnError: Error { case openFailed, beginFailed, commitFailed, missingHeld }
 
     /// Run [body] in ONE transaction holding the connection lock once (B3):
     /// `BEGIN IMMEDIATE` -> body -> `COMMIT`, or `ROLLBACK` if body throws. The
@@ -1135,6 +1154,76 @@ public final class SqliteMessageStore: MessageStore {
             }
             guard sqlite3_step(stmt) == SQLITE_DONE else { throw StoreError.stepFailed }
             return Int(sqlite3_changes(db))
+        }
+    }
+
+    /// Atomically run the guarded ACK CAS and delete the exact held frame in
+    /// ONE transaction (C7.4). Returns .applied if both mutations succeeded, .noMatch
+    /// if the delivery row was absent or did not match CAS predicates, or .missingHeld
+    /// if the active delivery row matched but the held frame was missing (which rolls
+    /// back the transaction and maps outside to .corrupt).
+    internal func atomicAcknowledgeAndRetire(
+        guardedAckSql: String,
+        msgId: Data,
+        expectedRecipient: Data
+    ) throws -> AckRetireMutationResult {
+        try atomicAcknowledgeAndRetireWithFault(
+            guardedAckSql: guardedAckSql,
+            msgId: msgId,
+            expectedRecipient: expectedRecipient,
+            fault: nil
+        )
+    }
+
+    internal func atomicAcknowledgeAndRetireWithFault(
+        guardedAckSql: String,
+        msgId: Data,
+        expectedRecipient: Data,
+        fault: ((String, OpaquePointer) throws -> Void)? = nil
+    ) throws -> AckRetireMutationResult {
+        do {
+            return try withTransaction { db in
+                try fault?("before_ack_cas", db)
+                var stmt: OpaquePointer?
+                guard sqlite3_prepare_v2(db, guardedAckSql, -1, &stmt, nil) == SQLITE_OK else {
+                    sqlite3_finalize(stmt); throw StoreError.prepareFailed
+                }
+                defer { sqlite3_finalize(stmt) }
+                bindBlob(stmt, 1, msgId)
+                bindBlob(stmt, 2, expectedRecipient)
+                guard sqlite3_step(stmt) == SQLITE_DONE else { throw StoreError.stepFailed }
+                let ackChanges = sqlite3_changes(db)
+                if ackChanges == 0 {
+                    return .noMatch
+                }
+                guard ackChanges == 1 else {
+                    throw StoreError.stepFailed
+                }
+
+                try fault?("after_ack_cas", db)
+
+                let deleteHeldSql = StoreSchema.deleteHeldSql
+                var delStmt: OpaquePointer?
+                guard sqlite3_prepare_v2(db, deleteHeldSql, -1, &delStmt, nil) == SQLITE_OK else {
+                    sqlite3_finalize(delStmt); throw StoreError.prepareFailed
+                }
+                defer { sqlite3_finalize(delStmt) }
+                bindBlob(delStmt, 1, msgId)
+                guard sqlite3_step(delStmt) == SQLITE_DONE else { throw StoreError.stepFailed }
+                let delChanges = sqlite3_changes(db)
+                if delChanges == 0 {
+                    throw StoreTxnError.missingHeld
+                }
+                guard delChanges == 1 else {
+                    throw StoreError.stepFailed
+                }
+
+                try fault?("after_held_delete", db)
+
+                return .applied
+            }
+        } catch StoreTxnError.missingHeld {
+            return .missingHeld
         }
     }
 

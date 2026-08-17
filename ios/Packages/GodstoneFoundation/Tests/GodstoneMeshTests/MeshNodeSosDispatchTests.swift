@@ -78,7 +78,7 @@ final class MeshNodeSosDispatchTests: XCTestCase {
                 return .rejectedState
             }
         }
-        func acknowledgeBound(_ msgId: Data, expectedRecipient: Data) -> AckResult {
+        func acknowledgeBoundAndRetire(_ msgId: Data, expectedRecipient: Data) -> AckResult {
             switch get(msgId) {
             case .notFound: return .unknownMessage
             case .corrupt: return .corrupt

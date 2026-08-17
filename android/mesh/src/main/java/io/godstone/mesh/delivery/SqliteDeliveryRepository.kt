@@ -125,7 +125,14 @@ internal class SqliteDeliveryRepository(
         }
     }
 
-    override fun acknowledgeBound(
+    private class MissingHeldException : RuntimeException("active delivery missing held frame")
+
+    private enum class AckRetireResult {
+        APPLIED,
+        NO_MATCH,
+    }
+
+    override fun acknowledgeBoundAndRetire(
         msgId: ByteArray,
         expectedRecipient: ByteArray,
     ): AckResult {
@@ -134,23 +141,35 @@ internal class SqliteDeliveryRepository(
         // record (it gates `none` / null first); a malformed call fails closed
         // before any SQL. C6.4.1-I: `ackMode` + optionality are removed -- the SQL
         // hard-codes `ack_mode = 1` and the recipient is always bound.
+        // C7.4: runs guarded ACK CAS AND exact held frame deletion in ONE atomic
+        // transaction. Missing held row triggers rollback and yields Corrupt.
         if (msgId.size != 16) return AckResult.InvalidArgument
         if (expectedRecipient.size != 16) return AckResult.InvalidArgument
         val sql = acknowledgeBoundSql()
-        // C6.4.1-A: recipient is ALWAYS bound (bind slot 2); production CAS is
-        // unconditional. Declared `Array<ByteArray?>` so expected-type inference
-        // drives `arrayOf<ByteArray?>` (the non-null `expectedRecipient` would
-        // otherwise infer the invariant `Array<ByteArray>`).
         val bindArgs: Array<ByteArray?> = arrayOf(msgId, expectedRecipient)
         return try {
-            val affected = db.execDeliveryUpdate(sql, bindArgs)
-            when (affected) {
-                1 -> AckResult.Applied
-                0 -> classifyZeroRowAck(msgId, expectedRecipient)
-                else -> AckResult.StorageFailure // affected > 1: invariant violation
+            val result = db.inTransaction { tx ->
+                val affected = tx.execDeliveryUpdate(sql, bindArgs)
+                if (affected == 0) {
+                    return@inTransaction AckRetireResult.NO_MATCH
+                }
+                if (affected != 1) {
+                    throw IllegalStateException("invariant violation: affected > 1")
+                }
+                val deleted = tx.deleteHeld(msgId)
+                if (deleted != 1) {
+                    throw MissingHeldException()
+                }
+                AckRetireResult.APPLIED
             }
+            when (result) {
+                AckRetireResult.APPLIED -> AckResult.Applied
+                AckRetireResult.NO_MATCH -> classifyZeroRowAck(msgId, expectedRecipient)
+            }
+        } catch (e: MissingHeldException) {
+            AckResult.Corrupt // Transaction rolled back; missing held row is cross-table corruption
         } catch (e: Exception) {
-            AckResult.StorageFailure // C6.4-A
+            AckResult.StorageFailure // Transaction rolled back
         }
     }
 

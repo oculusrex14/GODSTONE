@@ -140,7 +140,7 @@ class MeshNodeDeliveryIntegrationTest {
                 }
             }
         }
-        override fun acknowledgeBound(
+        override fun acknowledgeBoundAndRetire(
             msgId: ByteArray,
             expectedRecipient: ByteArray,
         ): AckResult {

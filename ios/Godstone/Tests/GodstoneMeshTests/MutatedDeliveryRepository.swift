@@ -61,7 +61,7 @@ final class MutatedDeliveryRepository: DeliveryRepository {
         }
     }
 
-    public func acknowledgeBound(_ msgId: Data, expectedRecipient: Data) -> AckResult {
+    public func acknowledgeBoundAndRetire(_ msgId: Data, expectedRecipient: Data) -> AckResult {
         guard msgId.count == 16 else { return .invalidArgument }
         guard expectedRecipient.count == 16 else { return .invalidArgument }
         let sql = acknowledgeBoundSql()

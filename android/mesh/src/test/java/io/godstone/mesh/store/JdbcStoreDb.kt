@@ -108,7 +108,7 @@ internal class JdbcStoreDb(file: File) : StoreDb {
         }
     }
 
-    override fun insert(frame: FrameV2, receivedFrom: ByteArray, receivedAt: Long): Long {
+    override fun insert(frame: FrameV2, receivedFrom: ByteArray, receivedAt: Long): Long = synchronized(conn) {
         val sql = "INSERT OR IGNORE INTO ${StoreSchema.TABLE} (" +
             "${StoreSchema.COL_MSG_ID}, ${StoreSchema.COL_TYPE}, ${StoreSchema.COL_TTL}, " +
             "${StoreSchema.COL_HOP_COUNT}, ${StoreSchema.COL_FLAGS}, ${StoreSchema.COL_PRIORITY}, " +
@@ -126,23 +126,23 @@ internal class JdbcStoreDb(file: File) : StoreDb {
             ps.setBytes(8, frame.payload)
             ps.setBytes(9, receivedFrom)
             ps.setLong(10, receivedAt)
-            return if (ps.executeUpdate() > 0) 1L else -1L   // IGNORE -> -1
+            if (ps.executeUpdate() > 0) 1L else -1L   // IGNORE -> -1
         }
     }
 
-    override fun contains(msgId: ByteArray): Boolean {
+    override fun contains(msgId: ByteArray): Boolean = synchronized(conn) {
         conn.prepareStatement(StoreSchema.containsSql()).use { ps ->
             ps.setBytes(1, msgId)
-            ps.executeQuery().use { rs -> return rs.next() }
+            ps.executeQuery().use { rs -> rs.next() }
         }
     }
 
-    override fun readHeld(msgId: ByteArray): StoreRow? {
+    override fun readHeld(msgId: ByteArray): StoreRow? = synchronized(conn) {
         conn.prepareStatement(StoreSchema.readHeldSql()).use { ps ->
             ps.setBytes(1, msgId)
             ps.executeQuery().use { rs ->
                 if (!rs.next()) return null
-                return StoreRow(
+                StoreRow(
                     typeCode = rs.getInt(1),
                     msgId = rs.getBytes(2),
                     routingTag = rs.getBytes(3),
@@ -157,17 +157,18 @@ internal class JdbcStoreDb(file: File) : StoreDb {
         }
     }
 
-    override fun heldBytes(): Long {
+    override fun heldBytes(): Long = synchronized(conn) {
         conn.prepareStatement(StoreSchema.heldBytesSql()).use { ps ->
-            ps.executeQuery().use { rs -> return if (rs.next()) rs.getLong(1) else 0L }
+            ps.executeQuery().use { rs -> if (rs.next()) rs.getLong(1) else 0L }
         }
     }
 
-    override fun evictOldestPrefix(overshoot: Long) {
+    override fun evictOldestPrefix(overshoot: Long) = synchronized(conn) {
         conn.prepareStatement(StoreSchema.evictPrefixSql()).use { ps ->
             ps.setLong(1, overshoot)
             ps.executeUpdate()
         }
+        Unit
     }
 
     /**
@@ -177,13 +178,13 @@ internal class JdbcStoreDb(file: File) : StoreDb {
      * [block] throws, rollback and rethrow so the caller reports
      * `PersistResult.FAILED_STORAGE` and the store reopens in a valid state.
      */
-    override fun <T> inTransaction(block: (StoreDb) -> T): T {
+    override fun <T> inTransaction(block: (StoreDb) -> T): T = synchronized(conn) {
         val wasAuto = conn.autoCommit
         conn.autoCommit = false
         try {
             val result = block(this)
             conn.commit()
-            return result
+            result
         } catch (e: Throwable) {
             runCatching { conn.rollback() }
             throw e
@@ -192,7 +193,7 @@ internal class JdbcStoreDb(file: File) : StoreDb {
         }
     }
 
-    override fun forEachRowOrderedByPriority(visit: (StoreRow) -> Boolean) {
+    override fun forEachRowOrderedByPriority(visit: (StoreRow) -> Boolean) = synchronized(conn) {
         val sql = "SELECT ${StoreSchema.COL_TYPE}, ${StoreSchema.COL_MSG_ID}, " +
             "${StoreSchema.COL_ROUTING_TAG}, ${StoreSchema.COL_TTL}, ${StoreSchema.COL_HOP_COUNT}, " +
             "${StoreSchema.COL_FLAGS}, ${StoreSchema.COL_PAYLOAD} FROM ${StoreSchema.TABLE} " +
@@ -215,7 +216,7 @@ internal class JdbcStoreDb(file: File) : StoreDb {
         }
     }
 
-    override fun forEachMsgId(visit: (ByteArray) -> Boolean) {
+    override fun forEachMsgId(visit: (ByteArray) -> Boolean) = synchronized(conn) {
         conn.prepareStatement("SELECT ${StoreSchema.COL_MSG_ID} FROM ${StoreSchema.TABLE}").use { ps ->
             ps.executeQuery().use { rs ->
                 while (rs.next()) {
@@ -227,7 +228,7 @@ internal class JdbcStoreDb(file: File) : StoreDb {
 
     // --- Stage 4C.1 / C6.1 -- delivery_state row (single atomic statements) ---
 
-    override fun readDelivery(msgId: ByteArray): DeliveryRow? {
+    override fun readDelivery(msgId: ByteArray): DeliveryRow? = synchronized(conn) {
         conn.prepareStatement(StoreSchema.readDeliverySql()).use { ps ->
             ps.setBytes(1, msgId)
             ps.executeQuery().use { rs ->
@@ -235,7 +236,7 @@ internal class JdbcStoreDb(file: File) : StoreDb {
                 val state = rs.getInt(1)
                 val ackMode = rs.getInt(2)
                 val expected = rs.getBytes(3)   // null when the SQL column is NULL
-                return DeliveryRow(state, ackMode, expected)
+                DeliveryRow(state, ackMode, expected)
             }
         }
     }
@@ -245,13 +246,13 @@ internal class JdbcStoreDb(file: File) : StoreDb {
         stateOrdinal: Int,
         ackModeOrdinal: Int,
         expectedRecipient: ByteArray?,
-    ): Boolean {
+    ): Boolean = synchronized(conn) {
         conn.prepareStatement(StoreSchema.insertDeliverySql()).use { ps ->
             ps.setBytes(1, msgId)
             ps.setInt(2, stateOrdinal)
             ps.setInt(3, ackModeOrdinal)
             if (expectedRecipient == null) ps.setNull(4, Types.BLOB) else ps.setBytes(4, expectedRecipient)
-            return ps.executeUpdate() > 0   // 1 inserted, 0 on conflict (DO NOTHING)
+            ps.executeUpdate() > 0   // 1 inserted, 0 on conflict (DO NOTHING)
         }
     }
 
@@ -262,20 +263,30 @@ internal class JdbcStoreDb(file: File) : StoreDb {
      * builds the SQL (fixed transition mapping / ACK CAS / clear) and binds the
      * BLOB args in order (null -> SQL NULL).
      */
-    override fun execDeliveryUpdate(sql: String, bytesArgs: Array<ByteArray?>): Int =
+    override fun execDeliveryUpdate(sql: String, bytesArgs: Array<ByteArray?>): Int = synchronized(conn) {
         conn.prepareStatement(sql).use { ps ->
             bytesArgs.forEachIndexed { i, b ->
                 if (b == null) ps.setNull(i + 1, Types.BLOB) else ps.setBytes(i + 1, b)
             }
             ps.executeUpdate()
         }
+    }
 
     /** Raw no-arg SQL (C6.4 test seam -- `PRAGMA ignore_check_constraints`). */
-    override fun execRawSql(sql: String) {
+    override fun execRawSql(sql: String): Unit = synchronized(conn) {
         conn.createStatement().use { it.execute(sql) }
     }
 
-    override fun close() = conn.close()
+    override fun deleteHeld(msgId: ByteArray): Int = synchronized(conn) {
+        conn.prepareStatement(
+            "DELETE FROM ${StoreSchema.TABLE} WHERE ${StoreSchema.COL_MSG_ID} = ?"
+        ).use { ps ->
+            ps.setBytes(1, msgId)
+            ps.executeUpdate()
+        }
+    }
+
+    override fun close() = synchronized(conn) { conn.close() }
 
     /**
      * Test seam: run a raw UPDATE against the SAME connection (C6.5 corrupt-write
@@ -286,9 +297,10 @@ internal class JdbcStoreDb(file: File) : StoreDb {
      * `PRAGMA ignore_check_constraints = ON` first (see [execRawSql]); a plain
      * bad-state UPDATE is now rejected by the schema CHECK, which is the point.
      */
-    internal fun execRawUpdate(sql: String, vararg bytesArgs: ByteArray): Int =
+    internal fun execRawUpdate(sql: String, vararg bytesArgs: ByteArray): Int = synchronized(conn) {
         conn.prepareStatement(sql).use { ps ->
             bytesArgs.forEachIndexed { i, b -> ps.setBytes(i + 1, b) }
             ps.executeUpdate()
         }
+    }
 }
