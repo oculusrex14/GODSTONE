@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
-"""C6.4.1 / C6.6 / C7.4 / C7.4.1 / C7.4.2 / C7.4.3 gate: schema, persist, and atomic ACK-retirement controls MUST exist.
+"""C6.4.1 / C6.6 / C7.4 / C7.4.1 / C7.4.2 / C7.4.3 / C7.5 / C7.5.1 gate: schema, persist, and atomic ACK/terminal-retirement controls MUST exist.
 
-A GATE: it fails (exit 1) iff a C6.4.1/C6.6/C7.4/C7.4.1/C7.4.2/C7.4.3 schema, persistence,
-or atomic ACK-retirement fail-closed negative control is MISSING from the test sources
+A GATE: it fails (exit 1) iff a C6.4.1/C6.6/C7.4/C7.4.1/C7.4.2/C7.4.3/C7.5/C7.5.1 schema, persistence,
+or atomic ACK/terminal-retirement fail-closed negative control is MISSING from the test sources
 or if the brace-balanced lexical function/closure-region structural invariants are violated.
 
 Structural checks enforce:
@@ -17,6 +17,14 @@ Structural checks enforce:
      fallbacks and comment-only decoys are rejected.
   6. iOS SqliteMessageStore.atomicAcknowledgeAndRetireWithFault executes withTransaction,
      and inside that transaction closure consumes guardedAckSql via sqlite3_prepare_v2
+     and executes StoreSchema.deleteHeldSql in strictly ordered succession.
+  7. Android SqliteDeliveryRepository.executeRetiringTransition executes db.inTransaction,
+     and inside that transaction closure executes execDeliveryUpdate and deleteHeld in
+     strictly ordered succession; executeStateOnlyTransition must NOT call deleteHeld.
+  8. iOS SqliteDeliveryRepository.transitionWithFault routes .retireAtomically to
+     atomicTransitionAndRetire / atomicTransitionAndRetireWithFault.
+  9. iOS SqliteMessageStore.atomicTransitionAndRetireWithFault executes withTransaction,
+     and inside that transaction closure consumes guardedTransitionSql via sqlite3_prepare_v2
      and executes StoreSchema.deleteHeldSql in strictly ordered succession.
 
 Usage:
@@ -244,6 +252,128 @@ CONTROLS: list[tuple[str, str, str]] = [
     ("ios/Godstone/Tests/GodstoneMeshTests/SqliteDeliveryRepositoryTests.swift",
      "testSkipHeldRetirementLeavesSplitStateProvingAtomicRetirementIsLoadBearing",
      "iOS cross-table mutation control - skipping held retirement leaves split state"),
+    # --- Android: C7.5 terminal transition and held retirement controls ---
+    ("android/mesh/src/test/java/io/godstone/mesh/delivery/SqliteDeliveryRepositoryTest.kt",
+     "C7_5 production queued C6_6 to EXPIRE success",
+     "Android C7.5 production queued to EXPIRE success"),
+    ("android/mesh/src/test/java/io/godstone/mesh/delivery/SqliteDeliveryRepositoryTest.kt",
+     "C7_5 production handed C6_6 to EXPIRE success",
+     "Android C7.5 production handed to EXPIRE success"),
+    ("android/mesh/src/test/java/io/godstone/mesh/delivery/SqliteDeliveryRepositoryTest.kt",
+     "C7_5 production queued C6_6 to CANCEL success",
+     "Android C7.5 production queued to CANCEL success"),
+    ("android/mesh/src/test/java/io/godstone/mesh/delivery/SqliteDeliveryRepositoryTest.kt",
+     "C7_5 production handed C6_6 to CANCEL success",
+     "Android C7.5 production handed to CANCEL success"),
+    ("android/mesh/src/test/java/io/godstone/mesh/delivery/SqliteDeliveryRepositoryTest.kt",
+     "C7_5 MARK_HANDED retains held frame",
+     "Android C7.5 MARK_HANDED retains held frame"),
+    ("android/mesh/src/test/java/io/godstone/mesh/delivery/SqliteDeliveryRepositoryTest.kt",
+     "C7_5 missing-held active row rollback and Corrupt on EXPIRE",
+     "Android C7.5 missing-held rollback on EXPIRE"),
+    ("android/mesh/src/test/java/io/godstone/mesh/delivery/SqliteDeliveryRepositoryTest.kt",
+     "C7_5 missing-held active row rollback and Corrupt on CANCEL",
+     "Android C7.5 missing-held rollback on CANCEL"),
+    ("android/mesh/src/test/java/io/godstone/mesh/delivery/SqliteDeliveryRepositoryTest.kt",
+     "C7_5 fault after terminal CAS both restored",
+     "Android C7.5 fault after terminal CAS restored"),
+    ("android/mesh/src/test/java/io/godstone/mesh/delivery/SqliteDeliveryRepositoryTest.kt",
+     "C7_5 fault after held DELETE both restored",
+     "Android C7.5 fault after held DELETE restored"),
+    ("android/mesh/src/test/java/io/godstone/mesh/delivery/SqliteDeliveryRepositoryTest.kt",
+     "C7_5 held delete SQL failure",
+     "Android C7.5 held delete SQL failure"),
+    ("android/mesh/src/test/java/io/godstone/mesh/delivery/SqliteDeliveryRepositoryTest.kt",
+     "C7_5 ACK wins CANCEL loses",
+     "Android C7.5 ACK wins CANCEL loses"),
+    ("android/mesh/src/test/java/io/godstone/mesh/delivery/SqliteDeliveryRepositoryTest.kt",
+     "C7_5 ACK wins EXPIRE loses",
+     "Android C7.5 ACK wins EXPIRE loses"),
+    ("android/mesh/src/test/java/io/godstone/mesh/delivery/SqliteDeliveryRepositoryTest.kt",
+     "C7_5 CANCEL wins ACK loses",
+     "Android C7.5 CANCEL wins ACK loses"),
+    ("android/mesh/src/test/java/io/godstone/mesh/delivery/SqliteDeliveryRepositoryTest.kt",
+     "C7_5 EXPIRE wins ACK loses",
+     "Android C7.5 EXPIRE wins ACK loses"),
+    ("android/mesh/src/test/java/io/godstone/mesh/delivery/SqliteDeliveryRepositoryTest.kt",
+     "C7_5 CANCEL vs EXPIRE",
+     "Android C7.5 CANCEL vs EXPIRE"),
+    ("android/mesh/src/test/java/io/godstone/mesh/delivery/SqliteDeliveryRepositoryTest.kt",
+     "C7_5 anti-entropy excludes retired terminal frame",
+     "Android C7.5 anti-entropy excludes retired terminal frame"),
+    ("android/mesh/src/test/java/io/godstone/mesh/delivery/SqliteDeliveryRepositoryTest.kt",
+     "C7_5 capacity released on EXPIRE",
+     "Android C7.5 capacity released on EXPIRE"),
+    ("android/mesh/src/test/java/io/godstone/mesh/delivery/SqliteDeliveryRepositoryTest.kt",
+     "C7_5 capacity released on CANCEL",
+     "Android C7.5 capacity released on CANCEL"),
+    ("android/mesh/src/test/java/io/godstone/mesh/delivery/SqliteDeliveryRepositoryTest.kt",
+     "C7_5 AckMode NONE terminal retirement",
+     "Android C7.5 AckMode NONE terminal retirement"),
+    ("android/mesh/src/test/java/io/godstone/mesh/delivery/SqliteDeliveryRepositoryTest.kt",
+     "C7_5 transition disposition policy",
+     "Android C7.5 transition disposition policy"),
+    # --- iOS: C7.5 terminal transition and held retirement controls ---
+    ("ios/Godstone/Tests/GodstoneMeshTests/SqliteDeliveryRepositoryTests.swift",
+     "testC7_5_production_queued_C6_6_to_EXPIRE_success",
+     "iOS C7.5 production queued to EXPIRE success"),
+    ("ios/Godstone/Tests/GodstoneMeshTests/SqliteDeliveryRepositoryTests.swift",
+     "testC7_5_production_handed_C6_6_to_EXPIRE_success",
+     "iOS C7.5 production handed to EXPIRE success"),
+    ("ios/Godstone/Tests/GodstoneMeshTests/SqliteDeliveryRepositoryTests.swift",
+     "testC7_5_production_queued_C6_6_to_CANCEL_success",
+     "iOS C7.5 production queued to CANCEL success"),
+    ("ios/Godstone/Tests/GodstoneMeshTests/SqliteDeliveryRepositoryTests.swift",
+     "testC7_5_production_handed_C6_6_to_CANCEL_success",
+     "iOS C7.5 production handed to CANCEL success"),
+    ("ios/Godstone/Tests/GodstoneMeshTests/SqliteDeliveryRepositoryTests.swift",
+     "testC7_5_MARK_HANDED_retains_held_frame",
+     "iOS C7.5 MARK_HANDED retains held frame"),
+    ("ios/Godstone/Tests/GodstoneMeshTests/SqliteDeliveryRepositoryTests.swift",
+     "testC7_5_missing_held_active_row_rollback_and_Corrupt_on_EXPIRE",
+     "iOS C7.5 missing-held rollback on EXPIRE"),
+    ("ios/Godstone/Tests/GodstoneMeshTests/SqliteDeliveryRepositoryTests.swift",
+     "testC7_5_missing_held_active_row_rollback_and_Corrupt_on_CANCEL",
+     "iOS C7.5 missing-held rollback on CANCEL"),
+    ("ios/Godstone/Tests/GodstoneMeshTests/SqliteDeliveryRepositoryTests.swift",
+     "testC7_5_fault_after_terminal_CAS_both_restored",
+     "iOS C7.5 fault after terminal CAS restored"),
+    ("ios/Godstone/Tests/GodstoneMeshTests/SqliteDeliveryRepositoryTests.swift",
+     "testC7_5_fault_after_held_DELETE_both_restored",
+     "iOS C7.5 fault after held DELETE restored"),
+    ("ios/Godstone/Tests/GodstoneMeshTests/SqliteDeliveryRepositoryTests.swift",
+     "testC7_5_held_delete_SQL_failure",
+     "iOS C7.5 held delete SQL failure"),
+    ("ios/Godstone/Tests/GodstoneMeshTests/SqliteDeliveryRepositoryTests.swift",
+     "testC7_5_ACK_wins_CANCEL_loses",
+     "iOS C7.5 ACK wins CANCEL loses"),
+    ("ios/Godstone/Tests/GodstoneMeshTests/SqliteDeliveryRepositoryTests.swift",
+     "testC7_5_ACK_wins_EXPIRE_loses",
+     "iOS C7.5 ACK wins EXPIRE loses"),
+    ("ios/Godstone/Tests/GodstoneMeshTests/SqliteDeliveryRepositoryTests.swift",
+     "testC7_5_CANCEL_wins_ACK_loses",
+     "iOS C7.5 CANCEL wins ACK loses"),
+    ("ios/Godstone/Tests/GodstoneMeshTests/SqliteDeliveryRepositoryTests.swift",
+     "testC7_5_EXPIRE_wins_ACK_loses",
+     "iOS C7.5 EXPIRE wins ACK loses"),
+    ("ios/Godstone/Tests/GodstoneMeshTests/SqliteDeliveryRepositoryTests.swift",
+     "testC7_5_CANCEL_vs_EXPIRE",
+     "iOS C7.5 CANCEL vs EXPIRE"),
+    ("ios/Godstone/Tests/GodstoneMeshTests/SqliteDeliveryRepositoryTests.swift",
+     "testC7_5_anti_entropy_excludes_retired_terminal_frame",
+     "iOS C7.5 anti-entropy excludes retired terminal frame"),
+    ("ios/Godstone/Tests/GodstoneMeshTests/SqliteDeliveryRepositoryTests.swift",
+     "testC7_5_capacity_released_on_EXPIRE",
+     "iOS C7.5 capacity released on EXPIRE"),
+    ("ios/Godstone/Tests/GodstoneMeshTests/SqliteDeliveryRepositoryTests.swift",
+     "testC7_5_capacity_released_on_CANCEL",
+     "iOS C7.5 capacity released on CANCEL"),
+    ("ios/Godstone/Tests/GodstoneMeshTests/SqliteDeliveryRepositoryTests.swift",
+     "testC7_5_AckMode_NONE_terminal_retirement",
+     "iOS C7.5 AckMode NONE terminal retirement"),
+    ("ios/Godstone/Tests/GodstoneMeshTests/SqliteDeliveryRepositoryTests.swift",
+     "testC7_5_transition_disposition_policy",
+     "iOS C7.5 transition disposition policy"),
 ]
 
 
@@ -546,13 +676,91 @@ def scan(root: Path) -> list[str]:
                     if not (prep_match.start() < pos_del):
                         missing.append("ios/Godstone/Sources/GodstoneMesh/MessageStore.swift: atomicAcknowledgeAndRetireWithFault operations out of order (require guardedAckSql preparation before deleteHeldSql inside withTransaction closure)")
 
+    # 7. Structural check: Android SqliteDeliveryRepository executeRetiringTransition + executeStateOnlyTransition
+    if android_sqlite_repo.is_file():
+        text = android_sqlite_repo.read_text(encoding="utf-8", errors="replace")
+        fn_retire = extract_braced_function(text, "private fun executeRetiringTransition(")
+        if fn_retire is None:
+            fn_retire = extract_braced_function(text, "fun executeRetiringTransition(")
+        if fn_retire is None:
+            missing.append("android/mesh/src/main/java/io/godstone/mesh/delivery/SqliteDeliveryRepository.kt: executeRetiringTransition missing or unextractable")
+        else:
+            tx_closure = extract_braced_region_after(fn_retire, "inTransaction")
+            if tx_closure is None:
+                missing.append("android/mesh/src/main/java/io/godstone/mesh/delivery/SqliteDeliveryRepository.kt: executeRetiringTransition must execute inside inTransaction closure")
+            else:
+                clean_tx = strip_comments(tx_closure)
+                pos_upd = clean_tx.find("execDeliveryUpdate")
+                pos_del = clean_tx.find("deleteHeld")
+                if pos_upd == -1:
+                    missing.append("android/mesh/src/main/java/io/godstone/mesh/delivery/SqliteDeliveryRepository.kt: executeRetiringTransition must call execDeliveryUpdate inside inTransaction closure")
+                if pos_del == -1:
+                    missing.append("android/mesh/src/main/java/io/godstone/mesh/delivery/SqliteDeliveryRepository.kt: executeRetiringTransition must call deleteHeld inside inTransaction closure")
+                if pos_upd != -1 and pos_del != -1:
+                    if not (pos_upd < pos_del):
+                        missing.append("android/mesh/src/main/java/io/godstone/mesh/delivery/SqliteDeliveryRepository.kt: executeRetiringTransition operations out of order (require execDeliveryUpdate before deleteHeld inside inTransaction closure)")
+
+        fn_state_only = extract_braced_function(text, "private fun executeStateOnlyTransition(")
+        if fn_state_only is None:
+            fn_state_only = extract_braced_function(text, "fun executeStateOnlyTransition(")
+        if fn_state_only is None:
+            missing.append("android/mesh/src/main/java/io/godstone/mesh/delivery/SqliteDeliveryRepository.kt: executeStateOnlyTransition missing or unextractable")
+        else:
+            clean_so = strip_comments(fn_state_only)
+            if "deleteHeld" in clean_so:
+                missing.append("android/mesh/src/main/java/io/godstone/mesh/delivery/SqliteDeliveryRepository.kt: executeStateOnlyTransition must not call deleteHeld")
+
+    # 8. Structural check: iOS SqliteDeliveryRepository transition routes .retireAtomically to atomicTransitionAndRetire
+    if ios_sqlite_repo.is_file():
+        text = ios_sqlite_repo.read_text(encoding="utf-8", errors="replace")
+        fn_body = extract_braced_function(text, "func transitionWithFault(")
+        if fn_body is None:
+            fn_body = extract_braced_function(text, "public func transition(")
+        if fn_body is None:
+            missing.append("ios/Godstone/Sources/GodstoneMesh/SqliteDeliveryRepository.swift: transitionWithFault missing or unextractable")
+        else:
+            clean_fn = strip_comments(fn_body)
+            if not (
+                ".atomicTransitionAndRetire(" in clean_fn
+                or "store.atomicTransitionAndRetire(" in clean_fn
+                or "sms.atomicTransitionAndRetireWithFault(" in clean_fn
+                or "atomicTransitionAndRetire(" in clean_fn
+            ):
+                missing.append("ios/Godstone/Sources/GodstoneMesh/SqliteDeliveryRepository.swift: transitionWithFault must route .retireAtomically through atomicTransitionAndRetire")
+
+    # 9. Structural check: iOS MessageStore atomicTransitionAndRetireWithFault region + withTransaction closure containment
+    if ios_message_store.is_file():
+        text = ios_message_store.read_text(encoding="utf-8", errors="replace")
+        fn_body = extract_braced_function(text, "func atomicTransitionAndRetireWithFault(")
+        if fn_body is None:
+            missing.append("ios/Godstone/Sources/GodstoneMesh/MessageStore.swift: atomicTransitionAndRetireWithFault missing or unextractable")
+        else:
+            tx_closure = extract_braced_region_after(fn_body, "withTransaction")
+            if tx_closure is None:
+                missing.append("ios/Godstone/Sources/GodstoneMesh/MessageStore.swift: atomicTransitionAndRetireWithFault must execute inside withTransaction closure")
+            else:
+                clean_tx = strip_comments(tx_closure)
+                prep_match = re.search(r"sqlite3_prepare_v2\s*\(\s*db\s*,\s*guardedTransitionSql\b", clean_tx)
+                pos_del = clean_tx.find("StoreSchema.deleteHeldSql")
+                if pos_del == -1:
+                    pos_del = clean_tx.find("deleteHeldSql")
+
+                if not prep_match:
+                    missing.append("ios/Godstone/Sources/GodstoneMesh/MessageStore.swift: guardedTransitionSql must be prepared via sqlite3_prepare_v2 inside withTransaction closure")
+                if pos_del == -1:
+                    missing.append("ios/Godstone/Sources/GodstoneMesh/MessageStore.swift: atomicTransitionAndRetireWithFault must use StoreSchema.deleteHeldSql inside withTransaction closure")
+
+                if prep_match and pos_del != -1:
+                    if not (prep_match.start() < pos_del):
+                        missing.append("ios/Godstone/Sources/GodstoneMesh/MessageStore.swift: atomicTransitionAndRetireWithFault operations out of order (require guardedTransitionSql preparation before deleteHeldSql inside withTransaction closure)")
+
     return missing
 
 
 def run_gate(root: Path) -> int:
     missing = scan(root)
     if missing:
-        print("STORE-SCHEMA-CONTROLS GATE: FAIL -- a C6.4.1/C6.6/C7.4/C7.4.1/C7.4.2/C7.4.3 schema/persist/atomic-ACK "
+        print("STORE-SCHEMA-CONTROLS GATE: FAIL -- a C6.4.1/C6.6/C7.4/C7.4.1/C7.4.2/C7.4.3/C7.5/C7.5.1 schema/persist/atomic-ACK "
               "fail-closed control is MISSING from the test sources:")
         for m in missing:
             print("  - " + m)
@@ -562,7 +770,7 @@ def run_gate(root: Path) -> int:
         print("(A-03 / A-04 / A-10 / ADR-003 / ADR-004 / ADR-005 remain OPEN: this is "
               "repo-owned evidence, not device evidence.)")
         return 1
-    print(f"STORE-SCHEMA-CONTROLS GATE: PASS -- all {len(CONTROLS)} C6.4.1/C6.6/C7.4/C7.4.1/C7.4.2/C7.4.3 "
+    print(f"STORE-SCHEMA-CONTROLS GATE: PASS -- all {len(CONTROLS)} C6.4.1/C6.6/C7.4/C7.4.1/C7.4.2/C7.4.3/C7.5/C7.5.1 "
           "schema/persistence/atomic ACK-retirement controls present in the test sources.")
     return 0
 
@@ -628,6 +836,17 @@ def _build_synthetic_positive_tree(root: Path) -> None:
         "            AckRetireResult.APPLIED\n"
         "        }\n"
         "    }\n"
+        "    private fun executeStateOnlyTransition(msgId: ByteArray, target: DeliveryState, validFroms: Set<DeliveryState>): TransitionResult {\n"
+        "        val affected = db.execDeliveryUpdate(sql, arrayOf(msgId))\n"
+        "        return TransitionResult.Applied\n"
+        "    }\n"
+        "    private fun executeRetiringTransition(msgId: ByteArray, target: DeliveryState, validFroms: Set<DeliveryState>): TransitionResult {\n"
+        "        return db.inTransaction { tx ->\n"
+        "            val affected = tx.execDeliveryUpdate(sql, arrayOf(msgId))\n"
+        "            val deleted = tx.deleteHeld(msgId)\n"
+        "            CrossTableRetireResult.APPLIED\n"
+        "        }\n"
+        "    }\n"
         "}\n",
         encoding="utf-8",
     )
@@ -650,6 +869,14 @@ def _build_synthetic_positive_tree(root: Path) -> None:
         "    public func acknowledgeBoundAndRetire(_ msgId: Data, expectedRecipient: Data) -> AckResult {\n"
         "        return try store.atomicAcknowledgeAndRetire(guardedAckSql: sql, msgId: msgId, expectedRecipient: expectedRecipient)\n"
         "    }\n"
+        "    internal func transitionWithFault(_ msgId: Data, _ transition: DeliveryTransition, fault: ((String, OpaquePointer) throws -> Void)? = nil) -> TransitionResult {\n"
+        "        switch spec.heldDisposition {\n"
+        "        case .retain:\n"
+        "            return .applied\n"
+        "        case .retireAtomically:\n"
+        "            return try store.atomicTransitionAndRetire(guardedTransitionSql: sql, msgId: msgId)\n"
+        "        }\n"
+        "    }\n"
         "}\n",
         encoding="utf-8",
     )
@@ -667,6 +894,18 @@ def _build_synthetic_positive_tree(root: Path) -> None:
         "    ) throws -> AckRetireMutationResult {\n"
         "        return try withTransaction { db in\n"
         "            sqlite3_prepare_v2(db, guardedAckSql, -1, &stmt, nil)\n"
+        "            let deleteHeldSql = StoreSchema.deleteHeldSql\n"
+        "            sqlite3_prepare_v2(db, deleteHeldSql, -1, &delStmt, nil)\n"
+        "            return .applied\n"
+        "        }\n"
+        "    }\n"
+        "    internal func atomicTransitionAndRetireWithFault(\n"
+        "        guardedTransitionSql: String,\n"
+        "        msgId: Data,\n"
+        "        fault: ((String, OpaquePointer) throws -> Void)? = nil\n"
+        "    ) throws -> TerminalRetireMutationResult {\n"
+        "        return try withTransaction { db in\n"
+        "            sqlite3_prepare_v2(db, guardedTransitionSql, -1, &stmt, nil)\n"
         "            let deleteHeldSql = StoreSchema.deleteHeldSql\n"
         "            sqlite3_prepare_v2(db, deleteHeldSql, -1, &delStmt, nil)\n"
         "            return .applied\n"
@@ -714,6 +953,17 @@ def selftest() -> int:
             "        val deleted = tx.deleteHeld(msgId)\n"
             "        return AckResult.Applied\n"
             "    }\n"
+            "    private fun executeStateOnlyTransition(msgId: ByteArray, target: DeliveryState, validFroms: Set<DeliveryState>): TransitionResult {\n"
+            "        val affected = db.execDeliveryUpdate(sql, arrayOf(msgId))\n"
+            "        return TransitionResult.Applied\n"
+            "    }\n"
+            "    private fun executeRetiringTransition(msgId: ByteArray, target: DeliveryState, validFroms: Set<DeliveryState>): TransitionResult {\n"
+            "        return db.inTransaction { tx ->\n"
+            "            val affected = tx.execDeliveryUpdate(sql, arrayOf(msgId))\n"
+            "            val deleted = tx.deleteHeld(msgId)\n"
+            "            CrossTableRetireResult.APPLIED\n"
+            "        }\n"
+            "    }\n"
             "    fun decoyElsewhere() {\n"
             "        db.inTransaction { }\n"
             "    }\n"
@@ -738,6 +988,17 @@ def selftest() -> int:
             "        return db.inTransaction { tx ->\n"
             "            val affected = tx.execDeliveryUpdate(sql, bindArgs)\n"
             "            AckRetireResult.APPLIED\n"
+            "        }\n"
+            "    }\n"
+            "    private fun executeStateOnlyTransition(msgId: ByteArray, target: DeliveryState, validFroms: Set<DeliveryState>): TransitionResult {\n"
+            "        val affected = db.execDeliveryUpdate(sql, arrayOf(msgId))\n"
+            "        return TransitionResult.Applied\n"
+            "    }\n"
+            "    private fun executeRetiringTransition(msgId: ByteArray, target: DeliveryState, validFroms: Set<DeliveryState>): TransitionResult {\n"
+            "        return db.inTransaction { tx ->\n"
+            "            val affected = tx.execDeliveryUpdate(sql, arrayOf(msgId))\n"
+            "            val deleted = tx.deleteHeld(msgId)\n"
+            "            CrossTableRetireResult.APPLIED\n"
             "        }\n"
             "    }\n"
             "    fun decoyElsewhere() {\n"
@@ -766,6 +1027,17 @@ def selftest() -> int:
             "            AckRetireResult.APPLIED\n"
             "        }\n"
             "    }\n"
+            "    private fun executeStateOnlyTransition(msgId: ByteArray, target: DeliveryState, validFroms: Set<DeliveryState>): TransitionResult {\n"
+            "        val affected = db.execDeliveryUpdate(sql, arrayOf(msgId))\n"
+            "        return TransitionResult.Applied\n"
+            "    }\n"
+            "    private fun executeRetiringTransition(msgId: ByteArray, target: DeliveryState, validFroms: Set<DeliveryState>): TransitionResult {\n"
+            "        return db.inTransaction { tx ->\n"
+            "            val affected = tx.execDeliveryUpdate(sql, arrayOf(msgId))\n"
+            "            val deleted = tx.deleteHeld(msgId)\n"
+            "            CrossTableRetireResult.APPLIED\n"
+            "        }\n"
+            "    }\n"
             "    fun decoyElsewhere() {\n"
             "        tx.execDeliveryUpdate(sql, bindArgs)\n"
             "    }\n"
@@ -787,6 +1059,14 @@ def selftest() -> int:
             "public class SqliteDeliveryRepository {\n"
             "    public func acknowledgeBoundAndRetire(_ msgId: Data, expectedRecipient: Data) -> AckResult {\n"
             "        return try store.atomicAcknowledgeAndRetire(guardedAckSql: sql, msgId: msgId, expectedRecipient: expectedRecipient)\n"
+            "    }\n"
+            "    internal func transitionWithFault(_ msgId: Data, _ transition: DeliveryTransition, fault: ((String, OpaquePointer) throws -> Void)? = nil) -> TransitionResult {\n"
+            "        switch spec.heldDisposition {\n"
+            "        case .retain:\n"
+            "            return .applied\n"
+            "        case .retireAtomically:\n"
+            "            return try store.atomicTransitionAndRetire(guardedTransitionSql: sql, msgId: msgId)\n"
+            "        }\n"
             "    }\n"
             "}\n",
             encoding="utf-8",
@@ -810,6 +1090,14 @@ def selftest() -> int:
             "    internal func acknowledgeBoundAndRetireWithFault(_ msgId: Data, expectedRecipient: Data, fault: Any?) -> AckResult {\n"
             "        return try store.atomicAcknowledgeAndRetire(guardedAckSql: sql, msgId: msgId, expectedRecipient: expectedRecipient)\n"
             "    }\n"
+            "    internal func transitionWithFault(_ msgId: Data, _ transition: DeliveryTransition, fault: ((String, OpaquePointer) throws -> Void)? = nil) -> TransitionResult {\n"
+            "        switch spec.heldDisposition {\n"
+            "        case .retain:\n"
+            "            return .applied\n"
+            "        case .retireAtomically:\n"
+            "            return try store.atomicTransitionAndRetire(guardedTransitionSql: sql, msgId: msgId)\n"
+            "        }\n"
+            "    }\n"
             "}\n",
             encoding="utf-8",
         )
@@ -832,6 +1120,9 @@ def selftest() -> int:
             "    internal func acknowledgeBoundAndRetireWithFault(_ msgId: Data, expectedRecipient: Data, fault: Any?) -> AckResult {\n"
             "        return try store.atomicAcknowledgeAndRetire(guardedAckSql: sql, msgId: msgId, expectedRecipient: expectedRecipient)\n"
             "    }\n"
+            "    internal func transitionWithFault(_ msgId: Data, _ transition: DeliveryTransition, fault: ((String, OpaquePointer) throws -> Void)? = nil) -> TransitionResult {\n"
+            "        return try store.atomicTransitionAndRetire(guardedTransitionSql: sql, msgId: msgId)\n"
+            "    }\n"
             "}\n",
             encoding="utf-8",
         )
@@ -850,6 +1141,9 @@ def selftest() -> int:
             "public class SqliteDeliveryRepository {\n"
             "    internal func acknowledgeBoundAndRetireWithFault(_ msgId: Data, expectedRecipient: Data, fault: Any?) -> AckResult {\n"
             "        return try store.atomicAcknowledgeAndRetire(guardedAckSql: sql, msgId: msgId, expectedRecipient: expectedRecipient)\n"
+            "    }\n"
+            "    internal func transitionWithFault(_ msgId: Data, _ transition: DeliveryTransition, fault: ((String, OpaquePointer) throws -> Void)? = nil) -> TransitionResult {\n"
+            "        return try store.atomicTransitionAndRetire(guardedTransitionSql: sql, msgId: msgId)\n"
             "    }\n"
             "}\n",
             encoding="utf-8",
@@ -870,6 +1164,9 @@ def selftest() -> int:
             "    public func acknowledgeBoundAndRetire(_ msgId: Data, expectedRecipient: Data) -> AckResult {\n"
             "        // store.atomicAcknowledgeAndRetire(guardedAckSql: sql, msgId: msgId, expectedRecipient: expectedRecipient)\n"
             "        return .applied\n"
+            "    }\n"
+            "    internal func transitionWithFault(_ msgId: Data, _ transition: DeliveryTransition, fault: ((String, OpaquePointer) throws -> Void)? = nil) -> TransitionResult {\n"
+            "        return try store.atomicTransitionAndRetire(guardedTransitionSql: sql, msgId: msgId)\n"
             "    }\n"
             "}\n",
             encoding="utf-8",
@@ -898,6 +1195,18 @@ def selftest() -> int:
             "        sqlite3_prepare_v2(db, deleteHeldSql, -1, &delStmt, nil)\n"
             "        return .applied\n"
             "    }\n"
+            "    internal func atomicTransitionAndRetireWithFault(\n"
+            "        guardedTransitionSql: String,\n"
+            "        msgId: Data,\n"
+            "        fault: ((String, OpaquePointer) throws -> Void)? = nil\n"
+            "    ) throws -> TerminalRetireMutationResult {\n"
+            "        return try withTransaction { db in\n"
+            "            sqlite3_prepare_v2(db, guardedTransitionSql, -1, &stmt, nil)\n"
+            "            let deleteHeldSql = StoreSchema.deleteHeldSql\n"
+            "            sqlite3_prepare_v2(db, deleteHeldSql, -1, &delStmt, nil)\n"
+            "            return .applied\n"
+            "        }\n"
+            "    }\n"
             "    func decoyElsewhere() {\n"
             "        withTransaction { _ in }\n"
             "    }\n"
@@ -925,6 +1234,18 @@ def selftest() -> int:
             "    ) throws -> AckRetireMutationResult {\n"
             "        return try withTransaction { db in\n"
             "            sqlite3_prepare_v2(db, guardedAckSql, -1, &stmt, nil)\n"
+            "            return .applied\n"
+            "        }\n"
+            "    }\n"
+            "    internal func atomicTransitionAndRetireWithFault(\n"
+            "        guardedTransitionSql: String,\n"
+            "        msgId: Data,\n"
+            "        fault: ((String, OpaquePointer) throws -> Void)? = nil\n"
+            "    ) throws -> TerminalRetireMutationResult {\n"
+            "        return try withTransaction { db in\n"
+            "            sqlite3_prepare_v2(db, guardedTransitionSql, -1, &stmt, nil)\n"
+            "            let deleteHeldSql = StoreSchema.deleteHeldSql\n"
+            "            sqlite3_prepare_v2(db, deleteHeldSql, -1, &delStmt, nil)\n"
             "            return .applied\n"
             "        }\n"
             "    }\n"
@@ -974,6 +1295,17 @@ def selftest() -> int:
             "        db.deleteHeld(msgId)\n"
             "        return AckResult.Applied\n"
             "    }\n"
+            "    private fun executeStateOnlyTransition(msgId: ByteArray, target: DeliveryState, validFroms: Set<DeliveryState>): TransitionResult {\n"
+            "        val affected = db.execDeliveryUpdate(sql, arrayOf(msgId))\n"
+            "        return TransitionResult.Applied\n"
+            "    }\n"
+            "    private fun executeRetiringTransition(msgId: ByteArray, target: DeliveryState, validFroms: Set<DeliveryState>): TransitionResult {\n"
+            "        return db.inTransaction { tx ->\n"
+            "            val affected = tx.execDeliveryUpdate(sql, arrayOf(msgId))\n"
+            "            val deleted = tx.deleteHeld(msgId)\n"
+            "            CrossTableRetireResult.APPLIED\n"
+            "        }\n"
+            "    }\n"
             "}\n",
             encoding="utf-8",
         )
@@ -996,6 +1328,17 @@ def selftest() -> int:
             "            val deleted = tx.deleteHeld(msgId)\n"
             "            val affected = tx.execDeliveryUpdate(sql, bindArgs)\n"
             "            AckRetireResult.APPLIED\n"
+            "        }\n"
+            "    }\n"
+            "    private fun executeStateOnlyTransition(msgId: ByteArray, target: DeliveryState, validFroms: Set<DeliveryState>): TransitionResult {\n"
+            "        val affected = db.execDeliveryUpdate(sql, arrayOf(msgId))\n"
+            "        return TransitionResult.Applied\n"
+            "    }\n"
+            "    private fun executeRetiringTransition(msgId: ByteArray, target: DeliveryState, validFroms: Set<DeliveryState>): TransitionResult {\n"
+            "        return db.inTransaction { tx ->\n"
+            "            val affected = tx.execDeliveryUpdate(sql, arrayOf(msgId))\n"
+            "            val deleted = tx.deleteHeld(msgId)\n"
+            "            CrossTableRetireResult.APPLIED\n"
             "        }\n"
             "    }\n"
             "}\n",
@@ -1026,6 +1369,18 @@ def selftest() -> int:
             "        let deleteHeldSql = StoreSchema.deleteHeldSql\n"
             "        return .applied\n"
             "    }\n"
+            "    internal func atomicTransitionAndRetireWithFault(\n"
+            "        guardedTransitionSql: String,\n"
+            "        msgId: Data,\n"
+            "        fault: ((String, OpaquePointer) throws -> Void)? = nil\n"
+            "    ) throws -> TerminalRetireMutationResult {\n"
+            "        return try withTransaction { db in\n"
+            "            sqlite3_prepare_v2(db, guardedTransitionSql, -1, &stmt, nil)\n"
+            "            let deleteHeldSql = StoreSchema.deleteHeldSql\n"
+            "            sqlite3_prepare_v2(db, deleteHeldSql, -1, &delStmt, nil)\n"
+            "            return .applied\n"
+            "        }\n"
+            "    }\n"
             "}\n",
             encoding="utf-8",
         )
@@ -1052,6 +1407,18 @@ def selftest() -> int:
             "            // sqlite3_prepare_v2(db, guardedAckSql, -1, &stmt, nil)\n"
             "            let note = \"guardedAckSql\"\n"
             "            let deleteHeldSql = StoreSchema.deleteHeldSql\n"
+            "            return .applied\n"
+            "        }\n"
+            "    }\n"
+            "    internal func atomicTransitionAndRetireWithFault(\n"
+            "        guardedTransitionSql: String,\n"
+            "        msgId: Data,\n"
+            "        fault: ((String, OpaquePointer) throws -> Void)? = nil\n"
+            "    ) throws -> TerminalRetireMutationResult {\n"
+            "        return try withTransaction { db in\n"
+            "            sqlite3_prepare_v2(db, guardedTransitionSql, -1, &stmt, nil)\n"
+            "            let deleteHeldSql = StoreSchema.deleteHeldSql\n"
+            "            sqlite3_prepare_v2(db, deleteHeldSql, -1, &delStmt, nil)\n"
             "            return .applied\n"
             "        }\n"
             "    }\n"
@@ -1083,6 +1450,18 @@ def selftest() -> int:
             "            return .applied\n"
             "        }\n"
             "    }\n"
+            "    internal func atomicTransitionAndRetireWithFault(\n"
+            "        guardedTransitionSql: String,\n"
+            "        msgId: Data,\n"
+            "        fault: ((String, OpaquePointer) throws -> Void)? = nil\n"
+            "    ) throws -> TerminalRetireMutationResult {\n"
+            "        return try withTransaction { db in\n"
+            "            sqlite3_prepare_v2(db, guardedTransitionSql, -1, &stmt, nil)\n"
+            "            let deleteHeldSql = StoreSchema.deleteHeldSql\n"
+            "            sqlite3_prepare_v2(db, deleteHeldSql, -1, &delStmt, nil)\n"
+            "            return .applied\n"
+            "        }\n"
+            "    }\n"
             "}\n",
             encoding="utf-8",
         )
@@ -1091,6 +1470,250 @@ def selftest() -> int:
             failures.append(f"iOS ordering mutation inside closure NOT detected; got {res}")
         else:
             print("  ok    [iOS Ordering] operations out of order inside closure detected")
+
+    # --- C7.5.1 Mutations ---------------------------------------------
+    # Mutation H1: Android Retiring Transition Transaction Removal
+    with tempfile.TemporaryDirectory() as td:
+        root = Path(td)
+        _build_synthetic_positive_tree(root)
+        android_sdr = root / "android/mesh/src/main/java/io/godstone/mesh/delivery/SqliteDeliveryRepository.kt"
+        android_sdr.write_text(
+            "package io.godstone.mesh.delivery\n"
+            "class SqliteDeliveryRepository {\n"
+            "    override fun acknowledgeBoundAndRetire(msgId: ByteArray, expectedRecipient: ByteArray): AckResult {\n"
+            "        return db.inTransaction { tx ->\n"
+            "            val affected = tx.execDeliveryUpdate(sql, bindArgs)\n"
+            "            val deleted = tx.deleteHeld(msgId)\n"
+            "            AckRetireResult.APPLIED\n"
+            "        }\n"
+            "    }\n"
+            "    private fun executeStateOnlyTransition(msgId: ByteArray, target: DeliveryState, validFroms: Set<DeliveryState>): TransitionResult {\n"
+            "        val affected = db.execDeliveryUpdate(sql, arrayOf(msgId))\n"
+            "        return TransitionResult.Applied\n"
+            "    }\n"
+            "    private fun executeRetiringTransition(msgId: ByteArray, target: DeliveryState, validFroms: Set<DeliveryState>): TransitionResult {\n"
+            "        val affected = tx.execDeliveryUpdate(sql, arrayOf(msgId))\n"
+            "        val deleted = tx.deleteHeld(msgId)\n"
+            "        return TransitionResult.Applied\n"
+            "    }\n"
+            "}\n",
+            encoding="utf-8",
+        )
+        res = scan(root)
+        if not any("executeRetiringTransition must execute inside inTransaction closure" in m for m in res):
+            failures.append(f"Mutation H1 (Android retiring transition without inTransaction) NOT detected; got {res}")
+        else:
+            print("  ok    [Mutation H1] Android retiring transition without inTransaction detected")
+
+    # Mutation H2: Android Retiring Transition Delete Removal
+    with tempfile.TemporaryDirectory() as td:
+        root = Path(td)
+        _build_synthetic_positive_tree(root)
+        android_sdr = root / "android/mesh/src/main/java/io/godstone/mesh/delivery/SqliteDeliveryRepository.kt"
+        android_sdr.write_text(
+            "package io.godstone.mesh.delivery\n"
+            "class SqliteDeliveryRepository {\n"
+            "    override fun acknowledgeBoundAndRetire(msgId: ByteArray, expectedRecipient: ByteArray): AckResult {\n"
+            "        return db.inTransaction { tx ->\n"
+            "            val affected = tx.execDeliveryUpdate(sql, bindArgs)\n"
+            "            val deleted = tx.deleteHeld(msgId)\n"
+            "            AckRetireResult.APPLIED\n"
+            "        }\n"
+            "    }\n"
+            "    private fun executeStateOnlyTransition(msgId: ByteArray, target: DeliveryState, validFroms: Set<DeliveryState>): TransitionResult {\n"
+            "        val affected = db.execDeliveryUpdate(sql, arrayOf(msgId))\n"
+            "        return TransitionResult.Applied\n"
+            "    }\n"
+            "    private fun executeRetiringTransition(msgId: ByteArray, target: DeliveryState, validFroms: Set<DeliveryState>): TransitionResult {\n"
+            "        return db.inTransaction { tx ->\n"
+            "            val affected = tx.execDeliveryUpdate(sql, arrayOf(msgId))\n"
+            "            CrossTableRetireResult.APPLIED\n"
+            "        }\n"
+            "    }\n"
+            "}\n",
+            encoding="utf-8",
+        )
+        res = scan(root)
+        if not any("executeRetiringTransition must call deleteHeld inside inTransaction closure" in m for m in res):
+            failures.append(f"Mutation H2 (Android retiring transition without deleteHeld) NOT detected; got {res}")
+        else:
+            print("  ok    [Mutation H2] Android retiring transition without deleteHeld detected")
+
+    # Mutation H3: Android State-Only Transition Leak
+    with tempfile.TemporaryDirectory() as td:
+        root = Path(td)
+        _build_synthetic_positive_tree(root)
+        android_sdr = root / "android/mesh/src/main/java/io/godstone/mesh/delivery/SqliteDeliveryRepository.kt"
+        android_sdr.write_text(
+            "package io.godstone.mesh.delivery\n"
+            "class SqliteDeliveryRepository {\n"
+            "    override fun acknowledgeBoundAndRetire(msgId: ByteArray, expectedRecipient: ByteArray): AckResult {\n"
+            "        return db.inTransaction { tx ->\n"
+            "            val affected = tx.execDeliveryUpdate(sql, bindArgs)\n"
+            "            val deleted = tx.deleteHeld(msgId)\n"
+            "            AckRetireResult.APPLIED\n"
+            "        }\n"
+            "    }\n"
+            "    private fun executeStateOnlyTransition(msgId: ByteArray, target: DeliveryState, validFroms: Set<DeliveryState>): TransitionResult {\n"
+            "        val affected = db.execDeliveryUpdate(sql, arrayOf(msgId))\n"
+            "        db.deleteHeld(msgId)\n"
+            "        return TransitionResult.Applied\n"
+            "    }\n"
+            "    private fun executeRetiringTransition(msgId: ByteArray, target: DeliveryState, validFroms: Set<DeliveryState>): TransitionResult {\n"
+            "        return db.inTransaction { tx ->\n"
+            "            val affected = tx.execDeliveryUpdate(sql, arrayOf(msgId))\n"
+            "            val deleted = tx.deleteHeld(msgId)\n"
+            "            CrossTableRetireResult.APPLIED\n"
+            "        }\n"
+            "    }\n"
+            "}\n",
+            encoding="utf-8",
+        )
+        res = scan(root)
+        if not any("executeStateOnlyTransition must not call deleteHeld" in m for m in res):
+            failures.append(f"Mutation H3 (Android state-only transition calling deleteHeld) NOT detected; got {res}")
+        else:
+            print("  ok    [Mutation H3] Android state-only transition calling deleteHeld detected")
+
+    # Mutation H4: iOS Transition Repository Route Bypass
+    with tempfile.TemporaryDirectory() as td:
+        root = Path(td)
+        _build_synthetic_positive_tree(root)
+        ios_sdr = root / "ios/Godstone/Sources/GodstoneMesh/SqliteDeliveryRepository.swift"
+        ios_sdr.write_text(
+            "public class SqliteDeliveryRepository {\n"
+            "    public func acknowledgeBoundAndRetire(_ msgId: Data, expectedRecipient: Data) -> AckResult {\n"
+            "        return try store.atomicAcknowledgeAndRetire(guardedAckSql: sql, msgId: msgId, expectedRecipient: expectedRecipient)\n"
+            "    }\n"
+            "    internal func transitionWithFault(_ msgId: Data, _ transition: DeliveryTransition, fault: ((String, OpaquePointer) throws -> Void)? = nil) -> TransitionResult {\n"
+            "        return .applied\n"
+            "    }\n"
+            "}\n",
+            encoding="utf-8",
+        )
+        res = scan(root)
+        if not any("transitionWithFault must route .retireAtomically through atomicTransitionAndRetire" in m for m in res):
+            failures.append(f"Mutation H4 (iOS transition not routing to atomic) NOT detected; got {res}")
+        else:
+            print("  ok    [Mutation H4] iOS transition not routing to atomic detected")
+
+    # Mutation H5: iOS MessageStore atomicTransitionAndRetireWithFault Transaction Removal
+    with tempfile.TemporaryDirectory() as td:
+        root = Path(td)
+        _build_synthetic_positive_tree(root)
+        ios_ms = root / "ios/Godstone/Sources/GodstoneMesh/MessageStore.swift"
+        ios_ms.write_text(
+            "public class SqliteMessageStore {\n"
+            "    internal func atomicAcknowledgeAndRetireWithFault(\n"
+            "        guardedAckSql: String,\n"
+            "        msgId: Data,\n"
+            "        expectedRecipient: Data,\n"
+            "        fault: ((String, OpaquePointer) throws -> Void)? = nil\n"
+            "    ) throws -> AckRetireMutationResult {\n"
+            "        return try withTransaction { db in\n"
+            "            sqlite3_prepare_v2(db, guardedAckSql, -1, &stmt, nil)\n"
+            "            let deleteHeldSql = StoreSchema.deleteHeldSql\n"
+            "            sqlite3_prepare_v2(db, deleteHeldSql, -1, &delStmt, nil)\n"
+            "            return .applied\n"
+            "        }\n"
+            "    }\n"
+            "    internal func atomicTransitionAndRetireWithFault(\n"
+            "        guardedTransitionSql: String,\n"
+            "        msgId: Data,\n"
+            "        fault: ((String, OpaquePointer) throws -> Void)? = nil\n"
+            "    ) throws -> TerminalRetireMutationResult {\n"
+            "        sqlite3_prepare_v2(db, guardedTransitionSql, -1, &stmt, nil)\n"
+            "        let deleteHeldSql = StoreSchema.deleteHeldSql\n"
+            "        sqlite3_prepare_v2(db, deleteHeldSql, -1, &delStmt, nil)\n"
+            "        return .applied\n"
+            "    }\n"
+            "}\n",
+            encoding="utf-8",
+        )
+        res = scan(root)
+        if not any("atomicTransitionAndRetireWithFault must execute inside withTransaction closure" in m for m in res):
+            failures.append(f"Mutation H5 (iOS atomicTransition without withTransaction) NOT detected; got {res}")
+        else:
+            print("  ok    [Mutation H5] iOS atomicTransition without withTransaction detected")
+
+    # Mutation H6: iOS MessageStore atomicTransitionAndRetireWithFault Delete Removal
+    with tempfile.TemporaryDirectory() as td:
+        root = Path(td)
+        _build_synthetic_positive_tree(root)
+        ios_ms = root / "ios/Godstone/Sources/GodstoneMesh/MessageStore.swift"
+        ios_ms.write_text(
+            "public class SqliteMessageStore {\n"
+            "    internal func atomicAcknowledgeAndRetireWithFault(\n"
+            "        guardedAckSql: String,\n"
+            "        msgId: Data,\n"
+            "        expectedRecipient: Data,\n"
+            "        fault: ((String, OpaquePointer) throws -> Void)? = nil\n"
+            "    ) throws -> AckRetireMutationResult {\n"
+            "        return try withTransaction { db in\n"
+            "            sqlite3_prepare_v2(db, guardedAckSql, -1, &stmt, nil)\n"
+            "            let deleteHeldSql = StoreSchema.deleteHeldSql\n"
+            "            sqlite3_prepare_v2(db, deleteHeldSql, -1, &delStmt, nil)\n"
+            "            return .applied\n"
+            "        }\n"
+            "    }\n"
+            "    internal func atomicTransitionAndRetireWithFault(\n"
+            "        guardedTransitionSql: String,\n"
+            "        msgId: Data,\n"
+            "        fault: ((String, OpaquePointer) throws -> Void)? = nil\n"
+            "    ) throws -> TerminalRetireMutationResult {\n"
+            "        return try withTransaction { db in\n"
+            "            sqlite3_prepare_v2(db, guardedTransitionSql, -1, &stmt, nil)\n"
+            "            return .applied\n"
+            "        }\n"
+            "    }\n"
+            "}\n",
+            encoding="utf-8",
+        )
+        res = scan(root)
+        if not any("atomicTransitionAndRetireWithFault must use StoreSchema.deleteHeldSql inside withTransaction closure" in m for m in res):
+            failures.append(f"Mutation H6 (iOS atomicTransition without deleteHeldSql) NOT detected; got {res}")
+        else:
+            print("  ok    [Mutation H6] iOS atomicTransition without deleteHeldSql detected")
+
+    # Mutation H7: iOS MessageStore atomicTransitionAndRetireWithFault Ordering Violation
+    with tempfile.TemporaryDirectory() as td:
+        root = Path(td)
+        _build_synthetic_positive_tree(root)
+        ios_ms = root / "ios/Godstone/Sources/GodstoneMesh/MessageStore.swift"
+        ios_ms.write_text(
+            "public class SqliteMessageStore {\n"
+            "    internal func atomicAcknowledgeAndRetireWithFault(\n"
+            "        guardedAckSql: String,\n"
+            "        msgId: Data,\n"
+            "        expectedRecipient: Data,\n"
+            "        fault: ((String, OpaquePointer) throws -> Void)? = nil\n"
+            "    ) throws -> AckRetireMutationResult {\n"
+            "        return try withTransaction { db in\n"
+            "            sqlite3_prepare_v2(db, guardedAckSql, -1, &stmt, nil)\n"
+            "            let deleteHeldSql = StoreSchema.deleteHeldSql\n"
+            "            sqlite3_prepare_v2(db, deleteHeldSql, -1, &delStmt, nil)\n"
+            "            return .applied\n"
+            "        }\n"
+            "    }\n"
+            "    internal func atomicTransitionAndRetireWithFault(\n"
+            "        guardedTransitionSql: String,\n"
+            "        msgId: Data,\n"
+            "        fault: ((String, OpaquePointer) throws -> Void)? = nil\n"
+            "    ) throws -> TerminalRetireMutationResult {\n"
+            "        return try withTransaction { db in\n"
+            "            let deleteHeldSql = StoreSchema.deleteHeldSql\n"
+            "            sqlite3_prepare_v2(db, guardedTransitionSql, -1, &stmt, nil)\n"
+            "            return .applied\n"
+            "        }\n"
+            "    }\n"
+            "}\n",
+            encoding="utf-8",
+        )
+        res = scan(root)
+        if not any("atomicTransitionAndRetireWithFault operations out of order" in m for m in res):
+            failures.append(f"Mutation H7 (iOS atomicTransition ordering mutation) NOT detected; got {res}")
+        else:
+            print("  ok    [Mutation H7] iOS atomicTransition ordering mutation inside closure detected")
 
     # Missing file detection test
     with tempfile.TemporaryDirectory() as td:
@@ -1124,6 +1747,13 @@ def selftest() -> int:
           "  - iOS Delete After Transaction Closure detected.\n"
           "  - iOS Guarded SQL Decoy / Comment-only detected.\n"
           "  - iOS Ordering (deleteHeldSql before guardedAckSql) detected.\n"
+          "  - Mutation H1 (Android retiring transition without inTransaction) detected.\n"
+          "  - Mutation H2 (Android retiring transition without deleteHeld) detected.\n"
+          "  - Mutation H3 (Android state-only transition calling deleteHeld) detected.\n"
+          "  - Mutation H4 (iOS transition not routing to atomic) detected.\n"
+          "  - Mutation H5 (iOS atomicTransition without withTransaction) detected.\n"
+          "  - Mutation H6 (iOS atomicTransition without deleteHeldSql) detected.\n"
+          "  - Mutation H7 (iOS atomicTransition ordering mutation) detected.\n"
           "  - Missing files reported.")
     return 0
 

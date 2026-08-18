@@ -437,9 +437,12 @@ interface DeliveryRepository {
     fun enqueue(msgId: ByteArray, ackMode: AckMode, expectedRecipient: ByteArray?): EnqueueResult
 
     /**
-     * Guarded SQL CAS lifecycle transition (C6.4-F/G). Runs
-     * `UPDATE delivery_state SET state = target WHERE msg_id = ? AND state IN
-     * (validFroms)`; [TransitionResult.Applied] iff the affected row count is 1.
+     * Guarded SQL CAS lifecycle transition with explicit HeldDisposition policy (C7.5.1).
+     * Dispatches based on transitionSpec(transition).heldDisposition:
+     *  * RETAIN (MARK_HANDED): state-only guarded CAS update; held frame is retained.
+     *  * RETIRE_ATOMICALLY (EXPIRE, CANCEL): atomic guarded CAS update + held_frames
+     *    deletion in one transaction. If held frame is missing while delivery row is
+     *    active, rolls back and yields Corrupt.
      * A 0-row CAS is re-read ONCE and classified: row absent -> [UnknownMessage];
      * corrupt -> [Corrupt]; storage failure -> [StorageFailure];
      * state == target -> [AlreadyInTarget]; any other legal durable state ->

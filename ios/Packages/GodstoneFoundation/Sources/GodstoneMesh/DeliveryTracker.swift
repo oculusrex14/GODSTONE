@@ -398,11 +398,14 @@ public protocol DeliveryRepository: AnyObject {
     /// `.invalidArgument` (before any SQL).
     func enqueue(_ msgId: Data, ackMode: AckMode, expectedRecipient: Data?) -> EnqueueResult
 
-    /// Guarded SQL CAS lifecycle transition (C6.4-F/G). Runs
-    /// `UPDATE delivery_state SET state = target WHERE msg_id = ? AND state IN
-    /// (validFroms)`; `.applied` iff the affected row count is 1. A 0-row CAS is
-    /// re-read ONCE and classified: row absent -> `.unknownMessage`; corrupt ->
-    /// `.corrupt`; storage failure -> `.storageFailure`; state == target ->
+    /// Guarded SQL CAS lifecycle transition with explicit HeldDisposition policy (C7.5.1).
+    /// Dispatches based on transitionSpec(transition).heldDisposition:
+    ///  * .retain (.markHanded): state-only guarded CAS update; held frame is retained.
+    ///  * .retireAtomically (.expire, .cancel): atomic guarded CAS update + held_frames
+    ///    deletion in one transaction. If held frame is missing while delivery row is
+    ///    active, rolls back and yields .corrupt.
+    /// A 0-row CAS is re-read ONCE and classified: row absent -> `.unknownMessage`;
+    /// corrupt -> `.corrupt`; storage failure -> `.storageFailure`; state == target ->
     /// `.alreadyInTarget`; any other legal durable state -> `.rejectedState`; a
     /// same-validFrom state that the SQL should have matched (invariant violation
     /// under concurrency) -> `.storageFailure`. The (validFroms, target) pair is

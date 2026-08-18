@@ -23,18 +23,13 @@ import Foundation
 //    `UPDATE ... SET state WHERE msg_id AND state IN (...)` and decides `.applied`
 //    by the affected row count (1), NOT a stale pre-read; a 0-row CAS is re-read
 //    ONCE to classify.
-//  * Lifecycle truth-table owned here (C6.4-G): `transition` takes a
-//    `DeliveryTransition` (the fixed validFroms/target mapping lives here, not in
-//    the caller). The old public `compareAndSet(validFroms, target)` is GONE.
-//  * ACK CAS (C6.4-H): `acknowledgeBound` runs
-//    `UPDATE ... SET acknowledged WHERE msg_id AND state IN (queued,handed) AND
-//    ack_mode = SINGLE_RECIPIENT AND expected_recipient = ?` -- state + mode + the
-//    EXACT durable recipient in ONE WHERE clause; a 0-row CAS is re-read and
-//    classified (`.duplicateAuthenticatedAck` / `.rejectedState` /
-//    `.unknownMessage` / `.storageFailure`).
-//  * `acknowledgeBound` performs delivery-state retirement ONLY; held-frame
-//    retirement is C7.4 (NOT yet implemented -- C6.4-I; ADR-004 delete-on-ACK is
-//    NOT closed by this method).
+//  * Lifecycle truth-table owned here (C6.4-G / C7.5.1): `transition` takes a
+//    `DeliveryTransition` which explicitly and exhaustively specifies the target
+//    state, valid from-states, and held-frame disposition (`.retain` vs `.retireAtomically`).
+//  * MARK_HANDED (C7.5.1): guarded state-only CAS (held frame retained for relay transport).
+//  * ACK (C7.4 / C7.4.1): authenticated guarded CAS + exact held frame delete in ONE transaction.
+//  * EXPIRE / CANCEL (C7.5 / C7.5.1): guarded terminal CAS + exact held frame delete in ONE transaction.
+//  * Terminal delivery row remains historical authority.
 //  * `clear` is typed (C6.4-J): a failed destructive operation is never
 //    indistinguishable from success.
 //
@@ -55,6 +50,43 @@ import Foundation
 // decodes to `DeliveryLookup.corrupt` -- fail closed (C6.5), never silently to
 // unavailable. Mirrors `SqliteDeliveryRepository` on Android (byte-identical
 // schema + SQL + codes).
+
+/// Explicit disposition for held frames on a delivery transition (C7.5.1).
+internal enum HeldDisposition: Equatable {
+    case retain
+    case retireAtomically
+}
+
+/// Explicit transition specification (target state, valid source states, held disposition).
+internal struct TransitionSpec: Equatable {
+    let target: DeliveryState
+    let validFroms: [DeliveryState]
+    let heldDisposition: HeldDisposition
+}
+
+/// Canonical mapping of DeliveryTransition to its explicit specification (C7.5.1).
+internal func transitionSpec(_ transition: DeliveryTransition) -> TransitionSpec {
+    switch transition {
+    case .markHanded:
+        return TransitionSpec(
+            target: .handedToRelay,
+            validFroms: [.queuedDurably],
+            heldDisposition: .retain
+        )
+    case .expire:
+        return TransitionSpec(
+            target: .expired,
+            validFroms: [.queuedDurably, .handedToRelay],
+            heldDisposition: .retireAtomically
+        )
+    case .cancel:
+        return TransitionSpec(
+            target: .cancelledLocally,
+            validFroms: [.queuedDurably, .handedToRelay],
+            heldDisposition: .retireAtomically
+        )
+    }
+}
 
 /// Production `DeliveryRepository` over the same SQLite DB as `SqliteMessageStore`'s
 /// held-frames table. One row holds the delivery state, ack mode, and intended
@@ -141,48 +173,48 @@ public final class SqliteDeliveryRepository: DeliveryRepository {
         fault: ((String, OpaquePointer) throws -> Void)? = nil
     ) -> TransitionResult {
         guard msgId.count == 16 else { return .invalidArgument } // C6.4-D
-        let (target, validFroms) = transitionMapping(transition)
-        let sql = transitionSql(target: target, validFroms: validFroms)
+        let spec = transitionSpec(transition)
+        let sql = transitionSql(target: spec.target, validFroms: spec.validFroms)
 
-        // C7.5: MARK_HANDED is a state-only transition (held frame retained for relay carry).
-        if transition == .markHanded {
+        switch spec.heldDisposition {
+        case .retain:
             do {
                 let affected = try store.execDeliveryUpdate(sql, bytesArgs: [msgId])
                 switch affected {
                 case 1: return .applied
-                case 0: return classifyZeroRowTransition(msgId: msgId, target: target, validFroms: validFroms)
+                case 0: return classifyZeroRowTransition(msgId: msgId, target: spec.target, validFroms: spec.validFroms)
                 default: return .storageFailure // affected > 1: invariant violation (PK is msg_id)
                 }
             } catch {
                 return .storageFailure // C6.4-A
             }
-        }
 
-        // C7.5: EXPIRE and CANCEL are atomic terminal transitions that retire the held frame in ONE transaction.
-        do {
-            let res: TerminalRetireMutationResult
-            if let sms = store as? SqliteMessageStore {
-                res = try sms.atomicTransitionAndRetireWithFault(
-                    guardedTransitionSql: sql,
-                    msgId: msgId,
-                    fault: fault
-                )
-            } else {
-                res = try store.atomicTransitionAndRetire(
-                    guardedTransitionSql: sql,
-                    msgId: msgId
-                )
+        case .retireAtomically:
+            do {
+                let res: TerminalRetireMutationResult
+                if let sms = store as? SqliteMessageStore {
+                    res = try sms.atomicTransitionAndRetireWithFault(
+                        guardedTransitionSql: sql,
+                        msgId: msgId,
+                        fault: fault
+                    )
+                } else {
+                    res = try store.atomicTransitionAndRetire(
+                        guardedTransitionSql: sql,
+                        msgId: msgId
+                    )
+                }
+                switch res {
+                case .applied:
+                    return .applied
+                case .noMatch:
+                    return classifyZeroRowTransition(msgId: msgId, target: spec.target, validFroms: spec.validFroms)
+                case .missingHeld:
+                    return .corrupt
+                }
+            } catch {
+                return .storageFailure // C6.4-A
             }
-            switch res {
-            case .applied:
-                return .applied
-            case .noMatch:
-                return classifyZeroRowTransition(msgId: msgId, target: target, validFroms: validFroms)
-            case .missingHeld:
-                return .corrupt
-            }
-        } catch {
-            return .storageFailure // C6.4-A
         }
     }
 
@@ -248,21 +280,15 @@ public final class SqliteDeliveryRepository: DeliveryRepository {
         }
     }
 
-    // --- C6.4-F/G: guarded SQL CAS builders ---------------------------------
+    // --- C6.4-F/G / C7.5.1: guarded SQL CAS builders & transition specs -----
 
     /// The fixed (target, validFroms) mapping the repository owns (C6.4-G).
     /// C6.4.1-A: `internal` so the TEST-ONLY `MutatedDeliveryRepository` can reuse
     /// the exact lifecycle truth-table without duplicating it.
     internal func transitionMapping(_ t: DeliveryTransition)
         -> (target: DeliveryState, validFroms: [DeliveryState]) {
-        switch t {
-        case .markHanded:
-            return (.handedToRelay, [.queuedDurably])
-        case .expire:
-            return (.expired, [.queuedDurably, .handedToRelay])
-        case .cancel:
-            return (.cancelledLocally, [.queuedDurably, .handedToRelay])
-        }
+        let spec = transitionSpec(t)
+        return (spec.target, spec.validFroms)
     }
 
     /// `UPDATE delivery_state SET state = target WHERE msg_id = ? AND state IN (...)`.

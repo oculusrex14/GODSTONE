@@ -230,7 +230,7 @@ def check_consistency(
         if pattern in blocker_text:
             errors.append(f"RELEASE_MANIFEST.json contains stale release blocker claim: {label}")
 
-    # 7. Check Findings Status Truth
+    # 7. Check Findings Status Truth & Semantic Asserts
     findings = {f["id"]: f for f in findings_data.get("findings", [])}
     nonshipping_findings = ["A-03", "A-10"]
     for fid in nonshipping_findings:
@@ -241,6 +241,24 @@ def check_consistency(
                     f"FINDINGS_STATUS.json: {fid} is marked CLOSED; must remain NONSHIPPING_TESTED "
                     f"until on-device and radio verification are complete"
                 )
+
+    for fid in ["A-03", "A-04", "A-10"]:
+        f = findings.get(fid)
+        if f:
+            ev = f.get("evidence", "")
+            if "C7.4.1/C7.5/C7.5.1 atomic ACK and terminal retirement" not in ev:
+                errors.append(
+                    f"FINDINGS_STATUS.json: {fid} evidence must reflect 'C7.4.1/C7.5/C7.5.1 atomic ACK and terminal retirement'"
+                )
+
+    findings_raw = findings_path.read_text(encoding="utf-8")
+    stale_findings_phrases = [
+        ("delete-on-ACK (ADR-004, C7.4) pending", "stale delete-on-ACK pending without C7.4.1/C7.5 resolution"),
+        ("delete-on-ACK (ADR-004) remain", "stale delete-on-ACK remain without C7.4.1/C7.5 resolution"),
+    ]
+    for stale_str, label in stale_findings_phrases:
+        if stale_str in findings_raw:
+            errors.append(f"FINDINGS_STATUS.json contains stale phrase: {label} ({stale_str!r})")
 
     # 8. Check FINAL_STATUS.md prose truthfulness
     if final_status_text:
@@ -285,9 +303,6 @@ def selftest() -> int:
         f_status.write_text(FINAL_STATUS_PATH.read_text(encoding="utf-8"), encoding="utf-8")
 
         # Baseline: clean files must pass
-        base_errs = check_consistency(f_findings, f_gates, f_tiers, f_manifest, f_status)
-        # Note: if current real files are not yet updated, base_errs might not be empty yet,
-        # but in selftest we create a known-good baseline first:
         manifest_clean = json.loads(f_manifest.read_text(encoding="utf-8"))
         manifest_clean["source"]["branch"] = EXPECTED_BRANCH
         manifest_clean["release_blockers"] = [
@@ -399,12 +414,38 @@ def selftest() -> int:
             failures.append("Mutation 7 (stage3_frozen_tip corrupted) was NOT detected")
         f_manifest.write_text(json.dumps(manifest_clean, indent=2), encoding="utf-8")
 
+        # Mutation 8: Stale delete-on-ACK phrase in FINDINGS_STATUS.json
+        f8 = json.loads(f_findings.read_text(encoding="utf-8"))
+        for f in f8["findings"]:
+            if f["id"] == "A-03":
+                f["evidence"] += " delete-on-ACK (ADR-004, C7.4) pending"
+        f_findings.write_text(json.dumps(f8), encoding="utf-8")
+        errs = check_consistency(f_findings, f_gates, f_tiers, f_manifest, f_status)
+        if any("stale delete-on-ACK pending" in e or "stale phrase" in e for e in errs):
+            passed_mutations += 1
+        else:
+            failures.append("Mutation 8 (stale delete-on-ACK phrase in FINDINGS_STATUS.json) was NOT detected")
+        f_findings.write_text(FINDINGS_STATUS_PATH.read_text(encoding="utf-8"), encoding="utf-8")
+
+        # Mutation 9: Missing C7.4.1/C7.5/C7.5.1 evidence in A-03
+        f9 = json.loads(f_findings.read_text(encoding="utf-8"))
+        for f in f9["findings"]:
+            if f["id"] == "A-03":
+                f["evidence"] = "Old evidence without the C7 marker"
+        f_findings.write_text(json.dumps(f9), encoding="utf-8")
+        errs = check_consistency(f_findings, f_gates, f_tiers, f_manifest, f_status)
+        if any("A-03" in e and "C7.4.1/C7.5/C7.5.1 atomic ACK" in e for e in errs):
+            passed_mutations += 1
+        else:
+            failures.append("Mutation 9 (missing C7.4.1/C7.5/C7.5.1 evidence in A-03) was NOT detected")
+        f_findings.write_text(FINDINGS_STATUS_PATH.read_text(encoding="utf-8"), encoding="utf-8")
+
     if failures:
         for f in failures:
             print(f"::error::selftest failure: {f}")
         return 1
 
-    print(f"check_status_consistency selftest PASSED ({passed_mutations}/7 mutations caught deterministically).")
+    print(f"check_status_consistency selftest PASSED ({passed_mutations}/9 mutations caught deterministically).")
     return 0
 
 

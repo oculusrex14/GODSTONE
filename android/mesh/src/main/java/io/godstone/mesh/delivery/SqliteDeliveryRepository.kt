@@ -23,18 +23,14 @@ import io.godstone.mesh.store.StoreSchema
 //    `UPDATE ... SET state WHERE msg_id AND state IN (...)` and decides [Applied]
 //    by the affected row count (1), NOT a stale pre-read; a 0-row CAS is re-read
 //    ONCE to classify.
-//  * Lifecycle truth-table owned here (C6.4-G): [transition] takes a
-//    [DeliveryTransition] (the fixed validFroms/target mapping lives here, not in
-//    the caller). The old public `compareAndSet(validFroms, target)` is GONE.
-//  * ACK CAS (C6.4-H): [acknowledgeBound] runs
-//    `UPDATE ... SET acknowledged WHERE msg_id AND state IN (queued,handed) AND
-//    ack_mode = SINGLE_RECIPIENT AND expected_recipient = ?` -- state + mode + the
-//    EXACT durable recipient in ONE WHERE clause; a 0-row CAS is re-read and
-//    classified ([DuplicateAuthenticatedAck] / [RejectedState] / [UnknownMessage]
-//    / [StorageFailure]).
-//  * `acknowledgeBound` performs delivery-state retirement ONLY; held-frame
-//    retirement is C7.4 (NOT yet implemented -- C6.4-I; ADR-004 delete-on-ACK is
-//    NOT closed by this method).
+//  * Lifecycle truth-table owned here (C6.4-G / C7.5.1): [transition] takes a
+//    [DeliveryTransition] which explicitly and exhaustively specifies the target
+//    state, valid from-states, and held-frame disposition ([HeldDisposition.RETAIN]
+//    vs [HeldDisposition.RETIRE_ATOMICALLY]).
+//  * MARK_HANDED (C7.5.1): guarded state-only CAS (held frame retained for relay transport).
+//  * ACK (C7.4 / C7.4.1): authenticated guarded CAS + exact held frame delete in ONE transaction.
+//  * EXPIRE / CANCEL (C7.5 / C7.5.1): guarded terminal CAS + exact held frame delete in ONE transaction.
+//  * Terminal delivery row remains historical authority.
 //  * [clear] is typed (C6.4-J): a failed destructive operation is never
 //    indistinguishable from success.
 //
@@ -111,29 +107,42 @@ internal class SqliteDeliveryRepository(
 
     override fun transition(msgId: ByteArray, transition: DeliveryTransition): TransitionResult {
         if (msgId.size != 16) return TransitionResult.InvalidArgument // C6.4-D
-        val (target, validFroms) = transitionMapping(transition)
-        val sql = transitionSql(target, validFroms)
+        val spec = transitionSpec(transition)
+        val sql = transitionSql(spec.target, spec.validFroms)
 
-        // C7.5: MARK_HANDED is a state-only transition (held frame retained for relay carry).
-        if (transition == DeliveryTransition.MARK_HANDED) {
-            return try {
-                val affected = db.execDeliveryUpdate(sql, arrayOf(msgId))
-                when (affected) {
-                    1 -> TransitionResult.Applied
-                    0 -> classifyZeroRowTransition(msgId, target, validFroms)
-                    else -> TransitionResult.StorageFailure // affected > 1: invariant violation (PK is msg_id)
-                }
-            } catch (e: Exception) {
-                TransitionResult.StorageFailure // C6.4-A
-            }
+        return when (spec.heldDisposition) {
+            HeldDisposition.RETAIN -> executeStateOnlyTransition(msgId, spec, sql)
+            HeldDisposition.RETIRE_ATOMICALLY -> executeRetiringTransition(msgId, spec, sql)
         }
+    }
 
-        // C7.5: EXPIRE and CANCEL are atomic terminal transitions that retire the held frame in ONE transaction.
+    private fun executeStateOnlyTransition(
+        msgId: ByteArray,
+        spec: TransitionSpec,
+        sql: String,
+    ): TransitionResult {
+        return try {
+            val affected = db.execDeliveryUpdate(sql, arrayOf(msgId))
+            when (affected) {
+                1 -> TransitionResult.Applied
+                0 -> classifyZeroRowTransition(msgId, spec.target, spec.validFroms)
+                else -> TransitionResult.StorageFailure // affected > 1: invariant violation (PK is msg_id)
+            }
+        } catch (e: Exception) {
+            TransitionResult.StorageFailure // C6.4-A
+        }
+    }
+
+    private fun executeRetiringTransition(
+        msgId: ByteArray,
+        spec: TransitionSpec,
+        sql: String,
+    ): TransitionResult {
         return try {
             val result = db.inTransaction { tx ->
                 val affected = tx.execDeliveryUpdate(sql, arrayOf(msgId))
                 if (affected == 0) {
-                    return@inTransaction AckRetireResult.NO_MATCH
+                    return@inTransaction CrossTableRetireResult.NO_MATCH
                 }
                 if (affected != 1) {
                     throw IllegalStateException("invariant violation: affected > 1")
@@ -142,11 +151,11 @@ internal class SqliteDeliveryRepository(
                 if (deleted != 1) {
                     throw MissingHeldException()
                 }
-                AckRetireResult.APPLIED
+                CrossTableRetireResult.APPLIED
             }
             when (result) {
-                AckRetireResult.APPLIED -> TransitionResult.Applied
-                AckRetireResult.NO_MATCH -> classifyZeroRowTransition(msgId, target, validFroms)
+                CrossTableRetireResult.APPLIED -> TransitionResult.Applied
+                CrossTableRetireResult.NO_MATCH -> classifyZeroRowTransition(msgId, spec.target, spec.validFroms)
             }
         } catch (e: MissingHeldException) {
             TransitionResult.Corrupt // Transaction rolled back; missing held row is cross-table corruption
@@ -157,7 +166,7 @@ internal class SqliteDeliveryRepository(
 
     private class MissingHeldException : RuntimeException("active delivery missing held frame")
 
-    private enum class AckRetireResult {
+    private enum class CrossTableRetireResult {
         APPLIED,
         NO_MATCH,
     }
@@ -181,7 +190,7 @@ internal class SqliteDeliveryRepository(
             val result = db.inTransaction { tx ->
                 val affected = tx.execDeliveryUpdate(sql, bindArgs)
                 if (affected == 0) {
-                    return@inTransaction AckRetireResult.NO_MATCH
+                    return@inTransaction CrossTableRetireResult.NO_MATCH
                 }
                 if (affected != 1) {
                     throw IllegalStateException("invariant violation: affected > 1")
@@ -190,11 +199,11 @@ internal class SqliteDeliveryRepository(
                 if (deleted != 1) {
                     throw MissingHeldException()
                 }
-                AckRetireResult.APPLIED
+                CrossTableRetireResult.APPLIED
             }
             when (result) {
-                AckRetireResult.APPLIED -> AckResult.Applied
-                AckRetireResult.NO_MATCH -> classifyZeroRowAck(msgId, expectedRecipient)
+                CrossTableRetireResult.APPLIED -> AckResult.Applied
+                CrossTableRetireResult.NO_MATCH -> classifyZeroRowAck(msgId, expectedRecipient)
             }
         } catch (e: MissingHeldException) {
             AckResult.Corrupt // Transaction rolled back; missing held row is cross-table corruption
@@ -217,20 +226,58 @@ internal class SqliteDeliveryRepository(
         }
     }
 
-    // --- C6.4-F/G: guarded SQL CAS builders ---------------------------------
+    // --- C6.4-F/G / C7.5.1: guarded SQL CAS builders & transition specs -----
 
-    /** The fixed (validFroms, target) mapping the repository owns (C6.4-G).
+    /** Explicit disposition for held frames on a delivery transition (C7.5.1). */
+    internal enum class HeldDisposition {
+        RETAIN,
+        RETIRE_ATOMICALLY,
+    }
+
+    /** Explicit transition specification (target state, valid source states, held disposition). */
+    internal data class TransitionSpec(
+        val target: DeliveryState,
+        val validFroms: Set<DeliveryState>,
+        val heldDisposition: HeldDisposition,
+    )
+
+    /** Canonical mapping of [DeliveryTransition] to its explicit specification (C7.5.1). */
+    internal fun transitionSpec(
+        transition: DeliveryTransition,
+    ): TransitionSpec =
+        when (transition) {
+            DeliveryTransition.MARK_HANDED -> TransitionSpec(
+                target = DeliveryState.HANDED_TO_RELAY,
+                validFroms = setOf(DeliveryState.QUEUED_DURABLY),
+                heldDisposition = HeldDisposition.RETAIN,
+            )
+
+            DeliveryTransition.EXPIRE -> TransitionSpec(
+                target = DeliveryState.EXPIRED,
+                validFroms = setOf(
+                    DeliveryState.QUEUED_DURABLY,
+                    DeliveryState.HANDED_TO_RELAY,
+                ),
+                heldDisposition = HeldDisposition.RETIRE_ATOMICALLY,
+            )
+
+            DeliveryTransition.CANCEL -> TransitionSpec(
+                target = DeliveryState.CANCELLED_LOCALLY,
+                validFroms = setOf(
+                    DeliveryState.QUEUED_DURABLY,
+                    DeliveryState.HANDED_TO_RELAY,
+                ),
+                heldDisposition = HeldDisposition.RETIRE_ATOMICALLY,
+            )
+        }
+
+    /** The fixed (target, validFroms) mapping the repository owns (C6.4-G).
      *  C6.4.1-A: `internal` so the test-only `MutatedDeliveryRepository` reuses
      *  the exact lifecycle truth-table without duplicating it. */
-    internal fun transitionMapping(t: DeliveryTransition): Pair<DeliveryState, Set<DeliveryState>> =
-        when (t) {
-            DeliveryTransition.MARK_HANDED ->
-                DeliveryState.HANDED_TO_RELAY to setOf(DeliveryState.QUEUED_DURABLY)
-            DeliveryTransition.EXPIRE ->
-                DeliveryState.EXPIRED to setOf(DeliveryState.QUEUED_DURABLY, DeliveryState.HANDED_TO_RELAY)
-            DeliveryTransition.CANCEL ->
-                DeliveryState.CANCELLED_LOCALLY to setOf(DeliveryState.QUEUED_DURABLY, DeliveryState.HANDED_TO_RELAY)
-        }
+    internal fun transitionMapping(t: DeliveryTransition): Pair<DeliveryState, Set<DeliveryState>> {
+        val spec = transitionSpec(t)
+        return spec.target to spec.validFroms
+    }
 
     /**
      * `UPDATE delivery_state SET state = target WHERE msg_id = ? AND state IN (...)`.

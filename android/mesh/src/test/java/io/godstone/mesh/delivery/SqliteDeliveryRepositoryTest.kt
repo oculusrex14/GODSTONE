@@ -2518,7 +2518,7 @@ class SqliteDeliveryRepositoryTest {
     }
 
     @Test
-    fun `C7_5 ACK vs CANCEL race deterministic real-SQL`() = runBlocking {
+    fun `C7_5 CANCEL wins ACK loses`() = runBlocking {
         val file = Files.createTempFile("godstone-delivery", ".db").toFile()
         try {
             val db = JdbcStoreDb(file)
@@ -2560,7 +2560,7 @@ class SqliteDeliveryRepositoryTest {
     }
 
     @Test
-    fun `C7_5 ACK vs EXPIRE race deterministic real-SQL`() = runBlocking {
+    fun `C7_5 EXPIRE wins ACK loses`() = runBlocking {
         val file = Files.createTempFile("godstone-delivery", ".db").toFile()
         try {
             val db = JdbcStoreDb(file)
@@ -2602,7 +2602,79 @@ class SqliteDeliveryRepositoryTest {
     }
 
     @Test
-    fun `C7_5 CANCEL vs EXPIRE race deterministic real-SQL`() = runBlocking {
+    fun `C7_5 ACK wins CANCEL loses`() = runBlocking {
+        val file = Files.createTempFile("godstone-delivery", ".db").toFile()
+        try {
+            val db = JdbcStoreDb(file)
+            val store = SqliteMessageStore(db, maxBytes = 4096L)
+            val repo = SqliteDeliveryRepository(db)
+            val (pubA, privA) = realKeypair()
+            val tracker = DeliveryTracker(repo, Ed25519AckAuthenticator(SingleRecipientResolver(nodeA(), pubA)))
+            val mid = msgId(199)
+            val frame = directFrame(19, payloadSize = 64, msgIdOverride = mid)
+
+            // Start from production C6.6 HANDED state with held frame present
+            assertEquals(OutboundEnqueueResult.Created(frame),
+                store.enqueueDirectOutbound(frame, expectedRecipient = nodeA(), localOriginNodeId = localNode(1)))
+            assertEquals(TransitionResult.Applied, tracker.markHandedToRelay(mid))
+            assertEquals(DeliveryState.HANDED_TO_RELAY, stateOf(tracker, mid))
+            assertTrue(db.contains(mid))
+
+            // ACK commits first
+            val ack = AckFrame.build(mid, privA, nodeA(), routingTag)
+            assertEquals(AckResult.Applied, tracker.acknowledge(mid, ack))
+            assertEquals(DeliveryState.ACKNOWLEDGED_BY_RECIPIENT, stateOf(tracker, mid))
+            assertFalse(db.contains(mid), "held frame deleted by winning ACK")
+
+            // CANCEL called on same message -> RejectedState
+            val cancelRes = tracker.cancel(mid)
+            assertEquals(TransitionResult.RejectedState, cancelRes, "CANCEL after ACK must be RejectedState")
+            assertEquals(DeliveryState.ACKNOWLEDGED_BY_RECIPIENT, stateOf(tracker, mid))
+            assertFalse(db.contains(mid), "held frame remains absent")
+            db.close()
+        } finally {
+            file.delete()
+        }
+    }
+
+    @Test
+    fun `C7_5 ACK wins EXPIRE loses`() = runBlocking {
+        val file = Files.createTempFile("godstone-delivery", ".db").toFile()
+        try {
+            val db = JdbcStoreDb(file)
+            val store = SqliteMessageStore(db, maxBytes = 4096L)
+            val repo = SqliteDeliveryRepository(db)
+            val (pubA, privA) = realKeypair()
+            val tracker = DeliveryTracker(repo, Ed25519AckAuthenticator(SingleRecipientResolver(nodeA(), pubA)))
+            val mid = msgId(200)
+            val frame = directFrame(20, payloadSize = 64, msgIdOverride = mid)
+
+            // Start from production C6.6 HANDED state with held frame present
+            assertEquals(OutboundEnqueueResult.Created(frame),
+                store.enqueueDirectOutbound(frame, expectedRecipient = nodeA(), localOriginNodeId = localNode(1)))
+            assertEquals(TransitionResult.Applied, tracker.markHandedToRelay(mid))
+            assertEquals(DeliveryState.HANDED_TO_RELAY, stateOf(tracker, mid))
+            assertTrue(db.contains(mid))
+
+            // ACK commits first
+            val ack = AckFrame.build(mid, privA, nodeA(), routingTag)
+            assertEquals(AckResult.Applied, tracker.acknowledge(mid, ack))
+            assertEquals(DeliveryState.ACKNOWLEDGED_BY_RECIPIENT, stateOf(tracker, mid))
+            assertFalse(db.contains(mid), "held frame deleted by winning ACK")
+
+            // EXPIRE called on same message -> RejectedState
+            val expireRes = tracker.expire(mid)
+            assertEquals(TransitionResult.RejectedState, expireRes, "EXPIRE after ACK must be RejectedState")
+            assertEquals(DeliveryState.ACKNOWLEDGED_BY_RECIPIENT, stateOf(tracker, mid))
+            assertFalse(db.contains(mid), "held frame remains absent")
+            db.close()
+        } finally {
+            file.delete()
+        }
+    }
+
+    @Test
+    fun `C7_5 CANCEL vs EXPIRE`() = runBlocking {
         val file = Files.createTempFile("godstone-delivery", ".db").toFile()
         try {
             val db = JdbcStoreDb(file)
@@ -2618,11 +2690,25 @@ class SqliteDeliveryRepositoryTest {
             assertEquals(TransitionResult.Applied, tracker.markHandedToRelay(mid))
             assertTrue(db.contains(mid))
 
+            val readyLatch = CountDownLatch(2)
+            val startLatch = CountDownLatch(1)
             val rCancel = AtomicReference<TransitionResult?>()
             val rExpire = AtomicReference<TransitionResult?>()
-            val t1 = Thread { rCancel.set(tracker.cancel(mid)) }
-            val t2 = Thread { rExpire.set(tracker.expire(mid)) }
+
+            val t1 = Thread {
+                readyLatch.countDown()
+                startLatch.await()
+                rCancel.set(tracker.cancel(mid))
+            }
+            val t2 = Thread {
+                readyLatch.countDown()
+                startLatch.await()
+                rExpire.set(tracker.expire(mid))
+            }
             t1.start(); t2.start()
+
+            assertTrue(readyLatch.await(5, TimeUnit.SECONDS), "both threads must stage before release")
+            startLatch.countDown()
             t1.join(5000); t2.join(5000)
 
             val results = listOf(rCancel.get(), rExpire.get())
@@ -2794,6 +2880,41 @@ class SqliteDeliveryRepositoryTest {
             assertEquals(DeliveryState.CANCELLED_LOCALLY, stateOf(tracker, midNoneCancel))
             assertFalse(db.contains(midNoneCancel), "NONE mode frame must be deleted on CANCEL")
 
+            db.close()
+        } finally {
+            file.delete()
+        }
+    }
+
+    @Test
+    fun `C7_5 transition disposition policy`() {
+        val file = Files.createTempFile("godstone-delivery", ".db").toFile()
+        try {
+            val db = JdbcStoreDb(file)
+            val repo = SqliteDeliveryRepository(db)
+
+            val markHandedSpec = repo.transitionSpec(DeliveryTransition.MARK_HANDED)
+            assertEquals(DeliveryState.HANDED_TO_RELAY, markHandedSpec.target)
+            assertEquals(setOf(DeliveryState.QUEUED_DURABLY), markHandedSpec.validFroms)
+            assertEquals(SqliteDeliveryRepository.HeldDisposition.RETAIN, markHandedSpec.heldDisposition)
+
+            val expireSpec = repo.transitionSpec(DeliveryTransition.EXPIRE)
+            assertEquals(DeliveryState.EXPIRED, expireSpec.target)
+            assertEquals(setOf(DeliveryState.QUEUED_DURABLY, DeliveryState.HANDED_TO_RELAY), expireSpec.validFroms)
+            assertEquals(SqliteDeliveryRepository.HeldDisposition.RETIRE_ATOMICALLY, expireSpec.heldDisposition)
+
+            val cancelSpec = repo.transitionSpec(DeliveryTransition.CANCEL)
+            assertEquals(DeliveryState.CANCELLED_LOCALLY, cancelSpec.target)
+            assertEquals(setOf(DeliveryState.QUEUED_DURABLY, DeliveryState.HANDED_TO_RELAY), cancelSpec.validFroms)
+            assertEquals(SqliteDeliveryRepository.HeldDisposition.RETIRE_ATOMICALLY, cancelSpec.heldDisposition)
+
+            val allTransitions = DeliveryTransition.entries.toSet()
+            val mappedTransitions = setOf(
+                DeliveryTransition.MARK_HANDED,
+                DeliveryTransition.EXPIRE,
+                DeliveryTransition.CANCEL,
+            )
+            assertEquals(allTransitions, mappedTransitions, "all DeliveryTransition cases must be explicitly mapped")
             db.close()
         } finally {
             file.delete()

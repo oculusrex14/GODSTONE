@@ -178,16 +178,25 @@ link layer gates closed, and the carrier-partition mobility (criterion 2) needs
 the disabled link layer. A-04's "iOS durable store" half advances to
 NONSHIPPING_TESTED; on-device + transport remain.
 
+### Stage 4 Phase C7.4 / C7.5 / C7.5.1 — atomic ACK & terminal retirement architecture (NOT closed)
+
+Persist-before-forward, delete-on-authenticated-ACK (C7.4.1), and local terminal retirement (EXPIRE, CANCEL under C7.5/C7.5.1) are REPO-VERIFIED and NONSHIPPING-TESTED on both Android and iOS:
+- Transition policy is explicitly declared for all transitions via `HeldDisposition` (`RETAIN` for `MARK_HANDED`, `RETIRE_ATOMICALLY` for `EXPIRE` and `CANCEL`).
+- State mutation and held-frame deletion execute inside a single atomic SQLite transaction closure on both platforms.
+- Negative controls prove crash-safety, fault rollback, and concurrent race resolution.
+
+**Not closed.** The store and delivery tracker remain in the non-shipping `:mesh` and `GodstoneMesh` modules. On-device evidence, physical storage power-loss tests, and shipping-path deployment remain pending.
+
 ## Decisions still required
 
-- canonical GMP/2.1 store schema with 16-byte message IDs;
-- receipt-monotonic retention and expiry;
-- persist-before-forward and delete-on-authenticated-ACK behavior;
-- hard-cap eviction where SOS is last, not unbounded;
+- canonical GMP/2.1 store schema with 16-byte message IDs (repo-verified/nonshipping);
+- receipt-monotonic retention and expiry (repo-verified/nonshipping);
+- persist-before-forward, delete-on-authenticated-ACK, and local terminal retirement (EXPIRE, CANCEL) (repo-verified / nonshipping; on-device/shipping pending);
+- hard-cap eviction where SOS is last, not unbounded (repo-verified/nonshipping);
 - transactional key creation and migration under power loss;
 - corruption detection/recovery;
-- coordinated deletion of store, identity, contacts and session material;
-- digest generation from held durable records on both platforms.
+- coordinated deletion of store, identity, contacts and session material (repo-verified/nonshipping; on-device pending);
+- digest generation from held durable records on both platforms (repo-verified/nonshipping).
 
 ## Exit criteria
 
@@ -195,5 +204,5 @@ NONSHIPPING_TESTED; on-device + transport remain.
 2. A carrier can move between partitions after the origin has disappeared.
 3. Every migration is tested from each supported schema version.
 4. All-SOS flooding remains inside the configured hard cap.
-5. Panic wipe makes prior rows and keys unrecoverable and creates a new identity.
+5. Panic wipe makes prior rows and keys unrecoverable and creates a fresh identity.
 6. Android and iOS build the same anti-entropy digest from the same held set.
