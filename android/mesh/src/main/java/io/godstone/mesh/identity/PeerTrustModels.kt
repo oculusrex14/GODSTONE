@@ -33,7 +33,7 @@ enum class PeerTrustLevel(val persistedCode: Int) {
  * 3. USER_VERIFIED -> ACTIVE_USER_VERIFIED
  * 4. TOFU_PINNED -> ACTIVE_TOFU
  */
-enum class EffectivePeerTrustState {
+internal enum class EffectivePeerTrustState {
     ACTIVE_TOFU,
     ACTIVE_USER_VERIFIED,
     KEY_CHANGED_QUARANTINED,
@@ -43,10 +43,10 @@ enum class EffectivePeerTrustState {
 /**
  * Authoritative cryptographic peer identity record (ADR-003, Phase C8.2A).
  *
- * Contains only cryptographic trust authority fields. Contact names, metadata,
- * message-store state, and routing hints are strictly prohibited in this model.
+ * Module-internal storage and repository model only. Contains only cryptographic
+ * trust authority fields.
  */
-class PeerIdentityRecord(
+internal class PeerIdentityRecord(
     nodeId: ByteArray,
     signingPublicKey: ByteArray,
     acceptedStaticDhPublicKey: ByteArray,
@@ -102,7 +102,7 @@ class PeerIdentityRecord(
 /**
  * Corruption reasons for durable [PeerIdentityRecord] validation (ADR-003, Phase C8.2A).
  */
-enum class PeerRecordCorruptionReason {
+internal enum class PeerRecordCorruptionReason {
     InvalidNodeIdLength,
     InvalidSigningKeyLength,
     InvalidAcceptedStaticKeyLength,
@@ -119,15 +119,18 @@ enum class PeerRecordCorruptionReason {
 /**
  * Validation result taxonomy for durable [PeerIdentityRecord] (ADR-003, Phase C8.2A).
  */
-sealed class PeerIdentityRecordValidationResult {
+internal sealed class PeerIdentityRecordValidationResult {
     object Valid : PeerIdentityRecordValidationResult()
     data class Corrupt(val reason: PeerRecordCorruptionReason) : PeerIdentityRecordValidationResult()
 }
 
 /**
  * Pure validator enforcing the 11 durable invariants of [PeerIdentityRecord] (ADR-003, Phase C8.2A).
+ *
+ * Proves structural dimensions, domain ranges, cryptographic node_id derivation, and field coupling.
+ * Does NOT prove repository provenance or out-of-band user verification.
  */
-object PeerIdentityRecordValidator {
+internal object PeerIdentityRecordValidator {
     const val NODE_ID_LENGTH = 16
     const val SIGNING_KEY_LENGTH = 32
     const val STATIC_KEY_LENGTH = 32
@@ -205,7 +208,7 @@ object PeerIdentityRecordValidator {
 /**
  * Rejection reason taxonomy for peer trust evaluation (ADR-003, Phase C8.2A).
  */
-enum class PeerTrustRejectReason {
+internal enum class PeerTrustRejectReason {
     Rollback,
     SameGenerationConflict,
     PendingGenerationConflict,
@@ -218,7 +221,7 @@ enum class PeerTrustRejectReason {
 /**
  * Pure decision plan emitted by [PeerTrustEngine] (ADR-003, Phase C8.2A).
  */
-sealed class TrustPlan {
+internal sealed class TrustPlan {
     object AcceptExisting : TrustPlan()
     object InsertFirstSeen : TrustPlan()
     object SetInitialPendingCandidate : TrustPlan()
@@ -265,7 +268,7 @@ class VerifiedPeerIdentity private constructor(
     }
 
     companion object {
-        fun fromRecord(record: PeerIdentityRecord): VerifiedPeerIdentity? {
+        internal fun fromRecord(record: PeerIdentityRecord): VerifiedPeerIdentity? {
             if (PeerIdentityRecordValidator.validate(record) !is PeerIdentityRecordValidationResult.Valid) {
                 return null
             }
@@ -329,7 +332,7 @@ class PendingPeerIdentity private constructor(
     }
 
     companion object {
-        fun fromRecord(record: PeerIdentityRecord): PendingPeerIdentity? {
+        internal fun fromRecord(record: PeerIdentityRecord): PendingPeerIdentity? {
             if (PeerIdentityRecordValidator.validate(record) !is PeerIdentityRecordValidationResult.Valid) {
                 return null
             }

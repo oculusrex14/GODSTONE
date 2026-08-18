@@ -13,7 +13,7 @@ package io.godstone.mesh.identity
  * - Revocation precedence: revoked records reject all incoming bindings unconditionally.
  * - Quarantine rule: while a rotation candidate is pending, accepted reconnects return KeepQuarantined.
  */
-object PeerTrustEngine {
+internal object PeerTrustEngine {
 
     fun evaluate(
         binding: ValidatedPeerBinding,

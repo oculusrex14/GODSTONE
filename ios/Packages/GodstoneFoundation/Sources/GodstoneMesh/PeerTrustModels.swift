@@ -25,7 +25,7 @@ public enum PeerTrustLevel: Int32, Sendable, Equatable {
 /// 2. pendingGeneration != nil -> keyChangedQuarantined
 /// 3. userVerified -> activeUserVerified
 /// 4. tofuPinned -> activeTofu
-public enum EffectivePeerTrustState: Sendable, Equatable {
+enum EffectivePeerTrustState: Sendable, Equatable {
     case activeTofu
     case activeUserVerified
     case keyChangedQuarantined
@@ -34,18 +34,18 @@ public enum EffectivePeerTrustState: Sendable, Equatable {
 
 /// Authoritative cryptographic peer identity record (ADR-003, Phase C8.2A).
 ///
-/// Contains only cryptographic trust authority fields. Contact names, metadata,
-/// message-store state, and routing hints are strictly prohibited in this model.
-public struct PeerIdentityRecord: Sendable, Equatable {
-    public let nodeId: Data
-    public let signingPublicKey: Data
-    public let acceptedStaticDhPublicKey: Data
-    public let acceptedGeneration: UInt32
-    public let trustLevel: PeerTrustLevel
-    public let pendingStaticDhPublicKey: Data?
-    public let pendingGeneration: UInt32?
+/// Module-internal storage and repository model only. Contains only cryptographic
+/// trust authority fields.
+struct PeerIdentityRecord: Sendable, Equatable {
+    let nodeId: Data
+    let signingPublicKey: Data
+    let acceptedStaticDhPublicKey: Data
+    let acceptedGeneration: UInt32
+    let trustLevel: PeerTrustLevel
+    let pendingStaticDhPublicKey: Data?
+    let pendingGeneration: UInt32?
 
-    public init(
+    init(
         nodeId: Data,
         signingPublicKey: Data,
         acceptedStaticDhPublicKey: Data,
@@ -63,7 +63,7 @@ public struct PeerIdentityRecord: Sendable, Equatable {
         self.pendingGeneration = pendingGeneration
     }
 
-    public var effectiveState: EffectivePeerTrustState {
+    var effectiveState: EffectivePeerTrustState {
         if trustLevel == .revoked {
             return .revoked
         } else if pendingGeneration != nil {
@@ -77,7 +77,7 @@ public struct PeerIdentityRecord: Sendable, Equatable {
 }
 
 /// Corruption reasons for durable `PeerIdentityRecord` validation (ADR-003, Phase C8.2A).
-public enum PeerRecordCorruptionReason: Sendable, Equatable {
+enum PeerRecordCorruptionReason: Sendable, Equatable {
     case invalidNodeIdLength
     case invalidSigningKeyLength
     case invalidAcceptedStaticKeyLength
@@ -92,18 +92,21 @@ public enum PeerRecordCorruptionReason: Sendable, Equatable {
 }
 
 /// Validation result taxonomy for durable `PeerIdentityRecord` (ADR-003, Phase C8.2A).
-public enum PeerIdentityRecordValidationResult: Sendable, Equatable {
+enum PeerIdentityRecordValidationResult: Sendable, Equatable {
     case valid
     case corrupt(PeerRecordCorruptionReason)
 }
 
 /// Pure validator enforcing the 11 durable invariants of `PeerIdentityRecord` (ADR-003, Phase C8.2A).
-public enum PeerIdentityRecordValidator {
-    public static let nodeIdLength = 16
-    public static let signingKeyLength = 32
-    public static let staticKeyLength = 32
+///
+/// Proves structural dimensions, domain ranges, cryptographic node_id derivation, and field coupling.
+/// Does NOT prove repository provenance or out-of-band user verification.
+enum PeerIdentityRecordValidator {
+    static let nodeIdLength = 16
+    static let signingKeyLength = 32
+    static let staticKeyLength = 32
 
-    public static func validate(record: PeerIdentityRecord) -> PeerIdentityRecordValidationResult {
+    static func validate(record: PeerIdentityRecord) -> PeerIdentityRecordValidationResult {
         // R1: nodeId exactly 16 bytes
         guard record.nodeId.count == nodeIdLength else {
             return .corrupt(.invalidNodeIdLength)
@@ -160,7 +163,7 @@ public enum PeerIdentityRecordValidator {
 }
 
 /// Rejection reason taxonomy for peer trust evaluation (ADR-003, Phase C8.2A).
-public enum PeerTrustRejectReason: Sendable, Equatable {
+enum PeerTrustRejectReason: Sendable, Equatable {
     case rollback
     case sameGenerationConflict
     case pendingGenerationConflict
@@ -171,7 +174,7 @@ public enum PeerTrustRejectReason: Sendable, Equatable {
 }
 
 /// Pure decision plan emitted by `PeerTrustEngine` (ADR-003, Phase C8.2A).
-public enum TrustPlan: Sendable, Equatable {
+enum TrustPlan: Sendable, Equatable {
     case acceptExisting
     case insertFirstSeen
     case setInitialPendingCandidate
@@ -202,7 +205,7 @@ public struct VerifiedPeerIdentity: Sendable, Equatable {
         self.trustLevel = trustLevel
     }
 
-    public static func fromRecord(_ record: PeerIdentityRecord) -> VerifiedPeerIdentity? {
+    static func fromRecord(_ record: PeerIdentityRecord) -> VerifiedPeerIdentity? {
         guard case .valid = PeerIdentityRecordValidator.validate(record: record) else {
             return nil
         }
@@ -247,7 +250,7 @@ public struct PendingPeerIdentity: Sendable, Equatable {
         self.pendingGeneration = pendingGeneration
     }
 
-    public static func fromRecord(_ record: PeerIdentityRecord) -> PendingPeerIdentity? {
+    static func fromRecord(_ record: PeerIdentityRecord) -> PendingPeerIdentity? {
         guard case .valid = PeerIdentityRecordValidator.validate(record: record) else {
             return nil
         }
