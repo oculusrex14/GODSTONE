@@ -34,9 +34,21 @@ Each install has distinct long-term keys:
 - X25519 static Noise key;
 - `node_id = BLAKE2s-128(identity_signing_public_key)`.
 
-The private keys never appear in frames. TOFU/QR verification, key-change
-quarantine and panic wipe remain governed by ADR-003 and ADR-004; they are not
-closed by V4.
+The private keys never appear in frames.
+
+Under ADR-003 (Phase C8.0), the transport Noise session and the signing identity
+are cryptographically bound via the canonical 133-byte `IdentityBindingV1` object
+carried inside the encrypted handshake payloads of `Noise_XX`. The binding
+commits:
+
+- `version`: `0x01` (1 byte)
+- `generation`: `uint32_be` (4 bytes, monotonic rotation index)
+- `signing_public_key`: Ed25519 public key (32 bytes)
+- `static_dh_public_key`: X25519 static DH public key (32 bytes)
+- `signature`: Ed25519 signature (64 bytes) over `ASCII("GMP2-IDBIND") || version || generation || signing_public_key || static_dh_public_key`
+
+TOFU/QR verification, key-change quarantine, and panic wipe are governed by ADR-003
+and ADR-004; they are not closed by V4.
 
 ## 3. BLE discovery target
 
@@ -83,9 +95,9 @@ before application parsing and charged to the peer abuse budget.
 Pattern: `Noise_XX_25519_ChaChaPoly_BLAKE2s`.
 
 ```
--> e
-<- e, ee, s, es
--> s, se
+HS1 -> e (payload: EMPTY)                                [32 bytes]
+HS2 <- e, ee, s, es (payload: encrypted IdentityBindingV1) [229 bytes]
+HS3 -> s, se (payload: encrypted IdentityBindingV1)        [197 bytes]
 ```
 
 The canonical prologue after M1-wire is:
@@ -97,6 +109,27 @@ The canonical prologue after M1-wire is:
 Role election is deterministic: the lexicographically smaller node hint
 initiates. A hint collision is resolved only after full identity is available;
 an identical full node ID is a cloned-identity security event.
+
+### 5.1 Identity binding verification and READY gating
+
+Upon decrypting the remote `IdentityBindingV1` in HS2/HS3, the receiver executes
+the strict 13-step validation pipeline:
+
+1. Length == 133 bytes;
+2. Version == `0x01`;
+3. Parse `generation` uint32_be;
+4. Parse `signing_public_key` (32 bytes);
+5. Parse `static_dh_public_key` (32 bytes);
+6. Parse `signature` (64 bytes);
+7. Verify Ed25519 signature over canonical `GMP2-IDBIND` preimage;
+8. Derive `node_id = BLAKE2s-128(signing_public_key)`;
+9. Require `binding.static_dh_public_key == NoiseSession.remoteStaticKey`;
+10. Require `advertised_node_hint == first4(node_id)`;
+11. Evaluate `PeerIdentityStore` trust policy (`TOFU_PINNED`, `USER_VERIFIED`, `KEY_CHANGED_QUARANTINED`, `REVOKED`);
+12. Construct `VerifiedPeerIdentity`;
+13. Advance link state machine: `NOISE_ESTABLISHED -> BINDING_VALIDATION -> TRUST_POLICY_CHECK -> READY`.
+
+No application `FrameV2` traffic may be transmitted or processed before reaching `READY`.
 
 Session rekeying, TOFU pin enforcement and reconnect behavior require platform
 port tests and the hardware matrix before being called conformant.
@@ -148,7 +181,7 @@ scaffolding, but the radio and mesh remain disabled.
 The target is bounded epidemic routing:
 
 1. discover and elect roles;
-2. complete Noise and TOFU checks;
+2. complete Noise handshake, `IdentityBindingV1` validation, and TOFU/trust checks;
 3. exchange full 4096-bit bloom digests using the canonical hash input
    `msg_id[16] || uint32_be(round)` for four rounds;
 4. exchange WANT lists;
@@ -201,6 +234,7 @@ A platform may be called GMP/2.1 conformant only when all of these are green:
 - both routers and stores use the generated frame and 16-byte IDs;
 - no legacy v1 symbol survives;
 - platform Noise ports reproduce pinned external vectors;
+- cross-platform `IdentityBindingV1` validation and handshake sizes (HS1: 32B, HS2: 229B, HS3: 197B) pass;
 - record-layer property tests cover every fragmentation boundary, reorder,
   duplicate, drop, timeout and allocation bound;
 - two-device Android↔Android, iOS↔iOS and Android↔iOS encrypted ping tests;

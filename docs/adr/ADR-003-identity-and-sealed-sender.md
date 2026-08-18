@@ -1,85 +1,451 @@
 # ADR-003 — Identity binding, TOFU, contacts, sealed sender
 
-**STATUS: OPEN.** The A2 and A7 threat-model claims are unsupported until it closes.
+## 1. Status
 
-## Why the current construction cannot be shipped as specified
+**OPEN — BINDING ARCHITECTURE FROZEN, IMPLEMENTATION / SEALED-SENDER / DEVICE EVIDENCE PENDING**
 
-`SealedSender` now exists on both Android (`SealedSender.kt`) and iOS (`SealedSender.swift`)
-as nonshipping parity scaffolding. However, parity across platforms does NOT resolve
-the underlying architectural defects:
-
-| PROTOCOL.md §6 | Current SealedSender Scaffolding |
-|---|---|
-| two layers (`inner` under `K_e2e`, then sealed) | one AEAD pass |
-| `HKDF` | `BLAKE2s(shared ‖ label)` |
-| ChaCha20-Poly1305 | AES-GCM |
-| — | sender id is **unauthenticated**: any sender can place any 16 bytes inside |
-
-No associated data binds the routing tag, frame type, message id, version or TTL
-to the ciphertext. There is no forward secrecy against later compromise of the
-recipient's static key: recorded ephemerals plus that key recover past sealing
-keys. "X3DH-style" should not be claimed without signed and one-time prekeys.
-ADR-003 remains OPEN.
-
-## The binding nobody has specified
-
-`node_id` derives from the **Ed25519** identity key. Noise authenticates an
-**X25519** static key. Nothing cryptographically binds the two, so an
-authenticated handshake proves nothing about the claimed `node_id`. TOFU
-pinning, QR verification and the key-change warning are all specified and none
-are implemented.
-
-## Decide before writing code
-
-Sender authentication or deliberate sender anonymity; behaviour under sender vs
-recipient compromise; deniability; offline prekeys; group messaging; exactly
-which header metadata leaks.
+- **Phase C8.0 Decision:** FROZEN (canonical Ed25519-rooted `IdentityBindingV1` inside Noise XX).
+- **C8.1 Implementation:** OPEN (code, stores, and test vectors pending).
+- **Sealed-Sender Authenticated Authorship:** OPEN (underlying L4 envelope open).
+- **Production `RecipientKeyResolver`:** UNRESOLVED / Fail-closed.
+- **Link Layer:** Disabled (`LINK_LAYER_READY = false` / `linkLayerReady = false`).
 
 ---
 
-## Addendum — what bitchat does, and what happened to it
+## 2. Problem Statement
 
-[bitchat](https://github.com/permissionlesstech/bitchat) holds the same two key
-pairs GODSTONE does, and resolves the binding question by **choosing the other
-key as the identity**:
+GODSTONE nodes possess two distinct long-term cryptographic key pairs:
+1. An **Ed25519** signing key pair used for message authorship, ACK signatures, and contact identification.
+2. An **X25519** static Diffie-Hellman key pair used for the `Noise_XX_25519_ChaChaPoly_BLAKE2s` transport session.
 
-> a Curve25519 static key for Noise key agreement — its SHA-256 fingerprint is
-> the peer's stable identity — and an Ed25519 signing key for packet signatures.
+In the baseline GMP/2.1 specification, node identity is defined as:
+```text
+node_id = BLAKE2s-128(identity_signing_public_key)  [over Ed25519]
+```
 
-So `identity = H(X25519_static_pub)`: the identity is derived from the key that
-Noise actually authenticates. A completed handshake then proves the peer's
-identity **directly**, with nothing left to bind.
+However, the transport layer establishes encrypted sessions using the `Noise_XX` handshake, which cryptographically authenticates only the **X25519** static public key (`NoiseSession.remoteStaticKey`).
 
-GODSTONE made the opposite choice. `PROTOCOL.md` §2 specifies
-`node_id = BLAKE2s-128(identity_pub)` over the **Ed25519** key, while Noise
-authenticates the **X25519** key — so an authenticated handshake proves nothing
-about the claimed `node_id`, and the gap has to be closed by an explicit binding
-nobody has specified.
+Without an explicit, authenticated binding between the Ed25519 signing key and the X25519 static DH key:
+- A successfully completed Noise XX handshake proves possession of an X25519 private key, but proves **nothing** about the peer's claimed `node_id` or Ed25519 signing key.
+- An active attacker can present their own X25519 key in Noise while claiming a victim's `node_id` / Ed25519 key, or replay unauthenticated routing hints.
+- The Trust-On-First-Use (TOFU) model, out-of-band QR verification, key-change warnings, and the `RecipientKeyResolver` used for ACK verification cannot be grounded in cryptographic authority.
 
-Note what this means for the V3 history: iOS deriving `node_id` from the X25519
-key was recorded as a defect against `PROTOCOL.md:49`. It was a genuine
-*divergence* — the two platforms disagreed, which is fatal — but **iOS had
-accidentally implemented the better design.** The fix aligned both platforms onto
-the harder option.
+---
 
-**Recommended direction:** invert it. `node_id = H(static_dh_pub)` truncated to
-16 bytes, and carry the Ed25519 signing key inside a self-signed announcement
-bound to that static key. This is also what ADR-007 needs, since it changes the
-hash anyway.
+## 3. Decision
 
-### The caution that comes with it
+1. **Retain Ed25519 as the Canonical Identity Root:**
+   ```text
+   node_id = BLAKE2s-128(signing_public_key)
+   ```
+   We explicitly reject the earlier exploratory recommendation to invert the identity root to `H(X25519_static)`. The Ed25519 key remains the authoritative root of identity across all layers (wire, delivery, ACK, call signs, and QR verification).
 
-bitchat adopting this design did **not** make it immune. Within days of launch,
-Alex Radocea demonstrated impersonation against its `Favorites` system —
-described as *"broken identity authentication/verification"*, letting an attacker
-intercept an identity-key/peer-id pair and appear as a trusted contact. The
-project has since shipped `Pin announce signing keys to stop mesh identity
-spoofing (#1349)`, which is the announcement-binding problem above, found the
-hard way.
+2. **Close the Cryptographic Gap via Canonical Signed Binding:**
+   We establish a canonical, self-signed identity certificate object—`IdentityBindingV1`—that cryptographically binds the node's X25519 static DH public key to its Ed25519 signing public key.
 
-**Conclusion for GODSTONE:** the fingerprint-of-the-Noise-key model is the right
-base, and it is *not sufficient on its own*. The binding between the static key,
-the signing key and the displayed contact must be specified and tested, or the
-same class of impersonation is available here. ADR-003 remains the highest-risk
-OPEN decision in the project — it is the one that broke, in public, in the
-closest comparable system.
+3. **Carry the Binding Exclusively Inside Encrypted Noise XX Payloads:**
+   The binding is exchanged within the encrypted handshake payloads of `Noise_XX` (HS2 and HS3). It is never sent in plaintext BLE records and introduces zero additional round trips.
+
+---
+
+## 4. `IdentityBindingV1` Canonical Encoding
+
+### 4.1 Structure and Field Layout
+
+`IdentityBindingV1` is a fixed-size, 133-byte binary structure:
+
+| Offset | Size | Field Name | Type / Encoding | Description |
+|---|---|---|---|---|
+| `0` | `1` | `version` | `uint8` (`0x01`) | Identity binding structure version |
+| `1` | `4` | `generation` | `uint32_be` | Monotonic key rotation generation (starts at `0`) |
+| `5` | `32` | `signing_public_key` | `bytes[32]` | Authoritative Ed25519 signing public key |
+| `37` | `32` | `static_dh_public_key` | `bytes[32]` | X25519 static DH public key bound to this identity |
+| `69` | `64` | `signature` | `bytes[64]` | Ed25519 signature over the canonical preimage |
+
+**Total Serialized Payload:** Exactly **133 bytes**.
+
+### 4.2 Deterministic `node_id` Derivation
+To eliminate redundant, attacker-controlled representations, `node_id` is **NOT** included in the serialized binding. The receiving peer deterministically derives:
+```text
+node_id = BLAKE2s-128(signing_public_key)
+```
+
+### 4.3 Signature Domain and Preimage
+The signature is generated by the peer's Ed25519 private key over an 80-byte canonical preimage:
+
+```text
+Preimage = ASCII("GMP2-IDBIND")
+           || version[1]
+           || generation_be[4]
+           || signing_public_key[32]
+           || static_dh_public_key[32]
+```
+
+- **Domain Tag:** `ASCII("GMP2-IDBIND")` (11 bytes: `0x47, 0x4D, 0x50, 0x32, 0x2D, 0x49, 0x44, 0x42, 0x49, 0x4E, 0x44`)
+- **Total Preimage Length:** `11 + 1 + 4 + 32 + 32 = 80 bytes`.
+- **Signature Algorithm:** Standard Ed25519 (RFC 8032 / PureEd25519).
+
+---
+
+## 5. Noise XX Placement
+
+The binding is transmitted inside the standard encrypted handshake payload slots of `Noise_XX_25519_ChaChaPoly_BLAKE2s`:
+
+```text
+HS1 (initiator -> responder):
+    -> e
+    payload: EMPTY (0 bytes)
+    Message Size: 32 bytes
+
+HS2 (responder -> initiator):
+    <- e, ee, s, es
+    payload: Encrypted responder IdentityBindingV1 (133 bytes)
+    Message Size: 32 (e) + 48 (encrypted static) + 149 (encrypted binding) = 229 bytes
+
+HS3 (initiator -> responder):
+    -> s, se
+    payload: Encrypted initiator IdentityBindingV1 (133 bytes)
+    Message Size: 48 (encrypted static) + 149 (encrypted binding) = 197 bytes
+```
+
+### 5.1 Protocol Invariants
+- **Handshake Transcript Binding:** Because the payload is encrypted under the running Noise symmetric state, the binding bytes are authenticated by the AEAD cipher (`ChaCha20-Poly1305`) and incorporated into the Noise transcript hash (`h`).
+- **No Additional Round Trips:** Authentication occurs within the standard 1.5-RTT `Noise_XX` handshake.
+- **Fragmentation Bounds:** Reassembled record bounds (`MAX_RECORD = 16,384 bytes`) easily accommodate the 229-byte and 197-byte handshake messages.
+
+---
+
+## 6. Required Validation Order
+
+Upon decrypting the remote handshake payload in HS2 (on initiator) or HS3 (on responder), the receiving peer MUST execute the following 13-step validation sequence in strict order:
+
+1. **Length Check:** Require decrypted payload length is exactly 133 bytes.
+2. **Version Check:** Require `version == 0x01`.
+3. **Generation Parse:** Read `generation` as big-endian `uint32`.
+4. **Signing Key Parse:** Extract `signing_public_key` (32 bytes).
+5. **Static DH Key Parse:** Extract `static_dh_public_key` (32 bytes).
+6. **Signature Parse:** Extract `signature` (64 bytes).
+7. **Cryptographic Verification:** Verify `signature` under `signing_public_key` over `ASCII("GMP2-IDBIND") || version || generation_be || signing_public_key || static_dh_public_key`.
+8. **Node ID Derivation:** Compute `derived_node_id = BLAKE2s-128(signing_public_key)`.
+9. **Noise Static Match:** Require `binding.static_dh_public_key == NoiseSession.remoteStaticKey`.
+10. **Advertisement Match:** Require `advertised_node_hint == first4(derived_node_id)`.
+11. **Trust Policy Evaluation:** Evaluate stored binding for `derived_node_id` against generation and trust policy (see Section 8 & 9).
+12. **Verified Identity Creation:** Construct immutable `VerifiedPeerIdentity`.
+13. **Link Progression:** Only upon complete success of all prior steps may the link state machine advance toward `READY`.
+
+**Failure Rule:** Failure at **ANY** step terminates the connection immediately (`SECURITY_REJECT` or `QUARANTINE`), discards all session state, creates no `VerifiedPeerIdentity`, and updates no trust store.
+
+---
+
+## 7. Noise Authentication Claim
+
+We establish a precise definition of transport authentication:
+- **Before Step 9:** Noise proves only possession of an X25519 static private key. It does **not** prove the peer's identity, contact status, or claimed `node_id`.
+- **After Steps 7–10:** The combination of:
+  1. Proof of X25519 private key possession (via `Noise_XX`),
+  2. Proof of Ed25519 signing key authorization over that X25519 public key (via `IdentityBindingV1` signature),
+  3. Derivation of `node_id` from the Ed25519 signing key, and
+  4. Exact match of the advertised discovery hint,
+
+  strictly establishes the authenticated equivalence:
+  $$\text{Authenticated Noise Peer} \iff \text{Static DH Key} \iff \text{Signing Identity} \iff \text{node\_id} \iff \text{Advertised Hint}$$
+
+An unverified discovery hint or an unbound Noise session must never be treated as an authenticated identity.
+
+---
+
+## 8. Verified Peer Identity Model
+
+### 8.1 Logical Structure
+The cross-platform logical type `VerifiedPeerIdentity` represents an authenticated identity:
+
+```text
+VerifiedPeerIdentity:
+    nodeId:               bytes[16]
+    signingPublicKey:     bytes[32]
+    staticDhPublicKey:    bytes[32]
+    bindingGeneration:    uint32
+    trustState:           TrustState
+```
+
+### 8.2 Discrete Trust States
+The system rejects vague boolean `trusted` flags in favor of explicit `TrustState` semantics:
+
+- `TOFU_PINNED`: The identity was encountered and bound for the first time. The binding is pinned in durable storage.
+- `USER_VERIFIED`: The user has explicitly confirmed the identity out-of-band (e.g., via QR code scanning or authenticated call-sign verification).
+- `KEY_CHANGED_QUARANTINED`: A valid higher-generation binding was presented for an existing `node_id`. Ordinary communication is blocked until explicit user review.
+- `REVOKED`: The identity has been explicitly blocked or revoked by local policy.
+
+---
+
+## 9. Key Rotation and Generation Semantics
+
+The `generation` field enables X25519 static DH key rotation while preserving the long-term Ed25519 `node_id`:
+
+1. **Initial Encounter:** Unseen `node_id` with `generation = 0` $\to$ Persist binding as `TOFU_PINNED`.
+2. **Identical Reconnect:** Same `node_id`, same signing key, same static key, same `generation` $\to$ Accept session.
+3. **Valid Key Rotation (Higher Generation):** Same `node_id`, same signing key, `generation > stored_generation`, new static key, valid signature $\to$ Store as `KEY_CHANGED_QUARANTINED`. Do **not** silently update the active pin. Block ordinary `READY` state until the user approves the key change.
+4. **Rollback Attack (Lower Generation):** Same `node_id`, `generation < stored_generation` $\to$ **Reject** immediately (`SECURITY_REJECT`), disconnect, log security event.
+5. **Conflicting Binding (Same Generation, Different Key):** Same `node_id`, `generation == stored_generation`, different static key $\to$ **Reject** immediately (`SECURITY_REJECT`), disconnect.
+6. **New Signing Key:** A change in the Ed25519 signing key produces a different `node_id`. It is treated as an entirely new identity, not a rotation.
+7. **Panic Wipe:** Erases both long-term keys. A new install generates fresh Ed25519 and X25519 keys, resulting in a new `node_id` with `generation = 0`.
+
+---
+
+## 10. Recipient Key Resolution Contract
+
+The current production scaffolding:
+```kotlin
+UnresolvedRecipientKeyResolver  // Fail-closed placeholder
+```
+remains untouched in Phase C8.0.
+
+### 10.1 Future Production Resolver Contract
+When implemented in C8.1, `BoundRecipientKeyResolver` will resolve `node_id -> Ed25519 signing public key` subject to strict authority rules:
+
+- **Authorized Returns:** Returns the Ed25519 signing public key **ONLY** if backed by a persisted `VerifiedPeerIdentity` in state:
+  - `TOFU_PINNED`, or
+  - `USER_VERIFIED`.
+- **Null / Rejection Returns:** MUST return `null` (failing ACK verification closed) for:
+  - Unseen `node_id`,
+  - Unverified or malformed bindings,
+  - Identities in `KEY_CHANGED_QUARANTINED` state,
+  - Identities in `REVOKED` state.
+- **Prohibited Sources of Authority:**
+  - Inbound ACK frames NEVER insert or modify resolver mappings.
+  - Expected recipient delivery rows NEVER create resolver mappings.
+  - Discovery advertisements NEVER create resolver mappings.
+  - Unauthenticated link sessions NEVER create resolver mappings.
+
+Only an authenticated `IdentityBindingV1` validated through the 13-step pipeline can populate the resolver.
+
+---
+
+## 11. READY State Gating
+
+The conceptual link state machine is refined from ADR-002:
+
+```text
+DISCONNECTED
+    |
+    v (BLE connect)
+HANDSHAKE_STARTED
+    |
+    v (Noise_XX HS1..HS3 exchange)
+NOISE_ESTABLISHED
+    |
+    v (13-step IdentityBindingV1 validation)
+BINDING_VALIDATED
+    |
+    v (Check PeerIdentityStore: TOFU_PINNED or USER_VERIFIED)
+TRUST_POLICY_PASSED
+    |
+    v
+READY (Application FrameV2 router enabled)
+```
+
+### 11.1 Failure Dispositions
+- **Malformed / Invalid Signature / Static Mismatch / Hint Mismatch:** Transition to `SECURITY_REJECT`, disconnect link, drop all buffers.
+- **Rollback / Same-Generation Conflict:** Transition to `QUARANTINE`, disconnect link.
+- **Higher Generation Rotation:** Transition to `KEY_CHANGED_QUARANTINED`. Session remains blocked; no application `FrameV2` frames (text, SOS, routing digests) may be sent or received.
+
+**Strict Invariant:** Zero `FrameV2` frames may be dispatched before reaching `READY`.
+
+---
+
+## 12. Advertisement and Discovery Implications
+
+- **Node Hint Calculation:** `node_hint` remains defined as `first4(node_id)`.
+- **Pre-Binding Status:** Before identity binding, `node_hint` in BLE advertisements is treated strictly as an **untrusted role-election token** (lexicographically lower hint initiates Noise).
+- **Post-Binding Enforcement:** Once `IdentityBindingV1` is decrypted and verified, `first4(derived_node_id)` MUST match the advertised `node_hint`. If they differ, the connection is aborted.
+- **Self-Collision Security Event:** If `derived_node_id == local_node_id`, the session is aborted immediately as a cloned-identity security event.
+
+---
+
+## 13. Call Sign and QR Implications
+
+- **Call Sign Derivation:** Call signs are derived deterministically from `node_id`.
+- **Stability Under DH Rotation:** Because `node_id` is rooted in the Ed25519 signing key, rotating the X25519 static DH key (`generation > 0`) does **not** alter the user's call sign or advertised discovery hint.
+- **Verification UI:** When a quarantined key change occurs, the UI presents the rotation under the existing call sign, allowing out-of-band re-verification (e.g. QR scan) without treating the peer as a totally new contact.
+
+---
+
+## 14. Persistence Architecture (Specification Only)
+
+### 14.1 Logical Peer Binding Store
+A dedicated `PeerIdentityStore` will persist peer identity authorities:
+- **Primary Key:** `node_id` (16 bytes BLOB).
+- **Stored Attributes:**
+  - `signing_public_key` (32 bytes BLOB)
+  - `static_dh_public_key` (32 bytes BLOB)
+  - `binding_generation` (INTEGER / uint32)
+  - `trust_state` (TEXT / ENUM)
+  - `first_seen_timestamp` (INTEGER)
+  - `last_authenticated_timestamp` (INTEGER)
+
+### 14.2 Storage Security and Privacy
+Because the peer binding store represents a sensitive contact and communication graph:
+- It must reside in encrypted platform storage (SQLCipher on Android; SQLite with `FileProtectionType.complete` on iOS).
+- It must participate in atomic `PanicWipe`.
+- It must enforce fail-closed schema migrations and corruption detection.
+- Plaintext preferences (e.g. `SharedPreferences` or `UserDefaults`) are strictly forbidden.
+
+*(Schema DDL implementation is deferred to C8.1).*
+
+---
+
+## 15. Panic Wipe Contract
+
+When triggered, `PanicWipe` must atomically destroy:
+1. Local Ed25519 signing private key,
+2. Local X25519 static DH private key,
+3. Durable `PeerIdentityStore` and TOFU pins,
+4. Contact verification records and QR bindings,
+5. Backing data for `RecipientKeyResolver`,
+6. Ephemeral session keys and handshake state.
+
+Upon wipe completion, the node possesses no cryptographic link to its former identity. Subsequent startup generates a completely fresh identity with a new `node_id`.
+
+---
+
+## 16. Sealed Sender Dependency
+
+Phase C8.0 addresses **transport peer identity binding** (L2 session authentication).
+
+It does **NOT** resolve or close:
+- **L4 Sealed Sender Authorship:** End-to-end sender authentication inside encrypted application envelopes without leaking identity to intermediate relays.
+- **Relay Abuse Resistance:** Priority validation and PoW verification on sealed payloads.
+
+Because sealed-sender authenticated authorship remains an open protocol design area, **ADR-003 remains OPEN** even after C8.0 architecture is frozen.
+
+---
+
+## 17. ACK Authentication Contract
+
+The wire format and signing semantics for delivery ACKs remain strictly preserved from Phase C7.4 / C7.5:
+```text
+ACK Preimage = ASCII("GMP2-ACK") || msg_id[16] || recipient_node_id[16]
+Signature    = Ed25519Sign(recipient_signing_private_key, ACK Preimage)
+```
+
+Phase C8 defines the exact cryptographic path through which `RecipientKeyResolver` will supply the trusted `recipient_signing_public_key` required by `AckAuthenticator`. C7.4 and C7.5 contracts remain frozen and unmodified.
+
+---
+
+## 18. Rejected Alternative: Inverting the Identity Root to `H(X25519)`
+
+The earlier exploratory recommendation proposed setting:
+```text
+node_id = BLAKE2s-128(X25519_static_public_key)
+```
+and carrying the Ed25519 signing key in a separate announcement.
+
+### 18.1 Why This Alternative Was Rejected
+1. **Signed Explicit Binding Closes the Gap:** A signed `IdentityBindingV1` provides complete bidirectional cryptographic proof without requiring a root change.
+2. **Ed25519 Is Already Authoritative:** Application authorship, ACK signatures, and out-of-band contact verification are naturally signing operations. Rooting identity in Ed25519 keeps signing authority primary.
+3. **Enables DH Rotation:** With an Ed25519 root, X25519 static DH keys can rotate (via `generation`) without breaking the peer's permanent `node_id`, call sign, or contact identity.
+4. **Avoids Massive Blast Radius:** Inverting the root would invalidate all frozen GMP/2.1 wire vectors, golden fixtures, delivery stores, message IDs, and C6/C7 verification contracts.
+
+### 18.2 Genuine Advantage of the Rejected Alternative
+The single genuine advantage of `node_id = H(X25519)` is that `Noise_XX` directly authenticates the root key without needing a signed payload. However, as demonstrated by other mesh systems (e.g. bitchat #1349), signing keys still require explicit pinning to prevent impersonation, meaning an announcement binding is required in both designs.
+
+---
+
+## 19. Threat Analysis
+
+| Threat Scenario | Attack Vector | Mitigation / System Response |
+|---|---|---|
+| **A. Spoofed Discovery Hint** | Attacker advertises a victim's `node_hint` to manipulate role election or routing. | After handshake, Step 10 requires `advertised_node_hint == first4(derived_node_id)`. Mismatch causes immediate connection abort. |
+| **B. Mismatched Keys** | Attacker presents own X25519 static key in Noise, but claims victim's Ed25519 signing public key. | Step 7 verifies the signature over `IDBIND` preimage. Attacker cannot sign their X25519 key without victim's Ed25519 private key. Signature check fails $\to$ `SECURITY_REJECT`. |
+| **C. Replayed Binding** | Attacker captures a valid victim `IdentityBindingV1` and replays it in their own Noise handshake. | Step 9 checks `binding.static_dh_public_key == NoiseSession.remoteStaticKey`. The victim's static key does not match attacker's ephemeral/static Noise session. Check fails $\to$ `SECURITY_REJECT`. |
+| **D. Rollback Attack** | Attacker replays an older, valid lower-generation binding for a victim whose key has rotated. | Step 11 checks `generation < stored_generation`. Detected as rollback $\to$ rejected and connection aborted. |
+| **E. Forked / Conflicting Binding** | Attacker presents a binding with same `generation` but different X25519 static key. | Step 11 checks `generation == stored_generation` with mismatched key $\to$ conflicting binding rejected $\to$ disconnect. |
+| **F. Legitimate Key Rotation** | Legitimate peer rotates X25519 key with `generation > stored_generation` and valid signature. | Step 11 classifies binding as `KEY_CHANGED_QUARANTINED`. Session is established but quarantined; no application data flows until user approval. |
+| **G. First-Seen Attacker Identity** | Attacker creates a fresh, valid self-signed identity and connects. | Accepted as a new `TOFU_PINNED` peer, but possesses zero privileges, no existing contact trust, and cannot resolve as any existing contact. |
+| **H. Ed25519 Root Compromise** | Attacker steals victim's Ed25519 private key. | Identity is fully compromised. Attacker can issue valid bindings. Cryptographic recovery is impossible; requires out-of-band revocation and key regeneration. |
+| **I. X25519 Static Compromise Only** | Attacker steals victim's X25519 private key, but NOT Ed25519 signing key. | Attacker can impersonate only the compromised static session for that generation. Attacker cannot advance `generation` or bind a new DH key without the Ed25519 key. |
+| **J. Panic Wipe** | Device owner triggers emergency local data wipe. | Both private keys, all session state, and peer stores are destroyed. Device regenerates a new identity with a fresh `node_id`. |
+
+---
+
+## 20. Future Implementation Architecture (Phase C8.1 Map)
+
+```text
++-------------------------------------------------------------------------+
+| L1/L2: NoiseSession & Handshake Driver                                  |
+|   - Establishes Noise_XX session                                        |
+|   - Exposes remoteStaticKey and raw decrypted handshake payloads        |
++------------------------------------+------------------------------------+
+                                     |
+                                     v
++------------------------------------+------------------------------------+
+| L2.5: IdentityBindingValidator                                          |
+|   - 13-step validation pipeline                                         |
+|   - Cryptographic signature & preimage checks                           |
+|   - Produces VerifiedPeerIdentity                                       |
++------------------------------------+------------------------------------+
+                                     |
+                                     v
++------------------------------------+------------------------------------+
+| L2.5: PeerIdentityStore & Trust Engine                                  |
+|   - Evaluates TOFU / Generation / Quarantine rules                      |
+|   - Backed by encrypted durable storage                                 |
++------------------+----------------------------------+-------------------+
+                   |                                  |
+                   v                                  v
++------------------+----------------+  +--------------+-------------------+
+| L3/L4: BoundRecipientKeyResolver  |  | L2: Link State Machine            |
+|   - Read-only projection for ACKs |  |   - Enforces READY gating         |
+|   - Supplies Ed25519 public key   |  |   - Blocks FrameV2 before READY   |
++-----------------------------------+  +----------------------------------+
+```
+
+### 20.1 Code Ownership and File Mapping
+
+- **Android:**
+  - `android/mesh/src/main/java/io/godstone/mesh/identity/IdentityBindingV1.kt`
+  - `android/mesh/src/main/java/io/godstone/mesh/identity/VerifiedPeerIdentity.kt`
+  - `android/mesh/src/main/java/io/godstone/mesh/identity/PeerIdentityStore.kt`
+  - `android/mesh/src/main/java/io/godstone/mesh/delivery/BoundRecipientKeyResolver.kt`
+- **iOS:**
+  - `ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/IdentityBindingV1.swift`
+  - `ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/VerifiedPeerIdentity.swift`
+  - `ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/PeerIdentityStore.swift`
+  - `ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/BoundRecipientKeyResolver.swift`
+
+### 20.2 Separation of Concerns
+1. `NoiseSession`: Cryptographic session facts only (no SQLite, no trust policy).
+2. `IdentityBindingValidator`: Pure cryptographic parsing and signature validation.
+3. `PeerIdentityStore`: Durable trust policy and generation state.
+4. `BoundRecipientKeyResolver`: Read-only projection for ACK verification.
+5. `LinkStateMachine`: Transport state progression and `READY` gating.
+
+---
+
+## 21. Future Implementation Acceptance Matrix (C8.1 Target)
+
+When C8.1 is implemented, the test suite must satisfy the following matrix:
+
+| Category | Test Case | Expected Result |
+|---|---|---|
+| **Vectors** | Serialization / Deserialization KAT | Byte-for-byte agreement on 133-byte encoding. |
+| **Vectors** | Signature Preimage KAT | Byte-for-byte agreement on 80-byte `GMP2-IDBIND` preimage. |
+| **Vectors** | `node_id` Derivation KAT | Exact `BLAKE2s-128` output matching test fixtures. |
+| **Handshake** | Noise Handshake Message Sizes | HS1: 32 bytes; HS2: 229 bytes; HS3: 197 bytes. |
+| **Validation** | Truncated payload (<133 bytes) | Rejected (`SECURITY_REJECT`). |
+| **Validation** | Invalid version (`!= 0x01`) | Rejected (`SECURITY_REJECT`). |
+| **Validation** | Corrupted signature (1 bit flip) | Rejected (`SECURITY_REJECT`). |
+| **Validation** | Mismatched signing public key | Rejected (`SECURITY_REJECT`). |
+| **Validation** | `binding.staticDhKey != remoteStaticKey` | Rejected (`SECURITY_REJECT`). |
+| **Validation** | `first4(nodeId) != advertisedHint` | Rejected (`SECURITY_REJECT`). |
+| **Trust Policy** | First encounter (unseen `node_id`, `gen=0`) | Accepted $\to$ Persisted as `TOFU_PINNED`. |
+| **Trust Policy** | Reconnect with identical valid binding | Accepted $\to$ Transitions to `READY`. |
+| **Trust Policy** | Valid rotation (`gen > stored_gen`) | Quarantined $\to$ `KEY_CHANGED_QUARANTINED` (No `READY`). |
+| **Trust Policy** | Rollback attempt (`gen < stored_gen`) | Rejected $\to$ Disconnect. |
+| **Trust Policy** | Conflict (`gen == stored_gen`, different key) | Rejected $\to$ Disconnect. |
+| **Resolver** | Query before binding complete | Returns `null`. |
+| **Resolver** | Query for `TOFU_PINNED` peer | Returns correct Ed25519 public key. |
+| **Resolver** | Query for `USER_VERIFIED` peer | Returns correct Ed25519 public key. |
+| **Resolver** | Query for `KEY_CHANGED_QUARANTINED` peer | Returns `null`. |
+| **Resolver** | Query for `REVOKED` peer | Returns `null`. |
+| **Link Gate** | Inbound `FrameV2` before `READY` | Rejected / Discarded. |
