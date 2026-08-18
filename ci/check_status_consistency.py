@@ -280,7 +280,11 @@ def check_consistency(
             errors.append("FINDINGS_STATUS.json: A-05 evidence must mention C8.0")
         if "binding architecture" not in a05_ev and "peer-binding" not in a05_ev:
             errors.append("FINDINGS_STATUS.json: A-05 evidence must mention peer-binding architecture")
-        if "implementation" not in a05_ev or "open" not in a05_ev:
+        if "C8.1B" not in a05_ev or "local identity authority" not in a05_ev:
+            errors.append("FINDINGS_STATUS.json: A-05 evidence must reference C8.1B local identity authority implementation")
+        if "peer trust store is implemented" in a05_ev or "PeerIdentityStore implemented" in a05_ev:
+            errors.append("FINDINGS_STATUS.json: A-05 evidence must not claim peer trust store is implemented")
+        if "implementation" not in a05_ev or "open" not in a05_ev.lower():
             errors.append("FINDINGS_STATUS.json: A-05 evidence must state implementation remains open")
         if "sealed-sender" not in a05_ev:
             errors.append("FINDINGS_STATUS.json: A-05 evidence must state sealed-sender authorship remains open")
@@ -310,7 +314,7 @@ def check_consistency(
         # Check for stale branch references in FINAL_STATUS.md
         for stale in STALE_BRANCHES:
             if stale in final_status_text:
-                errors.append(f"FINAL_STATUS.md contains stale branch reference: {stale}")
+                errors.append(f"FINAL_STATUS.md references stale branch: {stale}")
 
     # 9. Check ADR-004 Status Authority
     if adr004_path.exists():
@@ -386,17 +390,23 @@ def check_consistency(
 
                 if "BINDING ARCHITECTURE FROZEN" not in s_text and "PEER-IDENTITY ARCHITECTURE FROZEN" not in s_text and "ARCHITECTURE FROZEN" not in s_text:
                     errors.append("ADR-003 status: must contain 'PEER-IDENTITY ARCHITECTURE FROZEN' or 'BINDING ARCHITECTURE FROZEN'")
-                if "Implementation" not in s_text or "OPEN" not in s_text:
+                if "C8.1A" not in s_text:
+                    errors.append("ADR-003 status: must mention C8.1A status as frozen/implemented")
+                if "C8.1B" not in s_text:
+                    errors.append("ADR-003 status: must mention C8.1B status as implemented/pending freeze")
+                if "C8.2" not in s_text:
+                    errors.append("ADR-003 status: must mention C8.2 status as unimplemented/open")
+                if re.search(r"C8\.2[^\n]*(?<!Un)implemented\b", s_text, re.IGNORECASE) or re.search(r"C8\.2[^\n]*\b(?:CLOSED|Frozen)\b", s_text, re.IGNORECASE):
+                    errors.append("ADR-003 status: C8.2 must not be claimed as implemented or closed")
+                if "open" not in s_text.lower():
                     errors.append("ADR-003 status: must state implementation is OPEN")
-                if "Sealed-Sender" not in s_text or "OPEN" not in s_text:
+                if "Sealed-Sender" not in s_text or "OPEN" not in s_text.upper():
                     errors.append("ADR-003 status: must state Sealed-Sender is OPEN")
                 if "RecipientKeyResolver" not in s_text or "UNRESOLVED" not in s_text:
                     errors.append("ADR-003 status: must state RecipientKeyResolver is UNRESOLVED")
                 if "Link" not in s_text or ("Disabled" not in s_text and "disabled" not in s_text and "false" not in s_text):
                     errors.append("ADR-003 status: must state Link layer is disabled")
 
-                if "Implementation: CLOSED" in s_text or "Implementation: IMPLEMENTED" in s_text or "Implementation:** CLOSED" in s_text or "Implementation:** IMPLEMENTED" in s_text:
-                    errors.append("ADR-003 status: Implementation must not be CLOSED/IMPLEMENTED")
                 if "RecipientKeyResolver: READY" in s_text or "RecipientKeyResolver: RESOLVED" in s_text or "RecipientKeyResolver`:** READY" in s_text or "RecipientKeyResolver`:** RESOLVED" in s_text:
                     errors.append("ADR-003 status: RecipientKeyResolver must not be READY/RESOLVED")
 
@@ -665,15 +675,15 @@ def selftest() -> int:
             failures.append("Mutation S17 (A-05 missing C8.0 evidence) was NOT detected")
         f_findings.write_text(FINDINGS_STATUS_PATH.read_text(encoding="utf-8"), encoding="utf-8")
 
-        # Mutation S18: ADR-003 implementation marked closed
+        # Mutation S18: ADR-003 claims C8.2 is implemented (S2)
         adr003_clean = f_adr003.read_text(encoding="utf-8")
-        s18 = adr003_clean.replace("C8.1 Implementation:** OPEN", "C8.1 Implementation:** CLOSED")
+        s18 = adr003_clean.replace("Unimplemented / Open", "Implemented / Closed")
         f_adr003.write_text(s18, encoding="utf-8")
         errs = check_consistency(f_findings, f_gates, f_tiers, f_manifest, f_status, f_adr004, f_adr003)
-        if any("ADR-003" in e and ("Implementation" in e or "CLOSED" in e) for e in errs):
+        if any("ADR-003" in e and "C8.2" in e for e in errs):
             passed_mutations += 1
         else:
-            failures.append("Mutation S18 (ADR-003 implementation marked CLOSED) was NOT detected")
+            failures.append("Mutation S2 (ADR-003 claims C8.2 is implemented) was NOT detected")
         f_adr003.write_text(adr003_clean, encoding="utf-8")
 
         # Mutation S19: ADR-003 resolver marked READY
@@ -686,12 +696,61 @@ def selftest() -> int:
             failures.append("Mutation S19 (ADR-003 resolver marked READY) was NOT detected")
         f_adr003.write_text(adr003_clean, encoding="utf-8")
 
+        # Mutation S3: ADR-003 omits C8.1B status
+        s3 = re.sub(r"- \*\*Phase C8\.1B[^\n]*\n", "", adr003_clean)
+        f_adr003.write_text(s3, encoding="utf-8")
+        errs = check_consistency(f_findings, f_gates, f_tiers, f_manifest, f_status, f_adr004, f_adr003)
+        if any("ADR-003" in e and "C8.1B" in e for e in errs):
+            passed_mutations += 1
+        else:
+            failures.append("Mutation S3 (ADR-003 omits C8.1B status) was NOT detected")
+        f_adr003.write_text(adr003_clean, encoding="utf-8")
+
+        # Mutation S4: A-05 omits C8.1B evidence
+        f_s4 = json.loads(f_findings.read_text(encoding="utf-8"))
+        for f in f_s4["findings"]:
+            if f["id"] == "A-05":
+                f["evidence"] = f["evidence"].replace("C8.1B local identity authority is implemented and hardened; ", "")
+        f_findings.write_text(json.dumps(f_s4), encoding="utf-8")
+        errs = check_consistency(f_findings, f_gates, f_tiers, f_manifest, f_status, f_adr004, f_adr003)
+        if any("A-05" in e and "C8.1B" in e for e in errs):
+            passed_mutations += 1
+        else:
+            failures.append("Mutation S4 (A-05 omits C8.1B evidence) was NOT detected")
+        f_findings.write_text(FINDINGS_STATUS_PATH.read_text(encoding="utf-8"), encoding="utf-8")
+
+        # Mutation S5: A-05 evidence claims peer trust store is implemented
+        f_s5 = json.loads(f_findings.read_text(encoding="utf-8"))
+        for f in f_s5["findings"]:
+            if f["id"] == "A-05":
+                f["evidence"] = f["evidence"] + " peer trust store is implemented."
+        f_findings.write_text(json.dumps(f_s5), encoding="utf-8")
+        errs = check_consistency(f_findings, f_gates, f_tiers, f_manifest, f_status, f_adr004, f_adr003)
+        if any("A-05" in e and "peer trust store is implemented" in e for e in errs):
+            passed_mutations += 1
+        else:
+            failures.append("Mutation S5 (A-05 claims peer trust store is implemented) was NOT detected")
+        f_findings.write_text(FINDINGS_STATUS_PATH.read_text(encoding="utf-8"), encoding="utf-8")
+
+        # Mutation S6: finding A-05 marked NONSHIPPING_TESTED before link layer wiring
+        f_s6 = json.loads(f_findings.read_text(encoding="utf-8"))
+        for f in f_s6["findings"]:
+            if f["id"] == "A-05":
+                f["status"] = "NONSHIPPING_TESTED"
+        f_findings.write_text(json.dumps(f_s6), encoding="utf-8")
+        errs = check_consistency(f_findings, f_gates, f_tiers, f_manifest, f_status, f_adr004, f_adr003)
+        if any("A-05" in e and ("NONSHIPPING_TESTED" in e or "OPEN_REPOSITORY" in e) for e in errs):
+            passed_mutations += 1
+        else:
+            failures.append("Mutation S6 (A-05 marked NONSHIPPING_TESTED) was NOT detected")
+        f_findings.write_text(FINDINGS_STATUS_PATH.read_text(encoding="utf-8"), encoding="utf-8")
+
     if failures:
         for f in failures:
             print(f"::error::selftest failure: {f}")
         return 1
 
-    print(f"check_status_consistency selftest PASSED ({passed_mutations}/19 mutations caught deterministically).")
+    print(f"check_status_consistency selftest PASSED ({passed_mutations}/23 mutations caught deterministically).")
     return 0
 
 

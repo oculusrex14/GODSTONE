@@ -188,37 +188,59 @@ internal class FileWipeJournal(ctx: Context) : WipeJournal {
  * no-op, `deleteSharedPreferences`/`deleteDatabase` on absent files are no-ops,
  * and `loadOrCreate` creates when nothing exists.
  */
-internal class AndroidWipeArtifacts(private val ctx: Context) : WipeArtifacts {
-
-    override fun eraseKeys() {
-        // Crypto erasure: destroy the KEK. All EncryptedSharedPreferences
-        // ciphertexts (identity, store key) become permanently undecryptable.
+internal class AndroidWipeArtifacts(
+    private val ctx: Context? = null,
+    private val eraseAction: () -> Unit = {
         val ks = KeyStore.getInstance("AndroidKeyStore")
         ks.load(null)
         if (ks.containsAlias(MASTER_KEY_ALIAS)) {
             ks.deleteEntry(MASTER_KEY_ALIAS)
         }
-        // A failure to delete the master key is a genuine wipe failure; the
-        // machine will re-attempt eraseKeys on resume because KEY_ERASED was
-        // not persisted (run() persists only after the call returns).
+    },
+    private val deleteArtifactsAction: () -> Unit = {
+        ctx?.let {
+            SqliteMessageStore.panicWipe(it)
+            Identity.panicWipe(it)
+        }
+    },
+    private val regenerateAction: () -> Unit = {
+        ctx?.let {
+            Identity.loadOrCreate(it)
+        }
+    }
+) : WipeArtifacts {
+
+    constructor(ctx: Context) : this(
+        ctx = ctx,
+        eraseAction = {
+            val ks = KeyStore.getInstance("AndroidKeyStore")
+            ks.load(null)
+            if (ks.containsAlias(MASTER_KEY_ALIAS)) {
+                ks.deleteEntry(MASTER_KEY_ALIAS)
+            }
+        },
+        deleteArtifactsAction = {
+            SqliteMessageStore.panicWipe(ctx)
+            Identity.panicWipe(ctx)
+        },
+        regenerateAction = {
+            Identity.loadOrCreate(ctx)
+        }
+    )
+
+    override fun eraseKeys() {
+        eraseAction()
     }
 
     override fun deleteArtifacts() {
-        // Reuse the existing, tested store + identity panic-wipe methods.
-        SqliteMessageStore.panicWipe(ctx)   // store DB + store key prefs
-        Identity.panicWipe(ctx)             // identity prefs
+        deleteArtifactsAction()
     }
 
     override fun regenerateIdentity() {
-        // Fresh master key + fresh EncryptedSharedPreferences + fresh keys.
-        // The returned identity is the new node identity; nothing to do with it
-        // here -- the caller (app init) will loadOrCreate again when it needs it.
-        Identity.loadOrCreate(ctx)
+        regenerateAction()
     }
 
     private companion object {
-        // AndroidX Security MasterKey default alias. Deleting this entry
-        // invalidates every EncryptedSharedPreferences file it encrypted.
         const val MASTER_KEY_ALIAS = "_androidx_security_master_key_"
     }
 }

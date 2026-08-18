@@ -397,9 +397,18 @@ class LocalIdentityStateV1Test {
         assertEquals(0L, id.bindingGeneration)
     }
 
-    // Panic wipe integration: key deletion failure prevents advancement
+    // 28. staticDhPriv is not public API
     @Test
-    fun `wipe failure key deletion prevents advancing to KEY_ERASED`() {
+    fun `test 28 staticDhPriv is not public API`() {
+        val methods = Identity::class.java.declaredMethods
+        val getter = methods.find { it.name.startsWith("getStaticDhPriv") }
+        assertNotNull("getStaticDhPriv getter must exist", getter)
+        assertFalse("getStaticDhPriv must not be public", java.lang.reflect.Modifier.isPublic(getter!!.modifiers))
+    }
+
+    // 29. AndroidWipeArtifacts erase failure leaves journal at REQUESTED
+    @Test
+    fun `test 29 AndroidWipeArtifacts erase failure leaves journal at REQUESTED`() {
         class MockJournal : WipeJournal {
             var state = PanicWipe.WipeState.IDLE
             override fun read() = state
@@ -407,16 +416,65 @@ class LocalIdentityStateV1Test {
             override fun clear() { state = PanicWipe.WipeState.IDLE }
         }
         val journal = MockJournal()
-        val artifacts = object : WipeArtifacts {
-            override fun eraseKeys() { throw RuntimeException("Keystore deletion failed") }
-            override fun deleteArtifacts() {}
-            override fun regenerateIdentity() {}
-        }
+        val artifacts = AndroidWipeArtifacts(
+            eraseAction = { throw RuntimeException("Keystore erase failed") },
+            deleteArtifactsAction = {},
+            regenerateAction = {}
+        )
         val wipe = PanicWipe(journal, artifacts)
         try {
             wipe.begin()
             fail("Expected exception")
         } catch (_: RuntimeException) {}
         assertEquals(PanicWipe.WipeState.REQUESTED, journal.state)
+    }
+
+    // 30. AndroidWipeArtifacts regenerate failure leaves journal at ARTIFACTS_DELETED
+    @Test
+    fun `test 30 AndroidWipeArtifacts regenerate failure leaves journal at ARTIFACTS_DELETED`() {
+        class MockJournal : WipeJournal {
+            var state = PanicWipe.WipeState.IDLE
+            override fun read() = state
+            override fun write(s: PanicWipe.WipeState) { state = s }
+            override fun clear() { state = PanicWipe.WipeState.IDLE }
+        }
+        val journal = MockJournal()
+        val artifacts = AndroidWipeArtifacts(
+            eraseAction = {},
+            deleteArtifactsAction = {},
+            regenerateAction = { throw RuntimeException("Regeneration persistence failed") }
+        )
+        val wipe = PanicWipe(journal, artifacts)
+        try {
+            wipe.begin()
+            fail("Expected exception")
+        } catch (_: RuntimeException) {}
+        assertEquals(PanicWipe.WipeState.ARTIFACTS_DELETED, journal.state)
+    }
+
+    // 31. AndroidWipeArtifacts successful wipe generates generation 0
+    @Test
+    fun `test 31 AndroidWipeArtifacts successful wipe generates generation 0`() {
+        class MockJournal : WipeJournal {
+            var state = PanicWipe.WipeState.IDLE
+            override fun read() = state
+            override fun write(s: PanicWipe.WipeState) { state = s }
+            override fun clear() { state = PanicWipe.WipeState.IDLE }
+        }
+        val storage = InMemoryIdentityStorage()
+        val journal = MockJournal()
+        var generatedId: Identity? = null
+        val artifacts = AndroidWipeArtifacts(
+            eraseAction = {},
+            deleteArtifactsAction = {},
+            regenerateAction = {
+                generatedId = Identity.loadOrCreate(storage)
+            }
+        )
+        val wipe = PanicWipe(journal, artifacts)
+        wipe.begin()
+        assertEquals(PanicWipe.WipeState.IDLE, journal.state)
+        assertNotNull(generatedId)
+        assertEquals(0L, generatedId!!.bindingGeneration)
     }
 }

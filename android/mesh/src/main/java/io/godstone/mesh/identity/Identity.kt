@@ -38,7 +38,7 @@ class Identity private constructor(
      * X25519 static private key (32 bytes). Defensive copy for existing NoiseSession constructor.
      * Private key material is never exposed via public mutable reference.
      */
-    val staticDhPriv: ByteArray get() = _staticDhPriv.copyOf()
+    internal val staticDhPriv: ByteArray get() = _staticDhPriv.copyOf()
 
     /** Authoritative node ID derived as BLAKE2s-128(identityPub) (16 bytes). Defensive copy. */
     val nodeId: ByteArray get() = _nodeId.copyOf()
@@ -91,7 +91,7 @@ class Identity private constructor(
     }
 
     companion object {
-        private const val PREFS = "godstone_identity"
+        const val PREFS = "godstone_identity"
 
         fun loadOrCreate(ctx: Context): Identity =
             loadOrCreate(EncryptedSharedPreferencesStorage(ctx), SecureRandom())

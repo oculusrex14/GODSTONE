@@ -745,10 +745,7 @@ final class RouterTests: XCTestCase {
     }
 
     func testMeshNodeCompositionBindsIdentityNodeIdToRouter() async throws {
-        let identity = MeshIdentity(
-            signingKey: Curve25519.Signing.PrivateKey(),
-            agreementKey: Curve25519.KeyAgreement.PrivateKey()
-        )
+        let identity = try MeshIdentity.generateAndStore(keychain: InMemoryKeychain())
         let store = InMemoryMessageStore()
         let tracker = DeliveryTracker(repo: TestDeliveryRepository(), authenticator: Ed25519AckAuthenticator(resolver: UnresolvedRecipientKeyResolver()))
         let node = MeshNode(identity: identity, store: store, deliveryTracker: tracker)

@@ -17,7 +17,7 @@ public struct MeshIdentity: Sendable {
 
     public let bindingGeneration: UInt32
     private let signingKey: Curve25519.Signing.PrivateKey
-    public let agreementKey: Curve25519.KeyAgreement.PrivateKey
+    internal let agreementKey: Curve25519.KeyAgreement.PrivateKey
 
     public var signingPublicKey: Data { signingKey.publicKey.rawRepresentation }
     public var staticDhPublicKey: Data { agreementKey.publicKey.rawRepresentation }
@@ -35,27 +35,19 @@ public struct MeshIdentity: Sendable {
         Bip39.words(from: nodeId, count: 6).joined(separator: "-")
     }
 
-    internal init(
+    private init(
         signingKey: Curve25519.Signing.PrivateKey,
         agreementKey: Curve25519.KeyAgreement.PrivateKey,
-        bindingGeneration: UInt32 = 0
+        bindingGeneration: UInt32
     ) {
         self.signingKey = signingKey
         self.agreementKey = agreementKey
         self.bindingGeneration = bindingGeneration
     }
 
-    /// Build an Identity directly from already-generated key material for tests with fixed generation 0.
-    internal static func fromKeyMaterial(
-        signingKey: Curve25519.Signing.PrivateKey,
-        agreementKey: Curve25519.KeyAgreement.PrivateKey
-    ) -> MeshIdentity {
-        MeshIdentity(signingKey: signingKey, agreementKey: agreementKey, bindingGeneration: 0)
-    }
-
     /// Sign a message using the long-term Ed25519 signing key.
-    public func sign(message: Data) throws -> Data {
-        try signingKey.signature(for: message)
+    internal func sign(message: Data) throws -> Data {
+        Ed25519Signer.sign(message: message, seed: signingKey.rawRepresentation)
     }
 
     /// Canonical local issuer producing an IdentityBindingV1 for the local node (ADR-003, Phase C8.1B).
@@ -71,7 +63,7 @@ public struct MeshIdentity: Sendable {
             signingPublicKey: signingPub,
             staticDhPublicKey: staticPub
         )
-        let signature = try signingKey.signature(for: preimage)
+        let signature = Ed25519Signer.sign(message: preimage, seed: signingKey.rawRepresentation)
 
         guard signingKey.publicKey.isValidSignature(signature, for: preimage) else {
             throw MeshError.identityStateCorrupt("Local issuer self-verification failed")
@@ -87,12 +79,16 @@ public struct MeshIdentity: Sendable {
 
     // MARK: - Keychain Tags
 
-    public static let v1Tag = "io.godstone.mesh.identity.v1"
-    public static let legacySigningTag = "io.godstone.mesh.identity.ed25519"
-    public static let legacyAgreementTag = "io.godstone.mesh.identity.x25519"
+    internal static let v1Tag = "io.godstone.mesh.identity.v1"
+    internal static let legacySigningTag = "io.godstone.mesh.identity.ed25519"
+    internal static let legacyAgreementTag = "io.godstone.mesh.identity.x25519"
 
-    public static func generateAndStore(
-        keychain: LocalIdentityKeychain = DefaultLocalIdentityKeychain()
+    public static func generateAndStore() throws -> MeshIdentity {
+        try generateAndStore(keychain: DefaultLocalIdentityKeychain())
+    }
+
+    internal static func generateAndStore(
+        keychain: any LocalIdentityKeychain
     ) throws -> MeshIdentity {
         let v1Data = try keychain.read(tag: v1Tag)
         let legEd = try keychain.read(tag: legacySigningTag)
@@ -114,8 +110,12 @@ public struct MeshIdentity: Sendable {
         return MeshIdentity(signingKey: signing, agreementKey: agreement, bindingGeneration: 0)
     }
 
-    public static func loadFromKeychain(
-        keychain: LocalIdentityKeychain = DefaultLocalIdentityKeychain()
+    public static func loadFromKeychain() throws -> MeshIdentity {
+        try loadFromKeychain(keychain: DefaultLocalIdentityKeychain())
+    }
+
+    internal static func loadFromKeychain(
+        keychain: any LocalIdentityKeychain
     ) throws -> MeshIdentity {
         let v1Data = try keychain.read(tag: v1Tag)
         let legEd = try keychain.read(tag: legacySigningTag)
@@ -185,8 +185,12 @@ public struct MeshIdentity: Sendable {
     ///
     /// This is the cryptographic-erasure primitive for the iOS panic-wipe path
     /// (ADR-004 criterion 5, GST-WIPE-001).
-    public static func deleteFromKeychain(
-        keychain: LocalIdentityKeychain = DefaultLocalIdentityKeychain()
+    public static func deleteFromKeychain() throws {
+        try deleteFromKeychain(keychain: DefaultLocalIdentityKeychain())
+    }
+
+    internal static func deleteFromKeychain(
+        keychain: any LocalIdentityKeychain
     ) throws {
         try keychain.delete(tag: v1Tag)
         try keychain.delete(tag: legacySigningTag)

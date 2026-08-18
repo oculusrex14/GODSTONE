@@ -132,9 +132,7 @@ final class MeshNodeSosDispatchTests: XCTestCase {
     /// path (C6/C7 do); it only enqueues with `AckMode.none` +
     /// `markHandedToRelay`.
     private func makeNode(store: MessageStore) -> MeshNode {
-        let identity = MeshIdentity(
-            signingKey: Curve25519.Signing.PrivateKey(),
-            agreementKey: Curve25519.KeyAgreement.PrivateKey())
+        let identity = try! MeshIdentity.generateAndStore(keychain: InMemoryKeychain())
         let journal = InMemoryDeliveryRepository()
         let tracker = DeliveryTracker(
             repo: journal,

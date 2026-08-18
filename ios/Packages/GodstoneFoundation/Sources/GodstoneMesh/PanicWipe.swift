@@ -165,33 +165,43 @@ public final class UserDefaultsWipeJournal: WipeJournal {
 
 /// Production `WipeArtifacts` for iOS.
 ///
-/// `eraseKeys` deletes the two Keychain identity items via
-/// `MeshIdentity.deleteFromKeychain()` -- on iOS the private keys ARE the
-/// secret (there is no separate KEK wrapping ciphertext files as on Android),
-/// so this is both key destruction and artifact deletion in one step.
+/// `eraseKeys` deletes the single authoritative V1 Keychain identity item
+/// and any legacy migration items via `MeshIdentity.deleteFromKeychain()`.
+/// Legacy two-key items may exist only during migration or interrupted migration.
+/// `deleteFromKeychain` removes V1 and both legacy items.
+///
 /// `deleteArtifacts` deletes the durable DTN store DB file (Phase G) when a
 /// `storeUrl` is registered; the Keychain keys are already gone by this point
 /// (eraseKeys), so this is cleanup of now-useless artifacts, coordinated with
-/// the store + identity wipe as on Android. `regenerateIdentity` builds a fresh
-/// identity via `MeshIdentity.generateAndStore()`.
+/// the store + identity wipe as on Android.
+///
+/// `regenerateIdentity` builds a fresh identity via `MeshIdentity.generateAndStore()`,
+/// which creates generation 0 keys only into an EMPTY authority state and does NOT
+/// delete or overwrite an existing identity.
 ///
 /// Each step is idempotent: `SecItemDelete` on an absent item is a no-op,
-/// `SqliteMessageStore.panicWipe(at:)` on an absent file is a no-op, and
-/// `generateAndStore` creates fresh keys (deleting any same-tag item first).
+/// `SqliteMessageStore.panicWipe(at:)` on an absent file is a no-op.
 public final class KeychainWipeArtifacts: WipeArtifacts {
+    private let keychain: any LocalIdentityKeychain
     /// URL of the durable store DB file to wipe in `deleteArtifacts`. Nil when
     /// no durable store is configured (the wipe then only touches the Keychain).
     private let storeUrl: URL?
 
     /// `storeUrl` registers the durable DTN store for coordinated wipe.
     public init(storeUrl: URL? = nil) {
+        self.keychain = DefaultLocalIdentityKeychain()
+        self.storeUrl = storeUrl
+    }
+
+    internal init(keychain: any LocalIdentityKeychain, storeUrl: URL? = nil) {
+        self.keychain = keychain
         self.storeUrl = storeUrl
     }
 
     public func eraseKeys() throws {
         // Crypto erasure: the keys are the secret. Deleting them makes prior
         // traffic permanently unlinkable. Idempotent (errSecItemNotFound ok).
-        try MeshIdentity.deleteFromKeychain()
+        try MeshIdentity.deleteFromKeychain(keychain: keychain)
     }
 
     public func deleteArtifacts() {
@@ -204,6 +214,6 @@ public final class KeychainWipeArtifacts: WipeArtifacts {
     }
 
     public func regenerateIdentity() throws {
-        _ = try MeshIdentity.generateAndStore()
+        _ = try MeshIdentity.generateAndStore(keychain: keychain)
     }
 }

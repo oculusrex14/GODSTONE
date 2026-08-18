@@ -221,7 +221,7 @@ internal class EncryptedSharedPreferencesStorage(private val ctx: Context) : Ide
     }
 
     companion object {
-        const val PREFS = "godstone_identity"
+        const val PREFS = Identity.PREFS
         const val K_STATE_V1 = "identity_state_v1"
         const val K_ID_PUB = "id_pub"
         const val K_ID_PRIV = "id_priv"

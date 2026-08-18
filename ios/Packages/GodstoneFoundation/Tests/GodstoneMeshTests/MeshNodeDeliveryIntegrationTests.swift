@@ -208,9 +208,7 @@ final class MeshNodeDeliveryIntegrationTests: XCTestCase {
     /// reference.
     private func makeNode(store: MessageStore,
                           resolver: RecipientKeyResolver) -> (MeshNode, InMemoryDeliveryRepository) {
-        let identity = MeshIdentity(
-            signingKey: Curve25519.Signing.PrivateKey(),
-            agreementKey: Curve25519.KeyAgreement.PrivateKey())
+        let identity = try! MeshIdentity.generateAndStore(keychain: InMemoryKeychain())
         let journal = InMemoryDeliveryRepository(store: store)
         let tracker = DeliveryTracker(repo: journal,
                                       authenticator: Ed25519AckAuthenticator(resolver: resolver))

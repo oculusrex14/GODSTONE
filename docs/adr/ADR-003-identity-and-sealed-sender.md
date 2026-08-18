@@ -2,11 +2,13 @@
 
 ## 1. Status
 
-**OPEN — PEER-IDENTITY ARCHITECTURE FROZEN, PRIMITIVE IMPLEMENTED, INTEGRATION / SEALED-SENDER / DEVICE EVIDENCE PENDING**
+**OPEN — PEER-IDENTITY ARCHITECTURE FROZEN, LOCAL IDENTITY AUTHORITY IMPLEMENTED, INTEGRATION / SEALED-SENDER / DEVICE EVIDENCE PENDING**
 
-- **Phase C8.0 / C8.0.1 / C8.0.2 Architecture:** FROZEN (canonical Ed25519-rooted `IdentityBindingV1`, local generation authority, Noise XX payload placement, pre-HS3 initiator validation, dual-state pending rotation model, atomic trust transaction ownership in `PeerIdentityRepository`, pure `TrustPlan` engine, exact-candidate rotation approval, strict revocation semantics, physical store separation, and platform-precise coordinated panic-wipe integration).
-- **Phase C8.1A IdentityBinding Primitive:** IMPLEMENTED / NONSHIPPING (canonical binary codec, 80-byte signature preimage, BLAKE2s-128 `node_id` derivation, pure `IdentityBindingValidator` with defensive copying, independent Python reference, and cross-platform locked KAT fixtures).
-- **C8.1 Implementation:** OPEN (peer trust persistence, transaction engine, Noise HS2/HS3 handshake integration, and BoundRecipientKeyResolver remain open).
+- **Phase C8.0 / C8.0.1 / C8.0.2 Architecture:** Accepted / Architecture Frozen (canonical Ed25519-rooted `IdentityBindingV1`, local generation authority, Noise XX payload placement, pre-HS3 initiator validation, dual-state pending rotation model, atomic trust transaction ownership in `PeerIdentityRepository`, pure `TrustPlan` engine, exact-candidate rotation approval, strict revocation semantics, physical store separation, and platform-precise coordinated panic-wipe integration).
+- **Phase C8.1A / C8.1A.1 IdentityBinding Primitive:** Implemented & Frozen (canonical binary codec, 80-byte signature preimage, BLAKE2s-128 `node_id` derivation, pure `IdentityBindingValidator` with defensive copying, independent Python reference, and cross-platform locked KAT fixtures).
+- **Phase C8.1B Local Identity Authority:** Implemented / Pending Final Freeze (durable `LocalIdentityStateV1` authority, zero-parameter canonical local issuer, legacy migration, panic-wipe integration, internal Keychain/SharedPreferences storage boundaries).
+- **Phase C8.1B.1 Correction / Verification:** Under Correction / Verification (closing visibility gaps, proving exact locked issuer KATs on all platforms, synchronized status truth).
+- **Phase C8.2+ Peer Trust / Noise / Resolver Integration:** Unimplemented / Open (peer trust persistence, transaction engine, Noise HS2/HS3 handshake integration, and BoundRecipientKeyResolver remain open).
 - **Sealed-Sender Authenticated Authorship:** OPEN (underlying L4 application envelope open).
 - **Production `RecipientKeyResolver`:** UNRESOLVED / Fail-closed (`UnresolvedRecipientKeyResolver`).
 - **Link Layer:** Disabled (`LINK_LAYER_READY = false` / `linkLayerReady = false`).

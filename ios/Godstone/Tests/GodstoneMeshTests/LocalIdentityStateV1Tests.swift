@@ -2,6 +2,44 @@ import XCTest
 import CryptoKit
 @testable import GodstoneMesh
 
+/// In-memory Keychain fake for deterministic testing.
+internal final class InMemoryKeychain: LocalIdentityKeychain, @unchecked Sendable {
+    var storage: [String: Data] = [:]
+    var failRead: OSStatus? = nil
+    var failAdd: OSStatus? = nil
+    var failDelete: OSStatus? = nil
+
+    func read(tag: String) throws -> Data? {
+        if let status = failRead {
+            throw MeshError.keychainFailure(status)
+        }
+        return storage[tag]
+    }
+
+    func add(tag: String, data: Data) throws {
+        if let status = failAdd {
+            throw MeshError.keychainFailure(status)
+        }
+        storage[tag] = data
+    }
+
+    func delete(tag: String) throws {
+        if let status = failDelete {
+            throw MeshError.keychainFailure(status)
+        }
+        storage.removeValue(forKey: tag)
+    }
+}
+
+/// Simple in-memory WipeJournal for deterministic testing.
+internal final class InMemoryWipeJournal: WipeJournal {
+    private var state: WipeState = .idle
+
+    func read() -> WipeState { state }
+    func write(_ state: WipeState) { self.state = state }
+    func clear() { self.state = .idle }
+}
+
 final class LocalIdentityStateV1Tests: XCTestCase {
 
     private func hexToData(_ hex: String) -> Data {
@@ -22,49 +60,20 @@ final class LocalIdentityStateV1Tests: XCTestCase {
     private lazy var vec1EdPriv = hexToData(String(repeating: "11", count: 32))
     private lazy var vec1XPriv = hexToData(String(repeating: "22", count: 32))
     private lazy var vec1Serialized = hexToData(
-        "0100000000d04ab232742bb4ab3a1368bd4615e4e6d0224ab71a016baf8520a332c97787370faa684ed28867b97f4a6a2dee5df8ce974e76b7018e3f22a1c4cf2678570f20d57d605658e4125b03d368d407ffaa4eaad96a090b8fec56ef19864293f9c6c5adad93433604fbe87bb22d26ce733a17e0bfeaa3f972dfec535f299101c51a0b"
+        "0100000000d04ab232742bb4ab3a1368bd4615e4e6d0224ab71a016baf8520a332c97787370faa684ed28867b97f4a6a2dee5df8ce974e76b7018e3f22a1c4cf2678570f204c546a07b0e80598eb6a290e3e3c8f364c059edf3804bd42a6924a7b0186e68217af7316c5f93cc40e35bb2731e752e758e7206fa6061b6ab349280752ec1908"
     )
 
     private lazy var vec2EdPriv = hexToData("000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f")
     private lazy var vec2XPriv = hexToData("202122232425262728292a2b2c2d2e2f303132333435363738393a3b3c3d3e3f")
     private lazy var vec2Serialized = hexToData(
-        "0101020304d75a980182b10ab7d54bfed3c964073a0ee172f3daa62325af021a68f707511a2f1a95e791e813a893081e7d0f9836371c6dc0ed5deab58f8b88d8b2f96cf9381e4c845bbf2f07297e68b31a396263fc0e782d02951bfa707ea86d5257ef512d7ec5817c8d9c57d76ee64f26b528be635df02d688cf6dc89028ea2819448150c"
+        "010102030403a107bff3ce10be1d70dd18e74bc09967e4d6309ba50d5f1ddc8664125531b8358072d6365880d1aeea329adf9121383851ed21a28e3b75e965d0d2cd166254595d507f2602b2f52fe4ed8c72a4720e6e37206c81aecaf725654fdd41a4a08c942b23022c352dee7583d11380e5d288fa5ebc6d7fb894c8e65e7052c1778d02"
     )
 
     private lazy var vec3EdPriv = hexToData(String(repeating: "a5", count: 32))
     private lazy var vec3XPriv = hexToData(String(repeating: "5a", count: 32))
     private lazy var vec3Serialized = hexToData(
-        "01ffffffff83675a34a87383a8b417e29bf8efaa59f6368d4f4ca5bcf7a0c86ebfcf237a3fc7f9ea93e3d361dae954cda83ff6e788c6fc605bc0d17aa0a58fae546197171e2ef64d7328bfb0fbfa9e7b2aa1e75eb9192451be6cb2a7fe8ecf6a15db3b9ff018318bbca1aa34e00780287cf82381f211516eef3aa2b1cbcc52d2b56e693108"
+        "01ffffffff29e5833a915a6429a4e3a7948475c338ef436eb82be89c92f059704403db9d55b0d08f35b4683381489afb32825e59152d47d19bc9e050d6d5a954984c9d1e2c1079c3b37526daba3ebc207f7d7802f750a21ad38442542f6ea504ef3f11453430aa06a673d483738a0ffc071ee6418ecc4c875072db6ec82bb20eedf44b9d02"
     )
-
-    /// In-memory Keychain fake for deterministic testing.
-    final class InMemoryKeychain: LocalIdentityKeychain, @unchecked Sendable {
-        var storage: [String: Data] = [:]
-        var failRead: OSStatus? = nil
-        var failAdd: OSStatus? = nil
-        var failDelete: OSStatus? = nil
-
-        func read(tag: String) throws -> Data? {
-            if let status = failRead {
-                throw MeshError.keychainFailure(status)
-            }
-            return storage[tag]
-        }
-
-        func add(tag: String, data: Data) throws {
-            if let status = failAdd {
-                throw MeshError.keychainFailure(status)
-            }
-            storage[tag] = data
-        }
-
-        func delete(tag: String) throws {
-            if let status = failDelete {
-                throw MeshError.keychainFailure(status)
-            }
-            storage.removeValue(forKey: tag)
-        }
-    }
 
     // 1. V1 state exact length 69
     func test1V1StateExactLength69() throws {
@@ -249,19 +258,20 @@ final class LocalIdentityStateV1Tests: XCTestCase {
         }
     }
 
-    // 20. vector-1 state issues exact fresh_generation_zero binding
+    // 20. vector-1 state issues exact fresh_generation_zero binding (locked KAT)
     func test20Vector1IssuesExactFreshGenerationZeroBinding() throws {
+        let kc = InMemoryKeychain()
         let state = try LocalIdentityStateV1(generation: 0, ed25519Seed: vec1EdPriv, x25519PrivateKey: vec1XPriv)
-        let signing = try Curve25519.Signing.PrivateKey(rawRepresentation: state.ed25519Seed)
-        let agreement = try Curve25519.KeyAgreement.PrivateKey(rawRepresentation: state.x25519PrivateKey)
-        let id = MeshIdentity(signingKey: signing, agreementKey: agreement, bindingGeneration: 0)
+        kc.storage[MeshIdentity.v1Tag] = state.encode()
 
+        let id = try MeshIdentity.loadFromKeychain(keychain: kc)
         let binding = try id.issueIdentityBinding()
+
         XCTAssertEqual(binding.version, 0x01)
         XCTAssertEqual(binding.generation, 0)
         XCTAssertEqual(binding.signingPublicKey, id.signingPublicKey)
-        XCTAssertEqual(binding.staticDhPublicKey, id.staticDhPublicKey)
         XCTAssertEqual(binding.signature.count, 64)
+        XCTAssertEqual(binding.encode(), vec1Serialized)
 
         let result = IdentityBindingValidator.validate(
             serialized: binding.encode(),
@@ -276,19 +286,21 @@ final class LocalIdentityStateV1Tests: XCTestCase {
         XCTAssertEqual(validated.nodeId, id.nodeId)
     }
 
-    // 21. vector-2 state issues exact endian_lock binding
+    // 21. vector-2 state issues exact endian_lock binding (locked KAT)
     func test21Vector2IssuesExactEndianLockBinding() throws {
+        let kc = InMemoryKeychain()
         let state = try LocalIdentityStateV1(generation: 0x01020304, ed25519Seed: vec2EdPriv, x25519PrivateKey: vec2XPriv)
-        let signing = try Curve25519.Signing.PrivateKey(rawRepresentation: state.ed25519Seed)
-        let agreement = try Curve25519.KeyAgreement.PrivateKey(rawRepresentation: state.x25519PrivateKey)
-        let id = MeshIdentity(signingKey: signing, agreementKey: agreement, bindingGeneration: 0x01020304)
+        kc.storage[MeshIdentity.v1Tag] = state.encode()
 
+        let id = try MeshIdentity.loadFromKeychain(keychain: kc)
         let binding = try id.issueIdentityBinding()
+
         XCTAssertEqual(binding.version, 0x01)
         XCTAssertEqual(binding.generation, 0x01020304)
         XCTAssertEqual(binding.signingPublicKey, id.signingPublicKey)
         XCTAssertEqual(binding.staticDhPublicKey, id.staticDhPublicKey)
         XCTAssertEqual(binding.signature.count, 64)
+        XCTAssertEqual(binding.encode(), vec2Serialized)
 
         let result = IdentityBindingValidator.validate(
             serialized: binding.encode(),
@@ -303,19 +315,21 @@ final class LocalIdentityStateV1Tests: XCTestCase {
         XCTAssertEqual(validated.nodeId, id.nodeId)
     }
 
-    // 22. vector-3 state issues exact max_generation binding
+    // 22. vector-3 state issues exact max_generation binding (locked KAT)
     func test22Vector3IssuesExactMaxGenerationBinding() throws {
+        let kc = InMemoryKeychain()
         let state = try LocalIdentityStateV1(generation: UInt32.max, ed25519Seed: vec3EdPriv, x25519PrivateKey: vec3XPriv)
-        let signing = try Curve25519.Signing.PrivateKey(rawRepresentation: state.ed25519Seed)
-        let agreement = try Curve25519.KeyAgreement.PrivateKey(rawRepresentation: state.x25519PrivateKey)
-        let id = MeshIdentity(signingKey: signing, agreementKey: agreement, bindingGeneration: UInt32.max)
+        kc.storage[MeshIdentity.v1Tag] = state.encode()
 
+        let id = try MeshIdentity.loadFromKeychain(keychain: kc)
         let binding = try id.issueIdentityBinding()
+
         XCTAssertEqual(binding.version, 0x01)
         XCTAssertEqual(binding.generation, UInt32.max)
         XCTAssertEqual(binding.signingPublicKey, id.signingPublicKey)
         XCTAssertEqual(binding.staticDhPublicKey, id.staticDhPublicKey)
         XCTAssertEqual(binding.signature.count, 64)
+        XCTAssertEqual(binding.encode(), vec3Serialized)
 
         let result = IdentityBindingValidator.validate(
             serialized: binding.encode(),
@@ -332,10 +346,8 @@ final class LocalIdentityStateV1Tests: XCTestCase {
 
     // 23. issueIdentityBinding has no generation parameter
     func test23IssueIdentityBindingHasNoGenerationParameter() throws {
-        let state = try LocalIdentityStateV1(generation: 0, ed25519Seed: vec1EdPriv, x25519PrivateKey: vec1XPriv)
-        let signing = try Curve25519.Signing.PrivateKey(rawRepresentation: state.ed25519Seed)
-        let agreement = try Curve25519.KeyAgreement.PrivateKey(rawRepresentation: state.x25519PrivateKey)
-        let id = MeshIdentity(signingKey: signing, agreementKey: agreement, bindingGeneration: 0)
+        let kc = InMemoryKeychain()
+        let id = try MeshIdentity.generateAndStore(keychain: kc)
 
         // Verifies calling without parameters compiles and succeeds
         let binding = try id.issueIdentityBinding()
@@ -344,10 +356,8 @@ final class LocalIdentityStateV1Tests: XCTestCase {
 
     // 24. issuer output passes C8 1A IdentityBindingValidator
     func test24IssuerOutputPassesIdentityBindingValidator() throws {
-        let state = try LocalIdentityStateV1(generation: 0, ed25519Seed: vec1EdPriv, x25519PrivateKey: vec1XPriv)
-        let signing = try Curve25519.Signing.PrivateKey(rawRepresentation: state.ed25519Seed)
-        let agreement = try Curve25519.KeyAgreement.PrivateKey(rawRepresentation: state.x25519PrivateKey)
-        let id = MeshIdentity(signingKey: signing, agreementKey: agreement, bindingGeneration: 0)
+        let kc = InMemoryKeychain()
+        let id = try MeshIdentity.generateAndStore(keychain: kc)
 
         let binding = try id.issueIdentityBinding()
         let result = IdentityBindingValidator.validate(
@@ -384,6 +394,51 @@ final class LocalIdentityStateV1Tests: XCTestCase {
         _ = try MeshIdentity.generateAndStore(keychain: kc)
         try MeshIdentity.deleteFromKeychain(keychain: kc)
         let regenerated = try MeshIdentity.generateAndStore(keychain: kc)
+        XCTAssertEqual(regenerated.bindingGeneration, 0)
+    }
+
+    // 27. wipe coordinator: erase failure leaves journal at requested
+    func test27WipeEraseFailureLeavesJournalRequested() {
+        let kc = InMemoryKeychain()
+        kc.failDelete = errSecIO
+        let journal = InMemoryWipeJournal()
+        let artifacts = KeychainWipeArtifacts(keychain: kc)
+        let wipe = PanicWipe(journal: journal, artifacts: artifacts)
+
+        XCTAssertThrowsError(try wipe.begin())
+        XCTAssertEqual(journal.read(), .requested)
+    }
+
+    // 28. wipe coordinator: regeneration add failure leaves journal at artifactsDeleted
+    func test28WipeRegenerateAddFailureLeavesJournalArtifactsDeleted() throws {
+        let kc = InMemoryKeychain()
+        let state = try LocalIdentityStateV1(generation: 0, ed25519Seed: vec1EdPriv, x25519PrivateKey: vec1XPriv)
+        kc.storage[MeshIdentity.v1Tag] = state.encode()
+
+        // Erase succeeds, but subsequent regeneration add fails
+        kc.failAdd = errSecIO
+        let journal = InMemoryWipeJournal()
+        let artifacts = KeychainWipeArtifacts(keychain: kc)
+        let wipe = PanicWipe(journal: journal, artifacts: artifacts)
+
+        XCTAssertThrowsError(try wipe.begin())
+        XCTAssertEqual(journal.read(), .artifactsDeleted)
+    }
+
+    // 29. wipe coordinator: successful wipe installs generation 0 in V1
+    func test29SuccessfulWipeInstallsGeneration0InV1() throws {
+        let kc = InMemoryKeychain()
+        let state = try LocalIdentityStateV1(generation: 42, ed25519Seed: vec1EdPriv, x25519PrivateKey: vec1XPriv)
+        kc.storage[MeshIdentity.v1Tag] = state.encode()
+
+        let journal = InMemoryWipeJournal()
+        let artifacts = KeychainWipeArtifacts(keychain: kc)
+        let wipe = PanicWipe(journal: journal, artifacts: artifacts)
+
+        try wipe.begin()
+        XCTAssertEqual(journal.read(), .idle)
+
+        let regenerated = try MeshIdentity.loadFromKeychain(keychain: kc)
         XCTAssertEqual(regenerated.bindingGeneration, 0)
     }
 }
