@@ -1,19 +1,23 @@
 #!/usr/bin/env python3
-"""C6.4.1 / C6.6 / C7.4 / C7.4.1 / C7.4.2 gate: schema, persist, and atomic ACK-retirement controls MUST exist.
+"""C6.4.1 / C6.6 / C7.4 / C7.4.1 / C7.4.2 / C7.4.3 gate: schema, persist, and atomic ACK-retirement controls MUST exist.
 
-A GATE: it fails (exit 1) iff a C6.4.1/C6.6/C7.4/C7.4.1/C7.4.2 schema, persistence,
+A GATE: it fails (exit 1) iff a C6.4.1/C6.6/C7.4/C7.4.1/C7.4.2/C7.4.3 schema, persistence,
 or atomic ACK-retirement fail-closed negative control is MISSING from the test sources
-or if the structural AST/function-region invariants are violated.
+or if the brace-balanced lexical function/closure-region structural invariants are violated.
 
 Structural checks enforce:
   1. Android MeshNode.dispatchDirect transports canonicalFrame, never frame directly.
   2. iOS MeshNode.dispatchDirect transports canonicalFrame, never frame directly.
   3. DeliveryTracker on both platforms forbids state-only acknowledgeBound.
   4. Android SqliteDeliveryRepository.acknowledgeBoundAndRetire executes db.inTransaction,
-     execDeliveryUpdate, and deleteHeld in strictly ordered succession inside the function region.
-  5. iOS SqliteDeliveryRepository.acknowledgeBoundAndRetire routes through atomicAcknowledgeAndRetire.
-  6. iOS SqliteMessageStore.atomicAcknowledgeAndRetireWithFault consumes guardedAckSql inside
-     withTransaction and deletes StoreSchema.deleteHeldSql in strictly ordered succession.
+     and inside that transaction closure executes execDeliveryUpdate and deleteHeld in
+     strictly ordered succession.
+  5. iOS SqliteDeliveryRepository.acknowledgeBoundAndRetire must exist and route to
+     atomicAcknowledgeAndRetire (either directly or via explicit helper hop). Stale helper
+     fallbacks and comment-only decoys are rejected.
+  6. iOS SqliteMessageStore.atomicAcknowledgeAndRetireWithFault executes withTransaction,
+     and inside that transaction closure consumes guardedAckSql via sqlite3_prepare_v2
+     and executes StoreSchema.deleteHeldSql in strictly ordered succession.
 
 Usage:
     python3 ci/check_store_schema_controls.py [--root DIR] [--selftest]
@@ -21,6 +25,7 @@ Usage:
 from __future__ import annotations
 
 import argparse
+import re
 import sys
 import tempfile
 from pathlib import Path
@@ -242,12 +247,55 @@ CONTROLS: list[tuple[str, str, str]] = [
 ]
 
 
+def strip_comments(text: str) -> str:
+    """Strip line and block comments from text while preserving string literals and newlines."""
+    out: list[str] = []
+    i = 0
+    in_line_comment = False
+    in_block_comment = False
+    in_string = False
+    escape = False
+    while i < len(text):
+        c = text[i]
+        nxt = text[i + 1] if i + 1 < len(text) else ""
+        if in_line_comment:
+            if c == "\n":
+                in_line_comment = False
+                out.append("\n")
+        elif in_block_comment:
+            if c == "*" and nxt == "/":
+                in_block_comment = False
+                i += 1
+        elif in_string:
+            out.append(c)
+            if escape:
+                escape = False
+            elif c == "\\":
+                escape = True
+            elif c == '"':
+                in_string = False
+        else:
+            if c == "/" and nxt == "/":
+                in_line_comment = True
+                i += 1
+            elif c == "/" and nxt == "*":
+                in_block_comment = True
+                i += 1
+            elif c == '"':
+                in_string = True
+                out.append(c)
+            else:
+                out.append(c)
+        i += 1
+    return "".join(out)
+
+
 def extract_braced_function(text: str, signature: str) -> str | None:
     """Extract the complete region of a function starting with `signature` up to its matching closing brace."""
     idx = text.find(signature)
     if idx == -1:
         return None
-    brace_start = text.find("{", idx)
+    brace_start = text.find("{", idx + len(signature))
     if brace_start == -1:
         return None
     depth = 0
@@ -292,6 +340,56 @@ def extract_braced_function(text: str, signature: str) -> str | None:
     return None
 
 
+def extract_braced_region_after(text: str, token: str) -> str | None:
+    """Extract the balanced { ... } closure region immediately following `token` in `text`."""
+    idx = text.find(token)
+    if idx == -1:
+        return None
+    brace_start = text.find("{", idx + len(token))
+    if brace_start == -1:
+        return None
+    depth = 0
+    in_line_comment = False
+    in_block_comment = False
+    in_string = False
+    escape = False
+    i = brace_start
+    while i < len(text):
+        c = text[i]
+        nxt = text[i + 1] if i + 1 < len(text) else ""
+        if in_line_comment:
+            if c == "\n":
+                in_line_comment = False
+        elif in_block_comment:
+            if c == "*" and nxt == "/":
+                in_block_comment = False
+                i += 1
+        elif in_string:
+            if escape:
+                escape = False
+            elif c == "\\":
+                escape = True
+            elif c == '"':
+                in_string = False
+        else:
+            if c == "/" and nxt == "/":
+                in_line_comment = True
+                i += 1
+            elif c == "/" and nxt == "*":
+                in_block_comment = True
+                i += 1
+            elif c == '"':
+                in_string = True
+            elif c == "{":
+                depth += 1
+            elif c == "}":
+                depth -= 1
+                if depth == 0:
+                    return text[brace_start : i + 1]
+        i += 1
+    return None
+
+
 def scan(root: Path) -> list[str]:
     """Return missing-control strings (empty list => gate passes)."""
     missing: list[str] = []
@@ -317,9 +415,10 @@ def scan(root: Path) -> list[str]:
         if fn_body is None:
             missing.append("android/mesh/src/main/java/io/godstone/mesh/MeshNode.kt: dispatchDirect missing or unextractable")
         else:
-            if "canonicalFrame.encode()" not in fn_body:
+            clean_fn = strip_comments(fn_body)
+            if "canonicalFrame.encode()" not in clean_fn:
                 missing.append("android/mesh/src/main/java/io/godstone/mesh/MeshNode.kt: dispatchDirect must encode canonicalFrame")
-            if "frame.encode()" in fn_body:
+            if "frame.encode()" in clean_fn:
                 missing.append("android/mesh/src/main/java/io/godstone/mesh/MeshNode.kt: dispatchDirect must not call frame.encode()")
 
     # 2. Structural check: iOS MeshNode.dispatchDirect sends canonicalFrame and never send(frame,
@@ -332,18 +431,20 @@ def scan(root: Path) -> list[str]:
         if fn_body is None:
             missing.append("ios/Godstone/Sources/GodstoneMesh/MeshNode.swift: dispatchDirect missing or unextractable")
         else:
-            if "send(canonicalFrame, peer)" not in fn_body:
+            clean_fn = strip_comments(fn_body)
+            if "send(canonicalFrame, peer)" not in clean_fn:
                 missing.append("ios/Godstone/Sources/GodstoneMesh/MeshNode.swift: dispatchDirect must transport canonicalFrame")
-            if "send(frame," in fn_body:
+            if "send(frame," in clean_fn:
                 missing.append("ios/Godstone/Sources/GodstoneMesh/MeshNode.swift: dispatchDirect must not transport frame directly")
 
-    # 3. Structural check: C7.4 DeliveryTracker must NOT expose state-only acknowledgeBound
+    # 3. Structural check: DeliveryTracker on both platforms must NOT expose state-only acknowledgeBound
     android_delivery_tracker = root / "android/mesh/src/main/java/io/godstone/mesh/delivery/DeliveryTracker.kt"
     if not android_delivery_tracker.is_file():
         missing.append("android/mesh/src/main/java/io/godstone/mesh/delivery/DeliveryTracker.kt: file MISSING")
     else:
         text = android_delivery_tracker.read_text(encoding="utf-8", errors="replace")
-        if "fun acknowledgeBound(" in text:
+        clean_text = strip_comments(text)
+        if "fun acknowledgeBound(" in clean_text:
             missing.append("android DeliveryTracker must not expose state-only acknowledgeBound (must use acknowledgeBoundAndRetire)")
 
     ios_delivery_tracker = root / "ios/Godstone/Sources/GodstoneMesh/DeliveryTracker.swift"
@@ -351,10 +452,11 @@ def scan(root: Path) -> list[str]:
         missing.append("ios/Godstone/Sources/GodstoneMesh/DeliveryTracker.swift: file MISSING")
     else:
         text = ios_delivery_tracker.read_text(encoding="utf-8", errors="replace")
-        if "func acknowledgeBound(" in text:
+        clean_text = strip_comments(text)
+        if "func acknowledgeBound(" in clean_text:
             missing.append("iOS DeliveryTracker must not expose state-only acknowledgeBound (must use acknowledgeBoundAndRetire)")
 
-    # 4. Structural check: Android SqliteDeliveryRepository acknowledgeBoundAndRetire region
+    # 4. Structural check: Android SqliteDeliveryRepository acknowledgeBoundAndRetire region + transaction closure containment
     android_sqlite_repo = root / "android/mesh/src/main/java/io/godstone/mesh/delivery/SqliteDeliveryRepository.kt"
     if not android_sqlite_repo.is_file():
         missing.append("android/mesh/src/main/java/io/godstone/mesh/delivery/SqliteDeliveryRepository.kt: file MISSING")
@@ -366,20 +468,22 @@ def scan(root: Path) -> list[str]:
         if fn_body is None:
             missing.append("android/mesh/src/main/java/io/godstone/mesh/delivery/SqliteDeliveryRepository.kt: acknowledgeBoundAndRetire missing or unextractable")
         else:
-            pos_tx = fn_body.find("inTransaction")
-            pos_upd = fn_body.find("execDeliveryUpdate")
-            pos_del = fn_body.find("deleteHeld")
+            tx_closure = extract_braced_region_after(fn_body, "inTransaction")
+            if tx_closure is None:
+                missing.append("android/mesh/src/main/java/io/godstone/mesh/delivery/SqliteDeliveryRepository.kt: acknowledgeBoundAndRetire must execute inside inTransaction closure")
+            else:
+                clean_tx = strip_comments(tx_closure)
+                pos_upd = clean_tx.find("execDeliveryUpdate")
+                pos_del = clean_tx.find("deleteHeld")
 
-            if pos_tx == -1:
-                missing.append("android/mesh/src/main/java/io/godstone/mesh/delivery/SqliteDeliveryRepository.kt: acknowledgeBoundAndRetire must execute inside inTransaction")
-            if pos_upd == -1:
-                missing.append("android/mesh/src/main/java/io/godstone/mesh/delivery/SqliteDeliveryRepository.kt: acknowledgeBoundAndRetire must call execDeliveryUpdate")
-            if pos_del == -1:
-                missing.append("android/mesh/src/main/java/io/godstone/mesh/delivery/SqliteDeliveryRepository.kt: acknowledgeBoundAndRetire must call deleteHeld")
+                if pos_upd == -1:
+                    missing.append("android/mesh/src/main/java/io/godstone/mesh/delivery/SqliteDeliveryRepository.kt: acknowledgeBoundAndRetire must call execDeliveryUpdate inside inTransaction closure")
+                if pos_del == -1:
+                    missing.append("android/mesh/src/main/java/io/godstone/mesh/delivery/SqliteDeliveryRepository.kt: acknowledgeBoundAndRetire must call deleteHeld inside inTransaction closure")
 
-            if pos_tx != -1 and pos_upd != -1 and pos_del != -1:
-                if not (pos_tx < pos_upd < pos_del):
-                    missing.append("android/mesh/src/main/java/io/godstone/mesh/delivery/SqliteDeliveryRepository.kt: acknowledgeBoundAndRetire operations out of order (require inTransaction before execDeliveryUpdate before deleteHeld)")
+                if pos_upd != -1 and pos_del != -1:
+                    if not (pos_upd < pos_del):
+                        missing.append("android/mesh/src/main/java/io/godstone/mesh/delivery/SqliteDeliveryRepository.kt: acknowledgeBoundAndRetire operations out of order (require execDeliveryUpdate before deleteHeld inside inTransaction closure)")
 
     # 5. Structural check: iOS SqliteDeliveryRepository acknowledgeBoundAndRetire region routes to atomicAcknowledgeAndRetire
     ios_sqlite_repo = root / "ios/Godstone/Sources/GodstoneMesh/SqliteDeliveryRepository.swift"
@@ -388,23 +492,32 @@ def scan(root: Path) -> list[str]:
     else:
         text = ios_sqlite_repo.read_text(encoding="utf-8", errors="replace")
         fn_body = extract_braced_function(text, "func acknowledgeBoundAndRetire(")
-        fn_fault = extract_braced_function(text, "func acknowledgeBoundAndRetireWithFault(")
-        if fn_body is None and fn_fault is None:
+        if fn_body is None:
             missing.append("ios/Godstone/Sources/GodstoneMesh/SqliteDeliveryRepository.swift: acknowledgeBoundAndRetire missing or unextractable")
         else:
+            clean_fn = strip_comments(fn_body)
             routes_to_atomic = False
-            if fn_body and "atomicAcknowledgeAndRetire" in fn_body:
+
+            # Shape A: Direct route
+            if ".atomicAcknowledgeAndRetire(" in clean_fn or "store.atomicAcknowledgeAndRetire(" in clean_fn:
                 routes_to_atomic = True
-            elif fn_body and "acknowledgeBoundAndRetireWithFault" in fn_body:
-                if fn_fault and "atomicAcknowledgeAndRetire" in fn_fault:
-                    routes_to_atomic = True
-            elif fn_fault and "atomicAcknowledgeAndRetire" in fn_fault:
-                routes_to_atomic = True
+            # Shape B: Explicit helper hop
+            elif "acknowledgeBoundAndRetireWithFault(" in clean_fn:
+                fn_fault = extract_braced_function(text, "func acknowledgeBoundAndRetireWithFault(")
+                if fn_fault is not None:
+                    clean_fault = strip_comments(fn_fault)
+                    if (
+                        ".atomicAcknowledgeAndRetire(" in clean_fault
+                        or "store.atomicAcknowledgeAndRetire(" in clean_fault
+                        or "sms.atomicAcknowledgeAndRetireWithFault(" in clean_fault
+                        or "atomicAcknowledgeAndRetire(" in clean_fault
+                    ):
+                        routes_to_atomic = True
 
             if not routes_to_atomic:
                 missing.append("ios/Godstone/Sources/GodstoneMesh/SqliteDeliveryRepository.swift: acknowledgeBoundAndRetire must route through atomicAcknowledgeAndRetire")
 
-    # 6. Structural check: iOS MessageStore atomicAcknowledgeAndRetireWithFault region
+    # 6. Structural check: iOS MessageStore atomicAcknowledgeAndRetireWithFault region + withTransaction closure containment
     ios_message_store = root / "ios/Godstone/Sources/GodstoneMesh/MessageStore.swift"
     if not ios_message_store.is_file():
         missing.append("ios/Godstone/Sources/GodstoneMesh/MessageStore.swift: file MISSING")
@@ -414,28 +527,24 @@ def scan(root: Path) -> list[str]:
         if fn_body is None:
             missing.append("ios/Godstone/Sources/GodstoneMesh/MessageStore.swift: atomicAcknowledgeAndRetireWithFault missing or unextractable")
         else:
-            pos_tx = fn_body.find("withTransaction")
-            pos_del = fn_body.find("StoreSchema.deleteHeldSql")
-            if pos_del == -1:
-                pos_del = fn_body.find("deleteHeldSql")
-
-            if pos_tx == -1:
-                missing.append("ios/Godstone/Sources/GodstoneMesh/MessageStore.swift: atomicAcknowledgeAndRetireWithFault must execute inside withTransaction")
-            if pos_del == -1:
-                missing.append("ios/Godstone/Sources/GodstoneMesh/MessageStore.swift: atomicAcknowledgeAndRetireWithFault must use StoreSchema.deleteHeldSql")
-
-            if pos_tx != -1 and pos_del != -1:
-                if not (pos_tx < pos_del):
-                    missing.append("ios/Godstone/Sources/GodstoneMesh/MessageStore.swift: atomicAcknowledgeAndRetireWithFault operations out of order (require withTransaction before deleteHeldSql)")
-
-            # Require guardedAckSql is consumed inside the transaction body, not just named in the signature
-            if pos_tx != -1:
-                tx_body = fn_body[pos_tx:]
-                if "guardedAckSql" not in tx_body:
-                    missing.append("ios/Godstone/Sources/GodstoneMesh/MessageStore.swift: guardedAckSql must be consumed inside withTransaction region")
+            tx_closure = extract_braced_region_after(fn_body, "withTransaction")
+            if tx_closure is None:
+                missing.append("ios/Godstone/Sources/GodstoneMesh/MessageStore.swift: atomicAcknowledgeAndRetireWithFault must execute inside withTransaction closure")
             else:
-                if "guardedAckSql" not in fn_body:
-                    missing.append("ios/Godstone/Sources/GodstoneMesh/MessageStore.swift: guardedAckSql missing from atomicAcknowledgeAndRetireWithFault")
+                clean_tx = strip_comments(tx_closure)
+                prep_match = re.search(r"sqlite3_prepare_v2\s*\(\s*db\s*,\s*guardedAckSql\b", clean_tx)
+                pos_del = clean_tx.find("StoreSchema.deleteHeldSql")
+                if pos_del == -1:
+                    pos_del = clean_tx.find("deleteHeldSql")
+
+                if not prep_match:
+                    missing.append("ios/Godstone/Sources/GodstoneMesh/MessageStore.swift: guardedAckSql must be prepared via sqlite3_prepare_v2 inside withTransaction closure")
+                if pos_del == -1:
+                    missing.append("ios/Godstone/Sources/GodstoneMesh/MessageStore.swift: atomicAcknowledgeAndRetireWithFault must use StoreSchema.deleteHeldSql inside withTransaction closure")
+
+                if prep_match and pos_del != -1:
+                    if not (prep_match.start() < pos_del):
+                        missing.append("ios/Godstone/Sources/GodstoneMesh/MessageStore.swift: atomicAcknowledgeAndRetireWithFault operations out of order (require guardedAckSql preparation before deleteHeldSql inside withTransaction closure)")
 
     return missing
 
@@ -443,7 +552,7 @@ def scan(root: Path) -> list[str]:
 def run_gate(root: Path) -> int:
     missing = scan(root)
     if missing:
-        print("STORE-SCHEMA-CONTROLS GATE: FAIL -- a C6.4.1/C6.6/C7.4/C7.4.1/C7.4.2 schema/persist/atomic-ACK "
+        print("STORE-SCHEMA-CONTROLS GATE: FAIL -- a C6.4.1/C6.6/C7.4/C7.4.1/C7.4.2/C7.4.3 schema/persist/atomic-ACK "
               "fail-closed control is MISSING from the test sources:")
         for m in missing:
             print("  - " + m)
@@ -453,7 +562,7 @@ def run_gate(root: Path) -> int:
         print("(A-03 / A-04 / A-10 / ADR-003 / ADR-004 / ADR-005 remain OPEN: this is "
               "repo-owned evidence, not device evidence.)")
         return 1
-    print(f"STORE-SCHEMA-CONTROLS GATE: PASS -- all {len(CONTROLS)} C6.4.1/C6.6/C7.4/C7.4.1/C7.4.2 "
+    print(f"STORE-SCHEMA-CONTROLS GATE: PASS -- all {len(CONTROLS)} C6.4.1/C6.6/C7.4/C7.4.1/C7.4.2/C7.4.3 "
           "schema/persistence/atomic ACK-retirement controls present in the test sources.")
     return 0
 
@@ -612,7 +721,7 @@ def selftest() -> int:
             encoding="utf-8",
         )
         res = scan(root)
-        if not any("acknowledgeBoundAndRetire must execute inside inTransaction" in m for m in res):
+        if not any("acknowledgeBoundAndRetire must execute inside inTransaction closure" in m for m in res):
             failures.append(f"Mutation A (Android transaction removal with decoy) NOT detected; got {res}")
         else:
             print("  ok    [Mutation A] Android transaction removal with decoy detected")
@@ -638,7 +747,7 @@ def selftest() -> int:
             encoding="utf-8",
         )
         res = scan(root)
-        if not any("acknowledgeBoundAndRetire must call deleteHeld" in m for m in res):
+        if not any("acknowledgeBoundAndRetire must call deleteHeld inside inTransaction closure" in m for m in res):
             failures.append(f"Mutation B (Android deleteHeld removal with decoy) NOT detected; got {res}")
         else:
             print("  ok    [Mutation B] Android deleteHeld removal with decoy detected")
@@ -664,12 +773,53 @@ def selftest() -> int:
             encoding="utf-8",
         )
         res = scan(root)
-        if not any("acknowledgeBoundAndRetire must call execDeliveryUpdate" in m for m in res):
+        if not any("acknowledgeBoundAndRetire must call execDeliveryUpdate inside inTransaction closure" in m for m in res):
             failures.append(f"Mutation C (Android execDeliveryUpdate removal with decoy) NOT detected; got {res}")
         else:
             print("  ok    [Mutation C] Android execDeliveryUpdate removal with decoy detected")
 
-    # Mutation D: iOS Repository Routing Removal with decoy elsewhere in file
+    # D1: Direct Route Positive
+    with tempfile.TemporaryDirectory() as td:
+        root = Path(td)
+        _build_synthetic_positive_tree(root)
+        ios_sdr = root / "ios/Godstone/Sources/GodstoneMesh/SqliteDeliveryRepository.swift"
+        ios_sdr.write_text(
+            "public class SqliteDeliveryRepository {\n"
+            "    public func acknowledgeBoundAndRetire(_ msgId: Data, expectedRecipient: Data) -> AckResult {\n"
+            "        return try store.atomicAcknowledgeAndRetire(guardedAckSql: sql, msgId: msgId, expectedRecipient: expectedRecipient)\n"
+            "    }\n"
+            "}\n",
+            encoding="utf-8",
+        )
+        res = scan(root)
+        if res:
+            failures.append(f"D1 (Direct route positive) failed unexpectedly: {res}")
+        else:
+            print("  ok    [D1 Direct Positive] direct route recognized (PASS)")
+
+    # D2: Helper Route Positive
+    with tempfile.TemporaryDirectory() as td:
+        root = Path(td)
+        _build_synthetic_positive_tree(root)
+        ios_sdr = root / "ios/Godstone/Sources/GodstoneMesh/SqliteDeliveryRepository.swift"
+        ios_sdr.write_text(
+            "public class SqliteDeliveryRepository {\n"
+            "    public func acknowledgeBoundAndRetire(_ msgId: Data, expectedRecipient: Data) -> AckResult {\n"
+            "        acknowledgeBoundAndRetireWithFault(msgId, expectedRecipient: expectedRecipient, fault: nil)\n"
+            "    }\n"
+            "    internal func acknowledgeBoundAndRetireWithFault(_ msgId: Data, expectedRecipient: Data, fault: Any?) -> AckResult {\n"
+            "        return try store.atomicAcknowledgeAndRetire(guardedAckSql: sql, msgId: msgId, expectedRecipient: expectedRecipient)\n"
+            "    }\n"
+            "}\n",
+            encoding="utf-8",
+        )
+        res = scan(root)
+        if res:
+            failures.append(f"D2 (Helper route positive) failed unexpectedly: {res}")
+        else:
+            print("  ok    [D2 Helper Positive] explicit helper hop recognized (PASS)")
+
+    # D3: Stale Helper Bypass (production returns .applied directly, helper still calls atomic)
     with tempfile.TemporaryDirectory() as td:
         root = Path(td)
         _build_synthetic_positive_tree(root)
@@ -679,17 +829,56 @@ def selftest() -> int:
             "    public func acknowledgeBoundAndRetire(_ msgId: Data, expectedRecipient: Data) -> AckResult {\n"
             "        return .applied\n"
             "    }\n"
-            "    func decoyElsewhere() {\n"
-            "        store.atomicAcknowledgeAndRetire()\n"
+            "    internal func acknowledgeBoundAndRetireWithFault(_ msgId: Data, expectedRecipient: Data, fault: Any?) -> AckResult {\n"
+            "        return try store.atomicAcknowledgeAndRetire(guardedAckSql: sql, msgId: msgId, expectedRecipient: expectedRecipient)\n"
             "    }\n"
             "}\n",
             encoding="utf-8",
         )
         res = scan(root)
         if not any("acknowledgeBoundAndRetire must route through atomicAcknowledgeAndRetire" in m for m in res):
-            failures.append(f"Mutation D (iOS repo routing removal with decoy) NOT detected; got {res}")
+            failures.append(f"D3 (Stale helper bypass) NOT detected; got {res}")
         else:
-            print("  ok    [Mutation D] iOS repository routing removal with decoy detected")
+            print("  ok    [D3 Stale Helper] stale helper bypass detected")
+
+    # D4: Production Function Missing (only helper exists)
+    with tempfile.TemporaryDirectory() as td:
+        root = Path(td)
+        _build_synthetic_positive_tree(root)
+        ios_sdr = root / "ios/Godstone/Sources/GodstoneMesh/SqliteDeliveryRepository.swift"
+        ios_sdr.write_text(
+            "public class SqliteDeliveryRepository {\n"
+            "    internal func acknowledgeBoundAndRetireWithFault(_ msgId: Data, expectedRecipient: Data, fault: Any?) -> AckResult {\n"
+            "        return try store.atomicAcknowledgeAndRetire(guardedAckSql: sql, msgId: msgId, expectedRecipient: expectedRecipient)\n"
+            "    }\n"
+            "}\n",
+            encoding="utf-8",
+        )
+        res = scan(root)
+        if not any("acknowledgeBoundAndRetire missing or unextractable" in m for m in res):
+            failures.append(f"D4 (Production function missing) NOT detected; got {res}")
+        else:
+            print("  ok    [D4 Function Missing] missing production function detected")
+
+    # D5: Comment-only Decoy in Main Function
+    with tempfile.TemporaryDirectory() as td:
+        root = Path(td)
+        _build_synthetic_positive_tree(root)
+        ios_sdr = root / "ios/Godstone/Sources/GodstoneMesh/SqliteDeliveryRepository.swift"
+        ios_sdr.write_text(
+            "public class SqliteDeliveryRepository {\n"
+            "    public func acknowledgeBoundAndRetire(_ msgId: Data, expectedRecipient: Data) -> AckResult {\n"
+            "        // store.atomicAcknowledgeAndRetire(guardedAckSql: sql, msgId: msgId, expectedRecipient: expectedRecipient)\n"
+            "        return .applied\n"
+            "    }\n"
+            "}\n",
+            encoding="utf-8",
+        )
+        res = scan(root)
+        if not any("acknowledgeBoundAndRetire must route through atomicAcknowledgeAndRetire" in m for m in res):
+            failures.append(f"D5 (Comment-only decoy route) NOT detected; got {res}")
+        else:
+            print("  ok    [D5 Comment Decoy] comment-only decoy route detected")
 
     # Mutation E: iOS Transaction Removal with decoy elsewhere in file
     with tempfile.TemporaryDirectory() as td:
@@ -716,7 +905,7 @@ def selftest() -> int:
             encoding="utf-8",
         )
         res = scan(root)
-        if not any("atomicAcknowledgeAndRetireWithFault must execute inside withTransaction" in m for m in res):
+        if not any("atomicAcknowledgeAndRetireWithFault must execute inside withTransaction closure" in m for m in res):
             failures.append(f"Mutation E (iOS withTransaction removal with decoy) NOT detected; got {res}")
         else:
             print("  ok    [Mutation E] iOS withTransaction removal with decoy detected")
@@ -746,7 +935,7 @@ def selftest() -> int:
             encoding="utf-8",
         )
         res = scan(root)
-        if not any("atomicAcknowledgeAndRetireWithFault must use StoreSchema.deleteHeldSql" in m for m in res):
+        if not any("atomicAcknowledgeAndRetireWithFault must use StoreSchema.deleteHeldSql inside withTransaction closure" in m for m in res):
             failures.append(f"Mutation F (iOS deleteHeldSql removal with decoy) NOT detected; got {res}")
         else:
             print("  ok    [Mutation F] iOS deleteHeldSql removal with decoy detected")
@@ -769,7 +958,32 @@ def selftest() -> int:
         else:
             print("  ok    [Mutation G] state-only acknowledgeBound reintroduction detected")
 
-    # Mutation Ordering Android: deleteHeld before execDeliveryUpdate
+    # Android Closure Mutation: Operations after transaction closure
+    with tempfile.TemporaryDirectory() as td:
+        root = Path(td)
+        _build_synthetic_positive_tree(root)
+        android_sdr = root / "android/mesh/src/main/java/io/godstone/mesh/delivery/SqliteDeliveryRepository.kt"
+        android_sdr.write_text(
+            "package io.godstone.mesh.delivery\n"
+            "class SqliteDeliveryRepository {\n"
+            "    override fun acknowledgeBoundAndRetire(msgId: ByteArray, expectedRecipient: ByteArray): AckResult {\n"
+            "        db.inTransaction { tx ->\n"
+            "            // empty transaction\n"
+            "        }\n"
+            "        db.execDeliveryUpdate(sql, bindArgs)\n"
+            "        db.deleteHeld(msgId)\n"
+            "        return AckResult.Applied\n"
+            "    }\n"
+            "}\n",
+            encoding="utf-8",
+        )
+        res = scan(root)
+        if not any("acknowledgeBoundAndRetire must call execDeliveryUpdate inside inTransaction closure" in m for m in res):
+            failures.append(f"Android operations after transaction NOT detected; got {res}")
+        else:
+            print("  ok    [Android Closure] operations after transaction closure detected")
+
+    # Android Ordering Mutation: deleteHeld before execDeliveryUpdate inside closure
     with tempfile.TemporaryDirectory() as td:
         root = Path(td)
         _build_synthetic_positive_tree(root)
@@ -789,11 +1003,11 @@ def selftest() -> int:
         )
         res = scan(root)
         if not any("acknowledgeBoundAndRetire operations out of order" in m for m in res):
-            failures.append(f"Mutation Ordering Android (deleteHeld before execDeliveryUpdate) NOT detected; got {res}")
+            failures.append(f"Android ordering mutation NOT detected; got {res}")
         else:
-            print("  ok    [Mutation Ordering Android] operations out of order detected")
+            print("  ok    [Android Ordering] operations out of order inside closure detected")
 
-    # Mutation Ordering iOS: StoreSchema.deleteHeldSql outside withTransaction
+    # iOS Closure Mutation: deleteHeldSql after withTransaction closure
     with tempfile.TemporaryDirectory() as td:
         root = Path(td)
         _build_synthetic_positive_tree(root)
@@ -806,8 +1020,65 @@ def selftest() -> int:
             "        expectedRecipient: Data,\n"
             "        fault: ((String, OpaquePointer) throws -> Void)? = nil\n"
             "    ) throws -> AckRetireMutationResult {\n"
+            "        try withTransaction { db in\n"
+            "            sqlite3_prepare_v2(db, guardedAckSql, -1, &stmt, nil)\n"
+            "        }\n"
             "        let deleteHeldSql = StoreSchema.deleteHeldSql\n"
+            "        return .applied\n"
+            "    }\n"
+            "}\n",
+            encoding="utf-8",
+        )
+        res = scan(root)
+        if not any("atomicAcknowledgeAndRetireWithFault must use StoreSchema.deleteHeldSql inside withTransaction closure" in m for m in res):
+            failures.append(f"iOS delete after transaction closure NOT detected; got {res}")
+        else:
+            print("  ok    [iOS Closure] deleteHeldSql after withTransaction closure detected")
+
+    # iOS guardedAckSql Decoy / Comment-only
+    with tempfile.TemporaryDirectory() as td:
+        root = Path(td)
+        _build_synthetic_positive_tree(root)
+        ios_ms = root / "ios/Godstone/Sources/GodstoneMesh/MessageStore.swift"
+        ios_ms.write_text(
+            "public class SqliteMessageStore {\n"
+            "    internal func atomicAcknowledgeAndRetireWithFault(\n"
+            "        guardedAckSql: String,\n"
+            "        msgId: Data,\n"
+            "        expectedRecipient: Data,\n"
+            "        fault: ((String, OpaquePointer) throws -> Void)? = nil\n"
+            "    ) throws -> AckRetireMutationResult {\n"
             "        return try withTransaction { db in\n"
+            "            // sqlite3_prepare_v2(db, guardedAckSql, -1, &stmt, nil)\n"
+            "            let note = \"guardedAckSql\"\n"
+            "            let deleteHeldSql = StoreSchema.deleteHeldSql\n"
+            "            return .applied\n"
+            "        }\n"
+            "    }\n"
+            "}\n",
+            encoding="utf-8",
+        )
+        res = scan(root)
+        if not any("guardedAckSql must be prepared via sqlite3_prepare_v2 inside withTransaction closure" in m for m in res):
+            failures.append(f"iOS guardedAckSql decoy/comment NOT detected; got {res}")
+        else:
+            print("  ok    [iOS Guarded SQL Decoy] comment-only/string decoy for guardedAckSql detected")
+
+    # iOS Ordering Mutation: deleteHeldSql before guardedAckSql preparation inside closure
+    with tempfile.TemporaryDirectory() as td:
+        root = Path(td)
+        _build_synthetic_positive_tree(root)
+        ios_ms = root / "ios/Godstone/Sources/GodstoneMesh/MessageStore.swift"
+        ios_ms.write_text(
+            "public class SqliteMessageStore {\n"
+            "    internal func atomicAcknowledgeAndRetireWithFault(\n"
+            "        guardedAckSql: String,\n"
+            "        msgId: Data,\n"
+            "        expectedRecipient: Data,\n"
+            "        fault: ((String, OpaquePointer) throws -> Void)? = nil\n"
+            "    ) throws -> AckRetireMutationResult {\n"
+            "        return try withTransaction { db in\n"
+            "            let deleteHeldSql = StoreSchema.deleteHeldSql\n"
             "            sqlite3_prepare_v2(db, guardedAckSql, -1, &stmt, nil)\n"
             "            return .applied\n"
             "        }\n"
@@ -817,9 +1088,9 @@ def selftest() -> int:
         )
         res = scan(root)
         if not any("atomicAcknowledgeAndRetireWithFault operations out of order" in m for m in res):
-            failures.append(f"Mutation Ordering iOS (deleteHeldSql outside withTransaction) NOT detected; got {res}")
+            failures.append(f"iOS ordering mutation inside closure NOT detected; got {res}")
         else:
-            print("  ok    [Mutation Ordering iOS] operations out of order detected")
+            print("  ok    [iOS Ordering] operations out of order inside closure detected")
 
     # Missing file detection test
     with tempfile.TemporaryDirectory() as td:
@@ -840,12 +1111,19 @@ def selftest() -> int:
           "  - Mutation A (Android no inTransaction) detected.\n"
           "  - Mutation B (Android no deleteHeld) detected.\n"
           "  - Mutation C (Android no execDeliveryUpdate) detected.\n"
-          "  - Mutation D (iOS no atomic routing) detected.\n"
+          "  - D1 Direct Positive recognized.\n"
+          "  - D2 Helper Positive recognized.\n"
+          "  - D3 Stale Helper Bypass detected.\n"
+          "  - D4 Production Function Missing detected.\n"
+          "  - D5 Comment-only Route Decoy detected.\n"
           "  - Mutation E (iOS no withTransaction) detected.\n"
           "  - Mutation F (iOS no deleteHeldSql) detected.\n"
           "  - Mutation G (state-only acknowledgeBound) detected.\n"
-          "  - Mutation Ordering Android (deleteHeld before execDeliveryUpdate) detected.\n"
-          "  - Mutation Ordering iOS (deleteHeldSql outside withTransaction) detected.\n"
+          "  - Android Operations After Transaction Closure detected.\n"
+          "  - Android Ordering (deleteHeld before execDeliveryUpdate) detected.\n"
+          "  - iOS Delete After Transaction Closure detected.\n"
+          "  - iOS Guarded SQL Decoy / Comment-only detected.\n"
+          "  - iOS Ordering (deleteHeldSql before guardedAckSql) detected.\n"
           "  - Missing files reported.")
     return 0
 
