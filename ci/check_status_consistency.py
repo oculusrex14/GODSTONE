@@ -47,6 +47,7 @@ TIERS_CONFIG_PATH = ROOT / "config" / "tiers.json"
 RELEASE_MANIFEST_PATH = ROOT / "RELEASE_MANIFEST.json"
 FINAL_STATUS_PATH = ROOT / "docs" / "production" / "FINAL_STATUS.md"
 ADR004_PATH = ROOT / "docs" / "adr" / "ADR-004-durable-store.md"
+ADR003_PATH = ROOT / "docs" / "adr" / "ADR-003-identity-and-sealed-sender.md"
 
 EXPECTED_VERDICT = "PARTIALLY_REMEDIATED_NOT_READY"
 EXPECTED_BRANCH = "remediation/stage-4-link-release"
@@ -62,6 +63,7 @@ def check_consistency(
     manifest_path: Path = RELEASE_MANIFEST_PATH,
     final_status_path: Path = FINAL_STATUS_PATH,
     adr004_path: Path = ADR004_PATH,
+    adr003_path: Path = ADR003_PATH,
 ) -> list[str]:
     errors: list[str] = []
 
@@ -72,6 +74,7 @@ def check_consistency(
         (tiers_path, "tiers.json"),
         (manifest_path, "RELEASE_MANIFEST.json"),
         (adr004_path, "ADR-004-durable-store.md"),
+        (adr003_path, "ADR-003-identity-and-sealed-sender.md"),
     ]:
         if not p.exists():
             errors.append(f"Missing authoritative file: {label} at {p}")
@@ -254,6 +257,34 @@ def check_consistency(
                     f"FINDINGS_STATUS.json: {fid} evidence must reflect 'C7.4.1/C7.5/C7.5.1 atomic ACK and terminal retirement'"
                 )
 
+    # Check finding A-05 (Identity binding / TOFU / sealed-sender)
+    a05 = findings.get("A-05")
+    if not a05:
+        errors.append("FINDINGS_STATUS.json: missing finding A-05")
+    else:
+        a05_status = a05.get("status")
+        if a05_status in ("CLOSED", "NONSHIPPING_TESTED", "IMPLEMENTED_SOURCE"):
+            errors.append(
+                f"FINDINGS_STATUS.json: A-05 status is {a05_status!r}; must remain OPEN_REPOSITORY "
+                f"while C8 implementation remains open"
+            )
+        elif a05_status != "OPEN_REPOSITORY":
+            errors.append(
+                f"FINDINGS_STATUS.json: A-05 status is {a05_status!r}; expected 'OPEN_REPOSITORY'"
+            )
+
+        a05_ev = a05.get("evidence", "")
+        if "trust architecture unimplemented" in a05_ev:
+            errors.append("FINDINGS_STATUS.json: A-05 contains stale phrase 'trust architecture unimplemented'")
+        if "C8.0" not in a05_ev:
+            errors.append("FINDINGS_STATUS.json: A-05 evidence must mention C8.0")
+        if "binding architecture" not in a05_ev and "peer-binding" not in a05_ev:
+            errors.append("FINDINGS_STATUS.json: A-05 evidence must mention peer-binding architecture")
+        if "implementation" not in a05_ev or "open" not in a05_ev:
+            errors.append("FINDINGS_STATUS.json: A-05 evidence must state implementation remains open")
+        if "sealed-sender" not in a05_ev:
+            errors.append("FINDINGS_STATUS.json: A-05 evidence must state sealed-sender authorship remains open")
+
     findings_raw = findings_path.read_text(encoding="utf-8")
     stale_findings_phrases = [
         ("delete-on-ACK (ADR-004, C7.4) pending", "stale delete-on-ACK pending without C7.4.1/C7.5 resolution"),
@@ -337,6 +368,38 @@ def check_consistency(
                 if "delete-on-ACK pending" in snapshot_text:
                     errors.append("ADR-004 snapshot contains stale phrase: 'delete-on-ACK pending'")
 
+    # 10. Check ADR-003 Status Authority
+    if adr003_path.exists():
+        adr003_text = adr003_path.read_text(encoding="utf-8")
+        if "## 1. Status" not in adr003_text and "## 1 Status" not in adr003_text:
+            errors.append("ADR-003: missing '## 1. Status' section")
+        else:
+            status_match = re.search(
+                r"## 1\.\s*Status\s*\n(.*?)(?=\n##|\Z)",
+                adr003_text,
+                re.DOTALL,
+            )
+            if not status_match:
+                errors.append("ADR-003: could not extract '## 1. Status' section")
+            else:
+                s_text = status_match.group(1)
+
+                if "BINDING ARCHITECTURE FROZEN" not in s_text:
+                    errors.append("ADR-003 status: must contain 'BINDING ARCHITECTURE FROZEN'")
+                if "Implementation" not in s_text or "OPEN" not in s_text:
+                    errors.append("ADR-003 status: must state implementation is OPEN")
+                if "Sealed-Sender" not in s_text or "OPEN" not in s_text:
+                    errors.append("ADR-003 status: must state Sealed-Sender is OPEN")
+                if "RecipientKeyResolver" not in s_text or "UNRESOLVED" not in s_text:
+                    errors.append("ADR-003 status: must state RecipientKeyResolver is UNRESOLVED")
+                if "Link" not in s_text or ("Disabled" not in s_text and "disabled" not in s_text and "false" not in s_text):
+                    errors.append("ADR-003 status: must state Link layer is disabled")
+
+                if "Implementation: CLOSED" in s_text or "Implementation: IMPLEMENTED" in s_text or "Implementation:** CLOSED" in s_text or "Implementation:** IMPLEMENTED" in s_text:
+                    errors.append("ADR-003 status: Implementation must not be CLOSED/IMPLEMENTED")
+                if "RecipientKeyResolver: READY" in s_text or "RecipientKeyResolver: RESOLVED" in s_text or "RecipientKeyResolver`:** READY" in s_text or "RecipientKeyResolver`:** RESOLVED" in s_text:
+                    errors.append("ADR-003 status: RecipientKeyResolver must not be READY/RESOLVED")
+
     return errors
 
 
@@ -355,6 +418,7 @@ def selftest() -> int:
         f_manifest = tdp / "RELEASE_MANIFEST.json"
         f_status = tdp / "FINAL_STATUS.md"
         f_adr004 = tdp / "ADR-004-durable-store.md"
+        f_adr003 = tdp / "ADR-003-identity-and-sealed-sender.md"
 
         f_findings.write_text(FINDINGS_STATUS_PATH.read_text(encoding="utf-8"), encoding="utf-8")
         f_gates.write_text(RELEASE_GATES_PATH.read_text(encoding="utf-8"), encoding="utf-8")
@@ -362,6 +426,7 @@ def selftest() -> int:
         f_manifest.write_text(RELEASE_MANIFEST_PATH.read_text(encoding="utf-8"), encoding="utf-8")
         f_status.write_text(FINAL_STATUS_PATH.read_text(encoding="utf-8"), encoding="utf-8")
         f_adr004.write_text(ADR004_PATH.read_text(encoding="utf-8"), encoding="utf-8")
+        f_adr003.write_text(ADR003_PATH.read_text(encoding="utf-8"), encoding="utf-8")
 
         # Baseline: clean files must pass
         manifest_clean = json.loads(f_manifest.read_text(encoding="utf-8"))
@@ -390,7 +455,7 @@ def selftest() -> int:
         )
         f_status.write_text(status_clean, encoding="utf-8")
 
-        clean_errs = check_consistency(f_findings, f_gates, f_tiers, f_manifest, f_status, f_adr004)
+        clean_errs = check_consistency(f_findings, f_gates, f_tiers, f_manifest, f_status, f_adr004, f_adr003)
         if clean_errs:
             print(f"::error::selftest baseline failed: {clean_errs}")
             return 1
@@ -399,7 +464,7 @@ def selftest() -> int:
         m1 = json.loads(f_manifest.read_text(encoding="utf-8"))
         m1["source"]["branch"] = "remediation/stage-3-durability"
         f_manifest.write_text(json.dumps(m1), encoding="utf-8")
-        errs = check_consistency(f_findings, f_gates, f_tiers, f_manifest, f_status, f_adr004)
+        errs = check_consistency(f_findings, f_gates, f_tiers, f_manifest, f_status, f_adr004, f_adr003)
         if any("remediation/stage-3-durability" in e or "branch" in e for e in errs):
             passed_mutations += 1
         else:
@@ -410,7 +475,7 @@ def selftest() -> int:
         m2 = json.loads(f_manifest.read_text(encoding="utf-8"))
         m2["shipping_surface"]["mesh"] = "enabled"
         f_manifest.write_text(json.dumps(m2), encoding="utf-8")
-        errs = check_consistency(f_findings, f_gates, f_tiers, f_manifest, f_status, f_adr004)
+        errs = check_consistency(f_findings, f_gates, f_tiers, f_manifest, f_status, f_adr004, f_adr003)
         if any("Mesh" in e or "mesh" in e for e in errs):
             passed_mutations += 1
         else:
@@ -423,7 +488,7 @@ def selftest() -> int:
             if g["gate"] == "A-06-independent-noise-vectors":
                 g["status"] = "CLOSED"
         f_gates.write_text(json.dumps(g3), encoding="utf-8")
-        errs = check_consistency(f_findings, f_gates, f_tiers, f_manifest, f_status, f_adr004)
+        errs = check_consistency(f_findings, f_gates, f_tiers, f_manifest, f_status, f_adr004, f_adr003)
         if any("A-06" in e for e in errs):
             passed_mutations += 1
         else:
@@ -433,7 +498,7 @@ def selftest() -> int:
         # Mutation 4: Android Archive-only build capability claimed "not produced" in status
         s4 = status_clean + "\nA full clean APK/AAB is **not produced** in repo-owned CI."
         f_status.write_text(s4, encoding="utf-8")
-        errs = check_consistency(f_findings, f_gates, f_tiers, f_manifest, f_status, f_adr004)
+        errs = check_consistency(f_findings, f_gates, f_tiers, f_manifest, f_status, f_adr004, f_adr003)
         if any("not produced" in e for e in errs):
             passed_mutations += 1
         else:
@@ -446,7 +511,7 @@ def selftest() -> int:
             if f["id"] == "A-03":
                 f["status"] = "CLOSED"
         f_findings.write_text(json.dumps(f5), encoding="utf-8")
-        errs = check_consistency(f_findings, f_gates, f_tiers, f_manifest, f_status, f_adr004)
+        errs = check_consistency(f_findings, f_gates, f_tiers, f_manifest, f_status, f_adr004, f_adr003)
         if any("A-03" in e and "CLOSED" in e for e in errs):
             passed_mutations += 1
         else:
@@ -457,7 +522,7 @@ def selftest() -> int:
         t6 = json.loads(f_tiers.read_text(encoding="utf-8"))
         t6["tiers"]["MEDIUM"]["shipping"] = True
         f_tiers.write_text(json.dumps(t6), encoding="utf-8")
-        errs = check_consistency(f_findings, f_gates, f_tiers, f_manifest, f_status, f_adr004)
+        errs = check_consistency(f_findings, f_gates, f_tiers, f_manifest, f_status, f_adr004, f_adr003)
         if any("MEDIUM" in e for e in errs):
             passed_mutations += 1
         else:
@@ -468,7 +533,7 @@ def selftest() -> int:
         m7 = json.loads(f_manifest.read_text(encoding="utf-8"))
         m7["source"]["stage3_frozen_tip"] = "0000000000000000000000000000000000000000"
         f_manifest.write_text(json.dumps(m7), encoding="utf-8")
-        errs = check_consistency(f_findings, f_gates, f_tiers, f_manifest, f_status, f_adr004)
+        errs = check_consistency(f_findings, f_gates, f_tiers, f_manifest, f_status, f_adr004, f_adr003)
         if any("stage3_frozen_tip" in e for e in errs):
             passed_mutations += 1
         else:
@@ -481,7 +546,7 @@ def selftest() -> int:
             if f["id"] == "A-03":
                 f["evidence"] += " delete-on-ACK (ADR-004, C7.4) pending"
         f_findings.write_text(json.dumps(f8), encoding="utf-8")
-        errs = check_consistency(f_findings, f_gates, f_tiers, f_manifest, f_status, f_adr004)
+        errs = check_consistency(f_findings, f_gates, f_tiers, f_manifest, f_status, f_adr004, f_adr003)
         if any("stale delete-on-ACK pending" in e or "stale phrase" in e for e in errs):
             passed_mutations += 1
         else:
@@ -494,7 +559,7 @@ def selftest() -> int:
             if f["id"] == "A-03":
                 f["evidence"] = "Old evidence without the C7 marker"
         f_findings.write_text(json.dumps(f9), encoding="utf-8")
-        errs = check_consistency(f_findings, f_gates, f_tiers, f_manifest, f_status, f_adr004)
+        errs = check_consistency(f_findings, f_gates, f_tiers, f_manifest, f_status, f_adr004, f_adr003)
         if any("A-03" in e and "C7.4.1/C7.5/C7.5.1 atomic ACK" in e for e in errs):
             passed_mutations += 1
         else:
@@ -508,7 +573,7 @@ def selftest() -> int:
             "- Delete-on-authenticated-ACK (Android): REPO-VERIFIED"
         )
         f_adr004.write_text(s10, encoding="utf-8")
-        errs = check_consistency(f_findings, f_gates, f_tiers, f_manifest, f_status, f_adr004)
+        errs = check_consistency(f_findings, f_gates, f_tiers, f_manifest, f_status, f_adr004, f_adr003)
         if any("Delete-on-authenticated-ACK (Android)" in e and "NONSHIPPING" in e for e in errs):
             passed_mutations += 1
         else:
@@ -518,7 +583,7 @@ def selftest() -> int:
         # Mutation S11: ADR-004 overall marked CLOSED
         s11 = adr004_clean.replace("- ADR-004 overall: OPEN", "- ADR-004 overall: CLOSED")
         f_adr004.write_text(s11, encoding="utf-8")
-        errs = check_consistency(f_findings, f_gates, f_tiers, f_manifest, f_status, f_adr004)
+        errs = check_consistency(f_findings, f_gates, f_tiers, f_manifest, f_status, f_adr004, f_adr003)
         if any("ADR-004" in e and ("CLOSED" in e or "overall" in e) for e in errs):
             passed_mutations += 1
         else:
@@ -531,7 +596,7 @@ def selftest() -> int:
             "- Delete-on-authenticated-ACK (Android): OPEN (delete-on-ACK pending)"
         )
         f_adr004.write_text(s12, encoding="utf-8")
-        errs = check_consistency(f_findings, f_gates, f_tiers, f_manifest, f_status, f_adr004)
+        errs = check_consistency(f_findings, f_gates, f_tiers, f_manifest, f_status, f_adr004, f_adr003)
         if any("Delete-on-authenticated-ACK (Android)" in e or "delete-on-ACK pending" in e for e in errs):
             passed_mutations += 1
         else:
@@ -544,7 +609,7 @@ def selftest() -> int:
             "- Terminal-retirement on EXPIRE / CANCEL (iOS): OPEN (pending)"
         )
         f_adr004.write_text(s13, encoding="utf-8")
-        errs = check_consistency(f_findings, f_gates, f_tiers, f_manifest, f_status, f_adr004)
+        errs = check_consistency(f_findings, f_gates, f_tiers, f_manifest, f_status, f_adr004, f_adr003)
         if any("Terminal-retirement on EXPIRE / CANCEL (iOS)" in e for e in errs):
             passed_mutations += 1
         else:
@@ -554,19 +619,79 @@ def selftest() -> int:
         # Mutation S14: Missing snapshot section
         s14 = adr004_clean.replace("### Current repo-owned closure snapshot", "### Stale section")
         f_adr004.write_text(s14, encoding="utf-8")
-        errs = check_consistency(f_findings, f_gates, f_tiers, f_manifest, f_status, f_adr004)
+        errs = check_consistency(f_findings, f_gates, f_tiers, f_manifest, f_status, f_adr004, f_adr003)
         if any("Current repo-owned closure snapshot" in e for e in errs):
             passed_mutations += 1
         else:
             failures.append("Mutation S14 (Missing snapshot section) was NOT detected")
         f_adr004.write_text(adr004_clean, encoding="utf-8")
 
+        # Mutation S15: Stale "trust architecture unimplemented" in A-05
+        f15 = json.loads(f_findings.read_text(encoding="utf-8"))
+        for f in f15["findings"]:
+            if f["id"] == "A-05":
+                f["evidence"] = "trust claims removed; trust architecture unimplemented."
+        f_findings.write_text(json.dumps(f15), encoding="utf-8")
+        errs = check_consistency(f_findings, f_gates, f_tiers, f_manifest, f_status, f_adr004, f_adr003)
+        if any("A-05" in e and "trust architecture unimplemented" in e for e in errs):
+            passed_mutations += 1
+        else:
+            failures.append("Mutation S15 (A-05 stale trust architecture unimplemented) was NOT detected")
+        f_findings.write_text(FINDINGS_STATUS_PATH.read_text(encoding="utf-8"), encoding="utf-8")
+
+        # Mutation S16: A-05 marked CLOSED
+        f16 = json.loads(f_findings.read_text(encoding="utf-8"))
+        for f in f16["findings"]:
+            if f["id"] == "A-05":
+                f["status"] = "CLOSED"
+        f_findings.write_text(json.dumps(f16), encoding="utf-8")
+        errs = check_consistency(f_findings, f_gates, f_tiers, f_manifest, f_status, f_adr004, f_adr003)
+        if any("A-05" in e and "CLOSED" in e for e in errs):
+            passed_mutations += 1
+        else:
+            failures.append("Mutation S16 (A-05 marked CLOSED) was NOT detected")
+        f_findings.write_text(FINDINGS_STATUS_PATH.read_text(encoding="utf-8"), encoding="utf-8")
+
+        # Mutation S17: A-05 missing C8.0 architecture evidence
+        f17 = json.loads(f_findings.read_text(encoding="utf-8"))
+        for f in f17["findings"]:
+            if f["id"] == "A-05":
+                f["evidence"] = "Old ungrounded evidence without C8.0 markers."
+        f_findings.write_text(json.dumps(f17), encoding="utf-8")
+        errs = check_consistency(f_findings, f_gates, f_tiers, f_manifest, f_status, f_adr004, f_adr003)
+        if any("A-05" in e and ("C8.0" in e or "architecture" in e or "peer-binding" in e) for e in errs):
+            passed_mutations += 1
+        else:
+            failures.append("Mutation S17 (A-05 missing C8.0 evidence) was NOT detected")
+        f_findings.write_text(FINDINGS_STATUS_PATH.read_text(encoding="utf-8"), encoding="utf-8")
+
+        # Mutation S18: ADR-003 implementation marked closed
+        adr003_clean = f_adr003.read_text(encoding="utf-8")
+        s18 = adr003_clean.replace("C8.1 Implementation:** OPEN", "C8.1 Implementation:** CLOSED")
+        f_adr003.write_text(s18, encoding="utf-8")
+        errs = check_consistency(f_findings, f_gates, f_tiers, f_manifest, f_status, f_adr004, f_adr003)
+        if any("ADR-003" in e and ("Implementation" in e or "CLOSED" in e) for e in errs):
+            passed_mutations += 1
+        else:
+            failures.append("Mutation S18 (ADR-003 implementation marked CLOSED) was NOT detected")
+        f_adr003.write_text(adr003_clean, encoding="utf-8")
+
+        # Mutation S19: ADR-003 resolver marked READY
+        s19 = adr003_clean.replace("RecipientKeyResolver`:** UNRESOLVED", "RecipientKeyResolver`:** READY")
+        f_adr003.write_text(s19, encoding="utf-8")
+        errs = check_consistency(f_findings, f_gates, f_tiers, f_manifest, f_status, f_adr004, f_adr003)
+        if any("ADR-003" in e and ("RecipientKeyResolver" in e or "READY" in e) for e in errs):
+            passed_mutations += 1
+        else:
+            failures.append("Mutation S19 (ADR-003 resolver marked READY) was NOT detected")
+        f_adr003.write_text(adr003_clean, encoding="utf-8")
+
     if failures:
         for f in failures:
             print(f"::error::selftest failure: {f}")
         return 1
 
-    print(f"check_status_consistency selftest PASSED ({passed_mutations}/14 mutations caught deterministically).")
+    print(f"check_status_consistency selftest PASSED ({passed_mutations}/19 mutations caught deterministically).")
     return 0
 
 

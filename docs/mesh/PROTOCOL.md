@@ -6,9 +6,10 @@
 
 This document is the target contract for the mesh. It is not a conformance
 claim. Android still contains a disabled legacy router/store path; the BLE record
-layer, deterministic handshake driver, durable iOS store, sealed-sender identity
-binding, authenticated SOS lifecycle and bulk plane remain open. Both apps keep
-the mesh feature flag false until the relevant acceptance tests pass.
+layer, deterministic handshake driver, durable iOS store, and authenticated SOS
+lifecycle remain open. Noise peer-binding architecture is frozen but unimplemented;
+sealed-sender authenticated authorship remains open. Both apps keep the mesh feature
+flag false until the relevant acceptance tests pass.
 
 Accepted ADRs override this summary if they disagree.
 
@@ -36,7 +37,7 @@ Each install has distinct long-term keys:
 
 The private keys never appear in frames.
 
-Under ADR-003 (Phase C8.0), the transport Noise session and the signing identity
+Under ADR-003 (Phase C8.0 / C8.0.1), the transport Noise session and the signing identity
 are cryptographically bound via the canonical 133-byte `IdentityBindingV1` object
 carried inside the encrypted handshake payloads of `Noise_XX`. The binding
 commits:
@@ -110,10 +111,9 @@ Role election is deterministic: the lexicographically smaller node hint
 initiates. A hint collision is resolved only after full identity is available;
 an identical full node ID is a cloned-identity security event.
 
-### 5.1 Identity binding verification and READY gating
+### 5.1 Identity binding verification and role-specific READY gating
 
-Upon decrypting the remote `IdentityBindingV1` in HS2/HS3, the receiver executes
-the strict 13-step validation pipeline:
+The validation pipeline separates pure cryptographic validation from trust policy:
 
 1. Length == 133 bytes;
 2. Version == `0x01`;
@@ -124,10 +124,13 @@ the strict 13-step validation pipeline:
 7. Verify Ed25519 signature over canonical `GMP2-IDBIND` preimage;
 8. Derive `node_id = BLAKE2s-128(signing_public_key)`;
 9. Require `binding.static_dh_public_key == NoiseSession.remoteStaticKey`;
-10. Require `advertised_node_hint == first4(node_id)`;
-11. Evaluate `PeerIdentityStore` trust policy (`TOFU_PINNED`, `USER_VERIFIED`, `KEY_CHANGED_QUARANTINED`, `REVOKED`);
-12. Construct `VerifiedPeerIdentity`;
-13. Advance link state machine: `NOISE_ESTABLISHED -> BINDING_VALIDATION -> TRUST_POLICY_CHECK -> READY`.
+10. Require `advertised_node_hint == first4(node_id)` (proven consistent with `first4(full_node_id)`);
+11. Evaluate `PeerTrustEngine` against durable `PeerIdentityRecord` (handling `TOFU_PINNED`, `USER_VERIFIED`, and dual-state `KEY_CHANGED_QUARANTINED`);
+12. If accepted/first-seen, construct `VerifiedPeerIdentity`;
+13. Role-specific state progression:
+    - **Initiator:** `HS1_SENT -> HS2_DECRYPTED -> REMOTE_STATIC_AUTHENTICATED -> REMOTE_BINDING_VALIDATION -> TRUST_POLICY_CHECK -> [accepted] -> HS3_SENT -> NOISE_ESTABLISHED -> READY`.
+      *(If rejected or quarantined, HS3 is NEVER emitted).*
+    - **Responder:** `HS2_SENT -> HS3_DECRYPTED -> REMOTE_STATIC_AUTHENTICATED -> REMOTE_BINDING_VALIDATION -> TRUST_POLICY_CHECK -> [accepted] -> NOISE_ESTABLISHED -> READY`.
 
 No application `FrameV2` traffic may be transmitted or processed before reaching `READY`.
 

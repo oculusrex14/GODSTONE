@@ -44,10 +44,10 @@
   {
    "id": "A-05",
    "severity": "Critical if claimed",
-   "status": "CLAIMS_REMOVED_OPEN_DESIGN",
+   "status": "OPEN_REPOSITORY",
    "repo_controlled": true,
-   "evidence": "trust claims removed; trust architecture unimplemented.",
-   "closes_in_phase": null
+   "evidence": "trust claims remain removed from shipping product; C8.0/C8.0.1 freeze the canonical Noise-static ↔ Ed25519 peer-binding architecture; IdentityBinding implementation, PeerIdentityStore, resolver binding, READY integration, sealed-sender authorship, and device evidence remain open.",
+   "closes_in_phase": "C8.x (repo) + device"
   },
   {
    "id": "A-06",

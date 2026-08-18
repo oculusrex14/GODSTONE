@@ -4,10 +4,10 @@
 
 **OPEN — BINDING ARCHITECTURE FROZEN, IMPLEMENTATION / SEALED-SENDER / DEVICE EVIDENCE PENDING**
 
-- **Phase C8.0 Decision:** FROZEN (canonical Ed25519-rooted `IdentityBindingV1` inside Noise XX).
+- **Phase C8.0 / C8.0.1 Decision:** FROZEN (canonical Ed25519-rooted `IdentityBindingV1`, Noise XX payload placement, pre-HS3 initiator validation, dual-state pending rotation model, and coordinated panic-wipe integration).
 - **C8.1 Implementation:** OPEN (code, stores, and test vectors pending).
-- **Sealed-Sender Authenticated Authorship:** OPEN (underlying L4 envelope open).
-- **Production `RecipientKeyResolver`:** UNRESOLVED / Fail-closed.
+- **Sealed-Sender Authenticated Authorship:** OPEN (underlying L4 application envelope open).
+- **Production `RecipientKeyResolver`:** UNRESOLVED / Fail-closed (`UnresolvedRecipientKeyResolver`).
 - **Link Layer:** Disabled (`LINK_LAYER_READY = false` / `linkLayerReady = false`).
 
 ---
@@ -46,6 +46,12 @@ Without an explicit, authenticated binding between the Ed25519 signing key and t
 3. **Carry the Binding Exclusively Inside Encrypted Noise XX Payloads:**
    The binding is exchanged within the encrypted handshake payloads of `Noise_XX` (HS2 and HS3). It is never sent in plaintext BLE records and introduces zero additional round trips.
 
+4. **Initiator Pre-HS3 Validation Contract:**
+   The initiator validates the responder's `IdentityBindingV1` and evaluates trust policy **before** emitting HS3. An invalid or quarantined responder never receives the initiator's identity binding.
+
+5. **Durable Dual-State Rotation Model:**
+   The storage model explicitly separates accepted binding authority from pending rotation candidates, allowing concurrent representation of an active pin and a quarantined rotation candidate without silent pin overwrites.
+
 ---
 
 ## 4. `IdentityBindingV1` Canonical Encoding
@@ -57,7 +63,7 @@ Without an explicit, authenticated binding between the Ed25519 signing key and t
 | Offset | Size | Field Name | Type / Encoding | Description |
 |---|---|---|---|---|
 | `0` | `1` | `version` | `uint8` (`0x01`) | Identity binding structure version |
-| `1` | `4` | `generation` | `uint32_be` | Monotonic key rotation generation (starts at `0`) |
+| `1` | `4` | `generation` | `uint32_be` | Monotonic key rotation generation index |
 | `5` | `32` | `signing_public_key` | `bytes[32]` | Authoritative Ed25519 signing public key |
 | `37` | `32` | `static_dh_public_key` | `bytes[32]` | X25519 static DH public key bound to this identity |
 | `69` | `64` | `signature` | `bytes[64]` | Ed25519 signature over the canonical preimage |
@@ -87,7 +93,7 @@ Preimage = ASCII("GMP2-IDBIND")
 
 ---
 
-## 5. Noise XX Placement
+## 5. Noise XX Placement & Handshake Sequencing
 
 The binding is transmitted inside the standard encrypted handshake payload slots of `Noise_XX_25519_ChaChaPoly_BLAKE2s`:
 
@@ -108,16 +114,40 @@ HS3 (initiator -> responder):
     Message Size: 48 (encrypted static) + 149 (encrypted binding) = 197 bytes
 ```
 
-### 5.1 Protocol Invariants
-- **Handshake Transcript Binding:** Because the payload is encrypted under the running Noise symmetric state, the binding bytes are authenticated by the AEAD cipher (`ChaCha20-Poly1305`) and incorporated into the Noise transcript hash (`h`).
-- **No Additional Round Trips:** Authentication occurs within the standard 1.5-RTT `Noise_XX` handshake.
-- **Fragmentation Bounds:** Reassembled record bounds (`MAX_RECORD = 16,384 bytes`) easily accommodate the 229-byte and 197-byte handshake messages.
+### 5.1 Initiator Handshake Sequencing Invariant
+The initiator MUST execute the following sequence:
+1. Send HS1 (32 bytes).
+2. Receive and Noise-decrypt HS2 (229 bytes).
+3. Extract responder's decrypted `IdentityBindingV1` and authenticated `remoteStaticKey`.
+4. Perform pure cryptographic validation (Steps 1–10).
+5. Evaluate `PeerTrustEngine` policy.
+6. **IF AND ONLY IF** the decision is `Accepted` or `FirstSeenPinned`:
+   - Construct local `IdentityBindingV1`.
+   - Encrypt and transmit HS3 (197 bytes).
+   - Advance to `NOISE_ESTABLISHED` $\to$ `READY`.
+7. **OTHERWISE (Rejected or KeyChangedQuarantined):**
+   - **DO NOT SEND HS3.**
+   - Abort handshake or record quarantine, and disconnect.
+
+*Rationale:* An invalid or quarantined responder must never be given the initiator's Ed25519 identity binding.
+
+### 5.2 Responder Handshake Sequencing
+1. Receive HS1 (32 bytes).
+2. Transmit HS2 containing encrypted responder `IdentityBindingV1` (229 bytes).
+3. Receive and Noise-decrypt HS3 (197 bytes).
+4. Perform pure cryptographic validation and evaluate `PeerTrustEngine` policy.
+5. If accepted, advance to `NOISE_ESTABLISHED` $\to$ `READY`. If rejected/quarantined, disconnect.
+
+*Note:* The responder necessarily reveals its encrypted HS2 binding before knowing the initiator's identity; this is standard and accepted Noise XX responder behavior.
 
 ---
 
-## 6. Required Validation Order
+## 6. Required Validation Pipeline
 
-Upon decrypting the remote handshake payload in HS2 (on initiator) or HS3 (on responder), the receiving peer MUST execute the following 13-step validation sequence in strict order:
+Validation is strictly divided into two phases: **Pure Cryptographic Validation** (Steps 1–10) and **Trust Policy Evaluation** (Steps 11–13).
+
+### 6.1 Pure Cryptographic Validation (Steps 1–10)
+Steps 1 through 10 MUST be pure functions with respect to `PeerIdentityStore`. Failure at any of these steps results in immediate `SECURITY_REJECT`, produces no store mutations, and aborts the connection:
 
 1. **Length Check:** Require decrypted payload length is exactly 133 bytes.
 2. **Version Check:** Require `version == 0x01`.
@@ -125,223 +155,327 @@ Upon decrypting the remote handshake payload in HS2 (on initiator) or HS3 (on re
 4. **Signing Key Parse:** Extract `signing_public_key` (32 bytes).
 5. **Static DH Key Parse:** Extract `static_dh_public_key` (32 bytes).
 6. **Signature Parse:** Extract `signature` (64 bytes).
-7. **Cryptographic Verification:** Verify `signature` under `signing_public_key` over `ASCII("GMP2-IDBIND") || version || generation_be || signing_public_key || static_dh_public_key`.
+7. **Cryptographic Signature Verification:** Verify `signature` under `signing_public_key` over the 80-byte `GMP2-IDBIND` preimage.
 8. **Node ID Derivation:** Compute `derived_node_id = BLAKE2s-128(signing_public_key)`.
 9. **Noise Static Match:** Require `binding.static_dh_public_key == NoiseSession.remoteStaticKey`.
-10. **Advertisement Match:** Require `advertised_node_hint == first4(derived_node_id)`.
-11. **Trust Policy Evaluation:** Evaluate stored binding for `derived_node_id` against generation and trust policy (see Section 8 & 9).
-12. **Verified Identity Creation:** Construct immutable `VerifiedPeerIdentity`.
-13. **Link Progression:** Only upon complete success of all prior steps may the link state machine advance toward `READY`.
+10. **Advertisement Consistency Check:** Require `advertised_node_hint == first4(derived_node_id)`.
 
-**Failure Rule:** Failure at **ANY** step terminates the connection immediately (`SECURITY_REJECT` or `QUARANTINE`), discards all session state, creates no `VerifiedPeerIdentity`, and updates no trust store.
-
----
-
-## 7. Noise Authentication Claim
-
-We establish a precise definition of transport authentication:
-- **Before Step 9:** Noise proves only possession of an X25519 static private key. It does **not** prove the peer's identity, contact status, or claimed `node_id`.
-- **After Steps 7–10:** The combination of:
-  1. Proof of X25519 private key possession (via `Noise_XX`),
-  2. Proof of Ed25519 signing key authorization over that X25519 public key (via `IdentityBindingV1` signature),
-  3. Derivation of `node_id` from the Ed25519 signing key, and
-  4. Exact match of the advertised discovery hint,
-
-  strictly establishes the authenticated equivalence:
-  $$\text{Authenticated Noise Peer} \iff \text{Static DH Key} \iff \text{Signing Identity} \iff \text{node\_id} \iff \text{Advertised Hint}$$
-
-An unverified discovery hint or an unbound Noise session must never be treated as an authenticated identity.
-
----
-
-## 8. Verified Peer Identity Model
-
-### 8.1 Logical Structure
-The cross-platform logical type `VerifiedPeerIdentity` represents an authenticated identity:
-
+Upon success of Steps 1–10, the intermediate object `ValidatedPeerBinding` is produced:
 ```text
-VerifiedPeerIdentity:
-    nodeId:               bytes[16]
-    signingPublicKey:     bytes[32]
-    staticDhPublicKey:    bytes[32]
-    bindingGeneration:    uint32
-    trustState:           TrustState
+ValidatedPeerBinding:
+    nodeId:            bytes[16]
+    signingPublicKey:  bytes[32]
+    staticDhPublicKey: bytes[32]
+    generation:        uint32
 ```
 
-### 8.2 Discrete Trust States
-The system rejects vague boolean `trusted` flags in favor of explicit `TrustState` semantics:
-
-- `TOFU_PINNED`: The identity was encountered and bound for the first time. The binding is pinned in durable storage.
-- `USER_VERIFIED`: The user has explicitly confirmed the identity out-of-band (e.g., via QR code scanning or authenticated call-sign verification).
-- `KEY_CHANGED_QUARANTINED`: A valid higher-generation binding was presented for an existing `node_id`. Ordinary communication is blocked until explicit user review.
-- `REVOKED`: The identity has been explicitly blocked or revoked by local policy.
+### 6.2 Trust Policy Evaluation (Steps 11–13)
+11. **Evaluate Trust Policy:** Pass `ValidatedPeerBinding` and stored `PeerIdentityRecord` to `PeerTrustEngine.evaluate(...)`.
+12. **Store Mutation (if permitted):** Update `PeerIdentityStore` only for valid new pins or valid pending rotation candidates (see Section 8 & 9).
+13. **Link State Progression:** If decision is `Accepted` or `FirstSeenPinned`, construct `VerifiedPeerIdentity` and advance link toward `READY`.
 
 ---
 
-## 9. Key Rotation and Generation Semantics
+## 7. Advertised Hint Security Statement
 
-The `generation` field enables X25519 static DH key rotation while preserving the long-term Ed25519 `node_id`:
+The 4-byte discovery hint (`node_hint`) is **NOT** an authenticated identity:
+- The hint is truncated (4 bytes / 32 bits), non-unique, and subject to accidental or malicious collision.
+- It cannot serve as a durable database key or as a `RecipientKeyResolver` lookup key.
 
-1. **Initial Encounter:** Unseen `node_id` with `generation = 0` $\to$ Persist binding as `TOFU_PINNED`.
-2. **Identical Reconnect:** Same `node_id`, same signing key, same static key, same `generation` $\to$ Accept session.
-3. **Valid Key Rotation (Higher Generation):** Same `node_id`, same signing key, `generation > stored_generation`, new static key, valid signature $\to$ Store as `KEY_CHANGED_QUARANTINED`. Do **not** silently update the active pin. Block ordinary `READY` state until the user approves the key change.
-4. **Rollback Attack (Lower Generation):** Same `node_id`, `generation < stored_generation` $\to$ **Reject** immediately (`SECURITY_REJECT`), disconnect, log security event.
-5. **Conflicting Binding (Same Generation, Different Key):** Same `node_id`, `generation == stored_generation`, different static key $\to$ **Reject** immediately (`SECURITY_REJECT`), disconnect.
-6. **New Signing Key:** A change in the Ed25519 signing key produces a different `node_id`. It is treated as an entirely new identity, not a rotation.
-7. **Panic Wipe:** Erases both long-term keys. A new install generates fresh Ed25519 and X25519 keys, resulting in a new `node_id` with `generation = 0`.
+**Formal Security Claim:**
+After successful validation through Step 10:
+1. The authenticated Noise static DH key is cryptographically bound to the Ed25519 signing public key.
+2. The Ed25519 signing public key deterministically derives the full 16-byte `node_id`.
+3. The observed 4-byte `advertised_node_hint` is proven **CONSISTENT WITH** `first4(node_id)`.
+
+The full 16-byte `node_id` MUST be used everywhere across the system following identity validation.
 
 ---
 
-## 10. Recipient Key Resolution Contract
+## 8. Durable Peer Identity Model & Trust Engine
 
-The current production scaffolding:
+### 8.1 Logical Storage Model (`PeerIdentityRecord`)
+To allow concurrent representation of an active pin and a quarantined rotation candidate, the storage model defines:
+
+```text
+PeerIdentityRecord:
+    nodeId:                      bytes[16]  (Primary Key)
+    signingPublicKey:            bytes[32]
+    acceptedStaticDhPublicKey:   bytes[32]
+    acceptedGeneration:          uint32
+    trustLevel:                  TrustLevel (TOFU_PINNED | USER_VERIFIED | REVOKED)
+    pendingStaticDhPublicKey:    bytes[32]? (Nullable)
+    pendingGeneration:           uint32?    (Nullable)
+```
+
+### 8.2 Trust Levels vs. Derived Effective States
+`TrustLevel` stores persistent provenance:
+- `TOFU_PINNED`: Established via first-seen unauthenticated encounter.
+- `USER_VERIFIED`: Confirmed out-of-band (e.g. QR scan or call-sign verification).
+- `REVOKED`: Explicitly blocked by local user policy.
+
+`KEY_CHANGED_QUARANTINED` is **NOT** a scalar `TrustLevel`. Instead, quarantine is dynamically derived from the presence of a pending rotation:
+```text
+isQuarantined = (pendingStaticDhPublicKey != null && pendingGeneration != null)
+```
+
+**Canonical Effective States:**
+1. `ACTIVE_TOFU`: `trustLevel == TOFU_PINNED` and `pending == null`.
+2. `ACTIVE_USER_VERIFIED`: `trustLevel == USER_VERIFIED` and `pending == null`.
+3. `KEY_CHANGED_QUARANTINED`: `pendingStaticDhPublicKey != null` (regardless of `trustLevel`).
+4. `REVOKED`: `trustLevel == REVOKED`.
+
+### 8.3 Pending Rotation Invariants
+The pending fields MUST obey the following invariants:
+- **Coupling:** Either both `pendingStaticDhPublicKey` and `pendingGeneration` are null, or both are non-null.
+- **Monotonic Advance:** If non-null, `pendingGeneration > acceptedGeneration`.
+- **Key Divergence:** If non-null, `pendingStaticDhPublicKey != acceptedStaticDhPublicKey`.
+- **Accepted Authority Preservation:** While a pending candidate exists, the accepted fields (`acceptedStaticDhPublicKey`, `acceptedGeneration`, `trustLevel`) MUST remain stored and unmodified.
+- **Non-Authority:** A pending candidate is NOT an accepted pin, does NOT grant `READY` link status, and is NEVER exposed to `RecipientKeyResolver`.
+
+---
+
+## 9. Trust Decision Matrices
+
+### 9.1 First-Seen Generation Rule
+A freshly created local identity begins at `generation = 0`. However, a remote peer may have performed valid key rotations before this node ever encounters it.
+
+**Rule:** An unseen `node_id` presenting a valid `IdentityBindingV1` with **ANY** `uint32` generation becomes the initial TOFU baseline.
+- *Example:* First encounter at `generation = 7` with static key $K_7 \implies$ store `acceptedGeneration = 7`, `acceptedStaticDhPublicKey = K_7`, `trustLevel = TOFU_PINNED`.
+- *Rationale:* The receiver has no prior historical state for that `node_id` from which to infer rollback.
+
+### 9.2 Known-Peer Evaluation Matrix (No Pending Rotation)
+Let $A = \text{acceptedGeneration}$ and $K_A = \text{acceptedStaticDhPublicKey}$:
+
+| Incoming `generation` | Incoming `static_dh_public_key` | Signing Key Check | Decision / Action |
+|---|---|---|---|
+| `gen == A` | `static == KA` | `signing == stored` | **Accepted:** Ordinary reconnect $\to$ `VerifiedPeerIdentity` created $\to$ `READY`. |
+| `gen < A` | Any | `signing == stored` | **SECURITY_REJECT:** Rollback attempt $\to$ Disconnect. |
+| `gen == A` | `static != KA` | `signing == stored` | **SECURITY_REJECT:** Same-generation conflict $\to$ Disconnect. |
+| `gen > A` | `static == KA` | `signing == stored` | **SECURITY_REJECT:** Noncanonical generation advance without static key change $\to$ Disconnect. |
+| `gen > A` | `static != KA` | `signing == stored` | **KeyChangedQuarantined:** Valid rotation candidate $\to$ Persist `pendingGeneration = gen`, `pendingStaticDhPublicKey = static` $\to$ Disconnect / No `READY`. Accepted fields unchanged. |
+| Any | Any | `signing != stored` (node_id collision) | **NODE_ID_SIGNING_KEY_COLLISION:** `SECURITY_REJECT` $\to$ No store mutation $\to$ Disconnect. |
+
+### 9.3 Known-Peer Evaluation Matrix (Pending Rotation Exists)
+Let $A = \text{acceptedGeneration}$, $K_A = \text{acceptedStaticDhPublicKey}$, $P = \text{pendingGeneration}$, $K_P = \text{pendingStaticDhPublicKey}$ ($P > A, K_P \neq K_A$):
+
+| Incoming `generation` | Incoming `static_dh_public_key` | Decision / Action |
+|---|---|---|
+| `gen == P` | `static == KP` | **KeyChangedQuarantined:** Idempotent re-encounter of pending candidate $\to$ Remain quarantined $\to$ No `READY`. |
+| `gen == A` | `static == KA` | **KeyChangedQuarantined:** Reconnect of old accepted binding while pending rotation unresolved $\to$ Remain quarantined $\to$ No `READY`. |
+| `gen < A` | Any | **SECURITY_REJECT:** Rollback attack $\to$ Disconnect. |
+| `gen == A` | `static != KA` | **SECURITY_REJECT:** Accepted generation conflict $\to$ Disconnect. |
+| `A < gen < P` | Any | **SECURITY_REJECT:** Stale generation relative to observed high-water mark $\to$ Disconnect. |
+| `gen == P` | `static != KP` | **SECURITY_REJECT:** Pending generation conflict $\to$ Disconnect. |
+| `gen > P` | `static != KP` and `static != KA` | **KeyChangedQuarantined:** Newer valid rotation candidate $\to$ Update `pendingGeneration = gen`, `pendingStaticDhPublicKey = static` $\to$ Remain quarantined $\to$ No `READY`. |
+| `gen > A` | `static == KA` | **SECURITY_REJECT:** Generation advance without key rotation $\to$ Disconnect. |
+| `gen > P` | `static == KP` | **SECURITY_REJECT:** Generation advance without key rotation $\to$ Disconnect. |
+
+**Strict Rule:** No incoming packet can automatically clear quarantine. Quarantine resolution requires explicit local user action.
+
+---
+
+## 10. Rotation Approval Semantics
+
+Promoting a pending rotation to accepted status is an explicit local user action:
+
+### 10.1 Promotion Transaction
+```text
+BEGIN TRANSACTION;
+    acceptedStaticDhPublicKey = pendingStaticDhPublicKey;
+    acceptedGeneration        = pendingGeneration;
+    pendingStaticDhPublicKey  = NULL;
+    pendingGeneration         = NULL;
+COMMIT;
+```
+
+### 10.2 Provenance Preservation
+The existing `trustLevel` is strictly preserved:
+- Prior `TOFU_PINNED` $\implies$ Remains `TOFU_PINNED`.
+- Prior `USER_VERIFIED` $\implies$ Remains `USER_VERIFIED`.
+
+Approving a key change MUST NOT automatically elevate an unverified TOFU contact to `USER_VERIFIED`. Out-of-band verification (e.g. QR scan) remains a separate, explicit user action.
+
+---
+
+## 11. Recipient Key Resolution Contract
+
+The current production placeholder:
 ```kotlin
-UnresolvedRecipientKeyResolver  // Fail-closed placeholder
+UnresolvedRecipientKeyResolver  // Fail-closed
 ```
-remains untouched in Phase C8.0.
+remains untouched in Phase C8.0.1.
 
-### 10.1 Future Production Resolver Contract
-When implemented in C8.1, `BoundRecipientKeyResolver` will resolve `node_id -> Ed25519 signing public key` subject to strict authority rules:
-
-- **Authorized Returns:** Returns the Ed25519 signing public key **ONLY** if backed by a persisted `VerifiedPeerIdentity` in state:
-  - `TOFU_PINNED`, or
-  - `USER_VERIFIED`.
-- **Null / Rejection Returns:** MUST return `null` (failing ACK verification closed) for:
+### 11.1 Future Production Resolver Contract
+When implemented in C8.1, `BoundRecipientKeyResolver` will resolve `node_id -> Ed25519 signing public key` under strict conditions:
+- **Authorized Returns:** Returns `signingPublicKey` **ONLY** when:
+  1. `pendingStaticDhPublicKey == null` (no unresolved quarantine exists), and
+  2. `trustLevel` is `TOFU_PINNED` or `USER_VERIFIED`.
+- **Null Returns:** MUST return `null` (causing ACK verification to fail closed) for:
   - Unseen `node_id`,
-  - Unverified or malformed bindings,
-  - Identities in `KEY_CHANGED_QUARANTINED` state,
-  - Identities in `REVOKED` state.
-- **Prohibited Sources of Authority:**
-  - Inbound ACK frames NEVER insert or modify resolver mappings.
-  - Expected recipient delivery rows NEVER create resolver mappings.
-  - Discovery advertisements NEVER create resolver mappings.
-  - Unauthenticated link sessions NEVER create resolver mappings.
+  - Unverified bindings,
+  - Quarantined peers (`pendingStaticDhPublicKey != null`),
+  - Revoked peers (`trustLevel == REVOKED`).
 
-Only an authenticated `IdentityBindingV1` validated through the 13-step pipeline can populate the resolver.
+*Authority Boundaries:* ACK frames, expected recipient delivery rows, and discovery advertisements NEVER create or mutate resolver mappings.
 
 ---
 
-## 11. READY State Gating
-
-The conceptual link state machine is refined from ADR-002:
+## 12. Role-Specific Link State Progression
 
 ```text
+INITIATOR:
 DISCONNECTED
     |
-    v (BLE connect)
-HANDSHAKE_STARTED
+    v (Send HS1)
+HS1_SENT
     |
-    v (Noise_XX HS1..HS3 exchange)
+    v (Receive & decrypt HS2)
+HS2_DECRYPTED
+    |
+    v (Validate Steps 1-10 & evaluate trust)
+REMOTE_STATIC_AUTHENTICATED & BINDING_VALIDATED
+    |
+    +---> [If Rejected or Quarantined] ---> SECURITY_REJECT / QUARANTINE (NO HS3 SENT, Disconnect)
+    |
+    v [If Accepted or FirstSeenPinned]
+HS3_SENT
+    |
+    v (Noise session established)
 NOISE_ESTABLISHED
     |
-    v (13-step IdentityBindingV1 validation)
-BINDING_VALIDATED
+    v
+READY (FrameV2 application traffic enabled)
+
+
+RESPONDER:
+DISCONNECTED
     |
-    v (Check PeerIdentityStore: TOFU_PINNED or USER_VERIFIED)
-TRUST_POLICY_PASSED
+    v (Receive HS1, send HS2 with responder binding)
+HS2_SENT
+    |
+    v (Receive & decrypt HS3)
+HS3_DECRYPTED
+    |
+    v (Validate Steps 1-10 & evaluate trust)
+REMOTE_STATIC_AUTHENTICATED & BINDING_VALIDATED
+    |
+    +---> [If Rejected or Quarantined] ---> SECURITY_REJECT / QUARANTINE (Disconnect)
+    |
+    v [If Accepted or FirstSeenPinned]
+NOISE_ESTABLISHED
     |
     v
-READY (Application FrameV2 router enabled)
+READY (FrameV2 application traffic enabled)
 ```
 
-### 11.1 Failure Dispositions
-- **Malformed / Invalid Signature / Static Mismatch / Hint Mismatch:** Transition to `SECURITY_REJECT`, disconnect link, drop all buffers.
-- **Rollback / Same-Generation Conflict:** Transition to `QUARANTINE`, disconnect link.
-- **Higher Generation Rotation:** Transition to `KEY_CHANGED_QUARANTINED`. Session remains blocked; no application `FrameV2` frames (text, SOS, routing digests) may be sent or received.
-
-**Strict Invariant:** Zero `FrameV2` frames may be dispatched before reaching `READY`.
+**Strict Invariant:** Zero `FrameV2` application frames may be dispatched before reaching `READY`.
 
 ---
 
-## 12. Advertisement and Discovery Implications
+## 13. Future Noise API Requirements (Phase C8.1 Target)
 
-- **Node Hint Calculation:** `node_hint` remains defined as `first4(node_id)`.
-- **Pre-Binding Status:** Before identity binding, `node_hint` in BLE advertisements is treated strictly as an **untrusted role-election token** (lexicographically lower hint initiates Noise).
-- **Post-Binding Enforcement:** Once `IdentityBindingV1` is decrypted and verified, `first4(derived_node_id)` MUST match the advertised `node_hint`. If they differ, the connection is aborted.
-- **Self-Collision Security Event:** If `derived_node_id == local_node_id`, the session is aborted immediately as a cloned-identity security event.
+To support pre-HS3 initiator validation and clean layering, Phase C8.1 requires platform Noise drivers to expose a typed handshake read result:
+
+```text
+HandshakeReadResult:
+    payload:                      bytes
+    authenticatedRemoteStaticKey: bytes[32]?
+```
+
+### 13.1 Platform Gaps to Resolve in C8.1
+- **Android Gap:** `NoiseSession.remoteStaticKey` is currently populated only in `maybeSplit()`. C8.1 must expose `handshake.remotePublicKey` immediately upon successfully processing a handshake message containing `s` (i.e. after HS2 read on initiator, after HS3 read on responder) without requiring session splitting.
+- **iOS Gap:** The existing `readMessage2AndWrite3(...)` driver combines reading HS2 and writing HS3 in a single uninspected call. C8.1 must split this into `readMessage2(...) -> HandshakeReadResult`, perform validation, and only then invoke `writeMessage3(localBindingPayload)`.
+
+`NoiseSession` remains a purely cryptographic mechanism and must contain no database or trust policy logic.
 
 ---
 
-## 13. Call Sign and QR Implications
+## 14. Persistence Architecture & Store Authority Model
 
-- **Call Sign Derivation:** Call signs are derived deterministically from `node_id`.
-- **Stability Under DH Rotation:** Because `node_id` is rooted in the Ed25519 signing key, rotating the X25519 static DH key (`generation > 0`) does **not** alter the user's call sign or advertised discovery hint.
-- **Verification UI:** When a quarantined key change occurs, the UI presents the rotation under the existing call sign, allowing out-of-band re-verification (e.g. QR scan) without treating the peer as a totally new contact.
+### 14.1 Security-Authoritative Store Schema
+The durable `PeerIdentityStore` must persist the following authoritative fields:
+- `node_id` (BLOB[16], Primary Key)
+- `signing_public_key` (BLOB[32], NOT NULL)
+- `accepted_static_dh_public_key` (BLOB[32], NOT NULL)
+- `accepted_generation` (INTEGER, NOT NULL)
+- `trust_level` (TEXT, NOT NULL)
+- `pending_static_dh_public_key` (BLOB[32], NULLABLE)
+- `pending_generation` (INTEGER, NULLABLE)
 
----
+### 14.2 Informational Metadata
+Timestamps (e.g. `first_seen_timestamp`, `last_authenticated_timestamp`) are **informational metadata only**. They are NOT signature inputs, NOT generation authorities, NOT rollback authorities, NOT trust inputs, and MUST NOT influence cryptographic acceptance.
 
-## 14. Persistence Architecture (Specification Only)
-
-### 14.1 Logical Peer Binding Store
-A dedicated `PeerIdentityStore` will persist peer identity authorities:
-- **Primary Key:** `node_id` (16 bytes BLOB).
-- **Stored Attributes:**
-  - `signing_public_key` (32 bytes BLOB)
-  - `static_dh_public_key` (32 bytes BLOB)
-  - `binding_generation` (INTEGER / uint32)
-  - `trust_state` (TEXT / ENUM)
-  - `first_seen_timestamp` (INTEGER)
-  - `last_authenticated_timestamp` (INTEGER)
-
-### 14.2 Storage Security and Privacy
-Because the peer binding store represents a sensitive contact and communication graph:
+### 14.3 Platform Storage Protection
+The peer binding store represents a sensitive contact and communication graph:
 - It must reside in encrypted platform storage (SQLCipher on Android; SQLite with `FileProtectionType.complete` on iOS).
-- It must participate in atomic `PanicWipe`.
-- It must enforce fail-closed schema migrations and corruption detection.
-- Plaintext preferences (e.g. `SharedPreferences` or `UserDefaults`) are strictly forbidden.
-
-*(Schema DDL implementation is deferred to C8.1).*
+- It must enforce fail-closed migrations and corruption detection.
+- Storage in plaintext preferences (`SharedPreferences` / `UserDefaults`) is strictly forbidden.
 
 ---
 
-## 15. Panic Wipe Contract
+## 15. Panic Wipe Contract (ADR-004 Integration)
 
-When triggered, `PanicWipe` must atomically destroy:
-1. Local Ed25519 signing private key,
-2. Local X25519 static DH private key,
-3. Durable `PeerIdentityStore` and TOFU pins,
-4. Contact verification records and QR bindings,
-5. Backing data for `RecipientKeyResolver`,
-6. Ephemeral session keys and handshake state.
+We explicitly integrate `PeerIdentityStore` into the existing **coordinated, resumable, crypto-erasure-first** `PanicWipe` architecture defined in ADR-004:
 
-Upon wipe completion, the node possesses no cryptographic link to its former identity. Subsequent startup generates a completely fresh identity with a new `node_id`.
+```text
+PanicWipe Request
+    |
+    v
+1. Erase master key / KEK material in Keystore/Keychain (crypto-erasure).
+    |
+    v
+2. Idempotently and sequentially delete durable stores:
+   - Durable Message Store (held frames + delivery records)
+   - Peer Identity Store (contact bindings + TOFU pins)
+   - Verification State & QR bindings
+   - Identity preferences and key files
+   - Backing state for RecipientKeyResolver
+    |
+    v
+3. Regenerate fresh local identity (new Ed25519 & X25519 keys -> new node_id).
+    |
+    v
+4. Clear wipe journal / commit clean state.
+```
+
+- We reject the impossible claim of a cross-system "atomic" wipe across Keychain, SQLite, and memory.
+- `PeerIdentityStore` is registered as a privacy-sensitive wipe artifact.
+- Crash before deletion $\implies$ Resumed wipe completes deletion.
+- Crash after deletion $\implies$ Resumed wipe remains idempotent.
 
 ---
 
 ## 16. Sealed Sender Dependency
 
-Phase C8.0 addresses **transport peer identity binding** (L2 session authentication).
+Phase C8.0 / C8.0.1 resolves **transport peer identity binding** (L2 session authentication).
 
 It does **NOT** resolve or close:
-- **L4 Sealed Sender Authorship:** End-to-end sender authentication inside encrypted application envelopes without leaking identity to intermediate relays.
+- **L4 Sealed Sender Authorship:** End-to-end sender authentication inside encrypted application envelopes without leaking sender identity to intermediate relays.
 - **Relay Abuse Resistance:** Priority validation and PoW verification on sealed payloads.
 
-Because sealed-sender authenticated authorship remains an open protocol design area, **ADR-003 remains OPEN** even after C8.0 architecture is frozen.
+Because sealed-sender authenticated authorship remains an open protocol design area, **ADR-003 remains OPEN**.
 
 ---
 
 ## 17. ACK Authentication Contract
 
-The wire format and signing semantics for delivery ACKs remain strictly preserved from Phase C7.4 / C7.5:
+Delivery ACK wire format and cryptographic signatures remain strictly preserved from Phase C7.4 / C7.5:
 ```text
 ACK Preimage = ASCII("GMP2-ACK") || msg_id[16] || recipient_node_id[16]
 Signature    = Ed25519Sign(recipient_signing_private_key, ACK Preimage)
 ```
 
-Phase C8 defines the exact cryptographic path through which `RecipientKeyResolver` will supply the trusted `recipient_signing_public_key` required by `AckAuthenticator`. C7.4 and C7.5 contracts remain frozen and unmodified.
+The C8 architecture defines how `RecipientKeyResolver` supplies the verified `recipient_signing_public_key` to `AckAuthenticator`. C7.4 and C7.5 contracts remain frozen and unmodified.
 
 ---
 
 ## 18. Rejected Alternative: Inverting the Identity Root to `H(X25519)`
 
-The earlier exploratory recommendation proposed setting:
-```text
-node_id = BLAKE2s-128(X25519_static_public_key)
-```
-and carrying the Ed25519 signing key in a separate announcement.
+The earlier exploratory recommendation proposed setting `node_id = BLAKE2s-128(X25519_static_public_key)`.
 
 ### 18.1 Why This Alternative Was Rejected
-1. **Signed Explicit Binding Closes the Gap:** A signed `IdentityBindingV1` provides complete bidirectional cryptographic proof without requiring a root change.
+1. **Explicit Signed Binding Closes the Gap:** A signed `IdentityBindingV1` provides complete bidirectional cryptographic proof without requiring a root change.
 2. **Ed25519 Is Already Authoritative:** Application authorship, ACK signatures, and out-of-band contact verification are naturally signing operations. Rooting identity in Ed25519 keeps signing authority primary.
 3. **Enables DH Rotation:** With an Ed25519 root, X25519 static DH keys can rotate (via `generation`) without breaking the peer's permanent `node_id`, call sign, or contact identity.
 4. **Avoids Massive Blast Radius:** Inverting the root would invalidate all frozen GMP/2.1 wire vectors, golden fixtures, delivery stores, message IDs, and C6/C7 verification contracts.
@@ -355,12 +489,12 @@ The single genuine advantage of `node_id = H(X25519)` is that `Noise_XX` directl
 
 | Threat Scenario | Attack Vector | Mitigation / System Response |
 |---|---|---|
-| **A. Spoofed Discovery Hint** | Attacker advertises a victim's `node_hint` to manipulate role election or routing. | After handshake, Step 10 requires `advertised_node_hint == first4(derived_node_id)`. Mismatch causes immediate connection abort. |
-| **B. Mismatched Keys** | Attacker presents own X25519 static key in Noise, but claims victim's Ed25519 signing public key. | Step 7 verifies the signature over `IDBIND` preimage. Attacker cannot sign their X25519 key without victim's Ed25519 private key. Signature check fails $\to$ `SECURITY_REJECT`. |
-| **C. Replayed Binding** | Attacker captures a valid victim `IdentityBindingV1` and replays it in their own Noise handshake. | Step 9 checks `binding.static_dh_public_key == NoiseSession.remoteStaticKey`. The victim's static key does not match attacker's ephemeral/static Noise session. Check fails $\to$ `SECURITY_REJECT`. |
-| **D. Rollback Attack** | Attacker replays an older, valid lower-generation binding for a victim whose key has rotated. | Step 11 checks `generation < stored_generation`. Detected as rollback $\to$ rejected and connection aborted. |
-| **E. Forked / Conflicting Binding** | Attacker presents a binding with same `generation` but different X25519 static key. | Step 11 checks `generation == stored_generation` with mismatched key $\to$ conflicting binding rejected $\to$ disconnect. |
-| **F. Legitimate Key Rotation** | Legitimate peer rotates X25519 key with `generation > stored_generation` and valid signature. | Step 11 classifies binding as `KEY_CHANGED_QUARANTINED`. Session is established but quarantined; no application data flows until user approval. |
+| **A. Spoofed Discovery Hint** | Attacker advertises a victim's `node_hint` to manipulate role election or routing. | Step 10 requires `advertised_node_hint == first4(derived_node_id)`. Mismatch causes immediate connection abort. |
+| **B. Mismatched Keys** | Attacker presents own X25519 static key in Noise, but claims victim's Ed25519 signing public key. | Step 7 verifies the signature over `IDBIND` preimage. Attacker cannot sign their X25519 key without victim's Ed25519 private key $\to$ `SECURITY_REJECT`. |
+| **C. Replayed Binding** | Attacker captures a valid victim `IdentityBindingV1` and replays it in their own Noise handshake. | Step 9 checks `binding.static_dh_public_key == NoiseSession.remoteStaticKey`. The victim's static key does not match attacker's ephemeral/static Noise session $\to$ `SECURITY_REJECT`. |
+| **D. Rollback Attack** | Attacker replays an older, valid lower-generation binding for a victim whose key has rotated. | Section 9.2/9.3 checks `generation < acceptedGeneration` (or `< pendingGeneration`) $\to$ `SECURITY_REJECT` $\to$ Disconnect. |
+| **E. Forked / Conflicting Binding** | Attacker presents a binding with same `generation` but different X25519 static key. | Section 9.2/9.3 checks `generation == stored_generation` with mismatched key $\to$ `SECURITY_REJECT` $\to$ Disconnect. |
+| **F. Legitimate Key Rotation** | Legitimate peer rotates X25519 key with `generation > acceptedGeneration` and valid signature. | Section 9.2 persists candidate as `pending` $\to$ effective state `KEY_CHANGED_QUARANTINED`. Session is established but quarantined; no application data flows and resolver returns `null` until user approval. |
 | **G. First-Seen Attacker Identity** | Attacker creates a fresh, valid self-signed identity and connects. | Accepted as a new `TOFU_PINNED` peer, but possesses zero privileges, no existing contact trust, and cannot resolve as any existing contact. |
 | **H. Ed25519 Root Compromise** | Attacker steals victim's Ed25519 private key. | Identity is fully compromised. Attacker can issue valid bindings. Cryptographic recovery is impossible; requires out-of-band revocation and key regeneration. |
 | **I. X25519 Static Compromise Only** | Attacker steals victim's X25519 private key, but NOT Ed25519 signing key. | Attacker can impersonate only the compromised static session for that generation. Attacker cannot advance `generation` or bind a new DH key without the Ed25519 key. |
@@ -368,68 +502,41 @@ The single genuine advantage of `node_id = H(X25519)` is that `Noise_XX` directl
 
 ---
 
-## 20. Future Implementation Architecture (Phase C8.1 Map)
+## 20. Adversarial Architecture Q&A
 
-```text
-+-------------------------------------------------------------------------+
-| L1/L2: NoiseSession & Handshake Driver                                  |
-|   - Establishes Noise_XX session                                        |
-|   - Exposes remoteStaticKey and raw decrypted handshake payloads        |
-+------------------------------------+------------------------------------+
-                                     |
-                                     v
-+------------------------------------+------------------------------------+
-| L2.5: IdentityBindingValidator                                          |
-|   - 13-step validation pipeline                                         |
-|   - Cryptographic signature & preimage checks                           |
-|   - Produces VerifiedPeerIdentity                                       |
-+------------------------------------+------------------------------------+
-                                     |
-                                     v
-+------------------------------------+------------------------------------+
-| L2.5: PeerIdentityStore & Trust Engine                                  |
-|   - Evaluates TOFU / Generation / Quarantine rules                      |
-|   - Backed by encrypted durable storage                                 |
-+------------------+----------------------------------+-------------------+
-                   |                                  |
-                   v                                  v
-+------------------+----------------+  +--------------+-------------------+
-| L3/L4: BoundRecipientKeyResolver  |  | L2: Link State Machine            |
-|   - Read-only projection for ACKs |  |   - Enforces READY gating         |
-|   - Supplies Ed25519 public key   |  |   - Blocks FrameV2 before READY   |
-+-----------------------------------+  +----------------------------------+
-```
-
-### 20.1 Code Ownership and File Mapping
-
-- **Android:**
-  - `android/mesh/src/main/java/io/godstone/mesh/identity/IdentityBindingV1.kt`
-  - `android/mesh/src/main/java/io/godstone/mesh/identity/VerifiedPeerIdentity.kt`
-  - `android/mesh/src/main/java/io/godstone/mesh/identity/PeerIdentityStore.kt`
-  - `android/mesh/src/main/java/io/godstone/mesh/delivery/BoundRecipientKeyResolver.kt`
-- **iOS:**
-  - `ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/IdentityBindingV1.swift`
-  - `ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/VerifiedPeerIdentity.swift`
-  - `ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/PeerIdentityStore.swift`
-  - `ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/BoundRecipientKeyResolver.swift`
-
-### 20.2 Separation of Concerns
-1. `NoiseSession`: Cryptographic session facts only (no SQLite, no trust policy).
-2. `IdentityBindingValidator`: Pure cryptographic parsing and signature validation.
-3. `PeerIdentityStore`: Durable trust policy and generation state.
-4. `BoundRecipientKeyResolver`: Read-only projection for ACK verification.
-5. `LinkStateMachine`: Transport state progression and `READY` gating.
+1. **Can a pending rotation overwrite the previously accepted pin?**
+   **NO.** The accepted pin fields remain stored and unmodified while a pending candidate exists.
+2. **Can the store represent accepted $K_4/\text{gen }4$ and pending $K_5/\text{gen }5$ simultaneously?**
+   **YES.** The `PeerIdentityRecord` schema contains separate columns for accepted and pending bindings.
+3. **Can a peer first seen at generation 7 be pinned?**
+   **YES.** Any valid `IdentityBindingV1` for an unseen `node_id` establishes the TOFU baseline at the observed generation.
+4. **Can generation increase while static key stays unchanged?**
+   **NO.** `generation > acceptedGeneration` with `static == acceptedStatic` is rejected as a noncanonical advance.
+5. **Can a different Ed25519 key with the same 16-byte `node_id` silently replace the stored signing key?**
+   **NO.** A signing key mismatch on a known `node_id` triggers `NODE_ID_SIGNING_KEY_COLLISION` and is rejected.
+6. **Can a quarantined peer resolve an ACK signing key?**
+   **NO.** `BoundRecipientKeyResolver` returns `null` whenever a pending rotation exists.
+7. **Can an invalid responder receive the initiator's HS3 `IdentityBinding`?**
+   **NO.** The initiator validates HS2 before emitting HS3.
+8. **Can iOS validate HS2 before constructing HS3 under the future API?**
+   **YES.** The future C8.1 API splits `readMessage2` from `writeMessage3`.
+9. **Can Android expose the authenticated remote static from HS2 before `SPLIT`?**
+   **YES.** The future C8.1 API exposes `handshake.remotePublicKey` immediately after reading message 2.
+10. **Does the advertised 4-byte hint become a unique authenticated identity?**
+    **NO.** The hint is only proven consistent with `first4(full_node_id)`. Full 16-byte `node_id` is required everywhere.
+11. **Does C8 redefine panic wipe as an impossible multi-store atomic transaction?**
+    **NO.** It integrates `PeerIdentityStore` into the existing coordinated, resumable ADR-004 wipe model.
+12. **Does `FINDINGS_STATUS` still say "trust architecture unimplemented"?**
+    **NO.** It is updated to reflect that the architecture is frozen under C8.0/C8.0.1 while implementation remains open.
 
 ---
 
-## 21. Future Implementation Acceptance Matrix (C8.1 Target)
-
-When C8.1 is implemented, the test suite must satisfy the following matrix:
+## 21. Future Implementation Acceptance Matrix (Phase C8.1 Target)
 
 | Category | Test Case | Expected Result |
 |---|---|---|
-| **Vectors** | Serialization / Deserialization KAT | Byte-for-byte agreement on 133-byte encoding. |
-| **Vectors** | Signature Preimage KAT | Byte-for-byte agreement on 80-byte `GMP2-IDBIND` preimage. |
+| **Vectors** | Serialization / Deserialization KAT | Exact byte-for-byte agreement on 133-byte structure. |
+| **Vectors** | Signature Preimage KAT | Exact byte-for-byte agreement on 80-byte `GMP2-IDBIND` preimage. |
 | **Vectors** | `node_id` Derivation KAT | Exact `BLAKE2s-128` output matching test fixtures. |
 | **Handshake** | Noise Handshake Message Sizes | HS1: 32 bytes; HS2: 229 bytes; HS3: 197 bytes. |
 | **Validation** | Truncated payload (<133 bytes) | Rejected (`SECURITY_REJECT`). |
@@ -438,14 +545,27 @@ When C8.1 is implemented, the test suite must satisfy the following matrix:
 | **Validation** | Mismatched signing public key | Rejected (`SECURITY_REJECT`). |
 | **Validation** | `binding.staticDhKey != remoteStaticKey` | Rejected (`SECURITY_REJECT`). |
 | **Validation** | `first4(nodeId) != advertisedHint` | Rejected (`SECURITY_REJECT`). |
-| **Trust Policy** | First encounter (unseen `node_id`, `gen=0`) | Accepted $\to$ Persisted as `TOFU_PINNED`. |
-| **Trust Policy** | Reconnect with identical valid binding | Accepted $\to$ Transitions to `READY`. |
-| **Trust Policy** | Valid rotation (`gen > stored_gen`) | Quarantined $\to$ `KEY_CHANGED_QUARANTINED` (No `READY`). |
-| **Trust Policy** | Rollback attempt (`gen < stored_gen`) | Rejected $\to$ Disconnect. |
-| **Trust Policy** | Conflict (`gen == stored_gen`, different key) | Rejected $\to$ Disconnect. |
-| **Resolver** | Query before binding complete | Returns `null`. |
-| **Resolver** | Query for `TOFU_PINNED` peer | Returns correct Ed25519 public key. |
-| **Resolver** | Query for `USER_VERIFIED` peer | Returns correct Ed25519 public key. |
-| **Resolver** | Query for `KEY_CHANGED_QUARANTINED` peer | Returns `null`. |
-| **Resolver** | Query for `REVOKED` peer | Returns `null`. |
+| **Trust Policy** | First encounter (`gen = 0`) | Accepted $\to$ Persisted as `TOFU_PINNED`. |
+| **Trust Policy** | First encounter (`gen = 7`) | Accepted $\to$ Persisted as `TOFU_PINNED` at generation 7. |
+| **Trust Policy** | Known peer same gen + same static | Accepted $\to$ Transitions to `READY`. |
+| **Trust Policy** | Known peer lower gen | Rejected (rollback) $\to$ Disconnect. |
+| **Trust Policy** | Known peer same gen + different static | Rejected (conflict) $\to$ Disconnect. |
+| **Trust Policy** | Known peer higher gen + SAME static | Rejected (noncanonical advance) $\to$ Disconnect. |
+| **Trust Policy** | Known peer higher gen + new static | Quarantined $\to$ Pending candidate persisted, accepted unchanged, resolver null, no `READY`. |
+| **Trust Policy** | Pending exact candidate reconnect | Quarantined $\to$ Idempotent re-encounter, no `READY`. |
+| **Trust Policy** | Pending + old accepted reconnect | Quarantined $\to$ Do not clear pending, no `READY`. |
+| **Trust Policy** | Pending + intermediate gen | Rejected (stale relative to high-water mark) $\to$ Disconnect. |
+| **Trust Policy** | Pending same gen + different static | Rejected (pending conflict) $\to$ Disconnect. |
+| **Trust Policy** | Pending newer valid gen + new key | Quarantined $\to$ Pending candidate advances, accepted unchanged. |
+| **Trust Policy** | Node ID collision with different signing pub | Rejected (`NODE_ID_SIGNING_KEY_COLLISION`) $\to$ Disconnect. |
+| **Resolver** | Active TOFU + no pending | Returns correct Ed25519 public key. |
+| **Resolver** | Active USER_VERIFIED + no pending | Returns correct Ed25519 public key. |
+| **Resolver** | Any pending rotation exists | Returns `null`. |
+| **Resolver** | Revoked identity | Returns `null`. |
+| **Sequencing** | Initiator invalid HS2 binding | HS3 MUST NOT be emitted $\to$ Disconnect. |
+| **Sequencing** | Initiator quarantined HS2 binding | HS3 MUST NOT be emitted $\to$ Quarantine recorded. |
+| **Sequencing** | Initiator valid first-seen HS2 | HS3 emitted $\to$ Handshake completes. |
+| **Driver API** | iOS HS2 inspection | Proves HS2 can be read and inspected before HS3 write. |
+| **Driver API** | Android remote static | Authenticated remote static available after HS2 read before `SPLIT`. |
+| **Panic Wipe** | PeerIdentityStore wipe | Store deleted during wipe; crash-resume idempotency holds. |
 | **Link Gate** | Inbound `FrameV2` before `READY` | Rejected / Discarded. |
