@@ -37,7 +37,7 @@ Each install has distinct long-term keys:
 
 The private keys never appear in frames.
 
-Under ADR-003 (Phase C8.0 / C8.0.1), the transport Noise session and the signing identity
+Under ADR-003 (Phase C8.0 / C8.0.1 / C8.0.2), the transport Noise session and the signing identity
 are cryptographically bound via the canonical 133-byte `IdentityBindingV1` object
 carried inside the encrypted handshake payloads of `Noise_XX`. The binding
 commits:
@@ -113,7 +113,7 @@ an identical full node ID is a cloned-identity security event.
 
 ### 5.1 Identity binding verification and role-specific READY gating
 
-The validation pipeline separates pure cryptographic validation from trust policy:
+The validation pipeline separates pure cryptographic validation from serialized trust transactions:
 
 1. Length == 133 bytes;
 2. Version == `0x01`;
@@ -125,7 +125,7 @@ The validation pipeline separates pure cryptographic validation from trust polic
 8. Derive `node_id = BLAKE2s-128(signing_public_key)`;
 9. Require `binding.static_dh_public_key == NoiseSession.remoteStaticKey`;
 10. Require `advertised_node_hint == first4(node_id)` (proven consistent with `first4(full_node_id)`);
-11. Evaluate `PeerTrustEngine` against durable `PeerIdentityRecord` (handling `TOFU_PINNED`, `USER_VERIFIED`, and dual-state `KEY_CHANGED_QUARANTINED`);
+11. Execute serialized `PeerIdentityRepository.applyValidatedBinding(...)` write transaction (pure `PeerTrustEngine` decision applied to durable `PeerIdentityRecord`);
 12. If accepted/first-seen, construct `VerifiedPeerIdentity`;
 13. Role-specific state progression:
     - **Initiator:** `HS1_SENT -> HS2_DECRYPTED -> REMOTE_STATIC_AUTHENTICATED -> REMOTE_BINDING_VALIDATION -> TRUST_POLICY_CHECK -> [accepted] -> HS3_SENT -> NOISE_ESTABLISHED -> READY`.

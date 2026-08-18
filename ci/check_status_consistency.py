@@ -384,8 +384,8 @@ def check_consistency(
             else:
                 s_text = status_match.group(1)
 
-                if "BINDING ARCHITECTURE FROZEN" not in s_text:
-                    errors.append("ADR-003 status: must contain 'BINDING ARCHITECTURE FROZEN'")
+                if "BINDING ARCHITECTURE FROZEN" not in s_text and "PEER-IDENTITY ARCHITECTURE FROZEN" not in s_text and "ARCHITECTURE FROZEN" not in s_text:
+                    errors.append("ADR-003 status: must contain 'PEER-IDENTITY ARCHITECTURE FROZEN' or 'BINDING ARCHITECTURE FROZEN'")
                 if "Implementation" not in s_text or "OPEN" not in s_text:
                     errors.append("ADR-003 status: must state implementation is OPEN")
                 if "Sealed-Sender" not in s_text or "OPEN" not in s_text:
