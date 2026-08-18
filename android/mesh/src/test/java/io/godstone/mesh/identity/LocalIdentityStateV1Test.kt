@@ -401,9 +401,10 @@ class LocalIdentityStateV1Test {
     @Test
     fun `test 28 staticDhPriv is not public API`() {
         val methods = Identity::class.java.declaredMethods
-        val getter = methods.find { it.name.startsWith("getStaticDhPriv") }
-        assertNotNull("getStaticDhPriv getter must exist", getter)
-        assertFalse("getStaticDhPriv must not be public", java.lang.reflect.Modifier.isPublic(getter!!.modifiers))
+        val unmangledGetter = methods.find { it.name == "getStaticDhPriv" }
+        assertNull("Unmangled public getter getStaticDhPriv() must not exist", unmangledGetter)
+        val internalMangledGetter = methods.find { it.name.startsWith("getStaticDhPriv$") }
+        assertNotNull("Kotlin internal getter getStaticDhPriv$... must exist", internalMangledGetter)
     }
 
     // 29. AndroidWipeArtifacts erase failure leaves journal at REQUESTED
