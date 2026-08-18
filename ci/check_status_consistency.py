@@ -302,6 +302,11 @@ def check_consistency(
                 if "ADR-004 overall: CLOSED" in snapshot_text:
                     errors.append("ADR-004 snapshot: overall must not be CLOSED")
 
+                if "- Persist-before-forward (Android): REPO-VERIFIED / NONSHIPPING" not in snapshot_text:
+                    errors.append("ADR-004 snapshot: must contain '- Persist-before-forward (Android): REPO-VERIFIED / NONSHIPPING'")
+                if "- Persist-before-forward (iOS): REPO-VERIFIED / NONSHIPPING" not in snapshot_text:
+                    errors.append("ADR-004 snapshot: must contain '- Persist-before-forward (iOS): REPO-VERIFIED / NONSHIPPING'")
+
                 if "- Delete-on-authenticated-ACK (Android): REPO-VERIFIED / NONSHIPPING" not in snapshot_text:
                     errors.append("ADR-004 snapshot: must contain '- Delete-on-authenticated-ACK (Android): REPO-VERIFIED / NONSHIPPING'")
                 if "- Delete-on-authenticated-ACK (iOS): REPO-VERIFIED / NONSHIPPING" not in snapshot_text:
@@ -311,6 +316,21 @@ def check_consistency(
                     errors.append("ADR-004 snapshot: must contain '- Terminal-retirement on EXPIRE / CANCEL (Android): REPO-VERIFIED / NONSHIPPING'")
                 if "- Terminal-retirement on EXPIRE / CANCEL (iOS): REPO-VERIFIED / NONSHIPPING" not in snapshot_text:
                     errors.append("ADR-004 snapshot: must contain '- Terminal-retirement on EXPIRE / CANCEL (iOS): REPO-VERIFIED / NONSHIPPING'")
+
+                if "- Durable held-set anti-entropy (Android): REPO-VERIFIED / NONSHIPPING" not in snapshot_text:
+                    errors.append("ADR-004 snapshot: must contain '- Durable held-set anti-entropy (Android): REPO-VERIFIED / NONSHIPPING'")
+                if "- Durable held-set anti-entropy (iOS): REPO-VERIFIED / NONSHIPPING" not in snapshot_text:
+                    errors.append("ADR-004 snapshot: must contain '- Durable held-set anti-entropy (iOS): REPO-VERIFIED / NONSHIPPING'")
+
+                # Still open section requirements
+                if "on-device" not in snapshot_text:
+                    errors.append("ADR-004 snapshot: Still open section must mention on-device verification")
+                if "power-loss" not in snapshot_text and "reboot" not in snapshot_text and "durability" not in snapshot_text:
+                    errors.append("ADR-004 snapshot: Still open section must mention physical reboot/power-loss/device durability")
+                if "radio" not in snapshot_text and "link" not in snapshot_text and "partition" not in snapshot_text:
+                    errors.append("ADR-004 snapshot: Still open section must mention radio/link or partition mobility")
+                if "shipping-path" not in snapshot_text:
+                    errors.append("ADR-004 snapshot: Still open section must mention shipping-path deployment")
 
                 if "C7.4 pending" in snapshot_text or "C7.4 pending" in adr004_text:
                     errors.append("ADR-004 contains stale phrase: 'C7.4 pending'")
@@ -481,9 +501,22 @@ def selftest() -> int:
             failures.append("Mutation 9 (missing C7.4.1/C7.5/C7.5.1 evidence in A-03) was NOT detected")
         f_findings.write_text(FINDINGS_STATUS_PATH.read_text(encoding="utf-8"), encoding="utf-8")
 
-        # Mutation S11: ADR-004 overall marked CLOSED
+        # Mutation S10: Android delete-on-ACK missing NONSHIPPING qualification
         adr004_clean = f_adr004.read_text(encoding="utf-8")
-        s11 = adr004_clean.replace("- ADR-004 overall: OPEN (device evidence pending)", "- ADR-004 overall: CLOSED")
+        s10 = adr004_clean.replace(
+            "- Delete-on-authenticated-ACK (Android): REPO-VERIFIED / NONSHIPPING",
+            "- Delete-on-authenticated-ACK (Android): REPO-VERIFIED"
+        )
+        f_adr004.write_text(s10, encoding="utf-8")
+        errs = check_consistency(f_findings, f_gates, f_tiers, f_manifest, f_status, f_adr004)
+        if any("Delete-on-authenticated-ACK (Android)" in e and "NONSHIPPING" in e for e in errs):
+            passed_mutations += 1
+        else:
+            failures.append("Mutation S10 (missing NONSHIPPING qualification) was NOT detected")
+        f_adr004.write_text(adr004_clean, encoding="utf-8")
+
+        # Mutation S11: ADR-004 overall marked CLOSED
+        s11 = adr004_clean.replace("- ADR-004 overall: OPEN", "- ADR-004 overall: CLOSED")
         f_adr004.write_text(s11, encoding="utf-8")
         errs = check_consistency(f_findings, f_gates, f_tiers, f_manifest, f_status, f_adr004)
         if any("ADR-004" in e and ("CLOSED" in e or "overall" in e) for e in errs):
@@ -533,7 +566,7 @@ def selftest() -> int:
             print(f"::error::selftest failure: {f}")
         return 1
 
-    print(f"check_status_consistency selftest PASSED ({passed_mutations}/13 mutations caught deterministically).")
+    print(f"check_status_consistency selftest PASSED ({passed_mutations}/14 mutations caught deterministically).")
     return 0
 
 

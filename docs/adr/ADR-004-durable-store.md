@@ -6,11 +6,21 @@
 
 ### Current repo-owned closure snapshot
 
-- ADR-004 overall: OPEN (device evidence pending)
+- ADR-004 overall: OPEN
+- Persist-before-forward (Android): REPO-VERIFIED / NONSHIPPING
+- Persist-before-forward (iOS): REPO-VERIFIED / NONSHIPPING
 - Delete-on-authenticated-ACK (Android): REPO-VERIFIED / NONSHIPPING
 - Delete-on-authenticated-ACK (iOS): REPO-VERIFIED / NONSHIPPING
 - Terminal-retirement on EXPIRE / CANCEL (Android): REPO-VERIFIED / NONSHIPPING
 - Terminal-retirement on EXPIRE / CANCEL (iOS): REPO-VERIFIED / NONSHIPPING
+- Durable held-set anti-entropy (Android): REPO-VERIFIED / NONSHIPPING
+- Durable held-set anti-entropy (iOS): REPO-VERIFIED / NONSHIPPING
+
+Still open:
+- on-device persistence / at-rest-encryption proof
+- physical reboot / power-loss / device durability proof
+- disabled radio/link and partition-mobility evidence
+- shipping-path deployment where applicable
 
 Android opens SQLCipher through the current `net.zetetic.database.sqlcipher`
 API and stores its database key behind an Android Keystore-backed preference.
