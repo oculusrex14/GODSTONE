@@ -4,6 +4,14 @@
 
 ## Current state
 
+### Current repo-owned closure snapshot
+
+- ADR-004 overall: OPEN (device evidence pending)
+- Delete-on-authenticated-ACK (Android): REPO-VERIFIED / NONSHIPPING
+- Delete-on-authenticated-ACK (iOS): REPO-VERIFIED / NONSHIPPING
+- Terminal-retirement on EXPIRE / CANCEL (Android): REPO-VERIFIED / NONSHIPPING
+- Terminal-retirement on EXPIRE / CANCEL (iOS): REPO-VERIFIED / NONSHIPPING
+
 Android opens SQLCipher through the current `net.zetetic.database.sqlcipher`
 API and stores its database key behind an Android Keystore-backed preference.
 That closes the V3 plaintext/import defect, but does not finish durability.

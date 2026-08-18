@@ -21,6 +21,7 @@ import java.security.SecureRandom
 import java.sql.DriverManager
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.CyclicBarrier
+import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicReference
 import java.util.concurrent.TimeUnit
 import kotlin.test.assertEquals
@@ -2601,8 +2602,48 @@ class SqliteDeliveryRepositoryTest {
         }
     }
 
+    private class BlockingBeforeTransactionStoreDb(private val underlyingDb: StoreDb) : StoreDb {
+        private val armBlock = AtomicBoolean(false)
+        @Volatile var reachedTransactionEntry: CountDownLatch? = null
+        @Volatile var releaseTransaction: CountDownLatch? = null
+
+        fun armBlockNextTransaction() {
+            reachedTransactionEntry = CountDownLatch(1)
+            releaseTransaction = CountDownLatch(1)
+            armBlock.set(true)
+        }
+
+        override fun insert(frame: FrameV2, receivedFrom: ByteArray, receivedAt: Long): Long =
+            underlyingDb.insert(frame, receivedFrom, receivedAt)
+        override fun readHeld(msgId: ByteArray): io.godstone.mesh.store.StoreRow? = underlyingDb.readHeld(msgId)
+        override fun contains(msgId: ByteArray): Boolean = underlyingDb.contains(msgId)
+        override fun heldBytes(): Long = underlyingDb.heldBytes()
+        override fun evictOldestPrefix(overshoot: Long) = underlyingDb.evictOldestPrefix(overshoot)
+        override fun forEachRowOrderedByPriority(visit: (io.godstone.mesh.store.StoreRow) -> Boolean) =
+            underlyingDb.forEachRowOrderedByPriority(visit)
+        override fun forEachMsgId(visit: (ByteArray) -> Boolean) = underlyingDb.forEachMsgId(visit)
+
+        override fun <T> inTransaction(block: (StoreDb) -> T): T {
+            if (armBlock.compareAndSet(true, false)) {
+                reachedTransactionEntry?.countDown()
+                releaseTransaction?.await(10, TimeUnit.SECONDS)
+            }
+            return underlyingDb.inTransaction { block(this) }
+        }
+
+        override fun readDelivery(msgId: ByteArray): DeliveryRow? = underlyingDb.readDelivery(msgId)
+        override fun insertDelivery(
+            msgId: ByteArray, stateOrdinal: Int, ackModeOrdinal: Int, expectedRecipient: ByteArray?,
+        ): Boolean = underlyingDb.insertDelivery(msgId, stateOrdinal, ackModeOrdinal, expectedRecipient)
+        override fun execDeliveryUpdate(sql: String, bytesArgs: Array<ByteArray?>): Int =
+            underlyingDb.execDeliveryUpdate(sql, bytesArgs)
+        override fun deleteHeld(msgId: ByteArray): Int = underlyingDb.deleteHeld(msgId)
+        override fun execRawSql(sql: String) = underlyingDb.execRawSql(sql)
+        override fun close() = underlyingDb.close()
+    }
+
     @Test
-    fun `C7_5 ACK wins CANCEL loses`() = runBlocking {
+    fun `C7_5 ACK committed then CANCEL zero-row classification`() = runBlocking {
         val file = Files.createTempFile("godstone-delivery", ".db").toFile()
         try {
             val db = JdbcStoreDb(file)
@@ -2638,7 +2679,7 @@ class SqliteDeliveryRepositoryTest {
     }
 
     @Test
-    fun `C7_5 ACK wins EXPIRE loses`() = runBlocking {
+    fun `C7_5 ACK committed then EXPIRE zero-row classification`() = runBlocking {
         val file = Files.createTempFile("godstone-delivery", ".db").toFile()
         try {
             val db = JdbcStoreDb(file)
@@ -2668,6 +2709,112 @@ class SqliteDeliveryRepositoryTest {
             assertEquals(DeliveryState.ACKNOWLEDGED_BY_RECIPIENT, stateOf(tracker, mid))
             assertFalse(db.contains(mid), "held frame remains absent")
             db.close()
+        } finally {
+            file.delete()
+        }
+    }
+
+    @Test
+    fun `C7_5 ACK wins concurrent in-flight CANCEL`() = runBlocking {
+        val file = Files.createTempFile("godstone-delivery", ".db").toFile()
+        try {
+            val realDb = JdbcStoreDb(file)
+            val wrapper = BlockingBeforeTransactionStoreDb(realDb)
+            val store = SqliteMessageStore(realDb, maxBytes = 4096L)
+            val repo = SqliteDeliveryRepository(wrapper)
+            val (pubA, privA) = realKeypair()
+            val tracker = DeliveryTracker(repo, Ed25519AckAuthenticator(SingleRecipientResolver(nodeA(), pubA)))
+            val mid = msgId(201)
+            val frame = directFrame(21, payloadSize = 64, msgIdOverride = mid)
+
+            // Arrange real production C6.6 HANDED state
+            assertEquals(OutboundEnqueueResult.Created(frame),
+                store.enqueueDirectOutbound(frame, expectedRecipient = nodeA(), localOriginNodeId = localNode(1)))
+            assertEquals(TransitionResult.Applied, tracker.markHandedToRelay(mid))
+            assertEquals(DeliveryState.HANDED_TO_RELAY, stateOf(tracker, mid))
+            assertTrue(realDb.contains(mid))
+
+            // Arm wrapper before starting CANCEL thread
+            wrapper.armBlockNextTransaction()
+            val cancelRes = AtomicReference<TransitionResult?>()
+            val cancelThread = Thread {
+                cancelRes.set(tracker.cancel(mid))
+            }
+            cancelThread.start()
+
+            // Wait until CANCEL has reached entry point before beginning its SQLite transaction
+            assertTrue(wrapper.reachedTransactionEntry!!.await(5, TimeUnit.SECONDS),
+                "CANCEL must reach transaction entry")
+
+            // Run a REAL authenticated ACK while CANCEL is already in flight
+            val ack = AckFrame.build(mid, privA, nodeA(), routingTag)
+            assertEquals(AckResult.Applied, tracker.acknowledge(mid, ack))
+            assertEquals(DeliveryState.ACKNOWLEDGED_BY_RECIPIENT, stateOf(tracker, mid))
+            assertFalse(realDb.contains(mid), "held frame deleted by winning ACK")
+
+            // Release CANCEL transaction
+            wrapper.releaseTransaction!!.countDown()
+            cancelThread.join(5000)
+
+            // CANCEL proceeds: guarded CAS sees 0 rows, performs zero held deletion, returns RejectedState
+            assertEquals(TransitionResult.RejectedState, cancelRes.get(),
+                "in-flight CANCEL losing to winning ACK must return RejectedState")
+            assertEquals(DeliveryState.ACKNOWLEDGED_BY_RECIPIENT, stateOf(tracker, mid))
+            assertFalse(realDb.contains(mid), "held frame remains absent")
+            realDb.close()
+        } finally {
+            file.delete()
+        }
+    }
+
+    @Test
+    fun `C7_5 ACK wins concurrent in-flight EXPIRE`() = runBlocking {
+        val file = Files.createTempFile("godstone-delivery", ".db").toFile()
+        try {
+            val realDb = JdbcStoreDb(file)
+            val wrapper = BlockingBeforeTransactionStoreDb(realDb)
+            val store = SqliteMessageStore(realDb, maxBytes = 4096L)
+            val repo = SqliteDeliveryRepository(wrapper)
+            val (pubA, privA) = realKeypair()
+            val tracker = DeliveryTracker(repo, Ed25519AckAuthenticator(SingleRecipientResolver(nodeA(), pubA)))
+            val mid = msgId(202)
+            val frame = directFrame(22, payloadSize = 64, msgIdOverride = mid)
+
+            // Arrange real production C6.6 HANDED state
+            assertEquals(OutboundEnqueueResult.Created(frame),
+                store.enqueueDirectOutbound(frame, expectedRecipient = nodeA(), localOriginNodeId = localNode(1)))
+            assertEquals(TransitionResult.Applied, tracker.markHandedToRelay(mid))
+            assertEquals(DeliveryState.HANDED_TO_RELAY, stateOf(tracker, mid))
+            assertTrue(realDb.contains(mid))
+
+            // Arm wrapper before starting EXPIRE thread
+            wrapper.armBlockNextTransaction()
+            val expireRes = AtomicReference<TransitionResult?>()
+            val expireThread = Thread {
+                expireRes.set(tracker.expire(mid))
+            }
+            expireThread.start()
+
+            // Wait until EXPIRE has reached entry point before beginning its SQLite transaction
+            assertTrue(wrapper.reachedTransactionEntry!!.await(5, TimeUnit.SECONDS),
+                "EXPIRE must reach transaction entry")
+
+            // Run a REAL authenticated ACK while EXPIRE is already in flight
+            val ack = AckFrame.build(mid, privA, nodeA(), routingTag)
+            assertEquals(AckResult.Applied, tracker.acknowledge(mid, ack))
+            assertEquals(DeliveryState.ACKNOWLEDGED_BY_RECIPIENT, stateOf(tracker, mid))
+            assertFalse(realDb.contains(mid), "held frame deleted by winning ACK")
+
+            // Release EXPIRE transaction
+            wrapper.releaseTransaction!!.countDown()
+            expireThread.join(5000)
+
+            // EXPIRE proceeds: guarded CAS sees 0 rows, performs zero held deletion, returns RejectedState
+            assertEquals(TransitionResult.RejectedState, expireRes.get(),
+                "in-flight EXPIRE losing to winning ACK must return RejectedState")
+            assertEquals(DeliveryState.ACKNOWLEDGED_BY_RECIPIENT, stateOf(tracker, mid))
+            assertFalse(realDb.contains(mid), "held frame remains absent")
+            realDb.close()
         } finally {
             file.delete()
         }

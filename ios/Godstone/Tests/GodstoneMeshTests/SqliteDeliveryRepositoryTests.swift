@@ -2042,7 +2042,63 @@ final class SqliteDeliveryRepositoryTests: XCTestCase {
         XCTAssertFalse(store.allHeldMsgIds().contains(mid))
     }
 
-    func testC7_5_ACK_wins_CANCEL_loses() throws {
+    private final class BlockingTerminalDeliveryStore: DeliveryStore {
+        private let realStore: SqliteMessageStore
+        private var armBlock: Bool = false
+        var terminalReached: DispatchSemaphore?
+        var terminalRelease: DispatchSemaphore?
+        private let lock = NSLock()
+
+        init(_ realStore: SqliteMessageStore) {
+            self.realStore = realStore
+        }
+
+        func armBlockNextTerminal() {
+            lock.lock()
+            defer { lock.unlock() }
+            terminalReached = DispatchSemaphore(value: 0)
+            terminalRelease = DispatchSemaphore(value: 0)
+            armBlock = true
+        }
+
+        func readDelivery(_ msgId: Data) throws -> DeliveryRow? {
+            try realStore.readDelivery(msgId)
+        }
+
+        func insertDelivery(_ msgId: Data, stateOrdinal: Int32, ackModeOrdinal: Int32, expectedRecipient: Data?) throws -> Bool {
+            try realStore.insertDelivery(msgId, stateOrdinal: stateOrdinal, ackModeOrdinal: ackModeOrdinal, expectedRecipient: expectedRecipient)
+        }
+
+        func execDeliveryUpdate(_ sql: String, bytesArgs: [Data?]) throws -> Int {
+            try realStore.execDeliveryUpdate(sql, bytesArgs: bytesArgs)
+        }
+
+        func atomicAcknowledgeAndRetire(guardedAckSql: String, msgId: Data, expectedRecipient: Data) throws -> AckRetireMutationResult {
+            try realStore.atomicAcknowledgeAndRetire(guardedAckSql: guardedAckSql, msgId: msgId, expectedRecipient: expectedRecipient)
+        }
+
+        func atomicTransitionAndRetire(guardedTransitionSql: String, msgId: Data) throws -> TerminalRetireMutationResult {
+            var shouldBlock = false
+            var reached: DispatchSemaphore?
+            var release: DispatchSemaphore?
+            lock.lock()
+            if armBlock {
+                armBlock = false
+                shouldBlock = true
+                reached = terminalReached
+                release = terminalRelease
+            }
+            lock.unlock()
+
+            if shouldBlock {
+                reached?.signal()
+                _ = release?.wait(timeout: .now() + 10.0)
+            }
+            return try realStore.atomicTransitionAndRetire(guardedTransitionSql: guardedTransitionSql, msgId: msgId)
+        }
+    }
+
+    func testC7_5_ACK_committed_then_CANCEL_zero_row_classification() throws {
         let url = URL(fileURLWithPath: NSTemporaryDirectory()).appendingPathComponent("godstone-d-\(UUID().uuidString).db")
         defer { try? FileManager.default.removeItem(at: url) }
         let store = SqliteMessageStore(url: url, maxBytes: 4096, fileProtection: .complete)
@@ -2069,7 +2125,7 @@ final class SqliteDeliveryRepositoryTests: XCTestCase {
         XCTAssertFalse(store.allHeldMsgIds().contains(mid), "held frame remains absent")
     }
 
-    func testC7_5_ACK_wins_EXPIRE_loses() throws {
+    func testC7_5_ACK_committed_then_EXPIRE_zero_row_classification() throws {
         let url = URL(fileURLWithPath: NSTemporaryDirectory()).appendingPathComponent("godstone-d-\(UUID().uuidString).db")
         defer { try? FileManager.default.removeItem(at: url) }
         let store = SqliteMessageStore(url: url, maxBytes: 4096, fileProtection: .complete)
@@ -2092,6 +2148,102 @@ final class SqliteDeliveryRepositoryTests: XCTestCase {
 
         let expireRes = tracker.expire(mid)
         XCTAssertEqual(TransitionResult.rejectedState, expireRes, "EXPIRE after ACK must be rejectedState")
+        XCTAssertEqual(DeliveryState.acknowledgedByRecipient, stateOf(tracker, mid))
+        XCTAssertFalse(store.allHeldMsgIds().contains(mid), "held frame remains absent")
+    }
+
+    func testC7_5_ACK_wins_concurrent_in_flight_CANCEL() throws {
+        let url = URL(fileURLWithPath: NSTemporaryDirectory()).appendingPathComponent("godstone-d-\(UUID().uuidString).db")
+        defer { try? FileManager.default.removeItem(at: url) }
+        let store = SqliteMessageStore(url: url, maxBytes: 4096, fileProtection: .complete)
+        let blockingStore = BlockingTerminalDeliveryStore(store)
+        let repo = SqliteDeliveryRepository(blockingStore as DeliveryStore)
+        let (pubA, privA) = realKeypair()
+        let tracker = DeliveryTracker(repo: repo, authenticator: Ed25519AckAuthenticator(resolver: SingleRecipientResolver(nodeA(), pubA)))
+        let mid = msgId(201)
+        let frame = directFrame(21, payloadSize: 64, msgIdOverride: mid)
+
+        // Arrange real production C6.6 HANDED state
+        XCTAssertEqual(.created(frame),
+                       store.enqueueDirectOutbound(frame, expectedRecipient: nodeA(), localOriginNodeId: localNode(1)))
+        XCTAssertEqual(.applied, tracker.markHandedToRelay(mid))
+        XCTAssertEqual(.handedToRelay, stateOf(tracker, mid))
+        XCTAssertTrue(store.allHeldMsgIds().contains(mid))
+
+        // Arm wrapper before starting CANCEL thread
+        blockingStore.armBlockNextTerminal()
+        let exp = expectation(description: "cancel")
+        let box = TransitionResultBox()
+        DispatchQueue.global().async {
+            box.value = tracker.cancel(mid)
+            exp.fulfill()
+        }
+
+        // Wait until CANCEL has reached wrapper barrier before beginning SQLite transaction
+        XCTAssertEqual(blockingStore.terminalReached?.wait(timeout: .now() + 5.0), .success,
+                       "CANCEL must reach terminal barrier")
+
+        // Run a REAL authenticated ACK while CANCEL is already in flight
+        let ack = try AckFrame.build(msgId: mid, recipientSigningPrivKey: privA, recipientNodeId: nodeA(), routingTag: routingTag)
+        XCTAssertEqual(AckResult.applied, tracker.acknowledge(mid, ack))
+        XCTAssertEqual(DeliveryState.acknowledgedByRecipient, stateOf(tracker, mid))
+        XCTAssertFalse(store.allHeldMsgIds().contains(mid), "held frame deleted by winning ACK")
+
+        // Release CANCEL transaction
+        blockingStore.terminalRelease?.signal()
+        wait(for: [exp], timeout: 5.0)
+
+        // CANCEL proceeds: guarded CAS sees 0 rows, performs zero held deletion, returns rejectedState
+        XCTAssertEqual(TransitionResult.rejectedState, box.value,
+                       "in-flight CANCEL losing to winning ACK must return rejectedState")
+        XCTAssertEqual(DeliveryState.acknowledgedByRecipient, stateOf(tracker, mid))
+        XCTAssertFalse(store.allHeldMsgIds().contains(mid), "held frame remains absent")
+    }
+
+    func testC7_5_ACK_wins_concurrent_in_flight_EXPIRE() throws {
+        let url = URL(fileURLWithPath: NSTemporaryDirectory()).appendingPathComponent("godstone-d-\(UUID().uuidString).db")
+        defer { try? FileManager.default.removeItem(at: url) }
+        let store = SqliteMessageStore(url: url, maxBytes: 4096, fileProtection: .complete)
+        let blockingStore = BlockingTerminalDeliveryStore(store)
+        let repo = SqliteDeliveryRepository(blockingStore as DeliveryStore)
+        let (pubA, privA) = realKeypair()
+        let tracker = DeliveryTracker(repo: repo, authenticator: Ed25519AckAuthenticator(resolver: SingleRecipientResolver(nodeA(), pubA)))
+        let mid = msgId(202)
+        let frame = directFrame(22, payloadSize: 64, msgIdOverride: mid)
+
+        // Arrange real production C6.6 HANDED state
+        XCTAssertEqual(.created(frame),
+                       store.enqueueDirectOutbound(frame, expectedRecipient: nodeA(), localOriginNodeId: localNode(1)))
+        XCTAssertEqual(.applied, tracker.markHandedToRelay(mid))
+        XCTAssertEqual(.handedToRelay, stateOf(tracker, mid))
+        XCTAssertTrue(store.allHeldMsgIds().contains(mid))
+
+        // Arm wrapper before starting EXPIRE thread
+        blockingStore.armBlockNextTerminal()
+        let exp = expectation(description: "expire")
+        let box = TransitionResultBox()
+        DispatchQueue.global().async {
+            box.value = tracker.expire(mid)
+            exp.fulfill()
+        }
+
+        // Wait until EXPIRE has reached wrapper barrier before beginning SQLite transaction
+        XCTAssertEqual(blockingStore.terminalReached?.wait(timeout: .now() + 5.0), .success,
+                       "EXPIRE must reach terminal barrier")
+
+        // Run a REAL authenticated ACK while EXPIRE is already in flight
+        let ack = try AckFrame.build(msgId: mid, recipientSigningPrivKey: privA, recipientNodeId: nodeA(), routingTag: routingTag)
+        XCTAssertEqual(AckResult.applied, tracker.acknowledge(mid, ack))
+        XCTAssertEqual(DeliveryState.acknowledgedByRecipient, stateOf(tracker, mid))
+        XCTAssertFalse(store.allHeldMsgIds().contains(mid), "held frame deleted by winning ACK")
+
+        // Release EXPIRE transaction
+        blockingStore.terminalRelease?.signal()
+        wait(for: [exp], timeout: 5.0)
+
+        // EXPIRE proceeds: guarded CAS sees 0 rows, performs zero held deletion, returns rejectedState
+        XCTAssertEqual(TransitionResult.rejectedState, box.value,
+                       "in-flight EXPIRE losing to winning ACK must return rejectedState")
         XCTAssertEqual(DeliveryState.acknowledgedByRecipient, stateOf(tracker, mid))
         XCTAssertFalse(store.allHeldMsgIds().contains(mid), "held frame remains absent")
     }

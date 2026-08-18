@@ -284,11 +284,17 @@ CONTROLS: list[tuple[str, str, str]] = [
      "C7_5 held delete SQL failure",
      "Android C7.5 held delete SQL failure"),
     ("android/mesh/src/test/java/io/godstone/mesh/delivery/SqliteDeliveryRepositoryTest.kt",
-     "C7_5 ACK wins CANCEL loses",
-     "Android C7.5 ACK wins CANCEL loses"),
+     "C7_5 ACK committed then CANCEL zero-row classification",
+     "Android C7.5 ACK committed then CANCEL zero-row classification"),
     ("android/mesh/src/test/java/io/godstone/mesh/delivery/SqliteDeliveryRepositoryTest.kt",
-     "C7_5 ACK wins EXPIRE loses",
-     "Android C7.5 ACK wins EXPIRE loses"),
+     "C7_5 ACK committed then EXPIRE zero-row classification",
+     "Android C7.5 ACK committed then EXPIRE zero-row classification"),
+    ("android/mesh/src/test/java/io/godstone/mesh/delivery/SqliteDeliveryRepositoryTest.kt",
+     "C7_5 ACK wins concurrent in-flight CANCEL",
+     "Android C7.5 ACK wins concurrent in-flight CANCEL"),
+    ("android/mesh/src/test/java/io/godstone/mesh/delivery/SqliteDeliveryRepositoryTest.kt",
+     "C7_5 ACK wins concurrent in-flight EXPIRE",
+     "Android C7.5 ACK wins concurrent in-flight EXPIRE"),
     ("android/mesh/src/test/java/io/godstone/mesh/delivery/SqliteDeliveryRepositoryTest.kt",
      "C7_5 CANCEL wins ACK loses",
      "Android C7.5 CANCEL wins ACK loses"),
@@ -345,11 +351,17 @@ CONTROLS: list[tuple[str, str, str]] = [
      "testC7_5_held_delete_SQL_failure",
      "iOS C7.5 held delete SQL failure"),
     ("ios/Godstone/Tests/GodstoneMeshTests/SqliteDeliveryRepositoryTests.swift",
-     "testC7_5_ACK_wins_CANCEL_loses",
-     "iOS C7.5 ACK wins CANCEL loses"),
+     "testC7_5_ACK_committed_then_CANCEL_zero_row_classification",
+     "iOS C7.5 ACK committed then CANCEL zero-row classification"),
     ("ios/Godstone/Tests/GodstoneMeshTests/SqliteDeliveryRepositoryTests.swift",
-     "testC7_5_ACK_wins_EXPIRE_loses",
-     "iOS C7.5 ACK wins EXPIRE loses"),
+     "testC7_5_ACK_committed_then_EXPIRE_zero_row_classification",
+     "iOS C7.5 ACK committed then EXPIRE zero-row classification"),
+    ("ios/Godstone/Tests/GodstoneMeshTests/SqliteDeliveryRepositoryTests.swift",
+     "testC7_5_ACK_wins_concurrent_in_flight_CANCEL",
+     "iOS C7.5 ACK wins concurrent in-flight CANCEL"),
+    ("ios/Godstone/Tests/GodstoneMeshTests/SqliteDeliveryRepositoryTests.swift",
+     "testC7_5_ACK_wins_concurrent_in_flight_EXPIRE",
+     "iOS C7.5 ACK wins concurrent in-flight EXPIRE"),
     ("ios/Godstone/Tests/GodstoneMeshTests/SqliteDeliveryRepositoryTests.swift",
      "testC7_5_CANCEL_wins_ACK_loses",
      "iOS C7.5 CANCEL wins ACK loses"),
@@ -710,7 +722,7 @@ def scan(root: Path) -> list[str]:
             if "deleteHeld" in clean_so:
                 missing.append("android/mesh/src/main/java/io/godstone/mesh/delivery/SqliteDeliveryRepository.kt: executeStateOnlyTransition must not call deleteHeld")
 
-    # 8. Structural check: iOS SqliteDeliveryRepository transition routes .retireAtomically to atomicTransitionAndRetire
+    # 8. Structural check: iOS SqliteDeliveryRepository transition routes .retireAtomically to atomicTransitionAndRetire and .retain to execDeliveryUpdate
     if ios_sqlite_repo.is_file():
         text = ios_sqlite_repo.read_text(encoding="utf-8", errors="replace")
         fn_body = extract_braced_function(text, "func transitionWithFault(")
@@ -720,13 +732,34 @@ def scan(root: Path) -> list[str]:
             missing.append("ios/Godstone/Sources/GodstoneMesh/SqliteDeliveryRepository.swift: transitionWithFault missing or unextractable")
         else:
             clean_fn = strip_comments(fn_body)
-            if not (
-                ".atomicTransitionAndRetire(" in clean_fn
-                or "store.atomicTransitionAndRetire(" in clean_fn
-                or "sms.atomicTransitionAndRetireWithFault(" in clean_fn
-                or "atomicTransitionAndRetire(" in clean_fn
-            ):
-                missing.append("ios/Godstone/Sources/GodstoneMesh/SqliteDeliveryRepository.swift: transitionWithFault must route .retireAtomically through atomicTransitionAndRetire")
+            if "switch spec.heldDisposition" not in clean_fn and "switch disposition" not in clean_fn:
+                missing.append("ios/Godstone/Sources/GodstoneMesh/SqliteDeliveryRepository.swift: transitionWithFault must switch on spec.heldDisposition")
+            else:
+                retain_matches = list(re.finditer(r"case\s+\.retain\s*:", clean_fn))
+                retire_matches = list(re.finditer(r"case\s+\.retireAtomically\s*:", clean_fn))
+                if len(retain_matches) != 1 or len(retire_matches) != 1:
+                    missing.append("ios/Godstone/Sources/GodstoneMesh/SqliteDeliveryRepository.swift: transitionWithFault switch must contain exactly one 'case .retain:' and one 'case .retireAtomically:'")
+                else:
+                    retain_start = retain_matches[0].start()
+                    retire_start = retire_matches[0].start()
+                    if retain_start < retire_start:
+                        retain_region = clean_fn[retain_start:retire_start]
+                        retire_region = clean_fn[retire_start:]
+                    else:
+                        retire_region = clean_fn[retire_start:retain_start]
+                        retain_region = clean_fn[retain_start:]
+
+                    if "atomicTransitionAndRetire(" in retain_region or "atomicTransitionAndRetireWithFault(" in retain_region:
+                        missing.append("ios/Godstone/Sources/GodstoneMesh/SqliteDeliveryRepository.swift: retain region must not call atomicTransitionAndRetire")
+                    if "execDeliveryUpdate" not in retain_region:
+                        missing.append("ios/Godstone/Sources/GodstoneMesh/SqliteDeliveryRepository.swift: retain region must call execDeliveryUpdate")
+                    if not (
+                        ".atomicTransitionAndRetire(" in retire_region
+                        or "store.atomicTransitionAndRetire(" in retire_region
+                        or "sms.atomicTransitionAndRetireWithFault(" in retire_region
+                        or "atomicTransitionAndRetire(" in retire_region
+                    ):
+                        missing.append("ios/Godstone/Sources/GodstoneMesh/SqliteDeliveryRepository.swift: retireAtomically region must route through atomicTransitionAndRetire")
 
     # 9. Structural check: iOS MessageStore atomicTransitionAndRetireWithFault region + withTransaction closure containment
     if ios_message_store.is_file():
@@ -753,6 +786,49 @@ def scan(root: Path) -> list[str]:
                 if prep_match and pos_del != -1:
                     if not (prep_match.start() < pos_del):
                         missing.append("ios/Godstone/Sources/GodstoneMesh/MessageStore.swift: atomicTransitionAndRetireWithFault operations out of order (require guardedTransitionSql preparation before deleteHeldSql inside withTransaction closure)")
+
+    # 10. Structural check: Android transitionSpec explicit policy
+    if android_sqlite_repo.is_file():
+        text = android_sqlite_repo.read_text(encoding="utf-8", errors="replace")
+        fn_ts = extract_braced_region_after(text, "fun transitionSpec(")
+        if fn_ts is None:
+            fn_ts = extract_braced_function(text, "fun transitionSpec(")
+        if fn_ts is None:
+            missing.append("android/mesh/src/main/java/io/godstone/mesh/delivery/SqliteDeliveryRepository.kt: transitionSpec missing or unextractable")
+        else:
+            clean_ts = strip_comments(fn_ts)
+            if "when (transition)" not in text and "when(transition)" not in text:
+                missing.append("android/mesh/src/main/java/io/godstone/mesh/delivery/SqliteDeliveryRepository.kt: transitionSpec must use when (transition)")
+            if "else ->" in clean_ts:
+                missing.append("android/mesh/src/main/java/io/godstone/mesh/delivery/SqliteDeliveryRepository.kt: transitionSpec must be exhaustive without else ->")
+            if "DeliveryTransition.MARK_HANDED" not in clean_ts or "HeldDisposition.RETAIN" not in clean_ts:
+                missing.append("android/mesh/src/main/java/io/godstone/mesh/delivery/SqliteDeliveryRepository.kt: transitionSpec must map MARK_HANDED to RETAIN")
+            if "DeliveryTransition.EXPIRE" not in clean_ts or "HeldDisposition.RETIRE_ATOMICALLY" not in clean_ts:
+                missing.append("android/mesh/src/main/java/io/godstone/mesh/delivery/SqliteDeliveryRepository.kt: transitionSpec must map EXPIRE to RETIRE_ATOMICALLY")
+            if "DeliveryTransition.CANCEL" not in clean_ts or "HeldDisposition.RETIRE_ATOMICALLY" not in clean_ts:
+                missing.append("android/mesh/src/main/java/io/godstone/mesh/delivery/SqliteDeliveryRepository.kt: transitionSpec must map CANCEL to RETIRE_ATOMICALLY")
+
+    # 11. Structural check: iOS transitionSpec explicit policy
+    if ios_sqlite_repo.is_file():
+        text = ios_sqlite_repo.read_text(encoding="utf-8", errors="replace")
+        fn_ts = extract_braced_function(text, "func transitionSpec(")
+        if fn_ts is None:
+            missing.append("ios/Godstone/Sources/GodstoneMesh/SqliteDeliveryRepository.swift: transitionSpec missing or unextractable")
+        else:
+            clean_ts = strip_comments(fn_ts)
+            if "switch transition" not in clean_ts:
+                missing.append("ios/Godstone/Sources/GodstoneMesh/SqliteDeliveryRepository.swift: transitionSpec must use switch transition")
+            if "default:" in clean_ts:
+                missing.append("ios/Godstone/Sources/GodstoneMesh/SqliteDeliveryRepository.swift: transitionSpec must be exhaustive without default:")
+            m_mark = re.search(r"case\s+\.markHanded\s*:(.*?)(case|\})", clean_ts, re.DOTALL)
+            m_exp = re.search(r"case\s+\.expire\s*:(.*?)(case|\})", clean_ts, re.DOTALL)
+            m_can = re.search(r"case\s+\.cancel\s*:(.*?)(case|\})", clean_ts, re.DOTALL)
+            if not m_mark or ".retain" not in m_mark.group(1):
+                missing.append("ios/Godstone/Sources/GodstoneMesh/SqliteDeliveryRepository.swift: transitionSpec must map .markHanded to .retain")
+            if not m_exp or ".retireAtomically" not in m_exp.group(1):
+                missing.append("ios/Godstone/Sources/GodstoneMesh/SqliteDeliveryRepository.swift: transitionSpec must map .expire to .retireAtomically")
+            if not m_can or ".retireAtomically" not in m_can.group(1):
+                missing.append("ios/Godstone/Sources/GodstoneMesh/SqliteDeliveryRepository.swift: transitionSpec must map .cancel to .retireAtomically")
 
     return missing
 
@@ -828,6 +904,11 @@ def _build_synthetic_positive_tree(root: Path) -> None:
     android_sdr.parent.mkdir(parents=True, exist_ok=True)
     android_sdr.write_text(
         "package io.godstone.mesh.delivery\n"
+        "internal fun transitionSpec(transition: DeliveryTransition): TransitionSpec = when (transition) {\n"
+        "    DeliveryTransition.MARK_HANDED -> TransitionSpec(target = DeliveryState.HANDED_TO_RELAY, validFroms = setOf(DeliveryState.QUEUED_DURABLY), heldDisposition = HeldDisposition.RETAIN)\n"
+        "    DeliveryTransition.EXPIRE -> TransitionSpec(target = DeliveryState.EXPIRED, validFroms = setOf(DeliveryState.QUEUED_DURABLY, DeliveryState.HANDED_TO_RELAY), heldDisposition = HeldDisposition.RETIRE_ATOMICALLY)\n"
+        "    DeliveryTransition.CANCEL -> TransitionSpec(target = DeliveryState.CANCELLED_LOCALLY, validFroms = setOf(DeliveryState.QUEUED_DURABLY, DeliveryState.HANDED_TO_RELAY), heldDisposition = HeldDisposition.RETIRE_ATOMICALLY)\n"
+        "}\n"
         "class SqliteDeliveryRepository {\n"
         "    override fun acknowledgeBoundAndRetire(msgId: ByteArray, expectedRecipient: ByteArray): AckResult {\n"
         "        return db.inTransaction { tx ->\n"
@@ -866,12 +947,23 @@ def _build_synthetic_positive_tree(root: Path) -> None:
     ios_sdr.parent.mkdir(parents=True, exist_ok=True)
     ios_sdr.write_text(
         "public class SqliteDeliveryRepository {\n"
+        "    internal func transitionSpec(_ transition: DeliveryTransition) -> TransitionSpec {\n"
+        "        switch transition {\n"
+        "        case .markHanded:\n"
+        "            return TransitionSpec(target: .handedToRelay, validFroms: [.queuedDurably], heldDisposition: .retain)\n"
+        "        case .expire:\n"
+        "            return TransitionSpec(target: .expired, validFroms: [.queuedDurably, .handedToRelay], heldDisposition: .retireAtomically)\n"
+        "        case .cancel:\n"
+        "            return TransitionSpec(target: .cancelledLocally, validFroms: [.queuedDurably, .handedToRelay], heldDisposition: .retireAtomically)\n"
+        "        }\n"
+        "    }\n"
         "    public func acknowledgeBoundAndRetire(_ msgId: Data, expectedRecipient: Data) -> AckResult {\n"
         "        return try store.atomicAcknowledgeAndRetire(guardedAckSql: sql, msgId: msgId, expectedRecipient: expectedRecipient)\n"
         "    }\n"
         "    internal func transitionWithFault(_ msgId: Data, _ transition: DeliveryTransition, fault: ((String, OpaquePointer) throws -> Void)? = nil) -> TransitionResult {\n"
         "        switch spec.heldDisposition {\n"
         "        case .retain:\n"
+        "            let affected = try store.execDeliveryUpdate(sql, bytesArgs: [msgId])\n"
         "            return .applied\n"
         "        case .retireAtomically:\n"
         "            return try store.atomicTransitionAndRetire(guardedTransitionSql: sql, msgId: msgId)\n"
@@ -947,6 +1039,11 @@ def selftest() -> int:
         android_sdr = root / "android/mesh/src/main/java/io/godstone/mesh/delivery/SqliteDeliveryRepository.kt"
         android_sdr.write_text(
             "package io.godstone.mesh.delivery\n"
+            "internal fun transitionSpec(transition: DeliveryTransition): TransitionSpec = when (transition) {\n"
+            "    DeliveryTransition.MARK_HANDED -> TransitionSpec(target = DeliveryState.HANDED_TO_RELAY, validFroms = setOf(DeliveryState.QUEUED_DURABLY), heldDisposition = HeldDisposition.RETAIN)\n"
+            "    DeliveryTransition.EXPIRE -> TransitionSpec(target = DeliveryState.EXPIRED, validFroms = setOf(DeliveryState.QUEUED_DURABLY, DeliveryState.HANDED_TO_RELAY), heldDisposition = HeldDisposition.RETIRE_ATOMICALLY)\n"
+            "    DeliveryTransition.CANCEL -> TransitionSpec(target = DeliveryState.CANCELLED_LOCALLY, validFroms = setOf(DeliveryState.QUEUED_DURABLY, DeliveryState.HANDED_TO_RELAY), heldDisposition = HeldDisposition.RETIRE_ATOMICALLY)\n"
+            "}\n"
             "class SqliteDeliveryRepository {\n"
             "    override fun acknowledgeBoundAndRetire(msgId: ByteArray, expectedRecipient: ByteArray): AckResult {\n"
             "        val affected = tx.execDeliveryUpdate(sql, bindArgs)\n"
@@ -983,6 +1080,11 @@ def selftest() -> int:
         android_sdr = root / "android/mesh/src/main/java/io/godstone/mesh/delivery/SqliteDeliveryRepository.kt"
         android_sdr.write_text(
             "package io.godstone.mesh.delivery\n"
+            "internal fun transitionSpec(transition: DeliveryTransition): TransitionSpec = when (transition) {\n"
+            "    DeliveryTransition.MARK_HANDED -> TransitionSpec(target = DeliveryState.HANDED_TO_RELAY, validFroms = setOf(DeliveryState.QUEUED_DURABLY), heldDisposition = HeldDisposition.RETAIN)\n"
+            "    DeliveryTransition.EXPIRE -> TransitionSpec(target = DeliveryState.EXPIRED, validFroms = setOf(DeliveryState.QUEUED_DURABLY, DeliveryState.HANDED_TO_RELAY), heldDisposition = HeldDisposition.RETIRE_ATOMICALLY)\n"
+            "    DeliveryTransition.CANCEL -> TransitionSpec(target = DeliveryState.CANCELLED_LOCALLY, validFroms = setOf(DeliveryState.QUEUED_DURABLY, DeliveryState.HANDED_TO_RELAY), heldDisposition = HeldDisposition.RETIRE_ATOMICALLY)\n"
+            "}\n"
             "class SqliteDeliveryRepository {\n"
             "    override fun acknowledgeBoundAndRetire(msgId: ByteArray, expectedRecipient: ByteArray): AckResult {\n"
             "        return db.inTransaction { tx ->\n"
@@ -1020,6 +1122,11 @@ def selftest() -> int:
         android_sdr = root / "android/mesh/src/main/java/io/godstone/mesh/delivery/SqliteDeliveryRepository.kt"
         android_sdr.write_text(
             "package io.godstone.mesh.delivery\n"
+            "internal fun transitionSpec(transition: DeliveryTransition): TransitionSpec = when (transition) {\n"
+            "    DeliveryTransition.MARK_HANDED -> TransitionSpec(target = DeliveryState.HANDED_TO_RELAY, validFroms = setOf(DeliveryState.QUEUED_DURABLY), heldDisposition = HeldDisposition.RETAIN)\n"
+            "    DeliveryTransition.EXPIRE -> TransitionSpec(target = DeliveryState.EXPIRED, validFroms = setOf(DeliveryState.QUEUED_DURABLY, DeliveryState.HANDED_TO_RELAY), heldDisposition = HeldDisposition.RETIRE_ATOMICALLY)\n"
+            "    DeliveryTransition.CANCEL -> TransitionSpec(target = DeliveryState.CANCELLED_LOCALLY, validFroms = setOf(DeliveryState.QUEUED_DURABLY, DeliveryState.HANDED_TO_RELAY), heldDisposition = HeldDisposition.RETIRE_ATOMICALLY)\n"
+            "}\n"
             "class SqliteDeliveryRepository {\n"
             "    override fun acknowledgeBoundAndRetire(msgId: ByteArray, expectedRecipient: ByteArray): AckResult {\n"
             "        return db.inTransaction { tx ->\n"
@@ -1057,12 +1164,23 @@ def selftest() -> int:
         ios_sdr = root / "ios/Godstone/Sources/GodstoneMesh/SqliteDeliveryRepository.swift"
         ios_sdr.write_text(
             "public class SqliteDeliveryRepository {\n"
+            "    internal func transitionSpec(_ transition: DeliveryTransition) -> TransitionSpec {\n"
+            "        switch transition {\n"
+            "        case .markHanded:\n"
+            "            return TransitionSpec(target: .handedToRelay, validFroms: [.queuedDurably], heldDisposition: .retain)\n"
+            "        case .expire:\n"
+            "            return TransitionSpec(target: .expired, validFroms: [.queuedDurably, .handedToRelay], heldDisposition: .retireAtomically)\n"
+            "        case .cancel:\n"
+            "            return TransitionSpec(target: .cancelledLocally, validFroms: [.queuedDurably, .handedToRelay], heldDisposition: .retireAtomically)\n"
+            "        }\n"
+            "    }\n"
             "    public func acknowledgeBoundAndRetire(_ msgId: Data, expectedRecipient: Data) -> AckResult {\n"
             "        return try store.atomicAcknowledgeAndRetire(guardedAckSql: sql, msgId: msgId, expectedRecipient: expectedRecipient)\n"
             "    }\n"
             "    internal func transitionWithFault(_ msgId: Data, _ transition: DeliveryTransition, fault: ((String, OpaquePointer) throws -> Void)? = nil) -> TransitionResult {\n"
             "        switch spec.heldDisposition {\n"
             "        case .retain:\n"
+            "            let affected = try store.execDeliveryUpdate(sql, bytesArgs: [msgId])\n"
             "            return .applied\n"
             "        case .retireAtomically:\n"
             "            return try store.atomicTransitionAndRetire(guardedTransitionSql: sql, msgId: msgId)\n"
@@ -1084,6 +1202,16 @@ def selftest() -> int:
         ios_sdr = root / "ios/Godstone/Sources/GodstoneMesh/SqliteDeliveryRepository.swift"
         ios_sdr.write_text(
             "public class SqliteDeliveryRepository {\n"
+            "    internal func transitionSpec(_ transition: DeliveryTransition) -> TransitionSpec {\n"
+            "        switch transition {\n"
+            "        case .markHanded:\n"
+            "            return TransitionSpec(target: .handedToRelay, validFroms: [.queuedDurably], heldDisposition: .retain)\n"
+            "        case .expire:\n"
+            "            return TransitionSpec(target: .expired, validFroms: [.queuedDurably, .handedToRelay], heldDisposition: .retireAtomically)\n"
+            "        case .cancel:\n"
+            "            return TransitionSpec(target: .cancelledLocally, validFroms: [.queuedDurably, .handedToRelay], heldDisposition: .retireAtomically)\n"
+            "        }\n"
+            "    }\n"
             "    public func acknowledgeBoundAndRetire(_ msgId: Data, expectedRecipient: Data) -> AckResult {\n"
             "        acknowledgeBoundAndRetireWithFault(msgId, expectedRecipient: expectedRecipient, fault: nil)\n"
             "    }\n"
@@ -1093,6 +1221,7 @@ def selftest() -> int:
             "    internal func transitionWithFault(_ msgId: Data, _ transition: DeliveryTransition, fault: ((String, OpaquePointer) throws -> Void)? = nil) -> TransitionResult {\n"
             "        switch spec.heldDisposition {\n"
             "        case .retain:\n"
+            "            let affected = try store.execDeliveryUpdate(sql, bytesArgs: [msgId])\n"
             "            return .applied\n"
             "        case .retireAtomically:\n"
             "            return try store.atomicTransitionAndRetire(guardedTransitionSql: sql, msgId: msgId)\n"
@@ -1114,6 +1243,16 @@ def selftest() -> int:
         ios_sdr = root / "ios/Godstone/Sources/GodstoneMesh/SqliteDeliveryRepository.swift"
         ios_sdr.write_text(
             "public class SqliteDeliveryRepository {\n"
+            "    internal func transitionSpec(_ transition: DeliveryTransition) -> TransitionSpec {\n"
+            "        switch transition {\n"
+            "        case .markHanded:\n"
+            "            return TransitionSpec(target: .handedToRelay, validFroms: [.queuedDurably], heldDisposition: .retain)\n"
+            "        case .expire:\n"
+            "            return TransitionSpec(target: .expired, validFroms: [.queuedDurably, .handedToRelay], heldDisposition: .retireAtomically)\n"
+            "        case .cancel:\n"
+            "            return TransitionSpec(target: .cancelledLocally, validFroms: [.queuedDurably, .handedToRelay], heldDisposition: .retireAtomically)\n"
+            "        }\n"
+            "    }\n"
             "    public func acknowledgeBoundAndRetire(_ msgId: Data, expectedRecipient: Data) -> AckResult {\n"
             "        return .applied\n"
             "    }\n"
@@ -1121,7 +1260,13 @@ def selftest() -> int:
             "        return try store.atomicAcknowledgeAndRetire(guardedAckSql: sql, msgId: msgId, expectedRecipient: expectedRecipient)\n"
             "    }\n"
             "    internal func transitionWithFault(_ msgId: Data, _ transition: DeliveryTransition, fault: ((String, OpaquePointer) throws -> Void)? = nil) -> TransitionResult {\n"
-            "        return try store.atomicTransitionAndRetire(guardedTransitionSql: sql, msgId: msgId)\n"
+            "        switch spec.heldDisposition {\n"
+            "        case .retain:\n"
+            "            let affected = try store.execDeliveryUpdate(sql, bytesArgs: [msgId])\n"
+            "            return .applied\n"
+            "        case .retireAtomically:\n"
+            "            return try store.atomicTransitionAndRetire(guardedTransitionSql: sql, msgId: msgId)\n"
+            "        }\n"
             "    }\n"
             "}\n",
             encoding="utf-8",
@@ -1139,11 +1284,27 @@ def selftest() -> int:
         ios_sdr = root / "ios/Godstone/Sources/GodstoneMesh/SqliteDeliveryRepository.swift"
         ios_sdr.write_text(
             "public class SqliteDeliveryRepository {\n"
+            "    internal func transitionSpec(_ transition: DeliveryTransition) -> TransitionSpec {\n"
+            "        switch transition {\n"
+            "        case .markHanded:\n"
+            "            return TransitionSpec(target: .handedToRelay, validFroms: [.queuedDurably], heldDisposition: .retain)\n"
+            "        case .expire:\n"
+            "            return TransitionSpec(target: .expired, validFroms: [.queuedDurably, .handedToRelay], heldDisposition: .retireAtomically)\n"
+            "        case .cancel:\n"
+            "            return TransitionSpec(target: .cancelledLocally, validFroms: [.queuedDurably, .handedToRelay], heldDisposition: .retireAtomically)\n"
+            "        }\n"
+            "    }\n"
             "    internal func acknowledgeBoundAndRetireWithFault(_ msgId: Data, expectedRecipient: Data, fault: Any?) -> AckResult {\n"
             "        return try store.atomicAcknowledgeAndRetire(guardedAckSql: sql, msgId: msgId, expectedRecipient: expectedRecipient)\n"
             "    }\n"
             "    internal func transitionWithFault(_ msgId: Data, _ transition: DeliveryTransition, fault: ((String, OpaquePointer) throws -> Void)? = nil) -> TransitionResult {\n"
-            "        return try store.atomicTransitionAndRetire(guardedTransitionSql: sql, msgId: msgId)\n"
+            "        switch spec.heldDisposition {\n"
+            "        case .retain:\n"
+            "            let affected = try store.execDeliveryUpdate(sql, bytesArgs: [msgId])\n"
+            "            return .applied\n"
+            "        case .retireAtomically:\n"
+            "            return try store.atomicTransitionAndRetire(guardedTransitionSql: sql, msgId: msgId)\n"
+            "        }\n"
             "    }\n"
             "}\n",
             encoding="utf-8",
@@ -1161,12 +1322,28 @@ def selftest() -> int:
         ios_sdr = root / "ios/Godstone/Sources/GodstoneMesh/SqliteDeliveryRepository.swift"
         ios_sdr.write_text(
             "public class SqliteDeliveryRepository {\n"
+            "    internal func transitionSpec(_ transition: DeliveryTransition) -> TransitionSpec {\n"
+            "        switch transition {\n"
+            "        case .markHanded:\n"
+            "            return TransitionSpec(target: .handedToRelay, validFroms: [.queuedDurably], heldDisposition: .retain)\n"
+            "        case .expire:\n"
+            "            return TransitionSpec(target: .expired, validFroms: [.queuedDurably, .handedToRelay], heldDisposition: .retireAtomically)\n"
+            "        case .cancel:\n"
+            "            return TransitionSpec(target: .cancelledLocally, validFroms: [.queuedDurably, .handedToRelay], heldDisposition: .retireAtomically)\n"
+            "        }\n"
+            "    }\n"
             "    public func acknowledgeBoundAndRetire(_ msgId: Data, expectedRecipient: Data) -> AckResult {\n"
             "        // store.atomicAcknowledgeAndRetire(guardedAckSql: sql, msgId: msgId, expectedRecipient: expectedRecipient)\n"
             "        return .applied\n"
             "    }\n"
             "    internal func transitionWithFault(_ msgId: Data, _ transition: DeliveryTransition, fault: ((String, OpaquePointer) throws -> Void)? = nil) -> TransitionResult {\n"
-            "        return try store.atomicTransitionAndRetire(guardedTransitionSql: sql, msgId: msgId)\n"
+            "        switch spec.heldDisposition {\n"
+            "        case .retain:\n"
+            "            let affected = try store.execDeliveryUpdate(sql, bytesArgs: [msgId])\n"
+            "            return .applied\n"
+            "        case .retireAtomically:\n"
+            "            return try store.atomicTransitionAndRetire(guardedTransitionSql: sql, msgId: msgId)\n"
+            "        }\n"
             "    }\n"
             "}\n",
             encoding="utf-8",
@@ -1286,6 +1463,11 @@ def selftest() -> int:
         android_sdr = root / "android/mesh/src/main/java/io/godstone/mesh/delivery/SqliteDeliveryRepository.kt"
         android_sdr.write_text(
             "package io.godstone.mesh.delivery\n"
+            "internal fun transitionSpec(transition: DeliveryTransition): TransitionSpec = when (transition) {\n"
+            "    DeliveryTransition.MARK_HANDED -> TransitionSpec(target = DeliveryState.HANDED_TO_RELAY, validFroms = setOf(DeliveryState.QUEUED_DURABLY), heldDisposition = HeldDisposition.RETAIN)\n"
+            "    DeliveryTransition.EXPIRE -> TransitionSpec(target = DeliveryState.EXPIRED, validFroms = setOf(DeliveryState.QUEUED_DURABLY, DeliveryState.HANDED_TO_RELAY), heldDisposition = HeldDisposition.RETIRE_ATOMICALLY)\n"
+            "    DeliveryTransition.CANCEL -> TransitionSpec(target = DeliveryState.CANCELLED_LOCALLY, validFroms = setOf(DeliveryState.QUEUED_DURABLY, DeliveryState.HANDED_TO_RELAY), heldDisposition = HeldDisposition.RETIRE_ATOMICALLY)\n"
+            "}\n"
             "class SqliteDeliveryRepository {\n"
             "    override fun acknowledgeBoundAndRetire(msgId: ByteArray, expectedRecipient: ByteArray): AckResult {\n"
             "        db.inTransaction { tx ->\n"
@@ -1322,6 +1504,11 @@ def selftest() -> int:
         android_sdr = root / "android/mesh/src/main/java/io/godstone/mesh/delivery/SqliteDeliveryRepository.kt"
         android_sdr.write_text(
             "package io.godstone.mesh.delivery\n"
+            "internal fun transitionSpec(transition: DeliveryTransition): TransitionSpec = when (transition) {\n"
+            "    DeliveryTransition.MARK_HANDED -> TransitionSpec(target = DeliveryState.HANDED_TO_RELAY, validFroms = setOf(DeliveryState.QUEUED_DURABLY), heldDisposition = HeldDisposition.RETAIN)\n"
+            "    DeliveryTransition.EXPIRE -> TransitionSpec(target = DeliveryState.EXPIRED, validFroms = setOf(DeliveryState.QUEUED_DURABLY, DeliveryState.HANDED_TO_RELAY), heldDisposition = HeldDisposition.RETIRE_ATOMICALLY)\n"
+            "    DeliveryTransition.CANCEL -> TransitionSpec(target = DeliveryState.CANCELLED_LOCALLY, validFroms = setOf(DeliveryState.QUEUED_DURABLY, DeliveryState.HANDED_TO_RELAY), heldDisposition = HeldDisposition.RETIRE_ATOMICALLY)\n"
+            "}\n"
             "class SqliteDeliveryRepository {\n"
             "    override fun acknowledgeBoundAndRetire(msgId: ByteArray, expectedRecipient: ByteArray): AckResult {\n"
             "        return db.inTransaction { tx ->\n"
@@ -1479,6 +1666,11 @@ def selftest() -> int:
         android_sdr = root / "android/mesh/src/main/java/io/godstone/mesh/delivery/SqliteDeliveryRepository.kt"
         android_sdr.write_text(
             "package io.godstone.mesh.delivery\n"
+            "internal fun transitionSpec(transition: DeliveryTransition): TransitionSpec = when (transition) {\n"
+            "    DeliveryTransition.MARK_HANDED -> TransitionSpec(target = DeliveryState.HANDED_TO_RELAY, validFroms = setOf(DeliveryState.QUEUED_DURABLY), heldDisposition = HeldDisposition.RETAIN)\n"
+            "    DeliveryTransition.EXPIRE -> TransitionSpec(target = DeliveryState.EXPIRED, validFroms = setOf(DeliveryState.QUEUED_DURABLY, DeliveryState.HANDED_TO_RELAY), heldDisposition = HeldDisposition.RETIRE_ATOMICALLY)\n"
+            "    DeliveryTransition.CANCEL -> TransitionSpec(target = DeliveryState.CANCELLED_LOCALLY, validFroms = setOf(DeliveryState.QUEUED_DURABLY, DeliveryState.HANDED_TO_RELAY), heldDisposition = HeldDisposition.RETIRE_ATOMICALLY)\n"
+            "}\n"
             "class SqliteDeliveryRepository {\n"
             "    override fun acknowledgeBoundAndRetire(msgId: ByteArray, expectedRecipient: ByteArray): AckResult {\n"
             "        return db.inTransaction { tx ->\n"
@@ -1512,6 +1704,11 @@ def selftest() -> int:
         android_sdr = root / "android/mesh/src/main/java/io/godstone/mesh/delivery/SqliteDeliveryRepository.kt"
         android_sdr.write_text(
             "package io.godstone.mesh.delivery\n"
+            "internal fun transitionSpec(transition: DeliveryTransition): TransitionSpec = when (transition) {\n"
+            "    DeliveryTransition.MARK_HANDED -> TransitionSpec(target = DeliveryState.HANDED_TO_RELAY, validFroms = setOf(DeliveryState.QUEUED_DURABLY), heldDisposition = HeldDisposition.RETAIN)\n"
+            "    DeliveryTransition.EXPIRE -> TransitionSpec(target = DeliveryState.EXPIRED, validFroms = setOf(DeliveryState.QUEUED_DURABLY, DeliveryState.HANDED_TO_RELAY), heldDisposition = HeldDisposition.RETIRE_ATOMICALLY)\n"
+            "    DeliveryTransition.CANCEL -> TransitionSpec(target = DeliveryState.CANCELLED_LOCALLY, validFroms = setOf(DeliveryState.QUEUED_DURABLY, DeliveryState.HANDED_TO_RELAY), heldDisposition = HeldDisposition.RETIRE_ATOMICALLY)\n"
+            "}\n"
             "class SqliteDeliveryRepository {\n"
             "    override fun acknowledgeBoundAndRetire(msgId: ByteArray, expectedRecipient: ByteArray): AckResult {\n"
             "        return db.inTransaction { tx ->\n"
@@ -1546,6 +1743,11 @@ def selftest() -> int:
         android_sdr = root / "android/mesh/src/main/java/io/godstone/mesh/delivery/SqliteDeliveryRepository.kt"
         android_sdr.write_text(
             "package io.godstone.mesh.delivery\n"
+            "internal fun transitionSpec(transition: DeliveryTransition): TransitionSpec = when (transition) {\n"
+            "    DeliveryTransition.MARK_HANDED -> TransitionSpec(target = DeliveryState.HANDED_TO_RELAY, validFroms = setOf(DeliveryState.QUEUED_DURABLY), heldDisposition = HeldDisposition.RETAIN)\n"
+            "    DeliveryTransition.EXPIRE -> TransitionSpec(target = DeliveryState.EXPIRED, validFroms = setOf(DeliveryState.QUEUED_DURABLY, DeliveryState.HANDED_TO_RELAY), heldDisposition = HeldDisposition.RETIRE_ATOMICALLY)\n"
+            "    DeliveryTransition.CANCEL -> TransitionSpec(target = DeliveryState.CANCELLED_LOCALLY, validFroms = setOf(DeliveryState.QUEUED_DURABLY, DeliveryState.HANDED_TO_RELAY), heldDisposition = HeldDisposition.RETIRE_ATOMICALLY)\n"
+            "}\n"
             "class SqliteDeliveryRepository {\n"
             "    override fun acknowledgeBoundAndRetire(msgId: ByteArray, expectedRecipient: ByteArray): AckResult {\n"
             "        return db.inTransaction { tx ->\n"
@@ -1582,6 +1784,16 @@ def selftest() -> int:
         ios_sdr = root / "ios/Godstone/Sources/GodstoneMesh/SqliteDeliveryRepository.swift"
         ios_sdr.write_text(
             "public class SqliteDeliveryRepository {\n"
+            "    internal func transitionSpec(_ transition: DeliveryTransition) -> TransitionSpec {\n"
+            "        switch transition {\n"
+            "        case .markHanded:\n"
+            "            return TransitionSpec(target: .handedToRelay, validFroms: [.queuedDurably], heldDisposition: .retain)\n"
+            "        case .expire:\n"
+            "            return TransitionSpec(target: .expired, validFroms: [.queuedDurably, .handedToRelay], heldDisposition: .retireAtomically)\n"
+            "        case .cancel:\n"
+            "            return TransitionSpec(target: .cancelledLocally, validFroms: [.queuedDurably, .handedToRelay], heldDisposition: .retireAtomically)\n"
+            "        }\n"
+            "    }\n"
             "    public func acknowledgeBoundAndRetire(_ msgId: Data, expectedRecipient: Data) -> AckResult {\n"
             "        return try store.atomicAcknowledgeAndRetire(guardedAckSql: sql, msgId: msgId, expectedRecipient: expectedRecipient)\n"
             "    }\n"
@@ -1592,7 +1804,7 @@ def selftest() -> int:
             encoding="utf-8",
         )
         res = scan(root)
-        if not any("transitionWithFault must route .retireAtomically through atomicTransitionAndRetire" in m for m in res):
+        if not any("transitionWithFault must switch on spec.heldDisposition" in m for m in res):
             failures.append(f"Mutation H4 (iOS transition not routing to atomic) NOT detected; got {res}")
         else:
             print("  ok    [Mutation H4] iOS transition not routing to atomic detected")
@@ -1715,6 +1927,197 @@ def selftest() -> int:
         else:
             print("  ok    [Mutation H7] iOS atomicTransition ordering mutation inside closure detected")
 
+    # Mutation H8: iOS RETAIN incorrectly routes atomic
+    with tempfile.TemporaryDirectory() as td:
+        root = Path(td)
+        _build_synthetic_positive_tree(root)
+        ios_sdr = root / "ios/Godstone/Sources/GodstoneMesh/SqliteDeliveryRepository.swift"
+        ios_sdr.write_text(
+            "public class SqliteDeliveryRepository {\n"
+            "    internal func transitionSpec(_ transition: DeliveryTransition) -> TransitionSpec {\n"
+            "        switch transition {\n"
+            "        case .markHanded:\n"
+            "            return TransitionSpec(target: .handedToRelay, validFroms: [.queuedDurably], heldDisposition: .retain)\n"
+            "        case .expire:\n"
+            "            return TransitionSpec(target: .expired, validFroms: [.queuedDurably, .handedToRelay], heldDisposition: .retireAtomically)\n"
+            "        case .cancel:\n"
+            "            return TransitionSpec(target: .cancelledLocally, validFroms: [.queuedDurably, .handedToRelay], heldDisposition: .retireAtomically)\n"
+            "        }\n"
+            "    }\n"
+            "    public func acknowledgeBoundAndRetire(_ msgId: Data, expectedRecipient: Data) -> AckResult {\n"
+            "        return try store.atomicAcknowledgeAndRetire(guardedAckSql: sql, msgId: msgId, expectedRecipient: expectedRecipient)\n"
+            "    }\n"
+            "    internal func transitionWithFault(_ msgId: Data, _ transition: DeliveryTransition, fault: ((String, OpaquePointer) throws -> Void)? = nil) -> TransitionResult {\n"
+            "        switch spec.heldDisposition {\n"
+            "        case .retain:\n"
+            "            return try store.atomicTransitionAndRetire(guardedTransitionSql: sql, msgId: msgId)\n"
+            "        case .retireAtomically:\n"
+            "            return try store.atomicTransitionAndRetire(guardedTransitionSql: sql, msgId: msgId)\n"
+            "        }\n"
+            "    }\n"
+            "}\n",
+            encoding="utf-8",
+        )
+        res = scan(root)
+        if not any("retain region must not call atomicTransitionAndRetire" in m for m in res):
+            failures.append(f"Mutation H8 (iOS retain calling atomic) NOT detected; got {res}")
+        else:
+            print("  ok    [Mutation H8] iOS retain calling atomic detected")
+
+    # Mutation H9: iOS atomic decoy outside case
+    with tempfile.TemporaryDirectory() as td:
+        root = Path(td)
+        _build_synthetic_positive_tree(root)
+        ios_sdr = root / "ios/Godstone/Sources/GodstoneMesh/SqliteDeliveryRepository.swift"
+        ios_sdr.write_text(
+            "public class SqliteDeliveryRepository {\n"
+            "    internal func transitionSpec(_ transition: DeliveryTransition) -> TransitionSpec {\n"
+            "        switch transition {\n"
+            "        case .markHanded:\n"
+            "            return TransitionSpec(target: .handedToRelay, validFroms: [.queuedDurably], heldDisposition: .retain)\n"
+            "        case .expire:\n"
+            "            return TransitionSpec(target: .expired, validFroms: [.queuedDurably, .handedToRelay], heldDisposition: .retireAtomically)\n"
+            "        case .cancel:\n"
+            "            return TransitionSpec(target: .cancelledLocally, validFroms: [.queuedDurably, .handedToRelay], heldDisposition: .retireAtomically)\n"
+            "        }\n"
+            "    }\n"
+            "    public func acknowledgeBoundAndRetire(_ msgId: Data, expectedRecipient: Data) -> AckResult {\n"
+            "        return try store.atomicAcknowledgeAndRetire(guardedAckSql: sql, msgId: msgId, expectedRecipient: expectedRecipient)\n"
+            "    }\n"
+            "    internal func transitionWithFault(_ msgId: Data, _ transition: DeliveryTransition, fault: ((String, OpaquePointer) throws -> Void)? = nil) -> TransitionResult {\n"
+            "        let decoy = store.atomicTransitionAndRetire(guardedTransitionSql: sql, msgId: msgId)\n"
+            "        switch spec.heldDisposition {\n"
+            "        case .retain:\n"
+            "            let affected = try store.execDeliveryUpdate(sql, bytesArgs: [msgId])\n"
+            "            return .applied\n"
+            "        case .retireAtomically:\n"
+            "            return .applied\n"
+            "        }\n"
+            "    }\n"
+            "}\n",
+            encoding="utf-8",
+        )
+        res = scan(root)
+        if not any("retireAtomically region must route through atomicTransitionAndRetire" in m for m in res):
+            failures.append(f"Mutation H9 (iOS atomic decoy outside case) NOT detected; got {res}")
+        else:
+            print("  ok    [Mutation H9] iOS atomic decoy outside case detected")
+
+    # Mutation H10: iOS retain loses guarded state-only update
+    with tempfile.TemporaryDirectory() as td:
+        root = Path(td)
+        _build_synthetic_positive_tree(root)
+        ios_sdr = root / "ios/Godstone/Sources/GodstoneMesh/SqliteDeliveryRepository.swift"
+        ios_sdr.write_text(
+            "public class SqliteDeliveryRepository {\n"
+            "    internal func transitionSpec(_ transition: DeliveryTransition) -> TransitionSpec {\n"
+            "        switch transition {\n"
+            "        case .markHanded:\n"
+            "            return TransitionSpec(target: .handedToRelay, validFroms: [.queuedDurably], heldDisposition: .retain)\n"
+            "        case .expire:\n"
+            "            return TransitionSpec(target: .expired, validFroms: [.queuedDurably, .handedToRelay], heldDisposition: .retireAtomically)\n"
+            "        case .cancel:\n"
+            "            return TransitionSpec(target: .cancelledLocally, validFroms: [.queuedDurably, .handedToRelay], heldDisposition: .retireAtomically)\n"
+            "        }\n"
+            "    }\n"
+            "    public func acknowledgeBoundAndRetire(_ msgId: Data, expectedRecipient: Data) -> AckResult {\n"
+            "        return try store.atomicAcknowledgeAndRetire(guardedAckSql: sql, msgId: msgId, expectedRecipient: expectedRecipient)\n"
+            "    }\n"
+            "    internal func transitionWithFault(_ msgId: Data, _ transition: DeliveryTransition, fault: ((String, OpaquePointer) throws -> Void)? = nil) -> TransitionResult {\n"
+            "        switch spec.heldDisposition {\n"
+            "        case .retain:\n"
+            "            return .applied\n"
+            "        case .retireAtomically:\n"
+            "            return try store.atomicTransitionAndRetire(guardedTransitionSql: sql, msgId: msgId)\n"
+            "        }\n"
+            "    }\n"
+            "}\n",
+            encoding="utf-8",
+        )
+        res = scan(root)
+        if not any("retain region must call execDeliveryUpdate" in m for m in res):
+            failures.append(f"Mutation H10 (iOS retain without execDeliveryUpdate) NOT detected; got {res}")
+        else:
+            print("  ok    [Mutation H10] iOS retain without execDeliveryUpdate detected")
+
+    # Mutation H11: Android transitionSpec MARK_HANDED mutated to RETIRE_ATOMICALLY
+    with tempfile.TemporaryDirectory() as td:
+        root = Path(td)
+        _build_synthetic_positive_tree(root)
+        android_sdr = root / "android/mesh/src/main/java/io/godstone/mesh/delivery/SqliteDeliveryRepository.kt"
+        android_sdr.write_text(
+            "package io.godstone.mesh.delivery\n"
+            "internal fun transitionSpec(transition: DeliveryTransition): TransitionSpec = when (transition) {\n"
+            "    DeliveryTransition.MARK_HANDED -> TransitionSpec(target = DeliveryState.HANDED_TO_RELAY, validFroms = setOf(DeliveryState.QUEUED_DURABLY), heldDisposition = HeldDisposition.RETIRE_ATOMICALLY)\n"
+            "    DeliveryTransition.EXPIRE -> TransitionSpec(target = DeliveryState.EXPIRED, validFroms = setOf(DeliveryState.QUEUED_DURABLY, DeliveryState.HANDED_TO_RELAY), heldDisposition = HeldDisposition.RETIRE_ATOMICALLY)\n"
+            "    DeliveryTransition.CANCEL -> TransitionSpec(target = DeliveryState.CANCELLED_LOCALLY, validFroms = setOf(DeliveryState.QUEUED_DURABLY, DeliveryState.HANDED_TO_RELAY), heldDisposition = HeldDisposition.RETIRE_ATOMICALLY)\n"
+            "}\n"
+            "class SqliteDeliveryRepository {\n"
+            "    override fun acknowledgeBoundAndRetire(msgId: ByteArray, expectedRecipient: ByteArray): AckResult {\n"
+            "        return db.inTransaction { tx ->\n"
+            "            val affected = tx.execDeliveryUpdate(sql, bindArgs)\n"
+            "            val deleted = tx.deleteHeld(msgId)\n"
+            "            AckRetireResult.APPLIED\n"
+            "        }\n"
+            "    }\n"
+            "    private fun executeStateOnlyTransition(msgId: ByteArray, target: DeliveryState, validFroms: Set<DeliveryState>): TransitionResult {\n"
+            "        val affected = db.execDeliveryUpdate(sql, arrayOf(msgId))\n"
+            "        return TransitionResult.Applied\n"
+            "    }\n"
+            "    private fun executeRetiringTransition(msgId: ByteArray, target: DeliveryState, validFroms: Set<DeliveryState>): TransitionResult {\n"
+            "        return db.inTransaction { tx ->\n"
+            "            val affected = tx.execDeliveryUpdate(sql, arrayOf(msgId))\n"
+            "            val deleted = tx.deleteHeld(msgId)\n"
+            "            CrossTableRetireResult.APPLIED\n"
+            "        }\n"
+            "    }\n"
+            "}\n",
+            encoding="utf-8",
+        )
+        res = scan(root)
+        if not any("transitionSpec must map MARK_HANDED to RETAIN" in m for m in res):
+            failures.append(f"Mutation H11 (Android transitionSpec MARK_HANDED mutation) NOT detected; got {res}")
+        else:
+            print("  ok    [Mutation H11] Android transitionSpec MARK_HANDED mutation detected")
+
+    # Mutation H12: iOS transitionSpec .markHanded mutated to .retireAtomically
+    with tempfile.TemporaryDirectory() as td:
+        root = Path(td)
+        _build_synthetic_positive_tree(root)
+        ios_sdr = root / "ios/Godstone/Sources/GodstoneMesh/SqliteDeliveryRepository.swift"
+        ios_sdr.write_text(
+            "public class SqliteDeliveryRepository {\n"
+            "    internal func transitionSpec(_ transition: DeliveryTransition) -> TransitionSpec {\n"
+            "        switch transition {\n"
+            "        case .markHanded:\n"
+            "            return TransitionSpec(target: .handedToRelay, validFroms: [.queuedDurably], heldDisposition: .retireAtomically)\n"
+            "        case .expire:\n"
+            "            return TransitionSpec(target: .expired, validFroms: [.queuedDurably, .handedToRelay], heldDisposition: .retireAtomically)\n"
+            "        case .cancel:\n"
+            "            return TransitionSpec(target: .cancelledLocally, validFroms: [.queuedDurably, .handedToRelay], heldDisposition: .retireAtomically)\n"
+            "        }\n"
+            "    }\n"
+            "    public func acknowledgeBoundAndRetire(_ msgId: Data, expectedRecipient: Data) -> AckResult {\n"
+            "        return try store.atomicAcknowledgeAndRetire(guardedAckSql: sql, msgId: msgId, expectedRecipient: expectedRecipient)\n"
+            "    }\n"
+            "    internal func transitionWithFault(_ msgId: Data, _ transition: DeliveryTransition, fault: ((String, OpaquePointer) throws -> Void)? = nil) -> TransitionResult {\n"
+            "        switch spec.heldDisposition {\n"
+            "        case .retain:\n"
+            "            let affected = try store.execDeliveryUpdate(sql, bytesArgs: [msgId])\n"
+            "            return .applied\n"
+            "        case .retireAtomically:\n"
+            "            return try store.atomicTransitionAndRetire(guardedTransitionSql: sql, msgId: msgId)\n"
+            "        }\n"
+            "    }\n"
+            "}\n",
+            encoding="utf-8",
+        )
+        res = scan(root)
+        if not any("transitionSpec must map .markHanded to .retain" in m for m in res):
+            failures.append(f"Mutation H12 (iOS transitionSpec .markHanded mutation) NOT detected; got {res}")
+        else:
+            print("  ok    [Mutation H12] iOS transitionSpec .markHanded mutation detected")
+
     # Missing file detection test
     with tempfile.TemporaryDirectory() as td:
         root = Path(td)
@@ -1754,6 +2157,11 @@ def selftest() -> int:
           "  - Mutation H5 (iOS atomicTransition without withTransaction) detected.\n"
           "  - Mutation H6 (iOS atomicTransition without deleteHeldSql) detected.\n"
           "  - Mutation H7 (iOS atomicTransition ordering mutation) detected.\n"
+          "  - Mutation H8 (iOS retain calling atomic) detected.\n"
+          "  - Mutation H9 (iOS atomic decoy outside case) detected.\n"
+          "  - Mutation H10 (iOS retain without execDeliveryUpdate) detected.\n"
+          "  - Mutation H11 (Android transitionSpec MARK_HANDED mutation) detected.\n"
+          "  - Mutation H12 (iOS transitionSpec .markHanded mutation) detected.\n"
           "  - Missing files reported.")
     return 0
 
