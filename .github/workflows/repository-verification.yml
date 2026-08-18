@@ -130,6 +130,10 @@ jobs:
         run: |
           python ci/check_local_identity_controls.py --selftest
           python ci/check_local_identity_controls.py
+      - name: peer trust regression controls present (ADR-003, C8.2A)
+        run: |
+          python ci/check_peer_trust_controls.py --selftest
+          python ci/check_peer_trust_controls.py
       - name: production-readiness status consistency (Stage 4E0)
         run: |
           python ci/check_status_consistency.py --selftest

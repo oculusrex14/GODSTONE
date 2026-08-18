@@ -46,7 +46,7 @@
    "severity": "Critical if claimed",
    "status": "OPEN_REPOSITORY",
    "repo_controlled": true,
-   "evidence": "trust claims remain removed from shipping product; C8.0/C8.0.1/C8.0.2 freeze canonical peer-binding architecture, transaction ownership, and rotation/revocation contracts; C8.1A/C8.1A.1 canonical IdentityBindingV1 wire format and cross-platform KATs are frozen; C8.1B local identity authority is implemented and hardened; PeerIdentityStore, PeerIdentityRepository, PeerTrustEngine, rotation approval/revocation implementation, BoundRecipientKeyResolver, Noise HS2/HS3 integration, READY gating, panic-wipe peer-store integration, sealed-sender authenticated authorship, and device evidence remain OPEN_REPOSITORY.",
+   "evidence": "trust claims remain removed from shipping product; C8.0/C8.0.1/C8.0.2 freeze canonical peer-binding architecture, transaction ownership, and rotation/revocation contracts; C8.1A/C8.1A.1 canonical IdentityBindingV1 wire format and cross-platform KATs are frozen; C8.1B local identity authority is implemented and hardened; C8.2A pure peer-trust decision logic, models, and durable-row validator are implemented and repo-tested on both platforms; PeerIdentityStore, PeerIdentityRepository transactional persistence, rotation approval/revocation persistence, BoundRecipientKeyResolver, Noise HS2/HS3 integration, READY gating, panic-wipe peer-store integration, sealed-sender authenticated authorship, and device evidence implementation remain OPEN_REPOSITORY.",
    "closes_in_phase": "C8.x (repo) + device"
   },
   {

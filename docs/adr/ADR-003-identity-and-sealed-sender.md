@@ -7,7 +7,8 @@
 - **Phase C8.0 / C8.0.1 / C8.0.2 Architecture:** Accepted / Architecture Frozen (canonical Ed25519-rooted `IdentityBindingV1`, local generation authority, Noise XX payload placement, pre-HS3 initiator validation, dual-state pending rotation model, atomic trust transaction ownership in `PeerIdentityRepository`, pure `TrustPlan` engine, exact-candidate rotation approval, strict revocation semantics, physical store separation, and platform-precise coordinated panic-wipe integration).
 - **Phase C8.1A / C8.1A.1 IdentityBinding Primitive:** Implemented & Frozen (canonical binary codec, 80-byte signature preimage, BLAKE2s-128 `node_id` derivation, pure `IdentityBindingValidator` with defensive copying, independent Python reference, and cross-platform locked KAT fixtures).
 - **Phase C8.1B Local Identity Authority:** Implemented & Frozen (durable `LocalIdentityStateV1` authority, zero-parameter canonical local issuer, legacy migration, panic-wipe integration, platform CryptoKit/BouncyCastle signing, semantic and locked-KAT verification conformance to the canonical `IdentityBindingV1` contract, internal Keychain/SharedPreferences storage boundaries).
-- **Phase C8.2+ Peer Trust / Noise / Resolver Integration:** Unimplemented / Open (peer trust persistence, transaction engine, Noise HS2/HS3 handshake integration, and BoundRecipientKeyResolver remain open).
+- **Phase C8.2A Pure Peer Trust Engine & Models:** Implemented / Non-shipping (pure deterministic `PeerTrustEngine`, 11-rule durable `PeerIdentityRecordValidator`, explicit persistence codes `TOFU_PINNED(1)`, `USER_VERIFIED(2)`, `REVOKED(3)`, effective state precedence, typed `PeerTrustRejectReason` / `TrustPlan` taxonomy, cross-platform decision matrix).
+- **Phase C8.2B+ Peer Trust Persistence / Integration:** Unimplemented / Open (physical DB stores: iOS `FileProtectionType.complete` and Android dedicated SQLCipher `godstone_peer_identities.db`, transaction ownership in `PeerIdentityRepository`, Noise HS2/HS3 handshake integration, and BoundRecipientKeyResolver remain open).
 - **Sealed-Sender Authenticated Authorship:** OPEN (underlying L4 application envelope open).
 - **Production `RecipientKeyResolver`:** UNRESOLVED / Fail-closed (`UnresolvedRecipientKeyResolver`).
 - **Link Layer:** Disabled (`LINK_LAYER_READY = false` / `linkLayerReady = false`).
@@ -317,8 +318,21 @@ To preserve the frozen C7 durable message store contract:
 - **Independent Lifecycles:** Peer trust and message routing operate with isolated migrations and schemas.
 
 ### 10.2 Platform Protected Storage
-- **Android:** Dedicated SQLCipher database whose encryption key is protected under the Android Keystore boundary.
-- **iOS:** Dedicated SQLite database protected with `FileProtectionType.complete`. Authority in plaintext `UserDefaults` or standard unencrypted files is strictly forbidden.
+
+#### iOS Data Protection Contract (Frozen in C8.2A for C8.2B Implementation)
+- **Dedicated Database:** Dedicated SQLite database (`godstone_peer_identities.sqlite3`).
+- **Protection Class:** `FileProtectionType.complete` at rest, matching `SqliteMessageStore`.
+- **Locked-Device Operational Boundaries:**
+  - C8 does NOT currently promise locked-device relay or `READY` mesh operation.
+  - `MeshIdentity`'s Keychain use of `kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly` does NOT by itself establish a locked-device mesh guarantee.
+  - `PeerIdentityStore` and `SqliteMessageStore` remain completely unavailable under `FileProtectionType.complete` while the device is locked.
+  - Any future decision to support locked-device relay must change BOTH message and peer-store availability as a separate, threat-reviewed phase backed by device evidence.
+  - `C8.2B` must NOT silently choose `.completeUntilFirstUserAuthentication`.
+
+#### Android Storage Contract (Predeclared in C8.2A for C8.2B Implementation)
+- **Dedicated Database:** Dedicated SQLCipher database (`godstone_peer_identities.db`).
+- **Passphrase Authority:** Dedicated 32 random bytes passphrase stored in a separate `EncryptedSharedPreferences` namespace protected by Android Keystore.
+- **Physical Separation:** Do NOT reuse `godstone_messages.db` and do NOT add peer tables to `StoreSchema`.
 
 ### 10.3 Logical Schema & Durable Invariants (`PeerIdentityRecord`)
 ```text
