@@ -132,15 +132,54 @@ public final class SqliteDeliveryRepository: DeliveryRepository {
     }
 
     public func transition(_ msgId: Data, _ transition: DeliveryTransition) -> TransitionResult {
+        transitionWithFault(msgId, transition, fault: nil)
+    }
+
+    internal func transitionWithFault(
+        _ msgId: Data,
+        _ transition: DeliveryTransition,
+        fault: ((String, OpaquePointer) throws -> Void)? = nil
+    ) -> TransitionResult {
         guard msgId.count == 16 else { return .invalidArgument } // C6.4-D
         let (target, validFroms) = transitionMapping(transition)
         let sql = transitionSql(target: target, validFroms: validFroms)
+
+        // C7.5: MARK_HANDED is a state-only transition (held frame retained for relay carry).
+        if transition == .markHanded {
+            do {
+                let affected = try store.execDeliveryUpdate(sql, bytesArgs: [msgId])
+                switch affected {
+                case 1: return .applied
+                case 0: return classifyZeroRowTransition(msgId: msgId, target: target, validFroms: validFroms)
+                default: return .storageFailure // affected > 1: invariant violation (PK is msg_id)
+                }
+            } catch {
+                return .storageFailure // C6.4-A
+            }
+        }
+
+        // C7.5: EXPIRE and CANCEL are atomic terminal transitions that retire the held frame in ONE transaction.
         do {
-            let affected = try store.execDeliveryUpdate(sql, bytesArgs: [msgId])
-            switch affected {
-            case 1: return .applied
-            case 0: return classifyZeroRowTransition(msgId: msgId, target: target, validFroms: validFroms)
-            default: return .storageFailure // affected > 1: invariant violation (PK is msg_id)
+            let res: TerminalRetireMutationResult
+            if let sms = store as? SqliteMessageStore {
+                res = try sms.atomicTransitionAndRetireWithFault(
+                    guardedTransitionSql: sql,
+                    msgId: msgId,
+                    fault: fault
+                )
+            } else {
+                res = try store.atomicTransitionAndRetire(
+                    guardedTransitionSql: sql,
+                    msgId: msgId
+                )
+            }
+            switch res {
+            case .applied:
+                return .applied
+            case .noMatch:
+                return classifyZeroRowTransition(msgId: msgId, target: target, validFroms: validFroms)
+            case .missingHeld:
+                return .corrupt
             }
         } catch {
             return .storageFailure // C6.4-A

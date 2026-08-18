@@ -113,13 +113,43 @@ internal class SqliteDeliveryRepository(
         if (msgId.size != 16) return TransitionResult.InvalidArgument // C6.4-D
         val (target, validFroms) = transitionMapping(transition)
         val sql = transitionSql(target, validFroms)
-        return try {
-            val affected = db.execDeliveryUpdate(sql, arrayOf(msgId))
-            when (affected) {
-                1 -> TransitionResult.Applied
-                0 -> classifyZeroRowTransition(msgId, target, validFroms)
-                else -> TransitionResult.StorageFailure // affected > 1: invariant violation (PK is msg_id)
+
+        // C7.5: MARK_HANDED is a state-only transition (held frame retained for relay carry).
+        if (transition == DeliveryTransition.MARK_HANDED) {
+            return try {
+                val affected = db.execDeliveryUpdate(sql, arrayOf(msgId))
+                when (affected) {
+                    1 -> TransitionResult.Applied
+                    0 -> classifyZeroRowTransition(msgId, target, validFroms)
+                    else -> TransitionResult.StorageFailure // affected > 1: invariant violation (PK is msg_id)
+                }
+            } catch (e: Exception) {
+                TransitionResult.StorageFailure // C6.4-A
             }
+        }
+
+        // C7.5: EXPIRE and CANCEL are atomic terminal transitions that retire the held frame in ONE transaction.
+        return try {
+            val result = db.inTransaction { tx ->
+                val affected = tx.execDeliveryUpdate(sql, arrayOf(msgId))
+                if (affected == 0) {
+                    return@inTransaction AckRetireResult.NO_MATCH
+                }
+                if (affected != 1) {
+                    throw IllegalStateException("invariant violation: affected > 1")
+                }
+                val deleted = tx.deleteHeld(msgId)
+                if (deleted != 1) {
+                    throw MissingHeldException()
+                }
+                AckRetireResult.APPLIED
+            }
+            when (result) {
+                AckRetireResult.APPLIED -> TransitionResult.Applied
+                AckRetireResult.NO_MATCH -> classifyZeroRowTransition(msgId, target, validFroms)
+            }
+        } catch (e: MissingHeldException) {
+            TransitionResult.Corrupt // Transaction rolled back; missing held row is cross-table corruption
         } catch (e: Exception) {
             TransitionResult.StorageFailure // C6.4-A
         }

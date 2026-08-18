@@ -8,6 +8,8 @@ import io.godstone.mesh.store.PersistResult
 import io.godstone.mesh.store.SqliteMessageStore
 import io.godstone.mesh.store.StoreDb
 import io.godstone.mesh.store.StoreSchema
+import io.godstone.mesh.router.BloomDigest
+import io.godstone.mesh.router.Router
 import io.godstone.mesh.wire.v2.FrameV2
 import io.godstone.mesh.wire.v2.Priority
 import io.godstone.mesh.wire.v2.TypeV2
@@ -657,6 +659,7 @@ class SqliteDeliveryRepositoryTest {
         @Volatile var faultExecDeliveryUpdate = false
         @Volatile var faultDeleteHeld = false
         @Volatile var faultAfterAckCas: (() -> Unit)? = null
+        @Volatile var faultAfterTerminalCas: (() -> Unit)? = null
         @Volatile var faultAfterHeldDelete: (() -> Unit)? = null
 
         override fun insert(frame: FrameV2, receivedFrom: ByteArray, receivedAt: Long): Long =
@@ -686,6 +689,7 @@ class SqliteDeliveryRepositoryTest {
             if (faultExecDeliveryUpdate) throw java.sql.SQLException("injected execDeliveryUpdate fault")
             val res = inner.execDeliveryUpdate(sql, bytesArgs)
             faultAfterAckCas?.invoke()
+            faultAfterTerminalCas?.invoke()
             res
         }
 
@@ -817,6 +821,7 @@ class SqliteDeliveryRepositoryTest {
         try {
             val j = open(file)
             val mid = msgId(31)
+            plantHeld(file, mid)
             j.enqueue(mid, AckMode.SINGLE_RECIPIENT, nodeA())
             assertEquals(TransitionResult.Applied, j.transition(mid, DeliveryTransition.CANCEL))
             // CANCELLED -> markHanded is RejectedState (no transition out of terminal).
@@ -837,6 +842,7 @@ class SqliteDeliveryRepositoryTest {
         try {
             val j = open(file)
             val mid = msgId(32)
+            plantHeld(file, mid)
             j.enqueue(mid, AckMode.SINGLE_RECIPIENT, nodeA())
             j.transition(mid, DeliveryTransition.MARK_HANDED) // HANDED
             j.transition(mid, DeliveryTransition.CANCEL)      // CANCELLED
@@ -952,6 +958,7 @@ class SqliteDeliveryRepositoryTest {
             val auth = BlockingAuthenticator()
             val tracker = DeliveryTracker(j, auth)
             val mid = msgId(40)
+            plantHeld(wrapped, mid)
             tracker.enqueue(mid, AckMode.SINGLE_RECIPIENT, nodeA())
             tracker.markHandedToRelay(mid) // HANDED
             val (_, privA) = realKeypair()
@@ -984,6 +991,7 @@ class SqliteDeliveryRepositoryTest {
             val auth = BlockingAuthenticator()
             val tracker = DeliveryTracker(j, auth)
             val mid = msgId(41)
+            plantHeld(wrapped, mid)
             tracker.enqueue(mid, AckMode.SINGLE_RECIPIENT, nodeA())
             tracker.markHandedToRelay(mid)
             val (_, privA) = realKeypair()
@@ -1099,9 +1107,10 @@ class SqliteDeliveryRepositoryTest {
     fun `concurrency - cancel vs expire - exactly one terminal CAS Applied, other RejectedState, final is one terminal`() {
         val file = Files.createTempFile("godstone-delivery", ".db").toFile()
         try {
-            val (_, j) = newSyncRepo(file)
+            val (wrapped, j) = newSyncRepo(file)
             val tracker = DeliveryTracker(j, Ed25519AckAuthenticator(UnresolvedRecipientKeyResolver))
             val mid = msgId(45)
+            plantHeld(wrapped, mid)
             tracker.enqueue(mid, AckMode.SINGLE_RECIPIENT, nodeA())
             tracker.markHandedToRelay(mid) // HANDED (both cancel+expire valid from HANDED)
             val r1 = AtomicReference<TransitionResult?>(null)
@@ -1128,6 +1137,7 @@ class SqliteDeliveryRepositoryTest {
         try {
             val j = open(file)
             val mid = msgId(46)
+            plantHeld(file, mid)
             // Order 1: markHanded then cancel (both apply; CANCELLED is terminal).
             j.enqueue(mid, AckMode.SINGLE_RECIPIENT, nodeA())
             assertEquals(TransitionResult.Applied, j.transition(mid, DeliveryTransition.MARK_HANDED))
@@ -1142,6 +1152,7 @@ class SqliteDeliveryRepositoryTest {
             // Order 2: cancel from QUEUED then markHanded (cancel applies; markHanded
             // rejected -- CANCELLED not in (QUEUED,)).
             val mid2 = msgId(47)
+            plantHeld(file, mid2)
             j.enqueue(mid2, AckMode.SINGLE_RECIPIENT, nodeB())
             assertEquals(TransitionResult.Applied, j.transition(mid2, DeliveryTransition.CANCEL))
             assertEquals(TransitionResult.RejectedState, j.transition(mid2, DeliveryTransition.MARK_HANDED))
@@ -1165,6 +1176,7 @@ class SqliteDeliveryRepositoryTest {
             // Production repo (state guard ON): ACK after cancel -> RejectedState.
             val j = open(file)
             val mid = msgId(50)
+            plantHeld(file, mid)
             j.enqueue(mid, AckMode.SINGLE_RECIPIENT, nodeA())
             j.transition(mid, DeliveryTransition.MARK_HANDED)
             j.transition(mid, DeliveryTransition.CANCEL) // CANCELLED
@@ -1960,6 +1972,828 @@ class SqliteDeliveryRepositoryTest {
                 store.enqueueDirectOutbound(frameB, expectedRecipient = nodeB(), localOriginNodeId = localNode(1)))
             assertEquals(164L, store.heldBytes())
             assertTrue(db.contains(midB))
+            db.close()
+        } finally {
+            file.delete()
+        }
+    }
+
+    // ==================================================================
+    // C7.5: Atomic EXPIRE/CANCEL held-frame retirement + relay suppression
+    // ==================================================================
+
+    @Test
+    fun `C7_5 production queued C6_6 to EXPIRE success`() = runBlocking {
+        val file = Files.createTempFile("godstone-delivery", ".db").toFile()
+        try {
+            val db = JdbcStoreDb(file)
+            val store = SqliteMessageStore(db, maxBytes = 4096L)
+            val repo = SqliteDeliveryRepository(db)
+            val (pubA, _) = realKeypair()
+            val tracker = DeliveryTracker(repo, Ed25519AckAuthenticator(SingleRecipientResolver(nodeA(), pubA)))
+            val mid = msgId(170)
+            val frame = directFrame(1, payloadSize = 64, msgIdOverride = mid)
+
+            assertEquals(OutboundEnqueueResult.Created(frame),
+                store.enqueueDirectOutbound(frame, expectedRecipient = nodeA(), localOriginNodeId = localNode(1)))
+            assertEquals(DeliveryState.QUEUED_DURABLY, stateOf(tracker, mid))
+            assertTrue(db.contains(mid))
+
+            assertEquals(TransitionResult.Applied, tracker.expire(mid))
+            assertEquals(DeliveryState.EXPIRED, stateOf(tracker, mid))
+            assertFalse(db.contains(mid), "held frame must be deleted on EXPIRE")
+
+            val d = db.readDelivery(mid)
+            assertNotNull(d)
+            assertEquals(DeliveryState.EXPIRED.code, d.state)
+            assertTrue(nodeA().contentEquals(d.expectedRecipient))
+            db.close()
+
+            // Reopen verification
+            val rawDb = JdbcStoreDb(file)
+            assertFalse(rawDb.contains(mid), "held frame remains absent across restart")
+            val reloaded = rawDb.readDelivery(mid)
+            assertNotNull(reloaded)
+            assertEquals(DeliveryState.EXPIRED.code, reloaded.state)
+            rawDb.close()
+        } finally {
+            file.delete()
+        }
+    }
+
+    @Test
+    fun `C7_5 production handed C6_6 to EXPIRE success`() = runBlocking {
+        val file = Files.createTempFile("godstone-delivery", ".db").toFile()
+        try {
+            val db = JdbcStoreDb(file)
+            val store = SqliteMessageStore(db, maxBytes = 4096L)
+            val repo = SqliteDeliveryRepository(db)
+            val (pubA, _) = realKeypair()
+            val tracker = DeliveryTracker(repo, Ed25519AckAuthenticator(SingleRecipientResolver(nodeA(), pubA)))
+            val mid = msgId(171)
+            val frame = directFrame(1, payloadSize = 64, msgIdOverride = mid)
+
+            assertEquals(OutboundEnqueueResult.Created(frame),
+                store.enqueueDirectOutbound(frame, expectedRecipient = nodeA(), localOriginNodeId = localNode(1)))
+            assertEquals(TransitionResult.Applied, tracker.markHandedToRelay(mid))
+            assertEquals(DeliveryState.HANDED_TO_RELAY, stateOf(tracker, mid))
+            assertTrue(db.contains(mid))
+
+            assertEquals(TransitionResult.Applied, tracker.expire(mid))
+            assertEquals(DeliveryState.EXPIRED, stateOf(tracker, mid))
+            assertFalse(db.contains(mid), "held frame must be deleted on EXPIRE from HANDED state")
+            db.close()
+        } finally {
+            file.delete()
+        }
+    }
+
+    @Test
+    fun `C7_5 production queued C6_6 to CANCEL success`() = runBlocking {
+        val file = Files.createTempFile("godstone-delivery", ".db").toFile()
+        try {
+            val db = JdbcStoreDb(file)
+            val store = SqliteMessageStore(db, maxBytes = 4096L)
+            val repo = SqliteDeliveryRepository(db)
+            val (pubA, _) = realKeypair()
+            val tracker = DeliveryTracker(repo, Ed25519AckAuthenticator(SingleRecipientResolver(nodeA(), pubA)))
+            val mid = msgId(172)
+            val frame = directFrame(2, payloadSize = 64, msgIdOverride = mid)
+
+            assertEquals(OutboundEnqueueResult.Created(frame),
+                store.enqueueDirectOutbound(frame, expectedRecipient = nodeA(), localOriginNodeId = localNode(1)))
+            assertEquals(DeliveryState.QUEUED_DURABLY, stateOf(tracker, mid))
+            assertTrue(db.contains(mid))
+
+            assertEquals(TransitionResult.Applied, tracker.cancel(mid))
+            assertEquals(DeliveryState.CANCELLED_LOCALLY, stateOf(tracker, mid))
+            assertFalse(db.contains(mid), "held frame must be deleted on CANCEL")
+
+            val d = db.readDelivery(mid)
+            assertNotNull(d)
+            assertEquals(DeliveryState.CANCELLED_LOCALLY.code, d.state)
+            assertTrue(nodeA().contentEquals(d.expectedRecipient))
+            db.close()
+
+            // Reopen verification
+            val rawDb = JdbcStoreDb(file)
+            assertFalse(rawDb.contains(mid), "held frame remains absent across restart")
+            val reloaded = rawDb.readDelivery(mid)
+            assertNotNull(reloaded)
+            assertEquals(DeliveryState.CANCELLED_LOCALLY.code, reloaded.state)
+            rawDb.close()
+        } finally {
+            file.delete()
+        }
+    }
+
+    @Test
+    fun `C7_5 production handed C6_6 to CANCEL success`() = runBlocking {
+        val file = Files.createTempFile("godstone-delivery", ".db").toFile()
+        try {
+            val db = JdbcStoreDb(file)
+            val store = SqliteMessageStore(db, maxBytes = 4096L)
+            val repo = SqliteDeliveryRepository(db)
+            val (pubA, _) = realKeypair()
+            val tracker = DeliveryTracker(repo, Ed25519AckAuthenticator(SingleRecipientResolver(nodeA(), pubA)))
+            val mid = msgId(173)
+            val frame = directFrame(2, payloadSize = 64, msgIdOverride = mid)
+
+            assertEquals(OutboundEnqueueResult.Created(frame),
+                store.enqueueDirectOutbound(frame, expectedRecipient = nodeA(), localOriginNodeId = localNode(1)))
+            assertEquals(TransitionResult.Applied, tracker.markHandedToRelay(mid))
+            assertEquals(DeliveryState.HANDED_TO_RELAY, stateOf(tracker, mid))
+            assertTrue(db.contains(mid))
+
+            assertEquals(TransitionResult.Applied, tracker.cancel(mid))
+            assertEquals(DeliveryState.CANCELLED_LOCALLY, stateOf(tracker, mid))
+            assertFalse(db.contains(mid), "held frame must be deleted on CANCEL from HANDED state")
+            db.close()
+        } finally {
+            file.delete()
+        }
+    }
+
+    @Test
+    fun `C7_5 MARK_HANDED retains held frame`() = runBlocking {
+        val file = Files.createTempFile("godstone-delivery", ".db").toFile()
+        try {
+            val db = JdbcStoreDb(file)
+            val store = SqliteMessageStore(db, maxBytes = 4096L)
+            val repo = SqliteDeliveryRepository(db)
+            val (pubA, _) = realKeypair()
+            val tracker = DeliveryTracker(repo, Ed25519AckAuthenticator(SingleRecipientResolver(nodeA(), pubA)))
+            val mid = msgId(174)
+            val frame = directFrame(3, payloadSize = 64, msgIdOverride = mid)
+
+            assertEquals(OutboundEnqueueResult.Created(frame),
+                store.enqueueDirectOutbound(frame, expectedRecipient = nodeA(), localOriginNodeId = localNode(1)))
+            assertEquals(TransitionResult.Applied, tracker.markHandedToRelay(mid))
+            assertEquals(DeliveryState.HANDED_TO_RELAY, stateOf(tracker, mid))
+            assertTrue(db.contains(mid), "MARK_HANDED is state-only and must retain held frame for relay carry")
+            db.close()
+        } finally {
+            file.delete()
+        }
+    }
+
+    @Test
+    fun `C7_5 missing-held active row rollback and Corrupt on EXPIRE`() {
+        val file = Files.createTempFile("godstone-delivery", ".db").toFile()
+        try {
+            val db = JdbcStoreDb(file)
+            val repo = SqliteDeliveryRepository(db)
+            val (pubA, _) = realKeypair()
+            val tracker = DeliveryTracker(repo, Ed25519AckAuthenticator(SingleRecipientResolver(nodeA(), pubA)))
+            val mid = msgId(175)
+
+            // Enqueue active delivery row without held frame
+            assertEquals(EnqueueResult.Created, tracker.enqueue(mid, AckMode.SINGLE_RECIPIENT, nodeA()))
+            assertEquals(DeliveryState.QUEUED_DURABLY, stateOf(tracker, mid))
+            assertFalse(db.contains(mid))
+
+            assertEquals(TransitionResult.Corrupt, tracker.expire(mid))
+            assertEquals(DeliveryState.QUEUED_DURABLY, stateOf(tracker, mid),
+                "active delivery state must remain QUEUED_DURABLY after transaction rollback")
+            db.close()
+        } finally {
+            file.delete()
+        }
+    }
+
+    @Test
+    fun `C7_5 missing-held active row rollback and Corrupt on CANCEL`() {
+        val file = Files.createTempFile("godstone-delivery", ".db").toFile()
+        try {
+            val db = JdbcStoreDb(file)
+            val repo = SqliteDeliveryRepository(db)
+            val (pubA, _) = realKeypair()
+            val tracker = DeliveryTracker(repo, Ed25519AckAuthenticator(SingleRecipientResolver(nodeA(), pubA)))
+            val mid = msgId(176)
+
+            // Enqueue active delivery row without held frame
+            assertEquals(EnqueueResult.Created, tracker.enqueue(mid, AckMode.SINGLE_RECIPIENT, nodeA()))
+            assertEquals(DeliveryState.QUEUED_DURABLY, stateOf(tracker, mid))
+            assertFalse(db.contains(mid))
+
+            assertEquals(TransitionResult.Corrupt, tracker.cancel(mid))
+            assertEquals(DeliveryState.QUEUED_DURABLY, stateOf(tracker, mid),
+                "active delivery state must remain QUEUED_DURABLY after transaction rollback")
+            db.close()
+        } finally {
+            file.delete()
+        }
+    }
+
+    @Test
+    fun `C7_5 fault after terminal CAS both restored on EXPIRE`() = runBlocking {
+        val file = Files.createTempFile("godstone-delivery", ".db").toFile()
+        try {
+            val db = JdbcStoreDb(file)
+            val faulting = FaultingStoreDb(db)
+            val store = SqliteMessageStore(db, maxBytes = 4096L)
+            val repo = SqliteDeliveryRepository(faulting)
+            val (pubA, _) = realKeypair()
+            val tracker = DeliveryTracker(repo, Ed25519AckAuthenticator(SingleRecipientResolver(nodeA(), pubA)))
+            val mid = msgId(177)
+            val frame = directFrame(4, payloadSize = 64, msgIdOverride = mid)
+
+            assertEquals(OutboundEnqueueResult.Created(frame),
+                store.enqueueDirectOutbound(frame, expectedRecipient = nodeA(), localOriginNodeId = localNode(1)))
+            assertTrue(db.contains(mid))
+
+            faulting.faultAfterTerminalCas = { throw java.sql.SQLException("simulated crash after terminal CAS") }
+            assertEquals(TransitionResult.StorageFailure, tracker.expire(mid))
+
+            assertEquals(DeliveryState.QUEUED_DURABLY, stateOf(tracker, mid))
+            assertTrue(db.contains(mid))
+            db.close()
+
+            val rawDb = JdbcStoreDb(file)
+            val reloaded = rawDb.readDelivery(mid)
+            assertNotNull(reloaded)
+            assertEquals(DeliveryState.QUEUED_DURABLY.code, reloaded.state)
+            assertTrue(rawDb.contains(mid), "held frame must remain intact after rollback")
+            rawDb.close()
+        } finally {
+            file.delete()
+        }
+    }
+
+    @Test
+    fun `C7_5 fault after terminal CAS both restored on CANCEL`() = runBlocking {
+        val file = Files.createTempFile("godstone-delivery", ".db").toFile()
+        try {
+            val db = JdbcStoreDb(file)
+            val faulting = FaultingStoreDb(db)
+            val store = SqliteMessageStore(db, maxBytes = 4096L)
+            val repo = SqliteDeliveryRepository(faulting)
+            val (pubA, _) = realKeypair()
+            val tracker = DeliveryTracker(repo, Ed25519AckAuthenticator(SingleRecipientResolver(nodeA(), pubA)))
+            val mid = msgId(178)
+            val frame = directFrame(4, payloadSize = 64, msgIdOverride = mid)
+
+            assertEquals(OutboundEnqueueResult.Created(frame),
+                store.enqueueDirectOutbound(frame, expectedRecipient = nodeA(), localOriginNodeId = localNode(1)))
+            assertTrue(db.contains(mid))
+
+            faulting.faultAfterTerminalCas = { throw java.sql.SQLException("simulated crash after terminal CAS") }
+            assertEquals(TransitionResult.StorageFailure, tracker.cancel(mid))
+
+            assertEquals(DeliveryState.QUEUED_DURABLY, stateOf(tracker, mid))
+            assertTrue(db.contains(mid))
+            db.close()
+
+            val rawDb = JdbcStoreDb(file)
+            val reloaded = rawDb.readDelivery(mid)
+            assertNotNull(reloaded)
+            assertEquals(DeliveryState.QUEUED_DURABLY.code, reloaded.state)
+            assertTrue(rawDb.contains(mid), "held frame must remain intact after rollback")
+            rawDb.close()
+        } finally {
+            file.delete()
+        }
+    }
+
+    @Test
+    fun `C7_5 fault after held DELETE both restored on EXPIRE`() = runBlocking {
+        val file = Files.createTempFile("godstone-delivery", ".db").toFile()
+        try {
+            val db = JdbcStoreDb(file)
+            val faulting = FaultingStoreDb(db)
+            val store = SqliteMessageStore(db, maxBytes = 4096L)
+            val repo = SqliteDeliveryRepository(faulting)
+            val (pubA, _) = realKeypair()
+            val tracker = DeliveryTracker(repo, Ed25519AckAuthenticator(SingleRecipientResolver(nodeA(), pubA)))
+            val mid = msgId(179)
+            val frame = directFrame(5, payloadSize = 64, msgIdOverride = mid)
+
+            assertEquals(OutboundEnqueueResult.Created(frame),
+                store.enqueueDirectOutbound(frame, expectedRecipient = nodeA(), localOriginNodeId = localNode(1)))
+            assertTrue(db.contains(mid))
+
+            faulting.faultAfterHeldDelete = { throw java.sql.SQLException("simulated crash after held DELETE") }
+            assertEquals(TransitionResult.StorageFailure, tracker.expire(mid))
+
+            assertEquals(DeliveryState.QUEUED_DURABLY, stateOf(tracker, mid))
+            assertTrue(db.contains(mid))
+            db.close()
+
+            val rawDb = JdbcStoreDb(file)
+            val reloaded = rawDb.readDelivery(mid)
+            assertNotNull(reloaded)
+            assertEquals(DeliveryState.QUEUED_DURABLY.code, reloaded.state)
+            assertTrue(rawDb.contains(mid), "held frame must remain restored after rollback")
+            rawDb.close()
+        } finally {
+            file.delete()
+        }
+    }
+
+    @Test
+    fun `C7_5 fault after held DELETE both restored on CANCEL`() = runBlocking {
+        val file = Files.createTempFile("godstone-delivery", ".db").toFile()
+        try {
+            val db = JdbcStoreDb(file)
+            val faulting = FaultingStoreDb(db)
+            val store = SqliteMessageStore(db, maxBytes = 4096L)
+            val repo = SqliteDeliveryRepository(faulting)
+            val (pubA, _) = realKeypair()
+            val tracker = DeliveryTracker(repo, Ed25519AckAuthenticator(SingleRecipientResolver(nodeA(), pubA)))
+            val mid = msgId(180)
+            val frame = directFrame(5, payloadSize = 64, msgIdOverride = mid)
+
+            assertEquals(OutboundEnqueueResult.Created(frame),
+                store.enqueueDirectOutbound(frame, expectedRecipient = nodeA(), localOriginNodeId = localNode(1)))
+            assertTrue(db.contains(mid))
+
+            faulting.faultAfterHeldDelete = { throw java.sql.SQLException("simulated crash after held DELETE") }
+            assertEquals(TransitionResult.StorageFailure, tracker.cancel(mid))
+
+            assertEquals(DeliveryState.QUEUED_DURABLY, stateOf(tracker, mid))
+            assertTrue(db.contains(mid))
+            db.close()
+
+            val rawDb = JdbcStoreDb(file)
+            val reloaded = rawDb.readDelivery(mid)
+            assertNotNull(reloaded)
+            assertEquals(DeliveryState.QUEUED_DURABLY.code, reloaded.state)
+            assertTrue(rawDb.contains(mid), "held frame must remain restored after rollback")
+            rawDb.close()
+        } finally {
+            file.delete()
+        }
+    }
+
+    @Test
+    fun `C7_5 held delete SQL failure yields StorageFailure and rolls back`() = runBlocking {
+        val file = Files.createTempFile("godstone-delivery", ".db").toFile()
+        try {
+            val db = JdbcStoreDb(file)
+            val faulting = FaultingStoreDb(db)
+            val store = SqliteMessageStore(db, maxBytes = 4096L)
+            val repo = SqliteDeliveryRepository(faulting)
+            val (pubA, _) = realKeypair()
+            val tracker = DeliveryTracker(repo, Ed25519AckAuthenticator(SingleRecipientResolver(nodeA(), pubA)))
+            val mid = msgId(181)
+            val frame = directFrame(6, payloadSize = 64, msgIdOverride = mid)
+
+            assertEquals(OutboundEnqueueResult.Created(frame),
+                store.enqueueDirectOutbound(frame, expectedRecipient = nodeA(), localOriginNodeId = localNode(1)))
+
+            faulting.faultDeleteHeld = true
+            assertEquals(TransitionResult.StorageFailure, tracker.expire(mid))
+
+            assertEquals(DeliveryState.QUEUED_DURABLY, stateOf(tracker, mid))
+            assertTrue(db.contains(mid))
+            db.close()
+
+            val rawDb = JdbcStoreDb(file)
+            val reloaded = rawDb.readDelivery(mid)
+            assertNotNull(reloaded)
+            assertEquals(DeliveryState.QUEUED_DURABLY.code, reloaded.state)
+            assertTrue(rawDb.contains(mid))
+            rawDb.close()
+        } finally {
+            file.delete()
+        }
+    }
+
+    @Test
+    fun `C7_5 idempotent second EXPIRE returns AlreadyInTarget and held remains absent`() = runBlocking {
+        val file = Files.createTempFile("godstone-delivery", ".db").toFile()
+        try {
+            val db = JdbcStoreDb(file)
+            val store = SqliteMessageStore(db, maxBytes = 4096L)
+            val repo = SqliteDeliveryRepository(db)
+            val (pubA, _) = realKeypair()
+            val tracker = DeliveryTracker(repo, Ed25519AckAuthenticator(SingleRecipientResolver(nodeA(), pubA)))
+            val mid = msgId(182)
+            val frame = directFrame(7, payloadSize = 64, msgIdOverride = mid)
+
+            assertEquals(OutboundEnqueueResult.Created(frame),
+                store.enqueueDirectOutbound(frame, expectedRecipient = nodeA(), localOriginNodeId = localNode(1)))
+            assertEquals(TransitionResult.Applied, tracker.expire(mid))
+            assertFalse(db.contains(mid))
+
+            assertEquals(TransitionResult.AlreadyInTarget, tracker.expire(mid))
+            assertFalse(db.contains(mid), "held frame remains absent")
+            assertEquals(DeliveryState.EXPIRED, stateOf(tracker, mid))
+            db.close()
+        } finally {
+            file.delete()
+        }
+    }
+
+    @Test
+    fun `C7_5 idempotent second CANCEL returns AlreadyInTarget and held remains absent`() = runBlocking {
+        val file = Files.createTempFile("godstone-delivery", ".db").toFile()
+        try {
+            val db = JdbcStoreDb(file)
+            val store = SqliteMessageStore(db, maxBytes = 4096L)
+            val repo = SqliteDeliveryRepository(db)
+            val (pubA, _) = realKeypair()
+            val tracker = DeliveryTracker(repo, Ed25519AckAuthenticator(SingleRecipientResolver(nodeA(), pubA)))
+            val mid = msgId(183)
+            val frame = directFrame(7, payloadSize = 64, msgIdOverride = mid)
+
+            assertEquals(OutboundEnqueueResult.Created(frame),
+                store.enqueueDirectOutbound(frame, expectedRecipient = nodeA(), localOriginNodeId = localNode(1)))
+            assertEquals(TransitionResult.Applied, tracker.cancel(mid))
+            assertFalse(db.contains(mid))
+
+            assertEquals(TransitionResult.AlreadyInTarget, tracker.cancel(mid))
+            assertFalse(db.contains(mid), "held frame remains absent")
+            assertEquals(DeliveryState.CANCELLED_LOCALLY, stateOf(tracker, mid))
+            db.close()
+        } finally {
+            file.delete()
+        }
+    }
+
+    @Test
+    fun `C7_5 cross-terminal rejection EXPIRED then cancel returns RejectedState`() = runBlocking {
+        val file = Files.createTempFile("godstone-delivery", ".db").toFile()
+        try {
+            val db = JdbcStoreDb(file)
+            val store = SqliteMessageStore(db, maxBytes = 4096L)
+            val repo = SqliteDeliveryRepository(db)
+            val (pubA, _) = realKeypair()
+            val tracker = DeliveryTracker(repo, Ed25519AckAuthenticator(SingleRecipientResolver(nodeA(), pubA)))
+            val mid = msgId(184)
+            val frame = directFrame(8, payloadSize = 64, msgIdOverride = mid)
+
+            assertEquals(OutboundEnqueueResult.Created(frame),
+                store.enqueueDirectOutbound(frame, expectedRecipient = nodeA(), localOriginNodeId = localNode(1)))
+            assertEquals(TransitionResult.Applied, tracker.expire(mid))
+            assertFalse(db.contains(mid))
+
+            val res = tracker.cancel(mid)
+            assertEquals(TransitionResult.RejectedState, res)
+            assertEquals(DeliveryState.EXPIRED, stateOf(tracker, mid))
+            assertFalse(db.contains(mid))
+            db.close()
+        } finally {
+            file.delete()
+        }
+    }
+
+    @Test
+    fun `C7_5 cross-terminal rejection CANCELLED then expire returns RejectedState`() = runBlocking {
+        val file = Files.createTempFile("godstone-delivery", ".db").toFile()
+        try {
+            val db = JdbcStoreDb(file)
+            val store = SqliteMessageStore(db, maxBytes = 4096L)
+            val repo = SqliteDeliveryRepository(db)
+            val (pubA, _) = realKeypair()
+            val tracker = DeliveryTracker(repo, Ed25519AckAuthenticator(SingleRecipientResolver(nodeA(), pubA)))
+            val mid = msgId(185)
+            val frame = directFrame(8, payloadSize = 64, msgIdOverride = mid)
+
+            assertEquals(OutboundEnqueueResult.Created(frame),
+                store.enqueueDirectOutbound(frame, expectedRecipient = nodeA(), localOriginNodeId = localNode(1)))
+            assertEquals(TransitionResult.Applied, tracker.cancel(mid))
+            assertFalse(db.contains(mid))
+
+            val res = tracker.expire(mid)
+            assertEquals(TransitionResult.RejectedState, res)
+            assertEquals(DeliveryState.CANCELLED_LOCALLY, stateOf(tracker, mid))
+            assertFalse(db.contains(mid))
+            db.close()
+        } finally {
+            file.delete()
+        }
+    }
+
+    @Test
+    fun `C7_5 production enqueueDirectOutbound after EXPIRE returns RejectedTerminalState`() = runBlocking {
+        val file = Files.createTempFile("godstone-delivery", ".db").toFile()
+        try {
+            val db = JdbcStoreDb(file)
+            val store = SqliteMessageStore(db, maxBytes = 4096L)
+            val repo = SqliteDeliveryRepository(db)
+            val (pubA, _) = realKeypair()
+            val tracker = DeliveryTracker(repo, Ed25519AckAuthenticator(SingleRecipientResolver(nodeA(), pubA)))
+            val mid = msgId(186)
+            val frame = directFrame(9, payloadSize = 64, msgIdOverride = mid)
+
+            assertEquals(OutboundEnqueueResult.Created(frame),
+                store.enqueueDirectOutbound(frame, expectedRecipient = nodeA(), localOriginNodeId = localNode(1)))
+            assertEquals(TransitionResult.Applied, tracker.expire(mid))
+            assertFalse(db.contains(mid))
+
+            val reEnqueue = store.enqueueDirectOutbound(frame, expectedRecipient = nodeA(), localOriginNodeId = localNode(1))
+            assertEquals(OutboundEnqueueResult.RejectedTerminalState, reEnqueue)
+            assertFalse(db.contains(mid), "held frame must remain absent after terminal rejection")
+            db.close()
+        } finally {
+            file.delete()
+        }
+    }
+
+    @Test
+    fun `C7_5 production enqueueDirectOutbound after CANCEL returns RejectedTerminalState`() = runBlocking {
+        val file = Files.createTempFile("godstone-delivery", ".db").toFile()
+        try {
+            val db = JdbcStoreDb(file)
+            val store = SqliteMessageStore(db, maxBytes = 4096L)
+            val repo = SqliteDeliveryRepository(db)
+            val (pubA, _) = realKeypair()
+            val tracker = DeliveryTracker(repo, Ed25519AckAuthenticator(SingleRecipientResolver(nodeA(), pubA)))
+            val mid = msgId(187)
+            val frame = directFrame(9, payloadSize = 64, msgIdOverride = mid)
+
+            assertEquals(OutboundEnqueueResult.Created(frame),
+                store.enqueueDirectOutbound(frame, expectedRecipient = nodeA(), localOriginNodeId = localNode(1)))
+            assertEquals(TransitionResult.Applied, tracker.cancel(mid))
+            assertFalse(db.contains(mid))
+
+            val reEnqueue = store.enqueueDirectOutbound(frame, expectedRecipient = nodeA(), localOriginNodeId = localNode(1))
+            assertEquals(OutboundEnqueueResult.RejectedTerminalState, reEnqueue)
+            assertFalse(db.contains(mid), "held frame must remain absent after terminal rejection")
+            db.close()
+        } finally {
+            file.delete()
+        }
+    }
+
+    @Test
+    fun `C7_5 ACK vs CANCEL race deterministic real-SQL`() = runBlocking {
+        val file = Files.createTempFile("godstone-delivery", ".db").toFile()
+        try {
+            val db = JdbcStoreDb(file)
+            val repo = SqliteDeliveryRepository(db)
+            val (pubA, privA) = realKeypair()
+            val auth = BlockingAuthenticator()
+            val tracker = DeliveryTracker(repo, auth)
+            val mid = msgId(188)
+            val store = SqliteMessageStore(db, maxBytes = 4096L)
+            val frame = directFrame(10, payloadSize = 64, msgIdOverride = mid)
+
+            // Arrange HANDED state with held frame present
+            assertEquals(OutboundEnqueueResult.Created(frame),
+                store.enqueueDirectOutbound(frame, expectedRecipient = nodeA(), localOriginNodeId = localNode(1)))
+            assertEquals(TransitionResult.Applied, tracker.markHandedToRelay(mid))
+            assertTrue(db.contains(mid))
+
+            val ack = AckFrame.build(mid, privA, nodeA(), routingTag)
+            val ackRes = AtomicReference<AckResult?>()
+            val t = Thread { ackRes.set(tracker.acknowledge(mid, ack)) }
+            t.start()
+
+            // ACK enters verify
+            assertTrue(auth.reached.await(2, TimeUnit.SECONDS))
+            // Cancel applies while ACK is blocked
+            assertEquals(TransitionResult.Applied, tracker.cancel(mid))
+            assertFalse(db.contains(mid), "held frame deleted by cancel")
+
+            auth.release.countDown()
+            t.join()
+
+            assertEquals(AckResult.RejectedState, ackRes.get())
+            assertEquals(DeliveryState.CANCELLED_LOCALLY, stateOf(tracker, mid))
+            assertFalse(db.contains(mid))
+            db.close()
+        } finally {
+            file.delete()
+        }
+    }
+
+    @Test
+    fun `C7_5 ACK vs EXPIRE race deterministic real-SQL`() = runBlocking {
+        val file = Files.createTempFile("godstone-delivery", ".db").toFile()
+        try {
+            val db = JdbcStoreDb(file)
+            val repo = SqliteDeliveryRepository(db)
+            val (pubA, privA) = realKeypair()
+            val auth = BlockingAuthenticator()
+            val tracker = DeliveryTracker(repo, auth)
+            val mid = msgId(189)
+            val store = SqliteMessageStore(db, maxBytes = 4096L)
+            val frame = directFrame(11, payloadSize = 64, msgIdOverride = mid)
+
+            // Arrange HANDED state with held frame present
+            assertEquals(OutboundEnqueueResult.Created(frame),
+                store.enqueueDirectOutbound(frame, expectedRecipient = nodeA(), localOriginNodeId = localNode(1)))
+            assertEquals(TransitionResult.Applied, tracker.markHandedToRelay(mid))
+            assertTrue(db.contains(mid))
+
+            val ack = AckFrame.build(mid, privA, nodeA(), routingTag)
+            val ackRes = AtomicReference<AckResult?>()
+            val t = Thread { ackRes.set(tracker.acknowledge(mid, ack)) }
+            t.start()
+
+            // ACK enters verify
+            assertTrue(auth.reached.await(2, TimeUnit.SECONDS))
+            // Expire applies while ACK is blocked
+            assertEquals(TransitionResult.Applied, tracker.expire(mid))
+            assertFalse(db.contains(mid), "held frame deleted by expire")
+
+            auth.release.countDown()
+            t.join()
+
+            assertEquals(AckResult.RejectedState, ackRes.get())
+            assertEquals(DeliveryState.EXPIRED, stateOf(tracker, mid))
+            assertFalse(db.contains(mid))
+            db.close()
+        } finally {
+            file.delete()
+        }
+    }
+
+    @Test
+    fun `C7_5 CANCEL vs EXPIRE race deterministic real-SQL`() = runBlocking {
+        val file = Files.createTempFile("godstone-delivery", ".db").toFile()
+        try {
+            val db = JdbcStoreDb(file)
+            val repo = SqliteDeliveryRepository(db)
+            val (pubA, _) = realKeypair()
+            val tracker = DeliveryTracker(repo, Ed25519AckAuthenticator(SingleRecipientResolver(nodeA(), pubA)))
+            val mid = msgId(190)
+            val store = SqliteMessageStore(db, maxBytes = 4096L)
+            val frame = directFrame(12, payloadSize = 64, msgIdOverride = mid)
+
+            assertEquals(OutboundEnqueueResult.Created(frame),
+                store.enqueueDirectOutbound(frame, expectedRecipient = nodeA(), localOriginNodeId = localNode(1)))
+            assertEquals(TransitionResult.Applied, tracker.markHandedToRelay(mid))
+            assertTrue(db.contains(mid))
+
+            val rCancel = AtomicReference<TransitionResult?>()
+            val rExpire = AtomicReference<TransitionResult?>()
+            val t1 = Thread { rCancel.set(tracker.cancel(mid)) }
+            val t2 = Thread { rExpire.set(tracker.expire(mid)) }
+            t1.start(); t2.start()
+            t1.join(5000); t2.join(5000)
+
+            val results = listOf(rCancel.get(), rExpire.get())
+            assertEquals(1, results.count { it == TransitionResult.Applied }, "exactly one terminal transition applies")
+            assertEquals(1, results.count { it is TransitionResult.RejectedState }, "the loser is rejected with prior state")
+            assertFalse(db.contains(mid), "held frame must be absent after race")
+
+            val finalState = stateOf(tracker, mid)
+            assertTrue(finalState == DeliveryState.CANCELLED_LOCALLY || finalState == DeliveryState.EXPIRED)
+            db.close()
+        } finally {
+            file.delete()
+        }
+    }
+
+    @Test
+    fun `C7_5 anti-entropy excludes retired terminal frame after EXPIRE and CANCEL`() = runBlocking {
+        val file = Files.createTempFile("godstone-delivery", ".db").toFile()
+        try {
+            val db = JdbcStoreDb(file)
+            val store = SqliteMessageStore(db, maxBytes = 4096L)
+            val repo = SqliteDeliveryRepository(db)
+            val (pubA, _) = realKeypair()
+            val tracker = DeliveryTracker(repo, Ed25519AckAuthenticator(SingleRecipientResolver(nodeA(), pubA)))
+            val router = Router(store, localNode(1))
+
+            val midExpire = msgId(191)
+            val frameExpire = directFrame(13, payloadSize = 64, msgIdOverride = midExpire)
+            val midCancel = msgId(192)
+            val frameCancel = directFrame(14, payloadSize = 64, msgIdOverride = midCancel)
+
+            // Enqueue both frames
+            assertEquals(OutboundEnqueueResult.Created(frameExpire),
+                store.enqueueDirectOutbound(frameExpire, expectedRecipient = nodeA(), localOriginNodeId = localNode(1)))
+            assertEquals(OutboundEnqueueResult.Created(frameCancel),
+                store.enqueueDirectOutbound(frameCancel, expectedRecipient = nodeB(), localOriginNodeId = localNode(1)))
+
+            // Both present in anti-entropy before retirement
+            assertTrue(router.currentDigest().mightContain(midExpire))
+            assertTrue(router.currentDigest().mightContain(midCancel))
+            val initialLacks = router.framesPeerLacks(BloomDigest())
+            assertTrue(initialLacks.any { it.msgId.contentEquals(midExpire) })
+            assertTrue(initialLacks.any { it.msgId.contentEquals(midCancel) })
+
+            // 1. Expire midExpire
+            assertEquals(TransitionResult.Applied, tracker.expire(midExpire))
+            assertFalse(router.currentDigest().mightContain(midExpire), "expired frame must not appear in bloom digest")
+            val lacksAfterExpire = router.framesPeerLacks(BloomDigest())
+            assertFalse(lacksAfterExpire.any { it.msgId.contentEquals(midExpire) }, "expired frame must not be returned in framesPeerLacks")
+            assertTrue(router.currentDigest().mightContain(midCancel))
+
+            // 2. Cancel midCancel
+            assertEquals(TransitionResult.Applied, tracker.cancel(midCancel))
+            assertFalse(router.currentDigest().mightContain(midCancel), "cancelled frame must not appear in bloom digest")
+            val lacksAfterCancel = router.framesPeerLacks(BloomDigest())
+            assertFalse(lacksAfterCancel.any { it.msgId.contentEquals(midCancel) }, "cancelled frame must not be returned in framesPeerLacks")
+
+            db.close()
+        } finally {
+            file.delete()
+        }
+    }
+
+    @Test
+    fun `C7_5 capacity released on EXPIRE is reusable by new frame`() = runBlocking {
+        val file = Files.createTempFile("godstone-delivery", ".db").toFile()
+        try {
+            val db = JdbcStoreDb(file)
+            val store = SqliteMessageStore(db, maxBytes = 200L)
+            val repo = SqliteDeliveryRepository(db)
+            val (pubA, _) = realKeypair()
+            val tracker = DeliveryTracker(repo, Ed25519AckAuthenticator(SingleRecipientResolver(nodeA(), pubA)))
+
+            val midA = msgId(193)
+            val frameA = directFrame(15, payloadSize = 50, msgIdOverride = midA)
+            val midB = msgId(194)
+            val frameB = directFrame(16, payloadSize = 100, msgIdOverride = midB)
+
+            assertEquals(OutboundEnqueueResult.Created(frameA),
+                store.enqueueDirectOutbound(frameA, expectedRecipient = nodeA(), localOriginNodeId = localNode(1)))
+            assertEquals(114L, store.heldBytes())
+
+            // Frame B rejected due to capacity
+            assertEquals(OutboundEnqueueResult.RejectedCapacity,
+                store.enqueueDirectOutbound(frameB, expectedRecipient = nodeB(), localOriginNodeId = localNode(1)))
+
+            // Expire A -> releases capacity
+            assertEquals(TransitionResult.Applied, tracker.expire(midA))
+            assertEquals(0L, store.heldBytes())
+            assertFalse(db.contains(midA))
+
+            // B can now enqueue!
+            assertEquals(OutboundEnqueueResult.Created(frameB),
+                store.enqueueDirectOutbound(frameB, expectedRecipient = nodeB(), localOriginNodeId = localNode(1)))
+            assertEquals(164L, store.heldBytes())
+            assertTrue(db.contains(midB))
+            db.close()
+        } finally {
+            file.delete()
+        }
+    }
+
+    @Test
+    fun `C7_5 capacity released on CANCEL is reusable by new frame`() = runBlocking {
+        val file = Files.createTempFile("godstone-delivery", ".db").toFile()
+        try {
+            val db = JdbcStoreDb(file)
+            val store = SqliteMessageStore(db, maxBytes = 200L)
+            val repo = SqliteDeliveryRepository(db)
+            val (pubA, _) = realKeypair()
+            val tracker = DeliveryTracker(repo, Ed25519AckAuthenticator(SingleRecipientResolver(nodeA(), pubA)))
+
+            val midA = msgId(195)
+            val frameA = directFrame(17, payloadSize = 50, msgIdOverride = midA)
+            val midB = msgId(196)
+            val frameB = directFrame(18, payloadSize = 100, msgIdOverride = midB)
+
+            assertEquals(OutboundEnqueueResult.Created(frameA),
+                store.enqueueDirectOutbound(frameA, expectedRecipient = nodeA(), localOriginNodeId = localNode(1)))
+            assertEquals(114L, store.heldBytes())
+
+            // Frame B rejected due to capacity
+            assertEquals(OutboundEnqueueResult.RejectedCapacity,
+                store.enqueueDirectOutbound(frameB, expectedRecipient = nodeB(), localOriginNodeId = localNode(1)))
+
+            // Cancel A -> releases capacity
+            assertEquals(TransitionResult.Applied, tracker.cancel(midA))
+            assertEquals(0L, store.heldBytes())
+            assertFalse(db.contains(midA))
+
+            // B can now enqueue!
+            assertEquals(OutboundEnqueueResult.Created(frameB),
+                store.enqueueDirectOutbound(frameB, expectedRecipient = nodeB(), localOriginNodeId = localNode(1)))
+            assertEquals(164L, store.heldBytes())
+            assertTrue(db.contains(midB))
+            db.close()
+        } finally {
+            file.delete()
+        }
+    }
+
+    @Test
+    fun `C7_5 AckMode NONE terminal retirement on EXPIRE and CANCEL`() = runBlocking {
+        val file = Files.createTempFile("godstone-delivery", ".db").toFile()
+        try {
+            val db = JdbcStoreDb(file)
+            val store = SqliteMessageStore(db, maxBytes = 4096L)
+            val repo = SqliteDeliveryRepository(db)
+            val (pubA, _) = realKeypair()
+            val tracker = DeliveryTracker(repo, Ed25519AckAuthenticator(SingleRecipientResolver(nodeA(), pubA)))
+
+            // Test NONE mode EXPIRE
+            val midNoneExp = msgId(197)
+            plantHeld(file, midNoneExp)
+            assertEquals(EnqueueResult.Created, tracker.enqueue(midNoneExp, AckMode.NONE, null))
+            assertTrue(db.contains(midNoneExp))
+
+            assertEquals(TransitionResult.Applied, tracker.expire(midNoneExp))
+            assertEquals(DeliveryState.EXPIRED, stateOf(tracker, midNoneExp))
+            assertFalse(db.contains(midNoneExp), "NONE mode frame must be deleted on EXPIRE")
+
+            // Test NONE mode CANCEL
+            val midNoneCancel = msgId(198)
+            plantHeld(file, midNoneCancel)
+            assertEquals(EnqueueResult.Created, tracker.enqueue(midNoneCancel, AckMode.NONE, null))
+            assertTrue(db.contains(midNoneCancel))
+
+            assertEquals(TransitionResult.Applied, tracker.cancel(midNoneCancel))
+            assertEquals(DeliveryState.CANCELLED_LOCALLY, stateOf(tracker, midNoneCancel))
+            assertFalse(db.contains(midNoneCancel), "NONE mode frame must be deleted on CANCEL")
+
             db.close()
         } finally {
             file.delete()

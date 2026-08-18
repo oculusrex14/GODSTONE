@@ -231,6 +231,19 @@ final class SqliteDeliveryRepositoryTests: XCTestCase {
             )
         }
         var faultAtomicAcknowledgeAndRetire = false
+
+        func atomicTransitionAndRetire(
+            guardedTransitionSql: String,
+            msgId: Data
+        ) throws -> TerminalRetireMutationResult {
+            lock.lock(); defer { lock.unlock() }
+            if faultAtomicTransitionAndRetire { throw FaultError.injected }
+            return try underlying.atomicTransitionAndRetire(
+                guardedTransitionSql: guardedTransitionSql,
+                msgId: msgId
+            )
+        }
+        var faultAtomicTransitionAndRetire = false
     }
     private enum FaultError: Error { case injected }
 
@@ -354,8 +367,9 @@ final class SqliteDeliveryRepositoryTests: XCTestCase {
     }
 
     func testTerminalRejectsNonAckTransitions() throws {
-        let (j, _, url) = openRepo(); defer { try? FileManager.default.removeItem(at: url) }
+        let (j, store, url) = openRepo(); defer { try? FileManager.default.removeItem(at: url) }
         let mid = msgId(46)
+        plantHeld(store, mid)
         _ = j.enqueue(mid, ackMode: .singleRecipient, expectedRecipient: nodeA())
         XCTAssertEqual(.applied, j.transition(mid, .cancel))
         // CANCELLED is terminal: markHanded / expire are rejected; cancel is idempotent.
@@ -568,8 +582,9 @@ final class SqliteDeliveryRepositoryTests: XCTestCase {
     // MARK: - C6.4-H: zero-row ACK CAS classification
 
     func testAckAfterCancelIsRejectedState() throws {
-        let (j, _, url) = openRepo(); defer { try? FileManager.default.removeItem(at: url) }
+        let (j, store, url) = openRepo(); defer { try? FileManager.default.removeItem(at: url) }
         let mid = msgId(16)
+        plantHeld(store, mid)
         _ = j.enqueue(mid, ackMode: .singleRecipient, expectedRecipient: nodeA())
         XCTAssertEqual(.applied, j.transition(mid, .cancel))
         // The ACK lost the CAS to a cancel -> 0-row -> re-read CANCELLED -> RejectedState.
@@ -630,6 +645,7 @@ final class SqliteDeliveryRepositoryTests: XCTestCase {
         let auth = BlockingAckAuthenticator(result: true)
         let tracker = DeliveryTracker(repo: repo, authenticator: auth)
         let mid = msgId(seed)
+        plantHeld(store, mid)
         XCTAssertEqual(EnqueueResult.created, tracker.enqueue(mid, ackMode: .singleRecipient, expectedRecipient: recipient))
         XCTAssertEqual(TransitionResult.applied, tracker.markHandedToRelay(mid))
         let ack = try! AckFrame.build(msgId: mid, recipientSigningPrivKey: priv,
@@ -765,8 +781,9 @@ final class SqliteDeliveryRepositoryTests: XCTestCase {
     }
 
     func testCancelVersusExpireOneWinsOtherRejectedOrIdempotent() throws {
-        let (j, _, url) = openRepo(); defer { try? FileManager.default.removeItem(at: url) }
+        let (j, store, url) = openRepo(); defer { try? FileManager.default.removeItem(at: url) }
         let mid = msgId(105)
+        plantHeld(store, mid)
         _ = j.enqueue(mid, ackMode: .singleRecipient, expectedRecipient: nodeA())
         XCTAssertEqual(.applied, j.transition(mid, .expire))
         // expire won; cancel on an EXPIRED row -> RejectedState.
@@ -775,16 +792,18 @@ final class SqliteDeliveryRepositoryTests: XCTestCase {
     }
 
     func testMarkHandedVersusCancelBothOrders() throws {
-        let (j, _, url) = openRepo(); defer { try? FileManager.default.removeItem(at: url) }
+        let (j, store, url) = openRepo(); defer { try? FileManager.default.removeItem(at: url) }
         // HANDED -> cancel is in validFroms {queued,handed} -> .applied (cancel can
         // recall a handed-but-unacked message).
         let mid = msgId(106)
+        plantHeld(store, mid)
         _ = j.enqueue(mid, ackMode: .singleRecipient, expectedRecipient: nodeA())
         XCTAssertEqual(.applied, j.transition(mid, .markHanded))
         XCTAssertEqual(.applied, j.transition(mid, .cancel), "cancel from HANDED is valid -> Applied")
         XCTAssertEqual(.cancelledLocally, found(j, mid).state)
         // CANCELLED -> markHanded is rejected (validFroms {queued} only).
         let mid2 = msgId(107)
+        plantHeld(store, mid2)
         _ = j.enqueue(mid2, ackMode: .singleRecipient, expectedRecipient: nodeA())
         XCTAssertEqual(.applied, j.transition(mid2, .cancel))
         XCTAssertEqual(.rejectedState, j.transition(mid2, .markHanded), "markHanded on CANCELLED is rejected")
@@ -809,8 +828,9 @@ final class SqliteDeliveryRepositoryTests: XCTestCase {
     /// predicate decides the race; the winner is order-dependent but the OUTCOME
     /// SET is deterministic.
     func testCancelVersusExpireConcurrentCasDecidesOneWinsOtherRejected() throws {
-        let (j, _, url) = openRepo(); defer { try? FileManager.default.removeItem(at: url) }
+        let (j, store, url) = openRepo(); defer { try? FileManager.default.removeItem(at: url) }
         let mid = msgId(108)
+        plantHeld(store, mid)
         _ = j.enqueue(mid, ackMode: .singleRecipient, expectedRecipient: nodeA())
         let start = DispatchSemaphore(value: 0)
         let expA = expectation(description: "expire"), expB = expectation(description: "cancel")
@@ -837,8 +857,9 @@ final class SqliteDeliveryRepositoryTests: XCTestCase {
     /// RejectedState -- holds for every interleaving, so a non-atomic regression
     /// (torn state or both losing) is caught.
     func testMarkHandedVersusCancelConcurrentAlwaysEndsCancelled() throws {
-        let (j, _, url) = openRepo(); defer { try? FileManager.default.removeItem(at: url) }
+        let (j, store, url) = openRepo(); defer { try? FileManager.default.removeItem(at: url) }
         let mid = msgId(109)
+        plantHeld(store, mid)
         _ = j.enqueue(mid, ackMode: .singleRecipient, expectedRecipient: nodeA())
         let start = DispatchSemaphore(value: 0)
         let expA = expectation(description: "markHanded"), expB = expectation(description: "cancel")
@@ -866,6 +887,7 @@ final class SqliteDeliveryRepositoryTests: XCTestCase {
         _ = strong.enqueue(mid, ackMode: .singleRecipient, expectedRecipient: nodeA())
         plantHeld(store, mid)
         XCTAssertEqual(.applied, strong.transition(mid, .cancel)) // CANCELLED
+        plantHeld(store, mid)
         // Weaken only the state guard: the ACK CAS drops `state IN (queued,handed)`,
         // so it matches the CANCELLED row -> .applied (WRONG -- an ACK overwrote a
         // CANCELLED row; the guard is load-bearing).
@@ -878,6 +900,7 @@ final class SqliteDeliveryRepositoryTests: XCTestCase {
         _ = strong.enqueue(mid2, ackMode: .singleRecipient, expectedRecipient: nodeA())
         plantHeld(store, mid2)
         XCTAssertEqual(.applied, strong.transition(mid2, .cancel))
+        plantHeld(store, mid2)
         XCTAssertEqual(AckResult.rejectedState, strong.acknowledgeBoundAndRetire(mid2, expectedRecipient: nodeA()),
                        "with all guards on, an ACK on a CANCELLED row is RejectedState")
         XCTAssertTrue(store.allHeldMsgIds().contains(mid2), "held frame retained on rejection")
@@ -889,23 +912,25 @@ final class SqliteDeliveryRepositoryTests: XCTestCase {
         let store = SqliteMessageStore(url: url, maxBytes: .max, fileProtection: .complete)
         let strong = SqliteDeliveryRepository(store)
         let mid = msgId(202)
-        _ = strong.enqueue(mid, ackMode: .singleRecipient, expectedRecipient: nodeB()) // bound to Bob
+        _ = strong.enqueue(mid, ackMode: .singleRecipient, expectedRecipient: nodeA()) // Alice
         plantHeld(store, mid)
-        XCTAssertEqual(.applied, strong.transition(mid, .markHanded))
-        // Weaken only the recipient guard: Alice's ACK (recipient=alice) matches
-        // the Bob-bound row because the `expected_recipient = ?` predicate is gone
-        // -> .applied (WRONG -- Alice's ACK bound a Bob row; the guard is load-bearing).
+        _ = strong.transition(mid, .markHanded)
+        // Weaken the recipient guard: the ACK CAS matches on msg_id + mode + state
+        // only, ignoring expected_recipient -> Bob's ACK matches Alice's row -> .applied
+        // (WRONG -- Bob forged an ACK for Alice's message; the guard is load-bearing).
         let weak = newRepo(store, recipientGuard: false)
-        XCTAssertEqual(AckResult.applied, weak.acknowledgeBoundAndRetire(mid, expectedRecipient: nodeA()),
-                       "without the recipient guard, Alice's ACK binds a Bob row (guard is load-bearing)")
+        XCTAssertEqual(AckResult.applied, weak.acknowledgeBoundAndRetire(mid, expectedRecipient: nodeB()),
+                       "without the recipient guard, Bob's ACK binds Alice's row (guard is load-bearing)")
         XCTAssertFalse(store.allHeldMsgIds().contains(mid), "held frame deleted on ACK retirement")
-        // A SEPARATE Bob-bound row: the all-guards-on repo correctly rejects Alice.
+        // A SEPARATE row: the all-guards-on repo correctly rejects Bob's ACK with
+        // UnknownMessage (recipient mismatch via 0-row CAS re-read).
         let mid2 = msgId(203)
-        _ = strong.enqueue(mid2, ackMode: .singleRecipient, expectedRecipient: nodeB())
+        _ = strong.enqueue(mid2, ackMode: .singleRecipient, expectedRecipient: nodeA())
         plantHeld(store, mid2)
-        XCTAssertEqual(.applied, strong.transition(mid2, .markHanded))
-        XCTAssertEqual(AckResult.unknownMessage, strong.acknowledgeBoundAndRetire(mid2, expectedRecipient: nodeA()),
-                       "with all guards on, Alice's ACK on a Bob row is UnknownMessage")
+        _ = strong.transition(mid2, .markHanded)
+        XCTAssertEqual(AckResult.unknownMessage,
+                       strong.acknowledgeBoundAndRetire(mid2, expectedRecipient: nodeB()),
+                       "with all guards on, Bob's ACK on Alice's row is UnknownMessage")
         XCTAssertTrue(store.allHeldMsgIds().contains(mid2), "held frame retained on rejection")
     }
 
@@ -935,13 +960,11 @@ final class SqliteDeliveryRepositoryTests: XCTestCase {
         XCTAssertFalse(store.allHeldMsgIds().contains(mid), "held frame deleted on ACK retirement")
         // C6.4-M symmetry: a SEPARATE clean SINGLE_RECIPIENT HANDED row -> the
         // all-guards-on repo ACKs it normally (.applied), the happy path the mode
-        // guard protects. The corrupt-row branch above proves the guard catches a
-        // NONE-mode row; this proves a clean row still ACKs (the other three guard
-        // tests each carry this separate-row strong-repo check; now all four do).
+        // guard protects.
         let midClean = msgId(207)
         _ = strong.enqueue(midClean, ackMode: .singleRecipient, expectedRecipient: nodeA())
-        XCTAssertEqual(.applied, strong.transition(midClean, .markHanded))
         plantHeld(store, midClean)
+        XCTAssertEqual(.applied, strong.transition(midClean, .markHanded))
         XCTAssertEqual(AckResult.applied, strong.acknowledgeBoundAndRetire(midClean, expectedRecipient: nodeA()),
                        "with all guards on, a clean SINGLE_RECIPIENT HANDED row ACKs (happy path)")
     }
@@ -955,6 +978,7 @@ final class SqliteDeliveryRepositoryTests: XCTestCase {
         _ = strong.enqueue(mid, ackMode: .singleRecipient, expectedRecipient: nodeA())
         plantHeld(store, mid)
         XCTAssertEqual(AckResult.applied, strong.acknowledgeBoundAndRetire(mid, expectedRecipient: nodeA())) // ACKNOWLEDGED
+        plantHeld(store, mid)
         // Weaken the transition state guard: cancel's `state IN (queued,handed)`
         // predicate drops, so cancel matches the ACKNOWLEDGED row -> .applied (WRONG
         // -- cancel overwrote an ACKNOWLEDGED row; the guard is load-bearing).
@@ -966,6 +990,7 @@ final class SqliteDeliveryRepositoryTests: XCTestCase {
         _ = strong.enqueue(mid2, ackMode: .singleRecipient, expectedRecipient: nodeA())
         plantHeld(store, mid2)
         XCTAssertEqual(AckResult.applied, strong.acknowledgeBoundAndRetire(mid2, expectedRecipient: nodeA()))
+        plantHeld(store, mid2)
         XCTAssertEqual(TransitionResult.rejectedState, strong.transition(mid2, .cancel),
                        "with all guards on, cancel on an ACKNOWLEDGED row is RejectedState")
     }
@@ -1610,6 +1635,625 @@ final class SqliteDeliveryRepositoryTests: XCTestCase {
                        store.enqueueDirectOutbound(frameB, expectedRecipient: nodeB(), localOriginNodeId: localNode(1)))
         XCTAssertEqual(164, store.heldBytes)
         XCTAssertTrue(store.allHeldMsgIds().contains(midB))
+    }
+
+    // ==================================================================
+    // C7.5: Atomic EXPIRE/CANCEL held-frame retirement + relay suppression
+    // ==================================================================
+
+    func testC75ProductionQueuedToExpireSuccess() throws {
+        let url = URL(fileURLWithPath: NSTemporaryDirectory()).appendingPathComponent("godstone-d-\(UUID().uuidString).db")
+        defer { try? FileManager.default.removeItem(at: url) }
+        let store = SqliteMessageStore(url: url, maxBytes: 4096, fileProtection: .complete)
+        let repo = SqliteDeliveryRepository(store)
+        let (pubA, _) = realKeypair()
+        let tracker = DeliveryTracker(repo: repo, authenticator: Ed25519AckAuthenticator(resolver: SingleRecipientResolver(nodeA(), pubA)))
+        let mid = msgId(170)
+        let frame = directFrame(1, payloadSize: 64, msgIdOverride: mid)
+
+        XCTAssertEqual(.created(frame),
+                       store.enqueueDirectOutbound(frame, expectedRecipient: nodeA(), localOriginNodeId: localNode(1)))
+        XCTAssertEqual(.queuedDurably, stateOf(tracker, mid))
+        XCTAssertTrue(store.allHeldMsgIds().contains(mid))
+
+        XCTAssertEqual(.applied, tracker.expire(mid))
+        XCTAssertEqual(.expired, stateOf(tracker, mid))
+        XCTAssertFalse(store.allHeldMsgIds().contains(mid), "held frame must be deleted on EXPIRE")
+
+        let d = try store.readDelivery(mid)
+        XCTAssertNotNil(d)
+        XCTAssertEqual(DeliveryState.expired.code, d?.state)
+        XCTAssertEqual(nodeA(), d?.expectedRecipient)
+
+        // Reopen verification
+        let store2 = SqliteMessageStore(url: url, maxBytes: 4096, fileProtection: .complete)
+        XCTAssertFalse(store2.allHeldMsgIds().contains(mid), "held frame remains absent across restart")
+        let reloaded = try store2.readDelivery(mid)
+        XCTAssertNotNil(reloaded)
+        XCTAssertEqual(DeliveryState.expired.code, reloaded?.state)
+    }
+
+    func testC75ProductionHandedToExpireSuccess() throws {
+        let url = URL(fileURLWithPath: NSTemporaryDirectory()).appendingPathComponent("godstone-d-\(UUID().uuidString).db")
+        defer { try? FileManager.default.removeItem(at: url) }
+        let store = SqliteMessageStore(url: url, maxBytes: 4096, fileProtection: .complete)
+        let repo = SqliteDeliveryRepository(store)
+        let (pubA, _) = realKeypair()
+        let tracker = DeliveryTracker(repo: repo, authenticator: Ed25519AckAuthenticator(resolver: SingleRecipientResolver(nodeA(), pubA)))
+        let mid = msgId(171)
+        let frame = directFrame(1, payloadSize: 64, msgIdOverride: mid)
+
+        XCTAssertEqual(.created(frame),
+                       store.enqueueDirectOutbound(frame, expectedRecipient: nodeA(), localOriginNodeId: localNode(1)))
+        XCTAssertEqual(.applied, tracker.markHandedToRelay(mid))
+        XCTAssertEqual(.handedToRelay, stateOf(tracker, mid))
+        XCTAssertTrue(store.allHeldMsgIds().contains(mid))
+
+        XCTAssertEqual(.applied, tracker.expire(mid))
+        XCTAssertEqual(.expired, stateOf(tracker, mid))
+        XCTAssertFalse(store.allHeldMsgIds().contains(mid), "held frame must be deleted on EXPIRE from HANDED state")
+    }
+
+    func testC75ProductionQueuedToCancelSuccess() throws {
+        let url = URL(fileURLWithPath: NSTemporaryDirectory()).appendingPathComponent("godstone-d-\(UUID().uuidString).db")
+        defer { try? FileManager.default.removeItem(at: url) }
+        let store = SqliteMessageStore(url: url, maxBytes: 4096, fileProtection: .complete)
+        let repo = SqliteDeliveryRepository(store)
+        let (pubA, _) = realKeypair()
+        let tracker = DeliveryTracker(repo: repo, authenticator: Ed25519AckAuthenticator(resolver: SingleRecipientResolver(nodeA(), pubA)))
+        let mid = msgId(172)
+        let frame = directFrame(2, payloadSize: 64, msgIdOverride: mid)
+
+        XCTAssertEqual(.created(frame),
+                       store.enqueueDirectOutbound(frame, expectedRecipient: nodeA(), localOriginNodeId: localNode(1)))
+        XCTAssertEqual(.queuedDurably, stateOf(tracker, mid))
+        XCTAssertTrue(store.allHeldMsgIds().contains(mid))
+
+        XCTAssertEqual(.applied, tracker.cancel(mid))
+        XCTAssertEqual(.cancelledLocally, stateOf(tracker, mid))
+        XCTAssertFalse(store.allHeldMsgIds().contains(mid), "held frame must be deleted on CANCEL")
+
+        let d = try store.readDelivery(mid)
+        XCTAssertNotNil(d)
+        XCTAssertEqual(DeliveryState.cancelledLocally.code, d?.state)
+        XCTAssertEqual(nodeA(), d?.expectedRecipient)
+
+        // Reopen verification
+        let store2 = SqliteMessageStore(url: url, maxBytes: 4096, fileProtection: .complete)
+        XCTAssertFalse(store2.allHeldMsgIds().contains(mid), "held frame remains absent across restart")
+        let reloaded = try store2.readDelivery(mid)
+        XCTAssertNotNil(reloaded)
+        XCTAssertEqual(DeliveryState.cancelledLocally.code, reloaded?.state)
+    }
+
+    func testC75ProductionHandedToCancelSuccess() throws {
+        let url = URL(fileURLWithPath: NSTemporaryDirectory()).appendingPathComponent("godstone-d-\(UUID().uuidString).db")
+        defer { try? FileManager.default.removeItem(at: url) }
+        let store = SqliteMessageStore(url: url, maxBytes: 4096, fileProtection: .complete)
+        let repo = SqliteDeliveryRepository(store)
+        let (pubA, _) = realKeypair()
+        let tracker = DeliveryTracker(repo: repo, authenticator: Ed25519AckAuthenticator(resolver: SingleRecipientResolver(nodeA(), pubA)))
+        let mid = msgId(173)
+        let frame = directFrame(2, payloadSize: 64, msgIdOverride: mid)
+
+        XCTAssertEqual(.created(frame),
+                       store.enqueueDirectOutbound(frame, expectedRecipient: nodeA(), localOriginNodeId: localNode(1)))
+        XCTAssertEqual(.applied, tracker.markHandedToRelay(mid))
+        XCTAssertEqual(.handedToRelay, stateOf(tracker, mid))
+        XCTAssertTrue(store.allHeldMsgIds().contains(mid))
+
+        XCTAssertEqual(.applied, tracker.cancel(mid))
+        XCTAssertEqual(.cancelledLocally, stateOf(tracker, mid))
+        XCTAssertFalse(store.allHeldMsgIds().contains(mid), "held frame must be deleted on CANCEL from HANDED state")
+    }
+
+    func testC75MarkHandedRetainsHeldFrame() throws {
+        let url = URL(fileURLWithPath: NSTemporaryDirectory()).appendingPathComponent("godstone-d-\(UUID().uuidString).db")
+        defer { try? FileManager.default.removeItem(at: url) }
+        let store = SqliteMessageStore(url: url, maxBytes: 4096, fileProtection: .complete)
+        let repo = SqliteDeliveryRepository(store)
+        let (pubA, _) = realKeypair()
+        let tracker = DeliveryTracker(repo: repo, authenticator: Ed25519AckAuthenticator(resolver: SingleRecipientResolver(nodeA(), pubA)))
+        let mid = msgId(174)
+        let frame = directFrame(3, payloadSize: 64, msgIdOverride: mid)
+
+        XCTAssertEqual(.created(frame),
+                       store.enqueueDirectOutbound(frame, expectedRecipient: nodeA(), localOriginNodeId: localNode(1)))
+        XCTAssertEqual(.applied, tracker.markHandedToRelay(mid))
+        XCTAssertEqual(.handedToRelay, stateOf(tracker, mid))
+        XCTAssertTrue(store.allHeldMsgIds().contains(mid), "MARK_HANDED is state-only and must retain held frame for relay carry")
+    }
+
+    func testC75MissingHeldActiveRowRollbackAndCorruptOnExpire() throws {
+        let (j, _, url) = openRepo(); defer { try? FileManager.default.removeItem(at: url) }
+        let mid = msgId(175)
+        let (pubA, _) = realKeypair()
+        let tracker = DeliveryTracker(repo: j, authenticator: Ed25519AckAuthenticator(resolver: SingleRecipientResolver(nodeA(), pubA)))
+
+        XCTAssertEqual(.created, tracker.enqueue(mid, ackMode: .singleRecipient, expectedRecipient: nodeA()))
+        XCTAssertEqual(.queuedDurably, stateOf(tracker, mid))
+
+        XCTAssertEqual(.corrupt, tracker.expire(mid))
+        XCTAssertEqual(.queuedDurably, stateOf(tracker, mid), "active delivery state must remain QUEUED_DURABLY after rollback")
+    }
+
+    func testC75MissingHeldActiveRowRollbackAndCorruptOnCancel() throws {
+        let (j, _, url) = openRepo(); defer { try? FileManager.default.removeItem(at: url) }
+        let mid = msgId(176)
+        let (pubA, _) = realKeypair()
+        let tracker = DeliveryTracker(repo: j, authenticator: Ed25519AckAuthenticator(resolver: SingleRecipientResolver(nodeA(), pubA)))
+
+        XCTAssertEqual(.created, tracker.enqueue(mid, ackMode: .singleRecipient, expectedRecipient: nodeA()))
+        XCTAssertEqual(.queuedDurably, stateOf(tracker, mid))
+
+        XCTAssertEqual(.corrupt, tracker.cancel(mid))
+        XCTAssertEqual(.queuedDurably, stateOf(tracker, mid), "active delivery state must remain QUEUED_DURABLY after rollback")
+    }
+
+    func testC75FaultAfterTerminalCasBothRestoredOnExpire() throws {
+        let url = URL(fileURLWithPath: NSTemporaryDirectory()).appendingPathComponent("godstone-d-\(UUID().uuidString).db")
+        defer { try? FileManager.default.removeItem(at: url) }
+        let store = SqliteMessageStore(url: url, maxBytes: 4096, fileProtection: .complete)
+        let repo = SqliteDeliveryRepository(store)
+        let mid = msgId(177)
+        let frame = directFrame(4, payloadSize: 64, msgIdOverride: mid)
+
+        XCTAssertEqual(.created(frame),
+                       store.enqueueDirectOutbound(frame, expectedRecipient: nodeA(), localOriginNodeId: localNode(1)))
+        XCTAssertTrue(store.allHeldMsgIds().contains(mid))
+
+        let faultRes = repo.transitionWithFault(mid, .expire) { label, _ in
+            if label == "after_terminal_cas" { throw FaultError.injected }
+        }
+        XCTAssertEqual(TransitionResult.storageFailure, faultRes)
+
+        let d = try store.readDelivery(mid)
+        XCTAssertNotNil(d)
+        XCTAssertEqual(DeliveryState.queuedDurably.code, d?.state)
+        XCTAssertTrue(store.allHeldMsgIds().contains(mid), "held frame must remain intact after rollback")
+    }
+
+    func testC75FaultAfterTerminalCasBothRestoredOnCancel() throws {
+        let url = URL(fileURLWithPath: NSTemporaryDirectory()).appendingPathComponent("godstone-d-\(UUID().uuidString).db")
+        defer { try? FileManager.default.removeItem(at: url) }
+        let store = SqliteMessageStore(url: url, maxBytes: 4096, fileProtection: .complete)
+        let repo = SqliteDeliveryRepository(store)
+        let mid = msgId(178)
+        let frame = directFrame(4, payloadSize: 64, msgIdOverride: mid)
+
+        XCTAssertEqual(.created(frame),
+                       store.enqueueDirectOutbound(frame, expectedRecipient: nodeA(), localOriginNodeId: localNode(1)))
+        XCTAssertTrue(store.allHeldMsgIds().contains(mid))
+
+        let faultRes = repo.transitionWithFault(mid, .cancel) { label, _ in
+            if label == "after_terminal_cas" { throw FaultError.injected }
+        }
+        XCTAssertEqual(TransitionResult.storageFailure, faultRes)
+
+        let d = try store.readDelivery(mid)
+        XCTAssertNotNil(d)
+        XCTAssertEqual(DeliveryState.queuedDurably.code, d?.state)
+        XCTAssertTrue(store.allHeldMsgIds().contains(mid), "held frame must remain intact after rollback")
+    }
+
+    func testC75FaultAfterHeldDeleteBothRestoredOnExpire() throws {
+        let url = URL(fileURLWithPath: NSTemporaryDirectory()).appendingPathComponent("godstone-d-\(UUID().uuidString).db")
+        defer { try? FileManager.default.removeItem(at: url) }
+        let store = SqliteMessageStore(url: url, maxBytes: 4096, fileProtection: .complete)
+        let repo = SqliteDeliveryRepository(store)
+        let mid = msgId(179)
+        let frame = directFrame(5, payloadSize: 64, msgIdOverride: mid)
+
+        XCTAssertEqual(.created(frame),
+                       store.enqueueDirectOutbound(frame, expectedRecipient: nodeA(), localOriginNodeId: localNode(1)))
+        XCTAssertTrue(store.allHeldMsgIds().contains(mid))
+
+        let faultRes = repo.transitionWithFault(mid, .expire) { label, _ in
+            if label == "after_terminal_delete" { throw FaultError.injected }
+        }
+        XCTAssertEqual(TransitionResult.storageFailure, faultRes)
+
+        let d = try store.readDelivery(mid)
+        XCTAssertNotNil(d)
+        XCTAssertEqual(DeliveryState.queuedDurably.code, d?.state)
+        XCTAssertTrue(store.allHeldMsgIds().contains(mid), "held frame must remain intact after rollback")
+    }
+
+    func testC75FaultAfterHeldDeleteBothRestoredOnCancel() throws {
+        let url = URL(fileURLWithPath: NSTemporaryDirectory()).appendingPathComponent("godstone-d-\(UUID().uuidString).db")
+        defer { try? FileManager.default.removeItem(at: url) }
+        let store = SqliteMessageStore(url: url, maxBytes: 4096, fileProtection: .complete)
+        let repo = SqliteDeliveryRepository(store)
+        let mid = msgId(180)
+        let frame = directFrame(5, payloadSize: 64, msgIdOverride: mid)
+
+        XCTAssertEqual(.created(frame),
+                       store.enqueueDirectOutbound(frame, expectedRecipient: nodeA(), localOriginNodeId: localNode(1)))
+        XCTAssertTrue(store.allHeldMsgIds().contains(mid))
+
+        let faultRes = repo.transitionWithFault(mid, .cancel) { label, _ in
+            if label == "after_terminal_delete" { throw FaultError.injected }
+        }
+        XCTAssertEqual(TransitionResult.storageFailure, faultRes)
+
+        let d = try store.readDelivery(mid)
+        XCTAssertNotNil(d)
+        XCTAssertEqual(DeliveryState.queuedDurably.code, d?.state)
+        XCTAssertTrue(store.allHeldMsgIds().contains(mid), "held frame must remain intact after rollback")
+    }
+
+    func testC75HeldDeleteSqlFailureYieldsStorageFailureAndRollsBack() throws {
+        let url = URL(fileURLWithPath: NSTemporaryDirectory()).appendingPathComponent("godstone-d-\(UUID().uuidString).db")
+        defer { try? FileManager.default.removeItem(at: url) }
+        let store = SqliteMessageStore(url: url, maxBytes: 4096, fileProtection: .complete)
+        let faulting = FaultingDeliveryStore(store)
+        let repo = SqliteDeliveryRepository(faulting)
+        let mid = msgId(181)
+        let frame = directFrame(6, payloadSize: 64, msgIdOverride: mid)
+
+        XCTAssertEqual(.created(frame),
+                       store.enqueueDirectOutbound(frame, expectedRecipient: nodeA(), localOriginNodeId: localNode(1)))
+        XCTAssertTrue(store.allHeldMsgIds().contains(mid))
+
+        faulting.faultAtomicTransitionAndRetire = true
+        XCTAssertEqual(.storageFailure, repo.transition(mid, .expire))
+
+        let d = try store.readDelivery(mid)
+        XCTAssertNotNil(d)
+        XCTAssertEqual(DeliveryState.queuedDurably.code, d?.state)
+        XCTAssertTrue(store.allHeldMsgIds().contains(mid))
+    }
+
+    func testC75IdempotentSecondExpireReturnsAlreadyInTargetAndHeldRemainsAbsent() throws {
+        let url = URL(fileURLWithPath: NSTemporaryDirectory()).appendingPathComponent("godstone-d-\(UUID().uuidString).db")
+        defer { try? FileManager.default.removeItem(at: url) }
+        let store = SqliteMessageStore(url: url, maxBytes: 4096, fileProtection: .complete)
+        let repo = SqliteDeliveryRepository(store)
+        let mid = msgId(182)
+        let frame = directFrame(7, payloadSize: 64, msgIdOverride: mid)
+
+        XCTAssertEqual(.created(frame),
+                       store.enqueueDirectOutbound(frame, expectedRecipient: nodeA(), localOriginNodeId: localNode(1)))
+        XCTAssertEqual(.applied, repo.transition(mid, .expire))
+        XCTAssertFalse(store.allHeldMsgIds().contains(mid))
+
+        XCTAssertEqual(.alreadyInTarget, repo.transition(mid, .expire))
+        XCTAssertFalse(store.allHeldMsgIds().contains(mid), "held frame remains absent")
+        let d = try store.readDelivery(mid)
+        XCTAssertEqual(DeliveryState.expired.code, d?.state)
+    }
+
+    func testC75IdempotentSecondCancelReturnsAlreadyInTargetAndHeldRemainsAbsent() throws {
+        let url = URL(fileURLWithPath: NSTemporaryDirectory()).appendingPathComponent("godstone-d-\(UUID().uuidString).db")
+        defer { try? FileManager.default.removeItem(at: url) }
+        let store = SqliteMessageStore(url: url, maxBytes: 4096, fileProtection: .complete)
+        let repo = SqliteDeliveryRepository(store)
+        let mid = msgId(183)
+        let frame = directFrame(7, payloadSize: 64, msgIdOverride: mid)
+
+        XCTAssertEqual(.created(frame),
+                       store.enqueueDirectOutbound(frame, expectedRecipient: nodeA(), localOriginNodeId: localNode(1)))
+        XCTAssertEqual(.applied, repo.transition(mid, .cancel))
+        XCTAssertFalse(store.allHeldMsgIds().contains(mid))
+
+        XCTAssertEqual(.alreadyInTarget, repo.transition(mid, .cancel))
+        XCTAssertFalse(store.allHeldMsgIds().contains(mid), "held frame remains absent")
+        let d = try store.readDelivery(mid)
+        XCTAssertEqual(DeliveryState.cancelledLocally.code, d?.state)
+    }
+
+    func testC75CrossTerminalRejectionExpiredThenCancelReturnsRejectedState() throws {
+        let url = URL(fileURLWithPath: NSTemporaryDirectory()).appendingPathComponent("godstone-d-\(UUID().uuidString).db")
+        defer { try? FileManager.default.removeItem(at: url) }
+        let store = SqliteMessageStore(url: url, maxBytes: 4096, fileProtection: .complete)
+        let repo = SqliteDeliveryRepository(store)
+        let mid = msgId(184)
+        let frame = directFrame(8, payloadSize: 64, msgIdOverride: mid)
+
+        XCTAssertEqual(.created(frame),
+                       store.enqueueDirectOutbound(frame, expectedRecipient: nodeA(), localOriginNodeId: localNode(1)))
+        XCTAssertEqual(.applied, repo.transition(mid, .expire))
+        XCTAssertFalse(store.allHeldMsgIds().contains(mid))
+
+        XCTAssertEqual(.rejectedState, repo.transition(mid, .cancel))
+        XCTAssertFalse(store.allHeldMsgIds().contains(mid))
+        let d = try store.readDelivery(mid)
+        XCTAssertEqual(DeliveryState.expired.code, d?.state)
+    }
+
+    func testC75CrossTerminalRejectionCancelledThenExpireReturnsRejectedState() throws {
+        let url = URL(fileURLWithPath: NSTemporaryDirectory()).appendingPathComponent("godstone-d-\(UUID().uuidString).db")
+        defer { try? FileManager.default.removeItem(at: url) }
+        let store = SqliteMessageStore(url: url, maxBytes: 4096, fileProtection: .complete)
+        let repo = SqliteDeliveryRepository(store)
+        let mid = msgId(185)
+        let frame = directFrame(8, payloadSize: 64, msgIdOverride: mid)
+
+        XCTAssertEqual(.created(frame),
+                       store.enqueueDirectOutbound(frame, expectedRecipient: nodeA(), localOriginNodeId: localNode(1)))
+        XCTAssertEqual(.applied, repo.transition(mid, .cancel))
+        XCTAssertFalse(store.allHeldMsgIds().contains(mid))
+
+        XCTAssertEqual(.rejectedState, repo.transition(mid, .expire))
+        XCTAssertFalse(store.allHeldMsgIds().contains(mid))
+        let d = try store.readDelivery(mid)
+        XCTAssertEqual(DeliveryState.cancelledLocally.code, d?.state)
+    }
+
+    func testC75ProductionEnqueueDirectOutboundAfterExpireReturnsRejectedTerminalState() throws {
+        let url = URL(fileURLWithPath: NSTemporaryDirectory()).appendingPathComponent("godstone-d-\(UUID().uuidString).db")
+        defer { try? FileManager.default.removeItem(at: url) }
+        let store = SqliteMessageStore(url: url, maxBytes: 4096, fileProtection: .complete)
+        let repo = SqliteDeliveryRepository(store)
+        let mid = msgId(186)
+        let frame = directFrame(9, payloadSize: 64, msgIdOverride: mid)
+
+        XCTAssertEqual(.created(frame),
+                       store.enqueueDirectOutbound(frame, expectedRecipient: nodeA(), localOriginNodeId: localNode(1)))
+        XCTAssertEqual(.applied, repo.transition(mid, .expire))
+        XCTAssertFalse(store.allHeldMsgIds().contains(mid))
+
+        let reEnqueue = store.enqueueDirectOutbound(frame, expectedRecipient: nodeA(), localOriginNodeId: localNode(1))
+        XCTAssertEqual(OutboundEnqueueResult.rejectedTerminalState, reEnqueue)
+        XCTAssertFalse(store.allHeldMsgIds().contains(mid), "held frame must remain absent after terminal rejection")
+    }
+
+    func testC75ProductionEnqueueDirectOutboundAfterCancelReturnsRejectedTerminalState() throws {
+        let url = URL(fileURLWithPath: NSTemporaryDirectory()).appendingPathComponent("godstone-d-\(UUID().uuidString).db")
+        defer { try? FileManager.default.removeItem(at: url) }
+        let store = SqliteMessageStore(url: url, maxBytes: 4096, fileProtection: .complete)
+        let repo = SqliteDeliveryRepository(store)
+        let mid = msgId(187)
+        let frame = directFrame(9, payloadSize: 64, msgIdOverride: mid)
+
+        XCTAssertEqual(.created(frame),
+                       store.enqueueDirectOutbound(frame, expectedRecipient: nodeA(), localOriginNodeId: localNode(1)))
+        XCTAssertEqual(.applied, repo.transition(mid, .cancel))
+        XCTAssertFalse(store.allHeldMsgIds().contains(mid))
+
+        let reEnqueue = store.enqueueDirectOutbound(frame, expectedRecipient: nodeA(), localOriginNodeId: localNode(1))
+        XCTAssertEqual(OutboundEnqueueResult.rejectedTerminalState, reEnqueue)
+        XCTAssertFalse(store.allHeldMsgIds().contains(mid), "held frame must remain absent after terminal rejection")
+    }
+
+    func testC75AckVsCancelRaceDeterministicRealSql() throws {
+        let url = URL(fileURLWithPath: NSTemporaryDirectory()).appendingPathComponent("godstone-d-\(UUID().uuidString).db")
+        defer { try? FileManager.default.removeItem(at: url) }
+        let store = SqliteMessageStore(url: url, maxBytes: 4096, fileProtection: .complete)
+        let repo = SqliteDeliveryRepository(store)
+        let (pubA, privA) = realKeypair()
+        let auth = BlockingAckAuthenticator(result: true)
+        let tracker = DeliveryTracker(repo: repo, authenticator: auth)
+        let mid = msgId(188)
+        let frame = directFrame(10, payloadSize: 64, msgIdOverride: mid)
+
+        XCTAssertEqual(.created(frame),
+                       store.enqueueDirectOutbound(frame, expectedRecipient: nodeA(), localOriginNodeId: localNode(1)))
+        XCTAssertEqual(.applied, tracker.markHandedToRelay(mid))
+        XCTAssertTrue(store.allHeldMsgIds().contains(mid))
+
+        let ack = try AckFrame.build(msgId: mid, recipientSigningPrivKey: privA,
+                                     recipientNodeId: nodeA(), routingTag: routingTag)
+        let exp = expectation(description: "ack")
+        let box = ResultBox()
+        DispatchQueue.global().async {
+            box.value = tracker.acknowledge(mid, ack)
+            exp.fulfill()
+        }
+        auth.reached.wait()
+        // Cancel applies while ACK is blocked in verify
+        XCTAssertEqual(.applied, tracker.cancel(mid))
+        XCTAssertFalse(store.allHeldMsgIds().contains(mid), "held frame deleted by cancel")
+
+        auth.release.signal()
+        wait(for: [exp], timeout: 5)
+
+        XCTAssertEqual(.rejectedState, box.value)
+        XCTAssertEqual(.cancelledLocally, stateOf(tracker, mid))
+        XCTAssertFalse(store.allHeldMsgIds().contains(mid))
+    }
+
+    func testC75AckVsExpireRaceDeterministicRealSql() throws {
+        let url = URL(fileURLWithPath: NSTemporaryDirectory()).appendingPathComponent("godstone-d-\(UUID().uuidString).db")
+        defer { try? FileManager.default.removeItem(at: url) }
+        let store = SqliteMessageStore(url: url, maxBytes: 4096, fileProtection: .complete)
+        let repo = SqliteDeliveryRepository(store)
+        let (pubA, privA) = realKeypair()
+        let auth = BlockingAckAuthenticator(result: true)
+        let tracker = DeliveryTracker(repo: repo, authenticator: auth)
+        let mid = msgId(189)
+        let frame = directFrame(11, payloadSize: 64, msgIdOverride: mid)
+
+        XCTAssertEqual(.created(frame),
+                       store.enqueueDirectOutbound(frame, expectedRecipient: nodeA(), localOriginNodeId: localNode(1)))
+        XCTAssertEqual(.applied, tracker.markHandedToRelay(mid))
+        XCTAssertTrue(store.allHeldMsgIds().contains(mid))
+
+        let ack = try AckFrame.build(msgId: mid, recipientSigningPrivKey: privA,
+                                     recipientNodeId: nodeA(), routingTag: routingTag)
+        let exp = expectation(description: "ack")
+        let box = ResultBox()
+        DispatchQueue.global().async {
+            box.value = tracker.acknowledge(mid, ack)
+            exp.fulfill()
+        }
+        auth.reached.wait()
+        // Expire applies while ACK is blocked in verify
+        XCTAssertEqual(.applied, tracker.expire(mid))
+        XCTAssertFalse(store.allHeldMsgIds().contains(mid), "held frame deleted by expire")
+
+        auth.release.signal()
+        wait(for: [exp], timeout: 5)
+
+        XCTAssertEqual(.rejectedState, box.value)
+        XCTAssertEqual(.expired, stateOf(tracker, mid))
+        XCTAssertFalse(store.allHeldMsgIds().contains(mid))
+    }
+
+    func testC75CancelVsExpireRaceDeterministicRealSql() throws {
+        let url = URL(fileURLWithPath: NSTemporaryDirectory()).appendingPathComponent("godstone-d-\(UUID().uuidString).db")
+        defer { try? FileManager.default.removeItem(at: url) }
+        let store = SqliteMessageStore(url: url, maxBytes: 4096, fileProtection: .complete)
+        let repo = SqliteDeliveryRepository(store)
+        let mid = msgId(190)
+        let frame = directFrame(12, payloadSize: 64, msgIdOverride: mid)
+
+        XCTAssertEqual(.created(frame),
+                       store.enqueueDirectOutbound(frame, expectedRecipient: nodeA(), localOriginNodeId: localNode(1)))
+        XCTAssertEqual(.applied, repo.transition(mid, .markHanded))
+        XCTAssertTrue(store.allHeldMsgIds().contains(mid))
+
+        let start = DispatchSemaphore(value: 0)
+        let expA = expectation(description: "expire"), expB = expectation(description: "cancel")
+        let boxA = TransitionResultBox(), boxB = TransitionResultBox()
+        DispatchQueue.global().async { start.wait(); boxA.value = repo.transition(mid, .expire); expA.fulfill() }
+        DispatchQueue.global().async { start.wait(); boxB.value = repo.transition(mid, .cancel); expB.fulfill() }
+        start.signal(); start.signal()
+        wait(for: [expA, expB], timeout: 5)
+
+        let applied = (boxA.value == .applied ? 1 : 0) + (boxB.value == .applied ? 1 : 0)
+        let rejected = (boxA.value == .rejectedState ? 1 : 0) + (boxB.value == .rejectedState ? 1 : 0)
+        XCTAssertEqual(applied, 1, "exactly one terminal transition applies")
+        XCTAssertEqual(rejected, 1, "the loser is rejected with prior state")
+        XCTAssertFalse(store.allHeldMsgIds().contains(mid), "held frame must be absent after race")
+
+        let d = try store.readDelivery(mid)
+        XCTAssertTrue(d?.state == DeliveryState.expired.code || d?.state == DeliveryState.cancelledLocally.code)
+    }
+
+    func testC75AntiEntropyExcludesRetiredTerminalFrameAfterExpireAndCancel() throws {
+        let url = URL(fileURLWithPath: NSTemporaryDirectory()).appendingPathComponent("godstone-d-\(UUID().uuidString).db")
+        defer { try? FileManager.default.removeItem(at: url) }
+        let store = SqliteMessageStore(url: url, maxBytes: 4096, fileProtection: .complete)
+        let repo = SqliteDeliveryRepository(store)
+        let (pubA, _) = realKeypair()
+        let tracker = DeliveryTracker(repo: repo, authenticator: Ed25519AckAuthenticator(resolver: SingleRecipientResolver(nodeA(), pubA)))
+        let router = Router(selfNodeId: localNode(1))
+        router.store = store
+
+        let midExpire = msgId(191)
+        let frameExpire = directFrame(13, payloadSize: 64, msgIdOverride: midExpire)
+        let midCancel = msgId(192)
+        let frameCancel = directFrame(14, payloadSize: 64, msgIdOverride: midCancel)
+
+        // Enqueue both frames
+        XCTAssertEqual(.created(frameExpire),
+                       store.enqueueDirectOutbound(frameExpire, expectedRecipient: nodeA(), localOriginNodeId: localNode(1)))
+        XCTAssertEqual(.created(frameCancel),
+                       store.enqueueDirectOutbound(frameCancel, expectedRecipient: nodeB(), localOriginNodeId: localNode(1)))
+
+        // Both present in bloom digest before retirement
+        let initialBloom = BloomDigest.fromBytes(router.bloomDigest())
+        XCTAssertTrue(initialBloom.mightContain(midExpire))
+        XCTAssertTrue(initialBloom.mightContain(midCancel))
+
+        // 1. Expire midExpire
+        XCTAssertEqual(.applied, tracker.expire(midExpire))
+        let bloomAfterExpire = BloomDigest.fromBytes(router.bloomDigest())
+        XCTAssertFalse(bloomAfterExpire.mightContain(midExpire), "expired frame must not appear in bloom digest")
+        XCTAssertTrue(bloomAfterExpire.mightContain(midCancel))
+        XCTAssertFalse(store.allHeldMsgIds().contains(midExpire))
+
+        // 2. Cancel midCancel
+        XCTAssertEqual(.applied, tracker.cancel(midCancel))
+        let bloomAfterCancel = BloomDigest.fromBytes(router.bloomDigest())
+        XCTAssertFalse(bloomAfterCancel.mightContain(midCancel), "cancelled frame must not appear in bloom digest")
+        XCTAssertFalse(store.allHeldMsgIds().contains(midCancel))
+    }
+
+    func testC75CapacityReleasedOnExpireIsReusableByNewFrame() throws {
+        let url = URL(fileURLWithPath: NSTemporaryDirectory()).appendingPathComponent("godstone-d-\(UUID().uuidString).db")
+        defer { try? FileManager.default.removeItem(at: url) }
+        let store = SqliteMessageStore(url: url, maxBytes: 200, fileProtection: .complete)
+        let repo = SqliteDeliveryRepository(store)
+        let (pubA, _) = realKeypair()
+        let tracker = DeliveryTracker(repo: repo, authenticator: Ed25519AckAuthenticator(resolver: SingleRecipientResolver(nodeA(), pubA)))
+
+        let midA = msgId(193)
+        let frameA = directFrame(15, payloadSize: 50, msgIdOverride: midA)
+        let midB = msgId(194)
+        let frameB = directFrame(16, payloadSize: 100, msgIdOverride: midB)
+
+        XCTAssertEqual(.created(frameA),
+                       store.enqueueDirectOutbound(frameA, expectedRecipient: nodeA(), localOriginNodeId: localNode(1)))
+        XCTAssertEqual(114, store.heldBytes)
+
+        // Frame B rejected due to capacity
+        XCTAssertEqual(.rejectedCapacity,
+                       store.enqueueDirectOutbound(frameB, expectedRecipient: nodeB(), localOriginNodeId: localNode(1)))
+
+        // Expire A -> releases capacity
+        XCTAssertEqual(.applied, tracker.expire(midA))
+        XCTAssertEqual(0, store.heldBytes)
+        XCTAssertFalse(store.allHeldMsgIds().contains(midA))
+
+        // B can now enqueue!
+        XCTAssertEqual(.created(frameB),
+                       store.enqueueDirectOutbound(frameB, expectedRecipient: nodeB(), localOriginNodeId: localNode(1)))
+        XCTAssertEqual(164, store.heldBytes)
+        XCTAssertTrue(store.allHeldMsgIds().contains(midB))
+    }
+
+    func testC75CapacityReleasedOnCancelIsReusableByNewFrame() throws {
+        let url = URL(fileURLWithPath: NSTemporaryDirectory()).appendingPathComponent("godstone-d-\(UUID().uuidString).db")
+        defer { try? FileManager.default.removeItem(at: url) }
+        let store = SqliteMessageStore(url: url, maxBytes: 200, fileProtection: .complete)
+        let repo = SqliteDeliveryRepository(store)
+        let (pubA, _) = realKeypair()
+        let tracker = DeliveryTracker(repo: repo, authenticator: Ed25519AckAuthenticator(resolver: SingleRecipientResolver(nodeA(), pubA)))
+
+        let midA = msgId(195)
+        let frameA = directFrame(17, payloadSize: 50, msgIdOverride: midA)
+        let midB = msgId(196)
+        let frameB = directFrame(18, payloadSize: 100, msgIdOverride: midB)
+
+        XCTAssertEqual(.created(frameA),
+                       store.enqueueDirectOutbound(frameA, expectedRecipient: nodeA(), localOriginNodeId: localNode(1)))
+        XCTAssertEqual(114, store.heldBytes)
+
+        // Frame B rejected due to capacity
+        XCTAssertEqual(.rejectedCapacity,
+                       store.enqueueDirectOutbound(frameB, expectedRecipient: nodeB(), localOriginNodeId: localNode(1)))
+
+        // Cancel A -> releases capacity
+        XCTAssertEqual(.applied, tracker.cancel(midA))
+        XCTAssertEqual(0, store.heldBytes)
+        XCTAssertFalse(store.allHeldMsgIds().contains(midA))
+
+        // B can now enqueue!
+        XCTAssertEqual(.created(frameB),
+                       store.enqueueDirectOutbound(frameB, expectedRecipient: nodeB(), localOriginNodeId: localNode(1)))
+        XCTAssertEqual(164, store.heldBytes)
+        XCTAssertTrue(store.allHeldMsgIds().contains(midB))
+    }
+
+    func testC75AckModeNoneTerminalRetirementOnExpireAndCancel() throws {
+        let url = URL(fileURLWithPath: NSTemporaryDirectory()).appendingPathComponent("godstone-d-\(UUID().uuidString).db")
+        defer { try? FileManager.default.removeItem(at: url) }
+        let store = SqliteMessageStore(url: url, maxBytes: 4096, fileProtection: .complete)
+        let repo = SqliteDeliveryRepository(store)
+        let (pubA, _) = realKeypair()
+        let tracker = DeliveryTracker(repo: repo, authenticator: Ed25519AckAuthenticator(resolver: SingleRecipientResolver(nodeA(), pubA)))
+
+        // Test NONE mode EXPIRE
+        let midNoneExp = msgId(197)
+        plantHeld(store, midNoneExp)
+        XCTAssertEqual(.created, tracker.enqueue(midNoneExp, ackMode: .none, expectedRecipient: nil))
+        XCTAssertTrue(store.allHeldMsgIds().contains(midNoneExp))
+
+        XCTAssertEqual(.applied, tracker.expire(midNoneExp))
+        XCTAssertEqual(.expired, stateOf(tracker, midNoneExp))
+        XCTAssertFalse(store.allHeldMsgIds().contains(midNoneExp), "NONE mode frame must be deleted on EXPIRE")
+
+        // Test NONE mode CANCEL
+        let midNoneCancel = msgId(198)
+        plantHeld(store, midNoneCancel)
+        XCTAssertEqual(.created, tracker.enqueue(midNoneCancel, ackMode: .none, expectedRecipient: nil))
+        XCTAssertTrue(store.allHeldMsgIds().contains(midNoneCancel))
+
+        XCTAssertEqual(.applied, tracker.cancel(midNoneCancel))
+        XCTAssertEqual(.cancelledLocally, stateOf(tracker, midNoneCancel))
+        XCTAssertFalse(store.allHeldMsgIds().contains(midNoneCancel), "NONE mode frame must be deleted on CANCEL")
     }
 
     // MARK: - helpers

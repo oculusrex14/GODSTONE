@@ -139,6 +139,12 @@ internal enum AckRetireMutationResult {
     case missingHeld
 }
 
+internal enum TerminalRetireMutationResult {
+    case applied
+    case noMatch
+    case missingHeld
+}
+
 internal protocol DeliveryStore: AnyObject {
     /// Read the delivery row for `msgId`, or nil if no row exists. Throws on a
     /// storage failure (distinct from the nil absence result).
@@ -161,6 +167,15 @@ internal protocol DeliveryStore: AnyObject {
         msgId: Data,
         expectedRecipient: Data
     ) throws -> AckRetireMutationResult
+    /// Atomically run a terminal transition CAS (EXPIRE / CANCEL) and delete the exact
+    /// held frame in ONE transaction (C7.5). Returns .applied if both mutations succeeded,
+    /// .noMatch if the delivery row did not match CAS predicates (0 rows affected), or .missingHeld
+    /// if the active delivery row matched but the held frame was missing (which rolls back the
+    /// transaction and maps to .corrupt).
+    func atomicTransitionAndRetire(
+        guardedTransitionSql: String,
+        msgId: Data
+    ) throws -> TerminalRetireMutationResult
 }
 
 internal enum StoreSchema {
@@ -1218,6 +1233,69 @@ public final class SqliteMessageStore: MessageStore {
                 }
 
                 try fault?("after_held_delete", db)
+
+                return .applied
+            }
+        } catch StoreTxnError.missingHeld {
+            return .missingHeld
+        }
+    }
+
+    /// Atomically run a terminal transition CAS (EXPIRE / CANCEL) and delete the exact
+    /// held frame in ONE transaction (C7.5).
+    internal func atomicTransitionAndRetire(
+        guardedTransitionSql: String,
+        msgId: Data
+    ) throws -> TerminalRetireMutationResult {
+        try atomicTransitionAndRetireWithFault(
+            guardedTransitionSql: guardedTransitionSql,
+            msgId: msgId,
+            fault: nil
+        )
+    }
+
+    internal func atomicTransitionAndRetireWithFault(
+        guardedTransitionSql: String,
+        msgId: Data,
+        fault: ((String, OpaquePointer) throws -> Void)? = nil
+    ) throws -> TerminalRetireMutationResult {
+        do {
+            return try withTransaction { db in
+                try fault?("before_terminal_cas", db)
+                var stmt: OpaquePointer?
+                guard sqlite3_prepare_v2(db, guardedTransitionSql, -1, &stmt, nil) == SQLITE_OK else {
+                    sqlite3_finalize(stmt); throw StoreError.prepareFailed
+                }
+                defer { sqlite3_finalize(stmt) }
+                bindBlob(stmt, 1, msgId)
+                guard sqlite3_step(stmt) == SQLITE_DONE else { throw StoreError.stepFailed }
+                let casChanges = sqlite3_changes(db)
+                if casChanges == 0 {
+                    return .noMatch
+                }
+                guard casChanges == 1 else {
+                    throw StoreError.stepFailed
+                }
+
+                try fault?("after_terminal_cas", db)
+
+                let deleteHeldSql = StoreSchema.deleteHeldSql
+                var delStmt: OpaquePointer?
+                guard sqlite3_prepare_v2(db, deleteHeldSql, -1, &delStmt, nil) == SQLITE_OK else {
+                    sqlite3_finalize(delStmt); throw StoreError.prepareFailed
+                }
+                defer { sqlite3_finalize(delStmt) }
+                bindBlob(delStmt, 1, msgId)
+                guard sqlite3_step(delStmt) == SQLITE_DONE else { throw StoreError.stepFailed }
+                let delChanges = sqlite3_changes(db)
+                if delChanges == 0 {
+                    throw StoreTxnError.missingHeld
+                }
+                guard delChanges == 1 else {
+                    throw StoreError.stepFailed
+                }
+
+                try fault?("after_terminal_delete", db)
 
                 return .applied
             }

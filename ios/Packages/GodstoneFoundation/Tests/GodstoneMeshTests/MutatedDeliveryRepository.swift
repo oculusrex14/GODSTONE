@@ -55,12 +55,27 @@ final class MutatedDeliveryRepository: DeliveryRepository {
         guard msgId.count == 16 else { return .invalidArgument }
         let (target, validFroms) = strong.transitionMapping(transition)
         let sql = transitionSql(target: target, validFroms: validFroms)
+        if transition == .markHanded || skipHeldRetirement {
+            do {
+                let affected = try store.execDeliveryUpdate(sql, bytesArgs: [msgId])
+                switch affected {
+                case 1: return .applied
+                case 0: return strong.classifyZeroRowTransition(msgId: msgId, target: target, validFroms: validFroms)
+                default: return .storageFailure
+                }
+            } catch {
+                return .storageFailure
+            }
+        }
         do {
-            let affected = try store.execDeliveryUpdate(sql, bytesArgs: [msgId])
-            switch affected {
-            case 1: return .applied
-            case 0: return strong.classifyZeroRowTransition(msgId: msgId, target: target, validFroms: validFroms)
-            default: return .storageFailure
+            let res = try store.atomicTransitionAndRetire(
+                guardedTransitionSql: sql,
+                msgId: msgId
+            )
+            switch res {
+            case .applied: return .applied
+            case .noMatch: return strong.classifyZeroRowTransition(msgId: msgId, target: target, validFroms: validFroms)
+            case .missingHeld: return .corrupt
             }
         } catch {
             return .storageFailure
