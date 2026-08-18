@@ -1,5 +1,7 @@
 package io.godstone.mesh.identity
 
+import io.godstone.core.crypto.Ed25519Keys
+import io.godstone.core.crypto.X25519Keys
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
@@ -20,24 +22,24 @@ class PeerTrustEngineTest {
         generation: Long,
         staticDhPriv: ByteArray = staticPrivA
     ): ValidatedPeerBinding {
-        val edKeys = Ed25519Keys.fromSeed(seed)
-        val dhKeys = X25519Keys.fromPrivateKey(staticDhPriv)
+        val signingPub = Ed25519Keys.publicKeyFromPrivate(seed)
+        val staticPub = X25519Keys.publicKeyFromPrivate(staticDhPriv)
         val preimage = IdentityBindingV1.signaturePreimage(
             generation = generation,
-            signingPublicKey = edKeys.pub,
-            staticDhPublicKey = dhKeys.pub
+            signingPublicKey = signingPub,
+            staticDhPublicKey = staticPub
         )
-        val sig = Ed25519Keys.sign(preimage, edKeys.priv)
+        val sig = Ed25519Keys.sign(preimage, seed)
         val binding = IdentityBindingV1.create(
             generation = generation,
-            signingPublicKey = edKeys.pub,
-            staticDhPublicKey = dhKeys.pub,
+            signingPublicKey = signingPub,
+            staticDhPublicKey = staticPub,
             signature = sig
         )
         val res = IdentityBindingValidator.validate(
             serialized = binding.encode(),
-            authenticatedRemoteStaticKey = dhKeys.pub,
-            advertisedNodeHint = IdentityBindingV1.deriveNodeHint(IdentityBindingV1.deriveNodeId(edKeys.pub))
+            authenticatedRemoteStaticKey = staticPub,
+            advertisedNodeHint = IdentityBindingV1.deriveNodeHint(IdentityBindingV1.deriveNodeId(signingPub))
         )
         require(res is IdentityBindingValidationResult.Valid) { "Validation failed" }
         return res.binding
@@ -51,16 +53,16 @@ class PeerTrustEngineTest {
         pendingGeneration: Long? = null,
         pendingStaticPriv: ByteArray? = null
     ): PeerIdentityRecord {
-        val edKeys = Ed25519Keys.fromSeed(seed)
-        val accDh = X25519Keys.fromPrivateKey(acceptedStaticPriv)
-        val pendDh = pendingStaticPriv?.let { X25519Keys.fromPrivateKey(it) }
+        val signingPub = Ed25519Keys.publicKeyFromPrivate(seed)
+        val accPub = X25519Keys.publicKeyFromPrivate(acceptedStaticPriv)
+        val pendPub = pendingStaticPriv?.let { X25519Keys.publicKeyFromPrivate(it) }
         return PeerIdentityRecord(
-            nodeId = IdentityBindingV1.deriveNodeId(edKeys.pub),
-            signingPublicKey = edKeys.pub,
-            acceptedStaticDhPublicKey = accDh.pub,
+            nodeId = IdentityBindingV1.deriveNodeId(signingPub),
+            signingPublicKey = signingPub,
+            acceptedStaticDhPublicKey = accPub,
             acceptedGeneration = acceptedGeneration,
             trustLevel = trustLevel,
-            pendingStaticDhPublicKey = pendDh?.pub,
+            pendingStaticDhPublicKey = pendPub,
             pendingGeneration = pendingGeneration
         )
     }
@@ -375,11 +377,10 @@ class PeerTrustEngineTest {
     fun testT25ActiveNodeIdSigningKeyCollision() {
         // Synthetic branch test: node ID matched during DB lookup, but signing key differs
         val binding = makeValidatedBinding(testSeedA, 0L)
-        val otherSeed = testSeedB
-        val otherEd = Ed25519Keys.fromSeed(otherSeed)
+        val otherSigningPub = Ed25519Keys.publicKeyFromPrivate(testSeedB)
         val collisionRecord = PeerIdentityRecord(
             nodeId = binding.nodeId, // lookup identity matched
-            signingPublicKey = otherEd.pub, // different stored key!
+            signingPublicKey = otherSigningPub, // different stored key!
             acceptedStaticDhPublicKey = binding.staticDhPublicKey,
             acceptedGeneration = 0L,
             trustLevel = PeerTrustLevel.TOFU_PINNED
@@ -429,12 +430,12 @@ class PeerTrustEngineTest {
     // V05: nodeId length != 16 -> Corrupt
     @Test
     fun testV05NodeIdLengthInvalid() {
-        val ed = Ed25519Keys.fromSeed(testSeedA)
-        val dh = X25519Keys.fromPrivateKey(staticPrivA)
+        val signPub = Ed25519Keys.publicKeyFromPrivate(testSeedA)
+        val dhPub = X25519Keys.publicKeyFromPrivate(staticPrivA)
         val record = PeerIdentityRecord(
             nodeId = ByteArray(15),
-            signingPublicKey = ed.pub,
-            acceptedStaticDhPublicKey = dh.pub,
+            signingPublicKey = signPub,
+            acceptedStaticDhPublicKey = dhPub,
             acceptedGeneration = 0L,
             trustLevel = PeerTrustLevel.TOFU_PINNED
         )
@@ -447,11 +448,11 @@ class PeerTrustEngineTest {
     // V06: signing key length != 32 -> Corrupt
     @Test
     fun testV06SigningKeyLengthInvalid() {
-        val dh = X25519Keys.fromPrivateKey(staticPrivA)
+        val dhPub = X25519Keys.publicKeyFromPrivate(staticPrivA)
         val record = PeerIdentityRecord(
             nodeId = ByteArray(16),
             signingPublicKey = ByteArray(31),
-            acceptedStaticDhPublicKey = dh.pub,
+            acceptedStaticDhPublicKey = dhPub,
             acceptedGeneration = 0L,
             trustLevel = PeerTrustLevel.TOFU_PINNED
         )
@@ -464,10 +465,10 @@ class PeerTrustEngineTest {
     // V07: accepted static length != 32 -> Corrupt
     @Test
     fun testV07AcceptedStaticLengthInvalid() {
-        val ed = Ed25519Keys.fromSeed(testSeedA)
+        val signPub = Ed25519Keys.publicKeyFromPrivate(testSeedA)
         val record = PeerIdentityRecord(
-            nodeId = IdentityBindingV1.deriveNodeId(ed.pub),
-            signingPublicKey = ed.pub,
+            nodeId = IdentityBindingV1.deriveNodeId(signPub),
+            signingPublicKey = signPub,
             acceptedStaticDhPublicKey = ByteArray(33),
             acceptedGeneration = 0L,
             trustLevel = PeerTrustLevel.TOFU_PINNED
@@ -481,12 +482,12 @@ class PeerTrustEngineTest {
     // V08: nodeId != hash(signing key) -> Corrupt
     @Test
     fun testV08NodeIdSigningKeyMismatch() {
-        val ed = Ed25519Keys.fromSeed(testSeedA)
-        val dh = X25519Keys.fromPrivateKey(staticPrivA)
+        val signPub = Ed25519Keys.publicKeyFromPrivate(testSeedA)
+        val dhPub = X25519Keys.publicKeyFromPrivate(staticPrivA)
         val record = PeerIdentityRecord(
             nodeId = ByteArray(16) { 0xFF.toByte() }, // mismatched
-            signingPublicKey = ed.pub,
-            acceptedStaticDhPublicKey = dh.pub,
+            signingPublicKey = signPub,
+            acceptedStaticDhPublicKey = dhPub,
             acceptedGeneration = 0L,
             trustLevel = PeerTrustLevel.TOFU_PINNED
         )
@@ -499,12 +500,12 @@ class PeerTrustEngineTest {
     // V09: pending generation only -> Corrupt
     @Test
     fun testV09PendingGenerationOnly() {
-        val ed = Ed25519Keys.fromSeed(testSeedA)
-        val dh = X25519Keys.fromPrivateKey(staticPrivA)
+        val signPub = Ed25519Keys.publicKeyFromPrivate(testSeedA)
+        val dhPub = X25519Keys.publicKeyFromPrivate(staticPrivA)
         val record = PeerIdentityRecord(
-            nodeId = IdentityBindingV1.deriveNodeId(ed.pub),
-            signingPublicKey = ed.pub,
-            acceptedStaticDhPublicKey = dh.pub,
+            nodeId = IdentityBindingV1.deriveNodeId(signPub),
+            signingPublicKey = signPub,
+            acceptedStaticDhPublicKey = dhPub,
             acceptedGeneration = 0L,
             trustLevel = PeerTrustLevel.TOFU_PINNED,
             pendingStaticDhPublicKey = null,
@@ -519,16 +520,16 @@ class PeerTrustEngineTest {
     // V10: pending static only -> Corrupt
     @Test
     fun testV10PendingStaticOnly() {
-        val ed = Ed25519Keys.fromSeed(testSeedA)
-        val dhA = X25519Keys.fromPrivateKey(staticPrivA)
-        val dhB = X25519Keys.fromPrivateKey(staticPrivB)
+        val signPub = Ed25519Keys.publicKeyFromPrivate(testSeedA)
+        val dhPubA = X25519Keys.publicKeyFromPrivate(staticPrivA)
+        val dhPubB = X25519Keys.publicKeyFromPrivate(staticPrivB)
         val record = PeerIdentityRecord(
-            nodeId = IdentityBindingV1.deriveNodeId(ed.pub),
-            signingPublicKey = ed.pub,
-            acceptedStaticDhPublicKey = dhA.pub,
+            nodeId = IdentityBindingV1.deriveNodeId(signPub),
+            signingPublicKey = signPub,
+            acceptedStaticDhPublicKey = dhPubA,
             acceptedGeneration = 0L,
             trustLevel = PeerTrustLevel.TOFU_PINNED,
-            pendingStaticDhPublicKey = dhB.pub,
+            pendingStaticDhPublicKey = dhPubB,
             pendingGeneration = null
         )
         assertEquals(
@@ -540,12 +541,12 @@ class PeerTrustEngineTest {
     // V11: pending static wrong length -> Corrupt
     @Test
     fun testV11PendingStaticWrongLength() {
-        val ed = Ed25519Keys.fromSeed(testSeedA)
-        val dhA = X25519Keys.fromPrivateKey(staticPrivA)
+        val signPub = Ed25519Keys.publicKeyFromPrivate(testSeedA)
+        val dhPubA = X25519Keys.publicKeyFromPrivate(staticPrivA)
         val record = PeerIdentityRecord(
-            nodeId = IdentityBindingV1.deriveNodeId(ed.pub),
-            signingPublicKey = ed.pub,
-            acceptedStaticDhPublicKey = dhA.pub,
+            nodeId = IdentityBindingV1.deriveNodeId(signPub),
+            signingPublicKey = signPub,
+            acceptedStaticDhPublicKey = dhPubA,
             acceptedGeneration = 0L,
             trustLevel = PeerTrustLevel.TOFU_PINNED,
             pendingStaticDhPublicKey = ByteArray(16),
@@ -560,16 +561,16 @@ class PeerTrustEngineTest {
     // V12: pendingGeneration == acceptedGeneration -> Corrupt
     @Test
     fun testV12PendingGenerationEqualsAccepted() {
-        val ed = Ed25519Keys.fromSeed(testSeedA)
-        val dhA = X25519Keys.fromPrivateKey(staticPrivA)
-        val dhB = X25519Keys.fromPrivateKey(staticPrivB)
+        val signPub = Ed25519Keys.publicKeyFromPrivate(testSeedA)
+        val dhPubA = X25519Keys.publicKeyFromPrivate(staticPrivA)
+        val dhPubB = X25519Keys.publicKeyFromPrivate(staticPrivB)
         val record = PeerIdentityRecord(
-            nodeId = IdentityBindingV1.deriveNodeId(ed.pub),
-            signingPublicKey = ed.pub,
-            acceptedStaticDhPublicKey = dhA.pub,
+            nodeId = IdentityBindingV1.deriveNodeId(signPub),
+            signingPublicKey = signPub,
+            acceptedStaticDhPublicKey = dhPubA,
             acceptedGeneration = 5L,
             trustLevel = PeerTrustLevel.TOFU_PINNED,
-            pendingStaticDhPublicKey = dhB.pub,
+            pendingStaticDhPublicKey = dhPubB,
             pendingGeneration = 5L
         )
         assertEquals(
@@ -581,16 +582,16 @@ class PeerTrustEngineTest {
     // V13: pendingGeneration < acceptedGeneration -> Corrupt
     @Test
     fun testV13PendingGenerationLessThanAccepted() {
-        val ed = Ed25519Keys.fromSeed(testSeedA)
-        val dhA = X25519Keys.fromPrivateKey(staticPrivA)
-        val dhB = X25519Keys.fromPrivateKey(staticPrivB)
+        val signPub = Ed25519Keys.publicKeyFromPrivate(testSeedA)
+        val dhPubA = X25519Keys.publicKeyFromPrivate(staticPrivA)
+        val dhPubB = X25519Keys.publicKeyFromPrivate(staticPrivB)
         val record = PeerIdentityRecord(
-            nodeId = IdentityBindingV1.deriveNodeId(ed.pub),
-            signingPublicKey = ed.pub,
-            acceptedStaticDhPublicKey = dhA.pub,
+            nodeId = IdentityBindingV1.deriveNodeId(signPub),
+            signingPublicKey = signPub,
+            acceptedStaticDhPublicKey = dhPubA,
             acceptedGeneration = 5L,
             trustLevel = PeerTrustLevel.TOFU_PINNED,
-            pendingStaticDhPublicKey = dhB.pub,
+            pendingStaticDhPublicKey = dhPubB,
             pendingGeneration = 4L
         )
         assertEquals(
@@ -602,15 +603,15 @@ class PeerTrustEngineTest {
     // V14: pending static == accepted static -> Corrupt
     @Test
     fun testV14PendingStaticEqualsAccepted() {
-        val ed = Ed25519Keys.fromSeed(testSeedA)
-        val dhA = X25519Keys.fromPrivateKey(staticPrivA)
+        val signPub = Ed25519Keys.publicKeyFromPrivate(testSeedA)
+        val dhPubA = X25519Keys.publicKeyFromPrivate(staticPrivA)
         val record = PeerIdentityRecord(
-            nodeId = IdentityBindingV1.deriveNodeId(ed.pub),
-            signingPublicKey = ed.pub,
-            acceptedStaticDhPublicKey = dhA.pub,
+            nodeId = IdentityBindingV1.deriveNodeId(signPub),
+            signingPublicKey = signPub,
+            acceptedStaticDhPublicKey = dhPubA,
             acceptedGeneration = 5L,
             trustLevel = PeerTrustLevel.TOFU_PINNED,
-            pendingStaticDhPublicKey = dhA.pub, // identical!
+            pendingStaticDhPublicKey = dhPubA, // identical!
             pendingGeneration = 10L
         )
         assertEquals(
@@ -622,16 +623,16 @@ class PeerTrustEngineTest {
     // V15: REVOKED + pending -> Corrupt
     @Test
     fun testV15RevokedWithPending() {
-        val ed = Ed25519Keys.fromSeed(testSeedA)
-        val dhA = X25519Keys.fromPrivateKey(staticPrivA)
-        val dhB = X25519Keys.fromPrivateKey(staticPrivB)
+        val signPub = Ed25519Keys.publicKeyFromPrivate(testSeedA)
+        val dhPubA = X25519Keys.publicKeyFromPrivate(staticPrivA)
+        val dhPubB = X25519Keys.publicKeyFromPrivate(staticPrivB)
         val record = PeerIdentityRecord(
-            nodeId = IdentityBindingV1.deriveNodeId(ed.pub),
-            signingPublicKey = ed.pub,
-            acceptedStaticDhPublicKey = dhA.pub,
+            nodeId = IdentityBindingV1.deriveNodeId(signPub),
+            signingPublicKey = signPub,
+            acceptedStaticDhPublicKey = dhPubA,
             acceptedGeneration = 5L,
             trustLevel = PeerTrustLevel.REVOKED,
-            pendingStaticDhPublicKey = dhB.pub,
+            pendingStaticDhPublicKey = dhPubB,
             pendingGeneration = 10L
         )
         assertEquals(
@@ -643,12 +644,12 @@ class PeerTrustEngineTest {
     // V16: accepted generation < 0 -> Corrupt
     @Test
     fun testV16AcceptedGenerationNegative() {
-        val ed = Ed25519Keys.fromSeed(testSeedA)
-        val dh = X25519Keys.fromPrivateKey(staticPrivA)
+        val signPub = Ed25519Keys.publicKeyFromPrivate(testSeedA)
+        val dhPub = X25519Keys.publicKeyFromPrivate(staticPrivA)
         val record = PeerIdentityRecord(
-            nodeId = IdentityBindingV1.deriveNodeId(ed.pub),
-            signingPublicKey = ed.pub,
-            acceptedStaticDhPublicKey = dh.pub,
+            nodeId = IdentityBindingV1.deriveNodeId(signPub),
+            signingPublicKey = signPub,
+            acceptedStaticDhPublicKey = dhPub,
             acceptedGeneration = -1L,
             trustLevel = PeerTrustLevel.TOFU_PINNED
         )
@@ -661,12 +662,12 @@ class PeerTrustEngineTest {
     // V17: accepted generation > UINT32_MAX -> Corrupt
     @Test
     fun testV17AcceptedGenerationOutOfRange() {
-        val ed = Ed25519Keys.fromSeed(testSeedA)
-        val dh = X25519Keys.fromPrivateKey(staticPrivA)
+        val signPub = Ed25519Keys.publicKeyFromPrivate(testSeedA)
+        val dhPub = X25519Keys.publicKeyFromPrivate(staticPrivA)
         val record = PeerIdentityRecord(
-            nodeId = IdentityBindingV1.deriveNodeId(ed.pub),
-            signingPublicKey = ed.pub,
-            acceptedStaticDhPublicKey = dh.pub,
+            nodeId = IdentityBindingV1.deriveNodeId(signPub),
+            signingPublicKey = signPub,
+            acceptedStaticDhPublicKey = dhPub,
             acceptedGeneration = 0x100000000L,
             trustLevel = PeerTrustLevel.TOFU_PINNED
         )
@@ -679,16 +680,16 @@ class PeerTrustEngineTest {
     // V18: pending generation > UINT32_MAX -> Corrupt
     @Test
     fun testV18PendingGenerationOutOfRange() {
-        val ed = Ed25519Keys.fromSeed(testSeedA)
-        val dhA = X25519Keys.fromPrivateKey(staticPrivA)
-        val dhB = X25519Keys.fromPrivateKey(staticPrivB)
+        val signPub = Ed25519Keys.publicKeyFromPrivate(testSeedA)
+        val dhPubA = X25519Keys.publicKeyFromPrivate(staticPrivA)
+        val dhPubB = X25519Keys.publicKeyFromPrivate(staticPrivB)
         val record = PeerIdentityRecord(
-            nodeId = IdentityBindingV1.deriveNodeId(ed.pub),
-            signingPublicKey = ed.pub,
-            acceptedStaticDhPublicKey = dhA.pub,
+            nodeId = IdentityBindingV1.deriveNodeId(signPub),
+            signingPublicKey = signPub,
+            acceptedStaticDhPublicKey = dhPubA,
             acceptedGeneration = 5L,
             trustLevel = PeerTrustLevel.TOFU_PINNED,
-            pendingStaticDhPublicKey = dhB.pub,
+            pendingStaticDhPublicKey = dhPubB,
             pendingGeneration = 0x100000000L
         )
         assertEquals(
