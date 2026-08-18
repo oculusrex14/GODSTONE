@@ -1,14 +1,17 @@
 #!/usr/bin/env python3
-"""Regression controls and structural checks for IdentityBindingV1 (ADR-003, Phase C8.1A).
+"""Regression controls and structural checks for IdentityBindingV1 (ADR-003, Phase C8.1A.1).
 
 Verifies the presence and structural markers of:
 - Android production & test IdentityBindingV1 implementations
 - iOS production & test IdentityBindingV1 implementations
+- Authority boundaries on ValidatedPeerBinding (private/fileprivate constructors)
+- Immutability of domain separator (no public mutable ByteArray)
 - Python reference, generator, KAT fixture, and conformance test
 - CI workflow invocations of vector generation and identity binding tests
 """
 from __future__ import annotations
 
+import re
 import sys
 import tempfile
 from pathlib import Path
@@ -56,7 +59,34 @@ def check_identity_binding_controls(
     if errors:
         return errors
 
-    # 2. Android test markers
+    # 2. Android production structural & authority checks
+    a_prod_text = android_prod.read_text(encoding="utf-8")
+    if "IDENTITY_BINDING_DOMAIN_ASCII" not in a_prod_text:
+        errors.append("Android production missing immutable string constant: IDENTITY_BINDING_DOMAIN_ASCII")
+    if re.search(r"val\s+IDENTITY_BINDING_DOMAIN\s*:\s*ByteArray", a_prod_text) or re.search(r"val\s+IDENTITY_BINDING_DOMAIN\s*=", a_prod_text):
+        errors.append("Android production contains mutable public domain ByteArray: IDENTITY_BINDING_DOMAIN")
+    if "class ValidatedPeerBinding private constructor" not in a_prod_text:
+        errors.append("Android ValidatedPeerBinding must have a private constructor")
+    for unchecked_factory in ["createValidated", "fromFields", "unchecked("]:
+        if unchecked_factory in a_prod_text:
+            errors.append(f"Android production contains unchecked factory marker: '{unchecked_factory}'")
+
+    # 3. iOS production structural & authority checks
+    i_prod_text = ios_prod.read_text(encoding="utf-8")
+    val_block_match = re.search(r"struct\s+ValidatedPeerBinding\b.*?(?=struct|enum|class|\Z)", i_prod_text, re.DOTALL)
+    if not val_block_match:
+        errors.append("iOS production missing ValidatedPeerBinding struct definition")
+    else:
+        val_block = val_block_match.group(0)
+        if "public init(" in val_block or re.search(r"^\s*init\(", val_block, re.MULTILINE):
+            errors.append("iOS ValidatedPeerBinding must not have a public or unconstrained initializer")
+        if "fileprivate init(" not in val_block and "private init(" not in val_block:
+            errors.append("iOS ValidatedPeerBinding initializer must be fileprivate or private")
+    for unchecked_factory in ["createValidated", "fromFields", "unchecked("]:
+        if unchecked_factory in i_prod_text:
+            errors.append(f"iOS production contains unchecked factory marker: '{unchecked_factory}'")
+
+    # 4. Android test markers
     a_test_text = android_test.read_text(encoding="utf-8")
     if "fresh_generation_zero" not in a_test_text:
         errors.append("Android test missing KAT marker: fresh_generation_zero")
@@ -75,7 +105,7 @@ def check_identity_binding_controls(
     if "MalformedLength" not in a_test_text and "truncated" not in a_test_text:
         errors.append("Android test missing bad-length test marker")
 
-    # 3. iOS test markers
+    # 5. iOS test markers
     i_test_text = ios_test.read_text(encoding="utf-8")
     if "fresh_generation_zero" not in i_test_text and "testFreshGenerationZeroKat" not in i_test_text:
         errors.append("iOS test missing KAT marker: fresh_generation_zero")
@@ -94,7 +124,7 @@ def check_identity_binding_controls(
     if "malformedLength" not in i_test_text and "testTruncated" not in i_test_text:
         errors.append("iOS test missing bad-length test marker")
 
-    # 4. Workflow invocations
+    # 6. Workflow invocations
     if workflow.exists():
         wf_text = workflow.read_text(encoding="utf-8")
         if "crypto.gen_identity_binding_vectors" not in wf_text:
@@ -136,12 +166,10 @@ def selftest() -> int:
         f_py_test.write_text(PYTHON_TEST_PATH.read_text(encoding="utf-8"), encoding="utf-8")
         f_wf.write_text(WORKFLOW_PATH.read_text(encoding="utf-8"), encoding="utf-8")
 
-        # Baseline check must pass (assuming workflow is updated)
-        # Note: if workflow isn't updated yet, write a valid workflow in temp
-        wf_valid = f_wf.read_text(encoding="utf-8")
-        if "crypto.gen_identity_binding_vectors" not in wf_valid:
-            wf_valid += "\n          python -m crypto.gen_identity_binding_vectors\n          python -m crypto.test_identity_binding\n          python ci/check_identity_binding_controls.py\n"
-            f_wf.write_text(wf_valid, encoding="utf-8")
+        # Baseline check must pass
+        base_errs = check_identity_binding_controls(f_a_prod, f_a_test, f_i_prod, f_i_test, f_py_ref, f_py_gen, f_fixture, f_py_test, f_wf)
+        if base_errs:
+            failures.append(f"Baseline clean check failed: {base_errs}")
 
         # H1: Android KAT marker removed
         orig_a_test = f_a_test.read_text(encoding="utf-8")
@@ -236,13 +264,51 @@ def selftest() -> int:
             failures.append("Mutation H10 (conformance command removed from workflow) was NOT detected")
         f_wf.write_text(orig_wf, encoding="utf-8")
 
+        # H11: Android mutable public domain ByteArray reintroduced
+        orig_a_prod = f_a_prod.read_text(encoding="utf-8")
+        f_a_prod.write_text(orig_a_prod + '\nval IDENTITY_BINDING_DOMAIN: ByteArray = "GMP2-IDBIND".toByteArray()\n', encoding="utf-8")
+        errs = check_identity_binding_controls(f_a_prod, f_a_test, f_i_prod, f_i_test, f_py_ref, f_py_gen, f_fixture, f_py_test, f_wf)
+        if any("mutable public domain ByteArray" in e for e in errs):
+            passed_mutations += 1
+        else:
+            failures.append("Mutation H11 (Android mutable domain ByteArray) was NOT detected")
+        f_a_prod.write_text(orig_a_prod, encoding="utf-8")
+
+        # H12: Android ValidatedPeerBinding private constructor changed to public/internal
+        f_a_prod.write_text(orig_a_prod.replace("class ValidatedPeerBinding private constructor", "class ValidatedPeerBinding constructor"), encoding="utf-8")
+        errs = check_identity_binding_controls(f_a_prod, f_a_test, f_i_prod, f_i_test, f_py_ref, f_py_gen, f_fixture, f_py_test, f_wf)
+        if any("ValidatedPeerBinding must have a private constructor" in e for e in errs):
+            passed_mutations += 1
+        else:
+            failures.append("Mutation H12 (Android ValidatedPeerBinding constructor not private) was NOT detected")
+        f_a_prod.write_text(orig_a_prod, encoding="utf-8")
+
+        # H13: iOS ValidatedPeerBinding fileprivate/private initializer changed to public
+        orig_i_prod = f_i_prod.read_text(encoding="utf-8")
+        f_i_prod.write_text(orig_i_prod.replace("fileprivate init(", "public init("), encoding="utf-8")
+        errs = check_identity_binding_controls(f_a_prod, f_a_test, f_i_prod, f_i_test, f_py_ref, f_py_gen, f_fixture, f_py_test, f_wf)
+        if any("ValidatedPeerBinding must not have a public" in e for e in errs):
+            passed_mutations += 1
+        else:
+            failures.append("Mutation H13 (iOS ValidatedPeerBinding public init) was NOT detected")
+        f_i_prod.write_text(orig_i_prod, encoding="utf-8")
+
+        # H14: unchecked ValidatedPeerBinding factory marker introduced
+        f_a_prod.write_text(orig_a_prod + "\nfun createValidated() {}\n", encoding="utf-8")
+        errs = check_identity_binding_controls(f_a_prod, f_a_test, f_i_prod, f_i_test, f_py_ref, f_py_gen, f_fixture, f_py_test, f_wf)
+        if any("unchecked factory marker" in e for e in errs):
+            passed_mutations += 1
+        else:
+            failures.append("Mutation H14 (unchecked factory marker introduced) was NOT detected")
+        f_a_prod.write_text(orig_a_prod, encoding="utf-8")
+
     if failures:
         print(f"FAILED: {len(failures)} mutation(s) were NOT caught:")
         for f in failures:
             print(f"  - {f}")
         return 1
 
-    print(f"check_identity_binding_controls selftest PASSED ({passed_mutations}/10 mutations caught deterministically).")
+    print(f"check_identity_binding_controls selftest PASSED ({passed_mutations}/14 mutations caught deterministically).")
     return 0
 
 

@@ -127,13 +127,17 @@ public enum IdentityBindingError: Error, Equatable {
 }
 
 /// Immutable representation of a cryptographically validated peer identity binding (ADR-003, Phase C8.1A).
+///
+/// ValidatedPeerBinding is an unforgeable authority type: its initializer is fileprivate to this
+/// source file and instances can ONLY be instantiated through canonical execution of the 10-step
+/// cryptographic validation pipeline in `IdentityBindingValidator.validate(...)`.
 public struct ValidatedPeerBinding: Sendable, Equatable {
     public let nodeId: Data
     public let signingPublicKey: Data
     public let staticDhPublicKey: Data
     public let generation: UInt32
 
-    public init(
+    fileprivate init(
         nodeId: Data,
         signingPublicKey: Data,
         staticDhPublicKey: Data,

@@ -22,7 +22,7 @@
     "Sources/GodstoneMesh/BleTransport.swift": "41b7ec8f287b3d925f7931550a5ff4e7bb23b5b481721c265c36805c4d9f11b7",
     "Sources/GodstoneMesh/BulkTransport.swift": "c2be42952af4055bc7abea67fa0a2377b044a78435e0919702773cd838232bb0",
     "Sources/GodstoneMesh/DeliveryTracker.swift": "99d9aac14b86a26fdc6550c1b5586498245125c0d0828b94ab737ffa258c5ef3",
-    "Sources/GodstoneMesh/IdentityBindingV1.swift": "0343c7ab9972ff953277dc109defcfc04f21a2a863fe3e49189db860ac3df31c",
+    "Sources/GodstoneMesh/IdentityBindingV1.swift": "446cdefc6e9b89fcb58700db2bee1baa4c6aedebfe181925f52a94130bb5b7ba",
     "Sources/GodstoneMesh/MeshCoordinator.swift": "29f20d444c3143dbcc74a56a16a2524411268e60e2855b021d0883231e6b383d",
     "Sources/GodstoneMesh/MeshIdentity.swift": "2540f259e773cf6c52b180d2e1676ed70781ccf8e5a7e5929a918471f14a721f",
     "Sources/GodstoneMesh/MeshNode.swift": "4e36a2c94be8a4e32a054505b95d8f8e305e69f7307166226a7d932177ef2d4c",

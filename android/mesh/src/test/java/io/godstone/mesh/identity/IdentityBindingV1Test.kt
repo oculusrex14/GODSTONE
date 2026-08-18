@@ -331,10 +331,22 @@ class IdentityBindingV1Test {
     }
 
     @Test
-    fun `generation unsigned max parsing verification`() {
-        val serialized = hexToBytes(VEC3_SERIALIZED_HEX)
-        val parsed = IdentityBindingV1.parse(serialized)
-        assertEquals(4294967295L, parsed.generation)
-        assertEquals(0xFFFFFFFFL, parsed.generation)
+    fun `domain separator immutability and signaturePreimage reproducibility`() {
+        assertEquals("GMP2-IDBIND", IDENTITY_BINDING_DOMAIN_ASCII)
+
+        // Verify preimage reproducibility against locked KAT
+        val p1 = IdentityBindingV1.signaturePreimage(
+            VEC1_GEN,
+            hexToBytes(VEC1_SIGNING_PUB_HEX),
+            hexToBytes(VEC1_STATIC_DH_PUB_HEX)
+        )
+        assertEquals(VEC1_PREIMAGE_HEX, bytesToHex(p1))
+
+        // ValidatedPeerBinding constructor is not a public creation API;
+        // cryptographic validator is authoritative.
+        val staticDh = hexToBytes(VEC1_STATIC_DH_PUB_HEX)
+        val hint = hexToBytes(VEC1_NODE_ID_HEX).copyOfRange(0, 4)
+        val res = IdentityBindingValidator.validate(hexToBytes(VEC1_SERIALIZED_HEX), staticDh, hint)
+        assertTrue(res is IdentityBindingValidationResult.Valid)
     }
 }

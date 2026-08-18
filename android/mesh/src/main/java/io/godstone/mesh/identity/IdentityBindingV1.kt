@@ -27,8 +27,11 @@ const val IDENTITY_BINDING_NODE_ID_LENGTH: Int = 16
 /** Authoritative byte length of a discovery node hint (4 bytes). */
 const val IDENTITY_BINDING_NODE_HINT_LENGTH: Int = 4
 
-/** Domain separator for IdentityBindingV1 signature preimages. */
-val IDENTITY_BINDING_DOMAIN: ByteArray = "GMP2-IDBIND".toByteArray(Charsets.US_ASCII)
+/** Canonical domain separator string for IdentityBindingV1 signature preimages (ADR-003). */
+const val IDENTITY_BINDING_DOMAIN_ASCII: String = "GMP2-IDBIND"
+
+private fun domainBytes(): ByteArray =
+    IDENTITY_BINDING_DOMAIN_ASCII.toByteArray(Charsets.US_ASCII)
 
 /**
  * Immutable canonical representation of an IdentityBindingV1 object (ADR-003, Phase C8.1A).
@@ -138,10 +141,11 @@ class IdentityBindingV1 private constructor(
             require(staticDhPublicKey.size == IDENTITY_BINDING_STATIC_DH_KEY_LENGTH) {
                 "Invalid static DH public key size: ${staticDhPublicKey.size}"
             }
+            val domain = domainBytes()
             val out = ByteArray(IDENTITY_BINDING_PREIMAGE_LENGTH)
-            System.arraycopy(IDENTITY_BINDING_DOMAIN, 0, out, 0, IDENTITY_BINDING_DOMAIN.size)
-            out[IDENTITY_BINDING_DOMAIN.size] = version
-            val genOffset = IDENTITY_BINDING_DOMAIN.size + 1
+            System.arraycopy(domain, 0, out, 0, domain.size)
+            out[domain.size] = version
+            val genOffset = domain.size + 1
             out[genOffset] = ((generation ushr 24) and 0xFF).toByte()
             out[genOffset + 1] = ((generation ushr 16) and 0xFF).toByte()
             out[genOffset + 2] = ((generation ushr 8) and 0xFF).toByte()
@@ -174,10 +178,11 @@ class IdentityBindingV1 private constructor(
 /**
  * Immutable representation of a cryptographically validated peer identity binding (ADR-003, Phase C8.1A).
  *
- * Produced only after exact length, version, signature, node_id derivation, Noise static match,
- * and advertisement hint consistency have all succeeded.
+ * ValidatedPeerBinding is an unforgeable authority type: its constructor is private and instances can
+ * ONLY be instantiated through canonical execution of the 10-step cryptographic validation pipeline.
+ * Direct caller instantiation or unchecked field assembly is strictly prohibited.
  */
-class ValidatedPeerBinding(
+class ValidatedPeerBinding private constructor(
     nodeId: ByteArray,
     signingPublicKey: ByteArray,
     staticDhPublicKey: ByteArray,
@@ -207,6 +212,76 @@ class ValidatedPeerBinding(
         result = 31 * result + generation.hashCode()
         return result
     }
+
+    companion object {
+        internal fun validateCanonical(
+            serialized: ByteArray,
+            authenticatedRemoteStaticKey: ByteArray,
+            advertisedNodeHint: ByteArray,
+        ): IdentityBindingValidationResult {
+            // Invariant check on context arguments
+            if (authenticatedRemoteStaticKey.size != IDENTITY_BINDING_STATIC_DH_KEY_LENGTH ||
+                advertisedNodeHint.size != IDENTITY_BINDING_NODE_HINT_LENGTH
+            ) {
+                return IdentityBindingValidationResult.InvalidContext
+            }
+
+            // 1. Length check
+            if (serialized.size != IDENTITY_BINDING_SERIALIZED_LENGTH) {
+                return IdentityBindingValidationResult.MalformedLength
+            }
+
+            // 2. Version check
+            val version = serialized[0]
+            if (version != IDENTITY_BINDING_VERSION) {
+                return IdentityBindingValidationResult.UnsupportedVersion
+            }
+
+            // 3. Parse generation (uint32_be)
+            val generation = ((serialized[1].toLong() and 0xFF) shl 24) or
+                             ((serialized[2].toLong() and 0xFF) shl 16) or
+                             ((serialized[3].toLong() and 0xFF) shl 8) or
+                             (serialized[4].toLong() and 0xFF)
+
+            // 4. Parse signing public key (32 bytes)
+            val signingPublicKey = serialized.copyOfRange(5, 37)
+
+            // 5. Parse static DH public key (32 bytes)
+            val staticDhPublicKey = serialized.copyOfRange(37, 69)
+
+            // 6. Parse signature (64 bytes)
+            val signature = serialized.copyOfRange(69, 133)
+
+            // 7. Verify Ed25519 signature over canonical GMP2-IDBIND preimage
+            val preimage = IdentityBindingV1.signaturePreimage(generation, signingPublicKey, staticDhPublicKey, version)
+            val sigValid = Ed25519Keys.verify(preimage, signature, signingPublicKey)
+            if (!sigValid) {
+                return IdentityBindingValidationResult.InvalidSignature
+            }
+
+            // 8. Derive node_id = BLAKE2s-128(signingPublicKey)
+            val nodeId = IdentityBindingV1.deriveNodeId(signingPublicKey)
+
+            // 9. Check binding.static_dh_public_key == authenticatedRemoteStaticKey
+            if (!staticDhPublicKey.contentEquals(authenticatedRemoteStaticKey)) {
+                return IdentityBindingValidationResult.NoiseStaticMismatch
+            }
+
+            // 10. Check first4(node_id) == advertisedNodeHint
+            val expectedHint = IdentityBindingV1.deriveNodeHint(nodeId)
+            if (!expectedHint.contentEquals(advertisedNodeHint)) {
+                return IdentityBindingValidationResult.AdvertisementHintMismatch
+            }
+
+            val validated = ValidatedPeerBinding(
+                nodeId = nodeId,
+                signingPublicKey = signingPublicKey,
+                staticDhPublicKey = staticDhPublicKey,
+                generation = generation,
+            )
+            return IdentityBindingValidationResult.Valid(validated)
+        }
+    }
 }
 
 /**
@@ -230,67 +305,6 @@ object IdentityBindingValidator {
         serialized: ByteArray,
         authenticatedRemoteStaticKey: ByteArray,
         advertisedNodeHint: ByteArray,
-    ): IdentityBindingValidationResult {
-        // Invariant check on context arguments
-        if (authenticatedRemoteStaticKey.size != IDENTITY_BINDING_STATIC_DH_KEY_LENGTH ||
-            advertisedNodeHint.size != IDENTITY_BINDING_NODE_HINT_LENGTH
-        ) {
-            return IdentityBindingValidationResult.InvalidContext
-        }
-
-        // 1. Length check
-        if (serialized.size != IDENTITY_BINDING_SERIALIZED_LENGTH) {
-            return IdentityBindingValidationResult.MalformedLength
-        }
-
-        // 2. Version check
-        val version = serialized[0]
-        if (version != IDENTITY_BINDING_VERSION) {
-            return IdentityBindingValidationResult.UnsupportedVersion
-        }
-
-        // 3. Parse generation (uint32_be)
-        val generation = ((serialized[1].toLong() and 0xFF) shl 24) or
-                         ((serialized[2].toLong() and 0xFF) shl 16) or
-                         ((serialized[3].toLong() and 0xFF) shl 8) or
-                         (serialized[4].toLong() and 0xFF)
-
-        // 4. Parse signing public key (32 bytes)
-        val signingPublicKey = serialized.copyOfRange(5, 37)
-
-        // 5. Parse static DH public key (32 bytes)
-        val staticDhPublicKey = serialized.copyOfRange(37, 69)
-
-        // 6. Parse signature (64 bytes)
-        val signature = serialized.copyOfRange(69, 133)
-
-        // 7. Verify Ed25519 signature over canonical GMP2-IDBIND preimage
-        val preimage = IdentityBindingV1.signaturePreimage(generation, signingPublicKey, staticDhPublicKey, version)
-        val sigValid = Ed25519Keys.verify(preimage, signature, signingPublicKey)
-        if (!sigValid) {
-            return IdentityBindingValidationResult.InvalidSignature
-        }
-
-        // 8. Derive node_id = BLAKE2s-128(signingPublicKey)
-        val nodeId = IdentityBindingV1.deriveNodeId(signingPublicKey)
-
-        // 9. Check binding.static_dh_public_key == authenticatedRemoteStaticKey
-        if (!staticDhPublicKey.contentEquals(authenticatedRemoteStaticKey)) {
-            return IdentityBindingValidationResult.NoiseStaticMismatch
-        }
-
-        // 10. Check first4(node_id) == advertisedNodeHint
-        val expectedHint = IdentityBindingV1.deriveNodeHint(nodeId)
-        if (!expectedHint.contentEquals(advertisedNodeHint)) {
-            return IdentityBindingValidationResult.AdvertisementHintMismatch
-        }
-
-        val validated = ValidatedPeerBinding(
-            nodeId = nodeId,
-            signingPublicKey = signingPublicKey,
-            staticDhPublicKey = staticDhPublicKey,
-            generation = generation,
-        )
-        return IdentityBindingValidationResult.Valid(validated)
-    }
+    ): IdentityBindingValidationResult =
+        ValidatedPeerBinding.validateCanonical(serialized, authenticatedRemoteStaticKey, advertisedNodeHint)
 }
