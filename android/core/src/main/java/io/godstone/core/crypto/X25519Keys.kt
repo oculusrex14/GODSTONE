@@ -18,4 +18,13 @@ object X25519Keys {
         check(publicKey.size == 32 && privateKey.size == 32)
         return KeyPair(publicKey.copyOf(), privateKey.copyOf())
     }
+
+    /**
+     * Derive the 32-byte X25519 static DH public key from a raw 32-byte private key.
+     */
+    fun publicKeyFromPrivate(privateKey: ByteArray): ByteArray {
+        require(privateKey.size == 32) { "X25519 private key must be 32 bytes" }
+        val params = X25519PrivateKeyParameters(privateKey, 0)
+        return params.generatePublicKey().encoded
+    }
 }

@@ -1,30 +1,50 @@
 package io.godstone.mesh.identity
 
 import android.content.Context
-import androidx.security.crypto.EncryptedSharedPreferences
-import androidx.security.crypto.MasterKey
 import io.godstone.core.crypto.Ed25519Keys
 import io.godstone.core.crypto.X25519Keys
 import org.bouncycastle.crypto.digests.Blake2sDigest
 import java.security.SecureRandom
 
 /**
- * Long-term node identity. Private keys live in EncryptedSharedPreferences backed
- * by a Keystore master key, so device seizure does not immediately yield the
- * identity or the message history (threat A6).
+ * Long-term node identity and local binding authority (ADR-003, Phase C8.1B).
  *
- * node_id = BLAKE2s-128(identity_pub), 16 bytes.
+ * Owns durable [bindingGeneration], derived public keys, and private keys.
+ * All internal byte arrays are stored privately and copied on read to ensure immutability.
+ *
+ * node_id = BLAKE2s-128(identityPub), 16 bytes.
  */
 class Identity private constructor(
-    val identityPub: ByteArray,      // Ed25519, 32 bytes
-    private val identityPriv: ByteArray,
-    val staticDhPub: ByteArray,      // X25519, 32 bytes
-    val staticDhPriv: ByteArray,
-    val nodeId: ByteArray            // 16 bytes
+    val bindingGeneration: Long,
+    identityPub: ByteArray,      // Ed25519, 32 bytes
+    identityPriv: ByteArray,     // Ed25519 private seed, 32 bytes
+    staticDhPub: ByteArray,      // X25519, 32 bytes
+    staticDhPriv: ByteArray,     // X25519 static private key, 32 bytes
+    nodeId: ByteArray,           // 16 bytes
 ) {
+    private val _identityPub: ByteArray = identityPub.copyOf()
+    private val _identityPriv: ByteArray = identityPriv.copyOf()
+    private val _staticDhPub: ByteArray = staticDhPub.copyOf()
+    private val _staticDhPriv: ByteArray = staticDhPriv.copyOf()
+    private val _nodeId: ByteArray = nodeId.copyOf()
 
-    /** First 4 bytes of node_id, broadcast in the BLE advertisement. */
-    val nodeHint: ByteArray get() = nodeId.copyOf(4)
+    /** Derived Ed25519 public key (32 bytes). Defensive copy. */
+    val identityPub: ByteArray get() = _identityPub.copyOf()
+
+    /** Derived X25519 static DH public key (32 bytes). Defensive copy. */
+    val staticDhPub: ByteArray get() = _staticDhPub.copyOf()
+
+    /**
+     * X25519 static private key (32 bytes). Defensive copy for existing NoiseSession constructor.
+     * Private key material is never exposed via public mutable reference.
+     */
+    val staticDhPriv: ByteArray get() = _staticDhPriv.copyOf()
+
+    /** Authoritative node ID derived as BLAKE2s-128(identityPub) (16 bytes). Defensive copy. */
+    val nodeId: ByteArray get() = _nodeId.copyOf()
+
+    /** First 4 bytes of node_id, broadcast in BLE advertisement hint. Defensive copy. */
+    val nodeHint: ByteArray get() = _nodeId.copyOf(4)
 
     /**
      * Six-word call sign so two people can verify each other verbally, derived
@@ -37,7 +57,7 @@ class Identity private constructor(
         var idx = 0
         while (words.size < 6) {
             if (bits < 11) {
-                acc = (acc shl 8) or (nodeId[idx % nodeId.size].toLong() and 0xFF)
+                acc = (acc shl 8) or (_nodeId[idx % _nodeId.size].toLong() and 0xFF)
                 bits += 8
                 idx++
                 continue
@@ -49,50 +69,126 @@ class Identity private constructor(
         return words.joinToString(" ")
     }
 
+    /**
+     * Canonical local issuer producing an IdentityBindingV1 for the local node (ADR-003, Phase C8.1B).
+     *
+     * The binding generation, signing public key, and static DH public key are sourced directly
+     * from the owned identity authority without caller-supplied parameters. Signs the canonical
+     * 80-byte GMP2-IDBIND preimage and self-verifies before returning.
+     */
+    internal fun issueIdentityBinding(): IdentityBindingV1 {
+        val gen = this.bindingGeneration
+        val signingPublic = _identityPub.copyOf()
+        val staticPublic = _staticDhPub.copyOf()
+        val preimage = IdentityBindingV1.signaturePreimage(gen, signingPublic, staticPublic)
+        val signature = Ed25519Keys.sign(preimage, _identityPriv)
+
+        if (!Ed25519Keys.verify(preimage, signature, signingPublic)) {
+            throw LocalIdentityException.IdentityStateCorrupt("Local issuer self-verification failed")
+        }
+
+        return IdentityBindingV1.create(gen, signingPublic, staticPublic, signature)
+    }
+
     companion object {
         private const val PREFS = "godstone_identity"
-        private const val K_ID_PUB = "id_pub"
-        private const val K_ID_PRIV = "id_priv"
-        private const val K_DH_PUB = "dh_pub"
-        private const val K_DH_PRIV = "dh_priv"
 
-        fun loadOrCreate(ctx: Context): Identity {
-            val master = MasterKey.Builder(ctx)
-                .setKeyScheme(MasterKey.KeyScheme.AES256_GCM)
-                .build()
+        fun loadOrCreate(ctx: Context): Identity =
+            loadOrCreate(EncryptedSharedPreferencesStorage(ctx), SecureRandom())
 
-            val prefs = EncryptedSharedPreferences.create(
-                ctx,
-                PREFS,
-                master,
-                EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
-                EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
-            )
+        internal fun loadOrCreate(
+            storage: IdentityStorage,
+            rng: SecureRandom = SecureRandom(),
+        ): Identity {
+            val v1Raw = storage.readV1State()
+            val legacy = storage.readLegacyMaterial()
 
-            val existingPub = prefs.getString(K_ID_PUB, null)
-            if (existingPub != null) {
-                val idPub = decode(existingPub)
-                return Identity(
-                    identityPub = idPub,
-                    identityPriv = decode(prefs.getString(K_ID_PRIV, null)!!),
-                    staticDhPub = decode(prefs.getString(K_DH_PUB, null)!!),
-                    staticDhPriv = decode(prefs.getString(K_DH_PRIV, null)!!),
-                    nodeId = nodeIdOf(idPub)
-                )
+            if (storage.hasPartialLegacy()) {
+                throw LocalIdentityException.IdentityStateCorrupt("Partial legacy identity state detected")
             }
 
-            val rng = SecureRandom()
-            val ed = Ed25519Keys.generate(rng)
-            val dh = X25519Keys.generate(rng)
+            return when {
+                // CASE A -- EMPTY
+                v1Raw == null && legacy == null -> {
+                    val ed = Ed25519Keys.generate(rng)
+                    val dh = X25519Keys.generate(rng)
+                    val state = LocalIdentityStateV1.create(
+                        generation = 0L,
+                        ed25519Seed = ed.priv,
+                        x25519PrivateKey = dh.priv,
+                    )
+                    val ok = storage.writeV1State(state.encode())
+                    if (!ok) {
+                        throw LocalIdentityException.IdentityPersistenceFailure(
+                            "Failed to persist fresh identity state synchronously"
+                        )
+                    }
+                    fromState(state)
+                }
 
-            prefs.edit()
-                .putString(K_ID_PUB, encode(ed.pub))
-                .putString(K_ID_PRIV, encode(ed.priv))
-                .putString(K_DH_PUB, encode(dh.pub))
-                .putString(K_DH_PRIV, encode(dh.priv))
-                .apply()
+                // CASE B -- V1 ONLY
+                v1Raw != null && legacy == null -> {
+                    val state = LocalIdentityStateV1.parse(v1Raw)
+                    fromState(state)
+                }
 
-            return Identity(ed.pub, ed.priv, dh.pub, dh.priv, nodeIdOf(ed.pub))
+                // CASE C -- CANONICAL LEGACY MIGRATION
+                v1Raw == null && legacy != null -> {
+                    if (legacy.idPub.size != 32 || legacy.idPriv.size != 32 ||
+                        legacy.dhPub.size != 32 || legacy.dhPriv.size != 32
+                    ) {
+                        throw LocalIdentityException.IdentityStateCorrupt("Invalid legacy key length")
+                    }
+
+                    val derivedEdPub = Ed25519Keys.publicKeyFromPrivate(legacy.idPriv)
+                    if (!derivedEdPub.contentEquals(legacy.idPub)) {
+                        throw LocalIdentityException.IdentityStateCorrupt(
+                            "Legacy Ed25519 public key does not match private seed"
+                        )
+                    }
+
+                    val derivedDhPub = X25519Keys.publicKeyFromPrivate(legacy.dhPriv)
+                    if (!derivedDhPub.contentEquals(legacy.dhPub)) {
+                        throw LocalIdentityException.IdentityStateCorrupt(
+                            "Legacy X25519 public key does not match private key"
+                        )
+                    }
+
+                    val state = LocalIdentityStateV1.create(
+                        generation = 0L,
+                        ed25519Seed = legacy.idPriv,
+                        x25519PrivateKey = legacy.dhPriv,
+                    )
+                    val ok = storage.migrateLegacyToV1(state.encode())
+                    if (!ok) {
+                        throw LocalIdentityException.IdentityPersistenceFailure(
+                            "Failed to migrate legacy identity to V1 synchronously"
+                        )
+                    }
+                    fromState(state)
+                }
+
+                // CASE D -- ANY PARTIAL OR MIXED STATE
+                else -> {
+                    throw LocalIdentityException.IdentityStateCorrupt(
+                        "Mixed V1 and legacy identity state detected in storage"
+                    )
+                }
+            }
+        }
+
+        private fun fromState(state: LocalIdentityStateV1): Identity {
+            val edPub = Ed25519Keys.publicKeyFromPrivate(state.ed25519Seed)
+            val dhPub = X25519Keys.publicKeyFromPrivate(state.x25519PrivateKey)
+            val nid = nodeIdOf(edPub)
+            return Identity(
+                bindingGeneration = state.generation,
+                identityPub = edPub,
+                identityPriv = state.ed25519Seed,
+                staticDhPub = dhPub,
+                staticDhPriv = state.x25519PrivateKey,
+                nodeId = nid,
+            )
         }
 
         /**
@@ -105,27 +201,38 @@ class Identity private constructor(
 
         /**
          * Build an Identity directly from already-generated key material. Used by
-         * tests and by code paths that source keys outside EncryptedSharedPreferences.
+         * tests with fixed generation 0. Validates that supplied public keys match derived keys.
          */
         internal fun fromKeyMaterial(
             edPub: ByteArray,
             edPriv: ByteArray,
             dhPub: ByteArray,
-            dhPriv: ByteArray
-        ): Identity = Identity(edPub, edPriv, dhPub, dhPriv, nodeIdOf(edPub))
+            dhPriv: ByteArray,
+        ): Identity {
+            require(edPub.size == 32 && edPriv.size == 32 && dhPub.size == 32 && dhPriv.size == 32) {
+                "Key material must be 32 bytes each"
+            }
+            val derivedEdPub = Ed25519Keys.publicKeyFromPrivate(edPriv)
+            require(derivedEdPub.contentEquals(edPub)) { "Supplied edPub does not match derived public key" }
+            val derivedDhPub = X25519Keys.publicKeyFromPrivate(dhPriv)
+            require(derivedDhPub.contentEquals(dhPub)) { "Supplied dhPub does not match derived public key" }
+            return Identity(
+                bindingGeneration = 0L,
+                identityPub = edPub,
+                identityPriv = edPriv,
+                staticDhPub = dhPub,
+                staticDhPriv = dhPriv,
+                nodeId = nodeIdOf(edPub),
+            )
+        }
 
         fun nodeIdOf(identityPub: ByteArray): ByteArray {
+            require(identityPub.size == 32) { "identityPub must be 32 bytes" }
             val d = Blake2sDigest(null, 16, null, null)
             d.update(identityPub, 0, identityPub.size)
             val out = ByteArray(16)
             d.doFinal(out, 0)
             return out
         }
-
-        private fun encode(b: ByteArray) =
-            android.util.Base64.encodeToString(b, android.util.Base64.NO_WRAP)
-
-        private fun decode(s: String) =
-            android.util.Base64.decode(s, android.util.Base64.NO_WRAP)
     }
 }

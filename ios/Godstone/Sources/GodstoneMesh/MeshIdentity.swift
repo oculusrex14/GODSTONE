@@ -3,116 +3,203 @@ import CryptoKit
 import Security
 import GodstoneCore
 
-/// Long-lived node identity.
+/// Long-lived node identity and local binding authority (ADR-003, Phase C8.1B).
+///
+/// Owns durable [bindingGeneration], derived public keys, and private keys.
 ///
 /// Two key pairs, never conflated:
 ///   * Ed25519 for signatures (authorship, non-repudiation within the mesh)
 ///   * X25519  for Noise key agreement (confidentiality)
 ///
-/// Both are stored in the Keychain with kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly.
-/// AfterFirstUnlock rather than WhenUnlocked, because the mesh must keep relaying
-/// while the phone is locked in a pocket. ThisDeviceOnly so keys never enter an
-/// iCloud backup.
+/// Stored in the Keychain as a single 69-byte LocalIdentityStateV1 item with
+/// kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly.
 public struct MeshIdentity: Sendable {
 
-    public let signingKey: Curve25519.Signing.PrivateKey
+    public let bindingGeneration: UInt32
+    private let signingKey: Curve25519.Signing.PrivateKey
     public let agreementKey: Curve25519.KeyAgreement.PrivateKey
 
-    /// BLAKE2s-128 of the agreement public key. 16 bytes. Matches Android.
+    public var signingPublicKey: Data { signingKey.publicKey.rawRepresentation }
+    public var staticDhPublicKey: Data { agreementKey.publicKey.rawRepresentation }
+
+    /// BLAKE2s-128 of the signing public key. 16 bytes. Matches Android.
     public var nodeId: Data {
-        // PROTOCOL.md:49 -- node_id = BLAKE2s-128(identity_pub), the Ed25519
-        // signing key. This previously used agreementKey (X25519), producing a
-        // different node_id, hence a different node_hint, hence a different
-        // Noise prologue -- so h diverged BEFORE the first DH and no transcript
-        // test could have seen it. Pinned by handshake_vectors.json.
-        Blake2s.hash(signingKey.publicKey.rawRepresentation, digestLength: 16)
+        Blake2s.hash(signingPublicKey, digestLength: 16)
     }
 
-    /// First 4 bytes, carried in the accepted 13-byte BLE scan response.
+    /// First 4 bytes, carried in the accepted BLE advertisement hint.
     public var nodeHint: Data { nodeId.prefix(4) }
 
-    /// Six BIP-39 words derived from the node id, for verbal out-of-band
-    /// verification. "Is your call sign amber-tiger-...?" over actual voice is
-    /// the only trustworthy channel when everything else is compromised.
+    /// Six BIP-39 words derived from the node id, for verbal out-of-band verification.
     public var callSign: String {
         Bip39.words(from: nodeId, count: 6).joined(separator: "-")
     }
 
-    // MARK: - Keychain
-
-    private static let signingTag   = "io.godstone.mesh.identity.ed25519"
-    private static let agreementTag = "io.godstone.mesh.identity.x25519"
-
-    public static func generateAndStore() -> MeshIdentity {
-        let signing = Curve25519.Signing.PrivateKey()
-        let agreement = Curve25519.KeyAgreement.PrivateKey()
-
-        store(signing.rawRepresentation, tag: signingTag)
-        store(agreement.rawRepresentation, tag: agreementTag)
-
-        return MeshIdentity(signingKey: signing, agreementKey: agreement)
+    internal init(
+        signingKey: Curve25519.Signing.PrivateKey,
+        agreementKey: Curve25519.KeyAgreement.PrivateKey,
+        bindingGeneration: UInt32 = 0
+    ) {
+        self.signingKey = signingKey
+        self.agreementKey = agreementKey
+        self.bindingGeneration = bindingGeneration
     }
 
-    public static func loadFromKeychain() throws -> MeshIdentity {
-        guard let s = load(tag: signingTag), let a = load(tag: agreementTag) else {
-            throw MeshError.identityNotFound
+    /// Build an Identity directly from already-generated key material for tests with fixed generation 0.
+    internal static func fromKeyMaterial(
+        signingKey: Curve25519.Signing.PrivateKey,
+        agreementKey: Curve25519.KeyAgreement.PrivateKey
+    ) -> MeshIdentity {
+        MeshIdentity(signingKey: signingKey, agreementKey: agreementKey, bindingGeneration: 0)
+    }
+
+    /// Sign a message using the long-term Ed25519 signing key.
+    public func sign(message: Data) throws -> Data {
+        try signingKey.signature(for: message)
+    }
+
+    /// Canonical local issuer producing an IdentityBindingV1 for the local node (ADR-003, Phase C8.1B).
+    ///
+    /// The binding generation, signing public key, and static DH public key are sourced directly
+    /// from the owned identity authority without caller-supplied parameters.
+    internal func issueIdentityBinding() throws -> IdentityBindingV1 {
+        let gen = self.bindingGeneration
+        let signingPub = self.signingPublicKey
+        let staticPub = self.staticDhPublicKey
+        let preimage = IdentityBindingV1.signaturePreimage(
+            generation: gen,
+            signingPublicKey: signingPub,
+            staticDhPublicKey: staticPub
+        )
+        let signature = try signingKey.signature(for: preimage)
+
+        guard signingKey.publicKey.isValidSignature(signature, for: preimage) else {
+            throw MeshError.identityStateCorrupt("Local issuer self-verification failed")
         }
-        return MeshIdentity(
-            signingKey: try Curve25519.Signing.PrivateKey(rawRepresentation: s),
-            agreementKey: try Curve25519.KeyAgreement.PrivateKey(rawRepresentation: a)
+
+        return IdentityBindingV1(
+            generation: gen,
+            signingPublicKey: signingPub,
+            staticDhPublicKey: staticPub,
+            signature: signature
         )
     }
 
-    private static func store(_ data: Data, tag: String) {
-        let query: [String: Any] = [
-            kSecClass as String: kSecClassGenericPassword,
-            kSecAttrAccount as String: tag,
-            kSecValueData as String: data,
-            kSecAttrAccessible as String:
-                kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly
-        ]
-        SecItemDelete(query as CFDictionary)
-        SecItemAdd(query as CFDictionary, nil)
-    }
+    // MARK: - Keychain Tags
 
-    private static func load(tag: String) -> Data? {
-        let query: [String: Any] = [
-            kSecClass as String: kSecClassGenericPassword,
-            kSecAttrAccount as String: tag,
-            kSecReturnData as String: true,
-            kSecMatchLimit as String: kSecMatchLimitOne
-        ]
-        var out: CFTypeRef?
-        guard SecItemCopyMatching(query as CFDictionary, &out) == errSecSuccess else {
-            return nil
+    public static let v1Tag = "io.godstone.mesh.identity.v1"
+    public static let legacySigningTag = "io.godstone.mesh.identity.ed25519"
+    public static let legacyAgreementTag = "io.godstone.mesh.identity.x25519"
+
+    public static func generateAndStore(
+        keychain: LocalIdentityKeychain = DefaultLocalIdentityKeychain()
+    ) throws -> MeshIdentity {
+        let v1Data = try keychain.read(tag: v1Tag)
+        let legEd = try keychain.read(tag: legacySigningTag)
+        let legX = try keychain.read(tag: legacyAgreementTag)
+
+        if v1Data != nil || legEd != nil || legX != nil {
+            throw MeshError.identityAlreadyExists
         }
-        return out as? Data
+
+        let signing = Curve25519.Signing.PrivateKey()
+        let agreement = Curve25519.KeyAgreement.PrivateKey()
+        let state = try LocalIdentityStateV1(
+            generation: 0,
+            ed25519Seed: signing.rawRepresentation,
+            x25519PrivateKey: agreement.rawRepresentation
+        )
+
+        try keychain.add(tag: v1Tag, data: state.encode())
+        return MeshIdentity(signingKey: signing, agreementKey: agreement, bindingGeneration: 0)
     }
 
-    /// Delete both identity key items from the Keychain.
+    public static func loadFromKeychain(
+        keychain: LocalIdentityKeychain = DefaultLocalIdentityKeychain()
+    ) throws -> MeshIdentity {
+        let v1Data = try keychain.read(tag: v1Tag)
+        let legEd = try keychain.read(tag: legacySigningTag)
+        let legX = try keychain.read(tag: legacyAgreementTag)
+
+        // CASE A -- EMPTY
+        if v1Data == nil && legEd == nil && legX == nil {
+            throw MeshError.identityNotFound
+        }
+
+        // CASE B -- V1 ONLY
+        if let v1 = v1Data, legEd == nil && legX == nil {
+            let state = try LocalIdentityStateV1.parse(v1)
+            let signing = try Curve25519.Signing.PrivateKey(rawRepresentation: state.ed25519Seed)
+            let agreement = try Curve25519.KeyAgreement.PrivateKey(rawRepresentation: state.x25519PrivateKey)
+            return MeshIdentity(signingKey: signing, agreementKey: agreement, bindingGeneration: state.generation)
+        }
+
+        // CASE C -- CANONICAL LEGACY MIGRATION
+        if v1Data == nil, let ed = legEd, let x = legX {
+            guard ed.count == 32, x.count == 32 else {
+                throw MeshError.identityStateCorrupt("Invalid legacy key length")
+            }
+            let signing = try Curve25519.Signing.PrivateKey(rawRepresentation: ed)
+            let agreement = try Curve25519.KeyAgreement.PrivateKey(rawRepresentation: x)
+            let state = try LocalIdentityStateV1(
+                generation: 0,
+                ed25519Seed: ed,
+                x25519PrivateKey: x
+            )
+            // Write V1 state FIRST before deleting legacy entries
+            try keychain.add(tag: v1Tag, data: state.encode())
+            try keychain.delete(tag: legacySigningTag)
+            try keychain.delete(tag: legacyAgreementTag)
+            return MeshIdentity(signingKey: signing, agreementKey: agreement, bindingGeneration: 0)
+        }
+
+        // CASE D -- V1 + LEGACY REMNANTS (interrupted migration recovery)
+        if let v1 = v1Data {
+            let state = try LocalIdentityStateV1.parse(v1)
+            guard state.generation == 0 else {
+                throw MeshError.identityStateCorrupt("V1 generation is non-zero in mixed state")
+            }
+            if let ed = legEd, ed != state.ed25519Seed {
+                throw MeshError.identityStateCorrupt("Surviving legacy Ed key does not match V1 state")
+            }
+            if let x = legX, x != state.x25519PrivateKey {
+                throw MeshError.identityStateCorrupt("Surviving legacy X key does not match V1 state")
+            }
+            // All surviving remnants match V1: cleanup legacy entries
+            if legEd != nil {
+                try keychain.delete(tag: legacySigningTag)
+            }
+            if legX != nil {
+                try keychain.delete(tag: legacyAgreementTag)
+            }
+            let signing = try Curve25519.Signing.PrivateKey(rawRepresentation: state.ed25519Seed)
+            let agreement = try Curve25519.KeyAgreement.PrivateKey(rawRepresentation: state.x25519PrivateKey)
+            return MeshIdentity(signingKey: signing, agreementKey: agreement, bindingGeneration: state.generation)
+        }
+
+        // CASE E -- PARTIAL LEGACY WITHOUT V1
+        throw MeshError.identityStateCorrupt("Partial legacy identity state without V1 state")
+    }
+
+    /// Delete identity key items from the Keychain.
     ///
     /// This is the cryptographic-erasure primitive for the iOS panic-wipe path
-    /// (ADR-004 criterion 5, GST-WIPE-001). The private keys ARE the secret here
-    /// -- unlike Android, where a KEK wraps ciphertext files, on iOS the keys
-    /// live directly in the Keychain -- so deleting them is both key destruction
-    /// and artifact deletion in one step. Idempotent: `errSecItemNotFound` is
-    /// treated as success. Used by `KeychainWipeArtifacts.eraseKeys()`.
-    @discardableResult
-    public static func deleteFromKeychain() -> OSStatus {
-        var query: [String: Any] = [
-            kSecClass as String: kSecClassGenericPassword,
-            kSecAttrAccount as String: signingTag
-        ]
-        let r1 = SecItemDelete(query as CFDictionary)
-        query[kSecAttrAccount as String] = agreementTag
-        let r2 = SecItemDelete(query as CFDictionary)
-        // errSecItemNotFound (-25300) means already gone -- fine for a wipe.
-        return [r1, r2].first { $0 != errSecSuccess && $0 != errSecItemNotFound } ?? errSecSuccess
+    /// (ADR-004 criterion 5, GST-WIPE-001).
+    public static func deleteFromKeychain(
+        keychain: LocalIdentityKeychain = DefaultLocalIdentityKeychain()
+    ) throws {
+        try keychain.delete(tag: v1Tag)
+        try keychain.delete(tag: legacySigningTag)
+        try keychain.delete(tag: legacyAgreementTag)
     }
 }
 
-public enum MeshError: Error {
+public enum MeshError: Error, Equatable {
     case identityNotFound
+    case identityAlreadyExists
+    case identityStateCorrupt(String)
+    case unsupportedIdentityStateVersion(UInt8)
+    case keychainFailure(OSStatus)
     case malformedFrame
     case handshakeFailed
     case payloadTooLarge

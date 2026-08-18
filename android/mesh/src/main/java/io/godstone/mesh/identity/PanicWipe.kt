@@ -193,10 +193,10 @@ internal class AndroidWipeArtifacts(private val ctx: Context) : WipeArtifacts {
     override fun eraseKeys() {
         // Crypto erasure: destroy the KEK. All EncryptedSharedPreferences
         // ciphertexts (identity, store key) become permanently undecryptable.
-        runCatching {
-            val ks = KeyStore.getInstance("AndroidKeyStore")
-            ks.load(null)
-            if (ks.containsAlias(MASTER_KEY_ALIAS)) ks.deleteEntry(MASTER_KEY_ALIAS)
+        val ks = KeyStore.getInstance("AndroidKeyStore")
+        ks.load(null)
+        if (ks.containsAlias(MASTER_KEY_ALIAS)) {
+            ks.deleteEntry(MASTER_KEY_ALIAS)
         }
         // A failure to delete the master key is a genuine wipe failure; the
         // machine will re-attempt eraseKeys on resume because KEY_ERASED was

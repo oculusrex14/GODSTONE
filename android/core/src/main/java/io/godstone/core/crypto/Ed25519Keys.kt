@@ -24,6 +24,15 @@ object Ed25519Keys {
     }
 
     /**
+     * Derive the 32-byte Ed25519 public key from a raw 32-byte private seed.
+     */
+    fun publicKeyFromPrivate(privateKey: ByteArray): ByteArray {
+        require(privateKey.size == 32) { "Ed25519 private key must be 32 bytes" }
+        val params = Ed25519PrivateKeyParameters(privateKey, 0)
+        return params.generatePublicKey().encoded
+    }
+
+    /**
      * Sign `message` with a raw 32-byte Ed25519 private key. Returns the 64-byte
      * signature. Byte-identical operation to iOS
      * `Curve25519.Signing.PrivateKey.signature(for:)` -- both are RFC 8032 Ed25519

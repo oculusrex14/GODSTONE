@@ -143,7 +143,7 @@ public final class MeshNode {
             payload: payload)
 
         let magic = Data("SOS1".utf8)
-        guard let signature = try? identity.signingKey.signature(for: msgId + magic + payload) else {
+        guard let signature = try? identity.sign(message: msgId + magic + payload) else {
             return .failed("SOS signing failed")
         }
         let sealed = magic + signature + payload

@@ -188,10 +188,10 @@ public final class KeychainWipeArtifacts: WipeArtifacts {
         self.storeUrl = storeUrl
     }
 
-    public func eraseKeys() {
+    public func eraseKeys() throws {
         // Crypto erasure: the keys are the secret. Deleting them makes prior
         // traffic permanently unlinkable. Idempotent (errSecItemNotFound ok).
-        MeshIdentity.deleteFromKeychain()
+        try MeshIdentity.deleteFromKeychain()
     }
 
     public func deleteArtifacts() {
@@ -203,7 +203,7 @@ public final class KeychainWipeArtifacts: WipeArtifacts {
         }
     }
 
-    public func regenerateIdentity() {
-        _ = MeshIdentity.generateAndStore()
+    public func regenerateIdentity() throws {
+        _ = try MeshIdentity.generateAndStore()
     }
 }
