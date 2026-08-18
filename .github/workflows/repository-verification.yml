@@ -100,6 +100,9 @@ jobs:
           python -m crypto.port_vectors
           python -m crypto.gen_vectors
           python -m crypto.gen_gmp21_vectors
+          python -m crypto.gen_identity_binding_vectors
+      - name: identity binding python conformance (ADR-003, C8.1A)
+        run: python -m crypto.test_identity_binding
       # F and G selftests FIRST: a control that has never fired is not a control.
       - name: symbol resolver negative control
         run: python ci/symbols.py --selftest
@@ -119,6 +122,10 @@ jobs:
         run: |
           python ci/check_store_schema_controls.py --selftest
           python ci/check_store_schema_controls.py
+      - name: identity binding regression controls present (ADR-003, C8.1A)
+        run: |
+          python ci/check_identity_binding_controls.py --selftest
+          python ci/check_identity_binding_controls.py
       - name: production-readiness status consistency (Stage 4E0)
         run: |
           python ci/check_status_consistency.py --selftest

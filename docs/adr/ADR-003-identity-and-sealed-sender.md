@@ -2,10 +2,11 @@
 
 ## 1. Status
 
-**OPEN — PEER-IDENTITY ARCHITECTURE FROZEN, IMPLEMENTATION / SEALED-SENDER / DEVICE EVIDENCE PENDING**
+**OPEN — PEER-IDENTITY ARCHITECTURE FROZEN, PRIMITIVE IMPLEMENTED, INTEGRATION / SEALED-SENDER / DEVICE EVIDENCE PENDING**
 
-- **Phase C8.0 / C8.0.1 / C8.0.2 Decision:** FROZEN (canonical Ed25519-rooted `IdentityBindingV1`, local generation authority, Noise XX payload placement, pre-HS3 initiator validation, dual-state pending rotation model, atomic trust transaction ownership in `PeerIdentityRepository`, pure `TrustPlan` engine, exact-candidate rotation approval, strict revocation semantics, physical store separation, and platform-precise coordinated panic-wipe integration).
-- **C8.1 Implementation:** OPEN (code, stores, and test vectors pending).
+- **Phase C8.0 / C8.0.1 / C8.0.2 Architecture:** FROZEN (canonical Ed25519-rooted `IdentityBindingV1`, local generation authority, Noise XX payload placement, pre-HS3 initiator validation, dual-state pending rotation model, atomic trust transaction ownership in `PeerIdentityRepository`, pure `TrustPlan` engine, exact-candidate rotation approval, strict revocation semantics, physical store separation, and platform-precise coordinated panic-wipe integration).
+- **Phase C8.1A IdentityBinding Primitive:** IMPLEMENTED / NONSHIPPING (canonical binary codec, 80-byte signature preimage, BLAKE2s-128 `node_id` derivation, pure `IdentityBindingValidator` with defensive copying, independent Python reference, and cross-platform locked KAT fixtures).
+- **C8.1 Implementation:** OPEN (peer trust persistence, transaction engine, Noise HS2/HS3 handshake integration, and BoundRecipientKeyResolver remain open).
 - **Sealed-Sender Authenticated Authorship:** OPEN (underlying L4 application envelope open).
 - **Production `RecipientKeyResolver`:** UNRESOLVED / Fail-closed (`UnresolvedRecipientKeyResolver`).
 - **Link Layer:** Disabled (`LINK_LAYER_READY = false` / `linkLayerReady = false`).
