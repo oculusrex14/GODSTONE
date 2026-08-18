@@ -91,7 +91,7 @@ class Identity private constructor(
     }
 
     companion object {
-        const val PREFS = "godstone_identity"
+        internal const val PREFS = "godstone_identity"
 
         fun loadOrCreate(ctx: Context): Identity =
             loadOrCreate(EncryptedSharedPreferencesStorage(ctx), SecureRandom())

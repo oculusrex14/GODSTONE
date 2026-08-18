@@ -47,13 +47,13 @@ public struct MeshIdentity: Sendable {
 
     /// Sign a message using the long-term Ed25519 signing key.
     internal func sign(message: Data) throws -> Data {
-        Ed25519Signer.sign(message: message, seed: signingKey.rawRepresentation)
+        try signingKey.signature(for: message)
     }
 
     /// Canonical local issuer producing an IdentityBindingV1 for the local node (ADR-003, Phase C8.1B).
     ///
-    /// The binding generation, signing public key, and static DH public key are sourced directly
-    /// from the owned identity authority without caller-supplied parameters.
+    /// Sourced directly from the owned identity authority without caller-supplied parameters.
+    /// iOS EdDSA signatures are generated via Apple CryptoKit with self-verification.
     internal func issueIdentityBinding() throws -> IdentityBindingV1 {
         let gen = self.bindingGeneration
         let signingPub = self.signingPublicKey
@@ -63,7 +63,7 @@ public struct MeshIdentity: Sendable {
             signingPublicKey: signingPub,
             staticDhPublicKey: staticPub
         )
-        let signature = Ed25519Signer.sign(message: preimage, seed: signingKey.rawRepresentation)
+        let signature = try signingKey.signature(for: preimage)
 
         guard signingKey.publicKey.isValidSignature(signature, for: preimage) else {
             throw MeshError.identityStateCorrupt("Local issuer self-verification failed")

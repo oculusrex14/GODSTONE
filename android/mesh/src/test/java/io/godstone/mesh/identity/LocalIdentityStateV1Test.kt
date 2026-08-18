@@ -478,4 +478,12 @@ class LocalIdentityStateV1Test {
         assertNotNull(generatedId)
         assertEquals(0L, generatedId!!.bindingGeneration)
     }
+
+    // 32. AndroidWipeArtifacts has no default zero-arg constructor
+    @Test
+    fun `test 32 AndroidWipeArtifacts has no default zero-arg constructor`() {
+        val constructors = AndroidWipeArtifacts::class.java.constructors
+        val zeroArg = constructors.find { it.parameterCount == 0 }
+        assertNull("AndroidWipeArtifacts must not have a zero-arg constructor", zeroArg)
+    }
 }

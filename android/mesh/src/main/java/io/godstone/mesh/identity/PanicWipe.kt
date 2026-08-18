@@ -188,30 +188,13 @@ internal class FileWipeJournal(ctx: Context) : WipeJournal {
  * no-op, `deleteSharedPreferences`/`deleteDatabase` on absent files are no-ops,
  * and `loadOrCreate` creates when nothing exists.
  */
-internal class AndroidWipeArtifacts(
-    private val ctx: Context? = null,
-    private val eraseAction: () -> Unit = {
-        val ks = KeyStore.getInstance("AndroidKeyStore")
-        ks.load(null)
-        if (ks.containsAlias(MASTER_KEY_ALIAS)) {
-            ks.deleteEntry(MASTER_KEY_ALIAS)
-        }
-    },
-    private val deleteArtifactsAction: () -> Unit = {
-        ctx?.let {
-            SqliteMessageStore.panicWipe(it)
-            Identity.panicWipe(it)
-        }
-    },
-    private val regenerateAction: () -> Unit = {
-        ctx?.let {
-            Identity.loadOrCreate(it)
-        }
-    }
+internal class AndroidWipeArtifacts private constructor(
+    private val eraseAction: () -> Unit,
+    private val deleteArtifactsAction: () -> Unit,
+    private val regenerateAction: () -> Unit,
 ) : WipeArtifacts {
 
     constructor(ctx: Context) : this(
-        ctx = ctx,
         eraseAction = {
             val ks = KeyStore.getInstance("AndroidKeyStore")
             ks.load(null)
@@ -227,6 +210,13 @@ internal class AndroidWipeArtifacts(
             Identity.loadOrCreate(ctx)
         }
     )
+
+    internal constructor(
+        eraseAction: () -> Unit,
+        deleteArtifactsAction: () -> Unit,
+        regenerateAction: () -> Unit,
+        @Suppress("UNUSED_PARAMETER") testMarker: Unit = Unit,
+    ) : this(eraseAction, deleteArtifactsAction, regenerateAction)
 
     override fun eraseKeys() {
         eraseAction()

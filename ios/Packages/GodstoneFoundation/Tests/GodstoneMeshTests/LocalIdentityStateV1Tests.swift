@@ -258,8 +258,8 @@ final class LocalIdentityStateV1Tests: XCTestCase {
         }
     }
 
-    // 20. vector-1 state issues exact fresh_generation_zero binding (locked KAT)
-    func test20Vector1IssuesExactFreshGenerationZeroBinding() throws {
+    // 20. vector-1 state issues valid semantic fresh_generation_zero binding (ADR-003, C8.1B)
+    func test20Vector1IssuesValidSemanticBinding() throws {
         let kc = InMemoryKeychain()
         let state = try LocalIdentityStateV1(generation: 0, ed25519Seed: vec1EdPriv, x25519PrivateKey: vec1XPriv)
         kc.storage[MeshIdentity.v1Tag] = state.encode()
@@ -270,11 +270,27 @@ final class LocalIdentityStateV1Tests: XCTestCase {
         XCTAssertEqual(binding.version, 0x01)
         XCTAssertEqual(binding.generation, 0)
         XCTAssertEqual(binding.signingPublicKey, id.signingPublicKey)
+        XCTAssertEqual(binding.staticDhPublicKey, id.staticDhPublicKey)
+        XCTAssertEqual(binding.signingPublicKey, vec1Serialized.subdata(in: 5..<37))
+        XCTAssertEqual(binding.staticDhPublicKey, vec1Serialized.subdata(in: 37..<69))
+
+        let expectedPreimage = IdentityBindingV1.signaturePreimage(
+            generation: 0,
+            signingPublicKey: binding.signingPublicKey,
+            staticDhPublicKey: binding.staticDhPublicKey
+        )
+        XCTAssertEqual(expectedPreimage.count, 80)
         XCTAssertEqual(binding.signature.count, 64)
-        XCTAssertEqual(binding.encode(), vec1Serialized)
+
+        let verifier = try Curve25519.Signing.PublicKey(rawRepresentation: binding.signingPublicKey)
+        XCTAssertTrue(verifier.isValidSignature(binding.signature, for: expectedPreimage))
+
+        let encoded = binding.encode()
+        XCTAssertEqual(encoded.count, 133)
+        XCTAssertEqual(encoded.prefix(69), vec1Serialized.prefix(69))
 
         let result = IdentityBindingValidator.validate(
-            serialized: binding.encode(),
+            serialized: encoded,
             authenticatedRemoteStaticKey: id.staticDhPublicKey,
             advertisedNodeHint: id.nodeHint
         )
@@ -284,10 +300,25 @@ final class LocalIdentityStateV1Tests: XCTestCase {
         }
         XCTAssertEqual(validated.generation, 0)
         XCTAssertEqual(validated.nodeId, id.nodeId)
+        XCTAssertEqual(validated.signingPublicKey, id.signingPublicKey)
+        XCTAssertEqual(validated.staticDhPublicKey, id.staticDhPublicKey)
+
+        // Verify issuing a second time produces another valid binding
+        let binding2 = try id.issueIdentityBinding()
+        let result2 = IdentityBindingValidator.validate(
+            serialized: binding2.encode(),
+            authenticatedRemoteStaticKey: id.staticDhPublicKey,
+            advertisedNodeHint: id.nodeHint
+        )
+        guard case .valid(let validated2) = result2 else {
+            XCTFail("Expected second issuance to validate")
+            return
+        }
+        XCTAssertEqual(validated2.generation, 0)
     }
 
-    // 21. vector-2 state issues exact endian_lock binding (locked KAT)
-    func test21Vector2IssuesExactEndianLockBinding() throws {
+    // 21. vector-2 state issues valid endian_lock binding (ADR-003, C8.1B)
+    func test21Vector2IssuesValidEndianLockBinding() throws {
         let kc = InMemoryKeychain()
         let state = try LocalIdentityStateV1(generation: 0x01020304, ed25519Seed: vec2EdPriv, x25519PrivateKey: vec2XPriv)
         kc.storage[MeshIdentity.v1Tag] = state.encode()
@@ -299,11 +330,26 @@ final class LocalIdentityStateV1Tests: XCTestCase {
         XCTAssertEqual(binding.generation, 0x01020304)
         XCTAssertEqual(binding.signingPublicKey, id.signingPublicKey)
         XCTAssertEqual(binding.staticDhPublicKey, id.staticDhPublicKey)
+        XCTAssertEqual(binding.signingPublicKey, vec2Serialized.subdata(in: 5..<37))
+        XCTAssertEqual(binding.staticDhPublicKey, vec2Serialized.subdata(in: 37..<69))
+
+        let expectedPreimage = IdentityBindingV1.signaturePreimage(
+            generation: 0x01020304,
+            signingPublicKey: binding.signingPublicKey,
+            staticDhPublicKey: binding.staticDhPublicKey
+        )
+        XCTAssertEqual(expectedPreimage.count, 80)
         XCTAssertEqual(binding.signature.count, 64)
-        XCTAssertEqual(binding.encode(), vec2Serialized)
+
+        let verifier = try Curve25519.Signing.PublicKey(rawRepresentation: binding.signingPublicKey)
+        XCTAssertTrue(verifier.isValidSignature(binding.signature, for: expectedPreimage))
+
+        let encoded = binding.encode()
+        XCTAssertEqual(encoded.count, 133)
+        XCTAssertEqual(encoded.prefix(69), vec2Serialized.prefix(69))
 
         let result = IdentityBindingValidator.validate(
-            serialized: binding.encode(),
+            serialized: encoded,
             authenticatedRemoteStaticKey: id.staticDhPublicKey,
             advertisedNodeHint: id.nodeHint
         )
@@ -313,10 +359,12 @@ final class LocalIdentityStateV1Tests: XCTestCase {
         }
         XCTAssertEqual(validated.generation, 0x01020304)
         XCTAssertEqual(validated.nodeId, id.nodeId)
+        XCTAssertEqual(validated.signingPublicKey, id.signingPublicKey)
+        XCTAssertEqual(validated.staticDhPublicKey, id.staticDhPublicKey)
     }
 
-    // 22. vector-3 state issues exact max_generation binding (locked KAT)
-    func test22Vector3IssuesExactMaxGenerationBinding() throws {
+    // 22. vector-3 state issues valid max_generation binding (ADR-003, C8.1B)
+    func test22Vector3IssuesValidMaxGenerationBinding() throws {
         let kc = InMemoryKeychain()
         let state = try LocalIdentityStateV1(generation: UInt32.max, ed25519Seed: vec3EdPriv, x25519PrivateKey: vec3XPriv)
         kc.storage[MeshIdentity.v1Tag] = state.encode()
@@ -328,11 +376,26 @@ final class LocalIdentityStateV1Tests: XCTestCase {
         XCTAssertEqual(binding.generation, UInt32.max)
         XCTAssertEqual(binding.signingPublicKey, id.signingPublicKey)
         XCTAssertEqual(binding.staticDhPublicKey, id.staticDhPublicKey)
+        XCTAssertEqual(binding.signingPublicKey, vec3Serialized.subdata(in: 5..<37))
+        XCTAssertEqual(binding.staticDhPublicKey, vec3Serialized.subdata(in: 37..<69))
+
+        let expectedPreimage = IdentityBindingV1.signaturePreimage(
+            generation: UInt32.max,
+            signingPublicKey: binding.signingPublicKey,
+            staticDhPublicKey: binding.staticDhPublicKey
+        )
+        XCTAssertEqual(expectedPreimage.count, 80)
         XCTAssertEqual(binding.signature.count, 64)
-        XCTAssertEqual(binding.encode(), vec3Serialized)
+
+        let verifier = try Curve25519.Signing.PublicKey(rawRepresentation: binding.signingPublicKey)
+        XCTAssertTrue(verifier.isValidSignature(binding.signature, for: expectedPreimage))
+
+        let encoded = binding.encode()
+        XCTAssertEqual(encoded.count, 133)
+        XCTAssertEqual(encoded.prefix(69), vec3Serialized.prefix(69))
 
         let result = IdentityBindingValidator.validate(
-            serialized: binding.encode(),
+            serialized: encoded,
             authenticatedRemoteStaticKey: id.staticDhPublicKey,
             advertisedNodeHint: id.nodeHint
         )
@@ -342,10 +405,24 @@ final class LocalIdentityStateV1Tests: XCTestCase {
         }
         XCTAssertEqual(validated.generation, UInt32.max)
         XCTAssertEqual(validated.nodeId, id.nodeId)
+        XCTAssertEqual(validated.signingPublicKey, id.signingPublicKey)
+        XCTAssertEqual(validated.staticDhPublicKey, id.staticDhPublicKey)
     }
 
-    // 23. issueIdentityBinding has no generation parameter
-    func test23IssueIdentityBindingHasNoGenerationParameter() throws {
+    // 23. SOS / generic sign(message:) non-regression
+    func test23SosGenericSignProducesVerifiableSignature() throws {
+        let kc = InMemoryKeychain()
+        let id = try MeshIdentity.generateAndStore(keychain: kc)
+        let knownMessage = "GODSTONE_SOS_TEST_PAYLOAD".data(using: .utf8)!
+        let signature = try id.sign(message: knownMessage)
+
+        XCTAssertEqual(signature.count, 64)
+        let verifier = try Curve25519.Signing.PublicKey(rawRepresentation: id.signingPublicKey)
+        XCTAssertTrue(verifier.isValidSignature(signature, for: knownMessage))
+    }
+
+    // 24. issueIdentityBinding has no generation parameter
+    func test24IssueIdentityBindingHasNoGenerationParameter() throws {
         let kc = InMemoryKeychain()
         let id = try MeshIdentity.generateAndStore(keychain: kc)
 
@@ -354,8 +431,8 @@ final class LocalIdentityStateV1Tests: XCTestCase {
         XCTAssertEqual(binding.generation, 0)
     }
 
-    // 24. issuer output passes C8 1A IdentityBindingValidator
-    func test24IssuerOutputPassesIdentityBindingValidator() throws {
+    // 25. issuer output passes C8 1A IdentityBindingValidator
+    func test25IssuerOutputPassesIdentityBindingValidator() throws {
         let kc = InMemoryKeychain()
         let id = try MeshIdentity.generateAndStore(keychain: kc)
 
@@ -375,8 +452,8 @@ final class LocalIdentityStateV1Tests: XCTestCase {
         XCTAssertEqual(validated.staticDhPublicKey, id.staticDhPublicKey)
     }
 
-    // 25. deleteFromKeychain deletes V1 + both legacy tags
-    func test25DeleteFromKeychainDeletesV1AndLegacyTags() throws {
+    // 26. deleteFromKeychain deletes V1 + both legacy tags
+    func test26DeleteFromKeychainDeletesV1AndLegacyTags() throws {
         let kc = InMemoryKeychain()
         kc.storage[MeshIdentity.v1Tag] = Data([0x01])
         kc.storage[MeshIdentity.legacySigningTag] = Data([0x02])
@@ -388,8 +465,8 @@ final class LocalIdentityStateV1Tests: XCTestCase {
         XCTAssertNil(kc.storage[MeshIdentity.legacyAgreementTag])
     }
 
-    // 26. successful wipe regeneration returns generation 0
-    func test26SuccessfulWipeRegenerationReturnsGeneration0() throws {
+    // 27. successful wipe regeneration returns generation 0
+    func test27SuccessfulWipeRegenerationReturnsGeneration0() throws {
         let kc = InMemoryKeychain()
         _ = try MeshIdentity.generateAndStore(keychain: kc)
         try MeshIdentity.deleteFromKeychain(keychain: kc)
@@ -397,8 +474,8 @@ final class LocalIdentityStateV1Tests: XCTestCase {
         XCTAssertEqual(regenerated.bindingGeneration, 0)
     }
 
-    // 27. wipe coordinator: erase failure leaves journal at requested
-    func test27WipeEraseFailureLeavesJournalRequested() {
+    // 28. wipe coordinator: erase failure leaves journal at requested
+    func test28WipeEraseFailureLeavesJournalRequested() {
         let kc = InMemoryKeychain()
         kc.failDelete = errSecIO
         let journal = InMemoryWipeJournal()
@@ -409,8 +486,8 @@ final class LocalIdentityStateV1Tests: XCTestCase {
         XCTAssertEqual(journal.read(), .requested)
     }
 
-    // 28. wipe coordinator: regeneration add failure leaves journal at artifactsDeleted
-    func test28WipeRegenerateAddFailureLeavesJournalArtifactsDeleted() throws {
+    // 29. wipe coordinator: regeneration add failure leaves journal at artifactsDeleted
+    func test29WipeRegenerateAddFailureLeavesJournalArtifactsDeleted() throws {
         let kc = InMemoryKeychain()
         let state = try LocalIdentityStateV1(generation: 0, ed25519Seed: vec1EdPriv, x25519PrivateKey: vec1XPriv)
         kc.storage[MeshIdentity.v1Tag] = state.encode()
@@ -425,8 +502,8 @@ final class LocalIdentityStateV1Tests: XCTestCase {
         XCTAssertEqual(journal.read(), .artifactsDeleted)
     }
 
-    // 29. wipe coordinator: successful wipe installs generation 0 in V1
-    func test29SuccessfulWipeInstallsGeneration0InV1() throws {
+    // 30. wipe coordinator: successful wipe installs generation 0 in V1
+    func test30SuccessfulWipeInstallsGeneration0InV1() throws {
         let kc = InMemoryKeychain()
         let state = try LocalIdentityStateV1(generation: 42, ed25519Seed: vec1EdPriv, x25519PrivateKey: vec1XPriv)
         kc.storage[MeshIdentity.v1Tag] = state.encode()

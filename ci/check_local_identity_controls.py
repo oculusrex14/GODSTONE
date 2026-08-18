@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Regression controls and structural checks for LocalIdentityStateV1 (ADR-003, Phase C8.1B.1).
+"""Regression controls and structural checks for LocalIdentityStateV1 (ADR-003, Phase C8.1B.2).
 
 Verifies the presence and structural invariants of:
 - Android LocalIdentityStateV1 and Identity authority persistence
@@ -9,8 +9,10 @@ Verifies the presence and structural invariants of:
 - Canonical local issuer restrictions (no caller-supplied generation parameter)
 - PanicWipe failure propagation (no exception swallowing)
 - Prevention of direct outbound IdentityBindingV1 construction outside authority files
-- Exact locked KAT equality assertions in test suites
-- Internal visibility barriers on keychain protocols and private key accessors
+- iOS production signing using Apple CryptoKit (no handwritten Ed25519 engine)
+- iOS semantic cryptographic conformance tests (exact preimage, signature verification, prefix(69), validator)
+- Android WipeArtifacts constructor hardening (no zero-argument defaults)
+- Internal visibility barriers on keychain protocols, prefs constants, and private key accessors
 """
 from __future__ import annotations
 
@@ -68,7 +70,17 @@ def check_local_identity_controls(
     if errors:
         return errors
 
-    # 2. Android State & Identity checks
+    # 2. Production Cryptography Checks (Section 9)
+    if (ios_mesh_root / "Ed25519Signer.swift").exists():
+        errors.append("Forbidden file Ed25519Signer.swift found in iOS production source; must use platform CryptoKit")
+
+    i_id_text = i_id.read_text(encoding="utf-8")
+    if "Ed25519Signer" in i_id_text:
+        errors.append("iOS MeshIdentity must not invoke Ed25519Signer; must use platform CryptoKit")
+    if "signingKey.signature(for:" not in i_id_text:
+        errors.append("iOS MeshIdentity must use signingKey.signature(for:) for production signing")
+
+    # 3. Android State & Identity checks
     a_state_text = a_state.read_text(encoding="utf-8")
     if "LOCAL_IDENTITY_STATE_LENGTH: Int = 69" not in a_state_text:
         errors.append("Android LocalIdentityStateV1 missing 69-byte length definition (LOCAL_IDENTITY_STATE_LENGTH: Int = 69)")
@@ -94,6 +106,8 @@ def check_local_identity_controls(
         errors.append("Android issueIdentityBinding must have no caller-supplied parameters")
     if re.search(r"(?:public\s+val|val\s+)staticDhPriv\b", a_id_text) and not re.search(r"internal\s+val\s+staticDhPriv\b", a_id_text):
         errors.append("Android staticDhPriv accessor must be internal, not public")
+    if not re.search(r"internal\s+const\s+val\s+PREFS\b", a_id_text):
+        errors.append("Android Identity.PREFS constant must be internal, not public")
     if "signaturePreimage" not in a_id_text:
         errors.append("Android issueIdentityBinding must construct canonical signaturePreimage")
     if "Ed25519Keys.sign" not in a_id_text:
@@ -104,8 +118,10 @@ def check_local_identity_controls(
     a_wipe_text = a_wipe.read_text(encoding="utf-8")
     if "runCatching" in a_wipe_text:
         errors.append("AndroidWipeArtifacts.eraseKeys must not swallow KeyStore errors with runCatching")
+    if re.search(r"class\s+AndroidWipeArtifacts\s*\(\s*(?:private\s+)?val\s+ctx:\s*Context\?\s*=\s*null", a_wipe_text):
+        errors.append("AndroidWipeArtifacts must not have default null Context constructor")
 
-    # 3. iOS State & MeshIdentity checks
+    # 4. iOS State & MeshIdentity checks
     i_state_text = i_state.read_text(encoding="utf-8")
     if "localIdentityStateLength: Int = 69" not in i_state_text:
         errors.append("iOS LocalIdentityStateV1 missing 69-byte length definition (localIdentityStateLength: Int = 69)")
@@ -122,7 +138,6 @@ def check_local_identity_controls(
     if "guard status == errSecSuccess" not in i_state_text:
         errors.append("iOS DefaultLocalIdentityKeychain.add must check status == errSecSuccess")
 
-    i_id_text = i_id.read_text(encoding="utf-8")
     if "io.godstone.mesh.identity.v1" not in i_id_text:
         errors.append("iOS MeshIdentity missing canonical V1 tag 'io.godstone.mesh.identity.v1'")
     if "identityAlreadyExists" not in i_id_text:
@@ -168,16 +183,26 @@ def check_local_identity_controls(
     if re.search(r"func\s+regenerateIdentity\b.*?\bcatch\b", i_wipe_text, re.DOTALL):
         errors.append("iOS KeychainWipeArtifacts.regenerateIdentity must not swallow regeneration errors in catch block")
 
-    # Check iOS test exact KAT assertions
+    # Check iOS test semantic KAT assertions (Section 9)
     i_test_text = i_test.read_text(encoding="utf-8")
-    if "XCTAssertEqual(binding.encode(), vec1Serialized)" not in i_test_text:
-        errors.append("iOS LocalIdentityStateV1Tests must assert binding.encode() == vec1Serialized for Vector 1")
-    if "XCTAssertEqual(binding.encode(), vec2Serialized)" not in i_test_text:
-        errors.append("iOS LocalIdentityStateV1Tests must assert binding.encode() == vec2Serialized for Vector 2")
-    if "XCTAssertEqual(binding.encode(), vec3Serialized)" not in i_test_text:
-        errors.append("iOS LocalIdentityStateV1Tests must assert binding.encode() == vec3Serialized for Vector 3")
+    if "IdentityBindingV1.signaturePreimage" not in i_test_text:
+        errors.append("iOS LocalIdentityStateV1Tests must assert exact signaturePreimage")
+    if "test20Vector1IssuesValidSemanticBinding" not in i_test_text or "vec1Serialized.subdata(in: 5..<37)" not in i_test_text:
+        errors.append("iOS LocalIdentityStateV1Tests must assert vector 1 exact public keys and preimage")
+    if "test21Vector2IssuesValidEndianLockBinding" not in i_test_text or "vec2Serialized.subdata(in: 5..<37)" not in i_test_text:
+        errors.append("iOS LocalIdentityStateV1Tests must assert vector 2 exact public keys and preimage")
+    if "test22Vector3IssuesValidMaxGenerationBinding" not in i_test_text or "vec3Serialized.subdata(in: 5..<37)" not in i_test_text:
+        errors.append("iOS LocalIdentityStateV1Tests must assert vector 3 exact public keys and preimage")
+    if "isValidSignature(binding.signature" not in i_test_text:
+        errors.append("iOS LocalIdentityStateV1Tests must perform cryptographic signature verification")
+    if "encoded.count, 133" not in i_test_text and "binding.encode().count, 133" not in i_test_text:
+        errors.append("iOS LocalIdentityStateV1Tests must assert 133-byte encoded length")
+    if "prefix(69)" not in i_test_text:
+        errors.append("iOS LocalIdentityStateV1Tests must assert exact prefix(69) canonical field encoding")
+    if "IdentityBindingValidator.validate" not in i_test_text:
+        errors.append("iOS LocalIdentityStateV1Tests must assert validator acceptance")
 
-    # 4. Outbound issuance bypass check (Section 29)
+    # 5. Outbound issuance bypass check (Section 29)
     if android_mesh_root.exists():
         for f in android_mesh_root.rglob("*.kt"):
             if f.name in ["Identity.kt", "IdentityBindingV1.kt", "LocalIdentityStateV1.kt", "Ed25519Keys.kt", "X25519Keys.kt"]:
@@ -188,7 +213,7 @@ def check_local_identity_controls(
 
     if ios_mesh_root.exists():
         for f in ios_mesh_root.rglob("*.swift"):
-            if f.name in ["MeshIdentity.swift", "IdentityBindingV1.swift", "LocalIdentityStateV1.swift", "Ed25519Signer.swift"]:
+            if f.name in ["MeshIdentity.swift", "IdentityBindingV1.swift", "LocalIdentityStateV1.swift"]:
                 continue
             text = f.read_text(encoding="utf-8")
             if re.search(r"\bIdentityBindingV1\s*\(", text):
@@ -198,7 +223,7 @@ def check_local_identity_controls(
 
 
 def selftest() -> int:
-    """Run all 30 named mutation negative controls (M1-M30) against isolated temporary trees."""
+    """Run all named mutation negative controls against isolated temporary trees."""
     print("Running check_local_identity_controls --selftest...")
     failures: list[str] = []
     passed_mutations = 0
@@ -343,52 +368,92 @@ def selftest() -> int:
         fake_swift.write_text("import Foundation\nfunc bypass() { _ = IdentityBindingV1(generation: 0, signingPublicKey: Data(), staticDhPublicKey: Data(), signature: Data()) }", encoding="utf-8")
     mutations.append(("M21", "iOS production file Bypass.swift contains direct IdentityBindingV1 construction", mutate_m21))
 
-    # M22: iOS exact issuer Vector 1 equality assertion removed
+    # M22 (C1): Introduce Ed25519Signer.swift into iOS production tree
     def mutate_m22(a_state, a_id, a_wipe, a_test, i_state, i_id, i_wipe, i_test, a_mesh, i_mesh):
-        i_test.write_text(i_test.read_text(encoding="utf-8").replace("XCTAssertEqual(binding.encode(), vec1Serialized)", "// removed"), encoding="utf-8")
-    mutations.append(("M22", "Vector 1", mutate_m22))
+        (i_mesh / "Ed25519Signer.swift").write_text("// forbidden manual signer\n", encoding="utf-8")
+    mutations.append(("M22_C1", "Forbidden file Ed25519Signer.swift found", mutate_m22))
 
-    # M23: iOS exact issuer Vector 2 equality assertion removed
+    # M23 (C2): Replace CryptoKit signing with Ed25519Signer.sign call
     def mutate_m23(a_state, a_id, a_wipe, a_test, i_state, i_id, i_wipe, i_test, a_mesh, i_mesh):
-        i_test.write_text(i_test.read_text(encoding="utf-8").replace("XCTAssertEqual(binding.encode(), vec2Serialized)", "// removed"), encoding="utf-8")
-    mutations.append(("M23", "Vector 2", mutate_m23))
+        i_id.write_text(i_id.read_text(encoding="utf-8").replace("try signingKey.signature(for: preimage)", "Ed25519Signer.sign(message: preimage, seed: signingKey.rawRepresentation)"), encoding="utf-8")
+    mutations.append(("M23_C2", "must not invoke Ed25519Signer", mutate_m23))
 
-    # M24: iOS exact issuer Vector 3 equality assertion removed
+    # M24 (C3): Remove vector-1 exact preimage assertion
     def mutate_m24(a_state, a_id, a_wipe, a_test, i_state, i_id, i_wipe, i_test, a_mesh, i_mesh):
-        i_test.write_text(i_test.read_text(encoding="utf-8").replace("XCTAssertEqual(binding.encode(), vec3Serialized)", "// removed"), encoding="utf-8")
-    mutations.append(("M24", "Vector 3", mutate_m24))
+        i_test.write_text(i_test.read_text(encoding="utf-8").replace("vec1Serialized.subdata(in: 5..<37)", "// removed"), encoding="utf-8")
+    mutations.append(("M24_C3", "vector 1 exact public keys", mutate_m24))
 
-    # M25: iOS local generation parser reintroduces load(as: UInt32.self)
+    # M25 (C4): Remove vector-2 exact preimage assertion
     def mutate_m25(a_state, a_id, a_wipe, a_test, i_state, i_id, i_wipe, i_test, a_mesh, i_mesh):
-        i_state.write_text(i_state.read_text(encoding="utf-8") + "\n// load(as: UInt32.self)\n", encoding="utf-8")
-    mutations.append(("M25", "load(as: UInt32.self)", mutate_m25))
+        i_test.write_text(i_test.read_text(encoding="utf-8").replace("vec2Serialized.subdata(in: 5..<37)", "// removed"), encoding="utf-8")
+    mutations.append(("M25_C4", "vector 2 exact public keys", mutate_m25))
 
-    # M26: iOS deleteFromKeychain omits V1
+    # M26 (C5): Remove vector-3 exact preimage assertion
     def mutate_m26(a_state, a_id, a_wipe, a_test, i_state, i_id, i_wipe, i_test, a_mesh, i_mesh):
-        i_id.write_text(i_id.read_text(encoding="utf-8").replace("try keychain.delete(tag: v1Tag)", "// deleted"), encoding="utf-8")
-    mutations.append(("M26", "delete v1Tag", mutate_m26))
+        i_test.write_text(i_test.read_text(encoding="utf-8").replace("vec3Serialized.subdata(in: 5..<37)", "// removed"), encoding="utf-8")
+    mutations.append(("M26_C5", "vector 3 exact public keys", mutate_m26))
 
-    # M27: iOS deleteFromKeychain omits legacy Ed
+    # M27 (C6): Remove signature verification assertion
     def mutate_m27(a_state, a_id, a_wipe, a_test, i_state, i_id, i_wipe, i_test, a_mesh, i_mesh):
-        i_id.write_text(i_id.read_text(encoding="utf-8").replace("try keychain.delete(tag: legacySigningTag)", "// deleted"), encoding="utf-8")
-    mutations.append(("M27", "delete legacySigningTag", mutate_m27))
+        i_test.write_text(i_test.read_text(encoding="utf-8").replace("isValidSignature(binding.signature", "true //"), encoding="utf-8")
+    mutations.append(("M27_C6", "cryptographic signature verification", mutate_m27))
 
-    # M28: iOS deleteFromKeychain omits legacy X
+    # M28 (C7): Remove 133-byte length assertion
     def mutate_m28(a_state, a_id, a_wipe, a_test, i_state, i_id, i_wipe, i_test, a_mesh, i_mesh):
-        i_id.write_text(i_id.read_text(encoding="utf-8").replace("try keychain.delete(tag: legacyAgreementTag)", "// deleted"), encoding="utf-8")
-    mutations.append(("M28", "delete legacyAgreementTag", mutate_m28))
+        i_test.write_text(i_test.read_text(encoding="utf-8").replace("encoded.count, 133", "encoded.count, 134"), encoding="utf-8")
+    mutations.append(("M28_C7", "133-byte encoded length", mutate_m28))
 
-    # M29: iOS wipe erase failure is swallowed
+    # M29 (C8): Remove prefix(69) canonical-field assertion
     def mutate_m29(a_state, a_id, a_wipe, a_test, i_state, i_id, i_wipe, i_test, a_mesh, i_mesh):
-        i_wipe.write_text(i_wipe.read_text(encoding="utf-8").replace("try MeshIdentity.deleteFromKeychain(keychain: keychain)", "do { try MeshIdentity.deleteFromKeychain(keychain: keychain) } catch { }"), encoding="utf-8")
-    mutations.append(("M29", "eraseKeys must not swallow deletion errors", mutate_m29))
+        i_test.write_text(i_test.read_text(encoding="utf-8").replace("prefix(69)", "prefix(68)"), encoding="utf-8")
+    mutations.append(("M29_C8", "prefix(69)", mutate_m29))
 
-    # M30: iOS wipe regenerate failure is swallowed
+    # M30 (C9): Remove validator acceptance assertion
     def mutate_m30(a_state, a_id, a_wipe, a_test, i_state, i_id, i_wipe, i_test, a_mesh, i_mesh):
-        i_wipe.write_text(i_wipe.read_text(encoding="utf-8").replace("try MeshIdentity.generateAndStore(keychain: keychain)", "do { try MeshIdentity.generateAndStore(keychain: keychain) } catch { }"), encoding="utf-8")
-    mutations.append(("M30", "regenerateIdentity must not swallow regeneration errors", mutate_m30))
+        i_test.write_text(i_test.read_text(encoding="utf-8").replace("IdentityBindingValidator.validate", "// validator removed"), encoding="utf-8")
+    mutations.append(("M30_C9", "validator acceptance", mutate_m30))
 
-    # Execute all 30 mutations
+    # M31: iOS local generation parser reintroduces load(as: UInt32.self)
+    def mutate_m31(a_state, a_id, a_wipe, a_test, i_state, i_id, i_wipe, i_test, a_mesh, i_mesh):
+        i_state.write_text(i_state.read_text(encoding="utf-8") + "\n// load(as: UInt32.self)\n", encoding="utf-8")
+    mutations.append(("M31", "load(as: UInt32.self)", mutate_m31))
+
+    # M32: iOS deleteFromKeychain omits V1
+    def mutate_m32(a_state, a_id, a_wipe, a_test, i_state, i_id, i_wipe, i_test, a_mesh, i_mesh):
+        i_id.write_text(i_id.read_text(encoding="utf-8").replace("try keychain.delete(tag: v1Tag)", "// deleted"), encoding="utf-8")
+    mutations.append(("M32", "delete v1Tag", mutate_m32))
+
+    # M33: iOS deleteFromKeychain omits legacy Ed
+    def mutate_m33(a_state, a_id, a_wipe, a_test, i_state, i_id, i_wipe, i_test, a_mesh, i_mesh):
+        i_id.write_text(i_id.read_text(encoding="utf-8").replace("try keychain.delete(tag: legacySigningTag)", "// deleted"), encoding="utf-8")
+    mutations.append(("M33", "delete legacySigningTag", mutate_m33))
+
+    # M34: iOS deleteFromKeychain omits legacy X
+    def mutate_m34(a_state, a_id, a_wipe, a_test, i_state, i_id, i_wipe, i_test, a_mesh, i_mesh):
+        i_id.write_text(i_id.read_text(encoding="utf-8").replace("try keychain.delete(tag: legacyAgreementTag)", "// deleted"), encoding="utf-8")
+    mutations.append(("M34", "delete legacyAgreementTag", mutate_m34))
+
+    # M35: iOS wipe erase failure is swallowed
+    def mutate_m35(a_state, a_id, a_wipe, a_test, i_state, i_id, i_wipe, i_test, a_mesh, i_mesh):
+        i_wipe.write_text(i_wipe.read_text(encoding="utf-8").replace("try MeshIdentity.deleteFromKeychain(keychain: keychain)", "do { try MeshIdentity.deleteFromKeychain(keychain: keychain) } catch { }"), encoding="utf-8")
+    mutations.append(("M35", "eraseKeys must not swallow deletion errors", mutate_m35))
+
+    # M36: iOS wipe regenerate failure is swallowed
+    def mutate_m36(a_state, a_id, a_wipe, a_test, i_state, i_id, i_wipe, i_test, a_mesh, i_mesh):
+        i_wipe.write_text(i_wipe.read_text(encoding="utf-8").replace("try MeshIdentity.generateAndStore(keychain: keychain)", "do { try MeshIdentity.generateAndStore(keychain: keychain) } catch { }"), encoding="utf-8")
+    mutations.append(("M36", "regenerateIdentity must not swallow regeneration errors", mutate_m36))
+
+    # M37: Android PREFS constant is made public
+    def mutate_m37(a_state, a_id, a_wipe, a_test, i_state, i_id, i_wipe, i_test, a_mesh, i_mesh):
+        a_id.write_text(a_id.read_text(encoding="utf-8").replace("internal const val PREFS", "public const val PREFS"), encoding="utf-8")
+    mutations.append(("M37", "Identity.PREFS constant must be internal", mutate_m37))
+
+    # M38: Android WipeArtifacts gains zero-arg default null constructor
+    def mutate_m38(a_state, a_id, a_wipe, a_test, i_state, i_id, i_wipe, i_test, a_mesh, i_mesh):
+        a_wipe.write_text(a_wipe.read_text(encoding="utf-8").replace("internal class AndroidWipeArtifacts private constructor", "internal class AndroidWipeArtifacts(private val ctx: Context? = null"), encoding="utf-8")
+    mutations.append(("M38", "must not have default null Context constructor", mutate_m38))
+
+    # Execute all 38 mutations
     for name, expected_fragment, fn in mutations:
         tmpdir, a_state, a_id, a_wipe, a_test, i_state, i_id, i_wipe, i_test, a_mesh, i_mesh = make_tree()
         try:
