@@ -13,6 +13,8 @@ public enum PeerTrustLevel: Int32, Sendable, Equatable {
     case userVerified = 2
     case revoked = 3
 
+    public var persistedCode: Int32 { rawValue }
+
     public static func fromPersistedCode(_ code: Int32) -> PeerTrustLevel? {
         PeerTrustLevel(rawValue: code)
     }

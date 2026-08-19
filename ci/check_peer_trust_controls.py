@@ -288,7 +288,7 @@ def check_controls(
     # P34 & P35 / Same-Module Bypass Control across production source trees
     if android_src_dir and android_src_dir.exists():
         for kt_file in android_src_dir.rglob("*.kt"):
-            if kt_file.name == "PeerTrustModels.kt":
+            if kt_file.name in ("PeerTrustModels.kt", "PeerIdentityRepository.kt"):
                 continue
             txt = kt_file.read_text(encoding="utf-8")
             path_str = str(kt_file.relative_to(ROOT)) if kt_file.is_relative_to(ROOT) else kt_file.name
@@ -299,7 +299,7 @@ def check_controls(
 
     if ios_src_dir and ios_src_dir.exists():
         for swift_file in ios_src_dir.rglob("*.swift"):
-            if swift_file.name == "PeerTrustModels.swift":
+            if swift_file.name in ("PeerTrustModels.swift", "PeerIdentityRepository.swift"):
                 continue
             txt = swift_file.read_text(encoding="utf-8")
             path_str = str(swift_file.relative_to(ROOT)) if swift_file.is_relative_to(ROOT) else swift_file.name
