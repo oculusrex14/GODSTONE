@@ -12,6 +12,7 @@ import org.junit.Rule
 import org.junit.Test
 import org.junit.rules.TemporaryFolder
 import java.io.File
+import java.sql.SQLException
 import java.util.concurrent.Callable
 import java.util.concurrent.Executors
 import java.util.concurrent.Future
@@ -302,6 +303,10 @@ class PeerIdentityRepositoryTest {
         var hookAdvancePending: ((ByteArray, ByteArray, ByteArray, Long, Int, ByteArray, Long, ByteArray, Long) -> Int)? = null
         var hookInTx: (((PeerIdentityStore) -> Any?) -> Any?)? = null
 
+        var faultAfterInsert: Boolean = false
+        var faultAfterInitialPending: Boolean = false
+        var faultAfterAdvancePending: Boolean = false
+
         override fun readRaw(nodeId: ByteArray): PeerIdentityRow? {
             val hook = hookReadRaw
             return if (hook != null) hook(nodeId) else delegate.readRaw(nodeId)
@@ -315,8 +320,13 @@ class PeerIdentityRepositoryTest {
             trustCode: Int
         ): Int {
             val hook = hookInsertFirstSeen
-            return if (hook != null) hook(nodeId, signingPub, acceptedStatic, acceptedGeneration, trustCode)
+            val affected = if (hook != null) hook(nodeId, signingPub, acceptedStatic, acceptedGeneration, trustCode)
             else delegate.insertFirstSeen(nodeId, signingPub, acceptedStatic, acceptedGeneration, trustCode)
+            if (faultAfterInsert) {
+                assertEquals(1, affected)
+                throw SQLException("Injected post-insert storage fault (F1)")
+            }
+            return affected
         }
 
         override fun setInitialPendingGuarded(
@@ -329,8 +339,13 @@ class PeerIdentityRepositoryTest {
             newPendingGeneration: Long
         ): Int {
             val hook = hookSetInitialPending
-            return if (hook != null) hook(nodeId, signingPub, acceptedStatic, acceptedGeneration, trustLevel, newPendingStatic, newPendingGeneration)
+            val affected = if (hook != null) hook(nodeId, signingPub, acceptedStatic, acceptedGeneration, trustLevel, newPendingStatic, newPendingGeneration)
             else delegate.setInitialPendingGuarded(nodeId, signingPub, acceptedStatic, acceptedGeneration, trustLevel, newPendingStatic, newPendingGeneration)
+            if (faultAfterInitialPending) {
+                assertEquals(1, affected)
+                throw SQLException("Injected post-initial-pending storage fault (F2)")
+            }
+            return affected
         }
 
         override fun advancePendingGuarded(
@@ -345,8 +360,13 @@ class PeerIdentityRepositoryTest {
             newPendingGeneration: Long
         ): Int {
             val hook = hookAdvancePending
-            return if (hook != null) hook(nodeId, signingPub, acceptedStatic, acceptedGeneration, trustLevel, oldPendingStatic, oldPendingGeneration, newPendingStatic, newPendingGeneration)
+            val affected = if (hook != null) hook(nodeId, signingPub, acceptedStatic, acceptedGeneration, trustLevel, oldPendingStatic, oldPendingGeneration, newPendingStatic, newPendingGeneration)
             else delegate.advancePendingGuarded(nodeId, signingPub, acceptedStatic, acceptedGeneration, trustLevel, oldPendingStatic, oldPendingGeneration, newPendingStatic, newPendingGeneration)
+            if (faultAfterAdvancePending) {
+                assertEquals(1, affected)
+                throw SQLException("Injected post-advance-pending storage fault (F3)")
+            }
+            return affected
         }
 
         override fun <T> inImmediateTransaction(block: (PeerIdentityStore) -> T): T {
@@ -355,143 +375,21 @@ class PeerIdentityRepositoryTest {
                 @Suppress("UNCHECKED_CAST")
                 hook(block as (PeerIdentityStore) -> Any?) as T
             } else {
-                delegate.inImmediateTransaction { block(this) }
-            }
-        }
-    }
-
-    @Test
-    fun testFirstSeenReadbackCorruptionRollsBack() {
-        val file = tempFolder.newFile("rb_fs_corrupt.db").also { it.delete() }
-        JdbcPeerIdentityStore(file).use { rawStore ->
-            val hookStore = HookableStore(rawStore)
-            val repo = PeerIdentityRepository(hookStore)
-            val b = makeBinding(seedA, 0L, staticPrivA)
-
-            var readCount = 0
-            hookStore.hookReadRaw = { nodeId ->
-                readCount++
-                if (readCount == 1) {
-                    // Initial lookup before evaluate: absent
-                    null
-                } else {
-                    // Post-mutation readback: corrupt trust level code
-                    PeerIdentityRow(
-                        nodeIdRaw = nodeId,
-                        signingPublicKeyRaw = b.signingPublicKey,
-                        acceptedStaticDhPublicKeyRaw = b.staticDhPublicKey,
-                        acceptedGenerationRaw = b.generation,
-                        trustCodeRaw = 999, // Corrupt!
-                        pendingStaticDhPublicKeyRaw = null,
-                        pendingGenerationRaw = null
-                    )
+                delegate.inImmediateTransaction { tx ->
+                    val txHook = HookableStore(tx).also {
+                        it.hookReadRaw = this.hookReadRaw
+                        it.hookInsertFirstSeen = this.hookInsertFirstSeen
+                        it.hookSetInitialPending = this.hookSetInitialPending
+                        it.hookAdvancePending = this.hookAdvancePending
+                        it.faultAfterInsert = this.faultAfterInsert
+                        it.faultAfterInitialPending = this.faultAfterInitialPending
+                        it.faultAfterAdvancePending = this.faultAfterAdvancePending
+                    }
+                    block(txHook)
                 }
             }
-
-            val res = repo.applyValidatedBinding(b)
-            assertTrue(res is PeerTrustApplyResult.Corrupt)
-            val reason = (res as PeerTrustApplyResult.Corrupt).reason
-            assertTrue(reason is PeerTrustRepositoryCorruptionReason.UnknownTrustLevelCode)
-
-            // CRITICAL: Ensure transaction was aborted and database has NO row inserted!
-            hookStore.hookReadRaw = null
-            assertNull(rawStore.readRaw(b.nodeId))
         }
     }
-
-    @Test
-    fun testInitialPendingReadbackCorruptionRollsBack() {
-        val file = tempFolder.newFile("rb_init_corrupt.db").also { it.delete() }
-        JdbcPeerIdentityStore(file).use { rawStore ->
-            val hookStore = HookableStore(rawStore)
-            val repo = PeerIdentityRepository(hookStore)
-
-            val b1 = makeBinding(seedA, 0L, staticPrivA)
-            assertEquals(PeerTrustApplyResult.FirstSeenPinned, repo.applyValidatedBinding(b1))
-
-            val b2 = makeBinding(seedA, 1L, staticPrivB)
-            var readCount = 0
-            hookStore.hookReadRaw = { nodeId ->
-                readCount++
-                if (readCount == 1) {
-                    rawStore.readRaw(nodeId)
-                } else {
-                    // Post-mutation readback: corrupt out-of-range pending generation
-                    val valid = rawStore.readRaw(nodeId)!!
-                    PeerIdentityRow(
-                        nodeIdRaw = valid.nodeIdRaw,
-                        signingPublicKeyRaw = valid.signingPublicKeyRaw,
-                        acceptedStaticDhPublicKeyRaw = valid.acceptedStaticDhPublicKeyRaw,
-                        acceptedGenerationRaw = valid.acceptedGenerationRaw,
-                        trustCodeRaw = valid.trustCodeRaw,
-                        pendingStaticDhPublicKeyRaw = b2.staticDhPublicKey,
-                        pendingGenerationRaw = 5000000000L // Corrupt > UINT32_MAX!
-                    )
-                }
-            }
-
-            val res = repo.applyValidatedBinding(b2)
-            assertTrue(res is PeerTrustApplyResult.Corrupt)
-            assertTrue((res as PeerTrustApplyResult.Corrupt).reason is PeerTrustRepositoryCorruptionReason.PendingGenerationOutOfRange)
-
-            // Ensure rollback: state must remain b1 with no pending
-            hookStore.hookReadRaw = null
-            val restored = rawStore.readRaw(b1.nodeId)
-            assertNotNull(restored)
-            assertNull(restored!!.pendingStaticDhPublicKeyRaw)
-            assertNull(restored.pendingGenerationRaw)
-        }
-    }
-
-    @Test
-    fun testAdvancePendingReadbackCorruptionRollsBack() {
-        val file = tempFolder.newFile("rb_adv_corrupt.db").also { it.delete() }
-        JdbcPeerIdentityStore(file).use { rawStore ->
-            val hookStore = HookableStore(rawStore)
-            val repo = PeerIdentityRepository(hookStore)
-
-            val b1 = makeBinding(seedA, 0L, staticPrivA)
-            repo.applyValidatedBinding(b1)
-            val b2 = makeBinding(seedA, 1L, staticPrivB)
-            repo.applyValidatedBinding(b2)
-
-            val b3 = makeBinding(seedA, 2L, staticPrivC)
-            var readCount = 0
-            hookStore.hookReadRaw = { nodeId ->
-                readCount++
-                if (readCount == 1) {
-                    rawStore.readRaw(nodeId)
-                } else {
-                    // Return mismatch (valid candidate record, but does not match b3)
-                    val valid = rawStore.readRaw(nodeId)!!
-                    PeerIdentityRow(
-                        nodeIdRaw = valid.nodeIdRaw,
-                        signingPublicKeyRaw = valid.signingPublicKeyRaw,
-                        acceptedStaticDhPublicKeyRaw = valid.acceptedStaticDhPublicKeyRaw,
-                        acceptedGenerationRaw = valid.acceptedGenerationRaw,
-                        trustCodeRaw = valid.trustCodeRaw,
-                        pendingStaticDhPublicKeyRaw = b2.staticDhPublicKey, // Valid (differs from accepted), but does NOT match b3!
-                        pendingGenerationRaw = 99L
-                    )
-                }
-            }
-
-            val res = repo.applyValidatedBinding(b3)
-            assertTrue(res is PeerTrustApplyResult.Corrupt)
-            assertTrue((res as PeerTrustApplyResult.Corrupt).reason is PeerTrustRepositoryCorruptionReason.MutationReadbackMismatch)
-
-            // Ensure rollback: state retains b2 pending candidate
-            hookStore.hookReadRaw = null
-            val restored = rawStore.readRaw(b1.nodeId)
-            assertNotNull(restored)
-            assertEquals(1L, restored!!.pendingGenerationRaw)
-            assertArrayEquals(b2.staticDhPublicKey, restored.pendingStaticDhPublicKeyRaw)
-        }
-    }
-
-    // =========================================================================
-    // 6. MUTATION CARDINALITY MATRIX (0 and 2 affected rows)
-    // =========================================================================
 
     @Test
     fun testCardinalityMatrix_InitialPending_ZeroAffected_RollsBack() {
@@ -503,7 +401,7 @@ class PeerIdentityRepositoryTest {
             val b1 = makeBinding(seedA, 0L, staticPrivA)
             repo.applyValidatedBinding(b1)
 
-            hookStore.hookSetInitialPending = { _, _, _, _, _, _, _ -> 0 } // Force 0 affected
+            hookStore.hookSetInitialPending = { _, _, _, _, _, _, _ -> 0 }
             val b2 = makeBinding(seedA, 1L, staticPrivB)
             val res = repo.applyValidatedBinding(b2)
             assertTrue(res is PeerTrustApplyResult.Corrupt)
@@ -514,7 +412,11 @@ class PeerIdentityRepositoryTest {
 
             hookStore.hookSetInitialPending = null
             val row = rawStore.readRaw(b1.nodeId)
-            assertNull(row!!.pendingGenerationRaw)
+            assertNotNull(row)
+            assertEquals(0L, row!!.acceptedGenerationRaw)
+            assertArrayEquals(b1.staticDhPublicKey, row.acceptedStaticDhPublicKeyRaw)
+            assertNull(row.pendingGenerationRaw)
+            assertNull(row.pendingStaticDhPublicKeyRaw)
         }
     }
 
@@ -528,7 +430,7 @@ class PeerIdentityRepositoryTest {
             val b1 = makeBinding(seedA, 0L, staticPrivA)
             repo.applyValidatedBinding(b1)
 
-            hookStore.hookSetInitialPending = { _, _, _, _, _, _, _ -> 2 } // Force 2 affected
+            hookStore.hookSetInitialPending = { _, _, _, _, _, _, _ -> 2 }
             val b2 = makeBinding(seedA, 1L, staticPrivB)
             val res = repo.applyValidatedBinding(b2)
             assertTrue(res is PeerTrustApplyResult.Corrupt)
@@ -536,6 +438,14 @@ class PeerIdentityRepositoryTest {
                 PeerTrustRepositoryCorruptionReason.MutationCardinality(1, 2),
                 (res as PeerTrustApplyResult.Corrupt).reason
             )
+
+            hookStore.hookSetInitialPending = null
+            val row = rawStore.readRaw(b1.nodeId)
+            assertNotNull(row)
+            assertEquals(0L, row!!.acceptedGenerationRaw)
+            assertArrayEquals(b1.staticDhPublicKey, row.acceptedStaticDhPublicKeyRaw)
+            assertNull(row.pendingGenerationRaw)
+            assertNull(row.pendingStaticDhPublicKeyRaw)
         }
     }
 
@@ -559,6 +469,14 @@ class PeerIdentityRepositoryTest {
                 PeerTrustRepositoryCorruptionReason.MutationCardinality(1, 0),
                 (res as PeerTrustApplyResult.Corrupt).reason
             )
+
+            hookStore.hookAdvancePending = null
+            val row = rawStore.readRaw(b1.nodeId)
+            assertNotNull(row)
+            assertEquals(0L, row!!.acceptedGenerationRaw)
+            assertArrayEquals(b1.staticDhPublicKey, row.acceptedStaticDhPublicKeyRaw)
+            assertEquals(1L, row.pendingGenerationRaw)
+            assertArrayEquals(b2.staticDhPublicKey, row.pendingStaticDhPublicKeyRaw)
         }
     }
 
@@ -582,6 +500,14 @@ class PeerIdentityRepositoryTest {
                 PeerTrustRepositoryCorruptionReason.MutationCardinality(1, 2),
                 (res as PeerTrustApplyResult.Corrupt).reason
             )
+
+            hookStore.hookAdvancePending = null
+            val row = rawStore.readRaw(b1.nodeId)
+            assertNotNull(row)
+            assertEquals(0L, row!!.acceptedGenerationRaw)
+            assertArrayEquals(b1.staticDhPublicKey, row.acceptedStaticDhPublicKeyRaw)
+            assertEquals(1L, row.pendingGenerationRaw)
+            assertArrayEquals(b2.staticDhPublicKey, row.pendingStaticDhPublicKeyRaw)
         }
     }
 
@@ -596,15 +522,13 @@ class PeerIdentityRepositoryTest {
             val hookStore = HookableStore(rawStore)
             val repo = PeerIdentityRepository(hookStore)
 
-            hookStore.hookInsertFirstSeen = { _, _, _, _, _ ->
-                throw java.sql.SQLException("Injected fault in insertFirstSeen")
-            }
+            hookStore.faultAfterInsert = true
 
             val b1 = makeBinding(seedA, 0L, staticPrivA)
             val res = repo.applyValidatedBinding(b1)
             assertTrue(res is PeerTrustApplyResult.StorageFailure)
 
-            hookStore.hookInsertFirstSeen = null
+            hookStore.faultAfterInsert = false
             assertNull(rawStore.readRaw(b1.nodeId))
         }
     }
@@ -619,17 +543,19 @@ class PeerIdentityRepositoryTest {
             val b1 = makeBinding(seedA, 0L, staticPrivA)
             repo.applyValidatedBinding(b1)
 
-            hookStore.hookSetInitialPending = { _, _, _, _, _, _, _ ->
-                throw java.sql.SQLException("Injected fault in setInitialPendingGuarded")
-            }
+            hookStore.faultAfterInitialPending = true
 
             val b2 = makeBinding(seedA, 1L, staticPrivB)
             val res = repo.applyValidatedBinding(b2)
             assertTrue(res is PeerTrustApplyResult.StorageFailure)
 
-            hookStore.hookSetInitialPending = null
+            hookStore.faultAfterInitialPending = false
             val row = rawStore.readRaw(b1.nodeId)
-            assertNull(row!!.pendingGenerationRaw)
+            assertNotNull(row)
+            assertEquals(0L, row!!.acceptedGenerationRaw)
+            assertArrayEquals(b1.staticDhPublicKey, row.acceptedStaticDhPublicKeyRaw)
+            assertNull(row.pendingGenerationRaw)
+            assertNull(row.pendingStaticDhPublicKeyRaw)
         }
     }
 
@@ -645,22 +571,24 @@ class PeerIdentityRepositoryTest {
             val b2 = makeBinding(seedA, 1L, staticPrivB)
             repo.applyValidatedBinding(b2)
 
-            hookStore.hookAdvancePending = { _, _, _, _, _, _, _, _, _ ->
-                throw java.sql.SQLException("Injected fault in advancePendingGuarded")
-            }
+            hookStore.faultAfterAdvancePending = true
 
             val b3 = makeBinding(seedA, 2L, staticPrivC)
             val res = repo.applyValidatedBinding(b3)
             assertTrue(res is PeerTrustApplyResult.StorageFailure)
 
-            hookStore.hookAdvancePending = null
+            hookStore.faultAfterAdvancePending = false
             val row = rawStore.readRaw(b1.nodeId)
-            assertEquals(1L, row!!.pendingGenerationRaw)
+            assertNotNull(row)
+            assertEquals(0L, row!!.acceptedGenerationRaw)
+            assertArrayEquals(b1.staticDhPublicKey, row.acceptedStaticDhPublicKeyRaw)
+            assertEquals(1L, row.pendingGenerationRaw)
+            assertArrayEquals(b2.staticDhPublicKey, row.pendingStaticDhPublicKeyRaw)
         }
     }
 
     @Test
-    fun testCommitFailureRollsBack() {
+    fun testSimulatedCommitFailureAfterSuccessfulBodyRollsBack() {
         val file = tempFolder.newFile("fault_commit.db").also { it.delete() }
         JdbcPeerIdentityStore(file).use { rawStore ->
             val hookStore = HookableStore(rawStore)
@@ -669,7 +597,8 @@ class PeerIdentityRepositoryTest {
             hookStore.hookInTx = { block ->
                 rawStore.inImmediateTransaction { tx ->
                     block(tx)
-                    throw java.sql.SQLException("Simulated commit failure")
+                    // Simulated commit failure after transaction body success
+                    throw java.sql.SQLException("Simulated commit failure after transaction body success")
                 }
             }
 
@@ -683,13 +612,12 @@ class PeerIdentityRepositoryTest {
     }
 
     // =========================================================================
-    // 8. CROSS-CONNECTION CONCURRENCY TESTS (C1, C2, C3, C4)
+    // 8. CROSS-CONNECTION CONCURRENCY TESTS (C1, C2, C3, C4, Supplemental)
     // =========================================================================
 
     @Test
     fun testConcurrencyC1IdenticalFirstSeen() {
         val file = tempFolder.newFile("conc_c1.db").also { it.delete() }
-        // Create 2 independent stores / connections to the same file
         val store1 = JdbcPeerIdentityStore(file)
         val store2 = JdbcPeerIdentityStore(file)
 
@@ -734,7 +662,7 @@ class PeerIdentityRepositoryTest {
         val repo1 = PeerIdentityRepository(store1)
         val repo2 = PeerIdentityRepository(store2)
 
-        // Baseline: Gen 0
+        // Baseline: Gen 0 / Static A
         val b0 = makeBinding(seedA, 0L, staticPrivA)
         repo1.applyValidatedBinding(b0)
 
@@ -753,28 +681,132 @@ class PeerIdentityRepositoryTest {
         store2.close()
 
         // Legal outcome taxonomy for C2:
-        // Either:
-        // Option 1: Gen 5 runs first (KeyChangedQuarantined), then Gen 6 runs (KeyChangedQuarantined)
-        // Option 2: Gen 6 runs first (KeyChangedQuarantined), then Gen 5 runs (Rejected(Rollback))
+        // Option 1: Gen 5 serializes first: { KeyChangedQuarantined, KeyChangedQuarantined }
+        // Option 2: Gen 6 serializes first: { KeyChangedQuarantined, Rejected(StaleRelativeToPending) }
         val isOption1 = (r1 == PeerTrustApplyResult.KeyChangedQuarantined && r2 == PeerTrustApplyResult.KeyChangedQuarantined)
-        val isOption2 = (r1 == PeerTrustApplyResult.Rejected(PeerTrustRejectReason.Rollback) && r2 == PeerTrustApplyResult.KeyChangedQuarantined) ||
-                        (r1 == PeerTrustApplyResult.KeyChangedQuarantined && r2 == PeerTrustApplyResult.Rejected(PeerTrustRejectReason.Rollback))
+        val isOption2 = (r1 == PeerTrustApplyResult.Rejected(PeerTrustRejectReason.StaleRelativeToPending) && r2 == PeerTrustApplyResult.KeyChangedQuarantined) ||
+                        (r1 == PeerTrustApplyResult.KeyChangedQuarantined && r2 == PeerTrustApplyResult.Rejected(PeerTrustRejectReason.StaleRelativeToPending))
 
+        val legalResults = listOf(
+            PeerTrustApplyResult.KeyChangedQuarantined,
+            PeerTrustApplyResult.Rejected(PeerTrustRejectReason.StaleRelativeToPending)
+        )
+        assertTrue("r1 must be legal result: $r1", legalResults.contains(r1))
+        assertTrue("r2 must be legal result: $r2", legalResults.contains(r2))
         assertTrue("Outcome must match legal taxonomy: r1=$r1, r2=$r2", isOption1 || isOption2)
 
-        // Final state MUST be pendingGeneration == 6 / static K6
+        // Final state MUST be accepted 0 / static A, pendingGeneration == 6 / static C
         JdbcPeerIdentityStore(file).use { store ->
             val row = store.readRaw(b0.nodeId)
             assertNotNull(row)
             assertEquals(0L, row!!.acceptedGenerationRaw)
+            assertArrayEquals(b0.staticDhPublicKey, row.acceptedStaticDhPublicKeyRaw)
             assertEquals(6L, row.pendingGenerationRaw)
             assertArrayEquals(bGen6.staticDhPublicKey, row.pendingStaticDhPublicKeyRaw)
         }
     }
 
     @Test
-    fun testConcurrencyC3AdvancePendingHighWater() {
-        val file = tempFolder.newFile("conc_c3.db").also { it.delete() }
+    fun testConcurrencyC3ExactPendingReplayKeepsQuarantined() {
+        val file = tempFolder.newFile("conc_c3_canonical.db").also { it.delete() }
+        val store1 = JdbcPeerIdentityStore(file)
+        val store2 = JdbcPeerIdentityStore(file)
+
+        val repo1 = PeerIdentityRepository(store1)
+        val repo2 = PeerIdentityRepository(store2)
+
+        // Setup on connection 1: accepted A (gen 0, static A), pending P (gen 5, static B)
+        val b0 = makeBinding(seedA, 0L, staticPrivA)
+        repo1.applyValidatedBinding(b0)
+        val bGen5 = makeBinding(seedA, 5L, staticPrivB)
+        repo1.applyValidatedBinding(bGen5)
+
+        // Verify precondition
+        val preRow = store1.readRaw(b0.nodeId)
+        assertNotNull(preRow)
+        assertEquals(0L, preRow!!.acceptedGenerationRaw)
+        assertArrayEquals(b0.staticDhPublicKey, preRow.acceptedStaticDhPublicKeyRaw)
+        assertEquals(5L, preRow.pendingGenerationRaw)
+        assertArrayEquals(bGen5.staticDhPublicKey, preRow.pendingStaticDhPublicKeyRaw)
+
+        val executor = Executors.newFixedThreadPool(2)
+        val f1 = executor.submit(Callable { repo1.applyValidatedBinding(bGen5) })
+        val f2 = executor.submit(Callable { repo2.applyValidatedBinding(bGen5) })
+
+        val r1 = f1.get()
+        val r2 = f2.get()
+
+        executor.shutdown()
+        store1.close()
+        store2.close()
+
+        assertEquals(PeerTrustApplyResult.KeyChangedQuarantined, r1)
+        assertEquals(PeerTrustApplyResult.KeyChangedQuarantined, r2)
+
+        // Final durable row must be exact: accepted unchanged, pending generation 5, pending static B, trust unchanged
+        JdbcPeerIdentityStore(file).use { store ->
+            val row = store.readRaw(b0.nodeId)
+            assertNotNull(row)
+            assertEquals(0L, row!!.acceptedGenerationRaw)
+            assertArrayEquals(b0.staticDhPublicKey, row.acceptedStaticDhPublicKeyRaw)
+            assertEquals(5L, row.pendingGenerationRaw)
+            assertArrayEquals(bGen5.staticDhPublicKey, row.pendingStaticDhPublicKeyRaw)
+            assertEquals(PeerTrustLevel.TOFU_PINNED.persistedCode, row.trustCodeRaw)
+        }
+    }
+
+    @Test
+    fun testConcurrencyC4OldAcceptedReplayKeepsQuarantined() {
+        val file = tempFolder.newFile("conc_c4_canonical.db").also { it.delete() }
+        val store1 = JdbcPeerIdentityStore(file)
+        val store2 = JdbcPeerIdentityStore(file)
+
+        val repo1 = PeerIdentityRepository(store1)
+        val repo2 = PeerIdentityRepository(store2)
+
+        // Setup: accepted A (gen 0, static A), pending P (gen 5, static B)
+        val b0 = makeBinding(seedA, 0L, staticPrivA)
+        repo1.applyValidatedBinding(b0)
+        val bGen5 = makeBinding(seedA, 5L, staticPrivB)
+        repo1.applyValidatedBinding(bGen5)
+
+        // Verify precondition
+        val preRow = store1.readRaw(b0.nodeId)
+        assertNotNull(preRow)
+        assertEquals(0L, preRow!!.acceptedGenerationRaw)
+        assertArrayEquals(b0.staticDhPublicKey, preRow.acceptedStaticDhPublicKeyRaw)
+        assertEquals(5L, preRow.pendingGenerationRaw)
+        assertArrayEquals(bGen5.staticDhPublicKey, preRow.pendingStaticDhPublicKeyRaw)
+
+        val executor = Executors.newFixedThreadPool(2)
+        val f1 = executor.submit(Callable { repo1.applyValidatedBinding(b0) })
+        val f2 = executor.submit(Callable { repo2.applyValidatedBinding(b0) })
+
+        val r1 = f1.get()
+        val r2 = f2.get()
+
+        executor.shutdown()
+        store1.close()
+        store2.close()
+
+        assertEquals(PeerTrustApplyResult.KeyChangedQuarantined, r1)
+        assertEquals(PeerTrustApplyResult.KeyChangedQuarantined, r2)
+
+        // Final durable row must be exact: pending candidate MUST NOT be cleared
+        JdbcPeerIdentityStore(file).use { store ->
+            val row = store.readRaw(b0.nodeId)
+            assertNotNull(row)
+            assertEquals(0L, row!!.acceptedGenerationRaw)
+            assertArrayEquals(b0.staticDhPublicKey, row.acceptedStaticDhPublicKeyRaw)
+            assertEquals(5L, row.pendingGenerationRaw)
+            assertArrayEquals(bGen5.staticDhPublicKey, row.pendingStaticDhPublicKeyRaw)
+            assertEquals(PeerTrustLevel.TOFU_PINNED.persistedCode, row.trustCodeRaw)
+        }
+    }
+
+    @Test
+    fun testConcurrencySupplementalAdvancePendingHighWater() {
+        val file = tempFolder.newFile("conc_supp_adv.db").also { it.delete() }
         val store1 = JdbcPeerIdentityStore(file)
         val store2 = JdbcPeerIdentityStore(file)
 
@@ -817,8 +849,8 @@ class PeerIdentityRepositoryTest {
     }
 
     @Test
-    fun testConcurrencyC4IndependentNodes() {
-        val file = tempFolder.newFile("conc_c4.db").also { it.delete() }
+    fun testConcurrencySupplementalIndependentNodes() {
+        val file = tempFolder.newFile("conc_supp_indep.db").also { it.delete() }
         val store1 = JdbcPeerIdentityStore(file)
         val store2 = JdbcPeerIdentityStore(file)
 

@@ -323,6 +323,10 @@ final class PeerIdentityRepositoryTests: XCTestCase {
         var hookAdvancePending: ((Data, Data, Data, Int64, Int32, Data, Int64, Data, Int64) throws -> Int)?
         var hookInTx: (((PeerIdentityStore) throws -> Any) throws -> Any)?
 
+        var faultAfterInsert: Bool = false
+        var faultAfterInitialPending: Bool = false
+        var faultAfterAdvancePending: Bool = false
+
         init(delegate: PeerIdentityStore) {
             self.delegate = delegate
         }
@@ -337,6 +341,9 @@ final class PeerIdentityRepositoryTests: XCTestCase {
                 txHookStore.hookInsertFirstSeen = self.hookInsertFirstSeen
                 txHookStore.hookSetInitialPending = self.hookSetInitialPending
                 txHookStore.hookAdvancePending = self.hookAdvancePending
+                txHookStore.faultAfterInsert = self.faultAfterInsert
+                txHookStore.faultAfterInitialPending = self.faultAfterInitialPending
+                txHookStore.faultAfterAdvancePending = self.faultAfterAdvancePending
                 return try block(txHookStore)
             }
         }
@@ -353,16 +360,23 @@ final class PeerIdentityRepositoryTests: XCTestCase {
             acceptedGeneration: Int64,
             trustCode: Int32
         ) throws -> Int {
+            let affected: Int
             if let hook = hookInsertFirstSeen {
-                return try hook(nodeId, signingPub, acceptedStatic, acceptedGeneration, trustCode)
+                affected = try hook(nodeId, signingPub, acceptedStatic, acceptedGeneration, trustCode)
+            } else {
+                affected = try delegate.insertFirstSeen(
+                    nodeId: nodeId,
+                    signingPub: signingPub,
+                    acceptedStatic: acceptedStatic,
+                    acceptedGeneration: acceptedGeneration,
+                    trustCode: trustCode
+                )
             }
-            return try delegate.insertFirstSeen(
-                nodeId: nodeId,
-                signingPub: signingPub,
-                acceptedStatic: acceptedStatic,
-                acceptedGeneration: acceptedGeneration,
-                trustCode: trustCode
-            )
+            if faultAfterInsert {
+                XCTAssertEqual(affected, 1)
+                throw InjectedStorageFault()
+            }
+            return affected
         }
 
         func setInitialPendingGuarded(
@@ -374,18 +388,25 @@ final class PeerIdentityRepositoryTests: XCTestCase {
             newPendingStatic: Data,
             newPendingGeneration: Int64
         ) throws -> Int {
+            let affected: Int
             if let hook = hookSetInitialPending {
-                return try hook(nodeId, signingPub, acceptedStatic, acceptedGeneration, trustLevel, newPendingStatic, newPendingGeneration)
+                affected = try hook(nodeId, signingPub, acceptedStatic, acceptedGeneration, trustLevel, newPendingStatic, newPendingGeneration)
+            } else {
+                affected = try delegate.setInitialPendingGuarded(
+                    nodeId: nodeId,
+                    signingPub: signingPub,
+                    acceptedStatic: acceptedStatic,
+                    acceptedGeneration: acceptedGeneration,
+                    trustLevel: trustLevel,
+                    newPendingStatic: newPendingStatic,
+                    newPendingGeneration: newPendingGeneration
+                )
             }
-            return try delegate.setInitialPendingGuarded(
-                nodeId: nodeId,
-                signingPub: signingPub,
-                acceptedStatic: acceptedStatic,
-                acceptedGeneration: acceptedGeneration,
-                trustLevel: trustLevel,
-                newPendingStatic: newPendingStatic,
-                newPendingGeneration: newPendingGeneration
-            )
+            if faultAfterInitialPending {
+                XCTAssertEqual(affected, 1)
+                throw InjectedStorageFault()
+            }
+            return affected
         }
 
         func advancePendingGuarded(
@@ -399,20 +420,27 @@ final class PeerIdentityRepositoryTests: XCTestCase {
             newPendingStatic: Data,
             newPendingGeneration: Int64
         ) throws -> Int {
+            let affected: Int
             if let hook = hookAdvancePending {
-                return try hook(nodeId, signingPub, acceptedStatic, acceptedGeneration, trustLevel, oldPendingStatic, oldPendingGeneration, newPendingStatic, newPendingGeneration)
+                affected = try hook(nodeId, signingPub, acceptedStatic, acceptedGeneration, trustLevel, oldPendingStatic, oldPendingGeneration, newPendingStatic, newPendingGeneration)
+            } else {
+                affected = try delegate.advancePendingGuarded(
+                    nodeId: nodeId,
+                    signingPub: signingPub,
+                    acceptedStatic: acceptedStatic,
+                    acceptedGeneration: acceptedGeneration,
+                    trustLevel: trustLevel,
+                    oldPendingStatic: oldPendingStatic,
+                    oldPendingGeneration: oldPendingGeneration,
+                    newPendingStatic: newPendingStatic,
+                    newPendingGeneration: newPendingGeneration
+                )
             }
-            return try delegate.advancePendingGuarded(
-                nodeId: nodeId,
-                signingPub: signingPub,
-                acceptedStatic: acceptedStatic,
-                acceptedGeneration: acceptedGeneration,
-                trustLevel: trustLevel,
-                oldPendingStatic: oldPendingStatic,
-                oldPendingGeneration: oldPendingGeneration,
-                newPendingStatic: newPendingStatic,
-                newPendingGeneration: newPendingGeneration
-            )
+            if faultAfterAdvancePending {
+                XCTAssertEqual(affected, 1)
+                throw InjectedStorageFault()
+            }
+            return affected
         }
     }
 
@@ -482,6 +510,7 @@ final class PeerIdentityRepositoryTests: XCTestCase {
                     pendingGenerationRaw: nil
                 )
             } else {
+                // Post-mutation readback: corrupt out-of-range pending generation
                 return PeerIdentityRow(
                     nodeIdRaw: b1.nodeId,
                     signingPublicKeyRaw: b1.signingPublicKey,
@@ -592,7 +621,11 @@ final class PeerIdentityRepositoryTests: XCTestCase {
 
         hookStore.hookSetInitialPending = nil
         let row = try rawStore.readRaw(b1.nodeId)
+        XCTAssertNotNil(row)
+        XCTAssertEqual(row?.acceptedGenerationRaw, 0)
+        XCTAssertEqual(row?.acceptedStaticDhPublicKeyRaw, b1.staticDhPublicKey)
         XCTAssertNil(row?.pendingGenerationRaw)
+        XCTAssertNil(row?.pendingStaticDhPublicKeyRaw)
     }
 
     func testCardinalityMatrix_InitialPending_TwoAffected_RollsBack() throws {
@@ -616,6 +649,14 @@ final class PeerIdentityRepositoryTests: XCTestCase {
         }
         XCTAssertEqual(exp, 1)
         XCTAssertEqual(act, 2)
+
+        hookStore.hookSetInitialPending = nil
+        let row = try rawStore.readRaw(b1.nodeId)
+        XCTAssertNotNil(row)
+        XCTAssertEqual(row?.acceptedGenerationRaw, 0)
+        XCTAssertEqual(row?.acceptedStaticDhPublicKeyRaw, b1.staticDhPublicKey)
+        XCTAssertNil(row?.pendingGenerationRaw)
+        XCTAssertNil(row?.pendingStaticDhPublicKeyRaw)
     }
 
     func testCardinalityMatrix_AdvancePending_ZeroAffected_RollsBack() throws {
@@ -628,11 +669,11 @@ final class PeerIdentityRepositoryTests: XCTestCase {
 
         let b1 = makeBinding(seed: seedA, generation: 0, staticDhPriv: staticPrivA)
         _ = repo.applyValidatedBinding(b1)
-        let b2 = makeBinding(seed: seedA, generation: 1, staticDhPriv: staticPrivB)
+        let b2 = makeBinding(seed: seedA, generation: 5, staticDhPriv: staticPrivB)
         _ = repo.applyValidatedBinding(b2)
 
         hookStore.hookAdvancePending = { _, _, _, _, _, _, _, _, _ in 0 }
-        let b3 = makeBinding(seed: seedA, generation: 2, staticDhPriv: staticPrivC)
+        let b3 = makeBinding(seed: seedA, generation: 6, staticDhPriv: staticPrivC)
         let res = repo.applyValidatedBinding(b3)
         guard case .corrupt(let reason) = res,
               case .mutationCardinality(let exp, let act) = reason else {
@@ -641,6 +682,14 @@ final class PeerIdentityRepositoryTests: XCTestCase {
         }
         XCTAssertEqual(exp, 1)
         XCTAssertEqual(act, 0)
+
+        hookStore.hookAdvancePending = nil
+        let row = try rawStore.readRaw(b1.nodeId)
+        XCTAssertNotNil(row)
+        XCTAssertEqual(row?.acceptedGenerationRaw, 0)
+        XCTAssertEqual(row?.acceptedStaticDhPublicKeyRaw, b1.staticDhPublicKey)
+        XCTAssertEqual(row?.pendingGenerationRaw, 5)
+        XCTAssertEqual(row?.pendingStaticDhPublicKeyRaw, b2.staticDhPublicKey)
     }
 
     func testCardinalityMatrix_AdvancePending_TwoAffected_RollsBack() throws {
@@ -653,11 +702,11 @@ final class PeerIdentityRepositoryTests: XCTestCase {
 
         let b1 = makeBinding(seed: seedA, generation: 0, staticDhPriv: staticPrivA)
         _ = repo.applyValidatedBinding(b1)
-        let b2 = makeBinding(seed: seedA, generation: 1, staticDhPriv: staticPrivB)
+        let b2 = makeBinding(seed: seedA, generation: 5, staticDhPriv: staticPrivB)
         _ = repo.applyValidatedBinding(b2)
 
         hookStore.hookAdvancePending = { _, _, _, _, _, _, _, _, _ in 2 }
-        let b3 = makeBinding(seed: seedA, generation: 2, staticDhPriv: staticPrivC)
+        let b3 = makeBinding(seed: seedA, generation: 6, staticDhPriv: staticPrivC)
         let res = repo.applyValidatedBinding(b3)
         guard case .corrupt(let reason) = res,
               case .mutationCardinality(let exp, let act) = reason else {
@@ -666,6 +715,14 @@ final class PeerIdentityRepositoryTests: XCTestCase {
         }
         XCTAssertEqual(exp, 1)
         XCTAssertEqual(act, 2)
+
+        hookStore.hookAdvancePending = nil
+        let row = try rawStore.readRaw(b1.nodeId)
+        XCTAssertNotNil(row)
+        XCTAssertEqual(row?.acceptedGenerationRaw, 0)
+        XCTAssertEqual(row?.acceptedStaticDhPublicKeyRaw, b1.staticDhPublicKey)
+        XCTAssertEqual(row?.pendingGenerationRaw, 5)
+        XCTAssertEqual(row?.pendingStaticDhPublicKeyRaw, b2.staticDhPublicKey)
     }
 
     // =========================================================================
@@ -682,15 +739,13 @@ final class PeerIdentityRepositoryTests: XCTestCase {
         let hookStore = HookablePeerIdentityStore(delegate: rawStore)
         let repo = PeerIdentityRepository(store: hookStore)
 
-        hookStore.hookInsertFirstSeen = { _, _, _, _, _ in
-            throw InjectedStorageFault()
-        }
+        hookStore.faultAfterInsert = true
 
         let b1 = makeBinding(seed: seedA, generation: 0, staticDhPriv: staticPrivA)
         let res = repo.applyValidatedBinding(b1)
         XCTAssertEqual(res, .storageFailure)
 
-        hookStore.hookInsertFirstSeen = nil
+        hookStore.faultAfterInsert = false
         XCTAssertNil(try rawStore.readRaw(b1.nodeId))
     }
 
@@ -705,17 +760,19 @@ final class PeerIdentityRepositoryTests: XCTestCase {
         let b1 = makeBinding(seed: seedA, generation: 0, staticDhPriv: staticPrivA)
         _ = repo.applyValidatedBinding(b1)
 
-        hookStore.hookSetInitialPending = { _, _, _, _, _, _, _ in
-            throw InjectedStorageFault()
-        }
+        hookStore.faultAfterInitialPending = true
 
         let b2 = makeBinding(seed: seedA, generation: 1, staticDhPriv: staticPrivB)
         let res = repo.applyValidatedBinding(b2)
         XCTAssertEqual(res, .storageFailure)
 
-        hookStore.hookSetInitialPending = nil
+        hookStore.faultAfterInitialPending = false
         let row = try rawStore.readRaw(b1.nodeId)
+        XCTAssertNotNil(row)
+        XCTAssertEqual(row?.acceptedGenerationRaw, 0)
+        XCTAssertEqual(row?.acceptedStaticDhPublicKeyRaw, b1.staticDhPublicKey)
         XCTAssertNil(row?.pendingGenerationRaw)
+        XCTAssertNil(row?.pendingStaticDhPublicKeyRaw)
     }
 
     func testStorageFaultF3_AdvancePendingFailure_RollsBack() throws {
@@ -728,23 +785,25 @@ final class PeerIdentityRepositoryTests: XCTestCase {
 
         let b1 = makeBinding(seed: seedA, generation: 0, staticDhPriv: staticPrivA)
         _ = repo.applyValidatedBinding(b1)
-        let b2 = makeBinding(seed: seedA, generation: 1, staticDhPriv: staticPrivB)
+        let b2 = makeBinding(seed: seedA, generation: 5, staticDhPriv: staticPrivB)
         _ = repo.applyValidatedBinding(b2)
 
-        hookStore.hookAdvancePending = { _, _, _, _, _, _, _, _, _ in
-            throw InjectedStorageFault()
-        }
+        hookStore.faultAfterAdvancePending = true
 
-        let b3 = makeBinding(seed: seedA, generation: 2, staticDhPriv: staticPrivC)
+        let b3 = makeBinding(seed: seedA, generation: 6, staticDhPriv: staticPrivC)
         let res = repo.applyValidatedBinding(b3)
         XCTAssertEqual(res, .storageFailure)
 
-        hookStore.hookAdvancePending = nil
+        hookStore.faultAfterAdvancePending = false
         let row = try rawStore.readRaw(b1.nodeId)
-        XCTAssertEqual(row?.pendingGenerationRaw, 1)
+        XCTAssertNotNil(row)
+        XCTAssertEqual(row?.acceptedGenerationRaw, 0)
+        XCTAssertEqual(row?.acceptedStaticDhPublicKeyRaw, b1.staticDhPublicKey)
+        XCTAssertEqual(row?.pendingGenerationRaw, 5)
+        XCTAssertEqual(row?.pendingStaticDhPublicKeyRaw, b2.staticDhPublicKey)
     }
 
-    func testCommitFailureRollsBack() throws {
+    func testSimulatedCommitFailureAfterSuccessfulBodyRollsBack() throws {
         let url = tempDbUrl()
         defer { try? FileManager.default.removeItem(at: url) }
 
@@ -755,7 +814,8 @@ final class PeerIdentityRepositoryTests: XCTestCase {
         hookStore.hookInTx = { block in
             try rawStore.inImmediateTransaction { tx in
                 _ = try block(tx)
-                throw InjectedStorageFault() // Simulates failure during transaction / commit
+                // Simulated commit failure after transaction body success
+                throw InjectedStorageFault()
             }
         }
 
@@ -768,7 +828,7 @@ final class PeerIdentityRepositoryTests: XCTestCase {
     }
 
     // =========================================================================
-    // 8. CROSS-CONNECTION CONCURRENCY TESTS (C1, C2, C3, C4)
+    // 8. CROSS-CONNECTION CONCURRENCY TESTS (C1, C2, C3, C4, Supplemental)
     // =========================================================================
 
     func testConcurrencyC1IdenticalFirstSeen() throws {
@@ -822,6 +882,7 @@ final class PeerIdentityRepositoryTests: XCTestCase {
         let repo1 = PeerIdentityRepository(store: store1)
         let repo2 = PeerIdentityRepository(store: store2)
 
+        // Baseline: Gen 0 / Static A
         let b0 = makeBinding(seed: seedA, generation: 0, staticDhPriv: staticPrivA)
         _ = repo1.applyValidatedBinding(b0)
 
@@ -846,21 +907,138 @@ final class PeerIdentityRepositoryTests: XCTestCase {
 
         group.wait()
 
+        // Legal outcome taxonomy for C2:
+        // Option 1: Gen 5 serializes first: { KeyChangedQuarantined, KeyChangedQuarantined }
+        // Option 2: Gen 6 serializes first: { KeyChangedQuarantined, Rejected(StaleRelativeToPending) }
         let isOption1 = (r1 == .keyChangedQuarantined && r2 == .keyChangedQuarantined)
-        let isOption2 = (r1 == .rejected(.rollback) && r2 == .keyChangedQuarantined) ||
-                        (r1 == .keyChangedQuarantined && r2 == .rejected(.rollback))
+        let isOption2 = (r1 == .rejected(.staleRelativeToPending) && r2 == .keyChangedQuarantined) ||
+                        (r1 == .keyChangedQuarantined && r2 == .rejected(.staleRelativeToPending))
 
+        XCTAssertTrue(r1 == .keyChangedQuarantined || r1 == .rejected(.staleRelativeToPending), "r1 must be legal result: \(String(describing: r1))")
+        XCTAssertTrue(r2 == .keyChangedQuarantined || r2 == .rejected(.staleRelativeToPending), "r2 must be legal result: \(String(describing: r2))")
         XCTAssertTrue(isOption1 || isOption2, "Outcome must match legal taxonomy: r1=\(String(describing: r1)), r2=\(String(describing: r2))")
 
+        // Final state MUST be accepted 0 / static A, pendingGeneration == 6 / static C
         let freshStore = try SqlitePeerIdentityStore(url: url)
         let row = try freshStore.readRaw(b0.nodeId)
         XCTAssertNotNil(row)
         XCTAssertEqual(row?.acceptedGenerationRaw, 0)
+        XCTAssertEqual(row?.acceptedStaticDhPublicKeyRaw, b0.staticDhPublicKey)
         XCTAssertEqual(row?.pendingGenerationRaw, 6)
         XCTAssertEqual(row?.pendingStaticDhPublicKeyRaw, bGen6.staticDhPublicKey)
     }
 
-    func testConcurrencyC3AdvancePendingHighWater() throws {
+    func testConcurrencyC3ExactPendingReplayKeepsQuarantined() throws {
+        let url = tempDbUrl()
+        defer { try? FileManager.default.removeItem(at: url) }
+
+        let store1 = try SqlitePeerIdentityStore(url: url)
+        let store2 = try SqlitePeerIdentityStore(url: url)
+
+        let repo1 = PeerIdentityRepository(store: store1)
+        let repo2 = PeerIdentityRepository(store: store2)
+
+        // Setup on connection 1: accepted A (gen 0, static A), pending P (gen 5, static B)
+        let b0 = makeBinding(seed: seedA, generation: 0, staticDhPriv: staticPrivA)
+        _ = repo1.applyValidatedBinding(b0)
+        let bGen5 = makeBinding(seed: seedA, generation: 5, staticDhPriv: staticPrivB)
+        _ = repo1.applyValidatedBinding(bGen5)
+
+        // Verify precondition
+        let preRow = try store1.readRaw(b0.nodeId)
+        XCTAssertEqual(preRow?.acceptedGenerationRaw, 0)
+        XCTAssertEqual(preRow?.acceptedStaticDhPublicKeyRaw, b0.staticDhPublicKey)
+        XCTAssertEqual(preRow?.pendingGenerationRaw, 5)
+        XCTAssertEqual(preRow?.pendingStaticDhPublicKeyRaw, bGen5.staticDhPublicKey)
+
+        var r1: PeerTrustApplyResult?
+        var r2: PeerTrustApplyResult?
+
+        let group = DispatchGroup()
+        group.enter()
+        DispatchQueue.global().async {
+            r1 = repo1.applyValidatedBinding(bGen5)
+            group.leave()
+        }
+
+        group.enter()
+        DispatchQueue.global().async {
+            r2 = repo2.applyValidatedBinding(bGen5)
+            group.leave()
+        }
+
+        group.wait()
+
+        XCTAssertEqual(r1, .keyChangedQuarantined)
+        XCTAssertEqual(r2, .keyChangedQuarantined)
+
+        // Final durable row must be exact: accepted unchanged, pending generation 5, pending static B, trust unchanged
+        let freshStore = try SqlitePeerIdentityStore(url: url)
+        let row = try freshStore.readRaw(b0.nodeId)
+        XCTAssertNotNil(row)
+        XCTAssertEqual(row?.acceptedGenerationRaw, 0)
+        XCTAssertEqual(row?.acceptedStaticDhPublicKeyRaw, b0.staticDhPublicKey)
+        XCTAssertEqual(row?.pendingGenerationRaw, 5)
+        XCTAssertEqual(row?.pendingStaticDhPublicKeyRaw, bGen5.staticDhPublicKey)
+        XCTAssertEqual(row?.trustCodeRaw, Int32(PeerTrustLevel.tofuPinned.persistedCode))
+    }
+
+    func testConcurrencyC4OldAcceptedReplayKeepsQuarantined() throws {
+        let url = tempDbUrl()
+        defer { try? FileManager.default.removeItem(at: url) }
+
+        let store1 = try SqlitePeerIdentityStore(url: url)
+        let store2 = try SqlitePeerIdentityStore(url: url)
+
+        let repo1 = PeerIdentityRepository(store: store1)
+        let repo2 = PeerIdentityRepository(store: store2)
+
+        // Setup: accepted A (gen 0, static A), pending P (gen 5, static B)
+        let b0 = makeBinding(seed: seedA, generation: 0, staticDhPriv: staticPrivA)
+        _ = repo1.applyValidatedBinding(b0)
+        let bGen5 = makeBinding(seed: seedA, generation: 5, staticDhPriv: staticPrivB)
+        _ = repo1.applyValidatedBinding(bGen5)
+
+        // Verify precondition
+        let preRow = try store1.readRaw(b0.nodeId)
+        XCTAssertEqual(preRow?.acceptedGenerationRaw, 0)
+        XCTAssertEqual(preRow?.acceptedStaticDhPublicKeyRaw, b0.staticDhPublicKey)
+        XCTAssertEqual(preRow?.pendingGenerationRaw, 5)
+        XCTAssertEqual(preRow?.pendingStaticDhPublicKeyRaw, bGen5.staticDhPublicKey)
+
+        var r1: PeerTrustApplyResult?
+        var r2: PeerTrustApplyResult?
+
+        let group = DispatchGroup()
+        group.enter()
+        DispatchQueue.global().async {
+            r1 = repo1.applyValidatedBinding(b0)
+            group.leave()
+        }
+
+        group.enter()
+        DispatchQueue.global().async {
+            r2 = repo2.applyValidatedBinding(b0)
+            group.leave()
+        }
+
+        group.wait()
+
+        XCTAssertEqual(r1, .keyChangedQuarantined)
+        XCTAssertEqual(r2, .keyChangedQuarantined)
+
+        // Final durable row must be exact: pending candidate MUST NOT be cleared
+        let freshStore = try SqlitePeerIdentityStore(url: url)
+        let row = try freshStore.readRaw(b0.nodeId)
+        XCTAssertNotNil(row)
+        XCTAssertEqual(row?.acceptedGenerationRaw, 0)
+        XCTAssertEqual(row?.acceptedStaticDhPublicKeyRaw, b0.staticDhPublicKey)
+        XCTAssertEqual(row?.pendingGenerationRaw, 5)
+        XCTAssertEqual(row?.pendingStaticDhPublicKeyRaw, bGen5.staticDhPublicKey)
+        XCTAssertEqual(row?.trustCodeRaw, Int32(PeerTrustLevel.tofuPinned.persistedCode))
+    }
+
+    func testConcurrencySupplementalAdvancePendingHighWater() throws {
         let url = tempDbUrl()
         defer { try? FileManager.default.removeItem(at: url) }
 
@@ -909,7 +1087,7 @@ final class PeerIdentityRepositoryTests: XCTestCase {
         XCTAssertEqual(row?.pendingStaticDhPublicKeyRaw, bGen8.staticDhPublicKey)
     }
 
-    func testConcurrencyC4IndependentNodes() throws {
+    func testConcurrencySupplementalIndependentNodes() throws {
         let url = tempDbUrl()
         defer { try? FileManager.default.removeItem(at: url) }
 

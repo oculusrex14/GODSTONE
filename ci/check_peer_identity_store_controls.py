@@ -305,6 +305,9 @@ def check_controls(
                     errors.append(f"Forbidden production call to fromRecord() in {f.name} (S41/S42)")
                 if "PeerIdentityRecord(" in txt:
                     errors.append(f"Forbidden production instantiation of PeerIdentityRecord() in {f.name} (S43)")
+            if f.name != "PeerIdentityStore.swift":
+                if "SqlitePeerIdentityStore(" in txt and "protectionSetter:" in txt:
+                    errors.append(f"Forbidden production callsite using protectionSetter in {f.name} (S49)")
             if f.name == "PeerIdentityStore.swift":
                 if "VerifiedPeerIdentity(" in txt or "VerifiedPeerIdentity.fromRecord(" in txt:
                     errors.append("PeerIdentityStore must NOT mint VerifiedPeerIdentity directly (S44)")
@@ -682,12 +685,18 @@ def selftest() -> int:
         else: failures.append("Mutation S48 was NOT caught")
         reset_all()
 
+        # S49: production protectionSetter callsite bypass
+        (fake_ios_src / "BypassProtection.swift").write_text("import Foundation\nlet bypass = try? SqlitePeerIdentityStore(url: URL(fileURLWithPath: \"/tmp/x\"), protectionSetter: { _, _ in })\n", encoding="utf-8")
+        if any("S49" in e for e in run_check()): passed += 1
+        else: failures.append("Mutation S49 was NOT caught")
+        reset_all()
+
     if failures:
         for f in failures:
             print(f"::error::selftest failure: {f}")
         return 1
 
-    print(f"check_peer_identity_store_controls selftest PASSED ({passed}/48 mutations caught deterministically).")
+    print(f"check_peer_identity_store_controls selftest PASSED ({passed}/49 mutations caught deterministically).")
     return 0
 
 
