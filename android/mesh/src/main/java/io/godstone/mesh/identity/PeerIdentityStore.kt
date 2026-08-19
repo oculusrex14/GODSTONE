@@ -102,7 +102,7 @@ internal interface PeerIdentityStore : AutoCloseable {
 
     fun execRawSql(sql: String)
 
-    fun close()
+    override fun close()
 }
 
 /**
