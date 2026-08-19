@@ -36,16 +36,13 @@ internal class JdbcPeerIdentityStore(file: File) : PeerIdentityStore {
 
         when {
             v == 0 && !exists -> {
-                val wasAuto = conn.autoCommit
-                conn.autoCommit = false
+                conn.createStatement().use { it.execute("BEGIN IMMEDIATE") }
                 try {
                     conn.createStatement().use { it.execute(PeerIdentitySchema.CREATE_TABLE_SQL) }
-                    conn.commit()
+                    conn.createStatement().use { it.execute("COMMIT") }
                 } catch (e: Throwable) {
-                    runCatching { conn.rollback() }
+                    runCatching { conn.createStatement().use { it.execute("ROLLBACK") } }
                     throw e
-                } finally {
-                    conn.autoCommit = wasAuto
                 }
                 conn.createStatement().use { it.execute("PRAGMA user_version = ${PeerIdentitySchema.DB_VERSION}") }
                 validateSchema()
@@ -80,19 +77,14 @@ internal class JdbcPeerIdentityStore(file: File) : PeerIdentityStore {
     }
 
     override fun <T> inImmediateTransaction(block: (PeerIdentityStore) -> T): T {
-        val wasAuto = conn.autoCommit
-        conn.autoCommit = false
+        conn.createStatement().use { it.execute("BEGIN IMMEDIATE") }
         try {
-            // Begin immediate writer transaction
-            conn.createStatement().use { it.execute("BEGIN IMMEDIATE") }
             val result = block(this)
-            conn.commit()
+            conn.createStatement().use { it.execute("COMMIT") }
             return result
         } catch (e: Throwable) {
-            runCatching { conn.rollback() }
+            runCatching { conn.createStatement().use { it.execute("ROLLBACK") } }
             throw e
-        } finally {
-            conn.autoCommit = wasAuto
         }
     }
 
