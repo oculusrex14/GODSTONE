@@ -98,6 +98,8 @@ internal interface PeerIdentityStore : AutoCloseable {
         oldPendingGeneration: Long,
         newPendingStatic: ByteArray,
         newPendingGeneration: Long
+    ): Int
+
     fun execRawSql(sql: String)
 
     fun close()

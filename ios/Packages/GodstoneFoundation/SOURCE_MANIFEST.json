@@ -31,7 +31,7 @@
     "Sources/GodstoneMesh/NoiseSession.swift": "4373724d7a65740af74eefb623d6a950eeddfd8becb91a7ac3e9a347151cfd54",
     "Sources/GodstoneMesh/PanicWipe.swift": "9430cd5d1180471b8f51cb025bf14c317ec9d8a00b38b42d796e79f77c90679f",
     "Sources/GodstoneMesh/PeerIdentityRepository.swift": "77fec022f4e3fc4eb04eb1c362b4f6e55459178c7e3e222f4da12008429fcdd2",
-    "Sources/GodstoneMesh/PeerIdentityStore.swift": "ac1f6227f2718bacf9c55182aea72a4808935255189f520e76ad813e3c77dd10",
+    "Sources/GodstoneMesh/PeerIdentityStore.swift": "0e63ea62fddc438c29cfe711923a762978cc14ad09671e5ee1a3f6694298ba73",
     "Sources/GodstoneMesh/PeerTrustEngine.swift": "f2c4a4c8faf88a3b589ae1a7753a23d9676c5c8b59944f6adfee11dd8615028c",
     "Sources/GodstoneMesh/PeerTrustModels.swift": "9ed720b085e8f65451f6dc0adbc8c880afead24858b898bd86f2f71897d481fe",
     "Sources/GodstoneMesh/Priority.swift": "c6d739221a893c0551ca4228c30d5d8e82c39179fa559614fcd18d9f81690048",

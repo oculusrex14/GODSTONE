@@ -218,7 +218,8 @@ internal final class SqlitePeerIdentityStore: PeerIdentityStore {
             throw error
         }
 
-        // Apply FileProtectionType.complete fail-closed
+        // Apply FileProtectionType.complete fail-closed on iOS platform
+        #if os(iOS)
         do {
             try FileManager.default.setAttributes([.protectionKey: fileProtection], ofItemAtPath: path)
         } catch {
@@ -226,6 +227,7 @@ internal final class SqlitePeerIdentityStore: PeerIdentityStore {
             handle = nil
             throw PeerStoreError.fileProtectionFailed
         }
+        #endif
     }
 
     deinit {
