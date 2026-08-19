@@ -158,4 +158,197 @@ class PeerIdentityStoreTest {
         gottenNodeId[0] = 0xAA.toByte()
         assertEquals(0x01.toByte(), row.nodeIdRaw[0])
     }
+
+    // MARK: - Key-State Resolution Matrix (K1 - K9)
+
+    @Test
+    fun testK1_KeyAbsentAndDbAbsent_GeneratesAndPersists() {
+        var generateCalled = 0
+        var persistedValue: String? = null
+        val generatedKey = ByteArray(32) { 0x42 }
+
+        val result = PeerStoreKeyState.resolve(
+            dbExists = false,
+            storedEncodedKey = null,
+            generate = {
+                generateCalled++
+                generatedKey
+            },
+            persist = { encoded ->
+                persistedValue = encoded
+                true
+            }
+        )
+
+        assertEquals(1, generateCalled)
+        assertArrayEquals(generatedKey, result)
+        assertNotNull(persistedValue)
+        val decoded = java.util.Base64.getDecoder().decode(persistedValue)
+        assertArrayEquals(generatedKey, decoded)
+    }
+
+    @Test
+    fun testK2_KeyPresentAndDbAbsent_DecodesAndDoesNotGenerate() {
+        var generateCalled = 0
+        var persistCalled = 0
+        val existingKey = ByteArray(32) { 0x55 }
+        val encoded = java.util.Base64.getEncoder().encodeToString(existingKey)
+
+        val result = PeerStoreKeyState.resolve(
+            dbExists = false,
+            storedEncodedKey = encoded,
+            generate = {
+                generateCalled++
+                ByteArray(32)
+            },
+            persist = {
+                persistCalled++
+                true
+            }
+        )
+
+        assertEquals(0, generateCalled)
+        assertEquals(0, persistCalled)
+        assertArrayEquals(existingKey, result)
+    }
+
+    @Test
+    fun testK3_KeyPresentAndDbPresent_DecodesAndDoesNotGenerate() {
+        var generateCalled = 0
+        var persistCalled = 0
+        val existingKey = ByteArray(32) { 0x77 }
+        val encoded = java.util.Base64.getEncoder().encodeToString(existingKey)
+
+        val result = PeerStoreKeyState.resolve(
+            dbExists = true,
+            storedEncodedKey = encoded,
+            generate = {
+                generateCalled++
+                ByteArray(32)
+            },
+            persist = {
+                persistCalled++
+                true
+            }
+        )
+
+        assertEquals(0, generateCalled)
+        assertEquals(0, persistCalled)
+        assertArrayEquals(existingKey, result)
+    }
+
+    @Test
+    fun testK4_KeyAbsentAndDbPresent_FailsClosed() {
+        var generateCalled = 0
+        var persistCalled = 0
+
+        try {
+            PeerStoreKeyState.resolve(
+                dbExists = true,
+                storedEncodedKey = null,
+                generate = {
+                    generateCalled++
+                    ByteArray(32)
+                },
+                persist = {
+                    persistCalled++
+                    true
+                }
+            )
+            fail("Expected fail-closed when key is absent and DB exists")
+        } catch (e: IllegalStateException) {
+            assertTrue(e.message!!.contains("refusing to recreate key"))
+            assertEquals(0, generateCalled)
+            assertEquals(0, persistCalled)
+        }
+    }
+
+    @Test
+    fun testK5_MalformedBase64_FailsClosed() {
+        var generateCalled = 0
+        var persistCalled = 0
+
+        try {
+            PeerStoreKeyState.resolve(
+                dbExists = false,
+                storedEncodedKey = "%%%not-valid-base64%%%",
+                generate = {
+                    generateCalled++
+                    ByteArray(32)
+                },
+                persist = {
+                    persistCalled++
+                    true
+                }
+            )
+            fail("Expected failure on malformed Base64")
+        } catch (e: IllegalStateException) {
+            assertTrue(e.message!!.contains("Malformed Base64"))
+            assertEquals(0, generateCalled)
+            assertEquals(0, persistCalled)
+        }
+    }
+
+    @Test
+    fun testK6_KeyTooShort_FailsClosed() {
+        val shortKey = ByteArray(31) { 0x11 }
+        val encoded = java.util.Base64.getEncoder().encodeToString(shortKey)
+
+        try {
+            PeerStoreKeyState.resolve(
+                dbExists = false,
+                storedEncodedKey = encoded,
+                generate = { ByteArray(32) },
+                persist = { true }
+            )
+            fail("Expected failure for 31-byte key")
+        } catch (e: IllegalStateException) {
+            assertTrue(e.message!!.contains("must be 32 bytes, got 31"))
+        }
+    }
+
+    @Test
+    fun testK7_KeyTooLong_FailsClosed() {
+        val longKey = ByteArray(33) { 0x11 }
+        val encoded = java.util.Base64.getEncoder().encodeToString(longKey)
+
+        try {
+            PeerStoreKeyState.resolve(
+                dbExists = false,
+                storedEncodedKey = encoded,
+                generate = { ByteArray(32) },
+                persist = { true }
+            )
+            fail("Expected failure for 33-byte key")
+        } catch (e: IllegalStateException) {
+            assertTrue(e.message!!.contains("must be 32 bytes, got 33"))
+        }
+    }
+
+    @Test
+    fun testK8_PersistenceFailure_FailsClosed() {
+        var generateCalled = 0
+
+        try {
+            PeerStoreKeyState.resolve(
+                dbExists = false,
+                storedEncodedKey = null,
+                generate = {
+                    generateCalled++
+                    ByteArray(32) { 0x01 }
+                },
+                persist = { false } // Commit failed!
+            )
+            fail("Expected failure when persistence fails")
+        } catch (e: IllegalStateException) {
+            assertTrue(e.message!!.contains("Failed to synchronously commit"))
+            assertEquals(1, generateCalled)
+        }
+    }
+
+    @Test
+    fun testK9_KeyPreferenceNamespaceIsolation() {
+        assertEquals("godstone_peer_identity_store_key", PeerIdentitySchema.KEY_PREFS)
+        assertFalse(PeerIdentitySchema.KEY_PREFS == "godstone_store_key")
+    }
 }

@@ -146,6 +146,9 @@ internal enum PeerStoreError: Error {
     case fileProtectionFailed
 }
 
+/// Closure type for file protection attribute assignment (ADR-003, Phase C8.2B.1).
+internal typealias FileProtectionSetter = (_ path: String, _ protection: FileProtectionType) throws -> Void
+
 /// Storage protocol for peer identity repository backend (ADR-003, Phase C8.2B).
 internal protocol PeerIdentityStore: AnyObject {
     func inImmediateTransaction<T>(_ block: (PeerIdentityStore) throws -> T) throws -> T
@@ -181,19 +184,25 @@ internal protocol PeerIdentityStore: AnyObject {
         newPendingStatic: Data,
         newPendingGeneration: Int64
     ) throws -> Int
-
-    func execRawSql(_ sql: String) throws
 }
 
 /// Production SQLite-backed peer identity store with fixed FileProtectionType.complete (ADR-003, Phase C8.2B).
 internal final class SqlitePeerIdentityStore: PeerIdentityStore {
     private var handle: OpaquePointer?
     private let lock = NSLock()
-    internal let fileProtection: FileProtectionType
+    internal let fileProtection: FileProtectionType = .complete
 
     /// Open (or create) the peer store at `url` with fixed Complete file protection.
-    init(url: URL, fileProtection: FileProtectionType = .complete) throws {
-        self.fileProtection = fileProtection
+    convenience init(url: URL) throws {
+        try self.init(url: url, protectionSetter: { path, protection in
+            #if os(iOS)
+            try FileManager.default.setAttributes([.protectionKey: protection], ofItemAtPath: path)
+            #endif
+        })
+    }
+
+    /// Internal/test-only designated initializer with injected protection setter seam.
+    internal init(url: URL, protectionSetter: FileProtectionSetter) throws {
         try FileManager.default.createDirectory(
             at: url.deletingLastPathComponent(),
             withIntermediateDirectories: true
@@ -218,29 +227,20 @@ internal final class SqlitePeerIdentityStore: PeerIdentityStore {
             throw error
         }
 
-        // Apply FileProtectionType.complete fail-closed on iOS platform
-        #if os(iOS)
+        // Apply FileProtectionType.complete fail-closed via protectionSetter
         do {
-            try FileManager.default.setAttributes([.protectionKey: fileProtection], ofItemAtPath: path)
+            try protectionSetter(path, .complete)
         } catch {
             sqlite3_close_v2(validDb)
             handle = nil
             throw PeerStoreError.fileProtectionFailed
         }
-        #endif
     }
 
     deinit {
         if let db = handle {
             sqlite3_close_v2(db)
         }
-    }
-
-    private func withDbThrowing<T>(_ body: (OpaquePointer) throws -> T) throws -> T {
-        lock.lock()
-        defer { lock.unlock() }
-        guard let db = handle else { throw PeerStoreError.handleMissing }
-        return try body(db)
     }
 
     func inImmediateTransaction<T>(_ block: (PeerIdentityStore) throws -> T) throws -> T {
@@ -252,8 +252,9 @@ internal final class SqlitePeerIdentityStore: PeerIdentityStore {
             throw PeerStoreError.stepFailed
         }
 
+        let txStore = TransactionStore(parent: self, db: db)
         do {
-            let result = try block(self)
+            let result = try block(txStore)
             guard sqlite3_exec(db, "COMMIT", nil, nil, nil) == SQLITE_OK else {
                 sqlite3_exec(db, "ROLLBACK", nil, nil, nil)
                 throw PeerStoreError.stepFailed
@@ -343,7 +344,87 @@ internal final class SqlitePeerIdentityStore: PeerIdentityStore {
     }
 
     func readRaw(_ nodeId: Data) throws -> PeerIdentityRow? {
+        lock.lock()
+        defer { lock.unlock() }
         guard let db = handle else { throw PeerStoreError.handleMissing }
+        return try readRawNoLock(db, nodeId)
+    }
+
+    func insertFirstSeen(
+        nodeId: Data,
+        signingPub: Data,
+        acceptedStatic: Data,
+        acceptedGeneration: Int64,
+        trustCode: Int32
+    ) throws -> Int {
+        lock.lock()
+        defer { lock.unlock() }
+        guard let db = handle else { throw PeerStoreError.handleMissing }
+        return try insertFirstSeenNoLock(
+            db,
+            nodeId: nodeId,
+            signingPub: signingPub,
+            acceptedStatic: acceptedStatic,
+            acceptedGeneration: acceptedGeneration,
+            trustCode: trustCode
+        )
+    }
+
+    func setInitialPendingGuarded(
+        nodeId: Data,
+        signingPub: Data,
+        acceptedStatic: Data,
+        acceptedGeneration: Int64,
+        trustLevel: Int32,
+        newPendingStatic: Data,
+        newPendingGeneration: Int64
+    ) throws -> Int {
+        lock.lock()
+        defer { lock.unlock() }
+        guard let db = handle else { throw PeerStoreError.handleMissing }
+        return try setInitialPendingNoLock(
+            db,
+            nodeId: nodeId,
+            signingPub: signingPub,
+            acceptedStatic: acceptedStatic,
+            acceptedGeneration: acceptedGeneration,
+            trustLevel: trustLevel,
+            newPendingStatic: newPendingStatic,
+            newPendingGeneration: newPendingGeneration
+        )
+    }
+
+    func advancePendingGuarded(
+        nodeId: Data,
+        signingPub: Data,
+        acceptedStatic: Data,
+        acceptedGeneration: Int64,
+        trustLevel: Int32,
+        oldPendingStatic: Data,
+        oldPendingGeneration: Int64,
+        newPendingStatic: Data,
+        newPendingGeneration: Int64
+    ) throws -> Int {
+        lock.lock()
+        defer { lock.unlock() }
+        guard let db = handle else { throw PeerStoreError.handleMissing }
+        return try advancePendingNoLock(
+            db,
+            nodeId: nodeId,
+            signingPub: signingPub,
+            acceptedStatic: acceptedStatic,
+            acceptedGeneration: acceptedGeneration,
+            trustLevel: trustLevel,
+            oldPendingStatic: oldPendingStatic,
+            oldPendingGeneration: oldPendingGeneration,
+            newPendingStatic: newPendingStatic,
+            newPendingGeneration: newPendingGeneration
+        )
+    }
+
+    // MARK: - No-Lock Internal Operations (Lock discipline §22)
+
+    fileprivate func readRawNoLock(_ db: OpaquePointer, _ nodeId: Data) throws -> PeerIdentityRow? {
         var stmt: OpaquePointer?
         guard sqlite3_prepare_v2(db, PeerIdentitySchema.readRawSql, -1, &stmt, nil) == SQLITE_OK else {
             sqlite3_finalize(stmt); throw PeerStoreError.prepareFailed
@@ -374,14 +455,14 @@ internal final class SqlitePeerIdentityStore: PeerIdentityStore {
         )
     }
 
-    func insertFirstSeen(
+    fileprivate func insertFirstSeenNoLock(
+        _ db: OpaquePointer,
         nodeId: Data,
         signingPub: Data,
         acceptedStatic: Data,
         acceptedGeneration: Int64,
         trustCode: Int32
     ) throws -> Int {
-        guard let db = handle else { throw PeerStoreError.handleMissing }
         var stmt: OpaquePointer?
         guard sqlite3_prepare_v2(db, PeerIdentitySchema.insertFirstSeenSql, -1, &stmt, nil) == SQLITE_OK else {
             sqlite3_finalize(stmt); throw PeerStoreError.prepareFailed
@@ -397,7 +478,8 @@ internal final class SqlitePeerIdentityStore: PeerIdentityStore {
         return Int(sqlite3_changes(db))
     }
 
-    func setInitialPendingGuarded(
+    fileprivate func setInitialPendingNoLock(
+        _ db: OpaquePointer,
         nodeId: Data,
         signingPub: Data,
         acceptedStatic: Data,
@@ -406,7 +488,6 @@ internal final class SqlitePeerIdentityStore: PeerIdentityStore {
         newPendingStatic: Data,
         newPendingGeneration: Int64
     ) throws -> Int {
-        guard let db = handle else { throw PeerStoreError.handleMissing }
         var stmt: OpaquePointer?
         guard sqlite3_prepare_v2(db, PeerIdentitySchema.setInitialPendingSql, -1, &stmt, nil) == SQLITE_OK else {
             sqlite3_finalize(stmt); throw PeerStoreError.prepareFailed
@@ -424,7 +505,8 @@ internal final class SqlitePeerIdentityStore: PeerIdentityStore {
         return Int(sqlite3_changes(db))
     }
 
-    func advancePendingGuarded(
+    fileprivate func advancePendingNoLock(
+        _ db: OpaquePointer,
         nodeId: Data,
         signingPub: Data,
         acceptedStatic: Data,
@@ -435,7 +517,6 @@ internal final class SqlitePeerIdentityStore: PeerIdentityStore {
         newPendingStatic: Data,
         newPendingGeneration: Int64
     ) throws -> Int {
-        guard let db = handle else { throw PeerStoreError.handleMissing }
         var stmt: OpaquePointer?
         guard sqlite3_prepare_v2(db, PeerIdentitySchema.advancePendingSql, -1, &stmt, nil) == SQLITE_OK else {
             sqlite3_finalize(stmt); throw PeerStoreError.prepareFailed
@@ -455,13 +536,6 @@ internal final class SqlitePeerIdentityStore: PeerIdentityStore {
         return Int(sqlite3_changes(db))
     }
 
-    func execRawSql(_ sql: String) throws {
-        guard let db = handle else { throw PeerStoreError.handleMissing }
-        guard sqlite3_exec(db, sql, nil, nil, nil) == SQLITE_OK else {
-            throw PeerStoreError.stepFailed
-        }
-    }
-
     @inline(__always)
     private func bindBlob(_ stmt: OpaquePointer?, _ index: Int32, _ data: Data) {
         _ = data.withUnsafeBytes { raw in
@@ -479,5 +553,87 @@ internal final class SqlitePeerIdentityStore: PeerIdentityStore {
         guard let bytes = sqlite3_column_blob(stmt, index) else { return Data() }
         let count = Int(sqlite3_column_bytes(stmt, index))
         return Data(bytes: bytes, count: count)
+    }
+
+    /// Transaction-scoped store view avoiding recursive locking on NSLock (ADR-003, Phase C8.2B.1 §22).
+    private final class TransactionStore: PeerIdentityStore {
+        private unowned let parent: SqlitePeerIdentityStore
+        private let db: OpaquePointer
+
+        init(parent: SqlitePeerIdentityStore, db: OpaquePointer) {
+            self.parent = parent
+            self.db = db
+        }
+
+        func inImmediateTransaction<T>(_ block: (PeerIdentityStore) throws -> T) throws -> T {
+            throw PeerStoreError.stepFailed
+        }
+
+        func readRaw(_ nodeId: Data) throws -> PeerIdentityRow? {
+            try parent.readRawNoLock(db, nodeId)
+        }
+
+        func insertFirstSeen(
+            nodeId: Data,
+            signingPub: Data,
+            acceptedStatic: Data,
+            acceptedGeneration: Int64,
+            trustCode: Int32
+        ) throws -> Int {
+            try parent.insertFirstSeenNoLock(
+                db,
+                nodeId: nodeId,
+                signingPub: signingPub,
+                acceptedStatic: acceptedStatic,
+                acceptedGeneration: acceptedGeneration,
+                trustCode: trustCode
+            )
+        }
+
+        func setInitialPendingGuarded(
+            nodeId: Data,
+            signingPub: Data,
+            acceptedStatic: Data,
+            acceptedGeneration: Int64,
+            trustLevel: Int32,
+            newPendingStatic: Data,
+            newPendingGeneration: Int64
+        ) throws -> Int {
+            try parent.setInitialPendingNoLock(
+                db,
+                nodeId: nodeId,
+                signingPub: signingPub,
+                acceptedStatic: acceptedStatic,
+                acceptedGeneration: acceptedGeneration,
+                trustLevel: trustLevel,
+                newPendingStatic: newPendingStatic,
+                newPendingGeneration: newPendingGeneration
+            )
+        }
+
+        func advancePendingGuarded(
+            nodeId: Data,
+            signingPub: Data,
+            acceptedStatic: Data,
+            acceptedGeneration: Int64,
+            trustLevel: Int32,
+            oldPendingStatic: Data,
+            oldPendingGeneration: Int64,
+            newPendingStatic: Data,
+            newPendingGeneration: Int64
+        ) throws -> Int {
+            try parent.advancePendingNoLock(
+                db,
+                nodeId: nodeId,
+                signingPub: signingPub,
+                acceptedStatic: acceptedStatic,
+                acceptedGeneration: acceptedGeneration,
+                trustLevel: trustLevel,
+                oldPendingStatic: oldPendingStatic,
+                oldPendingGeneration: oldPendingGeneration,
+                newPendingStatic: newPendingStatic,
+                newPendingGeneration: newPendingGeneration
+            )
+        }
     }
 }

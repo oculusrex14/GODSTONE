@@ -100,9 +100,63 @@ internal interface PeerIdentityStore : AutoCloseable {
         newPendingGeneration: Long
     ): Int
 
-    fun execRawSql(sql: String)
-
     override fun close()
+}
+
+/**
+ * Key-state resolution helper for peer identity database encryption keys (ADR-003, Phase C8.2B.1).
+ *
+ * Matrix:
+ * K1. key absent + DB absent -> generate 32 bytes, commit synchronously, return key.
+ * K2. key present + DB absent -> decode exact 32 bytes, return key (generator NOT called).
+ * K3. key present + DB present -> decode exact 32 bytes, return key (generator NOT called).
+ * K4. key absent + DB present -> FAIL CLOSED (generator NOT called, persistence NOT called).
+ * K5. malformed Base64 -> FAIL CLOSED.
+ * K6. decoded key length < 32 (e.g. 31) -> FAIL CLOSED.
+ * K7. decoded key length > 32 (e.g. 33) -> FAIL CLOSED.
+ * K8. synchronous persistence fails (returns false) -> FAIL CLOSED.
+ */
+internal object PeerStoreKeyState {
+    fun resolve(
+        dbExists: Boolean,
+        storedEncodedKey: String?,
+        generate: () -> ByteArray,
+        persist: (String) -> Boolean
+    ): ByteArray {
+        if (storedEncodedKey != null) {
+            val decoded: ByteArray
+            try {
+                decoded = java.util.Base64.getDecoder().decode(storedEncodedKey)
+            } catch (e: Exception) {
+                throw IllegalStateException("Malformed Base64 in peer identity key preference", e)
+            }
+            if (decoded.size != 32) {
+                throw IllegalStateException(
+                    "Stored peer identity key length must be 32 bytes, got ${decoded.size}"
+                )
+            }
+            return decoded
+        }
+
+        // Stored key is absent: if DB file already exists, we must fail closed!
+        if (dbExists) {
+            throw IllegalStateException(
+                "Peer identity database exists but encryption key is missing; refusing to recreate key"
+            )
+        }
+
+        // Fresh state: generate 32 CSPRNG bytes and commit synchronously
+        val key = generate()
+        if (key.size != 32) {
+            throw IllegalStateException("Generated key length must be 32 bytes, got ${key.size}")
+        }
+        val encoded = java.util.Base64.getEncoder().encodeToString(key)
+        val committed = persist(encoded)
+        if (!committed) {
+            throw IllegalStateException("Failed to synchronously commit peer identity store key")
+        }
+        return key
+    }
 }
 
 /**
@@ -222,10 +276,6 @@ internal class SqlcipherPeerIdentityStore(ctx: Context) : PeerIdentityStore {
         }
     }
 
-    override fun execRawSql(sql: String) {
-        helper.writableDatabase.execSQL(sql)
-    }
-
     override fun close() {
         helper.close()
     }
@@ -271,14 +321,6 @@ internal class SqlcipherPeerIdentityStore(ctx: Context) : PeerIdentityStore {
     companion object {
         /**
          * Manage dedicated 32-byte CSPRNG passphrase in EncryptedSharedPreferences.
-         *
-         * Key-State Matrix:
-         * A. key absent + DB absent -> generate 32 bytes, commit synchronously, open DB.
-         * B. key present + DB absent -> decode exact 32 bytes, create DB.
-         * C. key present + DB present -> decode exact 32 bytes, open DB.
-         * D. key absent + DB present -> FAIL CLOSED (do not regenerate replacement key!).
-         * E. malformed Base64 -> FAIL CLOSED.
-         * F. decoded key length != 32 -> FAIL CLOSED.
          */
         internal fun getOrCreatePassphrase(ctx: Context): ByteArray {
             val dbFile: File = ctx.getDatabasePath(PeerIdentitySchema.DB_NAME)
@@ -296,36 +338,12 @@ internal class SqlcipherPeerIdentityStore(ctx: Context) : PeerIdentityStore {
             )
 
             val stored = prefs.getString("k", null)
-            if (stored != null) {
-                val decoded: ByteArray
-                try {
-                    decoded = android.util.Base64.decode(stored, android.util.Base64.NO_WRAP)
-                } catch (e: Exception) {
-                    throw IllegalStateException("Malformed Base64 in peer identity key preference", e)
-                }
-                if (decoded.size != 32) {
-                    throw IllegalStateException(
-                        "Stored peer identity key length must be 32 bytes, got ${decoded.size}"
-                    )
-                }
-                return decoded
-            }
-
-            // Stored key is absent: if DB file already exists, we must fail closed!
-            if (dbExists) {
-                throw IllegalStateException(
-                    "Peer identity database exists but encryption key is missing; refusing to recreate key"
-                )
-            }
-
-            // Fresh state: generate 32 CSPRNG bytes and commit synchronously
-            val key = ByteArray(32).also { SecureRandom().nextBytes(it) }
-            val encoded = android.util.Base64.encodeToString(key, android.util.Base64.NO_WRAP)
-            val committed = prefs.edit().putString("k", encoded).commit()
-            if (!committed) {
-                throw IllegalStateException("Failed to synchronously commit peer identity store key")
-            }
-            return key
+            return PeerStoreKeyState.resolve(
+                dbExists = dbExists,
+                storedEncodedKey = stored,
+                generate = { ByteArray(32).also { SecureRandom().nextBytes(it) } },
+                persist = { encoded -> prefs.edit().putString("k", encoded).commit() }
+            )
         }
     }
 }

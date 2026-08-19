@@ -179,7 +179,7 @@ internal class JdbcPeerIdentityStore(file: File) : PeerIdentityStore {
         }
     }
 
-    override fun execRawSql(sql: String) {
+    fun execRawSqlForTest(sql: String) {
         conn.createStatement().use { it.execute(sql) }
     }
 

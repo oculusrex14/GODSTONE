@@ -8,6 +8,7 @@ internal enum PeerTrustRepositoryCorruptionReason: Error, Sendable, Equatable {
     case durableRecord(PeerRecordCorruptionReason)
     case mutationCardinality(expected: Int, actual: Int)
     case mutationReadbackMismatch(String)
+    case enginePlanInvariant(String)
     case missingPostMutationRow
     case unexpectedInsertConflict
 }
@@ -31,6 +32,11 @@ internal enum PeerIdentityLookup: Sendable, Equatable {
     case corrupt(PeerTrustRepositoryCorruptionReason)
     case storageFailure
     case invalidArgument(String)
+}
+
+/// Private transaction-aborting error ensuring corrupted states trigger immediate rollback (ADR-003, Phase C8.2B.1).
+private enum ApplyTxnAbort: Error {
+    case corrupt(PeerTrustRepositoryCorruptionReason)
 }
 
 /// Durable peer identity repository owning transaction serialization, strict row decoding,
@@ -94,7 +100,7 @@ internal final class PeerIdentityRepository {
                     case .success(let rec):
                         currentRecord = rec
                     case .failure(let reason):
-                        return .corrupt(reason)
+                        throw ApplyTxnAbort.corrupt(reason)
                     }
                 } else {
                     currentRecord = nullRecord()
@@ -121,11 +127,11 @@ internal final class PeerIdentityRepository {
                         trustCode: Int32(PeerTrustLevel.tofuPinned.persistedCode)
                     )
                     if affected != 1 {
-                        return .corrupt(.mutationCardinality(expected: 1, actual: affected))
+                        throw ApplyTxnAbort.corrupt(.mutationCardinality(expected: 1, actual: affected))
                     }
 
                     guard let readbackRaw = try tx.readRaw(binding.nodeId) else {
-                        return .corrupt(.missingPostMutationRow)
+                        throw ApplyTxnAbort.corrupt(.missingPostMutationRow)
                     }
 
                     let readbackRecord: PeerIdentityRecord
@@ -133,7 +139,7 @@ internal final class PeerIdentityRepository {
                     case .success(let rec):
                         readbackRecord = rec
                     case .failure(let reason):
-                        return .corrupt(reason)
+                        throw ApplyTxnAbort.corrupt(reason)
                     }
 
                     let expected = PeerIdentityRecord(
@@ -147,14 +153,14 @@ internal final class PeerIdentityRepository {
                     )
 
                     guard readbackRecord == expected else {
-                        return .corrupt(.mutationReadbackMismatch("FirstSeen readback mismatch"))
+                        throw ApplyTxnAbort.corrupt(.mutationReadbackMismatch("FirstSeen readback mismatch"))
                     }
 
                     return .firstSeenPinned
 
                 case .setInitialPendingCandidate:
                     guard let current = currentRecord else {
-                        return .corrupt(.mutationReadbackMismatch("SetInitialPending requires existing record"))
+                        throw ApplyTxnAbort.corrupt(.enginePlanInvariant("SetInitialPending requires existing record"))
                     }
 
                     let affected = try tx.setInitialPendingGuarded(
@@ -167,11 +173,11 @@ internal final class PeerIdentityRepository {
                         newPendingGeneration: Int64(binding.generation)
                     )
                     if affected != 1 {
-                        return .corrupt(.mutationCardinality(expected: 1, actual: affected))
+                        throw ApplyTxnAbort.corrupt(.mutationCardinality(expected: 1, actual: affected))
                     }
 
                     guard let readbackRaw = try tx.readRaw(binding.nodeId) else {
-                        return .corrupt(.missingPostMutationRow)
+                        throw ApplyTxnAbort.corrupt(.missingPostMutationRow)
                     }
 
                     let readbackRecord: PeerIdentityRecord
@@ -179,7 +185,7 @@ internal final class PeerIdentityRepository {
                     case .success(let rec):
                         readbackRecord = rec
                     case .failure(let reason):
-                        return .corrupt(reason)
+                        throw ApplyTxnAbort.corrupt(reason)
                     }
 
                     let expected = PeerIdentityRecord(
@@ -193,7 +199,7 @@ internal final class PeerIdentityRepository {
                     )
 
                     guard readbackRecord == expected else {
-                        return .corrupt(.mutationReadbackMismatch("SetInitialPending readback mismatch"))
+                        throw ApplyTxnAbort.corrupt(.mutationReadbackMismatch("SetInitialPending readback mismatch"))
                     }
 
                     return .keyChangedQuarantined
@@ -202,7 +208,7 @@ internal final class PeerIdentityRepository {
                     guard let current = currentRecord,
                           let oldPendingStatic = current.pendingStaticDhPublicKey,
                           let oldPendingGen = current.pendingGeneration else {
-                        return .corrupt(.mutationReadbackMismatch("AdvancePending requires existing pending candidate"))
+                        throw ApplyTxnAbort.corrupt(.enginePlanInvariant("AdvancePending requires existing pending candidate"))
                     }
 
                     let affected = try tx.advancePendingGuarded(
@@ -217,11 +223,11 @@ internal final class PeerIdentityRepository {
                         newPendingGeneration: Int64(binding.generation)
                     )
                     if affected != 1 {
-                        return .corrupt(.mutationCardinality(expected: 1, actual: affected))
+                        throw ApplyTxnAbort.corrupt(.mutationCardinality(expected: 1, actual: affected))
                     }
 
                     guard let readbackRaw = try tx.readRaw(binding.nodeId) else {
-                        return .corrupt(.missingPostMutationRow)
+                        throw ApplyTxnAbort.corrupt(.missingPostMutationRow)
                     }
 
                     let readbackRecord: PeerIdentityRecord
@@ -229,7 +235,7 @@ internal final class PeerIdentityRepository {
                     case .success(let rec):
                         readbackRecord = rec
                     case .failure(let reason):
-                        return .corrupt(reason)
+                        throw ApplyTxnAbort.corrupt(reason)
                     }
 
                     let expected = PeerIdentityRecord(
@@ -243,12 +249,14 @@ internal final class PeerIdentityRepository {
                     )
 
                     guard readbackRecord == expected else {
-                        return .corrupt(.mutationReadbackMismatch("AdvancePending readback mismatch"))
+                        throw ApplyTxnAbort.corrupt(.mutationReadbackMismatch("AdvancePending readback mismatch"))
                     }
 
                     return .keyChangedQuarantined
                 }
             }
+        } catch let ApplyTxnAbort.corrupt(reason) {
+            return .corrupt(reason)
         } catch {
             return .storageFailure
         }

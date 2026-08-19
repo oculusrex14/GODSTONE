@@ -106,4 +106,22 @@ final class PeerIdentityStoreTests: XCTestCase {
         let store = try SqlitePeerIdentityStore(url: url)
         XCTAssertEqual(store.fileProtection, .complete)
     }
+
+    struct InjectedProtectionError: Error {}
+
+    func testFileProtectionFailureFailsClosed() throws {
+        let url = tempDbUrl()
+        defer { try? FileManager.default.removeItem(at: url) }
+
+        XCTAssertThrowsError(
+            try SqlitePeerIdentityStore(url: url, protectionSetter: { _, _ in
+                throw InjectedProtectionError()
+            })
+        ) { error in
+            guard case PeerStoreError.fileProtectionFailed = error else {
+                XCTFail("Expected fileProtectionFailed error, got \(error)")
+                return
+            }
+        }
+    }
 }

@@ -10,6 +10,7 @@ internal sealed class PeerTrustRepositoryCorruptionReason {
     data class DurableRecord(val reason: PeerRecordCorruptionReason) : PeerTrustRepositoryCorruptionReason()
     data class MutationCardinality(val expected: Int, val actual: Int) : PeerTrustRepositoryCorruptionReason()
     data class MutationReadbackMismatch(val description: String) : PeerTrustRepositoryCorruptionReason()
+    data class EnginePlanInvariant(val description: String) : PeerTrustRepositoryCorruptionReason()
     object MissingPostMutationRow : PeerTrustRepositoryCorruptionReason()
     object UnexpectedInsertConflict : PeerTrustRepositoryCorruptionReason()
 }
@@ -38,6 +39,17 @@ internal sealed class PeerIdentityLookup {
     data class StorageFailure(val exception: Exception? = null) : PeerIdentityLookup()
     data class InvalidArgument(val message: String) : PeerIdentityLookup()
 }
+
+/**
+ * Private transaction-aborting exception to ensure corrupted states trigger immediate rollback (ADR-003, Phase C8.2B.1).
+ */
+private class CorruptTxnAbort(
+    val reason: PeerTrustRepositoryCorruptionReason
+) : RuntimeException()
+
+private fun abortCorrupt(
+    reason: PeerTrustRepositoryCorruptionReason
+): Nothing = throw CorruptTxnAbort(reason)
 
 /**
  * Durable peer identity repository owning transaction serialization, strict row decoding,
@@ -94,8 +106,8 @@ internal class PeerIdentityRepository(private val store: PeerIdentityStore) {
      * Ingest a cryptographically validated peer binding inside a serialized database transaction.
      */
     fun applyValidatedBinding(binding: ValidatedPeerBinding): PeerTrustApplyResult {
-        try {
-            return store.inImmediateTransaction { tx ->
+        return try {
+            store.inImmediateTransaction { tx ->
                 val currentRaw = tx.readRaw(binding.nodeId)
                 val currentRecord: PeerIdentityRecord?
 
@@ -103,8 +115,8 @@ internal class PeerIdentityRepository(private val store: PeerIdentityStore) {
                     when (val decode = decodeRowStrict(currentRaw)) {
                         is DecodeResult.Success -> currentRecord = decode.record
                         is DecodeResult.Failure -> {
-                            // Discovering corrupt row aborts transaction
-                            return@inImmediateTransaction PeerTrustApplyResult.Corrupt(decode.reason)
+                            // Discovering corrupt row aborts transaction via throw
+                            abortCorrupt(decode.reason)
                         }
                     }
                 } else {
@@ -135,19 +147,15 @@ internal class PeerIdentityRepository(private val store: PeerIdentityStore) {
                             trustCode = PeerTrustLevel.TOFU_PINNED.persistedCode
                         )
                         if (affected != 1) {
-                            return@inImmediateTransaction PeerTrustApplyResult.Corrupt(
-                                PeerTrustRepositoryCorruptionReason.MutationCardinality(1, affected)
-                            )
+                            abortCorrupt(PeerTrustRepositoryCorruptionReason.MutationCardinality(1, affected))
                         }
 
                         val readbackRaw = tx.readRaw(binding.nodeId)
-                            ?: return@inImmediateTransaction PeerTrustApplyResult.Corrupt(
-                                PeerTrustRepositoryCorruptionReason.MissingPostMutationRow
-                            )
+                            ?: abortCorrupt(PeerTrustRepositoryCorruptionReason.MissingPostMutationRow)
 
                         val readbackRecord = when (val d = decodeRowStrict(readbackRaw)) {
                             is DecodeResult.Success -> d.record
-                            is DecodeResult.Failure -> return@inImmediateTransaction PeerTrustApplyResult.Corrupt(d.reason)
+                            is DecodeResult.Failure -> abortCorrupt(d.reason)
                         }
 
                         val expected = PeerIdentityRecord(
@@ -161,7 +169,7 @@ internal class PeerIdentityRepository(private val store: PeerIdentityStore) {
                         )
 
                         if (readbackRecord != expected) {
-                            return@inImmediateTransaction PeerTrustApplyResult.Corrupt(
+                            abortCorrupt(
                                 PeerTrustRepositoryCorruptionReason.MutationReadbackMismatch("FirstSeen readback mismatch")
                             )
                         }
@@ -170,7 +178,11 @@ internal class PeerIdentityRepository(private val store: PeerIdentityStore) {
                     }
 
                     is TrustPlan.SetInitialPendingCandidate -> {
-                        checkNotNull(currentRecord) { "SetInitialPendingCandidate requires existing record" }
+                        if (currentRecord == null) {
+                            abortCorrupt(
+                                PeerTrustRepositoryCorruptionReason.EnginePlanInvariant("SetInitialPendingCandidate requires existing record")
+                            )
+                        }
                         val affected = tx.setInitialPendingGuarded(
                             nodeId = currentRecord.nodeId,
                             signingPub = currentRecord.signingPublicKey,
@@ -181,19 +193,15 @@ internal class PeerIdentityRepository(private val store: PeerIdentityStore) {
                             newPendingGeneration = binding.generation
                         )
                         if (affected != 1) {
-                            return@inImmediateTransaction PeerTrustApplyResult.Corrupt(
-                                PeerTrustRepositoryCorruptionReason.MutationCardinality(1, affected)
-                            )
+                            abortCorrupt(PeerTrustRepositoryCorruptionReason.MutationCardinality(1, affected))
                         }
 
                         val readbackRaw = tx.readRaw(binding.nodeId)
-                            ?: return@inImmediateTransaction PeerTrustApplyResult.Corrupt(
-                                PeerTrustRepositoryCorruptionReason.MissingPostMutationRow
-                            )
+                            ?: abortCorrupt(PeerTrustRepositoryCorruptionReason.MissingPostMutationRow)
 
                         val readbackRecord = when (val d = decodeRowStrict(readbackRaw)) {
                             is DecodeResult.Success -> d.record
-                            is DecodeResult.Failure -> return@inImmediateTransaction PeerTrustApplyResult.Corrupt(d.reason)
+                            is DecodeResult.Failure -> abortCorrupt(d.reason)
                         }
 
                         val expected = PeerIdentityRecord(
@@ -207,7 +215,7 @@ internal class PeerIdentityRepository(private val store: PeerIdentityStore) {
                         )
 
                         if (readbackRecord != expected) {
-                            return@inImmediateTransaction PeerTrustApplyResult.Corrupt(
+                            abortCorrupt(
                                 PeerTrustRepositoryCorruptionReason.MutationReadbackMismatch("SetInitialPending readback mismatch")
                             )
                         }
@@ -216,9 +224,15 @@ internal class PeerIdentityRepository(private val store: PeerIdentityStore) {
                     }
 
                     is TrustPlan.AdvancePendingCandidate -> {
-                        checkNotNull(currentRecord) { "AdvancePendingCandidate requires existing record" }
-                        val oldPendingStatic = checkNotNull(currentRecord.pendingStaticDhPublicKey)
-                        val oldPendingGen = checkNotNull(currentRecord.pendingGeneration)
+                        val oldPendingStatic = currentRecord?.pendingStaticDhPublicKey
+                        val oldPendingGen = currentRecord?.pendingGeneration
+                        if (currentRecord == null || oldPendingStatic == null || oldPendingGen == null) {
+                            abortCorrupt(
+                                PeerTrustRepositoryCorruptionReason.EnginePlanInvariant(
+                                    "AdvancePendingCandidate requires currentRecord with non-null pending fields"
+                                )
+                            )
+                        }
 
                         val affected = tx.advancePendingGuarded(
                             nodeId = currentRecord.nodeId,
@@ -232,19 +246,15 @@ internal class PeerIdentityRepository(private val store: PeerIdentityStore) {
                             newPendingGeneration = binding.generation
                         )
                         if (affected != 1) {
-                            return@inImmediateTransaction PeerTrustApplyResult.Corrupt(
-                                PeerTrustRepositoryCorruptionReason.MutationCardinality(1, affected)
-                            )
+                            abortCorrupt(PeerTrustRepositoryCorruptionReason.MutationCardinality(1, affected))
                         }
 
                         val readbackRaw = tx.readRaw(binding.nodeId)
-                            ?: return@inImmediateTransaction PeerTrustApplyResult.Corrupt(
-                                PeerTrustRepositoryCorruptionReason.MissingPostMutationRow
-                            )
+                            ?: abortCorrupt(PeerTrustRepositoryCorruptionReason.MissingPostMutationRow)
 
                         val readbackRecord = when (val d = decodeRowStrict(readbackRaw)) {
                             is DecodeResult.Success -> d.record
-                            is DecodeResult.Failure -> return@inImmediateTransaction PeerTrustApplyResult.Corrupt(d.reason)
+                            is DecodeResult.Failure -> abortCorrupt(d.reason)
                         }
 
                         val expected = PeerIdentityRecord(
@@ -258,7 +268,7 @@ internal class PeerIdentityRepository(private val store: PeerIdentityStore) {
                         )
 
                         if (readbackRecord != expected) {
-                            return@inImmediateTransaction PeerTrustApplyResult.Corrupt(
+                            abortCorrupt(
                                 PeerTrustRepositoryCorruptionReason.MutationReadbackMismatch("AdvancePending readback mismatch")
                             )
                         }
@@ -267,8 +277,10 @@ internal class PeerIdentityRepository(private val store: PeerIdentityStore) {
                     }
                 }
             }
+        } catch (e: CorruptTxnAbort) {
+            PeerTrustApplyResult.Corrupt(e.reason)
         } catch (e: Exception) {
-            return PeerTrustApplyResult.StorageFailure(e)
+            PeerTrustApplyResult.StorageFailure(e)
         }
     }
 

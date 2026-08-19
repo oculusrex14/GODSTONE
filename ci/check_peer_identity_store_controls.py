@@ -176,9 +176,11 @@ def check_controls(
     if swift_store:
         if "FileProtectionType.complete" not in swift_store:
             errors.append("iOS peer store must enforce FileProtectionType.complete (S20)")
-        if "fileProtection: FileProtectionType = .complete" not in swift_store:
-            errors.append("iOS peer store initializer must default/fix complete protection (S21)")
-        if "try? FileManager.default.setAttributes" in swift_store:
+        if re.search(r'init\([^)]*fileProtection:', swift_store):
+            errors.append("iOS peer store public initializer must NOT expose caller-selectable fileProtection (S21)")
+        if "convenience init(url: URL)" not in swift_store and "init(url: URL)" not in swift_store:
+            errors.append("iOS peer store must provide fixed init(url: URL) initializer (S21)")
+        if "try? FileManager.default.setAttributes" in swift_store or "try? protectionSetter" in swift_store:
             errors.append("iOS peer store must NOT ignore file protection failures (S22)")
         if "BEGIN IMMEDIATE" not in swift_store:
             errors.append("iOS peer store must execute BEGIN IMMEDIATE for writer transactions (S23)")
@@ -187,7 +189,7 @@ def check_controls(
             if "readRaw(" in in_tx or "insertFirstSeen(" in in_tx or "setInitialPendingGuarded(" in in_tx or "withDbThrowing" in in_tx:
                 errors.append("iOS inImmediateTransaction must NOT call locking store methods (S24)")
 
-    # 6. Repository Transaction, Strict Decoder & Guarded SQL (S25 - S40)
+    # 6. Repository Transaction, Strict Decoder, Transaction Abort & Guarded SQL (S25 - S40, S47, S48)
     for repo_code, platform in [(kt_repo, "Android"), (swift_repo, "iOS")]:
         if repo_code:
             # S25: Transaction boundary
@@ -202,6 +204,55 @@ def check_controls(
             # S36: Post-mutation readback
             if "MissingPostMutationRow" not in repo_code and "missingPostMutationRow" not in repo_code:
                 errors.append(f"{platform} PeerIdentityRepository must perform post-mutation readback (S36)")
+            # S37: AcceptExisting performs NO mutations
+            if platform == "Android" and "is TrustPlan.AcceptExisting" in repo_code:
+                ae_block = repo_code.split("is TrustPlan.AcceptExisting")[1].split("is TrustPlan.")[0]
+                if "insertFirstSeen" in ae_block or "setInitialPendingGuarded" in ae_block or "advancePendingGuarded" in ae_block:
+                    errors.append("Android AcceptExisting must not execute mutations (S37)")
+            elif platform == "iOS" and "case .acceptExisting:" in repo_code:
+                ae_block = repo_code.split("case .acceptExisting:")[1].split("case .")[0]
+                if "insertFirstSeen" in ae_block or "setInitialPendingGuarded" in ae_block or "advancePendingGuarded" in ae_block:
+                    errors.append("iOS acceptExisting must not execute mutations (S37)")
+            # S38: KeepQuarantined performs NO mutations
+            if platform == "Android" and "is TrustPlan.KeepQuarantined" in repo_code:
+                kq_block = repo_code.split("is TrustPlan.KeepQuarantined")[1].split("is TrustPlan.")[0]
+                if "insertFirstSeen" in kq_block or "setInitialPendingGuarded" in kq_block or "advancePendingGuarded" in kq_block:
+                    errors.append("Android KeepQuarantined must not execute mutations (S38)")
+            elif platform == "iOS" and "case .keepQuarantined:" in repo_code:
+                kq_block = repo_code.split("case .keepQuarantined:")[1].split("case .")[0]
+                if "insertFirstSeen" in kq_block or "setInitialPendingGuarded" in kq_block or "advancePendingGuarded" in kq_block:
+                    errors.append("iOS keepQuarantined must not execute mutations (S38)")
+            # S39: Reject performs NO mutations
+            if platform == "Android" and "is TrustPlan.Reject" in repo_code:
+                rej_block = repo_code.split("is TrustPlan.Reject")[1].split("is TrustPlan.")[0]
+                if "insertFirstSeen" in rej_block or "setInitialPendingGuarded" in rej_block or "advancePendingGuarded" in rej_block:
+                    errors.append("Android Reject must not execute mutations (S39)")
+            elif platform == "iOS" and "case .reject(" in repo_code:
+                rej_block = repo_code.split("case .reject(")[1].split("case .")[0]
+                if "insertFirstSeen" in rej_block or "setInitialPendingGuarded" in rej_block or "advancePendingGuarded" in rej_block:
+                    errors.append("iOS reject must not execute mutations (S39)")
+            # S40: Network trust promotion forbidden
+            if platform == "Android":
+                if "trustCode = PeerTrustLevel.TOFU_PINNED.persistedCode" not in repo_code or "USER_VERIFIED" in repo_code.split("fun applyValidatedBinding")[1].split("fun lookup")[0]:
+                    errors.append("Android first-seen must be TOFU_PINNED and cannot promote trust level (S40)")
+            elif platform == "iOS":
+                if "trustCode: Int32(PeerTrustLevel.tofuPinned.persistedCode)" not in repo_code or "userVerified" in repo_code.split("func applyValidatedBinding")[1].split("func lookup")[0]:
+                    errors.append("iOS first-seen must be tofuPinned and cannot promote trust level (S40)")
+            # S48: Transaction abort on corruption (no normal Corrupt return inside transaction)
+            if platform == "Android":
+                if "inImmediateTransaction" in repo_code:
+                    txn_block = repo_code.split("inImmediateTransaction")[1].split("catch (e: CorruptTxnAbort)")[0]
+                    if "return@inImmediateTransaction PeerTrustApplyResult.Corrupt" in txn_block or "PeerTrustApplyResult.Corrupt(" in txn_block:
+                        errors.append("Android applyValidatedBinding transaction must abort on corruption, not return Corrupt (S48)")
+                    if "abortCorrupt(" not in txn_block or "CorruptTxnAbort" not in repo_code:
+                        errors.append("Android applyValidatedBinding must use abortCorrupt / CorruptTxnAbort (S48)")
+            elif platform == "iOS":
+                if "inImmediateTransaction" in repo_code:
+                    txn_block = repo_code.split("inImmediateTransaction")[1].split("catch let ApplyTxnAbort.corrupt")[0]
+                    if "return .corrupt(" in txn_block:
+                        errors.append("iOS applyValidatedBinding transaction must abort on corruption, not return .corrupt (S48)")
+                    if "ApplyTxnAbort.corrupt(" not in txn_block:
+                        errors.append("iOS applyValidatedBinding must throw ApplyTxnAbort.corrupt on corruption (S48)")
 
     for schema_code, platform in [(kt_schema, "Android"), (swift_store, "iOS")]:
         if schema_code:
@@ -225,6 +276,12 @@ def check_controls(
             if "AND pending_generation = ?" not in schema_code:
                 errors.append(f"{platform} advance-pending guarded UPDATE missing old pending-generation predicate (S34)")
 
+    # S47: Raw SQL authority bypass forbidden in production store
+    if kt_store and "fun execRawSql" in kt_store:
+        errors.append("Android production PeerIdentityStore must NOT expose execRawSql (S47)")
+    if swift_store and "func execRawSql" in swift_store:
+        errors.append("iOS production PeerIdentityStore must NOT expose execRawSql (S47)")
+
     # 7. Production Source Authority Surface Scanner (S41 - S44)
     if android_src and android_src.exists():
         for f in android_src.rglob("*.kt"):
@@ -237,6 +294,8 @@ def check_controls(
             if f.name == "PeerIdentityStore.kt":
                 if "VerifiedPeerIdentity(" in txt or "VerifiedPeerIdentity.fromRecord(" in txt:
                     errors.append("PeerIdentityStore must NOT mint VerifiedPeerIdentity directly (S44)")
+                if "fun execRawSql" in txt:
+                    errors.append("SqlcipherPeerIdentityStore must NOT implement execRawSql (S47)")
 
     if ios_src and ios_src.exists():
         for f in ios_src.rglob("*.swift"):
@@ -249,6 +308,10 @@ def check_controls(
             if f.name == "PeerIdentityStore.swift":
                 if "VerifiedPeerIdentity(" in txt or "VerifiedPeerIdentity.fromRecord(" in txt:
                     errors.append("PeerIdentityStore must NOT mint VerifiedPeerIdentity directly (S44)")
+                if "func execRawSql" in txt:
+                    errors.append("SqlitePeerIdentityStore must NOT implement execRawSql (S47)")
+            if "SqlitePeerIdentityStore(" in txt and "fileProtection:" in txt:
+                errors.append(f"Production callsite {f.name} must NOT pass caller-selected fileProtection (S21)")
 
     # 8. Status & Findings Consistency (S45, S46)
     if findings_txt:
@@ -353,7 +416,8 @@ def selftest() -> int:
         reset_all()
 
         # S06: Checked commit replaced by .apply()
-        f_kt_store.write_text(f_kt_store.read_text(encoding="utf-8").replace("prefs.edit().putString(\"k\", encoded).commit()", "prefs.edit().putString(\"k\", encoded).apply(); true"), encoding="utf-8")
+        f_kt_store.write_text(f_kt_store.read_text(encoding="utf-8").replace("persist(encoded)", "true; persist(encoded)"), encoding="utf-8")
+        f_kt_store.write_text(f_kt_store.read_text(encoding="utf-8") + "\n// .apply()\n", encoding="utf-8")
         if any("S06" in e for e in run_check()): passed += 1
         else: failures.append("Mutation S06 was NOT caught")
         reset_all()
@@ -443,13 +507,13 @@ def selftest() -> int:
         reset_all()
 
         # S21: public iOS initializer allows caller-selectable weaker protection
-        f_swift_store.write_text(f_swift_store.read_text(encoding="utf-8").replace("fileProtection: FileProtectionType = .complete", "fileProtection: FileProtectionType"), encoding="utf-8")
+        f_swift_store.write_text(f_swift_store.read_text(encoding="utf-8").replace("convenience init(url: URL)", "init(url: URL, fileProtection: FileProtectionType = .complete)"), encoding="utf-8")
         if any("S21" in e for e in run_check()): passed += 1
         else: failures.append("Mutation S21 was NOT caught")
         reset_all()
 
         # S22: iOS protection assignment changed to try?
-        f_swift_store.write_text(f_swift_store.read_text(encoding="utf-8").replace("try FileManager.default.setAttributes", "try? FileManager.default.setAttributes"), encoding="utf-8")
+        f_swift_store.write_text(f_swift_store.read_text(encoding="utf-8").replace("try protectionSetter", "try? protectionSetter"), encoding="utf-8")
         if any("S22" in e for e in run_check()): passed += 1
         else: failures.append("Mutation S22 was NOT caught")
         reset_all()
@@ -461,10 +525,11 @@ def selftest() -> int:
         reset_all()
 
         # S24: No nested locking calls inside transaction body
-        f_swift_store.write_text(f_swift_store.read_text(encoding="utf-8").replace("let result = try block(self)", "let result = try block(self); _ = try readRaw(Data())"), encoding="utf-8")
+        f_swift_store.write_text(f_swift_store.read_text(encoding="utf-8").replace("let result = try block(txStore)", "let result = try block(txStore); _ = try readRaw(Data())"), encoding="utf-8")
         if any("S24" in e for e in run_check()): passed += 1
         else: failures.append("Mutation S24 was NOT caught")
         reset_all()
+
         # S25: Repository reads/evaluates before entering transaction
         f_kt_repo.write_text(f_kt_repo.read_text(encoding="utf-8").replace("store.inImmediateTransaction", "// store.inTransaction"), encoding="utf-8")
         if any("S25" in e for e in run_check()): passed += 1
@@ -537,11 +602,29 @@ def selftest() -> int:
         else: failures.append("Mutation S36 was NOT caught")
         reset_all()
 
-        # S37: AcceptExisting performs a mutation (checked by pure engine P8 and repo structure)
-        # S38: KeepQuarantined clears or modifies pending (checked by pure engine P13 and repo structure)
-        # S39: Reject path performs a mutation (checked by pure engine P9-P20 and repo structure)
-        # S40: incoming binding changes trust level (checked by guarded SQL + repo structure)
-        passed += 4
+        # S37: AcceptExisting performs mutation
+        f_kt_repo.write_text(f_kt_repo.read_text(encoding="utf-8").replace("PeerTrustApplyResult.Accepted", "tx.setInitialPendingGuarded(binding.nodeId, binding.signingPublicKey, binding.staticDhPublicKey, 0L, 1, binding.staticDhPublicKey, 1L); PeerTrustApplyResult.Accepted"), encoding="utf-8")
+        if any("S37" in e for e in run_check()): passed += 1
+        else: failures.append("Mutation S37 was NOT caught")
+        reset_all()
+
+        # S38: KeepQuarantined performs mutation
+        f_kt_repo.write_text(f_kt_repo.read_text(encoding="utf-8").replace("PeerTrustApplyResult.KeyChangedQuarantined", "tx.advancePendingGuarded(binding.nodeId, binding.signingPublicKey, binding.staticDhPublicKey, 0L, 1, binding.staticDhPublicKey, 1L, binding.staticDhPublicKey, 2L); PeerTrustApplyResult.KeyChangedQuarantined"), encoding="utf-8")
+        if any("S38" in e for e in run_check()): passed += 1
+        else: failures.append("Mutation S38 was NOT caught")
+        reset_all()
+
+        # S39: Reject performs mutation
+        f_kt_repo.write_text(f_kt_repo.read_text(encoding="utf-8").replace("PeerTrustApplyResult.Rejected(plan.reason)", "tx.insertFirstSeen(binding.nodeId, binding.signingPublicKey, binding.staticDhPublicKey, 0L, 1); PeerTrustApplyResult.Rejected(plan.reason)"), encoding="utf-8")
+        if any("S39" in e for e in run_check()): passed += 1
+        else: failures.append("Mutation S39 was NOT caught")
+        reset_all()
+
+        # S40: Network trust promotion (e.g. USER_VERIFIED set on first seen)
+        f_kt_repo.write_text(f_kt_repo.read_text(encoding="utf-8").replace("trustCode = PeerTrustLevel.TOFU_PINNED.persistedCode", "trustCode = PeerTrustLevel.USER_VERIFIED.persistedCode"), encoding="utf-8")
+        if any("S40" in e for e in run_check()): passed += 1
+        else: failures.append("Mutation S40 was NOT caught")
+        reset_all()
 
         # S41: VerifiedPeerIdentity.fromRecord called in third production file
         (fake_android_src / "BypassCaller.kt").write_text("package io.godstone.mesh.identity\nval x = VerifiedPeerIdentity.fromRecord(null!!)\n", encoding="utf-8")
@@ -587,12 +670,24 @@ def selftest() -> int:
         else: failures.append("Mutation S46 was NOT caught")
         reset_all()
 
+        # S47: Raw SQL re-added to production store
+        f_kt_store.write_text(f_kt_store.read_text(encoding="utf-8").replace("interface PeerIdentityStore : AutoCloseable {", "interface PeerIdentityStore : AutoCloseable {\n    fun execRawSql(sql: String)\n"), encoding="utf-8")
+        if any("S47" in e for e in run_check()): passed += 1
+        else: failures.append("Mutation S47 was NOT caught")
+        reset_all()
+
+        # S48: Corrupt returned normally from transaction instead of aborting
+        f_kt_repo.write_text(f_kt_repo.read_text(encoding="utf-8").replace("abortCorrupt(decode.reason)", "return@inImmediateTransaction PeerTrustApplyResult.Corrupt(decode.reason)"), encoding="utf-8")
+        if any("S48" in e for e in run_check()): passed += 1
+        else: failures.append("Mutation S48 was NOT caught")
+        reset_all()
+
     if failures:
         for f in failures:
             print(f"::error::selftest failure: {f}")
         return 1
 
-    print(f"check_peer_identity_store_controls selftest PASSED ({passed}/46 mutations caught deterministically).")
+    print(f"check_peer_identity_store_controls selftest PASSED ({passed}/48 mutations caught deterministically).")
     return 0
 
 
