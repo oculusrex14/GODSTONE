@@ -481,7 +481,8 @@ final class PeerIdentityRepositoryTests: XCTestCase {
 
         // Verify transaction was aborted and database has NO row
         hookStore.hookReadRaw = nil
-        XCTAssertNil(try rawStore.readRaw(b.nodeId))
+        let freshStore = try SqlitePeerIdentityStore(url: url)
+        XCTAssertNil(try freshStore.readRaw(b.nodeId))
     }
 
     func testInitialPendingReadbackCorruptionRollsBack() throws {
@@ -532,7 +533,8 @@ final class PeerIdentityRepositoryTests: XCTestCase {
 
         // Verify transaction was aborted: row remains b1 with no pending
         hookStore.hookReadRaw = nil
-        let restored = try rawStore.readRaw(b1.nodeId)
+        let freshStore = try SqlitePeerIdentityStore(url: url)
+        let restored = try freshStore.readRaw(b1.nodeId)
         XCTAssertNotNil(restored)
         XCTAssertNil(restored?.pendingStaticDhPublicKeyRaw)
         XCTAssertNil(restored?.pendingGenerationRaw)
@@ -587,7 +589,8 @@ final class PeerIdentityRepositoryTests: XCTestCase {
 
         // Verify transaction was aborted: row retains b2 pending
         hookStore.hookReadRaw = nil
-        let restored = try rawStore.readRaw(b1.nodeId)
+        let freshStore = try SqlitePeerIdentityStore(url: url)
+        let restored = try freshStore.readRaw(b1.nodeId)
         XCTAssertNotNil(restored)
         XCTAssertEqual(restored?.pendingGenerationRaw, 1)
         XCTAssertEqual(restored?.pendingStaticDhPublicKeyRaw, b2.staticDhPublicKey)
@@ -620,7 +623,8 @@ final class PeerIdentityRepositoryTests: XCTestCase {
         XCTAssertEqual(act, 0)
 
         hookStore.hookSetInitialPending = nil
-        let row = try rawStore.readRaw(b1.nodeId)
+        let freshStore = try SqlitePeerIdentityStore(url: url)
+        let row = try freshStore.readRaw(b1.nodeId)
         XCTAssertNotNil(row)
         XCTAssertEqual(row?.acceptedGenerationRaw, 0)
         XCTAssertEqual(row?.acceptedStaticDhPublicKeyRaw, b1.staticDhPublicKey)
@@ -651,7 +655,8 @@ final class PeerIdentityRepositoryTests: XCTestCase {
         XCTAssertEqual(act, 2)
 
         hookStore.hookSetInitialPending = nil
-        let row = try rawStore.readRaw(b1.nodeId)
+        let freshStore = try SqlitePeerIdentityStore(url: url)
+        let row = try freshStore.readRaw(b1.nodeId)
         XCTAssertNotNil(row)
         XCTAssertEqual(row?.acceptedGenerationRaw, 0)
         XCTAssertEqual(row?.acceptedStaticDhPublicKeyRaw, b1.staticDhPublicKey)
@@ -684,7 +689,8 @@ final class PeerIdentityRepositoryTests: XCTestCase {
         XCTAssertEqual(act, 0)
 
         hookStore.hookAdvancePending = nil
-        let row = try rawStore.readRaw(b1.nodeId)
+        let freshStore = try SqlitePeerIdentityStore(url: url)
+        let row = try freshStore.readRaw(b1.nodeId)
         XCTAssertNotNil(row)
         XCTAssertEqual(row?.acceptedGenerationRaw, 0)
         XCTAssertEqual(row?.acceptedStaticDhPublicKeyRaw, b1.staticDhPublicKey)
@@ -717,7 +723,8 @@ final class PeerIdentityRepositoryTests: XCTestCase {
         XCTAssertEqual(act, 2)
 
         hookStore.hookAdvancePending = nil
-        let row = try rawStore.readRaw(b1.nodeId)
+        let freshStore = try SqlitePeerIdentityStore(url: url)
+        let row = try freshStore.readRaw(b1.nodeId)
         XCTAssertNotNil(row)
         XCTAssertEqual(row?.acceptedGenerationRaw, 0)
         XCTAssertEqual(row?.acceptedStaticDhPublicKeyRaw, b1.staticDhPublicKey)
@@ -746,7 +753,8 @@ final class PeerIdentityRepositoryTests: XCTestCase {
         XCTAssertEqual(res, .storageFailure)
 
         hookStore.faultAfterInsert = false
-        XCTAssertNil(try rawStore.readRaw(b1.nodeId))
+        let freshStore = try SqlitePeerIdentityStore(url: url)
+        XCTAssertNil(try freshStore.readRaw(b1.nodeId))
     }
 
     func testStorageFaultF2_InitialPendingFailure_RollsBack() throws {
@@ -767,7 +775,8 @@ final class PeerIdentityRepositoryTests: XCTestCase {
         XCTAssertEqual(res, .storageFailure)
 
         hookStore.faultAfterInitialPending = false
-        let row = try rawStore.readRaw(b1.nodeId)
+        let freshStore = try SqlitePeerIdentityStore(url: url)
+        let row = try freshStore.readRaw(b1.nodeId)
         XCTAssertNotNil(row)
         XCTAssertEqual(row?.acceptedGenerationRaw, 0)
         XCTAssertEqual(row?.acceptedStaticDhPublicKeyRaw, b1.staticDhPublicKey)
@@ -795,7 +804,8 @@ final class PeerIdentityRepositoryTests: XCTestCase {
         XCTAssertEqual(res, .storageFailure)
 
         hookStore.faultAfterAdvancePending = false
-        let row = try rawStore.readRaw(b1.nodeId)
+        let freshStore = try SqlitePeerIdentityStore(url: url)
+        let row = try freshStore.readRaw(b1.nodeId)
         XCTAssertNotNil(row)
         XCTAssertEqual(row?.acceptedGenerationRaw, 0)
         XCTAssertEqual(row?.acceptedStaticDhPublicKeyRaw, b1.staticDhPublicKey)
@@ -824,7 +834,8 @@ final class PeerIdentityRepositoryTests: XCTestCase {
         XCTAssertEqual(res, .storageFailure)
 
         hookStore.hookInTx = nil
-        XCTAssertNil(try rawStore.readRaw(b1.nodeId))
+        let freshStore = try SqlitePeerIdentityStore(url: url)
+        XCTAssertNil(try freshStore.readRaw(b1.nodeId))
     }
 
     // =========================================================================

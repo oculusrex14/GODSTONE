@@ -69,9 +69,11 @@ ROOT = Path(__file__).resolve().parent.parent
 KT_SCHEMA_PATH = ROOT / "android/mesh/src/main/java/io/godstone/mesh/identity/PeerIdentitySchema.kt"
 KT_STORE_PATH = ROOT / "android/mesh/src/main/java/io/godstone/mesh/identity/PeerIdentityStore.kt"
 KT_REPO_PATH = ROOT / "android/mesh/src/main/java/io/godstone/mesh/identity/PeerIdentityRepository.kt"
+KT_TEST_PATH = ROOT / "android/mesh/src/test/java/io/godstone/mesh/identity/PeerIdentityRepositoryTest.kt"
 
 SWIFT_STORE_PATH = ROOT / "ios/Godstone/Sources/GodstoneMesh/PeerIdentityStore.swift"
 SWIFT_REPO_PATH = ROOT / "ios/Godstone/Sources/GodstoneMesh/PeerIdentityRepository.swift"
+SWIFT_TEST_PATH = ROOT / "ios/Godstone/Tests/GodstoneMeshTests/PeerIdentityRepositoryTests.swift"
 
 ANDROID_SRC_DIR = ROOT / "android/mesh/src/main/java/io/godstone/mesh"
 IOS_SRC_DIR = ROOT / "ios/Godstone/Sources/GodstoneMesh"
@@ -79,6 +81,20 @@ IOS_SRC_DIR = ROOT / "ios/Godstone/Sources/GodstoneMesh"
 MSG_STORE_KT = ROOT / "android/mesh/src/main/java/io/godstone/mesh/store/MessageStore.kt"
 FINDINGS_PATH = ROOT / "docs/production/FINDINGS_STATUS.json"
 ADR_PATH = ROOT / "docs/adr/ADR-003-identity-and-sealed-sender.md"
+
+CANONICAL_SEMANTIC_TEST_METHODS = [
+    "testFirstSeenReadbackCorruptionRollsBack",
+    "testInitialPendingReadbackCorruptionRollsBack",
+    "testAdvancePendingReadbackCorruptionRollsBack",
+    "testStorageFaultF1_FirstSeenFailure_RollsBack",
+    "testStorageFaultF2_InitialPendingFailure_RollsBack",
+    "testStorageFaultF3_AdvancePendingFailure_RollsBack",
+    "testSimulatedCommitFailureAfterSuccessfulBodyRollsBack",
+    "testConcurrencyC1IdenticalFirstSeen",
+    "testConcurrencyC2Gen5Gen6HighWater",
+    "testConcurrencyC3ExactPendingReplayKeepsQuarantined",
+    "testConcurrencyC4OldAcceptedReplayKeepsQuarantined",
+]
 
 
 def check_controls(
@@ -92,6 +108,8 @@ def check_controls(
     adr_txt: str = None,
     android_src: Path = None,
     ios_src: Path = None,
+    kt_repo_test: str = None,
+    swift_repo_test: str = None,
 ) -> list[str]:
     errors = []
 
@@ -111,6 +129,10 @@ def check_controls(
         findings_txt = FINDINGS_PATH.read_text(encoding="utf-8")
     if adr_txt is None and ADR_PATH.exists():
         adr_txt = ADR_PATH.read_text(encoding="utf-8")
+    if kt_repo_test is None and KT_TEST_PATH.exists():
+        kt_repo_test = KT_TEST_PATH.read_text(encoding="utf-8")
+    if swift_repo_test is None and SWIFT_TEST_PATH.exists():
+        swift_repo_test = SWIFT_TEST_PATH.read_text(encoding="utf-8")
     if android_src is None:
         android_src = ANDROID_SRC_DIR
     if ios_src is None:
@@ -332,6 +354,16 @@ def check_controls(
         except json.JSONDecodeError as e:
             errors.append(f"Failed to parse FINDINGS_STATUS.json: {e}")
 
+    # 9. Required Semantic Inventory (S50 - Android, S51 - iOS)
+    if kt_repo_test:
+        for method_name in CANONICAL_SEMANTIC_TEST_METHODS:
+            if method_name not in kt_repo_test:
+                errors.append(f"Android test source missing canonical method '{method_name}' (S50)")
+    if swift_repo_test:
+        for method_name in CANONICAL_SEMANTIC_TEST_METHODS:
+            if method_name not in swift_repo_test:
+                errors.append(f"iOS test source missing canonical method '{method_name}' (S51)")
+
     return errors
 
 
@@ -350,8 +382,10 @@ def selftest() -> int:
         f_kt_schema = fake_android_src / "PeerIdentitySchema.kt"
         f_kt_store = fake_android_src / "PeerIdentityStore.kt"
         f_kt_repo = fake_android_src / "PeerIdentityRepository.kt"
+        f_kt_test = tmp_path / "PeerIdentityRepositoryTest.kt"
         f_swift_store = fake_ios_src / "PeerIdentityStore.swift"
         f_swift_repo = fake_ios_src / "PeerIdentityRepository.swift"
+        f_swift_test = tmp_path / "PeerIdentityRepositoryTests.swift"
         f_msg_store = fake_android_src / "MessageStore.kt"
         f_findings = tmp_path / "FINDINGS_STATUS.json"
         f_adr = tmp_path / "ADR-003.md"
@@ -360,8 +394,10 @@ def selftest() -> int:
             f_kt_schema.write_text(KT_SCHEMA_PATH.read_text(encoding="utf-8"), encoding="utf-8")
             f_kt_store.write_text(KT_STORE_PATH.read_text(encoding="utf-8"), encoding="utf-8")
             f_kt_repo.write_text(KT_REPO_PATH.read_text(encoding="utf-8"), encoding="utf-8")
+            f_kt_test.write_text(KT_TEST_PATH.read_text(encoding="utf-8"), encoding="utf-8")
             f_swift_store.write_text(SWIFT_STORE_PATH.read_text(encoding="utf-8"), encoding="utf-8")
             f_swift_repo.write_text(SWIFT_REPO_PATH.read_text(encoding="utf-8"), encoding="utf-8")
+            f_swift_test.write_text(SWIFT_TEST_PATH.read_text(encoding="utf-8"), encoding="utf-8")
             f_msg_store.write_text(MSG_STORE_KT.read_text(encoding="utf-8"), encoding="utf-8")
             f_findings.write_text(FINDINGS_PATH.read_text(encoding="utf-8"), encoding="utf-8")
             f_adr.write_text(ADR_PATH.read_text(encoding="utf-8"), encoding="utf-8")
@@ -380,6 +416,8 @@ def selftest() -> int:
                 adr_txt=f_adr.read_text(encoding="utf-8"),
                 android_src=fake_android_src,
                 ios_src=fake_ios_src,
+                kt_repo_test=f_kt_test.read_text(encoding="utf-8"),
+                swift_repo_test=f_swift_test.read_text(encoding="utf-8"),
             )
 
         # Baseline
@@ -691,12 +729,24 @@ def selftest() -> int:
         else: failures.append("Mutation S49 was NOT caught")
         reset_all()
 
+        # S50: Android test missing canonical semantic test method
+        f_kt_test.write_text(f_kt_test.read_text(encoding="utf-8").replace("testFirstSeenReadbackCorruptionRollsBack", "testOldFirstSeenReadbackCorruption"), encoding="utf-8")
+        if any("S50" in e for e in run_check()): passed += 1
+        else: failures.append("Mutation S50 was NOT caught")
+        reset_all()
+
+        # S51: iOS test missing canonical semantic test method
+        f_swift_test.write_text(f_swift_test.read_text(encoding="utf-8").replace("testAdvancePendingReadbackCorruptionRollsBack", "testOldAdvancePendingReadbackCorruption"), encoding="utf-8")
+        if any("S51" in e for e in run_check()): passed += 1
+        else: failures.append("Mutation S51 was NOT caught")
+        reset_all()
+
     if failures:
         for f in failures:
             print(f"::error::selftest failure: {f}")
         return 1
 
-    print(f"check_peer_identity_store_controls selftest PASSED ({passed}/49 mutations caught deterministically).")
+    print(f"check_peer_identity_store_controls selftest PASSED ({passed}/51 mutations caught deterministically).")
     return 0
 
 

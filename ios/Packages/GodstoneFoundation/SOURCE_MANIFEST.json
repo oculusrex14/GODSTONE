@@ -53,7 +53,7 @@
     "Tests/GodstoneMeshTests/MutatedDeliveryRepository.swift": "7ab4731ef68ef24e315adfdf1bb09e614cf878c7a5f073ebf1e7a06a39ec9f09",
     "Tests/GodstoneMeshTests/NoiseSessionTests.swift": "0ec84dbb480a9799c192873b18b719c9856bb62cdae7ee32495b86aab3e1af1f",
     "Tests/GodstoneMeshTests/PanicWipeTests.swift": "c9ab88721a07db3a3646948c9b1638f591f85850717bc6d97312d9c4a046abb7",
-    "Tests/GodstoneMeshTests/PeerIdentityRepositoryTests.swift": "7a3ac9612a8c6aeb679156a4b890d563d56b7b25117f287e91f5e5668f9b114d",
+    "Tests/GodstoneMeshTests/PeerIdentityRepositoryTests.swift": "d63f02f75907c23144f554ee38fc8af75198215066d52bf5526f71995b53a3b7",
     "Tests/GodstoneMeshTests/PeerIdentityStoreTests.swift": "b9bf64a9c134dc1ee0e11cf0034ef886538340162c7af372f036baa8f52fb3cc",
     "Tests/GodstoneMeshTests/PeerTrustEngineTests.swift": "371e7d20f593eefb5d88c2f472940bf249371bc4ebb8f1c629706066b6766bb0",
     "Tests/GodstoneMeshTests/PortVectorTests.swift": "08e4d81add95ada220f4bcc6d14a3b2acc0232b69064d376481390bbc10c9fb9",
