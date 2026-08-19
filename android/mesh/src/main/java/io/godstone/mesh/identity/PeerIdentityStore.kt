@@ -98,16 +98,16 @@ internal interface PeerIdentityStore : AutoCloseable {
         oldPendingGeneration: Long,
         newPendingStatic: ByteArray,
         newPendingGeneration: Long
-    ): Int
-
     fun execRawSql(sql: String)
+
+    fun close()
 }
 
 /**
  * Production Android peer identity store backed by dedicated SQLCipher encryption at rest (ADR-003, Phase C8.2B).
  */
 internal class SqlcipherPeerIdentityStore(ctx: Context) : PeerIdentityStore {
-    private val helper: Helper
+    private val helper: SQLiteOpenHelper
 
     init {
         // Explicit SQLCipher native library loading
