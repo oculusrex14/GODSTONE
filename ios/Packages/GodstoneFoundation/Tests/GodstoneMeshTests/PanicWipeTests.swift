@@ -170,12 +170,12 @@ final class PanicWipeTests: XCTestCase {
         XCTAssertTrue(SqlitePeerIdentityStore.panicWipe(at: dbUrl))
     }
 
-    func testKeychainWipeArtifacts_DeletionFailureThrows_AndLeavesJournalAtKeyErased() throws {
+    func testKeychainWipeArtifacts_PeerStoreDeletionFailureThrows_AndLeavesJournalAtKeyErased() throws {
         let j = FakeJournal()
-        var identityRegenerated = false
+        let keychain = ObservableLocalIdentityKeychain()
 
         let artifacts = KeychainWipeArtifacts(
-            keychain: DefaultLocalIdentityKeychain(),
+            keychain: keychain,
             peerStoreUrl: URL(fileURLWithPath: "/tmp/peer.db"),
             peerStoreWiper: { _ in false } // Injected wipe failure
         )
@@ -183,6 +183,71 @@ final class PanicWipeTests: XCTestCase {
         let wiper = PanicWipe(journal: j, artifacts: artifacts)
         XCTAssertThrowsError(try wiper.begin())
         XCTAssertEqual(j.state, .keyErased, "Journal must halt at keyErased on delete failure")
-        XCTAssertFalse(identityRegenerated, "Identity must not be regenerated if deletion fails")
+        XCTAssertEqual(keychain.addCount, 0, "Identity must not be regenerated if deletion fails")
+
+        // Resume with succeeding wipe proves regeneration runs exactly once
+        let resumeArtifacts = KeychainWipeArtifacts(
+            keychain: keychain,
+            peerStoreUrl: URL(fileURLWithPath: "/tmp/peer.db"),
+            peerStoreWiper: { _ in true }
+        )
+        let resumeWiper = PanicWipe(journal: j, artifacts: resumeArtifacts)
+        XCTAssertNoThrow(try resumeWiper.resumeIfPending())
+        XCTAssertEqual(j.state, .idle)
+        XCTAssertEqual(keychain.addCount, 1, "Identity regenerated exactly once on resume")
+    }
+
+    func testKeychainWipeArtifacts_MessageStoreDeletionFailureThrows_AndLeavesJournalAtKeyErased() throws {
+        let j = FakeJournal()
+        let keychain = ObservableLocalIdentityKeychain()
+
+        let artifacts = KeychainWipeArtifacts(
+            keychain: keychain,
+            storeUrl: URL(fileURLWithPath: "/tmp/message.db"),
+            messageStoreWiper: { _ in false } // Injected message wipe failure
+        )
+
+        let wiper = PanicWipe(journal: j, artifacts: artifacts)
+        XCTAssertThrowsError(try wiper.begin())
+        XCTAssertEqual(j.state, .keyErased, "Journal must halt at keyErased on message store delete failure")
+        XCTAssertEqual(keychain.addCount, 0, "Identity must not be regenerated if message deletion fails")
+
+        // Resume with succeeding wipe proves regeneration runs exactly once
+        let resumeArtifacts = KeychainWipeArtifacts(
+            keychain: keychain,
+            storeUrl: URL(fileURLWithPath: "/tmp/message.db"),
+            messageStoreWiper: { _ in true }
+        )
+        let resumeWiper = PanicWipe(journal: j, artifacts: resumeArtifacts)
+        XCTAssertNoThrow(try resumeWiper.resumeIfPending())
+        XCTAssertEqual(j.state, .idle)
+        XCTAssertEqual(keychain.addCount, 1, "Identity regenerated exactly once on resume after message store fix")
+    }
+}
+
+internal final class ObservableLocalIdentityKeychain: LocalIdentityKeychain, @unchecked Sendable {
+    private let lock = NSLock()
+    var addCount = 0
+    var deleteCount = 0
+    var storage: [String: Data] = [:]
+
+    func read(tag: String) throws -> Data? {
+        lock.lock()
+        defer { lock.unlock() }
+        return storage[tag]
+    }
+
+    func add(tag: String, data: Data) throws {
+        lock.lock()
+        defer { lock.unlock() }
+        addCount += 1
+        storage[tag] = data
+    }
+
+    func delete(tag: String) throws {
+        lock.lock()
+        defer { lock.unlock() }
+        deleteCount += 1
+        storage.removeValue(forKey: tag)
     }
 }

@@ -351,4 +351,92 @@ class PeerIdentityStoreTest {
         assertEquals("godstone_peer_identity_store_key", PeerIdentitySchema.KEY_PREFS)
         assertFalse(PeerIdentitySchema.KEY_PREFS == "godstone_store_key")
     }
+
+    // MARK: - Panic Wipe Physical Artifact Deletion & Failure Verification (Phase C8.2C.1)
+
+    @Test
+    fun testPanicWipe_PhysicalDeletionAndIdempotency() {
+        val mainDb = tempFolder.newFile("peer.db")
+        val wal = tempFolder.newFile("peer.db-wal")
+        val shm = tempFolder.newFile("peer.db-shm")
+        val journal = tempFolder.newFile("peer.db-journal")
+        val prefFile = tempFolder.newFile("${PeerIdentitySchema.KEY_PREFS}.xml")
+
+        val files = listOf(mainDb, wal, shm, journal, prefFile)
+        files.forEach { assertTrue(it.exists()) }
+
+        // First run: all physical artifacts deleted
+        PeerStoreWipeFileVerifier.deleteExistingOrThrow(files)
+        files.forEach { assertFalse(it.exists()) }
+
+        // Second run: idempotent success on absent files
+        PeerStoreWipeFileVerifier.deleteExistingOrThrow(files)
+        files.forEach { assertFalse(it.exists()) }
+    }
+
+    @Test
+    fun testPanicWipe_SidecarDeletionFailureThrowsAndFileRemains() {
+        val mainDb = tempFolder.newFile("fail_peer.db")
+        val wal = tempFolder.newFile("fail_peer.db-wal")
+        val shm = tempFolder.newFile("fail_peer.db-shm")
+        val journal = tempFolder.newFile("fail_peer.db-journal")
+        val prefFile = tempFolder.newFile("fail_${PeerIdentitySchema.KEY_PREFS}.xml")
+
+        val files = listOf(mainDb, wal, shm, journal, prefFile)
+        files.forEach { assertTrue(it.exists()) }
+
+        // Injected deleter refuses to delete the -wal sidecar
+        try {
+            PeerStoreWipeFileVerifier.deleteExistingOrThrow(
+                files = files,
+                deleter = { file ->
+                    if (file.name.endsWith("-wal")) {
+                        false // Refuse deletion
+                    } else {
+                        file.delete()
+                    }
+                }
+            )
+            fail("Expected IllegalStateException when sidecar deletion fails")
+        } catch (e: IllegalStateException) {
+            assertTrue(e.message!!.contains("artifact remained present"))
+            assertTrue(e.message!!.contains("fail_peer.db-wal"))
+        }
+
+        // Verify the refused file remained present
+        assertTrue(wal.exists())
+    }
+
+    @Test
+    fun testPanicWipe_PreferenceDeletionFailureThrowsAndFileRemains() {
+        val mainDb = tempFolder.newFile("pref_fail_peer.db")
+        val wal = tempFolder.newFile("pref_fail_peer.db-wal")
+        val shm = tempFolder.newFile("pref_fail_peer.db-shm")
+        val journal = tempFolder.newFile("pref_fail_peer.db-journal")
+        val prefFile = tempFolder.newFile("pref_fail_${PeerIdentitySchema.KEY_PREFS}.xml")
+
+        val files = listOf(mainDb, wal, shm, journal, prefFile)
+        files.forEach { assertTrue(it.exists()) }
+
+        // Injected deleter refuses to delete the preference file
+        try {
+            PeerStoreWipeFileVerifier.deleteExistingOrThrow(
+                files = files,
+                deleter = { file ->
+                    if (file.name.endsWith(".xml")) {
+                        false // Refuse deletion
+                    } else {
+                        file.delete()
+                    }
+                }
+            )
+            fail("Expected IllegalStateException when preference file deletion fails")
+        } catch (e: IllegalStateException) {
+            assertTrue(e.message!!.contains("artifact remained present"))
+            assertTrue(e.message!!.contains(prefFile.name))
+        }
+
+        // Verify the refused preference file remained present
+        assertTrue(prefFile.exists())
+    }
 }

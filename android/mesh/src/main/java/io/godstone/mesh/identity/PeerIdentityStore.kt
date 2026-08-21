@@ -422,24 +422,47 @@ internal class SqlcipherPeerIdentityStore(ctx: Context) : PeerIdentityStore {
         }
 
         /**
-         * Panic wipe (ADR-004 criterion 5, Phase C8.2C).
+         * Panic wipe (ADR-004 criterion 5, Phase C8.2C.1).
          * Deletes the peer identity database, its sidecar files (-wal, -shm, -journal),
          * and the dedicated encryption key preference file.
-         * Fails closed if deletion of existing files fails.
+         * Fails closed if deletion of existing files fails or if any artifact remains present.
          * Never recreates the key or database. Idempotent.
          */
         fun panicWipe(ctx: Context) {
             ctx.deleteDatabase(PeerIdentitySchema.DB_NAME)
             ctx.deleteSharedPreferences(PeerIdentitySchema.KEY_PREFS)
+
             val dbFile = ctx.getDatabasePath(PeerIdentitySchema.DB_NAME)
-            if (dbFile.exists()) {
-                throw IllegalStateException("Failed to delete peer identity database during panic wipe")
+            val sidecars = listOf("-wal", "-shm", "-journal").map { ext -> File(dbFile.path + ext) }
+            val dataDir = ctx.applicationInfo?.dataDir?.let { File(it) } ?: ctx.filesDir.parentFile
+            val prefFile = File(File(dataDir, "shared_prefs"), "${PeerIdentitySchema.KEY_PREFS}.xml")
+
+            val targetFiles = listOf(dbFile) + sidecars + listOf(prefFile)
+            PeerStoreWipeFileVerifier.deleteExistingOrThrow(targetFiles)
+        }
+    }
+}
+
+/**
+ * Mechanical file-deletion verification helper (Phase C8.2C.1).
+ * Attempts deletion for existing files in [files] using [deleter].
+ * Succeeds if and only if all targeted files are absent after the operation.
+ * Throws [IllegalStateException] if any targeted artifact remains present.
+ * Never creates keys, opens databases, or calls trust logic.
+ */
+internal object PeerStoreWipeFileVerifier {
+    fun deleteExistingOrThrow(
+        files: List<File>,
+        deleter: (File) -> Boolean = { it.delete() }
+    ) {
+        for (file in files) {
+            if (file.exists()) {
+                deleter(file)
             }
-            listOf("-wal", "-shm", "-journal").forEach { ext ->
-                val sidecar = File(dbFile.path + ext)
-                if (sidecar.exists()) {
-                    sidecar.delete()
-                }
+        }
+        for (file in files) {
+            if (file.exists()) {
+                throw IllegalStateException("Peer store artifact remained present after panic wipe attempt: ${file.name}")
             }
         }
     }

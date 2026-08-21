@@ -70,10 +70,15 @@ KT_SCHEMA_PATH = ROOT / "android/mesh/src/main/java/io/godstone/mesh/identity/Pe
 KT_STORE_PATH = ROOT / "android/mesh/src/main/java/io/godstone/mesh/identity/PeerIdentityStore.kt"
 KT_REPO_PATH = ROOT / "android/mesh/src/main/java/io/godstone/mesh/identity/PeerIdentityRepository.kt"
 KT_TEST_PATH = ROOT / "android/mesh/src/test/java/io/godstone/mesh/identity/PeerIdentityRepositoryTest.kt"
+KT_STORE_TEST_PATH = ROOT / "android/mesh/src/test/java/io/godstone/mesh/identity/PeerIdentityStoreTest.kt"
+KT_PANIC_WIPE_TEST_PATH = ROOT / "android/mesh/src/test/java/io/godstone/mesh/identity/PanicWipeTest.kt"
+KT_WIPE_PATH = ROOT / "android/mesh/src/main/java/io/godstone/mesh/identity/PanicWipe.kt"
 
 SWIFT_STORE_PATH = ROOT / "ios/Godstone/Sources/GodstoneMesh/PeerIdentityStore.swift"
 SWIFT_REPO_PATH = ROOT / "ios/Godstone/Sources/GodstoneMesh/PeerIdentityRepository.swift"
 SWIFT_TEST_PATH = ROOT / "ios/Godstone/Tests/GodstoneMeshTests/PeerIdentityRepositoryTests.swift"
+SWIFT_PANIC_WIPE_TEST_PATH = ROOT / "ios/Godstone/Tests/GodstoneMeshTests/PanicWipeTests.swift"
+SWIFT_WIPE_PATH = ROOT / "ios/Godstone/Sources/GodstoneMesh/PanicWipe.swift"
 
 ANDROID_SRC_DIR = ROOT / "android/mesh/src/main/java/io/godstone/mesh"
 IOS_SRC_DIR = ROOT / "ios/Godstone/Sources/GodstoneMesh"
@@ -125,6 +130,11 @@ def check_controls(
     ios_src: Path = None,
     kt_repo_test: str = None,
     swift_repo_test: str = None,
+    kt_wipe: str = None,
+    swift_wipe: str = None,
+    kt_store_test: str = None,
+    kt_panic_wipe_test: str = None,
+    swift_panic_wipe_test: str = None,
 ) -> list[str]:
     errors = []
 
@@ -148,6 +158,16 @@ def check_controls(
         kt_repo_test = KT_TEST_PATH.read_text(encoding="utf-8")
     if swift_repo_test is None and SWIFT_TEST_PATH.exists():
         swift_repo_test = SWIFT_TEST_PATH.read_text(encoding="utf-8")
+    if kt_wipe is None and KT_WIPE_PATH.exists():
+        kt_wipe = KT_WIPE_PATH.read_text(encoding="utf-8")
+    if swift_wipe is None and SWIFT_WIPE_PATH.exists():
+        swift_wipe = SWIFT_WIPE_PATH.read_text(encoding="utf-8")
+    if kt_store_test is None and KT_STORE_TEST_PATH.exists():
+        kt_store_test = KT_STORE_TEST_PATH.read_text(encoding="utf-8")
+    if kt_panic_wipe_test is None and KT_PANIC_WIPE_TEST_PATH.exists():
+        kt_panic_wipe_test = KT_PANIC_WIPE_TEST_PATH.read_text(encoding="utf-8")
+    if swift_panic_wipe_test is None and SWIFT_PANIC_WIPE_TEST_PATH.exists():
+        swift_panic_wipe_test = SWIFT_PANIC_WIPE_TEST_PATH.read_text(encoding="utf-8")
     if android_src is None:
         android_src = ANDROID_SRC_DIR
     if ios_src is None:
@@ -479,6 +499,177 @@ def check_controls(
             if method_name not in swift_repo_test:
                 errors.append(f"iOS test source missing C8.2C canonical method '{method_name}' (S68)")
 
+    # 20. S69 — Android Production Wipe Wiring
+    if kt_wipe:
+        if "SqlcipherPeerIdentityStore.panicWipe(ctx)" not in kt_wipe:
+            errors.append("Android AndroidWipeArtifacts delete action must include SqlcipherPeerIdentityStore.panicWipe(ctx) (S69)")
+
+    # 21. S70 — Android Wipe Truthful Absence & Helper
+    if kt_store:
+        panic_wipe_match = re.search(r'fun\s+panicWipe\s*\(\s*ctx:\s*Context\s*\)\s*\{(.*?)\n\s*\}\s*\n\s*\}', kt_store, re.DOTALL)
+        if panic_wipe_match:
+            pw_body = panic_wipe_match.group(1)
+            if "PeerStoreWipeFileVerifier.deleteExistingOrThrow" not in pw_body and "!dbFile.exists()" not in pw_body:
+                errors.append("Android SqlcipherPeerIdentityStore.panicWipe must verify artifact absence post-deletion (S70)")
+            if "deleteExistingOrThrow" not in kt_store or "throw IllegalStateException" not in kt_store:
+                errors.append("Android PeerStoreWipeFileVerifier must throw on remaining artifacts (S70)")
+        else:
+            errors.append("Android SqlcipherPeerIdentityStore must define panicWipe(ctx: Context) (S70)")
+
+    # 22. S71 — Android No Key Regeneration During Wipe
+    if kt_store:
+        panic_wipe_match = re.search(r'fun\s+panicWipe\s*\(\s*ctx:\s*Context\s*\)\s*\{(.*?)\n\s*\}\s*\n\s*\}', kt_store, re.DOTALL)
+        if panic_wipe_match:
+            pw_body = panic_wipe_match.group(1)
+            forbidden_wipe_tokens = [
+                "getOrCreatePassphrase",
+                "PeerStoreKeyState.resolve",
+                "SecureRandom",
+                "EncryptedSharedPreferences.create",
+                "SqlcipherPeerIdentityStore(",
+                "SQLiteDatabase.openOrCreateDatabase"
+            ]
+            for tok in forbidden_wipe_tokens:
+                if tok in pw_body:
+                    errors.append(f"Android panicWipe must NOT generate keys or open DB ('{tok}' forbidden) (S71)")
+
+    # 23. S72 — iOS Keychain Wipe Peer Wiring
+    if swift_wipe:
+        if "peerStoreUrl" not in swift_wipe or "SqlitePeerIdentityStore.panicWipe" not in swift_wipe:
+            errors.append("iOS KeychainWipeArtifacts must wire peerStoreUrl and SqlitePeerIdentityStore.panicWipe (S72)")
+        if not re.search(r'if\s+!ok\s*\{\s*throw\s+PanicWipeError\.artifactDeletionFailed\("Peer identity store', swift_wipe) and not re.search(r'guard\s+ok\s+else\s*\{\s*throw\s+PanicWipeError\.artifactDeletionFailed\("Peer identity store', swift_wipe):
+            errors.append("iOS KeychainWipeArtifacts must throw if peer store panicWipe fails (S72)")
+
+    # 24. S73 — iOS Message Wipe Failure Propagation
+    if swift_wipe:
+        if "SqliteMessageStore.panicWipe" not in swift_wipe:
+            errors.append("iOS KeychainWipeArtifacts must wire SqliteMessageStore.panicWipe (S73)")
+        if not re.search(r'if\s+!ok\s*\{\s*throw\s+PanicWipeError\.artifactDeletionFailed\("Message store', swift_wipe) and not re.search(r'messageStoreWiper[^{]*SqliteMessageStore\.panicWipe[^{]*\n\s*if\s+!ok\s*\{\s*throw', swift_wipe, re.DOTALL):
+            errors.append("iOS KeychainWipeArtifacts must throw if message store panicWipe fails (S73)")
+
+    # 25. S74 — Approval Guarded SQL Authority
+    for schema_code, platform in [(kt_schema, "Android"), (swift_store, "iOS")]:
+        if schema_code:
+            appr_sql_match = re.search(r'APPROVE_PENDING_ROTATION_SQL\s*=\s*"""(.*?)"""', schema_code, re.DOTALL) or re.search(r'approvePendingRotationSql\s*=\s*"""(.*?)"""', schema_code, re.DOTALL)
+            if appr_sql_match:
+                appr_sql = appr_sql_match.group(1)
+                for pred in ["node_id = ?", "signing_public_key = ?", "accepted_static_dh_public_key = ?", "accepted_generation = ?", "pending_static_dh_public_key = ?", "pending_generation = ?"]:
+                    if pred not in appr_sql:
+                        errors.append(f"{platform} approval SQL missing WHERE predicate '{pred}' (S74)")
+                if "trust_level IN (1,2)" not in appr_sql and "trust_level IN (1, 2)" not in appr_sql:
+                    errors.append(f"{platform} approval SQL missing trust_level IN (1,2) (S74)")
+                if "accepted_static_dh_public_key = pending_static_dh_public_key" not in appr_sql or "accepted_generation = pending_generation" not in appr_sql:
+                    errors.append(f"{platform} approval SQL must promote pending fields to accepted (S74)")
+                if "pending_static_dh_public_key = NULL" not in appr_sql or "pending_generation = NULL" not in appr_sql:
+                    errors.append(f"{platform} approval SQL must clear pending fields to NULL (S74)")
+                set_part = appr_sql.split("WHERE")[0] if "WHERE" in appr_sql else appr_sql
+                if "trust_level" in set_part:
+                    errors.append(f"{platform} approval SQL must NOT mutate trust_level in SET clause (S74)")
+
+    # 26. S75 — Revocation Guarded Authority
+    for schema_code, platform in [(kt_schema, "Android"), (swift_store, "iOS")]:
+        if schema_code:
+            for sql_name in ["REVOKE_NO_PENDING_SQL", "REVOKE_WITH_PENDING_SQL", "revokeNoPendingSql", "revokeWithPendingSql"]:
+                m = re.search(sql_name + r'\s*=\s*"""(.*?)"""', schema_code, re.DOTALL)
+                if m:
+                    sql_txt = m.group(1)
+                    set_part = sql_txt.split("WHERE")[0] if "WHERE" in sql_txt else sql_txt
+                    where_part = sql_txt.split("WHERE")[1] if "WHERE" in sql_txt else ""
+                    for forbidden_set in ["accepted_static_dh_public_key", "accepted_generation", "signing_public_key"]:
+                        if forbidden_set in set_part:
+                            errors.append(f"{platform} {sql_name} must NOT set '{forbidden_set}' in SET clause (S75)")
+                    for required_where in ["node_id = ?", "signing_public_key = ?", "accepted_static_dh_public_key = ?", "accepted_generation = ?", "trust_level = ?"]:
+                        if required_where not in where_part:
+                            errors.append(f"{platform} {sql_name} missing required WHERE guard '{required_where}' (S75)")
+
+    # 27. S76 — No Un-Revoke / Trust Promotion API
+    forbidden_api_patterns = [
+        r"\bdef\s+un[rR]evoke", r"\bfun\s+un[rR]evoke", r"\bfunc\s+un[rR]evoke",
+        r"\bdef\s+restorePeer", r"\bfun\s+restorePeer", r"\bfunc\s+restorePeer",
+        r"\bdef\s+clearRevocation", r"\bfun\s+clearRevocation", r"\bfunc\s+clearRevocation",
+        r"\bdef\s+setTrustLevel", r"\bfun\s+setTrustLevel", r"\bfunc\s+setTrustLevel",
+        r"\bdef\s+markUserVerified", r"\bfun\s+markUserVerified", r"\bfunc\s+markUserVerified",
+        r"\bdef\s+promoteTrust", r"\bfun\s+promoteTrust", r"\bfunc\s+promoteTrust",
+        r"\bdef\s+clearPendingRotation", r"\bfun\s+clearPendingRotation", r"\bfunc\s+clearPendingRotation",
+        r"\bdef\s+discardPendingRotation", r"\bfun\s+discardPendingRotation", r"\bfunc\s+discardPendingRotation",
+    ]
+    for prod_code, platform in [(kt_repo, "Android Repo"), (kt_store, "Android Store"), (swift_repo, "iOS Repo"), (swift_store, "iOS Store")]:
+        if prod_code:
+            for pat in forbidden_api_patterns:
+                if re.search(pat, prod_code):
+                    errors.append(f"{platform} contains forbidden un-revoke or trust promotion API matching '{pat}' (S76)")
+
+    # 28. S77 — C8.2C Mutation/Readback Authority
+    if kt_repo:
+        appr_fn = re.search(r'fun\s+approvePendingRotation\b.*?\n\s*fun\s+', kt_repo, re.DOTALL)
+        if appr_fn:
+            body = appr_fn.group(0)
+            if "if (affected != 1)" not in body:
+                errors.append("Android approvePendingRotation missing affected != 1 check (S77)")
+            if "readRaw(nodeId)" not in body or "readbackRecord != expected" not in body:
+                errors.append("Android approvePendingRotation missing readback verification (S77)")
+        revoke_fn = re.search(r'fun\s+revokePeer\b.*?\Z', kt_repo, re.DOTALL)
+        if revoke_fn:
+            body = revoke_fn.group(0)
+            if "if (affected != 1)" not in body:
+                errors.append("Android revokePeer missing affected != 1 check (S77)")
+            if "readRaw(nodeId)" not in body or "readbackRecord != expected" not in body:
+                errors.append("Android revokePeer missing readback verification (S77)")
+
+    if swift_repo:
+        appr_fn = re.search(r'func\s+approvePendingRotation\b.*?\n\s*func\s+', swift_repo, re.DOTALL)
+        if appr_fn:
+            body = appr_fn.group(0)
+            if "if affected != 1" not in body and "guard affected == 1" not in body and "affected != 1" not in body:
+                errors.append("iOS approvePendingRotation missing affected != 1 check (S77)")
+            if "readRaw(nodeId)" not in body or "readbackRecord == expected" not in body:
+                errors.append("iOS approvePendingRotation missing readback verification (S77)")
+        revoke_fn = re.search(r'func\s+revokePeer\b.*?\Z', swift_repo, re.DOTALL)
+        if revoke_fn:
+            body = revoke_fn.group(0)
+            if "if affected != 1" not in body and "guard affected == 1" not in body and "affected != 1" not in body:
+                errors.append("iOS revokePeer missing affected != 1 check (S77)")
+            if "readRaw(nodeId)" not in body or "readbackRecord == expected" not in body:
+                errors.append("iOS revokePeer missing readback verification (S77)")
+
+    # 29. S78 — Status Fail-Closed Boundary
+    if findings_txt:
+        try:
+            f_data = json.loads(findings_txt)
+            a05 = next((f for f in f_data.get("findings", []) if f.get("id") == "A-05"), None)
+            if not a05 or a05.get("status") != "OPEN_REPOSITORY":
+                errors.append("FINDINGS_STATUS.json: A-05 status must remain 'OPEN_REPOSITORY' (S78)")
+        except Exception:
+            errors.append("FINDINGS_STATUS.json: failed to parse JSON (S78)")
+
+    if adr_txt:
+        if "BoundRecipientKeyResolver` unimplemented" not in adr_txt and "UnresolvedRecipientKeyResolver" not in adr_txt:
+            errors.append("ADR-003: BoundRecipientKeyResolver must remain unresolved/fail-closed (S78)")
+        if "LINK_LAYER_READY = false" not in adr_txt or "linkLayerReady = false" not in adr_txt:
+            errors.append("ADR-003: link layer must remain disabled (S78)")
+        if "Phase C8.3" not in adr_txt or "Phase C8.4" not in adr_txt:
+            errors.append("ADR-003: Phase C8.3 and C8.4 must remain documented as open (S78)")
+
+    # 30. S79 / S80 — Wipe Test Inventory
+    if kt_store_test:
+        if "testPanicWipe_PhysicalDeletionAndIdempotency" not in kt_store_test:
+            errors.append("Android tests missing physical deletion/idempotency test (S79)")
+        if "testPanicWipe_SidecarDeletionFailureThrowsAndFileRemains" not in kt_store_test and "testPanicWipe_DeletionFailure" not in kt_store_test:
+            errors.append("Android tests missing deterministic deletion-failure test (S79)")
+    if kt_panic_wipe_test:
+        if "deleteArtifacts failure leaves journal at KEY_ERASED" not in kt_panic_wipe_test:
+            errors.append("Android tests missing KEY_ERASED resume test on wipe failure (S79)")
+
+    if swift_panic_wipe_test:
+        if "testSqlitePeerIdentityStore_PanicWipe_DeletesMainAndSidecarsHostSide" not in swift_panic_wipe_test:
+            errors.append("iOS tests missing peer main+wal+shm+journal deletion/idempotency test (S80)")
+        if "testKeychainWipeArtifacts_PeerStoreDeletionFailureThrows_AndLeavesJournalAtKeyErased" not in swift_panic_wipe_test:
+            errors.append("iOS tests missing peer wipe false -> throws/keyErased test (S80)")
+        if "testKeychainWipeArtifacts_MessageStoreDeletionFailureThrows_AndLeavesJournalAtKeyErased" not in swift_panic_wipe_test:
+            errors.append("iOS tests missing message wipe false -> throws/keyErased test (S80)")
+        if "ObservableLocalIdentityKeychain" not in swift_panic_wipe_test or "keychain.addCount" not in swift_panic_wipe_test:
+            errors.append("iOS tests missing observable no-regeneration evidence (S80)")
+
     return errors
 
 
@@ -498,9 +689,16 @@ def selftest() -> int:
         f_kt_store = fake_android_src / "PeerIdentityStore.kt"
         f_kt_repo = fake_android_src / "PeerIdentityRepository.kt"
         f_kt_test = tmp_path / "PeerIdentityRepositoryTest.kt"
+        f_kt_store_test = tmp_path / "PeerIdentityStoreTest.kt"
+        f_kt_panic_test = tmp_path / "PanicWipeTest.kt"
+        f_kt_wipe = fake_android_src / "PanicWipe.kt"
+
         f_swift_store = fake_ios_src / "PeerIdentityStore.swift"
         f_swift_repo = fake_ios_src / "PeerIdentityRepository.swift"
         f_swift_test = tmp_path / "PeerIdentityRepositoryTests.swift"
+        f_swift_panic_test = tmp_path / "PanicWipeTests.swift"
+        f_swift_wipe = fake_ios_src / "PanicWipe.swift"
+
         f_msg_store = fake_android_src / "MessageStore.kt"
         f_findings = tmp_path / "FINDINGS_STATUS.json"
         f_adr = tmp_path / "ADR-003.md"
@@ -510,9 +708,14 @@ def selftest() -> int:
             f_kt_store.write_text(KT_STORE_PATH.read_text(encoding="utf-8"), encoding="utf-8")
             f_kt_repo.write_text(KT_REPO_PATH.read_text(encoding="utf-8"), encoding="utf-8")
             f_kt_test.write_text(KT_TEST_PATH.read_text(encoding="utf-8"), encoding="utf-8")
+            f_kt_store_test.write_text(KT_STORE_TEST_PATH.read_text(encoding="utf-8"), encoding="utf-8")
+            f_kt_panic_test.write_text(KT_PANIC_WIPE_TEST_PATH.read_text(encoding="utf-8"), encoding="utf-8")
+            f_kt_wipe.write_text(KT_WIPE_PATH.read_text(encoding="utf-8"), encoding="utf-8")
             f_swift_store.write_text(SWIFT_STORE_PATH.read_text(encoding="utf-8"), encoding="utf-8")
             f_swift_repo.write_text(SWIFT_REPO_PATH.read_text(encoding="utf-8"), encoding="utf-8")
             f_swift_test.write_text(SWIFT_TEST_PATH.read_text(encoding="utf-8"), encoding="utf-8")
+            f_swift_panic_test.write_text(SWIFT_PANIC_WIPE_TEST_PATH.read_text(encoding="utf-8"), encoding="utf-8")
+            f_swift_wipe.write_text(SWIFT_WIPE_PATH.read_text(encoding="utf-8"), encoding="utf-8")
             f_msg_store.write_text(MSG_STORE_KT.read_text(encoding="utf-8"), encoding="utf-8")
             f_findings.write_text(FINDINGS_PATH.read_text(encoding="utf-8"), encoding="utf-8")
             f_adr.write_text(ADR_PATH.read_text(encoding="utf-8"), encoding="utf-8")
@@ -533,6 +736,11 @@ def selftest() -> int:
                 ios_src=fake_ios_src,
                 kt_repo_test=f_kt_test.read_text(encoding="utf-8"),
                 swift_repo_test=f_swift_test.read_text(encoding="utf-8"),
+                kt_wipe=f_kt_wipe.read_text(encoding="utf-8"),
+                swift_wipe=f_swift_wipe.read_text(encoding="utf-8"),
+                kt_store_test=f_kt_store_test.read_text(encoding="utf-8"),
+                kt_panic_wipe_test=f_kt_panic_test.read_text(encoding="utf-8"),
+                swift_panic_wipe_test=f_swift_panic_test.read_text(encoding="utf-8"),
             )
 
         # Baseline
@@ -958,12 +1166,84 @@ def selftest() -> int:
         else: failures.append("Mutation S68 was NOT caught")
         reset_all()
 
+        # S69: Android production wipe wiring removed
+        f_kt_wipe.write_text(f_kt_wipe.read_text(encoding="utf-8").replace("SqlcipherPeerIdentityStore.panicWipe(ctx)", "// wiped"), encoding="utf-8")
+        if any("S69" in e for e in run_check()): passed += 1
+        else: failures.append("Mutation S69 was NOT caught")
+        reset_all()
+
+        # S70: Android wipe truthful absence removed
+        f_kt_store.write_text(f_kt_store.read_text(encoding="utf-8").replace("PeerStoreWipeFileVerifier.deleteExistingOrThrow(targetFiles)", "// verified"), encoding="utf-8")
+        if any("S70" in e for e in run_check()): passed += 1
+        else: failures.append("Mutation S70 was NOT caught")
+        reset_all()
+
+        # S71: Android key regeneration during wipe
+        f_kt_store.write_text(f_kt_store.read_text(encoding="utf-8").replace("PeerStoreWipeFileVerifier.deleteExistingOrThrow(targetFiles)", "getOrCreatePassphrase(ctx)"), encoding="utf-8")
+        if any("S71" in e for e in run_check()): passed += 1
+        else: failures.append("Mutation S71 was NOT caught")
+        reset_all()
+
+        # S72: iOS Keychain wipe peer wiring removed
+        f_swift_wipe.write_text(f_swift_wipe.read_text(encoding="utf-8").replace('throw PanicWipeError.artifactDeletionFailed("Peer identity store deletion failed")', '// ignored'), encoding="utf-8")
+        if any("S72" in e for e in run_check()): passed += 1
+        else: failures.append("Mutation S72 was NOT caught")
+        reset_all()
+
+        # S73: iOS message wipe failure propagation removed
+        f_swift_wipe.write_text(f_swift_wipe.read_text(encoding="utf-8").replace('throw PanicWipeError.artifactDeletionFailed("Message store deletion failed")', '// ignored'), encoding="utf-8")
+        if any("S73" in e for e in run_check()): passed += 1
+        else: failures.append("Mutation S73 was NOT caught")
+        reset_all()
+
+        # S74: Approval guarded SQL missing predicate
+        f_kt_schema.write_text(f_kt_schema.read_text(encoding="utf-8").replace("AND pending_generation = ?", ""), encoding="utf-8")
+        if any("S74" in e for e in run_check()): passed += 1
+        else: failures.append("Mutation S74 was NOT caught")
+        reset_all()
+
+        # S75: Revocation guarded SQL authority broken
+        f_kt_schema.write_text(f_kt_schema.read_text(encoding="utf-8").replace("AND signing_public_key = ?", ""), encoding="utf-8")
+        if any("S75" in e for e in run_check()): passed += 1
+        else: failures.append("Mutation S75 was NOT caught")
+        reset_all()
+
+        # S76: Forbidden un-revoke API added
+        f_kt_repo.write_text(f_kt_repo.read_text(encoding="utf-8") + "\nfun unRevokePeer(nodeId: ByteArray) {}\n", encoding="utf-8")
+        if any("S76" in e for e in run_check()): passed += 1
+        else: failures.append("Mutation S76 was NOT caught")
+        reset_all()
+
+        # S77: C8.2C approval mutation guard weakened
+        f_kt_repo.write_text(f_kt_repo.read_text(encoding="utf-8").replace("if (affected != 1)", "if (false)"), encoding="utf-8")
+        if any("S77" in e for e in run_check()): passed += 1
+        else: failures.append("Mutation S77 was NOT caught")
+        reset_all()
+
+        # S78: Status fail-closed boundary violated
+        f_findings.write_text(f_findings.read_text(encoding="utf-8").replace('"status": "OPEN_REPOSITORY"', '"status": "CLOSED"'), encoding="utf-8")
+        if any("S78" in e for e in run_check()): passed += 1
+        else: failures.append("Mutation S78 was NOT caught")
+        reset_all()
+
+        # S79: Android wipe test inventory missing test
+        f_kt_store_test.write_text(f_kt_store_test.read_text(encoding="utf-8").replace("testPanicWipe_PhysicalDeletionAndIdempotency", "testOldWipe"), encoding="utf-8")
+        if any("S79" in e for e in run_check()): passed += 1
+        else: failures.append("Mutation S79 was NOT caught")
+        reset_all()
+
+        # S80: iOS wipe test inventory missing test
+        f_swift_panic_test.write_text(f_swift_panic_test.read_text(encoding="utf-8").replace("testKeychainWipeArtifacts_MessageStoreDeletionFailureThrows_AndLeavesJournalAtKeyErased", "testOldMessageWipe"), encoding="utf-8")
+        if any("S80" in e for e in run_check()): passed += 1
+        else: failures.append("Mutation S80 was NOT caught")
+        reset_all()
+
     if failures:
         for f in failures:
             print(f"::error::selftest failure: {f}")
         return 1
 
-    print(f"check_peer_identity_store_controls selftest PASSED ({passed}/68 mutations caught deterministically).")
+    print(f"check_peer_identity_store_controls selftest PASSED ({passed}/80 mutations caught deterministically).")
     return 0
 
 
