@@ -6,6 +6,7 @@ import CryptoKit
 final class BoundRecipientKeyResolverTests: XCTestCase {
 
     private let seedA = Data(repeating: 0x11, count: 32)
+    private let seedB = Data(repeating: 0x22, count: 32)
     private let staticPrivA = Data(repeating: 0x33, count: 32)
     private let staticPrivB = Data(repeating: 0x44, count: 32)
 
@@ -45,6 +46,38 @@ final class BoundRecipientKeyResolverTests: XCTestCase {
         }
         return validated
     }
+
+    private final class CountingPeerIdentityLookupSource: PeerIdentityLookupSource, @unchecked Sendable {
+        private let delegate: any PeerIdentityLookupSource
+        var lookupCount = 0
+
+        init(delegate: any PeerIdentityLookupSource) {
+            self.delegate = delegate
+        }
+
+        func lookup(_ nodeId: Data) -> PeerIdentityLookup {
+            lookupCount += 1
+            return delegate.lookup(nodeId)
+        }
+    }
+
+    private final class LambdaPeerIdentityLookupSource: PeerIdentityLookupSource, @unchecked Sendable {
+        private let block: @Sendable (Data) -> PeerIdentityLookup
+        var lookupCount = 0
+
+        init(block: @escaping @Sendable (Data) -> PeerIdentityLookup) {
+            self.block = block
+        }
+
+        func lookup(_ nodeId: Data) -> PeerIdentityLookup {
+            lookupCount += 1
+            return block(nodeId)
+        }
+    }
+
+    // =========================================================================
+    // 1. DIRECT RESOLVER TESTS (R1-R12)
+    // =========================================================================
 
     func testBoundResolver_ActiveTofu_ReturnsSigningKey() throws {
         let url = tempDbUrl()
@@ -192,45 +225,31 @@ final class BoundRecipientKeyResolverTests: XCTestCase {
     }
 
     func testBoundResolver_InvalidNodeLength_NoLookup() {
-        final class CountingLookupSource: PeerIdentityLookupSource, @unchecked Sendable {
-            var lookupCalls = 0
-            func lookup(_ nodeId: Data) -> PeerIdentityLookup {
-                lookupCalls += 1
-                return .notFound
-            }
-        }
-
-        let source = CountingLookupSource()
+        let source = LambdaPeerIdentityLookupSource { _ in .notFound }
         let resolver = BoundRecipientKeyResolver(source: source)
 
         XCTAssertNil(resolver.publicSigningKey(forNodeId: Data(repeating: 0x01, count: 15)))
         XCTAssertNil(resolver.publicSigningKey(forNodeId: Data(repeating: 0x01, count: 17)))
         XCTAssertNil(resolver.publicSigningKey(forNodeId: Data()))
-        XCTAssertEqual(source.lookupCalls, 0)
+        XCTAssertEqual(source.lookupCount, 0)
 
         XCTAssertNil(resolver.publicSigningKey(forNodeId: Data(repeating: 0x01, count: 16)))
-        XCTAssertEqual(source.lookupCalls, 1)
+        XCTAssertEqual(source.lookupCount, 1)
     }
 
     func testBoundResolver_Corrupt_ReturnsNull() {
-        final class CorruptLookupSource: PeerIdentityLookupSource, @unchecked Sendable {
-            func lookup(_ nodeId: Data) -> PeerIdentityLookup {
-                .corrupt(.mutationReadbackMismatch("test corruption"))
-            }
+        let source = LambdaPeerIdentityLookupSource { _ in
+            .corrupt(.mutationReadbackMismatch("test corruption"))
         }
-
-        let resolver = BoundRecipientKeyResolver(source: CorruptLookupSource())
+        let resolver = BoundRecipientKeyResolver(source: source)
         XCTAssertNil(resolver.publicSigningKey(forNodeId: Data(repeating: 0x01, count: 16)))
     }
 
     func testBoundResolver_StorageFailure_ReturnsNull() {
-        final class StorageFailureLookupSource: PeerIdentityLookupSource, @unchecked Sendable {
-            func lookup(_ nodeId: Data) -> PeerIdentityLookup {
-                .storageFailure
-            }
+        let source = LambdaPeerIdentityLookupSource { _ in
+            .storageFailure
         }
-
-        let resolver = BoundRecipientKeyResolver(source: StorageFailureLookupSource())
+        let resolver = BoundRecipientKeyResolver(source: source)
         XCTAssertNil(resolver.publicSigningKey(forNodeId: Data(repeating: 0x01, count: 16)))
     }
 
@@ -322,7 +341,175 @@ final class BoundRecipientKeyResolverTests: XCTestCase {
         XCTAssertNil(postRevokeKey, "Post-commit resolution must be null")
     }
 
-    func testBoundResolver_AckIntegrationLifecycle() throws {
+    func testBoundResolver_ReadOnlyAdapter_SingleLookupCall() {
+        let source = LambdaPeerIdentityLookupSource { _ in .notFound }
+        let resolver = BoundRecipientKeyResolver(source: source)
+
+        let validNode = Data(repeating: 0x01, count: 16)
+        let invalidNode = Data(repeating: 0x01, count: 10)
+
+        XCTAssertEqual(source.lookupCount, 0)
+
+        _ = resolver.publicSigningKey(forNodeId: validNode)
+        XCTAssertEqual(source.lookupCount, 1)
+
+        _ = resolver.publicSigningKey(forNodeId: invalidNode)
+        XCTAssertEqual(source.lookupCount, 1) // No extra call
+    }
+
+    // =========================================================================
+    // 2. LOAD-BEARING ACK INTEGRATION TESTS (C8.3.1)
+    // =========================================================================
+
+    func testBoundResolver_AckIntegration_ActiveValidAckSucceeds() throws {
+        let url = tempDbUrl()
+        defer { try? FileManager.default.removeItem(at: url) }
+
+        let store = try SqlitePeerIdentityStore(url: url)
+        let repo = PeerIdentityRepository(store: store)
+        let countingSource = CountingPeerIdentityLookupSource(delegate: repo)
+        let resolver = BoundRecipientKeyResolver(source: countingSource)
+        let authenticator = Ed25519AckAuthenticator(resolver: resolver)
+
+        let b0 = makeBinding(seed: seedA, generation: 0, staticDhPriv: staticPrivA)
+        _ = repo.applyValidatedBinding(b0)
+
+        let msgId = Data(repeating: 0x55, count: 16)
+        let routingTag = Data(repeating: 0x12, count: 4)
+        let ackFrame = try AckFrame.build(
+            msgId: msgId,
+            recipientSigningPrivKey: seedA,
+            recipientNodeId: b0.nodeId,
+            routingTag: routingTag
+        )
+
+        let result = authenticator.verify(originalMsgId: msgId, expectedRecipientNodeId: b0.nodeId, ackFrame: ackFrame)
+        XCTAssertTrue(result, "Active TOFU peer ACK must verify successfully")
+        XCTAssertEqual(countingSource.lookupCount, 1)
+    }
+
+    func testBoundResolver_AckIntegration_TamperedSignatureFailsWithActivePeer() throws {
+        let url = tempDbUrl()
+        defer { try? FileManager.default.removeItem(at: url) }
+
+        let store = try SqlitePeerIdentityStore(url: url)
+        let repo = PeerIdentityRepository(store: store)
+        let countingSource = CountingPeerIdentityLookupSource(delegate: repo)
+        let resolver = BoundRecipientKeyResolver(source: countingSource)
+        let authenticator = Ed25519AckAuthenticator(resolver: resolver)
+
+        let b0 = makeBinding(seed: seedA, generation: 0, staticDhPriv: staticPrivA)
+        _ = repo.applyValidatedBinding(b0) // Peer remains ACTIVE (TOFU_PINNED)
+
+        let msgId = Data(repeating: 0x55, count: 16)
+        let routingTag = Data(repeating: 0x12, count: 4)
+        let legitimateAck = try AckFrame.build(
+            msgId: msgId,
+            recipientSigningPrivKey: seedA,
+            recipientNodeId: b0.nodeId,
+            routingTag: routingTag
+        )
+
+        // Tamper exactly 1 signature byte, keeping length 80 and recipient exact
+        var tamperedPayload = legitimateAck.payload
+        tamperedPayload[0] ^= 0xFF
+        let tamperedAck = FrameV2(
+            type: .ack,
+            msgId: msgId,
+            routingTag: routingTag,
+            ttl: 4,
+            hopCount: 0,
+            flags: 0,
+            payload: tamperedPayload
+        )
+
+        let result = authenticator.verify(originalMsgId: msgId, expectedRecipientNodeId: b0.nodeId, ackFrame: tamperedAck)
+        XCTAssertFalse(result, "Tampered signature with active peer must fail verification")
+        // Proves lookup reached step 5, resolved the key, and failed at step 6 signature verification
+        XCTAssertEqual(countingSource.lookupCount, 1, "Lookup must execute exactly once before signature verification fails")
+    }
+
+    func testBoundResolver_AckIntegration_UnseenRecipientFailsAtResolver() throws {
+        let url = tempDbUrl()
+        defer { try? FileManager.default.removeItem(at: url) }
+
+        let store = try SqlitePeerIdentityStore(url: url)
+        let repo = PeerIdentityRepository(store: store)
+        let countingSource = CountingPeerIdentityLookupSource(delegate: repo)
+        let resolver = BoundRecipientKeyResolver(source: countingSource)
+        let authenticator = Ed25519AckAuthenticator(resolver: resolver)
+
+        // Seed peer A into repository
+        let b0A = makeBinding(seed: seedA, generation: 0, staticDhPriv: staticPrivA)
+        _ = repo.applyValidatedBinding(b0A)
+
+        // Create second independent real Ed25519 identity B, not inserted into repository
+        let signingKeyB = try Curve25519.Signing.PrivateKey(rawRepresentation: seedB)
+        let nodeIdB = IdentityBindingV1.deriveNodeId(signingPublicKey: signingKeyB.publicKey.rawRepresentation)
+
+        let msgId = Data(repeating: 0x55, count: 16)
+        let routingTag = Data(repeating: 0x12, count: 4)
+        let ackB = try AckFrame.build(
+            msgId: msgId,
+            recipientSigningPrivKey: seedB,
+            recipientNodeId: nodeIdB,
+            routingTag: routingTag
+        )
+
+        // Pass expectedRecipientNodeId = nodeIdB (matches ACK payload recipient)
+        let result = authenticator.verify(originalMsgId: msgId, expectedRecipientNodeId: nodeIdB, ackFrame: ackB)
+        XCTAssertFalse(result, "Unseen recipient must fail verification at resolver lookup step")
+        // Proves recipient equality guard passed and failure occurred because resolver returned null for unseen B
+        XCTAssertEqual(countingSource.lookupCount, 1, "Lookup must be invoked exactly once for unseen recipient")
+    }
+
+    func testBoundResolver_AckIntegration_CorruptLookupFailsClosed() throws {
+        let countingSource = LambdaPeerIdentityLookupSource { _ in
+            .corrupt(.mutationReadbackMismatch("simulated corruption"))
+        }
+        let resolver = BoundRecipientKeyResolver(source: countingSource)
+        let authenticator = Ed25519AckAuthenticator(resolver: resolver)
+
+        let signingKeyA = try Curve25519.Signing.PrivateKey(rawRepresentation: seedA)
+        let nodeIdA = IdentityBindingV1.deriveNodeId(signingPublicKey: signingKeyA.publicKey.rawRepresentation)
+        let msgId = Data(repeating: 0x55, count: 16)
+        let routingTag = Data(repeating: 0x12, count: 4)
+        let ackFrame = try AckFrame.build(
+            msgId: msgId,
+            recipientSigningPrivKey: seedA,
+            recipientNodeId: nodeIdA,
+            routingTag: routingTag
+        )
+
+        let result = authenticator.verify(originalMsgId: msgId, expectedRecipientNodeId: nodeIdA, ackFrame: ackFrame)
+        XCTAssertFalse(result, "Corrupt lookup result must fail closed in ACK verification")
+        XCTAssertEqual(countingSource.lookupCount, 1, "Lookup must be invoked exactly once")
+    }
+
+    func testBoundResolver_AckIntegration_StorageFailureFailsClosed() throws {
+        let countingSource = LambdaPeerIdentityLookupSource { _ in
+            .storageFailure
+        }
+        let resolver = BoundRecipientKeyResolver(source: countingSource)
+        let authenticator = Ed25519AckAuthenticator(resolver: resolver)
+
+        let signingKeyA = try Curve25519.Signing.PrivateKey(rawRepresentation: seedA)
+        let nodeIdA = IdentityBindingV1.deriveNodeId(signingPublicKey: signingKeyA.publicKey.rawRepresentation)
+        let msgId = Data(repeating: 0x55, count: 16)
+        let routingTag = Data(repeating: 0x12, count: 4)
+        let ackFrame = try AckFrame.build(
+            msgId: msgId,
+            recipientSigningPrivKey: seedA,
+            recipientNodeId: nodeIdA,
+            routingTag: routingTag
+        )
+
+        let result = authenticator.verify(originalMsgId: msgId, expectedRecipientNodeId: nodeIdA, ackFrame: ackFrame)
+        XCTAssertFalse(result, "Storage failure lookup must fail closed in ACK verification")
+        XCTAssertEqual(countingSource.lookupCount, 1, "Lookup must be invoked exactly once")
+    }
+
+    func testBoundResolver_AckIntegration_LifecycleQuarantineApprovalRevocation() throws {
         let url = tempDbUrl()
         defer { try? FileManager.default.removeItem(at: url) }
 
@@ -336,7 +523,7 @@ final class BoundRecipientKeyResolverTests: XCTestCase {
         let msgId = Data(repeating: 0x55, count: 16)
         let routingTag = Data(repeating: 0x12, count: 4)
 
-        // Step A1: Active TOFU verified ACK succeeds
+        // Step A: Active TOFU -> ACK verifies
         _ = repo.applyValidatedBinding(b0)
         let ackFrame = try AckFrame.build(
             msgId: msgId,
@@ -346,64 +533,58 @@ final class BoundRecipientKeyResolverTests: XCTestCase {
         )
         XCTAssertTrue(authenticator.verify(originalMsgId: msgId, expectedRecipientNodeId: b0.nodeId, ackFrame: ackFrame))
 
-        // Step A2: Quarantine blocks ACK verification
+        // Step B: Quarantine -> Same valid ACK fails
         _ = repo.applyValidatedBinding(b5)
         XCTAssertFalse(authenticator.verify(originalMsgId: msgId, expectedRecipientNodeId: b0.nodeId, ackFrame: ackFrame))
 
-        // Step A3: Approval restores ACK verification
-        _ = repo.approvePendingRotation(
+        // Step C: Approval -> Same valid ACK verifies again
+        let approval = repo.approvePendingRotation(
             nodeId: b0.nodeId,
             expectedPendingGeneration: 5,
             expectedPendingStaticDhPublicKey: b5.staticDhPublicKey
         )
+        guard case .approved = approval else {
+            XCTFail("Expected .approved")
+            return
+        }
         XCTAssertTrue(authenticator.verify(originalMsgId: msgId, expectedRecipientNodeId: b0.nodeId, ackFrame: ackFrame))
 
-        // Step A4: Revocation permanently blocks ACK verification
+        // Step D: Revocation -> Same valid ACK permanently fails
         _ = repo.revokePeer(b0.nodeId)
         XCTAssertFalse(authenticator.verify(originalMsgId: msgId, expectedRecipientNodeId: b0.nodeId, ackFrame: ackFrame))
-
-        // Negative controls
-        let wrongRecipient = Data(repeating: 0xAA, count: 16)
-        let wrongMsgId = Data(repeating: 0xBB, count: 16)
-        var tamperedPayload = ackFrame.payload
-        tamperedPayload[0] ^= 0xFF
-        let tamperedAck = FrameV2(
-            type: .ack,
-            msgId: msgId,
-            routingTag: routingTag,
-            ttl: 4,
-            hopCount: 0,
-            flags: 0,
-            payload: tamperedPayload
-        )
-
-        XCTAssertFalse(authenticator.verify(originalMsgId: msgId, expectedRecipientNodeId: wrongRecipient, ackFrame: ackFrame))
-        XCTAssertFalse(authenticator.verify(originalMsgId: wrongMsgId, expectedRecipientNodeId: b0.nodeId, ackFrame: ackFrame))
-        XCTAssertFalse(authenticator.verify(originalMsgId: msgId, expectedRecipientNodeId: b0.nodeId, ackFrame: tamperedAck))
-        XCTAssertFalse(authenticator.verify(originalMsgId: msgId, expectedRecipientNodeId: wrongRecipient, ackFrame: ackFrame))
     }
 
-    func testBoundResolver_ReadOnlyAdapter_SingleLookupCall() {
-        final class CountingLookupSource: PeerIdentityLookupSource, @unchecked Sendable {
-            var lookupCount = 0
-            func lookup(_ nodeId: Data) -> PeerIdentityLookup {
-                lookupCount += 1
-                return .notFound
-            }
-        }
+    func testBoundResolver_AckIntegration_PreResolverGuards_ZeroLookup() throws {
+        let url = tempDbUrl()
+        defer { try? FileManager.default.removeItem(at: url) }
 
-        let source = CountingLookupSource()
-        let resolver = BoundRecipientKeyResolver(source: source)
+        let store = try SqlitePeerIdentityStore(url: url)
+        let repo = PeerIdentityRepository(store: store)
+        let countingSource = CountingPeerIdentityLookupSource(delegate: repo)
+        let resolver = BoundRecipientKeyResolver(source: countingSource)
+        let authenticator = Ed25519AckAuthenticator(resolver: resolver)
 
-        let validNode = Data(repeating: 0x01, count: 16)
-        let invalidNode = Data(repeating: 0x01, count: 10)
+        let b0 = makeBinding(seed: seedA, generation: 0, staticDhPriv: staticPrivA)
+        _ = repo.applyValidatedBinding(b0)
 
-        XCTAssertEqual(source.lookupCount, 0)
+        let msgId = Data(repeating: 0x55, count: 16)
+        let routingTag = Data(repeating: 0x12, count: 4)
+        let ackFrame = try AckFrame.build(
+            msgId: msgId,
+            recipientSigningPrivKey: seedA,
+            recipientNodeId: b0.nodeId,
+            routingTag: routingTag
+        )
 
-        _ = resolver.publicSigningKey(forNodeId: validNode)
-        XCTAssertEqual(source.lookupCount, 1)
+        let wrongRecipient = Data(repeating: 0xAA, count: 16)
+        let wrongMsgId = Data(repeating: 0xBB, count: 16)
 
-        _ = resolver.publicSigningKey(forNodeId: invalidNode)
-        XCTAssertEqual(source.lookupCount, 1) // No extra call
+        // 1. Wrong expected recipient fails before resolver lookup
+        XCTAssertFalse(authenticator.verify(originalMsgId: msgId, expectedRecipientNodeId: wrongRecipient, ackFrame: ackFrame))
+        XCTAssertEqual(countingSource.lookupCount, 0, "Wrong expected recipient must not query lookup source")
+
+        // 2. Wrong msgId fails before resolver lookup
+        XCTAssertFalse(authenticator.verify(originalMsgId: wrongMsgId, expectedRecipientNodeId: b0.nodeId, ackFrame: ackFrame))
+        XCTAssertEqual(countingSource.lookupCount, 0, "Wrong msgId must not query lookup source")
     }
 }

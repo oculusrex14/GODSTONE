@@ -34,6 +34,7 @@ class BoundRecipientKeyResolverTest {
     val tempFolder = TemporaryFolder()
 
     private val seedA = ByteArray(32) { 0x11 }
+    private val seedB = ByteArray(32) { 0x22 }
     private val staticPrivA = ByteArray(32) { 0x33 }
     private val staticPrivB = ByteArray(32) { 0x44 }
 
@@ -64,6 +65,20 @@ class BoundRecipientKeyResolverTest {
         require(res is IdentityBindingValidationResult.Valid) { "Validation failed" }
         return res.binding
     }
+
+    private class CountingPeerIdentityLookupSource(
+        private val delegate: PeerIdentityLookupSource
+    ) : PeerIdentityLookupSource {
+        var lookupCount = 0
+        override fun lookup(nodeId: ByteArray): PeerIdentityLookup {
+            lookupCount++
+            return delegate.lookup(nodeId)
+        }
+    }
+
+    // =========================================================================
+    // 1. DIRECT RESOLVER TESTS (R1-R12 + THROWING)
+    // =========================================================================
 
     @Test
     fun testBoundResolver_ActiveTofu_ReturnsSigningKey() {
@@ -237,6 +252,15 @@ class BoundRecipientKeyResolverTest {
     }
 
     @Test
+    fun testBoundResolver_ThrownLookupException_ReturnsNull() {
+        val fakeSource = PeerIdentityLookupSource {
+            throw SQLException("Disk I/O failure")
+        }
+        val resolver = BoundRecipientKeyResolver(fakeSource)
+        assertNull(resolver.publicSigningKey(ByteArray(16)))
+    }
+
+    @Test
     fun testBoundResolver_NoCacheAcrossLifecycle() {
         val file = tempFolder.newFile("no_cache.db").also { it.delete() }
         JdbcPeerIdentityStore(file).use { store ->
@@ -318,57 +342,6 @@ class BoundRecipientKeyResolverTest {
     }
 
     @Test
-    fun testBoundResolver_AckIntegrationLifecycle() {
-        val file = tempFolder.newFile("ack_integration.db").also { it.delete() }
-        JdbcPeerIdentityStore(file).use { store ->
-            val repo = PeerIdentityRepository(store)
-            val resolver = BoundRecipientKeyResolver(repo)
-            val authenticator = Ed25519AckAuthenticator(resolver)
-
-            val b0 = makeBinding(seedA, 0L, staticPrivA)
-            val b5 = makeBinding(seedA, 5L, staticPrivB)
-            val msgId = ByteArray(16) { 0x55.toByte() }
-            val routingTag = ByteArray(4) { 0x12.toByte() }
-
-            // Step A1: Active TOFU verified ACK succeeds
-            repo.applyValidatedBinding(b0)
-            val ackFrame = AckFrame.build(msgId, seedA, b0.nodeId, routingTag)
-            assertTrue("Active TOFU ACK must verify", authenticator.verify(msgId, b0.nodeId, ackFrame))
-
-            // Step A2: Quarantine blocks ACK verification
-            repo.applyValidatedBinding(b5)
-            assertFalse("Quarantined peer ACK must fail verification", authenticator.verify(msgId, b0.nodeId, ackFrame))
-
-            // Step A3: Approval restores ACK verification
-            repo.approvePendingRotation(b0.nodeId, 5L, b5.staticDhPublicKey)
-            assertTrue("Approved peer ACK must verify", authenticator.verify(msgId, b0.nodeId, ackFrame))
-
-            // Step A4: Revocation permanently blocks ACK verification
-            repo.revokePeer(b0.nodeId)
-            assertFalse("Revoked peer ACK must fail verification", authenticator.verify(msgId, b0.nodeId, ackFrame))
-
-            // Negative controls
-            val wrongRecipient = ByteArray(16) { 0xAA.toByte() }
-            val wrongMsgId = ByteArray(16) { 0xBB.toByte() }
-            val tamperedPayload = ackFrame.payload.copyOf().also { it[0] = (it[0].toInt() xor 0xFF).toByte() }
-            val tamperedAck = FrameV2(
-                type = TypeV2.ACK,
-                msgId = msgId,
-                routingTag = routingTag,
-                ttl = 4,
-                hopCount = 0,
-                flags = 0,
-                payload = tamperedPayload
-            )
-
-            assertFalse("Wrong expected recipient must fail", authenticator.verify(msgId, wrongRecipient, ackFrame))
-            assertFalse("Wrong msgId must fail", authenticator.verify(wrongMsgId, b0.nodeId, ackFrame))
-            assertFalse("Tampered signature must fail", authenticator.verify(msgId, b0.nodeId, tamperedAck))
-            assertFalse("Unseen recipient must fail", authenticator.verify(msgId, wrongRecipient, ackFrame))
-        }
-    }
-
-    @Test
     fun testBoundResolver_ReadOnlyAdapter_SingleLookupCall() {
         var lookupCount = 0
         val fakeSource = PeerIdentityLookupSource {
@@ -387,5 +360,216 @@ class BoundRecipientKeyResolverTest {
 
         resolver.publicSigningKey(invalidNode)
         assertEquals(1, lookupCount) // No extra call for invalid node id
+    }
+
+    // =========================================================================
+    // 2. LOAD-BEARING ACK INTEGRATION TESTS (C8.3.1)
+    // =========================================================================
+
+    @Test
+    fun testBoundResolver_AckIntegration_ActiveValidAckSucceeds() {
+        val file = tempFolder.newFile("ack_active.db").also { it.delete() }
+        JdbcPeerIdentityStore(file).use { store ->
+            val repo = PeerIdentityRepository(store)
+            val countingSource = CountingPeerIdentityLookupSource(RepositoryPeerIdentityLookupSource(repo))
+            val resolver = BoundRecipientKeyResolver(countingSource)
+            val authenticator = Ed25519AckAuthenticator(resolver)
+
+            val b0 = makeBinding(seedA, 0L, staticPrivA)
+            repo.applyValidatedBinding(b0)
+
+            val msgId = ByteArray(16) { 0x55.toByte() }
+            val routingTag = ByteArray(4) { 0x12.toByte() }
+            val ackFrame = AckFrame.build(msgId, seedA, b0.nodeId, routingTag)
+
+            val result = authenticator.verify(msgId, b0.nodeId, ackFrame)
+            assertTrue("Active TOFU peer ACK must verify successfully", result)
+            assertEquals(1, countingSource.lookupCount)
+        }
+    }
+
+    @Test
+    fun testBoundResolver_AckIntegration_TamperedSignatureFailsWithActivePeer() {
+        val file = tempFolder.newFile("ack_tampered.db").also { it.delete() }
+        JdbcPeerIdentityStore(file).use { store ->
+            val repo = PeerIdentityRepository(store)
+            val countingSource = CountingPeerIdentityLookupSource(RepositoryPeerIdentityLookupSource(repo))
+            val resolver = BoundRecipientKeyResolver(countingSource)
+            val authenticator = Ed25519AckAuthenticator(resolver)
+
+            val b0 = makeBinding(seedA, 0L, staticPrivA)
+            repo.applyValidatedBinding(b0) // Peer remains ACTIVE (TOFU_PINNED)
+
+            val msgId = ByteArray(16) { 0x55.toByte() }
+            val routingTag = ByteArray(4) { 0x12.toByte() }
+            val legitimateAck = AckFrame.build(msgId, seedA, b0.nodeId, routingTag)
+
+            // Tamper exactly 1 signature byte, keeping length 80 and recipient exact
+            val tamperedPayload = legitimateAck.payload.copyOf().also {
+                it[0] = (it[0].toInt() xor 0xFF).toByte()
+            }
+            val tamperedAck = FrameV2(
+                type = TypeV2.ACK,
+                msgId = msgId,
+                routingTag = routingTag,
+                ttl = 4,
+                hopCount = 0,
+                flags = 0,
+                payload = tamperedPayload
+            )
+
+            val result = authenticator.verify(msgId, b0.nodeId, tamperedAck)
+            assertFalse("Tampered signature with active peer must fail verification", result)
+            // Proves lookup reached step 5, resolved the key, and failed at step 6 signature verification
+            assertEquals("Lookup must execute exactly once before signature verification fails", 1, countingSource.lookupCount)
+        }
+    }
+
+    @Test
+    fun testBoundResolver_AckIntegration_UnseenRecipientFailsAtResolver() {
+        val file = tempFolder.newFile("ack_unseen.db").also { it.delete() }
+        JdbcPeerIdentityStore(file).use { store ->
+            val repo = PeerIdentityRepository(store)
+            val countingSource = CountingPeerIdentityLookupSource(RepositoryPeerIdentityLookupSource(repo))
+            val resolver = BoundRecipientKeyResolver(countingSource)
+            val authenticator = Ed25519AckAuthenticator(resolver)
+
+            // Seed peer A into repository
+            val b0A = makeBinding(seedA, 0L, staticPrivA)
+            repo.applyValidatedBinding(b0A)
+
+            // Create second independent real Ed25519 identity B, not inserted into repository
+            val signPubB = Ed25519Keys.publicKeyFromPrivate(seedB)
+            val nodeIdB = IdentityBindingV1.deriveNodeId(signPubB)
+
+            val msgId = ByteArray(16) { 0x55.toByte() }
+            val routingTag = ByteArray(4) { 0x12.toByte() }
+            val ackB = AckFrame.build(msgId, seedB, nodeIdB, routingTag)
+
+            // Pass expectedRecipientNodeId = nodeIdB (matches ACK payload recipient)
+            val result = authenticator.verify(msgId, nodeIdB, ackB)
+            assertFalse("Unseen recipient must fail verification at resolver lookup step", result)
+            // Proves recipient equality guard passed and failure occurred because resolver returned null for unseen B
+            assertEquals("Lookup must be invoked exactly once for unseen recipient", 1, countingSource.lookupCount)
+        }
+    }
+
+    @Test
+    fun testBoundResolver_AckIntegration_CorruptLookupFailsClosed() {
+        val countingSource = CountingPeerIdentityLookupSource {
+            PeerIdentityLookup.Corrupt(PeerTrustRepositoryCorruptionReason.MutationReadbackMismatch("simulated corruption"))
+        }
+        val resolver = BoundRecipientKeyResolver(countingSource)
+        val authenticator = Ed25519AckAuthenticator(resolver)
+
+        val signPubA = Ed25519Keys.publicKeyFromPrivate(seedA)
+        val nodeIdA = IdentityBindingV1.deriveNodeId(signPubA)
+        val msgId = ByteArray(16) { 0x55.toByte() }
+        val routingTag = ByteArray(4) { 0x12.toByte() }
+        val ackFrame = AckFrame.build(msgId, seedA, nodeIdA, routingTag)
+
+        val result = authenticator.verify(msgId, nodeIdA, ackFrame)
+        assertFalse("Corrupt lookup result must fail closed in ACK verification", result)
+        assertEquals("Lookup must be invoked exactly once", 1, countingSource.lookupCount)
+    }
+
+    @Test
+    fun testBoundResolver_AckIntegration_StorageFailureFailsClosed() {
+        val countingSource = CountingPeerIdentityLookupSource {
+            PeerIdentityLookup.StorageFailure(SQLException("Disk I/O error"))
+        }
+        val resolver = BoundRecipientKeyResolver(countingSource)
+        val authenticator = Ed25519AckAuthenticator(resolver)
+
+        val signPubA = Ed25519Keys.publicKeyFromPrivate(seedA)
+        val nodeIdA = IdentityBindingV1.deriveNodeId(signPubA)
+        val msgId = ByteArray(16) { 0x55.toByte() }
+        val routingTag = ByteArray(4) { 0x12.toByte() }
+        val ackFrame = AckFrame.build(msgId, seedA, nodeIdA, routingTag)
+
+        val result = authenticator.verify(msgId, nodeIdA, ackFrame)
+        assertFalse("Storage failure lookup must fail closed in ACK verification", result)
+        assertEquals("Lookup must be invoked exactly once", 1, countingSource.lookupCount)
+    }
+
+    @Test
+    fun testBoundResolver_AckIntegration_ThrownLookupExceptionFailsClosed() {
+        val countingSource = CountingPeerIdentityLookupSource {
+            throw SQLException("Database connection dropped")
+        }
+        val resolver = BoundRecipientKeyResolver(countingSource)
+        val authenticator = Ed25519AckAuthenticator(resolver)
+
+        val signPubA = Ed25519Keys.publicKeyFromPrivate(seedA)
+        val nodeIdA = IdentityBindingV1.deriveNodeId(signPubA)
+        val msgId = ByteArray(16) { 0x55.toByte() }
+        val routingTag = ByteArray(4) { 0x12.toByte() }
+        val ackFrame = AckFrame.build(msgId, seedA, nodeIdA, routingTag)
+
+        val result = authenticator.verify(msgId, nodeIdA, ackFrame)
+        assertFalse("Thrown lookup exception must fail closed in ACK verification", result)
+        assertEquals("Lookup must be invoked exactly once", 1, countingSource.lookupCount)
+    }
+
+    @Test
+    fun testBoundResolver_AckIntegration_LifecycleQuarantineApprovalRevocation() {
+        val file = tempFolder.newFile("ack_lifecycle.db").also { it.delete() }
+        JdbcPeerIdentityStore(file).use { store ->
+            val repo = PeerIdentityRepository(store)
+            val resolver = BoundRecipientKeyResolver(repo)
+            val authenticator = Ed25519AckAuthenticator(resolver)
+
+            val b0 = makeBinding(seedA, 0L, staticPrivA)
+            val b5 = makeBinding(seedA, 5L, staticPrivB)
+            val msgId = ByteArray(16) { 0x55.toByte() }
+            val routingTag = ByteArray(4) { 0x12.toByte() }
+
+            // Step A: Active TOFU -> ACK verifies
+            repo.applyValidatedBinding(b0)
+            val ackFrame = AckFrame.build(msgId, seedA, b0.nodeId, routingTag)
+            assertTrue("Active TOFU ACK must verify", authenticator.verify(msgId, b0.nodeId, ackFrame))
+
+            // Step B: Quarantine -> Same valid ACK fails
+            repo.applyValidatedBinding(b5)
+            assertFalse("Quarantined peer ACK must fail verification", authenticator.verify(msgId, b0.nodeId, ackFrame))
+
+            // Step C: Approval -> Same valid ACK verifies again
+            val approval = repo.approvePendingRotation(b0.nodeId, 5L, b5.staticDhPublicKey)
+            assertTrue(approval is RotationApprovalResult.Approved)
+            assertTrue("Approved peer ACK must verify", authenticator.verify(msgId, b0.nodeId, ackFrame))
+
+            // Step D: Revocation -> Same valid ACK permanently fails
+            repo.revokePeer(b0.nodeId)
+            assertFalse("Revoked peer ACK must fail verification", authenticator.verify(msgId, b0.nodeId, ackFrame))
+        }
+    }
+
+    @Test
+    fun testBoundResolver_AckIntegration_PreResolverGuards_ZeroLookup() {
+        val file = tempFolder.newFile("ack_guards.db").also { it.delete() }
+        JdbcPeerIdentityStore(file).use { store ->
+            val repo = PeerIdentityRepository(store)
+            val countingSource = CountingPeerIdentityLookupSource(RepositoryPeerIdentityLookupSource(repo))
+            val resolver = BoundRecipientKeyResolver(countingSource)
+            val authenticator = Ed25519AckAuthenticator(resolver)
+
+            val b0 = makeBinding(seedA, 0L, staticPrivA)
+            repo.applyValidatedBinding(b0)
+
+            val msgId = ByteArray(16) { 0x55.toByte() }
+            val routingTag = ByteArray(4) { 0x12.toByte() }
+            val ackFrame = AckFrame.build(msgId, seedA, b0.nodeId, routingTag)
+
+            val wrongRecipient = ByteArray(16) { 0xAA.toByte() }
+            val wrongMsgId = ByteArray(16) { 0xBB.toByte() }
+
+            // 1. Wrong expected recipient fails before resolver lookup
+            assertFalse(authenticator.verify(msgId, wrongRecipient, ackFrame))
+            assertEquals("Wrong expected recipient must not query lookup source", 0, countingSource.lookupCount)
+
+            // 2. Wrong msgId fails before resolver lookup
+            assertFalse(authenticator.verify(wrongMsgId, b0.nodeId, ackFrame))
+            assertEquals("Wrong msgId must not query lookup source", 0, countingSource.lookupCount)
+        }
     }
 }

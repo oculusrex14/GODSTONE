@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Regression controls and structural checks for BoundRecipientKeyResolver (ADR-003, Phase C8.3).
+"""Regression controls and structural checks for BoundRecipientKeyResolver (ADR-003, Phase C8.3 / C8.3.1).
 
 Verifies the presence, boundaries, and structural invariants of:
 - Android & iOS BoundRecipientKeyResolver implementations
@@ -10,7 +10,7 @@ Verifies the presence, boundaries, and structural invariants of:
 - No store mutation, raw SQL, or store constructor calls in resolver sources
 - Stateless contract (no key caching or memoization)
 - Continued fail-closed UnresolvedRecipientKeyResolver in production MeshModule composition
-- Comprehensive semantic test inventories on Android and iOS
+- Comprehensive semantic test inventories on Android and iOS (including split ACK integration tests)
 """
 from __future__ import annotations
 
@@ -166,7 +166,7 @@ def check_controls(
     if "MeshNode" in app_cont or "DeliveryTracker" in app_cont or "BoundRecipientKeyResolver" in app_cont:
         errors.append("iOS AppContainer must remain Archive-only (B14)")
 
-    # 15. B15: Canonical Android resolver test inventory
+    # 15. B15: Canonical Android resolver test inventory (including distinct ACK integration methods)
     canonical_tests = [
         "testBoundResolver_ActiveTofu_ReturnsSigningKey",
         "testBoundResolver_UserVerified_ReturnsSigningKey",
@@ -181,13 +181,19 @@ def check_controls(
         "testBoundResolver_NoCacheAcrossLifecycle",
         "testBoundResolver_DefensiveCopy",
         "testBoundResolver_ConcurrentRevoke_NoStalePostCommitKey",
-        "testBoundResolver_AckIntegrationLifecycle",
+        "testBoundResolver_ReadOnlyAdapter_SingleLookupCall",
+        "testBoundResolver_AckIntegration_ActiveValidAckSucceeds",
+        "testBoundResolver_AckIntegration_TamperedSignatureFailsWithActivePeer",
+        "testBoundResolver_AckIntegration_UnseenRecipientFailsAtResolver",
+        "testBoundResolver_AckIntegration_CorruptLookupFailsClosed",
+        "testBoundResolver_AckIntegration_StorageFailureFailsClosed",
+        "testBoundResolver_AckIntegration_LifecycleQuarantineApprovalRevocation",
     ]
     for t in canonical_tests:
         if t not in kt_test:
             errors.append(f"Android test suite missing canonical test: {t} (B15)")
 
-    # 16. B16: Canonical iOS resolver test inventory
+    # 16. B16: Canonical iOS resolver test inventory (including distinct ACK integration methods)
     for t in canonical_tests:
         if t not in swift_test:
             errors.append(f"iOS test suite missing canonical test: {t} (B16)")
@@ -324,14 +330,14 @@ def selftest() -> int:
         else: failures.append("Mutation B14 was NOT caught")
         reset_all()
 
-        # Mutation B15: Android canonical test removed
-        f_kt_test.write_text(f_kt_test.read_text(encoding="utf-8").replace("testBoundResolver_AckIntegrationLifecycle", "testOldAckIntegration"), encoding="utf-8")
+        # Mutation B15: Android canonical test removed (UnseenRecipientFailsAtResolver)
+        f_kt_test.write_text(f_kt_test.read_text(encoding="utf-8").replace("testBoundResolver_AckIntegration_UnseenRecipientFailsAtResolver", "testOldUnseenAckIntegration"), encoding="utf-8")
         if any("B15" in e for e in run_check()): passed += 1
         else: failures.append("Mutation B15 was NOT caught")
         reset_all()
 
-        # Mutation B16: iOS canonical test removed
-        f_swift_test.write_text(f_swift_test.read_text(encoding="utf-8").replace("testBoundResolver_ApprovalRestoresResolution", "testOldApproval"), encoding="utf-8")
+        # Mutation B16: iOS canonical test removed (TamperedSignatureFailsWithActivePeer)
+        f_swift_test.write_text(f_swift_test.read_text(encoding="utf-8").replace("testBoundResolver_AckIntegration_TamperedSignatureFailsWithActivePeer", "testOldTamperedAckIntegration"), encoding="utf-8")
         if any("B16" in e for e in run_check()): passed += 1
         else: failures.append("Mutation B16 was NOT caught")
         reset_all()
