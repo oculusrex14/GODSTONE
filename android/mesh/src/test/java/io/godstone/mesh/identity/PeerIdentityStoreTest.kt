@@ -352,7 +352,7 @@ class PeerIdentityStoreTest {
         assertFalse(PeerIdentitySchema.KEY_PREFS == "godstone_store_key")
     }
 
-    // MARK: - Panic Wipe Physical Artifact Deletion & Failure Verification (Phase C8.2C.1)
+    // MARK: - Panic Wipe Physical Artifact Deletion & Failure Verification (Phase C8.2C.1 / C8.2C.2)
 
     @Test
     fun testPanicWipe_PhysicalDeletionAndIdempotency() {
@@ -361,8 +361,9 @@ class PeerIdentityStoreTest {
         val shm = tempFolder.newFile("peer.db-shm")
         val journal = tempFolder.newFile("peer.db-journal")
         val prefFile = tempFolder.newFile("${PeerIdentitySchema.KEY_PREFS}.xml")
+        val prefBackupFile = tempFolder.newFile("${PeerIdentitySchema.KEY_PREFS}.xml.bak")
 
-        val files = listOf(mainDb, wal, shm, journal, prefFile)
+        val files = listOf(mainDb, wal, shm, journal, prefFile, prefBackupFile)
         files.forEach { assertTrue(it.exists()) }
 
         // First run: all physical artifacts deleted
@@ -381,8 +382,9 @@ class PeerIdentityStoreTest {
         val shm = tempFolder.newFile("fail_peer.db-shm")
         val journal = tempFolder.newFile("fail_peer.db-journal")
         val prefFile = tempFolder.newFile("fail_${PeerIdentitySchema.KEY_PREFS}.xml")
+        val prefBackupFile = tempFolder.newFile("fail_${PeerIdentitySchema.KEY_PREFS}.xml.bak")
 
-        val files = listOf(mainDb, wal, shm, journal, prefFile)
+        val files = listOf(mainDb, wal, shm, journal, prefFile, prefBackupFile)
         files.forEach { assertTrue(it.exists()) }
 
         // Injected deleter refuses to delete the -wal sidecar
@@ -414,11 +416,12 @@ class PeerIdentityStoreTest {
         val shm = tempFolder.newFile("pref_fail_peer.db-shm")
         val journal = tempFolder.newFile("pref_fail_peer.db-journal")
         val prefFile = tempFolder.newFile("pref_fail_${PeerIdentitySchema.KEY_PREFS}.xml")
+        val prefBackupFile = tempFolder.newFile("pref_fail_${PeerIdentitySchema.KEY_PREFS}.xml.bak")
 
-        val files = listOf(mainDb, wal, shm, journal, prefFile)
+        val files = listOf(mainDb, wal, shm, journal, prefFile, prefBackupFile)
         files.forEach { assertTrue(it.exists()) }
 
-        // Injected deleter refuses to delete the preference file
+        // Injected deleter refuses to delete the primary preference file
         try {
             PeerStoreWipeFileVerifier.deleteExistingOrThrow(
                 files = files,
@@ -438,5 +441,39 @@ class PeerIdentityStoreTest {
 
         // Verify the refused preference file remained present
         assertTrue(prefFile.exists())
+    }
+
+    @Test
+    fun testPanicWipe_PreferenceBackupDeletionFailureThrowsAndFileRemains() {
+        val mainDb = tempFolder.newFile("bak_fail_peer.db")
+        val wal = tempFolder.newFile("bak_fail_peer.db-wal")
+        val shm = tempFolder.newFile("bak_fail_peer.db-shm")
+        val journal = tempFolder.newFile("bak_fail_peer.db-journal")
+        val prefFile = tempFolder.newFile("bak_fail_${PeerIdentitySchema.KEY_PREFS}.xml")
+        val prefBackupFile = tempFolder.newFile("bak_fail_${PeerIdentitySchema.KEY_PREFS}.xml.bak")
+
+        val files = listOf(mainDb, wal, shm, journal, prefFile, prefBackupFile)
+        files.forEach { assertTrue(it.exists()) }
+
+        // Injected deleter refuses to delete the preference backup file (.bak)
+        try {
+            PeerStoreWipeFileVerifier.deleteExistingOrThrow(
+                files = files,
+                deleter = { file ->
+                    if (file.name.endsWith(".bak")) {
+                        false // Refuse deletion
+                    } else {
+                        file.delete()
+                    }
+                }
+            )
+            fail("Expected IllegalStateException when preference backup deletion fails")
+        } catch (e: IllegalStateException) {
+            assertTrue(e.message!!.contains("artifact remained present"))
+            assertTrue(e.message!!.contains(prefBackupFile.name))
+        }
+
+        // Verify the refused backup file remained present
+        assertTrue(prefBackupFile.exists())
     }
 }

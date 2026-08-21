@@ -436,8 +436,9 @@ internal class SqlcipherPeerIdentityStore(ctx: Context) : PeerIdentityStore {
             val sidecars = listOf("-wal", "-shm", "-journal").map { ext -> File(dbFile.path + ext) }
             val dataDir = ctx.applicationInfo?.dataDir?.let { File(it) } ?: ctx.filesDir.parentFile
             val prefFile = File(File(dataDir, "shared_prefs"), "${PeerIdentitySchema.KEY_PREFS}.xml")
+            val prefBackupFile = File(File(dataDir, "shared_prefs"), "${PeerIdentitySchema.KEY_PREFS}.xml.bak")
 
-            val targetFiles = listOf(dbFile) + sidecars + listOf(prefFile)
+            val targetFiles = listOf(dbFile) + sidecars + listOf(prefFile, prefBackupFile)
             PeerStoreWipeFileVerifier.deleteExistingOrThrow(targetFiles)
         }
     }

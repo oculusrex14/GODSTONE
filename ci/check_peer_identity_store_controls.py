@@ -655,7 +655,11 @@ def check_controls(
         if "testPanicWipe_PhysicalDeletionAndIdempotency" not in kt_store_test:
             errors.append("Android tests missing physical deletion/idempotency test (S79)")
         if "testPanicWipe_SidecarDeletionFailureThrowsAndFileRemains" not in kt_store_test and "testPanicWipe_DeletionFailure" not in kt_store_test:
-            errors.append("Android tests missing deterministic deletion-failure test (S79)")
+            errors.append("Android tests missing deterministic sidecar deletion-failure test (S79)")
+        if "testPanicWipe_PreferenceDeletionFailureThrowsAndFileRemains" not in kt_store_test:
+            errors.append("Android tests missing deterministic preference deletion-failure test (S79)")
+        if "testPanicWipe_PreferenceBackupDeletionFailureThrowsAndFileRemains" not in kt_store_test:
+            errors.append("Android tests missing deterministic preference backup deletion-failure test (S79)")
     if kt_panic_wipe_test:
         if "deleteArtifacts failure leaves journal at KEY_ERASED" not in kt_panic_wipe_test:
             errors.append("Android tests missing KEY_ERASED resume test on wipe failure (S79)")
@@ -669,6 +673,60 @@ def check_controls(
             errors.append("iOS tests missing message wipe false -> throws/keyErased test (S80)")
         if "ObservableLocalIdentityKeychain" not in swift_panic_wipe_test or "keychain.addCount" not in swift_panic_wipe_test:
             errors.append("iOS tests missing observable no-regeneration evidence (S80)")
+
+    # 31. S81 — Android Peer Preference Primary + Backup Absence
+    if kt_store:
+        panic_wipe_match = re.search(r'fun\s+panicWipe\s*\(\s*ctx:\s*Context\s*\)\s*\{(.*?)\n\s*\}\s*\n\s*\}', kt_store, re.DOTALL)
+        if panic_wipe_match:
+            pw_body = panic_wipe_match.group(1)
+            has_primary = "${PeerIdentitySchema.KEY_PREFS}.xml" in pw_body or "prefFile" in pw_body
+            has_backup = ("${PeerIdentitySchema.KEY_PREFS}.xml.bak" in pw_body or ".bak" in pw_body) and "prefBackupFile" in pw_body
+            if not has_primary or not has_backup:
+                errors.append("Android SqlcipherPeerIdentityStore.panicWipe must target both primary XML and .xml.bak backup files (S81)")
+            if "prefBackupFile" not in pw_body or "targetFiles" not in pw_body:
+                errors.append("Android SqlcipherPeerIdentityStore.panicWipe must include prefBackupFile in targetFiles (S81)")
+            # Check targetFiles construction contains prefBackupFile
+            target_files_match = re.search(r'val\s+targetFiles\s*=\s*(.*?)\n', pw_body)
+            if target_files_match:
+                tf_expr = target_files_match.group(1)
+                if "prefBackupFile" not in tf_expr:
+                    errors.append("Android SqlcipherPeerIdentityStore.panicWipe targetFiles missing prefBackupFile (S81)")
+        else:
+            errors.append("Android SqlcipherPeerIdentityStore must define panicWipe(ctx: Context) (S81)")
+
+    # 32. S82 — Approval Current-Trust CAS Authority
+    for schema_code, platform in [(kt_schema, "Android"), (swift_store, "iOS")]:
+        if schema_code:
+            appr_sql_match = re.search(r'APPROVE_PENDING_ROTATION_SQL\s*=\s*"""(.*?)"""', schema_code, re.DOTALL) or re.search(r'approvePendingRotationSql\s*=\s*"""(.*?)"""', schema_code, re.DOTALL)
+            if appr_sql_match:
+                appr_sql = appr_sql_match.group(1)
+                where_part = appr_sql.split("WHERE")[1] if "WHERE" in appr_sql else ""
+                if "trust_level = ?" not in where_part:
+                    errors.append(f"{platform} approval SQL missing WHERE predicate 'trust_level = ?' (S82)")
+                if "pending_static_dh_public_key = ?" not in where_part:
+                    errors.append(f"{platform} approval SQL missing WHERE predicate 'pending_static_dh_public_key = ?' (S82)")
+                if "pending_generation = ?" not in where_part:
+                    errors.append(f"{platform} approval SQL missing WHERE predicate 'pending_generation = ?' (S82)")
+                if "trust_level IN (1,2)" not in where_part and "trust_level IN (1, 2)" not in where_part:
+                    errors.append(f"{platform} approval SQL missing WHERE predicate 'trust_level IN (1,2)' (S82)")
+
+    # 33. S83 — Revocation Pending-State CAS Authority
+    for schema_code, platform in [(kt_schema, "Android"), (swift_store, "iOS")]:
+        if schema_code:
+            # Check REVOKE_NO_PENDING
+            no_pend_match = re.search(r'(REVOKE_NO_PENDING_SQL|revokeNoPendingSql)\s*=\s*"""(.*?)"""', schema_code, re.DOTALL)
+            if no_pend_match:
+                sql_txt = no_pend_match.group(2)
+                where_part = sql_txt.split("WHERE")[1] if "WHERE" in sql_txt else ""
+                if "pending_static_dh_public_key IS NULL" not in where_part or "pending_generation IS NULL" not in where_part:
+                    errors.append(f"{platform} revokeNoPending SQL missing NULL pending checks (S83)")
+            # Check REVOKE_WITH_PENDING
+            with_pend_match = re.search(r'(REVOKE_WITH_PENDING_SQL|revokeWithPendingSql)\s*=\s*"""(.*?)"""', schema_code, re.DOTALL)
+            if with_pend_match:
+                sql_txt = with_pend_match.group(2)
+                where_part = sql_txt.split("WHERE")[1] if "WHERE" in sql_txt else ""
+                if "pending_static_dh_public_key = ?" not in where_part or "pending_generation = ?" not in where_part:
+                    errors.append(f"{platform} revokeWithPending SQL missing exact pending WHERE guards (S83)")
 
     return errors
 
@@ -1196,14 +1254,22 @@ def selftest() -> int:
         else: failures.append("Mutation S73 was NOT caught")
         reset_all()
 
-        # S74: Approval guarded SQL missing predicate
-        f_kt_schema.write_text(f_kt_schema.read_text(encoding="utf-8").replace("AND pending_generation = ?", ""), encoding="utf-8")
+        # S74: Approval guarded SQL missing predicate (isolated)
+        schema_txt = f_kt_schema.read_text(encoding="utf-8")
+        appr_match = re.search(r'const val APPROVE_PENDING_ROTATION_SQL\s*=\s*""".*?"""', schema_txt, re.DOTALL)
+        if appr_match:
+            mutated_appr = appr_match.group(0).replace("AND pending_generation = ?", "")
+            f_kt_schema.write_text(schema_txt.replace(appr_match.group(0), mutated_appr), encoding="utf-8")
         if any("S74" in e for e in run_check()): passed += 1
         else: failures.append("Mutation S74 was NOT caught")
         reset_all()
 
-        # S75: Revocation guarded SQL authority broken
-        f_kt_schema.write_text(f_kt_schema.read_text(encoding="utf-8").replace("AND signing_public_key = ?", ""), encoding="utf-8")
+        # S75: Revocation guarded SQL authority broken (isolated)
+        schema_txt = f_kt_schema.read_text(encoding="utf-8")
+        revoke_match = re.search(r'const val REVOKE_NO_PENDING_SQL\s*=\s*""".*?"""', schema_txt, re.DOTALL)
+        if revoke_match:
+            mutated_revoke = revoke_match.group(0).replace("AND signing_public_key = ?", "")
+            f_kt_schema.write_text(schema_txt.replace(revoke_match.group(0), mutated_revoke), encoding="utf-8")
         if any("S75" in e for e in run_check()): passed += 1
         else: failures.append("Mutation S75 was NOT caught")
         reset_all()
@@ -1238,12 +1304,38 @@ def selftest() -> int:
         else: failures.append("Mutation S80 was NOT caught")
         reset_all()
 
+        # S81: Android peer preference backup file removed from targetFiles
+        f_kt_store.write_text(f_kt_store.read_text(encoding="utf-8").replace("listOf(prefFile, prefBackupFile)", "listOf(prefFile)"), encoding="utf-8")
+        if any("S81" in e for e in run_check()): passed += 1
+        else: failures.append("Mutation S81 was NOT caught")
+        reset_all()
+
+        # S82: Approval current-trust CAS broken
+        schema_txt = f_kt_schema.read_text(encoding="utf-8")
+        appr_match = re.search(r'const val APPROVE_PENDING_ROTATION_SQL\s*=\s*""".*?"""', schema_txt, re.DOTALL)
+        if appr_match:
+            mutated_appr = appr_match.group(0).replace("AND trust_level = ?", "")
+            f_kt_schema.write_text(schema_txt.replace(appr_match.group(0), mutated_appr), encoding="utf-8")
+        if any("S82" in e for e in run_check()): passed += 1
+        else: failures.append("Mutation S82 was NOT caught")
+        reset_all()
+
+        # S83: Revocation pending-state CAS broken
+        schema_txt = f_kt_schema.read_text(encoding="utf-8")
+        with_pend_match = re.search(r'const val REVOKE_WITH_PENDING_SQL\s*=\s*""".*?"""', schema_txt, re.DOTALL)
+        if with_pend_match:
+            mutated_with = with_pend_match.group(0).replace("AND pending_generation = ?", "")
+            f_kt_schema.write_text(schema_txt.replace(with_pend_match.group(0), mutated_with), encoding="utf-8")
+        if any("S83" in e for e in run_check()): passed += 1
+        else: failures.append("Mutation S83 was NOT caught")
+        reset_all()
+
     if failures:
         for f in failures:
             print(f"::error::selftest failure: {f}")
         return 1
 
-    print(f"check_peer_identity_store_controls selftest PASSED ({passed}/80 mutations caught deterministically).")
+    print(f"check_peer_identity_store_controls selftest PASSED ({passed}/83 mutations caught deterministically).")
     return 0
 
 
