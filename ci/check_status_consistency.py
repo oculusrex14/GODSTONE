@@ -396,8 +396,10 @@ def check_consistency(
                     errors.append("ADR-003 status: must mention C8.1B status as implemented/pending freeze")
                 if "C8.2" not in s_text:
                     errors.append("ADR-003 status: must mention C8.2 status")
-                if re.search(r"C8\.3[^\n]*(?<!Un)implemented\b", s_text, re.IGNORECASE) or re.search(r"C8\.3[^\n]*\b(?:CLOSED|Frozen)\b", s_text, re.IGNORECASE) or "Unimplemented / Open" not in s_text:
-                    errors.append("ADR-003 status: C8.2/C8.3 must not be claimed as implemented or closed")
+                if "C8.3" not in s_text:
+                    errors.append("ADR-003 status: must mention C8.3 status")
+                if re.search(r"C8\.4[^\n]*(?<!Un)implemented\b", s_text, re.IGNORECASE) or re.search(r"C8\.4[^\n]*\b(?:CLOSED|Frozen)\b", s_text, re.IGNORECASE) or "C8.4 Noise & Handshake Trust Gating:** OPEN" not in s_text:
+                    errors.append("ADR-003 status: C8.4 must remain open and not claimed as implemented or closed")
                 if "open" not in s_text.lower():
                     errors.append("ADR-003 status: must state implementation is OPEN")
                 if "Sealed-Sender" not in s_text or "OPEN" not in s_text.upper():
@@ -675,15 +677,15 @@ def selftest() -> int:
             failures.append("Mutation S17 (A-05 missing C8.0 evidence) was NOT detected")
         f_findings.write_text(FINDINGS_STATUS_PATH.read_text(encoding="utf-8"), encoding="utf-8")
 
-        # Mutation S18: ADR-003 claims C8.2 is implemented (S2)
+        # Mutation S18: ADR-003 claims C8.4 is implemented (S2)
         adr003_clean = f_adr003.read_text(encoding="utf-8")
-        s18 = adr003_clean.replace("Unimplemented / Open", "Implemented / Closed")
+        s18 = adr003_clean.replace("C8.4 Noise & Handshake Trust Gating:** OPEN", "C8.4 Noise & Handshake Trust Gating:** Implemented & Closed")
         f_adr003.write_text(s18, encoding="utf-8")
         errs = check_consistency(f_findings, f_gates, f_tiers, f_manifest, f_status, f_adr004, f_adr003)
-        if any("ADR-003" in e and "C8.2" in e for e in errs):
+        if any("ADR-003" in e and "C8.4" in e for e in errs):
             passed_mutations += 1
         else:
-            failures.append("Mutation S2 (ADR-003 claims C8.2 is implemented) was NOT detected")
+            failures.append("Mutation S2 (ADR-003 claims C8.4 is implemented) was NOT detected")
         f_adr003.write_text(adr003_clean, encoding="utf-8")
 
         # Mutation S19: ADR-003 resolver marked READY

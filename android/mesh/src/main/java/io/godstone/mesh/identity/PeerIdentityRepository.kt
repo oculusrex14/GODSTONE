@@ -93,18 +93,18 @@ private sealed class RevokeControlAbort : RuntimeException() {
 }
 
 /**
+ * Strict raw row decoder enforcing steps D1-D5 (ADR-003 §10.2).
+ */
+private sealed class DecodeResult {
+    data class Success(val record: PeerIdentityRecord) : DecodeResult()
+    data class Failure(val reason: PeerTrustRepositoryCorruptionReason) : DecodeResult()
+}
+
+/**
  * Durable peer identity repository owning transaction serialization, strict row decoding,
  * and post-mutation readback verification (ADR-003, Phase C8.2B).
  */
 internal class PeerIdentityRepository(private val store: PeerIdentityStore) {
-
-    /**
-     * Strict raw row decoder enforcing steps D1-D5 (ADR-003 §10.2).
-     */
-    private sealed class DecodeResult {
-        data class Success(val record: PeerIdentityRecord) : DecodeResult()
-        data class Failure(val reason: PeerTrustRepositoryCorruptionReason) : DecodeResult()
-    }
 
     private fun decodeRowStrict(row: PeerIdentityRow): DecodeResult {
         // D1: Decode trust level from explicit persisted code

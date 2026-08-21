@@ -9,11 +9,11 @@
 - **Phase C8.1B Local Identity Authority:** Implemented & Frozen (durable `LocalIdentityStateV1` authority, zero-parameter canonical local issuer, legacy migration, panic-wipe integration, platform CryptoKit/BouncyCastle signing, semantic and locked-KAT verification conformance to the canonical `IdentityBindingV1` contract, internal Keychain/SharedPreferences storage boundaries).
 - **Phase C8.2A Pure Peer Trust Engine & Models:** Implemented & Frozen (pure deterministic `PeerTrustEngine`, 11-rule durable `PeerIdentityRecordValidator`, explicit persistence codes `TOFU_PINNED(1)`, `USER_VERIFIED(2)`, `REVOKED(3)`, effective state precedence, typed `PeerTrustRejectReason` / `TrustPlan` taxonomy, cross-platform decision matrix).
 - **Phase C8.2B Durable Peer Trust Persistence:** Implemented & Frozen (physically separate durable `godstone_peer_identities.db` store, strict raw-row decoder D1-D5, serialized transactional `applyValidatedBinding`, read classification `PeerIdentityLookup`, and cross-connection concurrency evidence).
-- **Phase C8.2C Peer Trust Lifecycle Authority:** Implemented / Candidate for Freeze (exact-candidate rotation approval, durable revocation, guarded CAS transitions, trust preservation, and platform-precise coordinated panic-wipe peer-store integration repo-tested on Android and iOS).
-- **Phase C8.3+ Peer Trust Integration:** Unimplemented / Open (BoundRecipientKeyResolver, Noise HS2/HS3 handshake integration, and device evidence remain open).
-- **Phase C8.4 Noise & Handshake Trust Gating:** OPEN (Noise HS2/HS3 handshake integration, pre-HS3 initiator validation, and READY gating open).
+- **Phase C8.2C Peer Trust Lifecycle Authority:** Implemented & Frozen (exact-candidate rotation approval, durable revocation, guarded CAS transitions, trust preservation, and platform-precise coordinated panic-wipe peer-store integration repo-tested on Android and iOS).
+- **Phase C8.3 Bound Recipient Key Resolver:** Implemented / Candidate for Freeze (read-only durable peer-identity -> ACK signing-key authority, fail-closed matrix, stateless evaluation, no-mutation boundary, and full ACK authenticator integration on Android and iOS; runtime composition installation deferred to C8.4).
+- **Phase C8.4 Noise & Handshake Trust Gating:** OPEN (Noise HS2/HS3 handshake integration, pre-HS3 initiator validation, runtime repository lifecycle coordination, and READY gating open).
 - **Sealed-Sender Authenticated Authorship:** OPEN (underlying L4 application envelope open).
-- **Production `RecipientKeyResolver`:** UNRESOLVED / Fail-closed (`UnresolvedRecipientKeyResolver`).
+- **Production `RecipientKeyResolver`:** UNRESOLVED / Fail-closed in composition (`UnresolvedRecipientKeyResolver`).
 - **Link Layer:** Disabled (`LINK_LAYER_READY = false` / `linkLayerReady = false`).
 
 ---
@@ -497,20 +497,22 @@ The production placeholder:
 ```kotlin
 UnresolvedRecipientKeyResolver  // Fail-closed
 ```
-remains untouched in Phase C8.0.2.
-
-### 15.1 Future Production Resolver Contract (`BoundRecipientKeyResolver`)
-When implemented in C8.1, `BoundRecipientKeyResolver` will resolve `node_id -> Ed25519 signing public key` under strict conditions:
+### 15.1 Production Resolver Contract (`BoundRecipientKeyResolver`)
+In Phase C8.3, `BoundRecipientKeyResolver` resolves `node_id -> Ed25519 signing public key` under strict conditions:
 - **Authorized Returns:** Returns `signingPublicKey` **ONLY** when:
-  1. `pendingStaticDhPublicKey == null` (no unresolved quarantine exists), and
+  1. `PeerIdentityLookup.Verified` is returned (no pending rotation candidate exists, not revoked), and
   2. `trustLevel` is `TOFU_PINNED` or `USER_VERIFIED`.
 - **Null Returns:** MUST return `null` (causing ACK verification to fail closed) for:
-  - Unseen `node_id`,
-  - Unverified bindings,
-  - Quarantined peers (`pendingStaticDhPublicKey != null`),
-  - Revoked peers (`trustLevel == REVOKED`).
-
-*Authority Boundaries:* ACK frames, expected recipient delivery rows, and discovery advertisements NEVER create or mutate resolver mappings.
+  - Unseen `node_id` (`NotFound`),
+  - Quarantined peers (`Quarantined` / `pendingStaticDhPublicKey != null`),
+  - Revoked peers (`Revoked` / `trustLevel == REVOKED`),
+  - Corrupt storage records (`Corrupt`),
+  - Storage I/O errors (`StorageFailure`),
+  - Invalid arguments (`InvalidArgument`, `nodeId` length != 16).
+- **Read-Only Authority:** `BoundRecipientKeyResolver` consumes a read-only `PeerIdentityLookupSource` / `PeerIdentityRepository.lookup` and performs NO store mutations, approvals, revocations, or key creations.
+- **Stateless:** Never caches or memoizes keys; all invocations re-query durable authority.
+- **Composition Boundary:** `BoundRecipientKeyResolver` is implemented and verified in GodstoneMesh tests, but runtime installation in `MeshModule` / `AppContainer` is intentionally deferred to Phase C8.4 where live peer store lifecycle, Noise handshake ingestion, and panic-wipe coordination are integrated together.
+- *Authority Boundaries:* ACK frames, expected recipient delivery rows, and discovery advertisements NEVER create or mutate resolver mappings.
 
 ---
 
