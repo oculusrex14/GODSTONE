@@ -136,4 +136,53 @@ final class PanicWipeTests: XCTestCase {
         // eraseKeys must NOT run -- the journal already says keys are gone.
         XCTAssertEqual(a.calls, ["deleteArtifacts", "regenerateIdentity"])
     }
+
+    func testSqlitePeerIdentityStore_PanicWipe_DeletesMainAndSidecarsHostSide() throws {
+        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: tempDir) }
+
+        let dbUrl = tempDir.appendingPathComponent("peer.db")
+        let walUrl = tempDir.appendingPathComponent("peer.db-wal")
+        let shmUrl = tempDir.appendingPathComponent("peer.db-shm")
+        let journalUrl = tempDir.appendingPathComponent("peer.db-journal")
+
+        // Create main and sidecars
+        try "db".write(to: dbUrl, atomically: true, encoding: .utf8)
+        try "wal".write(to: walUrl, atomically: true, encoding: .utf8)
+        try "shm".write(to: shmUrl, atomically: true, encoding: .utf8)
+        try "journal".write(to: journalUrl, atomically: true, encoding: .utf8)
+
+        XCTAssertTrue(FileManager.default.fileExists(atPath: dbUrl.path))
+        XCTAssertTrue(FileManager.default.fileExists(atPath: walUrl.path))
+        XCTAssertTrue(FileManager.default.fileExists(atPath: shmUrl.path))
+        XCTAssertTrue(FileManager.default.fileExists(atPath: journalUrl.path))
+
+        let wiped = SqlitePeerIdentityStore.panicWipe(at: dbUrl)
+        XCTAssertTrue(wiped)
+
+        XCTAssertFalse(FileManager.default.fileExists(atPath: dbUrl.path))
+        XCTAssertFalse(FileManager.default.fileExists(atPath: walUrl.path))
+        XCTAssertFalse(FileManager.default.fileExists(atPath: shmUrl.path))
+        XCTAssertFalse(FileManager.default.fileExists(atPath: journalUrl.path))
+
+        // Idempotent: deleting when absent returns true
+        XCTAssertTrue(SqlitePeerIdentityStore.panicWipe(at: dbUrl))
+    }
+
+    func testKeychainWipeArtifacts_DeletionFailureThrows_AndLeavesJournalAtKeyErased() throws {
+        let j = FakeJournal()
+        var identityRegenerated = false
+
+        let artifacts = KeychainWipeArtifacts(
+            keychain: DefaultLocalIdentityKeychain(),
+            peerStoreUrl: URL(fileURLWithPath: "/tmp/peer.db"),
+            peerStoreWiper: { _ in false } // Injected wipe failure
+        )
+
+        let wiper = PanicWipe(journal: j, artifacts: artifacts)
+        XCTAssertThrowsError(try wiper.begin())
+        XCTAssertEqual(j.state, .keyErased, "Journal must halt at keyErased on delete failure")
+        XCTAssertFalse(identityRegenerated, "Identity must not be regenerated if deletion fails")
+    }
 }

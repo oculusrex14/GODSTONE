@@ -96,6 +96,21 @@ CANONICAL_SEMANTIC_TEST_METHODS = [
     "testConcurrencyC4OldAcceptedReplayKeepsQuarantined",
 ]
 
+CANONICAL_C82C_TEST_METHODS = [
+    "testApprovePending_ExactCandidateSuccess_PromotesToAcceptedAndClearsPending",
+    "testApprovePending_StaleGeneration_ReturnsStaleCandidateAndDoesNotMutate",
+    "testApprovePending_SameGenerationWrongStatic_ReturnsStaleCandidateAndDoesNotMutate",
+    "testApprovePending_NoPendingCandidate_ReturnsNoPendingCandidateAndDoesNotMutate",
+    "testApprovePending_PreservesTofuPinnedTrustLevel",
+    "testApprovePending_PreservesUserVerifiedTrustLevel",
+    "testApprovePending_Revoked_ReturnsRejectedRevoked",
+    "testApprovePending_Vs_NewerPending_CrossConnectionRace",
+    "testRevokePeer_ActiveNoPending_RevokesAndPreservesAcceptedAudit",
+    "testRevokePeer_ActiveWithPending_RevokesAndClearsPending",
+    "testRevokePeer_AlreadyRevoked_ReturnsAlreadyRevokedWithoutMutation",
+    "testRevokePeer_Vs_InboundApply_CrossConnectionRace",
+]
+
 
 def check_controls(
     kt_schema: str = None,
@@ -354,15 +369,115 @@ def check_controls(
         except json.JSONDecodeError as e:
             errors.append(f"Failed to parse FINDINGS_STATUS.json: {e}")
 
-    # 9. Required Semantic Inventory (S50 - Android, S51 - iOS)
+    # 10. Approval SQL CAS Invariants (S52)
+    for schema_code, platform in [(kt_schema, "Android"), (swift_store, "iOS")]:
+        if schema_code:
+            if "accepted_static_dh_public_key = pending_static_dh_public_key" not in schema_code:
+                errors.append(f"{platform} approval SQL missing accepted_static promotion (S52)")
+            if "accepted_generation = pending_generation" not in schema_code:
+                errors.append(f"{platform} approval SQL missing accepted_generation promotion (S52)")
+            if "trust_level IN (1,2)" not in schema_code and "trust_level IN (1, 2)" not in schema_code:
+                errors.append(f"{platform} approval SQL missing trust_level IN (1,2) predicate (S52)")
+
+    # 11. Revocation SQL CAS Invariants (S53)
+    for schema_code, platform in [(kt_schema, "Android"), (swift_store, "iOS")]:
+        if schema_code:
+            if "trust_level = 3" not in schema_code:
+                errors.append(f"{platform} revocation SQL missing trust_level = 3 assignment (S53)")
+            if "pending_static_dh_public_key = NULL" not in schema_code:
+                errors.append(f"{platform} revocation SQL missing pending_static NULL assignment (S53)")
+            if "pending_generation = NULL" not in schema_code:
+                errors.append(f"{platform} revocation SQL missing pending_generation NULL assignment (S53)")
+
+    # 12. Approval & Revocation Method Contracts (S54, S55)
+    if kt_repo:
+        if not re.search(r'fun\s+approvePendingRotation\s*\(\s*nodeId:\s*ByteArray,\s*expectedPendingGeneration:\s*Long,\s*expectedPendingStaticDhPublicKey:\s*ByteArray\s*\)\s*:\s*RotationApprovalResult', kt_repo):
+            errors.append("Android PeerIdentityRepository missing approvePendingRotation contract (S54)")
+        if not re.search(r'fun\s+revokePeer\s*\(\s*nodeId:\s*ByteArray\s*\)\s*:\s*RevokeResult', kt_repo):
+            errors.append("Android PeerIdentityRepository missing revokePeer contract (S55)")
+    if swift_repo:
+        if not re.search(r'func\s+approvePendingRotation\s*\(\s*nodeId:\s*Data,\s*expectedPendingGeneration:\s*UInt32,\s*expectedPendingStaticDhPublicKey:\s*Data\s*\)\s*->\s*RotationApprovalResult', swift_repo):
+            errors.append("iOS PeerIdentityRepository missing approvePendingRotation contract (S54)")
+        if not re.search(r'func\s+revokePeer\s*\(\s*_?\s*nodeId:\s*Data\s*\)\s*->\s*RevokeResult', swift_repo):
+            errors.append("iOS PeerIdentityRepository missing revokePeer contract (S55)")
+
+    # 13. Pre-Mutation Non-Success Abort Without Mutation (S56, S57)
+    if kt_repo:
+        if "ApprovalControlAbort" not in kt_repo:
+            errors.append("Android PeerIdentityRepository must use ApprovalControlAbort for approval non-success exits (S56)")
+        if "RevokeControlAbort" not in kt_repo:
+            errors.append("Android PeerIdentityRepository must use RevokeControlAbort for revoke non-success exits (S57)")
+    if swift_repo:
+        if "ApprovalControlAbort" not in swift_repo:
+            errors.append("iOS PeerIdentityRepository must use ApprovalControlAbort for approval non-success exits (S56)")
+        if "RevokeControlAbort" not in swift_repo:
+            errors.append("iOS PeerIdentityRepository must use RevokeControlAbort for revoke non-success exits (S57)")
+
+    # 14. Trust Level Preservation in Approval (S58)
+    if kt_repo:
+        if "trustLevel = currentRecord.trustLevel.persistedCode" not in kt_repo:
+            errors.append("Android approval must preserve existing trust level (S58)")
+    if swift_repo:
+        if "trustLevel: Int32(currentRecord.trustLevel.persistedCode)" not in swift_repo:
+            errors.append("iOS approval must preserve existing trust level (S58)")
+
+    # 15. Exact Candidate Matching in Approval (S59)
+    if kt_repo:
+        if "currentRecord.pendingGeneration != expectedPendingGeneration" not in kt_repo or "!currentRecord.pendingStaticDhPublicKey.contentEquals(expectedPendingStaticDhPublicKey)" not in kt_repo:
+            errors.append("Android approval must verify exact pending candidate match (S59)")
+    if swift_repo:
+        if "currentPendingGen != expectedPendingGeneration" not in swift_repo or "currentPendingStatic != expectedPendingStaticDhPublicKey" not in swift_repo:
+            errors.append("iOS approval must verify exact pending candidate match (S59)")
+
+    # 16. No Unsafe Discard API (S60)
+    for code, platform in [(kt_repo, "Android Repo"), (kt_store, "Android Store"), (swift_repo, "iOS Repo"), (swift_store, "iOS Store")]:
+        if code:
+            if "discardPending" in code or "clearPendingRotation" in code or "acceptOldBinding" in code:
+                errors.append(f"{platform} must NOT expose unsafe discard / clearPending / acceptOldBinding API (S60)")
+
+    # 17. Panic Wipe Invariants & Wiring (S61, S62)
+    if kt_store:
+        if "fun panicWipe(ctx: Context)" not in kt_store:
+            errors.append("Android SqlcipherPeerIdentityStore must implement panicWipe(ctx) (S61)")
+        if "ctx.deleteDatabase(PeerIdentitySchema.DB_NAME)" not in kt_store or "ctx.deleteSharedPreferences(PeerIdentitySchema.KEY_PREFS)" not in kt_store:
+            errors.append("Android SqlcipherPeerIdentityStore.panicWipe must delete DB and key prefs (S61)")
+        for sidecar in ["-wal", "-shm", "-journal"]:
+            if sidecar not in kt_store:
+                errors.append(f"Android SqlcipherPeerIdentityStore.panicWipe must delete sidecar '{sidecar}' (S61)")
+    if swift_store:
+        if "static func panicWipe(at url: URL) -> Bool" not in swift_store:
+            errors.append("iOS SqlitePeerIdentityStore must implement panicWipe(at: URL) -> Bool (S62)")
+        for sidecar in ["-wal", "-shm", "-journal"]:
+            if sidecar not in swift_store:
+                errors.append(f"iOS SqlitePeerIdentityStore.panicWipe must delete sidecar '{sidecar}' (S62)")
+
+    # 18. Post-Mutation Verification (S65, S66)
+    if kt_repo:
+        if "ApprovePendingRotation readback mismatch" not in kt_repo:
+            errors.append("Android approval must verify readback record matches expected (S65)")
+        if "RevokePeer readback mismatch" not in kt_repo:
+            errors.append("Android revoke must verify readback record matches expected (S66)")
+    if swift_repo:
+        if 'mutationReadbackMismatch("ApprovePendingRotation readback mismatch")' not in swift_repo:
+            errors.append("iOS approval must verify readback record matches expected (S65)")
+        if 'mutationReadbackMismatch("RevokePeer readback mismatch")' not in swift_repo:
+            errors.append("iOS revoke must verify readback record matches expected (S66)")
+
+    # 19. Required Semantic Inventory (S50, S51, S67, S68)
     if kt_repo_test:
         for method_name in CANONICAL_SEMANTIC_TEST_METHODS:
             if method_name not in kt_repo_test:
                 errors.append(f"Android test source missing canonical method '{method_name}' (S50)")
+        for method_name in CANONICAL_C82C_TEST_METHODS:
+            if method_name not in kt_repo_test:
+                errors.append(f"Android test source missing C8.2C canonical method '{method_name}' (S67)")
     if swift_repo_test:
         for method_name in CANONICAL_SEMANTIC_TEST_METHODS:
             if method_name not in swift_repo_test:
                 errors.append(f"iOS test source missing canonical method '{method_name}' (S51)")
+        for method_name in CANONICAL_C82C_TEST_METHODS:
+            if method_name not in swift_repo_test:
+                errors.append(f"iOS test source missing C8.2C canonical method '{method_name}' (S68)")
 
     return errors
 
@@ -741,12 +856,114 @@ def selftest() -> int:
         else: failures.append("Mutation S51 was NOT caught")
         reset_all()
 
+        # S52: Approval SQL missing trust_level IN (1,2)
+        f_kt_schema.write_text(f_kt_schema.read_text(encoding="utf-8").replace("trust_level IN (1,2)", "1=1"), encoding="utf-8")
+        if any("S52" in e for e in run_check()): passed += 1
+        else: failures.append("Mutation S52 was NOT caught")
+        reset_all()
+
+        # S53: Revocation SQL missing trust_level = 3 assignment
+        f_kt_schema.write_text(f_kt_schema.read_text(encoding="utf-8").replace("trust_level = 3", "trust_level = 1"), encoding="utf-8")
+        if any("S53" in e for e in run_check()): passed += 1
+        else: failures.append("Mutation S53 was NOT caught")
+        reset_all()
+
+        # S54: Android approvePendingRotation signature modified
+        f_kt_repo.write_text(f_kt_repo.read_text(encoding="utf-8").replace("expectedPendingGeneration: Long", "expectedPendingGeneration: Int"), encoding="utf-8")
+        if any("S54" in e for e in run_check()): passed += 1
+        else: failures.append("Mutation S54 was NOT caught")
+        reset_all()
+
+        # S55: Android revokePeer signature modified
+        f_kt_repo.write_text(f_kt_repo.read_text(encoding="utf-8").replace("fun revokePeer(nodeId: ByteArray): RevokeResult", "fun revokePeer(nodeId: String): RevokeResult"), encoding="utf-8")
+        if any("S55" in e for e in run_check()): passed += 1
+        else: failures.append("Mutation S55 was NOT caught")
+        reset_all()
+
+        # S56: Android approval pre-mutation abort removed
+        f_kt_repo.write_text(f_kt_repo.read_text(encoding="utf-8").replace("ApprovalControlAbort", "ApprovalBypassAbort"), encoding="utf-8")
+        if any("S56" in e for e in run_check()): passed += 1
+        else: failures.append("Mutation S56 was NOT caught")
+        reset_all()
+
+        # S57: Android revoke pre-mutation abort removed
+        f_kt_repo.write_text(f_kt_repo.read_text(encoding="utf-8").replace("RevokeControlAbort", "RevokeBypassAbort"), encoding="utf-8")
+        if any("S57" in e for e in run_check()): passed += 1
+        else: failures.append("Mutation S57 was NOT caught")
+        reset_all()
+
+        # S58: Approval mutates trust level
+        f_kt_repo.write_text(f_kt_repo.read_text(encoding="utf-8").replace("trustLevel = currentRecord.trustLevel.persistedCode", "trustLevel = PeerTrustLevel.USER_VERIFIED.persistedCode"), encoding="utf-8")
+        if any("S58" in e for e in run_check()): passed += 1
+        else: failures.append("Mutation S58 was NOT caught")
+        reset_all()
+
+        # S59: Approval skips exact candidate check
+        f_kt_repo.write_text(f_kt_repo.read_text(encoding="utf-8").replace("currentRecord.pendingGeneration != expectedPendingGeneration", "false"), encoding="utf-8")
+        if any("S59" in e for e in run_check()): passed += 1
+        else: failures.append("Mutation S59 was NOT caught")
+        reset_all()
+
+        # S60: Repository adds unsafe clearPendingRotation
+        f_kt_repo.write_text(f_kt_repo.read_text(encoding="utf-8") + "\nfun clearPendingRotation() {}\n", encoding="utf-8")
+        if any("S60" in e for e in run_check()): passed += 1
+        else: failures.append("Mutation S60 was NOT caught")
+        reset_all()
+
+        # S61: Android panic wipe misses sidecars
+        f_kt_store.write_text(f_kt_store.read_text(encoding="utf-8").replace("-wal", "-disabled"), encoding="utf-8")
+        if any("S61" in e for e in run_check()): passed += 1
+        else: failures.append("Mutation S61 was NOT caught")
+        reset_all()
+
+        # S62: iOS panic wipe misses sidecars
+        f_swift_store.write_text(f_swift_store.read_text(encoding="utf-8").replace("-shm", "-disabled"), encoding="utf-8")
+        if any("S62" in e for e in run_check()): passed += 1
+        else: failures.append("Mutation S62 was NOT caught")
+        reset_all()
+
+        # S63: iOS approval signature modified
+        f_swift_repo.write_text(f_swift_repo.read_text(encoding="utf-8").replace("expectedPendingGeneration: UInt32", "expectedPendingGeneration: Int"), encoding="utf-8")
+        if any("S54" in e for e in run_check()): passed += 1
+        else: failures.append("Mutation S63 was NOT caught")
+        reset_all()
+
+        # S64: iOS revoke signature modified
+        f_swift_repo.write_text(f_swift_repo.read_text(encoding="utf-8").replace("func revokePeer(_ nodeId: Data) -> RevokeResult", "func revokePeer(nodeId: String) -> RevokeResult"), encoding="utf-8")
+        if any("S55" in e for e in run_check()): passed += 1
+        else: failures.append("Mutation S64 was NOT caught")
+        reset_all()
+
+        # S65: Android approval readback verification removed
+        f_kt_repo.write_text(f_kt_repo.read_text(encoding="utf-8").replace("ApprovePendingRotation readback mismatch", "ApprovePendingRotation readback ignored"), encoding="utf-8")
+        if any("S65" in e for e in run_check()): passed += 1
+        else: failures.append("Mutation S65 was NOT caught")
+        reset_all()
+
+        # S66: Android revoke readback verification removed
+        f_kt_repo.write_text(f_kt_repo.read_text(encoding="utf-8").replace("RevokePeer readback mismatch", "RevokePeer readback ignored"), encoding="utf-8")
+        if any("S66" in e for e in run_check()): passed += 1
+        else: failures.append("Mutation S66 was NOT caught")
+        reset_all()
+
+        # S67: Android test missing C8.2C semantic test method
+        f_kt_test.write_text(f_kt_test.read_text(encoding="utf-8").replace("testApprovePending_ExactCandidateSuccess_PromotesToAcceptedAndClearsPending", "testOldApprovePending"), encoding="utf-8")
+        if any("S67" in e for e in run_check()): passed += 1
+        else: failures.append("Mutation S67 was NOT caught")
+        reset_all()
+
+        # S68: iOS test missing C8.2C semantic test method
+        f_swift_test.write_text(f_swift_test.read_text(encoding="utf-8").replace("testRevokePeer_ActiveNoPending_RevokesAndPreservesAcceptedAudit", "testOldRevokePeer"), encoding="utf-8")
+        if any("S68" in e for e in run_check()): passed += 1
+        else: failures.append("Mutation S68 was NOT caught")
+        reset_all()
+
     if failures:
         for f in failures:
             print(f"::error::selftest failure: {f}")
         return 1
 
-    print(f"check_peer_identity_store_controls selftest PASSED ({passed}/51 mutations caught deterministically).")
+    print(f"check_peer_identity_store_controls selftest PASSED ({passed}/68 mutations caught deterministically).")
     return 0
 
 

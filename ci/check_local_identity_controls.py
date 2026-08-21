@@ -450,7 +450,7 @@ def selftest() -> int:
 
     # M38: Android WipeArtifacts gains zero-arg default null constructor
     def mutate_m38(a_state, a_id, a_wipe, a_test, i_state, i_id, i_wipe, i_test, a_mesh, i_mesh):
-        a_wipe.write_text(a_wipe.read_text(encoding="utf-8").replace("internal class AndroidWipeArtifacts private constructor", "internal class AndroidWipeArtifacts(private val ctx: Context? = null"), encoding="utf-8")
+        a_wipe.write_text(a_wipe.read_text(encoding="utf-8").replace("internal class AndroidWipeArtifacts internal constructor", "internal class AndroidWipeArtifacts(private val ctx: Context? = null"), encoding="utf-8")
     mutations.append(("M38", "must not have default null Context constructor", mutate_m38))
 
     # Execute all 38 mutations

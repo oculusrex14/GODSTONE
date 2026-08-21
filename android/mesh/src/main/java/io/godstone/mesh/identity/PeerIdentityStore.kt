@@ -100,6 +100,26 @@ internal interface PeerIdentityStore : AutoCloseable {
         newPendingGeneration: Long
     ): Int
 
+    fun approvePendingRotationGuarded(
+        nodeId: ByteArray,
+        signingPub: ByteArray,
+        acceptedStatic: ByteArray,
+        acceptedGeneration: Long,
+        trustLevel: Int,
+        expectedPendingStatic: ByteArray,
+        expectedPendingGeneration: Long
+    ): Int
+
+    fun revokePeerGuarded(
+        nodeId: ByteArray,
+        signingPub: ByteArray,
+        acceptedStatic: ByteArray,
+        acceptedGeneration: Long,
+        currentTrustLevel: Int,
+        oldPendingStatic: ByteArray?,
+        oldPendingGeneration: Long?
+    ): Int
+
     override fun close()
 }
 
@@ -276,6 +296,61 @@ internal class SqlcipherPeerIdentityStore(ctx: Context) : PeerIdentityStore {
         }
     }
 
+    override fun approvePendingRotationGuarded(
+        nodeId: ByteArray,
+        signingPub: ByteArray,
+        acceptedStatic: ByteArray,
+        acceptedGeneration: Long,
+        trustLevel: Int,
+        expectedPendingStatic: ByteArray,
+        expectedPendingGeneration: Long
+    ): Int {
+        val db = helper.writableDatabase
+        return db.compileStatement(PeerIdentitySchema.APPROVE_PENDING_ROTATION_SQL).use { stmt: SQLiteStatement ->
+            stmt.bindBlob(1, nodeId)
+            stmt.bindBlob(2, signingPub)
+            stmt.bindBlob(3, acceptedStatic)
+            stmt.bindLong(4, acceptedGeneration)
+            stmt.bindLong(5, trustLevel.toLong())
+            stmt.bindBlob(6, expectedPendingStatic)
+            stmt.bindLong(7, expectedPendingGeneration)
+            stmt.executeUpdateDelete()
+        }
+    }
+
+    override fun revokePeerGuarded(
+        nodeId: ByteArray,
+        signingPub: ByteArray,
+        acceptedStatic: ByteArray,
+        acceptedGeneration: Long,
+        currentTrustLevel: Int,
+        oldPendingStatic: ByteArray?,
+        oldPendingGeneration: Long?
+    ): Int {
+        val db = helper.writableDatabase
+        return if (oldPendingStatic != null && oldPendingGeneration != null) {
+            db.compileStatement(PeerIdentitySchema.REVOKE_WITH_PENDING_SQL).use { stmt: SQLiteStatement ->
+                stmt.bindBlob(1, nodeId)
+                stmt.bindBlob(2, signingPub)
+                stmt.bindBlob(3, acceptedStatic)
+                stmt.bindLong(4, acceptedGeneration)
+                stmt.bindLong(5, currentTrustLevel.toLong())
+                stmt.bindBlob(6, oldPendingStatic)
+                stmt.bindLong(7, oldPendingGeneration)
+                stmt.executeUpdateDelete()
+            }
+        } else {
+            db.compileStatement(PeerIdentitySchema.REVOKE_NO_PENDING_SQL).use { stmt: SQLiteStatement ->
+                stmt.bindBlob(1, nodeId)
+                stmt.bindBlob(2, signingPub)
+                stmt.bindBlob(3, acceptedStatic)
+                stmt.bindLong(4, acceptedGeneration)
+                stmt.bindLong(5, currentTrustLevel.toLong())
+                stmt.executeUpdateDelete()
+            }
+        }
+    }
+
     override fun close() {
         helper.close()
     }
@@ -344,6 +419,28 @@ internal class SqlcipherPeerIdentityStore(ctx: Context) : PeerIdentityStore {
                 generate = { ByteArray(32).also { SecureRandom().nextBytes(it) } },
                 persist = { encoded -> prefs.edit().putString("k", encoded).commit() }
             )
+        }
+
+        /**
+         * Panic wipe (ADR-004 criterion 5, Phase C8.2C).
+         * Deletes the peer identity database, its sidecar files (-wal, -shm, -journal),
+         * and the dedicated encryption key preference file.
+         * Fails closed if deletion of existing files fails.
+         * Never recreates the key or database. Idempotent.
+         */
+        fun panicWipe(ctx: Context) {
+            ctx.deleteDatabase(PeerIdentitySchema.DB_NAME)
+            ctx.deleteSharedPreferences(PeerIdentitySchema.KEY_PREFS)
+            val dbFile = ctx.getDatabasePath(PeerIdentitySchema.DB_NAME)
+            if (dbFile.exists()) {
+                throw IllegalStateException("Failed to delete peer identity database during panic wipe")
+            }
+            listOf("-wal", "-shm", "-journal").forEach { ext ->
+                val sidecar = File(dbFile.path + ext)
+                if (sidecar.exists()) {
+                    sidecar.delete()
+                }
+            }
         }
     }
 }

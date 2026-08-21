@@ -50,6 +50,10 @@ final class PeerIdentityRepositoryTests: XCTestCase {
         return validated
     }
 
+    private func staticPubFromPriv(_ priv: Data) -> Data {
+        (try! Curve25519.KeyAgreement.PrivateKey(rawRepresentation: priv)).publicKey.rawRepresentation
+    }
+
     // =========================================================================
     // 1. FIRST SEEN & RECONNECT TESTS
     // =========================================================================
@@ -321,11 +325,15 @@ final class PeerIdentityRepositoryTests: XCTestCase {
         var hookInsertFirstSeen: ((Data, Data, Data, Int64, Int32) throws -> Int)?
         var hookSetInitialPending: ((Data, Data, Data, Int64, Int32, Data, Int64) throws -> Int)?
         var hookAdvancePending: ((Data, Data, Data, Int64, Int32, Data, Int64, Data, Int64) throws -> Int)?
+        var hookApprovePending: ((Data, Data, Data, Int64, Int32, Data, Int64) throws -> Int)?
+        var hookRevoke: ((Data, Data, Data, Int64, Int32, Data?, Int64?) throws -> Int)?
         var hookInTx: (((PeerIdentityStore) throws -> Any) throws -> Any)?
 
         var faultAfterInsert: Bool = false
         var faultAfterInitialPending: Bool = false
         var faultAfterAdvancePending: Bool = false
+        var faultAfterApprove: Bool = false
+        var faultAfterRevoke: Bool = false
 
         init(delegate: PeerIdentityStore) {
             self.delegate = delegate
@@ -341,9 +349,13 @@ final class PeerIdentityRepositoryTests: XCTestCase {
                 txHookStore.hookInsertFirstSeen = self.hookInsertFirstSeen
                 txHookStore.hookSetInitialPending = self.hookSetInitialPending
                 txHookStore.hookAdvancePending = self.hookAdvancePending
+                txHookStore.hookApprovePending = self.hookApprovePending
+                txHookStore.hookRevoke = self.hookRevoke
                 txHookStore.faultAfterInsert = self.faultAfterInsert
                 txHookStore.faultAfterInitialPending = self.faultAfterInitialPending
                 txHookStore.faultAfterAdvancePending = self.faultAfterAdvancePending
+                txHookStore.faultAfterApprove = self.faultAfterApprove
+                txHookStore.faultAfterRevoke = self.faultAfterRevoke
                 return try block(txHookStore)
             }
         }
@@ -437,6 +449,66 @@ final class PeerIdentityRepositoryTests: XCTestCase {
                 )
             }
             if faultAfterAdvancePending {
+                XCTAssertEqual(affected, 1)
+                throw InjectedStorageFault()
+            }
+            return affected
+        }
+
+        func approvePendingRotationGuarded(
+            nodeId: Data,
+            signingPub: Data,
+            acceptedStatic: Data,
+            acceptedGeneration: Int64,
+            trustLevel: Int32,
+            expectedPendingStatic: Data,
+            expectedPendingGeneration: Int64
+        ) throws -> Int {
+            let affected: Int
+            if let hook = hookApprovePending {
+                affected = try hook(nodeId, signingPub, acceptedStatic, acceptedGeneration, trustLevel, expectedPendingStatic, expectedPendingGeneration)
+            } else {
+                affected = try delegate.approvePendingRotationGuarded(
+                    nodeId: nodeId,
+                    signingPub: signingPub,
+                    acceptedStatic: acceptedStatic,
+                    acceptedGeneration: acceptedGeneration,
+                    trustLevel: trustLevel,
+                    expectedPendingStatic: expectedPendingStatic,
+                    expectedPendingGeneration: expectedPendingGeneration
+                )
+            }
+            if faultAfterApprove {
+                XCTAssertEqual(affected, 1)
+                throw InjectedStorageFault()
+            }
+            return affected
+        }
+
+        func revokePeerGuarded(
+            nodeId: Data,
+            signingPub: Data,
+            acceptedStatic: Data,
+            acceptedGeneration: Int64,
+            currentTrustLevel: Int32,
+            oldPendingStatic: Data?,
+            oldPendingGeneration: Int64?
+        ) throws -> Int {
+            let affected: Int
+            if let hook = hookRevoke {
+                affected = try hook(nodeId, signingPub, acceptedStatic, acceptedGeneration, currentTrustLevel, oldPendingStatic, oldPendingGeneration)
+            } else {
+                affected = try delegate.revokePeerGuarded(
+                    nodeId: nodeId,
+                    signingPub: signingPub,
+                    acceptedStatic: acceptedStatic,
+                    acceptedGeneration: acceptedGeneration,
+                    currentTrustLevel: currentTrustLevel,
+                    oldPendingStatic: oldPendingStatic,
+                    oldPendingGeneration: oldPendingGeneration
+                )
+            }
+            if faultAfterRevoke {
                 XCTAssertEqual(affected, 1)
                 throw InjectedStorageFault()
             }
@@ -1139,5 +1211,871 @@ final class PeerIdentityRepositoryTests: XCTestCase {
         XCTAssertNotNil(rowB)
         XCTAssertEqual(rowA?.acceptedGenerationRaw, 1)
         XCTAssertEqual(rowB?.acceptedGenerationRaw, 1)
+    }
+
+    // =========================================================================
+    // 10. APPROVAL SEMANTIC TESTS (Phase C8.2C)
+    // =========================================================================
+
+    func testApprovePending_ExactCandidateSuccess_PromotesToAcceptedAndClearsPending() throws {
+        let url = tempDbUrl()
+        defer { try? FileManager.default.removeItem(at: url) }
+
+        let store = try SqlitePeerIdentityStore(url: url)
+        let repo = PeerIdentityRepository(store: store)
+
+        let b0 = makeBinding(seed: seedA, generation: 0, staticDhPriv: staticPrivA)
+        let b5 = makeBinding(seed: seedA, generation: 5, staticDhPriv: staticPrivB)
+        _ = repo.applyValidatedBinding(b0)
+        _ = repo.applyValidatedBinding(b5)
+
+        let res = repo.approvePendingRotation(
+            nodeId: b0.nodeId,
+            expectedPendingGeneration: 5,
+            expectedPendingStaticDhPublicKey: b5.staticDhPublicKey
+        )
+
+        guard case .approved(let view) = res else {
+            XCTFail("Expected .approved, got \(res)")
+            return
+        }
+        XCTAssertEqual(view.acceptedGeneration, 5)
+        XCTAssertEqual(view.acceptedStaticDhPublicKey, b5.staticDhPublicKey)
+        XCTAssertEqual(view.trustLevel, .tofuPinned)
+
+        let lookup = repo.lookup(b0.nodeId)
+        guard case .verified(let lookedUp) = lookup else {
+            XCTFail("Expected .verified, got \(lookup)")
+            return
+        }
+        XCTAssertEqual(lookedUp.acceptedGeneration, 5)
+        XCTAssertEqual(lookedUp.acceptedStaticDhPublicKey, b5.staticDhPublicKey)
+
+        let freshStore = try SqlitePeerIdentityStore(url: url)
+        let row = try freshStore.readRaw(b0.nodeId)
+        XCTAssertNotNil(row)
+        XCTAssertEqual(row?.acceptedGenerationRaw, 5)
+        XCTAssertEqual(row?.acceptedStaticDhPublicKeyRaw, b5.staticDhPublicKey)
+        XCTAssertEqual(row?.trustCodeRaw, PeerTrustLevel.tofuPinned.persistedCode)
+        XCTAssertNil(row?.pendingGenerationRaw)
+        XCTAssertNil(row?.pendingStaticDhPublicKeyRaw)
+    }
+
+    func testApprovePending_PreservesTofuPinnedTrustLevel() throws {
+        let url = tempDbUrl()
+        defer { try? FileManager.default.removeItem(at: url) }
+
+        let store = try SqlitePeerIdentityStore(url: url)
+        let repo = PeerIdentityRepository(store: store)
+
+        let b0 = makeBinding(seed: seedA, generation: 0, staticDhPriv: staticPrivA)
+        let b5 = makeBinding(seed: seedA, generation: 5, staticDhPriv: staticPrivB)
+        _ = repo.applyValidatedBinding(b0)
+        _ = repo.applyValidatedBinding(b5)
+
+        let res = repo.approvePendingRotation(
+            nodeId: b0.nodeId,
+            expectedPendingGeneration: 5,
+            expectedPendingStaticDhPublicKey: b5.staticDhPublicKey
+        )
+
+        guard case .approved(let view) = res else {
+            XCTFail("Expected .approved, got \(res)")
+            return
+        }
+        XCTAssertEqual(view.trustLevel, .tofuPinned)
+
+        let freshStore = try SqlitePeerIdentityStore(url: url)
+        let row = try freshStore.readRaw(b0.nodeId)
+        XCTAssertNotNil(row)
+        XCTAssertEqual(row?.trustCodeRaw, PeerTrustLevel.tofuPinned.persistedCode)
+    }
+
+    func testApprovePending_PreservesUserVerifiedTrustLevel() throws {
+        let url = tempDbUrl()
+        defer { try? FileManager.default.removeItem(at: url) }
+
+        let store = try SqlitePeerIdentityStore(url: url)
+        let repo = PeerIdentityRepository(store: store)
+
+        let b0 = makeBinding(seed: seedA, generation: 0, staticDhPriv: staticPrivA)
+        let b5 = makeBinding(seed: seedA, generation: 5, staticDhPriv: staticPrivB)
+        _ = repo.applyValidatedBinding(b0)
+
+        // Test SQL seam: promote to USER_VERIFIED (code 2) before pending candidate
+        var db: OpaquePointer?
+        sqlite3_open_v2(url.path, &db, SQLITE_OPEN_READWRITE, nil)
+        sqlite3_exec(db, "UPDATE peer_identities SET trust_level = 2", nil, nil, nil)
+        sqlite3_close_v2(db)
+
+        _ = repo.applyValidatedBinding(b5)
+
+        let res = repo.approvePendingRotation(
+            nodeId: b0.nodeId,
+            expectedPendingGeneration: 5,
+            expectedPendingStaticDhPublicKey: b5.staticDhPublicKey
+        )
+
+        guard case .approved(let view) = res else {
+            XCTFail("Expected .approved, got \(res)")
+            return
+        }
+        XCTAssertEqual(view.trustLevel, .userVerified)
+        XCTAssertEqual(view.acceptedGeneration, 5)
+        XCTAssertEqual(view.acceptedStaticDhPublicKey, b5.staticDhPublicKey)
+
+        let freshStore = try SqlitePeerIdentityStore(url: url)
+        let row = try freshStore.readRaw(b0.nodeId)
+        XCTAssertNotNil(row)
+        XCTAssertEqual(row?.acceptedGenerationRaw, 5)
+        XCTAssertEqual(row?.acceptedStaticDhPublicKeyRaw, b5.staticDhPublicKey)
+        XCTAssertEqual(row?.trustCodeRaw, PeerTrustLevel.userVerified.persistedCode)
+        XCTAssertNil(row?.pendingGenerationRaw)
+        XCTAssertNil(row?.pendingStaticDhPublicKeyRaw)
+    }
+
+    func testApprovePending_StaleGeneration_ReturnsStaleCandidateAndDoesNotMutate() throws {
+        let url = tempDbUrl()
+        defer { try? FileManager.default.removeItem(at: url) }
+
+        let store = try SqlitePeerIdentityStore(url: url)
+        let repo = PeerIdentityRepository(store: store)
+
+        let b0 = makeBinding(seed: seedA, generation: 0, staticDhPriv: staticPrivA)
+        let b5 = makeBinding(seed: seedA, generation: 5, staticDhPriv: staticPrivB)
+        let b6 = makeBinding(seed: seedA, generation: 6, staticDhPriv: staticPrivC)
+        _ = repo.applyValidatedBinding(b0)
+        _ = repo.applyValidatedBinding(b5)
+        _ = repo.applyValidatedBinding(b6)
+
+        // Try to approve stale P5
+        let res = repo.approvePendingRotation(
+            nodeId: b0.nodeId,
+            expectedPendingGeneration: 5,
+            expectedPendingStaticDhPublicKey: b5.staticDhPublicKey
+        )
+        XCTAssertEqual(res, .staleCandidate)
+
+        let freshStore = try SqlitePeerIdentityStore(url: url)
+        let row = try freshStore.readRaw(b0.nodeId)
+        XCTAssertNotNil(row)
+        XCTAssertEqual(row?.acceptedGenerationRaw, 0)
+        XCTAssertEqual(row?.acceptedStaticDhPublicKeyRaw, b0.staticDhPublicKey)
+        XCTAssertEqual(row?.pendingGenerationRaw, 6)
+        XCTAssertEqual(row?.pendingStaticDhPublicKeyRaw, b6.staticDhPublicKey)
+    }
+
+    func testApprovePending_SameGenerationWrongStatic_ReturnsStaleCandidateAndDoesNotMutate() throws {
+        let url = tempDbUrl()
+        defer { try? FileManager.default.removeItem(at: url) }
+
+        let store = try SqlitePeerIdentityStore(url: url)
+        let repo = PeerIdentityRepository(store: store)
+
+        let b0 = makeBinding(seed: seedA, generation: 0, staticDhPriv: staticPrivA)
+        let b5 = makeBinding(seed: seedA, generation: 5, staticDhPriv: staticPrivB)
+        _ = repo.applyValidatedBinding(b0)
+        _ = repo.applyValidatedBinding(b5)
+
+        let wrongStatic = staticPubFromPriv(staticPrivC)
+        let res = repo.approvePendingRotation(
+            nodeId: b0.nodeId,
+            expectedPendingGeneration: 5,
+            expectedPendingStaticDhPublicKey: wrongStatic
+        )
+        XCTAssertEqual(res, .staleCandidate)
+
+        let freshStore = try SqlitePeerIdentityStore(url: url)
+        let row = try freshStore.readRaw(b0.nodeId)
+        XCTAssertNotNil(row)
+        XCTAssertEqual(row?.acceptedGenerationRaw, 0)
+        XCTAssertEqual(row?.pendingGenerationRaw, 5)
+        XCTAssertEqual(row?.pendingStaticDhPublicKeyRaw, b5.staticDhPublicKey)
+    }
+
+    func testApprovePending_NoPendingCandidate_ReturnsNoPendingCandidateAndDoesNotMutate() throws {
+        let url = tempDbUrl()
+        defer { try? FileManager.default.removeItem(at: url) }
+
+        let store = try SqlitePeerIdentityStore(url: url)
+        let repo = PeerIdentityRepository(store: store)
+
+        let b0 = makeBinding(seed: seedA, generation: 0, staticDhPriv: staticPrivA)
+        _ = repo.applyValidatedBinding(b0)
+
+        let staticB = staticPubFromPriv(staticPrivB)
+        let res = repo.approvePendingRotation(
+            nodeId: b0.nodeId,
+            expectedPendingGeneration: 5,
+            expectedPendingStaticDhPublicKey: staticB
+        )
+        XCTAssertEqual(res, .noPendingCandidate)
+
+        let freshStore = try SqlitePeerIdentityStore(url: url)
+        let row = try freshStore.readRaw(b0.nodeId)
+        XCTAssertNotNil(row)
+        XCTAssertEqual(row?.acceptedGenerationRaw, 0)
+        XCTAssertNil(row?.pendingGenerationRaw)
+    }
+
+    func testApprovePending_PeerNotFound_ReturnsPeerNotFound() throws {
+        let url = tempDbUrl()
+        defer { try? FileManager.default.removeItem(at: url) }
+
+        let store = try SqlitePeerIdentityStore(url: url)
+        let repo = PeerIdentityRepository(store: store)
+
+        let unknownNode = Data(repeating: 0x99, count: 16)
+        let staticB = staticPubFromPriv(staticPrivB)
+        let res = repo.approvePendingRotation(
+            nodeId: unknownNode,
+            expectedPendingGeneration: 5,
+            expectedPendingStaticDhPublicKey: staticB
+        )
+        XCTAssertEqual(res, .peerNotFound)
+    }
+
+    func testApprovePending_Revoked_ReturnsRejectedRevoked() throws {
+        let url = tempDbUrl()
+        defer { try? FileManager.default.removeItem(at: url) }
+
+        let store = try SqlitePeerIdentityStore(url: url)
+        let repo = PeerIdentityRepository(store: store)
+
+        let b0 = makeBinding(seed: seedA, generation: 0, staticDhPriv: staticPrivA)
+        _ = repo.applyValidatedBinding(b0)
+        _ = repo.revokePeer(b0.nodeId)
+
+        let staticB = staticPubFromPriv(staticPrivB)
+        let res = repo.approvePendingRotation(
+            nodeId: b0.nodeId,
+            expectedPendingGeneration: 5,
+            expectedPendingStaticDhPublicKey: staticB
+        )
+        XCTAssertEqual(res, .rejectedRevoked)
+
+        let freshStore = try SqlitePeerIdentityStore(url: url)
+        let row = try freshStore.readRaw(b0.nodeId)
+        XCTAssertNotNil(row)
+        XCTAssertEqual(row?.trustCodeRaw, PeerTrustLevel.revoked.persistedCode)
+    }
+
+    func testApprovePending_InvalidArgument_NodeIdOrKeyOrGenerationInvalid() throws {
+        let url = tempDbUrl()
+        defer { try? FileManager.default.removeItem(at: url) }
+
+        let store = try SqlitePeerIdentityStore(url: url)
+        let repo = PeerIdentityRepository(store: store)
+
+        let validNode = Data(count: 16)
+        let validKey = Data(count: 32)
+
+        guard case .invalidArgument = repo.approvePendingRotation(
+            nodeId: Data(count: 15),
+            expectedPendingGeneration: 5,
+            expectedPendingStaticDhPublicKey: validKey
+        ) else {
+            XCTFail("Expected invalidArgument for short nodeId")
+            return
+        }
+
+        guard case .invalidArgument = repo.approvePendingRotation(
+            nodeId: validNode,
+            expectedPendingGeneration: 5,
+            expectedPendingStaticDhPublicKey: Data(count: 31)
+        ) else {
+            XCTFail("Expected invalidArgument for short static key")
+            return
+        }
+    }
+
+    func testApprovePending_CardinalityZero_RollsBack() throws {
+        let url = tempDbUrl()
+        defer { try? FileManager.default.removeItem(at: url) }
+
+        let rawStore = try SqlitePeerIdentityStore(url: url)
+        let hookStore = HookablePeerIdentityStore(delegate: rawStore)
+        let repo = PeerIdentityRepository(store: hookStore)
+
+        let b0 = makeBinding(seed: seedA, generation: 0, staticDhPriv: staticPrivA)
+        let b5 = makeBinding(seed: seedA, generation: 5, staticDhPriv: staticPrivB)
+        _ = repo.applyValidatedBinding(b0)
+        _ = repo.applyValidatedBinding(b5)
+
+        hookStore.hookApprovePending = { _, _, _, _, _, _, _ in 0 }
+        let res = repo.approvePendingRotation(
+            nodeId: b0.nodeId,
+            expectedPendingGeneration: 5,
+            expectedPendingStaticDhPublicKey: b5.staticDhPublicKey
+        )
+        XCTAssertEqual(res, .corrupt(.mutationCardinality(expected: 1, actual: 0)))
+
+        let freshStore = try SqlitePeerIdentityStore(url: url)
+        let row = try freshStore.readRaw(b0.nodeId)
+        XCTAssertNotNil(row)
+        XCTAssertEqual(row?.acceptedGenerationRaw, 0)
+        XCTAssertEqual(row?.pendingGenerationRaw, 5)
+    }
+
+    func testApprovePending_CardinalityTwo_RollsBack() throws {
+        let url = tempDbUrl()
+        defer { try? FileManager.default.removeItem(at: url) }
+
+        let rawStore = try SqlitePeerIdentityStore(url: url)
+        let hookStore = HookablePeerIdentityStore(delegate: rawStore)
+        let repo = PeerIdentityRepository(store: hookStore)
+
+        let b0 = makeBinding(seed: seedA, generation: 0, staticDhPriv: staticPrivA)
+        let b5 = makeBinding(seed: seedA, generation: 5, staticDhPriv: staticPrivB)
+        _ = repo.applyValidatedBinding(b0)
+        _ = repo.applyValidatedBinding(b5)
+
+        hookStore.hookApprovePending = { _, _, _, _, _, _, _ in 2 }
+        let res = repo.approvePendingRotation(
+            nodeId: b0.nodeId,
+            expectedPendingGeneration: 5,
+            expectedPendingStaticDhPublicKey: b5.staticDhPublicKey
+        )
+        XCTAssertEqual(res, .corrupt(.mutationCardinality(expected: 1, actual: 2)))
+
+        let freshStore = try SqlitePeerIdentityStore(url: url)
+        let row = try freshStore.readRaw(b0.nodeId)
+        XCTAssertNotNil(row)
+        XCTAssertEqual(row?.acceptedGenerationRaw, 0)
+        XCTAssertEqual(row?.pendingGenerationRaw, 5)
+    }
+
+    func testApprovePending_PostWriteCorruptReadback_RollsBack() throws {
+        let url = tempDbUrl()
+        defer { try? FileManager.default.removeItem(at: url) }
+
+        let rawStore = try SqlitePeerIdentityStore(url: url)
+        let hookStore = HookablePeerIdentityStore(delegate: rawStore)
+        let repo = PeerIdentityRepository(store: hookStore)
+
+        let b0 = makeBinding(seed: seedA, generation: 0, staticDhPriv: staticPrivA)
+        let b5 = makeBinding(seed: seedA, generation: 5, staticDhPriv: staticPrivB)
+        _ = repo.applyValidatedBinding(b0)
+        _ = repo.applyValidatedBinding(b5)
+
+        var readCount = 0
+        hookStore.hookReadRaw = { nodeId in
+            readCount += 1
+            if readCount == 1 {
+                return PeerIdentityRow(
+                    nodeIdRaw: nodeId,
+                    signingPublicKeyRaw: b0.signingPublicKey,
+                    acceptedStaticDhPublicKeyRaw: b0.staticDhPublicKey,
+                    acceptedGenerationRaw: 0,
+                    trustCodeRaw: PeerTrustLevel.tofuPinned.persistedCode,
+                    pendingStaticDhPublicKeyRaw: b5.staticDhPublicKey,
+                    pendingGenerationRaw: 5
+                )
+            } else {
+                return PeerIdentityRow(
+                    nodeIdRaw: nodeId,
+                    signingPublicKeyRaw: b0.signingPublicKey,
+                    acceptedStaticDhPublicKeyRaw: b5.staticDhPublicKey,
+                    acceptedGenerationRaw: 5,
+                    trustCodeRaw: 999, // Corrupt code
+                    pendingStaticDhPublicKeyRaw: nil,
+                    pendingGenerationRaw: nil
+                )
+            }
+        }
+
+        let res = repo.approvePendingRotation(
+            nodeId: b0.nodeId,
+            expectedPendingGeneration: 5,
+            expectedPendingStaticDhPublicKey: b5.staticDhPublicKey
+        )
+        XCTAssertEqual(res, .corrupt(.unknownTrustLevelCode(999)))
+
+        let freshStore = try SqlitePeerIdentityStore(url: url)
+        let row = try freshStore.readRaw(b0.nodeId)
+        XCTAssertNotNil(row)
+        XCTAssertEqual(row?.acceptedGenerationRaw, 0)
+        XCTAssertEqual(row?.pendingGenerationRaw, 5)
+    }
+
+    func testApprovePending_StorageFaultAfterUpdate_RollsBack() throws {
+        let url = tempDbUrl()
+        defer { try? FileManager.default.removeItem(at: url) }
+
+        let rawStore = try SqlitePeerIdentityStore(url: url)
+        let hookStore = HookablePeerIdentityStore(delegate: rawStore)
+        let repo = PeerIdentityRepository(store: hookStore)
+
+        let b0 = makeBinding(seed: seedA, generation: 0, staticDhPriv: staticPrivA)
+        let b5 = makeBinding(seed: seedA, generation: 5, staticDhPriv: staticPrivB)
+        _ = repo.applyValidatedBinding(b0)
+        _ = repo.applyValidatedBinding(b5)
+
+        hookStore.faultAfterApprove = true
+
+        let res = repo.approvePendingRotation(
+            nodeId: b0.nodeId,
+            expectedPendingGeneration: 5,
+            expectedPendingStaticDhPublicKey: b5.staticDhPublicKey
+        )
+        XCTAssertEqual(res, .storageFailure)
+
+        let freshStore = try SqlitePeerIdentityStore(url: url)
+        let row = try freshStore.readRaw(b0.nodeId)
+        XCTAssertNotNil(row)
+        XCTAssertEqual(row?.acceptedGenerationRaw, 0)
+        XCTAssertEqual(row?.pendingGenerationRaw, 5)
+    }
+
+    func testApprovePending_SimulatedCommitFailure_RollsBack() throws {
+        let url = tempDbUrl()
+        defer { try? FileManager.default.removeItem(at: url) }
+
+        let rawStore = try SqlitePeerIdentityStore(url: url)
+        let hookStore = HookablePeerIdentityStore(delegate: rawStore)
+        let repo = PeerIdentityRepository(store: hookStore)
+
+        let b0 = makeBinding(seed: seedA, generation: 0, staticDhPriv: staticPrivA)
+        let b5 = makeBinding(seed: seedA, generation: 5, staticDhPriv: staticPrivB)
+        _ = repo.applyValidatedBinding(b0)
+        _ = repo.applyValidatedBinding(b5)
+
+        hookStore.hookInTx = { block in
+            try rawStore.inImmediateTransaction { tx in
+                _ = try block(tx)
+                throw InjectedStorageFault()
+            }
+        }
+
+        let res = repo.approvePendingRotation(
+            nodeId: b0.nodeId,
+            expectedPendingGeneration: 5,
+            expectedPendingStaticDhPublicKey: b5.staticDhPublicKey
+        )
+        XCTAssertEqual(res, .storageFailure)
+
+        let freshStore = try SqlitePeerIdentityStore(url: url)
+        let row = try freshStore.readRaw(b0.nodeId)
+        XCTAssertNotNil(row)
+        XCTAssertEqual(row?.acceptedGenerationRaw, 0)
+        XCTAssertEqual(row?.pendingGenerationRaw, 5)
+    }
+
+    func testApprovePending_Vs_NewerPending_CrossConnectionRace() throws {
+        let url = tempDbUrl()
+        defer { try? FileManager.default.removeItem(at: url) }
+
+        let store1 = try SqlitePeerIdentityStore(url: url)
+        let store2 = try SqlitePeerIdentityStore(url: url)
+
+        let repo1 = PeerIdentityRepository(store: store1)
+        let repo2 = PeerIdentityRepository(store: store2)
+
+        let b0 = makeBinding(seed: seedA, generation: 0, staticDhPriv: staticPrivA)
+        let b5 = makeBinding(seed: seedA, generation: 5, staticDhPriv: staticPrivB)
+        _ = repo1.applyValidatedBinding(b0)
+        _ = repo1.applyValidatedBinding(b5)
+
+        let b6 = makeBinding(seed: seedA, generation: 6, staticDhPriv: staticPrivC)
+
+        var r1: RotationApprovalResult?
+        var r2: PeerTrustApplyResult?
+
+        let group = DispatchGroup()
+        group.enter()
+        DispatchQueue.global().async {
+            r1 = repo1.approvePendingRotation(
+                nodeId: b0.nodeId,
+                expectedPendingGeneration: 5,
+                expectedPendingStaticDhPublicKey: b5.staticDhPublicKey
+            )
+            group.leave()
+        }
+
+        group.enter()
+        DispatchQueue.global().async {
+            r2 = repo2.applyValidatedBinding(b6)
+            group.leave()
+        }
+
+        group.wait()
+
+        let isOptionA: Bool
+        if case .approved = r1, r2 == .keyChangedQuarantined {
+            isOptionA = true
+        } else {
+            isOptionA = false
+        }
+        let isOptionB = (r1 == .staleCandidate && r2 == .keyChangedQuarantined)
+
+        XCTAssertTrue(isOptionA || isOptionB, "Outcome must match Option A or B: r1=\(String(describing: r1)), r2=\(String(describing: r2))")
+
+        let freshStore = try SqlitePeerIdentityStore(url: url)
+        let row = try freshStore.readRaw(b0.nodeId)
+        XCTAssertNotNil(row)
+        if isOptionA {
+            XCTAssertEqual(row?.acceptedGenerationRaw, 5)
+            XCTAssertEqual(row?.acceptedStaticDhPublicKeyRaw, b5.staticDhPublicKey)
+            XCTAssertEqual(row?.pendingGenerationRaw, 6)
+            XCTAssertEqual(row?.pendingStaticDhPublicKeyRaw, b6.staticDhPublicKey)
+        } else {
+            XCTAssertEqual(row?.acceptedGenerationRaw, 0)
+            XCTAssertEqual(row?.acceptedStaticDhPublicKeyRaw, b0.staticDhPublicKey)
+            XCTAssertEqual(row?.pendingGenerationRaw, 6)
+            XCTAssertEqual(row?.pendingStaticDhPublicKeyRaw, b6.staticDhPublicKey)
+        }
+    }
+
+    // =========================================================================
+    // 11. REVOCATION SEMANTIC TESTS (Phase C8.2C)
+    // =========================================================================
+
+    func testRevokePeer_ActiveNoPending_RevokesAndPreservesAcceptedAudit() throws {
+        let url = tempDbUrl()
+        defer { try? FileManager.default.removeItem(at: url) }
+
+        let store = try SqlitePeerIdentityStore(url: url)
+        let repo = PeerIdentityRepository(store: store)
+
+        let b0 = makeBinding(seed: seedA, generation: 0, staticDhPriv: staticPrivA)
+        _ = repo.applyValidatedBinding(b0)
+
+        let res = repo.revokePeer(b0.nodeId)
+        XCTAssertEqual(res, .revoked)
+
+        let lookup = repo.lookup(b0.nodeId)
+        XCTAssertEqual(lookup, .revoked)
+
+        let reapply = repo.applyValidatedBinding(b0)
+        XCTAssertEqual(reapply, .rejected(.revoked))
+
+        let freshStore = try SqlitePeerIdentityStore(url: url)
+        let row = try freshStore.readRaw(b0.nodeId)
+        XCTAssertNotNil(row)
+        XCTAssertEqual(row?.acceptedGenerationRaw, 0)
+        XCTAssertEqual(row?.acceptedStaticDhPublicKeyRaw, b0.staticDhPublicKey)
+        XCTAssertEqual(row?.trustCodeRaw, PeerTrustLevel.revoked.persistedCode)
+        XCTAssertNil(row?.pendingGenerationRaw)
+        XCTAssertNil(row?.pendingStaticDhPublicKeyRaw)
+    }
+
+    func testRevokePeer_ActiveWithPending_RevokesAndClearsPending() throws {
+        let url = tempDbUrl()
+        defer { try? FileManager.default.removeItem(at: url) }
+
+        let store = try SqlitePeerIdentityStore(url: url)
+        let repo = PeerIdentityRepository(store: store)
+
+        let b0 = makeBinding(seed: seedA, generation: 0, staticDhPriv: staticPrivA)
+        let b5 = makeBinding(seed: seedA, generation: 5, staticDhPriv: staticPrivB)
+        _ = repo.applyValidatedBinding(b0)
+        _ = repo.applyValidatedBinding(b5)
+
+        let res = repo.revokePeer(b0.nodeId)
+        XCTAssertEqual(res, .revoked)
+
+        let freshStore = try SqlitePeerIdentityStore(url: url)
+        let row = try freshStore.readRaw(b0.nodeId)
+        XCTAssertNotNil(row)
+        XCTAssertEqual(row?.acceptedGenerationRaw, 0)
+        XCTAssertEqual(row?.acceptedStaticDhPublicKeyRaw, b0.staticDhPublicKey)
+        XCTAssertEqual(row?.trustCodeRaw, PeerTrustLevel.revoked.persistedCode)
+        XCTAssertNil(row?.pendingGenerationRaw)
+        XCTAssertNil(row?.pendingStaticDhPublicKeyRaw)
+    }
+
+    func testRevokePeer_AlreadyRevoked_ReturnsAlreadyRevokedWithoutMutation() throws {
+        let url = tempDbUrl()
+        defer { try? FileManager.default.removeItem(at: url) }
+
+        let store = try SqlitePeerIdentityStore(url: url)
+        let repo = PeerIdentityRepository(store: store)
+
+        let b0 = makeBinding(seed: seedA, generation: 0, staticDhPriv: staticPrivA)
+        _ = repo.applyValidatedBinding(b0)
+        XCTAssertEqual(repo.revokePeer(b0.nodeId), .revoked)
+        XCTAssertEqual(repo.revokePeer(b0.nodeId), .alreadyRevoked)
+
+        let freshStore = try SqlitePeerIdentityStore(url: url)
+        let row = try freshStore.readRaw(b0.nodeId)
+        XCTAssertNotNil(row)
+        XCTAssertEqual(row?.trustCodeRaw, PeerTrustLevel.revoked.persistedCode)
+    }
+
+    func testRevokePeer_PeerNotFound_ReturnsPeerNotFound() throws {
+        let url = tempDbUrl()
+        defer { try? FileManager.default.removeItem(at: url) }
+
+        let store = try SqlitePeerIdentityStore(url: url)
+        let repo = PeerIdentityRepository(store: store)
+
+        let unknownNode = Data(repeating: 0x88, count: 16)
+        XCTAssertEqual(repo.revokePeer(unknownNode), .peerNotFound)
+    }
+
+    func testRevokePeer_InvalidArgument_InvalidNodeId() throws {
+        let url = tempDbUrl()
+        defer { try? FileManager.default.removeItem(at: url) }
+
+        let store = try SqlitePeerIdentityStore(url: url)
+        let repo = PeerIdentityRepository(store: store)
+
+        guard case .invalidArgument = repo.revokePeer(Data(count: 15)) else {
+            XCTFail("Expected invalidArgument for short node")
+            return
+        }
+        guard case .invalidArgument = repo.revokePeer(Data(count: 17)) else {
+            XCTFail("Expected invalidArgument for long node")
+            return
+        }
+    }
+
+    func testRevokePeer_CorruptDurableRow_RollsBack() throws {
+        let url = tempDbUrl()
+        defer { try? FileManager.default.removeItem(at: url) }
+
+        let rawStore = try SqlitePeerIdentityStore(url: url)
+        let hookStore = HookablePeerIdentityStore(delegate: rawStore)
+        let repo = PeerIdentityRepository(store: hookStore)
+
+        let b0 = makeBinding(seed: seedA, generation: 0, staticDhPriv: staticPrivA)
+        _ = repo.applyValidatedBinding(b0)
+
+        hookStore.hookReadRaw = { nodeId in
+            PeerIdentityRow(
+                nodeIdRaw: nodeId,
+                signingPublicKeyRaw: b0.signingPublicKey,
+                acceptedStaticDhPublicKeyRaw: b0.staticDhPublicKey,
+                acceptedGenerationRaw: 0,
+                trustCodeRaw: 999, // Corrupt code
+                pendingStaticDhPublicKeyRaw: nil,
+                pendingGenerationRaw: nil
+            )
+        }
+
+        let res = repo.revokePeer(b0.nodeId)
+        XCTAssertEqual(res, .corrupt(.unknownTrustLevelCode(999)))
+
+        let freshStore = try SqlitePeerIdentityStore(url: url)
+        let row = try freshStore.readRaw(b0.nodeId)
+        XCTAssertNotNil(row)
+        XCTAssertEqual(row?.trustCodeRaw, PeerTrustLevel.tofuPinned.persistedCode)
+    }
+
+    func testRevokePeer_CardinalityZero_RollsBack() throws {
+        let url = tempDbUrl()
+        defer { try? FileManager.default.removeItem(at: url) }
+
+        let rawStore = try SqlitePeerIdentityStore(url: url)
+        let hookStore = HookablePeerIdentityStore(delegate: rawStore)
+        let repo = PeerIdentityRepository(store: hookStore)
+
+        let b0 = makeBinding(seed: seedA, generation: 0, staticDhPriv: staticPrivA)
+        _ = repo.applyValidatedBinding(b0)
+
+        hookStore.hookRevoke = { _, _, _, _, _, _, _ in 0 }
+        let res = repo.revokePeer(b0.nodeId)
+        XCTAssertEqual(res, .corrupt(.mutationCardinality(expected: 1, actual: 0)))
+
+        let freshStore = try SqlitePeerIdentityStore(url: url)
+        let row = try freshStore.readRaw(b0.nodeId)
+        XCTAssertNotNil(row)
+        XCTAssertEqual(row?.trustCodeRaw, PeerTrustLevel.tofuPinned.persistedCode)
+    }
+
+    func testRevokePeer_CardinalityTwo_RollsBack() throws {
+        let url = tempDbUrl()
+        defer { try? FileManager.default.removeItem(at: url) }
+
+        let rawStore = try SqlitePeerIdentityStore(url: url)
+        let hookStore = HookablePeerIdentityStore(delegate: rawStore)
+        let repo = PeerIdentityRepository(store: hookStore)
+
+        let b0 = makeBinding(seed: seedA, generation: 0, staticDhPriv: staticPrivA)
+        _ = repo.applyValidatedBinding(b0)
+
+        hookStore.hookRevoke = { _, _, _, _, _, _, _ in 2 }
+        let res = repo.revokePeer(b0.nodeId)
+        XCTAssertEqual(res, .corrupt(.mutationCardinality(expected: 1, actual: 2)))
+
+        let freshStore = try SqlitePeerIdentityStore(url: url)
+        let row = try freshStore.readRaw(b0.nodeId)
+        XCTAssertNotNil(row)
+        XCTAssertEqual(row?.trustCodeRaw, PeerTrustLevel.tofuPinned.persistedCode)
+    }
+
+    func testRevokePeer_StorageFaultAfterUpdate_RollsBack() throws {
+        let url = tempDbUrl()
+        defer { try? FileManager.default.removeItem(at: url) }
+
+        let rawStore = try SqlitePeerIdentityStore(url: url)
+        let hookStore = HookablePeerIdentityStore(delegate: rawStore)
+        let repo = PeerIdentityRepository(store: hookStore)
+
+        let b0 = makeBinding(seed: seedA, generation: 0, staticDhPriv: staticPrivA)
+        _ = repo.applyValidatedBinding(b0)
+
+        hookStore.faultAfterRevoke = true
+
+        let res = repo.revokePeer(b0.nodeId)
+        XCTAssertEqual(res, .storageFailure)
+
+        let freshStore = try SqlitePeerIdentityStore(url: url)
+        let row = try freshStore.readRaw(b0.nodeId)
+        XCTAssertNotNil(row)
+        XCTAssertEqual(row?.trustCodeRaw, PeerTrustLevel.tofuPinned.persistedCode)
+    }
+
+    func testRevokePeer_PostWriteCorruptReadback_RollsBack() throws {
+        let url = tempDbUrl()
+        defer { try? FileManager.default.removeItem(at: url) }
+
+        let rawStore = try SqlitePeerIdentityStore(url: url)
+        let hookStore = HookablePeerIdentityStore(delegate: rawStore)
+        let repo = PeerIdentityRepository(store: hookStore)
+
+        let b0 = makeBinding(seed: seedA, generation: 0, staticDhPriv: staticPrivA)
+        _ = repo.applyValidatedBinding(b0)
+
+        var readCount = 0
+        hookStore.hookReadRaw = { nodeId in
+            readCount += 1
+            if readCount == 1 {
+                return PeerIdentityRow(
+                    nodeIdRaw: nodeId,
+                    signingPublicKeyRaw: b0.signingPublicKey,
+                    acceptedStaticDhPublicKeyRaw: b0.staticDhPublicKey,
+                    acceptedGenerationRaw: 0,
+                    trustCodeRaw: PeerTrustLevel.tofuPinned.persistedCode,
+                    pendingStaticDhPublicKeyRaw: nil,
+                    pendingGenerationRaw: nil
+                )
+            } else {
+                return PeerIdentityRow(
+                    nodeIdRaw: nodeId,
+                    signingPublicKeyRaw: b0.signingPublicKey,
+                    acceptedStaticDhPublicKeyRaw: b0.staticDhPublicKey,
+                    acceptedGenerationRaw: 0,
+                    trustCodeRaw: 999, // Corrupt code
+                    pendingStaticDhPublicKeyRaw: nil,
+                    pendingGenerationRaw: nil
+                )
+            }
+        }
+
+        let res = repo.revokePeer(b0.nodeId)
+        XCTAssertEqual(res, .corrupt(.unknownTrustLevelCode(999)))
+
+        let freshStore = try SqlitePeerIdentityStore(url: url)
+        let row = try freshStore.readRaw(b0.nodeId)
+        XCTAssertNotNil(row)
+        XCTAssertEqual(row?.trustCodeRaw, PeerTrustLevel.tofuPinned.persistedCode)
+    }
+
+    func testRevokePeer_SimulatedCommitFailure_RollsBack() throws {
+        let url = tempDbUrl()
+        defer { try? FileManager.default.removeItem(at: url) }
+
+        let rawStore = try SqlitePeerIdentityStore(url: url)
+        let hookStore = HookablePeerIdentityStore(delegate: rawStore)
+        let repo = PeerIdentityRepository(store: hookStore)
+
+        let b0 = makeBinding(seed: seedA, generation: 0, staticDhPriv: staticPrivA)
+        _ = repo.applyValidatedBinding(b0)
+
+        hookStore.hookInTx = { block in
+            try rawStore.inImmediateTransaction { tx in
+                _ = try block(tx)
+                throw InjectedStorageFault()
+            }
+        }
+
+        let res = repo.revokePeer(b0.nodeId)
+        XCTAssertEqual(res, .storageFailure)
+
+        let freshStore = try SqlitePeerIdentityStore(url: url)
+        let row = try freshStore.readRaw(b0.nodeId)
+        XCTAssertNotNil(row)
+        XCTAssertEqual(row?.trustCodeRaw, PeerTrustLevel.tofuPinned.persistedCode)
+    }
+
+    func testRevokePeer_Vs_InboundApply_CrossConnectionRace() throws {
+        let url = tempDbUrl()
+        defer { try? FileManager.default.removeItem(at: url) }
+
+        let store1 = try SqlitePeerIdentityStore(url: url)
+        let store2 = try SqlitePeerIdentityStore(url: url)
+
+        let repo1 = PeerIdentityRepository(store: store1)
+        let repo2 = PeerIdentityRepository(store: store2)
+
+        let b0 = makeBinding(seed: seedA, generation: 0, staticDhPriv: staticPrivA)
+        let b5 = makeBinding(seed: seedA, generation: 5, staticDhPriv: staticPrivB)
+        _ = repo1.applyValidatedBinding(b0)
+        _ = repo1.applyValidatedBinding(b5)
+
+        let b6 = makeBinding(seed: seedA, generation: 6, staticDhPriv: staticPrivC)
+
+        var r1: RevokeResult?
+        var r2: PeerTrustApplyResult?
+
+        let group = DispatchGroup()
+        group.enter()
+        DispatchQueue.global().async {
+            r1 = repo1.revokePeer(b0.nodeId)
+            group.leave()
+        }
+
+        group.enter()
+        DispatchQueue.global().async {
+            r2 = repo2.applyValidatedBinding(b6)
+            group.leave()
+        }
+
+        group.wait()
+
+        let isOptionA = (r1 == .revoked && r2 == .rejected(.revoked))
+        let isOptionB = (r1 == .revoked && r2 == .keyChangedQuarantined)
+
+        XCTAssertTrue(isOptionA || isOptionB, "Outcome must match Option A or B: r1=\(String(describing: r1)), r2=\(String(describing: r2))")
+
+        // FINAL STATE IN BOTH: trust REVOKED, accepted 0/A, pending NULL
+        let freshStore = try SqlitePeerIdentityStore(url: url)
+        let row = try freshStore.readRaw(b0.nodeId)
+        XCTAssertNotNil(row)
+        XCTAssertEqual(row?.acceptedGenerationRaw, 0)
+        XCTAssertEqual(row?.acceptedStaticDhPublicKeyRaw, b0.staticDhPublicKey)
+        XCTAssertEqual(row?.trustCodeRaw, PeerTrustLevel.revoked.persistedCode)
+        XCTAssertNil(row?.pendingGenerationRaw)
+        XCTAssertNil(row?.pendingStaticDhPublicKeyRaw)
+    }
+
+    func testRevokePeer_ThenApprovePending_ReturnsRejectedRevoked() throws {
+        let url = tempDbUrl()
+        defer { try? FileManager.default.removeItem(at: url) }
+
+        let store = try SqlitePeerIdentityStore(url: url)
+        let repo = PeerIdentityRepository(store: store)
+
+        let b0 = makeBinding(seed: seedA, generation: 0, staticDhPriv: staticPrivA)
+        let b5 = makeBinding(seed: seedA, generation: 5, staticDhPriv: staticPrivB)
+        _ = repo.applyValidatedBinding(b0)
+        _ = repo.applyValidatedBinding(b5)
+
+        XCTAssertEqual(repo.revokePeer(b0.nodeId), .revoked)
+
+        let res = repo.approvePendingRotation(
+            nodeId: b0.nodeId,
+            expectedPendingGeneration: 5,
+            expectedPendingStaticDhPublicKey: b5.staticDhPublicKey
+        )
+        XCTAssertEqual(res, .rejectedRevoked)
+
+        let freshStore = try SqlitePeerIdentityStore(url: url)
+        let row = try freshStore.readRaw(b0.nodeId)
+        XCTAssertNotNil(row)
+        XCTAssertEqual(row?.trustCodeRaw, PeerTrustLevel.revoked.persistedCode)
+        XCTAssertNil(row?.pendingGenerationRaw)
+        XCTAssertNil(row?.pendingStaticDhPublicKeyRaw)
     }
 }

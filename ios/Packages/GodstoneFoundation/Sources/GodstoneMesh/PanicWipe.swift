@@ -163,6 +163,11 @@ public final class UserDefaultsWipeJournal: WipeJournal {
     }
 }
 
+/// Error taxonomy for panic wipe operations (ADR-004, Phase C8.2C).
+public enum PanicWipeError: Error, Sendable, Equatable {
+    case artifactDeletionFailed(String)
+}
+
 /// Production `WipeArtifacts` for iOS.
 ///
 /// `eraseKeys` deletes the single authoritative V1 Keychain identity item
@@ -170,8 +175,8 @@ public final class UserDefaultsWipeJournal: WipeJournal {
 /// Legacy two-key items may exist only during migration or interrupted migration.
 /// `deleteFromKeychain` removes V1 and both legacy items.
 ///
-/// `deleteArtifacts` deletes the durable DTN store DB file (Phase G) when a
-/// `storeUrl` is registered; the Keychain keys are already gone by this point
+/// `deleteArtifacts` deletes the durable DTN store DB file (Phase G) and peer store DB file
+/// (Phase C8.2C) when configured; the Keychain keys are already gone by this point
 /// (eraseKeys), so this is cleanup of now-useless artifacts, coordinated with
 /// the store + identity wipe as on Android.
 ///
@@ -180,22 +185,40 @@ public final class UserDefaultsWipeJournal: WipeJournal {
 /// delete or overwrite an existing identity.
 ///
 /// Each step is idempotent: `SecItemDelete` on an absent item is a no-op,
-/// `SqliteMessageStore.panicWipe(at:)` on an absent file is a no-op.
+/// `SqliteMessageStore.panicWipe(at:)` and `SqlitePeerIdentityStore.panicWipe(at:)` on absent files are no-ops.
 public final class KeychainWipeArtifacts: WipeArtifacts {
     private let keychain: any LocalIdentityKeychain
     /// URL of the durable store DB file to wipe in `deleteArtifacts`. Nil when
     /// no durable store is configured (the wipe then only touches the Keychain).
     private let storeUrl: URL?
+    /// URL of the durable peer store DB file to wipe in `deleteArtifacts`. Nil when
+    /// no peer store is configured (the wipe then only touches the Keychain).
+    private let peerStoreUrl: URL?
 
-    /// `storeUrl` registers the durable DTN store for coordinated wipe.
-    public init(storeUrl: URL? = nil) {
+    private let messageStoreWiper: ((URL) -> Bool)?
+    private let peerStoreWiper: ((URL) -> Bool)?
+
+    /// `storeUrl` and `peerStoreUrl` register the durable DTN and peer stores for coordinated wipe.
+    public init(storeUrl: URL? = nil, peerStoreUrl: URL? = nil) {
         self.keychain = DefaultLocalIdentityKeychain()
         self.storeUrl = storeUrl
+        self.peerStoreUrl = peerStoreUrl
+        self.messageStoreWiper = nil
+        self.peerStoreWiper = nil
     }
 
-    internal init(keychain: any LocalIdentityKeychain, storeUrl: URL? = nil) {
+    internal init(
+        keychain: any LocalIdentityKeychain,
+        storeUrl: URL? = nil,
+        peerStoreUrl: URL? = nil,
+        messageStoreWiper: ((URL) -> Bool)? = nil,
+        peerStoreWiper: ((URL) -> Bool)? = nil
+    ) {
         self.keychain = keychain
         self.storeUrl = storeUrl
+        self.peerStoreUrl = peerStoreUrl
+        self.messageStoreWiper = messageStoreWiper
+        self.peerStoreWiper = peerStoreWiper
     }
 
     public func eraseKeys() throws {
@@ -204,12 +227,21 @@ public final class KeychainWipeArtifacts: WipeArtifacts {
         try MeshIdentity.deleteFromKeychain(keychain: keychain)
     }
 
-    public func deleteArtifacts() {
-        // Delete the durable store DB file (+ WAL/SHM). The Keychain keys are
+    public func deleteArtifacts() throws {
+        // Delete the durable store DB files (+ WAL/SHM/journal). The Keychain keys are
         // already gone (eraseKeys); this is cleanup of the now-useless artifact
         // container, coordinated with the identity wipe. Idempotent.
         if let url = storeUrl {
-            SqliteMessageStore.panicWipe(at: url)
+            let ok = messageStoreWiper?(url) ?? SqliteMessageStore.panicWipe(at: url)
+            if !ok {
+                throw PanicWipeError.artifactDeletionFailed("Message store deletion failed")
+            }
+        }
+        if let url = peerStoreUrl {
+            let ok = peerStoreWiper?(url) ?? SqlitePeerIdentityStore.panicWipe(at: url)
+            if !ok {
+                throw PanicWipeError.artifactDeletionFailed("Peer identity store deletion failed")
+            }
         }
     }
 

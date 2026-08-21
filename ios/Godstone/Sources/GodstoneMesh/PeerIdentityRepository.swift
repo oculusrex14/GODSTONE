@@ -34,9 +34,44 @@ internal enum PeerIdentityLookup: Sendable, Equatable {
     case invalidArgument(String)
 }
 
+/// Rotation approval result taxonomy (ADR-003, Phase C8.2C).
+internal enum RotationApprovalResult: Sendable, Equatable {
+    case approved(VerifiedPeerIdentity)
+    case peerNotFound
+    case rejectedRevoked
+    case noPendingCandidate
+    case staleCandidate
+    case invalidArgument(String)
+    case corrupt(PeerTrustRepositoryCorruptionReason)
+    case storageFailure
+}
+
+/// Revocation result taxonomy (ADR-003, Phase C8.2C).
+internal enum RevokeResult: Sendable, Equatable {
+    case revoked
+    case alreadyRevoked
+    case peerNotFound
+    case invalidArgument(String)
+    case corrupt(PeerTrustRepositoryCorruptionReason)
+    case storageFailure
+}
+
 /// Private transaction-aborting error ensuring corrupted states trigger immediate rollback (ADR-003, Phase C8.2B.1).
 private enum ApplyTxnAbort: Error {
     case corrupt(PeerTrustRepositoryCorruptionReason)
+}
+
+/// Private transaction-aborting errors for non-mutating control paths (ADR-003, Phase C8.2C).
+private enum ApprovalControlAbort: Error {
+    case peerNotFound
+    case rejectedRevoked
+    case noPendingCandidate
+    case staleCandidate
+}
+
+private enum RevokeControlAbort: Error {
+    case peerNotFound
+    case alreadyRevoked
 }
 
 /// Durable peer identity repository owning transaction serialization, strict row decoding,
@@ -306,5 +341,188 @@ internal final class PeerIdentityRepository {
         }
 
         return .corrupt(.mutationReadbackMismatch("Unable to construct valid view from unquarantined non-revoked record"))
+    }
+
+    /**
+     * Explicitly approve an exact pending rotation candidate inside a serialized write transaction (ADR-003, Phase C8.2C).
+     */
+    func approvePendingRotation(
+        nodeId: Data,
+        expectedPendingGeneration: UInt32,
+        expectedPendingStaticDhPublicKey: Data
+    ) -> RotationApprovalResult {
+        guard nodeId.count == 16 else {
+            return .invalidArgument("nodeId must be exactly 16 bytes, got \(nodeId.count)")
+        }
+        guard expectedPendingStaticDhPublicKey.count == 32 else {
+            return .invalidArgument(
+                "expectedPendingStaticDhPublicKey must be exactly 32 bytes, got \(expectedPendingStaticDhPublicKey.count)"
+            )
+        }
+
+        do {
+            return try store.inImmediateTransaction { tx in
+                guard let currentRaw = try tx.readRaw(nodeId) else {
+                    throw ApprovalControlAbort.peerNotFound
+                }
+
+                let currentRecord: PeerIdentityRecord
+                switch decodeRowStrict(currentRaw) {
+                case .success(let rec):
+                    currentRecord = rec
+                case .failure(let reason):
+                    throw ApplyTxnAbort.corrupt(reason)
+                }
+
+                if currentRecord.trustLevel == .revoked {
+                    throw ApprovalControlAbort.rejectedRevoked
+                }
+
+                guard let currentPendingGen = currentRecord.pendingGeneration,
+                      let currentPendingStatic = currentRecord.pendingStaticDhPublicKey else {
+                    throw ApprovalControlAbort.noPendingCandidate
+                }
+
+                if currentPendingGen != expectedPendingGeneration ||
+                    currentPendingStatic != expectedPendingStaticDhPublicKey {
+                    throw ApprovalControlAbort.staleCandidate
+                }
+
+                let affected = try tx.approvePendingRotationGuarded(
+                    nodeId: currentRecord.nodeId,
+                    signingPub: currentRecord.signingPublicKey,
+                    acceptedStatic: currentRecord.acceptedStaticDhPublicKey,
+                    acceptedGeneration: Int64(currentRecord.acceptedGeneration),
+                    trustLevel: Int32(currentRecord.trustLevel.persistedCode),
+                    expectedPendingStatic: expectedPendingStaticDhPublicKey,
+                    expectedPendingGeneration: Int64(expectedPendingGeneration)
+                )
+                if affected != 1 {
+                    throw ApplyTxnAbort.corrupt(.mutationCardinality(expected: 1, actual: affected))
+                }
+
+                guard let readbackRaw = try tx.readRaw(nodeId) else {
+                    throw ApplyTxnAbort.corrupt(.missingPostMutationRow)
+                }
+
+                let readbackRecord: PeerIdentityRecord
+                switch decodeRowStrict(readbackRaw) {
+                case .success(let rec):
+                    readbackRecord = rec
+                case .failure(let reason):
+                    throw ApplyTxnAbort.corrupt(reason)
+                }
+
+                let expected = PeerIdentityRecord(
+                    nodeId: currentRecord.nodeId,
+                    signingPublicKey: currentRecord.signingPublicKey,
+                    acceptedStaticDhPublicKey: expectedPendingStaticDhPublicKey,
+                    acceptedGeneration: expectedPendingGeneration,
+                    trustLevel: currentRecord.trustLevel,
+                    pendingStaticDhPublicKey: nil,
+                    pendingGeneration: nil
+                )
+
+                guard readbackRecord == expected else {
+                    throw ApplyTxnAbort.corrupt(.mutationReadbackMismatch("ApprovePendingRotation readback mismatch"))
+                }
+
+                guard let verifiedView = VerifiedPeerIdentity.fromRecord(readbackRecord) else {
+                    throw ApplyTxnAbort.corrupt(.mutationReadbackMismatch("Unable to mint VerifiedPeerIdentity from approved record"))
+                }
+
+                return .approved(verifiedView)
+            }
+        } catch ApprovalControlAbort.peerNotFound {
+            return .peerNotFound
+        } catch ApprovalControlAbort.rejectedRevoked {
+            return .rejectedRevoked
+        } catch ApprovalControlAbort.noPendingCandidate {
+            return .noPendingCandidate
+        } catch ApprovalControlAbort.staleCandidate {
+            return .staleCandidate
+        } catch let ApplyTxnAbort.corrupt(reason) {
+            return .corrupt(reason)
+        } catch {
+            return .storageFailure
+        }
+    }
+
+    /**
+     * Durably revoke a peer identity inside a serialized write transaction (ADR-003, Phase C8.2C).
+     */
+    func revokePeer(_ nodeId: Data) -> RevokeResult {
+        guard nodeId.count == 16 else {
+            return .invalidArgument("nodeId must be exactly 16 bytes, got \(nodeId.count)")
+        }
+
+        do {
+            return try store.inImmediateTransaction { tx in
+                guard let currentRaw = try tx.readRaw(nodeId) else {
+                    throw RevokeControlAbort.peerNotFound
+                }
+
+                let currentRecord: PeerIdentityRecord
+                switch decodeRowStrict(currentRaw) {
+                case .success(let rec):
+                    currentRecord = rec
+                case .failure(let reason):
+                    throw ApplyTxnAbort.corrupt(reason)
+                }
+
+                if currentRecord.trustLevel == .revoked {
+                    throw RevokeControlAbort.alreadyRevoked
+                }
+
+                let affected = try tx.revokePeerGuarded(
+                    nodeId: currentRecord.nodeId,
+                    signingPub: currentRecord.signingPublicKey,
+                    acceptedStatic: currentRecord.acceptedStaticDhPublicKey,
+                    acceptedGeneration: Int64(currentRecord.acceptedGeneration),
+                    currentTrustLevel: Int32(currentRecord.trustLevel.persistedCode),
+                    oldPendingStatic: currentRecord.pendingStaticDhPublicKey,
+                    oldPendingGeneration: currentRecord.pendingGeneration.map { Int64($0) }
+                )
+                if affected != 1 {
+                    throw ApplyTxnAbort.corrupt(.mutationCardinality(expected: 1, actual: affected))
+                }
+
+                guard let readbackRaw = try tx.readRaw(nodeId) else {
+                    throw ApplyTxnAbort.corrupt(.missingPostMutationRow)
+                }
+
+                let readbackRecord: PeerIdentityRecord
+                switch decodeRowStrict(readbackRaw) {
+                case .success(let rec):
+                    readbackRecord = rec
+                case .failure(let reason):
+                    throw ApplyTxnAbort.corrupt(reason)
+                }
+
+                let expected = PeerIdentityRecord(
+                    nodeId: currentRecord.nodeId,
+                    signingPublicKey: currentRecord.signingPublicKey,
+                    acceptedStaticDhPublicKey: currentRecord.acceptedStaticDhPublicKey,
+                    acceptedGeneration: currentRecord.acceptedGeneration,
+                    trustLevel: .revoked,
+                    pendingStaticDhPublicKey: nil,
+                    pendingGeneration: nil
+                )
+
+                guard readbackRecord == expected else {
+                    throw ApplyTxnAbort.corrupt(.mutationReadbackMismatch("RevokePeer readback mismatch"))
+                }
+
+                return .revoked
+            }
+        } catch RevokeControlAbort.peerNotFound {
+            return .peerNotFound
+        } catch RevokeControlAbort.alreadyRevoked {
+            return .alreadyRevoked
+        } catch let ApplyTxnAbort.corrupt(reason) {
+            return .corrupt(reason)
+        } catch {
+            return .storageFailure
+        }
     }
 }

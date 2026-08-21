@@ -146,4 +146,39 @@ class PanicWipeTest {
         // eraseKeys must NOT run -- the journal already says the KEK is gone.
         assertEquals(listOf("deleteArtifacts", "regenerateIdentity"), a.calls)
     }
+
+    @Test
+    fun `deleteArtifacts failure leaves journal at KEY_ERASED and resume retries and completes`() {
+        val j = FakeJournal()
+        var deleteFailed = true
+        var peerWiped = false
+        var identityRegenerated = false
+
+        val artifacts = AndroidWipeArtifacts(
+            eraseAction = {},
+            deleteArtifactsAction = {
+                if (deleteFailed) {
+                    throw IllegalStateException("Peer store deletion failure")
+                }
+                peerWiped = true
+            },
+            regenerateAction = {
+                identityRegenerated = true
+            }
+        )
+
+        val wiper1 = PanicWipe(j, artifacts)
+        assertFailsWith<IllegalStateException> { wiper1.begin() }
+        assertEquals(WipeState.KEY_ERASED, j.state, "Journal must halt at KEY_ERASED on delete failure")
+        assertTrue(!peerWiped, "Peer wipe did not complete")
+        assertTrue(!identityRegenerated, "Identity must not be regenerated if artifacts deletion failed")
+
+        // Resume with delete now succeeding
+        deleteFailed = false
+        val wiper2 = PanicWipe(j, artifacts)
+        wiper2.resumeIfPending()
+        assertEquals(WipeState.IDLE, j.state, "Journal cleared to IDLE after resume completes")
+        assertTrue(peerWiped, "Peer wipe completed on resume")
+        assertTrue(identityRegenerated, "Identity regenerated on resume")
+    }
 }

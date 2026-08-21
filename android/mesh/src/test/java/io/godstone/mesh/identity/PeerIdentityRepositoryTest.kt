@@ -301,11 +301,15 @@ class PeerIdentityRepositoryTest {
         var hookInsertFirstSeen: ((ByteArray, ByteArray, ByteArray, Long, Int) -> Int)? = null
         var hookSetInitialPending: ((ByteArray, ByteArray, ByteArray, Long, Int, ByteArray, Long) -> Int)? = null
         var hookAdvancePending: ((ByteArray, ByteArray, ByteArray, Long, Int, ByteArray, Long, ByteArray, Long) -> Int)? = null
+        var hookApprovePending: ((ByteArray, ByteArray, ByteArray, Long, Int, ByteArray, Long) -> Int)? = null
+        var hookRevoke: ((ByteArray, ByteArray, ByteArray, Long, Int, ByteArray?, Long?) -> Int)? = null
         var hookInTx: (((PeerIdentityStore) -> Any?) -> Any?)? = null
 
         var faultAfterInsert: Boolean = false
         var faultAfterInitialPending: Boolean = false
         var faultAfterAdvancePending: Boolean = false
+        var faultAfterApprove: Boolean = false
+        var faultAfterRevoke: Boolean = false
 
         override fun readRaw(nodeId: ByteArray): PeerIdentityRow? {
             val hook = hookReadRaw
@@ -369,6 +373,44 @@ class PeerIdentityRepositoryTest {
             return affected
         }
 
+        override fun approvePendingRotationGuarded(
+            nodeId: ByteArray,
+            signingPub: ByteArray,
+            acceptedStatic: ByteArray,
+            acceptedGeneration: Long,
+            trustLevel: Int,
+            expectedPendingStatic: ByteArray,
+            expectedPendingGeneration: Long
+        ): Int {
+            val hook = hookApprovePending
+            val affected = if (hook != null) hook(nodeId, signingPub, acceptedStatic, acceptedGeneration, trustLevel, expectedPendingStatic, expectedPendingGeneration)
+            else delegate.approvePendingRotationGuarded(nodeId, signingPub, acceptedStatic, acceptedGeneration, trustLevel, expectedPendingStatic, expectedPendingGeneration)
+            if (faultAfterApprove) {
+                assertEquals(1, affected)
+                throw SQLException("Injected post-approve storage fault")
+            }
+            return affected
+        }
+
+        override fun revokePeerGuarded(
+            nodeId: ByteArray,
+            signingPub: ByteArray,
+            acceptedStatic: ByteArray,
+            acceptedGeneration: Long,
+            currentTrustLevel: Int,
+            oldPendingStatic: ByteArray?,
+            oldPendingGeneration: Long?
+        ): Int {
+            val hook = hookRevoke
+            val affected = if (hook != null) hook(nodeId, signingPub, acceptedStatic, acceptedGeneration, currentTrustLevel, oldPendingStatic, oldPendingGeneration)
+            else delegate.revokePeerGuarded(nodeId, signingPub, acceptedStatic, acceptedGeneration, currentTrustLevel, oldPendingStatic, oldPendingGeneration)
+            if (faultAfterRevoke) {
+                assertEquals(1, affected)
+                throw SQLException("Injected post-revoke storage fault")
+            }
+            return affected
+        }
+
         override fun <T> inImmediateTransaction(block: (PeerIdentityStore) -> T): T {
             val hook = hookInTx
             return if (hook != null) {
@@ -381,9 +423,13 @@ class PeerIdentityRepositoryTest {
                         it.hookInsertFirstSeen = this.hookInsertFirstSeen
                         it.hookSetInitialPending = this.hookSetInitialPending
                         it.hookAdvancePending = this.hookAdvancePending
+                        it.hookApprovePending = this.hookApprovePending
+                        it.hookRevoke = this.hookRevoke
                         it.faultAfterInsert = this.faultAfterInsert
                         it.faultAfterInitialPending = this.faultAfterInitialPending
                         it.faultAfterAdvancePending = this.faultAfterAdvancePending
+                        it.faultAfterApprove = this.faultAfterApprove
+                        it.faultAfterRevoke = this.faultAfterRevoke
                     }
                     block(txHook)
                 }
@@ -1059,6 +1105,796 @@ class PeerIdentityRepositoryTest {
             assertNotNull(rowB)
             assertEquals(1L, rowA!!.acceptedGenerationRaw)
             assertEquals(1L, rowB!!.acceptedGenerationRaw)
+        }
+    }
+
+    // =========================================================================
+    // 10. APPROVAL SEMANTIC TESTS (Phase C8.2C)
+    // =========================================================================
+
+    @Test
+    fun testApprovePending_ExactCandidateSuccess_PromotesToAcceptedAndClearsPending() {
+        val file = tempFolder.newFile("appr_exact.db").also { it.delete() }
+        val rawStore = JdbcPeerIdentityStore(file)
+        val repo = PeerIdentityRepository(rawStore)
+
+        val b0 = makeBinding(seedA, 0L, staticPrivA)
+        val b5 = makeBinding(seedA, 5L, staticPrivB)
+        repo.applyValidatedBinding(b0)
+        repo.applyValidatedBinding(b5)
+
+        val res = repo.approvePendingRotation(b0.nodeId, 5L, b5.staticDhPublicKey)
+        assertTrue(res is RotationApprovalResult.Approved)
+        val view = (res as RotationApprovalResult.Approved).identity
+        assertEquals(5L, view.acceptedGeneration)
+        assertArrayEquals(b5.staticDhPublicKey, view.acceptedStaticDhPublicKey)
+        assertEquals(PeerTrustLevel.TOFU_PINNED, view.trustLevel)
+
+        val lookup = repo.lookup(b0.nodeId)
+        assertTrue(lookup is PeerIdentityLookup.Verified)
+        val lookedUp = (lookup as PeerIdentityLookup.Verified).identity
+        assertEquals(5L, lookedUp.acceptedGeneration)
+        assertArrayEquals(b5.staticDhPublicKey, lookedUp.acceptedStaticDhPublicKey)
+
+        rawStore.close()
+        JdbcPeerIdentityStore(file).use { freshStore ->
+            val row = freshStore.readRaw(b0.nodeId)
+            assertNotNull(row)
+            assertEquals(5L, row!!.acceptedGenerationRaw)
+            assertArrayEquals(b5.staticDhPublicKey, row.acceptedStaticDhPublicKeyRaw)
+            assertEquals(PeerTrustLevel.TOFU_PINNED.persistedCode, row.trustCodeRaw)
+            assertNull(row.pendingGenerationRaw)
+            assertNull(row.pendingStaticDhPublicKeyRaw)
+        }
+    }
+
+    @Test
+    fun testApprovePending_PreservesTofuPinnedTrustLevel() {
+        val file = tempFolder.newFile("appr_tofu.db").also { it.delete() }
+        val rawStore = JdbcPeerIdentityStore(file)
+        val repo = PeerIdentityRepository(rawStore)
+
+        val b0 = makeBinding(seedA, 0L, staticPrivA)
+        val b5 = makeBinding(seedA, 5L, staticPrivB)
+        repo.applyValidatedBinding(b0)
+        repo.applyValidatedBinding(b5)
+
+        val res = repo.approvePendingRotation(b0.nodeId, 5L, b5.staticDhPublicKey)
+        assertTrue(res is RotationApprovalResult.Approved)
+        val view = (res as RotationApprovalResult.Approved).identity
+        assertEquals(PeerTrustLevel.TOFU_PINNED, view.trustLevel)
+
+        rawStore.close()
+        JdbcPeerIdentityStore(file).use { freshStore ->
+            val row = freshStore.readRaw(b0.nodeId)
+            assertNotNull(row)
+            assertEquals(PeerTrustLevel.TOFU_PINNED.persistedCode, row!!.trustCodeRaw)
+        }
+    }
+
+    @Test
+    fun testApprovePending_PreservesUserVerifiedTrustLevel() {
+        val file = tempFolder.newFile("appr_uv.db").also { it.delete() }
+        val rawStore = JdbcPeerIdentityStore(file)
+        val repo = PeerIdentityRepository(rawStore)
+
+        val b0 = makeBinding(seedA, 0L, staticPrivA)
+        val b5 = makeBinding(seedA, 5L, staticPrivB)
+        repo.applyValidatedBinding(b0)
+        // Test SQL seam: promote to USER_VERIFIED (code 2) before pending candidate
+        rawStore.execRawSqlForTest("UPDATE peer_identities SET trust_level = 2")
+        repo.applyValidatedBinding(b5)
+
+        val res = repo.approvePendingRotation(b0.nodeId, 5L, b5.staticDhPublicKey)
+        assertTrue(res is RotationApprovalResult.Approved)
+        val view = (res as RotationApprovalResult.Approved).identity
+        assertEquals(PeerTrustLevel.USER_VERIFIED, view.trustLevel)
+        assertEquals(5L, view.acceptedGeneration)
+        assertArrayEquals(b5.staticDhPublicKey, view.acceptedStaticDhPublicKey)
+
+        rawStore.close()
+        JdbcPeerIdentityStore(file).use { freshStore ->
+            val row = freshStore.readRaw(b0.nodeId)
+            assertNotNull(row)
+            assertEquals(5L, row!!.acceptedGenerationRaw)
+            assertArrayEquals(b5.staticDhPublicKey, row.acceptedStaticDhPublicKeyRaw)
+            assertEquals(PeerTrustLevel.USER_VERIFIED.persistedCode, row.trustCodeRaw)
+            assertNull(row.pendingGenerationRaw)
+            assertNull(row.pendingStaticDhPublicKeyRaw)
+        }
+    }
+
+    @Test
+    fun testApprovePending_StaleGeneration_ReturnsStaleCandidateAndDoesNotMutate() {
+        val file = tempFolder.newFile("appr_stale_gen.db").also { it.delete() }
+        val rawStore = JdbcPeerIdentityStore(file)
+        val repo = PeerIdentityRepository(rawStore)
+
+        val b0 = makeBinding(seedA, 0L, staticPrivA)
+        val b5 = makeBinding(seedA, 5L, staticPrivB)
+        val b6 = makeBinding(seedA, 6L, staticPrivC)
+        repo.applyValidatedBinding(b0)
+        repo.applyValidatedBinding(b5)
+        repo.applyValidatedBinding(b6)
+
+        // Try to approve stale P5
+        val res = repo.approvePendingRotation(b0.nodeId, 5L, b5.staticDhPublicKey)
+        assertEquals(RotationApprovalResult.StaleCandidate, res)
+
+        rawStore.close()
+        JdbcPeerIdentityStore(file).use { freshStore ->
+            val row = freshStore.readRaw(b0.nodeId)
+            assertNotNull(row)
+            assertEquals(0L, row!!.acceptedGenerationRaw)
+            assertArrayEquals(b0.staticDhPublicKey, row.acceptedStaticDhPublicKeyRaw)
+            assertEquals(6L, row.pendingGenerationRaw)
+            assertArrayEquals(b6.staticDhPublicKey, row.pendingStaticDhPublicKeyRaw)
+        }
+    }
+
+    @Test
+    fun testApprovePending_SameGenerationWrongStatic_ReturnsStaleCandidateAndDoesNotMutate() {
+        val file = tempFolder.newFile("appr_wrong_static.db").also { it.delete() }
+        val rawStore = JdbcPeerIdentityStore(file)
+        val repo = PeerIdentityRepository(rawStore)
+
+        val b0 = makeBinding(seedA, 0L, staticPrivA)
+        val b5 = makeBinding(seedA, 5L, staticPrivB)
+        repo.applyValidatedBinding(b0)
+        repo.applyValidatedBinding(b5)
+
+        val wrongStatic = X25519Keys.publicKeyFromPrivate(staticPrivC)
+        val res = repo.approvePendingRotation(b0.nodeId, 5L, wrongStatic)
+        assertEquals(RotationApprovalResult.StaleCandidate, res)
+
+        rawStore.close()
+        JdbcPeerIdentityStore(file).use { freshStore ->
+            val row = freshStore.readRaw(b0.nodeId)
+            assertNotNull(row)
+            assertEquals(0L, row!!.acceptedGenerationRaw)
+            assertEquals(5L, row.pendingGenerationRaw)
+            assertArrayEquals(b5.staticDhPublicKey, row.pendingStaticDhPublicKeyRaw)
+        }
+    }
+
+    @Test
+    fun testApprovePending_NoPendingCandidate_ReturnsNoPendingCandidateAndDoesNotMutate() {
+        val file = tempFolder.newFile("appr_no_pending.db").also { it.delete() }
+        val rawStore = JdbcPeerIdentityStore(file)
+        val repo = PeerIdentityRepository(rawStore)
+
+        val b0 = makeBinding(seedA, 0L, staticPrivA)
+        repo.applyValidatedBinding(b0)
+
+        val staticB = X25519Keys.publicKeyFromPrivate(staticPrivB)
+        val res = repo.approvePendingRotation(b0.nodeId, 5L, staticB)
+        assertEquals(RotationApprovalResult.NoPendingCandidate, res)
+
+        rawStore.close()
+        JdbcPeerIdentityStore(file).use { freshStore ->
+            val row = freshStore.readRaw(b0.nodeId)
+            assertNotNull(row)
+            assertEquals(0L, row!!.acceptedGenerationRaw)
+            assertNull(row.pendingGenerationRaw)
+        }
+    }
+
+    @Test
+    fun testApprovePending_PeerNotFound_ReturnsPeerNotFound() {
+        val file = tempFolder.newFile("appr_not_found.db").also { it.delete() }
+        val rawStore = JdbcPeerIdentityStore(file)
+        val repo = PeerIdentityRepository(rawStore)
+
+        val unknownNode = ByteArray(16) { 0x99.toByte() }
+        val staticB = X25519Keys.publicKeyFromPrivate(staticPrivB)
+        val res = repo.approvePendingRotation(unknownNode, 5L, staticB)
+        assertEquals(RotationApprovalResult.PeerNotFound, res)
+
+        rawStore.close()
+    }
+
+    @Test
+    fun testApprovePending_Revoked_ReturnsRejectedRevoked() {
+        val file = tempFolder.newFile("appr_revoked.db").also { it.delete() }
+        val rawStore = JdbcPeerIdentityStore(file)
+        val repo = PeerIdentityRepository(rawStore)
+
+        val b0 = makeBinding(seedA, 0L, staticPrivA)
+        repo.applyValidatedBinding(b0)
+        repo.revokePeer(b0.nodeId)
+
+        val staticB = X25519Keys.publicKeyFromPrivate(staticPrivB)
+        val res = repo.approvePendingRotation(b0.nodeId, 5L, staticB)
+        assertEquals(RotationApprovalResult.RejectedRevoked, res)
+
+        rawStore.close()
+        JdbcPeerIdentityStore(file).use { freshStore ->
+            val row = freshStore.readRaw(b0.nodeId)
+            assertNotNull(row)
+            assertEquals(PeerTrustLevel.REVOKED.persistedCode, row!!.trustCodeRaw)
+        }
+    }
+
+    @Test
+    fun testApprovePending_InvalidArgument_NodeIdOrKeyOrGenerationInvalid() {
+        val file = tempFolder.newFile("appr_invalid.db").also { it.delete() }
+        val rawStore = JdbcPeerIdentityStore(file)
+        val repo = PeerIdentityRepository(rawStore)
+
+        val validNode = ByteArray(16)
+        val validKey = ByteArray(32)
+
+        assertTrue(repo.approvePendingRotation(ByteArray(15), 5L, validKey) is RotationApprovalResult.InvalidArgument)
+        assertTrue(repo.approvePendingRotation(validNode, 5L, ByteArray(31)) is RotationApprovalResult.InvalidArgument)
+        assertTrue(repo.approvePendingRotation(validNode, -1L, validKey) is RotationApprovalResult.InvalidArgument)
+        assertTrue(repo.approvePendingRotation(validNode, 4294967296L, validKey) is RotationApprovalResult.InvalidArgument)
+
+        rawStore.close()
+    }
+
+    @Test
+    fun testApprovePending_CardinalityZero_RollsBack() {
+        val file = tempFolder.newFile("appr_card0.db").also { it.delete() }
+        val rawStore = JdbcPeerIdentityStore(file)
+        val hookStore = HookableStore(rawStore)
+        val repo = PeerIdentityRepository(hookStore)
+
+        val b0 = makeBinding(seedA, 0L, staticPrivA)
+        val b5 = makeBinding(seedA, 5L, staticPrivB)
+        repo.applyValidatedBinding(b0)
+        repo.applyValidatedBinding(b5)
+
+        hookStore.hookApprovePending = { _, _, _, _, _, _, _ -> 0 }
+        val res = repo.approvePendingRotation(b0.nodeId, 5L, b5.staticDhPublicKey)
+        assertTrue(res is RotationApprovalResult.Corrupt)
+        assertEquals(
+            PeerTrustRepositoryCorruptionReason.MutationCardinality(1, 0),
+            (res as RotationApprovalResult.Corrupt).reason
+        )
+
+        rawStore.close()
+        JdbcPeerIdentityStore(file).use { freshStore ->
+            val row = freshStore.readRaw(b0.nodeId)
+            assertNotNull(row)
+            assertEquals(0L, row!!.acceptedGenerationRaw)
+            assertEquals(5L, row.pendingGenerationRaw)
+        }
+    }
+
+    @Test
+    fun testApprovePending_CardinalityTwo_RollsBack() {
+        val file = tempFolder.newFile("appr_card2.db").also { it.delete() }
+        val rawStore = JdbcPeerIdentityStore(file)
+        val hookStore = HookableStore(rawStore)
+        val repo = PeerIdentityRepository(hookStore)
+
+        val b0 = makeBinding(seedA, 0L, staticPrivA)
+        val b5 = makeBinding(seedA, 5L, staticPrivB)
+        repo.applyValidatedBinding(b0)
+        repo.applyValidatedBinding(b5)
+
+        hookStore.hookApprovePending = { _, _, _, _, _, _, _ -> 2 }
+        val res = repo.approvePendingRotation(b0.nodeId, 5L, b5.staticDhPublicKey)
+        assertTrue(res is RotationApprovalResult.Corrupt)
+        assertEquals(
+            PeerTrustRepositoryCorruptionReason.MutationCardinality(1, 2),
+            (res as RotationApprovalResult.Corrupt).reason
+        )
+
+        rawStore.close()
+        JdbcPeerIdentityStore(file).use { freshStore ->
+            val row = freshStore.readRaw(b0.nodeId)
+            assertNotNull(row)
+            assertEquals(0L, row!!.acceptedGenerationRaw)
+            assertEquals(5L, row.pendingGenerationRaw)
+        }
+    }
+
+    @Test
+    fun testApprovePending_PostWriteCorruptReadback_RollsBack() {
+        val file = tempFolder.newFile("appr_readback_corrupt.db").also { it.delete() }
+        val rawStore = JdbcPeerIdentityStore(file)
+        val hookStore = HookableStore(rawStore)
+        val repo = PeerIdentityRepository(hookStore)
+
+        val b0 = makeBinding(seedA, 0L, staticPrivA)
+        val b5 = makeBinding(seedA, 5L, staticPrivB)
+        repo.applyValidatedBinding(b0)
+        repo.applyValidatedBinding(b5)
+
+        var readCount = 0
+        hookStore.hookReadRaw = { nodeId ->
+            readCount += 1
+            if (readCount == 1) {
+                rawStore.readRaw(nodeId)
+            } else {
+                PeerIdentityRow(
+                    nodeIdRaw = nodeId,
+                    signingPublicKeyRaw = b0.signingPublicKey,
+                    acceptedStaticDhPublicKeyRaw = b5.staticDhPublicKey,
+                    acceptedGenerationRaw = 5L,
+                    trustCodeRaw = 999, // Corrupt code
+                    pendingStaticDhPublicKeyRaw = null,
+                    pendingGenerationRaw = null
+                )
+            }
+        }
+
+        val res = repo.approvePendingRotation(b0.nodeId, 5L, b5.staticDhPublicKey)
+        assertTrue(res is RotationApprovalResult.Corrupt)
+        assertEquals(
+            PeerTrustRepositoryCorruptionReason.UnknownTrustLevelCode(999),
+            (res as RotationApprovalResult.Corrupt).reason
+        )
+
+        rawStore.close()
+        JdbcPeerIdentityStore(file).use { freshStore ->
+            val row = freshStore.readRaw(b0.nodeId)
+            assertNotNull(row)
+            assertEquals(0L, row!!.acceptedGenerationRaw)
+            assertEquals(5L, row.pendingGenerationRaw)
+        }
+    }
+
+    @Test
+    fun testApprovePending_StorageFaultAfterUpdate_RollsBack() {
+        val file = tempFolder.newFile("appr_fault.db").also { it.delete() }
+        val rawStore = JdbcPeerIdentityStore(file)
+        val hookStore = HookableStore(rawStore)
+        val repo = PeerIdentityRepository(hookStore)
+
+        val b0 = makeBinding(seedA, 0L, staticPrivA)
+        val b5 = makeBinding(seedA, 5L, staticPrivB)
+        repo.applyValidatedBinding(b0)
+        repo.applyValidatedBinding(b5)
+
+        hookStore.faultAfterApprove = true
+
+        val res = repo.approvePendingRotation(b0.nodeId, 5L, b5.staticDhPublicKey)
+        assertTrue(res is RotationApprovalResult.StorageFailure)
+
+        rawStore.close()
+        JdbcPeerIdentityStore(file).use { freshStore ->
+            val row = freshStore.readRaw(b0.nodeId)
+            assertNotNull(row)
+            assertEquals(0L, row!!.acceptedGenerationRaw)
+            assertEquals(5L, row.pendingGenerationRaw)
+        }
+    }
+
+    @Test
+    fun testApprovePending_SimulatedCommitFailure_RollsBack() {
+        val file = tempFolder.newFile("appr_commit_fail.db").also { it.delete() }
+        val rawStore = JdbcPeerIdentityStore(file)
+        val hookStore = HookableStore(rawStore)
+        val repo = PeerIdentityRepository(hookStore)
+
+        val b0 = makeBinding(seedA, 0L, staticPrivA)
+        val b5 = makeBinding(seedA, 5L, staticPrivB)
+        repo.applyValidatedBinding(b0)
+        repo.applyValidatedBinding(b5)
+
+        hookStore.hookInTx = { block ->
+            rawStore.inImmediateTransaction { tx ->
+                block(tx)
+                throw SQLException("Simulated commit failure after successful approval body")
+            }
+        }
+
+        val res = repo.approvePendingRotation(b0.nodeId, 5L, b5.staticDhPublicKey)
+        assertTrue(res is RotationApprovalResult.StorageFailure)
+
+        rawStore.close()
+        JdbcPeerIdentityStore(file).use { freshStore ->
+            val row = freshStore.readRaw(b0.nodeId)
+            assertNotNull(row)
+            assertEquals(0L, row!!.acceptedGenerationRaw)
+            assertEquals(5L, row.pendingGenerationRaw)
+        }
+    }
+
+    @Test
+    fun testApprovePending_Vs_NewerPending_CrossConnectionRace() {
+        val file = tempFolder.newFile("appr_race.db").also { it.delete() }
+        val store1 = JdbcPeerIdentityStore(file)
+        val store2 = JdbcPeerIdentityStore(file)
+
+        val repo1 = PeerIdentityRepository(store1)
+        val repo2 = PeerIdentityRepository(store2)
+
+        val b0 = makeBinding(seedA, 0L, staticPrivA)
+        val b5 = makeBinding(seedA, 5L, staticPrivB)
+        repo1.applyValidatedBinding(b0)
+        repo1.applyValidatedBinding(b5)
+
+        val b6 = makeBinding(seedA, 6L, staticPrivC)
+
+        val executor = Executors.newFixedThreadPool(2)
+        val f1 = executor.submit(Callable { repo1.approvePendingRotation(b0.nodeId, 5L, b5.staticDhPublicKey) })
+        val f2 = executor.submit(Callable { repo2.applyValidatedBinding(b6) })
+
+        val r1 = f1.get()
+        val r2 = f2.get()
+
+        executor.shutdown()
+        store1.close()
+        store2.close()
+
+        val isOptionA = (r1 is RotationApprovalResult.Approved && r2 == PeerTrustApplyResult.KeyChangedQuarantined)
+        val isOptionB = (r1 == RotationApprovalResult.StaleCandidate && r2 == PeerTrustApplyResult.KeyChangedQuarantined)
+
+        assertTrue("Outcome must match legal serialization Option A or B: r1=$r1, r2=$r2", isOptionA || isOptionB)
+
+        JdbcPeerIdentityStore(file).use { store ->
+            val row = store.readRaw(b0.nodeId)
+            assertNotNull(row)
+            if (isOptionA) {
+                assertEquals(5L, row!!.acceptedGenerationRaw)
+                assertArrayEquals(b5.staticDhPublicKey, row.acceptedStaticDhPublicKeyRaw)
+                assertEquals(6L, row.pendingGenerationRaw)
+                assertArrayEquals(b6.staticDhPublicKey, row.pendingStaticDhPublicKeyRaw)
+            } else {
+                assertEquals(0L, row!!.acceptedGenerationRaw)
+                assertArrayEquals(b0.staticDhPublicKey, row.acceptedStaticDhPublicKeyRaw)
+                assertEquals(6L, row.pendingGenerationRaw)
+                assertArrayEquals(b6.staticDhPublicKey, row.pendingStaticDhPublicKeyRaw)
+            }
+        }
+    }
+
+    // =========================================================================
+    // 11. REVOCATION SEMANTIC TESTS (Phase C8.2C)
+    // =========================================================================
+
+    @Test
+    fun testRevokePeer_ActiveNoPending_RevokesAndPreservesAcceptedAudit() {
+        val file = tempFolder.newFile("rev_nopending.db").also { it.delete() }
+        val rawStore = JdbcPeerIdentityStore(file)
+        val repo = PeerIdentityRepository(rawStore)
+
+        val b0 = makeBinding(seedA, 0L, staticPrivA)
+        repo.applyValidatedBinding(b0)
+
+        val res = repo.revokePeer(b0.nodeId)
+        assertEquals(RevokeResult.Revoked, res)
+
+        val lookup = repo.lookup(b0.nodeId)
+        assertEquals(PeerIdentityLookup.Revoked, lookup)
+
+        val reapply = repo.applyValidatedBinding(b0)
+        assertEquals(PeerTrustApplyResult.Rejected(PeerTrustRejectReason.Revoked), reapply)
+
+        rawStore.close()
+        JdbcPeerIdentityStore(file).use { freshStore ->
+            val row = freshStore.readRaw(b0.nodeId)
+            assertNotNull(row)
+            assertEquals(0L, row!!.acceptedGenerationRaw)
+            assertArrayEquals(b0.staticDhPublicKey, row.acceptedStaticDhPublicKeyRaw)
+            assertEquals(PeerTrustLevel.REVOKED.persistedCode, row.trustCodeRaw)
+            assertNull(row.pendingGenerationRaw)
+            assertNull(row.pendingStaticDhPublicKeyRaw)
+        }
+    }
+
+    @Test
+    fun testRevokePeer_ActiveWithPending_RevokesAndClearsPending() {
+        val file = tempFolder.newFile("rev_withpending.db").also { it.delete() }
+        val rawStore = JdbcPeerIdentityStore(file)
+        val repo = PeerIdentityRepository(rawStore)
+
+        val b0 = makeBinding(seedA, 0L, staticPrivA)
+        val b5 = makeBinding(seedA, 5L, staticPrivB)
+        repo.applyValidatedBinding(b0)
+        repo.applyValidatedBinding(b5)
+
+        val res = repo.revokePeer(b0.nodeId)
+        assertEquals(RevokeResult.Revoked, res)
+
+        rawStore.close()
+        JdbcPeerIdentityStore(file).use { freshStore ->
+            val row = freshStore.readRaw(b0.nodeId)
+            assertNotNull(row)
+            assertEquals(0L, row!!.acceptedGenerationRaw)
+            assertArrayEquals(b0.staticDhPublicKey, row.acceptedStaticDhPublicKeyRaw)
+            assertEquals(PeerTrustLevel.REVOKED.persistedCode, row.trustCodeRaw)
+            assertNull(row.pendingGenerationRaw)
+            assertNull(row.pendingStaticDhPublicKeyRaw)
+        }
+    }
+
+    @Test
+    fun testRevokePeer_AlreadyRevoked_ReturnsAlreadyRevokedWithoutMutation() {
+        val file = tempFolder.newFile("rev_already.db").also { it.delete() }
+        val rawStore = JdbcPeerIdentityStore(file)
+        val repo = PeerIdentityRepository(rawStore)
+
+        val b0 = makeBinding(seedA, 0L, staticPrivA)
+        repo.applyValidatedBinding(b0)
+        assertEquals(RevokeResult.Revoked, repo.revokePeer(b0.nodeId))
+        assertEquals(RevokeResult.AlreadyRevoked, repo.revokePeer(b0.nodeId))
+
+        rawStore.close()
+        JdbcPeerIdentityStore(file).use { freshStore ->
+            val row = freshStore.readRaw(b0.nodeId)
+            assertNotNull(row)
+            assertEquals(PeerTrustLevel.REVOKED.persistedCode, row!!.trustCodeRaw)
+        }
+    }
+
+    @Test
+    fun testRevokePeer_PeerNotFound_ReturnsPeerNotFound() {
+        val file = tempFolder.newFile("rev_not_found.db").also { it.delete() }
+        val rawStore = JdbcPeerIdentityStore(file)
+        val repo = PeerIdentityRepository(rawStore)
+
+        val unknownNode = ByteArray(16) { 0x88.toByte() }
+        assertEquals(RevokeResult.PeerNotFound, repo.revokePeer(unknownNode))
+
+        rawStore.close()
+    }
+
+    @Test
+    fun testRevokePeer_InvalidArgument_InvalidNodeId() {
+        val file = tempFolder.newFile("rev_invalid.db").also { it.delete() }
+        val rawStore = JdbcPeerIdentityStore(file)
+        val repo = PeerIdentityRepository(rawStore)
+
+        assertTrue(repo.revokePeer(ByteArray(15)) is RevokeResult.InvalidArgument)
+        assertTrue(repo.revokePeer(ByteArray(17)) is RevokeResult.InvalidArgument)
+
+        rawStore.close()
+    }
+
+    @Test
+    fun testRevokePeer_CorruptDurableRow_RollsBack() {
+        val file = tempFolder.newFile("rev_corrupt.db").also { it.delete() }
+        val rawStore = JdbcPeerIdentityStore(file)
+        val hookStore = HookableStore(rawStore)
+        val repo = PeerIdentityRepository(hookStore)
+
+        val b0 = makeBinding(seedA, 0L, staticPrivA)
+        repo.applyValidatedBinding(b0)
+
+        hookStore.hookReadRaw = { nodeId ->
+            PeerIdentityRow(
+                nodeIdRaw = nodeId,
+                signingPublicKeyRaw = b0.signingPublicKey,
+                acceptedStaticDhPublicKeyRaw = b0.staticDhPublicKey,
+                acceptedGenerationRaw = 0L,
+                trustCodeRaw = 999, // Corrupt code
+                pendingStaticDhPublicKeyRaw = null,
+                pendingGenerationRaw = null
+            )
+        }
+
+        val res = repo.revokePeer(b0.nodeId)
+        assertTrue(res is RevokeResult.Corrupt)
+        assertEquals(
+            PeerTrustRepositoryCorruptionReason.UnknownTrustLevelCode(999),
+            (res as RevokeResult.Corrupt).reason
+        )
+
+        rawStore.close()
+        JdbcPeerIdentityStore(file).use { freshStore ->
+            val row = freshStore.readRaw(b0.nodeId)
+            assertNotNull(row)
+            assertEquals(PeerTrustLevel.TOFU_PINNED.persistedCode, row!!.trustCodeRaw)
+        }
+    }
+
+    @Test
+    fun testRevokePeer_CardinalityZero_RollsBack() {
+        val file = tempFolder.newFile("rev_card0.db").also { it.delete() }
+        val rawStore = JdbcPeerIdentityStore(file)
+        val hookStore = HookableStore(rawStore)
+        val repo = PeerIdentityRepository(hookStore)
+
+        val b0 = makeBinding(seedA, 0L, staticPrivA)
+        repo.applyValidatedBinding(b0)
+
+        hookStore.hookRevoke = { _, _, _, _, _, _, _ -> 0 }
+        val res = repo.revokePeer(b0.nodeId)
+        assertTrue(res is RevokeResult.Corrupt)
+        assertEquals(
+            PeerTrustRepositoryCorruptionReason.MutationCardinality(1, 0),
+            (res as RevokeResult.Corrupt).reason
+        )
+
+        rawStore.close()
+        JdbcPeerIdentityStore(file).use { freshStore ->
+            val row = freshStore.readRaw(b0.nodeId)
+            assertNotNull(row)
+            assertEquals(PeerTrustLevel.TOFU_PINNED.persistedCode, row!!.trustCodeRaw)
+        }
+    }
+
+    @Test
+    fun testRevokePeer_CardinalityTwo_RollsBack() {
+        val file = tempFolder.newFile("rev_card2.db").also { it.delete() }
+        val rawStore = JdbcPeerIdentityStore(file)
+        val hookStore = HookableStore(rawStore)
+        val repo = PeerIdentityRepository(hookStore)
+
+        val b0 = makeBinding(seedA, 0L, staticPrivA)
+        repo.applyValidatedBinding(b0)
+
+        hookStore.hookRevoke = { _, _, _, _, _, _, _ -> 2 }
+        val res = repo.revokePeer(b0.nodeId)
+        assertTrue(res is RevokeResult.Corrupt)
+        assertEquals(
+            PeerTrustRepositoryCorruptionReason.MutationCardinality(1, 2),
+            (res as RevokeResult.Corrupt).reason
+        )
+
+        rawStore.close()
+        JdbcPeerIdentityStore(file).use { freshStore ->
+            val row = freshStore.readRaw(b0.nodeId)
+            assertNotNull(row)
+            assertEquals(PeerTrustLevel.TOFU_PINNED.persistedCode, row!!.trustCodeRaw)
+        }
+    }
+
+    @Test
+    fun testRevokePeer_StorageFaultAfterUpdate_RollsBack() {
+        val file = tempFolder.newFile("rev_fault.db").also { it.delete() }
+        val rawStore = JdbcPeerIdentityStore(file)
+        val hookStore = HookableStore(rawStore)
+        val repo = PeerIdentityRepository(hookStore)
+
+        val b0 = makeBinding(seedA, 0L, staticPrivA)
+        repo.applyValidatedBinding(b0)
+
+        hookStore.faultAfterRevoke = true
+
+        val res = repo.revokePeer(b0.nodeId)
+        assertTrue(res is RevokeResult.StorageFailure)
+
+        rawStore.close()
+        JdbcPeerIdentityStore(file).use { freshStore ->
+            val row = freshStore.readRaw(b0.nodeId)
+            assertNotNull(row)
+            assertEquals(PeerTrustLevel.TOFU_PINNED.persistedCode, row!!.trustCodeRaw)
+        }
+    }
+
+    @Test
+    fun testRevokePeer_PostWriteCorruptReadback_RollsBack() {
+        val file = tempFolder.newFile("rev_readback_corrupt.db").also { it.delete() }
+        val rawStore = JdbcPeerIdentityStore(file)
+        val hookStore = HookableStore(rawStore)
+        val repo = PeerIdentityRepository(hookStore)
+
+        val b0 = makeBinding(seedA, 0L, staticPrivA)
+        repo.applyValidatedBinding(b0)
+
+        var readCount = 0
+        hookStore.hookReadRaw = { nodeId ->
+            readCount += 1
+            if (readCount == 1) {
+                rawStore.readRaw(nodeId)
+            } else {
+                PeerIdentityRow(
+                    nodeIdRaw = nodeId,
+                    signingPublicKeyRaw = b0.signingPublicKey,
+                    acceptedStaticDhPublicKeyRaw = b0.staticDhPublicKey,
+                    acceptedGenerationRaw = 0L,
+                    trustCodeRaw = 999, // Corrupt code
+                    pendingStaticDhPublicKeyRaw = null,
+                    pendingGenerationRaw = null
+                )
+            }
+        }
+
+        val res = repo.revokePeer(b0.nodeId)
+        assertTrue(res is RevokeResult.Corrupt)
+        assertEquals(
+            PeerTrustRepositoryCorruptionReason.UnknownTrustLevelCode(999),
+            (res as RevokeResult.Corrupt).reason
+        )
+
+        rawStore.close()
+        JdbcPeerIdentityStore(file).use { freshStore ->
+            val row = freshStore.readRaw(b0.nodeId)
+            assertNotNull(row)
+            assertEquals(PeerTrustLevel.TOFU_PINNED.persistedCode, row!!.trustCodeRaw)
+        }
+    }
+
+    @Test
+    fun testRevokePeer_SimulatedCommitFailure_RollsBack() {
+        val file = tempFolder.newFile("rev_commit_fail.db").also { it.delete() }
+        val rawStore = JdbcPeerIdentityStore(file)
+        val hookStore = HookableStore(rawStore)
+        val repo = PeerIdentityRepository(hookStore)
+
+        val b0 = makeBinding(seedA, 0L, staticPrivA)
+        repo.applyValidatedBinding(b0)
+
+        hookStore.hookInTx = { block ->
+            rawStore.inImmediateTransaction { tx ->
+                block(tx)
+                throw SQLException("Simulated commit failure after successful revoke body")
+            }
+        }
+
+        val res = repo.revokePeer(b0.nodeId)
+        assertTrue(res is RevokeResult.StorageFailure)
+
+        rawStore.close()
+        JdbcPeerIdentityStore(file).use { freshStore ->
+            val row = freshStore.readRaw(b0.nodeId)
+            assertNotNull(row)
+            assertEquals(PeerTrustLevel.TOFU_PINNED.persistedCode, row!!.trustCodeRaw)
+        }
+    }
+
+    @Test
+    fun testRevokePeer_Vs_InboundApply_CrossConnectionRace() {
+        val file = tempFolder.newFile("rev_race.db").also { it.delete() }
+        val store1 = JdbcPeerIdentityStore(file)
+        val store2 = JdbcPeerIdentityStore(file)
+
+        val repo1 = PeerIdentityRepository(store1)
+        val repo2 = PeerIdentityRepository(store2)
+
+        val b0 = makeBinding(seedA, 0L, staticPrivA)
+        val b5 = makeBinding(seedA, 5L, staticPrivB)
+        repo1.applyValidatedBinding(b0)
+        repo1.applyValidatedBinding(b5)
+
+        val b6 = makeBinding(seedA, 6L, staticPrivC)
+
+        val executor = Executors.newFixedThreadPool(2)
+        val f1 = executor.submit(Callable { repo1.revokePeer(b0.nodeId) })
+        val f2 = executor.submit(Callable { repo2.applyValidatedBinding(b6) })
+
+        val r1 = f1.get()
+        val r2 = f2.get()
+
+        executor.shutdown()
+        store1.close()
+        store2.close()
+
+        val isOptionA = (r1 == RevokeResult.Revoked && r2 == PeerTrustApplyResult.Rejected(PeerTrustRejectReason.Revoked))
+        val isOptionB = (r1 == RevokeResult.Revoked && r2 == PeerTrustApplyResult.KeyChangedQuarantined)
+
+        assertTrue("Outcome must match legal serialization Option A or B: r1=$r1, r2=$r2", isOptionA || isOptionB)
+
+        // FINAL STATE IN BOTH: trust REVOKED, accepted 0/A, pending NULL
+        JdbcPeerIdentityStore(file).use { store ->
+            val row = store.readRaw(b0.nodeId)
+            assertNotNull(row)
+            assertEquals(0L, row!!.acceptedGenerationRaw)
+            assertArrayEquals(b0.staticDhPublicKey, row.acceptedStaticDhPublicKeyRaw)
+            assertEquals(PeerTrustLevel.REVOKED.persistedCode, row.trustCodeRaw)
+            assertNull(row.pendingGenerationRaw)
+            assertNull(row.pendingStaticDhPublicKeyRaw)
+        }
+    }
+
+    @Test
+    fun testRevokePeer_ThenApprovePending_ReturnsRejectedRevoked() {
+        val file = tempFolder.newFile("rev_then_appr.db").also { it.delete() }
+        val rawStore = JdbcPeerIdentityStore(file)
+        val repo = PeerIdentityRepository(rawStore)
+
+        val b0 = makeBinding(seedA, 0L, staticPrivA)
+        val b5 = makeBinding(seedA, 5L, staticPrivB)
+        repo.applyValidatedBinding(b0)
+        repo.applyValidatedBinding(b5)
+
+        assertEquals(RevokeResult.Revoked, repo.revokePeer(b0.nodeId))
+
+        val res = repo.approvePendingRotation(b0.nodeId, 5L, b5.staticDhPublicKey)
+        assertEquals(RotationApprovalResult.RejectedRevoked, res)
+
+        rawStore.close()
+        JdbcPeerIdentityStore(file).use { freshStore ->
+            val row = freshStore.readRaw(b0.nodeId)
+            assertNotNull(row)
+            assertEquals(PeerTrustLevel.REVOKED.persistedCode, row!!.trustCodeRaw)
+            assertNull(row.pendingGenerationRaw)
+            assertNull(row.pendingStaticDhPublicKeyRaw)
         }
     }
 }

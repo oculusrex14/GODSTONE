@@ -395,9 +395,9 @@ def check_consistency(
                 if "C8.1B" not in s_text:
                     errors.append("ADR-003 status: must mention C8.1B status as implemented/pending freeze")
                 if "C8.2" not in s_text:
-                    errors.append("ADR-003 status: must mention C8.2 status as unimplemented/open")
-                if re.search(r"C8\.2C[^\n]*(?<!Un)implemented\b", s_text, re.IGNORECASE) or re.search(r"C8\.2C[^\n]*\b(?:CLOSED|Frozen)\b", s_text, re.IGNORECASE) or "Unimplemented / Open" not in s_text:
-                    errors.append("ADR-003 status: C8.2 must not be claimed as implemented or closed")
+                    errors.append("ADR-003 status: must mention C8.2 status")
+                if re.search(r"C8\.3[^\n]*(?<!Un)implemented\b", s_text, re.IGNORECASE) or re.search(r"C8\.3[^\n]*\b(?:CLOSED|Frozen)\b", s_text, re.IGNORECASE) or "Unimplemented / Open" not in s_text:
+                    errors.append("ADR-003 status: C8.2/C8.3 must not be claimed as implemented or closed")
                 if "open" not in s_text.lower():
                     errors.append("ADR-003 status: must state implementation is OPEN")
                 if "Sealed-Sender" not in s_text or "OPEN" not in s_text.upper():

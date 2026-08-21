@@ -121,6 +121,51 @@ internal enum PeerIdentitySchema {
           AND pending_generation = ?
         """
 
+    static let approvePendingRotationSql = """
+        UPDATE peer_identities
+        SET
+            accepted_static_dh_public_key = pending_static_dh_public_key,
+            accepted_generation = pending_generation,
+            pending_static_dh_public_key = NULL,
+            pending_generation = NULL
+        WHERE node_id = ?
+          AND signing_public_key = ?
+          AND accepted_static_dh_public_key = ?
+          AND accepted_generation = ?
+          AND trust_level = ?
+          AND pending_static_dh_public_key = ?
+          AND pending_generation = ?
+          AND trust_level IN (1,2)
+        """
+
+    static let revokeNoPendingSql = """
+        UPDATE peer_identities
+        SET trust_level = 3,
+            pending_static_dh_public_key = NULL,
+            pending_generation = NULL
+        WHERE node_id = ?
+          AND signing_public_key = ?
+          AND accepted_static_dh_public_key = ?
+          AND accepted_generation = ?
+          AND trust_level = ?
+          AND pending_static_dh_public_key IS NULL
+          AND pending_generation IS NULL
+        """
+
+    static let revokeWithPendingSql = """
+        UPDATE peer_identities
+        SET trust_level = 3,
+            pending_static_dh_public_key = NULL,
+            pending_generation = NULL
+        WHERE node_id = ?
+          AND signing_public_key = ?
+          AND accepted_static_dh_public_key = ?
+          AND accepted_generation = ?
+          AND trust_level = ?
+          AND pending_static_dh_public_key = ?
+          AND pending_generation = ?
+        """
+
     static func normalizeSql(_ sql: String) -> String {
         sql.split(whereSeparator: { $0.isWhitespace }).joined(separator: " ")
     }
@@ -183,6 +228,26 @@ internal protocol PeerIdentityStore: AnyObject {
         oldPendingGeneration: Int64,
         newPendingStatic: Data,
         newPendingGeneration: Int64
+    ) throws -> Int
+
+    func approvePendingRotationGuarded(
+        nodeId: Data,
+        signingPub: Data,
+        acceptedStatic: Data,
+        acceptedGeneration: Int64,
+        trustLevel: Int32,
+        expectedPendingStatic: Data,
+        expectedPendingGeneration: Int64
+    ) throws -> Int
+
+    func revokePeerGuarded(
+        nodeId: Data,
+        signingPub: Data,
+        acceptedStatic: Data,
+        acceptedGeneration: Int64,
+        currentTrustLevel: Int32,
+        oldPendingStatic: Data?,
+        oldPendingGeneration: Int64?
     ) throws -> Int
 }
 
@@ -422,6 +487,67 @@ internal final class SqlitePeerIdentityStore: PeerIdentityStore {
         )
     }
 
+    func approvePendingRotationGuarded(
+        nodeId: Data,
+        signingPub: Data,
+        acceptedStatic: Data,
+        acceptedGeneration: Int64,
+        trustLevel: Int32,
+        expectedPendingStatic: Data,
+        expectedPendingGeneration: Int64
+    ) throws -> Int {
+        lock.lock()
+        defer { lock.unlock() }
+        guard let db = handle else { throw PeerStoreError.handleMissing }
+        return try approvePendingRotationNoLock(
+            db,
+            nodeId: nodeId,
+            signingPub: signingPub,
+            acceptedStatic: acceptedStatic,
+            acceptedGeneration: acceptedGeneration,
+            trustLevel: trustLevel,
+            expectedPendingStatic: expectedPendingStatic,
+            expectedPendingGeneration: expectedPendingGeneration
+        )
+    }
+
+    func revokePeerGuarded(
+        nodeId: Data,
+        signingPub: Data,
+        acceptedStatic: Data,
+        acceptedGeneration: Int64,
+        currentTrustLevel: Int32,
+        oldPendingStatic: Data?,
+        oldPendingGeneration: Int64?
+    ) throws -> Int {
+        lock.lock()
+        defer { lock.unlock() }
+        guard let db = handle else { throw PeerStoreError.handleMissing }
+        return try revokePeerNoLock(
+            db,
+            nodeId: nodeId,
+            signingPub: signingPub,
+            acceptedStatic: acceptedStatic,
+            acceptedGeneration: acceptedGeneration,
+            currentTrustLevel: currentTrustLevel,
+            oldPendingStatic: oldPendingStatic,
+            oldPendingGeneration: oldPendingGeneration
+        )
+    }
+
+    /// Coordinated panic wipe helper for peer identity database artifacts (ADR-004, Phase C8.2C).
+    @discardableResult
+    public static func panicWipe(at url: URL) -> Bool {
+        let fm = FileManager.default
+        var ok = true
+        for suffix in ["", "-wal", "-shm", "-journal"] {
+            let p = URL(fileURLWithPath: url.path + suffix)
+            do { try fm.removeItem(at: p) } catch { /* absent is fine */ }
+            if fm.fileExists(atPath: p.path) { ok = false }
+        }
+        return ok
+    }
+
     // MARK: - No-Lock Internal Operations (Lock discipline §22)
 
     fileprivate func readRawNoLock(_ db: OpaquePointer, _ nodeId: Data) throws -> PeerIdentityRow? {
@@ -536,6 +662,75 @@ internal final class SqlitePeerIdentityStore: PeerIdentityStore {
         return Int(sqlite3_changes(db))
     }
 
+    fileprivate func approvePendingRotationNoLock(
+        _ db: OpaquePointer,
+        nodeId: Data,
+        signingPub: Data,
+        acceptedStatic: Data,
+        acceptedGeneration: Int64,
+        trustLevel: Int32,
+        expectedPendingStatic: Data,
+        expectedPendingGeneration: Int64
+    ) throws -> Int {
+        var stmt: OpaquePointer?
+        guard sqlite3_prepare_v2(db, PeerIdentitySchema.approvePendingRotationSql, -1, &stmt, nil) == SQLITE_OK else {
+            sqlite3_finalize(stmt); throw PeerStoreError.prepareFailed
+        }
+        defer { sqlite3_finalize(stmt) }
+        bindBlob(stmt, 1, nodeId)
+        bindBlob(stmt, 2, signingPub)
+        bindBlob(stmt, 3, acceptedStatic)
+        sqlite3_bind_int64(stmt, 4, acceptedGeneration)
+        sqlite3_bind_int(stmt, 5, trustLevel)
+        bindBlob(stmt, 6, expectedPendingStatic)
+        sqlite3_bind_int64(stmt, 7, expectedPendingGeneration)
+
+        guard sqlite3_step(stmt) == SQLITE_DONE else { throw PeerStoreError.stepFailed }
+        return Int(sqlite3_changes(db))
+    }
+
+    fileprivate func revokePeerNoLock(
+        _ db: OpaquePointer,
+        nodeId: Data,
+        signingPub: Data,
+        acceptedStatic: Data,
+        acceptedGeneration: Int64,
+        currentTrustLevel: Int32,
+        oldPendingStatic: Data?,
+        oldPendingGeneration: Int64?
+    ) throws -> Int {
+        var stmt: OpaquePointer?
+        if let oldStatic = oldPendingStatic, let oldGen = oldPendingGeneration {
+            guard sqlite3_prepare_v2(db, PeerIdentitySchema.revokeWithPendingSql, -1, &stmt, nil) == SQLITE_OK else {
+                sqlite3_finalize(stmt); throw PeerStoreError.prepareFailed
+            }
+            defer { sqlite3_finalize(stmt) }
+            bindBlob(stmt, 1, nodeId)
+            bindBlob(stmt, 2, signingPub)
+            bindBlob(stmt, 3, acceptedStatic)
+            sqlite3_bind_int64(stmt, 4, acceptedGeneration)
+            sqlite3_bind_int(stmt, 5, currentTrustLevel)
+            bindBlob(stmt, 6, oldStatic)
+            sqlite3_bind_int64(stmt, 7, oldGen)
+
+            guard sqlite3_step(stmt) == SQLITE_DONE else { throw PeerStoreError.stepFailed }
+            return Int(sqlite3_changes(db))
+        } else {
+            guard sqlite3_prepare_v2(db, PeerIdentitySchema.revokeNoPendingSql, -1, &stmt, nil) == SQLITE_OK else {
+                sqlite3_finalize(stmt); throw PeerStoreError.prepareFailed
+            }
+            defer { sqlite3_finalize(stmt) }
+            bindBlob(stmt, 1, nodeId)
+            bindBlob(stmt, 2, signingPub)
+            bindBlob(stmt, 3, acceptedStatic)
+            sqlite3_bind_int64(stmt, 4, acceptedGeneration)
+            sqlite3_bind_int(stmt, 5, currentTrustLevel)
+
+            guard sqlite3_step(stmt) == SQLITE_DONE else { throw PeerStoreError.stepFailed }
+            return Int(sqlite3_changes(db))
+        }
+    }
+
     @inline(__always)
     private func bindBlob(_ stmt: OpaquePointer?, _ index: Int32, _ data: Data) {
         _ = data.withUnsafeBytes { raw in
@@ -633,6 +828,48 @@ internal final class SqlitePeerIdentityStore: PeerIdentityStore {
                 oldPendingGeneration: oldPendingGeneration,
                 newPendingStatic: newPendingStatic,
                 newPendingGeneration: newPendingGeneration
+            )
+        }
+
+        func approvePendingRotationGuarded(
+            nodeId: Data,
+            signingPub: Data,
+            acceptedStatic: Data,
+            acceptedGeneration: Int64,
+            trustLevel: Int32,
+            expectedPendingStatic: Data,
+            expectedPendingGeneration: Int64
+        ) throws -> Int {
+            try parent.approvePendingRotationNoLock(
+                db,
+                nodeId: nodeId,
+                signingPub: signingPub,
+                acceptedStatic: acceptedStatic,
+                acceptedGeneration: acceptedGeneration,
+                trustLevel: trustLevel,
+                expectedPendingStatic: expectedPendingStatic,
+                expectedPendingGeneration: expectedPendingGeneration
+            )
+        }
+
+        func revokePeerGuarded(
+            nodeId: Data,
+            signingPub: Data,
+            acceptedStatic: Data,
+            acceptedGeneration: Int64,
+            currentTrustLevel: Int32,
+            oldPendingStatic: Data?,
+            oldPendingGeneration: Int64?
+        ) throws -> Int {
+            try parent.revokePeerNoLock(
+                db,
+                nodeId: nodeId,
+                signingPub: signingPub,
+                acceptedStatic: acceptedStatic,
+                acceptedGeneration: acceptedGeneration,
+                currentTrustLevel: currentTrustLevel,
+                oldPendingStatic: oldPendingStatic,
+                oldPendingGeneration: oldPendingGeneration
             )
         }
     }

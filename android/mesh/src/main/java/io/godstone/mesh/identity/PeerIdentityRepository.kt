@@ -41,6 +41,32 @@ internal sealed class PeerIdentityLookup {
 }
 
 /**
+ * Rotation approval result taxonomy (ADR-003, Phase C8.2C).
+ */
+internal sealed class RotationApprovalResult {
+    data class Approved(val identity: VerifiedPeerIdentity) : RotationApprovalResult()
+    object PeerNotFound : RotationApprovalResult()
+    object RejectedRevoked : RotationApprovalResult()
+    object NoPendingCandidate : RotationApprovalResult()
+    object StaleCandidate : RotationApprovalResult()
+    data class InvalidArgument(val message: String) : RotationApprovalResult()
+    data class Corrupt(val reason: PeerTrustRepositoryCorruptionReason) : RotationApprovalResult()
+    data class StorageFailure(val exception: Exception? = null) : RotationApprovalResult()
+}
+
+/**
+ * Revocation result taxonomy (ADR-003, Phase C8.2C).
+ */
+internal sealed class RevokeResult {
+    object Revoked : RevokeResult()
+    object AlreadyRevoked : RevokeResult()
+    object PeerNotFound : RevokeResult()
+    data class InvalidArgument(val message: String) : RevokeResult()
+    data class Corrupt(val reason: PeerTrustRepositoryCorruptionReason) : RevokeResult()
+    data class StorageFailure(val exception: Exception? = null) : RevokeResult()
+}
+
+/**
  * Private transaction-aborting exception to ensure corrupted states trigger immediate rollback (ADR-003, Phase C8.2B.1).
  */
 private class CorruptTxnAbort(
@@ -50,6 +76,21 @@ private class CorruptTxnAbort(
 private fun abortCorrupt(
     reason: PeerTrustRepositoryCorruptionReason
 ): Nothing = throw CorruptTxnAbort(reason)
+
+/**
+ * Private transaction-aborting exceptions for non-mutating control paths (ADR-003, Phase C8.2C).
+ */
+private sealed class ApprovalControlAbort : RuntimeException() {
+    object PeerNotFound : ApprovalControlAbort()
+    object RejectedRevoked : ApprovalControlAbort()
+    object NoPendingCandidate : ApprovalControlAbort()
+    object StaleCandidate : ApprovalControlAbort()
+}
+
+private sealed class RevokeControlAbort : RuntimeException() {
+    object PeerNotFound : RevokeControlAbort()
+    object AlreadyRevoked : RevokeControlAbort()
+}
 
 /**
  * Durable peer identity repository owning transaction serialization, strict row decoding,
@@ -325,5 +366,182 @@ internal class PeerIdentityRepository(private val store: PeerIdentityStore) {
         return PeerIdentityLookup.Corrupt(
             PeerTrustRepositoryCorruptionReason.MutationReadbackMismatch("Unable to construct valid view from unquarantined non-revoked record")
         )
+    }
+
+    /**
+     * Explicitly approve an exact pending rotation candidate inside a serialized write transaction (ADR-003, Phase C8.2C).
+     */
+    fun approvePendingRotation(
+        nodeId: ByteArray,
+        expectedPendingGeneration: Long,
+        expectedPendingStaticDhPublicKey: ByteArray
+    ): RotationApprovalResult {
+        if (nodeId.size != 16) {
+            return RotationApprovalResult.InvalidArgument("nodeId must be exactly 16 bytes, got ${nodeId.size}")
+        }
+        if (expectedPendingStaticDhPublicKey.size != 32) {
+            return RotationApprovalResult.InvalidArgument(
+                "expectedPendingStaticDhPublicKey must be exactly 32 bytes, got ${expectedPendingStaticDhPublicKey.size}"
+            )
+        }
+        if (expectedPendingGeneration !in 0L..PeerIdentityRecordValidator.MAX_UINT32) {
+            return RotationApprovalResult.InvalidArgument(
+                "expectedPendingGeneration out of range: $expectedPendingGeneration"
+            )
+        }
+
+        return try {
+            store.inImmediateTransaction { tx ->
+                val currentRaw = tx.readRaw(nodeId)
+                    ?: throw ApprovalControlAbort.PeerNotFound
+
+                val currentRecord = when (val decode = decodeRowStrict(currentRaw)) {
+                    is DecodeResult.Success -> decode.record
+                    is DecodeResult.Failure -> abortCorrupt(decode.reason)
+                }
+
+                if (currentRecord.trustLevel == PeerTrustLevel.REVOKED) {
+                    throw ApprovalControlAbort.RejectedRevoked
+                }
+
+                if (currentRecord.pendingGeneration == null || currentRecord.pendingStaticDhPublicKey == null) {
+                    throw ApprovalControlAbort.NoPendingCandidate
+                }
+
+                if (currentRecord.pendingGeneration != expectedPendingGeneration ||
+                    !currentRecord.pendingStaticDhPublicKey.contentEquals(expectedPendingStaticDhPublicKey)
+                ) {
+                    throw ApprovalControlAbort.StaleCandidate
+                }
+
+                val affected = tx.approvePendingRotationGuarded(
+                    nodeId = currentRecord.nodeId,
+                    signingPub = currentRecord.signingPublicKey,
+                    acceptedStatic = currentRecord.acceptedStaticDhPublicKey,
+                    acceptedGeneration = currentRecord.acceptedGeneration,
+                    trustLevel = currentRecord.trustLevel.persistedCode,
+                    expectedPendingStatic = expectedPendingStaticDhPublicKey,
+                    expectedPendingGeneration = expectedPendingGeneration
+                )
+                if (affected != 1) {
+                    abortCorrupt(PeerTrustRepositoryCorruptionReason.MutationCardinality(1, affected))
+                }
+
+                val readbackRaw = tx.readRaw(nodeId)
+                    ?: abortCorrupt(PeerTrustRepositoryCorruptionReason.MissingPostMutationRow)
+
+                val readbackRecord = when (val d = decodeRowStrict(readbackRaw)) {
+                    is DecodeResult.Success -> d.record
+                    is DecodeResult.Failure -> abortCorrupt(d.reason)
+                }
+
+                val expected = PeerIdentityRecord(
+                    nodeId = currentRecord.nodeId,
+                    signingPublicKey = currentRecord.signingPublicKey,
+                    acceptedStaticDhPublicKey = expectedPendingStaticDhPublicKey,
+                    acceptedGeneration = expectedPendingGeneration,
+                    trustLevel = currentRecord.trustLevel,
+                    pendingStaticDhPublicKey = null,
+                    pendingGeneration = null
+                )
+
+                if (readbackRecord != expected) {
+                    abortCorrupt(
+                        PeerTrustRepositoryCorruptionReason.MutationReadbackMismatch("ApprovePendingRotation readback mismatch")
+                    )
+                }
+
+                val verifiedView = VerifiedPeerIdentity.fromRecord(readbackRecord)
+                    ?: abortCorrupt(
+                        PeerTrustRepositoryCorruptionReason.MutationReadbackMismatch("Unable to mint VerifiedPeerIdentity from approved record")
+                    )
+
+                RotationApprovalResult.Approved(verifiedView)
+            }
+        } catch (e: ApprovalControlAbort.PeerNotFound) {
+            RotationApprovalResult.PeerNotFound
+        } catch (e: ApprovalControlAbort.RejectedRevoked) {
+            RotationApprovalResult.RejectedRevoked
+        } catch (e: ApprovalControlAbort.NoPendingCandidate) {
+            RotationApprovalResult.NoPendingCandidate
+        } catch (e: ApprovalControlAbort.StaleCandidate) {
+            RotationApprovalResult.StaleCandidate
+        } catch (e: CorruptTxnAbort) {
+            RotationApprovalResult.Corrupt(e.reason)
+        } catch (e: Exception) {
+            RotationApprovalResult.StorageFailure(e)
+        }
+    }
+
+    /**
+     * Durably revoke a peer identity inside a serialized write transaction (ADR-003, Phase C8.2C).
+     */
+    fun revokePeer(nodeId: ByteArray): RevokeResult {
+        if (nodeId.size != 16) {
+            return RevokeResult.InvalidArgument("nodeId must be exactly 16 bytes, got ${nodeId.size}")
+        }
+
+        return try {
+            store.inImmediateTransaction { tx ->
+                val currentRaw = tx.readRaw(nodeId)
+                    ?: throw RevokeControlAbort.PeerNotFound
+
+                val currentRecord = when (val decode = decodeRowStrict(currentRaw)) {
+                    is DecodeResult.Success -> decode.record
+                    is DecodeResult.Failure -> abortCorrupt(decode.reason)
+                }
+
+                if (currentRecord.trustLevel == PeerTrustLevel.REVOKED) {
+                    throw RevokeControlAbort.AlreadyRevoked
+                }
+
+                val affected = tx.revokePeerGuarded(
+                    nodeId = currentRecord.nodeId,
+                    signingPub = currentRecord.signingPublicKey,
+                    acceptedStatic = currentRecord.acceptedStaticDhPublicKey,
+                    acceptedGeneration = currentRecord.acceptedGeneration,
+                    currentTrustLevel = currentRecord.trustLevel.persistedCode,
+                    oldPendingStatic = currentRecord.pendingStaticDhPublicKey,
+                    oldPendingGeneration = currentRecord.pendingGeneration
+                )
+                if (affected != 1) {
+                    abortCorrupt(PeerTrustRepositoryCorruptionReason.MutationCardinality(1, affected))
+                }
+
+                val readbackRaw = tx.readRaw(nodeId)
+                    ?: abortCorrupt(PeerTrustRepositoryCorruptionReason.MissingPostMutationRow)
+
+                val readbackRecord = when (val d = decodeRowStrict(readbackRaw)) {
+                    is DecodeResult.Success -> d.record
+                    is DecodeResult.Failure -> abortCorrupt(d.reason)
+                }
+
+                val expected = PeerIdentityRecord(
+                    nodeId = currentRecord.nodeId,
+                    signingPublicKey = currentRecord.signingPublicKey,
+                    acceptedStaticDhPublicKey = currentRecord.acceptedStaticDhPublicKey,
+                    acceptedGeneration = currentRecord.acceptedGeneration,
+                    trustLevel = PeerTrustLevel.REVOKED,
+                    pendingStaticDhPublicKey = null,
+                    pendingGeneration = null
+                )
+
+                if (readbackRecord != expected) {
+                    abortCorrupt(
+                        PeerTrustRepositoryCorruptionReason.MutationReadbackMismatch("RevokePeer readback mismatch")
+                    )
+                }
+
+                RevokeResult.Revoked
+            }
+        } catch (e: RevokeControlAbort.PeerNotFound) {
+            RevokeResult.PeerNotFound
+        } catch (e: RevokeControlAbort.AlreadyRevoked) {
+            RevokeResult.AlreadyRevoked
+        } catch (e: CorruptTxnAbort) {
+            RevokeResult.Corrupt(e.reason)
+        } catch (e: Exception) {
+            RevokeResult.StorageFailure(e)
+        }
     }
 }

@@ -131,6 +131,51 @@ internal object PeerIdentitySchema {
           AND pending_generation = ?
     """
 
+    const val APPROVE_PENDING_ROTATION_SQL = """
+        UPDATE peer_identities
+        SET
+            accepted_static_dh_public_key = pending_static_dh_public_key,
+            accepted_generation = pending_generation,
+            pending_static_dh_public_key = NULL,
+            pending_generation = NULL
+        WHERE node_id = ?
+          AND signing_public_key = ?
+          AND accepted_static_dh_public_key = ?
+          AND accepted_generation = ?
+          AND trust_level = ?
+          AND pending_static_dh_public_key = ?
+          AND pending_generation = ?
+          AND trust_level IN (1,2)
+    """
+
+    const val REVOKE_NO_PENDING_SQL = """
+        UPDATE peer_identities
+        SET trust_level = 3,
+            pending_static_dh_public_key = NULL,
+            pending_generation = NULL
+        WHERE node_id = ?
+          AND signing_public_key = ?
+          AND accepted_static_dh_public_key = ?
+          AND accepted_generation = ?
+          AND trust_level = ?
+          AND pending_static_dh_public_key IS NULL
+          AND pending_generation IS NULL
+    """
+
+    const val REVOKE_WITH_PENDING_SQL = """
+        UPDATE peer_identities
+        SET trust_level = 3,
+            pending_static_dh_public_key = NULL,
+            pending_generation = NULL
+        WHERE node_id = ?
+          AND signing_public_key = ?
+          AND accepted_static_dh_public_key = ?
+          AND accepted_generation = ?
+          AND trust_level = ?
+          AND pending_static_dh_public_key = ?
+          AND pending_generation = ?
+    """
+
     /**
      * Validate the exact table DDL fingerprint from sqlite_master on every open.
      * Normalized whitespace comparison prevents false mismatches due to indentation.

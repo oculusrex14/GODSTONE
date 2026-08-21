@@ -179,6 +179,59 @@ internal class JdbcPeerIdentityStore(file: File) : PeerIdentityStore {
         }
     }
 
+    override fun approvePendingRotationGuarded(
+        nodeId: ByteArray,
+        signingPub: ByteArray,
+        acceptedStatic: ByteArray,
+        acceptedGeneration: Long,
+        trustLevel: Int,
+        expectedPendingStatic: ByteArray,
+        expectedPendingGeneration: Long
+    ): Int {
+        return conn.prepareStatement(PeerIdentitySchema.APPROVE_PENDING_ROTATION_SQL).use { ps ->
+            ps.setBytes(1, nodeId)
+            ps.setBytes(2, signingPub)
+            ps.setBytes(3, acceptedStatic)
+            ps.setLong(4, acceptedGeneration)
+            ps.setInt(5, trustLevel)
+            ps.setBytes(6, expectedPendingStatic)
+            ps.setLong(7, expectedPendingGeneration)
+            ps.executeUpdate()
+        }
+    }
+
+    override fun revokePeerGuarded(
+        nodeId: ByteArray,
+        signingPub: ByteArray,
+        acceptedStatic: ByteArray,
+        acceptedGeneration: Long,
+        currentTrustLevel: Int,
+        oldPendingStatic: ByteArray?,
+        oldPendingGeneration: Long?
+    ): Int {
+        return if (oldPendingStatic != null && oldPendingGeneration != null) {
+            conn.prepareStatement(PeerIdentitySchema.REVOKE_WITH_PENDING_SQL).use { ps ->
+                ps.setBytes(1, nodeId)
+                ps.setBytes(2, signingPub)
+                ps.setBytes(3, acceptedStatic)
+                ps.setLong(4, acceptedGeneration)
+                ps.setInt(5, currentTrustLevel)
+                ps.setBytes(6, oldPendingStatic)
+                ps.setLong(7, oldPendingGeneration)
+                ps.executeUpdate()
+            }
+        } else {
+            conn.prepareStatement(PeerIdentitySchema.REVOKE_NO_PENDING_SQL).use { ps ->
+                ps.setBytes(1, nodeId)
+                ps.setBytes(2, signingPub)
+                ps.setBytes(3, acceptedStatic)
+                ps.setLong(4, acceptedGeneration)
+                ps.setInt(5, currentTrustLevel)
+                ps.executeUpdate()
+            }
+        }
+    }
+
     fun execRawSqlForTest(sql: String) {
         conn.createStatement().use { it.execute(sql) }
     }
