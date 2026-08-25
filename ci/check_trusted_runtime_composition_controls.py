@@ -380,7 +380,7 @@ def check_controls(
         if m not in swift_test_cr:
             errors.append(f"iOS CompositionResolverAckTests missing canonical test: {m} (R28)")
 
-    # ── R29: Android WipeLifecycleTest and CrashStartupResumeTest inventories ──
+    # ── R29: Android WipeLifecycleTest, SessionManagerConcurrencyTest, CrashStartupResumeTest ──
     wipe_methods = [
         "testWipe_CleanIdle_NoOp",
         "testWipe_FullExecution_ErasesKeysAndDeletesArtifactsAndRegeneratesIdentity",
@@ -403,13 +403,21 @@ def check_controls(
         if m not in kt_test_wipe:
             errors.append(f"Android WipeLifecycleTest missing canonical test: {m} (R29)")
 
+    # Android Concurrency semantics (RC01-RC03)
     if "testRC01_ResolverLookupVsInvalidation" not in kt_test_concurrency:
         errors.append("Android SessionManagerConcurrencyTest missing testRC01_ResolverLookupVsInvalidation (R29)")
     if "testRC02_ReadySealVsInvalidation" not in kt_test_concurrency:
         errors.append("Android SessionManagerConcurrencyTest missing testRC02_ReadySealVsInvalidation (R29)")
+    else:
+        if not re.search(r"enteredReadAuthority.*releaseThreadA.*invalidationFinished", kt_test_concurrency, re.DOTALL):
+            errors.append("Android SessionManagerConcurrencyTest RC02 missing deterministic entered-read barrier / invalidation ordering (R29)")
     if "testRC03_HandshakeProcessingVsInvalidation" not in kt_test_concurrency:
         errors.append("Android SessionManagerConcurrencyTest missing testRC03_HandshakeProcessingVsInvalidation (R29)")
+    else:
+        if not re.search(r"responderProcessHs1.*enteredHsReadAuthority.*releaseHsThread.*invalidationFinished.*initiatorStart", kt_test_concurrency, re.DOTALL):
+            errors.append("Android SessionManagerConcurrencyTest RC03 missing real handshake stage / deterministic in-flight barrier (R29)")
 
+    # Android Startup semantics (SR01-SR07)
     startup_methods = [
         "testSR01_CleanLaunch_InitializesRuntimeNormally",
         "testSR02_PendingWipe_Requested_FinishesBeforeRuntimeInitialization",
@@ -423,7 +431,22 @@ def check_controls(
         if m not in kt_test_startup:
             errors.append(f"Android CrashStartupResumeTest missing canonical test: {m} (R29)")
 
-    # ── R30: iOS WipeLifecycleTests and CrashStartupResumeTests inventories ──
+    if not re.search(r"eraseKeys.*deleteArtifacts.*regenerateIdentity.*identityOpen.*failedIdentityOpens", kt_test_startup, re.DOTALL):
+        errors.append("Android CrashStartupResumeTest SR02 missing recovery-before-open ordering or fail-closed assertions (R29)")
+
+    if not re.search(r"sr03_msg\.db.*sr03_peer\.db.*allArtifacts.*KEY_ERASED.*deletedBeforeOpen.*JdbcPeerIdentityStore\(peerFile\)", kt_test_startup, re.DOTALL):
+        errors.append("Android CrashStartupResumeTest SR03 missing exact artifact deletion / same path store open (R29)")
+
+    if not re.search(r"RuntimeAwareWipeArtifacts.*PanicWipe\(.*\.begin\(\).*oldNodeId.*newIdentity\.nodeId.*bindingGeneration", kt_test_startup, re.DOTALL):
+        errors.append("Android CrashStartupResumeTest SR05 missing actual wipe invocation or causal node change assertion (R29)")
+
+    if not re.search(r"applyValidatedBinding.*lookup1.*MeshRuntimeInvalidator.*deleteArtifacts.*JdbcPeerIdentityStore\(peerFile\).*lookup2.*NotFound", kt_test_startup, re.DOTALL):
+        errors.append("Android CrashStartupResumeTest SR06 missing prior peer insertion / same-path fresh store / post-wipe absence proof (R29)")
+
+    if not re.search(r"BoundRecipientKeyResolver.*SessionManager.*MeshRuntimeInvalidator.*PanicWipe.*sm\.seal.*resolver\.publicSigningKey", kt_test_startup, re.DOTALL):
+        errors.append("Android CrashStartupResumeTest SR07 missing full runtime authority / runtime invalidation / post-wipe denial assertions (R29)")
+
+    # ── R30: iOS WipeLifecycleTests, SessionManagerConcurrencyTests, CrashStartupResumeTests ──
     for m in wipe_methods:
         if m not in swift_test_wipe:
             errors.append(f"iOS WipeLifecycleTests missing canonical test: {m} (R30)")
@@ -431,12 +454,31 @@ def check_controls(
         if m not in swift_test_startup:
             errors.append(f"iOS CrashStartupResumeTests missing canonical test: {m} (R30)")
 
+    # iOS Concurrency semantics (RC01-RC03)
     if "testRC01_ResolverLookupVsInvalidation" not in swift_test_concurrency:
         errors.append("iOS SessionManagerConcurrencyTests missing testRC01_ResolverLookupVsInvalidation (R30)")
     if "testRC02_ReadySealVsInvalidation" not in swift_test_concurrency:
         errors.append("iOS SessionManagerConcurrencyTests missing testRC02_ReadySealVsInvalidation (R30)")
+    else:
+        if not re.search(r"enteredReadAuthority.*releaseThreadA.*invalidationFinished.*isInvalidated", swift_test_concurrency, re.DOTALL):
+            errors.append("iOS SessionManagerConcurrencyTests RC02 missing deterministic entered-read barrier / invalidation ordering (R30)")
     if "testRC03_HandshakeProcessingVsInvalidation" not in swift_test_concurrency:
         errors.append("iOS SessionManagerConcurrencyTests missing testRC03_HandshakeProcessingVsInvalidation (R30)")
+    else:
+        if not re.search(r"responderProcessHs1.*enteredHsReadAuthority.*releaseHsThread.*invalidationFinished.*initiatorStart", swift_test_concurrency, re.DOTALL):
+            errors.append("iOS SessionManagerConcurrencyTests RC03 missing real handshake stage / deterministic in-flight barrier (R30)")
+
+    # iOS SR05: runtime1 beginPanicWipe, runtime2 SAME store URLs, node id change
+    if not re.search(r"runtime1\.beginPanicWipe.*MeshRuntime\.create\(.*messageStoreUrl:\s*msgUrl,\s*peerStoreUrl:\s*peerUrl.*XCTAssertNotEqual\(oldNodeId,\s*runtime2\.identity\.nodeId\)", swift_test_startup, re.DOTALL):
+        errors.append("iOS CrashStartupResumeTests SR05 missing runtime1 beginPanicWipe / runtime2 same store URLs / node ID change assertion (R30)")
+
+    # iOS SR06: peer inserted in runtime1, beginPanicWipe, runtime2 SAME peer URL, post-wipe absence
+    if not re.search(r"applyValidatedBinding.*lookup1.*runtime1\.beginPanicWipe.*MeshRuntime\.create\(.*peerStoreUrl:\s*peerUrl.*peerIdentityStore\.readRaw.*lookup2.*notFound.*recipientKeyResolver.*XCTAssertNil", swift_test_startup, re.DOTALL):
+        errors.append("iOS CrashStartupResumeTests SR06 missing prior peer insertion / same-path fresh store / post-wipe absence proof (R30)")
+
+    # iOS SR07: beginPanicWipe, invalidated gate, inactive sessions, nil resolver
+    if not re.search(r"beginPanicWipe.*lifecycleGate\.isInvalidated.*sessionManager\.isActive.*recipientKeyResolver", swift_test_startup, re.DOTALL):
+        errors.append("iOS CrashStartupResumeTests SR07 missing post-wipe denial assertions (R30)")
 
     return errors
 
@@ -717,16 +759,94 @@ def selftest() -> int:
         else: failures.append("Mutation R28 was NOT caught")
         reset_all()
 
-        # Mutation R29: Remove canonical test from Android WipeLifecycleTest
+        # Mutation R29a: Remove canonical test from Android WipeLifecycleTest
         f_kt_twipe.write_text(f_kt_twipe.read_text(encoding="utf-8").replace("testWipe_W04_PeerStoreClosed_AfterInvalidation", "testOldWipeHandles"), encoding="utf-8")
         if any("R29" in e for e in run_check()): passed += 1
-        else: failures.append("Mutation R29 was NOT caught")
+        else: failures.append("Mutation R29a was NOT caught")
         reset_all()
 
-        # Mutation R30: Remove canonical test from iOS WipeLifecycleTests
+        # Mutation R29_SR02: Move sensitive open marker before recovery in Android CrashStartupResumeTest
+        f_kt_tstartup.write_text(f_kt_tstartup.read_text(encoding="utf-8").replace("eraseKeys", "identityOpen"), encoding="utf-8")
+        if any("R29" in e for e in run_check()): passed += 1
+        else: failures.append("Mutation R29_SR02 was NOT caught")
+        reset_all()
+
+        # Mutation R29_SR03: Switch recovered peer/message artifact to unrelated path in Android CrashStartupResumeTest
+        f_kt_tstartup.write_text(f_kt_tstartup.read_text(encoding="utf-8").replace("sr03_peer.db", "unrelated_other.db"), encoding="utf-8")
+        if any("R29" in e for e in run_check()): passed += 1
+        else: failures.append("Mutation R29_SR03 was NOT caught")
+        reset_all()
+
+        # Mutation R29_SR05: Replace actual wipe path with two independent MeshIdentity.generate() calls
+        f_kt_tstartup.write_text(f_kt_tstartup.read_text(encoding="utf-8").replace("RuntimeAwareWipeArtifacts", "PlainFakeArtifacts"), encoding="utf-8")
+        if any("R29" in e for e in run_check()): passed += 1
+        else: failures.append("Mutation R29_SR05 was NOT caught")
+        reset_all()
+
+        # Mutation R29_SR06a: Remove prior peer insertion in Android CrashStartupResumeTest
+        f_kt_tstartup.write_text(f_kt_tstartup.read_text(encoding="utf-8").replace("applyValidatedBinding", "// no-insert"), encoding="utf-8")
+        if any("R29" in e for e in run_check()): passed += 1
+        else: failures.append("Mutation R29_SR06a was NOT caught")
+        reset_all()
+
+        # Mutation R29_SR06b: Fresh store uses a different DB path in Android CrashStartupResumeTest
+        f_kt_tstartup.write_text(f_kt_tstartup.read_text(encoding="utf-8").replace("JdbcPeerIdentityStore(peerFile)", "JdbcPeerIdentityStore(differentFile)"), encoding="utf-8")
+        if any("R29" in e for e in run_check()): passed += 1
+        else: failures.append("Mutation R29_SR06b was NOT caught")
+        reset_all()
+
+        # Mutation R29_SR07: Replace runtime invalidation with bare gate invalidation in Android CrashStartupResumeTest
+        f_kt_tstartup.write_text(f_kt_tstartup.read_text(encoding="utf-8").replace("MeshRuntimeInvalidator", "BareGateOnly"), encoding="utf-8")
+        if any("R29" in e for e in run_check()): passed += 1
+        else: failures.append("Mutation R29_SR07 was NOT caught")
+        reset_all()
+
+        # Mutation R29_RC02: Remove the in-operation barrier in Android SessionManagerConcurrencyTest
+        f_kt_tconcurrency.write_text(f_kt_tconcurrency.read_text(encoding="utf-8").replace("enteredReadAuthority", "noBarrier"), encoding="utf-8")
+        if any("R29" in e for e in run_check()): passed += 1
+        else: failures.append("Mutation R29_RC02 was NOT caught")
+        reset_all()
+
+        # Mutation R29_RC03: Replace real handshake stage with bogus zero HS2 race in Android SessionManagerConcurrencyTest
+        f_kt_tconcurrency.write_text(f_kt_tconcurrency.read_text(encoding="utf-8").replace("responderProcessHs1", "bogusZeroHs1"), encoding="utf-8")
+        if any("R29" in e for e in run_check()): passed += 1
+        else: failures.append("Mutation R29_RC03 was NOT caught")
+        reset_all()
+
+        # Mutation R30a: Remove canonical test from iOS WipeLifecycleTests
         f_swift_twipe.write_text(f_swift_twipe.read_text(encoding="utf-8").replace("testWipe_W04_PeerStoreClosed_AfterInvalidation", "testOldWipeHandles"), encoding="utf-8")
         if any("R30" in e for e in run_check()): passed += 1
-        else: failures.append("Mutation R30 was NOT caught")
+        else: failures.append("Mutation R30a was NOT caught")
+        reset_all()
+
+        # Mutation R30_SR05: runtime2 uses unrelated URLs in iOS CrashStartupResumeTests
+        f_swift_tstartup.write_text(f_swift_tstartup.read_text(encoding="utf-8").replace("messageStoreUrl: msgUrl,\n            peerStoreUrl: peerUrl", "messageStoreUrl: unrelatedMsgUrl,\n            peerStoreUrl: unrelatedPeerUrl"), encoding="utf-8")
+        if any("R30" in e for e in run_check()): passed += 1
+        else: failures.append("Mutation R30_SR05 was NOT caught")
+        reset_all()
+
+        # Mutation R30_SR06a: Remove prior peer insertion in iOS CrashStartupResumeTests
+        f_swift_tstartup.write_text(f_swift_tstartup.read_text(encoding="utf-8").replace("applyValidatedBinding", "// no-apply"), encoding="utf-8")
+        if any("R30" in e for e in run_check()): passed += 1
+        else: failures.append("Mutation R30_SR06a was NOT caught")
+        reset_all()
+
+        # Mutation R30_SR06b: runtime2 uses unrelated peer URL in iOS CrashStartupResumeTests
+        f_swift_tstartup.write_text(f_swift_tstartup.read_text(encoding="utf-8").replace("peerStoreUrl: peerUrl", "peerStoreUrl: otherPeerUrl"), encoding="utf-8")
+        if any("R30" in e for e in run_check()): passed += 1
+        else: failures.append("Mutation R30_SR06b was NOT caught")
+        reset_all()
+
+        # Mutation R30_RC02: Remove the in-operation barrier in iOS SessionManagerConcurrencyTests
+        f_swift_tconcurrency.write_text(f_swift_tconcurrency.read_text(encoding="utf-8").replace("enteredReadAuthority", "noBarrier"), encoding="utf-8")
+        if any("R30" in e for e in run_check()): passed += 1
+        else: failures.append("Mutation R30_RC02 was NOT caught")
+        reset_all()
+
+        # Mutation R30_RC03: Replace deterministic handshake interleaving with opportunistic race in iOS SessionManagerConcurrencyTests
+        f_swift_tconcurrency.write_text(f_swift_tconcurrency.read_text(encoding="utf-8").replace("responderProcessHs1", "bogusZeroHs1"), encoding="utf-8")
+        if any("R30" in e for e in run_check()): passed += 1
+        else: failures.append("Mutation R30_RC03 was NOT caught")
         reset_all()
 
     if failures:
@@ -734,7 +854,7 @@ def selftest() -> int:
             print(f"::error::selftest failure: {f}")
         return 1
 
-    print(f"check_trusted_runtime_composition_controls selftest PASSED ({passed}/32 mutations caught deterministically across R01-R30).")
+    print(f"check_trusted_runtime_composition_controls selftest PASSED ({passed}/45 mutations caught deterministically across R01-R30).")
     return 0
 
 

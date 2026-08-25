@@ -413,38 +413,57 @@ class WipeLifecycleTest {
 
     @Test
     fun testWipe_W15_RealDatabaseArtifactsAndSidecars_DeletedAfterClosure() {
-        val peerFile = tempFolder.newFile("w15_peer.db")
+        val peerFile = tempFolder.newFile("w15_peer.db").also { it.delete() }
+        val peerStore = JdbcPeerIdentityStore(peerFile)
         val peerWal = File(peerFile.parentFile, "${peerFile.name}-wal").also { it.writeText("wal") }
         val peerShm = File(peerFile.parentFile, "${peerFile.name}-shm").also { it.writeText("shm") }
-        val msgFile = tempFolder.newFile("w15_msg.db")
+        val peerJournal = File(peerFile.parentFile, "${peerFile.name}-journal").also { it.writeText("journal") }
+
+        val msgFile = tempFolder.newFile("w15_msg.db").also { it.delete() }
+        val msgStore = SqliteMessageStore(JdbcStoreDb(msgFile), 4096)
         val msgWal = File(msgFile.parentFile, "${msgFile.name}-wal").also { it.writeText("wal") }
         val msgShm = File(msgFile.parentFile, "${msgFile.name}-shm").also { it.writeText("shm") }
+        val msgJournal = File(msgFile.parentFile, "${msgFile.name}-journal").also { it.writeText("journal") }
 
-        assertTrue(peerFile.exists())
-        assertTrue(peerWal.exists())
-        assertTrue(peerShm.exists())
-        assertTrue(msgFile.exists())
-        assertTrue(msgWal.exists())
-        assertTrue(msgShm.exists())
+        val allFiles = listOf(peerFile, peerWal, peerShm, peerJournal, msgFile, msgWal, msgShm, msgJournal)
 
-        // Physical deletion step
-        val artifacts = object : WipeArtifacts {
+        // Verify stores operate normally before closure
+        assertNull(peerStore.readRaw(ByteArray(16)))
+        val frame = makeTestFrame()
+        val persistRes1 = kotlinx.coroutines.runBlocking { msgStore.persist(frame, ByteArray(16)) }
+        assertEquals(PersistResult.HELD_NEW, persistRes1)
+
+        val gate = DefaultRuntimeLifecycleGate()
+        val invalidator = MeshRuntimeInvalidator(
+            lifecycleGate = gate,
+            peerStore = peerStore,
+            messageStore = msgStore
+        )
+
+        val delegate = object : WipeArtifacts {
             override fun eraseKeys() {}
             override fun deleteArtifacts() {
-                listOf(peerFile, peerWal, peerShm, msgFile, msgWal, msgShm).forEach {
-                    if (it.exists()) it.delete()
-                }
+                allFiles.forEach { if (it.exists()) it.delete() }
             }
             override fun regenerateIdentity() {}
         }
 
-        PanicWipe(InMemoryJournal(), artifacts).begin()
+        val aware = RuntimeAwareWipeArtifacts(invalidator = invalidator, delegate = delegate)
+        PanicWipe(InMemoryJournal(), aware).begin()
 
-        assertFalse(peerFile.exists())
-        assertFalse(peerWal.exists())
-        assertFalse(peerShm.exists())
-        assertFalse(msgFile.exists())
-        assertFalse(msgWal.exists())
-        assertFalse(msgShm.exists())
+        // 1. Gate invalidated and stores closed
+        assertTrue(gate.isInvalidated)
+        val persistRes2 = kotlinx.coroutines.runBlocking { msgStore.persist(frame, ByteArray(16)) }
+        assertEquals(PersistResult.FAILED_STORAGE, persistRes2)
+
+        try {
+            peerStore.readRaw(ByteArray(16))
+            fail("Expected closed connection on peer store post-closure")
+        } catch (e: Exception) {
+            // Expected
+        }
+
+        // 2. All physical DB artifacts and sidecars are deleted
+        allFiles.forEach { assertFalse("Artifact $it should be deleted", it.exists()) }
     }
 }

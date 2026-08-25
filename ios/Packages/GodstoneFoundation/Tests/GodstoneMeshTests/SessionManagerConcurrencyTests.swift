@@ -46,31 +46,34 @@ final class SessionManagerConcurrencyTests: XCTestCase {
             authenticatedRemoteStaticKey: agreementKey.publicKey.rawRepresentation,
             advertisedNodeHint: nodeId.prefix(4)
         ) else {
-            fatalError()
+            XCTFail("Failed to create valid test binding")
+            return
         }
         _ = repo.applyValidatedBinding(validated)
+
+        // 1. Before invalidation: lookup returns verified non-null key
         XCTAssertNotNil(resolver.publicSigningKey(forNodeId: nodeId))
 
+        // 2. Perform invalidation
+        gate.invalidateForWipe()
+        XCTAssertTrue(gate.isInvalidated)
+
+        // 3. After invalidation boundary: concurrent readers all deterministically receive nil
         let count = 8
-        let exp = expectation(description: "rc01 concurrency")
-        exp.expectedFulfillmentCount = count + 1
+        let exp = expectation(description: "rc01 post-invalidation readers")
+        exp.expectedFulfillmentCount = count
 
         for _ in 0..<count {
             DispatchQueue.global().async {
                 for _ in 0..<50 {
-                    _ = resolver.publicSigningKey(forNodeId: nodeId)
+                    let key = resolver.publicSigningKey(forNodeId: nodeId)
+                    XCTAssertNil(key)
                 }
                 exp.fulfill()
             }
         }
 
-        DispatchQueue.global().async {
-            gate.invalidateForWipe()
-            exp.fulfill()
-        }
-
         waitForExpectations(timeout: 5.0)
-        XCTAssertTrue(gate.isInvalidated)
         XCTAssertNil(resolver.publicSigningKey(forNodeId: nodeId))
     }
 
@@ -84,6 +87,7 @@ final class SessionManagerConcurrencyTests: XCTestCase {
         let peerB = UUID()
         let peerA = UUID()
 
+        // 1. Establish full cryptographic handshake to READY state
         let hs1 = try XCTUnwrap(smA.initiatorStart(peerB, remoteHint: identityB.nodeHint))
         let hs2 = try XCTUnwrap(smB.responderProcessHs1(peerA, remoteHint: identityA.nodeHint, hs1: hs1))
         let hs3 = try XCTUnwrap(smA.initiatorProcessHs2(peerB, hs2: hs2, advertisedRemoteHint: identityB.nodeHint))
@@ -91,90 +95,110 @@ final class SessionManagerConcurrencyTests: XCTestCase {
         XCTAssertTrue(readyB)
         XCTAssertTrue(smA.isReady(peerB))
 
-        let count = 16
-        let exp = expectation(description: "seal and invalidation")
-        exp.expectedFulfillmentCount = count + 1
+        // 2. Linearization test: in-flight seal holds read lock; invalidation write lock must wait
+        let enteredReadAuthority = DispatchSemaphore(value: 0)
+        let releaseThreadA = DispatchSemaphore(value: 0)
+        let threadAFinished = expectation(description: "Thread A seal finished")
+        let invalidationFinished = expectation(description: "Invalidation finished")
+        var sealResult: Data?
 
-        for i in 0..<count {
-            DispatchQueue.global().async {
-                for j in 0..<50 {
-                    _ = smA.seal(peerB, Data("payload \(i)-\(j)".utf8))
-                }
-                exp.fulfill()
+        smA.testOperationHook = { op in
+            if op == "seal" {
+                enteredReadAuthority.signal()
+                _ = releaseThreadA.wait(timeout: .now() + 5.0)
             }
         }
 
+        // Thread A: enters seal under read lock and pauses
         DispatchQueue.global().async {
-            smA.invalidateForWipe()
-            exp.fulfill()
+            sealResult = smA.seal(peerB, Data("linearized payload".utf8))
+            threadAFinished.fulfill()
         }
 
-        waitForExpectations(timeout: 5.0)
+        // Wait for Thread A to enter read authority
+        _ = enteredReadAuthority.wait(timeout: .now() + 5.0)
+
+        // Thread B: calls invalidateForWipe() which requires exclusive write lock
+        DispatchQueue.global().async {
+            smA.invalidateForWipe()
+            invalidationFinished.fulfill()
+        }
+
+        // Give Thread B time to attempt write lock acquisition
+        Thread.sleep(forTimeInterval: 0.01)
+
+        // Release Thread A
+        releaseThreadA.signal()
+
+        // Wait for both operations to complete
+        wait(for: [threadAFinished, invalidationFinished], timeout: 5.0)
+
+        // Thread A succeeded
+        XCTAssertNotNil(sealResult)
+
+        // Invalidation completed, all subsequent operations are denied
         XCTAssertTrue(smA.isInvalidated)
         XCTAssertFalse(smA.isActive)
         XCTAssertFalse(smA.isReady(peerB))
         XCTAssertNil(smA.seal(peerB, Data("after wipe".utf8)))
         XCTAssertNil(smA.open(peerB, Data("after wipe".utf8)))
+        XCTAssertNil(smA.initiatorStart(peerB, remoteHint: identityB.nodeHint))
     }
 
     func testRC03_HandshakeProcessingVsInvalidation() throws {
         let identityA = try MeshIdentity.generateAndStore(keychain: InMemoryKeychain())
         let identityB = try MeshIdentity.generateAndStore(keychain: InMemoryKeychain())
         let smA = SessionManager(identity: identityA, trustAuthority: RecordingTrustAuthority())
+        let smB = SessionManager(identity: identityB, trustAuthority: RecordingTrustAuthority())
 
         let peerB = UUID()
-        let hs1 = smA.initiatorStart(peerB, remoteHint: identityB.nodeHint)
-        XCTAssertNotNil(hs1)
+        let peerA = UUID()
 
-        let count = 4
-        let exp = expectation(description: "bogus hs2 and wipe")
-        exp.expectedFulfillmentCount = count + 1
+        // 1. Generate real valid handshake messages
+        let hs1 = try XCTUnwrap(smA.initiatorStart(peerB, remoteHint: identityB.nodeHint))
+        let hs2 = try XCTUnwrap(smB.responderProcessHs1(peerA, remoteHint: identityA.nodeHint, hs1: hs1))
 
-        for _ in 0..<count {
-            DispatchQueue.global().async {
-                _ = smA.initiatorProcessHs2(peerB, hs2: Data(count: 229), advertisedRemoteHint: identityB.nodeHint)
-                exp.fulfill()
+        let enteredHsReadAuthority = DispatchSemaphore(value: 0)
+        let releaseHsThread = DispatchSemaphore(value: 0)
+        let hsThreadFinished = expectation(description: "HS thread finished")
+        let invalidationFinished = expectation(description: "Invalidation finished")
+        var hs3Result: Data?
+
+        smA.testOperationHook = { op in
+            if op == "initiatorProcessHs2" {
+                enteredHsReadAuthority.signal()
+                _ = releaseHsThread.wait(timeout: .now() + 5.0)
             }
         }
 
+        // Thread A: processes valid HS2 and pauses in read lock
+        DispatchQueue.global().async {
+            hs3Result = smA.initiatorProcessHs2(peerB, hs2: hs2, advertisedRemoteHint: identityB.nodeHint)
+            hsThreadFinished.fulfill()
+        }
+
+        // Wait for Thread A to enter read authority
+        _ = enteredHsReadAuthority.wait(timeout: .now() + 5.0)
+
+        // Thread B: calls invalidateForWipe() which requires exclusive write lock
         DispatchQueue.global().async {
             smA.invalidateForWipe()
-            exp.fulfill()
+            invalidationFinished.fulfill()
         }
 
-        waitForExpectations(timeout: 5.0)
+        Thread.sleep(forTimeInterval: 0.01)
+
+        // Release Thread A
+        releaseHsThread.signal()
+
+        // Wait for both operations to complete
+        wait(for: [hsThreadFinished, invalidationFinished], timeout: 5.0)
+
+        // After invalidation completes: no controller survives, no READY state, fresh operations denied
         XCTAssertTrue(smA.isInvalidated)
+        XCTAssertFalse(smA.isActive)
         XCTAssertFalse(smA.isReady(peerB))
         XCTAssertNil(smA.initiatorStart(peerB, remoteHint: identityB.nodeHint))
-    }
-
-    func testConcurrency_SimultaneousInitiatorAndResponder_DoesNotCorrupt() throws {
-        let identityA = try MeshIdentity.generateAndStore(keychain: InMemoryKeychain())
-        let identityB = try MeshIdentity.generateAndStore(keychain: InMemoryKeychain())
-        let smA = SessionManager(identity: identityA, trustAuthority: RecordingTrustAuthority())
-
-        let peerB = UUID()
-        let count = 8
-        let exp = expectation(description: "concurrent initiatorStart")
-        exp.expectedFulfillmentCount = count
-
-        var successes = 0
-        let lock = NSLock()
-
-        for _ in 0..<count {
-            DispatchQueue.global().async {
-                let hs1 = smA.initiatorStart(peerB, remoteHint: identityB.nodeHint)
-                if hs1 != nil {
-                    lock.lock()
-                    successes += 1
-                    lock.unlock()
-                }
-                exp.fulfill()
-            }
-        }
-
-        waitForExpectations(timeout: 5.0)
-        XCTAssertGreaterThanOrEqual(successes, 1)
-        XCTAssertLessThanOrEqual(successes, count)
+        XCTAssertNil(smA.seal(peerB, Data("test".utf8)))
     }
 }

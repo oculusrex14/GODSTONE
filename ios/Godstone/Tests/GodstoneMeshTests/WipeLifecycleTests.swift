@@ -384,11 +384,32 @@ final class WipeLifecycleTests: XCTestCase {
 
     func testWipe_W15_RealDatabaseArtifactsAndSidecars_DeletedAfterClosure() throws {
         let msgUrl = FileManager.default.temporaryDirectory.appendingPathComponent("msg_w15_\(UUID().uuidString).db")
+        let msgWal = URL(fileURLWithPath: msgUrl.path + "-wal")
+        let msgShm = URL(fileURLWithPath: msgUrl.path + "-shm")
+        let msgJournal = URL(fileURLWithPath: msgUrl.path + "-journal")
+        try Data("wal".utf8).write(to: msgWal)
+        try Data("shm".utf8).write(to: msgShm)
+        try Data("journal".utf8).write(to: msgJournal)
+
         let peerUrl = FileManager.default.temporaryDirectory.appendingPathComponent("peer_w15_\(UUID().uuidString).db")
+        let peerWal = URL(fileURLWithPath: peerUrl.path + "-wal")
+        let peerShm = URL(fileURLWithPath: peerUrl.path + "-shm")
+        let peerJournal = URL(fileURLWithPath: peerUrl.path + "-journal")
+        try Data("wal".utf8).write(to: peerWal)
+        try Data("shm".utf8).write(to: peerShm)
+        try Data("journal".utf8).write(to: peerJournal)
+
+        let allUrls = [msgUrl, msgWal, msgShm, msgJournal, peerUrl, peerWal, peerShm, peerJournal]
 
         let msgStore = SqliteMessageStore(url: msgUrl, maxBytes: 4096)
         let peerStore = try SqlitePeerIdentityStore(url: peerUrl)
         let gate = DefaultRuntimeLifecycleGate()
+
+        // Verify stores work normally before invalidation
+        let frame = makeTestFrame()
+        let res1 = msgStore.persist(frame, receivedFrom: Data(count: 16))
+        XCTAssertEqual(res1, .heldNew)
+        XCTAssertNil(try peerStore.readRaw(Data(count: 16)))
 
         let invalidator = MeshRuntimeInvalidator(
             lifecycleGate: gate,
@@ -397,27 +418,33 @@ final class WipeLifecycleTests: XCTestCase {
         )
 
         final class FileDeleteDelegate: WipeArtifacts, @unchecked Sendable {
-            let msgUrl: URL
-            let peerUrl: URL
-            init(msgUrl: URL, peerUrl: URL) {
-                self.msgUrl = msgUrl
-                self.peerUrl = peerUrl
+            let urls: [URL]
+            init(urls: [URL]) {
+                self.urls = urls
             }
             func eraseKeys() throws {}
             func deleteArtifacts() throws {
-                try? FileManager.default.removeItem(at: msgUrl)
-                try? FileManager.default.removeItem(at: peerUrl)
+                for u in urls {
+                    try? FileManager.default.removeItem(at: u)
+                }
             }
             func regenerateIdentity() throws {}
         }
 
-        let delegate = FileDeleteDelegate(msgUrl: msgUrl, peerUrl: peerUrl)
+        let delegate = FileDeleteDelegate(urls: allUrls)
         let aware = RuntimeAwareWipeArtifacts(invalidator: invalidator, delegate: delegate)
         let journal = InMemoryJournal()
         try PanicWipe(journal: journal, artifacts: aware).begin()
 
+        // Gate invalidated and stores closed
         XCTAssertTrue(gate.isInvalidated)
-        XCTAssertFalse(FileManager.default.fileExists(atPath: msgUrl.path))
-        XCTAssertFalse(FileManager.default.fileExists(atPath: peerUrl.path))
+        let res2 = msgStore.persist(frame, receivedFrom: Data(count: 16))
+        XCTAssertEqual(res2, .failedStorage)
+        XCTAssertThrowsError(try peerStore.readRaw(Data(count: 16)))
+
+        // All physical DB artifacts and sidecars are deleted
+        for u in allUrls {
+            XCTAssertFalse(FileManager.default.fileExists(atPath: u.path), "Expected \(u.path) to be deleted")
+        }
     }
 }

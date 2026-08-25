@@ -75,6 +75,8 @@ public final class SessionManager {
     private let lifecycleRwLock = ReadWriteLock()
     private var managerState: ManagerState = .active
 
+    internal var testOperationHook: ((String) -> Void)?
+
     internal init(
         identity: MeshIdentity,
         trustAuthority: any PeerBindingTrustAuthority,
@@ -164,6 +166,7 @@ public final class SessionManager {
     public func initiatorProcessHs2(_ peerId: UUID, hs2: Data, advertisedRemoteHint: Data) -> Data? {
         return lifecycleRwLock.withReadLock {
             guard isActive else { return nil }
+            testOperationHook?("initiatorProcessHs2")
             let pLock = getPeerLock(peerId)
             pLock.lock()
             defer { pLock.unlock() }
@@ -197,6 +200,7 @@ public final class SessionManager {
     public func responderProcessHs1(_ peerId: UUID, remoteHint: Data, hs1: Data) -> Data? {
         return lifecycleRwLock.withReadLock {
             guard isActive else { return nil }
+            testOperationHook?("responderProcessHs1")
             let pLock = getPeerLock(peerId)
             pLock.lock()
             defer { pLock.unlock() }
@@ -236,6 +240,7 @@ public final class SessionManager {
     public func responderProcessHs3(_ peerId: UUID, hs3: Data, advertisedRemoteHint: Data) -> Bool {
         return lifecycleRwLock.withReadLock {
             guard isActive else { return false }
+            testOperationHook?("responderProcessHs3")
             let pLock = getPeerLock(peerId)
             pLock.lock()
             defer { pLock.unlock() }
@@ -265,6 +270,7 @@ public final class SessionManager {
     public func seal(_ peerId: UUID, _ frameBytes: Data) -> Data? {
         return lifecycleRwLock.withReadLock {
             guard isActive else { return nil }
+            testOperationHook?("seal")
             mapLock.lock()
             guard let ctrl = controllers[peerId] else {
                 mapLock.unlock()
@@ -284,6 +290,7 @@ public final class SessionManager {
     public func open(_ peerId: UUID, _ ciphertext: Data) -> Data? {
         return lifecycleRwLock.withReadLock {
             guard isActive else { return nil }
+            testOperationHook?("open")
             mapLock.lock()
             guard let ctrl = controllers[peerId] else {
                 mapLock.unlock()

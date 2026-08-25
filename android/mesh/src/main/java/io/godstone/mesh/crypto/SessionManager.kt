@@ -42,6 +42,8 @@ class SessionManager internal constructor(
     private val mapLock = ReentrantLock()
     @Volatile private var managerState = ManagerState.ACTIVE
 
+    internal var testOperationHook: ((String) -> Unit)? = null
+
     private val controllers = HashMap<String, TrustedHandshakeController>()
     private val peerLocks = ConcurrentHashMap<String, ReentrantLock>()
 
@@ -120,6 +122,7 @@ class SessionManager internal constructor(
     fun initiatorProcessHs2(peerId: ByteArray, hs2: ByteArray, advertisedRemoteHint: ByteArray): ByteArray? {
         lifecycleRwLock.read {
             if (!isActive) return null
+            testOperationHook?.invoke("initiatorProcessHs2")
             val k = key(peerId)
             val pLock = getPeerLock(k)
             return pLock.withLock {
@@ -145,6 +148,7 @@ class SessionManager internal constructor(
     fun responderProcessHs1(peerId: ByteArray, remoteHint: ByteArray, hs1: ByteArray): ByteArray? {
         lifecycleRwLock.read {
             if (!isActive) return null
+            testOperationHook?.invoke("responderProcessHs1")
             val k = key(peerId)
             val pLock = getPeerLock(k)
             return pLock.withLock {
@@ -189,6 +193,7 @@ class SessionManager internal constructor(
     fun responderProcessHs3(peerId: ByteArray, hs3: ByteArray, advertisedRemoteHint: ByteArray): Boolean {
         lifecycleRwLock.read {
             if (!isActive) return false
+            testOperationHook?.invoke("responderProcessHs3")
             val k = key(peerId)
             val pLock = getPeerLock(k)
             return pLock.withLock {
@@ -212,6 +217,7 @@ class SessionManager internal constructor(
     fun seal(peerId: ByteArray, frameBytes: ByteArray): ByteArray? {
         lifecycleRwLock.read {
             if (!isActive) return null
+            testOperationHook?.invoke("seal")
             val k = key(peerId)
             val ctrl = mapLock.withLock { controllers[k] } ?: return null
             if (!ctrl.isReady || ctrl.state != HandshakeTrustState.READY) return null
@@ -226,6 +232,7 @@ class SessionManager internal constructor(
     fun open(peerId: ByteArray, ciphertext: ByteArray): ByteArray? {
         lifecycleRwLock.read {
             if (!isActive) return null
+            testOperationHook?.invoke("open")
             val k = key(peerId)
             val ctrl = mapLock.withLock { controllers[k] } ?: return null
             if (!ctrl.isReady || ctrl.state != HandshakeTrustState.READY) return null

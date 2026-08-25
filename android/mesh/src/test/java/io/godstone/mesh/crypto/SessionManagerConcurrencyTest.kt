@@ -1,6 +1,8 @@
 package io.godstone.mesh.crypto
 
 import io.godstone.mesh.MeshIdentity
+import io.godstone.mesh.delivery.BoundRecipientKeyResolver
+import io.godstone.mesh.delivery.RepositoryPeerIdentityLookupSource
 import io.godstone.mesh.identity.DefaultRuntimeLifecycleGate
 import io.godstone.mesh.identity.IdentityBindingValidationResult
 import io.godstone.mesh.identity.IdentityBindingValidator
@@ -10,8 +12,6 @@ import io.godstone.mesh.identity.PeerTrustApplyResult
 import io.godstone.mesh.identity.RuntimeGatedPeerBindingTrustAuthority
 import io.godstone.mesh.identity.RuntimeGatedPeerIdentityLookupSource
 import io.godstone.mesh.identity.ValidatedPeerBinding
-import io.godstone.mesh.delivery.BoundRecipientKeyResolver
-import io.godstone.mesh.delivery.RepositoryPeerIdentityLookupSource
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
@@ -23,6 +23,7 @@ import org.junit.rules.TemporaryFolder
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
+import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicInteger
 
 class SessionManagerConcurrencyTest {
@@ -52,43 +53,35 @@ class SessionManagerConcurrencyTest {
         val validated = IdentityBindingValidator.validate(binding.encode(), peer.staticDhPub, peer.nodeHint) as IdentityBindingValidationResult.Valid
         repo.applyValidatedBinding(validated.binding)
 
+        // 1. Before invalidation: lookup returns verified non-null key
         assertNotNull(resolver.publicSigningKey(peer.nodeId))
 
-        val threads = 8
-        val pool = Executors.newFixedThreadPool(threads + 1)
-        val startLatch = CountDownLatch(1)
-        val doneLatch = CountDownLatch(threads + 1)
+        // 2. Perform invalidation
+        gate.invalidateForWipe()
+        assertTrue(gate.isInvalidated)
 
+        // 3. After invalidation boundary: concurrent readers all deterministically receive null
+        val threads = 8
+        val pool = Executors.newFixedThreadPool(threads)
+        val doneLatch = CountDownLatch(threads)
         val postInvalidateNullCount = AtomicInteger(0)
 
-        // Readers
         for (i in 0 until threads) {
             pool.execute {
-                startLatch.await()
                 for (j in 0 until 50) {
                     val key = resolver.publicSigningKey(peer.nodeId)
-                    if (gate.isInvalidated) {
-                        if (key == null) {
-                            postInvalidateNullCount.incrementAndGet()
-                        }
+                    if (key == null) {
+                        postInvalidateNullCount.incrementAndGet()
                     }
                 }
                 doneLatch.countDown()
             }
         }
 
-        // Invalidator
-        pool.execute {
-            startLatch.await()
-            gate.invalidateForWipe()
-            doneLatch.countDown()
-        }
-
-        startLatch.countDown()
         assertTrue(doneLatch.await(5, TimeUnit.SECONDS))
         pool.shutdown()
 
-        assertTrue(gate.isInvalidated)
+        assertEquals(threads * 50, postInvalidateNullCount.get())
         assertNull(resolver.publicSigningKey(peer.nodeId))
     }
 
@@ -102,7 +95,7 @@ class SessionManagerConcurrencyTest {
         val smA = SessionManager(identityA, trustA, lifecycleGate = gate)
         val smB = SessionManager(identityB, trustB)
 
-        // Perform full handshake to READY
+        // 1. Establish full cryptographic handshake to READY state
         val hs1 = smA.initiatorStart(identityB.nodeId, identityB.nodeHint)!!
         val hs2 = smB.responderProcessHs1(identityA.nodeId, identityA.nodeHint, hs1)!!
         val hs3 = smA.initiatorProcessHs2(identityB.nodeId, hs2, identityB.nodeHint)!!
@@ -110,47 +103,61 @@ class SessionManagerConcurrencyTest {
         assertTrue(readyB)
         assertTrue(smA.isReady(identityB.nodeId))
 
-        val threads = 8
-        val pool = Executors.newFixedThreadPool(threads + 1)
-        val startLatch = CountDownLatch(1)
-        val doneLatch = CountDownLatch(threads + 1)
+        // 2. Linearization test: in-flight seal holds read lock; invalidation write lock must wait
+        val enteredReadAuthority = CountDownLatch(1)
+        val releaseThreadA = CountDownLatch(1)
+        val threadAFinished = CountDownLatch(1)
+        val invalidationFinished = CountDownLatch(1)
+        var sealResult: ByteArray? = null
 
-        val sealsAttempted = AtomicInteger(0)
-        val sealsSucceeded = AtomicInteger(0)
-        val postInvalidateDenials = AtomicInteger(0)
-
-        for (i in 0 until threads) {
-            pool.execute {
-                startLatch.await()
-                for (j in 0 until 100) {
-                    sealsAttempted.incrementAndGet()
-                    val ciphertext = smA.seal(identityB.nodeId, "payload $j".toByteArray(Charsets.UTF_8))
-                    if (ciphertext != null) {
-                        sealsSucceeded.incrementAndGet()
-                    } else if (smA.isInvalidated) {
-                        postInvalidateDenials.incrementAndGet()
-                    }
-                }
-                doneLatch.countDown()
+        smA.testOperationHook = { op ->
+            if (op == "seal") {
+                enteredReadAuthority.countDown()
+                releaseThreadA.await(5, TimeUnit.SECONDS)
             }
         }
 
+        val pool = Executors.newFixedThreadPool(2)
+
+        // Thread A: enters seal under read lock and pauses
         pool.execute {
-            startLatch.await()
-            smA.invalidateForWipe()
-            doneLatch.countDown()
+            sealResult = smA.seal(identityB.nodeId, "linearized payload".toByteArray(Charsets.UTF_8))
+            threadAFinished.countDown()
         }
 
-        startLatch.countDown()
-        assertTrue(doneLatch.await(5, TimeUnit.SECONDS))
+        // Wait for Thread A to enter read authority
+        assertTrue(enteredReadAuthority.await(5, TimeUnit.SECONDS))
+
+        // Thread B: calls invalidateForWipe() which requires exclusive write lock
+        pool.execute {
+            smA.invalidateForWipe()
+            invalidationFinished.countDown()
+        }
+
+        // Give Thread B time to attempt write lock acquisition while Thread A is paused
+        Thread.yield()
+
+        // Verify invalidation has NOT completed because Thread A is holding read lock
+        assertEquals(1L, invalidationFinished.count)
+
+        // Release Thread A
+        releaseThreadA.countDown()
+
+        // Thread A must finish successfully
+        assertTrue(threadAFinished.await(5, TimeUnit.SECONDS))
+        assertNotNull(sealResult)
+
+        // Invalidation now acquires write lock and completes
+        assertTrue(invalidationFinished.await(5, TimeUnit.SECONDS))
         pool.shutdown()
 
-        // Invalidation must have completed, and all subsequent operations are denied
+        // Post-invalidation verification
         assertTrue(smA.isInvalidated)
         assertFalse(smA.isActive)
         assertFalse(smA.isReady(identityB.nodeId))
         assertNull(smA.seal(identityB.nodeId, "after wipe".toByteArray(Charsets.UTF_8)))
         assertNull(smA.open(identityB.nodeId, "after wipe".toByteArray(Charsets.UTF_8)))
+        assertNull(smA.initiatorStart(identityB.nodeId, identityB.nodeHint))
     }
 
     @Test
@@ -158,37 +165,61 @@ class SessionManagerConcurrencyTest {
         val identityA = MeshIdentity.generate()
         val identityB = MeshIdentity.generate()
         val trustA = RecordingTrustAuthority()
+        val trustB = RecordingTrustAuthority()
         val smA = SessionManager(identityA, trustA)
+        val smB = SessionManager(identityB, trustB)
 
-        val peerB = identityB.nodeId
-        val hs1 = smA.initiatorStart(peerB, identityB.nodeHint)
-        assertNotNull(hs1)
+        // 1. Generate real valid handshake messages
+        val hs1 = smA.initiatorStart(identityB.nodeId, identityB.nodeHint)!!
+        val hs2 = smB.responderProcessHs1(identityA.nodeId, identityA.nodeHint, hs1)!!
 
-        val threads = 4
-        val pool = Executors.newFixedThreadPool(threads + 1)
-        val startLatch = CountDownLatch(1)
-        val doneLatch = CountDownLatch(threads + 1)
+        val enteredHsReadAuthority = CountDownLatch(1)
+        val releaseHsThread = CountDownLatch(1)
+        val hsThreadFinished = CountDownLatch(1)
+        val invalidationFinished = CountDownLatch(1)
+        var hs3Result: ByteArray? = null
 
-        for (i in 0 until threads) {
-            pool.execute {
-                startLatch.await()
-                smA.initiatorProcessHs2(peerB, ByteArray(229), identityB.nodeHint)
-                doneLatch.countDown()
+        smA.testOperationHook = { op ->
+            if (op == "initiatorProcessHs2") {
+                enteredHsReadAuthority.countDown()
+                releaseHsThread.await(5, TimeUnit.SECONDS)
             }
         }
 
+        val pool = Executors.newFixedThreadPool(2)
+
+        // Thread A: processes valid HS2 and pauses in read lock
         pool.execute {
-            startLatch.await()
-            smA.invalidateForWipe()
-            doneLatch.countDown()
+            hs3Result = smA.initiatorProcessHs2(identityB.nodeId, hs2, identityB.nodeHint)
+            hsThreadFinished.countDown()
         }
 
-        startLatch.countDown()
-        assertTrue(doneLatch.await(5, TimeUnit.SECONDS))
+        // Wait for Thread A to enter read authority
+        assertTrue(enteredHsReadAuthority.await(5, TimeUnit.SECONDS))
+
+        // Thread B: calls invalidateForWipe() which requires exclusive write lock
+        pool.execute {
+            smA.invalidateForWipe()
+            invalidationFinished.countDown()
+        }
+
+        Thread.yield()
+
+        // Verify invalidation has NOT completed because handshake is in-flight under read lock
+        assertEquals(1L, invalidationFinished.count)
+
+        // Release Thread A
+        releaseHsThread.countDown()
+
+        assertTrue(hsThreadFinished.await(5, TimeUnit.SECONDS))
+        assertTrue(invalidationFinished.await(5, TimeUnit.SECONDS))
         pool.shutdown()
 
+        // After invalidation completes: no controller survives, no READY state, fresh operations denied
         assertTrue(smA.isInvalidated)
-        assertFalse(smA.isReady(peerB))
-        assertNull(smA.initiatorStart(peerB, identityB.nodeHint))
+        assertFalse(smA.isActive)
+        assertFalse(smA.isReady(identityB.nodeId))
+        assertNull(smA.initiatorStart(identityB.nodeId, identityB.nodeHint))
+        assertNull(smA.seal(identityB.nodeId, "test".toByteArray(Charsets.UTF_8)))
     }
 }

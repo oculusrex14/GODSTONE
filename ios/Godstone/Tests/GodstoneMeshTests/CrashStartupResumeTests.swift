@@ -58,6 +58,7 @@ final class CrashStartupResumeTests: XCTestCase {
         )
         XCTAssertTrue(runtime.lifecycleGate.isActive)
         XCTAssertFalse(runtime.sessionManager.isInvalidated)
+        XCTAssertEqual(journal.state, .idle)
     }
 
     func testSR02_PendingWipe_Requested_FinishesBeforeRuntimeInitialization() throws {
@@ -121,14 +122,14 @@ final class CrashStartupResumeTests: XCTestCase {
     }
 
     func testSR05_FreshRuntime_AfterWipe_HasDifferentNodeId() throws {
-        let msgUrl1 = FileManager.default.temporaryDirectory.appendingPathComponent("sr05_msg1_\(UUID().uuidString).db")
-        let peerUrl1 = FileManager.default.temporaryDirectory.appendingPathComponent("sr05_peer1_\(UUID().uuidString).db")
+        let msgUrl = FileManager.default.temporaryDirectory.appendingPathComponent("sr05_msg_\(UUID().uuidString).db")
+        let peerUrl = FileManager.default.temporaryDirectory.appendingPathComponent("sr05_peer_\(UUID().uuidString).db")
         let journal = InMemoryJournal()
         let keychain = InMemoryKeychain()
 
         let runtime1 = try MeshRuntime.create(
-            messageStoreUrl: msgUrl1,
-            peerStoreUrl: peerUrl1,
+            messageStoreUrl: msgUrl,
+            peerStoreUrl: peerUrl,
             journal: journal,
             keychain: keychain
         )
@@ -136,17 +137,20 @@ final class CrashStartupResumeTests: XCTestCase {
 
         try runtime1.beginPanicWipe(keychain: keychain)
         XCTAssertTrue(runtime1.lifecycleGate.isInvalidated)
+        XCTAssertFalse(runtime1.sessionManager.isActive)
 
-        let msgUrl2 = FileManager.default.temporaryDirectory.appendingPathComponent("sr05_msg2_\(UUID().uuidString).db")
-        let peerUrl2 = FileManager.default.temporaryDirectory.appendingPathComponent("sr05_peer2_\(UUID().uuidString).db")
+        // Construct runtime2 with the SAME store URLs
         let runtime2 = try MeshRuntime.create(
-            messageStoreUrl: msgUrl2,
-            peerStoreUrl: peerUrl2,
+            messageStoreUrl: msgUrl,
+            peerStoreUrl: peerUrl,
             journal: journal,
             keychain: keychain
         )
 
         XCTAssertNotEqual(oldNodeId, runtime2.identity.nodeId)
+        XCTAssertEqual(runtime2.identity.bindingGeneration, 0)
+        XCTAssertTrue(runtime2.lifecycleGate.isActive)
+        XCTAssertTrue(runtime1.lifecycleGate.isInvalidated)
     }
 
     func testSR06_FreshPeerStore_ContainsNoPriorPeerRecords() throws {
@@ -155,16 +159,75 @@ final class CrashStartupResumeTests: XCTestCase {
         let journal = InMemoryJournal()
         let keychain = InMemoryKeychain()
 
-        let runtime = try MeshRuntime.create(
+        // 1. Create runtime1 using messageStoreUrl and peerStoreUrl
+        let runtime1 = try MeshRuntime.create(
             messageStoreUrl: msgUrl,
             peerStoreUrl: peerUrl,
             journal: journal,
             keychain: keychain
         )
 
-        let dummyNodeId = Data(count: 16)
-        let record = try runtime.peerIdentityStore.readRaw(dummyNodeId)
-        XCTAssertNil(record)
+        // 2. Construct a VALID peer binding and apply it through runtime1.peerRepository
+        let signingKey = Curve25519.Signing.PrivateKey()
+        let agreementKey = Curve25519.KeyAgreement.PrivateKey()
+        let peerNodeId = Blake2s.hash(signingKey.publicKey.rawRepresentation, digestLength: 16)
+        let preimage = IdentityBindingV1.signaturePreimage(
+            generation: 0,
+            signingPublicKey: signingKey.publicKey.rawRepresentation,
+            staticDhPublicKey: agreementKey.publicKey.rawRepresentation
+        )
+        let sig = try signingKey.signature(for: preimage)
+        let binding = IdentityBindingV1(
+            generation: 0,
+            signingPublicKey: signingKey.publicKey.rawRepresentation,
+            staticDhPublicKey: agreementKey.publicKey.rawRepresentation,
+            signature: sig
+        )
+        guard case .valid(let validated) = IdentityBindingValidator.validate(
+            serialized: binding.encode(),
+            authenticatedRemoteStaticKey: agreementKey.publicKey.rawRepresentation,
+            advertisedNodeHint: peerNodeId.prefix(4)
+        ) else {
+            XCTFail("Failed to create valid test binding")
+            return
+        }
+
+        let applyRes = runtime1.peerRepository.applyValidatedBinding(validated)
+        XCTAssertTrue(applyRes == .firstSeenPinned || applyRes == .accepted)
+
+        // 3. Prove lookup is Verified before wipe
+        let lookup1 = runtime1.peerRepository.lookup(peerNodeId)
+        guard case .verified = lookup1 else {
+            XCTFail("Expected peer to be verified before wipe")
+            return
+        }
+        XCTAssertNotNil(try runtime1.peerIdentityStore.readRaw(peerNodeId))
+        XCTAssertNotNil(runtime1.recipientKeyResolver.publicSigningKey(forNodeId: peerNodeId))
+
+        // 4. Begin active panic wipe
+        try runtime1.beginPanicWipe(keychain: keychain)
+        XCTAssertTrue(runtime1.lifecycleGate.isInvalidated)
+
+        // 5. Create runtime2 using the SAME messageStoreUrl and SAME peerStoreUrl
+        let runtime2 = try MeshRuntime.create(
+            messageStoreUrl: msgUrl,
+            peerStoreUrl: peerUrl,
+            journal: journal,
+            keychain: keychain
+        )
+
+        // 6. Prove old peer is completely absent: raw row absent, lookup NotFound, resolver nil
+        let raw2 = try runtime2.peerIdentityStore.readRaw(peerNodeId)
+        XCTAssertNil(raw2)
+
+        let lookup2 = runtime2.peerRepository.lookup(peerNodeId)
+        guard case .notFound = lookup2 else {
+            XCTFail("Expected peer to be notFound in fresh runtime store")
+            return
+        }
+
+        let key2 = runtime2.recipientKeyResolver.publicSigningKey(forNodeId: peerNodeId)
+        XCTAssertNil(key2)
     }
 
     func testSR07_OldRuntimeHandle_RemainsPermanentlyUnusable() throws {

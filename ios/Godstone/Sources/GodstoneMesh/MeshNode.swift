@@ -41,9 +41,9 @@ public final class MeshNode {
     /// `SqliteMessageStore` as `store`: a `SqliteDeliveryRepository` is the
     /// durable record -- one row holds the delivery state, the ACK mode, and the
     /// intended recipient (the separate `ExpectedRecipientStore` seam was removed
-    /// in C6.1), and an `Ed25519AckAuthenticator` over the production
-    /// `UnresolvedRecipientKeyResolver` rejects every ACK until the M2-link
-    /// identity binding wires real recipient keys (fail-closed). The outbound
+    /// in C6.1), and an `Ed25519AckAuthenticator` (backed by `BoundRecipientKeyResolver`
+    /// in the non-shipping `MeshRuntime` graph, while in the shipping `LIGHT` target Mesh
+    /// is completely absent) rejects every unverified ACK (fail-closed). The outbound
     /// path (C6) records the ACK mode (SOS is a broadcast -> `AckMode.none`, no
     /// recipient binding; a directed message is `AckMode.singleRecipient`) +
     /// advances state on a successful relay hand-off; the inbound ACK path (C7)

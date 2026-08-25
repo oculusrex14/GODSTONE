@@ -30,15 +30,33 @@ import io.godstone.mesh.store.SqliteMessageStore
 import javax.inject.Singleton
 
 /**
+ * Startup barrier execution primitive ensuring [PanicWipe.resumeIfPending] executes before
+ * sensitive cryptographic identity or database stores are opened (Stage 4 Phase C8.4B.2).
+ */
+internal fun runStartupWipeBarrier(resumePendingWipe: () -> Unit) {
+    resumePendingWipe()
+}
+
+internal class MeshStartupCoordinator(
+    private val resumePendingWipe: () -> Unit
+) {
+    fun executeBarrier() {
+        runStartupWipeBarrier(resumePendingWipe)
+    }
+}
+
+/**
  * Startup barrier token ensuring [PanicWipe.resumeIfPending] executes before
- * any sensitive cryptographic identity or database store is opened (Stage 4B.1 / C8.4B.1).
+ * any sensitive cryptographic identity or database store is opened (Stage 4B.1 / C8.4B.1 / C8.4B.2).
  */
 @Singleton
 class MeshStartupWipeBarrier internal constructor(
     @ApplicationContext ctx: Context
 ) {
     init {
-        PanicWipe.resumeIfPending(ctx)
+        runStartupWipeBarrier {
+            PanicWipe.resumeIfPending(ctx)
+        }
     }
 }
 
