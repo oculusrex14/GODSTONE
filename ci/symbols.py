@@ -187,25 +187,39 @@ def resolve(root: Path) -> list[str]:
                         f"declares it")
 
         # -- R2: calls on a receiver whose declared type we know -------------
-        recv_types = {v: t for v, t in TYPED_VAL.findall(src)}
-        for recv, method in CALL.findall(src):
-            t = recv_types.get(recv)
-            if not t or t not in members:
-                continue                      # unknown type: cannot judge
-            if method not in all_members(t, members, supers):
-                problems.append(
-                    f"{rel}: {recv}.{method}() -- `{recv}` is typed `{t}`, "
-                    f"which declares no such member")
+        # Scope variable declarations to their enclosing class/declaration scope
+        # so that files declaring multiple classes (e.g., adapters/decorators sharing
+        # variable names like `delegate` or `lifecycleGate`) do not conflate types.
+        scopes: list[str] = []
+        if decls:
+            if decls[0].start() > 0:
+                scopes.append(src[:decls[0].start()])
+            for i, m in enumerate(decls):
+                end = decls[i + 1].start() if i + 1 < len(decls) else len(src)
+                scopes.append(src[m.start():end])
+        else:
+            scopes.append(src)
+
+        for scope_src in scopes:
+            recv_types = {v: t for v, t in TYPED_VAL.findall(scope_src)}
+            for recv, method in CALL.findall(scope_src):
+                t = recv_types.get(recv)
+                if not t or t not in members:
+                    continue                      # unknown type: cannot judge
+                if method not in all_members(t, members, supers):
+                    problems.append(
+                        f"{rel}: {recv}.{method}() -- `{recv}` is typed `{t}`, "
+                        f"which declares no such member")
 
     return sorted(set(problems))
 
 
 def selftest(root: Path) -> int:
-    """Prove the resolver fires on the exact defect that shipped.
+    """Prove the resolver fires on the exact defect that shipped and handles multi-class scoping.
 
-    Removes the streaming declarations from the MessageStore interface, runs the
-    resolver, and requires it to complain. A control that has never been
-    observed failing is not a control.
+    1. Removes the streaming declarations from the MessageStore interface, runs the
+       resolver, and requires it to complain.
+    2. Injects a non-existent method call into a multi-class file and requires it to be caught.
     """
     target = (root / "android/mesh/src/main/java/io/godstone/mesh"
               "/store/MessageStore.kt")
@@ -230,10 +244,33 @@ def selftest(root: Path) -> int:
               f"-- {len(hits)} finding(s) naming the removed members")
     finally:
         target.write_text(original, encoding="utf-8")
+
+    # Multi-class scoping mutation test
+    gate_target = (root / "android/mesh/src/main/java/io/godstone/mesh"
+                   "/identity/RuntimeLifecycleGate.kt")
+    gate_original = gate_target.read_text(encoding="utf-8")
+    print("\nSELFTEST -- verifying multi-class scoped receiver resolution\n")
+    try:
+        gate_broken = gate_original.replace(
+            "delegate.eraseKeys()",
+            "delegate.nonExistentMethod()", 1)
+        if gate_broken == gate_original:
+            print("  BROKEN -- could not inject multi-class defect")
+            return 1
+        gate_target.write_text(gate_broken, encoding="utf-8")
+        gate_found = resolve(root)
+        gate_hits = [p for p in gate_found if "nonExistentMethod" in p]
+        for p in gate_hits:
+            print("  detected: " + p)
+        gate_caught = len(gate_hits) >= 1
+        print(f"\n  multi-class scoping control: {'OK' if gate_caught else 'BROKEN'}")
+    finally:
+        gate_target.write_text(gate_original, encoding="utf-8")
+
     clean = resolve(root)
     print(f"  restored tree: {len(clean)} unresolved "
           f"({'OK' if not clean else 'BROKEN'})")
-    return 0 if (caught and not clean) else 1
+    return 0 if (caught and gate_caught and not clean) else 1
 
 
 def main() -> int:

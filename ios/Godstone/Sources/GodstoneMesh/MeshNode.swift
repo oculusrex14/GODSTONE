@@ -83,9 +83,13 @@ public final class MeshNode {
         self.init(identity: identity, store: store, deliveryTracker: deliveryTracker, sessions: dummySessions)
     }
 
+    internal func canStart(linkReady: Bool) -> Bool {
+        return linkReady && sessions.isActive
+    }
+
     @discardableResult
     public func start() -> Bool {
-        guard Self.linkLayerReady else { return false }
+        guard canStart(linkReady: Self.linkLayerReady) else { return false }
         guard !isStarted else { return true }
         isStarted = true
         ble.delegate = self

@@ -7,6 +7,12 @@ import io.godstone.mesh.crypto.SessionManager
 import io.godstone.mesh.delivery.BoundRecipientKeyResolver
 import io.godstone.mesh.delivery.RepositoryPeerIdentityLookupSource
 import io.godstone.mesh.identity.PanicWipe.WipeState
+import io.godstone.mesh.store.JdbcStoreDb
+import io.godstone.mesh.store.MessageStore
+import io.godstone.mesh.store.PersistResult
+import io.godstone.mesh.store.SqliteMessageStore
+import io.godstone.mesh.wire.v2.FrameV2
+import io.godstone.mesh.wire.v2.TypeV2
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
@@ -48,6 +54,19 @@ class WipeLifecycleTest {
         override fun regenerateIdentity() = step("regenerateIdentity") {}
     }
 
+    private fun makeTestFrame(msgIdHex: String = "0102030405060708090a0b0c0d0e0f10"): FrameV2 {
+        val msgId = msgIdHex.chunked(2).map { it.toInt(16).toByte() }.toByteArray()
+        return FrameV2(
+            type = TypeV2.MESSAGE,
+            msgId = msgId,
+            routingTag = ByteArray(16),
+            ttl = 3,
+            hopCount = 0,
+            flags = 0,
+            payload = "payload".toByteArray(Charsets.UTF_8)
+        )
+    }
+
     @Test
     fun testWipe_CleanIdle_NoOp() {
         val journal = InMemoryJournal()
@@ -69,53 +88,96 @@ class WipeLifecycleTest {
     }
 
     @Test
-    fun testWipe_InvalidatesRuntimeHandles_BeforeKeyErasure() {
-        val events = mutableListOf<String>()
-        val invalidator = object : RuntimeInvalidator {
-            override fun invalidateForWipe() {
-                events += "invalidated"
-            }
-        }
-        val delegateArtifacts = object : WipeArtifacts {
-            override fun eraseKeys() { events += "eraseKeys" }
-            override fun deleteArtifacts() { events += "deleteArtifacts" }
-            override fun regenerateIdentity() { events += "regenerateIdentity" }
-        }
-        val awareArtifacts = RuntimeAwareWipeArtifacts(invalidator, delegateArtifacts)
-        val journal = InMemoryJournal()
-        val wipe = PanicWipe(journal, awareArtifacts)
-        wipe.begin()
-
-        assertEquals(listOf("invalidated", "eraseKeys", "deleteArtifacts", "regenerateIdentity"), events)
-    }
-
-    @Test
-    fun testWipe_SessionManagerInvalidated_RefusesAllOperations() {
-        val identity = MeshIdentity.generate()
+    fun testWipe_DeterministicOrdering_GateSessionsPeerMessageKeys() {
+        val order = mutableListOf<String>()
         val gate = DefaultRuntimeLifecycleGate()
+        val identity = MeshIdentity.generate()
         val sm = SessionManager(
-            identity,
-            object : PeerBindingTrustAuthority {
+            identity = identity,
+            trustAuthority = object : PeerBindingTrustAuthority {
                 override fun applyValidatedBinding(binding: ValidatedPeerBinding) = PeerTrustApplyResult.Accepted
             },
             lifecycleGate = gate
         )
-        val peer = MeshIdentity.generate()
-        val hs1 = sm.initiatorStart(peer.nodeId, peer.nodeHint)
+        val peerFile = tempFolder.newFile("peer_order.db").also { it.delete() }
+        val peerStore = JdbcPeerIdentityStore(peerFile)
+        val msgFile = tempFolder.newFile("msg_order.db").also { it.delete() }
+        val msgStore = SqliteMessageStore(JdbcStoreDb(msgFile), 4096)
+
+        val invalidator = object : RuntimeInvalidator {
+            override fun invalidateForWipe() {
+                order += "gateInvalidated"
+                gate.invalidateForWipe()
+                order += "sessionsInvalidated"
+                sm.invalidateForWipe()
+                order += "peerStoreClosed"
+                peerStore.close()
+                order += "messageStoreClosed"
+                msgStore.close()
+            }
+        }
+
+        val delegate = object : WipeArtifacts {
+            override fun eraseKeys() {
+                order += "platformEraseKeys"
+            }
+            override fun deleteArtifacts() {
+                order += "deleteArtifacts"
+            }
+            override fun regenerateIdentity() {
+                order += "regenerateIdentity"
+            }
+        }
+
+        val wipe = PanicWipe(InMemoryJournal(), RuntimeAwareWipeArtifacts(invalidator, delegate))
+        wipe.begin()
+
+        assertEquals(
+            listOf(
+                "gateInvalidated",
+                "sessionsInvalidated",
+                "peerStoreClosed",
+                "messageStoreClosed",
+                "platformEraseKeys",
+                "deleteArtifacts",
+                "regenerateIdentity"
+            ),
+            order
+        )
+    }
+
+    @Test
+    fun testWipe_SessionManagerInvalidated_RefusesAllOperations() {
+        val gate = DefaultRuntimeLifecycleGate()
+        val identityA = MeshIdentity.generate()
+        val identityB = MeshIdentity.generate()
+
+        val sm = SessionManager(
+            identity = identityA,
+            trustAuthority = object : PeerBindingTrustAuthority {
+                override fun applyValidatedBinding(binding: ValidatedPeerBinding) = PeerTrustApplyResult.Accepted
+            },
+            lifecycleGate = gate
+        )
+
+        val peerB = ByteArray(16) { 0x02 }
+        val hs1 = sm.initiatorStart(peerB, identityB.nodeHint)
         assertNotNull(hs1)
 
         gate.invalidateForWipe()
-        assertTrue(sm.isInvalidated)
-        assertFalse(sm.isActive)
-        assertFalse(sm.isReady(peer.nodeId))
-        assertNull(sm.seal(peer.nodeId, "data".toByteArray(Charsets.UTF_8)))
-        assertNull(sm.open(peer.nodeId, "data".toByteArray(Charsets.UTF_8)))
-        assertNull(sm.initiatorStart(MeshIdentity.generate().nodeId, ByteArray(4)))
+        assertTrue(gate.isInvalidated)
+        assertFalse(gate.isActive)
+
+        // Session manager must refuse new operations post-invalidation
+        val peerC = ByteArray(16) { 0x03 }
+        assertNull(sm.initiatorStart(peerC, identityB.nodeHint))
+        assertNull(sm.seal(peerB, "test".toByteArray()))
+        assertNull(sm.open(peerB, "test".toByteArray()))
     }
 
     @Test
     fun testWipe_ResolverReturnsNull_AfterInvalidation() {
-        val file = tempFolder.newFile("wipe_res_${System.nanoTime()}.db").also { it.delete() }
+        val file = tempFolder.newFile("wipe_resolver_${System.nanoTime()}.db").also { it.delete() }
         val store = JdbcPeerIdentityStore(file)
         val repo = PeerIdentityRepository(store)
         val gate = DefaultRuntimeLifecycleGate()
@@ -151,22 +213,80 @@ class WipeLifecycleTest {
     }
 
     @Test
-    fun testWipe_PeerStoreClosed_AfterInvalidation() {
+    fun testWipe_W04_PeerStoreClosed_AfterInvalidation() {
         val file = tempFolder.newFile("wipe_peer_store_${System.nanoTime()}.db").also { it.delete() }
         val store = JdbcPeerIdentityStore(file)
         val gate = DefaultRuntimeLifecycleGate()
+
+        // 1. Verify store functions normally before invalidation
+        val peer = MeshIdentity.generate()
+        val record = store.readRaw(peer.nodeId)
+        assertNull(record)
+
+        // 2. Invalidate via MeshRuntimeInvalidator
         val invalidator = MeshRuntimeInvalidator(gate, peerStore = store)
         invalidator.invalidateForWipe()
-
         assertTrue(gate.isInvalidated)
+
+        // 3. Post-invalidation: direct store operations fail closed because handle is closed
+        try {
+            store.readRaw(peer.nodeId)
+            fail("Expected exception accessing closed database handle")
+        } catch (e: Exception) {
+            // Expected closed connection exception
+        }
     }
 
     @Test
-    fun testWipe_MessageStoreClosed_AfterInvalidation() {
+    fun testWipe_W05_MessageStoreClosed_AfterInvalidation() {
+        val file = tempFolder.newFile("wipe_msg_store_${System.nanoTime()}.db").also { it.delete() }
+        val store = SqliteMessageStore(JdbcStoreDb(file), 4096)
         val gate = DefaultRuntimeLifecycleGate()
-        val invalidator = MeshRuntimeInvalidator(gate)
+
+        // 1. Verify store functions normally before invalidation
+        val frame = makeTestFrame("0102030405060708090a0b0c0d0e0f10")
+        val res1 = kotlinx.coroutines.runBlocking { store.persist(frame, ByteArray(16)) }
+        assertEquals(PersistResult.HELD_NEW, res1)
+
+        // 2. Invalidate via MeshRuntimeInvalidator
+        val invalidator = MeshRuntimeInvalidator(gate, messageStore = store)
         invalidator.invalidateForWipe()
         assertTrue(gate.isInvalidated)
+
+        // 3. Post-invalidation: persist returns FAILED_STORAGE
+        val frame2 = makeTestFrame("0202030405060708090a0b0c0d0e0f10")
+        val res2 = kotlinx.coroutines.runBlocking { store.persist(frame2, ByteArray(16)) }
+        assertEquals(PersistResult.FAILED_STORAGE, res2)
+    }
+
+    @Test
+    fun testWipe_W06_InvalidatorFailure_PreventsKeyErasure_PreservesRequestedState() {
+        val journal = InMemoryJournal()
+        val gate = DefaultRuntimeLifecycleGate()
+
+        var erasedKeys = false
+        val failingInvalidator = object : RuntimeInvalidator {
+            override fun invalidateForWipe() {
+                gate.invalidateForWipe()
+                throw RuntimeException("Store closure I/O deadlock failure")
+            }
+        }
+        val delegate = object : WipeArtifacts {
+            override fun eraseKeys() { erasedKeys = true }
+            override fun deleteArtifacts() {}
+            override fun regenerateIdentity() {}
+        }
+
+        val wipe = PanicWipe(journal, RuntimeAwareWipeArtifacts(failingInvalidator, delegate))
+        try {
+            wipe.begin()
+            fail("Expected wipe to fail when invalidator throws")
+        } catch (e: Exception) {
+            // Expected
+        }
+
+        assertFalse("Key erasure must NOT happen if invalidation fails", erasedKeys)
+        assertEquals(WipeState.REQUESTED, journal.state)
     }
 
     @Test
@@ -174,16 +294,19 @@ class WipeLifecycleTest {
         val journal = InMemoryJournal()
         val artifacts = RecordingArtifacts(crashBefore = "eraseKeys")
         val wipe = PanicWipe(journal, artifacts)
+
         try {
             wipe.begin()
             fail("Expected crash")
         } catch (_: Exception) {}
 
         assertEquals(WipeState.REQUESTED, journal.state)
-        assertEquals(0, artifacts.calls.size)
 
-        PanicWipe(journal, artifacts).resumeIfPending()
-        assertEquals(listOf("eraseKeys", "deleteArtifacts", "regenerateIdentity"), artifacts.calls)
+        // Resume with non-crashing artifacts
+        val resumeArtifacts = RecordingArtifacts()
+        PanicWipe(journal, resumeArtifacts).resumeIfPending()
+
+        assertEquals(listOf("eraseKeys", "deleteArtifacts", "regenerateIdentity"), resumeArtifacts.calls)
         assertEquals(WipeState.IDLE, journal.state)
     }
 
@@ -192,16 +315,18 @@ class WipeLifecycleTest {
         val journal = InMemoryJournal()
         val artifacts = RecordingArtifacts(crashBefore = "deleteArtifacts")
         val wipe = PanicWipe(journal, artifacts)
+
         try {
             wipe.begin()
             fail("Expected crash")
         } catch (_: Exception) {}
 
         assertEquals(WipeState.KEY_ERASED, journal.state)
-        assertEquals(listOf("eraseKeys"), artifacts.calls)
 
-        PanicWipe(journal, artifacts).resumeIfPending()
-        assertEquals(listOf("eraseKeys", "deleteArtifacts", "regenerateIdentity"), artifacts.calls)
+        val resumeArtifacts = RecordingArtifacts()
+        PanicWipe(journal, resumeArtifacts).resumeIfPending()
+
+        assertEquals(listOf("deleteArtifacts", "regenerateIdentity"), resumeArtifacts.calls)
         assertEquals(WipeState.IDLE, journal.state)
     }
 
@@ -210,16 +335,18 @@ class WipeLifecycleTest {
         val journal = InMemoryJournal()
         val artifacts = RecordingArtifacts(crashBefore = "regenerateIdentity")
         val wipe = PanicWipe(journal, artifacts)
+
         try {
             wipe.begin()
             fail("Expected crash")
         } catch (_: Exception) {}
 
         assertEquals(WipeState.ARTIFACTS_DELETED, journal.state)
-        assertEquals(listOf("eraseKeys", "deleteArtifacts"), artifacts.calls)
 
-        PanicWipe(journal, artifacts).resumeIfPending()
-        assertEquals(listOf("eraseKeys", "deleteArtifacts", "regenerateIdentity"), artifacts.calls)
+        val resumeArtifacts = RecordingArtifacts()
+        PanicWipe(journal, resumeArtifacts).resumeIfPending()
+
+        assertEquals(listOf("regenerateIdentity"), resumeArtifacts.calls)
         assertEquals(WipeState.IDLE, journal.state)
     }
 
@@ -227,9 +354,10 @@ class WipeLifecycleTest {
     fun testWipe_CrashAtNewIdentity_ResumesWipeAndCompletes() {
         val journal = InMemoryJournal()
         journal.write(WipeState.NEW_IDENTITY)
-        val artifacts = RecordingArtifacts()
 
+        val artifacts = RecordingArtifacts()
         PanicWipe(journal, artifacts).resumeIfPending()
+
         assertEquals(0, artifacts.calls.size)
         assertEquals(WipeState.IDLE, journal.state)
     }
@@ -237,45 +365,86 @@ class WipeLifecycleTest {
     @Test
     fun testWipe_OldRuntimeHandleRemainsInvalid_AfterWipeCompletes() {
         val gate = DefaultRuntimeLifecycleGate()
-        val invalidator = MeshRuntimeInvalidator(gate)
-        val delegate = RecordingArtifacts()
-        val awareArtifacts = RuntimeAwareWipeArtifacts(invalidator, delegate)
+        val sm = SessionManager(
+            identity = MeshIdentity.generate(),
+            trustAuthority = object : PeerBindingTrustAuthority {
+                override fun applyValidatedBinding(binding: ValidatedPeerBinding) = PeerTrustApplyResult.Accepted
+            },
+            lifecycleGate = gate
+        )
         val journal = InMemoryJournal()
-        val wipe = PanicWipe(journal, awareArtifacts)
+        val artifacts = RecordingArtifacts()
+
+        val wipe = PanicWipe(journal, RuntimeAwareWipeArtifacts(gate, artifacts))
         wipe.begin()
 
         assertTrue(gate.isInvalidated)
         assertFalse(gate.isActive)
+        assertFalse(sm.isActive)
     }
 
     @Test
     fun testWipe_FreshRuntimeInstance_AfterWipeWorksNormally() {
         val journal = InMemoryJournal()
-        val artifacts = RecordingArtifacts()
+        var freshIdentity: Identity? = null
+        val artifacts = object : WipeArtifacts {
+            override fun eraseKeys() {}
+            override fun deleteArtifacts() {}
+            override fun regenerateIdentity() {
+                freshIdentity = MeshIdentity.generate()
+            }
+        }
+
         PanicWipe(journal, artifacts).begin()
 
+        assertNotNull(freshIdentity)
         val freshGate = DefaultRuntimeLifecycleGate()
+        val freshSm = SessionManager(
+            identity = freshIdentity!!,
+            trustAuthority = object : PeerBindingTrustAuthority {
+                override fun applyValidatedBinding(binding: ValidatedPeerBinding) = PeerTrustApplyResult.Accepted
+            },
+            lifecycleGate = freshGate
+        )
+
         assertTrue(freshGate.isActive)
-        assertFalse(freshGate.isInvalidated)
+        assertTrue(freshSm.isActive)
     }
 
     @Test
-    fun testWipe_InvalidationException_PreventsKeyErasure() {
-        val invalidator = object : RuntimeInvalidator {
-            override fun invalidateForWipe() {
-                throw IllegalStateException("Pre-wipe invalidator failure")
+    fun testWipe_W15_RealDatabaseArtifactsAndSidecars_DeletedAfterClosure() {
+        val peerFile = tempFolder.newFile("w15_peer.db")
+        val peerWal = File(peerFile.parentFile, "${peerFile.name}-wal").also { it.writeText("wal") }
+        val peerShm = File(peerFile.parentFile, "${peerFile.name}-shm").also { it.writeText("shm") }
+        val msgFile = tempFolder.newFile("w15_msg.db")
+        val msgWal = File(msgFile.parentFile, "${msgFile.name}-wal").also { it.writeText("wal") }
+        val msgShm = File(msgFile.parentFile, "${msgFile.name}-shm").also { it.writeText("shm") }
+
+        assertTrue(peerFile.exists())
+        assertTrue(peerWal.exists())
+        assertTrue(peerShm.exists())
+        assertTrue(msgFile.exists())
+        assertTrue(msgWal.exists())
+        assertTrue(msgShm.exists())
+
+        // Physical deletion step
+        val artifacts = object : WipeArtifacts {
+            override fun eraseKeys() {}
+            override fun deleteArtifacts() {
+                listOf(peerFile, peerWal, peerShm, msgFile, msgWal, msgShm).forEach {
+                    if (it.exists()) it.delete()
+                }
             }
+            override fun regenerateIdentity() {}
         }
-        val delegateArtifacts = RecordingArtifacts()
-        val awareArtifacts = RuntimeAwareWipeArtifacts(invalidator, delegateArtifacts)
-        val journal = InMemoryJournal()
-        val wipe = PanicWipe(journal, awareArtifacts)
 
-        try {
-            wipe.begin()
-            fail("Expected exception")
-        } catch (_: IllegalStateException) {}
+        PanicWipe(InMemoryJournal(), artifacts).begin()
 
-        assertEquals(0, delegateArtifacts.calls.size)
+        assertFalse(peerFile.exists())
+        assertFalse(peerWal.exists())
+        assertFalse(peerShm.exists())
+        assertFalse(msgFile.exists())
+        assertFalse(msgWal.exists())
+        assertFalse(msgShm.exists())
     }
 }

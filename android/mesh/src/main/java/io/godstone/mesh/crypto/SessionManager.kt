@@ -4,15 +4,28 @@ import io.godstone.mesh.identity.Identity
 import io.godstone.mesh.identity.RuntimeLifecycleGate
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.locks.ReentrantLock
+import java.util.concurrent.locks.ReentrantReadWriteLock
+import kotlin.concurrent.read
+import kotlin.concurrent.write
 import kotlin.concurrent.withLock
 
 /**
- * Per-peer trusted session registry (Stage 4 Phase C8.4B).
+ * Per-peer trusted session registry (Stage 4 Phase C8.4B / C8.4B.1).
  *
  * Replaces the untrusted raw NoiseSession registry. Owns and gates on
  * [TrustedHandshakeController] instances rather than raw Noise establishment.
  * Seal and open are permitted IFF the transport peer's controller has reached
  * [HandshakeTrustState.READY].
+ *
+ * LOCK ORDER HIERARCHY:
+ * 1. Lifecycle Read/Write Lock (`lifecycleRwLock`):
+ *    - In-flight operations take the read lock for their entire duration (including controller execution).
+ *    - Invalidation (`invalidateForWipe`) takes the exclusive write lock, ensuring all in-flight operations
+ *      drain completely before controllers are destroyed and the registry cleared.
+ * 2. Per-Peer Lock (`peerLocks`):
+ *    - Serializes handshakes (initiator/responder processing) for a specific peer.
+ * 3. Map Lock (`mapLock`):
+ *    - Protects insertion, removal, and lookup in `controllers`.
  *
  * Invalidation for panic wipe destroys all sessions and permanently transitions
  * the manager to INVALIDATED state.
@@ -25,7 +38,8 @@ class SessionManager internal constructor(
 ) {
     private enum class ManagerState { ACTIVE, INVALIDATED }
 
-    private val lock = ReentrantLock()
+    private val lifecycleRwLock = ReentrantReadWriteLock()
+    private val mapLock = ReentrantLock()
     @Volatile private var managerState = ManagerState.ACTIVE
 
     private val controllers = HashMap<String, TrustedHandshakeController>()
@@ -47,10 +61,12 @@ class SessionManager internal constructor(
      * and the manager is not invalidated.
      */
     fun isReady(peerId: ByteArray): Boolean {
-        if (!isActive) return false
-        val k = key(peerId)
-        val ctrl = lock.withLock { controllers[k] } ?: return false
-        return ctrl.isReady && ctrl.state == HandshakeTrustState.READY
+        lifecycleRwLock.read {
+            if (!isActive) return false
+            val k = key(peerId)
+            val ctrl = mapLock.withLock { controllers[k] } ?: return false
+            return ctrl.isReady && ctrl.state == HandshakeTrustState.READY
+        }
     }
 
     /**
@@ -61,37 +77,39 @@ class SessionManager internal constructor(
         initiatorStart(peerId, remoteHint)
 
     fun initiatorStart(peerId: ByteArray, remoteHint: ByteArray): ByteArray? {
-        if (!isActive) return null
-        val k = key(peerId)
-        val pLock = getPeerLock(k)
-        return pLock.withLock {
-            if (!isActive) return@withLock null
-            val exists = lock.withLock { controllers.containsKey(k) }
-            if (exists) return@withLock null
+        lifecycleRwLock.read {
+            if (!isActive) return null
+            val k = key(peerId)
+            val pLock = getPeerLock(k)
+            return pLock.withLock {
+                if (!isActive) return@withLock null
+                val exists = mapLock.withLock { controllers.containsKey(k) }
+                if (exists) return@withLock null
 
-            val ctrl = TrustedHandshakeController.initiator(
-                identity = identity,
-                remoteHint = remoteHint,
-                trustAuthority = trustAuthority,
-                localBindingIssuer = localBindingIssuer
-            )
-            val hs1 = try {
-                ctrl.initiatorWriteMessage1()
-            } catch (e: Exception) {
-                return@withLock null
-            }
-
-            val saved = lock.withLock {
-                if (!isActive) {
-                    ctrl.destroy()
-                    false
-                } else {
-                    controllers[k] = ctrl
-                    true
+                val ctrl = TrustedHandshakeController.initiator(
+                    identity = identity,
+                    remoteHint = remoteHint,
+                    trustAuthority = trustAuthority,
+                    localBindingIssuer = localBindingIssuer
+                )
+                val hs1 = try {
+                    ctrl.initiatorWriteMessage1()
+                } catch (e: Exception) {
+                    return@withLock null
                 }
+
+                val saved = mapLock.withLock {
+                    if (!isActive) {
+                        ctrl.destroy()
+                        false
+                    } else {
+                        controllers[k] = ctrl
+                        true
+                    }
+                }
+                if (!saved) return@withLock null
+                hs1
             }
-            if (!saved) return@withLock null
-            hs1
         }
     }
 
@@ -100,19 +118,21 @@ class SessionManager internal constructor(
      * On success, transitions controller to READY. On failure or non-READY, drops entry and returns null.
      */
     fun initiatorProcessHs2(peerId: ByteArray, hs2: ByteArray, advertisedRemoteHint: ByteArray): ByteArray? {
-        if (!isActive) return null
-        val k = key(peerId)
-        val pLock = getPeerLock(k)
-        return pLock.withLock {
-            if (!isActive) return@withLock null
-            val ctrl = lock.withLock { controllers[k] } ?: return@withLock null
-            val hs3 = ctrl.initiatorProcessMessage2(hs2, advertisedRemoteHint)
-            if (hs3 == null || !ctrl.isReady) {
-                lock.withLock { controllers.remove(k) }
-                ctrl.destroy()
-                return@withLock null
+        lifecycleRwLock.read {
+            if (!isActive) return null
+            val k = key(peerId)
+            val pLock = getPeerLock(k)
+            return pLock.withLock {
+                if (!isActive) return@withLock null
+                val ctrl = mapLock.withLock { controllers[k] } ?: return@withLock null
+                val hs3 = ctrl.initiatorProcessMessage2(hs2, advertisedRemoteHint)
+                if (hs3 == null || !ctrl.isReady) {
+                    mapLock.withLock { controllers.remove(k) }
+                    ctrl.destroy()
+                    return@withLock null
+                }
+                hs3
             }
-            hs3
         }
     }
 
@@ -123,40 +143,42 @@ class SessionManager internal constructor(
         responderProcessHs1(peerId, remoteHint, hs1)
 
     fun responderProcessHs1(peerId: ByteArray, remoteHint: ByteArray, hs1: ByteArray): ByteArray? {
-        if (!isActive) return null
-        val k = key(peerId)
-        val pLock = getPeerLock(k)
-        return pLock.withLock {
-            if (!isActive) return@withLock null
-            val exists = lock.withLock { controllers.containsKey(k) }
-            if (exists) return@withLock null
+        lifecycleRwLock.read {
+            if (!isActive) return null
+            val k = key(peerId)
+            val pLock = getPeerLock(k)
+            return pLock.withLock {
+                if (!isActive) return@withLock null
+                val exists = mapLock.withLock { controllers.containsKey(k) }
+                if (exists) return@withLock null
 
-            val ctrl = TrustedHandshakeController.responder(
-                identity = identity,
-                remoteHint = remoteHint,
-                trustAuthority = trustAuthority
-            )
-            val hs2 = try {
-                ctrl.responderProcessMessage1AndWriteMessage2(hs1)
-            } catch (e: Exception) {
-                return@withLock null
-            }
-            if (hs2 == null) {
-                ctrl.destroy()
-                return@withLock null
-            }
-
-            val saved = lock.withLock {
-                if (!isActive) {
-                    ctrl.destroy()
-                    false
-                } else {
-                    controllers[k] = ctrl
-                    true
+                val ctrl = TrustedHandshakeController.responder(
+                    identity = identity,
+                    remoteHint = remoteHint,
+                    trustAuthority = trustAuthority
+                )
+                val hs2 = try {
+                    ctrl.responderProcessMessage1AndWriteMessage2(hs1)
+                } catch (e: Exception) {
+                    return@withLock null
                 }
+                if (hs2 == null) {
+                    ctrl.destroy()
+                    return@withLock null
+                }
+
+                val saved = mapLock.withLock {
+                    if (!isActive) {
+                        ctrl.destroy()
+                        false
+                    } else {
+                        controllers[k] = ctrl
+                        true
+                    }
+                }
+                if (!saved) return@withLock null
+                hs2
             }
-            if (!saved) return@withLock null
-            hs2
         }
     }
 
@@ -165,19 +187,21 @@ class SessionManager internal constructor(
      * Returns true IFF handshake reaches HandshakeTrustState.READY.
      */
     fun responderProcessHs3(peerId: ByteArray, hs3: ByteArray, advertisedRemoteHint: ByteArray): Boolean {
-        if (!isActive) return false
-        val k = key(peerId)
-        val pLock = getPeerLock(k)
-        return pLock.withLock {
-            if (!isActive) return@withLock false
-            val ctrl = lock.withLock { controllers[k] } ?: return@withLock false
-            val ok = ctrl.responderProcessMessage3(hs3, advertisedRemoteHint)
-            if (!ok || !ctrl.isReady) {
-                lock.withLock { controllers.remove(k) }
-                ctrl.destroy()
-                return@withLock false
+        lifecycleRwLock.read {
+            if (!isActive) return false
+            val k = key(peerId)
+            val pLock = getPeerLock(k)
+            return pLock.withLock {
+                if (!isActive) return@withLock false
+                val ctrl = mapLock.withLock { controllers[k] } ?: return@withLock false
+                val ok = ctrl.responderProcessMessage3(hs3, advertisedRemoteHint)
+                if (!ok || !ctrl.isReady) {
+                    mapLock.withLock { controllers.remove(k) }
+                    ctrl.destroy()
+                    return@withLock false
+                }
+                true
             }
-            true
         }
     }
 
@@ -186,11 +210,13 @@ class SessionManager internal constructor(
      * Returns ciphertext IFF session is READY and manager is active.
      */
     fun seal(peerId: ByteArray, frameBytes: ByteArray): ByteArray? {
-        if (!isActive) return null
-        val k = key(peerId)
-        val ctrl = lock.withLock { controllers[k] } ?: return null
-        if (!ctrl.isReady || ctrl.state != HandshakeTrustState.READY) return null
-        return ctrl.seal(frameBytes)
+        lifecycleRwLock.read {
+            if (!isActive) return null
+            val k = key(peerId)
+            val ctrl = mapLock.withLock { controllers[k] } ?: return null
+            if (!ctrl.isReady || ctrl.state != HandshakeTrustState.READY) return null
+            return ctrl.seal(frameBytes)
+        }
     }
 
     /**
@@ -198,35 +224,43 @@ class SessionManager internal constructor(
      * Returns cleartext IFF session is READY and manager is active.
      */
     fun open(peerId: ByteArray, ciphertext: ByteArray): ByteArray? {
-        if (!isActive) return null
-        val k = key(peerId)
-        val ctrl = lock.withLock { controllers[k] } ?: return null
-        if (!ctrl.isReady || ctrl.state != HandshakeTrustState.READY) return null
-        return ctrl.open(ciphertext)
+        lifecycleRwLock.read {
+            if (!isActive) return null
+            val k = key(peerId)
+            val ctrl = mapLock.withLock { controllers[k] } ?: return null
+            if (!ctrl.isReady || ctrl.state != HandshakeTrustState.READY) return null
+            return ctrl.open(ciphertext)
+        }
     }
 
     fun drop(peerId: ByteArray) {
-        val k = key(peerId)
-        val ctrl = lock.withLock { controllers.remove(k) }
-        ctrl?.destroy()
+        lifecycleRwLock.read {
+            val k = key(peerId)
+            val ctrl = mapLock.withLock { controllers.remove(k) }
+            ctrl?.destroy()
+        }
     }
 
     fun destroyAll() {
-        lock.withLock {
-            for (ctrl in controllers.values) {
-                ctrl.destroy()
+        lifecycleRwLock.write {
+            mapLock.withLock {
+                for (ctrl in controllers.values) {
+                    ctrl.destroy()
+                }
+                controllers.clear()
             }
-            controllers.clear()
         }
     }
 
     fun invalidateForWipe() {
-        lock.withLock {
-            managerState = ManagerState.INVALIDATED
-            for (ctrl in controllers.values) {
-                ctrl.destroy()
+        lifecycleRwLock.write {
+            mapLock.withLock {
+                managerState = ManagerState.INVALIDATED
+                for (ctrl in controllers.values) {
+                    ctrl.destroy()
+                }
+                controllers.clear()
             }
-            controllers.clear()
         }
     }
 }

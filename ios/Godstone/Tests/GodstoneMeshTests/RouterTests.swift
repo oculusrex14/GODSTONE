@@ -809,6 +809,37 @@ final class RouterTests: XCTestCase {
             return
         }
     }
+
+    func testR20_MeshNodeCanStartRequiresBothLinkReadinessAndActiveSessionRuntime() throws {
+        let keypair = try MeshIdentity.generateAndStore(keychain: InMemoryKeychain())
+        let store = InMemoryMessageStore()
+        let dummyTracker = DeliveryTracker(
+            repo: TestDeliveryRepository(),
+            authenticator: Ed25519AckAuthenticator(resolver: UnresolvedRecipientKeyResolver())
+        )
+        final class DummyTrustAuth: PeerBindingTrustAuthority, @unchecked Sendable {
+            func applyValidatedBinding(_ binding: ValidatedPeerBinding) -> PeerTrustApplyResult { .storageFailure }
+        }
+        let gate = DefaultRuntimeLifecycleGate()
+        let sm = SessionManager(identity: keypair, trustAuthority: DummyTrustAuth(), lifecycleGate: gate)
+        let node = MeshNode(identity: keypair, store: store, deliveryTracker: dummyTracker, sessions: sm)
+
+        // Active runtime:
+        XCTAssertTrue(node.sessions.isActive)
+        XCTAssertTrue(node.canStart(linkReady: true))
+        XCTAssertFalse(node.canStart(linkReady: false))
+        XCTAssertFalse(node.start()) // linkLayerReady is false
+
+        // Invalidate:
+        node.sessions.invalidateForWipe()
+        XCTAssertTrue(node.sessions.isInvalidated)
+        XCTAssertFalse(node.sessions.isActive)
+
+        // Must refuse even if hypothetical linkReady = true
+        XCTAssertFalse(node.canStart(linkReady: true))
+        XCTAssertFalse(node.canStart(linkReady: false))
+        XCTAssertFalse(node.start())
+    }
 }
 
 /// A `MessageStore` whose `persist` always fails -- exercises the persist-result

@@ -591,4 +591,25 @@ class MeshNodeDeliveryIntegrationTest {
         val decoded = FrameV2.decode(sentBytes!!)
         assertEquals(frame1, decoded)
     }
+
+    @Test
+    fun `R19 canStart requires both link readiness and active session runtime`() {
+        val (node, _) = makeNode(InMemoryMessageStore(), UnresolvedRecipientKeyResolver)
+
+        // With active session runtime:
+        assertTrue(node.sessions.isActive)
+        assertTrue(node.canStart(linkReady = true))
+        assertFalse(node.canStart(linkReady = false))
+        assertFalse(node.start()) // Because committed LINK_LAYER_READY is false
+
+        // Invalidate session runtime:
+        node.sessions.invalidateForWipe()
+        assertTrue(node.sessions.isInvalidated)
+        assertFalse(node.sessions.isActive)
+
+        // Must refuse start even with hypothetical linkReady = true
+        assertFalse(node.canStart(linkReady = true))
+        assertFalse(node.canStart(linkReady = false))
+        assertFalse(node.start())
+    }
 }

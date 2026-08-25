@@ -1,27 +1,27 @@
 #!/usr/bin/env python3
-"""Structural and regression controls for Trusted Runtime Composition (ADR-003, Phase C8.4B).
+"""Structural and regression controls for Trusted Runtime Composition (ADR-003, Phase C8.4B / C8.4B.1).
 
 Verifies the presence, boundaries, and structural invariants of:
 - Android SessionManager owns TrustedHandshakeController instances, not raw NoiseSession (R01)
 - iOS SessionManager owns TrustedHandshakeController instances, not raw NoiseSession (R02)
-- Android SessionManager.seal and SessionManager.open require HandshakeTrustState.READY (R03)
-- iOS SessionManager.seal and SessionManager.open require HandshakeTrustState.READY (R04)
+- Android SessionManager.seal and SessionManager.open require HandshakeTrustState.READY under lifecycle lock (R03)
+- iOS SessionManager.seal and SessionManager.open require .ready under lifecycle lock (R04)
 - Android SessionManager per-peer serialized handshake operations (R05)
 - iOS SessionManager per-peer serialized handshake operations (R06)
 - Android RuntimeLifecycleGate / RuntimeInvalidator authority interface and implementations (R07)
 - iOS RuntimeLifecycleGate / RuntimeInvalidator authority protocol and implementations (R08)
-- Android MeshRuntimeInvalidator invalidates gate and closes stores (R09)
-- iOS MeshRuntimeInvalidator invalidates gate and closes stores (R10)
+- Android MeshRuntimeInvalidator closes stores without swallowed exceptions and invalidates gate (R09)
+- iOS MeshRuntimeInvalidator closes stores without swallowed exceptions and invalidates gate (R10)
 - Android RuntimeGatedPeerIdentityLookupSource and RuntimeGatedPeerBindingTrustAuthority fail closed upon invalidation (R11)
 - iOS RuntimeGatedPeerIdentityLookupSource and RuntimeGatedPeerBindingTrustAuthority fail closed upon invalidation (R12)
-- Android RuntimeAwareWipeArtifacts invalidates runtime handles before key erasure (R13)
-- iOS RuntimeAwareWipeArtifacts invalidates runtime handles before key erasure (R14)
-- Android MeshModule wires BoundRecipientKeyResolver, PeerIdentityRepository, DefaultRuntimeLifecycleGate, SessionManager, MeshNode (R15)
-- iOS MeshRuntime wires BoundRecipientKeyResolver, PeerIdentityRepository, DefaultRuntimeLifecycleGate, SessionManager, MeshNode (R16)
-- Android MeshModule / startup path calls PanicWipe.resumeIfPending(ctx) (R17)
-- iOS MeshRuntime / startup path calls PanicWipe.resumeIfPending() (R18)
-- Android MeshNode consumes trusted SessionManager authority (R19)
-- iOS MeshNode consumes trusted SessionManager authority (R20)
+- Android RuntimeAwareWipeArtifacts used in active MeshPanicWipe composition (R13)
+- iOS RuntimeAwareWipeArtifacts used in active MeshRuntime.beginPanicWipe (R14)
+- Android MeshModule wires same gate, sessions, peerStore, messageStore into MeshRuntimeInvalidator and MeshPanicWipe (R15)
+- iOS MeshRuntime owns/uses MeshRuntimeInvalidator and exact store URLs for active wipe (R16)
+- Android MeshStartupWipeBarrier precedes all sensitive opens (R17)
+- iOS MeshRuntime.create binds default startup artifacts to exact store URLs (R18)
+- Android MeshNode.canStart checks sessions.isActive and forbids independent Identity.loadOrCreate (R19)
+- iOS MeshNode.canStart checks sessions.isActive (R20)
 - iOS AppContainer remains strictly Archive-only (no GodstoneMesh / MeshRuntime / BoundRecipientKeyResolver / SessionManager) (R21)
 - Android :mesh is not exposed/imported in shipping Light app root (R22)
 - Link layer ready flags remain false on BOTH platforms (R23)
@@ -30,8 +30,8 @@ Verifies the presence, boundaries, and structural invariants of:
 - iOS SessionManagerTests inventory (SM01-SM12) (R26)
 - Android CompositionResolverAckTest inventory (CR01-CR08) (R27)
 - iOS CompositionResolverAckTests inventory (CR01-CR08) (R28)
-- Android WipeLifecycleTest and CrashStartupResumeTest inventories (W01-W15, SR01-SR07) (R29)
-- iOS WipeLifecycleTests and CrashStartupResumeTests inventories (W01-W15, SR01-SR07) (R30)
+- Android WipeLifecycleTest and CrashStartupResumeTest inventories (W01-W15, SR01-SR07, RC01-RC03) (R29)
+- iOS WipeLifecycleTests and CrashStartupResumeTests inventories (W01-W15, SR01-SR07, RC01-RC03) (R30)
 """
 from __future__ import annotations
 
@@ -54,6 +54,7 @@ ANDROID_TEST_SM_PATH = ROOT / "android" / "mesh" / "src" / "test" / "java" / "io
 ANDROID_TEST_CR_PATH = ROOT / "android" / "mesh" / "src" / "test" / "java" / "io" / "godstone" / "mesh" / "delivery" / "CompositionResolverAckTest.kt"
 ANDROID_TEST_WIPE_PATH = ROOT / "android" / "mesh" / "src" / "test" / "java" / "io" / "godstone" / "mesh" / "identity" / "WipeLifecycleTest.kt"
 ANDROID_TEST_STARTUP_PATH = ROOT / "android" / "mesh" / "src" / "test" / "java" / "io" / "godstone" / "mesh" / "identity" / "CrashStartupResumeTest.kt"
+ANDROID_TEST_CONCURRENCY_PATH = ROOT / "android" / "mesh" / "src" / "test" / "java" / "io" / "godstone" / "mesh" / "crypto" / "SessionManagerConcurrencyTest.kt"
 
 IOS_SM_PATH = ROOT / "ios" / "Godstone" / "Sources" / "GodstoneMesh" / "SessionManager.swift"
 IOS_GATE_PATH = ROOT / "ios" / "Godstone" / "Sources" / "GodstoneMesh" / "RuntimeLifecycleGate.swift"
@@ -66,6 +67,7 @@ IOS_TEST_SM_PATH = ROOT / "ios" / "Godstone" / "Tests" / "GodstoneMeshTests" / "
 IOS_TEST_CR_PATH = ROOT / "ios" / "Godstone" / "Tests" / "GodstoneMeshTests" / "CompositionResolverAckTests.swift"
 IOS_TEST_WIPE_PATH = ROOT / "ios" / "Godstone" / "Tests" / "GodstoneMeshTests" / "WipeLifecycleTests.swift"
 IOS_TEST_STARTUP_PATH = ROOT / "ios" / "Godstone" / "Tests" / "GodstoneMeshTests" / "CrashStartupResumeTests.swift"
+IOS_TEST_CONCURRENCY_PATH = ROOT / "ios" / "Godstone" / "Tests" / "GodstoneMeshTests" / "SessionManagerConcurrencyTests.swift"
 
 ADR003_PATH = ROOT / "docs" / "adr" / "ADR-003-identity-and-sealed-sender.md"
 
@@ -87,6 +89,7 @@ def check_controls(
     android_test_cr_path: Path = ANDROID_TEST_CR_PATH,
     android_test_wipe_path: Path = ANDROID_TEST_WIPE_PATH,
     android_test_startup_path: Path = ANDROID_TEST_STARTUP_PATH,
+    android_test_concurrency_path: Path = ANDROID_TEST_CONCURRENCY_PATH,
     ios_sm_path: Path = IOS_SM_PATH,
     ios_gate_path: Path = IOS_GATE_PATH,
     ios_mesh_runtime_path: Path = IOS_MESH_RUNTIME_PATH,
@@ -97,6 +100,7 @@ def check_controls(
     ios_test_cr_path: Path = IOS_TEST_CR_PATH,
     ios_test_wipe_path: Path = IOS_TEST_WIPE_PATH,
     ios_test_startup_path: Path = IOS_TEST_STARTUP_PATH,
+    ios_test_concurrency_path: Path = IOS_TEST_CONCURRENCY_PATH,
     adr003_path: Path = ADR003_PATH,
 ) -> list[str]:
     errors: list[str] = []
@@ -112,6 +116,7 @@ def check_controls(
         (android_test_cr_path, "Android CompositionResolverAckTest"),
         (android_test_wipe_path, "Android WipeLifecycleTest"),
         (android_test_startup_path, "Android CrashStartupResumeTest"),
+        (android_test_concurrency_path, "Android SessionManagerConcurrencyTest"),
         (ios_sm_path, "iOS SessionManager"),
         (ios_gate_path, "iOS RuntimeLifecycleGate"),
         (ios_mesh_runtime_path, "iOS MeshRuntime"),
@@ -122,6 +127,7 @@ def check_controls(
         (ios_test_cr_path, "iOS CompositionResolverAckTests"),
         (ios_test_wipe_path, "iOS WipeLifecycleTests"),
         (ios_test_startup_path, "iOS CrashStartupResumeTests"),
+        (ios_test_concurrency_path, "iOS SessionManagerConcurrencyTests"),
         (adr003_path, "ADR-003"),
     ]
 
@@ -141,6 +147,7 @@ def check_controls(
     kt_test_cr = strip_comments(android_test_cr_path.read_text(encoding="utf-8"))
     kt_test_wipe = strip_comments(android_test_wipe_path.read_text(encoding="utf-8"))
     kt_test_startup = strip_comments(android_test_startup_path.read_text(encoding="utf-8"))
+    kt_test_concurrency = strip_comments(android_test_concurrency_path.read_text(encoding="utf-8"))
 
     swift_sm = strip_comments(ios_sm_path.read_text(encoding="utf-8"))
     swift_gate = strip_comments(ios_gate_path.read_text(encoding="utf-8"))
@@ -152,6 +159,7 @@ def check_controls(
     swift_test_cr = strip_comments(ios_test_cr_path.read_text(encoding="utf-8"))
     swift_test_wipe = strip_comments(ios_test_wipe_path.read_text(encoding="utf-8"))
     swift_test_startup = strip_comments(ios_test_startup_path.read_text(encoding="utf-8"))
+    swift_test_concurrency = strip_comments(ios_test_concurrency_path.read_text(encoding="utf-8"))
 
     adr_txt = adr003_path.read_text(encoding="utf-8")
 
@@ -175,17 +183,21 @@ def check_controls(
     if re.search(r'controllers\s*:\s*\[\s*UUID\s*:\s*NoiseSession\s*\]', swift_sm):
         errors.append("iOS SessionManager must NOT store raw NoiseSession instances in controllers (R02)")
 
-    # ── R03: Android SessionManager.seal and open require READY state ──
+    # ── R03: Android SessionManager.seal and open require READY state under lifecycle lock ──
     if "fun seal(" not in kt_sm or "fun open(" not in kt_sm:
         errors.append("Android SessionManager missing seal or open methods (R03)")
     if "HandshakeTrustState.READY" not in kt_sm:
         errors.append("Android SessionManager seal/open must gate on HandshakeTrustState.READY (R03)")
+    if "lifecycleRwLock" not in kt_sm:
+        errors.append("Android SessionManager must use lifecycle read/write lock for operation linearizability (R03)")
 
-    # ── R04: iOS SessionManager.seal and open require READY state ──
+    # ── R04: iOS SessionManager.seal and open require READY state under lifecycle lock ──
     if "func seal(" not in swift_sm or "func open(" not in swift_sm:
         errors.append("iOS SessionManager missing seal or open methods (R04)")
     if ".ready" not in swift_sm:
         errors.append("iOS SessionManager seal/open must gate on .ready state (R04)")
+    if "lifecycleRwLock" not in swift_sm:
+        errors.append("iOS SessionManager must use lifecycle read/write lock for operation linearizability (R04)")
 
     # ── R05: Android SessionManager per-peer serialization ──
     if "peerLocks" not in kt_sm and "getPeerLock" not in kt_sm:
@@ -207,17 +219,27 @@ def check_controls(
     if "class DefaultRuntimeLifecycleGate" not in swift_gate:
         errors.append("iOS DefaultRuntimeLifecycleGate missing (R08)")
 
-    # ── R09: Android MeshRuntimeInvalidator closes stores and invalidates gate ──
+    # ── R09: Android MeshRuntimeInvalidator closes stores and invalidates gate without swallowed exceptions ──
     if "class MeshRuntimeInvalidator" not in kt_gate:
         errors.append("Android MeshRuntimeInvalidator missing (R09)")
     if "lifecycleGate.invalidateForWipe()" not in kt_gate:
         errors.append("Android MeshRuntimeInvalidator must invalidate lifecycleGate (R09)")
+    if "peerStore?.close()" not in kt_gate:
+        errors.append("Android MeshRuntimeInvalidator must close peerStore (R09)")
+    if "messageStore?.close()" not in kt_gate:
+        errors.append("Android MeshRuntimeInvalidator must close messageStore (R09)")
+    if "catch (_: Exception)" in kt_gate or "catch (e: Exception)" in kt_gate or "catch (t: Throwable)" in kt_gate:
+        errors.append("Android MeshRuntimeInvalidator must NOT swallow closure exceptions (R09)")
 
     # ── R10: iOS MeshRuntimeInvalidator closes stores and invalidates gate ──
     if "class MeshRuntimeInvalidator" not in swift_gate:
         errors.append("iOS MeshRuntimeInvalidator missing (R10)")
     if "lifecycleGate.invalidateForWipe()" not in swift_gate:
         errors.append("iOS MeshRuntimeInvalidator must invalidate lifecycleGate (R10)")
+    if "peerStore?.close()" not in swift_gate:
+        errors.append("iOS MeshRuntimeInvalidator must close peerStore (R10)")
+    if "messageStore?.close()" not in swift_gate:
+        errors.append("iOS MeshRuntimeInvalidator must close messageStore (R10)")
 
     # ── R11: Android RuntimeGatedPeerIdentityLookupSource and RuntimeGatedPeerBindingTrustAuthority ──
     if "class RuntimeGatedPeerIdentityLookupSource" not in kt_gate:
@@ -231,17 +253,21 @@ def check_controls(
     if "class RuntimeGatedPeerBindingTrustAuthority" not in swift_gate:
         errors.append("iOS RuntimeGatedPeerBindingTrustAuthority missing (R12)")
 
-    # ── R13: Android RuntimeAwareWipeArtifacts invalidates before key erasure ──
+    # ── R13: Android RuntimeAwareWipeArtifacts used in active MeshPanicWipe composition ──
     if "class RuntimeAwareWipeArtifacts" not in kt_gate:
         errors.append("Android RuntimeAwareWipeArtifacts missing (R13)")
     if "invalidator.invalidateForWipe()" not in kt_gate or "delegate.eraseKeys()" not in kt_gate:
         errors.append("Android RuntimeAwareWipeArtifacts must invalidate before delegate.eraseKeys (R13)")
+    if "class MeshPanicWipe" not in kt_mesh_mod or "RuntimeAwareWipeArtifacts" not in kt_mesh_mod:
+        errors.append("Android MeshModule must define MeshPanicWipe using RuntimeAwareWipeArtifacts (R13)")
 
-    # ── R14: iOS RuntimeAwareWipeArtifacts invalidates before key erasure ──
+    # ── R14: iOS RuntimeAwareWipeArtifacts used in active MeshRuntime wipe ──
     if "class RuntimeAwareWipeArtifacts" not in swift_gate:
         errors.append("iOS RuntimeAwareWipeArtifacts missing (R14)")
     if "invalidator.invalidateForWipe()" not in swift_gate or "delegate.eraseKeys()" not in swift_gate:
         errors.append("iOS RuntimeAwareWipeArtifacts must invalidate before delegate.eraseKeys (R14)")
+    if "func beginPanicWipe()" not in swift_mesh_runtime or "RuntimeAwareWipeArtifacts" not in swift_mesh_runtime:
+        errors.append("iOS MeshRuntime must provide beginPanicWipe using RuntimeAwareWipeArtifacts (R14)")
 
     # ── R15: Android MeshModule wires BoundRecipientKeyResolver and SessionManager ──
     if "BoundRecipientKeyResolver" not in kt_mesh_mod:
@@ -250,6 +276,8 @@ def check_controls(
         errors.append("Android MeshModule must wire SessionManager (R15)")
     if "DefaultRuntimeLifecycleGate" not in kt_mesh_mod:
         errors.append("Android MeshModule must wire DefaultRuntimeLifecycleGate (R15)")
+    if "provideMeshRuntimeInvalidator" not in kt_mesh_mod or "provideMeshPanicWipe" not in kt_mesh_mod:
+        errors.append("Android MeshModule must provide MeshRuntimeInvalidator and MeshPanicWipe (R15)")
 
     # ── R16: iOS MeshRuntime wires BoundRecipientKeyResolver and SessionManager ──
     if "BoundRecipientKeyResolver" not in swift_mesh_runtime:
@@ -258,22 +286,32 @@ def check_controls(
         errors.append("iOS MeshRuntime must wire SessionManager (R16)")
     if "DefaultRuntimeLifecycleGate" not in swift_mesh_runtime:
         errors.append("iOS MeshRuntime must wire DefaultRuntimeLifecycleGate (R16)")
+    if "invalidator" not in swift_mesh_runtime or "MeshRuntimeInvalidator" not in swift_mesh_runtime:
+        errors.append("iOS MeshRuntime must own MeshRuntimeInvalidator (R16)")
 
-    # ── R17: Android MeshModule calls PanicWipe.resumeIfPending ──
-    if "PanicWipe.resumeIfPending" not in kt_mesh_mod and "resumeIfPending" not in kt_mesh_mod:
-        errors.append("Android MeshModule must invoke PanicWipe.resumeIfPending at initialization (R17)")
+    # ── R17: Android MeshModule startup wipe barrier precedes sensitive opens ──
+    if "MeshStartupWipeBarrier" not in kt_mesh_mod:
+        errors.append("Android MeshModule must define MeshStartupWipeBarrier (R17)")
+    if "_barrier: MeshStartupWipeBarrier" not in kt_mesh_mod:
+        errors.append("Android MeshModule sensitive providers must depend on MeshStartupWipeBarrier (R17)")
 
-    # ── R18: iOS MeshRuntime calls PanicWipe.resumeIfPending ──
-    if "PanicWipe.resumeIfPending" not in swift_mesh_runtime and "resumeIfPending" not in swift_mesh_runtime:
-        errors.append("iOS MeshRuntime must invoke PanicWipe.resumeIfPending at initialization (R18)")
+    # ── R18: iOS MeshRuntime binds default startup artifacts to exact store URLs ──
+    if "storeUrl: messageStoreUrl" not in swift_mesh_runtime or "peerStoreUrl: peerStoreUrl" not in swift_mesh_runtime:
+        errors.append("iOS MeshRuntime.create must bind default startup artifacts to messageStoreUrl and peerStoreUrl (R18)")
 
-    # ── R19: Android MeshNode consumes trusted SessionManager authority ──
+    # ── R19: Android MeshNode consumes trusted SessionManager and forbids independent identity load ──
     if "sessions: io.godstone.mesh.crypto.SessionManager" not in kt_mesh_node and "sessions: SessionManager" not in kt_mesh_node:
         errors.append("Android MeshNode must require SessionManager authority (R19)")
+    if "canStart(" not in kt_mesh_node or "sessions.isActive" not in kt_mesh_node:
+        errors.append("Android MeshNode.start must check canStart(linkReady) with sessions.isActive (R19)")
+    if "Identity.loadOrCreate" in kt_mesh_node:
+        errors.append("Android MeshNode must not independently invoke Identity.loadOrCreate (R19)")
 
-    # ── R20: iOS MeshNode consumes trusted SessionManager authority ──
+    # ── R20: iOS MeshNode consumes trusted SessionManager and checks canStart ──
     if "sessions: SessionManager" not in swift_mesh_node:
         errors.append("iOS MeshNode must require SessionManager authority (R20)")
+    if "canStart(" not in swift_mesh_node or "sessions.isActive" not in swift_mesh_node:
+        errors.append("iOS MeshNode.start must check canStart(linkReady) with sessions.isActive (R20)")
 
     # ── R21: iOS AppContainer remains strictly Archive-only ──
     for forbidden in ["GodstoneMesh", "MeshRuntime", "BoundRecipientKeyResolver", "SessionManager", "MeshNode"]:
@@ -346,32 +384,40 @@ def check_controls(
     wipe_methods = [
         "testWipe_CleanIdle_NoOp",
         "testWipe_FullExecution_ErasesKeysAndDeletesArtifactsAndRegeneratesIdentity",
-        "testWipe_InvalidatesRuntimeHandles_BeforeKeyErasure",
+        "testWipe_DeterministicOrdering_GateSessionsPeerMessageKeys",
         "testWipe_SessionManagerInvalidated_RefusesAllOperations",
         "testWipe_ResolverReturnsNull_AfterInvalidation",
         "testWipe_TrustAuthorityReturnsStorageFailure_AfterInvalidation",
-        "testWipe_PeerStoreClosed_AfterInvalidation",
-        "testWipe_MessageStoreClosed_AfterInvalidation",
+        "testWipe_W04_PeerStoreClosed_AfterInvalidation",
+        "testWipe_W05_MessageStoreClosed_AfterInvalidation",
+        "testWipe_W06_InvalidatorFailure_PreventsKeyErasure_PreservesRequestedState",
         "testWipe_CrashAtRequested_ResumesWipeAndCompletes",
         "testWipe_CrashAtKeyErased_ResumesWipeAndCompletes",
         "testWipe_CrashAtArtifactsDeleted_ResumesWipeAndCompletes",
         "testWipe_CrashAtNewIdentity_ResumesWipeAndCompletes",
         "testWipe_OldRuntimeHandleRemainsInvalid_AfterWipeCompletes",
         "testWipe_FreshRuntimeInstance_AfterWipeWorksNormally",
-        "testWipe_InvalidationException_PreventsKeyErasure",
+        "testWipe_W15_RealDatabaseArtifactsAndSidecars_DeletedAfterClosure",
     ]
     for m in wipe_methods:
         if m not in kt_test_wipe:
             errors.append(f"Android WipeLifecycleTest missing canonical test: {m} (R29)")
 
+    if "testRC01_ResolverLookupVsInvalidation" not in kt_test_concurrency:
+        errors.append("Android SessionManagerConcurrencyTest missing testRC01_ResolverLookupVsInvalidation (R29)")
+    if "testRC02_ReadySealVsInvalidation" not in kt_test_concurrency:
+        errors.append("Android SessionManagerConcurrencyTest missing testRC02_ReadySealVsInvalidation (R29)")
+    if "testRC03_HandshakeProcessingVsInvalidation" not in kt_test_concurrency:
+        errors.append("Android SessionManagerConcurrencyTest missing testRC03_HandshakeProcessingVsInvalidation (R29)")
+
     startup_methods = [
-        "testStartup_PendingWipe_FinishesBeforeRuntimeInitialization",
-        "testStartup_CleanLaunch_InitializesRuntimeNormally",
-        "testStartup_MidWipeCrash_LeavesConsistentFinalState",
-        "testStartup_IdentityRegeneration_YieldsFreshNodeIdAndZeroGeneration",
-        "testStartup_OldDatabaseFilesUnusable_AfterCryptoErasure",
-        "testStartup_WipeJournalCleared_OnlyUponFullCompletion",
-        "testStartup_RebootBarrier_PreventsStaleStoreAccess",
+        "testSR01_CleanLaunch_InitializesRuntimeNormally",
+        "testSR02_PendingWipe_Requested_FinishesBeforeRuntimeInitialization",
+        "testSR03_KeyErased_DeletesExactStoreArtifactsBeforeOpen",
+        "testSR04_ArtifactsDeleted_RegeneratesIdentityBeforeRuntimeConstruction",
+        "testSR05_FreshRuntime_AfterWipe_HasDifferentNodeId",
+        "testSR06_FreshPeerStore_ContainsNoPriorPeerRecords",
+        "testSR07_OldRuntimeHandle_RemainsPermanentlyUnusable",
     ]
     for m in startup_methods:
         if m not in kt_test_startup:
@@ -384,6 +430,13 @@ def check_controls(
     for m in startup_methods:
         if m not in swift_test_startup:
             errors.append(f"iOS CrashStartupResumeTests missing canonical test: {m} (R30)")
+
+    if "testRC01_ResolverLookupVsInvalidation" not in swift_test_concurrency:
+        errors.append("iOS SessionManagerConcurrencyTests missing testRC01_ResolverLookupVsInvalidation (R30)")
+    if "testRC02_ReadySealVsInvalidation" not in swift_test_concurrency:
+        errors.append("iOS SessionManagerConcurrencyTests missing testRC02_ReadySealVsInvalidation (R30)")
+    if "testRC03_HandshakeProcessingVsInvalidation" not in swift_test_concurrency:
+        errors.append("iOS SessionManagerConcurrencyTests missing testRC03_HandshakeProcessingVsInvalidation (R30)")
 
     return errors
 
@@ -411,6 +464,7 @@ def selftest() -> int:
         f_kt_tcr = tdp / "CompositionResolverAckTest.kt"
         f_kt_twipe = tdp / "WipeLifecycleTest.kt"
         f_kt_tstartup = tdp / "CrashStartupResumeTest.kt"
+        f_kt_tconcurrency = tdp / "SessionManagerConcurrencyTest.kt"
 
         f_swift_sm = tdp / "SessionManager.swift"
         f_swift_gate = tdp / "RuntimeLifecycleGate.swift"
@@ -422,6 +476,7 @@ def selftest() -> int:
         f_swift_tcr = tdp / "CompositionResolverAckTests.swift"
         f_swift_twipe = tdp / "WipeLifecycleTests.swift"
         f_swift_tstartup = tdp / "CrashStartupResumeTests.swift"
+        f_swift_tconcurrency = tdp / "SessionManagerConcurrencyTests.swift"
 
         f_adr = tdp / "ADR-003.md"
 
@@ -435,6 +490,7 @@ def selftest() -> int:
             f_kt_tcr.write_text(ANDROID_TEST_CR_PATH.read_text(encoding="utf-8"), encoding="utf-8")
             f_kt_twipe.write_text(ANDROID_TEST_WIPE_PATH.read_text(encoding="utf-8"), encoding="utf-8")
             f_kt_tstartup.write_text(ANDROID_TEST_STARTUP_PATH.read_text(encoding="utf-8"), encoding="utf-8")
+            f_kt_tconcurrency.write_text(ANDROID_TEST_CONCURRENCY_PATH.read_text(encoding="utf-8"), encoding="utf-8")
 
             f_swift_sm.write_text(IOS_SM_PATH.read_text(encoding="utf-8"), encoding="utf-8")
             f_swift_gate.write_text(IOS_GATE_PATH.read_text(encoding="utf-8"), encoding="utf-8")
@@ -446,6 +502,7 @@ def selftest() -> int:
             f_swift_tcr.write_text(IOS_TEST_CR_PATH.read_text(encoding="utf-8"), encoding="utf-8")
             f_swift_twipe.write_text(IOS_TEST_WIPE_PATH.read_text(encoding="utf-8"), encoding="utf-8")
             f_swift_tstartup.write_text(IOS_TEST_STARTUP_PATH.read_text(encoding="utf-8"), encoding="utf-8")
+            f_swift_tconcurrency.write_text(IOS_TEST_CONCURRENCY_PATH.read_text(encoding="utf-8"), encoding="utf-8")
 
             f_adr.write_text(ADR003_PATH.read_text(encoding="utf-8"), encoding="utf-8")
 
@@ -460,6 +517,7 @@ def selftest() -> int:
                 android_test_cr_path=f_kt_tcr,
                 android_test_wipe_path=f_kt_twipe,
                 android_test_startup_path=f_kt_tstartup,
+                android_test_concurrency_path=f_kt_tconcurrency,
                 ios_sm_path=f_swift_sm,
                 ios_gate_path=f_swift_gate,
                 ios_mesh_runtime_path=f_swift_runtime,
@@ -470,6 +528,7 @@ def selftest() -> int:
                 ios_test_cr_path=f_swift_tcr,
                 ios_test_wipe_path=f_swift_twipe,
                 ios_test_startup_path=f_swift_tstartup,
+                ios_test_concurrency_path=f_swift_tconcurrency,
                 adr003_path=f_adr,
             )
 
@@ -526,10 +585,28 @@ def selftest() -> int:
         else: failures.append("Mutation R08 was NOT caught")
         reset_all()
 
-        # Mutation R09: Android MeshRuntimeInvalidator does not invalidate lifecycleGate
+        # Mutation R09a: Android MeshRuntimeInvalidator does not invalidate lifecycleGate
         f_kt_gate.write_text(f_kt_gate.read_text(encoding="utf-8").replace("lifecycleGate.invalidateForWipe()", "// no-op"), encoding="utf-8")
         if any("R09" in e for e in run_check()): passed += 1
-        else: failures.append("Mutation R09 was NOT caught")
+        else: failures.append("Mutation R09a was NOT caught")
+        reset_all()
+
+        # Mutation R09b: Android MeshRuntimeInvalidator removes peer-store close
+        f_kt_gate.write_text(f_kt_gate.read_text(encoding="utf-8").replace("peerStore?.close()", "// peerStore"), encoding="utf-8")
+        if any("R09" in e for e in run_check()): passed += 1
+        else: failures.append("Mutation R09b was NOT caught")
+        reset_all()
+
+        # Mutation R09c: Android MeshRuntimeInvalidator wraps close in swallowed catch
+        f_kt_gate.write_text(f_kt_gate.read_text(encoding="utf-8").replace("peerStore?.close()", "try { peerStore?.close() } catch (_: Exception) {}"), encoding="utf-8")
+        if any("R09" in e for e in run_check()): passed += 1
+        else: failures.append("Mutation R09c was NOT caught")
+        reset_all()
+
+        # Mutation R09d: Android MeshRuntimeInvalidator removes message-store close
+        f_kt_gate.write_text(f_kt_gate.read_text(encoding="utf-8").replace("messageStore?.close()", "// msgStore"), encoding="utf-8")
+        if any("R09" in e for e in run_check()): passed += 1
+        else: failures.append("Mutation R09d was NOT caught")
         reset_all()
 
         # Mutation R10: iOS MeshRuntimeInvalidator does not invalidate lifecycleGate
@@ -550,14 +627,14 @@ def selftest() -> int:
         else: failures.append("Mutation R12 was NOT caught")
         reset_all()
 
-        # Mutation R13: Android RuntimeAwareWipeArtifacts misses invalidation call
-        f_kt_gate.write_text(f_kt_gate.read_text(encoding="utf-8").replace("invalidator.invalidateForWipe()", "// no-op"), encoding="utf-8")
+        # Mutation R13: Android MeshModule uses plain AndroidWipeArtifacts instead of RuntimeAwareWipeArtifacts
+        f_kt_mod.write_text(f_kt_mod.read_text(encoding="utf-8").replace("RuntimeAwareWipeArtifacts", "PlainWipeArtifacts"), encoding="utf-8")
         if any("R13" in e for e in run_check()): passed += 1
         else: failures.append("Mutation R13 was NOT caught")
         reset_all()
 
-        # Mutation R14: iOS RuntimeAwareWipeArtifacts misses invalidation call
-        f_swift_gate.write_text(f_swift_gate.read_text(encoding="utf-8").replace("invalidator.invalidateForWipe()", "// no-op"), encoding="utf-8")
+        # Mutation R14: iOS MeshRuntime active wipe bypasses RuntimeAwareWipeArtifacts
+        f_swift_runtime.write_text(f_swift_runtime.read_text(encoding="utf-8").replace("RuntimeAwareWipeArtifacts", "PlainWipeArtifacts"), encoding="utf-8")
         if any("R14" in e for e in run_check()): passed += 1
         else: failures.append("Mutation R14 was NOT caught")
         reset_all()
@@ -574,26 +651,32 @@ def selftest() -> int:
         else: failures.append("Mutation R16 was NOT caught")
         reset_all()
 
-        # Mutation R17: Android MeshModule does not call PanicWipe.resumeIfPending
-        f_kt_mod.write_text(f_kt_mod.read_text(encoding="utf-8").replace("PanicWipe.resumeIfPending", "// resume"), encoding="utf-8")
+        # Mutation R17: Android MeshModule sensitive providers omit MeshStartupWipeBarrier
+        f_kt_mod.write_text(f_kt_mod.read_text(encoding="utf-8").replace("_barrier: MeshStartupWipeBarrier", "// no barrier"), encoding="utf-8")
         if any("R17" in e for e in run_check()): passed += 1
         else: failures.append("Mutation R17 was NOT caught")
         reset_all()
 
-        # Mutation R18: iOS MeshRuntime does not call PanicWipe.resumeIfPending
-        f_swift_runtime.write_text(f_swift_runtime.read_text(encoding="utf-8").replace("PanicWipe.resumeIfPending", "// resume"), encoding="utf-8")
+        # Mutation R18: iOS MeshRuntime.create does not bind exact URLs
+        f_swift_runtime.write_text(f_swift_runtime.read_text(encoding="utf-8").replace("storeUrl: messageStoreUrl", "storeUrl: nil"), encoding="utf-8")
         if any("R18" in e for e in run_check()): passed += 1
         else: failures.append("Mutation R18 was NOT caught")
         reset_all()
 
-        # Mutation R19: Android MeshNode constructor does not require SessionManager
-        f_kt_node.write_text(f_kt_node.read_text(encoding="utf-8").replace("io.godstone.mesh.crypto.SessionManager", "Any").replace("SessionManager", "Any"), encoding="utf-8")
+        # Mutation R19a: Android MeshNode removes canStart / sessions.isActive check
+        f_kt_node.write_text(f_kt_node.read_text(encoding="utf-8").replace("sessions.isActive", "true"), encoding="utf-8")
         if any("R19" in e for e in run_check()): passed += 1
-        else: failures.append("Mutation R19 was NOT caught")
+        else: failures.append("Mutation R19a was NOT caught")
         reset_all()
 
-        # Mutation R20: iOS MeshNode initializer does not require SessionManager
-        f_swift_node.write_text(f_swift_node.read_text(encoding="utf-8").replace("sessions: SessionManager", "sessions: Any"), encoding="utf-8")
+        # Mutation R19b: Android MeshNode reintroduces Identity.loadOrCreate
+        f_kt_node.write_text(f_kt_node.read_text(encoding="utf-8") + "\nfun dummy() = Identity.loadOrCreate(ctx)\n", encoding="utf-8")
+        if any("R19" in e for e in run_check()): passed += 1
+        else: failures.append("Mutation R19b was NOT caught")
+        reset_all()
+
+        # Mutation R20: iOS MeshNode removes canStart / sessions.isActive check
+        f_swift_node.write_text(f_swift_node.read_text(encoding="utf-8").replace("sessions.isActive", "true"), encoding="utf-8")
         if any("R20" in e for e in run_check()): passed += 1
         else: failures.append("Mutation R20 was NOT caught")
         reset_all()
@@ -635,13 +718,13 @@ def selftest() -> int:
         reset_all()
 
         # Mutation R29: Remove canonical test from Android WipeLifecycleTest
-        f_kt_twipe.write_text(f_kt_twipe.read_text(encoding="utf-8").replace("testWipe_InvalidatesRuntimeHandles_BeforeKeyErasure", "testOldWipeHandles"), encoding="utf-8")
+        f_kt_twipe.write_text(f_kt_twipe.read_text(encoding="utf-8").replace("testWipe_W04_PeerStoreClosed_AfterInvalidation", "testOldWipeHandles"), encoding="utf-8")
         if any("R29" in e for e in run_check()): passed += 1
         else: failures.append("Mutation R29 was NOT caught")
         reset_all()
 
         # Mutation R30: Remove canonical test from iOS WipeLifecycleTests
-        f_swift_twipe.write_text(f_swift_twipe.read_text(encoding="utf-8").replace("testWipe_InvalidatesRuntimeHandles_BeforeKeyErasure", "testOldWipeHandles"), encoding="utf-8")
+        f_swift_twipe.write_text(f_swift_twipe.read_text(encoding="utf-8").replace("testWipe_W04_PeerStoreClosed_AfterInvalidation", "testOldWipeHandles"), encoding="utf-8")
         if any("R30" in e for e in run_check()): passed += 1
         else: failures.append("Mutation R30 was NOT caught")
         reset_all()
@@ -651,7 +734,7 @@ def selftest() -> int:
             print(f"::error::selftest failure: {f}")
         return 1
 
-    print(f"check_trusted_runtime_composition_controls selftest PASSED ({passed}/28 mutations caught deterministically across R01-R30).")
+    print(f"check_trusted_runtime_composition_controls selftest PASSED ({passed}/32 mutations caught deterministically across R01-R30).")
     return 0
 
 

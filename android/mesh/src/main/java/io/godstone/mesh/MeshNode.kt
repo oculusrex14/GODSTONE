@@ -75,14 +75,12 @@ class MeshNode(
     private val store: MessageStore,
     /**
      * Durable, recipient-authenticated delivery state machine (ADR-005; A-03;
-     * Stage 4C / C6.1; C6.3). Constructed by [di.MeshModule] from the SAME
+     * Stage 4C / C6.1; C6.3; C8.4B). Constructed by [di.MeshModule] from the SAME
      * `StoreDb` engine as `store`: a [io.godstone.mesh.delivery.SqliteDeliveryRepository]
      * is the durable record -- one row holds the delivery state, the ACK mode,
-     * and the intended recipient (the separate `ExpectedRecipientStore` seam was
-     * removed in C6.1), and an [io.godstone.mesh.delivery.Ed25519AckAuthenticator]
-     * over the production [io.godstone.mesh.delivery.UnresolvedRecipientKeyResolver]
-     * rejects every ACK until the M2-link identity binding wires real recipient
-     * keys (fail-closed). The outbound path (C6) records the ACK mode (SOS is a
+     * and the intended recipient, and an [io.godstone.mesh.delivery.Ed25519AckAuthenticator]
+     * over [io.godstone.mesh.delivery.BoundRecipientKeyResolver] binds real recipient
+     * keys with peer trust. The outbound path (C6) records the ACK mode (SOS is a
      * broadcast -> [AckMode.NONE], no recipient binding; a directed message is
      * [AckMode.SINGLE_RECIPIENT]) + advances state on a successful relay
      * hand-off; the inbound ACK path (C7) binds the ACK to the durable expected
@@ -94,9 +92,9 @@ class MeshNode(
     val sessions: io.godstone.mesh.crypto.SessionManager,
 ) {
     /**
-     * Primary test constructor with pure JVM backward compatibility.
+     * Pure JVM test convenience constructor: builds a fail-closed SessionManager from the SAME [identity].
      */
-    constructor(ctx: Context?, identity: Identity, store: MessageStore, deliveryTracker: DeliveryTracker)
+    internal constructor(ctx: Context?, identity: Identity, store: MessageStore, deliveryTracker: DeliveryTracker)
         : this(ctx, identity, store, deliveryTracker, io.godstone.mesh.crypto.SessionManager(
             identity = identity,
             trustAuthority = object : io.godstone.mesh.crypto.PeerBindingTrustAuthority {
@@ -104,15 +102,6 @@ class MeshNode(
                     io.godstone.mesh.identity.PeerTrustApplyResult.StorageFailure()
             }
         ))
-
-    /**
-     * Production constructor: identity and sessions loaded via Hilt from MeshModule.
-     */
-    constructor(ctx: Context, store: MessageStore, deliveryTracker: DeliveryTracker, sessions: io.godstone.mesh.crypto.SessionManager)
-        : this(ctx, Identity.loadOrCreate(ctx), store, deliveryTracker, sessions)
-
-    constructor(ctx: Context, store: MessageStore, deliveryTracker: DeliveryTracker)
-        : this(ctx, Identity.loadOrCreate(ctx), store, deliveryTracker)
 
     internal val router: Router by lazy { Router(store, identity.nodeId) }
     private val ble: BleTransport by lazy {
@@ -140,13 +129,16 @@ class MeshNode(
     fun onAppBackgrounded() { if (isStarted) setPowerState(PowerState.POWER_SAVE) }
     fun setPowerState(state: PowerState) { if (isStarted) ble.setPowerState(state) }
 
+    internal fun canStart(linkReady: Boolean): Boolean =
+        linkReady && sessions.isActive
+
     /**
-     * Start only after M1-wire and M2-link are implemented and verified.
+     * Start only after M1-wire and M2-link are implemented and verified and runtime is active.
      * A non-functional encrypted transport must never silently fall back to
      * plaintext or consume battery while the UI calls it active.
      */
     fun start(): Boolean {
-        if (!LINK_LAYER_READY) {
+        if (!canStart(LINK_LAYER_READY)) {
             _status.value = MeshStatus(detail = LINK_LAYER_OPEN_REASON)
             return false
         }

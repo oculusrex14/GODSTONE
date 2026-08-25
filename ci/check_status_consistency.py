@@ -398,7 +398,7 @@ def check_consistency(
                     errors.append("ADR-003 status: must mention C8.2 status")
                 if "C8.3" not in s_text:
                     errors.append("ADR-003 status: must mention C8.3 status")
-                if re.search(r"C8\.4[^\n]*(?<!Un)implemented\b", s_text, re.IGNORECASE) or re.search(r"C8\.4[^\n]*\b(?:CLOSED|Frozen)\b", s_text, re.IGNORECASE) or "C8.4 Noise & Handshake Trust Gating:** OPEN" not in s_text:
+                if re.search(r"C8\.4(?!\w)[^\n]*(?<!Un)implemented\b", s_text, re.IGNORECASE) or re.search(r"C8\.4(?!\w)[^\n]*\b(?:CLOSED|Frozen)\b", s_text, re.IGNORECASE) or "C8.4 Noise & Handshake Trust Gating:** OPEN" not in s_text:
                     errors.append("ADR-003 status: C8.4 must remain open and not claimed as implemented or closed")
                 if "open" not in s_text.lower():
                     errors.append("ADR-003 status: must state implementation is OPEN")

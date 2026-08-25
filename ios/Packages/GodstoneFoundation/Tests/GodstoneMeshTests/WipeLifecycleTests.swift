@@ -42,6 +42,19 @@ final class WipeLifecycleTests: XCTestCase {
         func regenerateIdentity() throws { try step("regenerateIdentity") {} }
     }
 
+    private func makeTestFrame(_ msgIdHex: String = "0102030405060708090a0b0c0d0e0f10") -> FrameV2 {
+        let msgId = Data((0..<16).map { UInt8($0) })
+        return FrameV2(
+            type: .message,
+            msgId: msgId,
+            routingTag: Data(count: 4),
+            ttl: 3,
+            hopCount: 0,
+            flags: 0,
+            payload: Data("payload".utf8)
+        )
+    }
+
     func testWipe_CleanIdle_NoOp() throws {
         let journal = InMemoryJournal()
         let artifacts = RecordingArtifacts()
@@ -60,31 +73,73 @@ final class WipeLifecycleTests: XCTestCase {
         XCTAssertEqual(journal.state, .idle)
     }
 
-    func testWipe_InvalidatesRuntimeHandles_BeforeKeyErasure() throws {
-        var events: [String] = []
+    func testWipe_DeterministicOrdering_GateSessionsPeerMessageKeys() throws {
+        var order: [String] = []
 
-        final class InvalidatorMock: RuntimeInvalidator, @unchecked Sendable {
-            let onInvalidate: () -> Void
-            init(onInvalidate: @escaping () -> Void) { self.onInvalidate = onInvalidate }
-            func invalidateForWipe() { onInvalidate() }
+        let gate = DefaultRuntimeLifecycleGate()
+        let identity = try MeshIdentity.generateAndStore(keychain: InMemoryKeychain())
+        final class DummyTrustAuthority: PeerBindingTrustAuthority, @unchecked Sendable {
+            func applyValidatedBinding(_ binding: ValidatedPeerBinding) -> PeerTrustApplyResult { .storageFailure }
+        }
+        let sm = SessionManager(identity: identity, trustAuthority: DummyTrustAuthority(), lifecycleGate: gate)
+
+        let peerUrl = FileManager.default.temporaryDirectory.appendingPathComponent("order_peer_\(UUID().uuidString).db")
+        let peerStore = try SqlitePeerIdentityStore(url: peerUrl)
+        let msgUrl = FileManager.default.temporaryDirectory.appendingPathComponent("order_msg_\(UUID().uuidString).db")
+        let msgStore = SqliteMessageStore(url: msgUrl, maxBytes: 4096)
+
+        final class OrderInvalidator: RuntimeInvalidator, @unchecked Sendable {
+            let gate: DefaultRuntimeLifecycleGate
+            let sm: SessionManager
+            let peerStore: SqlitePeerIdentityStore
+            let msgStore: SqliteMessageStore
+            let onStep: (String) -> Void
+
+            init(gate: DefaultRuntimeLifecycleGate, sm: SessionManager, peerStore: SqlitePeerIdentityStore, msgStore: SqliteMessageStore, onStep: @escaping (String) -> Void) {
+                self.gate = gate
+                self.sm = sm
+                self.peerStore = peerStore
+                self.msgStore = msgStore
+                self.onStep = onStep
+            }
+
+            func invalidateForWipe() {
+                onStep("gateInvalidated")
+                gate.invalidateForWipe()
+                onStep("sessionsInvalidated")
+                sm.invalidateForWipe()
+                onStep("peerStoreClosed")
+                peerStore.close()
+                onStep("messageStoreClosed")
+                msgStore.close()
+            }
         }
 
-        final class DelegateMock: WipeArtifacts, @unchecked Sendable {
-            let onCall: (String) -> Void
-            init(onCall: @escaping (String) -> Void) { self.onCall = onCall }
-            func eraseKeys() throws { onCall("eraseKeys") }
-            func deleteArtifacts() throws { onCall("deleteArtifacts") }
-            func regenerateIdentity() throws { onCall("regenerateIdentity") }
+        final class OrderDelegate: WipeArtifacts, @unchecked Sendable {
+            let onStep: (String) -> Void
+            init(onStep: @escaping (String) -> Void) { self.onStep = onStep }
+            func eraseKeys() throws { onStep("platformEraseKeys") }
+            func deleteArtifacts() throws { onStep("deleteArtifacts") }
+            func regenerateIdentity() throws { onStep("regenerateIdentity") }
         }
 
-        let invMock = InvalidatorMock { events.append("invalidated") }
-        let delMock = DelegateMock { name in events.append(name) }
-        let awareArtifacts = RuntimeAwareWipeArtifacts(invalidator: invMock, delegate: delMock)
-        let journal = InMemoryJournal()
-        let wipe = PanicWipe(journal: journal, artifacts: awareArtifacts)
+        let invalidator = OrderInvalidator(gate: gate, sm: sm, peerStore: peerStore, msgStore: msgStore) { order.append($0) }
+        let delegate = OrderDelegate { order.append($0) }
+        let wipe = PanicWipe(journal: InMemoryJournal(), artifacts: RuntimeAwareWipeArtifacts(invalidator: invalidator, delegate: delegate))
         try wipe.begin()
 
-        XCTAssertEqual(events, ["invalidated", "eraseKeys", "deleteArtifacts", "regenerateIdentity"])
+        XCTAssertEqual(
+            order,
+            [
+                "gateInvalidated",
+                "sessionsInvalidated",
+                "peerStoreClosed",
+                "messageStoreClosed",
+                "platformEraseKeys",
+                "deleteArtifacts",
+                "regenerateIdentity"
+            ]
+        )
     }
 
     func testWipe_SessionManagerInvalidated_RefusesAllOperations() throws {
@@ -186,24 +241,70 @@ final class WipeLifecycleTests: XCTestCase {
         }
     }
 
-    func testWipe_PeerStoreClosed_AfterInvalidation() throws {
+    func testWipe_W04_PeerStoreClosed_AfterInvalidation() throws {
         let url = FileManager.default.temporaryDirectory.appendingPathComponent("wipe_peer_store_\(UUID().uuidString).db")
         let store = try SqlitePeerIdentityStore(url: url)
         let gate = DefaultRuntimeLifecycleGate()
-        let invalidator = MeshRuntimeInvalidator(lifecycleGate: gate, peerStore: store)
 
+        // 1. Verify store functions normally before invalidation
+        let nodeId = Data(count: 16)
+        let record = try store.readRaw(nodeId)
+        XCTAssertNil(record)
+
+        // 2. Invalidate via MeshRuntimeInvalidator
+        let invalidator = MeshRuntimeInvalidator(lifecycleGate: gate, peerStore: store)
         invalidator.invalidateForWipe()
         XCTAssertTrue(gate.isInvalidated)
+
+        // 3. Post-invalidation: operations fail closed because handle is nil
+        XCTAssertThrowsError(try store.readRaw(nodeId))
     }
 
-    func testWipe_MessageStoreClosed_AfterInvalidation() throws {
+    func testWipe_W05_MessageStoreClosed_AfterInvalidation() throws {
         let url = FileManager.default.temporaryDirectory.appendingPathComponent("wipe_msg_store_\(UUID().uuidString).db")
         let store = SqliteMessageStore(url: url, maxBytes: 4096)
         let gate = DefaultRuntimeLifecycleGate()
-        let invalidator = MeshRuntimeInvalidator(lifecycleGate: gate, messageStore: store)
 
+        // 1. Verify store functions normally before invalidation
+        let frame = makeTestFrame()
+        let res1 = store.persist(frame, receivedFrom: Data(count: 16))
+        XCTAssertEqual(res1, .heldNew)
+
+        // 2. Invalidate via MeshRuntimeInvalidator
+        let invalidator = MeshRuntimeInvalidator(lifecycleGate: gate, messageStore: store)
         invalidator.invalidateForWipe()
         XCTAssertTrue(gate.isInvalidated)
+
+        // 3. Post-invalidation: operations return .failedStorage
+        let res2 = store.persist(frame, receivedFrom: Data(count: 16))
+        XCTAssertEqual(res2, .failedStorage)
+    }
+
+    func testWipe_W06_InvalidatorFailure_PreventsKeyErasure_PreservesRequestedState() throws {
+        final class FailingInvalidator: RuntimeInvalidator, @unchecked Sendable {
+            let gate: DefaultRuntimeLifecycleGate
+            init(gate: DefaultRuntimeLifecycleGate) { self.gate = gate }
+            func invalidateForWipe() throws {
+                gate.invalidateForWipe()
+                throw NSError(domain: "test", code: 99, userInfo: [NSLocalizedDescriptionKey: "Database close failed"])
+            }
+        }
+
+        let gate = DefaultRuntimeLifecycleGate()
+        let delegate = RecordingArtifacts()
+        let aware = RuntimeAwareWipeArtifacts(invalidator: FailingInvalidator(gate: gate), delegate: delegate)
+        let journal = InMemoryJournal()
+        let wipe = PanicWipe(journal: journal, artifacts: aware)
+
+        XCTAssertThrowsError(try wipe.begin())
+
+        // Platform eraseKeys MUST NOT have been called
+        XCTAssertEqual(delegate.calls.count, 0)
+        // Journal MUST remain in requested state
+        XCTAssertEqual(journal.state, .requested)
+        // Old runtime gate remains permanently invalidated
+        XCTAssertTrue(gate.isInvalidated)
+        XCTAssertFalse(gate.isActive)
     }
 
     func testWipe_CrashAtRequested_ResumesWipeAndCompletes() throws {
@@ -281,18 +382,42 @@ final class WipeLifecycleTests: XCTestCase {
         XCTAssertFalse(freshGate.isInvalidated)
     }
 
-    func testWipe_InvalidationException_PreventsKeyErasure() throws {
-        final class FailingInvalidator: RuntimeInvalidator, @unchecked Sendable {
-            func invalidateForWipe() throws {
-                throw NSError(domain: "test", code: 99, userInfo: [NSLocalizedDescriptionKey: "Invalidator failure"])
-            }
-        }
-        let delegateArtifacts = RecordingArtifacts()
-        let awareArtifacts = RuntimeAwareWipeArtifacts(invalidator: FailingInvalidator(), delegate: delegateArtifacts)
-        let journal = InMemoryJournal()
-        let wipe = PanicWipe(journal: journal, artifacts: awareArtifacts)
+    func testWipe_W15_RealDatabaseArtifactsAndSidecars_DeletedAfterClosure() throws {
+        let msgUrl = FileManager.default.temporaryDirectory.appendingPathComponent("msg_w15_\(UUID().uuidString).db")
+        let peerUrl = FileManager.default.temporaryDirectory.appendingPathComponent("peer_w15_\(UUID().uuidString).db")
 
-        XCTAssertThrowsError(try wipe.begin())
-        XCTAssertEqual(delegateArtifacts.calls.count, 0)
+        let msgStore = SqliteMessageStore(url: msgUrl, maxBytes: 4096)
+        let peerStore = try SqlitePeerIdentityStore(url: peerUrl)
+        let gate = DefaultRuntimeLifecycleGate()
+
+        let invalidator = MeshRuntimeInvalidator(
+            lifecycleGate: gate,
+            peerStore: peerStore,
+            messageStore: msgStore
+        )
+
+        final class FileDeleteDelegate: WipeArtifacts, @unchecked Sendable {
+            let msgUrl: URL
+            let peerUrl: URL
+            init(msgUrl: URL, peerUrl: URL) {
+                self.msgUrl = msgUrl
+                self.peerUrl = peerUrl
+            }
+            func eraseKeys() throws {}
+            func deleteArtifacts() throws {
+                try? FileManager.default.removeItem(at: msgUrl)
+                try? FileManager.default.removeItem(at: peerUrl)
+            }
+            func regenerateIdentity() throws {}
+        }
+
+        let delegate = FileDeleteDelegate(msgUrl: msgUrl, peerUrl: peerUrl)
+        let aware = RuntimeAwareWipeArtifacts(invalidator: invalidator, delegate: delegate)
+        let journal = InMemoryJournal()
+        try PanicWipe(journal: journal, artifacts: aware).begin()
+
+        XCTAssertTrue(gate.isInvalidated)
+        XCTAssertFalse(FileManager.default.fileExists(atPath: msgUrl.path))
+        XCTAssertFalse(FileManager.default.fileExists(atPath: peerUrl.path))
     }
 }

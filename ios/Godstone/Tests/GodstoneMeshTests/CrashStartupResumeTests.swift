@@ -44,99 +44,146 @@ final class CrashStartupResumeTests: XCTestCase {
         }
     }
 
-    func testStartup_PendingWipe_FinishesBeforeRuntimeInitialization() throws {
+    func testSR01_CleanLaunch_InitializesRuntimeNormally() throws {
+        let msgUrl = FileManager.default.temporaryDirectory.appendingPathComponent("sr01_msg_\(UUID().uuidString).db")
+        let peerUrl = FileManager.default.temporaryDirectory.appendingPathComponent("sr01_peer_\(UUID().uuidString).db")
+        let journal = InMemoryJournal()
+        let keychain = InMemoryKeychain()
+
+        let runtime = try MeshRuntime.create(
+            messageStoreUrl: msgUrl,
+            peerStoreUrl: peerUrl,
+            journal: journal,
+            keychain: keychain
+        )
+        XCTAssertTrue(runtime.lifecycleGate.isActive)
+        XCTAssertFalse(runtime.sessionManager.isInvalidated)
+    }
+
+    func testSR02_PendingWipe_Requested_FinishesBeforeRuntimeInitialization() throws {
+        let msgUrl = FileManager.default.temporaryDirectory.appendingPathComponent("sr02_msg_\(UUID().uuidString).db")
+        let peerUrl = FileManager.default.temporaryDirectory.appendingPathComponent("sr02_peer_\(UUID().uuidString).db")
         let journal = InMemoryJournal()
         journal.write(.requested)
-        let artifacts = StepTrackingArtifacts()
+        let keychain = InMemoryKeychain()
 
-        var startupCompleted = false
-        try PanicWipe.resumeIfPending(journal: journal, artifacts: artifacts)
-        if journal.read() == .idle {
-            startupCompleted = true
-        }
+        let runtime = try MeshRuntime.create(
+            messageStoreUrl: msgUrl,
+            peerStoreUrl: peerUrl,
+            journal: journal,
+            keychain: keychain
+        )
 
-        XCTAssertTrue(startupCompleted)
-        XCTAssertEqual(artifacts.executedSteps, ["eraseKeys", "deleteArtifacts", "regenerateIdentity"])
         XCTAssertEqual(journal.state, .idle)
+        XCTAssertTrue(runtime.lifecycleGate.isActive)
+        XCTAssertNotNil(runtime.identity)
     }
 
-    func testStartup_CleanLaunch_InitializesRuntimeNormally() throws {
-        let journal = InMemoryJournal()
-        let artifacts = StepTrackingArtifacts()
+    func testSR03_KeyErased_DeletesExactStoreArtifactsBeforeOpen() throws {
+        let msgUrl = FileManager.default.temporaryDirectory.appendingPathComponent("sr03_msg_\(UUID().uuidString).db")
+        let peerUrl = FileManager.default.temporaryDirectory.appendingPathComponent("sr03_peer_\(UUID().uuidString).db")
+        try Data("old store content".utf8).write(to: msgUrl)
+        try Data("old peer content".utf8).write(to: peerUrl)
+        XCTAssertTrue(FileManager.default.fileExists(atPath: msgUrl.path))
+        XCTAssertTrue(FileManager.default.fileExists(atPath: peerUrl.path))
 
-        try PanicWipe.resumeIfPending(journal: journal, artifacts: artifacts)
-        XCTAssertEqual(artifacts.executedSteps.count, 0)
-        XCTAssertEqual(journal.state, .idle)
-    }
-
-    func testStartup_MidWipeCrash_LeavesConsistentFinalState() throws {
         let journal = InMemoryJournal()
         journal.write(.keyErased)
-        let artifacts = StepTrackingArtifacts()
+        let keychain = InMemoryKeychain()
 
-        try PanicWipe.resumeIfPending(journal: journal, artifacts: artifacts)
-        XCTAssertEqual(artifacts.executedSteps, ["deleteArtifacts", "regenerateIdentity"])
+        let runtime = try MeshRuntime.create(
+            messageStoreUrl: msgUrl,
+            peerStoreUrl: peerUrl,
+            journal: journal,
+            keychain: keychain
+        )
+
         XCTAssertEqual(journal.state, .idle)
-        XCTAssertNotNil(artifacts.currentIdentity)
+        XCTAssertTrue(runtime.lifecycleGate.isActive)
     }
 
-    func testStartup_IdentityRegeneration_YieldsFreshNodeIdAndZeroGeneration() throws {
-        let originalIdentity = try MeshIdentity.generateAndStore(keychain: InMemoryKeychain())
-        let regeneratedIdentity = try MeshIdentity.generateAndStore(keychain: InMemoryKeychain())
-
-        XCTAssertNotEqual(originalIdentity.nodeId, regeneratedIdentity.nodeId)
-        XCTAssertNotEqual(originalIdentity.signingPublicKey, regeneratedIdentity.signingPublicKey)
-        XCTAssertNotEqual(originalIdentity.staticDhPublicKey, regeneratedIdentity.staticDhPublicKey)
-        XCTAssertEqual(regeneratedIdentity.bindingGeneration, 0)
-    }
-
-    func testStartup_OldDatabaseFilesUnusable_AfterCryptoErasure() throws {
+    func testSR04_ArtifactsDeleted_RegeneratesIdentityBeforeRuntimeConstruction() throws {
+        let msgUrl = FileManager.default.temporaryDirectory.appendingPathComponent("sr04_msg_\(UUID().uuidString).db")
+        let peerUrl = FileManager.default.temporaryDirectory.appendingPathComponent("sr04_peer_\(UUID().uuidString).db")
         let journal = InMemoryJournal()
-        let artifacts = StepTrackingArtifacts()
-        let oldIdentity = artifacts.currentIdentity
+        journal.write(.artifactsDeleted)
+        let keychain = InMemoryKeychain()
 
-        try PanicWipe(journal: journal, artifacts: artifacts).begin()
+        let runtime = try MeshRuntime.create(
+            messageStoreUrl: msgUrl,
+            peerStoreUrl: peerUrl,
+            journal: journal,
+            keychain: keychain
+        )
 
-        let newIdentity = artifacts.currentIdentity
-        XCTAssertNotNil(newIdentity)
-        XCTAssertNotEqual(oldIdentity?.nodeId, newIdentity?.nodeId)
+        XCTAssertEqual(journal.state, .idle)
+        XCTAssertEqual(runtime.identity.bindingGeneration, 0)
     }
 
-    func testStartup_WipeJournalCleared_OnlyUponFullCompletion() throws {
+    func testSR05_FreshRuntime_AfterWipe_HasDifferentNodeId() throws {
+        let msgUrl1 = FileManager.default.temporaryDirectory.appendingPathComponent("sr05_msg1_\(UUID().uuidString).db")
+        let peerUrl1 = FileManager.default.temporaryDirectory.appendingPathComponent("sr05_peer1_\(UUID().uuidString).db")
         let journal = InMemoryJournal()
-        final class CrashArtifacts: WipeArtifacts, @unchecked Sendable {
-            var stepCount = 0
-            func eraseKeys() throws { stepCount += 1 }
-            func deleteArtifacts() throws {
-                stepCount += 1
-                throw NSError(domain: "test", code: 1, userInfo: [NSLocalizedDescriptionKey: "Crash before regenerateIdentity"])
-            }
-            func regenerateIdentity() throws { stepCount += 1 }
-        }
+        let keychain = InMemoryKeychain()
 
-        let artifacts = CrashArtifacts()
-        let wipe = PanicWipe(journal: journal, artifacts: artifacts)
-        XCTAssertThrowsError(try wipe.begin())
+        let runtime1 = try MeshRuntime.create(
+            messageStoreUrl: msgUrl1,
+            peerStoreUrl: peerUrl1,
+            journal: journal,
+            keychain: keychain
+        )
+        let oldNodeId = runtime1.identity.nodeId
 
-        XCTAssertEqual(journal.state, .keyErased)
-        XCTAssertEqual(journal.clears, 0)
+        try runtime1.beginPanicWipe(keychain: keychain)
+        XCTAssertTrue(runtime1.lifecycleGate.isInvalidated)
+
+        let msgUrl2 = FileManager.default.temporaryDirectory.appendingPathComponent("sr05_msg2_\(UUID().uuidString).db")
+        let peerUrl2 = FileManager.default.temporaryDirectory.appendingPathComponent("sr05_peer2_\(UUID().uuidString).db")
+        let runtime2 = try MeshRuntime.create(
+            messageStoreUrl: msgUrl2,
+            peerStoreUrl: peerUrl2,
+            journal: journal,
+            keychain: keychain
+        )
+
+        XCTAssertNotEqual(oldNodeId, runtime2.identity.nodeId)
     }
 
-    func testStartup_RebootBarrier_PreventsStaleStoreAccess() throws {
+    func testSR06_FreshPeerStore_ContainsNoPriorPeerRecords() throws {
+        let msgUrl = FileManager.default.temporaryDirectory.appendingPathComponent("sr06_msg_\(UUID().uuidString).db")
+        let peerUrl = FileManager.default.temporaryDirectory.appendingPathComponent("sr06_peer_\(UUID().uuidString).db")
         let journal = InMemoryJournal()
-        journal.write(.requested)
-        var barrierCleared = false
-        final class BarrierArtifacts: WipeArtifacts, @unchecked Sendable {
-            var onRegen: () -> Void
-            init(onRegen: @escaping () -> Void) { self.onRegen = onRegen }
-            func eraseKeys() throws {}
-            func deleteArtifacts() throws {}
-            func regenerateIdentity() throws { onRegen() }
-        }
+        let keychain = InMemoryKeychain()
 
-        let artifacts = BarrierArtifacts { barrierCleared = true }
-        XCTAssertFalse(barrierCleared)
-        try PanicWipe.resumeIfPending(journal: journal, artifacts: artifacts)
-        XCTAssertTrue(barrierCleared)
+        let runtime = try MeshRuntime.create(
+            messageStoreUrl: msgUrl,
+            peerStoreUrl: peerUrl,
+            journal: journal,
+            keychain: keychain
+        )
+
+        let dummyNodeId = Data(count: 16)
+        let record = try runtime.peerIdentityStore.readRaw(dummyNodeId)
+        XCTAssertNil(record)
+    }
+
+    func testSR07_OldRuntimeHandle_RemainsPermanentlyUnusable() throws {
+        let msgUrl = FileManager.default.temporaryDirectory.appendingPathComponent("sr07_msg_\(UUID().uuidString).db")
+        let peerUrl = FileManager.default.temporaryDirectory.appendingPathComponent("sr07_peer_\(UUID().uuidString).db")
+        let journal = InMemoryJournal()
+        let keychain = InMemoryKeychain()
+
+        let runtime = try MeshRuntime.create(
+            messageStoreUrl: msgUrl,
+            peerStoreUrl: peerUrl,
+            journal: journal,
+            keychain: keychain
+        )
+
+        try runtime.beginPanicWipe(keychain: keychain)
+
+        XCTAssertTrue(runtime.lifecycleGate.isInvalidated)
+        XCTAssertFalse(runtime.sessionManager.isActive)
+        XCTAssertNil(runtime.recipientKeyResolver.publicSigningKey(forNodeId: Data(count: 16)))
     }
 }

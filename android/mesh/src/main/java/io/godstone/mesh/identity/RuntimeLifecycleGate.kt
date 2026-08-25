@@ -7,7 +7,7 @@ import io.godstone.mesh.store.SqliteMessageStore
 import java.util.concurrent.atomic.AtomicBoolean
 
 /**
- * Interface for invalidating runtime handles upon panic wipe (ADR-003 / Stage 4B / C8.4B).
+ * Interface for invalidating runtime handles upon panic wipe (ADR-003 / Stage 4B / C8.4B / C8.4B.1).
  */
 interface RuntimeInvalidator {
     fun invalidateForWipe()
@@ -37,7 +37,7 @@ class DefaultRuntimeLifecycleGate : RuntimeLifecycleGate, RuntimeInvalidator {
 
 /**
  * Decorates [WipeArtifacts] to guarantee deterministic runtime invalidation
- * BEFORE cryptographic key erasure is executed (ADR-003 / Stage 4B / C8.4B).
+ * BEFORE cryptographic key erasure is executed (ADR-003 / Stage 4B / C8.4B / C8.4B.1).
  */
 class RuntimeAwareWipeArtifacts(
     private val invalidator: RuntimeInvalidator,
@@ -60,6 +60,9 @@ class RuntimeAwareWipeArtifacts(
 /**
  * Runtime invalidator that coordinates lifecycle state, session destruction,
  * and database closure across stores in the process.
+ *
+ * Propagates any closure exceptions deterministically, ensuring that failure
+ * to close database handles aborts panic wipe before platform key erasure.
  */
 class MeshRuntimeInvalidator internal constructor(
     private val lifecycleGate: DefaultRuntimeLifecycleGate,
@@ -70,12 +73,8 @@ class MeshRuntimeInvalidator internal constructor(
     override fun invalidateForWipe() {
         lifecycleGate.invalidateForWipe()
         sessions?.invalidateForWipe()
-        try {
-            peerStore?.close()
-        } catch (_: Exception) {}
-        try {
-            messageStore?.close()
-        } catch (_: Exception) {}
+        peerStore?.close()
+        messageStore?.close()
     }
 }
 

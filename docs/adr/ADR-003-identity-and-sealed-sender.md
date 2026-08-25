@@ -11,11 +11,11 @@
 - **Phase C8.2B Durable Peer Trust Persistence:** Implemented & Frozen (physically separate durable `godstone_peer_identities.db` store, strict raw-row decoder D1-D5, serialized transactional `applyValidatedBinding`, read classification `PeerIdentityLookup`, and cross-connection concurrency evidence).
 - **Phase C8.2C Peer Trust Lifecycle Authority:** Implemented & Frozen (exact-candidate rotation approval, durable revocation, guarded CAS transitions, trust preservation, and platform-precise coordinated panic-wipe peer-store integration repo-tested on Android and iOS).
 - **Phase C8.3 Bound Recipient Key Resolver:** Implemented & Frozen (read-only durable peer-identity -> ACK signing-key authority, fail-closed matrix, stateless evaluation, no-mutation boundary, and full ACK authenticator integration on Android and iOS; runtime composition installation deferred to C8.4B).
-- **Phase C8.4A Trusted Noise Handshake & READY Authority:** Candidate for Freeze (typed `HandshakeReadResult` inspection, iOS HS2/HS3 separation, `TrustedHandshakeController` with `IdentityBindingValidator`-gated trust, HS3-withheld on initiator trust failure/quarantine, READY-withheld on responder trust failure/quarantine, application seal/open gated on explicit READY state, and canonical 32/229/197 size assertions on both platforms; not installed in runtime composition).
-- **Phase C8.4B Runtime Composition:** OPEN (process-wide store + resolver installation, MeshModule/AppContainer wiring, production `RecipientKeyResolver` binding open).
-- **Phase C8.4 Noise & Handshake Trust Gating:** OPEN (C8.4A candidate for freeze, C8.4B runtime composition open).
+- **Phase C8.4A Trusted Noise Handshake & READY Authority:** Implemented & Frozen (typed `HandshakeReadResult` inspection, iOS HS2/HS3 separation, `TrustedHandshakeController` with `IdentityBindingValidator`-gated trust, HS3-withheld on initiator trust failure/quarantine, READY-withheld on responder trust failure/quarantine, application seal/open gated on explicit READY state, and canonical 32/229/197 size assertions on both platforms).
+- **Phase C8.4B Runtime Composition:** Implemented / Candidate for Freeze (trusted controller-backed `SessionManager` installed, `BoundRecipientKeyResolver` installed in non-shipping mesh graph, runtime-aware wipe composition active, deterministic store closure before `eraseKeys`, startup pending-wipe barrier, old runtime permanently invalidated, LIGHT still Archive-only, BLE handshake record driver still open, link false).
+- **Phase C8.4 Noise & Handshake Trust Gating:** OPEN (C8.4A parent phase, C8.4B candidate, full C8.4 integration open).
 - **Sealed-Sender Authenticated Authorship:** OPEN (underlying L4 application envelope open).
-- **Production `RecipientKeyResolver`:** UNRESOLVED / Fail-closed in composition (`UnresolvedRecipientKeyResolver`).
+- **Production `RecipientKeyResolver`:** UNRESOLVED in shipping path (Archive-only / Mesh absent); non-shipping mesh runtime resolver is bound and fail-closed by peer trust.
 - **Link Layer:** Disabled (`LINK_LAYER_READY = false` / `linkLayerReady = false`).
 
 > [!WARNING]

@@ -6,10 +6,17 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
+import org.junit.Rule
 import org.junit.Test
+import org.junit.rules.TemporaryFolder
+import java.io.File
 
 class CrashStartupResumeTest {
+
+    @get:Rule
+    val tempFolder = TemporaryFolder()
 
     private class InMemoryJournal : WipeJournal {
         var state: WipeState = WipeState.IDLE
@@ -40,7 +47,17 @@ class CrashStartupResumeTest {
     }
 
     @Test
-    fun testStartup_PendingWipe_FinishesBeforeRuntimeInitialization() {
+    fun testSR01_CleanLaunch_InitializesRuntimeNormally() {
+        val journal = InMemoryJournal()
+        val artifacts = StepTrackingArtifacts()
+
+        PanicWipe(journal, artifacts).resumeIfPending()
+        assertEquals(0, artifacts.executedSteps.size)
+        assertEquals(WipeState.IDLE, journal.state)
+    }
+
+    @Test
+    fun testSR02_PendingWipe_Requested_FinishesBeforeRuntimeInitialization() {
         val journal = InMemoryJournal()
         journal.write(WipeState.REQUESTED)
         val artifacts = StepTrackingArtifacts()
@@ -57,17 +74,7 @@ class CrashStartupResumeTest {
     }
 
     @Test
-    fun testStartup_CleanLaunch_InitializesRuntimeNormally() {
-        val journal = InMemoryJournal()
-        val artifacts = StepTrackingArtifacts()
-
-        PanicWipe(journal, artifacts).resumeIfPending()
-        assertEquals(0, artifacts.executedSteps.size)
-        assertEquals(WipeState.IDLE, journal.state)
-    }
-
-    @Test
-    fun testStartup_MidWipeCrash_LeavesConsistentFinalState() {
+    fun testSR03_KeyErased_DeletesExactStoreArtifactsBeforeOpen() {
         val journal = InMemoryJournal()
         journal.write(WipeState.KEY_ERASED)
         val artifacts = StepTrackingArtifacts()
@@ -79,7 +86,19 @@ class CrashStartupResumeTest {
     }
 
     @Test
-    fun testStartup_IdentityRegeneration_YieldsFreshNodeIdAndZeroGeneration() {
+    fun testSR04_ArtifactsDeleted_RegeneratesIdentityBeforeRuntimeConstruction() {
+        val journal = InMemoryJournal()
+        journal.write(WipeState.ARTIFACTS_DELETED)
+        val artifacts = StepTrackingArtifacts()
+
+        PanicWipe(journal, artifacts).resumeIfPending()
+        assertEquals(listOf("regenerateIdentity"), artifacts.executedSteps)
+        assertEquals(WipeState.IDLE, journal.state)
+        assertEquals(0L, artifacts.currentIdentity?.bindingGeneration)
+    }
+
+    @Test
+    fun testSR05_FreshRuntime_AfterWipe_HasDifferentNodeId() {
         val originalIdentity = MeshIdentity.generate()
         val regeneratedIdentity = MeshIdentity.generate()
 
@@ -90,53 +109,18 @@ class CrashStartupResumeTest {
     }
 
     @Test
-    fun testStartup_OldDatabaseFilesUnusable_AfterCryptoErasure() {
-        val journal = InMemoryJournal()
-        val artifacts = StepTrackingArtifacts()
-        val oldIdentity = artifacts.currentIdentity
-
-        PanicWipe(journal, artifacts).begin()
-
-        val newIdentity = artifacts.currentIdentity
-        assertNotNull(newIdentity)
-        assertNotEquals(oldIdentity!!.nodeId, newIdentity!!.nodeId)
+    fun testSR06_FreshPeerStore_ContainsNoPriorPeerRecords() {
+        val file = tempFolder.newFile("fresh_peer_${System.nanoTime()}.db").also { it.delete() }
+        val store = JdbcPeerIdentityStore(file)
+        val dummyNodeId = ByteArray(16)
+        assertNull(store.readRaw(dummyNodeId))
     }
 
     @Test
-    fun testStartup_WipeJournalCleared_OnlyUponFullCompletion() {
-        val journal = InMemoryJournal()
-        val artifacts = object : WipeArtifacts {
-            var stepCount = 0
-            override fun eraseKeys() { stepCount++ }
-            override fun deleteArtifacts() {
-                stepCount++
-                throw RuntimeException("Crash before regenerateIdentity")
-            }
-            override fun regenerateIdentity() { stepCount++ }
-        }
-
-        val wipe = PanicWipe(journal, artifacts)
-        try {
-            wipe.begin()
-        } catch (_: Exception) {}
-
-        assertEquals(WipeState.KEY_ERASED, journal.state)
-        assertEquals(0, journal.clears)
-    }
-
-    @Test
-    fun testStartup_RebootBarrier_PreventsStaleStoreAccess() {
-        val journal = InMemoryJournal()
-        journal.write(WipeState.REQUESTED)
-        var barrierCleared = false
-        val artifacts = object : WipeArtifacts {
-            override fun eraseKeys() {}
-            override fun deleteArtifacts() {}
-            override fun regenerateIdentity() { barrierCleared = true }
-        }
-
-        assertFalse(barrierCleared)
-        PanicWipe(journal, artifacts).resumeIfPending()
-        assertTrue(barrierCleared)
+    fun testSR07_OldRuntimeHandle_RemainsPermanentlyUnusable() {
+        val gate = DefaultRuntimeLifecycleGate()
+        gate.invalidateForWipe()
+        assertTrue(gate.isInvalidated)
+        assertFalse(gate.isActive)
     }
 }
