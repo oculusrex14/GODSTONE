@@ -93,7 +93,8 @@ final class PortVectorTests: XCTestCase {
 
         let m1 = try initiator.writeMessage1()
         let m2 = try responder.readMessage1AndWrite2(m1)
-        let m3 = try initiator.readMessage2AndWrite3(m2)
+        _ = try initiator.readMessage2(m2)
+        let m3 = try initiator.writeMessage3()
         try responder.readMessage3(m3)
 
         XCTAssertEqual([m1.count, m2.count, m3.count], [32, 96, 64])

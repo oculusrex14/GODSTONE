@@ -77,6 +77,29 @@ final class TrustedHandshakeControllerTests: XCTestCase {
         }
     }
 
+    private final class CountingIssuer: LocalBindingIssuer, @unchecked Sendable {
+        let identity: MeshIdentity
+        var calls = 0
+        init(identity: MeshIdentity) { self.identity = identity }
+        func issueEncodedBinding() throws -> Data {
+            calls += 1
+            return try identity.issueIdentityBinding().encode()
+        }
+    }
+
+    private final class CountingHs3Writer: Hs3Writer, @unchecked Sendable {
+        let noiseSession: NoiseSession?
+        var calls = 0
+        init(noiseSession: NoiseSession? = nil) { self.noiseSession = noiseSession }
+        func writeHs3(payload: Data) throws -> Data {
+            calls += 1
+            if let ns = noiseSession {
+                return try ns.writeMessage3(payload: payload)
+            }
+            return Data(count: 197)
+        }
+    }
+
     // MARK: - H-I01: Full First Seen Handshake
 
     func testTrustedHandshake_H_I01_FullFirstSeenHandshake_SucceedsAndReachesReady() throws {
@@ -705,19 +728,106 @@ final class TrustedHandshakeControllerTests: XCTestCase {
         let aliceId = try makeIdentity(seedByte: 0x11, staticPrivByte: 0x22)
         let bobId = try makeIdentity(seedByte: 0x33, staticPrivByte: 0x44)
 
-        let rejectAuth = LambdaTrustAuthority { _ in .rejected(.revoked) }
+        struct FailureTestCase {
+            let name: String
+            let authResult: PeerTrustApplyResult?
+            let bindingPayload: Data
+            let wrongHint: Data?
+            let expectedState: HandshakeTrustState
+        }
 
-        let alice = TrustedHandshakeController.initiator(identity: aliceId, remoteHint: bobId.nodeHint, trustAuthority: rejectAuth)
-        let bobNoise = NoiseSession(role: .responder, staticKey: bobId.agreementKey, localHint: bobId.nodeHint, remoteHint: aliceId.nodeHint)
+        let validBinding = try makeBinding(seedByte: 0x33, staticPrivByte: 0x44).encode()
 
-        let hs1 = try alice.initiatorWriteMessage1()
-        _ = try bobNoise.readMessage1(hs1)
-        let hs2 = try bobNoise.writeMessage2(payload: try makeBinding(seedByte: 0x33, staticPrivByte: 0x44).encode())
+        // Tampered signature binding
+        var tamperedSigBinding = validBinding
+        tamperedSigBinding[69] ^= 0xFF
 
-        let hs3 = alice.initiatorProcessMessage2(hs2: hs2, advertisedRemoteHint: bobId.nodeHint)
-        XCTAssertNil(hs3)
-        XCTAssertEqual(alice.state, .securityReject)
-        XCTAssertFalse(alice.noiseSession.isEstablished)
+        // Static mismatch binding
+        let wrongStaticDh = Data(repeating: 0x99, count: 32)
+        let mismatchStaticBinding = try makeBinding(seedByte: 0x33, staticPrivByte: 0x44, overrideStaticPub: wrongStaticDh).encode()
+
+        let failureCases: [FailureTestCase] = [
+            FailureTestCase(name: "F1_InvalidSignature", authResult: nil, bindingPayload: tamperedSigBinding, wrongHint: nil, expectedState: .securityReject),
+            FailureTestCase(name: "F2_StaticMismatch", authResult: nil, bindingPayload: mismatchStaticBinding, wrongHint: nil, expectedState: .securityReject),
+            FailureTestCase(name: "F3_HintMismatch", authResult: nil, bindingPayload: validBinding, wrongHint: Data(repeating: 0xFE, count: 4), expectedState: .securityReject),
+            FailureTestCase(name: "F4_KeyChangedQuarantined", authResult: .keyChangedQuarantined, bindingPayload: validBinding, wrongHint: nil, expectedState: .quarantined),
+            FailureTestCase(name: "F5_RejectedRevoked", authResult: .rejected(.revoked), bindingPayload: validBinding, wrongHint: nil, expectedState: .securityReject),
+            FailureTestCase(name: "F6_Corrupt", authResult: .corrupt(.mutationReadbackMismatch("test")), bindingPayload: validBinding, wrongHint: nil, expectedState: .corrupt),
+            FailureTestCase(name: "F7_StorageFailure", authResult: .storageFailure, bindingPayload: validBinding, wrongHint: nil, expectedState: .storageFailure)
+        ]
+
+        for tc in failureCases {
+            let issuer = CountingIssuer(identity: aliceId)
+            let writer = CountingHs3Writer()
+            let fakeAuth = LambdaTrustAuthority { _ in tc.authResult ?? .accepted }
+
+            let alice = TrustedHandshakeController.initiator(
+                identity: aliceId,
+                remoteHint: bobId.nodeHint,
+                trustAuthority: fakeAuth,
+                localBindingIssuer: issuer,
+                hs3Writer: writer
+            )
+
+            let hs1 = try alice.initiatorWriteMessage1()
+            let bobNoise = NoiseSession(role: .responder, staticKey: bobId.agreementKey, localHint: bobId.nodeHint, remoteHint: aliceId.nodeHint)
+            _ = try bobNoise.readMessage1(hs1)
+            let hs2 = try bobNoise.writeMessage2(payload: tc.bindingPayload)
+
+            let hs3 = alice.initiatorProcessMessage2(hs2: hs2, advertisedRemoteHint: tc.wrongHint ?? bobId.nodeHint)
+            XCTAssertNil(hs3, "HS3 must be nil for \(tc.name)")
+            XCTAssertEqual(alice.state, tc.expectedState, "State must match for \(tc.name)")
+            XCTAssertFalse(alice.isReady, "isReady must be false for \(tc.name)")
+            XCTAssertEqual(issuer.calls, 0, "issuer.calls must be 0 for \(tc.name)")
+            XCTAssertEqual(writer.calls, 0, "writer.calls must be 0 for \(tc.name)")
+            XCTAssertFalse(alice.noiseSession.isEstablished, "NoiseSession must not be established for \(tc.name)")
+        }
+
+        // Positive case: Accepted -> exactly 1/1
+        do {
+            let issuer = CountingIssuer(identity: aliceId)
+            let fakeAuth = LambdaTrustAuthority { _ in .accepted }
+            let alice = TrustedHandshakeController(
+                noiseSession: NoiseSession(role: .initiator, staticKey: aliceId.agreementKey, localHint: aliceId.nodeHint, remoteHint: bobId.nodeHint),
+                trustAuthority: fakeAuth,
+                localIdentity: aliceId,
+                localBindingIssuer: issuer,
+                hs3Writer: nil
+            )
+            let hs1 = try alice.initiatorWriteMessage1()
+            let bobNoise = NoiseSession(role: .responder, staticKey: bobId.agreementKey, localHint: bobId.nodeHint, remoteHint: aliceId.nodeHint)
+            _ = try bobNoise.readMessage1(hs1)
+            let hs2 = try bobNoise.writeMessage2(payload: validBinding)
+            let hs3 = alice.initiatorProcessMessage2(hs2: hs2, advertisedRemoteHint: bobId.nodeHint)
+            XCTAssertNotNil(hs3)
+            XCTAssertEqual(alice.state, .ready)
+            XCTAssertTrue(alice.isReady)
+            XCTAssertEqual(issuer.calls, 1)
+            XCTAssertTrue(alice.noiseSession.isEstablished)
+        }
+
+        // Positive case: FirstSeenPinned -> exactly 1/1
+        do {
+            let issuer = CountingIssuer(identity: aliceId)
+            let fakeAuth = LambdaTrustAuthority { _ in .firstSeenPinned }
+            let alice = TrustedHandshakeController(
+                noiseSession: NoiseSession(role: .initiator, staticKey: aliceId.agreementKey, localHint: aliceId.nodeHint, remoteHint: bobId.nodeHint),
+                trustAuthority: fakeAuth,
+                localIdentity: aliceId,
+                localBindingIssuer: issuer,
+                hs3Writer: nil
+            )
+            let hs1 = try alice.initiatorWriteMessage1()
+            let bobNoise = NoiseSession(role: .responder, staticKey: bobId.agreementKey, localHint: bobId.nodeHint, remoteHint: aliceId.nodeHint)
+            _ = try bobNoise.readMessage1(hs1)
+            let hs2 = try bobNoise.writeMessage2(payload: validBinding)
+            let hs3 = alice.initiatorProcessMessage2(hs2: hs2, advertisedRemoteHint: bobId.nodeHint)
+            XCTAssertNotNil(hs3)
+            XCTAssertEqual(alice.state, .ready)
+            XCTAssertTrue(alice.isReady)
+            XCTAssertEqual(issuer.calls, 1)
+            XCTAssertTrue(alice.noiseSession.isEstablished)
+        }
     }
 
     // MARK: - H-I21: readMessage2 alone exposes payload & static, no HS3, not established
@@ -762,11 +872,127 @@ final class TrustedHandshakeControllerTests: XCTestCase {
         XCTAssertTrue(aliceSession.isEstablished, "aliceSession must become established after writeMessage3")
     }
 
-    // MARK: - H-I23: Trusted controller does not call readMessage2AndWrite3
+    // MARK: - H-I23: Trusted controller uses split readMessage2 and writeMessage3 (observable write gating)
 
-    func testTrustedHandshake_H_I23_TrustedControllerDoesNotCallReadMessage2AndWrite3() {
-        // Verified statically and structurally: TrustedHandshakeController uses readMessage2 and writeMessage3 separately.
-        XCTAssertTrue(true)
+    func testTrustedHandshake_H_I23_TrustedControllerDoesNotCallReadMessage2AndWrite3() throws {
+        let aliceId = try makeIdentity(seedByte: 0x11, staticPrivByte: 0x22)
+        let bobId = try makeIdentity(seedByte: 0x33, staticPrivByte: 0x44)
+
+        let writer = CountingHs3Writer()
+        let fakeRejectAuth = LambdaTrustAuthority { _ in .rejected(.revoked) }
+
+        let alice = TrustedHandshakeController.initiator(
+            identity: aliceId,
+            remoteHint: bobId.nodeHint,
+            trustAuthority: fakeRejectAuth,
+            localBindingIssuer: nil,
+            hs3Writer: writer
+        )
+
+        let hs1 = try alice.initiatorWriteMessage1()
+        let bobNoise = NoiseSession(role: .responder, staticKey: bobId.agreementKey, localHint: bobId.nodeHint, remoteHint: aliceId.nodeHint)
+        _ = try bobNoise.readMessage1(hs1)
+        let hs2 = try bobNoise.writeMessage2(payload: try makeBinding(seedByte: 0x33, staticPrivByte: 0x44).encode())
+
+        // Step: processMessage2 on rejected trust -> readMessage2 runs, but writeMessage3 is NOT called
+        let hs3 = alice.initiatorProcessMessage2(hs2: hs2, advertisedRemoteHint: bobId.nodeHint)
+        XCTAssertNil(hs3)
+        XCTAssertEqual(writer.calls, 0, "hs3Writer must not be called when trust fails")
+
+        // Positive path: writer called exactly once
+        let acceptedWriter = CountingHs3Writer()
+        let fakeAcceptAuth = LambdaTrustAuthority { _ in .accepted }
+        let aliceAccepted = TrustedHandshakeController.initiator(
+            identity: aliceId,
+            remoteHint: bobId.nodeHint,
+            trustAuthority: fakeAcceptAuth,
+            localBindingIssuer: nil,
+            hs3Writer: acceptedWriter
+        )
+        let hs1Accepted = try aliceAccepted.initiatorWriteMessage1()
+        let bobNoise2 = NoiseSession(role: .responder, staticKey: bobId.agreementKey, localHint: bobId.nodeHint, remoteHint: aliceId.nodeHint)
+        _ = try bobNoise2.readMessage1(hs1Accepted)
+        let hs2Accepted = try bobNoise2.writeMessage2(payload: try makeBinding(seedByte: 0x33, staticPrivByte: 0x44).encode())
+        let hs3Success = aliceAccepted.initiatorProcessMessage2(hs2: hs2Accepted, advertisedRemoteHint: bobId.nodeHint)
+        XCTAssertNotNil(hs3Success)
+        XCTAssertEqual(acceptedWriter.calls, 1, "hs3Writer must be called exactly once on accepted trust")
+    }
+
+    // MARK: - Responder NOISE_ESTABLISHED Observation Tests
+
+    func testResponder_NoiseEstablishedObservedDuringTrustApply_AcceptedAdvancesToReady() throws {
+        let aliceId = try makeIdentity(seedByte: 0x11, staticPrivByte: 0x22)
+        let bobId = try makeIdentity(seedByte: 0x33, staticPrivByte: 0x44)
+
+        let observedInCallback = Box(false)
+        let bobHolder = Box<TrustedHandshakeController?>(nil)
+
+        let observingAuth = LambdaTrustAuthority { _ in
+            observedInCallback.value = true
+            guard let bob = bobHolder.value else { return .rejected(.revoked) }
+            XCTAssertTrue(bob.noiseSession.isEstablished, "Noise session must be established during apply")
+            XCTAssertEqual(bob.state, .noiseEstablished, "Controller state must be .noiseEstablished during apply")
+            XCTAssertFalse(bob.isReady, "isReady must be false during apply")
+            XCTAssertNil(bob.seal(Data(count: 10)), "seal must return nil during .noiseEstablished")
+            XCTAssertNil(bob.open(Data(count: 10)), "open must return nil during .noiseEstablished")
+            return .accepted
+        }
+
+        let bob = TrustedHandshakeController.responder(identity: bobId, remoteHint: aliceId.nodeHint, trustAuthority: observingAuth)
+        bobHolder.value = bob
+
+        let aliceNoise = NoiseSession(role: .initiator, staticKey: aliceId.agreementKey, localHint: aliceId.nodeHint, remoteHint: bobId.nodeHint)
+
+        let hs1 = try aliceNoise.writeMessage1()
+        let hs2 = bob.responderProcessMessage1AndWriteMessage2(hs1: hs1)!
+        _ = try aliceNoise.readMessage2(hs2)
+
+        let aliceBinding = try aliceId.issueIdentityBinding().encode()
+        let hs3 = try aliceNoise.writeMessage3(payload: aliceBinding)
+
+        let ready = bob.responderProcessMessage3(hs3: hs3, advertisedRemoteHint: aliceId.nodeHint)
+        XCTAssertTrue(ready)
+        XCTAssertTrue(observedInCallback.value)
+        XCTAssertEqual(bob.state, .ready)
+        XCTAssertTrue(bob.isReady)
+        XCTAssertNotNil(bob.seal(Data(count: 10)))
+    }
+
+    func testResponder_NoiseEstablishedObservedDuringTrustApply_QuarantineDeniesReadyAndSeal() throws {
+        let aliceId = try makeIdentity(seedByte: 0x11, staticPrivByte: 0x22)
+        let bobId = try makeIdentity(seedByte: 0x33, staticPrivByte: 0x44)
+
+        let observedInCallback = Box(false)
+        let bobHolder = Box<TrustedHandshakeController?>(nil)
+
+        let observingAuth = LambdaTrustAuthority { _ in
+            observedInCallback.value = true
+            guard let bob = bobHolder.value else { return .rejected(.revoked) }
+            XCTAssertTrue(bob.noiseSession.isEstablished, "Noise session must be established during apply")
+            XCTAssertEqual(bob.state, .noiseEstablished, "Controller state must be .noiseEstablished during apply")
+            XCTAssertFalse(bob.isReady, "isReady must be false during apply")
+            XCTAssertNil(bob.seal(Data(count: 10)), "seal must return nil during .noiseEstablished")
+            return .keyChangedQuarantined
+        }
+
+        let bob = TrustedHandshakeController.responder(identity: bobId, remoteHint: aliceId.nodeHint, trustAuthority: observingAuth)
+        bobHolder.value = bob
+
+        let aliceNoise = NoiseSession(role: .initiator, staticKey: aliceId.agreementKey, localHint: aliceId.nodeHint, remoteHint: bobId.nodeHint)
+
+        let hs1 = try aliceNoise.writeMessage1()
+        let hs2 = bob.responderProcessMessage1AndWriteMessage2(hs1: hs1)!
+        _ = try aliceNoise.readMessage2(hs2)
+
+        let aliceBinding = try aliceId.issueIdentityBinding().encode()
+        let hs3 = try aliceNoise.writeMessage3(payload: aliceBinding)
+
+        let ready = bob.responderProcessMessage3(hs3: hs3, advertisedRemoteHint: aliceId.nodeHint)
+        XCTAssertFalse(ready)
+        XCTAssertTrue(observedInCallback.value)
+        XCTAssertEqual(bob.state, HandshakeTrustState.quarantined)
+        XCTAssertFalse(bob.isReady)
+        XCTAssertNil(bob.seal(Data(count: 10)))
     }
 
     // MARK: - Noise Auth Failure

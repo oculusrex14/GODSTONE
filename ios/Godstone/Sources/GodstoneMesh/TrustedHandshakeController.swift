@@ -17,6 +17,28 @@ internal protocol PeerBindingTrustAuthority: Sendable {
     func applyValidatedBinding(_ binding: ValidatedPeerBinding) -> PeerTrustApplyResult
 }
 
+internal protocol LocalBindingIssuer: Sendable {
+    func issueEncodedBinding() throws -> Data
+}
+
+internal protocol Hs3Writer: Sendable {
+    func writeHs3(payload: Data) throws -> Data
+}
+
+internal struct DefaultLocalBindingIssuer: LocalBindingIssuer {
+    let identity: MeshIdentity
+    func issueEncodedBinding() throws -> Data {
+        try identity.issueIdentityBinding().encode()
+    }
+}
+
+internal struct DefaultHs3Writer: Hs3Writer {
+    let noiseSession: NoiseSession
+    func writeHs3(payload: Data) throws -> Data {
+        try noiseSession.writeMessage3(payload: payload)
+    }
+}
+
 internal final class RepositoryPeerBindingTrustAuthority: PeerBindingTrustAuthority, @unchecked Sendable {
     private let repository: PeerIdentityRepository
 
@@ -33,6 +55,8 @@ internal final class TrustedHandshakeController: @unchecked Sendable {
     let noiseSession: NoiseSession
     let trustAuthority: any PeerBindingTrustAuthority
     let localIdentity: MeshIdentity
+    private let localBindingIssuer: any LocalBindingIssuer
+    private let hs3Writer: any Hs3Writer
 
     private(set) var state: HandshakeTrustState = .initial
 
@@ -45,11 +69,15 @@ internal final class TrustedHandshakeController: @unchecked Sendable {
     init(
         noiseSession: NoiseSession,
         trustAuthority: any PeerBindingTrustAuthority,
-        localIdentity: MeshIdentity
+        localIdentity: MeshIdentity,
+        localBindingIssuer: (any LocalBindingIssuer)? = nil,
+        hs3Writer: (any Hs3Writer)? = nil
     ) {
         self.noiseSession = noiseSession
         self.trustAuthority = trustAuthority
         self.localIdentity = localIdentity
+        self.localBindingIssuer = localBindingIssuer ?? DefaultLocalBindingIssuer(identity: localIdentity)
+        self.hs3Writer = hs3Writer ?? DefaultHs3Writer(noiseSession: noiseSession)
     }
 
     /// Initiator step 1: write HS1 (32 bytes).
@@ -99,10 +127,10 @@ internal final class TrustedHandshakeController: @unchecked Sendable {
         switch applyResult {
         case .accepted, .firstSeenPinned:
             do {
-                let localBinding = try localIdentity.issueIdentityBinding()
-                let localBytes = localBinding.encode()
+                let localBytes = try localBindingIssuer.issueEncodedBinding()
                 guard localBytes.count == 133 else { return nil }
-                let hs3 = try noiseSession.writeMessage3(payload: localBytes)
+                state = .noiseEstablished
+                let hs3 = try hs3Writer.writeHs3(payload: localBytes)
                 guard hs3.count == 197 else { return nil }
                 state = .ready
                 return hs3
@@ -187,6 +215,10 @@ internal final class TrustedHandshakeController: @unchecked Sendable {
             return false
         }
 
+        // Noise message 3 was read and split() occurred in NoiseSession.
+        // Transition controller to .noiseEstablished before applying trust.
+        state = .noiseEstablished
+
         let applyResult = trustAuthority.applyValidatedBinding(binding)
         switch applyResult {
         case .accepted, .firstSeenPinned:
@@ -222,7 +254,9 @@ internal final class TrustedHandshakeController: @unchecked Sendable {
     static func initiator(
         identity: MeshIdentity,
         remoteHint: Data,
-        trustAuthority: any PeerBindingTrustAuthority
+        trustAuthority: any PeerBindingTrustAuthority,
+        localBindingIssuer: (any LocalBindingIssuer)? = nil,
+        hs3Writer: (any Hs3Writer)? = nil
     ) -> TrustedHandshakeController {
         let session = NoiseSession(
             role: .initiator,
@@ -233,7 +267,9 @@ internal final class TrustedHandshakeController: @unchecked Sendable {
         return TrustedHandshakeController(
             noiseSession: session,
             trustAuthority: trustAuthority,
-            localIdentity: identity
+            localIdentity: identity,
+            localBindingIssuer: localBindingIssuer,
+            hs3Writer: hs3Writer
         )
     }
 

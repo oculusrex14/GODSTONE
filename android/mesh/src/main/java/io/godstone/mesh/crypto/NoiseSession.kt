@@ -6,24 +6,33 @@ import io.godstone.mesh.identity.Identity
 import java.nio.ByteBuffer
 import java.util.concurrent.atomic.AtomicLong
 
-data class HandshakeReadResult(
-    val payload: ByteArray,
-    val authenticatedRemoteStaticKey: ByteArray?
+internal class HandshakeReadResult(
+    payload: ByteArray,
+    authenticatedRemoteStaticKey: ByteArray? = null
 ) {
+    private val _payload: ByteArray = payload.copyOf()
+    private val _authenticatedRemoteStaticKey: ByteArray? = authenticatedRemoteStaticKey?.copyOf()
+
+    val payload: ByteArray
+        get() = _payload.copyOf()
+
+    val authenticatedRemoteStaticKey: ByteArray?
+        get() = _authenticatedRemoteStaticKey?.copyOf()
+
     override fun equals(other: Any?): Boolean {
         if (this === other) return true
         if (other !is HandshakeReadResult) return false
-        if (!payload.contentEquals(other.payload)) return false
-        if (authenticatedRemoteStaticKey != null) {
-            if (other.authenticatedRemoteStaticKey == null) return false
-            if (!authenticatedRemoteStaticKey.contentEquals(other.authenticatedRemoteStaticKey)) return false
-        } else if (other.authenticatedRemoteStaticKey != null) return false
+        if (!_payload.contentEquals(other._payload)) return false
+        if (_authenticatedRemoteStaticKey != null) {
+            if (other._authenticatedRemoteStaticKey == null) return false
+            if (!_authenticatedRemoteStaticKey.contentEquals(other._authenticatedRemoteStaticKey)) return false
+        } else if (other._authenticatedRemoteStaticKey != null) return false
         return true
     }
 
     override fun hashCode(): Int {
-        var result = payload.contentHashCode()
-        result = 31 * result + (authenticatedRemoteStaticKey?.contentHashCode() ?: 0)
+        var result = _payload.contentHashCode()
+        result = 31 * result + (_authenticatedRemoteStaticKey?.contentHashCode() ?: 0)
         return result
     }
 }
@@ -84,7 +93,7 @@ class NoiseSession private constructor(
         return out.copyOf(len)
     }
 
-    fun readHandshakeMessageWithResult(message: ByteArray): HandshakeReadResult {
+    internal fun readHandshakeMessageWithResult(message: ByteArray): HandshakeReadResult {
         val out = ByteArray(MAX_HANDSHAKE)
         val len = handshake.readMessage(message, 0, message.size, out, 0)
         val payload = out.copyOf(len)

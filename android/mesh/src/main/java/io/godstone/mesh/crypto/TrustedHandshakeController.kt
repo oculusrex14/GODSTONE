@@ -8,7 +8,7 @@ import io.godstone.mesh.identity.PeerTrustApplyResult
 import io.godstone.mesh.identity.ValidatedPeerBinding
 
 /**
- * Lifecycle state for trusted handshake execution (ADR-003, Phase C8.4A).
+ * Lifecycle state for trusted handshake execution (ADR-003, Phase C8.4A / C8.4A.1).
  * Distinguishes cryptographic establishment from higher-level application READY authority.
  */
 enum class HandshakeTrustState {
@@ -31,6 +31,20 @@ internal interface PeerBindingTrustAuthority {
 }
 
 /**
+ * Narrow test seam for observing local binding issuance during handshake (ADR-003, Phase C8.4A.1).
+ */
+internal fun interface LocalBindingIssuer {
+    fun issueEncodedBinding(): ByteArray
+}
+
+/**
+ * Narrow test seam for observing HS3 write calls during handshake (ADR-003, Phase C8.4A.1).
+ */
+internal fun interface Hs3Writer {
+    fun writeHs3(payload: ByteArray): ByteArray
+}
+
+/**
  * Production implementation of [PeerBindingTrustAuthority] delegating to [PeerIdentityRepository].
  */
 internal class RepositoryPeerBindingTrustAuthority(
@@ -41,7 +55,7 @@ internal class RepositoryPeerBindingTrustAuthority(
 }
 
 /**
- * Trust-aware Noise handshake controller (ADR-003, Phase C8.4A).
+ * Trust-aware Noise handshake controller (ADR-003, Phase C8.4A / C8.4A.1).
  *
  * Enforces:
  * - Pure [IdentityBindingValidator] validation before any repository access.
@@ -54,7 +68,9 @@ internal class RepositoryPeerBindingTrustAuthority(
 internal class TrustedHandshakeController(
     val noiseSession: NoiseSession,
     val trustAuthority: PeerBindingTrustAuthority,
-    val localIdentity: Identity
+    val localIdentity: Identity,
+    private val localBindingIssuer: LocalBindingIssuer = LocalBindingIssuer { localIdentity.issueIdentityBinding().encode() },
+    private val hs3Writer: Hs3Writer = Hs3Writer { payload -> noiseSession.writeHandshakeMessage(payload) }
 ) {
     var state: HandshakeTrustState = HandshakeTrustState.INITIAL
         private set
@@ -110,10 +126,10 @@ internal class TrustedHandshakeController(
         return when (applyResult) {
             is PeerTrustApplyResult.Accepted,
             is PeerTrustApplyResult.FirstSeenPinned -> {
-                val localBinding = localIdentity.issueIdentityBinding()
-                val localBytes = localBinding.encode()
+                val localBytes = localBindingIssuer.issueEncodedBinding()
                 check(localBytes.size == 133) { "Local binding size must be 133, was ${localBytes.size}" }
-                val hs3 = noiseSession.writeHandshakeMessage(localBytes)
+                state = HandshakeTrustState.NOISE_ESTABLISHED
+                val hs3 = hs3Writer.writeHs3(localBytes)
                 check(hs3.size == 197) { "HS3 size must be exactly 197 bytes, was ${hs3.size}" }
                 state = HandshakeTrustState.READY
                 hs3
@@ -195,6 +211,10 @@ internal class TrustedHandshakeController(
             return false
         }
 
+        // Noise message 3 was read and split() occurred in NoiseSession.
+        // Transition controller to NOISE_ESTABLISHED before applying trust.
+        state = HandshakeTrustState.NOISE_ESTABLISHED
+
         val applyResult = trustAuthority.applyValidatedBinding(validation.binding)
         return when (applyResult) {
             is PeerTrustApplyResult.Accepted,
@@ -241,10 +261,18 @@ internal class TrustedHandshakeController(
         fun initiator(
             identity: Identity,
             remoteHint: ByteArray,
-            trustAuthority: PeerBindingTrustAuthority
+            trustAuthority: PeerBindingTrustAuthority,
+            localBindingIssuer: LocalBindingIssuer = LocalBindingIssuer { identity.issueIdentityBinding().encode() },
+            hs3Writer: Hs3Writer? = null
         ): TrustedHandshakeController {
             val session = NoiseSession.initiator(identity, identity.nodeHint, remoteHint)
-            return TrustedHandshakeController(session, trustAuthority, identity)
+            return TrustedHandshakeController(
+                session,
+                trustAuthority,
+                identity,
+                localBindingIssuer,
+                hs3Writer ?: Hs3Writer { payload -> session.writeHandshakeMessage(payload) }
+            )
         }
 
         fun responder(

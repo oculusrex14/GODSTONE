@@ -35,11 +35,11 @@ import GodstoneCore
 ///
 /// The prologue binds the handshake to the protocol name and both node hints,
 /// which kills downgrade and cross-protocol attacks before they start.
-public struct HandshakeReadResult: Equatable, Sendable {
-    public let payload: Data
-    public let authenticatedRemoteStaticKey: Data?
+internal struct HandshakeReadResult: Equatable, Sendable {
+    let payload: Data
+    let authenticatedRemoteStaticKey: Data?
 
-    public init(payload: Data, authenticatedRemoteStaticKey: Data?) {
+    init(payload: Data, authenticatedRemoteStaticKey: Data? = nil) {
         self.payload = payload
         self.authenticatedRemoteStaticKey = authenticatedRemoteStaticKey
     }
@@ -195,7 +195,7 @@ public final class NoiseSession {
 
     /// Message 1, responder reads: `-> e`
     @discardableResult
-    public func readMessage1(_ msg1: Data) throws -> HandshakeReadResult {
+    internal func readMessage1(_ msg1: Data) throws -> HandshakeReadResult {
         let m = Data(msg1)
         guard m.count >= NoiseSession.dhLen else { throw MeshError.handshakeFailed }
 
@@ -227,7 +227,7 @@ public final class NoiseSession {
 
     /// Message 2, initiator: reads message 2, parses remote static key & payload.
     /// Does NOT write HS3 and does NOT call split().
-    public func readMessage2(_ msg2: Data) throws -> HandshakeReadResult {
+    internal func readMessage2(_ msg2: Data) throws -> HandshakeReadResult {
         let m = Data(msg2)
         let encStaticLen = NoiseSession.dhLen + NoiseSession.tagLen   // 48
         guard m.count >= NoiseSession.dhLen + encStaticLen else {
@@ -261,17 +261,9 @@ public final class NoiseSession {
         return out
     }
 
-    /// Message 3, initiator: reads message 2, writes `s, se` + payload.
-    /// 64 bytes with an empty payload. V3 produced 48.
-    public func readMessage2AndWrite3(_ msg2: Data,
-                                      payload: Data = Data()) throws -> Data {
-        _ = try readMessage2(msg2)
-        return try writeMessage3(payload: payload)
-    }
-
     /// Message 3, responder side.
     @discardableResult
-    public func readMessage3(_ msg3: Data) throws -> HandshakeReadResult {
+    internal func readMessage3(_ msg3: Data) throws -> HandshakeReadResult {
         let m = Data(msg3)
         let encStaticLen = NoiseSession.dhLen + NoiseSession.tagLen
         guard m.count >= encStaticLen else { throw MeshError.handshakeFailed }

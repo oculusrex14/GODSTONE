@@ -91,7 +91,8 @@ final class NoiseSessionTests: XCTestCase {
         // XX: -> e   <- e, ee, s, es   -> s, se
         let m1 = try alice.writeMessage1()
         let m2 = try bob.readMessage1AndWrite2(m1)
-        let m3 = try alice.readMessage2AndWrite3(m2)
+        _ = try alice.readMessage2(m2)
+        let m3 = try alice.writeMessage3()
         try bob.readMessage3(m3)
 
         XCTAssertTrue(alice.isEstablished, "alice must be established after XX")
@@ -115,20 +116,20 @@ final class NoiseSessionTests: XCTestCase {
         let hintB = Data(repeating: 0x02, count: 8)
 
         let alice = NoiseSession(role: .initiator,
-                                staticKey: Curve25519.KeyAgreement.PrivateKey(),
-                                localHint: hintA,
-                                remoteHint: hintB)
+                                 staticKey: Curve25519.KeyAgreement.PrivateKey(),
+                                 localHint: hintA,
+                                 remoteHint: hintB)
         // bob computes its prologue from the WRONG remote hint, so the two
         // handshake hashes diverge from the start (same effect as a GMP1 peer).
         let bob = NoiseSession(role: .responder,
-                              staticKey: Curve25519.KeyAgreement.PrivateKey(),
-                              localHint: hintB,
-                              remoteHint: Data(repeating: 0xff, count: 8))
+                               staticKey: Curve25519.KeyAgreement.PrivateKey(),
+                               localHint: hintB,
+                               remoteHint: Data(repeating: 0xff, count: 8))
 
         let m1 = try alice.writeMessage1()
         let m2 = try bob.readMessage1AndWrite2(m1)
 
-        XCTAssertThrowsError(try alice.readMessage2AndWrite3(m2)) { err in
+        XCTAssertThrowsError(try alice.readMessage2(m2)) { err in
             // The first AEAD open (encrypted static in message 2) fails because
             // the AAD (handshake hash, seeded by the prologue) disagrees.
             // ChaChaPoly.open surfaces that as a CryptoKitError (authentication

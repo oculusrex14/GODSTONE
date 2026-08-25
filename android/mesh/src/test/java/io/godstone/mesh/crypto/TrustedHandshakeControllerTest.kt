@@ -719,27 +719,252 @@ class TrustedHandshakeControllerTest {
     }
 
     @Test
+    fun testHandshakeReadResult_DefensiveImmutability() {
+        val payloadIn = ByteArray(32) { 0xAA.toByte() }
+        val staticIn = ByteArray(32) { 0xBB.toByte() }
+
+        val result = HandshakeReadResult(payloadIn, staticIn)
+
+        // 1. Mutating constructor inputs does not affect stored value
+        payloadIn[0] = 0x00
+        staticIn[0] = 0x00
+        assertEquals(0xAA.toByte(), result.payload[0])
+        assertEquals(0xBB.toByte(), result.authenticatedRemoteStaticKey!![0])
+
+        // 2. Mutating getter return value does not affect subsequent getter calls
+        val payloadOut = result.payload
+        payloadOut[0] = 0xFF.toByte()
+        assertEquals(0xAA.toByte(), result.payload[0])
+
+        val staticOut = result.authenticatedRemoteStaticKey!!
+        staticOut[0] = 0xFF.toByte()
+        assertEquals(0xBB.toByte(), result.authenticatedRemoteStaticKey!![0])
+    }
+
+    @Test
     fun testTrustedHandshake_H_A20_NoLocalBindingIssuedOnInitiatorValidationOrTrustFailure() {
         val aliceId = createIdentity(0x11, 0x22)
         val bobId = createIdentity(0x33, 0x44)
 
-        val rejectAuth = object : PeerBindingTrustAuthority {
-            override fun applyValidatedBinding(binding: ValidatedPeerBinding): PeerTrustApplyResult =
-                PeerTrustApplyResult.Rejected(PeerTrustRejectReason.Revoked)
+        data class FailureTestCase(
+            val name: String,
+            val authResult: PeerTrustApplyResult?,
+            val bindingPayload: ByteArray,
+            val wrongHint: ByteArray?,
+            val expectedState: HandshakeTrustState
+        )
+
+        val validBinding = createTestBinding(bobId, ByteArray(32) { 0x33 }).encode()
+
+        // Tampered signature binding
+        val tamperedSigBinding = createTestBinding(bobId, ByteArray(32) { 0x33 }).encode().also {
+            it[69] = (it[69].toInt() xor 0xFF).toByte()
         }
 
-        val alice = TrustedHandshakeController.initiator(aliceId, bobId.nodeHint, rejectAuth)
-        val bobNoise = NoiseSession.responder(bobId, aliceId.nodeHint, bobId.nodeHint)
+        // Static mismatch binding (signed with bobId, but claims different static DH key)
+        val wrongStaticDh = ByteArray(32) { 0x99.toByte() }
+        val mismatchStaticBinding = createTestBinding(bobId, ByteArray(32) { 0x33 }, staticDhPub = wrongStaticDh).encode()
 
-        val hs1 = alice.initiatorWriteMessage1()
-        bobNoise.readHandshakeMessage(hs1)
-        val hs2 = bobNoise.writeHandshakeMessage(createTestBinding(bobId, ByteArray(32) { 0x33 }).encode())
+        val failureCases = listOf(
+            FailureTestCase("F1_InvalidSignature", null, tamperedSigBinding, null, HandshakeTrustState.SECURITY_REJECT),
+            FailureTestCase("F2_StaticMismatch", null, mismatchStaticBinding, null, HandshakeTrustState.SECURITY_REJECT),
+            FailureTestCase("F3_HintMismatch", null, validBinding, ByteArray(4) { 0xFE.toByte() }, HandshakeTrustState.SECURITY_REJECT),
+            FailureTestCase("F4_KeyChangedQuarantined", PeerTrustApplyResult.KeyChangedQuarantined, validBinding, null, HandshakeTrustState.QUARANTINED),
+            FailureTestCase("F5_RejectedRevoked", PeerTrustApplyResult.Rejected(PeerTrustRejectReason.Revoked), validBinding, null, HandshakeTrustState.SECURITY_REJECT),
+            FailureTestCase("F6_Corrupt", PeerTrustApplyResult.Corrupt(PeerTrustRepositoryCorruptionReason.MutationReadbackMismatch("test")), validBinding, null, HandshakeTrustState.CORRUPT),
+            FailureTestCase("F7_StorageFailure", PeerTrustApplyResult.StorageFailure(SQLException("disk error")), validBinding, null, HandshakeTrustState.STORAGE_FAILURE)
+        )
 
-        val hs3 = alice.initiatorProcessMessage2(hs2, bobId.nodeHint)
-        assertNull(hs3)
-        assertEquals(HandshakeTrustState.SECURITY_REJECT, alice.state)
-        // Alice noise session remains not established (no split called on initiator because HS3 was withheld)
-        assertFalse("Alice noise session must not be established", alice.noiseSession.isEstablished)
+        for (tc in failureCases) {
+            var issuerCalls = 0
+            var hs3WriterCalls = 0
+            val mockIssuer = LocalBindingIssuer {
+                issuerCalls++
+                aliceId.issueIdentityBinding().encode()
+            }
+            val mockHs3Writer = Hs3Writer { payload ->
+                hs3WriterCalls++
+                ByteArray(197)
+            }
+            val fakeAuth = object : PeerBindingTrustAuthority {
+                override fun applyValidatedBinding(binding: ValidatedPeerBinding): PeerTrustApplyResult =
+                    tc.authResult ?: PeerTrustApplyResult.Accepted
+            }
+
+            val alice = TrustedHandshakeController.initiator(
+                identity = aliceId,
+                remoteHint = bobId.nodeHint,
+                trustAuthority = fakeAuth,
+                localBindingIssuer = mockIssuer,
+                hs3Writer = mockHs3Writer
+            )
+
+            val hs1 = alice.initiatorWriteMessage1()
+            val bobNoise = NoiseSession.responder(bobId, aliceId.nodeHint, bobId.nodeHint)
+            bobNoise.readHandshakeMessage(hs1)
+            val hs2 = bobNoise.writeHandshakeMessage(tc.bindingPayload)
+
+            val hs3 = alice.initiatorProcessMessage2(
+                hs2 = hs2,
+                advertisedRemoteHint = tc.wrongHint ?: bobId.nodeHint
+            )
+
+            assertNull("HS3 must be null for ${tc.name}", hs3)
+            assertEquals("State must match for ${tc.name}", tc.expectedState, alice.state)
+            assertFalse("isReady must be false for ${tc.name}", alice.isReady)
+            assertEquals("issuerCalls must be 0 for ${tc.name}", 0, issuerCalls)
+            assertEquals("hs3WriterCalls must be 0 for ${tc.name}", 0, hs3WriterCalls)
+            assertFalse("Noise session must not be established for ${tc.name}", alice.noiseSession.isEstablished)
+        }
+
+        // Positive case: Accepted -> exactly 1/1
+        run {
+            var issuerCalls = 0
+            var hs3WriterCalls = 0
+            val mockIssuer = LocalBindingIssuer {
+                issuerCalls++
+                aliceId.issueIdentityBinding().encode()
+            }
+            lateinit var alice: TrustedHandshakeController
+            val mockHs3Writer = Hs3Writer { payload ->
+                hs3WriterCalls++
+                alice.noiseSession.writeHandshakeMessage(payload)
+            }
+            val fakeAuth = object : PeerBindingTrustAuthority {
+                override fun applyValidatedBinding(binding: ValidatedPeerBinding): PeerTrustApplyResult =
+                    PeerTrustApplyResult.Accepted
+            }
+            alice = TrustedHandshakeController.initiator(
+                identity = aliceId,
+                remoteHint = bobId.nodeHint,
+                trustAuthority = fakeAuth,
+                localBindingIssuer = mockIssuer,
+                hs3Writer = mockHs3Writer
+            )
+            val hs1 = alice.initiatorWriteMessage1()
+            val bobNoise = NoiseSession.responder(bobId, aliceId.nodeHint, bobId.nodeHint)
+            bobNoise.readHandshakeMessage(hs1)
+            val hs2 = bobNoise.writeHandshakeMessage(validBinding)
+            val hs3 = alice.initiatorProcessMessage2(hs2, bobId.nodeHint)
+            assertNotNull(hs3)
+            assertEquals(HandshakeTrustState.READY, alice.state)
+            assertTrue(alice.isReady)
+            assertEquals("issuerCalls must be 1 for Accepted", 1, issuerCalls)
+            assertEquals("hs3WriterCalls must be 1 for Accepted", 1, hs3WriterCalls)
+            assertTrue(alice.noiseSession.isEstablished)
+        }
+
+        // Positive case: FirstSeenPinned -> exactly 1/1
+        run {
+            var issuerCalls = 0
+            var hs3WriterCalls = 0
+            val mockIssuer = LocalBindingIssuer {
+                issuerCalls++
+                aliceId.issueIdentityBinding().encode()
+            }
+            lateinit var alice: TrustedHandshakeController
+            val mockHs3Writer = Hs3Writer { payload ->
+                hs3WriterCalls++
+                alice.noiseSession.writeHandshakeMessage(payload)
+            }
+            val fakeAuth = object : PeerBindingTrustAuthority {
+                override fun applyValidatedBinding(binding: ValidatedPeerBinding): PeerTrustApplyResult =
+                    PeerTrustApplyResult.FirstSeenPinned
+            }
+            alice = TrustedHandshakeController.initiator(
+                identity = aliceId,
+                remoteHint = bobId.nodeHint,
+                trustAuthority = fakeAuth,
+                localBindingIssuer = mockIssuer,
+                hs3Writer = mockHs3Writer
+            )
+            val hs1 = alice.initiatorWriteMessage1()
+            val bobNoise = NoiseSession.responder(bobId, aliceId.nodeHint, bobId.nodeHint)
+            bobNoise.readHandshakeMessage(hs1)
+            val hs2 = bobNoise.writeHandshakeMessage(validBinding)
+            val hs3 = alice.initiatorProcessMessage2(hs2, bobId.nodeHint)
+            assertNotNull(hs3)
+            assertEquals(HandshakeTrustState.READY, alice.state)
+            assertTrue(alice.isReady)
+            assertEquals("issuerCalls must be 1 for FirstSeenPinned", 1, issuerCalls)
+            assertEquals("hs3WriterCalls must be 1 for FirstSeenPinned", 1, hs3WriterCalls)
+            assertTrue(alice.noiseSession.isEstablished)
+        }
+    }
+
+    @Test
+    fun testResponder_NoiseEstablishedObservedDuringTrustApply_AcceptedAdvancesToReady() {
+        val aliceId = createIdentity(0x11, 0x22)
+        val bobId = createIdentity(0x33, 0x44)
+
+        lateinit var bobController: TrustedHandshakeController
+        var observedInCallback = false
+
+        val observingAuth = object : PeerBindingTrustAuthority {
+            override fun applyValidatedBinding(binding: ValidatedPeerBinding): PeerTrustApplyResult {
+                observedInCallback = true
+                assertTrue("Noise session must be established during apply", bobController.noiseSession.isEstablished)
+                assertEquals("Controller state must be NOISE_ESTABLISHED during apply", HandshakeTrustState.NOISE_ESTABLISHED, bobController.state)
+                assertFalse("isReady must be false during apply", bobController.isReady)
+                assertNull("seal must return null during NOISE_ESTABLISHED", bobController.seal(ByteArray(10)))
+                assertNull("open must return null during NOISE_ESTABLISHED", bobController.open(ByteArray(10)))
+                return PeerTrustApplyResult.Accepted
+            }
+        }
+
+        bobController = TrustedHandshakeController.responder(bobId, aliceId.nodeHint, observingAuth)
+        val aliceNoise = NoiseSession.initiator(aliceId, aliceId.nodeHint, bobId.nodeHint)
+
+        val hs1 = aliceNoise.writeHandshakeMessage()
+        val hs2 = bobController.responderProcessMessage1AndWriteMessage2(hs1)!!
+        aliceNoise.readHandshakeMessage(hs2)
+
+        val aliceBinding = createTestBinding(aliceId, ByteArray(32) { 0x11 }).encode()
+        val hs3 = aliceNoise.writeHandshakeMessage(aliceBinding)
+
+        val ready = bobController.responderProcessMessage3(hs3, aliceId.nodeHint)
+        assertTrue(ready)
+        assertTrue("Callback must have executed", observedInCallback)
+        assertEquals("Controller must advance to READY after Accepted", HandshakeTrustState.READY, bobController.state)
+        assertTrue(bobController.isReady)
+        assertNotNull(bobController.seal(ByteArray(10)))
+    }
+
+    @Test
+    fun testResponder_NoiseEstablishedObservedDuringTrustApply_QuarantineDeniesReadyAndSeal() {
+        val aliceId = createIdentity(0x11, 0x22)
+        val bobId = createIdentity(0x33, 0x44)
+
+        lateinit var bobController: TrustedHandshakeController
+        var observedInCallback = false
+
+        val observingAuth = object : PeerBindingTrustAuthority {
+            override fun applyValidatedBinding(binding: ValidatedPeerBinding): PeerTrustApplyResult {
+                observedInCallback = true
+                assertTrue("Noise session must be established during apply", bobController.noiseSession.isEstablished)
+                assertEquals("Controller state must be NOISE_ESTABLISHED during apply", HandshakeTrustState.NOISE_ESTABLISHED, bobController.state)
+                assertFalse("isReady must be false during apply", bobController.isReady)
+                assertNull("seal must return null during NOISE_ESTABLISHED", bobController.seal(ByteArray(10)))
+                return PeerTrustApplyResult.KeyChangedQuarantined
+            }
+        }
+
+        bobController = TrustedHandshakeController.responder(bobId, aliceId.nodeHint, observingAuth)
+        val aliceNoise = NoiseSession.initiator(aliceId, aliceId.nodeHint, bobId.nodeHint)
+
+        val hs1 = aliceNoise.writeHandshakeMessage()
+        val hs2 = bobController.responderProcessMessage1AndWriteMessage2(hs1)!!
+        aliceNoise.readHandshakeMessage(hs2)
+
+        val aliceBinding = createTestBinding(aliceId, ByteArray(32) { 0x11 }).encode()
+        val hs3 = aliceNoise.writeHandshakeMessage(aliceBinding)
+
+        val ready = bobController.responderProcessMessage3(hs3, aliceId.nodeHint)
+        assertFalse(ready)
+        assertTrue("Callback must have executed", observedInCallback)
+        assertEquals("Controller must be QUARANTINED after quarantine", HandshakeTrustState.QUARANTINED, bobController.state)
+        assertFalse(bobController.isReady)
+        assertNull(bobController.seal(ByteArray(10)))
     }
 
     @Test

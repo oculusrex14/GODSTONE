@@ -18,6 +18,9 @@
 - **Production `RecipientKeyResolver`:** UNRESOLVED / Fail-closed in composition (`UnresolvedRecipientKeyResolver`).
 - **Link Layer:** Disabled (`LINK_LAYER_READY = false` / `linkLayerReady = false`).
 
+> [!WARNING]
+> During C8.4A the existing SessionManager is UNTRUSTED / NOT RUNTIME-AUTHORITATIVE for peer-trust READY. Its established() predicate reflects Noise cryptographic establishment only. It remains unreachable behind linkLayerReady=false / LINK_LAYER_READY=false. C8.4B must replace or refactor this authority before any link-layer enablement.
+
 ---
 
 ## 2. Problem Statement
@@ -225,6 +228,10 @@ After successful validation through Step 10:
 3. The observed 4-byte `advertised_node_hint` is proven **CONSISTENT WITH** `first4(node_id)`.
 
 The full 16-byte `node_id` MUST be used everywhere across the system following identity validation.
+
+### 7.3 Runtime Authority and Legacy SessionManager Warning
+> [!WARNING]
+> During C8.4A the existing SessionManager is UNTRUSTED / NOT RUNTIME-AUTHORITATIVE for peer-trust READY. Its established() predicate reflects Noise cryptographic establishment only. It remains unreachable behind linkLayerReady=false / LINK_LAYER_READY=false. C8.4B must replace or refactor this authority before any link-layer enablement.
 
 ---
 
