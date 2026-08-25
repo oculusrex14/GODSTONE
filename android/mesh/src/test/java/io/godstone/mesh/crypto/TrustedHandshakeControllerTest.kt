@@ -994,4 +994,242 @@ class TrustedHandshakeControllerTest {
         assertEquals(HandshakeTrustState.SECURITY_REJECT, alice.state)
         assertEquals(0, applyCalls)
     }
+
+    // MARK: - A-HS3-FAIL Battery (C8.4A.2)
+
+    @Test
+    fun testInitiator_A_HS3_FAIL_01_WriterThrows_FailsClosed() {
+        val aliceId = createIdentity(0x11, 0x22)
+        val bobId = createIdentity(0x33, 0x44)
+        var issuerCalls = 0
+        var writerCalls = 0
+        val mockIssuer = LocalBindingIssuer {
+            issuerCalls++
+            aliceId.issueIdentityBinding().encode()
+        }
+        val throwingWriter = Hs3Writer { payload ->
+            writerCalls++
+            throw RuntimeException("Simulated HS3 write failure")
+        }
+        val fakeAuth = object : PeerBindingTrustAuthority {
+            override fun applyValidatedBinding(binding: ValidatedPeerBinding): PeerTrustApplyResult =
+                PeerTrustApplyResult.Accepted
+        }
+        val alice = TrustedHandshakeController.initiator(
+            identity = aliceId,
+            remoteHint = bobId.nodeHint,
+            trustAuthority = fakeAuth,
+            localBindingIssuer = mockIssuer,
+            hs3Writer = throwingWriter
+        )
+        val hs1 = alice.initiatorWriteMessage1()
+        val bobNoise = NoiseSession.responder(bobId, aliceId.nodeHint, bobId.nodeHint)
+        bobNoise.readHandshakeMessage(hs1)
+        val hs2 = bobNoise.writeHandshakeMessage(createTestBinding(bobId, ByteArray(32) { 0x33 }).encode())
+
+        val hs3 = alice.initiatorProcessMessage2(hs2, bobId.nodeHint)
+        assertNull("HS3 must be null when writer throws", hs3)
+        assertEquals(HandshakeTrustState.SECURITY_REJECT, alice.state)
+        assertFalse(alice.isReady)
+        assertFalse(alice.noiseSession.isEstablished)
+        assertEquals(1, issuerCalls)
+        assertEquals(1, writerCalls)
+    }
+
+    @Test
+    fun testInitiator_A_HS3_FAIL_02_WriterReturnsWrongLength_NoNoiseWrite_FailsClosed() {
+        val aliceId = createIdentity(0x11, 0x22)
+        val bobId = createIdentity(0x33, 0x44)
+        var issuerCalls = 0
+        var writerCalls = 0
+        val mockIssuer = LocalBindingIssuer {
+            issuerCalls++
+            aliceId.issueIdentityBinding().encode()
+        }
+        val shortWriter = Hs3Writer { payload ->
+            writerCalls++
+            ByteArray(196)
+        }
+        val fakeAuth = object : PeerBindingTrustAuthority {
+            override fun applyValidatedBinding(binding: ValidatedPeerBinding): PeerTrustApplyResult =
+                PeerTrustApplyResult.Accepted
+        }
+        val alice = TrustedHandshakeController.initiator(
+            identity = aliceId,
+            remoteHint = bobId.nodeHint,
+            trustAuthority = fakeAuth,
+            localBindingIssuer = mockIssuer,
+            hs3Writer = shortWriter
+        )
+        val hs1 = alice.initiatorWriteMessage1()
+        val bobNoise = NoiseSession.responder(bobId, aliceId.nodeHint, bobId.nodeHint)
+        bobNoise.readHandshakeMessage(hs1)
+        val hs2 = bobNoise.writeHandshakeMessage(createTestBinding(bobId, ByteArray(32) { 0x33 }).encode())
+
+        val hs3 = alice.initiatorProcessMessage2(hs2, bobId.nodeHint)
+        assertNull("HS3 must be null when writer returns wrong length", hs3)
+        assertEquals(HandshakeTrustState.SECURITY_REJECT, alice.state)
+        assertFalse(alice.isReady)
+        assertFalse(alice.noiseSession.isEstablished)
+        assertEquals(1, issuerCalls)
+        assertEquals(1, writerCalls)
+    }
+
+    @Test
+    fun testInitiator_A_HS3_FAIL_03_WriterReturns197FakeBytes_NoNoiseWrite_FailsClosed() {
+        val aliceId = createIdentity(0x11, 0x22)
+        val bobId = createIdentity(0x33, 0x44)
+        var issuerCalls = 0
+        var writerCalls = 0
+        val mockIssuer = LocalBindingIssuer {
+            issuerCalls++
+            aliceId.issueIdentityBinding().encode()
+        }
+        val fake197Writer = Hs3Writer { payload ->
+            writerCalls++
+            ByteArray(197)
+        }
+        val fakeAuth = object : PeerBindingTrustAuthority {
+            override fun applyValidatedBinding(binding: ValidatedPeerBinding): PeerTrustApplyResult =
+                PeerTrustApplyResult.Accepted
+        }
+        val alice = TrustedHandshakeController.initiator(
+            identity = aliceId,
+            remoteHint = bobId.nodeHint,
+            trustAuthority = fakeAuth,
+            localBindingIssuer = mockIssuer,
+            hs3Writer = fake197Writer
+        )
+        val hs1 = alice.initiatorWriteMessage1()
+        val bobNoise = NoiseSession.responder(bobId, aliceId.nodeHint, bobId.nodeHint)
+        bobNoise.readHandshakeMessage(hs1)
+        val hs2 = bobNoise.writeHandshakeMessage(createTestBinding(bobId, ByteArray(32) { 0x33 }).encode())
+
+        val hs3 = alice.initiatorProcessMessage2(hs2, bobId.nodeHint)
+        assertNull("HS3 must be null when writer returns 197 fake bytes without establishing Noise", hs3)
+        assertEquals(HandshakeTrustState.SECURITY_REJECT, alice.state)
+        assertFalse(alice.isReady)
+        assertFalse(alice.noiseSession.isEstablished)
+        assertEquals(1, issuerCalls)
+        assertEquals(1, writerCalls)
+    }
+
+    @Test
+    fun testInitiator_A_HS3_FAIL_04_RealNoiseSplit_ThenMalformedReturnedLength_FailsClosed() {
+        val aliceId = createIdentity(0x11, 0x22)
+        val bobId = createIdentity(0x33, 0x44)
+        var issuerCalls = 0
+        var writerCalls = 0
+        val mockIssuer = LocalBindingIssuer {
+            issuerCalls++
+            aliceId.issueIdentityBinding().encode()
+        }
+        lateinit var alice: TrustedHandshakeController
+        val splitThenMalformedWriter = Hs3Writer { payload ->
+            writerCalls++
+            alice.noiseSession.writeHandshakeMessage(payload)
+            ByteArray(196)
+        }
+        val fakeAuth = object : PeerBindingTrustAuthority {
+            override fun applyValidatedBinding(binding: ValidatedPeerBinding): PeerTrustApplyResult =
+                PeerTrustApplyResult.Accepted
+        }
+        alice = TrustedHandshakeController.initiator(
+            identity = aliceId,
+            remoteHint = bobId.nodeHint,
+            trustAuthority = fakeAuth,
+            localBindingIssuer = mockIssuer,
+            hs3Writer = splitThenMalformedWriter
+        )
+        val hs1 = alice.initiatorWriteMessage1()
+        val bobNoise = NoiseSession.responder(bobId, aliceId.nodeHint, bobId.nodeHint)
+        bobNoise.readHandshakeMessage(hs1)
+        val hs2 = bobNoise.writeHandshakeMessage(createTestBinding(bobId, ByteArray(32) { 0x33 }).encode())
+
+        val hs3 = alice.initiatorProcessMessage2(hs2, bobId.nodeHint)
+        assertNull("HS3 must be null when returned length is malformed even if Noise split occurred", hs3)
+        assertEquals(HandshakeTrustState.SECURITY_REJECT, alice.state)
+        assertFalse(alice.isReady)
+        assertTrue("Noise session was split in mock", alice.noiseSession.isEstablished)
+        assertEquals(1, issuerCalls)
+        assertEquals(1, writerCalls)
+    }
+
+    @Test
+    fun testInitiator_A_HS3_FAIL_05_IssuerThrows_FailsClosed() {
+        val aliceId = createIdentity(0x11, 0x22)
+        val bobId = createIdentity(0x33, 0x44)
+        var issuerCalls = 0
+        var writerCalls = 0
+        val throwingIssuer = LocalBindingIssuer {
+            issuerCalls++
+            throw RuntimeException("Simulated local binding issuance failure")
+        }
+        val mockWriter = Hs3Writer { payload ->
+            writerCalls++
+            ByteArray(197)
+        }
+        val fakeAuth = object : PeerBindingTrustAuthority {
+            override fun applyValidatedBinding(binding: ValidatedPeerBinding): PeerTrustApplyResult =
+                PeerTrustApplyResult.Accepted
+        }
+        val alice = TrustedHandshakeController.initiator(
+            identity = aliceId,
+            remoteHint = bobId.nodeHint,
+            trustAuthority = fakeAuth,
+            localBindingIssuer = throwingIssuer,
+            hs3Writer = mockWriter
+        )
+        val hs1 = alice.initiatorWriteMessage1()
+        val bobNoise = NoiseSession.responder(bobId, aliceId.nodeHint, bobId.nodeHint)
+        bobNoise.readHandshakeMessage(hs1)
+        val hs2 = bobNoise.writeHandshakeMessage(createTestBinding(bobId, ByteArray(32) { 0x33 }).encode())
+
+        val hs3 = alice.initiatorProcessMessage2(hs2, bobId.nodeHint)
+        assertNull("HS3 must be null when issuer throws", hs3)
+        assertEquals(HandshakeTrustState.SECURITY_REJECT, alice.state)
+        assertFalse(alice.isReady)
+        assertFalse(alice.noiseSession.isEstablished)
+        assertEquals(1, issuerCalls)
+        assertEquals(0, writerCalls)
+    }
+
+    @Test
+    fun testInitiator_A_HS3_FAIL_06_IssuerReturnsNon133Bytes_FailsClosed() {
+        val aliceId = createIdentity(0x11, 0x22)
+        val bobId = createIdentity(0x33, 0x44)
+        var issuerCalls = 0
+        var writerCalls = 0
+        val shortIssuer = LocalBindingIssuer {
+            issuerCalls++
+            ByteArray(132)
+        }
+        val mockWriter = Hs3Writer { payload ->
+            writerCalls++
+            ByteArray(197)
+        }
+        val fakeAuth = object : PeerBindingTrustAuthority {
+            override fun applyValidatedBinding(binding: ValidatedPeerBinding): PeerTrustApplyResult =
+                PeerTrustApplyResult.Accepted
+        }
+        val alice = TrustedHandshakeController.initiator(
+            identity = aliceId,
+            remoteHint = bobId.nodeHint,
+            trustAuthority = fakeAuth,
+            localBindingIssuer = shortIssuer,
+            hs3Writer = mockWriter
+        )
+        val hs1 = alice.initiatorWriteMessage1()
+        val bobNoise = NoiseSession.responder(bobId, aliceId.nodeHint, bobId.nodeHint)
+        bobNoise.readHandshakeMessage(hs1)
+        val hs2 = bobNoise.writeHandshakeMessage(createTestBinding(bobId, ByteArray(32) { 0x33 }).encode())
+
+        val hs3 = alice.initiatorProcessMessage2(hs2, bobId.nodeHint)
+        assertNull("HS3 must be null when issuer returns non-133 bytes", hs3)
+        assertEquals(HandshakeTrustState.SECURITY_REJECT, alice.state)
+        assertFalse(alice.isReady)
+        assertFalse(alice.noiseSession.isEstablished)
+        assertEquals(1, issuerCalls)
+        assertEquals(0, writerCalls)
+    }
 }

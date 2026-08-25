@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Regression controls and structural checks for TrustedHandshakeController (ADR-003, Phase C8.4A / C8.4A.1).
+"""Regression controls and structural checks for TrustedHandshakeController (ADR-003, Phase C8.4A / C8.4A.1 / C8.4A.2).
 
 Verifies the presence, boundaries, and structural invariants of:
 - Typed HandshakeReadResult on Android and iOS (H01)
@@ -23,11 +23,15 @@ Verifies the presence, boundaries, and structural invariants of:
 - Canonical semantic test inventories exist on BOTH platforms (H19)
 - iOS readMessage2AndWrite3 absent or strictly non-public/uncalled in production mesh (H20)
 - Android HandshakeReadResult defensive immutability with private backing and clone copies (H21)
-- Method-scoped HS3 authority on Android and iOS (H22)
+- Method-scoped HS3 authority and correct initiator state ordering on Android and iOS (H22)
 - Zero-call semantic test inventory on Android and iOS (H23)
 - Option-B status truth in ADR-003 regarding untrusted SessionManager (H24)
 - iOS AppContainer archive-only boundary (H25)
-- NOISE_ESTABLISHED state is real, assigned, tested, and not READY (H26)
+- NOISE_ESTABLISHED state is real, assigned after split, tested, and distinct from READY (H26)
+- READY requires real Noise establishment on BOTH platforms (H27)
+- HS3 writer/issuer failure fails closed without leaking exceptions (H28)
+- Positive writer counts (1/1) proven on BOTH platforms for Accepted and FirstSeenPinned (H29)
+- Successful tests may not fake READY with non-delegating mock writers (H30)
 """
 from __future__ import annotations
 
@@ -54,7 +58,7 @@ IOS_MESH_NODE_PATH = ROOT / "ios" / "Godstone" / "Sources" / "GodstoneMesh" / "M
 ADR003_PATH = ROOT / "docs" / "adr" / "ADR-003-identity-and-sealed-sender.md"
 
 
-def strip_comments(text: str, lang: str = "kt") -> str:
+def strip_comments(text: str) -> str:
     """Remove single-line and multi-line comments."""
     text = re.sub(r'//.*', '', text)
     text = re.sub(r'/\*.*?\*/', '', text, flags=re.DOTALL)
@@ -276,27 +280,105 @@ def check_controls(
     if "readMessage2AndWrite3" in swift_noise_code:
         errors.append("iOS NoiseSession must NOT contain readMessage2AndWrite3 (H20)")
 
-    # ── H21: Android HandshakeReadResult defensive immutability ──
-    if "internal class HandshakeReadResult" not in kt_noise_code and "class HandshakeReadResult" not in kt_noise_code:
-        errors.append("Android HandshakeReadResult must be an internal class (H21)")
-    if "_payload" not in kt_noise_code or "_authenticatedRemoteStaticKey" not in kt_noise_code:
-        errors.append("Android HandshakeReadResult must use private backing fields for defensive copying (H21)")
-    if "clone()" not in kt_noise_code:
-        errors.append("Android HandshakeReadResult must use clone() for defensive copy semantics (H21)")
+    # ── H21: Android HandshakeReadResult defensive immutability (Strengthened) ──
+    hrr_start = kt_noise_code.find("internal class HandshakeReadResult")
+    ns_start = kt_noise_code.find("class NoiseSession")
+    if hrr_start < 0:
+        errors.append("Android NoiseSession must define 'internal class HandshakeReadResult' (H21)")
+    else:
+        hrr_body = kt_noise_code[hrr_start:ns_start] if ns_start > hrr_start else kt_noise_code[hrr_start:]
+        if "private val _payload: ByteArray" not in hrr_body:
+            errors.append("Android HandshakeReadResult must define 'private val _payload: ByteArray' backing field (H21)")
+        if "private val _authenticatedRemoteStaticKey: ByteArray?" not in hrr_body:
+            errors.append("Android HandshakeReadResult must define 'private val _authenticatedRemoteStaticKey: ByteArray?' backing field (H21)")
+        if ("_payload: ByteArray = payload.copyOf()" not in hrr_body and "_payload: ByteArray = payload.clone()" not in hrr_body and
+            "_payload = payload.copyOf()" not in hrr_body and "_payload = payload.clone()" not in hrr_body):
+            errors.append("Android HandshakeReadResult constructor must copy input payload (H21)")
+        if ("_authenticatedRemoteStaticKey: ByteArray? = authenticatedRemoteStaticKey?.copyOf()" not in hrr_body and
+            "_authenticatedRemoteStaticKey: ByteArray? = authenticatedRemoteStaticKey?.clone()" not in hrr_body and
+            "_authenticatedRemoteStaticKey = authenticatedRemoteStaticKey?.copyOf()" not in hrr_body and
+            "_authenticatedRemoteStaticKey = authenticatedRemoteStaticKey?.clone()" not in hrr_body):
+            errors.append("Android HandshakeReadResult constructor must copy input authenticatedRemoteStaticKey (H21)")
+        if "val payload: ByteArray" not in hrr_body or ("_payload.copyOf()" not in hrr_body and "_payload.clone()" not in hrr_body):
+            errors.append("Android HandshakeReadResult payload getter must return a defensive copy (H21)")
+        if "val authenticatedRemoteStaticKey: ByteArray?" not in hrr_body or ("_authenticatedRemoteStaticKey?.copyOf()" not in hrr_body and "_authenticatedRemoteStaticKey?.clone()" not in hrr_body):
+            errors.append("Android HandshakeReadResult authenticatedRemoteStaticKey getter must return a defensive copy (H21)")
     if "testHandshakeReadResult_DefensiveImmutability" not in kt_test:
         errors.append("Android TrustedHandshakeControllerTest missing testHandshakeReadResult_DefensiveImmutability (H21)")
 
-    # ── H22: Method-scoped HS3 authority on Android and iOS ──
-    if "hs3Writer.writeHs3" not in kt_ctrl_code:
-        errors.append("Android TrustedHandshakeController missing method-scoped hs3Writer.writeHs3 invocation (H22)")
-    if "hs3Writer.writeHs3" not in swift_ctrl_code:
-        errors.append("iOS TrustedHandshakeController missing method-scoped hs3Writer.writeHs3 invocation (H22)")
+    # ── H22: Method-scoped HS3 authority & Ordering on Android and iOS (Strengthened) ──
+    # Android initiatorProcessMessage2 sequence check
+    kt_init_match = re.search(r'fun\s+initiatorProcessMessage2\s*\(.*?\)\s*:\s*ByteArray\?\s*\{(?P<body>.*?)\n\s*fun\s+', kt_ctrl_code, re.DOTALL)
+    if not kt_init_match:
+        errors.append("Android TrustedHandshakeController missing initiatorProcessMessage2 method (H22)")
+    else:
+        kt_body = kt_init_match.group("body")
+        pos_val = kt_body.find("IdentityBindingValidator.validate")
+        pos_apply = kt_body.find("trustAuthority.applyValidatedBinding")
+        pos_issue = kt_body.find("localBindingIssuer.issueEncodedBinding")
+        pos_write = kt_body.find("hs3Writer.writeHs3")
+        pos_estab = kt_body.find("noiseSession.isEstablished")
+        pos_noise_state = kt_body.find("HandshakeTrustState.NOISE_ESTABLISHED")
+        pos_ready_state = kt_body.find("HandshakeTrustState.READY")
 
-    # ── H23: Zero-call semantic test inventory on Android and iOS ──
-    if "issuerCalls" not in kt_test or "hs3WriterCalls" not in kt_test:
-        errors.append("Android TrustedHandshakeControllerTest must verify zero issuer/hs3Writer calls on failure (H23)")
-    if "CountingIssuer" not in swift_test or "CountingHs3Writer" not in swift_test:
-        errors.append("iOS TrustedHandshakeControllerTests must verify zero issuer/hs3Writer calls on failure (H23)")
+        if pos_val < 0 or pos_apply < 0 or pos_issue < 0 or pos_write < 0 or pos_estab < 0 or pos_noise_state < 0 or pos_ready_state < 0:
+            errors.append("Android initiatorProcessMessage2 missing required steps in pipeline (H22)")
+        elif not (pos_val < pos_apply < pos_issue < pos_write < pos_estab < pos_noise_state < pos_ready_state):
+            errors.append("Android initiatorProcessMessage2 steps executed in invalid order (must be: validate -> apply -> issue -> writeHs3 -> isEstablished -> NOISE_ESTABLISHED -> READY) (H22)")
+        if "hs3Writer" in kt_ctrl_code[kt_ctrl_code.find("KeyChangedQuarantined"):kt_ctrl_code.find("responderProcessMessage1")]:
+            errors.append("Android hs3Writer must not be called in quarantine/rejected branch (H22)")
+
+    # iOS initiatorProcessMessage2 sequence check
+    swift_init_match = re.search(r'func\s+initiatorProcessMessage2\s*\(.*?\)\s*->\s*Data\?\s*\{(?P<body>.*?)\n\s*(?:func|\/\/\/)\s+', swift_ctrl_code, re.DOTALL)
+    if not swift_init_match:
+        errors.append("iOS TrustedHandshakeController missing initiatorProcessMessage2 method (H22)")
+    else:
+        swift_body = swift_init_match.group("body")
+        pos_val = swift_body.find("IdentityBindingValidator.validate")
+        pos_apply = swift_body.find("trustAuthority.applyValidatedBinding")
+        pos_issue = swift_body.find("localBindingIssuer.issueEncodedBinding")
+        pos_write = swift_body.find("hs3Writer.writeHs3")
+        pos_estab = swift_body.find("noiseSession.isEstablished")
+        pos_noise_state = swift_body.find(".noiseEstablished")
+        pos_ready_state = swift_body.find(".ready")
+
+        if pos_val < 0 or pos_apply < 0 or pos_issue < 0 or pos_write < 0 or pos_estab < 0 or pos_noise_state < 0 or pos_ready_state < 0:
+            errors.append("iOS initiatorProcessMessage2 missing required steps in pipeline (H22)")
+        elif not (pos_val < pos_apply < pos_issue < pos_write < pos_estab < pos_noise_state < pos_ready_state):
+            errors.append("iOS initiatorProcessMessage2 steps executed in invalid order (must be: validate -> apply -> issue -> writeHs3 -> isEstablished -> .noiseEstablished -> .ready) (H22)")
+        if "hs3Writer" in swift_ctrl_code[swift_ctrl_code.find("case .keyChangedQuarantined"):swift_ctrl_code.find("responderProcessMessage1")]:
+            errors.append("iOS hs3Writer must not be called in quarantine/rejected branch (H22)")
+
+    # ── H23: Zero-call semantic test inventory on Android and iOS (Strengthened) ──
+    # Android zero-call check
+    h_a20_start = kt_test.find("testTrustedHandshake_H_A20")
+    h_a20_pos = kt_test.find("Positive case: Accepted", h_a20_start)
+    if h_a20_start >= 0 and h_a20_pos > h_a20_start:
+        h_a20_fail_body = kt_test[h_a20_start:h_a20_pos]
+        if "assertEquals(\"issuerCalls must be 0 for ${tc.name}\", 0, issuerCalls)" not in h_a20_fail_body:
+            errors.append("Android H-A20 test missing zero-call assertion for issuerCalls (H23)")
+        if "assertEquals(\"hs3WriterCalls must be 0 for ${tc.name}\", 0, hs3WriterCalls)" not in h_a20_fail_body:
+            errors.append("Android H-A20 test missing zero-call assertion for hs3WriterCalls (H23)")
+        for req_token in ["F1_InvalidSignature", "F2_StaticMismatch", "F3_HintMismatch", "F4_KeyChangedQuarantined", "F5_RejectedRevoked", "F6_Corrupt", "F7_StorageFailure"]:
+            if req_token not in h_a20_fail_body:
+                errors.append(f"Android H-A20 test missing failure test case {req_token} (H23)")
+    else:
+        errors.append("Android TrustedHandshakeControllerTest missing H-A20 test body (H23)")
+
+    # iOS zero-call check
+    h_i20_start = swift_test.find("testTrustedHandshake_H_I20")
+    h_i20_pos = swift_test.find("Positive case: Accepted", h_i20_start)
+    if h_i20_start >= 0 and h_i20_pos > h_i20_start:
+        h_i20_fail_body = swift_test[h_i20_start:h_i20_pos]
+        if "XCTAssertEqual(issuer.calls, 0" not in h_i20_fail_body:
+            errors.append("iOS H-I20 test missing zero-call assertion for issuer.calls (H23)")
+        if "XCTAssertEqual(writer.calls, 0" not in h_i20_fail_body:
+            errors.append("iOS H-I20 test missing zero-call assertion for writer.calls (H23)")
+        for req_token in ["F1_InvalidSignature", "F2_StaticMismatch", "F3_HintMismatch", "F4_KeyChangedQuarantined", "F5_RejectedRevoked", "F6_Corrupt", "F7_StorageFailure"]:
+            if req_token not in h_i20_fail_body:
+                errors.append(f"iOS H-I20 test missing failure test case {req_token} (H23)")
+    else:
+        errors.append("iOS TrustedHandshakeControllerTests missing H-I20 test body (H23)")
 
     # ── H24: Option-B status truth in ADR-003 regarding untrusted SessionManager ──
     if "SessionManager" not in adr_txt or "UNTRUSTED" not in adr_txt or "NOT RUNTIME-AUTHORITATIVE" not in adr_txt:
@@ -312,7 +394,7 @@ def check_controls(
         if forbidden in swift_app_cont_code:
             errors.append(f"iOS AppContainer must NOT reference {forbidden} (H25)")
 
-    # ── H26: NOISE_ESTABLISHED state is real, assigned, tested, and not READY ──
+    # ── H26: NOISE_ESTABLISHED state is real, assigned after split, tested, and distinct from READY (Strengthened) ──
     if "HandshakeTrustState.NOISE_ESTABLISHED" not in kt_ctrl_code:
         errors.append("Android TrustedHandshakeController must transition through NOISE_ESTABLISHED (H26)")
     if ".noiseEstablished" not in swift_ctrl_code:
@@ -321,12 +403,90 @@ def check_controls(
         errors.append("Android TrustedHandshakeControllerTest missing NOISE_ESTABLISHED observation test (H26)")
     if "testResponder_NoiseEstablishedObservedDuringTrustApply_AcceptedAdvancesToReady" not in swift_test:
         errors.append("iOS TrustedHandshakeControllerTests missing NOISE_ESTABLISHED observation test (H26)")
+    if "testResponder_NoiseEstablishedObservedDuringTrustApply_QuarantineDeniesReadyAndSeal" not in kt_test:
+        errors.append("Android TrustedHandshakeControllerTest missing NOISE_ESTABLISHED quarantine deny test (H26)")
+    if "testResponder_NoiseEstablishedObservedDuringTrustApply_QuarantineDeniesReadyAndSeal" not in swift_test:
+        errors.append("iOS TrustedHandshakeControllerTests missing NOISE_ESTABLISHED quarantine deny test (H26)")
+
+    # Verify seal/open only accept READY (not NOISE_ESTABLISHED)
+    if "NOISE_ESTABLISHED" in kt_ctrl_code[kt_ctrl_code.find("fun seal("):kt_ctrl_code.find("companion object")]:
+        errors.append("Android seal/open must NOT accept NOISE_ESTABLISHED (H26)")
+
+    # ── H27: READY requires real Noise establishment on BOTH platforms ──
+    # Android production isEstablished guard
+    if kt_init_match and "if (!noiseSession.isEstablished)" not in kt_init_match.group("body"):
+        errors.append("Android initiatorProcessMessage2 missing !noiseSession.isEstablished guard (H27)")
+    kt_resp_match = re.search(r'fun\s+responderProcessMessage3\s*\(.*?\)\s*:\s*Boolean\s*\{(?P<body>.*?)\n\s*fun\s+', kt_ctrl_code, re.DOTALL)
+    if not kt_resp_match or "if (!noiseSession.isEstablished)" not in kt_resp_match.group("body"):
+        errors.append("Android responderProcessMessage3 missing !noiseSession.isEstablished guard (H27)")
+
+    # iOS production isEstablished guard
+    if swift_init_match and "guard noiseSession.isEstablished" not in swift_init_match.group("body"):
+        errors.append("iOS initiatorProcessMessage2 missing guard noiseSession.isEstablished (H27)")
+    swift_resp_match = re.search(r'func\s+responderProcessMessage3\s*\(.*?\)\s*->\s*Bool\s*\{(?P<body>.*?)\n\s*(?:func|\/\/\/)\s+', swift_ctrl_code, re.DOTALL)
+    if not swift_resp_match or "guard noiseSession.isEstablished" not in swift_resp_match.group("body"):
+        errors.append("iOS responderProcessMessage3 missing guard noiseSession.isEstablished (H27)")
+
+    # Negative control semantic test presence
+    if "A_HS3_FAIL_03" not in kt_test:
+        errors.append("Android TrustedHandshakeControllerTest missing A_HS3_FAIL_03 negative control (H27)")
+    if "I_HS3_FAIL_03" not in swift_test:
+        errors.append("iOS TrustedHandshakeControllerTests missing I_HS3_FAIL_03 negative control (H27)")
+
+    # ── H28: HS3 writer/issuer failure fails closed without leaking exceptions ──
+    # Android controller must catch writer/issuer exceptions rather than leaking
+    if "hs3Writer.writeHs3" in kt_ctrl_code:
+        hs3_pos = kt_ctrl_code.find("hs3Writer.writeHs3")
+        try_before = kt_ctrl_code.rfind("try {", 0, hs3_pos)
+        catch_after = kt_ctrl_code.find("catch (e: Exception)", hs3_pos)
+        if try_before < 0 or catch_after < 0 or catch_after - hs3_pos > 200:
+            errors.append("Android TrustedHandshakeController must wrap hs3Writer in try/catch to prevent exception leak (H28)")
+
+    # Semantic failure tests battery
+    for a_test in ["A_HS3_FAIL_01", "A_HS3_FAIL_02", "A_HS3_FAIL_04", "A_HS3_FAIL_05", "A_HS3_FAIL_06"]:
+        if a_test not in kt_test:
+            errors.append(f"Android TrustedHandshakeControllerTest missing {a_test} (H28)")
+    for i_test in ["I_HS3_FAIL_01", "I_HS3_FAIL_02", "I_HS3_FAIL_04", "I_HS3_FAIL_05", "I_HS3_FAIL_06"]:
+        if i_test not in swift_test:
+            errors.append(f"iOS TrustedHandshakeControllerTests missing {i_test} (H28)")
+
+    # ── H29: Positive writer counts (1/1) proven on BOTH platforms for Accepted and FirstSeenPinned ──
+    if "issuerCalls must be 1 for Accepted" not in kt_test and "assertEquals(1, issuerCalls)" not in kt_test:
+        errors.append("Android test missing positive issuerCalls == 1 assertion for Accepted (H29)")
+    if "hs3WriterCalls must be 1 for Accepted" not in kt_test and "assertEquals(1, hs3WriterCalls)" not in kt_test:
+        errors.append("Android test missing positive hs3WriterCalls == 1 assertion for Accepted (H29)")
+    if "issuerCalls must be 1 for FirstSeenPinned" not in kt_test and "assertEquals(1, issuerCalls)" not in kt_test:
+        errors.append("Android test missing positive issuerCalls == 1 assertion for FirstSeenPinned (H29)")
+    if "hs3WriterCalls must be 1 for FirstSeenPinned" not in kt_test and "assertEquals(1, hs3WriterCalls)" not in kt_test:
+        errors.append("Android test missing positive hs3WriterCalls == 1 assertion for FirstSeenPinned (H29)")
+
+    # iOS positive writer count assertions
+    h_i20_start = swift_test.find("testTrustedHandshake_H_I20")
+    h_i21_start = swift_test.find("testTrustedHandshake_H_I21")
+    if h_i20_start >= 0 and h_i21_start > h_i20_start:
+        h_i20_body = swift_test[h_i20_start:h_i21_start]
+        writer_1_count = len(re.findall(r'XCTAssertEqual\(writer\.calls,\s*1\)', h_i20_body))
+        if writer_1_count < 2:
+            errors.append("iOS H-I20 test missing positive writer.calls == 1 assertions for Accepted and FirstSeenPinned (H29)")
+    else:
+        errors.append("iOS TrustedHandshakeControllerTests missing H-I20 test body (H29)")
+
+    # ── H30: Successful tests may not fake READY with non-delegating mock writers ──
+    # Check that positive tests in Android and iOS do NOT use fake non-delegating writers
+    accepted_slice = kt_test[kt_test.find("Positive case: Accepted"):kt_test.find("Positive case: FirstSeenPinned")]
+    firstseen_slice = kt_test[kt_test.find("Positive case: FirstSeenPinned"):kt_test.find("testResponder_NoiseEstablishedObservedDuringTrustApply_AcceptedAdvancesToReady")]
+    if "alice.noiseSession.writeHandshakeMessage" not in accepted_slice:
+        errors.append("Android positive Accepted test must delegate to noiseSession.writeHandshakeMessage (H30)")
+    if "alice.noiseSession.writeHandshakeMessage" not in firstseen_slice:
+        errors.append("Android positive FirstSeenPinned test must delegate to noiseSession.writeHandshakeMessage (H30)")
+    if "CountingHs3Writer(noiseSession:" not in swift_test[swift_test.find("Positive case: Accepted"):swift_test.find("testTrustedHandshake_H_I21")]:
+        errors.append("iOS positive Accepted test must use delegating CountingHs3Writer(noiseSession:) (H30)")
 
     return errors
 
 
 def selftest() -> int:
-    """Run mutation selftest: inject 26 mutations (one per control) and verify each is caught."""
+    """Run mutation selftest across all controls H01-H30 and verify each is caught."""
     import shutil
 
     passed = 0
@@ -516,22 +676,81 @@ def selftest() -> int:
         else: failures.append("Mutation H20 was NOT caught")
         reset_all()
 
-        # Mutation H21: Remove clone() from Android HandshakeReadResult
-        f_kt_noise.write_text(f_kt_noise.read_text(encoding="utf-8").replace(".clone()", ""), encoding="utf-8")
+        # Mutation H21a: Remove `internal` from HandshakeReadResult
+        f_kt_noise.write_text(f_kt_noise.read_text(encoding="utf-8").replace("internal class HandshakeReadResult", "public class HandshakeReadResult"), encoding="utf-8")
         if any("H21" in e for e in run_check()): passed += 1
-        else: failures.append("Mutation H21 was NOT caught")
+        else: failures.append("Mutation H21a was NOT caught")
         reset_all()
 
-        # Mutation H22: Remove hs3Writer.writeHs3 from iOS controller
-        f_swift_ctrl.write_text(f_swift_ctrl.read_text(encoding="utf-8").replace("hs3Writer.writeHs3", "dummyWriter"), encoding="utf-8")
+        # Mutation H21b: Change payload getter from clone()/copyOf() to raw backing
+        f_kt_noise.write_text(f_kt_noise.read_text(encoding="utf-8").replace("get() = _payload.copyOf()", "get() = _payload").replace("get() = _payload.clone()", "get() = _payload"), encoding="utf-8")
+        if any("H21" in e for e in run_check()): passed += 1
+        else: failures.append("Mutation H21b was NOT caught")
+        reset_all()
+
+        # Mutation H21c: Change remote-static getter from clone()/copyOf() to raw backing
+        f_kt_noise.write_text(f_kt_noise.read_text(encoding="utf-8").replace("get() = _authenticatedRemoteStaticKey?.copyOf()", "get() = _authenticatedRemoteStaticKey").replace("get() = _authenticatedRemoteStaticKey?.clone()", "get() = _authenticatedRemoteStaticKey"), encoding="utf-8")
+        if any("H21" in e for e in run_check()): passed += 1
+        else: failures.append("Mutation H21c was NOT caught")
+        reset_all()
+
+        # Mutation H21d: Remove constructor input copy
+        f_kt_noise.write_text(f_kt_noise.read_text(encoding="utf-8").replace("private val _payload: ByteArray = payload.copyOf()", "private val _payload: ByteArray = payload").replace("private val _payload: ByteArray = payload.clone()", "private val _payload: ByteArray = payload"), encoding="utf-8")
+        if any("H21" in e for e in run_check()): passed += 1
+        else: failures.append("Mutation H21d was NOT caught")
+        reset_all()
+
+        # Mutation H22a: Move hs3Writer call before applyValidatedBinding in Android controller
+        bad_kt_ctrl = f_kt_ctrl.read_text(encoding="utf-8").replace(
+            "val applyResult = trustAuthority.applyValidatedBinding(validation.binding)",
+            "val dummyHs3 = hs3Writer.writeHs3(ByteArray(133))\n        val applyResult = trustAuthority.applyValidatedBinding(validation.binding)"
+        )
+        f_kt_ctrl.write_text(bad_kt_ctrl, encoding="utf-8")
         if any("H22" in e for e in run_check()): passed += 1
-        else: failures.append("Mutation H22 was NOT caught")
+        else: failures.append("Mutation H22a was NOT caught")
         reset_all()
 
-        # Mutation H23: Remove CountingIssuer from iOS test
-        f_swift_test.write_text(f_swift_test.read_text(encoding="utf-8").replace("CountingIssuer", "OtherIssuer"), encoding="utf-8")
+        # Mutation H22b: Move hs3Writer into quarantine branch in iOS controller
+        bad_swift_ctrl = f_swift_ctrl.read_text(encoding="utf-8").replace(
+            "case .keyChangedQuarantined:\n            state = .quarantined\n            return nil",
+            "case .keyChangedQuarantined:\n            state = .quarantined\n            _ = try? hs3Writer.writeHs3(payload: Data())\n            return nil"
+        )
+        f_swift_ctrl.write_text(bad_swift_ctrl, encoding="utf-8")
+        if any("H22" in e for e in run_check()): passed += 1
+        else: failures.append("Mutation H22b was NOT caught")
+        reset_all()
+
+        # Mutation H22c: Move NOISE_ESTABLISHED before hs3Writer in Android controller
+        bad_kt_ctrl2 = f_kt_ctrl.read_text(encoding="utf-8").replace(
+            "state = HandshakeTrustState.NOISE_ESTABLISHED\n                state = HandshakeTrustState.READY",
+            "state = HandshakeTrustState.READY"
+        ).replace(
+            "val hs3 = try {",
+            "state = HandshakeTrustState.NOISE_ESTABLISHED\n                val hs3 = try {"
+        )
+        f_kt_ctrl.write_text(bad_kt_ctrl2, encoding="utf-8")
+        if any("H22" in e for e in run_check()): passed += 1
+        else: failures.append("Mutation H22c was NOT caught")
+        reset_all()
+
+        # Mutation H23a: Replace 0 with 1 in Android H-A20 zero-call assertion
+        bad_kt_test = f_kt_test.read_text(encoding="utf-8").replace(
+            "assertEquals(\"issuerCalls must be 0 for ${tc.name}\", 0, issuerCalls)",
+            "assertEquals(\"issuerCalls must be 0 for ${tc.name}\", 1, issuerCalls)"
+        )
+        f_kt_test.write_text(bad_kt_test, encoding="utf-8")
         if any("H23" in e for e in run_check()): passed += 1
-        else: failures.append("Mutation H23 was NOT caught")
+        else: failures.append("Mutation H23a was NOT caught")
+        reset_all()
+
+        # Mutation H23b: Delete failure test case from iOS H-I20
+        bad_swift_test = f_swift_test.read_text(encoding="utf-8").replace(
+            '"F4_KeyChangedQuarantined"',
+            '"F4_Skipped"',
+        )
+        f_swift_test.write_text(bad_swift_test, encoding="utf-8")
+        if any("H23" in e for e in run_check()): passed += 1
+        else: failures.append("Mutation H23b was NOT caught")
         reset_all()
 
         # Mutation H24: Remove UNTRUSTED warning from ADR-003
@@ -546,18 +765,113 @@ def selftest() -> int:
         else: failures.append("Mutation H25 was NOT caught")
         reset_all()
 
-        # Mutation H26: Remove NOISE_ESTABLISHED state transition from Android controller
-        f_kt_ctrl.write_text(f_kt_ctrl.read_text(encoding="utf-8").replace("HandshakeTrustState.NOISE_ESTABLISHED", "HandshakeTrustState.READY"), encoding="utf-8")
-        if any("H26" in e for e in run_check()): passed += 1
-        else: failures.append("Mutation H26 was NOT caught")
+        # Mutation H26a: Move initiator NOISE_ESTABLISHED assignment before writer in iOS controller
+        bad_swift_ctrl2 = f_swift_ctrl.read_text(encoding="utf-8").replace(
+            "state = .noiseEstablished\n                state = .ready",
+            "state = .ready"
+        ).replace(
+            "let hs3 = try hs3Writer.writeHs3",
+            "state = .noiseEstablished\n                let hs3 = try hs3Writer.writeHs3"
+        )
+        f_swift_ctrl.write_text(bad_swift_ctrl2, encoding="utf-8")
+        if any("H22" in e or "H26" in e for e in run_check()): passed += 1
+        else: failures.append("Mutation H26a was NOT caught")
         reset_all()
 
+        # Mutation H26b: Allow seal/open when NOISE_ESTABLISHED in Android controller
+        bad_kt_ctrl3 = f_kt_ctrl.read_text(encoding="utf-8").replace(
+            "if (state != HandshakeTrustState.READY) return null",
+            "if (state != HandshakeTrustState.READY && state != HandshakeTrustState.NOISE_ESTABLISHED) return null"
+        )
+        f_kt_ctrl.write_text(bad_kt_ctrl3, encoding="utf-8")
+        if any("H26" in e for e in run_check()): passed += 1
+        else: failures.append("Mutation H26b was NOT caught")
+        reset_all()
+
+        # Mutation H27a: Remove isEstablished guard before READY in Android controller
+        bad_kt_ctrl_h27 = f_kt_ctrl.read_text(encoding="utf-8").replace(
+            "if (!noiseSession.isEstablished)",
+            "if (true)"
+        )
+        f_kt_ctrl.write_text(bad_kt_ctrl_h27, encoding="utf-8")
+        if any("H27" in e for e in run_check()): passed += 1
+        else: failures.append("Mutation H27a was NOT caught")
+        reset_all()
+
+        # Mutation H27b: Remove isEstablished guard before READY in iOS controller
+        bad_swift_ctrl_h27 = f_swift_ctrl.read_text(encoding="utf-8").replace(
+            "guard noiseSession.isEstablished",
+            "guard true"
+        )
+        f_swift_ctrl.write_text(bad_swift_ctrl_h27, encoding="utf-8")
+        if any("H27" in e for e in run_check()): passed += 1
+        else: failures.append("Mutation H27b was NOT caught")
+        reset_all()
+
+        # Mutation H28a: Remove try-catch around hs3Writer in Android controller (leaks exception)
+        bad_kt_ctrl_h28 = f_kt_ctrl.read_text(encoding="utf-8").replace(
+            "val hs3 = try {\n                    hs3Writer.writeHs3(localBytes)\n                } catch (e: Exception) {\n                    state = HandshakeTrustState.SECURITY_REJECT\n                    return null\n                }",
+            "val hs3 = hs3Writer.writeHs3(localBytes)"
+        )
+        f_kt_ctrl.write_text(bad_kt_ctrl_h28, encoding="utf-8")
+        if any("H28" in e for e in run_check()): passed += 1
+        else: failures.append("Mutation H28a was NOT caught")
+        reset_all()
+
+        # Mutation H28b: Remove A_HS3_FAIL_01 test from Android test
+        bad_kt_test_h28 = f_kt_test.read_text(encoding="utf-8").replace("A_HS3_FAIL_01", "A_HS3_OLD_01")
+        f_kt_test.write_text(bad_kt_test_h28, encoding="utf-8")
+        if any("H28" in e for e in run_check()): passed += 1
+        else: failures.append("Mutation H28b was NOT caught")
+        reset_all()
+
+        # Mutation H29a: Remove iOS FirstSeenPinned writer assertion in H-I20
+        bad_swift_test_h29 = f_swift_test.read_text(encoding="utf-8").replace(
+            "XCTAssertEqual(writer.calls, 1)\n            XCTAssertTrue(alice.noiseSession.isEstablished)\n        }\n    }\n\n    // MARK: - H-I21",
+            "XCTAssertTrue(alice.noiseSession.isEstablished)\n        }\n    }\n\n    // MARK: - H-I21"
+        )
+        f_swift_test.write_text(bad_swift_test_h29, encoding="utf-8")
+        if any("H29" in e for e in run_check()): passed += 1
+        else: failures.append("Mutation H29a was NOT caught")
+        reset_all()
+
+        # Mutation H29b: Remove Android FirstSeenPinned hs3WriterCalls assertion in H-A20
+        bad_kt_test_h29 = f_kt_test.read_text(encoding="utf-8").replace(
+            "assertEquals(\"hs3WriterCalls must be 1 for FirstSeenPinned\", 1, hs3WriterCalls)",
+            ""
+        )
+        f_kt_test.write_text(bad_kt_test_h29, encoding="utf-8")
+        if any("H29" in e for e in run_check()): passed += 1
+        else: failures.append("Mutation H29b was NOT caught")
+        reset_all()
+
+        # Mutation H30a: Change iOS positive accepted writer to return fake Data(count: 197) without NoiseSession
+        bad_swift_test_h30 = f_swift_test.read_text(encoding="utf-8").replace(
+            "CountingHs3Writer(noiseSession: noiseSession)",
+            "CountingHs3Writer()"
+        )
+        f_swift_test.write_text(bad_swift_test_h30, encoding="utf-8")
+        if any("H30" in e for e in run_check()): passed += 1
+        else: failures.append("Mutation H30a was NOT caught")
+        reset_all()
+
+        # Mutation H30b: Change Android positive accepted writer to return fake ByteArray(197) without NoiseSession
+        bad_kt_test_h30 = f_kt_test.read_text(encoding="utf-8").replace(
+            "alice.noiseSession.writeHandshakeMessage(payload)",
+            "ByteArray(197)"
+        )
+        f_kt_test.write_text(bad_kt_test_h30, encoding="utf-8")
+        if any("H30" in e for e in run_check()): passed += 1
+        else: failures.append("Mutation H30b was NOT caught")
+        reset_all()
+
+    total_mutations = 41
     if failures:
         for f in failures:
             print(f"::error::selftest failure: {f}")
         return 1
 
-    print(f"check_trusted_handshake_controls selftest PASSED ({passed}/26 mutations caught deterministically).")
+    print(f"check_trusted_handshake_controls selftest PASSED ({passed}/{total_mutations} mutations caught deterministically across H01-H30).")
     return 0
 
 
@@ -576,7 +890,7 @@ def main() -> int:
         print(f"\nFAIL: {len(errors)} trusted handshake control issue(s) found.", file=sys.stderr)
         return 1
 
-    print("TRUSTED HANDSHAKE CONTROLS GATE: PASS -- typed inspection, trust gate, seal/open boundary, defensive immutability, zero-call semantics, and link flags satisfied.")
+    print("TRUSTED HANDSHAKE CONTROLS GATE: PASS -- typed inspection, trust gate, seal/open boundary, defensive immutability, zero-call semantics, Noise establishment invariant (H01-H30), and link flags satisfied.")
     return 0
 
 

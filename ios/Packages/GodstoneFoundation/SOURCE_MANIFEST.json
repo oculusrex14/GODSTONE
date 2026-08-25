@@ -41,7 +41,7 @@
     "Sources/GodstoneMesh/SessionManager.swift": "dbd0e466b8fd02de35f5eda449c9b77ff1b310231668365dbde889db5ad18212",
     "Sources/GodstoneMesh/SosFrameValidator.swift": "40da66c6cb8e6321733094655cc56c280e1fbd111fbbccb38eb392ee682c521a",
     "Sources/GodstoneMesh/SqliteDeliveryRepository.swift": "2af5ed87ebfb9b4c19b956d2b8e5b73d162f148962ffe55b2e2c11fc140d96e2",
-    "Sources/GodstoneMesh/TrustedHandshakeController.swift": "badb1a38424b17e0d1f30682c1b58af9b9f386c08ddac0966cc9b191b04b8071",
+    "Sources/GodstoneMesh/TrustedHandshakeController.swift": "7522685d33ddaf9e3b7167b8c2577440db9d2bd7d739e3529a9e8aa4524d26c3",
     "Sources/GodstoneMesh/WireV2.swift": "98a75a58716bacd7d33a3472d063fc0821e96cf8cae24497d8e91450c0e8c74d",
     "Tests/GodstoneCoreTests/OracleAnswerValidatorTests.swift": "7568184482727be1f07e78761b53f11adfa565893f51f7ad217eac95031f476a",
     "Tests/GodstoneCoreTests/OracleViewModelRuntimeTests.swift": "a04c5ac5186c28686c6767e8f3b89bf905bf936d5cb42eebad65bb455b6ddab0",
@@ -64,7 +64,7 @@
     "Tests/GodstoneMeshTests/RouterTests.swift": "f6f2859e50df0efd84c07c5f6730cf2bfbd6a4fbabd000b11051fd0b8f04ae28",
     "Tests/GodstoneMeshTests/SqliteDeliveryRepositoryTests.swift": "5edde0a6ff22cb50e1536bf0d0291d7fda2000741bcd2afb9815475fc1268a31",
     "Tests/GodstoneMeshTests/SqliteMessageStoreTests.swift": "146500f7f9563f3de001f606ab29ec06474252a429372e2b5c4e2cd9b6ba624b",
-    "Tests/GodstoneMeshTests/TrustedHandshakeControllerTests.swift": "84a9ae966964d3bf8e811fdc754729b9552c67bf6e59b1bd7a9fb5981ed07f20",
+    "Tests/GodstoneMeshTests/TrustedHandshakeControllerTests.swift": "ba18f1de55843fd758a46e5357a843f94a79e14c6c63ccf1178b12915c4d5289",
     "Tests/GodstoneMeshTests/WireV2VectorTests.swift": "49099a1535aa501763df0c2949949b76f14ee8b6e0f585abf4306a2f70e23c70"
   },
   "schema": 1

@@ -128,10 +128,20 @@ internal final class TrustedHandshakeController: @unchecked Sendable {
         case .accepted, .firstSeenPinned:
             do {
                 let localBytes = try localBindingIssuer.issueEncodedBinding()
-                guard localBytes.count == 133 else { return nil }
-                state = .noiseEstablished
+                guard localBytes.count == 133 else {
+                    state = .securityReject
+                    return nil
+                }
                 let hs3 = try hs3Writer.writeHs3(payload: localBytes)
-                guard hs3.count == 197 else { return nil }
+                guard hs3.count == 197 else {
+                    state = .securityReject
+                    return nil
+                }
+                guard noiseSession.isEstablished else {
+                    state = .securityReject
+                    return nil
+                }
+                state = .noiseEstablished
                 state = .ready
                 return hs3
             } catch {
@@ -222,6 +232,10 @@ internal final class TrustedHandshakeController: @unchecked Sendable {
         let applyResult = trustAuthority.applyValidatedBinding(binding)
         switch applyResult {
         case .accepted, .firstSeenPinned:
+            guard noiseSession.isEstablished else {
+                state = .securityReject
+                return false
+            }
             state = .ready
             return true
         case .keyChangedQuarantined:

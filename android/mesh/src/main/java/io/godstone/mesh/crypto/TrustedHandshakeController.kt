@@ -126,11 +126,31 @@ internal class TrustedHandshakeController(
         return when (applyResult) {
             is PeerTrustApplyResult.Accepted,
             is PeerTrustApplyResult.FirstSeenPinned -> {
-                val localBytes = localBindingIssuer.issueEncodedBinding()
-                check(localBytes.size == 133) { "Local binding size must be 133, was ${localBytes.size}" }
+                val localBytes = try {
+                    localBindingIssuer.issueEncodedBinding()
+                } catch (e: Exception) {
+                    state = HandshakeTrustState.SECURITY_REJECT
+                    return null
+                }
+                if (localBytes.size != 133) {
+                    state = HandshakeTrustState.SECURITY_REJECT
+                    return null
+                }
+                val hs3 = try {
+                    hs3Writer.writeHs3(localBytes)
+                } catch (e: Exception) {
+                    state = HandshakeTrustState.SECURITY_REJECT
+                    return null
+                }
+                if (hs3.size != 197) {
+                    state = HandshakeTrustState.SECURITY_REJECT
+                    return null
+                }
+                if (!noiseSession.isEstablished) {
+                    state = HandshakeTrustState.SECURITY_REJECT
+                    return null
+                }
                 state = HandshakeTrustState.NOISE_ESTABLISHED
-                val hs3 = hs3Writer.writeHs3(localBytes)
-                check(hs3.size == 197) { "HS3 size must be exactly 197 bytes, was ${hs3.size}" }
                 state = HandshakeTrustState.READY
                 hs3
             }
@@ -219,6 +239,10 @@ internal class TrustedHandshakeController(
         return when (applyResult) {
             is PeerTrustApplyResult.Accepted,
             is PeerTrustApplyResult.FirstSeenPinned -> {
+                if (!noiseSession.isEstablished) {
+                    state = HandshakeTrustState.SECURITY_REJECT
+                    return false
+                }
                 state = HandshakeTrustState.READY
                 true
             }

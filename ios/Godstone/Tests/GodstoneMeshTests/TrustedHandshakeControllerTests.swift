@@ -787,12 +787,14 @@ final class TrustedHandshakeControllerTests: XCTestCase {
         do {
             let issuer = CountingIssuer(identity: aliceId)
             let fakeAuth = LambdaTrustAuthority { _ in .accepted }
+            let noiseSession = NoiseSession(role: .initiator, staticKey: aliceId.agreementKey, localHint: aliceId.nodeHint, remoteHint: bobId.nodeHint)
+            let writer = CountingHs3Writer(noiseSession: noiseSession)
             let alice = TrustedHandshakeController(
-                noiseSession: NoiseSession(role: .initiator, staticKey: aliceId.agreementKey, localHint: aliceId.nodeHint, remoteHint: bobId.nodeHint),
+                noiseSession: noiseSession,
                 trustAuthority: fakeAuth,
                 localIdentity: aliceId,
                 localBindingIssuer: issuer,
-                hs3Writer: nil
+                hs3Writer: writer
             )
             let hs1 = try alice.initiatorWriteMessage1()
             let bobNoise = NoiseSession(role: .responder, staticKey: bobId.agreementKey, localHint: bobId.nodeHint, remoteHint: aliceId.nodeHint)
@@ -803,6 +805,7 @@ final class TrustedHandshakeControllerTests: XCTestCase {
             XCTAssertEqual(alice.state, .ready)
             XCTAssertTrue(alice.isReady)
             XCTAssertEqual(issuer.calls, 1)
+            XCTAssertEqual(writer.calls, 1)
             XCTAssertTrue(alice.noiseSession.isEstablished)
         }
 
@@ -810,12 +813,14 @@ final class TrustedHandshakeControllerTests: XCTestCase {
         do {
             let issuer = CountingIssuer(identity: aliceId)
             let fakeAuth = LambdaTrustAuthority { _ in .firstSeenPinned }
+            let noiseSession = NoiseSession(role: .initiator, staticKey: aliceId.agreementKey, localHint: aliceId.nodeHint, remoteHint: bobId.nodeHint)
+            let writer = CountingHs3Writer(noiseSession: noiseSession)
             let alice = TrustedHandshakeController(
-                noiseSession: NoiseSession(role: .initiator, staticKey: aliceId.agreementKey, localHint: aliceId.nodeHint, remoteHint: bobId.nodeHint),
+                noiseSession: noiseSession,
                 trustAuthority: fakeAuth,
                 localIdentity: aliceId,
                 localBindingIssuer: issuer,
-                hs3Writer: nil
+                hs3Writer: writer
             )
             let hs1 = try alice.initiatorWriteMessage1()
             let bobNoise = NoiseSession(role: .responder, staticKey: bobId.agreementKey, localHint: bobId.nodeHint, remoteHint: aliceId.nodeHint)
@@ -826,6 +831,7 @@ final class TrustedHandshakeControllerTests: XCTestCase {
             XCTAssertEqual(alice.state, .ready)
             XCTAssertTrue(alice.isReady)
             XCTAssertEqual(issuer.calls, 1)
+            XCTAssertEqual(writer.calls, 1)
             XCTAssertTrue(alice.noiseSession.isEstablished)
         }
     }
@@ -899,13 +905,14 @@ final class TrustedHandshakeControllerTests: XCTestCase {
         XCTAssertNil(hs3)
         XCTAssertEqual(writer.calls, 0, "hs3Writer must not be called when trust fails")
 
-        // Positive path: writer called exactly once
-        let acceptedWriter = CountingHs3Writer()
+        // Positive path: writer called exactly once and delegates to NoiseSession
+        let acceptedSession = NoiseSession(role: .initiator, staticKey: aliceId.agreementKey, localHint: aliceId.nodeHint, remoteHint: bobId.nodeHint)
+        let acceptedWriter = CountingHs3Writer(noiseSession: acceptedSession)
         let fakeAcceptAuth = LambdaTrustAuthority { _ in .accepted }
-        let aliceAccepted = TrustedHandshakeController.initiator(
-            identity: aliceId,
-            remoteHint: bobId.nodeHint,
+        let aliceAccepted = TrustedHandshakeController(
+            noiseSession: acceptedSession,
             trustAuthority: fakeAcceptAuth,
+            localIdentity: aliceId,
             localBindingIssuer: nil,
             hs3Writer: acceptedWriter
         )
@@ -916,6 +923,8 @@ final class TrustedHandshakeControllerTests: XCTestCase {
         let hs3Success = aliceAccepted.initiatorProcessMessage2(hs2: hs2Accepted, advertisedRemoteHint: bobId.nodeHint)
         XCTAssertNotNil(hs3Success)
         XCTAssertEqual(acceptedWriter.calls, 1, "hs3Writer must be called exactly once on accepted trust")
+        XCTAssertTrue(aliceAccepted.noiseSession.isEstablished, "Noise session must be established on accepted path")
+        XCTAssertEqual(aliceAccepted.state, .ready)
     }
 
     // MARK: - Responder NOISE_ESTABLISHED Observation Tests
@@ -1020,5 +1029,229 @@ final class TrustedHandshakeControllerTests: XCTestCase {
         XCTAssertNil(hs3)
         XCTAssertEqual(alice.state, .securityReject)
         XCTAssertEqual(applyCalls.value, 0)
+    }
+
+    // MARK: - I-HS3-FAIL Battery (C8.4A.2)
+
+    func testInitiator_I_HS3_FAIL_01_WriterThrows_FailsClosed() throws {
+        let aliceId = try makeIdentity(seedByte: 0x11, staticPrivByte: 0x22)
+        let bobId = try makeIdentity(seedByte: 0x33, staticPrivByte: 0x44)
+
+        final class ThrowingWriter: Hs3Writer, @unchecked Sendable {
+            var calls = 0
+            func writeHs3(payload: Data) throws -> Data {
+                calls += 1
+                throw MeshError.handshakeFailed
+            }
+        }
+        let issuer = CountingIssuer(identity: aliceId)
+        let writer = ThrowingWriter()
+        let fakeAuth = LambdaTrustAuthority { _ in .accepted }
+
+        let alice = TrustedHandshakeController.initiator(
+            identity: aliceId,
+            remoteHint: bobId.nodeHint,
+            trustAuthority: fakeAuth,
+            localBindingIssuer: issuer,
+            hs3Writer: writer
+        )
+        let hs1 = try alice.initiatorWriteMessage1()
+        let bobNoise = NoiseSession(role: .responder, staticKey: bobId.agreementKey, localHint: bobId.nodeHint, remoteHint: aliceId.nodeHint)
+        _ = try bobNoise.readMessage1(hs1)
+        let hs2 = try bobNoise.writeMessage2(payload: try makeBinding(seedByte: 0x33, staticPrivByte: 0x44).encode())
+
+        let hs3 = alice.initiatorProcessMessage2(hs2: hs2, advertisedRemoteHint: bobId.nodeHint)
+        XCTAssertNil(hs3, "HS3 must be nil when writer throws")
+        XCTAssertEqual(alice.state, .securityReject)
+        XCTAssertFalse(alice.isReady)
+        XCTAssertFalse(alice.noiseSession.isEstablished)
+        XCTAssertEqual(issuer.calls, 1)
+        XCTAssertEqual(writer.calls, 1)
+    }
+
+    func testInitiator_I_HS3_FAIL_02_WriterReturnsWrongLength_NoNoiseWrite_FailsClosed() throws {
+        let aliceId = try makeIdentity(seedByte: 0x11, staticPrivByte: 0x22)
+        let bobId = try makeIdentity(seedByte: 0x33, staticPrivByte: 0x44)
+
+        final class ShortWriter: Hs3Writer, @unchecked Sendable {
+            var calls = 0
+            func writeHs3(payload: Data) throws -> Data {
+                calls += 1
+                return Data(count: 196) // wrong length, no Noise write
+            }
+        }
+        let issuer = CountingIssuer(identity: aliceId)
+        let writer = ShortWriter()
+        let fakeAuth = LambdaTrustAuthority { _ in .accepted }
+
+        let alice = TrustedHandshakeController.initiator(
+            identity: aliceId,
+            remoteHint: bobId.nodeHint,
+            trustAuthority: fakeAuth,
+            localBindingIssuer: issuer,
+            hs3Writer: writer
+        )
+        let hs1 = try alice.initiatorWriteMessage1()
+        let bobNoise = NoiseSession(role: .responder, staticKey: bobId.agreementKey, localHint: bobId.nodeHint, remoteHint: aliceId.nodeHint)
+        _ = try bobNoise.readMessage1(hs1)
+        let hs2 = try bobNoise.writeMessage2(payload: try makeBinding(seedByte: 0x33, staticPrivByte: 0x44).encode())
+
+        let hs3 = alice.initiatorProcessMessage2(hs2: hs2, advertisedRemoteHint: bobId.nodeHint)
+        XCTAssertNil(hs3, "HS3 must be nil when writer returns wrong length")
+        XCTAssertEqual(alice.state, .securityReject)
+        XCTAssertFalse(alice.isReady)
+        XCTAssertFalse(alice.noiseSession.isEstablished)
+        XCTAssertEqual(issuer.calls, 1)
+        XCTAssertEqual(writer.calls, 1)
+    }
+
+    func testInitiator_I_HS3_FAIL_03_WriterReturns197FakeBytes_NoNoiseWrite_FailsClosed() throws {
+        let aliceId = try makeIdentity(seedByte: 0x11, staticPrivByte: 0x22)
+        let bobId = try makeIdentity(seedByte: 0x33, staticPrivByte: 0x44)
+
+        final class Fake197Writer: Hs3Writer, @unchecked Sendable {
+            var calls = 0
+            func writeHs3(payload: Data) throws -> Data {
+                calls += 1
+                return Data(count: 197) // exactly 197 fake bytes, NO NoiseSession write/split
+            }
+        }
+        let issuer = CountingIssuer(identity: aliceId)
+        let writer = Fake197Writer()
+        let fakeAuth = LambdaTrustAuthority { _ in .accepted }
+
+        let alice = TrustedHandshakeController.initiator(
+            identity: aliceId,
+            remoteHint: bobId.nodeHint,
+            trustAuthority: fakeAuth,
+            localBindingIssuer: issuer,
+            hs3Writer: writer
+        )
+        let hs1 = try alice.initiatorWriteMessage1()
+        let bobNoise = NoiseSession(role: .responder, staticKey: bobId.agreementKey, localHint: bobId.nodeHint, remoteHint: aliceId.nodeHint)
+        _ = try bobNoise.readMessage1(hs1)
+        let hs2 = try bobNoise.writeMessage2(payload: try makeBinding(seedByte: 0x33, staticPrivByte: 0x44).encode())
+
+        let hs3 = alice.initiatorProcessMessage2(hs2: hs2, advertisedRemoteHint: bobId.nodeHint)
+        XCTAssertNil(hs3, "HS3 must be nil when writer returns 197 fake bytes without establishing Noise")
+        XCTAssertEqual(alice.state, .securityReject)
+        XCTAssertFalse(alice.isReady)
+        XCTAssertFalse(alice.noiseSession.isEstablished)
+        XCTAssertEqual(issuer.calls, 1)
+        XCTAssertEqual(writer.calls, 1)
+    }
+
+    func testInitiator_I_HS3_FAIL_04_RealNoiseSplit_ThenMalformedReturnedLength_FailsClosed() throws {
+        let aliceId = try makeIdentity(seedByte: 0x11, staticPrivByte: 0x22)
+        let bobId = try makeIdentity(seedByte: 0x33, staticPrivByte: 0x44)
+
+        let issuer = CountingIssuer(identity: aliceId)
+        let noiseSession = NoiseSession(role: .initiator, staticKey: aliceId.agreementKey, localHint: aliceId.nodeHint, remoteHint: bobId.nodeHint)
+
+        final class SplitThenMalformedWriter: Hs3Writer, @unchecked Sendable {
+            let session: NoiseSession
+            var calls = 0
+            init(session: NoiseSession) { self.session = session }
+            func writeHs3(payload: Data) throws -> Data {
+                calls += 1
+                _ = try session.writeMessage3(payload: payload) // real split
+                return Data(count: 196) // malformed length
+            }
+        }
+
+        let writer = SplitThenMalformedWriter(session: noiseSession)
+        let fakeAuth = LambdaTrustAuthority { _ in .accepted }
+
+        let alice = TrustedHandshakeController(
+            noiseSession: noiseSession,
+            trustAuthority: fakeAuth,
+            localIdentity: aliceId,
+            localBindingIssuer: issuer,
+            hs3Writer: writer
+        )
+        let hs1 = try alice.initiatorWriteMessage1()
+        let bobNoise = NoiseSession(role: .responder, staticKey: bobId.agreementKey, localHint: bobId.nodeHint, remoteHint: aliceId.nodeHint)
+        _ = try bobNoise.readMessage1(hs1)
+        let hs2 = try bobNoise.writeMessage2(payload: try makeBinding(seedByte: 0x33, staticPrivByte: 0x44).encode())
+
+        let hs3 = alice.initiatorProcessMessage2(hs2: hs2, advertisedRemoteHint: bobId.nodeHint)
+        XCTAssertNil(hs3, "HS3 must be nil when returned length is malformed even if Noise split occurred")
+        XCTAssertEqual(alice.state, .securityReject)
+        XCTAssertFalse(alice.isReady)
+        XCTAssertTrue(alice.noiseSession.isEstablished, "Noise session was split in mock")
+        XCTAssertEqual(issuer.calls, 1)
+        XCTAssertEqual(writer.calls, 1)
+    }
+
+    func testInitiator_I_HS3_FAIL_05_IssuerThrows_FailsClosed() throws {
+        let aliceId = try makeIdentity(seedByte: 0x11, staticPrivByte: 0x22)
+        let bobId = try makeIdentity(seedByte: 0x33, staticPrivByte: 0x44)
+
+        final class ThrowingIssuer: LocalBindingIssuer, @unchecked Sendable {
+            var calls = 0
+            func issueEncodedBinding() throws -> Data {
+                calls += 1
+                throw MeshError.handshakeFailed
+            }
+        }
+        let issuer = ThrowingIssuer()
+        let writer = CountingHs3Writer()
+        let fakeAuth = LambdaTrustAuthority { _ in .accepted }
+
+        let alice = TrustedHandshakeController.initiator(
+            identity: aliceId,
+            remoteHint: bobId.nodeHint,
+            trustAuthority: fakeAuth,
+            localBindingIssuer: issuer,
+            hs3Writer: writer
+        )
+        let hs1 = try alice.initiatorWriteMessage1()
+        let bobNoise = NoiseSession(role: .responder, staticKey: bobId.agreementKey, localHint: bobId.nodeHint, remoteHint: aliceId.nodeHint)
+        _ = try bobNoise.readMessage1(hs1)
+        let hs2 = try bobNoise.writeMessage2(payload: try makeBinding(seedByte: 0x33, staticPrivByte: 0x44).encode())
+
+        let hs3 = alice.initiatorProcessMessage2(hs2: hs2, advertisedRemoteHint: bobId.nodeHint)
+        XCTAssertNil(hs3, "HS3 must be nil when issuer throws")
+        XCTAssertEqual(alice.state, .securityReject)
+        XCTAssertFalse(alice.isReady)
+        XCTAssertFalse(alice.noiseSession.isEstablished)
+        XCTAssertEqual(issuer.calls, 1)
+        XCTAssertEqual(writer.calls, 0)
+    }
+
+    func testInitiator_I_HS3_FAIL_06_IssuerReturnsNon133Bytes_FailsClosed() throws {
+        let aliceId = try makeIdentity(seedByte: 0x11, staticPrivByte: 0x22)
+        let bobId = try makeIdentity(seedByte: 0x33, staticPrivByte: 0x44)
+
+        final class ShortIssuer: LocalBindingIssuer, @unchecked Sendable {
+            var calls = 0
+            func issueEncodedBinding() throws -> Data {
+                calls += 1
+                return Data(count: 132) // non-133 bytes
+            }
+        }
+        let issuer = ShortIssuer()
+        let writer = CountingHs3Writer()
+        let fakeAuth = LambdaTrustAuthority { _ in .accepted }
+
+        let alice = TrustedHandshakeController.initiator(
+            identity: aliceId,
+            remoteHint: bobId.nodeHint,
+            trustAuthority: fakeAuth,
+            localBindingIssuer: issuer,
+            hs3Writer: writer
+        )
+        let hs1 = try alice.initiatorWriteMessage1()
+        let bobNoise = NoiseSession(role: .responder, staticKey: bobId.agreementKey, localHint: bobId.nodeHint, remoteHint: aliceId.nodeHint)
+        _ = try bobNoise.readMessage1(hs1)
+        let hs2 = try bobNoise.writeMessage2(payload: try makeBinding(seedByte: 0x33, staticPrivByte: 0x44).encode())
+
+        let hs3 = alice.initiatorProcessMessage2(hs2: hs2, advertisedRemoteHint: bobId.nodeHint)
+        XCTAssertNil(hs3, "HS3 must be nil when issuer returns non-133 bytes")
+        XCTAssertEqual(alice.state, .securityReject)
+        XCTAssertFalse(alice.isReady)
+        XCTAssertFalse(alice.noiseSession.isEstablished)
+        XCTAssertEqual(issuer.calls, 1)
+        XCTAssertEqual(writer.calls, 0)
     }
 }
