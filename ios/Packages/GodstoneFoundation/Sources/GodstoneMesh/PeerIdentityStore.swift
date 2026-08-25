@@ -308,6 +308,15 @@ internal final class SqlitePeerIdentityStore: PeerIdentityStore {
         }
     }
 
+    public func close() {
+        lock.lock()
+        defer { lock.unlock() }
+        if let db = handle {
+            sqlite3_close_v2(db)
+            handle = nil
+        }
+    }
+
     func inImmediateTransaction<T>(_ block: (PeerIdentityStore) throws -> T) throws -> T {
         lock.lock()
         defer { lock.unlock() }

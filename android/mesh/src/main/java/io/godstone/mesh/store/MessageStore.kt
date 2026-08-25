@@ -826,6 +826,10 @@ class SqliteMessageStore internal constructor(
         engine.forEachMsgId(visit)
     }
 
+    fun close() {
+        engine.close()
+    }
+
     companion object {
         /**
          * Panic wipe (PROTOCOL.md section 2). Destroys the store AND its key, so

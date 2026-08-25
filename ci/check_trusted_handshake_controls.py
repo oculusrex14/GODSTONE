@@ -243,19 +243,12 @@ def check_controls(
         if forbidden in swift_noise_code:
             errors.append(f"iOS NoiseSession must NOT reference {forbidden} (H16)")
 
-    # ── H17: Android MeshModule still uses UnresolvedRecipientKeyResolver; iOS AppContainer remains Archive-only ──
-    kt_mesh_mod_code = strip_comments(kt_mesh_mod)
-    if "UnresolvedRecipientKeyResolver" not in kt_mesh_mod_code:
-        errors.append("Android MeshModule must still use UnresolvedRecipientKeyResolver during C8.4A (H17)")
-    if "BoundRecipientKeyResolver" in kt_mesh_mod_code:
-        errors.append("Android MeshModule must NOT wire BoundRecipientKeyResolver during C8.4A (H17)")
-    if "TrustedHandshakeController" in kt_mesh_mod_code:
-        errors.append("Android MeshModule must NOT wire TrustedHandshakeController during C8.4A (H17)")
+    # ── H17: Android MeshModule non-shipping composition; iOS AppContainer remains Archive-only ──
     swift_app_cont_code = strip_comments(swift_app_cont)
     if "BoundRecipientKeyResolver" in swift_app_cont_code:
-        errors.append("iOS AppContainer must NOT wire BoundRecipientKeyResolver during C8.4A (H17)")
-    if "TrustedHandshakeController" in swift_app_cont_code:
-        errors.append("iOS AppContainer must NOT wire TrustedHandshakeController during C8.4A (H17)")
+        errors.append("iOS AppContainer must NOT wire BoundRecipientKeyResolver (H17)")
+    if "TrustedHandshakeController" in swift_app_cont_code or "MeshRuntime" in swift_app_cont_code:
+        errors.append("iOS AppContainer must NOT wire TrustedHandshakeController or MeshRuntime (H17)")
 
     # ── H18: Link flags remain false ──
     if "LINK_LAYER_READY = false" not in kt_mesh_node:
@@ -652,8 +645,8 @@ def selftest() -> int:
         else: failures.append("Mutation H16 was NOT caught")
         reset_all()
 
-        # Mutation H17: Wire BoundRecipientKeyResolver in Android MeshModule
-        f_mesh_mod.write_text(f_mesh_mod.read_text(encoding="utf-8").replace("UnresolvedRecipientKeyResolver", "BoundRecipientKeyResolver"), encoding="utf-8")
+        # Mutation H17: Wire BoundRecipientKeyResolver in iOS AppContainer
+        f_app_cont.write_text(f_app_cont.read_text(encoding="utf-8") + "\nprivate var resolver: BoundRecipientKeyResolver?\n", encoding="utf-8")
         if any("H17" in e for e in run_check()): passed += 1
         else: failures.append("Mutation H17 was NOT caught")
         reset_all()

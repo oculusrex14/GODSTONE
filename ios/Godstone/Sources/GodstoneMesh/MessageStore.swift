@@ -466,6 +466,15 @@ public final class SqliteMessageStore: MessageStore {
 
     deinit { if let db = handle { sqlite3_close_v2(db) } }
 
+    public func close() {
+        lock.lock()
+        defer { lock.unlock() }
+        if let db = handle {
+            sqlite3_close_v2(db)
+            handle = nil
+        }
+    }
+
     // MARK: - MessageStore
 
     public func persist(_ frame: FrameV2, receivedFrom: Data) -> PersistResult {

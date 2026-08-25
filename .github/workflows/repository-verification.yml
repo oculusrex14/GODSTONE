@@ -146,6 +146,10 @@ jobs:
         run: |
           python ci/check_trusted_handshake_controls.py --selftest
           python ci/check_trusted_handshake_controls.py
+      - name: trusted runtime composition regression controls (ADR-003, C8.4B)
+        run: |
+          python ci/check_trusted_runtime_composition_controls.py --selftest
+          python ci/check_trusted_runtime_composition_controls.py
       - name: production-readiness status consistency (Stage 4E0)
         run: |
           python ci/check_status_consistency.py --selftest

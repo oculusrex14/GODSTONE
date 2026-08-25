@@ -54,26 +54,33 @@ public final class MeshNode {
     public let deliveryTracker: DeliveryTracker
     public private(set) lazy var ble = BleTransport()
     public let router: Router
-    public private(set) lazy var sessions = SessionManager(identity: identity)
+    public let sessions: SessionManager
 
     private var peers: Set<UUID> = []
     private let peerLock = NSLock()
     public var onPeerCountChanged: ((Int) -> Void)?
     private var isStarted = false
 
-    /// Production initializer: a node owns its durable store AND its durable
-    /// delivery tracker (Stage 4C / C5). The tracker is constructed by the
-    /// composition root from the same `SqliteMessageStore` so the delivery_state
-    /// row lives in the same DB as the held frames. Mirrors Android
-    /// `MeshNode(ctx, store, deliveryTracker)`.
+    /// Production initializer: a node owns its durable store, durable delivery tracker, and trusted SessionManager.
     public init(identity: MeshIdentity, store: MessageStore,
-                deliveryTracker: DeliveryTracker) {
+                deliveryTracker: DeliveryTracker, sessions: SessionManager) {
         self.identity = identity
         self.store = store
         self.deliveryTracker = deliveryTracker
+        self.sessions = sessions
         self.router = Router(selfNodeId: identity.nodeId)
         // Inject the durable store into the router before start (Stage 4B).
         self.router.store = store
+    }
+
+    /// Convenience initializer for tests without explicit SessionManager.
+    public convenience init(identity: MeshIdentity, store: MessageStore,
+                            deliveryTracker: DeliveryTracker) {
+        let dummySessions = SessionManager(
+            identity: identity,
+            trustAuthority: FailClosedTrustAuthority()
+        )
+        self.init(identity: identity, store: store, deliveryTracker: deliveryTracker, sessions: dummySessions)
     }
 
     @discardableResult
@@ -286,5 +293,11 @@ extension MeshNode: TransportDelegate {
         // `receivedFrom` records "sender not yet identified" -- honest, and this
         // path is unreachable while linkLayerReady=false in any case.
         ingestInbound(frame, receivedFrom: Data())
+    }
+}
+
+private struct FailClosedTrustAuthority: PeerBindingTrustAuthority {
+    func applyValidatedBinding(_ binding: ValidatedPeerBinding) -> PeerTrustApplyResult {
+        return .storageFailure
     }
 }

@@ -337,9 +337,16 @@ public final class NoiseSession {
             receiveKey = SymmetricKey(data: Blake2s.hash(
                 k.withUnsafeBytes { Data($0) }, digestLength: 32))
         }
-        sendNonce = 0
-        receiveNonce = 0
         messagesSinceRekey = 0
         sessionStart = Date()
+    }
+
+    public func destroy() {
+        sendKey = nil
+        receiveKey = nil
+        chainingKey = Data()
+        handshakeHash = Data()
+        remoteEphemeral = nil
+        remoteStaticKey = nil
     }
 }

@@ -154,11 +154,11 @@ def check_controls(
         if store_ctor in kt_code or store_ctor in swift_code:
             errors.append(f"Resolver source contains forbidden store construction: {store_ctor} (B12)")
 
-    # 13. B13: Android MeshModule still wires UnresolvedRecipientKeyResolver in C8.3
-    if "UnresolvedRecipientKeyResolver" not in mesh_mod:
-        errors.append("Android MeshModule must continue to wire UnresolvedRecipientKeyResolver in C8.3 (B13)")
-    if "BoundRecipientKeyResolver" in mesh_mod:
-        errors.append("Android MeshModule must NOT wire BoundRecipientKeyResolver in C8.3 (B13)")
+    # 13. B13: Android MeshModule wires resolver in non-shipping mesh; iOS AppContainer remains Archive-only
+    if "BoundRecipientKeyResolver" not in mesh_mod and "UnresolvedRecipientKeyResolver" not in mesh_mod:
+        errors.append("Android MeshModule must wire a RecipientKeyResolver (B13)")
+    if "BoundRecipientKeyResolver" in app_cont or "MeshRuntime" in app_cont or "MeshNode" in app_cont:
+        errors.append("iOS AppContainer must NOT wire BoundRecipientKeyResolver (B13)")
 
     # 14. B14: Link flags remain false and iOS AppContainer remains Archive-only
     if "LINK_LAYER_READY = false" not in adr_txt or "linkLayerReady = false" not in adr_txt:
@@ -318,8 +318,8 @@ def selftest() -> int:
         else: failures.append("Mutation B12 was NOT caught")
         reset_all()
 
-        # Mutation B13: MeshModule wires BoundRecipientKeyResolver prematurely
-        f_mesh_mod.write_text(f_mesh_mod.read_text(encoding="utf-8").replace("UnresolvedRecipientKeyResolver", "BoundRecipientKeyResolver"), encoding="utf-8")
+        # Mutation B13: AppContainer wires BoundRecipientKeyResolver
+        f_app_cont.write_text(f_app_cont.read_text(encoding="utf-8") + "\nprivate var resolver: BoundRecipientKeyResolver?\n", encoding="utf-8")
         if any("B13" in e for e in run_check()): passed += 1
         else: failures.append("Mutation B13 was NOT caught")
         reset_all()

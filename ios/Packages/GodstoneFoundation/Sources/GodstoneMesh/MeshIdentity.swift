@@ -114,6 +114,18 @@ public struct MeshIdentity: Sendable {
         try loadFromKeychain(keychain: DefaultLocalIdentityKeychain())
     }
 
+    public static func loadOrCreate() throws -> MeshIdentity {
+        try loadOrCreate(keychain: DefaultLocalIdentityKeychain())
+    }
+
+    internal static func loadOrCreate(keychain: any LocalIdentityKeychain) throws -> MeshIdentity {
+        do {
+            return try MeshIdentity.loadFromKeychain(keychain: keychain)
+        } catch MeshError.identityNotFound {
+            return try MeshIdentity.generateAndStore(keychain: keychain)
+        }
+    }
+
     internal static func loadFromKeychain(
         keychain: any LocalIdentityKeychain
     ) throws -> MeshIdentity {

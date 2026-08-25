@@ -229,9 +229,10 @@ After successful validation through Step 10:
 
 The full 16-byte `node_id` MUST be used everywhere across the system following identity validation.
 
-### 7.3 Runtime Authority and Legacy SessionManager Warning
-> [!WARNING]
-> During C8.4A the existing SessionManager is UNTRUSTED / NOT RUNTIME-AUTHORITATIVE for peer-trust READY. Its established() predicate reflects Noise cryptographic establishment only. It remains unreachable behind linkLayerReady=false / LINK_LAYER_READY=false. C8.4B must replace or refactor this authority before any link-layer enablement.
+### 7.3 Runtime Authority and Trusted SessionManager Composition (Phase C8.4B)
+> [!NOTE]
+> In Phase C8.4B, the runtime SessionManager has been fully replaced/refactored on both Android and iOS to own `TrustedHandshakeController` instances rather than raw Noise establishment. Application sealing and opening are gated strictly on `HandshakeTrustState.READY`.
+> The runtime composition graph (`BoundRecipientKeyResolver`, `PeerIdentityRepository`, `SessionManager`, `DefaultRuntimeLifecycleGate`) is installed in the non-shipping mesh runtime while shipping iOS `AppContainer` and Android Light roots remain strictly Archive-only with `linkLayerReady = false` / `LINK_LAYER_READY = false`.
 
 ---
 

@@ -91,23 +91,32 @@ class MeshNode(
      * evidence -- A-03 / ADR-005 stay OPEN.
      */
     internal val deliveryTracker: DeliveryTracker,
+    val sessions: io.godstone.mesh.crypto.SessionManager,
 ) {
     /**
-     * Production constructor: identity loaded from the Android Context via
-     * [Identity.loadOrCreate]. [di.MeshModule] is the only caller. The Context
-     * is retained for the lazy BLE/Wi-Fi transports (reached only through the
-     * `LINK_LAYER_READY`-gated `start()` / `broadcastSos`, never from the
-     * ungated `dispatchSos` / `ingestInbound` test seams).
+     * Primary test constructor with pure JVM backward compatibility.
      */
+    constructor(ctx: Context?, identity: Identity, store: MessageStore, deliveryTracker: DeliveryTracker)
+        : this(ctx, identity, store, deliveryTracker, io.godstone.mesh.crypto.SessionManager(
+            identity = identity,
+            trustAuthority = object : io.godstone.mesh.crypto.PeerBindingTrustAuthority {
+                override fun applyValidatedBinding(binding: io.godstone.mesh.identity.ValidatedPeerBinding): io.godstone.mesh.identity.PeerTrustApplyResult =
+                    io.godstone.mesh.identity.PeerTrustApplyResult.StorageFailure()
+            }
+        ))
+
+    /**
+     * Production constructor: identity and sessions loaded via Hilt from MeshModule.
+     */
+    constructor(ctx: Context, store: MessageStore, deliveryTracker: DeliveryTracker, sessions: io.godstone.mesh.crypto.SessionManager)
+        : this(ctx, Identity.loadOrCreate(ctx), store, deliveryTracker, sessions)
+
     constructor(ctx: Context, store: MessageStore, deliveryTracker: DeliveryTracker)
         : this(ctx, Identity.loadOrCreate(ctx), store, deliveryTracker)
 
     internal val router: Router by lazy { Router(store, identity.nodeId) }
-    val sessions: io.godstone.mesh.crypto.SessionManager by lazy {
-        io.godstone.mesh.crypto.SessionManager(identity)
-    }
     private val ble: BleTransport by lazy {
-        // ctx is non-null in production (3-arg ctor); null only in pure-JVM tests
+        // ctx is non-null in production; null only in pure-JVM tests
         // that never start the node and so never reach the transports.
         BleTransport(ctx!!, identity, { router.currentDigest() }, sessions)
     }

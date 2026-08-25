@@ -265,6 +265,10 @@ internal final class TrustedHandshakeController: @unchecked Sendable {
         return try? noiseSession.decrypt(ciphertext)
     }
 
+    func destroy() {
+        noiseSession.destroy()
+    }
+
     static func initiator(
         identity: MeshIdentity,
         remoteHint: Data,

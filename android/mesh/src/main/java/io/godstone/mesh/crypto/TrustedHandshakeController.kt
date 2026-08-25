@@ -281,6 +281,10 @@ internal class TrustedHandshakeController(
         return noiseSession.decrypt(ciphertext)
     }
 
+    fun destroy() {
+        noiseSession.destroy()
+    }
+
     companion object {
         fun initiator(
             identity: Identity,
