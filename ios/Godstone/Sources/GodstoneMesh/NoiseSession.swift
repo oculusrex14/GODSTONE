@@ -35,6 +35,16 @@ import GodstoneCore
 ///
 /// The prologue binds the handshake to the protocol name and both node hints,
 /// which kills downgrade and cross-protocol attacks before they start.
+public struct HandshakeReadResult: Equatable, Sendable {
+    public let payload: Data
+    public let authenticatedRemoteStaticKey: Data?
+
+    public init(payload: Data, authenticatedRemoteStaticKey: Data?) {
+        self.payload = payload
+        self.authenticatedRemoteStaticKey = authenticatedRemoteStaticKey
+    }
+}
+
 public final class NoiseSession {
 
     public enum Role { case initiator, responder }
@@ -183,20 +193,21 @@ public final class NoiseSession {
         return out
     }
 
-    /// Message 2, responder: reads `e`, writes `e, ee, s, es` + payload.
-    /// 96 bytes with empty payloads. V3 produced 80.
-    public func readMessage1AndWrite2(_ msg1: Data,
-                                      payload: Data = Data()) throws -> Data {
-        // Normalise: a sliced Data carries a non-zero startIndex, and
-        // subdata(in:) uses ABSOLUTE indices. Copying makes every offset below
-        // zero-based regardless of what the transport handed us.
+    /// Message 1, responder reads: `-> e`
+    @discardableResult
+    public func readMessage1(_ msg1: Data) throws -> HandshakeReadResult {
         let m = Data(msg1)
         guard m.count >= NoiseSession.dhLen else { throw MeshError.handshakeFailed }
 
         remoteEphemeral = m.prefix(NoiseSession.dhLen)
         mixHash(remoteEphemeral!)
-        _ = try decryptAndHash(m.suffix(from: NoiseSession.dhLen))
+        let payload = try decryptAndHash(m.suffix(from: NoiseSession.dhLen))
+        return HandshakeReadResult(payload: payload, authenticatedRemoteStaticKey: nil)
+    }
 
+    /// Message 2, responder writes: `e, ee, s, es` + payload
+    public func writeMessage2(payload: Data = Data()) throws -> Data {
+        guard role == .responder, remoteEphemeral != nil else { throw MeshError.handshakeFailed }
         var out = ephemeral.publicKey.rawRepresentation
         mixHash(out)
         mixKey(try dhEE())                                             // ee
@@ -206,10 +217,17 @@ public final class NoiseSession {
         return out
     }
 
-    /// Message 3, initiator: reads message 2, writes `s, se` + payload.
-    /// 64 bytes with an empty payload. V3 produced 48.
-    public func readMessage2AndWrite3(_ msg2: Data,
+    /// Message 2, responder: reads `e`, writes `e, ee, s, es` + payload.
+    /// 96 bytes with empty payloads. V3 produced 80.
+    public func readMessage1AndWrite2(_ msg1: Data,
                                       payload: Data = Data()) throws -> Data {
+        _ = try readMessage1(msg1)
+        return try writeMessage2(payload: payload)
+    }
+
+    /// Message 2, initiator: reads message 2, parses remote static key & payload.
+    /// Does NOT write HS3 and does NOT call split().
+    public func readMessage2(_ msg2: Data) throws -> HandshakeReadResult {
         let m = Data(msg2)
         let encStaticLen = NoiseSession.dhLen + NoiseSession.tagLen   // 48
         guard m.count >= NoiseSession.dhLen + encStaticLen else {
@@ -220,17 +238,22 @@ public final class NoiseSession {
         mixHash(remoteEphemeral!)
         mixKey(try dhEE())                                             // ee
 
-        // Split the encrypted static from the encrypted payload. V3 fed BOTH
-        // to one AEAD open and derived a 48-byte "X25519 key".
         let encStatic = m.subdata(in: NoiseSession.dhLen ..< (NoiseSession.dhLen + encStaticLen))
-        remoteStaticKey = try decryptAndHash(encStatic)                // s
-        guard remoteStaticKey?.count == NoiseSession.dhLen else {
+        let decryptedStatic = try decryptAndHash(encStatic)            // s
+        guard decryptedStatic.count == NoiseSession.dhLen else {
             throw MeshError.handshakeFailed
         }
+        remoteStaticKey = decryptedStatic
         mixKey(try dhES())                                             // es
-        _ = try decryptAndHash(m.suffix(from: NoiseSession.dhLen + encStaticLen))
+        let payload = try decryptAndHash(m.suffix(from: NoiseSession.dhLen + encStaticLen))
+        return HandshakeReadResult(payload: payload, authenticatedRemoteStaticKey: decryptedStatic)
+    }
 
-        // n is now 1 under the es key. encryptAndHash carries that forward.
+    /// Message 3, initiator writes: `s, se` + payload.
+    public func writeMessage3(payload: Data = Data()) throws -> Data {
+        guard role == .initiator, remoteStaticKey != nil, remoteEphemeral != nil, !isEstablished else {
+            throw MeshError.handshakeFailed
+        }
         var out = try encryptAndHash(staticKey.publicKey.rawRepresentation)  // s
         mixKey(try dhSE())                                             // se
         out += try encryptAndHash(payload)                             // payload
@@ -238,19 +261,30 @@ public final class NoiseSession {
         return out
     }
 
+    /// Message 3, initiator: reads message 2, writes `s, se` + payload.
+    /// 64 bytes with an empty payload. V3 produced 48.
+    public func readMessage2AndWrite3(_ msg2: Data,
+                                      payload: Data = Data()) throws -> Data {
+        _ = try readMessage2(msg2)
+        return try writeMessage3(payload: payload)
+    }
+
     /// Message 3, responder side.
-    public func readMessage3(_ msg3: Data) throws {
+    @discardableResult
+    public func readMessage3(_ msg3: Data) throws -> HandshakeReadResult {
         let m = Data(msg3)
         let encStaticLen = NoiseSession.dhLen + NoiseSession.tagLen
         guard m.count >= encStaticLen else { throw MeshError.handshakeFailed }
 
-        remoteStaticKey = try decryptAndHash(m.prefix(encStaticLen))   // s
-        guard remoteStaticKey?.count == NoiseSession.dhLen else {
+        let decryptedStatic = try decryptAndHash(m.prefix(encStaticLen))   // s
+        guard decryptedStatic.count == NoiseSession.dhLen else {
             throw MeshError.handshakeFailed
         }
+        remoteStaticKey = decryptedStatic
         mixKey(try dhSE())                                             // se
-        _ = try decryptAndHash(m.suffix(from: encStaticLen))
+        let payload = try decryptAndHash(m.suffix(from: encStaticLen))
         split()
+        return HandshakeReadResult(payload: payload, authenticatedRemoteStaticKey: decryptedStatic)
     }
 
     private func split() {

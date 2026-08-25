@@ -6,6 +6,28 @@ import io.godstone.mesh.identity.Identity
 import java.nio.ByteBuffer
 import java.util.concurrent.atomic.AtomicLong
 
+data class HandshakeReadResult(
+    val payload: ByteArray,
+    val authenticatedRemoteStaticKey: ByteArray?
+) {
+    override fun equals(other: Any?): Boolean {
+        if (this === other) return true
+        if (other !is HandshakeReadResult) return false
+        if (!payload.contentEquals(other.payload)) return false
+        if (authenticatedRemoteStaticKey != null) {
+            if (other.authenticatedRemoteStaticKey == null) return false
+            if (!authenticatedRemoteStaticKey.contentEquals(other.authenticatedRemoteStaticKey)) return false
+        } else if (other.authenticatedRemoteStaticKey != null) return false
+        return true
+    }
+
+    override fun hashCode(): Int {
+        var result = payload.contentHashCode()
+        result = 31 * result + (authenticatedRemoteStaticKey?.contentHashCode() ?: 0)
+        return result
+    }
+}
+
 /**
  * Pairwise encrypted session, Noise_XX_25519_ChaChaPoly_BLAKE2s.
  *
@@ -62,12 +84,28 @@ class NoiseSession private constructor(
         return out.copyOf(len)
     }
 
-    fun readHandshakeMessage(message: ByteArray): ByteArray {
+    fun readHandshakeMessageWithResult(message: ByteArray): HandshakeReadResult {
         val out = ByteArray(MAX_HANDSHAKE)
         val len = handshake.readMessage(message, 0, message.size, out, 0)
+        val payload = out.copyOf(len)
+        val remoteStatic = if (handshake.remotePublicKey.hasPublicKey()) {
+            val key = ByteArray(32).also {
+                handshake.remotePublicKey.getPublicKey(it, 0)
+            }
+            remoteStaticKey = key.clone()
+            key
+        } else {
+            null
+        }
         maybeSplit()
-        return out.copyOf(len)
+        return HandshakeReadResult(
+            payload = payload,
+            authenticatedRemoteStaticKey = remoteStatic
+        )
     }
+
+    fun readHandshakeMessage(message: ByteArray): ByteArray =
+        readHandshakeMessageWithResult(message).payload
 
     /** Alias matching the Noise verb-naming convention used in tests. */
     fun writeMessage(payload: ByteArray = ByteArray(0)): ByteArray = writeHandshakeMessage(payload)
@@ -77,8 +115,10 @@ class NoiseSession private constructor(
 
     private fun maybeSplit() {
         if (handshake.action == HandshakeState.SPLIT && ciphers == null) {
-            remoteStaticKey = ByteArray(32).also {
-                handshake.remotePublicKey.getPublicKey(it, 0)
+            if (remoteStaticKey == null && handshake.remotePublicKey.hasPublicKey()) {
+                remoteStaticKey = ByteArray(32).also {
+                    handshake.remotePublicKey.getPublicKey(it, 0)
+                }
             }
             ciphers = handshake.split()
         }
