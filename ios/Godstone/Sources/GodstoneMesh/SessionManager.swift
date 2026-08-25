@@ -76,6 +76,7 @@ public final class SessionManager {
     private var managerState: ManagerState = .active
 
     internal var testOperationHook: ((String) -> Void)?
+    internal var testInvalidationAttemptHook: (() -> Void)?
 
     internal init(
         identity: MeshIdentity,
@@ -326,6 +327,7 @@ public final class SessionManager {
     }
 
     public func invalidateForWipe() {
+        testInvalidationAttemptHook?()
         lifecycleRwLock.withWriteLock {
             mapLock.lock()
             defer { mapLock.unlock() }

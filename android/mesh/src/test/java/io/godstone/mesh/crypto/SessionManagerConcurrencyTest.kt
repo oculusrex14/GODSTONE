@@ -23,7 +23,6 @@ import org.junit.rules.TemporaryFolder
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
-import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicInteger
 
 class SessionManagerConcurrencyTest {
@@ -106,6 +105,7 @@ class SessionManagerConcurrencyTest {
         // 2. Linearization test: in-flight seal holds read lock; invalidation write lock must wait
         val enteredReadAuthority = CountDownLatch(1)
         val releaseThreadA = CountDownLatch(1)
+        val invalidationStarted = CountDownLatch(1)
         val threadAFinished = CountDownLatch(1)
         val invalidationFinished = CountDownLatch(1)
         var sealResult: ByteArray? = null
@@ -115,6 +115,9 @@ class SessionManagerConcurrencyTest {
                 enteredReadAuthority.countDown()
                 releaseThreadA.await(5, TimeUnit.SECONDS)
             }
+        }
+        smA.testInvalidationAttemptHook = {
+            invalidationStarted.countDown()
         }
 
         val pool = Executors.newFixedThreadPool(2)
@@ -134,8 +137,8 @@ class SessionManagerConcurrencyTest {
             invalidationFinished.countDown()
         }
 
-        // Give Thread B time to attempt write lock acquisition while Thread A is paused
-        Thread.yield()
+        // Wait deterministically for Thread B to enter invalidateForWipe() before write-lock acquisition attempt
+        assertTrue(invalidationStarted.await(5, TimeUnit.SECONDS))
 
         // Verify invalidation has NOT completed because Thread A is holding read lock
         assertEquals(1L, invalidationFinished.count)
@@ -175,6 +178,7 @@ class SessionManagerConcurrencyTest {
 
         val enteredHsReadAuthority = CountDownLatch(1)
         val releaseHsThread = CountDownLatch(1)
+        val invalidationStarted = CountDownLatch(1)
         val hsThreadFinished = CountDownLatch(1)
         val invalidationFinished = CountDownLatch(1)
         var hs3Result: ByteArray? = null
@@ -184,6 +188,9 @@ class SessionManagerConcurrencyTest {
                 enteredHsReadAuthority.countDown()
                 releaseHsThread.await(5, TimeUnit.SECONDS)
             }
+        }
+        smA.testInvalidationAttemptHook = {
+            invalidationStarted.countDown()
         }
 
         val pool = Executors.newFixedThreadPool(2)
@@ -203,7 +210,8 @@ class SessionManagerConcurrencyTest {
             invalidationFinished.countDown()
         }
 
-        Thread.yield()
+        // Wait deterministically for Thread B to enter invalidateForWipe() before write-lock acquisition attempt
+        assertTrue(invalidationStarted.await(5, TimeUnit.SECONDS))
 
         // Verify invalidation has NOT completed because handshake is in-flight under read lock
         assertEquals(1L, invalidationFinished.count)

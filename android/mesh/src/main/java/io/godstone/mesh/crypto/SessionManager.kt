@@ -43,6 +43,7 @@ class SessionManager internal constructor(
     @Volatile private var managerState = ManagerState.ACTIVE
 
     internal var testOperationHook: ((String) -> Unit)? = null
+    internal var testInvalidationAttemptHook: (() -> Unit)? = null
 
     private val controllers = HashMap<String, TrustedHandshakeController>()
     private val peerLocks = ConcurrentHashMap<String, ReentrantLock>()
@@ -260,6 +261,7 @@ class SessionManager internal constructor(
     }
 
     fun invalidateForWipe() {
+        testInvalidationAttemptHook?.invoke()
         lifecycleRwLock.write {
             mapLock.withLock {
                 managerState = ManagerState.INVALIDATED

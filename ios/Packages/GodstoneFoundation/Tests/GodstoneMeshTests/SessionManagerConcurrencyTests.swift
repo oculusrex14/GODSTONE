@@ -98,15 +98,22 @@ final class SessionManagerConcurrencyTests: XCTestCase {
         // 2. Linearization test: in-flight seal holds read lock; invalidation write lock must wait
         let enteredReadAuthority = DispatchSemaphore(value: 0)
         let releaseThreadA = DispatchSemaphore(value: 0)
+        let invalidationStarted = DispatchSemaphore(value: 0)
         let threadAFinished = expectation(description: "Thread A seal finished")
         let invalidationFinished = expectation(description: "Invalidation finished")
         var sealResult: Data?
+
+        var invalidationReturned = false
+        let invalidationStateLock = NSLock()
 
         smA.testOperationHook = { op in
             if op == "seal" {
                 enteredReadAuthority.signal()
                 _ = releaseThreadA.wait(timeout: .now() + 5.0)
             }
+        }
+        smA.testInvalidationAttemptHook = {
+            invalidationStarted.signal()
         }
 
         // Thread A: enters seal under read lock and pauses
@@ -121,11 +128,19 @@ final class SessionManagerConcurrencyTests: XCTestCase {
         // Thread B: calls invalidateForWipe() which requires exclusive write lock
         DispatchQueue.global().async {
             smA.invalidateForWipe()
+            invalidationStateLock.lock()
+            invalidationReturned = true
+            invalidationStateLock.unlock()
             invalidationFinished.fulfill()
         }
 
-        // Give Thread B time to attempt write lock acquisition
-        Thread.sleep(forTimeInterval: 0.01)
+        // Wait deterministically for Thread B to enter invalidateForWipe() before write-lock acquisition attempt
+        _ = invalidationStarted.wait(timeout: .now() + 5.0)
+
+        // Verify invalidation has NOT completed while Thread A holds read lock
+        invalidationStateLock.lock()
+        XCTAssertFalse(invalidationReturned, "invalidation must NOT return while Thread A holds read lock")
+        invalidationStateLock.unlock()
 
         // Release Thread A
         releaseThreadA.signal()
@@ -160,15 +175,22 @@ final class SessionManagerConcurrencyTests: XCTestCase {
 
         let enteredHsReadAuthority = DispatchSemaphore(value: 0)
         let releaseHsThread = DispatchSemaphore(value: 0)
+        let invalidationStarted = DispatchSemaphore(value: 0)
         let hsThreadFinished = expectation(description: "HS thread finished")
         let invalidationFinished = expectation(description: "Invalidation finished")
         var hs3Result: Data?
+
+        var invalidationReturned = false
+        let invalidationStateLock = NSLock()
 
         smA.testOperationHook = { op in
             if op == "initiatorProcessHs2" {
                 enteredHsReadAuthority.signal()
                 _ = releaseHsThread.wait(timeout: .now() + 5.0)
             }
+        }
+        smA.testInvalidationAttemptHook = {
+            invalidationStarted.signal()
         }
 
         // Thread A: processes valid HS2 and pauses in read lock
@@ -183,10 +205,19 @@ final class SessionManagerConcurrencyTests: XCTestCase {
         // Thread B: calls invalidateForWipe() which requires exclusive write lock
         DispatchQueue.global().async {
             smA.invalidateForWipe()
+            invalidationStateLock.lock()
+            invalidationReturned = true
+            invalidationStateLock.unlock()
             invalidationFinished.fulfill()
         }
 
-        Thread.sleep(forTimeInterval: 0.01)
+        // Wait deterministically for Thread B to enter invalidateForWipe() before write-lock acquisition attempt
+        _ = invalidationStarted.wait(timeout: .now() + 5.0)
+
+        // Verify invalidation has NOT completed while handshake is in-flight under read lock
+        invalidationStateLock.lock()
+        XCTAssertFalse(invalidationReturned, "invalidation must NOT return while handshake in read lock")
+        invalidationStateLock.unlock()
 
         // Release Thread A
         releaseHsThread.signal()

@@ -399,9 +399,14 @@ def check_controls(
         "testWipe_FreshRuntimeInstance_AfterWipeWorksNormally",
         "testWipe_W15_RealDatabaseArtifactsAndSidecars_DeletedAfterClosure",
     ]
+    # ── R29: Android WipeLifecycleTest, SessionManagerConcurrencyTest, CrashStartupResumeTest ──
     for m in wipe_methods:
         if m not in kt_test_wipe:
             errors.append(f"Android WipeLifecycleTest missing canonical test: {m} (R29)")
+
+    # Android SessionManager invalidation-attempt hook
+    if "testInvalidationAttemptHook" not in kt_sm or not re.search(r"fun\s+invalidateForWipe\(\)\s*\{\s*testInvalidationAttemptHook\?\.invoke\(\)\s*lifecycleRwLock\.write", kt_sm):
+        errors.append("Android SessionManager invalidateForWipe missing testInvalidationAttemptHook invocation immediately before write authority (R29)")
 
     # Android Concurrency semantics (RC01-RC03)
     if "testRC01_ResolverLookupVsInvalidation" not in kt_test_concurrency:
@@ -409,13 +414,16 @@ def check_controls(
     if "testRC02_ReadySealVsInvalidation" not in kt_test_concurrency:
         errors.append("Android SessionManagerConcurrencyTest missing testRC02_ReadySealVsInvalidation (R29)")
     else:
-        if not re.search(r"enteredReadAuthority.*releaseThreadA.*invalidationFinished", kt_test_concurrency, re.DOTALL):
-            errors.append("Android SessionManagerConcurrencyTest RC02 missing deterministic entered-read barrier / invalidation ordering (R29)")
+        if not re.search(r"testRC02_ReadySealVsInvalidation.*?enteredReadAuthority.*?testInvalidationAttemptHook\s*=\s*\{\s*invalidationStarted\.countDown\(\)\s*\}.*?invalidationStarted\.await.*?assertEquals\(1L,\s*invalidationFinished\.count\).*?releaseThreadA\.countDown\(\).*?invalidationFinished\.await", kt_test_concurrency, re.DOTALL):
+            errors.append("Android SessionManagerConcurrencyTest RC02 missing deterministic invalidationStarted boundary / pre-release invalidationFinished check (R29)")
     if "testRC03_HandshakeProcessingVsInvalidation" not in kt_test_concurrency:
         errors.append("Android SessionManagerConcurrencyTest missing testRC03_HandshakeProcessingVsInvalidation (R29)")
     else:
-        if not re.search(r"responderProcessHs1.*enteredHsReadAuthority.*releaseHsThread.*invalidationFinished.*initiatorStart", kt_test_concurrency, re.DOTALL):
-            errors.append("Android SessionManagerConcurrencyTest RC03 missing real handshake stage / deterministic in-flight barrier (R29)")
+        if not re.search(r"testRC03_HandshakeProcessingVsInvalidation.*?responderProcessHs1.*?enteredHsReadAuthority.*?testInvalidationAttemptHook\s*=\s*\{\s*invalidationStarted\.countDown\(\)\s*\}.*?invalidationStarted\.await.*?assertEquals\(1L,\s*invalidationFinished\.count\).*?releaseHsThread\.countDown\(\).*?invalidationFinished\.await", kt_test_concurrency, re.DOTALL):
+            errors.append("Android SessionManagerConcurrencyTest RC03 missing real responderProcessHs1 HS2 / deterministic invalidationStarted boundary (R29)")
+
+    if "Thread.yield()" in kt_test_concurrency or "Thread.sleep" in kt_test_concurrency:
+        errors.append("Android SessionManagerConcurrencyTest contains timing assumptions (Thread.yield/Thread.sleep) (R29)")
 
     # Android Startup semantics (SR01-SR07)
     startup_methods = [
@@ -454,19 +462,26 @@ def check_controls(
         if m not in swift_test_startup:
             errors.append(f"iOS CrashStartupResumeTests missing canonical test: {m} (R30)")
 
+    # iOS SessionManager invalidation-attempt hook
+    if "testInvalidationAttemptHook" not in swift_sm or not re.search(r"func\s+invalidateForWipe\(\)\s*\{\s*testInvalidationAttemptHook\?\(\)\s*lifecycleRwLock\.withWriteLock", swift_sm):
+        errors.append("iOS SessionManager invalidateForWipe missing testInvalidationAttemptHook invocation immediately before write authority (R30)")
+
     # iOS Concurrency semantics (RC01-RC03)
     if "testRC01_ResolverLookupVsInvalidation" not in swift_test_concurrency:
         errors.append("iOS SessionManagerConcurrencyTests missing testRC01_ResolverLookupVsInvalidation (R30)")
     if "testRC02_ReadySealVsInvalidation" not in swift_test_concurrency:
         errors.append("iOS SessionManagerConcurrencyTests missing testRC02_ReadySealVsInvalidation (R30)")
     else:
-        if not re.search(r"enteredReadAuthority.*releaseThreadA.*invalidationFinished.*isInvalidated", swift_test_concurrency, re.DOTALL):
-            errors.append("iOS SessionManagerConcurrencyTests RC02 missing deterministic entered-read barrier / invalidation ordering (R30)")
+        if not re.search(r"testRC02_ReadySealVsInvalidation.*?enteredReadAuthority.*?testInvalidationAttemptHook\s*=\s*\{\s*invalidationStarted\.signal\(\)\s*\}.*?invalidationStarted\.wait.*?XCTAssertFalse\(invalidationReturned.*?releaseThreadA\.signal\(\).*?wait\(for:\s*\[threadAFinished,\s*invalidationFinished\]", swift_test_concurrency, re.DOTALL):
+            errors.append("iOS SessionManagerConcurrencyTests RC02 missing deterministic invalidationStarted boundary / pre-release invalidationReturned check (R30)")
     if "testRC03_HandshakeProcessingVsInvalidation" not in swift_test_concurrency:
         errors.append("iOS SessionManagerConcurrencyTests missing testRC03_HandshakeProcessingVsInvalidation (R30)")
     else:
-        if not re.search(r"responderProcessHs1.*enteredHsReadAuthority.*releaseHsThread.*invalidationFinished.*initiatorStart", swift_test_concurrency, re.DOTALL):
-            errors.append("iOS SessionManagerConcurrencyTests RC03 missing real handshake stage / deterministic in-flight barrier (R30)")
+        if not re.search(r"testRC03_HandshakeProcessingVsInvalidation.*?responderProcessHs1.*?enteredHsReadAuthority.*?testInvalidationAttemptHook\s*=\s*\{\s*invalidationStarted\.signal\(\)\s*\}.*?invalidationStarted\.wait.*?XCTAssertFalse\(invalidationReturned.*?releaseHsThread\.signal\(\).*?wait\(for:\s*\[hsThreadFinished,\s*invalidationFinished\]", swift_test_concurrency, re.DOTALL):
+            errors.append("iOS SessionManagerConcurrencyTests RC03 missing real responderProcessHs1 HS2 / deterministic invalidationStarted boundary (R30)")
+
+    if "Thread.sleep" in swift_test_concurrency or "Thread.yield" in swift_test_concurrency:
+        errors.append("iOS SessionManagerConcurrencyTests contains timing assumptions (Thread.sleep/Thread.yield) (R30)")
 
     # iOS SR05: runtime1 beginPanicWipe, runtime2 SAME store URLs, node id change
     if not re.search(r"runtime1\.beginPanicWipe.*MeshRuntime\.create\(.*messageStoreUrl:\s*msgUrl,\s*peerStoreUrl:\s*peerUrl.*XCTAssertNotEqual\(oldNodeId,\s*runtime2\.identity\.nodeId\)", swift_test_startup, re.DOTALL):
@@ -849,12 +864,74 @@ def selftest() -> int:
         else: failures.append("Mutation R30_RC03 was NOT caught")
         reset_all()
 
+        # Mutation M46 (R29_HOOK): Remove testInvalidationAttemptHook invocation from Android SessionManager
+        f_kt_sm.write_text(f_kt_sm.read_text(encoding="utf-8").replace("testInvalidationAttemptHook?.invoke()", "// no-hook"), encoding="utf-8")
+        if any("R29" in e for e in run_check()): passed += 1
+        else: failures.append("Mutation M46 (R29_HOOK) was NOT caught")
+        reset_all()
+
+        # Mutation M47 (R29_RC02_START): Remove invalidationStarted synchronization from Android RC02
+        f_kt_tconcurrency.write_text(f_kt_tconcurrency.read_text(encoding="utf-8").replace("invalidationStarted.countDown()", "// no-start-signal"), encoding="utf-8")
+        if any("R29" in e for e in run_check()): passed += 1
+        else: failures.append("Mutation M47 (R29_RC02_START) was NOT caught")
+        reset_all()
+
+        # Mutation M48 (R29_RC02_ORDER): Move pre-release invalidation check after releaseThreadA in Android RC02
+        old_block_kt_rc02 = "assertEquals(1L, invalidationFinished.count)\n\n        // Release Thread A\n        releaseThreadA.countDown()"
+        new_block_kt_rc02 = "releaseThreadA.countDown()\n\n        assertEquals(1L, invalidationFinished.count)"
+        f_kt_tconcurrency.write_text(f_kt_tconcurrency.read_text(encoding="utf-8").replace(old_block_kt_rc02, new_block_kt_rc02), encoding="utf-8")
+        if any("R29" in e for e in run_check()): passed += 1
+        else: failures.append("Mutation M48 (R29_RC02_ORDER) was NOT caught")
+        reset_all()
+
+        # Mutation M49 (R29_YIELD): Reintroduce Thread.yield() in Android SessionManagerConcurrencyTest
+        f_kt_tconcurrency.write_text(f_kt_tconcurrency.read_text(encoding="utf-8").replace("package io.godstone.mesh.crypto", "package io.godstone.mesh.crypto\nfun yieldHelper() { Thread.yield() }"), encoding="utf-8")
+        if any("R29" in e for e in run_check()): passed += 1
+        else: failures.append("Mutation M49 (R29_YIELD) was NOT caught")
+        reset_all()
+
+        # Mutation M50 (R29_RC03_START): Remove invalidationStarted boundary from Android RC03
+        f_kt_tconcurrency.write_text(f_kt_tconcurrency.read_text(encoding="utf-8").replace("smA.testInvalidationAttemptHook = {\n            invalidationStarted.countDown()\n        }", "smA.testInvalidationAttemptHook = null"), encoding="utf-8")
+        if any("R29" in e for e in run_check()): passed += 1
+        else: failures.append("Mutation M50 (R29_RC03_START) was NOT caught")
+        reset_all()
+
+        # Mutation M51 (R30_HOOK): Remove testInvalidationAttemptHook invocation from iOS SessionManager
+        f_swift_sm.write_text(f_swift_sm.read_text(encoding="utf-8").replace("testInvalidationAttemptHook?()", "// no-hook"), encoding="utf-8")
+        if any("R30" in e for e in run_check()): passed += 1
+        else: failures.append("Mutation M51 (R30_HOOK) was NOT caught")
+        reset_all()
+
+        # Mutation M52 (R30_RC02_SLEEP): Replace deterministic boundary with Thread.sleep in iOS RC02
+        f_swift_tconcurrency.write_text(f_swift_tconcurrency.read_text(encoding="utf-8").replace("XCTAssertFalse(invalidationReturned", "Thread.sleep(forTimeInterval: 0.01)\n        XCTAssertFalse(invalidationReturned"), encoding="utf-8")
+        if any("R30" in e for e in run_check()): passed += 1
+        else: failures.append("Mutation M52 (R30_RC02_SLEEP) was NOT caught")
+        reset_all()
+
+        # Mutation M53 (R30_RC02_ASSERT): Remove pre-release invalidation-not-returned assertion in iOS RC02
+        f_swift_tconcurrency.write_text(f_swift_tconcurrency.read_text(encoding="utf-8").replace('XCTAssertFalse(invalidationReturned, "invalidation must NOT return while Thread A holds read lock")', '// no assert'), encoding="utf-8")
+        if any("R30" in e for e in run_check()): passed += 1
+        else: failures.append("Mutation M53 (R30_RC02_ASSERT) was NOT caught")
+        reset_all()
+
+        # Mutation M54 (R30_RC03_SLEEP): Replace deterministic boundary with Thread.sleep in iOS RC03
+        f_swift_tconcurrency.write_text(f_swift_tconcurrency.read_text(encoding="utf-8").replace("releaseHsThread.signal()", "Thread.sleep(forTimeInterval: 0.01)\n        releaseHsThread.signal()"), encoding="utf-8")
+        if any("R30" in e for e in run_check()): passed += 1
+        else: failures.append("Mutation M54 (R30_RC03_SLEEP) was NOT caught")
+        reset_all()
+
+        # Mutation M55 (R30_RC03_START): Remove invalidationStarted synchronization from iOS RC03
+        f_swift_tconcurrency.write_text(f_swift_tconcurrency.read_text(encoding="utf-8").replace("smA.testInvalidationAttemptHook = {\n            invalidationStarted.signal()\n        }", "smA.testInvalidationAttemptHook = nil"), encoding="utf-8")
+        if any("R30" in e for e in run_check()): passed += 1
+        else: failures.append("Mutation M55 (R30_RC03_START) was NOT caught")
+        reset_all()
+
     if failures:
         for f in failures:
             print(f"::error::selftest failure: {f}")
         return 1
 
-    print(f"check_trusted_runtime_composition_controls selftest PASSED ({passed}/45 mutations caught deterministically across R01-R30).")
+    print(f"check_trusted_runtime_composition_controls selftest PASSED ({passed}/55 mutations caught deterministically across R01-R30).")
     return 0
 
 
