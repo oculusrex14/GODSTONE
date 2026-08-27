@@ -1,7 +1,7 @@
 # ADR-002 — BLE roles, record framing, and the Noise handshake driver
 
-**STATUS: ACCEPTED** (31 Jul 2026)
-Implementation is tracked as `M2-link` and is NOT part of V4.
+**STATUS: ACCEPTED / PHASE C8.4C RECORD LAYER IMPLEMENTED & FROZEN** (27 Aug 2026)
+Implementation: Phase C8.4C canonical BLE record layer (types, balanced-stride codec, fragmenter, bounded reassembler with injected clock, duplicate suppression, conflict rejection, encrypt-then-fragment semantic verification, 32/229/197 handshake composition tests, independent Python reference wire/ble_record_reference.py, and locked vectors wire/ble_record_vectors.json) is implemented and verified. Full link enablement (radio/GATT drivers) remains open behind LINK_LAYER_READY=false / linkLayerReady=false.
 
 ---
 
