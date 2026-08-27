@@ -475,7 +475,7 @@ class BleLinkSubstrateTest {
     @Test
     fun testLinkInfoAuthority_OverridesAdvMetadata() {
         val advHint = byteArrayOf(0x00, 0x00, 0x00, 0x00) // spoofed or stale adv
-        val realLinkInfoHint = byteArrayOf(0x77, 0x88, 0x99.toByte(), 0xAA.toByte())
+        val realLinkInfoHint = byteArrayOf(0x77, 0x88.toByte(), 0x99.toByte(), 0xAA.toByte())
 
         // Role election uses realLinkInfoHint from LinkInfo characteristic READ
         val myHint = byteArrayOf(0x11, 0x22, 0x33, 0x44)
