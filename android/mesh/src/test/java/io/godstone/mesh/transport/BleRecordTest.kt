@@ -1,8 +1,8 @@
 package io.godstone.mesh.transport
 
 import io.godstone.mesh.MeshIdentity
+import io.godstone.mesh.crypto.PeerBindingTrustAuthority
 import io.godstone.mesh.crypto.SessionManager
-import io.godstone.mesh.identity.PeerBindingTrustAuthority
 import io.godstone.mesh.identity.PeerTrustApplyResult
 import io.godstone.mesh.identity.ValidatedPeerBinding
 import org.junit.Assert.assertArrayEquals
