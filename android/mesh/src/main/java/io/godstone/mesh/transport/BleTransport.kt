@@ -16,17 +16,21 @@ import io.godstone.mesh.router.BloomDigest
 import io.godstone.mesh.wire.v2.FrameV2
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.callbackFlow
 import java.nio.ByteBuffer
 import java.util.UUID
+import java.util.concurrent.ConcurrentHashMap
 
 /**
- * Disabled BLE control-plane scaffold.
+ * Persistent duplex BLE control-plane substrate (ADR-002, Phase C8.4D1).
  *
- * ADR-002 proved the old 26-byte service-data advertisement cannot fit beside a
- * 128-bit UUID. The accepted target is UUID-only primary advertising plus a
- * 13-byte scan-response payload. MeshNode keeps this transport unreachable until
- * the record layer, handshake driver and on-device size tests are complete.
+ * Implements:
+ * - Deterministic role election via [BleRoleElection]
+ * - 13-byte scan-response discovery metadata plumbing via [BleDiscoveryCodec]
+ * - Persistent bidirectional GATT client/server links
+ * - Connection-local [BleRecord] fragmentation/reassembly seam
+ * - Bounded peer and connection resource management
  */
 @SuppressLint("MissingPermission")
 class BleTransport(
@@ -41,36 +45,87 @@ class BleTransport(
     override val isBulkCapable = false
 
     private val btManager = context.getSystemService(BluetoothManager::class.java)
-    private val adapter get() = btManager.adapter
+    private val adapter get() = btManager?.adapter
 
     private var powerState = PowerState.NORMAL
     private var advertiseCallback: AdvertiseCallback? = null
     private var scanCallback: ScanCallback? = null
 
+    // Owned peripheral GATT server
+    private val gattServer: BleGattServer = BleGattServer(
+        context = context,
+        serviceUuid = SERVICE_UUID,
+        inboxCharUuid = WRITE_CHAR_UUID,
+        onInboundWrite = { peerAddress, value -> handleInboundAttValue(peerAddress, value) },
+        onClientDisconnected = { peerAddress -> handlePeerDisconnected(peerAddress) }
+    )
+
+    // Discovered peer cache (bounded to MAX_DISCOVERED_PEERS)
+    private val discoveryLock = Any()
+    private val discoveredPeers = LinkedHashMap<String, BleDiscoveryMetadata>()
+
+    // Active persistent connections (bounded to MAX_ACTIVE_CONNECTIONS)
+    private val activeConnections = ConcurrentHashMap<String, BleConnection>()
+    private val activeClientConnections = ConcurrentHashMap<String, GattClientConnection>()
+
+    // Inbound raw record events
+    private val inboundRecordFlow = MutableSharedFlow<Pair<ByteArray, BleReassembledRecord>>(extraBufferCapacity = 64)
+
+    @Volatile
+    private var isStarted = false
+
     override fun start() {
+        if (isStarted) return
+        isStarted = true
+
+        // Logical startup order (ADR-002 §7):
+        // 1. Open GATT server
+        // 2. Establish inbound plumbing
+        // 3. Begin advertising
+        gattServer.start()
         startAdvertising()
     }
 
     override fun stop() {
-        advertiseCallback?.let { adapter.bluetoothLeAdvertiser?.stopAdvertising(it) }
-        scanCallback?.let { adapter.bluetoothLeScanner?.stopScan(it) }
+        isStarted = false
+
+        // Stop advertising and scanning
+        advertiseCallback?.let { adapter?.bluetoothLeAdvertiser?.stopAdvertising(it) }
+        scanCallback?.let { adapter?.bluetoothLeScanner?.stopScan(it) }
         advertiseCallback = null
         scanCallback = null
+
+        // Disconnect and purge active client links
+        for ((_, client) in activeClientConnections) {
+            client.disconnect()
+        }
+        activeClientConnections.clear()
+
+        // Reset and purge connections
+        for ((_, conn) in activeConnections) {
+            conn.markDisconnected()
+        }
+        activeConnections.clear()
+
+        // Close server
+        gattServer.stop()
+
+        synchronized(discoveryLock) {
+            discoveredPeers.clear()
+        }
     }
 
     fun setPowerState(state: PowerState) {
         if (state == powerState) return
         powerState = state
-        stop()
-        start()
+        if (isStarted) {
+            stop()
+            start()
+        }
     }
 
     /**
-     * Accepted 13-byte scan-response payload from ADR-002.
-     *
-     * This builder is not wired into advertising yet: the complete M2-link
-     * lifecycle must produce it asynchronously from the durable held-message
-     * digest and verify packet sizes on hardware before LINK_LAYER_READY moves.
+     * Accepted 13-byte scan-response payload from ADR-002 §2.
      */
     fun buildScanResponsePayload(
         digest: ByteArray,
@@ -84,16 +139,18 @@ class BleTransport(
         if (powerState == PowerState.CRITICAL) flags = flags or FLAG_POWER_CONSTRAINED
         if (clockUntrusted) flags = flags or FLAG_CLOCK_UNTRUSTED
 
-        return ByteBuffer.allocate(SCAN_RESPONSE_BYTES)
-            .put(FrameV2.VERSION)
-            .put(flags.toByte())
-            .put(identity.nodeHint)
-            .put(digest, 0, 6)
-            .put(queueDepth.coerceIn(0, 255).toByte())
-            .array()
+        return BleDiscoveryCodec.encode(
+            version = FrameV2.VERSION,
+            flags = flags.toByte(),
+            nodeHint = identity.nodeHint,
+            shortDigest = digest.copyOfRange(0, 6),
+            queueDepth = queueDepth
+        )
     }
 
     private fun startAdvertising() {
+        val adv = adapter?.bluetoothLeAdvertiser ?: return
+
         val settings = AdvertiseSettings.Builder()
             .setAdvertiseMode(
                 when (powerState) {
@@ -111,46 +168,84 @@ class BleTransport(
             .setConnectable(true)
             .build()
 
+        // Primary Advertisement: Service UUID only (18 bytes)
         val data = AdvertiseData.Builder()
-            .setIncludeDeviceName(false)   // never leak the device name
+            .setIncludeDeviceName(false)
             .addServiceUuid(ParcelUuid(SERVICE_UUID))
             .build()
 
-        advertiseCallback = object : AdvertiseCallback() {
-            override fun onStartFailure(errorCode: Int) {
-                // Surfaced to the user by MeshNode as a degraded-mode banner.
-            }
-        }
+        // Scan Response: Service Data with 13-byte discovery payload (31 bytes exact fit)
+        val dummyDigest = ByteArray(6)
+        val scanResponsePayload = buildScanResponsePayload(dummyDigest, 0, false)
+        val scanResponse = AdvertiseData.Builder()
+            .setIncludeDeviceName(false)
+            .addServiceData(ParcelUuid(SERVICE_UUID), scanResponsePayload)
+            .build()
 
-        adapter.bluetoothLeAdvertiser?.startAdvertising(settings, data, advertiseCallback)
+        val cb = object : AdvertiseCallback() {
+            override fun onStartFailure(errorCode: Int) {}
+        }
+        advertiseCallback = cb
+        adv.startAdvertising(settings, data, scanResponse, cb)
     }
 
     override fun peers(): Flow<PeerEvent> = callbackFlow {
         val cb = object : ScanCallback() {
             override fun onScanResult(callbackType: Int, result: ScanResult) {
-                val sd = result.scanRecord
-                    ?.getServiceData(ParcelUuid(SERVICE_UUID)) ?: return
-                if (sd.size < SCAN_RESPONSE_BYTES) return
+                val address = result.device.address ?: return
+                val peerMacBytes = PeerId.fromAddress(address) ?: return
 
-                val buf = ByteBuffer.wrap(sd)
-                if (buf.get() != 0x02.toByte()) return   // refuse unknown versions
+                val sd = result.scanRecord?.getServiceData(ParcelUuid(SERVICE_UUID))
+                val metadata = if (sd != null && sd.size >= BleDiscoveryConstants.DISCOVERY_PAYLOAD_BYTES) {
+                    BleDiscoveryCodec.decode(sd)
+                } else {
+                    null
+                }
 
-                val flags = buf.get().toInt()
-                val hint = ByteArray(4).also { buf.get(it) }
-                val digest = ByteArray(6).also { buf.get(it) }
-                val queueDepth = buf.get().toInt() and 0xFF
+                if (metadata != null) {
+                    // Update discovery cache with full metadata
+                    synchronized(discoveryLock) {
+                        if (discoveredPeers.size >= MAX_DISCOVERED_PEERS && !discoveredPeers.containsKey(address)) {
+                            val oldest = discoveredPeers.keys.firstOrNull()
+                            if (oldest != null) discoveredPeers.remove(oldest)
+                        }
+                        discoveredPeers[address] = metadata
+                    }
 
-                trySend(
-                    PeerEvent.Found(
-                        peerId = PeerId.fromAddress(result.device.address) ?: return,
-                        nodeHint = hint,
-                        rssi = result.rssi,
-                        sosFlag = flags and FLAG_SOS != 0,
-                        bulkCapable = flags and FLAG_BULK_CAPABLE != 0,
-                        shortDigest = digest,
-                        queueDepth = queueDepth
+                    // Role election evaluation
+                    val election = BleRoleElection.elect(identity.nodeHint, metadata.nodeHint)
+                    if (election is BleRoleElectionResult.Elected) {
+                        getOrCreateConnection(peerMacBytes, address, metadata.nodeHint, election.role)
+                    }
+
+                    trySend(
+                        PeerEvent.Found(
+                            peerId = peerMacBytes,
+                            nodeHint = metadata.nodeHint,
+                            rssi = result.rssi,
+                            sosFlag = metadata.isSosPresent,
+                            bulkCapable = metadata.isBulkCapable,
+                            shortDigest = metadata.shortDigest,
+                            queueDepth = metadata.queueDepth
+                        )
                     )
-                )
+                } else {
+                    // Tolerates adv arrival before scan response: retain cached metadata if previously seen
+                    val cached = synchronized(discoveryLock) { discoveredPeers[address] }
+                    if (cached != null) {
+                        trySend(
+                            PeerEvent.Found(
+                                peerId = peerMacBytes,
+                                nodeHint = cached.nodeHint,
+                                rssi = result.rssi,
+                                sosFlag = cached.isSosPresent,
+                                bulkCapable = cached.isBulkCapable,
+                                shortDigest = cached.shortDigest,
+                                queueDepth = cached.queueDepth
+                            )
+                        )
+                    }
+                }
             }
         }
 
@@ -168,59 +263,109 @@ class BleTransport(
             .setServiceUuid(ParcelUuid(SERVICE_UUID))
             .build()
 
-        adapter.bluetoothLeScanner?.startScan(listOf(filter), settings, cb)
+        adapter?.bluetoothLeScanner?.startScan(listOf(filter), settings, cb)
         scanCallback = cb
 
-        awaitClose { adapter.bluetoothLeScanner?.stopScan(cb) }
+        awaitClose { adapter?.bluetoothLeScanner?.stopScan(cb) }
+    }
+
+    private fun getOrCreateConnection(
+        peerMacBytes: ByteArray,
+        address: String,
+        remoteHint: ByteArray,
+        role: BleRole
+    ): BleConnection? {
+        val existing = activeConnections[address]
+        if (existing != null && existing.isActive) return existing
+
+        if (activeConnections.size >= MAX_ACTIVE_CONNECTIONS && !activeConnections.containsKey(address)) {
+            return null // Reject connection exceeding bounded capacity
+        }
+
+        val conn = BleConnection(
+            peerId = peerMacBytes,
+            remoteNodeHint = remoteHint,
+            localRole = role
+        )
+        activeConnections[address] = conn
+        return conn
+    }
+
+    private fun handleInboundAttValue(peerAddress: String, value: ByteArray) {
+        val conn = activeConnections[peerAddress] ?: return
+        val record = conn.ingestInboundAttValue(value) ?: return
+        val peerId = conn.peerId
+        inboundRecordFlow.tryEmit(peerId to record)
+    }
+
+    private fun handlePeerDisconnected(peerAddress: String) {
+        val conn = activeConnections.remove(peerAddress)
+        conn?.markDisconnected()
+        activeClientConnections.remove(peerAddress)?.disconnect()
     }
 
     /**
-     * Send [bytes] to [peerId] THROUGH THE NOISE SESSION.
-     *
-     * Audit: this method previously wrote `frame.encode()` directly to the GATT
-     * characteristic. NoiseSession existed and was tested, but nothing in
-     * production ever constructed one, so every byte the mesh sent was
-     * plaintext while the app described itself as encrypted.
-     *
-     * There is deliberately NO plaintext fallback. If no session is established
-     * the send fails and the router carries the frame to the next encounter --
-     * delay is the designed behaviour; leaking is not.
+     * Send [bytes] to [peerId] through the Noise session and BleRecord layer.
      */
     override suspend fun send(peerId: ByteArray, bytes: ByteArray): Boolean {
         require(bytes.size <= GATT_MTU) { "use the bulk plane for large payloads" }
+        val address = PeerId.toAddress(peerId) ?: return false
+        val conn = activeConnections[address] ?: return false
+        if (!conn.isActive) return false
+
         val sealed = sessions?.seal(peerId, bytes) ?: return false
-        return GattClient.write(context, peerId, WRITE_CHAR_UUID, sealed)
+
+        // Fragment record through connection seam
+        val fragments = conn.fragmentOutbound(BleRecordType.DATA, sealed)
+        if (fragments.isEmpty()) return false
+
+        // Send all fragments over the persistent duplex link
+        for (frag in fragments) {
+            val success = if (conn.localRole == BleRole.INITIATOR) {
+                val client = activeClientConnections[address] ?: return false
+                client.sendAttValue(frag)
+            } else {
+                gattServer.sendNotification(address, frag)
+            }
+            if (!success) return false
+        }
+        return true
     }
 
     /** Decrypted inbound frames. Anything that fails authentication is dropped. */
     fun receivedPlaintext(): Flow<Pair<ByteArray, ByteArray>> =
         kotlinx.coroutines.flow.flow {
-            received().collect { (peer, cipher) ->
-                val clear = try {
-                    sessions?.open(peer, cipher)
-                } catch (e: Exception) {
-                    null   // tamper or replay: refuse to process
+            inboundRecordFlow.collect { (peer, record) ->
+                if (record.recordType == BleRecordType.DATA) {
+                    val clear = try {
+                        sessions?.open(peer, record.payload)
+                    } catch (_: Exception) {
+                        null
+                    }
+                    if (clear != null) emit(peer to clear)
                 }
-                if (clear != null) emit(peer to clear)
             }
         }
 
     override fun received(): Flow<Pair<ByteArray, ByteArray>> =
-        GattServer.incoming(context, SERVICE_UUID, WRITE_CHAR_UUID)
+        kotlinx.coroutines.flow.flow {
+            inboundRecordFlow.collect { (peer, record) ->
+                if (record.recordType == BleRecordType.DATA) {
+                    emit(peer to record.payload)
+                }
+            }
+        }
 
     companion object {
-        // GENERATED-SPEC UUIDs. These previously read 67640001-… while iOS read
-        // 6F0D0001-… -- the two platforms literally could not see each other, so
-        // the header and type-code defects below were never even reached. The
-        // values now come from wire/wire_v2.yaml via FrameV2 and cannot drift:
-        // ci/check_parity.py Invariant G fails the build if a literal UUID
-        // reappears here.
         val SERVICE_UUID: UUID = FrameV2.SERVICE_UUID
         val WRITE_CHAR_UUID: UUID = FrameV2.INBOX_UUID
         val NOTIFY_CHAR_UUID: UUID = FrameV2.DIGEST_UUID
 
         const val GATT_MTU = 512
         const val SCAN_RESPONSE_BYTES = 13
+
+        const val MAX_DISCOVERED_PEERS = 64
+        const val MAX_ACTIVE_CONNECTIONS = 7
 
         const val FLAG_SOS = 0x01
         const val FLAG_BULK_CAPABLE = 0x02

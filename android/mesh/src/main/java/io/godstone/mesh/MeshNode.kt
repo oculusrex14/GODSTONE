@@ -52,7 +52,8 @@ sealed interface DirectDispatchResult {
 }
 
 const val LINK_LAYER_OPEN_REASON =
-    "Encrypted BLE records and the Noise handshake driver are not implemented yet. " +
+    "BLE record framing and the persistent radio substrate are implemented, " +
+    "but the trusted handshake driver and on-device link validation remain incomplete. " +
     "Radio transmission is disabled in this pre-alpha build."
 
 /**

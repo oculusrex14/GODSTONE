@@ -27,7 +27,7 @@ public enum DirectDispatchResult: Equatable, Sendable {
 public final class MeshNode {
     public static let linkLayerReady = false
     public static let linkLayerOpenReason =
-        "Encrypted BLE record reassembly and the Noise handshake driver are not implemented yet. Radio transmission is disabled in this pre-alpha build."
+        "BLE record framing and the persistent radio substrate are implemented, but the trusted handshake driver and on-device link validation remain incomplete. Radio transmission is disabled in this pre-alpha build."
 
     public let identity: MeshIdentity
     /// Durable hold, injected before `start()` (ADR-004 / Stage 4B). The router
@@ -94,6 +94,7 @@ public final class MeshNode {
         isStarted = true
         ble.delegate = self
         ble.sessions = sessions
+        ble.identity = identity
         router.onForward = { [weak self] frame in
             guard let self else { return }
             for peer in self.currentPeers() { _ = self.ble.send(frame, to: peer) }

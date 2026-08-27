@@ -1,4 +1,3 @@
-// SYNTHESIZED gap-closure file -- authored to make the project compile; see docs/AUDIT.md.
 package io.godstone.mesh.transport
 
 import android.annotation.SuppressLint
@@ -6,84 +5,181 @@ import android.bluetooth.BluetoothDevice
 import android.bluetooth.BluetoothGatt
 import android.bluetooth.BluetoothGattCallback
 import android.bluetooth.BluetoothGattCharacteristic
+import android.bluetooth.BluetoothGattDescriptor
 import android.bluetooth.BluetoothProfile
 import android.content.Context
+import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import java.util.UUID
-import kotlin.coroutines.resume
-import kotlinx.coroutines.suspendCancellableCoroutine
 
 /**
- * Central-side GATT client. Connects to a peer, locates the write characteristic,
- * and writes one frame. The peer [peerId] is the peer's MAC address as raw bytes.
+ * Persistent central-side GATT connection (ADR-002, Phase C8.4D1).
+ *
+ * Retains a single [BluetoothGatt] connection for the link lifetime, serializes GATT operations,
+ * subscribes to notifications on the canonical inbox characteristic, negotiates MTU, and supports
+ * multiple sequential bidirectional ATT value transmissions without disconnecting.
  */
 @SuppressLint("MissingPermission")
-internal object GattClient {
+class GattClientConnection(
+    private val context: Context,
+    val peerAddress: String,
+    val onInboundNotification: (ByteArray) -> Unit,
+    val onDisconnected: () -> Unit,
+    val onMtuUpdated: (Int) -> Unit = {}
+) {
+    private var gatt: BluetoothGatt? = null
+    private var inboxCharacteristic: BluetoothGattCharacteristic? = null
+    private val gattMutex = Mutex()
+    private var pendingOperation: CompletableDeferred<Boolean>? = null
+    private val connectDeferred = CompletableDeferred<Boolean>()
 
-    /**
-     * Write [bytes] to [charUuid] on the peer identified by [peerId] MAC bytes.
-     * Returns true only when the write is acknowledged by the peripheral.
-     */
-    suspend fun write(
-        context: Context,
-        peerId: ByteArray,
-        charUuid: UUID,
-        bytes: ByteArray
-    ): Boolean = suspendCancellableCoroutine { cont ->
-        val manager = context.getSystemService(android.bluetooth.BluetoothManager::class.java)
-        val adapter = manager?.adapter
-        if (adapter == null) {
-            cont.resume(false); return@suspendCancellableCoroutine
-        }
+    @Volatile
+    var isConnected: Boolean = false
+        private set
 
-        val mac = PeerId.toAddress(peerId) ?: run {
-            cont.resume(false); return@suspendCancellableCoroutine
-        }
-        val device: BluetoothDevice = try {
-            adapter.getRemoteDevice(mac)
-        } catch (e: IllegalArgumentException) {
-            cont.resume(false); return@suspendCancellableCoroutine
-        }
+    val isReady: Boolean
+        get() = isConnected && inboxCharacteristic != null
 
-        var gatt: BluetoothGatt? = null
-        val callback = object : BluetoothGattCallback() {
-            override fun onConnectionStateChange(g: BluetoothGatt, status: Int, newState: Int) {
-                if (newState == BluetoothProfile.STATE_CONNECTED) {
-                    g.discoverServices()
-                } else if (newState == BluetoothProfile.STATE_DISCONNECTED) {
-                    if (cont.isActive) cont.resume(false)
-                    g.close()
-                }
+    private val callback = object : BluetoothGattCallback() {
+        override fun onConnectionStateChange(g: BluetoothGatt, status: Int, newState: Int) {
+            if (status != BluetoothGatt.GATT_SUCCESS) {
+                isConnected = false
+                if (!connectDeferred.isCompleted) connectDeferred.complete(false)
+                pendingOperation?.complete(false)
+                g.close()
+                onDisconnected()
+                return
             }
 
-            override fun onServicesDiscovered(g: BluetoothGatt, status: Int) {
-                val service = g.services.firstOrNull { it.uuid == BleTransport.SERVICE_UUID }
-                val characteristic = service?.getCharacteristic(charUuid)
-                if (characteristic == null) {
-                    if (cont.isActive) cont.resume(false)
-                    g.disconnect(); return
-                }
-                characteristic.value = bytes
-                characteristic.writeType = BluetoothGattCharacteristic.WRITE_TYPE_DEFAULT
-                if (!g.writeCharacteristic(characteristic)) {
-                    if (cont.isActive) cont.resume(false)
-                    g.disconnect()
-                }
+            if (newState == BluetoothProfile.STATE_CONNECTED) {
+                isConnected = true
+                g.discoverServices()
+            } else if (newState == BluetoothProfile.STATE_DISCONNECTED) {
+                isConnected = false
+                if (!connectDeferred.isCompleted) connectDeferred.complete(false)
+                pendingOperation?.complete(false)
+                g.close()
+                onDisconnected()
+            }
+        }
+
+        override fun onServicesDiscovered(g: BluetoothGatt, status: Int) {
+            if (status != BluetoothGatt.GATT_SUCCESS) {
+                if (!connectDeferred.isCompleted) connectDeferred.complete(false)
+                return
             }
 
-            override fun onCharacteristicWrite(
-                g: BluetoothGatt,
-                characteristic: BluetoothGattCharacteristic,
-                status: Int
-            ) {
-                if (cont.isActive) cont.resume(status == BluetoothGatt.GATT_SUCCESS)
+            val service = g.services.firstOrNull { it.uuid == BleTransport.SERVICE_UUID }
+            val characteristic = service?.getCharacteristic(BleTransport.WRITE_CHAR_UUID)
+            if (characteristic == null) {
+                if (!connectDeferred.isCompleted) connectDeferred.complete(false)
                 g.disconnect()
+                return
             }
+
+            inboxCharacteristic = characteristic
+
+            // Enable notifications on the inbox characteristic
+            g.setCharacteristicNotification(characteristic, true)
+            val cccd = characteristic.getDescriptor(CCCD_UUID)
+            if (cccd != null) {
+                cccd.value = BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE
+                g.writeDescriptor(cccd)
+            } else {
+                g.requestMtu(TARGET_MTU)
+            }
+        }
+
+        override fun onDescriptorWrite(g: BluetoothGatt, descriptor: BluetoothGattDescriptor, status: Int) {
+            g.requestMtu(TARGET_MTU)
+        }
+
+        override fun onMtuChanged(g: BluetoothGatt, mtu: Int, status: Int) {
+            if (status == BluetoothGatt.GATT_SUCCESS) {
+                val maxAttValueLen = maxOf(20, mtu - 3)
+                onMtuUpdated(maxAttValueLen)
+            }
+            if (!connectDeferred.isCompleted) {
+                connectDeferred.complete(true)
+            }
+        }
+
+        override fun onCharacteristicWrite(g: BluetoothGatt, characteristic: BluetoothGattCharacteristic, status: Int) {
+            val deferred = pendingOperation
+            pendingOperation = null
+            deferred?.complete(status == BluetoothGatt.GATT_SUCCESS)
+        }
+
+        @Deprecated("Deprecated in Java")
+        override fun onCharacteristicChanged(g: BluetoothGatt, characteristic: BluetoothGattCharacteristic) {
+            if (characteristic.uuid == BleTransport.WRITE_CHAR_UUID) {
+                val value = characteristic.value ?: return
+                onInboundNotification(value)
+            }
+        }
+    }
+
+    suspend fun connect(): Boolean {
+        val manager = context.getSystemService(android.bluetooth.BluetoothManager::class.java)
+        val adapter = manager?.adapter ?: return false
+        val device: BluetoothDevice = try {
+            adapter.getRemoteDevice(peerAddress)
+        } catch (_: IllegalArgumentException) {
+            return false
         }
 
         gatt = device.connectGatt(context, false, callback, BluetoothDevice.TRANSPORT_LE)
-        if (gatt == null && cont.isActive) cont.resume(false)
+        if (gatt == null) return false
 
-        cont.invokeOnCancellation { gatt?.close() }
+        return try {
+            connectDeferred.await()
+        } catch (_: Exception) {
+            disconnect()
+            false
+        }
     }
 
+    /**
+     * Send an ATT value to the peripheral over this persistent connection.
+     * Serialized via [gattMutex] so sequential writes do not overlap.
+     */
+    suspend fun sendAttValue(bytes: ByteArray): Boolean = gattMutex.withLock {
+        val g = gatt ?: return false
+        val ch = inboxCharacteristic ?: return false
+        if (!isConnected) return false
+
+        val deferred = CompletableDeferred<Boolean>()
+        pendingOperation = deferred
+
+        ch.value = bytes
+        ch.writeType = BluetoothGattCharacteristic.WRITE_TYPE_DEFAULT
+
+        val initiated = g.writeCharacteristic(ch)
+        if (!initiated) {
+            pendingOperation = null
+            return false
+        }
+
+        return try {
+            deferred.await()
+        } catch (_: Exception) {
+            false
+        }
+    }
+
+    fun disconnect() {
+        isConnected = false
+        try {
+            gatt?.disconnect()
+            gatt?.close()
+        } catch (_: Exception) {}
+        gatt = null
+        inboxCharacteristic = null
+    }
+
+    companion object {
+        val CCCD_UUID: UUID = UUID.fromString("00002902-0000-1000-8000-00805f9b34fb")
+        const val TARGET_MTU = 517
+    }
 }

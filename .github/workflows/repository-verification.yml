@@ -159,6 +159,10 @@ jobs:
         run: |
           python ci/check_ble_record_controls.py --selftest
           python ci/check_ble_record_controls.py
+      - name: persistent duplex BLE link substrate regression controls (ADR-002, C8.4D1)
+        run: |
+          python ci/check_ble_link_substrate_controls.py --selftest
+          python ci/check_ble_link_substrate_controls.py
       - name: production-readiness status consistency (Stage 4E0)
         run: |
           python ci/check_status_consistency.py --selftest
