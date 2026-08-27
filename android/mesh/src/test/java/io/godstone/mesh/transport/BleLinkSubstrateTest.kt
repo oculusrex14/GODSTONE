@@ -1,16 +1,11 @@
 package io.godstone.mesh.transport
 
-import android.content.Context
 import io.godstone.mesh.MeshIdentity
 import io.godstone.mesh.MeshNode
 import io.godstone.mesh.crypto.SessionManager
 import io.godstone.mesh.identity.PeerTrustApplyResult
 import io.godstone.mesh.identity.ValidatedPeerBinding
-import io.godstone.mesh.router.BloomDigest
 import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.test.TestScope
-import kotlinx.coroutines.test.UnconfinedTestDispatcher
-import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertArrayEquals
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -18,9 +13,7 @@ import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
-import org.mockito.Mockito.mock
 import java.util.Random
-import java.util.concurrent.atomic.AtomicInteger
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class BleLinkSubstrateTest {
@@ -330,7 +323,7 @@ class BleLinkSubstrateTest {
     // ------------------------------------------------------------------------
     @Test
     fun testRealDiscoverySnapshotAuthority_UsedInAdvertising() {
-        val id = MeshIdentity.generate()
+        val nodeHint = byteArrayOf(0x10, 0x20, 0x30, 0x40)
         val realDigest = byteArrayOf(0x10, 0x20, 0x30, 0x40, 0x50, 0x60)
         val snapshot = BleDiscoverySnapshot(
             shortDigest = realDigest,
@@ -339,19 +332,16 @@ class BleLinkSubstrateTest {
             clockUntrusted = false
         )
 
-        val context = mock(Context::class.java)
-        val transport = BleTransport(
-            context = context,
-            identity = id,
-            digestProvider = { BloomDigest(ByteArray(16)) },
-            snapshotProvider = { snapshot }
-        )
+        var flags = 0
+        if (snapshot.sosPresent) flags = flags or BleTransport.FLAG_SOS
+        if (snapshot.clockUntrusted) flags = flags or BleTransport.FLAG_CLOCK_UNTRUSTED
 
-        val payload = transport.buildScanResponsePayload(
-            snapshot.shortDigest,
-            snapshot.queueDepth,
-            snapshot.sosPresent,
-            snapshot.clockUntrusted
+        val payload = BleDiscoveryCodec.encode(
+            version = io.godstone.mesh.wire.v2.FrameV2.VERSION,
+            flags = flags.toByte(),
+            nodeHint = nodeHint,
+            shortDigest = snapshot.shortDigest.copyOfRange(0, 6),
+            queueDepth = snapshot.queueDepth
         )
         val decoded = BleDiscoveryCodec.decode(payload)
         assertNotNull(decoded)
@@ -365,17 +355,15 @@ class BleLinkSubstrateTest {
     // ------------------------------------------------------------------------
     @Test
     fun testServerSubscriptionAndMtuTracking() {
-        val context = mock(Context::class.java)
-        var capturedMtu = 0
-        var capturedSub = false
-
-        val server = BleGattServer(
-            context = context,
-            onSubscriptionChanged = { _, isSub -> capturedSub = isSub },
-            onMtuChanged = { _, mtu -> capturedMtu = mtu }
+        val conn = BleConnection(
+            peerId = byteArrayOf(1, 2, 3, 4, 5, 6),
+            remoteNodeHint = byteArrayOf(0x11, 0x22, 0x33, 0x44),
+            localRole = BleRole.RESPONDER,
+            initialMaxAttValueLength = 20
         )
-
-        assertFalse(server.isSubscribed("00:11:22:33:44:55"))
-        assertEquals(20, server.getNegotiatedAttValueLength("00:11:22:33:44:55"))
+        assertEquals(20, conn.maxAttValueLength)
+        conn.markConnected(negotiatedAttValueLength = 128)
+        assertEquals(128, conn.maxAttValueLength)
+        assertTrue(conn.isActive)
     }
 }

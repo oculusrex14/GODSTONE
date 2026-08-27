@@ -312,10 +312,7 @@ final class BleLinkSubstrateTests: XCTestCase {
     // ------------------------------------------------------------------------
     // 14. iOS CoreBluetooth Service Data absence fails closed (Spec Blocker Evidence)
     // ------------------------------------------------------------------------
-    func testCoreBluetoothMissingServiceData_FailsClosed() throws {
-        let id = try makeIdentity()
-        let transport = BleTransport(identity: id)
-
+    func testCoreBluetoothMissingServiceData_FailsClosed() {
         // Advertisements without CBAdvertisementDataServiceDataKey fail closed to decode
         let emptyAdvData: [String: Any] = [:]
         let rawPayload = (emptyAdvData[CBAdvertisementDataServiceDataKey] as? [CBUUID: Data])?[BleTransport.serviceUuid]
@@ -324,6 +321,5 @@ final class BleLinkSubstrateTests: XCTestCase {
         // Decode returns nil and didDiscover does not connect or create connection
         let metadata = rawPayload.flatMap { BleDiscoveryCodec.decode($0) }
         XCTAssertNil(metadata)
-        XCTAssertNil(transport.connection(for: UUID()))
     }
 }

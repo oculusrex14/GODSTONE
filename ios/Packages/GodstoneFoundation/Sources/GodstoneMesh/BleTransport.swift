@@ -51,8 +51,13 @@ public final class BleTransport: NSObject {
     public init(identity: MeshIdentity? = nil) {
         self.identity = identity
         super.init()
+        #if targetEnvironment(simulator)
+        central = CBCentralManager(delegate: self, queue: .global(qos: .utility))
+        peripheral = CBPeripheralManager(delegate: self, queue: .global(qos: .utility))
+        #else
         central = CBCentralManager(delegate: self, queue: .global(qos: .utility), options: [CBCentralManagerOptionRestoreIdentifierKey: "io.godstone.central"])
         peripheral = CBPeripheralManager(delegate: self, queue: .global(qos: .utility), options: [CBPeripheralManagerOptionRestoreIdentifierKey: "io.godstone.peripheral"])
+        #endif
     }
 
     public func start() {
