@@ -1,9 +1,9 @@
 package io.godstone.mesh.transport
 
-import java.util.concurrent.atomic.AtomicBoolean
+import java.util.concurrent.atomic.AtomicReference
 
 /**
- * Connection state and lifecycle for a persistent BLE link (ADR-002, Phase C8.4D1-A1).
+ * Authoritative connection state and lifecycle for a persistent BLE link (ADR-002, Phase C8.4D1-A1/R2).
  */
 enum class BleConnectionState {
     DISCOVERED,
@@ -16,32 +16,24 @@ enum class BleConnectionState {
     READY,
     QUARANTINED,
     CLOSING,
-    CLOSED,
-
-    // Backward-compatible lifecycle states
-    CONNECTING,
-    CONNECTED,
-    DISCONNECTING,
-    DISCONNECTED
+    CLOSED
 }
 
 /**
  * Persistent duplex connection abstraction representing an active or in-flight BLE link.
  *
- * Encapsulates:
- * - Transport peer identifier (MAC address bytes on Android)
- * - Actual observed remote node_hint (from discovery payload)
- * - Elected local role (INITIATOR vs RESPONDER)
- * - Negotiated safe ATT value capacity (maxAttValueLength)
- * - Connection-local BleRecord reassembler and sequence counter
+ * A provisional connection is constructible without remote node_hint or elected role.
+ * Role and remote node_hint are bound one-way via [bindRole] during the LinkInfo exchange.
  */
 class BleConnection(
     val peerId: ByteArray,
-    val remoteNodeHint: ByteArray,
-    val localRole: BleRole,
     initialMaxAttValueLength: Int = DEFAULT_MAX_ATT_VALUE_LENGTH,
     private val clock: () -> Long = { System.currentTimeMillis() / 1000L }
 ) {
+    init {
+        require(peerId.isNotEmpty()) { "peerId must not be empty" }
+    }
+
     var maxAttValueLength: Int = initialMaxAttValueLength
         set(value) {
             require(value >= BleRecordConstants.HEADER_BYTES + 1) {
@@ -50,32 +42,83 @@ class BleConnection(
             field = value
         }
 
-    private val _state = java.util.concurrent.atomic.AtomicReference(BleConnectionState.CONNECTING)
+    private val _state = AtomicReference(BleConnectionState.PROVISIONAL_CONNECTING)
     val state: BleConnectionState get() = _state.get()
 
-    val isActive: Boolean get() = state == BleConnectionState.CONNECTED || state == BleConnectionState.CONNECTING
+    private var _remoteNodeHint: ByteArray? = null
+    val remoteNodeHint: ByteArray?
+        get() = _remoteNodeHint?.copyOf()
+
+    private var _localRole: BleRole? = null
+    val localRole: BleRole?
+        get() = _localRole
+
+    val isRoleBound: Boolean
+        get() = _localRole != null && _remoteNodeHint != null
+
+    val isActive: Boolean
+        get() {
+            val s = state
+            return s != BleConnectionState.CLOSED && s != BleConnectionState.CLOSING && s != BleConnectionState.QUARANTINED
+        }
+
+    @Volatile
+    var isNotificationSubscribed: Boolean = false
+
+    /**
+     * Predicate defining physical duplex readiness for subsequent handshake records (ADR-002 §6).
+     * Distinct from cryptographic [BleConnectionState.READY].
+     */
+    val isHandshakeTransportReady: Boolean
+        get() {
+            val s = state
+            val bound = s == BleConnectionState.ROLE_BOUND || s == BleConnectionState.HANDSHAKE_IN_PROGRESS
+            if (!bound) return false
+            return isNotificationSubscribed && maxAttValueLength >= DEFAULT_MAX_ATT_VALUE_LENGTH
+        }
 
     private val reassembler = BleRecordReassembler(clock)
     private var nextOutboundSeq: Int = 0
     private val lock = Any()
 
-    init {
-        require(peerId.isNotEmpty()) { "peerId must not be empty" }
-        require(remoteNodeHint.size == BleRoleElection.NODE_HINT_BYTES) {
-            "remoteNodeHint must be exactly ${BleRoleElection.NODE_HINT_BYTES} bytes"
+    fun transitionTo(newState: BleConnectionState) {
+        _state.set(newState)
+    }
+
+    /**
+     * One-way binding of remote node hint and elected role.
+     * Succeeds at most once from a valid pre-role-bound state.
+     */
+    fun bindRole(hint: ByteArray, role: BleRole) = synchronized(lock) {
+        require(hint.size == BleRoleElection.NODE_HINT_BYTES) {
+            "remoteNodeHint must be exactly ${BleRoleElection.NODE_HINT_BYTES} bytes, got ${hint.size}"
         }
+        check(_remoteNodeHint == null && _localRole == null) {
+            "Cannot rebind role: already bound to role $_localRole with hint ${_remoteNodeHint?.joinToString("") { "%02x".format(it) }}"
+        }
+        val s = state
+        check(s != BleConnectionState.CLOSED && s != BleConnectionState.CLOSING && s != BleConnectionState.QUARANTINED) {
+            "Cannot bind role on inactive connection in state $s"
+        }
+
+        _remoteNodeHint = hint.copyOf()
+        _localRole = role
+        _state.set(BleConnectionState.ROLE_BOUND)
     }
 
     fun markConnected(negotiatedAttValueLength: Int? = null) {
         if (negotiatedAttValueLength != null) {
             maxAttValueLength = negotiatedAttValueLength
         }
-        _state.set(BleConnectionState.CONNECTED)
+        val current = _state.get()
+        if (current == BleConnectionState.PROVISIONAL_CONNECTING || current == BleConnectionState.DISCOVERED) {
+            _state.set(BleConnectionState.PROVISIONAL_CONNECTED)
+        }
     }
 
-    fun markDisconnected() {
-        _state.set(BleConnectionState.DISCONNECTED)
-        reset()
+    fun markDisconnected() = synchronized(lock) {
+        _state.set(BleConnectionState.CLOSED)
+        resetLocked()
     }
 
     /**
@@ -83,6 +126,10 @@ class BleConnection(
      */
     fun fragmentOutbound(recordType: BleRecordType, payload: ByteArray): List<ByteArray> = synchronized(lock) {
         if (!isActive) return emptyList()
+        // DATA records are strictly forbidden before cryptographic READY
+        if (recordType == BleRecordType.DATA && state != BleConnectionState.READY) {
+            return emptyList()
+        }
         val seq = nextOutboundSeq
         nextOutboundSeq = (nextOutboundSeq + 1) and 0xFF
         return BleRecordFragmenter.fragment(recordType, seq, payload, maxAttValueLength)
@@ -101,8 +148,13 @@ class BleConnection(
      * Reset connection-local record state (purge in-flight and completed record state, reset sequence counter).
      */
     fun reset() = synchronized(lock) {
+        resetLocked()
+    }
+
+    private fun resetLocked() {
         reassembler.reset()
         nextOutboundSeq = 0
+        isNotificationSubscribed = false
     }
 
     companion object {

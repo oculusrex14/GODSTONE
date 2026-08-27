@@ -18,14 +18,22 @@ Implementation:
 
 ## 2. Platform constraints and the discovery amendment
 
-### 2.1 The Apple CoreBluetooth platform limitation
+### 2.1 The Apple CoreBluetooth platform and background discovery limitations
 Authoritative platform evaluation confirms that stock Apple `CBPeripheralManager.startAdvertising(_:)` supports only:
 - `CBAdvertisementDataServiceUUIDsKey`
 - `CBAdvertisementDataLocalNameKey`
 
 Any additional keys specified in the advertising dictionary (including `CBAdvertisementDataServiceDataKey` and manufacturer data keys) are ignored by iOS peripheral advertising. Furthermore, iOS automatically manages scan responses, allowing only the local name string. Stock iOS **cannot emit arbitrary 13-byte service data in a scan response**.
 
-Therefore, the original ADR-002 assumption that both platforms can broadcast 13-byte discovery metadata over the air *before* connection is physically unimplementable under stock iOS CoreBluetooth.
+Crucially, when an iOS app is backgrounded:
+1. `CBPeripheralManager` does not advertise the local name.
+2. All advertised service UUIDs are moved into Apple's proprietary "overflow area".
+3. Overflow area service UUIDs are discoverable **only by an iOS device explicitly scanning for that exact service UUID** (with `CBCentralManagerScanOptionAllowDuplicatesKey` set to false).
+4. An Android device scanning for standard BLE advertisements cannot discover a backgrounded iOS device in the overflow area.
+
+**Android -> background-iOS discovery is a fundamental PLATFORM / PHYSICAL-DEVICE LIMITATION NOT CLOSED BY C8.4D1-R2.**
+
+Therefore, the original ADR-002 assumption that both platforms can broadcast 13-byte discovery metadata over the air *before* connection is physically unimplementable under stock iOS CoreBluetooth. Discovery is fundamentally UUID-only baseline.
 
 ### 2.2 Rejection of "Central == Noise Initiator" alone
 A simplistic rule where "every BLE Central is automatically the Noise Initiator" was evaluated and **rejected**.

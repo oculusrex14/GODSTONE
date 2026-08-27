@@ -11,6 +11,7 @@ import android.bluetooth.BluetoothGattService
 import android.bluetooth.BluetoothManager
 import android.bluetooth.BluetoothProfile
 import android.content.Context
+import io.godstone.mesh.wire.v2.FrameV2
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -18,32 +19,43 @@ import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
 
 /**
- * Peripheral-side GATT server supporting duplex bidirectional communication (ADR-002, Phase C8.4D1).
+ * Peripheral-side GATT server supporting duplex bidirectional communication and LinkInfo exchange (ADR-002, Phase C8.4D1-R2).
  *
- * Exposes the canonical inbox characteristic for central-to-peripheral writes, tracks per-peer CCCD
- * subscription states, receives per-peer MTU updates, and provides a serialized notification path
- * for peripheral-to-central transmissions that strictly requires an active CCCD subscription.
+ * Exposes the canonical inbox characteristic and LINK_INFO characteristic.
+ * Enforces asynchronous service add verification before advertising, serves local LinkInfo on READ,
+ * validates incoming Central LinkInfo on WRITE, and requires role-binding before accepting inbox records.
  */
 @SuppressLint("MissingPermission")
 class BleGattServer(
     private val context: Context,
     private val serviceUuid: UUID = BleTransport.SERVICE_UUID,
     private val inboxCharUuid: UUID = BleTransport.WRITE_CHAR_UUID,
+    private val linkInfoCharUuid: UUID = BleTransport.LINK_INFO_CHAR_UUID,
+    private val linkInfoProvider: () -> ByteArray? = { null },
+    private val onLinkInfoWrite: (peerAddress: String, value: ByteArray) -> Boolean = { _, _ -> false },
+    private val isRoleBoundPredicate: (peerAddress: String) -> Boolean = { false },
     private val onInboundWrite: (peerAddress: String, value: ByteArray) -> Unit = { _, _ -> },
     private val onClientDisconnected: (peerAddress: String) -> Unit = {},
     private val onSubscriptionChanged: (peerAddress: String, isSubscribed: Boolean) -> Unit = { _, _ -> },
-    private val onMtuChanged: (peerAddress: String, maxAttValueLength: Int) -> Unit = { _, _ -> }
+    private val onMtuChanged: (peerAddress: String, maxAttValueLength: Int) -> Unit = { _, _ -> },
+    private val onServiceStatusChanged: (isReady: Boolean) -> Unit = {}
 ) {
     private var server: BluetoothGattServer? = null
     private var inboxCharacteristic: BluetoothGattCharacteristic? = null
+    private var linkInfoCharacteristic: BluetoothGattCharacteristic? = null
+
     private val connectedDevices = ConcurrentHashMap<String, BluetoothDevice>()
     private val subscribedDevices = ConcurrentHashMap<String, Boolean>()
     private val deviceMtu = ConcurrentHashMap<String, Int>()
     private val notificationMutex = Mutex()
     private var pendingNotification: CompletableDeferred<Boolean>? = null
 
+    @Volatile
+    var isServiceReady: Boolean = false
+        private set
+
     val isRunning: Boolean
-        get() = server != null
+        get() = server != null && isServiceReady
 
     fun isSubscribed(peerAddress: String): Boolean = subscribedDevices[peerAddress] == true
 
@@ -51,16 +63,51 @@ class BleGattServer(
         deviceMtu[peerAddress] ?: BleConnection.DEFAULT_MAX_ATT_VALUE_LENGTH
 
     private val callback = object : BluetoothGattServerCallback() {
-        override fun onConnectionStateChange(device: BluetoothDevice, status: Int, newState: Int) {
-            if (newState == BluetoothProfile.STATE_CONNECTED) {
-                connectedDevices[device.address] = device
-            } else if (newState == BluetoothProfile.STATE_DISCONNECTED) {
-                connectedDevices.remove(device.address)
-                subscribedDevices.remove(device.address)
-                deviceMtu.remove(device.address)
-                onSubscriptionChanged(device.address, false)
-                onClientDisconnected(device.address)
+        override fun onServiceAdded(status: Int, service: BluetoothGattService) {
+            if (status == BluetoothGatt.GATT_SUCCESS && service.uuid == serviceUuid) {
+                isServiceReady = true
+                onServiceStatusChanged(true)
+            } else {
+                isServiceReady = false
+                onServiceStatusChanged(false)
             }
+        }
+
+        override fun onConnectionStateChange(device: BluetoothDevice, status: Int, newState: Int) {
+            val address = device.address ?: return
+            if (newState == BluetoothProfile.STATE_CONNECTED) {
+                connectedDevices[address] = device
+            } else if (newState == BluetoothProfile.STATE_DISCONNECTED) {
+                connectedDevices.remove(address)
+                subscribedDevices.remove(address)
+                deviceMtu.remove(address)
+                onSubscriptionChanged(address, false)
+                onClientDisconnected(address)
+            }
+        }
+
+        override fun onCharacteristicReadRequest(
+            device: BluetoothDevice,
+            requestId: Int,
+            offset: Int,
+            characteristic: BluetoothGattCharacteristic
+        ) {
+            val s = server ?: return
+            if (characteristic.uuid == linkInfoCharUuid) {
+                if (offset != 0) {
+                    s.sendResponse(device, requestId, BluetoothGatt.GATT_INVALID_OFFSET, offset, null)
+                    return
+                }
+                val localBytes = linkInfoProvider()
+                if (localBytes == null || localBytes.size != BleLinkInfoConstants.LINK_INFO_BYTES) {
+                    s.sendResponse(device, requestId, BluetoothGatt.GATT_FAILURE, offset, null)
+                    return
+                }
+                s.sendResponse(device, requestId, BluetoothGatt.GATT_SUCCESS, offset, localBytes)
+                return
+            }
+
+            s.sendResponse(device, requestId, BluetoothGatt.GATT_REQUEST_NOT_SUPPORTED, offset, null)
         }
 
         override fun onCharacteristicWriteRequest(
@@ -72,11 +119,49 @@ class BleGattServer(
             offset: Int,
             value: ByteArray
         ) {
-            if (characteristic.uuid == inboxCharUuid) {
-                onInboundWrite(device.address, value)
+            val s = server
+            val address = device.address ?: return
+
+            if (characteristic.uuid == linkInfoCharUuid) {
+                if (offset != 0 || preparedWrite) {
+                    if (responseNeeded) {
+                        s?.sendResponse(device, requestId, BluetoothGatt.GATT_REQUEST_NOT_SUPPORTED, offset, null)
+                    }
+                    return
+                }
+
+                // Process LinkInfo write through coordinator seam
+                val accepted = onLinkInfoWrite(address, value)
+                if (accepted) {
+                    if (responseNeeded) {
+                        s?.sendResponse(device, requestId, BluetoothGatt.GATT_SUCCESS, offset, value)
+                    }
+                } else {
+                    if (responseNeeded) {
+                        s?.sendResponse(device, requestId, BluetoothGatt.GATT_FAILURE, offset, null)
+                    }
+                }
+                return
             }
+
+            if (characteristic.uuid == inboxCharUuid) {
+                // Require connection to be role-bound before accepting inbox record traffic
+                if (!isRoleBoundPredicate(address)) {
+                    if (responseNeeded) {
+                        s?.sendResponse(device, requestId, BluetoothGatt.GATT_FAILURE, offset, null)
+                    }
+                    return
+                }
+
+                onInboundWrite(address, value)
+                if (responseNeeded) {
+                    s?.sendResponse(device, requestId, BluetoothGatt.GATT_SUCCESS, offset, value)
+                }
+                return
+            }
+
             if (responseNeeded) {
-                server?.sendResponse(device, requestId, BluetoothGatt.GATT_SUCCESS, offset, value)
+                s?.sendResponse(device, requestId, BluetoothGatt.GATT_REQUEST_NOT_SUPPORTED, offset, null)
             }
         }
 
@@ -89,14 +174,15 @@ class BleGattServer(
             offset: Int,
             value: ByteArray
         ) {
+            val address = device.address ?: return
             if (descriptor.uuid == GattClientConnection.CCCD_UUID) {
                 val isSub = value.contentEquals(BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE)
                 if (isSub) {
-                    subscribedDevices[device.address] = true
-                    onSubscriptionChanged(device.address, true)
+                    subscribedDevices[address] = true
+                    onSubscriptionChanged(address, true)
                 } else if (value.contentEquals(BluetoothGattDescriptor.DISABLE_NOTIFICATION_VALUE)) {
-                    subscribedDevices.remove(device.address)
-                    onSubscriptionChanged(device.address, false)
+                    subscribedDevices.remove(address)
+                    onSubscriptionChanged(address, false)
                 }
             }
             if (responseNeeded) {
@@ -105,9 +191,10 @@ class BleGattServer(
         }
 
         override fun onMtuChanged(device: BluetoothDevice, mtu: Int) {
+            val address = device.address ?: return
             val maxAttLen = maxOf(20, mtu - 3)
-            deviceMtu[device.address] = maxAttLen
-            onMtuChanged(device.address, maxAttLen)
+            deviceMtu[address] = maxAttLen
+            onMtuChanged(address, maxAttLen)
         }
 
         override fun onNotificationSent(device: BluetoothDevice, status: Int) {
@@ -126,29 +213,37 @@ class BleGattServer(
 
         val gattServer = manager.openGattServer(context, callback) ?: return false
 
-        val characteristic = BluetoothGattCharacteristic(
+        // 1. Inbox Characteristic (write / write_no_response / notify)
+        val inbox = BluetoothGattCharacteristic(
             inboxCharUuid,
             BluetoothGattCharacteristic.PROPERTY_WRITE or
                 BluetoothGattCharacteristic.PROPERTY_WRITE_NO_RESPONSE or
                 BluetoothGattCharacteristic.PROPERTY_NOTIFY,
             BluetoothGattCharacteristic.PERMISSION_WRITE
         )
-
         val cccd = BluetoothGattDescriptor(
             GattClientConnection.CCCD_UUID,
             BluetoothGattDescriptor.PERMISSION_READ or BluetoothGattDescriptor.PERMISSION_WRITE
         )
-        characteristic.addDescriptor(cccd)
+        inbox.addDescriptor(cccd)
+
+        // 2. LinkInfo Characteristic (read / write)
+        val linkInfo = BluetoothGattCharacteristic(
+            linkInfoCharUuid,
+            BluetoothGattCharacteristic.PROPERTY_READ or BluetoothGattCharacteristic.PROPERTY_WRITE,
+            BluetoothGattCharacteristic.PERMISSION_READ or BluetoothGattCharacteristic.PERMISSION_WRITE
+        )
 
         val service = BluetoothGattService(
             serviceUuid,
             BluetoothGattService.SERVICE_TYPE_PRIMARY
         ).apply {
-            addCharacteristic(characteristic)
+            addCharacteristic(inbox)
+            addCharacteristic(linkInfo)
         }
 
-        val serviceAdded = gattServer.addService(service)
-        if (!serviceAdded) {
+        val addInitiated = gattServer.addService(service)
+        if (!addInitiated) {
             try {
                 gattServer.close()
             } catch (_: Exception) {}
@@ -156,7 +251,8 @@ class BleGattServer(
         }
 
         server = gattServer
-        inboxCharacteristic = characteristic
+        inboxCharacteristic = inbox
+        linkInfoCharacteristic = linkInfo
         return true
     }
 
@@ -169,7 +265,6 @@ class BleGattServer(
         val ch = inboxCharacteristic ?: return false
         val device = connectedDevices[deviceAddress] ?: return false
 
-        // Refuse notification to unsubscribed central
         if (subscribedDevices[deviceAddress] != true) {
             return false
         }
@@ -192,12 +287,14 @@ class BleGattServer(
     }
 
     fun stop() {
+        isServiceReady = false
         try {
             server?.clearServices()
             server?.close()
         } catch (_: Exception) {}
         server = null
         inboxCharacteristic = null
+        linkInfoCharacteristic = null
         connectedDevices.clear()
         subscribedDevices.clear()
         deviceMtu.clear()

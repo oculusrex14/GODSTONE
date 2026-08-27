@@ -13,6 +13,7 @@ import android.content.Context
 import android.os.ParcelUuid
 import io.godstone.mesh.identity.Identity
 import io.godstone.mesh.router.BloomDigest
+import io.godstone.mesh.store.MessageStore
 import io.godstone.mesh.wire.v2.FrameV2
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -55,31 +56,46 @@ data class BleDiscoverySnapshot(
 }
 
 /**
- * Persistent duplex BLE control-plane substrate (ADR-002, Phase C8.4D1).
+ * Persistent duplex BLE control-plane substrate (ADR-002, Phase C8.4D1-A1/R2).
  *
  * Implements:
- * - Deterministic role election via [BleRoleElection]
- * - 13-byte scan-response discovery metadata plumbing via [BleDiscoveryCodec]
+ * - UUID-only discovery baseline and provisional GATT connections
+ * - Connect-First / Elect-Before-Handshake role binding via [BleRoleBindingCoordinator]
+ * - Canonical 13-byte LinkInfo GATT characteristic exchange
+ * - Asynchronous GATT service readiness gating before advertising
  * - Persistent bidirectional GATT client/server links
  * - Connection-local [BleRecord] fragmentation/reassembly seam
- * - Bounded peer and connection resource management
+ * - Strict gating against application DATA transmission before cryptographic READY
  */
 @SuppressLint("MissingPermission")
 class BleTransport(
     private val context: Context,
     private val identity: Identity,
-    private val digestProvider: suspend () -> BloomDigest,
+    private val digestProvider: (suspend () -> BloomDigest)? = null,
     /** Noise sessions. Without this the transport cannot send at all -- by design. */
     private val sessions: io.godstone.mesh.crypto.SessionManager? = null,
     private val snapshotProvider: (() -> BleDiscoverySnapshot)? = null,
+    private val store: MessageStore? = null,
     private val clientFactory: (
         context: Context,
         address: String,
+        localLinkInfoProvider: () -> ByteArray?,
+        coordinator: BleRoleBindingCoordinator,
         onInboundNotification: (ByteArray) -> Unit,
         onDisconnected: () -> Unit,
+        onRoleBound: (role: BleRole, remoteHint: ByteArray) -> Unit,
         onMtuUpdated: (Int) -> Unit
-    ) -> GattClientConnection = { ctx, addr, onInbound, onDisc, onMtu ->
-        GattClientConnection(ctx, addr, onInbound, onDisc, onMtu)
+    ) -> GattClientConnection = { ctx, addr, linkInfoProv, coord, onInbound, onDisc, onBound, onMtu ->
+        GattClientConnection(
+            context = ctx,
+            peerAddress = addr,
+            localLinkInfoProvider = linkInfoProv,
+            coordinator = coord,
+            onInboundNotification = onInbound,
+            onDisconnected = onDisc,
+            onRoleBound = onBound,
+            onMtuUpdated = onMtu
+        )
     },
     private val coroutineScope: CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 ) : Transport {
@@ -94,17 +110,37 @@ class BleTransport(
     private var advertiseCallback: AdvertiseCallback? = null
     private var scanCallback: ScanCallback? = null
 
+    val roleCoordinator = BleRoleBindingCoordinator(identity.nodeHint)
+
+    @Volatile
+    private var cachedLinkInfoSnapshot: BleLinkInfoV1? = null
+
+    @Volatile
+    private var cachedLinkInfoBytes: ByteArray? = null
+
     // Owned peripheral GATT server
     private val gattServer: BleGattServer = BleGattServer(
         context = context,
         serviceUuid = SERVICE_UUID,
         inboxCharUuid = WRITE_CHAR_UUID,
+        linkInfoCharUuid = LINK_INFO_CHAR_UUID,
+        linkInfoProvider = { getLocalLinkInfoBytes() },
+        onLinkInfoWrite = { peerAddress, value -> handleIncomingLinkInfoWrite(peerAddress, value) },
+        isRoleBoundPredicate = { peerAddress -> activeConnections[peerAddress]?.isRoleBound == true },
         onInboundWrite = { peerAddress, value -> handleInboundAttValue(peerAddress, value) },
         onClientDisconnected = { peerAddress -> handlePeerDisconnected(peerAddress) },
+        onSubscriptionChanged = { peerAddress, isSubscribed ->
+            activeConnections[peerAddress]?.isNotificationSubscribed = isSubscribed
+        },
         onMtuChanged = { peerAddress, maxAttLen ->
             activeConnections[peerAddress]?.let { conn ->
                 conn.maxAttValueLength = maxAttLen
                 conn.markConnected(maxAttLen)
+            }
+        },
+        onServiceStatusChanged = { isReady ->
+            if (isReady && isStarted) {
+                startAdvertising()
             }
         }
     )
@@ -126,46 +162,125 @@ class BleTransport(
     val isRunning: Boolean
         get() = isStarted && gattServer.isRunning
 
+    init {
+        // Initial real snapshot derivation
+        refreshLocalLinkInfoSnapshotSync()
+    }
+
+    fun getLocalLinkInfoBytes(): ByteArray? {
+        if (cachedLinkInfoBytes == null) {
+            refreshLocalLinkInfoSnapshotSync()
+        }
+        return cachedLinkInfoBytes
+    }
+
+    fun refreshLocalLinkInfoSnapshotSync(): BleLinkInfoV1 {
+        val snap = snapshotProvider?.invoke()
+        val shortDigest: ByteArray
+        val queueDepth: Int
+        var flags = 0
+
+        if (snap != null) {
+            shortDigest = snap.shortDigest.copyOf(BleLinkInfoConstants.SHORT_DIGEST_BYTES)
+            queueDepth = snap.queueDepth.coerceIn(0, 255)
+            if (snap.sosPresent) flags = flags or BleLinkInfoConstants.FLAG_SOS_PRESENT
+            if (snap.clockUntrusted) flags = flags or BleLinkInfoConstants.FLAG_CLOCK_UNTRUSTED
+        } else {
+            // Sourced from real identity and empty/initial state
+            shortDigest = ByteArray(BleLinkInfoConstants.SHORT_DIGEST_BYTES)
+            queueDepth = 0
+        }
+
+        if (powerState == PowerState.CRITICAL) flags = flags or BleLinkInfoConstants.FLAG_POWER_CONSTRAINED
+        if (powerState == PowerState.SOS_ACTIVE) flags = flags or BleLinkInfoConstants.FLAG_SOS_PRESENT
+
+        val info = BleLinkInfoV1(
+            version = BleLinkInfoConstants.PROTOCOL_VERSION,
+            flags = flags.toByte(),
+            nodeHint = identity.nodeHint.copyOf(),
+            shortDigest = shortDigest,
+            queueDepth = queueDepth
+        )
+        cachedLinkInfoSnapshot = info
+        cachedLinkInfoBytes = BleLinkInfoCodec.encode(
+            version = info.version,
+            flags = info.flags,
+            nodeHint = info.nodeHint,
+            shortDigest = info.shortDigest,
+            queueDepth = info.queueDepth
+        )
+        return info
+    }
+
+    suspend fun refreshLocalLinkInfoSnapshot(): BleLinkInfoV1 {
+        var count = 0
+        val bloom = BloomDigest()
+        if (store != null) {
+            store.forEachHeldMsgId { msgId ->
+                count++
+                bloom.add(msgId)
+                true
+            }
+        }
+        val shortDigest = bloom.toBytes().copyOf(BleLinkInfoConstants.SHORT_DIGEST_BYTES)
+        val queueDepth = minOf(count, 255)
+        var flags = 0
+        if (powerState == PowerState.CRITICAL) flags = flags or BleLinkInfoConstants.FLAG_POWER_CONSTRAINED
+        if (powerState == PowerState.SOS_ACTIVE) flags = flags or BleLinkInfoConstants.FLAG_SOS_PRESENT
+
+        val info = BleLinkInfoV1(
+            version = BleLinkInfoConstants.PROTOCOL_VERSION,
+            flags = flags.toByte(),
+            nodeHint = identity.nodeHint.copyOf(),
+            shortDigest = shortDigest,
+            queueDepth = queueDepth
+        )
+        cachedLinkInfoSnapshot = info
+        cachedLinkInfoBytes = BleLinkInfoCodec.encode(
+            version = info.version,
+            flags = info.flags,
+            nodeHint = info.nodeHint,
+            shortDigest = info.shortDigest,
+            queueDepth = info.queueDepth
+        )
+        return info
+    }
+
     override fun start() {
         if (isStarted) return
+        isStarted = true
 
-        // Logical startup order (ADR-002 §7):
-        // 1. Open GATT server. If server open fails, fail-closed without advertising!
-        val serverStarted = gattServer.start()
-        if (!serverStarted) {
+        // 1. Open GATT server. Advertising will begin only when onServiceAdded confirms readiness.
+        val serverInitiated = gattServer.start()
+        if (!serverInitiated) {
             isStarted = false
             return
         }
 
-        isStarted = true
-
-        // 2. Establish inbound plumbing & begin advertising
-        startAdvertising()
+        if (gattServer.isServiceReady) {
+            startAdvertising()
+        }
     }
 
     override fun stop() {
         if (!isStarted) return
         isStarted = false
 
-        // Stop advertising and scanning
         advertiseCallback?.let { adapter?.bluetoothLeAdvertiser?.stopAdvertising(it) }
         scanCallback?.let { adapter?.bluetoothLeScanner?.stopScan(it) }
         advertiseCallback = null
         scanCallback = null
 
-        // Disconnect and purge active client links
         for ((_, client) in activeClientConnections) {
             client.disconnect()
         }
         activeClientConnections.clear()
 
-        // Reset and purge connections
         for ((_, conn) in activeConnections) {
             conn.markDisconnected()
         }
         activeConnections.clear()
 
-        // Close server
         gattServer.stop()
 
         synchronized(discoveryLock) {
@@ -176,6 +291,7 @@ class BleTransport(
     fun setPowerState(state: PowerState) {
         if (state == powerState) return
         powerState = state
+        refreshLocalLinkInfoSnapshotSync()
         if (isStarted) {
             stop()
             start()
@@ -193,11 +309,11 @@ class BleTransport(
     ): ByteArray {
         require(digest.size >= 6) { "short digest requires at least 6 bytes" }
         var flags = 0
-        if (sosPresent) flags = flags or FLAG_SOS
-        if (powerState == PowerState.CRITICAL) flags = flags or FLAG_POWER_CONSTRAINED
-        if (clockUntrusted) flags = flags or FLAG_CLOCK_UNTRUSTED
+        if (sosPresent) flags = flags or BleLinkInfoConstants.FLAG_SOS_PRESENT
+        if (powerState == PowerState.CRITICAL) flags = flags or BleLinkInfoConstants.FLAG_POWER_CONSTRAINED
+        if (clockUntrusted) flags = flags or BleLinkInfoConstants.FLAG_CLOCK_UNTRUSTED
 
-        return BleDiscoveryCodec.encode(
+        return BleLinkInfoCodec.encode(
             version = FrameV2.VERSION,
             flags = flags.toByte(),
             nodeHint = identity.nodeHint,
@@ -206,19 +322,9 @@ class BleTransport(
         )
     }
 
-    private fun getCurrentDiscoverySnapshot(): BleDiscoverySnapshot {
-        snapshotProvider?.let { return it() }
-        // Default real snapshot derived from node identity and state
-        return BleDiscoverySnapshot(
-            shortDigest = identity.nodeHint.copyOf(6),
-            queueDepth = 0,
-            sosPresent = false,
-            clockUntrusted = false
-        )
-    }
-
     private fun startAdvertising() {
         val adv = adapter?.bluetoothLeAdvertiser ?: return
+        if (!gattServer.isServiceReady) return
 
         val settings = AdvertiseSettings.Builder()
             .setAdvertiseMode(
@@ -243,24 +349,26 @@ class BleTransport(
             .addServiceUuid(ParcelUuid(SERVICE_UUID))
             .build()
 
-        // Scan Response: Service Data with 13-byte discovery payload sourced from real snapshot authority
-        val snapshot = getCurrentDiscoverySnapshot()
-        val scanResponsePayload = buildScanResponsePayload(
-            digest = snapshot.shortDigest,
-            queueDepth = snapshot.queueDepth,
-            sosPresent = snapshot.sosPresent,
-            clockUntrusted = snapshot.clockUntrusted
-        )
-        val scanResponse = AdvertiseData.Builder()
-            .setIncludeDeviceName(false)
-            .addServiceData(ParcelUuid(SERVICE_UUID), scanResponsePayload)
-            .build()
+        // Optional Android Scan Response: 13-byte LinkInfo payload
+        val localBytes = getLocalLinkInfoBytes()
+        val scanResponse = if (localBytes != null && localBytes.size == BleLinkInfoConstants.LINK_INFO_BYTES) {
+            AdvertiseData.Builder()
+                .setIncludeDeviceName(false)
+                .addServiceData(ParcelUuid(SERVICE_UUID), localBytes)
+                .build()
+        } else {
+            null
+        }
 
         val cb = object : AdvertiseCallback() {
             override fun onStartFailure(errorCode: Int) {}
         }
         advertiseCallback = cb
-        adv.startAdvertising(settings, data, scanResponse, cb)
+        if (scanResponse != null) {
+            adv.startAdvertising(settings, data, scanResponse, cb)
+        } else {
+            adv.startAdvertising(settings, data, cb)
+        }
     }
 
     override fun peers(): Flow<PeerEvent> = callbackFlow {
@@ -269,27 +377,21 @@ class BleTransport(
                 val address = result.device.address ?: return
                 val peerMacBytes = PeerId.fromAddress(address) ?: return
 
+                // UUID-Only Discovery: A scan result with SERVICE_UUID is sufficient to begin provisional connection
                 val sd = result.scanRecord?.getServiceData(ParcelUuid(SERVICE_UUID))
-                val metadata = if (sd != null && sd.size >= BleDiscoveryConstants.DISCOVERY_PAYLOAD_BYTES) {
-                    BleDiscoveryCodec.decode(sd)
+                val metadata = if (sd != null && sd.size == BleLinkInfoConstants.LINK_INFO_BYTES) {
+                    BleLinkInfoCodec.decode(sd)
                 } else {
                     null
                 }
 
                 if (metadata != null) {
-                    // Update discovery cache with full metadata
                     synchronized(discoveryLock) {
                         if (discoveredPeers.size >= MAX_DISCOVERED_PEERS && !discoveredPeers.containsKey(address)) {
                             val oldest = discoveredPeers.keys.firstOrNull()
                             if (oldest != null) discoveredPeers.remove(oldest)
                         }
                         discoveredPeers[address] = metadata
-                    }
-
-                    // Role election evaluation (ADR-002 §3)
-                    val election = BleRoleElection.elect(identity.nodeHint, metadata.nodeHint)
-                    if (election is BleRoleElectionResult.Elected) {
-                        handleElectedPeer(peerMacBytes, address, metadata.nodeHint, election.role)
                     }
 
                     trySend(
@@ -303,23 +405,10 @@ class BleTransport(
                             queueDepth = metadata.queueDepth
                         )
                     )
-                } else {
-                    // Tolerates adv arrival before scan response: retain cached metadata if previously seen
-                    val cached = synchronized(discoveryLock) { discoveredPeers[address] }
-                    if (cached != null) {
-                        trySend(
-                            PeerEvent.Found(
-                                peerId = peerMacBytes,
-                                nodeHint = cached.nodeHint,
-                                rssi = result.rssi,
-                                sosFlag = cached.isSosPresent,
-                                bulkCapable = cached.isBulkCapable,
-                                shortDigest = cached.shortDigest,
-                                queueDepth = cached.queueDepth
-                            )
-                        )
-                    }
                 }
+
+                // Initiate one bounded provisional Central attempt if not active or in-flight
+                handleProvisionalDiscovery(peerMacBytes, address)
             }
         }
 
@@ -343,54 +432,70 @@ class BleTransport(
         awaitClose { adapter?.bluetoothLeScanner?.stopScan(cb) }
     }
 
-    private fun handleElectedPeer(
-        peerMacBytes: ByteArray,
-        address: String,
-        remoteHint: ByteArray,
-        role: BleRole
-    ) {
+    private fun handleProvisionalDiscovery(peerMacBytes: ByteArray, address: String) {
         val existing = activeConnections[address]
         if (existing != null && existing.isActive) return
 
         if (activeConnections.size >= MAX_ACTIVE_CONNECTIONS && !activeConnections.containsKey(address)) {
-            return // Capacity exceeded
+            return
         }
 
         val conn = BleConnection(
-            peerId = peerMacBytes,
-            remoteNodeHint = remoteHint,
-            localRole = role
+            peerId = peerMacBytes
         )
         activeConnections[address] = conn
 
-        // Role Authority: INITIATOR creates and initiates persistent client connection; RESPONDER waits
-        if (role == BleRole.INITIATOR) {
-            val client = clientFactory(
-                context,
-                address,
-                { value -> handleInboundAttValue(address, value) },
-                { handlePeerDisconnected(address) },
-                { maxAttLen ->
-                    conn.maxAttValueLength = maxAttLen
-                    conn.markConnected(maxAttLen)
-                }
-            )
-            activeClientConnections[address] = client
-
-            coroutineScope.launch {
-                val ok = client.connect()
-                if (ok) {
-                    conn.markConnected()
-                } else {
-                    activeClientConnections.remove(address)?.disconnect()
-                    activeConnections.remove(address)?.markDisconnected()
-                }
+        val client = clientFactory(
+            context,
+            address,
+            { getLocalLinkInfoBytes() },
+            roleCoordinator,
+            { value -> handleInboundAttValue(address, value) },
+            { handlePeerDisconnected(address) },
+            { role, remoteHint ->
+                conn.bindRole(remoteHint, role)
+            },
+            { maxAttLen ->
+                conn.maxAttValueLength = maxAttLen
+                conn.markConnected(maxAttLen)
             }
+        )
+        activeClientConnections[address] = client
+
+        coroutineScope.launch {
+            val ok = client.connect()
+            if (ok) {
+                conn.markConnected()
+            } else {
+                activeClientConnections.remove(address)?.disconnect()
+                activeConnections.remove(address)?.markDisconnected()
+            }
+        }
+    }
+
+    private fun handleIncomingLinkInfoWrite(peerAddress: String, value: ByteArray): Boolean {
+        val action = roleCoordinator.processPeripheralLinkInfoWrite(peerAddress, value)
+        return when (action) {
+            is BleRoleBindingAction.AcceptIncomingWrite -> {
+                val peerMacBytes = PeerId.fromAddress(peerAddress) ?: peerAddress.toByteArray()
+                var conn = activeConnections[peerAddress]
+                if (conn == null || !conn.isActive) {
+                    conn = BleConnection(peerId = peerMacBytes)
+                    activeConnections[peerAddress] = conn
+                }
+                if (!conn.isRoleBound) {
+                    conn.bindRole(action.remoteHint, BleRole.RESPONDER)
+                }
+                true
+            }
+            else -> false
         }
     }
 
     private fun handleInboundAttValue(peerAddress: String, value: ByteArray) {
         val conn = activeConnections[peerAddress] ?: return
+        if (!conn.isRoleBound) return
+
         val record = conn.ingestInboundAttValue(value) ?: return
         val peerId = conn.peerId
         inboundRecordFlow.tryEmit(peerId to record)
@@ -407,12 +512,15 @@ class BleTransport(
 
     /**
      * Send [bytes] to [peerId] through the Noise session and BleRecord layer.
+     * Application DATA is strictly forbidden unless both link connection and Noise session are READY.
      */
     override suspend fun send(peerId: ByteArray, bytes: ByteArray): Boolean {
         require(bytes.size <= GATT_MTU) { "use the bulk plane for large payloads" }
         val address = PeerId.toAddress(peerId) ?: return false
         val conn = activeConnections[address] ?: return false
-        if (!conn.isActive) return false
+
+        // Invariant: Link must be cryptographically READY before sending application DATA
+        if (conn.state != BleConnectionState.READY) return false
 
         val sealed = sessions?.seal(peerId, bytes) ?: return false
 
@@ -420,7 +528,6 @@ class BleTransport(
         val fragments = conn.fragmentOutbound(BleRecordType.DATA, sealed)
         if (fragments.isEmpty()) return false
 
-        // Send all fragments over the persistent duplex link
         for (frag in fragments) {
             val success = if (conn.localRole == BleRole.INITIATOR) {
                 val client = activeClientConnections[address] ?: return false
@@ -433,11 +540,14 @@ class BleTransport(
         return true
     }
 
-    /** Decrypted inbound frames. Anything that fails authentication is dropped. */
+    /** Decrypted inbound frames. Strictly requires link state READY and successful session decryption. */
     fun receivedPlaintext(): Flow<Pair<ByteArray, ByteArray>> =
         kotlinx.coroutines.flow.flow {
             inboundRecordFlow.collect { (peer, record) ->
-                if (record.recordType == BleRecordType.DATA) {
+                val address = PeerId.toAddress(peer) ?: return@collect
+                val conn = activeConnections[address] ?: return@collect
+
+                if (record.recordType == BleRecordType.DATA && conn.state == BleConnectionState.READY) {
                     val clear = try {
                         sessions?.open(peer, record.payload)
                     } catch (_: Exception) {
@@ -451,7 +561,10 @@ class BleTransport(
     override fun received(): Flow<Pair<ByteArray, ByteArray>> =
         kotlinx.coroutines.flow.flow {
             inboundRecordFlow.collect { (peer, record) ->
-                if (record.recordType == BleRecordType.DATA) {
+                val address = PeerId.toAddress(peer) ?: return@collect
+                val conn = activeConnections[address] ?: return@collect
+
+                if (record.recordType == BleRecordType.DATA && conn.state == BleConnectionState.READY) {
                     emit(peer to record.payload)
                 }
             }
@@ -468,11 +581,5 @@ class BleTransport(
 
         const val MAX_DISCOVERED_PEERS = 64
         const val MAX_ACTIVE_CONNECTIONS = 7
-
-        const val FLAG_SOS = 0x01
-        const val FLAG_BULK_CAPABLE = 0x02
-        const val FLAG_POWER_CONSTRAINED = 0x04
-        const val FLAG_VERIFIED_ONLY = 0x08
-        const val FLAG_CLOCK_UNTRUSTED = 0x10
     }
 }

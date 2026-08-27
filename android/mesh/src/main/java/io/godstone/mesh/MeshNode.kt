@@ -108,7 +108,13 @@ class MeshNode(
     private val ble: BleTransport by lazy {
         // ctx is non-null in production; null only in pure-JVM tests
         // that never start the node and so never reach the transports.
-        BleTransport(ctx!!, identity, { router.currentDigest() }, sessions)
+        BleTransport(
+            context = ctx!!,
+            identity = identity,
+            digestProvider = { router.currentDigest() },
+            sessions = sessions,
+            store = store
+        )
     }
     private val wifi: WifiAwareTransport by lazy { WifiAwareTransport(ctx!!) }
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)

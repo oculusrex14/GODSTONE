@@ -56,7 +56,7 @@ object BleRoleElection {
 }
 
 /**
- * Canonical 13-byte LinkInfo structure exchanged over the link_info GATT characteristic (ADR-002 §2, Phase C8.4D1-A1).
+ * Canonical 13-byte LinkInfo structure exchanged over the link_info GATT characteristic (ADR-002 §2, Phase C8.4D1-A1/R2).
  * Also used for optional Android scan-response discovery metadata.
  */
 data class BleLinkInfoV1(
@@ -66,7 +66,7 @@ data class BleLinkInfoV1(
     val shortDigest: ByteArray,
     val queueDepth: Int
 ) {
-    val isSosPresent: Boolean get() = (flags.toInt() and BleLinkInfoConstants.FLAG_SOS) != 0
+    val isSosPresent: Boolean get() = (flags.toInt() and BleLinkInfoConstants.FLAG_SOS_PRESENT) != 0
     val isBulkCapable: Boolean get() = (flags.toInt() and BleLinkInfoConstants.FLAG_BULK_CAPABLE) != 0
     val isPowerConstrained: Boolean get() = (flags.toInt() and BleLinkInfoConstants.FLAG_POWER_CONSTRAINED) != 0
     val isVerifiedOnly: Boolean get() = (flags.toInt() and BleLinkInfoConstants.FLAG_VERIFIED_ONLY) != 0
@@ -103,6 +103,7 @@ object BleLinkInfoConstants {
     const val NODE_HINT_BYTES = 4
     const val SHORT_DIGEST_BYTES = 6
 
+    const val FLAG_SOS_PRESENT = 0x01
     const val FLAG_SOS = 0x01
     const val FLAG_BULK_CAPABLE = 0x02
     const val FLAG_POWER_CONSTRAINED = 0x04
@@ -116,6 +117,7 @@ object BleDiscoveryConstants {
     const val NODE_HINT_BYTES = 4
     const val SHORT_DIGEST_BYTES = 6
 
+    const val FLAG_SOS_PRESENT = 0x01
     const val FLAG_SOS = 0x01
     const val FLAG_BULK_CAPABLE = 0x02
     const val FLAG_POWER_CONSTRAINED = 0x04
@@ -149,8 +151,12 @@ object BleLinkInfoCodec {
         return buf.array()
     }
 
+    /**
+     * Decode and validate a canonical 13-byte LinkInfo payload.
+     * Normative requirement: length == 13 and version == 0x02.
+     */
     fun decode(bytes: ByteArray): BleLinkInfoV1? {
-        if (bytes.size < BleLinkInfoConstants.LINK_INFO_BYTES) return null
+        if (bytes.size != BleLinkInfoConstants.LINK_INFO_BYTES) return null
 
         val buf = ByteBuffer.wrap(bytes)
         val version = buf.get()

@@ -102,12 +102,17 @@ jobs:
           python -m crypto.gen_gmp21_vectors
           python -m crypto.gen_identity_binding_vectors
           python wire/ble_record_reference.py --generate
+          python wire/ble_link_info_reference.py --generate
       - name: identity binding python conformance (ADR-003, C8.1A)
         run: python -m crypto.test_identity_binding
       - name: ble record python conformance (ADR-002, C8.4C)
         run: |
           python wire/ble_record_reference.py --check
           python wire/ble_record_reference.py
+      - name: ble link info python conformance (ADR-002, C8.4D1)
+        run: |
+          python wire/ble_link_info_reference.py --check
+          python wire/ble_link_info_reference.py
       # F and G selftests FIRST: a control that has never fired is not a control.
       - name: symbol resolver negative control
         run: python ci/symbols.py --selftest

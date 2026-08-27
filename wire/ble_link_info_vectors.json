@@ -1,0 +1,145 @@
+{
+  "description": "GODSTONE Canonical BleLinkInfoV1 Test Vectors (ADR-002, Phase C8.4D1-R2)",
+  "protocol_version": 2,
+  "link_info_bytes": 13,
+  "valid_cases": [
+    {
+      "name": "all_zero_informational_fields_with_real_hint",
+      "version": 2,
+      "flags": 0,
+      "node_hint": "01020304",
+      "short_digest": "000000000000",
+      "queue_depth": 0,
+      "expected_hex": "02000102030400000000000000"
+    },
+    {
+      "name": "mixed_flags_sos_power_clock",
+      "version": 2,
+      "flags": 21,
+      "node_hint": "a1b2c3d4",
+      "short_digest": "112233445566",
+      "queue_depth": 42,
+      "expected_hex": "0215a1b2c3d41122334455662a"
+    },
+    {
+      "name": "all_flags_set",
+      "version": 2,
+      "flags": 31,
+      "node_hint": "deadbeef",
+      "short_digest": "aabbccddeeff",
+      "queue_depth": 128,
+      "expected_hex": "021fdeadbeefaabbccddeeff80"
+    },
+    {
+      "name": "unsigned_edge_zero_hint",
+      "version": 2,
+      "flags": 0,
+      "node_hint": "00000000",
+      "short_digest": "010203040506",
+      "queue_depth": 0,
+      "expected_hex": "02000000000001020304050600"
+    },
+    {
+      "name": "unsigned_edge_max_hint_and_max_queue_depth",
+      "version": 2,
+      "flags": 8,
+      "node_hint": "ffffffff",
+      "short_digest": "ffffffffffff",
+      "queue_depth": 255,
+      "expected_hex": "0208ffffffffffffffffffffff"
+    },
+    {
+      "name": "high_bit_hint_comparison_edge",
+      "version": 2,
+      "flags": 2,
+      "node_hint": "80000000",
+      "short_digest": "1234567890ab",
+      "queue_depth": 255,
+      "expected_hex": "0202800000001234567890abff"
+    }
+  ],
+  "invalid_cases": [
+    {
+      "name": "empty",
+      "hex": "",
+      "reason": "length == 0"
+    },
+    {
+      "name": "length_1",
+      "hex": "02",
+      "reason": "length == 1"
+    },
+    {
+      "name": "length_12",
+      "hex": "020001020304000000000000",
+      "reason": "length == 12"
+    },
+    {
+      "name": "length_14",
+      "hex": "0200010203040000000000000099",
+      "reason": "length == 14"
+    },
+    {
+      "name": "length_20",
+      "hex": "0200010203040000000000000001020304050607",
+      "reason": "length == 20"
+    },
+    {
+      "name": "length_255",
+      "hex": "020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202",
+      "reason": "length == 255"
+    },
+    {
+      "name": "unknown_version_01",
+      "hex": "01000102030400000000000000",
+      "reason": "version != 0x02"
+    },
+    {
+      "name": "unknown_version_03",
+      "hex": "03000102030400000000000000",
+      "reason": "version != 0x02"
+    },
+    {
+      "name": "unknown_version_ff",
+      "hex": "ff000102030400000000000000",
+      "reason": "version != 0x02"
+    }
+  ],
+  "role_election_cases": [
+    {
+      "local_hint": "00000000",
+      "remote_hint": "00000001",
+      "expected_role": "INITIATOR"
+    },
+    {
+      "local_hint": "00000001",
+      "remote_hint": "00000000",
+      "expected_role": "RESPONDER"
+    },
+    {
+      "local_hint": "7fffffff",
+      "remote_hint": "80000000",
+      "expected_role": "INITIATOR"
+    },
+    {
+      "local_hint": "80000000",
+      "remote_hint": "7fffffff",
+      "expected_role": "RESPONDER"
+    },
+    {
+      "local_hint": "00000000",
+      "remote_hint": "00000000",
+      "expected_role": null
+    },
+    {
+      "local_hint": "deadbeef",
+      "remote_hint": "deadbeef",
+      "expected_role": null
+    },
+    {
+      "local_hint": "00ff00ff",
+      "remote_hint": "00ff0100",
+      "expected_role": "INITIATOR"
+    }
+  ]
+}

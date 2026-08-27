@@ -51,28 +51,28 @@ commits:
 TOFU/QR verification, key-change quarantine, and panic wipe are governed by ADR-003
 and ADR-004; they are not closed by V4.
 
-## 3. BLE discovery target
+## 3. BLE discovery target and LinkInfo substrate
 
 The service UUID and characteristics come only from `wire/wire_v2.yaml`.
 
 A legacy BLE advertisement cannot carry a 128-bit UUID plus the old 26-byte
-service-data payload. ADR-002 therefore accepts:
+service-data payload. ADR-002 therefore defines the Connect-First / Elect-Before-Handshake substrate:
 
-- primary advertisement: service UUID only;
-- scan response: 13-byte service data;
-- active scan;
-- first sightings without scan-response data are retained briefly rather than
-  rejected.
+- Primary advertisement: service UUID only (`6764A001-9A5E-4C7B-B0A1-3E5D8C2F7A10`). No local name is broadcast, preserving privacy.
+- Optional Android scan response: 13-byte `BleLinkInfoV1` service data payload.
+- Stock Apple CoreBluetooth limitation: `CBPeripheralManager.startAdvertising` supports only service UUID and local name keys; backgrounded iOS does not advertise local name and places service UUIDs into Apple's proprietary overflow area, discoverable only by an iOS device explicitly scanning for them. Android -> background-iOS discovery is a fundamental **PLATFORM / PHYSICAL-DEVICE LIMITATION NOT CLOSED BY C8.4D1-R2**.
+- Discovery is UUID-only baseline on both platforms. Scan response data is optional and not required to initiate provisional GATT connection.
+- Authoritative role election and discovery metadata exchange occur post-connect over the canonical `link_info_uuid` GATT characteristic (`6764A004-9A5E-4C7B-B0A1-3E5D8C2F7A10`).
 
-Scan-response payload:
+Canonical 13-byte LinkInfo payload layout (`BleLinkInfoV1`):
 
 ```
 off size field
 0   1    protocol version, 0x02
-1   1    flags
-2   4    node hint
-6   6    short bloom digest
-12  1    queue depth, saturating
+1   1    flags (bit0 SOS_PRESENT, bit1 BULK_CAPABLE, bit2 POWER_CONSTRAINED, bit3 VERIFIED_ONLY, bit4 CLOCK_UNTRUSTED)
+2   4    node hint (first 4 bytes of node_id, unsigned lexicographical comparison)
+6   6    short bloom digest (first 6 bytes of Bloom filter)
+12  1    queue depth, saturating uint8 (0..255)
 ```
 
 The exact packet sizes must be verified on Android and iOS hardware before the
@@ -107,8 +107,7 @@ The canonical prologue after M1-wire is:
 "GMP2" || initiator_node_hint || responder_node_hint
 ```
 
-Role election is deterministic: the lexicographically smaller node hint
-initiates. A hint collision is resolved only after full identity is available;
+Role election is deterministic: Connect-First / Elect-Before-Handshake via the `link_info_uuid` characteristic. The peer with the lexicographically smaller 4-byte `node_hint` (unsigned byte comparison) initiates. A hint collision is resolved only after full identity is available;
 an identical full node ID is a cloned-identity security event.
 
 ### 5.1 Identity binding verification and role-specific READY gating
@@ -124,7 +123,7 @@ The validation pipeline separates pure cryptographic validation from serialized 
 7. Verify Ed25519 signature over canonical `GMP2-IDBIND` preimage;
 8. Derive `node_id = BLAKE2s-128(signing_public_key)`;
 9. Require `binding.static_dh_public_key == NoiseSession.remoteStaticKey`;
-10. Require `advertised_node_hint == first4(node_id)` (proven consistent with `first4(full_node_id)`);
+10. Require observed LinkInfo `node_hint == first4(node_id)` (proven consistent with `first4(full_node_id)`);
 11. Execute serialized `PeerIdentityRepository.applyValidatedBinding(...)` write transaction (pure `PeerTrustEngine` decision applied to durable `PeerIdentityRecord`);
 12. If accepted/first-seen, construct `VerifiedPeerIdentity`;
 13. Role-specific state progression:

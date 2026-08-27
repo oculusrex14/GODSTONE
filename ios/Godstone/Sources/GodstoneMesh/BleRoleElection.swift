@@ -50,7 +50,7 @@ public enum BleRoleElection {
     }
 }
 
-/// Canonical 13-byte LinkInfo structure exchanged over the link_info GATT characteristic (ADR-002 §2, Phase C8.4D1-A1).
+/// Canonical 13-byte LinkInfo structure exchanged over the link_info GATT characteristic (ADR-002 §2, Phase C8.4D1-A1/R2).
 public struct BleLinkInfoV1: Equatable, Sendable {
     public let version: UInt8
     public let flags: UInt8
@@ -58,7 +58,7 @@ public struct BleLinkInfoV1: Equatable, Sendable {
     public let shortDigest: Data
     public let queueDepth: UInt8
 
-    public var isSosPresent: Bool { (flags & BleLinkInfoConstants.flagSos) != 0 }
+    public var isSosPresent: Bool { (flags & BleLinkInfoConstants.flagSosPresent) != 0 }
     public var isBulkCapable: Bool { (flags & BleLinkInfoConstants.flagBulkCapable) != 0 }
     public var isPowerConstrained: Bool { (flags & BleLinkInfoConstants.flagPowerConstrained) != 0 }
     public var isVerifiedOnly: Bool { (flags & BleLinkInfoConstants.flagVerifiedOnly) != 0 }
@@ -88,6 +88,7 @@ public enum BleLinkInfoConstants {
     public static let nodeHintBytes = 4
     public static let shortDigestBytes = 6
 
+    public static let flagSosPresent: UInt8 = 0x01
     public static let flagSos: UInt8 = 0x01
     public static let flagBulkCapable: UInt8 = 0x02
     public static let flagPowerConstrained: UInt8 = 0x04
@@ -101,6 +102,7 @@ public enum BleDiscoveryConstants {
     public static let nodeHintBytes = 4
     public static let shortDigestBytes = 6
 
+    public static let flagSosPresent: UInt8 = 0x01
     public static let flagSos: UInt8 = 0x01
     public static let flagBulkCapable: UInt8 = 0x02
     public static let flagPowerConstrained: UInt8 = 0x04
@@ -129,8 +131,10 @@ public enum BleLinkInfoCodec {
         return out
     }
 
+    /// Decode and validate a canonical 13-byte LinkInfo payload.
+    /// Normative requirement: length == 13 and version == 0x02.
     public static func decode(_ data: Data) -> BleLinkInfoV1? {
-        guard data.count >= BleLinkInfoConstants.linkInfoBytes else { return nil }
+        guard data.count == BleLinkInfoConstants.linkInfoBytes else { return nil }
 
         let b = [UInt8](data)
         let version = b[0]
