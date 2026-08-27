@@ -1,7 +1,12 @@
 # ADR-002 — BLE roles, record framing, and the Noise handshake driver
 
-**STATUS: ACCEPTED / PHASE C8.4C RECORD LAYER & PHASE C8.4D1 SUBSTRATE IMPLEMENTED** (27 Aug 2026)
-Implementation: Phase C8.4C canonical BLE record layer (types, balanced-stride codec, fragmenter, bounded reassembler with injected clock, duplicate suppression, conflict rejection, encrypt-then-fragment semantic verification, 32/229/197 handshake composition tests, independent Python reference wire/ble_record_reference.py, and locked vectors wire/ble_record_vectors.json) is implemented and frozen. Phase C8.4D1 persistent duplex BLE link substrate (pure unsigned-byte lexicographic role election, 13-byte scan response discovery codec, persistent bidirectional GATT client/server abstractions, connection-local record seams, and structural controls BL01–BL24) is implemented. Phase C8.4D2 (trusted handshake driver) remains open; full link enablement (radio/GATT drivers) remains open behind LINK_LAYER_READY=false / linkLayerReady=false.
+**STATUS: ACCEPTED / PHASE C8.4C RECORD LAYER FROZEN; PHASE C8.4D1 SUBSTRATE PARTIALLY IMPLEMENTED / OPEN (SPEC BLOCKER: IOS DISCOVERY)** (27 Aug 2026)
+Implementation:
+- Phase C8.4C canonical BLE record layer (types, balanced-stride codec, fragmenter, bounded reassembler with injected clock, duplicate suppression, conflict rejection, encrypt-then-fragment semantic verification, 32/229/197 handshake composition tests, independent Python reference wire/ble_record_reference.py, and locked vectors wire/ble_record_vectors.json) is IMPLEMENTED and FROZEN.
+- Phase C8.4D1 persistent duplex BLE link substrate (pure unsigned-byte lexicographic role election, 13-byte scan response discovery codec, persistent bidirectional GATT client/server abstractions, connection-local record seams, and structural controls BL01–BL24) is PARTIALLY IMPLEMENTED / OPEN.
+- BLOCKER: Stock iOS CBPeripheralManager cannot emit the ADR-002 arbitrary 13-byte service-data scan response required for pre-connection node_hint role election.
+- Phase C8.4D2 (trusted handshake driver) is OPEN / NOT STARTED.
+- Full link enablement (radio/GATT drivers) remains open behind LINK_LAYER_READY=false / linkLayerReady=false.
 
 ---
 

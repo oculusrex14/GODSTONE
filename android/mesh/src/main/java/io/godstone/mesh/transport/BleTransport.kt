@@ -14,13 +14,45 @@ import android.os.ParcelUuid
 import io.godstone.mesh.identity.Identity
 import io.godstone.mesh.router.BloomDigest
 import io.godstone.mesh.wire.v2.FrameV2
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.callbackFlow
-import java.nio.ByteBuffer
+import kotlinx.coroutines.launch
 import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
+
+/**
+ * Snapshot of local discovery metadata broadcast in scan response (ADR-002 §2).
+ */
+data class BleDiscoverySnapshot(
+    val shortDigest: ByteArray,
+    val queueDepth: Int,
+    val sosPresent: Boolean = false,
+    val clockUntrusted: Boolean = false
+) {
+    override fun equals(other: Any?): Boolean {
+        if (this === other) return true
+        if (javaClass != other?.javaClass) return false
+        other as BleDiscoverySnapshot
+        if (!shortDigest.contentEquals(other.shortDigest)) return false
+        if (queueDepth != other.queueDepth) return false
+        if (sosPresent != other.sosPresent) return false
+        if (clockUntrusted != other.clockUntrusted) return false
+        return true
+    }
+
+    override fun hashCode(): Int {
+        var result = shortDigest.contentHashCode()
+        result = 31 * result + queueDepth
+        result = 31 * result + sosPresent.hashCode()
+        result = 31 * result + clockUntrusted.hashCode()
+        return result
+    }
+}
 
 /**
  * Persistent duplex BLE control-plane substrate (ADR-002, Phase C8.4D1).
@@ -38,7 +70,18 @@ class BleTransport(
     private val identity: Identity,
     private val digestProvider: suspend () -> BloomDigest,
     /** Noise sessions. Without this the transport cannot send at all -- by design. */
-    private val sessions: io.godstone.mesh.crypto.SessionManager? = null
+    private val sessions: io.godstone.mesh.crypto.SessionManager? = null,
+    private val snapshotProvider: (() -> BleDiscoverySnapshot)? = null,
+    private val clientFactory: (
+        context: Context,
+        address: String,
+        onInboundNotification: (ByteArray) -> Unit,
+        onDisconnected: () -> Unit,
+        onMtuUpdated: (Int) -> Unit
+    ) -> GattClientConnection = { ctx, addr, onInbound, onDisc, onMtu ->
+        GattClientConnection(ctx, addr, onInbound, onDisc, onMtu)
+    },
+    private val coroutineScope: CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 ) : Transport {
 
     override val name = "BLE"
@@ -57,7 +100,13 @@ class BleTransport(
         serviceUuid = SERVICE_UUID,
         inboxCharUuid = WRITE_CHAR_UUID,
         onInboundWrite = { peerAddress, value -> handleInboundAttValue(peerAddress, value) },
-        onClientDisconnected = { peerAddress -> handlePeerDisconnected(peerAddress) }
+        onClientDisconnected = { peerAddress -> handlePeerDisconnected(peerAddress) },
+        onMtuChanged = { peerAddress, maxAttLen ->
+            activeConnections[peerAddress]?.let { conn ->
+                conn.maxAttValueLength = maxAttLen
+                conn.markConnected(maxAttLen)
+            }
+        }
     )
 
     // Discovered peer cache (bounded to MAX_DISCOVERED_PEERS)
@@ -74,19 +123,28 @@ class BleTransport(
     @Volatile
     private var isStarted = false
 
+    val isRunning: Boolean
+        get() = isStarted && gattServer.isRunning
+
     override fun start() {
         if (isStarted) return
-        isStarted = true
 
         // Logical startup order (ADR-002 §7):
-        // 1. Open GATT server
-        // 2. Establish inbound plumbing
-        // 3. Begin advertising
-        gattServer.start()
+        // 1. Open GATT server. If server open fails, fail-closed without advertising!
+        val serverStarted = gattServer.start()
+        if (!serverStarted) {
+            isStarted = false
+            return
+        }
+
+        isStarted = true
+
+        // 2. Establish inbound plumbing & begin advertising
         startAdvertising()
     }
 
     override fun stop() {
+        if (!isStarted) return
         isStarted = false
 
         // Stop advertising and scanning
@@ -125,7 +183,7 @@ class BleTransport(
     }
 
     /**
-     * Accepted 13-byte scan-response payload from ADR-002 §2.
+     * Build the 13-byte scan-response payload from current discovery snapshot authority (ADR-002 §2).
      */
     fun buildScanResponsePayload(
         digest: ByteArray,
@@ -145,6 +203,17 @@ class BleTransport(
             nodeHint = identity.nodeHint,
             shortDigest = digest.copyOfRange(0, 6),
             queueDepth = queueDepth
+        )
+    }
+
+    private fun getCurrentDiscoverySnapshot(): BleDiscoverySnapshot {
+        snapshotProvider?.let { return it() }
+        // Default real snapshot derived from node identity and state
+        return BleDiscoverySnapshot(
+            shortDigest = identity.nodeHint.copyOf(6),
+            queueDepth = 0,
+            sosPresent = false,
+            clockUntrusted = false
         )
     }
 
@@ -174,9 +243,14 @@ class BleTransport(
             .addServiceUuid(ParcelUuid(SERVICE_UUID))
             .build()
 
-        // Scan Response: Service Data with 13-byte discovery payload (31 bytes exact fit)
-        val dummyDigest = ByteArray(6)
-        val scanResponsePayload = buildScanResponsePayload(dummyDigest, 0, false)
+        // Scan Response: Service Data with 13-byte discovery payload sourced from real snapshot authority
+        val snapshot = getCurrentDiscoverySnapshot()
+        val scanResponsePayload = buildScanResponsePayload(
+            digest = snapshot.shortDigest,
+            queueDepth = snapshot.queueDepth,
+            sosPresent = snapshot.sosPresent,
+            clockUntrusted = snapshot.clockUntrusted
+        )
         val scanResponse = AdvertiseData.Builder()
             .setIncludeDeviceName(false)
             .addServiceData(ParcelUuid(SERVICE_UUID), scanResponsePayload)
@@ -212,10 +286,10 @@ class BleTransport(
                         discoveredPeers[address] = metadata
                     }
 
-                    // Role election evaluation
+                    // Role election evaluation (ADR-002 §3)
                     val election = BleRoleElection.elect(identity.nodeHint, metadata.nodeHint)
                     if (election is BleRoleElectionResult.Elected) {
-                        getOrCreateConnection(peerMacBytes, address, metadata.nodeHint, election.role)
+                        handleElectedPeer(peerMacBytes, address, metadata.nodeHint, election.role)
                     }
 
                     trySend(
@@ -269,17 +343,17 @@ class BleTransport(
         awaitClose { adapter?.bluetoothLeScanner?.stopScan(cb) }
     }
 
-    private fun getOrCreateConnection(
+    private fun handleElectedPeer(
         peerMacBytes: ByteArray,
         address: String,
         remoteHint: ByteArray,
         role: BleRole
-    ): BleConnection? {
+    ) {
         val existing = activeConnections[address]
-        if (existing != null && existing.isActive) return existing
+        if (existing != null && existing.isActive) return
 
         if (activeConnections.size >= MAX_ACTIVE_CONNECTIONS && !activeConnections.containsKey(address)) {
-            return null // Reject connection exceeding bounded capacity
+            return // Capacity exceeded
         }
 
         val conn = BleConnection(
@@ -288,7 +362,31 @@ class BleTransport(
             localRole = role
         )
         activeConnections[address] = conn
-        return conn
+
+        // Role Authority: INITIATOR creates and initiates persistent client connection; RESPONDER waits
+        if (role == BleRole.INITIATOR) {
+            val client = clientFactory(
+                context,
+                address,
+                { value -> handleInboundAttValue(address, value) },
+                { handlePeerDisconnected(address) },
+                { maxAttLen ->
+                    conn.maxAttValueLength = maxAttLen
+                    conn.markConnected(maxAttLen)
+                }
+            )
+            activeClientConnections[address] = client
+
+            coroutineScope.launch {
+                val ok = client.connect()
+                if (ok) {
+                    conn.markConnected()
+                } else {
+                    activeClientConnections.remove(address)?.disconnect()
+                    activeConnections.remove(address)?.markDisconnected()
+                }
+            }
+        }
     }
 
     private fun handleInboundAttValue(peerAddress: String, value: ByteArray) {
@@ -303,6 +401,9 @@ class BleTransport(
         conn?.markDisconnected()
         activeClientConnections.remove(peerAddress)?.disconnect()
     }
+
+    fun getConnection(address: String): BleConnection? = activeConnections[address]
+    fun getClient(address: String): GattClientConnection? = activeClientConnections[address]
 
     /**
      * Send [bytes] to [peerId] through the Noise session and BleRecord layer.

@@ -1,11 +1,16 @@
 package io.godstone.mesh.transport
 
+import android.content.Context
 import io.godstone.mesh.MeshIdentity
 import io.godstone.mesh.MeshNode
 import io.godstone.mesh.crypto.SessionManager
-import io.godstone.mesh.identity.PeerIdentityRepository
 import io.godstone.mesh.identity.PeerTrustApplyResult
 import io.godstone.mesh.identity.ValidatedPeerBinding
+import io.godstone.mesh.router.BloomDigest
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.test.TestScope
+import kotlinx.coroutines.test.UnconfinedTestDispatcher
+import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertArrayEquals
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -13,26 +18,17 @@ import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
-import java.security.SecureRandom
+import org.mockito.Mockito.mock
 import java.util.Random
+import java.util.concurrent.atomic.AtomicInteger
 
+@OptIn(ExperimentalCoroutinesApi::class)
 class BleLinkSubstrateTest {
 
     private class RecordingTrustAuthority : io.godstone.mesh.crypto.PeerBindingTrustAuthority {
         override fun applyValidatedBinding(binding: ValidatedPeerBinding): PeerTrustApplyResult {
             return PeerTrustApplyResult.Accepted
         }
-    }
-
-    private fun hexToBytes(hex: String): ByteArray {
-        val len = hex.length
-        val data = ByteArray(len / 2)
-        var i = 0
-        while (i < len) {
-            data[i / 2] = ((Character.digit(hex[i], 16) shl 4) + Character.digit(hex[i + 1], 16)).toByte()
-            i += 2
-        }
-        return data
     }
 
     // ------------------------------------------------------------------------
@@ -50,7 +46,7 @@ class BleLinkSubstrateTest {
         val res2 = BleRoleElection.elect(hintLarge, hintSmall)
         assertEquals(BleRoleElectionResult.Elected(BleRole.RESPONDER), res2)
 
-        // Edge case: 0x7F vs 0x80 (signed comparison would treat 0x80 as -128 < 127; unsigned must treat 0x80 as 128 > 127)
+        // 0x7F vs 0x80 (unsigned comparison: 127 < 128)
         val hint7F = byteArrayOf(0x7F.toByte(), 0x00.toByte(), 0x00.toByte(), 0x00.toByte())
         val hint80 = byteArrayOf(0x80.toByte(), 0x00.toByte(), 0x00.toByte(), 0x00.toByte())
         assertEquals(BleRoleElectionResult.Elected(BleRole.INITIATOR), BleRoleElection.elect(hint7F, hint80))
@@ -134,11 +130,9 @@ class BleLinkSubstrateTest {
         val shortDigest = byteArrayOf(1, 2, 3, 4, 5, 6)
         val payload = BleDiscoveryCodec.encode(0x02, BleDiscoveryConstants.FLAG_SOS.toByte(), nodeHint, shortDigest, 5)
 
-        // Decode partial or absent returns null
         assertNull(BleDiscoveryCodec.decode(ByteArray(0)))
-        assertNull(BleDiscoveryCodec.decode(ByteArray(12))) // less than 13
+        assertNull(BleDiscoveryCodec.decode(ByteArray(12)))
 
-        // When complete 13 bytes arrives:
         val metadata = BleDiscoveryCodec.decode(payload)
         assertNotNull(metadata)
         assertArrayEquals(nodeHint, metadata!!.nodeHint)
@@ -168,7 +162,6 @@ class BleLinkSubstrateTest {
         assertTrue(frags1.isNotEmpty())
         assertTrue(frags2.isNotEmpty())
 
-        // Ingest on receiver
         val receiverConn = BleConnection(
             peerId = peerId,
             remoteNodeHint = remoteHint,
@@ -272,7 +265,6 @@ class BleLinkSubstrateTest {
 
         val payload = ByteArray(150)
         val frags = conn.fragmentOutbound(BleRecordType.DATA, payload)
-        // Capacity = 100 - 8 = 92 bytes. 150 / 92 = 2 fragments
         assertEquals(2, frags.size)
         assertTrue(frags[0].size <= 100)
         assertTrue(frags[1].size <= 100)
@@ -290,15 +282,12 @@ class BleLinkSubstrateTest {
         val frags = conn.fragmentOutbound(BleRecordType.DATA, payload)
         assertTrue(frags.size > 1)
 
-        // Ingest fragment 0
         assertNull(conn.ingestInboundAttValue(frags[0]))
 
-        // Mark disconnected
         conn.markDisconnected()
         assertFalse(conn.isActive)
         assertEquals(BleConnectionState.DISCONNECTED, conn.state)
 
-        // Ingesting after disconnect returns null
         assertNull(conn.ingestInboundAttValue(frags[1]))
     }
 
@@ -310,7 +299,7 @@ class BleLinkSubstrateTest {
         val conn = BleConnection(byteArrayOf(1), byteArrayOf(2, 3, 4, 5), BleRole.INITIATOR, 20)
         conn.markConnected()
         conn.markDisconnected()
-        conn.markDisconnected() // safe second call
+        conn.markDisconnected()
         assertEquals(BleConnectionState.DISCONNECTED, conn.state)
     }
 
@@ -322,11 +311,9 @@ class BleLinkSubstrateTest {
         val id = MeshIdentity.generate()
         val sm = SessionManager(id, RecordingTrustAuthority())
 
-        // Substrate connection does not invoke sm.beginInitiator or beginResponder
         val conn = BleConnection(byteArrayOf(1), byteArrayOf(2, 3, 4, 5), BleRole.INITIATOR, 20)
         conn.markConnected()
 
-        // SM remains in initial state with zero sessions
         assertFalse(sm.isReady(byteArrayOf(1)))
     }
 
@@ -336,5 +323,59 @@ class BleLinkSubstrateTest {
     @Test
     fun testLinkLayerReady_RemainsFalse() {
         assertFalse(MeshNode.LINK_LAYER_READY)
+    }
+
+    // ------------------------------------------------------------------------
+    // 14. Real discovery snapshot authority is used in advertising
+    // ------------------------------------------------------------------------
+    @Test
+    fun testRealDiscoverySnapshotAuthority_UsedInAdvertising() {
+        val id = MeshIdentity.generate()
+        val realDigest = byteArrayOf(0x10, 0x20, 0x30, 0x40, 0x50, 0x60)
+        val snapshot = BleDiscoverySnapshot(
+            shortDigest = realDigest,
+            queueDepth = 7,
+            sosPresent = true,
+            clockUntrusted = false
+        )
+
+        val context = mock(Context::class.java)
+        val transport = BleTransport(
+            context = context,
+            identity = id,
+            digestProvider = { BloomDigest(ByteArray(16)) },
+            snapshotProvider = { snapshot }
+        )
+
+        val payload = transport.buildScanResponsePayload(
+            snapshot.shortDigest,
+            snapshot.queueDepth,
+            snapshot.sosPresent,
+            snapshot.clockUntrusted
+        )
+        val decoded = BleDiscoveryCodec.decode(payload)
+        assertNotNull(decoded)
+        assertArrayEquals(realDigest, decoded!!.shortDigest)
+        assertEquals(7, decoded.queueDepth)
+        assertTrue(decoded.isSosPresent)
+    }
+
+    // ------------------------------------------------------------------------
+    // 15. Server subscription and MTU tracking
+    // ------------------------------------------------------------------------
+    @Test
+    fun testServerSubscriptionAndMtuTracking() {
+        val context = mock(Context::class.java)
+        var capturedMtu = 0
+        var capturedSub = false
+
+        val server = BleGattServer(
+            context = context,
+            onSubscriptionChanged = { _, isSub -> capturedSub = isSub },
+            onMtuChanged = { _, mtu -> capturedMtu = mtu }
+        )
+
+        assertFalse(server.isSubscribed("00:11:22:33:44:55"))
+        assertEquals(20, server.getNegotiatedAttValueLength("00:11:22:33:44:55"))
     }
 }

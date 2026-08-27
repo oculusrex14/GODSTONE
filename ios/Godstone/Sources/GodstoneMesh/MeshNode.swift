@@ -27,7 +27,7 @@ public enum DirectDispatchResult: Equatable, Sendable {
 public final class MeshNode {
     public static let linkLayerReady = false
     public static let linkLayerOpenReason =
-        "BLE record framing and the persistent radio substrate are implemented, but the trusted handshake driver and on-device link validation remain incomplete. Radio transmission is disabled in this pre-alpha build."
+        "BLE record framing is implemented, but cross-platform link discovery, role binding, trusted handshake integration, and on-device validation remain incomplete. Radio transmission is disabled in this pre-alpha build."
 
     public let identity: MeshIdentity
     /// Durable hold, injected before `start()` (ADR-004 / Stage 4B). The router

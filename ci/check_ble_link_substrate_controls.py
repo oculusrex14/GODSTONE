@@ -26,6 +26,12 @@ Verifies the presence, boundaries, and structural invariants of:
 - BL22: No SessionManager handshake APIs called by production BLE transport
 - BL23: Hard boundaries: LINK_LAYER_READY = false, linkLayerReady = false, LIGHT Archive-only
 - BL24: ADR-002 and ADR-003 truthful representation of Phase C8.4D1 status
+- BL25: Android persistent client connection wiring in BleTransport (instantiation, connect, storage)
+- BL26: iOS central connection guarded by elected initiator role check
+- BL27: Android startup fail-closed gating on gattServer.start() result
+- BL28: Android server CCCD subscription tracking and enforcement in sendNotification
+- BL29: Android server-side MTU callback wired to BleConnection
+- BL30: iOS outbound write and update queues are strictly hard-bounded
 """
 from __future__ import annotations
 
@@ -298,6 +304,8 @@ def check_controls(
             "testRepeatedStartStop_Idempotent",
             "testSessionManager_HandshakeApiNotInvokedBySubstrate",
             "testLinkLayerReady_RemainsFalse",
+            "testRealDiscoverySnapshotAuthority_UsedInAdvertising",
+            "testServerSubscriptionAndMtuTracking"
         ]
         for t in req_tests:
             if t not in c:
@@ -324,6 +332,7 @@ def check_controls(
             "testRepeatedLifecycle_Idempotent",
             "testSessionManager_HandshakeApiNotInvokedBySubstrate",
             "testLinkLayerReady_RemainsFalse",
+            "testCoreBluetoothMissingServiceData_FailsClosed"
         ]
         for t in req_tests:
             if t not in c:
@@ -363,23 +372,71 @@ def check_controls(
             errors.append("BL23: iOS AppContainer must remain Archive-only (Mesh absent)")
 
     # ------------------------------------------------------------------------
-    # BL24: ADR-002 and ADR-003 Status Consistency
+    # BL24: ADR-002 and ADR-003 Status Consistency & Spec Blocker
     # ------------------------------------------------------------------------
     if adr002_path.exists():
         c_adr2 = adr002_path.read_text(encoding="utf-8")
-        if not re.search(r'PHASE\s+C8\.4D1', c_adr2):
-            errors.append("BL24: ADR-002 missing C8.4D1 status documentation")
+        if not re.search(r'PHASE\s+C8\.4D1', c_adr2) or "SPEC BLOCKER" not in c_adr2:
+            errors.append("BL24: ADR-002 missing C8.4D1 spec blocker status documentation")
 
     if adr003_path.exists():
         c_adr3 = adr003_path.read_text(encoding="utf-8")
-        if not re.search(r'Phase\s+C8\.4D1', c_adr3):
-            errors.append("BL24: ADR-003 missing C8.4D1 status documentation")
+        if not re.search(r'Phase\s+C8\.4D1', c_adr3) or "SPEC BLOCKER" not in c_adr3:
+            errors.append("BL24: ADR-003 missing C8.4D1 spec blocker status documentation")
+
+    # ------------------------------------------------------------------------
+    # BL25: Android persistent client wiring in BleTransport
+    # ------------------------------------------------------------------------
+    if android_transport_path.exists():
+        c = strip_comments(android_transport_path.read_text(encoding="utf-8"))
+        if "clientFactory(" not in c or "activeClientConnections[address] = client" not in c or "client.connect()" not in c:
+            errors.append("BL25: Android BleTransport missing persistent client instantiation or connect() call")
+
+    # ------------------------------------------------------------------------
+    # BL26: iOS central connection guarded by initiator role
+    # ------------------------------------------------------------------------
+    if ios_transport_path.exists():
+        c = strip_comments(ios_transport_path.read_text(encoding="utf-8"))
+        if "if role == .initiator" not in c or "c.connect(p, options: nil)" not in c:
+            errors.append("BL26: iOS central connect must be enclosed within role == .initiator guard")
+
+    # ------------------------------------------------------------------------
+    # BL27: Android startup fail-closed gating on gattServer.start()
+    # ------------------------------------------------------------------------
+    if android_transport_path.exists():
+        c = strip_comments(android_transport_path.read_text(encoding="utf-8"))
+        if "val serverStarted = gattServer.start()" not in c or "if (!serverStarted)" not in c:
+            errors.append("BL27: Android BleTransport start() must check gattServer.start() result")
+
+    # ------------------------------------------------------------------------
+    # BL28: Android server CCCD subscription check in sendNotification
+    # ------------------------------------------------------------------------
+    if android_server_path.exists():
+        c = strip_comments(android_server_path.read_text(encoding="utf-8"))
+        if "subscribedDevices[deviceAddress]" not in c or "return false" not in c:
+            errors.append("BL28: Android BleGattServer sendNotification must check CCCD subscription state")
+
+    # ------------------------------------------------------------------------
+    # BL29: Android server-side MTU callback wired to BleConnection
+    # ------------------------------------------------------------------------
+    if android_transport_path.exists():
+        c = strip_comments(android_transport_path.read_text(encoding="utf-8"))
+        if "onMtuChanged =" not in c or "conn.maxAttValueLength = maxAttLen" not in c:
+            errors.append("BL29: Android BleTransport missing server onMtuChanged callback wiring to BleConnection")
+
+    # ------------------------------------------------------------------------
+    # BL30: iOS outbound queues hard-bounded
+    # ------------------------------------------------------------------------
+    if ios_transport_path.exists():
+        c = strip_comments(ios_transport_path.read_text(encoding="utf-8"))
+        if "maxQueuedAttValues = 16" not in c or "pendingOutboundWrites" not in c or "pendingOutboundUpdates" not in c:
+            errors.append("BL30: iOS BleTransport missing bounded pendingOutboundWrites/Updates")
 
     return errors
 
 
 def run_selftest() -> int:
-    """Mutation testing for all BL01-BL24 control rules."""
+    """Mutation testing for all BL01-BL30 control rules."""
     print("Running check_ble_link_substrate_controls selftest (mutation test battery)...")
 
     # 1. Baseline must pass
@@ -409,7 +466,7 @@ def run_selftest() -> int:
         ("ios_transport", "conn.markDisconnected()", "/* conn.markDisconnected() */", "BL15"),
         ("android_transport", "MAX_DISCOVERED_PEERS = 64", "MAX_DISCOVERED_PEERS = 9999", "BL16"),
         ("ios_transport", "maxDiscoveredPeers = 64", "maxDiscoveredPeers = 9999", "BL17"),
-        ("android_transport", "gattServer.start()\n        startAdvertising()", "startAdvertising()\n        gattServer.start()", "BL18"),
+        ("android_transport", "gattServer.start()\n        if (!serverStarted)", "startAdvertising()\n        val serverStarted = gattServer.start()", "BL18"),
         ("ios_transport", "[BleTransport.serviceUuid]", "[BleTransport.serviceUuid],\n            CBAdvertisementDataLocalNameKey: \"GS\"", "BL19"),
         ("android_test_substrate", "testRoleElection_1000RandomUnequalPairs_ExactlyOneInitiator", "disabled_testRoleElection", "BL20"),
         ("ios_test_substrate", "testRoleElection_1000RandomUnequalPairs_ExactlyOneInitiator", "disabled_testRoleElection", "BL21"),
@@ -418,8 +475,14 @@ def run_selftest() -> int:
         ("android_mesh_node", "const val LINK_LAYER_READY = false", "const val LINK_LAYER_READY = true", "BL23"),
         ("ios_mesh_node", "public static let linkLayerReady = false", "public static let linkLayerReady = true", "BL23"),
         ("ios_app_container", "import Foundation", "import Foundation\nimport GodstoneMesh", "BL23"),
-        ("adr002", "PHASE C8.4D1", "PHASE C8.4X_MUTATED", "BL24"),
-        ("adr003", "Phase C8.4D1", "Phase C8.4X_MUTATED", "BL24"),
+        ("adr002", "SPEC BLOCKER", "ALL_CLOSED_UNBLOCK", "BL24"),
+        ("adr003", "SPEC BLOCKER", "ALL_CLOSED_UNBLOCK", "BL24"),
+        ("android_transport", "activeClientConnections[address] = client", "/* activeClientConnections[address] = client */", "BL25"),
+        ("ios_transport", "if role == .initiator {", "if true {", "BL26"),
+        ("android_transport", "if (!serverStarted)", "if (false)", "BL27"),
+        ("android_server", "if (subscribedDevices[deviceAddress] != true)", "if (false)", "BL28"),
+        ("android_transport", "conn.maxAttValueLength = maxAttLen", "/* conn.maxAttValueLength = maxAttLen */", "BL29"),
+        ("ios_transport", "maxQueuedAttValues = 16", "maxQueuedAttValues = 999999", "BL30"),
     ]
 
     all_passed = True
@@ -510,7 +573,7 @@ def main() -> int:
             print(f"  - {err}", file=sys.stderr)
         return 1
 
-    print("BLE link substrate structural controls: ALL PASSED (BL01-BL24).")
+    print("BLE link substrate structural controls: ALL PASSED (BL01-BL30).")
     return 0
 
 

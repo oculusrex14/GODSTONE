@@ -1,4 +1,6 @@
 import XCTest
+import CoreBluetooth
+@testable import GodstoneCore
 @testable import GodstoneMesh
 
 final class BleLinkSubstrateTests: XCTestCase {
@@ -305,5 +307,23 @@ final class BleLinkSubstrateTests: XCTestCase {
     // ------------------------------------------------------------------------
     func testLinkLayerReady_RemainsFalse() {
         XCTAssertFalse(MeshNode.linkLayerReady)
+    }
+
+    // ------------------------------------------------------------------------
+    // 14. iOS CoreBluetooth Service Data absence fails closed (Spec Blocker Evidence)
+    // ------------------------------------------------------------------------
+    func testCoreBluetoothMissingServiceData_FailsClosed() throws {
+        let id = try makeIdentity()
+        let transport = BleTransport(identity: id)
+
+        // Advertisements without CBAdvertisementDataServiceDataKey fail closed to decode
+        let emptyAdvData: [String: Any] = [:]
+        let rawPayload = (emptyAdvData[CBAdvertisementDataServiceDataKey] as? [CBUUID: Data])?[BleTransport.serviceUuid]
+        XCTAssertNil(rawPayload)
+
+        // Decode returns nil and didDiscover does not connect or create connection
+        let metadata = rawPayload.flatMap { BleDiscoveryCodec.decode($0) }
+        XCTAssertNil(metadata)
+        XCTAssertNil(transport.connection(for: UUID()))
     }
 }

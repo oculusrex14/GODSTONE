@@ -13,9 +13,10 @@ public final class BleTransport: NSObject {
 
     public static let maxDiscoveredPeers = 64
     public static let maxActiveConnections = 7
+    public static let maxQueuedAttValues = 16
 
-    private let central: CBCentralManager
-    private let peripheral: CBPeripheralManager
+    private var central: CBCentralManager!
+    private var peripheral: CBPeripheralManager!
 
     public var identity: MeshIdentity?
 
@@ -30,7 +31,10 @@ public final class BleTransport: NSObject {
     // Active connection state abstractions
     private var activeConnections: [UUID: BleConnection] = [:]
 
-    // Queued outbound notifications awaiting peripheralManagerIsReady
+    // Queued outbound writes awaiting peripheralIsReady(toSendWriteWithoutResponse:)
+    private var pendingOutboundWrites: [UUID: [Data]] = [:]
+
+    // Queued outbound notifications awaiting peripheralManagerIsReady(toUpdateSubscribers:)
     private var pendingOutboundUpdates: [UUID: [Data]] = [:]
 
     private let transportLock = NSLock()
@@ -42,23 +46,28 @@ public final class BleTransport: NSObject {
 
     public private(set) var isBackgrounded = false
     public private(set) var isStarted = false
+    public private(set) var isServiceRegistered = false
 
     public init(identity: MeshIdentity? = nil) {
         self.identity = identity
-        central = CBCentralManager(delegate: nil, queue: .global(qos: .utility), options: [CBCentralManagerOptionRestoreIdentifierKey: "io.godstone.central"])
-        peripheral = CBPeripheralManager(delegate: nil, queue: .global(qos: .utility), options: [CBPeripheralManagerOptionRestoreIdentifierKey: "io.godstone.peripheral"])
         super.init()
-        central.delegate = self
-        peripheral.delegate = self
+        central = CBCentralManager(delegate: self, queue: .global(qos: .utility), options: [CBCentralManagerOptionRestoreIdentifierKey: "io.godstone.central"])
+        peripheral = CBPeripheralManager(delegate: self, queue: .global(qos: .utility), options: [CBPeripheralManagerOptionRestoreIdentifierKey: "io.godstone.peripheral"])
     }
 
     public func start() {
         transportLock.lock()
-        defer { transportLock.unlock() }
-        guard !isStarted else { return }
+        guard !isStarted else {
+            transportLock.unlock()
+            return
+        }
         isStarted = true
+        let canAdv = isServiceRegistered && peripheral.state == .poweredOn
+        transportLock.unlock()
 
-        startAdvertising()
+        if canAdv {
+            startAdvertising()
+        }
         startScanning()
     }
 
@@ -83,6 +92,7 @@ public final class BleTransport: NSObject {
         }
         activeConnections.removeAll()
         discoveredPeers.removeAll()
+        pendingOutboundWrites.removeAll()
         pendingOutboundUpdates.removeAll()
     }
 
@@ -95,7 +105,7 @@ public final class BleTransport: NSObject {
     }
 
     private func startAdvertising() {
-        guard peripheral.state == .poweredOn else { return }
+        guard peripheral.state == .poweredOn, isServiceRegistered else { return }
         // Privacy: service UUID only, no local name broadcast (ADR-002 §2 / §7b)
         peripheral.startAdvertising([
             CBAdvertisementDataServiceUUIDsKey: [BleTransport.serviceUuid]
@@ -147,8 +157,20 @@ public final class BleTransport: NSObject {
                 transportLock.unlock()
                 return false
             }
-            transportLock.unlock()
 
+            var queue = pendingOutboundWrites[peerId] ?? []
+            if !queue.isEmpty || !p.canSendWriteWithoutResponse {
+                if queue.count + fragments.count > BleTransport.maxQueuedAttValues {
+                    transportLock.unlock()
+                    return false // Bound overflow: fail-closed
+                }
+                queue.append(contentsOf: fragments)
+                pendingOutboundWrites[peerId] = queue
+                transportLock.unlock()
+                return true
+            }
+
+            transportLock.unlock()
             for frag in fragments {
                 p.writeValue(frag, for: ch, type: .withoutResponse)
             }
@@ -160,14 +182,26 @@ public final class BleTransport: NSObject {
                 return false
             }
 
+            var queue = pendingOutboundUpdates[peerId] ?? []
             for frag in fragments {
-                let ok = peripheral.updateValue(frag, for: inboxChar, onSubscribedCentrals: [centralObj])
-                if !ok {
-                    if pendingOutboundUpdates[peerId] == nil {
-                        pendingOutboundUpdates[peerId] = []
+                if !queue.isEmpty {
+                    if queue.count >= BleTransport.maxQueuedAttValues {
+                        transportLock.unlock()
+                        return false // Bound overflow: fail-closed
                     }
-                    pendingOutboundUpdates[peerId]?.append(frag)
+                    queue.append(frag)
+                } else {
+                    let ok = peripheral.updateValue(frag, for: inboxChar, onSubscribedCentrals: [centralObj])
+                    if !ok {
+                        queue.append(frag)
+                    }
                 }
+            }
+
+            if queue.isEmpty {
+                pendingOutboundUpdates.removeValue(forKey: peerId)
+            } else {
+                pendingOutboundUpdates[peerId] = queue
             }
             transportLock.unlock()
             return true
@@ -198,7 +232,7 @@ public final class BleTransport: NSObject {
 extension BleTransport: CBCentralManagerDelegate, CBPeripheralDelegate {
 
     public func centralManagerDidUpdateState(_ c: CBCentralManager) {
-        if c.state == .poweredOn {
+        if c.state == .poweredOn && isStarted {
             startScanning()
         }
     }
@@ -230,25 +264,33 @@ extension BleTransport: CBCentralManagerDelegate, CBPeripheralDelegate {
             metadata = BleDiscoveryCodec.decode(rawPayload)
         }
 
-        if let meta = metadata {
-            if discoveredPeers.count >= BleTransport.maxDiscoveredPeers && discoveredPeers[p.identifier] == nil {
-                if let oldest = discoveredPeers.keys.first {
-                    discoveredPeers.removeValue(forKey: oldest)
-                }
-            }
-            discoveredPeers[p.identifier] = meta
-
-            if let localHint = identity?.nodeHint {
-                let election = BleRoleElection.elect(localHint: localHint, remoteHint: meta.nodeHint)
-                if case .elected(let role) = election {
-                    _ = getOrCreateConnection(peerId: p.identifier, remoteNodeHint: meta.nodeHint, localRole: role)
-                }
-            }
+        // Role Election Authority: require actual discovered metadata and local identity
+        guard let meta = metadata, let localHint = identity?.nodeHint else {
+            // Missing discovery metadata or local identity: fail-closed, do NOT connect!
+            return
         }
 
-        connectedPeripherals[p.identifier] = p
-        p.delegate = self
-        c.connect(p, options: nil)
+        if discoveredPeers.count >= BleTransport.maxDiscoveredPeers && discoveredPeers[p.identifier] == nil {
+            if let oldest = discoveredPeers.keys.first {
+                discoveredPeers.removeValue(forKey: oldest)
+            }
+        }
+        discoveredPeers[p.identifier] = meta
+
+        let election = BleRoleElection.elect(localHint: localHint, remoteHint: meta.nodeHint)
+        switch election {
+        case .elected(let role):
+            _ = getOrCreateConnection(peerId: p.identifier, remoteNodeHint: meta.nodeHint, localRole: role)
+            if role == .initiator {
+                connectedPeripherals[p.identifier] = p
+                p.delegate = self
+                c.connect(p, options: nil)
+            }
+            // If responder: do NOT connect as central; wait for peer connection.
+        case .tie, .invalid:
+            // Equal hint or invalid: fail closed! Do NOT connect!
+            break
+        }
     }
 
     public func centralManager(_ c: CBCentralManager, didConnect p: CBPeripheral) {
@@ -261,6 +303,7 @@ extension BleTransport: CBCentralManagerDelegate, CBPeripheralDelegate {
                                error: Error?) {
         transportLock.lock()
         inboxCharacteristics.removeValue(forKey: p.identifier)
+        pendingOutboundWrites.removeValue(forKey: p.identifier)
         if let conn = activeConnections.removeValue(forKey: p.identifier) {
             conn.markDisconnected()
         }
@@ -295,6 +338,24 @@ extension BleTransport: CBCentralManagerDelegate, CBPeripheralDelegate {
         transportLock.unlock()
 
         delegate?.transportReady(peerId: p.identifier)
+    }
+
+    public func peripheralIsReady(toSendWriteWithoutResponse p: CBPeripheral) {
+        transportLock.lock()
+        defer { transportLock.unlock() }
+        guard let ch = inboxCharacteristics[p.identifier] else { return }
+
+        var queue = pendingOutboundWrites[p.identifier] ?? []
+        while !queue.isEmpty && p.canSendWriteWithoutResponse {
+            let item = queue.removeFirst()
+            p.writeValue(item, for: ch, type: .withoutResponse)
+        }
+
+        if queue.isEmpty {
+            pendingOutboundWrites.removeValue(forKey: p.identifier)
+        } else {
+            pendingOutboundWrites[p.identifier] = queue
+        }
     }
 
     public func peripheral(_ p: CBPeripheral,
@@ -344,7 +405,23 @@ extension BleTransport: CBPeripheralManagerDelegate {
         pm.add(service)
 
         mutableInboxCharacteristic = inbox
-        startAdvertising()
+    }
+
+    public func peripheralManager(_ pm: CBPeripheralManager, didAdd service: CBService, error: Error?) {
+        transportLock.lock()
+        if error == nil && service.uuid == BleTransport.serviceUuid {
+            isServiceRegistered = true
+        }
+        let shouldAdv = isStarted && isServiceRegistered
+        transportLock.unlock()
+
+        if shouldAdv {
+            startAdvertising()
+        }
+    }
+
+    public func peripheralManager(_ pm: CBPeripheralManager, willRestoreState dict: [String: Any]) {
+        // State restoration hook for peripheral manager
     }
 
     public func peripheralManager(_ pm: CBPeripheralManager,
