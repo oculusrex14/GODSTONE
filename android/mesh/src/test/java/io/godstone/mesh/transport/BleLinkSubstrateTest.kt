@@ -327,7 +327,7 @@ class BleLinkSubstrateTest {
         conn.markConnected()
 
         // SM remains in initial state with zero sessions
-        assertFalse(sm.isReady("peer1"))
+        assertFalse(sm.isReady(byteArrayOf(1)))
     }
 
     // ------------------------------------------------------------------------
