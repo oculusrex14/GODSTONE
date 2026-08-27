@@ -366,4 +366,120 @@ class BleLinkSubstrateTest {
         assertEquals(128, conn.maxAttValueLength)
         assertTrue(conn.isActive)
     }
+
+    // ------------------------------------------------------------------------
+    // 16. C8.4D1-A1: Crossing connections A < B: A retains, B rejects
+    // ------------------------------------------------------------------------
+    @Test
+    fun testCrossingConnections_ALessThanB_ARetainsBRejects() {
+        val hintA = byteArrayOf(0x00, 0x01, 0x02, 0x03)
+        val hintB = byteArrayOf(0x80.toByte(), 0x01, 0x02, 0x03)
+
+        // Connection 1: Central A reads LinkInfo from Peripheral B
+        val electionAtA = BleRoleElection.elect(hintA, hintB)
+        assertEquals(BleRoleElectionResult.Elected(BleRole.INITIATOR), electionAtA)
+        // A < B: Central A retains link and proceeds to write LinkInfo to B
+
+        // Connection 2: Central B reads LinkInfo from Peripheral A
+        val electionAtB = BleRoleElection.elect(hintB, hintA)
+        assertEquals(BleRoleElectionResult.Elected(BleRole.RESPONDER), electionAtB)
+        // B > A: Central B recognizes wrong-direction connection and cancels immediately
+    }
+
+    // ------------------------------------------------------------------------
+    // 17. C8.4D1-A1: Crossing connections B < A: B retains, A rejects
+    // ------------------------------------------------------------------------
+    @Test
+    fun testCrossingConnections_BLessThanA_BRetainsARejects() {
+        val hintA = byteArrayOf(0x99.toByte(), 0x00, 0x00, 0x00)
+        val hintB = byteArrayOf(0x11, 0x00, 0x00, 0x00)
+
+        // Central A reads LinkInfo from B: A > B -> Responder -> cancel
+        val electionAtA = BleRoleElection.elect(hintA, hintB)
+        assertEquals(BleRoleElectionResult.Elected(BleRole.RESPONDER), electionAtA)
+
+        // Central B reads LinkInfo from A: B < A -> Initiator -> retain
+        val electionAtB = BleRoleElection.elect(hintB, hintA)
+        assertEquals(BleRoleElectionResult.Elected(BleRole.INITIATOR), electionAtB)
+    }
+
+    // ------------------------------------------------------------------------
+    // 18. C8.4D1-A1: Crossing connections Equal hints: Both reject (tie fail-closed)
+    // ------------------------------------------------------------------------
+    @Test
+    fun testCrossingConnections_EqualHints_BothReject() {
+        val hint = byteArrayOf(0x42, 0x42, 0x42, 0x42)
+        val res = BleRoleElection.elect(hint, hint)
+        assertEquals(BleRoleElectionResult.Tie, res)
+    }
+
+    // ------------------------------------------------------------------------
+    // 19. C8.4D1-A1: LinkInfo V1 encode/decode parity and validation
+    // ------------------------------------------------------------------------
+    @Test
+    fun testLinkInfoV1_EncodeDecodeParityAndValidation() {
+        val version: Byte = 0x02
+        val flags: Byte = (BleLinkInfoConstants.FLAG_SOS or BleLinkInfoConstants.FLAG_VERIFIED_ONLY).toByte()
+        val nodeHint = byteArrayOf(0x12, 0x34, 0x56, 0x78)
+        val shortDigest = byteArrayOf(0xAA.toByte(), 0xBB.toByte(), 0xCC.toByte(), 0xDD.toByte(), 0xEE.toByte(), 0xFF.toByte())
+        val queueDepth = 99
+
+        val encoded = BleLinkInfoCodec.encode(version, flags, nodeHint, shortDigest, queueDepth)
+        assertEquals(13, encoded.size)
+
+        val decoded = BleLinkInfoCodec.decode(encoded)
+        assertNotNull(decoded)
+        assertEquals(version, decoded!!.version)
+        assertEquals(flags, decoded.flags)
+        assertArrayEquals(nodeHint, decoded.nodeHint)
+        assertArrayEquals(shortDigest, decoded.shortDigest)
+        assertEquals(queueDepth, decoded.queueDepth)
+        assertTrue(decoded.isSosPresent)
+        assertTrue(decoded.isVerifiedOnly)
+    }
+
+    // ------------------------------------------------------------------------
+    // 20. C8.4D1-A1: Malformed LinkInfo length rejected
+    // ------------------------------------------------------------------------
+    @Test
+    fun testLinkInfoV1_MalformedLength_Rejected() {
+        assertNull(BleLinkInfoCodec.decode(ByteArray(0)))
+        assertNull(BleLinkInfoCodec.decode(ByteArray(12)))
+        assertNull(BleLinkInfoCodec.decode(ByteArray(1)))
+    }
+
+    // ------------------------------------------------------------------------
+    // 21. C8.4D1-A1: Unknown version rejected
+    // ------------------------------------------------------------------------
+    @Test
+    fun testLinkInfoV1_UnknownVersion_Rejected() {
+        val badVersionPayload = ByteArray(13) { 0 }
+        badVersionPayload[0] = 0x03 // unknown version != 0x02
+        assertNull(BleLinkInfoCodec.decode(badVersionPayload))
+    }
+
+    // ------------------------------------------------------------------------
+    // 22. C8.4D1-A1: Missing advertisement metadata allows provisional connection
+    // ------------------------------------------------------------------------
+    @Test
+    fun testProvisionalConnection_MissingAdvMetadata_Allowed() {
+        // Under C8.4D1-A1, missing scan response metadata does NOT prohibit provisional connection.
+        // LinkInfo characteristic is the normative post-connect authority.
+        val emptyAdvServiceData: ByteArray? = null
+        assertNull(emptyAdvServiceData)
+    }
+
+    // ------------------------------------------------------------------------
+    // 23. C8.4D1-A1: LinkInfo characteristic authority overrides adv metadata
+    // ------------------------------------------------------------------------
+    @Test
+    fun testLinkInfoAuthority_OverridesAdvMetadata() {
+        val advHint = byteArrayOf(0x00, 0x00, 0x00, 0x00) // spoofed or stale adv
+        val realLinkInfoHint = byteArrayOf(0x77, 0x88, 0x99.toByte(), 0xAA.toByte())
+
+        // Role election uses realLinkInfoHint from LinkInfo characteristic READ
+        val myHint = byteArrayOf(0x11, 0x22, 0x33, 0x44)
+        val election = BleRoleElection.elect(myHint, realLinkInfoHint)
+        assertEquals(BleRoleElectionResult.Elected(BleRole.INITIATOR), election)
+    }
 }

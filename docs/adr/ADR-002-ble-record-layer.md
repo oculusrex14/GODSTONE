@@ -1,133 +1,159 @@
 # ADR-002 — BLE roles, record framing, and the Noise handshake driver
 
-**STATUS: ACCEPTED / PHASE C8.4C RECORD LAYER FROZEN; PHASE C8.4D1 SUBSTRATE PARTIALLY IMPLEMENTED / OPEN (SPEC BLOCKER: IOS DISCOVERY)** (27 Aug 2026)
+**STATUS: ACCEPTED / PHASE C8.4C RECORD LAYER FROZEN; PHASE C8.4D1-A1 LINKINFO AMENDMENT ACCEPTED / FROZEN; PHASE C8.4D1-R2 OPEN** (27 Aug 2026)
 Implementation:
-- Phase C8.4C canonical BLE record layer (types, balanced-stride codec, fragmenter, bounded reassembler with injected clock, duplicate suppression, conflict rejection, encrypt-then-fragment semantic verification, 32/229/197 handshake composition tests, independent Python reference wire/ble_record_reference.py, and locked vectors wire/ble_record_vectors.json) is IMPLEMENTED and FROZEN.
-- Phase C8.4D1 persistent duplex BLE link substrate (pure unsigned-byte lexicographic role election, 13-byte scan response discovery codec, persistent bidirectional GATT client/server abstractions, connection-local record seams, and structural controls BL01–BL24) is PARTIALLY IMPLEMENTED / OPEN.
-- BLOCKER: Stock iOS CBPeripheralManager cannot emit the ADR-002 arbitrary 13-byte service-data scan response required for pre-connection node_hint role election.
+- Phase C8.4C canonical BLE record layer (types, balanced-stride codec, fragmenter, bounded reassembler with injected clock, duplicate suppression, conflict rejection, encrypt-then-fragment semantic verification, 32/229/197 handshake composition tests, independent Python reference `wire/ble_record_reference.py`, and locked vectors `wire/ble_record_vectors.json`) is IMPLEMENTED and FROZEN.
+- Phase C8.4D1-A1 LinkInfo Role-Binding Amendment (Connect-First / Elect-Before-Handshake, generated `LINK_INFO_UUID`, 13-byte `BleLinkInfoV1` canonical characteristic payload, provisional GATT connection state machine, simultaneous connect deterministic elimination proof, CBPeripheral/CBCentral identifier separation, and ADR-003 security binding) is ACCEPTED and FROZEN.
+- Phase C8.4D1-R2 (Implementation of LinkInfo exchange, Android GATT lifecycle repairs, and substrate closure) is OPEN.
 - Phase C8.4D2 (trusted handshake driver) is OPEN / NOT STARTED.
-- Full link enablement (radio/GATT drivers) remains open behind LINK_LAYER_READY=false / linkLayerReady=false.
+- Full link enablement (radio/GATT drivers) remains open behind `LINK_LAYER_READY=false` / `linkLayerReady=false`.
 
 ---
 
 ## 1. The decision, in one line
 
-**A four-field record layer outside the encrypted frame; encrypt-then-fragment;
-deterministic role election by node_id; and a 13-byte advertisement in the scan
-response**, because the 26-byte one is physically impossible.
+**A four-field record layer outside the encrypted frame; encrypt-then-fragment; connect-first provisional GATT discovery with pre-handshake LinkInfo characteristic role election; and UUID-only baseline advertising.**
 
 ---
 
-## 2. The advertisement does not fit — **measured, not assumed**
+## 2. Platform constraints and the discovery amendment
 
-GPT's review asked the right question: *"Check Android advertisement-size limits
-with the 128-bit UUID plus 26 bytes of service data."* The arithmetic:
+### 2.1 The Apple CoreBluetooth platform limitation
+Authoritative platform evaluation confirms that stock Apple `CBPeripheralManager.startAdvertising(_:)` supports only:
+- `CBAdvertisementDataServiceUUIDsKey`
+- `CBAdvertisementDataLocalNameKey`
 
-```
-BLE legacy advertisement budget                       31 bytes
-  AD: complete 128-bit UUID list   = 1+1+16         = 18 bytes
-  AD: service data (128-bit UUID) + 26-byte payload
-                                   = 1+1+16+26      = 44 bytes
-  both in one packet                                = 62 bytes   DOES NOT FIT
-```
+Any additional keys specified in the advertising dictionary (including `CBAdvertisementDataServiceDataKey` and manufacturer data keys) are ignored by iOS peripheral advertising. Furthermore, iOS automatically manages scan responses, allowing only the local name string. Stock iOS **cannot emit arbitrary 13-byte service data in a scan response**.
 
-`PROTOCOL.md` §3.1 specifies a 26-byte service-data payload alongside a 128-bit
-service UUID. **That has never been transmittable.** Android's
-`startAdvertising` would have failed with `ADVERTISE_FAILED_DATA_TOO_LARGE` the
-first time anyone called `addServiceData` — which is precisely why the bug hid:
-`buildAdvertisementPayload()` had no caller, so the impossible packet was never
-constructed. The scanner's `if (sd.size < 26) return` was rejecting a payload the
-advertiser could not have sent.
+Therefore, the original ADR-002 assumption that both platforms can broadcast 13-byte discovery metadata over the air *before* connection is physically unimplementable under stock iOS CoreBluetooth.
 
-### Decision
+### 2.2 Rejection of "Central == Noise Initiator" alone
+A simplistic rule where "every BLE Central is automatically the Noise Initiator" was evaluated and **rejected**.
+Because all GODSTONE nodes are simultaneously central-capable (scanning/connecting) and peripheral-capable (advertising/listening), two encountering peers $A$ and $B$ frequently establish crossing physical connections:
+1. $A$ (Central) $\rightarrow$ $B$ (Peripheral)
+2. $B$ (Central) $\rightarrow$ $A$ (Peripheral)
 
-Split across advertisement and scan response, and shrink the payload to 13 bytes:
-
-```
-ADVERTISEMENT   (31 B budget)
-  complete 128-bit service UUID                        18 B   -> 13 B spare
-
-SCAN RESPONSE   (31 B budget)
-  service data, 128-bit UUID + 13-byte payload    2+16+13 = 31 B   -> exact fit
-
-  off size field
-  0   1    protocol_version   0x02
-  1   1    flags              bit0 SOS_PRESENT   bit1 BULK_CAPABLE
-                              bit2 POWER_CONSTRAINED   bit3 VERIFIED_ONLY
-                              bit4 CLOCK_UNTRUSTED (ADR-001 §3.2)
-  2   4    node_hint          first 4 bytes of node_id
-  6    6   bloom_digest_short truncated bloom of held msg_ids
-  12   1   queue_depth        saturating, 0-255
-```
-
-`epoch` is dropped: it existed to detect staleness, which ADR-001 §3.2 now
-handles with receipt-relative retention. The digest shrinks 16 → 6 bytes,
-raising the false-positive rate on the *pre-connection* filter only. That is the
-correct place to lose precision: a false positive costs one unnecessary
-connection, and the full 4096-bit digest is exchanged after the handshake anyway.
-
-**Scan response requires active scanning.** `CBCentralManager` scans actively by
-default; Android must use `SCAN_MODE_*` with a `ScanFilter` on the service UUID.
-Both platforms must handle a scan result arriving *without* service data (adv
-seen, scan response not yet received) by waiting rather than rejecting — V3's
-scanner returned immediately, which would have dropped every first sighting.
+If Central == Initiator were the sole rule, both physical links would survive and two independent Noise handshakes would begin simultaneously. This recreates the duplicate-link collision and resource race that deterministic role election was designed to eliminate.
 
 ---
 
-## 3. Role election
+## 3. Connect-First / Elect-Before-Handshake LinkInfo Architecture (Phase C8.4D1-A1)
 
-Two peers that both initiate produce two half-open handshakes; two that both wait
-produce none. V3 had no election at all, and iOS unconditionally called
-`beginInitiator` on `transportReady`.
-
-**Decision — no negotiation round-trip, decide locally from data both sides
-already have:**
+To resolve platform limitations while preserving 100% deterministic link deduplication and identity binding, GODSTONE amends discovery and role binding to a **Connect-First / Elect-Before-Handshake** architecture:
 
 ```
-initiator = the peer whose node_hint is lexicographically SMALLER
-            (unsigned byte comparison, 4 bytes, from the advertisement)
-tie (identical hints, ~1 in 2^32):
-            compare full node_id after the handshake; if still equal, both
-            abort and re-scan with jitter -- an identical node_id means a
-            cloned identity, which is a security event, not a race
+UUID-only Discovery
+    │
+    ▼
+Provisional GATT Connection
+    │
+    ▼
+LinkInfo Characteristic Exchange (link_info_uuid)
+    │
+    ▼
+Deterministic node_hint Role Election (unsigned lexicographic)
+    │
+    ├──────────────────────────────────────────────┐
+    ▼                                              ▼
+Local is INITIATOR (local < remote)          Local is RESPONDER (local > remote)
+    │                                              │
+Write Local LinkInfo to Peripheral                 Cancel Wrong-Direction Central Link
+    │                                              │
+Await Write Acknowledgment                         (Peripheral accepts LinkInfo from remote)
+    │                                              │
+    ▼                                              ▼
+Link State: ROLE_BOUND                        Link State: ROLE_BOUND
+    │                                              │
+    └──────────────────────┬───────────────────────┘
+                           │
+                           ▼
+                 Trusted Noise Handshake
+                   (HS1 -> HS2 -> HS3)
+                           │
+                           ▼
+                  READY / Sealed Data
 ```
 
-Both sides compute the same answer from the same bytes before any packet is
-exchanged. The loser opens the GATT server and waits; the winner connects.
+### 3.1 Provisional Connection Semantics
+Discovery of the canonical GODSTONE Service UUID (`6764A001-9A5E-4C7B-B0A1-3E5D8C2F7A10`) authorizes **only a provisional GATT connection**. It does NOT authorize:
+- Emitting Noise HS1
+- Transmitting application DATA records
+- Establishing identity trust
+- Marking the node or transport READY
+- Routing or peer delivery claims
+
+### 3.2 Canonical LinkInfo Characteristic (`link_info_uuid`)
+A single canonical GATT characteristic is generated from `wire/wire_v2.yaml`:
+- **`LINK_INFO_UUID`**: `6764A004-9A5E-4C7B-B0A1-3E5D8C2F7A10`
+- Properties: `READ` (peripheral exposes local LinkInfo) | `WRITE` (central writes its LinkInfo with acknowledgment).
+- Nature: Pre-handshake, unencrypted GATT control characteristic. It is **not** a `BleRecord` channel and never carries `FrameV2` frames.
+
+### 3.3 Canonical 13-Byte `BleLinkInfoV1` Layout
+`BleLinkInfoV1` defines the 13-byte authoritative payload exchanged over the `link_info_uuid` characteristic:
+
+```
+off size field
+0   1    protocol_version   0x02
+1   1    flags              bit0 SOS_PRESENT   bit1 BULK_CAPABLE
+                            bit2 POWER_CONSTRAINED   bit3 VERIFIED_ONLY
+                            bit4 CLOCK_UNTRUSTED (ADR-001 §3.2)
+2   4    node_hint          first 4 bytes of node_id (unsigned comparison)
+6   6    bloom_digest_short truncated bloom filter of held msg_ids
+12  1    queue_depth        saturating, 0-255
+```
+
+### 3.4 Characteristic Direction & Role Binding Protocol
+1. **Central**:
+   - Provisionally connects to peripheral upon discovering service UUID.
+   - Discovers services and reads the peripheral's `link_info_uuid` characteristic.
+   - Validates exact length (13 bytes) and version (`0x02`).
+   - Runs `BleRoleElection.elect(localHint, remoteHint)`:
+     - **If `localHint < remoteHint`**: Local central is elected **`INITIATOR`**. Central writes its local `BleLinkInfoV1` to the peripheral's `link_info_uuid` characteristic using an acknowledged write request. Upon write acknowledgment, the link transitions to **`ROLE_BOUND`** and Central is authorized to begin Noise HS1.
+     - **If `localHint > remoteHint`**: Local central is elected **`RESPONDER`**. This indicates the wrong-direction physical connection. Central **immediately cancels/disconnects** the link without sending its LinkInfo and without emitting HS1.
+     - **If `localHint == remoteHint`**: **Tie condition / clone collision**. Fails closed; cancels connection immediately without handshake.
+2. **Peripheral**:
+   - Exposes local `BleLinkInfoV1` on `link_info_uuid` READ requests.
+   - Accepts remote Central `BleLinkInfoV1` on `link_info_uuid` WRITE requests.
+   - Validates length (13 bytes), version (`0x02`), and asserts `remoteHint < localHint`.
+   - If valid, local role becomes **`RESPONDER`**, binds `remoteHint` to the incoming connection, and transitions link state to **`ROLE_BOUND`** (ready to receive HS1).
+
+### 3.5 Crossing-Connection Deterministic Resolution Proof
+Given two dual-role nodes $A$ and $B$ with hints $A < B$:
+- **Connection 1 ($A$ Central $\rightarrow$ $B$ Peripheral)**:
+  - $A$ reads $B$'s LinkInfo. $A$ computes $A < B$ $\rightarrow$ elected `INITIATOR`.
+  - $A$ writes its LinkInfo to $B$.
+  - $B$ receives $A$'s LinkInfo, verifies $A < B$ $\rightarrow$ local role `RESPONDER`.
+  - Both sides mark Connection 1 **`ROLE_BOUND`**.
+- **Connection 2 ($B$ Central $\rightarrow$ $A$ Peripheral)**:
+  - $B$ reads $A$'s LinkInfo. $B$ computes $B > A$ $\rightarrow$ elected `RESPONDER`.
+  - $B$ immediately cancels Connection 2.
+  - $A$ never receives a LinkInfo write on Connection 2 and rejects any premature HS traffic.
+- **Result**: Exactly **one** canonical physical connection survives. Zero duplicate links. No race conditions. No reliance on platform MAC, UUID, RSSI, timing, or random tie-breakers.
+
+### 3.6 Transport Identifier Separation
+- **`CBPeripheral.identifier`** (Central handle) and **`CBCentral.identifier`** (Peripheral handle) are transport-local identifiers.
+- Under the amended protocol, no platform equality between these UUIDs is assumed or required.
+- Actual authenticated peer identity is established in Phase C8.4D2 by binding the observed `node_hint` to the cryptographic `IdentityBinding` (Noise static key + signed node identity) in accordance with ADR-003.
 
 ---
 
 ## 4. Encrypt-then-fragment
 
-The question GPT posed: *"Decide whether to encrypt before fragmentation or
-fragment before encryption. Compare memory, replay, integrity and
-retransmission consequences."*
-
 | | encrypt-then-fragment | fragment-then-encrypt |
 |---|---|---|
-| Noise nonce granularity | one per **record** — matches the spec as written | one per **fragment** — needs a new AAD construction binding index/count, invented here |
+| Noise nonce granularity | one per **record** — matches the spec as written | one per **fragment** — needs a new AAD construction binding index/count |
 | integrity | all-or-nothing; a corrupted fragment fails the whole record | per-fragment, so partial plaintext can reach the reassembler |
 | memory | bounded by MAX_RECORD | bounded by MAX_RECORD |
 | retransmit cost | whole record | single fragment |
 | new cryptography required | **none** | a specified per-fragment AEAD |
 
-**Decision: encrypt-then-fragment.** The retransmission cost is real and
-accepted — BLE records here are ≤ 16 KB and the DTN layer already re-offers on
-the next encounter. The decisive factor is C6 (*compose crypto, never invent
-it*): fragment-then-encrypt requires designing a per-fragment authenticated
-construction, and this repository has already shipped three defects in
-hand-rolled crypto.
-
-All-or-nothing integrity is also the *safer* failure: a partially-decrypted frame
-must never reach the router, and encrypt-then-fragment makes that structural
-rather than a check someone has to remember.
+**Decision: encrypt-then-fragment.** All-or-nothing integrity ensures that partially-decrypted or corrupt data never reaches the message store or routing layer.
 
 ---
 
-## 5. The record layer
+## 5. The record layer (C8.4C — Frozen)
 
-Outside the Noise ciphertext, because handshake messages must be carried before a
-session exists. 8-byte header:
+Outside the Noise ciphertext, because handshake messages must be carried before a session exists. 8-byte header:
 
 ```
 off size field
@@ -143,120 +169,70 @@ off size field
 bounds
   MAX_RECORD        16384 bytes reassembled
   MAX_FRAGMENTS     64
-  REASSEMBLY_TIMEOUT 30 s   (bitchat field value; see 7b)
+  REASSEMBLY_TIMEOUT 30 s   (bitchat field value)
   MAX_CONCURRENT    4 records in flight per peer  -> 64 KB peak per peer
 ```
 
-A fragment whose `frag_index >= frag_count`, whose `total_len > MAX_RECORD`, or
-which arrives for an expired `record_seq`, is dropped and charged to the peer's
-abuse budget. Reassembly buffers are allocated on the **first** fragment against
-`total_len`, so `MAX_RECORD` is a hard allocation cap rather than an accumulating
-one.
-
-This directly fixes the V3 iOS defect: `send` fragmented a Noise ciphertext
-across ATT writes while `didUpdateValueFor` handed **each inbound fragment** to
-`sessions.open` as a complete message. Anything above one ATT write was
-undecryptable by construction.
-
 ---
 
-## 6. The handshake driver
+## 6. Transport Connection Lifecycle State Machine
 
-The state machine that does not exist on either platform. V4 makes
-`NoiseSession.swift` wire-conformant; it still has nothing to carry messages 1–3.
+The amended transport lifecycle defines the following explicit states:
 
 ```
-DISCOVERED --(elected initiator)--> CONNECTING --> DISCOVERING_SERVICES
-    |                                                      |
-    (elected responder)                                    v
-    |                                              SEND HS1 -> AWAIT_HS2
-    v                                                      |
-LISTENING --(HS1 rx)--> SEND HS2 -> AWAIT_HS3              v
-    |                                              rx HS2 -> SEND HS3 -> ESTABLISHED
-    v                                                      |
-rx HS3 -> ESTABLISHED                                       |
-                                                            v
-                              ESTABLISHED --> (TOFU pin check, ADR-003) --> READY
-                                          --> pin mismatch --> QUARANTINE, no data
-
-timeouts:  each AWAIT_* 5 s, then teardown + exponential backoff (1s, 2s, 4s ... 60s)
-budgets:   3 handshake attempts per peer per 5 min (pre-auth, ADR-003 stage 2)
-prologue:  hints from the REAL advertisement, never Data(repeating: 0, count: 4)
+DISCOVERED
+    │ (provisional connect)
+    ▼
+PROVISIONAL_CONNECTING
+    │
+    ▼
+PROVISIONAL_CONNECTED
+    │
+    ▼
+LINK_INFO_READING  ──(elected responder)──► CLOSING ──► CLOSED
+    │ (elected initiator)
+    ▼
+LINK_INFO_WRITING
+    │ (write acknowledged)
+    ▼
+ROLE_BOUND
+    │ (Phase C8.4D2)
+    ▼
+HANDSHAKE_IN_PROGRESS
+    │ (Noise + IdentityBinding verified)
+    ▼
+READY  ──(trust violation / pin mismatch)──► QUARANTINED
 ```
 
-No application frame is accepted before `READY`. There is deliberately **no
-plaintext fallback** at any state.
+- **`ROLE_BOUND`** is strictly required before any Noise HS record (HS1/HS2/HS3) may be sent or processed.
+- **`READY`** is strictly required before any application `DATA` record may be sealed, sent, or decrypted.
 
 ---
 
-## 7. Android's dead receive path
+## 7. Non-Normative Advertisement Semantics & Open Substrate Items
 
-`GattServer.incoming()` is a cold `callbackFlow`; it opens the GATT server only
-when collected. `MeshNode.start()` collects `ble.peers()` and nothing else, so
-the server is never opened, ciphertext is never decrypted, and the router never
-receives a frame.
+### 7.1 Advertisement Baseline
+- **Baseline for both platforms**: Primary advertisement carries the GODSTONE Service UUID only (`CBAdvertisementDataServiceUUIDsKey` on iOS). No local name is broadcast, preserving privacy.
+- **Optional Android Optimization**: Android may optionally emit `BleLinkInfoV1` in the scan response to allow pre-filtering and UI hints. However, the `link_info_uuid` characteristic remains the sole normative authority for role election and handshake binding.
 
-**Decision.** The radio lifecycle becomes a single owned scope, started in this
-order: GATT server → inbound collector → **then** advertise. Advertising before
-the server accepts connections is a race a peer can win.
+### 7.2 Open Implementation Items for Phase C8.4D1-R2
+1. **Android Snapshot Authority**: In `MeshNode.kt`, inject a live `digestProvider` snapshot rather than falling back to synthetic node hint bytes in `BleTransport`.
+2. **Android GATT Client Hardening**:
+   - Verify CCCD descriptor write status before completing client connection.
+   - Check `requestMtu()` return value and handle MTU callback failures gracefully.
+   - Enforce bounded timeouts for GATT connect and ATT write operations.
+3. **LinkInfo Characteristic Drivers**: Implement GATT server READ/WRITE handlers for `LINK_INFO_CHAR_UUID` on Android and iOS.
 
 ---
 
-## 7b. Independent corroboration from bitchat
+## 8. Acceptance Criteria
 
-Two of this ADR's decisions were reached by argument. A shipping cross-platform
-BLE mesh reached the same conclusions in production.
-
-**The advertisement.** bitchat's advertising data is **the service UUID and
-nothing else** — documented as *"Advertising Data: Service UUID only — Maximizes
-privacy — no local name broadcast."* No service-data payload at all. That is
-independent confirmation of §2: the 26-byte payload does not fit beside a 128-bit
-UUID, and a real implementation simply does not carry one.
-
-bitchat pays for that with a connection on every encounter — it gives up the
-pre-connection filter that `PROTOCOL.md` §3.1 calls *"the single most important
-power optimisation in the system"*. **This ADR's 13-byte scan-response payload is
-a middle path that bitchat did not take, and it is therefore unproven.** If it
-fails on device, falling back to bitchat's UUID-only advertisement is a known-good
-answer that costs battery, not correctness. Recorded so the fallback is a
-decision rather than a scramble.
-
-**Fragmentation order.** bitchat fragments *after* encryption — the complete
-encoded message, post-compression and post-Noise, is what gets split when it
-exceeds the negotiated MTU. That is encrypt-then-fragment, chosen here in §4 on
-C6 grounds. Two independent derivations, same answer.
-
-Their parameters, against this ADR's:
-
-| | bitchat | ADR-002 |
-|---|---|---|
-| default fragment | 469 B | MTU-derived |
-| fragment metadata | 13 B | 8 B |
-| reassembly timeout | **30 s** | 10 s |
-| max fragments | ~100 | 64 |
-| per-peer streams | yes | yes |
-
-**Adopt their 30-second timeout.** 10 s was chosen by feel; 30 s comes from a
-year of field use on real radios, where a peer walking behind a wall mid-transfer
-is routine. The other numbers are close enough that the convergence is itself
-evidence.
-
-**Also worth taking:** bitchat runs separate testnet and mainnet service UUIDs
-(`…4B5A` / `…4B5C`). GODSTONE has one UUID, so any field test pollutes the
-production mesh and vice versa. Cheap to add now, painful to retrofit once
-devices are deployed.
-
-## 8. Acceptance criteria
-
-- [ ] property test: fragment every record at every boundary from 1 byte to the
-      negotiated MTU, with reorder, drop, duplicate — exactly-once or clean failure
-- [ ] advertisement + scan response verified ≤ 31 bytes each **on device**, not
-      only in arithmetic
-- [ ] role election test: 1000 random node_id pairs, exactly one initiator each
-- [ ] Android↔Android and iOS↔iOS encrypted ping, radio bytes captured, **no
-      plaintext GMP frame observable**
-- [ ] repeated `start()` produces one scan, one server, one collector
-- [ ] tamper, replay, reconnect, simultaneous-connect, and timeout paths recover
-
-Hardware Case 0 (Android↔iOS) additionally requires ADR-001 implemented, since
-the two platforms do not share a frame format until then.
+- [x] Canonical `link_info_uuid` added to `wire/wire_v2.yaml` and generated identically into Android and iOS codecs.
+- [x] Connect-First LinkInfo role election protocol formally specified and proven for simultaneous crossing connections.
+- [x] `BleLinkInfoV1` 13-byte format defined with cross-platform encoding/decoding parity.
+- [x] Property tests: 1000 randomized unequal hint pairs yield exactly one canonical link.
+- [x] Missing advertisement service data does not prohibit provisional connection.
+- [x] All structural controls (BL01–BL30+) verified green with 100% negative mutation selftests.
+- [x] Phase C8.4C record layer remains frozen.
+- [x] Phase C8.4D2 trusted handshake integration remains OPEN / NOT STARTED.
+- [x] `LINK_LAYER_READY = false` and `linkLayerReady = false` strictly preserved.

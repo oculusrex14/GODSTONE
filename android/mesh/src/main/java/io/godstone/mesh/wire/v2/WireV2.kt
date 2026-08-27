@@ -108,6 +108,7 @@ class FrameV2(
         val SERVICE_UUID: java.util.UUID = java.util.UUID.fromString("6764A001-9A5E-4C7B-B0A1-3E5D8C2F7A10")
         val INBOX_UUID: java.util.UUID = java.util.UUID.fromString("6764A002-9A5E-4C7B-B0A1-3E5D8C2F7A10")
         val DIGEST_UUID: java.util.UUID = java.util.UUID.fromString("6764A003-9A5E-4C7B-B0A1-3E5D8C2F7A10")
+        val LINK_INFO_UUID: java.util.UUID = java.util.UUID.fromString("6764A004-9A5E-4C7B-B0A1-3E5D8C2F7A10")
 
         const val SEALED = 0x0001
         const val COMPRESSED = 0x0002

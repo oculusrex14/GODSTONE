@@ -1,7 +1,20 @@
 import Foundation
 
-/// Connection state for a persistent BLE link (ADR-002, Phase C8.4D1).
+/// Connection state for a persistent BLE link (ADR-002, Phase C8.4D1-A1).
 public enum BleConnectionState: Sendable, Equatable {
+    case discovered
+    case provisionalConnecting
+    case provisionalConnected
+    case linkInfoReading
+    case linkInfoWriting
+    case roleBound
+    case handshakeInProgress
+    case ready
+    case quarantined
+    case closing
+    case closed
+
+    // Backward-compatible lifecycle states
     case connecting
     case connected
     case disconnecting

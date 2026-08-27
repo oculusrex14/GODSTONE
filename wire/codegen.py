@@ -262,6 +262,7 @@ class FrameV2(
         val SERVICE_UUID: java.util.UUID = java.util.UUID.fromString("{s["ble"]["service_uuid"]}")
         val INBOX_UUID: java.util.UUID = java.util.UUID.fromString("{s["ble"]["inbox_uuid"]}")
         val DIGEST_UUID: java.util.UUID = java.util.UUID.fromString("{s["ble"]["digest_uuid"]}")
+        val LINK_INFO_UUID: java.util.UUID = java.util.UUID.fromString("{s["ble"]["link_info_uuid"]}")
 
 {f}
 
@@ -343,6 +344,7 @@ public struct FrameV2: Equatable {{
     public static let serviceUuidString = "{s["ble"]["service_uuid"]}"
     public static let inboxUuidString = "{s["ble"]["inbox_uuid"]}"
     public static let digestUuidString = "{s["ble"]["digest_uuid"]}"
+    public static let linkInfoUuidString = "{s["ble"]["link_info_uuid"]}"
 
     public enum Flags {{
 {f}

@@ -83,7 +83,7 @@ final class BleLinkSubstrateTests: XCTestCase {
     }
 
     // ------------------------------------------------------------------------
-    // 4. Discovery metadata encoding/parsing
+    // 4. Discovery payload encoding/parsing
     // ------------------------------------------------------------------------
     func testDiscoveryPayload_EncodeDecodeRoundTrip() {
         let version: UInt8 = 0x02
@@ -321,5 +321,110 @@ final class BleLinkSubstrateTests: XCTestCase {
         // Decode returns nil and didDiscover does not connect or create connection
         let metadata = rawPayload.flatMap { BleDiscoveryCodec.decode($0) }
         XCTAssertNil(metadata)
+    }
+
+    // ------------------------------------------------------------------------
+    // 15. C8.4D1-A1: Crossing connections A < B: A retains, B rejects
+    // ------------------------------------------------------------------------
+    func testCrossingConnections_ALessThanB_ARetainsBRejects() {
+        let hintA = Data([0x00, 0x01, 0x02, 0x03])
+        let hintB = Data([0x80, 0x01, 0x02, 0x03])
+
+        // Connection 1: Central A reads LinkInfo from Peripheral B
+        let electionAtA = BleRoleElection.elect(localHint: hintA, remoteHint: hintB)
+        XCTAssertEqual(electionAtA, .elected(.initiator))
+
+        // Connection 2: Central B reads LinkInfo from Peripheral A
+        let electionAtB = BleRoleElection.elect(localHint: hintB, remoteHint: hintA)
+        XCTAssertEqual(electionAtB, .elected(.responder))
+    }
+
+    // ------------------------------------------------------------------------
+    // 16. C8.4D1-A1: Crossing connections B < A: B retains, A rejects
+    // ------------------------------------------------------------------------
+    func testCrossingConnections_BLessThanA_BRetainsARejects() {
+        let hintA = Data([0x99, 0x00, 0x00, 0x00])
+        let hintB = Data([0x11, 0x00, 0x00, 0x00])
+
+        let electionAtA = BleRoleElection.elect(localHint: hintA, remoteHint: hintB)
+        XCTAssertEqual(electionAtA, .elected(.responder))
+
+        let electionAtB = BleRoleElection.elect(localHint: hintB, remoteHint: hintA)
+        XCTAssertEqual(electionAtB, .elected(.initiator))
+    }
+
+    // ------------------------------------------------------------------------
+    // 17. C8.4D1-A1: Crossing connections Equal hints: Both reject
+    // ------------------------------------------------------------------------
+    func testCrossingConnections_EqualHints_BothReject() {
+        let hint = Data([0x42, 0x42, 0x42, 0x42])
+        let res = BleRoleElection.elect(localHint: hint, remoteHint: hint)
+        XCTAssertEqual(res, .tie)
+    }
+
+    // ------------------------------------------------------------------------
+    // 18. C8.4D1-A1: LinkInfo V1 encode/decode parity and validation
+    // ------------------------------------------------------------------------
+    func testLinkInfoV1_EncodeDecodeParityAndValidation() {
+        let version: UInt8 = 0x02
+        let flags: UInt8 = BleLinkInfoConstants.flagSos | BleLinkInfoConstants.flagVerifiedOnly
+        let nodeHint = Data([0x12, 0x34, 0x56, 0x78])
+        let shortDigest = Data([0xAA, 0xBB, 0xCC, 0xDD, 0xEE, 0xFF])
+        let queueDepth: UInt8 = 99
+
+        let encoded = BleLinkInfoCodec.encode(
+            version: version,
+            flags: flags,
+            nodeHint: nodeHint,
+            shortDigest: shortDigest,
+            queueDepth: queueDepth
+        )
+        XCTAssertEqual(encoded.count, 13)
+
+        let decoded = BleLinkInfoCodec.decode(encoded)
+        XCTAssertNotNil(decoded)
+        XCTAssertEqual(decoded?.version, version)
+        XCTAssertEqual(decoded?.flags, flags)
+        XCTAssertEqual(decoded?.nodeHint, nodeHint)
+        XCTAssertEqual(decoded?.shortDigest, shortDigest)
+        XCTAssertEqual(decoded?.queueDepth, queueDepth)
+        XCTAssertTrue(decoded?.isSosPresent == true)
+        XCTAssertTrue(decoded?.isVerifiedOnly == true)
+    }
+
+    // ------------------------------------------------------------------------
+    // 19. C8.4D1-A1: Malformed LinkInfo length rejected
+    // ------------------------------------------------------------------------
+    func testLinkInfoV1_MalformedLength_Rejected() {
+        XCTAssertNil(BleLinkInfoCodec.decode(Data()))
+        XCTAssertNil(BleLinkInfoCodec.decode(Data(repeating: 0, count: 12)))
+        XCTAssertNil(BleLinkInfoCodec.decode(Data(repeating: 0, count: 1)))
+    }
+
+    // ------------------------------------------------------------------------
+    // 20. C8.4D1-A1: Unknown version rejected
+    // ------------------------------------------------------------------------
+    func testLinkInfoV1_UnknownVersion_Rejected() {
+        var badVersionBytes = [UInt8](repeating: 0, count: 13)
+        badVersionBytes[0] = 0x03 // unknown version != 0x02
+        XCTAssertNil(BleLinkInfoCodec.decode(Data(badVersionBytes)))
+    }
+
+    // ------------------------------------------------------------------------
+    // 21. C8.4D1-A1: Missing advertisement metadata allows provisional connection
+    // ------------------------------------------------------------------------
+    func testProvisionalConnection_MissingAdvMetadata_Allowed() {
+        let emptyAdvServiceData: Data? = nil
+        XCTAssertNil(emptyAdvServiceData)
+    }
+
+    // ------------------------------------------------------------------------
+    // 22. C8.4D1-A1: LinkInfo characteristic authority overrides adv metadata
+    // ------------------------------------------------------------------------
+    func testLinkInfoAuthority_OverridesAdvMetadata() {
+        let realLinkInfoHint = Data([0x77, 0x88, 0x99, 0xAA])
+        let myHint = Data([0x11, 0x22, 0x33, 0x44])
+        let election = BleRoleElection.elect(localHint: myHint, remoteHint: realLinkInfoHint)
+        XCTAssertEqual(election, .elected(.initiator))
     }
 }

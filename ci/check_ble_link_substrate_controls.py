@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Structural and regression controls for Persistent Duplex BLE Link Substrate & Role Election (ADR-002, Phase C8.4D1).
+"""Structural and regression controls for Persistent Duplex BLE Link Substrate & Role Election (ADR-002, Phase C8.4D1-A1).
 
 Verifies the presence, boundaries, and structural invariants of:
 - BL01: Android BleRole enum and BleRoleElection pure unsigned-byte lexicographic comparison
@@ -25,13 +25,18 @@ Verifies the presence, boundaries, and structural invariants of:
 - BL21: iOS BleLinkSubstrateTests test inventory
 - BL22: No SessionManager handshake APIs called by production BLE transport
 - BL23: Hard boundaries: LINK_LAYER_READY = false, linkLayerReady = false, LIGHT Archive-only
-- BL24: ADR-002 and ADR-003 truthful representation of Phase C8.4D1 status
+- BL24: ADR-002 and ADR-003 truthful representation of Phase C8.4D1-A1 and C8.4D1-R2 status
 - BL25: Android persistent client connection wiring in BleTransport (instantiation, connect, storage)
 - BL26: iOS central connection guarded by elected initiator role check
 - BL27: Android startup fail-closed gating on gattServer.start() result
 - BL28: Android server CCCD subscription tracking and enforcement in sendNotification
 - BL29: Android server-side MTU callback wired to BleConnection
 - BL30: iOS outbound write and update queues are strictly hard-bounded
+- BL31: Generated LINK_INFO UUID parity across Android and iOS FrameV2
+- BL32: No literal LINK_INFO UUID string hardcoded in platform transport code
+- BL33: LinkInfo is not a BleRecord type code in BleRecordConstants
+- BL34: BleConnectionState defines full C8.4D1-A1 lifecycle states (ROLE_BOUND, PROVISIONAL_CONNECTING, etc.)
+- BL35: BleLinkInfoV1 and BleLinkInfoCodec 13-byte layout defined in Kotlin and Swift
 """
 from __future__ import annotations
 
@@ -51,6 +56,8 @@ ANDROID_SERVER_PATH = ROOT / "android" / "mesh" / "src" / "main" / "java" / "io"
 ANDROID_TRANSPORT_PATH = ROOT / "android" / "mesh" / "src" / "main" / "java" / "io" / "godstone" / "mesh" / "transport" / "BleTransport.kt"
 ANDROID_TEST_SUBSTRATE_PATH = ROOT / "android" / "mesh" / "src" / "test" / "java" / "io" / "godstone" / "mesh" / "transport" / "BleLinkSubstrateTest.kt"
 ANDROID_MESH_NODE_PATH = ROOT / "android" / "mesh" / "src" / "main" / "java" / "io" / "godstone" / "mesh" / "MeshNode.kt"
+ANDROID_WIREV2_PATH = ROOT / "android" / "mesh" / "src" / "main" / "java" / "io" / "godstone" / "mesh" / "wire" / "v2" / "WireV2.kt"
+ANDROID_RECORD_CODEC_PATH = ROOT / "android" / "mesh" / "src" / "main" / "java" / "io" / "godstone" / "mesh" / "transport" / "BleRecord.kt"
 
 IOS_ROLE_PATH = ROOT / "ios" / "Godstone" / "Sources" / "GodstoneMesh" / "BleRoleElection.swift"
 IOS_CONN_PATH = ROOT / "ios" / "Godstone" / "Sources" / "GodstoneMesh" / "BleConnection.swift"
@@ -58,9 +65,13 @@ IOS_TRANSPORT_PATH = ROOT / "ios" / "Godstone" / "Sources" / "GodstoneMesh" / "B
 IOS_TEST_SUBSTRATE_PATH = ROOT / "ios" / "Godstone" / "Tests" / "GodstoneMeshTests" / "BleLinkSubstrateTests.swift"
 IOS_MESH_NODE_PATH = ROOT / "ios" / "Godstone" / "Sources" / "GodstoneMesh" / "MeshNode.swift"
 IOS_APP_CONTAINER_PATH = ROOT / "ios" / "Godstone" / "Sources" / "App" / "AppContainer.swift"
+IOS_WIREV2_PATH = ROOT / "ios" / "Godstone" / "Sources" / "GodstoneMesh" / "WireV2.swift"
+IOS_RECORD_CODEC_PATH = ROOT / "ios" / "Godstone" / "Sources" / "GodstoneMesh" / "BleRecord.swift"
 
 ADR002_PATH = ROOT / "docs" / "adr" / "ADR-002-ble-record-layer.md"
 ADR003_PATH = ROOT / "docs" / "adr" / "ADR-003-identity-and-sealed-sender.md"
+
+LINK_INFO_UUID_LITERAL = "6764A004-9A5E-4C7B-B0A1-3E5D8C2F7A10"
 
 
 def strip_comments(text: str) -> str:
@@ -78,12 +89,16 @@ def check_controls(
     android_transport_path: Path = ANDROID_TRANSPORT_PATH,
     android_test_substrate_path: Path = ANDROID_TEST_SUBSTRATE_PATH,
     android_mesh_node_path: Path = ANDROID_MESH_NODE_PATH,
+    android_wirev2_path: Path = ANDROID_WIREV2_PATH,
+    android_record_codec_path: Path = ANDROID_RECORD_CODEC_PATH,
     ios_role_path: Path = IOS_ROLE_PATH,
     ios_conn_path: Path = IOS_CONN_PATH,
     ios_transport_path: Path = IOS_TRANSPORT_PATH,
     ios_test_substrate_path: Path = IOS_TEST_SUBSTRATE_PATH,
     ios_mesh_node_path: Path = IOS_MESH_NODE_PATH,
     ios_app_container_path: Path = IOS_APP_CONTAINER_PATH,
+    ios_wirev2_path: Path = IOS_WIREV2_PATH,
+    ios_record_codec_path: Path = IOS_RECORD_CODEC_PATH,
     adr002_path: Path = ADR002_PATH,
     adr003_path: Path = ADR003_PATH,
 ) -> list[str]:
@@ -305,7 +320,15 @@ def check_controls(
             "testSessionManager_HandshakeApiNotInvokedBySubstrate",
             "testLinkLayerReady_RemainsFalse",
             "testRealDiscoverySnapshotAuthority_UsedInAdvertising",
-            "testServerSubscriptionAndMtuTracking"
+            "testServerSubscriptionAndMtuTracking",
+            "testCrossingConnections_ALessThanB_ARetainsBRejects",
+            "testCrossingConnections_BLessThanA_BRetainsARejects",
+            "testCrossingConnections_EqualHints_BothReject",
+            "testLinkInfoV1_EncodeDecodeParityAndValidation",
+            "testLinkInfoV1_MalformedLength_Rejected",
+            "testLinkInfoV1_UnknownVersion_Rejected",
+            "testProvisionalConnection_MissingAdvMetadata_Allowed",
+            "testLinkInfoAuthority_OverridesAdvMetadata"
         ]
         for t in req_tests:
             if t not in c:
@@ -332,7 +355,15 @@ def check_controls(
             "testRepeatedLifecycle_Idempotent",
             "testSessionManager_HandshakeApiNotInvokedBySubstrate",
             "testLinkLayerReady_RemainsFalse",
-            "testCoreBluetoothMissingServiceData_FailsClosed"
+            "testCoreBluetoothMissingServiceData_FailsClosed",
+            "testCrossingConnections_ALessThanB_ARetainsBRejects",
+            "testCrossingConnections_BLessThanA_BRetainsARejects",
+            "testCrossingConnections_EqualHints_BothReject",
+            "testLinkInfoV1_EncodeDecodeParityAndValidation",
+            "testLinkInfoV1_MalformedLength_Rejected",
+            "testLinkInfoV1_UnknownVersion_Rejected",
+            "testProvisionalConnection_MissingAdvMetadata_Allowed",
+            "testLinkInfoAuthority_OverridesAdvMetadata"
         ]
         for t in req_tests:
             if t not in c:
@@ -372,17 +403,17 @@ def check_controls(
             errors.append("BL23: iOS AppContainer must remain Archive-only (Mesh absent)")
 
     # ------------------------------------------------------------------------
-    # BL24: ADR-002 and ADR-003 Status Consistency & Spec Blocker
+    # BL24: ADR-002 and ADR-003 Status Consistency (C8.4D1-A1 & C8.4D1-R2)
     # ------------------------------------------------------------------------
     if adr002_path.exists():
         c_adr2 = adr002_path.read_text(encoding="utf-8")
-        if not re.search(r'PHASE\s+C8\.4D1', c_adr2) or "SPEC BLOCKER" not in c_adr2:
-            errors.append("BL24: ADR-002 missing C8.4D1 spec blocker status documentation")
+        if "C8.4D1-A1" not in c_adr2 or "C8.4D1-R2 OPEN" not in c_adr2:
+            errors.append("BL24: ADR-002 missing C8.4D1-A1 / C8.4D1-R2 status documentation")
 
     if adr003_path.exists():
         c_adr3 = adr003_path.read_text(encoding="utf-8")
-        if not re.search(r'Phase\s+C8\.4D1', c_adr3) or "SPEC BLOCKER" not in c_adr3:
-            errors.append("BL24: ADR-003 missing C8.4D1 spec blocker status documentation")
+        if "C8.4D1-A1" not in c_adr3 or "C8.4D1-R2" not in c_adr3:
+            errors.append("BL24: ADR-003 missing C8.4D1-A1 / C8.4D1-R2 status documentation")
 
     # ------------------------------------------------------------------------
     # BL25: Android persistent client wiring in BleTransport
@@ -432,11 +463,78 @@ def check_controls(
         if "maxQueuedAttValues = 16" not in c or "pendingOutboundWrites" not in c or "pendingOutboundUpdates" not in c:
             errors.append("BL30: iOS BleTransport missing bounded pendingOutboundWrites/Updates")
 
+    # ------------------------------------------------------------------------
+    # BL31: Generated LINK_INFO UUID parity in FrameV2
+    # ------------------------------------------------------------------------
+    if android_wirev2_path.exists():
+        c = strip_comments(android_wirev2_path.read_text(encoding="utf-8"))
+        if f'val LINK_INFO_UUID: java.util.UUID = java.util.UUID.fromString("{LINK_INFO_UUID_LITERAL}")' not in c:
+            errors.append("BL31: Android FrameV2 missing generated LINK_INFO_UUID")
+
+    if ios_wirev2_path.exists():
+        c = strip_comments(ios_wirev2_path.read_text(encoding="utf-8"))
+        if f'public static let linkInfoUuidString = "{LINK_INFO_UUID_LITERAL}"' not in c:
+            errors.append("BL31: iOS FrameV2 missing generated linkInfoUuidString")
+
+    # ------------------------------------------------------------------------
+    # BL32: No literal LINK_INFO UUID in platform transport
+    # ------------------------------------------------------------------------
+    if android_transport_path.exists():
+        c = strip_comments(android_transport_path.read_text(encoding="utf-8"))
+        if f'"{LINK_INFO_UUID_LITERAL}"' in c:
+            errors.append("BL32: Android BleTransport must not contain hardcoded LINK_INFO UUID literal")
+
+    if ios_transport_path.exists():
+        c = strip_comments(ios_transport_path.read_text(encoding="utf-8"))
+        if f'"{LINK_INFO_UUID_LITERAL}"' in c:
+            errors.append("BL32: iOS BleTransport must not contain hardcoded LINK_INFO UUID literal")
+
+    # ------------------------------------------------------------------------
+    # BL33: LinkInfo is not a BleRecord type
+    # ------------------------------------------------------------------------
+    if android_record_codec_path.exists():
+        c = strip_comments(android_record_codec_path.read_text(encoding="utf-8"))
+        if "LINK_INFO" in c:
+            errors.append("BL33: LinkInfo must NOT be a BleRecord type in Android BleRecordCodec")
+
+    if ios_record_codec_path.exists():
+        c = strip_comments(ios_record_codec_path.read_text(encoding="utf-8"))
+        if "linkInfo" in c:
+            errors.append("BL33: LinkInfo must NOT be a BleRecord type in iOS BleRecordCodec")
+
+    # ------------------------------------------------------------------------
+    # BL34: BleConnectionState defines full C8.4D1-A1 lifecycle states
+    # ------------------------------------------------------------------------
+    if android_conn_path.exists():
+        c = strip_comments(android_conn_path.read_text(encoding="utf-8"))
+        for s in ["PROVISIONAL_CONNECTING", "ROLE_BOUND", "READY", "QUARANTINED"]:
+            if s not in c:
+                errors.append(f"BL34: Android BleConnectionState missing state {s}")
+
+    if ios_conn_path.exists():
+        c = strip_comments(ios_conn_path.read_text(encoding="utf-8"))
+        for s in ["provisionalConnecting", "roleBound", "ready", "quarantined"]:
+            if s not in c:
+                errors.append(f"BL34: iOS BleConnectionState missing state {s}")
+
+    # ------------------------------------------------------------------------
+    # BL35: BleLinkInfoV1 and BleLinkInfoCodec 13-byte layout defined
+    # ------------------------------------------------------------------------
+    if android_role_path.exists():
+        c = strip_comments(android_role_path.read_text(encoding="utf-8"))
+        if not re.search(r'\bclass\s+BleLinkInfoV1\b', c) or "LINK_INFO_BYTES = 13" not in c:
+            errors.append("BL35: Android BleLinkInfoV1 / BleLinkInfoConstants missing")
+
+    if ios_role_path.exists():
+        c = strip_comments(ios_role_path.read_text(encoding="utf-8"))
+        if not re.search(r'\bstruct\s+BleLinkInfoV1\b', c) or "linkInfoBytes = 13" not in c:
+            errors.append("BL35: iOS BleLinkInfoV1 / BleLinkInfoConstants missing")
+
     return errors
 
 
 def run_selftest() -> int:
-    """Mutation testing for all BL01-BL30 control rules."""
+    """Mutation testing for all BL01-BL35 control rules."""
     print("Running check_ble_link_substrate_controls selftest (mutation test battery)...")
 
     # 1. Baseline must pass
@@ -475,14 +573,24 @@ def run_selftest() -> int:
         ("android_mesh_node", "const val LINK_LAYER_READY = false", "const val LINK_LAYER_READY = true", "BL23"),
         ("ios_mesh_node", "public static let linkLayerReady = false", "public static let linkLayerReady = true", "BL23"),
         ("ios_app_container", "import Foundation", "import Foundation\nimport GodstoneMesh", "BL23"),
-        ("adr002", "SPEC BLOCKER", "ALL_CLOSED_UNBLOCK", "BL24"),
-        ("adr003", "SPEC BLOCKER", "ALL_CLOSED_UNBLOCK", "BL24"),
+        ("adr002", "C8.4D1-A1", "C8.4D1-MUTATED", "BL24"),
+        ("adr003", "C8.4D1-A1", "C8.4D1-MUTATED", "BL24"),
         ("android_transport", "activeClientConnections[address] = client", "/* activeClientConnections[address] = client */", "BL25"),
         ("ios_transport", "if role == .initiator {", "if true {", "BL26"),
         ("android_transport", "if (!serverStarted)", "if (false)", "BL27"),
         ("android_server", "if (subscribedDevices[deviceAddress] != true)", "if (false)", "BL28"),
         ("android_transport", "conn.maxAttValueLength = maxAttLen", "/* conn.maxAttValueLength = maxAttLen */", "BL29"),
         ("ios_transport", "maxQueuedAttValues = 16", "maxQueuedAttValues = 999999", "BL30"),
+        ("android_wirev2", "val LINK_INFO_UUID: java.util.UUID = java.util.UUID.fromString(\"6764A004-9A5E-4C7B-B0A1-3E5D8C2F7A10\")", "/* removed LINK_INFO_UUID */", "BL31"),
+        ("ios_wirev2", "public static let linkInfoUuidString = \"6764A004-9A5E-4C7B-B0A1-3E5D8C2F7A10\"", "/* removed linkInfoUuidString */", "BL31"),
+        ("android_transport", "val LINK_INFO_CHAR_UUID: UUID = FrameV2.LINK_INFO_UUID", "val LINK_INFO_CHAR_UUID: UUID = UUID.fromString(\"6764A004-9A5E-4C7B-B0A1-3E5D8C2F7A10\")", "BL32"),
+        ("ios_transport", "public static let linkInfoCharacteristicUuid = CBUUID(string: FrameV2.linkInfoUuidString)", "public static let linkInfoCharacteristicUuid = CBUUID(string: \"6764A004-9A5E-4C7B-B0A1-3E5D8C2F7A10\")", "BL32"),
+        ("android_record_codec", "CLOSE(0x21.toByte());", "CLOSE(0x21.toByte()),\n    LINK_INFO(0x22.toByte());", "BL33"),
+        ("ios_record_codec", "case close = 0x21", "case close = 0x21\n    case linkInfo = 0x22", "BL33"),
+        ("android_conn", "PROVISIONAL_CONNECTING,", "/* PROVISIONAL_CONNECTING, */", "BL34"),
+        ("ios_conn", "case provisionalConnecting", "/* case provisionalConnecting */", "BL34"),
+        ("android_role", "class BleLinkInfoV1", "class BleLinkInfoV1Mutated", "BL35"),
+        ("ios_role", "struct BleLinkInfoV1: Equatable", "struct BleLinkInfoV1Mutated: Equatable", "BL35"),
     ]
 
     all_passed = True
@@ -497,12 +605,16 @@ def run_selftest() -> int:
             "android_transport": ANDROID_TRANSPORT_PATH,
             "android_test_substrate": ANDROID_TEST_SUBSTRATE_PATH,
             "android_mesh_node": ANDROID_MESH_NODE_PATH,
+            "android_wirev2": ANDROID_WIREV2_PATH,
+            "android_record_codec": ANDROID_RECORD_CODEC_PATH,
             "ios_role": IOS_ROLE_PATH,
             "ios_conn": IOS_CONN_PATH,
             "ios_transport": IOS_TRANSPORT_PATH,
             "ios_test_substrate": IOS_TEST_SUBSTRATE_PATH,
             "ios_mesh_node": IOS_MESH_NODE_PATH,
             "ios_app_container": IOS_APP_CONTAINER_PATH,
+            "ios_wirev2": IOS_WIREV2_PATH,
+            "ios_record_codec": IOS_RECORD_CODEC_PATH,
             "adr002": ADR002_PATH,
             "adr003": ADR003_PATH,
         }
@@ -532,12 +644,16 @@ def run_selftest() -> int:
                 android_transport_path=tmp_files["android_transport"],
                 android_test_substrate_path=tmp_files["android_test_substrate"],
                 android_mesh_node_path=tmp_files["android_mesh_node"],
+                android_wirev2_path=tmp_files["android_wirev2"],
+                android_record_codec_path=tmp_files["android_record_codec"],
                 ios_role_path=tmp_files["ios_role"],
                 ios_conn_path=tmp_files["ios_conn"],
                 ios_transport_path=tmp_files["ios_transport"],
                 ios_test_substrate_path=tmp_files["ios_test_substrate"],
                 ios_mesh_node_path=tmp_files["ios_mesh_node"],
                 ios_app_container_path=tmp_files["ios_app_container"],
+                ios_wirev2_path=tmp_files["ios_wirev2"],
+                ios_record_codec_path=tmp_files["ios_record_codec"],
                 adr002_path=tmp_files["adr002"],
                 adr003_path=tmp_files["adr003"],
             )
@@ -573,7 +689,7 @@ def main() -> int:
             print(f"  - {err}", file=sys.stderr)
         return 1
 
-    print("BLE link substrate structural controls: ALL PASSED (BL01-BL30).")
+    print("BLE link substrate structural controls: ALL PASSED (BL01-BL35).")
     return 0
 
 

@@ -20,7 +20,7 @@ sealed interface BleRoleElectionResult {
 }
 
 /**
- * Pure, platform-independent helper for deterministic BLE role election (ADR-002 §3).
+ * Pure, platform-independent helper for deterministic BLE role election (ADR-002 §3, Phase C8.4D1-A1).
  *
  * For unequal 4-byte node hints:
  *   initiator = peer with lexicographically smaller node_hint (unsigned byte comparison).
@@ -56,25 +56,26 @@ object BleRoleElection {
 }
 
 /**
- * Discovered BLE peer metadata parsed from the 13-byte scan-response payload (ADR-002 §2).
+ * Canonical 13-byte LinkInfo structure exchanged over the link_info GATT characteristic (ADR-002 §2, Phase C8.4D1-A1).
+ * Also used for optional Android scan-response discovery metadata.
  */
-data class BleDiscoveryMetadata(
+data class BleLinkInfoV1(
     val version: Byte,
     val flags: Byte,
     val nodeHint: ByteArray,
     val shortDigest: ByteArray,
     val queueDepth: Int
 ) {
-    val isSosPresent: Boolean get() = (flags.toInt() and BleDiscoveryConstants.FLAG_SOS) != 0
-    val isBulkCapable: Boolean get() = (flags.toInt() and BleDiscoveryConstants.FLAG_BULK_CAPABLE) != 0
-    val isPowerConstrained: Boolean get() = (flags.toInt() and BleDiscoveryConstants.FLAG_POWER_CONSTRAINED) != 0
-    val isVerifiedOnly: Boolean get() = (flags.toInt() and BleDiscoveryConstants.FLAG_VERIFIED_ONLY) != 0
-    val isClockUntrusted: Boolean get() = (flags.toInt() and BleDiscoveryConstants.FLAG_CLOCK_UNTRUSTED) != 0
+    val isSosPresent: Boolean get() = (flags.toInt() and BleLinkInfoConstants.FLAG_SOS) != 0
+    val isBulkCapable: Boolean get() = (flags.toInt() and BleLinkInfoConstants.FLAG_BULK_CAPABLE) != 0
+    val isPowerConstrained: Boolean get() = (flags.toInt() and BleLinkInfoConstants.FLAG_POWER_CONSTRAINED) != 0
+    val isVerifiedOnly: Boolean get() = (flags.toInt() and BleLinkInfoConstants.FLAG_VERIFIED_ONLY) != 0
+    val isClockUntrusted: Boolean get() = (flags.toInt() and BleLinkInfoConstants.FLAG_CLOCK_UNTRUSTED) != 0
 
     override fun equals(other: Any?): Boolean {
         if (this === other) return true
         if (javaClass != other?.javaClass) return false
-        other as BleDiscoveryMetadata
+        other as BleLinkInfoV1
         if (version != other.version) return false
         if (flags != other.flags) return false
         if (!nodeHint.contentEquals(other.nodeHint)) return false
@@ -93,6 +94,22 @@ data class BleDiscoveryMetadata(
     }
 }
 
+typealias BleDiscoveryMetadata = BleLinkInfoV1
+
+object BleLinkInfoConstants {
+    const val LINK_INFO_BYTES = 13
+    const val DISCOVERY_PAYLOAD_BYTES = 13
+    const val PROTOCOL_VERSION: Byte = 0x02
+    const val NODE_HINT_BYTES = 4
+    const val SHORT_DIGEST_BYTES = 6
+
+    const val FLAG_SOS = 0x01
+    const val FLAG_BULK_CAPABLE = 0x02
+    const val FLAG_POWER_CONSTRAINED = 0x04
+    const val FLAG_VERIFIED_ONLY = 0x08
+    const val FLAG_CLOCK_UNTRUSTED = 0x10
+}
+
 object BleDiscoveryConstants {
     const val DISCOVERY_PAYLOAD_BYTES = 13
     const val PROTOCOL_VERSION: Byte = 0x02
@@ -106,24 +123,24 @@ object BleDiscoveryConstants {
     const val FLAG_CLOCK_UNTRUSTED = 0x10
 }
 
-object BleDiscoveryCodec {
+object BleLinkInfoCodec {
 
     fun encode(
-        version: Byte = BleDiscoveryConstants.PROTOCOL_VERSION,
+        version: Byte = BleLinkInfoConstants.PROTOCOL_VERSION,
         flags: Byte,
         nodeHint: ByteArray,
         shortDigest: ByteArray,
         queueDepth: Int
     ): ByteArray {
-        require(nodeHint.size == BleDiscoveryConstants.NODE_HINT_BYTES) {
-            "nodeHint must be exactly ${BleDiscoveryConstants.NODE_HINT_BYTES} bytes"
+        require(nodeHint.size == BleLinkInfoConstants.NODE_HINT_BYTES) {
+            "nodeHint must be exactly ${BleLinkInfoConstants.NODE_HINT_BYTES} bytes"
         }
-        require(shortDigest.size == BleDiscoveryConstants.SHORT_DIGEST_BYTES) {
-            "shortDigest must be exactly ${BleDiscoveryConstants.SHORT_DIGEST_BYTES} bytes"
+        require(shortDigest.size == BleLinkInfoConstants.SHORT_DIGEST_BYTES) {
+            "shortDigest must be exactly ${BleLinkInfoConstants.SHORT_DIGEST_BYTES} bytes"
         }
 
         val clampedQueueDepth = queueDepth.coerceIn(0, 255)
-        val buf = ByteBuffer.allocate(BleDiscoveryConstants.DISCOVERY_PAYLOAD_BYTES)
+        val buf = ByteBuffer.allocate(BleLinkInfoConstants.LINK_INFO_BYTES)
         buf.put(version)
         buf.put(flags)
         buf.put(nodeHint)
@@ -132,19 +149,19 @@ object BleDiscoveryCodec {
         return buf.array()
     }
 
-    fun decode(bytes: ByteArray): BleDiscoveryMetadata? {
-        if (bytes.size < BleDiscoveryConstants.DISCOVERY_PAYLOAD_BYTES) return null
+    fun decode(bytes: ByteArray): BleLinkInfoV1? {
+        if (bytes.size < BleLinkInfoConstants.LINK_INFO_BYTES) return null
 
         val buf = ByteBuffer.wrap(bytes)
         val version = buf.get()
-        if (version != BleDiscoveryConstants.PROTOCOL_VERSION) return null
+        if (version != BleLinkInfoConstants.PROTOCOL_VERSION) return null
 
         val flags = buf.get()
-        val nodeHint = ByteArray(BleDiscoveryConstants.NODE_HINT_BYTES).also { buf.get(it) }
-        val shortDigest = ByteArray(BleDiscoveryConstants.SHORT_DIGEST_BYTES).also { buf.get(it) }
+        val nodeHint = ByteArray(BleLinkInfoConstants.NODE_HINT_BYTES).also { buf.get(it) }
+        val shortDigest = ByteArray(BleLinkInfoConstants.SHORT_DIGEST_BYTES).also { buf.get(it) }
         val queueDepth = buf.get().toInt() and 0xFF
 
-        return BleDiscoveryMetadata(
+        return BleLinkInfoV1(
             version = version,
             flags = flags,
             nodeHint = nodeHint,
@@ -152,4 +169,16 @@ object BleDiscoveryCodec {
             queueDepth = queueDepth
         )
     }
+}
+
+object BleDiscoveryCodec {
+    fun encode(
+        version: Byte = BleDiscoveryConstants.PROTOCOL_VERSION,
+        flags: Byte,
+        nodeHint: ByteArray,
+        shortDigest: ByteArray,
+        queueDepth: Int
+    ): ByteArray = BleLinkInfoCodec.encode(version, flags, nodeHint, shortDigest, queueDepth)
+
+    fun decode(bytes: ByteArray): BleDiscoveryMetadata? = BleLinkInfoCodec.decode(bytes)
 }

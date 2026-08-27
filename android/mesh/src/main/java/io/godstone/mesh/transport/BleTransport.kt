@@ -461,6 +461,7 @@ class BleTransport(
         val SERVICE_UUID: UUID = FrameV2.SERVICE_UUID
         val WRITE_CHAR_UUID: UUID = FrameV2.INBOX_UUID
         val NOTIFY_CHAR_UUID: UUID = FrameV2.DIGEST_UUID
+        val LINK_INFO_CHAR_UUID: UUID = FrameV2.LINK_INFO_UUID
 
         const val GATT_MTU = 512
         const val SCAN_RESPONSE_BYTES = 13

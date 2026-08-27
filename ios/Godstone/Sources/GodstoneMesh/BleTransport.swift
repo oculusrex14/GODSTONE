@@ -10,6 +10,7 @@ public final class BleTransport: NSObject {
     public static let serviceUuid = CBUUID(string: FrameV2.serviceUuidString)
     public static let inboxCharacteristicUuid = CBUUID(string: FrameV2.inboxUuidString)
     public static let digestCharacteristicUuid = CBUUID(string: FrameV2.digestUuidString)
+    public static let linkInfoCharacteristicUuid = CBUUID(string: FrameV2.linkInfoUuidString)
 
     public static let maxDiscoveredPeers = 64
     public static let maxActiveConnections = 7

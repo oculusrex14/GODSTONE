@@ -3,9 +3,22 @@ package io.godstone.mesh.transport
 import java.util.concurrent.atomic.AtomicBoolean
 
 /**
- * Connection state and lifecycle for a persistent BLE link (ADR-002, Phase C8.4D1).
+ * Connection state and lifecycle for a persistent BLE link (ADR-002, Phase C8.4D1-A1).
  */
 enum class BleConnectionState {
+    DISCOVERED,
+    PROVISIONAL_CONNECTING,
+    PROVISIONAL_CONNECTED,
+    LINK_INFO_READING,
+    LINK_INFO_WRITING,
+    ROLE_BOUND,
+    HANDSHAKE_IN_PROGRESS,
+    READY,
+    QUARANTINED,
+    CLOSING,
+    CLOSED,
+
+    // Backward-compatible lifecycle states
     CONNECTING,
     CONNECTED,
     DISCONNECTING,

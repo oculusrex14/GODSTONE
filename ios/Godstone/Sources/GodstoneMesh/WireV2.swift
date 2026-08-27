@@ -16,6 +16,7 @@ public struct FrameV2: Equatable {
     public static let serviceUuidString = "6764A001-9A5E-4C7B-B0A1-3E5D8C2F7A10"
     public static let inboxUuidString = "6764A002-9A5E-4C7B-B0A1-3E5D8C2F7A10"
     public static let digestUuidString = "6764A003-9A5E-4C7B-B0A1-3E5D8C2F7A10"
+    public static let linkInfoUuidString = "6764A004-9A5E-4C7B-B0A1-3E5D8C2F7A10"
 
     public enum Flags {
         public static let sealed: UInt16 = 0x0001
