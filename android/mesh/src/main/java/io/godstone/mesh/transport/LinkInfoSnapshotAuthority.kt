@@ -7,14 +7,15 @@ import kotlinx.coroutines.runBlocking
 import java.util.concurrent.atomic.AtomicReference
 
 /**
- * Authoritative provider and precomputed cache of local LinkInfo V1 snapshots (ADR-002, Phase C8.4D1-R2.2).
+ * Authoritative provider and precomputed cache of local LinkInfo V1 snapshots (ADR-002, Phase C8.4D1-R2.3).
  *
  * Enforces:
- * - Real identity nodeHint derivation (no synthetic dummy values).
- * - Real MessageStore held message ID enumeration and Bloom digest calculation.
+ * - Real identity nodeHint derivation (no synthetic dummy values). Fails closed (null) if identity is absent.
+ * - Real MessageStore held message ID enumeration and Bloom digest calculation. Fails closed (null) if store is absent.
+ * - Canonical empty digest and queue depth 0 when store is real and empty.
  * - Exact held count queue depth, saturating at 255.
  * - Immutable precomputed snapshot caching: ATT callbacks NEVER perform durable store traversal.
- * - Cache refresh on defined durable-state mutation boundaries (identity load, store insert/purge, transport start).
+ * - Automatic cache refresh on MessageStore mutation events without requiring manual caller invocation.
  */
 class LinkInfoSnapshotAuthority(
     private val identityProvider: () -> Identity? = { null },
@@ -25,29 +26,47 @@ class LinkInfoSnapshotAuthority(
 ) {
     private val cachedSnapshot = AtomicReference<BleLinkInfoV1?>(null)
     private val cachedBytes = AtomicReference<ByteArray?>(null)
+    private var registeredStore: MessageStore? = null
 
     init {
+        attachStoreObserver()
         refresh()
+    }
+
+    private fun attachStoreObserver() {
+        val store = storeProvider()
+        if (store != null && store !== registeredStore) {
+            registeredStore = store
+            store.registerHeldSetObserver {
+                refresh()
+            }
+        }
     }
 
     /**
      * Compute and atomically update the immutable cached snapshot.
+     * Fails closed (returns null) if identity or store authority is missing.
      * Must be called outside ATT callbacks (e.g. on store mutation boundaries or transport start).
      */
-    fun refresh(): BleLinkInfoV1 {
+    fun refresh(): BleLinkInfoV1? {
+        attachStoreObserver()
         val identity = identityProvider()
-        val nodeHint = identity?.nodeHint ?: ByteArray(BleLinkInfoConstants.NODE_HINT_BYTES)
         val store = storeProvider()
 
+        if (identity == null || identity.nodeHint.size != BleLinkInfoConstants.NODE_HINT_BYTES || store == null) {
+            cachedSnapshot.set(null)
+            cachedBytes.set(null)
+            return null
+        }
+
+        val nodeHint = identity.nodeHint
         var count = 0
         val bloom = BloomDigest()
-        if (store != null) {
-            runBlocking {
-                store.forEachHeldMsgId { msgId ->
-                    count++
-                    bloom.add(msgId)
-                    true
-                }
+        runBlocking(kotlinx.coroutines.Dispatchers.IO) {
+            store.forEachHeldMsgId { msgId ->
+                count++
+                bloom.add(msgId)
+                true
             }
         }
 
@@ -85,13 +104,11 @@ class LinkInfoSnapshotAuthority(
         return info
     }
 
-    fun currentSnapshot(): BleLinkInfoV1 {
+    fun currentSnapshot(): BleLinkInfoV1? {
         return cachedSnapshot.get() ?: refresh()
     }
 
-    fun currentBytes(): ByteArray {
-        return cachedBytes.get() ?: currentSnapshot().let {
-            cachedBytes.get()!!
-        }
+    fun currentBytes(): ByteArray? {
+        return cachedBytes.get() ?: currentSnapshot()?.let { cachedBytes.get() }
     }
 }

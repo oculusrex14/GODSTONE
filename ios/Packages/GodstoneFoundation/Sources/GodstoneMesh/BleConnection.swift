@@ -90,11 +90,15 @@ public final class BleConnection: @unchecked Sendable {
         self.reassembler = BleRecordReassembler(timeProvider: timeProvider)
     }
 
-    /// Validates and executes state transitions. Direct transitions to ready or backwards transitions are rejected.
+    /// Validates and executes state transitions. Direct transitions to roleBound, handshakeInProgress, or ready are rejected.
     public func transitionTo(_ newState: BleConnectionState) {
         lock.lock()
         defer { lock.unlock() }
         if state == newState { return }
+
+        precondition(newState != .roleBound, "roleBound must be entered via bindInitiatorAfterLinkInfoWriteAck or bindResponderFromAcceptedIncomingLinkInfo")
+        precondition(newState != .handshakeInProgress, "handshakeInProgress is reserved for Phase C8.4D2 trusted handshake driver")
+        precondition(newState != .ready, "ready is reserved for Phase C8.4D2 trusted handshake")
 
         let valid: Bool
         switch state {
@@ -103,13 +107,13 @@ public final class BleConnection: @unchecked Sendable {
         case .provisionalConnecting:
             valid = (newState == .provisionalConnected || newState == .closing || newState == .closed)
         case .provisionalConnected:
-            valid = (newState == .linkInfoReading || newState == .roleBound || newState == .closing || newState == .closed)
+            valid = (newState == .linkInfoReading || newState == .closing || newState == .closed)
         case .linkInfoReading:
             valid = (newState == .linkInfoWriting || newState == .closing || newState == .closed)
         case .linkInfoWriting:
-            valid = (newState == .roleBound || newState == .closing || newState == .closed)
+            valid = (newState == .closing || newState == .closed)
         case .roleBound:
-            valid = (newState == .handshakeInProgress || newState == .quarantined || newState == .closing || newState == .closed)
+            valid = (newState == .quarantined || newState == .closing || newState == .closed)
         case .handshakeInProgress:
             valid = (newState == .quarantined || newState == .closing || newState == .closed)
         case .ready:
@@ -122,19 +126,13 @@ public final class BleConnection: @unchecked Sendable {
             valid = false
         }
 
-        guard newState != .ready else {
-            // Cryptographic ready transition reserved for C8.4D2 trusted handshake
-            return
-        }
         precondition(valid, "Illegal state transition from \(state) to \(newState)")
         state = newState
     }
 
     /// One-way binding of remote node hint and elected role.
-    /// Succeeds at most once from a valid pre-role-bound state.
-    public func bindRole(hint: Data, role: BleRole) {
-        lock.lock()
-        defer { lock.unlock() }
+    /// Accessible only through authoritative bind methods.
+    private func bindRoleInternal(hint: Data, role: BleRole) {
         precondition(hint.count == BleRoleElection.nodeHintBytes, "remoteNodeHint must be 4 bytes")
         precondition(_remoteNodeHint == nil && _localRole == nil, "Cannot rebind role on BleConnection")
         precondition(state != .closed && state != .closing && state != .quarantined, "Cannot bind role on inactive connection")
@@ -147,18 +145,18 @@ public final class BleConnection: @unchecked Sendable {
 
     public func bindInitiatorAfterLinkInfoWriteAck(remoteHint: Data) {
         lock.lock()
+        defer { lock.unlock() }
         let s = state
-        lock.unlock()
         precondition(s == .linkInfoWriting, "Cannot bind initiator from state \(s): must be in linkInfoWriting")
-        bindRole(hint: remoteHint, role: .initiator)
+        bindRoleInternal(hint: remoteHint, role: .initiator)
     }
 
     public func bindResponderFromAcceptedIncomingLinkInfo(remoteHint: Data) {
         lock.lock()
+        defer { lock.unlock() }
         let s = state
-        lock.unlock()
         precondition(s == .provisionalConnected, "Cannot bind responder from state \(s): must be in provisionalConnected")
-        bindRole(hint: remoteHint, role: .responder)
+        bindRoleInternal(hint: remoteHint, role: .responder)
     }
 
     public func startLinkInfoRead() {

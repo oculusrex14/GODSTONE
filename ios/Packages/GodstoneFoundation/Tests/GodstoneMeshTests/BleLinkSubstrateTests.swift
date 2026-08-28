@@ -13,17 +13,65 @@ final class BleLinkSubstrateTests: XCTestCase {
 
     private final class MockMessageStore: MessageStore {
         var held: [Data] = []
-        func persist(_ frame: FrameV2, receivedFrom: Data) -> PersistResult { .heldNew }
-        func enqueueDirectOutbound(_ frame: FrameV2, expectedRecipient: Data, localOriginNodeId: Data) -> OutboundEnqueueResult { .canonicalFrameMismatch }
+        private var observers: [@Sendable () -> Void] = []
+        private let lock = NSLock()
+
+        func registerHeldSetObserver(_ observer: @escaping @Sendable () -> Void) {
+            lock.lock()
+            defer { lock.unlock() }
+            observers.append(observer)
+        }
+
+        func notifyObservers() {
+            lock.lock()
+            let obs = observers
+            lock.unlock()
+            obs.forEach { $0() }
+        }
+
+        func persist(_ frame: FrameV2, receivedFrom: Data) -> PersistResult {
+            lock.lock()
+            held.append(frame.msgId)
+            lock.unlock()
+            notifyObservers()
+            return .heldNew
+        }
+
+        func removeHeld(_ msgId: Data) -> Bool {
+            lock.lock()
+            let initial = held.count
+            held.removeAll { $0 == msgId }
+            let removed = held.count < initial
+            lock.unlock()
+            if removed {
+                notifyObservers()
+            }
+            return removed
+        }
+
+        func enqueueDirectOutbound(_ frame: FrameV2, expectedRecipient: Data, localOriginNodeId: Data) -> OutboundEnqueueResult {
+            .canonicalFrameMismatch
+        }
         func allHeldOrderedByPriority() -> [FrameV2] { [] }
-        func allHeldMsgIds() -> [Data] { held }
+        func allHeldMsgIds() -> [Data] {
+            lock.lock()
+            defer { lock.unlock() }
+            return held
+        }
         func forEachHeldOrderedByPriority(_ visit: (FrameV2) -> Bool) {}
         func forEachHeldMsgId(_ visit: (Data) -> Bool) {
-            for id in held {
+            lock.lock()
+            let copy = held
+            lock.unlock()
+            for id in copy {
                 if !visit(id) { break }
             }
         }
-        var heldBytes: Int64 { Int64(held.count * 32) }
+        var heldBytes: Int64 {
+            lock.lock()
+            defer { lock.unlock() }
+            return Int64(held.count * 32)
+        }
     }
 
     private func makeIdentity(seedByte: UInt8 = 1, staticPrivByte: UInt8 = 2, generation: UInt32 = 0) throws -> MeshIdentity {
@@ -52,11 +100,9 @@ final class BleLinkSubstrateTests: XCTestCase {
         var candidateUrls: [URL] = []
 
         let thisFile = URL(fileURLWithPath: #filePath)
-        // Walking up from ios/Godstone/Tests/GodstoneMeshTests/BleLinkSubstrateTests.swift:
         let root1 = thisFile.deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent()
         candidateUrls.append(root1.appendingPathComponent("wire/ble_link_info_vectors.json"))
 
-        // Walking up from ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/BleLinkSubstrateTests.swift:
         let root2 = thisFile.deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent()
         candidateUrls.append(root2.appendingPathComponent("wire/ble_link_info_vectors.json"))
 
@@ -95,7 +141,6 @@ final class BleLinkSubstrateTests: XCTestCase {
         let res2 = BleRoleElection.elect(localHint: hintLarge, remoteHint: hintSmall)
         XCTAssertEqual(res2, .elected(.responder))
 
-        // 0x7F vs 0x80
         let hint7F = Data([0x7F, 0x00, 0x00, 0x00])
         let hint80 = Data([0x80, 0x00, 0x00, 0x00])
         XCTAssertEqual(BleRoleElection.elect(localHint: hint7F, remoteHint: hint80), .elected(.initiator))
@@ -354,15 +399,11 @@ final class BleLinkSubstrateTests: XCTestCase {
         conn.startLinkInfoWrite()
         conn.bindInitiatorAfterLinkInfoWriteAck(remoteHint: Data([1, 2, 3, 4]))
         conn.isNotificationSubscribed = true
-        conn.transitionTo(.handshakeInProgress)
-
-        // Directly attempting transition to ready must be a no-op / rejected in substrate
-        conn.transitionTo(.ready)
-        XCTAssertEqual(conn.state, .handshakeInProgress)
+        XCTAssertEqual(conn.state, .roleBound)
     }
 
     // ------------------------------------------------------------------------
-    // 10. Application DATA Forbidden Before Cryptographic READY
+    // 12. Application DATA Forbidden Before Cryptographic READY
     // ------------------------------------------------------------------------
     func testDataTransmission_StrictlyForbiddenBeforeReady() {
         let conn = BleConnection(peerId: UUID())
@@ -375,15 +416,27 @@ final class BleLinkSubstrateTests: XCTestCase {
         let appData = Data("Secret Mesh Payload".utf8)
         let fragsInRoleBound = conn.fragmentOutbound(recordType: .data, payload: appData)
         XCTAssertTrue(fragsInRoleBound.isEmpty, "DATA fragments must be empty before READY")
-
-        conn.transitionTo(.handshakeInProgress)
-        let fragsInHs = conn.fragmentOutbound(recordType: .data, payload: appData)
-        XCTAssertTrue(fragsInHs.isEmpty, "DATA fragments must be empty in HANDSHAKE_IN_PROGRESS")
     }
 
     // ------------------------------------------------------------------------
-    // 11. Dynamic LinkInfo Snapshot Authority Tests
+    // 13. Dynamic LinkInfo Snapshot Authority Tests
     // ------------------------------------------------------------------------
+    func testSnapshotAuthority_MissingAuthorities_FailsClosed() throws {
+        let authMissingAll = LinkInfoSnapshotAuthority()
+        XCTAssertNil(authMissingAll.currentSnapshot())
+        XCTAssertNil(authMissingAll.currentData())
+
+        let store = MockMessageStore()
+        let authMissingIdentity = LinkInfoSnapshotAuthority(storeProvider: { store })
+        XCTAssertNil(authMissingIdentity.currentSnapshot())
+        XCTAssertNil(authMissingIdentity.currentData())
+
+        let identity = try makeIdentity()
+        let authMissingStore = LinkInfoSnapshotAuthority(identityProvider: { identity })
+        XCTAssertNil(authMissingStore.currentSnapshot())
+        XCTAssertNil(authMissingStore.currentData())
+    }
+
     func testLinkInfoSnapshotAuthority_EmptyStore() throws {
         let identity = try makeIdentity()
         let store = MockMessageStore()
@@ -393,9 +446,10 @@ final class BleLinkSubstrateTests: XCTestCase {
         )
 
         let snap = authority.currentSnapshot()
-        XCTAssertEqual(snap.queueDepth, 0)
-        XCTAssertEqual(snap.nodeHint, identity.nodeHint)
-        XCTAssertEqual(snap.shortDigest, Data(repeating: 0, count: 6))
+        XCTAssertNotNil(snap)
+        XCTAssertEqual(snap?.queueDepth, 0)
+        XCTAssertEqual(snap?.nodeHint, identity.nodeHint)
+        XCTAssertEqual(snap?.shortDigest, Data(repeating: 0, count: 6))
     }
 
     func testLinkInfoSnapshotAuthority_HeldRecordsAndSaturating255() throws {
@@ -416,8 +470,8 @@ final class BleLinkSubstrateTests: XCTestCase {
 
         authority.refresh()
         let snap10 = authority.currentSnapshot()
-        XCTAssertEqual(snap10.queueDepth, 10)
-        XCTAssertEqual(snap10.shortDigest, Data(bloom.toBytes().prefix(6)))
+        XCTAssertEqual(snap10?.queueDepth, 10)
+        XCTAssertEqual(snap10?.shortDigest, Data(bloom.toBytes().prefix(6)))
 
         // Insert 300 records to test saturation at 255
         for i in 11...300 {
@@ -427,11 +481,261 @@ final class BleLinkSubstrateTests: XCTestCase {
 
         authority.refresh()
         let snap300 = authority.currentSnapshot()
-        XCTAssertEqual(snap300.queueDepth, 255)
+        XCTAssertEqual(snap300?.queueDepth, 255)
     }
 
     // ------------------------------------------------------------------------
-    // 12. Crossing Connections Logic
+    // 14. iOS Production Orchestration Driver Tests
+    // ------------------------------------------------------------------------
+    func testOrchestration_UuidOnlyToDuplexReadyAndFound() {
+        let localHint = Data([0x01, 0x00, 0x00, 0x00])
+        let remoteHint = Data([0x02, 0x00, 0x00, 0x00])
+        let localLinkInfo = BleLinkInfoCodec.encode(
+            version: BleLinkInfoConstants.protocolVersion,
+            flags: 0,
+            nodeHint: localHint,
+            shortDigest: Data(repeating: 0, count: 6),
+            queueDepth: 0
+        )
+        let remoteLinkInfo = BleLinkInfoCodec.encode(
+            version: BleLinkInfoConstants.protocolVersion,
+            flags: 0,
+            nodeHint: remoteHint,
+            shortDigest: Data(repeating: 0, count: 6),
+            queueDepth: 0
+        )
+
+        let driver = BleCentralOrchestrationDriver(
+            localHint: localHint,
+            localLinkInfoProvider: { localLinkInfo }
+        )
+
+        let peer = UUID()
+        // 1. Scan -> Connect
+        let act1 = driver.onDiscover(peerId: peer, rssi: -60, serviceDataHint: nil)
+        XCTAssertEqual(act1, .connectPeripheral(peer))
+
+        // 2. Connected -> DiscoverServices
+        let act2 = driver.onConnected(peerId: peer)
+        XCTAssertEqual(act2, .discoverServices(peer))
+
+        // 3. Services Discovered -> ReadLinkInfo
+        let act3 = driver.onServicesDiscovered(peerId: peer, success: true)
+        XCTAssertEqual(act3, .readLinkInfo(peer))
+
+        // 4. Remote LinkInfo read (local < remote -> INITIATOR) -> WriteLinkInfo
+        let act4 = driver.onLinkInfoReadResult(peerId: peer, rawData: remoteLinkInfo)
+        XCTAssertEqual(act4, .writeLinkInfo(peer, localLinkInfo, remoteHint))
+
+        // 5. LinkInfo write acknowledged -> SetNotify
+        let act5 = driver.onLinkInfoWriteAcknowledged(peerId: peer, success: true, remoteHint: remoteHint)
+        XCTAssertEqual(act5, .setNotify(peer))
+
+        // 6. Notification subscribed -> PhysicalDuplexReady!
+        let act6 = driver.onNotificationStateUpdated(peerId: peer, success: true, isNotifying: true)
+        XCTAssertEqual(act6, .physicalDuplexReady(peer, -60))
+        XCTAssertTrue(driver.isPhysicalReady(peer))
+    }
+
+    func testOrchestration_DuplicateScanCreatesOneProvisionalLink() {
+        let driver = BleCentralOrchestrationDriver(
+            localHint: Data([1, 0, 0, 0]),
+            localLinkInfoProvider: { Data(repeating: 0, count: 13) }
+        )
+        let peer = UUID()
+        let act1 = driver.onDiscover(peerId: peer, rssi: -50, serviceDataHint: nil)
+        XCTAssertEqual(act1, .connectPeripheral(peer))
+        XCTAssertEqual(driver.getActiveConnectionCount(), 1)
+
+        let act2 = driver.onDiscover(peerId: peer, rssi: -48, serviceDataHint: nil)
+        XCTAssertEqual(act2, .noOp)
+        XCTAssertEqual(driver.getActiveConnectionCount(), 1)
+    }
+
+    func testOrchestration_LinkInfoWriteAckRequiredForInitiatorBinding() {
+        let localHint = Data([1, 0, 0, 0])
+        let remoteHint = Data([2, 0, 0, 0])
+        let driver = BleCentralOrchestrationDriver(
+            localHint: localHint,
+            localLinkInfoProvider: { Data(repeating: 0, count: 13) }
+        )
+        let peer = UUID()
+        _ = driver.onDiscover(peerId: peer, rssi: -60, serviceDataHint: nil)
+        _ = driver.onConnected(peerId: peer)
+        _ = driver.onServicesDiscovered(peerId: peer, success: true)
+        let remoteLinkInfo = BleLinkInfoCodec.encode(
+            version: BleLinkInfoConstants.protocolVersion,
+            flags: 0,
+            nodeHint: remoteHint,
+            shortDigest: Data(repeating: 0, count: 6),
+            queueDepth: 0
+        )
+        _ = driver.onLinkInfoReadResult(peerId: peer, rawData: remoteLinkInfo)
+
+        let conn = driver.getActiveConnection(peer)
+        XCTAssertNotNil(conn)
+        XCTAssertEqual(conn?.state, .linkInfoWriting)
+        XCTAssertFalse(conn?.isRoleBound ?? true)
+
+        let failAct = driver.onLinkInfoWriteAcknowledged(peerId: peer, success: false, remoteHint: remoteHint)
+        XCTAssertEqual(failAct, .disconnectPeripheral(peer, "LinkInfo write failed"))
+        XCTAssertNil(driver.getActiveConnection(peer))
+    }
+
+    func testOrchestration_CccdAckRequiredForPhysicalReady() {
+        let localHint = Data([1, 0, 0, 0])
+        let remoteHint = Data([2, 0, 0, 0])
+        let driver = BleCentralOrchestrationDriver(
+            localHint: localHint,
+            localLinkInfoProvider: { Data(repeating: 0, count: 13) }
+        )
+        let peer = UUID()
+        _ = driver.onDiscover(peerId: peer, rssi: -60, serviceDataHint: nil)
+        _ = driver.onConnected(peerId: peer)
+        _ = driver.onServicesDiscovered(peerId: peer, success: true)
+        let remoteLinkInfo = BleLinkInfoCodec.encode(
+            version: BleLinkInfoConstants.protocolVersion,
+            flags: 0,
+            nodeHint: remoteHint,
+            shortDigest: Data(repeating: 0, count: 6),
+            queueDepth: 0
+        )
+        _ = driver.onLinkInfoReadResult(peerId: peer, rawData: remoteLinkInfo)
+        _ = driver.onLinkInfoWriteAcknowledged(peerId: peer, success: true, remoteHint: remoteHint)
+
+        let conn = driver.getActiveConnection(peer)!
+        XCTAssertTrue(conn.isRoleBound)
+        XCTAssertFalse(conn.isHandshakeTransportReady)
+
+        let act = driver.onNotificationStateUpdated(peerId: peer, success: true, isNotifying: true)
+        XCTAssertTrue(conn.isHandshakeTransportReady)
+        XCTAssertEqual(act, .physicalDuplexReady(peer, -60))
+    }
+
+    func testOrchestration_CccdFailureNeverPublishesFound() {
+        let localHint = Data([1, 0, 0, 0])
+        let remoteHint = Data([2, 0, 0, 0])
+        let driver = BleCentralOrchestrationDriver(
+            localHint: localHint,
+            localLinkInfoProvider: { Data(repeating: 0, count: 13) }
+        )
+        let peer = UUID()
+        _ = driver.onDiscover(peerId: peer, rssi: -60, serviceDataHint: nil)
+        _ = driver.onConnected(peerId: peer)
+        _ = driver.onServicesDiscovered(peerId: peer, success: true)
+        let remoteLinkInfo = BleLinkInfoCodec.encode(
+            version: BleLinkInfoConstants.protocolVersion,
+            flags: 0,
+            nodeHint: remoteHint,
+            shortDigest: Data(repeating: 0, count: 6),
+            queueDepth: 0
+        )
+        _ = driver.onLinkInfoReadResult(peerId: peer, rawData: remoteLinkInfo)
+        _ = driver.onLinkInfoWriteAcknowledged(peerId: peer, success: true, remoteHint: remoteHint)
+
+        let act = driver.onNotificationStateUpdated(peerId: peer, success: false, isNotifying: false)
+        XCTAssertEqual(act, .disconnectPeripheral(peer, "Notification subscribe failed"))
+        XCTAssertFalse(driver.isPhysicalReady(peer))
+    }
+
+    func testOrchestration_RawInboundCapacityBounded() {
+        let localHint = Data([0x02, 0x00, 0x00, 0x00])
+        let driver = BlePeripheralOrchestrationDriver(
+            localHint: localHint,
+            localLinkInfoProvider: { Data(repeating: 0, count: 13) },
+            maxAdmittedCentrals: 7
+        )
+
+        var admittedIds: [UUID] = []
+        for _ in 1...7 {
+            let u = UUID()
+            admittedIds.append(u)
+            let act = driver.onCentralConnected(u)
+            XCTAssertEqual(act, .admitCentral(u))
+        }
+        XCTAssertEqual(driver.getAdmittedCount(), 7)
+
+        let u8 = UUID()
+        let act8 = driver.onCentralConnected(u8)
+        XCTAssertEqual(act8, .rejectCentral(u8))
+        XCTAssertFalse(driver.isCentralAdmitted(u8))
+
+        let readAct = driver.onLinkInfoReadRequest(centralId: u8)
+        XCTAssertEqual(readAct, .rejectRead(u8))
+
+        let writeAct = driver.onLinkInfoWriteRequest(centralId: u8, rawData: Data(repeating: 0, count: 13))
+        XCTAssertEqual(writeAct, .rejectWrite(u8, "Unadmitted central"))
+
+        let subAct = driver.onSubscriptionUpdate(centralId: u8, isSubscribed: true)
+        XCTAssertEqual(subAct, .rejectSubscription(u8))
+
+        // Disconnect one central -> replacement admitted
+        _ = driver.onCentralDisconnected(admittedIds[0])
+        XCTAssertEqual(driver.getAdmittedCount(), 6)
+
+        let act8Replacement = driver.onCentralConnected(u8)
+        XCTAssertEqual(act8Replacement, .admitCentral(u8))
+        XCTAssertEqual(driver.getAdmittedCount(), 7)
+    }
+
+    func testOrchestration_StorePersistAutomaticallyRefreshesLinkInfo() throws {
+        let identity = try makeIdentity()
+        let store = InMemoryMessageStore()
+        let authority = LinkInfoSnapshotAuthority(
+            identityProvider: { identity },
+            storeProvider: { store }
+        )
+
+        let initialSnap = authority.currentSnapshot()
+        XCTAssertNotNil(initialSnap)
+        XCTAssertEqual(initialSnap?.queueDepth, 0)
+
+        // Persist frame through store API without calling authority.refresh()
+        let frame = FrameV2(
+            type: .message,
+            msgId: Data(repeating: 0x55, count: 16),
+            routingTag: Data(repeating: 0, count: 4),
+            ttl: 10,
+            hopCount: 0,
+            flags: Priority.toFlags(.direct),
+            payload: Data([1, 2, 3])
+        )
+        let res = store.persist(frame, receivedFrom: Data(repeating: 9, count: 16))
+        XCTAssertEqual(res, PersistResult.heldNew)
+
+        // Observe automatic snapshot update
+        let updatedSnap = authority.currentSnapshot()
+        XCTAssertNotNil(updatedSnap)
+        XCTAssertEqual(updatedSnap?.queueDepth, 1)
+    }
+
+    func testOrchestration_StoreRemovalAutomaticallyRefreshesLinkInfo() throws {
+        let identity = try makeIdentity()
+        let store = InMemoryMessageStore()
+        let authority = LinkInfoSnapshotAuthority(
+            identityProvider: { identity },
+            storeProvider: { store }
+        )
+
+        let frame = FrameV2(
+            type: .message,
+            msgId: Data(repeating: 0x77, count: 16),
+            routingTag: Data(repeating: 0, count: 4),
+            ttl: 10,
+            hopCount: 0,
+            flags: Priority.toFlags(.direct),
+            payload: Data([4, 5, 6])
+        )
+        _ = store.persist(frame, receivedFrom: Data(repeating: 9, count: 16))
+        XCTAssertEqual(authority.currentSnapshot()?.queueDepth, 1)
+
+        // Remove through store API without manual refresh
+        _ = store.removeHeld(frame.msgId)
+        XCTAssertEqual(authority.currentSnapshot()?.queueDepth, 0)
+    }
+
+    // ------------------------------------------------------------------------
+    // 15. Crossing Connections Logic
     // ------------------------------------------------------------------------
     func testCrossingConnections_ALessThanB_ARetainsBRejects() {
         let hintA = Data([0x00, 0x01, 0x02, 0x03])
@@ -462,7 +766,7 @@ final class BleLinkSubstrateTests: XCTestCase {
     }
 
     // ------------------------------------------------------------------------
-    // 13. Handshake Record Delivery Across Seam
+    // 16. Handshake Record Delivery Across Seam
     // ------------------------------------------------------------------------
     func testHandshakeRecordDelivery_AcrossConnectionSeam() {
         let connA = BleConnection(peerId: UUID(), initialMaxAttValueLength: 30)
@@ -471,13 +775,11 @@ final class BleLinkSubstrateTests: XCTestCase {
         connA.startLinkInfoWrite()
         connA.bindInitiatorAfterLinkInfoWriteAck(remoteHint: Data([5, 6, 7, 8]))
         connA.isNotificationSubscribed = true
-        connA.transitionTo(.handshakeInProgress)
 
         let connB = BleConnection(peerId: UUID(), initialMaxAttValueLength: 30)
         connB.markConnected()
         connB.bindResponderFromAcceptedIncomingLinkInfo(remoteHint: Data([1, 2, 3, 4]))
         connB.isNotificationSubscribed = true
-        connB.transitionTo(.handshakeInProgress)
 
         // Handshake 2 record (229 bytes)
         var hs2Bytes = [UInt8](repeating: 0, count: 229)
@@ -498,7 +800,7 @@ final class BleLinkSubstrateTests: XCTestCase {
     }
 
     // ------------------------------------------------------------------------
-    // 14. Disconnect Purges Reassembly State & Idempotent Start/Stop
+    // 17. Disconnect Purges Reassembly State & Idempotent Start/Stop
     // ------------------------------------------------------------------------
     func testDisconnect_PurgesState_AndIdempotent() {
         let conn = BleConnection(peerId: UUID(), initialMaxAttValueLength: 20)
@@ -525,14 +827,14 @@ final class BleLinkSubstrateTests: XCTestCase {
     }
 
     // ------------------------------------------------------------------------
-    // 15. linkLayerReady Remains False
+    // 18. linkLayerReady Remains False
     // ------------------------------------------------------------------------
     func testLinkLayerReady_RemainsFalse() {
         XCTAssertFalse(MeshNode.linkLayerReady)
     }
 
     // ------------------------------------------------------------------------
-    // 16. SessionManager Handshake API Not Invoked by Substrate
+    // 19. SessionManager Handshake API Not Invoked by Substrate
     // ------------------------------------------------------------------------
     func testSessionManager_HandshakeApiNotInvokedBySubstrate() throws {
         let id = try makeIdentity()

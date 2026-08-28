@@ -16,7 +16,7 @@
 - **Phase C8.4C Canonical BLE Record Layer:** Implemented & Frozen (canonical 8-byte record header, balanced-stride fragmentation, bounded 4-concurrent reassembly, duplicate suppression, sequence wrapping, fail-closed metadata/payload conflict rejection, encrypt-then-fragment semantic integrity, pure 32/229/197 handshake record composition tests, independent Python reference `wire/ble_record_reference.py`, locked golden vectors `wire/ble_record_vectors.json`, and structural control checker `ci/check_ble_record_controls.py` enforcing BR01–BR23).
 - **Phase C8.4D1 Persistent Duplex BLE Link Substrate:**
   - **C8.4D1-A1 LinkInfo Role-Binding Amendment:** Implemented & Frozen (Connect-First / Elect-Before-Handshake, generated `LINK_INFO_UUID`, 13-byte `BleLinkInfoV1` canonical characteristic payload, provisional GATT connection state machine, simultaneous connect deterministic elimination proof, CBPeripheral/CBCentral identifier separation, and ADR-003 security binding).
-  - **C8.4D1-R2.2 Substrate Implementation & Closure:** Implemented & Frozen (Authoritative state progression, precomputed snapshot provider, generation ownership tracking, peer publication gating on duplex readiness, and 100% negative mutation selftests).
+  - **C8.4D1-R2 Substrate Implementation & Closure:** Implemented & Frozen (LinkInfo exchange drivers, Android GATT lifecycle repairs, and substrate closure).
 - **Phase C8.4D2 Trusted Handshake Driver:** OPEN / NOT STARTED (trusted handshake state machine driving C8.4C records over C8.4D1 substrate).
 - **Phase C8.4 Noise & Handshake Trust Gating:** OPEN (C8.4A/B/C/D subphases, full C8.4 parent integration open).
 - **Sealed-Sender Authenticated Authorship:** OPEN (underlying L4 application envelope open).

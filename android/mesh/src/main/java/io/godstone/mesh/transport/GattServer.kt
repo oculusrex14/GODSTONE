@@ -17,16 +17,20 @@ import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withTimeoutOrNull
 import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.atomic.AtomicLong
 
 /**
- * Peripheral-side GATT server supporting duplex bidirectional communication and LinkInfo exchange (ADR-002, Phase C8.4D1-A1/R2/R2.2).
+ * Peripheral-side GATT server supporting duplex bidirectional communication and LinkInfo exchange (ADR-002, Phase C8.4D1-A1/R2/R2.3).
  *
  * Exposes the canonical inbox characteristic and LINK_INFO characteristic.
  * Enforces:
+ * - Strict global capacity limit of 7 admitted remote devices (8th device rejected immediately).
+ * - Unadmitted centrals cannot allocate subscription or MTU state, and reads/writes fail closed.
  * - Real service registration generation matching and service object validation in onServiceAdded.
  * - Stale/cross-generation onServiceAdded callback rejection.
- * - Notification generation tracking and timeout invalidation preventing late callback poisoning.
- * - Local LinkInfo serving on READ from precomputed snapshot provider.
+ * - Notification timeout physical channel invalidation preventing ambiguous callback reuse.
+ * - Late/stale notification callbacks cannot complete later notifications.
+ * - Local LinkInfo serving on READ from precomputed snapshot provider (fail-closed if unavailable).
  * - Inbound Central LinkInfo verification on WRITE.
  * - Role-binding precondition before accepting inbox records.
  */
@@ -40,7 +44,8 @@ typealias BleMtuHandler = (String, Int) -> Unit
 typealias BleServiceStatusHandler = (Boolean) -> Unit
 
 private data class PendingNotification(
-    val generation: Long,
+    val notificationGeneration: Long,
+    val peerGeneration: Long,
     val deviceAddress: String,
     val deferred: CompletableDeferred<Boolean>
 )
@@ -68,6 +73,8 @@ class BleGattServer(
     private val connectedDevices = ConcurrentHashMap<String, BluetoothDevice>()
     private val subscribedDevices = ConcurrentHashMap<String, Boolean>()
     private val deviceMtu = ConcurrentHashMap<String, Int>()
+    private val peerGenerations = ConcurrentHashMap<String, Long>()
+    private val globalPeerGenCounter = AtomicLong(0L)
     private val notificationMutex = Mutex()
 
     private var pendingNotification: PendingNotification? = null
@@ -96,6 +103,10 @@ class BleGattServer(
     fun getNegotiatedAttValueLength(peerAddress: String): Int =
         deviceMtu[peerAddress] ?: BleConnection.DEFAULT_MAX_ATT_VALUE_LENGTH
 
+    fun getConnectedDeviceCount(): Int = connectedDevices.size
+
+    fun isDeviceAdmitted(peerAddress: String): Boolean = connectedDevices.containsKey(peerAddress)
+
     private val callback = object : BluetoothGattServerCallback() {
         override fun onServiceAdded(status: Int, service: BluetoothGattService) {
             val gen = serverGeneration
@@ -115,11 +126,25 @@ class BleGattServer(
         override fun onConnectionStateChange(device: BluetoothDevice, status: Int, newState: Int) {
             val address = device.address ?: return
             if (newState == BluetoothProfile.STATE_CONNECTED) {
-                connectedDevices[address] = device
+                if (connectedDevices.containsKey(address)) {
+                    // Idempotent reconnect / update for already-admitted device
+                    connectedDevices[address] = device
+                } else if (connectedDevices.size >= MAX_ADMITTED_CLIENTS) {
+                    // Enforce hard capacity bound: reject 8th device immediately
+                    try {
+                        server?.cancelConnection(device)
+                    } catch (_: Exception) {}
+                    return
+                } else {
+                    val pGen = globalPeerGenCounter.incrementAndGet()
+                    peerGenerations[address] = pGen
+                    connectedDevices[address] = device
+                }
             } else if (newState == BluetoothProfile.STATE_DISCONNECTED) {
                 connectedDevices.remove(address)
                 subscribedDevices.remove(address)
                 deviceMtu.remove(address)
+                peerGenerations.remove(address)
                 val pending = pendingNotification
                 if (pending != null && pending.deviceAddress == address) {
                     pendingNotification = null
@@ -137,6 +162,14 @@ class BleGattServer(
             characteristic: BluetoothGattCharacteristic
         ) {
             val s = server ?: return
+            val address = device.address ?: return
+
+            // Unadmitted devices cannot read LinkInfo or any characteristic
+            if (!connectedDevices.containsKey(address)) {
+                s.sendResponse(device, requestId, BluetoothGatt.GATT_FAILURE, offset, null)
+                return
+            }
+
             if (characteristic.uuid == linkInfoCharUuid) {
                 if (offset != 0) {
                     s.sendResponse(device, requestId, BluetoothGatt.GATT_INVALID_OFFSET, offset, null)
@@ -165,6 +198,14 @@ class BleGattServer(
         ) {
             val s = server
             val address = device.address ?: return
+
+            // Unadmitted devices cannot write to LinkInfo or Inbox
+            if (!connectedDevices.containsKey(address)) {
+                if (responseNeeded) {
+                    s?.sendResponse(device, requestId, BluetoothGatt.GATT_FAILURE, offset, null)
+                }
+                return
+            }
 
             if (characteristic.uuid == linkInfoCharUuid) {
                 if (offset != 0 || preparedWrite) {
@@ -219,6 +260,15 @@ class BleGattServer(
             value: ByteArray
         ) {
             val address = device.address ?: return
+
+            // Unadmitted devices cannot write to descriptors
+            if (!connectedDevices.containsKey(address)) {
+                if (responseNeeded) {
+                    server?.sendResponse(device, requestId, BluetoothGatt.GATT_FAILURE, offset, null)
+                }
+                return
+            }
+
             if (descriptor.uuid == GattClientConnection.CCCD_UUID) {
                 val isSub = value.contentEquals(BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE)
                 if (isSub) {
@@ -236,6 +286,9 @@ class BleGattServer(
 
         override fun onMtuChanged(device: BluetoothDevice, mtu: Int) {
             val address = device.address ?: return
+            if (!connectedDevices.containsKey(address)) {
+                return
+            }
             val maxAttLen = maxOf(20, mtu - 3)
             deviceMtu[address] = maxAttLen
             onMtuChanged(address, maxAttLen)
@@ -243,8 +296,16 @@ class BleGattServer(
 
         override fun onNotificationSent(device: BluetoothDevice, status: Int) {
             val address = device.address ?: return
-            val pending = pendingNotification
-            if (pending != null && pending.deviceAddress == address && pending.generation == notificationGeneration) {
+            val pending = pendingNotification ?: return
+            val currentPeerGen = peerGenerations[address]
+
+            // Verify device address, notification generation, peer generation, and active admission
+            if (pending.deviceAddress == address &&
+                pending.notificationGeneration == notificationGeneration &&
+                currentPeerGen != null &&
+                pending.peerGeneration == currentPeerGen &&
+                connectedDevices.containsKey(address)
+            ) {
                 pendingNotification = null
                 pending.deferred.complete(status == BluetoothGatt.GATT_SUCCESS)
             }
@@ -310,6 +371,9 @@ class BleGattServer(
      * Send an ATT value notification from this peripheral to a connected, subscribed central.
      * Serialized via [notificationMutex]. Refuses to send if client has not subscribed to CCCD.
      * Bounded by [notificationTimeoutMs].
+     *
+     * On timeout: invalidates the peer's physical channel and disconnects the device so that no further
+     * notification may be sent on the same ambiguous physical generation.
      */
     suspend fun sendNotification(deviceAddress: String, value: ByteArray): Boolean = notificationMutex.withLock {
         val s = server ?: return false
@@ -320,9 +384,10 @@ class BleGattServer(
             return false
         }
 
+        val pGen = peerGenerations[deviceAddress] ?: return false
         val gen = ++notificationGeneration
         val deferred = CompletableDeferred<Boolean>()
-        pendingNotification = PendingNotification(gen, deviceAddress, deferred)
+        pendingNotification = PendingNotification(gen, pGen, deviceAddress, deferred)
 
         ch.value = value
         val initiated = s.notifyCharacteristicChanged(device, ch, false)
@@ -340,12 +405,28 @@ class BleGattServer(
         }
 
         if (result == null) {
-            // Timeout reached: invalidate notification generation so late callback cannot satisfy next op
+            // Timeout reached: channel correlation is ambiguous.
+            // Invalidate notification generation AND tear down this physical connection relation.
             notificationGeneration++
             pendingNotification = null
+            invalidatePeerPhysicalConnection(deviceAddress, device)
             return false
         }
         return result
+    }
+
+    private fun invalidatePeerPhysicalConnection(deviceAddress: String, device: BluetoothDevice?) {
+        connectedDevices.remove(deviceAddress)
+        subscribedDevices.remove(deviceAddress)
+        deviceMtu.remove(deviceAddress)
+        peerGenerations.remove(deviceAddress)
+        try {
+            if (device != null) {
+                server?.cancelConnection(device)
+            }
+        } catch (_: Exception) {}
+        onSubscriptionChanged(deviceAddress, false)
+        onClientDisconnected(deviceAddress)
     }
 
     fun stop() {
@@ -366,9 +447,11 @@ class BleGattServer(
         connectedDevices.clear()
         subscribedDevices.clear()
         deviceMtu.clear()
+        peerGenerations.clear()
     }
 
     companion object {
+        const val MAX_ADMITTED_CLIENTS = 7
         const val NOTIFICATION_TIMEOUT_MS = 5000L
     }
 }

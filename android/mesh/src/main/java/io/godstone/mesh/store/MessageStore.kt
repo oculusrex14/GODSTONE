@@ -147,6 +147,12 @@ interface MessageStore {
 
     /** Stream held msg_ids, stopping as soon as [visit] returns false. */
     suspend fun forEachHeldMsgId(visit: (ByteArray) -> Boolean)
+
+    /**
+     * Register a callback invoked whenever the held message set changes
+     * (e.g. on accepted insert/persist, direct enqueue, deletion, eviction, or clear).
+     */
+    fun registerHeldSetObserver(observer: () -> Unit) {}
 }
 
 /**
@@ -605,6 +611,19 @@ class SqliteMessageStore internal constructor(
      */
     private val faultInjector: ((String) -> Unit)? = null,
 ) : MessageStore {
+    private val heldSetObservers = java.util.concurrent.CopyOnWriteArrayList<() -> Unit>()
+
+    override fun registerHeldSetObserver(observer: () -> Unit) {
+        heldSetObservers.add(observer)
+    }
+
+    internal fun notifyHeldSetChanged() {
+        for (observer in heldSetObservers) {
+            try {
+                observer.invoke()
+            } catch (_: Throwable) {}
+        }
+    }
 
     /** Production constructor: open the SQLCipher engine with a Keystore-held key. */
     constructor(ctx: Context, maxBytes: Long) : this(SqlcipherStoreDb(ctx.applicationContext), maxBytes, null)
@@ -646,7 +665,7 @@ class SqliteMessageStore internal constructor(
         frame: FrameV2, receivedFrom: ByteArray, receivedAt: Long,
         fault: ((String) -> Unit)?,
     ): PersistResult {
-        return try {
+        val result = try {
             engine.inTransaction { db ->
                 val rowId = db.insert(frame, receivedFrom, receivedAt)
                 val isNew = rowId != -1L   // -1 == CONFLICT_IGNORE duplicate
@@ -667,6 +686,10 @@ class SqliteMessageStore internal constructor(
         } catch (e: Exception) {
             PersistResult.FAILED_STORAGE
         }
+        if (result == PersistResult.HELD_NEW) {
+            notifyHeldSetChanged()
+        }
+        return result
     }
 
     override suspend fun enqueueDirectOutbound(
@@ -712,7 +735,7 @@ class SqliteMessageStore internal constructor(
         if ((frame.flags and FrameV2.SEALED) == 0) return OutboundEnqueueResult.InvalidArgument
         if ((frame.flags and FrameV2.HAS_POW) != 0) return OutboundEnqueueResult.InvalidArgument
 
-        return try {
+        val result = try {
             engine.inTransaction { db ->
                 val existingDelivery = db.readDelivery(frame.msgId)
                 val heldRow = db.readHeld(frame.msgId)
@@ -790,6 +813,19 @@ class SqliteMessageStore internal constructor(
         } catch (e: Exception) {
             OutboundEnqueueResult.StorageFailure
         }
+        if (result is OutboundEnqueueResult.Created) {
+            notifyHeldSetChanged()
+        }
+        return result
+    }
+
+    /** Remove held frame for [msgId] and notify observers on change. */
+    fun removeHeld(msgId: ByteArray): Boolean {
+        val deleted = engine.deleteHeld(msgId) > 0
+        if (deleted) {
+            notifyHeldSetChanged()
+        }
+        return deleted
     }
 
     /** Current stored byte total (payloads + per-row overhead). */
@@ -1120,6 +1156,20 @@ internal class SqlcipherStoreDb(ctx: Context) : StoreDb {
 internal class InMemoryMessageStore(
     private val maxBytes: Long = Long.MAX_VALUE,
 ) : MessageStore {
+    private val heldSetObservers = java.util.concurrent.CopyOnWriteArrayList<() -> Unit>()
+
+    override fun registerHeldSetObserver(observer: () -> Unit) {
+        heldSetObservers.add(observer)
+    }
+
+    private fun notifyHeldSetChanged() {
+        for (observer in heldSetObservers) {
+            try {
+                observer.invoke()
+            } catch (_: Throwable) {}
+        }
+    }
+
     // ByteArray is identity-equal by default, so wrap it for content-based map keys.
     private class BytesKey(input: ByteArray) {
         private val bytes = input.copyOf()
@@ -1151,11 +1201,15 @@ internal class InMemoryMessageStore(
         val isNew = !held.containsKey(key)
         if (isNew) held[key] = Held(frame, receivedFrom.copyOf(), System.currentTimeMillis())
         if (held.values.sumOf { bytesOf(it.frame) } > maxBytes) evictUntilUnderCap()
-        return when {
+        val result = when {
             held.containsKey(key) && isNew -> PersistResult.HELD_NEW
             held.containsKey(key) -> PersistResult.HELD_DUPLICATE
             else -> PersistResult.REJECTED_CAPACITY   // the just-inserted frame was evicted
         }
+        if (result == PersistResult.HELD_NEW) {
+            notifyHeldSetChanged()
+        }
+        return result
     }
 
     override suspend fun enqueueDirectOutbound(
@@ -1236,7 +1290,23 @@ internal class InMemoryMessageStore(
             AckMode.SINGLE_RECIPIENT.code,
             expectedRecipient.copyOf()
         )
-        return OutboundEnqueueResult.Created(persisted.frame)
+        val result = OutboundEnqueueResult.Created(persisted.frame)
+        notifyHeldSetChanged()
+        return result
+    }
+
+    fun removeHeld(msgId: ByteArray): Boolean {
+        val removed = held.remove(BytesKey(msgId)) != null
+        if (removed) {
+            notifyHeldSetChanged()
+        }
+        return removed
+    }
+
+    fun clear() {
+        held.clear()
+        deliveryRows.clear()
+        notifyHeldSetChanged()
     }
 
     fun readDeliveryRow(msgId: ByteArray): DeliveryRow? = deliveryRows[BytesKey(msgId)]

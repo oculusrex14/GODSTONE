@@ -1,14 +1,15 @@
 import Foundation
 import GodstoneCore
 
-/// Authoritative provider and precomputed cache of local LinkInfo V1 snapshots on iOS (ADR-002, Phase C8.4D1-R2.2).
+/// Authoritative provider and precomputed cache of local LinkInfo V1 snapshots on iOS (ADR-002, Phase C8.4D1-R2.3).
 ///
 /// Enforces:
-/// - Real identity nodeHint derivation (no synthetic dummy values).
-/// - Real MessageStore held message ID enumeration and Bloom digest calculation.
+/// - Real identity nodeHint derivation (no synthetic dummy values). Fails closed (nil) if identity is absent.
+/// - Real MessageStore held message ID enumeration and Bloom digest calculation. Fails closed (nil) if store is absent.
+/// - Canonical empty digest and queue depth 0 when store is real and empty.
 /// - Exact held count queue depth, saturating at 255.
 /// - Immutable precomputed snapshot caching: ATT callbacks NEVER perform durable store traversal.
-/// - Cache refresh on defined durable-state mutation boundaries (identity load, store insert/purge, transport start).
+/// - Automatic cache refresh on MessageStore mutation events without requiring manual caller invocation.
 public final class LinkInfoSnapshotAuthority: @unchecked Sendable {
 
     private let identityProvider: () -> MeshIdentity?
@@ -20,6 +21,7 @@ public final class LinkInfoSnapshotAuthority: @unchecked Sendable {
     private let lock = NSLock()
     private var cachedSnapshot: BleLinkInfoV1?
     private var cachedData: Data?
+    private weak var registeredStore: MessageStore?
 
     public init(
         identityProvider: @escaping () -> MeshIdentity? = { nil },
@@ -33,23 +35,40 @@ public final class LinkInfoSnapshotAuthority: @unchecked Sendable {
         self.isSosPresentProvider = isSosPresentProvider
         self.isClockUntrustedProvider = isClockUntrustedProvider
         self.isPowerConstrainedProvider = isPowerConstrainedProvider
+
+        attachStoreObserver()
         _ = refresh()
     }
 
-    @discardableResult
-    public func refresh() -> BleLinkInfoV1 {
-        let identity = identityProvider()
-        let nodeHint = identity?.nodeHint ?? Data(repeating: 0, count: BleLinkInfoConstants.nodeHintBytes)
-        let store = storeProvider()
+    private func attachStoreObserver() {
+        if let store = storeProvider(), store !== registeredStore {
+            registeredStore = store
+            store.registerHeldSetObserver { [weak self] in
+                _ = self?.refresh()
+            }
+        }
+    }
 
+    @discardableResult
+    public func refresh() -> BleLinkInfoV1? {
+        attachStoreObserver()
+        guard let identity = identityProvider(),
+              identity.nodeHint.count == BleLinkInfoConstants.nodeHintBytes,
+              let store = storeProvider() else {
+            lock.lock()
+            cachedSnapshot = nil
+            cachedData = nil
+            lock.unlock()
+            return nil
+        }
+
+        let nodeHint = identity.nodeHint
         var count = 0
         var bloom = BloomDigest()
-        if let st = store {
-            st.forEachHeldMsgId { msgId in
-                count += 1
-                bloom.add(msgId)
-                return true
-            }
+        store.forEachHeldMsgId { msgId in
+            count += 1
+            bloom.add(msgId)
+            return true
         }
 
         let queueDepth = UInt8(min(count, 255))
@@ -89,26 +108,15 @@ public final class LinkInfoSnapshotAuthority: @unchecked Sendable {
         return info
     }
 
-    public func currentSnapshot() -> BleLinkInfoV1 {
-        lock.lock()
-        if let s = cachedSnapshot {
-            lock.unlock()
-            return s
-        }
-        lock.unlock()
-        return refresh()
-    }
-
-    public func currentData() -> Data {
-        lock.lock()
-        if let d = cachedData {
-            lock.unlock()
-            return d
-        }
-        lock.unlock()
-        _ = refresh()
+    public func currentSnapshot() -> BleLinkInfoV1? {
         lock.lock()
         defer { lock.unlock() }
-        return cachedData ?? Data()
+        return cachedSnapshot
+    }
+
+    public func currentData() -> Data? {
+        lock.lock()
+        defer { lock.unlock() }
+        return cachedData
     }
 }

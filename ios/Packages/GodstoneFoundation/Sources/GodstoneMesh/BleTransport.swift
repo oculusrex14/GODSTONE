@@ -570,7 +570,7 @@ extension BleTransport: CBCentralManagerDelegate, CBPeripheralDelegate {
                 let isReady = conn.isHandshakeTransportReady
                 transportLock.unlock()
                 if isReady {
-                    delegate?.transportReady(peerId: p.identifier)
+                    delegate?.transportPhysicalDuplexReady(peerId: p.identifier)
                     delegate?.transportDidConnect(peerId: p.identifier)
                 }
             } else {
@@ -712,7 +712,7 @@ extension BleTransport: CBPeripheralManagerDelegate {
                     transportLock.unlock()
                     pm.respond(to: r, withResult: .success)
                     if isReady {
-                        delegate?.transportReady(peerId: centralId)
+                        delegate?.transportPhysicalDuplexReady(peerId: centralId)
                         delegate?.transportDidConnect(peerId: centralId)
                     }
                 default:
@@ -776,7 +776,7 @@ extension BleTransport: CBPeripheralManagerDelegate {
         conn.markConnected(negotiatedAttValueLength: maxUpdate)
         let isReady = conn.isHandshakeTransportReady
         if isReady {
-            delegate?.transportReady(peerId: central.identifier)
+            delegate?.transportPhysicalDuplexReady(peerId: central.identifier)
             delegate?.transportDidConnect(peerId: central.identifier)
         }
     }
@@ -826,7 +826,13 @@ extension BleTransport: CBPeripheralManagerDelegate {
 
 public protocol TransportDelegate: AnyObject {
     func transportDidConnect(peerId: UUID)
+    func transportPhysicalDuplexReady(peerId: UUID)
     func transportReady(peerId: UUID)
     func transportDidDisconnect(peerId: UUID)
     func transportDidReceive(data: Data, peerId: UUID)
+}
+
+public extension TransportDelegate {
+    func transportPhysicalDuplexReady(peerId: UUID) {}
+    func transportReady(peerId: UUID) {}
 }

@@ -114,6 +114,14 @@ public protocol MessageStore: AnyObject {
     func forEachHeldMsgId(_ visit: (Data) -> Bool)
     /// Total stored bytes (sum of payloads + per-row bookkeeping allowance).
     var heldBytes: Int64 { get }
+
+    /// Register a callback invoked whenever the held message set changes
+    /// (e.g. on accepted insert/persist, direct enqueue, deletion, eviction, or clear).
+    func registerHeldSetObserver(_ observer: @escaping @Sendable () -> Void)
+}
+
+public extension MessageStore {
+    func registerHeldSetObserver(_ observer: @escaping @Sendable () -> Void) {}
 }
 
 /// Schema + SQL shared in spirit with the Android `StoreSchema`. Keeping the
@@ -415,10 +423,26 @@ public final class SqliteMessageStore: MessageStore {
     private var handle: OpaquePointer?
     private let lock = NSLock()
     private let maxBytes: Int64
+    private var heldSetObservers: [@Sendable () -> Void] = []
     /// The data-protection class the DB file is created with. Pinned to
     /// `.complete` (production default) so a regression to a weaker class is a
     /// test failure, not a silent weakening of at-rest encryption.
     public let fileProtection: FileProtectionType
+
+    public func registerHeldSetObserver(_ observer: @escaping @Sendable () -> Void) {
+        lock.lock()
+        heldSetObservers.append(observer)
+        lock.unlock()
+    }
+
+    internal func notifyHeldSetChanged() {
+        lock.lock()
+        let observers = heldSetObservers
+        lock.unlock()
+        for observer in observers {
+            observer()
+        }
+    }
 
     /// Open (or create) the store at `url` with a `maxBytes` hard cap.
     public init(url: URL, maxBytes: Int64,
@@ -579,7 +603,7 @@ public final class SqliteMessageStore: MessageStore {
         fault: ((String, OpaquePointer?) throws -> Void)?
     ) -> PersistResult {
         do {
-            return try withTransaction { db in
+            let result = try withTransaction { db in
                 // A duplicate (INSERT OR IGNORE no-op) is NOT an error: returns
                 // isNew=false without throwing. A real SQL/IO failure throws.
                 let isNew = try insertRowNoLockStrict(db, frame, receivedFrom: receivedFrom, receivedAt: receivedAt)
@@ -594,12 +618,18 @@ public final class SqliteMessageStore: MessageStore {
                 }
                 try fault?("before_contains", db)
                 let present = try containsNoLockStrict(db, frame.msgId)
+                let result: PersistResult
                 switch (present, isNew) {
-                case (true, true):   return .heldNew
-                case (true, false):  return .heldDuplicate
-                default:             return .rejectedCapacity
+                case (true, true):   result = .heldNew
+                case (true, false):  result = .heldDuplicate
+                default:             result = .rejectedCapacity
                 }
+                return result
             }
+            if result == .heldNew {
+                notifyHeldSetChanged()
+            }
+            return result
         } catch {
             return .failedStorage
         }
@@ -660,7 +690,7 @@ public final class SqliteMessageStore: MessageStore {
         }
 
         do {
-            return try withTransaction { db in
+            let result = try withTransaction { (db: OpaquePointer) -> OutboundEnqueueResult in
                 let existingDelivery = try readDeliveryNoLockStrict(db, frame.msgId)
                 let heldRow = try readHeldNoLockStrict(db, frame.msgId)
 
@@ -694,7 +724,7 @@ public final class SqliteMessageStore: MessageStore {
                 }
 
                 let isNew = try insertRowNoLockStrict(db, frame, receivedFrom: localOriginNodeId, receivedAt: receivedAt)
-                guard isNew else { return .inconsistentState }
+                guard isNew else { throw StoreError.stepFailed }
 
                 try fault?("after_held_insert", db)
 
@@ -726,13 +756,41 @@ public final class SqliteMessageStore: MessageStore {
 
                 try fault?("after_delivery_insert", db)
 
-                return .created(persistedFrame)
+                return OutboundEnqueueResult.created(persistedFrame)
             }
+            if case .created = result {
+                notifyHeldSetChanged()
+            }
+            return result
         } catch DirectEnqueueError.capacityEvicted {
             return .rejectedCapacity
         } catch {
             return .storageFailure
         }
+    }
+
+    /// Remove held frame for `msgId` and notify observers if deleted.
+    @discardableResult
+    public func removeHeld(_ msgId: Data) -> Bool {
+        let deleted = withDb { db -> Bool in
+            let sql = "DELETE FROM \(StoreSchema.table) WHERE \(StoreSchema.colMsgId) = ?"
+            var stmt: OpaquePointer?
+            guard sqlite3_prepare_v2(db, sql, -1, &stmt, nil) == SQLITE_OK else {
+                sqlite3_finalize(stmt)
+                return false
+            }
+            defer { sqlite3_finalize(stmt) }
+            self.bindBlob(stmt, 1, msgId)
+            let step = sqlite3_step(stmt)
+            if step == SQLITE_DONE {
+                return sqlite3_changes(db) > 0
+            }
+            return false
+        } ?? false
+        if deleted {
+            notifyHeldSetChanged()
+        }
+        return deleted
     }
 
     /// Evict the smallest oldest (non-SOS-first) prefix that brings the store
@@ -1408,19 +1466,45 @@ internal final class InMemoryMessageStore: MessageStore {
     private let maxBytes: Int64
     private var rows: [Data: Held] = [:]
     private var deliveryRows: [Data: DeliveryRow] = [:]
+    private var heldSetObservers: [@Sendable () -> Void] = []
 
     internal init(maxBytes: Int64 = .max) { self.maxBytes = maxBytes }
 
+    func registerHeldSetObserver(_ observer: @escaping @Sendable () -> Void) {
+        lock.lock()
+        heldSetObservers.append(observer)
+        lock.unlock()
+    }
+
+    private func notifyHeldSetChanged() {
+        lock.lock()
+        let observers = heldSetObservers
+        lock.unlock()
+        for observer in observers {
+            observer()
+        }
+    }
+
     func persist(_ frame: FrameV2, receivedFrom: Data) -> PersistResult {
-        lock.lock(); defer { lock.unlock() }
+        lock.lock()
         let isNew = rows[frame.msgId] == nil
         if isNew {
             rows[frame.msgId] = Held(frame: frame, receivedFrom: receivedFrom, receivedAt: Int64(Date().timeIntervalSince1970 * 1000))
         }
         if totalBytesNoLock > maxBytes { evictUntilUnderCapNoLock() }
-        if rows[frame.msgId] != nil && isNew { return .heldNew }
-        if rows[frame.msgId] != nil { return .heldDuplicate }
-        return .rejectedCapacity   // the just-inserted frame was evicted by the cap
+        let result: PersistResult
+        if rows[frame.msgId] != nil && isNew {
+            result = .heldNew
+        } else if rows[frame.msgId] != nil {
+            result = .heldDuplicate
+        } else {
+            result = .rejectedCapacity   // the just-inserted frame was evicted by the cap
+        }
+        lock.unlock()
+        if result == .heldNew {
+            notifyHeldSetChanged()
+        }
+        return result
     }
 
     func enqueueDirectOutbound(_ frame: FrameV2, expectedRecipient: Data, localOriginNodeId: Data) -> OutboundEnqueueResult {
@@ -1439,64 +1523,90 @@ internal final class InMemoryMessageStore: MessageStore {
         else {
             return .invalidArgument
         }
+        let result: OutboundEnqueueResult = {
+            lock.lock()
+            defer { lock.unlock() }
 
-        lock.lock(); defer { lock.unlock() }
+            let heldEntry = rows[frame.msgId]
+            let existingDelivery = deliveryRows[frame.msgId]
 
-        let heldEntry = rows[frame.msgId]
-        let existingDelivery = deliveryRows[frame.msgId]
+            if let existing = existingDelivery {
+                guard let state = DeliveryState.fromPersistedCode(existing.state),
+                      let ackMode = AckMode.fromCode(existing.ackMode),
+                      existing.expectedRecipient?.count == 16
+                else {
+                    return .inconsistentState
+                }
+                if state.isTerminal {
+                    return .rejectedTerminalState
+                }
+                guard let held = heldEntry else {
+                    return .inconsistentState
+                }
+                guard held.receivedFrom == localOriginNodeId else {
+                    return .inconsistentState
+                }
+                if ackMode != .singleRecipient || expectedRecipient != existing.expectedRecipient {
+                    return .conflictRecipient
+                }
+                if held.frame != frame {
+                    return .canonicalFrameMismatch
+                }
+                return .alreadyQueuedSameBinding(held.frame)
+            }
 
-        if let existing = existingDelivery {
-            guard let state = DeliveryState.fromPersistedCode(existing.state),
-                  let ackMode = AckMode.fromCode(existing.ackMode),
-                  existing.expectedRecipient?.count == 16
-            else {
+            if heldEntry != nil {
                 return .inconsistentState
             }
-            if state.isTerminal {
-                return .rejectedTerminalState
+
+            let backupRows = rows
+            let now = Int64(Date().timeIntervalSince1970 * 1000)
+            rows[frame.msgId] = Held(frame: frame, receivedFrom: localOriginNodeId, receivedAt: now)
+            if totalBytesNoLock > maxBytes {
+                evictUntilUnderCapNoLock()
             }
-            guard let held = heldEntry else {
+
+            guard let persisted = rows[frame.msgId] else {
+                rows = backupRows
+                return .rejectedCapacity
+            }
+
+            guard persisted.frame == frame && persisted.receivedFrom == localOriginNodeId else {
+                rows = backupRows
                 return .inconsistentState
             }
-            guard held.receivedFrom == localOriginNodeId else {
-                return .inconsistentState
-            }
-            if ackMode != .singleRecipient || expectedRecipient != existing.expectedRecipient {
-                return .conflictRecipient
-            }
-            if held.frame != frame {
-                return .canonicalFrameMismatch
-            }
-            return .alreadyQueuedSameBinding(held.frame)
-        }
 
-        if heldEntry != nil {
-            return .inconsistentState
-        }
+            deliveryRows[frame.msgId] = DeliveryRow(
+                state: DeliveryState.queuedDurably.code,
+                ackMode: AckMode.singleRecipient.rawValue,
+                expectedRecipient: expectedRecipient
+            )
+            return OutboundEnqueueResult.created(persisted.frame)
+        }()
 
-        let backupRows = rows
-        let now = Int64(Date().timeIntervalSince1970 * 1000)
-        rows[frame.msgId] = Held(frame: frame, receivedFrom: localOriginNodeId, receivedAt: now)
-        if totalBytesNoLock > maxBytes {
-            evictUntilUnderCapNoLock()
+        if case .created = result {
+            notifyHeldSetChanged()
         }
+        return result
+    }
 
-        guard let persisted = rows[frame.msgId] else {
-            rows = backupRows
-            return .rejectedCapacity
+    @discardableResult
+    func removeHeld(_ msgId: Data) -> Bool {
+        lock.lock()
+        let removed = rows.removeValue(forKey: msgId) != nil
+        lock.unlock()
+        if removed {
+            notifyHeldSetChanged()
         }
+        return removed
+    }
 
-        guard persisted.frame == frame && persisted.receivedFrom == localOriginNodeId else {
-            rows = backupRows
-            return .inconsistentState
-        }
-
-        deliveryRows[frame.msgId] = DeliveryRow(
-            state: DeliveryState.queuedDurably.code,
-            ackMode: AckMode.singleRecipient.rawValue,
-            expectedRecipient: expectedRecipient
-        )
-        return .created(persisted.frame)
+    func clear() {
+        lock.lock()
+        rows.removeAll()
+        deliveryRows.removeAll()
+        lock.unlock()
+        notifyHeldSetChanged()
     }
 
     internal func readDeliveryRow(_ msgId: Data) -> DeliveryRow? {
