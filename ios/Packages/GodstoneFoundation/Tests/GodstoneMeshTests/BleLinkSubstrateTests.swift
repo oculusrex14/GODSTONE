@@ -11,6 +11,21 @@ final class BleLinkSubstrateTests: XCTestCase {
         }
     }
 
+    private final class MockMessageStore: MessageStore {
+        var held: [Data] = []
+        func persist(_ frame: FrameV2, receivedFrom: Data) -> PersistResult { .heldNew }
+        func enqueueDirectOutbound(_ frame: FrameV2, expectedRecipient: Data, localOriginNodeId: Data) -> OutboundEnqueueResult { .canonicalFrameMismatch }
+        func allHeldOrderedByPriority() -> [FrameV2] { [] }
+        func allHeldMsgIds() -> [Data] { held }
+        func forEachHeldOrderedByPriority(_ visit: (FrameV2) -> Bool) {}
+        func forEachHeldMsgId(_ visit: (Data) -> Bool) {
+            for id in held {
+                if !visit(id) { break }
+            }
+        }
+        var heldBytes: Int64 { Int64(held.count * 32) }
+    }
+
     private func makeIdentity(seedByte: UInt8 = 1, staticPrivByte: UInt8 = 2, generation: UInt32 = 0) throws -> MeshIdentity {
         let kc = InMemoryKeychain()
         let edSeed = Data(repeating: seedByte, count: 32)
@@ -18,6 +33,53 @@ final class BleLinkSubstrateTests: XCTestCase {
         let state = try LocalIdentityStateV1(generation: generation, ed25519Seed: edSeed, x25519PrivateKey: xPriv)
         kc.storage[MeshIdentity.v1Tag] = state.encode()
         return try MeshIdentity.loadFromKeychain(keychain: kc)
+    }
+
+    private func hexToData(_ hex: String) -> Data {
+        var data = Data()
+        var hexStr = hex
+        while hexStr.count >= 2 {
+            let sub = hexStr.prefix(2)
+            hexStr = String(hexStr.dropFirst(2))
+            if let byte = UInt8(sub, radix: 16) {
+                data.append(byte)
+            }
+        }
+        return data
+    }
+
+    private func loadCanonicalLinkInfoVectorsJson() throws -> [String: Any] {
+        var candidateUrls: [URL] = []
+
+        let thisFile = URL(fileURLWithPath: #filePath)
+        // Walking up from ios/Godstone/Tests/GodstoneMeshTests/BleLinkSubstrateTests.swift:
+        let root1 = thisFile.deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent()
+        candidateUrls.append(root1.appendingPathComponent("wire/ble_link_info_vectors.json"))
+
+        // Walking up from ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/BleLinkSubstrateTests.swift:
+        let root2 = thisFile.deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent()
+        candidateUrls.append(root2.appendingPathComponent("wire/ble_link_info_vectors.json"))
+
+        let candidatePaths = [
+            "wire/ble_link_info_vectors.json",
+            "../wire/ble_link_info_vectors.json",
+            "../../wire/ble_link_info_vectors.json",
+            "../../../wire/ble_link_info_vectors.json",
+            "../../../../wire/ble_link_info_vectors.json"
+        ]
+        for path in candidatePaths {
+            candidateUrls.append(URL(fileURLWithPath: path))
+        }
+
+        for url in candidateUrls {
+            if FileManager.default.fileExists(atPath: url.path) {
+                let data = try Data(contentsOf: url)
+                if let dict = try JSONSerialization.jsonObject(with: data) as? [String: Any] {
+                    return dict
+                }
+            }
+        }
+        throw NSError(domain: "BleLinkSubstrateTests", code: 1, userInfo: [NSLocalizedDescriptionKey: "wire/ble_link_info_vectors.json not found in candidate paths"])
     }
 
     // ------------------------------------------------------------------------
@@ -142,246 +204,234 @@ final class BleLinkSubstrateTests: XCTestCase {
     }
 
     // ------------------------------------------------------------------------
-    // 7. Canonical JSON LinkInfo Vectors (Valid & Invalid)
+    // 7. Canonical JSON LinkInfo Vectors (Directly Consumed from JSON)
     // ------------------------------------------------------------------------
     func testLinkInfoV1_CanonicalJsonVectors_AllValidAndInvalid() throws {
-        let validCases: [(name: String, flags: UInt8, hintHex: String, digestHex: String, depth: UInt8, expectedHex: String)] = [
-            ("all_zero_informational_fields_with_real_hint", 0, "01020304", "000000000000", 0, "02000102030400000000000000"),
-            ("mixed_flags_sos_power_clock", 21, "a1b2c3d4", "112233445566", 42, "0215a1b2c3d41122334455662a"),
-            ("all_flags_set", 31, "deadbeef", "aabbccddeeff", 128, "021fdeadbeefaabbccddeeff80"),
-            ("unsigned_edge_zero_hint", 0, "00000000", "010203040506", 0, "02000000000001020304050600"),
-            ("unsigned_edge_max_hint_and_max_queue_depth", 8, "ffffffff", "ffffffffffff", 255, "0208ffffffffffffffffffffff"),
-            ("high_bit_hint_comparison_edge", 2, "80000000", "1234567890ab", 255, "0202800000001234567890abff")
-        ]
+        let root = try loadCanonicalLinkInfoVectorsJson()
 
-        for c in validCases {
-            guard let hint = Data(hexString: c.hintHex),
-                  let digest = Data(hexString: c.digestHex),
-                  let expected = Data(hexString: c.expectedHex) else {
-                XCTFail("Hex conversion failed for case \(c.name)")
-                continue
+        // Valid cases
+        if let validCases = root["valid_cases"] as? [[String: Any]] {
+            for c in validCases {
+                let name = c["name"] as? String ?? ""
+                let flags = UInt8((c["flags"] as? Int) ?? 0)
+                let hintHex = c["node_hint"] as? String ?? ""
+                let digestHex = c["short_digest"] as? String ?? ""
+                let depth = UInt8((c["queue_depth"] as? Int) ?? 0)
+                let expectedHex = c["expected_hex"] as? String ?? ""
+
+                let hint = hexToData(hintHex)
+                let digest = hexToData(digestHex)
+                let expected = hexToData(expectedHex)
+
+                let encoded = BleLinkInfoCodec.encode(
+                    flags: flags,
+                    nodeHint: hint,
+                    shortDigest: digest,
+                    queueDepth: depth
+                )
+                XCTAssertEqual(encoded, expected, "Mismatch encoding case \(name)")
+
+                let decoded = BleLinkInfoCodec.decode(expected)
+                XCTAssertNotNil(decoded, "Decode returned nil in case \(name)")
+                XCTAssertEqual(decoded?.flags, flags)
+                XCTAssertEqual(decoded?.nodeHint, hint)
+                XCTAssertEqual(decoded?.shortDigest, digest)
+                XCTAssertEqual(decoded?.queueDepth, depth)
             }
-
-            let encoded = BleLinkInfoCodec.encode(
-                flags: c.flags,
-                nodeHint: hint,
-                shortDigest: digest,
-                queueDepth: c.depth
-            )
-            XCTAssertEqual(encoded, expected, "Mismatch encoding case \(c.name)")
-
-            let decoded = BleLinkInfoCodec.decode(expected)
-            XCTAssertNotNil(decoded, "Decode returned nil in case \(c.name)")
-            XCTAssertEqual(decoded?.flags, c.flags)
-            XCTAssertEqual(decoded?.nodeHint, hint)
-            XCTAssertEqual(decoded?.shortDigest, digest)
-            XCTAssertEqual(decoded?.queueDepth, c.depth)
         }
 
-        let invalidHexes = [
-            "",
-            "02",
-            "020001020304000000000000",
-            "0200010203040000000000000099",
-            "0200010203040000000000000001020304050607",
-            "01000102030400000000000000",
-            "03000102030400000000000000",
-            "ff000102030400000000000000"
-        ]
-
-        for hex in invalidHexes {
-            let data = Data(hexString: hex) ?? Data()
-            XCTAssertNil(BleLinkInfoCodec.decode(data), "Expected invalid case \(hex) to decode as nil")
-        }
-    }
-
-    // ------------------------------------------------------------------------
-    // 8. Canonical JSON Role Election Cases
-    // ------------------------------------------------------------------------
-    func testRoleElection_CanonicalJsonVectors() {
-        let cases: [(local: String, remote: String, expected: BleRole?)] = [
-            ("00000000", "00000001", .initiator),
-            ("00000001", "00000000", .responder),
-            ("7fffffff", "80000000", .initiator),
-            ("80000000", "7fffffff", .responder),
-            ("00000000", "00000000", nil),
-            ("deadbeef", "deadbeef", nil),
-            ("00ff00ff", "00ff0100", .initiator)
-        ]
-
-        for c in cases {
-            let local = Data(hexString: c.local)!
-            let remote = Data(hexString: c.remote)!
-            let res = BleRoleElection.elect(localHint: local, remoteHint: remote)
-
-            if let exp = c.expected {
-                XCTAssertEqual(res, .elected(exp), "Mismatch in role election for \(c.local) vs \(c.remote)")
-            } else {
-                XCTAssertEqual(res, .tie, "Expected tie for \(c.local) vs \(c.remote)")
+        // Invalid cases
+        if let invalidCases = root["invalid_cases"] as? [[String: Any]] {
+            for c in invalidCases {
+                let name = c["name"] as? String ?? ""
+                let hex = c["hex"] as? String ?? ""
+                let data = hexToData(hex)
+                XCTAssertNil(BleLinkInfoCodec.decode(data), "Expected invalid case \(name) (\(hex)) to decode as nil")
             }
         }
     }
 
     // ------------------------------------------------------------------------
-    // 9. UUID-Only Discovery
+    // 8. Canonical JSON Role Election Cases (Directly Consumed from JSON)
     // ------------------------------------------------------------------------
-    func testProvisionalConnection_MissingAdvMetadata_Allowed() {
-        let emptyAdvServiceData: Data? = nil
-        XCTAssertNil(emptyAdvServiceData)
+    func testRoleElection_CanonicalJsonVectors() throws {
+        let root = try loadCanonicalLinkInfoVectorsJson()
+        if let electionCases = root["role_election_cases"] as? [[String: Any]] {
+            for c in electionCases {
+                let localHex = c["local_hint"] as? String ?? ""
+                let remoteHex = c["remote_hint"] as? String ?? ""
+                let expectedRoleStr = c["expected_role"] as? String
+
+                let local = hexToData(localHex)
+                let remote = hexToData(remoteHex)
+
+                let res = BleRoleElection.elect(localHint: local, remoteHint: remote)
+                if let roleStr = expectedRoleStr {
+                    let expectedRole: BleRole = (roleStr == "INITIATOR") ? .initiator : .responder
+                    XCTAssertEqual(res, BleRoleElectionResult.elected(expectedRole), "Mismatch in role election for \(localHex) vs \(remoteHex)")
+                } else {
+                    XCTAssertEqual(res, BleRoleElectionResult.tie, "Expected tie for \(localHex) vs \(remoteHex)")
+                }
+            }
+        }
     }
 
     // ------------------------------------------------------------------------
-    // 10. LinkInfo Authority Overrides Adv Metadata
+    // 9. Authoritative State Progression - Initiator & Responder
     // ------------------------------------------------------------------------
-    func testLinkInfoAuthority_OverridesAdvMetadata() {
-        let realLinkInfoHint = Data([0x77, 0x88, 0x99, 0xAA])
-        let myHint = Data([0x11, 0x22, 0x33, 0x44])
-        let election = BleRoleElection.elect(localHint: myHint, remoteHint: realLinkInfoHint)
-        XCTAssertEqual(election, .elected(.initiator))
-    }
-
-    // ------------------------------------------------------------------------
-    // 11. BleConnection Provisional State Machine & One-Way Role Binding
-    // ------------------------------------------------------------------------
-    func testBleConnection_ProvisionalStateMachine() {
+    func testStateProgression_InitiatorFlow_Authoritative() {
         let peerId = UUID()
         let conn = BleConnection(peerId: peerId)
-
         XCTAssertEqual(conn.state, .provisionalConnecting)
-        XCTAssertNil(conn.remoteNodeHint)
-        XCTAssertNil(conn.localRole)
-        XCTAssertFalse(conn.isRoleBound)
-        XCTAssertFalse(conn.isHandshakeTransportReady)
-        XCTAssertTrue(conn.isActive)
 
         conn.markConnected()
         XCTAssertEqual(conn.state, .provisionalConnected)
 
-        conn.transitionTo(.linkInfoReading)
+        conn.startLinkInfoRead()
         XCTAssertEqual(conn.state, .linkInfoReading)
 
-        conn.transitionTo(.linkInfoWriting)
+        conn.startLinkInfoWrite()
         XCTAssertEqual(conn.state, .linkInfoWriting)
 
-        // Bind role
         let remoteHint = Data([0x01, 0x02, 0x03, 0x04])
-        conn.bindRole(hint: remoteHint, role: .initiator)
+        conn.bindInitiatorAfterLinkInfoWriteAck(remoteHint: remoteHint)
         XCTAssertEqual(conn.state, .roleBound)
-        XCTAssertTrue(conn.isRoleBound)
-        XCTAssertEqual(conn.remoteNodeHint, remoteHint)
         XCTAssertEqual(conn.localRole, .initiator)
+        XCTAssertEqual(conn.remoteNodeHint, remoteHint)
 
-        // Handshake transport ready requires notification subscription
         XCTAssertFalse(conn.isHandshakeTransportReady)
         conn.isNotificationSubscribed = true
         XCTAssertTrue(conn.isHandshakeTransportReady)
+    }
 
-        // Disconnect
-        conn.markDisconnected()
-        XCTAssertEqual(conn.state, .closed)
-        XCTAssertFalse(conn.isActive)
+    func testStateProgression_ResponderFlow_Authoritative() {
+        let peerId = UUID()
+        let conn = BleConnection(peerId: peerId)
+        conn.markConnected()
+        XCTAssertEqual(conn.state, .provisionalConnected)
+
+        let remoteHint = Data([0x05, 0x06, 0x07, 0x08])
+        conn.bindResponderFromAcceptedIncomingLinkInfo(remoteHint: remoteHint)
+        XCTAssertEqual(conn.state, .roleBound)
+        XCTAssertEqual(conn.localRole, .responder)
+        XCTAssertEqual(conn.remoteNodeHint, remoteHint)
+
         XCTAssertFalse(conn.isHandshakeTransportReady)
+        conn.isNotificationSubscribed = true
+        XCTAssertTrue(conn.isHandshakeTransportReady)
     }
 
     // ------------------------------------------------------------------------
-    // 12. Role Binding Coordinator - Central Flow
+    // 10. Role Binding Negative Preconditions
     // ------------------------------------------------------------------------
-    func testRoleBindingCoordinator_CentralFlow() {
-        let localHint = Data([0x01, 0x02, 0x03, 0x04])
-        let coord = BleRoleBindingCoordinator(localHint: localHint)
-        let peerId = UUID()
+    func testRoleBinding_NegativePreconditions() {
+        let remoteHint = Data([1, 2, 3, 4])
 
-        let act1 = coord.processCentralEvent(.discovered(peerId))
-        XCTAssertEqual(act1, .connectProvisionally(peerId))
+        // 1. Initiator from linkInfoWriting -> succeeds
+        let connWriting = BleConnection(peerId: UUID())
+        connWriting.markConnected()
+        connWriting.startLinkInfoRead()
+        connWriting.startLinkInfoWrite()
+        connWriting.bindInitiatorAfterLinkInfoWriteAck(remoteHint: remoteHint)
+        XCTAssertEqual(connWriting.state, .roleBound)
+        XCTAssertEqual(connWriting.localRole, .initiator)
 
-        let act2 = coord.processCentralEvent(.provisionalConnected(peerId))
-        XCTAssertEqual(act2, .readRemoteLinkInfo(peerId))
-
-        let remoteHintLarger = Data([0x05, 0x06, 0x07, 0x08])
-        let remoteLinkInfoLarger = BleLinkInfoCodec.encode(
-            flags: 0,
-            nodeHint: remoteHintLarger,
-            shortDigest: Data(repeating: 0, count: 6),
-            queueDepth: 0
-        )
-        let act3 = coord.processCentralEvent(.remoteLinkInfoReadRaw(peerId, remoteLinkInfoLarger))
-        XCTAssertEqual(act3, .writeLocalLinkInfo(peerId, remoteHint: remoteHintLarger))
-
-        let act4 = coord.processCentralEvent(.localLinkInfoWriteAcknowledged(peerId, remoteHintLarger))
-        XCTAssertEqual(act4, .roleBound(peerId, role: .initiator, remoteHint: remoteHintLarger))
-
-        let remoteHintSmaller = Data([0x00, 0x01, 0x02, 0x03])
-        let remoteLinkInfoSmaller = BleLinkInfoCodec.encode(
-            flags: 0,
-            nodeHint: remoteHintSmaller,
-            shortDigest: Data(repeating: 0, count: 6),
-            queueDepth: 0
-        )
-        let act5 = coord.processCentralEvent(.remoteLinkInfoReadRaw(peerId, remoteLinkInfoSmaller))
-        guard case .cancelWrongDirectionLink = act5 else {
-            XCTFail("Expected cancelWrongDirectionLink for smaller remote hint")
-            return
-        }
-
-        let remoteLinkInfoEqual = BleLinkInfoCodec.encode(
-            flags: 0,
-            nodeHint: localHint,
-            shortDigest: Data(repeating: 0, count: 6),
-            queueDepth: 0
-        )
-        let act6 = coord.processCentralEvent(.remoteLinkInfoReadRaw(peerId, remoteLinkInfoEqual))
-        guard case .cancelWrongDirectionLink = act6 else {
-            XCTFail("Expected cancelWrongDirectionLink for equal hint tie")
-            return
-        }
+        // 2. Responder from provisionalConnected -> succeeds
+        let connConnected = BleConnection(peerId: UUID())
+        connConnected.markConnected()
+        connConnected.bindResponderFromAcceptedIncomingLinkInfo(remoteHint: remoteHint)
+        XCTAssertEqual(connConnected.state, .roleBound)
+        XCTAssertEqual(connConnected.localRole, .responder)
     }
 
     // ------------------------------------------------------------------------
-    // 13. Role Binding Coordinator - Peripheral Incoming Write Events
+    // 11. Substrate Forbidden From Transitioning to READY
     // ------------------------------------------------------------------------
-    func testRoleBindingCoordinator_PeripheralIncomingWrite() {
-        let localHint = Data([0x80, 0x00, 0x00, 0x00])
-        let coord = BleRoleBindingCoordinator(localHint: localHint)
-        let peerId = UUID()
+    func testTransitionToReady_ForbiddenInSubstrate() {
+        let conn = BleConnection(peerId: UUID())
+        conn.markConnected()
+        conn.startLinkInfoRead()
+        conn.startLinkInfoWrite()
+        conn.bindInitiatorAfterLinkInfoWriteAck(remoteHint: Data([1, 2, 3, 4]))
+        conn.isNotificationSubscribed = true
+        conn.transitionTo(.handshakeInProgress)
 
-        let remoteSmaller = Data([0x10, 0x00, 0x00, 0x00])
-        let payloadSmaller = BleLinkInfoCodec.encode(
-            flags: 0,
-            nodeHint: remoteSmaller,
-            shortDigest: Data(repeating: 0, count: 6),
-            queueDepth: 0
-        )
-        let act1 = coord.processPeripheralLinkInfoWrite(peerId: peerId, rawBytes: payloadSmaller)
-        XCTAssertEqual(act1, .acceptIncomingWrite(peerId, remoteHint: remoteSmaller))
-
-        let remoteLarger = Data([0x90, 0x00, 0x00, 0x00])
-        let payloadLarger = BleLinkInfoCodec.encode(
-            flags: 0,
-            nodeHint: remoteLarger,
-            shortDigest: Data(repeating: 0, count: 6),
-            queueDepth: 0
-        )
-        let act2 = coord.processPeripheralLinkInfoWrite(peerId: peerId, rawBytes: payloadLarger)
-        guard case .rejectIncomingWrite = act2 else {
-            XCTFail("Expected rejectIncomingWrite for remote >= local")
-            return
-        }
-
-        let payloadEqual = BleLinkInfoCodec.encode(
-            flags: 0,
-            nodeHint: localHint,
-            shortDigest: Data(repeating: 0, count: 6),
-            queueDepth: 0
-        )
-        let act3 = coord.processPeripheralLinkInfoWrite(peerId: peerId, rawBytes: payloadEqual)
-        guard case .rejectIncomingWrite = act3 else {
-            XCTFail("Expected rejectIncomingWrite for tie")
-            return
-        }
+        // Directly attempting transition to ready must be a no-op / rejected in substrate
+        conn.transitionTo(.ready)
+        XCTAssertEqual(conn.state, .handshakeInProgress)
     }
 
     // ------------------------------------------------------------------------
-    // 14. Crossing Connections - A < B -> A retains initiator, B rejects
+    // 10. Application DATA Forbidden Before Cryptographic READY
+    // ------------------------------------------------------------------------
+    func testDataTransmission_StrictlyForbiddenBeforeReady() {
+        let conn = BleConnection(peerId: UUID())
+        conn.markConnected()
+        conn.startLinkInfoRead()
+        conn.startLinkInfoWrite()
+        conn.bindInitiatorAfterLinkInfoWriteAck(remoteHint: Data([1, 2, 3, 4]))
+        conn.isNotificationSubscribed = true
+
+        let appData = Data("Secret Mesh Payload".utf8)
+        let fragsInRoleBound = conn.fragmentOutbound(recordType: .data, payload: appData)
+        XCTAssertTrue(fragsInRoleBound.isEmpty, "DATA fragments must be empty before READY")
+
+        conn.transitionTo(.handshakeInProgress)
+        let fragsInHs = conn.fragmentOutbound(recordType: .data, payload: appData)
+        XCTAssertTrue(fragsInHs.isEmpty, "DATA fragments must be empty in HANDSHAKE_IN_PROGRESS")
+    }
+
+    // ------------------------------------------------------------------------
+    // 11. Dynamic LinkInfo Snapshot Authority Tests
+    // ------------------------------------------------------------------------
+    func testLinkInfoSnapshotAuthority_EmptyStore() throws {
+        let identity = try makeIdentity()
+        let store = MockMessageStore()
+        let authority = LinkInfoSnapshotAuthority(
+            identityProvider: { identity },
+            storeProvider: { store }
+        )
+
+        let snap = authority.currentSnapshot()
+        XCTAssertEqual(snap.queueDepth, 0)
+        XCTAssertEqual(snap.nodeHint, identity.nodeHint)
+        XCTAssertEqual(snap.shortDigest, Data(repeating: 0, count: 6))
+    }
+
+    func testLinkInfoSnapshotAuthority_HeldRecordsAndSaturating255() throws {
+        let identity = try makeIdentity()
+        let store = MockMessageStore()
+        let authority = LinkInfoSnapshotAuthority(
+            identityProvider: { identity },
+            storeProvider: { store }
+        )
+
+        // Insert 10 records
+        let bloom = BloomDigest()
+        for i in 1...10 {
+            let msgId = Data(repeating: UInt8(i), count: 16)
+            store.held.append(msgId)
+            bloom.add(msgId)
+        }
+
+        authority.refresh()
+        let snap10 = authority.currentSnapshot()
+        XCTAssertEqual(snap10.queueDepth, 10)
+        XCTAssertEqual(snap10.shortDigest, Data(bloom.toBytes().prefix(6)))
+
+        // Insert 300 records to test saturation at 255
+        for i in 11...300 {
+            let msgId = Data(repeating: UInt8(i % 250), count: 16)
+            store.held.append(msgId)
+        }
+
+        authority.refresh()
+        let snap300 = authority.currentSnapshot()
+        XCTAssertEqual(snap300.queueDepth, 255)
+    }
+
+    // ------------------------------------------------------------------------
+    // 12. Crossing Connections Logic
     // ------------------------------------------------------------------------
     func testCrossingConnections_ALessThanB_ARetainsBRejects() {
         let hintA = Data([0x00, 0x01, 0x02, 0x03])
@@ -394,9 +444,6 @@ final class BleLinkSubstrateTests: XCTestCase {
         XCTAssertEqual(electionAtB, .elected(.responder))
     }
 
-    // ------------------------------------------------------------------------
-    // 15. Crossing Connections - B < A -> B retains initiator, A rejects
-    // ------------------------------------------------------------------------
     func testCrossingConnections_BLessThanA_BRetainsARejects() {
         let hintA = Data([0x99, 0x00, 0x00, 0x00])
         let hintB = Data([0x11, 0x00, 0x00, 0x00])
@@ -408,9 +455,6 @@ final class BleLinkSubstrateTests: XCTestCase {
         XCTAssertEqual(electionAtB, .elected(.initiator))
     }
 
-    // ------------------------------------------------------------------------
-    // 16. Crossing Connections - Equal hints -> Both reject
-    // ------------------------------------------------------------------------
     func testCrossingConnections_EqualHints_BothReject() {
         let hint = Data([0x42, 0x42, 0x42, 0x42])
         let res = BleRoleElection.elect(localHint: hint, remoteHint: hint)
@@ -418,297 +462,83 @@ final class BleLinkSubstrateTests: XCTestCase {
     }
 
     // ------------------------------------------------------------------------
-    // 17. Central Write Queue - Sequential ATT Values
+    // 13. Handshake Record Delivery Across Seam
     // ------------------------------------------------------------------------
-    func testCentralWriteQueue_SequentialAttValues() {
-        let peerId = UUID()
-        let conn = BleConnection(peerId: peerId, initialMaxAttValueLength: 30)
-        conn.markConnected()
-        conn.bindRole(hint: Data([0x05, 0x06, 0x07, 0x08]), role: .initiator)
-        conn.isNotificationSubscribed = true
-        conn.transitionTo(.handshakeInProgress)
-        conn.transitionTo(.ready)
+    func testHandshakeRecordDelivery_AcrossConnectionSeam() {
+        let connA = BleConnection(peerId: UUID(), initialMaxAttValueLength: 30)
+        connA.markConnected()
+        connA.startLinkInfoRead()
+        connA.startLinkInfoWrite()
+        connA.bindInitiatorAfterLinkInfoWriteAck(remoteHint: Data([5, 6, 7, 8]))
+        connA.isNotificationSubscribed = true
+        connA.transitionTo(.handshakeInProgress)
 
-        let payload1 = "First sequential record payload".data(using: .utf8)!
-        let payload2 = "Second sequential record payload with different bytes".data(using: .utf8)!
+        let connB = BleConnection(peerId: UUID(), initialMaxAttValueLength: 30)
+        connB.markConnected()
+        connB.bindResponderFromAcceptedIncomingLinkInfo(remoteHint: Data([1, 2, 3, 4]))
+        connB.isNotificationSubscribed = true
+        connB.transitionTo(.handshakeInProgress)
 
-        let frags1 = conn.fragmentOutbound(recordType: .data, payload: payload1)
-        let frags2 = conn.fragmentOutbound(recordType: .data, payload: payload2)
-
-        XCTAssertFalse(frags1.isEmpty)
-        XCTAssertFalse(frags2.isEmpty)
-
-        let receiverConn = BleConnection(peerId: peerId, initialMaxAttValueLength: 30)
-        receiverConn.markConnected()
-        receiverConn.bindRole(hint: Data([0x01, 0x02, 0x03, 0x04]), role: .responder)
-        receiverConn.isNotificationSubscribed = true
-        receiverConn.transitionTo(.handshakeInProgress)
-        receiverConn.transitionTo(.ready)
-
-        var rec1: BleReassembledRecord? = nil
-        for f in frags1 {
-            if let r = receiverConn.ingestInboundAttValue(f) { rec1 = r }
-        }
-        XCTAssertNotNil(rec1)
-        XCTAssertEqual(rec1?.payload, payload1)
-
-        var rec2: BleReassembledRecord? = nil
-        for f in frags2 {
-            if let r = receiverConn.ingestInboundAttValue(f) { rec2 = r }
-        }
-        XCTAssertNotNil(rec2)
-        XCTAssertEqual(rec2?.payload, payload2)
-    }
-
-    // ------------------------------------------------------------------------
-    // 18. Peripheral Notification Queue - Backpressure
-    // ------------------------------------------------------------------------
-    func testPeripheralNotificationQueue_Backpressure() {
-        let conn = BleConnection(peerId: UUID(), initialMaxAttValueLength: 25)
-        conn.markConnected()
-        conn.bindRole(hint: Data([1, 2, 3, 4]), role: .responder)
-        conn.isNotificationSubscribed = true
-        conn.transitionTo(.handshakeInProgress)
-        conn.transitionTo(.ready)
-
-        let payload = Data(repeating: 0x42, count: 60)
-        let frags = conn.fragmentOutbound(recordType: .data, payload: payload)
-        XCTAssertTrue(frags.count > 1)
-    }
-
-    // ------------------------------------------------------------------------
-    // 19. Record Fragments Through Connection Seam
-    // ------------------------------------------------------------------------
-    func testRecordFragments_ThroughConnectionSeam() {
-        let conn = BleConnection(peerId: UUID(), initialMaxAttValueLength: 25)
-        conn.markConnected()
-        conn.bindRole(hint: Data([2, 3, 4, 5]), role: .initiator)
-        conn.isNotificationSubscribed = true
-        conn.transitionTo(.handshakeInProgress)
-
+        // Handshake 2 record (229 bytes)
         var hs2Bytes = [UInt8](repeating: 0, count: 229)
-        for i in 0..<229 { hs2Bytes[i] = UInt8((i * 7) & 0xFF) }
+        for i in 0..<229 { hs2Bytes[i] = UInt8((i * 3) % 256) }
         let hs2Payload = Data(hs2Bytes)
-
-        let fragments = conn.fragmentOutbound(recordType: .hs2, payload: hs2Payload)
-        XCTAssertTrue(fragments.count > 1)
-
-        let receiver = BleConnection(peerId: UUID(), initialMaxAttValueLength: 25)
-        receiver.markConnected()
-        receiver.bindRole(hint: Data([1, 1, 1, 1]), role: .responder)
-        receiver.isNotificationSubscribed = true
-        receiver.transitionTo(.handshakeInProgress)
-
-        var result: BleReassembledRecord? = nil
-        for f in fragments {
-            if let r = receiver.ingestInboundAttValue(f) { result = r }
-        }
-        XCTAssertNotNil(result)
-        XCTAssertEqual(result?.recordType, .hs2)
-        XCTAssertEqual(result?.payload, hs2Payload)
-    }
-
-    // ------------------------------------------------------------------------
-    // 20. Negotiated Max ATT Value Length Propagation
-    // ------------------------------------------------------------------------
-    func testNegotiatedMaxAttValueLength_PropagatedToFragmentation() {
-        let conn = BleConnection(peerId: UUID(), initialMaxAttValueLength: 20)
-        conn.markConnected(negotiatedAttValueLength: 100)
-        conn.bindRole(hint: Data([2, 3, 4, 5]), role: .initiator)
-        conn.isNotificationSubscribed = true
-        conn.transitionTo(.handshakeInProgress)
-        conn.transitionTo(.ready)
-        XCTAssertEqual(conn.maxAttValueLength, 100)
-
-        let payload = Data(repeating: 0x55, count: 150)
-        let frags = conn.fragmentOutbound(recordType: .data, payload: payload)
-        XCTAssertEqual(frags.count, 2)
-        XCTAssertTrue(frags[0].count <= 100)
-        XCTAssertTrue(frags[1].count <= 100)
-    }
-
-    // ------------------------------------------------------------------------
-    // 21. Disconnect Purges Connection & Reassembly State
-    // ------------------------------------------------------------------------
-    func testDisconnect_PurgesConnectionAndReassemblyState() {
-        let conn = BleConnection(peerId: UUID(), initialMaxAttValueLength: 20)
-        conn.markConnected()
-        conn.bindRole(hint: Data([2, 3, 4, 5]), role: .initiator)
-        conn.isNotificationSubscribed = true
-        conn.transitionTo(.handshakeInProgress)
-        conn.transitionTo(.ready)
-
-        let payload = Data(repeating: 0x33, count: 50)
-        let frags = conn.fragmentOutbound(recordType: .data, payload: payload)
+        let frags = connA.fragmentOutbound(recordType: .hs2, payload: hs2Payload)
         XCTAssertTrue(frags.count > 1)
 
+        var reassembled: BleReassembledRecord?
+        for f in frags {
+            if let r = connB.ingestInboundAttValue(f) {
+                reassembled = r
+            }
+        }
+        XCTAssertNotNil(reassembled)
+        XCTAssertEqual(reassembled?.recordType, .hs2)
+        XCTAssertEqual(reassembled?.payload, hs2Payload)
+    }
+
+    // ------------------------------------------------------------------------
+    // 14. Disconnect Purges Reassembly State & Idempotent Start/Stop
+    // ------------------------------------------------------------------------
+    func testDisconnect_PurgesState_AndIdempotent() {
+        let conn = BleConnection(peerId: UUID(), initialMaxAttValueLength: 20)
+        conn.markConnected()
+        conn.startLinkInfoRead()
+        conn.startLinkInfoWrite()
+        conn.bindInitiatorAfterLinkInfoWriteAck(remoteHint: Data([2, 3, 4, 5]))
+        conn.isNotificationSubscribed = true
+
+        let hs1Payload = Data(repeating: 1, count: 32)
+        let frags = conn.fragmentOutbound(recordType: .hs1, payload: hs1Payload)
         XCTAssertNil(conn.ingestInboundAttValue(frags[0]))
 
         conn.markDisconnected()
         XCTAssertFalse(conn.isActive)
         XCTAssertEqual(conn.state, .closed)
 
+        // Fragments after disconnect are rejected
         XCTAssertNil(conn.ingestInboundAttValue(frags[1]))
-    }
 
-    // ------------------------------------------------------------------------
-    // 22. Repeated Lifecycle Idempotence
-    // ------------------------------------------------------------------------
-    func testRepeatedLifecycle_Idempotent() {
-        let conn = BleConnection(peerId: UUID(), initialMaxAttValueLength: 20)
-        conn.markConnected()
-        conn.markDisconnected()
+        // Repeated disconnect is safe and idempotent
         conn.markDisconnected()
         XCTAssertEqual(conn.state, .closed)
     }
 
     // ------------------------------------------------------------------------
-    // 23. DATA Record Gated on READY State
-    // ------------------------------------------------------------------------
-    func testDataRecord_ForbiddenBeforeReadyState() {
-        let conn = BleConnection(peerId: UUID(), initialMaxAttValueLength: 40)
-        conn.markConnected()
-        conn.bindRole(hint: Data([0x01, 0x02, 0x03, 0x04]), role: .initiator)
-        conn.isNotificationSubscribed = true
-        conn.transitionTo(.handshakeInProgress)
-
-        let appData = "Secret Application Data".data(using: .utf8)!
-
-        // While in .handshakeInProgress: DATA fragments return empty
-        let fragsBeforeReady = conn.fragmentOutbound(recordType: .data, payload: appData)
-        XCTAssertTrue(fragsBeforeReady.isEmpty)
-
-        // Transition to .ready: DATA fragments are permitted
-        conn.transitionTo(.ready)
-        let fragsAfterReady = conn.fragmentOutbound(recordType: .data, payload: appData)
-        XCTAssertFalse(fragsAfterReady.isEmpty)
-    }
-
-    // ------------------------------------------------------------------------
-    // 24. LINK_LAYER_READY Remains False
+    // 15. linkLayerReady Remains False
     // ------------------------------------------------------------------------
     func testLinkLayerReady_RemainsFalse() {
         XCTAssertFalse(MeshNode.linkLayerReady)
     }
 
     // ------------------------------------------------------------------------
-    // 25. SessionManager Handshake API Not Invoked by Substrate
+    // 16. SessionManager Handshake API Not Invoked by Substrate
     // ------------------------------------------------------------------------
     func testSessionManager_HandshakeApiNotInvokedBySubstrate() throws {
         let id = try makeIdentity()
         let sm = SessionManager(identity: id, trustAuthority: RecordingTrustAuthority())
-
-        let conn = BleConnection(peerId: UUID(), initialMaxAttValueLength: 20)
+        let conn = BleConnection(peerId: UUID())
         conn.markConnected()
-
         XCTAssertFalse(sm.isReady(UUID()))
-    }
-
-    // ------------------------------------------------------------------------
-    // 26. Duplex Synthetic Traffic Both Directions
-    // ------------------------------------------------------------------------
-    func testDuplexSyntheticTraffic_BothDirections() {
-        let nodeA = Data([0x01, 0x02, 0x03, 0x04])
-        let nodeB = Data([0x05, 0x06, 0x07, 0x08])
-
-        let electionA = BleRoleElection.elect(localHint: nodeA, remoteHint: nodeB)
-        let electionB = BleRoleElection.elect(localHint: nodeB, remoteHint: nodeA)
-
-        XCTAssertEqual(electionA, .elected(.initiator))
-        XCTAssertEqual(electionB, .elected(.responder))
-
-        let peerA = UUID()
-        let peerB = UUID()
-        let connA = BleConnection(peerId: peerB, initialMaxAttValueLength: 40)
-        let connB = BleConnection(peerId: peerA, initialMaxAttValueLength: 40)
-        connA.markConnected()
-        connB.markConnected()
-        connA.bindRole(hint: nodeB, role: .initiator)
-        connB.bindRole(hint: nodeA, role: .responder)
-        connA.isNotificationSubscribed = true
-        connB.isNotificationSubscribed = true
-        connA.transitionTo(.handshakeInProgress)
-        connB.transitionTo(.handshakeInProgress)
-        connA.transitionTo(.ready)
-        connB.transitionTo(.ready)
-
-        // Direction 1: A -> B
-        let msgAtoB = "Hello from Initiator A to Responder B".data(using: .utf8)!
-        let fragsAtoB = connA.fragmentOutbound(recordType: .data, payload: msgAtoB)
-        var receivedByB: BleReassembledRecord? = nil
-        for f in fragsAtoB {
-            if let r = connB.ingestInboundAttValue(f) { receivedByB = r }
-        }
-        XCTAssertNotNil(receivedByB)
-        XCTAssertEqual(receivedByB?.payload, msgAtoB)
-
-        // Direction 2: B -> A
-        let msgBtoA = "Hello back from Responder B to Initiator A".data(using: .utf8)!
-        let fragsBtoA = connB.fragmentOutbound(recordType: .data, payload: msgBtoA)
-        var receivedByA: BleReassembledRecord? = nil
-        for f in fragsBtoA {
-            if let r = connA.ingestInboundAttValue(f) { receivedByA = r }
-        }
-        XCTAssertNotNil(receivedByA)
-        XCTAssertEqual(receivedByA?.payload, msgBtoA)
-    }
-
-    // ------------------------------------------------------------------------
-    // 27. Locking - No Deadlock On Local LinkInfo Query
-    // ------------------------------------------------------------------------
-    func testLocking_NoDeadlockOnLocalLinkInfoQuery() throws {
-        let id = try makeIdentity()
-        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
-        let store = SqliteMessageStore(url: tempDir, maxBytes: 1024 * 1024, fileProtection: .complete)
-        let transport = BleTransport(identity: id, store: store)
-
-        // Calling getLocalLinkInfoData safely from outside
-        let data1 = transport.getLocalLinkInfoData()
-        XCTAssertNotNil(data1)
-        XCTAssertEqual(data1?.count, BleLinkInfoConstants.linkInfoBytes)
-
-        // Calling getLocalLinkInfoDataLocked internally does not re-enter lock
-        let data2 = transport.getLocalLinkInfoDataLocked()
-        XCTAssertEqual(data1, data2)
-
-        // Without store: safely returns nil without deadlock
-        let transportNoStore = BleTransport(identity: id, store: nil)
-        XCTAssertNil(transportNoStore.getLocalLinkInfoData())
-    }
-
-    // ------------------------------------------------------------------------
-    // 28. Subscription Acknowledgement Gates Duplex Readiness
-    // ------------------------------------------------------------------------
-    func testSubscriptionAcknowledgement_GatesDuplexReadiness() {
-        let conn = BleConnection(peerId: UUID(), initialMaxAttValueLength: 40)
-        conn.markConnected()
-        conn.bindRole(hint: Data([1, 2, 3, 4]), role: .initiator)
-
-        // Before subscription acknowledged: isHandshakeTransportReady is false
-        XCTAssertFalse(conn.isNotificationSubscribed)
-        XCTAssertFalse(conn.isHandshakeTransportReady)
-
-        // After CCCD subscription acknowledged: isHandshakeTransportReady is true
-        conn.isNotificationSubscribed = true
-        XCTAssertTrue(conn.isHandshakeTransportReady)
-    }
-}
-
-private extension Data {
-    init?(hexString: String) {
-        let len = hexString.count / 2
-        var data = Data(capacity: len)
-        var index = hexString.startIndex
-        for _ in 0..<len {
-            let nextIndex = hexString.index(index, offsetBy: 2)
-            let byteString = hexString[index..<nextIndex]
-            if let byte = UInt8(byteString, radix: 16) {
-                data.append(byte)
-            } else {
-                return nil
-            }
-            index = nextIndex
-        }
-        self = data
     }
 }

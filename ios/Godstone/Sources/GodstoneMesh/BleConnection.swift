@@ -111,7 +111,7 @@ public final class BleConnection: @unchecked Sendable {
         case .roleBound:
             valid = (newState == .handshakeInProgress || newState == .quarantined || newState == .closing || newState == .closed)
         case .handshakeInProgress:
-            valid = ((newState == .ready && isHandshakeTransportReadyLocked) || newState == .quarantined || newState == .closing || newState == .closed)
+            valid = (newState == .quarantined || newState == .closing || newState == .closed)
         case .ready:
             valid = (newState == .quarantined || newState == .closing || newState == .closed)
         case .quarantined:
@@ -122,6 +122,10 @@ public final class BleConnection: @unchecked Sendable {
             valid = false
         }
 
+        guard newState != .ready else {
+            // Cryptographic ready transition reserved for C8.4D2 trusted handshake
+            return
+        }
         precondition(valid, "Illegal state transition from \(state) to \(newState)")
         state = newState
     }
@@ -134,7 +138,7 @@ public final class BleConnection: @unchecked Sendable {
         precondition(hint.count == BleRoleElection.nodeHintBytes, "remoteNodeHint must be 4 bytes")
         precondition(_remoteNodeHint == nil && _localRole == nil, "Cannot rebind role on BleConnection")
         precondition(state != .closed && state != .closing && state != .quarantined, "Cannot bind role on inactive connection")
-        precondition(state == .provisionalConnected || state == .linkInfoWriting || state == .provisionalConnecting || state == .discovered, "Cannot bind role from state \(state)")
+        precondition(state == .linkInfoWriting || state == .provisionalConnected, "Cannot bind role from state \(state)")
 
         _remoteNodeHint = hint
         _localRole = role
@@ -142,11 +146,27 @@ public final class BleConnection: @unchecked Sendable {
     }
 
     public func bindInitiatorAfterLinkInfoWriteAck(remoteHint: Data) {
+        lock.lock()
+        let s = state
+        lock.unlock()
+        precondition(s == .linkInfoWriting, "Cannot bind initiator from state \(s): must be in linkInfoWriting")
         bindRole(hint: remoteHint, role: .initiator)
     }
 
     public func bindResponderFromAcceptedIncomingLinkInfo(remoteHint: Data) {
+        lock.lock()
+        let s = state
+        lock.unlock()
+        precondition(s == .provisionalConnected, "Cannot bind responder from state \(s): must be in provisionalConnected")
         bindRole(hint: remoteHint, role: .responder)
+    }
+
+    public func startLinkInfoRead() {
+        transitionTo(.linkInfoReading)
+    }
+
+    public func startLinkInfoWrite() {
+        transitionTo(.linkInfoWriting)
     }
 
     public func markConnected(negotiatedAttValueLength: Int? = nil) {

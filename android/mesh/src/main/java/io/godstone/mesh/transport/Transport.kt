@@ -34,7 +34,7 @@ sealed class PeerEvent {
     data class Found(
         val peerId: ByteArray,
         val nodeHint: ByteArray,
-        val rssi: Int,
+        val rssi: Int?,
         val sosFlag: Boolean,
         val bulkCapable: Boolean,
         val shortDigest: ByteArray,

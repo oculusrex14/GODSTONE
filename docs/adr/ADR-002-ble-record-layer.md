@@ -1,10 +1,10 @@
 # ADR-002 — BLE roles, record framing, and the Noise handshake driver
 
-**STATUS: ACCEPTED / PHASE C8.4C RECORD LAYER FROZEN; PHASE C8.4D1-A1 LINKINFO AMENDMENT ACCEPTED / FROZEN; PHASE C8.4D1-R2 OPEN** (27 Aug 2026)
+**STATUS: ACCEPTED / PHASE C8.4C RECORD LAYER FROZEN; PHASE C8.4D1-A1 LINKINFO AMENDMENT ACCEPTED / FROZEN; PHASE C8.4D1-R2.2 CLOSED** (28 Aug 2026)
 Implementation:
 - Phase C8.4C canonical BLE record layer (types, balanced-stride codec, fragmenter, bounded reassembler with injected clock, duplicate suppression, conflict rejection, encrypt-then-fragment semantic verification, 32/229/197 handshake composition tests, independent Python reference `wire/ble_record_reference.py`, and locked vectors `wire/ble_record_vectors.json`) is IMPLEMENTED and FROZEN.
 - Phase C8.4D1-A1 LinkInfo Role-Binding Amendment (Connect-First / Elect-Before-Handshake, generated `LINK_INFO_UUID`, 13-byte `BleLinkInfoV1` canonical characteristic payload, provisional GATT connection state machine, simultaneous connect deterministic elimination proof, CBPeripheral/CBCentral identifier separation, and ADR-003 security binding) is ACCEPTED and FROZEN.
-- Phase C8.4D1-R2 (Implementation of LinkInfo exchange, Android GATT lifecycle repairs, and substrate closure) is OPEN.
+- Phase C8.4D1-R2.2 (Authoritative state machine, async precomputed generation, and substrate closure) is IMPLEMENTED, VERIFIED, and CLOSED.
 - Phase C8.4D2 (trusted handshake driver) is OPEN / NOT STARTED.
 - Full link enablement (radio/GATT drivers) remains open behind `LINK_LAYER_READY=false` / `linkLayerReady=false`.
 

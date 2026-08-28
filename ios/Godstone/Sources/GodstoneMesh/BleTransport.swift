@@ -22,7 +22,7 @@ public final class BleTransport: NSObject {
 
     public var store: MessageStore? {
         didSet {
-            refreshLocalLinkInfoSnapshotSync()
+            snapshotAuthority?.refresh()
         }
     }
 
@@ -30,12 +30,13 @@ public final class BleTransport: NSObject {
         didSet {
             if let id = identity {
                 roleCoordinator = BleRoleBindingCoordinator(localHint: id.nodeHint)
-                refreshLocalLinkInfoSnapshotSync()
+                snapshotAuthority?.refresh()
             }
         }
     }
 
     public private(set) var roleCoordinator: BleRoleBindingCoordinator
+    public private(set) var snapshotAuthority: LinkInfoSnapshotAuthority!
 
     // Separate identifier namespaces:
     // Outbound Central links keyed by CBPeripheral.identifier
@@ -45,6 +46,7 @@ public final class BleTransport: NSObject {
     private var linkInfoCharacteristics: [UUID: CBCharacteristic] = [:]
     private var pendingInitiatorRemoteHints: [UUID: Data] = [:]
     private var provisionalTimers: [UUID: Timer] = [:]
+    private var provisionalGenerations: [UUID: UInt64] = [:]
 
     // Inbound Peripheral links keyed by CBCentral.identifier
     private var inboundPeripheralConnections: [UUID: BleConnection] = [:]
@@ -60,9 +62,6 @@ public final class BleTransport: NSObject {
 
     // Queued outbound notifications awaiting peripheralManagerIsReady(toUpdateSubscribers:)
     private var pendingOutboundUpdates: [UUID: [Data]] = [:]
-
-    private var cachedLocalLinkInfoSnapshot: BleLinkInfoV1?
-    private var cachedLocalLinkInfoData: Data?
 
     private let transportLock = NSLock()
 
@@ -84,7 +83,10 @@ public final class BleTransport: NSObject {
         self.roleCoordinator = BleRoleBindingCoordinator(localHint: initialHint)
         super.init()
 
-        refreshLocalLinkInfoSnapshotSync()
+        self.snapshotAuthority = LinkInfoSnapshotAuthority(
+            identityProvider: { [weak self] in self?.identity },
+            storeProvider: { [weak self] in self?.store }
+        )
 
         #if targetEnvironment(simulator)
         central = CBCentralManager(delegate: self, queue: .global(qos: .utility))
@@ -96,63 +98,17 @@ public final class BleTransport: NSObject {
     }
 
     /// Retrieve local LinkInfo bytes when transportLock is ALREADY held by the caller.
-    /// Guaranteed non-recursive to prevent deadlocks.
-    public func getLocalLinkInfoDataLocked() -> Data? {
-        if cachedLocalLinkInfoData == nil {
-            refreshLocalLinkInfoSnapshotSyncLocked()
-        }
-        return cachedLocalLinkInfoData
+    func getLocalLinkInfoDataLocked() -> Data? {
+        return snapshotAuthority.currentData()
     }
 
     /// Retrieve local LinkInfo bytes safely from external/unlocked callers.
     public func getLocalLinkInfoData() -> Data? {
-        transportLock.lock()
-        defer { transportLock.unlock() }
-        return getLocalLinkInfoDataLocked()
+        return snapshotAuthority.currentData()
     }
 
     public func refreshLocalLinkInfoSnapshotSync() {
-        transportLock.lock()
-        defer { transportLock.unlock() }
-        refreshLocalLinkInfoSnapshotSyncLocked()
-    }
-
-    private func refreshLocalLinkInfoSnapshotSyncLocked() {
-        guard let s = store else {
-            cachedLocalLinkInfoSnapshot = nil
-            cachedLocalLinkInfoData = nil
-            return
-        }
-
-        let nodeHint = identity?.nodeHint ?? Data(repeating: 0, count: BleRoleElection.nodeHintBytes)
-        var count: Int = 0
-        let bloom = BloomDigest()
-        s.forEachHeldMsgId { msgId in
-            count += 1
-            bloom.add(msgId)
-            return true
-        }
-
-        let bloomBytes = bloom.toBytes()
-        let shortDigest = bloomBytes.prefix(BleLinkInfoConstants.shortDigestBytes)
-        let queueDepth = UInt8(clamping: min(count, 255))
-        let flags: UInt8 = 0
-
-        let info = BleLinkInfoV1(
-            version: BleLinkInfoConstants.protocolVersion,
-            flags: flags,
-            nodeHint: nodeHint,
-            shortDigest: Data(shortDigest),
-            queueDepth: queueDepth
-        )
-        cachedLocalLinkInfoSnapshot = info
-        cachedLocalLinkInfoData = BleLinkInfoCodec.encode(
-            version: info.version,
-            flags: info.flags,
-            nodeHint: info.nodeHint,
-            shortDigest: info.shortDigest,
-            queueDepth: info.queueDepth
-        )
+        _ = snapshotAuthority.refresh()
     }
 
     public func start() {
@@ -422,12 +378,15 @@ extension BleTransport: CBCentralManagerDelegate, CBPeripheralDelegate {
 
         // Start bounded provisional timeout
         let peerId = p.identifier
+        let gen = (provisionalGenerations[peerId] ?? 0) + 1
+        provisionalGenerations[peerId] = gen
         let timer = Timer(timeInterval: provisionalTimeoutSeconds, repeats: false) { [weak self] _ in
             guard let self = self else { return }
             self.transportLock.lock()
+            let isCurrentGen = (self.provisionalGenerations[peerId] == gen)
             let isReady = self.outboundCentralConnections[peerId]?.isHandshakeTransportReady ?? false
             self.transportLock.unlock()
-            if !isReady {
+            if isCurrentGen && !isReady {
                 self.purgeCentralConnection(peerId: peerId, cancelPeripheral: true)
             }
         }
@@ -586,7 +545,7 @@ extension BleTransport: CBCentralManagerDelegate, CBPeripheralDelegate {
             }
 
             // Role binding succeeds upon LinkInfo write acknowledgment
-            conn.bindRole(hint: remoteHint, role: .initiator)
+            conn.bindInitiatorAfterLinkInfoWriteAck(remoteHint: remoteHint)
             let maxWrite = p.maximumWriteValueLength(for: .withoutResponse)
             conn.markConnected(negotiatedAttValueLength: maxWrite)
             transportLock.unlock()
@@ -611,6 +570,7 @@ extension BleTransport: CBCentralManagerDelegate, CBPeripheralDelegate {
                 let isReady = conn.isHandshakeTransportReady
                 transportLock.unlock()
                 if isReady {
+                    delegate?.transportReady(peerId: p.identifier)
                     delegate?.transportDidConnect(peerId: p.identifier)
                 }
             } else {
@@ -736,13 +696,25 @@ extension BleTransport: CBPeripheralManagerDelegate {
                     var conn = inboundPeripheralConnections[centralId]
                     if conn == nil || !(conn?.isActive ?? false) {
                         conn = BleConnection(peerId: centralId)
+                        conn?.markConnected()
                         inboundPeripheralConnections[centralId] = conn
+                    } else if conn?.state == .provisionalConnecting || conn?.state == .discovered {
+                        conn?.markConnected()
                     }
                     if !(conn?.isRoleBound ?? false) {
-                        conn?.bindRole(hint: remoteHint, role: .responder)
+                        conn?.bindResponderFromAcceptedIncomingLinkInfo(remoteHint: remoteHint)
                     }
+                    let isSubscribed = (subscribedCentrals[centralId] != nil)
+                    if isSubscribed {
+                        conn?.isNotificationSubscribed = true
+                    }
+                    let isReady = conn?.isHandshakeTransportReady ?? false
                     transportLock.unlock()
                     pm.respond(to: r, withResult: .success)
+                    if isReady {
+                        delegate?.transportReady(peerId: centralId)
+                        delegate?.transportDidConnect(peerId: centralId)
+                    }
                 default:
                     transportLock.unlock()
                     pm.respond(to: r, withResult: .unlikelyError)
@@ -783,18 +755,29 @@ extension BleTransport: CBPeripheralManagerDelegate {
                                   central: CBCentral,
                                   didSubscribeTo ch: CBCharacteristic) {
         transportLock.lock()
+        defer { transportLock.unlock() }
+
+        // Require:
+        // 1. Canonical mutable inbox characteristic
+        guard ch.uuid == BleTransport.inboxCharacteristicUuid else { return }
+
+        // 2. Existing active accepted inbound connection
+        guard let conn = inboundPeripheralConnections[central.identifier], conn.isActive else {
+            // Unknown / unaccepted inbound central: do not allocate persistent state
+            return
+        }
+
+        // 3. Within global active connection capacity
+        guard inboundPeripheralConnections.count <= BleTransport.maxActiveConnections else { return }
+
         subscribedCentrals[central.identifier] = central
-        if let conn = inboundPeripheralConnections[central.identifier] {
-            conn.isNotificationSubscribed = true
-            let maxUpdate = central.maximumUpdateValueLength
-            conn.markConnected(negotiatedAttValueLength: maxUpdate)
-            let isReady = conn.isHandshakeTransportReady
-            transportLock.unlock()
-            if isReady {
-                delegate?.transportDidConnect(peerId: central.identifier)
-            }
-        } else {
-            transportLock.unlock()
+        conn.isNotificationSubscribed = true
+        let maxUpdate = central.maximumUpdateValueLength
+        conn.markConnected(negotiatedAttValueLength: maxUpdate)
+        let isReady = conn.isHandshakeTransportReady
+        if isReady {
+            delegate?.transportReady(peerId: central.identifier)
+            delegate?.transportDidConnect(peerId: central.identifier)
         }
     }
 

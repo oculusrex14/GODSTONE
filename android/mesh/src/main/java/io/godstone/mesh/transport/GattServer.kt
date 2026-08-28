@@ -19,26 +19,46 @@ import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
 
 /**
- * Peripheral-side GATT server supporting duplex bidirectional communication and LinkInfo exchange (ADR-002, Phase C8.4D1-A1/R2/R2.1).
+ * Peripheral-side GATT server supporting duplex bidirectional communication and LinkInfo exchange (ADR-002, Phase C8.4D1-A1/R2/R2.2).
  *
  * Exposes the canonical inbox characteristic and LINK_INFO characteristic.
- * Enforces asynchronous service add verification before advertising, serves local LinkInfo on READ,
- * validates incoming Central LinkInfo on WRITE, and requires role-binding before accepting inbox records.
+ * Enforces:
+ * - Real service registration generation matching and service object validation in onServiceAdded.
+ * - Stale/cross-generation onServiceAdded callback rejection.
+ * - Notification generation tracking and timeout invalidation preventing late callback poisoning.
+ * - Local LinkInfo serving on READ from precomputed snapshot provider.
+ * - Inbound Central LinkInfo verification on WRITE.
+ * - Role-binding precondition before accepting inbox records.
  */
+typealias BleLinkInfoProvider = () -> ByteArray?
+typealias BleLinkInfoWriteHandler = (String, ByteArray) -> Boolean
+typealias BleRoleBoundPredicate = (String) -> Boolean
+typealias BleInboundWriteHandler = (String, ByteArray) -> Unit
+typealias BleDisconnectHandler = (String) -> Unit
+typealias BleSubscriptionHandler = (String, Boolean) -> Unit
+typealias BleMtuHandler = (String, Int) -> Unit
+typealias BleServiceStatusHandler = (Boolean) -> Unit
+
+private data class PendingNotification(
+    val generation: Long,
+    val deviceAddress: String,
+    val deferred: CompletableDeferred<Boolean>
+)
+
 @SuppressLint("MissingPermission")
 class BleGattServer(
     private val context: Context,
     private val serviceUuid: UUID = BleTransport.SERVICE_UUID,
     private val inboxCharUuid: UUID = BleTransport.WRITE_CHAR_UUID,
     private val linkInfoCharUuid: UUID = BleTransport.LINK_INFO_CHAR_UUID,
-    private val linkInfoProvider: () -> ByteArray? = { null },
-    private val onLinkInfoWrite: (peerAddress: String, value: ByteArray) -> Boolean = { _, _ -> false },
-    private val isRoleBoundPredicate: (peerAddress: String) -> Boolean = { false },
-    private val onInboundWrite: (peerAddress: String, value: ByteArray) -> Unit = { _, _ -> },
-    private val onClientDisconnected: (peerAddress: String) -> Unit = {},
-    private val onSubscriptionChanged: (peerAddress: String, isSubscribed: Boolean) -> Unit = { _, _ -> },
-    private val onMtuChanged: (peerAddress: String, maxAttValueLength: Int) -> Unit = { _, _ -> },
-    private val onServiceStatusChanged: (isReady: Boolean) -> Unit = {},
+    private val linkInfoProvider: BleLinkInfoProvider = { null },
+    private val onLinkInfoWrite: BleLinkInfoWriteHandler = { _, _ -> false },
+    private val isRoleBoundPredicate: BleRoleBoundPredicate = { false },
+    private val onInboundWrite: BleInboundWriteHandler = { _, _ -> },
+    private val onClientDisconnected: BleDisconnectHandler = {},
+    private val onSubscriptionChanged: BleSubscriptionHandler = { _, _ -> },
+    private val onMtuChanged: BleMtuHandler = { _, _ -> },
+    private val onServiceStatusChanged: BleServiceStatusHandler = {},
     private val notificationTimeoutMs: Long = NOTIFICATION_TIMEOUT_MS
 ) {
     private var server: BluetoothGattServer? = null
@@ -49,12 +69,20 @@ class BleGattServer(
     private val subscribedDevices = ConcurrentHashMap<String, Boolean>()
     private val deviceMtu = ConcurrentHashMap<String, Int>()
     private val notificationMutex = Mutex()
-    private var pendingNotification: CompletableDeferred<Boolean>? = null
-    private var pendingNotificationAddress: String? = null
-    private var notificationToken: Long = 0L
+
+    private var pendingNotification: PendingNotification? = null
+    private var notificationGeneration: Long = 0L
 
     @Volatile
-    private var serviceRegistrationEpoch: Long = 0L
+    var serverGeneration: Long = 0L
+        private set
+
+    @Volatile
+    var serviceRegistrationEpoch: Long = 0L
+        private set
+
+    private var pendingService: BluetoothGattService? = null
+    private var pendingServiceGeneration: Long = 0L
 
     @Volatile
     var isServiceReady: Boolean = false
@@ -70,11 +98,11 @@ class BleGattServer(
 
     private val callback = object : BluetoothGattServerCallback() {
         override fun onServiceAdded(status: Int, service: BluetoothGattService) {
-            val epoch = serviceRegistrationEpoch
-            // Verify generation: if server was stopped/restarted, ignore stale callbacks
-            if (server == null) {
+            val gen = serverGeneration
+            if (server == null || gen != pendingServiceGeneration || service !== pendingService) {
                 return
             }
+            pendingService = null
             if (status == BluetoothGatt.GATT_SUCCESS && service.uuid == serviceUuid) {
                 isServiceReady = true
                 onServiceStatusChanged(true)
@@ -92,10 +120,10 @@ class BleGattServer(
                 connectedDevices.remove(address)
                 subscribedDevices.remove(address)
                 deviceMtu.remove(address)
-                if (pendingNotificationAddress == address) {
-                    pendingNotification?.complete(false)
+                val pending = pendingNotification
+                if (pending != null && pending.deviceAddress == address) {
                     pendingNotification = null
-                    pendingNotificationAddress = null
+                    pending.deferred.complete(false)
                 }
                 onSubscriptionChanged(address, false)
                 onClientDisconnected(address)
@@ -214,10 +242,12 @@ class BleGattServer(
         }
 
         override fun onNotificationSent(device: BluetoothDevice, status: Int) {
-            val deferred = pendingNotification
-            pendingNotification = null
-            pendingNotificationAddress = null
-            deferred?.complete(status == BluetoothGatt.GATT_SUCCESS)
+            val address = device.address ?: return
+            val pending = pendingNotification
+            if (pending != null && pending.deviceAddress == address && pending.generation == notificationGeneration) {
+                pendingNotification = null
+                pending.deferred.complete(status == BluetoothGatt.GATT_SUCCESS)
+            }
         }
     }
 
@@ -228,7 +258,8 @@ class BleGattServer(
         val adapter = manager.adapter ?: return false
         if (!adapter.isEnabled) return false
 
-        serviceRegistrationEpoch++
+        val gen = ++serverGeneration
+        serviceRegistrationEpoch = gen
         val gattServer = manager.openGattServer(context, callback) ?: return false
 
         // 1. Inbox Characteristic (write / write_no_response / notify)
@@ -260,11 +291,12 @@ class BleGattServer(
             addCharacteristic(linkInfo)
         }
 
+        pendingServiceGeneration = gen
+        pendingService = service
+
         val addInitiated = gattServer.addService(service)
         if (!addInitiated) {
-            try {
-                gattServer.close()
-            } catch (_: Exception) {}
+            stop()
             return false
         }
 
@@ -288,15 +320,14 @@ class BleGattServer(
             return false
         }
 
+        val gen = ++notificationGeneration
         val deferred = CompletableDeferred<Boolean>()
-        pendingNotification = deferred
-        pendingNotificationAddress = deviceAddress
+        pendingNotification = PendingNotification(gen, deviceAddress, deferred)
 
         ch.value = value
         val initiated = s.notifyCharacteristicChanged(device, ch, false)
         if (!initiated) {
             pendingNotification = null
-            pendingNotificationAddress = null
             return false
         }
 
@@ -309,20 +340,22 @@ class BleGattServer(
         }
 
         if (result == null) {
-            // Timeout reached
+            // Timeout reached: invalidate notification generation so late callback cannot satisfy next op
+            notificationGeneration++
             pendingNotification = null
-            pendingNotificationAddress = null
             return false
         }
         return result
     }
 
     fun stop() {
-        serviceRegistrationEpoch++
+        serverGeneration++
+        serviceRegistrationEpoch = serverGeneration
+        notificationGeneration++
         isServiceReady = false
-        pendingNotification?.complete(false)
+        pendingService = null
+        pendingNotification?.deferred?.complete(false)
         pendingNotification = null
-        pendingNotificationAddress = null
         try {
             server?.clearServices()
             server?.close()
@@ -339,4 +372,3 @@ class BleGattServer(
         const val NOTIFICATION_TIMEOUT_MS = 5000L
     }
 }
-

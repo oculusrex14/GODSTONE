@@ -102,7 +102,7 @@ class BleConnection(
             BleConnectionState.ROLE_BOUND ->
                 newState == BleConnectionState.HANDSHAKE_IN_PROGRESS || newState == BleConnectionState.QUARANTINED || newState == BleConnectionState.CLOSING || newState == BleConnectionState.CLOSED
             BleConnectionState.HANDSHAKE_IN_PROGRESS ->
-                (newState == BleConnectionState.READY && isHandshakeTransportReady) || newState == BleConnectionState.QUARANTINED || newState == BleConnectionState.CLOSING || newState == BleConnectionState.CLOSED
+                newState == BleConnectionState.QUARANTINED || newState == BleConnectionState.CLOSING || newState == BleConnectionState.CLOSED
             BleConnectionState.READY ->
                 newState == BleConnectionState.QUARANTINED || newState == BleConnectionState.CLOSING || newState == BleConnectionState.CLOSED
             BleConnectionState.QUARANTINED ->
@@ -112,6 +112,9 @@ class BleConnection(
             BleConnectionState.CLOSED -> false
         }
 
+        check(newState != BleConnectionState.READY) {
+            "Cryptographic READY transitions reserved for C8.4D2 trusted handshake"
+        }
         check(valid) { "Illegal state transition from $current to $newState" }
         _state.set(newState)
     }
@@ -131,7 +134,7 @@ class BleConnection(
         check(s != BleConnectionState.CLOSED && s != BleConnectionState.CLOSING && s != BleConnectionState.QUARANTINED) {
             "Cannot bind role on inactive connection in state $s"
         }
-        check(s == BleConnectionState.PROVISIONAL_CONNECTED || s == BleConnectionState.LINK_INFO_WRITING || s == BleConnectionState.PROVISIONAL_CONNECTING || s == BleConnectionState.DISCOVERED) {
+        check(s == BleConnectionState.LINK_INFO_WRITING || s == BleConnectionState.PROVISIONAL_CONNECTED) {
             "Cannot bind role from state $s"
         }
 
@@ -141,11 +144,27 @@ class BleConnection(
     }
 
     fun bindInitiatorAfterLinkInfoWriteAck(remoteHint: ByteArray) = synchronized(lock) {
+        val s = state
+        check(s == BleConnectionState.LINK_INFO_WRITING) {
+            "Cannot bind initiator from state $s: must be in LINK_INFO_WRITING"
+        }
         bindRole(remoteHint, BleRole.INITIATOR)
     }
 
     fun bindResponderFromAcceptedIncomingLinkInfo(remoteHint: ByteArray) = synchronized(lock) {
+        val s = state
+        check(s == BleConnectionState.PROVISIONAL_CONNECTED) {
+            "Cannot bind responder from state $s: must be in PROVISIONAL_CONNECTED"
+        }
         bindRole(remoteHint, BleRole.RESPONDER)
+    }
+
+    fun startLinkInfoRead() = synchronized(lock) {
+        transitionTo(BleConnectionState.LINK_INFO_READING)
+    }
+
+    fun startLinkInfoWrite() = synchronized(lock) {
+        transitionTo(BleConnectionState.LINK_INFO_WRITING)
     }
 
     fun markConnected(negotiatedAttValueLength: Int? = null) = synchronized(lock) {

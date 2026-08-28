@@ -164,7 +164,7 @@ class MeshNode(
                 publishStatus()
             }
         }.launchIn(scope)
-        ble.receivedPlaintext().onEach { (peer, clear) ->
+        ble.received().onEach { (peer, clear) ->
             // GMP/2.1 frame path (ADR-001/008): decode is fail-closed (null on any
             // desync/magic/version/CRC/length error). The inbound frame then goes
             // to [ingestInbound], which routes ACK frames to the delivery tracker
