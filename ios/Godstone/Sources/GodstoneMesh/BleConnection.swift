@@ -1,6 +1,6 @@
 import Foundation
 
-/// Authoritative connection state and lifecycle for a persistent BLE link (ADR-002, Phase C8.4D1-A1/R2).
+/// Authoritative connection state and lifecycle for a persistent BLE link (ADR-002, Phase C8.4D1-A1/R2/R2.1).
 public enum BleConnectionState: Sendable, Equatable {
     case discovered
     case provisionalConnecting
@@ -64,12 +64,16 @@ public final class BleConnection: @unchecked Sendable {
 
     /// Predicate defining physical duplex readiness for subsequent handshake records (ADR-002 §6).
     /// Distinct from cryptographic `BleConnectionState.ready`.
+    private var isHandshakeTransportReadyLocked: Bool {
+        let bound = (state == .roleBound || state == .handshakeInProgress)
+        guard bound else { return false }
+        return _remoteNodeHint != nil && _localRole != nil && isNotificationSubscribed && maxAttValueLength >= 20
+    }
+
     public var isHandshakeTransportReady: Bool {
         lock.lock()
         defer { lock.unlock() }
-        let bound = (state == .roleBound || state == .handshakeInProgress)
-        guard bound else { return false }
-        return isNotificationSubscribed && maxAttValueLength >= 20
+        return isHandshakeTransportReadyLocked
     }
 
     private let reassembler: BleRecordReassembler
@@ -86,9 +90,39 @@ public final class BleConnection: @unchecked Sendable {
         self.reassembler = BleRecordReassembler(timeProvider: timeProvider)
     }
 
+    /// Validates and executes state transitions. Direct transitions to ready or backwards transitions are rejected.
     public func transitionTo(_ newState: BleConnectionState) {
         lock.lock()
         defer { lock.unlock() }
+        if state == newState { return }
+
+        let valid: Bool
+        switch state {
+        case .discovered:
+            valid = (newState == .provisionalConnecting || newState == .closing || newState == .closed)
+        case .provisionalConnecting:
+            valid = (newState == .provisionalConnected || newState == .closing || newState == .closed)
+        case .provisionalConnected:
+            valid = (newState == .linkInfoReading || newState == .roleBound || newState == .closing || newState == .closed)
+        case .linkInfoReading:
+            valid = (newState == .linkInfoWriting || newState == .closing || newState == .closed)
+        case .linkInfoWriting:
+            valid = (newState == .roleBound || newState == .closing || newState == .closed)
+        case .roleBound:
+            valid = (newState == .handshakeInProgress || newState == .quarantined || newState == .closing || newState == .closed)
+        case .handshakeInProgress:
+            valid = ((newState == .ready && isHandshakeTransportReadyLocked) || newState == .quarantined || newState == .closing || newState == .closed)
+        case .ready:
+            valid = (newState == .quarantined || newState == .closing || newState == .closed)
+        case .quarantined:
+            valid = (newState == .closing || newState == .closed)
+        case .closing:
+            valid = (newState == .closed)
+        case .closed:
+            valid = false
+        }
+
+        precondition(valid, "Illegal state transition from \(state) to \(newState)")
         state = newState
     }
 
@@ -100,10 +134,19 @@ public final class BleConnection: @unchecked Sendable {
         precondition(hint.count == BleRoleElection.nodeHintBytes, "remoteNodeHint must be 4 bytes")
         precondition(_remoteNodeHint == nil && _localRole == nil, "Cannot rebind role on BleConnection")
         precondition(state != .closed && state != .closing && state != .quarantined, "Cannot bind role on inactive connection")
+        precondition(state == .provisionalConnected || state == .linkInfoWriting || state == .provisionalConnecting || state == .discovered, "Cannot bind role from state \(state)")
 
         _remoteNodeHint = hint
         _localRole = role
         state = .roleBound
+    }
+
+    public func bindInitiatorAfterLinkInfoWriteAck(remoteHint: Data) {
+        bindRole(hint: remoteHint, role: .initiator)
+    }
+
+    public func bindResponderFromAcceptedIncomingLinkInfo(remoteHint: Data) {
+        bindRole(hint: remoteHint, role: .responder)
     }
 
     public func markConnected(negotiatedAttValueLength: Int? = nil) {
@@ -122,16 +165,26 @@ public final class BleConnection: @unchecked Sendable {
         defer { lock.unlock() }
         state = .closed
         resetLocked()
+        _remoteNodeHint = nil
+        _localRole = nil
     }
 
     /// Fragment an outbound record into ordered BLE record fragments using connection-local sequence state.
+    /// Enforces phase-specific record type restrictions.
     public func fragmentOutbound(recordType: BleRecordType, payload: Data) -> [Data] {
         lock.lock()
         defer { lock.unlock() }
         guard state != .closed && state != .closing && state != .quarantined else { return [] }
-        // DATA records strictly forbidden before cryptographic ready
-        if recordType == .data && state != .ready {
-            return []
+
+        switch recordType {
+        case .data:
+            if state != .ready { return [] }
+        case .hs1, .hs2, .hs3:
+            if !isHandshakeTransportReadyLocked || (state != .roleBound && state != .handshakeInProgress) {
+                return []
+            }
+        case .close:
+            break
         }
 
         let seq = nextOutboundSeq
@@ -146,11 +199,24 @@ public final class BleConnection: @unchecked Sendable {
     }
 
     /// Ingest an inbound ATT value, decode it as a canonical BleRecord fragment, and reassemble.
+    /// Gating is strictly enforced BEFORE fragment is passed to the reassembler.
     public func ingestInboundAttValue(_ data: Data) -> BleReassembledRecord? {
         lock.lock()
         defer { lock.unlock() }
         guard state != .closed && state != .closing && state != .quarantined else { return nil }
         guard let frag = BleRecordCodec.decodeFragment(data) else { return nil }
+
+        switch frag.header.recordType {
+        case .data:
+            if state != .ready { return nil }
+        case .hs1, .hs2, .hs3:
+            if !isHandshakeTransportReadyLocked || (state != .roleBound && state != .handshakeInProgress) {
+                return nil
+            }
+        case .close:
+            break
+        }
+
         return reassembler.receiveFragment(frag)
     }
 
@@ -167,3 +233,4 @@ public final class BleConnection: @unchecked Sendable {
         isNotificationSubscribed = false
     }
 }
+

@@ -324,7 +324,8 @@ def check_controls(
             errors.append("BL19: iOS advertisement must not broadcast local name")
 
     # ------------------------------------------------------------------------
-    # BL20: Android BleLinkSubstrateTest inventory
+    # ------------------------------------------------------------------------
+    # BL20: Android BleLinkSubstrateTest inventory (Section 16A, 27 methods)
     # ------------------------------------------------------------------------
     if not android_test_substrate_path.exists():
         errors.append(f"BL20: Android test file missing at {android_test_substrate_path}")
@@ -334,38 +335,37 @@ def check_controls(
             "testRoleElection_UnsignedLexicographical",
             "testRoleElection_1000RandomUnequalPairs_ExactlyOneInitiator",
             "testRoleElection_EqualHints_FailClosed",
-            "testDiscoveryPayload_EncodeDecodeRoundTrip",
-            "testScanObservationMerger_AdvFirst_ScanResponseLater",
+            "testLinkInfoV1_EncodeDecodeParity",
+            "testLinkInfoV1_MalformedLength_Rejected",
+            "testLinkInfoV1_UnknownVersion_Rejected",
+            "testLinkInfoV1_CanonicalJsonVectors_AllValidAndInvalid",
+            "testRoleElection_CanonicalJsonVectors",
+            "testProvisionalConnection_MissingAdvMetadata_Allowed",
+            "testLinkInfoAuthority_OverridesAdvMetadata",
+            "testBleConnection_ProvisionalStateMachine",
+            "testRoleBindingCoordinator_CentralFlow",
+            "testRoleBindingCoordinator_PeripheralIncomingWrite",
+            "testCrossingConnections_ALessThanB_ARetainsBRejects",
+            "testCrossingConnections_BLessThanA_BRetainsARejects",
+            "testCrossingConnections_EqualHints_BothReject",
             "testPersistentConnection_MultipleSequentialAttValues",
-            "testDuplexSyntheticTraffic_BothDirections",
+            "testServerSubscriptionAndMtuTracking",
             "testRecordFragments_ThroughConnectionSeam",
             "testNegotiatedMaxAttValueLength_PropagatedToFragmentation",
             "testDisconnect_PurgesConnectionAndReassemblyState",
             "testRepeatedStartStop_Idempotent",
-            "testSessionManager_HandshakeApiNotInvokedBySubstrate",
-            "testLinkLayerReady_RemainsFalse",
-            "testRealDiscoverySnapshotAuthority_UsedInAdvertising",
-            "testServerSubscriptionAndMtuTracking",
-            "testCrossingConnections_ALessThanB_ARetainsBRejects",
-            "testCrossingConnections_BLessThanA_BRetainsARejects",
-            "testCrossingConnections_EqualHints_BothReject",
-            "testLinkInfoV1_EncodeDecodeParityAndValidation",
-            "testLinkInfoV1_MalformedLength_Rejected",
-            "testLinkInfoV1_UnknownVersion_Rejected",
-            "testProvisionalConnection_MissingAdvMetadata_Allowed",
-            "testLinkInfoAuthority_OverridesAdvMetadata",
             "testDataRecord_ForbiddenBeforeReadyState",
-            "testGoldenVectors_BleLinkInfoV1",
-            "testRoleBindingCoordinator_CentralFlow",
-            "testRoleBindingCoordinator_PeripheralIncomingWrite",
-            "testBleConnection_ProvisionalStateMachine"
+            "testLinkLayerReady_RemainsFalse",
+            "testSessionManager_HandshakeApiNotInvokedBySubstrate",
+            "testDuplexSyntheticTraffic_BothDirections",
+            "testSubscriptionAcknowledgement_GatesDuplexReadiness"
         ]
         for t in req_tests:
             if t not in c:
                 errors.append(f"BL20: Android test missing method {t}")
 
     # ------------------------------------------------------------------------
-    # BL21: iOS BleLinkSubstrateTests inventory
+    # BL21: iOS BleLinkSubstrateTests inventory (Section 16B, 28 methods)
     # ------------------------------------------------------------------------
     if not ios_test_substrate_path.exists():
         errors.append(f"BL21: iOS test file missing at {ios_test_substrate_path}")
@@ -375,30 +375,31 @@ def check_controls(
             "testRoleElection_UnsignedLexicographical",
             "testRoleElection_1000RandomUnequalPairs_ExactlyOneInitiator",
             "testRoleElection_EqualHints_FailClosed",
-            "testDiscoveryPayload_EncodeDecodeRoundTrip",
+            "testLinkInfoV1_EncodeDecodeParity",
+            "testLinkInfoV1_MalformedLength_Rejected",
+            "testLinkInfoV1_UnknownVersion_Rejected",
+            "testLinkInfoV1_CanonicalJsonVectors_AllValidAndInvalid",
+            "testRoleElection_CanonicalJsonVectors",
+            "testProvisionalConnection_MissingAdvMetadata_Allowed",
+            "testLinkInfoAuthority_OverridesAdvMetadata",
+            "testBleConnection_ProvisionalStateMachine",
+            "testRoleBindingCoordinator_CentralFlow",
+            "testRoleBindingCoordinator_PeripheralIncomingWrite",
+            "testCrossingConnections_ALessThanB_ARetainsBRejects",
+            "testCrossingConnections_BLessThanA_BRetainsARejects",
+            "testCrossingConnections_EqualHints_BothReject",
             "testCentralWriteQueue_SequentialAttValues",
             "testPeripheralNotificationQueue_Backpressure",
-            "testDuplexSyntheticTraffic_BothDirections",
             "testRecordFragments_ThroughConnectionSeam",
             "testNegotiatedMaxAttValueLength_PropagatedToFragmentation",
             "testDisconnect_PurgesConnectionAndReassemblyState",
             "testRepeatedLifecycle_Idempotent",
-            "testSessionManager_HandshakeApiNotInvokedBySubstrate",
-            "testLinkLayerReady_RemainsFalse",
-            "testCoreBluetoothMissingServiceData_FailsClosed",
-            "testCrossingConnections_ALessThanB_ARetainsBRejects",
-            "testCrossingConnections_BLessThanA_BRetainsARejects",
-            "testCrossingConnections_EqualHints_BothReject",
-            "testLinkInfoV1_EncodeDecodeParityAndValidation",
-            "testLinkInfoV1_MalformedLength_Rejected",
-            "testLinkInfoV1_UnknownVersion_Rejected",
-            "testProvisionalConnection_MissingAdvMetadata_Allowed",
-            "testLinkInfoAuthority_OverridesAdvMetadata",
             "testDataRecord_ForbiddenBeforeReadyState",
-            "testGoldenVectors_BleLinkInfoV1",
-            "testRoleBindingCoordinator_CentralFlow",
-            "testRoleBindingCoordinator_PeripheralIncomingWrite",
-            "testBleConnection_ProvisionalStateMachine"
+            "testLinkLayerReady_RemainsFalse",
+            "testSessionManager_HandshakeApiNotInvokedBySubstrate",
+            "testDuplexSyntheticTraffic_BothDirections",
+            "testLocking_NoDeadlockOnLocalLinkInfoQuery",
+            "testSubscriptionAcknowledgement_GatesDuplexReadiness"
         ]
         for t in req_tests:
             if t not in c:
@@ -665,11 +666,110 @@ def check_controls(
         if "identity.nodeHint.copyOf(6)" in c:
             errors.append("BL46: Android BleTransport must not use fake nodeHint.copyOf(6) fallback")
 
+    # ------------------------------------------------------------------------
+    # BL47: iOS BleTransport non-recursive locking
+    # ------------------------------------------------------------------------
+    if ios_transport_path.exists():
+        c = strip_comments(ios_transport_path.read_text(encoding="utf-8"))
+        if "getLocalLinkInfoDataLocked()" not in c:
+            errors.append("BL47: iOS BleTransport must define non-recursive getLocalLinkInfoDataLocked()")
+
+    # ------------------------------------------------------------------------
+    # BL48: iOS BleTransport CCCD subscription tracking on callback
+    # ------------------------------------------------------------------------
+    if ios_transport_path.exists():
+        c = strip_comments(ios_transport_path.read_text(encoding="utf-8"))
+        if "didUpdateNotificationStateFor ch:" not in c:
+            errors.append("BL48: iOS BleTransport must track CCCD subscription on didUpdateNotificationStateFor callback")
+
+    # ------------------------------------------------------------------------
+    # ------------------------------------------------------------------------
+    # BL49: Android GattClient completion-serialized sendAttValue
+    # ------------------------------------------------------------------------
+    if android_client_path.exists():
+        c = strip_comments(android_client_path.read_text(encoding="utf-8"))
+        if not re.search(r'\bpendingWriteDeferred\b', c) or "WRITE_TYPE_DEFAULT" not in c:
+            errors.append("BL49: Android GattClientConnection must serialize sendAttValue with CompletableDeferred")
+
+    # ------------------------------------------------------------------------
+    # BL50: Android BleTransport store-backed snapshot authority
+    # ------------------------------------------------------------------------
+    if android_transport_path.exists():
+        c = strip_comments(android_transport_path.read_text(encoding="utf-8"))
+        if "store.forEachHeldMsgId" not in c and "store?.forEachHeldMsgId" not in c:
+            errors.append("BL50: Android BleTransport must derive Bloom digest from durable message store")
+
+    # ------------------------------------------------------------------------
+    # BL51: iOS BleTransport store-backed snapshot authority
+    # ------------------------------------------------------------------------
+    if ios_transport_path.exists():
+        c = strip_comments(ios_transport_path.read_text(encoding="utf-8"))
+        if "forEachHeldMsgId" not in c or "store" not in c:
+            errors.append("BL51: iOS BleTransport must derive Bloom digest from durable message store")
+
+    # ------------------------------------------------------------------------
+    # BL52: Android BleTransport RSSI recording from scan observations
+    # ------------------------------------------------------------------------
+    if android_transport_path.exists():
+        c = strip_comments(android_transport_path.read_text(encoding="utf-8"))
+        if "peerRssi[address] = result.rssi" not in c:
+            errors.append("BL52: Android BleTransport must record observed RSSI from scan observations")
+
+    # ------------------------------------------------------------------------
+    # BL53: Handshake transport readiness gated on subscription and role binding
+    # ------------------------------------------------------------------------
+    if android_conn_path.exists():
+        c = strip_comments(android_conn_path.read_text(encoding="utf-8"))
+        if "isRoleBound && isNotificationSubscribed" not in c:
+            errors.append("BL53: Android BleConnection must gate isHandshakeTransportReady on isRoleBound and isNotificationSubscribed")
+
+    if ios_conn_path.exists():
+        c = strip_comments(ios_conn_path.read_text(encoding="utf-8"))
+        if not re.search(r'return\s+_remoteNodeHint\s*!=\s*nil\s*&&\s*_localRole\s*!=\s*nil\s*&&\s*isNotificationSubscribed', c):
+            errors.append("BL53: iOS BleConnection must gate isHandshakeTransportReady on isRoleBound and isNotificationSubscribed")
+
+    # ------------------------------------------------------------------------
+    # BL54: Connection capacity bounding (max active connections = 7)
+    # ------------------------------------------------------------------------
+    if android_transport_path.exists():
+        c = strip_comments(android_transport_path.read_text(encoding="utf-8"))
+        if "activeConnections.size >= MAX_ACTIVE_CONNECTIONS" not in c:
+            errors.append("BL54: Android BleTransport must bound inbound connections to MAX_ACTIVE_CONNECTIONS")
+
+    if ios_transport_path.exists():
+        c = strip_comments(ios_transport_path.read_text(encoding="utf-8"))
+        if "BleTransport.maxActiveConnections" not in c:
+            errors.append("BL54: iOS BleTransport must bound inbound connections to maxActiveConnections")
+
+    # ------------------------------------------------------------------------
+    # BL55: iOS provisional lifecycle cleanup timer and didFailToConnect
+    # ------------------------------------------------------------------------
+    if ios_transport_path.exists():
+        c = strip_comments(ios_transport_path.read_text(encoding="utf-8"))
+        if "didFailToConnect" not in c or "func purgeCentralConnection(" not in c:
+            errors.append("BL55: iOS BleTransport must implement didFailToConnect and purgeCentralConnection")
+
+    # ------------------------------------------------------------------------
+    # BL56: Android BleGattServer serviceRegistrationEpoch tracking
+    # ------------------------------------------------------------------------
+    if android_server_path.exists():
+        c = strip_comments(android_server_path.read_text(encoding="utf-8"))
+        if not re.search(r'\bserviceRegistrationEpoch\b', c):
+            errors.append("BL56: Android BleGattServer must track serviceRegistrationEpoch")
+
+    # ------------------------------------------------------------------------
+    # BL57: iOS BleTransport backpressure checking canSendWriteWithoutResponse
+    # ------------------------------------------------------------------------
+    if ios_transport_path.exists():
+        c = strip_comments(ios_transport_path.read_text(encoding="utf-8"))
+        if "canSendWriteWithoutResponse" not in c:
+            errors.append("BL57: iOS BleTransport must check canSendWriteWithoutResponse for write-without-response")
+
     return errors
 
 
 def run_selftest() -> int:
-    """Mutation testing for all BL01-BL46 control rules."""
+    """Mutation testing for all BL01-BL57 control rules."""
     print("Running check_ble_link_substrate_controls selftest (mutation test battery)...")
 
     # 1. Baseline must pass
@@ -737,7 +837,20 @@ def run_selftest() -> int:
         ("android_conn", "state != BleConnectionState.READY", "state != BleConnectionState.CLOSED", "BL44"),
         ("ios_conn", "state != .ready", "state != .closed", "BL44"),
         ("ios_transport", "private var outboundCentralConnections: [UUID: BleConnection] = [:]", "private var outboundCentralConnectionsMutated: [UUID: BleConnection] = [:]", "BL45"),
-        ("android_transport", "ByteArray(BleLinkInfoConstants.SHORT_DIGEST_BYTES)", "identity.nodeHint.copyOf(6)", "BL46"),
+        ("android_transport", "bloom.toBytes().copyOf(BleLinkInfoConstants.SHORT_DIGEST_BYTES)", "identity.nodeHint.copyOf(6)", "BL46"),
+        ("ios_transport", "getLocalLinkInfoDataLocked()", "getLocalLinkInfoDataLockedMutated()", "BL47"),
+        ("ios_transport", "didUpdateNotificationStateFor ch: CBCharacteristic,", "didUpdateNotificationStateForMutated ch: CBCharacteristic,", "BL48"),
+        ("android_client", "pendingWriteDeferred", "pendingWriteDeferredMut", "BL49"),
+        ("android_transport", "store.forEachHeldMsgId", "/* store.forEachHeldMsgId */", "BL50"),
+        ("ios_transport", "s.forEachHeldMsgId", "/* s.forEachHeldMsgId */", "BL51"),
+        ("android_transport", "peerRssi[address] = result.rssi", "/* peerRssi[address] = result.rssi */", "BL52"),
+        ("android_conn", "isRoleBound && isNotificationSubscribed", "isRoleBound", "BL53"),
+        ("ios_conn", "_remoteNodeHint != nil && _localRole != nil && isNotificationSubscribed", "_remoteNodeHint != nil && _localRole != nil", "BL53"),
+        ("android_transport", "activeConnections.size >= MAX_ACTIVE_CONNECTIONS", "false", "BL54"),
+        ("ios_transport", "BleTransport.maxActiveConnections", "999999", "BL54"),
+        ("ios_transport", "func purgeCentralConnection(", "func purgeCentralConnectionMutated(", "BL55"),
+        ("android_server", "serviceRegistrationEpoch", "serviceRegistrationEpochMut", "BL56"),
+        ("ios_transport", "p.canSendWriteWithoutResponse", "true", "BL57"),
     ]
 
     all_passed = True
@@ -844,7 +957,7 @@ def main() -> int:
             print(f"  - {err}", file=sys.stderr)
         return 1
 
-    print("BLE link substrate structural controls: ALL PASSED (BL01-BL46).")
+    print("BLE link substrate structural controls: ALL PASSED (BL01-BL57).")
     return 0
 
 

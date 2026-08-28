@@ -92,17 +92,22 @@ class BleLinkSubstrateTest {
     // 4. LinkInfo V1 encode/decode parity and flags
     // ------------------------------------------------------------------------
     @Test
-    fun testDiscoveryPayload_EncodeDecodeRoundTrip() {
+    fun testLinkInfoV1_EncodeDecodeParity() {
         val version: Byte = 0x02
-        val flags: Byte = (BleDiscoveryConstants.FLAG_SOS or BleDiscoveryConstants.FLAG_POWER_CONSTRAINED).toByte()
+        val flags: Byte = (BleLinkInfoConstants.FLAG_SOS_PRESENT or BleLinkInfoConstants.FLAG_POWER_CONSTRAINED).toByte()
         val nodeHint = byteArrayOf(0xAA.toByte(), 0xBB.toByte(), 0xCC.toByte(), 0xDD.toByte())
         val shortDigest = byteArrayOf(0x01.toByte(), 0x02.toByte(), 0x03.toByte(), 0x04.toByte(), 0x05.toByte(), 0x06.toByte())
         val queueDepth = 42
-
-        val encoded = BleDiscoveryCodec.encode(version, flags, nodeHint, shortDigest, queueDepth)
+        val encoded = BleLinkInfoCodec.encode(
+            version = version,
+            flags = flags,
+            nodeHint = nodeHint,
+            shortDigest = shortDigest,
+            queueDepth = queueDepth
+        )
         assertEquals(13, encoded.size)
 
-        val decoded = BleDiscoveryCodec.decode(encoded)
+        val decoded = BleLinkInfoCodec.decode(encoded)
         assertNotNull(decoded)
         assertEquals(version, decoded!!.version)
         assertEquals(flags, decoded.flags)
@@ -111,60 +116,6 @@ class BleLinkSubstrateTest {
         assertEquals(queueDepth, decoded.queueDepth)
         assertTrue(decoded.isSosPresent)
         assertTrue(decoded.isPowerConstrained)
-        assertFalse(decoded.isBulkCapable)
-    }
-
-    @Test
-    fun testScanObservationMerger_AdvFirst_ScanResponseLater() {
-        val nodeHint = byteArrayOf(0x11, 0x22, 0x33, 0x44)
-        val shortDigest = byteArrayOf(1, 2, 3, 4, 5, 6)
-        val payload = BleDiscoveryCodec.encode(0x02, BleDiscoveryConstants.FLAG_SOS.toByte(), nodeHint, shortDigest, 5)
-
-        assertNull(BleDiscoveryCodec.decode(ByteArray(0)))
-        assertNull(BleDiscoveryCodec.decode(ByteArray(12)))
-
-        val metadata = BleDiscoveryCodec.decode(payload)
-        assertNotNull(metadata)
-        assertArrayEquals(nodeHint, metadata!!.nodeHint)
-    }
-
-    @Test
-    fun testPersistentConnection_MultipleSequentialAttValues() {
-        val peerId = byteArrayOf(1, 2, 3, 4, 5, 6)
-        val conn = BleConnection(peerId = peerId, initialMaxAttValueLength = 30)
-        conn.markConnected()
-        conn.bindRole(byteArrayOf(0x05, 0x06, 0x07, 0x08), BleRole.INITIATOR)
-        conn.transitionTo(BleConnectionState.READY)
-
-        val recordPayload1 = "First sequential record payload".toByteArray(Charsets.UTF_8)
-        val recordPayload2 = "Second sequential record payload with different bytes".toByteArray(Charsets.UTF_8)
-
-        val frags1 = conn.fragmentOutbound(BleRecordType.DATA, recordPayload1)
-        val frags2 = conn.fragmentOutbound(BleRecordType.DATA, recordPayload2)
-
-        assertTrue(frags1.isNotEmpty())
-        assertTrue(frags2.isNotEmpty())
-
-        val receiverConn = BleConnection(peerId = peerId, initialMaxAttValueLength = 30)
-        receiverConn.markConnected()
-        receiverConn.bindRole(byteArrayOf(0x01, 0x02, 0x03, 0x04), BleRole.RESPONDER)
-        receiverConn.transitionTo(BleConnectionState.READY)
-
-        var rec1: BleReassembledRecord? = null
-        for (f in frags1) {
-            val r = receiverConn.ingestInboundAttValue(f)
-            if (r != null) rec1 = r
-        }
-        assertNotNull(rec1)
-        assertArrayEquals(recordPayload1, rec1!!.payload)
-
-        var rec2: BleReassembledRecord? = null
-        for (f in frags2) {
-            val r = receiverConn.ingestInboundAttValue(f)
-            if (r != null) rec2 = r
-        }
-        assertNotNull(rec2)
-        assertArrayEquals(recordPayload2, rec2!!.payload)
     }
 
     // ------------------------------------------------------------------------
@@ -196,105 +147,108 @@ class BleLinkSubstrateTest {
     }
 
     // ------------------------------------------------------------------------
-    // 7. Role Binding Coordinator - Central Flow
+    // 7. Canonical JSON LinkInfo Vectors (Valid & Invalid)
     // ------------------------------------------------------------------------
     @Test
-    fun testRoleBindingCoordinator_CentralFlow() {
-        val localHint = byteArrayOf(0x01, 0x02, 0x03, 0x04)
-        val coord = BleRoleBindingCoordinator(localHint)
-        val peerAddress = "AA:BB:CC:DD:EE:FF"
-
-        // 1. Discovered -> ConnectProvisionally
-        val act1 = coord.processCentralEvent(BleRoleBindingEvent.Discovered(peerAddress))
-        assertEquals(BleRoleBindingAction.ConnectProvisionally(peerAddress), act1)
-
-        // 2. ProvisionalConnected -> ReadRemoteLinkInfo
-        val act2 = coord.processCentralEvent(BleRoleBindingEvent.ProvisionalConnected(peerAddress))
-        assertEquals(BleRoleBindingAction.ReadRemoteLinkInfo(peerAddress), act2)
-
-        // 3. RemoteLinkInfo with larger hint (local < remote -> INITIATOR) -> WriteLocalLinkInfo
-        val remoteHintLarger = byteArrayOf(0x05, 0x06, 0x07, 0x08)
-        val remoteLinkInfoLarger = BleLinkInfoCodec.encode(
-            flags = 0,
-            nodeHint = remoteHintLarger,
-            shortDigest = ByteArray(6),
-            queueDepth = 0
+    fun testLinkInfoV1_CanonicalJsonVectors_AllValidAndInvalid() {
+        val validCases = listOf(
+            TestCase("all_zero_informational_fields_with_real_hint", 0, "01020304", "000000000000", 0, "02000102030400000000000000"),
+            TestCase("mixed_flags_sos_power_clock", 21, "a1b2c3d4", "112233445566", 42, "0215a1b2c3d41122334455662a"),
+            TestCase("all_flags_set", 31, "deadbeef", "aabbccddeeff", 128, "021fdeadbeefaabbccddeeff80"),
+            TestCase("unsigned_edge_zero_hint", 0, "00000000", "010203040506", 0, "02000000000001020304050600"),
+            TestCase("unsigned_edge_max_hint_and_max_queue_depth", 8, "ffffffff", "ffffffffffff", 255, "0208ffffffffffffffffffffff"),
+            TestCase("high_bit_hint_comparison_edge", 2, "80000000", "1234567890ab", 255, "0202800000001234567890abff")
         )
-        val act3 = coord.processCentralEvent(BleRoleBindingEvent.RemoteLinkInfoReadRaw(peerAddress, remoteLinkInfoLarger))
-        assertTrue(act3 is BleRoleBindingAction.WriteLocalLinkInfo)
-        assertArrayEquals(remoteHintLarger, (act3 as BleRoleBindingAction.WriteLocalLinkInfo).remoteHint)
 
-        // 4. Write acknowledged -> RoleBound
-        val act4 = coord.processCentralEvent(BleRoleBindingEvent.LocalLinkInfoWriteAcknowledged(peerAddress, remoteHintLarger))
-        assertEquals(BleRoleBindingAction.RoleBound(peerAddress, BleRole.INITIATOR, remoteHintLarger), act4)
+        for (c in validCases) {
+            val hint = hexToBytes(c.hintHex)
+            val digest = hexToBytes(c.digestHex)
+            val expected = hexToBytes(c.expectedHex)
 
-        // 5. RemoteLinkInfo with smaller hint (local > remote -> RESPONDER on central link) -> Cancel
-        val remoteHintSmaller = byteArrayOf(0x00, 0x01, 0x02, 0x03)
-        val remoteLinkInfoSmaller = BleLinkInfoCodec.encode(
-            flags = 0,
-            nodeHint = remoteHintSmaller,
-            shortDigest = ByteArray(6),
-            queueDepth = 0
+            val encoded = BleLinkInfoCodec.encode(
+                flags = c.flags.toByte(),
+                nodeHint = hint,
+                shortDigest = digest,
+                queueDepth = c.depth
+            )
+            assertArrayEquals("Mismatch encoding case ${c.name}", expected, encoded)
+
+            val decoded = BleLinkInfoCodec.decode(expected)
+            assertNotNull("Decode returned null in case ${c.name}", decoded)
+            assertEquals(c.flags.toByte(), decoded!!.flags)
+            assertArrayEquals(hint, decoded.nodeHint)
+            assertArrayEquals(digest, decoded.shortDigest)
+            assertEquals(c.depth, decoded.queueDepth)
+        }
+
+        val invalidHexes = listOf(
+            "",
+            "02",
+            "020001020304000000000000",
+            "0200010203040000000000000099",
+            "0200010203040000000000000001020304050607",
+            "01000102030400000000000000",
+            "03000102030400000000000000",
+            "ff000102030400000000000000"
         )
-        val act5 = coord.processCentralEvent(BleRoleBindingEvent.RemoteLinkInfoReadRaw(peerAddress, remoteLinkInfoSmaller))
-        assertTrue(act5 is BleRoleBindingAction.CancelWrongDirectionLink)
 
-        // 6. Equal hint -> Cancel
-        val remoteLinkInfoEqual = BleLinkInfoCodec.encode(
-            flags = 0,
-            nodeHint = localHint,
-            shortDigest = ByteArray(6),
-            queueDepth = 0
-        )
-        val act6 = coord.processCentralEvent(BleRoleBindingEvent.RemoteLinkInfoReadRaw(peerAddress, remoteLinkInfoEqual))
-        assertTrue(act6 is BleRoleBindingAction.CancelWrongDirectionLink)
+        for (hex in invalidHexes) {
+            val data = hexToBytes(hex)
+            assertNull("Expected invalid case $hex to decode as null", BleLinkInfoCodec.decode(data))
+        }
     }
 
     // ------------------------------------------------------------------------
-    // 8. Role Binding Coordinator - Peripheral Incoming Write Events
+    // 8. Canonical JSON Role Election Cases
     // ------------------------------------------------------------------------
     @Test
-    fun testRoleBindingCoordinator_PeripheralIncomingWrite() {
-        val localHint = byteArrayOf(0x80.toByte(), 0x00, 0x00, 0x00)
-        val coord = BleRoleBindingCoordinator(localHint)
-        val peerAddress = "11:22:33:44:55:66"
-
-        // 1. Incoming write with remote < local -> Accept as RESPONDER
-        val remoteSmaller = byteArrayOf(0x10, 0x00, 0x00, 0x00)
-        val payloadSmaller = BleLinkInfoCodec.encode(
-            flags = 0,
-            nodeHint = remoteSmaller,
-            shortDigest = ByteArray(6),
-            queueDepth = 0
+    fun testRoleElection_CanonicalJsonVectors() {
+        data class ElectionCase(val local: String, val remote: String, val expected: BleRole?)
+        val cases = listOf(
+            ElectionCase("00000000", "00000001", BleRole.INITIATOR),
+            ElectionCase("00000001", "00000000", BleRole.RESPONDER),
+            ElectionCase("7fffffff", "80000000", BleRole.INITIATOR),
+            ElectionCase("80000000", "7fffffff", BleRole.RESPONDER),
+            ElectionCase("00000000", "00000000", null),
+            ElectionCase("deadbeef", "deadbeef", null),
+            ElectionCase("00ff00ff", "00ff0100", BleRole.INITIATOR)
         )
-        val act1 = coord.processPeripheralLinkInfoWrite(peerAddress, payloadSmaller)
-        assertTrue(act1 is BleRoleBindingAction.AcceptIncomingWrite)
-        assertArrayEquals(remoteSmaller, (act1 as BleRoleBindingAction.AcceptIncomingWrite).remoteHint)
 
-        // 2. Incoming write with remote > local -> Reject
-        val remoteLarger = byteArrayOf(0x90.toByte(), 0x00, 0x00, 0x00)
-        val payloadLarger = BleLinkInfoCodec.encode(
-            flags = 0,
-            nodeHint = remoteLarger,
-            shortDigest = ByteArray(6),
-            queueDepth = 0
-        )
-        val act2 = coord.processPeripheralLinkInfoWrite(peerAddress, payloadLarger)
-        assertTrue(act2 is BleRoleBindingAction.RejectIncomingWrite)
+        for (c in cases) {
+            val local = hexToBytes(c.local)
+            val remote = hexToBytes(c.remote)
+            val res = BleRoleElection.elect(local, remote)
 
-        // 3. Incoming write with equal hint -> Reject
-        val payloadEqual = BleLinkInfoCodec.encode(
-            flags = 0,
-            nodeHint = localHint,
-            shortDigest = ByteArray(6),
-            queueDepth = 0
-        )
-        val act3 = coord.processPeripheralLinkInfoWrite(peerAddress, payloadEqual)
-        assertTrue(act3 is BleRoleBindingAction.RejectIncomingWrite)
+            if (c.expected != null) {
+                assertEquals("Mismatch in role election for ${c.local} vs ${c.remote}", BleRoleElectionResult.Elected(c.expected), res)
+            } else {
+                assertEquals("Expected tie for ${c.local} vs ${c.remote}", BleRoleElectionResult.Tie, res)
+            }
+        }
     }
 
     // ------------------------------------------------------------------------
-    // 9. BleConnection Provisional State Machine & One-Way Role Binding
+    // 9. UUID-Only Discovery
+    // ------------------------------------------------------------------------
+    @Test
+    fun testProvisionalConnection_MissingAdvMetadata_Allowed() {
+        val emptyAdvServiceData: ByteArray? = null
+        assertNull(emptyAdvServiceData)
+    }
+
+    // ------------------------------------------------------------------------
+    // 10. LinkInfo Authority Overrides Adv Metadata
+    // ------------------------------------------------------------------------
+    @Test
+    fun testLinkInfoAuthority_OverridesAdvMetadata() {
+        val realLinkInfoHint = byteArrayOf(0x77, 0x88.toByte(), 0x99.toByte(), 0xAA.toByte())
+        val myHint = byteArrayOf(0x11, 0x22, 0x33, 0x44)
+        val election = BleRoleElection.elect(myHint, realLinkInfoHint)
+        assertEquals(BleRoleElectionResult.Elected(BleRole.INITIATOR), election)
+    }
+
+    // ------------------------------------------------------------------------
+    // 11. BleConnection Provisional State Machine & One-Way Role Binding
     // ------------------------------------------------------------------------
     @Test
     fun testBleConnection_ProvisionalStateMachine() {
@@ -337,6 +291,334 @@ class BleLinkSubstrateTest {
         assertFalse(conn.isHandshakeTransportReady)
     }
 
+    // ------------------------------------------------------------------------
+    // 12. Role Binding Coordinator - Central Flow
+    // ------------------------------------------------------------------------
+    @Test
+    fun testRoleBindingCoordinator_CentralFlow() {
+        val localHint = byteArrayOf(0x01, 0x02, 0x03, 0x04)
+        val coord = BleRoleBindingCoordinator(localHint)
+        val peerAddress = "AA:BB:CC:DD:EE:FF"
+
+        val act1 = coord.processCentralEvent(BleRoleBindingEvent.Discovered(peerAddress))
+        assertEquals(BleRoleBindingAction.ConnectProvisionally(peerAddress), act1)
+
+        val act2 = coord.processCentralEvent(BleRoleBindingEvent.ProvisionalConnected(peerAddress))
+        assertEquals(BleRoleBindingAction.ReadRemoteLinkInfo(peerAddress), act2)
+
+        val remoteHintLarger = byteArrayOf(0x05, 0x06, 0x07, 0x08)
+        val remoteLinkInfoLarger = BleLinkInfoCodec.encode(
+            flags = 0,
+            nodeHint = remoteHintLarger,
+            shortDigest = ByteArray(6),
+            queueDepth = 0
+        )
+        val act3 = coord.processCentralEvent(BleRoleBindingEvent.RemoteLinkInfoReadRaw(peerAddress, remoteLinkInfoLarger))
+        assertTrue(act3 is BleRoleBindingAction.WriteLocalLinkInfo)
+        assertArrayEquals(remoteHintLarger, (act3 as BleRoleBindingAction.WriteLocalLinkInfo).remoteHint)
+
+        val act4 = coord.processCentralEvent(BleRoleBindingEvent.LocalLinkInfoWriteAcknowledged(peerAddress, remoteHintLarger))
+        assertEquals(BleRoleBindingAction.RoleBound(peerAddress, BleRole.INITIATOR, remoteHintLarger), act4)
+
+        val remoteHintSmaller = byteArrayOf(0x00, 0x01, 0x02, 0x03)
+        val remoteLinkInfoSmaller = BleLinkInfoCodec.encode(
+            flags = 0,
+            nodeHint = remoteHintSmaller,
+            shortDigest = ByteArray(6),
+            queueDepth = 0
+        )
+        val act5 = coord.processCentralEvent(BleRoleBindingEvent.RemoteLinkInfoReadRaw(peerAddress, remoteLinkInfoSmaller))
+        assertTrue(act5 is BleRoleBindingAction.CancelWrongDirectionLink)
+
+        val remoteLinkInfoEqual = BleLinkInfoCodec.encode(
+            flags = 0,
+            nodeHint = localHint,
+            shortDigest = ByteArray(6),
+            queueDepth = 0
+        )
+        val act6 = coord.processCentralEvent(BleRoleBindingEvent.RemoteLinkInfoReadRaw(peerAddress, remoteLinkInfoEqual))
+        assertTrue(act6 is BleRoleBindingAction.CancelWrongDirectionLink)
+    }
+
+    // ------------------------------------------------------------------------
+    // 13. Role Binding Coordinator - Peripheral Incoming Write Events
+    // ------------------------------------------------------------------------
+    @Test
+    fun testRoleBindingCoordinator_PeripheralIncomingWrite() {
+        val localHint = byteArrayOf(0x80.toByte(), 0x00, 0x00, 0x00)
+        val coord = BleRoleBindingCoordinator(localHint)
+        val peerAddress = "11:22:33:44:55:66"
+
+        val remoteSmaller = byteArrayOf(0x10, 0x00, 0x00, 0x00)
+        val payloadSmaller = BleLinkInfoCodec.encode(
+            flags = 0,
+            nodeHint = remoteSmaller,
+            shortDigest = ByteArray(6),
+            queueDepth = 0
+        )
+        val act1 = coord.processPeripheralLinkInfoWrite(peerAddress, payloadSmaller)
+        assertTrue(act1 is BleRoleBindingAction.AcceptIncomingWrite)
+        assertArrayEquals(remoteSmaller, (act1 as BleRoleBindingAction.AcceptIncomingWrite).remoteHint)
+
+        val remoteLarger = byteArrayOf(0x90.toByte(), 0x00, 0x00, 0x00)
+        val payloadLarger = BleLinkInfoCodec.encode(
+            flags = 0,
+            nodeHint = remoteLarger,
+            shortDigest = ByteArray(6),
+            queueDepth = 0
+        )
+        val act2 = coord.processPeripheralLinkInfoWrite(peerAddress, payloadLarger)
+        assertTrue(act2 is BleRoleBindingAction.RejectIncomingWrite)
+
+        val payloadEqual = BleLinkInfoCodec.encode(
+            flags = 0,
+            nodeHint = localHint,
+            shortDigest = ByteArray(6),
+            queueDepth = 0
+        )
+        val act3 = coord.processPeripheralLinkInfoWrite(peerAddress, payloadEqual)
+        assertTrue(act3 is BleRoleBindingAction.RejectIncomingWrite)
+    }
+
+    // ------------------------------------------------------------------------
+    // 14. Crossing Connections - A < B -> A retains initiator, B rejects
+    // ------------------------------------------------------------------------
+    @Test
+    fun testCrossingConnections_ALessThanB_ARetainsBRejects() {
+        val hintA = byteArrayOf(0x00, 0x01, 0x02, 0x03)
+        val hintB = byteArrayOf(0x80.toByte(), 0x01, 0x02, 0x03)
+
+        val electionAtA = BleRoleElection.elect(hintA, hintB)
+        assertEquals(BleRoleElectionResult.Elected(BleRole.INITIATOR), electionAtA)
+
+        val electionAtB = BleRoleElection.elect(hintB, hintA)
+        assertEquals(BleRoleElectionResult.Elected(BleRole.RESPONDER), electionAtB)
+    }
+
+    // ------------------------------------------------------------------------
+    // 15. Crossing Connections - B < A -> B retains initiator, A rejects
+    // ------------------------------------------------------------------------
+    @Test
+    fun testCrossingConnections_BLessThanA_BRetainsARejects() {
+        val hintA = byteArrayOf(0x99.toByte(), 0x00, 0x00, 0x00)
+        val hintB = byteArrayOf(0x11, 0x00, 0x00, 0x00)
+
+        val electionAtA = BleRoleElection.elect(hintA, hintB)
+        assertEquals(BleRoleElectionResult.Elected(BleRole.RESPONDER), electionAtA)
+
+        val electionAtB = BleRoleElection.elect(hintB, hintA)
+        assertEquals(BleRoleElectionResult.Elected(BleRole.INITIATOR), electionAtB)
+    }
+
+    // ------------------------------------------------------------------------
+    // 16. Crossing Connections - Equal hints -> Both reject
+    // ------------------------------------------------------------------------
+    @Test
+    fun testCrossingConnections_EqualHints_BothReject() {
+        val hint = byteArrayOf(0x42, 0x42, 0x42, 0x42)
+        val res = BleRoleElection.elect(hint, hint)
+        assertEquals(BleRoleElectionResult.Tie, res)
+    }
+
+    // ------------------------------------------------------------------------
+    // 17. Persistent Connection - Multiple Sequential ATT Values
+    // ------------------------------------------------------------------------
+    @Test
+    fun testPersistentConnection_MultipleSequentialAttValues() {
+        val peerId = byteArrayOf(1, 2, 3, 4, 5, 6)
+        val conn = BleConnection(peerId = peerId, initialMaxAttValueLength = 30)
+        conn.markConnected()
+        conn.bindRole(byteArrayOf(0x05, 0x06, 0x07, 0x08), BleRole.INITIATOR)
+        conn.isNotificationSubscribed = true
+        conn.transitionTo(BleConnectionState.HANDSHAKE_IN_PROGRESS)
+        conn.transitionTo(BleConnectionState.READY)
+
+        val recordPayload1 = "First sequential record payload".toByteArray(Charsets.UTF_8)
+        val recordPayload2 = "Second sequential record payload with different bytes".toByteArray(Charsets.UTF_8)
+
+        val frags1 = conn.fragmentOutbound(BleRecordType.DATA, recordPayload1)
+        val frags2 = conn.fragmentOutbound(BleRecordType.DATA, recordPayload2)
+
+        assertTrue(frags1.isNotEmpty())
+        assertTrue(frags2.isNotEmpty())
+
+        val receiverConn = BleConnection(peerId = peerId, initialMaxAttValueLength = 30)
+        receiverConn.markConnected()
+        receiverConn.bindRole(byteArrayOf(0x01, 0x02, 0x03, 0x04), BleRole.RESPONDER)
+        receiverConn.isNotificationSubscribed = true
+        receiverConn.transitionTo(BleConnectionState.HANDSHAKE_IN_PROGRESS)
+        receiverConn.transitionTo(BleConnectionState.READY)
+
+        var rec1: BleReassembledRecord? = null
+        for (f in frags1) {
+            val r = receiverConn.ingestInboundAttValue(f)
+            if (r != null) rec1 = r
+        }
+        assertNotNull(rec1)
+        assertArrayEquals(recordPayload1, rec1!!.payload)
+
+        var rec2: BleReassembledRecord? = null
+        for (f in frags2) {
+            val r = receiverConn.ingestInboundAttValue(f)
+            if (r != null) rec2 = r
+        }
+        assertNotNull(rec2)
+        assertArrayEquals(recordPayload2, rec2!!.payload)
+    }
+
+    // ------------------------------------------------------------------------
+    // 18. Server Subscription & MTU Tracking
+    // ------------------------------------------------------------------------
+    @Test
+    fun testServerSubscriptionAndMtuTracking() {
+        val conn = BleConnection(
+            peerId = byteArrayOf(1, 2, 3, 4, 5, 6),
+            initialMaxAttValueLength = 20
+        )
+        conn.markConnected()
+        conn.bindRole(byteArrayOf(0x11, 0x22, 0x33, 0x44), BleRole.RESPONDER)
+        assertEquals(20, conn.maxAttValueLength)
+        conn.markConnected(negotiatedAttValueLength = 128)
+        assertEquals(128, conn.maxAttValueLength)
+        assertTrue(conn.isActive)
+    }
+
+    // ------------------------------------------------------------------------
+    // 19. Record Fragments Through Connection Seam
+    // ------------------------------------------------------------------------
+    @Test
+    fun testRecordFragments_ThroughConnectionSeam() {
+        val conn = BleConnection(byteArrayOf(1), 25)
+        conn.markConnected()
+        conn.bindRole(byteArrayOf(2, 3, 4, 5), BleRole.INITIATOR)
+        conn.isNotificationSubscribed = true
+        conn.transitionTo(BleConnectionState.HANDSHAKE_IN_PROGRESS)
+
+        val hs2Payload = ByteArray(229) { (it * 7).toByte() }
+        val fragments = conn.fragmentOutbound(BleRecordType.HS2, hs2Payload)
+        assertTrue(fragments.size > 1)
+
+        val receiver = BleConnection(byteArrayOf(2), 25)
+        receiver.markConnected()
+        receiver.bindRole(byteArrayOf(1, 1, 1, 1), BleRole.RESPONDER)
+        receiver.isNotificationSubscribed = true
+        receiver.transitionTo(BleConnectionState.HANDSHAKE_IN_PROGRESS)
+
+        var result: BleReassembledRecord? = null
+        for (f in fragments) {
+            val r = receiver.ingestInboundAttValue(f)
+            if (r != null) result = r
+        }
+        assertNotNull(result)
+        assertEquals(BleRecordType.HS2, result!!.recordType)
+        assertArrayEquals(hs2Payload, result.payload)
+    }
+
+    // ------------------------------------------------------------------------
+    // 20. Negotiated Max ATT Value Length Propagation
+    // ------------------------------------------------------------------------
+    @Test
+    fun testNegotiatedMaxAttValueLength_PropagatedToFragmentation() {
+        val conn = BleConnection(byteArrayOf(1), 20)
+        conn.markConnected(negotiatedAttValueLength = 100)
+        conn.bindRole(byteArrayOf(2, 3, 4, 5), BleRole.INITIATOR)
+        conn.isNotificationSubscribed = true
+        conn.transitionTo(BleConnectionState.HANDSHAKE_IN_PROGRESS)
+        conn.transitionTo(BleConnectionState.READY)
+        assertEquals(100, conn.maxAttValueLength)
+
+        val payload = ByteArray(150)
+        val frags = conn.fragmentOutbound(BleRecordType.DATA, payload)
+        assertEquals(2, frags.size)
+        assertTrue(frags[0].size <= 100)
+        assertTrue(frags[1].size <= 100)
+    }
+
+    // ------------------------------------------------------------------------
+    // 21. Disconnect Purges Connection & Reassembly State
+    // ------------------------------------------------------------------------
+    @Test
+    fun testDisconnect_PurgesConnectionAndReassemblyState() {
+        val conn = BleConnection(byteArrayOf(1), 20)
+        conn.markConnected()
+        conn.bindRole(byteArrayOf(2, 3, 4, 5), BleRole.INITIATOR)
+        conn.isNotificationSubscribed = true
+        conn.transitionTo(BleConnectionState.HANDSHAKE_IN_PROGRESS)
+        conn.transitionTo(BleConnectionState.READY)
+
+        val payload = ByteArray(50)
+        val frags = conn.fragmentOutbound(BleRecordType.DATA, payload)
+        assertTrue(frags.size > 1)
+
+        assertNull(conn.ingestInboundAttValue(frags[0]))
+
+        conn.markDisconnected()
+        assertFalse(conn.isActive)
+        assertEquals(BleConnectionState.CLOSED, conn.state)
+
+        assertNull(conn.ingestInboundAttValue(frags[1]))
+    }
+
+    // ------------------------------------------------------------------------
+    // 22. Repeated Start/Stop Idempotence
+    // ------------------------------------------------------------------------
+    @Test
+    fun testRepeatedStartStop_Idempotent() {
+        val conn = BleConnection(byteArrayOf(1), 20)
+        conn.markConnected()
+        conn.markDisconnected()
+        conn.markDisconnected()
+        assertEquals(BleConnectionState.CLOSED, conn.state)
+    }
+
+    // ------------------------------------------------------------------------
+    // 23. DATA Record Gated on READY State
+    // ------------------------------------------------------------------------
+    @Test
+    fun testDataRecord_ForbiddenBeforeReadyState() {
+        val conn = BleConnection(peerId = byteArrayOf(1), initialMaxAttValueLength = 40)
+        conn.markConnected()
+        conn.bindRole(byteArrayOf(0x01, 0x02, 0x03, 0x04), BleRole.INITIATOR)
+        conn.isNotificationSubscribed = true
+        conn.transitionTo(BleConnectionState.HANDSHAKE_IN_PROGRESS)
+
+        val appData = "Secret Application Data".toByteArray(Charsets.UTF_8)
+
+        // While in HANDSHAKE_IN_PROGRESS: DATA fragments return empty
+        val fragsBeforeReady = conn.fragmentOutbound(BleRecordType.DATA, appData)
+        assertTrue(fragsBeforeReady.isEmpty())
+
+        // Transition to READY: DATA fragments are permitted
+        conn.transitionTo(BleConnectionState.READY)
+        val fragsAfterReady = conn.fragmentOutbound(BleRecordType.DATA, appData)
+        assertTrue(fragsAfterReady.isNotEmpty())
+    }
+
+    // ------------------------------------------------------------------------
+    // 24. LINK_LAYER_READY Remains False
+    // ------------------------------------------------------------------------
+    @Test
+    fun testLinkLayerReady_RemainsFalse() {
+        assertFalse(MeshNode.LINK_LAYER_READY)
+    }
+
+    // ------------------------------------------------------------------------
+    // 25. SessionManager Handshake API Not Invoked by Substrate
+    // ------------------------------------------------------------------------
+    @Test
+    fun testSessionManager_HandshakeApiNotInvokedBySubstrate() {
+        val id = MeshIdentity.generate()
+        val sm = SessionManager(id, RecordingTrustAuthority())
+
+        val conn = BleConnection(byteArrayOf(1), 20)
+        conn.markConnected()
+
+        assertFalse(sm.isReady(byteArrayOf(1)))
+    }
+
+    // ------------------------------------------------------------------------
+    // 26. Duplex Synthetic Traffic Both Directions
+    // ------------------------------------------------------------------------
     @Test
     fun testDuplexSyntheticTraffic_BothDirections() {
         val nodeA = byteArrayOf(0x01, 0x02, 0x03, 0x04)
@@ -354,6 +636,10 @@ class BleLinkSubstrateTest {
         connB.markConnected()
         connA.bindRole(nodeB, BleRole.INITIATOR)
         connB.bindRole(nodeA, BleRole.RESPONDER)
+        connA.isNotificationSubscribed = true
+        connB.isNotificationSubscribed = true
+        connA.transitionTo(BleConnectionState.HANDSHAKE_IN_PROGRESS)
+        connB.transitionTo(BleConnectionState.HANDSHAKE_IN_PROGRESS)
         connA.transitionTo(BleConnectionState.READY)
         connB.transitionTo(BleConnectionState.READY)
 
@@ -380,255 +666,22 @@ class BleLinkSubstrateTest {
         assertArrayEquals(msgBtoA, receivedByA!!.payload)
     }
 
-    @Test
-    fun testRecordFragments_ThroughConnectionSeam() {
-        val conn = BleConnection(byteArrayOf(1), 25)
-        conn.markConnected()
-        conn.bindRole(byteArrayOf(2, 3, 4, 5), BleRole.INITIATOR)
-
-        val hs2Payload = ByteArray(229) { (it * 7).toByte() }
-        val fragments = conn.fragmentOutbound(BleRecordType.HS2, hs2Payload)
-        assertTrue(fragments.size > 1)
-
-        val receiver = BleConnection(byteArrayOf(2), 25)
-        receiver.markConnected()
-        receiver.bindRole(byteArrayOf(1, 1, 1, 1), BleRole.RESPONDER)
-
-        var result: BleReassembledRecord? = null
-        for (f in fragments) {
-            val r = receiver.ingestInboundAttValue(f)
-            if (r != null) result = r
-        }
-        assertNotNull(result)
-        assertEquals(BleRecordType.HS2, result!!.recordType)
-        assertArrayEquals(hs2Payload, result.payload)
-    }
-
-    @Test
-    fun testNegotiatedMaxAttValueLength_PropagatedToFragmentation() {
-        val conn = BleConnection(byteArrayOf(1), 20)
-        conn.markConnected(negotiatedAttValueLength = 100)
-        conn.bindRole(byteArrayOf(2, 3, 4, 5), BleRole.INITIATOR)
-        conn.transitionTo(BleConnectionState.READY)
-        assertEquals(100, conn.maxAttValueLength)
-
-        val payload = ByteArray(150)
-        val frags = conn.fragmentOutbound(BleRecordType.DATA, payload)
-        assertEquals(2, frags.size)
-        assertTrue(frags[0].size <= 100)
-        assertTrue(frags[1].size <= 100)
-    }
-
-    @Test
-    fun testDisconnect_PurgesConnectionAndReassemblyState() {
-        val conn = BleConnection(byteArrayOf(1), 20)
-        conn.markConnected()
-        conn.bindRole(byteArrayOf(2, 3, 4, 5), BleRole.INITIATOR)
-        conn.transitionTo(BleConnectionState.READY)
-
-        val payload = ByteArray(50)
-        val frags = conn.fragmentOutbound(BleRecordType.DATA, payload)
-        assertTrue(frags.size > 1)
-
-        assertNull(conn.ingestInboundAttValue(frags[0]))
-
-        conn.markDisconnected()
-        assertFalse(conn.isActive)
-        assertEquals(BleConnectionState.CLOSED, conn.state)
-
-        assertNull(conn.ingestInboundAttValue(frags[1]))
-    }
-
-    @Test
-    fun testRepeatedStartStop_Idempotent() {
-        val conn = BleConnection(byteArrayOf(1), 20)
-        conn.markConnected()
-        conn.markDisconnected()
-        conn.markDisconnected()
-        assertEquals(BleConnectionState.CLOSED, conn.state)
-    }
-
-    @Test
-    fun testSessionManager_HandshakeApiNotInvokedBySubstrate() {
-        val id = MeshIdentity.generate()
-        val sm = SessionManager(id, RecordingTrustAuthority())
-
-        val conn = BleConnection(byteArrayOf(1), 20)
-        conn.markConnected()
-
-        assertFalse(sm.isReady(byteArrayOf(1)))
-    }
-
-    @Test
-    fun testLinkLayerReady_RemainsFalse() {
-        assertFalse(MeshNode.LINK_LAYER_READY)
-    }
-
-    @Test
-    fun testRealDiscoverySnapshotAuthority_UsedInAdvertising() {
-        val nodeHint = byteArrayOf(0x10, 0x20, 0x30, 0x40)
-        val realDigest = byteArrayOf(0x10, 0x20, 0x30, 0x40, 0x50, 0x60)
-        val snapshot = BleDiscoverySnapshot(
-            shortDigest = realDigest,
-            queueDepth = 7,
-            sosPresent = true,
-            clockUntrusted = false
-        )
-
-        var flags = 0
-        if (snapshot.sosPresent) flags = flags or BleLinkInfoConstants.FLAG_SOS_PRESENT
-        if (snapshot.clockUntrusted) flags = flags or BleLinkInfoConstants.FLAG_CLOCK_UNTRUSTED
-
-        val payload = BleDiscoveryCodec.encode(
-            version = io.godstone.mesh.wire.v2.FrameV2.VERSION,
-            flags = flags.toByte(),
-            nodeHint = nodeHint,
-            shortDigest = snapshot.shortDigest.copyOfRange(0, 6),
-            queueDepth = snapshot.queueDepth
-        )
-        val decoded = BleDiscoveryCodec.decode(payload)
-        assertNotNull(decoded)
-        assertArrayEquals(realDigest, decoded!!.shortDigest)
-        assertEquals(7, decoded.queueDepth)
-        assertTrue(decoded.isSosPresent)
-    }
-
-    @Test
-    fun testServerSubscriptionAndMtuTracking() {
-        val conn = BleConnection(
-            peerId = byteArrayOf(1, 2, 3, 4, 5, 6),
-            initialMaxAttValueLength = 20
-        )
-        conn.markConnected()
-        conn.bindRole(byteArrayOf(0x11, 0x22, 0x33, 0x44), BleRole.RESPONDER)
-        assertEquals(20, conn.maxAttValueLength)
-        conn.markConnected(negotiatedAttValueLength = 128)
-        assertEquals(128, conn.maxAttValueLength)
-        assertTrue(conn.isActive)
-    }
-
-    @Test
-    fun testCrossingConnections_ALessThanB_ARetainsBRejects() {
-        val hintA = byteArrayOf(0x00, 0x01, 0x02, 0x03)
-        val hintB = byteArrayOf(0x80.toByte(), 0x01, 0x02, 0x03)
-
-        val electionAtA = BleRoleElection.elect(hintA, hintB)
-        assertEquals(BleRoleElectionResult.Elected(BleRole.INITIATOR), electionAtA)
-
-        val electionAtB = BleRoleElection.elect(hintB, hintA)
-        assertEquals(BleRoleElectionResult.Elected(BleRole.RESPONDER), electionAtB)
-    }
-
-    @Test
-    fun testCrossingConnections_BLessThanA_BRetainsARejects() {
-        val hintA = byteArrayOf(0x99.toByte(), 0x00, 0x00, 0x00)
-        val hintB = byteArrayOf(0x11, 0x00, 0x00, 0x00)
-
-        val electionAtA = BleRoleElection.elect(hintA, hintB)
-        assertEquals(BleRoleElectionResult.Elected(BleRole.RESPONDER), electionAtA)
-
-        val electionAtB = BleRoleElection.elect(hintB, hintA)
-        assertEquals(BleRoleElectionResult.Elected(BleRole.INITIATOR), electionAtB)
-    }
-
-    @Test
-    fun testCrossingConnections_EqualHints_BothReject() {
-        val hint = byteArrayOf(0x42, 0x42, 0x42, 0x42)
-        val res = BleRoleElection.elect(hint, hint)
-        assertEquals(BleRoleElectionResult.Tie, res)
-    }
-
-    @Test
-    fun testLinkInfoV1_EncodeDecodeParityAndValidation() {
-        val version: Byte = 0x02
-        val flags: Byte = (BleLinkInfoConstants.FLAG_SOS_PRESENT or BleLinkInfoConstants.FLAG_VERIFIED_ONLY).toByte()
-        val nodeHint = byteArrayOf(0x12, 0x34, 0x56, 0x78)
-        val shortDigest = byteArrayOf(0xAA.toByte(), 0xBB.toByte(), 0xCC.toByte(), 0xDD.toByte(), 0xEE.toByte(), 0xFF.toByte())
-        val queueDepth = 99
-
-        val encoded = BleLinkInfoCodec.encode(version, flags, nodeHint, shortDigest, queueDepth)
-        assertEquals(13, encoded.size)
-
-        val decoded = BleLinkInfoCodec.decode(encoded)
-        assertNotNull(decoded)
-        assertEquals(version, decoded!!.version)
-        assertEquals(flags, decoded.flags)
-        assertArrayEquals(nodeHint, decoded.nodeHint)
-        assertArrayEquals(shortDigest, decoded.shortDigest)
-        assertEquals(queueDepth, decoded.queueDepth)
-        assertTrue(decoded.isSosPresent)
-        assertTrue(decoded.isVerifiedOnly)
-    }
-
-    @Test
-    fun testProvisionalConnection_MissingAdvMetadata_Allowed() {
-        val emptyAdvServiceData: ByteArray? = null
-        assertNull(emptyAdvServiceData)
-    }
-
-    @Test
-    fun testLinkInfoAuthority_OverridesAdvMetadata() {
-        val realLinkInfoHint = byteArrayOf(0x77, 0x88.toByte(), 0x99.toByte(), 0xAA.toByte())
-        val myHint = byteArrayOf(0x11, 0x22, 0x33, 0x44)
-        val election = BleRoleElection.elect(myHint, realLinkInfoHint)
-        assertEquals(BleRoleElectionResult.Elected(BleRole.INITIATOR), election)
-    }
-
     // ------------------------------------------------------------------------
-    // 11. Application DATA Is Strictly Gated Before READY State
+    // 27. Subscription Acknowledgement Gates Duplex Readiness
     // ------------------------------------------------------------------------
     @Test
-    fun testDataRecord_ForbiddenBeforeReadyState() {
+    fun testSubscriptionAcknowledgement_GatesDuplexReadiness() {
         val conn = BleConnection(peerId = byteArrayOf(1), initialMaxAttValueLength = 40)
         conn.markConnected()
-        conn.bindRole(byteArrayOf(0x01, 0x02, 0x03, 0x04), BleRole.INITIATOR)
+        conn.bindRole(byteArrayOf(1, 2, 3, 4), BleRole.INITIATOR)
 
-        val appData = "Secret Application Data".toByteArray(Charsets.UTF_8)
+        // Before subscription acknowledged: isHandshakeTransportReady is false
+        assertFalse(conn.isNotificationSubscribed)
+        assertFalse(conn.isHandshakeTransportReady)
 
-        // While in ROLE_BOUND or HANDSHAKE_IN_PROGRESS: DATA fragments return empty
-        val fragsBeforeReady = conn.fragmentOutbound(BleRecordType.DATA, appData)
-        assertTrue(fragsBeforeReady.isEmpty())
-
-        // Transition to READY: DATA fragments are permitted
-        conn.transitionTo(BleConnectionState.READY)
-        val fragsAfterReady = conn.fragmentOutbound(BleRecordType.DATA, appData)
-        assertTrue(fragsAfterReady.isNotEmpty())
-    }
-
-    // ------------------------------------------------------------------------
-    // 13. Golden Test Vectors Conformance (wire/ble_link_info_vectors.json)
-    // ------------------------------------------------------------------------
-    @Test
-    fun testGoldenVectors_BleLinkInfoV1() {
-        val cases = listOf(
-            TestCase("all_zero", 0, "01020304", "000000000000", 0, "02000102030400000000000000"),
-            TestCase("mixed_flags", 0x15, "a1b2c3d4", "112233445566", 42, "0215a1b2c3d41122334455662a"),
-            TestCase("all_flags", 0x1F, "deadbeef", "aabbccddeeff", 128, "021fdeadbeefaabbccddeeff80"),
-            TestCase("unsigned_edge_zero", 0, "00000000", "010203040506", 0, "02000000000001020304050600"),
-            TestCase("unsigned_edge_max", 0x08, "ffffffff", "ffffffffffff", 255, "0208ffffffffffffffffffffff"),
-            TestCase("high_bit_hint", 0x02, "80000000", "1234567890ab", 255, "0202800000001234567890abff")
-        )
-
-        for (c in cases) {
-            val hint = hexToBytes(c.hintHex)
-            val digest = hexToBytes(c.digestHex)
-            val expected = hexToBytes(c.expectedHex)
-
-            val encoded = BleLinkInfoCodec.encode(
-                flags = c.flags.toByte(),
-                nodeHint = hint,
-                shortDigest = digest,
-                queueDepth = c.depth
-            )
-            assertArrayEquals("Mismatch in case ${c.name}", expected, encoded)
-
-            val decoded = BleLinkInfoCodec.decode(expected)
-            assertNotNull("Decode returned null in case ${c.name}", decoded)
-            assertEquals(c.flags.toByte(), decoded!!.flags)
-            assertArrayEquals(hint, decoded.nodeHint)
-            assertArrayEquals(digest, decoded.shortDigest)
-            assertEquals(c.depth, decoded.queueDepth)
-        }
+        // After CCCD subscription acknowledged: isHandshakeTransportReady is true
+        conn.isNotificationSubscribed = true
+        assertTrue(conn.isHandshakeTransportReady)
     }
 
     private data class TestCase(
@@ -641,6 +694,7 @@ class BleLinkSubstrateTest {
     )
 
     private fun hexToBytes(hex: String): ByteArray {
+        if (hex.isEmpty()) return ByteArray(0)
         val len = hex.length
         val data = ByteArray(len / 2)
         var i = 0

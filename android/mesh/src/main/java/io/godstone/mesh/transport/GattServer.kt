@@ -11,15 +11,15 @@ import android.bluetooth.BluetoothGattService
 import android.bluetooth.BluetoothManager
 import android.bluetooth.BluetoothProfile
 import android.content.Context
-import io.godstone.mesh.wire.v2.FrameV2
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.withTimeoutOrNull
 import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
 
 /**
- * Peripheral-side GATT server supporting duplex bidirectional communication and LinkInfo exchange (ADR-002, Phase C8.4D1-R2).
+ * Peripheral-side GATT server supporting duplex bidirectional communication and LinkInfo exchange (ADR-002, Phase C8.4D1-A1/R2/R2.1).
  *
  * Exposes the canonical inbox characteristic and LINK_INFO characteristic.
  * Enforces asynchronous service add verification before advertising, serves local LinkInfo on READ,
@@ -38,7 +38,8 @@ class BleGattServer(
     private val onClientDisconnected: (peerAddress: String) -> Unit = {},
     private val onSubscriptionChanged: (peerAddress: String, isSubscribed: Boolean) -> Unit = { _, _ -> },
     private val onMtuChanged: (peerAddress: String, maxAttValueLength: Int) -> Unit = { _, _ -> },
-    private val onServiceStatusChanged: (isReady: Boolean) -> Unit = {}
+    private val onServiceStatusChanged: (isReady: Boolean) -> Unit = {},
+    private val notificationTimeoutMs: Long = NOTIFICATION_TIMEOUT_MS
 ) {
     private var server: BluetoothGattServer? = null
     private var inboxCharacteristic: BluetoothGattCharacteristic? = null
@@ -49,6 +50,11 @@ class BleGattServer(
     private val deviceMtu = ConcurrentHashMap<String, Int>()
     private val notificationMutex = Mutex()
     private var pendingNotification: CompletableDeferred<Boolean>? = null
+    private var pendingNotificationAddress: String? = null
+    private var notificationToken: Long = 0L
+
+    @Volatile
+    private var serviceRegistrationEpoch: Long = 0L
 
     @Volatile
     var isServiceReady: Boolean = false
@@ -64,6 +70,11 @@ class BleGattServer(
 
     private val callback = object : BluetoothGattServerCallback() {
         override fun onServiceAdded(status: Int, service: BluetoothGattService) {
+            val epoch = serviceRegistrationEpoch
+            // Verify generation: if server was stopped/restarted, ignore stale callbacks
+            if (server == null) {
+                return
+            }
             if (status == BluetoothGatt.GATT_SUCCESS && service.uuid == serviceUuid) {
                 isServiceReady = true
                 onServiceStatusChanged(true)
@@ -81,6 +92,11 @@ class BleGattServer(
                 connectedDevices.remove(address)
                 subscribedDevices.remove(address)
                 deviceMtu.remove(address)
+                if (pendingNotificationAddress == address) {
+                    pendingNotification?.complete(false)
+                    pendingNotification = null
+                    pendingNotificationAddress = null
+                }
                 onSubscriptionChanged(address, false)
                 onClientDisconnected(address)
             }
@@ -200,6 +216,7 @@ class BleGattServer(
         override fun onNotificationSent(device: BluetoothDevice, status: Int) {
             val deferred = pendingNotification
             pendingNotification = null
+            pendingNotificationAddress = null
             deferred?.complete(status == BluetoothGatt.GATT_SUCCESS)
         }
     }
@@ -211,6 +228,7 @@ class BleGattServer(
         val adapter = manager.adapter ?: return false
         if (!adapter.isEnabled) return false
 
+        serviceRegistrationEpoch++
         val gattServer = manager.openGattServer(context, callback) ?: return false
 
         // 1. Inbox Characteristic (write / write_no_response / notify)
@@ -259,6 +277,7 @@ class BleGattServer(
     /**
      * Send an ATT value notification from this peripheral to a connected, subscribed central.
      * Serialized via [notificationMutex]. Refuses to send if client has not subscribed to CCCD.
+     * Bounded by [notificationTimeoutMs].
      */
     suspend fun sendNotification(deviceAddress: String, value: ByteArray): Boolean = notificationMutex.withLock {
         val s = server ?: return false
@@ -271,23 +290,39 @@ class BleGattServer(
 
         val deferred = CompletableDeferred<Boolean>()
         pendingNotification = deferred
+        pendingNotificationAddress = deviceAddress
 
         ch.value = value
         val initiated = s.notifyCharacteristicChanged(device, ch, false)
         if (!initiated) {
             pendingNotification = null
+            pendingNotificationAddress = null
             return false
         }
 
-        return try {
-            deferred.await()
-        } catch (_: Exception) {
-            false
+        val result = withTimeoutOrNull(notificationTimeoutMs) {
+            try {
+                deferred.await()
+            } catch (_: Exception) {
+                false
+            }
         }
+
+        if (result == null) {
+            // Timeout reached
+            pendingNotification = null
+            pendingNotificationAddress = null
+            return false
+        }
+        return result
     }
 
     fun stop() {
+        serviceRegistrationEpoch++
         isServiceReady = false
+        pendingNotification?.complete(false)
+        pendingNotification = null
+        pendingNotificationAddress = null
         try {
             server?.clearServices()
             server?.close()
@@ -299,4 +334,9 @@ class BleGattServer(
         subscribedDevices.clear()
         deviceMtu.clear()
     }
+
+    companion object {
+        const val NOTIFICATION_TIMEOUT_MS = 5000L
+    }
 }
+

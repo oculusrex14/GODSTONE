@@ -71,6 +71,8 @@ public final class MeshNode {
         self.router = Router(selfNodeId: identity.nodeId)
         // Inject the durable store into the router before start (Stage 4B).
         self.router.store = store
+        self.ble.store = store
+        self.ble.identity = identity
     }
 
     /// Convenience initializer for tests without explicit SessionManager.
@@ -95,6 +97,7 @@ public final class MeshNode {
         ble.delegate = self
         ble.sessions = sessions
         ble.identity = identity
+        ble.store = store
         router.onForward = { [weak self] frame in
             guard let self else { return }
             for peer in self.currentPeers() { _ = self.ble.send(frame, to: peer) }

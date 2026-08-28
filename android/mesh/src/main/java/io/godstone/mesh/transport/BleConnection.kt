@@ -3,7 +3,7 @@ package io.godstone.mesh.transport
 import java.util.concurrent.atomic.AtomicReference
 
 /**
- * Authoritative connection state and lifecycle for a persistent BLE link (ADR-002, Phase C8.4D1-A1/R2).
+ * Authoritative connection state and lifecycle for a persistent BLE link (ADR-002, Phase C8.4D1-A1/R2/R2.1).
  */
 enum class BleConnectionState {
     DISCOVERED,
@@ -47,14 +47,14 @@ class BleConnection(
 
     private var _remoteNodeHint: ByteArray? = null
     val remoteNodeHint: ByteArray?
-        get() = _remoteNodeHint?.copyOf()
+        get() = synchronized(lock) { _remoteNodeHint?.copyOf() }
 
     private var _localRole: BleRole? = null
     val localRole: BleRole?
-        get() = _localRole
+        get() = synchronized(lock) { _localRole }
 
     val isRoleBound: Boolean
-        get() = _localRole != null && _remoteNodeHint != null
+        get() = synchronized(lock) { _localRole != null && _remoteNodeHint != null }
 
     val isActive: Boolean
         get() {
@@ -74,14 +74,45 @@ class BleConnection(
             val s = state
             val bound = s == BleConnectionState.ROLE_BOUND || s == BleConnectionState.HANDSHAKE_IN_PROGRESS
             if (!bound) return false
-            return isNotificationSubscribed && maxAttValueLength >= DEFAULT_MAX_ATT_VALUE_LENGTH
+            return isRoleBound && isNotificationSubscribed && maxAttValueLength >= DEFAULT_MAX_ATT_VALUE_LENGTH
         }
 
     private val reassembler = BleRecordReassembler(clock)
     private var nextOutboundSeq: Int = 0
     private val lock = Any()
 
-    fun transitionTo(newState: BleConnectionState) {
+    /**
+     * Validates and executes state transitions. Direct transitions to READY or backwards transitions are rejected.
+     */
+    fun transitionTo(newState: BleConnectionState) = synchronized(lock) {
+        val current = _state.get()
+        if (current == newState) return@synchronized
+
+        val valid = when (current) {
+            BleConnectionState.DISCOVERED ->
+                newState == BleConnectionState.PROVISIONAL_CONNECTING || newState == BleConnectionState.CLOSING || newState == BleConnectionState.CLOSED
+            BleConnectionState.PROVISIONAL_CONNECTING ->
+                newState == BleConnectionState.PROVISIONAL_CONNECTED || newState == BleConnectionState.CLOSING || newState == BleConnectionState.CLOSED
+            BleConnectionState.PROVISIONAL_CONNECTED ->
+                newState == BleConnectionState.LINK_INFO_READING || newState == BleConnectionState.ROLE_BOUND || newState == BleConnectionState.CLOSING || newState == BleConnectionState.CLOSED
+            BleConnectionState.LINK_INFO_READING ->
+                newState == BleConnectionState.LINK_INFO_WRITING || newState == BleConnectionState.CLOSING || newState == BleConnectionState.CLOSED
+            BleConnectionState.LINK_INFO_WRITING ->
+                newState == BleConnectionState.ROLE_BOUND || newState == BleConnectionState.CLOSING || newState == BleConnectionState.CLOSED
+            BleConnectionState.ROLE_BOUND ->
+                newState == BleConnectionState.HANDSHAKE_IN_PROGRESS || newState == BleConnectionState.QUARANTINED || newState == BleConnectionState.CLOSING || newState == BleConnectionState.CLOSED
+            BleConnectionState.HANDSHAKE_IN_PROGRESS ->
+                (newState == BleConnectionState.READY && isHandshakeTransportReady) || newState == BleConnectionState.QUARANTINED || newState == BleConnectionState.CLOSING || newState == BleConnectionState.CLOSED
+            BleConnectionState.READY ->
+                newState == BleConnectionState.QUARANTINED || newState == BleConnectionState.CLOSING || newState == BleConnectionState.CLOSED
+            BleConnectionState.QUARANTINED ->
+                newState == BleConnectionState.CLOSING || newState == BleConnectionState.CLOSED
+            BleConnectionState.CLOSING ->
+                newState == BleConnectionState.CLOSED
+            BleConnectionState.CLOSED -> false
+        }
+
+        check(valid) { "Illegal state transition from $current to $newState" }
         _state.set(newState)
     }
 
@@ -100,13 +131,24 @@ class BleConnection(
         check(s != BleConnectionState.CLOSED && s != BleConnectionState.CLOSING && s != BleConnectionState.QUARANTINED) {
             "Cannot bind role on inactive connection in state $s"
         }
+        check(s == BleConnectionState.PROVISIONAL_CONNECTED || s == BleConnectionState.LINK_INFO_WRITING || s == BleConnectionState.PROVISIONAL_CONNECTING || s == BleConnectionState.DISCOVERED) {
+            "Cannot bind role from state $s"
+        }
 
         _remoteNodeHint = hint.copyOf()
         _localRole = role
         _state.set(BleConnectionState.ROLE_BOUND)
     }
 
-    fun markConnected(negotiatedAttValueLength: Int? = null) {
+    fun bindInitiatorAfterLinkInfoWriteAck(remoteHint: ByteArray) = synchronized(lock) {
+        bindRole(remoteHint, BleRole.INITIATOR)
+    }
+
+    fun bindResponderFromAcceptedIncomingLinkInfo(remoteHint: ByteArray) = synchronized(lock) {
+        bindRole(remoteHint, BleRole.RESPONDER)
+    }
+
+    fun markConnected(negotiatedAttValueLength: Int? = null) = synchronized(lock) {
         if (negotiatedAttValueLength != null) {
             maxAttValueLength = negotiatedAttValueLength
         }
@@ -119,17 +161,32 @@ class BleConnection(
     fun markDisconnected() = synchronized(lock) {
         _state.set(BleConnectionState.CLOSED)
         resetLocked()
+        _remoteNodeHint = null
+        _localRole = null
     }
 
     /**
      * Fragment an outbound record into ordered BLE record fragments using connection-local sequence state.
+     * Enforces phase-specific record type restrictions.
      */
     fun fragmentOutbound(recordType: BleRecordType, payload: ByteArray): List<ByteArray> = synchronized(lock) {
         if (!isActive) return emptyList()
-        // DATA records are strictly forbidden before cryptographic READY
-        if (recordType == BleRecordType.DATA && state != BleConnectionState.READY) {
-            return emptyList()
+
+        when (recordType) {
+            BleRecordType.DATA -> {
+                if (state != BleConnectionState.READY) return emptyList()
+            }
+            BleRecordType.HS1, BleRecordType.HS2, BleRecordType.HS3 -> {
+                val s = state
+                if (!isHandshakeTransportReady || (s != BleConnectionState.ROLE_BOUND && s != BleConnectionState.HANDSHAKE_IN_PROGRESS)) {
+                    return emptyList()
+                }
+            }
+            BleRecordType.CLOSE -> {
+                // CLOSE allowed if active
+            }
         }
+
         val seq = nextOutboundSeq
         nextOutboundSeq = (nextOutboundSeq + 1) and 0xFF
         return BleRecordFragmenter.fragment(recordType, seq, payload, maxAttValueLength)
@@ -137,10 +194,27 @@ class BleConnection(
 
     /**
      * Ingest an inbound ATT value, decode it as a canonical BleRecord fragment, and reassemble.
+     * Gating is strictly enforced BEFORE fragment is passed to the reassembler.
      */
     fun ingestInboundAttValue(bytes: ByteArray): BleReassembledRecord? = synchronized(lock) {
         if (!isActive) return null
         val frag = BleRecordCodec.decodeFragment(bytes) ?: return null
+
+        when (frag.header.recordType) {
+            BleRecordType.DATA -> {
+                if (state != BleConnectionState.READY) return null
+            }
+            BleRecordType.HS1, BleRecordType.HS2, BleRecordType.HS3 -> {
+                val s = state
+                if (!isHandshakeTransportReady || (s != BleConnectionState.ROLE_BOUND && s != BleConnectionState.HANDSHAKE_IN_PROGRESS)) {
+                    return null
+                }
+            }
+            BleRecordType.CLOSE -> {
+                // CLOSE allowed if active
+            }
+        }
+
         return reassembler.receiveFragment(frag)
     }
 

@@ -16,7 +16,7 @@ import kotlinx.coroutines.withTimeoutOrNull
 import java.util.UUID
 
 /**
- * Persistent central-side GATT connection implementing the Connect-First LinkInfo control path (ADR-002, Phase C8.4D1-R2).
+ * Persistent central-side GATT connection implementing the Connect-First LinkInfo control path (ADR-002, Phase C8.4D1-A1/R2/R2.1).
  *
  * Enforces:
  * - Bounded connect and operation timeouts (GATT_CONNECT_TIMEOUT, GATT_OPERATION_TIMEOUT)
@@ -24,9 +24,9 @@ import java.util.UUID
  * - Remote LinkInfo reading and exact 13-byte validation
  * - Deterministic role election via [BleRoleBindingCoordinator]
  * - Acknowledged local LinkInfo write for elected Initiator
- * - Verified CCCD descriptor write gating
+ * - Verified CCCD descriptor write gating and subscription propagation
  * - Non-blocking bounded MTU negotiation with safe 20-byte fallback
- * - Mutex-serialized GATT operations
+ * - Mutex-serialized GATT operations and completion-serialized record writes
  */
 @SuppressLint("MissingPermission")
 class GattClientConnection(
@@ -36,7 +36,8 @@ class GattClientConnection(
     private val coordinator: BleRoleBindingCoordinator? = null,
     val onInboundNotification: (ByteArray) -> Unit = {},
     val onDisconnected: () -> Unit = {},
-    val onRoleBound: (role: BleRole, remoteHint: ByteArray) -> Unit = { _, _ -> },
+    val onRoleBound: (role: BleRole, remoteHint: ByteArray, remoteInfo: BleLinkInfoV1?) -> Unit = { _, _, _ -> },
+    val onSubscriptionReady: () -> Unit = {},
     val onMtuUpdated: (Int) -> Unit = {},
     private val connectTimeoutMs: Long = GATT_CONNECT_TIMEOUT_MS,
     private val operationTimeoutMs: Long = GATT_OPERATION_TIMEOUT_MS
@@ -54,6 +55,10 @@ class GattClientConnection(
     private var descWriteDeferred = CompletableDeferred<Int>()
     private var mtuChangedDeferred = CompletableDeferred<Pair<Int, Int>>()
 
+    private var operationToken: Long = 0L
+    private var pendingWriteToken: Long = 0L
+    private var pendingWriteDeferred: CompletableDeferred<Int>? = null
+
     @Volatile
     var isConnected: Boolean = false
         private set
@@ -62,20 +67,27 @@ class GattClientConnection(
     var isRoleBound: Boolean = false
         private set
 
+    @Volatile
+    var isSubscribed: Boolean = false
+        private set
+
     val isReady: Boolean
-        get() = isConnected && isRoleBound && inboxCharacteristic != null
+        get() = isConnected && isRoleBound && isSubscribed && inboxCharacteristic != null
 
     private val callback = object : BluetoothGattCallback() {
         override fun onConnectionStateChange(g: BluetoothGatt, status: Int, newState: Int) {
             if (status != BluetoothGatt.GATT_SUCCESS || newState == BluetoothProfile.STATE_DISCONNECTED) {
                 isConnected = false
                 isRoleBound = false
+                isSubscribed = false
                 if (!connectionStateDeferred.isCompleted) connectionStateDeferred.complete(status)
                 if (!servicesDiscoveredDeferred.isCompleted) servicesDiscoveredDeferred.complete(status)
                 if (!charReadDeferred.isCompleted) charReadDeferred.complete(status to null)
                 if (!charWriteDeferred.isCompleted) charWriteDeferred.complete(status)
                 if (!descWriteDeferred.isCompleted) descWriteDeferred.complete(status)
                 if (!mtuChangedDeferred.isCompleted) mtuChangedDeferred.complete(status to 23)
+                pendingWriteDeferred?.complete(status)
+                pendingWriteDeferred = null
                 try {
                     g.close()
                 } catch (_: Exception) {}
@@ -111,6 +123,11 @@ class GattClientConnection(
             characteristic: BluetoothGattCharacteristic,
             status: Int
         ) {
+            val deferred = pendingWriteDeferred
+            if (deferred != null && !deferred.isCompleted) {
+                pendingWriteDeferred = null
+                deferred.complete(status)
+            }
             if (!charWriteDeferred.isCompleted) {
                 charWriteDeferred.complete(status)
             }
@@ -261,8 +278,9 @@ class GattClientConnection(
         coord.processCentralEvent(
             BleRoleBindingEvent.LocalLinkInfoWriteAcknowledged(peerAddress, remoteHint)
         )
+        val remoteInfo = BleLinkInfoCodec.decode(remoteBytes)
         isRoleBound = true
-        onRoleBound(BleRole.INITIATOR, remoteHint)
+        onRoleBound(BleRole.INITIATOR, remoteHint, remoteInfo)
 
         // 6. Subscribe to inbox notifications (CCCD)
         val notifSet = g.setCharacteristicNotification(inbox, true)
@@ -293,6 +311,9 @@ class GattClientConnection(
             return false
         }
 
+        isSubscribed = true
+        onSubscriptionReady()
+
         // 7. Request MTU with safe 20-byte fallback
         var maxAttValLen = BleConnection.DEFAULT_MAX_ATT_VALUE_LENGTH
         mtuChangedDeferred = CompletableDeferred()
@@ -312,23 +333,41 @@ class GattClientConnection(
 
     /**
      * Send an ATT value to the peripheral over this persistent connection.
-     * Serialized via [gattMutex] so sequential writes do not overlap.
+     * Serialized via [gattMutex] and completion-serialized via [BluetoothGattCharacteristic.WRITE_TYPE_DEFAULT].
      */
     suspend fun sendAttValue(bytes: ByteArray): Boolean = gattMutex.withLock {
         val g = gatt ?: return false
         val ch = inboxCharacteristic ?: return false
         if (!isConnected || !isRoleBound) return false
 
-        charWriteDeferred = CompletableDeferred()
-        ch.writeType = BluetoothGattCharacteristic.WRITE_TYPE_NO_RESPONSE
+        val token = ++operationToken
+        pendingWriteToken = token
+        val deferred = CompletableDeferred<Int>()
+        pendingWriteDeferred = deferred
+
+        ch.writeType = BluetoothGattCharacteristic.WRITE_TYPE_DEFAULT
         ch.value = bytes
 
         val initiated = g.writeCharacteristic(ch)
         if (!initiated) {
+            pendingWriteDeferred = null
             return false
         }
 
-        // Write without response: return initiation success directly
+        val status = withTimeoutOrNull(operationTimeoutMs) {
+            try {
+                deferred.await()
+            } catch (_: Exception) {
+                null
+            }
+        }
+
+        if (status != BluetoothGatt.GATT_SUCCESS) {
+            pendingWriteDeferred = null
+            disconnectLocked()
+            return false
+        }
+
         return true
     }
 
@@ -340,8 +379,11 @@ class GattClientConnection(
         gatt = null
         isConnected = false
         isRoleBound = false
+        isSubscribed = false
         inboxCharacteristic = null
         linkInfoCharacteristic = null
+        pendingWriteDeferred?.complete(BluetoothGatt.GATT_FAILURE)
+        pendingWriteDeferred = null
     }
 
     private fun disconnectLocked() {
