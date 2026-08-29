@@ -85,8 +85,14 @@ public final class BleTransport: NSObject, @unchecked Sendable {
         )
 
         #if !os(macOS)
-        central = CBCentralManager(delegate: self, queue: .global(qos: .utility), options: [CBCentralManagerOptionRestoreIdentifierKey: "io.godstone.central"])
-        peripheral = CBPeripheralManager(delegate: self, queue: .global(qos: .utility), options: [CBPeripheralManagerOptionRestoreIdentifierKey: "io.godstone.peripheral"])
+        let isTesting = ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] != nil || NSClassFromString("XCTestCase") != nil
+        if isTesting {
+            central = CBCentralManager(delegate: self, queue: .global(qos: .utility))
+            peripheral = CBPeripheralManager(delegate: self, queue: .global(qos: .utility))
+        } else {
+            central = CBCentralManager(delegate: self, queue: .global(qos: .utility), options: [CBCentralManagerOptionRestoreIdentifierKey: "io.godstone.central"])
+            peripheral = CBPeripheralManager(delegate: self, queue: .global(qos: .utility), options: [CBPeripheralManagerOptionRestoreIdentifierKey: "io.godstone.peripheral"])
+        }
         #endif
     }
 
