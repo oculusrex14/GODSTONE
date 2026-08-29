@@ -53,6 +53,7 @@ import io.godstone.mesh.store.StoreSchema
 // + SQL + codes).
 internal class SqliteDeliveryRepository(
     private val db: StoreDb,
+    private val onHeldSetMutated: (() -> Unit)? = null,
 ) : DeliveryRepository {
 
     override fun get(msgId: ByteArray): DeliveryLookup {
@@ -154,7 +155,12 @@ internal class SqliteDeliveryRepository(
                 CrossTableRetireResult.APPLIED
             }
             when (result) {
-                CrossTableRetireResult.APPLIED -> TransitionResult.Applied
+                CrossTableRetireResult.APPLIED -> {
+                    // Notify AFTER transaction commit (outside DB lock) so snapshot
+                    // recomputation cannot recursively deadlock the store.
+                    onHeldSetMutated?.invoke()
+                    TransitionResult.Applied
+                }
                 CrossTableRetireResult.NO_MATCH -> classifyZeroRowTransition(msgId, spec.target, spec.validFroms)
             }
         } catch (e: MissingHeldException) {
@@ -202,7 +208,12 @@ internal class SqliteDeliveryRepository(
                 CrossTableRetireResult.APPLIED
             }
             when (result) {
-                CrossTableRetireResult.APPLIED -> AckResult.Applied
+                CrossTableRetireResult.APPLIED -> {
+                    // Notify AFTER transaction commit (outside DB lock) so snapshot
+                    // recomputation cannot recursively deadlock the store.
+                    onHeldSetMutated?.invoke()
+                    AckResult.Applied
+                }
                 CrossTableRetireResult.NO_MATCH -> classifyZeroRowAck(msgId, expectedRecipient)
             }
         } catch (e: MissingHeldException) {

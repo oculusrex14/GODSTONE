@@ -1262,8 +1262,9 @@ public final class SqliteMessageStore: MessageStore {
         expectedRecipient: Data,
         fault: ((String, OpaquePointer) throws -> Void)? = nil
     ) throws -> AckRetireMutationResult {
+        let result: AckRetireMutationResult
         do {
-            return try withTransaction { db in
+            result = try withTransaction { db in
                 try fault?("before_ack_cas", db)
                 var stmt: OpaquePointer?
                 guard sqlite3_prepare_v2(db, guardedAckSql, -1, &stmt, nil) == SQLITE_OK else {
@@ -1306,6 +1307,12 @@ public final class SqliteMessageStore: MessageStore {
         } catch StoreTxnError.missingHeld {
             return .missingHeld
         }
+        // Notify AFTER transaction commit (outside NSLock) so snapshot
+        // recomputation cannot recursively deadlock the store.
+        if result == .applied {
+            notifyHeldSetChanged()
+        }
+        return result
     }
 
     /// Atomically run a terminal transition CAS (EXPIRE / CANCEL) and delete the exact
@@ -1326,8 +1333,9 @@ public final class SqliteMessageStore: MessageStore {
         msgId: Data,
         fault: ((String, OpaquePointer) throws -> Void)? = nil
     ) throws -> TerminalRetireMutationResult {
+        let result: TerminalRetireMutationResult
         do {
-            return try withTransaction { db in
+            result = try withTransaction { db in
                 try fault?("before_terminal_cas", db)
                 var stmt: OpaquePointer?
                 guard sqlite3_prepare_v2(db, guardedTransitionSql, -1, &stmt, nil) == SQLITE_OK else {
@@ -1369,6 +1377,12 @@ public final class SqliteMessageStore: MessageStore {
         } catch StoreTxnError.missingHeld {
             return .missingHeld
         }
+        // Notify AFTER transaction commit (outside NSLock) so snapshot
+        // recomputation cannot recursively deadlock the store.
+        if result == .applied {
+            notifyHeldSetChanged()
+        }
+        return result
     }
 
     /// Test seam (C6.5/C6.4-C): run a raw statement with NO BLOB binds on the SAME

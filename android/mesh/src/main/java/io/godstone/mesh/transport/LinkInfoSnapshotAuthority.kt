@@ -104,11 +104,19 @@ class LinkInfoSnapshotAuthority(
         return info
     }
 
+    /**
+     * Pure cached read. Returns null (fail-closed) if snapshot has not been precomputed.
+     * ATT read callbacks MUST use this — never triggers durable store traversal.
+     */
     fun currentSnapshot(): BleLinkInfoV1? {
-        return cachedSnapshot.get() ?: refresh()
+        return cachedSnapshot.get()
     }
 
+    /**
+     * Pure cached read. Returns null (fail-closed) if bytes have not been precomputed.
+     * ATT read callbacks MUST use this — never triggers durable store traversal.
+     */
     fun currentBytes(): ByteArray? {
-        return cachedBytes.get() ?: currentSnapshot()?.let { cachedBytes.get() }
+        return cachedBytes.get()
     }
 }

@@ -163,7 +163,7 @@ internal object MeshModule {
         store: SqliteMessageStore,
         resolver: BoundRecipientKeyResolver
     ): DeliveryTracker {
-        val repo = SqliteDeliveryRepository(store.engine)
+        val repo = SqliteDeliveryRepository(store.engine, store::notifyHeldSetChanged)
         return DeliveryTracker(repo, Ed25519AckAuthenticator(resolver))
     }
 

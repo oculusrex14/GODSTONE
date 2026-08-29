@@ -22,7 +22,8 @@ sealed interface BleCentralAction {
 class BleCentralOrchestrationDriver(
     val localHint: ByteArray,
     val localLinkInfoProvider: () -> ByteArray?,
-    val maxActiveConnections: Int = BleTransport.MAX_ACTIVE_CONNECTIONS
+    val maxActiveConnections: Int = BleTransport.MAX_ACTIVE_CONNECTIONS,
+    private val globalCapacity: BleGlobalCapacityAuthority? = null
 ) {
     init {
         require(localHint.size == BleRoleElection.NODE_HINT_BYTES) {
@@ -52,8 +53,14 @@ class BleCentralOrchestrationDriver(
             return BleCentralAction.NoOp
         }
 
-        if (activeConnections.size >= maxActiveConnections) {
-            return BleCentralAction.NoOp
+        if (globalCapacity != null) {
+            if (!globalCapacity.tryAdmitOutbound()) {
+                return BleCentralAction.NoOp
+            }
+        } else {
+            if (activeConnections.size >= maxActiveConnections) {
+                return BleCentralAction.NoOp
+            }
         }
 
         val conn = BleConnection(peerAddress.toByteArray())
@@ -75,6 +82,7 @@ class BleCentralOrchestrationDriver(
         if (!success) {
             conn.transitionTo(BleConnectionState.CLOSED)
             activeConnections.remove(peerAddress)
+            globalCapacity?.releaseOutbound()
             return BleCentralAction.DisconnectGatt(peerAddress, "Service discovery failed")
         }
         if (conn.state != BleConnectionState.PROVISIONAL_CONNECTED) return BleCentralAction.NoOp
@@ -90,6 +98,7 @@ class BleCentralOrchestrationDriver(
         if (rawBytes == null || rawBytes.size != BleLinkInfoConstants.LINK_INFO_BYTES) {
             conn.transitionTo(BleConnectionState.CLOSED)
             activeConnections.remove(peerAddress)
+            globalCapacity?.releaseOutbound()
             return BleCentralAction.DisconnectGatt(peerAddress, "Malformed or missing LinkInfo")
         }
 
@@ -97,6 +106,7 @@ class BleCentralOrchestrationDriver(
         if (remoteInfo == null) {
             conn.transitionTo(BleConnectionState.CLOSED)
             activeConnections.remove(peerAddress)
+            globalCapacity?.releaseOutbound()
             return BleCentralAction.DisconnectGatt(peerAddress, "Malformed LinkInfo")
         }
 
@@ -108,6 +118,7 @@ class BleCentralOrchestrationDriver(
                     if (localBytes == null || localBytes.size != BleLinkInfoConstants.LINK_INFO_BYTES) {
                         conn.transitionTo(BleConnectionState.CLOSED)
                         activeConnections.remove(peerAddress)
+                        globalCapacity?.releaseOutbound()
                         return BleCentralAction.DisconnectGatt(peerAddress, "Local LinkInfo unavailable")
                     }
                     conn.transitionTo(BleConnectionState.LINK_INFO_WRITING)
@@ -116,12 +127,14 @@ class BleCentralOrchestrationDriver(
                     // Local > remote: We are responder; central link is wrong direction -> drop
                     conn.transitionTo(BleConnectionState.CLOSED)
                     activeConnections.remove(peerAddress)
+                    globalCapacity?.releaseOutbound()
                     BleCentralAction.DisconnectGatt(peerAddress, "Elected RESPONDER on central link")
                 }
             }
             BleRoleElectionResult.Tie, is BleRoleElectionResult.Invalid -> {
                 conn.transitionTo(BleConnectionState.CLOSED)
                 activeConnections.remove(peerAddress)
+                globalCapacity?.releaseOutbound()
                 BleCentralAction.DisconnectGatt(peerAddress, "Role election tie or invalid")
             }
         }
@@ -135,6 +148,7 @@ class BleCentralOrchestrationDriver(
         if (!success) {
             conn.transitionTo(BleConnectionState.CLOSED)
             activeConnections.remove(peerAddress)
+            globalCapacity?.releaseOutbound()
             return BleCentralAction.DisconnectGatt(peerAddress, "LinkInfo write failed")
         }
 
@@ -150,6 +164,7 @@ class BleCentralOrchestrationDriver(
         if (!success) {
             conn.transitionTo(BleConnectionState.CLOSED)
             activeConnections.remove(peerAddress)
+            globalCapacity?.releaseOutbound()
             return BleCentralAction.DisconnectGatt(peerAddress, "CCCD subscription failed")
         }
 
@@ -167,7 +182,9 @@ class BleCentralOrchestrationDriver(
     }
 
     fun onDisconnected(peerAddress: String): BleCentralAction {
-        activeConnections.remove(peerAddress)
+        if (activeConnections.remove(peerAddress) != null) {
+            globalCapacity?.releaseOutbound()
+        }
         val wasPublished = publishedFound.remove(peerAddress)
         if (wasPublished) {
             return BleCentralAction.PublishLost(peerAddress)
@@ -188,6 +205,7 @@ sealed interface BleServerAction {
     data class AcceptDescriptorWriteAndPublishFound(val deviceAddress: String) : BleServerAction
     data class RejectDescriptorWrite(val deviceAddress: String) : BleServerAction
     data class TearDownPhysicalChannel(val deviceAddress: String) : BleServerAction
+    data object PoisonServer : BleServerAction
     data class NotificationSuccess(val deviceAddress: String) : BleServerAction
     data class NotificationFailure(val deviceAddress: String) : BleServerAction
     data object NoOp : BleServerAction
@@ -196,13 +214,21 @@ sealed interface BleServerAction {
 class BleServerOrchestrationDriver(
     val localHint: ByteArray,
     val localLinkInfoProvider: () -> ByteArray?,
-    val maxAdmittedClients: Int = BleGattServer.MAX_ADMITTED_CLIENTS
+    val maxAdmittedClients: Int = BleGattServer.MAX_ADMITTED_CLIENTS,
+    private val globalCapacity: BleGlobalCapacityAuthority? = null
 ) {
     init {
         require(localHint.size == BleRoleElection.NODE_HINT_BYTES) {
             "localHint must be 4 bytes"
         }
     }
+
+    private var serverCallbackEpoch: Long = 0
+    private var isPoisoned: Boolean = false
+    var isServerReady: Boolean = false
+        private set
+
+    private var pendingNotificationAddress: String? = null
 
     private val admittedDevices = mutableSetOf<String>()
     private val subscribedDevices = mutableSetOf<String>()
@@ -216,15 +242,47 @@ class BleServerOrchestrationDriver(
     fun isDeviceSubscribed(deviceAddress: String): Boolean = subscribedDevices.contains(deviceAddress)
     fun getInboundConnection(deviceAddress: String): BleConnection? = inboundConnections[deviceAddress]
 
+    fun startNewServerEpoch(): Long {
+        isPoisoned = false
+        isServerReady = false
+        serverCallbackEpoch++
+        
+        admittedDevices.clear()
+        subscribedDevices.clear()
+        deviceMtu.clear()
+        peerGenerations.clear()
+        inboundConnections.clear()
+        publishedFound.clear()
+        pendingNotificationAddress = null
+        return serverCallbackEpoch
+    }
+
+    fun onServiceAdded(epoch: Long, success: Boolean): Boolean {
+        if (epoch != serverCallbackEpoch) return false
+        if (success) {
+            isServerReady = true
+            return true
+        }
+        return false
+    }
+
     fun onClientConnected(deviceAddress: String, peerGeneration: Long): BleServerAction {
+        if (isPoisoned) return BleServerAction.RejectConnection(deviceAddress)
+
         if (admittedDevices.contains(deviceAddress)) {
             // Idempotent reconnect update
             peerGenerations[deviceAddress] = peerGeneration
             return BleServerAction.AdmitConnection(deviceAddress)
         }
 
-        if (admittedDevices.size >= maxAdmittedClients) {
-            return BleServerAction.RejectConnection(deviceAddress)
+        if (globalCapacity != null) {
+            if (!globalCapacity.tryAdmitInbound()) {
+                return BleServerAction.RejectConnection(deviceAddress)
+            }
+        } else {
+            if (admittedDevices.size >= maxAdmittedClients) {
+                return BleServerAction.RejectConnection(deviceAddress)
+            }
         }
 
         admittedDevices.add(deviceAddress)
@@ -236,17 +294,23 @@ class BleServerOrchestrationDriver(
     }
 
     fun onClientDisconnected(deviceAddress: String): BleServerAction {
-        admittedDevices.remove(deviceAddress)
+        if (admittedDevices.remove(deviceAddress)) {
+            globalCapacity?.releaseInbound()
+        }
         subscribedDevices.remove(deviceAddress)
         deviceMtu.remove(deviceAddress)
         peerGenerations.remove(deviceAddress)
         val conn = inboundConnections.remove(deviceAddress)
         conn?.transitionTo(BleConnectionState.CLOSED)
         publishedFound.remove(deviceAddress)
+        if (pendingNotificationAddress == deviceAddress) {
+            pendingNotificationAddress = null
+        }
         return BleServerAction.NoOp
     }
 
     fun onLinkInfoReadRequest(deviceAddress: String): BleServerAction {
+        if (isPoisoned) return BleServerAction.RejectRead(deviceAddress)
         if (!admittedDevices.contains(deviceAddress)) {
             return BleServerAction.RejectRead(deviceAddress)
         }
@@ -258,6 +322,7 @@ class BleServerOrchestrationDriver(
     }
 
     fun onLinkInfoWriteRequest(deviceAddress: String, rawBytes: ByteArray): BleServerAction {
+        if (isPoisoned) return BleServerAction.RejectWrite(deviceAddress, "Server is poisoned")
         if (!admittedDevices.contains(deviceAddress)) {
             return BleServerAction.RejectWrite(deviceAddress, "Unadmitted client")
         }
@@ -295,6 +360,7 @@ class BleServerOrchestrationDriver(
     }
 
     fun onDescriptorWriteRequest(deviceAddress: String, isSubscribed: Boolean): BleServerAction {
+        if (isPoisoned) return BleServerAction.RejectDescriptorWrite(deviceAddress)
         if (!admittedDevices.contains(deviceAddress)) {
             return BleServerAction.RejectDescriptorWrite(deviceAddress)
         }
@@ -323,29 +389,36 @@ class BleServerOrchestrationDriver(
         conn.maxAttValueLength = maxAttLen
     }
 
+    fun beginNotification(deviceAddress: String): Boolean {
+        if (isPoisoned) return false
+        if (!admittedDevices.contains(deviceAddress)) return false
+        pendingNotificationAddress = deviceAddress
+        return true
+    }
+
     fun onNotificationTimeout(deviceAddress: String): BleServerAction {
-        admittedDevices.remove(deviceAddress)
+        isPoisoned = true
+        pendingNotificationAddress = null
+        if (admittedDevices.remove(deviceAddress)) {
+            globalCapacity?.releaseInbound()
+        }
         subscribedDevices.remove(deviceAddress)
         deviceMtu.remove(deviceAddress)
         peerGenerations.remove(deviceAddress)
         val conn = inboundConnections.remove(deviceAddress)
         conn?.transitionTo(BleConnectionState.CLOSED)
         publishedFound.remove(deviceAddress)
-        return BleServerAction.TearDownPhysicalChannel(deviceAddress)
+        return BleServerAction.PoisonServer
     }
 
     fun onNotificationSent(
         deviceAddress: String,
-        statusSuccess: Boolean,
-        notificationGen: Long,
-        expectedNotificationGen: Long,
-        peerGen: Long
+        statusSuccess: Boolean
     ): BleServerAction {
-        val currentPeerGen = peerGenerations[deviceAddress] ?: return BleServerAction.NoOp
+        if (isPoisoned) return BleServerAction.NoOp
+        if (pendingNotificationAddress != deviceAddress) return BleServerAction.NoOp
+        pendingNotificationAddress = null
         if (!admittedDevices.contains(deviceAddress)) return BleServerAction.NoOp
-        if (notificationGen != expectedNotificationGen || peerGen != currentPeerGen) {
-            return BleServerAction.NoOp
-        }
         return if (statusSuccess) {
             BleServerAction.NotificationSuccess(deviceAddress)
         } else {

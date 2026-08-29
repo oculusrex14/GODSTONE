@@ -19,21 +19,6 @@ import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicLong
 
-/**
- * Peripheral-side GATT server supporting duplex bidirectional communication and LinkInfo exchange (ADR-002, Phase C8.4D1-A1/R2/R2.3).
- *
- * Exposes the canonical inbox characteristic and LINK_INFO characteristic.
- * Enforces:
- * - Strict global capacity limit of 7 admitted remote devices (8th device rejected immediately).
- * - Unadmitted centrals cannot allocate subscription or MTU state, and reads/writes fail closed.
- * - Real service registration generation matching and service object validation in onServiceAdded.
- * - Stale/cross-generation onServiceAdded callback rejection.
- * - Notification timeout physical channel invalidation preventing ambiguous callback reuse.
- * - Late/stale notification callbacks cannot complete later notifications.
- * - Local LinkInfo serving on READ from precomputed snapshot provider (fail-closed if unavailable).
- * - Inbound Central LinkInfo verification on WRITE.
- * - Role-binding precondition before accepting inbox records.
- */
 typealias BleLinkInfoProvider = () -> ByteArray?
 typealias BleLinkInfoWriteHandler = (String, ByteArray) -> Boolean
 typealias BleRoleBoundPredicate = (String) -> Boolean
@@ -64,7 +49,8 @@ class BleGattServer(
     private val onSubscriptionChanged: BleSubscriptionHandler = { _, _ -> },
     private val onMtuChanged: BleMtuHandler = { _, _ -> },
     private val onServiceStatusChanged: BleServiceStatusHandler = {},
-    private val notificationTimeoutMs: Long = NOTIFICATION_TIMEOUT_MS
+    private val notificationTimeoutMs: Long = NOTIFICATION_TIMEOUT_MS,
+    private val orchestrationDriver: BleServerOrchestrationDriver? = null
 ) {
     private var server: BluetoothGattServer? = null
     private var inboxCharacteristic: BluetoothGattCharacteristic? = null
@@ -114,33 +100,50 @@ class BleGattServer(
                 return
             }
             pendingService = null
-            if (status == BluetoothGatt.GATT_SUCCESS && service.uuid == serviceUuid) {
-                isServiceReady = true
-                onServiceStatusChanged(true)
+            val success = status == BluetoothGatt.GATT_SUCCESS && service.uuid == serviceUuid
+            if (orchestrationDriver != null) {
+                val ready = orchestrationDriver.onServiceAdded(gen, success)
+                isServiceReady = ready
+                onServiceStatusChanged(ready)
             } else {
-                isServiceReady = false
-                onServiceStatusChanged(false)
+                if (success) {
+                    isServiceReady = true
+                    onServiceStatusChanged(true)
+                } else {
+                    isServiceReady = false
+                    onServiceStatusChanged(false)
+                }
             }
         }
 
         override fun onConnectionStateChange(device: BluetoothDevice, status: Int, newState: Int) {
             val address = device.address ?: return
             if (newState == BluetoothProfile.STATE_CONNECTED) {
+                val pGen = globalPeerGenCounter.incrementAndGet()
+                
+                if (orchestrationDriver != null) {
+                    val action = orchestrationDriver.onClientConnected(address, pGen)
+                    if (action is BleServerAction.RejectConnection) {
+                        try {
+                            server?.cancelConnection(device)
+                        } catch (_: Exception) {}
+                        return
+                    }
+                }
+                
                 if (connectedDevices.containsKey(address)) {
-                    // Idempotent reconnect / update for already-admitted device
                     connectedDevices[address] = device
-                } else if (connectedDevices.size >= MAX_ADMITTED_CLIENTS) {
-                    // Enforce hard capacity bound: reject 8th device immediately
+                } else if (orchestrationDriver == null && connectedDevices.size >= MAX_ADMITTED_CLIENTS) {
                     try {
                         server?.cancelConnection(device)
                     } catch (_: Exception) {}
                     return
                 } else {
-                    val pGen = globalPeerGenCounter.incrementAndGet()
                     peerGenerations[address] = pGen
                     connectedDevices[address] = device
                 }
             } else if (newState == BluetoothProfile.STATE_DISCONNECTED) {
+                orchestrationDriver?.onClientDisconnected(address)
                 connectedDevices.remove(address)
                 subscribedDevices.remove(address)
                 deviceMtu.remove(address)
@@ -164,23 +167,37 @@ class BleGattServer(
             val s = server ?: return
             val address = device.address ?: return
 
-            // Unadmitted devices cannot read LinkInfo or any characteristic
-            if (!connectedDevices.containsKey(address)) {
-                s.sendResponse(device, requestId, BluetoothGatt.GATT_FAILURE, offset, null)
-                return
-            }
-
             if (characteristic.uuid == linkInfoCharUuid) {
                 if (offset != 0) {
                     s.sendResponse(device, requestId, BluetoothGatt.GATT_INVALID_OFFSET, offset, null)
                     return
                 }
-                val localBytes = linkInfoProvider()
-                if (localBytes == null || localBytes.size != BleLinkInfoConstants.LINK_INFO_BYTES) {
-                    s.sendResponse(device, requestId, BluetoothGatt.GATT_FAILURE, offset, null)
-                    return
+                
+                if (orchestrationDriver != null) {
+                    val action = orchestrationDriver.onLinkInfoReadRequest(address)
+                    when (action) {
+                        is BleServerAction.SendReadResponse -> {
+                            s.sendResponse(device, requestId, BluetoothGatt.GATT_SUCCESS, offset, action.bytes)
+                        }
+                        is BleServerAction.RejectRead -> {
+                            s.sendResponse(device, requestId, BluetoothGatt.GATT_FAILURE, offset, null)
+                        }
+                        else -> {
+                            s.sendResponse(device, requestId, BluetoothGatt.GATT_FAILURE, offset, null)
+                        }
+                    }
+                } else {
+                    if (!connectedDevices.containsKey(address)) {
+                        s.sendResponse(device, requestId, BluetoothGatt.GATT_FAILURE, offset, null)
+                        return
+                    }
+                    val localBytes = linkInfoProvider()
+                    if (localBytes == null || localBytes.size != BleLinkInfoConstants.LINK_INFO_BYTES) {
+                        s.sendResponse(device, requestId, BluetoothGatt.GATT_FAILURE, offset, null)
+                        return
+                    }
+                    s.sendResponse(device, requestId, BluetoothGatt.GATT_SUCCESS, offset, localBytes)
                 }
-                s.sendResponse(device, requestId, BluetoothGatt.GATT_SUCCESS, offset, localBytes)
                 return
             }
 
@@ -199,14 +216,6 @@ class BleGattServer(
             val s = server
             val address = device.address ?: return
 
-            // Unadmitted devices cannot write to LinkInfo or Inbox
-            if (!connectedDevices.containsKey(address)) {
-                if (responseNeeded) {
-                    s?.sendResponse(device, requestId, BluetoothGatt.GATT_FAILURE, offset, null)
-                }
-                return
-            }
-
             if (characteristic.uuid == linkInfoCharUuid) {
                 if (offset != 0 || preparedWrite) {
                     if (responseNeeded) {
@@ -215,22 +224,53 @@ class BleGattServer(
                     return
                 }
 
-                // Process LinkInfo write through coordinator seam
-                val accepted = onLinkInfoWrite(address, value)
-                if (accepted) {
-                    if (responseNeeded) {
-                        s?.sendResponse(device, requestId, BluetoothGatt.GATT_SUCCESS, offset, value)
+                if (orchestrationDriver != null) {
+                    val action = orchestrationDriver.onLinkInfoWriteRequest(address, value)
+                    when (action) {
+                        is BleServerAction.AcceptWrite,
+                        is BleServerAction.AcceptWriteAndPublishFound -> {
+                            val accepted = onLinkInfoWrite(address, value)
+                            if (accepted) {
+                                if (responseNeeded) s?.sendResponse(device, requestId, BluetoothGatt.GATT_SUCCESS, offset, value)
+                            } else {
+                                if (responseNeeded) s?.sendResponse(device, requestId, BluetoothGatt.GATT_FAILURE, offset, null)
+                            }
+                        }
+                        is BleServerAction.RejectWrite -> {
+                            if (responseNeeded) s?.sendResponse(device, requestId, BluetoothGatt.GATT_FAILURE, offset, null)
+                        }
+                        else -> {
+                            if (responseNeeded) s?.sendResponse(device, requestId, BluetoothGatt.GATT_FAILURE, offset, null)
+                        }
                     }
                 } else {
-                    if (responseNeeded) {
-                        s?.sendResponse(device, requestId, BluetoothGatt.GATT_FAILURE, offset, null)
+                    if (!connectedDevices.containsKey(address)) {
+                        if (responseNeeded) s?.sendResponse(device, requestId, BluetoothGatt.GATT_FAILURE, offset, null)
+                        return
+                    }
+                    val accepted = onLinkInfoWrite(address, value)
+                    if (accepted) {
+                        if (responseNeeded) s?.sendResponse(device, requestId, BluetoothGatt.GATT_SUCCESS, offset, value)
+                    } else {
+                        if (responseNeeded) s?.sendResponse(device, requestId, BluetoothGatt.GATT_FAILURE, offset, null)
                     }
                 }
                 return
             }
 
             if (characteristic.uuid == inboxCharUuid) {
-                // Require connection to be role-bound before accepting inbox record traffic
+                if (orchestrationDriver != null && !orchestrationDriver.isDeviceAdmitted(address)) {
+                    if (responseNeeded) {
+                        s?.sendResponse(device, requestId, BluetoothGatt.GATT_FAILURE, offset, null)
+                    }
+                    return
+                } else if (orchestrationDriver == null && !connectedDevices.containsKey(address)) {
+                    if (responseNeeded) {
+                        s?.sendResponse(device, requestId, BluetoothGatt.GATT_FAILURE, offset, null)
+                    }
+                    return
+                }
+
                 if (!isRoleBoundPredicate(address)) {
                     if (responseNeeded) {
                         s?.sendResponse(device, requestId, BluetoothGatt.GATT_FAILURE, offset, null)
@@ -261,31 +301,49 @@ class BleGattServer(
         ) {
             val address = device.address ?: return
 
-            // Unadmitted devices cannot write to descriptors
-            if (!connectedDevices.containsKey(address)) {
-                if (responseNeeded) {
-                    server?.sendResponse(device, requestId, BluetoothGatt.GATT_FAILURE, offset, null)
-                }
-                return
-            }
-
             if (descriptor.uuid == GattClientConnection.CCCD_UUID) {
                 val isSub = value.contentEquals(BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE)
-                if (isSub) {
-                    subscribedDevices[address] = true
-                    onSubscriptionChanged(address, true)
-                } else if (value.contentEquals(BluetoothGattDescriptor.DISABLE_NOTIFICATION_VALUE)) {
-                    subscribedDevices.remove(address)
-                    onSubscriptionChanged(address, false)
+                
+                if (orchestrationDriver != null) {
+                    val action = orchestrationDriver.onDescriptorWriteRequest(address, isSub)
+                    when (action) {
+                        is BleServerAction.AcceptDescriptorWrite,
+                        is BleServerAction.AcceptDescriptorWriteAndPublishFound -> {
+                            subscribedDevices[address] = isSub
+                            onSubscriptionChanged(address, isSub)
+                            if (responseNeeded) server?.sendResponse(device, requestId, BluetoothGatt.GATT_SUCCESS, offset, value)
+                        }
+                        is BleServerAction.RejectDescriptorWrite -> {
+                            if (responseNeeded) server?.sendResponse(device, requestId, BluetoothGatt.GATT_FAILURE, offset, null)
+                        }
+                        else -> {
+                            if (responseNeeded) server?.sendResponse(device, requestId, BluetoothGatt.GATT_FAILURE, offset, null)
+                        }
+                    }
+                } else {
+                    if (!connectedDevices.containsKey(address)) {
+                        if (responseNeeded) server?.sendResponse(device, requestId, BluetoothGatt.GATT_FAILURE, offset, null)
+                        return
+                    }
+                    if (isSub) {
+                        subscribedDevices[address] = true
+                        onSubscriptionChanged(address, true)
+                    } else if (value.contentEquals(BluetoothGattDescriptor.DISABLE_NOTIFICATION_VALUE)) {
+                        subscribedDevices.remove(address)
+                        onSubscriptionChanged(address, false)
+                    }
+                    if (responseNeeded) server?.sendResponse(device, requestId, BluetoothGatt.GATT_SUCCESS, offset, value)
                 }
-            }
-            if (responseNeeded) {
-                server?.sendResponse(device, requestId, BluetoothGatt.GATT_SUCCESS, offset, value)
+            } else {
+                if (responseNeeded) server?.sendResponse(device, requestId, BluetoothGatt.GATT_REQUEST_NOT_SUPPORTED, offset, null)
             }
         }
 
         override fun onMtuChanged(device: BluetoothDevice, mtu: Int) {
             val address = device.address ?: return
+            if (orchestrationDriver != null) {
+                orchestrationDriver.onMtuChanged(address, mtu)
+            }
             if (!connectedDevices.containsKey(address)) {
                 return
             }
@@ -296,10 +354,17 @@ class BleGattServer(
 
         override fun onNotificationSent(device: BluetoothDevice, status: Int) {
             val address = device.address ?: return
+            if (orchestrationDriver != null) {
+                val action = orchestrationDriver.onNotificationSent(address, status == BluetoothGatt.GATT_SUCCESS)
+                if (action is BleServerAction.NoOp && !orchestrationDriver.isDeviceAdmitted(address)) {
+                    // Ignore late notifications for unadmitted
+                    return
+                }
+            }
+            
             val pending = pendingNotification ?: return
             val currentPeerGen = peerGenerations[address]
 
-            // Verify device address, notification generation, peer generation, and active admission
             if (pending.deviceAddress == address &&
                 pending.notificationGeneration == notificationGeneration &&
                 currentPeerGen != null &&
@@ -319,11 +384,16 @@ class BleGattServer(
         val adapter = manager.adapter ?: return false
         if (!adapter.isEnabled) return false
 
-        val gen = ++serverGeneration
+        var gen = serverGeneration
+        if (orchestrationDriver != null) {
+            gen = orchestrationDriver.startNewServerEpoch()
+            serverGeneration = gen
+        } else {
+            gen = ++serverGeneration
+        }
         serviceRegistrationEpoch = gen
         val gattServer = manager.openGattServer(context, callback) ?: return false
 
-        // 1. Inbox Characteristic (write / write_no_response / notify)
         val inbox = BluetoothGattCharacteristic(
             inboxCharUuid,
             BluetoothGattCharacteristic.PROPERTY_WRITE or
@@ -337,7 +407,6 @@ class BleGattServer(
         )
         inbox.addDescriptor(cccd)
 
-        // 2. LinkInfo Characteristic (read / write)
         val linkInfo = BluetoothGattCharacteristic(
             linkInfoCharUuid,
             BluetoothGattCharacteristic.PROPERTY_READ or BluetoothGattCharacteristic.PROPERTY_WRITE,
@@ -367,18 +436,14 @@ class BleGattServer(
         return true
     }
 
-    /**
-     * Send an ATT value notification from this peripheral to a connected, subscribed central.
-     * Serialized via [notificationMutex]. Refuses to send if client has not subscribed to CCCD.
-     * Bounded by [notificationTimeoutMs].
-     *
-     * On timeout: invalidates the peer's physical channel and disconnects the device so that no further
-     * notification may be sent on the same ambiguous physical generation.
-     */
     suspend fun sendNotification(deviceAddress: String, value: ByteArray): Boolean = notificationMutex.withLock {
         val s = server ?: return false
         val ch = inboxCharacteristic ?: return false
         val device = connectedDevices[deviceAddress] ?: return false
+
+        if (orchestrationDriver != null) {
+            if (!orchestrationDriver.beginNotification(deviceAddress)) return false
+        }
 
         if (subscribedDevices[deviceAddress] != true) {
             return false
@@ -405,11 +470,17 @@ class BleGattServer(
         }
 
         if (result == null) {
-            // Timeout reached: channel correlation is ambiguous.
-            // Invalidate notification generation AND tear down this physical connection relation.
             notificationGeneration++
             pendingNotification = null
-            invalidatePeerPhysicalConnection(deviceAddress, device)
+            if (orchestrationDriver != null) {
+                val action = orchestrationDriver.onNotificationTimeout(deviceAddress)
+                if (action is BleServerAction.PoisonServer) {
+                    stop()
+                    onServiceStatusChanged(false)
+                }
+            } else {
+                invalidatePeerPhysicalConnection(deviceAddress, device)
+            }
             return false
         }
         return result
@@ -430,8 +501,14 @@ class BleGattServer(
     }
 
     fun stop() {
-        serverGeneration++
-        serviceRegistrationEpoch = serverGeneration
+        var gen = serverGeneration
+        if (orchestrationDriver != null) {
+            gen = orchestrationDriver.startNewServerEpoch()
+            serverGeneration = gen
+        } else {
+            gen = ++serverGeneration
+        }
+        serviceRegistrationEpoch = gen
         notificationGeneration++
         isServiceReady = false
         pendingService = null

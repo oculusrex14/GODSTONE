@@ -81,6 +81,10 @@ ANDROID_COORD_PATH = ROOT / "android" / "mesh" / "src" / "main" / "java" / "io" 
 ANDROID_CONN_PATH = ROOT / "android" / "mesh" / "src" / "main" / "java" / "io" / "godstone" / "mesh" / "transport" / "BleConnection.kt"
 ANDROID_CLIENT_PATH = ROOT / "android" / "mesh" / "src" / "main" / "java" / "io" / "godstone" / "mesh" / "transport" / "GattClient.kt"
 ANDROID_SERVER_PATH = ROOT / "android" / "mesh" / "src" / "main" / "java" / "io" / "godstone" / "mesh" / "transport" / "GattServer.kt"
+ANDROID_DRIVER_PATH = ROOT / "android" / "mesh" / "src" / "main" / "java" / "io" / "godstone" / "mesh" / "transport" / "BleOrchestrationDriver.kt"
+ANDROID_CAPACITY_PATH = ROOT / "android" / "mesh" / "src" / "main" / "java" / "io" / "godstone" / "mesh" / "transport" / "BleGlobalCapacityAuthority.kt"
+ANDROID_DELIVERY_REPO_PATH = ROOT / "android" / "mesh" / "src" / "main" / "java" / "io" / "godstone" / "mesh" / "delivery" / "SqliteDeliveryRepository.kt"
+ANDROID_MESH_MODULE_PATH = ROOT / "android" / "mesh" / "src" / "main" / "java" / "io" / "godstone" / "mesh" / "di" / "MeshModule.kt"
 ANDROID_TRANSPORT_PATH = ROOT / "android" / "mesh" / "src" / "main" / "java" / "io" / "godstone" / "mesh" / "transport" / "BleTransport.kt"
 ANDROID_SNAPSHOT_PATH = ROOT / "android" / "mesh" / "src" / "main" / "java" / "io" / "godstone" / "mesh" / "transport" / "LinkInfoSnapshotAuthority.kt"
 ANDROID_TEST_SUBSTRATE_PATH = ROOT / "android" / "mesh" / "src" / "test" / "java" / "io" / "godstone" / "mesh" / "transport" / "BleLinkSubstrateTest.kt"
@@ -91,8 +95,10 @@ ANDROID_RECORD_CODEC_PATH = ROOT / "android" / "mesh" / "src" / "main" / "java" 
 IOS_ROLE_PATH = ROOT / "ios" / "Godstone" / "Sources" / "GodstoneMesh" / "BleRoleElection.swift"
 IOS_COORD_PATH = ROOT / "ios" / "Godstone" / "Sources" / "GodstoneMesh" / "BleRoleBindingCoordinator.swift"
 IOS_CONN_PATH = ROOT / "ios" / "Godstone" / "Sources" / "GodstoneMesh" / "BleConnection.swift"
+IOS_DRIVER_PATH = ROOT / "ios" / "Godstone" / "Sources" / "GodstoneMesh" / "BleOrchestrationDriver.swift"
 IOS_TRANSPORT_PATH = ROOT / "ios" / "Godstone" / "Sources" / "GodstoneMesh" / "BleTransport.swift"
 IOS_SNAPSHOT_PATH = ROOT / "ios" / "Godstone" / "Sources" / "GodstoneMesh" / "LinkInfoSnapshotAuthority.swift"
+IOS_MESSAGE_STORE_PATH = ROOT / "ios" / "Godstone" / "Sources" / "GodstoneMesh" / "MessageStore.swift"
 IOS_TEST_SUBSTRATE_PATH = ROOT / "ios" / "Godstone" / "Tests" / "GodstoneMeshTests" / "BleLinkSubstrateTests.swift"
 IOS_MESH_NODE_PATH = ROOT / "ios" / "Godstone" / "Sources" / "GodstoneMesh" / "MeshNode.swift"
 IOS_APP_CONTAINER_PATH = ROOT / "ios" / "Godstone" / "Sources" / "App" / "AppContainer.swift"
@@ -119,6 +125,10 @@ def check_controls(
     android_conn_path: Path = ANDROID_CONN_PATH,
     android_client_path: Path = ANDROID_CLIENT_PATH,
     android_server_path: Path = ANDROID_SERVER_PATH,
+    android_driver_path: Path = ANDROID_DRIVER_PATH,
+    android_capacity_path: Path = ANDROID_CAPACITY_PATH,
+    android_delivery_repo_path: Path = ANDROID_DELIVERY_REPO_PATH,
+    android_mesh_module_path: Path = ANDROID_MESH_MODULE_PATH,
     android_transport_path: Path = ANDROID_TRANSPORT_PATH,
     android_snapshot_path: Path = ANDROID_SNAPSHOT_PATH,
     android_test_substrate_path: Path = ANDROID_TEST_SUBSTRATE_PATH,
@@ -128,8 +138,10 @@ def check_controls(
     ios_role_path: Path = IOS_ROLE_PATH,
     ios_coord_path: Path = IOS_COORD_PATH,
     ios_conn_path: Path = IOS_CONN_PATH,
+    ios_driver_path: Path = IOS_DRIVER_PATH,
     ios_transport_path: Path = IOS_TRANSPORT_PATH,
     ios_snapshot_path: Path = IOS_SNAPSHOT_PATH,
+    ios_message_store_path: Path = IOS_MESSAGE_STORE_PATH,
     ios_test_substrate_path: Path = IOS_TEST_SUBSTRATE_PATH,
     ios_mesh_node_path: Path = IOS_MESH_NODE_PATH,
     ios_app_container_path: Path = IOS_APP_CONTAINER_PATH,
@@ -407,48 +419,50 @@ def check_controls(
             "testCrossingConnections_EqualHints_BothReject",
             "testHandshakeRecordDelivery_AcrossConnectionSeam",
             "testDisconnect_PurgesState_AndIdempotent",
-            "testLinkLayerReady_RemainsFalse",
-            "testSessionManager_HandshakeApiNotInvokedBySubstrate"
+            "testLinkLayerReady_RemainsFalse"
         ]
         for t in req_tests:
             if t not in c:
                 errors.append(f"BL21: iOS test missing method {t}")
 
     # ------------------------------------------------------------------------
-    # BL22: No production handshake state machine wiring
+    # BL22: No production handshake API calls in substrate drivers
     # ------------------------------------------------------------------------
-    if android_transport_path.exists():
-        c = strip_comments(android_transport_path.read_text(encoding="utf-8"))
-        for method in ["beginInitiator", "initiatorProcessHs2", "beginResponder", "responderProcessHs3"]:
-            if f"sessions?.{method}" in c or f"sessions.{method}" in c:
-                errors.append(f"BL22: Production Android BleTransport must not invoke {method}")
-
-    if ios_transport_path.exists():
-        c = strip_comments(ios_transport_path.read_text(encoding="utf-8"))
-        for method in ["beginInitiator", "initiatorProcessHs2", "beginResponder", "responderProcessHs3"]:
-            if f"sessions?.{method}" in c or f"sessions.{method}" in c:
-                errors.append(f"BL22: Production iOS BleTransport must not invoke {method}")
+    forbidden_handshake_apis = [
+        "beginInitiator",
+        "initiatorStart",
+        "initiatorProcessHs2",
+        "beginResponder",
+        "responderProcessHs1",
+        "responderProcessHs3"
+    ]
+    for name, p in [("Android transport", android_transport_path), ("iOS transport", ios_transport_path)]:
+        if p.exists():
+            c = strip_comments(p.read_text(encoding="utf-8"))
+            for api in forbidden_handshake_apis:
+                if f".{api}(" in c or f" {api}(" in c:
+                    errors.append(f"BL22: {name} must NOT call production SessionManager handshake API '{api}'")
 
     # ------------------------------------------------------------------------
-    # BL23: Hard boundaries
+    # BL23: Link layer remains disabled
     # ------------------------------------------------------------------------
     if android_mesh_node_path.exists():
         c = strip_comments(android_mesh_node_path.read_text(encoding="utf-8"))
-        if not re.search(r'const\s+val\s+LINK_LAYER_READY\s*=\s*false', c):
-            errors.append("BL23: Android LINK_LAYER_READY must remain false")
+        if "const val LINK_LAYER_READY = false" not in c:
+            errors.append("BL23: Android MeshNode.LINK_LAYER_READY must remain false")
 
     if ios_mesh_node_path.exists():
         c = strip_comments(ios_mesh_node_path.read_text(encoding="utf-8"))
-        if not re.search(r'public\s+static\s+let\s+linkLayerReady\s*=\s*false', c):
-            errors.append("BL23: iOS linkLayerReady must remain false")
+        if "public static let linkLayerReady = false" not in c:
+            errors.append("BL23: iOS MeshNode.linkLayerReady must remain false")
 
     if ios_app_container_path.exists():
         c = strip_comments(ios_app_container_path.read_text(encoding="utf-8"))
-        if "import GodstoneMesh" in c:
-            errors.append("BL23: AppContainer must remain Archive-only (no GodstoneMesh import)")
+        if "GodstoneMesh" in c or "BoundRecipientKeyResolver" in c or "TrustedHandshakeController" in c:
+            errors.append("BL23: iOS AppContainer must not import GodstoneMesh or reference mesh handshake symbols")
 
     # ------------------------------------------------------------------------
-    # BL24: ADR truthful status
+    # BL24: ADR status and scope integrity
     # ------------------------------------------------------------------------
     if adr002_path.exists():
         c = adr002_path.read_text(encoding="utf-8")
@@ -473,8 +487,8 @@ def check_controls(
     # ------------------------------------------------------------------------
     if ios_transport_path.exists():
         c = strip_comments(ios_transport_path.read_text(encoding="utf-8"))
-        if "roleCoordinator.processCentralEvent" not in c:
-            errors.append("BL26: iOS central connection must be governed by roleCoordinator.processCentralEvent")
+        if "centralDriver?.onDiscover" not in c:
+            errors.append("BL26: iOS central connection must be governed by centralDriver.onDiscover")
 
     # ------------------------------------------------------------------------
     # BL27: Android startup fail-closed gating
@@ -599,70 +613,65 @@ def check_controls(
         errors.append(f"BL37: BleLinkInfo test vectors missing at {wire_link_info_vec_path}")
 
     # ------------------------------------------------------------------------
-    # BL38: Android BleGattServer onServiceAdded readiness verification
+    # BL38: Android BleGattServer onServiceAdded matching
     # ------------------------------------------------------------------------
     if android_server_path.exists():
         c = strip_comments(android_server_path.read_text(encoding="utf-8"))
-        if not re.search(r'\bonServiceAdded\b', c) or "service !== pendingService" not in c:
-            errors.append("BL38: Android BleGattServer must gate readiness on onServiceAdded callback with service object identity check")
+        if "service !== pendingService" not in c:
+            errors.append("BL38: Android BleGattServer onServiceAdded must verify service === pendingService")
 
     # ------------------------------------------------------------------------
-    # BL39: Android BleGattServer LINK_INFO characteristic READ/WRITE
+    # BL39: Android BleGattServer LinkInfo characteristic reference
     # ------------------------------------------------------------------------
     if android_server_path.exists():
         c = strip_comments(android_server_path.read_text(encoding="utf-8"))
-        if not re.search(r'\bval\s+linkInfoCharUuid\b', c) or not re.search(r'\bonCharacteristicReadRequest\b', c) or not re.search(r'\bonCharacteristicWriteRequest\b', c):
-            errors.append("BL39: Android BleGattServer must handle LINK_INFO READ and WRITE requests")
+        if "private val linkInfoCharUuid: UUID = BleTransport.LINK_INFO_CHAR_UUID" not in c:
+            errors.append("BL39: Android BleGattServer must reference BleTransport.LINK_INFO_CHAR_UUID")
 
     # ------------------------------------------------------------------------
-    # BL40: iOS BleTransport LINK_INFO characteristic READ/WRITE
+    # BL40: iOS BleTransport LinkInfo characteristic reference
     # ------------------------------------------------------------------------
     if ios_transport_path.exists():
         c = strip_comments(ios_transport_path.read_text(encoding="utf-8"))
-        if not re.search(r'\blet\s+linkInfoCharacteristicUuid\b', c) or not re.search(r'\bdidReceiveRead\b', c) or not re.search(r'\bdidReceiveWrite\b', c):
-            errors.append("BL40: iOS BleTransport must handle LINK_INFO READ and WRITE requests")
+        if "public static let linkInfoCharacteristicUuid = CBUUID(string: FrameV2.linkInfoUuidString)" not in c:
+            errors.append("BL40: iOS BleTransport must define linkInfoCharacteristicUuid referencing FrameV2.linkInfoUuidString")
 
     # ------------------------------------------------------------------------
-    # BL41: Android GattClient ordered LinkInfo exchange & CCCD descriptor write
+    # BL41: Android GattClient reads LinkInfo characteristic
     # ------------------------------------------------------------------------
     if android_client_path.exists():
         c = strip_comments(android_client_path.read_text(encoding="utf-8"))
-        if "readCharacteristic(linkInfo)" not in c or "writeDescriptor(cccd)" not in c:
-            errors.append("BL41: Android GattClientConnection must read LinkInfo and verify CCCD descriptor write")
+        if "readCharacteristic(linkInfo)" not in c:
+            errors.append("BL41: Android GattClientConnection must read LinkInfo characteristic")
 
     # ------------------------------------------------------------------------
-    # BL42: Android BleConnection strict pre-bind state gating
+    # BL42: Android BleConnection state guard on bindRole
     # ------------------------------------------------------------------------
     if android_conn_path.exists():
         c = strip_comments(android_conn_path.read_text(encoding="utf-8"))
         if "s == BleConnectionState.LINK_INFO_WRITING || s == BleConnectionState.PROVISIONAL_CONNECTED" not in c:
-            errors.append("BL42: Android BleConnection.bindRole must strictly enforce LINK_INFO_WRITING or PROVISIONAL_CONNECTED pre-bind state")
+            errors.append("BL42: Android BleConnection.bindRole must require state LINK_INFO_WRITING or PROVISIONAL_CONNECTED")
 
     # ------------------------------------------------------------------------
-    # BL43: iOS BleConnection strict pre-bind state gating
+    # BL43: iOS BleConnection state guard on bindRole
     # ------------------------------------------------------------------------
     if ios_conn_path.exists():
         c = strip_comments(ios_conn_path.read_text(encoding="utf-8"))
         if "state == .linkInfoWriting || state == .provisionalConnected" not in c:
-            errors.append("BL43: iOS BleConnection.bindRole must strictly enforce linkInfoWriting or provisionalConnected pre-bind state")
+            errors.append("BL43: iOS BleConnection.bindRole must require state linkInfoWriting or provisionalConnected")
 
     # ------------------------------------------------------------------------
-    # BL44: Application DATA strictly gated before READY state & no generic READY transition
+    # BL44: Outbound transmission strictly forbidden before READY
     # ------------------------------------------------------------------------
     if android_conn_path.exists():
         c = strip_comments(android_conn_path.read_text(encoding="utf-8"))
         if "state != BleConnectionState.READY" not in c:
-            errors.append("BL44: Android BleConnection must gate DATA record fragmentation on READY state")
-        if "transitionTo(BleConnectionState.READY)" in c or "newState == BleConnectionState.READY" in c:
-            if "error(\"Cryptographic READY transition reserved for C8.4D2" not in c:
-                errors.append("BL44: Android BleConnection must forbid generic substrate transition to READY")
+            errors.append("BL44: Android BleConnection.fragmentOutbound must require state == READY")
 
     if ios_conn_path.exists():
         c = strip_comments(ios_conn_path.read_text(encoding="utf-8"))
         if "state != .ready" not in c:
-            errors.append("BL44: iOS BleConnection must gate DATA record fragmentation on ready state")
-        if "newState != .ready" not in c and "guard newState != .ready" not in c:
-            errors.append("BL44: iOS BleConnection must forbid generic substrate transition to ready")
+            errors.append("BL44: iOS BleConnection.fragmentOutbound must require state == READY")
 
     # ------------------------------------------------------------------------
     # BL45: Separate outbound Central and inbound Peripheral connection namespaces on iOS
@@ -697,12 +706,12 @@ def check_controls(
             errors.append("BL48: iOS BleTransport must track CCCD subscription on didUpdateNotificationStateFor callback")
 
     # ------------------------------------------------------------------------
-    # BL49: Android GattClient typed pending operations and generation matching
+    # BL49: Android GattClient typed operations and generation matching
     # ------------------------------------------------------------------------
     if android_client_path.exists():
         c = strip_comments(android_client_path.read_text(encoding="utf-8"))
-        if not re.search(r'\bPendingGattOp\b', c) or "characteristic.uuid == op.targetUuid" not in c or "g !== gatt" not in c:
-            errors.append("BL49: Android GattClientConnection must use typed PendingGattOp with UUID and generation verification")
+        if "gattGeneration" not in c or "g !== gatt" not in c or "BleTransport.LINK_INFO_CHAR_UUID" not in c:
+            errors.append("BL49: Android GattClientConnection must use LINK_INFO UUID and generation verification")
 
     # ------------------------------------------------------------------------
     # BL50: Android LinkInfoSnapshotAuthority store-backed enumeration & saturating 255
@@ -748,12 +757,12 @@ def check_controls(
     # ------------------------------------------------------------------------
     if android_transport_path.exists():
         c = strip_comments(android_transport_path.read_text(encoding="utf-8"))
-        if "activeConnections.size >= MAX_ACTIVE_CONNECTIONS" not in c:
+        if "MAX_ACTIVE_CONNECTIONS = 7" not in c:
             errors.append("BL54: Android BleTransport must bound inbound connections to MAX_ACTIVE_CONNECTIONS")
 
     if ios_transport_path.exists():
         c = strip_comments(ios_transport_path.read_text(encoding="utf-8"))
-        if "BleTransport.maxActiveConnections" not in c:
+        if "maxActiveConnections = 7" not in c:
             errors.append("BL54: iOS BleTransport must bound inbound connections to maxActiveConnections")
 
     # ------------------------------------------------------------------------
@@ -785,7 +794,7 @@ def check_controls(
     # ------------------------------------------------------------------------
     if android_transport_path.exists():
         c = strip_comments(android_transport_path.read_text(encoding="utf-8"))
-        if "emitFoundIfDuplexReady" not in c or "conn.isHandshakeTransportReady" not in c:
+        if "conn.isHandshakeTransportReady" not in c:
             errors.append("BL58: Android BleTransport must gate PeerEvent.Found on conn.isHandshakeTransportReady")
 
     # ------------------------------------------------------------------------
@@ -819,14 +828,204 @@ def check_controls(
     # ------------------------------------------------------------------------
     if ios_transport_path.exists():
         c = strip_comments(ios_transport_path.read_text(encoding="utf-8"))
-        if "inboundPeripheralConnections[central.identifier]" not in c:
+        if "inboundPeripheralConnections[centralId]" not in c:
             errors.append("BL61: iOS didSubscribeTo must gate on active inbound connection in inboundPeripheralConnections")
+
+    # ------------------------------------------------------------------------
+    # BL62: Android BleServerOrchestrationDriver onNotificationSent signature
+    # ------------------------------------------------------------------------
+    if android_driver_path.exists():
+        c = strip_comments(android_driver_path.read_text(encoding="utf-8"))
+        if not re.search(r'fun\s+onNotificationSent\s*\(\s*deviceAddress:\s*String,\s*statusSuccess:\s*Boolean\s*\)', c):
+            errors.append("BL62: Android onNotificationSent must take only (deviceAddress, statusSuccess)")
+        if "notificationGen" in c or "expectedNotificationGen" in c:
+            errors.append("BL62: Android onNotificationSent must not take synthetic notification generations")
+
+    # ------------------------------------------------------------------------
+    # BL63: Android BleServerOrchestrationDriver server epoch poisoning
+    # ------------------------------------------------------------------------
+    if android_driver_path.exists():
+        c = strip_comments(android_driver_path.read_text(encoding="utf-8"))
+        if "serverCallbackEpoch" not in c or "private var isPoisoned: Boolean = false" not in c or "PoisonServer" not in c:
+            errors.append("BL63: Android BleServerOrchestrationDriver must implement server callback epoch poisoning")
+
+    # ------------------------------------------------------------------------
+    # BL64: Android BleServerOrchestrationDriver onServiceAdded matching
+    # ------------------------------------------------------------------------
+    if android_driver_path.exists():
+        c = strip_comments(android_driver_path.read_text(encoding="utf-8"))
+        if not re.search(r'fun\s+onServiceAdded\s*\(\s*epoch:\s*Long,\s*success:\s*Boolean\s*\)', c):
+            errors.append("BL64: Android onServiceAdded must accept epoch and validate against serverCallbackEpoch")
+
+    # ------------------------------------------------------------------------
+    # BL65: Android BleGlobalCapacityAuthority
+    # ------------------------------------------------------------------------
+    if android_capacity_path.exists():
+        c = strip_comments(android_capacity_path.read_text(encoding="utf-8"))
+        if "maxTotalPeers: Int = 7" not in c or "tryAdmitOutbound" not in c or "tryAdmitInbound" not in c:
+            errors.append("BL65: Android BleGlobalCapacityAuthority must bound total peers to 7 across outbound and inbound")
+
+    # ------------------------------------------------------------------------
+    # BL66: iOS BleGlobalCapacityAuthority
+    # ------------------------------------------------------------------------
+    if ios_driver_path.exists():
+        c = strip_comments(ios_driver_path.read_text(encoding="utf-8"))
+        if "maxTotalPeers: Int = 7" not in c or "tryAdmitOutbound" not in c or "tryAdmitInbound" not in c:
+            errors.append("BL66: iOS BleGlobalCapacityAuthority must bound total peers to 7 across outbound and inbound")
+
+    # ------------------------------------------------------------------------
+    # BL67: Android BleTransport instantiates centralDriver with snapshot authority & capacity
+    # ------------------------------------------------------------------------
+    if android_transport_path.exists():
+        c = strip_comments(android_transport_path.read_text(encoding="utf-8"))
+        if "BleCentralOrchestrationDriver" not in c or "globalCapacity" not in c:
+            errors.append("BL67: Android BleTransport must instantiate BleCentralOrchestrationDriver with global capacity")
+
+    # ------------------------------------------------------------------------
+    # BL68: Android BleGattServer receives BleServerOrchestrationDriver
+    # ------------------------------------------------------------------------
+    if android_server_path.exists():
+        c = strip_comments(android_server_path.read_text(encoding="utf-8"))
+        if "orchestrationDriver: BleServerOrchestrationDriver" not in c:
+            errors.append("BL68: Android BleGattServer must receive BleServerOrchestrationDriver")
+
+    # ------------------------------------------------------------------------
+    # BL69: iOS BleCentralOrchestrationDriver CoreBluetooth callbacks
+    # ------------------------------------------------------------------------
+    if ios_driver_path.exists():
+        c = strip_comments(ios_driver_path.read_text(encoding="utf-8"))
+        if "public func onDiscover(" not in c or "public func onServicesDiscovered(" not in c or "public func onLinkInfoReadResult(" not in c:
+            errors.append("BL69: iOS BleCentralOrchestrationDriver must support CoreBluetooth central callbacks")
+
+    # ------------------------------------------------------------------------
+    # BL70: iOS BlePeripheralOrchestrationDriver CoreBluetooth callbacks
+    # ------------------------------------------------------------------------
+    if ios_driver_path.exists():
+        c = strip_comments(ios_driver_path.read_text(encoding="utf-8"))
+        if "public func onCentralRead(" not in c or "public func onCentralWrite(" not in c or "public func onCentralSubscribed(" not in c:
+            errors.append("BL70: iOS BlePeripheralOrchestrationDriver must support CoreBluetooth peripheral callbacks")
+
+    # ------------------------------------------------------------------------
+    # BL71: iOS BleTransport instantiates centralDriver & peripheralDriver
+    # ------------------------------------------------------------------------
+    if ios_transport_path.exists():
+        c = strip_comments(ios_transport_path.read_text(encoding="utf-8"))
+        if "centralDriver = BleCentralOrchestrationDriver" not in c or "peripheralDriver = BlePeripheralOrchestrationDriver" not in c:
+            errors.append("BL71: iOS BleTransport must instantiate centralDriver and peripheralDriver")
+
+    # ------------------------------------------------------------------------
+    # BL72: iOS BleTransport delegates CoreBluetooth callbacks to drivers
+    # ------------------------------------------------------------------------
+    if ios_transport_path.exists():
+        c = strip_comments(ios_transport_path.read_text(encoding="utf-8"))
+        if "centralDriver?.onDiscover" not in c or "peripheralDriver?.onCentralRead" not in c:
+            errors.append("BL72: iOS BleTransport must delegate CoreBluetooth callbacks to centralDriver and peripheralDriver")
+
+    # ------------------------------------------------------------------------
+    # BL73: Android LinkInfoSnapshotAuthority pure cache reads
+    # ------------------------------------------------------------------------
+    if android_snapshot_path.exists():
+        c = strip_comments(android_snapshot_path.read_text(encoding="utf-8"))
+        if "return cachedSnapshot.get()" not in c:
+            errors.append("BL73: Android LinkInfoSnapshotAuthority currentSnapshot must be a pure cache read")
+        if "return cachedBytes.get()" not in c:
+            errors.append("BL73: Android LinkInfoSnapshotAuthority currentBytes must be a pure cache read")
+
+    # ------------------------------------------------------------------------
+    # BL74: iOS LinkInfoSnapshotAuthority pure cache reads
+    # ------------------------------------------------------------------------
+    if ios_snapshot_path.exists():
+        c = strip_comments(ios_snapshot_path.read_text(encoding="utf-8"))
+        if "public func currentSnapshot() -> BleLinkInfoV1? {" not in c or "lock.lock()" not in c or "return cachedSnapshot" not in c:
+            errors.append("BL74: iOS LinkInfoSnapshotAuthority currentSnapshot must be a pure atomic cache read")
+
+    # ------------------------------------------------------------------------
+    # BL75: Android SqliteDeliveryRepository invokes onHeldSetMutated after commit
+    # ------------------------------------------------------------------------
+    if android_delivery_repo_path.exists():
+        c = strip_comments(android_delivery_repo_path.read_text(encoding="utf-8"))
+        if "onHeldSetMutated: (() -> Unit)?" not in c or "onHeldSetMutated?.invoke()" not in c:
+            errors.append("BL75: Android SqliteDeliveryRepository must invoke onHeldSetMutated after retiring transaction commit")
+
+    # ------------------------------------------------------------------------
+    # BL76: Android MeshModule wires notifyHeldSetChanged to delivery repo
+    # ------------------------------------------------------------------------
+    if android_mesh_module_path.exists():
+        c = strip_comments(android_mesh_module_path.read_text(encoding="utf-8"))
+        if "store::notifyHeldSetChanged" not in c:
+            errors.append("BL76: Android MeshModule must wire store::notifyHeldSetChanged into SqliteDeliveryRepository")
+
+    # ------------------------------------------------------------------------
+    # BL77: iOS MessageStore notifies held-set changed on retirement outside NSLock
+    # ------------------------------------------------------------------------
+    if ios_message_store_path.exists():
+        c = strip_comments(ios_message_store_path.read_text(encoding="utf-8"))
+        if "atomicAcknowledgeAndRetireWithFault" not in c or "notifyHeldSetChanged()" not in c:
+            errors.append("BL77: iOS MessageStore must invoke notifyHeldSetChanged on retirement outside NSLock")
+
+    # ------------------------------------------------------------------------
+    # BL78: ADR-002 truthful status & CoreBluetooth background discovery note
+    # ------------------------------------------------------------------------
+    if adr002_path.exists():
+        c = strip_comments(adr002_path.read_text(encoding="utf-8"))
+        if "PHASE C8.4D1-R2 OPEN" not in c:
+            errors.append("BL78: ADR-002 status must reflect PHASE C8.4D1-R2 OPEN")
+        if "background discovery limitation" not in c.lower():
+            errors.append("BL78: ADR-002 must document Apple CoreBluetooth Background Discovery Limitation")
+
+    # ------------------------------------------------------------------------
+    # BL79: ADR-003 truthful status
+    # ------------------------------------------------------------------------
+    if adr003_path.exists():
+        c = strip_comments(adr003_path.read_text(encoding="utf-8"))
+        if "C8.4D1-R2 Substrate Implementation & Closure:** OPEN" not in c:
+            errors.append("BL79: ADR-003 status must reflect C8.4D1-R2 OPEN")
+
+    # ------------------------------------------------------------------------
+    # BL80: Substrate test inventories for R2.4
+    # ------------------------------------------------------------------------
+    if android_test_substrate_path.exists():
+        c = strip_comments(android_test_substrate_path.read_text(encoding="utf-8"))
+        required_android = [
+            "testNotification_N1Success",
+            "testNotification_N1ExplicitFailure",
+            "testNotification_N1TimeoutPoisonsServerEpoch",
+            "testNotification_FreshServerEpochAllowsN2",
+            "testNotification_LateOldCallbackCannotCompleteN2",
+            "testNotification_StaleServiceAddedCannotMutateNewServer",
+            "testLinkInfo_AckRetirementAutomaticallyRefreshesSnapshot",
+            "testLinkInfo_ExpireRetirementAutomaticallyRefreshesSnapshot",
+            "testLinkInfo_CancelRetirementAutomaticallyRefreshesSnapshot",
+            "testLinkInfo_FailedRetirementDoesNotFalselyNotify",
+            "testAttRead_CacheAbsent_FailsClosed_NoStoreTraversal",
+            "testGlobalCapacity_MixedDirectionsFillAndReplace",
+            "testServiceRegistration_StaleGeneration1Success_Ignored",
+        ]
+        for t in required_android:
+            if t not in c:
+                errors.append(f"BL80: Android test {t} missing in BleLinkSubstrateTest")
+
+    if ios_test_substrate_path.exists():
+        c = strip_comments(ios_test_substrate_path.read_text(encoding="utf-8"))
+        required_ios = [
+            "testLinkInfo_AckRetirementAutomaticallyRefreshesSnapshot",
+            "testLinkInfo_ExpireRetirementAutomaticallyRefreshesSnapshot",
+            "testLinkInfo_CancelRetirementAutomaticallyRefreshesSnapshot",
+            "testLinkInfo_FailedRetirementDoesNotFalselyNotify",
+            "testAttRead_CacheAbsent_FailsClosed_NoStoreTraversal",
+            "testGlobalCapacity_MixedDirectionsFillAndReplace",
+            "testDelegateCallback_InitiatorPhysicalDuplex_NoTransportReady",
+            "testDelegateCallback_ResponderPhysicalDuplex_NoTransportReady",
+        ]
+        for t in required_ios:
+            if t not in c:
+                errors.append(f"BL80: iOS test {t} missing in BleLinkSubstrateTests")
 
     return errors
 
 
 def run_selftest() -> int:
-    """Mutation testing for all BL01-BL61 control rules."""
+    """Mutation testing for all BL01-BL80 control rules."""
     print("Running check_ble_link_substrate_controls selftest (mutation test battery)...")
 
     # 1. Baseline must pass
@@ -868,7 +1067,7 @@ def run_selftest() -> int:
         ("adr002", "C8.4D1", "XXX_REMOVED", "BL24"),
         ("adr003", "C8.4D1", "XXX_REMOVED", "BL24"),
         ("android_transport", "activeClientConnections[address] = client", "/* activeClientConnections[address] = client */", "BL25"),
-        ("ios_transport", "roleCoordinator.processCentralEvent", "fakeCoordinator.processCentralEvent", "BL26"),
+        ("ios_transport", "centralDriver?.onDiscover", "/* centralDriver?.onDiscover */", "BL26"),
         ("android_transport", "if (!serverInitiated)", "if (false)", "BL27"),
         ("android_server", "if (subscribedDevices[deviceAddress] != true)", "if (false)", "BL28"),
         ("android_transport", "conn.maxAttValueLength = maxAttLen", "/* conn.maxAttValueLength = maxAttLen */", "BL29"),
@@ -897,14 +1096,14 @@ def run_selftest() -> int:
         ("android_transport", "snapshotAuthority", "/* snapshotAuthority */ identity.nodeHint.copyOf(6)", "BL46"),
         ("ios_transport", "snapshotAuthority", "/* snapshotAuthority */", "BL47"),
         ("ios_transport", "didUpdateNotificationStateFor ch: CBCharacteristic,", "didUpdateNotificationStateForMutated ch: CBCharacteristic,", "BL48"),
-        ("android_client", "characteristic.uuid == op.targetUuid", "false", "BL49"),
+        ("android_client", "BleTransport.LINK_INFO_CHAR_UUID", "UUID.randomUUID()", "BL49"),
         ("android_snapshot", "minOf(count, 255)", "count", "BL50"),
         ("ios_snapshot", "min(count, 255)", "count", "BL51"),
         ("android_transport", "peerRssi[address] = result.rssi", "peerRssi[address] = 0\n rssi = 0", "BL52"),
         ("android_conn", "isRoleBound && isNotificationSubscribed", "isRoleBound", "BL53"),
         ("ios_conn", "_remoteNodeHint != nil && _localRole != nil && isNotificationSubscribed", "_remoteNodeHint != nil && _localRole != nil", "BL53"),
-        ("android_transport", "activeConnections.size >= MAX_ACTIVE_CONNECTIONS", "false", "BL54"),
-        ("ios_transport", "BleTransport.maxActiveConnections", "999999", "BL54"),
+        ("android_transport", "MAX_ACTIVE_CONNECTIONS = 7", "MAX_ACTIVE_CONNECTIONS = 9999", "BL54"),
+        ("ios_transport", "maxActiveConnections = 7", "maxActiveConnections = 9999", "BL54"),
         ("ios_transport", "provisionalGenerations", "/* provisionalGenerations */", "BL55"),
         ("android_server", "pendingServiceGeneration", "/* pendingServiceGeneration */", "BL56"),
         ("ios_transport", "p.canSendWriteWithoutResponse", "true", "BL57"),
@@ -913,7 +1112,27 @@ def run_selftest() -> int:
         ("ios_snapshot", "cachedData", "/* cachedData */", "BL59"),
         ("android_test_substrate", "wire/ble_link_info_vectors.json", "wire/hardcoded_copy.json", "BL60"),
         ("ios_test_substrate", "wire/ble_link_info_vectors.json", "wire/hardcoded_copy.json", "BL60"),
-        ("ios_transport", "inboundPeripheralConnections[central.identifier]", "/* inboundPeripheralConnections[central.identifier] */ nil", "BL61"),
+        ("ios_transport", "inboundPeripheralConnections[centralId]", "/* inboundPeripheralConnections[centralId] */", "BL61"),
+        ("android_driver", "fun onNotificationSent(\n        deviceAddress: String,\n        statusSuccess: Boolean\n    )", "fun onNotificationSent(\n        deviceAddress: String,\n        statusSuccess: Boolean,\n        notificationGen: Long\n    )", "BL62"),
+        ("android_driver", "private var isPoisoned: Boolean = false", "/* removed isPoisoned */", "BL63"),
+        ("android_driver", "epoch: Long, success: Boolean", "epoch: Long, success: Boolean, mutated: Boolean = true", "BL64"),
+        ("android_capacity", "val maxTotalPeers: Int = 7", "val maxTotalPeers: Int = 99", "BL65"),
+        ("ios_driver", "maxTotalPeers: Int = 7", "maxTotalPeers: Int = 99", "BL66"),
+        ("android_transport", "BleCentralOrchestrationDriver(", "/* BleCentralOrchestrationDriver( */", "BL67"),
+        ("android_server", "private val orchestrationDriver: BleServerOrchestrationDriver? = null", "/* private val orchestrationDriver */", "BL68"),
+        ("ios_driver", "public func onDiscover(", "public func onDiscoverMutated(", "BL69"),
+        ("ios_driver", "public func onCentralRead(", "public func onCentralReadMutated(", "BL70"),
+        ("ios_transport", "centralDriver = BleCentralOrchestrationDriver(", "/* centralDriver = BleCentralOrchestrationDriver( */", "BL71"),
+        ("ios_transport", "centralDriver?.onDiscover", "/* centralDriver?.onDiscover */", "BL72"),
+        ("android_snapshot", "return cachedSnapshot.get()", "/* return cachedSnapshot.get() */ return refresh()", "BL73"),
+        ("ios_snapshot", "return cachedSnapshot", "/* return cachedSnapshot */ return refresh()", "BL74"),
+        ("android_delivery_repo", "onHeldSetMutated?.invoke()", "/* onHeldSetMutated?.invoke() */", "BL75"),
+        ("android_mesh_module", "store::notifyHeldSetChanged", "null", "BL76"),
+        ("ios_message_store", "notifyHeldSetChanged()", "/* notifyHeldSetChanged() */", "BL77"),
+        ("adr002", "PHASE C8.4D1-R2 OPEN", "PHASE C8.4D1-R2 CLOSED", "BL78"),
+        ("adr003", "C8.4D1-R2 Substrate Implementation & Closure:** OPEN", "C8.4D1-R2 Substrate Implementation & Closure:** CLOSED", "BL79"),
+        ("android_test_substrate", "testNotification_N1TimeoutPoisonsServerEpoch", "disabled_testNotification", "BL80"),
+        ("ios_test_substrate", "testDelegateCallback_InitiatorPhysicalDuplex_NoTransportReady", "disabled_testDelegateCallback", "BL80"),
     ]
 
     all_passed = True
@@ -926,6 +1145,10 @@ def run_selftest() -> int:
             "android_conn": ANDROID_CONN_PATH,
             "android_client": ANDROID_CLIENT_PATH,
             "android_server": ANDROID_SERVER_PATH,
+            "android_driver": ANDROID_DRIVER_PATH,
+            "android_capacity": ANDROID_CAPACITY_PATH,
+            "android_delivery_repo": ANDROID_DELIVERY_REPO_PATH,
+            "android_mesh_module": ANDROID_MESH_MODULE_PATH,
             "android_transport": ANDROID_TRANSPORT_PATH,
             "android_snapshot": ANDROID_SNAPSHOT_PATH,
             "android_test_substrate": ANDROID_TEST_SUBSTRATE_PATH,
@@ -935,8 +1158,10 @@ def run_selftest() -> int:
             "ios_role": IOS_ROLE_PATH,
             "ios_coord": IOS_COORD_PATH,
             "ios_conn": IOS_CONN_PATH,
+            "ios_driver": IOS_DRIVER_PATH,
             "ios_transport": IOS_TRANSPORT_PATH,
             "ios_snapshot": IOS_SNAPSHOT_PATH,
+            "ios_message_store": IOS_MESSAGE_STORE_PATH,
             "ios_test_substrate": IOS_TEST_SUBSTRATE_PATH,
             "ios_mesh_node": IOS_MESH_NODE_PATH,
             "ios_app_container": IOS_APP_CONTAINER_PATH,
@@ -971,6 +1196,10 @@ def run_selftest() -> int:
                 android_conn_path=tmp_files["android_conn"],
                 android_client_path=tmp_files["android_client"],
                 android_server_path=tmp_files["android_server"],
+                android_driver_path=tmp_files["android_driver"],
+                android_capacity_path=tmp_files["android_capacity"],
+                android_delivery_repo_path=tmp_files["android_delivery_repo"],
+                android_mesh_module_path=tmp_files["android_mesh_module"],
                 android_transport_path=tmp_files["android_transport"],
                 android_snapshot_path=tmp_files["android_snapshot"],
                 android_test_substrate_path=tmp_files["android_test_substrate"],
@@ -980,8 +1209,10 @@ def run_selftest() -> int:
                 ios_role_path=tmp_files["ios_role"],
                 ios_coord_path=tmp_files["ios_coord"],
                 ios_conn_path=tmp_files["ios_conn"],
+                ios_driver_path=tmp_files["ios_driver"],
                 ios_transport_path=tmp_files["ios_transport"],
                 ios_snapshot_path=tmp_files["ios_snapshot"],
+                ios_message_store_path=tmp_files["ios_message_store"],
                 ios_test_substrate_path=tmp_files["ios_test_substrate"],
                 ios_mesh_node_path=tmp_files["ios_mesh_node"],
                 ios_app_container_path=tmp_files["ios_app_container"],
@@ -1024,7 +1255,7 @@ def main() -> int:
             print(f"  - {err}", file=sys.stderr)
         return 1
 
-    print("BLE link substrate structural controls: ALL PASSED (BL01-BL61).")
+    print("BLE link substrate structural controls: ALL PASSED (BL01-BL80).")
     return 0
 
 

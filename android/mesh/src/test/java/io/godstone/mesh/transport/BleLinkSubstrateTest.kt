@@ -686,7 +686,7 @@ class BleLinkSubstrateTest {
 
         // Timeout triggers physical channel teardown
         val act = driver.onNotificationTimeout(central)
-        assertEquals(BleServerAction.TearDownPhysicalChannel(central), act)
+        assertEquals(BleServerAction.PoisonServer, act)
         assertFalse(driver.isDeviceAdmitted(central))
         assertNull(driver.getInboundConnection(central))
     }
@@ -711,9 +711,6 @@ class BleLinkSubstrateTest {
         val staleAct = driver.onNotificationSent(
             deviceAddress = central,
             statusSuccess = true,
-            notificationGen = 1,
-            expectedNotificationGen = 2,
-            peerGen = 1
         )
         assertEquals(BleServerAction.NoOp, staleAct)
     }
@@ -906,8 +903,365 @@ class BleLinkSubstrateTest {
     }
 
     @Test
+    fun testNotification_N1Success() {
+        val localHint = byteArrayOf(0x02, 0x00, 0x00, 0x00)
+        val driver = BleServerOrchestrationDriver(
+            localHint = localHint,
+            localLinkInfoProvider = { ByteArray(13) }
+        )
+        val epoch = driver.startNewServerEpoch()
+        assertTrue(driver.onServiceAdded(epoch, true))
+        val central = "11:22:33:44:55:66"
+        driver.onClientConnected(central, peerGeneration = 1)
+        assertTrue(driver.beginNotification(central))
+        val act = driver.onNotificationSent(central, statusSuccess = true)
+        assertEquals(BleServerAction.NotificationSuccess(central), act)
+    }
+
+    @Test
+    fun testNotification_N1ExplicitFailure() {
+        val localHint = byteArrayOf(0x02, 0x00, 0x00, 0x00)
+        val driver = BleServerOrchestrationDriver(
+            localHint = localHint,
+            localLinkInfoProvider = { ByteArray(13) }
+        )
+        val epoch = driver.startNewServerEpoch()
+        assertTrue(driver.onServiceAdded(epoch, true))
+        val central = "11:22:33:44:55:66"
+        driver.onClientConnected(central, peerGeneration = 1)
+        assertTrue(driver.beginNotification(central))
+        val act = driver.onNotificationSent(central, statusSuccess = false)
+        assertEquals(BleServerAction.NotificationFailure(central), act)
+    }
+
+    @Test
+    fun testNotification_N1TimeoutPoisonsServerEpoch() {
+        val localHint = byteArrayOf(0x02, 0x00, 0x00, 0x00)
+        val driver = BleServerOrchestrationDriver(
+            localHint = localHint,
+            localLinkInfoProvider = { ByteArray(13) }
+        )
+        val epoch = driver.startNewServerEpoch()
+        assertTrue(driver.onServiceAdded(epoch, true))
+        val central = "11:22:33:44:55:66"
+        driver.onClientConnected(central, peerGeneration = 1)
+        assertTrue(driver.beginNotification(central))
+        val act = driver.onNotificationTimeout(central)
+        assertEquals(BleServerAction.PoisonServer, act)
+        assertFalse(driver.beginNotification(central))
+    }
+
+    @Test
+    fun testNotification_FreshServerEpochAllowsN2() {
+        val localHint = byteArrayOf(0x02, 0x00, 0x00, 0x00)
+        val driver = BleServerOrchestrationDriver(
+            localHint = localHint,
+            localLinkInfoProvider = { ByteArray(13) }
+        )
+        val epoch1 = driver.startNewServerEpoch()
+        assertTrue(driver.onServiceAdded(epoch1, true))
+        val central = "11:22:33:44:55:66"
+        driver.onClientConnected(central, peerGeneration = 1)
+        assertTrue(driver.beginNotification(central))
+        driver.onNotificationTimeout(central)
+
+        // Fresh server epoch
+        val epoch2 = driver.startNewServerEpoch()
+        assertTrue(epoch2 > epoch1)
+        assertTrue(driver.onServiceAdded(epoch2, true))
+        driver.onClientConnected(central, peerGeneration = 2)
+        assertTrue(driver.beginNotification(central))
+        val act = driver.onNotificationSent(central, statusSuccess = true)
+        assertEquals(BleServerAction.NotificationSuccess(central), act)
+    }
+
+    @Test
+    fun testNotification_LateOldCallbackCannotCompleteN2() {
+        val localHint = byteArrayOf(0x02, 0x00, 0x00, 0x00)
+        val driver = BleServerOrchestrationDriver(
+            localHint = localHint,
+            localLinkInfoProvider = { ByteArray(13) }
+        )
+        val epoch1 = driver.startNewServerEpoch()
+        assertTrue(driver.onServiceAdded(epoch1, true))
+        val central = "11:22:33:44:55:66"
+        driver.onClientConnected(central, peerGeneration = 1)
+        assertTrue(driver.beginNotification(central))
+        driver.onNotificationTimeout(central)
+
+        // Late callback from old epoch arrives while server is poisoned -> NoOp
+        val lateAct = driver.onNotificationSent(central, statusSuccess = true)
+        assertEquals(BleServerAction.NoOp, lateAct)
+    }
+
+    @Test
+    fun testNotification_StaleServiceAddedCannotMutateNewServer() {
+        val localHint = byteArrayOf(0x02, 0x00, 0x00, 0x00)
+        val driver = BleServerOrchestrationDriver(
+            localHint = localHint,
+            localLinkInfoProvider = { ByteArray(13) }
+        )
+        val epoch1 = driver.startNewServerEpoch()
+        val epoch2 = driver.startNewServerEpoch()
+
+        // Stale epoch 1 callback arrives after epoch 2 has begun
+        assertFalse(driver.onServiceAdded(epoch1, true))
+        assertFalse(driver.isServerReady)
+
+        // Valid epoch 2 callback succeeds
+        assertTrue(driver.onServiceAdded(epoch2, true))
+        assertTrue(driver.isServerReady)
+    }
+
+    @Test
+    fun testNotification_DisconnectWhilePendingSettles() {
+        val localHint = byteArrayOf(0x02, 0x00, 0x00, 0x00)
+        val driver = BleServerOrchestrationDriver(
+            localHint = localHint,
+            localLinkInfoProvider = { ByteArray(13) }
+        )
+        val epoch = driver.startNewServerEpoch()
+        assertTrue(driver.onServiceAdded(epoch, true))
+        val central = "11:22:33:44:55:66"
+        driver.onClientConnected(central, peerGeneration = 1)
+        assertTrue(driver.beginNotification(central))
+        driver.onClientDisconnected(central)
+
+        // Callback after disconnect is NoOp
+        val act = driver.onNotificationSent(central, statusSuccess = true)
+        assertEquals(BleServerAction.NoOp, act)
+    }
+
+    @Test
+    fun testLinkInfo_AckRetirementAutomaticallyRefreshesSnapshot() = kotlinx.coroutines.runBlocking {
+        val identity = makeIdentity()
+        val tmpFile = File.createTempFile("godstone_retire_ack", ".db")
+        tmpFile.deleteOnExit()
+        val store = io.godstone.mesh.store.SqliteMessageStore(
+            io.godstone.mesh.store.JdbcStoreDb(tmpFile),
+            4096,
+            null
+        )
+        val repo = io.godstone.mesh.delivery.SqliteDeliveryRepository(store.engine, store::notifyHeldSetChanged)
+        val authority = LinkInfoSnapshotAuthority(
+            identityProvider = { identity },
+            storeProvider = { store }
+        )
+
+        val msgId = ByteArray(16) { 0x11.toByte() }
+        val recipient = ByteArray(16) { 0x22.toByte() }
+        val frame = FrameV2(
+            type = TypeV2.MESSAGE,
+            flags = Priority.toFlags(Priority.DIRECT) or FrameV2.SEALED,
+            ttl = 10,
+            hopCount = 0,
+            routingTag = ByteArray(4),
+            msgId = msgId,
+            payload = byteArrayOf(1, 2, 3)
+        )
+        val enq = store.enqueueDirectOutbound(frame, recipient, identity.nodeId)
+        assertTrue(enq is io.godstone.mesh.store.OutboundEnqueueResult.Created)
+        assertEquals(1, authority.currentSnapshot()!!.queueDepth)
+
+        // Authenticated ACK retirement deletes held frame and notifies snapshot authority automatically
+        val ackRes = repo.acknowledgeBoundAndRetire(msgId, recipient)
+        assertEquals(io.godstone.mesh.delivery.AckResult.Applied, ackRes)
+        assertEquals(0, authority.currentSnapshot()!!.queueDepth)
+    }
+
+    @Test
+    fun testLinkInfo_ExpireRetirementAutomaticallyRefreshesSnapshot() = kotlinx.coroutines.runBlocking {
+        val identity = makeIdentity()
+        val tmpFile = File.createTempFile("godstone_retire_exp", ".db")
+        tmpFile.deleteOnExit()
+        val store = io.godstone.mesh.store.SqliteMessageStore(
+            io.godstone.mesh.store.JdbcStoreDb(tmpFile),
+            4096,
+            null
+        )
+        val repo = io.godstone.mesh.delivery.SqliteDeliveryRepository(store.engine, store::notifyHeldSetChanged)
+        val authority = LinkInfoSnapshotAuthority(
+            identityProvider = { identity },
+            storeProvider = { store }
+        )
+
+        val msgId = ByteArray(16) { 0x33.toByte() }
+        val recipient = ByteArray(16) { 0x44.toByte() }
+        val frame = FrameV2(
+            type = TypeV2.MESSAGE,
+            flags = Priority.toFlags(Priority.DIRECT) or FrameV2.SEALED,
+            ttl = 10,
+            hopCount = 0,
+            routingTag = ByteArray(4),
+            msgId = msgId,
+            payload = byteArrayOf(1, 2, 3)
+        )
+        store.enqueueDirectOutbound(frame, recipient, identity.nodeId)
+        assertEquals(1, authority.currentSnapshot()!!.queueDepth)
+
+        // EXPIRE retirement deletes held frame and notifies snapshot authority automatically
+        val expRes = repo.transition(msgId, io.godstone.mesh.delivery.DeliveryTransition.EXPIRE)
+        assertEquals(io.godstone.mesh.delivery.TransitionResult.Applied, expRes)
+        assertEquals(0, authority.currentSnapshot()!!.queueDepth)
+    }
+
+    @Test
+    fun testLinkInfo_CancelRetirementAutomaticallyRefreshesSnapshot() = kotlinx.coroutines.runBlocking {
+        val identity = makeIdentity()
+        val tmpFile = File.createTempFile("godstone_retire_cnc", ".db")
+        tmpFile.deleteOnExit()
+        val store = io.godstone.mesh.store.SqliteMessageStore(
+            io.godstone.mesh.store.JdbcStoreDb(tmpFile),
+            4096,
+            null
+        )
+        val repo = io.godstone.mesh.delivery.SqliteDeliveryRepository(store.engine, store::notifyHeldSetChanged)
+        val authority = LinkInfoSnapshotAuthority(
+            identityProvider = { identity },
+            storeProvider = { store }
+        )
+
+        val msgId = ByteArray(16) { 0x55.toByte() }
+        val recipient = ByteArray(16) { 0x66.toByte() }
+        val frame = FrameV2(
+            type = TypeV2.MESSAGE,
+            flags = Priority.toFlags(Priority.DIRECT) or FrameV2.SEALED,
+            ttl = 10,
+            hopCount = 0,
+            routingTag = ByteArray(4),
+            msgId = msgId,
+            payload = byteArrayOf(1, 2, 3)
+        )
+        store.enqueueDirectOutbound(frame, recipient, identity.nodeId)
+        assertEquals(1, authority.currentSnapshot()!!.queueDepth)
+
+        // CANCEL retirement deletes held frame and notifies snapshot authority automatically
+        val cncRes = repo.transition(msgId, io.godstone.mesh.delivery.DeliveryTransition.CANCEL)
+        assertEquals(io.godstone.mesh.delivery.TransitionResult.Applied, cncRes)
+        assertEquals(0, authority.currentSnapshot()!!.queueDepth)
+    }
+
+    @Test
+    fun testLinkInfo_FailedRetirementDoesNotFalselyNotify() = kotlinx.coroutines.runBlocking {
+        val identity = makeIdentity()
+        val tmpFile = File.createTempFile("godstone_retire_fail", ".db")
+        tmpFile.deleteOnExit()
+        val store = io.godstone.mesh.store.SqliteMessageStore(
+            io.godstone.mesh.store.JdbcStoreDb(tmpFile),
+            4096,
+            null
+        )
+        val repo = io.godstone.mesh.delivery.SqliteDeliveryRepository(store.engine, store::notifyHeldSetChanged)
+        val authority = LinkInfoSnapshotAuthority(
+            identityProvider = { identity },
+            storeProvider = { store }
+        )
+
+        val msgId = ByteArray(16) { 0x77.toByte() }
+        val recipient = ByteArray(16) { 0x88.toByte() }
+        val frame = FrameV2(
+            type = TypeV2.MESSAGE,
+            flags = Priority.toFlags(Priority.DIRECT) or FrameV2.SEALED,
+            ttl = 10,
+            hopCount = 0,
+            routingTag = ByteArray(4),
+            msgId = msgId,
+            payload = byteArrayOf(1, 2, 3)
+        )
+        store.enqueueDirectOutbound(frame, recipient, identity.nodeId)
+        assertEquals(1, authority.currentSnapshot()!!.queueDepth)
+
+        // Attempt ACK with wrong recipient -> UnknownMessage / no-match; snapshot depth remains 1
+        val badRecipient = ByteArray(16) { 0x99.toByte() }
+        val ackRes = repo.acknowledgeBoundAndRetire(msgId, badRecipient)
+        assertEquals(io.godstone.mesh.delivery.AckResult.UnknownMessage, ackRes)
+        assertEquals(1, authority.currentSnapshot()!!.queueDepth)
+    }
+
+    @Test
+    fun testAttRead_CacheAbsent_FailsClosed_NoStoreTraversal() {
+        var traversalCount = 0
+        val store = object : MessageStore {
+            override fun registerHeldSetObserver(observer: () -> Unit) {}
+            override suspend fun persist(frame: FrameV2, receivedFrom: ByteArray) = PersistResult.HELD_NEW
+            override suspend fun enqueueDirectOutbound(frame: FrameV2, expectedRecipient: ByteArray, localOriginNodeId: ByteArray) =
+                io.godstone.mesh.store.OutboundEnqueueResult.CanonicalFrameMismatch
+            override suspend fun allHeldOrderedByPriority(): List<FrameV2> = emptyList()
+            override suspend fun allHeldMsgIds(): List<ByteArray> = emptyList()
+            override suspend fun forEachHeldOrderedByPriority(visit: (FrameV2) -> Boolean) {}
+            override suspend fun forEachHeldMsgId(visit: (ByteArray) -> Boolean) {
+                traversalCount++
+            }
+        }
+        // Authority with missing identity provider -> initial snapshot is null
+        val authority = LinkInfoSnapshotAuthority(
+            identityProvider = { null },
+            storeProvider = { store }
+        )
+        assertNull(authority.currentSnapshot())
+        assertNull(authority.currentBytes())
+        assertEquals(0, traversalCount)
+    }
+
+    @Test
+    fun testGlobalCapacity_MixedDirectionsFillAndReplace() {
+        val cap = BleGlobalCapacityAuthority()
+        assertEquals(7, cap.maxTotalPeers)
+
+        // Admit 4 outbound
+        for (i in 1..4) {
+            assertTrue(cap.tryAdmitOutbound())
+        }
+        assertEquals(4, cap.totalCount)
+
+        // Admit 3 inbound -> capacity full (7)
+        for (i in 1..3) {
+            assertTrue(cap.tryAdmitInbound())
+        }
+        assertEquals(7, cap.totalCount)
+
+        // 8th connection (either direction) rejected
+        assertFalse(cap.tryAdmitOutbound())
+        assertFalse(cap.tryAdmitInbound())
+
+        // Release 1 outbound -> 1 inbound can now enter
+        cap.releaseOutbound()
+        assertEquals(6, cap.totalCount)
+        assertTrue(cap.tryAdmitInbound())
+        assertEquals(7, cap.totalCount)
+        assertFalse(cap.tryAdmitInbound())
+    }
+
+    @Test
+    fun testServiceRegistration_StaleGeneration1Success_Ignored() {
+        val localHint = byteArrayOf(0x02, 0x00, 0x00, 0x00)
+        val driver = BleServerOrchestrationDriver(
+            localHint = localHint,
+            localLinkInfoProvider = { ByteArray(13) }
+        )
+        val epoch1 = driver.startNewServerEpoch()
+        val epoch2 = driver.startNewServerEpoch()
+
+        // Stale epoch 1 success callback
+        assertFalse(driver.onServiceAdded(epoch1, true))
+        assertFalse(driver.isServerReady)
+
+        // Current epoch 2 success callback
+        assertTrue(driver.onServiceAdded(epoch2, true))
+        assertTrue(driver.isServerReady)
+    }
+
+    @Test
     fun testSessionManager_HandshakeApiNotInvokedBySubstrate() {
-        val recordingTrust = RecordingTrustAuthority()
-        assertNotNull(recordingTrust)
+        // Assert that substrate driver never invokes SessionManager handshake-driving APIs
+        val smClass = io.godstone.mesh.crypto.SessionManager::class.java
+        val driverClass = BleServerOrchestrationDriver::class.java
+        // Verify no method on driver takes SessionManager
+        for (m in driverClass.declaredMethods) {
+            for (pt in m.parameterTypes) {
+                assertFalse("BleServerOrchestrationDriver must not accept SessionManager", smClass.isAssignableFrom(pt))
+            }
+        }
     }
 }
+
