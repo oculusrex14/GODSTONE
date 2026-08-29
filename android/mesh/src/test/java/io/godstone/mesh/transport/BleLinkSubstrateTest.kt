@@ -569,7 +569,7 @@ class BleLinkSubstrateTest {
         assertArrayEquals(remoteHint, writeAct.remoteHint)
 
         // 5. LinkInfo write acknowledged -> SubscribeCccd
-        val act5 = driver.onLinkInfoWriteAcknowledged(peer, success = true, remoteHint = remoteHint, gattGeneration = 1, currentGattGen = 1)
+        val act5 = driver.onLinkInfoWriteAcknowledged(peer, success = true, fallbackRemoteHint = remoteHint, gattGeneration = 1, currentGattGen = 1)
         assertEquals(BleCentralAction.SubscribeCccd(peer), act5)
 
         // 6. CCCD subscription acknowledged -> Duplex Ready & PublishFound!
@@ -613,7 +613,7 @@ class BleLinkSubstrateTest {
         assertFalse(conn.isRoleBound)
 
         // If write fails -> Disconnect and cleanup
-        val act = driver.onLinkInfoWriteAcknowledged(peer, success = false, remoteHint = byteArrayOf(2, 0, 0, 0), gattGeneration = 1, currentGattGen = 1)
+        val act = driver.onLinkInfoWriteAcknowledged(peer, success = false, fallbackRemoteHint = byteArrayOf(2, 0, 0, 0), gattGeneration = 1, currentGattGen = 1)
         assertTrue(act is BleCentralAction.DisconnectGatt)
         assertNull(driver.getActiveConnection(peer))
     }
@@ -1514,7 +1514,7 @@ class BleLinkSubstrateTest {
         assertEquals(1, cap.inboundCount)
 
         // Release unknown/stale lease -> does not decrement!
-        val staleLease = CapacityLease(BleDirection.OUTBOUND, "PEER_1", generation = 999)
+        val staleLease = CapacityLease(BleDirection.OUTBOUND, "PEER_1", generation = 999L, leaseId = 999L)
         assertFalse(cap.releaseLease(staleLease))
         assertEquals(2, cap.totalCount)
 
@@ -1730,6 +1730,329 @@ class BleLinkSubstrateTest {
         val cccdAct = driver.onDescriptorWriteRequest(peer, true)
         assertEquals(BleServerAction.AcceptDescriptorWrite(peer, true), cccdAct)
     }
+
+    // =========================================================================
+    // SECTION 4 & 16: Android Exact CapacityLease Ownership and Stale Isolation
+    // =========================================================================
+
+    @Test
+    fun testAndroidCapacity_Gen1Admitted_Gen2Replacement_StaleGen1ReleaseDoesNotReleaseGen2() {
+        val authority = BleGlobalCapacityAuthority(maxTotalPeers = 7)
+        val peer = "AA:BB:CC:DD:EE:01"
+
+        val lease1 = authority.tryAdmitOutbound(peer, generation = 1)
+        assertNotNull(lease1)
+        assertEquals(1, authority.outboundCount)
+        assertEquals(1, authority.totalCount)
+        assertTrue(authority.isLeaseActive(lease1))
+
+        // Replacement relation admitted for generation 2
+        val lease2 = authority.tryAdmitOutbound(peer, generation = 2)
+        assertNotNull(lease2)
+        assertEquals(1, authority.outboundCount)
+        assertTrue(authority.isLeaseActive(lease2))
+        assertFalse(authority.isLeaseActive(lease1))
+
+        // Stale terminal event for generation 1 attempts release
+        val staleReleased = authority.releaseLease(lease1)
+        assertFalse(staleReleased)
+        assertEquals(1, authority.outboundCount)
+        assertTrue(authority.isLeaseActive(lease2))
+
+        // Releasing generation 2 succeeds
+        val gen2Released = authority.releaseLease(lease2)
+        assertTrue(gen2Released)
+        assertEquals(0, authority.outboundCount)
+    }
+
+    @Test
+    fun testAndroidCapacity_DriverOwnsExactLease_StaleDisconnectDoesNotReleaseReplacement() {
+        val authority = BleGlobalCapacityAuthority(maxTotalPeers = 7)
+        val localHint = byteArrayOf(0x01, 0x00, 0x00, 0x00)
+        val centralDriver = BleCentralOrchestrationDriver(
+            localHint = localHint,
+            localLinkInfoProvider = { ByteArray(13) },
+            globalCapacity = authority
+        )
+        val peer = "AA:BB:CC:DD:EE:02"
+
+        val act1 = centralDriver.onScanResult(peer, -60, null)
+        assertTrue(act1 is BleCentralAction.ConnectGatt)
+        val lease1 = centralDriver.getActiveLease(peer)
+        assertNotNull(lease1)
+        assertEquals(1L, centralDriver.getConnectionGeneration(peer))
+
+        // Stale timeout for expected generation 99 is ignored
+        val staleTimeoutAct = centralDriver.onProvisionalTimeout(peer, expectedGen = 99L)
+        assertEquals(BleCentralAction.NoOp, staleTimeoutAct)
+        assertEquals(1, authority.outboundCount)
+        assertNotNull(centralDriver.getActiveConnection(peer))
+
+        // Legitimate timeout for generation 1 releases exact lease
+        val validTimeoutAct = centralDriver.onProvisionalTimeout(peer, expectedGen = 1L)
+        assertTrue(validTimeoutAct is BleCentralAction.DisconnectGatt)
+        assertEquals(0, authority.outboundCount)
+        assertNull(centralDriver.getActiveConnection(peer))
+    }
+
+    // =========================================================================
+    // SECTION 7 & 16: Android Rejected Inbound Provisional Links & Timeouts
+    // =========================================================================
+
+    @Test
+    fun testAndroidServer_MalformedLinkInfo_ReleasesCapacity() {
+        val authority = BleGlobalCapacityAuthority(maxTotalPeers = 7)
+        val localHint = byteArrayOf(0x05, 0x00, 0x00, 0x00)
+        val serverDriver = BleServerOrchestrationDriver(
+            localHint = localHint,
+            localLinkInfoProvider = { ByteArray(13) },
+            globalCapacity = authority
+        )
+        val epoch = serverDriver.startNewServerEpoch()
+        serverDriver.onServiceAdded(epoch, true)
+
+        val peer = "11:22:33:44:55:20"
+        val admitAct = serverDriver.onClientConnected(peer, 1)
+        assertEquals(BleServerAction.AdmitConnection(peer), admitAct)
+        assertEquals(1, authority.inboundCount)
+
+        // Remote writes malformed (short) LinkInfo
+        val malformedBytes = byteArrayOf(1, 2, 3)
+        val writeAct = serverDriver.onLinkInfoWriteRequest(peer, malformedBytes)
+        assertTrue(writeAct is BleServerAction.RejectWrite)
+        assertEquals(0, authority.inboundCount)
+        assertNull(serverDriver.getInboundConnection(peer))
+        assertFalse(serverDriver.isDeviceAdmitted(peer))
+    }
+
+    @Test
+    fun testAndroidServer_TieLinkInfo_ReleasesCapacity() {
+        val authority = BleGlobalCapacityAuthority(maxTotalPeers = 7)
+        val localHint = byteArrayOf(0x05, 0x00, 0x00, 0x00)
+        val serverDriver = BleServerOrchestrationDriver(
+            localHint = localHint,
+            localLinkInfoProvider = { ByteArray(13) },
+            globalCapacity = authority
+        )
+        val epoch = serverDriver.startNewServerEpoch()
+        serverDriver.onServiceAdded(epoch, true)
+
+        val peer = "11:22:33:44:55:21"
+        serverDriver.onClientConnected(peer, 1)
+        assertEquals(1, authority.inboundCount)
+
+        // Remote writes identical hint (tie)
+        val tieLinkInfo = BleLinkInfoCodec.encode(
+            version = BleLinkInfoConstants.PROTOCOL_VERSION,
+            flags = 0,
+            nodeHint = localHint,
+            shortDigest = ByteArray(6),
+            queueDepth = 0
+        )
+        val writeAct = serverDriver.onLinkInfoWriteRequest(peer, tieLinkInfo)
+        assertTrue(writeAct is BleServerAction.RejectWrite)
+        assertEquals(0, authority.inboundCount)
+        assertNull(serverDriver.getInboundConnection(peer))
+    }
+
+    @Test
+    fun testAndroidServer_WrongRoleLinkInfo_ReleasesCapacity() {
+        val authority = BleGlobalCapacityAuthority(maxTotalPeers = 7)
+        val localHint = byteArrayOf(0x01, 0x00, 0x00, 0x00)
+        val remoteHint = byteArrayOf(0x05, 0x00, 0x00, 0x00) // Remote > Local -> Local is INITIATOR, not responder
+        val serverDriver = BleServerOrchestrationDriver(
+            localHint = localHint,
+            localLinkInfoProvider = { ByteArray(13) },
+            globalCapacity = authority
+        )
+        val epoch = serverDriver.startNewServerEpoch()
+        serverDriver.onServiceAdded(epoch, true)
+
+        val peer = "11:22:33:44:55:22"
+        serverDriver.onClientConnected(peer, 1)
+        assertEquals(1, authority.inboundCount)
+
+        val wrongRoleLinkInfo = BleLinkInfoCodec.encode(
+            version = BleLinkInfoConstants.PROTOCOL_VERSION,
+            flags = 0,
+            nodeHint = remoteHint,
+            shortDigest = ByteArray(6),
+            queueDepth = 0
+        )
+        val writeAct = serverDriver.onLinkInfoWriteRequest(peer, wrongRoleLinkInfo)
+        assertTrue(writeAct is BleServerAction.RejectWrite)
+        assertEquals(0, authority.inboundCount)
+        assertNull(serverDriver.getInboundConnection(peer))
+    }
+
+    @Test
+    fun testAndroidServer_NoLinkInfo_TimeoutReleasesCapacity() {
+        val authority = BleGlobalCapacityAuthority(maxTotalPeers = 7)
+        val localHint = byteArrayOf(0x05, 0x00, 0x00, 0x00)
+        val serverDriver = BleServerOrchestrationDriver(
+            localHint = localHint,
+            localLinkInfoProvider = { ByteArray(13) },
+            globalCapacity = authority
+        )
+        val epoch = serverDriver.startNewServerEpoch()
+        serverDriver.onServiceAdded(epoch, true)
+
+        val peer = "11:22:33:44:55:23"
+        serverDriver.onClientConnected(peer, 1)
+        assertEquals(1, authority.inboundCount)
+
+        // Connected peer never writes LinkInfo; timeout triggers
+        val timeoutAct = serverDriver.onInboundTimeout(peer, expectedGen = 1)
+        assertTrue(timeoutAct is BleServerAction.TearDownPhysicalChannel)
+        assertEquals(0, authority.inboundCount)
+        assertNull(serverDriver.getInboundConnection(peer))
+    }
+
+    @Test
+    fun testAndroidServer_SevenRejectedPeersCannotExhaustFutureAdmissions() {
+        val authority = BleGlobalCapacityAuthority(maxTotalPeers = 7)
+        val localHint = byteArrayOf(0x05, 0x00, 0x00, 0x00)
+        val serverDriver = BleServerOrchestrationDriver(
+            localHint = localHint,
+            localLinkInfoProvider = { ByteArray(13) },
+            globalCapacity = authority
+        )
+        val epoch = serverDriver.startNewServerEpoch()
+        serverDriver.onServiceAdded(epoch, true)
+
+        for (i in 1..7) {
+            val peer = "11:22:33:44:55:0$i"
+            serverDriver.onClientConnected(peer, 1)
+            assertEquals(1, authority.inboundCount) // Admitted
+            val badBytes = byteArrayOf(0x99.toByte())
+            serverDriver.onLinkInfoWriteRequest(peer, badBytes) // Rejected and torn down
+            assertEquals(0, authority.inboundCount)
+        }
+
+        // An 8th peer can still be admitted
+        val peer8 = "11:22:33:44:55:08"
+        val act8 = serverDriver.onClientConnected(peer8, 1)
+        assertEquals(BleServerAction.AdmitConnection(peer8), act8)
+        assertEquals(1, authority.inboundCount)
+    }
+
+    // =========================================================================
+    // SECTION 8 & 13: Direction-Scoped Publication & Crossing Isolation
+    // =========================================================================
+
+    @Test
+    fun testAndroidCrossing_CentralDuplexReady_WrongServerDirectionTeardown_NoLost() {
+        val authority = BleGlobalCapacityAuthority(maxTotalPeers = 7)
+        val localHint = byteArrayOf(0x01, 0x00, 0x00, 0x00)
+        val remoteHint = byteArrayOf(0x05, 0x00, 0x00, 0x00)
+        val peer = "11:22:33:44:55:30"
+
+        val centralDriver = BleCentralOrchestrationDriver(
+            localHint = localHint,
+            localLinkInfoProvider = { ByteArray(13) },
+            globalCapacity = authority
+        )
+        val serverDriver = BleServerOrchestrationDriver(
+            localHint = localHint,
+            localLinkInfoProvider = { ByteArray(13) },
+            globalCapacity = authority
+        )
+
+        // 1. Central link establishes physical duplex readiness
+        centralDriver.onScanResult(peer, -50, null)
+        centralDriver.onGattConnected(peer, 1, 1)
+        centralDriver.onServicesDiscovered(peer, true, 1, 1)
+        val remoteLinkInfo = BleLinkInfoCodec.encode(
+            version = BleLinkInfoConstants.PROTOCOL_VERSION,
+            flags = 0,
+            nodeHint = remoteHint,
+            shortDigest = ByteArray(6),
+            queueDepth = 0
+        )
+        centralDriver.onLinkInfoReadResult(peer, remoteLinkInfo, 1, 1)
+        centralDriver.onLinkInfoWriteAcknowledged(peer, true, remoteHint, 1, 1)
+        val publishAct = centralDriver.onCccdWriteAcknowledged(peer, true, 1, 1)
+        assertTrue(publishAct is BleCentralAction.PublishFound)
+
+        // 2. Erroneous inbound server connection arrives from peer
+        val serverEpoch = serverDriver.startNewServerEpoch()
+        serverDriver.onServiceAdded(serverEpoch, true)
+        serverDriver.onClientConnected(peer, 1)
+
+        // Server receives LinkInfo from peer -> local is INITIATOR, so server link is wrong direction!
+        val rejectAct = serverDriver.onLinkInfoWriteRequest(peer, remoteLinkInfo)
+        assertTrue(rejectAct is BleServerAction.RejectWrite)
+
+        // Server disconnect occurs
+        val serverDisconnectAct = serverDriver.onClientDisconnected(peer)
+        assertEquals(BleServerAction.NoOp, serverDisconnectAct)
+
+        // Central connection remains active and role-bound!
+        val centralConn = centralDriver.getActiveConnection(peer)
+        assertNotNull(centralConn)
+        assertTrue(centralConn?.isHandshakeTransportReady == true)
+        assertTrue(centralDriver.isPublishedFound(peer))
+
+        // 3. Normal disconnect of central link triggers PublishLost
+        val centralDisconnectAct = centralDriver.onDisconnected(peer)
+        assertEquals(BleCentralAction.PublishLost(peer), centralDisconnectAct)
+    }
+
+    // =========================================================================
+    // SECTION 10 & 16: Immutable LinkInfo Election Context
+    // =========================================================================
+
+    @Test
+    fun testAndroidElectionContext_ImmutableAcrossStaleReads() {
+        val authority = BleGlobalCapacityAuthority(maxTotalPeers = 7)
+        val localHint = byteArrayOf(0x01, 0x00, 0x00, 0x00)
+        val remoteHint1 = byteArrayOf(0x05, 0x00, 0x00, 0x00)
+        val remoteHint2 = byteArrayOf(0x09, 0x00, 0x00, 0x00)
+        val peer = "11:22:33:44:55:40"
+
+        val centralDriver = BleCentralOrchestrationDriver(
+            localHint = localHint,
+            localLinkInfoProvider = { ByteArray(13) },
+            globalCapacity = authority
+        )
+
+        centralDriver.onScanResult(peer, -50, null)
+        centralDriver.onGattConnected(peer, 1, 1)
+        centralDriver.onServicesDiscovered(peer, true, 1, 1)
+
+        val linkInfo1 = BleLinkInfoCodec.encode(
+            version = BleLinkInfoConstants.PROTOCOL_VERSION,
+            flags = 0,
+            nodeHint = remoteHint1,
+            shortDigest = ByteArray(6),
+            queueDepth = 0
+        )
+        val readAct = centralDriver.onLinkInfoReadResult(peer, linkInfo1, 1, 1)
+        assertTrue(readAct is BleCentralAction.WriteLinkInfo)
+
+        val context = centralDriver.getElectionContext(peer)
+        assertNotNull(context)
+        assertArrayEquals(remoteHint1, context?.remoteNodeHint)
+
+        // Inject stale read with Hint 2 while write is in progress -> ignored
+        val linkInfo2 = BleLinkInfoCodec.encode(
+            version = BleLinkInfoConstants.PROTOCOL_VERSION,
+            flags = 0,
+            nodeHint = remoteHint2,
+            shortDigest = ByteArray(6),
+            queueDepth = 0
+        )
+        val staleReadAct = centralDriver.onLinkInfoReadResult(peer, linkInfo2, 1, 1)
+        assertEquals(BleCentralAction.NoOp, staleReadAct)
+
+        // Write ACK binds immutable Hint 1
+        centralDriver.onLinkInfoWriteAcknowledged(peer, true, byteArrayOf(0, 0, 0, 0), 1, 1)
+        val conn = centralDriver.getActiveConnection(peer)
+        assertNotNull(conn)
+        assertTrue(conn?.isRoleBound == true)
+        assertArrayEquals(remoteHint1, conn?.remoteNodeHint)
+    }
 }
+
 
 

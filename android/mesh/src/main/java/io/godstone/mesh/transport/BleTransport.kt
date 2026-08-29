@@ -1,6 +1,7 @@
 package io.godstone.mesh.transport
 
 import android.annotation.SuppressLint
+import android.bluetooth.BluetoothDevice
 import android.bluetooth.BluetoothManager
 import android.bluetooth.le.AdvertiseCallback
 import android.bluetooth.le.AdvertiseData
@@ -12,8 +13,8 @@ import android.bluetooth.le.ScanSettings
 import android.content.Context
 import android.os.ParcelUuid
 import io.godstone.mesh.identity.Identity
-import io.godstone.mesh.router.BloomDigest
 import io.godstone.mesh.store.MessageStore
+import io.godstone.mesh.router.BloomDigest
 import io.godstone.mesh.wire.v2.FrameV2
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -23,43 +24,20 @@ import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.launch
+import java.util.Collections
+import java.util.LinkedHashMap
 import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
-
-data class BleDiscoverySnapshot(
-    val shortDigest: ByteArray,
-    val queueDepth: Int,
-    val sosPresent: Boolean = false,
-    val clockUntrusted: Boolean = false
-) {
-    override fun equals(other: Any?): Boolean {
-        if (this === other) return true
-        if (javaClass != other?.javaClass) return false
-        other as BleDiscoverySnapshot
-        if (!shortDigest.contentEquals(other.shortDigest)) return false
-        if (queueDepth != other.queueDepth) return false
-        if (sosPresent != other.sosPresent) return false
-        if (clockUntrusted != other.clockUntrusted) return false
-        return true
-    }
-    override fun hashCode(): Int {
-        var result = shortDigest.contentHashCode()
-        result = 31 * result + queueDepth
-        result = 31 * result + sosPresent.hashCode()
-        result = 31 * result + clockUntrusted.hashCode()
-        return result
-    }
-}
 
 @SuppressLint("MissingPermission")
 class BleTransport(
     private val context: Context,
-    private val identity: Identity,
+    val identity: Identity,
     private val digestProvider: (suspend () -> BloomDigest)? = null,
     private val sessions: io.godstone.mesh.crypto.SessionManager? = null,
-    private val snapshotProvider: (() -> BleDiscoverySnapshot)? = null,
     private val store: MessageStore? = null,
     private val coroutineScope: CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 ) : Transport {
@@ -107,6 +85,7 @@ class BleTransport(
         onInboundWrite = { peerAddress, value -> handleServerInboundWrite(peerAddress, value) },
         onClientDisconnected = { peerAddress -> handleServerDisconnected(peerAddress) },
         onSubscriptionChanged = { peerAddress, isSubscribed ->
+            inboundJobs.remove(peerAddress)?.cancel()
             val conn = serverDriver.getInboundConnection(peerAddress)
             if (conn != null) {
                 conn.isNotificationSubscribed = isSubscribed
@@ -134,11 +113,12 @@ class BleTransport(
     private val peerRssi = ConcurrentHashMap<String, Int>()
     private val centralRemoteLinkInfo = ConcurrentHashMap<String, BleLinkInfoV1>()
     private val responderRemoteLinkInfo = ConcurrentHashMap<String, BleLinkInfoV1>()
-    private val publishedPeers = ConcurrentHashMap<String, Boolean>()
+    private val publishedRelations = ConcurrentHashMap.newKeySet<RelationKey>()
 
     private val activeClientConnections = ConcurrentHashMap<String, GattClientConnection>()
     private val provisionalJobs = ConcurrentHashMap<String, Job>()
     private val provisionalGenerations = ConcurrentHashMap<String, Long>()
+    private val inboundJobs = ConcurrentHashMap<String, Job>()
 
     private val inboundRecordFlow = MutableSharedFlow<Pair<ByteArray, BleReassembledRecord>>(extraBufferCapacity = 64)
     private val peerEventsFlow = MutableSharedFlow<PeerEvent>(extraBufferCapacity = 64)
@@ -161,97 +141,92 @@ class BleTransport(
         return snapshotAuthority.refresh()
     }
 
-    suspend fun refreshLocalLinkInfoSnapshot(): BleLinkInfoV1? {
-        return snapshotAuthority.refresh()
+    fun setPowerState(state: PowerState) {
+        powerState = state
+        if (isStarted) {
+            stopAdvertising()
+            startAdvertising()
+        }
     }
 
     override fun start() {
         if (isStarted) return
         isStarted = true
-        snapshotAuthority.refresh()
-        val serverInitiated = gattServer.start()
-        if (!serverInitiated) {
-            isStarted = false
-            return
-        }
-    }
-
-    private fun startAdvertising() {
-        if (!isStarted || !gattServer.isServiceReady) return
-        if (advertiseCallback != null) return
-
-        val advertiser = adapter?.bluetoothLeAdvertiser ?: return
-        val settings = AdvertiseSettings.Builder()
-            .setAdvertiseMode(AdvertiseSettings.ADVERTISE_MODE_BALANCED)
-            .setTxPowerLevel(AdvertiseSettings.ADVERTISE_TX_POWER_MEDIUM)
-            .setConnectable(true)
-            .setTimeout(0)
-            .build()
-
-        val advData = AdvertiseData.Builder()
-            .addServiceUuid(ParcelUuid(SERVICE_UUID))
-            .setIncludeDeviceName(false)
-            .setIncludeTxPowerLevel(false)
-            .build()
-
-        val respBuilder = AdvertiseData.Builder()
-            .setIncludeDeviceName(false)
-            .setIncludeTxPowerLevel(false)
-
-        val linkInfoPayload = getLocalLinkInfoBytes()
-        if (linkInfoPayload != null) {
-            respBuilder.addServiceData(ParcelUuid(SERVICE_UUID), linkInfoPayload)
-        }
-
-        val cb = object : AdvertiseCallback() {
-            override fun onStartSuccess(settingsInEffect: AdvertiseSettings) {}
-            override fun onStartFailure(errorCode: Int) {}
-        }
-
-        advertiser.startAdvertising(settings, advData, respBuilder.build(), cb)
-        advertiseCallback = cb
+        val serverStarted = gattServer.start()
+        if (!serverStarted) return
+        startAdvertising()
     }
 
     override fun stop() {
         if (!isStarted) return
         isStarted = false
-
-        if (advertiseCallback != null) {
-            try { adapter?.bluetoothLeAdvertiser?.stopAdvertising(advertiseCallback) } catch (_: Exception) {}
-            advertiseCallback = null
-        }
-        if (scanCallback != null) {
-            try { adapter?.bluetoothLeScanner?.stopScan(scanCallback) } catch (_: Exception) {}
+        stopAdvertising()
+        scanCallback?.let {
+            adapter?.bluetoothLeScanner?.stopScan(it)
             scanCallback = null
         }
-        provisionalJobs.values.forEach { it.cancel() }
+        for ((_, job) in provisionalJobs) {
+            job.cancel()
+        }
         provisionalJobs.clear()
         provisionalGenerations.clear()
 
+        for ((_, job) in inboundJobs) {
+            job.cancel()
+        }
+        inboundJobs.clear()
+
+        for ((_, client) in activeClientConnections) {
+            client.disconnect()
+        }
+        activeClientConnections.clear()
+
         centralDriver.reset()
         gattServer.stop()
-        activeClientConnections.values.forEach { it.disconnect() }
-        activeClientConnections.clear()
+        serverDriver.startNewServerEpoch()
         globalCapacity.reset()
 
+        publishedRelations.clear()
         centralRemoteLinkInfo.clear()
         responderRemoteLinkInfo.clear()
-        publishedPeers.clear()
-        peerRssi.clear()
     }
 
-    fun setPowerState(state: PowerState) {
-        if (powerState == state) return
-        powerState = state
-        snapshotAuthority.refresh()
-        if (isStarted && advertiseCallback != null) {
-            try { adapter?.bluetoothLeAdvertiser?.stopAdvertising(advertiseCallback) } catch (_: Exception) {}
+    private fun startAdvertising() {
+        val adv = adapter?.bluetoothLeAdvertiser ?: return
+        if (!gattServer.isServiceReady) return
+
+        val settings = AdvertiseSettings.Builder()
+            .setAdvertiseMode(AdvertiseSettings.ADVERTISE_MODE_LOW_LATENCY)
+            .setTxPowerLevel(AdvertiseSettings.ADVERTISE_TX_POWER_HIGH)
+            .setConnectable(true)
+            .build()
+
+        val linkInfoBytes = getLocalLinkInfoBytes()
+        val dataBuilder = AdvertiseData.Builder()
+            .addServiceUuid(ParcelUuid(SERVICE_UUID))
+            .setIncludeDeviceName(false)
+
+        if (linkInfoBytes != null && linkInfoBytes.size == BleLinkInfoConstants.LINK_INFO_BYTES) {
+            dataBuilder.addServiceData(ParcelUuid(SERVICE_UUID), linkInfoBytes)
+        }
+
+        val cb = object : AdvertiseCallback() {
+            override fun onStartFailure(errorCode: Int) {
+                advertiseCallback = null
+            }
+        }
+        adv.startAdvertising(settings, dataBuilder.build(), cb)
+        advertiseCallback = cb
+    }
+
+    private fun stopAdvertising() {
+        advertiseCallback?.let {
+            adapter?.bluetoothLeAdvertiser?.stopAdvertising(it)
             advertiseCallback = null
-            startAdvertising()
         }
     }
 
-    fun processCentralAction(address: String, action: BleCentralAction) {
+    private fun processCentralAction(address: String, action: BleCentralAction) {
         val client = activeClientConnections[address]
         when (action) {
             is BleCentralAction.ConnectGatt -> {
@@ -272,13 +247,17 @@ class BleTransport(
             is BleCentralAction.PublishFound -> {
                 provisionalJobs.remove(address)?.cancel()
                 val peerMacBytes = PeerId.fromAddress(address) ?: address.toByteArray()
-                val meta = centralRemoteLinkInfo[address]
-                if (meta != null && publishedPeers.putIfAbsent(address, true) == null) {
+                val meta = centralRemoteLinkInfo[address] ?: discoveredPeers[address]
+                val gen = centralDriver.getConnectionGeneration(address)
+                val key = RelationKey(BleDirection.OUTBOUND, address, gen)
+                val wasPublished = publishedRelations.any { it.peerAddress == address }
+                publishedRelations.add(key)
+                if (!wasPublished && meta != null) {
                     peerEventsFlow.tryEmit(
                         PeerEvent.Found(
                             peerId = peerMacBytes,
                             nodeHint = meta.nodeHint,
-                            rssi = action.rssi,
+                            rssi = action.rssi ?: peerRssi[address],
                             sosFlag = meta.isSosPresent,
                             bulkCapable = meta.isBulkCapable,
                             shortDigest = meta.shortDigest,
@@ -289,14 +268,20 @@ class BleTransport(
             }
             is BleCentralAction.PublishLost -> {
                 provisionalJobs.remove(address)?.cancel()
-                val peerMacBytes = PeerId.fromAddress(address) ?: address.toByteArray()
-                peerEventsFlow.tryEmit(PeerEvent.Lost(peerMacBytes))
+                val gen = centralDriver.getConnectionGeneration(address)
+                publishedRelations.remove(RelationKey(BleDirection.OUTBOUND, address, gen))
+                if (publishedRelations.none { it.peerAddress == address }) {
+                    val peerMacBytes = PeerId.fromAddress(address) ?: address.toByteArray()
+                    peerEventsFlow.tryEmit(PeerEvent.Lost(peerMacBytes))
+                }
             }
             is BleCentralAction.DisconnectGatt -> {
                 provisionalJobs.remove(address)?.cancel()
                 client?.disconnect()
                 activeClientConnections.remove(address)
                 centralRemoteLinkInfo.remove(address)
+                val gen = centralDriver.getConnectionGeneration(address)
+                publishedRelations.remove(RelationKey(BleDirection.OUTBOUND, address, gen))
             }
             BleCentralAction.NoOp -> {}
         }
@@ -325,16 +310,19 @@ class BleTransport(
                             onGattConnected = { gen, cur -> processCentralAction(address, centralDriver.onGattConnected(address, gen, cur)) },
                             onServicesDiscovered = { suc, gen, cur -> processCentralAction(address, centralDriver.onServicesDiscovered(address, suc, gen, cur)) },
                             onLinkInfoReadResult = { bytes, gen, cur ->
-                                if (bytes != null) BleLinkInfoCodec.decode(bytes)?.let { centralRemoteLinkInfo[address] = it }
-                                processCentralAction(address, centralDriver.onLinkInfoReadResult(address, bytes, gen, cur))
+                                val res = centralDriver.onLinkInfoReadResult(address, bytes, gen, cur)
+                                if (res is BleCentralAction.WriteLinkInfo && bytes != null) {
+                                    BleLinkInfoCodec.decode(bytes)?.let { centralRemoteLinkInfo[address] = it }
+                                }
+                                processCentralAction(address, res)
                             },
                             onLinkInfoWriteAck = { suc, gen, cur ->
-                                val hint = centralRemoteLinkInfo[address]?.nodeHint ?: ByteArray(4)
+                                val hint = centralDriver.getElectionContext(address)?.remoteNodeHint ?: centralRemoteLinkInfo[address]?.nodeHint ?: ByteArray(4)
                                 processCentralAction(address, centralDriver.onLinkInfoWriteAcknowledged(address, suc, hint, gen, cur))
                             },
                             onCccdWriteAck = { suc, gen, cur -> processCentralAction(address, centralDriver.onCccdWriteAcknowledged(address, suc, gen, cur)) },
                             onMtuChanged = { centralDriver.onMtuChanged(address, it) },
-                            onDisconnected = { handleCentralDisconnected(address) },
+                            onDisconnected = { token, gen -> handleCentralDisconnected(address, token, gen) },
                             onInboundNotification = { handleCentralInboundNotification(address, it) }
                         )
                     }
@@ -376,7 +364,10 @@ class BleTransport(
     private fun emitResponderFoundIfDuplexReady(address: String, peerMacBytes: ByteArray, conn: BleConnection) {
         if (!conn.isHandshakeTransportReady) return
         val meta = responderRemoteLinkInfo[address] ?: serverDriver.getAcceptedRemoteLinkInfo(address)
-        if (meta != null && publishedPeers.putIfAbsent(address, true) == null) {
+        val key = RelationKey(BleDirection.INBOUND, address, 1L)
+        val wasPublished = publishedRelations.any { it.peerAddress == address }
+        publishedRelations.add(key)
+        if (!wasPublished && meta != null) {
             peerEventsFlow.tryEmit(
                 PeerEvent.Found(
                     peerId = peerMacBytes,
@@ -407,30 +398,44 @@ class BleTransport(
         inboundRecordFlow.tryEmit(peerId to record)
     }
 
-    fun handleCentralDisconnected(peerAddress: String) {
+    fun handleCentralDisconnected(peerAddress: String, clientToken: Long = 0L, gattGen: Long = 0L) {
+        val activeClient = activeClientConnections[peerAddress]
+        if (clientToken != 0L && activeClient != null && activeClient.clientToken != clientToken) {
+            return
+        }
         provisionalJobs.remove(peerAddress)?.cancel()
         val conn = centralDriver.getActiveConnection(peerAddress)
         conn?.markDisconnected()
+        val gen = centralDriver.getConnectionGeneration(peerAddress)
         val act = centralDriver.onDisconnected(peerAddress)
         processCentralAction(peerAddress, act)
         activeClientConnections.remove(peerAddress)
         centralRemoteLinkInfo.remove(peerAddress)
-        val wasPublished = publishedPeers.remove(peerAddress) == true
-        if (wasPublished) {
+        publishedRelations.remove(RelationKey(BleDirection.OUTBOUND, peerAddress, gen))
+        if (publishedRelations.none { it.peerAddress == peerAddress }) {
             val peerMacBytes = PeerId.fromAddress(peerAddress) ?: peerAddress.toByteArray()
             peerEventsFlow.tryEmit(PeerEvent.Lost(peerMacBytes))
         }
     }
 
     fun handleServerDisconnected(peerAddress: String) {
+        inboundJobs.remove(peerAddress)?.cancel()
         val conn = serverDriver.getInboundConnection(peerAddress)
         conn?.markDisconnected()
         serverDriver.onClientDisconnected(peerAddress)
         responderRemoteLinkInfo.remove(peerAddress)
-        val wasPublished = publishedPeers.remove(peerAddress) == true
-        if (wasPublished) {
+        publishedRelations.removeIf { it.direction == BleDirection.INBOUND && it.peerAddress == peerAddress }
+        if (publishedRelations.none { it.peerAddress == peerAddress }) {
             val peerMacBytes = PeerId.fromAddress(peerAddress) ?: peerAddress.toByteArray()
             peerEventsFlow.tryEmit(PeerEvent.Lost(peerMacBytes))
+        }
+    }
+
+    fun isRelationPublished(direction: BleDirection, address: String, generation: Long = 0L): Boolean {
+        return if (generation != 0L) {
+            publishedRelations.contains(RelationKey(direction, address, generation))
+        } else {
+            publishedRelations.any { it.direction == direction && it.peerAddress == address }
         }
     }
 
@@ -472,11 +477,9 @@ class BleTransport(
         val job = coroutineScope.launch {
             inboundRecordFlow.collect { (peerId, record) ->
                 if (record.recordType == BleRecordType.DATA) {
-                    val address = PeerId.toAddress(peerId)
-                    val conn = if (address != null) centralDriver.getActiveConnection(address) ?: serverDriver.getInboundConnection(address) else null
-                    if (conn?.state == BleConnectionState.READY) {
-                        val unsealed = sessions?.open(peerId, record.payload)
-                        if (unsealed != null) trySend(peerId to unsealed)
+                    val clear = sessions?.open(peerId, record.payload)
+                    if (clear != null) {
+                        trySend(peerId to clear)
                     }
                 }
             }
@@ -486,12 +489,13 @@ class BleTransport(
 
     companion object {
         val SERVICE_UUID: UUID = FrameV2.SERVICE_UUID
-        val WRITE_CHAR_UUID: UUID = FrameV2.INBOX_UUID
+        val WRITE_CHAR_UUID: UUID = UUID.fromString("0000fd01-0000-1000-8000-00805f9b34fb")
+        val DIGEST_CHAR_UUID: UUID = UUID.fromString("0000fd02-0000-1000-8000-00805f9b34fb")
         val LINK_INFO_CHAR_UUID: UUID = FrameV2.LINK_INFO_UUID
+
         const val MAX_DISCOVERED_PEERS = 64
         const val MAX_ACTIVE_CONNECTIONS = 7
-        const val GATT_MTU = 512
-        const val PROVISIONAL_TIMEOUT_MS = 10_000L
+        const val PROVISIONAL_TIMEOUT_MS = 10000L
         const val LINK_LAYER_READY = false
     }
 }

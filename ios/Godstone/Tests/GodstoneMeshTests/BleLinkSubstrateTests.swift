@@ -1356,9 +1356,325 @@ final class BleLinkSubstrateTests: XCTestCase {
         XCTAssertEqual(cap.totalCount, 0)
 
         for _ in 1...7 {
-            XCTAssertTrue(cap.tryAdmitInbound())
+            XCTAssertTrue(cap.tryAdmitInbound() != nil)
         }
         XCTAssertEqual(cap.totalCount, 7)
     }
+
+    // =========================================================================
+    // SECTION 5 & 16: iOS Exact Capacity Lease Ownership & Stale Release Isolation
+    // =========================================================================
+
+    func testIosCapacity_StaleOutboundReleaseCannotReleaseReplacement() {
+        let cap = BleGlobalCapacityAuthority(maxTotalPeers: 7)
+        let peerId = UUID()
+
+        let lease1 = cap.tryAdmitOutbound(peerId: peerId, generation: 1)
+        XCTAssertNotNil(lease1)
+        XCTAssertEqual(cap.outboundCount, 1)
+        XCTAssertEqual(cap.totalCount, 1)
+        XCTAssertTrue(cap.isLeaseActive(lease1))
+
+        // Replacement relation admitted for generation 2
+        let lease2 = cap.tryAdmitOutbound(peerId: peerId, generation: 2)
+        XCTAssertNotNil(lease2)
+        XCTAssertEqual(cap.outboundCount, 1)
+        XCTAssertTrue(cap.isLeaseActive(lease2))
+        XCTAssertFalse(cap.isLeaseActive(lease1))
+
+        // Stale terminal event for generation 1 attempts release
+        let staleReleased = cap.releaseLease(lease1)
+        XCTAssertFalse(staleReleased)
+        XCTAssertEqual(cap.outboundCount, 1)
+        XCTAssertTrue(cap.isLeaseActive(lease2))
+
+        // Releasing generation 2 succeeds
+        let gen2Released = cap.releaseLease(lease2)
+        XCTAssertTrue(gen2Released)
+        XCTAssertEqual(cap.outboundCount, 0)
+    }
+
+    func testIosCapacity_StaleInboundReleaseCannotReleaseReplacement() {
+        let cap = BleGlobalCapacityAuthority(maxTotalPeers: 7)
+        let peerId = UUID()
+
+        let lease1 = cap.tryAdmitInbound(peerId: peerId, generation: 1)
+        XCTAssertNotNil(lease1)
+        XCTAssertEqual(cap.inboundCount, 1)
+        XCTAssertTrue(cap.isLeaseActive(lease1))
+
+        // Replacement relation admitted for generation 2
+        let lease2 = cap.tryAdmitInbound(peerId: peerId, generation: 2)
+        XCTAssertNotNil(lease2)
+        XCTAssertEqual(cap.inboundCount, 1)
+        XCTAssertTrue(cap.isLeaseActive(lease2))
+
+        // Stale release for generation 1 fails
+        let staleReleased = cap.releaseLease(lease1)
+        XCTAssertFalse(staleReleased)
+        XCTAssertEqual(cap.inboundCount, 1)
+        XCTAssertTrue(cap.isLeaseActive(lease2))
+
+        // Legitimate release for generation 2 succeeds
+        XCTAssertTrue(cap.releaseLease(lease2))
+        XCTAssertEqual(cap.inboundCount, 0)
+    }
+
+    func testIosCapacity_DuplicateReleaseIsIdempotent() {
+        let cap = BleGlobalCapacityAuthority(maxTotalPeers: 7)
+        let peerId = UUID()
+        let lease = cap.tryAdmitOutbound(peerId: peerId, generation: 1)
+        XCTAssertNotNil(lease)
+
+        XCTAssertTrue(cap.releaseLease(lease))
+        XCTAssertFalse(cap.releaseLease(lease)) // Duplicate release returns false
+        XCTAssertEqual(cap.totalCount, 0)
+    }
+
+    func testIosCapacity_MixedDirectionsNeverExceedsSeven() {
+        let cap = BleGlobalCapacityAuthority(maxTotalPeers: 7)
+        for i in 1...4 {
+            XCTAssertNotNil(cap.tryAdmitOutbound(peerId: UUID(), generation: UInt64(i)))
+        }
+        for i in 5...7 {
+            XCTAssertNotNil(cap.tryAdmitInbound(peerId: UUID(), generation: UInt64(i)))
+        }
+        XCTAssertEqual(cap.totalCount, 7)
+        XCTAssertNil(cap.tryAdmitOutbound(peerId: UUID(), generation: 8))
+        XCTAssertNil(cap.tryAdmitInbound(peerId: UUID(), generation: 9))
+    }
+
+    func testIosCapacity_StopResetLeavesZeroLeases() {
+        let cap = BleGlobalCapacityAuthority(maxTotalPeers: 7)
+        _ = cap.tryAdmitOutbound(peerId: UUID(), generation: 1)
+        _ = cap.tryAdmitInbound(peerId: UUID(), generation: 1)
+        XCTAssertEqual(cap.totalCount, 2)
+        cap.reset()
+        XCTAssertEqual(cap.totalCount, 0)
+        XCTAssertEqual(cap.outboundCount, 0)
+        XCTAssertEqual(cap.inboundCount, 0)
+    }
+
+    // =========================================================================
+    // SECTION 6 & 16: iOS Duplicate / Conflicting LinkInfo Write Safety
+    // =========================================================================
+
+    func testIosLinkInfo_FirstValidWrite_BindsResponder() {
+        let localHint = Data([5, 0, 0, 0])
+        let remoteHint = Data([1, 0, 0, 0]) // Remote < Local -> Local is RESPONDER
+        let remoteLinkInfo = BleLinkInfoCodec.encode(
+            version: BleLinkInfoConstants.protocolVersion,
+            flags: 0,
+            nodeHint: remoteHint,
+            shortDigest: Data(repeating: 0, count: 6),
+            queueDepth: 0
+        )
+        let driver = BlePeripheralOrchestrationDriver(
+            localHint: localHint,
+            localLinkInfoProvider: { Data(repeating: 0, count: 13) }
+        )
+        let centralId = UUID()
+
+        let act = driver.onCentralWrite(centralId: centralId, rawData: remoteLinkInfo)
+        XCTAssertEqual(act, .acceptWrite(centralId, remoteHint))
+        let conn = driver.getInboundConnection(centralId)
+        XCTAssertNotNil(conn)
+        XCTAssertTrue(conn?.isRoleBound == true)
+        XCTAssertEqual(conn?.localRole, .responder)
+    }
+
+    func testIosLinkInfo_ExactDuplicate_NoCrashNoRebindNoExtraLease() {
+        let cap = BleGlobalCapacityAuthority(maxTotalPeers: 7)
+        let localHint = Data([5, 0, 0, 0])
+        let remoteHint = Data([1, 0, 0, 0])
+        let remoteLinkInfo = BleLinkInfoCodec.encode(
+            version: BleLinkInfoConstants.protocolVersion,
+            flags: 0,
+            nodeHint: remoteHint,
+            shortDigest: Data(repeating: 0, count: 6),
+            queueDepth: 0
+        )
+        let driver = BlePeripheralOrchestrationDriver(
+            localHint: localHint,
+            localLinkInfoProvider: { Data(repeating: 0, count: 13) },
+            capacityAuthority: cap
+        )
+        let centralId = UUID()
+
+        // First write: binds responder
+        let act1 = driver.onCentralWrite(centralId: centralId, rawData: remoteLinkInfo)
+        XCTAssertEqual(act1, .acceptWrite(centralId, remoteHint))
+        XCTAssertEqual(cap.inboundCount, 1)
+        let initialGen = driver.getCentralGeneration(centralId)
+
+        // Second write (exact duplicate): must NOT crash, must NOT rebind, must NOT allocate extra capacity lease
+        let act2 = driver.onCentralWrite(centralId: centralId, rawData: remoteLinkInfo)
+        XCTAssertEqual(act2, .acceptWrite(centralId, remoteHint))
+        XCTAssertEqual(cap.inboundCount, 1)
+        XCTAssertEqual(driver.getCentralGeneration(centralId), initialGen)
+        XCTAssertTrue(driver.getInboundConnection(centralId)?.isRoleBound == true)
+    }
+
+    func testIosLinkInfo_ConflictingDuplicate_RejectedNoCrash() {
+        let cap = BleGlobalCapacityAuthority(maxTotalPeers: 7)
+        let localHint = Data([5, 0, 0, 0])
+        let remoteHint1 = Data([1, 0, 0, 0])
+        let remoteHint2 = Data([2, 0, 0, 0])
+        let remoteLinkInfo1 = BleLinkInfoCodec.encode(
+            version: BleLinkInfoConstants.protocolVersion,
+            flags: 0,
+            nodeHint: remoteHint1,
+            shortDigest: Data(repeating: 0, count: 6),
+            queueDepth: 0
+        )
+        let remoteLinkInfo2 = BleLinkInfoCodec.encode(
+            version: BleLinkInfoConstants.protocolVersion,
+            flags: 0,
+            nodeHint: remoteHint2,
+            shortDigest: Data(repeating: 0, count: 6),
+            queueDepth: 0
+        )
+        let driver = BlePeripheralOrchestrationDriver(
+            localHint: localHint,
+            localLinkInfoProvider: { Data(repeating: 0, count: 13) },
+            capacityAuthority: cap
+        )
+        let centralId = UUID()
+
+        // First write: binds remoteHint1
+        _ = driver.onCentralWrite(centralId: centralId, rawData: remoteLinkInfo1)
+        XCTAssertEqual(cap.inboundCount, 1)
+
+        // Second write with conflicting remoteHint2: rejected cleanly without crash
+        let act2 = driver.onCentralWrite(centralId: centralId, rawData: remoteLinkInfo2)
+        XCTAssertEqual(act2, .rejectWrite(centralId, "Conflicting LinkInfo write on active relation"))
+        XCTAssertEqual(cap.inboundCount, 1)
+        // Original relation remains intact
+        XCTAssertEqual(driver.getAcceptedRemoteLinkInfo(centralId)?.nodeHint, remoteHint1)
+    }
+
+    func testIosLinkInfo_DuplicateAfterSubscription_DoesNotResetRelation() {
+        let localHint = Data([5, 0, 0, 0])
+        let remoteHint = Data([1, 0, 0, 0])
+        let remoteLinkInfo = BleLinkInfoCodec.encode(
+            version: BleLinkInfoConstants.protocolVersion,
+            flags: 0,
+            nodeHint: remoteHint,
+            shortDigest: Data(repeating: 0, count: 6),
+            queueDepth: 0
+        )
+        let driver = BlePeripheralOrchestrationDriver(
+            localHint: localHint,
+            localLinkInfoProvider: { Data(repeating: 0, count: 13) }
+        )
+        let centralId = UUID()
+
+        _ = driver.onCentralWrite(centralId: centralId, rawData: remoteLinkInfo)
+        let subAct = driver.onCentralSubscribed(centralId: centralId)
+        XCTAssertEqual(subAct, .acceptSubscriptionAndDuplexReady(centralId))
+
+        // Duplicate write after subscription
+        let dupAct = driver.onCentralWrite(centralId: centralId, rawData: remoteLinkInfo)
+        XCTAssertEqual(dupAct, .acceptWrite(centralId, remoteHint))
+        XCTAssertTrue(driver.getInboundConnection(centralId)?.isHandshakeTransportReady == true)
+    }
+
+    func testIosLinkInfo_DuplicateCannotRestartTimeoutForDifferentGeneration() {
+        let cap = BleGlobalCapacityAuthority(maxTotalPeers: 7)
+        let localHint = Data([5, 0, 0, 0])
+        let remoteHint = Data([1, 0, 0, 0])
+        let remoteLinkInfo = BleLinkInfoCodec.encode(
+            version: BleLinkInfoConstants.protocolVersion,
+            flags: 0,
+            nodeHint: remoteHint,
+            shortDigest: Data(repeating: 0, count: 6),
+            queueDepth: 0
+        )
+        let driver = BlePeripheralOrchestrationDriver(
+            localHint: localHint,
+            localLinkInfoProvider: { Data(repeating: 0, count: 13) },
+            capacityAuthority: cap
+        )
+        let centralId = UUID()
+
+        _ = driver.onCentralWrite(centralId: centralId, rawData: remoteLinkInfo)
+        let gen = driver.getCentralGeneration(centralId)
+
+        // Stale timeout for expectedGen 99 is ignored
+        driver.onInboundTimeout(centralId: centralId, expectedGen: 99)
+        XCTAssertEqual(cap.inboundCount, 1)
+        XCTAssertNotNil(driver.getInboundConnection(centralId))
+
+        // Timeout for current gen releases capacity
+        driver.onInboundTimeout(centralId: centralId, expectedGen: gen)
+        XCTAssertEqual(cap.inboundCount, 0)
+        XCTAssertNil(driver.getInboundConnection(centralId))
+    }
+
+    // =========================================================================
+    // SECTION 14: iOS Production Callback-Mapping Reducer Tests
+    // =========================================================================
+
+    func testIosAdapter_DirectReducerMapping() throws {
+        let identity = try makeIdentity()
+        let store = MockMessageStore()
+        let transport = BleTransport(identity: identity, store: store)
+        transport.start()
+
+        let centralId = UUID()
+
+        // 1. Read only -> 0 capacity consumed
+        let readAct = transport.dispatchReceiveRead(centralId: centralId)
+        guard case .sendReadResponse = readAct else {
+            XCTFail("Expected sendReadResponse")
+            return
+        }
+        XCTAssertEqual(transport.capacityAuthority.totalCount, 0)
+
+        // 2. Valid write -> 1 relation admitted, 1 lease consumed
+        let remoteHint = Data([0, 0, 0, 1])
+        let remoteLinkInfo = BleLinkInfoCodec.encode(
+            version: BleLinkInfoConstants.protocolVersion,
+            flags: 0,
+            nodeHint: remoteHint,
+            shortDigest: Data(repeating: 0, count: 6),
+            queueDepth: 0
+        )
+        let writeAct = transport.dispatchReceiveWrite(centralId: centralId, rawData: remoteLinkInfo)
+        XCTAssertEqual(writeAct, .acceptWrite(centralId, remoteHint))
+        XCTAssertEqual(transport.capacityAuthority.inboundCount, 1)
+
+        // 3. Exact duplicate write -> no crash, no extra lease
+        let dupAct = transport.dispatchReceiveWrite(centralId: centralId, rawData: remoteLinkInfo)
+        XCTAssertEqual(dupAct, .acceptWrite(centralId, remoteHint))
+        XCTAssertEqual(transport.capacityAuthority.inboundCount, 1)
+
+        // 4. Conflicting duplicate write -> rejected
+        let conflictLinkInfo = BleLinkInfoCodec.encode(
+            version: BleLinkInfoConstants.protocolVersion,
+            flags: 0,
+            nodeHint: Data([0, 0, 0, 2]),
+            shortDigest: Data(repeating: 0, count: 6),
+            queueDepth: 0
+        )
+        let conflictAct = transport.dispatchReceiveWrite(centralId: centralId, rawData: conflictLinkInfo)
+        guard case .rejectWrite = conflictAct else {
+            XCTFail("Expected rejectWrite for conflicting LinkInfo")
+            return
+        }
+        XCTAssertEqual(transport.capacityAuthority.inboundCount, 1)
+
+        // 5. Subscription -> physical duplex ready
+        let subAct = transport.dispatchSubscribe(centralId: centralId)
+        XCTAssertEqual(subAct, .acceptSubscriptionAndDuplexReady(centralId))
+
+        // 6. Unsubscribe -> releases exact lease
+        let unsubAct = transport.dispatchUnsubscribe(centralId: centralId)
+        XCTAssertEqual(unsubAct, .noOp)
+        XCTAssertEqual(transport.capacityAuthority.inboundCount, 0)
+
+        transport.stop()
+    }
 }
+
 

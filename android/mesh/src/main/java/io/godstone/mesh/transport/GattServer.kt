@@ -19,15 +19,6 @@ import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicLong
 
-typealias BleLinkInfoProvider = () -> ByteArray?
-typealias BleLinkInfoWriteHandler = (String, ByteArray) -> Boolean
-typealias BleRoleBoundPredicate = (String) -> Boolean
-typealias BleInboundWriteHandler = (String, ByteArray) -> Unit
-typealias BleDisconnectHandler = (String) -> Unit
-typealias BleSubscriptionHandler = (String, Boolean) -> Unit
-typealias BleMtuHandler = (String, Int) -> Unit
-typealias BleServiceStatusHandler = (Boolean) -> Unit
-
 private data class PendingNotification(
     val notificationGeneration: Long,
     val peerGeneration: Long,
@@ -39,19 +30,19 @@ private data class PendingNotification(
 @SuppressLint("MissingPermission")
 class BleGattServer(
     private val context: Context,
-    private val serviceUuid: UUID = BleTransport.SERVICE_UUID,
-    private val inboxCharUuid: UUID = BleTransport.WRITE_CHAR_UUID,
-    private val linkInfoCharUuid: UUID = BleTransport.LINK_INFO_CHAR_UUID,
-    private val linkInfoProvider: BleLinkInfoProvider = { null },
-    private val onLinkInfoWrite: BleLinkInfoWriteHandler = { _, _ -> false },
-    private val isRoleBoundPredicate: BleRoleBoundPredicate = { false },
-    private val onInboundWrite: BleInboundWriteHandler = { _, _ -> },
-    private val onClientDisconnected: BleDisconnectHandler = {},
-    private val onSubscriptionChanged: BleSubscriptionHandler = { _, _ -> },
-    private val onMtuChanged: BleMtuHandler = { _, _ -> },
-    private val onServiceStatusChanged: BleServiceStatusHandler = {},
-    private val notificationTimeoutMs: Long = NOTIFICATION_TIMEOUT_MS,
-    private val orchestrationDriver: BleServerOrchestrationDriver? = null
+    val serviceUuid: UUID,
+    val inboxCharUuid: UUID,
+    val linkInfoCharUuid: UUID = BleTransport.LINK_INFO_CHAR_UUID,
+    val linkInfoProvider: () -> ByteArray?,
+    val isRoleBoundPredicate: (String) -> Boolean,
+    val onInboundWrite: (String, ByteArray) -> Unit,
+    val onLinkInfoWrite: (String, ByteArray) -> Boolean,
+    val onSubscriptionChanged: (String, Boolean) -> Unit,
+    val onClientDisconnected: (String) -> Unit,
+    val onMtuChanged: (String, Int) -> Unit,
+    val onServiceStatusChanged: (Boolean) -> Unit = {},
+    private val orchestrationDriver: BleServerOrchestrationDriver? = null,
+    private val notificationTimeoutMs: Long = NOTIFICATION_TIMEOUT_MS
 ) {
     private var server: BluetoothGattServer? = null
     private var inboxCharacteristic: BluetoothGattCharacteristic? = null
@@ -86,6 +77,8 @@ class BleGattServer(
     var isPoisoned: Boolean = false
         private set
 
+    private var activeCallback: BluetoothGattServerCallback? = null
+
     val isRunning: Boolean
         get() = server != null && isServiceReady && !isPoisoned
 
@@ -97,6 +90,8 @@ class BleGattServer(
     fun getConnectedDeviceCount(): Int = connectedDevices.size
 
     fun isDeviceAdmitted(peerAddress: String): Boolean = connectedDevices.containsKey(peerAddress)
+
+    fun getActiveCallback(): BluetoothGattServerCallback? = activeCallback
 
     fun makeServerCallback(callbackEpoch: Long): BluetoothGattServerCallback {
         return object : BluetoothGattServerCallback() {
@@ -188,9 +183,6 @@ class BleGattServer(
                             is BleServerAction.SendReadResponse -> {
                                 s.sendResponse(device, requestId, BluetoothGatt.GATT_SUCCESS, offset, action.bytes)
                             }
-                            is BleServerAction.RejectRead -> {
-                                s.sendResponse(device, requestId, BluetoothGatt.GATT_FAILURE, offset, null)
-                            }
                             else -> {
                                 s.sendResponse(device, requestId, BluetoothGatt.GATT_FAILURE, offset, null)
                             }
@@ -244,13 +236,25 @@ class BleGattServer(
                                     if (responseNeeded) s?.sendResponse(device, requestId, BluetoothGatt.GATT_SUCCESS, offset, value)
                                 } else {
                                     if (responseNeeded) s?.sendResponse(device, requestId, BluetoothGatt.GATT_FAILURE, offset, null)
+                                    connectedDevices.remove(address)
+                                    try {
+                                        s?.cancelConnection(device)
+                                    } catch (_: Exception) {}
                                 }
                             }
                             is BleServerAction.RejectWrite -> {
                                 if (responseNeeded) s?.sendResponse(device, requestId, BluetoothGatt.GATT_FAILURE, offset, null)
+                                connectedDevices.remove(address)
+                                try {
+                                    s?.cancelConnection(device)
+                                } catch (_: Exception) {}
                             }
                             else -> {
                                 if (responseNeeded) s?.sendResponse(device, requestId, BluetoothGatt.GATT_FAILURE, offset, null)
+                                connectedDevices.remove(address)
+                                try {
+                                    s?.cancelConnection(device)
+                                } catch (_: Exception) {}
                             }
                         }
                     } else {
@@ -263,6 +267,10 @@ class BleGattServer(
                             if (responseNeeded) s?.sendResponse(device, requestId, BluetoothGatt.GATT_SUCCESS, offset, value)
                         } else {
                             if (responseNeeded) s?.sendResponse(device, requestId, BluetoothGatt.GATT_FAILURE, offset, null)
+                            connectedDevices.remove(address)
+                            try {
+                                s?.cancelConnection(device)
+                            } catch (_: Exception) {}
                         }
                     }
                     return
@@ -391,6 +399,52 @@ class BleGattServer(
         }
     }
 
+    fun dispatchServiceAdded(status: Int, service: BluetoothGattService, callback: BluetoothGattServerCallback? = null) =
+        (callback ?: activeCallback)?.onServiceAdded(status, service)
+
+    fun dispatchConnectionStateChange(device: BluetoothDevice, status: Int, newState: Int, callback: BluetoothGattServerCallback? = null) =
+        (callback ?: activeCallback)?.onConnectionStateChange(device, status, newState)
+
+    fun dispatchCharacteristicReadRequest(
+        device: BluetoothDevice,
+        requestId: Int,
+        offset: Int,
+        characteristic: BluetoothGattCharacteristic,
+        callback: BluetoothGattServerCallback? = null
+    ) = (callback ?: activeCallback)?.onCharacteristicReadRequest(device, requestId, offset, characteristic)
+
+    fun dispatchCharacteristicWriteRequest(
+        device: BluetoothDevice,
+        requestId: Int,
+        characteristic: BluetoothGattCharacteristic,
+        preparedWrite: Boolean,
+        responseNeeded: Boolean,
+        offset: Int,
+        value: ByteArray,
+        callback: BluetoothGattServerCallback? = null
+    ) = (callback ?: activeCallback)?.onCharacteristicWriteRequest(device, requestId, characteristic, preparedWrite, responseNeeded, offset, value)
+
+    fun dispatchDescriptorWriteRequest(
+        device: BluetoothDevice,
+        requestId: Int,
+        descriptor: BluetoothGattDescriptor,
+        preparedWrite: Boolean,
+        responseNeeded: Boolean,
+        offset: Int,
+        value: ByteArray,
+        callback: BluetoothGattServerCallback? = null
+    ) = (callback ?: activeCallback)?.onDescriptorWriteRequest(device, requestId, descriptor, preparedWrite, responseNeeded, offset, value)
+
+    fun dispatchMtuChanged(device: BluetoothDevice, mtu: Int, callback: BluetoothGattServerCallback? = null) =
+        (callback ?: activeCallback)?.onMtuChanged(device, mtu)
+
+    fun dispatchNotificationSent(device: BluetoothDevice, status: Int, callback: BluetoothGattServerCallback? = null) =
+        (callback ?: activeCallback)?.onNotificationSent(device, status)
+
+    fun setServerGenerationForTesting(gen: Long) {
+        serverGeneration = gen
+    }
+
     fun start(): Boolean {
         if (server != null && !isPoisoned) return true
 
@@ -408,6 +462,7 @@ class BleGattServer(
         }
         serviceRegistrationEpoch = gen
         val currentCallback = makeServerCallback(gen)
+        activeCallback = currentCallback
         val gattServer = manager.openGattServer(context, currentCallback) ?: return false
 
         val inbox = BluetoothGattCharacteristic(
@@ -538,6 +593,7 @@ class BleGattServer(
             server?.close()
         } catch (_: Exception) {}
         server = null
+        activeCallback = null
         inboxCharacteristic = null
         linkInfoCharacteristic = null
         connectedDevices.clear()

@@ -14,6 +14,7 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withTimeoutOrNull
 import java.util.UUID
+import java.util.concurrent.atomic.AtomicLong
 
 enum class GattOpType {
     CONNECT,
@@ -44,9 +45,11 @@ class GattClientConnection(
     val onLinkInfoWriteAck: (Boolean, Long, Long) -> Unit = { _, _, _ -> },
     val onCccdWriteAck: (Boolean, Long, Long) -> Unit = { _, _, _ -> },
     val onMtuChanged: (Int) -> Unit = {},
-    val onDisconnected: () -> Unit = {},
+    val onDisconnected: (Long, Long) -> Unit = { _, _ -> },
     val onInboundNotification: (ByteArray) -> Unit = {}
 ) {
+    val clientToken: Long = nextClientToken()
+
     private var gatt: BluetoothGatt? = null
     private var inboxCharacteristic: BluetoothGattCharacteristic? = null
     private var linkInfoCharacteristic: BluetoothGattCharacteristic? = null
@@ -75,11 +78,20 @@ class GattClientConnection(
             if (status != BluetoothGatt.GATT_SUCCESS || newState == BluetoothProfile.STATE_DISCONNECTED) {
                 isConnected = false
                 synchronized(opLock) { currentOp = null }
-                onDisconnected()
+                onDisconnected(clientToken, gen)
                 return
             }
 
             if (newState == BluetoothProfile.STATE_CONNECTED) {
+                var matched = false
+                synchronized(opLock) {
+                    val op = currentOp
+                    if (op != null && op.opType == GattOpType.CONNECT && op.gattGeneration == gen) {
+                        currentOp = null
+                        matched = true
+                    }
+                }
+                if (!matched) return
                 isConnected = true
                 onGattConnected(gen, gen)
             }
@@ -89,11 +101,15 @@ class GattClientConnection(
             val gen = gattGeneration
             if (g !== gatt) return
 
+            var matched = false
             synchronized(opLock) {
-                if (currentOp?.opType == GattOpType.SERVICE_DISCOVERY && currentOp?.gattGeneration == gen) {
+                val op = currentOp
+                if (op != null && op.opType == GattOpType.SERVICE_DISCOVERY && op.gattGeneration == gen) {
                     currentOp = null
+                    matched = true
                 }
             }
+            if (!matched) return
 
             if (status == BluetoothGatt.GATT_SUCCESS) {
                 val service = g.services.firstOrNull { it.uuid == BleTransport.SERVICE_UUID }
@@ -127,13 +143,12 @@ class GattClientConnection(
                     matched = true
                 }
             }
+            if (!matched) return
 
-            if (characteristic.uuid == BleTransport.LINK_INFO_CHAR_UUID) {
-                if (status == BluetoothGatt.GATT_SUCCESS) {
-                    onLinkInfoReadResult(characteristic.value, gen, gen)
-                } else {
-                    onLinkInfoReadResult(null, gen, gen)
-                }
+            if (status == BluetoothGatt.GATT_SUCCESS) {
+                onLinkInfoReadResult(characteristic.value, gen, gen)
+            } else {
+                onLinkInfoReadResult(null, gen, gen)
             }
         }
 
@@ -142,6 +157,7 @@ class GattClientConnection(
             if (g !== gatt) return
 
             if (characteristic.uuid == BleTransport.LINK_INFO_CHAR_UUID) {
+                var matched = false
                 synchronized(opLock) {
                     val op = currentOp
                     if (op != null &&
@@ -150,8 +166,10 @@ class GattClientConnection(
                         op.expectedUuid == BleTransport.LINK_INFO_CHAR_UUID
                     ) {
                         currentOp = null
+                        matched = true
                     }
                 }
+                if (!matched) return
                 onLinkInfoWriteAck(status == BluetoothGatt.GATT_SUCCESS, gen, gen)
                 return
             }
@@ -178,6 +196,7 @@ class GattClientConnection(
             if (g !== gatt) return
 
             if (descriptor.uuid == CCCD_UUID) {
+                var matched = false
                 synchronized(opLock) {
                     val op = currentOp
                     if (op != null &&
@@ -186,8 +205,10 @@ class GattClientConnection(
                         op.expectedUuid == CCCD_UUID
                     ) {
                         currentOp = null
+                        matched = true
                     }
                 }
+                if (!matched) return
                 onCccdWriteAck(status == BluetoothGatt.GATT_SUCCESS, gen, gen)
             }
         }
@@ -196,11 +217,15 @@ class GattClientConnection(
             val gen = gattGeneration
             if (g !== gatt) return
 
+            var matched = false
             synchronized(opLock) {
-                if (currentOp?.opType == GattOpType.MTU_REQUEST && currentOp?.gattGeneration == gen) {
+                val op = currentOp
+                if (op != null && op.opType == GattOpType.MTU_REQUEST && op.gattGeneration == gen) {
                     currentOp = null
+                    matched = true
                 }
             }
+            if (!matched) return
 
             if (status == BluetoothGatt.GATT_SUCCESS) {
                 onMtuChanged(mtu)
@@ -215,6 +240,41 @@ class GattClientConnection(
                 onInboundNotification(value)
             }
         }
+    }
+
+    fun dispatchConnectionStateChange(g: BluetoothGatt, status: Int, newState: Int) =
+        callback.onConnectionStateChange(g, status, newState)
+
+    fun dispatchServicesDiscovered(g: BluetoothGatt, status: Int) =
+        callback.onServicesDiscovered(g, status)
+
+    fun dispatchCharacteristicRead(g: BluetoothGatt, characteristic: BluetoothGattCharacteristic, status: Int) =
+        callback.onCharacteristicRead(g, characteristic, status)
+
+    fun dispatchCharacteristicWrite(g: BluetoothGatt, characteristic: BluetoothGattCharacteristic, status: Int) =
+        callback.onCharacteristicWrite(g, characteristic, status)
+
+    fun dispatchDescriptorWrite(g: BluetoothGatt, descriptor: BluetoothGattDescriptor, status: Int) =
+        callback.onDescriptorWrite(g, descriptor, status)
+
+    fun dispatchMtuChanged(g: BluetoothGatt, mtu: Int, status: Int) =
+        callback.onMtuChanged(g, mtu, status)
+
+    fun dispatchCharacteristicChanged(g: BluetoothGatt, characteristic: BluetoothGattCharacteristic) =
+        callback.onCharacteristicChanged(g, characteristic)
+
+    fun setMockGattForTesting(
+        mockGatt: BluetoothGatt,
+        mockInbox: BluetoothGattCharacteristic? = null,
+        mockLinkInfo: BluetoothGattCharacteristic? = null
+    ) {
+        gatt = mockGatt
+        inboxCharacteristic = mockInbox
+        linkInfoCharacteristic = mockLinkInfo
+    }
+
+    fun setGattGenerationForTesting(gen: Long) {
+        gattGeneration = gen
     }
 
     fun connectGatt() {
@@ -389,5 +449,7 @@ class GattClientConnection(
 
     companion object {
         val CCCD_UUID: UUID = UUID.fromString("00002902-0000-1000-8000-00805f9b34fb")
+        private val tokenCounter = AtomicLong(1L)
+        fun nextClientToken(): Long = tokenCounter.getAndIncrement()
     }
 }

@@ -303,7 +303,7 @@ def check_controls(
         errors.append(f"BL11: iOS BleTransport missing at {ios_transport_path}")
     else:
         c = strip_comments(ios_transport_path.read_text(encoding="utf-8"))
-        if "peripheral.updateValue(" not in c or "pm.updateValue(" not in c:
+        if "peripheral.updateValue(" not in c and "peripheral?.updateValue(" not in c:
             errors.append("BL11: iOS updateValue with onSubscribedCentrals missing")
         if "peripheralManagerIsReady" not in c:
             errors.append("BL11: iOS peripheralManagerIsReady backpressure handling missing")
@@ -651,7 +651,7 @@ def check_controls(
     # ------------------------------------------------------------------------
     if android_server_path.exists():
         c = strip_comments(android_server_path.read_text(encoding="utf-8"))
-        if "private val linkInfoCharUuid: UUID = BleTransport.LINK_INFO_CHAR_UUID" not in c:
+        if "linkInfoCharUuid: UUID = BleTransport.LINK_INFO_CHAR_UUID" not in c:
             errors.append("BL39: Android BleGattServer must reference BleTransport.LINK_INFO_CHAR_UUID")
 
     # ------------------------------------------------------------------------
@@ -1120,6 +1120,123 @@ def check_controls(
         if "data class CapacityLease(" not in c or "enum class BleDirection" not in c or "synchronized" not in c:
             errors.append("BL87: Android BleGlobalCapacityAuthority must use synchronized CapacityLease tokens")
 
+    # ------------------------------------------------------------------------
+    # BL88: iOS duplicate/conflicting LinkInfo write handling without state crash
+    # ------------------------------------------------------------------------
+    if ios_driver_path.exists():
+        c = strip_comments(ios_driver_path.read_text(encoding="utf-8"))
+        if "admittedCentrals.contains(centralId)" not in c or "conn.isRoleBound || conn.state == .ready" not in c:
+            errors.append("BL88: iOS BlePeripheralOrchestrationDriver must check for active admitted roleBound connections on central write")
+        if "Conflicting LinkInfo write on active relation" not in c:
+            errors.append("BL88: iOS BlePeripheralOrchestrationDriver must reject conflicting LinkInfo writes on active relations")
+
+    # ------------------------------------------------------------------------
+    # BL89: Exact CapacityLease ownership and leaseId matching
+    # ------------------------------------------------------------------------
+    if android_capacity_path.exists():
+        c = strip_comments(android_capacity_path.read_text(encoding="utf-8"))
+        if "val leaseId: Long" not in c or "current.leaseId == lease.leaseId" not in c:
+            errors.append("BL89: Android BleGlobalCapacityAuthority must validate exact leaseId matching on release")
+
+    if ios_driver_path.exists():
+        c = strip_comments(ios_driver_path.read_text(encoding="utf-8"))
+        if "let leaseId: UInt64" not in c or "current.leaseId == lease.leaseId" not in c:
+            errors.append("BL89: iOS BleGlobalCapacityAuthority must validate exact leaseId matching on release")
+
+    # ------------------------------------------------------------------------
+    # BL90: Direction-scoped publication via RelationKey
+    # ------------------------------------------------------------------------
+    if android_transport_path.exists():
+        c = strip_comments(android_transport_path.read_text(encoding="utf-8"))
+        if "publishedRelations" not in c or "publishedRelations.none" not in c:
+            errors.append("BL90: Android BleTransport must use publishedRelations and emit Lost only when 0 relations remain")
+
+    if ios_transport_path.exists():
+        c = strip_comments(ios_transport_path.read_text(encoding="utf-8"))
+        if "publishedRelations" not in c or "stillPublished" not in c:
+            errors.append("BL90: iOS BleTransport must track publishedRelations and emit disconnect only when 0 relations remain")
+
+    # ------------------------------------------------------------------------
+    # BL91: Android GattClient.kt callback authority & currentOp verification
+    # ------------------------------------------------------------------------
+    if android_client_path.exists():
+        c = strip_comments(android_client_path.read_text(encoding="utf-8"))
+        if "op.opType == GattOpType.SERVICE_DISCOVERY" not in c or "op.opType == GattOpType.LINK_INFO_READ" not in c or "op.opType == GattOpType.CCCD_WRITE" not in c:
+            errors.append("BL91: Android GattClientConnection must strictly match PendingGattOp in callbacks")
+
+    # ------------------------------------------------------------------------
+    # BL92: Immutable BleElectionContext bound on authoritative LinkInfo read
+    # ------------------------------------------------------------------------
+    if android_driver_path.exists():
+        c = strip_comments(android_driver_path.read_text(encoding="utf-8"))
+        if "data class BleElectionContext(" not in c or "electionContexts[peerAddress] = BleElectionContext" not in c:
+            errors.append("BL92: Android BleCentralOrchestrationDriver must record immutable BleElectionContext")
+
+    if ios_driver_path.exists():
+        c = strip_comments(ios_driver_path.read_text(encoding="utf-8"))
+        if "struct BleElectionContext" not in c or "electionContexts[peerId] = BleElectionContext" not in c:
+            errors.append("BL92: iOS BleCentralOrchestrationDriver must record immutable BleElectionContext")
+
+    # ------------------------------------------------------------------------
+    # BL93: Android GattClientConnection clientToken and generation-scoped disconnect
+    # ------------------------------------------------------------------------
+    if android_client_path.exists():
+        c = strip_comments(android_client_path.read_text(encoding="utf-8"))
+        if "val clientToken: Long = nextClientToken()" not in c or "onDisconnected(clientToken, gen)" not in c:
+            errors.append("BL93: Android GattClientConnection must produce clientToken and forward on disconnect")
+
+    if android_transport_path.exists():
+        c = strip_comments(android_transport_path.read_text(encoding="utf-8"))
+        if "activeClient.clientToken != clientToken" not in c:
+            errors.append("BL93: Android BleTransport must ignore stale disconnects from replaced clients")
+
+    # ------------------------------------------------------------------------
+    # BL94: Android BleGattServer.kt LinkInfo rejection teardown
+    # ------------------------------------------------------------------------
+    if android_server_path.exists():
+        c = strip_comments(android_server_path.read_text(encoding="utf-8"))
+        if "is BleServerAction.RejectWrite" not in c or "s?.cancelConnection(device)" not in c:
+            errors.append("BL94: Android BleGattServer must cancel physical connection on RejectWrite")
+
+    # ------------------------------------------------------------------------
+    # BL95: R2.6 Substrate test inventories
+    # ------------------------------------------------------------------------
+    if android_test_substrate_path.exists():
+        c = strip_comments(android_test_substrate_path.read_text(encoding="utf-8"))
+        required_r26_android = [
+            "testAndroidCapacity_Gen1Admitted_Gen2Replacement_StaleGen1ReleaseDoesNotReleaseGen2",
+            "testAndroidCapacity_DriverOwnsExactLease_StaleDisconnectDoesNotReleaseReplacement",
+            "testAndroidServer_MalformedLinkInfo_ReleasesCapacity",
+            "testAndroidServer_TieLinkInfo_ReleasesCapacity",
+            "testAndroidServer_WrongRoleLinkInfo_ReleasesCapacity",
+            "testAndroidServer_NoLinkInfo_TimeoutReleasesCapacity",
+            "testAndroidServer_SevenRejectedPeersCannotExhaustFutureAdmissions",
+            "testAndroidCrossing_CentralDuplexReady_WrongServerDirectionTeardown_NoLost",
+            "testAndroidElectionContext_ImmutableAcrossStaleReads",
+        ]
+        for t in required_r26_android:
+            if t not in c:
+                errors.append(f"BL95: Android test {t} missing in BleLinkSubstrateTest")
+
+    if ios_test_substrate_path.exists():
+        c = strip_comments(ios_test_substrate_path.read_text(encoding="utf-8"))
+        required_r26_ios = [
+            "testIosCapacity_StaleOutboundReleaseCannotReleaseReplacement",
+            "testIosCapacity_StaleInboundReleaseCannotReleaseReplacement",
+            "testIosCapacity_DuplicateReleaseIsIdempotent",
+            "testIosCapacity_MixedDirectionsNeverExceedsSeven",
+            "testIosCapacity_StopResetLeavesZeroLeases",
+            "testIosLinkInfo_FirstValidWrite_BindsResponder",
+            "testIosLinkInfo_ExactDuplicate_NoCrashNoRebindNoExtraLease",
+            "testIosLinkInfo_ConflictingDuplicate_RejectedNoCrash",
+            "testIosLinkInfo_DuplicateAfterSubscription_DoesNotResetRelation",
+            "testIosLinkInfo_DuplicateCannotRestartTimeoutForDifferentGeneration",
+            "testIosAdapter_DirectReducerMapping",
+        ]
+        for t in required_r26_ios:
+            if t not in c:
+                errors.append(f"BL95: iOS test {t} missing in BleLinkSubstrateTests")
+
     return errors
 
 
@@ -1147,14 +1264,14 @@ def run_selftest() -> int:
         ("ios_conn", "class BleConnection", "class BleConnectionMutated", "BL08"),
         ("android_client", "class GattClientConnection", "class GattClientConnectionMutated", "BL09"),
         ("android_server", "class BleGattServer", "class BleGattServerMutated", "BL10"),
-        ("ios_transport", "peripheral.updateValue(frag, for: inboxChar, onSubscribedCentrals: [centralObj])", "/* peripheral.updateValue(frag, for: inboxChar, onSubscribedCentrals: [centralObj]) */", "BL11"),
+        ("ios_transport", "peripheral?.updateValue(frag, for: inboxChar, onSubscribedCentrals: [centralObj])", "/* peripheral?.updateValue(frag, for: inboxChar, onSubscribedCentrals: [centralObj]) */", "BL11"),
         ("android_transport", "val roleCoordinator = BleRoleBindingCoordinator", "val roleCoordinatorMutated = BleRoleBindingCoordinator", "BL12"),
-        ("ios_transport", "public private(set) var roleCoordinator: BleRoleBindingCoordinator", "public private(set) var roleCoordinatorMutated: BleRoleBindingCoordinator", "BL13"),
+        ("ios_transport", "public var roleCoordinator: BleRoleBindingCoordinator?", "public var roleCoordinatorMutated: BleRoleBindingCoordinator?", "BL13"),
         ("android_transport", "conn?.markDisconnected()", "/* conn?.markDisconnected() */", "BL14"),
         ("ios_transport", "outboundCentralConnections.removeAll()", "/* outboundCentralConnections.removeAll() */", "BL15"),
         ("android_transport", "MAX_DISCOVERED_PEERS = 64", "MAX_DISCOVERED_PEERS = 9999", "BL16"),
         ("ios_transport", "maxDiscoveredPeers = 64", "maxDiscoveredPeers = 9999", "BL17"),
-        ("android_transport", "val serverInitiated = gattServer.start()", "startAdvertising()\n        val serverInitiated = gattServer.start()", "BL18"),
+        ("android_transport", "val serverStarted = gattServer.start()", "startAdvertising()\n        val serverStarted = gattServer.start()", "BL18"),
         ("ios_transport", "[BleTransport.serviceUuid]", "[BleTransport.serviceUuid],\n            CBAdvertisementDataLocalNameKey: \"GS\"", "BL19"),
         ("android_test_substrate", "testRoleElection_1000RandomUnequalPairs_ExactlyOneInitiator", "disabled_testRoleElection", "BL20"),
         ("ios_test_substrate", "testRoleElection_1000RandomUnequalPairs_ExactlyOneInitiator", "disabled_testRoleElection", "BL21"),
@@ -1167,7 +1284,7 @@ def run_selftest() -> int:
         ("adr003", "C8.4D1", "XXX_REMOVED", "BL24"),
         ("android_transport", "activeClientConnections[address] = client", "/* activeClientConnections[address] = client */", "BL25"),
         ("ios_transport", "centralDriver?.onDiscover", "/* centralDriver?.onDiscover */", "BL26"),
-        ("android_transport", "if (!serverInitiated)", "if (false)", "BL27"),
+        ("android_transport", "if (!serverStarted)", "if (false)", "BL27"),
         ("android_server", "if (subscribedDevices[deviceAddress] != true)", "if (false)", "BL28"),
         ("android_transport", "conn.maxAttValueLength = maxAttLen", "/* conn.maxAttValueLength = maxAttLen */", "BL29"),
         ("ios_transport", "maxQueuedAttValues = 16", "maxQueuedAttValues = 999999", "BL30"),
@@ -1184,14 +1301,14 @@ def run_selftest() -> int:
         ("android_coord", "class BleRoleBindingCoordinator(", "class BleRoleBindingCoordinatorMutated(", "BL36"),
         ("ios_coord", "public final class BleRoleBindingCoordinator:", "public final class BleRoleBindingCoordinatorMutated:", "BL36"),
         ("android_server", "service !== pendingService", "false", "BL38"),
-        ("android_server", "private val linkInfoCharUuid: UUID = BleTransport.LINK_INFO_CHAR_UUID", "private val linkInfoCharUuidMutated: UUID = BleTransport.LINK_INFO_CHAR_UUID", "BL39"),
+        ("android_server", "val linkInfoCharUuid: UUID = BleTransport.LINK_INFO_CHAR_UUID", "val linkInfoCharUuidMutated: UUID = BleTransport.LINK_INFO_CHAR_UUID", "BL39"),
         ("ios_transport", "public static let linkInfoCharacteristicUuid = CBUUID(string: FrameV2.linkInfoUuidString)", "public static let linkInfoCharacteristicUuidMutated = CBUUID(string: FrameV2.linkInfoUuidString)", "BL40"),
         ("android_client", "readCharacteristic(linkInfo)", "readCharacteristic(null)", "BL41"),
         ("android_conn", "s == BleConnectionState.LINK_INFO_WRITING || s == BleConnectionState.PROVISIONAL_CONNECTED", "true", "BL42"),
         ("ios_conn", "state == .linkInfoWriting || state == .provisionalConnected", "true", "BL43"),
         ("android_conn", "state != BleConnectionState.READY", "state != BleConnectionState.CLOSED", "BL44"),
         ("ios_conn", "state != .ready", "state != .closed", "BL44"),
-        ("ios_transport", "private var outboundCentralConnections: [UUID: BleConnection] = [:]", "private var outboundCentralConnectionsMutated: [UUID: BleConnection] = [:]", "BL45"),
+        ("ios_transport", "var outboundCentralConnections: [UUID: BleConnection] = [:]", "var outboundCentralConnectionsMutated: [UUID: BleConnection] = [:]", "BL45"),
         ("android_transport", "snapshotAuthority", "/* snapshotAuthority */ identity.nodeHint.copyOf(6)", "BL46"),
         ("ios_transport", "snapshotAuthority", "/* snapshotAuthority */", "BL47"),
         ("ios_transport", "didUpdateNotificationStateFor ch: CBCharacteristic,", "didUpdateNotificationStateForMutated ch: CBCharacteristic,", "BL48"),
@@ -1239,6 +1356,19 @@ def run_selftest() -> int:
         ("ios_transport", "inboundTimers[centralId] = timer", "/* inboundTimers[centralId] = timer */", "BL85"),
         ("android_server", "val currentCallback = makeServerCallback(gen)", "/* val currentCallback = makeServerCallback(gen) */", "BL86"),
         ("android_capacity", "data class CapacityLease(", "data class CapacityLeaseMutated(", "BL87"),
+        ("ios_driver", 'return .rejectWrite(centralId, "Conflicting LinkInfo write on active relation")', '/* return .rejectWrite(centralId, "Conflicting LinkInfo write on active relation") */', "BL88"),
+        ("android_capacity", "val leaseId: Long", "/* val leaseId: Long */", "BL89"),
+        ("ios_driver", "let leaseId: UInt64", "/* let leaseId: UInt64 */", "BL89"),
+        ("android_transport", "publishedRelations", "publishedRelationsMutated", "BL90"),
+        ("ios_transport", "stillPublished", "mutatedPublished", "BL90"),
+        ("android_client", "op.opType == GattOpType.SERVICE_DISCOVERY", "/* op.opType == GattOpType.SERVICE_DISCOVERY */", "BL91"),
+        ("android_driver", "data class BleElectionContext(", "/* data class BleElectionContext( */", "BL92"),
+        ("ios_driver", "struct BleElectionContext", "/* struct BleElectionContext */", "BL92"),
+        ("android_client", "val clientToken: Long = nextClientToken()", "/* val clientToken: Long = nextClientToken() */", "BL93"),
+        ("android_transport", "activeClient.clientToken != clientToken", "/* activeClient.clientToken != clientToken */", "BL93"),
+        ("android_server", "is BleServerAction.RejectWrite", "/* is BleServerAction.RejectWrite */", "BL94"),
+        ("android_test_substrate", "testAndroidServer_MalformedLinkInfo_ReleasesCapacity", "disabled_testAndroidServer", "BL95"),
+        ("ios_test_substrate", "testIosLinkInfo_ExactDuplicate_NoCrashNoRebindNoExtraLease", "disabled_testIosLinkInfo", "BL95"),
     ]
 
     all_passed = True
@@ -1361,7 +1491,7 @@ def main() -> int:
             print(f"  - {err}", file=sys.stderr)
         return 1
 
-    print("BLE link substrate structural controls: ALL PASSED (BL01-BL87).")
+    print("BLE link substrate structural controls: ALL PASSED (BL01-BL95).")
     return 0
 
 
