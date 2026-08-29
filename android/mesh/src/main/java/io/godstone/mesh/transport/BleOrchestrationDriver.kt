@@ -263,16 +263,21 @@ class BleCentralOrchestrationDriver(
         BleCentralAction.NoOp
     }
 
-    fun onDisconnected(peerAddress: String): BleCentralAction = synchronized(lock) {
-        if (activeConnections.remove(peerAddress) != null) {
-            electionContexts.remove(peerAddress)
-            releaseLeaseLocked(peerAddress)
+    fun onDisconnected(peerAddress: String, expectedGen: Long = 0L): BleCentralAction = synchronized(lock) {
+        val currentGen = connectionGenerations[peerAddress] ?: 0L
+        if (expectedGen != 0L && currentGen != expectedGen) {
+            return BleCentralAction.NoOp
         }
+        val conn = activeConnections.remove(peerAddress)
+        conn?.transitionTo(BleConnectionState.CLOSED)
+        electionContexts.remove(peerAddress)
+        releaseLeaseLocked(peerAddress)
         val wasPublished = publishedFound.remove(peerAddress)
         if (wasPublished) {
-            return BleCentralAction.PublishLost(peerAddress)
+            BleCentralAction.PublishLost(peerAddress)
+        } else {
+            BleCentralAction.NoOp
         }
-        BleCentralAction.NoOp
     }
 
     fun reset() = synchronized(lock) {
@@ -343,6 +348,8 @@ class BleServerOrchestrationDriver(
     fun getInboundConnection(deviceAddress: String): BleConnection? = synchronized(lock) { inboundConnections[deviceAddress] }
     fun getInboundLease(deviceAddress: String): CapacityLease? = synchronized(lock) { inboundLeases[deviceAddress] }
     fun getAcceptedRemoteLinkInfo(deviceAddress: String): BleLinkInfoV1? = synchronized(lock) { acceptedRemoteLinkInfo[deviceAddress] }
+    fun getClientGeneration(deviceAddress: String): Long = synchronized(lock) { peerGenerations[deviceAddress] ?: 0L }
+    fun isPhysicalReady(deviceAddress: String): Boolean = synchronized(lock) { publishedFound.contains(deviceAddress) }
 
     private fun releaseLeaseLocked(deviceAddress: String) {
         val lease = inboundLeases.remove(deviceAddress)
@@ -409,12 +416,15 @@ class BleServerOrchestrationDriver(
         BleServerAction.AdmitConnection(deviceAddress)
     }
 
-    fun onClientDisconnected(deviceAddress: String): BleServerAction = synchronized(lock) {
+    fun onClientDisconnected(deviceAddress: String, expectedGen: Long = 0L): BleServerAction = synchronized(lock) {
+        val currentGen = peerGenerations[deviceAddress] ?: 0L
+        if (expectedGen != 0L && currentGen != expectedGen) {
+            return BleServerAction.NoOp
+        }
         admittedDevices.remove(deviceAddress)
         releaseLeaseLocked(deviceAddress)
         subscribedDevices.remove(deviceAddress)
         deviceMtu.remove(deviceAddress)
-        peerGenerations.remove(deviceAddress)
         val conn = inboundConnections.remove(deviceAddress)
         conn?.transitionTo(BleConnectionState.CLOSED)
         acceptedRemoteLinkInfo.remove(deviceAddress)
@@ -456,13 +466,31 @@ class BleServerOrchestrationDriver(
             return BleServerAction.RejectWrite(deviceAddress, "Unadmitted client")
         }
         val conn = inboundConnections[deviceAddress] ?: return BleServerAction.RejectWrite(deviceAddress, "No active connection")
-        if (conn.state != BleConnectionState.PROVISIONAL_CONNECTED) {
-            return BleServerAction.RejectWrite(deviceAddress, "Connection state is not PROVISIONAL_CONNECTED")
-        }
 
         val remoteInfo = BleLinkInfoCodec.decode(rawBytes)
         if (remoteInfo == null) {
             return rejectAndTeardownLocked(deviceAddress, "Malformed LinkInfo payload")
+        }
+
+        // Exact duplicate handling on active / role-bound relation
+        if (conn.isRoleBound || conn.state == BleConnectionState.READY) {
+            val existing = acceptedRemoteLinkInfo[deviceAddress]
+            if (existing != null) {
+                val isExactDuplicate = (existing == remoteInfo)
+                if (isExactDuplicate) {
+                    if (conn.isHandshakeTransportReady && !publishedFound.contains(deviceAddress)) {
+                        publishedFound.add(deviceAddress)
+                        return BleServerAction.AcceptWriteAndPublishFound(deviceAddress, remoteInfo)
+                    }
+                    return BleServerAction.AcceptWrite(deviceAddress, remoteInfo)
+                } else {
+                    return BleServerAction.RejectWrite(deviceAddress, "Conflicting LinkInfo write on active relation")
+                }
+            }
+        }
+
+        if (conn.state != BleConnectionState.PROVISIONAL_CONNECTED) {
+            return BleServerAction.RejectWrite(deviceAddress, "Connection state is not PROVISIONAL_CONNECTED")
         }
 
         val election = BleRoleElection.elect(localHint, remoteInfo.nodeHint)

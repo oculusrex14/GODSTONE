@@ -37,7 +37,7 @@ data class PendingGattOp(
 
 @SuppressLint("MissingPermission")
 class GattClientConnection(
-    private val context: Context,
+    private val context: Context? = null,
     val peerAddress: String,
     val onGattConnected: (Long, Long) -> Unit = { _, _ -> },
     val onServicesDiscovered: (Boolean, Long, Long) -> Unit = { _, _, _ -> },
@@ -278,7 +278,7 @@ class GattClientConnection(
     }
 
     fun connectGatt() {
-        val manager = context.getSystemService(BluetoothManager::class.java)
+        val manager = context?.getSystemService(BluetoothManager::class.java)
         val adapter = manager?.adapter ?: return
         if (!adapter.isEnabled) return
 

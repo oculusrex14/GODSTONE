@@ -448,9 +448,14 @@ public final class BleCentralOrchestrationDriver: @unchecked Sendable {
         return .noOp
     }
 
-    public func onDisconnected(peerId: UUID) -> BleCentralAction {
+    public func onDisconnected(peerId: UUID, expectedGen: UInt64 = 0) -> BleCentralAction {
         lock.lock()
         defer { lock.unlock() }
+
+        let currentGen = connectionGenerations[peerId] ?? 0
+        if expectedGen != 0 && currentGen != expectedGen {
+            return .noOp
+        }
 
         let existing = activeConnections[peerId]
         if existing != nil {
@@ -597,7 +602,7 @@ public final class BlePeripheralOrchestrationDriver: @unchecked Sendable {
         // Check if central is already admitted and role-bound:
         if admittedCentrals.contains(centralId), let conn = inboundConnections[centralId] {
             if conn.isRoleBound || conn.state == .ready {
-                if let existing = acceptedRemoteLinkInfo[centralId], existing.nodeHint == remoteInfo.nodeHint {
+                if let existing = acceptedRemoteLinkInfo[centralId], existing == remoteInfo {
                     // Exact duplicate: idempotently ACK without state transition or extra lease
                     if conn.isHandshakeTransportReady && !physicalReadyCentrals.contains(centralId) {
                         physicalReadyCentrals.insert(centralId)
@@ -629,7 +634,7 @@ public final class BlePeripheralOrchestrationDriver: @unchecked Sendable {
                 centralGenerations[centralId] = gen
                 acceptedRemoteLinkInfo[centralId] = remoteInfo
 
-                let conn = inboundConnections[centralId] ?? BleConnection(peerId: centralId)
+                let conn = (inboundConnections[centralId]?.state == .closed) ? BleConnection(peerId: centralId) : (inboundConnections[centralId] ?? BleConnection(peerId: centralId))
                 conn.transitionTo(.provisionalConnected)
                 conn.bindResponderFromAcceptedIncomingLinkInfo(remoteHint: remoteInfo.nodeHint)
                 inboundConnections[centralId] = conn
@@ -650,6 +655,12 @@ public final class BlePeripheralOrchestrationDriver: @unchecked Sendable {
         }
     }
 
+    public func isPhysicalReady(_ centralId: UUID) -> Bool {
+        lock.lock()
+        defer { lock.unlock() }
+        return physicalReadyCentrals.contains(centralId)
+    }
+
     public func onCentralSubscribed(centralId: UUID) -> BlePeripheralAction {
         lock.lock()
         defer { lock.unlock() }
@@ -668,9 +679,14 @@ public final class BlePeripheralOrchestrationDriver: @unchecked Sendable {
         return .acceptSubscription(centralId)
     }
 
-    public func onCentralUnsubscribed(centralId: UUID) -> BlePeripheralAction {
+    public func onCentralUnsubscribed(centralId: UUID, expectedGen: UInt64 = 0) -> BlePeripheralAction {
         lock.lock()
         defer { lock.unlock() }
+
+        let currentGen = centralGenerations[centralId] ?? 0
+        if expectedGen != 0 && currentGen != expectedGen {
+            return .noOp
+        }
 
         subscribedCentrals.remove(centralId)
         physicalReadyCentrals.remove(centralId)

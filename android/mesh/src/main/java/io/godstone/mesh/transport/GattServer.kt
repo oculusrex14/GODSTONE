@@ -29,7 +29,7 @@ private data class PendingNotification(
 
 @SuppressLint("MissingPermission")
 class BleGattServer(
-    private val context: Context,
+    private val context: Context? = null,
     val serviceUuid: UUID,
     val inboxCharUuid: UUID,
     val linkInfoCharUuid: UUID = BleTransport.LINK_INFO_CHAR_UUID,
@@ -38,9 +38,10 @@ class BleGattServer(
     val onInboundWrite: (String, ByteArray) -> Unit,
     val onLinkInfoWrite: (String, ByteArray) -> Boolean,
     val onSubscriptionChanged: (String, Boolean) -> Unit,
-    val onClientDisconnected: (String) -> Unit,
+    val onClientDisconnected: (String, Long) -> Unit,
     val onMtuChanged: (String, Int) -> Unit,
     val onServiceStatusChanged: (Boolean) -> Unit = {},
+    val onClientAdmitted: ((String, Long) -> Unit)? = null,
     private val orchestrationDriver: BleServerOrchestrationDriver? = null,
     private val notificationTimeoutMs: Long = NOTIFICATION_TIMEOUT_MS
 ) {
@@ -93,6 +94,15 @@ class BleGattServer(
 
     fun getActiveCallback(): BluetoothGattServerCallback? = activeCallback
 
+    fun cancelConnection(peerAddress: String) {
+        val device = connectedDevices[peerAddress]
+        if (device != null) {
+            try {
+                server?.cancelConnection(device)
+            } catch (_: Exception) {}
+        }
+    }
+
     fun makeServerCallback(callbackEpoch: Long): BluetoothGattServerCallback {
         return object : BluetoothGattServerCallback() {
             override fun onServiceAdded(status: Int, service: BluetoothGattService) {
@@ -136,6 +146,7 @@ class BleGattServer(
 
                     if (connectedDevices.containsKey(address)) {
                         connectedDevices[address] = device
+                        peerGenerations[address] = pGen
                     } else if (orchestrationDriver == null && connectedDevices.size >= MAX_ADMITTED_CLIENTS) {
                         try {
                             server?.cancelConnection(device)
@@ -145,19 +156,24 @@ class BleGattServer(
                         peerGenerations[address] = pGen
                         connectedDevices[address] = device
                     }
+                    onClientAdmitted?.invoke(address, pGen)
                 } else if (newState == BluetoothProfile.STATE_DISCONNECTED) {
-                    orchestrationDriver?.onClientDisconnected(address)
+                    val currentConnected = connectedDevices[address]
+                    if (currentConnected != null && currentConnected != device) {
+                        return
+                    }
+                    val pGen = peerGenerations.remove(address) ?: 0L
+                    orchestrationDriver?.onClientDisconnected(address, pGen)
                     connectedDevices.remove(address)
                     subscribedDevices.remove(address)
                     deviceMtu.remove(address)
-                    peerGenerations.remove(address)
                     val pending = pendingNotification
                     if (pending != null && pending.deviceAddress == address) {
                         pendingNotification = null
                         pending.deferred.complete(false)
                     }
                     onSubscriptionChanged(address, false)
-                    onClientDisconnected(address)
+                    onClientDisconnected(address, pGen)
                 }
             }
 
@@ -448,7 +464,7 @@ class BleGattServer(
     fun start(): Boolean {
         if (server != null && !isPoisoned) return true
 
-        val manager = context.getSystemService(BluetoothManager::class.java) ?: return false
+        val manager = context?.getSystemService(BluetoothManager::class.java) ?: return false
         val adapter = manager.adapter ?: return false
         if (!adapter.isEnabled) return false
 
@@ -561,17 +577,17 @@ class BleGattServer(
     }
 
     private fun invalidatePeerPhysicalConnection(deviceAddress: String, device: BluetoothDevice?) {
+        val pGen = peerGenerations.remove(deviceAddress) ?: 0L
         connectedDevices.remove(deviceAddress)
         subscribedDevices.remove(deviceAddress)
         deviceMtu.remove(deviceAddress)
-        peerGenerations.remove(deviceAddress)
         try {
             if (device != null) {
                 server?.cancelConnection(device)
             }
         } catch (_: Exception) {}
         onSubscriptionChanged(deviceAddress, false)
-        onClientDisconnected(deviceAddress)
+        onClientDisconnected(deviceAddress, pGen)
     }
 
     fun stop() {

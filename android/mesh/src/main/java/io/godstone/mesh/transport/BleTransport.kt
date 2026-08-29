@@ -34,7 +34,7 @@ import java.util.concurrent.ConcurrentHashMap
 
 @SuppressLint("MissingPermission")
 class BleTransport(
-    private val context: Context,
+    private val context: Context? = null,
     val identity: Identity,
     private val digestProvider: (suspend () -> BloomDigest)? = null,
     private val sessions: io.godstone.mesh.crypto.SessionManager? = null,
@@ -45,7 +45,7 @@ class BleTransport(
     override val name = "BLE"
     override val isBulkCapable = false
 
-    private val btManager = context.getSystemService(BluetoothManager::class.java)
+    private val btManager = context?.getSystemService(BluetoothManager::class.java)
     private val adapter get() = btManager?.adapter
 
     private var powerState = PowerState.NORMAL
@@ -83,13 +83,13 @@ class BleTransport(
         onLinkInfoWrite = { peerAddress, value -> handleIncomingLinkInfoWrite(peerAddress, value) },
         isRoleBoundPredicate = { peerAddress -> serverDriver.getInboundConnection(peerAddress)?.isRoleBound == true },
         onInboundWrite = { peerAddress, value -> handleServerInboundWrite(peerAddress, value) },
-        onClientDisconnected = { peerAddress -> handleServerDisconnected(peerAddress) },
+        onClientDisconnected = { peerAddress, generation -> handleServerDisconnected(peerAddress, generation) },
         onSubscriptionChanged = { peerAddress, isSubscribed ->
-            inboundJobs.remove(peerAddress)?.cancel()
             val conn = serverDriver.getInboundConnection(peerAddress)
             if (conn != null) {
                 conn.isNotificationSubscribed = isSubscribed
                 if (isSubscribed && conn.isHandshakeTransportReady) {
+                    inboundJobs.remove(peerAddress)?.cancel()
                     val peerMacBytes = PeerId.fromAddress(peerAddress) ?: peerAddress.toByteArray()
                     emitResponderFoundIfDuplexReady(peerAddress, peerMacBytes, conn)
                 }
@@ -106,6 +106,7 @@ class BleTransport(
                 startAdvertising()
             }
         },
+        onClientAdmitted = { peerAddress, generation -> handleInboundClientAdmitted(peerAddress, generation) },
         orchestrationDriver = serverDriver
     )
 
@@ -158,12 +159,14 @@ class BleTransport(
     }
 
     override fun stop() {
-        if (!isStarted) return
+        val wasStarted = isStarted
         isStarted = false
-        stopAdvertising()
-        scanCallback?.let {
-            adapter?.bluetoothLeScanner?.stopScan(it)
-            scanCallback = null
+        if (wasStarted) {
+            stopAdvertising()
+            scanCallback?.let {
+                adapter?.bluetoothLeScanner?.stopScan(it)
+                scanCallback = null
+            }
         }
         for ((_, job) in provisionalJobs) {
             job.cancel()
@@ -246,34 +249,14 @@ class BleTransport(
             }
             is BleCentralAction.PublishFound -> {
                 provisionalJobs.remove(address)?.cancel()
-                val peerMacBytes = PeerId.fromAddress(address) ?: address.toByteArray()
                 val meta = centralRemoteLinkInfo[address] ?: discoveredPeers[address]
                 val gen = centralDriver.getConnectionGeneration(address)
-                val key = RelationKey(BleDirection.OUTBOUND, address, gen)
-                val wasPublished = publishedRelations.any { it.peerAddress == address }
-                publishedRelations.add(key)
-                if (!wasPublished && meta != null) {
-                    peerEventsFlow.tryEmit(
-                        PeerEvent.Found(
-                            peerId = peerMacBytes,
-                            nodeHint = meta.nodeHint,
-                            rssi = action.rssi ?: peerRssi[address],
-                            sosFlag = meta.isSosPresent,
-                            bulkCapable = meta.isBulkCapable,
-                            shortDigest = meta.shortDigest,
-                            queueDepth = meta.queueDepth
-                        )
-                    )
-                }
+                publishRelation(RelationKey(BleDirection.OUTBOUND, address, gen), meta)
             }
             is BleCentralAction.PublishLost -> {
                 provisionalJobs.remove(address)?.cancel()
                 val gen = centralDriver.getConnectionGeneration(address)
-                publishedRelations.remove(RelationKey(BleDirection.OUTBOUND, address, gen))
-                if (publishedRelations.none { it.peerAddress == address }) {
-                    val peerMacBytes = PeerId.fromAddress(address) ?: address.toByteArray()
-                    peerEventsFlow.tryEmit(PeerEvent.Lost(peerMacBytes))
-                }
+                unpublishRelation(RelationKey(BleDirection.OUTBOUND, address, gen))
             }
             is BleCentralAction.DisconnectGatt -> {
                 provisionalJobs.remove(address)?.cancel()
@@ -281,7 +264,7 @@ class BleTransport(
                 activeClientConnections.remove(address)
                 centralRemoteLinkInfo.remove(address)
                 val gen = centralDriver.getConnectionGeneration(address)
-                publishedRelations.remove(RelationKey(BleDirection.OUTBOUND, address, gen))
+                unpublishRelation(RelationKey(BleDirection.OUTBOUND, address, gen))
             }
             BleCentralAction.NoOp -> {}
         }
@@ -354,6 +337,77 @@ class BleTransport(
         }
     }
 
+    private val publicationLock = Any()
+
+    fun publishRelation(key: RelationKey, metadata: BleLinkInfoV1? = null): Boolean = synchronized(publicationLock) {
+        val hadAny = publishedRelations.any { it.peerAddress == key.peerAddress }
+        val added = publishedRelations.add(key)
+        if (added) {
+            if (!hadAny) {
+                val peerMacBytes = PeerId.fromAddress(key.peerAddress) ?: key.peerAddress.toByteArray()
+                val hint = metadata?.nodeHint ?: byteArrayOf()
+                peerEventsFlow.tryEmit(
+                    PeerEvent.Found(
+                        peerId = peerMacBytes,
+                        nodeHint = hint,
+                        rssi = peerRssi[key.peerAddress],
+                        sosFlag = metadata?.isSosPresent == true,
+                        bulkCapable = metadata?.isBulkCapable == true,
+                        shortDigest = metadata?.shortDigest ?: ByteArray(6),
+                        queueDepth = metadata?.queueDepth ?: 0
+                    )
+                )
+            }
+            true
+        } else {
+            false
+        }
+    }
+
+    fun unpublishRelation(key: RelationKey): Boolean = synchronized(publicationLock) {
+        val hadAny = publishedRelations.any { it.peerAddress == key.peerAddress }
+        val removed = publishedRelations.remove(key)
+        if (removed) {
+            if (hadAny) {
+                val hasRemaining = publishedRelations.any { it.peerAddress == key.peerAddress }
+                if (!hasRemaining) {
+                    val peerMacBytes = PeerId.fromAddress(key.peerAddress) ?: key.peerAddress.toByteArray()
+                    peerEventsFlow.tryEmit(PeerEvent.Lost(peerMacBytes))
+                }
+            }
+            true
+        } else {
+            false
+        }
+    }
+
+    fun handleInboundClientAdmitted(peerAddress: String, generation: Long) {
+        inboundJobs.remove(peerAddress)?.cancel()
+        val job = coroutineScope.launch {
+            delay(PROVISIONAL_TIMEOUT_MS)
+            handleInboundTimeout(peerAddress, generation)
+        }
+        inboundJobs[peerAddress] = job
+    }
+
+    fun hasInboundJob(peerAddress: String): Boolean = inboundJobs.containsKey(peerAddress)
+
+    fun handleInboundTimeout(peerAddress: String, generation: Long = 0L) {
+        val currentGen = serverDriver.getClientGeneration(peerAddress)
+        if (generation != 0L && currentGen != 0L && currentGen != generation) {
+            return
+        }
+        if (serverDriver.isPhysicalReady(peerAddress)) {
+            return
+        }
+        val effectiveGen = if (generation != 0L) generation else currentGen
+        serverDriver.onInboundTimeout(peerAddress, effectiveGen)
+        inboundJobs.remove(peerAddress)?.cancel()
+        responderRemoteLinkInfo.remove(peerAddress)
+        gattServer.cancelConnection(peerAddress)
+        unpublishRelation(RelationKey(BleDirection.INBOUND, peerAddress, effectiveGen))
+    }
+
     private fun handleIncomingLinkInfoWrite(peerAddress: String, value: ByteArray): Boolean {
         if (value.size != BleLinkInfoConstants.LINK_INFO_BYTES) return false
         val decoded = BleLinkInfoCodec.decode(value) ?: return false
@@ -364,22 +418,9 @@ class BleTransport(
     private fun emitResponderFoundIfDuplexReady(address: String, peerMacBytes: ByteArray, conn: BleConnection) {
         if (!conn.isHandshakeTransportReady) return
         val meta = responderRemoteLinkInfo[address] ?: serverDriver.getAcceptedRemoteLinkInfo(address)
-        val key = RelationKey(BleDirection.INBOUND, address, 1L)
-        val wasPublished = publishedRelations.any { it.peerAddress == address }
-        publishedRelations.add(key)
-        if (!wasPublished && meta != null) {
-            peerEventsFlow.tryEmit(
-                PeerEvent.Found(
-                    peerId = peerMacBytes,
-                    nodeHint = meta.nodeHint,
-                    rssi = peerRssi[address],
-                    sosFlag = meta.isSosPresent,
-                    bulkCapable = meta.isBulkCapable,
-                    shortDigest = meta.shortDigest,
-                    queueDepth = meta.queueDepth
-                )
-            )
-        }
+        val gen = serverDriver.getClientGeneration(address)
+        val key = RelationKey(BleDirection.INBOUND, address, gen)
+        publishRelation(key, meta)
     }
 
     fun handleCentralInboundNotification(peerAddress: String, value: ByteArray) {
@@ -407,28 +448,25 @@ class BleTransport(
         val conn = centralDriver.getActiveConnection(peerAddress)
         conn?.markDisconnected()
         val gen = centralDriver.getConnectionGeneration(peerAddress)
-        val act = centralDriver.onDisconnected(peerAddress)
+        val act = centralDriver.onDisconnected(peerAddress, gen)
         processCentralAction(peerAddress, act)
         activeClientConnections.remove(peerAddress)
         centralRemoteLinkInfo.remove(peerAddress)
-        publishedRelations.remove(RelationKey(BleDirection.OUTBOUND, peerAddress, gen))
-        if (publishedRelations.none { it.peerAddress == peerAddress }) {
-            val peerMacBytes = PeerId.fromAddress(peerAddress) ?: peerAddress.toByteArray()
-            peerEventsFlow.tryEmit(PeerEvent.Lost(peerMacBytes))
-        }
+        unpublishRelation(RelationKey(BleDirection.OUTBOUND, peerAddress, gen))
     }
 
-    fun handleServerDisconnected(peerAddress: String) {
+    fun handleServerDisconnected(peerAddress: String, generation: Long = 0L) {
+        val currentGen = serverDriver.getClientGeneration(peerAddress)
+        if (generation != 0L && currentGen != 0L && currentGen != generation) {
+            return
+        }
         inboundJobs.remove(peerAddress)?.cancel()
+        val effectiveGen = if (generation != 0L) generation else currentGen
         val conn = serverDriver.getInboundConnection(peerAddress)
         conn?.markDisconnected()
-        serverDriver.onClientDisconnected(peerAddress)
+        serverDriver.onClientDisconnected(peerAddress, effectiveGen)
         responderRemoteLinkInfo.remove(peerAddress)
-        publishedRelations.removeIf { it.direction == BleDirection.INBOUND && it.peerAddress == peerAddress }
-        if (publishedRelations.none { it.peerAddress == peerAddress }) {
-            val peerMacBytes = PeerId.fromAddress(peerAddress) ?: peerAddress.toByteArray()
-            peerEventsFlow.tryEmit(PeerEvent.Lost(peerMacBytes))
-        }
+        unpublishRelation(RelationKey(BleDirection.INBOUND, peerAddress, effectiveGen))
     }
 
     fun isRelationPublished(direction: BleDirection, address: String, generation: Long = 0L): Boolean {

@@ -46,7 +46,6 @@ public final class BleTransport: NSObject, @unchecked Sendable {
     private var provisionalTimers: [UUID: Timer] = [:]
     private var provisionalGenerations: [UUID: UInt64] = [:]
     private var inboundTimers: [UUID: Timer] = [:]
-    private var inboundGenerations: [UUID: UInt64] = [:]
 
     private var publishedRelations: Set<RelationKey> = []
     private var discoveredPeers: [UUID: BleDiscoveryMetadata] = [:]
@@ -156,7 +155,6 @@ public final class BleTransport: NSObject, @unchecked Sendable {
             timer.invalidate()
         }
         inboundTimers.removeAll()
-        inboundGenerations.removeAll()
 
         for (_, p) in connectedPeripherals {
             central?.cancelPeripheralConnection(p)
@@ -224,6 +222,7 @@ public final class BleTransport: NSObject, @unchecked Sendable {
     }
 
     private func purgeCentralConnection(peerId: UUID, cancelPeripheral: Bool) {
+        let gen = centralDriver?.getConnectionGeneration(peerId) ?? 0
         transportLock.lock()
         provisionalTimers.removeValue(forKey: peerId)?.invalidate()
         inboxCharacteristics.removeValue(forKey: peerId)
@@ -233,19 +232,14 @@ public final class BleTransport: NSObject, @unchecked Sendable {
         let periph = connectedPeripherals.removeValue(forKey: peerId)
         let conn = outboundCentralConnections.removeValue(forKey: peerId)
         conn?.markDisconnected()
-        _ = centralDriver?.onProvisionalTimeout(peerId: peerId)
-
-        let wasPublished = publishedRelations.contains(where: { $0.peerId == peerId })
-        publishedRelations = publishedRelations.filter { !($0.direction == .outboundCentral && $0.peerId == peerId) }
-        let stillPublished = publishedRelations.contains(where: { $0.peerId == peerId })
+        _ = centralDriver?.onProvisionalTimeout(peerId: peerId, expectedGen: gen)
         transportLock.unlock()
 
         if cancelPeripheral, let p = periph {
             central?.cancelPeripheralConnection(p)
         }
-        if wasPublished && !stillPublished {
-            delegate?.transportDidDisconnect(peerId: peerId)
-        }
+        let key = RelationKey(direction: .outboundCentral, peerId: peerId, generation: gen)
+        unpublishRelation(key)
     }
 
     @discardableResult
@@ -342,28 +336,203 @@ public final class BleTransport: NSObject, @unchecked Sendable {
         }
     }
 
+    @discardableResult
+    public func publishRelation(_ key: RelationKey) -> Bool {
+        transportLock.lock()
+        let hadAny = publishedRelations.contains(where: { $0.peerId == key.peerId })
+        let (inserted, _) = publishedRelations.insert(key)
+        transportLock.unlock()
+        if inserted && !hadAny {
+            delegate?.transportPhysicalDuplexReady(peerId: key.peerId)
+            delegate?.transportDidConnect(peerId: key.peerId)
+            return true
+        }
+        return false
+    }
+
+    @discardableResult
+    public func unpublishRelation(_ key: RelationKey) -> Bool {
+        transportLock.lock()
+        let hadAny = publishedRelations.contains(where: { $0.peerId == key.peerId })
+        let removed = publishedRelations.remove(key) != nil
+        let hasRemaining = publishedRelations.contains(where: { $0.peerId == key.peerId })
+        transportLock.unlock()
+        if removed && hadAny && !hasRemaining {
+            delegate?.transportDidDisconnect(peerId: key.peerId)
+            return true
+        }
+        return false
+    }
+
+    public func processInboundWrite(centralId: UUID, rawData: Data) -> BlePeripheralAction {
+        guard let driver = peripheralDriver else { return .noOp }
+        let action = driver.onCentralWrite(centralId: centralId, rawData: rawData)
+        switch action {
+        case .acceptWrite(let cid, let remoteHint),
+             .acceptWriteAndDuplexReady(let cid, let remoteHint):
+            transportLock.lock()
+            if inboundPeripheralConnections[cid] == nil {
+                inboundPeripheralConnections[cid] = driver.getInboundConnection(cid)
+            }
+            if let conn = inboundPeripheralConnections[cid], !conn.isRoleBound {
+                conn.bindResponderFromAcceptedIncomingLinkInfo(remoteHint: remoteHint)
+            }
+            let gen = driver.getCentralGeneration(cid)
+            if inboundTimers[cid] == nil {
+                let timer = Timer(timeInterval: provisionalTimeoutSeconds, repeats: false) { [weak self] _ in
+                    self?.handleInboundTimeout(centralId: cid, generation: gen)
+                }
+                RunLoop.main.add(timer, forMode: .common)
+                inboundTimers[cid] = timer
+            }
+            transportLock.unlock()
+            if case .acceptWriteAndDuplexReady = action {
+                let key = RelationKey(direction: .inboundPeripheral, peerId: cid, generation: gen)
+                publishRelation(key)
+            }
+        default:
+            break
+        }
+        return action
+    }
+
+    public func processInboundSubscribe(centralId: UUID, maxUpdateLength: Int = 512) -> BlePeripheralAction {
+        guard let driver = peripheralDriver else { return .noOp }
+        let action = driver.onCentralSubscribed(centralId: centralId)
+        switch action {
+        case .acceptSubscription(let cid), .acceptSubscriptionAndDuplexReady(let cid):
+            transportLock.lock()
+            inboundTimers.removeValue(forKey: cid)?.invalidate()
+            if inboundPeripheralConnections[cid] == nil {
+                inboundPeripheralConnections[cid] = driver.getInboundConnection(cid)
+            }
+            if let conn = inboundPeripheralConnections[cid] {
+                conn.markConnected(negotiatedAttValueLength: maxUpdateLength)
+            }
+            let gen = driver.getCentralGeneration(cid)
+            transportLock.unlock()
+            if case .acceptSubscriptionAndDuplexReady = action {
+                let key = RelationKey(direction: .inboundPeripheral, peerId: cid, generation: gen)
+                publishRelation(key)
+            }
+        default:
+            break
+        }
+        return action
+    }
+
+    public func processInboundUnsubscribe(centralId: UUID, expectedGen: UInt64 = 0) -> BlePeripheralAction {
+        guard let driver = peripheralDriver else { return .noOp }
+        let currentGen = driver.getCentralGeneration(centralId)
+        if expectedGen != 0 && currentGen != expectedGen {
+            return .noOp
+        }
+        let effectiveGen = (expectedGen != 0) ? expectedGen : currentGen
+        let action = driver.onCentralUnsubscribed(centralId: centralId, expectedGen: effectiveGen)
+        transportLock.lock()
+        inboundTimers.removeValue(forKey: centralId)?.invalidate()
+        inboundPeripheralConnections.removeValue(forKey: centralId)?.markDisconnected()
+        subscribedCentrals.removeValue(forKey: centralId)
+        pendingOutboundUpdates.removeValue(forKey: centralId)
+        transportLock.unlock()
+        let key = RelationKey(direction: .inboundPeripheral, peerId: centralId, generation: effectiveGen)
+        unpublishRelation(key)
+        return action
+    }
+
+    public func handleInboundTimeout(centralId: UUID, generation: UInt64 = 0) {
+        guard let driver = peripheralDriver else { return }
+        let currentGen = driver.getCentralGeneration(centralId)
+        if generation != 0 && currentGen != generation {
+            return
+        }
+        if driver.isPhysicalReady(centralId) {
+            return
+        }
+        let effectiveGen = (generation != 0) ? generation : currentGen
+        driver.onInboundTimeout(centralId: centralId, expectedGen: effectiveGen)
+        transportLock.lock()
+        inboundTimers.removeValue(forKey: centralId)?.invalidate()
+        inboundPeripheralConnections.removeValue(forKey: centralId)?.markDisconnected()
+        subscribedCentrals.removeValue(forKey: centralId)
+        pendingOutboundUpdates.removeValue(forKey: centralId)
+        transportLock.unlock()
+        let key = RelationKey(direction: .inboundPeripheral, peerId: centralId, generation: effectiveGen)
+        unpublishRelation(key)
+    }
+
+    public func processOutboundDisconnect(peerId: UUID, expectedGen: UInt64 = 0) -> BleCentralAction {
+        guard let driver = centralDriver else { return .noOp }
+        let currentGen = driver.getConnectionGeneration(peerId)
+        if expectedGen != 0 && currentGen != expectedGen {
+            return .noOp
+        }
+        let effectiveGen = (expectedGen != 0) ? expectedGen : currentGen
+        transportLock.lock()
+        provisionalTimers.removeValue(forKey: peerId)?.invalidate()
+        outboundCentralConnections.removeValue(forKey: peerId)?.markDisconnected()
+        connectedPeripherals.removeValue(forKey: peerId)
+        inboxCharacteristics.removeValue(forKey: peerId)
+        linkInfoCharacteristics.removeValue(forKey: peerId)
+        pendingInitiatorRemoteHints.removeValue(forKey: peerId)
+        pendingOutboundWrites.removeValue(forKey: peerId)
+        transportLock.unlock()
+        let action = driver.onDisconnected(peerId: peerId, expectedGen: effectiveGen)
+        let key = RelationKey(direction: .outboundCentral, peerId: peerId, generation: effectiveGen)
+        unpublishRelation(key)
+        return action
+    }
+
+    public func handleOutboundTimeout(peerId: UUID, generation: UInt64 = 0) -> BleCentralAction {
+        guard let driver = centralDriver else { return .noOp }
+        let currentGen = driver.getConnectionGeneration(peerId)
+        if generation != 0 && currentGen != generation {
+            return .noOp
+        }
+        if driver.isPhysicalReady(peerId) {
+            return .noOp
+        }
+        let effectiveGen = (generation != 0) ? generation : currentGen
+        let action = driver.onProvisionalTimeout(peerId: peerId, expectedGen: effectiveGen)
+        transportLock.lock()
+        provisionalTimers.removeValue(forKey: peerId)?.invalidate()
+        let p = connectedPeripherals.removeValue(forKey: peerId)
+        outboundCentralConnections.removeValue(forKey: peerId)?.markDisconnected()
+        inboxCharacteristics.removeValue(forKey: peerId)
+        linkInfoCharacteristics.removeValue(forKey: peerId)
+        pendingInitiatorRemoteHints.removeValue(forKey: peerId)
+        pendingOutboundWrites.removeValue(forKey: peerId)
+        transportLock.unlock()
+        if let p = p {
+            central?.cancelPeripheralConnection(p)
+        }
+        let key = RelationKey(direction: .outboundCentral, peerId: peerId, generation: effectiveGen)
+        unpublishRelation(key)
+        return action
+    }
+
     public func dispatchReceiveRead(centralId: UUID) -> BlePeripheralAction {
         return peripheralDriver?.onCentralRead(centralId: centralId) ?? .noOp
     }
 
     public func dispatchReceiveWrite(centralId: UUID, rawData: Data) -> BlePeripheralAction {
-        return peripheralDriver?.onCentralWrite(centralId: centralId, rawData: rawData) ?? .noOp
+        return processInboundWrite(centralId: centralId, rawData: rawData)
     }
 
     public func dispatchSubscribe(centralId: UUID) -> BlePeripheralAction {
-        return peripheralDriver?.onCentralSubscribed(centralId: centralId) ?? .noOp
+        return processInboundSubscribe(centralId: centralId)
     }
 
-    public func dispatchUnsubscribe(centralId: UUID) -> BlePeripheralAction {
-        return peripheralDriver?.onCentralUnsubscribed(centralId: centralId) ?? .noOp
+    public func dispatchUnsubscribe(centralId: UUID, expectedGen: UInt64 = 0) -> BlePeripheralAction {
+        return processInboundUnsubscribe(centralId: centralId, expectedGen: expectedGen)
     }
 
     public func dispatchOutboundProvisionalTimeout(peerId: UUID, expectedGen: UInt64 = 0) -> BleCentralAction {
-        return centralDriver?.onProvisionalTimeout(peerId: peerId, expectedGen: expectedGen) ?? .noOp
+        return handleOutboundTimeout(peerId: peerId, generation: expectedGen)
     }
 
     public func dispatchInboundTimeout(centralId: UUID, expectedGen: UInt64 = 0) {
-        peripheralDriver?.onInboundTimeout(centralId: centralId, expectedGen: expectedGen)
+        handleInboundTimeout(centralId: centralId, generation: expectedGen)
     }
 
     public func isRelationPublished(direction: BleDirection, peerId: UUID, generation: UInt64 = 0) -> Bool {
@@ -462,10 +631,7 @@ extension BleTransport: CBCentralManagerDelegate, CBPeripheralDelegate {
     public func centralManager(_ c: CBCentralManager,
                                didDisconnectPeripheral p: CBPeripheral,
                                error: Error?) {
-        let action = centralDriver?.onDisconnected(peerId: p.identifier) ?? .noOp
-        purgeCentralConnection(peerId: p.identifier, cancelPeripheral: false)
-        if case .didDisconnect(let peerId) = action {
-        }
+        _ = processOutboundDisconnect(peerId: p.identifier)
     }
 
     public func peripheral(_ p: CBPeripheral, didDiscoverServices error: Error?) {
@@ -591,14 +757,9 @@ extension BleTransport: CBCentralManagerDelegate, CBPeripheralDelegate {
                 transportLock.lock()
                 provisionalTimers.removeValue(forKey: peerId)?.invalidate()
                 let gen = centralDriver?.getConnectionGeneration(peerId) ?? 0
-                let key = RelationKey(direction: .outboundCentral, peerId: peerId, generation: gen)
-                let wasPublished = publishedRelations.contains(where: { $0.peerId == peerId })
-                publishedRelations.insert(key)
                 transportLock.unlock()
-                if !wasPublished {
-                    delegate?.transportPhysicalDuplexReady(peerId: peerId)
-                    delegate?.transportDidConnect(peerId: peerId)
-                }
+                let key = RelationKey(direction: .outboundCentral, peerId: peerId, generation: gen)
+                publishRelation(key)
             case .disconnectPeripheral(let peerId, _):
                 purgeCentralConnection(peerId: peerId, cancelPeripheral: true)
             default: break
@@ -710,54 +871,10 @@ extension BleTransport: CBPeripheralManagerDelegate {
                     continue
                 }
 
-                let action = peripheralDriver?.onCentralWrite(centralId: centralId, rawData: v) ?? .noOp
+                let action = processInboundWrite(centralId: centralId, rawData: v)
                 switch action {
-                case .acceptWrite(let centralId, let remoteHint),
-                     .acceptWriteAndDuplexReady(let centralId, let remoteHint):
-                    transportLock.lock()
-                    if inboundPeripheralConnections[centralId] == nil {
-                        inboundPeripheralConnections[centralId] = peripheralDriver?.getInboundConnection(centralId)
-                    }
-                    if let conn = inboundPeripheralConnections[centralId], !(conn.isRoleBound) {
-                        conn.bindResponderFromAcceptedIncomingLinkInfo(remoteHint: remoteHint)
-                    }
-                    let gen = (inboundGenerations[centralId] ?? 0) + 1
-                    inboundGenerations[centralId] = gen
-                    inboundTimers[centralId]?.invalidate()
-                    let timer = Timer(timeInterval: provisionalTimeoutSeconds, repeats: false) { [weak self] _ in
-                        guard let self = self else { return }
-                        self.transportLock.lock()
-                        let isCurrentGen = (self.inboundGenerations[centralId] == gen)
-                        let isSubscribed = self.subscribedCentrals[centralId] != nil
-                        self.transportLock.unlock()
-                        if isCurrentGen && !isSubscribed {
-                            self.peripheralDriver?.onInboundTimeout(centralId: centralId, expectedGen: gen)
-                            self.transportLock.lock()
-                            self.inboundPeripheralConnections.removeValue(forKey: centralId)?.markDisconnected()
-                            self.inboundTimers.removeValue(forKey: centralId)
-                            let wasPublished = self.publishedRelations.contains(where: { $0.peerId == centralId })
-                            self.publishedRelations = self.publishedRelations.filter { !($0.direction == .inboundPeripheral && $0.peerId == centralId) }
-                            let stillPublished = self.publishedRelations.contains(where: { $0.peerId == centralId })
-                            self.transportLock.unlock()
-                            if wasPublished && !stillPublished {
-                                self.delegate?.transportDidDisconnect(peerId: centralId)
-                            }
-                        }
-                    }
-                    RunLoop.main.add(timer, forMode: .common)
-                    inboundTimers[centralId] = timer
-                    let key = RelationKey(direction: .inboundPeripheral, peerId: centralId, generation: gen)
-                    let wasPublished = publishedRelations.contains(where: { $0.peerId == centralId })
-                    if case .acceptWriteAndDuplexReady = action {
-                        publishedRelations.insert(key)
-                    }
-                    transportLock.unlock()
+                case .acceptWrite, .acceptWriteAndDuplexReady:
                     pm.respond(to: r, withResult: .success)
-
-                    if case .acceptWriteAndDuplexReady = action, !wasPublished {
-                        delegate?.transportPhysicalDuplexReady(peerId: centralId)
-                        delegate?.transportDidConnect(peerId: centralId)
-                    }
                 default:
                     pm.respond(to: r, withResult: .unlikelyError)
                 }
@@ -797,56 +914,13 @@ extension BleTransport: CBPeripheralManagerDelegate {
                                   central: CBCentral,
                                   didSubscribeTo ch: CBCharacteristic) {
         guard ch.uuid == BleTransport.inboxCharacteristicUuid else { return }
-
-        let action = peripheralDriver?.onCentralSubscribed(centralId: central.identifier) ?? .noOp
-        switch action {
-        case .acceptSubscription(let centralId), .acceptSubscriptionAndDuplexReady(let centralId):
-            transportLock.lock()
-            inboundTimers.removeValue(forKey: centralId)?.invalidate()
-            subscribedCentrals[centralId] = central
-            if inboundPeripheralConnections[centralId] == nil {
-                inboundPeripheralConnections[centralId] = peripheralDriver?.getInboundConnection(centralId)
-            }
-            if let conn = inboundPeripheralConnections[centralId] {
-                let maxUpdate = central.maximumUpdateValueLength
-                conn.markConnected(negotiatedAttValueLength: maxUpdate)
-            }
-            let gen = peripheralDriver?.getCentralGeneration(centralId) ?? 0
-            let key = RelationKey(direction: .inboundPeripheral, peerId: centralId, generation: gen)
-            let wasPublished = publishedRelations.contains(where: { $0.peerId == centralId })
-            if case .acceptSubscriptionAndDuplexReady = action {
-                publishedRelations.insert(key)
-            }
-            transportLock.unlock()
-
-            if case .acceptSubscriptionAndDuplexReady = action, !wasPublished {
-                delegate?.transportPhysicalDuplexReady(peerId: centralId)
-                delegate?.transportDidConnect(peerId: centralId)
-            }
-        default:
-            break
-        }
+        _ = processInboundSubscribe(centralId: central.identifier, maxUpdateLength: central.maximumUpdateValueLength)
     }
 
     public func peripheralManager(_ pm: CBPeripheralManager,
                                   central: CBCentral,
                                   didUnsubscribeFrom ch: CBCharacteristic) {
-        _ = peripheralDriver?.onCentralUnsubscribed(centralId: central.identifier)
-        transportLock.lock()
-        inboundTimers.removeValue(forKey: central.identifier)?.invalidate()
-        subscribedCentrals.removeValue(forKey: central.identifier)
-        pendingOutboundUpdates.removeValue(forKey: central.identifier)
-        if let conn = inboundPeripheralConnections.removeValue(forKey: central.identifier) {
-            conn.markDisconnected()
-        }
-        let wasPublished = publishedRelations.contains(where: { $0.peerId == central.identifier })
-        publishedRelations = publishedRelations.filter { !($0.direction == .inboundPeripheral && $0.peerId == central.identifier) }
-        let stillPublished = publishedRelations.contains(where: { $0.peerId == central.identifier })
-        transportLock.unlock()
-
-        if wasPublished && !stillPublished {
-            delegate?.transportDidDisconnect(peerId: central.identifier)
-        }
+        _ = processInboundUnsubscribe(centralId: central.identifier)
     }
 
     public func peripheralManagerIsReady(toUpdateSubscribers pm: CBPeripheralManager) {

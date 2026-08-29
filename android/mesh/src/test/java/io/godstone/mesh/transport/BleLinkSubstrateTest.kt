@@ -2052,6 +2052,390 @@ class BleLinkSubstrateTest {
         assertTrue(conn?.isRoleBound == true)
         assertArrayEquals(remoteHint1, conn?.remoteNodeHint)
     }
+
+    // =========================================================================
+    // SECTION N — Phase C8.4D1-R2.7 Single Authority & Publication Closure Regressions
+    // =========================================================================
+
+    @Test
+    fun testTransportInboundAdmission_SchedulesExactGenerationTimeout() {
+        val identity = makeIdentity()
+        val store = InMemoryMessageStore()
+        val transport = BleTransport(
+            identity = identity,
+            store = store
+        )
+        val peer = "11:22:33:44:55:60"
+        transport.handleInboundClientAdmitted(peer, 1L)
+        assertTrue("Inbound job must be scheduled on admission", transport.hasInboundJob(peer))
+        transport.stop()
+        assertFalse("Inbound job must be cancelled on stop", transport.hasInboundJob(peer))
+    }
+
+    @Test
+    fun testTransportInboundTimeout_ReleasesExactRelation() {
+        val identity = makeIdentity()
+        val store = InMemoryMessageStore()
+        val transport = BleTransport(
+            identity = identity,
+            store = store
+        )
+        val peer = "11:22:33:44:55:61"
+        transport.handleInboundClientAdmitted(peer, 1L)
+        assertTrue(transport.hasInboundJob(peer))
+
+        // Trigger timeout for exact generation 1L
+        transport.handleInboundTimeout(peer, 1L)
+        assertFalse(transport.hasInboundJob(peer))
+        assertFalse(transport.isRelationPublished(BleDirection.INBOUND, peer, 1L))
+    }
+
+    @Test
+    fun testTransportPublication_UnpublishedDisconnectEmitsNoLost() {
+        val identity = makeIdentity()
+        val store = InMemoryMessageStore()
+        val transport = BleTransport(
+            identity = identity,
+            store = store
+        )
+        val peer = "11:22:33:44:55:62"
+        // Unpublished relation disconnects
+        transport.handleCentralDisconnected(peer, 0L, 0L)
+        transport.handleServerDisconnected(peer, 1L)
+
+        assertFalse(transport.isRelationPublished(BleDirection.OUTBOUND, peer))
+        assertFalse(transport.isRelationPublished(BleDirection.INBOUND, peer))
+    }
+
+    @Test
+    fun testTransportPublication_CentralDisconnectEmitsExactlyOneLost() {
+        val identity = makeIdentity()
+        val store = InMemoryMessageStore()
+        val transport = BleTransport(
+            identity = identity,
+            store = store
+        )
+        val peer = "11:22:33:44:55:63"
+        val key = RelationKey(BleDirection.OUTBOUND, peer, 1L)
+        val metadata = BleLinkInfoV1(nodeHint = byteArrayOf(1, 2, 3, 4), shortDigest = ByteArray(6))
+
+        val published = transport.publishRelation(key, metadata)
+        assertTrue(published)
+        assertTrue(transport.isRelationPublished(BleDirection.OUTBOUND, peer, 1L))
+
+        val unpublished = transport.unpublishRelation(key)
+        assertTrue(unpublished)
+        assertFalse(transport.isRelationPublished(BleDirection.OUTBOUND, peer, 1L))
+    }
+
+    @Test
+    fun testTransportPublication_ServerDisconnectEmitsExactlyOneLost() {
+        val identity = makeIdentity()
+        val store = InMemoryMessageStore()
+        val transport = BleTransport(
+            identity = identity,
+            store = store
+        )
+        val peer = "11:22:33:44:55:64"
+        val key = RelationKey(BleDirection.INBOUND, peer, 1L)
+        val metadata = BleLinkInfoV1(nodeHint = byteArrayOf(5, 6, 7, 8), shortDigest = ByteArray(6))
+
+        assertTrue(transport.publishRelation(key, metadata))
+        assertTrue(transport.isRelationPublished(BleDirection.INBOUND, peer, 1L))
+
+        assertTrue(transport.unpublishRelation(key))
+        assertFalse(transport.isRelationPublished(BleDirection.INBOUND, peer, 1L))
+    }
+
+    @Test
+    fun testTransportPublication_CrossingOneDiesNoLost() {
+        val identity = makeIdentity()
+        val store = InMemoryMessageStore()
+        val transport = BleTransport(
+            identity = identity,
+            store = store
+        )
+        val peer = "11:22:33:44:55:65"
+        val keyOut = RelationKey(BleDirection.OUTBOUND, peer, 1L)
+        val keyIn = RelationKey(BleDirection.INBOUND, peer, 1L)
+        val metadata = BleLinkInfoV1(nodeHint = byteArrayOf(1, 1, 1, 1), shortDigest = ByteArray(6))
+
+        // 0 -> 1 outbound (Published)
+        assertTrue(transport.publishRelation(keyOut, metadata))
+
+        // 1 -> 2 inbound (Published relation, but peer already had published relations)
+        assertTrue(transport.publishRelation(keyIn, metadata))
+
+        // 2 -> 1 inbound dies (Unpublished, but peer still has outbound relation published)
+        assertTrue(transport.unpublishRelation(keyIn))
+        assertTrue(transport.isRelationPublished(BleDirection.OUTBOUND, peer, 1L))
+    }
+
+    @Test
+    fun testTransportPublication_FinalRelationDiesExactlyOneLost() {
+        val identity = makeIdentity()
+        val store = InMemoryMessageStore()
+        val transport = BleTransport(
+            identity = identity,
+            store = store
+        )
+        val peer = "11:22:33:44:55:66"
+        val keyOut = RelationKey(BleDirection.OUTBOUND, peer, 1L)
+        val keyIn = RelationKey(BleDirection.INBOUND, peer, 1L)
+        val metadata = BleLinkInfoV1(nodeHint = byteArrayOf(1, 1, 1, 1), shortDigest = ByteArray(6))
+
+        transport.publishRelation(keyOut, metadata)
+        transport.publishRelation(keyIn, metadata)
+
+        transport.unpublishRelation(keyIn)
+        assertTrue(transport.isRelationPublished(BleDirection.OUTBOUND, peer, 1L))
+
+        // 1 -> 0 final outbound dies
+        assertTrue(transport.unpublishRelation(keyOut))
+        assertFalse(transport.isRelationPublished(BleDirection.OUTBOUND, peer, 1L))
+    }
+
+    @Test
+    fun testTransportPublication_StaleGenerationRemovalNoOp() {
+        val identity = makeIdentity()
+        val store = InMemoryMessageStore()
+        val transport = BleTransport(
+            identity = identity,
+            store = store
+        )
+        val peer = "11:22:33:44:55:67"
+        val keyGen2 = RelationKey(BleDirection.OUTBOUND, peer, 2L)
+        val keyGen1 = RelationKey(BleDirection.OUTBOUND, peer, 1L)
+        val metadata = BleLinkInfoV1(nodeHint = byteArrayOf(1, 1, 1, 1), shortDigest = ByteArray(6))
+
+        transport.publishRelation(keyGen2, metadata)
+
+        // Attempt to remove stale generation 1 -> returns false
+        assertFalse(transport.unpublishRelation(keyGen1))
+        assertTrue(transport.isRelationPublished(BleDirection.OUTBOUND, peer, 2L))
+    }
+
+    @Test
+    fun testServerDisconnect_StaleGenerationCannotDeleteReplacement() {
+        val authority = BleGlobalCapacityAuthority(maxTotalPeers = 7)
+        val localHint = byteArrayOf(0x01, 0x00, 0x00, 0x00)
+        val serverDriver = BleServerOrchestrationDriver(
+            localHint = localHint,
+            localLinkInfoProvider = { ByteArray(13) },
+            globalCapacity = authority
+        )
+        val peer = "11:22:33:44:55:68"
+        serverDriver.startNewServerEpoch()
+        serverDriver.onServiceAdded(1, true)
+
+        // Connect generation 1
+        serverDriver.onClientConnected(peer, 1)
+        assertEquals(1L, serverDriver.getClientGeneration(peer))
+
+        // Reconnect generation 2
+        serverDriver.onClientConnected(peer, 2)
+        assertEquals(2L, serverDriver.getClientGeneration(peer))
+
+        // Stale generation 1 disconnect arrives -> ignored!
+        serverDriver.onClientDisconnected(peer, 1L)
+        assertEquals("Generation 2 must remain active after stale generation 1 disconnect", 2L, serverDriver.getClientGeneration(peer))
+        assertTrue(serverDriver.isDeviceAdmitted(peer))
+    }
+
+    @Test
+    fun testGattClient_UnmatchedReadNotForwarded() {
+        val peer = "11:22:33:44:55:69"
+        var readResultCount = 0
+        val gattConn = GattClientConnection(
+            peerAddress = peer,
+            onLinkInfoReadResult = { _, _, _ -> readResultCount++ }
+        )
+        // No pending op queued -> callback ignored
+        gattConn.dispatchCharacteristicRead(
+            g = android.bluetooth.BluetoothGatt::class.java.cast(null) ?: return,
+            characteristic = android.bluetooth.BluetoothGattCharacteristic(BleTransport.LINK_INFO_CHAR_UUID, 0, 0),
+            status = android.bluetooth.BluetoothGatt.GATT_SUCCESS
+        )
+        assertEquals(0, readResultCount)
+    }
+
+    @Test
+    fun testGattClient_UnmatchedWriteNotForwarded() {
+        val peer = "11:22:33:44:55:70"
+        var writeAckCount = 0
+        val gattConn = GattClientConnection(
+            peerAddress = peer,
+            onLinkInfoWriteAck = { _, _, _ -> writeAckCount++ }
+        )
+        // No pending op queued -> callback ignored
+        gattConn.dispatchCharacteristicWrite(
+            g = android.bluetooth.BluetoothGatt::class.java.cast(null) ?: return,
+            characteristic = android.bluetooth.BluetoothGattCharacteristic(BleTransport.LINK_INFO_CHAR_UUID, 0, 0),
+            status = android.bluetooth.BluetoothGatt.GATT_SUCCESS
+        )
+        assertEquals(0, writeAckCount)
+    }
+
+    @Test
+    fun testGattClient_UnmatchedCccdNotForwarded() {
+        val peer = "11:22:33:44:55:71"
+        var cccdAckCount = 0
+        val gattConn = GattClientConnection(
+            peerAddress = peer,
+            onCccdWriteAck = { _, _, _ -> cccdAckCount++ }
+        )
+        // No pending op queued -> callback ignored
+        gattConn.dispatchDescriptorWrite(
+            g = android.bluetooth.BluetoothGatt::class.java.cast(null) ?: return,
+            descriptor = android.bluetooth.BluetoothGattDescriptor(GattClientConnection.CCCD_UUID, 0),
+            status = android.bluetooth.BluetoothGatt.GATT_SUCCESS
+        )
+        assertEquals(0, cccdAckCount)
+    }
+
+    @Test
+    fun testServerLinkInfo_SameHintDifferentFlagsRejected() {
+        val authority = BleGlobalCapacityAuthority(maxTotalPeers = 7)
+        val localHint = byteArrayOf(0x02, 0x00, 0x00, 0x00)
+        val serverDriver = BleServerOrchestrationDriver(
+            localHint = localHint,
+            localLinkInfoProvider = { ByteArray(13) },
+            globalCapacity = authority
+        )
+        val peer = "11:22:33:44:55:72"
+        serverDriver.startNewServerEpoch()
+        serverDriver.onServiceAdded(1, true)
+        serverDriver.onClientConnected(peer, 1)
+
+        val remoteHint = byteArrayOf(0x01, 0x00, 0x00, 0x00)
+        val linkInfo1 = BleLinkInfoCodec.encode(
+            version = BleLinkInfoConstants.PROTOCOL_VERSION,
+            flags = 0,
+            nodeHint = remoteHint,
+            shortDigest = ByteArray(6),
+            queueDepth = 0
+        )
+        val act1 = serverDriver.onLinkInfoWriteRequest(peer, linkInfo1)
+        assertTrue(act1 is BleServerAction.AcceptWrite)
+
+        // Conflict: same hint, different flags (0x01 != 0x00)
+        val linkInfoConflict = BleLinkInfoCodec.encode(
+            version = BleLinkInfoConstants.PROTOCOL_VERSION,
+            flags = 1,
+            nodeHint = remoteHint,
+            shortDigest = ByteArray(6),
+            queueDepth = 0
+        )
+        val actConflict = serverDriver.onLinkInfoWriteRequest(peer, linkInfoConflict)
+        assertTrue(actConflict is BleServerAction.RejectWrite)
+    }
+
+    @Test
+    fun testServerLinkInfo_SameHintDifferentDigestRejected() {
+        val authority = BleGlobalCapacityAuthority(maxTotalPeers = 7)
+        val localHint = byteArrayOf(0x02, 0x00, 0x00, 0x00)
+        val serverDriver = BleServerOrchestrationDriver(
+            localHint = localHint,
+            localLinkInfoProvider = { ByteArray(13) },
+            globalCapacity = authority
+        )
+        val peer = "11:22:33:44:55:73"
+        serverDriver.startNewServerEpoch()
+        serverDriver.onServiceAdded(1, true)
+        serverDriver.onClientConnected(peer, 1)
+
+        val remoteHint = byteArrayOf(0x01, 0x00, 0x00, 0x00)
+        val linkInfo1 = BleLinkInfoCodec.encode(
+            version = BleLinkInfoConstants.PROTOCOL_VERSION,
+            flags = 0,
+            nodeHint = remoteHint,
+            shortDigest = byteArrayOf(1, 2, 3, 4, 5, 6),
+            queueDepth = 0
+        )
+        val act1 = serverDriver.onLinkInfoWriteRequest(peer, linkInfo1)
+        assertTrue(act1 is BleServerAction.AcceptWrite)
+
+        // Conflict: same hint, different shortDigest
+        val linkInfoConflict = BleLinkInfoCodec.encode(
+            version = BleLinkInfoConstants.PROTOCOL_VERSION,
+            flags = 0,
+            nodeHint = remoteHint,
+            shortDigest = byteArrayOf(9, 9, 9, 9, 9, 9),
+            queueDepth = 0
+        )
+        val actConflict = serverDriver.onLinkInfoWriteRequest(peer, linkInfoConflict)
+        assertTrue(actConflict is BleServerAction.RejectWrite)
+    }
+
+    @Test
+    fun testServerLinkInfo_SameHintDifferentQueueDepthRejected() {
+        val authority = BleGlobalCapacityAuthority(maxTotalPeers = 7)
+        val localHint = byteArrayOf(0x02, 0x00, 0x00, 0x00)
+        val serverDriver = BleServerOrchestrationDriver(
+            localHint = localHint,
+            localLinkInfoProvider = { ByteArray(13) },
+            globalCapacity = authority
+        )
+        val peer = "11:22:33:44:55:74"
+        serverDriver.startNewServerEpoch()
+        serverDriver.onServiceAdded(1, true)
+        serverDriver.onClientConnected(peer, 1)
+
+        val remoteHint = byteArrayOf(0x01, 0x00, 0x00, 0x00)
+        val linkInfo1 = BleLinkInfoCodec.encode(
+            version = BleLinkInfoConstants.PROTOCOL_VERSION,
+            flags = 0,
+            nodeHint = remoteHint,
+            shortDigest = ByteArray(6),
+            queueDepth = 0
+        )
+        val act1 = serverDriver.onLinkInfoWriteRequest(peer, linkInfo1)
+        assertTrue(act1 is BleServerAction.AcceptWrite)
+
+        // Conflict: same hint, different queueDepth (5 != 0)
+        val linkInfoConflict = BleLinkInfoCodec.encode(
+            version = BleLinkInfoConstants.PROTOCOL_VERSION,
+            flags = 0,
+            nodeHint = remoteHint,
+            shortDigest = ByteArray(6),
+            queueDepth = 5
+        )
+        val actConflict = serverDriver.onLinkInfoWriteRequest(peer, linkInfoConflict)
+        assertTrue(actConflict is BleServerAction.RejectWrite)
+    }
+
+    @Test
+    fun testServerLinkInfo_ExactDuplicate_NoCrashNoRebindNoExtraLease() {
+        val authority = BleGlobalCapacityAuthority(maxTotalPeers = 7)
+        val localHint = byteArrayOf(0x02, 0x00, 0x00, 0x00)
+        val serverDriver = BleServerOrchestrationDriver(
+            localHint = localHint,
+            localLinkInfoProvider = { ByteArray(13) },
+            globalCapacity = authority
+        )
+        val peer = "11:22:33:44:55:75"
+        serverDriver.startNewServerEpoch()
+        serverDriver.onServiceAdded(1, true)
+        serverDriver.onClientConnected(peer, 1)
+
+        val remoteHint = byteArrayOf(0x01, 0x00, 0x00, 0x00)
+        val linkInfo = BleLinkInfoCodec.encode(
+            version = BleLinkInfoConstants.PROTOCOL_VERSION,
+            flags = 0,
+            nodeHint = remoteHint,
+            shortDigest = ByteArray(6),
+            queueDepth = 0
+        )
+        val act1 = serverDriver.onLinkInfoWriteRequest(peer, linkInfo)
+        assertTrue(act1 is BleServerAction.AcceptWrite)
+        assertEquals(1, authority.inboundCount)
+
+        // Exact duplicate write
+        val actDup = serverDriver.onLinkInfoWriteRequest(peer, linkInfo)
+        assertTrue(actDup is BleServerAction.AcceptWrite)
+        // No extra lease allocated
+        assertEquals(1, authority.inboundCount)
+    }
 }
 
 

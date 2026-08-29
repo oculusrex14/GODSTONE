@@ -60,11 +60,11 @@ object BleRoleElection {
  * Also used for optional Android scan-response discovery metadata.
  */
 data class BleLinkInfoV1(
-    val version: Byte,
-    val flags: Byte,
+    val version: Byte = BleLinkInfoConstants.PROTOCOL_VERSION,
+    val flags: Byte = 0,
     val nodeHint: ByteArray,
     val shortDigest: ByteArray,
-    val queueDepth: Int
+    val queueDepth: Int = 0
 ) {
     val isSosPresent: Boolean get() = (flags.toInt() and BleLinkInfoConstants.FLAG_SOS_PRESENT) != 0
     val isBulkCapable: Boolean get() = (flags.toInt() and BleLinkInfoConstants.FLAG_BULK_CAPABLE) != 0
