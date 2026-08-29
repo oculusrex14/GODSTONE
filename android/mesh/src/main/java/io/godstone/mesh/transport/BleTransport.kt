@@ -17,13 +17,14 @@ import io.godstone.mesh.store.MessageStore
 import io.godstone.mesh.wire.v2.FrameV2
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.channels.awaitClose
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.runBlocking
 import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
 
@@ -80,38 +81,38 @@ class BleTransport(
         storeProvider = { store },
         powerStateProvider = { powerState }
     )
-    
+
     val globalCapacity = BleGlobalCapacityAuthority()
 
-    private val serverDriver = BleServerOrchestrationDriver(
+    val serverDriver = BleServerOrchestrationDriver(
         localHint = identity.nodeHint,
         localLinkInfoProvider = { getLocalLinkInfoBytes() },
         globalCapacity = globalCapacity
     )
 
-    private val centralDriver = BleCentralOrchestrationDriver(
+    val centralDriver = BleCentralOrchestrationDriver(
         localHint = identity.nodeHint,
         localLinkInfoProvider = { getLocalLinkInfoBytes() },
         globalCapacity = globalCapacity
     )
 
-    private val gattServer: BleGattServer = BleGattServer(
+    val gattServer: BleGattServer = BleGattServer(
         context = context,
         serviceUuid = SERVICE_UUID,
         inboxCharUuid = WRITE_CHAR_UUID,
         linkInfoCharUuid = LINK_INFO_CHAR_UUID,
         linkInfoProvider = { getLocalLinkInfoBytes() },
         onLinkInfoWrite = { peerAddress, value -> handleIncomingLinkInfoWrite(peerAddress, value) },
-        isRoleBoundPredicate = { peerAddress -> centralDriver.getActiveConnection(peerAddress)?.isRoleBound == true || serverDriver.getInboundConnection(peerAddress)?.isRoleBound == true },
-        onInboundWrite = { peerAddress, value -> handleInboundAttValue(peerAddress, value) },
-        onClientDisconnected = { peerAddress -> handlePeerDisconnected(peerAddress) },
+        isRoleBoundPredicate = { peerAddress -> serverDriver.getInboundConnection(peerAddress)?.isRoleBound == true },
+        onInboundWrite = { peerAddress, value -> handleServerInboundWrite(peerAddress, value) },
+        onClientDisconnected = { peerAddress -> handleServerDisconnected(peerAddress) },
         onSubscriptionChanged = { peerAddress, isSubscribed ->
             val conn = serverDriver.getInboundConnection(peerAddress)
             if (conn != null) {
                 conn.isNotificationSubscribed = isSubscribed
-                if (isSubscribed) {
+                if (isSubscribed && conn.isHandshakeTransportReady) {
                     val peerMacBytes = PeerId.fromAddress(peerAddress) ?: peerAddress.toByteArray()
-                    emitFoundIfDuplexReady(peerAddress, peerMacBytes, conn)
+                    emitResponderFoundIfDuplexReady(peerAddress, peerMacBytes, conn)
                 }
             }
         },
@@ -129,13 +130,15 @@ class BleTransport(
         orchestrationDriver = serverDriver
     )
 
-    private val discoveryLock = Any()
     private val discoveredPeers = LinkedHashMap<String, BleDiscoveryMetadata>()
     private val peerRssi = ConcurrentHashMap<String, Int>()
-    private val pendingRemoteLinkInfo = ConcurrentHashMap<String, BleLinkInfoV1>()
+    private val centralRemoteLinkInfo = ConcurrentHashMap<String, BleLinkInfoV1>()
+    private val responderRemoteLinkInfo = ConcurrentHashMap<String, BleLinkInfoV1>()
     private val publishedPeers = ConcurrentHashMap<String, Boolean>()
-    
+
     private val activeClientConnections = ConcurrentHashMap<String, GattClientConnection>()
+    private val provisionalJobs = ConcurrentHashMap<String, Job>()
+    private val provisionalGenerations = ConcurrentHashMap<String, Long>()
 
     private val inboundRecordFlow = MutableSharedFlow<Pair<ByteArray, BleReassembledRecord>>(extraBufferCapacity = 64)
     private val peerEventsFlow = MutableSharedFlow<PeerEvent>(extraBufferCapacity = 64)
@@ -221,10 +224,18 @@ class BleTransport(
             try { adapter?.bluetoothLeScanner?.stopScan(scanCallback) } catch (_: Exception) {}
             scanCallback = null
         }
+        provisionalJobs.values.forEach { it.cancel() }
+        provisionalJobs.clear()
+        provisionalGenerations.clear()
+
+        centralDriver.reset()
         gattServer.stop()
         activeClientConnections.values.forEach { it.disconnect() }
         activeClientConnections.clear()
-        pendingRemoteLinkInfo.clear()
+        globalCapacity.reset()
+
+        centralRemoteLinkInfo.clear()
+        responderRemoteLinkInfo.clear()
         publishedPeers.clear()
         peerRssi.clear()
     }
@@ -240,27 +251,28 @@ class BleTransport(
         }
     }
 
-    private fun processCentralAction(address: String, action: BleCentralAction, peerHint: ByteArray? = null) {
-        val client = activeClientConnections[address] ?: return
+    fun processCentralAction(address: String, action: BleCentralAction) {
+        val client = activeClientConnections[address]
         when (action) {
             is BleCentralAction.ConnectGatt -> {
-                client.connectGatt()
+                client?.connectGatt()
             }
             is BleCentralAction.DiscoverServices -> {
-                client.discoverServices()
+                client?.discoverServices()
             }
             is BleCentralAction.ReadLinkInfo -> {
-                client.readLinkInfo()
+                client?.readLinkInfo()
             }
             is BleCentralAction.WriteLinkInfo -> {
-                client.writeLinkInfo(action.localBytes)
+                client?.writeLinkInfo(action.localBytes)
             }
             is BleCentralAction.SubscribeCccd -> {
-                client.subscribeCccd()
+                client?.subscribeCccd()
             }
             is BleCentralAction.PublishFound -> {
+                provisionalJobs.remove(address)?.cancel()
                 val peerMacBytes = PeerId.fromAddress(address) ?: address.toByteArray()
-                val meta = pendingRemoteLinkInfo[address]
+                val meta = centralRemoteLinkInfo[address]
                 if (meta != null && publishedPeers.putIfAbsent(address, true) == null) {
                     peerEventsFlow.tryEmit(
                         PeerEvent.Found(
@@ -276,12 +288,15 @@ class BleTransport(
                 }
             }
             is BleCentralAction.PublishLost -> {
+                provisionalJobs.remove(address)?.cancel()
                 val peerMacBytes = PeerId.fromAddress(address) ?: address.toByteArray()
                 peerEventsFlow.tryEmit(PeerEvent.Lost(peerMacBytes))
             }
             is BleCentralAction.DisconnectGatt -> {
-                client.disconnect()
+                provisionalJobs.remove(address)?.cancel()
+                client?.disconnect()
                 activeClientConnections.remove(address)
+                centralRemoteLinkInfo.remove(address)
             }
             BleCentralAction.NoOp -> {}
         }
@@ -298,37 +313,46 @@ class BleTransport(
                 val sd = result.scanRecord?.getServiceData(ParcelUuid(SERVICE_UUID))
                 val metadata = if (sd != null && sd.size == BleLinkInfoConstants.LINK_INFO_BYTES) BleLinkInfoCodec.decode(sd) else null
                 if (metadata != null) {
-                    val peerHint = metadata.nodeHint
-                    val action = centralDriver.onScanResult(address, result.rssi, peerHint)
-                    if (action is BleCentralAction.ConnectGatt) {
-                        if (!activeClientConnections.containsKey(address)) {
-                            val client = GattClientConnection(
-                                context = context,
-                                peerAddress = address,
-                                onGattConnected = { gen, cur -> processCentralAction(address, centralDriver.onGattConnected(address, gen, cur)) },
-                                onServicesDiscovered = { suc, gen, cur -> processCentralAction(address, centralDriver.onServicesDiscovered(address, suc, gen, cur)) },
-                                onLinkInfoReadResult = { bytes, gen, cur ->
-                                    if (bytes != null) BleLinkInfoCodec.decode(bytes)?.let { pendingRemoteLinkInfo[address] = it }
-                                    processCentralAction(address, centralDriver.onLinkInfoReadResult(address, bytes, gen, cur))
-                                },
-                                onLinkInfoWriteAck = { suc, gen, cur ->
-                                    val hint = pendingRemoteLinkInfo[address]?.nodeHint ?: ByteArray(4)
-                                    processCentralAction(address, centralDriver.onLinkInfoWriteAcknowledged(address, suc, hint, gen, cur))
-                                    activeClientConnections[address]?.requestMtu(512)
-                                },
-                                onCccdWriteAck = { suc, gen, cur -> processCentralAction(address, centralDriver.onCccdWriteAcknowledged(address, suc, gen, cur)) },
-                                onMtuChanged = { centralDriver.onMtuChanged(address, it) },
-                                onDisconnected = {
-                                    val act = centralDriver.onDisconnected(address)
-                                    processCentralAction(address, act)
-                                    activeClientConnections.remove(address)
-                                },
-                                onInboundNotification = { handleInboundAttValue(address, it) }
-                            )
-                            activeClientConnections[address] = client
-                        }
-                        processCentralAction(address, action)
+                    discoveredPeers[address] = metadata
+                }
+                val optionalHint = metadata?.nodeHint
+                val action = centralDriver.onScanResult(address, result.rssi, optionalHint)
+                if (action is BleCentralAction.ConnectGatt) {
+                    val client = activeClientConnections.getOrPut(address) {
+                        GattClientConnection(
+                            context = context,
+                            peerAddress = address,
+                            onGattConnected = { gen, cur -> processCentralAction(address, centralDriver.onGattConnected(address, gen, cur)) },
+                            onServicesDiscovered = { suc, gen, cur -> processCentralAction(address, centralDriver.onServicesDiscovered(address, suc, gen, cur)) },
+                            onLinkInfoReadResult = { bytes, gen, cur ->
+                                if (bytes != null) BleLinkInfoCodec.decode(bytes)?.let { centralRemoteLinkInfo[address] = it }
+                                processCentralAction(address, centralDriver.onLinkInfoReadResult(address, bytes, gen, cur))
+                            },
+                            onLinkInfoWriteAck = { suc, gen, cur ->
+                                val hint = centralRemoteLinkInfo[address]?.nodeHint ?: ByteArray(4)
+                                processCentralAction(address, centralDriver.onLinkInfoWriteAcknowledged(address, suc, hint, gen, cur))
+                            },
+                            onCccdWriteAck = { suc, gen, cur -> processCentralAction(address, centralDriver.onCccdWriteAcknowledged(address, suc, gen, cur)) },
+                            onMtuChanged = { centralDriver.onMtuChanged(address, it) },
+                            onDisconnected = { handleCentralDisconnected(address) },
+                            onInboundNotification = { handleCentralInboundNotification(address, it) }
+                        )
                     }
+                    activeClientConnections[address] = client
+                    val gen = (provisionalGenerations[address] ?: 0L) + 1L
+                    provisionalGenerations[address] = gen
+                    provisionalJobs[address]?.cancel()
+                    provisionalJobs[address] = coroutineScope.launch {
+                        delay(PROVISIONAL_TIMEOUT_MS)
+                        if (provisionalGenerations[address] == gen) {
+                            val conn = centralDriver.getActiveConnection(address)
+                            if (conn?.isHandshakeTransportReady != true) {
+                                val timeoutAct = centralDriver.onProvisionalTimeout(address, gen)
+                                processCentralAction(address, timeoutAct)
+                            }
+                        }
+                    }
+                    processCentralAction(address, action)
                 }
             }
         }
@@ -343,45 +367,69 @@ class BleTransport(
     }
 
     private fun handleIncomingLinkInfoWrite(peerAddress: String, value: ByteArray): Boolean {
+        if (value.size != BleLinkInfoConstants.LINK_INFO_BYTES) return false
+        val decoded = BleLinkInfoCodec.decode(value) ?: return false
+        responderRemoteLinkInfo[peerAddress] = decoded
         return true
     }
 
-    private fun emitFoundIfDuplexReady(address: String, peerMacBytes: ByteArray, conn: BleConnection) {
+    private fun emitResponderFoundIfDuplexReady(address: String, peerMacBytes: ByteArray, conn: BleConnection) {
         if (!conn.isHandshakeTransportReady) return
-        if (publishedPeers.putIfAbsent(address, true) == null) {
-            val meta = pendingRemoteLinkInfo[address]
-            if (meta != null) {
-                peerEventsFlow.tryEmit(
-                    PeerEvent.Found(
-                        peerId = peerMacBytes,
-                        nodeHint = meta.nodeHint,
-                        rssi = peerRssi[address],
-                        sosFlag = meta.isSosPresent,
-                        bulkCapable = meta.isBulkCapable,
-                        shortDigest = meta.shortDigest,
-                        queueDepth = meta.queueDepth
-                    )
+        val meta = responderRemoteLinkInfo[address] ?: serverDriver.getAcceptedRemoteLinkInfo(address)
+        if (meta != null && publishedPeers.putIfAbsent(address, true) == null) {
+            peerEventsFlow.tryEmit(
+                PeerEvent.Found(
+                    peerId = peerMacBytes,
+                    nodeHint = meta.nodeHint,
+                    rssi = peerRssi[address],
+                    sosFlag = meta.isSosPresent,
+                    bulkCapable = meta.isBulkCapable,
+                    shortDigest = meta.shortDigest,
+                    queueDepth = meta.queueDepth
                 )
-            }
+            )
         }
     }
 
-    private fun handleInboundAttValue(peerAddress: String, value: ByteArray) {
-        val conn = centralDriver.getActiveConnection(peerAddress) ?: serverDriver.getInboundConnection(peerAddress) ?: return
+    fun handleCentralInboundNotification(peerAddress: String, value: ByteArray) {
+        val conn = centralDriver.getActiveConnection(peerAddress) ?: return
         if (!conn.isRoleBound) return
         val record = conn.ingestInboundAttValue(value) ?: return
         val peerId = conn.peerId
         inboundRecordFlow.tryEmit(peerId to record)
     }
 
-    private fun handlePeerDisconnected(peerAddress: String) {
-        val conn = centralDriver.getActiveConnection(peerAddress) ?: serverDriver.getInboundConnection(peerAddress)
+    fun handleServerInboundWrite(peerAddress: String, value: ByteArray) {
+        val conn = serverDriver.getInboundConnection(peerAddress) ?: return
+        if (!conn.isRoleBound) return
+        val record = conn.ingestInboundAttValue(value) ?: return
+        val peerId = conn.peerId
+        inboundRecordFlow.tryEmit(peerId to record)
+    }
+
+    fun handleCentralDisconnected(peerAddress: String) {
+        provisionalJobs.remove(peerAddress)?.cancel()
+        val conn = centralDriver.getActiveConnection(peerAddress)
         conn?.markDisconnected()
-        activeClientConnections.remove(peerAddress)?.disconnect()
-        pendingRemoteLinkInfo.remove(peerAddress)
+        val act = centralDriver.onDisconnected(peerAddress)
+        processCentralAction(peerAddress, act)
+        activeClientConnections.remove(peerAddress)
+        centralRemoteLinkInfo.remove(peerAddress)
         val wasPublished = publishedPeers.remove(peerAddress) == true
-        val peerMacBytes = PeerId.fromAddress(peerAddress) ?: peerAddress.toByteArray()
         if (wasPublished) {
+            val peerMacBytes = PeerId.fromAddress(peerAddress) ?: peerAddress.toByteArray()
+            peerEventsFlow.tryEmit(PeerEvent.Lost(peerMacBytes))
+        }
+    }
+
+    fun handleServerDisconnected(peerAddress: String) {
+        val conn = serverDriver.getInboundConnection(peerAddress)
+        conn?.markDisconnected()
+        serverDriver.onClientDisconnected(peerAddress)
+        responderRemoteLinkInfo.remove(peerAddress)
+        val wasPublished = publishedPeers.remove(peerAddress) == true
+        if (wasPublished) {
+            val peerMacBytes = PeerId.fromAddress(peerAddress) ?: peerAddress.toByteArray()
             peerEventsFlow.tryEmit(PeerEvent.Lost(peerMacBytes))
         }
     }
@@ -389,26 +437,34 @@ class BleTransport(
     override suspend fun send(peerId: ByteArray, bytes: ByteArray): Boolean {
         require(bytes.size <= 512)
         val address = PeerId.toAddress(peerId) ?: return false
-        val conn = centralDriver.getActiveConnection(address) ?: serverDriver.getInboundConnection(address) ?: return false
-        if (conn.state != BleConnectionState.READY) return false
-        val sealed = sessions?.seal(peerId, bytes) ?: return false
-        val fragments = conn.fragmentOutbound(BleRecordType.DATA, sealed)
-        if (fragments.isEmpty()) return false
-        val client = activeClientConnections[address]
-        if (client != null && client.isConnected) {
+        val centralConn = centralDriver.getActiveConnection(address)
+        val serverConn = serverDriver.getInboundConnection(address)
+
+        if (centralConn?.state == BleConnectionState.READY) {
+            val sealed = sessions?.seal(peerId, bytes) ?: return false
+            val fragments = centralConn.fragmentOutbound(BleRecordType.DATA, sealed)
+            if (fragments.isEmpty()) return false
+            val client = activeClientConnections[address] ?: return false
+            if (!client.isConnected) return false
             for (frag in fragments) {
                 val ok = client.sendAttValue(frag)
                 if (!ok) return false
             }
             return true
         }
-        if (gattServer.isSubscribed(address)) {
+
+        if (serverConn?.state == BleConnectionState.READY) {
+            val sealed = sessions?.seal(peerId, bytes) ?: return false
+            val fragments = serverConn.fragmentOutbound(BleRecordType.DATA, sealed)
+            if (fragments.isEmpty()) return false
+            if (!gattServer.isSubscribed(address)) return false
             for (frag in fragments) {
                 val ok = gattServer.sendNotification(address, frag)
                 if (!ok) return false
             }
             return true
         }
+
         return false
     }
 
@@ -435,5 +491,7 @@ class BleTransport(
         const val MAX_DISCOVERED_PEERS = 64
         const val MAX_ACTIVE_CONNECTIONS = 7
         const val GATT_MTU = 512
+        const val PROVISIONAL_TIMEOUT_MS = 10_000L
+        const val LINK_LAYER_READY = false
     }
 }

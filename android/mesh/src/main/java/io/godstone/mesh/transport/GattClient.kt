@@ -15,6 +15,25 @@ import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withTimeoutOrNull
 import java.util.UUID
 
+enum class GattOpType {
+    CONNECT,
+    SERVICE_DISCOVERY,
+    LINK_INFO_READ,
+    LINK_INFO_WRITE,
+    CCCD_WRITE,
+    DATA_WRITE,
+    MTU_REQUEST
+}
+
+data class PendingGattOp(
+    val opType: GattOpType,
+    val gattGeneration: Long,
+    val opGeneration: Long,
+    val expectedUuid: UUID? = null,
+    val gatt: BluetoothGatt? = null,
+    val deferred: CompletableDeferred<Boolean>? = null
+)
+
 @SuppressLint("MissingPermission")
 class GattClientConnection(
     private val context: Context,
@@ -33,6 +52,7 @@ class GattClientConnection(
     private var linkInfoCharacteristic: BluetoothGattCharacteristic? = null
 
     private val gattMutex = Mutex()
+    private val opLock = Any()
 
     @Volatile
     var gattGeneration: Long = 0L
@@ -42,13 +62,19 @@ class GattClientConnection(
     var isConnected: Boolean = false
         private set
 
-    private val callback = object : BluetoothGattCallback() {
+    private var opGenCounter: Long = 0L
+    private var currentOp: PendingGattOp? = null
+
+    fun getCurrentPendingOp(): PendingGattOp? = synchronized(opLock) { currentOp }
+
+    val callback = object : BluetoothGattCallback() {
         override fun onConnectionStateChange(g: BluetoothGatt, status: Int, newState: Int) {
             val gen = gattGeneration
             if (g !== gatt) return
 
             if (status != BluetoothGatt.GATT_SUCCESS || newState == BluetoothProfile.STATE_DISCONNECTED) {
                 isConnected = false
+                synchronized(opLock) { currentOp = null }
                 onDisconnected()
                 return
             }
@@ -62,7 +88,13 @@ class GattClientConnection(
         override fun onServicesDiscovered(g: BluetoothGatt, status: Int) {
             val gen = gattGeneration
             if (g !== gatt) return
-            
+
+            synchronized(opLock) {
+                if (currentOp?.opType == GattOpType.SERVICE_DISCOVERY && currentOp?.gattGeneration == gen) {
+                    currentOp = null
+                }
+            }
+
             if (status == BluetoothGatt.GATT_SUCCESS) {
                 val service = g.services.firstOrNull { it.uuid == BleTransport.SERVICE_UUID }
                 val inbox = service?.getCharacteristic(BleTransport.WRITE_CHAR_UUID)
@@ -81,6 +113,21 @@ class GattClientConnection(
         override fun onCharacteristicRead(g: BluetoothGatt, characteristic: BluetoothGattCharacteristic, status: Int) {
             val gen = gattGeneration
             if (g !== gatt) return
+
+            var matched = false
+            synchronized(opLock) {
+                val op = currentOp
+                if (op != null &&
+                    op.opType == GattOpType.LINK_INFO_READ &&
+                    op.gattGeneration == gen &&
+                    op.expectedUuid == BleTransport.LINK_INFO_CHAR_UUID &&
+                    characteristic.uuid == BleTransport.LINK_INFO_CHAR_UUID
+                ) {
+                    currentOp = null
+                    matched = true
+                }
+            }
+
             if (characteristic.uuid == BleTransport.LINK_INFO_CHAR_UUID) {
                 if (status == BluetoothGatt.GATT_SUCCESS) {
                     onLinkInfoReadResult(characteristic.value, gen, gen)
@@ -93,27 +140,68 @@ class GattClientConnection(
         override fun onCharacteristicWrite(g: BluetoothGatt, characteristic: BluetoothGattCharacteristic, status: Int) {
             val gen = gattGeneration
             if (g !== gatt) return
+
             if (characteristic.uuid == BleTransport.LINK_INFO_CHAR_UUID) {
-                onLinkInfoWriteAck(status == BluetoothGatt.GATT_SUCCESS, gen, gen)
-            }
-            if (characteristic.uuid == BleTransport.WRITE_CHAR_UUID) {
-                val deferred = pendingWriteDeferred
-                if (deferred != null && !deferred.isCompleted) {
-                    deferred.complete(status == BluetoothGatt.GATT_SUCCESS)
+                synchronized(opLock) {
+                    val op = currentOp
+                    if (op != null &&
+                        op.opType == GattOpType.LINK_INFO_WRITE &&
+                        op.gattGeneration == gen &&
+                        op.expectedUuid == BleTransport.LINK_INFO_CHAR_UUID
+                    ) {
+                        currentOp = null
+                    }
                 }
+                onLinkInfoWriteAck(status == BluetoothGatt.GATT_SUCCESS, gen, gen)
+                return
+            }
+
+            if (characteristic.uuid == BleTransport.WRITE_CHAR_UUID) {
+                var deferredToComplete: CompletableDeferred<Boolean>? = null
+                synchronized(opLock) {
+                    val op = currentOp
+                    if (op != null &&
+                        op.opType == GattOpType.DATA_WRITE &&
+                        op.gattGeneration == gen &&
+                        op.expectedUuid == BleTransport.WRITE_CHAR_UUID
+                    ) {
+                        deferredToComplete = op.deferred
+                        currentOp = null
+                    }
+                }
+                deferredToComplete?.complete(status == BluetoothGatt.GATT_SUCCESS)
             }
         }
 
         override fun onDescriptorWrite(g: BluetoothGatt, descriptor: BluetoothGattDescriptor, status: Int) {
             val gen = gattGeneration
             if (g !== gatt) return
-            if (descriptor.uuid == GattClientConnection.CCCD_UUID) {
+
+            if (descriptor.uuid == CCCD_UUID) {
+                synchronized(opLock) {
+                    val op = currentOp
+                    if (op != null &&
+                        op.opType == GattOpType.CCCD_WRITE &&
+                        op.gattGeneration == gen &&
+                        op.expectedUuid == CCCD_UUID
+                    ) {
+                        currentOp = null
+                    }
+                }
                 onCccdWriteAck(status == BluetoothGatt.GATT_SUCCESS, gen, gen)
             }
         }
 
         override fun onMtuChanged(g: BluetoothGatt, mtu: Int, status: Int) {
+            val gen = gattGeneration
             if (g !== gatt) return
+
+            synchronized(opLock) {
+                if (currentOp?.opType == GattOpType.MTU_REQUEST && currentOp?.gattGeneration == gen) {
+                    currentOp = null
+                }
+            }
+
             if (status == BluetoothGatt.GATT_SUCCESS) {
                 onMtuChanged(mtu)
             }
@@ -140,39 +228,99 @@ class GattClientConnection(
             return
         }
 
-        gattGeneration++
+        synchronized(opLock) {
+            gattGeneration++
+            opGenCounter++
+            currentOp = PendingGattOp(
+                opType = GattOpType.CONNECT,
+                gattGeneration = gattGeneration,
+                opGeneration = opGenCounter
+            )
+        }
         gatt = device.connectGatt(context, false, callback, BluetoothDevice.TRANSPORT_LE)
     }
 
     fun discoverServices() {
-        gatt?.discoverServices()
+        val g = gatt ?: return
+        synchronized(opLock) {
+            opGenCounter++
+            currentOp = PendingGattOp(
+                opType = GattOpType.SERVICE_DISCOVERY,
+                gattGeneration = gattGeneration,
+                opGeneration = opGenCounter,
+                expectedUuid = BleTransport.SERVICE_UUID,
+                gatt = g
+            )
+        }
+        g.discoverServices()
     }
 
     fun readLinkInfo() {
+        val g = gatt ?: return
         val linkInfo = linkInfoCharacteristic ?: return
-        gatt?.readCharacteristic(linkInfo)
+        synchronized(opLock) {
+            opGenCounter++
+            currentOp = PendingGattOp(
+                opType = GattOpType.LINK_INFO_READ,
+                gattGeneration = gattGeneration,
+                opGeneration = opGenCounter,
+                expectedUuid = BleTransport.LINK_INFO_CHAR_UUID,
+                gatt = g
+            )
+        }
+        g.readCharacteristic(linkInfo)
     }
 
     fun writeLinkInfo(localBytes: ByteArray) {
+        val g = gatt ?: return
         val linkInfo = linkInfoCharacteristic ?: return
         linkInfo.writeType = BluetoothGattCharacteristic.WRITE_TYPE_DEFAULT
         linkInfo.value = localBytes
-        gatt?.writeCharacteristic(linkInfo)
+        synchronized(opLock) {
+            opGenCounter++
+            currentOp = PendingGattOp(
+                opType = GattOpType.LINK_INFO_WRITE,
+                gattGeneration = gattGeneration,
+                opGeneration = opGenCounter,
+                expectedUuid = BleTransport.LINK_INFO_CHAR_UUID,
+                gatt = g
+            )
+        }
+        g.writeCharacteristic(linkInfo)
     }
 
     fun subscribeCccd() {
+        val g = gatt ?: return
         val inbox = inboxCharacteristic ?: return
-        gatt?.setCharacteristicNotification(inbox, true)
+        g.setCharacteristicNotification(inbox, true)
         val cccd = inbox.getDescriptor(CCCD_UUID) ?: return
         cccd.value = BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE
-        gatt?.writeDescriptor(cccd)
+        synchronized(opLock) {
+            opGenCounter++
+            currentOp = PendingGattOp(
+                opType = GattOpType.CCCD_WRITE,
+                gattGeneration = gattGeneration,
+                opGeneration = opGenCounter,
+                expectedUuid = CCCD_UUID,
+                gatt = g
+            )
+        }
+        g.writeDescriptor(cccd)
     }
 
     fun requestMtu(mtu: Int) {
-        gatt?.requestMtu(mtu)
+        val g = gatt ?: return
+        synchronized(opLock) {
+            opGenCounter++
+            currentOp = PendingGattOp(
+                opType = GattOpType.MTU_REQUEST,
+                gattGeneration = gattGeneration,
+                opGeneration = opGenCounter,
+                gatt = g
+            )
+        }
+        g.requestMtu(mtu)
     }
-
-    private var pendingWriteDeferred: CompletableDeferred<Boolean>? = null
 
     suspend fun sendAttValue(bytes: ByteArray): Boolean = gattMutex.withLock {
         val g = gatt ?: return false
@@ -180,27 +328,55 @@ class GattClientConnection(
         if (!isConnected) return false
 
         val deferred = CompletableDeferred<Boolean>()
-        pendingWriteDeferred = deferred
+        val opGen: Long
+        val gen: Long
+
+        synchronized(opLock) {
+            gen = gattGeneration
+            opGenCounter++
+            opGen = opGenCounter
+            currentOp = PendingGattOp(
+                opType = GattOpType.DATA_WRITE,
+                gattGeneration = gen,
+                opGeneration = opGen,
+                expectedUuid = BleTransport.WRITE_CHAR_UUID,
+                gatt = g,
+                deferred = deferred
+            )
+        }
 
         ch.writeType = BluetoothGattCharacteristic.WRITE_TYPE_DEFAULT
         ch.value = bytes
 
         val initiated = g.writeCharacteristic(ch)
         if (!initiated) {
-            pendingWriteDeferred = null
+            synchronized(opLock) {
+                if (currentOp?.opGeneration == opGen) {
+                    currentOp = null
+                }
+            }
             return false
         }
 
         val success = withTimeoutOrNull(5000L) {
             deferred.await()
-        } ?: false
+        }
 
-        pendingWriteDeferred = null
+        if (success == null) {
+            // Timed out: Invalidate and close this GATT generation so late callbacks from N1 cannot satisfy N2
+            disconnect()
+            return false
+        }
+
         return success
     }
 
     fun disconnect() {
-        gattGeneration++
+        synchronized(opLock) {
+            gattGeneration++
+            currentOp?.deferred?.complete(false)
+            currentOp = null
+        }
         try {
             gatt?.disconnect()
             gatt?.close()

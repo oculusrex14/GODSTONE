@@ -16,6 +16,7 @@ public final class BleTransport: NSObject {
     public static let maxDiscoveredPeers = 64
     public static let maxActiveConnections = 7
     public static let maxQueuedAttValues = 16
+    public static let linkLayerReady = false
 
     private var central: CBCentralManager!
     private var peripheral: CBPeripheralManager!
@@ -29,19 +30,17 @@ public final class BleTransport: NSObject {
     public var identity: MeshIdentity? {
         didSet {
             if let id = identity {
-                
                 snapshotAuthority?.refresh()
             }
         }
     }
 
     public private(set) var roleCoordinator: BleRoleBindingCoordinator
-    private var capacityAuthority = BleGlobalCapacityAuthority(maxTotalPeers: BleTransport.maxActiveConnections)
-    private var centralDriver: BleCentralOrchestrationDriver?
-    private var peripheralDriver: BlePeripheralOrchestrationDriver?
+    public private(set) var capacityAuthority = BleGlobalCapacityAuthority(maxTotalPeers: BleTransport.maxActiveConnections)
+    public private(set) var centralDriver: BleCentralOrchestrationDriver?
+    public private(set) var peripheralDriver: BlePeripheralOrchestrationDriver?
     public private(set) var snapshotAuthority: LinkInfoSnapshotAuthority!
 
-    // Separate identifier namespaces:
     // Outbound Central links keyed by CBPeripheral.identifier
     private var outboundCentralConnections: [UUID: BleConnection] = [:]
     private var connectedPeripherals: [UUID: CBPeripheral] = [:]
@@ -54,6 +53,8 @@ public final class BleTransport: NSObject {
     // Inbound Peripheral links keyed by CBCentral.identifier
     private var inboundPeripheralConnections: [UUID: BleConnection] = [:]
     private var subscribedCentrals: [UUID: CBCentral] = [:]
+    private var inboundTimers: [UUID: Timer] = [:]
+    private var inboundGenerations: [UUID: UInt64] = [:]
     private var mutableInboxCharacteristic: CBMutableCharacteristic?
     private var mutableLinkInfoCharacteristic: CBMutableCharacteristic?
 
@@ -83,7 +84,7 @@ public final class BleTransport: NSObject {
         self.identity = identity
         self.store = store
         self.roleCoordinator = BleRoleBindingCoordinator(localHint: Data((identity?.nodeHint ?? Data(repeating: 0, count: 4)).prefix(4)))
-        
+
         super.init()
 
         self.snapshotAuthority = LinkInfoSnapshotAuthority(
@@ -100,12 +101,10 @@ public final class BleTransport: NSObject {
         #endif
     }
 
-    /// Retrieve local LinkInfo bytes when transportLock is ALREADY held by the caller.
     func getLocalLinkInfoDataLocked() -> Data? {
         return snapshotAuthority.currentData()
     }
 
-    /// Retrieve local LinkInfo bytes safely from external/unlocked callers.
     public func getLocalLinkInfoData() -> Data? {
         return snapshotAuthority.currentData()
     }
@@ -120,7 +119,7 @@ public final class BleTransport: NSObject {
             transportLock.unlock()
             return
         }
-                let localHint = identity?.nodeHint ?? Data(repeating: 0, count: BleRoleElection.nodeHintBytes)
+        let localHint = identity?.nodeHint ?? Data(repeating: 0, count: BleRoleElection.nodeHintBytes)
         centralDriver = BleCentralOrchestrationDriver(
             localHint: localHint,
             localLinkInfoProvider: { [weak self] in self?.getLocalLinkInfoData() },
@@ -156,6 +155,13 @@ public final class BleTransport: NSObject {
             timer.invalidate()
         }
         provisionalTimers.removeAll()
+        provisionalGenerations.removeAll()
+
+        for (_, timer) in inboundTimers {
+            timer.invalidate()
+        }
+        inboundTimers.removeAll()
+        inboundGenerations.removeAll()
 
         for (_, p) in connectedPeripherals {
             central.cancelPeripheralConnection(p)
@@ -176,6 +182,10 @@ public final class BleTransport: NSObject {
         }
         inboundPeripheralConnections.removeAll()
 
+        centralDriver?.reset()
+        peripheralDriver?.reset()
+        capacityAuthority.reset()
+
         discoveredPeers.removeAll()
         pendingOutboundWrites.removeAll()
         pendingOutboundUpdates.removeAll()
@@ -192,7 +202,6 @@ public final class BleTransport: NSObject {
 
     private func startAdvertising() {
         guard peripheral.state == .poweredOn, isServiceRegistered else { return }
-        // Privacy: service UUID only, no local name broadcast (ADR-002 §2 / §7b)
         peripheral.startAdvertising([
             CBAdvertisementDataServiceUUIDsKey: [BleTransport.serviceUuid]
         ])
@@ -218,7 +227,6 @@ public final class BleTransport: NSObject {
         return discoveredPeers[peerId]
     }
 
-    /// Transactionally purges an outbound central provisional/canonical link on failure or disconnect.
     private func purgeCentralConnection(peerId: UUID, cancelPeripheral: Bool) {
         transportLock.lock()
         provisionalTimers.removeValue(forKey: peerId)?.invalidate()
@@ -229,6 +237,7 @@ public final class BleTransport: NSObject {
         let periph = connectedPeripherals.removeValue(forKey: peerId)
         let conn = outboundCentralConnections.removeValue(forKey: peerId)
         conn?.markDisconnected()
+        _ = centralDriver?.onProvisionalTimeout(peerId: peerId)
         transportLock.unlock()
 
         if cancelPeripheral, let p = periph {
@@ -237,8 +246,6 @@ public final class BleTransport: NSObject {
         delegate?.transportDidDisconnect(peerId: peerId)
     }
 
-    /// Send [frame] to [peerId] through the Noise session and BleRecord layer.
-    /// Application DATA is strictly forbidden unless both link connection and Noise session are READY.
     @discardableResult
     public func send(_ frame: FrameV2, to peerId: UUID) -> Bool {
         transportLock.lock()
@@ -423,7 +430,6 @@ extension BleTransport: CBCentralManagerDelegate, CBPeripheralDelegate {
         let action = centralDriver?.onDisconnected(peerId: p.identifier) ?? .noOp
         purgeCentralConnection(peerId: p.identifier, cancelPeripheral: false)
         if case .didDisconnect(let peerId) = action {
-            // Already handled by purgeCentralConnection delegating out
         }
     }
 
@@ -547,6 +553,9 @@ extension BleTransport: CBCentralManagerDelegate, CBPeripheralDelegate {
             let action = centralDriver?.onNotificationStateUpdated(peerId: p.identifier, success: success, isNotifying: ch.isNotifying) ?? .noOp
             switch action {
             case .physicalDuplexReady(let peerId, _):
+                transportLock.lock()
+                provisionalTimers.removeValue(forKey: peerId)?.invalidate()
+                transportLock.unlock()
                 delegate?.transportPhysicalDuplexReady(peerId: peerId)
                 delegate?.transportDidConnect(peerId: peerId)
             case .disconnectPeripheral(let peerId, _):
@@ -671,9 +680,28 @@ extension BleTransport: CBPeripheralManagerDelegate {
                     if let conn = inboundPeripheralConnections[centralId], !(conn.isRoleBound) {
                         conn.bindResponderFromAcceptedIncomingLinkInfo(remoteHint: remoteHint)
                     }
+                    let gen = (inboundGenerations[centralId] ?? 0) + 1
+                    inboundGenerations[centralId] = gen
+                    inboundTimers[centralId]?.invalidate()
+                    let timer = Timer(timeInterval: provisionalTimeoutSeconds, repeats: false) { [weak self] _ in
+                        guard let self = self else { return }
+                        self.transportLock.lock()
+                        let isCurrentGen = (self.inboundGenerations[centralId] == gen)
+                        let isSubscribed = self.subscribedCentrals[centralId] != nil
+                        self.transportLock.unlock()
+                        if isCurrentGen && !isSubscribed {
+                            self.peripheralDriver?.onInboundTimeout(centralId: centralId, expectedGen: gen)
+                            self.transportLock.lock()
+                            self.inboundPeripheralConnections.removeValue(forKey: centralId)?.markDisconnected()
+                            self.inboundTimers.removeValue(forKey: centralId)
+                            self.transportLock.unlock()
+                        }
+                    }
+                    RunLoop.main.add(timer, forMode: .common)
+                    inboundTimers[centralId] = timer
                     transportLock.unlock()
                     pm.respond(to: r, withResult: .success)
-                    
+
                     if case .acceptWriteAndDuplexReady = action {
                         delegate?.transportPhysicalDuplexReady(peerId: centralId)
                         delegate?.transportDidConnect(peerId: centralId)
@@ -717,11 +745,12 @@ extension BleTransport: CBPeripheralManagerDelegate {
                                   central: CBCentral,
                                   didSubscribeTo ch: CBCharacteristic) {
         guard ch.uuid == BleTransport.inboxCharacteristicUuid else { return }
-        
+
         let action = peripheralDriver?.onCentralSubscribed(centralId: central.identifier) ?? .noOp
         switch action {
         case .acceptSubscription(let centralId), .acceptSubscriptionAndDuplexReady(let centralId):
             transportLock.lock()
+            inboundTimers.removeValue(forKey: centralId)?.invalidate()
             subscribedCentrals[centralId] = central
             if inboundPeripheralConnections[centralId] == nil {
                 inboundPeripheralConnections[centralId] = peripheralDriver?.getInboundConnection(centralId)
@@ -731,7 +760,7 @@ extension BleTransport: CBPeripheralManagerDelegate {
                 conn.markConnected(negotiatedAttValueLength: maxUpdate)
             }
             transportLock.unlock()
-            
+
             if case .acceptSubscriptionAndDuplexReady = action {
                 delegate?.transportPhysicalDuplexReady(peerId: centralId)
                 delegate?.transportDidConnect(peerId: centralId)
@@ -746,6 +775,7 @@ extension BleTransport: CBPeripheralManagerDelegate {
                                   didUnsubscribeFrom ch: CBCharacteristic) {
         _ = peripheralDriver?.onCentralUnsubscribed(centralId: central.identifier)
         transportLock.lock()
+        inboundTimers.removeValue(forKey: central.identifier)?.invalidate()
         subscribedCentrals.removeValue(forKey: central.identifier)
         pendingOutboundUpdates.removeValue(forKey: central.identifier)
         if let conn = inboundPeripheralConnections.removeValue(forKey: central.identifier) {

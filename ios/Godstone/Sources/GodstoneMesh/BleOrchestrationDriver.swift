@@ -2,7 +2,7 @@ import Foundation
 import GodstoneCore
 
 /// Authoritative production orchestration driver for BLE link state transitions, capacity bounding,
-/// role election, and callback correlation on iOS (ADR-002, Phase C8.4D1-R2.3).
+/// role election, and callback correlation on iOS (ADR-002, Phase C8.4D1-R2.5).
 ///
 /// Used by production BleTransport and driven directly by host orchestration tests.
 
@@ -11,6 +11,12 @@ public final class BleGlobalCapacityAuthority: @unchecked Sendable {
     public private(set) var inboundCount: Int = 0
     public let maxTotalPeers: Int
     private let lock = NSLock()
+
+    public var totalCount: Int {
+        lock.lock()
+        defer { lock.unlock() }
+        return outboundCount + inboundCount
+    }
 
     public init(maxTotalPeers: Int = 7) {
         self.maxTotalPeers = maxTotalPeers
@@ -47,6 +53,25 @@ public final class BleGlobalCapacityAuthority: @unchecked Sendable {
         defer { lock.unlock() }
         if inboundCount > 0 { inboundCount -= 1 }
     }
+
+    public func releaseAllInbound() {
+        lock.lock()
+        defer { lock.unlock() }
+        inboundCount = 0
+    }
+
+    public func releaseAllOutbound() {
+        lock.lock()
+        defer { lock.unlock() }
+        outboundCount = 0
+    }
+
+    public func reset() {
+        lock.lock()
+        defer { lock.unlock() }
+        outboundCount = 0
+        inboundCount = 0
+    }
 }
 
 public enum BleCentralAction: Equatable, Sendable {
@@ -68,6 +93,7 @@ public final class BleCentralOrchestrationDriver: @unchecked Sendable {
     public let capacityAuthority: BleGlobalCapacityAuthority?
 
     private var activeConnections: [UUID: BleConnection] = [:]
+    private var connectionGenerations: [UUID: UInt64] = [:]
     private var discoveredHints: [UUID: Data] = [:]
     private var peerRssi: [UUID: Int] = [:]
     private var physicalReadyPeers: Set<UUID> = []
@@ -125,6 +151,8 @@ public final class BleCentralOrchestrationDriver: @unchecked Sendable {
             guard cap.tryAdmitOutbound() else { return .noOp }
         }
 
+        let gen = (connectionGenerations[peerId] ?? 0) + 1
+        connectionGenerations[peerId] = gen
         let conn = BleConnection(peerId: peerId)
         activeConnections[peerId] = conn
         return .connectPeripheral(peerId)
@@ -181,7 +209,7 @@ public final class BleCentralOrchestrationDriver: @unchecked Sendable {
         defer { lock.unlock() }
         guard let conn = activeConnections[peerId] else { return .noOp }
         guard conn.state == .linkInfoReading else { return .noOp }
-        
+
         if !success {
             conn.transitionTo(.closed)
             removeConnection(peerId)
@@ -260,20 +288,50 @@ public final class BleCentralOrchestrationDriver: @unchecked Sendable {
         return .noOp
     }
 
+    public func onProvisionalTimeout(peerId: UUID, expectedGen: UInt64 = 0) -> BleCentralAction {
+        lock.lock()
+        defer { lock.unlock() }
+        let currentGen = connectionGenerations[peerId] ?? 0
+        if expectedGen != 0 && currentGen != expectedGen {
+            return .noOp
+        }
+        if let conn = activeConnections.removeValue(forKey: peerId) {
+            conn.transitionTo(.closed)
+            capacityAuthority?.releaseOutbound()
+            physicalReadyPeers.remove(peerId)
+            return .disconnectPeripheral(peerId, "Provisional timeout")
+        }
+        return .noOp
+    }
+
     public func onDisconnected(peerId: UUID) -> BleCentralAction {
         lock.lock()
         defer { lock.unlock() }
-        
+
         let existing = activeConnections[peerId]
         if existing != nil {
             removeConnection(peerId)
         }
-        
+
         let wasReady = physicalReadyPeers.remove(peerId) != nil
         if wasReady || existing != nil {
             return .didDisconnect(peerId)
         }
         return .noOp
+    }
+
+    public func reset() {
+        lock.lock()
+        defer { lock.unlock() }
+        for (_, conn) in activeConnections {
+            conn.transitionTo(.closed)
+        }
+        activeConnections.removeAll()
+        connectionGenerations.removeAll()
+        discoveredHints.removeAll()
+        peerRssi.removeAll()
+        physicalReadyPeers.removeAll()
+        capacityAuthority?.releaseAllOutbound()
     }
 }
 
@@ -295,6 +353,7 @@ public final class BlePeripheralOrchestrationDriver: @unchecked Sendable {
     public let capacityAuthority: BleGlobalCapacityAuthority?
 
     private var admittedCentrals: Set<UUID> = []
+    private var centralGenerations: [UUID: UInt64] = [:]
     private var subscribedCentrals: Set<UUID> = []
     private var inboundConnections: [UUID: BleConnection] = [:]
     private var physicalReadyCentrals: Set<UUID> = []
@@ -335,25 +394,8 @@ public final class BlePeripheralOrchestrationDriver: @unchecked Sendable {
         return inboundConnections[centralId]
     }
 
-    private func ensureAdmitted(centralId: UUID) -> Bool {
-        if admittedCentrals.contains(centralId) {
-            return true
-        }
-        if let cap = capacityAuthority {
-            if !cap.tryAdmitInbound() {
-                return false
-            }
-        }
-        admittedCentrals.insert(centralId)
-        let conn = BleConnection(peerId: centralId)
-        conn.transitionTo(.provisionalConnected)
-        inboundConnections[centralId] = conn
-        return true
-    }
-    
     private func removeAdmitted(centralId: UUID) {
-        if admittedCentrals.contains(centralId) {
-            admittedCentrals.remove(centralId)
+        if admittedCentrals.remove(centralId) != nil {
             capacityAuthority?.releaseInbound()
         }
     }
@@ -361,11 +403,8 @@ public final class BlePeripheralOrchestrationDriver: @unchecked Sendable {
     public func onCentralRead(centralId: UUID) -> BlePeripheralAction {
         lock.lock()
         defer { lock.unlock() }
-        
-        guard ensureAdmitted(centralId: centralId) else {
-            return .rejectRead(centralId)
-        }
-        
+
+        // Non-allocating pure cache read
         guard let data = localLinkInfoProvider(), data.count == BleLinkInfoConstants.linkInfoBytes else {
             return .rejectRead(centralId)
         }
@@ -375,16 +414,9 @@ public final class BlePeripheralOrchestrationDriver: @unchecked Sendable {
     public func onCentralWrite(centralId: UUID, rawData: Data) -> BlePeripheralAction {
         lock.lock()
         defer { lock.unlock() }
-        
-        guard ensureAdmitted(centralId: centralId) else {
-            return .rejectWrite(centralId, "Capacity exhausted")
-        }
-        
-        guard let conn = inboundConnections[centralId] else {
-            return .rejectWrite(centralId, "No inbound connection")
-        }
-        guard conn.state == .provisionalConnected else {
-            return .rejectWrite(centralId, "Connection is not in provisionalConnected")
+
+        guard rawData.count == BleLinkInfoConstants.linkInfoBytes else {
+            return .rejectWrite(centralId, "Invalid LinkInfo length")
         }
 
         guard let remoteInfo = BleLinkInfoCodec.decode(rawData) else {
@@ -395,7 +427,23 @@ public final class BlePeripheralOrchestrationDriver: @unchecked Sendable {
         switch election {
         case .elected(let role):
             if role == .responder {
+                if !admittedCentrals.contains(centralId) {
+                    if let cap = capacityAuthority {
+                        guard cap.tryAdmitInbound() else {
+                            return .rejectWrite(centralId, "Capacity exhausted")
+                        }
+                    }
+                    admittedCentrals.insert(centralId)
+                }
+
+                let gen = (centralGenerations[centralId] ?? 0) + 1
+                centralGenerations[centralId] = gen
+
+                let conn = inboundConnections[centralId] ?? BleConnection(peerId: centralId)
+                conn.transitionTo(.provisionalConnected)
                 conn.bindResponderFromAcceptedIncomingLinkInfo(remoteHint: remoteInfo.nodeHint)
+                inboundConnections[centralId] = conn
+
                 if subscribedCentrals.contains(centralId) {
                     conn.isNotificationSubscribed = true
                 }
@@ -415,12 +463,8 @@ public final class BlePeripheralOrchestrationDriver: @unchecked Sendable {
     public func onCentralSubscribed(centralId: UUID) -> BlePeripheralAction {
         lock.lock()
         defer { lock.unlock() }
-        
-        guard ensureAdmitted(centralId: centralId) else {
-            return .rejectSubscription(centralId)
-        }
-        
-        guard let conn = inboundConnections[centralId] else {
+
+        guard admittedCentrals.contains(centralId), let conn = inboundConnections[centralId] else {
             return .rejectSubscription(centralId)
         }
 
@@ -433,11 +477,11 @@ public final class BlePeripheralOrchestrationDriver: @unchecked Sendable {
         }
         return .acceptSubscription(centralId)
     }
-    
+
     public func onCentralUnsubscribed(centralId: UUID) -> BlePeripheralAction {
         lock.lock()
         defer { lock.unlock() }
-        
+
         subscribedCentrals.remove(centralId)
         if let conn = inboundConnections.removeValue(forKey: centralId) {
             conn.transitionTo(.closed)
@@ -447,7 +491,33 @@ public final class BlePeripheralOrchestrationDriver: @unchecked Sendable {
         return .noOp
     }
 
-    public func onReadyToUpdateSubscribers() -> BlePeripheralAction {
-        return .noOp
+    public func onInboundTimeout(centralId: UUID, expectedGen: UInt64 = 0) {
+        lock.lock()
+        defer { lock.unlock() }
+        let currentGen = centralGenerations[centralId] ?? 0
+        if expectedGen != 0 && currentGen != expectedGen {
+            return
+        }
+        if !subscribedCentrals.contains(centralId) {
+            if let conn = inboundConnections.removeValue(forKey: centralId) {
+                conn.transitionTo(.closed)
+            }
+            removeAdmitted(centralId: centralId)
+            physicalReadyCentrals.remove(centralId)
+        }
+    }
+
+    public func reset() {
+        lock.lock()
+        defer { lock.unlock() }
+        for (_, conn) in inboundConnections {
+            conn.transitionTo(.closed)
+        }
+        inboundConnections.removeAll()
+        admittedCentrals.removeAll()
+        centralGenerations.removeAll()
+        subscribedCentrals.removeAll()
+        physicalReadyCentrals.removeAll()
+        capacityAuthority?.releaseAllInbound()
     }
 }

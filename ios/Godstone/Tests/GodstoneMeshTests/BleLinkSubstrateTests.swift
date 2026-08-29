@@ -646,7 +646,15 @@ final class BleLinkSubstrateTests: XCTestCase {
     }
 
     func testOrchestration_RawInboundCapacityBounded() {
-        let localHint = Data([0x02, 0x00, 0x00, 0x00])
+        let localHint = Data([0x02, 0x00, 0x00, 0x00]) // Local is 2
+        let remoteHint = Data([0x01, 0x00, 0x00, 0x00]) // Remote is 1 -> Remote < Local -> Local is RESPONDER -> Valid
+        let validLinkInfo = BleLinkInfoCodec.encode(
+            version: BleLinkInfoConstants.protocolVersion,
+            flags: 0,
+            nodeHint: remoteHint,
+            shortDigest: Data(repeating: 0, count: 6),
+            queueDepth: 0
+        )
         let cap = BleGlobalCapacityAuthority(maxTotalPeers: 7)
         let driver = BlePeripheralOrchestrationDriver(
             localHint: localHint,
@@ -654,33 +662,44 @@ final class BleLinkSubstrateTests: XCTestCase {
             capacityAuthority: cap
         )
 
+        // 1. Central reads are stateless and non-allocating
+        for _ in 1...10 {
+            let u = UUID()
+            let act = driver.onCentralRead(centralId: u)
+            XCTAssertEqual(act, .sendReadResponse(u, Data(repeating: 0, count: 13)))
+        }
+        XCTAssertEqual(driver.getAdmittedCount(), 0)
+        XCTAssertEqual(cap.totalCount, 0)
+
+        // 2. Admit 7 centrals via valid LinkInfo write
         var admittedIds: [UUID] = []
         for _ in 1...7 {
             let u = UUID()
             admittedIds.append(u)
-            let act = driver.onCentralRead(centralId: u)
-            XCTAssertEqual(act, .sendReadResponse(u, Data(repeating: 0, count: 13)))
+            let act = driver.onCentralWrite(centralId: u, rawData: validLinkInfo)
+            XCTAssertEqual(act, .acceptWrite(u, remoteHint))
         }
         XCTAssertEqual(driver.getAdmittedCount(), 7)
+        XCTAssertEqual(cap.totalCount, 7)
 
+        // 3. 8th central write rejected due to capacity exhaustion
         let u8 = UUID()
-        let act8 = driver.onCentralRead(centralId: u8)
-        XCTAssertEqual(act8, .rejectRead(u8))
+        let writeAct8 = driver.onCentralWrite(centralId: u8, rawData: validLinkInfo)
+        XCTAssertEqual(writeAct8, .rejectWrite(u8, "Capacity exhausted"))
         XCTAssertFalse(driver.isCentralAdmitted(u8))
 
-        let writeAct = driver.onCentralWrite(centralId: u8, rawData: Data(repeating: 0, count: 13))
-        XCTAssertEqual(writeAct, .rejectWrite(u8, "Capacity exhausted"))
+        let subAct8 = driver.onCentralSubscribed(centralId: u8)
+        XCTAssertEqual(subAct8, .rejectSubscription(u8))
 
-        let subAct = driver.onCentralSubscribed(centralId: u8)
-        XCTAssertEqual(subAct, .rejectSubscription(u8))
-
-        // Disconnect one central -> replacement admitted
+        // 4. Disconnect one central -> replacement can be admitted
         _ = driver.onCentralUnsubscribed(centralId: admittedIds[0])
         XCTAssertEqual(driver.getAdmittedCount(), 6)
+        XCTAssertEqual(cap.totalCount, 6)
 
-        let act8Replacement = driver.onCentralRead(centralId: u8)
-        XCTAssertEqual(act8Replacement, .sendReadResponse(u8, Data(repeating: 0, count: 13)))
+        let act8Replacement = driver.onCentralWrite(centralId: u8, rawData: validLinkInfo)
+        XCTAssertEqual(act8Replacement, .acceptWrite(u8, remoteHint))
         XCTAssertEqual(driver.getAdmittedCount(), 7)
+        XCTAssertEqual(cap.totalCount, 7)
     }
 
     func testOrchestration_StorePersistAutomaticallyRefreshesLinkInfo() throws {
@@ -1127,4 +1146,219 @@ final class BleLinkSubstrateTests: XCTestCase {
         XCTAssertEqual(delegate.physicalDuplexReadyCount, 1)
         XCTAssertEqual(delegate.transportReadyCount, 0)
     }
+
+    // =========================================================================
+    // SECTION 11, 12, 13 — iOS Non-Allocating Read, Inbound Timeout & Capacity Tests
+    // =========================================================================
+
+    func testIosLinkInfoReadOnly_DoesNotConsumeCapacity() {
+        let localHint = Data([2, 0, 0, 0])
+        let localLinkInfo = BleLinkInfoCodec.encode(
+            version: BleLinkInfoConstants.protocolVersion,
+            flags: 0,
+            nodeHint: localHint,
+            shortDigest: Data(repeating: 0, count: 6),
+            queueDepth: 0
+        )
+        let cap = BleGlobalCapacityAuthority(maxTotalPeers: 7)
+        let driver = BlePeripheralOrchestrationDriver(
+            localHint: localHint,
+            localLinkInfoProvider: { localLinkInfo },
+            capacityAuthority: cap
+        )
+
+        let central = UUID()
+        let act = driver.onCentralRead(centralId: central)
+        XCTAssertEqual(act, .sendReadResponse(central, localLinkInfo))
+
+        // Read is non-allocating: 0 capacity consumed, 0 admitted centrals!
+        XCTAssertEqual(cap.totalCount, 0)
+        XCTAssertEqual(cap.inboundCount, 0)
+        XCTAssertEqual(driver.getAdmittedCount(), 0)
+        XCTAssertFalse(driver.isCentralAdmitted(central))
+    }
+
+    func testIosRejectedLinkInfoWrite_DoesNotConsumeCapacity() {
+        let localHint = Data([1, 0, 0, 0]) // Local is 1
+        let remoteHint = Data([2, 0, 0, 0]) // Remote is 2 -> Remote > Local -> Central is responder -> Wrong direction!
+        let remoteLinkInfo = BleLinkInfoCodec.encode(
+            version: BleLinkInfoConstants.protocolVersion,
+            flags: 0,
+            nodeHint: remoteHint,
+            shortDigest: Data(repeating: 0, count: 6),
+            queueDepth: 0
+        )
+        let cap = BleGlobalCapacityAuthority(maxTotalPeers: 7)
+        let driver = BlePeripheralOrchestrationDriver(
+            localHint: localHint,
+            localLinkInfoProvider: { Data(repeating: 0, count: 13) },
+            capacityAuthority: cap
+        )
+
+        let central = UUID()
+        let act = driver.onCentralWrite(centralId: central, rawData: remoteLinkInfo)
+        XCTAssertEqual(act, .rejectWrite(central, "Central is not initiator"))
+
+        // Rejected write consumes 0 capacity!
+        XCTAssertEqual(cap.totalCount, 0)
+        XCTAssertEqual(cap.inboundCount, 0)
+        XCTAssertEqual(driver.getAdmittedCount(), 0)
+    }
+
+    func testIosAcceptedWriteWithoutSubscription_TimesOutAndReleases() {
+        let localHint = Data([2, 0, 0, 0]) // Local is 2
+        let remoteHint = Data([1, 0, 0, 0]) // Remote is 1 -> Remote < Local -> Local is RESPONDER -> Valid!
+        let remoteLinkInfo = BleLinkInfoCodec.encode(
+            version: BleLinkInfoConstants.protocolVersion,
+            flags: 0,
+            nodeHint: remoteHint,
+            shortDigest: Data(repeating: 0, count: 6),
+            queueDepth: 0
+        )
+        let cap = BleGlobalCapacityAuthority(maxTotalPeers: 7)
+        let driver = BlePeripheralOrchestrationDriver(
+            localHint: localHint,
+            localLinkInfoProvider: { Data(repeating: 0, count: 13) },
+            capacityAuthority: cap
+        )
+
+        let central = UUID()
+        let act = driver.onCentralWrite(centralId: central, rawData: remoteLinkInfo)
+        XCTAssertEqual(act, .acceptWrite(central, remoteHint))
+        XCTAssertEqual(cap.inboundCount, 1)
+        XCTAssertEqual(driver.getAdmittedCount(), 1)
+
+        // Pre-subscription timeout fires
+        driver.onInboundTimeout(centralId: central, expectedGen: 1)
+
+        // Capacity and connection cleanly released!
+        XCTAssertEqual(cap.inboundCount, 0)
+        XCTAssertEqual(cap.totalCount, 0)
+        XCTAssertEqual(driver.getAdmittedCount(), 0)
+        XCTAssertFalse(driver.isCentralAdmitted(central))
+    }
+
+    func testIosUnknownSubscription_DoesNotAllocate() {
+        let cap = BleGlobalCapacityAuthority(maxTotalPeers: 7)
+        let driver = BlePeripheralOrchestrationDriver(
+            localHint: Data([1, 0, 0, 0]),
+            localLinkInfoProvider: { Data(repeating: 0, count: 13) },
+            capacityAuthority: cap
+        )
+
+        let central = UUID()
+        let act = driver.onCentralSubscribed(centralId: central)
+        XCTAssertEqual(act, .rejectSubscription(central))
+        XCTAssertEqual(cap.totalCount, 0)
+        XCTAssertEqual(driver.getAdmittedCount(), 0)
+    }
+
+    func testIosProvisionalTimeout_ReleasesDriverCapacity() {
+        let cap = BleGlobalCapacityAuthority(maxTotalPeers: 7)
+        let driver = BleCentralOrchestrationDriver(
+            localHint: Data([1, 0, 0, 0]),
+            localLinkInfoProvider: { Data(repeating: 0, count: 13) },
+            capacityAuthority: cap
+        )
+
+        let peer = UUID()
+        _ = driver.onDiscover(peerId: peer, rssi: -60, serviceDataHint: nil)
+        XCTAssertEqual(cap.outboundCount, 1)
+        XCTAssertEqual(driver.getActiveConnectionCount(), 1)
+
+        let act = driver.onProvisionalTimeout(peerId: peer, expectedGen: 1)
+        XCTAssertEqual(act, .disconnectPeripheral(peer, "Provisional timeout"))
+        XCTAssertEqual(cap.outboundCount, 0)
+        XCTAssertEqual(driver.getActiveConnectionCount(), 0)
+    }
+
+    func testIosStaleProvisionalTimer_CannotReleaseReplacement() {
+        let cap = BleGlobalCapacityAuthority(maxTotalPeers: 7)
+        let driver = BleCentralOrchestrationDriver(
+            localHint: Data([1, 0, 0, 0]),
+            localLinkInfoProvider: { Data(repeating: 0, count: 13) },
+            capacityAuthority: cap
+        )
+
+        let peer = UUID()
+        _ = driver.onDiscover(peerId: peer, rssi: -60, serviceDataHint: nil)
+        XCTAssertEqual(cap.outboundCount, 1)
+
+        _ = driver.onDisconnected(peerId: peer)
+        XCTAssertEqual(cap.outboundCount, 0)
+
+        _ = driver.onDiscover(peerId: peer, rssi: -60, serviceDataHint: nil)
+        XCTAssertEqual(cap.outboundCount, 1)
+
+        // Stale Gen 1 timeout
+        let staleAct = driver.onProvisionalTimeout(peerId: peer, expectedGen: 1)
+        XCTAssertEqual(staleAct, .noOp)
+        XCTAssertEqual(cap.outboundCount, 1)
+        XCTAssertEqual(driver.getActiveConnectionCount(), 1)
+
+        // Valid Gen 2 timeout
+        let validAct = driver.onProvisionalTimeout(peerId: peer, expectedGen: 2)
+        XCTAssertEqual(validAct, .disconnectPeripheral(peer, "Provisional timeout"))
+        XCTAssertEqual(cap.outboundCount, 0)
+        XCTAssertEqual(driver.getActiveConnectionCount(), 0)
+    }
+
+    func testIosStop_ReleasesAllCapacity() {
+        let cap = BleGlobalCapacityAuthority(maxTotalPeers: 7)
+        let centralDriver = BleCentralOrchestrationDriver(
+            localHint: Data([1, 0, 0, 0]),
+            localLinkInfoProvider: { Data(repeating: 0, count: 13) },
+            capacityAuthority: cap
+        )
+        let peripheralDriver = BlePeripheralOrchestrationDriver(
+            localHint: Data([2, 0, 0, 0]),
+            localLinkInfoProvider: { Data(repeating: 0, count: 13) },
+            capacityAuthority: cap
+        )
+
+        let p1 = UUID()
+        let p2 = UUID()
+        _ = centralDriver.onDiscover(peerId: p1, rssi: -60, serviceDataHint: nil)
+        let remoteLinkInfo = BleLinkInfoCodec.encode(
+            version: BleLinkInfoConstants.protocolVersion,
+            flags: 0,
+            nodeHint: Data([1, 0, 0, 0]),
+            shortDigest: Data(repeating: 0, count: 6),
+            queueDepth: 0
+        )
+        _ = peripheralDriver.onCentralWrite(centralId: p2, rawData: remoteLinkInfo)
+
+        XCTAssertEqual(cap.totalCount, 2)
+        XCTAssertEqual(cap.outboundCount, 1)
+        XCTAssertEqual(cap.inboundCount, 1)
+
+        // Reset / Stop
+        centralDriver.reset()
+        peripheralDriver.reset()
+        cap.reset()
+
+        XCTAssertEqual(cap.totalCount, 0)
+        XCTAssertEqual(cap.outboundCount, 0)
+        XCTAssertEqual(cap.inboundCount, 0)
+        XCTAssertEqual(centralDriver.getActiveConnectionCount(), 0)
+        XCTAssertEqual(peripheralDriver.getAdmittedCount(), 0)
+    }
+
+    func testIosStopStart_CanAdmitSevenFreshPeers() {
+        let cap = BleGlobalCapacityAuthority(maxTotalPeers: 7)
+        for _ in 1...7 {
+            XCTAssertTrue(cap.tryAdmitOutbound())
+        }
+        XCTAssertEqual(cap.totalCount, 7)
+        XCTAssertFalse(cap.tryAdmitInbound())
+
+        cap.reset()
+        XCTAssertEqual(cap.totalCount, 0)
+
+        for _ in 1...7 {
+            XCTAssertTrue(cap.tryAdmitInbound())
+        }
+        XCTAssertEqual(cap.totalCount, 7)
+    }
 }
+

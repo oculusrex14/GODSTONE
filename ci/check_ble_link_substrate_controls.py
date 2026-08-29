@@ -63,6 +63,32 @@ Verifies the presence, boundaries, and structural invariants of:
 - BL59: ATT READ callbacks serve from precomputed immutable cache without synchronous durable store traversal
 - BL60: Direct canonical JSON test vector consumption from wire/ble_link_info_vectors.json
 - BL61: iOS inbound central subscription authority requiring active accepted inbound connection
+- BL62: Android BleServerOrchestrationDriver onNotificationSent signature
+- BL63: Android BleServerOrchestrationDriver server callback epoch poisoning
+- BL64: Android BleServerOrchestrationDriver onServiceAdded matching
+- BL65: Android BleGlobalCapacityAuthority
+- BL66: iOS BleGlobalCapacityAuthority
+- BL67: Android BleTransport centralDriver instantiation
+- BL68: Android BleGattServer orchestrationDriver integration
+- BL69: iOS BleCentralOrchestrationDriver CoreBluetooth callbacks
+- BL70: iOS BlePeripheralOrchestrationDriver CoreBluetooth callbacks
+- BL71: iOS BleTransport driver instantiation
+- BL72: iOS BleTransport callback delegation
+- BL73: Android LinkInfoSnapshotAuthority pure cache reads
+- BL74: iOS LinkInfoSnapshotAuthority pure atomic cache reads
+- BL75: Android SqliteDeliveryRepository onHeldSetMutated invocation
+- BL76: Android MeshModule wiring
+- BL77: iOS MessageStore notifyHeldSetChanged
+- BL78: ADR-002 truthful status
+- BL79: ADR-003 truthful status
+- BL80: Substrate test inventories
+- BL81: Android UUID-only discovery scan authority
+- BL82: Android Server physical link direction isolation
+- BL83: Android Inbound Responder metadata propagation
+- BL84: iOS Non-allocating LinkInfo read
+- BL85: iOS Inbound pre-subscription timeout
+- BL86: Real Android server callback factory
+- BL87: Thread-safe capacity authority leases
 """
 from __future__ import annotations
 
@@ -1016,10 +1042,83 @@ def check_controls(
             "testGlobalCapacity_MixedDirectionsFillAndReplace",
             "testDelegateCallback_InitiatorPhysicalDuplex_NoTransportReady",
             "testDelegateCallback_ResponderPhysicalDuplex_NoTransportReady",
+            "testIosLinkInfoReadOnly_DoesNotConsumeCapacity",
+            "testIosRejectedLinkInfoWrite_DoesNotConsumeCapacity",
+            "testIosAcceptedWriteWithoutSubscription_TimesOutAndReleases",
+            "testIosUnknownSubscription_DoesNotAllocate",
+            "testIosProvisionalTimeout_ReleasesDriverCapacity",
+            "testIosStaleProvisionalTimer_CannotReleaseReplacement",
+            "testIosStop_ReleasesAllCapacity",
+            "testIosStopStart_CanAdmitSevenFreshPeers",
         ]
         for t in required_ios:
             if t not in c:
                 errors.append(f"BL80: iOS test {t} missing in BleLinkSubstrateTests")
+
+    # ------------------------------------------------------------------------
+    # BL81: Android UUID-only discovery scan authority
+    # ------------------------------------------------------------------------
+    if android_transport_path.exists():
+        c = strip_comments(android_transport_path.read_text(encoding="utf-8"))
+        if "val optionalHint = metadata?.nodeHint" not in c or "val action = centralDriver.onScanResult(address, result.rssi, optionalHint)" not in c:
+            errors.append("BL81: Android BleTransport must trigger centralDriver.onScanResult unconditionally for UUID-only scan results")
+
+    # ------------------------------------------------------------------------
+    # BL82: Android Server physical link direction isolation
+    # ------------------------------------------------------------------------
+    if android_transport_path.exists():
+        c = strip_comments(android_transport_path.read_text(encoding="utf-8"))
+        if "isRoleBoundPredicate = { peerAddress -> serverDriver.getInboundConnection(peerAddress)?.isRoleBound == true }" not in c:
+            errors.append("BL82: Android BleTransport isRoleBoundPredicate must check only serverDriver inbound connection")
+        if "handleCentralInboundNotification" not in c or "handleServerInboundWrite" not in c:
+            errors.append("BL82: Android BleTransport must separate central and server inbound traffic handlers")
+
+    # ------------------------------------------------------------------------
+    # BL83: Android Inbound Responder metadata propagation
+    # ------------------------------------------------------------------------
+    if android_transport_path.exists():
+        c = strip_comments(android_transport_path.read_text(encoding="utf-8"))
+        if "responderRemoteLinkInfo[peerAddress] = decoded" not in c:
+            errors.append("BL83: Android BleTransport handleIncomingLinkInfoWrite must store decoded BleLinkInfoV1")
+
+    # ------------------------------------------------------------------------
+    # ------------------------------------------------------------------------
+    # BL84: iOS Non-allocating LinkInfo read
+    # ------------------------------------------------------------------------
+    if ios_driver_path.exists():
+        c = strip_comments(ios_driver_path.read_text(encoding="utf-8"))
+        if "public func onCentralRead(centralId: UUID) -> BlePeripheralAction {" not in c:
+            errors.append("BL84: iOS BlePeripheralOrchestrationDriver onCentralRead must be implemented")
+        read_fn_start = c.find("public func onCentralRead(centralId: UUID) -> BlePeripheralAction {")
+        if read_fn_start != -1:
+            write_fn_start = c.find("public func onCentralWrite(", read_fn_start)
+            body = c[read_fn_start:write_fn_start] if write_fn_start != -1 else c[read_fn_start:]
+            if "tryAdmitInbound" in body or "ensureAdmitted" in body or "admittedCentrals.insert" in body or "admit" in body.lower():
+                errors.append("BL84: iOS BlePeripheralOrchestrationDriver onCentralRead must be completely stateless and non-allocating")
+
+    # ------------------------------------------------------------------------
+    # BL85: iOS Inbound pre-subscription timer and timeout
+    # ------------------------------------------------------------------------
+    if ios_transport_path.exists():
+        c = strip_comments(ios_transport_path.read_text(encoding="utf-8"))
+        if "inboundTimers[centralId] = timer" not in c or "peripheralDriver?.onInboundTimeout" not in c:
+            errors.append("BL85: iOS BleTransport must manage inbound pre-subscription timeout")
+
+    # ------------------------------------------------------------------------
+    # BL86: Real Android server callback factory
+    # ------------------------------------------------------------------------
+    if android_server_path.exists():
+        c = strip_comments(android_server_path.read_text(encoding="utf-8"))
+        if "fun makeServerCallback(callbackEpoch: Long): BluetoothGattServerCallback" not in c or "val currentCallback = makeServerCallback(gen)" not in c:
+            errors.append("BL86: Android BleGattServer must instantiate a new BluetoothGattServerCallback per server epoch")
+
+    # ------------------------------------------------------------------------
+    # BL87: Thread-safe capacity authority leases
+    # ------------------------------------------------------------------------
+    if android_capacity_path.exists():
+        c = strip_comments(android_capacity_path.read_text(encoding="utf-8"))
+        if "data class CapacityLease(" not in c or "enum class BleDirection" not in c or "synchronized" not in c:
+            errors.append("BL87: Android BleGlobalCapacityAuthority must use synchronized CapacityLease tokens")
 
     return errors
 
@@ -1133,6 +1232,13 @@ def run_selftest() -> int:
         ("adr003", "C8.4D1-R2 Substrate Implementation & Closure:** OPEN", "C8.4D1-R2 Substrate Implementation & Closure:** CLOSED", "BL79"),
         ("android_test_substrate", "testNotification_N1TimeoutPoisonsServerEpoch", "disabled_testNotification", "BL80"),
         ("ios_test_substrate", "testDelegateCallback_InitiatorPhysicalDuplex_NoTransportReady", "disabled_testDelegateCallback", "BL80"),
+        ("android_transport", "val optionalHint = metadata?.nodeHint", "/* val optionalHint = metadata?.nodeHint */", "BL81"),
+        ("android_transport", "isRoleBoundPredicate = { peerAddress -> serverDriver.getInboundConnection(peerAddress)?.isRoleBound == true }", "isRoleBoundPredicate = { peerAddress -> centralDriver.getActiveConnection(peerAddress)?.isRoleBound == true }", "BL82"),
+        ("android_transport", "responderRemoteLinkInfo[peerAddress] = decoded", "/* responderRemoteLinkInfo[peerAddress] = decoded */", "BL83"),
+        ("ios_driver", "guard let data = localLinkInfoProvider(), data.count == BleLinkInfoConstants.linkInfoBytes else {", "if !ensureAdmitted(centralId: centralId) { return .rejectRead(centralId) }\n        guard let data = localLinkInfoProvider(), data.count == BleLinkInfoConstants.linkInfoBytes else {", "BL84"),
+        ("ios_transport", "inboundTimers[centralId] = timer", "/* inboundTimers[centralId] = timer */", "BL85"),
+        ("android_server", "val currentCallback = makeServerCallback(gen)", "/* val currentCallback = makeServerCallback(gen) */", "BL86"),
+        ("android_capacity", "data class CapacityLease(", "data class CapacityLeaseMutated(", "BL87"),
     ]
 
     all_passed = True
@@ -1255,7 +1361,7 @@ def main() -> int:
             print(f"  - {err}", file=sys.stderr)
         return 1
 
-    print("BLE link substrate structural controls: ALL PASSED (BL01-BL80).")
+    print("BLE link substrate structural controls: ALL PASSED (BL01-BL87).")
     return 0
 
 
