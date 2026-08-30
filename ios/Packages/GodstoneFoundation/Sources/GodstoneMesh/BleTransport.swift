@@ -44,7 +44,6 @@ public final class BleTransport: NSObject, @unchecked Sendable {
     var inboundPeripheralConnections: [UUID: BleConnection] = [:]
 
     private var provisionalTimers: [UUID: Timer] = [:]
-    private var provisionalGenerations: [UUID: UInt64] = [:]
     private var inboundTimers: [UUID: Timer] = [:]
 
     private var publishedRelations: Set<RelationKey> = []
@@ -149,7 +148,6 @@ public final class BleTransport: NSObject, @unchecked Sendable {
             timer.invalidate()
         }
         provisionalTimers.removeAll()
-        provisionalGenerations.removeAll()
 
         for (_, timer) in inboundTimers {
             timer.invalidate()
@@ -390,6 +388,9 @@ public final class BleTransport: NSObject, @unchecked Sendable {
                 let key = RelationKey(direction: .inboundPeripheral, peerId: cid, generation: gen)
                 publishRelation(key)
             }
+        case .acceptDuplicateWrite(let cid, _):
+            // Exact duplicate write: idempotent, does not allocate timer or change state
+            break
         default:
             break
         }
@@ -442,6 +443,9 @@ public final class BleTransport: NSObject, @unchecked Sendable {
 
     public func handleInboundTimeout(centralId: UUID, generation: UInt64 = 0) {
         guard let driver = peripheralDriver else { return }
+        transportLock.lock()
+        inboundTimers.removeValue(forKey: centralId)?.invalidate()
+        transportLock.unlock()
         let currentGen = driver.getCentralGeneration(centralId)
         if generation != 0 && currentGen != generation {
             return
@@ -452,7 +456,6 @@ public final class BleTransport: NSObject, @unchecked Sendable {
         let effectiveGen = (generation != 0) ? generation : currentGen
         driver.onInboundTimeout(centralId: centralId, expectedGen: effectiveGen)
         transportLock.lock()
-        inboundTimers.removeValue(forKey: centralId)?.invalidate()
         inboundPeripheralConnections.removeValue(forKey: centralId)?.markDisconnected()
         subscribedCentrals.removeValue(forKey: centralId)
         pendingOutboundUpdates.removeValue(forKey: centralId)
@@ -485,6 +488,9 @@ public final class BleTransport: NSObject, @unchecked Sendable {
 
     public func handleOutboundTimeout(peerId: UUID, generation: UInt64 = 0) -> BleCentralAction {
         guard let driver = centralDriver else { return .noOp }
+        transportLock.lock()
+        provisionalTimers.removeValue(forKey: peerId)?.invalidate()
+        transportLock.unlock()
         let currentGen = driver.getConnectionGeneration(peerId)
         if generation != 0 && currentGen != generation {
             return .noOp
@@ -495,7 +501,6 @@ public final class BleTransport: NSObject, @unchecked Sendable {
         let effectiveGen = (generation != 0) ? generation : currentGen
         let action = driver.onProvisionalTimeout(peerId: peerId, expectedGen: effectiveGen)
         transportLock.lock()
-        provisionalTimers.removeValue(forKey: peerId)?.invalidate()
         let p = connectedPeripherals.removeValue(forKey: peerId)
         outboundCentralConnections.removeValue(forKey: peerId)?.markDisconnected()
         inboxCharacteristics.removeValue(forKey: peerId)
@@ -594,12 +599,11 @@ extension BleTransport: CBCentralManagerDelegate, CBPeripheralDelegate {
                 connectedPeripherals[peerId] = p
                 p.delegate = self
 
-                let gen = (provisionalGenerations[peerId] ?? 0) + 1
-                provisionalGenerations[peerId] = gen
+                let gen = centralDriver?.getConnectionGeneration(peerId) ?? 0
                 let timer = Timer(timeInterval: provisionalTimeoutSeconds, repeats: false) { [weak self] _ in
                     guard let self = self else { return }
                     self.transportLock.lock()
-                    let isCurrentGen = (self.provisionalGenerations[peerId] == gen)
+                    let isCurrentGen = (self.centralDriver?.getConnectionGeneration(peerId) == gen)
                     let isReady = self.outboundCentralConnections[peerId]?.isHandshakeTransportReady ?? false
                     self.transportLock.unlock()
                     if isCurrentGen && !isReady {

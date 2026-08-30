@@ -142,28 +142,28 @@ class BleGattServer(
                             } catch (_: Exception) {}
                             return
                         }
-                    }
-
-                    if (connectedDevices.containsKey(address)) {
-                        connectedDevices[address] = device
-                        peerGenerations[address] = pGen
-                    } else if (orchestrationDriver == null && connectedDevices.size >= MAX_ADMITTED_CLIENTS) {
+                    } else if (connectedDevices.containsKey(address) || connectedDevices.size >= MAX_ADMITTED_CLIENTS) {
                         try {
                             server?.cancelConnection(device)
                         } catch (_: Exception) {}
                         return
-                    } else {
-                        peerGenerations[address] = pGen
-                        connectedDevices[address] = device
                     }
-                    onClientAdmitted?.invoke(address, pGen)
+
+                    val effectiveGen = orchestrationDriver?.getClientGeneration(address) ?: pGen
+                    connectedDevices[address] = device
+                    peerGenerations[address] = effectiveGen
+                    onClientAdmitted?.invoke(address, effectiveGen)
                 } else if (newState == BluetoothProfile.STATE_DISCONNECTED) {
-                    val currentConnected = connectedDevices[address]
-                    if (currentConnected != null && currentConnected != device) {
-                        return
+                    // Android BluetoothGattServerCallback gives only BluetoothDevice with address-based equality.
+                    // Physical relation lifetimes are strictly serialized via orchestrationDriver ACTIVE/CLOSING peer slots.
+                    val pGen = orchestrationDriver?.getClientGeneration(address) ?: (peerGenerations[address] ?: 0L)
+                    val action = orchestrationDriver?.onClientDisconnected(address, pGen)
+                    val retiredGen = if (action is BleServerAction.TearDownPhysicalChannel && action.generation != 0L) {
+                        action.generation
+                    } else {
+                        pGen
                     }
-                    val pGen = peerGenerations.remove(address) ?: 0L
-                    orchestrationDriver?.onClientDisconnected(address, pGen)
+                    peerGenerations.remove(address)
                     connectedDevices.remove(address)
                     subscribedDevices.remove(address)
                     deviceMtu.remove(address)
@@ -173,7 +173,7 @@ class BleGattServer(
                         pending.deferred.complete(false)
                     }
                     onSubscriptionChanged(address, false)
-                    onClientDisconnected(address, pGen)
+                    onClientDisconnected(address, retiredGen)
                 }
             }
 
@@ -188,11 +188,6 @@ class BleGattServer(
                 val address = device.address ?: return
 
                 if (characteristic.uuid == linkInfoCharUuid) {
-                    if (offset != 0) {
-                        s.sendResponse(device, requestId, BluetoothGatt.GATT_INVALID_OFFSET, offset, null)
-                        return
-                    }
-
                     if (orchestrationDriver != null) {
                         val action = orchestrationDriver.onLinkInfoReadRequest(address)
                         when (action) {
@@ -204,16 +199,12 @@ class BleGattServer(
                             }
                         }
                     } else {
-                        if (!connectedDevices.containsKey(address)) {
+                        val data = linkInfoProvider()
+                        if (data != null && data.size == BleLinkInfoConstants.LINK_INFO_BYTES) {
+                            s.sendResponse(device, requestId, BluetoothGatt.GATT_SUCCESS, offset, data)
+                        } else {
                             s.sendResponse(device, requestId, BluetoothGatt.GATT_FAILURE, offset, null)
-                            return
                         }
-                        val localBytes = linkInfoProvider()
-                        if (localBytes == null || localBytes.size != BleLinkInfoConstants.LINK_INFO_BYTES) {
-                            s.sendResponse(device, requestId, BluetoothGatt.GATT_FAILURE, offset, null)
-                            return
-                        }
-                        s.sendResponse(device, requestId, BluetoothGatt.GATT_SUCCESS, offset, localBytes)
                     }
                     return
                 }
@@ -246,6 +237,7 @@ class BleGattServer(
                         val action = orchestrationDriver.onLinkInfoWriteRequest(address, value)
                         when (action) {
                             is BleServerAction.AcceptWrite,
+                            is BleServerAction.AcceptDuplicateWrite,
                             is BleServerAction.AcceptWriteAndPublishFound -> {
                                 val accepted = onLinkInfoWrite(address, value)
                                 if (accepted) {

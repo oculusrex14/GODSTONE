@@ -2,7 +2,7 @@ package io.godstone.mesh.transport
 
 /**
  * Authoritative production orchestration driver for BLE link state transitions, capacity bounding,
- * role election, and callback correlation (ADR-002, Phase C8.4D1-R2.6).
+ * role election, and callback correlation (ADR-002, Phase C8.4D1-R2.8).
  *
  * Used by production BleTransport, GattClient, and BleGattServer and driven directly by host orchestration tests.
  */
@@ -13,6 +13,19 @@ data class BleElectionContext(
     val relationGen: Long,
     val gattGen: Long,
     val opGen: Long
+)
+
+enum class OutboundPeerSlotState {
+    IDLE,
+    ACTIVE,
+    CLOSING
+}
+
+data class OutboundPeerSlot(
+    val state: OutboundPeerSlotState,
+    val generation: Long,
+    val peerAddress: String,
+    val lease: CapacityLease? = null
 )
 
 sealed interface BleCentralAction {
@@ -47,6 +60,7 @@ class BleCentralOrchestrationDriver(
     private val discoveredHints = mutableMapOf<String, ByteArray>()
     private val peerRssi = mutableMapOf<String, Int>()
     private val publishedFound = mutableSetOf<String>()
+    private val outboundSlots = mutableMapOf<String, OutboundPeerSlot>()
 
     fun getActiveConnection(peerAddress: String): BleConnection? = synchronized(lock) {
         activeConnections[peerAddress]
@@ -72,6 +86,14 @@ class BleCentralOrchestrationDriver(
         publishedFound.contains(peerAddress)
     }
 
+    fun getOutboundSlot(peerAddress: String): OutboundPeerSlot? = synchronized(lock) {
+        outboundSlots[peerAddress]
+    }
+
+    fun getOutboundSlotState(peerAddress: String): OutboundPeerSlotState = synchronized(lock) {
+        outboundSlots[peerAddress]?.state ?: OutboundPeerSlotState.IDLE
+    }
+
     private fun releaseLeaseLocked(peerAddress: String) {
         val lease = activeLeases.remove(peerAddress)
         if (lease != null && globalCapacity != null) {
@@ -87,27 +109,38 @@ class BleCentralOrchestrationDriver(
             peerRssi[peerAddress] = rssi
         }
 
+        val slot = outboundSlots[peerAddress]
+        if (slot?.state == OutboundPeerSlotState.CLOSING) {
+            return BleCentralAction.NoOp
+        }
+        if (slot?.state == OutboundPeerSlotState.ACTIVE) {
+            return BleCentralAction.NoOp
+        }
+
         val existing = activeConnections[peerAddress]
         if (existing != null && existing.isActive) {
             return BleCentralAction.NoOp
         }
 
         val nextGen = (connectionGenerations[peerAddress] ?: 0L) + 1L
-        if (globalCapacity != null) {
-            val lease = globalCapacity.tryAdmitOutbound(peerAddress, nextGen)
-            if (lease == null) {
-                return BleCentralAction.NoOp
-            }
-            activeLeases[peerAddress] = lease
+        val lease = if (globalCapacity != null) {
+            val l = globalCapacity.tryAdmitOutbound(peerAddress, nextGen)
+            if (l == null) return BleCentralAction.NoOp
+            l
         } else {
             if (activeConnections.size >= maxActiveConnections) {
                 return BleCentralAction.NoOp
             }
+            null
         }
 
         connectionGenerations[peerAddress] = nextGen
+        if (lease != null) {
+            activeLeases[peerAddress] = lease
+        }
         val conn = BleConnection(peerAddress.toByteArray())
         activeConnections[peerAddress] = conn
+        outboundSlots[peerAddress] = OutboundPeerSlot(OutboundPeerSlotState.ACTIVE, nextGen, peerAddress, lease)
         BleCentralAction.ConnectGatt(peerAddress)
     }
 
@@ -122,11 +155,13 @@ class BleCentralOrchestrationDriver(
     fun onServicesDiscovered(peerAddress: String, success: Boolean, gattGeneration: Long, currentGattGen: Long): BleCentralAction = synchronized(lock) {
         if (gattGeneration != currentGattGen) return BleCentralAction.NoOp
         val conn = activeConnections[peerAddress] ?: return BleCentralAction.NoOp
+        val gen = connectionGenerations[peerAddress] ?: 0L
         if (!success) {
             conn.transitionTo(BleConnectionState.CLOSED)
             activeConnections.remove(peerAddress)
             electionContexts.remove(peerAddress)
             releaseLeaseLocked(peerAddress)
+            outboundSlots[peerAddress] = OutboundPeerSlot(OutboundPeerSlotState.CLOSING, gen, peerAddress, null)
             return BleCentralAction.DisconnectGatt(peerAddress, "Service discovery failed")
         }
         if (conn.state != BleConnectionState.PROVISIONAL_CONNECTED) return BleCentralAction.NoOp
@@ -138,12 +173,14 @@ class BleCentralOrchestrationDriver(
         if (gattGeneration != currentGattGen) return BleCentralAction.NoOp
         val conn = activeConnections[peerAddress] ?: return BleCentralAction.NoOp
         if (conn.state != BleConnectionState.LINK_INFO_READING) return BleCentralAction.NoOp
+        val gen = connectionGenerations[peerAddress] ?: 0L
 
         if (rawBytes == null || rawBytes.size != BleLinkInfoConstants.LINK_INFO_BYTES) {
             conn.transitionTo(BleConnectionState.CLOSED)
             activeConnections.remove(peerAddress)
             electionContexts.remove(peerAddress)
             releaseLeaseLocked(peerAddress)
+            outboundSlots[peerAddress] = OutboundPeerSlot(OutboundPeerSlotState.CLOSING, gen, peerAddress, null)
             return BleCentralAction.DisconnectGatt(peerAddress, "Malformed or missing LinkInfo")
         }
 
@@ -153,6 +190,7 @@ class BleCentralOrchestrationDriver(
             activeConnections.remove(peerAddress)
             electionContexts.remove(peerAddress)
             releaseLeaseLocked(peerAddress)
+            outboundSlots[peerAddress] = OutboundPeerSlot(OutboundPeerSlotState.CLOSING, gen, peerAddress, null)
             return BleCentralAction.DisconnectGatt(peerAddress, "Malformed LinkInfo")
         }
 
@@ -166,6 +204,7 @@ class BleCentralOrchestrationDriver(
                         activeConnections.remove(peerAddress)
                         electionContexts.remove(peerAddress)
                         releaseLeaseLocked(peerAddress)
+                        outboundSlots[peerAddress] = OutboundPeerSlot(OutboundPeerSlotState.CLOSING, gen, peerAddress, null)
                         return BleCentralAction.DisconnectGatt(peerAddress, "Local LinkInfo unavailable")
                     }
                     val relGen = connectionGenerations[peerAddress] ?: 0L
@@ -179,11 +218,11 @@ class BleCentralOrchestrationDriver(
                     conn.transitionTo(BleConnectionState.LINK_INFO_WRITING)
                     BleCentralAction.WriteLinkInfo(peerAddress, localBytes, remoteInfo.nodeHint)
                 } else {
-                    // Local > remote: We are responder; central link is wrong direction -> drop
                     conn.transitionTo(BleConnectionState.CLOSED)
                     activeConnections.remove(peerAddress)
                     electionContexts.remove(peerAddress)
                     releaseLeaseLocked(peerAddress)
+                    outboundSlots[peerAddress] = OutboundPeerSlot(OutboundPeerSlotState.CLOSING, gen, peerAddress, null)
                     BleCentralAction.DisconnectGatt(peerAddress, "Elected RESPONDER on central link")
                 }
             }
@@ -192,6 +231,7 @@ class BleCentralOrchestrationDriver(
                 activeConnections.remove(peerAddress)
                 electionContexts.remove(peerAddress)
                 releaseLeaseLocked(peerAddress)
+                outboundSlots[peerAddress] = OutboundPeerSlot(OutboundPeerSlotState.CLOSING, gen, peerAddress, null)
                 BleCentralAction.DisconnectGatt(peerAddress, "Role election tie or invalid")
             }
         }
@@ -207,12 +247,14 @@ class BleCentralOrchestrationDriver(
         if (gattGeneration != currentGattGen) return BleCentralAction.NoOp
         val conn = activeConnections[peerAddress] ?: return BleCentralAction.NoOp
         if (conn.state != BleConnectionState.LINK_INFO_WRITING) return BleCentralAction.NoOp
+        val gen = connectionGenerations[peerAddress] ?: 0L
 
         if (!success) {
             conn.transitionTo(BleConnectionState.CLOSED)
             activeConnections.remove(peerAddress)
             electionContexts.remove(peerAddress)
             releaseLeaseLocked(peerAddress)
+            outboundSlots[peerAddress] = OutboundPeerSlot(OutboundPeerSlotState.CLOSING, gen, peerAddress, null)
             return BleCentralAction.DisconnectGatt(peerAddress, "LinkInfo write failed")
         }
 
@@ -225,12 +267,14 @@ class BleCentralOrchestrationDriver(
         if (gattGeneration != currentGattGen) return BleCentralAction.NoOp
         val conn = activeConnections[peerAddress] ?: return BleCentralAction.NoOp
         if (!conn.isRoleBound) return BleCentralAction.NoOp
+        val gen = connectionGenerations[peerAddress] ?: 0L
 
         if (!success) {
             conn.transitionTo(BleConnectionState.CLOSED)
             activeConnections.remove(peerAddress)
             electionContexts.remove(peerAddress)
             releaseLeaseLocked(peerAddress)
+            outboundSlots[peerAddress] = OutboundPeerSlot(OutboundPeerSlotState.CLOSING, gen, peerAddress, null)
             return BleCentralAction.DisconnectGatt(peerAddress, "CCCD subscription failed")
         }
 
@@ -258,13 +302,15 @@ class BleCentralOrchestrationDriver(
             electionContexts.remove(peerAddress)
             releaseLeaseLocked(peerAddress)
             publishedFound.remove(peerAddress)
+            outboundSlots[peerAddress] = OutboundPeerSlot(OutboundPeerSlotState.CLOSING, currentGen, peerAddress, null)
             return BleCentralAction.DisconnectGatt(peerAddress, "Provisional timeout")
         }
         BleCentralAction.NoOp
     }
 
     fun onDisconnected(peerAddress: String, expectedGen: Long = 0L): BleCentralAction = synchronized(lock) {
-        val currentGen = connectionGenerations[peerAddress] ?: 0L
+        val slot = outboundSlots[peerAddress]
+        val currentGen = slot?.generation ?: (connectionGenerations[peerAddress] ?: 0L)
         if (expectedGen != 0L && currentGen != expectedGen) {
             return BleCentralAction.NoOp
         }
@@ -273,6 +319,7 @@ class BleCentralOrchestrationDriver(
         electionContexts.remove(peerAddress)
         releaseLeaseLocked(peerAddress)
         val wasPublished = publishedFound.remove(peerAddress)
+        outboundSlots[peerAddress] = OutboundPeerSlot(OutboundPeerSlotState.IDLE, currentGen, peerAddress, null)
         if (wasPublished) {
             BleCentralAction.PublishLost(peerAddress)
         } else {
@@ -291,22 +338,37 @@ class BleCentralOrchestrationDriver(
         discoveredHints.clear()
         peerRssi.clear()
         publishedFound.clear()
+        outboundSlots.clear()
         globalCapacity?.releaseAllOutbound()
     }
 }
 
+enum class ServerPeerSlotState {
+    IDLE,
+    ACTIVE,
+    CLOSING
+}
+
+data class ServerPeerSlot(
+    val state: ServerPeerSlotState,
+    val generation: Long,
+    val deviceAddress: String,
+    val lease: CapacityLease? = null
+)
+
 sealed interface BleServerAction {
-    data class AdmitConnection(val deviceAddress: String) : BleServerAction
-    data class RejectConnection(val deviceAddress: String) : BleServerAction
+    data class AdmitConnection(val deviceAddress: String, val generation: Long = 0L) : BleServerAction
+    data class RejectConnection(val deviceAddress: String, val reason: String = "") : BleServerAction
     data class SendReadResponse(val deviceAddress: String, val bytes: ByteArray) : BleServerAction
     data class RejectRead(val deviceAddress: String) : BleServerAction
     data class AcceptWrite(val deviceAddress: String, val remoteInfo: BleLinkInfoV1) : BleServerAction
+    data class AcceptDuplicateWrite(val deviceAddress: String, val remoteInfo: BleLinkInfoV1) : BleServerAction
     data class AcceptWriteAndPublishFound(val deviceAddress: String, val remoteInfo: BleLinkInfoV1) : BleServerAction
     data class RejectWrite(val deviceAddress: String, val reason: String) : BleServerAction
     data class AcceptDescriptorWrite(val deviceAddress: String, val isSubscribed: Boolean) : BleServerAction
     data class AcceptDescriptorWriteAndPublishFound(val deviceAddress: String) : BleServerAction
     data class RejectDescriptorWrite(val deviceAddress: String) : BleServerAction
-    data class TearDownPhysicalChannel(val deviceAddress: String) : BleServerAction
+    data class TearDownPhysicalChannel(val deviceAddress: String, val generation: Long = 0L) : BleServerAction
     data object PoisonServer : BleServerAction
     data class NotificationSuccess(val deviceAddress: String) : BleServerAction
     data class NotificationFailure(val deviceAddress: String) : BleServerAction
@@ -341,6 +403,7 @@ class BleServerOrchestrationDriver(
     private val inboundConnections = mutableMapOf<String, BleConnection>()
     private val acceptedRemoteLinkInfo = mutableMapOf<String, BleLinkInfoV1>()
     private val publishedFound = mutableSetOf<String>()
+    private val peerSlots = mutableMapOf<String, ServerPeerSlot>()
 
     fun getAdmittedCount(): Int = synchronized(lock) { admittedDevices.size }
     fun isDeviceAdmitted(deviceAddress: String): Boolean = synchronized(lock) { admittedDevices.contains(deviceAddress) }
@@ -348,8 +411,14 @@ class BleServerOrchestrationDriver(
     fun getInboundConnection(deviceAddress: String): BleConnection? = synchronized(lock) { inboundConnections[deviceAddress] }
     fun getInboundLease(deviceAddress: String): CapacityLease? = synchronized(lock) { inboundLeases[deviceAddress] }
     fun getAcceptedRemoteLinkInfo(deviceAddress: String): BleLinkInfoV1? = synchronized(lock) { acceptedRemoteLinkInfo[deviceAddress] }
-    fun getClientGeneration(deviceAddress: String): Long = synchronized(lock) { peerGenerations[deviceAddress] ?: 0L }
+    fun getClientGeneration(deviceAddress: String): Long = synchronized(lock) {
+        peerSlots[deviceAddress]?.generation ?: (peerGenerations[deviceAddress] ?: 0L)
+    }
     fun isPhysicalReady(deviceAddress: String): Boolean = synchronized(lock) { publishedFound.contains(deviceAddress) }
+    fun getPeerSlot(deviceAddress: String): ServerPeerSlot? = synchronized(lock) { peerSlots[deviceAddress] }
+    fun getPeerSlotState(deviceAddress: String): ServerPeerSlotState = synchronized(lock) {
+        peerSlots[deviceAddress]?.state ?: ServerPeerSlotState.IDLE
+    }
 
     private fun releaseLeaseLocked(deviceAddress: String) {
         val lease = inboundLeases.remove(deviceAddress)
@@ -374,6 +443,7 @@ class BleServerOrchestrationDriver(
         inboundConnections.clear()
         acceptedRemoteLinkInfo.clear()
         publishedFound.clear()
+        peerSlots.clear()
         pendingNotificationAddress = null
         globalCapacity?.releaseAllInbound()
         serverCallbackEpoch
@@ -389,36 +459,49 @@ class BleServerOrchestrationDriver(
     }
 
     fun onClientConnected(deviceAddress: String, peerGeneration: Long): BleServerAction = synchronized(lock) {
-        if (isPoisoned) return BleServerAction.RejectConnection(deviceAddress)
+        if (isPoisoned) return BleServerAction.RejectConnection(deviceAddress, "Server is poisoned")
 
-        if (admittedDevices.contains(deviceAddress)) {
-            peerGenerations[deviceAddress] = peerGeneration
-            return BleServerAction.AdmitConnection(deviceAddress)
+        val slot = peerSlots[deviceAddress]
+        if (slot?.state == ServerPeerSlotState.ACTIVE) {
+            return BleServerAction.RejectConnection(deviceAddress, "Client is already ACTIVE")
+        }
+        if (slot?.state == ServerPeerSlotState.CLOSING) {
+            return BleServerAction.RejectConnection(deviceAddress, "Client slot is CLOSING")
         }
 
-        if (globalCapacity != null) {
-            val lease = globalCapacity.tryAdmitInbound(deviceAddress, peerGeneration)
-            if (lease == null) {
-                return BleServerAction.RejectConnection(deviceAddress)
+        val gen = (peerGenerations[deviceAddress] ?: 0L) + 1L
+        val lease = if (globalCapacity != null) {
+            val l = globalCapacity.tryAdmitInbound(deviceAddress, gen)
+            if (l == null) {
+                return BleServerAction.RejectConnection(deviceAddress, "Capacity exhausted")
             }
-            inboundLeases[deviceAddress] = lease
+            l
         } else {
             if (admittedDevices.size >= maxAdmittedClients) {
-                return BleServerAction.RejectConnection(deviceAddress)
+                return BleServerAction.RejectConnection(deviceAddress, "Max admitted clients reached")
             }
+            null
         }
 
+        peerGenerations[deviceAddress] = gen
+        if (lease != null) {
+            inboundLeases[deviceAddress] = lease
+        }
         admittedDevices.add(deviceAddress)
-        peerGenerations[deviceAddress] = peerGeneration
         val conn = BleConnection(deviceAddress.toByteArray())
         conn.transitionTo(BleConnectionState.PROVISIONAL_CONNECTED)
         inboundConnections[deviceAddress] = conn
-        BleServerAction.AdmitConnection(deviceAddress)
+        peerSlots[deviceAddress] = ServerPeerSlot(ServerPeerSlotState.ACTIVE, gen, deviceAddress, lease)
+        BleServerAction.AdmitConnection(deviceAddress, gen)
     }
 
     fun onClientDisconnected(deviceAddress: String, expectedGen: Long = 0L): BleServerAction = synchronized(lock) {
-        val currentGen = peerGenerations[deviceAddress] ?: 0L
-        if (expectedGen != 0L && currentGen != expectedGen) {
+        val slot = peerSlots[deviceAddress]
+        if (slot == null || slot.state == ServerPeerSlotState.IDLE) {
+            return BleServerAction.NoOp
+        }
+        val gen = slot.generation
+        if (expectedGen != 0L && gen != expectedGen) {
             return BleServerAction.NoOp
         }
         admittedDevices.remove(deviceAddress)
@@ -432,7 +515,8 @@ class BleServerOrchestrationDriver(
         if (pendingNotificationAddress == deviceAddress) {
             pendingNotificationAddress = null
         }
-        BleServerAction.NoOp
+        peerSlots[deviceAddress] = ServerPeerSlot(ServerPeerSlotState.IDLE, gen, deviceAddress, null)
+        BleServerAction.TearDownPhysicalChannel(deviceAddress, gen)
     }
 
     fun onLinkInfoReadRequest(deviceAddress: String): BleServerAction = synchronized(lock) {
@@ -448,20 +532,27 @@ class BleServerOrchestrationDriver(
     }
 
     private fun rejectAndTeardownLocked(deviceAddress: String, reason: String): BleServerAction {
+        val currentGen = peerGenerations[deviceAddress] ?: 0L
         admittedDevices.remove(deviceAddress)
         releaseLeaseLocked(deviceAddress)
         subscribedDevices.remove(deviceAddress)
         deviceMtu.remove(deviceAddress)
-        peerGenerations.remove(deviceAddress)
         val conn = inboundConnections.remove(deviceAddress)
         conn?.transitionTo(BleConnectionState.CLOSED)
         acceptedRemoteLinkInfo.remove(deviceAddress)
         publishedFound.remove(deviceAddress)
+        if (currentGen != 0L) {
+            peerSlots[deviceAddress] = ServerPeerSlot(ServerPeerSlotState.CLOSING, currentGen, deviceAddress, null)
+        }
         return BleServerAction.RejectWrite(deviceAddress, reason)
     }
 
     fun onLinkInfoWriteRequest(deviceAddress: String, rawBytes: ByteArray): BleServerAction = synchronized(lock) {
         if (isPoisoned) return BleServerAction.RejectWrite(deviceAddress, "Server is poisoned")
+        val slot = peerSlots[deviceAddress]
+        if (slot?.state == ServerPeerSlotState.CLOSING) {
+            return BleServerAction.RejectWrite(deviceAddress, "Client slot is CLOSING")
+        }
         if (!admittedDevices.contains(deviceAddress)) {
             return BleServerAction.RejectWrite(deviceAddress, "Unadmitted client")
         }
@@ -482,7 +573,7 @@ class BleServerOrchestrationDriver(
                         publishedFound.add(deviceAddress)
                         return BleServerAction.AcceptWriteAndPublishFound(deviceAddress, remoteInfo)
                     }
-                    return BleServerAction.AcceptWrite(deviceAddress, remoteInfo)
+                    return BleServerAction.AcceptDuplicateWrite(deviceAddress, remoteInfo)
                 } else {
                     return BleServerAction.RejectWrite(deviceAddress, "Conflicting LinkInfo write on active relation")
                 }
@@ -520,6 +611,10 @@ class BleServerOrchestrationDriver(
 
     fun onDescriptorWriteRequest(deviceAddress: String, isSubscribed: Boolean): BleServerAction = synchronized(lock) {
         if (isPoisoned) return BleServerAction.RejectDescriptorWrite(deviceAddress)
+        val slot = peerSlots[deviceAddress]
+        if (slot?.state == ServerPeerSlotState.CLOSING) {
+            return BleServerAction.RejectDescriptorWrite(deviceAddress)
+        }
         if (!admittedDevices.contains(deviceAddress)) {
             return BleServerAction.RejectDescriptorWrite(deviceAddress)
         }
@@ -541,7 +636,8 @@ class BleServerOrchestrationDriver(
     }
 
     fun onInboundTimeout(deviceAddress: String, expectedGen: Long = 0L): BleServerAction = synchronized(lock) {
-        val currentGen = peerGenerations[deviceAddress] ?: 0L
+        val slot = peerSlots[deviceAddress]
+        val currentGen = slot?.generation ?: (peerGenerations[deviceAddress] ?: 0L)
         if (expectedGen != 0L && currentGen != expectedGen) {
             return BleServerAction.NoOp
         }
@@ -551,11 +647,11 @@ class BleServerOrchestrationDriver(
             releaseLeaseLocked(deviceAddress)
             subscribedDevices.remove(deviceAddress)
             deviceMtu.remove(deviceAddress)
-            peerGenerations.remove(deviceAddress)
             inboundConnections.remove(deviceAddress)?.transitionTo(BleConnectionState.CLOSED)
             acceptedRemoteLinkInfo.remove(deviceAddress)
             publishedFound.remove(deviceAddress)
-            return BleServerAction.TearDownPhysicalChannel(deviceAddress)
+            peerSlots[deviceAddress] = ServerPeerSlot(ServerPeerSlotState.CLOSING, currentGen, deviceAddress, null)
+            return BleServerAction.TearDownPhysicalChannel(deviceAddress, currentGen)
         }
         BleServerAction.NoOp
     }
@@ -578,15 +674,18 @@ class BleServerOrchestrationDriver(
     fun onNotificationTimeout(deviceAddress: String): BleServerAction = synchronized(lock) {
         isPoisoned = true
         pendingNotificationAddress = null
+        val currentGen = peerGenerations[deviceAddress] ?: 0L
         admittedDevices.remove(deviceAddress)
         releaseLeaseLocked(deviceAddress)
         subscribedDevices.remove(deviceAddress)
         deviceMtu.remove(deviceAddress)
-        peerGenerations.remove(deviceAddress)
         val conn = inboundConnections.remove(deviceAddress)
         conn?.transitionTo(BleConnectionState.CLOSED)
         acceptedRemoteLinkInfo.remove(deviceAddress)
         publishedFound.remove(deviceAddress)
+        if (currentGen != 0L) {
+            peerSlots[deviceAddress] = ServerPeerSlot(ServerPeerSlotState.CLOSING, currentGen, deviceAddress, null)
+        }
         BleServerAction.PoisonServer
     }
 
@@ -605,3 +704,4 @@ class BleServerOrchestrationDriver(
         }
     }
 }
+

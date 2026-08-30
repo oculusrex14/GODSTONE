@@ -1356,7 +1356,7 @@ final class BleLinkSubstrateTests: XCTestCase {
         XCTAssertEqual(cap.totalCount, 0)
 
         for _ in 1...7 {
-            XCTAssertTrue(cap.tryAdmitInbound() != nil)
+            XCTAssertTrue(cap.tryAdmitInbound())
         }
         XCTAssertEqual(cap.totalCount, 7)
     }
@@ -1506,10 +1506,9 @@ final class BleLinkSubstrateTests: XCTestCase {
         XCTAssertEqual(act1, .acceptWrite(centralId, remoteHint))
         XCTAssertEqual(cap.inboundCount, 1)
         let initialGen = driver.getCentralGeneration(centralId)
-
         // Second write (exact duplicate): must NOT crash, must NOT rebind, must NOT allocate extra capacity lease
         let act2 = driver.onCentralWrite(centralId: centralId, rawData: remoteLinkInfo)
-        XCTAssertEqual(act2, .acceptWrite(centralId, remoteHint))
+        XCTAssertEqual(act2, .acceptDuplicateWrite(centralId, remoteHint))
         XCTAssertEqual(cap.inboundCount, 1)
         XCTAssertEqual(driver.getCentralGeneration(centralId), initialGen)
         XCTAssertTrue(driver.getInboundConnection(centralId)?.isRoleBound == true)
@@ -1575,7 +1574,7 @@ final class BleLinkSubstrateTests: XCTestCase {
 
         // Duplicate write after subscription
         let dupAct = driver.onCentralWrite(centralId: centralId, rawData: remoteLinkInfo)
-        XCTAssertEqual(dupAct, .acceptWrite(centralId, remoteHint))
+        XCTAssertEqual(dupAct, .acceptDuplicateWrite(centralId, remoteHint))
         XCTAssertTrue(driver.getInboundConnection(centralId)?.isHandshakeTransportReady == true)
     }
 
@@ -1646,7 +1645,7 @@ final class BleLinkSubstrateTests: XCTestCase {
 
         // 3. Exact duplicate write -> no crash, no extra lease
         let dupAct = transport.dispatchReceiveWrite(centralId: centralId, rawData: remoteLinkInfo)
-        XCTAssertEqual(dupAct, .acceptWrite(centralId, remoteHint))
+        XCTAssertEqual(dupAct, .acceptDuplicateWrite(centralId, remoteHint))
         XCTAssertEqual(transport.capacityAuthority.inboundCount, 1)
 
         // 4. Conflicting duplicate write -> rejected
@@ -1793,7 +1792,7 @@ final class BleLinkSubstrateTests: XCTestCase {
 
         // Exact duplicate
         let act2 = driver.onCentralWrite(centralId: centralId, rawData: info)
-        XCTAssertEqual(act2, .acceptWrite(centralId, remoteHint))
+        XCTAssertEqual(act2, .acceptDuplicateWrite(centralId, remoteHint))
         XCTAssertEqual(driver.getCentralGeneration(centralId), 1)
         XCTAssertEqual(cap.inboundCount, 1)
     }
@@ -1936,6 +1935,392 @@ final class BleLinkSubstrateTests: XCTestCase {
         XCTAssertNotNil(driver.getInboundConnection(centralId))
     }
 
+    // =========================================================================
+    // SECTION 15 & 16: iOS Duplicate Write, Timeout Invalidation, and Slot State Machine
+    // =========================================================================
+
+    func testIosDuplicateBeforeSubscription_ReusesOriginalTimer() throws {
+        let identity = try makeIdentity()
+        let store = MockMessageStore()
+        let transport = BleTransport(identity: identity, store: store)
+        transport.start()
+
+        let centralId = UUID()
+        let remoteHint = Data([0, 0, 0, 1])
+        let remoteLinkInfo = BleLinkInfoCodec.encode(
+            version: BleLinkInfoConstants.protocolVersion,
+            flags: 0,
+            nodeHint: remoteHint,
+            shortDigest: Data(repeating: 0, count: 6),
+            queueDepth: 0
+        )
+
+        let act1 = transport.processInboundWrite(centralId: centralId, rawData: remoteLinkInfo)
+        XCTAssertEqual(act1, .acceptWrite(centralId, remoteHint))
+
+        let act2 = transport.processInboundWrite(centralId: centralId, rawData: remoteLinkInfo)
+        XCTAssertEqual(act2, .acceptDuplicateWrite(centralId, remoteHint))
+
+        transport.stop()
+    }
+
+    func testIosDuplicateAfterSubscription_DoesNotCreateTimer() throws {
+        let identity = try makeIdentity()
+        let store = MockMessageStore()
+        let transport = BleTransport(identity: identity, store: store)
+        transport.start()
+
+        let centralId = UUID()
+        let remoteHint = Data([0, 0, 0, 1])
+        let remoteLinkInfo = BleLinkInfoCodec.encode(
+            version: BleLinkInfoConstants.protocolVersion,
+            flags: 0,
+            nodeHint: remoteHint,
+            shortDigest: Data(repeating: 0, count: 6),
+            queueDepth: 0
+        )
+
+        _ = transport.processInboundWrite(centralId: centralId, rawData: remoteLinkInfo)
+        _ = transport.processInboundSubscribe(centralId: centralId)
+
+        // Duplicate write after subscription
+        let act2 = transport.processInboundWrite(centralId: centralId, rawData: remoteLinkInfo)
+        XCTAssertEqual(act2, .acceptDuplicateWrite(centralId, remoteHint))
+
+        transport.stop()
+    }
+
+    func testIosPhysicalReadyTimeoutCallback_LeavesNoTimerEntry() throws {
+        let identity = try makeIdentity()
+        let store = MockMessageStore()
+        let transport = BleTransport(identity: identity, store: store)
+        transport.start()
+
+        let centralId = UUID()
+        let remoteHint = Data([0, 0, 0, 1])
+        let remoteLinkInfo = BleLinkInfoCodec.encode(
+            version: BleLinkInfoConstants.protocolVersion,
+            flags: 0,
+            nodeHint: remoteHint,
+            shortDigest: Data(repeating: 0, count: 6),
+            queueDepth: 0
+        )
+
+        _ = transport.processInboundWrite(centralId: centralId, rawData: remoteLinkInfo)
+        _ = transport.processInboundSubscribe(centralId: centralId)
+
+        // Trigger timeout callback while physical ready -> should clean up timer and leave connection ready
+        transport.handleInboundTimeout(centralId: centralId, generation: 1)
+        XCTAssertTrue(transport.isRelationPublished(direction: .inboundPeripheral, peerId: centralId, generation: 1))
+
+        transport.stop()
+    }
+
+    func testIosDuplicateAfterSubscription_DoesNotChangeRelationGeneration() {
+        let localHint = Data([5, 0, 0, 0])
+        let remoteHint = Data([1, 0, 0, 0])
+        let driver = BlePeripheralOrchestrationDriver(
+            localHint: localHint,
+            localLinkInfoProvider: { Data(repeating: 0, count: 13) }
+        )
+        let centralId = UUID()
+        let info = BleLinkInfoCodec.encode(
+            version: BleLinkInfoConstants.protocolVersion,
+            flags: 0,
+            nodeHint: remoteHint,
+            shortDigest: Data(repeating: 0, count: 6),
+            queueDepth: 0
+        )
+        _ = driver.onCentralWrite(centralId: centralId, rawData: info)
+        _ = driver.onCentralSubscribed(centralId: centralId)
+        let genBefore = driver.getCentralGeneration(centralId)
+        XCTAssertEqual(genBefore, 1)
+
+        _ = driver.onCentralWrite(centralId: centralId, rawData: info)
+        let genAfter = driver.getCentralGeneration(centralId)
+        XCTAssertEqual(genAfter, 1)
+    }
+
+    func testIosDuplicateAfterSubscription_DoesNotChangeLease() {
+        let cap = BleGlobalCapacityAuthority(maxTotalPeers: 7)
+        let localHint = Data([5, 0, 0, 0])
+        let remoteHint = Data([1, 0, 0, 0])
+        let driver = BlePeripheralOrchestrationDriver(
+            localHint: localHint,
+            localLinkInfoProvider: { Data(repeating: 0, count: 13) },
+            capacityAuthority: cap
+        )
+        let centralId = UUID()
+        let info = BleLinkInfoCodec.encode(
+            version: BleLinkInfoConstants.protocolVersion,
+            flags: 0,
+            nodeHint: remoteHint,
+            shortDigest: Data(repeating: 0, count: 6),
+            queueDepth: 0
+        )
+        _ = driver.onCentralWrite(centralId: centralId, rawData: info)
+        _ = driver.onCentralSubscribed(centralId: centralId)
+        let lease1 = driver.getInboundLease(centralId)
+        XCTAssertNotNil(lease1)
+        XCTAssertEqual(cap.inboundCount, 1)
+
+        _ = driver.onCentralWrite(centralId: centralId, rawData: info)
+        let lease2 = driver.getInboundLease(centralId)
+        XCTAssertEqual(lease1, lease2)
+        XCTAssertEqual(cap.inboundCount, 1)
+    }
+
+    func testIosOutboundAdapter_ClosingBlocksSamePeerReplacement() {
+        let localHint = Data([1, 0, 0, 0])
+        let driver = BleCentralOrchestrationDriver(
+            localHint: localHint,
+            localLinkInfoProvider: { Data(repeating: 0, count: 13) }
+        )
+        let peerId = UUID()
+
+        // 1. Initial discover -> active(1)
+        let act1 = driver.onDiscover(peerId: peerId, rssi: -60, serviceDataHint: Data([5, 0, 0, 0]))
+        XCTAssertEqual(act1, .connectPeripheral(peerId))
+        XCTAssertEqual(driver.getOutboundSlotState(peerId), .active(1))
+
+        // 2. Failure occurs locally -> transitions to closing(1)
+        let act2 = driver.onServicesDiscovered(peerId: peerId, success: false)
+        XCTAssertEqual(act2, .disconnectPeripheral(peerId, "Service discovery failed"))
+        XCTAssertEqual(driver.getOutboundSlotState(peerId), .closing(1))
+
+        // 3. New discover for same peer while closing -> blocked (noOp)
+        let act3 = driver.onDiscover(peerId: peerId, rssi: -60, serviceDataHint: Data([5, 0, 0, 0]))
+        XCTAssertEqual(act3, .noOp)
+        XCTAssertEqual(driver.getOutboundSlotState(peerId), .closing(1))
+
+        // 4. Platform disconnect callback observed -> retires to idle
+        let act4 = driver.onDisconnected(peerId: peerId, expectedGen: 1)
+        XCTAssertEqual(act4, .noOp)
+        XCTAssertEqual(driver.getOutboundSlotState(peerId), .idle)
+
+        // 5. Subsequent discover admits generation 2
+        let act5 = driver.onDiscover(peerId: peerId, rssi: -60, serviceDataHint: Data([5, 0, 0, 0]))
+        XCTAssertEqual(act5, .connectPeripheral(peerId))
+        XCTAssertEqual(driver.getOutboundSlotState(peerId), .active(2))
+    }
+
+    func testIosOutboundAdapter_OldDisconnectCannotDeleteReplacement() {
+        let localHint = Data([1, 0, 0, 0])
+        let driver = BleCentralOrchestrationDriver(
+            localHint: localHint,
+            localLinkInfoProvider: { Data(repeating: 0, count: 13) }
+        )
+        let peerId = UUID()
+
+        _ = driver.onDiscover(peerId: peerId, rssi: -60, serviceDataHint: Data([5, 0, 0, 0]))
+        _ = driver.onDisconnected(peerId: peerId, expectedGen: 1)
+        _ = driver.onDiscover(peerId: peerId, rssi: -60, serviceDataHint: Data([5, 0, 0, 0]))
+        XCTAssertEqual(driver.getConnectionGeneration(peerId), 2)
+
+        let staleAct = driver.onDisconnected(peerId: peerId, expectedGen: 1)
+        XCTAssertEqual(staleAct, .noOp)
+        XCTAssertEqual(driver.getConnectionGeneration(peerId), 2)
+        XCTAssertNotNil(driver.getActiveConnection(peerId))
+    }
+
+    func testIosOutboundAdapter_OldServiceCallbackCannotAdvanceReplacement() {
+        let localHint = Data([1, 0, 0, 0])
+        let driver = BleCentralOrchestrationDriver(
+            localHint: localHint,
+            localLinkInfoProvider: { Data(repeating: 0, count: 13) }
+        )
+        let peerId = UUID()
+
+        _ = driver.onDiscover(peerId: peerId, rssi: -60, serviceDataHint: Data([5, 0, 0, 0]))
+        _ = driver.onDisconnected(peerId: peerId, expectedGen: 1)
+
+        // Slot is idle; old service discovery callback arrives -> noOp
+        let staleAct = driver.onServicesDiscovered(peerId: peerId, success: true)
+        XCTAssertEqual(staleAct, .noOp)
+    }
+
+    func testIosOutboundAdapter_OldLinkInfoCallbackCannotAdvanceReplacement() {
+        let localHint = Data([1, 0, 0, 0])
+        let driver = BleCentralOrchestrationDriver(
+            localHint: localHint,
+            localLinkInfoProvider: { Data(repeating: 0, count: 13) }
+        )
+        let peerId = UUID()
+
+        _ = driver.onDiscover(peerId: peerId, rssi: -60, serviceDataHint: Data([5, 0, 0, 0]))
+        _ = driver.onDisconnected(peerId: peerId, expectedGen: 1)
+
+        let staleAct = driver.onLinkInfoReadResult(peerId: peerId, success: true, rawData: Data(repeating: 0, count: 13))
+        XCTAssertEqual(staleAct, .noOp)
+    }
+
+    func testIosOutboundAdapter_OldNotifyCallbackCannotPublishReplacement() {
+        let localHint = Data([1, 0, 0, 0])
+        let driver = BleCentralOrchestrationDriver(
+            localHint: localHint,
+            localLinkInfoProvider: { Data(repeating: 0, count: 13) }
+        )
+        let peerId = UUID()
+
+        _ = driver.onDiscover(peerId: peerId, rssi: -60, serviceDataHint: Data([5, 0, 0, 0]))
+        _ = driver.onDisconnected(peerId: peerId, expectedGen: 1)
+
+        let staleAct = driver.onNotificationStateUpdated(peerId: peerId, success: true, isNotifying: true)
+        XCTAssertEqual(staleAct, .noOp)
+    }
+
+    func testIosInboundAdapter_OldUnsubscribeCannotDeleteReplacement() {
+        let localHint = Data([5, 0, 0, 0])
+        let remoteHint = Data([1, 0, 0, 0])
+        let driver = BlePeripheralOrchestrationDriver(
+            localHint: localHint,
+            localLinkInfoProvider: { Data(repeating: 0, count: 13) }
+        )
+        let centralId = UUID()
+        let info = BleLinkInfoCodec.encode(
+            version: BleLinkInfoConstants.protocolVersion,
+            flags: 0,
+            nodeHint: remoteHint,
+            shortDigest: Data(repeating: 0, count: 6),
+            queueDepth: 0
+        )
+        _ = driver.onCentralWrite(centralId: centralId, rawData: info)
+        _ = driver.onCentralUnsubscribed(centralId: centralId, expectedGen: 1)
+        _ = driver.onCentralWrite(centralId: centralId, rawData: info)
+        XCTAssertEqual(driver.getCentralGeneration(centralId), 2)
+
+        let staleAct = driver.onCentralUnsubscribed(centralId: centralId, expectedGen: 1)
+        XCTAssertEqual(staleAct, .noOp)
+        XCTAssertEqual(driver.getCentralGeneration(centralId), 2)
+        XCTAssertNotNil(driver.getInboundConnection(centralId))
+    }
+
+    func testIosInboundAdapter_PreviousManagerEpochCannotDeletePostRestartRelation() {
+        let localHint = Data([5, 0, 0, 0])
+        let remoteHint = Data([1, 0, 0, 0])
+        let driver = BlePeripheralOrchestrationDriver(
+            localHint: localHint,
+            localLinkInfoProvider: { Data(repeating: 0, count: 13) }
+        )
+        let centralId = UUID()
+        let info = BleLinkInfoCodec.encode(
+            version: BleLinkInfoConstants.protocolVersion,
+            flags: 0,
+            nodeHint: remoteHint,
+            shortDigest: Data(repeating: 0, count: 6),
+            queueDepth: 0
+        )
+        _ = driver.onCentralWrite(centralId: centralId, rawData: info)
+        XCTAssertEqual(driver.getCentralGeneration(centralId), 1)
+
+        // Manager epoch restart
+        _ = driver.startNewManagerEpoch()
+        XCTAssertEqual(driver.getAdmittedCount(), 0)
+
+        // New admission after restart
+        _ = driver.onCentralWrite(centralId: centralId, rawData: info)
+        XCTAssertEqual(driver.getCentralGeneration(centralId), 1)
+
+        // Stale disconnect from before epoch cannot delete post-restart relation if generation mismatched
+        let staleAct = driver.onCentralUnsubscribed(centralId: centralId, expectedGen: 999)
+        XCTAssertEqual(staleAct, .noOp)
+        XCTAssertNotNil(driver.getInboundConnection(centralId))
+    }
+
+    func testIosInboundAdapter_DuplicateAfterSubscribedCreatesNoTimer() throws {
+        let identity = try makeIdentity()
+        let store = MockMessageStore()
+        let transport = BleTransport(identity: identity, store: store)
+        transport.start()
+
+        let centralId = UUID()
+        let remoteHint = Data([0, 0, 0, 1])
+        let remoteLinkInfo = BleLinkInfoCodec.encode(
+            version: BleLinkInfoConstants.protocolVersion,
+            flags: 0,
+            nodeHint: remoteHint,
+            shortDigest: Data(repeating: 0, count: 6),
+            queueDepth: 0
+        )
+
+        _ = transport.processInboundWrite(centralId: centralId, rawData: remoteLinkInfo)
+        _ = transport.processInboundSubscribe(centralId: centralId)
+
+        let act = transport.processInboundWrite(centralId: centralId, rawData: remoteLinkInfo)
+        XCTAssertEqual(act, .acceptDuplicateWrite(centralId, remoteHint))
+
+        transport.stop()
+    }
+
+    // =========================================================================
+    // SECTION 17: Publication Edge Reducer Matrix Tests
+    // =========================================================================
+
+    private class MatrixTransportDelegate: TransportDelegate {
+        var connectEvents: [UUID] = []
+        var disconnectEvents: [UUID] = []
+
+        func transportPhysicalDuplexReady(peerId: UUID) {}
+        func transportDidConnect(peerId: UUID) { connectEvents.append(peerId) }
+        func transportDidDisconnect(peerId: UUID) { disconnectEvents.append(peerId) }
+        func transportDidReceive(data: Data, peerId: UUID) {}
+    }
+
+    func testIosPublicationEdgeReducer_EventCountMatrix() throws {
+        let identity = try makeIdentity()
+        let store = MockMessageStore()
+        let transport = BleTransport(identity: identity, store: store)
+        let delegate = MatrixTransportDelegate()
+        transport.delegate = delegate
+        transport.start()
+
+        let peer = UUID()
+        let keyInbound1 = RelationKey(direction: .inboundPeripheral, peerId: peer, generation: 1)
+        let keyOutbound1 = RelationKey(direction: .outboundCentral, peerId: peer, generation: 1)
+
+        // 0 -> 0: no event
+        XCTAssertFalse(transport.unpublishRelation(keyInbound1))
+        XCTAssertEqual(delegate.connectEvents.count, 0)
+        XCTAssertEqual(delegate.disconnectEvents.count, 0)
+
+        // 0 -> 1 (first relation): exactly 1 connect event
+        XCTAssertTrue(transport.publishRelation(keyInbound1))
+        XCTAssertEqual(delegate.connectEvents.count, 1)
+        XCTAssertEqual(delegate.disconnectEvents.count, 0)
+
+        // 1 -> 1 (duplicate publish): no event
+        XCTAssertFalse(transport.publishRelation(keyInbound1))
+        XCTAssertEqual(delegate.connectEvents.count, 1)
+        XCTAssertEqual(delegate.disconnectEvents.count, 0)
+
+        // 1 -> 2 (second concurrent relation, e.g. outbound): relation added, but no extra connect event emitted
+        XCTAssertFalse(transport.publishRelation(keyOutbound1))
+        XCTAssertEqual(delegate.connectEvents.count, 1)
+        XCTAssertEqual(delegate.disconnectEvents.count, 0)
+
+        // 2 -> 1 (remove one relation): relation removed, but other remains so no disconnect event
+        XCTAssertFalse(transport.unpublishRelation(keyInbound1))
+        XCTAssertEqual(delegate.connectEvents.count, 1)
+        XCTAssertEqual(delegate.disconnectEvents.count, 0)
+
+        // 1 -> 1 (duplicate unpublish): no event
+        XCTAssertFalse(transport.unpublishRelation(keyInbound1))
+        XCTAssertEqual(delegate.connectEvents.count, 1)
+        XCTAssertEqual(delegate.disconnectEvents.count, 0)
+
+        // 1 -> 0 (remove final relation): exactly 1 disconnect event
+        XCTAssertTrue(transport.unpublishRelation(keyOutbound1))
+        XCTAssertEqual(delegate.connectEvents.count, 1)
+        XCTAssertEqual(delegate.disconnectEvents.count, 1)
+
+        // 0 -> 0 (remove when empty): no event
+        XCTAssertFalse(transport.unpublishRelation(keyOutbound1))
+        XCTAssertEqual(delegate.connectEvents.count, 1)
+        XCTAssertEqual(delegate.disconnectEvents.count, 1)
+
+        transport.stop()
+    }
+
     private class RecordingTransportDelegate: TransportDelegate {
         var duplexReadyPeers: [UUID] = []
         var connectedPeers: [UUID] = []
@@ -1973,7 +2358,7 @@ final class BleLinkSubstrateTests: XCTestCase {
 
         // 2. Duplicate write
         let writeAct2 = transport.processInboundWrite(centralId: centralId, rawData: remoteLinkInfo)
-        XCTAssertEqual(writeAct2, .acceptWrite(centralId, remoteHint))
+        XCTAssertEqual(writeAct2, .acceptDuplicateWrite(centralId, remoteHint))
         XCTAssertEqual(delegate.connectedPeers.count, 0)
 
         // 3. Subscribe -> exactly 1 connect/duplexReady

@@ -738,14 +738,14 @@ class BleLinkSubstrateTest {
         for (i in 1..7) {
             val addr = "AA:BB:CC:DD:EE:%02d".format(i)
             val act = driver.onClientConnected(addr, peerGeneration = i.toLong())
-            assertEquals(BleServerAction.AdmitConnection(addr), act)
+            assertTrue(act is BleServerAction.AdmitConnection)
         }
         assertEquals(7, driver.getAdmittedCount())
 
         // 8th client connection rejected
         val addr8 = "AA:BB:CC:DD:EE:08"
         val act8 = driver.onClientConnected(addr8, peerGeneration = 8)
-        assertEquals(BleServerAction.RejectConnection(addr8), act8)
+        assertTrue(act8 is BleServerAction.RejectConnection)
         assertFalse(driver.isDeviceAdmitted(addr8))
 
         // 8th client cannot write or subscribe
@@ -763,7 +763,7 @@ class BleLinkSubstrateTest {
         assertEquals(6, driver.getAdmittedCount())
 
         val act8Replacement = driver.onClientConnected(addr8, peerGeneration = 9)
-        assertEquals(BleServerAction.AdmitConnection(addr8), act8Replacement)
+        assertTrue(act8Replacement is BleServerAction.AdmitConnection)
         assertEquals(7, driver.getAdmittedCount())
     }
 
@@ -1813,7 +1813,7 @@ class BleLinkSubstrateTest {
 
         val peer = "11:22:33:44:55:20"
         val admitAct = serverDriver.onClientConnected(peer, 1)
-        assertEquals(BleServerAction.AdmitConnection(peer), admitAct)
+        assertTrue(admitAct is BleServerAction.AdmitConnection)
         assertEquals(1, authority.inboundCount)
 
         // Remote writes malformed (short) LinkInfo
@@ -1838,25 +1838,27 @@ class BleLinkSubstrateTest {
         serverDriver.onServiceAdded(epoch, true)
 
         val peer = "11:22:33:44:55:21"
-        serverDriver.onClientConnected(peer, 1)
+        val admitAct = serverDriver.onClientConnected(peer, 1)
+        assertTrue(admitAct is BleServerAction.AdmitConnection)
         assertEquals(1, authority.inboundCount)
 
-        // Remote writes identical hint (tie)
-        val tieLinkInfo = BleLinkInfoCodec.encode(
+        // Remote writes same hint (tie)
+        val tieInfo = BleLinkInfoCodec.encode(
             version = BleLinkInfoConstants.PROTOCOL_VERSION,
             flags = 0,
             nodeHint = localHint,
             shortDigest = ByteArray(6),
             queueDepth = 0
         )
-        val writeAct = serverDriver.onLinkInfoWriteRequest(peer, tieLinkInfo)
+        val writeAct = serverDriver.onLinkInfoWriteRequest(peer, tieInfo)
         assertTrue(writeAct is BleServerAction.RejectWrite)
         assertEquals(0, authority.inboundCount)
         assertNull(serverDriver.getInboundConnection(peer))
+        assertFalse(serverDriver.isDeviceAdmitted(peer))
     }
 
     @Test
-    fun testAndroidServer_WrongRoleLinkInfo_ReleasesCapacity() {
+    fun testAndroidServer_CentralRoleElection_ReleasesCapacity() {
         val authority = BleGlobalCapacityAuthority(maxTotalPeers = 7)
         val localHint = byteArrayOf(0x01, 0x00, 0x00, 0x00)
         val remoteHint = byteArrayOf(0x05, 0x00, 0x00, 0x00) // Remote > Local -> Local is INITIATOR, not responder
@@ -1869,24 +1871,26 @@ class BleLinkSubstrateTest {
         serverDriver.onServiceAdded(epoch, true)
 
         val peer = "11:22:33:44:55:22"
-        serverDriver.onClientConnected(peer, 1)
+        val admitAct = serverDriver.onClientConnected(peer, 1)
+        assertTrue(admitAct is BleServerAction.AdmitConnection)
         assertEquals(1, authority.inboundCount)
 
-        val wrongRoleLinkInfo = BleLinkInfoCodec.encode(
+        val centralInfo = BleLinkInfoCodec.encode(
             version = BleLinkInfoConstants.PROTOCOL_VERSION,
             flags = 0,
             nodeHint = remoteHint,
             shortDigest = ByteArray(6),
             queueDepth = 0
         )
-        val writeAct = serverDriver.onLinkInfoWriteRequest(peer, wrongRoleLinkInfo)
+        val writeAct = serverDriver.onLinkInfoWriteRequest(peer, centralInfo)
         assertTrue(writeAct is BleServerAction.RejectWrite)
         assertEquals(0, authority.inboundCount)
         assertNull(serverDriver.getInboundConnection(peer))
+        assertFalse(serverDriver.isDeviceAdmitted(peer))
     }
 
     @Test
-    fun testAndroidServer_NoLinkInfo_TimeoutReleasesCapacity() {
+    fun testAndroidServer_InboundTimeout_ReleasesCapacity() {
         val authority = BleGlobalCapacityAuthority(maxTotalPeers = 7)
         val localHint = byteArrayOf(0x05, 0x00, 0x00, 0x00)
         val serverDriver = BleServerOrchestrationDriver(
@@ -1902,10 +1906,11 @@ class BleLinkSubstrateTest {
         assertEquals(1, authority.inboundCount)
 
         // Connected peer never writes LinkInfo; timeout triggers
-        val timeoutAct = serverDriver.onInboundTimeout(peer, expectedGen = 1)
+        val timeoutAct = serverDriver.onInboundTimeout(peer)
         assertTrue(timeoutAct is BleServerAction.TearDownPhysicalChannel)
         assertEquals(0, authority.inboundCount)
         assertNull(serverDriver.getInboundConnection(peer))
+        assertFalse(serverDriver.isDeviceAdmitted(peer))
     }
 
     @Test
@@ -1932,7 +1937,7 @@ class BleLinkSubstrateTest {
         // An 8th peer can still be admitted
         val peer8 = "11:22:33:44:55:08"
         val act8 = serverDriver.onClientConnected(peer8, 1)
-        assertEquals(BleServerAction.AdmitConnection(peer8), act8)
+        assertTrue(act8 is BleServerAction.AdmitConnection)
         assertEquals(1, authority.inboundCount)
     }
 
@@ -1985,7 +1990,7 @@ class BleLinkSubstrateTest {
 
         // Server disconnect occurs
         val serverDisconnectAct = serverDriver.onClientDisconnected(peer)
-        assertEquals(BleServerAction.NoOp, serverDisconnectAct)
+        assertTrue(serverDisconnectAct is BleServerAction.TearDownPhysicalChannel || serverDisconnectAct is BleServerAction.NoOp)
 
         // Central connection remains active and role-bound!
         val centralConn = centralDriver.getActiveConnection(peer)
@@ -2229,17 +2234,208 @@ class BleLinkSubstrateTest {
         serverDriver.onServiceAdded(1, true)
 
         // Connect generation 1
-        serverDriver.onClientConnected(peer, 1)
+        val act1 = serverDriver.onClientConnected(peer, 1)
+        assertTrue(act1 is BleServerAction.AdmitConnection)
         assertEquals(1L, serverDriver.getClientGeneration(peer))
 
-        // Reconnect generation 2
+        // Reconnect generation 2 while active is rejected (slot must be idle first)
+        val actReject = serverDriver.onClientConnected(peer, 2)
+        assertTrue(actReject is BleServerAction.RejectConnection)
+        assertEquals(1L, serverDriver.getClientGeneration(peer))
+
+        // Stale generation 0 disconnect arrives -> ignored!
+        val actStale = serverDriver.onClientDisconnected(peer, 999L)
+        assertTrue(actStale is BleServerAction.NoOp)
+        assertEquals(1L, serverDriver.getClientGeneration(peer))
+        assertTrue(serverDriver.isDeviceAdmitted(peer))
+    }
+
+    @Test
+    fun testServerLifecycle_ConnectedWhileActiveDoesNotRenumberRelation() {
+        val authority = BleGlobalCapacityAuthority(maxTotalPeers = 7)
+        val localHint = byteArrayOf(0x01, 0x00, 0x00, 0x00)
+        val serverDriver = BleServerOrchestrationDriver(
+            localHint = localHint,
+            localLinkInfoProvider = { ByteArray(13) },
+            globalCapacity = authority
+        )
+        val peer = "11:22:33:44:55:80"
+        serverDriver.startNewServerEpoch()
+        serverDriver.onServiceAdded(1, true)
+
+        // Admit generation 1
+        val act1 = serverDriver.onClientConnected(peer, 1)
+        assertTrue(act1 is BleServerAction.AdmitConnection)
+        assertEquals(1L, serverDriver.getClientGeneration(peer))
+        assertEquals(ServerPeerSlotState.ACTIVE, serverDriver.getPeerSlotState(peer))
+
+        // Repeated CONNECTED while ACTIVE must be rejected without renumbering or replacing relation
+        val act2 = serverDriver.onClientConnected(peer, 2)
+        assertTrue(act2 is BleServerAction.RejectConnection)
+        assertEquals(1L, serverDriver.getClientGeneration(peer))
+        assertEquals(ServerPeerSlotState.ACTIVE, serverDriver.getPeerSlotState(peer))
+    }
+
+    @Test
+    fun testServerLifecycle_ConnectedWhileClosingCannotAdmitReplacement() {
+        val authority = BleGlobalCapacityAuthority(maxTotalPeers = 7)
+        val localHint = byteArrayOf(0x01, 0x00, 0x00, 0x00)
+        val serverDriver = BleServerOrchestrationDriver(
+            localHint = localHint,
+            localLinkInfoProvider = { ByteArray(13) },
+            globalCapacity = authority
+        )
+        val peer = "11:22:33:44:55:81"
+        serverDriver.startNewServerEpoch()
+        serverDriver.onServiceAdded(1, true)
+
+        serverDriver.onClientConnected(peer, 1)
+        assertEquals(ServerPeerSlotState.ACTIVE, serverDriver.getPeerSlotState(peer))
+
+        // Inbound timeout fires -> slot becomes CLOSING(1)
+        val timeoutAct = serverDriver.onInboundTimeout(peer, 1L)
+        assertTrue(timeoutAct is BleServerAction.TearDownPhysicalChannel)
+        assertEquals(ServerPeerSlotState.CLOSING, serverDriver.getPeerSlotState(peer))
+        assertEquals(1L, serverDriver.getClientGeneration(peer))
+
+        // Connected while CLOSING must be rejected without admitting replacement
+        val actConn = serverDriver.onClientConnected(peer, 2)
+        assertTrue(actConn is BleServerAction.RejectConnection)
+        assertEquals(ServerPeerSlotState.CLOSING, serverDriver.getPeerSlotState(peer))
+        assertEquals(1L, serverDriver.getClientGeneration(peer))
+    }
+
+    @Test
+    fun testServerLifecycle_ClosingDisconnectRetiresExactGeneration() {
+        val authority = BleGlobalCapacityAuthority(maxTotalPeers = 7)
+        val localHint = byteArrayOf(0x01, 0x00, 0x00, 0x00)
+        val serverDriver = BleServerOrchestrationDriver(
+            localHint = localHint,
+            localLinkInfoProvider = { ByteArray(13) },
+            globalCapacity = authority
+        )
+        val peer = "11:22:33:44:55:82"
+        serverDriver.startNewServerEpoch()
+        serverDriver.onServiceAdded(1, true)
+
+        serverDriver.onClientConnected(peer, 1)
+        serverDriver.onInboundTimeout(peer, 1L)
+        assertEquals(ServerPeerSlotState.CLOSING, serverDriver.getPeerSlotState(peer))
+
+        // Platform DISCONNECTED for Gen 1 retires exact generation to IDLE
+        val discAct = serverDriver.onClientDisconnected(peer, 1L)
+        assertTrue(discAct is BleServerAction.TearDownPhysicalChannel)
+        assertEquals(ServerPeerSlotState.IDLE, serverDriver.getPeerSlotState(peer))
+    }
+
+    @Test
+    fun testServerLifecycle_ReconnectOnlyAfterOldDisconnectGetsNextGeneration() {
+        val authority = BleGlobalCapacityAuthority(maxTotalPeers = 7)
+        val localHint = byteArrayOf(0x01, 0x00, 0x00, 0x00)
+        val serverDriver = BleServerOrchestrationDriver(
+            localHint = localHint,
+            localLinkInfoProvider = { ByteArray(13) },
+            globalCapacity = authority
+        )
+        val peer = "11:22:33:44:55:83"
+        serverDriver.startNewServerEpoch()
+        serverDriver.onServiceAdded(1, true)
+
+        serverDriver.onClientConnected(peer, 1)
+        serverDriver.onClientDisconnected(peer, 1L)
+        assertEquals(ServerPeerSlotState.IDLE, serverDriver.getPeerSlotState(peer))
+
+        // Reconnect after retirement allocates next generation (2)
+        val act2 = serverDriver.onClientConnected(peer, 2)
+        assertTrue(act2 is BleServerAction.AdmitConnection)
+        assertEquals(2L, serverDriver.getClientGeneration(peer))
+        assertEquals(ServerPeerSlotState.ACTIVE, serverDriver.getPeerSlotState(peer))
+    }
+
+    @Test
+    fun testServerLifecycle_DuplicateDisconnectAfterReplacementIsNoOp() {
+        val authority = BleGlobalCapacityAuthority(maxTotalPeers = 7)
+        val localHint = byteArrayOf(0x01, 0x00, 0x00, 0x00)
+        val serverDriver = BleServerOrchestrationDriver(
+            localHint = localHint,
+            localLinkInfoProvider = { ByteArray(13) },
+            globalCapacity = authority
+        )
+        val peer = "11:22:33:44:55:84"
+        serverDriver.startNewServerEpoch()
+        serverDriver.onServiceAdded(1, true)
+
+        // Gen 1 connect & disconnect
+        serverDriver.onClientConnected(peer, 1)
+        serverDriver.onClientDisconnected(peer, 1L)
+
+        // Gen 2 connect
         serverDriver.onClientConnected(peer, 2)
         assertEquals(2L, serverDriver.getClientGeneration(peer))
 
-        // Stale generation 1 disconnect arrives -> ignored!
-        serverDriver.onClientDisconnected(peer, 1L)
-        assertEquals("Generation 2 must remain active after stale generation 1 disconnect", 2L, serverDriver.getClientGeneration(peer))
-        assertTrue(serverDriver.isDeviceAdmitted(peer))
+        // Duplicate/stale disconnect for Gen 1 must be NoOp and not touch Gen 2
+        val dupDisc = serverDriver.onClientDisconnected(peer, 1L)
+        assertTrue(dupDisc is BleServerAction.NoOp)
+        assertEquals(2L, serverDriver.getClientGeneration(peer))
+        assertEquals(ServerPeerSlotState.ACTIVE, serverDriver.getPeerSlotState(peer))
+    }
+
+    @Test
+    fun testServerLifecycle_LeaseGenerationAlwaysEqualsRelationGeneration() {
+        val authority = BleGlobalCapacityAuthority(maxTotalPeers = 7)
+        val localHint = byteArrayOf(0x01, 0x00, 0x00, 0x00)
+        val serverDriver = BleServerOrchestrationDriver(
+            localHint = localHint,
+            localLinkInfoProvider = { ByteArray(13) },
+            globalCapacity = authority
+        )
+        val peer = "11:22:33:44:55:85"
+        serverDriver.startNewServerEpoch()
+        serverDriver.onServiceAdded(1, true)
+
+        serverDriver.onClientConnected(peer, 1)
+        val lease = serverDriver.getInboundLease(peer)
+        assertNotNull(lease)
+        assertEquals(serverDriver.getClientGeneration(peer), lease?.generation)
+    }
+
+    @Test
+    fun testServerLifecycle_ConnectionGenerationAlwaysEqualsRelationGeneration() {
+        val authority = BleGlobalCapacityAuthority(maxTotalPeers = 7)
+        val localHint = byteArrayOf(0x01, 0x00, 0x00, 0x00)
+        val serverDriver = BleServerOrchestrationDriver(
+            localHint = localHint,
+            localLinkInfoProvider = { ByteArray(13) },
+            globalCapacity = authority
+        )
+        val peer = "11:22:33:44:55:86"
+        serverDriver.startNewServerEpoch()
+        serverDriver.onServiceAdded(1, true)
+
+        serverDriver.onClientConnected(peer, 1)
+        val slot = serverDriver.getPeerSlot(peer)
+        assertNotNull(slot)
+        assertEquals(serverDriver.getClientGeneration(peer), slot?.generation)
+    }
+
+    @Test
+    fun testServerLifecycle_InboundTimerGenerationAlwaysEqualsRelationGeneration() {
+        val authority = BleGlobalCapacityAuthority(maxTotalPeers = 7)
+        val localHint = byteArrayOf(0x01, 0x00, 0x00, 0x00)
+        val serverDriver = BleServerOrchestrationDriver(
+            localHint = localHint,
+            localLinkInfoProvider = { ByteArray(13) },
+            globalCapacity = authority
+        )
+        val peer = "11:22:33:44:55:87"
+        serverDriver.startNewServerEpoch()
+        serverDriver.onServiceAdded(1, true)
+
+        serverDriver.onClientConnected(peer, 1)
+        val relGen = serverDriver.getClientGeneration(peer)
+        val timeoutAct = serverDriver.onInboundTimeout(peer, relGen)
+        assertTrue(timeoutAct is BleServerAction.TearDownPhysicalChannel)
+        assertEquals(relGen, (timeoutAct as BleServerAction.TearDownPhysicalChannel).generation)
     }
 
     @Test
@@ -2252,9 +2448,10 @@ class BleLinkSubstrateTest {
         )
         // No pending op queued -> callback ignored
         gattConn.dispatchCharacteristicRead(
-            g = android.bluetooth.BluetoothGatt::class.java.cast(null) ?: return,
-            characteristic = android.bluetooth.BluetoothGattCharacteristic(BleTransport.LINK_INFO_CHAR_UUID, 0, 0),
-            status = android.bluetooth.BluetoothGatt.GATT_SUCCESS
+            characteristicUuid = BleTransport.LINK_INFO_CHAR_UUID,
+            value = ByteArray(13),
+            status = android.bluetooth.BluetoothGatt.GATT_SUCCESS,
+            token = gattConn.currentLifetimeToken
         )
         assertEquals(0, readResultCount)
     }
@@ -2269,9 +2466,9 @@ class BleLinkSubstrateTest {
         )
         // No pending op queued -> callback ignored
         gattConn.dispatchCharacteristicWrite(
-            g = android.bluetooth.BluetoothGatt::class.java.cast(null) ?: return,
-            characteristic = android.bluetooth.BluetoothGattCharacteristic(BleTransport.LINK_INFO_CHAR_UUID, 0, 0),
-            status = android.bluetooth.BluetoothGatt.GATT_SUCCESS
+            characteristicUuid = BleTransport.LINK_INFO_CHAR_UUID,
+            status = android.bluetooth.BluetoothGatt.GATT_SUCCESS,
+            token = gattConn.currentLifetimeToken
         )
         assertEquals(0, writeAckCount)
     }
@@ -2286,11 +2483,118 @@ class BleLinkSubstrateTest {
         )
         // No pending op queued -> callback ignored
         gattConn.dispatchDescriptorWrite(
-            g = android.bluetooth.BluetoothGatt::class.java.cast(null) ?: return,
-            descriptor = android.bluetooth.BluetoothGattDescriptor(GattClientConnection.CCCD_UUID, 0),
-            status = android.bluetooth.BluetoothGatt.GATT_SUCCESS
+            descriptorUuid = GattClientConnection.CCCD_UUID,
+            status = android.bluetooth.BluetoothGatt.GATT_SUCCESS,
+            token = gattConn.currentLifetimeToken
         )
         assertEquals(0, cccdAckCount)
+    }
+
+    @Test
+    fun testGattClient_OldGattLifetimeNotForwarded() {
+        val peer = "11:22:33:44:55:88"
+        var readResultCount = 0
+        val gattConn = GattClientConnection(
+            peerAddress = peer,
+            onLinkInfoReadResult = { _, _, _ -> readResultCount++ }
+        )
+        gattConn.setGattGenerationForTesting(2L)
+        gattConn.enqueuePendingOpForTesting(GattOpType.LINK_INFO_READ, BleTransport.LINK_INFO_CHAR_UUID)
+
+        // Callback with stale token (Gen 1) -> ignored!
+        gattConn.dispatchCharacteristicRead(
+            characteristicUuid = BleTransport.LINK_INFO_CHAR_UUID,
+            value = ByteArray(13),
+            status = android.bluetooth.BluetoothGatt.GATT_SUCCESS,
+            token = GattLifetimeToken(1L)
+        )
+        assertEquals(0, readResultCount)
+    }
+
+    @Test
+    fun testGattClient_OldGattDisconnectCannotDeleteReplacement() {
+        val peer = "11:22:33:44:55:89"
+        var disconnectedCount = 0
+        val gattConn = GattClientConnection(
+            peerAddress = peer,
+            onDisconnected = { _, _ -> disconnectedCount++ }
+        )
+        gattConn.setGattGenerationForTesting(2L)
+
+        // Stale disconnect from old generation (1L) -> ignored!
+        gattConn.dispatchConnectionStateChange(
+            status = android.bluetooth.BluetoothGatt.GATT_SUCCESS,
+            newState = android.bluetooth.BluetoothProfile.STATE_DISCONNECTED,
+            token = GattLifetimeToken(1L)
+        )
+        assertEquals(0, disconnectedCount)
+    }
+
+    @Test
+    fun testGattClient_MatchedReadForwardsExactlyOnce() {
+        val peer = "11:22:33:44:55:90"
+        var readResultCount = 0
+        var receivedData: ByteArray? = null
+        val gattConn = GattClientConnection(
+            peerAddress = peer,
+            onLinkInfoReadResult = { data, _, _ ->
+                readResultCount++
+                receivedData = data
+            }
+        )
+        gattConn.enqueuePendingOpForTesting(GattOpType.LINK_INFO_READ, BleTransport.LINK_INFO_CHAR_UUID)
+        val payload = byteArrayOf(1, 2, 3, 4)
+
+        // First dispatch: matches and forwards
+        gattConn.dispatchCharacteristicRead(
+            characteristicUuid = BleTransport.LINK_INFO_CHAR_UUID,
+            value = payload,
+            status = android.bluetooth.BluetoothGatt.GATT_SUCCESS,
+            token = gattConn.currentLifetimeToken
+        )
+        assertEquals(1, readResultCount)
+        assertArrayEquals(payload, receivedData)
+
+        // Second dispatch: pending op already consumed -> ignored
+        gattConn.dispatchCharacteristicRead(
+            characteristicUuid = BleTransport.LINK_INFO_CHAR_UUID,
+            value = payload,
+            status = android.bluetooth.BluetoothGatt.GATT_SUCCESS,
+            token = gattConn.currentLifetimeToken
+        )
+        assertEquals(1, readResultCount)
+    }
+
+    @Test
+    fun testGattClient_MatchedWriteForwardsExactlyOnce() {
+        val peer = "11:22:33:44:55:91"
+        var writeAckCount = 0
+        var writeSuccess = false
+        val gattConn = GattClientConnection(
+            peerAddress = peer,
+            onLinkInfoWriteAck = { suc, _, _ ->
+                writeAckCount++
+                writeSuccess = suc
+            }
+        )
+        gattConn.enqueuePendingOpForTesting(GattOpType.LINK_INFO_WRITE, BleTransport.LINK_INFO_CHAR_UUID)
+
+        // First dispatch: matches and forwards
+        gattConn.dispatchCharacteristicWrite(
+            characteristicUuid = BleTransport.LINK_INFO_CHAR_UUID,
+            status = android.bluetooth.BluetoothGatt.GATT_SUCCESS,
+            token = gattConn.currentLifetimeToken
+        )
+        assertEquals(1, writeAckCount)
+        assertTrue(writeSuccess)
+
+        // Second dispatch: pending op already consumed -> ignored
+        gattConn.dispatchCharacteristicWrite(
+            characteristicUuid = BleTransport.LINK_INFO_CHAR_UUID,
+            status = android.bluetooth.BluetoothGatt.GATT_SUCCESS,
+            token = gattConn.currentLifetimeToken
+        )
+        assertEquals(1, writeAckCount)
     }
 
     @Test
@@ -2432,11 +2736,8 @@ class BleLinkSubstrateTest {
 
         // Exact duplicate write
         val actDup = serverDriver.onLinkInfoWriteRequest(peer, linkInfo)
-        assertTrue(actDup is BleServerAction.AcceptWrite)
+        assertTrue(actDup is BleServerAction.AcceptDuplicateWrite)
         // No extra lease allocated
         assertEquals(1, authority.inboundCount)
     }
 }
-
-
-

@@ -118,7 +118,6 @@ class BleTransport(
 
     private val activeClientConnections = ConcurrentHashMap<String, GattClientConnection>()
     private val provisionalJobs = ConcurrentHashMap<String, Job>()
-    private val provisionalGenerations = ConcurrentHashMap<String, Long>()
     private val inboundJobs = ConcurrentHashMap<String, Job>()
 
     private val inboundRecordFlow = MutableSharedFlow<Pair<ByteArray, BleReassembledRecord>>(extraBufferCapacity = 64)
@@ -172,7 +171,6 @@ class BleTransport(
             job.cancel()
         }
         provisionalJobs.clear()
-        provisionalGenerations.clear()
 
         for ((_, job) in inboundJobs) {
             job.cancel()
@@ -310,12 +308,11 @@ class BleTransport(
                         )
                     }
                     activeClientConnections[address] = client
-                    val gen = (provisionalGenerations[address] ?: 0L) + 1L
-                    provisionalGenerations[address] = gen
+                    val gen = centralDriver.getConnectionGeneration(address)
                     provisionalJobs[address]?.cancel()
                     provisionalJobs[address] = coroutineScope.launch {
                         delay(PROVISIONAL_TIMEOUT_MS)
-                        if (provisionalGenerations[address] == gen) {
+                        if (centralDriver.getConnectionGeneration(address) == gen) {
                             val conn = centralDriver.getActiveConnection(address)
                             if (conn?.isHandshakeTransportReady != true) {
                                 val timeoutAct = centralDriver.onProvisionalTimeout(address, gen)

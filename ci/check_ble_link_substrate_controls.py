@@ -800,8 +800,8 @@ def check_controls(
     # ------------------------------------------------------------------------
     if ios_transport_path.exists():
         c = strip_comments(ios_transport_path.read_text(encoding="utf-8"))
-        if "didFailToConnect" not in c or "provisionalGenerations" not in c:
-            errors.append("BL55: iOS BleTransport must implement didFailToConnect and provisionalGenerations tracking")
+        if "didFailToConnect" not in c or "centralDriver?.getConnectionGeneration" not in c:
+            errors.append("BL55: iOS BleTransport must implement didFailToConnect and centralDriver.getConnectionGeneration tracking")
 
     # ------------------------------------------------------------------------
     # BL56: Android BleGattServer generation tracking for registration and notifications
@@ -1212,8 +1212,8 @@ def check_controls(
             "testAndroidCapacity_DriverOwnsExactLease_StaleDisconnectDoesNotReleaseReplacement",
             "testAndroidServer_MalformedLinkInfo_ReleasesCapacity",
             "testAndroidServer_TieLinkInfo_ReleasesCapacity",
-            "testAndroidServer_WrongRoleLinkInfo_ReleasesCapacity",
-            "testAndroidServer_NoLinkInfo_TimeoutReleasesCapacity",
+            "testAndroidServer_CentralRoleElection_ReleasesCapacity",
+            "testAndroidServer_InboundTimeout_ReleasesCapacity",
             "testAndroidServer_SevenRejectedPeersCannotExhaustFutureAdmissions",
             "testAndroidCrossing_CentralDuplexReady_WrongServerDirectionTeardown_NoLost",
             "testAndroidElectionContext_ImmutableAcrossStaleReads",
@@ -1389,11 +1389,120 @@ def check_controls(
             if t not in c:
                 errors.append(f"BL107: iOS test {t} missing in BleLinkSubstrateTests")
 
+    # ------------------------------------------------------------------------
+    # BL108: Android ServerPeerSlot and ServerPeerSlotState
+    # ------------------------------------------------------------------------
+    if android_driver_path.exists():
+        c = strip_comments(android_driver_path.read_text(encoding="utf-8"))
+        if "enum class ServerPeerSlotState" not in c or "data class ServerPeerSlot(" not in c:
+            errors.append("BL108: Android BleOrchestrationDriver must define ServerPeerSlot and ServerPeerSlotState")
+        if "ServerPeerSlotState.IDLE" not in c or "ServerPeerSlotState.ACTIVE" not in c or "ServerPeerSlotState.CLOSING" not in c:
+            errors.append("BL108: Android ServerPeerSlotState must define IDLE, ACTIVE, and CLOSING states")
+
+    # ------------------------------------------------------------------------
+    # BL109: Android OutboundPeerSlot and OutboundPeerSlotState
+    # ------------------------------------------------------------------------
+    if android_driver_path.exists():
+        c = strip_comments(android_driver_path.read_text(encoding="utf-8"))
+        if "enum class OutboundPeerSlotState" not in c or "data class OutboundPeerSlot(" not in c:
+            errors.append("BL109: Android BleOrchestrationDriver must define OutboundPeerSlot and OutboundPeerSlotState")
+
+    # ------------------------------------------------------------------------
+    # BL110: Android GattLifetimeToken and no BluetoothGatt::class.java.cast(null)
+    # ------------------------------------------------------------------------
+    if android_client_path.exists():
+        c = strip_comments(android_client_path.read_text(encoding="utf-8"))
+        if "data class GattLifetimeToken(" not in c:
+            errors.append("BL110: Android GattClientConnection must define GattLifetimeToken")
+        if "BluetoothGatt::class.java.cast(null)" in c:
+            errors.append("BL110: Android GattClientConnection must NOT contain BluetoothGatt::class.java.cast(null)")
+
+    # ------------------------------------------------------------------------
+    # BL111: Android BleServerAction.AcceptDuplicateWrite
+    # ------------------------------------------------------------------------
+    if android_driver_path.exists():
+        c = strip_comments(android_driver_path.read_text(encoding="utf-8"))
+        if "data class AcceptDuplicateWrite(" not in c:
+            errors.append("BL111: Android BleServerAction must define AcceptDuplicateWrite")
+
+    # ------------------------------------------------------------------------
+    # BL112: iOS OutboundPeerSlot and OutboundSlotState
+    # ------------------------------------------------------------------------
+    if ios_driver_path.exists():
+        c = strip_comments(ios_driver_path.read_text(encoding="utf-8"))
+        if "enum OutboundSlotState" not in c or "struct OutboundPeerSlot" not in c:
+            errors.append("BL112: iOS BleOrchestrationDriver must define OutboundPeerSlot and OutboundSlotState")
+
+    # ------------------------------------------------------------------------
+    # BL113: iOS InboundPeerSlot and InboundSlotState
+    # ------------------------------------------------------------------------
+    if ios_driver_path.exists():
+        c = strip_comments(ios_driver_path.read_text(encoding="utf-8"))
+        if "enum InboundSlotState" not in c or "struct InboundPeerSlot" not in c:
+            errors.append("BL113: iOS BleOrchestrationDriver must define InboundPeerSlot and InboundSlotState")
+
+    # ------------------------------------------------------------------------
+    # BL114: iOS BlePeripheralAction.acceptDuplicateWrite
+    # ------------------------------------------------------------------------
+    if ios_driver_path.exists():
+        c = strip_comments(ios_driver_path.read_text(encoding="utf-8"))
+        if "case acceptDuplicateWrite(UUID, Data)" not in c:
+            errors.append("BL114: iOS BlePeripheralAction must define acceptDuplicateWrite")
+
+    # ------------------------------------------------------------------------
+    # BL115: Section 8 & 9 regression test inventory (Android)
+    # ------------------------------------------------------------------------
+    if android_test_substrate_path.exists():
+        c = strip_comments(android_test_substrate_path.read_text(encoding="utf-8"))
+        required_r28_android = [
+            "testServerLifecycle_ConnectedWhileActiveDoesNotRenumberRelation",
+            "testServerLifecycle_ConnectedWhileClosingCannotAdmitReplacement",
+            "testServerLifecycle_ClosingDisconnectRetiresExactGeneration",
+            "testServerLifecycle_ReconnectOnlyAfterOldDisconnectGetsNextGeneration",
+            "testServerLifecycle_DuplicateDisconnectAfterReplacementIsNoOp",
+            "testServerLifecycle_LeaseGenerationAlwaysEqualsRelationGeneration",
+            "testServerLifecycle_ConnectionGenerationAlwaysEqualsRelationGeneration",
+            "testServerLifecycle_InboundTimerGenerationAlwaysEqualsRelationGeneration",
+            "testGattClient_OldGattLifetimeNotForwarded",
+            "testGattClient_OldGattDisconnectCannotDeleteReplacement",
+            "testGattClient_MatchedReadForwardsExactlyOnce",
+            "testGattClient_MatchedWriteForwardsExactlyOnce",
+            "testServerLinkInfo_ExactDuplicate_NoCrashNoRebindNoExtraLease",
+        ]
+        for t in required_r28_android:
+            if t not in c:
+                errors.append(f"BL115: Android test {t} missing in BleLinkSubstrateTest")
+
+    # ------------------------------------------------------------------------
+    # BL116: Section 15, 16, 17 regression test inventory (iOS)
+    # ------------------------------------------------------------------------
+    if ios_test_substrate_path.exists():
+        c = strip_comments(ios_test_substrate_path.read_text(encoding="utf-8"))
+        required_r28_ios = [
+            "testIosDuplicateBeforeSubscription_ReusesOriginalTimer",
+            "testIosDuplicateAfterSubscription_DoesNotCreateTimer",
+            "testIosPhysicalReadyTimeoutCallback_LeavesNoTimerEntry",
+            "testIosDuplicateAfterSubscription_DoesNotChangeRelationGeneration",
+            "testIosDuplicateAfterSubscription_DoesNotChangeLease",
+            "testIosOutboundAdapter_ClosingBlocksSamePeerReplacement",
+            "testIosOutboundAdapter_OldDisconnectCannotDeleteReplacement",
+            "testIosOutboundAdapter_OldServiceCallbackCannotAdvanceReplacement",
+            "testIosOutboundAdapter_OldLinkInfoCallbackCannotAdvanceReplacement",
+            "testIosOutboundAdapter_OldNotifyCallbackCannotPublishReplacement",
+            "testIosInboundAdapter_OldUnsubscribeCannotDeleteReplacement",
+            "testIosInboundAdapter_PreviousManagerEpochCannotDeletePostRestartRelation",
+            "testIosInboundAdapter_DuplicateAfterSubscribedCreatesNoTimer",
+            "testIosPublicationEdgeReducer_EventCountMatrix",
+        ]
+        for t in required_r28_ios:
+            if t not in c:
+                errors.append(f"BL116: iOS test {t} missing in BleLinkSubstrateTests")
+
     return errors
 
 
 def run_selftest() -> int:
-    """Mutation testing for all BL01-BL107 control rules."""
+    """Mutation testing for all BL01-BL116 control rules."""
     print("Running check_ble_link_substrate_controls selftest (mutation test battery)...")
 
     # 1. Baseline must pass
@@ -1473,7 +1582,7 @@ def run_selftest() -> int:
         ("ios_conn", "_remoteNodeHint != nil && _localRole != nil && isNotificationSubscribed", "_remoteNodeHint != nil && _localRole != nil", "BL53"),
         ("android_transport", "MAX_ACTIVE_CONNECTIONS = 7", "MAX_ACTIVE_CONNECTIONS = 9999", "BL54"),
         ("ios_transport", "maxActiveConnections = 7", "maxActiveConnections = 9999", "BL54"),
-        ("ios_transport", "provisionalGenerations", "/* provisionalGenerations */", "BL55"),
+        ("ios_transport", "centralDriver?.getConnectionGeneration", "/* centralDriver?.getConnectionGeneration */", "BL55"),
         ("android_server", "pendingServiceGeneration", "/* pendingServiceGeneration */", "BL56"),
         ("ios_transport", "p.canSendWriteWithoutResponse", "true", "BL57"),
         ("android_transport", "conn.isHandshakeTransportReady", "true", "BL58"),
@@ -1535,6 +1644,15 @@ def run_selftest() -> int:
         ("android_client", "op.gattGeneration == gen", "false", "BL105"),
         ("android_test_substrate", "fun testTransportInboundAdmission_SchedulesExactGenerationTimeout", "fun disabled_testTransportInboundAdmission", "BL106"),
         ("ios_test_substrate", "func testIosLinkInfo_SameHintDifferentFlagsRejected", "func disabled_testIosLinkInfo_FlagsRejected", "BL107"),
+        ("android_driver", "enum class ServerPeerSlotState", "enum class MutatedServerPeerSlotState", "BL108"),
+        ("android_driver", "enum class OutboundPeerSlotState", "enum class MutatedOutboundPeerSlotState", "BL109"),
+        ("android_client", "data class GattLifetimeToken(", "data class GattLifetimeTokenMutated(", "BL110"),
+        ("android_driver", "data class AcceptDuplicateWrite(", "data class AcceptDuplicateWriteMutated(", "BL111"),
+        ("ios_driver", "enum OutboundSlotState", "enum MutatedOutboundSlotState", "BL112"),
+        ("ios_driver", "enum InboundSlotState", "enum MutatedInboundSlotState", "BL113"),
+        ("ios_driver", "case acceptDuplicateWrite(UUID, Data)", "case acceptDuplicateWriteMutated(UUID, Data)", "BL114"),
+        ("android_test_substrate", "testServerLifecycle_ConnectedWhileActiveDoesNotRenumberRelation", "disabled_testServerLifecycle", "BL115"),
+        ("ios_test_substrate", "testIosDuplicateBeforeSubscription_ReusesOriginalTimer", "disabled_testIosDuplicate", "BL116"),
     ]
 
     all_passed = True
@@ -1656,7 +1774,7 @@ def main() -> int:
             print(f"  - {err}", file=sys.stderr)
         return 1
 
-    print("BLE link substrate structural controls: ALL PASSED (BL01-BL107).")
+    print("BLE link substrate structural controls: ALL PASSED (BL01-BL116).")
     return 0
 
 
