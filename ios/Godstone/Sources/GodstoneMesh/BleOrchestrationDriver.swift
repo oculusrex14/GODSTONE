@@ -239,6 +239,7 @@ public final class BleCentralOrchestrationDriver: @unchecked Sendable {
     private var peerRssi: [UUID: Int] = [:]
     private var physicalReadyPeers: Set<UUID> = []
     private var outboundSlots: [UUID: OutboundPeerSlot] = [:]
+    private var transportEpoch: UInt64 = 0
     private let lock = NSLock()
 
     public init(
@@ -250,6 +251,24 @@ public final class BleCentralOrchestrationDriver: @unchecked Sendable {
         self.localHint = localHint
         self.localLinkInfoProvider = localLinkInfoProvider
         self.capacityAuthority = capacityAuthority
+    }
+
+    public func startNewTransportEpoch(_ epoch: UInt64) -> UInt64 {
+        lock.lock()
+        defer { lock.unlock() }
+        transportEpoch = epoch
+        for (_, conn) in activeConnections {
+            conn.transitionTo(.closed)
+        }
+        activeConnections.removeAll()
+        activeLeases.removeAll()
+        electionContexts.removeAll()
+        discoveredHints.removeAll()
+        peerRssi.removeAll()
+        physicalReadyPeers.removeAll()
+        outboundSlots.removeAll()
+        capacityAuthority?.releaseAllOutbound()
+        return transportEpoch
     }
 
     public func getActiveConnection(_ peerId: UUID) -> BleConnection? {
@@ -537,7 +556,6 @@ public final class BleCentralOrchestrationDriver: @unchecked Sendable {
             conn.transitionTo(.closed)
         }
         activeConnections.removeAll()
-        connectionGenerations.removeAll()
         activeLeases.removeAll()
         electionContexts.removeAll()
         discoveredHints.removeAll()
@@ -552,6 +570,7 @@ public enum InboundSlotState: Equatable, Sendable {
     case idle
     case active(UInt64)
     case closing(UInt64)
+    case quarantined(UInt64, UInt64) // (transportEpoch, generation)
 }
 
 public struct InboundPeerSlot: Equatable, Sendable {
@@ -595,6 +614,7 @@ public final class BlePeripheralOrchestrationDriver: @unchecked Sendable {
     private var physicalReadyCentrals: Set<UUID> = []
     private var inboundSlots: [UUID: InboundPeerSlot] = [:]
     private var managerEpoch: UInt64 = 0
+    private var transportEpoch: UInt64 = 0
     private let lock = NSLock()
 
     public init(
@@ -608,29 +628,27 @@ public final class BlePeripheralOrchestrationDriver: @unchecked Sendable {
         self.capacityAuthority = capacityAuthority
     }
 
-    public func startNewManagerEpoch() -> UInt64 {
+    public func startNewTransportEpoch(_ epoch: UInt64) -> UInt64 {
         lock.lock()
         defer { lock.unlock() }
-        managerEpoch += 1
+        transportEpoch = epoch
+        managerEpoch = epoch
         for (_, conn) in inboundConnections {
             conn.transitionTo(.closed)
         }
         inboundConnections.removeAll()
         admittedCentrals.removeAll()
-        centralGenerations.removeAll()
         inboundLeases.removeAll()
         acceptedRemoteLinkInfo.removeAll()
         subscribedCentrals.removeAll()
         physicalReadyCentrals.removeAll()
         inboundSlots.removeAll()
         capacityAuthority?.releaseAllInbound()
-        return managerEpoch
+        return transportEpoch
     }
 
-    public func getAdmittedCount() -> Int {
-        lock.lock()
-        defer { lock.unlock() }
-        return admittedCentrals.count
+    public func startNewManagerEpoch() -> UInt64 {
+        return startNewTransportEpoch(managerEpoch + 1)
     }
 
     public func isCentralAdmitted(_ centralId: UUID) -> Bool {
@@ -639,22 +657,34 @@ public final class BlePeripheralOrchestrationDriver: @unchecked Sendable {
         return admittedCentrals.contains(centralId)
     }
 
-    public func isCentralSubscribed(_ centralId: UUID) -> Bool {
-        lock.lock()
-        defer { lock.unlock() }
-        return subscribedCentrals.contains(centralId)
-    }
-
     public func getInboundConnection(_ centralId: UUID) -> BleConnection? {
         lock.lock()
         defer { lock.unlock() }
         return inboundConnections[centralId]
     }
 
+    public func getAdmittedCount() -> Int {
+        lock.lock()
+        defer { lock.unlock() }
+        return admittedCentrals.count
+    }
+
+    public func getSubscribedCount() -> Int {
+        lock.lock()
+        defer { lock.unlock() }
+        return subscribedCentrals.count
+    }
+
     public func getInboundLease(_ centralId: UUID) -> CapacityLease? {
         lock.lock()
         defer { lock.unlock() }
         return inboundLeases[centralId]
+    }
+
+    public func isCentralSubscribed(_ centralId: UUID) -> Bool {
+        lock.lock()
+        defer { lock.unlock() }
+        return subscribedCentrals.contains(centralId)
     }
 
     public func getAcceptedRemoteLinkInfo(_ centralId: UUID) -> BleLinkInfoV1? {
@@ -757,34 +787,21 @@ public final class BlePeripheralOrchestrationDriver: @unchecked Sendable {
                 centralGenerations[centralId] = gen
                 acceptedRemoteLinkInfo[centralId] = remoteInfo
 
-                let conn = (inboundConnections[centralId]?.state == .closed) ? BleConnection(peerId: centralId) : (inboundConnections[centralId] ?? BleConnection(peerId: centralId))
+                let conn = BleConnection(peerId: centralId)
                 conn.transitionTo(.provisionalConnected)
                 conn.bindResponderFromAcceptedIncomingLinkInfo(remoteHint: remoteInfo.nodeHint)
                 inboundConnections[centralId] = conn
                 inboundSlots[centralId] = InboundPeerSlot(state: .active(gen), generation: gen, centralId: centralId, lease: lease)
 
-                if subscribedCentrals.contains(centralId) {
-                    conn.isNotificationSubscribed = true
-                }
                 if conn.isHandshakeTransportReady && !physicalReadyCentrals.contains(centralId) {
                     physicalReadyCentrals.insert(centralId)
                     return .acceptWriteAndDuplexReady(centralId, remoteInfo.nodeHint)
                 }
                 return .acceptWrite(centralId, remoteInfo.nodeHint)
             } else {
-                let gen = centralGenerations[centralId] ?? 0
-                removeAdmitted(centralId: centralId)
-                if gen != 0 {
-                    inboundSlots[centralId] = InboundPeerSlot(state: .closing(gen), generation: gen, centralId: centralId, lease: nil)
-                }
                 return .rejectWrite(centralId, "Central is not initiator")
             }
         case .tie, .invalid:
-            let gen = centralGenerations[centralId] ?? 0
-            removeAdmitted(centralId: centralId)
-            if gen != 0 {
-                inboundSlots[centralId] = InboundPeerSlot(state: .closing(gen), generation: gen, centralId: centralId, lease: nil)
-            }
             return .rejectWrite(centralId, "Role election tie or invalid")
         }
     }
@@ -847,14 +864,15 @@ public final class BlePeripheralOrchestrationDriver: @unchecked Sendable {
         if expectedGen != 0 && currentGen != expectedGen {
             return
         }
-        if !subscribedCentrals.contains(centralId) {
-            removeAdmitted(centralId: centralId)
-            acceptedRemoteLinkInfo.removeValue(forKey: centralId)
-            if let conn = inboundConnections.removeValue(forKey: centralId) {
-                conn.transitionTo(.closed)
-            }
-            inboundSlots[centralId] = InboundPeerSlot(state: .idle, generation: currentGen, centralId: centralId, lease: nil)
+
+        subscribedCentrals.remove(centralId)
+        physicalReadyCentrals.remove(centralId)
+        removeAdmitted(centralId: centralId)
+        acceptedRemoteLinkInfo.removeValue(forKey: centralId)
+        if let conn = inboundConnections.removeValue(forKey: centralId) {
+            conn.transitionTo(.closed)
         }
+        inboundSlots[centralId] = InboundPeerSlot(state: .idle, generation: currentGen, centralId: centralId, lease: nil)
     }
 
     public func reset() {
@@ -863,13 +881,12 @@ public final class BlePeripheralOrchestrationDriver: @unchecked Sendable {
         for (_, conn) in inboundConnections {
             conn.transitionTo(.closed)
         }
-        inboundConnections.removeAll()
         admittedCentrals.removeAll()
-        centralGenerations.removeAll()
-        inboundLeases.removeAll()
-        acceptedRemoteLinkInfo.removeAll()
         subscribedCentrals.removeAll()
         physicalReadyCentrals.removeAll()
+        inboundConnections.removeAll()
+        acceptedRemoteLinkInfo.removeAll()
+        inboundLeases.removeAll()
         inboundSlots.removeAll()
         capacityAuthority?.releaseAllInbound()
     }

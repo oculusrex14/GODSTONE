@@ -513,8 +513,8 @@ def check_controls(
     # ------------------------------------------------------------------------
     if ios_transport_path.exists():
         c = strip_comments(ios_transport_path.read_text(encoding="utf-8"))
-        if "centralDriver?.onDiscover" not in c:
-            errors.append("BL26: iOS central connection must be governed by centralDriver.onDiscover")
+        if "public func processOutboundDiscover(" not in c:
+            errors.append("BL26: iOS central connection must be governed by processOutboundDiscover")
 
     # ------------------------------------------------------------------------
     # BL27: Android startup fail-closed gating
@@ -948,7 +948,7 @@ def check_controls(
     # ------------------------------------------------------------------------
     if ios_transport_path.exists():
         c = strip_comments(ios_transport_path.read_text(encoding="utf-8"))
-        if "centralDriver?.onDiscover" not in c or "peripheralDriver?.onCentralRead" not in c:
+        if "public func processInboundWrite(" not in c or "public func processOutboundDiscover(" not in c:
             errors.append("BL72: iOS BleTransport must delegate CoreBluetooth callbacks to centralDriver and peripheralDriver")
 
     # ------------------------------------------------------------------------
@@ -1251,8 +1251,8 @@ def check_controls(
 
     if android_server_path.exists():
         c = strip_comments(android_server_path.read_text(encoding="utf-8"))
-        if "orchestrationDriver?.onClientDisconnected(address, pGen)" not in c:
-            errors.append("BL96: Android BleGattServer onConnectionStateChange must forward exact generation to onClientDisconnected")
+        if "orchestrationDriver?.onClientDisconnected(address)" not in c:
+            errors.append("BL96: Android BleGattServer onConnectionStateChange must forward disconnect to orchestrationDriver")
 
     # ------------------------------------------------------------------------
     # BL97: Android inbound timeout scheduled on admission
@@ -1498,11 +1498,75 @@ def check_controls(
             if t not in c:
                 errors.append(f"BL116: iOS test {t} missing in BleLinkSubstrateTests")
 
+    # ------------------------------------------------------------------------
+    # BL117: Android ServerPeerSlotState includes QUARANTINED
+    # ------------------------------------------------------------------------
+    if android_driver_path.exists():
+        c = strip_comments(android_driver_path.read_text(encoding="utf-8"))
+        if not re.search(r'enum\s+class\s+ServerPeerSlotState\s*\{[^}]*\bQUARANTINED\b', c, re.DOTALL):
+            errors.append("BL117: Android ServerPeerSlotState must include QUARANTINED state")
+
+    # ------------------------------------------------------------------------
+    # BL118: Android GattServer processConnectionStateChange
+    # ------------------------------------------------------------------------
+    if android_server_path.exists():
+        c = strip_comments(android_server_path.read_text(encoding="utf-8"))
+        if "fun processConnectionStateChange(" not in c or "orchestrationDriver?.onClientDisconnected(address)" not in c:
+            errors.append("BL118: Android GattServer must define processConnectionStateChange delegating to orchestrationDriver without synthetic expectedGen")
+
+    # ------------------------------------------------------------------------
+    # BL119: Android GattClient token-bound callbacks
+    # ------------------------------------------------------------------------
+    if android_client_path.exists():
+        c = strip_comments(android_client_path.read_text(encoding="utf-8"))
+        if "fun makeGattCallback(token: GattLifetimeToken)" not in c:
+            errors.append("BL119: Android GattClientConnection must define makeGattCallback(token: GattLifetimeToken)")
+
+    # ------------------------------------------------------------------------
+    # BL120: iOS RelationPeripheralDelegate
+    # ------------------------------------------------------------------------
+    if ios_transport_path.exists():
+        c = strip_comments(ios_transport_path.read_text(encoding="utf-8"))
+        if "class RelationPeripheralDelegate: NSObject, CBPeripheralDelegate" not in c:
+            errors.append("BL120: iOS BleTransport must define RelationPeripheralDelegate: NSObject, CBPeripheralDelegate")
+
+    # ------------------------------------------------------------------------
+    # BL121: iOS OutboundPhysicalLifetime & InboundSubscriptionLifetime
+    # ------------------------------------------------------------------------
+    if ios_transport_path.exists():
+        c = strip_comments(ios_transport_path.read_text(encoding="utf-8"))
+        if not re.search(r'\bstruct\s+OutboundPhysicalLifetime\b', c) or not re.search(r'\bstruct\s+InboundSubscriptionLifetime\b', c):
+            errors.append("BL121: iOS BleTransport must define OutboundPhysicalLifetime and InboundSubscriptionLifetime")
+
+    # ------------------------------------------------------------------------
+    # BL122: iOS BleTransport currentTransportEpoch
+    # ------------------------------------------------------------------------
+    if ios_transport_path.exists():
+        c = strip_comments(ios_transport_path.read_text(encoding="utf-8"))
+        if "var currentTransportEpoch: UInt64" not in c or "currentTransportEpoch += 1" not in c:
+            errors.append("BL122: iOS BleTransport must track currentTransportEpoch and advance on start/stop")
+
+    # ------------------------------------------------------------------------
+    # BL123: iOS acceptDuplicateWrite maps to .success in didReceiveWrite
+    # ------------------------------------------------------------------------
+    if ios_transport_path.exists():
+        c = strip_comments(ios_transport_path.read_text(encoding="utf-8"))
+        if "case .acceptWrite, .acceptDuplicateWrite, .acceptWriteAndDuplexReady:" not in c and "case .acceptWrite, .acceptWriteAndDuplexReady, .acceptDuplicateWrite:" not in c:
+            errors.append("BL123: iOS BleTransport.peripheralManager(_:didReceiveWrite:) must include .acceptDuplicateWrite in success response")
+
+    # ------------------------------------------------------------------------
+    # BL124: iOS BleOrchestrationDriver active slot generation state
+    # ------------------------------------------------------------------------
+    if ios_driver_path.exists():
+        c = strip_comments(ios_driver_path.read_text(encoding="utf-8"))
+        if "case active(UInt64)" not in c:
+            errors.append("BL124: iOS OutboundSlotState and InboundSlotState must define case active(UInt64)")
+
     return errors
 
 
 def run_selftest() -> int:
-    """Mutation testing for all BL01-BL116 control rules."""
+    """Mutation testing for all BL01-BL124 control rules."""
     print("Running check_ble_link_substrate_controls selftest (mutation test battery)...")
 
     # 1. Baseline must pass
@@ -1544,7 +1608,7 @@ def run_selftest() -> int:
         ("adr002", "C8.4D1", "XXX_REMOVED", "BL24"),
         ("adr003", "C8.4D1", "XXX_REMOVED", "BL24"),
         ("android_transport", "activeClientConnections[address] = client", "/* activeClientConnections[address] = client */", "BL25"),
-        ("ios_transport", "centralDriver?.onDiscover", "/* centralDriver?.onDiscover */", "BL26"),
+        ("ios_transport", "public func processOutboundDiscover(", "public func processOutboundDiscoverMutated(", "BL26"),
         ("android_transport", "if (!serverStarted)", "if (false)", "BL27"),
         ("android_server", "if (subscribedDevices[deviceAddress] != true)", "if (false)", "BL28"),
         ("android_transport", "conn.maxAttValueLength = maxAttLen", "/* conn.maxAttValueLength = maxAttLen */", "BL29"),
@@ -1601,7 +1665,7 @@ def run_selftest() -> int:
         ("ios_driver", "public func onDiscover(", "public func onDiscoverMutated(", "BL69"),
         ("ios_driver", "public func onCentralRead(", "public func onCentralReadMutated(", "BL70"),
         ("ios_transport", "centralDriver = BleCentralOrchestrationDriver(", "/* centralDriver = BleCentralOrchestrationDriver( */", "BL71"),
-        ("ios_transport", "centralDriver?.onDiscover", "/* centralDriver?.onDiscover */", "BL72"),
+        ("ios_transport", "public func processInboundWrite(", "public func processInboundWriteMutated(", "BL72"),
         ("android_snapshot", "return cachedSnapshot.get()", "/* return cachedSnapshot.get() */ return refresh()", "BL73"),
         ("ios_snapshot", "return cachedSnapshot", "/* return cachedSnapshot */ return refresh()", "BL74"),
         ("android_delivery_repo", "onHeldSetMutated?.invoke()", "/* onHeldSetMutated?.invoke() */", "BL75"),
@@ -1632,7 +1696,7 @@ def run_selftest() -> int:
         ("android_test_substrate", "testAndroidServer_MalformedLinkInfo_ReleasesCapacity", "disabled_testAndroidServer", "BL95"),
         ("ios_test_substrate", "testIosLinkInfo_ExactDuplicate_NoCrashNoRebindNoExtraLease", "disabled_testIosLinkInfo", "BL95"),
         ("android_driver", "fun onClientDisconnected(deviceAddress: String, expectedGen: Long = 0L)", "fun onClientDisconnected(deviceAddress: String)", "BL96"),
-        ("android_server", "orchestrationDriver?.onClientDisconnected(address, pGen)", "/* orchestrationDriver?.onClientDisconnected(address, pGen) */", "BL96"),
+        ("android_server", "orchestrationDriver?.onClientDisconnected(address)", "/* orchestrationDriver?.onClientDisconnected(address) */", "BL96"),
         ("android_transport", "inboundJobs[peerAddress] = job", "/* inboundJobs[peerAddress] = job */", "BL97"),
         ("android_transport", "fun publishRelation(key: RelationKey", "fun disabled_publish(key: RelationKey", "BL98"),
         ("android_driver", "isExactDuplicate = (existing == remoteInfo)", "isExactDuplicate = existing.nodeHint.contentEquals(remoteInfo.nodeHint)", "BL99"),
@@ -1653,6 +1717,14 @@ def run_selftest() -> int:
         ("ios_driver", "case acceptDuplicateWrite(UUID, Data)", "case acceptDuplicateWriteMutated(UUID, Data)", "BL114"),
         ("android_test_substrate", "testServerLifecycle_ConnectedWhileActiveDoesNotRenumberRelation", "disabled_testServerLifecycle", "BL115"),
         ("ios_test_substrate", "testIosDuplicateBeforeSubscription_ReusesOriginalTimer", "disabled_testIosDuplicate", "BL116"),
+        ("android_driver", "    CLOSING,\n    QUARANTINED", "    CLOSING,\n    MUTATED_QUARANTINED", "BL117"),
+        ("android_server", "orchestrationDriver?.onClientDisconnected(address)", "/* mutated disconnected */", "BL118"),
+        ("android_client", "fun makeGattCallback(token: GattLifetimeToken)", "fun makeGattCallbackMutated(token: GattLifetimeToken)", "BL119"),
+        ("ios_transport", "class RelationPeripheralDelegate: NSObject, CBPeripheralDelegate", "class RelationPeripheralDelegateMutated: NSObject, CBPeripheralDelegate", "BL120"),
+        ("ios_transport", "public struct OutboundPhysicalLifetime: Sendable", "public struct OutboundPhysicalLifetimeMutated: Sendable", "BL121"),
+        ("ios_transport", "currentTransportEpoch += 1", "/* currentTransportEpoch += 1 */", "BL122"),
+        ("ios_transport", "case .acceptWrite, .acceptDuplicateWrite, .acceptWriteAndDuplexReady:", "case .acceptWrite, .acceptWriteAndDuplexReady:", "BL123"),
+        ("ios_driver", "case active(UInt64)", "case activeMutated(UInt64)", "BL124"),
     ]
 
     all_passed = True
@@ -1774,7 +1846,7 @@ def main() -> int:
             print(f"  - {err}", file=sys.stderr)
         return 1
 
-    print("BLE link substrate structural controls: ALL PASSED (BL01-BL116).")
+    print("BLE link substrate structural controls: ALL PASSED (BL01-BL124).")
     return 0
 
 

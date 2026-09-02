@@ -30,16 +30,16 @@ private data class PendingNotification(
 @SuppressLint("MissingPermission")
 class BleGattServer(
     private val context: Context? = null,
-    val serviceUuid: UUID,
-    val inboxCharUuid: UUID,
+    val serviceUuid: UUID = BleTransport.SERVICE_UUID,
+    val inboxCharUuid: UUID = BleTransport.WRITE_CHAR_UUID,
     val linkInfoCharUuid: UUID = BleTransport.LINK_INFO_CHAR_UUID,
-    val linkInfoProvider: () -> ByteArray?,
-    val isRoleBoundPredicate: (String) -> Boolean,
-    val onInboundWrite: (String, ByteArray) -> Unit,
-    val onLinkInfoWrite: (String, ByteArray) -> Boolean,
-    val onSubscriptionChanged: (String, Boolean) -> Unit,
-    val onClientDisconnected: (String, Long) -> Unit,
-    val onMtuChanged: (String, Int) -> Unit,
+    val linkInfoProvider: () -> ByteArray? = { null },
+    val isRoleBoundPredicate: (String) -> Boolean = { false },
+    val onInboundWrite: (String, ByteArray) -> Unit = { _, _ -> },
+    val onLinkInfoWrite: (String, ByteArray) -> Boolean = { _, _ -> false },
+    val onSubscriptionChanged: (String, Boolean) -> Unit = { _, _ -> },
+    val onClientDisconnected: (String, Long) -> Unit = { _, _ -> },
+    val onMtuChanged: (String, Int) -> Unit = { _, _ -> },
     val onServiceStatusChanged: (Boolean) -> Unit = {},
     val onClientAdmitted: ((String, Long) -> Unit)? = null,
     private val orchestrationDriver: BleServerOrchestrationDriver? = null,
@@ -53,7 +53,6 @@ class BleGattServer(
     private val subscribedDevices = ConcurrentHashMap<String, Boolean>()
     private val deviceMtu = ConcurrentHashMap<String, Int>()
     private val peerGenerations = ConcurrentHashMap<String, Long>()
-    private val globalPeerGenCounter = AtomicLong(0L)
     private val notificationMutex = Mutex()
 
     private var pendingNotification: PendingNotification? = null
@@ -88,9 +87,11 @@ class BleGattServer(
     fun getNegotiatedAttValueLength(peerAddress: String): Int =
         deviceMtu[peerAddress] ?: BleConnection.DEFAULT_MAX_ATT_VALUE_LENGTH
 
-    fun getConnectedDeviceCount(): Int = connectedDevices.size
+    fun getConnectedDeviceCount(): Int =
+        orchestrationDriver?.getAdmittedCount() ?: connectedDevices.size
 
-    fun isDeviceAdmitted(peerAddress: String): Boolean = connectedDevices.containsKey(peerAddress)
+    fun isDeviceAdmitted(peerAddress: String): Boolean =
+        orchestrationDriver?.isDeviceAdmitted(peerAddress) ?: connectedDevices.containsKey(peerAddress)
 
     fun getActiveCallback(): BluetoothGattServerCallback? = activeCallback
 
@@ -100,6 +101,61 @@ class BleGattServer(
             try {
                 server?.cancelConnection(device)
             } catch (_: Exception) {}
+        }
+    }
+
+    fun processConnectionStateChange(address: String, status: Int, newState: Int, device: BluetoothDevice? = null) {
+        if (isPoisoned) return
+
+        if (newState == BluetoothProfile.STATE_CONNECTED) {
+            if (orchestrationDriver != null) {
+                val action = orchestrationDriver.onClientConnected(address)
+                if (action is BleServerAction.AdmitConnection) {
+                    val gen = action.generation
+                    if (device != null) {
+                        connectedDevices[address] = device
+                    }
+                    peerGenerations[address] = gen
+                    onClientAdmitted?.invoke(address, gen)
+                } else {
+                    if (device != null) {
+                        try {
+                            server?.cancelConnection(device)
+                        } catch (_: Exception) {}
+                    }
+                }
+            } else if (connectedDevices.containsKey(address) || connectedDevices.size >= MAX_ADMITTED_CLIENTS) {
+                if (device != null) {
+                    try {
+                        server?.cancelConnection(device)
+                    } catch (_: Exception) {}
+                }
+            } else {
+                val gen = 1L
+                if (device != null) {
+                    connectedDevices[address] = device
+                }
+                peerGenerations[address] = gen
+                onClientAdmitted?.invoke(address, gen)
+            }
+        } else if (newState == BluetoothProfile.STATE_DISCONNECTED) {
+            val action = orchestrationDriver?.onClientDisconnected(address)
+            if (action is BleServerAction.TearDownPhysicalChannel) {
+                val retiredGen = action.generation
+                peerGenerations.remove(address)
+                connectedDevices.remove(address)
+                subscribedDevices.remove(address)
+                deviceMtu.remove(address)
+                val pending = pendingNotification
+                if (pending != null && pending.deviceAddress == address) {
+                    pendingNotification = null
+                    pending.deferred.complete(false)
+                }
+                onSubscriptionChanged(address, false)
+                onClientDisconnected(address, retiredGen)
+            } else {
+                connectedDevices.remove(address)
+            }
         }
     }
 
@@ -130,51 +186,7 @@ class BleGattServer(
             override fun onConnectionStateChange(device: BluetoothDevice, status: Int, newState: Int) {
                 if (callbackEpoch != serverGeneration || isPoisoned) return
                 val address = device.address ?: return
-
-                if (newState == BluetoothProfile.STATE_CONNECTED) {
-                    val pGen = globalPeerGenCounter.incrementAndGet()
-
-                    if (orchestrationDriver != null) {
-                        val action = orchestrationDriver.onClientConnected(address, pGen)
-                        if (action is BleServerAction.RejectConnection) {
-                            try {
-                                server?.cancelConnection(device)
-                            } catch (_: Exception) {}
-                            return
-                        }
-                    } else if (connectedDevices.containsKey(address) || connectedDevices.size >= MAX_ADMITTED_CLIENTS) {
-                        try {
-                            server?.cancelConnection(device)
-                        } catch (_: Exception) {}
-                        return
-                    }
-
-                    val effectiveGen = orchestrationDriver?.getClientGeneration(address) ?: pGen
-                    connectedDevices[address] = device
-                    peerGenerations[address] = effectiveGen
-                    onClientAdmitted?.invoke(address, effectiveGen)
-                } else if (newState == BluetoothProfile.STATE_DISCONNECTED) {
-                    // Android BluetoothGattServerCallback gives only BluetoothDevice with address-based equality.
-                    // Physical relation lifetimes are strictly serialized via orchestrationDriver ACTIVE/CLOSING peer slots.
-                    val pGen = orchestrationDriver?.getClientGeneration(address) ?: (peerGenerations[address] ?: 0L)
-                    val action = orchestrationDriver?.onClientDisconnected(address, pGen)
-                    val retiredGen = if (action is BleServerAction.TearDownPhysicalChannel && action.generation != 0L) {
-                        action.generation
-                    } else {
-                        pGen
-                    }
-                    peerGenerations.remove(address)
-                    connectedDevices.remove(address)
-                    subscribedDevices.remove(address)
-                    deviceMtu.remove(address)
-                    val pending = pendingNotification
-                    if (pending != null && pending.deviceAddress == address) {
-                        pendingNotification = null
-                        pending.deferred.complete(false)
-                    }
-                    onSubscriptionChanged(address, false)
-                    onClientDisconnected(address, retiredGen)
-                }
+                processConnectionStateChange(address, status, newState, device)
             }
 
             override fun onCharacteristicReadRequest(

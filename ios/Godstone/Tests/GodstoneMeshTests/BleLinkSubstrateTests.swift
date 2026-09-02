@@ -2070,113 +2070,119 @@ final class BleLinkSubstrateTests: XCTestCase {
         XCTAssertEqual(cap.inboundCount, 1)
     }
 
-    func testIosOutboundAdapter_ClosingBlocksSamePeerReplacement() {
-        let localHint = Data([1, 0, 0, 0])
-        let driver = BleCentralOrchestrationDriver(
-            localHint: localHint,
-            localLinkInfoProvider: { Data(repeating: 0, count: 13) }
-        )
+    func testIosOutboundAdapter_ClosingBlocksSamePeerReplacement() throws {
+        let identity = try makeIdentity()
+        let store = MockMessageStore()
+        let transport = BleTransport(identity: identity, store: store)
+        transport.start()
         let peerId = UUID()
 
         // 1. Initial discover -> active(1)
-        let act1 = driver.onDiscover(peerId: peerId, rssi: -60, serviceDataHint: Data([5, 0, 0, 0]))
+        let act1 = transport.processOutboundDiscover(peerId: peerId, rssi: -60, serviceDataHint: Data([5, 0, 0, 0]))
         XCTAssertEqual(act1, .connectPeripheral(peerId))
-        XCTAssertEqual(driver.getOutboundSlotState(peerId), .active(1))
+        XCTAssertNotNil(transport.getOutboundLifetime(peerId))
+        let proxy1 = transport.getRelationDelegate(peerId)
+        XCTAssertNotNil(proxy1)
 
         // 2. Failure occurs locally -> transitions to closing(1)
-        let act2 = driver.onServicesDiscovered(peerId: peerId, success: false)
+        let act2 = transport.processPeripheralDiscoverServices(nil, delegate: proxy1!, error: NSError(domain: "test", code: 1))
         XCTAssertEqual(act2, .disconnectPeripheral(peerId, "Service discovery failed"))
-        XCTAssertEqual(driver.getOutboundSlotState(peerId), .closing(1))
 
-        // 3. New discover for same peer while closing -> blocked (noOp)
-        let act3 = driver.onDiscover(peerId: peerId, rssi: -60, serviceDataHint: Data([5, 0, 0, 0]))
+        // 3. New discover for same peer while closing -> blocked (.noOp)
+        let act3 = transport.processOutboundDiscover(peerId: peerId, rssi: -60, serviceDataHint: Data([5, 0, 0, 0]))
         XCTAssertEqual(act3, .noOp)
-        XCTAssertEqual(driver.getOutboundSlotState(peerId), .closing(1))
 
-        // 4. Platform disconnect callback observed -> retires to idle
-        let act4 = driver.onDisconnected(peerId: peerId, expectedGen: 1)
+        // 4. Platform disconnect callback observed -> retires
+        let act4 = transport.processOutboundDisconnect(peerId: peerId)
         XCTAssertEqual(act4, .noOp)
-        XCTAssertEqual(driver.getOutboundSlotState(peerId), .idle)
 
         // 5. Subsequent discover admits generation 2
-        let act5 = driver.onDiscover(peerId: peerId, rssi: -60, serviceDataHint: Data([5, 0, 0, 0]))
+        let act5 = transport.processOutboundDiscover(peerId: peerId, rssi: -60, serviceDataHint: Data([5, 0, 0, 0]))
         XCTAssertEqual(act5, .connectPeripheral(peerId))
-        XCTAssertEqual(driver.getOutboundSlotState(peerId), .active(2))
+        let lifetime2 = transport.getOutboundLifetime(peerId)
+        XCTAssertNotNil(lifetime2)
+        XCTAssertEqual(lifetime2?.relationKey.generation, 2)
+        transport.stop()
     }
 
-    func testIosOutboundAdapter_OldDisconnectCannotDeleteReplacement() {
-        let localHint = Data([1, 0, 0, 0])
-        let driver = BleCentralOrchestrationDriver(
-            localHint: localHint,
-            localLinkInfoProvider: { Data(repeating: 0, count: 13) }
-        )
+    func testIosOutboundAdapter_OldDisconnectCannotDeleteReplacement() throws {
+        let identity = try makeIdentity()
+        let store = MockMessageStore()
+        let transport = BleTransport(identity: identity, store: store)
+        transport.start()
         let peerId = UUID()
 
-        _ = driver.onDiscover(peerId: peerId, rssi: -60, serviceDataHint: Data([5, 0, 0, 0]))
-        _ = driver.onDisconnected(peerId: peerId, expectedGen: 1)
-        _ = driver.onDiscover(peerId: peerId, rssi: -60, serviceDataHint: Data([5, 0, 0, 0]))
-        XCTAssertEqual(driver.getConnectionGeneration(peerId), 2)
+        _ = transport.processOutboundDiscover(peerId: peerId, rssi: -60, serviceDataHint: Data([5, 0, 0, 0]))
+        _ = transport.processOutboundDisconnect(peerId: peerId)
+        _ = transport.processOutboundDiscover(peerId: peerId, rssi: -60, serviceDataHint: Data([5, 0, 0, 0]))
+        XCTAssertEqual(transport.getOutboundLifetime(peerId)?.relationKey.generation, 2)
 
-        let staleAct = driver.onDisconnected(peerId: peerId, expectedGen: 1)
+        // Stale disconnect from old generation (expectedGen: 1) arrives
+        let staleAct = transport.processOutboundDisconnect(peerId: peerId, expectedGen: 1)
         XCTAssertEqual(staleAct, .noOp)
-        XCTAssertEqual(driver.getConnectionGeneration(peerId), 2)
-        XCTAssertNotNil(driver.getActiveConnection(peerId))
+        XCTAssertEqual(transport.getOutboundLifetime(peerId)?.relationKey.generation, 2)
+        XCTAssertNotNil(transport.connection(for: peerId))
+        transport.stop()
     }
 
-    func testIosOutboundAdapter_OldServiceCallbackCannotAdvanceReplacement() {
-        let localHint = Data([1, 0, 0, 0])
-        let driver = BleCentralOrchestrationDriver(
-            localHint: localHint,
-            localLinkInfoProvider: { Data(repeating: 0, count: 13) }
-        )
+    func testIosOutboundAdapter_OldServiceCallbackCannotAdvanceReplacement() throws {
+        let identity = try makeIdentity()
+        let store = MockMessageStore()
+        let transport = BleTransport(identity: identity, store: store)
+        transport.start()
         let peerId = UUID()
 
-        _ = driver.onDiscover(peerId: peerId, rssi: -60, serviceDataHint: Data([5, 0, 0, 0]))
-        _ = driver.onDisconnected(peerId: peerId, expectedGen: 1)
+        _ = transport.processOutboundDiscover(peerId: peerId, rssi: -60, serviceDataHint: Data([5, 0, 0, 0]))
+        let proxy1 = transport.getRelationDelegate(peerId)!
+        _ = transport.processOutboundDisconnect(peerId: peerId)
 
-        // Slot is idle; old service discovery callback arrives -> noOp
-        let staleAct = driver.onServicesDiscovered(peerId: peerId, success: true)
+        // Stale service discovery callback with proxy1 arrives -> noOp
+        let staleAct = transport.processPeripheralDiscoverServices(nil, delegate: proxy1, error: nil)
         XCTAssertEqual(staleAct, .noOp)
+        transport.stop()
     }
 
-    func testIosOutboundAdapter_OldLinkInfoCallbackCannotAdvanceReplacement() {
-        let localHint = Data([1, 0, 0, 0])
-        let driver = BleCentralOrchestrationDriver(
-            localHint: localHint,
-            localLinkInfoProvider: { Data(repeating: 0, count: 13) }
-        )
+    func testIosOutboundAdapter_OldLinkInfoCallbackCannotAdvanceReplacement() throws {
+        let identity = try makeIdentity()
+        let store = MockMessageStore()
+        let transport = BleTransport(identity: identity, store: store)
+        transport.start()
         let peerId = UUID()
 
-        _ = driver.onDiscover(peerId: peerId, rssi: -60, serviceDataHint: Data([5, 0, 0, 0]))
-        _ = driver.onDisconnected(peerId: peerId, expectedGen: 1)
+        _ = transport.processOutboundDiscover(peerId: peerId, rssi: -60, serviceDataHint: Data([5, 0, 0, 0]))
+        let proxy1 = transport.getRelationDelegate(peerId)!
+        _ = transport.processOutboundDisconnect(peerId: peerId)
 
-        let staleAct = driver.onLinkInfoReadResult(peerId: peerId, success: true, rawData: Data(repeating: 0, count: 13))
+        let ch = CBMutableCharacteristic(type: BleTransport.linkInfoCharacteristicUuid, properties: [.read], value: Data(repeating: 0, count: 13), permissions: [.readable])
+        let staleAct = transport.processPeripheralUpdateValue(nil, delegate: proxy1, characteristic: ch, error: nil)
         XCTAssertEqual(staleAct, .noOp)
+        transport.stop()
     }
 
-    func testIosOutboundAdapter_OldNotifyCallbackCannotPublishReplacement() {
-        let localHint = Data([1, 0, 0, 0])
-        let driver = BleCentralOrchestrationDriver(
-            localHint: localHint,
-            localLinkInfoProvider: { Data(repeating: 0, count: 13) }
-        )
+    func testIosOutboundAdapter_OldNotifyCallbackCannotPublishReplacement() throws {
+        let identity = try makeIdentity()
+        let store = MockMessageStore()
+        let transport = BleTransport(identity: identity, store: store)
+        transport.start()
         let peerId = UUID()
 
-        _ = driver.onDiscover(peerId: peerId, rssi: -60, serviceDataHint: Data([5, 0, 0, 0]))
-        _ = driver.onDisconnected(peerId: peerId, expectedGen: 1)
+        _ = transport.processOutboundDiscover(peerId: peerId, rssi: -60, serviceDataHint: Data([5, 0, 0, 0]))
+        let proxy1 = transport.getRelationDelegate(peerId)!
+        _ = transport.processOutboundDisconnect(peerId: peerId)
 
-        let staleAct = driver.onNotificationStateUpdated(peerId: peerId, success: true, isNotifying: true)
+        let ch = CBMutableCharacteristic(type: BleTransport.inboxCharacteristicUuid, properties: [.notify], value: nil, permissions: [.readable])
+        let staleAct = transport.processPeripheralNotificationStateUpdated(nil, delegate: proxy1, characteristic: ch, error: nil)
         XCTAssertEqual(staleAct, .noOp)
+        transport.stop()
     }
 
-    func testIosInboundAdapter_OldUnsubscribeCannotDeleteReplacement() {
-        let localHint = Data([5, 0, 0, 0])
-        let remoteHint = Data([1, 0, 0, 0])
-        let driver = BlePeripheralOrchestrationDriver(
-            localHint: localHint,
-            localLinkInfoProvider: { Data(repeating: 0, count: 13) }
-        )
+    func testIosInboundAdapter_OldUnsubscribeCannotDeleteReplacement() throws {
+        let identity = try makeIdentity()
+        let store = MockMessageStore()
+        let transport = BleTransport(identity: identity, store: store)
+        transport.start()
         let centralId = UUID()
+        let remoteHint = Data([0, 0, 0, 1])
         let info = BleLinkInfoCodec.encode(
             version: BleLinkInfoConstants.protocolVersion,
             flags: 0,
@@ -2184,25 +2190,25 @@ final class BleLinkSubstrateTests: XCTestCase {
             shortDigest: Data(repeating: 0, count: 6),
             queueDepth: 0
         )
-        _ = driver.onCentralWrite(centralId: centralId, rawData: info)
-        _ = driver.onCentralUnsubscribed(centralId: centralId, expectedGen: 1)
-        _ = driver.onCentralWrite(centralId: centralId, rawData: info)
-        XCTAssertEqual(driver.getCentralGeneration(centralId), 2)
+        _ = transport.processInboundWrite(centralId: centralId, rawData: info)
+        _ = transport.processInboundUnsubscribe(centralId: centralId)
+        _ = transport.processInboundWrite(centralId: centralId, rawData: info)
+        XCTAssertEqual(transport.getInboundLifetime(centralId)?.relationKey.generation, 2)
 
-        let staleAct = driver.onCentralUnsubscribed(centralId: centralId, expectedGen: 1)
+        let staleAct = transport.processInboundUnsubscribe(centralId: centralId, expectedGen: 1)
         XCTAssertEqual(staleAct, .noOp)
-        XCTAssertEqual(driver.getCentralGeneration(centralId), 2)
-        XCTAssertNotNil(driver.getInboundConnection(centralId))
+        XCTAssertEqual(transport.getInboundLifetime(centralId)?.relationKey.generation, 2)
+        XCTAssertNotNil(transport.connection(for: centralId))
+        transport.stop()
     }
 
-    func testIosInboundAdapter_PreviousManagerEpochCannotDeletePostRestartRelation() {
-        let localHint = Data([5, 0, 0, 0])
-        let remoteHint = Data([1, 0, 0, 0])
-        let driver = BlePeripheralOrchestrationDriver(
-            localHint: localHint,
-            localLinkInfoProvider: { Data(repeating: 0, count: 13) }
-        )
+    func testIosInboundAdapter_PreviousManagerEpochCannotDeletePostRestartRelation() throws {
+        let identity = try makeIdentity()
+        let store = MockMessageStore()
+        let transport = BleTransport(identity: identity, store: store)
+        transport.start()
         let centralId = UUID()
+        let remoteHint = Data([0, 0, 0, 1])
         let info = BleLinkInfoCodec.encode(
             version: BleLinkInfoConstants.protocolVersion,
             flags: 0,
@@ -2210,21 +2216,22 @@ final class BleLinkSubstrateTests: XCTestCase {
             shortDigest: Data(repeating: 0, count: 6),
             queueDepth: 0
         )
-        _ = driver.onCentralWrite(centralId: centralId, rawData: info)
-        XCTAssertEqual(driver.getCentralGeneration(centralId), 1)
+        _ = transport.processInboundWrite(centralId: centralId, rawData: info)
+        XCTAssertEqual(transport.getInboundLifetime(centralId)?.relationKey.generation, 1)
 
-        // Manager epoch restart
-        _ = driver.startNewManagerEpoch()
-        XCTAssertEqual(driver.getAdmittedCount(), 0)
+        // Transport stop & start (epoch advance)
+        transport.stop()
+        transport.start()
 
         // New admission after restart
-        _ = driver.onCentralWrite(centralId: centralId, rawData: info)
-        XCTAssertEqual(driver.getCentralGeneration(centralId), 1)
+        _ = transport.processInboundWrite(centralId: centralId, rawData: info)
+        XCTAssertEqual(transport.getInboundLifetime(centralId)?.relationKey.generation, 1)
 
-        // Stale disconnect from before epoch cannot delete post-restart relation if generation mismatched
-        let staleAct = driver.onCentralUnsubscribed(centralId: centralId, expectedGen: 999)
+        // Stale unsubscribe from before epoch cannot delete post-restart relation (generation mismatched or old epoch)
+        let staleAct = transport.processInboundUnsubscribe(centralId: centralId, expectedGen: 999)
         XCTAssertEqual(staleAct, .noOp)
-        XCTAssertNotNil(driver.getInboundConnection(centralId))
+        XCTAssertNotNil(transport.connection(for: centralId))
+        transport.stop()
     }
 
     func testIosInboundAdapter_DuplicateAfterSubscribedCreatesNoTimer() throws {

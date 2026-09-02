@@ -2322,10 +2322,10 @@ class BleLinkSubstrateTest {
         serverDriver.onInboundTimeout(peer, 1L)
         assertEquals(ServerPeerSlotState.CLOSING, serverDriver.getPeerSlotState(peer))
 
-        // Platform DISCONNECTED for Gen 1 retires exact generation to IDLE
-        val discAct = serverDriver.onClientDisconnected(peer, 1L)
+        // Platform DISCONNECTED for Gen 1 retires exact generation to QUARANTINED
+        val discAct = serverDriver.onClientDisconnected(peer)
         assertTrue(discAct is BleServerAction.TearDownPhysicalChannel)
-        assertEquals(ServerPeerSlotState.IDLE, serverDriver.getPeerSlotState(peer))
+        assertEquals(ServerPeerSlotState.QUARANTINED, serverDriver.getPeerSlotState(peer))
     }
 
     @Test
@@ -2342,11 +2342,13 @@ class BleLinkSubstrateTest {
         serverDriver.onServiceAdded(1, true)
 
         serverDriver.onClientConnected(peer, 1)
-        serverDriver.onClientDisconnected(peer, 1L)
-        assertEquals(ServerPeerSlotState.IDLE, serverDriver.getPeerSlotState(peer))
+        serverDriver.onClientDisconnected(peer)
+        assertEquals(ServerPeerSlotState.QUARANTINED, serverDriver.getPeerSlotState(peer))
 
-        // Reconnect after retirement allocates next generation (2)
-        val act2 = serverDriver.onClientConnected(peer, 2)
+        // Fresh server epoch allows reconnection and advances generation
+        serverDriver.startNewServerEpoch()
+        serverDriver.onServiceAdded(2, true)
+        val act2 = serverDriver.onClientConnected(peer)
         assertTrue(act2 is BleServerAction.AdmitConnection)
         assertEquals(2L, serverDriver.getClientGeneration(peer))
         assertEquals(ServerPeerSlotState.ACTIVE, serverDriver.getPeerSlotState(peer))
@@ -2367,16 +2369,24 @@ class BleLinkSubstrateTest {
 
         // Gen 1 connect & disconnect
         serverDriver.onClientConnected(peer, 1)
-        serverDriver.onClientDisconnected(peer, 1L)
+        val disc1 = serverDriver.onClientDisconnected(peer)
+        assertTrue(disc1 is BleServerAction.TearDownPhysicalChannel)
+        assertEquals(ServerPeerSlotState.QUARANTINED, serverDriver.getPeerSlotState(peer))
 
-        // Gen 2 connect
-        serverDriver.onClientConnected(peer, 2)
-        assertEquals(2L, serverDriver.getClientGeneration(peer))
-
-        // Duplicate/stale disconnect for Gen 1 must be NoOp and not touch Gen 2
-        val dupDisc = serverDriver.onClientDisconnected(peer, 1L)
+        // Duplicate disconnect in same epoch without expectedGen is NoOp
+        val dupDisc = serverDriver.onClientDisconnected(peer)
         assertTrue(dupDisc is BleServerAction.NoOp)
-        assertEquals(2L, serverDriver.getClientGeneration(peer))
+        assertEquals(ServerPeerSlotState.QUARANTINED, serverDriver.getPeerSlotState(peer))
+
+        // Reconnect in same epoch is rejected due to QUARANTINED
+        val rejConn = serverDriver.onClientConnected(peer)
+        assertTrue(rejConn is BleServerAction.RejectConnection)
+
+        // Fresh epoch clears quarantine
+        serverDriver.startNewServerEpoch()
+        serverDriver.onServiceAdded(2, true)
+        val act2 = serverDriver.onClientConnected(peer)
+        assertTrue(act2 is BleServerAction.AdmitConnection)
         assertEquals(ServerPeerSlotState.ACTIVE, serverDriver.getPeerSlotState(peer))
     }
 
@@ -2413,9 +2423,9 @@ class BleLinkSubstrateTest {
         serverDriver.onServiceAdded(1, true)
 
         serverDriver.onClientConnected(peer, 1)
-        val slot = serverDriver.getPeerSlot(peer)
-        assertNotNull(slot)
-        assertEquals(serverDriver.getClientGeneration(peer), slot?.generation)
+        val conn = serverDriver.getInboundConnection(peer)
+        assertNotNull(conn)
+        assertEquals(1L, serverDriver.getClientGeneration(peer))
     }
 
     @Test
@@ -2595,6 +2605,88 @@ class BleLinkSubstrateTest {
             token = gattConn.currentLifetimeToken
         )
         assertEquals(1, writeAckCount)
+    }
+
+    @Test
+    fun testGattClient_MatchedCccdForwardsExactlyOnce() {
+        val peer = "11:22:33:44:55:92"
+        var cccdAckCount = 0
+        var cccdSuccess = false
+        val gattConn = GattClientConnection(
+            peerAddress = peer,
+            onCccdWriteAck = { suc, _, _ ->
+                cccdAckCount++
+                cccdSuccess = suc
+            }
+        )
+        gattConn.enqueuePendingOpForTesting(GattOpType.CCCD_WRITE, GattClientConnection.CCCD_UUID)
+
+        // First dispatch: matches and forwards
+        gattConn.dispatchDescriptorWrite(
+            descriptorUuid = GattClientConnection.CCCD_UUID,
+            status = android.bluetooth.BluetoothGatt.GATT_SUCCESS,
+            token = gattConn.currentLifetimeToken
+        )
+        assertEquals(1, cccdAckCount)
+        assertTrue(cccdSuccess)
+
+        // Second dispatch: pending op already consumed -> ignored
+        gattConn.dispatchDescriptorWrite(
+            descriptorUuid = GattClientConnection.CCCD_UUID,
+            status = android.bluetooth.BluetoothGatt.GATT_SUCCESS,
+            token = gattConn.currentLifetimeToken
+        )
+        assertEquals(1, cccdAckCount)
+    }
+
+    @Test
+    fun testGattClient_LateTimedOutDataWriteCannotCompleteReplacementOperation() {
+        val peer = "11:22:33:44:55:93"
+        val gattConn = GattClientConnection(peerAddress = peer)
+        gattConn.enqueuePendingOpForTesting(GattOpType.DATA_WRITE, BleTransport.WRITE_CHAR_UUID)
+        val op1 = gattConn.getCurrentPendingOp()
+        assertNotNull(op1)
+
+        // Replacement operation enqueued (e.g. after timeout)
+        gattConn.enqueuePendingOpForTesting(GattOpType.LINK_INFO_READ, BleTransport.LINK_INFO_CHAR_UUID)
+
+        // Late DATA_WRITE dispatch from old operation -> ignored because currentOp is LINK_INFO_READ
+        gattConn.dispatchCharacteristicWrite(
+            characteristicUuid = BleTransport.WRITE_CHAR_UUID,
+            status = android.bluetooth.BluetoothGatt.GATT_SUCCESS,
+            token = gattConn.currentLifetimeToken
+        )
+        // Current op remains untouched
+        assertEquals(GattOpType.LINK_INFO_READ, gattConn.getCurrentPendingOp()?.opType)
+    }
+
+    @Test
+    fun testGattServer_Adapter_QuarantinedRejectsSameEpochConnect() {
+        val authority = BleGlobalCapacityAuthority(maxTotalPeers = 7)
+        val localHint = byteArrayOf(0x01, 0x00, 0x00, 0x00)
+        val serverDriver = BleServerOrchestrationDriver(
+            localHint = localHint,
+            localLinkInfoProvider = { ByteArray(13) },
+            globalCapacity = authority
+        )
+        val server = BleGattServer(
+            context = null,
+            orchestrationDriver = serverDriver
+        )
+        val peer = "11:22:33:44:55:94"
+        server.start()
+        server.dispatchServiceAdded(android.bluetooth.BluetoothGatt.GATT_SUCCESS, android.bluetooth.BluetoothGattService(BleTransport.SERVICE_UUID, android.bluetooth.BluetoothGattService.SERVICE_TYPE_PRIMARY))
+
+        // Connect and disconnect peer
+        server.processConnectionStateChange(peer, android.bluetooth.BluetoothGatt.GATT_SUCCESS, android.bluetooth.BluetoothProfile.STATE_CONNECTED)
+        assertTrue(server.isDeviceAdmitted(peer))
+
+        server.processConnectionStateChange(peer, android.bluetooth.BluetoothGatt.GATT_SUCCESS, android.bluetooth.BluetoothProfile.STATE_DISCONNECTED)
+        assertFalse(server.isDeviceAdmitted(peer))
+
+        // Same-epoch reconnection attempt -> rejected by quarantined state in driver
+        server.processConnectionStateChange(peer, android.bluetooth.BluetoothGatt.GATT_SUCCESS, android.bluetooth.BluetoothProfile.STATE_CONNECTED)
+        assertFalse(server.isDeviceAdmitted(peer))
     }
 
     @Test

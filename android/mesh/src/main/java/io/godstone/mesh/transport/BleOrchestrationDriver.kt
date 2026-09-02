@@ -110,10 +110,9 @@ class BleCentralOrchestrationDriver(
         }
 
         val slot = outboundSlots[peerAddress]
-        if (slot?.state == OutboundPeerSlotState.CLOSING) {
-            return BleCentralAction.NoOp
-        }
-        if (slot?.state == OutboundPeerSlotState.ACTIVE) {
+        if (slot?.state == OutboundPeerSlotState.CLOSING ||
+            slot?.state == OutboundPeerSlotState.ACTIVE
+        ) {
             return BleCentralAction.NoOp
         }
 
@@ -346,7 +345,8 @@ class BleCentralOrchestrationDriver(
 enum class ServerPeerSlotState {
     IDLE,
     ACTIVE,
-    CLOSING
+    CLOSING,
+    QUARANTINED
 }
 
 data class ServerPeerSlot(
@@ -438,7 +438,6 @@ class BleServerOrchestrationDriver(
         admittedDevices.clear()
         subscribedDevices.clear()
         deviceMtu.clear()
-        peerGenerations.clear()
         inboundLeases.clear()
         inboundConnections.clear()
         acceptedRemoteLinkInfo.clear()
@@ -458,10 +457,13 @@ class BleServerOrchestrationDriver(
         false
     }
 
-    fun onClientConnected(deviceAddress: String, peerGeneration: Long): BleServerAction = synchronized(lock) {
+    fun onClientConnected(deviceAddress: String, peerGeneration: Long = 0L): BleServerAction = synchronized(lock) {
         if (isPoisoned) return BleServerAction.RejectConnection(deviceAddress, "Server is poisoned")
 
         val slot = peerSlots[deviceAddress]
+        if (slot?.state == ServerPeerSlotState.QUARANTINED) {
+            return BleServerAction.RejectConnection(deviceAddress, "Client is QUARANTINED in current server epoch")
+        }
         if (slot?.state == ServerPeerSlotState.ACTIVE) {
             return BleServerAction.RejectConnection(deviceAddress, "Client is already ACTIVE")
         }
@@ -469,7 +471,7 @@ class BleServerOrchestrationDriver(
             return BleServerAction.RejectConnection(deviceAddress, "Client slot is CLOSING")
         }
 
-        val gen = (peerGenerations[deviceAddress] ?: 0L) + 1L
+        val gen = if (peerGeneration > 0L) peerGeneration else (peerGenerations[deviceAddress] ?: 0L) + 1L
         val lease = if (globalCapacity != null) {
             val l = globalCapacity.tryAdmitInbound(deviceAddress, gen)
             if (l == null) {
@@ -500,6 +502,9 @@ class BleServerOrchestrationDriver(
         if (slot == null || slot.state == ServerPeerSlotState.IDLE) {
             return BleServerAction.NoOp
         }
+        if (slot.state == ServerPeerSlotState.QUARANTINED) {
+            return BleServerAction.NoOp
+        }
         val gen = slot.generation
         if (expectedGen != 0L && gen != expectedGen) {
             return BleServerAction.NoOp
@@ -515,12 +520,16 @@ class BleServerOrchestrationDriver(
         if (pendingNotificationAddress == deviceAddress) {
             pendingNotificationAddress = null
         }
-        peerSlots[deviceAddress] = ServerPeerSlot(ServerPeerSlotState.IDLE, gen, deviceAddress, null)
+        peerSlots[deviceAddress] = ServerPeerSlot(ServerPeerSlotState.QUARANTINED, gen, deviceAddress, null)
         BleServerAction.TearDownPhysicalChannel(deviceAddress, gen)
     }
 
     fun onLinkInfoReadRequest(deviceAddress: String): BleServerAction = synchronized(lock) {
         if (isPoisoned) return BleServerAction.RejectRead(deviceAddress)
+        val slot = peerSlots[deviceAddress]
+        if (slot?.state == ServerPeerSlotState.QUARANTINED) {
+            return BleServerAction.RejectRead(deviceAddress)
+        }
         if (!admittedDevices.contains(deviceAddress)) {
             return BleServerAction.RejectRead(deviceAddress)
         }
@@ -550,6 +559,9 @@ class BleServerOrchestrationDriver(
     fun onLinkInfoWriteRequest(deviceAddress: String, rawBytes: ByteArray): BleServerAction = synchronized(lock) {
         if (isPoisoned) return BleServerAction.RejectWrite(deviceAddress, "Server is poisoned")
         val slot = peerSlots[deviceAddress]
+        if (slot?.state == ServerPeerSlotState.QUARANTINED) {
+            return BleServerAction.RejectWrite(deviceAddress, "Client is QUARANTINED")
+        }
         if (slot?.state == ServerPeerSlotState.CLOSING) {
             return BleServerAction.RejectWrite(deviceAddress, "Client slot is CLOSING")
         }
@@ -612,6 +624,9 @@ class BleServerOrchestrationDriver(
     fun onDescriptorWriteRequest(deviceAddress: String, isSubscribed: Boolean): BleServerAction = synchronized(lock) {
         if (isPoisoned) return BleServerAction.RejectDescriptorWrite(deviceAddress)
         val slot = peerSlots[deviceAddress]
+        if (slot?.state == ServerPeerSlotState.QUARANTINED) {
+            return BleServerAction.RejectDescriptorWrite(deviceAddress)
+        }
         if (slot?.state == ServerPeerSlotState.CLOSING) {
             return BleServerAction.RejectDescriptorWrite(deviceAddress)
         }

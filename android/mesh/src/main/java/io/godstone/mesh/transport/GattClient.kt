@@ -254,58 +254,63 @@ class GattClientConnection(
         }
     }
 
-    val callback = object : BluetoothGattCallback() {
-        override fun onConnectionStateChange(g: BluetoothGatt, status: Int, newState: Int) {
-            if (g !== gatt) return
-            dispatchConnectionStateChange(status, newState, currentLifetimeToken)
-        }
-
-        override fun onServicesDiscovered(g: BluetoothGatt, status: Int) {
-            if (g !== gatt) return
-            if (status == BluetoothGatt.GATT_SUCCESS) {
-                val service = g.services.firstOrNull { it.uuid == BleTransport.SERVICE_UUID }
-                val inbox = service?.getCharacteristic(BleTransport.WRITE_CHAR_UUID)
-                val linkInfo = service?.getCharacteristic(BleTransport.LINK_INFO_CHAR_UUID)
-
-                if (inbox != null && linkInfo != null) {
-                    inboxCharacteristic = inbox
-                    linkInfoCharacteristic = linkInfo
-                    dispatchServicesDiscovered(status, currentLifetimeToken, true)
-                    return
-                }
+    fun makeGattCallback(token: GattLifetimeToken): BluetoothGattCallback {
+        return object : BluetoothGattCallback() {
+            override fun onConnectionStateChange(g: BluetoothGatt, status: Int, newState: Int) {
+                if (g !== gatt) return
+                dispatchConnectionStateChange(status, newState, token)
             }
-            dispatchServicesDiscovered(status, currentLifetimeToken, false)
-        }
 
-        override fun onCharacteristicRead(g: BluetoothGatt, characteristic: BluetoothGattCharacteristic, status: Int) {
-            if (g !== gatt) return
-            dispatchCharacteristicRead(characteristic.uuid, characteristic.value, status, currentLifetimeToken)
-        }
+            override fun onServicesDiscovered(g: BluetoothGatt, status: Int) {
+                if (g !== gatt) return
+                if (status == BluetoothGatt.GATT_SUCCESS) {
+                    val service = g.services.firstOrNull { it.uuid == BleTransport.SERVICE_UUID }
+                    val inbox = service?.getCharacteristic(BleTransport.WRITE_CHAR_UUID)
+                    val linkInfo = service?.getCharacteristic(BleTransport.LINK_INFO_CHAR_UUID)
 
-        override fun onCharacteristicWrite(g: BluetoothGatt, characteristic: BluetoothGattCharacteristic, status: Int) {
-            if (g !== gatt) return
-            dispatchCharacteristicWrite(characteristic.uuid, status, currentLifetimeToken)
-        }
+                    if (inbox != null && linkInfo != null) {
+                        inboxCharacteristic = inbox
+                        linkInfoCharacteristic = linkInfo
+                        dispatchServicesDiscovered(status, token, true)
+                        return
+                    }
+                }
+                dispatchServicesDiscovered(status, token, false)
+            }
 
-        override fun onDescriptorWrite(g: BluetoothGatt, descriptor: BluetoothGattDescriptor, status: Int) {
-            if (g !== gatt) return
-            dispatchDescriptorWrite(descriptor.uuid, status, currentLifetimeToken)
-        }
+            override fun onCharacteristicRead(g: BluetoothGatt, characteristic: BluetoothGattCharacteristic, status: Int) {
+                if (g !== gatt) return
+                dispatchCharacteristicRead(characteristic.uuid, characteristic.value, status, token)
+            }
 
-        override fun onMtuChanged(g: BluetoothGatt, mtu: Int, status: Int) {
-            if (g !== gatt) return
-            dispatchMtuChanged(mtu, status, currentLifetimeToken)
-        }
+            override fun onCharacteristicWrite(g: BluetoothGatt, characteristic: BluetoothGattCharacteristic, status: Int) {
+                if (g !== gatt) return
+                dispatchCharacteristicWrite(characteristic.uuid, status, token)
+            }
 
-        @Deprecated("Deprecated in Java")
-        override fun onCharacteristicChanged(g: BluetoothGatt, characteristic: BluetoothGattCharacteristic) {
-            if (g !== gatt) return
-            if (characteristic.uuid == BleTransport.WRITE_CHAR_UUID) {
-                val value = characteristic.value ?: return
-                onInboundNotification(value)
+            override fun onDescriptorWrite(g: BluetoothGatt, descriptor: BluetoothGattDescriptor, status: Int) {
+                if (g !== gatt) return
+                dispatchDescriptorWrite(descriptor.uuid, status, token)
+            }
+
+            override fun onMtuChanged(g: BluetoothGatt, mtu: Int, status: Int) {
+                if (g !== gatt) return
+                dispatchMtuChanged(mtu, status, token)
+            }
+
+            @Deprecated("Deprecated in Java")
+            override fun onCharacteristicChanged(g: BluetoothGatt, characteristic: BluetoothGattCharacteristic) {
+                if (g !== gatt) return
+                if (characteristic.uuid == BleTransport.WRITE_CHAR_UUID) {
+                    val value = characteristic.value ?: return
+                    onInboundNotification(value)
+                }
             }
         }
     }
+
+    val callback: BluetoothGattCallback
+        get() = makeGattCallback(currentLifetimeToken)
 
     fun setMockGattForTesting(
         mockGatt: BluetoothGatt,
@@ -332,16 +337,19 @@ class GattClientConnection(
             return
         }
 
+        val token: GattLifetimeToken
         synchronized(opLock) {
             gattGeneration++
             opGenCounter++
+            token = GattLifetimeToken(gattGeneration)
             currentOp = PendingGattOp(
                 opType = GattOpType.CONNECT,
                 gattGeneration = gattGeneration,
                 opGeneration = opGenCounter
             )
         }
-        gatt = device.connectGatt(context, false, callback, BluetoothDevice.TRANSPORT_LE)
+        val cb = makeGattCallback(token)
+        gatt = device.connectGatt(context, false, cb, BluetoothDevice.TRANSPORT_LE)
     }
 
     fun discoverServices() {
