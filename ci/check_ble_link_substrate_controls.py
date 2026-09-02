@@ -1555,6 +1555,7 @@ def check_controls(
             errors.append("BL123: iOS BleTransport.peripheralManager(_:didReceiveWrite:) must include .acceptDuplicateWrite in success response")
 
     # ------------------------------------------------------------------------
+    # ------------------------------------------------------------------------
     # BL124: iOS BleOrchestrationDriver active slot generation state
     # ------------------------------------------------------------------------
     if ios_driver_path.exists():
@@ -1562,11 +1563,148 @@ def check_controls(
         if "case active(UInt64)" not in c:
             errors.append("BL124: iOS OutboundSlotState and InboundSlotState must define case active(UInt64)")
 
+    # ------------------------------------------------------------------------
+    # BL125: iOS CentralManagerEpochDelegate & PeripheralManagerEpochDelegate
+    # ------------------------------------------------------------------------
+    if ios_transport_path.exists():
+        c = strip_comments(ios_transport_path.read_text(encoding="utf-8"))
+        if "class CentralManagerEpochDelegate: NSObject, CBCentralManagerDelegate" not in c or "class PeripheralManagerEpochDelegate: NSObject, CBPeripheralManagerDelegate" not in c:
+            errors.append("BL125: iOS BleTransport must define CentralManagerEpochDelegate and PeripheralManagerEpochDelegate")
+        if "public let transportEpoch: UInt64" not in c or "weak var transport: BleTransport?" not in c:
+            errors.append("BL125: iOS manager epoch delegates must capture transportEpoch and weak transport")
+
+    # ------------------------------------------------------------------------
+    # BL126: iOS BleTransport manager delegates initialized nil and set on start
+    # ------------------------------------------------------------------------
+    if ios_transport_path.exists():
+        c = strip_comments(ios_transport_path.read_text(encoding="utf-8"))
+        if "CBCentralManager(delegate: nil," not in c or "CBPeripheralManager(delegate: nil," not in c:
+            errors.append("BL126: iOS BleTransport CBCentralManager and CBPeripheralManager must be initialized with delegate: nil")
+        if "CentralManagerEpochDelegate(transportEpoch: currentTransportEpoch, transport: self)" not in c or "PeripheralManagerEpochDelegate(transportEpoch: currentTransportEpoch, transport: self)" not in c:
+            errors.append("BL126: iOS BleTransport.start() must install fresh epoch delegate proxies")
+        if "activeCentralEpochDelegate = nil" not in c or "activePeripheralEpochDelegate = nil" not in c:
+            errors.append("BL126: iOS BleTransport.stop() must clear active epoch delegate proxies")
+
+    # ------------------------------------------------------------------------
+    # BL127: iOS BleTransport has NO direct CoreBluetooth manager/peripheral delegate conformance
+    # ------------------------------------------------------------------------
+    if ios_transport_path.exists():
+        c = strip_comments(ios_transport_path.read_text(encoding="utf-8"))
+        if "extension BleTransport: CBCentralManagerDelegate" in c or "extension BleTransport: CBPeripheralDelegate" in c or "extension BleTransport: CBPeripheralManagerDelegate" in c:
+            errors.append("BL127: iOS BleTransport must NOT directly conform to CBCentralManagerDelegate, CBPeripheralDelegate, or CBPeripheralManagerDelegate")
+        if re.search(r'\bclass\s+BleTransport\b[^{]*\b(CBCentralManagerDelegate|CBPeripheralDelegate|CBPeripheralManagerDelegate)\b', c):
+            errors.append("BL127: iOS BleTransport class declaration must NOT directly conform to CoreBluetooth delegate protocols")
+
+    # ------------------------------------------------------------------------
+    # BL128: iOS callback reducers guard against sourceEpoch != currentTransportEpoch and isStarted
+    # ------------------------------------------------------------------------
+    if ios_transport_path.exists():
+        c = strip_comments(ios_transport_path.read_text(encoding="utf-8"))
+        required_guarded_methods = [
+            "processCentralConnect",
+            "processCentralFailToConnect",
+            "processOutboundDisconnect",
+            "processInboundWrite",
+            "processInboundSubscribe",
+            "processInboundUnsubscribe",
+        ]
+        for m in required_guarded_methods:
+            if not re.search(rf'public\s+func\s+{m}\b[^{{]*sourceEpoch:\s*UInt64\s*=\s*0', c):
+                errors.append(f"BL128: iOS BleTransport.{m} must take sourceEpoch parameter")
+            if not re.search(rf'public\s+func\s+{m}\b.*?\bsourceEpoch\s*==\s*0\s*\|\|\s*sourceEpoch\s*==\s*currentTransportEpoch\b', c, re.DOTALL):
+                errors.append(f"BL128: iOS BleTransport.{m} must validate sourceEpoch == currentTransportEpoch")
+
+    # ------------------------------------------------------------------------
+    # BL129: iOS OutboundSlotState and InboundSlotState define quarantined(UInt64, UInt64)
+    # ------------------------------------------------------------------------
+    if ios_driver_path.exists():
+        c = strip_comments(ios_driver_path.read_text(encoding="utf-8"))
+        if "case quarantined(UInt64, UInt64)" not in c:
+            errors.append("BL129: iOS OutboundSlotState and InboundSlotState must define case quarantined(UInt64, UInt64)")
+
+    # ------------------------------------------------------------------------
+    # BL130: iOS startNewTransportEpoch clears quarantine preserving generations
+    # ------------------------------------------------------------------------
+    if ios_driver_path.exists():
+        c = strip_comments(ios_driver_path.read_text(encoding="utf-8"))
+        if "outboundSlots[peerId] = OutboundPeerSlot(state: .idle, generation: slot.generation" not in c or "inboundSlots[centralId] = InboundPeerSlot(state: .idle, generation: slot.generation" not in c:
+            errors.append("BL130: iOS BleCentralOrchestrationDriver and BlePeripheralOrchestrationDriver startNewTransportEpoch must clear quarantined slots to idle preserving generation")
+
+    # ------------------------------------------------------------------------
+    # BL131: iOS processCentralFailToConnect immediately unpublishes, releases lease, and quarantines
+    # ------------------------------------------------------------------------
+    if ios_transport_path.exists():
+        c = strip_comments(ios_transport_path.read_text(encoding="utf-8"))
+        if "centralDriver?.onFailedToConnect" not in c:
+            errors.append("BL131: iOS processCentralFailToConnect must delegate to centralDriver?.onFailedToConnect")
+        if "unpublishRelation(key)" not in c:
+            errors.append("BL131: iOS processCentralFailToConnect must unpublish exact relation key")
+
+    # ------------------------------------------------------------------------
+    # BL132: iOS concrete CBCentral stored on accepted subscription and removed on unsubscribe/timeout
+    # ------------------------------------------------------------------------
+    if ios_transport_path.exists():
+        c = strip_comments(ios_transport_path.read_text(encoding="utf-8"))
+        if "subscribedCentrals[cid] = c" not in c:
+            errors.append("BL132: iOS processInboundSubscribe must install concrete CBCentral in subscribedCentrals")
+        if "subscribedCentrals.removeValue(forKey: centralId)" not in c:
+            errors.append("BL132: iOS processInboundUnsubscribe and handleInboundTimeout must remove central from subscribedCentrals")
+        if "guard let centralObj = subscribedCentrals[peerId]" not in c:
+            errors.append("BL132: iOS send responder branch must guard on subscribedCentrals[peerId]")
+        if "public func getSubscribedCentral(_ id: UUID) -> CBCentral?" not in c:
+            errors.append("BL132: iOS BleTransport must expose getSubscribedCentral helper")
+
+    # ------------------------------------------------------------------------
+    # BL133: Android GattClientConnection dispatchInboundNotification drops stale tokens
+    # ------------------------------------------------------------------------
+    if android_client_path.exists():
+        c = strip_comments(android_client_path.read_text(encoding="utf-8"))
+        if "fun dispatchInboundNotification(value: ByteArray, token: GattLifetimeToken)" not in c:
+            errors.append("BL133: Android GattClientConnection must define dispatchInboundNotification")
+        if "token.generation != gen" not in c and "token.generation != gattGeneration" not in c:
+            errors.append("BL133: Android dispatchInboundNotification must drop notifications with stale generation tokens")
+
+    # ------------------------------------------------------------------------
+    # BL134: iOS unit tests do NOT use synthetic expectedGen: 999
+    # ------------------------------------------------------------------------
+    if ios_test_substrate_path.exists():
+        c = strip_comments(ios_test_substrate_path.read_text(encoding="utf-8"))
+        if "expectedGen: 999" in c:
+            errors.append("BL134: iOS unit tests must NOT use synthetic expectedGen: 999 in BleLinkSubstrateTests")
+
+    # ------------------------------------------------------------------------
+    # BL135: Section 22 regression test inventory in BleLinkSubstrateTests.swift
+    # ------------------------------------------------------------------------
+    if ios_test_substrate_path.exists():
+        c = strip_comments(ios_test_substrate_path.read_text(encoding="utf-8"))
+        required_r210_ios = [
+            "testIosCentralManagerDelegate_FreshProxyCapturesNewEpochAcrossRestart",
+            "testIosPeripheralManagerDelegate_FreshProxyCapturesNewEpochAcrossRestart",
+            "testIosDelegateProxy_StaleEpochCallbacksFailClosedBeforeDriversOrStateMutate",
+            "testIosStoppedTransport_CallbacksFailClosed",
+            "testIosInboundSlot_UnsubscribeTransitionsToQuarantined",
+            "testIosInboundSlot_QuarantinedSamePeerWriteRejectedInSameEpoch",
+            "testIosInboundSlot_QuarantinedSamePeerSubscribeRejectedInSameEpoch",
+            "testIosInboundSlot_FreshEpochClearsQuarantineWithNextGeneration",
+            "testIosOutboundSlot_DisconnectTransitionsToQuarantined",
+            "testIosOutboundSlot_QuarantinedSamePeerDiscoverRejectedInSameEpoch",
+            "testIosOutboundSlot_FreshEpochClearsQuarantineWithNextGeneration",
+            "testIosOutboundSlot_DidFailToConnectImmediatelyQuarantinesAndReleasesLease",
+            "testIosConcreteCBCentral_RetainedOnAcceptedSubscription",
+            "testIosConcreteCBCentral_RemovedOnUnsubscribeAndTimeout",
+            "testIosResponderSend_TargetsConcreteSubscribedCentral",
+            "testIosDidFailToConnect_NoDisconnectionOrTimeoutSideEffectsRemain",
+            "testIosInboundWriteAttResponse_DecisionReducerMapping",
+        ]
+        for t in required_r210_ios:
+            if t not in c:
+                errors.append(f"BL135: iOS test {t} missing in BleLinkSubstrateTests")
+
     return errors
 
 
 def run_selftest() -> int:
-    """Mutation testing for all BL01-BL124 control rules."""
+    """Mutation testing for all BL01-BL135 control rules."""
     print("Running check_ble_link_substrate_controls selftest (mutation test battery)...")
 
     # 1. Baseline must pass
@@ -1725,6 +1863,17 @@ def run_selftest() -> int:
         ("ios_transport", "currentTransportEpoch += 1", "/* currentTransportEpoch += 1 */", "BL122"),
         ("ios_transport", "case .acceptWrite, .acceptDuplicateWrite, .acceptWriteAndDuplexReady:", "case .acceptWrite, .acceptWriteAndDuplexReady:", "BL123"),
         ("ios_driver", "case active(UInt64)", "case activeMutated(UInt64)", "BL124"),
+        ("ios_transport", "class CentralManagerEpochDelegate: NSObject, CBCentralManagerDelegate", "class CentralManagerEpochDelegateMutated: NSObject, CBCentralManagerDelegate", "BL125"),
+        ("ios_transport", "let centralEpochDelegate = CentralManagerEpochDelegate(", "/* let centralEpochDelegate = CentralManagerEpochDelegate( */", "BL126"),
+        ("ios_transport", "public private(set) var activeCentralEpochDelegate: CentralManagerEpochDelegate?", "extension BleTransport: CBCentralManagerDelegate {}\n    public private(set) var activeCentralEpochDelegate: CentralManagerEpochDelegate?", "BL127"),
+        ("ios_transport", "sourceEpoch == 0 || sourceEpoch == currentTransportEpoch", "sourceEpoch == 0 || sourceEpoch == 999999", "BL128"),
+        ("ios_driver", "case quarantined(UInt64, UInt64)", "case quarantinedMutated(UInt64, UInt64)", "BL129"),
+        ("ios_driver", "outboundSlots[peerId] = OutboundPeerSlot(state: .idle, generation: slot.generation", "/* outboundSlots[peerId] = OutboundPeerSlot(state: .idle, generation: slot.generation */", "BL130"),
+        ("ios_transport", "centralDriver?.onFailedToConnect(peerId: peerId, error: error)", "/* centralDriver?.onFailedToConnect */", "BL131"),
+        ("ios_transport", "subscribedCentrals[cid] = c", "/* subscribedCentrals[cid] = c */", "BL132"),
+        ("android_client", "fun dispatchInboundNotification(value: ByteArray, token: GattLifetimeToken)", "fun dispatchInboundNotificationMutated(value: ByteArray, token: GattLifetimeToken)", "BL133"),
+        ("ios_test_substrate", "sourceEpoch: oldEpoch", "expectedGen: 999", "BL134"),
+        ("ios_test_substrate", "testIosCentralManagerDelegate_FreshProxyCapturesNewEpochAcrossRestart", "disabled_testIosCentralManagerDelegate", "BL135"),
     ]
 
     all_passed = True
@@ -1846,7 +1995,7 @@ def main() -> int:
             print(f"  - {err}", file=sys.stderr)
         return 1
 
-    print("BLE link substrate structural controls: ALL PASSED (BL01-BL124).")
+    print("BLE link substrate structural controls: ALL PASSED (BL01-BL135).")
     return 0
 
 

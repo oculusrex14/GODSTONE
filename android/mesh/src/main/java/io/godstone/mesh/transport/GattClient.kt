@@ -254,6 +254,12 @@ class GattClientConnection(
         }
     }
 
+    fun dispatchInboundNotification(value: ByteArray, token: GattLifetimeToken) {
+        val gen = synchronized(opLock) { gattGeneration }
+        if (token.generation != gen) return
+        onInboundNotification(value)
+    }
+
     fun makeGattCallback(token: GattLifetimeToken): BluetoothGattCallback {
         return object : BluetoothGattCallback() {
             override fun onConnectionStateChange(g: BluetoothGatt, status: Int, newState: Int) {
@@ -303,7 +309,7 @@ class GattClientConnection(
                 if (g !== gatt) return
                 if (characteristic.uuid == BleTransport.WRITE_CHAR_UUID) {
                     val value = characteristic.value ?: return
-                    onInboundNotification(value)
+                    dispatchInboundNotification(value, token)
                 }
             }
         }

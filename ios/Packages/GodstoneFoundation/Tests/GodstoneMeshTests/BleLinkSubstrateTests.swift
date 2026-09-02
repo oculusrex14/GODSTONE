@@ -1287,6 +1287,8 @@ final class BleLinkSubstrateTests: XCTestCase {
         _ = driver.onDisconnected(peerId: peer)
         XCTAssertEqual(cap.outboundCount, 0)
 
+        // Disconnect quarantined slot; start fresh epoch to admit replacement
+        _ = driver.startNewTransportEpoch(2)
         _ = driver.onDiscover(peerId: peer, rssi: -60, serviceDataHint: nil)
         XCTAssertEqual(cap.outboundCount, 1)
 
@@ -1847,7 +1849,8 @@ final class BleLinkSubstrateTests: XCTestCase {
         driver.onInboundTimeout(centralId: centralId, expectedGen: 1)
         XCTAssertEqual(cap.inboundCount, 0)
 
-        // New write after timeout -> Gen 2
+        // Fresh epoch clears quarantine -> Gen 2
+        _ = driver.startNewTransportEpoch(2)
         let act2 = driver.onCentralWrite(centralId: centralId, rawData: info)
         XCTAssertEqual(act2, .acceptWrite(centralId, remoteHint))
         XCTAssertEqual(driver.getCentralGeneration(centralId), 2)
@@ -1875,7 +1878,8 @@ final class BleLinkSubstrateTests: XCTestCase {
         _ = driver.onCentralWrite(centralId: centralId, rawData: info)
         _ = driver.onCentralUnsubscribed(centralId: centralId, expectedGen: 1)
 
-        // Duplicate write on closed relation smoothly opens new connection
+        // Fresh epoch clears quarantine and smoothly opens new connection
+        _ = driver.startNewTransportEpoch(2)
         let act = driver.onCentralWrite(centralId: centralId, rawData: info)
         XCTAssertEqual(act, .acceptWrite(centralId, remoteHint))
         XCTAssertEqual(driver.getCentralGeneration(centralId), 2)
@@ -1894,6 +1898,7 @@ final class BleLinkSubstrateTests: XCTestCase {
         XCTAssertEqual(driver.getConnectionGeneration(peerId), 1)
 
         _ = driver.onDisconnected(peerId: peerId, expectedGen: 1)
+        _ = driver.startNewTransportEpoch(2)
         _ = driver.onDiscover(peerId: peerId, rssi: -60, serviceDataHint: Data([5, 0, 0, 0]))
         XCTAssertEqual(driver.getConnectionGeneration(peerId), 2)
 
@@ -1925,6 +1930,7 @@ final class BleLinkSubstrateTests: XCTestCase {
         XCTAssertEqual(driver.getCentralGeneration(centralId), 1)
 
         _ = driver.onCentralUnsubscribed(centralId: centralId, expectedGen: 1)
+        _ = driver.startNewTransportEpoch(2)
         _ = driver.onCentralWrite(centralId: centralId, rawData: info)
         XCTAssertEqual(driver.getCentralGeneration(centralId), 2)
 
@@ -2092,16 +2098,18 @@ final class BleLinkSubstrateTests: XCTestCase {
         let act3 = transport.processOutboundDiscover(peerId: peerId, rssi: -60, serviceDataHint: Data([5, 0, 0, 0]))
         XCTAssertEqual(act3, .noOp)
 
-        // 4. Platform disconnect callback observed -> retires
+        // 4. Platform disconnect callback observed -> slot quarantined
         let act4 = transport.processOutboundDisconnect(peerId: peerId)
         XCTAssertEqual(act4, .noOp)
 
-        // 5. Subsequent discover admits generation 2
+        // 5. Fresh epoch clears quarantine and admits replacement
+        transport.stop()
+        transport.start()
         let act5 = transport.processOutboundDiscover(peerId: peerId, rssi: -60, serviceDataHint: Data([5, 0, 0, 0]))
         XCTAssertEqual(act5, .connectPeripheral(peerId))
         let lifetime2 = transport.getOutboundLifetime(peerId)
         XCTAssertNotNil(lifetime2)
-        XCTAssertEqual(lifetime2?.relationKey.generation, 2)
+        XCTAssertEqual(lifetime2?.relationKey.generation, 1)
         transport.stop()
     }
 
@@ -2111,16 +2119,21 @@ final class BleLinkSubstrateTests: XCTestCase {
         let transport = BleTransport(identity: identity, store: store)
         transport.start()
         let peerId = UUID()
+        let oldEpoch = transport.currentTransportEpoch
 
         _ = transport.processOutboundDiscover(peerId: peerId, rssi: -60, serviceDataHint: Data([5, 0, 0, 0]))
         _ = transport.processOutboundDisconnect(peerId: peerId)
-        _ = transport.processOutboundDiscover(peerId: peerId, rssi: -60, serviceDataHint: Data([5, 0, 0, 0]))
-        XCTAssertEqual(transport.getOutboundLifetime(peerId)?.relationKey.generation, 2)
 
-        // Stale disconnect from old generation (expectedGen: 1) arrives
-        let staleAct = transport.processOutboundDisconnect(peerId: peerId, expectedGen: 1)
+        // Fresh epoch clears quarantine
+        transport.stop()
+        transport.start()
+        _ = transport.processOutboundDiscover(peerId: peerId, rssi: -60, serviceDataHint: Data([5, 0, 0, 0]))
+        XCTAssertEqual(transport.getOutboundLifetime(peerId)?.relationKey.generation, 1)
+
+        // Stale disconnect from old generation from old epoch arrives
+        let staleAct = transport.processOutboundDisconnect(peerId: peerId, expectedGen: 1, sourceEpoch: oldEpoch)
         XCTAssertEqual(staleAct, .noOp)
-        XCTAssertEqual(transport.getOutboundLifetime(peerId)?.relationKey.generation, 2)
+        XCTAssertEqual(transport.getOutboundLifetime(peerId)?.relationKey.generation, 1)
         XCTAssertNotNil(transport.connection(for: peerId))
         transport.stop()
     }
@@ -2191,13 +2204,18 @@ final class BleLinkSubstrateTests: XCTestCase {
             queueDepth: 0
         )
         _ = transport.processInboundWrite(centralId: centralId, rawData: info)
+        let oldEpoch = transport.currentTransportEpoch
         _ = transport.processInboundUnsubscribe(centralId: centralId)
-        _ = transport.processInboundWrite(centralId: centralId, rawData: info)
-        XCTAssertEqual(transport.getInboundLifetime(centralId)?.relationKey.generation, 2)
 
-        let staleAct = transport.processInboundUnsubscribe(centralId: centralId, expectedGen: 1)
+        // Fresh epoch clears quarantine
+        transport.stop()
+        transport.start()
+        _ = transport.processInboundWrite(centralId: centralId, rawData: info)
+        XCTAssertEqual(transport.getInboundLifetime(centralId)?.relationKey.generation, 1)
+
+        let staleAct = transport.processInboundUnsubscribe(centralId: centralId, expectedGen: 1, sourceEpoch: oldEpoch)
         XCTAssertEqual(staleAct, .noOp)
-        XCTAssertEqual(transport.getInboundLifetime(centralId)?.relationKey.generation, 2)
+        XCTAssertEqual(transport.getInboundLifetime(centralId)?.relationKey.generation, 1)
         XCTAssertNotNil(transport.connection(for: centralId))
         transport.stop()
     }
@@ -2218,17 +2236,20 @@ final class BleLinkSubstrateTests: XCTestCase {
         )
         _ = transport.processInboundWrite(centralId: centralId, rawData: info)
         XCTAssertEqual(transport.getInboundLifetime(centralId)?.relationKey.generation, 1)
+        let oldEpoch = transport.currentTransportEpoch
 
         // Transport stop & start (epoch advance)
         transport.stop()
         transport.start()
+        let newEpoch = transport.currentTransportEpoch
+        XCTAssertGreaterThan(newEpoch, oldEpoch)
 
         // New admission after restart
         _ = transport.processInboundWrite(centralId: centralId, rawData: info)
         XCTAssertEqual(transport.getInboundLifetime(centralId)?.relationKey.generation, 1)
 
-        // Stale unsubscribe from before epoch cannot delete post-restart relation (generation mismatched or old epoch)
-        let staleAct = transport.processInboundUnsubscribe(centralId: centralId, expectedGen: 999)
+        // Stale unsubscribe from before epoch cannot delete post-restart relation (no synthetic expectedGen needed)
+        let staleAct = transport.processInboundUnsubscribe(centralId: centralId, expectedGen: 0, sourceEpoch: oldEpoch)
         XCTAssertEqual(staleAct, .noOp)
         XCTAssertNotNil(transport.connection(for: centralId))
         transport.stop()
@@ -2380,6 +2401,485 @@ final class BleLinkSubstrateTests: XCTestCase {
         XCTAssertEqual(delegate.disconnectedPeers, [centralId])
 
         transport.stop()
+    }
+
+    final class MockCBCentralPeer: NSObject {
+        @objc let identifier: UUID
+        @objc let maximumUpdateValueLength: Int = 512
+        init(id: UUID) {
+            self.identifier = id
+            super.init()
+        }
+    }
+
+    func testIosCentralManagerDelegate_FreshProxyCapturesNewEpochAcrossRestart() throws {
+        let identity = try makeIdentity()
+        let store = MockMessageStore()
+        let transport = BleTransport(identity: identity, store: store)
+        transport.start()
+        let proxy1 = transport.activeCentralEpochDelegate
+        XCTAssertNotNil(proxy1)
+        let epoch1 = proxy1!.transportEpoch
+        XCTAssertEqual(epoch1, transport.currentTransportEpoch)
+
+        transport.stop()
+        XCTAssertNil(transport.activeCentralEpochDelegate)
+
+        transport.start()
+        let proxy2 = transport.activeCentralEpochDelegate
+        XCTAssertNotNil(proxy2)
+        let epoch2 = proxy2!.transportEpoch
+        XCTAssertGreaterThan(epoch2, epoch1)
+        XCTAssertTrue(proxy1 !== proxy2)
+        transport.stop()
+    }
+
+    func testIosPeripheralManagerDelegate_FreshProxyCapturesNewEpochAcrossRestart() throws {
+        let identity = try makeIdentity()
+        let store = MockMessageStore()
+        let transport = BleTransport(identity: identity, store: store)
+        transport.start()
+        let proxy1 = transport.activePeripheralEpochDelegate
+        XCTAssertNotNil(proxy1)
+        let epoch1 = proxy1!.transportEpoch
+        XCTAssertEqual(epoch1, transport.currentTransportEpoch)
+
+        transport.stop()
+        XCTAssertNil(transport.activePeripheralEpochDelegate)
+
+        transport.start()
+        let proxy2 = transport.activePeripheralEpochDelegate
+        XCTAssertNotNil(proxy2)
+        let epoch2 = proxy2!.transportEpoch
+        XCTAssertGreaterThan(epoch2, epoch1)
+        XCTAssertTrue(proxy1 !== proxy2)
+        transport.stop()
+    }
+
+    func testIosDelegateProxy_StaleEpochCallbacksFailClosedBeforeDriversOrStateMutate() throws {
+        let identity = try makeIdentity()
+        let store = MockMessageStore()
+        let transport = BleTransport(identity: identity, store: store)
+        transport.start()
+        let oldEpoch = transport.currentTransportEpoch
+
+        // Advance to epoch 2
+        transport.stop()
+        transport.start()
+        let newEpoch = transport.currentTransportEpoch
+        XCTAssertGreaterThan(newEpoch, oldEpoch)
+
+        let centralId = UUID()
+        let rawInfo = BleLinkInfoCodec.encode(
+            version: BleLinkInfoConstants.protocolVersion,
+            flags: 0,
+            nodeHint: Data([0, 0, 0, 1]),
+            shortDigest: Data(repeating: 0, count: 6),
+            queueDepth: 0
+        )
+
+        // 1. Stale inbound write -> rejected fail-closed
+        let writeAct = transport.processInboundWrite(centralId: centralId, rawData: rawInfo, sourceEpoch: oldEpoch)
+        if case .rejectWrite = writeAct {} else {
+            XCTFail("Stale epoch write must be rejected")
+        }
+        XCTAssertNil(transport.getInboundLifetime(centralId))
+        XCTAssertNil(transport.connection(for: centralId))
+
+        // 2. Stale inbound subscribe -> no-op fail-closed
+        let subAct = transport.processInboundSubscribe(centralId: centralId, sourceEpoch: oldEpoch)
+        XCTAssertEqual(subAct, .noOp)
+
+        // 3. Stale outbound discover -> no-op fail-closed
+        let peerId = UUID()
+        let discAct = transport.processOutboundDiscover(peerId: peerId, sourceEpoch: oldEpoch)
+        XCTAssertEqual(discAct, .noOp)
+        XCTAssertNil(transport.getOutboundLifetime(peerId))
+
+        // 4. Stale outbound connect -> no-op fail-closed
+        let connAct = transport.processCentralConnect(peerId: peerId, sourceEpoch: oldEpoch)
+        XCTAssertEqual(connAct, .noOp)
+
+        // 5. Stale outbound fail to connect -> no-op fail-closed
+        let failAct = transport.processCentralFailToConnect(peerId: peerId, sourceEpoch: oldEpoch)
+        XCTAssertEqual(failAct, .noOp)
+
+        // 6. Stale outbound disconnect -> no-op fail-closed
+        let discOutAct = transport.processOutboundDisconnect(peerId: peerId, sourceEpoch: oldEpoch)
+        XCTAssertEqual(discOutAct, .noOp)
+
+        transport.stop()
+    }
+
+    func testIosStoppedTransport_CallbacksFailClosed() throws {
+        let identity = try makeIdentity()
+        let store = MockMessageStore()
+        let transport = BleTransport(identity: identity, store: store)
+        transport.start()
+        transport.stop()
+
+        let centralId = UUID()
+        let rawInfo = BleLinkInfoCodec.encode(
+            version: BleLinkInfoConstants.protocolVersion,
+            flags: 0,
+            nodeHint: Data([0, 0, 0, 1]),
+            shortDigest: Data(repeating: 0, count: 6),
+            queueDepth: 0
+        )
+
+        let writeAct = transport.processInboundWrite(centralId: centralId, rawData: rawInfo)
+        if case .rejectWrite = writeAct {} else {
+            XCTFail("Stopped transport write must be rejected")
+        }
+        let subAct = transport.processInboundSubscribe(centralId: centralId)
+        XCTAssertEqual(subAct, .noOp)
+
+        let peerId = UUID()
+        let discAct = transport.processOutboundDiscover(peerId: peerId)
+        XCTAssertEqual(discAct, .noOp)
+        let connAct = transport.processCentralConnect(peerId: peerId)
+        XCTAssertEqual(connAct, .noOp)
+        let failAct = transport.processCentralFailToConnect(peerId: peerId)
+        XCTAssertEqual(failAct, .noOp)
+        let discOutAct = transport.processOutboundDisconnect(peerId: peerId)
+        XCTAssertEqual(discOutAct, .noOp)
+    }
+
+    func testIosInboundSlot_UnsubscribeTransitionsToQuarantined() throws {
+        let identity = try makeIdentity()
+        let store = MockMessageStore()
+        let transport = BleTransport(identity: identity, store: store)
+        transport.start()
+
+        let centralId = UUID()
+        let rawInfo = BleLinkInfoCodec.encode(
+            version: BleLinkInfoConstants.protocolVersion,
+            flags: 0,
+            nodeHint: Data([0, 0, 0, 1]),
+            shortDigest: Data(repeating: 0, count: 6),
+            queueDepth: 0
+        )
+        _ = transport.processInboundWrite(centralId: centralId, rawData: rawInfo)
+        _ = transport.processInboundSubscribe(centralId: centralId)
+        _ = transport.processInboundUnsubscribe(centralId: centralId)
+
+        let slotState = transport.peripheralDriver?.getInboundSlotState(centralId)
+        if case .quarantined(let epoch, let gen) = slotState {
+            XCTAssertEqual(epoch, transport.currentTransportEpoch)
+            XCTAssertEqual(gen, 1)
+        } else {
+            XCTFail("Inbound slot must transition to quarantined upon unsubscribe, got: \(String(describing: slotState))")
+        }
+        transport.stop()
+    }
+
+    func testIosInboundSlot_QuarantinedSamePeerWriteRejectedInSameEpoch() throws {
+        let identity = try makeIdentity()
+        let store = MockMessageStore()
+        let transport = BleTransport(identity: identity, store: store)
+        transport.start()
+
+        let centralId = UUID()
+        let rawInfo = BleLinkInfoCodec.encode(
+            version: BleLinkInfoConstants.protocolVersion,
+            flags: 0,
+            nodeHint: Data([0, 0, 0, 1]),
+            shortDigest: Data(repeating: 0, count: 6),
+            queueDepth: 0
+        )
+        _ = transport.processInboundWrite(centralId: centralId, rawData: rawInfo)
+        _ = transport.processInboundSubscribe(centralId: centralId)
+        _ = transport.processInboundUnsubscribe(centralId: centralId)
+
+        // Write from same central in same epoch must be rejected while quarantined
+        let writeAct = transport.processInboundWrite(centralId: centralId, rawData: rawInfo)
+        XCTAssertEqual(writeAct, .rejectWrite(centralId, "Central is quarantined"))
+        transport.stop()
+    }
+
+    func testIosInboundSlot_QuarantinedSamePeerSubscribeRejectedInSameEpoch() throws {
+        let identity = try makeIdentity()
+        let store = MockMessageStore()
+        let transport = BleTransport(identity: identity, store: store)
+        transport.start()
+
+        let centralId = UUID()
+        let rawInfo = BleLinkInfoCodec.encode(
+            version: BleLinkInfoConstants.protocolVersion,
+            flags: 0,
+            nodeHint: Data([0, 0, 0, 1]),
+            shortDigest: Data(repeating: 0, count: 6),
+            queueDepth: 0
+        )
+        _ = transport.processInboundWrite(centralId: centralId, rawData: rawInfo)
+        _ = transport.processInboundSubscribe(centralId: centralId)
+        _ = transport.processInboundUnsubscribe(centralId: centralId)
+
+        // Subscribe from same central in same epoch must be rejected while quarantined
+        let subAct = transport.processInboundSubscribe(centralId: centralId)
+        XCTAssertEqual(subAct, .rejectSubscription(centralId))
+        transport.stop()
+    }
+
+    func testIosInboundSlot_FreshEpochClearsQuarantineWithNextGeneration() throws {
+        let identity = try makeIdentity()
+        let store = MockMessageStore()
+        let transport = BleTransport(identity: identity, store: store)
+        transport.start()
+
+        let centralId = UUID()
+        let rawInfo = BleLinkInfoCodec.encode(
+            version: BleLinkInfoConstants.protocolVersion,
+            flags: 0,
+            nodeHint: Data([0, 0, 0, 1]),
+            shortDigest: Data(repeating: 0, count: 6),
+            queueDepth: 0
+        )
+        _ = transport.processInboundWrite(centralId: centralId, rawData: rawInfo)
+        _ = transport.processInboundSubscribe(centralId: centralId)
+        _ = transport.processInboundUnsubscribe(centralId: centralId)
+
+        // Advance to new epoch
+        transport.stop()
+        transport.start()
+
+        // Fresh epoch clears quarantine and accepts new relation
+        let writeAct = transport.processInboundWrite(centralId: centralId, rawData: rawInfo)
+        XCTAssertEqual(writeAct, .acceptWrite(centralId, Data([0, 0, 0, 1])))
+        XCTAssertEqual(transport.getInboundLifetime(centralId)?.relationKey.generation, 1)
+        transport.stop()
+    }
+
+    func testIosOutboundSlot_DisconnectTransitionsToQuarantined() throws {
+        let identity = try makeIdentity()
+        let store = MockMessageStore()
+        let transport = BleTransport(identity: identity, store: store)
+        transport.start()
+
+        let peerId = UUID()
+        _ = transport.processOutboundDiscover(peerId: peerId)
+        _ = transport.processCentralConnect(peerId: peerId)
+        _ = transport.processOutboundDisconnect(peerId: peerId)
+
+        let slotState = transport.centralDriver?.getOutboundSlotState(peerId)
+        if case .quarantined(let epoch, let gen) = slotState {
+            XCTAssertEqual(epoch, transport.currentTransportEpoch)
+            XCTAssertEqual(gen, 1)
+        } else {
+            XCTFail("Outbound slot must transition to quarantined upon disconnect, got: \(String(describing: slotState))")
+        }
+        transport.stop()
+    }
+
+    func testIosOutboundSlot_QuarantinedSamePeerDiscoverRejectedInSameEpoch() throws {
+        let identity = try makeIdentity()
+        let store = MockMessageStore()
+        let transport = BleTransport(identity: identity, store: store)
+        transport.start()
+
+        let peerId = UUID()
+        _ = transport.processOutboundDiscover(peerId: peerId)
+        _ = transport.processCentralConnect(peerId: peerId)
+        _ = transport.processOutboundDisconnect(peerId: peerId)
+
+        // Subsequent discover for same peer in same epoch must be rejected as noOp
+        let discAct = transport.processOutboundDiscover(peerId: peerId)
+        XCTAssertEqual(discAct, .noOp)
+        transport.stop()
+    }
+
+    func testIosOutboundSlot_FreshEpochClearsQuarantineWithNextGeneration() throws {
+        let identity = try makeIdentity()
+        let store = MockMessageStore()
+        let transport = BleTransport(identity: identity, store: store)
+        transport.start()
+
+        let peerId = UUID()
+        _ = transport.processOutboundDiscover(peerId: peerId)
+        _ = transport.processCentralConnect(peerId: peerId)
+        _ = transport.processOutboundDisconnect(peerId: peerId)
+
+        // Advance to new epoch
+        transport.stop()
+        transport.start()
+
+        // Fresh epoch clears quarantine and permits discovery
+        let discAct = transport.processOutboundDiscover(peerId: peerId)
+        XCTAssertEqual(discAct, .connectPeripheral(peerId))
+        XCTAssertEqual(transport.getOutboundLifetime(peerId)?.relationKey.generation, 1)
+        transport.stop()
+    }
+
+    func testIosOutboundSlot_DidFailToConnectImmediatelyQuarantinesAndReleasesLease() throws {
+        let identity = try makeIdentity()
+        let store = MockMessageStore()
+        let transport = BleTransport(identity: identity, store: store)
+        transport.start()
+
+        let peerId = UUID()
+        _ = transport.processOutboundDiscover(peerId: peerId)
+        XCTAssertEqual(transport.capacityAuthority.outboundCount, 1)
+
+        let failAct = transport.processCentralFailToConnect(peerId: peerId)
+        XCTAssertEqual(failAct, .disconnectPeripheral(peerId, "Connection failed"))
+        XCTAssertEqual(transport.capacityAuthority.outboundCount, 0)
+        XCTAssertNil(transport.getOutboundLifetime(peerId))
+
+        let slotState = transport.centralDriver?.getOutboundSlotState(peerId)
+        if case .quarantined(let epoch, let gen) = slotState {
+            XCTAssertEqual(epoch, transport.currentTransportEpoch)
+            XCTAssertEqual(gen, 1)
+        } else {
+            XCTFail("Slot state must be quarantined after failToConnect, got: \(String(describing: slotState))")
+        }
+        transport.stop()
+    }
+
+    func testIosConcreteCBCentral_RetainedOnAcceptedSubscription() throws {
+        let identity = try makeIdentity()
+        let store = MockMessageStore()
+        let transport = BleTransport(identity: identity, store: store)
+        transport.start()
+
+        let centralId = UUID()
+        let rawInfo = BleLinkInfoCodec.encode(
+            version: BleLinkInfoConstants.protocolVersion,
+            flags: 0,
+            nodeHint: Data([0, 0, 0, 1]),
+            shortDigest: Data(repeating: 0, count: 6),
+            queueDepth: 0
+        )
+        _ = transport.processInboundWrite(centralId: centralId, rawData: rawInfo)
+
+        let mockPeer = MockCBCentralPeer(id: centralId)
+        let central = unsafeBitCast(mockPeer, to: CBCentral.self)
+        _ = transport.processInboundSubscribe(centralId: centralId, central: central)
+
+        let retained = transport.getSubscribedCentral(centralId)
+        XCTAssertNotNil(retained)
+        XCTAssertEqual(retained?.identifier, centralId)
+        transport.stop()
+    }
+
+    func testIosConcreteCBCentral_RemovedOnUnsubscribeAndTimeout() throws {
+        let identity = try makeIdentity()
+        let store = MockMessageStore()
+        let transport = BleTransport(identity: identity, store: store)
+        transport.start()
+
+        let centralId = UUID()
+        let rawInfo = BleLinkInfoCodec.encode(
+            version: BleLinkInfoConstants.protocolVersion,
+            flags: 0,
+            nodeHint: Data([0, 0, 0, 1]),
+            shortDigest: Data(repeating: 0, count: 6),
+            queueDepth: 0
+        )
+        _ = transport.processInboundWrite(centralId: centralId, rawData: rawInfo)
+
+        let mockPeer = MockCBCentralPeer(id: centralId)
+        let central = unsafeBitCast(mockPeer, to: CBCentral.self)
+        _ = transport.processInboundSubscribe(centralId: centralId, central: central)
+        XCTAssertNotNil(transport.getSubscribedCentral(centralId))
+
+        _ = transport.processInboundUnsubscribe(centralId: centralId)
+        XCTAssertNil(transport.getSubscribedCentral(centralId))
+
+        // Also test removal on handleInboundTimeout
+        transport.stop()
+        transport.start()
+        let centralId2 = UUID()
+        _ = transport.processInboundWrite(centralId: centralId2, rawData: rawInfo)
+        let mockPeer2 = MockCBCentralPeer(id: centralId2)
+        let central2 = unsafeBitCast(mockPeer2, to: CBCentral.self)
+        _ = transport.processInboundSubscribe(centralId: centralId2, central: central2)
+        XCTAssertNotNil(transport.getSubscribedCentral(centralId2))
+        transport.handleInboundTimeout(centralId: centralId2)
+        XCTAssertNil(transport.getSubscribedCentral(centralId2))
+        transport.stop()
+    }
+
+    func testIosResponderSend_TargetsConcreteSubscribedCentral() throws {
+        let identity = try makeIdentity()
+        let store = MockMessageStore()
+        let transport = BleTransport(identity: identity, store: store)
+        transport.start()
+
+        let centralId = UUID()
+        let rawInfo = BleLinkInfoCodec.encode(
+            version: BleLinkInfoConstants.protocolVersion,
+            flags: 0,
+            nodeHint: Data([0, 0, 0, 1]),
+            shortDigest: Data(repeating: 0, count: 6),
+            queueDepth: 0
+        )
+        _ = transport.processInboundWrite(centralId: centralId, rawData: rawInfo)
+
+        let mockPeer = MockCBCentralPeer(id: centralId)
+        let central = unsafeBitCast(mockPeer, to: CBCentral.self)
+        _ = transport.processInboundSubscribe(centralId: centralId, central: central)
+
+        let inboxChar = CBMutableCharacteristic(
+            type: BleTransport.inboxCharacteristicUuid,
+            properties: [.notify, .write],
+            value: nil,
+            permissions: [.readable, .writeable]
+        )
+        transport.setMutableInboxCharacteristicForTesting(inboxChar)
+
+        let conn = transport.connection(for: centralId)!
+        conn.markReadyForTesting()
+
+        let testFrame = FrameV2(
+            type: .message,
+            msgId: Data(repeating: 0x55, count: 16),
+            routingTag: Data(repeating: 0, count: 4),
+            ttl: 10,
+            hopCount: 0,
+            flags: Priority.toFlags(.direct),
+            payload: Data([1, 2, 3, 4])
+        )
+
+        // In responder branch, send targets the subscribed CBCentral and does not fail on missing central
+        let sent = transport.send(testFrame, to: centralId)
+        XCTAssertTrue(sent)
+        transport.stop()
+    }
+
+    func testIosDidFailToConnect_NoDisconnectionOrTimeoutSideEffectsRemain() throws {
+        let identity = try makeIdentity()
+        let store = MockMessageStore()
+        let transport = BleTransport(identity: identity, store: store)
+        transport.start()
+
+        let peerId = UUID()
+        _ = transport.processOutboundDiscover(peerId: peerId)
+        _ = transport.processCentralFailToConnect(peerId: peerId)
+
+        // Invoking timeout subsequently is a no-op
+        let timeoutAct = transport.handleOutboundTimeout(peerId: peerId, generation: 1)
+        XCTAssertEqual(timeoutAct, .noOp)
+
+        // Slot remains quarantined
+        let slotState = transport.centralDriver?.getOutboundSlotState(peerId)
+        if case .quarantined = slotState {} else {
+            XCTFail("Slot state must remain quarantined")
+        }
+        transport.stop()
+    }
+
+    func testIosInboundWriteAttResponse_DecisionReducerMapping() throws {
+        let identity = try makeIdentity()
+        let store = MockMessageStore()
+        let transport = BleTransport(identity: identity, store: store)
+
+        let id = UUID()
+        let hint = Data([1, 2, 3, 4])
+        XCTAssertEqual(transport.decideInboundWriteAttResponse(action: .acceptWrite(id, hint)), .success)
+        XCTAssertEqual(transport.decideInboundWriteAttResponse(action: .acceptDuplicateWrite(id, hint)), .success)
+        XCTAssertEqual(transport.decideInboundWriteAttResponse(action: .acceptWriteAndDuplexReady(id, hint)), .success)
+        XCTAssertEqual(transport.decideInboundWriteAttResponse(action: .rejectWrite(id, "rejected")), .unlikelyError)
+        XCTAssertEqual(transport.decideInboundWriteAttResponse(action: .noOp), .unlikelyError)
     }
 }
 

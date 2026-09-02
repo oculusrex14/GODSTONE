@@ -130,6 +130,12 @@ public final class BleConnection: @unchecked Sendable {
         state = newState
     }
 
+    public func markReadyForTesting() {
+        lock.lock()
+        defer { lock.unlock() }
+        state = .ready
+    }
+
     /// One-way binding of remote node hint and elected role.
     /// Accessible only through authoritative bind methods.
     private func bindRoleInternal(hint: Data, role: BleRole) {

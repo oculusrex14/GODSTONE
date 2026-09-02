@@ -197,6 +197,7 @@ public enum OutboundSlotState: Equatable, Sendable {
     case idle
     case active(UInt64)
     case closing(UInt64)
+    case quarantined(UInt64, UInt64) // (transportEpoch, generation)
 }
 
 public struct OutboundPeerSlot: Equatable, Sendable {
@@ -266,7 +267,9 @@ public final class BleCentralOrchestrationDriver: @unchecked Sendable {
         discoveredHints.removeAll()
         peerRssi.removeAll()
         physicalReadyPeers.removeAll()
-        outboundSlots.removeAll()
+        for (peerId, slot) in outboundSlots {
+            outboundSlots[peerId] = OutboundPeerSlot(state: .idle, generation: slot.generation, peerId: peerId, lease: nil)
+        }
         capacityAuthority?.releaseAllOutbound()
         return transportEpoch
     }
@@ -348,6 +351,9 @@ public final class BleCentralOrchestrationDriver: @unchecked Sendable {
         if case .active = slot?.state {
             return .noOp
         }
+        if case .quarantined(let qEpoch, _) = slot?.state, qEpoch == transportEpoch {
+            return .noOp
+        }
 
         if let existing = activeConnections[peerId], existing.isActive {
             return .noOp
@@ -386,11 +392,13 @@ public final class BleCentralOrchestrationDriver: @unchecked Sendable {
     public func onFailedToConnect(peerId: UUID, error: Error?) -> BleCentralAction {
         lock.lock()
         defer { lock.unlock() }
-        guard let conn = activeConnections[peerId] else { return .noOp }
         let gen = connectionGenerations[peerId] ?? 0
-        conn.transitionTo(.closed)
+        if let conn = activeConnections.removeValue(forKey: peerId) {
+            conn.transitionTo(.closed)
+        }
         removeConnection(peerId)
-        outboundSlots[peerId] = OutboundPeerSlot(state: .closing(gen), generation: gen, peerId: peerId, lease: nil)
+        physicalReadyPeers.remove(peerId)
+        outboundSlots[peerId] = OutboundPeerSlot(state: .quarantined(transportEpoch, gen), generation: gen, peerId: peerId, lease: nil)
         return .disconnectPeripheral(peerId, error?.localizedDescription ?? "Connection failed")
     }
 
@@ -520,7 +528,7 @@ public final class BleCentralOrchestrationDriver: @unchecked Sendable {
             electionContexts.removeValue(forKey: peerId)
             releaseLeaseLocked(peerId)
             physicalReadyPeers.remove(peerId)
-            outboundSlots[peerId] = OutboundPeerSlot(state: .closing(currentGen), generation: currentGen, peerId: peerId, lease: nil)
+            outboundSlots[peerId] = OutboundPeerSlot(state: .quarantined(transportEpoch, currentGen), generation: currentGen, peerId: peerId, lease: nil)
             return .disconnectPeripheral(peerId, "Provisional timeout")
         }
         return .noOp
@@ -535,6 +543,9 @@ public final class BleCentralOrchestrationDriver: @unchecked Sendable {
         if expectedGen != 0 && currentGen != expectedGen {
             return .noOp
         }
+        if case .quarantined(let qEpoch, _) = slot?.state, qEpoch == transportEpoch {
+            return .noOp
+        }
 
         let existing = activeConnections[peerId]
         if existing != nil {
@@ -542,7 +553,7 @@ public final class BleCentralOrchestrationDriver: @unchecked Sendable {
         }
 
         let wasReady = physicalReadyPeers.remove(peerId) != nil
-        outboundSlots[peerId] = OutboundPeerSlot(state: .idle, generation: currentGen, peerId: peerId, lease: nil)
+        outboundSlots[peerId] = OutboundPeerSlot(state: .quarantined(transportEpoch, currentGen), generation: currentGen, peerId: peerId, lease: nil)
         if wasReady || existing != nil {
             return .didDisconnect(peerId)
         }
@@ -642,7 +653,9 @@ public final class BlePeripheralOrchestrationDriver: @unchecked Sendable {
         acceptedRemoteLinkInfo.removeAll()
         subscribedCentrals.removeAll()
         physicalReadyCentrals.removeAll()
-        inboundSlots.removeAll()
+        for (centralId, slot) in inboundSlots {
+            inboundSlots[centralId] = InboundPeerSlot(state: .idle, generation: slot.generation, centralId: centralId, lease: nil)
+        }
         capacityAuthority?.releaseAllInbound()
         return transportEpoch
     }
@@ -741,6 +754,9 @@ public final class BlePeripheralOrchestrationDriver: @unchecked Sendable {
         if case .closing = slot?.state {
             return .rejectWrite(centralId, "Slot is closing")
         }
+        if case .quarantined(let qEpoch, _) = slot?.state, qEpoch == transportEpoch {
+            return .rejectWrite(centralId, "Central is quarantined")
+        }
 
         guard rawData.count == BleLinkInfoConstants.linkInfoBytes else {
             return .rejectWrite(centralId, "Invalid LinkInfo length")
@@ -820,6 +836,9 @@ public final class BlePeripheralOrchestrationDriver: @unchecked Sendable {
         if case .closing = slot?.state {
             return .rejectSubscription(centralId)
         }
+        if case .quarantined(let qEpoch, _) = slot?.state, qEpoch == transportEpoch {
+            return .rejectSubscription(centralId)
+        }
 
         guard admittedCentrals.contains(centralId), let conn = inboundConnections[centralId] else {
             return .rejectSubscription(centralId)
@@ -844,6 +863,9 @@ public final class BlePeripheralOrchestrationDriver: @unchecked Sendable {
         if expectedGen != 0 && currentGen != expectedGen {
             return .noOp
         }
+        if case .quarantined(let qEpoch, _) = slot?.state, qEpoch == transportEpoch {
+            return .noOp
+        }
 
         subscribedCentrals.remove(centralId)
         physicalReadyCentrals.remove(centralId)
@@ -852,7 +874,7 @@ public final class BlePeripheralOrchestrationDriver: @unchecked Sendable {
         if let conn = inboundConnections.removeValue(forKey: centralId) {
             conn.transitionTo(.closed)
         }
-        inboundSlots[centralId] = InboundPeerSlot(state: .idle, generation: currentGen, centralId: centralId, lease: nil)
+        inboundSlots[centralId] = InboundPeerSlot(state: .quarantined(transportEpoch, currentGen), generation: currentGen, centralId: centralId, lease: nil)
         return .noOp
     }
 
@@ -872,7 +894,7 @@ public final class BlePeripheralOrchestrationDriver: @unchecked Sendable {
         if let conn = inboundConnections.removeValue(forKey: centralId) {
             conn.transitionTo(.closed)
         }
-        inboundSlots[centralId] = InboundPeerSlot(state: .idle, generation: currentGen, centralId: centralId, lease: nil)
+        inboundSlots[centralId] = InboundPeerSlot(state: .quarantined(transportEpoch, currentGen), generation: currentGen, centralId: centralId, lease: nil)
     }
 
     public func reset() {

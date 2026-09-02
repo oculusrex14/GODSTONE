@@ -2832,4 +2832,61 @@ class BleLinkSubstrateTest {
         // No extra lease allocated
         assertEquals(1, authority.inboundCount)
     }
+
+    @Test
+    fun testAndroidGattServerCallback_OldEpochAcrossRestartIgnored() {
+        val authority = BleGlobalCapacityAuthority(maxTotalPeers = 7)
+        val serverDriver = BleServerOrchestrationDriver(
+            localHint = byteArrayOf(0x02, 0, 0, 0),
+            localLinkInfoProvider = { ByteArray(13) },
+            globalCapacity = authority
+        )
+        val server = BleGattServer(
+            context = null,
+            orchestrationDriver = serverDriver
+        )
+        // Start server in epoch 1
+        server.start()
+        val epoch1 = server.serverGeneration
+        val cb1 = server.makeServerCallback(epoch1)
+
+        // Stop and start server -> advances to epoch 2
+        server.stop()
+        server.start()
+        val epoch2 = server.serverGeneration
+        assertTrue(epoch2 > epoch1)
+
+        val service = android.bluetooth.BluetoothGattService(
+            BleTransport.SERVICE_UUID,
+            android.bluetooth.BluetoothGattService.SERVICE_TYPE_PRIMARY
+        )
+        // Stale cb1 delivers onServiceAdded
+        cb1.onServiceAdded(android.bluetooth.BluetoothGatt.GATT_SUCCESS, service)
+        // Readiness must not be enabled by stale callback
+        assertFalse(server.isServiceReady)
+        assertFalse(serverDriver.isServerReady)
+    }
+
+    @Test
+    fun testAndroidGattClient_OldNotificationTokenDropped() {
+        var notifiedData: ByteArray? = null
+        val client = GattClientConnection(
+            peerAddress = "11:22:33:44:55:66",
+            context = null,
+            onInboundNotification = { notifiedData = it }
+        )
+        val tokenGen0 = GattLifetimeToken(0)
+        val tokenGen1 = GattLifetimeToken(1)
+
+        // Advance gattGeneration to 1
+        client.setGattGenerationForTesting(1)
+
+        // Deliver notification with stale tokenGen0
+        client.dispatchInboundNotification(byteArrayOf(1, 2, 3), tokenGen0)
+        assertNull(notifiedData)
+
+        // Deliver notification with matching tokenGen1
+        client.dispatchInboundNotification(byteArrayOf(4, 5, 6), tokenGen1)
+        assertArrayEquals(byteArrayOf(4, 5, 6), notifiedData)
+    }
 }
