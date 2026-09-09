@@ -75,8 +75,13 @@ public final class NoiseSession {
     private var sendNonce: UInt64 = 0
     private var receiveNonce: UInt64 = 0
 
-    private var messagesSinceRekey: UInt64 = 0
-    private var sessionStart = Date()
+    // T07: monotonic session budget (see SessionBudget below).
+    private let establishedMono: UInt64 = DispatchTime.now().uptimeNanoseconds
+    private var receiveCount: UInt64 = 0
+    private var retiredReason: String?
+    internal var recordBudgetForTest: UInt64?
+    internal var ageBudgetForTest: Double?
+    internal var establishedMonoForTest: UInt64?
 
     private var remoteEphemeral: Data?
     public private(set) var remoteStaticKey: Data?
@@ -85,8 +90,9 @@ public final class NoiseSession {
     private static let protocolName = "Noise_XX_25519_ChaChaPoly_BLAKE2s"
     private static let tagLen = 16
     private static let dhLen = 32
-    private static let rekeyMessageLimit: UInt64 = 1 << 20
-    private static let rekeyTimeLimit: TimeInterval = 30 * 60
+    // T07 session budget: 2^20 records per direction, 30 minutes.
+    public static let recordBudget: UInt64 = 1 << 20
+    public static let timeBudgetSeconds: TimeInterval = 30 * 60
 
     public init(role: Role,
                 staticKey: Curve25519.KeyAgreement.PrivateKey,
@@ -286,8 +292,6 @@ public final class NoiseSession {
         receiveKey = SymmetricKey(data: role == .initiator ? k2 : k1)
         sendNonce = 0
         receiveNonce = 0
-        messagesSinceRekey = 0
-        sessionStart = Date()
         isEstablished = true
     }
 
@@ -303,14 +307,18 @@ public final class NoiseSession {
     }
 
     public func encrypt(_ plaintext: Data) throws -> Data {
+        if let reason = retiredReason {
+            throw SessionExpired(reason: reason)
+        }
         guard let key = sendKey else { throw MeshError.handshakeFailed }
-        rekeyIfNeeded()
+        if let reason = enforceSendBudget() {
+            throw SessionExpired(reason: reason)
+        }
         // T06: the wire nonce is explicit: uint64_be(nonce) prefix.
         let nonce = sendNonce
         let box = try ChaChaPoly.seal(plaintext, using: key,
                                       nonce: NoiseSession.transportNonce(nonce))
         sendNonce += 1
-        messagesSinceRekey += 1
         // Internal ChaCha nonce stays zero32 || uint64_le(n);
         // the wire carries uint64_be(n) || ciphertext || tag.
         return TransportCiphertextV1.encode(nonce: nonce,
@@ -334,6 +342,9 @@ public final class NoiseSession {
     /// zero32 || uint64_le(n). A failed authenticate commits nothing.
     public func openWithResult(_ ciphertext: Data) throws -> CryptoOpenResult {
         guard let key = receiveKey else { throw MeshError.handshakeFailed }
+        if let reason = enforceReceiveBudget() {
+            return .expired
+        }
         guard ciphertext.count >= 8 + NoiseSession.tagLen else {
             return .rejected
         }
@@ -358,6 +369,7 @@ public final class NoiseSession {
         replayWindow.commit(.accept(nonce: accepted,
                                     forwardShift: forwardShift,
                                     index: index))
+        receiveCount &+= 1
         return .authenticated(plain)
     }
 
@@ -370,19 +382,69 @@ public final class NoiseSession {
         }
     }
 
-    private func rekeyIfNeeded() {
-        let expired = Date().timeIntervalSince(sessionStart) > NoiseSession.rekeyTimeLimit
-        guard messagesSinceRekey >= NoiseSession.rekeyMessageLimit || expired else { return }
-        if let k = sendKey {
-            sendKey = SymmetricKey(data: Blake2s.hash(
-                k.withUnsafeBytes { Data($0) }, digestLength: 32))
+    // MARK: - T07 deterministic session retirement
+
+    /// T07: monotonic session budget, established at trusted establishment:
+    /// 2^20 authenticated records per direction or 30 minutes, whichever
+    /// comes first. Retirement is terminal: key material and readiness are
+    /// cleared, the relation closes, and a fresh trusted Noise session must
+    /// be established. No counter resets under an existing key and there is
+    /// no rekey-in-place API.
+    public struct SessionBudget: Equatable {
+        public let establishedMono: UInt64
+        public let sendCount: UInt64
+        public let receiveCount: UInt64
+    }
+
+    /// T07: the session is past its agreed budget and is retired.
+    public struct SessionExpired: Error {
+        public let reason: String
+    }
+
+    private func budgetAgeSeconds() -> TimeInterval {
+        let start = establishedMonoForTest ?? establishedMono
+        let now = DispatchTime.now().uptimeNanoseconds
+        return TimeInterval(now &- start) / 1_000_000_000.0
+    }
+
+    private func budgetLimit() -> UInt64 {
+        recordBudgetForTest ?? NoiseSession.recordBudget
+    }
+
+    /// T07 terminal retirement: clear readiness and key material.
+    private func retire(_ reason: String) {
+        if retiredReason == nil { retiredReason = reason }
+        sendKey = nil
+        receiveKey = nil
+        isEstablished = false
+    }
+
+    private func enforceSendBudget() -> String? {
+        if let reason = retiredReason { return reason }
+        let limit = recordBudgetForTest ?? NoiseSession.recordBudget
+        if sendNonce + 1 > limit {
+            retire("send budget: 2^20 authenticated records reached")
+            return "send budget exceeded (records)"
         }
-        if let k = receiveKey {
-            receiveKey = SymmetricKey(data: Blake2s.hash(
-                k.withUnsafeBytes { Data($0) }, digestLength: 32))
+        if budgetAgeSeconds() > (ageBudgetForTest ?? NoiseSession.timeBudgetSeconds) {
+            retire("send budget: 30 minutes elapsed")
+            return "send budget exceeded (time)"
         }
-        messagesSinceRekey = 0
-        sessionStart = Date()
+        return nil
+    }
+
+    private func enforceReceiveBudget() -> String? {
+        if let reason = retiredReason { return reason }
+        let limit = recordBudgetForTest ?? NoiseSession.recordBudget
+        if receiveCount + 1 > limit {
+            retire("receive budget: 2^20 authenticated records reached")
+            return "receive budget exceeded (records)"
+        }
+        if budgetAgeSeconds() > (ageBudgetForTest ?? NoiseSession.timeBudgetSeconds) {
+            retire("receive budget: 30 minutes elapsed")
+            return "receive budget exceeded (time)"
+        }
+        return nil
     }
 
     /// T06 test hooks: bind fixture transport keys (documented constants,

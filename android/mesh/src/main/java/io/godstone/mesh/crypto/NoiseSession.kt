@@ -80,10 +80,74 @@ class NoiseSession private constructor(
     val handshakeHash: ByteArray
         get() = handshake.handshakeHash
 
-    /** Rekey after 2^20 messages or 30 minutes, whichever comes first. */
-    val needsRekey: Boolean
-        get() = messageCount.get() > REKEY_MESSAGE_LIMIT ||
-            (System.currentTimeMillis() - createdAt) > REKEY_TIME_LIMIT_MS
+    /**
+     * T07: monotonic session budget, established at trusted establishment.
+     * 2^20 authenticated records per direction or 30 minutes, whichever
+     * comes first; the session retires terminally (key material cleared,
+     * readiness cleared) when the budget is exhausted, and a fresh trusted
+     * Noise session must be established. No counter resets under an
+     * existing key and there is no rekey-in-place API.
+     */
+    data class SessionBudget(
+        val establishedMono: Long,
+        val sendCount: Long,
+        val receiveCount: Long,
+    )
+
+    /** T07: the session is past its agreed budget and is retired. */
+    class SessionExpired(val reason: String) :
+        Exception("session expired: $reason")
+
+    private val establishedMono: Long = System.nanoTime()
+    private var receiveCount: Long = 0
+    private var retired: String? = null
+
+    /** Test hooks: deterministic budget injection (real dependency boundary). */
+    internal var recordBudgetForTest: Long? = null
+    internal var ageBudgetForTest: Long? = null
+    internal var establishedMonoForTest: Long? = null
+
+    private fun budgetAgeMs(): Long {
+        val start = establishedMonoForTest ?: establishedMono
+        val limit = ageBudgetForTest ?: TIME_BUDGET_MS
+        return (System.nanoTime() - start) / 1_000_000L
+    }
+
+    private fun budgetLimit(): Long = recordBudgetForTest ?: RECORD_BUDGET
+
+    /** T07 terminal retirement: clear readiness and key material. */
+    private fun retire(reason: String) {
+        if (retired == null) retired = reason
+        ciphers?.destroy()
+        ciphers = null
+    }
+
+    private fun enforceSendBudget() {
+        retired?.let { throw IllegalStateException("session retired: $it") }
+        val limit = recordBudgetForTest ?: RECORD_BUDGET
+        if (messageCount.get() + 1 > limit) {
+            retire("send budget: 2^20 authenticated records reached")
+            throw SessionExpired("send budget exceeded (records)")
+        }
+        if (budgetAgeMs() > (ageBudgetForTest ?: TIME_BUDGET_MS)) {
+            retire("send budget: 30 minutes elapsed")
+            throw SessionExpired("send budget exceeded (time)")
+        }
+    }
+
+    private fun enforceReceiveBudget(): String? {
+        retired?.let { return it }
+        val limit = recordBudgetForTest ?: RECORD_BUDGET
+        if (receiveCount + 1 > limit) {
+            retire("receive budget: 2^20 authenticated records reached")
+            return "receive budget exceeded (records)"
+        }
+        if (budgetAgeMs() > (ageBudgetForTest ?: TIME_BUDGET_MS)) {
+            retire("receive budget: 30 minutes elapsed")
+            return "receive budget exceeded (time)"
+        }
+        return null
+    }
 
     fun writeHandshakeMessage(payload: ByteArray = ByteArray(0)): ByteArray {
         val out = ByteArray(MAX_HANDSHAKE)
@@ -141,6 +205,7 @@ class NoiseSession private constructor(
      * @throws IllegalStateException if the handshake has not completed.
      */
     fun encrypt(plaintext: ByteArray): ByteArray {
+        enforceSendBudget()  // retired check first, then budget
         val c = ciphers ?: throw IllegalStateException("session not established")
         val nonce = sendNonce.getAndIncrement()
         c.sender.setNonce(nonce)
@@ -161,6 +226,7 @@ class NoiseSession private constructor(
      */
     fun openWithResult(ciphertext: ByteArray): CryptoOpenResult {
         val c = ciphers ?: throw IllegalStateException("session not established")
+        enforceReceiveBudget()?.let { return CryptoOpenResult.Expired }
         val (nonceRaw, rest) = TransportCiphertextV1.decode(ciphertext)
             ?: return CryptoOpenResult.Rejected
         synchronized(replayLock) {
@@ -181,6 +247,7 @@ class NoiseSession private constructor(
                                 return CryptoOpenResult.Rejected
                             }
                             replayWindow.commit(plan)
+                            receiveCount += 1
                             return CryptoOpenResult.Authenticated(out.copyOf(len))
                         }
                     }
@@ -253,8 +320,9 @@ class NoiseSession private constructor(
         private const val MAX_HANDSHAKE = 2048
         private const val MAC_LEN = 16
         private const val WINDOW = 2048
-        private const val REKEY_MESSAGE_LIMIT = 1L shl 20
-        private const val REKEY_TIME_LIMIT_MS = 30 * 60 * 1000L
+        /** T07 session budget: 2^20 records per direction, 30 minutes. */
+        const val RECORD_BUDGET = 1L shl 20
+        const val TIME_BUDGET_MS = 30 * 60 * 1000L
 
         /**
          * One-arg overloads: both peers bind the prologue with zero hints so the

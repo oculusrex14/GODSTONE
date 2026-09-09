@@ -121,8 +121,9 @@ object UnsignedNonce {
         data class Rejected(val reason: String) : Result()
     }
 
-    /** 2 * rekey limit: a conformant sender never exceeds this. */
-    const val POLICY_CEILING: Long = 2L * (1L shl 20)
+    /** T07: the agreed session budget - 2^20 records per direction.
+     *  A peer nonce at or above it is outside the budget. */
+    const val POLICY_CEILING: Long = 1L shl 20
 
     fun parse(buffer: java.nio.ByteBuffer, offset: Int = 0): Result {
         val raw = buffer.getLong(offset)
@@ -131,10 +132,10 @@ object UnsignedNonce {
                 "reserved nonce region: unsigned value >= 2^63 (raw " +
                     "0x" + java.lang.Long.toHexString(raw) + ")")
         }
-        if (raw > POLICY_CEILING) {
+        if (raw >= POLICY_CEILING) {
             return Result.Rejected(
-                "out-of-policy nonce " + raw +
-                    ": conformant senders rekey at 2^20 transport messages")
+                "out-of-budget nonce " + raw +
+                    ": the agreed session budget is 2^20 records per direction")
         }
         return Result.Valid(raw)
     }

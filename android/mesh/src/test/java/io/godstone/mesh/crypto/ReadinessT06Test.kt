@@ -176,8 +176,10 @@ class ReadinessT06Test {
         }
         // A forged in-policy nonce never legitimately sent: AEAD fails and
         // the window commits nothing.
+        // T07: forge at the last IN-BUDGET nonce so the preview/AEAD
+        // failure path (not the parser) is what rejects it.
         val forged = TransportCiphertextV1.encode(
-            UnsignedNonce.POLICY_CEILING, ByteArray(16))
+            UnsignedNonce.POLICY_CEILING - 1, ByteArray(16))
         assertTrue(responder.openWithResult(forged)
             is NoiseSession.CryptoOpenResult.Rejected)
         // The real next frame still authenticates.

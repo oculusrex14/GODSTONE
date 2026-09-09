@@ -100,9 +100,9 @@ public enum UnsignedNonce {
         if raw >= reservedFloor {
             return .rejected("reserved nonce region: unsigned value >= 2^63")
         }
-        if raw > policyCeiling {
-            return .rejected("out-of-policy nonce \(raw): conformant senders " +
-                             "rekey at 2^20 transport messages")
+        if raw >= policyCeiling {
+            return .rejected("out-of-budget nonce \(raw): the agreed session " +
+                             "budget is 2^20 records per direction")
         }
         return .valid(raw)
     }

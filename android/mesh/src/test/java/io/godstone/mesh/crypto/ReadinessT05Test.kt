@@ -78,8 +78,11 @@ class ReadinessT05Test {
         }
         // A forged frame inside the nonce policy but never legitimately sent:
         // preview may plan a shift, but AEAD fails and the commit must not run.
+        // T07 moved the budget boundary to >= 2^20; forging at the last
+        // in-budget nonce still exercises preview + AEAD failure.
         assertEquals(NoiseSession.CryptoOpenResult.Rejected,
-            receiver.openWithResult(forged(UnsignedNonce.POLICY_CEILING)))
+            receiver.openWithResult(
+                forged(UnsignedNonce.POLICY_CEILING - 1)))
         // Window untouched: the sender's real next frame (nonce 5) works.
         assertTrue(receiver.openWithResult(frame(sender, "m5")) is
             NoiseSession.CryptoOpenResult.Authenticated)
@@ -106,12 +109,14 @@ class ReadinessT05Test {
         val buffer = java.nio.ByteBuffer.allocate(8)
         buffer.putLong(0, -1L) // unsigned 2^64-1, the classic sentinel
         assertTrue(UnsignedNonce.parse(buffer) is UnsignedNonce.Result.Rejected)
-        buffer.putLong(0, UnsignedNonce.POLICY_CEILING + 1)
-        assertTrue(UnsignedNonce.parse(buffer) is UnsignedNonce.Result.Rejected)
+        // T07: the budget boundary is strict - the last in-budget nonce
+        // is ceiling-1; the ceiling itself is out of budget.
         buffer.putLong(0, UnsignedNonce.POLICY_CEILING)
+        assertTrue(UnsignedNonce.parse(buffer) is UnsignedNonce.Result.Rejected)
+        buffer.putLong(0, UnsignedNonce.POLICY_CEILING - 1)
         val parsed = UnsignedNonce.parse(buffer)
         assertTrue(parsed is UnsignedNonce.Result.Valid)
-        assertEquals(UnsignedNonce.POLICY_CEILING,
+        assertEquals(UnsignedNonce.POLICY_CEILING - 1,
             (parsed as UnsignedNonce.Result.Valid).value)
     }
 
