@@ -223,3 +223,39 @@ JUnit XML by absolute path, and the gradle "N tests completed, M failed"
 summary is treated as a fallback signal, not as proof of execution; a
 gradle exit 0 with an absent summary line means "task delivered from cache",
 never "suite passed".
+
+## D-T13-a [ACCEPTED] Epoch-owned manager pairs with three-way source authentication
+Long-lived CBCentralManager/CBPeripheralManager pairs with reassigned
+delegate proxies made callback-source identity unprovable: a reused manager
+carries wiring, state and in-flight callbacks across the epoch boundary, and
+an event stamped with the current epoch could ride in from an object the new
+epoch never created. Each opening of a transport epoch now builds a fresh
+ManagerContext - one pair from the injected TransportManagerFactory, born on
+a dedicated serial queue named for the epoch, wired to its own delegate
+proxies once at birth and never rewired. The reducer admits a manager-sourced
+event only when three identities agree: the sender is the very manager
+instance of the active context, the wired delegate is still the context-own
+proxy, and the event names the context's epoch. The zero token is no token:
+absent tokens are refused, never correlated to the current slot, and the
+default-zero fallbacks came out of the production callbacks and their
+dispatcher surface. Stopping retires the context; late events of a closed
+epoch are dropped where they stand. The five-mutant campaign (reuse of
+managers with re-stamped delegates - the cards own negative case - blinded
+sender check, dropped token obligation, removed wiring check, look-alike
+birth wiring) is killed entirely, each mutant by a named witness; the
+perfect-alibi case (stranger manager wearing the genuine delegate and the
+current token) is what gives the sender check its full force.
+
+## D-T13-b [ACCEPTED] Builder runtime facts (this environment)
+The host CoreBluetooth overlay is thinner than production iOS: CBManager has
+no readable delegateQueue on macOS, so queue dedication is observed at the
+factory seam (the very queue object handed to both managers of a birth) plus
+a serialisation barrier probe, and device runs must read delegateQueue
+directly. Also: an output-token corruption pattern in this harness can swallow
+the middle of long identifier literals when the assistant emits them
+(DispatchQueue arrived as DispatchQ, twice, including inside a fix attempt);
+repairs must assemble such tokens from short string fragments or character
+codes and verify the bytes on disk after every write. Corollary: git
+diff --check before committing catches the trailing-whitespace residue left
+at injected seam lines, and the mirror parity check (sync --check) must run
+after every canonical edit, not only before commit.

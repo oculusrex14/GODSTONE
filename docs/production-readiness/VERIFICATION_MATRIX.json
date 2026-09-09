@@ -571,6 +571,50 @@
       "task_ids": [
         "T12"
       ]
+    },
+    {
+      "claim_id": "CLM-T13-EPOCHCTX",
+      "command_ids": [
+        "T13-narrow-swift",
+        "T13-subsystem-swift"
+      ],
+      "evidence_class": "internal",
+      "evidence_sha256": null,
+      "latest_source_sha": "9c069622464fec4d3b32ce535ea5ecaac89a3172",
+      "limitations": "host-side evidence; device runs add the delegateQueue read and real state-restoration identifiers",
+      "production_path": "ios/Godstone/Sources/GodstoneMesh/BleTransport.swift",
+      "profile": "swift-host",
+      "required_case_ids": [
+        "ReadinessT13Tests"
+      ],
+      "requirement": "every transport epoch opens with a fresh CBCentralManager/CBPeripheralManager pair and its own delegate proxies on a dedicated serial queue named for the epoch; the pair is created through the injected TransportManagerFactory, wired once at birth and never rewired; stopping retires the context and the successor shares no manager, proxy or queue object with its predecessor",
+      "result": "PASS",
+      "state_owner": "iOS transport executor and ManagerContext",
+      "task_ids": [
+        "T13"
+      ]
+    },
+    {
+      "claim_id": "CLM-T13-SRCID",
+      "command_ids": [
+        "T13-narrow-swift",
+        "T13-subsystem-swift"
+      ],
+      "evidence_class": "internal",
+      "evidence_sha256": null,
+      "latest_source_sha": "9c069622464fec4d3b32ce535ea5ecaac89a3172",
+      "limitations": "host-side evidence; real CoreBluetooth interleaving of late closures awaits the T73-T75 device gates",
+      "production_path": "ios/Godstone/Sources/GodstoneMesh/BleTransport.swift",
+      "profile": "swift-host",
+      "required_case_ids": [
+        "ReadinessT13Tests"
+      ],
+      "requirement": "a manager-sourced event is reduced only when the sending manager is the very instance of the active context, the wired delegate is still that context-own proxy, and the event names the context epoch; no token wildcard, no current-state stand-in; the central connect/fail/disconnect/discover and inbound write/subscribe/unsubscribe families and their dispatcher surface carry required tokens and required source managers, and default-zero fallbacks are removed from the production callbacks",
+      "result": "PASS",
+      "state_owner": "iOS transport callback identity discipline",
+      "task_ids": [
+        "T13"
+      ]
     }
   ],
   "note": "Claims appended per task with real evidence; PASS requires positive case counts and matching command output. Device/independent claims never accept host-only results.",

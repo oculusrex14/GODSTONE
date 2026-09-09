@@ -937,9 +937,116 @@
         "the post-driver revalidation of the scheduling step is race machinery beyond JVM-deterministic reach; it is covered by construction (same guard vocabulary as the arrival guards, witnessed by MU-B) and awaits instrumented exercise",
         "the runner records test counts as UNKNOWN for command-kind specs, so the positive counts above were derived from the fresh JUnit XML reports and the gradle summaries in the recorded logs"
       ]
+    },
+    "T12": {
+      "case_results": [
+        {
+          "collected": 13,
+          "counts_source": "fresh JUnit XML report of the filtered run at this tree (13 cases, zero failures), matching the recorded narrow log",
+          "engine": "android-jvm",
+          "executed": 13,
+          "failed": 0,
+          "passed": 13,
+          "skipped": 0,
+          "stage": "narrow",
+          "suite": "ReadinessT12Test"
+        },
+        {
+          "collected": 789,
+          "counts_source": "all fresh JUnit XML reports of the mesh unit test task",
+          "engine": "android-jvm",
+          "executed": 789,
+          "failed": 0,
+          "passed": 789,
+          "skipped": 0,
+          "stage": "subsystem"
+        },
+        {
+          "executed": 2,
+          "failed": 0,
+          "passed": 2,
+          "skipped": 0,
+          "stage": "controls"
+        }
+      ],
+      "commands": [
+        "T12-narrow-gradlew-002",
+        "T12-subsystem-gradlew-002",
+        "T12-controls-python3-003",
+        "T12-controls-python3-004"
+      ],
+      "device_gate_ids": [],
+      "implementation_commit": "d7376a640dfe5118e48e29339896dafc85c9b7d8",
+      "inputs": {
+        "baseline": "b5c3d3d394b70cf356cdde33b47511dad7cbb95c",
+        "commit_c_initial": "35657fb",
+        "commit_c_load_bearing_witness": "d7376a6",
+        "commit_c_once_pins": "a432176",
+        "mutation_worktree": "/Users/oculus/Projects/GODSTONE_T12_MUT"
+      },
+      "mutation_results": [
+        {
+          "engines": [
+            "android-jvm"
+          ],
+          "evidence": "T12/mutations/MU-1-diddisconnect-required.log (4 of 13 failing; the card-obligation mutant: requiring the didDisconnect for terminal cleanup makes the timeout-with-no-callback tests fail)",
+          "expected": "the timeout must terminate the relation locally; a slot awaiting a callback that cannot arrive is the defect",
+          "mutation": "MU-1 the provisional timeout awaits the platform didDisconnect again: the terminal authority is bypassed and the slot rests CLOSING",
+          "outcome": "KILLED"
+        },
+        {
+          "engines": [
+            "android-jvm"
+          ],
+          "evidence": "T12/mutations/MU-2-once-flag-blind.log (2 of 13 failing)",
+          "expected": "repeats of the very same terminal event must be recognised as already terminal and change nothing",
+          "mutation": "MU-2 the already-terminal witness (terminatedOnce) is blinded",
+          "outcome": "KILLED"
+        },
+        {
+          "engines": [
+            "android-jvm"
+          ],
+          "evidence": "T12/mutations/MU-3-absent-token-correlated.log (1 of 13 failing)",
+          "expected": "an arrival without its token is refused, never correlated to the current slot",
+          "mutation": "MU-3 the positive-token refusal is removed and the old current-state derivation returns",
+          "outcome": "KILLED"
+        },
+        {
+          "engines": [
+            "android-jvm"
+          ],
+          "evidence": "T12/mutations/MU-4-close-ignores-stamp.log (1 of 13 failing)",
+          "expected": "the close targets exactly the captured handle of the named generation",
+          "mutation": "MU-4 the close intent ignores the generation stamp and closes whatever client stands at the address",
+          "outcome": "KILLED"
+        },
+        {
+          "engines": [
+            "android-jvm"
+          ],
+          "evidence": "T12/mutations/MU-5-transport-gate-removed.log (1 of 13 failing; the first witness run survived this mutant because the driver re-checked the token too - the witness was strengthened to observe the side effect the transport gate itself owes on the live connection object, then killed)",
+          "expected": "the transport handler itself must drop foreign-generation events before touching the connection object",
+          "mutation": "MU-5 the transport handler drops its exact-registration gate and accepts any token",
+          "outcome": "KILLED"
+        }
+      ],
+      "next_action": "none - task complete",
+      "phase_gate": "P1",
+      "required_cases": [
+        "ReadinessT12Test (13 cases Android)"
+      ],
+      "status": "COMPLETE",
+      "task_id": "T12",
+      "tested_tree_sha": "6349a7bca5e98198c62306ae7ed3406919fd2d75",
+      "unresolved": [
+        "device gates for the GATT terminal path stay open: real handle closes, platform-delivered didDisconnect timing and controller races belong to the T73-T75 physical evidence",
+        "the closeCapturedHandle true-branch requires a captured platform handle; on the JVM the context-null connect path returns before capturing, so the once-flag false-branches and the generation-stamp guards are what the internal evidence pins",
+        "the runner records test counts as UNKNOWN for command-kind specs, so the positive counts above were derived from the fresh JUnit XML reports and the gradle summaries in the recorded logs"
+      ]
     }
   },
-  "current_task": "T12",
+  "current_task": "T13",
   "external_blockers": [
     "A06",
     "APPROVED_CONTENT",
@@ -949,20 +1056,20 @@
   ],
   "failed_attempts": [],
   "in_progress": {
-    "claimed_head": "b5ffaa6c060983e70651add5d96476a76a2912f6",
-    "claimed_utc": "2026-09-09T19:06:34Z",
-    "objective": "Terminate Android locally cancelled attempts explicitly (TerminalEvent, closeExactly, required tokens)",
-    "task": "T12"
+    "claimed_head": "e352a8c72f4ffd20b73e3897f2bb8c067a4fc0e6",
+    "claimed_utc": "2026-09-09T20:19:19Z",
+    "objective": "per card",
+    "task": "T13"
   },
-  "last_code_head": "72002d62e241d2604f8bff388a2e40b220ddd786",
-  "last_observed_head": "72002d62e241d2604f8bff388a2e40b220ddd786",
+  "last_code_head": "d7376a640dfe5118e48e29339896dafc85c9b7d8",
+  "last_observed_head": "d7376a640dfe5118e48e29339896dafc85c9b7d8",
   "latest_verification": {
-    "note": "T11 narrow 13/13, mesh subsystem 776/776 green at 72002d6; five mutants killed",
-    "recorded_utc": "2026-09-09T19:05:26+00:00",
-    "source_sha": "72002d62e241d2604f8bff388a2e40b220ddd786",
-    "tested_tree_sha": "bc2b89aa558d79aa9061df5617ce77216f860d1e"
+    "note": "T12 narrow 13/13, mesh subsystem 789/789 green at d7376a6; five mutants killed on both sides of the terminal authority",
+    "recorded_utc": "2026-09-09T20:18:36+00:00",
+    "source_sha": "d7376a640dfe5118e48e29339896dafc85c9b7d8",
+    "tested_tree_sha": "6349a7bca5e98198c62306ae7ed3406919fd2d75"
   },
-  "next_task": "T12",
+  "next_task": "T13",
   "phase": "P0",
   "plan_sha256": "685456b378662b0a40a53a6abc810041e37daf97b213f3efeb6cea879363934e",
   "planning_baseline_sha": "b5c3d3d394b70cf356cdde33b47511dad7cbb95c",
@@ -978,6 +1085,7 @@
     "No external review/model/content/device result may be fabricated.",
     "Mesh advertising is UUID-only (canonical service UUID + flags); the 13-octet LinkInfo record is served by GATT and the air payload is budget-audited before dispatch.",
     "GATT profile is contract-driven on both engines (Generated A001-A004; legacy FD01/FD02 removed and refused; digest characteristic parity added to the Android server).",
-    "Android scan callbacks are context-bound (ScanContext epoch/identity/lease; capture-before-deliver; reducer-only mutation) and the discovery surface is bounded (64, pin-aware, deterministic LRU eviction) on both the transport and the orchestration driver."
+    "Android scan callbacks are context-bound (ScanContext epoch/identity/lease; capture-before-deliver; reducer-only mutation) and the discovery surface is bounded (64, pin-aware, deterministic LRU eviction) on both the transport and the orchestration driver.",
+    "Android terminal events (reject, timeout, local cancel) complete explicitly via the driver terminate authority: exact RelationKey transitions, once-leased, once-unpublished, captured-handle closes; production callbacks carry required tokens; late platform terminals are idempotent."
   ]
 }
