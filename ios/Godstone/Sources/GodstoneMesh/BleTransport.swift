@@ -139,6 +139,8 @@ public final class ManagerContext: @unchecked Sendable {
         )
         self.centralProxy = CentralManagerEpochDelegate(transportEpoch: epoch, transport: transport)
         self.peripheralProxy = PeripheralManagerEpochDelegate(transportEpoch: epoch, transport: transport)
+        self.centralProxy.ownerContext = self
+        self.peripheralProxy.ownerContext = self
         // The wiring belongs to the birth: it happens once, on the way to
         // the queue the pair will run on, and is never repeated.
         self.central.delegate = self.centralProxy
@@ -152,6 +154,57 @@ public final class ManagerContext: @unchecked Sendable {
         return value
     }
 
+    /// Key into the calling thread's dictionary naming this context's
+    /// serial executor: a thread carrying the marker is executing within
+    /// the context, and reductions there are the serial reductions of
+    /// this epoch.
+    private var serialMarkerKey: String {
+        return "godstone.mesh.serial." + queue.label
+    }
+
+    /// True while the calling thread executes within this context's serial
+    /// executor.
+    public var isOnSerialExecutor: Bool {
+        return Thread.current.threadDictionary[serialMarkerKey] != nil
+    }
+
+    /// Runs the body while the calling thread is marked as executing
+    /// within this executor. Already-marked callers run their body inline:
+    /// the executor is serial, and the queue context is the same object.
+    func withSerial<T>(_ body: () -> T) -> T {
+        let key = serialMarkerKey
+        let tagKey = "godstone.mesh.epoch.tag"
+        if Thread.current.threadDictionary[key] != nil {
+            return body()
+        }
+        Thread.current.threadDictionary[key] = NSNumber(value: true)
+        Thread.current.threadDictionary[tagKey] = NSNumber(value: epoch)
+        let result = body()
+        Thread.current.threadDictionary.removeObject(forKey: key)
+        Thread.current.threadDictionary.removeObject(forKey: tagKey)
+        return result
+    }
+
+    /// Admits a reduction to this epoch's serial executor. A caller
+    /// already inside the executor runs the body at once; any other
+    /// caller is synchronised onto the queue, so validation, transition
+    /// and effect scheduling of one event are never decomposed against
+    /// another event, against stop/start, or against a timer fire.
+    func serialise<T>(_ body: () -> T) -> T {
+        if isOnSerialExecutor {
+            return withSerial(body)
+        }
+        return queue.sync {
+            return self.withSerial(body)
+        }
+    }
+
+    /// Test seam: whether the calling thread executes within this
+    /// executor, as the reduction trace records it.
+    public func isOnSerialExecutorForTest() -> Bool {
+        return isOnSerialExecutor
+    }
+
     public func retire() {
         stateLock.lock()
         retiredFlag = true
@@ -162,6 +215,10 @@ public final class ManagerContext: @unchecked Sendable {
 public final class CentralManagerEpochDelegate: NSObject, CBCentralManagerDelegate, @unchecked Sendable {
     public let transportEpoch: UInt64
     public weak var transport: BleTransport?
+    /// Back pointer to the context that created this proxy, filled in at
+    /// birth by ManagerContext's designated initialiser. It is weak: the
+    /// context owns the proxy, the proxy only names its context.
+    public weak var ownerContext: ManagerContext?
 
     public init(transportEpoch: UInt64, transport: BleTransport) {
         self.transportEpoch = transportEpoch
@@ -170,33 +227,54 @@ public final class CentralManagerEpochDelegate: NSObject, CBCentralManagerDelega
     }
 
     public func centralManagerDidUpdateState(_ c: CBCentralManager) {
+        ownerContext?.withSerial {
         transport?.processCentralDidUpdateState(c, sourceEpoch: transportEpoch)
+        }
     }
+
 
     public func centralManager(_ c: CBCentralManager, willRestoreState dict: [String: Any]) {
+        ownerContext?.withSerial {
         transport?.processCentralWillRestoreState(c, dict: dict, sourceEpoch: transportEpoch)
+        }
     }
+
 
     public func centralManager(_ c: CBCentralManager, didDiscover p: CBPeripheral, advertisementData: [String: Any], rssi RSSI: NSNumber) {
+        ownerContext?.withSerial {
         transport?.processCentralDidDiscover(c, peripheral: p, advertisementData: advertisementData, rssi: RSSI, sourceEpoch: transportEpoch)
+        }
     }
+
 
     public func centralManager(_ c: CBCentralManager, didConnect p: CBPeripheral) {
+        ownerContext?.withSerial {
         _ = transport?.processCentralConnect(peerId: p.identifier, peripheral: p, sourceEpoch: transportEpoch, from: c)
+        }
     }
+
 
     public func centralManager(_ c: CBCentralManager, didFailToConnect p: CBPeripheral, error: Error?) {
+        ownerContext?.withSerial {
         _ = transport?.processCentralFailToConnect(peerId: p.identifier, error: error, peripheral: p, sourceEpoch: transportEpoch, from: c)
+        }
     }
 
+
     public func centralManager(_ c: CBCentralManager, didDisconnectPeripheral p: CBPeripheral, error: Error?) {
+        ownerContext?.withSerial {
         _ = transport?.processOutboundDisconnect(peerId: p.identifier, expectedGen: 0, peripheral: p, sourceEpoch: transportEpoch, from: c)
+        }
     }
+
 }
 
 public final class PeripheralManagerEpochDelegate: NSObject, CBPeripheralManagerDelegate, @unchecked Sendable {
     public let transportEpoch: UInt64
     public weak var transport: BleTransport?
+    /// Back pointer to the context that created this proxy; weak, filled
+    /// in at birth, never rewired afterwards.
+    public weak var ownerContext: ManagerContext?
 
     public init(transportEpoch: UInt64, transport: BleTransport) {
         self.transportEpoch = transportEpoch
@@ -205,36 +283,60 @@ public final class PeripheralManagerEpochDelegate: NSObject, CBPeripheralManager
     }
 
     public func peripheralManagerDidUpdateState(_ pm: CBPeripheralManager) {
+        ownerContext?.withSerial {
         transport?.processPeripheralManagerDidUpdateState(pm, sourceEpoch: transportEpoch)
+        }
     }
+
 
     public func peripheralManager(_ pm: CBPeripheralManager, didAdd service: CBService, error: Error?) {
+        ownerContext?.withSerial {
         transport?.processPeripheralDidAddService(pm, service: service, error: error, sourceEpoch: transportEpoch)
+        }
     }
+
 
     public func peripheralManager(_ pm: CBPeripheralManager, willRestoreState dict: [String: Any]) {
+        ownerContext?.withSerial {
         transport?.processPeripheralWillRestoreState(pm, dict: dict, sourceEpoch: transportEpoch)
+        }
     }
+
 
     public func peripheralManager(_ pm: CBPeripheralManager, didReceiveRead request: CBATTRequest) {
+        ownerContext?.withSerial {
         transport?.processPeripheralReceiveRead(pm, request: request, sourceEpoch: transportEpoch)
+        }
     }
+
 
     public func peripheralManager(_ pm: CBPeripheralManager, didReceiveWrite requests: [CBATTRequest]) {
+        ownerContext?.withSerial {
         transport?.processPeripheralReceiveWrite(pm, requests: requests, sourceEpoch: transportEpoch)
+        }
     }
+
 
     public func peripheralManager(_ pm: CBPeripheralManager, central: CBCentral, didSubscribeTo ch: CBCharacteristic) {
+        ownerContext?.withSerial {
         transport?.processPeripheralDidSubscribe(pm, central: central, characteristic: ch, sourceEpoch: transportEpoch)
+        }
     }
+
 
     public func peripheralManager(_ pm: CBPeripheralManager, central: CBCentral, didUnsubscribeFrom ch: CBCharacteristic) {
+        ownerContext?.withSerial {
         transport?.processPeripheralDidUnsubscribe(pm, central: central, characteristic: ch, sourceEpoch: transportEpoch)
+        }
     }
 
+
     public func peripheralManagerIsReady(toUpdateSubscribers pm: CBPeripheralManager) {
+        ownerContext?.withSerial {
         transport?.processPeripheralIsReadyToUpdateSubscribers(pm, sourceEpoch: transportEpoch)
+        }
     }
+
 }
 
 public final class BleTransport: NSObject, @unchecked Sendable {
@@ -324,9 +426,9 @@ public final class BleTransport: NSObject, @unchecked Sendable {
 
     /// Test seam: the context of the active transport epoch, if any.
     public func currentManagerContextForTest() -> ManagerContext? {
-        transportLock.lock()
+        lockTransport()
         let value = activeManagerContext
-        transportLock.unlock()
+        unlockTransport()
         return value
     }
 
@@ -334,9 +436,9 @@ public final class BleTransport: NSObject, @unchecked Sendable {
     /// late-callback cases can deliver through the very objects the
     /// previous epoch ran on.
     public func lastRetiredManagerContextForTest() -> ManagerContext? {
-        transportLock.lock()
+        lockTransport()
         let value = lastRetiredManagerContext
-        transportLock.unlock()
+        unlockTransport()
         return value
     }
 
@@ -370,18 +472,125 @@ public final class BleTransport: NSObject, @unchecked Sendable {
     /// composition harness attributes its dispatched central events to it,
     /// so no event travels without naming its source instance.
     public func requireContextCentralForTest() -> CBCentralManager {
-        transportLock.lock()
+        lockTransport()
         let value = activeManagerContext?.central ?? lastRetiredManagerContext?.central
-        transportLock.unlock()
+        unlockTransport()
         precondition(value != nil, "no transport epoch has ever opened on this instance: start the transport before dispatching manager-sourced events")
         return value!
     }
 
+    // MARK: - T14 serial reduction facility
+    //
+    // One admitted event is reduced in a single uninterrupted operation on
+    // the epoch's dedicated serial queue: validation, transition and the
+    // scheduling of effects. Callback adapters only package immutable
+    // events; trust work (seal/open) runs outside the critical section and
+    // its completion is token-checked before any effect commits.
+
+    /// One reduction as it was admitted: which epoch's executor carried
+    /// it, and whether the admitting thread was already inside the
+    /// executor (re-entry from a callback or a nested reduction) or was
+    /// synchronised onto the queue.
+    public struct ReductionTrace: Equatable {
+        public let epoch: UInt64
+        public let ranOnSerialExecutor: Bool
+        public let reentrant: Bool
+    }
+
+    /// Test seam: the trace of the most recent reduction admission.
+    public private(set) var lastReductionTraceForTest: ReductionTrace?
+
+    /// Test failpoint: when set, invoked on the executor between the
+    /// validation of an event and the scheduling of its effects, for the
+    /// named reduction. Production never sets it; the deterministic
+    /// barrier-interleaving case does, at a real dependency boundary.
+    public var failpointAfterValidationForTest: ((String) -> Void)?
+
+    func onExecutor<T>(_ body: () -> T) -> T {
+        lockTransport()
+        let context = activeManagerContext ?? lastRetiredManagerContext
+        unlockTransport()
+        return onExecutorOf(context, body)
+    }
+
+    func onExecutorOf<T>(_ context: ManagerContext?, _ body: () -> T) -> T {
+        if let context {
+            let reentrant = context.isOnSerialExecutor
+            let result = context.serialise {
+                body()
+            }
+            lockTransport()
+            lastReductionTraceForTest = ReductionTrace(
+                epoch: context.epoch,
+                ranOnSerialExecutor: true,
+                reentrant: reentrant
+            )
+            unlockTransport()
+            return result
+        }
+        lockTransport()
+        lastReductionTraceForTest = ReductionTrace(
+            epoch: currentTransportEpoch,
+            ranOnSerialExecutor: false,
+            reentrant: false
+        )
+        unlockTransport()
+        return body()
+    }
+
+    private let lockAccountingForTest = NSLock()
+    private var transportLockDepthForTest = 0
+
+    private func lockTransport() {
+        transportLock.lock()
+        lockAccountingForTest.lock()
+        transportLockDepthForTest += 1
+        lockAccountingForTest.unlock()
+    }
+
+    private func unlockTransport() {
+        lockAccountingForTest.lock()
+        transportLockDepthForTest -= 1
+        lockAccountingForTest.unlock()
+        transportLock.unlock()
+    }
+
+    /// Whether the transport lock is held at this instant. Trust-work
+    /// sites are asserted never to run under it.
+    public func transportLockIsHeldForTest() -> Bool {
+        lockAccountingForTest.lock()
+        let held = transportLockDepthForTest > 0
+        lockAccountingForTest.unlock()
+        return held
+    }
+
+    /// What the trust-work sites were told to record: the operation, and
+    /// the state of the world at the dispatch - read lock-free through the
+    /// thread's own tags, so the act of observing never perturbs it.
+    public struct TrustWorkProbe: Equatable {
+        public let operation: String
+        public let lockHeld: Bool
+        public let onExecutor: Bool
+    }
+
+    public private(set) var lastTrustWorkProbeForTest: TrustWorkProbe?
+
+    public func recordTrustWorkForTest(_ operation: String) {
+        let key = "godstone.mesh.epoch.tag"
+        let onExec = Thread.current.threadDictionary[key] != nil
+        lockAccountingForTest.lock()
+        let held = transportLockDepthForTest > 0
+        lockAccountingForTest.unlock()
+        lockTransport()
+        lastTrustWorkProbeForTest = TrustWorkProbe(operation: operation, lockHeld: held, onExecutor: onExec)
+        unlockTransport()
+    }
+
     /// Test seam: the peripheral manager of the open epoch context.
     public func requireContextPeripheralForTest() -> CBPeripheralManager {
-        transportLock.lock()
+        lockTransport()
         let value = activeManagerContext?.peripheral ?? lastRetiredManagerContext?.peripheral
-        transportLock.unlock()
+        unlockTransport()
         precondition(value != nil, "no transport epoch has ever opened on this instance: start the transport before dispatching manager-sourced events")
         return value!
     }
@@ -393,13 +602,13 @@ public final class BleTransport: NSObject, @unchecked Sendable {
         isCentral: Bool,
         sender: AnyObject?
     ) -> Bool {
-        transportLock.lock()
+        lockTransport()
         let value = managerEventIsAuthenticLocked(
             sourceEpoch: sourceEpoch,
             isCentral: isCentral,
             sender: sender
         )
-        transportLock.unlock()
+        unlockTransport()
         return value
     }
 
@@ -463,26 +672,26 @@ public final class BleTransport: NSObject, @unchecked Sendable {
     }
 
     public func getOutboundLifetime(_ peerId: UUID) -> OutboundPhysicalLifetime? {
-        transportLock.lock()
-        defer { transportLock.unlock() }
+        lockTransport()
+        defer { unlockTransport() }
         return activeOutboundLifetimes[peerId]
     }
 
     public func getInboundLifetime(_ centralId: UUID) -> InboundSubscriptionLifetime? {
-        transportLock.lock()
-        defer { transportLock.unlock() }
+        lockTransport()
+        defer { unlockTransport() }
         return activeInboundLifetimes[centralId]
     }
 
     public func getSubscribedCentral(_ id: UUID) -> CBCentral? {
-        transportLock.lock()
-        defer { transportLock.unlock() }
+        lockTransport()
+        defer { unlockTransport() }
         return subscribedCentrals[id]
     }
 
     public func getRelationDelegate(_ peerId: UUID) -> RelationPeripheralDelegate? {
-        transportLock.lock()
-        defer { transportLock.unlock() }
+        lockTransport()
+        defer { unlockTransport() }
         return relationDelegates[peerId]
     }
 
@@ -499,9 +708,25 @@ public final class BleTransport: NSObject, @unchecked Sendable {
     }
 
     public func start() {
-        transportLock.lock()
+        // T14: a restart first quiesces the previous epoch's executor:
+        // in-flight reductions complete their one operation against the
+        // drivers they were admitted with, and only then are fresh
+        // drivers installed. No event mutates a replaced driver.
+        lockTransport()
+        let quiesceTarget = activeManagerContext ?? lastRetiredManagerContext
+        unlockTransport()
+        if let quiesceTarget {
+            quiesceTarget.serialise {
+                self.startInstalling()
+            }
+        } else {
+            startInstalling()
+        }
+    }
+    private func startInstalling() {
+        lockTransport()
         guard !isStarted else {
-            transportLock.unlock()
+            unlockTransport()
             return
         }
         currentTransportEpoch += 1
@@ -542,7 +767,7 @@ public final class BleTransport: NSObject, @unchecked Sendable {
         relationDelegates.removeAll()
         isStarted = true
         let canAdv = isServiceRegistered && (peripheral?.state == .poweredOn)
-        transportLock.unlock()
+        unlockTransport()
 
         if canAdv {
             startAdvertising()
@@ -551,9 +776,25 @@ public final class BleTransport: NSObject, @unchecked Sendable {
     }
 
     public func stop() {
-        transportLock.lock()
+        // T14: the closing epoch is quiesced on its own serial
+        // executor: in-flight reductions complete their one operation
+        // before the reset, and nothing of them mutates the new state.
+        lockTransport()
+        let closing = activeManagerContext
+        unlockTransport()
+        if let closing {
+            closing.serialise {
+                stopQuiesced()
+            }
+        } else {
+            stopQuiesced()
+        }
+    }
+
+    private func stopQuiesced() {
+        lockTransport()
         guard isStarted else {
-            transportLock.unlock()
+            unlockTransport()
             return
         }
         // FIRST: Invalidate active transport epoch
@@ -619,10 +860,18 @@ public final class BleTransport: NSObject, @unchecked Sendable {
         discoveredPeers.removeAll()
         pendingOutboundWrites.removeAll()
         pendingOutboundUpdates.removeAll()
-        transportLock.unlock()
+        unlockTransport()
     }
 
-    private func startScanning() {
+    private func startScanning() -> Void {
+        // T14: the whole reduction of this event - validation, transition,
+        // effect scheduling - is one operation on the epoch serial executor.
+        return onExecutor {
+            self.reductionStartScanning()
+        }
+    }
+
+    private func reductionStartScanning() {
         guard let central = central, central.state == .poweredOn else { return }
         central.scanForPeripherals(
             withServices: [BleTransport.serviceUuid],
@@ -630,7 +879,15 @@ public final class BleTransport: NSObject, @unchecked Sendable {
         )
     }
 
-    private func startAdvertising() {
+    private func startAdvertising() -> Void {
+        // T14: the whole reduction of this event - validation, transition,
+        // effect scheduling - is one operation on the epoch serial executor.
+        return onExecutor {
+            self.reductionStartAdvertising()
+        }
+    }
+
+    private func reductionStartAdvertising() {
         guard let peripheral = peripheral, peripheral.state == .poweredOn, isServiceRegistered else { return }
         peripheral.startAdvertising([
             CBAdvertisementDataServiceUUIDsKey: [BleTransport.serviceUuid]
@@ -638,34 +895,38 @@ public final class BleTransport: NSObject, @unchecked Sendable {
     }
 
     public func setBackgrounded(_ backgrounded: Bool) {
-        transportLock.lock()
-        defer { transportLock.unlock() }
+        lockTransport()
         isBackgrounded = backgrounded
+        unlockTransport()
+        // The scan restart belongs on the serial executor, outside the
+        // critical section: startScanning is itself an entry that queues
+        // there, and blocking on the queue while holding the lock would
+        // invert the order the reducer relies on.
         central?.stopScan()
         startScanning()
     }
 
     public func connection(for peerId: UUID) -> BleConnection? {
-        transportLock.lock()
-        defer { transportLock.unlock() }
+        lockTransport()
+        defer { unlockTransport() }
         return outboundCentralConnections[peerId] ?? inboundPeripheralConnections[peerId]
     }
 
     public func discoveryMetadata(for peerId: UUID) -> BleDiscoveryMetadata? {
-        transportLock.lock()
-        defer { transportLock.unlock() }
+        lockTransport()
+        defer { unlockTransport() }
         return discoveredPeers[peerId]
     }
 
     public func setMutableInboxCharacteristicForTesting(_ char: CBMutableCharacteristic?) {
-        transportLock.lock()
-        defer { transportLock.unlock() }
+        lockTransport()
+        defer { unlockTransport() }
         mutableInboxCharacteristic = char
     }
 
     private func purgeCentralConnection(peerId: UUID, cancelPeripheral: Bool) {
         let gen = centralDriver?.getConnectionGeneration(peerId) ?? 0
-        transportLock.lock()
+        lockTransport()
         provisionalTimers.removeValue(forKey: peerId)?.invalidate()
         inboxCharacteristics.removeValue(forKey: peerId)
         digestCharacteristics.removeValue(forKey: peerId)
@@ -676,7 +937,7 @@ public final class BleTransport: NSObject, @unchecked Sendable {
         let conn = outboundCentralConnections.removeValue(forKey: peerId)
         conn?.markDisconnected()
         _ = centralDriver?.onProvisionalTimeout(peerId: peerId, expectedGen: gen)
-        transportLock.unlock()
+        unlockTransport()
 
         if cancelPeripheral, let p = periph {
             central?.cancelPeripheralConnection(p)
@@ -687,40 +948,61 @@ public final class BleTransport: NSObject, @unchecked Sendable {
 
     @discardableResult
     public func send(_ frame: FrameV2, to peerId: UUID) -> Bool {
-        transportLock.lock()
+        // T14: the whole reduction of this event - validation, transition,
+        // effect scheduling - is one operation on the epoch serial executor.
+        return onExecutor {
+            self.reductionSend(frame, to: peerId)
+        }
+    }
+
+    public func reductionSend(_ frame: FrameV2, to peerId: UUID) -> Bool {
+        lockTransport()
         let conn = outboundCentralConnections[peerId] ?? inboundPeripheralConnections[peerId]
         guard let connection = conn, connection.state == .ready else {
-            transportLock.unlock()
+            unlockTransport()
             return false
         }
+        let epochAtAdmission = currentTransportEpoch
+        unlockTransport()
+        // T14: sealing is trust work. It runs outside the critical section,
+        // on the serial executor, and returns a completion that is
+        // token-checked before any effect commits. Authentication failure
+        // (nil) is distinguished from success throughout: false names the
+        // refusal, true names the queued write.
+        recordTrustWorkForTest("seal")
         let sealedPayload = sessions?.seal(peerId, frame.encode()) ?? (sessions == nil ? frame.encode() : nil)
         guard let sealed = sealedPayload else {
-            transportLock.unlock()
             return false
         }
-
+        lockTransport()
+        guard isStarted, epochAtAdmission == currentTransportEpoch,
+              let again = (outboundCentralConnections[peerId] ?? inboundPeripheralConnections[peerId]),
+              again === connection, again.state == .ready else {
+            unlockTransport()
+            return false
+        }
         let fragments = connection.fragmentOutbound(recordType: .data, payload: sealed)
         guard !fragments.isEmpty else {
-            transportLock.unlock()
+            unlockTransport()
             return false
         }
 
         if connection.localRole == .initiator {
             guard let p = connectedPeripherals[peerId],
                   let ch = inboxCharacteristics[peerId] else {
-                transportLock.unlock()
+                unlockTransport()
                 return false
             }
 
             var queue = pendingOutboundWrites[peerId] ?? []
             if !queue.isEmpty {
                 if queue.count + fragments.count > BleTransport.maxQueuedAttValues {
-                    transportLock.unlock()
+                    unlockTransport()
                     return false
                 }
                 queue.append(contentsOf: fragments)
                 pendingOutboundWrites[peerId] = queue
-                transportLock.unlock()
+                unlockTransport()
                 return true
             }
 
@@ -739,18 +1021,18 @@ public final class BleTransport: NSObject, @unchecked Sendable {
 
             if !remaining.isEmpty {
                 if queue.count + remaining.count > BleTransport.maxQueuedAttValues {
-                    transportLock.unlock()
+                    unlockTransport()
                     return false
                 }
                 queue.append(contentsOf: remaining)
                 pendingOutboundWrites[peerId] = queue
             }
-            transportLock.unlock()
+            unlockTransport()
             return true
         } else {
             guard let centralObj = subscribedCentrals[peerId],
                   let inboxChar = mutableInboxCharacteristic else {
-                transportLock.unlock()
+                unlockTransport()
                 return false
             }
 
@@ -758,7 +1040,7 @@ public final class BleTransport: NSObject, @unchecked Sendable {
             for frag in fragments {
                 if !queue.isEmpty {
                     if queue.count >= BleTransport.maxQueuedAttValues {
-                        transportLock.unlock()
+                        unlockTransport()
                         return false
                     }
                     queue.append(frag)
@@ -775,17 +1057,17 @@ public final class BleTransport: NSObject, @unchecked Sendable {
             } else {
                 pendingOutboundUpdates[peerId] = queue
             }
-            transportLock.unlock()
+            unlockTransport()
             return true
         }
     }
 
     @discardableResult
     public func publishRelation(_ key: RelationKey) -> Bool {
-        transportLock.lock()
+        lockTransport()
         let hadAny = publishedRelations.contains(where: { $0.peerId == key.peerId })
         let (inserted, _) = publishedRelations.insert(key)
-        transportLock.unlock()
+        unlockTransport()
         if inserted && !hadAny {
             delegate?.transportPhysicalDuplexReady(peerId: key.peerId)
             delegate?.transportDidConnect(peerId: key.peerId)
@@ -796,11 +1078,11 @@ public final class BleTransport: NSObject, @unchecked Sendable {
 
     @discardableResult
     public func unpublishRelation(_ key: RelationKey) -> Bool {
-        transportLock.lock()
+        lockTransport()
         let hadAny = publishedRelations.contains(where: { $0.peerId == key.peerId })
         let removed = publishedRelations.remove(key) != nil
         let hasRemaining = publishedRelations.contains(where: { $0.peerId == key.peerId })
-        transportLock.unlock()
+        unlockTransport()
         if removed && hadAny && !hasRemaining {
             delegate?.transportDidDisconnect(peerId: key.peerId)
             return true
@@ -808,31 +1090,50 @@ public final class BleTransport: NSObject, @unchecked Sendable {
         return false
     }
 
-    public func processOutboundDiscover(
+    public func processOutboundDiscover(peerId: UUID,
+        rssi: Int = -60,
+        serviceDataHint: Data? = nil,
+        peripheral: CBPeripheral? = nil,
+        sourceEpoch: UInt64, from manager: CBCentralManager) -> BleCentralAction {
+        // T14: the whole reduction of this event - validation, transition,
+        // effect scheduling - is one operation on the epoch serial executor.
+        return onExecutor {
+            self.reductionProcessOutboundDiscover(peerId: peerId, rssi: rssi, serviceDataHint: serviceDataHint, peripheral: peripheral, sourceEpoch: sourceEpoch, from: manager)
+        }
+    }
+
+    public func reductionProcessOutboundDiscover(
         peerId: UUID,
         rssi: Int = -60,
         serviceDataHint: Data? = nil,
         peripheral: CBPeripheral? = nil,
         sourceEpoch: UInt64, from manager: CBCentralManager
     ) -> BleCentralAction {
-        transportLock.lock()
+        // T14: read the drivers once, at the critical instant of admission,
+        // under the lock that guards their assignment; the reduction below
+        // proceeds on these captured references, outside any lock.
+        lockTransport()
+        let snapshotCentral = centralDriver
+        unlockTransport()
+
+        lockTransport()
         guard isStarted, managerEventIsAuthenticLocked(
             sourceEpoch: sourceEpoch,
             isCentral: true,
             sender: manager
         ) else {
-            transportLock.unlock()
+            unlockTransport()
             return .noOp
         }
-        guard let driver = centralDriver else {
-            transportLock.unlock()
+        guard let driver = snapshotCentral else {
+            unlockTransport()
             return .noOp
         }
-        transportLock.unlock()
+        unlockTransport()
 
         let action = driver.onDiscover(peerId: peerId, rssi: rssi, serviceDataHint: serviceDataHint)
         if case .connectPeripheral(let pid) = action {
-            transportLock.lock()
+            lockTransport()
             let gen = driver.getConnectionGeneration(pid)
             let key = RelationKey(direction: .outboundCentral, peerId: pid, generation: gen)
             let lifetime = OutboundPhysicalLifetime(relationKey: key, transportEpoch: currentTransportEpoch, peripheral: peripheral)
@@ -846,36 +1147,58 @@ public final class BleTransport: NSObject, @unchecked Sendable {
             let conn = driver.getActiveConnection(pid) ?? BleConnection(peerId: pid)
             outboundCentralConnections[pid] = conn
 
-            let timer = Timer(timeInterval: provisionalTimeoutSeconds, repeats: false) { [weak self] _ in
-                _ = self?.handleOutboundTimeout(peerId: pid, generation: gen)
+            let birthContext = activeManagerContext
+            let timer = Timer(timeInterval: provisionalTimeoutSeconds, repeats: false) { [weak self, birthContext] _ in
+                guard let self, let birthContext else { return }
+                _ = self.onExecutorOf(birthContext) {
+                    self.reductionHandleOutboundTimeout(peerId: pid, generation: gen)
+                }
             }
             RunLoop.main.add(timer, forMode: .common)
             provisionalTimers[pid] = timer
-            transportLock.unlock()
+            unlockTransport()
         }
         return action
     }
 
     public func processCentralConnect(peerId: UUID, peripheral: CBPeripheral? = nil, sourceEpoch: UInt64, from manager: CBCentralManager) -> BleCentralAction {
-        transportLock.lock()
+        // T14: the whole reduction of this event - validation, transition,
+        // effect scheduling - is one operation on the epoch serial executor.
+        return onExecutor {
+            self.reductionProcessCentralConnect(peerId: peerId, peripheral: peripheral, sourceEpoch: sourceEpoch, from: manager)
+        }
+    }
+
+    public func reductionProcessCentralConnect(peerId: UUID, peripheral: CBPeripheral? = nil, sourceEpoch: UInt64, from manager: CBCentralManager) -> BleCentralAction {
+        // T14: read the drivers once, at the critical instant of admission,
+        // under the lock that guards their assignment; the reduction below
+        // proceeds on these captured references, outside any lock.
+        lockTransport()
+        let snapshotCentral = centralDriver
+        unlockTransport()
+
+        lockTransport()
         guard isStarted, managerEventIsAuthenticLocked(
             sourceEpoch: sourceEpoch,
             isCentral: true,
             sender: manager
         ) else {
-            transportLock.unlock()
+            unlockTransport()
             return .noOp
         }
         guard let lifetime = activeOutboundLifetimes[peerId], (sourceEpoch == 0 || lifetime.transportEpoch == sourceEpoch) else {
-            transportLock.unlock()
+            unlockTransport()
             return .noOp
         }
         if let p = peripheral, let installedP = lifetime.peripheral, installedP !== p {
-            transportLock.unlock()
+            unlockTransport()
             return .noOp
         }
-        transportLock.unlock()
-        let action = centralDriver?.onConnected(peerId: peerId) ?? .noOp
+        unlockTransport()
+        if let failpoint = failpointAfterValidationForTest {
+            failpoint("processCentralConnect")
+        }
+        let action = snapshotCentral?.onConnected(peerId: peerId) ?? .noOp
         if case .discoverServices = action {
             if let p = peripheral ?? lifetime.peripheral {
                 p.discoverServices([BleTransport.serviceUuid])
@@ -885,21 +1208,36 @@ public final class BleTransport: NSObject, @unchecked Sendable {
     }
 
     public func processCentralFailToConnect(peerId: UUID, error: Error? = nil, peripheral: CBPeripheral? = nil, sourceEpoch: UInt64, from manager: CBCentralManager) -> BleCentralAction {
-        transportLock.lock()
+        // T14: the whole reduction of this event - validation, transition,
+        // effect scheduling - is one operation on the epoch serial executor.
+        return onExecutor {
+            self.reductionProcessCentralFailToConnect(peerId: peerId, error: error, peripheral: peripheral, sourceEpoch: sourceEpoch, from: manager)
+        }
+    }
+
+    public func reductionProcessCentralFailToConnect(peerId: UUID, error: Error? = nil, peripheral: CBPeripheral? = nil, sourceEpoch: UInt64, from manager: CBCentralManager) -> BleCentralAction {
+        // T14: read the drivers once, at the critical instant of admission,
+        // under the lock that guards their assignment; the reduction below
+        // proceeds on these captured references, outside any lock.
+        lockTransport()
+        let snapshotCentral = centralDriver
+        unlockTransport()
+
+        lockTransport()
         guard isStarted, managerEventIsAuthenticLocked(
             sourceEpoch: sourceEpoch,
             isCentral: true,
             sender: manager
         ) else {
-            transportLock.unlock()
+            unlockTransport()
             return .noOp
         }
         guard let lifetime = activeOutboundLifetimes[peerId], (sourceEpoch == 0 || lifetime.transportEpoch == sourceEpoch) else {
-            transportLock.unlock()
+            unlockTransport()
             return .noOp
         }
         if let p = peripheral, let installedP = lifetime.peripheral, installedP !== p {
-            transportLock.unlock()
+            unlockTransport()
             return .noOp
         }
         let key = lifetime.relationKey
@@ -914,34 +1252,49 @@ public final class BleTransport: NSObject, @unchecked Sendable {
         linkInfoCharacteristics.removeValue(forKey: peerId)
         pendingInitiatorRemoteHints.removeValue(forKey: peerId)
         pendingOutboundWrites.removeValue(forKey: peerId)
-        transportLock.unlock()
+        unlockTransport()
 
-        let action = centralDriver?.onFailedToConnect(peerId: peerId, error: error) ?? .noOp
+        let action = snapshotCentral?.onFailedToConnect(peerId: peerId, error: error) ?? .noOp
         unpublishRelation(key)
         return action
     }
 
     public func processOutboundDisconnect(peerId: UUID, expectedGen: UInt64, peripheral: CBPeripheral? = nil, sourceEpoch: UInt64, from manager: CBCentralManager) -> BleCentralAction {
-        transportLock.lock()
+        // T14: the whole reduction of this event - validation, transition,
+        // effect scheduling - is one operation on the epoch serial executor.
+        return onExecutor {
+            self.reductionProcessOutboundDisconnect(peerId: peerId, expectedGen: expectedGen, peripheral: peripheral, sourceEpoch: sourceEpoch, from: manager)
+        }
+    }
+
+    public func reductionProcessOutboundDisconnect(peerId: UUID, expectedGen: UInt64, peripheral: CBPeripheral? = nil, sourceEpoch: UInt64, from manager: CBCentralManager) -> BleCentralAction {
+        // T14: read the drivers once, at the critical instant of admission,
+        // under the lock that guards their assignment; the reduction below
+        // proceeds on these captured references, outside any lock.
+        lockTransport()
+        let snapshotCentral = centralDriver
+        unlockTransport()
+
+        lockTransport()
         guard isStarted, managerEventIsAuthenticLocked(
             sourceEpoch: sourceEpoch,
             isCentral: true,
             sender: manager
         ) else {
-            transportLock.unlock()
+            unlockTransport()
             return .noOp
         }
         guard let lifetime = activeOutboundLifetimes[peerId], (sourceEpoch == 0 || lifetime.transportEpoch == sourceEpoch) else {
-            transportLock.unlock()
+            unlockTransport()
             return .noOp
         }
         if let p = peripheral, let installedP = lifetime.peripheral, installedP !== p {
-            transportLock.unlock()
+            unlockTransport()
             return .noOp
         }
         let key = lifetime.relationKey
         if expectedGen != 0 && key.generation != expectedGen {
-            transportLock.unlock()
+            unlockTransport()
             return .noOp
         }
         activeOutboundLifetimes.removeValue(forKey: peerId)
@@ -954,26 +1307,41 @@ public final class BleTransport: NSObject, @unchecked Sendable {
         linkInfoCharacteristics.removeValue(forKey: peerId)
         pendingInitiatorRemoteHints.removeValue(forKey: peerId)
         pendingOutboundWrites.removeValue(forKey: peerId)
-        transportLock.unlock()
+        unlockTransport()
 
-        let action = centralDriver?.onDisconnected(peerId: peerId, expectedGen: key.generation) ?? .noOp
+        let action = snapshotCentral?.onDisconnected(peerId: peerId, expectedGen: key.generation) ?? .noOp
         unpublishRelation(key)
         return action
     }
 
     public func validateOutboundDelegate(_ delegate: RelationPeripheralDelegate, peerId: UUID) -> Bool {
-        transportLock.lock()
-        defer { transportLock.unlock() }
+        lockTransport()
+        defer { unlockTransport() }
         guard delegate.transportEpoch == currentTransportEpoch else { return false }
         guard let lifetime = activeOutboundLifetimes[peerId] else { return false }
         return lifetime.transportEpoch == currentTransportEpoch && lifetime.relationKey == delegate.relationKey
     }
 
     public func processPeripheralDiscoverServices(_ p: CBPeripheral?, delegate: RelationPeripheralDelegate, error: Error? = nil) -> BleCentralAction {
+        // T14: the whole reduction of this event - validation, transition,
+        // effect scheduling - is one operation on the epoch serial executor.
+        return onExecutor {
+            self.reductionProcessPeripheralDiscoverServices(p, delegate: delegate, error: error)
+        }
+    }
+
+    public func reductionProcessPeripheralDiscoverServices(_ p: CBPeripheral?, delegate: RelationPeripheralDelegate, error: Error? = nil) -> BleCentralAction {
+        // T14: read the drivers once, at the critical instant of admission,
+        // under the lock that guards their assignment; the reduction below
+        // proceeds on these captured references, outside any lock.
+        lockTransport()
+        let snapshotCentral = centralDriver
+        unlockTransport()
+
         let peerId = delegate.relationKey.peerId
         guard validateOutboundDelegate(delegate, peerId: peerId) else { return .noOp }
         let success = (error == nil && ((p?.services?.contains(where: { $0.uuid == BleTransport.serviceUuid })) ?? true))
-        let action = centralDriver?.onServicesDiscovered(peerId: peerId, success: success) ?? .noOp
+        let action = snapshotCentral?.onServicesDiscovered(peerId: peerId, success: success) ?? .noOp
         switch action {
         case .discoverCharacteristics:
             if let p = p {
@@ -992,13 +1360,28 @@ public final class BleTransport: NSObject, @unchecked Sendable {
     }
 
     public func processPeripheralDiscoverCharacteristics(_ p: CBPeripheral?, delegate: RelationPeripheralDelegate, service: CBService, error: Error? = nil) -> BleCentralAction {
+        // T14: the whole reduction of this event - validation, transition,
+        // effect scheduling - is one operation on the epoch serial executor.
+        return onExecutor {
+            self.reductionProcessPeripheralDiscoverCharacteristics(p, delegate: delegate, service: service, error: error)
+        }
+    }
+
+    public func reductionProcessPeripheralDiscoverCharacteristics(_ p: CBPeripheral?, delegate: RelationPeripheralDelegate, service: CBService, error: Error? = nil) -> BleCentralAction {
+        // T14: read the drivers once, at the critical instant of admission,
+        // under the lock that guards their assignment; the reduction below
+        // proceeds on these captured references, outside any lock.
+        lockTransport()
+        let snapshotCentral = centralDriver
+        unlockTransport()
+
         let peerId = delegate.relationKey.peerId
         guard validateOutboundDelegate(delegate, peerId: peerId) else { return .noOp }
         var tree: [ContractCharacteristic] = []
         for ch in service.characteristics ?? [] {
             tree.append(ContractCharacteristic(uuid: ch.uuid, properties: RequiredCharacteristicSet.propertiesOf(ch.properties)))
         }
-        transportLock.lock()
+        lockTransport()
         for ch in service.characteristics ?? [] {
             if ch.uuid == BleTransport.inboxCharacteristicUuid {
                 inboxCharacteristics[peerId] = ch
@@ -1009,14 +1392,14 @@ public final class BleTransport: NSObject, @unchecked Sendable {
             }
         }
         let linkInfoChar = linkInfoCharacteristics[peerId]
-        transportLock.unlock()
+        unlockTransport()
 
         // T10 provisioning gate: resolve the whole discovered tree against
         // the canonical profile -- all three roles exactly once, with their
         // required properties and nothing beyond the contract -- instead of
         // spot-checking the one characteristic this client happens to read.
         let success = (error == nil && BleTransport.meshProfile.accepts(tree))
-        let action = centralDriver?.onCharacteristicsDiscovered(peerId: peerId, success: success) ?? .noOp
+        let action = snapshotCentral?.onCharacteristicsDiscovered(peerId: peerId, success: success) ?? .noOp
         switch action {
         case .readLinkInfo:
             if let ch = linkInfoChar, let p = p {
@@ -1030,17 +1413,32 @@ public final class BleTransport: NSObject, @unchecked Sendable {
     }
 
     public func processPeripheralUpdateValue(_ p: CBPeripheral?, delegate: RelationPeripheralDelegate, characteristic: CBCharacteristic, error: Error? = nil) -> BleCentralAction {
+        // T14: the whole reduction of this event - validation, transition,
+        // effect scheduling - is one operation on the epoch serial executor.
+        return onExecutor {
+            self.reductionProcessPeripheralUpdateValue(p, delegate: delegate, characteristic: characteristic, error: error)
+        }
+    }
+
+    public func reductionProcessPeripheralUpdateValue(_ p: CBPeripheral?, delegate: RelationPeripheralDelegate, characteristic: CBCharacteristic, error: Error? = nil) -> BleCentralAction {
+        // T14: read the drivers once, at the critical instant of admission,
+        // under the lock that guards their assignment; the reduction below
+        // proceeds on these captured references, outside any lock.
+        lockTransport()
+        let snapshotCentral = centralDriver
+        unlockTransport()
+
         let peerId = delegate.relationKey.peerId
         guard validateOutboundDelegate(delegate, peerId: peerId) else { return .noOp }
 
         if characteristic.uuid == BleTransport.linkInfoCharacteristicUuid {
             let success = (error == nil)
-            let action = centralDriver?.onLinkInfoReadResult(peerId: peerId, success: success, rawData: characteristic.value) ?? .noOp
+            let action = snapshotCentral?.onLinkInfoReadResult(peerId: peerId, success: success, rawData: characteristic.value) ?? .noOp
             switch action {
             case .writeLinkInfo(_, let localData, let remoteHint):
-                transportLock.lock()
+                lockTransport()
                 pendingInitiatorRemoteHints[peerId] = remoteHint
-                transportLock.unlock()
+                unlockTransport()
                 p?.writeValue(localData, for: characteristic, type: .withResponse)
             case .disconnectPeripheral:
                 purgeCentralConnection(peerId: peerId, cancelPeripheral: true)
@@ -1050,20 +1448,34 @@ public final class BleTransport: NSObject, @unchecked Sendable {
         }
 
         if characteristic.uuid == BleTransport.inboxCharacteristicUuid {
-            transportLock.lock()
+            lockTransport()
             guard let conn = outboundCentralConnections[peerId], conn.isRoleBound else {
-                transportLock.unlock()
+                unlockTransport()
                 return .noOp
             }
             guard let record = conn.ingestInboundAttValue(characteristic.value ?? Data()) else {
-                transportLock.unlock()
+                unlockTransport()
                 return .noOp
             }
-            transportLock.unlock()
+            unlockTransport()
 
             if record.recordType == .data && conn.state == .ready {
+                // T14: opening a received record is trust work: it runs
+                // outside the critical section, and its completion comes
+                // back through the executor for a token check before the
+                // delegate ever hears of it. An unauthenticated payload
+                // (nil) is a failure, distinct from an empty success.
+                recordTrustWorkForTest("open")
                 if let clear = sessions?.open(peerId, record.payload) {
-                    self.delegate?.transportDidReceive(data: clear, peerId: peerId)
+                    self.onExecutor {
+                        self.lockTransport()
+                        let still = self.isStarted
+                            && (self.outboundCentralConnections[peerId] === conn)
+                            && conn.state == .ready
+                        self.unlockTransport()
+                        guard still else { return }
+                        self.delegate?.transportDidReceive(data: clear, peerId: peerId)
+                    }
                 }
             }
         }
@@ -1071,15 +1483,30 @@ public final class BleTransport: NSObject, @unchecked Sendable {
     }
 
     public func processPeripheralWriteValue(_ p: CBPeripheral?, delegate: RelationPeripheralDelegate, characteristic: CBCharacteristic, error: Error? = nil) -> BleCentralAction {
+        // T14: the whole reduction of this event - validation, transition,
+        // effect scheduling - is one operation on the epoch serial executor.
+        return onExecutor {
+            self.reductionProcessPeripheralWriteValue(p, delegate: delegate, characteristic: characteristic, error: error)
+        }
+    }
+
+    public func reductionProcessPeripheralWriteValue(_ p: CBPeripheral?, delegate: RelationPeripheralDelegate, characteristic: CBCharacteristic, error: Error? = nil) -> BleCentralAction {
+        // T14: read the drivers once, at the critical instant of admission,
+        // under the lock that guards their assignment; the reduction below
+        // proceeds on these captured references, outside any lock.
+        lockTransport()
+        let snapshotCentral = centralDriver
+        unlockTransport()
+
         let peerId = delegate.relationKey.peerId
         guard validateOutboundDelegate(delegate, peerId: peerId) else { return .noOp }
 
         if characteristic.uuid == BleTransport.linkInfoCharacteristicUuid {
-            transportLock.lock()
+            lockTransport()
             let remoteHint = pendingInitiatorRemoteHints.removeValue(forKey: peerId)
-            transportLock.unlock()
+            unlockTransport()
 
-            let action = centralDriver?.onLinkInfoWriteAcknowledged(
+            let action = snapshotCentral?.onLinkInfoWriteAcknowledged(
                 peerId: peerId,
                 success: (error == nil),
                 remoteHint: remoteHint ?? Data()
@@ -1087,13 +1514,13 @@ public final class BleTransport: NSObject, @unchecked Sendable {
 
             switch action {
             case .setNotify:
-                transportLock.lock()
+                lockTransport()
                 if let inboxChar = inboxCharacteristics[peerId] {
                     let maxWrite = p?.maximumWriteValueLength(for: .withoutResponse) ?? 512
                     outboundCentralConnections[peerId]?.markConnected(negotiatedAttValueLength: maxWrite)
                     p?.setNotifyValue(true, for: inboxChar)
                 }
-                transportLock.unlock()
+                unlockTransport()
             case .disconnectPeripheral:
                 purgeCentralConnection(peerId: peerId, cancelPeripheral: true)
             default: break
@@ -1104,17 +1531,32 @@ public final class BleTransport: NSObject, @unchecked Sendable {
     }
 
     public func processPeripheralNotificationStateUpdated(_ p: CBPeripheral?, delegate: RelationPeripheralDelegate, characteristic: CBCharacteristic, error: Error? = nil) -> BleCentralAction {
+        // T14: the whole reduction of this event - validation, transition,
+        // effect scheduling - is one operation on the epoch serial executor.
+        return onExecutor {
+            self.reductionProcessPeripheralNotificationStateUpdated(p, delegate: delegate, characteristic: characteristic, error: error)
+        }
+    }
+
+    public func reductionProcessPeripheralNotificationStateUpdated(_ p: CBPeripheral?, delegate: RelationPeripheralDelegate, characteristic: CBCharacteristic, error: Error? = nil) -> BleCentralAction {
+        // T14: read the drivers once, at the critical instant of admission,
+        // under the lock that guards their assignment; the reduction below
+        // proceeds on these captured references, outside any lock.
+        lockTransport()
+        let snapshotCentral = centralDriver
+        unlockTransport()
+
         let peerId = delegate.relationKey.peerId
         guard validateOutboundDelegate(delegate, peerId: peerId) else { return .noOp }
 
         if characteristic.uuid == BleTransport.inboxCharacteristicUuid {
             let success = (error == nil)
-            let action = centralDriver?.onNotificationStateUpdated(peerId: peerId, success: success, isNotifying: characteristic.isNotifying) ?? .noOp
+            let action = snapshotCentral?.onNotificationStateUpdated(peerId: peerId, success: success, isNotifying: characteristic.isNotifying) ?? .noOp
             switch action {
             case .physicalDuplexReady:
-                transportLock.lock()
+                lockTransport()
                 provisionalTimers.removeValue(forKey: peerId)?.invalidate()
-                transportLock.unlock()
+                unlockTransport()
                 publishRelation(delegate.relationKey)
             case .disconnectPeripheral:
                 purgeCentralConnection(peerId: peerId, cancelPeripheral: true)
@@ -1125,11 +1567,19 @@ public final class BleTransport: NSObject, @unchecked Sendable {
         return .noOp
     }
 
-    public func processPeripheralIsReady(_ p: CBPeripheral, delegate: RelationPeripheralDelegate) {
+    public func processPeripheralIsReady(_ p: CBPeripheral, delegate: RelationPeripheralDelegate) -> Void {
+        // T14: the whole reduction of this event - validation, transition,
+        // effect scheduling - is one operation on the epoch serial executor.
+        return onExecutor {
+            self.reductionProcessPeripheralIsReady(p, delegate: delegate)
+        }
+    }
+
+    public func reductionProcessPeripheralIsReady(_ p: CBPeripheral, delegate: RelationPeripheralDelegate) {
         let peerId = delegate.relationKey.peerId
         guard validateOutboundDelegate(delegate, peerId: peerId) else { return }
-        transportLock.lock()
-        defer { transportLock.unlock() }
+        lockTransport()
+        defer { unlockTransport() }
         guard isStarted, delegate.transportEpoch == currentTransportEpoch else { return }
         guard let ch = inboxCharacteristics[peerId] else { return }
 
@@ -1147,10 +1597,25 @@ public final class BleTransport: NSObject, @unchecked Sendable {
     }
 
     public func handleOutboundTimeout(peerId: UUID, generation: UInt64 = 0) -> BleCentralAction {
-        guard let driver = centralDriver else { return .noOp }
-        transportLock.lock()
+        // T14: the whole reduction of this event - validation, transition,
+        // effect scheduling - is one operation on the epoch serial executor.
+        return onExecutor {
+            self.reductionHandleOutboundTimeout(peerId: peerId, generation: generation)
+        }
+    }
+
+    public func reductionHandleOutboundTimeout(peerId: UUID, generation: UInt64 = 0) -> BleCentralAction {
+        // T14: read the drivers once, at the critical instant of admission,
+        // under the lock that guards their assignment; the reduction below
+        // proceeds on these captured references, outside any lock.
+        lockTransport()
+        let snapshotCentral = centralDriver
+        unlockTransport()
+
+        guard let driver = snapshotCentral else { return .noOp }
+        lockTransport()
         provisionalTimers.removeValue(forKey: peerId)?.invalidate()
-        transportLock.unlock()
+        unlockTransport()
         let currentGen = driver.getConnectionGeneration(peerId)
         if generation != 0 && currentGen != generation {
             return .noOp
@@ -1160,7 +1625,7 @@ public final class BleTransport: NSObject, @unchecked Sendable {
         }
         let effectiveGen = (generation != 0) ? generation : currentGen
         let action = driver.onProvisionalTimeout(peerId: peerId, expectedGen: effectiveGen)
-        transportLock.lock()
+        lockTransport()
         activeOutboundLifetimes.removeValue(forKey: peerId)
         relationDelegates.removeValue(forKey: peerId)
         let p = connectedPeripherals.removeValue(forKey: peerId)
@@ -1170,7 +1635,7 @@ public final class BleTransport: NSObject, @unchecked Sendable {
         linkInfoCharacteristics.removeValue(forKey: peerId)
         pendingInitiatorRemoteHints.removeValue(forKey: peerId)
         pendingOutboundWrites.removeValue(forKey: peerId)
-        transportLock.unlock()
+        unlockTransport()
         if let p = p {
             central?.cancelPeripheralConnection(p)
         }
@@ -1189,26 +1654,41 @@ public final class BleTransport: NSObject, @unchecked Sendable {
     }
 
     public func processInboundWrite(centralId: UUID, rawData: Data, sourceEpoch: UInt64, from manager: CBPeripheralManager) -> BlePeripheralAction {
-        transportLock.lock()
+        // T14: the whole reduction of this event - validation, transition,
+        // effect scheduling - is one operation on the epoch serial executor.
+        return onExecutor {
+            self.reductionProcessInboundWrite(centralId: centralId, rawData: rawData, sourceEpoch: sourceEpoch, from: manager)
+        }
+    }
+
+    public func reductionProcessInboundWrite(centralId: UUID, rawData: Data, sourceEpoch: UInt64, from manager: CBPeripheralManager) -> BlePeripheralAction {
+        // T14: read the drivers once, at the critical instant of admission,
+        // under the lock that guards their assignment; the reduction below
+        // proceeds on these captured references, outside any lock.
+        lockTransport()
+        let snapshotPeripheral = peripheralDriver
+        unlockTransport()
+
+        lockTransport()
         guard isStarted, managerEventIsAuthenticLocked(
             sourceEpoch: sourceEpoch,
             isCentral: false,
             sender: manager
         ) else {
-            transportLock.unlock()
+            unlockTransport()
             return .rejectWrite(centralId, "Transport not started or stale epoch")
         }
-        guard let driver = peripheralDriver else {
-            transportLock.unlock()
+        guard let driver = snapshotPeripheral else {
+            unlockTransport()
             return .noOp
         }
-        transportLock.unlock()
+        unlockTransport()
 
         let action = driver.onCentralWrite(centralId: centralId, rawData: rawData)
         switch action {
         case .acceptWrite(let cid, let remoteHint),
              .acceptWriteAndDuplexReady(let cid, let remoteHint):
-            transportLock.lock()
+            lockTransport()
             let gen = driver.getCentralGeneration(cid)
             let key = RelationKey(direction: .inboundPeripheral, peerId: cid, generation: gen)
             activeInboundLifetimes[cid] = InboundSubscriptionLifetime(relationKey: key, transportEpoch: currentTransportEpoch)
@@ -1220,13 +1700,17 @@ public final class BleTransport: NSObject, @unchecked Sendable {
                 conn.bindResponderFromAcceptedIncomingLinkInfo(remoteHint: remoteHint)
             }
             if inboundTimers[cid] == nil {
-                let timer = Timer(timeInterval: provisionalTimeoutSeconds, repeats: false) { [weak self] _ in
-                    self?.handleInboundTimeout(centralId: cid, generation: gen)
+                let birthContext = activeManagerContext
+                let timer = Timer(timeInterval: provisionalTimeoutSeconds, repeats: false) { [weak self, birthContext] _ in
+                    guard let self, let birthContext else { return }
+                    _ = self.onExecutorOf(birthContext) {
+                        self.reductionHandleInboundTimeout(centralId: cid, generation: gen)
+                    }
                 }
                 RunLoop.main.add(timer, forMode: .common)
                 inboundTimers[cid] = timer
             }
-            transportLock.unlock()
+            unlockTransport()
             if case .acceptWriteAndDuplexReady = action {
                 publishRelation(key)
             }
@@ -1240,25 +1724,40 @@ public final class BleTransport: NSObject, @unchecked Sendable {
     }
 
     public func processInboundSubscribe(centralId: UUID, central: CBCentral? = nil, maxUpdateLength: Int = 512, sourceEpoch: UInt64, from manager: CBPeripheralManager) -> BlePeripheralAction {
-        transportLock.lock()
+        // T14: the whole reduction of this event - validation, transition,
+        // effect scheduling - is one operation on the epoch serial executor.
+        return onExecutor {
+            self.reductionProcessInboundSubscribe(centralId: centralId, central: central, maxUpdateLength: maxUpdateLength, sourceEpoch: sourceEpoch, from: manager)
+        }
+    }
+
+    public func reductionProcessInboundSubscribe(centralId: UUID, central: CBCentral? = nil, maxUpdateLength: Int = 512, sourceEpoch: UInt64, from manager: CBPeripheralManager) -> BlePeripheralAction {
+        // T14: read the drivers once, at the critical instant of admission,
+        // under the lock that guards their assignment; the reduction below
+        // proceeds on these captured references, outside any lock.
+        lockTransport()
+        let snapshotPeripheral = peripheralDriver
+        unlockTransport()
+
+        lockTransport()
         guard isStarted, managerEventIsAuthenticLocked(
             sourceEpoch: sourceEpoch,
             isCentral: false,
             sender: manager
         ) else {
-            transportLock.unlock()
+            unlockTransport()
             return .noOp
         }
-        guard let driver = peripheralDriver else {
-            transportLock.unlock()
+        guard let driver = snapshotPeripheral else {
+            unlockTransport()
             return .noOp
         }
-        transportLock.unlock()
+        unlockTransport()
 
         let action = driver.onCentralSubscribed(centralId: centralId)
         switch action {
         case .acceptSubscription(let cid), .acceptSubscriptionAndDuplexReady(let cid):
-            transportLock.lock()
+            lockTransport()
             inboundTimers.removeValue(forKey: cid)?.invalidate()
             if let c = central {
                 subscribedCentrals[cid] = c
@@ -1270,7 +1769,7 @@ public final class BleTransport: NSObject, @unchecked Sendable {
                 conn.markConnected(negotiatedAttValueLength: maxUpdateLength)
             }
             let key = activeInboundLifetimes[cid]?.relationKey ?? RelationKey(direction: .inboundPeripheral, peerId: cid, generation: driver.getCentralGeneration(cid))
-            transportLock.unlock()
+            unlockTransport()
             if case .acceptSubscriptionAndDuplexReady = action {
                 publishRelation(key)
             }
@@ -1281,23 +1780,38 @@ public final class BleTransport: NSObject, @unchecked Sendable {
     }
 
     public func processInboundUnsubscribe(centralId: UUID, expectedGen: UInt64, sourceEpoch: UInt64, from manager: CBPeripheralManager) -> BlePeripheralAction {
-        guard let driver = peripheralDriver else { return .noOp }
-        transportLock.lock()
+        // T14: the whole reduction of this event - validation, transition,
+        // effect scheduling - is one operation on the epoch serial executor.
+        return onExecutor {
+            self.reductionProcessInboundUnsubscribe(centralId: centralId, expectedGen: expectedGen, sourceEpoch: sourceEpoch, from: manager)
+        }
+    }
+
+    public func reductionProcessInboundUnsubscribe(centralId: UUID, expectedGen: UInt64, sourceEpoch: UInt64, from manager: CBPeripheralManager) -> BlePeripheralAction {
+        // T14: read the drivers once, at the critical instant of admission,
+        // under the lock that guards their assignment; the reduction below
+        // proceeds on these captured references, outside any lock.
+        lockTransport()
+        let snapshotPeripheral = peripheralDriver
+        unlockTransport()
+
+        guard let driver = snapshotPeripheral else { return .noOp }
+        lockTransport()
         guard isStarted, managerEventIsAuthenticLocked(
             sourceEpoch: sourceEpoch,
             isCentral: false,
             sender: manager
         ) else {
-            transportLock.unlock()
+            unlockTransport()
             return .noOp
         }
         guard let lifetime = activeInboundLifetimes[centralId], (sourceEpoch == 0 || lifetime.transportEpoch == sourceEpoch) else {
-            transportLock.unlock()
+            unlockTransport()
             return .noOp
         }
         let key = lifetime.relationKey
         if expectedGen != 0 && key.generation != expectedGen {
-            transportLock.unlock()
+            unlockTransport()
             return .noOp
         }
         activeInboundLifetimes.removeValue(forKey: centralId)
@@ -1305,18 +1819,33 @@ public final class BleTransport: NSObject, @unchecked Sendable {
         inboundPeripheralConnections.removeValue(forKey: centralId)?.markDisconnected()
         subscribedCentrals.removeValue(forKey: centralId)
         pendingOutboundUpdates.removeValue(forKey: centralId)
-        transportLock.unlock()
+        unlockTransport()
 
         let action = driver.onCentralUnsubscribed(centralId: centralId, expectedGen: key.generation)
         unpublishRelation(key)
         return action
     }
 
-    public func handleInboundTimeout(centralId: UUID, generation: UInt64 = 0) {
-        guard let driver = peripheralDriver else { return }
-        transportLock.lock()
+    public func handleInboundTimeout(centralId: UUID, generation: UInt64 = 0) -> Void {
+        // T14: the whole reduction of this event - validation, transition,
+        // effect scheduling - is one operation on the epoch serial executor.
+        return onExecutor {
+            self.reductionHandleInboundTimeout(centralId: centralId, generation: generation)
+        }
+    }
+
+    public func reductionHandleInboundTimeout(centralId: UUID, generation: UInt64 = 0) {
+        // T14: read the drivers once, at the critical instant of admission,
+        // under the lock that guards their assignment; the reduction below
+        // proceeds on these captured references, outside any lock.
+        lockTransport()
+        let snapshotPeripheral = peripheralDriver
+        unlockTransport()
+
+        guard let driver = snapshotPeripheral else { return }
+        lockTransport()
         inboundTimers.removeValue(forKey: centralId)?.invalidate()
-        transportLock.unlock()
+        unlockTransport()
         let currentGen = driver.getCentralGeneration(centralId)
         if generation != 0 && currentGen != generation {
             return
@@ -1326,69 +1855,140 @@ public final class BleTransport: NSObject, @unchecked Sendable {
         }
         let effectiveGen = (generation != 0) ? generation : currentGen
         driver.onInboundTimeout(centralId: centralId, expectedGen: effectiveGen)
-        transportLock.lock()
+        lockTransport()
         activeInboundLifetimes.removeValue(forKey: centralId)
         inboundPeripheralConnections.removeValue(forKey: centralId)?.markDisconnected()
         subscribedCentrals.removeValue(forKey: centralId)
         pendingOutboundUpdates.removeValue(forKey: centralId)
-        transportLock.unlock()
+        unlockTransport()
         let key = RelationKey(direction: .inboundPeripheral, peerId: centralId, generation: effectiveGen)
         unpublishRelation(key)
     }
 
     public func dispatchReceiveRead(centralId: UUID) -> BlePeripheralAction {
-        return peripheralDriver?.onCentralRead(centralId: centralId) ?? .noOp
+        // T14: the whole reduction of this event - validation, transition,
+        // effect scheduling - is one operation on the epoch serial executor.
+        return onExecutor {
+            self.reductionDispatchReceiveRead(centralId: centralId)
+        }
+    }
+
+    public func reductionDispatchReceiveRead(centralId: UUID) -> BlePeripheralAction {
+        // T14: read the drivers once, at the critical instant of admission,
+        // under the lock that guards their assignment; the reduction below
+        // proceeds on these captured references, outside any lock.
+        lockTransport()
+        let snapshotPeripheral = peripheralDriver
+        unlockTransport()
+
+        return snapshotPeripheral?.onCentralRead(centralId: centralId) ?? .noOp
     }
 
     public func dispatchReceiveWrite(centralId: UUID, rawData: Data, sourceEpoch: UInt64, from manager: CBPeripheralManager) -> BlePeripheralAction {
+        // T14: the whole reduction of this event - validation, transition,
+        // effect scheduling - is one operation on the epoch serial executor.
+        return onExecutor {
+            self.reductionDispatchReceiveWrite(centralId: centralId, rawData: rawData, sourceEpoch: sourceEpoch, from: manager)
+        }
+    }
+
+    public func reductionDispatchReceiveWrite(centralId: UUID, rawData: Data, sourceEpoch: UInt64, from manager: CBPeripheralManager) -> BlePeripheralAction {
         return processInboundWrite(centralId: centralId, rawData: rawData, sourceEpoch: sourceEpoch, from: manager)
     }
 
     public func dispatchSubscribe(centralId: UUID, sourceEpoch: UInt64, from manager: CBPeripheralManager) -> BlePeripheralAction {
+        // T14: the whole reduction of this event - validation, transition,
+        // effect scheduling - is one operation on the epoch serial executor.
+        return onExecutor {
+            self.reductionDispatchSubscribe(centralId: centralId, sourceEpoch: sourceEpoch, from: manager)
+        }
+    }
+
+    public func reductionDispatchSubscribe(centralId: UUID, sourceEpoch: UInt64, from manager: CBPeripheralManager) -> BlePeripheralAction {
         return processInboundSubscribe(centralId: centralId, sourceEpoch: sourceEpoch, from: manager)
     }
 
     public func dispatchUnsubscribe(centralId: UUID, expectedGen: UInt64, sourceEpoch: UInt64, from manager: CBPeripheralManager) -> BlePeripheralAction {
+        // T14: the whole reduction of this event - validation, transition,
+        // effect scheduling - is one operation on the epoch serial executor.
+        return onExecutor {
+            self.reductionDispatchUnsubscribe(centralId: centralId, expectedGen: expectedGen, sourceEpoch: sourceEpoch, from: manager)
+        }
+    }
+
+    public func reductionDispatchUnsubscribe(centralId: UUID, expectedGen: UInt64, sourceEpoch: UInt64, from manager: CBPeripheralManager) -> BlePeripheralAction {
         return processInboundUnsubscribe(centralId: centralId, expectedGen: expectedGen, sourceEpoch: sourceEpoch, from: manager)
     }
 
     public func dispatchOutboundProvisionalTimeout(peerId: UUID, expectedGen: UInt64 = 0) -> BleCentralAction {
+        // T14: the whole reduction of this event - validation, transition,
+        // effect scheduling - is one operation on the epoch serial executor.
+        return onExecutor {
+            self.reductionDispatchOutboundProvisionalTimeout(peerId: peerId, expectedGen: expectedGen)
+        }
+    }
+
+    public func reductionDispatchOutboundProvisionalTimeout(peerId: UUID, expectedGen: UInt64 = 0) -> BleCentralAction {
         return handleOutboundTimeout(peerId: peerId, generation: expectedGen)
     }
 
-    public func dispatchInboundTimeout(centralId: UUID, expectedGen: UInt64 = 0) {
+    public func dispatchInboundTimeout(centralId: UUID, expectedGen: UInt64 = 0) -> Void {
+        // T14: the whole reduction of this event - validation, transition,
+        // effect scheduling - is one operation on the epoch serial executor.
+        return onExecutor {
+            self.reductionDispatchInboundTimeout(centralId: centralId, expectedGen: expectedGen)
+        }
+    }
+
+    public func reductionDispatchInboundTimeout(centralId: UUID, expectedGen: UInt64 = 0) {
         handleInboundTimeout(centralId: centralId, generation: expectedGen)
     }
 
     public func isRelationPublished(direction: BleDirection, peerId: UUID, generation: UInt64 = 0) -> Bool {
-        transportLock.lock()
-        defer { transportLock.unlock() }
+        lockTransport()
+        defer { unlockTransport() }
         if generation != 0 {
             return publishedRelations.contains(RelationKey(direction: direction, peerId: peerId, generation: generation))
         }
         return publishedRelations.contains(where: { $0.direction == direction && $0.peerId == peerId })
     }
 
-    public func processCentralDidUpdateState(_ c: CBCentralManager, sourceEpoch: UInt64) {
-        transportLock.lock()
+    public func processCentralDidUpdateState(_ c: CBCentralManager, sourceEpoch: UInt64) -> Void {
+        // T14: the whole reduction of this event - validation, transition,
+        // effect scheduling - is one operation on the epoch serial executor.
+        return onExecutor {
+            self.reductionProcessCentralDidUpdateState(c, sourceEpoch: sourceEpoch)
+        }
+    }
+
+    public func reductionProcessCentralDidUpdateState(_ c: CBCentralManager, sourceEpoch: UInt64) {
+        lockTransport()
         guard isStarted, managerEventIsAuthenticLocked(
             sourceEpoch: sourceEpoch,
             isCentral: true,
             sender: c
         ) else {
-            transportLock.unlock()
+            unlockTransport()
             return
         }
         let shouldScan = (c.state == .poweredOn)
-        transportLock.unlock()
+        unlockTransport()
         if shouldScan {
             startScanning()
         }
     }
 
-    public func processCentralWillRestoreState(_ c: CBCentralManager, dict: [String: Any], sourceEpoch: UInt64) {
-        transportLock.lock()
-        defer { transportLock.unlock() }
+    public func processCentralWillRestoreState(_ c: CBCentralManager, dict: [String: Any], sourceEpoch: UInt64) -> Void {
+        // T14: the whole reduction of this event - validation, transition,
+        // effect scheduling - is one operation on the epoch serial executor.
+        return onExecutor {
+            self.reductionProcessCentralWillRestoreState(c, dict: dict, sourceEpoch: sourceEpoch)
+        }
+    }
+
+    public func reductionProcessCentralWillRestoreState(_ c: CBCentralManager, dict: [String: Any], sourceEpoch: UInt64) {
+        lockTransport()
+        defer { unlockTransport() }
         guard isStarted, managerEventIsAuthenticLocked(
             sourceEpoch: sourceEpoch,
             isCentral: true,
@@ -1401,7 +2001,19 @@ public final class BleTransport: NSObject, @unchecked Sendable {
         }
     }
 
-    public func processCentralDidDiscover(
+    public func processCentralDidDiscover(_ c: CBCentralManager,
+        peripheral p: CBPeripheral,
+        advertisementData: [String: Any],
+        rssi RSSI: NSNumber,
+        sourceEpoch: UInt64) -> Void {
+        // T14: the whole reduction of this event - validation, transition,
+        // effect scheduling - is one operation on the epoch serial executor.
+        return onExecutor {
+            self.reductionProcessCentralDidDiscover(c, peripheral: p, advertisementData: advertisementData, rssi: RSSI, sourceEpoch: sourceEpoch)
+        }
+    }
+
+    public func reductionProcessCentralDidDiscover(
         _ c: CBCentralManager,
         peripheral p: CBPeripheral,
         advertisementData: [String: Any],
@@ -1411,13 +2023,13 @@ public final class BleTransport: NSObject, @unchecked Sendable {
         guard RSSI.intValue > -90 else { return }
 
         var metaHint: Data? = nil
-        transportLock.lock()
+        lockTransport()
         guard isStarted, managerEventIsAuthenticLocked(
             sourceEpoch: sourceEpoch,
             isCentral: true,
             sender: c
         ) else {
-            transportLock.unlock()
+            unlockTransport()
             return
         }
         if let serviceDataDict = advertisementData[CBAdvertisementDataServiceDataKey] as? [CBUUID: Data],
@@ -1432,7 +2044,7 @@ public final class BleTransport: NSObject, @unchecked Sendable {
             discoveredPeers[p.identifier] = meta
             metaHint = meta.nodeHint
         }
-        transportLock.unlock()
+        unlockTransport()
 
         let action = processOutboundDiscover(peerId: p.identifier, rssi: RSSI.intValue, serviceDataHint: metaHint, peripheral: p, sourceEpoch: sourceEpoch, from: c)
         if case .connectPeripheral = action {
@@ -1440,88 +2052,127 @@ public final class BleTransport: NSObject, @unchecked Sendable {
         }
     }
 
-    public func processPeripheralManagerDidUpdateState(_ pm: CBPeripheralManager, sourceEpoch: UInt64) {
-        transportLock.lock()
+    public func processPeripheralManagerDidUpdateState(_ pm: CBPeripheralManager, sourceEpoch: UInt64) -> Void {
+        // T14: the whole reduction of this event - validation, transition,
+        // effect scheduling - is one operation on the epoch serial executor.
+        return onExecutor {
+            self.reductionProcessPeripheralManagerDidUpdateState(pm, sourceEpoch: sourceEpoch)
+        }
+    }
+
+    public func reductionProcessPeripheralManagerDidUpdateState(_ pm: CBPeripheralManager, sourceEpoch: UInt64) {
+        lockTransport()
         guard isStarted, managerEventIsAuthenticLocked(
             sourceEpoch: sourceEpoch,
             isCentral: false,
             sender: pm
         ) else {
-            transportLock.unlock()
+            unlockTransport()
             return
         }
         guard pm.state == .poweredOn else {
-            transportLock.unlock()
+            unlockTransport()
             return
         }
-        transportLock.unlock()
+        unlockTransport()
 
         let installed = BleTransport.characteristicsToInstall(BleTransport.meshProfile)
         let service = CBMutableService(type: BleTransport.meshProfile.serviceUuid, primary: true)
         service.characteristics = installed
         pm.add(service)
 
-        transportLock.lock()
+        lockTransport()
         mutableInboxCharacteristic = installed.first { $0.uuid == BleTransport.inboxCharacteristicUuid }
         mutableLinkInfoCharacteristic = installed.first { $0.uuid == BleTransport.linkInfoCharacteristicUuid }
-        transportLock.unlock()
+        unlockTransport()
     }
 
-    public func processPeripheralDidAddService(_ pm: CBPeripheralManager, service: CBService, error: Error?, sourceEpoch: UInt64) {
-        transportLock.lock()
+    public func processPeripheralDidAddService(_ pm: CBPeripheralManager, service: CBService, error: Error?, sourceEpoch: UInt64) -> Void {
+        // T14: the whole reduction of this event - validation, transition,
+        // effect scheduling - is one operation on the epoch serial executor.
+        return onExecutor {
+            self.reductionProcessPeripheralDidAddService(pm, service: service, error: error, sourceEpoch: sourceEpoch)
+        }
+    }
+
+    public func reductionProcessPeripheralDidAddService(_ pm: CBPeripheralManager, service: CBService, error: Error?, sourceEpoch: UInt64) {
+        lockTransport()
         guard isStarted, managerEventIsAuthenticLocked(
             sourceEpoch: sourceEpoch,
             isCentral: false,
             sender: pm
         ) else {
-            transportLock.unlock()
+            unlockTransport()
             return
         }
         if error == nil && service.uuid == BleTransport.serviceUuid {
             isServiceRegistered = true
         }
         let shouldAdv = isStarted && isServiceRegistered
-        transportLock.unlock()
+        unlockTransport()
 
         if shouldAdv {
             startAdvertising()
         }
     }
 
-    public func processPeripheralWillRestoreState(_ pm: CBPeripheralManager, dict: [String: Any], sourceEpoch: UInt64) {
-        transportLock.lock()
+    public func processPeripheralWillRestoreState(_ pm: CBPeripheralManager, dict: [String: Any], sourceEpoch: UInt64) -> Void {
+        // T14: the whole reduction of this event - validation, transition,
+        // effect scheduling - is one operation on the epoch serial executor.
+        return onExecutor {
+            self.reductionProcessPeripheralWillRestoreState(pm, dict: dict, sourceEpoch: sourceEpoch)
+        }
+    }
+
+    public func reductionProcessPeripheralWillRestoreState(_ pm: CBPeripheralManager, dict: [String: Any], sourceEpoch: UInt64) {
+        lockTransport()
         let authentic = managerEventIsAuthenticLocked(
             sourceEpoch: sourceEpoch,
             isCentral: false,
             sender: pm
         )
         guard isStarted, authentic else {
-            transportLock.unlock()
+            unlockTransport()
             return
         }
-        transportLock.unlock()
+        unlockTransport()
 
     }
 
-    public func processPeripheralReceiveRead(_ pm: CBPeripheralManager, request: CBATTRequest, sourceEpoch: UInt64) {
-        transportLock.lock()
+    public func processPeripheralReceiveRead(_ pm: CBPeripheralManager, request: CBATTRequest, sourceEpoch: UInt64) -> Void {
+        // T14: the whole reduction of this event - validation, transition,
+        // effect scheduling - is one operation on the epoch serial executor.
+        return onExecutor {
+            self.reductionProcessPeripheralReceiveRead(pm, request: request, sourceEpoch: sourceEpoch)
+        }
+    }
+
+    public func reductionProcessPeripheralReceiveRead(_ pm: CBPeripheralManager, request: CBATTRequest, sourceEpoch: UInt64) {
+        // T14: read the drivers once, at the critical instant of admission,
+        // under the lock that guards their assignment; the reduction below
+        // proceeds on these captured references, outside any lock.
+        lockTransport()
+        let snapshotPeripheral = peripheralDriver
+        unlockTransport()
+
+        lockTransport()
         guard isStarted, managerEventIsAuthenticLocked(
             sourceEpoch: sourceEpoch,
             isCentral: false,
             sender: pm
         ) else {
-            transportLock.unlock()
+            unlockTransport()
             pm.respond(to: request, withResult: .unlikelyError)
             return
         }
-        transportLock.unlock()
+        unlockTransport()
 
         if BleTransport.classifyInbound(request.characteristic.uuid) == .toLinkInfo {
             if request.offset != 0 {
                 pm.respond(to: request, withResult: .invalidOffset)
                 return
             }
-            let action = peripheralDriver?.onCentralRead(centralId: request.central.identifier) ?? .noOp
+            let action = snapshotPeripheral?.onCentralRead(centralId: request.central.identifier) ?? .noOp
             switch action {
             case .sendReadResponse(_, let data):
                 request.value = data
@@ -1535,20 +2186,28 @@ public final class BleTransport: NSObject, @unchecked Sendable {
         pm.respond(to: request, withResult: .requestNotSupported)
     }
 
-    public func processPeripheralReceiveWrite(_ pm: CBPeripheralManager, requests: [CBATTRequest], sourceEpoch: UInt64) {
-        transportLock.lock()
+    public func processPeripheralReceiveWrite(_ pm: CBPeripheralManager, requests: [CBATTRequest], sourceEpoch: UInt64) -> Void {
+        // T14: the whole reduction of this event - validation, transition,
+        // effect scheduling - is one operation on the epoch serial executor.
+        return onExecutor {
+            self.reductionProcessPeripheralReceiveWrite(pm, requests: requests, sourceEpoch: sourceEpoch)
+        }
+    }
+
+    public func reductionProcessPeripheralReceiveWrite(_ pm: CBPeripheralManager, requests: [CBATTRequest], sourceEpoch: UInt64) {
+        lockTransport()
         guard isStarted, managerEventIsAuthenticLocked(
             sourceEpoch: sourceEpoch,
             isCentral: false,
             sender: pm
         ) else {
-            transportLock.unlock()
+            unlockTransport()
             for r in requests {
                 pm.respond(to: r, withResult: .unlikelyError)
             }
             return
         }
-        transportLock.unlock()
+        unlockTransport()
 
         for r in requests {
             let centralId = r.central.identifier
@@ -1575,19 +2234,30 @@ public final class BleTransport: NSObject, @unchecked Sendable {
                     continue
                 }
 
-                transportLock.lock()
+                lockTransport()
                 guard let conn = inboundPeripheralConnections[centralId], conn.isRoleBound else {
-                    transportLock.unlock()
+                    unlockTransport()
                     pm.respond(to: r, withResult: .unlikelyError)
                     continue
                 }
 
                 let record = conn.ingestInboundAttValue(v)
-                transportLock.unlock()
+                unlockTransport()
 
                 if let rec = record, rec.recordType == .data && conn.state == .ready {
+                    // T14: as above - trust work outside, completion revalidated
+                    // on the executor against the very connection that earned it.
+                    recordTrustWorkForTest("open")
                     if let clear = sessions?.open(centralId, rec.payload) {
-                        delegate?.transportDidReceive(data: clear, peerId: centralId)
+                        self.onExecutor {
+                            self.lockTransport()
+                            let still = self.isStarted
+                                && (self.inboundPeripheralConnections[centralId] === conn)
+                                && conn.state == .ready
+                            self.unlockTransport()
+                            guard still else { return }
+                            self.delegate?.transportDidReceive(data: clear, peerId: centralId)
+                        }
                     }
                 }
                 pm.respond(to: r, withResult: .success)
@@ -1598,49 +2268,73 @@ public final class BleTransport: NSObject, @unchecked Sendable {
         }
     }
 
-    public func processPeripheralDidSubscribe(_ pm: CBPeripheralManager, central: CBCentral, characteristic ch: CBCharacteristic, sourceEpoch: UInt64) {
-        transportLock.lock()
+    public func processPeripheralDidSubscribe(_ pm: CBPeripheralManager, central: CBCentral, characteristic ch: CBCharacteristic, sourceEpoch: UInt64) -> Void {
+        // T14: the whole reduction of this event - validation, transition,
+        // effect scheduling - is one operation on the epoch serial executor.
+        return onExecutor {
+            self.reductionProcessPeripheralDidSubscribe(pm, central: central, characteristic: ch, sourceEpoch: sourceEpoch)
+        }
+    }
+
+    public func reductionProcessPeripheralDidSubscribe(_ pm: CBPeripheralManager, central: CBCentral, characteristic ch: CBCharacteristic, sourceEpoch: UInt64) {
+        lockTransport()
         guard isStarted, managerEventIsAuthenticLocked(
             sourceEpoch: sourceEpoch,
             isCentral: false,
             sender: pm
         ) else {
-            transportLock.unlock()
+            unlockTransport()
             return
         }
-        transportLock.unlock()
+        unlockTransport()
 
         guard ch.uuid == BleTransport.inboxCharacteristicUuid else { return }
         _ = processInboundSubscribe(centralId: central.identifier, central: central, maxUpdateLength: central.maximumUpdateValueLength, sourceEpoch: sourceEpoch, from: pm)
     }
 
-    public func processPeripheralDidUnsubscribe(_ pm: CBPeripheralManager, central: CBCentral, characteristic ch: CBCharacteristic, sourceEpoch: UInt64) {
-        transportLock.lock()
+    public func processPeripheralDidUnsubscribe(_ pm: CBPeripheralManager, central: CBCentral, characteristic ch: CBCharacteristic, sourceEpoch: UInt64) -> Void {
+        // T14: the whole reduction of this event - validation, transition,
+        // effect scheduling - is one operation on the epoch serial executor.
+        return onExecutor {
+            self.reductionProcessPeripheralDidUnsubscribe(pm, central: central, characteristic: ch, sourceEpoch: sourceEpoch)
+        }
+    }
+
+    public func reductionProcessPeripheralDidUnsubscribe(_ pm: CBPeripheralManager, central: CBCentral, characteristic ch: CBCharacteristic, sourceEpoch: UInt64) {
+        lockTransport()
         guard isStarted, managerEventIsAuthenticLocked(
             sourceEpoch: sourceEpoch,
             isCentral: false,
             sender: pm
         ) else {
-            transportLock.unlock()
+            unlockTransport()
             return
         }
-        transportLock.unlock()
+        unlockTransport()
 
         _ = processInboundUnsubscribe(centralId: central.identifier, expectedGen: 0, sourceEpoch: sourceEpoch, from: pm)
     }
 
-    public func processPeripheralIsReadyToUpdateSubscribers(_ pm: CBPeripheralManager, sourceEpoch: UInt64) {
-        transportLock.lock()
+    public func processPeripheralIsReadyToUpdateSubscribers(_ pm: CBPeripheralManager, sourceEpoch: UInt64) -> Void {
+        // T14: the whole reduction of this event - validation, transition,
+        // effect scheduling - is one operation on the epoch serial executor.
+        return onExecutor {
+            self.reductionProcessPeripheralIsReadyToUpdateSubscribers(pm, sourceEpoch: sourceEpoch)
+        }
+    }
+
+    public func reductionProcessPeripheralIsReadyToUpdateSubscribers(_ pm: CBPeripheralManager, sourceEpoch: UInt64) {
+        lockTransport()
         guard isStarted, managerEventIsAuthenticLocked(
             sourceEpoch: sourceEpoch,
             isCentral: false,
             sender: pm
         ) else {
-            transportLock.unlock()
+            unlockTransport()
             return
         }
         guard let inboxChar = mutableInboxCharacteristic else {
-            transportLock.unlock()
+            unlockTransport()
             return
         }
 
@@ -1666,7 +2360,7 @@ public final class BleTransport: NSObject, @unchecked Sendable {
                 pendingOutboundUpdates[centralId] = queue
             }
         }
-        transportLock.unlock()
+        unlockTransport()
     }
 }
 
