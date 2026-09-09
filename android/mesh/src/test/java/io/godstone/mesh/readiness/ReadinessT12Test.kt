@@ -239,6 +239,12 @@ class ReadinessT12Test {
         assertEquals("the lease left the authority once", 0, authority.outboundCount)
         val second = driver.onDisconnected(peer, 1L)
         assertTrue("the repeat of the very same event is an idempotent no-op", second is BleCentralAction.NoOp)
+        val repeat = driver.terminate(TerminalEvent(RelationKey(BleDirection.OUTBOUND, peer, 1L), TerminalReason.LOCAL_CANCEL))
+        assertFalse("the repeat does not transition again", repeat.transitioned)
+        assertFalse("the repeat is not mistaken for a foreign relation", repeat.refusedForeignGeneration)
+        assertTrue("the repeat is recognised as already terminal", repeat.alreadyTerminal)
+        assertFalse("the repeat schedules no close", repeat.closeCapturedGattRequired)
+        assertFalse("the repeat takes no publication down", repeat.unpublishEffectPending)
         assertEquals("the count did not fall below zero", 0, authority.outboundCount)
         val rested = driver.outboundSlotForTest(peer)
         if (rested != null) {
@@ -349,6 +355,9 @@ class ReadinessT12Test {
         assertTrue("the exact event transitions", exact.transitioned)
         assertTrue("and reports the close of the captured handle", exact.closeCapturedGattRequired)
         assertEquals("the lease left once", 0, authority.outboundCount)
+        val again = driver.terminate(TerminalEvent(RelationKey(BleDirection.OUTBOUND, "3E:00:00:00:03:28", 1L), TerminalReason.LOCAL_CANCEL))
+        assertFalse("the very same event never transitions twice", again.transitioned)
+        assertTrue("it is recognised as already terminal", again.alreadyTerminal)
     }
 
     @Test
