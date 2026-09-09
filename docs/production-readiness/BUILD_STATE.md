@@ -1,7 +1,7 @@
 # BUILD_STATE (generated view — not authoritative)
 
-- phase: P0  next task: **T11**
-- branch: `codex/production-blueprint`  last code head: `afddada23d90`
+- phase: P0  next task: **T12**
+- branch: `codex/production-blueprint`  last code head: `72002d62e241`
 
 ## Completed tasks
 
@@ -17,6 +17,7 @@
 | T08 | COMPLETE | `ae0c5390e895` | narrow(android-jvm) 739/739, narrow(swift-host) 8/8, subsystem(android-jvm) 739/739, subsystem(swift-host) 684/684, controls 3/3 |
 | T09 | COMPLETE | `5b75481cb3a4` | narrow(android-jvm) 13/13 ReadinessT09Test, subsystem(android-jvm) 752/752, controls 2/2; mutations M1+M2 KILLED |
 | T10 | COMPLETE | `afddada23d90` | narrow(android-jvm) 11/11 + narrow(swift-host) 12/12, subsystem(android-jvm) 763/763, subsystem(swift-host) 696/696, controls 3/3; mutants M1a/M2a/M3a/M1b/M2b/M3b KILLED |
+| T11 | COMPLETE | `72002d62e241` | narrow(android-jvm) 13/13, subsystem(android-jvm) 776/776, controls 2/2; mutants MU-A/MU-B/MU-C/MU-D/MU-E KILLED |
 
 ## External blockers (open)
 

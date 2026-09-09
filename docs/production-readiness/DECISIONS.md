@@ -149,3 +149,40 @@ the collection shape is the thing under test. The five-task boundary ladder
 (L0-L1) caught a latent ci/symbols.py misattribution (nested types stealing
 outer-class members) that had shipped green since T06; fixed with brace
 matched declaration regions (commit f9633dd).
+
+## D-T11-a [ACCEPTED] Context-bound scan callbacks and a single bounded discovery surface
+Android scan callbacks previously mutated transport state with no notion of
+which registration produced them: a delayed result of a stopped scan landed
+in the state of the next run, and the metadata, rssi and hint caches grew
+without limit under a flood of distinct advertisers (the driver's hint cache
+was write-only). After T11 a registration is created complete, epoch plus
+callback identity plus lease, before startScan is told to call anybody back.
+The platform shim performs no mutation: it captures an immutable ScanEvent
+naming its source context (no platform object rides the event; a late
+callback can deliver only the snapshot). All mutation runs in the reducer,
+which consults the exact context identity, the epoch read at arrival and the
+lease, at every step including revalidation on completion before the
+scheduling step. A scan failure terminates only its own context; permission
+restoration is simply a fresh registration, and stop() releases the run's
+registration and its bounded surface. BoundedDiscoveryIndex applies the
+64-peer bound before any insertion, on both the transport and the driver:
+least recently observed unpinned entries leave first, deterministically in
+observation order, while active relations - scheduled clients, live driver
+connections, published relations - are pinned and never evicted; if the
+whole surface is pinned a newcomer is expelled instead of disturbing live
+work. Metadata and signal are kept in one record per address so a flood
+counts once against one bound and the two fields can never diverge.
+
+## D-T11-b [ACCEPTED] Builder runtime facts (this environment)
+Gradle's build cache serves testDebugUnitTest FROM-CACHE and materializes the
+JUnit XML lazily: a mutation run whose tree hash matches a cached entry can
+produce an empty results directory, and even a genuinely failing run may not
+have unpacked the XML when the post-run extractor reads it. Mutation and
+verification invocations therefore pass --rerun-tasks, and extractors must
+fall back to the gradle "N tests completed, M failed" summary in the raw
+log. The android ScanCallback facade names its failure hook onScanFailed
+(not onScanFailure); BleLinkInfoConstants.SHORT_DIGEST_BYTES is 6, so a
+13-byte LinkInfo payload is version+flags+hint(4)+digest(6)+queue. The
+five-mutant campaign (arrival epoch read removed, arrival consultation
+removed, bound never enforced, pinning removed, failure clears the run) was
+killed with full 13-case executions and exact witnesses each.

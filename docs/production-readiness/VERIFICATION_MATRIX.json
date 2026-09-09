@@ -484,6 +484,49 @@
       "task_ids": [
         "T10"
       ]
+    },
+    {
+      "claim_id": "CLM-T11-SCANCTX",
+      "command_ids": [
+        "T11-narrow-gradlew"
+      ],
+      "evidence_class": "internal",
+      "evidence_sha256": null,
+      "latest_source_sha": "72002d62e241d2604f8bff388a2e40b220ddd786",
+      "limitations": "JVM-facade evidence; real controller callbacks, radio flood behavior and permission transitions belong to the T73-T75 device gates",
+      "production_path": "android/mesh/src/main/java/io/godstone/mesh/transport/ScanContext.kt",
+      "profile": "jvm-host",
+      "required_case_ids": [
+        "ReadinessT11Test"
+      ],
+      "requirement": "scan callbacks are bound to their registration: ScanContext(epoch, callback identity, lease) is created before startScan, the boundary only captures an immutable ScanEvent, the reducer mutates state only for the exact active context of a started transport in the currently open epoch with a live lease (epoch read at arrival), a scan failure terminates only its own context, and old-result replay changes nothing",
+      "result": "PASS",
+      "state_owner": "transport scan reducer (scan gate)",
+      "task_ids": [
+        "T11"
+      ]
+    },
+    {
+      "claim_id": "CLM-T11-BOUNDED",
+      "command_ids": [
+        "T11-narrow-gradlew",
+        "T11-subsystem-gradlew"
+      ],
+      "evidence_class": "internal",
+      "evidence_sha256": null,
+      "latest_source_sha": "72002d62e241d2604f8bff388a2e40b220ddd786",
+      "limitations": "JVM-facade evidence with 10000-address floods at the reducer; the platform scanner delivers the same records on real hardware only under the device gates",
+      "production_path": "android/mesh/src/main/java/io/godstone/mesh/transport/BoundedDiscoveryIndex.kt",
+      "profile": "jvm-host",
+      "required_case_ids": [
+        "ReadinessT11Test"
+      ],
+      "requirement": "the 64-discovered-peer bound is applied before inserting any peer metadata on the transport and the orchestration driver surfaces: least recently observed unpinned entries are evicted first and deterministically in observation order, active relations are pinned and never evicted, and re-observation refreshes without duplicating",
+      "result": "PASS",
+      "state_owner": "transport and driver discovery surfaces (BoundedDiscoveryIndex)",
+      "task_ids": [
+        "T11"
+      ]
     }
   ],
   "note": "Claims appended per task with real evidence; PASS requires positive case counts and matching command output. Device/independent claims never accept host-only results.",
