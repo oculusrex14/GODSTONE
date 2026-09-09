@@ -1641,12 +1641,12 @@ final class BleLinkSubstrateTests: XCTestCase {
             shortDigest: Data(repeating: 0, count: 6),
             queueDepth: 0
         )
-        let writeAct = transport.dispatchReceiveWrite(centralId: centralId, rawData: remoteLinkInfo)
+        let writeAct = transport.dispatchReceiveWrite(centralId: centralId, rawData: remoteLinkInfo, sourceEpoch: transport.currentTransportEpoch, from: transport.requireContextPeripheralForTest())
         XCTAssertEqual(writeAct, .acceptWrite(centralId, remoteHint))
         XCTAssertEqual(transport.capacityAuthority.inboundCount, 1)
 
         // 3. Exact duplicate write -> no crash, no extra lease
-        let dupAct = transport.dispatchReceiveWrite(centralId: centralId, rawData: remoteLinkInfo)
+        let dupAct = transport.dispatchReceiveWrite(centralId: centralId, rawData: remoteLinkInfo, sourceEpoch: transport.currentTransportEpoch, from: transport.requireContextPeripheralForTest())
         XCTAssertEqual(dupAct, .acceptDuplicateWrite(centralId, remoteHint))
         XCTAssertEqual(transport.capacityAuthority.inboundCount, 1)
 
@@ -1658,7 +1658,7 @@ final class BleLinkSubstrateTests: XCTestCase {
             shortDigest: Data(repeating: 0, count: 6),
             queueDepth: 0
         )
-        let conflictAct = transport.dispatchReceiveWrite(centralId: centralId, rawData: conflictLinkInfo)
+        let conflictAct = transport.dispatchReceiveWrite(centralId: centralId, rawData: conflictLinkInfo, sourceEpoch: transport.currentTransportEpoch, from: transport.requireContextPeripheralForTest())
         guard case .rejectWrite = conflictAct else {
             XCTFail("Expected rejectWrite for conflicting LinkInfo")
             return
@@ -1666,11 +1666,11 @@ final class BleLinkSubstrateTests: XCTestCase {
         XCTAssertEqual(transport.capacityAuthority.inboundCount, 1)
 
         // 5. Subscription -> physical duplex ready
-        let subAct = transport.dispatchSubscribe(centralId: centralId)
+        let subAct = transport.dispatchSubscribe(centralId: centralId, sourceEpoch: transport.currentTransportEpoch, from: transport.requireContextPeripheralForTest())
         XCTAssertEqual(subAct, .acceptSubscriptionAndDuplexReady(centralId))
 
         // 6. Unsubscribe -> releases exact lease
-        let unsubAct = transport.dispatchUnsubscribe(centralId: centralId)
+        let unsubAct = transport.dispatchUnsubscribe(centralId: centralId, expectedGen: 0, sourceEpoch: transport.currentTransportEpoch, from: transport.requireContextPeripheralForTest())
         XCTAssertEqual(unsubAct, .noOp)
         XCTAssertEqual(transport.capacityAuthority.inboundCount, 0)
 
@@ -1961,10 +1961,10 @@ final class BleLinkSubstrateTests: XCTestCase {
             queueDepth: 0
         )
 
-        let act1 = transport.processInboundWrite(centralId: centralId, rawData: remoteLinkInfo)
+        let act1 = transport.processInboundWrite(centralId: centralId, rawData: remoteLinkInfo, sourceEpoch: transport.currentTransportEpoch, from: transport.requireContextPeripheralForTest())
         XCTAssertEqual(act1, .acceptWrite(centralId, remoteHint))
 
-        let act2 = transport.processInboundWrite(centralId: centralId, rawData: remoteLinkInfo)
+        let act2 = transport.processInboundWrite(centralId: centralId, rawData: remoteLinkInfo, sourceEpoch: transport.currentTransportEpoch, from: transport.requireContextPeripheralForTest())
         XCTAssertEqual(act2, .acceptDuplicateWrite(centralId, remoteHint))
 
         transport.stop()
@@ -1986,11 +1986,11 @@ final class BleLinkSubstrateTests: XCTestCase {
             queueDepth: 0
         )
 
-        _ = transport.processInboundWrite(centralId: centralId, rawData: remoteLinkInfo)
-        _ = transport.processInboundSubscribe(centralId: centralId)
+        _ = transport.processInboundWrite(centralId: centralId, rawData: remoteLinkInfo, sourceEpoch: transport.currentTransportEpoch, from: transport.requireContextPeripheralForTest())
+        _ = transport.processInboundSubscribe(centralId: centralId, sourceEpoch: transport.currentTransportEpoch, from: transport.requireContextPeripheralForTest())
 
         // Duplicate write after subscription
-        let act2 = transport.processInboundWrite(centralId: centralId, rawData: remoteLinkInfo)
+        let act2 = transport.processInboundWrite(centralId: centralId, rawData: remoteLinkInfo, sourceEpoch: transport.currentTransportEpoch, from: transport.requireContextPeripheralForTest())
         XCTAssertEqual(act2, .acceptDuplicateWrite(centralId, remoteHint))
 
         transport.stop()
@@ -2012,8 +2012,8 @@ final class BleLinkSubstrateTests: XCTestCase {
             queueDepth: 0
         )
 
-        _ = transport.processInboundWrite(centralId: centralId, rawData: remoteLinkInfo)
-        _ = transport.processInboundSubscribe(centralId: centralId)
+        _ = transport.processInboundWrite(centralId: centralId, rawData: remoteLinkInfo, sourceEpoch: transport.currentTransportEpoch, from: transport.requireContextPeripheralForTest())
+        _ = transport.processInboundSubscribe(centralId: centralId, sourceEpoch: transport.currentTransportEpoch, from: transport.requireContextPeripheralForTest())
 
         // Trigger timeout callback while physical ready -> should clean up timer and leave connection ready
         transport.handleInboundTimeout(centralId: centralId, generation: 1)
@@ -2084,7 +2084,7 @@ final class BleLinkSubstrateTests: XCTestCase {
         let peerId = UUID()
 
         // 1. Initial discover -> active(1)
-        let act1 = transport.processOutboundDiscover(peerId: peerId, rssi: -60, serviceDataHint: Data([5, 0, 0, 0]))
+        let act1 = transport.processOutboundDiscover(peerId: peerId, rssi: -60, serviceDataHint: Data([5, 0, 0, 0]), sourceEpoch: transport.currentTransportEpoch, from: transport.requireContextCentralForTest())
         XCTAssertEqual(act1, .connectPeripheral(peerId))
         XCTAssertNotNil(transport.getOutboundLifetime(peerId))
         let proxy1 = transport.getRelationDelegate(peerId)
@@ -2095,17 +2095,17 @@ final class BleLinkSubstrateTests: XCTestCase {
         XCTAssertEqual(act2, .disconnectPeripheral(peerId, "Service discovery failed"))
 
         // 3. New discover for same peer while closing -> blocked (.noOp)
-        let act3 = transport.processOutboundDiscover(peerId: peerId, rssi: -60, serviceDataHint: Data([5, 0, 0, 0]))
+        let act3 = transport.processOutboundDiscover(peerId: peerId, rssi: -60, serviceDataHint: Data([5, 0, 0, 0]), sourceEpoch: transport.currentTransportEpoch, from: transport.requireContextCentralForTest())
         XCTAssertEqual(act3, .noOp)
 
         // 4. Platform disconnect callback observed -> slot quarantined
-        let act4 = transport.processOutboundDisconnect(peerId: peerId)
+        let act4 = transport.processOutboundDisconnect(peerId: peerId, expectedGen: 0, sourceEpoch: transport.currentTransportEpoch, from: transport.requireContextCentralForTest())
         XCTAssertEqual(act4, .noOp)
 
         // 5. Fresh epoch clears quarantine and admits replacement
         transport.stop()
         transport.start()
-        let act5 = transport.processOutboundDiscover(peerId: peerId, rssi: -60, serviceDataHint: Data([5, 0, 0, 0]))
+        let act5 = transport.processOutboundDiscover(peerId: peerId, rssi: -60, serviceDataHint: Data([5, 0, 0, 0]), sourceEpoch: transport.currentTransportEpoch, from: transport.requireContextCentralForTest())
         XCTAssertEqual(act5, .connectPeripheral(peerId))
         let lifetime2 = transport.getOutboundLifetime(peerId)
         XCTAssertNotNil(lifetime2)
@@ -2121,17 +2121,17 @@ final class BleLinkSubstrateTests: XCTestCase {
         let peerId = UUID()
         let oldEpoch = transport.currentTransportEpoch
 
-        _ = transport.processOutboundDiscover(peerId: peerId, rssi: -60, serviceDataHint: Data([5, 0, 0, 0]))
-        _ = transport.processOutboundDisconnect(peerId: peerId)
+        _ = transport.processOutboundDiscover(peerId: peerId, rssi: -60, serviceDataHint: Data([5, 0, 0, 0]), sourceEpoch: transport.currentTransportEpoch, from: transport.requireContextCentralForTest())
+        _ = transport.processOutboundDisconnect(peerId: peerId, expectedGen: 0, sourceEpoch: transport.currentTransportEpoch, from: transport.requireContextCentralForTest())
 
         // Fresh epoch clears quarantine
         transport.stop()
         transport.start()
-        _ = transport.processOutboundDiscover(peerId: peerId, rssi: -60, serviceDataHint: Data([5, 0, 0, 0]))
+        _ = transport.processOutboundDiscover(peerId: peerId, rssi: -60, serviceDataHint: Data([5, 0, 0, 0]), sourceEpoch: transport.currentTransportEpoch, from: transport.requireContextCentralForTest())
         XCTAssertEqual(transport.getOutboundLifetime(peerId)?.relationKey.generation, 1)
 
         // Stale disconnect from old generation from old epoch arrives
-        let staleAct = transport.processOutboundDisconnect(peerId: peerId, expectedGen: 1, sourceEpoch: oldEpoch)
+        let staleAct = transport.processOutboundDisconnect(peerId: peerId, expectedGen: 1, sourceEpoch: oldEpoch, from: transport.requireContextCentralForTest())
         XCTAssertEqual(staleAct, .noOp)
         XCTAssertEqual(transport.getOutboundLifetime(peerId)?.relationKey.generation, 1)
         XCTAssertNotNil(transport.connection(for: peerId))
@@ -2145,9 +2145,9 @@ final class BleLinkSubstrateTests: XCTestCase {
         transport.start()
         let peerId = UUID()
 
-        _ = transport.processOutboundDiscover(peerId: peerId, rssi: -60, serviceDataHint: Data([5, 0, 0, 0]))
+        _ = transport.processOutboundDiscover(peerId: peerId, rssi: -60, serviceDataHint: Data([5, 0, 0, 0]), sourceEpoch: transport.currentTransportEpoch, from: transport.requireContextCentralForTest())
         let proxy1 = transport.getRelationDelegate(peerId)!
-        _ = transport.processOutboundDisconnect(peerId: peerId)
+        _ = transport.processOutboundDisconnect(peerId: peerId, expectedGen: 0, sourceEpoch: transport.currentTransportEpoch, from: transport.requireContextCentralForTest())
 
         // Stale service discovery callback with proxy1 arrives -> noOp
         let staleAct = transport.processPeripheralDiscoverServices(nil, delegate: proxy1, error: nil)
@@ -2162,9 +2162,9 @@ final class BleLinkSubstrateTests: XCTestCase {
         transport.start()
         let peerId = UUID()
 
-        _ = transport.processOutboundDiscover(peerId: peerId, rssi: -60, serviceDataHint: Data([5, 0, 0, 0]))
+        _ = transport.processOutboundDiscover(peerId: peerId, rssi: -60, serviceDataHint: Data([5, 0, 0, 0]), sourceEpoch: transport.currentTransportEpoch, from: transport.requireContextCentralForTest())
         let proxy1 = transport.getRelationDelegate(peerId)!
-        _ = transport.processOutboundDisconnect(peerId: peerId)
+        _ = transport.processOutboundDisconnect(peerId: peerId, expectedGen: 0, sourceEpoch: transport.currentTransportEpoch, from: transport.requireContextCentralForTest())
 
         let ch = CBMutableCharacteristic(type: BleTransport.linkInfoCharacteristicUuid, properties: [.read], value: Data(repeating: 0, count: 13), permissions: [.readable])
         let staleAct = transport.processPeripheralUpdateValue(nil, delegate: proxy1, characteristic: ch, error: nil)
@@ -2179,9 +2179,9 @@ final class BleLinkSubstrateTests: XCTestCase {
         transport.start()
         let peerId = UUID()
 
-        _ = transport.processOutboundDiscover(peerId: peerId, rssi: -60, serviceDataHint: Data([5, 0, 0, 0]))
+        _ = transport.processOutboundDiscover(peerId: peerId, rssi: -60, serviceDataHint: Data([5, 0, 0, 0]), sourceEpoch: transport.currentTransportEpoch, from: transport.requireContextCentralForTest())
         let proxy1 = transport.getRelationDelegate(peerId)!
-        _ = transport.processOutboundDisconnect(peerId: peerId)
+        _ = transport.processOutboundDisconnect(peerId: peerId, expectedGen: 0, sourceEpoch: transport.currentTransportEpoch, from: transport.requireContextCentralForTest())
 
         let ch = CBMutableCharacteristic(type: BleTransport.inboxCharacteristicUuid, properties: [.notify], value: nil, permissions: [.readable])
         let staleAct = transport.processPeripheralNotificationStateUpdated(nil, delegate: proxy1, characteristic: ch, error: nil)
@@ -2203,17 +2203,17 @@ final class BleLinkSubstrateTests: XCTestCase {
             shortDigest: Data(repeating: 0, count: 6),
             queueDepth: 0
         )
-        _ = transport.processInboundWrite(centralId: centralId, rawData: info)
+        _ = transport.processInboundWrite(centralId: centralId, rawData: info, sourceEpoch: transport.currentTransportEpoch, from: transport.requireContextPeripheralForTest())
         let oldEpoch = transport.currentTransportEpoch
-        _ = transport.processInboundUnsubscribe(centralId: centralId)
+        _ = transport.processInboundUnsubscribe(centralId: centralId, expectedGen: 0, sourceEpoch: transport.currentTransportEpoch, from: transport.requireContextPeripheralForTest())
 
         // Fresh epoch clears quarantine
         transport.stop()
         transport.start()
-        _ = transport.processInboundWrite(centralId: centralId, rawData: info)
+        _ = transport.processInboundWrite(centralId: centralId, rawData: info, sourceEpoch: transport.currentTransportEpoch, from: transport.requireContextPeripheralForTest())
         XCTAssertEqual(transport.getInboundLifetime(centralId)?.relationKey.generation, 1)
 
-        let staleAct = transport.processInboundUnsubscribe(centralId: centralId, expectedGen: 1, sourceEpoch: oldEpoch)
+        let staleAct = transport.processInboundUnsubscribe(centralId: centralId, expectedGen: 1, sourceEpoch: oldEpoch, from: transport.requireContextPeripheralForTest())
         XCTAssertEqual(staleAct, .noOp)
         XCTAssertEqual(transport.getInboundLifetime(centralId)?.relationKey.generation, 1)
         XCTAssertNotNil(transport.connection(for: centralId))
@@ -2234,7 +2234,7 @@ final class BleLinkSubstrateTests: XCTestCase {
             shortDigest: Data(repeating: 0, count: 6),
             queueDepth: 0
         )
-        _ = transport.processInboundWrite(centralId: centralId, rawData: info)
+        _ = transport.processInboundWrite(centralId: centralId, rawData: info, sourceEpoch: transport.currentTransportEpoch, from: transport.requireContextPeripheralForTest())
         XCTAssertEqual(transport.getInboundLifetime(centralId)?.relationKey.generation, 1)
         let oldEpoch = transport.currentTransportEpoch
 
@@ -2245,11 +2245,11 @@ final class BleLinkSubstrateTests: XCTestCase {
         XCTAssertGreaterThan(newEpoch, oldEpoch)
 
         // New admission after restart
-        _ = transport.processInboundWrite(centralId: centralId, rawData: info)
+        _ = transport.processInboundWrite(centralId: centralId, rawData: info, sourceEpoch: transport.currentTransportEpoch, from: transport.requireContextPeripheralForTest())
         XCTAssertEqual(transport.getInboundLifetime(centralId)?.relationKey.generation, 1)
 
         // Stale unsubscribe from before epoch cannot delete post-restart relation (no synthetic expectedGen needed)
-        let staleAct = transport.processInboundUnsubscribe(centralId: centralId, expectedGen: 0, sourceEpoch: oldEpoch)
+        let staleAct = transport.processInboundUnsubscribe(centralId: centralId, expectedGen: 0, sourceEpoch: oldEpoch, from: transport.requireContextPeripheralForTest())
         XCTAssertEqual(staleAct, .noOp)
         XCTAssertNotNil(transport.connection(for: centralId))
         transport.stop()
@@ -2271,10 +2271,10 @@ final class BleLinkSubstrateTests: XCTestCase {
             queueDepth: 0
         )
 
-        _ = transport.processInboundWrite(centralId: centralId, rawData: remoteLinkInfo)
-        _ = transport.processInboundSubscribe(centralId: centralId)
+        _ = transport.processInboundWrite(centralId: centralId, rawData: remoteLinkInfo, sourceEpoch: transport.currentTransportEpoch, from: transport.requireContextPeripheralForTest())
+        _ = transport.processInboundSubscribe(centralId: centralId, sourceEpoch: transport.currentTransportEpoch, from: transport.requireContextPeripheralForTest())
 
-        let act = transport.processInboundWrite(centralId: centralId, rawData: remoteLinkInfo)
+        let act = transport.processInboundWrite(centralId: centralId, rawData: remoteLinkInfo, sourceEpoch: transport.currentTransportEpoch, from: transport.requireContextPeripheralForTest())
         XCTAssertEqual(act, .acceptDuplicateWrite(centralId, remoteHint))
 
         transport.stop()
@@ -2380,23 +2380,23 @@ final class BleLinkSubstrateTests: XCTestCase {
         )
 
         // 1. Initial write
-        let writeAct1 = transport.processInboundWrite(centralId: centralId, rawData: remoteLinkInfo)
+        let writeAct1 = transport.processInboundWrite(centralId: centralId, rawData: remoteLinkInfo, sourceEpoch: transport.currentTransportEpoch, from: transport.requireContextPeripheralForTest())
         XCTAssertEqual(writeAct1, .acceptWrite(centralId, remoteHint))
         XCTAssertEqual(delegate.connectedPeers.count, 0)
 
         // 2. Duplicate write
-        let writeAct2 = transport.processInboundWrite(centralId: centralId, rawData: remoteLinkInfo)
+        let writeAct2 = transport.processInboundWrite(centralId: centralId, rawData: remoteLinkInfo, sourceEpoch: transport.currentTransportEpoch, from: transport.requireContextPeripheralForTest())
         XCTAssertEqual(writeAct2, .acceptDuplicateWrite(centralId, remoteHint))
         XCTAssertEqual(delegate.connectedPeers.count, 0)
 
         // 3. Subscribe -> exactly 1 connect/duplexReady
-        let subAct = transport.processInboundSubscribe(centralId: centralId)
+        let subAct = transport.processInboundSubscribe(centralId: centralId, sourceEpoch: transport.currentTransportEpoch, from: transport.requireContextPeripheralForTest())
         XCTAssertEqual(subAct, .acceptSubscriptionAndDuplexReady(centralId))
         XCTAssertEqual(delegate.duplexReadyPeers, [centralId])
         XCTAssertEqual(delegate.connectedPeers, [centralId])
 
         // 4. Unsubscribe -> exactly 1 disconnect
-        let unsubAct = transport.processInboundUnsubscribe(centralId: centralId)
+        let unsubAct = transport.processInboundUnsubscribe(centralId: centralId, expectedGen: 0, sourceEpoch: transport.currentTransportEpoch, from: transport.requireContextPeripheralForTest())
         XCTAssertEqual(unsubAct, .noOp)
         XCTAssertEqual(delegate.disconnectedPeers, [centralId])
 
@@ -2479,7 +2479,7 @@ final class BleLinkSubstrateTests: XCTestCase {
         )
 
         // 1. Stale inbound write -> rejected fail-closed
-        let writeAct = transport.processInboundWrite(centralId: centralId, rawData: rawInfo, sourceEpoch: oldEpoch)
+        let writeAct = transport.processInboundWrite(centralId: centralId, rawData: rawInfo, sourceEpoch: oldEpoch, from: transport.requireContextPeripheralForTest())
         if case .rejectWrite = writeAct {} else {
             XCTFail("Stale epoch write must be rejected")
         }
@@ -2487,25 +2487,25 @@ final class BleLinkSubstrateTests: XCTestCase {
         XCTAssertNil(transport.connection(for: centralId))
 
         // 2. Stale inbound subscribe -> no-op fail-closed
-        let subAct = transport.processInboundSubscribe(centralId: centralId, sourceEpoch: oldEpoch)
+        let subAct = transport.processInboundSubscribe(centralId: centralId, sourceEpoch: oldEpoch, from: transport.requireContextPeripheralForTest())
         XCTAssertEqual(subAct, .noOp)
 
         // 3. Stale outbound discover -> no-op fail-closed
         let peerId = UUID()
-        let discAct = transport.processOutboundDiscover(peerId: peerId, sourceEpoch: oldEpoch)
+        let discAct = transport.processOutboundDiscover(peerId: peerId, sourceEpoch: oldEpoch, from: transport.requireContextCentralForTest())
         XCTAssertEqual(discAct, .noOp)
         XCTAssertNil(transport.getOutboundLifetime(peerId))
 
         // 4. Stale outbound connect -> no-op fail-closed
-        let connAct = transport.processCentralConnect(peerId: peerId, sourceEpoch: oldEpoch)
+        let connAct = transport.processCentralConnect(peerId: peerId, sourceEpoch: oldEpoch, from: transport.requireContextCentralForTest())
         XCTAssertEqual(connAct, .noOp)
 
         // 5. Stale outbound fail to connect -> no-op fail-closed
-        let failAct = transport.processCentralFailToConnect(peerId: peerId, sourceEpoch: oldEpoch)
+        let failAct = transport.processCentralFailToConnect(peerId: peerId, sourceEpoch: oldEpoch, from: transport.requireContextCentralForTest())
         XCTAssertEqual(failAct, .noOp)
 
         // 6. Stale outbound disconnect -> no-op fail-closed
-        let discOutAct = transport.processOutboundDisconnect(peerId: peerId, sourceEpoch: oldEpoch)
+        let discOutAct = transport.processOutboundDisconnect(peerId: peerId, expectedGen: 0, sourceEpoch: oldEpoch, from: transport.requireContextCentralForTest())
         XCTAssertEqual(discOutAct, .noOp)
 
         transport.stop()
@@ -2527,21 +2527,21 @@ final class BleLinkSubstrateTests: XCTestCase {
             queueDepth: 0
         )
 
-        let writeAct = transport.processInboundWrite(centralId: centralId, rawData: rawInfo)
+        let writeAct = transport.processInboundWrite(centralId: centralId, rawData: rawInfo, sourceEpoch: transport.currentTransportEpoch, from: transport.requireContextPeripheralForTest())
         if case .rejectWrite = writeAct {} else {
             XCTFail("Stopped transport write must be rejected")
         }
-        let subAct = transport.processInboundSubscribe(centralId: centralId)
+        let subAct = transport.processInboundSubscribe(centralId: centralId, sourceEpoch: transport.currentTransportEpoch, from: transport.requireContextPeripheralForTest())
         XCTAssertEqual(subAct, .noOp)
 
         let peerId = UUID()
-        let discAct = transport.processOutboundDiscover(peerId: peerId)
+        let discAct = transport.processOutboundDiscover(peerId: peerId, sourceEpoch: transport.currentTransportEpoch, from: transport.requireContextCentralForTest())
         XCTAssertEqual(discAct, .noOp)
-        let connAct = transport.processCentralConnect(peerId: peerId)
+        let connAct = transport.processCentralConnect(peerId: peerId, sourceEpoch: transport.currentTransportEpoch, from: transport.requireContextCentralForTest())
         XCTAssertEqual(connAct, .noOp)
-        let failAct = transport.processCentralFailToConnect(peerId: peerId)
+        let failAct = transport.processCentralFailToConnect(peerId: peerId, sourceEpoch: transport.currentTransportEpoch, from: transport.requireContextCentralForTest())
         XCTAssertEqual(failAct, .noOp)
-        let discOutAct = transport.processOutboundDisconnect(peerId: peerId)
+        let discOutAct = transport.processOutboundDisconnect(peerId: peerId, expectedGen: 0, sourceEpoch: transport.currentTransportEpoch, from: transport.requireContextCentralForTest())
         XCTAssertEqual(discOutAct, .noOp)
     }
 
@@ -2559,9 +2559,9 @@ final class BleLinkSubstrateTests: XCTestCase {
             shortDigest: Data(repeating: 0, count: 6),
             queueDepth: 0
         )
-        _ = transport.processInboundWrite(centralId: centralId, rawData: rawInfo)
-        _ = transport.processInboundSubscribe(centralId: centralId)
-        _ = transport.processInboundUnsubscribe(centralId: centralId)
+        _ = transport.processInboundWrite(centralId: centralId, rawData: rawInfo, sourceEpoch: transport.currentTransportEpoch, from: transport.requireContextPeripheralForTest())
+        _ = transport.processInboundSubscribe(centralId: centralId, sourceEpoch: transport.currentTransportEpoch, from: transport.requireContextPeripheralForTest())
+        _ = transport.processInboundUnsubscribe(centralId: centralId, expectedGen: 0, sourceEpoch: transport.currentTransportEpoch, from: transport.requireContextPeripheralForTest())
 
         let slotState = transport.peripheralDriver?.getInboundSlotState(centralId)
         if case .quarantined(let epoch, let gen) = slotState {
@@ -2587,12 +2587,12 @@ final class BleLinkSubstrateTests: XCTestCase {
             shortDigest: Data(repeating: 0, count: 6),
             queueDepth: 0
         )
-        _ = transport.processInboundWrite(centralId: centralId, rawData: rawInfo)
-        _ = transport.processInboundSubscribe(centralId: centralId)
-        _ = transport.processInboundUnsubscribe(centralId: centralId)
+        _ = transport.processInboundWrite(centralId: centralId, rawData: rawInfo, sourceEpoch: transport.currentTransportEpoch, from: transport.requireContextPeripheralForTest())
+        _ = transport.processInboundSubscribe(centralId: centralId, sourceEpoch: transport.currentTransportEpoch, from: transport.requireContextPeripheralForTest())
+        _ = transport.processInboundUnsubscribe(centralId: centralId, expectedGen: 0, sourceEpoch: transport.currentTransportEpoch, from: transport.requireContextPeripheralForTest())
 
         // Write from same central in same epoch must be rejected while quarantined
-        let writeAct = transport.processInboundWrite(centralId: centralId, rawData: rawInfo)
+        let writeAct = transport.processInboundWrite(centralId: centralId, rawData: rawInfo, sourceEpoch: transport.currentTransportEpoch, from: transport.requireContextPeripheralForTest())
         XCTAssertEqual(writeAct, .rejectWrite(centralId, "Central is quarantined"))
         transport.stop()
     }
@@ -2611,12 +2611,12 @@ final class BleLinkSubstrateTests: XCTestCase {
             shortDigest: Data(repeating: 0, count: 6),
             queueDepth: 0
         )
-        _ = transport.processInboundWrite(centralId: centralId, rawData: rawInfo)
-        _ = transport.processInboundSubscribe(centralId: centralId)
-        _ = transport.processInboundUnsubscribe(centralId: centralId)
+        _ = transport.processInboundWrite(centralId: centralId, rawData: rawInfo, sourceEpoch: transport.currentTransportEpoch, from: transport.requireContextPeripheralForTest())
+        _ = transport.processInboundSubscribe(centralId: centralId, sourceEpoch: transport.currentTransportEpoch, from: transport.requireContextPeripheralForTest())
+        _ = transport.processInboundUnsubscribe(centralId: centralId, expectedGen: 0, sourceEpoch: transport.currentTransportEpoch, from: transport.requireContextPeripheralForTest())
 
         // Subscribe from same central in same epoch must be rejected while quarantined
-        let subAct = transport.processInboundSubscribe(centralId: centralId)
+        let subAct = transport.processInboundSubscribe(centralId: centralId, sourceEpoch: transport.currentTransportEpoch, from: transport.requireContextPeripheralForTest())
         XCTAssertEqual(subAct, .rejectSubscription(centralId))
         transport.stop()
     }
@@ -2635,16 +2635,16 @@ final class BleLinkSubstrateTests: XCTestCase {
             shortDigest: Data(repeating: 0, count: 6),
             queueDepth: 0
         )
-        _ = transport.processInboundWrite(centralId: centralId, rawData: rawInfo)
-        _ = transport.processInboundSubscribe(centralId: centralId)
-        _ = transport.processInboundUnsubscribe(centralId: centralId)
+        _ = transport.processInboundWrite(centralId: centralId, rawData: rawInfo, sourceEpoch: transport.currentTransportEpoch, from: transport.requireContextPeripheralForTest())
+        _ = transport.processInboundSubscribe(centralId: centralId, sourceEpoch: transport.currentTransportEpoch, from: transport.requireContextPeripheralForTest())
+        _ = transport.processInboundUnsubscribe(centralId: centralId, expectedGen: 0, sourceEpoch: transport.currentTransportEpoch, from: transport.requireContextPeripheralForTest())
 
         // Advance to new epoch
         transport.stop()
         transport.start()
 
         // Fresh epoch clears quarantine and accepts new relation
-        let writeAct = transport.processInboundWrite(centralId: centralId, rawData: rawInfo)
+        let writeAct = transport.processInboundWrite(centralId: centralId, rawData: rawInfo, sourceEpoch: transport.currentTransportEpoch, from: transport.requireContextPeripheralForTest())
         XCTAssertEqual(writeAct, .acceptWrite(centralId, Data([0, 0, 0, 1])))
         XCTAssertEqual(transport.getInboundLifetime(centralId)?.relationKey.generation, 1)
         transport.stop()
@@ -2657,9 +2657,9 @@ final class BleLinkSubstrateTests: XCTestCase {
         transport.start()
 
         let peerId = UUID()
-        _ = transport.processOutboundDiscover(peerId: peerId)
-        _ = transport.processCentralConnect(peerId: peerId)
-        _ = transport.processOutboundDisconnect(peerId: peerId)
+        _ = transport.processOutboundDiscover(peerId: peerId, sourceEpoch: transport.currentTransportEpoch, from: transport.requireContextCentralForTest())
+        _ = transport.processCentralConnect(peerId: peerId, sourceEpoch: transport.currentTransportEpoch, from: transport.requireContextCentralForTest())
+        _ = transport.processOutboundDisconnect(peerId: peerId, expectedGen: 0, sourceEpoch: transport.currentTransportEpoch, from: transport.requireContextCentralForTest())
 
         let slotState = transport.centralDriver?.getOutboundSlotState(peerId)
         if case .quarantined(let epoch, let gen) = slotState {
@@ -2678,12 +2678,12 @@ final class BleLinkSubstrateTests: XCTestCase {
         transport.start()
 
         let peerId = UUID()
-        _ = transport.processOutboundDiscover(peerId: peerId)
-        _ = transport.processCentralConnect(peerId: peerId)
-        _ = transport.processOutboundDisconnect(peerId: peerId)
+        _ = transport.processOutboundDiscover(peerId: peerId, sourceEpoch: transport.currentTransportEpoch, from: transport.requireContextCentralForTest())
+        _ = transport.processCentralConnect(peerId: peerId, sourceEpoch: transport.currentTransportEpoch, from: transport.requireContextCentralForTest())
+        _ = transport.processOutboundDisconnect(peerId: peerId, expectedGen: 0, sourceEpoch: transport.currentTransportEpoch, from: transport.requireContextCentralForTest())
 
         // Subsequent discover for same peer in same epoch must be rejected as noOp
-        let discAct = transport.processOutboundDiscover(peerId: peerId)
+        let discAct = transport.processOutboundDiscover(peerId: peerId, sourceEpoch: transport.currentTransportEpoch, from: transport.requireContextCentralForTest())
         XCTAssertEqual(discAct, .noOp)
         transport.stop()
     }
@@ -2695,16 +2695,16 @@ final class BleLinkSubstrateTests: XCTestCase {
         transport.start()
 
         let peerId = UUID()
-        _ = transport.processOutboundDiscover(peerId: peerId)
-        _ = transport.processCentralConnect(peerId: peerId)
-        _ = transport.processOutboundDisconnect(peerId: peerId)
+        _ = transport.processOutboundDiscover(peerId: peerId, sourceEpoch: transport.currentTransportEpoch, from: transport.requireContextCentralForTest())
+        _ = transport.processCentralConnect(peerId: peerId, sourceEpoch: transport.currentTransportEpoch, from: transport.requireContextCentralForTest())
+        _ = transport.processOutboundDisconnect(peerId: peerId, expectedGen: 0, sourceEpoch: transport.currentTransportEpoch, from: transport.requireContextCentralForTest())
 
         // Advance to new epoch
         transport.stop()
         transport.start()
 
         // Fresh epoch clears quarantine and permits discovery
-        let discAct = transport.processOutboundDiscover(peerId: peerId)
+        let discAct = transport.processOutboundDiscover(peerId: peerId, sourceEpoch: transport.currentTransportEpoch, from: transport.requireContextCentralForTest())
         XCTAssertEqual(discAct, .connectPeripheral(peerId))
         XCTAssertEqual(transport.getOutboundLifetime(peerId)?.relationKey.generation, 1)
         transport.stop()
@@ -2717,10 +2717,10 @@ final class BleLinkSubstrateTests: XCTestCase {
         transport.start()
 
         let peerId = UUID()
-        _ = transport.processOutboundDiscover(peerId: peerId)
+        _ = transport.processOutboundDiscover(peerId: peerId, sourceEpoch: transport.currentTransportEpoch, from: transport.requireContextCentralForTest())
         XCTAssertEqual(transport.capacityAuthority.outboundCount, 1)
 
-        let failAct = transport.processCentralFailToConnect(peerId: peerId)
+        let failAct = transport.processCentralFailToConnect(peerId: peerId, sourceEpoch: transport.currentTransportEpoch, from: transport.requireContextCentralForTest())
         XCTAssertEqual(failAct, .disconnectPeripheral(peerId, "Connection failed"))
         XCTAssertEqual(transport.capacityAuthority.outboundCount, 0)
         XCTAssertNil(transport.getOutboundLifetime(peerId))
@@ -2749,11 +2749,11 @@ final class BleLinkSubstrateTests: XCTestCase {
             shortDigest: Data(repeating: 0, count: 6),
             queueDepth: 0
         )
-        _ = transport.processInboundWrite(centralId: centralId, rawData: rawInfo)
+        _ = transport.processInboundWrite(centralId: centralId, rawData: rawInfo, sourceEpoch: transport.currentTransportEpoch, from: transport.requireContextPeripheralForTest())
 
         let mockPeer = MockCBCentralPeer(id: centralId)
         let central = unsafeBitCast(mockPeer, to: CBCentral.self)
-        _ = transport.processInboundSubscribe(centralId: centralId, central: central)
+        _ = transport.processInboundSubscribe(centralId: centralId, central: central, sourceEpoch: transport.currentTransportEpoch, from: transport.requireContextPeripheralForTest())
 
         let retained = transport.getSubscribedCentral(centralId)
         XCTAssertNotNil(retained)
@@ -2775,24 +2775,24 @@ final class BleLinkSubstrateTests: XCTestCase {
             shortDigest: Data(repeating: 0, count: 6),
             queueDepth: 0
         )
-        _ = transport.processInboundWrite(centralId: centralId, rawData: rawInfo)
+        _ = transport.processInboundWrite(centralId: centralId, rawData: rawInfo, sourceEpoch: transport.currentTransportEpoch, from: transport.requireContextPeripheralForTest())
 
         let mockPeer = MockCBCentralPeer(id: centralId)
         let central = unsafeBitCast(mockPeer, to: CBCentral.self)
-        _ = transport.processInboundSubscribe(centralId: centralId, central: central)
+        _ = transport.processInboundSubscribe(centralId: centralId, central: central, sourceEpoch: transport.currentTransportEpoch, from: transport.requireContextPeripheralForTest())
         XCTAssertNotNil(transport.getSubscribedCentral(centralId))
 
-        _ = transport.processInboundUnsubscribe(centralId: centralId)
+        _ = transport.processInboundUnsubscribe(centralId: centralId, expectedGen: 0, sourceEpoch: transport.currentTransportEpoch, from: transport.requireContextPeripheralForTest())
         XCTAssertNil(transport.getSubscribedCentral(centralId))
 
         // Also test removal on handleInboundTimeout
         transport.stop()
         transport.start()
         let centralId2 = UUID()
-        _ = transport.processInboundWrite(centralId: centralId2, rawData: rawInfo)
+        _ = transport.processInboundWrite(centralId: centralId2, rawData: rawInfo, sourceEpoch: transport.currentTransportEpoch, from: transport.requireContextPeripheralForTest())
         let mockPeer2 = MockCBCentralPeer(id: centralId2)
         let central2 = unsafeBitCast(mockPeer2, to: CBCentral.self)
-        _ = transport.processInboundSubscribe(centralId: centralId2, central: central2)
+        _ = transport.processInboundSubscribe(centralId: centralId2, central: central2, sourceEpoch: transport.currentTransportEpoch, from: transport.requireContextPeripheralForTest())
         XCTAssertNotNil(transport.getSubscribedCentral(centralId2))
         transport.handleInboundTimeout(centralId: centralId2)
         XCTAssertNil(transport.getSubscribedCentral(centralId2))
@@ -2813,11 +2813,11 @@ final class BleLinkSubstrateTests: XCTestCase {
             shortDigest: Data(repeating: 0, count: 6),
             queueDepth: 0
         )
-        _ = transport.processInboundWrite(centralId: centralId, rawData: rawInfo)
+        _ = transport.processInboundWrite(centralId: centralId, rawData: rawInfo, sourceEpoch: transport.currentTransportEpoch, from: transport.requireContextPeripheralForTest())
 
         let mockPeer = MockCBCentralPeer(id: centralId)
         let central = unsafeBitCast(mockPeer, to: CBCentral.self)
-        _ = transport.processInboundSubscribe(centralId: centralId, central: central)
+        _ = transport.processInboundSubscribe(centralId: centralId, central: central, sourceEpoch: transport.currentTransportEpoch, from: transport.requireContextPeripheralForTest())
 
         let inboxChar = CBMutableCharacteristic(
             type: BleTransport.inboxCharacteristicUuid,
@@ -2853,8 +2853,8 @@ final class BleLinkSubstrateTests: XCTestCase {
         transport.start()
 
         let peerId = UUID()
-        _ = transport.processOutboundDiscover(peerId: peerId)
-        _ = transport.processCentralFailToConnect(peerId: peerId)
+        _ = transport.processOutboundDiscover(peerId: peerId, sourceEpoch: transport.currentTransportEpoch, from: transport.requireContextCentralForTest())
+        _ = transport.processCentralFailToConnect(peerId: peerId, sourceEpoch: transport.currentTransportEpoch, from: transport.requireContextCentralForTest())
 
         // Invoking timeout subsequently is a no-op
         let timeoutAct = transport.handleOutboundTimeout(peerId: peerId, generation: 1)

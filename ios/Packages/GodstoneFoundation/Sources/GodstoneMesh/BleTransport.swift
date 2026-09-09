@@ -61,6 +61,104 @@ public final class RelationPeripheralDelegate: NSObject, CBPeripheralDelegate, @
     }
 }
 
+///
+/// T13: the transport epoch's manager pair, created fresh per epoch.
+///
+/// Reassigning delegates on long-lived managers is not proof of
+/// callback-source identity: a reused manager carries state, wiring and
+/// in-flight callbacks across the epoch boundary. A transport epoch
+/// therefore owns a fresh CBCentralManager/CBPeripheralManager pair, born
+/// on a dedicated serial queue, with the epoch's delegate proxies wired
+/// at creation and never rewired afterwards. The reducer authenticates
+/// every manager-sourced event by three identities that must agree: the
+/// sending manager is the very instance of the active context, the wired
+/// delegate is still the context's own proxy, and the event names the
+/// context's epoch.
+///
+public protocol TransportManagerFactory {
+    func makeCentralManager(queue: DispatchQueue, restoreIdentifier: String?) -> CBCentralManager
+    func makePeripheralManager(queue: DispatchQueue, restoreIdentifier: String?) -> CBPeripheralManager
+}
+
+public final class DefaultTransportManagerFactory: TransportManagerFactory, @unchecked Sendable {
+    public init() {}
+
+    public func makeCentralManager(queue: DispatchQueue, restoreIdentifier: String?) -> CBCentralManager {
+        if let restoreIdentifier {
+            return CBCentralManager(
+                delegate: nil,
+                queue: queue,
+                options: [CBCentralManagerOptionRestoreIdentifierKey: restoreIdentifier]
+            )
+        }
+        return CBCentralManager(delegate: nil, queue: queue)
+    }
+
+    public func makePeripheralManager(queue: DispatchQueue, restoreIdentifier: String?) -> CBPeripheralManager {
+        if let restoreIdentifier {
+            return CBPeripheralManager(
+                delegate: nil,
+                queue: queue,
+                options: [CBPeripheralManagerOptionRestoreIdentifierKey: restoreIdentifier]
+            )
+        }
+        return CBPeripheralManager(delegate: nil, queue: queue)
+    }
+}
+
+public final class ManagerContext: @unchecked Sendable {
+    public let epoch: UInt64
+    public let queue: DispatchQueue
+    public let central: CBCentralManager
+    public let peripheral: CBPeripheralManager
+    public let centralProxy: CentralManagerEpochDelegate
+    public let peripheralProxy: PeripheralManagerEpochDelegate
+    private var retiredFlag = false
+    private let stateLock = NSLock()
+
+    init(
+        epoch: UInt64,
+        transport: BleTransport,
+        factory: TransportManagerFactory,
+        restoresState: Bool
+    ) {
+        self.epoch = epoch
+        self.queue = DispatchQueue(
+            label: "io.godstone.mesh.transport.epoch." + String(epoch),
+            qos: .utility,
+            attributes: []
+        )
+        let restorePrefix = restoresState ? "io.godstone.mesh.transport." + String(epoch) + "." : nil
+        self.central = factory.makeCentralManager(
+            queue: self.queue,
+            restoreIdentifier: restorePrefix.map { $0 + "central" }
+        )
+        self.peripheral = factory.makePeripheralManager(
+            queue: self.queue,
+            restoreIdentifier: restorePrefix.map { $0 + "peripheral" }
+        )
+        self.centralProxy = CentralManagerEpochDelegate(transportEpoch: epoch, transport: transport)
+        self.peripheralProxy = PeripheralManagerEpochDelegate(transportEpoch: epoch, transport: transport)
+        // The wiring belongs to the birth: it happens once, on the way to
+        // the queue the pair will run on, and is never repeated.
+        self.central.delegate = self.centralProxy
+        self.peripheral.delegate = self.peripheralProxy
+    }
+
+    public var isRetired: Bool {
+        stateLock.lock()
+        let value = retiredFlag
+        stateLock.unlock()
+        return value
+    }
+
+    public func retire() {
+        stateLock.lock()
+        retiredFlag = true
+        stateLock.unlock()
+    }
+}
+
 public final class CentralManagerEpochDelegate: NSObject, CBCentralManagerDelegate, @unchecked Sendable {
     public let transportEpoch: UInt64
     public weak var transport: BleTransport?
@@ -84,15 +182,15 @@ public final class CentralManagerEpochDelegate: NSObject, CBCentralManagerDelega
     }
 
     public func centralManager(_ c: CBCentralManager, didConnect p: CBPeripheral) {
-        _ = transport?.processCentralConnect(peerId: p.identifier, peripheral: p, sourceEpoch: transportEpoch)
+        _ = transport?.processCentralConnect(peerId: p.identifier, peripheral: p, sourceEpoch: transportEpoch, from: c)
     }
 
     public func centralManager(_ c: CBCentralManager, didFailToConnect p: CBPeripheral, error: Error?) {
-        _ = transport?.processCentralFailToConnect(peerId: p.identifier, error: error, peripheral: p, sourceEpoch: transportEpoch)
+        _ = transport?.processCentralFailToConnect(peerId: p.identifier, error: error, peripheral: p, sourceEpoch: transportEpoch, from: c)
     }
 
     public func centralManager(_ c: CBCentralManager, didDisconnectPeripheral p: CBPeripheral, error: Error?) {
-        _ = transport?.processOutboundDisconnect(peerId: p.identifier, peripheral: p, sourceEpoch: transportEpoch)
+        _ = transport?.processOutboundDisconnect(peerId: p.identifier, expectedGen: 0, peripheral: p, sourceEpoch: transportEpoch, from: c)
     }
 }
 
@@ -210,8 +308,100 @@ public final class BleTransport: NSObject, @unchecked Sendable {
     private var activeInboundLifetimes: [UUID: InboundSubscriptionLifetime] = [:]
     private var relationDelegates: [UUID: RelationPeripheralDelegate] = [:]
 
-    private var central: CBCentralManager?
-    private var peripheral: CBPeripheralManager?
+    private var activeManagerContext: ManagerContext?
+    private var lastRetiredManagerContext: ManagerContext?
+    private let managerFactory: TransportManagerFactory
+
+    /// The pair of the active epoch, when one is open.
+    private var central: CBCentralManager? {
+        return activeManagerContext?.central
+    }
+
+    /// The pair of the active epoch, when one is open.
+    private var peripheral: CBPeripheralManager? {
+        return activeManagerContext?.peripheral
+    }
+
+    /// Test seam: the context of the active transport epoch, if any.
+    public func currentManagerContextForTest() -> ManagerContext? {
+        transportLock.lock()
+        let value = activeManagerContext
+        transportLock.unlock()
+        return value
+    }
+
+    /// Test seam: the most recently retired context, kept so the
+    /// late-callback cases can deliver through the very objects the
+    /// previous epoch ran on.
+    public func lastRetiredManagerContextForTest() -> ManagerContext? {
+        transportLock.lock()
+        let value = lastRetiredManagerContext
+        transportLock.unlock()
+        return value
+    }
+
+    /// Authenticates one manager-sourced event. The sending manager must
+    /// be the very instance of the active context, the wired delegate must
+    /// still be the context's own proxy, and the event must name the
+    /// context's epoch. No token wildcard, no current-state stand-in:
+    /// reassigning delegates on a reused manager proves nothing.
+    /// The transport lock is held by the calling reducer.
+    private func managerEventIsAuthenticLocked(
+        sourceEpoch: UInt64,
+        isCentral: Bool,
+        sender: AnyObject?
+    ) -> Bool {
+        guard isStarted else { return false }
+        guard let context = activeManagerContext else { return false }
+        if context.isRetired {
+            return false
+        }
+        guard sourceEpoch == context.epoch, context.epoch == currentTransportEpoch else { return false }
+        guard let sender else { return false }
+        let expectedManager: AnyObject = isCentral ? context.central : context.peripheral
+        guard sender === expectedManager else { return false }
+        let wired: AnyObject? = isCentral ? (context.central.delegate as AnyObject?) : (context.peripheral.delegate as AnyObject?)
+        let proxy: AnyObject = isCentral ? context.centralProxy : context.peripheralProxy
+        guard wired === proxy else { return false }
+        return true
+    }
+
+    /// Test seam: the central manager of the open epoch context; the
+    /// composition harness attributes its dispatched central events to it,
+    /// so no event travels without naming its source instance.
+    public func requireContextCentralForTest() -> CBCentralManager {
+        transportLock.lock()
+        let value = activeManagerContext?.central ?? lastRetiredManagerContext?.central
+        transportLock.unlock()
+        precondition(value != nil, "no transport epoch has ever opened on this instance: start the transport before dispatching manager-sourced events")
+        return value!
+    }
+
+    /// Test seam: the peripheral manager of the open epoch context.
+    public func requireContextPeripheralForTest() -> CBPeripheralManager {
+        transportLock.lock()
+        let value = activeManagerContext?.peripheral ?? lastRetiredManagerContext?.peripheral
+        transportLock.unlock()
+        precondition(value != nil, "no transport epoch has ever opened on this instance: start the transport before dispatching manager-sourced events")
+        return value!
+    }
+
+    /// Test seam: deliver the authentication decision the reducer makes for
+    /// one manager-sourced event, so the suite can pin refusals directly.
+    public func managerEventIsAuthenticForTest(
+        sourceEpoch: UInt64,
+        isCentral: Bool,
+        sender: AnyObject?
+    ) -> Bool {
+        transportLock.lock()
+        let value = managerEventIsAuthenticLocked(
+            sourceEpoch: sourceEpoch,
+            isCentral: isCentral,
+            sender: sender
+        )
+        transportLock.unlock()
+        return value
+    }
 
     private var isStarted = false
     private var isBackgrounded = false
@@ -257,28 +447,19 @@ public final class BleTransport: NSObject, @unchecked Sendable {
         identity: MeshIdentity? = nil,
         store: MessageStore? = nil,
         sessions: SessionManager? = nil,
-        provisionalTimeoutSeconds: TimeInterval = 10.0
+        provisionalTimeoutSeconds: TimeInterval = 10.0,
+        managerFactory: TransportManagerFactory? = nil
     ) {
         self.identity = identity
         self.store = store
         self.sessions = sessions
         self.provisionalTimeoutSeconds = provisionalTimeoutSeconds
+        self.managerFactory = managerFactory ?? DefaultTransportManagerFactory()
         super.init()
         self.snapshotAuthority = LinkInfoSnapshotAuthority(
             identityProvider: { [weak self] in self?.identity },
             storeProvider: { [weak self] in self?.store }
         )
-
-        #if !os(macOS)
-        let isTesting = ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] != nil || NSClassFromString("XCTestCase") != nil
-        if isTesting {
-            central = CBCentralManager(delegate: nil, queue: .global(qos: .utility))
-            peripheral = CBPeripheralManager(delegate: nil, queue: .global(qos: .utility))
-        } else {
-            central = CBCentralManager(delegate: nil, queue: .global(qos: .utility), options: [CBCentralManagerOptionRestoreIdentifierKey: "io.godstone.central"])
-            peripheral = CBPeripheralManager(delegate: nil, queue: .global(qos: .utility), options: [CBPeripheralManagerOptionRestoreIdentifierKey: "io.godstone.peripheral"])
-        }
-        #endif
     }
 
     public func getOutboundLifetime(_ peerId: UUID) -> OutboundPhysicalLifetime? {
@@ -324,14 +505,24 @@ public final class BleTransport: NSObject, @unchecked Sendable {
             return
         }
         currentTransportEpoch += 1
-        let centralEpochDelegate = CentralManagerEpochDelegate(transportEpoch: currentTransportEpoch, transport: self)
-        let peripheralEpochDelegate = PeripheralManagerEpochDelegate(transportEpoch: currentTransportEpoch, transport: self)
-        activeCentralEpochDelegate = centralEpochDelegate
-        activePeripheralEpochDelegate = peripheralEpochDelegate
+        // T13: the epoch opens with a fresh pair on a dedicated serial
+        // queue, wired to its own proxies at birth. Reassigning delegates
+        // on a reused manager is not the design: nothing here touches a
+        // manager that a previous epoch already saw.
         #if !os(macOS)
-        central?.delegate = centralEpochDelegate
-        peripheral?.delegate = peripheralEpochDelegate
+        let restoresState = !ProcessInfo.processInfo.environment.keys.contains(where: { $0.hasPrefix("XCTest") })
+        #else
+        let restoresState = false
         #endif
+        let context = ManagerContext(
+            epoch: currentTransportEpoch,
+            transport: self,
+            factory: managerFactory,
+            restoresState: restoresState
+        )
+        activeManagerContext = context
+        activeCentralEpochDelegate = context.centralProxy
+        activePeripheralEpochDelegate = context.peripheralProxy
 
         let localHint = identity?.nodeHint ?? Data(repeating: 0, count: BleRoleElection.nodeHintBytes)
         centralDriver = BleCentralOrchestrationDriver(
@@ -368,6 +559,13 @@ public final class BleTransport: NSObject, @unchecked Sendable {
         // FIRST: Invalidate active transport epoch
         isStarted = false
         currentTransportEpoch += 1
+        // T13: the closing epoch retires its pair. The objects leave the
+        // stage as they came; the next opening creates fresh ones.
+        if let context = activeManagerContext {
+            context.retire()
+            lastRetiredManagerContext = context
+        }
+        activeManagerContext = nil
         activeCentralEpochDelegate = nil
         activePeripheralEpochDelegate = nil
         #if !os(macOS)
@@ -615,10 +813,14 @@ public final class BleTransport: NSObject, @unchecked Sendable {
         rssi: Int = -60,
         serviceDataHint: Data? = nil,
         peripheral: CBPeripheral? = nil,
-        sourceEpoch: UInt64 = 0
+        sourceEpoch: UInt64, from manager: CBCentralManager
     ) -> BleCentralAction {
         transportLock.lock()
-        guard isStarted, (sourceEpoch == 0 || sourceEpoch == currentTransportEpoch) else {
+        guard isStarted, managerEventIsAuthenticLocked(
+            sourceEpoch: sourceEpoch,
+            isCentral: true,
+            sender: manager
+        ) else {
             transportLock.unlock()
             return .noOp
         }
@@ -654,9 +856,13 @@ public final class BleTransport: NSObject, @unchecked Sendable {
         return action
     }
 
-    public func processCentralConnect(peerId: UUID, peripheral: CBPeripheral? = nil, sourceEpoch: UInt64 = 0) -> BleCentralAction {
+    public func processCentralConnect(peerId: UUID, peripheral: CBPeripheral? = nil, sourceEpoch: UInt64, from manager: CBCentralManager) -> BleCentralAction {
         transportLock.lock()
-        guard isStarted, (sourceEpoch == 0 || sourceEpoch == currentTransportEpoch) else {
+        guard isStarted, managerEventIsAuthenticLocked(
+            sourceEpoch: sourceEpoch,
+            isCentral: true,
+            sender: manager
+        ) else {
             transportLock.unlock()
             return .noOp
         }
@@ -678,9 +884,13 @@ public final class BleTransport: NSObject, @unchecked Sendable {
         return action
     }
 
-    public func processCentralFailToConnect(peerId: UUID, error: Error? = nil, peripheral: CBPeripheral? = nil, sourceEpoch: UInt64 = 0) -> BleCentralAction {
+    public func processCentralFailToConnect(peerId: UUID, error: Error? = nil, peripheral: CBPeripheral? = nil, sourceEpoch: UInt64, from manager: CBCentralManager) -> BleCentralAction {
         transportLock.lock()
-        guard isStarted, (sourceEpoch == 0 || sourceEpoch == currentTransportEpoch) else {
+        guard isStarted, managerEventIsAuthenticLocked(
+            sourceEpoch: sourceEpoch,
+            isCentral: true,
+            sender: manager
+        ) else {
             transportLock.unlock()
             return .noOp
         }
@@ -711,9 +921,13 @@ public final class BleTransport: NSObject, @unchecked Sendable {
         return action
     }
 
-    public func processOutboundDisconnect(peerId: UUID, expectedGen: UInt64 = 0, peripheral: CBPeripheral? = nil, sourceEpoch: UInt64 = 0) -> BleCentralAction {
+    public func processOutboundDisconnect(peerId: UUID, expectedGen: UInt64, peripheral: CBPeripheral? = nil, sourceEpoch: UInt64, from manager: CBCentralManager) -> BleCentralAction {
         transportLock.lock()
-        guard isStarted, (sourceEpoch == 0 || sourceEpoch == currentTransportEpoch) else {
+        guard isStarted, managerEventIsAuthenticLocked(
+            sourceEpoch: sourceEpoch,
+            isCentral: true,
+            sender: manager
+        ) else {
             transportLock.unlock()
             return .noOp
         }
@@ -974,9 +1188,13 @@ public final class BleTransport: NSObject, @unchecked Sendable {
         }
     }
 
-    public func processInboundWrite(centralId: UUID, rawData: Data, sourceEpoch: UInt64 = 0) -> BlePeripheralAction {
+    public func processInboundWrite(centralId: UUID, rawData: Data, sourceEpoch: UInt64, from manager: CBPeripheralManager) -> BlePeripheralAction {
         transportLock.lock()
-        guard isStarted, (sourceEpoch == 0 || sourceEpoch == currentTransportEpoch) else {
+        guard isStarted, managerEventIsAuthenticLocked(
+            sourceEpoch: sourceEpoch,
+            isCentral: false,
+            sender: manager
+        ) else {
             transportLock.unlock()
             return .rejectWrite(centralId, "Transport not started or stale epoch")
         }
@@ -1021,9 +1239,13 @@ public final class BleTransport: NSObject, @unchecked Sendable {
         return action
     }
 
-    public func processInboundSubscribe(centralId: UUID, central: CBCentral? = nil, maxUpdateLength: Int = 512, sourceEpoch: UInt64 = 0) -> BlePeripheralAction {
+    public func processInboundSubscribe(centralId: UUID, central: CBCentral? = nil, maxUpdateLength: Int = 512, sourceEpoch: UInt64, from manager: CBPeripheralManager) -> BlePeripheralAction {
         transportLock.lock()
-        guard isStarted, (sourceEpoch == 0 || sourceEpoch == currentTransportEpoch) else {
+        guard isStarted, managerEventIsAuthenticLocked(
+            sourceEpoch: sourceEpoch,
+            isCentral: false,
+            sender: manager
+        ) else {
             transportLock.unlock()
             return .noOp
         }
@@ -1058,10 +1280,14 @@ public final class BleTransport: NSObject, @unchecked Sendable {
         return action
     }
 
-    public func processInboundUnsubscribe(centralId: UUID, expectedGen: UInt64 = 0, sourceEpoch: UInt64 = 0) -> BlePeripheralAction {
+    public func processInboundUnsubscribe(centralId: UUID, expectedGen: UInt64, sourceEpoch: UInt64, from manager: CBPeripheralManager) -> BlePeripheralAction {
         guard let driver = peripheralDriver else { return .noOp }
         transportLock.lock()
-        guard isStarted, (sourceEpoch == 0 || sourceEpoch == currentTransportEpoch) else {
+        guard isStarted, managerEventIsAuthenticLocked(
+            sourceEpoch: sourceEpoch,
+            isCentral: false,
+            sender: manager
+        ) else {
             transportLock.unlock()
             return .noOp
         }
@@ -1114,16 +1340,16 @@ public final class BleTransport: NSObject, @unchecked Sendable {
         return peripheralDriver?.onCentralRead(centralId: centralId) ?? .noOp
     }
 
-    public func dispatchReceiveWrite(centralId: UUID, rawData: Data) -> BlePeripheralAction {
-        return processInboundWrite(centralId: centralId, rawData: rawData)
+    public func dispatchReceiveWrite(centralId: UUID, rawData: Data, sourceEpoch: UInt64, from manager: CBPeripheralManager) -> BlePeripheralAction {
+        return processInboundWrite(centralId: centralId, rawData: rawData, sourceEpoch: sourceEpoch, from: manager)
     }
 
-    public func dispatchSubscribe(centralId: UUID) -> BlePeripheralAction {
-        return processInboundSubscribe(centralId: centralId)
+    public func dispatchSubscribe(centralId: UUID, sourceEpoch: UInt64, from manager: CBPeripheralManager) -> BlePeripheralAction {
+        return processInboundSubscribe(centralId: centralId, sourceEpoch: sourceEpoch, from: manager)
     }
 
-    public func dispatchUnsubscribe(centralId: UUID, expectedGen: UInt64 = 0) -> BlePeripheralAction {
-        return processInboundUnsubscribe(centralId: centralId, expectedGen: expectedGen)
+    public func dispatchUnsubscribe(centralId: UUID, expectedGen: UInt64, sourceEpoch: UInt64, from manager: CBPeripheralManager) -> BlePeripheralAction {
+        return processInboundUnsubscribe(centralId: centralId, expectedGen: expectedGen, sourceEpoch: sourceEpoch, from: manager)
     }
 
     public func dispatchOutboundProvisionalTimeout(peerId: UUID, expectedGen: UInt64 = 0) -> BleCentralAction {
@@ -1145,7 +1371,11 @@ public final class BleTransport: NSObject, @unchecked Sendable {
 
     public func processCentralDidUpdateState(_ c: CBCentralManager, sourceEpoch: UInt64) {
         transportLock.lock()
-        guard isStarted, sourceEpoch == currentTransportEpoch else {
+        guard isStarted, managerEventIsAuthenticLocked(
+            sourceEpoch: sourceEpoch,
+            isCentral: true,
+            sender: c
+        ) else {
             transportLock.unlock()
             return
         }
@@ -1159,7 +1389,11 @@ public final class BleTransport: NSObject, @unchecked Sendable {
     public func processCentralWillRestoreState(_ c: CBCentralManager, dict: [String: Any], sourceEpoch: UInt64) {
         transportLock.lock()
         defer { transportLock.unlock() }
-        guard isStarted, sourceEpoch == currentTransportEpoch else { return }
+        guard isStarted, managerEventIsAuthenticLocked(
+            sourceEpoch: sourceEpoch,
+            isCentral: true,
+            sender: c
+        ) else { return }
         if let peers = dict[CBCentralManagerRestoredStatePeripheralsKey] as? [CBPeripheral] {
             for p in peers {
                 connectedPeripherals[p.identifier] = p
@@ -1178,7 +1412,11 @@ public final class BleTransport: NSObject, @unchecked Sendable {
 
         var metaHint: Data? = nil
         transportLock.lock()
-        guard isStarted, sourceEpoch == currentTransportEpoch else {
+        guard isStarted, managerEventIsAuthenticLocked(
+            sourceEpoch: sourceEpoch,
+            isCentral: true,
+            sender: c
+        ) else {
             transportLock.unlock()
             return
         }
@@ -1196,7 +1434,7 @@ public final class BleTransport: NSObject, @unchecked Sendable {
         }
         transportLock.unlock()
 
-        let action = processOutboundDiscover(peerId: p.identifier, rssi: RSSI.intValue, serviceDataHint: metaHint, peripheral: p, sourceEpoch: sourceEpoch)
+        let action = processOutboundDiscover(peerId: p.identifier, rssi: RSSI.intValue, serviceDataHint: metaHint, peripheral: p, sourceEpoch: sourceEpoch, from: c)
         if case .connectPeripheral = action {
             c.connect(p, options: nil)
         }
@@ -1204,7 +1442,11 @@ public final class BleTransport: NSObject, @unchecked Sendable {
 
     public func processPeripheralManagerDidUpdateState(_ pm: CBPeripheralManager, sourceEpoch: UInt64) {
         transportLock.lock()
-        guard isStarted, sourceEpoch == currentTransportEpoch else {
+        guard isStarted, managerEventIsAuthenticLocked(
+            sourceEpoch: sourceEpoch,
+            isCentral: false,
+            sender: pm
+        ) else {
             transportLock.unlock()
             return
         }
@@ -1227,7 +1469,11 @@ public final class BleTransport: NSObject, @unchecked Sendable {
 
     public func processPeripheralDidAddService(_ pm: CBPeripheralManager, service: CBService, error: Error?, sourceEpoch: UInt64) {
         transportLock.lock()
-        guard isStarted, sourceEpoch == currentTransportEpoch else {
+        guard isStarted, managerEventIsAuthenticLocked(
+            sourceEpoch: sourceEpoch,
+            isCentral: false,
+            sender: pm
+        ) else {
             transportLock.unlock()
             return
         }
@@ -1243,11 +1489,27 @@ public final class BleTransport: NSObject, @unchecked Sendable {
     }
 
     public func processPeripheralWillRestoreState(_ pm: CBPeripheralManager, dict: [String: Any], sourceEpoch: UInt64) {
+        transportLock.lock()
+        let authentic = managerEventIsAuthenticLocked(
+            sourceEpoch: sourceEpoch,
+            isCentral: false,
+            sender: pm
+        )
+        guard isStarted, authentic else {
+            transportLock.unlock()
+            return
+        }
+        transportLock.unlock()
+    
     }
 
     public func processPeripheralReceiveRead(_ pm: CBPeripheralManager, request: CBATTRequest, sourceEpoch: UInt64) {
         transportLock.lock()
-        guard isStarted, sourceEpoch == currentTransportEpoch else {
+        guard isStarted, managerEventIsAuthenticLocked(
+            sourceEpoch: sourceEpoch,
+            isCentral: false,
+            sender: pm
+        ) else {
             transportLock.unlock()
             pm.respond(to: request, withResult: .unlikelyError)
             return
@@ -1275,7 +1537,11 @@ public final class BleTransport: NSObject, @unchecked Sendable {
 
     public func processPeripheralReceiveWrite(_ pm: CBPeripheralManager, requests: [CBATTRequest], sourceEpoch: UInt64) {
         transportLock.lock()
-        guard isStarted, sourceEpoch == currentTransportEpoch else {
+        guard isStarted, managerEventIsAuthenticLocked(
+            sourceEpoch: sourceEpoch,
+            isCentral: false,
+            sender: pm
+        ) else {
             transportLock.unlock()
             for r in requests {
                 pm.respond(to: r, withResult: .unlikelyError)
@@ -1297,7 +1563,7 @@ public final class BleTransport: NSObject, @unchecked Sendable {
                     continue
                 }
 
-                let action = processInboundWrite(centralId: centralId, rawData: v, sourceEpoch: sourceEpoch)
+                let action = processInboundWrite(centralId: centralId, rawData: v, sourceEpoch: sourceEpoch, from: pm)
                 let result = decideInboundWriteAttResponse(action: action)
                 pm.respond(to: r, withResult: result)
                 continue
@@ -1334,30 +1600,42 @@ public final class BleTransport: NSObject, @unchecked Sendable {
 
     public func processPeripheralDidSubscribe(_ pm: CBPeripheralManager, central: CBCentral, characteristic ch: CBCharacteristic, sourceEpoch: UInt64) {
         transportLock.lock()
-        guard isStarted, sourceEpoch == currentTransportEpoch else {
+        guard isStarted, managerEventIsAuthenticLocked(
+            sourceEpoch: sourceEpoch,
+            isCentral: false,
+            sender: pm
+        ) else {
             transportLock.unlock()
             return
         }
         transportLock.unlock()
 
         guard ch.uuid == BleTransport.inboxCharacteristicUuid else { return }
-        _ = processInboundSubscribe(centralId: central.identifier, central: central, maxUpdateLength: central.maximumUpdateValueLength, sourceEpoch: sourceEpoch)
+        _ = processInboundSubscribe(centralId: central.identifier, central: central, maxUpdateLength: central.maximumUpdateValueLength, sourceEpoch: sourceEpoch, from: pm)
     }
 
     public func processPeripheralDidUnsubscribe(_ pm: CBPeripheralManager, central: CBCentral, characteristic ch: CBCharacteristic, sourceEpoch: UInt64) {
         transportLock.lock()
-        guard isStarted, sourceEpoch == currentTransportEpoch else {
+        guard isStarted, managerEventIsAuthenticLocked(
+            sourceEpoch: sourceEpoch,
+            isCentral: false,
+            sender: pm
+        ) else {
             transportLock.unlock()
             return
         }
         transportLock.unlock()
 
-        _ = processInboundUnsubscribe(centralId: central.identifier, sourceEpoch: sourceEpoch)
+        _ = processInboundUnsubscribe(centralId: central.identifier, expectedGen: 0, sourceEpoch: sourceEpoch, from: pm)
     }
 
     public func processPeripheralIsReadyToUpdateSubscribers(_ pm: CBPeripheralManager, sourceEpoch: UInt64) {
         transportLock.lock()
-        guard isStarted, sourceEpoch == currentTransportEpoch else {
+        guard isStarted, managerEventIsAuthenticLocked(
+            sourceEpoch: sourceEpoch,
+            isCentral: false,
+            sender: pm
+        ) else {
             transportLock.unlock()
             return
         }
