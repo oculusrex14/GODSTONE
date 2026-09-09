@@ -67,11 +67,13 @@ final class ReadinessT10Tests: XCTestCase {
     func testServerBlueprintIsTheCanonicalTree() {
         let set = BleTransport.meshProfile
         let blueprint = set.characteristics
-        XCTAssertEqual(blueprint.count, 3, "one service installs three characteristics")
         XCTAssertEqual(blueprint, [set.inbox, set.digest, set.linkInfo], "the blueprint is the contract, element by element")
-        XCTAssertEqual(blueprint[0].properties, Set<GattProperty>([.write, .writeWithoutResponse, .notify]), "inbox: write, write no response, notify")
-        XCTAssertEqual(blueprint[1].properties, Set<GattProperty>([.read, .notify]), "digest: read, notify")
-        XCTAssertEqual(blueprint[2].properties, Set<GattProperty>([.read, .write]), "link info: read, write")
+        let expectedProperties: [Set<GattProperty>] = [
+            [.write, .writeWithoutResponse, .notify],
+            [.read, .notify],
+            [.read, .write]
+        ]
+        XCTAssertEqual(blueprint.map { $0.properties }, expectedProperties, "one service installs three characteristics with the contract properties")
         let roles = Set<String>(blueprint.map { $0.uuid.uuidString.uppercased() })
         XCTAssertEqual(roles.count, 3, "pairwise distinct roles")
     }
@@ -90,16 +92,24 @@ final class ReadinessT10Tests: XCTestCase {
     func testInstalledTreeIsGeneratedFromTheContractOnTheRealPlatformSurface() {
         let set = BleTransport.meshProfile
         let installed = BleTransport.characteristicsToInstall(set)
-        XCTAssertEqual(installed.count, 3, "the generation installs the profile")
         let roles = set.characteristics
-        for index in 0..<3 {
-            XCTAssertEqual(installed[index].uuid.isEqual(roles[index].uuid), true, "characteristic \(index) carries the contract uuid")
-            XCTAssertEqual(installed[index].properties, RequiredCharacteristicSet.cbProperties(of: roles[index].properties), "characteristic \(index) carries the contract properties")
-            XCTAssertEqual(installed[index].permissions, RequiredCharacteristicSet.permissionsFor(roles[index].properties), "characteristic \(index) carries the mapped permissions")
-        }
-        XCTAssertEqual(installed[0].properties.rawValue, CBCharacteristicProperties.writeWithoutResponse.rawValue | CBCharacteristicProperties.write.rawValue | CBCharacteristicProperties.notify.rawValue, "inbox mask is WR | W | N")
-        XCTAssertEqual(installed[1].properties.rawValue, CBCharacteristicProperties.read.rawValue | CBCharacteristicProperties.notify.rawValue, "digest mask is R | N")
-        XCTAssertEqual(installed[2].properties.rawValue, CBCharacteristicProperties.read.rawValue | CBCharacteristicProperties.write.rawValue, "link info mask is R | W")
+        // Map views, no raw indexing: a truncated or extended installation is
+        // reported fully as a difference, it must never trap the harness.
+        let installedUuids = installed.map { $0.uuid.uuidString.uppercased() }
+        let roleUuids = roles.map { $0.uuid.uuidString.uppercased() }
+        XCTAssertEqual(installedUuids, roleUuids, "the generation installs the profile, in order")
+        let installedProperties = installed.map { $0.properties }
+        let expectedProperties = roles.map { RequiredCharacteristicSet.cbProperties(of: $0.properties) }
+        XCTAssertEqual(installedProperties, expectedProperties, "each installed characteristic carries the contract properties")
+        let installedPermissions = installed.map { $0.permissions }
+        let expectedPermissions = roles.map { RequiredCharacteristicSet.permissionsFor($0.properties) }
+        XCTAssertEqual(installedPermissions, expectedPermissions, "each installed characteristic carries the mapped permissions")
+        let expectedMasks: [UInt] = [
+            CBCharacteristicProperties.writeWithoutResponse.rawValue | CBCharacteristicProperties.write.rawValue | CBCharacteristicProperties.notify.rawValue,
+            CBCharacteristicProperties.read.rawValue | CBCharacteristicProperties.notify.rawValue,
+            CBCharacteristicProperties.read.rawValue | CBCharacteristicProperties.write.rawValue
+        ]
+        XCTAssertEqual(installed.map { $0.properties.rawValue }, expectedMasks, "inbox WR | W | N, digest R | N, link info R | W")
     }
 
     func testPropertyAndPermissionMappingPreservesTheHistoricalInstallation() {
