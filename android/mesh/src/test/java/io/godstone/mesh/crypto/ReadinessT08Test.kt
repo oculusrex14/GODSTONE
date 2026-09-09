@@ -112,9 +112,20 @@ class ReadinessT08Test {
                 start.countDown()
                 sealTask.get(30, TimeUnit.SECONDS)
                 dropTask.get(30, TimeUnit.SECONDS)
-                // After the drops, operations must be typed-failed, alive.
-                initiator.seal(peer, "post".toByteArray())
-                responder.isReady(peer)
+                // After the drops, operations must answer with typed failures only:
+                // never ciphertext, and never a successful no-op.
+                assertNull(
+                    "a dropped relation must not seal",
+                    initiator.seal(peer, "post".toByteArray())
+                )
+                assertNull(
+                    "a dropped relation must not open",
+                    responder.open(peer, "post".toByteArray())
+                )
+                assertFalse(
+                    "a dropped relation must not be ready",
+                    responder.isReady(peer)
+                )
             }
         } finally {
             executor.shutdownNow()
