@@ -137,6 +137,80 @@
       "task_id": "T02",
       "tested_tree_sha": "e5e6413fd43ddb5425490988feafdc04f5b7a792",
       "unresolved": []
+    },
+    "T03": {
+      "case_results": [
+        {
+          "collected": 18,
+          "executed": 18,
+          "failed": 0,
+          "passed": 18,
+          "skipped": 0,
+          "stage": "narrow"
+        },
+        {
+          "collected": 69,
+          "executed": 69,
+          "failed": 0,
+          "passed": 69,
+          "skipped": 0,
+          "stage": "subsystem"
+        },
+        {
+          "executed": 2,
+          "failed": 0,
+          "passed": 2,
+          "skipped": 0,
+          "stage": "controls"
+        }
+      ],
+      "commands": [
+        "T03-narrow-python3",
+        "T03-subsystem-python3",
+        "T03-controls-python3",
+        "T03-controls-python3-002"
+      ],
+      "device_gate_ids": [],
+      "implementation_commit": "34adfba3f4c4b32ce1bc144cbf0c490df59c17bc",
+      "inputs": {
+        "baseline": "b5c3d3d394b70cf356cdde33b47511dad7cbb95c"
+      },
+      "mutation_results": [
+        {
+          "expected": "invariant validation fails",
+          "mutation": "election rewritten to platform-based",
+          "outcome": "KILLED"
+        },
+        {
+          "expected": "profile validation fails",
+          "mutation": "LIGHT mesh marked available",
+          "outcome": "KILLED"
+        },
+        {
+          "expected": "both validators fail",
+          "mutation": "readiness flipped to true",
+          "outcome": "KILLED"
+        },
+        {
+          "expected": "validation fails",
+          "mutation": "PROPOSED approval language dropped",
+          "outcome": "KILLED"
+        },
+        {
+          "expected": "authority blob drift rejected",
+          "mutation": "foreign authority sha recorded",
+          "outcome": "KILLED"
+        }
+      ],
+      "next_action": "none — task complete",
+      "phase_gate": "P0",
+      "required_cases": [
+        "tools/readiness/tests/test_t03.py"
+      ],
+      "status": "COMPLETE",
+      "task_id": "T03",
+      "tested_tree_sha": "77bb8039f7cdd6714408cf4224a835a19038ce33",
+      "unresolved": []
     }
   },
   "current_task": null,
@@ -149,22 +223,22 @@
   ],
   "failed_attempts": [],
   "in_progress": null,
-  "last_code_head": "1432d7afb97f018bd07f3eb0a5063e8897b758d6",
-  "last_observed_head": "1432d7afb97f018bd07f3eb0a5063e8897b758d6",
+  "last_code_head": "34adfba3f4c4b32ce1bc144cbf0c490df59c17bc",
+  "last_observed_head": "34adfba3f4c4b32ce1bc144cbf0c490df59c17bc",
   "latest_verification": {
-    "at": "2026-09-09T04:35:25+00:00",
-    "log": "T02/logs/T02-subsystem-python3.log",
-    "log_sha256": "2b138bdf0123f602eebd5e42224e53f941b760cda0b7af50e24edfeb3a81ae5b",
-    "source_sha": "1432d7afb97f018bd07f3eb0a5063e8897b758d6",
+    "at": "2026-09-09T04:49:27+00:00",
+    "log": "T03/logs/T03-subsystem-python3.log",
+    "log_sha256": "9e066e7d068d768cad29d99f566ab7957a7a1bed51aa637c6c7b1b3e3e5ef49f",
+    "source_sha": "34adfba3f4c4b32ce1bc144cbf0c490df59c17bc",
     "suite": "tools/readiness/tests (discover)",
-    "tests_collected": 51,
-    "tests_executed": 51,
+    "tests_collected": 69,
+    "tests_executed": 69,
     "tests_failed": 0,
-    "tests_passed": 51,
+    "tests_passed": 69,
     "tests_skipped": 0,
-    "tree_sha": "e5e6413fd43ddb5425490988feafdc04f5b7a792"
+    "tree_sha": "77bb8039f7cdd6714408cf4224a835a19038ce33"
   },
-  "next_task": "T03",
+  "next_task": "T04",
   "phase": "P0",
   "plan_sha256": "685456b378662b0a40a53a6abc810041e37daf97b213f3efeb6cea879363934e",
   "planning_baseline_sha": "b5c3d3d394b70cf356cdde33b47511dad7cbb95c",
@@ -174,8 +248,8 @@
   "warnings_for_next_invocation": [
     "Preserve original codex/archive-reliability dirty checkout and untracked WIP.",
     "Readiness flags remain false. D2 absent at planning baseline.",
-    "Android targets are environment-blocked on mac-primary (no usable JDK/SDK).",
-    "DGX/Linux executor remains absent; no remote shells by design.",
+    "Android targets environment-blocked on mac-primary (no usable JDK/SDK).",
+    "Contract documents are hash-bound; changes need re-recorded blob shas.",
     "No external review/model/content/device result may be fabricated."
   ]
 }
