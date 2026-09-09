@@ -138,6 +138,12 @@ class BleTransport(
     private val activeClientConnections = ConcurrentHashMap<String, GattClientConnection>()
     private val provisionalJobs = ConcurrentHashMap<String, Job>()
     private val inboundJobs = ConcurrentHashMap<String, Job>()
+    /**
+     * T12: the generation each provisional inbound job was armed with. The
+     * timeout ends the arming it names, matched against this stamp - the
+     * job's own record - never against a re-read of the driver's slot.
+     */
+    private val inboundJobGenerations = ConcurrentHashMap<String, Long>()
 
     private val inboundRecordFlow = MutableSharedFlow<Pair<ByteArray, BleReassembledRecord>>(extraBufferCapacity = 64)
     private val peerEventsFlow = MutableSharedFlow<PeerEvent>(extraBufferCapacity = 64)
@@ -202,6 +208,7 @@ class BleTransport(
             job.cancel()
         }
         inboundJobs.clear()
+        inboundJobGenerations.clear()
 
         for ((_, client) in activeClientConnections) {
             client.disconnect()
@@ -282,17 +289,29 @@ class BleTransport(
                 publishRelation(RelationKey(BleDirection.OUTBOUND, address, gen), meta)
             }
             is BleCentralAction.PublishLost -> {
+                // T12: the effect carries its exact token; the publication of
+                // the named relation comes down - never a re-read of
+                // whatever the current registration happens to be.
                 provisionalJobs.remove(address)?.cancel()
-                val gen = centralDriver.getConnectionGeneration(address)
-                unpublishRelation(RelationKey(BleDirection.OUTBOUND, address, gen))
+                unpublishRelation(RelationKey(BleDirection.OUTBOUND, address, action.generation))
             }
             is BleCentralAction.DisconnectGatt -> {
+                // T12: reject, timeout and local cancel reach terminal here
+                // without awaiting a callback a closed handle can no longer
+                // deliver. The close targets exactly the captured handle of
+                // the named generation; a late intent for a superseded
+                // attempt closes nothing and removes nothing that belongs to
+                // the successor.
                 provisionalJobs.remove(address)?.cancel()
-                client?.disconnect()
-                activeClientConnections.remove(address)
-                centralRemoteLinkInfo.remove(address)
-                val gen = centralDriver.getConnectionGeneration(address)
-                unpublishRelation(RelationKey(BleDirection.OUTBOUND, address, gen))
+                val captured = activeClientConnections[address]
+                if (captured != null && captured.relationGeneration == action.generation) {
+                    captured.closeCapturedHandle()
+                    if (activeClientConnections[address] === captured) {
+                        activeClientConnections.remove(address)
+                        centralRemoteLinkInfo.remove(address)
+                    }
+                }
+                unpublishRelation(RelationKey(BleDirection.OUTBOUND, address, action.generation))
             }
             BleCentralAction.NoOp -> {}
         }
@@ -446,10 +465,23 @@ class BleTransport(
 
     /** The scheduling half of a connect intent, carried verbatim from the former shim body. */
     private fun scheduleConnectFromScan(address: String, action: BleCentralAction.ConnectGatt) {
+            val scheduledGen = centralDriver.getConnectionGeneration(address)
+            val existing = activeClientConnections[address]
+            if (existing != null && existing.relationGeneration != scheduledGen) {
+                // T12: a stale entry from a dead attempt owns a handle of
+                // the dead generation: close exactly that captured handle
+                // before the successor's client is installed; the
+                // successor's tokens are stamped at creation below.
+                existing.closeCapturedHandle()
+                if (activeClientConnections[address] === existing) {
+                    activeClientConnections.remove(address)
+                }
+            }
             val client = activeClientConnections.getOrPut(address) {
                 GattClientConnection(
                     context = context,
                     peerAddress = address,
+                    relationGeneration = scheduledGen,
                     onGattConnected = { gen, cur -> processCentralAction(address, centralDriver.onGattConnected(address, gen, cur)) },
                     onServicesDiscovered = { suc, gen, cur -> processCentralAction(address, centralDriver.onServicesDiscovered(address, suc, gen, cur)) },
                     onLinkInfoReadResult = { bytes, gen, cur ->
@@ -494,6 +526,9 @@ class BleTransport(
             scanEpoch += 1L
         }
     }
+
+    /** Test seam: the client stored for one address, or null. */
+    fun activeClientForTest(address: String): GattClientConnection? = activeClientConnections[address]
 
     /** Test seam: the discovery surface size of the current run. */
     fun discoveredCountForTest(): Int = discoveryIndex.size
@@ -567,6 +602,7 @@ class BleTransport(
 
     fun handleInboundClientAdmitted(peerAddress: String, generation: Long) {
         inboundJobs.remove(peerAddress)?.cancel()
+        inboundJobGenerations[peerAddress] = generation
         val job = coroutineScope.launch {
             delay(PROVISIONAL_TIMEOUT_MS)
             handleInboundTimeout(peerAddress, generation)
@@ -576,17 +612,21 @@ class BleTransport(
 
     fun hasInboundJob(peerAddress: String): Boolean = inboundJobs.containsKey(peerAddress)
 
-    fun handleInboundTimeout(peerAddress: String, generation: Long = 0L) {
-        val currentGen = serverDriver.getClientGeneration(peerAddress)
-        if (generation != 0L && currentGen != 0L && currentGen != generation) {
+    fun handleInboundTimeout(peerAddress: String, generation: Long) {
+        // T12: the provisional job carries the exact generation it was
+        // scheduled for; a timeout ends that registration only, never a
+        // newer one that took its place.
+        val armed = inboundJobGenerations[peerAddress]
+        if (armed == null || armed != generation) {
             return
         }
         if (serverDriver.isPhysicalReady(peerAddress)) {
             return
         }
-        val effectiveGen = if (generation != 0L) generation else currentGen
+        val effectiveGen = generation
         serverDriver.onInboundTimeout(peerAddress, effectiveGen)
         inboundJobs.remove(peerAddress)?.cancel()
+        inboundJobGenerations.remove(peerAddress)
         responderRemoteLinkInfo.remove(peerAddress)
         gattServer.cancelConnection(peerAddress)
         unpublishRelation(RelationKey(BleDirection.INBOUND, peerAddress, effectiveGen))
@@ -607,6 +647,16 @@ class BleTransport(
         publishRelation(key, meta)
     }
 
+    /**
+     * Test seam: schedule a driver effect through the transport's one
+     * action dispatcher, exactly as the platform callback boundary does.
+     * The production call sites reach it through the captured hooks; the
+     * determinism tests of the terminal effects drive it directly.
+     */
+    fun dispatchCentralActionForTest(address: String, action: BleCentralAction) {
+        processCentralAction(address, action)
+    }
+
     fun handleCentralInboundNotification(peerAddress: String, value: ByteArray) {
         val conn = centralDriver.getActiveConnection(peerAddress) ?: return
         if (!conn.isRoleBound) return
@@ -623,37 +673,57 @@ class BleTransport(
         inboundRecordFlow.tryEmit(peerId to record)
     }
 
-    fun handleCentralDisconnected(peerAddress: String, clientToken: Long = 0L, gattGen: Long = 0L) {
-        val activeClient = activeClientConnections[peerAddress]
-        if (clientToken != 0L && activeClient != null && activeClient.clientToken != clientToken) {
+    fun handleCentralDisconnected(peerAddress: String, clientToken: Long, gattGen: Long) {
+        // T12: the event must name the client registration it came from.
+        // Validation first: an event that does not match the stored
+        // client's tokens is dropped where it stands, and no current-state
+        // lookup stands in for the missing identity. Only then does the
+        // named relation terminate - through the driver's one authority,
+        // by the generation this client was scheduled for.
+        val client = activeClientConnections[peerAddress] ?: return
+        if (client.clientToken != clientToken || client.gattGeneration != gattGen) {
             return
         }
+        val relationGen = client.relationGeneration
         provisionalJobs.remove(peerAddress)?.cancel()
-        val conn = centralDriver.getActiveConnection(peerAddress)
-        conn?.markDisconnected()
-        val gen = centralDriver.getConnectionGeneration(peerAddress)
-        val act = centralDriver.onDisconnected(peerAddress, gen)
+        val act = centralDriver.onDisconnected(peerAddress, relationGen)
         processCentralAction(peerAddress, act)
-        activeClientConnections.remove(peerAddress)
-        centralRemoteLinkInfo.remove(peerAddress)
-        unpublishRelation(RelationKey(BleDirection.OUTBOUND, peerAddress, gen))
+        if (activeClientConnections[peerAddress] === client) {
+            activeClientConnections.remove(peerAddress)
+            centralRemoteLinkInfo.remove(peerAddress)
+        }
+        unpublishRelation(RelationKey(BleDirection.OUTBOUND, peerAddress, relationGen))
     }
 
-    fun handleServerDisconnected(peerAddress: String, generation: Long = 0L) {
+    fun handleServerDisconnected(peerAddress: String, generation: Long) {
+        // T12: the event names the exact registration it terminates. An
+        // event for another generation - a late terminal of a superseded
+        // client, for one - is dropped where it stands and changes
+        // nothing; the successor's slot, lease and publication stay intact.
         val currentGen = serverDriver.getClientGeneration(peerAddress)
-        if (generation != 0L && currentGen != 0L && currentGen != generation) {
+        if (currentGen != generation) {
             return
         }
         inboundJobs.remove(peerAddress)?.cancel()
-        val effectiveGen = if (generation != 0L) generation else currentGen
         val conn = serverDriver.getInboundConnection(peerAddress)
         conn?.markDisconnected()
-        serverDriver.onClientDisconnected(peerAddress, effectiveGen)
+        serverDriver.onClientDisconnected(peerAddress, generation)
         responderRemoteLinkInfo.remove(peerAddress)
-        unpublishRelation(RelationKey(BleDirection.INBOUND, peerAddress, effectiveGen))
+        unpublishRelation(RelationKey(BleDirection.INBOUND, peerAddress, generation))
     }
 
-    fun isRelationPublished(direction: BleDirection, address: String, generation: Long = 0L): Boolean {
+    /**
+     * The observable question, at all: is any relation of this direction
+     * for this address published, whatever its generation. The exact
+     * question isRelationPublished asks generation by generation remains
+     * the primary one; this query serves lifecycle inspection and the
+     * tests that assert a peer is not published at all.
+     */
+    fun isAnyRelationPublishedForAddress(direction: BleDirection, address: String): Boolean {
+        return publishedRelations.any { it.direction == direction && it.peerAddress == address }
+    }
+
+    fun isRelationPublished(direction: BleDirection, address: String, generation: Long): Boolean {
         return if (generation != 0L) {
             publishedRelations.contains(RelationKey(direction, address, generation))
         } else {

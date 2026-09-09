@@ -759,7 +759,7 @@ class BleLinkSubstrateTest {
         assertEquals(BleServerAction.RejectDescriptorWrite(addr8), subAct)
 
         // Disconnect one client -> replacement is admitted
-        driver.onClientDisconnected("AA:BB:CC:DD:EE:01")
+        driver.onClientDisconnected("AA:BB:CC:DD:EE:01", driver.getClientGeneration("AA:BB:CC:DD:EE:01"))
         assertEquals(6, driver.getAdmittedCount())
 
         val act8Replacement = driver.onClientConnected(addr8, peerGeneration = 9)
@@ -1025,7 +1025,7 @@ class BleLinkSubstrateTest {
         val central = "11:22:33:44:55:66"
         driver.onClientConnected(central, peerGeneration = 1)
         assertTrue(driver.beginNotification(central))
-        driver.onClientDisconnected(central)
+        driver.onClientDisconnected(central, 1L)
 
         // Callback after disconnect is NoOp
         val act = driver.onNotificationSent(central, statusSuccess = true)
@@ -1433,7 +1433,7 @@ class BleLinkSubstrateTest {
         assertEquals(1, cap.totalCount)
 
         // Disconnect and reconnect -> Gen 2
-        driver.onDisconnected(peer)
+        driver.onDisconnected(peer, 1L)
         assertEquals(0, cap.totalCount)
         driver.onScanResult(peer, -60, null)
         assertEquals(1, cap.totalCount)
@@ -1598,7 +1598,7 @@ class BleLinkSubstrateTest {
         assertTrue(writeAct is BleServerAction.RejectWrite)
 
         // 3. Rejected server physical link disconnects
-        serverDriver.onClientDisconnected(peerB)
+        serverDriver.onClientDisconnected(peerB, 1L)
 
         // 4. VERIFY: A's central connection to B remains ALIVE and DUPLEX READY!
         val centralConn = centralDriver.getActiveConnection(peerB)
@@ -1906,7 +1906,7 @@ class BleLinkSubstrateTest {
         assertEquals(1, authority.inboundCount)
 
         // Connected peer never writes LinkInfo; timeout triggers
-        val timeoutAct = serverDriver.onInboundTimeout(peer)
+        val timeoutAct = serverDriver.onInboundTimeout(peer, 1L)
         assertTrue(timeoutAct is BleServerAction.TearDownPhysicalChannel)
         assertEquals(0, authority.inboundCount)
         assertNull(serverDriver.getInboundConnection(peer))
@@ -1989,7 +1989,7 @@ class BleLinkSubstrateTest {
         assertTrue(rejectAct is BleServerAction.RejectWrite)
 
         // Server disconnect occurs
-        val serverDisconnectAct = serverDriver.onClientDisconnected(peer)
+        val serverDisconnectAct = serverDriver.onClientDisconnected(peer, 1L)
         assertTrue(serverDisconnectAct is BleServerAction.TearDownPhysicalChannel || serverDisconnectAct is BleServerAction.NoOp)
 
         // Central connection remains active and role-bound!
@@ -1999,8 +1999,8 @@ class BleLinkSubstrateTest {
         assertTrue(centralDriver.isPublishedFound(peer))
 
         // 3. Normal disconnect of central link triggers PublishLost
-        val centralDisconnectAct = centralDriver.onDisconnected(peer)
-        assertEquals(BleCentralAction.PublishLost(peer), centralDisconnectAct)
+        val centralDisconnectAct = centralDriver.onDisconnected(peer, 1L)
+        assertEquals(BleCentralAction.PublishLost(peer, 1L), centralDisconnectAct)
     }
 
     // =========================================================================
@@ -2108,8 +2108,8 @@ class BleLinkSubstrateTest {
         transport.handleCentralDisconnected(peer, 0L, 0L)
         transport.handleServerDisconnected(peer, 1L)
 
-        assertFalse(transport.isRelationPublished(BleDirection.OUTBOUND, peer))
-        assertFalse(transport.isRelationPublished(BleDirection.INBOUND, peer))
+        assertFalse(transport.isAnyRelationPublishedForAddress(BleDirection.OUTBOUND, peer))
+        assertFalse(transport.isAnyRelationPublishedForAddress(BleDirection.INBOUND, peer))
     }
 
     @Test
@@ -2277,7 +2277,7 @@ class BleLinkSubstrateTest {
     }
 
     @Test
-    fun testServerLifecycle_ConnectedWhileClosingCannotAdmitReplacement() {
+    fun testServerLifecycle_ConnectedWhileTerminatedCannotAdmitReplacement() {
         val authority = BleGlobalCapacityAuthority(maxTotalPeers = 7)
         val localHint = byteArrayOf(0x01, 0x00, 0x00, 0x00)
         val serverDriver = BleServerOrchestrationDriver(
@@ -2292,21 +2292,21 @@ class BleLinkSubstrateTest {
         serverDriver.onClientConnected(peer, 1)
         assertEquals(ServerPeerSlotState.ACTIVE, serverDriver.getPeerSlotState(peer))
 
-        // Inbound timeout fires -> slot becomes CLOSING(1)
+        // Inbound timeout fires -> the local termination is terminal in itself: slot QUARANTINED(1), awaiting no callback
         val timeoutAct = serverDriver.onInboundTimeout(peer, 1L)
         assertTrue(timeoutAct is BleServerAction.TearDownPhysicalChannel)
-        assertEquals(ServerPeerSlotState.CLOSING, serverDriver.getPeerSlotState(peer))
+        assertEquals(ServerPeerSlotState.QUARANTINED, serverDriver.getPeerSlotState(peer))
         assertEquals(1L, serverDriver.getClientGeneration(peer))
 
-        // Connected while CLOSING must be rejected without admitting replacement
+        // Connected while terminated must be rejected without admitting replacement
         val actConn = serverDriver.onClientConnected(peer, 2)
         assertTrue(actConn is BleServerAction.RejectConnection)
-        assertEquals(ServerPeerSlotState.CLOSING, serverDriver.getPeerSlotState(peer))
+        assertEquals(ServerPeerSlotState.QUARANTINED, serverDriver.getPeerSlotState(peer))
         assertEquals(1L, serverDriver.getClientGeneration(peer))
     }
 
     @Test
-    fun testServerLifecycle_ClosingDisconnectRetiresExactGeneration() {
+    fun testServerLifecycle_LatePlatformTerminalAfterLocalTimeoutIsIdempotent() {
         val authority = BleGlobalCapacityAuthority(maxTotalPeers = 7)
         val localHint = byteArrayOf(0x01, 0x00, 0x00, 0x00)
         val serverDriver = BleServerOrchestrationDriver(
@@ -2320,11 +2320,11 @@ class BleLinkSubstrateTest {
 
         serverDriver.onClientConnected(peer, 1)
         serverDriver.onInboundTimeout(peer, 1L)
-        assertEquals(ServerPeerSlotState.CLOSING, serverDriver.getPeerSlotState(peer))
+        assertEquals(ServerPeerSlotState.QUARANTINED, serverDriver.getPeerSlotState(peer))
 
-        // Platform DISCONNECTED for Gen 1 retires exact generation to QUARANTINED
-        val discAct = serverDriver.onClientDisconnected(peer)
-        assertTrue(discAct is BleServerAction.TearDownPhysicalChannel)
+        // The local timeout already retired the exact generation; the late platform terminal is an idempotent no-op
+        val discAct = serverDriver.onClientDisconnected(peer, 1L)
+        assertTrue(discAct is BleServerAction.NoOp)
         assertEquals(ServerPeerSlotState.QUARANTINED, serverDriver.getPeerSlotState(peer))
     }
 
@@ -2342,13 +2342,13 @@ class BleLinkSubstrateTest {
         serverDriver.onServiceAdded(1, true)
 
         serverDriver.onClientConnected(peer, 1)
-        serverDriver.onClientDisconnected(peer)
+        serverDriver.onClientDisconnected(peer, 1L)
         assertEquals(ServerPeerSlotState.QUARANTINED, serverDriver.getPeerSlotState(peer))
 
         // Fresh server epoch allows reconnection and advances generation
         serverDriver.startNewServerEpoch()
         serverDriver.onServiceAdded(2, true)
-        val act2 = serverDriver.onClientConnected(peer)
+        val act2 = serverDriver.onClientConnected(peer, 2L)
         assertTrue(act2 is BleServerAction.AdmitConnection)
         assertEquals(2L, serverDriver.getClientGeneration(peer))
         assertEquals(ServerPeerSlotState.ACTIVE, serverDriver.getPeerSlotState(peer))
@@ -2369,23 +2369,23 @@ class BleLinkSubstrateTest {
 
         // Gen 1 connect & disconnect
         serverDriver.onClientConnected(peer, 1)
-        val disc1 = serverDriver.onClientDisconnected(peer)
+        val disc1 = serverDriver.onClientDisconnected(peer, 1L)
         assertTrue(disc1 is BleServerAction.TearDownPhysicalChannel)
         assertEquals(ServerPeerSlotState.QUARANTINED, serverDriver.getPeerSlotState(peer))
 
-        // Duplicate disconnect in same epoch without expectedGen is NoOp
-        val dupDisc = serverDriver.onClientDisconnected(peer)
+        // Duplicate disconnect naming the same exact generation is an idempotent NoOp
+        val dupDisc = serverDriver.onClientDisconnected(peer, 1L)
         assertTrue(dupDisc is BleServerAction.NoOp)
         assertEquals(ServerPeerSlotState.QUARANTINED, serverDriver.getPeerSlotState(peer))
 
         // Reconnect in same epoch is rejected due to QUARANTINED
-        val rejConn = serverDriver.onClientConnected(peer)
+        val rejConn = serverDriver.onClientConnected(peer, 2L)
         assertTrue(rejConn is BleServerAction.RejectConnection)
 
         // Fresh epoch clears quarantine
         serverDriver.startNewServerEpoch()
         serverDriver.onServiceAdded(2, true)
-        val act2 = serverDriver.onClientConnected(peer)
+        val act2 = serverDriver.onClientConnected(peer, 2L)
         assertTrue(act2 is BleServerAction.AdmitConnection)
         assertEquals(ServerPeerSlotState.ACTIVE, serverDriver.getPeerSlotState(peer))
     }
@@ -2454,6 +2454,7 @@ class BleLinkSubstrateTest {
         var readResultCount = 0
         val gattConn = GattClientConnection(
             peerAddress = peer,
+            relationGeneration = 1L,
             onLinkInfoReadResult = { _, _, _ -> readResultCount++ }
         )
         // No pending op queued -> callback ignored
@@ -2472,6 +2473,7 @@ class BleLinkSubstrateTest {
         var writeAckCount = 0
         val gattConn = GattClientConnection(
             peerAddress = peer,
+            relationGeneration = 1L,
             onLinkInfoWriteAck = { _, _, _ -> writeAckCount++ }
         )
         // No pending op queued -> callback ignored
@@ -2489,6 +2491,7 @@ class BleLinkSubstrateTest {
         var cccdAckCount = 0
         val gattConn = GattClientConnection(
             peerAddress = peer,
+            relationGeneration = 1L,
             onCccdWriteAck = { _, _, _ -> cccdAckCount++ }
         )
         // No pending op queued -> callback ignored
@@ -2506,6 +2509,7 @@ class BleLinkSubstrateTest {
         var readResultCount = 0
         val gattConn = GattClientConnection(
             peerAddress = peer,
+            relationGeneration = 1L,
             onLinkInfoReadResult = { _, _, _ -> readResultCount++ }
         )
         gattConn.setGattGenerationForTesting(2L)
@@ -2527,6 +2531,7 @@ class BleLinkSubstrateTest {
         var disconnectedCount = 0
         val gattConn = GattClientConnection(
             peerAddress = peer,
+            relationGeneration = 1L,
             onDisconnected = { _, _ -> disconnectedCount++ }
         )
         gattConn.setGattGenerationForTesting(2L)
@@ -2547,6 +2552,7 @@ class BleLinkSubstrateTest {
         var receivedData: ByteArray? = null
         val gattConn = GattClientConnection(
             peerAddress = peer,
+            relationGeneration = 1L,
             onLinkInfoReadResult = { data, _, _ ->
                 readResultCount++
                 receivedData = data
@@ -2582,6 +2588,7 @@ class BleLinkSubstrateTest {
         var writeSuccess = false
         val gattConn = GattClientConnection(
             peerAddress = peer,
+            relationGeneration = 1L,
             onLinkInfoWriteAck = { suc, _, _ ->
                 writeAckCount++
                 writeSuccess = suc
@@ -2614,6 +2621,7 @@ class BleLinkSubstrateTest {
         var cccdSuccess = false
         val gattConn = GattClientConnection(
             peerAddress = peer,
+            relationGeneration = 1L,
             onCccdWriteAck = { suc, _, _ ->
                 cccdAckCount++
                 cccdSuccess = suc
@@ -2642,7 +2650,7 @@ class BleLinkSubstrateTest {
     @Test
     fun testGattClient_LateTimedOutDataWriteCannotCompleteReplacementOperation() {
         val peer = "11:22:33:44:55:93"
-        val gattConn = GattClientConnection(peerAddress = peer)
+        val gattConn = GattClientConnection(peerAddress = peer, relationGeneration = 1L)
         gattConn.enqueuePendingOpForTesting(GattOpType.DATA_WRITE, BleTransport.WRITE_CHAR_UUID)
         val op1 = gattConn.getCurrentPendingOp()
         assertNotNull(op1)
@@ -2872,6 +2880,7 @@ class BleLinkSubstrateTest {
         var notifiedData: ByteArray? = null
         val client = GattClientConnection(
             peerAddress = "11:22:33:44:55:66",
+            relationGeneration = 1L,
             context = null,
             onInboundNotification = { notifiedData = it }
         )

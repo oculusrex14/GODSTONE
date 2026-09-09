@@ -274,6 +274,7 @@ class ReadinessT10Test {
         var reported = "nothing"
         val client = GattClientConnection(
             peerAddress = "11:22:33:44:55:6E",
+            relationGeneration = 1L,
             onServicesDiscovered = { success, _, _ ->
                 reported = if (success) "found" else "lost"
             }

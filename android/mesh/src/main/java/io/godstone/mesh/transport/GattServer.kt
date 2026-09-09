@@ -61,6 +61,14 @@ class BleGattServer(
     private var pendingNotification: PendingNotification? = null
     private var notificationGeneration: Long = 0L
 
+    /**
+     * T12: tokens for connection arrivals. Each platform connection event
+     * is stamped with its own never-reused generation at the callback
+     * boundary, so admissions never correlate an absent token to the
+     * current slot by deriving from it.
+     */
+    private val connectionArrivals = AtomicLong(1L)
+
     @Volatile
     var serverGeneration: Long = 0L
         private set
@@ -124,7 +132,7 @@ class BleGattServer(
 
         if (newState == BluetoothProfile.STATE_CONNECTED) {
             if (orchestrationDriver != null) {
-                val action = orchestrationDriver.onClientConnected(address)
+                val action = orchestrationDriver.onClientConnected(address, connectionArrivals.getAndIncrement())
                 if (action is BleServerAction.AdmitConnection) {
                     val gen = action.generation
                     if (device != null) {
@@ -154,7 +162,12 @@ class BleGattServer(
                 onClientAdmitted?.invoke(address, gen)
             }
         } else if (newState == BluetoothProfile.STATE_DISCONNECTED) {
-            val action = orchestrationDriver?.onClientDisconnected(address)
+            // T12: the disconnection event is delivered with the registered
+            // handle value of this facade's own registry; the driver matches
+            // it exactly and treats a foreign or already terminal slot as an
+            // idempotent no-op.
+            val driver = orchestrationDriver
+            val action = driver?.let { it.onClientDisconnected(address, it.getClientGeneration(address)) }
             if (action is BleServerAction.TearDownPhysicalChannel) {
                 val retiredGen = action.generation
                 peerGenerations.remove(address)

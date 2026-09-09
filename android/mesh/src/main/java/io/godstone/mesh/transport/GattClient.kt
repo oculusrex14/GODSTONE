@@ -42,6 +42,14 @@ data class GattLifetimeToken(val generation: Long)
 class GattClientConnection(
     private val context: Context? = null,
     val peerAddress: String,
+    /**
+     * T12: the relation generation this client object was scheduled for.
+     * The token is stamped at scheduling time and names the exact attempt;
+     * terminal cleanups and handle closes may only act for the attempt
+     * whose token they carry, never for whatever the current registration
+     * happens to be.
+     */
+    val relationGeneration: Long,
     val onGattConnected: (Long, Long) -> Unit = { _, _ -> },
     val onServicesDiscovered: (Boolean, Long, Long) -> Unit = { _, _, _ -> },
     val onLinkInfoReadResult: (ByteArray?, Long, Long) -> Unit = { _, _, _ -> },
@@ -54,6 +62,7 @@ class GattClientConnection(
     val clientToken: Long = nextClientToken()
 
     private var gatt: BluetoothGatt? = null
+    private var handleClosed: Boolean = true
     private var inboxCharacteristic: BluetoothGattCharacteristic? = null
     private var digestCharacteristic: BluetoothGattCharacteristic? = null
     private var linkInfoCharacteristic: BluetoothGattCharacteristic? = null
@@ -373,7 +382,11 @@ class GattClientConnection(
             )
         }
         val cb = makeGattCallback(token)
-        gatt = device.connectGatt(context, false, cb, BluetoothDevice.TRANSPORT_LE)
+        val captured = device.connectGatt(context, false, cb, BluetoothDevice.TRANSPORT_LE)
+        synchronized(opLock) {
+            gatt = captured
+            handleClosed = false
+        }
     }
 
     fun discoverServices() {
@@ -507,21 +520,41 @@ class GattClientConnection(
         return success
     }
 
+    /**
+     * T12: close exactly the handle this instance captured at connect
+     * time, and close it once. The first call releases the platform
+     * handle and clears the derived characteristic caches; every repeat
+     * call changes nothing and reports false. Only the operation that
+     * owns the handle closes it: no current-state lookup decides which
+     * handle dies.
+     */
+    fun closeCapturedHandle(): Boolean {
+        synchronized(opLock) {
+            if (handleClosed) {
+                return false
+            }
+            handleClosed = true
+        }
+        val captured = gatt
+        gatt = null
+        isConnected = false
+        inboxCharacteristic = null
+        digestCharacteristic = null
+        linkInfoCharacteristic = null
+        try {
+            captured?.disconnect()
+            captured?.close()
+        } catch (_: Exception) {}
+        return true
+    }
+
     fun disconnect() {
         synchronized(opLock) {
             gattGeneration++
             currentOp?.deferred?.complete(false)
             currentOp = null
         }
-        try {
-            gatt?.disconnect()
-            gatt?.close()
-        } catch (_: Exception) {}
-        gatt = null
-        isConnected = false
-        inboxCharacteristic = null
-        digestCharacteristic = null
-        linkInfoCharacteristic = null
+        closeCapturedHandle()
     }
 
     companion object {
