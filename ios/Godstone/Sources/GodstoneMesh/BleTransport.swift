@@ -1500,7 +1500,7 @@ public final class BleTransport: NSObject, @unchecked Sendable {
             return
         }
         transportLock.unlock()
-    
+
     }
 
     public func processPeripheralReceiveRead(_ pm: CBPeripheralManager, request: CBATTRequest, sourceEpoch: UInt64) {
