@@ -4,6 +4,7 @@ import android.bluetooth.BluetoothProfile
 import io.godstone.mesh.identity.Identity
 import io.godstone.mesh.store.InMemoryMessageStore
 import io.godstone.mesh.transport.BleCentralAction
+import io.godstone.mesh.transport.BleConnectionState
 import io.godstone.mesh.transport.BleCentralOrchestrationDriver
 import io.godstone.mesh.transport.BleDirection
 import io.godstone.mesh.transport.BleGlobalCapacityAuthority
@@ -423,6 +424,14 @@ class ReadinessT12Test {
             assertEquals("still admitted", 1, transport.serverDriver.getAdmittedCount())
             assertTrue("still active", transport.serverDriver.getPeerSlotState(peer) == ServerPeerSlotState.ACTIVE)
             assertEquals("still leased", 1, transport.globalCapacity.inboundCount)
+            // The transport's own gate is load-bearing: the foreign event may
+            // not even reach the connection object of the live registration.
+            val live = transport.serverDriver.getInboundConnection(peer)
+            assertNotNull("the live inbound connection stands", live)
+            if (live != null) {
+                assertTrue("the foreign event touched nothing of it",
+                    live.state == BleConnectionState.PROVISIONAL_CONNECTED)
+            }
             // The exact registration terminates through the transport.
             transport.handleServerDisconnected(peer, gen)
             assertEquals("withdrawn", 0, transport.serverDriver.getAdmittedCount())
