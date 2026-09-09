@@ -108,3 +108,44 @@ on the lambda body); entry iteration and index assignment are the proven
 idioms. Array copy helpers spell copyOf/copyOfRange verbatim as shipped by
 the baseline; token verification against the baseline bytes (ord dumps) is
 the reliable channel, not tool-rendered text.
+
+## D-T10-a [ACCEPTED] Contract-driven GATT profile with a whole-tree provisioning gate
+The GATT surface of a GodStone peripheral - service A001 and the inbox/digest/
+link-info characteristics A002/A003/A004 - is defined once by the generated
+wire contract and consumed by RequiredCharacteristicSet on each engine. The
+Android server previously served only inbox and link info (the digest
+characteristic existed as a constant but was never installed and never
+resolved); iOS served all three with hand-rolled FD01/FD02 characteristic
+values that matched neither each other across engines nor the contract. All
+installation, resolution and routing now derive from the contract: the server
+installs its tree data-driven (property masks, permission mapping, CCC
+descriptor on every notify-capable characteristic), the central resolves the
+whole discovered tree (duplicate first, then unknown, then property gaps) and
+fails provisioning on any deviation, and inbound writes route by the single
+classify authority so LinkInfo records never reach the record decoder. The
+legacy FD short-form values are deleted, never dual-registered, and refused
+by the resolvers. Android gained the digest characteristic for cross-engine
+parity; the Android subscription routing now ignores CCC writes owned by
+non-inbox characteristics, mirroring the CoreBluetooth didSubscribe filter that
+iOS already had.
+
+## D-T10-b [ACCEPTED] Mutation campaign and the crash-tolerance lesson
+Six mutants over three families (reverted FD constant in each production
+adapter, blinded accepts(), truncated installation) were killed with positive
+executions and zero compile errors on both engines. The first Swift run of
+the truncated-installation family exposed a harness flaw: raw indexing of the
+installed array trapped the test process after two witnesses, truncating the
+report. The suite was hardened to map/zip views that report the same
+differences as data (14 assertion failures across 6 cases, no trap), and the
+family was re-run to a complete report. Rule recorded: resolver tests must
+observe, never index blind.
+
+## D-T10-c [ACCEPTED] Builder runtime facts (this environment)
+Kotlin reports out-of-range list access as a test failure the JVM survives;
+Swift traps the whole xctest process (signal 5) on the same class of defect,
+aborting the remaining cases. Swift suites that inspect generated collections
+must therefore prefer total, map and zip views over positional indexing when
+the collection shape is the thing under test. The five-task boundary ladder
+(L0-L1) caught a latent ci/symbols.py misattribution (nested types stealing
+outer-class members) that had shipped green since T06; fixed with brace
+matched declaration regions (commit f9633dd).

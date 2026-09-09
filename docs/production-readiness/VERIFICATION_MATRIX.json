@@ -436,6 +436,54 @@
       "task_ids": [
         "T09"
       ]
+    },
+    {
+      "claim_id": "CLM-T10-PROFILE",
+      "command_ids": [
+        "T10-narrow-gradlew-003",
+        "T10-narrow-swift-003"
+      ],
+      "evidence_class": "internal",
+      "evidence_sha256": null,
+      "latest_source_sha": "afddada23d905d3231b0196ae0e6ed6121eeff43",
+      "limitations": "host-only evidence; real controller installation and subscription belong to the T73-T75 device gates",
+      "production_path": "android/mesh/src/main/java/io/godstone/mesh/transport/GattServiceContract.kt",
+      "profile": "jvm-host+swift-host",
+      "required_case_ids": [
+        "ReadinessT10Test",
+        "ReadinessT10Tests"
+      ],
+      "requirement": "the GATT service and all three characteristics resolve to the generated wire-contract values (A001 service, A002 inbox W/WR/N, A003 digest R/N, A004 link info R/W) on both engines; the server installs its tree data-driven from the contract; the hand-rolled FD short-form legacy values are removed and refused wherever a resolver meets them",
+      "result": "PASS",
+      "state_owner": "transport gatt profile (RequiredCharacteristicSet)",
+      "task_ids": [
+        "T10"
+      ]
+    },
+    {
+      "claim_id": "CLM-T10-GATE",
+      "command_ids": [
+        "T10-narrow-gradlew-003",
+        "T10-narrow-swift-003",
+        "T10-subsystem-gradlew-003",
+        "T10-subsystem-swift-003"
+      ],
+      "evidence_class": "internal",
+      "evidence_sha256": null,
+      "latest_source_sha": "afddada23d905d3231b0196ae0e6ed6121eeff43",
+      "limitations": "host-only evidence; the platform callback bodies run on real controllers only",
+      "production_path": "android/mesh/src/main/java/io/godstone/mesh/transport/GattClient.kt",
+      "profile": "jvm-host+swift-host",
+      "required_case_ids": [
+        "ReadinessT10Test",
+        "ReadinessT10Tests"
+      ],
+      "requirement": "the central provisioning gate resolves the whole discovered tree against the contract (duplicate first, then unknown, then property gaps) and fails provisioning on any deviation instead of half-connecting; inbound writes route by the classify authority so LinkInfo records never reach the record decoder and frame records never reach the link info store; CCC writes on non-inbox descriptors are accepted silently, mirroring CoreBluetooth",
+      "result": "PASS",
+      "state_owner": "transport provisioning gate (central) and server routing",
+      "task_ids": [
+        "T10"
+      ]
     }
   ],
   "note": "Claims appended per task with real evidence; PASS requires positive case counts and matching command output. Device/independent claims never accept host-only results.",

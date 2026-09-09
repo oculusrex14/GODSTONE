@@ -691,6 +691,147 @@
         "device gates for the BLE runtime path stay open: the section 19/18 cases are exercised on the host only until T73-T75 record physical evidence",
         "the runner records test counts as UNKNOWN for command-kind specs, so the positive counts above were derived from the fresh JUnit XML reports"
       ]
+    },
+    "T10": {
+      "case_results": [
+        {
+          "collected": 11,
+          "counts_source": "JUnit XML of the filtered testDebugUnitTest run (recorded verification at this tree)",
+          "engine": "android-jvm",
+          "executed": 11,
+          "failed": 0,
+          "passed": 11,
+          "skipped": 0,
+          "stage": "narrow",
+          "suite": "ReadinessT10Test"
+        },
+        {
+          "collected": 12,
+          "counts_source": "xctest summary in the recorded narrow log",
+          "engine": "swift-host",
+          "executed": 12,
+          "failed": 0,
+          "passed": 12,
+          "skipped": 0,
+          "stage": "narrow",
+          "suite": "ReadinessT10Tests"
+        },
+        {
+          "collected": 763,
+          "counts_source": "all fresh JUnit XML reports of the mesh unit test task",
+          "engine": "android-jvm",
+          "executed": 763,
+          "failed": 0,
+          "passed": 763,
+          "skipped": 0,
+          "stage": "subsystem"
+        },
+        {
+          "collected": 696,
+          "counts_source": "xctest summary in the recorded subsystem log",
+          "engine": "swift-host",
+          "executed": 696,
+          "failed": 0,
+          "passed": 696,
+          "skipped": 0,
+          "stage": "subsystem"
+        },
+        {
+          "executed": 3,
+          "failed": 0,
+          "passed": 3,
+          "skipped": 0,
+          "stage": "controls"
+        }
+      ],
+      "commands": [
+        "T10-narrow-gradlew-003",
+        "T10-narrow-swift-003",
+        "T10-subsystem-gradlew-003",
+        "T10-subsystem-swift-003",
+        "T10-controls-python3-007",
+        "T10-controls-python3-008",
+        "T10-controls-python3-009"
+      ],
+      "device_gate_ids": [],
+      "implementation_commit": "afddada23d905d3231b0196ae0e6ed6121eeff43",
+      "inputs": {
+        "baseline": "b5c3d3d394b70cf356cdde33b47511dad7cbb95c",
+        "commit_c_crash_tolerant": "afddada",
+        "commit_c_gate_pins": "10727fd",
+        "commit_c_initial": "ea9915b",
+        "commit_c_roundtrip": "59dae9f",
+        "mutation_worktree": "/Users/oculus/Projects/GODSTONE_T10_MUT"
+      },
+      "mutation_results": [
+        {
+          "engines": [
+            "android-jvm"
+          ],
+          "evidence": "T10/mutations/M1a-android-kotlin.log (2 of 11 failing; positive execution, zero compile errors)",
+          "expected": "alias equality against the generated contract and the classify authority both refuse the reverted constant",
+          "mutation": "M1a revert one hard-coded FD01 inbox UUID into the production Android adapter (BleTransport companion alias)",
+          "outcome": "KILLED"
+        },
+        {
+          "engines": [
+            "swift-host"
+          ],
+          "evidence": "T10/mutations/M1b-swift-host.log (3 assertion failures across 2 of 12 cases; positive execution, no traps)",
+          "expected": "alias equality against the generated contract and the classify authority both refuse the reverted constant",
+          "mutation": "M1b revert one hard-coded FD01 inbox UUID into the production iOS adapter (BleTransport static alias)",
+          "outcome": "KILLED"
+        },
+        {
+          "engines": [
+            "android-jvm"
+          ],
+          "evidence": "T10/mutations/M2a-android-kotlin.log (2 of 11 failing)",
+          "expected": "the negative pins of the acceptance entry point fail exactly where the gate went blind",
+          "mutation": "M2a blind the provisioning gate: RequiredCharacteristicSet.accepts() returns true unconditionally",
+          "outcome": "KILLED"
+        },
+        {
+          "engines": [
+            "swift-host"
+          ],
+          "evidence": "T10/mutations/M2b-swift-host.log (7 assertion failures in 1 of 12 cases)",
+          "expected": "the negative pins of the acceptance entry point fail exactly where the gate went blind",
+          "mutation": "M2b blind the provisioning gate: accepts() returns true unconditionally",
+          "outcome": "KILLED"
+        },
+        {
+          "engines": [
+            "android-jvm"
+          ],
+          "evidence": "T10/mutations/M3a-android-kotlin.log (1 of 11 failing)",
+          "expected": "the service/discovery round trip reports the truncated installation as a difference",
+          "mutation": "M3a the server installs only two of the three contract characteristics (truncated blueprint)",
+          "outcome": "KILLED"
+        },
+        {
+          "engines": [
+            "swift-host"
+          ],
+          "evidence": "T10/mutations/M3b-swift-host.log (14 assertion failures across 6 of 12 cases; the hardened map-view assertions report fully and never trap)",
+          "expected": "installation, discovery resolution and the profile enumeration all report the truncation",
+          "mutation": "M3b the profile enumerates only two of the three contract characteristics (truncated installation)",
+          "outcome": "KILLED"
+        }
+      ],
+      "next_action": "none - task complete",
+      "phase_gate": "P1",
+      "required_cases": [
+        "ReadinessT10Test (11 cases Android)",
+        "ReadinessT10Tests (12 cases Swift)"
+      ],
+      "status": "COMPLETE",
+      "task_id": "T10",
+      "tested_tree_sha": "8e864a02c1b13ae5ed726205472de1ba83a92ee6",
+      "unresolved": [
+        "device gates for the BLE runtime path stay open: the section 19/18 cases are exercised on the host only until T73-T75 record physical evidence",
+        "the runner records test counts as UNKNOWN for command-kind specs, so the positive counts above were derived from the fresh JUnit XML reports and the xctest summaries in the recorded logs"
+      ]
     }
   },
   "current_task": null,
@@ -703,15 +844,15 @@
   ],
   "failed_attempts": [],
   "in_progress": null,
-  "last_code_head": "5b75481cb3a40dd7ee2f527e721972fe61e70825",
-  "last_observed_head": "5b75481cb3a40dd7ee2f527e721972fe61e70825",
+  "last_code_head": "afddada23d905d3231b0196ae0e6ed6121eeff43",
+  "last_observed_head": "afddada23d905d3231b0196ae0e6ed6121eeff43",
   "latest_verification": {
-    "note": "T09 narrow 13/13 + mesh subsystem 752/752 green at 5b75481; Swift side untouched (no cross-engine contract change)",
-    "recorded_utc": "2026-09-09T16:23:03+00:00",
-    "source_sha": "5b75481cb3a40dd7ee2f527e721972fe61e70825",
-    "tested_tree_sha": "7324b4601d019dac32faa7118dbab290948346ec"
+    "note": "T10 narrow 11/13 dual + mesh subsystem 763/763 + host subsystem 696/696 green at afddada; six mutants killed on both engines",
+    "recorded_utc": "2026-09-09T17:57:38+00:00",
+    "source_sha": "afddada23d905d3231b0196ae0e6ed6121eeff43",
+    "tested_tree_sha": "8e864a02c1b13ae5ed726205472de1ba83a92ee6"
   },
-  "next_task": "T10",
+  "next_task": "T11",
   "phase": "P0",
   "plan_sha256": "685456b378662b0a40a53a6abc810041e37daf97b213f3efeb6cea879363934e",
   "planning_baseline_sha": "b5c3d3d394b70cf356cdde33b47511dad7cbb95c",
@@ -725,6 +866,7 @@
     "Session budget: 2^20 records/direction, 30 minutes; retirement is terminal.",
     "SessionSlot is the single serialisation point of a relation and witnesses itself; retiring a slot reclaims its lock entry and the replacement carries the next lease generation.",
     "No external review/model/content/device result may be fabricated.",
-    "Mesh advertising is UUID-only (canonical service UUID + flags); the 13-octet LinkInfo record is served by GATT and the air payload is budget-audited before dispatch."
+    "Mesh advertising is UUID-only (canonical service UUID + flags); the 13-octet LinkInfo record is served by GATT and the air payload is budget-audited before dispatch.",
+    "GATT profile is contract-driven on both engines (Generated A001-A004; legacy FD01/FD02 removed and refused; digest characteristic parity added to the Android server)."
   ]
 }
