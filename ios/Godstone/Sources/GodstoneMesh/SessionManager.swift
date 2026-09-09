@@ -69,9 +69,22 @@ public final class SessionManager {
     private let localBindingIssuer: any LocalBindingIssuer
     private let lifecycleGate: (any RuntimeLifecycleGate)?
 
-    private var controllers: [UUID: TrustedHandshakeController] = [:]
-    private var peerLocks: [UUID: NSRecursiveLock] = [:]
+    /// T08: one SessionSlot per relation keyed by the immutable RelationKey
+    /// (the transport lookup handle). The slot owns its lock, so removing a
+    /// retired slot reclaims its lock entry with it.
+    private var slots: [UUID: SessionSlot] = [:]
     private let mapLock = NSRecursiveLock()
+    /// T08: bounded last-generation registry. When a slot is reclaimed the
+    /// generation its lease carried is remembered here, so a replacement for
+    /// the SAME transport handle starts at the NEXT generation and a stale
+    /// event captured against the previous incarnation can never be mistaken
+    /// for one captured against the replacement. Bounded: the eldest
+    /// remembered handle is evicted first, and a lost generation only weakens
+    /// the stale-event guard - the terminal slot state and the replay window
+    /// remain the authoritative defences.
+    private var rememberedGenerations = [UUID: Int]()
+    private var rememberedOrder = [UUID]()
+    private let reclaimMaxRemembered = 256
     private let lifecycleRwLock = ReadWriteLock()
     private var managerState: ManagerState = .active
 
@@ -90,6 +103,26 @@ public final class SessionManager {
         self.lifecycleGate = lifecycleGate
     }
 
+    /// T08 evidence hook: live entries in the relation-slot registry.
+    internal func slotCountForTest() -> Int {
+        mapLock.lock()
+        defer { mapLock.unlock() }
+        return slots.count
+    }
+
+    /// T08 evidence hook: remembered generations currently retained.
+    internal func rememberedCountForTest() -> Int {
+        mapLock.lock()
+        defer { mapLock.unlock() }
+        return rememberedGenerations.count
+    }
+
+    /// T08 evidence hook: lease generation of the live slot, if any.
+    internal func slotLeaseGenerationForTest(_ peerId: UUID) -> Int? {
+        guard let slot = slotFor(peerId) else { return nil }
+        return slot.serialize { () -> Int in slot.lease.generation }
+    }
+
     public var isInvalidated: Bool {
         mapLock.lock()
         defer { mapLock.unlock() }
@@ -100,13 +133,53 @@ public final class SessionManager {
         return !isInvalidated
     }
 
-    private func getPeerLock(_ peerId: UUID) -> NSRecursiveLock {
+    private func relationKey(_ peerId: UUID) -> RelationKey {
+        return RelationKey(direction: .outboundCentral, peerId: peerId)
+    }
+
+    private func slotFor(_ peerId: UUID) -> SessionSlot? {
         mapLock.lock()
         defer { mapLock.unlock() }
-        if let l = peerLocks[peerId] { return l }
-        let l = NSRecursiveLock()
-        peerLocks[peerId] = l
-        return l
+        return slots[peerId]
+    }
+
+    private func getOrCreateSlot(_ peerId: UUID) -> SessionSlot {
+        mapLock.lock()
+        defer { mapLock.unlock() }
+        if let slot = slots[peerId] { return slot }
+        let generation = (rememberedGenerations[peerId] ?? -1) + 1
+        let slot = SessionSlot(
+            key: RelationKey(direction: .outboundCentral, peerId: peerId),
+            lease: SlotLease(generation: generation))
+        slots[peerId] = slot
+        return slot
+    }
+
+    private func removeSlot(_ slot: SessionSlot) {
+        mapLock.lock()
+        defer { mapLock.unlock() }
+        // Only the CURRENT incarnation is reclaimed: a stale caller that
+        // still holds an already-replaced slot must not evict the replacement,
+        // and the reclaimed lock entry leaves together with its slot.
+        if slots[slot.key.peerId] === slot {
+            slots.removeValue(forKey: slot.key.peerId)
+            rememberGeneration(slot)
+        }
+    }
+
+    private func rememberGeneration(_ slot: SessionSlot) {
+        let handle = slot.key.peerId
+        if let index = rememberedOrder.firstIndex(of: handle) {
+            rememberedOrder.remove(at: index)
+        } else if rememberedGenerations.count >= reclaimMaxRemembered {
+            // removeFirst() hands back the element itself; eviction only
+            // happens while the registry sits above its bound, so it is
+            // never empty at this point.
+            let victim = rememberedOrder.removeFirst()
+            rememberedGenerations.removeValue(forKey: victim)
+        }
+        rememberedGenerations[handle] = slot.lease.generation
+        rememberedOrder.append(handle)
     }
 
     /// True IFF the peer has an active TrustedHandshakeController in `.ready`
@@ -114,10 +187,11 @@ public final class SessionManager {
     public func isReady(_ peerId: UUID) -> Bool {
         return lifecycleRwLock.withReadLock {
             guard isActive else { return false }
-            mapLock.lock()
-            defer { mapLock.unlock() }
-            guard let ctrl = controllers[peerId] else { return false }
-            return ctrl.isReady && ctrl.state == .ready
+            guard let slot = slotFor(peerId) else { return false }
+            return slot.serialize { () -> Bool in
+                guard let ctrl = slot.controller else { return false }
+                return ctrl.isReady && ctrl.state == .ready
+            }
         }
     }
 
@@ -130,35 +204,30 @@ public final class SessionManager {
     public func initiatorStart(_ peerId: UUID, remoteHint: Data) -> Data? {
         return lifecycleRwLock.withReadLock {
             guard isActive else { return nil }
-            let pLock = getPeerLock(peerId)
-            pLock.lock()
-            defer { pLock.unlock() }
-
-            guard isActive else { return nil }
-            mapLock.lock()
-            if controllers[peerId] != nil {
-                mapLock.unlock()
-                return nil
+            let slot = getOrCreateSlot(peerId)
+            return slot.serialize { () -> Data? in
+                guard isActive else { return nil }
+                guard slot.state == .active else { return nil }
+                guard slot.controller == nil else { return nil }
+                let ctrl = TrustedHandshakeController.initiator(
+                    identity: identity,
+                    remoteHint: remoteHint,
+                    trustAuthority: trustAuthority,
+                    localBindingIssuer: localBindingIssuer
+                )
+                guard let hs1 = try? ctrl.initiatorWriteMessage1() else {
+                    ctrl.destroy()
+                    return nil
+                }
+                guard isActive else {
+                    _ = slot.retire()
+                    removeSlot(slot)
+                    ctrl.destroy()
+                    return nil
+                }
+                slot.controller = ctrl
+                return hs1
             }
-            mapLock.unlock()
-
-            let ctrl = TrustedHandshakeController.initiator(
-                identity: identity,
-                remoteHint: remoteHint,
-                trustAuthority: trustAuthority,
-                localBindingIssuer: localBindingIssuer
-            )
-            guard let hs1 = try? ctrl.initiatorWriteMessage1() else { return nil }
-
-            mapLock.lock()
-            guard isActive else {
-                mapLock.unlock()
-                ctrl.destroy()
-                return nil
-            }
-            controllers[peerId] = ctrl
-            mapLock.unlock()
-            return hs1
         }
     }
 
@@ -168,27 +237,26 @@ public final class SessionManager {
         return lifecycleRwLock.withReadLock {
             guard isActive else { return nil }
             testOperationHook?("initiatorProcessHs2")
-            let pLock = getPeerLock(peerId)
-            pLock.lock()
-            defer { pLock.unlock() }
-
-            guard isActive else { return nil }
-            mapLock.lock()
-            guard let ctrl = controllers[peerId] else {
-                mapLock.unlock()
-                return nil
+            guard let slot = slotFor(peerId) else { return nil }
+            var doomed: TrustedHandshakeController? = nil
+            let result = slot.serialize { () -> Data? in
+                guard isActive, slot.state == .active else { return nil }
+                guard let ctrl = slot.controller else { return nil }
+                guard let hs3 = ctrl.initiatorProcessMessage2(
+                    hs2: hs2, advertisedRemoteHint: advertisedRemoteHint),
+                    ctrl.isReady else {
+                    // T08: terminal transition serialized with the operation;
+                    // the destructive destroy is routed outside the slot lock.
+                    doomed = slot.retire()
+                    return nil
+                }
+                return hs3
             }
-            mapLock.unlock()
-
-            guard let hs3 = ctrl.initiatorProcessMessage2(hs2: hs2, advertisedRemoteHint: advertisedRemoteHint),
-                  ctrl.isReady else {
-                mapLock.lock()
-                controllers.removeValue(forKey: peerId)
-                mapLock.unlock()
-                ctrl.destroy()
-                return nil
+            if let doomed = doomed {
+                removeSlot(slot)
+                doomed.destroy()
             }
-            return hs3
+            return result
         }
     }
 
@@ -202,67 +270,53 @@ public final class SessionManager {
         return lifecycleRwLock.withReadLock {
             guard isActive else { return nil }
             testOperationHook?("responderProcessHs1")
-            let pLock = getPeerLock(peerId)
-            pLock.lock()
-            defer { pLock.unlock() }
-
-            guard isActive else { return nil }
-            mapLock.lock()
-            if controllers[peerId] != nil {
-                mapLock.unlock()
-                return nil
+            let slot = getOrCreateSlot(peerId)
+            return slot.serialize { () -> Data? in
+                guard isActive, slot.state == .active else { return nil }
+                guard slot.controller == nil else { return nil }
+                let ctrl = TrustedHandshakeController.responder(
+                    identity: identity,
+                    remoteHint: remoteHint,
+                    trustAuthority: trustAuthority
+                )
+                guard let hs2 = try? ctrl.responderProcessMessage1AndWriteMessage2(hs1: hs1) else {
+                    ctrl.destroy()
+                    return nil
+                }
+                guard isActive else {
+                    _ = slot.retire()
+                    removeSlot(slot)
+                    ctrl.destroy()
+                    return nil
+                }
+                slot.controller = ctrl
+                return hs2
             }
-            mapLock.unlock()
-
-            let ctrl = TrustedHandshakeController.responder(
-                identity: identity,
-                remoteHint: remoteHint,
-                trustAuthority: trustAuthority
-            )
-            guard let hs2 = try? ctrl.responderProcessMessage1AndWriteMessage2(hs1: hs1) else {
-                ctrl.destroy()
-                return nil
-            }
-
-            mapLock.lock()
-            guard isActive else {
-                mapLock.unlock()
-                ctrl.destroy()
-                return nil
-            }
-            controllers[peerId] = ctrl
-            mapLock.unlock()
-            return hs2
         }
     }
 
-    /// Process inbound HS3 from initiator.
-    /// Returns true IFF handshake reaches `.ready`.
     public func responderProcessHs3(_ peerId: UUID, hs3: Data, advertisedRemoteHint: Data) -> Bool {
         return lifecycleRwLock.withReadLock {
             guard isActive else { return false }
             testOperationHook?("responderProcessHs3")
-            let pLock = getPeerLock(peerId)
-            pLock.lock()
-            defer { pLock.unlock() }
-
-            guard isActive else { return false }
-            mapLock.lock()
-            guard let ctrl = controllers[peerId] else {
-                mapLock.unlock()
-                return false
+            guard let slot = slotFor(peerId) else { return false }
+            var doomed: TrustedHandshakeController? = nil
+            let result = slot.serialize {
+                guard isActive, slot.state == .active else { return false }
+                guard let ctrl = slot.controller else { return false }
+                let ok = ctrl.responderProcessMessage3(
+                    hs3: hs3, advertisedRemoteHint: advertisedRemoteHint)
+                if !ok || !ctrl.isReady {
+                    doomed = slot.retire()
+                    return false
+                }
+                return true
             }
-            mapLock.unlock()
-
-            guard ctrl.responderProcessMessage3(hs3: hs3, advertisedRemoteHint: advertisedRemoteHint),
-                  ctrl.isReady else {
-                mapLock.lock()
-                controllers.removeValue(forKey: peerId)
-                mapLock.unlock()
-                ctrl.destroy()
-                return false
+            if let doomed = doomed {
+                removeSlot(slot)
+                doomed.destroy()
             }
-            return true
+            return result
         }
     }
 
@@ -272,17 +326,13 @@ public final class SessionManager {
         return lifecycleRwLock.withReadLock {
             guard isActive else { return nil }
             testOperationHook?("seal")
-            mapLock.lock()
-            guard let ctrl = controllers[peerId] else {
-                mapLock.unlock()
-                return nil
+            guard let slot = slotFor(peerId) else { return nil }
+            return slot.serialize { () -> Data? in
+                guard slot.state == .active else { return nil }
+                guard let ctrl = slot.controller else { return nil }
+                guard ctrl.isReady && ctrl.state == .ready else { return nil }
+                return ctrl.seal(frameBytes)
             }
-            guard ctrl.isReady && ctrl.state == .ready else {
-                mapLock.unlock()
-                return nil
-            }
-            mapLock.unlock()
-            return ctrl.seal(frameBytes)
         }
     }
 
@@ -292,26 +342,23 @@ public final class SessionManager {
         return lifecycleRwLock.withReadLock {
             guard isActive else { return nil }
             testOperationHook?("open")
-            mapLock.lock()
-            guard let ctrl = controllers[peerId] else {
-                mapLock.unlock()
-                return nil
+            guard let slot = slotFor(peerId) else { return nil }
+            return slot.serialize { () -> Data? in
+                guard slot.state == .active else { return nil }
+                guard let ctrl = slot.controller else { return nil }
+                guard ctrl.isReady && ctrl.state == .ready else { return nil }
+                return ctrl.open(ciphertext)
             }
-            guard ctrl.isReady && ctrl.state == .ready else {
-                mapLock.unlock()
-                return nil
-            }
-            mapLock.unlock()
-            return ctrl.open(ciphertext)
         }
     }
 
     public func drop(_ peerId: UUID) {
         lifecycleRwLock.withReadLock {
-            mapLock.lock()
-            let ctrl = controllers.removeValue(forKey: peerId)
-            mapLock.unlock()
-            ctrl?.destroy()
+            guard let slot = slotFor(peerId) else { return }
+            // T08: the terminal transition is serialized; the destructive
+            // destroy is routed OUTSIDE the slot lock.
+            removeSlot(slot)
+            _ = slot.retire()?.destroy()
         }
     }
 
@@ -319,10 +366,10 @@ public final class SessionManager {
         lifecycleRwLock.withWriteLock {
             mapLock.lock()
             defer { mapLock.unlock() }
-            for ctrl in controllers.values {
-                ctrl.destroy()
+            for slot in slots.values {
+                slot.retire()?.destroy()
             }
-            controllers.removeAll()
+            slots.removeAll()
         }
     }
 
@@ -332,10 +379,12 @@ public final class SessionManager {
             mapLock.lock()
             defer { mapLock.unlock() }
             managerState = .invalidated
-            for ctrl in controllers.values {
-                ctrl.destroy()
+            for slot in slots.values {
+                slot.state = .invalidated
+                slot.controller?.destroy()
+                slot.controller = nil
             }
-            controllers.removeAll()
+            slots.removeAll()
         }
     }
 }

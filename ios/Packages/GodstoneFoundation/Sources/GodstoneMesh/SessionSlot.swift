@@ -1,0 +1,64 @@
+import Foundation
+
+public enum SlotState: Equatable {
+    case active
+    case retired
+    case invalidated
+}
+
+/// T08: monotonic lease token. Reclaim compares generations: a retired slot
+/// returns its lease to the registry and a replacement carries the next
+/// generation.
+public struct SlotLease: Equatable {
+    public let generation: Int
+
+    public init(generation: Int) {
+        self.generation = generation
+    }
+
+    public func next() -> SlotLease {
+        return SlotLease(generation: generation + 1)
+    }
+}
+
+/// T08: the single serialization authority for one relation. The handshake
+/// controller, cipher counters, replay window, terminal state and timer lease
+/// all live in this slot, and every operation - handshake, seal, open, drop,
+/// isReady - takes the SAME slot lock. Lock order: the lifecycle gate first,
+/// then the slot; the destructive work of a drop happens OUTSIDE the slot
+/// lock (only the terminal transition is serialized). Retired slots are
+/// removed from the registry and their lock entries reclaimed with them.
+public final class SessionSlot {
+
+    public let key: RelationKey
+    private let lock = NSRecursiveLock()
+
+    internal var controller: TrustedHandshakeController?
+    internal var state: SlotState = .active
+    internal var lease: SlotLease
+
+    public init(key: RelationKey, lease: SlotLease = SlotLease(generation: 0)) {
+        self.key = key
+        self.lease = lease
+    }
+
+    /// Every slot operation runs under this single serialization.
+    public func serialize<T>(_ block: () throws -> T) rethrows -> T {
+        lock.lock()
+        defer { lock.unlock() }
+        return try block()
+    }
+
+    /// T08: transition the slot to `.retired` atomically with the operation
+    /// that caused it, and hand back the controller so the CALLER can route
+    /// the destructive destroy outside the slot lock.
+    internal func retire() -> TrustedHandshakeController? {
+        return lock.withLock {
+            if state == .retired { return nil }
+            state = .retired
+            let doomed = controller
+            controller = nil
+            return doomed
+        }
+    }
+}

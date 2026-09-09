@@ -45,13 +45,86 @@ class SessionManager internal constructor(
     internal var testOperationHook: ((String) -> Unit)? = null
     internal var testInvalidationAttemptHook: (() -> Unit)? = null
 
-    private val controllers = HashMap<String, TrustedHandshakeController>()
-    private val peerLocks = ConcurrentHashMap<String, ReentrantLock>()
+    /**
+     * T08: one SessionSlot per relation keyed by the immutable RelationKey
+     * (the transport lookup handle). The slot owns its lock, so removing a
+     * retired slot reclaims its lock entry with it.
+     */
+    private val slots = HashMap<String, SessionSlot>()
+
+    /**
+     * T08: bounded last-generation registry. When a slot is reclaimed the
+     * generation its lease carried is remembered here, so a replacement for
+     * the SAME transport handle starts at the NEXT generation and a stale
+     * event captured against the previous incarnation can never be mistaken
+     * for one captured against the replacement. Bounded: the eldest
+     * remembered handle is evicted first, and a lost generation only weakens
+     * the stale-event guard - the terminal slot state and the replay window
+     * remain the authoritative defences.
+     */
+    private val rememberedGenerations = LinkedHashMap<String, Long>()
+    private val rememberedOrder = ArrayList<String>()
+    private val reclaimMaxRemembered = 256
 
     private fun key(peerId: ByteArray): String = peerId.joinToString("") { "%02x".format(it) }
 
-    private fun getPeerLock(key: String): ReentrantLock =
-        peerLocks.computeIfAbsent(key) { ReentrantLock() }
+    private fun relationKey(peerId: ByteArray): RelationKey = RelationKey(key(peerId))
+
+    private fun slotFor(rk: RelationKey): SessionSlot? =
+        mapLock.withLock { slots[rk.handle] }
+
+    private fun getOrCreateSlot(rk: RelationKey): SessionSlot =
+        mapLock.withLock {
+            val existing = slots[rk.handle]
+            if (existing != null) {
+                return@withLock existing
+            }
+            val generation = (rememberedGenerations[rk.handle] ?: -1L) + 1L
+            val fresh = SessionSlot(rk, SlotLease(generation))
+            slots[rk.handle] = fresh
+            return@withLock fresh
+        }
+
+    private fun removeSlot(slot: SessionSlot) {
+        mapLock.withLock {
+            // Only the CURRENT incarnation is reclaimed: a stale caller that
+            // still holds an already-replaced slot must not evict the
+            // replacement, and the reclaimed lock entry leaves with its slot.
+            if (slots[slot.key.handle] === slot) {
+                slots.remove(slot.key.handle)
+                rememberGeneration(slot)
+            }
+        }
+    }
+
+    private fun rememberGeneration(slot: SessionSlot) {
+        val handle = slot.key.handle
+        if (rememberedGenerations.containsKey(handle)) {
+            rememberedOrder.remove(handle)
+        } else if (rememberedGenerations.size >= reclaimMaxRemembered) {
+            val eldest = rememberedOrder.iterator()
+            if (eldest.hasNext()) {
+                val victim = eldest.next()
+                eldest.remove()
+                rememberedGenerations.remove(victim)
+            }
+        }
+        rememberedGenerations[handle] = slot.lease.generation
+        rememberedOrder.add(handle)
+    }
+
+    /** T08 evidence hook: live entries in the relation-slot registry. */
+    internal fun slotCountForTest(): Int = mapLock.withLock { slots.size }
+
+    /** T08 evidence hook: remembered generations currently retained. */
+    internal fun rememberedCountForTest(): Int =
+        mapLock.withLock { rememberedGenerations.size }
+
+    /** T08 evidence hook: lease generation of the live slot, if any. */
+    internal fun slotLeaseGenerationForTest(peerId: ByteArray): Long? {
+        val slot = slotFor(relationKey(peerId)) ?: return null
+        return slot.serialize { slot.lease.generation }
+    }
 
     val isInvalidated: Boolean
         get() = managerState == ManagerState.INVALIDATED || (lifecycleGate?.isInvalidated == true)
@@ -66,9 +139,11 @@ class SessionManager internal constructor(
     fun isReady(peerId: ByteArray): Boolean {
         lifecycleRwLock.read {
             if (!isActive) return false
-            val k = key(peerId)
-            val ctrl = mapLock.withLock { controllers[k] } ?: return false
-            return ctrl.isReady && ctrl.state == HandshakeTrustState.READY
+            val slot = slotFor(relationKey(peerId)) ?: return false
+            return slot.serialize {
+                val ctrl = slot.controller ?: return@serialize false
+                ctrl.isReady && ctrl.state == HandshakeTrustState.READY
+            }
         }
     }
 
@@ -82,13 +157,11 @@ class SessionManager internal constructor(
     fun initiatorStart(peerId: ByteArray, remoteHint: ByteArray): ByteArray? {
         lifecycleRwLock.read {
             if (!isActive) return null
-            val k = key(peerId)
-            val pLock = getPeerLock(k)
-            return pLock.withLock {
-                if (!isActive) return@withLock null
-                val exists = mapLock.withLock { controllers.containsKey(k) }
-                if (exists) return@withLock null
-
+            val slot = getOrCreateSlot(relationKey(peerId))
+            return slot.serialize {
+                if (!isActive) return@serialize null
+                if (slot.state != SlotState.ACTIVE) return@serialize null
+                if (slot.controller != null) return@serialize null
                 val ctrl = TrustedHandshakeController.initiator(
                     identity = identity,
                     remoteHint = remoteHint,
@@ -98,19 +171,16 @@ class SessionManager internal constructor(
                 val hs1 = try {
                     ctrl.initiatorWriteMessage1()
                 } catch (e: Exception) {
-                    return@withLock null
+                    ctrl.destroy()
+                    return@serialize null
                 }
-
-                val saved = mapLock.withLock {
-                    if (!isActive) {
-                        ctrl.destroy()
-                        false
-                    } else {
-                        controllers[k] = ctrl
-                        true
-                    }
+                if (!isActive) {
+                    slot.retire()
+                    removeSlot(slot)
+                    ctrl.destroy()
+                    return@serialize null
                 }
-                if (!saved) return@withLock null
+                slot.controller = ctrl
                 hs1
             }
         }
@@ -124,19 +194,27 @@ class SessionManager internal constructor(
         lifecycleRwLock.read {
             if (!isActive) return null
             testOperationHook?.invoke("initiatorProcessHs2")
-            val k = key(peerId)
-            val pLock = getPeerLock(k)
-            return pLock.withLock {
-                if (!isActive) return@withLock null
-                val ctrl = mapLock.withLock { controllers[k] } ?: return@withLock null
+            val slot = slotFor(relationKey(peerId)) ?: return null
+            var doomed: TrustedHandshakeController? = null
+            val result = slot.serialize {
+                if (!isActive || slot.state != SlotState.ACTIVE) {
+                    return@serialize null
+                }
+                val ctrl = slot.controller ?: return@serialize null
                 val hs3 = ctrl.initiatorProcessMessage2(hs2, advertisedRemoteHint)
                 if (hs3 == null || !ctrl.isReady) {
-                    mapLock.withLock { controllers.remove(k) }
-                    ctrl.destroy()
-                    return@withLock null
+                    // T08: terminal transition serialized with the operation;
+                    // the destructive destroy is routed outside the slot lock.
+                    doomed = slot.retire()
+                    return@serialize null
                 }
                 hs3
             }
+            doomed?.let { ctrl ->
+                removeSlot(slot)
+                ctrl.destroy()
+            }
+            return result
         }
     }
 
@@ -150,13 +228,11 @@ class SessionManager internal constructor(
         lifecycleRwLock.read {
             if (!isActive) return null
             testOperationHook?.invoke("responderProcessHs1")
-            val k = key(peerId)
-            val pLock = getPeerLock(k)
-            return pLock.withLock {
-                if (!isActive) return@withLock null
-                val exists = mapLock.withLock { controllers.containsKey(k) }
-                if (exists) return@withLock null
-
+            val slot = getOrCreateSlot(relationKey(peerId))
+            return slot.serialize {
+                if (!isActive) return@serialize null
+                if (slot.state != SlotState.ACTIVE) return@serialize null
+                if (slot.controller != null) return@serialize null
                 val ctrl = TrustedHandshakeController.responder(
                     identity = identity,
                     remoteHint = remoteHint,
@@ -165,23 +241,20 @@ class SessionManager internal constructor(
                 val hs2 = try {
                     ctrl.responderProcessMessage1AndWriteMessage2(hs1)
                 } catch (e: Exception) {
-                    return@withLock null
+                    ctrl.destroy()
+                    return@serialize null
                 }
                 if (hs2 == null) {
                     ctrl.destroy()
-                    return@withLock null
+                    return@serialize null
                 }
-
-                val saved = mapLock.withLock {
-                    if (!isActive) {
-                        ctrl.destroy()
-                        false
-                    } else {
-                        controllers[k] = ctrl
-                        true
-                    }
+                if (!isActive) {
+                    slot.retire()
+                    removeSlot(slot)
+                    ctrl.destroy()
+                    return@serialize null
                 }
-                if (!saved) return@withLock null
+                slot.controller = ctrl
                 hs2
             }
         }
@@ -195,19 +268,25 @@ class SessionManager internal constructor(
         lifecycleRwLock.read {
             if (!isActive) return false
             testOperationHook?.invoke("responderProcessHs3")
-            val k = key(peerId)
-            val pLock = getPeerLock(k)
-            return pLock.withLock {
-                if (!isActive) return@withLock false
-                val ctrl = mapLock.withLock { controllers[k] } ?: return@withLock false
+            val slot = slotFor(relationKey(peerId)) ?: return false
+            var doomed: TrustedHandshakeController? = null
+            val result = slot.serialize {
+                if (!isActive || slot.state != SlotState.ACTIVE) {
+                    return@serialize false
+                }
+                val ctrl = slot.controller ?: return@serialize false
                 val ok = ctrl.responderProcessMessage3(hs3, advertisedRemoteHint)
                 if (!ok || !ctrl.isReady) {
-                    mapLock.withLock { controllers.remove(k) }
-                    ctrl.destroy()
-                    return@withLock false
+                    doomed = slot.retire()
+                    return@serialize false
                 }
                 true
             }
+            doomed?.let { ctrl ->
+                removeSlot(slot)
+                ctrl.destroy()
+            }
+            return result
         }
     }
 
@@ -219,10 +298,15 @@ class SessionManager internal constructor(
         lifecycleRwLock.read {
             if (!isActive) return null
             testOperationHook?.invoke("seal")
-            val k = key(peerId)
-            val ctrl = mapLock.withLock { controllers[k] } ?: return null
-            if (!ctrl.isReady || ctrl.state != HandshakeTrustState.READY) return null
-            return ctrl.seal(frameBytes)
+            val slot = slotFor(relationKey(peerId)) ?: return null
+            return slot.serialize {
+                if (slot.state != SlotState.ACTIVE) return@serialize null
+                val ctrl = slot.controller ?: return@serialize null
+                if (!ctrl.isReady || ctrl.state != HandshakeTrustState.READY) {
+                    return@serialize null
+                }
+                ctrl.seal(frameBytes)
+            }
         }
     }
 
@@ -234,28 +318,42 @@ class SessionManager internal constructor(
         lifecycleRwLock.read {
             if (!isActive) return null
             testOperationHook?.invoke("open")
-            val k = key(peerId)
-            val ctrl = mapLock.withLock { controllers[k] } ?: return null
-            if (!ctrl.isReady || ctrl.state != HandshakeTrustState.READY) return null
-            return ctrl.open(ciphertext)
+            val slot = slotFor(relationKey(peerId)) ?: return null
+            return slot.serialize {
+                if (slot.state != SlotState.ACTIVE) return@serialize null
+                val ctrl = slot.controller ?: return@serialize null
+                if (!ctrl.isReady || ctrl.state != HandshakeTrustState.READY) {
+                    return@serialize null
+                }
+                ctrl.open(ciphertext)
+            }
         }
     }
 
     fun drop(peerId: ByteArray) {
         lifecycleRwLock.read {
-            val k = key(peerId)
-            val ctrl = mapLock.withLock { controllers.remove(k) }
-            ctrl?.destroy()
+            val slot = removeSlotFor(relationKey(peerId)) ?: return
+            // T08: the terminal transition is serialized; the destructive
+            // destroy is routed OUTSIDE the slot lock.
+            slot.retire()?.destroy()
         }
     }
+
+    private fun removeSlotFor(rk: RelationKey): SessionSlot? =
+        mapLock.withLock {
+            val slot = slots[rk.handle] ?: return@withLock null
+            slots.remove(rk.handle)
+            rememberGeneration(slot)
+            return@withLock slot
+        }
 
     fun destroyAll() {
         lifecycleRwLock.write {
             mapLock.withLock {
-                for (ctrl in controllers.values) {
-                    ctrl.destroy()
+                for (slot in slots.values) {
+                    slot.retire()?.destroy()
                 }
-                controllers.clear()
+                slots.clear()
             }
         }
     }
@@ -265,10 +363,12 @@ class SessionManager internal constructor(
         lifecycleRwLock.write {
             mapLock.withLock {
                 managerState = ManagerState.INVALIDATED
-                for (ctrl in controllers.values) {
-                    ctrl.destroy()
+                for (slot in slots.values) {
+                    slot.state = SlotState.INVALIDATED
+                    slot.controller?.destroy()
+                    slot.controller = null
                 }
-                controllers.clear()
+                slots.clear()
             }
         }
     }
