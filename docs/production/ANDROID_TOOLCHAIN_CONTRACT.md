@@ -102,3 +102,19 @@ must declare the same `ndkVersion`.
   `python3 scripts/check_android_toolchain.py`
 - Full Phase 0 runner: `scripts/verify_android_phase0.sh` (see
   `docs/production/ANDROID_PHASE0_VERIFICATION.md`).
+## Machine state — mac-primary (probed at T02)
+
+Probed 2026-09-09 by the builder through real argv commands only;
+captures live in the private evidence root (T02/probes/).
+
+| Item | Observed state |
+|---|---|
+| gradle-wrapper.jar | present; sha256 matches the pin (`498495120a03…44f17`) |
+| gradle-wrapper.properties | matches this contract: distributionUrl gradle-8.9-bin.zip, distributionSha256Sum `d725d707…cecab`, validateDistributionUrl=true, networkTimeout=10000 |
+| JDK | `/usr/bin/java` present but `java -version` unparseable; toolchain preflight reports `ENV: missing jdk` (exit 2) — an environment failure, never a source-test failure |
+| Android SDK | ANDROID_HOME unset; adb/cmake/ninja/gradle absent |
+| Xcode toolchain | Xcode 26.6, XcodeGen 2.46.0, Swift 6.3.3 |
+
+Conclusion: Android targets are blocked at environment level on this
+machine until a JDK 17 + SDK are provisioned; the contract pins
+themselves are verified intact.

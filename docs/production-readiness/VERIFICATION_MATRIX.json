@@ -62,6 +62,71 @@
       "task_ids": [
         "T01"
       ]
+    },
+    {
+      "claim_id": "CLM-T02-RUNNER",
+      "command_ids": [
+        "T02-narrow-python3",
+        "T02-subsystem-python3"
+      ],
+      "evidence_class": "internal",
+      "evidence_sha256": null,
+      "latest_source_sha": null,
+      "limitations": "host-only evidence; Android/device gates remain external",
+      "production_path": "tools/readiness/run.py",
+      "profile": "host-tooling",
+      "required_case_ids": [
+        "test_t02 suite"
+      ],
+      "requirement": "argv-only runner classifies zero-tests, timeouts and blocked executors honestly",
+      "result": "PASS",
+      "state_owner": "build/release controller",
+      "task_ids": [
+        "T02"
+      ]
+    },
+    {
+      "claim_id": "CLM-T02-GATES",
+      "command_ids": [
+        "T02-narrow-python3"
+      ],
+      "evidence_class": "internal",
+      "evidence_sha256": null,
+      "latest_source_sha": null,
+      "limitations": "host-only evidence; Android/device gates remain external",
+      "production_path": "tools/readiness/tests/test_t02.py",
+      "profile": "host-tooling",
+      "required_case_ids": [
+        "test_t02 suite"
+      ],
+      "requirement": "exact-SHA and zero-test mutation gates reject tampered evidence",
+      "result": "PASS",
+      "state_owner": "build/release controller",
+      "task_ids": [
+        "T02"
+      ]
+    },
+    {
+      "claim_id": "CLM-T02-CONTROLS",
+      "command_ids": [
+        "T02-controls-python3",
+        "T02-controls-python3-002"
+      ],
+      "evidence_class": "internal",
+      "evidence_sha256": null,
+      "latest_source_sha": null,
+      "limitations": "host-only evidence; Android/device gates remain external",
+      "production_path": "ci/check_repository.py",
+      "profile": "host-tooling",
+      "required_case_ids": [
+        "test_t02 suite"
+      ],
+      "requirement": "repository controls pass at the T02 tree",
+      "result": "PASS",
+      "state_owner": "build/release controller",
+      "task_ids": [
+        "T02"
+      ]
     }
   ],
   "note": "Claims appended per task with real evidence; PASS requires positive case counts and matching command output. Device/independent claims never accept host-only results.",

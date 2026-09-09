@@ -7,20 +7,46 @@
       "capabilities": [
         "python",
         "git",
-        "swift-xcode-when-available",
-        "android-gradle-when-available"
+        "unittest",
+        "swift-xcode",
+        "xcodegen",
+        "node",
+        "harness-omp-read-only"
       ],
       "id": "mac-primary",
       "last_smoke_test": {
-        "at": "2026-09-09T02:39:11+00:00",
-        "note": "preflight probed at T01 start: git/python present, no fabricated tool output",
+        "at": "2026-09-09T04:35:07+00:00",
+        "note": "T02 discovery: omp --version + `omp models ls --json` read-only (742 models), check_android_toolchain.py --selftest (all 10 branches fired), runner selftest 10/10, stages narrow/subsystem/controls PASSED through run.py",
         "result": "pass"
       },
-      "model_identity_if_builder": null,
+      "model_identity_if_builder": {
+        "advertised_by": "runtime system context; not introspectable by the builder",
+        "advertised_name": "Qwen3.8-Flash-Next",
+        "context_limit": null,
+        "license": null,
+        "note": "fields left null were never disclosed by the runtime; nothing fabricated",
+        "quantization": null,
+        "source_revision_hash": null,
+        "tool_calling": "supported (observed in this session)",
+        "user_requested_label": "Qwen3.8-Flash-Next"
+      },
       "os": "Darwin",
       "tool_versions": {
+        "ffmpeg": "8.1.2",
         "git": "2.53.0",
-        "python3": "3.14.4"
+        "node": "v25.8.2",
+        "npm": "11.11.1",
+        "ollama": "ollama version is 0.33.2",
+        "omp": "omp/18.1.13 (Oh My Pi CLI, /opt/homebrew/bin/omp)",
+        "python3": "3.14.4",
+        "swift": "Apple Swift version 6.3.3 (swiftlang-6.3.3.1.3 clang-2100.1.1.101)",
+        "xcodebuild": "Xcode 26.6",
+        "xcodegen": "Version: 2.46.0"
+      },
+      "unusable_or_absent": {
+        "android_sdk": "ANDROID_HOME unset; adb, cmake, ninja, gradle not found",
+        "dgx_host": "no reachable DGX/Linux host and no authorized transport",
+        "jdk": "/usr/bin/java present but `java -version` unparseable; scripts/check_android_toolchain.py reports ENV: missing jdk (exit 2)"
       },
       "workspace_root": "/Users/oculus/Projects/GODSTONE_BUILDER"
     },
@@ -31,8 +57,8 @@
       "capabilities": [],
       "id": "dgx-linux",
       "last_smoke_test": {
-        "at": "2026-09-09T02:39:11+00:00",
-        "note": "No DGX/Linux executor found by preflight probe; not fabricated. Register in T02 when discovered.",
+        "at": "2026-09-09T04:35:07+00:00",
+        "note": "No reachable DGX/Linux host and no authorized transport at T02 discovery; the runner refuses remote transports by design. Not fabricated.",
         "result": "absent"
       },
       "model_identity_if_builder": null,
@@ -41,6 +67,6 @@
       "workspace_root": null
     }
   ],
-  "note": "model_identity fields stay None until T02 reads real --help/model metadata; user-requested labels are separate fields",
+  "note": "Model identity fields stay null where the runtime disclosed nothing; the omp model catalog (742 entries) is a session catalog, not the builder identity. Probe captures live in the private evidence root (T02/probes/).",
   "schema_version": 1
 }

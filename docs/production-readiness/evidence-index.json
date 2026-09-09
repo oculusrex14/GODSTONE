@@ -1,73 +1,143 @@
 {
-  "evidence_root": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/T01",
+  "evidence_root": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE",
   "files": [
     {
-      "path": "raw/head-fuller.txt",
+      "path": "T01/raw/head-fuller.txt",
       "sha256": "e239bc31d2424f26b39262a367d9fc3470d380f94c83dfeb5e5b87e94868127e",
       "size": 318
     },
     {
-      "path": "raw/head.txt",
+      "path": "T01/raw/head.txt",
       "sha256": "e40630af0ce5bf8d49065b72a242e9f90002188f83f8add001439e7fcbae2c54",
       "size": 41
     },
     {
-      "path": "raw/parent.txt",
+      "path": "T01/raw/parent.txt",
       "sha256": "6256e2ff5c493df645175400e7e446463f816619b6e201a178a29f559c447cd7",
       "size": 41
     },
     {
-      "path": "raw/remote-tips.txt",
+      "path": "T01/raw/remote-tips.txt",
       "sha256": "6f49682c8ff8ec2817e3347013143dd85aa470d825208b84fa1c007e899778c9",
       "size": 540
     },
     {
-      "path": "raw/status-before.txt",
+      "path": "T01/raw/status-before.txt",
       "sha256": "8fdab17ec265223876300f39f34880b8635de2c113f3c7e3d960433af01c1a27",
       "size": 7271
     },
     {
-      "path": "raw/tracked-patch.bin",
+      "path": "T01/raw/tracked-patch.bin",
       "sha256": "b78e77db8ff425c2d8009abedeec7306ca1783c5a7a87d70e51982f873eed1ac",
       "size": 114681
     },
     {
-      "path": "logs/unittest-t01-run1.log",
+      "path": "T01/logs/unittest-t01-run1.log",
       "sha256": "5725088ba1927073533c68413c9ae0e869089f934faf6d85fdb848d947c21702",
       "size": 136744
     },
     {
-      "path": "logs/unittest-t01-run2.log",
+      "path": "T01/logs/unittest-t01-run2.log",
       "sha256": "606b0ea278db2419649deacffd609bedb8bdc31dc2792af558ca111d48912927",
       "size": 5692
     },
     {
-      "path": "logs/unittest-t01-run3.log",
+      "path": "T01/logs/unittest-t01-run3.log",
       "sha256": "df208754fa36306f8bffbd9aef4d646d04bc7dbb05ba63f23b06204cdde2c88a",
       "size": 5895
     },
     {
-      "path": "logs/unittest-t01-run4.log",
+      "path": "T01/logs/unittest-t01-run4.log",
       "sha256": "26c11ef518f2a5bdea743df22e0c464e415667c0181030774f785e03232637cb",
       "size": 3013
     },
     {
-      "path": "inventory.json",
+      "path": "T01/logs/unittest-t01-run5-postM.log",
+      "sha256": "69570406bc2644da6898bf47921080929680e63510b0c81f9f2cce2d550def51",
+      "size": 3013
+    },
+    {
+      "path": "T02/probes/node-version.txt",
+      "sha256": "8f8c5711e40e4aeef57fc1eab46f5ec0c8b99addf1cd6959551c3b914d17058d",
+      "size": 32
+    },
+    {
+      "path": "T02/probes/ollama-version.txt",
+      "sha256": "c9b0b5fc56ee0042db1359da6bc68c4f4b7317009c9bcbaae145423bf16e5325",
+      "size": 49
+    },
+    {
+      "path": "T02/probes/omp-help.txt",
+      "sha256": "ee212ddc6c6ee58ad0bb720dade4af664f6bc5f9245d4f23029e0dd4d2fdd820",
+      "size": 13273
+    },
+    {
+      "path": "T02/probes/omp-models-ls-json.txt",
+      "sha256": "e937ab7a3f9d613fc2c93724a848e009f0771dd42f5904d9eeae4c63bde7f4ab",
+      "size": 236548
+    },
+    {
+      "path": "T02/probes/omp-version.txt",
+      "sha256": "d34d8734b854082ce4307b924512f542d6b10d7faa8be8ef2909718fd88be266",
+      "size": 36
+    },
+    {
+      "path": "T02/probes/swift-version.txt",
+      "sha256": "ecdb14d07a72410e83b11e08d75ebba9bceb08956d7ec13e40a570ae52b8707a",
+      "size": 152
+    },
+    {
+      "path": "T02/probes/xcodebuild-version.txt",
+      "sha256": "c97b412c340d7eda6b2402244f707aa0a6a1c4058e60575a7d37684bc346d05e",
+      "size": 56
+    },
+    {
+      "path": "T02/probes/xcodegen-version.txt",
+      "sha256": "6c6cd18f11263b99301d75f9fdf43254c4ce934a411e0a0f9a5425ac3f634dbc",
+      "size": 40
+    },
+    {
+      "path": "T02/logs/T02-controls-python3-002.log",
+      "sha256": "0b1ac463307b9f7d907105bb19e85bdada5dcd05131d80c492ffd80b4ab3f5f4",
+      "size": 234
+    },
+    {
+      "path": "T02/logs/T02-controls-python3.log",
+      "sha256": "03f0bc422dc53a81fd7f41085300a28e42626c2a4554e8929d897d3c092bd014",
+      "size": 1374
+    },
+    {
+      "path": "T02/logs/T02-narrow-python3.log",
+      "sha256": "1f66e10c9736e7b9ac483009fc315a32cb4812a56051c4f960f1afe1a9c1d42f",
+      "size": 6974
+    },
+    {
+      "path": "T02/logs/T02-subsystem-python3.log",
+      "sha256": "2b138bdf0123f602eebd5e42224e53f941b760cda0b7af50e24edfeb3a81ae5b",
+      "size": 9873
+    },
+    {
+      "path": "T01/inventory.json",
       "sha256": "e7f2e905fa7d1be256d54e26854ff91aab89490209af0058dbce375cdb57f3fb",
       "size": 29459
     },
     {
-      "path": "commands.json",
+      "path": "T01/commands.json",
       "sha256": "f858e715e0202a40f733656f39f7ba5377c8598f52f27754b073e3612dd30d00",
       "size": 13121
     },
     {
-      "path": "tracked-patch.bin",
+      "path": "T01/tracked-patch.bin",
       "sha256": "b78e77db8ff425c2d8009abedeec7306ca1783c5a7a87d70e51982f873eed1ac",
       "size": 114681
+    },
+    {
+      "path": "T02/commands.json",
+      "sha256": "3310def66f77d4703466b80d94edccc4252c543816084314ac53eb7fc6be1f8c",
+      "size": 3526
     }
   ],
   "note": "nonsecret index; full logs live outside the repository",
   "schema_version": 1,
-  "task": "T01"
+  "task": "T02"
 }
