@@ -69,8 +69,7 @@ class NoiseSession private constructor(
      * reordering and rejects anything older or already seen.
      */
     private val replayLock = Any()
-    private var highestReceived: Long = -1L
-    private val replayWindow = java.util.BitSet(WINDOW)
+    private val replayWindow = ReplayWindow(WINDOW)
 
     var remoteStaticKey: ByteArray? = null
         private set
@@ -152,66 +151,52 @@ class NoiseSession private constructor(
     }
 
     /**
-     * Decrypt [ciphertext] (nonce || ciphertext+MAC), enforcing a 2048-message
-     * sliding replay window.
-     *
-     * @throws IllegalStateException if the handshake has not completed.
-     * @throws NoiseSession.AuthenticationException on tamper, replay, or any
-     *   message outside the replay window. A failed frame is never returned to
-     *   the caller: it is corruption or an active attacker, and in both cases
-     *   we refuse to process it.
+     * T05: one session operation = parse -> preview -> authenticate ->
+     * commit. The unsigned nonce is parsed and policy-checked before any
+     * subtraction; the window state is previewed WITHOUT mutation; the AEAD
+     * authentication runs against that nonce; the previewed plan is committed
+     * only on success. A failed authenticate mutates nothing, so a forged
+     * frame can no longer poison the window ("forged-high-then-valid" fails).
      */
-    fun decrypt(ciphertext: ByteArray): ByteArray {
+    fun openWithResult(ciphertext: ByteArray): CryptoOpenResult {
         val c = ciphers ?: throw IllegalStateException("session not established")
-        if (ciphertext.size < 8 + MAC_LEN) throw AuthenticationException()
-
-        val nonce = ByteBuffer.wrap(ciphertext, 0, 8).getLong()
-        val rest = ciphertext.copyOfRange(8, ciphertext.size)
-
+        if (ciphertext.size < 8 + MAC_LEN) return CryptoOpenResult.Rejected
         synchronized(replayLock) {
-            if (!recordNonce(nonce)) throw AuthenticationException()
+            when (val parsed = UnsignedNonce.parse(ByteBuffer.wrap(ciphertext))) {
+                is UnsignedNonce.Result.Rejected -> return CryptoOpenResult.Expired
+                is UnsignedNonce.Result.Valid -> {
+                    when (val plan = replayWindow.preview(parsed.value)) {
+                        is ReplayWindow.Plan.Reject -> return CryptoOpenResult.Expired
+                        is ReplayWindow.Plan.Accept -> {
+                            val rest = ciphertext.copyOfRange(8, ciphertext.size)
+                            val out = ByteArray(rest.size)
+                            val len = try {
+                                c.receiver.setNonce(parsed.value)
+                                c.receiver.decryptWithAd(null, rest, 0, out, 0, rest.size)
+                            } catch (e: javax.crypto.BadPaddingException) {
+                                return CryptoOpenResult.Rejected
+                            } catch (e: javax.crypto.ShortBufferException) {
+                                return CryptoOpenResult.Rejected
+                            }
+                            replayWindow.commit(plan)
+                            return CryptoOpenResult.Authenticated(out.copyOf(len))
+                        }
+                    }
+                }
+            }
         }
-
-        val out = ByteArray(rest.size)
-        val len = try {
-            c.receiver.setNonce(nonce)
-            c.receiver.decryptWithAd(null, rest, 0, out, 0, rest.size)
-        } catch (e: javax.crypto.BadPaddingException) {
-            throw AuthenticationException()
-        } catch (e: javax.crypto.ShortBufferException) {
-            throw AuthenticationException()
-        }
-        return out.copyOf(len)
     }
 
     /**
-     * Sliding-window nonce tracker. Returns true when [nonce] is novel and
-     * within the window, false when it is a replay or too old to consider.
+     * Backward-compatible wrapper: hard failure on any non-authenticated
+     * outcome, preserving the pre-T05 contract for existing callers.
      */
-    private fun recordNonce(nonce: Long): Boolean {
-        if (nonce > highestReceived) {
-            val shift = (nonce - highestReceived).toInt()
-            if (shift >= WINDOW) {
-                replayWindow.clear()
-            } else {
-                for (i in 0 until WINDOW - shift) {
-                    replayWindow[i] = replayWindow[i + shift]
-                }
-                for (i in WINDOW - shift until WINDOW) {
-                    replayWindow[i] = false
-                }
-            }
-            highestReceived = nonce
-            replayWindow[WINDOW - 1] = true
-            return true
+    fun decrypt(ciphertext: ByteArray): ByteArray =
+        when (val result = openWithResult(ciphertext)) {
+            is CryptoOpenResult.Authenticated -> result.plaintext
+            is CryptoOpenResult.Rejected, is CryptoOpenResult.Expired ->
+                throw AuthenticationException()
         }
-        val offset = (highestReceived - nonce).toInt()
-        if (offset >= WINDOW) return false
-        val idx = WINDOW - 1 - offset
-        if (replayWindow[idx]) return false
-        replayWindow[idx] = true
-        return true
-    }
 
     fun destroy() {
         ciphers?.destroy()
@@ -225,6 +210,18 @@ class NoiseSession private constructor(
      *  enclosing class name in Kotlin, which left the test's
      *  assertFailsWith<NoiseSession.AuthenticationException> unresolved. */
     class AuthenticationException : Exception("noise authentication failed")
+
+    /** T05: typed outcome of one authenticated-open session operation. */
+    sealed class CryptoOpenResult {
+        /** Frame authenticated and the previewed window plan committed. */
+        data class Authenticated(val plaintext: ByteArray) : CryptoOpenResult()
+
+        /** Malformed frame or failed AEAD verification; window untouched. */
+        object Rejected : CryptoOpenResult()
+
+        /** Reserved/out-of-policy nonce, replay, or outside the window. */
+        object Expired : CryptoOpenResult()
+    }
 
     companion object {
         const val PATTERN = "Noise_XX_25519_ChaChaPoly_BLAKE2s"

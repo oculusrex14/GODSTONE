@@ -260,17 +260,30 @@ def run_command(repo, spec, task_id, stage, executor, dry_run=False):
             f'{task_id}: executor {executor.id!r} cannot run commands: '
             f'authorized_transport is {executor.transport!r} '
             f'(only local transport is implemented; no implicit remote shell)')
-    if shutil.which(argv[0]) is None:
+    argv0 = argv[0]
+    if '/' in argv0:
+        argv0_path = os.path.join(cwd, argv0)
+        argv0_found = os.path.isfile(argv0_path) and os.access(
+            os.path.realpath(argv0_path), os.X_OK)
+    else:
+        argv0_path = shutil.which(argv0)
+        argv0_found = argv0_path is not None
+    if not argv0_found:
         raise BlockedExternal(
             f'{task_id}: executable {argv[0]!r} not found on PATH')
-    family = _family_chain(argv[0])
+    family = _family_chain(os.path.basename(argv0))
+    capabilities = set(executor.entry.get('capabilities') or ()) \
+        if executor is not None else set()
     for name, _found in resolve_executables(spec.get('requires')):
         if shutil.which(name):
             continue
         if name in family:
             continue
+        if name in capabilities:
+            continue
         raise BlockedExternal(
-            f'{task_id}: required executable {name!r} not found on PATH')
+            f'{task_id}: required executable or capability {name!r} '
+            f'not available')
     for part in argv:
         pass  # argv parts are passed verbatim; no shell involved
     started = _utcnow()

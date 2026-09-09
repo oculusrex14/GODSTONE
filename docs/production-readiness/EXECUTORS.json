@@ -11,12 +11,14 @@
         "swift-xcode",
         "xcodegen",
         "node",
-        "harness-omp-read-only"
+        "harness-omp-read-only",
+        "android-jvm",
+        "gradle"
       ],
       "id": "mac-primary",
       "last_smoke_test": {
         "at": "2026-09-09T04:35:07+00:00",
-        "note": "T02 discovery: omp --version + `omp models ls --json` read-only (742 models), check_android_toolchain.py --selftest (all 10 branches fired), runner selftest 10/10, stages narrow/subsystem/controls PASSED through run.py",
+        "note": "T02 discovery: omp --version + `omp models ls --json` read-only (742 models), check_android_toolchain.py --selftest (all 10 branches fired), runner selftest 10/10, stages narrow/subsystem/controls PASSED through run.py; T05: Android toolchain provisioned (JDK 17.0.20.1, SDK 35), preflight green, :mesh JVM tests executed",
         "result": "pass"
       },
       "model_identity_if_builder": {
@@ -31,9 +33,15 @@
         "user_requested_label": "Qwen3.8-Flash-Next"
       },
       "os": "Darwin",
+      "provisioning_note": null,
       "tool_versions": {
+        "android_sdk": "platform android-35, build-tools 35.0.0/34.0.0, platform-tools (ANDROID_HOME=/opt/homebrew/share/android-commandlinetools)",
+        "cmake": "3.22.1",
         "ffmpeg": "8.1.2",
         "git": "2.53.0",
+        "gradle": "8.9 (wrapper-pinned, distribution checksum verified)",
+        "jdk": "OpenJDK 17.0.20.1+1 (Temurin, arm64) - provisioned during T05",
+        "ndk": "27.0.12077973",
         "node": "v25.8.2",
         "npm": "11.11.1",
         "ollama": "ollama version is 0.33.2",
@@ -44,9 +52,7 @@
         "xcodegen": "Version: 2.46.0"
       },
       "unusable_or_absent": {
-        "android_sdk": "ANDROID_HOME unset; adb, cmake, ninja, gradle not found",
-        "dgx_host": "no reachable DGX/Linux host and no authorized transport",
-        "jdk": "/usr/bin/java present but `java -version` unparseable; scripts/check_android_toolchain.py reports ENV: missing jdk (exit 2)"
+        "dgx_host": "no reachable DGX/Linux host and no authorized transport"
       },
       "workspace_root": "/Users/oculus/Projects/GODSTONE_BUILDER"
     },
@@ -67,6 +73,9 @@
       "workspace_root": null
     }
   ],
-  "note": "Model identity fields stay null where the runtime disclosed nothing; the omp model catalog (742 entries) is a session catalog, not the builder identity. Probe captures live in the private evidence root (T02/probes/).",
+  "note": "Model identity fields stay null where the runtime disclosed nothing; the omp model catalog (742 entries) is a session catalog, not the builder identity. Probe captures live in the private evidence root (T02/probes/). Provisioning facts verified by the toolchain preflight and the first real Gradle test run (T05).",
+  "provisioning": {
+    "note": null
+  },
   "schema_version": 1
 }

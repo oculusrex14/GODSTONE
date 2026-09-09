@@ -157,6 +157,26 @@
       "size": 23784
     },
     {
+      "path": "T05/logs/T05-controls-python3-002.log",
+      "sha256": "0b1ac463307b9f7d907105bb19e85bdada5dcd05131d80c492ffd80b4ab3f5f4",
+      "size": 234
+    },
+    {
+      "path": "T05/logs/T05-controls-python3.log",
+      "sha256": "03f0bc422dc53a81fd7f41085300a28e42626c2a4554e8929d897d3c092bd014",
+      "size": 1374
+    },
+    {
+      "path": "T05/logs/T05-narrow-gradlew.log",
+      "sha256": "c50e097e858381dd4d74d06c0f46e9c359cfd4362fad86c47c61ab5e282a1862",
+      "size": 2854
+    },
+    {
+      "path": "T05/logs/T05-subsystem-gradlew.log",
+      "sha256": "643e3f759b9fba0f8694c14ce98a98e473ecb09fff1ccb06675c9f428c294ddb",
+      "size": 2806
+    },
+    {
       "path": "T01/inventory.json",
       "sha256": "e7f2e905fa7d1be256d54e26854ff91aab89490209af0058dbce375cdb57f3fb",
       "size": 29459
@@ -185,9 +205,14 @@
       "path": "T04/commands.json",
       "sha256": "87e8fa1bb4eba37a179c4525d67fc6477315cfffa8d0319921d3965b74c17e49",
       "size": 3526
+    },
+    {
+      "path": "T05/commands.json",
+      "sha256": "0b962da1b9ab9a5b33de0c77a4abe1054384faa92ffa5f73911051010da17574",
+      "size": 5983
     }
   ],
   "note": "nonsecret index; full logs live outside the repository",
   "schema_version": 1,
-  "task": "T04"
+  "task": "T05"
 }
