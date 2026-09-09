@@ -2,62 +2,82 @@
   "evidence_root": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE",
   "files": [
     {
-      "path": "T11/commands.json",
-      "sha256": "072bf7fb9880f73d928dea4de0b3c09e89949760b04dd31bc5ac0bc3627dff36",
-      "size": 3470
+      "path": "T12/commands.json",
+      "sha256": "f6739028e49b29f35c36ea51016de34bb39e17038ce37de87762227e63136df2",
+      "size": 6918
     },
     {
-      "path": "T11/logs/T11-controls-python3-002.log",
+      "path": "T12/logs/T12-controls-python3-002.log",
       "sha256": "0b1ac463307b9f7d907105bb19e85bdada5dcd05131d80c492ffd80b4ab3f5f4",
       "size": 234
     },
     {
-      "path": "T11/logs/T11-controls-python3.log",
+      "path": "T12/logs/T12-controls-python3-003.log",
       "sha256": "03f0bc422dc53a81fd7f41085300a28e42626c2a4554e8929d897d3c092bd014",
       "size": 1374
     },
     {
-      "path": "T11/logs/T11-narrow-gradlew.log",
-      "sha256": "be638ff2ad2184af7ca43a448d17bdb347e2f88e2cd082f56dfc45c0a512d59c",
-      "size": 2527
+      "path": "T12/logs/T12-controls-python3-004.log",
+      "sha256": "0b1ac463307b9f7d907105bb19e85bdada5dcd05131d80c492ffd80b4ab3f5f4",
+      "size": 234
     },
     {
-      "path": "T11/logs/T11-subsystem-gradlew.log",
-      "sha256": "f230bd4035ee2091b90f8be147864e2e4c952c3d2eebcc9ad3ec7b5832f1995f",
+      "path": "T12/logs/T12-controls-python3.log",
+      "sha256": "03f0bc422dc53a81fd7f41085300a28e42626c2a4554e8929d897d3c092bd014",
+      "size": 1374
+    },
+    {
+      "path": "T12/logs/T12-narrow-gradlew-002.log",
+      "sha256": "670a5ebf198a346b9046f3d18ee857d73f53f8d611389de33827df6345e166be",
+      "size": 2513
+    },
+    {
+      "path": "T12/logs/T12-narrow-gradlew.log",
+      "sha256": "a761b44fc1f25187e79b52a13a6e100ae48dce932ccc94d347926c5eb17ef855",
+      "size": 2514
+    },
+    {
+      "path": "T12/logs/T12-subsystem-gradlew-002.log",
+      "sha256": "15344530ac7a75e9efecf4a033eb6afed2fa0a59a51479ab18bfcb3a1d268156",
+      "size": 2488
+    },
+    {
+      "path": "T12/logs/T12-subsystem-gradlew.log",
+      "sha256": "81c7c06b778a33e01fb4e9a48d317e69f8d0c022aacd2c4cfddd5a47640a3cca",
       "size": 2500
     },
     {
-      "path": "T11/mutations/MU-A-epoch-arrival.log",
-      "sha256": "e3d670c09363fd4079c760acda45e2df0d93011e451975fc1cb254124c94c70a",
-      "size": 6165
+      "path": "T12/mutations/MU-1-diddisconnect-required.log",
+      "sha256": "55744edd8e8d2a41711d36acb5ec26a1e1d8fb33a98dbe4029018a6295249062",
+      "size": 7090
     },
     {
-      "path": "T11/mutations/MU-B-consultation-removed.log",
-      "sha256": "11f71137e7e68bbef5dcb6ff089b7746d1725b85f8574eca34eabba932c9b405",
-      "size": 6851
+      "path": "T12/mutations/MU-2-once-flag-blind.log",
+      "sha256": "850262383a35e0f0857031a94e95a12a7fc18d02249de31de934b2edb7620b2a",
+      "size": 6325
     },
     {
-      "path": "T11/mutations/MU-C-bound-never-enforced.log",
-      "sha256": "68cde515cc558d99dce7348364f9c9b27aa4bc3122bbeac6c77ec3451c53df76",
-      "size": 6313
+      "path": "T12/mutations/MU-3-absent-token-correlated.log",
+      "sha256": "2e57fa422a96662de629644c874825c1b48dc78a2701820fff329130a8ebea99",
+      "size": 6181
     },
     {
-      "path": "T11/mutations/MU-D-pinning-removed.log",
-      "sha256": "5a7a7f3b307d34d12d2c04c8b4c70b88f27f37b8b76a9977d0d869fc4a969ecc",
-      "size": 6315
+      "path": "T12/mutations/MU-4-close-ignores-stamp.log",
+      "sha256": "741f5ad76bd1a86c05f0fea844cdf4937a9c9698c9b5c3b4efc9744691190d4e",
+      "size": 6137
     },
     {
-      "path": "T11/mutations/MU-E-failure-clears-run.log",
-      "sha256": "1f8da1bb1347f60aca2f50176038d8b5804780a798302051e4cd005b9102c9d6",
-      "size": 6120
+      "path": "T12/mutations/MU-5-transport-gate-removed.log",
+      "sha256": "61e38b5885b22b274fe157a50726f6f3cc7c3f2183d2f5e3e35a601210d364ee",
+      "size": 6118
     },
     {
-      "path": "T11/mutations/manifest.json",
-      "sha256": "955e8cd76339630c8d66ffce9abe93938ecca6721480218c0fec559d3f39751f",
-      "size": 2462
+      "path": "T12/mutations/manifest.json",
+      "sha256": "2f0674b9b4002981813f773686b22dceb2ee58c3790fd3d37344b677db138422",
+      "size": 2403
     }
   ],
   "note": "nonsecret index; full logs live outside the repository",
   "schema_version": 1,
-  "task": "T11"
+  "task": "T12"
 }

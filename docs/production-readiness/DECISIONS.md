@@ -186,3 +186,40 @@ log. The android ScanCallback facade names its failure hook onScanFailed
 five-mutant campaign (arrival epoch read removed, arrival consultation
 removed, bound never enforced, pinning removed, failure clears the run) was
 killed with full 13-case executions and exact witnesses each.
+
+## D-T12-a [ACCEPTED] One terminal authority for locally ended attempts
+A local close invalidates the GATT callback lifetime: any slot that, after a
+reject, provisional timeout or local cancel, still rested CLOSING awaited a
+didDisconnect that could never arrive, leaving the peer unreachable for the
+epoch. T12 makes termination explicit: TerminalEvent{RelationKey, reason}
+names the exact relation that ends, and one terminate authority under the
+driver lock performs the whole completion - the relation transitions once,
+the lease leaves the capacity authority once (identity-matched), the
+publication comes down once, the slot rests terminal at IDLE of that
+generation - and returns an outcome, so effects (DisconnectGatt, PublishLost)
+are scheduled from the event that earned them, never from a re-read of
+current state. Late platform terminals for ended generations are idempotent
+no-ops; foreign-generation events are refused entirely. Production callbacks
+lost their default-zero fallbacks: handlers require their tokens, absent
+arrival tokens are refused rather than correlated to the current slot, and
+each scheduled client carries the relation generation it was stamped with,
+so the close of the captured handle belongs to the exact attempt that
+captured it (closeCapturedHandle, once). The server's local reject-teardown
+rests QUARANTINED, terminal in itself, mirroring the iOS didSubscribe filter
+at the platform boundary.
+
+## D-T12-b [ACCEPTED] Builder runtime facts (this environment)
+Mutation campaigns must run against committed trees: an uncommitted witness
+strengthening was invisible to the disposable worktree, and a survivor verdict
+for the transport-gate mutant was an artifact of the stale witness (the driver
+re-checked the token, so the removed transport guard had no observable
+consequence until the witness was strengthened to observe the gate's own side
+effect on the live connection object). Corollary rule adopted: a redundant
+defense-in-depth guard is only as alive as a witness that can see it. Also:
+the gradle build cache serves testDebugUnitTest FROM-CACHE with lazy XML
+materialisation even for genuinely-changed inputs on this machine, so campaign
+and verification invocations pass --rerun-tasks, extractors read the fresh
+JUnit XML by absolute path, and the gradle "N tests completed, M failed"
+summary is treated as a fallback signal, not as proof of execution; a
+gradle exit 0 with an absent summary line means "task delivered from cache",
+never "suite passed".

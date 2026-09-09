@@ -832,9 +832,114 @@
         "device gates for the BLE runtime path stay open: the section 19/18 cases are exercised on the host only until T73-T75 record physical evidence",
         "the runner records test counts as UNKNOWN for command-kind specs, so the positive counts above were derived from the fresh JUnit XML reports and the xctest summaries in the recorded logs"
       ]
+    },
+    "T11": {
+      "case_results": [
+        {
+          "collected": 13,
+          "counts_source": "fresh JUnit XML report of the filtered run at this tree (13 cases, zero failures), matching the recorded narrow log",
+          "engine": "android-jvm",
+          "executed": 13,
+          "failed": 0,
+          "passed": 13,
+          "skipped": 0,
+          "stage": "narrow",
+          "suite": "ReadinessT11Test"
+        },
+        {
+          "collected": 776,
+          "counts_source": "all fresh JUnit XML reports of the mesh unit test task",
+          "engine": "android-jvm",
+          "executed": 776,
+          "failed": 0,
+          "passed": 776,
+          "skipped": 0,
+          "stage": "subsystem"
+        },
+        {
+          "executed": 2,
+          "failed": 0,
+          "passed": 2,
+          "skipped": 0,
+          "stage": "controls"
+        }
+      ],
+      "commands": [
+        "T11-narrow-gradlew",
+        "T11-subsystem-gradlew",
+        "T11-controls-python3",
+        "T11-controls-python3-002"
+      ],
+      "device_gate_ids": [],
+      "implementation_commit": "72002d62e241d2604f8bff388a2e40b220ddd786",
+      "inputs": {
+        "baseline": "b5c3d3d394b70cf356cdde33b47511dad7cbb95c",
+        "commit_c_initial": "72002d62e241d2604f8bff388a2e40b220ddd786",
+        "mutation_worktree": "/Users/oculus/Projects/GODSTONE_T11_MUT"
+      },
+      "mutation_results": [
+        {
+          "engines": [
+            "android-jvm"
+          ],
+          "evidence": "T11/mutations/MU-A-epoch-arrival.log (1 of 13 failing; the card-obligation mutant)",
+          "expected": "old-result replay of the current context object must be refused at arrival; the drop must change nothing",
+          "mutation": "MU-A the epoch is no longer read at callback arrival (isCurrent term removed from all three arrival guards)",
+          "outcome": "KILLED"
+        },
+        {
+          "engines": [
+            "android-jvm"
+          ],
+          "evidence": "T11/mutations/MU-B-consultation-removed.log (5 of 13 failing)",
+          "expected": "every replay/isolation case fails when the arrival consultation is gone",
+          "mutation": "MU-B the arrival consultation is removed wholesale (guards replaced by a constant pass)",
+          "outcome": "KILLED"
+        },
+        {
+          "engines": [
+            "android-jvm"
+          ],
+          "evidence": "T11/mutations/MU-C-bound-never-enforced.log (2 of 13 failing)",
+          "expected": "the 10000-advertiser flood cases report the missing bound",
+          "mutation": "MU-C the discovered-peer bound is never enforced",
+          "outcome": "KILLED"
+        },
+        {
+          "engines": [
+            "android-jvm"
+          ],
+          "evidence": "T11/mutations/MU-D-pinning-removed.log (2 of 13 failing)",
+          "expected": "the exact survivor sets of the flood cases witness the destroyed pins",
+          "mutation": "MU-D active relations are no longer pinned during eviction",
+          "outcome": "KILLED"
+        },
+        {
+          "engines": [
+            "android-jvm"
+          ],
+          "evidence": "T11/mutations/MU-E-failure-clears-run.log (1 of 13 failing)",
+          "expected": "a scan failure must terminate only its own context, never the run",
+          "mutation": "MU-E a scan failure clears the whole run surface and registration",
+          "outcome": "KILLED"
+        }
+      ],
+      "next_action": "none - task complete",
+      "phase_gate": "P1",
+      "required_cases": [
+        "ReadinessT11Test (13 cases Android)"
+      ],
+      "status": "COMPLETE",
+      "task_id": "T11",
+      "tested_tree_sha": "bc2b89aa558d79aa9061df5617ce77216f860d1e",
+      "unresolved": [
+        "device gates for the Android scan path stay open: the section 19/18 cases (real controller scan, radio flood behavior, permission transitions) are exercised on the JVM facade only until T73-T75 record physical evidence",
+        "the post-driver revalidation of the scheduling step is race machinery beyond JVM-deterministic reach; it is covered by construction (same guard vocabulary as the arrival guards, witnessed by MU-B) and awaits instrumented exercise",
+        "the runner records test counts as UNKNOWN for command-kind specs, so the positive counts above were derived from the fresh JUnit XML reports and the gradle summaries in the recorded logs"
+      ]
     }
   },
-  "current_task": "T11",
+  "current_task": "T12",
   "external_blockers": [
     "A06",
     "APPROVED_CONTENT",
@@ -844,20 +949,20 @@
   ],
   "failed_attempts": [],
   "in_progress": {
-    "claimed_head": "43cd83da6f48ef1a3e346f78a8ace16392346c19",
-    "claimed_utc": "2026-09-09T17:59:03Z",
-    "objective": "Bind Android scan callbacks to bounded scan epochs (ScanContext + BoundedDiscoveryIndex)",
-    "task": "T11"
+    "claimed_head": "b5ffaa6c060983e70651add5d96476a76a2912f6",
+    "claimed_utc": "2026-09-09T19:06:34Z",
+    "objective": "Terminate Android locally cancelled attempts explicitly (TerminalEvent, closeExactly, required tokens)",
+    "task": "T12"
   },
-  "last_code_head": "afddada23d905d3231b0196ae0e6ed6121eeff43",
-  "last_observed_head": "afddada23d905d3231b0196ae0e6ed6121eeff43",
+  "last_code_head": "72002d62e241d2604f8bff388a2e40b220ddd786",
+  "last_observed_head": "72002d62e241d2604f8bff388a2e40b220ddd786",
   "latest_verification": {
-    "note": "T10 narrow 11/13 dual + mesh subsystem 763/763 + host subsystem 696/696 green at afddada; six mutants killed on both engines",
-    "recorded_utc": "2026-09-09T17:57:38+00:00",
-    "source_sha": "afddada23d905d3231b0196ae0e6ed6121eeff43",
-    "tested_tree_sha": "8e864a02c1b13ae5ed726205472de1ba83a92ee6"
+    "note": "T11 narrow 13/13, mesh subsystem 776/776 green at 72002d6; five mutants killed",
+    "recorded_utc": "2026-09-09T19:05:26+00:00",
+    "source_sha": "72002d62e241d2604f8bff388a2e40b220ddd786",
+    "tested_tree_sha": "bc2b89aa558d79aa9061df5617ce77216f860d1e"
   },
-  "next_task": "T11",
+  "next_task": "T12",
   "phase": "P0",
   "plan_sha256": "685456b378662b0a40a53a6abc810041e37daf97b213f3efeb6cea879363934e",
   "planning_baseline_sha": "b5c3d3d394b70cf356cdde33b47511dad7cbb95c",
@@ -872,6 +977,7 @@
     "SessionSlot is the single serialisation point of a relation and witnesses itself; retiring a slot reclaims its lock entry and the replacement carries the next lease generation.",
     "No external review/model/content/device result may be fabricated.",
     "Mesh advertising is UUID-only (canonical service UUID + flags); the 13-octet LinkInfo record is served by GATT and the air payload is budget-audited before dispatch.",
-    "GATT profile is contract-driven on both engines (Generated A001-A004; legacy FD01/FD02 removed and refused; digest characteristic parity added to the Android server)."
+    "GATT profile is contract-driven on both engines (Generated A001-A004; legacy FD01/FD02 removed and refused; digest characteristic parity added to the Android server).",
+    "Android scan callbacks are context-bound (ScanContext epoch/identity/lease; capture-before-deliver; reducer-only mutation) and the discovery surface is bounded (64, pin-aware, deterministic LRU eviction) on both the transport and the orchestration driver."
   ]
 }

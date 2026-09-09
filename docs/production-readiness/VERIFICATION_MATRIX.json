@@ -527,6 +527,50 @@
       "task_ids": [
         "T11"
       ]
+    },
+    {
+      "claim_id": "CLM-T12-TERMINAL",
+      "command_ids": [
+        "T12-narrow-gradlew-002",
+        "T12-subsystem-gradlew-002"
+      ],
+      "evidence_class": "internal",
+      "evidence_sha256": null,
+      "latest_source_sha": "d7376a640dfe5118e48e29339896dafc85c9b7d8",
+      "limitations": "JVM-facade evidence; real handle-close timing and platform disconnection delivery belong to the T73-T75 device gates",
+      "production_path": "android/mesh/src/main/java/io/godstone/mesh/transport/Terminal.kt",
+      "profile": "jvm-host",
+      "required_case_ids": [
+        "ReadinessT12Test"
+      ],
+      "requirement": "on reject, provisional timeout and local cancel the exact RelationKey (direction, address, generation) transitions to terminal atomically under the driver lock: the lease leaves the authority once, the publication comes down once, and only then the captured GATT handle of that very attempt is closed; no slot awaits a didDisconnect that a locally closed handle can no longer deliver, and late platform terminals for ended generations are idempotent no-ops",
+      "result": "PASS",
+      "state_owner": "transport terminal authority (driver terminate)",
+      "task_ids": [
+        "T12"
+      ]
+    },
+    {
+      "claim_id": "CLM-T12-TOKENS",
+      "command_ids": [
+        "T12-narrow-gradlew-002",
+        "T12-subsystem-gradlew-002"
+      ],
+      "evidence_class": "internal",
+      "evidence_sha256": null,
+      "latest_source_sha": "d7376a640dfe5118e48e29339896dafc85c9b7d8",
+      "limitations": "JVM-facade evidence; the true-branch of the captured-handle close needs a platform-captured handle and awaits instrumented exercise",
+      "production_path": "android/mesh/src/main/java/io/godstone/mesh/transport/BleTransport.kt",
+      "profile": "jvm-host",
+      "required_case_ids": [
+        "ReadinessT12Test"
+      ],
+      "requirement": "production callbacks carry their required tokens: central and server disconnect handlers, inbound timeouts and admission arrivals name their exact registrations - default-zero fallbacks are removed, absent arrival tokens are refused rather than correlated to the current slot, foreign-generation terminals are refused entirely, and effects (DisconnectGatt, PublishLost) travel with their generation so no executor re-reads current state to decide what to close or unpublish",
+      "result": "PASS",
+      "state_owner": "transport callback token discipline",
+      "task_ids": [
+        "T12"
+      ]
     }
   ],
   "note": "Claims appended per task with real evidence; PASS requires positive case counts and matching command output. Device/independent claims never accept host-only results.",
