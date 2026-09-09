@@ -58,8 +58,8 @@
     },
     {
       "path": "commands.json",
-      "sha256": "8f33a12467bd3e5c5990cf1da0cb073815e5c18113c594b29792f0dd0a8fc7e9",
-      "size": 10950
+      "sha256": "f858e715e0202a40f733656f39f7ba5377c8598f52f27754b073e3612dd30d00",
+      "size": 13121
     },
     {
       "path": "tracked-patch.bin",

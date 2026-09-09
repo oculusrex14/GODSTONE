@@ -1,5 +1,69 @@
 {
-  "claims": [],
+  "claims": [
+    {
+      "claim_id": "CLM-T01-COPIES",
+      "command_ids": [
+        "t01-cmd-12"
+      ],
+      "evidence_class": "internal",
+      "evidence_sha256": "26c11ef518f2a5bdea743df22e0c464e415667c0181030774f785e03232637cb",
+      "latest_source_sha": "b33d790818c1019a5508917d653546f166ece983",
+      "limitations": "host-only evidence; device and independent gates remain external",
+      "production_path": "tools/readiness/preserve.py",
+      "profile": "host-tooling",
+      "required_case_ids": [
+        "test_t01 suite"
+      ],
+      "requirement": "all required copies match the inventory byte-for-byte",
+      "result": "PASS",
+      "state_owner": "build/release controller",
+      "task_ids": [
+        "T01"
+      ]
+    },
+    {
+      "claim_id": "CLM-T01-PATCH",
+      "command_ids": [
+        "t01-cmd-12"
+      ],
+      "evidence_class": "internal",
+      "evidence_sha256": "26c11ef518f2a5bdea743df22e0c464e415667c0181030774f785e03232637cb",
+      "latest_source_sha": "b33d790818c1019a5508917d653546f166ece983",
+      "limitations": "host-only evidence; device and independent gates remain external",
+      "production_path": "docs/production/BASELINE.md",
+      "profile": "host-tooling",
+      "required_case_ids": [
+        "test_t01 suite"
+      ],
+      "requirement": "tracked patch reconstructs byte-identically in a disposable checkout",
+      "result": "PASS",
+      "state_owner": "build/release controller",
+      "task_ids": [
+        "T01"
+      ]
+    },
+    {
+      "claim_id": "CLM-T01-MUTATION",
+      "command_ids": [
+        "t01-cmd-12"
+      ],
+      "evidence_class": "internal",
+      "evidence_sha256": "26c11ef518f2a5bdea743df22e0c464e415667c0181030774f785e03232637cb",
+      "latest_source_sha": "b33d790818c1019a5508917d653546f166ece983",
+      "limitations": "host-only evidence; device and independent gates remain external",
+      "production_path": "tools/readiness/tests/test_t01.py",
+      "profile": "host-tooling",
+      "required_case_ids": [
+        "test_t01 suite"
+      ],
+      "requirement": "preservation verification detects removal and tampering of copies",
+      "result": "PASS",
+      "state_owner": "build/release controller",
+      "task_ids": [
+        "T01"
+      ]
+    }
+  ],
   "note": "Claims appended per task with real evidence; PASS requires positive case counts and matching command output. Device/independent claims never accept host-only results.",
   "schema_version": 1
 }

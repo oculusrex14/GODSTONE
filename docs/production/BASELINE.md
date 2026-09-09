@@ -241,4 +241,3 @@ Canonical-vs-generated sync check: `ios/Godstone/Sources/GodstoneCore/ArchiveRep
 
 - A06 independent conformance review, APPROVED_CONTENT, NATIVE_MODELS, HARDWARE, SIGNING.
 - Readiness flags unchanged: android `LINK_LAYER_READY=false`; iOS `linkLayerReady=false`.
-
