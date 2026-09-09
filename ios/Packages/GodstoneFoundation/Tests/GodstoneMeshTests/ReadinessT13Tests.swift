@@ -319,6 +319,11 @@ final class ReadinessT13Tests: XCTestCase {
         }
         let queue = DispatchQueue(label: "io.godstone.mesh.transport.foreign", qos: DispatchQoS.utility, attributes: DispatchQueue.Attributes())
         let stranger = DefaultTransportManagerFactory().makeCentralManager(queue: queue, restoreIdentifier: nil)
+        // Perfect alibi on both counts the sender check owes its full force:
+        // the stranger carries the current token AND wears the genuine
+        // delegate - only the instance identity of the sender itself can
+        // refuse it.
+        stranger.delegate = context.centralProxy
         XCTAssertFalse(
             transport.managerEventIsAuthenticForTest(sourceEpoch: context.epoch, isCentral: true, sender: stranger),
             "a manager the context did not create is no source of this epoch, whatever token it carries"
