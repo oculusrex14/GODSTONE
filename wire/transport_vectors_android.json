@@ -1,0 +1,28 @@
+{
+  "origin_engine": "android",
+  "schema_version": 1,
+  "suite": "Noise_XX_25519_ChaChaPoly_BLAKE2s",
+  "transport": [
+    {
+      "ciphertext_hex": "000000000000000084908461f95b2f02f1eb68ea2b057350",
+      "nonce_u64": 0,
+      "plaintext_hex": ""
+    },
+    {
+      "ciphertext_hex": "0000000000000001ea0463f45846bf1e4d4a95df4627a965c14110a1edc0c2a44e3a005b5c",
+      "nonce_u64": 1,
+      "plaintext_hex": "7472616e73706f72742d6f6e65"
+    },
+    {
+      "ciphertext_hex": "0000000000000002981f9e48b5ff09515b0807c6be01bffd2d2f8aaf80b15f4ec6af9a90f4",
+      "nonce_u64": 2,
+      "plaintext_hex": "7472616e73706f72742d74776f"
+    },
+    {
+      "ciphertext_hex": "0000000000000003c8f1b801e02a7b2daa000e84903e28e6",
+      "nonce_u64": 3,
+      "plaintext_hex": ""
+    }
+  ],
+  "transport_key_hex": "5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a"
+}

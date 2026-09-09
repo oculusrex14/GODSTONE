@@ -5,15 +5,16 @@
       "authorized_transport": "local",
       "cache_manifest_sha": null,
       "capabilities": [
-        "python",
-        "git",
-        "unittest",
-        "swift-xcode",
-        "xcodegen",
-        "node",
-        "harness-omp-read-only",
         "android-jvm",
-        "gradle"
+        "git",
+        "gradle",
+        "harness-omp-read-only",
+        "node",
+        "python",
+        "swift-host",
+        "swift-xcode",
+        "unittest",
+        "xcodegen"
       ],
       "id": "mac-primary",
       "last_smoke_test": {

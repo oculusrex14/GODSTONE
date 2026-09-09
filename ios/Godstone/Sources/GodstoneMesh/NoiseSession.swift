@@ -305,25 +305,69 @@ public final class NoiseSession {
     public func encrypt(_ plaintext: Data) throws -> Data {
         guard let key = sendKey else { throw MeshError.handshakeFailed }
         rekeyIfNeeded()
+        // T06: the wire nonce is explicit: uint64_be(nonce) prefix.
+        let nonce = sendNonce
         let box = try ChaChaPoly.seal(plaintext, using: key,
-                                      nonce: NoiseSession.transportNonce(sendNonce))
+                                      nonce: NoiseSession.transportNonce(nonce))
         sendNonce += 1
         messagesSinceRekey += 1
-        return box.ciphertext + box.tag
+        // Internal ChaCha nonce stays zero32 || uint64_le(n);
+        // the wire carries uint64_be(n) || ciphertext || tag.
+        return TransportCiphertextV1.encode(nonce: nonce,
+                                            ciphertextAndTag: box.ciphertext + box.tag)
     }
 
-    public func decrypt(_ ciphertext: Data) throws -> Data {
-        guard let key = receiveKey,
-              ciphertext.count > NoiseSession.tagLen else {
-            throw MeshError.handshakeFailed
+    /// T06: typed outcome of one authenticated-open session operation
+    /// (parity with Android `NoiseSession.CryptoOpenResult`).
+    public enum CryptoOpenResult {
+        case authenticated(Data)
+        case rejected
+        case expired
+    }
+
+    private let replayWindow = ReplayWindow()
+    private let replayLock = NSLock()
+
+    /// T06: one session operation = parse -> preview -> authenticate ->
+    /// commit. The wire nonce is the explicit uint64_be prefix
+    /// (TransportCiphertextV1); the internal ChaChaPoly nonce stays
+    /// zero32 || uint64_le(n). A failed authenticate commits nothing.
+    public func openWithResult(_ ciphertext: Data) throws -> CryptoOpenResult {
+        guard let key = receiveKey else { throw MeshError.handshakeFailed }
+        guard ciphertext.count >= 8 + NoiseSession.tagLen else {
+            return .rejected
         }
-        let box = try ChaChaPoly.SealedBox(
-            nonce: NoiseSession.transportNonce(receiveNonce),
-            ciphertext: ciphertext.dropLast(NoiseSession.tagLen),
-            tag: ciphertext.suffix(NoiseSession.tagLen))
-        let plain = try ChaChaPoly.open(box, using: key)
-        receiveNonce += 1
-        return plain
+        let framed = TransportCiphertextV1.decode(ciphertext)
+        guard let (nonceRaw, body) = framed else { return .rejected }
+        let parsed = UnsignedNonce.parse(
+            Data(repeating: 0, count: 0) + withUnsafeBytes(of: nonceRaw.bigEndian)
+                { Data($0) })
+        guard case .valid(let nonce) = parsed else { return .expired }
+        replayLock.lock()
+        defer { replayLock.unlock() }
+        let plan = replayWindow.preview(nonce)
+        guard case .accept(let accepted, let forwardShift, let index) = plan
+        else { return .expired }
+        let box = try? ChaChaPoly.SealedBox(
+            nonce: NoiseSession.transportNonce(accepted),
+            ciphertext: body.dropLast(NoiseSession.tagLen),
+            tag: body.suffix(NoiseSession.tagLen))
+        guard let sealed = box,
+              let plain = try? ChaChaPoly.open(sealed, using: key)
+        else { return .rejected }
+        replayWindow.commit(.accept(nonce: accepted,
+                                    forwardShift: forwardShift,
+                                    index: index))
+        return .authenticated(plain)
+    }
+
+    /// Backward-compatible wrapper: hard failure on any non-authenticated
+    /// outcome, preserving the pre-T06 contract for existing callers.
+    public func decrypt(_ ciphertext: Data) throws -> Data {
+        switch try openWithResult(ciphertext) {
+        case .authenticated(let plain): return plain
+        case .rejected, .expired: throw MeshError.handshakeFailed
+        }
     }
 
     private func rekeyIfNeeded() {
@@ -339,6 +383,19 @@ public final class NoiseSession {
         }
         messagesSinceRekey = 0
         sessionStart = Date()
+    }
+
+    /// T06 test hooks: bind fixture transport keys (documented constants,
+    /// never real secrets) so the exporter/verifier exercises the real
+    /// session codec without a live handshake.
+    func installSendKeyForTest(_ key: SymmetricKey) {
+        sendKey = key
+        isEstablished = true
+    }
+
+    func installReceiveKeyForTest(_ key: SymmetricKey) {
+        receiveKey = key
+        isEstablished = true
     }
 
     public func destroy() {

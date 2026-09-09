@@ -147,7 +147,8 @@ class NoiseSession private constructor(
         val out = ByteArray(plaintext.size + MAC_LEN)
         val len = c.sender.encryptWithAd(null, plaintext, 0, out, 0, plaintext.size)
         messageCount.incrementAndGet()
-        return ByteBuffer.allocate(8 + len).putLong(nonce).put(out, 0, len).array()
+        // T06: explicit uint64_be(nonce) prefix via the shared codec.
+        return TransportCiphertextV1.encode(nonce, out.copyOf(len))
     }
 
     /**
@@ -160,15 +161,16 @@ class NoiseSession private constructor(
      */
     fun openWithResult(ciphertext: ByteArray): CryptoOpenResult {
         val c = ciphers ?: throw IllegalStateException("session not established")
-        if (ciphertext.size < 8 + MAC_LEN) return CryptoOpenResult.Rejected
+        val (nonceRaw, rest) = TransportCiphertextV1.decode(ciphertext)
+            ?: return CryptoOpenResult.Rejected
         synchronized(replayLock) {
-            when (val parsed = UnsignedNonce.parse(ByteBuffer.wrap(ciphertext))) {
+            when (val parsed = UnsignedNonce.parse(
+                ByteBuffer.allocate(8).putLong(nonceRaw))) {
                 is UnsignedNonce.Result.Rejected -> return CryptoOpenResult.Expired
                 is UnsignedNonce.Result.Valid -> {
                     when (val plan = replayWindow.preview(parsed.value)) {
                         is ReplayWindow.Plan.Reject -> return CryptoOpenResult.Expired
                         is ReplayWindow.Plan.Accept -> {
-                            val rest = ciphertext.copyOfRange(8, ciphertext.size)
                             val out = ByteArray(rest.size)
                             val len = try {
                                 c.receiver.setNonce(parsed.value)
@@ -224,6 +226,29 @@ class NoiseSession private constructor(
     }
 
     companion object {
+    /** T06 test hook: a sender-only session bound to a fixture transport key
+     *  (documented test constant; never a real secret). */
+    internal fun senderForTest(sendKey: ByteArray, identity: Identity): NoiseSession {
+        val hs = HandshakeState(PATTERN, HandshakeState.INITIATOR)
+        val sender = com.southernstorm.noise.protocol.Noise.createCipher(
+            "ChaChaPoly")
+        sender.initializeKey(sendKey, 0)
+        val session = NoiseSession(hs, identity)
+        session.ciphers = com.southernstorm.noise.protocol.CipherStatePair(sender, null)
+        return session
+    }
+
+    /** T06 test hook: a receiver-only session bound to a recorded transport key. */
+    internal fun receiverForTest(receiveKey: ByteArray, identity: Identity): NoiseSession {
+        val hs = HandshakeState(PATTERN, HandshakeState.RESPONDER)
+        val receiver = com.southernstorm.noise.protocol.Noise.createCipher(
+            "ChaChaPoly")
+        receiver.initializeKey(receiveKey, 0)
+        val session = NoiseSession(hs, identity)
+        session.ciphers = com.southernstorm.noise.protocol.CipherStatePair(null, receiver)
+        return session
+    }
+
         const val PATTERN = "Noise_XX_25519_ChaChaPoly_BLAKE2s"
         private const val MAX_HANDSHAKE = 2048
         private const val MAC_LEN = 16
