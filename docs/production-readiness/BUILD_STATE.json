@@ -62,6 +62,81 @@
       "task_id": "T01",
       "tested_tree_sha": "94824bfe837de0fa046b8b12856e4a2f436d7ab4",
       "unresolved": []
+    },
+    "T02": {
+      "case_results": [
+        {
+          "collected": 30,
+          "executed": 30,
+          "failed": 0,
+          "passed": 30,
+          "skipped": 0,
+          "stage": "narrow"
+        },
+        {
+          "collected": 51,
+          "executed": 51,
+          "failed": 0,
+          "passed": 51,
+          "skipped": 0,
+          "stage": "subsystem"
+        },
+        {
+          "executed": 2,
+          "failed": 0,
+          "passed": 2,
+          "skipped": 0,
+          "stage": "controls"
+        }
+      ],
+      "commands": [
+        "T02-narrow-python3",
+        "T02-subsystem-python3",
+        "T02-controls-python3",
+        "T02-controls-python3-002"
+      ],
+      "device_gate_ids": [],
+      "implementation_commit": "1432d7afb97f018bd07f3eb0a5063e8897b758d6",
+      "inputs": {
+        "baseline": "b5c3d3d394b70cf356cdde33b47511dad7cbb95c",
+        "catalog": "b7cf90483cde63b67099a996d2139823e79d029e2b2481d81a756da70c3ef97a"
+      },
+      "mutation_results": [
+        {
+          "expected": "rejected as not a known commit",
+          "mutation": "wrong commit object substituted in mac evidence",
+          "outcome": "KILLED"
+        },
+        {
+          "expected": "rejected as tree mismatch",
+          "mutation": "wrong tree substituted under a real commit",
+          "outcome": "KILLED"
+        },
+        {
+          "expected": "rejected",
+          "mutation": "COMPLETE claimed with missing dependency",
+          "outcome": "KILLED"
+        },
+        {
+          "expected": "rejected as a pass",
+          "mutation": "exit status 0 with zero tests executed",
+          "outcome": "KILLED"
+        },
+        {
+          "expected": "classified TIMEOUT, never passed through",
+          "mutation": "command exceeding its timeout",
+          "outcome": "KILLED"
+        }
+      ],
+      "next_action": "none — task complete",
+      "phase_gate": "P0",
+      "required_cases": [
+        "tools/readiness/tests/test_t02.py"
+      ],
+      "status": "COMPLETE",
+      "task_id": "T02",
+      "tested_tree_sha": "e5e6413fd43ddb5425490988feafdc04f5b7a792",
+      "unresolved": []
     }
   },
   "current_task": null,
@@ -74,22 +149,22 @@
   ],
   "failed_attempts": [],
   "in_progress": null,
-  "last_code_head": "b33d790818c1019a5508917d653546f166ece983",
-  "last_observed_head": "b5c3d3d394b70cf356cdde33b47511dad7cbb95c",
+  "last_code_head": "1432d7afb97f018bd07f3eb0a5063e8897b758d6",
+  "last_observed_head": "1432d7afb97f018bd07f3eb0a5063e8897b758d6",
   "latest_verification": {
-    "at": "2026-09-09T03:11:12+00:00",
-    "log": "logs/unittest-t01-run4.log",
-    "log_sha256": "26c11ef518f2a5bdea743df22e0c464e415667c0181030774f785e03232637cb",
-    "source_sha": "b33d790818c1019a5508917d653546f166ece983",
-    "suite": "tools/readiness/tests/test_t01.py",
-    "tests_collected": 21,
-    "tests_executed": 21,
+    "at": "2026-09-09T04:35:25+00:00",
+    "log": "T02/logs/T02-subsystem-python3.log",
+    "log_sha256": "2b138bdf0123f602eebd5e42224e53f941b760cda0b7af50e24edfeb3a81ae5b",
+    "source_sha": "1432d7afb97f018bd07f3eb0a5063e8897b758d6",
+    "suite": "tools/readiness/tests (discover)",
+    "tests_collected": 51,
+    "tests_executed": 51,
     "tests_failed": 0,
-    "tests_passed": 21,
+    "tests_passed": 51,
     "tests_skipped": 0,
-    "tree_sha": "94824bfe837de0fa046b8b12856e4a2f436d7ab4"
+    "tree_sha": "e5e6413fd43ddb5425490988feafdc04f5b7a792"
   },
-  "next_task": "T02",
+  "next_task": "T03",
   "phase": "P0",
   "plan_sha256": "685456b378662b0a40a53a6abc810041e37daf97b213f3efeb6cea879363934e",
   "planning_baseline_sha": "b5c3d3d394b70cf356cdde33b47511dad7cbb95c",
@@ -99,9 +174,8 @@
   "warnings_for_next_invocation": [
     "Preserve original codex/archive-reliability dirty checkout and untracked WIP.",
     "Readiness flags remain false. D2 absent at planning baseline.",
-    "Known iOS optional Archive resource WIP has missing CpResource failure (T51).",
-    "Baseline is one commit beyond independent audit anchor 921b9390.",
-    "No external review/model/content/device result may be fabricated.",
-    "T02 discovers the real local toolchain only; no unverified launch commands."
+    "Android targets are environment-blocked on mac-primary (no usable JDK/SDK).",
+    "DGX/Linux executor remains absent; no remote shells by design.",
+    "No external review/model/content/device result may be fabricated."
   ]
 }
