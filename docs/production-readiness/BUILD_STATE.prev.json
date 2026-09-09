@@ -497,9 +497,126 @@
       "task_id": "T07",
       "tested_tree_sha": "c68404c8712c1c6b469e5e8d57956963e5e62c6f",
       "unresolved": []
+    },
+    "T08": {
+      "case_results": [
+        {
+          "collected": 739,
+          "counts_source": "JUnit XML restored by the Gradle test task",
+          "engine": "android-jvm",
+          "executed": 739,
+          "failed": 0,
+          "passed": 739,
+          "skipped": 0,
+          "stage": "narrow",
+          "suite": "ReadinessT08Test"
+        },
+        {
+          "collected": 8,
+          "counts_source": "xctest summary in the recorded narrow log",
+          "engine": "swift-host",
+          "executed": 8,
+          "failed": 0,
+          "passed": 8,
+          "skipped": 0,
+          "stage": "narrow",
+          "suite": "ReadinessT08Tests"
+        },
+        {
+          "collected": 739,
+          "counts_source": "all fresh JUnit XML reports of the mesh unit test task",
+          "engine": "android-jvm",
+          "executed": 739,
+          "failed": 0,
+          "passed": 739,
+          "skipped": 0,
+          "stage": "subsystem"
+        },
+        {
+          "collected": 684,
+          "counts_source": "xctest summary in the recorded subsystem log",
+          "engine": "swift-host",
+          "executed": 684,
+          "failed": 0,
+          "passed": 684,
+          "skipped": 0,
+          "stage": "subsystem"
+        },
+        {
+          "executed": 3,
+          "failed": 0,
+          "passed": 3,
+          "skipped": 0,
+          "stage": "controls"
+        }
+      ],
+      "commands": [
+        "T08-controls-python3-004",
+        "T08-controls-python3-005",
+        "T08-controls-python3-006",
+        "T08-narrow-gradlew-002",
+        "T08-narrow-swift-002",
+        "T08-subsystem-gradlew-004",
+        "T08-subsystem-swift-004"
+      ],
+      "device_gate_ids": [],
+      "implementation_commit": "ae0c5390e895a90c7b49867ab151094ee76f8308",
+      "inputs": {
+        "baseline": "b5c3d3d394b70cf356cdde33b47511dad7cbb95c",
+        "commit_c_initial": "aa07561",
+        "commit_c_parity": "ae0c539",
+        "commit_c_strengthened": "d32ad0d",
+        "commit_c_witness": "92b29eb",
+        "mutation_worktree": "/Users/oculus/Projects/GODSTONE_T08_MUT"
+      },
+      "mutation_results": [
+        {
+          "engines": [
+            "android-jvm",
+            "swift-host"
+          ],
+          "evidence": "T08/mutations/M1-android-kotlin.log (5 of 8 failing); T08/mutations/M1-swift-host.log (34 assertion failures)",
+          "expected": "concurrent seal/drop schedule and the teardown cases fail",
+          "mutation": "M1 drop does not route the terminal transition through the slot: a dropped relation stays serviceable",
+          "outcome": "KILLED"
+        },
+        {
+          "engines": [
+            "android-jvm",
+            "swift-host"
+          ],
+          "evidence": "T08/mutations/M2-android-kotlin.log; T08/mutations/M2-swift-host.log",
+          "expected": "the concurrent case must observe two threads inside one slot",
+          "mutation": "M2 SessionSlot.serialize stops being the serialisation authority (lock removed from the slot entry point)",
+          "outcome": "KILLED on android-jvm (concurrency case failed); SURVIVED on swift-host before the witness existed"
+        },
+        {
+          "engines": [
+            "android-jvm",
+            "swift-host"
+          ],
+          "evidence": "T08/mutations/M2b-android-kotlin.log (concurrency case failed); T08/mutations/M2c-swift-host.log (24 assertion failures, witness peak two)",
+          "expected": "the witness peak must report two distinct threads inside one slot",
+          "mutation": "M2 (after the slot witness and the retire parity fix) same lock removal from the slot entry point",
+          "outcome": "KILLED"
+        }
+      ],
+      "next_action": "none - task complete",
+      "phase_gate": "P1",
+      "required_cases": [
+        "ReadinessT08Test (8 cases Android)",
+        "ReadinessT08Tests (8 cases Swift)"
+      ],
+      "status": "COMPLETE",
+      "task_id": "T08",
+      "tested_tree_sha": "542bbfec57e3c2e50a8d235d5c5224444861c74e",
+      "unresolved": [
+        "device gates for the runtime path stay open: the section 19/18 cases are exercised on the host only until T73-T75 record physical evidence",
+        "the runner records test counts as UNKNOWN for command-kind specs, so the positive counts above were derived from the JUnit XML reports and the xctest summaries in the recorded logs"
+      ]
     }
   },
-  "current_task": null,
+  "current_task": "T09",
   "external_blockers": [
     "A06",
     "APPROVED_CONTENT",
@@ -508,24 +625,28 @@
     "SIGNING"
   ],
   "failed_attempts": [],
-  "in_progress": null,
-  "last_code_head": "b1d51529ddc7a2df0c2755ce0a99577ea21d34b7",
-  "last_observed_head": "b1d51529ddc7a2df0c2755ce0a99577ea21d34b7",
-  "latest_verification": {
-    "at": "2026-09-09T06:56:14+00:00",
-    "log": "T07/logs/T07-subsystem-gradlew.log",
-    "log_sha256": null,
-    "note": "Android 731 + Swift 676",
-    "source_sha": "b1d51529ddc7a2df0c2755ce0a99577ea21d34b7",
-    "suite": ":mesh JVM + GodstoneFoundation swift package",
-    "tests_collected": 1407,
-    "tests_executed": 1407,
-    "tests_failed": 0,
-    "tests_passed": 1407,
-    "tests_skipped": 0,
-    "tree_sha": "c68404c8712c1c6b469e5e8d57956963e5e62c6f"
+  "in_progress": {
+    "claimed_head": "880d2103b8df3b188364fb0300c9e3038f6ad95b",
+    "claimed_utc": "2026-09-09T15:29:17Z",
+    "objective": "Advertise only the canonical service UUID on Android",
+    "task": "T09"
   },
-  "next_task": "T08",
+  "last_code_head": "ae0c5390e895a90c7b49867ab151094ee76f8308",
+  "last_observed_head": "ae0c5390e895a90c7b49867ab151094ee76f8308",
+  "latest_verification": {
+    "at": "2026-09-09T12:30:55+00:00",
+    "log": "T08/logs/T08-subsystem-gradlew-004.log",
+    "log_sha256": null,
+    "note": "Android 739 + Swift 684",
+    "source_sha": "ae0c5390e895a90c7b49867ab151094ee76f8308",
+    "suite": ":mesh JVM + GodstoneFoundation swift package",
+    "tests_collected": 1423,
+    "tests_executed": 1423,
+    "tests_failed": 0,
+    "tests_passed": 1423,
+    "tests_skipped": 0
+  },
+  "next_task": "T09",
   "phase": "P0",
   "plan_sha256": "685456b378662b0a40a53a6abc810041e37daf97b213f3efeb6cea879363934e",
   "planning_baseline_sha": "b5c3d3d394b70cf356cdde33b47511dad7cbb95c",
@@ -537,6 +658,7 @@
     "Readiness flags remain false. D2 absent at planning baseline.",
     "A-06 stays UNAVAILABLE until an independent fixture + lock arrive.",
     "Session budget: 2^20 records/direction, 30 minutes; retirement is terminal.",
+    "SessionSlot is the single serialisation point of a relation and witnesses itself; retiring a slot reclaims its lock entry and the replacement carries the next lease generation.",
     "No external review/model/content/device result may be fabricated."
   ]
 }

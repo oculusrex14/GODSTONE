@@ -71,3 +71,40 @@ retire through serialize on both engines (parity fix) made M2 kill on both
 (negative evidence: M2b Android concurrency failure, M2c Swift 24 witness-
 peak assertion failures). Lesson recorded: teardown paths must share the same
 entry point as the operations they terminate, or the invariant is untested.
+
+## D-T09-a [ACCEPTED] Canonical advertising adapter and injectable hooks
+The mesh advertisement is produced by a canonical adapter (BleAdvertiser)
+that translates a BLE-advertising-payload object model into an ordered
+instruction stream executed by AdvertisingHooks. The single production hooks
+implementation (RealAdvertisingHooks) is the only file touching
+android.bluetooth.le in the advertising path; tests substitute a recording
+double and inspect the exact settings and instruction stream that would
+reach the platform. The decision logic - availability, GATT readiness,
+legacy 31-octet budget audit, SecurityException handling - lives in the
+adapter and is fully JVM-inspectable. Typed AdvertisingResult surfaces
+every platform outcome; a stop without an outstanding submission is a
+documented no-op, not a failure.
+
+## D-T09-b [ACCEPTED] UUID-only air payload, LinkInfo served by GATT
+The legacy defect (13-octet LinkInfo record pushed into the legacy
+advertisement via addServiceData, exceeding the budget and leaking the
+identity hint on air) is removed: the canonical payload carries only the
+Flags AD and the complete 128-bit canonical service UUID list (21 octets).
+The whole LinkInfo record remains served by the GATT link-info
+characteristic provider (verified byte-identical to the snapshot), and the
+scanner filter shares the single canonical UUID constant with the
+advertisement. Both historical overflows (service data 52, manufacturer 38,
+name 33 octets) are refused before dispatch. Mutations M1 (re-add service
+data with the verbatim historical condition bytes) and M2 (blind the
+budget audit) were killed with positive test execution and zero compile
+errors. The isServiceReady gate keeps a private setter in production; JVM
+tests drive it through the documented markServiceReadyForTest seam that
+mirrors the platform callback transition.
+
+## D-T09-c [ACCEPTED] Builder runtime facts (this environment)
+The map façade java.util.LinkedHashMap does not expose the stdlib
+mapValues extension (calls to it cascade into unresolved-reference errors
+on the lambda body); entry iteration and index assignment are the proven
+idioms. Array copy helpers spell copyOf/copyOfRange verbatim as shipped by
+the baseline; token verification against the baseline bytes (ord dumps) is
+the reliable channel, not tool-rendered text.

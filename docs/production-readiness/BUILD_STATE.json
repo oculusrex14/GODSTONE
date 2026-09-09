@@ -614,6 +614,83 @@
         "device gates for the runtime path stay open: the section 19/18 cases are exercised on the host only until T73-T75 record physical evidence",
         "the runner records test counts as UNKNOWN for command-kind specs, so the positive counts above were derived from the JUnit XML reports and the xctest summaries in the recorded logs"
       ]
+    },
+    "T09": {
+      "case_results": [
+        {
+          "collected": 13,
+          "counts_source": "JUnit XML of the filtered testDebugUnitTest run",
+          "engine": "android-jvm",
+          "executed": 13,
+          "failed": 0,
+          "passed": 13,
+          "skipped": 0,
+          "stage": "narrow",
+          "suite": "ReadinessT09Test"
+        },
+        {
+          "collected": 752,
+          "counts_source": "all fresh JUnit XML reports of the mesh unit test task",
+          "engine": "android-jvm",
+          "executed": 752,
+          "failed": 0,
+          "passed": 752,
+          "skipped": 0,
+          "stage": "subsystem"
+        },
+        {
+          "executed": 2,
+          "failed": 0,
+          "passed": 2,
+          "skipped": 0,
+          "stage": "controls"
+        }
+      ],
+      "commands": [
+        "T09-narrow-gradlew-005",
+        "T09-subsystem-gradlew-002",
+        "T09-controls-python3-003",
+        "T09-controls-python3-004"
+      ],
+      "device_gate_ids": [],
+      "implementation_commit": "5b75481cb3a40dd7ee2f527e721972fe61e70825",
+      "inputs": {
+        "baseline": "b5c3d3d394b70cf356cdde33b47511dad7cbb95c",
+        "commit_c_initial": "5b75481",
+        "mutation_worktree": "/Users/oculus/Projects/GODSTONE_T09_MUT"
+      },
+      "mutation_results": [
+        {
+          "engines": [
+            "android-jvm"
+          ],
+          "evidence": "T09/mutations/M1-android-kotlin.log (8 of 13 failing; positive execution, zero compile errors)",
+          "expected": "dispatcher, gate and hint-leak assertions all refuse the on-air LinkInfo record",
+          "mutation": "M1 re-add LinkInfo service data to the production advertisement (historical defect bytes spliced into canonicalAdvertisingPayload; condition tokens extracted verbatim from git show 880d210)",
+          "outcome": "KILLED"
+        },
+        {
+          "engines": [
+            "android-jvm"
+          ],
+          "evidence": "T09/mutations/M2-android-kotlin.log (3 of 13 failing; positive execution, zero compile errors)",
+          "expected": "the budget audit and refusal assertions fail exactly where the audit is load-bearing",
+          "mutation": "M2 blind the adapter assertion: fitsLegacyBudget returns true unconditionally",
+          "outcome": "KILLED"
+        }
+      ],
+      "next_action": "none - task complete",
+      "phase_gate": "P1",
+      "required_cases": [
+        "ReadinessT09Test (13 cases Android)"
+      ],
+      "status": "COMPLETE",
+      "task_id": "T09",
+      "tested_tree_sha": "7324b4601d019dac32faa7118dbab290948346ec",
+      "unresolved": [
+        "device gates for the BLE runtime path stay open: the section 19/18 cases are exercised on the host only until T73-T75 record physical evidence",
+        "the runner records test counts as UNKNOWN for command-kind specs, so the positive counts above were derived from the fresh JUnit XML reports"
+      ]
     }
   },
   "current_task": null,
@@ -626,22 +703,15 @@
   ],
   "failed_attempts": [],
   "in_progress": null,
-  "last_code_head": "ae0c5390e895a90c7b49867ab151094ee76f8308",
-  "last_observed_head": "ae0c5390e895a90c7b49867ab151094ee76f8308",
+  "last_code_head": "5b75481cb3a40dd7ee2f527e721972fe61e70825",
+  "last_observed_head": "5b75481cb3a40dd7ee2f527e721972fe61e70825",
   "latest_verification": {
-    "at": "2026-09-09T12:30:55+00:00",
-    "log": "T08/logs/T08-subsystem-gradlew-004.log",
-    "log_sha256": null,
-    "note": "Android 739 + Swift 684",
-    "source_sha": "ae0c5390e895a90c7b49867ab151094ee76f8308",
-    "suite": ":mesh JVM + GodstoneFoundation swift package",
-    "tests_collected": 1423,
-    "tests_executed": 1423,
-    "tests_failed": 0,
-    "tests_passed": 1423,
-    "tests_skipped": 0
+    "note": "T09 narrow 13/13 + mesh subsystem 752/752 green at 5b75481; Swift side untouched (no cross-engine contract change)",
+    "recorded_utc": "2026-09-09T16:23:03+00:00",
+    "source_sha": "5b75481cb3a40dd7ee2f527e721972fe61e70825",
+    "tested_tree_sha": "7324b4601d019dac32faa7118dbab290948346ec"
   },
-  "next_task": "T09",
+  "next_task": "T10",
   "phase": "P0",
   "plan_sha256": "685456b378662b0a40a53a6abc810041e37daf97b213f3efeb6cea879363934e",
   "planning_baseline_sha": "b5c3d3d394b70cf356cdde33b47511dad7cbb95c",
@@ -654,6 +724,7 @@
     "A-06 stays UNAVAILABLE until an independent fixture + lock arrive.",
     "Session budget: 2^20 records/direction, 30 minutes; retirement is terminal.",
     "SessionSlot is the single serialisation point of a relation and witnesses itself; retiring a slot reclaims its lock entry and the replacement carries the next lease generation.",
-    "No external review/model/content/device result may be fabricated."
+    "No external review/model/content/device result may be fabricated.",
+    "Mesh advertising is UUID-only (canonical service UUID + flags); the 13-octet LinkInfo record is served by GATT and the air payload is budget-audited before dispatch."
   ]
 }

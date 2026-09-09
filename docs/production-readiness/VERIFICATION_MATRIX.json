@@ -392,6 +392,50 @@
       "task_ids": [
         "T08"
       ]
+    },
+    {
+      "claim_id": "CLM-T09-UUID-ONLY",
+      "command_ids": [
+        "T09-narrow-gradlew-005",
+        "T09-subsystem-gradlew-002"
+      ],
+      "evidence_class": "internal",
+      "evidence_sha256": null,
+      "latest_source_sha": "5b75481cb3a40dd7ee2f527e721972fe61e70825",
+      "limitations": "host-only evidence; real controller behaviour belongs to the T73-T75 device gates",
+      "production_path": "android/mesh/src/main/java/io/godstone/mesh/transport/BleAdvertisingPayload.kt",
+      "profile": "jvm-host",
+      "required_case_ids": [
+        "ReadinessT09Test"
+      ],
+      "requirement": "the legacy advertisement carries exactly the Flags AD and the complete 128-bit canonical service UUID list; no LinkInfo service data, manufacturer data, local name or identity hint rides the air; the full 13-octet record is served by GATT and the scanner filter shares the one canonical UUID",
+      "result": "PASS",
+      "state_owner": "transport advertising payload (BleAdvertiser adapter)",
+      "task_ids": [
+        "T09"
+      ]
+    },
+    {
+      "claim_id": "CLM-T09-TYPED-RESULTS",
+      "command_ids": [
+        "T09-narrow-gradlew-005",
+        "T09-subsystem-gradlew-002"
+      ],
+      "evidence_class": "internal",
+      "evidence_sha256": null,
+      "latest_source_sha": "5b75481cb3a40dd7ee2f527e721972fe61e70825",
+      "limitations": "host-only evidence; platform callback wiring is exercised through injectable hooks; the real BluetoothLeAdvertiser path is device-gated",
+      "production_path": "android/mesh/src/main/java/io/godstone/mesh/transport/BleAdvertiser.kt",
+      "profile": "jvm-host",
+      "required_case_ids": [
+        "ReadinessT09Test"
+      ],
+      "requirement": "every advertising attempt yields a typed AdvertisingResult: adapter unavailable, service not ready, oversized payload refused before dispatch, permission denial and platform start failures are surfaced observably; a stop without an outstanding submission is a no-op, never a failure",
+      "result": "PASS",
+      "state_owner": "transport advertising lifecycle (BleAdvertiser via AdvertisingHooks)",
+      "task_ids": [
+        "T09"
+      ]
     }
   ],
   "note": "Claims appended per task with real evidence; PASS requires positive case counts and matching command output. Device/independent claims never accept host-only results.",
