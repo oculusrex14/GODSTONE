@@ -277,6 +277,52 @@
       "task_ids": [
         "T05"
       ]
+    },
+    {
+      "claim_id": "CLM-T06-FRAMING",
+      "command_ids": [
+        "T06-narrow-gradlew",
+        "T06-narrow-swift"
+      ],
+      "evidence_class": "internal",
+      "evidence_sha256": null,
+      "latest_source_sha": "b86f16603f23f2adc2374dbf4019fd1a7a8ccb3c",
+      "limitations": "host-only evidence; instrumented-device evidence remains a separate device gate",
+      "production_path": "ios/Godstone/Sources/GodstoneMesh/ReplayWindow.swift",
+      "profile": "jvm-host+swift-host",
+      "required_case_ids": [
+        "ReadinessT06Test",
+        "ReadinessT06Tests"
+      ],
+      "requirement": "DATA ciphertext = uint64_be(nonce) || ct || tag on both engines; internal nonce zero32||LE preserved; legacy frames never auto-detected",
+      "result": "PASS",
+      "state_owner": "crypto/session owner",
+      "task_ids": [
+        "T06"
+      ]
+    },
+    {
+      "claim_id": "CLM-T06-CROSS",
+      "command_ids": [
+        "T06-narrow-gradlew",
+        "T06-narrow-swift"
+      ],
+      "evidence_class": "internal",
+      "evidence_sha256": null,
+      "latest_source_sha": "b86f16603f23f2adc2374dbf4019fd1a7a8ccb3c",
+      "limitations": "host-only evidence; instrumented-device evidence remains a separate device gate",
+      "production_path": "wire/transport_vectors_android.json",
+      "profile": "jvm-host+swift-host",
+      "required_case_ids": [
+        "ReadinessT06Test",
+        "ReadinessT06Tests"
+      ],
+      "requirement": "the two engines verify each other through the shared transport vector manifest (byte-identical ciphertexts)",
+      "result": "PASS",
+      "state_owner": "crypto/session owner",
+      "task_ids": [
+        "T06"
+      ]
     }
   ],
   "note": "Claims appended per task with real evidence; PASS requires positive case counts and matching command output. Device/independent claims never accept host-only results.",

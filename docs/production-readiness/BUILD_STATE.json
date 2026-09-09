@@ -359,6 +359,76 @@
       "unresolved": [
         "Platform encryption/ABI/permissions require separate instrumented-device evidence (recorded, not claimed)."
       ]
+    },
+    "T06": {
+      "case_results": [
+        {
+          "executed": 14,
+          "failed": 0,
+          "passed": 14,
+          "skipped": 0,
+          "stage": "narrow"
+        },
+        {
+          "collected": 725,
+          "engine": "android-jvm",
+          "executed": 725,
+          "failed": 0,
+          "passed": 725,
+          "skipped": 0,
+          "stage": "subsystem"
+        },
+        {
+          "collected": 670,
+          "engine": "swift-host",
+          "executed": 670,
+          "failed": 0,
+          "passed": 670,
+          "skipped": 0,
+          "stage": "subsystem"
+        },
+        {
+          "executed": 3,
+          "failed": 0,
+          "passed": 3,
+          "skipped": 0,
+          "stage": "controls"
+        }
+      ],
+      "commands": [
+        "T06-narrow-gradlew",
+        "T06-narrow-swift",
+        "T06-subsystem-gradlew",
+        "T06-subsystem-swift",
+        "T06-controls-python3",
+        "T06-controls-python3-002",
+        "T06-controls-python3-003"
+      ],
+      "device_gate_ids": [],
+      "implementation_commit": "b86f16603f23f2adc2374dbf4019fd1a7a8ccb3c",
+      "inputs": {
+        "baseline": "b5c3d3d394b70cf356cdde33b47511dad7cbb95c"
+      },
+      "mutation_results": [
+        {
+          "evidence": "testLegacyImplicitCounterCiphertextIsNeverAutoDetected on both engines",
+          "expected": "cross-engine decode fails; never auto-detect",
+          "mutation": "nonce prefix removed from the Swift wire codec (legacy implicit-counter shape)",
+          "outcome": "KILLED"
+        }
+      ],
+      "next_action": "none — task complete",
+      "phase_gate": "P1",
+      "required_cases": [
+        "ReadinessT06Test (8 cases Android)",
+        "ReadinessT06Tests (6 cases Swift)"
+      ],
+      "status": "COMPLETE",
+      "task_id": "T06",
+      "tested_tree_sha": "bbd3fb7fdf3c568b8b6e5dc2c7265586ad1e370c",
+      "unresolved": [
+        "Platform encryption/ABI/permissions require separate instrumented-device evidence."
+      ]
     }
   },
   "current_task": null,
@@ -371,23 +441,23 @@
   ],
   "failed_attempts": [],
   "in_progress": null,
-  "last_code_head": "4e22a3f1279b08ba281656666594d463b9b7c699",
-  "last_observed_head": "4e22a3f1279b08ba281656666594d463b9b7c699",
+  "last_code_head": "b86f16603f23f2adc2374dbf4019fd1a7a8ccb3c",
+  "last_observed_head": "b86f16603f23f2adc2374dbf4019fd1a7a8ccb3c",
   "latest_verification": {
-    "at": "2026-09-09T05:39:58+00:00",
-    "log": "T05/logs/T05-subsystem-gradlew.log",
+    "at": "2026-09-09T06:07:59+00:00",
+    "log": "T06/logs/T06-subsystem-gradlew.log",
     "log_sha256": null,
-    "note": "counts from JUnit XML audit (29 classes); runner log files under T05/logs",
-    "source_sha": "4e22a3f1279b08ba281656666594d463b9b7c699",
-    "suite": ":mesh JVM suite (gradle) + readiness python suites",
-    "tests_collected": 717,
-    "tests_executed": 717,
+    "note": "Android 725 + Swift package 670, all passed; counts from JUnit XML and swift test output",
+    "source_sha": "b86f16603f23f2adc2374dbf4019fd1a7a8ccb3c",
+    "suite": ":mesh JVM suite + GodstoneFoundation swift package suite",
+    "tests_collected": 1395,
+    "tests_executed": 1395,
     "tests_failed": 0,
-    "tests_passed": 717,
+    "tests_passed": 1395,
     "tests_skipped": 0,
-    "tree_sha": "41603f1f7935d8bf50b408af7d0d20db8825522a"
+    "tree_sha": "bbd3fb7fdf3c568b8b6e5dc2c7265586ad1e370c"
   },
-  "next_task": "T06",
+  "next_task": "T07",
   "phase": "P0",
   "plan_sha256": "685456b378662b0a40a53a6abc810041e37daf97b213f3efeb6cea879363934e",
   "planning_baseline_sha": "b5c3d3d394b70cf356cdde33b47511dad7cbb95c",
@@ -398,7 +468,7 @@
     "Android toolchain provisioned: JDK 17.0.20.1 + SDK 35 on mac-primary.",
     "Readiness flags remain false. D2 absent at planning baseline.",
     "A-06 stays UNAVAILABLE until an independent fixture + lock arrive.",
-    "Platform/device evidence still requires instrumented runs.",
+    "transport vector manifests are deterministic (fixture key) and committed.",
     "No external review/model/content/device result may be fabricated."
   ]
 }
