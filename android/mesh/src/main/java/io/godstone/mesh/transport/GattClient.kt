@@ -13,6 +13,7 @@ import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withTimeoutOrNull
+import java.util.ArrayList
 import java.util.UUID
 import java.util.concurrent.atomic.AtomicLong
 
@@ -54,6 +55,7 @@ class GattClientConnection(
 
     private var gatt: BluetoothGatt? = null
     private var inboxCharacteristic: BluetoothGattCharacteristic? = null
+    private var digestCharacteristic: BluetoothGattCharacteristic? = null
     private var linkInfoCharacteristic: BluetoothGattCharacteristic? = null
 
     private val gattMutex = Mutex()
@@ -270,15 +272,31 @@ class GattClientConnection(
             override fun onServicesDiscovered(g: BluetoothGatt, status: Int) {
                 if (g !== gatt) return
                 if (status == BluetoothGatt.GATT_SUCCESS) {
-                    val service = g.services.firstOrNull { it.uuid == BleTransport.SERVICE_UUID }
-                    val inbox = service?.getCharacteristic(BleTransport.WRITE_CHAR_UUID)
-                    val linkInfo = service?.getCharacteristic(BleTransport.LINK_INFO_CHAR_UUID)
-
-                    if (inbox != null && linkInfo != null) {
-                        inboxCharacteristic = inbox
-                        linkInfoCharacteristic = linkInfo
-                        dispatchServicesDiscovered(status, token, true)
-                        return
+                    // T10: provisioning gate. Resolve the whole discovered tree
+                    // against the canonical profile -- not merely spot-check the
+                    // two characteristics this client happens to use today. All
+                    // three roles must appear exactly once with their required
+                    // properties and nothing may sit beyond the contract, so a
+                    // legacy FD profile, a duplicate, or a property gap fails
+                    // provisioning instead of half-connecting.
+                    val service = g.services.firstOrNull { it.uuid == RequiredCharacteristicSet.MESH.serviceUuid }
+                    if (service != null) {
+                        val tree = ArrayList<ContractCharacteristic>()
+                        for (characteristic in service.characteristics) {
+                            tree.add(
+                                ContractCharacteristic(
+                                    characteristic.uuid,
+                                    RequiredCharacteristicSet.propertiesOf(characteristic.properties)
+                                )
+                            )
+                        }
+                        if (RequiredCharacteristicSet.MESH.accepts(tree)) {
+                            inboxCharacteristic = service.getCharacteristic(RequiredCharacteristicSet.MESH.inbox.uuid)
+                            digestCharacteristic = service.getCharacteristic(RequiredCharacteristicSet.MESH.digest.uuid)
+                            linkInfoCharacteristic = service.getCharacteristic(RequiredCharacteristicSet.MESH.linkInfo.uuid)
+                            dispatchServicesDiscovered(status, token, true)
+                            return
+                        }
                     }
                 }
                 dispatchServicesDiscovered(status, token, false)
@@ -502,6 +520,7 @@ class GattClientConnection(
         gatt = null
         isConnected = false
         inboxCharacteristic = null
+        digestCharacteristic = null
         linkInfoCharacteristic = null
     }
 

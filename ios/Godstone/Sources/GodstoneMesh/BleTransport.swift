@@ -142,9 +142,50 @@ public final class PeripheralManagerEpochDelegate: NSObject, CBPeripheralManager
 public final class BleTransport: NSObject, @unchecked Sendable {
 
     public static let serviceUuid = CBUUID(string: FrameV2.serviceUuidString)
-    public static let inboxCharacteristicUuid = CBUUID(string: "0000FD01-0000-1000-8000-00805F9B34FB")
-    public static let digestCharacteristicUuid = CBUUID(string: "0000FD02-0000-1000-8000-00805F9B34FB")
+    // T10: every GATT identifier is the generated wire-contract value. The
+    // historical hand-rolled FD short-form characteristic constants
+    // (0000FD01/0000FD02) are the non-shipping legacy profile: removed,
+    // never dual-registered, and rejected by RequiredCharacteristicSet's
+    // provisioning gate. Aliases keep their established names.
+    public static let inboxCharacteristicUuid = CBUUID(string: FrameV2.inboxUuidString)
+    public static let digestCharacteristicUuid = CBUUID(string: FrameV2.digestUuidString)
     public static let linkInfoCharacteristicUuid = CBUUID(string: FrameV2.linkInfoUuidString)
+
+    /// The one canonical profile; the server installs from it, the central
+    /// resolves discovered trees against it.
+    public static let meshProfile = RequiredCharacteristicSet.mesh
+
+    /// The one platform mapping: contract entries to installable CoreBluetooth
+    /// characteristics, generated as one data-driven pass over the profile.
+    /// Every property set and permission mask derives from the contract, and
+    /// the CCC descriptor travels with each notify-capable characteristic
+    /// (attached by the system, as our Android server adds it explicitly).
+    public static func characteristicsToInstall(_ set: RequiredCharacteristicSet) -> [CBMutableCharacteristic] {
+        var installed: [CBMutableCharacteristic] = []
+        for entry in set.characteristics {
+            installed.append(CBMutableCharacteristic(
+                type: entry.uuid,
+                properties: RequiredCharacteristicSet.cbProperties(of: entry.properties),
+                value: nil,
+                permissions: RequiredCharacteristicSet.permissionsFor(entry.properties)
+            ))
+        }
+        return installed
+    }
+
+    /// Inbound routing decision by uuid equality against the configured
+    /// roles: LinkInfo records go to the link info store, never through the
+    /// record decoder; frame records go to the record decoder; anything else
+    /// is answered request-not-supported, including the legacy FD values.
+    public static func classifyInbound(_ uuid: CBUUID) -> InboundRoute {
+        if uuid.isEqual(linkInfoCharacteristicUuid) {
+            return .toLinkInfo
+        }
+        if uuid.isEqual(inboxCharacteristicUuid) {
+            return .toDeframer
+        }
+        return .notSupported
+    }
 
     public static let maxActiveConnections = 7
     public static let maxDiscoveredPeers = 64
@@ -181,6 +222,7 @@ public final class BleTransport: NSObject, @unchecked Sendable {
 
     private var connectedPeripherals: [UUID: CBPeripheral] = [:]
     private var inboxCharacteristics: [UUID: CBCharacteristic] = [:]
+    private var digestCharacteristics: [UUID: CBCharacteristic] = [:]
     private var linkInfoCharacteristics: [UUID: CBCharacteristic] = [:]
     private var pendingInitiatorRemoteHints: [UUID: Data] = [:]
     private var subscribedCentrals: [UUID: CBCentral] = [:]
@@ -351,6 +393,7 @@ public final class BleTransport: NSObject, @unchecked Sendable {
         }
         connectedPeripherals.removeAll()
         inboxCharacteristics.removeAll()
+        digestCharacteristics.removeAll()
         linkInfoCharacteristics.removeAll()
         pendingInitiatorRemoteHints.removeAll()
         subscribedCentrals.removeAll()
@@ -427,6 +470,7 @@ public final class BleTransport: NSObject, @unchecked Sendable {
         transportLock.lock()
         provisionalTimers.removeValue(forKey: peerId)?.invalidate()
         inboxCharacteristics.removeValue(forKey: peerId)
+        digestCharacteristics.removeValue(forKey: peerId)
         linkInfoCharacteristics.removeValue(forKey: peerId)
         pendingInitiatorRemoteHints.removeValue(forKey: peerId)
         pendingOutboundWrites.removeValue(forKey: peerId)
@@ -656,6 +700,7 @@ public final class BleTransport: NSObject, @unchecked Sendable {
         conn?.markDisconnected()
         connectedPeripherals.removeValue(forKey: peerId)
         inboxCharacteristics.removeValue(forKey: peerId)
+        digestCharacteristics.removeValue(forKey: peerId)
         linkInfoCharacteristics.removeValue(forKey: peerId)
         pendingInitiatorRemoteHints.removeValue(forKey: peerId)
         pendingOutboundWrites.removeValue(forKey: peerId)
@@ -691,6 +736,7 @@ public final class BleTransport: NSObject, @unchecked Sendable {
         outboundCentralConnections.removeValue(forKey: peerId)?.markDisconnected()
         connectedPeripherals.removeValue(forKey: peerId)
         inboxCharacteristics.removeValue(forKey: peerId)
+        digestCharacteristics.removeValue(forKey: peerId)
         linkInfoCharacteristics.removeValue(forKey: peerId)
         pendingInitiatorRemoteHints.removeValue(forKey: peerId)
         pendingOutboundWrites.removeValue(forKey: peerId)
@@ -734,10 +780,16 @@ public final class BleTransport: NSObject, @unchecked Sendable {
     public func processPeripheralDiscoverCharacteristics(_ p: CBPeripheral?, delegate: RelationPeripheralDelegate, service: CBService, error: Error? = nil) -> BleCentralAction {
         let peerId = delegate.relationKey.peerId
         guard validateOutboundDelegate(delegate, peerId: peerId) else { return .noOp }
+        var tree: [ContractCharacteristic] = []
+        for ch in service.characteristics ?? [] {
+            tree.append(ContractCharacteristic(uuid: ch.uuid, properties: RequiredCharacteristicSet.propertiesOf(ch.properties)))
+        }
         transportLock.lock()
         for ch in service.characteristics ?? [] {
             if ch.uuid == BleTransport.inboxCharacteristicUuid {
                 inboxCharacteristics[peerId] = ch
+            } else if ch.uuid == BleTransport.digestCharacteristicUuid {
+                digestCharacteristics[peerId] = ch
             } else if ch.uuid == BleTransport.linkInfoCharacteristicUuid {
                 linkInfoCharacteristics[peerId] = ch
             }
@@ -745,7 +797,11 @@ public final class BleTransport: NSObject, @unchecked Sendable {
         let linkInfoChar = linkInfoCharacteristics[peerId]
         transportLock.unlock()
 
-        let success = (error == nil && linkInfoChar != nil)
+        // T10 provisioning gate: resolve the whole discovered tree against
+        // the canonical profile -- all three roles exactly once, with their
+        // required properties and nothing beyond the contract -- instead of
+        // spot-checking the one characteristic this client happens to read.
+        let success = (error == nil && BleTransport.meshProfile.accepts(tree))
         let action = centralDriver?.onCharacteristicsDiscovered(peerId: peerId, success: success) ?? .noOp
         switch action {
         case .readLinkInfo:
@@ -896,6 +952,7 @@ public final class BleTransport: NSObject, @unchecked Sendable {
         let p = connectedPeripherals.removeValue(forKey: peerId)
         outboundCentralConnections.removeValue(forKey: peerId)?.markDisconnected()
         inboxCharacteristics.removeValue(forKey: peerId)
+        digestCharacteristics.removeValue(forKey: peerId)
         linkInfoCharacteristics.removeValue(forKey: peerId)
         pendingInitiatorRemoteHints.removeValue(forKey: peerId)
         pendingOutboundWrites.removeValue(forKey: peerId)
@@ -1157,34 +1214,14 @@ public final class BleTransport: NSObject, @unchecked Sendable {
         }
         transportLock.unlock()
 
-        let inbox = CBMutableCharacteristic(
-            type: BleTransport.inboxCharacteristicUuid,
-            properties: [.writeWithoutResponse, .write, .notify],
-            value: nil,
-            permissions: [.writeable]
-        )
-
-        let digest = CBMutableCharacteristic(
-            type: BleTransport.digestCharacteristicUuid,
-            properties: [.read, .notify],
-            value: nil,
-            permissions: [.readable]
-        )
-
-        let linkInfo = CBMutableCharacteristic(
-            type: BleTransport.linkInfoCharacteristicUuid,
-            properties: [.read, .write],
-            value: nil,
-            permissions: [.readable, .writeable]
-        )
-
-        let service = CBMutableService(type: BleTransport.serviceUuid, primary: true)
-        service.characteristics = [inbox, digest, linkInfo]
+        let installed = BleTransport.characteristicsToInstall(BleTransport.meshProfile)
+        let service = CBMutableService(type: BleTransport.meshProfile.serviceUuid, primary: true)
+        service.characteristics = installed
         pm.add(service)
 
         transportLock.lock()
-        mutableInboxCharacteristic = inbox
-        mutableLinkInfoCharacteristic = linkInfo
+        mutableInboxCharacteristic = installed.first { $0.uuid == BleTransport.inboxCharacteristicUuid }
+        mutableLinkInfoCharacteristic = installed.first { $0.uuid == BleTransport.linkInfoCharacteristicUuid }
         transportLock.unlock()
     }
 
@@ -1217,7 +1254,7 @@ public final class BleTransport: NSObject, @unchecked Sendable {
         }
         transportLock.unlock()
 
-        if request.characteristic.uuid == BleTransport.linkInfoCharacteristicUuid {
+        if BleTransport.classifyInbound(request.characteristic.uuid) == .toLinkInfo {
             if request.offset != 0 {
                 pm.respond(to: request, withResult: .invalidOffset)
                 return
@@ -1250,7 +1287,7 @@ public final class BleTransport: NSObject, @unchecked Sendable {
         for r in requests {
             let centralId = r.central.identifier
 
-            if r.characteristic.uuid == BleTransport.linkInfoCharacteristicUuid {
+            if BleTransport.classifyInbound(r.characteristic.uuid) == .toLinkInfo {
                 if r.offset != 0 {
                     pm.respond(to: r, withResult: .invalidOffset)
                     continue
@@ -1266,7 +1303,7 @@ public final class BleTransport: NSObject, @unchecked Sendable {
                 continue
             }
 
-            if r.characteristic.uuid == BleTransport.inboxCharacteristicUuid {
+            if BleTransport.classifyInbound(r.characteristic.uuid) == .toDeframer {
                 guard let v = r.value else {
                     pm.respond(to: r, withResult: .invalidAttributeValueLength)
                     continue

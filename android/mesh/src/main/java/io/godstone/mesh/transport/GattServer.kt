@@ -15,6 +15,7 @@ import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withTimeoutOrNull
+import java.util.ArrayList
 import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicLong
@@ -32,6 +33,7 @@ class BleGattServer(
     private val context: Context? = null,
     val serviceUuid: UUID = BleTransport.SERVICE_UUID,
     val inboxCharUuid: UUID = BleTransport.WRITE_CHAR_UUID,
+    val digestCharUuid: UUID = BleTransport.DIGEST_CHAR_UUID,
     val linkInfoCharUuid: UUID = BleTransport.LINK_INFO_CHAR_UUID,
     val linkInfoProvider: () -> ByteArray? = { null },
     val isRoleBoundPredicate: (String) -> Boolean = { false },
@@ -47,6 +49,7 @@ class BleGattServer(
 ) {
     private var server: BluetoothGattServer? = null
     private var inboxCharacteristic: BluetoothGattCharacteristic? = null
+    private var digestCharacteristic: BluetoothGattCharacteristic? = null
     private var linkInfoCharacteristic: BluetoothGattCharacteristic? = null
 
     private val connectedDevices = ConcurrentHashMap<String, BluetoothDevice>()
@@ -211,7 +214,7 @@ class BleGattServer(
                 val s = server ?: return
                 val address = device.address ?: return
 
-                if (characteristic.uuid == linkInfoCharUuid) {
+                if (classifyInbound(characteristic.uuid) === InboundRoute.TO_LINK_INFO) {
                     if (orchestrationDriver != null) {
                         val action = orchestrationDriver.onLinkInfoReadRequest(address)
                         when (action) {
@@ -249,7 +252,7 @@ class BleGattServer(
                 val s = server
                 val address = device.address ?: return
 
-                if (characteristic.uuid == linkInfoCharUuid) {
+                if (classifyInbound(characteristic.uuid) === InboundRoute.TO_LINK_INFO) {
                     if (offset != 0 || preparedWrite) {
                         if (responseNeeded) {
                             s?.sendResponse(device, requestId, BluetoothGatt.GATT_REQUEST_NOT_SUPPORTED, offset, null)
@@ -308,7 +311,7 @@ class BleGattServer(
                     return
                 }
 
-                if (characteristic.uuid == inboxCharUuid) {
+                if (classifyInbound(characteristic.uuid) === InboundRoute.TO_DEFRAMER) {
                     if (orchestrationDriver != null && !orchestrationDriver.isDeviceAdmitted(address)) {
                         if (responseNeeded) {
                             s?.sendResponse(device, requestId, BluetoothGatt.GATT_FAILURE, offset, null)
@@ -354,6 +357,19 @@ class BleGattServer(
 
                 if (descriptor.uuid == GattClientConnection.CCCD_UUID) {
                     val isSub = value.contentEquals(BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE)
+
+                    val owner = descriptor.characteristic?.uuid
+                    if (owner != null && owner != inboxCharUuid) {
+                        // T10: a CCC write on a non-inbox descriptor (the digest now
+                        // carries one too) is accepted silently at the attribute
+                        // layer, mirroring CoreBluetooth whose didSubscribe filters
+                        // non-inbox subscriptions. It must not touch the inbox
+                        // subscription state nor the duplex-ready emission.
+                        if (responseNeeded) {
+                            server?.sendResponse(device, requestId, BluetoothGatt.GATT_SUCCESS, offset, value)
+                        }
+                        return
+                    }
 
                     if (orchestrationDriver != null) {
                         val action = orchestrationDriver.onDescriptorWriteRequest(address, isSub)
@@ -497,31 +513,17 @@ class BleGattServer(
         activeCallback = currentCallback
         val gattServer = manager.openGattServer(context, currentCallback) ?: return false
 
-        val inbox = BluetoothGattCharacteristic(
-            inboxCharUuid,
-            BluetoothGattCharacteristic.PROPERTY_WRITE or
-                BluetoothGattCharacteristic.PROPERTY_WRITE_NO_RESPONSE or
-                BluetoothGattCharacteristic.PROPERTY_NOTIFY,
-            BluetoothGattCharacteristic.PERMISSION_WRITE
-        )
-        val cccd = BluetoothGattDescriptor(
-            GattClientConnection.CCCD_UUID,
-            BluetoothGattDescriptor.PERMISSION_READ or BluetoothGattDescriptor.PERMISSION_WRITE
-        )
-        inbox.addDescriptor(cccd)
-
-        val linkInfo = BluetoothGattCharacteristic(
-            linkInfoCharUuid,
-            BluetoothGattCharacteristic.PROPERTY_READ or BluetoothGattCharacteristic.PROPERTY_WRITE,
-            BluetoothGattCharacteristic.PERMISSION_READ or BluetoothGattCharacteristic.PERMISSION_WRITE
-        )
+        val installed = ArrayList<BluetoothGattCharacteristic>()
+        for (entry in serverBlueprint()) {
+            installed.add(buildCharacteristic(entry))
+        }
 
         val service = BluetoothGattService(
             serviceUuid,
             BluetoothGattService.SERVICE_TYPE_PRIMARY
-        ).apply {
-            addCharacteristic(inbox)
-            addCharacteristic(linkInfo)
+        )
+        for (characteristic in installed) {
+            service.addCharacteristic(characteristic)
         }
 
         pendingServiceGeneration = gen
@@ -534,9 +536,55 @@ class BleGattServer(
         }
 
         server = gattServer
-        inboxCharacteristic = inbox
-        linkInfoCharacteristic = linkInfo
+        inboxCharacteristic = installed.firstOrNull { it.uuid == inboxCharUuid }
+        digestCharacteristic = installed.firstOrNull { it.uuid == digestCharUuid }
+        linkInfoCharacteristic = installed.firstOrNull { it.uuid == linkInfoCharUuid }
         return true
+    }
+
+    /**
+     * T10: the canonical service tree the server installs, read from the
+     * generated wire contract through RequiredCharacteristicSet. One service,
+     * three characteristics, exact property sets; the legacy FD short-form
+     * values are never named here.
+     */
+    fun serverBlueprint(): List<ContractCharacteristic> =
+        RequiredCharacteristicSet.MESH.characteristics
+
+    /**
+     * The one platform mapping: contract entry to installed object, a single
+     * data-driven loop over the blueprint. Every notify characteristic gains
+     * the CCC descriptor (CoreBluetooth attaches the same one implicitly on
+     * its platform side), so a subscribing central can enable notifications
+     * of inbox and digest alike.
+     */
+    private fun buildCharacteristic(entry: ContractCharacteristic): BluetoothGattCharacteristic {
+        val characteristic = BluetoothGattCharacteristic(
+            entry.uuid,
+            RequiredCharacteristicSet.maskOf(entry.properties),
+            RequiredCharacteristicSet.permissionsFor(entry.properties)
+        )
+        if (entry.properties.contains(GattProperty.NOTIFY)) {
+            characteristic.addDescriptor(
+                BluetoothGattDescriptor(
+                    GattClientConnection.CCCD_UUID,
+                    BluetoothGattDescriptor.PERMISSION_READ or BluetoothGattDescriptor.PERMISSION_WRITE
+                )
+            )
+        }
+        return characteristic
+    }
+
+    /**
+     * T10 inbound routing decision by uuid equality against the configured
+     * roles: LinkInfo records go to the link info store, never through the
+     * record decoder; frame records go to the record decoder; anything else
+     * is answered request-not-supported, including the legacy FD values.
+     */
+    fun classifyInbound(uuid: UUID): InboundRoute = when (uuid) {
+        linkInfoCharUuid -> InboundRoute.TO_LINK_INFO
+        inboxCharUuid -> InboundRoute.TO_DEFRAMER
+        else -> InboundRoute.NOT_SUPPORTED
     }
 
     suspend fun sendNotification(deviceAddress: String, value: ByteArray): Boolean = notificationMutex.withLock {
@@ -627,6 +675,7 @@ class BleGattServer(
         server = null
         activeCallback = null
         inboxCharacteristic = null
+        digestCharacteristic = null
         linkInfoCharacteristic = null
         connectedDevices.clear()
         subscribedDevices.clear()

@@ -534,9 +534,14 @@ class BleTransport(
     }
 
     companion object {
+        // T10: every GATT identifier is the generated wire-contract value.
+        // The historical hand-rolled FD short-form characteristic constants
+        // (0000fd01/0000fd02) are the non-shipping legacy profile: removed,
+        // never dual-registered, and rejected by RequiredCharacteristicSet's
+        // provisioning gate. Aliases keep their established names.
         val SERVICE_UUID: UUID = FrameV2.SERVICE_UUID
-        val WRITE_CHAR_UUID: UUID = UUID.fromString("0000fd01-0000-1000-8000-00805f9b34fb")
-        val DIGEST_CHAR_UUID: UUID = UUID.fromString("0000fd02-0000-1000-8000-00805f9b34fb")
+        val WRITE_CHAR_UUID: UUID = FrameV2.INBOX_UUID
+        val DIGEST_CHAR_UUID: UUID = FrameV2.DIGEST_UUID
         val LINK_INFO_CHAR_UUID: UUID = FrameV2.LINK_INFO_UUID
 
         const val MAX_DISCOVERED_PEERS = 64
