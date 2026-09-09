@@ -286,6 +286,15 @@ def main() -> int:
         print("        Steps 1-5 are internal: the fixture is produced by the")
         print("        very reference it checks. Only an external vector settles")
         print("        conformance. See docs/PINNING_CACOPHONY.md.")
+    from .noise_lock import status as noise_lock_status
+    lock_value, lock_problems, lock_detail = noise_lock_status()
+    if lock_value == "UNAVAILABLE":
+        print("        ExternalNoiseLockV1: UNAVAILABLE -- no lock file; A-06 open.")
+    elif lock_value == "VERIFIED":
+        r.check(True, f"external noise lock VERIFIED -- {lock_detail}")
+    else:
+        r.check(False, f"external noise lock {lock_value}",
+                "; ".join(lock_problems[:3]))
 
     print("\n" + "=" * 68)
     print(f"checks={r.checks} failures={len(r.failures)}")

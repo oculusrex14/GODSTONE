@@ -352,6 +352,20 @@ def main() -> int:
               "repo-owned scope; tracked fail-closed under `--scope all` in the "
               "release-gates workflow. crypto/cacophony_vectors.json holds no "
               "approved EXTERNAL fixture yet.")
+        try:
+            import os as _os
+            import sys as _sys
+            _root = _os.path.dirname(_os.path.dirname(
+                _os.path.abspath(__file__)))
+            if _root not in _sys.path:
+                _sys.path.insert(0, _root)
+            from crypto.noise_lock import status as noise_lock_status
+            _lock_value, _lock_problems, _lock_detail = noise_lock_status()
+            print(f"  note  [D] ExternalNoiseLockV1: {_lock_value}")
+            for _problem in _lock_problems[:3]:
+                print(f"        - {_problem}")
+        except Exception:  # noqa: BLE001 -- lock layer must never crash the gate
+            pass
     invariant_e(r)
     invariant_f(r)
     invariant_g(r)

@@ -137,6 +137,26 @@
       "size": 19434
     },
     {
+      "path": "T04/logs/T04-controls-python3-002.log",
+      "sha256": "0b1ac463307b9f7d907105bb19e85bdada5dcd05131d80c492ffd80b4ab3f5f4",
+      "size": 234
+    },
+    {
+      "path": "T04/logs/T04-controls-python3.log",
+      "sha256": "03f0bc422dc53a81fd7f41085300a28e42626c2a4554e8929d897d3c092bd014",
+      "size": 1374
+    },
+    {
+      "path": "T04/logs/T04-narrow-python3.log",
+      "sha256": "dce976d54ffd2b0c21da3be9b57479f32f4881df28e834dac0e53bc80eaf2a50",
+      "size": 4591
+    },
+    {
+      "path": "T04/logs/T04-subsystem-python3.log",
+      "sha256": "a91564b801b0da8350c35ca5238024963560947a877b0461c7d942704fb3fbb7",
+      "size": 23784
+    },
+    {
       "path": "T01/inventory.json",
       "sha256": "e7f2e905fa7d1be256d54e26854ff91aab89490209af0058dbce375cdb57f3fb",
       "size": 29459
@@ -160,9 +180,14 @@
       "path": "T03/commands.json",
       "sha256": "9aa78abbf5224badf1c9245b6d7d8dccb40612729c73410f340dfa6672fd1527",
       "size": 3526
+    },
+    {
+      "path": "T04/commands.json",
+      "sha256": "87e8fa1bb4eba37a179c4525d67fc6477315cfffa8d0319921d3965b74c17e49",
+      "size": 3526
     }
   ],
   "note": "nonsecret index; full logs live outside the repository",
   "schema_version": 1,
-  "task": "T03"
+  "task": "T04"
 }

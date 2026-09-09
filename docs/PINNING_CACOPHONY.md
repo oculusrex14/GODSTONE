@@ -36,12 +36,10 @@ curl -L -o crypto/cacophony_vectors.json \
 python -m crypto.cacophony --check --write-status
 ```
 
-If it passes, drop the flag from CI:
-
-```diff
--        run: python ci/check_parity.py --allow-unpinned
-+        run: python ci/check_parity.py
-```
+If it passes, the release-gates workflow keeps running Invariant D fail-
+closed (`ci/check_parity.py --scope all`); there is no bypass flag in the
+current script, and none should be added: an unpinned gate must stay a
+typed, nonzero-release-exit result (T04), not a tolerated green.
 
 `crypto/test_conformance.py` step 6 and `ci/check_parity.py` Invariant D read
 the status automatically. **No other code changes are needed.**
@@ -97,3 +95,31 @@ Pinning does not make the hand-rolled crypto acceptable. Audit **A-02** stands:
 a hand-rolled stack shipped without conformance vectors, and patching three
 known bugs leaves the unknown ones. The strongest end state remains a single
 cacophony-verified core (snow via JNI/FFI) shared by both platforms.
+
+
+## The lock (ExternalNoiseLockV1, T04)
+
+Fetching vectors is not enough to close A-06. A lock file at
+`crypto/noise_lock.json` must bind the fixture to its provenance:
+
+| Field | Requirement |
+|---|---|
+| `lock_schema` | `ExternalNoiseLockV1` |
+| `upstream.repo` / `.revision` / `.path` / `.fetched_utc` | immutable origin + full 40-hex revision; an origin naming this repository is refused (a self-generated fixture mislabeled independent is the exact failure this gate exists to eliminate) |
+| `license` | non-empty |
+| `source_sha256` / `fixture_sha256` | exact digests; a one-byte fixture mutation fails the lock |
+| `protocol_name` | `Noise_XX_25519_ChaChaPoly_BLAKE2s` (the frozen suite) |
+| `prologue_sha256` / `prologue_prefix_hex` | pins the GMP2 prologue bound by the transcript |
+| `required_cases` | every matching case, exactly once; duplicate ids and partial selection are rejected |
+| `reviewer.identity` / `.date` | named reviewer and date |
+
+Commands:
+
+```bash
+python -m crypto.noise_lock --status     # informational; typed status
+python -m crypto.noise_lock --release    # exit 0 only when VERIFIED;
+                                         # UNAVAILABLE exits 3, FAILED exits 1
+```
+
+Until then the gate stays UNAVAILABLE: typed, fail-closed, and never
+satisfied by repository-generated fixtures.
