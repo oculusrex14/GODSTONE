@@ -48,7 +48,7 @@
     "Sources/GodstoneMesh/RuntimeLifecycleGate.swift": "b29cef4fc0c388e7bce49743cb30a5429ac13d4850fc8a1c24616c05acb5eb6e",
     "Sources/GodstoneMesh/SealedSender.swift": "2283a5b0726e6aaf2cfc02fcc1b22ff648d5b2e9fbd6bbd434873c6762a9a9f9",
     "Sources/GodstoneMesh/SessionManager.swift": "e7ccec9f9c1e131a02322d96fd3371f366c8c4e8cb567c236d6a17001046fde7",
-    "Sources/GodstoneMesh/SessionSlot.swift": "8d744a7c1b7df14a0e402a3ce226fb38050d8936c96730eccad24ec8f792f52e",
+    "Sources/GodstoneMesh/SessionSlot.swift": "a24be96549fb18293945e54c48ae6c750c0db9aba7f07474d38b77f7dd4f3f55",
     "Sources/GodstoneMesh/SosFrameValidator.swift": "40da66c6cb8e6321733094655cc56c280e1fbd111fbbccb38eb392ee682c521a",
     "Sources/GodstoneMesh/SqliteDeliveryRepository.swift": "2af5ed87ebfb9b4c19b956d2b8e5b73d162f148962ffe55b2e2c11fc140d96e2",
     "Sources/GodstoneMesh/TrustedHandshakeController.swift": "74d36686e1bd48d7855bf3196f90c40c85166f0a78dd96031423d0b16488b698",

@@ -80,7 +80,11 @@ public final class SessionSlot {
     /// that caused it, and hand back the controller so the CALLER can route
     /// the destructive destroy outside the slot lock.
     internal func retire() -> TrustedHandshakeController? {
-        return lock.withLock {
+        // The terminal transition is an operation on the relation too,
+        // so it enters through the slot serialization like every other
+        // one; the caller still routes the destructive destroy outside
+        // the lock.
+        return serialize { () -> TrustedHandshakeController? in
             if state == .retired { return nil }
             state = .retired
             let doomed = controller
@@ -88,4 +92,5 @@ public final class SessionSlot {
             return doomed
         }
     }
+
 }
