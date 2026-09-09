@@ -323,6 +323,29 @@
       "task_ids": [
         "T06"
       ]
+    },
+    {
+      "claim_id": "CLM-T07-RETIREMENT",
+      "command_ids": [
+        "T07-narrow-gradlew",
+        "T07-narrow-swift"
+      ],
+      "evidence_class": "internal",
+      "evidence_sha256": null,
+      "latest_source_sha": "b1d51529ddc7a2df0c2755ce0a99577ea21d34b7",
+      "limitations": "host-only evidence; instrumented-device evidence remains a separate device gate",
+      "production_path": "android/mesh/src/main/java/io/godstone/mesh/crypto/NoiseSession.kt",
+      "profile": "jvm-host+swift-host",
+      "required_case_ids": [
+        "ReadinessT07Test",
+        "ReadinessT07Tests"
+      ],
+      "requirement": "monotonic SessionBudget enforced terminally (2^20/direction, 30 min); no rekey-in-place; peer nonces beyond budget rejected before window math",
+      "result": "PASS",
+      "state_owner": "crypto/session owner",
+      "task_ids": [
+        "T07"
+      ]
     }
   ],
   "note": "Claims appended per task with real evidence; PASS requires positive case counts and matching command output. Device/independent claims never accept host-only results.",

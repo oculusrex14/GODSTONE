@@ -429,6 +429,74 @@
       "unresolved": [
         "Platform encryption/ABI/permissions require separate instrumented-device evidence."
       ]
+    },
+    "T07": {
+      "case_results": [
+        {
+          "executed": 12,
+          "failed": 0,
+          "passed": 12,
+          "skipped": 0,
+          "stage": "narrow"
+        },
+        {
+          "collected": 731,
+          "engine": "android-jvm",
+          "executed": 731,
+          "failed": 0,
+          "passed": 731,
+          "skipped": 0,
+          "stage": "subsystem"
+        },
+        {
+          "collected": 676,
+          "engine": "swift-host",
+          "executed": 676,
+          "failed": 0,
+          "passed": 676,
+          "skipped": 0,
+          "stage": "subsystem"
+        },
+        {
+          "executed": 3,
+          "failed": 0,
+          "passed": 3,
+          "skipped": 0,
+          "stage": "controls"
+        }
+      ],
+      "commands": [
+        "T07-narrow-gradlew",
+        "T07-narrow-swift",
+        "T07-subsystem-gradlew",
+        "T07-subsystem-swift",
+        "T07-controls-python3",
+        "T07-controls-python3-002",
+        "T07-controls-python3-003"
+      ],
+      "device_gate_ids": [],
+      "implementation_commit": "b1d51529ddc7a2df0c2755ce0a99577ea21d34b7",
+      "inputs": {
+        "baseline": "b5c3d3d394b70cf356cdde33b47511dad7cbb95c"
+      },
+      "mutation_results": [
+        {
+          "evidence": "testRekeyInPlaceApiRemoved (Android L0)",
+          "expected": "L0 source-integrity test fails (needsRekey/rekeyIfNeeded absent)",
+          "mutation": "ad hoc key rehashing reintroduced / rekey-in-place API",
+          "outcome": "KILLED"
+        }
+      ],
+      "next_action": "none — task complete",
+      "phase_gate": "P1",
+      "required_cases": [
+        "ReadinessT07Test (6 cases Android)",
+        "ReadinessT07Tests (6 cases Swift)"
+      ],
+      "status": "COMPLETE",
+      "task_id": "T07",
+      "tested_tree_sha": "c68404c8712c1c6b469e5e8d57956963e5e62c6f",
+      "unresolved": []
     }
   },
   "current_task": null,
@@ -441,23 +509,23 @@
   ],
   "failed_attempts": [],
   "in_progress": null,
-  "last_code_head": "b86f16603f23f2adc2374dbf4019fd1a7a8ccb3c",
-  "last_observed_head": "b86f16603f23f2adc2374dbf4019fd1a7a8ccb3c",
+  "last_code_head": "b1d51529ddc7a2df0c2755ce0a99577ea21d34b7",
+  "last_observed_head": "b1d51529ddc7a2df0c2755ce0a99577ea21d34b7",
   "latest_verification": {
-    "at": "2026-09-09T06:07:59+00:00",
-    "log": "T06/logs/T06-subsystem-gradlew.log",
+    "at": "2026-09-09T06:56:14+00:00",
+    "log": "T07/logs/T07-subsystem-gradlew.log",
     "log_sha256": null,
-    "note": "Android 725 + Swift package 670, all passed; counts from JUnit XML and swift test output",
-    "source_sha": "b86f16603f23f2adc2374dbf4019fd1a7a8ccb3c",
-    "suite": ":mesh JVM suite + GodstoneFoundation swift package suite",
-    "tests_collected": 1395,
-    "tests_executed": 1395,
+    "note": "Android 731 + Swift 676",
+    "source_sha": "b1d51529ddc7a2df0c2755ce0a99577ea21d34b7",
+    "suite": ":mesh JVM + GodstoneFoundation swift package",
+    "tests_collected": 1407,
+    "tests_executed": 1407,
     "tests_failed": 0,
-    "tests_passed": 1395,
+    "tests_passed": 1407,
     "tests_skipped": 0,
-    "tree_sha": "bbd3fb7fdf3c568b8b6e5dc2c7265586ad1e370c"
+    "tree_sha": "c68404c8712c1c6b469e5e8d57956963e5e62c6f"
   },
-  "next_task": "T07",
+  "next_task": "T08",
   "phase": "P0",
   "plan_sha256": "685456b378662b0a40a53a6abc810041e37daf97b213f3efeb6cea879363934e",
   "planning_baseline_sha": "b5c3d3d394b70cf356cdde33b47511dad7cbb95c",
@@ -468,7 +536,7 @@
     "Android toolchain provisioned: JDK 17.0.20.1 + SDK 35 on mac-primary.",
     "Readiness flags remain false. D2 absent at planning baseline.",
     "A-06 stays UNAVAILABLE until an independent fixture + lock arrive.",
-    "transport vector manifests are deterministic (fixture key) and committed.",
+    "Session budget: 2^20 records/direction, 30 minutes; retirement is terminal.",
     "No external review/model/content/device result may be fabricated."
   ]
 }
