@@ -2,352 +2,227 @@
   "evidence_root": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE",
   "files": [
     {
-      "path": "T01/raw/head-fuller.txt",
-      "sha256": "e239bc31d2424f26b39262a367d9fc3470d380f94c83dfeb5e5b87e94868127e",
-      "size": 318
+      "path": "T07/commands.json",
+      "sha256": "309eb0f19893025fc51a87bce8bc9e940a6798aacd30bcfeaf9ee8087813d167",
+      "size": 15096
     },
     {
-      "path": "T01/raw/head.txt",
-      "sha256": "e40630af0ce5bf8d49065b72a242e9f90002188f83f8add001439e7fcbae2c54",
-      "size": 41
-    },
-    {
-      "path": "T01/raw/parent.txt",
-      "sha256": "6256e2ff5c493df645175400e7e446463f816619b6e201a178a29f559c447cd7",
-      "size": 41
-    },
-    {
-      "path": "T01/raw/remote-tips.txt",
-      "sha256": "6f49682c8ff8ec2817e3347013143dd85aa470d825208b84fa1c007e899778c9",
-      "size": 540
-    },
-    {
-      "path": "T01/raw/status-before.txt",
-      "sha256": "8fdab17ec265223876300f39f34880b8635de2c113f3c7e3d960433af01c1a27",
-      "size": 7271
-    },
-    {
-      "path": "T01/raw/tracked-patch.bin",
-      "sha256": "b78e77db8ff425c2d8009abedeec7306ca1783c5a7a87d70e51982f873eed1ac",
-      "size": 114681
-    },
-    {
-      "path": "T01/logs/unittest-t01-run1.log",
-      "sha256": "5725088ba1927073533c68413c9ae0e869089f934faf6d85fdb848d947c21702",
-      "size": 136744
-    },
-    {
-      "path": "T01/logs/unittest-t01-run2.log",
-      "sha256": "606b0ea278db2419649deacffd609bedb8bdc31dc2792af558ca111d48912927",
-      "size": 5692
-    },
-    {
-      "path": "T01/logs/unittest-t01-run3.log",
-      "sha256": "df208754fa36306f8bffbd9aef4d646d04bc7dbb05ba63f23b06204cdde2c88a",
-      "size": 5895
-    },
-    {
-      "path": "T01/logs/unittest-t01-run4.log",
-      "sha256": "26c11ef518f2a5bdea743df22e0c464e415667c0181030774f785e03232637cb",
-      "size": 3013
-    },
-    {
-      "path": "T01/logs/unittest-t01-run5-postM.log",
-      "sha256": "69570406bc2644da6898bf47921080929680e63510b0c81f9f2cce2d550def51",
-      "size": 3013
-    },
-    {
-      "path": "T02/probes/node-version.txt",
-      "sha256": "8f8c5711e40e4aeef57fc1eab46f5ec0c8b99addf1cd6959551c3b914d17058d",
-      "size": 32
-    },
-    {
-      "path": "T02/probes/ollama-version.txt",
-      "sha256": "c9b0b5fc56ee0042db1359da6bc68c4f4b7317009c9bcbaae145423bf16e5325",
-      "size": 49
-    },
-    {
-      "path": "T02/probes/omp-help.txt",
-      "sha256": "ee212ddc6c6ee58ad0bb720dade4af664f6bc5f9245d4f23029e0dd4d2fdd820",
-      "size": 13273
-    },
-    {
-      "path": "T02/probes/omp-models-ls-json.txt",
-      "sha256": "e937ab7a3f9d613fc2c93724a848e009f0771dd42f5904d9eeae4c63bde7f4ab",
-      "size": 236548
-    },
-    {
-      "path": "T02/probes/omp-version.txt",
-      "sha256": "d34d8734b854082ce4307b924512f542d6b10d7faa8be8ef2909718fd88be266",
-      "size": 36
-    },
-    {
-      "path": "T02/probes/swift-version.txt",
-      "sha256": "ecdb14d07a72410e83b11e08d75ebba9bceb08956d7ec13e40a570ae52b8707a",
-      "size": 152
-    },
-    {
-      "path": "T02/probes/xcodebuild-version.txt",
-      "sha256": "c97b412c340d7eda6b2402244f707aa0a6a1c4058e60575a7d37684bc346d05e",
-      "size": 56
-    },
-    {
-      "path": "T02/probes/xcodegen-version.txt",
-      "sha256": "6c6cd18f11263b99301d75f9fdf43254c4ce934a411e0a0f9a5425ac3f634dbc",
-      "size": 40
-    },
-    {
-      "path": "T02/logs/T02-controls-python3-002.log",
+      "path": "T07/logs/T07-controls-python3-002.log",
       "sha256": "0b1ac463307b9f7d907105bb19e85bdada5dcd05131d80c492ffd80b4ab3f5f4",
       "size": 234
     },
     {
-      "path": "T02/logs/T02-controls-python3.log",
-      "sha256": "03f0bc422dc53a81fd7f41085300a28e42626c2a4554e8929d897d3c092bd014",
-      "size": 1374
-    },
-    {
-      "path": "T02/logs/T02-narrow-python3.log",
-      "sha256": "1f66e10c9736e7b9ac483009fc315a32cb4812a56051c4f960f1afe1a9c1d42f",
-      "size": 6974
-    },
-    {
-      "path": "T02/logs/T02-subsystem-python3.log",
-      "sha256": "2b138bdf0123f602eebd5e42224e53f941b760cda0b7af50e24edfeb3a81ae5b",
-      "size": 9873
-    },
-    {
-      "path": "T03/logs/T03-controls-python3-002.log",
-      "sha256": "0b1ac463307b9f7d907105bb19e85bdada5dcd05131d80c492ffd80b4ab3f5f4",
-      "size": 234
-    },
-    {
-      "path": "T03/logs/T03-controls-python3.log",
-      "sha256": "03f0bc422dc53a81fd7f41085300a28e42626c2a4554e8929d897d3c092bd014",
-      "size": 1374
-    },
-    {
-      "path": "T03/logs/T03-narrow-python3.log",
-      "sha256": "7519ed9000d1a1730b865f08da35fb53f824f72c01bb4f2490497ddf6671a7ed",
-      "size": 9802
-    },
-    {
-      "path": "T03/logs/T03-subsystem-python3.log",
-      "sha256": "9e066e7d068d768cad29d99f566ab7957a7a1bed51aa637c6c7b1b3e3e5ef49f",
-      "size": 19434
-    },
-    {
-      "path": "T04/logs/T04-controls-python3-002.log",
-      "sha256": "0b1ac463307b9f7d907105bb19e85bdada5dcd05131d80c492ffd80b4ab3f5f4",
-      "size": 234
-    },
-    {
-      "path": "T04/logs/T04-controls-python3.log",
-      "sha256": "03f0bc422dc53a81fd7f41085300a28e42626c2a4554e8929d897d3c092bd014",
-      "size": 1374
-    },
-    {
-      "path": "T04/logs/T04-narrow-python3.log",
-      "sha256": "dce976d54ffd2b0c21da3be9b57479f32f4881df28e834dac0e53bc80eaf2a50",
-      "size": 4591
-    },
-    {
-      "path": "T04/logs/T04-subsystem-python3.log",
-      "sha256": "a91564b801b0da8350c35ca5238024963560947a877b0461c7d942704fb3fbb7",
-      "size": 23784
-    },
-    {
-      "path": "T05/logs/T05-controls-python3-002.log",
-      "sha256": "0b1ac463307b9f7d907105bb19e85bdada5dcd05131d80c492ffd80b4ab3f5f4",
-      "size": 234
-    },
-    {
-      "path": "T05/logs/T05-controls-python3.log",
-      "sha256": "03f0bc422dc53a81fd7f41085300a28e42626c2a4554e8929d897d3c092bd014",
-      "size": 1374
-    },
-    {
-      "path": "T05/logs/T05-narrow-gradlew.log",
-      "sha256": "c50e097e858381dd4d74d06c0f46e9c359cfd4362fad86c47c61ab5e282a1862",
-      "size": 2854
-    },
-    {
-      "path": "T05/logs/T05-subsystem-gradlew.log",
-      "sha256": "643e3f759b9fba0f8694c14ce98a98e473ecb09fff1ccb06675c9f428c294ddb",
-      "size": 2806
-    },
-    {
-      "path": "T06/logs/T06-controls-python3-002.log",
-      "sha256": "0b1ac463307b9f7d907105bb19e85bdada5dcd05131d80c492ffd80b4ab3f5f4",
-      "size": 234
-    },
-    {
-      "path": "T06/logs/T06-controls-python3-003.log",
+      "path": "T07/logs/T07-controls-python3-003.log",
       "sha256": "67493ebd28a55ece17214e55d318f34ba4af6ac7592268756f1b3dcc304afa21",
       "size": 125
     },
     {
-      "path": "T06/logs/T06-controls-python3.log",
+      "path": "T07/logs/T07-controls-python3.log",
       "sha256": "03f0bc422dc53a81fd7f41085300a28e42626c2a4554e8929d897d3c092bd014",
       "size": 1374
     },
     {
-      "path": "T06/logs/T06-narrow-gradlew-002.log",
-      "sha256": "fbe64570db8eca0e8c0619595698568d819e08ff023abf16507b23cc8ef12ee0",
-      "size": 3768
+      "path": "T07/logs/T07-narrow-gradlew-002.log",
+      "sha256": "ac05d22f82df3ecc936edd83be9f96fb9a2ffc19d1c33976c3cdcd218e07a5fe",
+      "size": 3210
     },
     {
-      "path": "T06/logs/T06-narrow-gradlew-003.log",
-      "sha256": "c6a33c43483022ce5594d7a6d6a9a4eaf499ff19adee3b10bdd2ee058de24666",
-      "size": 3078
+      "path": "T07/logs/T07-narrow-gradlew-003.log",
+      "sha256": "b3cdd36eca0dafdae38377c74d095573cc44b683d7284128eb765211eec1c653",
+      "size": 3718
     },
     {
-      "path": "T06/logs/T06-narrow-gradlew-004.log",
-      "sha256": "3669e066c7458a2a2e3260fb81c3038607d6c1976866d43a9048b6bf2205b119",
-      "size": 3186
+      "path": "T07/logs/T07-narrow-gradlew-004.log",
+      "sha256": "f78a657407e067ad65b8b49150093ae4a6aebb1b55e55472fb770b0af00cd89d",
+      "size": 2854
     },
     {
-      "path": "T06/logs/T06-narrow-gradlew-005.log",
-      "sha256": "e3d8bbf0c88fe8b89eaa3eaf01380e2ebe9134bde5b7f38cbd2f0e001fdb1692",
-      "size": 2944
+      "path": "T07/logs/T07-narrow-gradlew.log",
+      "sha256": "bb3686dde6d93a01a87014bfeff3bd6ab79c8ffc82c831a3254bdc4690023cbd",
+      "size": 3099
     },
     {
-      "path": "T06/logs/T06-narrow-gradlew-006.log",
-      "sha256": "c8d449e4b020f23b0d232a8f7e6401cc7b5cbfffe42e576c6026d3663b0f0ee6",
-      "size": 3204
+      "path": "T07/logs/T07-narrow-swift-002.log",
+      "sha256": "12629c109b0c3d18e33a0108067ef0cffa1b86525416ce67b635bf5010798c7a",
+      "size": 87100
     },
     {
-      "path": "T06/logs/T06-narrow-gradlew-007.log",
-      "sha256": "6b5cd9258a335221d766abad4b3a513c44d5acef343f7672d4c6fcead176710f",
-      "size": 3104
+      "path": "T07/logs/T07-narrow-swift-003.log",
+      "sha256": "dbaec37f87c0d63f60bf2279907f1a5f53c4018172aa0c5cf4a257b947686d31",
+      "size": 86840
     },
     {
-      "path": "T06/logs/T06-narrow-gradlew-008.log",
-      "sha256": "acc0f56cd75d85a860594218abf92870bb5a5154943797e6c7aab4c5c27f531d",
-      "size": 2930
+      "path": "T07/logs/T07-narrow-swift-004.log",
+      "sha256": "71bb687418a4dd5e452c751bfec80c29616ca2e457d64a37aa4d5f5c7a6d51eb",
+      "size": 2343
     },
     {
-      "path": "T06/logs/T06-narrow-gradlew-009.log",
-      "sha256": "aee94d3a56533dedc0d508c71b0f08f8b9cac848ea0784da6430304933d5042d",
-      "size": 2996
+      "path": "T07/logs/T07-narrow-swift.log",
+      "sha256": "687e1568b1ef9321554b84ec80025f47d33e4ab3e4a9c3532f981576784e2d31",
+      "size": 86355
     },
     {
-      "path": "T06/logs/T06-narrow-gradlew-010.log",
-      "sha256": "8a867fc005830163b3a41becfb83efdac231f801bf3074d0389b30aaebba4603",
-      "size": 3184
+      "path": "T07/logs/T07-subsystem-gradlew-002.log",
+      "sha256": "9c618b2e4cefefcc8b5cc9aec26e8271d2fe6ca374cf65e99d72078c2fdee691",
+      "size": 2672
     },
     {
-      "path": "T06/logs/T06-narrow-gradlew-011.log",
-      "sha256": "f9dd0c8642917cc92025e43e796fcb6abd1d8b067ca8782b6bdc002e6355d4c3",
-      "size": 2699
+      "path": "T07/logs/T07-subsystem-gradlew-003.log",
+      "sha256": "1f5a6da4446224e9780d0652905f017f7e2c90ae95b10e727d6c57062a4b6197",
+      "size": 2486
     },
     {
-      "path": "T06/logs/T06-narrow-gradlew.log",
-      "sha256": "d546425c2576ca35892d67cfc3b0accea818a867ec9f3a66ef239e702d3a08b6",
-      "size": 4048
+      "path": "T07/logs/T07-subsystem-gradlew.log",
+      "sha256": "a4da2df273a10b9f9f464982bf74f992a0b5ed8b8e5958291a8a1d9c104b07d2",
+      "size": 3118
     },
     {
-      "path": "T06/logs/T06-narrow-swift-002.log",
-      "sha256": "f90e1a5e0f9490f683c1306a9d91b98406951c9db57aeeadb6b466c2732317f0",
-      "size": 14894
+      "path": "T07/logs/T07-subsystem-swift-002.log",
+      "sha256": "26d96adcab806fa3b93c31f92646cf47e4b21e5efc2ff8d81fc2ed615d629327",
+      "size": 259609
     },
     {
-      "path": "T06/logs/T06-narrow-swift-003.log",
-      "sha256": "49a082a71ef31b02ba0d5fc31e17b8190591d05828ad844c216d5acbff11e8db",
-      "size": 47167
+      "path": "T07/logs/T07-subsystem-swift-003.log",
+      "sha256": "9ed52ad43c83751bea888930812688b67e3b636d82ec79395b9a007427d5caec",
+      "size": 175225
     },
     {
-      "path": "T06/logs/T06-narrow-swift-004.log",
-      "sha256": "c02368fc4bd0937b27c3dc406a48b61a557d7e4fdba65a8104b66fc81d32f61a",
-      "size": 93555
+      "path": "T07/logs/T07-subsystem-swift.log",
+      "sha256": "0d492a6347dc34b121a71c2b8b4e6fe8955821b1ed94bf8fcd2f7aee11ce553d",
+      "size": 175455
     },
     {
-      "path": "T06/logs/T06-narrow-swift-005.log",
-      "sha256": "597dc478683df9fed8868fd9a1347f85458813a83c39b2fc8ce82c011c0240d4",
-      "size": 86500
+      "path": "T08/commands.json",
+      "sha256": "0e0529c89624278a35c8ac98c9a533d16323e518c9063906fee7793ddc0ea4c2",
+      "size": 15730
     },
     {
-      "path": "T06/logs/T06-narrow-swift-006.log",
-      "sha256": "0e821856deb5a74f10f9a2e1a077088da44a183c64af38634b75b3de577f2ec8",
-      "size": 4180
+      "path": "T08/logs/T08-controls-python3-002.log",
+      "sha256": "0b1ac463307b9f7d907105bb19e85bdada5dcd05131d80c492ffd80b4ab3f5f4",
+      "size": 234
     },
     {
-      "path": "T06/logs/T06-narrow-swift-007.log",
-      "sha256": "459f6bcd4185a47cdbc8a7604f1b1ac891f7b7a6e1b131450e7ec5c21280ccfe",
-      "size": 2400
+      "path": "T08/logs/T08-controls-python3-003.log",
+      "sha256": "67493ebd28a55ece17214e55d318f34ba4af6ac7592268756f1b3dcc304afa21",
+      "size": 125
     },
     {
-      "path": "T06/logs/T06-narrow-swift-008.log",
-      "sha256": "5db35acf76a9f213c5ed2e565480116e5ffbaf429d00c996eca7cb15ddeacb87",
-      "size": 2400
+      "path": "T08/logs/T08-controls-python3-004.log",
+      "sha256": "03f0bc422dc53a81fd7f41085300a28e42626c2a4554e8929d897d3c092bd014",
+      "size": 1374
     },
     {
-      "path": "T06/logs/T06-narrow-swift-009.log",
-      "sha256": "bcc537203a5ce418a3a7f959e357e95849a9117f9a49670263eeac6e3a8f3ac4",
-      "size": 2400
+      "path": "T08/logs/T08-controls-python3-005.log",
+      "sha256": "0b1ac463307b9f7d907105bb19e85bdada5dcd05131d80c492ffd80b4ab3f5f4",
+      "size": 234
     },
     {
-      "path": "T06/logs/T06-narrow-swift-010.log",
-      "sha256": "71c63c9f9919df87aca8da3098d73ff091d12b20c265fdee67c028e43abd2039",
-      "size": 2400
+      "path": "T08/logs/T08-controls-python3-006.log",
+      "sha256": "67493ebd28a55ece17214e55d318f34ba4af6ac7592268756f1b3dcc304afa21",
+      "size": 125
     },
     {
-      "path": "T06/logs/T06-narrow-swift.log",
-      "sha256": "6ec706daf82460dcad2fddb98a01a51cf496cc0cd48f3edc216b843857d34a07",
-      "size": 47645
+      "path": "T08/logs/T08-controls-python3.log",
+      "sha256": "03f0bc422dc53a81fd7f41085300a28e42626c2a4554e8929d897d3c092bd014",
+      "size": 1374
     },
     {
-      "path": "T06/logs/T06-subsystem-gradlew.log",
-      "sha256": "450070191438f0dd8c52bd8d8ef18b5b7eb2c1a10676019cc834817e707e3f16",
-      "size": 2828
+      "path": "T08/logs/T08-narrow-gradlew-002.log",
+      "sha256": "8240f66f747f92394541ee1f312a83b919067dcdf03627416a7b4dc38828c1e0",
+      "size": 2513
     },
     {
-      "path": "T06/logs/T06-subsystem-swift.log",
-      "sha256": "c85b50d549e56d060181aadd7d2a6e18c7a6c6490afaa0bfa9e1dcdaee1aae6b",
-      "size": 173747
+      "path": "T08/logs/T08-narrow-gradlew.log",
+      "sha256": "f95acb3ec2efa413f7a8233bf4a2efdd52c8146f0e5ea4ded002fd2a60320495",
+      "size": 2513
     },
     {
-      "path": "T01/inventory.json",
-      "sha256": "e7f2e905fa7d1be256d54e26854ff91aab89490209af0058dbce375cdb57f3fb",
-      "size": 29459
+      "path": "T08/logs/T08-narrow-swift-002.log",
+      "sha256": "8fb4dd0a4a067fb42e3bfdf143738a44423b01bd91f827d6c1244d42cbb5cd13",
+      "size": 2904
     },
     {
-      "path": "T01/commands.json",
-      "sha256": "f858e715e0202a40f733656f39f7ba5377c8598f52f27754b073e3612dd30d00",
-      "size": 13121
+      "path": "T08/logs/T08-narrow-swift.log",
+      "sha256": "f8ac7b5b71f56eb844b8ffc082c0f46d9cf83e6dbbd60bdd5fd720abe2f6843c",
+      "size": 2904
     },
     {
-      "path": "T01/tracked-patch.bin",
-      "sha256": "b78e77db8ff425c2d8009abedeec7306ca1783c5a7a87d70e51982f873eed1ac",
-      "size": 114681
+      "path": "T08/logs/T08-subsystem-gradlew-002.log",
+      "sha256": "d31c4a8eb91733e4f624aa6d1b95a45f9d065de83dcfe4bb13bd0209ecad984a",
+      "size": 2487
     },
     {
-      "path": "T02/commands.json",
-      "sha256": "3310def66f77d4703466b80d94edccc4252c543816084314ac53eb7fc6be1f8c",
-      "size": 3526
+      "path": "T08/logs/T08-subsystem-gradlew-003.log",
+      "sha256": "789a68d5840644adf86b27786691789ffc60fd34b8cbbfbdceb6f3b5aed6fa07",
+      "size": 2829
     },
     {
-      "path": "T03/commands.json",
-      "sha256": "9aa78abbf5224badf1c9245b6d7d8dccb40612729c73410f340dfa6672fd1527",
-      "size": 3526
+      "path": "T08/logs/T08-subsystem-gradlew-004.log",
+      "sha256": "b5d51afb95a9468284de0761ca1da5b6fda6f04e3acf61d9ec038c26d49198af",
+      "size": 2488
     },
     {
-      "path": "T04/commands.json",
-      "sha256": "87e8fa1bb4eba37a179c4525d67fc6477315cfffa8d0319921d3965b74c17e49",
-      "size": 3526
+      "path": "T08/logs/T08-subsystem-gradlew.log",
+      "sha256": "4137eb6eb20f329559e5a58c94c2b125c54641644ca550e9b7727fbb23c04e9c",
+      "size": 3005
     },
     {
-      "path": "T05/commands.json",
-      "sha256": "0b962da1b9ab9a5b33de0c77a4abe1054384faa92ffa5f73911051010da17574",
-      "size": 5983
+      "path": "T08/logs/T08-subsystem-swift-002.log",
+      "sha256": "79105dfe12543cfe6e75e3b167b2548a67c919b06fb913e6befe4551aa766011",
+      "size": 175198
     },
     {
-      "path": "T06/commands.json",
-      "sha256": "50deadfa1ec350c60f2edf40580a1e47bf743f4c76e967b27efd1f56b2517b49",
-      "size": 23471
+      "path": "T08/logs/T08-subsystem-swift-003.log",
+      "sha256": "c5949a8ef630c434d10959f3d38a662e59f7c753be909b25ca80b312cc6796d9",
+      "size": 177209
+    },
+    {
+      "path": "T08/logs/T08-subsystem-swift-004.log",
+      "sha256": "29bc59c635568b7e775ee1c43cb88253ceffe46bc2008b9eb78aa8be7e9e7370",
+      "size": 177211
+    },
+    {
+      "path": "T08/logs/T08-subsystem-swift.log",
+      "sha256": "845fb5661b7815b100163773498c8828f2b7afb6a05351775ed6abaae7d0eedc",
+      "size": 175203
+    },
+    {
+      "path": "T08/mutations/M1-android-kotlin.log",
+      "sha256": "785eea6a8896f9daf5829ef46c7636290bed7882df05d6164ef7a964f92f1c51",
+      "size": 6072
+    },
+    {
+      "path": "T08/mutations/M1-swift-host.log",
+      "sha256": "cda7065ed9089a14301627cafe61912728387b93593c9f0490f82683fac2c215",
+      "size": 101662
+    },
+    {
+      "path": "T08/mutations/M2-android-kotlin.log",
+      "sha256": "b3f82b686dd623b56fda47c4388d0e837cd7b31e2746cda25c5116739194d2cc",
+      "size": 5701
+    },
+    {
+      "path": "T08/mutations/M2-swift-host.log",
+      "sha256": "f20e7bccbf31101ff4327648cdf8716be2588da2c7d07d687ec8525bae715a0d",
+      "size": 11083
+    },
+    {
+      "path": "T08/mutations/M2b-android-kotlin.log",
+      "sha256": "7c20e28f313d8d33b8c4faba14b29e32bc0811eea424f5e26937187510e6a9dc",
+      "size": 5610
+    },
+    {
+      "path": "T08/mutations/M2b-swift-host.log",
+      "sha256": "5579a6f6c10dd6a2d8ff1147da8afea84118ca069e15c21e444cdb76813db383",
+      "size": 14731
+    },
+    {
+      "path": "T08/mutations/M2c-swift-host.log",
+      "sha256": "3b0cb3caaa5881a82c323078f5509067459658ba452e112933a89677f0a23348",
+      "size": 18247
     }
   ],
   "note": "nonsecret index; full logs live outside the repository",
   "schema_version": 1,
-  "task": "T06"
+  "task": "T08"
 }

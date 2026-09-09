@@ -49,3 +49,25 @@ Runner command entries follow the section 25 schema (exit_code, test
 counts as UNKNOWN when absent); logs live under <evidence>/<task>/logs
 with sha256 recorded; entry ids get a -NNN suffix when a log name
 would collide, keeping the log append-only and every record addressable.
+
+## D-T08-a [ACCEPTED] SessionSlot is the single serialization authority
+All relation-scoped operations (handshake completion, seal, open, readiness
+query, retire, and the drop transition) enter their relation through one lock
+owned by the slot, never through the manager-wide map lock. The manager lock
+guards only the registry mapping itself. Destructive lease destroy is routed
+outside the serialize lock to avoid reentrancy hazards, and retired slots are
+removed together with their lock entries; the remembered-generation registry is
+bounded (256) so a replacement handle for the same relation carries generation
++1. Both engines implement the identical design.
+
+## D-T08-b [ACCEPTED] Self-witnessing serialisation and teardown parity
+Each slot records the peak number of distinct threads ever simultaneously
+inside its serialize region (Kotlin: Thread identity + depth; Swift:
+pthread_t identity + depth). The concurrency test asserts the peak stays below
+2 after the join, so a lock-free mutation cannot survive silently. This
+witness was required: the M2 mutation (serialize made non-locking) initially
+SURVIVED the Swift host because retire() bypassed the slot lock; routing
+retire through serialize on both engines (parity fix) made M2 kill on both
+(negative evidence: M2b Android concurrency failure, M2c Swift 24 witness-
+peak assertion failures). Lesson recorded: teardown paths must share the same
+entry point as the operations they terminate, or the invariant is untested.

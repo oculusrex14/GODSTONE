@@ -22,27 +22,6 @@
       ]
     },
     {
-      "claim_id": "CLM-T01-PATCH",
-      "command_ids": [
-        "t01-cmd-12"
-      ],
-      "evidence_class": "internal",
-      "evidence_sha256": "26c11ef518f2a5bdea743df22e0c464e415667c0181030774f785e03232637cb",
-      "latest_source_sha": "b33d790818c1019a5508917d653546f166ece983",
-      "limitations": "host-only evidence; device and independent gates remain external",
-      "production_path": "docs/production/BASELINE.md",
-      "profile": "host-tooling",
-      "required_case_ids": [
-        "test_t01 suite"
-      ],
-      "requirement": "tracked patch reconstructs byte-identically in a disposable checkout",
-      "result": "PASS",
-      "state_owner": "build/release controller",
-      "task_ids": [
-        "T01"
-      ]
-    },
-    {
       "claim_id": "CLM-T01-MUTATION",
       "command_ids": [
         "t01-cmd-12"
@@ -64,21 +43,42 @@
       ]
     },
     {
-      "claim_id": "CLM-T02-RUNNER",
+      "claim_id": "CLM-T01-PATCH",
       "command_ids": [
-        "T02-narrow-python3",
-        "T02-subsystem-python3"
+        "t01-cmd-12"
+      ],
+      "evidence_class": "internal",
+      "evidence_sha256": "26c11ef518f2a5bdea743df22e0c464e415667c0181030774f785e03232637cb",
+      "latest_source_sha": "b33d790818c1019a5508917d653546f166ece983",
+      "limitations": "host-only evidence; device and independent gates remain external",
+      "production_path": "docs/production/BASELINE.md",
+      "profile": "host-tooling",
+      "required_case_ids": [
+        "test_t01 suite"
+      ],
+      "requirement": "tracked patch reconstructs byte-identically in a disposable checkout",
+      "result": "PASS",
+      "state_owner": "build/release controller",
+      "task_ids": [
+        "T01"
+      ]
+    },
+    {
+      "claim_id": "CLM-T02-CONTROLS",
+      "command_ids": [
+        "T02-controls-python3",
+        "T02-controls-python3-002"
       ],
       "evidence_class": "internal",
       "evidence_sha256": null,
       "latest_source_sha": null,
       "limitations": "host-only evidence; Android/device gates remain external",
-      "production_path": "tools/readiness/run.py",
+      "production_path": "ci/check_repository.py",
       "profile": "host-tooling",
       "required_case_ids": [
         "test_t02 suite"
       ],
-      "requirement": "argv-only runner classifies zero-tests, timeouts and blocked executors honestly",
+      "requirement": "repository controls pass at the T02 tree",
       "result": "PASS",
       "state_owner": "build/release controller",
       "task_ids": [
@@ -107,21 +107,21 @@
       ]
     },
     {
-      "claim_id": "CLM-T02-CONTROLS",
+      "claim_id": "CLM-T02-RUNNER",
       "command_ids": [
-        "T02-controls-python3",
-        "T02-controls-python3-002"
+        "T02-narrow-python3",
+        "T02-subsystem-python3"
       ],
       "evidence_class": "internal",
       "evidence_sha256": null,
       "latest_source_sha": null,
       "limitations": "host-only evidence; Android/device gates remain external",
-      "production_path": "ci/check_repository.py",
+      "production_path": "tools/readiness/run.py",
       "profile": "host-tooling",
       "required_case_ids": [
         "test_t02 suite"
       ],
-      "requirement": "repository controls pass at the T02 tree",
+      "requirement": "argv-only runner classifies zero-tests, timeouts and blocked executors honestly",
       "result": "PASS",
       "state_owner": "build/release controller",
       "task_ids": [
@@ -143,27 +143,6 @@
         "test_t03 suite"
       ],
       "requirement": "normative links resolve; authority blob shas match; frozen constants validated",
-      "result": "PASS",
-      "state_owner": "build/release controller",
-      "task_ids": [
-        "T03"
-      ]
-    },
-    {
-      "claim_id": "CLM-T03-PROFILES",
-      "command_ids": [
-        "T03-narrow-python3"
-      ],
-      "evidence_class": "internal",
-      "evidence_sha256": "7519ed9000d1a1730b865f08da35fb53f824f72c01bb4f2490497ddf6671a7ed",
-      "latest_source_sha": "34adfba3f4c4b32ce1bc144cbf0c490df59c17bc",
-      "limitations": "host-only evidence; device and independent gates remain external",
-      "production_path": "docs/production-readiness/CAPABILITY_PROFILES.json",
-      "profile": "host-tooling",
-      "required_case_ids": [
-        "test_t03 suite"
-      ],
-      "requirement": "shipping stays LIGHT Archive-only; disabled features and readiness false; mutations detected",
       "result": "PASS",
       "state_owner": "build/release controller",
       "task_ids": [
@@ -193,24 +172,24 @@
       ]
     },
     {
-      "claim_id": "CLM-T04-LOCK",
+      "claim_id": "CLM-T03-PROFILES",
       "command_ids": [
-        "T04-narrow-python3"
+        "T03-narrow-python3"
       ],
       "evidence_class": "internal",
-      "evidence_sha256": "a91564b801b0da8350c35ca5238024963560947a877b0461c7d942704fb3fbb7",
-      "latest_source_sha": "a067c1b9ea5c366e85af52f8d9758dcf3afe2fc1",
-      "limitations": "host-only evidence; the independent A-06 artifact remains external",
-      "production_path": "crypto/noise_lock.py",
+      "evidence_sha256": "7519ed9000d1a1730b865f08da35fb53f824f72c01bb4f2490497ddf6671a7ed",
+      "latest_source_sha": "34adfba3f4c4b32ce1bc144cbf0c490df59c17bc",
+      "limitations": "host-only evidence; device and independent gates remain external",
+      "production_path": "docs/production-readiness/CAPABILITY_PROFILES.json",
       "profile": "host-tooling",
       "required_case_ids": [
-        "test_t04 suite"
+        "test_t03 suite"
       ],
-      "requirement": "ExternalNoiseLockV1 rejects missing/tampered/mislabeled inputs and keeps UNAVAILABLE typed with nonzero release exit",
+      "requirement": "shipping stays LIGHT Archive-only; disabled features and readiness false; mutations detected",
       "result": "PASS",
       "state_owner": "build/release controller",
       "task_ids": [
-        "T04"
+        "T03"
       ]
     },
     {
@@ -229,6 +208,27 @@
         "test_t04 suite"
       ],
       "requirement": "repository + release-gate controls pass at the T04 tree",
+      "result": "PASS",
+      "state_owner": "build/release controller",
+      "task_ids": [
+        "T04"
+      ]
+    },
+    {
+      "claim_id": "CLM-T04-LOCK",
+      "command_ids": [
+        "T04-narrow-python3"
+      ],
+      "evidence_class": "internal",
+      "evidence_sha256": "a91564b801b0da8350c35ca5238024963560947a877b0461c7d942704fb3fbb7",
+      "latest_source_sha": "a067c1b9ea5c366e85af52f8d9758dcf3afe2fc1",
+      "limitations": "host-only evidence; the independent A-06 artifact remains external",
+      "production_path": "crypto/noise_lock.py",
+      "profile": "host-tooling",
+      "required_case_ids": [
+        "test_t04 suite"
+      ],
+      "requirement": "ExternalNoiseLockV1 rejects missing/tampered/mislabeled inputs and keeps UNAVAILABLE typed with nonzero release exit",
       "result": "PASS",
       "state_owner": "build/release controller",
       "task_ids": [
@@ -279,29 +279,6 @@
       ]
     },
     {
-      "claim_id": "CLM-T06-FRAMING",
-      "command_ids": [
-        "T06-narrow-gradlew",
-        "T06-narrow-swift"
-      ],
-      "evidence_class": "internal",
-      "evidence_sha256": null,
-      "latest_source_sha": "b86f16603f23f2adc2374dbf4019fd1a7a8ccb3c",
-      "limitations": "host-only evidence; instrumented-device evidence remains a separate device gate",
-      "production_path": "ios/Godstone/Sources/GodstoneMesh/ReplayWindow.swift",
-      "profile": "jvm-host+swift-host",
-      "required_case_ids": [
-        "ReadinessT06Test",
-        "ReadinessT06Tests"
-      ],
-      "requirement": "DATA ciphertext = uint64_be(nonce) || ct || tag on both engines; internal nonce zero32||LE preserved; legacy frames never auto-detected",
-      "result": "PASS",
-      "state_owner": "crypto/session owner",
-      "task_ids": [
-        "T06"
-      ]
-    },
-    {
       "claim_id": "CLM-T06-CROSS",
       "command_ids": [
         "T06-narrow-gradlew",
@@ -318,6 +295,29 @@
         "ReadinessT06Tests"
       ],
       "requirement": "the two engines verify each other through the shared transport vector manifest (byte-identical ciphertexts)",
+      "result": "PASS",
+      "state_owner": "crypto/session owner",
+      "task_ids": [
+        "T06"
+      ]
+    },
+    {
+      "claim_id": "CLM-T06-FRAMING",
+      "command_ids": [
+        "T06-narrow-gradlew",
+        "T06-narrow-swift"
+      ],
+      "evidence_class": "internal",
+      "evidence_sha256": null,
+      "latest_source_sha": "b86f16603f23f2adc2374dbf4019fd1a7a8ccb3c",
+      "limitations": "host-only evidence; instrumented-device evidence remains a separate device gate",
+      "production_path": "ios/Godstone/Sources/GodstoneMesh/ReplayWindow.swift",
+      "profile": "jvm-host+swift-host",
+      "required_case_ids": [
+        "ReadinessT06Test",
+        "ReadinessT06Tests"
+      ],
+      "requirement": "DATA ciphertext = uint64_be(nonce) || ct || tag on both engines; internal nonce zero32||LE preserved; legacy frames never auto-detected",
       "result": "PASS",
       "state_owner": "crypto/session owner",
       "task_ids": [
@@ -345,6 +345,52 @@
       "state_owner": "crypto/session owner",
       "task_ids": [
         "T07"
+      ]
+    },
+    {
+      "claim_id": "CLM-T08-RECLAIM",
+      "command_ids": [
+        "T08-narrow-gradlew-002",
+        "T08-narrow-swift-002"
+      ],
+      "evidence_class": "internal",
+      "evidence_sha256": null,
+      "latest_source_sha": "ae0c5390e895a90c7b49867ab151094ee76f8308",
+      "limitations": "host-only evidence; 10000 reconnects observed on the host only",
+      "production_path": "ios/Godstone/Sources/GodstoneMesh/SessionManager.swift",
+      "profile": "jvm-host+swift-host",
+      "required_case_ids": [
+        "ReadinessT08Test",
+        "ReadinessT08Tests"
+      ],
+      "requirement": "reclaiming a retired slot reclaims its lock entry, and the replacement for the same transport handle carries the next lease generation from a bounded last-generation registry",
+      "result": "PASS",
+      "state_owner": "crypto/session owner",
+      "task_ids": [
+        "T08"
+      ]
+    },
+    {
+      "claim_id": "CLM-T08-SERIALISATION",
+      "command_ids": [
+        "T08-narrow-gradlew-002",
+        "T08-narrow-swift-002"
+      ],
+      "evidence_class": "internal",
+      "evidence_sha256": null,
+      "latest_source_sha": "ae0c5390e895a90c7b49867ab151094ee76f8308",
+      "limitations": "host-only evidence; the device runtime path stays a separate gate",
+      "production_path": "android/mesh/src/main/java/io/godstone/mesh/crypto/SessionSlot.kt",
+      "profile": "jvm-host+swift-host",
+      "required_case_ids": [
+        "ReadinessT08Test",
+        "ReadinessT08Tests"
+      ],
+      "requirement": "one SessionSlot per immutable RelationKey holds the controller, terminal state and lease, and every operation - handshake, seal, open, isReady, retire - enters through the same slot serialisation, witnessed by the slot",
+      "result": "PASS",
+      "state_owner": "crypto/session owner",
+      "task_ids": [
+        "T08"
       ]
     }
   ],
