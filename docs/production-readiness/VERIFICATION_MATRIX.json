@@ -234,6 +234,49 @@
       "task_ids": [
         "T04"
       ]
+    },
+    {
+      "claim_id": "CLM-T05-REPLAY",
+      "command_ids": [
+        "T05-narrow-gradlew",
+        "T05-mutation-commit-before-aead"
+      ],
+      "evidence_class": "internal",
+      "evidence_sha256": null,
+      "latest_source_sha": "4e22a3f1279b08ba281656666594d463b9b7c699",
+      "limitations": "JVM-only evidence; instrumented-device crypto evidence remains a separate device gate",
+      "production_path": "android/mesh/src/main/java/io/godstone/mesh/crypto/ReplayWindow.kt",
+      "profile": "jvm-host",
+      "required_case_ids": [
+        "ReadinessT05Test"
+      ],
+      "requirement": "replay window commits only after AEAD; forged frames cannot poison the window; nonce parsing rejects reserved/out-of-policy before subtraction",
+      "result": "PASS",
+      "state_owner": "crypto/session owner",
+      "task_ids": [
+        "T05"
+      ]
+    },
+    {
+      "claim_id": "CLM-T05-SUBSYSTEM",
+      "command_ids": [
+        "T05-subsystem-gradlew"
+      ],
+      "evidence_class": "internal",
+      "evidence_sha256": null,
+      "latest_source_sha": "4e22a3f1279b08ba281656666594d463b9b7c699",
+      "limitations": "JVM-only evidence; instrumented-device crypto evidence remains a separate device gate",
+      "production_path": "android/mesh",
+      "profile": "jvm-host",
+      "required_case_ids": [
+        "ReadinessT05Test"
+      ],
+      "requirement": "full :mesh JVM suite passes with the T05 change",
+      "result": "PASS",
+      "state_owner": "crypto/session owner",
+      "task_ids": [
+        "T05"
+      ]
     }
   ],
   "note": "Claims appended per task with real evidence; PASS requires positive case counts and matching command output. Device/independent claims never accept host-only results.",

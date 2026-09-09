@@ -295,6 +295,70 @@
       "task_id": "T04",
       "tested_tree_sha": "ade7f5a791f990c91a00b3f8caea460a3cb1a3e2",
       "unresolved": []
+    },
+    "T05": {
+      "case_results": [
+        {
+          "collected": 10,
+          "executed": 10,
+          "failed": 0,
+          "passed": 10,
+          "skipped": 0,
+          "stage": "narrow"
+        },
+        {
+          "collected": 717,
+          "executed": 717,
+          "failed": 0,
+          "passed": 717,
+          "skipped": 0,
+          "stage": "subsystem"
+        },
+        {
+          "executed": 2,
+          "failed": 0,
+          "passed": 2,
+          "skipped": 0,
+          "stage": "controls"
+        }
+      ],
+      "commands": [
+        "T05-narrow-gradlew",
+        "T05-subsystem-gradlew",
+        "T05-controls-python3",
+        "T05-controls-python3-002",
+        "T05-narrow-xml-audit",
+        "T05-subsystem-xml-audit",
+        "T05-mutation-commit-before-aead"
+      ],
+      "device_gate_ids": [],
+      "implementation_commit": "4e22a3f1279b08ba281656666594d463b9b7c699",
+      "inputs": {
+        "baseline": "b5c3d3d394b70cf356cdde33b47511dad7cbb95c",
+        "provisioned_toolchain": "JDK 17.0.20.1 + SDK 35 (verified preflight exit 0)"
+      },
+      "mutation_results": [
+        {
+          "expected": "forged-high-then-valid / retransmission tests fail",
+          "killed_by": [
+            "testFailedAuthenticationConsumesNothing_RetransmissionRecovers",
+            "testForgedInPolicyNonce_AuthenticationFailureCommitsNothing"
+          ],
+          "mutation": "replay commit moved before AEAD (symbols unchanged)",
+          "outcome": "KILLED"
+        }
+      ],
+      "next_action": "none — task complete",
+      "phase_gate": "P1",
+      "required_cases": [
+        "ReadinessT05Test (10 cases)"
+      ],
+      "status": "COMPLETE",
+      "task_id": "T05",
+      "tested_tree_sha": "41603f1f7935d8bf50b408af7d0d20db8825522a",
+      "unresolved": [
+        "Platform encryption/ABI/permissions require separate instrumented-device evidence (recorded, not claimed)."
+      ]
     }
   },
   "current_task": null,
@@ -307,22 +371,23 @@
   ],
   "failed_attempts": [],
   "in_progress": null,
-  "last_code_head": "a067c1b9ea5c366e85af52f8d9758dcf3afe2fc1",
-  "last_observed_head": "a067c1b9ea5c366e85af52f8d9758dcf3afe2fc1",
+  "last_code_head": "4e22a3f1279b08ba281656666594d463b9b7c699",
+  "last_observed_head": "4e22a3f1279b08ba281656666594d463b9b7c699",
   "latest_verification": {
-    "at": "2026-09-09T04:55:36+00:00",
-    "log": "T04/logs/T04-subsystem-python3.log",
-    "log_sha256": "a91564b801b0da8350c35ca5238024963560947a877b0461c7d942704fb3fbb7",
-    "source_sha": "a067c1b9ea5c366e85af52f8d9758dcf3afe2fc1",
-    "suite": "tools/readiness/tests (discover)",
-    "tests_collected": 87,
-    "tests_executed": 87,
+    "at": "2026-09-09T05:39:58+00:00",
+    "log": "T05/logs/T05-subsystem-gradlew.log",
+    "log_sha256": null,
+    "note": "counts from JUnit XML audit (29 classes); runner log files under T05/logs",
+    "source_sha": "4e22a3f1279b08ba281656666594d463b9b7c699",
+    "suite": ":mesh JVM suite (gradle) + readiness python suites",
+    "tests_collected": 717,
+    "tests_executed": 717,
     "tests_failed": 0,
-    "tests_passed": 87,
+    "tests_passed": 717,
     "tests_skipped": 0,
-    "tree_sha": "ade7f5a791f990c91a00b3f8caea460a3cb1a3e2"
+    "tree_sha": "41603f1f7935d8bf50b408af7d0d20db8825522a"
   },
-  "next_task": "T05",
+  "next_task": "T06",
   "phase": "P0",
   "plan_sha256": "685456b378662b0a40a53a6abc810041e37daf97b213f3efeb6cea879363934e",
   "planning_baseline_sha": "b5c3d3d394b70cf356cdde33b47511dad7cbb95c",
@@ -330,10 +395,10 @@
   "task_catalog_sha256": "b7cf90483cde63b67099a996d2139823e79d029e2b2481d81a756da70c3ef97a",
   "unresolved_defects": [],
   "warnings_for_next_invocation": [
-    "Preserve original codex/archive-reliability dirty checkout and untracked WIP.",
+    "Android toolchain provisioned: JDK 17.0.20.1 + SDK 35 on mac-primary.",
     "Readiness flags remain false. D2 absent at planning baseline.",
-    "Android targets environment-blocked on mac-primary (no usable JDK/SDK).",
-    "A-06 lock layer exists but the gate stays UNAVAILABLE until an independent fixture + lock arrive.",
+    "A-06 stays UNAVAILABLE until an independent fixture + lock arrive.",
+    "Platform/device evidence still requires instrumented runs.",
     "No external review/model/content/device result may be fabricated."
   ]
 }
