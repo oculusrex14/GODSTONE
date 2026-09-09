@@ -76,6 +76,17 @@ final class ReadinessT10Tests: XCTestCase {
         XCTAssertEqual(roles.count, 3, "pairwise distinct roles")
     }
 
+    func testServiceDiscoveryIntegrationRoundTripOnTheRealPlatformSurface() {
+        let set = BleTransport.meshProfile
+        let installed = BleTransport.characteristicsToInstall(set)
+        var decoded: [ContractCharacteristic] = []
+        for ch in installed {
+            decoded.append(ContractCharacteristic(uuid: ch.uuid, properties: RequiredCharacteristicSet.propertiesOf(ch.properties)))
+        }
+        XCTAssertEqual(set.accepts(decoded), true, "the central accepts what the server installs")
+        XCTAssertEqual(decoded, set.characteristics, "installation is the enumeration of the contract, bit for bit")
+    }
+
     func testInstalledTreeIsGeneratedFromTheContractOnTheRealPlatformSurface() {
         let set = BleTransport.meshProfile
         let installed = BleTransport.characteristicsToInstall(set)

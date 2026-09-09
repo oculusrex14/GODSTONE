@@ -95,6 +95,12 @@ class ReadinessT10Test {
         roles.add(blueprint[1].uuid)
         roles.add(blueprint[2].uuid)
         assertEquals("pairwise distinct roles", 3, roles.distinct().size)
+        // Service/discovery integration: the tree the server installs is
+        // exactly the tree the central provisioning gate accepts.
+        assertTrue(
+            "the central accepts what the server installs",
+            RequiredCharacteristicSet.MESH.accepts(blueprint)
+        )
     }
 
     @Test
