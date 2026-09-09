@@ -120,17 +120,80 @@ def strip_anonymous_objects(body: str) -> str:
     return "".join(out)
 
 
+def declaration_regions(src: str) -> tuple[list[str], list]:
+    """Per TYPE_DECL match, the declaration region with nested type bodies blanked.
+
+    The slice-at-a-later-declaration heuristic attributed every method written
+    after a nested type (data class, sealed variant, nested exception) to that
+    nested type, and left the outer class registered with an empty member set,
+    so calls on the outer class were reported unresolved although the
+    (never-compiled here) sources are sound. The region of a declaration now
+    spans up to the start of the next declaration that is not its descendant
+    (determined by brace matching its own body), with each DIRECT child's
+    region blanked to newlines. Each fun stays with its innermost declared
+    owner, mirroring the language's own scoping, while the trailing gap after
+    a class's closing brace remains with the class, as before. An unbalanced
+    brace scan degrades to the old bound behaviour, never to silence.
+    """
+    decls = list(TYPE_DECL.finditer(src))
+    if not decls:
+        return [src], decls
+    starts = [m.start() for m in decls]
+    ends: list[int] = []
+    for i, m in enumerate(decls):
+        op = src.find(chr(123), m.end())
+        close = -1
+        if op != -1:
+            depth, j = 0, op
+            while j < len(src):
+                if src[j] == chr(123):
+                    depth += 1
+                elif src[j] == chr(125):
+                    depth -= 1
+                    if depth == 0:
+                        close = j
+                        break
+                j += 1
+        ends.append((op, close))
+    def descendants(i: int) -> list[int]:
+        op, close = ends[i]
+        if close == -1:
+            return []
+        out = []
+        for k, s in enumerate(starts):
+            if k != i and op < s < close:
+                out.append(k)
+        return out
+    regions = []
+    for i, m in enumerate(decls):
+        kids = descendants(i)
+        kid_starts = set(starts[k] for k in kids)
+        nxt = len(src)
+        for s in starts:
+            if starts[i] < s and s not in kid_starts:
+                nxt = s
+                break
+        text = list(src[starts[i]:nxt])
+        for k in kids:
+            stop, close = ends[k]
+            span_end = close + 1 if close != -1 else starts[k]
+            for q in range(starts[k] - starts[i], min(span_end, nxt) - starts[i]):
+                if 0 <= q < len(text):
+                    text[q] = chr(10)
+        regions.append("".join(text))
+    return [src[:starts[0]]] + regions, decls
+
+
 def parse_types(files: list[Path]) -> tuple[dict, dict]:
     """-> ({TypeName: {members}}, {TypeName: [supertypes]})"""
     members: dict[str, set[str]] = {}
     supers: dict[str, list[str]] = {}
     for f in files:
         src = f.read_text(encoding="utf-8", errors="ignore")
-        decls = list(TYPE_DECL.finditer(src))
+        regions, decls = declaration_regions(src)
         for i, m in enumerate(decls):
             name = m.group(1)
-            end = decls[i + 1].start() if i + 1 < len(decls) else len(src)
-            body = src[m.end():end]
+            body = regions[i + 1][m.end() - m.start():]
             members.setdefault(name, set())
             members[name] |= {fm.group("name") for fm in FUN_DECL.finditer(body)}
             if m.group(2):
@@ -167,13 +230,12 @@ def resolve(root: Path) -> list[str]:
     for f in files:
         src = f.read_text(encoding="utf-8", errors="ignore")
         rel = f.relative_to(root)
-        decls = list(TYPE_DECL.finditer(src))
+        regions, decls = declaration_regions(src)
 
         # -- R1: an override must override something in a supertype ----------
         for i, m in enumerate(decls):
             name = m.group(1)
-            end = decls[i + 1].start() if i + 1 < len(decls) else len(src)
-            body = src[m.end():end]
+            body = regions[i + 1][m.end() - m.start():]
             inherited: set[str] = set()
             for s in supers.get(name, []):
                 inherited |= all_members(s, members, supers)
@@ -190,15 +252,7 @@ def resolve(root: Path) -> list[str]:
         # Scope variable declarations to their enclosing class/declaration scope
         # so that files declaring multiple classes (e.g., adapters/decorators sharing
         # variable names like `delegate` or `lifecycleGate`) do not conflate types.
-        scopes: list[str] = []
-        if decls:
-            if decls[0].start() > 0:
-                scopes.append(src[:decls[0].start()])
-            for i, m in enumerate(decls):
-                end = decls[i + 1].start() if i + 1 < len(decls) else len(src)
-                scopes.append(src[m.start():end])
-        else:
-            scopes.append(src)
+        scopes = regions
 
         for scope_src in scopes:
             recv_types = {v: t for v, t in TYPED_VAL.findall(scope_src)}
