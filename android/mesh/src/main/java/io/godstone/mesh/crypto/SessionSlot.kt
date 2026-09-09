@@ -44,12 +44,42 @@ class SessionSlot(
 
     private val lock = ReentrantLock()
 
+    /**
+     * T08 witness: the serialisation authority proves itself. While the
+     * slot lock is held an entry is exclusive, so the depth is zero
+     * when a fresh operation begins, and the same thread may re-enter
+     * through retire. If two different threads are ever seen inside the
+     * slot at the same time the slot has stopped being the serialisation
+     * point, and the peak records it for the concurrent case to fail on.
+     */
+    private var lastEntered: Thread? = null
+    private var depth = 0
+    internal var maxThreadsInside = 0
+
     internal var controller: TrustedHandshakeController? = null
     internal var state: SlotState = SlotState.ACTIVE
     internal var lease: SlotLease = lease
 
     /** Every slot operation runs under this single serialization. */
-    fun <T> serialize(block: () -> T): T = lock.withLock { block() }
+    fun <T> serialize(block: () -> T): T = lock.withLock {
+        val me = Thread.currentThread()
+        if (depth > 0 && lastEntered != null && lastEntered !== me) {
+            // Two different threads were seen inside the slot at once.
+            maxThreadsInside = 2
+        }
+        if (depth == 0) {
+            lastEntered = me
+        }
+        depth += 1
+        try {
+            block()
+        } finally {
+            depth -= 1
+            if (depth == 0) {
+                lastEntered = null
+            }
+        }
+    }
 
     /**
      * T08: transition the slot to RETIRED atomically with the operation that

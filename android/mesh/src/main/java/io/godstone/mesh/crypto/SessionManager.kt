@@ -113,6 +113,10 @@ class SessionManager internal constructor(
         rememberedOrder.add(handle)
     }
 
+    /** T08 evidence hook: the slot handle for [peerId], live or held over. */
+    internal fun slotForTest(peerId: ByteArray): SessionSlot? =
+        slotFor(relationKey(peerId))
+
     /** T08 evidence hook: live entries in the relation-slot registry. */
     internal fun slotCountForTest(): Int = mapLock.withLock { slots.size }
 

@@ -86,6 +86,14 @@ class ReadinessT08Test {
         try {
             for (round in 0 until 40) {
                         val (initiator, responder, peer) = readyManagers()
+                // The serialisation witness: the slots themselves report how
+                // many distinct threads were ever inside at the same time.
+                val sealedSlot = initiator.slotForTest(peer)
+                    ?: throw AssertionError("the initiator must hold a slot")
+                val openedSlot = responder.slotForTest(peer)
+                    ?: throw AssertionError("the responder must hold a slot")
+                sealedSlot.maxThreadsInside = 0
+                openedSlot.maxThreadsInside = 0
                 val start = CountDownLatch(1)
                 val sealTask = executor.submit {
                     start.await()
@@ -112,6 +120,16 @@ class ReadinessT08Test {
                 start.countDown()
                 sealTask.get(30, TimeUnit.SECONDS)
                 dropTask.get(30, TimeUnit.SECONDS)
+                // Neither slot may have been entered by two threads at once:
+                // the slot is the single serialisation point of a relation.
+                assertTrue(
+                    "the sealing slot must serialise its operations",
+                    sealedSlot.maxThreadsInside < 2
+                )
+                assertTrue(
+                    "the opening slot must serialise its operations",
+                    openedSlot.maxThreadsInside < 2
+                )
                 // After the drops, operations must answer with typed failures only:
                 // never ciphertext, and never a successful no-op.
                 assertNull(

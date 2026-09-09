@@ -33,6 +33,18 @@ public final class SessionSlot {
     public let key: RelationKey
     private let lock = NSRecursiveLock()
 
+    /// T08 witness: the serialisation authority proves itself. While
+    /// the slot lock is held an entry is exclusive, so the depth is
+    /// zero when a fresh operation begins, and the same thread may
+    /// re-enter through retire. If two different threads are ever seen
+    /// inside the slot at the same time the slot has stopped being the
+    /// serialisation point, and the peak records it for the concurrent
+    /// case to fail on.
+    private var lastEntered: pthread_t?
+    private var depth = 0
+    internal var maxThreadsInside = 0
+
+
     internal var controller: TrustedHandshakeController?
     internal var state: SlotState = .active
     internal var lease: SlotLease
@@ -45,7 +57,22 @@ public final class SessionSlot {
     /// Every slot operation runs under this single serialization.
     public func serialize<T>(_ block: () throws -> T) rethrows -> T {
         lock.lock()
-        defer { lock.unlock() }
+        let me = pthread_self()
+        if depth > 0, lastEntered != nil, lastEntered != me {
+            // Two different threads were seen inside the slot at once.
+            maxThreadsInside = 2
+        }
+        if depth == 0 {
+            lastEntered = me
+        }
+        depth += 1
+        defer {
+            depth -= 1
+            if depth == 0 {
+                lastEntered = nil
+            }
+            lock.unlock()
+        }
         return try block()
     }
 

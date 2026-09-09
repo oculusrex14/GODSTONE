@@ -103,6 +103,11 @@ public final class SessionManager {
         self.lifecycleGate = lifecycleGate
     }
 
+    /// T08 evidence hook: the slot handle for [peerId], live or held over.
+    internal func slotForTest(_ peerId: UUID) -> SessionSlot? {
+        slotFor(peerId)
+    }
+
     /// T08 evidence hook: live entries in the relation-slot registry.
     internal func slotCountForTest() -> Int {
         mapLock.lock()

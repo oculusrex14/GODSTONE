@@ -93,6 +93,12 @@ final class ReadinessT08Tests: XCTestCase {
             let initiator = session.initiator
             let responder = session.responder
             let peer = session.peer
+            // The serialisation witness: the slots themselves report how many
+            // distinct threads were ever inside at the same time.
+            let sealedSlot = try XCTUnwrap(initiator.slotForTest(peer))
+            let openedSlot = try XCTUnwrap(responder.slotForTest(peer))
+            sealedSlot.maxThreadsInside = 0
+            openedSlot.maxThreadsInside = 0
             // Latch gate: BOTH workers wait for one release. This is a counting
             // semaphore, so it must be signalled once per waiter - a single
             // signal would strand the second worker forever.
@@ -131,6 +137,12 @@ final class ReadinessT08Tests: XCTestCase {
                 XCTFail("concurrent seal/drop join timed out")
                 return
             }
+            // Neither slot may have been entered by two threads at once: the
+            // slot is the single serialisation point of a relation.
+            XCTAssertLessThan(sealedSlot.maxThreadsInside, 2,
+                              "the sealing slot must serialise its operations")
+            XCTAssertLessThan(openedSlot.maxThreadsInside, 2,
+                              "the opening slot must serialise its operations")
             XCTAssertFalse(corruption.isRaised, "cipher state must never corrupt")
             // After the drops, operations must be typed-failed, not crashed.
             XCTAssertNil(initiator.seal(peer, Data("post".utf8)))
