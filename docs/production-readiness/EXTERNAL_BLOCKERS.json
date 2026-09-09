@@ -11,11 +11,15 @@
       ],
       "id": "A06",
       "internal_prerequisites_completed": false,
-      "reason": "Independent Noise/conformance review artifact not supplied.",
+      "reason": "Independent Noise/conformance review artifact not supplied. The ExternalNoiseLockV1 validator (T04) is ready; the gate stays UNAVAILABLE until a real fixture + lock arrive.",
       "recheck_trigger": "receipt of reviewed artifact",
       "required_artifact_schema": "structured PINNED/matched-case conformance report + tamper controls",
       "status": "BLOCKED_EXTERNAL",
-      "verification_commands": []
+      "verification_commands": [
+        "python -m crypto.noise_lock --status",
+        "python -m crypto.noise_lock --release",
+        "python -m crypto.cacophony --check --write-status"
+      ]
     },
     {
       "approved_source_or_human_role": "content editor / releasing authority",

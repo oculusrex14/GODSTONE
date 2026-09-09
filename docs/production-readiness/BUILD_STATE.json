@@ -211,6 +211,90 @@
       "task_id": "T03",
       "tested_tree_sha": "77bb8039f7cdd6714408cf4224a835a19038ce33",
       "unresolved": []
+    },
+    "T04": {
+      "case_results": [
+        {
+          "collected": 18,
+          "executed": 18,
+          "failed": 0,
+          "passed": 18,
+          "skipped": 0,
+          "stage": "narrow"
+        },
+        {
+          "collected": 87,
+          "executed": 87,
+          "failed": 0,
+          "passed": 87,
+          "skipped": 0,
+          "stage": "subsystem"
+        },
+        {
+          "executed": 2,
+          "failed": 0,
+          "passed": 2,
+          "skipped": 0,
+          "stage": "controls"
+        }
+      ],
+      "commands": [
+        "T04-narrow-python3",
+        "T04-subsystem-python3",
+        "T04-controls-python3",
+        "T04-controls-python3-002"
+      ],
+      "device_gate_ids": [],
+      "implementation_commit": "a067c1b9ea5c366e85af52f8d9758dcf3afe2fc1",
+      "inputs": {
+        "baseline": "b5c3d3d394b70cf356cdde33b47511dad7cbb95c"
+      },
+      "mutation_results": [
+        {
+          "expected": "rejected",
+          "mutation": "one-byte fixture tamper (ciphertext)",
+          "outcome": "KILLED"
+        },
+        {
+          "expected": "digest mismatch rejection",
+          "mutation": "warning-text tamper (digest-only defense)",
+          "outcome": "KILLED"
+        },
+        {
+          "expected": "rejected",
+          "mutation": "wrong prologue digest / prefix in lock",
+          "outcome": "KILLED"
+        },
+        {
+          "expected": "rejected",
+          "mutation": "wrong protocol suite in lock",
+          "outcome": "KILLED"
+        },
+        {
+          "expected": "rejected",
+          "mutation": "partial selection / duplicate ids",
+          "outcome": "KILLED"
+        },
+        {
+          "expected": "rejected",
+          "mutation": "self-origin mislabeled independent",
+          "outcome": "KILLED"
+        },
+        {
+          "expected": "mutant loses the rejection; detected",
+          "mutation": "digest-bypass mutant (symbols unchanged)",
+          "outcome": "KILLED"
+        }
+      ],
+      "next_action": "none — task complete; A-06 gate stays OPEN (typed UNAVAILABLE)",
+      "phase_gate": "P0",
+      "required_cases": [
+        "tools/readiness/tests/test_t04.py"
+      ],
+      "status": "COMPLETE",
+      "task_id": "T04",
+      "tested_tree_sha": "ade7f5a791f990c91a00b3f8caea460a3cb1a3e2",
+      "unresolved": []
     }
   },
   "current_task": null,
@@ -223,22 +307,22 @@
   ],
   "failed_attempts": [],
   "in_progress": null,
-  "last_code_head": "34adfba3f4c4b32ce1bc144cbf0c490df59c17bc",
-  "last_observed_head": "34adfba3f4c4b32ce1bc144cbf0c490df59c17bc",
+  "last_code_head": "a067c1b9ea5c366e85af52f8d9758dcf3afe2fc1",
+  "last_observed_head": "a067c1b9ea5c366e85af52f8d9758dcf3afe2fc1",
   "latest_verification": {
-    "at": "2026-09-09T04:49:27+00:00",
-    "log": "T03/logs/T03-subsystem-python3.log",
-    "log_sha256": "9e066e7d068d768cad29d99f566ab7957a7a1bed51aa637c6c7b1b3e3e5ef49f",
-    "source_sha": "34adfba3f4c4b32ce1bc144cbf0c490df59c17bc",
+    "at": "2026-09-09T04:55:36+00:00",
+    "log": "T04/logs/T04-subsystem-python3.log",
+    "log_sha256": "a91564b801b0da8350c35ca5238024963560947a877b0461c7d942704fb3fbb7",
+    "source_sha": "a067c1b9ea5c366e85af52f8d9758dcf3afe2fc1",
     "suite": "tools/readiness/tests (discover)",
-    "tests_collected": 69,
-    "tests_executed": 69,
+    "tests_collected": 87,
+    "tests_executed": 87,
     "tests_failed": 0,
-    "tests_passed": 69,
+    "tests_passed": 87,
     "tests_skipped": 0,
-    "tree_sha": "77bb8039f7cdd6714408cf4224a835a19038ce33"
+    "tree_sha": "ade7f5a791f990c91a00b3f8caea460a3cb1a3e2"
   },
-  "next_task": "T04",
+  "next_task": "T05",
   "phase": "P0",
   "plan_sha256": "685456b378662b0a40a53a6abc810041e37daf97b213f3efeb6cea879363934e",
   "planning_baseline_sha": "b5c3d3d394b70cf356cdde33b47511dad7cbb95c",
@@ -249,7 +333,7 @@
     "Preserve original codex/archive-reliability dirty checkout and untracked WIP.",
     "Readiness flags remain false. D2 absent at planning baseline.",
     "Android targets environment-blocked on mac-primary (no usable JDK/SDK).",
-    "Contract documents are hash-bound; changes need re-recorded blob shas.",
+    "A-06 lock layer exists but the gate stays UNAVAILABLE until an independent fixture + lock arrive.",
     "No external review/model/content/device result may be fabricated."
   ]
 }

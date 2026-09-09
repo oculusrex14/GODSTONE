@@ -191,6 +191,49 @@
       "task_ids": [
         "T03"
       ]
+    },
+    {
+      "claim_id": "CLM-T04-LOCK",
+      "command_ids": [
+        "T04-narrow-python3"
+      ],
+      "evidence_class": "internal",
+      "evidence_sha256": "a91564b801b0da8350c35ca5238024963560947a877b0461c7d942704fb3fbb7",
+      "latest_source_sha": "a067c1b9ea5c366e85af52f8d9758dcf3afe2fc1",
+      "limitations": "host-only evidence; the independent A-06 artifact remains external",
+      "production_path": "crypto/noise_lock.py",
+      "profile": "host-tooling",
+      "required_case_ids": [
+        "test_t04 suite"
+      ],
+      "requirement": "ExternalNoiseLockV1 rejects missing/tampered/mislabeled inputs and keeps UNAVAILABLE typed with nonzero release exit",
+      "result": "PASS",
+      "state_owner": "build/release controller",
+      "task_ids": [
+        "T04"
+      ]
+    },
+    {
+      "claim_id": "CLM-T04-CONTROLS",
+      "command_ids": [
+        "T04-controls-python3",
+        "T04-controls-python3-002"
+      ],
+      "evidence_class": "internal",
+      "evidence_sha256": "a91564b801b0da8350c35ca5238024963560947a877b0461c7d942704fb3fbb7",
+      "latest_source_sha": "a067c1b9ea5c366e85af52f8d9758dcf3afe2fc1",
+      "limitations": "host-only evidence; the independent A-06 artifact remains external",
+      "production_path": "ci/check_parity.py",
+      "profile": "host-tooling",
+      "required_case_ids": [
+        "test_t04 suite"
+      ],
+      "requirement": "repository + release-gate controls pass at the T04 tree",
+      "result": "PASS",
+      "state_owner": "build/release controller",
+      "task_ids": [
+        "T04"
+      ]
     }
   ],
   "note": "Claims appended per task with real evidence; PASS requires positive case counts and matching command output. Device/independent claims never accept host-only results.",
