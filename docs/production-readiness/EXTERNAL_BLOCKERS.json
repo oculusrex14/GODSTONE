@@ -1,0 +1,89 @@
+{
+  "blockers": [
+    {
+      "approved_source_or_human_role": "external auditor",
+      "class": "independent-review",
+      "closure_evidence": null,
+      "dependent_tasks": [
+        "T04",
+        "T21-T28",
+        "T79"
+      ],
+      "id": "A06",
+      "internal_prerequisites_completed": false,
+      "reason": "Independent Noise/conformance review artifact not supplied.",
+      "recheck_trigger": "receipt of reviewed artifact",
+      "required_artifact_schema": "structured PINNED/matched-case conformance report + tamper controls",
+      "status": "BLOCKED_EXTERNAL",
+      "verification_commands": []
+    },
+    {
+      "approved_source_or_human_role": "content editor / releasing authority",
+      "class": "content",
+      "closure_evidence": null,
+      "dependent_tasks": [
+        "T45-T53",
+        "T80"
+      ],
+      "id": "APPROVED_CONTENT",
+      "internal_prerequisites_completed": false,
+      "reason": "No approved content corpus or trust bundle supplied.",
+      "recheck_trigger": "approved manifest staged",
+      "required_artifact_schema": "release manifest + independent trust store",
+      "status": "BLOCKED_EXTERNAL",
+      "verification_commands": []
+    },
+    {
+      "approved_source_or_human_role": "native build owner",
+      "class": "native",
+      "closure_evidence": null,
+      "dependent_tasks": [
+        "T61-T66",
+        "T81"
+      ],
+      "id": "NATIVE_MODELS",
+      "internal_prerequisites_completed": false,
+      "reason": "No approved native model/runtime binaries supplied.",
+      "recheck_trigger": "binary drop received",
+      "required_artifact_schema": "hash-pinned binaries with license metadata",
+      "status": "BLOCKED_EXTERNAL",
+      "verification_commands": []
+    },
+    {
+      "approved_source_or_human_role": "device lab",
+      "class": "device",
+      "closure_evidence": null,
+      "dependent_tasks": [
+        "T13",
+        "T17",
+        "T25",
+        "T33",
+        "T60",
+        "T69-T75"
+      ],
+      "id": "HARDWARE",
+      "internal_prerequisites_completed": false,
+      "reason": "Physical iOS/Android devices and BLE radios unavailable in this environment.",
+      "recheck_trigger": "device access established",
+      "required_artifact_schema": "device matrix results",
+      "status": "BLOCKED_HARDWARE",
+      "verification_commands": []
+    },
+    {
+      "approved_source_or_human_role": "release owner",
+      "class": "release",
+      "closure_evidence": null,
+      "dependent_tasks": [
+        "T76-T78"
+      ],
+      "id": "SIGNING",
+      "internal_prerequisites_completed": false,
+      "reason": "Signing keys, keystore and store credentials are external and secret.",
+      "recheck_trigger": "credentials provisioned",
+      "required_artifact_schema": "signing metadata without key material",
+      "status": "BLOCKED_EXTERNAL",
+      "verification_commands": []
+    }
+  ],
+  "schema_version": 1
+}

@@ -1,0 +1,5 @@
+{
+  "claims": [],
+  "note": "Claims appended per task with real evidence; PASS requires positive case counts and matching command output. Device/independent claims never accept host-only results.",
+  "schema_version": 1
+}

@@ -1,0 +1,1186 @@
+{
+  "schema_version": 1,
+  "planning_baseline_sha": "b5c3d3d394b70cf356cdde33b47511dad7cbb95c",
+  "branch": "codex/archive-reliability",
+  "audited_parent": "921b93903dea32b30ee591c3c0b454f706333c69",
+  "working_tree_porcelain_all_files": [
+    " M .github/workflows/repository-verification.yml",
+    " M android/app/src/main/java/io/godstone/app/ui/browse/BrowseScreen.kt",
+    " M android/app/src/main/java/io/godstone/app/ui/browse/BrowseViewModel.kt",
+    " M android/core/build.gradle.kts",
+    " M android/core/src/main/java/io/godstone/core/archive/ArchiveRepository.kt",
+    " M ci/check_release_gates_status.py",
+    " M content/archive_manifest.py",
+    " M content/ingest/build_archive.py",
+    " M content/tests/test_archive_manifest.py",
+    " M ios/Godstone/Info.plist",
+    " M ios/Godstone/Sources/App/AppContainer.swift",
+    " M ios/Godstone/Sources/App/ArchiveView.swift",
+    " M ios/Godstone/Sources/GodstoneCore/ArchiveRepository.swift",
+    " M ios/Packages/GodstoneFoundation/SOURCE_MANIFEST.json",
+    " M ios/Packages/GodstoneFoundation/Sources/GodstoneCore/ArchiveRepository.swift",
+    " M ios/project.yml",
+    " M scripts/inspect_android_artifacts.py",
+    " M scripts/prepare_release_assets.py",
+    "?? android/app/src/test/java/io/godstone/app/ui/browse/BrowseViewModelTest.kt",
+    "?? android/core/src/main/java/io/godstone/core/archive/ArchiveDatabase.kt",
+    "?? android/core/src/main/java/io/godstone/core/archive/ArchiveInstaller.kt",
+    "?? android/core/src/test/java/io/godstone/core/archive/ArchiveInstallerTest.kt",
+    "?? android/core/src/test/java/io/godstone/core/archive/ArchiveRepositoryTest.kt",
+    "?? ci/archive_fixture.py",
+    "?? content/requirements-dev.txt",
+    "?? content/tests/archive_fixtures.py",
+    "?? content/tests/test_build_archive.py",
+    "?? content/tests/test_prepare_release_assets.py",
+    "?? ios/Godstone/Sources/GodstoneCore/ArchiveReaderModel.swift",
+    "?? ios/Godstone/Tests/GodstoneCoreTests/ArchiveReaderModelTests.swift",
+    "?? ios/Godstone/Tests/GodstoneCoreTests/ArchiveRepositoryTests.swift",
+    "?? ios/Packages/GodstoneFoundation/Sources/GodstoneCore/ArchiveReaderModel.swift",
+    "?? ios/Packages/GodstoneFoundation/Tests/GodstoneCoreTests/ArchiveReaderModelTests.swift",
+    "?? ios/Packages/GodstoneFoundation/Tests/GodstoneCoreTests/ArchiveRepositoryTests.swift"
+  ],
+  "source_fingerprints": [
+    {
+      "path": ".github/workflows/release-gates.yml",
+      "head_blob": "461b2f7765ea29d2e224948fa32c984c26ab91a6",
+      "working_tree_sha256": "768b585cc914323e0932d336f7024580590fef04332c79f30e2c555a57655124",
+      "working_tree_bytes": 16957,
+      "classification": "HEAD-tracked, may have WIP"
+    },
+    {
+      "path": ".github/workflows/repository-verification.yml",
+      "head_blob": "5a0de1d42527b2edee00f759fa69e5d72738736e",
+      "working_tree_sha256": "b0a1488a8fbd688e040a61fe7a7c468ab58081482a220d884f99b716d75ccfef",
+      "working_tree_bytes": 20669,
+      "classification": "HEAD-tracked, may have WIP"
+    },
+    {
+      "path": "android/app/build.gradle.kts",
+      "head_blob": "0b4a366a4bad1da0ac33fadf6e0a9d64002bd770",
+      "working_tree_sha256": "34f7da1dd485a06a1705c7aadc1277723a305b9da33b7da691259a1de95dc7f7",
+      "working_tree_bytes": 11676,
+      "classification": "HEAD-tracked, may have WIP"
+    },
+    {
+      "path": "android/app/proguard-rules.pro",
+      "head_blob": "6eb505fb4e11af040c6fb11dec1491cd83446848",
+      "working_tree_sha256": "eea661938324a0c053017c5195d87c6dd33bfb2cdb913c3a7fd6b17fc398f12c",
+      "working_tree_bytes": 1339,
+      "classification": "HEAD-tracked, may have WIP"
+    },
+    {
+      "path": "android/app/src/main/AndroidManifest.xml",
+      "head_blob": "83f42bc47503be1f5550732ad8650b423fa3024e",
+      "working_tree_sha256": "b173a65bc8e6335c4d3f5a5781e85de8f0b68a67dda1b0a1fc102ec765a19620",
+      "working_tree_bytes": 1521,
+      "classification": "HEAD-tracked, may have WIP"
+    },
+    {
+      "path": "android/app/src/main/dormant/java/io/godstone/app/ui/mesh/MeshScreen.kt",
+      "head_blob": "04b27ad89709a7c8a113e61fe80d2469755aa8a8",
+      "working_tree_sha256": "eb866b6539ab64e09ee676882866d20f0404a94e5ad190ae888970dc13eba353",
+      "working_tree_bytes": 2172,
+      "classification": "HEAD-tracked, may have WIP"
+    },
+    {
+      "path": "android/app/src/main/dormant/java/io/godstone/app/ui/sos/SosScreen.kt",
+      "head_blob": "0ed014f845f0f2cf343484ff66946dd6239f399f",
+      "working_tree_sha256": "c2275f39fc946b79570e71403f390f63b687e24a6a5438e7c6c58bdbce3ddb28",
+      "working_tree_bytes": 5307,
+      "classification": "HEAD-tracked, may have WIP"
+    },
+    {
+      "path": "android/app/src/main/java/io/godstone/app/GodstoneApplication.kt",
+      "head_blob": "b65882d945a5101d3d0802b78fc48c8deacfa19f",
+      "working_tree_sha256": "30a93a7c47c570c17ff5eac871fb583beba4ff0bc673f816f69dd7bfab08d734",
+      "working_tree_bytes": 243,
+      "classification": "HEAD-tracked, may have WIP"
+    },
+    {
+      "path": "android/app/src/main/java/io/godstone/app/ui/GodstoneNavHost.kt",
+      "head_blob": "b0fb92e406446604ee93f1f1d3e825f923e9cc0b",
+      "working_tree_sha256": "09e4ec7d7fdb3d5022467793673ba53a0c1952e105932d30a6b0a7699bd3239c",
+      "working_tree_bytes": 2456,
+      "classification": "HEAD-tracked, may have WIP"
+    },
+    {
+      "path": "android/app/src/main/java/io/godstone/app/ui/browse/BrowseScreen.kt",
+      "head_blob": "338db2bd064062c695d0f6e27e88caf0adcd672f",
+      "working_tree_sha256": "f8b4cc94228f3625f5839dd1e9531e12d3e733e3cda02ab25c5e10aada02fbab",
+      "working_tree_bytes": 7983,
+      "classification": "HEAD-tracked, may have WIP"
+    },
+    {
+      "path": "android/app/src/main/java/io/godstone/app/ui/browse/BrowseViewModel.kt",
+      "head_blob": "f75bbf8192716b35964653f200b451810f12090a",
+      "working_tree_sha256": "1be6b5aef43190d810d9ecf76f5eddf660fe2f3be4e17f29483b33b9708f5346",
+      "working_tree_bytes": 4768,
+      "classification": "HEAD-tracked, may have WIP"
+    },
+    {
+      "path": "android/app/src/main/res/xml/data_extraction_rules.xml",
+      "head_blob": "8244e75ddf44b2466ba87c89f14b2f657c8949b0",
+      "working_tree_sha256": "15ca4890f9a54dfa96b5707862a82b9e8fcaae7c969ac32268010d3efc64375b",
+      "working_tree_bytes": 848,
+      "classification": "HEAD-tracked, may have WIP"
+    },
+    {
+      "path": "android/app/src/test/java/io/godstone/app/ui/browse/BrowseViewModelTest.kt",
+      "head_blob": null,
+      "working_tree_sha256": "f1830624443a3e40017044560819693a6c51951049e6f4631a82b4162ceac7bc",
+      "working_tree_bytes": 7861,
+      "classification": "WIP-only or proposed; not baseline source"
+    },
+    {
+      "path": "android/build.gradle.kts",
+      "head_blob": "272edcc9f04be481e80efa44a3de6f0504b7df78",
+      "working_tree_sha256": "a815d44a29e006ec99fda6c39030c46d0553c426822d37ec855e91bd4cab51c8",
+      "working_tree_bytes": 503,
+      "classification": "HEAD-tracked, may have WIP"
+    },
+    {
+      "path": "android/core/build.gradle.kts",
+      "head_blob": "e768e3fbb20ed44686626f042d7c47a5b927d8bd",
+      "working_tree_sha256": "3642f4247af780d49dc106928a38105e1a75b1a535f1d31dbc060871326e97cd",
+      "working_tree_bytes": 2141,
+      "classification": "HEAD-tracked, may have WIP"
+    },
+    {
+      "path": "android/core/src/main/java/io/godstone/core/archive/ArchiveDatabase.kt",
+      "head_blob": null,
+      "working_tree_sha256": "9d58ef2ac894f3bb267b372b9d08ab3dd3b02ec6758ea26a439ec113362bb667",
+      "working_tree_bytes": 3751,
+      "classification": "WIP-only or proposed; not baseline source"
+    },
+    {
+      "path": "android/core/src/main/java/io/godstone/core/archive/ArchiveInstaller.kt",
+      "head_blob": null,
+      "working_tree_sha256": "a04243838dcc23b88dedb5a4ac116b26840901fff41a417cbd5e0bd9454cc37e",
+      "working_tree_bytes": 3686,
+      "classification": "WIP-only or proposed; not baseline source"
+    },
+    {
+      "path": "android/core/src/main/java/io/godstone/core/archive/ArchiveRepository.kt",
+      "head_blob": "9cc979bd013180c49b3bc247af721d9cee594ab5",
+      "working_tree_sha256": "6780dd04edf73c0046e3183008ff3d57277254a3a26509046c7fc553db145566",
+      "working_tree_bytes": 5340,
+      "classification": "HEAD-tracked, may have WIP"
+    },
+    {
+      "path": "android/gradle/wrapper/gradle-wrapper.properties",
+      "head_blob": "fe918b448c7c3e4762657ea4d5922f8885b07657",
+      "working_tree_sha256": "4d3372b4adbf1f6818169fac062820a05c966ec63abdfda06ddafa32166e864e",
+      "working_tree_bytes": 714,
+      "classification": "HEAD-tracked, may have WIP"
+    },
+    {
+      "path": "android/llm/src/main/cpp/CMakeLists.txt",
+      "head_blob": "e6ece871fe3486a9526c7be6ffa9dd191d9b13c9",
+      "working_tree_sha256": "4fa93048e4c6203b3f93c68ab818970f51b612a5d081b61f1df10d416245f463",
+      "working_tree_bytes": 1299,
+      "classification": "HEAD-tracked, may have WIP"
+    },
+    {
+      "path": "android/llm/src/main/cpp/godstone_llm_jni.cpp",
+      "head_blob": "924d2f69c57efa360b4e7653225fd1f1be9edabf",
+      "working_tree_sha256": "260f0020a20d05c72fcca9be974b1caf96e020a7c3d55527739710732ec19aa2",
+      "working_tree_bytes": 5318,
+      "classification": "HEAD-tracked, may have WIP"
+    },
+    {
+      "path": "android/llm/src/main/java/io/godstone/llm/LlamaBridge.kt",
+      "head_blob": "14720c5aa81b93cc17eafc91747c6818a5d602e6",
+      "working_tree_sha256": "a00f60ef0ccaa6ad1bbddf84fc014b8ede9658cb70992f2a671fa2f588fe23b8",
+      "working_tree_bytes": 2377,
+      "classification": "HEAD-tracked, may have WIP"
+    },
+    {
+      "path": "android/llm/src/main/java/io/godstone/llm/rag/Embedder.kt",
+      "head_blob": "7f7e49cafbb2db48b7425434afeaf47880ab3a37",
+      "working_tree_sha256": "8658b0bbd7c5d3413c85b4c9de6ad80581205499d53837a71b3128d7457d6940",
+      "working_tree_bytes": 2623,
+      "classification": "HEAD-tracked, may have WIP"
+    },
+    {
+      "path": "android/llm/src/main/java/io/godstone/llm/rag/OraclePipeline.kt",
+      "head_blob": "9e5623f9a5acfd2eb2407c5452662be9319b1de1",
+      "working_tree_sha256": "98495bb07a2c5a5c7a075170e82ace312f0cf324d5ba0ad16462980eb97b0903",
+      "working_tree_bytes": 1637,
+      "classification": "HEAD-tracked, may have WIP"
+    },
+    {
+      "path": "android/llm/src/main/java/io/godstone/llm/rag/RagPipeline.kt",
+      "head_blob": "5cd69f42b5d2abe5c0646e6e89275530c3675d3b",
+      "working_tree_sha256": "2a90d131d251505295de89a1368d7ce8222b8ecdd5c1ca8198cc01f38819e6e0",
+      "working_tree_bytes": 1661,
+      "classification": "HEAD-tracked, may have WIP"
+    },
+    {
+      "path": "android/llm/src/main/java/io/godstone/llm/rag/Retriever.kt",
+      "head_blob": "4a5583042e7cd82b6988ddf647d6e54886033f14",
+      "working_tree_sha256": "001fc45f275c891fd760cf60f856ae943ee25ba9926bc7e045bbea744c72728b",
+      "working_tree_bytes": 9166,
+      "classification": "HEAD-tracked, may have WIP"
+    },
+    {
+      "path": "android/mesh/src/main/java/io/godstone/mesh/MeshNode.kt",
+      "head_blob": "fdb9f281c05009fe26939a9781ac7a56fb2a8bd7",
+      "working_tree_sha256": "d6b49229238c0a1b520db1d526b0b38e2e0dd31c52ed925a4289270c034154ec",
+      "working_tree_bytes": 17375,
+      "classification": "HEAD-tracked, may have WIP"
+    },
+    {
+      "path": "android/mesh/src/main/java/io/godstone/mesh/abuse/PeerGovernor.kt",
+      "head_blob": "dcdc8db6b6190a61920558800b453fbc14804cbd",
+      "working_tree_sha256": "4b189e6a065294e5459669a69e1ca484c087d3aef29a373872cadfabe7fd81ec",
+      "working_tree_bytes": 5299,
+      "classification": "HEAD-tracked, may have WIP"
+    },
+    {
+      "path": "android/mesh/src/main/java/io/godstone/mesh/crypto/NoiseSession.kt",
+      "head_blob": "262b74dafd13bd8d6f9418eea633f54b5c8d3924",
+      "working_tree_sha256": "0e9a3c00e6d10b293f3dc88366a140f2fc9ed146dad96994e876f85d744e24df",
+      "working_tree_bytes": 10577,
+      "classification": "HEAD-tracked, may have WIP"
+    },
+    {
+      "path": "android/mesh/src/main/java/io/godstone/mesh/crypto/SessionManager.kt",
+      "head_blob": "4c2647dc346d9f8aee6bea79abdea881f8e11271",
+      "working_tree_sha256": "0a04cafa687cfc4c4d2d85541d819b1ad0a78dab3dccd4599dbd01be56cd0260",
+      "working_tree_bytes": 10399,
+      "classification": "HEAD-tracked, may have WIP"
+    },
+    {
+      "path": "android/mesh/src/main/java/io/godstone/mesh/crypto/TrustedHandshakeController.kt",
+      "head_blob": "e727fc458c034c6778e891cd3a87f40c46ee0765",
+      "working_tree_sha256": "253d99d9f44a5fc66c3278442c6d3cac9d7d5529490f0dcb0241f7a46d342f4e",
+      "working_tree_bytes": 12121,
+      "classification": "HEAD-tracked, may have WIP"
+    },
+    {
+      "path": "android/mesh/src/main/java/io/godstone/mesh/delivery/AckAuthenticator.kt",
+      "head_blob": "a2cf55cecb74dcf55c2f060513abb09b032c975d",
+      "working_tree_sha256": "7d0400f0ceaf3780a2ccb1e206ea52993a076c550aae9ef77c1779a599b5ffb0",
+      "working_tree_bytes": 6776,
+      "classification": "HEAD-tracked, may have WIP"
+    },
+    {
+      "path": "android/mesh/src/main/java/io/godstone/mesh/delivery/BoundRecipientKeyResolver.kt",
+      "head_blob": "200e6da4c47aa74cf7727e4d8d7c1ab5615d18de",
+      "working_tree_sha256": "781a944fe09c114ca3549862d07deed52e4e1d3c9efb3b5fca320fcbec5d8c6f",
+      "working_tree_bytes": 2853,
+      "classification": "HEAD-tracked, may have WIP"
+    },
+    {
+      "path": "android/mesh/src/main/java/io/godstone/mesh/delivery/DeliveryTracker.kt",
+      "head_blob": "7db61d17c4bf352f60bbb5724634d532e827109b",
+      "working_tree_sha256": "de7c00b9d73b1fd26420a44965947555a45822d2cd5a81bec72eab10bcf68c8e",
+      "working_tree_bytes": 31698,
+      "classification": "HEAD-tracked, may have WIP"
+    },
+    {
+      "path": "android/mesh/src/main/java/io/godstone/mesh/delivery/SqliteDeliveryRepository.kt",
+      "head_blob": "d0bb1f1433931ca7226759ef439a2863549e4ed3",
+      "working_tree_sha256": "e589856721edd9988d8e681b0c1f9ed80ba631371b802472e07cca4df36cedba",
+      "working_tree_bytes": 21264,
+      "classification": "HEAD-tracked, may have WIP"
+    },
+    {
+      "path": "android/mesh/src/main/java/io/godstone/mesh/di/MeshModule.kt",
+      "head_blob": "222a2b8f9b797555feea1f0fa654daa7fae77730",
+      "working_tree_sha256": "eec79b0aa479dd20382f2f6b69c4c43e945a754790a9118c10459c463e39f610",
+      "working_tree_bytes": 8062,
+      "classification": "HEAD-tracked, may have WIP"
+    },
+    {
+      "path": "android/mesh/src/main/java/io/godstone/mesh/identity/LocalIdentityStateV1.kt",
+      "head_blob": "9f3bee08fcac7ec9823ff7087d64e9c62ae4f7f3",
+      "working_tree_sha256": "a6fe3e94960b7f78e16f26c38fd3ceeefeca5629fd969bc35af1809a60490039",
+      "working_tree_bytes": 9349,
+      "classification": "HEAD-tracked, may have WIP"
+    },
+    {
+      "path": "android/mesh/src/main/java/io/godstone/mesh/identity/PanicWipe.kt",
+      "head_blob": "d61612a28758350e11dc032453590c2fbcf02cd1",
+      "working_tree_sha256": "dd04d76a8fa7fddef8407369e759149fd5b751783a332a539829fbd3d9d151a3",
+      "working_tree_bytes": 9144,
+      "classification": "HEAD-tracked, may have WIP"
+    },
+    {
+      "path": "android/mesh/src/main/java/io/godstone/mesh/identity/PeerIdentityRepository.kt",
+      "head_blob": "f25016053111e7c6a1a0e7d8c854670af348b467",
+      "working_tree_sha256": "65ae0539a00eb8411dee9cd67dd891ee6815626599321ab107adfa203bfd2421",
+      "working_tree_bytes": 25567,
+      "classification": "HEAD-tracked, may have WIP"
+    },
+    {
+      "path": "android/mesh/src/main/java/io/godstone/mesh/identity/PeerIdentityStore.kt",
+      "head_blob": "4adbb3755e52e79002b49b92c8033bcd34141a43",
+      "working_tree_sha256": "74720cce13c949924798c13011986cd9cf96999d18ed8429a8ef4fe2016f9bab",
+      "working_tree_bytes": 18260,
+      "classification": "HEAD-tracked, may have WIP"
+    },
+    {
+      "path": "android/mesh/src/main/java/io/godstone/mesh/identity/RuntimeLifecycleGate.kt",
+      "head_blob": "fd37f63178de80a4197b59b224217d264e126155",
+      "working_tree_sha256": "630a7bc7fdceae10298fc19de9a71e61cae2d3a34203e9be7f312195aa12c8ca",
+      "working_tree_bytes": 3515,
+      "classification": "HEAD-tracked, may have WIP"
+    },
+    {
+      "path": "android/mesh/src/main/java/io/godstone/mesh/router/BloomDigest.kt",
+      "head_blob": "5fb7ac1f3cdc9b63442b21f45bedb0317a83e9d0",
+      "working_tree_sha256": "61bc12bf082cb0cdc57d22b4f8b9a1ed6ff10eea8479555561b6a3f961537b79",
+      "working_tree_bytes": 2855,
+      "classification": "HEAD-tracked, may have WIP"
+    },
+    {
+      "path": "android/mesh/src/main/java/io/godstone/mesh/router/Router.kt",
+      "head_blob": "05acf766b05bb39b7861ef4fa4f33477385cb05f",
+      "working_tree_sha256": "20d4e96a68332684f05126da82a9debe83cafda37a08ba68f2c11523047c11a7",
+      "working_tree_bytes": 19738,
+      "classification": "HEAD-tracked, may have WIP"
+    },
+    {
+      "path": "android/mesh/src/main/java/io/godstone/mesh/seal/SealedSender.kt",
+      "head_blob": "65b5720024d96ac43063decb51545fb8a90229a6",
+      "working_tree_sha256": "881cde9bbea5b7bf784549c5b67df0193bac2d7c838710b31a3bc3911c5bcec9",
+      "working_tree_bytes": 6700,
+      "classification": "HEAD-tracked, may have WIP"
+    },
+    {
+      "path": "android/mesh/src/main/java/io/godstone/mesh/store/MessageStore.kt",
+      "head_blob": "ecdc81f7b83f3050e6a2b8ab218ca39dd63ca991",
+      "working_tree_sha256": "4a0e086f21008ddf9cb1e2de4741db7a61ddf6fe1c4c8f4042e9576f554202fb",
+      "working_tree_bytes": 65511,
+      "classification": "HEAD-tracked, may have WIP"
+    },
+    {
+      "path": "android/mesh/src/main/java/io/godstone/mesh/transport/BleConnection.kt",
+      "head_blob": "ce175eda7ab1813523e4826fe711df67359ff56c",
+      "working_tree_sha256": "ebcda814a763480dd5ecad26db0ae2b965f039284d42fb7e6be657006570617f",
+      "working_tree_bytes": 10758,
+      "classification": "HEAD-tracked, may have WIP"
+    },
+    {
+      "path": "android/mesh/src/main/java/io/godstone/mesh/transport/BleOrchestrationDriver.kt",
+      "head_blob": "78c7d805aed8b92974c7d2dd7fe935d10403a26b",
+      "working_tree_sha256": "81b5376a84bb108c0d65f680607a5a62329ea3883803bc376d4d6e72c3d08678",
+      "working_tree_bytes": 33525,
+      "classification": "HEAD-tracked, may have WIP"
+    },
+    {
+      "path": "android/mesh/src/main/java/io/godstone/mesh/transport/BleRecord.kt",
+      "head_blob": "f84feae02115fda61b88994b6796ffb4bad54c10",
+      "working_tree_sha256": "57b8fc9b0a23d8633b4c7258580dc7cc8f2249165353f70eb2273f528335208d",
+      "working_tree_bytes": 12772,
+      "classification": "HEAD-tracked, may have WIP"
+    },
+    {
+      "path": "android/mesh/src/main/java/io/godstone/mesh/transport/BleTransport.kt",
+      "head_blob": "adc3300844c87f988de9881326e9a172294e1eec",
+      "working_tree_sha256": "fc327edbd74c83a481ff366741fc39e6283f6517ebc9982223258ea83a120fa2",
+      "working_tree_bytes": 23110,
+      "classification": "HEAD-tracked, may have WIP"
+    },
+    {
+      "path": "android/mesh/src/main/java/io/godstone/mesh/transport/GattClient.kt",
+      "head_blob": "eb8dd0002631e041d91f4d92dc76addcc4ece3e7",
+      "working_tree_sha256": "9f28012fe5cec36a782b670d6adccd507e9da7aa3605356f61c1409892096692",
+      "working_tree_bytes": 17406,
+      "classification": "HEAD-tracked, may have WIP"
+    },
+    {
+      "path": "android/mesh/src/main/java/io/godstone/mesh/transport/GattServer.kt",
+      "head_blob": "eeace899e5557a34b8a0a1e280350d9c5e58060d",
+      "working_tree_sha256": "7ca28c0d41b905a226e3deb2402ca481021d2f5abe86443b554a4c1472c5516b",
+      "working_tree_bytes": 27420,
+      "classification": "HEAD-tracked, may have WIP"
+    },
+    {
+      "path": "android/mesh/src/main/java/io/godstone/mesh/transport/LinkInfoSnapshotAuthority.kt",
+      "head_blob": "19be3bff93a39dc70fe5239a66372480b13d56bc",
+      "working_tree_sha256": "77e3e022256fb352607af8e0c8af6f942582f77a66aab98e078a32b8fee7a687",
+      "working_tree_bytes": 4491,
+      "classification": "HEAD-tracked, may have WIP"
+    },
+    {
+      "path": "android/mesh/src/main/java/io/godstone/mesh/transport/Transport.kt",
+      "head_blob": "595bcfb056e0ef403be023fbcc70f46f99a16a4c",
+      "working_tree_sha256": "aad9b3350ec0df819b99c7f32aa7b712806aff672a84fd9c1738c1717b3b9f89",
+      "working_tree_bytes": 1474,
+      "classification": "HEAD-tracked, may have WIP"
+    },
+    {
+      "path": "android/mesh/src/main/java/io/godstone/mesh/transport/WifiAwareTransport.kt",
+      "head_blob": "7d24d6e889e32a7e343bac06b67f7be2f6965715",
+      "working_tree_sha256": "eeaf6236c74fac89f2499d4befee82864ad715a9678aa065b7828d4347e8665e",
+      "working_tree_bytes": 3100,
+      "classification": "HEAD-tracked, may have WIP"
+    },
+    {
+      "path": "android/mesh/src/main/java/io/godstone/mesh/wire/v2/MessageId.kt",
+      "head_blob": "7c40a49d98e1ddff178a7e1a9a05ac5fafabb4f3",
+      "working_tree_sha256": "de6d1adbb1282e4313d5f5a652521e6ec57e50ffe3cdb2e731e3ff8e47e118b1",
+      "working_tree_bytes": 3797,
+      "classification": "HEAD-tracked, may have WIP"
+    },
+    {
+      "path": "android/mesh/src/main/java/io/godstone/mesh/wire/v2/SosFrameValidator.kt",
+      "head_blob": "bff015502c9c29d851ce0045b5435b907d5e3098",
+      "working_tree_sha256": "4138d260f2fe988b55a80010af01408393b6fe8a67b6dbf9cd2a4703a5c468b0",
+      "working_tree_bytes": 3342,
+      "classification": "HEAD-tracked, may have WIP"
+    },
+    {
+      "path": "android/mesh/src/test/java/io/godstone/mesh/NoiseSessionTest.kt",
+      "head_blob": "c9dbf8866c43654c66394340f13c4c192e5c7204",
+      "working_tree_sha256": "99dfde04472724b4842926b60ec7602be182439b2d228bd8b1c0934ce27cc707",
+      "working_tree_bytes": 5197,
+      "classification": "HEAD-tracked, may have WIP"
+    },
+    {
+      "path": "android/settings.gradle.kts",
+      "head_blob": "17b0142c2987335d7f4af72dd5d169fae0c9ed7a",
+      "working_tree_sha256": "338fe525d70d7cc4e29735c774a991ad780243fbb7d89654b0452cb339231f4f",
+      "working_tree_bytes": 379,
+      "classification": "HEAD-tracked, may have WIP"
+    },
+    {
+      "path": "ci/check_ble_link_substrate_controls.py",
+      "head_blob": "a4f967bfbb48d5819593d84349fdb72e0b6b2f18",
+      "working_tree_sha256": "e32a41e15836adbb71bf0841d1513d21f7c817166ac4486b07175a5c7f2ce339",
+      "working_tree_bytes": 137543,
+      "classification": "HEAD-tracked, may have WIP"
+    },
+    {
+      "path": "ci/check_ble_record_controls.py",
+      "head_blob": "28042c467495700a552f59e9f898f3d3be31c874",
+      "working_tree_sha256": "5bb9efff54eb3da43c74d5c7a0b5f6ce6eb72d0b1464f4d032c220184ac566c3",
+      "working_tree_bytes": 31278,
+      "classification": "HEAD-tracked, may have WIP"
+    },
+    {
+      "path": "ci/check_content_release_integration.py",
+      "head_blob": "8ddf79c2e3e1714bf6b5220821dafd70dcb7573d",
+      "working_tree_sha256": "a88d4b70ff3b24fec0951be927fef6b1933da4e4850ac9fd6a9ababbc2747f7c",
+      "working_tree_bytes": 782,
+      "classification": "HEAD-tracked, may have WIP"
+    },
+    {
+      "path": "ci/check_oracle_private_draft.py",
+      "head_blob": "1332e536b63a1c5a941c156996ca44a12c374fdf",
+      "working_tree_sha256": "423782ca34b2634b302a54b03c5d8da43a6f3f41447a3b7988dca46c3696b1ad",
+      "working_tree_bytes": 2592,
+      "classification": "HEAD-tracked, may have WIP"
+    },
+    {
+      "path": "ci/check_parity.py",
+      "head_blob": "2df9095d661d91db094a39e44be0babc9fcbf1d7",
+      "working_tree_sha256": "3f3bfe36f1d17f374dbd7f72c0dc1061dd812b9f7c31808507e21d3d6d77ff84",
+      "working_tree_bytes": 17120,
+      "classification": "HEAD-tracked, may have WIP"
+    },
+    {
+      "path": "ci/check_release_gates_status.py",
+      "head_blob": "85ff9d1fd424e1e9d06ccb51ff61bdc50ab4d32d",
+      "working_tree_sha256": "bae05f4d73f3e7c6600fe01e542192050ffcdd2bf21b4cf77bc3962a33f22775",
+      "working_tree_bytes": 7015,
+      "classification": "HEAD-tracked, may have WIP"
+    },
+    {
+      "path": "ci/check_release_surface.py",
+      "head_blob": "dbbde97ba05b91b587654d4255b1ca9ae352625b",
+      "working_tree_sha256": "a0f64600ca3302b9f25df7d4ae628e151d343735fa7def3a8f64c7f5fe29e4cc",
+      "working_tree_bytes": 2580,
+      "classification": "HEAD-tracked, may have WIP"
+    },
+    {
+      "path": "ci/check_shipping_path.py",
+      "head_blob": "bb2c97ec13712dd64fca359be8447de4faa0983e",
+      "working_tree_sha256": "6a51871a83c7728aa762d817bb36bce61684e153ff6784b8eb29c2e06c35df90",
+      "working_tree_bytes": 24662,
+      "classification": "HEAD-tracked, may have WIP"
+    },
+    {
+      "path": "ci/check_status_consistency.py",
+      "head_blob": "66dd3d4e34d752a56890b862f12dc3e6c192ab43",
+      "working_tree_sha256": "7ff0632bca9a1d2ca623523a731eac151234b02220d2107da72adc71423025b8",
+      "working_tree_bytes": 41967,
+      "classification": "HEAD-tracked, may have WIP"
+    },
+    {
+      "path": "ci/mutations.py",
+      "head_blob": "626159603acf5dbd6371113612d81657645ea709",
+      "working_tree_sha256": "b75f5bb0991ca19ee1d4bb436c520e3cdf158e4e701931a16de5148d2562215e",
+      "working_tree_bytes": 6028,
+      "classification": "HEAD-tracked, may have WIP"
+    },
+    {
+      "path": "config/tiers.json",
+      "head_blob": "990b8cb87332b27badf7896c1161509c53d54418",
+      "working_tree_sha256": "4228e80ba67147f8cb82b3161fcdcdbc6173142517e05db278d17d74ad75985f",
+      "working_tree_bytes": 1461,
+      "classification": "HEAD-tracked, may have WIP"
+    },
+    {
+      "path": "content/archive_manifest.py",
+      "head_blob": "4d3b2ec4b56632b1d9045341f9048ef46c752210",
+      "working_tree_sha256": "3576a4ee537cbc9818d43dfddccf8d7960d036e05e54d0d9124043343c9f2ecc",
+      "working_tree_bytes": 15380,
+      "classification": "HEAD-tracked, may have WIP"
+    },
+    {
+      "path": "content/db/indexes.sql",
+      "head_blob": "4b61a46d997064117e07f2adb0039238762fd559",
+      "working_tree_sha256": "1ee976cbd63fb07dd7cdc1a5e86d895857b687c7751a5062fa3b1ee3d1b1963e",
+      "working_tree_bytes": 1986,
+      "classification": "HEAD-tracked, may have WIP"
+    },
+    {
+      "path": "content/db/schema.sql",
+      "head_blob": "e9e5062ce08e5083d3117a78b3e2cf3f56770541",
+      "working_tree_sha256": "cf694442b28f68201d15f3b0c59e1978a5cd680a8f6acb8e5329c7c4cd334487",
+      "working_tree_bytes": 6242,
+      "classification": "HEAD-tracked, may have WIP"
+    },
+    {
+      "path": "content/eval/grounding.py",
+      "head_blob": "9f2d94fbf5e93c33d2dcae908937b9c3563c82d4",
+      "working_tree_sha256": "96f641f6d579e32b3dc4c306190708d62512befb77977eed5a509eed84ceee4c",
+      "working_tree_bytes": 6514,
+      "classification": "HEAD-tracked, may have WIP"
+    },
+    {
+      "path": "content/ingest/build_archive.py",
+      "head_blob": "c321787015c579c16a5a3165b863d2c65e9a2f4b",
+      "working_tree_sha256": "f80e8c1a524e39d3cc79dbd482ad4a758bd54f630e0198ea02b0d1cfac37f268",
+      "working_tree_bytes": 13920,
+      "classification": "HEAD-tracked, may have WIP"
+    },
+    {
+      "path": "content/ingest/embedder.py",
+      "head_blob": "ba9ea350a225e3acedfc18274658ae0091988eac",
+      "working_tree_sha256": "319b9240b07970983f15d4dd7dba638cf20d0e8f2684c12b64e5c91f6646103a",
+      "working_tree_bytes": 4240,
+      "classification": "HEAD-tracked, may have WIP"
+    },
+    {
+      "path": "content/manifests/README.md",
+      "head_blob": "cfcb99d6f6ce402831dc9b172b5f2d7b58ca5d28",
+      "working_tree_sha256": "6b30f83f12a0aa5f034f73dbde249280cd19f2318c3a9aff75d89cd86311ceee",
+      "working_tree_bytes": 607,
+      "classification": "HEAD-tracked, may have WIP"
+    },
+    {
+      "path": "content/release_gate.py",
+      "head_blob": "f651c1b13f9de8537a4554978e517dc415753c03",
+      "working_tree_sha256": "b9df76c1237efb5bf452360ed060dd48a18fef410e84eb595721eed514af6067",
+      "working_tree_bytes": 13854,
+      "classification": "HEAD-tracked, may have WIP"
+    },
+    {
+      "path": "content/requirements-dev.txt",
+      "head_blob": null,
+      "working_tree_sha256": "30043a5ba98fed5414c14c85db2b99420dce00ce23cb6735e05c4fc7a3a70c91",
+      "working_tree_bytes": 177,
+      "classification": "WIP-only or proposed; not baseline source"
+    },
+    {
+      "path": "content/requirements.txt",
+      "head_blob": "4d60e71b6643ee13455823b306ffbc9bf44fdf56",
+      "working_tree_sha256": "5e91131e635b2273155dad4f2240244d79d69fd0a34cce28886d6218cb2c09aa",
+      "working_tree_bytes": 916,
+      "classification": "HEAD-tracked, may have WIP"
+    },
+    {
+      "path": "content/tests/test_archive_manifest.py",
+      "head_blob": "e161a1644d0b05187d92fd2640800a7d20d33a7a",
+      "working_tree_sha256": "811c6598905fab97361069e640e4751b378a845731e4bd508f53761455873680",
+      "working_tree_bytes": 5390,
+      "classification": "HEAD-tracked, may have WIP"
+    },
+    {
+      "path": "content/tests/test_build_archive.py",
+      "head_blob": null,
+      "working_tree_sha256": "c3336ac56af24bd95e2bf9834ee88a77c8cf50cf4abe6b91ad3be186de5e5aa0",
+      "working_tree_bytes": 2958,
+      "classification": "WIP-only or proposed; not baseline source"
+    },
+    {
+      "path": "content/tests/test_release_gate.py",
+      "head_blob": "c0cf23c08af266c3faf80732df2a3342b7cda676",
+      "working_tree_sha256": "a8364009f6ff54f979da344e86977ac489ca4614e6393c8ef98196e31cd4cda1",
+      "working_tree_bytes": 4853,
+      "classification": "HEAD-tracked, may have WIP"
+    },
+    {
+      "path": "crypto/cacophony.py",
+      "head_blob": "f802964dbcbe8f3c64d224f696d143a2bcad200e",
+      "working_tree_sha256": "37be7469c72af5399a2292a37fc3cdbd30fcc8e1da976ccdf1a863a8f4429947",
+      "working_tree_bytes": 11807,
+      "classification": "HEAD-tracked, may have WIP"
+    },
+    {
+      "path": "crypto/cacophony_vectors.json",
+      "head_blob": "e1130ddb0fdfe5be7a7dc337d249efb44666b583",
+      "working_tree_sha256": "31399123b82bbe34b8c5a5984beb2149172d7bceb36b91fe6c39d07cb10d9fb6",
+      "working_tree_bytes": 1965,
+      "classification": "HEAD-tracked, may have WIP"
+    },
+    {
+      "path": "crypto/gmp21.py",
+      "head_blob": "419c0b5818777db0d94566091f0f17dba83e722e",
+      "working_tree_sha256": "2d1da640034852b92be99cda6bce892947f095e2312a300e4c2a320ffbb54f35",
+      "working_tree_bytes": 7978,
+      "classification": "HEAD-tracked, may have WIP"
+    },
+    {
+      "path": "crypto/noise_ref.py",
+      "head_blob": "f87574f13bf00d8aef66c7ea146a8a175e985a34",
+      "working_tree_sha256": "e18c8004f42f5e4d9f1250458bcc17f46ac6f8549ac7f984b3740a9d7c295a48",
+      "working_tree_bytes": 14309,
+      "classification": "HEAD-tracked, may have WIP"
+    },
+    {
+      "path": "crypto/test_conformance.py",
+      "head_blob": "2e41c49c64f5a55e975d7e662d89018dc2f48113",
+      "working_tree_sha256": "406697694da93796215fb021e854d92bd8b39c9bc080b40d27262476a278a668",
+      "working_tree_bytes": 14295,
+      "classification": "HEAD-tracked, may have WIP"
+    },
+    {
+      "path": "docs/PINNING_CACOPHONY.md",
+      "head_blob": "0131769b85e9b302fd42752be8b4a8c774816fb4",
+      "working_tree_sha256": "6869f93a51694981e93773bf396f57eefd8d66c53c440fe2d61fa2108610d57b",
+      "working_tree_bytes": 3696,
+      "classification": "HEAD-tracked, may have WIP"
+    },
+    {
+      "path": "docs/adr/ADR-001-canonical-wire.md",
+      "head_blob": "17fe2b3411a6a57287164f4c60c34ecd9079e411",
+      "working_tree_sha256": "971f142a5f1b32ced87e5f11a74bf1abab3cfc4efc4b784226a22e30b8aec07d",
+      "working_tree_bytes": 14307,
+      "classification": "HEAD-tracked, may have WIP"
+    },
+    {
+      "path": "docs/adr/ADR-002-ble-record-layer.md",
+      "head_blob": "8a826dc611ab2642fdebd8ef665aa2f172ad907e",
+      "working_tree_sha256": "02e3cb18fdd46b14c4734017a85a41ea238057f74478044590d6cb8aabec625c",
+      "working_tree_bytes": 14652,
+      "classification": "HEAD-tracked, may have WIP"
+    },
+    {
+      "path": "docs/adr/ADR-003-identity-and-sealed-sender.md",
+      "head_blob": "c8ab1c3d55b41a13ef231e3dab94ea0840edf361",
+      "working_tree_sha256": "cbb5e134b4ad383dd69c78987d1fd5c3de3ae8f1eaaeda4f5f83848d63a65631",
+      "working_tree_bytes": 50193,
+      "classification": "HEAD-tracked, may have WIP"
+    },
+    {
+      "path": "docs/adr/ADR-004-durable-store.md",
+      "head_blob": "59d76e337c0f32e3e71cf1992bb36d868eade29c",
+      "working_tree_sha256": "023b661f2e6029a7f6c97d2881152e6a7b914b363a9039d21d6646b1790d8f60",
+      "working_tree_bytes": 14278,
+      "classification": "HEAD-tracked, may have WIP"
+    },
+    {
+      "path": "docs/adr/ADR-006-bulk-plane.md",
+      "head_blob": "241ba4e099209a9963e85924feb0111b19436287",
+      "working_tree_sha256": "1544ef54f21f9644949f848619688c2c0a8c2aac10a48544c94cbe05bb2640ec",
+      "working_tree_bytes": 7196,
+      "classification": "HEAD-tracked, may have WIP"
+    },
+    {
+      "path": "docs/adr/ADR-007-cipher-suite.md",
+      "head_blob": "999164a77cd0e5ef8ce6cf50482a9c7907393548",
+      "working_tree_sha256": "ffe3658b1cdc07b4fe0d38ef9a5d9a2f7c37903320037ad820d6dea997b76d2d",
+      "working_tree_bytes": 7265,
+      "classification": "HEAD-tracked, may have WIP"
+    },
+    {
+      "path": "docs/architecture/ADR-0002-initial-release-surface.md",
+      "head_blob": "8adc6626c2b935da6749532891dfa36e2cfa5569",
+      "working_tree_sha256": "d19fc7ad526dfeac3697f5435b4e78f6a48e83015960a7306b9ed62eb0e32832",
+      "working_tree_bytes": 413,
+      "classification": "HEAD-tracked, may have WIP"
+    },
+    {
+      "path": "docs/editorial/REVIEW.md",
+      "head_blob": "258be6b7a87da6759cd3200f4951e1ccda1a9f97",
+      "working_tree_sha256": "479cee7ffe1ba2f00a808dd5ec45749f96307dde458e3f4d765f137876c02899",
+      "working_tree_bytes": 3028,
+      "classification": "HEAD-tracked, may have WIP"
+    },
+    {
+      "path": "docs/packaging/MODELS.lock.json",
+      "head_blob": "1845ab9314cd126f104da1f4b0a34ac2d5d58f13",
+      "working_tree_sha256": "6134de06bcd41bd79816ac0f38610b85b9dcbec4a135854860ad99248864ed1a",
+      "working_tree_bytes": 1404,
+      "classification": "HEAD-tracked, may have WIP"
+    },
+    {
+      "path": "docs/packaging/TIERS.md",
+      "head_blob": "2b95f62ffbfdc2ba9f73d57529752b82c03b1f89",
+      "working_tree_sha256": "85ea4853aa4e761671dc2a3227fe9bd0ab83b7fa10ef142c17dce04a77cefff3",
+      "working_tree_bytes": 4779,
+      "classification": "HEAD-tracked, may have WIP"
+    },
+    {
+      "path": "docs/production/ANDROID_TOOLCHAIN_CONTRACT.md",
+      "head_blob": "74370eb82c82c43f85409a38a2ebf55a961ef023",
+      "working_tree_sha256": "5a6dd26bedc4374d6d31055ba888fb8ff193a4f7c06221bb32297d852c519e7e",
+      "working_tree_bytes": 4616,
+      "classification": "HEAD-tracked, may have WIP"
+    },
+    {
+      "path": "docs/production/BASELINE.md",
+      "head_blob": "dcddc87e863e205a00ff11e790473e461a6b2b53",
+      "working_tree_sha256": "9a2d43190c2e798580698d3ae5c1f80f2ae0c2f388f1fe915ba52fdcfd9cfe2c",
+      "working_tree_bytes": 1356,
+      "classification": "HEAD-tracked, may have WIP"
+    },
+    {
+      "path": "docs/production/HARDWARE_CASE_0.md",
+      "head_blob": "a961f5fd3c4e510eb851cbce3e448cae62792067",
+      "working_tree_sha256": "c218d42806d2dc276d2f461f48b0735a9183bbfe121ee88ca49a21ea06f86fbd",
+      "working_tree_bytes": 487,
+      "classification": "HEAD-tracked, may have WIP"
+    },
+    {
+      "path": "docs/production/PLATFORM_VERIFICATION_MATRIX.md",
+      "head_blob": "23382b077471834849747007f9af61c630b20da9",
+      "working_tree_sha256": "f9912baf3b03a638dfc979bdb6b73bd58a06023230f9e3016df3291ff0697d53",
+      "working_tree_bytes": 1853,
+      "classification": "HEAD-tracked, may have WIP"
+    },
+    {
+      "path": "docs/production/RECOVERY.md",
+      "head_blob": "dba3b862285f36342b8d001f191791e2afb91236",
+      "working_tree_sha256": "284852a7988acff491697ac6c10df9510e8dae04bdf9f403881372fda58fb866",
+      "working_tree_bytes": 371,
+      "classification": "HEAD-tracked, may have WIP"
+    },
+    {
+      "path": "docs/production/RELEASE_GATES_STATUS.json",
+      "head_blob": "86b3d2270d37b0d5b1ec1327ffc794d240d1c259",
+      "working_tree_sha256": "cf1c999ac9c27a08d42e3b2a96210a4e7f1bdd35a71c5e8a513d0602bf1ccedc",
+      "working_tree_bytes": 6009,
+      "classification": "HEAD-tracked, may have WIP"
+    },
+    {
+      "path": "docs/production/VERIFICATION_MATRIX.md",
+      "head_blob": "db6319369ed178591822b5a85d6ac5325187d7fb",
+      "working_tree_sha256": "e42b07ecd84bd39de69c3e9dfe2d38134108c733f351802dd0257311a4f85a25",
+      "working_tree_bytes": 5772,
+      "classification": "HEAD-tracked, may have WIP"
+    },
+    {
+      "path": "ios/Godstone/Godstone.entitlements",
+      "head_blob": "27b2a4edf2cae854cf038e66ce411e92a0921db7",
+      "working_tree_sha256": "76b8c1559cfe1c951489e8aab0460dbfc680771db911e105dc91fd30886ac3cf",
+      "working_tree_bytes": 181,
+      "classification": "HEAD-tracked, may have WIP"
+    },
+    {
+      "path": "ios/Godstone/Info.plist",
+      "head_blob": "862a5d95a89bae3d4fcb6db41abc1fdd1b8707e5",
+      "working_tree_sha256": "3cbdc76f77fca760d9e15460f420a20a727ae36ff7531ca599a85e359627e9d1",
+      "working_tree_bytes": 1709,
+      "classification": "HEAD-tracked, may have WIP"
+    },
+    {
+      "path": "ios/Godstone/Package.swift",
+      "head_blob": "7f0e2df1c903f63aadd6412d7d2dd6e0b00f5eb5",
+      "working_tree_sha256": "edf2ad0fc26282874eaf6b4d4e623c8a30782414bd700c4d39571b8596e8f24e",
+      "working_tree_bytes": 1156,
+      "classification": "HEAD-tracked, may have WIP"
+    },
+    {
+      "path": "ios/Godstone/PrivacyInfo.xcprivacy",
+      "head_blob": "2a7dbc406be05c2cdbeec53f50bb9b3114ce67f0",
+      "working_tree_sha256": "3b7f3ac11860b287ba857970f4fde77d833ff1476ee0d112b79e1de52bf432e8",
+      "working_tree_bytes": 379,
+      "classification": "HEAD-tracked, may have WIP"
+    },
+    {
+      "path": "ios/Godstone/Sources/App/AppContainer.swift",
+      "head_blob": "3b4f22d623c29ccdec853f7b0d5ec4434c57414b",
+      "working_tree_sha256": "bddb756db736ef35bf59b4c410887d2fe73a48211d9ad0f865e27fbfa4fd519f",
+      "working_tree_bytes": 375,
+      "classification": "HEAD-tracked, may have WIP"
+    },
+    {
+      "path": "ios/Godstone/Sources/App/ArchiveView.swift",
+      "head_blob": "983d3f312af75fcf92c1bd1bb7706601cad0bf74",
+      "working_tree_sha256": "f3c8868d987047436e24d3fd28031037a25112ae5b55edd51d84af466a93724a",
+      "working_tree_bytes": 7377,
+      "classification": "HEAD-tracked, may have WIP"
+    },
+    {
+      "path": "ios/Godstone/Sources/App/MeshView.swift",
+      "head_blob": "20463d72ba71e5265d7ce63571474ebda1bf52cb",
+      "working_tree_sha256": "c56767b35bc59688417d8198b6f4d52eab75be069f44fadd847221a70a20ddb1",
+      "working_tree_bytes": 2173,
+      "classification": "HEAD-tracked, may have WIP"
+    },
+    {
+      "path": "ios/Godstone/Sources/App/RootView.swift",
+      "head_blob": "1af280735e25b5cb212914d7986002a51c1c1755",
+      "working_tree_sha256": "aba86bcabe71c2f848c0cd57dd1299c4345f4abf4714db2afb36b7badcdb36e6",
+      "working_tree_bytes": 527,
+      "classification": "HEAD-tracked, may have WIP"
+    },
+    {
+      "path": "ios/Godstone/Sources/App/SosView.swift",
+      "head_blob": "99ee272caf93df735ff421bd37e865cfc66a9972",
+      "working_tree_sha256": "37344d2d85d487ccd658de0d293dd77149c325935fc959c6effd7f98390a4eb7",
+      "working_tree_bytes": 3160,
+      "classification": "HEAD-tracked, may have WIP"
+    },
+    {
+      "path": "ios/Godstone/Sources/GodstoneCore/ArchiveReaderModel.swift",
+      "head_blob": null,
+      "working_tree_sha256": "545e82f190fe810e57899a512f04efa431e755aa1f594ddf9e3cff924cc45c1a",
+      "working_tree_bytes": 2745,
+      "classification": "WIP-only or proposed; not baseline source"
+    },
+    {
+      "path": "ios/Godstone/Sources/GodstoneCore/ArchiveRepository.swift",
+      "head_blob": "06096861f1ea15769071c109e580e6c30b30d2d8",
+      "working_tree_sha256": "2ff4eef196d9dd3522eb937c27fbd03b96f6b2823751956b8e0aea126a6dfd03",
+      "working_tree_bytes": 17056,
+      "classification": "HEAD-tracked, may have WIP"
+    },
+    {
+      "path": "ios/Godstone/Sources/GodstoneCore/OracleOrchestration.swift",
+      "head_blob": "9b335bdbaa4d95df0428e3562326f44536a197d5",
+      "working_tree_sha256": "dc3027eb8f1f32e2bd3af5279e15f2099d5ebea37ff3e80e0afe83034dfe004c",
+      "working_tree_bytes": 4762,
+      "classification": "HEAD-tracked, may have WIP"
+    },
+    {
+      "path": "ios/Godstone/Sources/GodstoneCore/Retriever.swift",
+      "head_blob": "81879c70d4e260cf4c515ceeeb771f1e44f0dc84",
+      "working_tree_sha256": "896467a4ad83f1b6ac0931d0126764553c7ca7c8299bf004fb1d8e269e703279",
+      "working_tree_bytes": 2220,
+      "classification": "HEAD-tracked, may have WIP"
+    },
+    {
+      "path": "ios/Godstone/Sources/GodstoneLLM/LlamaRunner.swift",
+      "head_blob": "4487ec7e9d79745af2c4eaad35e4275ed8bc64ef",
+      "working_tree_sha256": "a92854b582b171e9490595a34ccfa7f68a317b4897639600733eb389bb2ceca3",
+      "working_tree_bytes": 4566,
+      "classification": "HEAD-tracked, may have WIP"
+    },
+    {
+      "path": "ios/Godstone/Sources/GodstoneLLM/ModelManager.swift",
+      "head_blob": "92a6f66ecaa2b62a178b5aa7bbd75907374239e5",
+      "working_tree_sha256": "507235b4f55790b340f8ba5fe97874c892b99403f8d6ef9cd65d6aacffd83195",
+      "working_tree_bytes": 5872,
+      "classification": "HEAD-tracked, may have WIP"
+    },
+    {
+      "path": "ios/Godstone/Sources/GodstoneLLM/RagPipeline.swift",
+      "head_blob": "c339ce354e1b6baaa94e31937d99568ddf86fadc",
+      "working_tree_sha256": "5e98d0ba6e9f1b1808e4baeddcada78b3c095342c2f0ba6c3de000b7656ea6ab",
+      "working_tree_bytes": 5944,
+      "classification": "HEAD-tracked, may have WIP"
+    },
+    {
+      "path": "ios/Godstone/Sources/GodstoneLLMBridge/LlamaBridge.mm",
+      "head_blob": "19aa1828948463a83efe3ca41e8cb52b17d511ae",
+      "working_tree_sha256": "ef912aeef804524b39744fc3a6b07ef4948dd96023782204dd734a866793b88a",
+      "working_tree_bytes": 8243,
+      "classification": "HEAD-tracked, may have WIP"
+    },
+    {
+      "path": "ios/Godstone/Sources/GodstoneMesh/AckAuthenticator.swift",
+      "head_blob": "a537ed7192c4094c5e2569d39d47535fbaa439e3",
+      "working_tree_sha256": "40b6ab9d90ce32d2a247f3c2f03429b6c248ae2c8b0a4b2c8fa988240808c3b2",
+      "working_tree_bytes": 6994,
+      "classification": "HEAD-tracked, may have WIP"
+    },
+    {
+      "path": "ios/Godstone/Sources/GodstoneMesh/BleConnection.swift",
+      "head_blob": "bbb461d4e3fe765051a13c50477535457f4a4f35",
+      "working_tree_sha256": "2f8f91c92eb274a49835cbe11538aee18138c4e5f61af11f0a42b48d1d8c3ce6",
+      "working_tree_bytes": 9529,
+      "classification": "HEAD-tracked, may have WIP"
+    },
+    {
+      "path": "ios/Godstone/Sources/GodstoneMesh/BleOrchestrationDriver.swift",
+      "head_blob": "deeec96c28ebafded35c575bea44aa4db4230f10",
+      "working_tree_sha256": "138a1aea527cf306caf06dcc9049c13acddf1adee5bce72df4620a78f04c51e2",
+      "working_tree_bytes": 34226,
+      "classification": "HEAD-tracked, may have WIP"
+    },
+    {
+      "path": "ios/Godstone/Sources/GodstoneMesh/BleRecord.swift",
+      "head_blob": "61b8216e7c593fe52329e24c96d796d7109d43dc",
+      "working_tree_sha256": "b713ef035e82db0df60e2048f694121ba2b7d91fbe1ff31d986a93eb585247f5",
+      "working_tree_bytes": 14458,
+      "classification": "HEAD-tracked, may have WIP"
+    },
+    {
+      "path": "ios/Godstone/Sources/GodstoneMesh/BleTransport.swift",
+      "head_blob": "540852f71594db5730e1a32984b7013aafd23e14",
+      "working_tree_sha256": "bd150c777ac50e29f01ee22647278187f98e8d0cb0e13256d74f3ebe8b785483",
+      "working_tree_bytes": 56651,
+      "classification": "HEAD-tracked, may have WIP"
+    },
+    {
+      "path": "ios/Godstone/Sources/GodstoneMesh/BoundRecipientKeyResolver.swift",
+      "head_blob": "bcf4a49b3c730c096c5204762c6e7a793035f85e",
+      "working_tree_sha256": "bd07e6a13aa727576776f00056bc5acae3e8656f8c7b41371b3c3349005d50e2",
+      "working_tree_bytes": 2068,
+      "classification": "HEAD-tracked, may have WIP"
+    },
+    {
+      "path": "ios/Godstone/Sources/GodstoneMesh/BulkTransport.swift",
+      "head_blob": "ac0cf642c0fedec00c351eb6becdcdec70831d0b",
+      "working_tree_sha256": "82c78d36b22df97a3415ffe42caf86988f1c8304b9f881dd7bbdb7d7b104ac76",
+      "working_tree_bytes": 926,
+      "classification": "HEAD-tracked, may have WIP"
+    },
+    {
+      "path": "ios/Godstone/Sources/GodstoneMesh/DeliveryTracker.swift",
+      "head_blob": "1506cf472328d7d14ce872cd4e6c4b786aa8833e",
+      "working_tree_sha256": "9c0fc19d5cf08f4db456bbd988be67bee654e6629f49743db95a4834fca6ff69",
+      "working_tree_bytes": 31439,
+      "classification": "HEAD-tracked, may have WIP"
+    },
+    {
+      "path": "ios/Godstone/Sources/GodstoneMesh/LinkInfoSnapshotAuthority.swift",
+      "head_blob": "a6279bddcbf8e56466fb47e9d38d23300b8453e0",
+      "working_tree_sha256": "236e9e9ea4e850a15efc534e11a5abd2a7e49fd457af52678334acb5679a3d19",
+      "working_tree_bytes": 4237,
+      "classification": "HEAD-tracked, may have WIP"
+    },
+    {
+      "path": "ios/Godstone/Sources/GodstoneMesh/LocalIdentityStateV1.swift",
+      "head_blob": "8cab081eddd2415cb8878cf19dd033ef8ff39291",
+      "working_tree_sha256": "497efaf27954dec643946dccd1e4bca1fa429024f44eb703fe523c6b8d6029c5",
+      "working_tree_bytes": 5338,
+      "classification": "HEAD-tracked, may have WIP"
+    },
+    {
+      "path": "ios/Godstone/Sources/GodstoneMesh/MeshCoordinator.swift",
+      "head_blob": "5caa2b6b14d8cdff25f7480d7328f66ad85ec4ff",
+      "working_tree_sha256": "41861aaec4e0096e90822cc44c2377c61c727eecfd4b621aefbac14f87a6ae32",
+      "working_tree_bytes": 1946,
+      "classification": "HEAD-tracked, may have WIP"
+    },
+    {
+      "path": "ios/Godstone/Sources/GodstoneMesh/MeshNode.swift",
+      "head_blob": "99c61f2ac7e823eaa9e611a45da780621aaeb3bf",
+      "working_tree_sha256": "7437fc111457693f80ebd77f30719dd90e9fcdb5c7112bbda90329ba35a21ffc",
+      "working_tree_bytes": 15016,
+      "classification": "HEAD-tracked, may have WIP"
+    },
+    {
+      "path": "ios/Godstone/Sources/GodstoneMesh/MeshRuntime.swift",
+      "head_blob": "bf8f4d76e942398f7c83e3d6ddec18bcc7db6b32",
+      "working_tree_sha256": "7864dd5fa4747245224d657030d6e4fdd7091492037ad9caa1bd8aa46ce6e2b0",
+      "working_tree_bytes": 6858,
+      "classification": "HEAD-tracked, may have WIP"
+    },
+    {
+      "path": "ios/Godstone/Sources/GodstoneMesh/MessageStore.swift",
+      "head_blob": "6307f531e910bbae43c286233958988272a641ea",
+      "working_tree_sha256": "0b81eae7f11b6131756f0815b0d3ac57b698794699cbf9e99d74192550a8f902",
+      "working_tree_bytes": 80778,
+      "classification": "HEAD-tracked, may have WIP"
+    },
+    {
+      "path": "ios/Godstone/Sources/GodstoneMesh/NoiseSession.swift",
+      "head_blob": "8a1fa8c253ed5abdca5bbb29f9f8ec898ef1f983",
+      "working_tree_sha256": "9cdf14aba8f851ecccc4033aef03f3c1c9191e80206eab2db0643f42eaa70495",
+      "working_tree_bytes": 14585,
+      "classification": "HEAD-tracked, may have WIP"
+    },
+    {
+      "path": "ios/Godstone/Sources/GodstoneMesh/PanicWipe.swift",
+      "head_blob": "008b9302d1652429f9f8b395ceaad152bb00799b",
+      "working_tree_sha256": "0556e68030247b075b3aa5fbbd0f5931860f7fb600dbd9dfaffce634b1d80d9f",
+      "working_tree_bytes": 10734,
+      "classification": "HEAD-tracked, may have WIP"
+    },
+    {
+      "path": "ios/Godstone/Sources/GodstoneMesh/PeerIdentityRepository.swift",
+      "head_blob": "c6488d77fa2eac082cd07164750750144364018a",
+      "working_tree_sha256": "fd1bd78adc616081e49e8c7fb1efe4d38ddd889a053460d0bf02798cbcf82fd5",
+      "working_tree_bytes": 21903,
+      "classification": "HEAD-tracked, may have WIP"
+    },
+    {
+      "path": "ios/Godstone/Sources/GodstoneMesh/PeerIdentityStore.swift",
+      "head_blob": "3c17b1100339c1d3d5a178015122344905cd86c8",
+      "working_tree_sha256": "b11bb55bdb263eca5efb9426fa15eb9b6f07bd40530c85cae111741a12d7dd30",
+      "working_tree_bytes": 31690,
+      "classification": "HEAD-tracked, may have WIP"
+    },
+    {
+      "path": "ios/Godstone/Sources/GodstoneMesh/Router.swift",
+      "head_blob": "b98e0d2e139ccdc3a4604600a88c55dbf86c5349",
+      "working_tree_sha256": "6931e36a03df5d6dc07db009d11b55706c63065c77f5961e48a97fe1ae8777c6",
+      "working_tree_bytes": 12391,
+      "classification": "HEAD-tracked, may have WIP"
+    },
+    {
+      "path": "ios/Godstone/Sources/GodstoneMesh/RuntimeLifecycleGate.swift",
+      "head_blob": "a4d33c70f3fede6eea1b9ed495e8d86a9ca7e97b",
+      "working_tree_sha256": "4006a097a22255a8abb574c0b3b379ce774963e337d35f88e65fb46f13102fb4",
+      "working_tree_bytes": 4286,
+      "classification": "HEAD-tracked, may have WIP"
+    },
+    {
+      "path": "ios/Godstone/Sources/GodstoneMesh/SealedSender.swift",
+      "head_blob": "f1926a5d9cb170a40d957cb569caaa1815628985",
+      "working_tree_sha256": "91d85ade2b2f424b202d4a669b19145d3eecdd7589613e99c1b50a906b4a2d07",
+      "working_tree_bytes": 4606,
+      "classification": "HEAD-tracked, may have WIP"
+    },
+    {
+      "path": "ios/Godstone/Sources/GodstoneMesh/SessionManager.swift",
+      "head_blob": "a57beb0dfe14061778151fd3fa71df145172476f",
+      "working_tree_sha256": "4afb7c798cb443cdd30e4b8019d5b79afc20b33afb81cb6df550df6b8adf9cc3",
+      "working_tree_bytes": 11418,
+      "classification": "HEAD-tracked, may have WIP"
+    },
+    {
+      "path": "ios/Godstone/Sources/GodstoneMesh/SosFrameValidator.swift",
+      "head_blob": "f3018162eb4218947b7f1393d955ddc396ef909d",
+      "working_tree_sha256": "3bc271aa986949690e475891a210cd7b11b8d1f2493b932801382c7d5a2474be",
+      "working_tree_bytes": 3366,
+      "classification": "HEAD-tracked, may have WIP"
+    },
+    {
+      "path": "ios/Godstone/Sources/GodstoneMesh/SqliteDeliveryRepository.swift",
+      "head_blob": "31fd9d2d7f587f3fa7f6d3ff85121640a62ad510",
+      "working_tree_sha256": "d0b554157fb0d9626a68550349f10ee4d31eb72dce1d2ba42fd7024828c2657f",
+      "working_tree_bytes": 20801,
+      "classification": "HEAD-tracked, may have WIP"
+    },
+    {
+      "path": "ios/Godstone/Sources/GodstoneMesh/TrustedHandshakeController.swift",
+      "head_blob": "1147cd6f923709c825fafe03f68a13eb4b6bf9e3",
+      "working_tree_sha256": "25e1d3b3916713678f2142f3b6409eda06c31ff55f453f881c5513339d4435b2",
+      "working_tree_bytes": 10281,
+      "classification": "HEAD-tracked, may have WIP"
+    },
+    {
+      "path": "ios/Godstone/Tests/GodstoneCoreTests/ArchiveReaderModelTests.swift",
+      "head_blob": null,
+      "working_tree_sha256": "17d47eab73fadda75c7dc47fba43616412710c4dad708abab8e5643d93f0902d",
+      "working_tree_bytes": 2773,
+      "classification": "WIP-only or proposed; not baseline source"
+    },
+    {
+      "path": "ios/Godstone/Tests/GodstoneMeshTests/NoiseSessionTests.swift",
+      "head_blob": "43380797457eb676e5c0860d78fa971c58a417d8",
+      "working_tree_sha256": "b289fb1a62e3bc7b47dcfa795ead3691bfa312000fa600d1541f8648f0858b8d",
+      "working_tree_bytes": 7531,
+      "classification": "HEAD-tracked, may have WIP"
+    },
+    {
+      "path": "ios/project.yml",
+      "head_blob": "a4fdbd58ff616b38afe5191a692b44b709881a1a",
+      "working_tree_sha256": "42d9c66c97f823298e374e70374a04f7a92f6c0a730cd116158ff51b088ae751",
+      "working_tree_bytes": 3931,
+      "classification": "HEAD-tracked, may have WIP"
+    },
+    {
+      "path": "meshsim/run.py",
+      "head_blob": "89195b8caa58e2c121d699c2905897ef3fb2c04d",
+      "working_tree_sha256": "85d6dec1da093ff8b88e48c70e33af2a8b4894589399f8b24a54fb3835cbd004",
+      "working_tree_bytes": 16072,
+      "classification": "HEAD-tracked, may have WIP"
+    },
+    {
+      "path": "requirements.lock",
+      "head_blob": "2b10dd7662dacde1254c40f50171da8c9d385c57",
+      "working_tree_sha256": "1299a9508b866818e7c0dcde2335874ef9e5d70625f3b15167fd5a399907eedb",
+      "working_tree_bytes": 202,
+      "classification": "HEAD-tracked, may have WIP"
+    },
+    {
+      "path": "safety/gate.py",
+      "head_blob": "a90cc198e28a8f1cbfec96e44e065cd77f983574",
+      "working_tree_sha256": "799a8960101afc0487b45b39be4c7eeb25579152d1d33e939e191b24df7781d6",
+      "working_tree_bytes": 16851,
+      "classification": "HEAD-tracked, may have WIP"
+    },
+    {
+      "path": "safety/probes.py",
+      "head_blob": "7cdb8e1774d43fea86837403034e26476af2fe37",
+      "working_tree_sha256": "6f8c38824785434609c45737571b9b93c5ecff7cfe896e8f6bb4e11efcf45b6e",
+      "working_tree_bytes": 4496,
+      "classification": "HEAD-tracked, may have WIP"
+    },
+    {
+      "path": "scripts/check_android_toolchain.py",
+      "head_blob": "a07fd79cf2dc81ba7c665d42dabf067bce2c0a6f",
+      "working_tree_sha256": "ffab04f3b77b59089c1af6c1ded01f34068221dabf8a8840b14a2ca996c2c658",
+      "working_tree_bytes": 17475,
+      "classification": "HEAD-tracked, may have WIP"
+    },
+    {
+      "path": "scripts/fetch_models.sh",
+      "head_blob": "9f51db77c397f1ee132395327e17336c146b5857",
+      "working_tree_sha256": "efff19ae057c5b98ca719923bacd501baab9f4201f253762061a13bf815e8d5a",
+      "working_tree_bytes": 4498,
+      "classification": "HEAD-tracked, may have WIP"
+    },
+    {
+      "path": "scripts/inspect_android_artifacts.py",
+      "head_blob": "4ad7e29686416a0ef37f67820e675adad2524568",
+      "working_tree_sha256": "e0c913b081509326d06a1d8df8e5fca505361d12993a3da46d23be3c3dbc4c54",
+      "working_tree_bytes": 10420,
+      "classification": "HEAD-tracked, may have WIP"
+    },
+    {
+      "path": "scripts/prepare_release_assets.py",
+      "head_blob": "03ca5067048142860933fd8086f62cd80ac75752",
+      "working_tree_sha256": "fa1fe05ecd126e5d111a59cafdf458d3bc8329e3eb9aabd0f9ca90fde50f2e80",
+      "working_tree_bytes": 8934,
+      "classification": "HEAD-tracked, may have WIP"
+    },
+    {
+      "path": "scripts/quantise.sh",
+      "head_blob": "8ccfccec33583f4e94e0187d628a61ea09660277",
+      "working_tree_sha256": "81b5d15be765820304ec6dadf9c4a19c0bef275f4cfb8e5806c8d520cf64db56",
+      "working_tree_bytes": 2041,
+      "classification": "HEAD-tracked, may have WIP"
+    },
+    {
+      "path": "scripts/sync_ios_foundation_package.py",
+      "head_blob": "5687811524a4ccb39ae0cf07347c8b809aea892c",
+      "working_tree_sha256": "0bed2d6d24fbd2bb9fab1b6e9a7427b9ca56fe3ef5767df6d0d749c070deb4ef",
+      "working_tree_bytes": 4807,
+      "classification": "HEAD-tracked, may have WIP"
+    },
+    {
+      "path": "transport/role_matrix.md",
+      "head_blob": null,
+      "working_tree_sha256": "4d82b76425493e578ffff89786ae80d2b3706a96f75af8e6d91b37804a185e6d",
+      "working_tree_bytes": 3949,
+      "classification": "WIP-only or proposed; not baseline source"
+    },
+    {
+      "path": "wire/codegen.py",
+      "head_blob": "b76380d0e1262546a96002abad3080f5efc71e78",
+      "working_tree_sha256": "55a6eb33bcec78fbb62fea62d8d78b15bfa600d019904f14e7e5629a2b1846c5",
+      "working_tree_bytes": 29087,
+      "classification": "HEAD-tracked, may have WIP"
+    },
+    {
+      "path": "wire/wire_v2.yaml",
+      "head_blob": "73f31d8e37602b2dbc704c2844ad0f8799e4cc7d",
+      "working_tree_sha256": "f6fdc077a3a06366ed6437a45c130233bbf5eac438f03c4224b07f3b618058fe",
+      "working_tree_bytes": 4502,
+      "classification": "HEAD-tracked, may have WIP"
+    }
+  ],
+  "scope": "Read-only planning source fingerprints; neither application verification nor proof that WIP is committed."
+}

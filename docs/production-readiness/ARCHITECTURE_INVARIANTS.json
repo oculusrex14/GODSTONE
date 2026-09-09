@@ -1,0 +1,115 @@
+{
+  "authority": {
+    "attachment_status": "seeded-in-T01-formalised-in-T03",
+    "master_blob_sha1": "7ab7ab042f46dcad974b4756be66aa400530c0f7",
+    "master_file_sha256": "685456b378662b0a40a53a6abc810041e37daf97b213f3efeb6cea879363934e",
+    "master_import_path": "docs/production-readiness/MASTER_IMPLEMENTATION_BLUEPRINT.md",
+    "section": 5
+  },
+  "ble_record": {
+    "encrypt_then_fragment": true,
+    "fragmentation": "balanced-stride",
+    "header_bytes": 8,
+    "max_fragments": 64,
+    "max_incomplete": 4,
+    "max_record_bytes": 16384,
+    "sequence_bits": 8,
+    "timeout_note": "Frozen implementations use sliding lastActivity; proposed connection-owned absolute lease is a separate local resource control.",
+    "timeout_seconds": 30
+  },
+  "entries": [
+    {
+      "applies_to_profiles": [
+        "LIGHT_ARCHIVE_ONLY"
+      ],
+      "authority_blob_sha": null,
+      "authority_path": "docs/production-readiness/ARCHITECTURE_INVARIANTS.json",
+      "device_case_ids": [],
+      "id": "INV-READINESS-FALSE",
+      "integration_case_ids": [],
+      "mutation_ids": [],
+      "owner": "build/release controller",
+      "production_paths": [
+        "android",
+        "ios"
+      ],
+      "statement": "Android LINK_LAYER_READY=false and iOS linkLayerReady=false remain false; no task may flip them.",
+      "status": "ACCEPTED",
+      "unit_case_ids": []
+    },
+    {
+      "applies_to_profiles": [
+        "LIGHT_ARCHIVE_ONLY"
+      ],
+      "authority_blob_sha": null,
+      "authority_path": "docs/production-readiness/ARCHITECTURE_INVARIANTS.json",
+      "device_case_ids": [],
+      "id": "INV-BLE-RECORD-FROZEN",
+      "integration_case_ids": [],
+      "mutation_ids": [],
+      "owner": "link layer",
+      "production_paths": [
+        "wire"
+      ],
+      "statement": "BLE record constants are frozen: header 8, max_fragments 64, max_record_bytes 16384, max_incomplete 4, timeout 30s, sequence_bits 8, balanced-stride, encrypt-then-fragment.",
+      "status": "ACCEPTED",
+      "unit_case_ids": []
+    },
+    {
+      "applies_to_profiles": [
+        "LIGHT_ARCHIVE_ONLY"
+      ],
+      "authority_blob_sha": null,
+      "authority_path": "docs/production-readiness/ARCHITECTURE_INVARIANTS.json",
+      "device_case_ids": [],
+      "id": "INV-LINKINFO-FROZEN",
+      "integration_case_ids": [],
+      "mutation_ids": [],
+      "owner": "link layer",
+      "production_paths": [
+        "wire"
+      ],
+      "statement": "LinkInfo is 13 bytes, protocol_version 2, UUID 6764A004-9A5E-4C7B-B0A1-3E5D8C2F7A10, unsigned-lexicographic election, equal fails closed.",
+      "status": "ACCEPTED",
+      "unit_case_ids": []
+    },
+    {
+      "applies_to_profiles": [
+        "LAB_MESH",
+        "LAB_ORACLE"
+      ],
+      "authority_blob_sha": null,
+      "authority_path": "docs/production-readiness/ARCHITECTURE_INVARIANTS.json",
+      "device_case_ids": [],
+      "id": "INV-NOISE-PROPOSED",
+      "integration_case_ids": [],
+      "mutation_ids": [],
+      "owner": "crypto",
+      "production_paths": [
+        "crypto"
+      ],
+      "statement": "Noise_XX_25519_ChaChaPoly_BLAKE2s suite, prologue GMP2; DATA envelope PROPOSED pending independent A06 review.",
+      "status": "PROPOSED",
+      "unit_case_ids": []
+    }
+  ],
+  "link_info": {
+    "bytes": 13,
+    "election": "unsigned-lexicographic smaller hint retains central/initiator; equal fails closed",
+    "protocol_version": 2,
+    "uuid": "6764A004-9A5E-4C7B-B0A1-3E5D8C2F7A10"
+  },
+  "noise": {
+    "data_envelope_status": "PROPOSED explicit BE-u64 nonce plus ciphertext/tag, internal ChaCha nonce zero32+LE64",
+    "prologue": "GMP2",
+    "suite": "Noise_XX_25519_ChaChaPoly_BLAKE2s"
+  },
+  "planning_baseline_sha": "b5c3d3d394b70cf356cdde33b47511dad7cbb95c",
+  "readiness": {
+    "android_LINK_LAYER_READY": false,
+    "ios_linkLayerReady": false
+  },
+  "schema_version": 1,
+  "shipping_profile": "LIGHT_ARCHIVE_ONLY",
+  "source": "MASTER_IMPLEMENTATION_BLUEPRINT.md section5; T03 must attach canonical source/blob/test IDs"
+}

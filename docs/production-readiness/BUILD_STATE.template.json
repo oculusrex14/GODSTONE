@@ -1,0 +1,32 @@
+{
+  "schema_version": 1,
+  "planning_baseline_sha": "b5c3d3d394b70cf356cdde33b47511dad7cbb95c",
+  "plan_sha256": "685456b378662b0a40a53a6abc810041e37daf97b213f3efeb6cea879363934e",
+  "task_catalog_sha256": "b7cf90483cde63b67099a996d2139823e79d029e2b2481d81a756da70c3ef97a",
+  "branch": "codex/production-blueprint",
+  "last_observed_head": "b5c3d3d394b70cf356cdde33b47511dad7cbb95c",
+  "last_code_head": "b5c3d3d394b70cf356cdde33b47511dad7cbb95c",
+  "phase": "P0",
+  "current_task": null,
+  "completed_tasks": {},
+  "in_progress": null,
+  "failed_attempts": [],
+  "unresolved_defects": [],
+  "latest_verification": {},
+  "external_blockers": [
+    "A06",
+    "APPROVED_CONTENT",
+    "NATIVE_MODELS",
+    "HARDWARE",
+    "SIGNING"
+  ],
+  "next_task": "T01",
+  "warnings_for_next_invocation": [
+    "This is a template; initialize with actual preservation/continuation state.",
+    "Preserve original codex/archive-reliability dirty checkout and untracked WIP.",
+    "Readiness flags remain false. D2 absent at planning baseline.",
+    "Known iOS optional Archive resource WIP has missing CpResource failure.",
+    "Current baseline is one commit beyond independent audit anchor.",
+    "No external review/model/content/device result may be fabricated."
+  ]
+}

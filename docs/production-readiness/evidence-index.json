@@ -1,0 +1,73 @@
+{
+  "evidence_root": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/T01",
+  "files": [
+    {
+      "path": "raw/head-fuller.txt",
+      "sha256": "e239bc31d2424f26b39262a367d9fc3470d380f94c83dfeb5e5b87e94868127e",
+      "size": 318
+    },
+    {
+      "path": "raw/head.txt",
+      "sha256": "e40630af0ce5bf8d49065b72a242e9f90002188f83f8add001439e7fcbae2c54",
+      "size": 41
+    },
+    {
+      "path": "raw/parent.txt",
+      "sha256": "6256e2ff5c493df645175400e7e446463f816619b6e201a178a29f559c447cd7",
+      "size": 41
+    },
+    {
+      "path": "raw/remote-tips.txt",
+      "sha256": "6f49682c8ff8ec2817e3347013143dd85aa470d825208b84fa1c007e899778c9",
+      "size": 540
+    },
+    {
+      "path": "raw/status-before.txt",
+      "sha256": "8fdab17ec265223876300f39f34880b8635de2c113f3c7e3d960433af01c1a27",
+      "size": 7271
+    },
+    {
+      "path": "raw/tracked-patch.bin",
+      "sha256": "b78e77db8ff425c2d8009abedeec7306ca1783c5a7a87d70e51982f873eed1ac",
+      "size": 114681
+    },
+    {
+      "path": "logs/unittest-t01-run1.log",
+      "sha256": "5725088ba1927073533c68413c9ae0e869089f934faf6d85fdb848d947c21702",
+      "size": 136744
+    },
+    {
+      "path": "logs/unittest-t01-run2.log",
+      "sha256": "606b0ea278db2419649deacffd609bedb8bdc31dc2792af558ca111d48912927",
+      "size": 5692
+    },
+    {
+      "path": "logs/unittest-t01-run3.log",
+      "sha256": "df208754fa36306f8bffbd9aef4d646d04bc7dbb05ba63f23b06204cdde2c88a",
+      "size": 5895
+    },
+    {
+      "path": "logs/unittest-t01-run4.log",
+      "sha256": "26c11ef518f2a5bdea743df22e0c464e415667c0181030774f785e03232637cb",
+      "size": 3013
+    },
+    {
+      "path": "inventory.json",
+      "sha256": "e7f2e905fa7d1be256d54e26854ff91aab89490209af0058dbce375cdb57f3fb",
+      "size": 29459
+    },
+    {
+      "path": "commands.json",
+      "sha256": "8f33a12467bd3e5c5990cf1da0cb073815e5c18113c594b29792f0dd0a8fc7e9",
+      "size": 10950
+    },
+    {
+      "path": "tracked-patch.bin",
+      "sha256": "b78e77db8ff425c2d8009abedeec7306ca1783c5a7a87d70e51982f873eed1ac",
+      "size": 114681
+    }
+  ],
+  "note": "nonsecret index; full logs live outside the repository",
+  "schema_version": 1,
+  "task": "T01"
+}

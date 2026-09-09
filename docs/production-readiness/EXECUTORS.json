@@ -1,0 +1,46 @@
+{
+  "executors": [
+    {
+      "architecture": "arm64",
+      "authorized_transport": "local",
+      "cache_manifest_sha": null,
+      "capabilities": [
+        "python",
+        "git",
+        "swift-xcode-when-available",
+        "android-gradle-when-available"
+      ],
+      "id": "mac-primary",
+      "last_smoke_test": {
+        "at": "2026-09-09T02:39:11+00:00",
+        "note": "preflight probed at T01 start: git/python present, no fabricated tool output",
+        "result": "pass"
+      },
+      "model_identity_if_builder": null,
+      "os": "Darwin",
+      "tool_versions": {
+        "git": "2.53.0",
+        "python3": "3.14.4"
+      },
+      "workspace_root": "/Users/oculus/Projects/GODSTONE_BUILDER"
+    },
+    {
+      "architecture": null,
+      "authorized_transport": null,
+      "cache_manifest_sha": null,
+      "capabilities": [],
+      "id": "dgx-linux",
+      "last_smoke_test": {
+        "at": "2026-09-09T02:39:11+00:00",
+        "note": "No DGX/Linux executor found by preflight probe; not fabricated. Register in T02 when discovered.",
+        "result": "absent"
+      },
+      "model_identity_if_builder": null,
+      "os": null,
+      "tool_versions": {},
+      "workspace_root": null
+    }
+  ],
+  "note": "model_identity fields stay None until T02 reads real --help/model metadata; user-requested labels are separate fields",
+  "schema_version": 1
+}

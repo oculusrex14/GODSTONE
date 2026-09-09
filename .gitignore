@@ -87,3 +87,10 @@ provenance-*.json
 *.iml
 *.swp
 .DS_Store
+
+# --- builder live runtime journal (docs/production-readiness) ---
+# Machine-owned process state, mirrored to the private evidence root outside
+# the repo. Never committed. The reviewed, nonsecret evidence-index.json IS
+# committed (section 25). This rule exists so the journal can never dirty the
+# clean-tree provenance checks.
+docs/production-readiness/.runtime-state.json

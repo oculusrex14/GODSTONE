@@ -1,0 +1,32 @@
+{
+  "schema_version": 1,
+  "planning_baseline_sha": "b5c3d3d394b70cf356cdde33b47511dad7cbb95c",
+  "readiness": {
+    "android_LINK_LAYER_READY": false,
+    "ios_linkLayerReady": false
+  },
+  "ble_record": {
+    "header_bytes": 8,
+    "max_fragments": 64,
+    "max_record_bytes": 16384,
+    "max_incomplete": 4,
+    "timeout_seconds": 30,
+    "sequence_bits": 8,
+    "fragmentation": "balanced-stride",
+    "encrypt_then_fragment": true,
+    "timeout_note": "Frozen implementations use sliding lastActivity; proposed connection-owned absolute lease is a separate local resource control."
+  },
+  "link_info": {
+    "bytes": 13,
+    "protocol_version": 2,
+    "uuid": "6764A004-9A5E-4C7B-B0A1-3E5D8C2F7A10",
+    "election": "unsigned-lexicographic smaller hint retains central/initiator; equal fails closed"
+  },
+  "noise": {
+    "suite": "Noise_XX_25519_ChaChaPoly_BLAKE2s",
+    "prologue": "GMP2",
+    "data_envelope_status": "PROPOSED explicit BE-u64 nonce plus ciphertext/tag, internal ChaCha nonce zero32+LE64"
+  },
+  "shipping_profile": "LIGHT_ARCHIVE_ONLY",
+  "source": "MASTER_IMPLEMENTATION_BLUEPRINT.md section5; T03 must attach canonical source/blob/test IDs"
+}

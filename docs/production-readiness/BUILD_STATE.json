@@ -1,0 +1,37 @@
+{
+  "branch": "codex/production-blueprint",
+  "completed_tasks": {},
+  "current_task": "T01",
+  "external_blockers": [
+    "A06",
+    "APPROVED_CONTENT",
+    "NATIVE_MODELS",
+    "HARDWARE",
+    "SIGNING"
+  ],
+  "failed_attempts": [],
+  "in_progress": {
+    "claimed_at": "2026-09-09T02:39:11+00:00",
+    "claimed_head": "b5c3d3d394b70cf356cdde33b47511dad7cbb95c",
+    "status": "IN_PROGRESS",
+    "task_id": "T01"
+  },
+  "last_code_head": "b5c3d3d394b70cf356cdde33b47511dad7cbb95c",
+  "last_observed_head": "b5c3d3d394b70cf356cdde33b47511dad7cbb95c",
+  "latest_verification": {},
+  "next_task": "T01",
+  "phase": "P0",
+  "plan_sha256": "685456b378662b0a40a53a6abc810041e37daf97b213f3efeb6cea879363934e",
+  "planning_baseline_sha": "b5c3d3d394b70cf356cdde33b47511dad7cbb95c",
+  "schema_version": 1,
+  "task_catalog_sha256": "b7cf90483cde63b67099a996d2139823e79d029e2b2481d81a756da70c3ef97a",
+  "unresolved_defects": [],
+  "warnings_for_next_invocation": [
+    "Preserve original codex/archive-reliability dirty checkout and untracked WIP.",
+    "Readiness flags remain false. D2 absent at planning baseline.",
+    "Known iOS optional Archive resource WIP has missing CpResource failure (T51).",
+    "Baseline is one commit beyond independent audit anchor 921b9390.",
+    "No external review/model/content/device result may be fabricated.",
+    "Planning snapshot counted 33 porcelain entries; live inventory recorded 156 (drift documented in BASELINE.md)."
+  ]
+}
