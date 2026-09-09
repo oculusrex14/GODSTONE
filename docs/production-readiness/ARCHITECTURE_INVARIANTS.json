@@ -1,7 +1,12 @@
 {
+  "ack_preimage": {
+    "layout": "magic(8) + msgId(16) + recipientNodeId(16)",
+    "magic": "GMP2-ACK",
+    "magic_bytes": 8,
+    "total_bytes": 40
+  },
   "authority": {
-    "attachment_status": "seeded-in-T01-formalised-in-T03",
-    "master_blob_sha1": "7ab7ab042f46dcad974b4756be66aa400530c0f7",
+    "attachment_status": "formalised-in-T03",
     "master_file_sha256": "685456b378662b0a40a53a6abc810041e37daf97b213f3efeb6cea879363934e",
     "master_import_path": "docs/production-readiness/MASTER_IMPLEMENTATION_BLUEPRINT.md",
     "section": 5
@@ -14,36 +19,76 @@
     "max_incomplete": 4,
     "max_record_bytes": 16384,
     "sequence_bits": 8,
-    "timeout_note": "Frozen implementations use sliding lastActivity; proposed connection-owned absolute lease is a separate local resource control.",
     "timeout_seconds": 30
   },
   "entries": [
     {
       "applies_to_profiles": [
-        "LIGHT_ARCHIVE_ONLY"
+        "LIGHT"
       ],
-      "authority_blob_sha": null,
-      "authority_path": "docs/production-readiness/ARCHITECTURE_INVARIANTS.json",
+      "authority_paths": [
+        {
+          "blob_sha1": "8a826dc611ab2642fdebd8ef665aa2f172ad907e",
+          "path": "docs/adr/ADR-002-ble-record-layer.md"
+        },
+        {
+          "blob_sha1": "fdb9f281c05009fe26939a9781ac7a56fb2a8bd7",
+          "path": "android/mesh/src/main/java/io/godstone/mesh/MeshNode.kt"
+        },
+        {
+          "blob_sha1": "99c61f2ac7e823eaa9e611a45da780621aaeb3bf",
+          "path": "ios/Godstone/Sources/GodstoneMesh/MeshNode.swift"
+        }
+      ],
       "device_case_ids": [],
+      "evidence": {
+        "case_ids": [
+          "test_t03.test_readiness_constants_are_false"
+        ],
+        "commands": [
+          "wire/ble_link_info_reference.py --check"
+        ]
+      },
       "id": "INV-READINESS-FALSE",
       "integration_case_ids": [],
       "mutation_ids": [],
       "owner": "build/release controller",
       "production_paths": [
-        "android",
-        "ios"
+        "android/mesh",
+        "ios/Godstone/Sources/GodstoneMesh"
       ],
-      "statement": "Android LINK_LAYER_READY=false and iOS linkLayerReady=false remain false; no task may flip them.",
+      "statement": "Android LINK_LAYER_READY=false (MeshNode/BleTransport) and iOS linkLayerReady=false (MeshNode) are frozen false constants; full link enablement stays behind them (ADR-002).",
       "status": "ACCEPTED",
       "unit_case_ids": []
     },
     {
       "applies_to_profiles": [
-        "LIGHT_ARCHIVE_ONLY"
+        "LIGHT",
+        "LAB_MESH"
       ],
-      "authority_blob_sha": null,
-      "authority_path": "docs/production-readiness/ARCHITECTURE_INVARIANTS.json",
+      "authority_paths": [
+        {
+          "blob_sha1": "8a826dc611ab2642fdebd8ef665aa2f172ad907e",
+          "path": "docs/adr/ADR-002-ble-record-layer.md"
+        },
+        {
+          "blob_sha1": "e6e83de786ac93b1920001980f36f2bb9c5ec8ff",
+          "path": "wire/ble_record_reference.py"
+        },
+        {
+          "blob_sha1": "ae6f49a8ebcfc3c482e119cdf2bbe11b9e5af494",
+          "path": "wire/ble_record_vectors.json"
+        }
+      ],
       "device_case_ids": [],
+      "evidence": {
+        "case_ids": [
+          "test_t03.test_ble_record_reference_frozen"
+        ],
+        "commands": [
+          "wire/ble_record_reference.py --check"
+        ]
+      },
       "id": "INV-BLE-RECORD-FROZEN",
       "integration_case_ids": [],
       "mutation_ids": [],
@@ -51,25 +96,146 @@
       "production_paths": [
         "wire"
       ],
-      "statement": "BLE record constants are frozen: header 8, max_fragments 64, max_record_bytes 16384, max_incomplete 4, timeout 30s, sequence_bits 8, balanced-stride, encrypt-then-fragment.",
+      "statement": "C8.4C record layer frozen: 8-byte header, 64 fragments max, 16384-byte records max, 4 concurrent incomplete, 30s timeout, 8 sequence bits, balanced-stride, encrypt-then-fragment.",
       "status": "ACCEPTED",
       "unit_case_ids": []
     },
     {
       "applies_to_profiles": [
-        "LIGHT_ARCHIVE_ONLY"
+        "LIGHT",
+        "LAB_MESH"
       ],
-      "authority_blob_sha": null,
-      "authority_path": "docs/production-readiness/ARCHITECTURE_INVARIANTS.json",
+      "authority_paths": [
+        {
+          "blob_sha1": "8a826dc611ab2642fdebd8ef665aa2f172ad907e",
+          "path": "docs/adr/ADR-002-ble-record-layer.md"
+        },
+        {
+          "blob_sha1": "ab3659b2e91d8a8b3e9b8bfb79027936043e1061",
+          "path": "wire/ble_link_info_reference.py"
+        }
+      ],
       "device_case_ids": [],
-      "id": "INV-LINKINFO-FROZEN",
+      "evidence": {
+        "case_ids": [
+          "test_t03.test_linkinfo_reference_frozen"
+        ],
+        "commands": [
+          "wire/ble_link_info_reference.py --check"
+        ]
+      },
+      "id": "INV-LINKINFO-V2",
       "integration_case_ids": [],
-      "mutation_ids": [],
+      "mutation_ids": [
+        "MUT-T03-ELECTION-PLATFORM"
+      ],
       "owner": "link layer",
       "production_paths": [
         "wire"
       ],
-      "statement": "LinkInfo is 13 bytes, protocol_version 2, UUID 6764A004-9A5E-4C7B-B0A1-3E5D8C2F7A10, unsigned-lexicographic election, equal fails closed.",
+      "statement": "C8.4D1-A1: 13-byte BleLinkInfoV1, protocol byte 0x02, generated LINK_INFO_UUID, unsigned-lexicographic node_hint election, equal fails closed.",
+      "status": "ACCEPTED",
+      "unit_case_ids": []
+    },
+    {
+      "applies_to_profiles": [
+        "LIGHT",
+        "LAB_MESH",
+        "LAB_ORACLE"
+      ],
+      "authority_paths": [
+        {
+          "blob_sha1": "999164a77cd0e5ef8ce6cf50482a9c7907393548",
+          "path": "docs/adr/ADR-007-cipher-suite.md"
+        },
+        {
+          "blob_sha1": "7491a9f652309dc52a51b8433d497cb738415396",
+          "path": "docs/adr/ADR-003-identity-and-sealed-sender.md"
+        }
+      ],
+      "device_case_ids": [],
+      "evidence": {
+        "case_ids": [
+          "test_t03.test_cipher_suite_not_approved"
+        ],
+        "commands": []
+      },
+      "id": "INV-NOISE-SUITE-FROZEN",
+      "integration_case_ids": [],
+      "mutation_ids": [],
+      "owner": "crypto",
+      "production_paths": [
+        "crypto"
+      ],
+      "statement": "Accepted suite is Noise_XX_25519_ChaChaPoly_BLAKE2s with prologue GMP2; ADR-007 (SHA-256 variant) stays OPEN/PROPOSED without approval; independent A06 review remains open.",
+      "status": "ACCEPTED",
+      "unit_case_ids": []
+    },
+    {
+      "applies_to_profiles": [
+        "LIGHT",
+        "LAB_MESH"
+      ],
+      "authority_paths": [
+        {
+          "blob_sha1": "a39beb2622fb176d3bc34bf2ad99ecf651e360b6",
+          "path": "ios/Godstone/Sources/GodstoneMesh/AckAuthenticator.swift"
+        },
+        {
+          "blob_sha1": "f02923aaed6cc555580195241fc4a47188fd6934",
+          "path": "android/mesh/src/main/java/io/godstone/mesh/delivery/AckAuthenticator.kt"
+        },
+        {
+          "blob_sha1": "b12865933bbf5b950f7609854a5cda3fba5a99e4",
+          "path": "docs/adr/ADR-005-sos-and-lifecycle.md"
+        }
+      ],
+      "device_case_ids": [],
+      "evidence": {
+        "case_ids": [
+          "test_t03.test_ack_preimage_comment_sites"
+        ],
+        "commands": []
+      },
+      "id": "INV-ACK-PREIMAGE-40",
+      "integration_case_ids": [],
+      "mutation_ids": [],
+      "owner": "delivery",
+      "production_paths": [
+        "ios/Godstone/Sources/GodstoneMesh",
+        "android/mesh/src/main/java/io/godstone/mesh/delivery"
+      ],
+      "statement": "ACK signed preimage is 40 bytes: ASCII(\"GMP2-ACK\") is 8 bytes, plus msgId(16) plus recipientNodeId(16). Comment sites corrected in T03 preserving executable bytes.",
+      "status": "ACCEPTED",
+      "unit_case_ids": []
+    },
+    {
+      "applies_to_profiles": [
+        "LIGHT"
+      ],
+      "authority_paths": [
+        {
+          "blob_sha1": "8adc6626c2b935da6749532891dfa36e2cfa5569",
+          "path": "docs/architecture/ADR-0002-initial-release-surface.md"
+        }
+      ],
+      "device_case_ids": [],
+      "evidence": {
+        "case_ids": [
+          "test_t03.test_shipping_graph_archive_only"
+        ],
+        "commands": [
+          "ci/check_release_gates_status.py"
+        ]
+      },
+      "id": "INV-SHIPPING-LIGHT-ARCHIVE-ONLY",
+      "integration_case_ids": [],
+      "mutation_ids": [],
+      "owner": "build/release controller",
+      "production_paths": [
+        "ci"
+      ],
+      "statement": "The only shipping profile is LIGHT Archive-only (ADR-0002); no permissions/entitlements/services/background modes for mesh, oracle, bulk or SOS.",
       "status": "ACCEPTED",
       "unit_case_ids": []
     },
@@ -78,17 +244,104 @@
         "LAB_MESH",
         "LAB_ORACLE"
       ],
-      "authority_blob_sha": null,
-      "authority_path": "docs/production-readiness/ARCHITECTURE_INVARIANTS.json",
+      "authority_paths": [
+        {
+          "blob_sha1": "7491a9f652309dc52a51b8433d497cb738415396",
+          "path": "docs/adr/ADR-003-identity-and-sealed-sender.md"
+        }
+      ],
       "device_case_ids": [],
-      "id": "INV-NOISE-PROPOSED",
+      "evidence": {
+        "case_ids": [],
+        "commands": []
+      },
+      "id": "INV-ACK-MAGIC-DOMAIN-SEPARATION",
       "integration_case_ids": [],
       "mutation_ids": [],
       "owner": "crypto",
       "production_paths": [
         "crypto"
       ],
-      "statement": "Noise_XX_25519_ChaChaPoly_BLAKE2s suite, prologue GMP2; DATA envelope PROPOSED pending independent A06 review.",
+      "statement": "PROPOSED, scoped, not approved: explicit BE-u64 DATA nonce framing plus ciphertext/tag with internal ChaCha nonce zero32+LE64 (ADR-003 DATA envelope), pending independent A06 review and new vectors.",
+      "status": "PROPOSED",
+      "unit_case_ids": []
+    },
+    {
+      "applies_to_profiles": [
+        "LAB_MESH"
+      ],
+      "authority_paths": [
+        {
+          "blob_sha1": "8a826dc611ab2642fdebd8ef665aa2f172ad907e",
+          "path": "docs/adr/ADR-002-ble-record-layer.md"
+        }
+      ],
+      "device_case_ids": [],
+      "evidence": {
+        "case_ids": [],
+        "commands": []
+      },
+      "id": "PROP-SESSION-RETIREMENT",
+      "integration_case_ids": [],
+      "mutation_ids": [],
+      "owner": "link layer",
+      "production_paths": [
+        "wire"
+      ],
+      "statement": "PROPOSED, scoped, not approved: deterministic session retirement lifecycle for BLE links (ADR-002 C8.4D1-R2 scope).",
+      "status": "PROPOSED",
+      "unit_case_ids": []
+    },
+    {
+      "applies_to_profiles": [
+        "LAB_MESH"
+      ],
+      "authority_paths": [
+        {
+          "blob_sha1": "7491a9f652309dc52a51b8433d497cb738415396",
+          "path": "docs/adr/ADR-003-identity-and-sealed-sender.md"
+        }
+      ],
+      "device_case_ids": [],
+      "evidence": {
+        "case_ids": [],
+        "commands": []
+      },
+      "id": "PROP-SIGNED-APPLICATION-ENVELOPES",
+      "integration_case_ids": [],
+      "mutation_ids": [],
+      "owner": "crypto",
+      "production_paths": [
+        "crypto"
+      ],
+      "statement": "PROPOSED, scoped, not approved: signed application envelopes over the duplex engine (ADR-003 sealed-sender direction).",
+      "status": "PROPOSED",
+      "unit_case_ids": []
+    },
+    {
+      "applies_to_profiles": [
+        "LIGHT",
+        "LAB_MESH"
+      ],
+      "authority_paths": [
+        {
+          "blob_sha1": "59d76e337c0f32e3e71cf1992bb36d868eade29c",
+          "path": "docs/adr/ADR-004-durable-store.md"
+        }
+      ],
+      "device_case_ids": [],
+      "evidence": {
+        "case_ids": [],
+        "commands": []
+      },
+      "id": "PROP-STORE-ERASURE",
+      "integration_case_ids": [],
+      "mutation_ids": [],
+      "owner": "storage",
+      "production_paths": [
+        "crypto"
+      ],
+      "statement": "PROPOSED, scoped, not approved: crypto-erasure-first store erasure semantics extension (ADR-004).",
       "status": "PROPOSED",
       "unit_case_ids": []
     }
@@ -96,7 +349,7 @@
   "link_info": {
     "bytes": 13,
     "election": "unsigned-lexicographic smaller hint retains central/initiator; equal fails closed",
-    "protocol_version": 2,
+    "protocol_version": "0x02",
     "uuid": "6764A004-9A5E-4C7B-B0A1-3E5D8C2F7A10"
   },
   "noise": {
@@ -110,6 +363,5 @@
     "ios_linkLayerReady": false
   },
   "schema_version": 1,
-  "shipping_profile": "LIGHT_ARCHIVE_ONLY",
-  "source": "MASTER_IMPLEMENTATION_BLUEPRINT.md section5; T03 must attach canonical source/blob/test IDs"
+  "shipping_profile": "LIGHT_ARCHIVE_ONLY"
 }

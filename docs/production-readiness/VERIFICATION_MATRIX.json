@@ -127,6 +127,70 @@
       "task_ids": [
         "T02"
       ]
+    },
+    {
+      "claim_id": "CLM-T03-CONTRACTS",
+      "command_ids": [
+        "T03-narrow-python3"
+      ],
+      "evidence_class": "internal",
+      "evidence_sha256": "7519ed9000d1a1730b865f08da35fb53f824f72c01bb4f2490497ddf6671a7ed",
+      "latest_source_sha": null,
+      "limitations": "host-only evidence; device and independent gates remain external",
+      "production_path": "tools/readiness/contract_check.py",
+      "profile": "host-tooling",
+      "required_case_ids": [
+        "test_t03 suite"
+      ],
+      "requirement": "normative links resolve; authority blob shas match; frozen constants validated",
+      "result": "PASS",
+      "state_owner": "build/release controller",
+      "task_ids": [
+        "T03"
+      ]
+    },
+    {
+      "claim_id": "CLM-T03-PROFILES",
+      "command_ids": [
+        "T03-narrow-python3"
+      ],
+      "evidence_class": "internal",
+      "evidence_sha256": "7519ed9000d1a1730b865f08da35fb53f824f72c01bb4f2490497ddf6671a7ed",
+      "latest_source_sha": null,
+      "limitations": "host-only evidence; device and independent gates remain external",
+      "production_path": "docs/production-readiness/CAPABILITY_PROFILES.json",
+      "profile": "host-tooling",
+      "required_case_ids": [
+        "test_t03 suite"
+      ],
+      "requirement": "shipping stays LIGHT Archive-only; disabled features and readiness false; mutations detected",
+      "result": "PASS",
+      "state_owner": "build/release controller",
+      "task_ids": [
+        "T03"
+      ]
+    },
+    {
+      "claim_id": "CLM-T03-CONTROLS",
+      "command_ids": [
+        "T03-controls-python3",
+        "T03-controls-python3-002"
+      ],
+      "evidence_class": "internal",
+      "evidence_sha256": "7519ed9000d1a1730b865f08da35fb53f824f72c01bb4f2490497ddf6671a7ed",
+      "latest_source_sha": null,
+      "limitations": "host-only evidence; device and independent gates remain external",
+      "production_path": "ci/check_release_gates_status.py",
+      "profile": "host-tooling",
+      "required_case_ids": [
+        "test_t03 suite"
+      ],
+      "requirement": "repository + release-gate controls pass after contract normalization",
+      "result": "PASS",
+      "state_owner": "build/release controller",
+      "task_ids": [
+        "T03"
+      ]
     }
   ],
   "note": "Claims appended per task with real evidence; PASS requires positive case counts and matching command output. Device/independent claims never accept host-only results.",

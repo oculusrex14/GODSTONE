@@ -1,3 +1,20 @@
+# SUPERSEDED — do not implement from this document
+
+Status: SUPERSEDED (2026-09-09, T03 contract normalization).
+Superseding authority: `docs/adr/ADR-002-ble-record-layer.md` phase
+C8.4D1-A1 (Connect-First / Elect-Before-Handshake, 13-byte LinkInfo,
+protocol byte 0x02, unsigned-lexicographic `node_hint` election, equal
+fails closed) plus the machine-readable capability profiles in
+`docs/production-readiness/CAPABILITY_PROFILES.json`.
+
+Rejected here: platform-based anchor election (contradicts the frozen
+LinkInfo election; mutating the frozen election requires the explicit
+scoped amendment procedure, not this document). Its platform limitations
+survive as recorded limitations in the capability profiles; its hardware
+test matrix remains a HISTORY reference behind the open HARDWARE gate.
+
+--- original document follows ---
+
 # L1 Discovery — Role Matrix
 
 ## Why symmetric discovery cannot work

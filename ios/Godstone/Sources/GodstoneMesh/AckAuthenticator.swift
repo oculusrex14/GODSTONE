@@ -24,7 +24,7 @@ import CryptoKit
 //   msgId       = the EXACT message id being acknowledged (16 bytes)
 //   routingTag  = recipient node hint (4 bytes)
 //   payload     = signature(64) || recipientNodeId(16)   = 80 bytes
-// canonical preimage signed = ACK_MAGIC("GMP2-ACK", 7) || msgId(16) || recipientNodeId(16) = 39 bytes
+// canonical preimage signed = ACK_MAGIC("GMP2-ACK", 8) || msgId(16) || recipientNodeId(16) = 40 bytes
 
 /// ASCII domain-separation tag bound into the signed ACK preimage.
 public let ackMagic = "GMP2-ACK"

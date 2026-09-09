@@ -1,0 +1,82 @@
+{
+  "authority": {
+    "discovery": "docs/adr/ADR-002-ble-record-layer.md",
+    "note": "Re-enablement requires evidence-backed release capability generation, not a Boolean change (ADR-0002).",
+    "release_surface": "docs/architecture/ADR-0002-initial-release-surface.md"
+  },
+  "election": {
+    "authority": "docs/adr/ADR-002-ble-record-layer.md phase C8.4D1-A1",
+    "link_info": {
+      "bytes": 13,
+      "protocol_version": "0x02",
+      "uuid": "6764A004-9A5E-4C7B-B0A1-3E5D8C2F7A10"
+    },
+    "platform_based_election": "REJECTED (would contradict the frozen contract; needs the scoped amendment procedure)",
+    "rule": "unsigned-lexicographic smaller node_hint retains central/initiator; equal fails closed",
+    "status": "FROZEN"
+  },
+  "limitations": [
+    "Android -> backgrounded-iOS discovery is structurally impossible (Apple overflow area; ADR-002 section 2.1). Recorded as a limitation, never a capability.",
+    "iOS-Android links require at least one Android device in range; an all-iOS backgrounded group is a degraded mesh.",
+    "iBeacon-format relaunch requires Apple licensing review (open compliance item; legal, not engineering).",
+    "No physical device matrix case 0-10 has been run; HARDWARE gate open. BLE only tells the truth on real radios.",
+    "Cipher suite stays BLAKE2s; ADR-007 remains PROPOSED without approval and independent A06 review remains open."
+  ],
+  "profiles": {
+    "BULK": {
+      "archive": false,
+      "authority": "docs/adr/ADR-0002-initial-release-surface.md",
+      "bulk": "lab-only",
+      "mesh": false,
+      "note": "Not a production route; Wi-Fi bulk plane work is lab-scoped (ADR-006).",
+      "oracle": false,
+      "shipping": false,
+      "sos": false
+    },
+    "LAB_MESH": {
+      "archive": false,
+      "authority": "docs/adr/ADR-002-ble-record-layer.md",
+      "bulk": "lab-only",
+      "mesh": "lab-only",
+      "note": "Non-shipping mesh lab; frozen LinkInfo election applies; delivery substrate C8.4D1-R2 and trusted driver C8.4D2 remain OPEN.",
+      "oracle": false,
+      "shipping": false,
+      "sos": false
+    },
+    "LAB_ORACLE": {
+      "archive": false,
+      "authority": "docs/adr/ADR-0002-initial-release-surface.md",
+      "bulk": false,
+      "mesh": false,
+      "note": "Native models remain an external gate (NATIVE_MODELS); no private draft may leak into shipping LIGHT.",
+      "oracle": "lab-only",
+      "shipping": false,
+      "sos": false
+    },
+    "LIGHT": {
+      "archive": true,
+      "authority": "docs/architecture/ADR-0002-initial-release-surface.md",
+      "bulk": false,
+      "mesh": false,
+      "note": "LIGHT is the only initial tier; mesh/oracle/bulk/SOS are not production routes and receive no permissions, entitlements, services, background modes or marketing claims.",
+      "oracle": false,
+      "readiness": {
+        "android": false,
+        "ios": false
+      },
+      "shipping": true,
+      "sos": false
+    },
+    "SOS": {
+      "archive": false,
+      "authority": "docs/adr/ADR-0002-initial-release-surface.md",
+      "bulk": false,
+      "mesh": false,
+      "note": "Not a production route; atomic SOS remains behind the mesh engine gates.",
+      "oracle": false,
+      "shipping": false,
+      "sos": "lab-only"
+    }
+  },
+  "schema_version": 1
+}

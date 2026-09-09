@@ -79,7 +79,7 @@ message id and the recipient node id, so:
 ACK frame layout (byte-identical cross-platform): `type = ack (0x21)`,
 `msgId = the exact message id (16)`, `routingTag (4)`,
 `payload = signature(64) || recipientNodeId(16) = 80 bytes`. Canonical signed
-preimage = `"GMP2-ACK"(7 ASCII) || msgId(16) || recipientNodeId(16) = 39 bytes`,
+preimage = `"GMP2-ACK"(8 ASCII) || msgId(16) || recipientNodeId(16) = 40 bytes`,
 Ed25519 (RFC 8032, no prehash) — BouncyCastle on Android (`:core`), CryptoKit
 `Curve25519.Signing` on iOS, byte-identical signatures.
 

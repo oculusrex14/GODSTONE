@@ -641,7 +641,7 @@ Because sealed-sender authenticated authorship remains an open protocol design a
 
 Delivery ACK wire format and cryptographic signatures remain strictly preserved from Phase C7.4 / C7.5:
 ```text
-ACK Preimage = ASCII("GMP2-ACK") || msg_id[16] || recipient_node_id[16]
+ACK Preimage = ASCII("GMP2-ACK") || msg_id[16] || recipient_node_id[16]  (40 bytes total: 8 + 16 + 16)
 Signature    = Ed25519Sign(recipient_signing_private_key, ACK Preimage)
 ```
 
