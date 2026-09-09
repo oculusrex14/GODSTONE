@@ -3,8 +3,6 @@ package io.godstone.mesh.transport
 import android.annotation.SuppressLint
 import android.bluetooth.BluetoothDevice
 import android.bluetooth.BluetoothManager
-import android.bluetooth.le.AdvertiseCallback
-import android.bluetooth.le.AdvertiseData
 import android.bluetooth.le.AdvertiseSettings
 import android.bluetooth.le.ScanCallback
 import android.bluetooth.le.ScanFilter
@@ -39,7 +37,8 @@ class BleTransport(
     private val digestProvider: (suspend () -> BloomDigest)? = null,
     private val sessions: io.godstone.mesh.crypto.SessionManager? = null,
     private val store: MessageStore? = null,
-    private val coroutineScope: CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    private val coroutineScope: CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.IO),
+    private val advertisingHooks: AdvertisingHooks? = null
 ) : Transport {
 
     override val name = "BLE"
@@ -49,8 +48,16 @@ class BleTransport(
     private val adapter get() = btManager?.adapter
 
     private var powerState = PowerState.NORMAL
-    private var advertiseCallback: AdvertiseCallback? = null
     private var scanCallback: ScanCallback? = null
+
+    /**
+     * T09: the canonical advertising adapter. Production reaches the radio via
+     * [RealAdvertisingHooks]; tests inject [advertisingHooks] to inspect the
+     * exact settings and instruction stream handed to the platform.
+     */
+    private val advertiser: BleAdvertiser by lazy {
+        BleAdvertiser(advertisingHooks ?: RealAdvertisingHooks(adapter?.bluetoothLeAdvertiser))
+    }
 
     val roleCoordinator = BleRoleBindingCoordinator(identity.nodeHint)
 
@@ -192,40 +199,44 @@ class BleTransport(
         responderRemoteLinkInfo.clear()
     }
 
-    private fun startAdvertising() {
-        val adv = adapter?.bluetoothLeAdvertiser ?: return
-        if (!gattServer.isServiceReady) return
-
-        val settings = AdvertiseSettings.Builder()
-            .setAdvertiseMode(AdvertiseSettings.ADVERTISE_MODE_LOW_LATENCY)
-            .setTxPowerLevel(AdvertiseSettings.ADVERTISE_TX_POWER_HIGH)
-            .setConnectable(true)
-            .build()
-
-        val linkInfoBytes = getLocalLinkInfoBytes()
-        val dataBuilder = AdvertiseData.Builder()
-            .addServiceUuid(ParcelUuid(SERVICE_UUID))
-            .setIncludeDeviceName(false)
-
-        if (linkInfoBytes != null && linkInfoBytes.size == BleLinkInfoConstants.LINK_INFO_BYTES) {
-            dataBuilder.addServiceData(ParcelUuid(SERVICE_UUID), linkInfoBytes)
-        }
-
-        val cb = object : AdvertiseCallback() {
-            override fun onStartFailure(errorCode: Int) {
-                advertiseCallback = null
-            }
-        }
-        adv.startAdvertising(settings, dataBuilder.build(), cb)
-        advertiseCallback = cb
+    private fun startAdvertising(): Boolean {
+        return advertiser.start(
+            settings = canonicalAdvertiseSettings(),
+            payload = canonicalAdvertisingPayload(),
+            ready = gattServer.isServiceReady
+        )
     }
 
-    private fun stopAdvertising() {
-        advertiseCallback?.let {
-            adapter?.bluetoothLeAdvertiser?.stopAdvertising(it)
-            advertiseCallback = null
-        }
-    }
+    private fun stopAdvertising(): Boolean = advertiser.stop()
+
+    /**
+     * T09: the mesh advertises exactly the canonical service UUID and the
+     * required platform flags. No LinkInfo bytes, no service data, no
+     * manufacturer data, no local name and no identity hint ever ride the
+     * air; the full 13-octet LinkInfo record is served by GATT.
+     */
+    fun canonicalAdvertisingPayload(): BleAdvertisingPayload =
+        BleAdvertisingPayload.canonical(SERVICE_UUID)
+
+    /** The settings half of the canonical submission, mirrored as inspectable values. */
+    fun canonicalAdvertiseSettings(): BleAdvertiseSettings = BleAdvertiseSettings(
+        mode = AdvertiseSettings.ADVERTISE_MODE_LOW_LATENCY,
+        txPowerLevel = AdvertiseSettings.ADVERTISE_TX_POWER_HIGH,
+        connectable = true
+    )
+
+    /** The single service UUID the scanner filter and the advertisement share. */
+    fun canonicalScanFilterServiceUuid(): UUID = SERVICE_UUID
+
+    /** Submit the canonical advertisement now; the typed outcome is in [lastAdvertisingResult]. */
+    fun startAdvertisingNow(): Boolean = startAdvertising()
+
+    /** Withdraw the advertisement; a stop without an outstanding submission is a no-op. */
+    fun stopAdvertisingNow(): Boolean = stopAdvertising()
+
+    /** The last typed advertising outcome observed by this transport, or null if none yet. */
+    val lastAdvertisingResult: AdvertisingResult?
+        get() = advertiser.lastResult
 
     private fun processCentralAction(address: String, action: BleCentralAction) {
         val client = activeClientConnections[address]
@@ -325,7 +336,7 @@ class BleTransport(
             }
         }
         val settings = ScanSettings.Builder().setScanMode(ScanSettings.SCAN_MODE_BALANCED).build()
-        val filter = ScanFilter.Builder().setServiceUuid(ParcelUuid(SERVICE_UUID)).build()
+        val filter = ScanFilter.Builder().setServiceUuid(ParcelUuid(canonicalScanFilterServiceUuid())).build()
         adapter?.bluetoothLeScanner?.startScan(listOf(filter), settings, cb)
         scanCallback = cb
         awaitClose {

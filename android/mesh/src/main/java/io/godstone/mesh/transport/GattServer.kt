@@ -73,6 +73,18 @@ class BleGattServer(
     var isServiceReady: Boolean = false
         private set
 
+    /**
+     * T09 test/diagnostic seam: records the service registration outcome the
+     * platform callback would report (the same transition performed inside
+     * makeServerCallback). Production never calls this; JVM tests and the
+     * lab diagnostics use it to exercise the advertising gate without a radio
+     * stack. The backing field is the single authority the
+     * [BleTransport.canonicalAdvertiseSettings] readiness gate reads.
+     */
+    fun markServiceReadyForTest(ready: Boolean) {
+        isServiceReady = ready
+    }
+
     @Volatile
     var isPoisoned: Boolean = false
         private set
