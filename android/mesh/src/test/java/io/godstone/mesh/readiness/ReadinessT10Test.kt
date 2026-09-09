@@ -134,6 +134,36 @@ class ReadinessT10Test {
         assertSame("the profile resolves to Match", ProvisionCheck.Match, RequiredCharacteristicSet.MESH.check(canonicalTree()))
         assertTrue("the provisioning gate accepts it", RequiredCharacteristicSet.MESH.accepts(canonicalTree()))
         assertSame(ProvisionCheck.Match, RequiredCharacteristicSet.MESH.checkService(RequiredCharacteristicSet.MESH.serviceUuid))
+        // The gate's acceptance function must refuse the negatives too:
+        // every tree that is not the profile returns false, on the very
+        // entry point the central provisioning gate calls in production.
+        assertFalse("no digest does not pass the gate", RequiredCharacteristicSet.MESH.accepts(
+            listOf(RequiredCharacteristicSet.MESH.inbox, RequiredCharacteristicSet.MESH.linkInfo)))
+        assertFalse("no inbox does not pass the gate", RequiredCharacteristicSet.MESH.accepts(
+            listOf(RequiredCharacteristicSet.MESH.digest, RequiredCharacteristicSet.MESH.linkInfo)))
+        assertFalse("no link info does not pass the gate", RequiredCharacteristicSet.MESH.accepts(
+            listOf(RequiredCharacteristicSet.MESH.inbox, RequiredCharacteristicSet.MESH.digest)))
+        assertFalse("a property gap does not pass the gate", RequiredCharacteristicSet.MESH.accepts(
+            listOf(
+                RequiredCharacteristicSet.MESH.inbox,
+                ContractCharacteristic(RequiredCharacteristicSet.MESH.digest.uuid, setOf(GattProperty.READ)),
+                RequiredCharacteristicSet.MESH.linkInfo
+            )))
+        assertFalse("an unknown member does not pass the gate", RequiredCharacteristicSet.MESH.accepts(
+            listOf(
+                RequiredCharacteristicSet.MESH.inbox,
+                RequiredCharacteristicSet.MESH.digest,
+                RequiredCharacteristicSet.MESH.linkInfo,
+                ContractCharacteristic(legacyInbox, setOf(GattProperty.WRITE))
+            )))
+        assertFalse("a duplicate does not pass the gate", RequiredCharacteristicSet.MESH.accepts(
+            listOf(
+                RequiredCharacteristicSet.MESH.inbox,
+                RequiredCharacteristicSet.MESH.digest,
+                RequiredCharacteristicSet.MESH.linkInfo,
+                RequiredCharacteristicSet.MESH.linkInfo
+            )))
+        assertFalse("an empty tree does not pass the gate", RequiredCharacteristicSet.MESH.accepts(listOf()))
     }
 
     @Test

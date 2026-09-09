@@ -116,6 +116,37 @@ final class ReadinessT10Tests: XCTestCase {
         XCTAssertEqual(set.check(canonicalTree()), ProvisionCheck.match, "the profile resolves to match")
         XCTAssertEqual(set.accepts(canonicalTree()), true, "the provisioning gate accepts it")
         XCTAssertEqual(set.checkService(set.serviceUuid), ProvisionCheck.match, "the canonical service resolves to match")
+        // The gate's acceptance function must refuse the negatives too:
+        // every tree that is not the profile returns false, on the very
+        // entry point the central provisioning gate calls in production.
+        XCTAssertEqual(set.accepts([set.inbox, set.linkInfo]), false, "no digest does not pass the gate")
+        XCTAssertEqual(set.accepts([set.digest, set.linkInfo]), false, "no inbox does not pass the gate")
+        XCTAssertEqual(set.accepts([set.inbox, set.digest]), false, "no link info does not pass the gate")
+        XCTAssertEqual(
+            set.accepts([
+                set.inbox,
+                ContractCharacteristic(uuid: set.digest.uuid, properties: [.read]),
+                set.linkInfo
+            ]),
+            false,
+            "a property gap does not pass the gate"
+        )
+        XCTAssertEqual(
+            set.accepts([
+                set.inbox,
+                set.digest,
+                set.linkInfo,
+                ContractCharacteristic(uuid: legacyInboxUuid(), properties: [.write])
+            ]),
+            false,
+            "an unknown member does not pass the gate"
+        )
+        XCTAssertEqual(
+            set.accepts([set.inbox, set.digest, set.linkInfo, set.linkInfo]),
+            false,
+            "a duplicate does not pass the gate"
+        )
+        XCTAssertEqual(set.accepts([]), false, "an empty tree does not pass the gate")
     }
 
     func testResolverReportsEveryPropertyGap() {
