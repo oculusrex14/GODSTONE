@@ -57,8 +57,25 @@ class BleCentralOrchestrationDriver(
     private val connectionGenerations = mutableMapOf<String, Long>()
     private val activeLeases = mutableMapOf<String, CapacityLease>()
     private val electionContexts = mutableMapOf<String, BleElectionContext>()
-    private val discoveredHints = mutableMapOf<String, ByteArray>()
-    private val peerRssi = mutableMapOf<String, Int>()
+    // T11: the hint and signal observations of the scan path share one
+    // bounded surface, so a flood of distinct advertisers cannot grow the
+    // caches without limit. Entries of currently active connections are
+    // pinned: the bound evicts the least recently observed unpinned
+    // entry, deterministically, in observation order.
+    private val scanSurface = BoundedDiscoveryIndex<DriverScanRecord>(
+        capacity = BleTransport.MAX_DISCOVERED_PEERS,
+        isPinned = { address -> activeConnections[address]?.isActive == true }
+    )
+
+    /** Test seam: the bounded scan record of one address, or null. */
+    fun driverScanRecordForTest(address: String): DriverScanRecord? = synchronized(lock) {
+        scanSurface.valueOf(address)
+    }
+
+    /** Test seam: the size of the bounded scan surface. */
+    fun driverScanCountForTest(): Int = synchronized(lock) {
+        scanSurface.size
+    }
     private val publishedFound = mutableSetOf<String>()
     private val outboundSlots = mutableMapOf<String, OutboundPeerSlot>()
 
@@ -103,10 +120,21 @@ class BleCentralOrchestrationDriver(
 
     fun onScanResult(peerAddress: String, rssi: Int?, serviceDataHint: ByteArray?): BleCentralAction = synchronized(lock) {
         if (serviceDataHint != null && serviceDataHint.size == BleRoleElection.NODE_HINT_BYTES) {
-            discoveredHints[peerAddress] = serviceDataHint.copyOf()
+            val carried = serviceDataHint.copyOf()
+            var record = scanSurface.valueOf(peerAddress)
+            if (record == null) {
+                record = DriverScanRecord()
+            }
+            record.absorb(carried, null)
+            scanSurface.observe(peerAddress, record)
         }
         if (rssi != null) {
-            peerRssi[peerAddress] = rssi
+            var record = scanSurface.valueOf(peerAddress)
+            if (record == null) {
+                record = DriverScanRecord()
+            }
+            record.absorb(null, rssi)
+            scanSurface.observe(peerAddress, record)
         }
 
         val slot = outboundSlots[peerAddress]
@@ -280,7 +308,7 @@ class BleCentralOrchestrationDriver(
         conn.isNotificationSubscribed = true
         if (conn.isHandshakeTransportReady && !publishedFound.contains(peerAddress)) {
             publishedFound.add(peerAddress)
-            return BleCentralAction.PublishFound(peerAddress, peerRssi[peerAddress])
+            return BleCentralAction.PublishFound(peerAddress, scanSurface.valueOf(peerAddress)?.rssi)
         }
         BleCentralAction.NoOp
     }
@@ -334,8 +362,7 @@ class BleCentralOrchestrationDriver(
         connectionGenerations.clear()
         activeLeases.clear()
         electionContexts.clear()
-        discoveredHints.clear()
-        peerRssi.clear()
+        scanSurface.releaseAll()
         publishedFound.clear()
         outboundSlots.clear()
         globalCapacity?.releaseAllOutbound()

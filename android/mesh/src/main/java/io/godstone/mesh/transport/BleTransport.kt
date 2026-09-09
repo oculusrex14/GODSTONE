@@ -117,8 +117,20 @@ class BleTransport(
         orchestrationDriver = serverDriver
     )
 
-    private val discoveredPeers = LinkedHashMap<String, BleDiscoveryMetadata>()
-    private val peerRssi = ConcurrentHashMap<String, Int>()
+    private val discoveryIndex = BoundedDiscoveryIndex<BleDiscoveryRecord>(
+        capacity = MAX_DISCOVERED_PEERS,
+        isPinned = { address -> isRelationPinned(address) }
+    )
+    private val scanGateLock = Any()
+
+    @Volatile
+    private var scanEpoch: Long = 0L
+
+    @Volatile
+    private var scanIdentity: Long = 0L
+
+    @Volatile
+    private var activeScanContext: ScanContext? = null
     private val centralRemoteLinkInfo = ConcurrentHashMap<String, BleLinkInfoV1>()
     private val responderRemoteLinkInfo = ConcurrentHashMap<String, BleLinkInfoV1>()
     private val publishedRelations = ConcurrentHashMap.newKeySet<RelationKey>()
@@ -172,6 +184,13 @@ class BleTransport(
             scanCallback?.let {
                 adapter?.bluetoothLeScanner?.stopScan(it)
                 scanCallback = null
+            }
+            synchronized(scanGateLock) {
+                val ctx = activeScanContext
+                if (ctx != null) {
+                    retireScanContext(ctx)
+                }
+                discoveryIndex.releaseAll()
             }
         }
         for ((_, job) in provisionalJobs) {
@@ -258,7 +277,7 @@ class BleTransport(
             }
             is BleCentralAction.PublishFound -> {
                 provisionalJobs.remove(address)?.cancel()
-                val meta = centralRemoteLinkInfo[address] ?: discoveredPeers[address]
+                val meta = centralRemoteLinkInfo[address] ?: discoveryIndex.valueOf(address)?.metadata
                 val gen = centralDriver.getConnectionGeneration(address)
                 publishRelation(RelationKey(BleDirection.OUTBOUND, address, gen), meta)
             }
@@ -283,56 +302,21 @@ class BleTransport(
         val peerJob = coroutineScope.launch {
             peerEventsFlow.collect { event -> trySend(event) }
         }
+        // T11: the scan source context is created complete - epoch, callback
+        // identity and lease - before the scanner is told to call anybody
+        // back. The shim below only captures the source and forwards a
+        // ScanEvent; every mutation of transport state happens in the
+        // reducer, after the exact context has been consulted.
+        val context = openScanContext()
         val cb = object : ScanCallback() {
             override fun onScanResult(callbackType: Int, result: ScanResult) {
-                val address = result.device.address ?: return
-                peerRssi[address] = result.rssi
                 val sd = result.scanRecord?.getServiceData(ParcelUuid(SERVICE_UUID))
-                val metadata = if (sd != null && sd.size == BleLinkInfoConstants.LINK_INFO_BYTES) BleLinkInfoCodec.decode(sd) else null
-                if (metadata != null) {
-                    discoveredPeers[address] = metadata
-                }
-                val optionalHint = metadata?.nodeHint
-                val action = centralDriver.onScanResult(address, result.rssi, optionalHint)
-                if (action is BleCentralAction.ConnectGatt) {
-                    val client = activeClientConnections.getOrPut(address) {
-                        GattClientConnection(
-                            context = context,
-                            peerAddress = address,
-                            onGattConnected = { gen, cur -> processCentralAction(address, centralDriver.onGattConnected(address, gen, cur)) },
-                            onServicesDiscovered = { suc, gen, cur -> processCentralAction(address, centralDriver.onServicesDiscovered(address, suc, gen, cur)) },
-                            onLinkInfoReadResult = { bytes, gen, cur ->
-                                val res = centralDriver.onLinkInfoReadResult(address, bytes, gen, cur)
-                                if (res is BleCentralAction.WriteLinkInfo && bytes != null) {
-                                    BleLinkInfoCodec.decode(bytes)?.let { centralRemoteLinkInfo[address] = it }
-                                }
-                                processCentralAction(address, res)
-                            },
-                            onLinkInfoWriteAck = { suc, gen, cur ->
-                                val hint = centralDriver.getElectionContext(address)?.remoteNodeHint ?: centralRemoteLinkInfo[address]?.nodeHint ?: ByteArray(4)
-                                processCentralAction(address, centralDriver.onLinkInfoWriteAcknowledged(address, suc, hint, gen, cur))
-                            },
-                            onCccdWriteAck = { suc, gen, cur -> processCentralAction(address, centralDriver.onCccdWriteAcknowledged(address, suc, gen, cur)) },
-                            onMtuChanged = { centralDriver.onMtuChanged(address, it) },
-                            onDisconnected = { token, gen -> handleCentralDisconnected(address, token, gen) },
-                            onInboundNotification = { handleCentralInboundNotification(address, it) }
-                        )
-                    }
-                    activeClientConnections[address] = client
-                    val gen = centralDriver.getConnectionGeneration(address)
-                    provisionalJobs[address]?.cancel()
-                    provisionalJobs[address] = coroutineScope.launch {
-                        delay(PROVISIONAL_TIMEOUT_MS)
-                        if (centralDriver.getConnectionGeneration(address) == gen) {
-                            val conn = centralDriver.getActiveConnection(address)
-                            if (conn?.isHandshakeTransportReady != true) {
-                                val timeoutAct = centralDriver.onProvisionalTimeout(address, gen)
-                                processCentralAction(address, timeoutAct)
-                            }
-                        }
-                    }
-                    processCentralAction(address, action)
-                }
+                val bytes = if (sd != null && sd.size == BleLinkInfoConstants.LINK_INFO_BYTES) sd else null
+                handleScanEvent(captureScanEvent(context, callbackType, result.device.address, result.rssi, bytes))
+            }
+
+            override fun onScanFailed(errorCode: Int) {
+                handleScanFailure(ScanFailureEvent(context, errorCode))
             }
         }
         val settings = ScanSettings.Builder().setScanMode(ScanSettings.SCAN_MODE_BALANCED).build()
@@ -341,9 +325,201 @@ class BleTransport(
         scanCallback = cb
         awaitClose {
             peerJob.cancel()
+            retireScanContext(context)
             adapter?.bluetoothLeScanner?.stopScan(cb)
         }
     }
+
+    /**
+     * The capture step of the callback boundary. Source identity, signal
+     * and any well-formed link info payload are snapshotted here, before
+     * delivery: the event carries no platform object, so a late callback
+     * can deliver only this immutable snapshot, never a live result.
+     */
+    fun captureScanEvent(
+        context: ScanContext,
+        callbackType: Int,
+        address: String?,
+        signal: Int?,
+        linkInfoBytes: ByteArray?
+    ): ScanEvent {
+        val metadata = if (linkInfoBytes == null) {
+            null
+        } else if (linkInfoBytes.size == BleLinkInfoConstants.LINK_INFO_BYTES) {
+            BleLinkInfoCodec.decode(linkInfoBytes)
+        } else {
+            null
+        }
+        return ScanEvent(context, callbackType, address, signal, metadata)
+    }
+
+    /** Open the next scan registration: a fresh epoch, identity and lease. */
+    private fun openScanContext(): ScanContext = synchronized(scanGateLock) {
+        scanEpoch += 1L
+        scanIdentity += 1L
+        val ctx = ScanContext(scanEpoch, scanIdentity, ScanLease())
+        activeScanContext = ctx
+        ctx
+    }
+
+    /** Terminate one registration; it never touches any other context. */
+    private fun retireScanContext(context: ScanContext) {
+        context.lease.release()
+        if (activeScanContext === context) {
+            activeScanContext = null
+        }
+    }
+
+    /**
+     * The scan reducer. The event must name the exact context that is still
+     * the active registration of a started transport, in the currently open
+     * epoch, with a live lease. Any other event is dropped where it stands
+     * and mutates nothing: a late delivery of a retired or replaced
+     * registration can never reach the newer state. The epoch is read at
+     * arrival, never inferred from a current-state lookup afterwards.
+     */
+    fun handleScanEvent(event: ScanEvent): Boolean {
+        val context = event.context
+        if (!isStarted) {
+            return false
+        }
+        if (context !== activeScanContext || !context.isCurrent(scanEpoch) || !context.isActive()) {
+            return false
+        }
+        val address = event.address
+        if (address == null) {
+            return false
+        }
+        synchronized(scanGateLock) {
+            if (context !== activeScanContext || !context.isCurrent(scanEpoch) || !context.isActive()) {
+                return false
+            }
+            var record = discoveryIndex.valueOf(address)
+            if (record == null) {
+                record = BleDiscoveryRecord()
+            }
+            record.absorb(event.metadata, event.rssi)
+            discoveryIndex.observe(address, record)
+        }
+        val action = centralDriver.onScanResult(address, event.rssi, event.metadata?.nodeHint)
+        if (action is BleCentralAction.ConnectGatt) {
+            synchronized(scanGateLock) {
+                // Revalidate the token on completion: a stop or a newer
+                // registration that began while the driver was consulted
+                // denies this scheduling step.
+                if (context !== activeScanContext || !context.isCurrent(scanEpoch) || !context.isActive()) {
+                    return false
+                }
+                scheduleConnectFromScan(address, action)
+            }
+        }
+        return true
+    }
+
+    /**
+     * A scan failure terminates only its own context: the transport keeps
+     * running, other state survives, and permission recovery is simply a
+     * fresh registration through peers().
+     */
+    fun handleScanFailure(event: ScanFailureEvent): Boolean {
+        val context = event.context
+        if (context !== activeScanContext) {
+            return false
+        }
+        if (!context.isActive()) {
+            return false
+        }
+        retireScanContext(context)
+        return true
+    }
+
+    /** Active relations are pinned: the discovery bound must not evict them. */
+    private fun isRelationPinned(address: String): Boolean {
+        if (activeClientConnections.containsKey(address)) {
+            return true
+        }
+        if (centralDriver.getActiveConnection(address)?.isActive == true) {
+            return true
+        }
+        return publishedRelations.any { it.peerAddress == address }
+    }
+
+    /** The scheduling half of a connect intent, carried verbatim from the former shim body. */
+    private fun scheduleConnectFromScan(address: String, action: BleCentralAction.ConnectGatt) {
+            val client = activeClientConnections.getOrPut(address) {
+                GattClientConnection(
+                    context = context,
+                    peerAddress = address,
+                    onGattConnected = { gen, cur -> processCentralAction(address, centralDriver.onGattConnected(address, gen, cur)) },
+                    onServicesDiscovered = { suc, gen, cur -> processCentralAction(address, centralDriver.onServicesDiscovered(address, suc, gen, cur)) },
+                    onLinkInfoReadResult = { bytes, gen, cur ->
+                        val res = centralDriver.onLinkInfoReadResult(address, bytes, gen, cur)
+                        if (res is BleCentralAction.WriteLinkInfo && bytes != null) {
+                            BleLinkInfoCodec.decode(bytes)?.let { centralRemoteLinkInfo[address] = it }
+                        }
+                        processCentralAction(address, res)
+                    },
+                    onLinkInfoWriteAck = { suc, gen, cur ->
+                        val hint = centralDriver.getElectionContext(address)?.remoteNodeHint ?: centralRemoteLinkInfo[address]?.nodeHint ?: ByteArray(4)
+                        processCentralAction(address, centralDriver.onLinkInfoWriteAcknowledged(address, suc, hint, gen, cur))
+                    },
+                    onCccdWriteAck = { suc, gen, cur -> processCentralAction(address, centralDriver.onCccdWriteAcknowledged(address, suc, gen, cur)) },
+                    onMtuChanged = { centralDriver.onMtuChanged(address, it) },
+                    onDisconnected = { token, gen -> handleCentralDisconnected(address, token, gen) },
+                    onInboundNotification = { handleCentralInboundNotification(address, it) }
+                )
+            }
+            activeClientConnections[address] = client
+            val gen = centralDriver.getConnectionGeneration(address)
+            provisionalJobs[address]?.cancel()
+            provisionalJobs[address] = coroutineScope.launch {
+                delay(PROVISIONAL_TIMEOUT_MS)
+                if (centralDriver.getConnectionGeneration(address) == gen) {
+                    val conn = centralDriver.getActiveConnection(address)
+                    if (conn?.isHandshakeTransportReady != true) {
+                        val timeoutAct = centralDriver.onProvisionalTimeout(address, gen)
+                        processCentralAction(address, timeoutAct)
+                    }
+                }
+            }
+            processCentralAction(address, action)
+    }
+
+    /** Test seam: the currently active scan context, or null. */
+    fun activeScanContextForTest(): ScanContext? = activeScanContext
+
+    /** Test seam: advance the epoch, as a replacement registration would. */
+    fun bumpScanEpochForTest() {
+        synchronized(scanGateLock) {
+            scanEpoch += 1L
+        }
+    }
+
+    /** Test seam: the discovery surface size of the current run. */
+    fun discoveredCountForTest(): Int = discoveryIndex.size
+
+    /** Test seam: whether one address is currently discovered. */
+    fun isPeerDiscoveredForTest(address: String): Boolean = discoveryIndex.contains(address)
+
+    /** Test seam: the metadata of one discovered peer, or null. */
+    fun discoveredMetadataForTest(address: String): BleLinkInfoV1? = discoveryIndex.valueOf(address)?.metadata
+
+    /** Test seam: the signal of one discovered peer, or null. */
+    fun rssiForTest(address: String): Int? = discoveryIndex.valueOf(address)?.rssi
+
+    /** Test seam: open a registration without a radio, for reducer driving. */
+    fun openScanContextForTest(): ScanContext = openScanContext()
+    /** Test seam: the observation-ordered survivor list of the bounded surface. */
+    fun discoveredAddressesForTest(): List<String> = discoveryIndex.addresses()
+
+    /** Test seam: scheduled outbound client count, the platform action trace. */
+    fun activeClientCountForTest(): Int = activeClientConnections.size
+
+    /** Test seam: whether the provisional connect timeout job is pending. */
+    fun hasProvisionalJobForTest(address: String): Boolean = provisionalJobs.containsKey(address)
+
+    /** Test seam: whether the transport run is started. */
+    fun isTransportStartedForTest(): Boolean = isStarted
 
     private val publicationLock = Any()
 
@@ -358,7 +534,7 @@ class BleTransport(
                     PeerEvent.Found(
                         peerId = peerMacBytes,
                         nodeHint = hint,
-                        rssi = peerRssi[key.peerAddress],
+                        rssi = discoveryIndex.valueOf(key.peerAddress)?.rssi,
                         sosFlag = metadata?.isSosPresent == true,
                         bulkCapable = metadata?.isBulkCapable == true,
                         shortDigest = metadata?.shortDigest ?: ByteArray(6),
