@@ -499,6 +499,9 @@ public final class BleTransport: NSObject, @unchecked Sendable {
 
     /// Test seam: the trace of the most recent reduction admission.
     public private(set) var lastReductionTraceForTest: ReductionTrace?
+    public func clearReductionTraceForTest() {
+        lastReductionTraceForTest = nil
+    }
 
     /// Test failpoint: when set, invoked on the executor between the
     /// validation of an event and the scheduling of its effects, for the

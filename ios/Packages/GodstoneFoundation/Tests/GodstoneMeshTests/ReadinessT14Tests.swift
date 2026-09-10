@@ -332,6 +332,14 @@ final class ReadinessT14Tests: XCTestCase {
         resumed.signal()
         wait(for: [connectDone, lifecycleDone], timeout: 10)
 
+        // The decisive teeth: the stopper may only cross the queue barrier
+        // once the parked reduction has finished its one operation, so the
+        // lifecycle lines up strictly after the connect's own completion.
+        XCTAssertEqual(order.snapshot(), [
+            "validated:processCentralConnect", "connect-return", "stop-done", "start-done",
+        ], "the queued lifecycle proceeds only after the parked reduction completes its operation")
+        XCTAssertEqual(returnedAction.get(), .discoverServices(peerId), "the action was scheduled on the validated driver")
+
         let driverAfter = try XCTUnwrap(transport.centralDriver)
         XCTAssertNotIdentical(driverAfter, driverBefore, "the restart installed fresh drivers")
         XCTAssertEqual(transport.capacityAuthority.totalCount, 0, "the stop released the authority after the reduction had committed")
@@ -384,6 +392,7 @@ final class ReadinessT14Tests: XCTestCase {
         // Delivered from this test thread - a queue the executor never
         // expects: the reduction must still be carried onto the serial
         // queue context before it touches anything.
+        transport.clearReductionTraceForTest()
         ctx.centralProxy.centralManagerDidUpdateState(ctx.central)
         guard let trace = transport.lastReductionTraceForTest else {
             XCTFail("the reduction left no trace")
@@ -391,6 +400,7 @@ final class ReadinessT14Tests: XCTestCase {
         }
         XCTAssertEqual(trace.epoch, ctx.epoch, "the event was reduced by its own epoch")
         XCTAssertTrue(trace.ranOnSerialExecutor, "reductions run on the serial executor")
+        XCTAssertTrue(trace.reentrant, "the adapter delivers inside its context's own marker")
 
         // Re-entry: an event admitted from inside the executor (here, from
         // within a failpoint of another reduction) is carried through
@@ -620,16 +630,19 @@ final class ReadinessT14Tests: XCTestCase {
         let rawInfo = remoteLinkInfo(hint: Data([0, 0, 0, 1]))
 
         var traces: [BleTransport.ReductionTrace] = []
+        transport.clearReductionTraceForTest()
         _ = transport.processInboundWrite(
             centralId: centralId, rawData: rawInfo,
             sourceEpoch: ctx.epoch, from: ctx.peripheral
         )
         traces.append(try XCTUnwrap(transport.lastReductionTraceForTest))
+        transport.clearReductionTraceForTest()
         _ = transport.processInboundSubscribe(
             centralId: centralId, central: nil,
             sourceEpoch: ctx.epoch, from: ctx.peripheral
         )
         traces.append(try XCTUnwrap(transport.lastReductionTraceForTest))
+        transport.clearReductionTraceForTest()
         ctx.peripheralProxy.peripheralManagerDidUpdateState(ctx.peripheral)
         traces.append(try XCTUnwrap(transport.lastReductionTraceForTest))
 
