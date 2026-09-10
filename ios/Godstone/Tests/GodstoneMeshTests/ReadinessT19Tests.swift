@@ -969,6 +969,44 @@ final class ReadinessT19Tests: XCTestCase {
         bob.stop()
     }
 
+    // MARK: case 13: the stalled write leg holds its values and resumes as they were staged
+
+    func testTheStalledWriteLegHoldsItsValuesAndResumesAsTheyWereStaged() throws {
+        let pair = try ReadinessTrustedPairing.establish()
+        defer { ReadinessTrustedPairing.tearDown(pair) }
+        let peerId = pair.viaBob
+        let alice = BleTransport(identity: pair.aliceIdentity, store: T17MessageStore(),
+                                 sessions: pair.aliceManager, managerFactory: CaptureFactory(),
+                                 clock: TestClock(startingAt: 9_709))
+        alice.start()
+        let (peerHandle, capturePeer) = peripheralPunt(peerId)
+        capturePeer.canSendWriteWithoutResponse = false          // the leg is stalled
+        guard let delegate = advanceToRoleBound(alice, peerId: peerId,
+                                                serviceDataHint: ReadinessT19Tests.greaterHint(than: pair.aliceIdentity.nodeHint),
+                                                capturePeer: capturePeer) else {
+            XCTFail("the initiator never stood a connection: " + walkLog.joined(separator: " | ")); return
+        }
+        alice.connection(for: peerId)?.markReadyForTesting()
+        let space = capturePeer.maxWrite - BleRecordConstants.headerBytes
+        guard let f = frameOfExactEncodedLength(3 * space - RecordWriter.sealOverheadBytes) else {
+            XCTFail("the calibration of the three-value frame failed"); return
+        }
+        XCTAssertEqual(alice.send(f, to: peerId), .backpressured, "the stalled leg refuses the hand")
+        let writer = alice.centralWriterForTest(peerId)
+        XCTAssertNotNil(writer, "the direction's writer stands")
+        XCTAssertEqual(writer?.stagedValues() ?? -1, 3, "all three values wait; none is claimed away")
+        XCTAssertNil(writer?.inFlightOperation(), "nothing flies while the leg is barred")
+        XCTAssertTrue(capturePeer.writes.isEmpty, "the barred leg carried nothing out")
+        // The very context reports itself ready again: the window drains in order.
+        capturePeer.canSendWriteWithoutResponse = true
+        alice.processPeripheralIsReady(peerHandle, delegate: delegate)
+        XCTAssertEqual(capturePeer.writes.count, 3, "the three values flow out, in the order staged")
+        XCTAssertEqual(writer?.stagedValues() ?? -1, 0, "the window stands empty")
+        XCTAssertEqual(writer?.admittedCount() ?? -1, 0, "the record retired whole")
+        XCTAssertTrue(fragIndexIsHead(capturePeer.writes[0]), "the first value leads as the head")
+        alice.stop()
+    }
+
     // MARK: case 12: the two directions fragment at their own maxima
 
     func testFragmentationDiffersByTheirDirections() throws {
