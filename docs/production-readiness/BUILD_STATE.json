@@ -2124,7 +2124,12 @@
   "SIGNING"
  ],
  "failed_attempts": [],
- "in_progress": null,
+ "in_progress": {
+  "task": "T21",
+  "objective": "On physical duplex ROLE_BOUND with localHint<remoteHint, create a relation SessionSlot and call beginInitiator.",
+  "claimed_head": "a0e69d7300b84c2bd4cf0c45f895f1ad8f8d93bb",
+  "claimed_utc": "2026-09-10T20:22:32Z"
+ },
  "last_code_head": "194ccb5c27a8440fae18327312b9148a088c718b",
  "last_observed_head": "d9b300be102c5c880cab2491e15b79af2838d442",
  "latest_verification": {
