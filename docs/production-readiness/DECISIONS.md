@@ -302,3 +302,41 @@ assertion during a house-style rewrite of a test is invisible to green suites -
 mutation resistance of the suite was proven only after the missing order
 assertion was restored; keep campaigns should verify witness names, not merely
 counts.
+
+## D-T15-a [ACCEPTED] Timers are leases named by immutable whole keys
+Every window - the provisional outbound attempt and the inbound inactivity
+watch - is stored as a TimerLease keyed by TimerKey(RelationKey, operation
+kind, unique operation id). Storage, cancellation and replacement run only
+through reducer bodies on the epoch serial executor, each comparing the
+whole key of the current occupant before removing anything: cancel releases
+exactly the handle that matches, never a blind sweep of the slot that could
+catch a newer lease. The fire closure carries the whole key and the arming
+epoch's context; identity is re-verified under the lock before the
+corresponding timeout reduction runs. Two decisions carry the weight: the
+operation id source is monotone for the transport lifetime and never reset
+at an opening (a reset lets a successor issue keys colliding with retired
+ones - demonstrated by mutant MU-6, where the stale-fire refusal collapsed);
+and the connect advance re-arms the window through the same reducer -
+observed necessary because the admission arm alone left the replacement path
+without production coverage, and it mirrors the Android driver's connect
+lease from T12. Deadlines are computed against the injected MonotonicClock
+at every arm, including replacements (MU-5 pins the stale-inherited variant).
+
+## D-T15-b [ACCEPTED] Builder runtime facts (this environment)
+Three campaign lessons extended: (1) an equivalence-class trap - the first
+MU-2 and MU-5 passed as SURVIVED because the correct compare-cancel ordering
+masked them: with the map membership check first in the field, weakening a
+single redundant guard changes nothing observable; faithful mutants must
+degrade every guard on the path (fire-time check and reduction re-validation)
+or move the hoisted evaluation above the cancel; the specs were redeployed
+non-equivalent before reporting, and no surviving mutant was ever called
+killed. (2) The mutation driver's member-slice scanner must begin its
+next-member search after the declaration's own line: with an attribute line
+attached, a fixed-offset scan self-matched the declaration and truncated the
+slice. (3) The verdict parsers are now built from character pieces (dashed
+case lines, singular-or-plural failure summaries) and byte-exact
+install/revert round-trips are a pre-condition of the campaign, asserted by
+exit status, not by displayed text - the output-token corruption family
+documented in D-T13-b/D-T14-b continues to strike long literals crossing
+tool channels, and structural derivation from the file's own bytes remains
+the durable defense.

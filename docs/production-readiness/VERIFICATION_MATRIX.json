@@ -659,6 +659,50 @@
       "task_ids": [
         "T14"
       ]
+    },
+    {
+      "claim_id": "CLM-T15-TIMERKEY",
+      "command_ids": [
+        "T15-narrow-swift",
+        "T15-subsystem-swift"
+      ],
+      "evidence_class": "internal",
+      "evidence_sha256": null,
+      "latest_source_sha": "8e3d9522727ab0af16bc4e861a824249d3efc35d",
+      "limitations": "host-side evidence; real run-loop expiry and orphan-fire timing races await the T73-T75 device gates",
+      "production_path": "ios/Godstone/Sources/GodstoneMesh/BleTransport.swift",
+      "profile": "swift-host",
+      "required_case_ids": [
+        "ReadinessT15Tests"
+      ],
+      "requirement": "every iOS timer owns an immutable whole key (relation + operation kind + unique operation id); timers are stored, cancelled and replaced only through reducer bodies on the epoch serial executor; the fire captures the whole key and compares its identity before removing or transitioning anything; the operation id source is monotone for the transport lifetime so no successor epoch can collide with a retired key; terminals and the closing sweep retain no lease",
+      "result": "PASS",
+      "state_owner": "iOS timer lease discipline",
+      "task_ids": [
+        "T15"
+      ]
+    },
+    {
+      "claim_id": "CLM-T15-DEADLINE",
+      "command_ids": [
+        "T15-narrow-swift",
+        "T15-subsystem-swift"
+      ],
+      "evidence_class": "internal",
+      "evidence_sha256": null,
+      "latest_source_sha": "8e3d9522727ab0af16bc4e861a824249d3efc35d",
+      "limitations": "host-side evidence with the production SystemMonotonicClock replaced by a deterministic test clock at the real dependency boundary",
+      "production_path": "ios/Godstone/Sources/GodstoneMesh/BleTransport.swift",
+      "profile": "swift-host",
+      "required_case_ids": [
+        "ReadinessT15Tests"
+      ],
+      "requirement": "lease deadlines are explicit in the injected MonotonicClock domain, recomputed at every arm including the replacement path; counters are never relied on without their epoch, and the connect advance re-arms the provisional window through the same reducer as the admission path",
+      "result": "PASS",
+      "state_owner": "iOS monotonic deadline and numbering discipline",
+      "task_ids": [
+        "T15"
+      ]
     }
   ],
   "note": "Claims appended per task with real evidence; PASS requires positive case counts and matching command output. Device/independent claims never accept host-only results.",
