@@ -2213,6 +2213,47 @@ public final class BleTransport: NSObject, @unchecked Sendable {
         }
     }
 
+    /// T20: the heartbeat of the absolute lease. The reassembler sweeps at
+    /// every ingress as matter; this sweeps the relations whose peers have
+    /// gone silent altogether, so a stalled dribble cannot pin a slot and a
+    /// buffer until some unrelated event happens to arrive. Each lapsed
+    /// lease is released and reported by the connection's own sweep, and
+    /// the affected relation is closed through the very arms the platform's
+    /// terminals travel - nothing here invents a terminal the platform did
+    /// not deliver.
+    public func sweepInboundLeases() {
+        lockTransport()
+        var pendingOut: [(peerId: UUID, gen: UInt64, peripheral: CBPeripheral?,
+                          epoch: UInt64, manager: CBCentralManager)] = []
+        var pendingIn: [(centralId: UUID, gen: UInt64, epoch: UInt64,
+                         manager: CBPeripheralManager)] = []
+        for (peerId, conn) in outboundCentralConnections where conn.isRoleBound {
+            if conn.sweepLeases(), let lifetime = activeOutboundLifetimes[peerId],
+               let manager = central {
+                pendingOut.append((peerId, lifetime.relationKey.generation, lifetime.peripheral,
+                                  lifetime.transportEpoch, manager))
+            }
+        }
+        for (centralId, conn) in inboundPeripheralConnections where conn.isRoleBound {
+            if conn.sweepLeases(), let lifetime = activeInboundLifetimes[centralId],
+               let manager = peripheral {
+                pendingIn.append((centralId, lifetime.relationKey.generation,
+                                  lifetime.transportEpoch, manager))
+            }
+        }
+        unlockTransport()
+        for e in pendingOut {
+            _ = reductionProcessOutboundDisconnect(peerId: e.peerId, expectedGen: e.gen,
+                                                  peripheral: e.peripheral,
+                                                  sourceEpoch: e.epoch, from: e.manager)
+        }
+        for e in pendingIn {
+            _ = reductionProcessInboundUnsubscribe(centralId: e.centralId, expectedGen: e.gen,
+                                                  characteristic: nil,
+                                                  sourceEpoch: e.epoch, from: e.manager)
+        }
+    }
+
     public func reductionProcessOutboundDisconnect(peerId: UUID, expectedGen: UInt64, peripheral: CBPeripheral? = nil, sourceEpoch: UInt64, from manager: CBCentralManager) -> BleCentralAction {
         // T14: read the drivers once, at the critical instant of admission,
         // under the lock that guards their assignment; the reduction below
@@ -2403,7 +2444,26 @@ public final class BleTransport: NSObject, @unchecked Sendable {
             }
             let ingested = conn.ingestInboundAttValue(characteristic.value ?? Data())
             let registry = sessions
+            let leaseLapsed = conn.takeLeaseExpiryNotice() != nil
+            let standingOut = leaseLapsed ? activeOutboundLifetimes[peerId] : nil
+            let speakingCentral = central
             unlockTransport()
+            if leaseLapsed {
+                // T20: the absolute term of a whole-record assembly lapsed on
+                // this ingress. The reassembler has released its buffers; only
+                // the owner closes the relation, and it does so through the
+                // very arm the platform's own disconnect travels - named by
+                // the generation and epoch the registration itself bears, and
+                // by the retained central that speaks for the context.
+                if let lifetime = standingOut, let manager = speakingCentral {
+                    _ = reductionProcessOutboundDisconnect(peerId: peerId,
+                                                          expectedGen: lifetime.relationKey.generation,
+                                                          peripheral: lifetime.peripheral,
+                                                          sourceEpoch: lifetime.transportEpoch,
+                                                          from: manager)
+                }
+                return .noOp
+            }
             guard let record = ingested.admittedRecord else {
                 // T17: an incomplete reassembly stays silent - it is in
                 // flight, not a failure; a rejected record is a bounded
@@ -3291,7 +3351,23 @@ public final class BleTransport: NSObject, @unchecked Sendable {
 
                 let ingested = conn.ingestInboundAttValue(v)
                 let registry = sessions
+                let leaseLapsed = conn.takeLeaseExpiryNotice() != nil
+                let standingIn = leaseLapsed ? activeInboundLifetimes[centralId] : nil
                 unlockTransport()
+                if leaseLapsed {
+                    // T20: the absolute term lapsed on this ingress; the owner
+                    // closes through the inbound arm, generation and epoch
+                    // validated as ever by the registration's own tokens, and
+                    // the direction's writer retires with the relation served.
+                    if let lifetime = standingIn {
+                        _ = reductionProcessInboundUnsubscribe(centralId: centralId,
+                                                              expectedGen: lifetime.relationKey.generation,
+                                                              characteristic: nil,
+                                                              sourceEpoch: lifetime.transportEpoch,
+                                                              from: pm)
+                    }
+                    continue
+                }
                 let record = ingested.admittedRecord
                 if record == nil, case .rejected(let why) = ingested {
                     // T17: bounded rejection event; the collector runs on.

@@ -112,6 +112,49 @@ public final class BleConnection: @unchecked Sendable {
     }
 
     private let reassembler: BleRecordReassembler
+
+    /// T20: the relation this connection's ingress belongs to, as the owner
+    /// binds it from the registration it currently holds. A bare connection
+    /// keeps the documented unclaimed placeholder, whose leases govern no
+    /// live relation and raise no fall.
+    internal var relationKeyProvider: (() -> RelationKey)?
+
+    private let noticeLock = NSLock()
+    private var leaseExpiryNotice: AssemblyLease?
+
+    internal func noteLeaseExpiry(_ lease: AssemblyLease) {
+        noticeLock.lock()
+        defer { noticeLock.unlock() }
+        if leaseExpiryNotice == nil { leaseExpiryNotice = lease }
+    }
+
+    /// The owner asks once per ingress what lapsed; the notice is consumed.
+    internal func takeLeaseExpiryNotice() -> AssemblyLease? {
+        noticeLock.lock()
+        defer { noticeLock.unlock() }
+        let notice = leaseExpiryNotice
+        leaseExpiryNotice = nil
+        return notice
+    }
+
+    /// Observation only: the standing notice, for the suites' sight.
+    internal func peekLeaseExpiryNotice() -> AssemblyLease? {
+        noticeLock.lock()
+        defer { noticeLock.unlock() }
+        return leaseExpiryNotice
+    }
+
+    /// T20: the heartbeat's question - sweep at the clock's instant and
+    /// report whether a lease lapsed. The notice is consumed here; the
+    /// owner who hears it performs the fall.
+    internal func sweepLeases() -> Bool {
+        reassembler.sweepAtNow()
+        return takeLeaseExpiryNotice() != nil
+    }
+
+    internal func activeLeaseOf(_ seq: UInt8) -> AssemblyLease? { reassembler.activeLeaseOf(seq) }
+    internal func leaseCount() -> Int { reassembler.leaseCount() }
+    internal func sweepLeasesAt(_ now: TimeInterval) { reassembler.sweepExpiredAt(now) }
     private var nextOutboundSeq: UInt8 = 0
     private let lock = NSLock()
 
@@ -123,6 +166,14 @@ public final class BleConnection: @unchecked Sendable {
         self.peerId = peerId
         self.maxAttValueLength = initialMaxAttValueLength
         self.reassembler = BleRecordReassembler(timeProvider: timeProvider)
+        // T20: the owner's seats are bound once the connection stands whole
+        // - weak on the connection, so the reassembler never keeps its own
+        // alive; the binding order is law: the last to be bound is the
+        // reassembler's counsel for every later admission.
+        reassembler.onLeaseExpiry = { [weak self] lease in self?.noteLeaseExpiry(lease) }
+        reassembler.relationKeyOf = { [weak self] in
+            (self?.relationKeyProvider ?? { LifetimeControl.unclaimedRelation })()
+        }
     }
 
     /// Validates and executes state transitions. Direct transitions to roleBound, handshakeInProgress, or ready are rejected.

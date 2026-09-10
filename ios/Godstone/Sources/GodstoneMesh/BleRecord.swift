@@ -274,12 +274,14 @@ public final class BleRecordReassembler: @unchecked Sendable {
         var buffer: [UInt8]
         let createdTime: TimeInterval
         var lastActivityTime: TimeInterval
+        let lease: AssemblyLease
 
         init(
             recordType: BleRecordType,
             totalLen: Int,
             fragCount: Int,
             stride: Int,
+            lease: AssemblyLease,
             createdTime: TimeInterval
         ) {
             self.recordType = recordType
@@ -290,16 +292,53 @@ public final class BleRecordReassembler: @unchecked Sendable {
             self.buffer = [UInt8](repeating: 0, count: totalLen)
             self.createdTime = createdTime
             self.lastActivityTime = createdTime
+            self.lease = lease
         }
     }
 
     private let timeProvider: () -> TimeInterval
+    /// T20: the owner's seat for expiry notices, bound late by the
+    /// connection once its own identity is fully standing. Unbound, the
+    /// reassembler still releases buffers at the term; only the notice is
+    /// withheld, and the absolute term itself never depends on the seat.
+    internal var onLeaseExpiry: ((AssemblyLease) -> Void)?
+    /// T20: the owner's seat for the relation key the leases name; the
+    /// unclaimed placeholder stands until the connection binds its own.
+    internal var relationKeyOf: () -> RelationKey = { LifetimeControl.unclaimedRelation }
+    private var nextAdmissionId: UInt64 = 1
     private var inFlight: [UInt8: InFlightAssembly] = [:]
     private var completedFingerprints: [UInt8: String] = [:]
     private let lock = NSLock()
 
     public init(timeProvider: @escaping () -> TimeInterval = { Date().timeIntervalSince1970 }) {
         self.timeProvider = timeProvider
+    }
+
+    /// The lease register's probes, for the lifetime suites and the owner.
+    internal func activeLeaseOf(_ seq: UInt8) -> AssemblyLease? {
+        lock.lock()
+        defer { lock.unlock() }
+        return inFlight[seq]?.lease
+    }
+
+    internal func leaseCount() -> Int {
+        lock.lock()
+        defer { lock.unlock() }
+        return inFlight.count
+    }
+
+    /// The sweep every ingress runs, at the clock's current instant.
+    internal func sweepAtNow() {
+        lock.lock()
+        defer { lock.unlock() }
+        evictExpired(now: timeProvider())
+    }
+
+    /// The sweep every ingress runs, exposed for the timer-race schedules.
+    internal func sweepExpiredAt(_ now: TimeInterval) {
+        lock.lock()
+        defer { lock.unlock() }
+        evictExpired(now: now)
     }
 
     private func evictExpired(now: TimeInterval) {
@@ -311,6 +350,26 @@ public final class BleRecordReassembler: @unchecked Sendable {
         }
         for seq in expired {
             inFlight.removeValue(forKey: seq)
+        }
+
+        // T20: the absolute term of the assembly lease. Whatever the sliding
+        // window above has been made to forget by late arrivals - fresh or
+        // duplicate, each of which refreshes the activity stamp - the
+        // deadline the admission minted stands fast: no refresh moves it.
+        // When it passes, the buffers are released here and the owner is
+        // told below, so a dribbling peer cannot pin the slots and buffers
+        // indefinitely through the window courtesy.
+        var lapsed: [AssemblyLease] = []
+        for (_, asm) in inFlight {
+            if now >= asm.lease.deadlineMono {
+                lapsed.append(asm.lease)
+            }
+        }
+        for lease in lapsed {
+            inFlight.removeValue(forKey: lease.seq)
+        }
+        for lease in lapsed {
+            onLeaseExpiry?(lease)
         }
     }
 
@@ -351,11 +410,20 @@ public final class BleRecordReassembler: @unchecked Sendable {
             }
 
             let stride = totalLen > 0 ? (totalLen + fragCount - 1) / fragCount : 0
+            // T20: the admission mints the absolute lease once. The token
+            // names the relation, the sequence, an admission identity that
+            // never repeats for this reassembler, and the deadline; nothing
+            // later received moves any of it.
+            let minted = AssemblyLease(relationKey: relationKeyOf(), seq: seq,
+                                      admissionId: nextAdmissionId,
+                                      deadlineMono: now + AssemblyLease.leaseSeconds)
+            nextAdmissionId += 1
             let newAsm = InFlightAssembly(
                 recordType: hdr.recordType,
                 totalLen: totalLen,
                 fragCount: fragCount,
                 stride: stride,
+                lease: minted,
                 createdTime: now
             )
             inFlight[seq] = newAsm

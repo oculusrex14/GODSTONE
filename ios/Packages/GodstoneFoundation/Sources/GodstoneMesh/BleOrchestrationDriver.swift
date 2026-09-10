@@ -228,6 +228,12 @@ public enum BleCentralAction: Equatable, Sendable {
 }
 
 public final class BleCentralOrchestrationDriver: @unchecked Sendable {
+
+    /// T20 seam: the clock handed to connections this driver creates, so
+    /// the lifetime suites can stand the absolute term at known instants.
+    /// Nil keeps the wall clock; production never sets it.
+    internal var connectionClockForTest: (() -> TimeInterval)?
+
     public let localHint: Data
     public let localLinkInfoProvider: @Sendable () -> Data?
     public let capacityAuthority: BleGlobalCapacityAuthority?
@@ -374,7 +380,8 @@ public final class BleCentralOrchestrationDriver: @unchecked Sendable {
         }
 
         connectionGenerations[peerId] = nextGen
-        let conn = BleConnection(peerId: peerId)
+        let conn = BleConnection(peerId: peerId,
+                                 timeProvider: connectionClockForTest ?? { Date().timeIntervalSince1970 })
         activeConnections[peerId] = conn
         outboundSlots[peerId] = OutboundPeerSlot(state: .active(nextGen), generation: nextGen, peerId: peerId, lease: lease)
         return .connectPeripheral(peerId)
@@ -615,6 +622,12 @@ public enum BlePeripheralAction: Equatable, Sendable {
 }
 
 public final class BlePeripheralOrchestrationDriver: @unchecked Sendable {
+
+    /// T20 seam: the clock handed to connections this driver creates, so
+    /// the lifetime suites can stand the absolute term at known instants.
+    /// Nil keeps the wall clock; production never sets it.
+    internal var connectionClockForTest: (() -> TimeInterval)?
+
     public let localHint: Data
     public let localLinkInfoProvider: @Sendable () -> Data?
     public let capacityAuthority: BleGlobalCapacityAuthority?
@@ -806,7 +819,8 @@ public final class BlePeripheralOrchestrationDriver: @unchecked Sendable {
                 centralGenerations[centralId] = gen
                 acceptedRemoteLinkInfo[centralId] = remoteInfo
 
-                let conn = BleConnection(peerId: centralId)
+                let conn = BleConnection(peerId: centralId,
+                                         timeProvider: connectionClockForTest ?? { Date().timeIntervalSince1970 })
                 conn.transitionTo(.provisionalConnected)
                 conn.bindResponderFromAcceptedIncomingLinkInfo(remoteHint: remoteInfo.nodeHint)
                 inboundConnections[centralId] = conn
