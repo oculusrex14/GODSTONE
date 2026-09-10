@@ -259,3 +259,46 @@ codes and verify the bytes on disk after every write. Corollary: git
 diff --check before committing catches the trailing-whitespace residue left
 at injected seam lines, and the mirror parity check (sync --check) must run
 after every canonical edit, not only before commit.
+
+## D-T14-a [ACCEPTED] One uninterrupted reduction per admitted event on the epoch serial executor
+Every mutating transport entry is wrapped so its validation, state transition and
+effect scheduling run as one operation on the ManagerContext's dedicated serial
+queue; reentrance is thread-marker based (the context stamps its own executing
+thread), so an adapter already inside its context admits inline and never
+recurses into a queue of its own. The lifecycle takes the same discipline: stop
+quiesces the closing epoch on its own executor and start quiesces the previous
+one before installing fresh drivers, which is what makes the card's barrier
+scenario - pause between validation and action, queue a stop/start, resume the
+old work - resolve to a single total order. Driver references are read once at
+the critical instant of admission under the lock that guards their assignment,
+and every action keeps the validated context identity with it, so a stale event
+mutates no new state. Sealing and opening are trust work: they run outside the
+critical section and their completions return token-checked to the executor
+before any effect commits or the delegate is notified; failure is kept
+distinguishable from empty success at every completion site. Chosen over
+fine-grained locking around each mutation because the defect class the card
+names is the split between validation and action, which only a serialised
+reduction eliminates. The five-mutant campaign pins each pillar: unwrapping any
+single entry or the lifecycle hop, or delivering untagged through an adapter,
+kills a named witness case.
+
+## D-T14-b [ACCEPTED] Builder runtime facts (this environment)
+The output-token corruption pattern seen before (D-T12-b, D-T13-b) extends to
+long literal payloads inside scripts that pass through the editing tools: a
+Python campaign driver authored with long Swift anchor strings silently stopped
+matching, while byte-identical round-trips of short structural fragments
+succeeded; the durable form is to derive every anchor from the file's own bytes
+via structural regex and rebuild replacements from captured groups, never to
+carry long literals across the channel, and to let asserted counts (exit codes,
+byte-equality round-trip checks) - not displayed text - decide whether a spec
+is fit. Two more cases of the same family: a test verifier misreported '1
+failure' as no run because its match pattern was written for the plural, and
+the dash in the per-case summary line went unmatched by an over-escaped
+bracket; verdicts were therefore recomputed offline from the retained logs,
+and the runs themselves were never rerun for convenience of the parser. Also:
+test seams must be declared forget-only where they must not be writable
+(public private(set) plus an explicit clear...ForTest seam), and a dropped
+assertion during a house-style rewrite of a test is invisible to green suites -
+mutation resistance of the suite was proven only after the missing order
+assertion was restored; keep campaigns should verify witness names, not merely
+counts.

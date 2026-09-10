@@ -615,6 +615,50 @@
       "task_ids": [
         "T13"
       ]
+    },
+    {
+      "claim_id": "CLM-T14-SERIALREDUCE",
+      "command_ids": [
+        "T14-narrow-swift",
+        "T14-subsystem-swift"
+      ],
+      "evidence_class": "internal",
+      "evidence_sha256": null,
+      "latest_source_sha": "6b760539adb7335294cd660005d5db1e7c67aa52",
+      "limitations": "host-side evidence; real CoreBluetooth event interleaving, restore identifiers and delegate-queue reads on device remain with the T73-T75 physical gates",
+      "production_path": "ios/Godstone/Sources/GodstoneMesh/BleTransport.swift",
+      "profile": "swift-host",
+      "required_case_ids": [
+        "ReadinessT14Tests"
+      ],
+      "requirement": "all connection state, capacity, publication and driver actions of a transport epoch are reduced on the ManagerContext serial executor: callback adapters package immutable events only, validation and transition and effect scheduling form one uninterrupted operation, actions retain the validated context, the lifecycle quiesces its epochs on the same queues, and a deterministic barrier interleaving (pause between validation and action, queue a stop/start, resume the old work) shows the queued lifecycle cannot overtake the in-flight reduction and stale events mutate no new state",
+      "result": "PASS",
+      "state_owner": "iOS transport serial executor",
+      "task_ids": [
+        "T14"
+      ]
+    },
+    {
+      "claim_id": "CLM-T14-TRUSTOUT",
+      "command_ids": [
+        "T14-narrow-swift",
+        "T14-subsystem-swift"
+      ],
+      "evidence_class": "internal",
+      "evidence_sha256": null,
+      "latest_source_sha": "6b760539adb7335294cd660005d5db1e7c67aa52",
+      "limitations": "host-side evidence; the completion token re-check is defence-in-depth on the synchronous host executor and earns its independent teeth at the device gates",
+      "production_path": "ios/Godstone/Sources/GodstoneMesh/BleTransport.swift",
+      "profile": "swift-host",
+      "required_case_ids": [
+        "ReadinessT14Tests"
+      ],
+      "requirement": "no storage or trust work runs while a lock is held: sealing after admission and opening of received records execute outside the critical section on the executor, their completions return token-checked before any effect commits or the delegate is notified, authentication failure is distinguished from empty success throughout, and duplicate terminals and stale timeouts act exactly once",
+      "result": "PASS",
+      "state_owner": "iOS transport trust-work discipline",
+      "task_ids": [
+        "T14"
+      ]
     }
   ],
   "note": "Claims appended per task with real evidence; PASS requires positive case counts and matching command output. Device/independent claims never accept host-only results.",

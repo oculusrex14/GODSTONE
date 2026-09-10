@@ -1166,6 +1166,121 @@
         "CBManager delegateQueue is not readable on the macOS overlay, so queue dedication is observed at the factory seam (the very queue object handed to both managers of a birth) plus the serialisation probe; a device run can additionally read delegateQueue directly",
         "the runner records test counts as UNKNOWN for command-kind specs, so the positive counts above were taken from the swift-test summaries of the recorded logs"
       ]
+    },
+    "T14": {
+      "case_results": [
+        {
+          "collected": 8,
+          "counts_source": "fresh swift-test summary of the filtered run at this tree (8 cases, zero failures)",
+          "engine": "swift-host",
+          "executed": 8,
+          "failed": 0,
+          "passed": 8,
+          "skipped": 0,
+          "stage": "narrow",
+          "suite": "ReadinessT14Tests"
+        },
+        {
+          "collected": 712,
+          "counts_source": "fresh swift-test summary of the GodstoneFoundation suite at this tree",
+          "engine": "swift-host",
+          "executed": 712,
+          "failed": 0,
+          "passed": 712,
+          "skipped": 0,
+          "stage": "subsystem"
+        },
+        {
+          "executed": 3,
+          "failed": 0,
+          "passed": 3,
+          "skipped": 0,
+          "stage": "controls"
+        }
+      ],
+      "commands": [
+        "T14-narrow-swift",
+        "T14-subsystem-swift",
+        "T14-controls-python3",
+        "T14-controls-python3-002",
+        "T14-controls-python3-003"
+      ],
+      "device_gate_ids": [],
+      "implementation_commit": "6b760539adb7335294cd660005d5db1e7c67aa52",
+      "inputs": {
+        "baseline": "b54f3a4",
+        "commit_c_initial": "9b95b6f",
+        "commit_c_whitespace": "whitespace stripped in 9b95b6f before the commit",
+        "commit_c_witness": "6b76053",
+        "file_hashes": {
+          "ios/Godstone/Sources/GodstoneMesh/BleTransport.swift": "98f22e079fd5b72ed92adfdd9b862aa587de69077307b7c55a98fa166b640fb9",
+          "ios/Godstone/Tests/GodstoneMeshTests/ReadinessT14Tests.swift": "0767c9a36b90eb60c0d41135b62d198b2e6f9dc8be76be972fddc9c2c006a0c6",
+          "ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/BleTransport.swift": "98f22e079fd5b72ed92adfdd9b862aa587de69077307b7c55a98fa166b640fb9",
+          "ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/ReadinessT14Tests.swift": "0767c9a36b90eb60c0d41135b62d198b2e6f9dc8be76be972fddc9c2c006a0c6"
+        },
+        "mutation_worktree": "/Users/oculus/Projects/GODSTONE_T14_MUT"
+      },
+      "mutation_results": [
+        {
+          "engines": [
+            "swift-host"
+          ],
+          "evidence": "T14/mutations/MU-1-t14.log (witness testQueuedStopStartCannotSplitValidationFromAction down; testCallbackFromUnexpectedQueueIsCarriedOntoTheExecutor also down - five failing cases)",
+          "expected": "the card-named defect: unlocking before reading the mutable current driver lets a queued stop/start interleave between validation and action",
+          "mutation": "MU-1 the connect entry loses its serial-executor wrapper (pre-T14 shape: validate on the caller thread, then act)",
+          "outcome": "KILLED"
+        },
+        {
+          "engines": [
+            "swift-host"
+          ],
+          "evidence": "T14/mutations/MU-2-t14.log (witness testTheWholeAdmissionStreamReducesOnTheSerialExecutor down: the subscribe admission leaves no trace and the freshness guard fires)",
+          "expected": "every admitted event is reduced on the epoch serial executor",
+          "mutation": "MU-2 the inbound-subscribe entry loses its serial-executor wrapper",
+          "outcome": "KILLED"
+        },
+        {
+          "engines": [
+            "swift-host"
+          ],
+          "evidence": "T14/mutations/MU-3-t14.log (witness testQueuedStopStartCannotSplitValidationFromAction down: the strict arrival order is violated once the stopper slips past the parked reduction)",
+          "expected": "the queued lifecycle may only cross the barrier after the in-flight reduction completed its one operation",
+          "mutation": "MU-3 stop() loses the quiesce hop onto the closing epoch executor",
+          "outcome": "KILLED"
+        },
+        {
+          "engines": [
+            "swift-host"
+          ],
+          "evidence": "T14/mutations/MU-4-t14.log (witness testCallbackFromUnexpectedQueueIsCarriedOntoTheExecutor down: the marker-carried reentrance pin fails)",
+          "expected": "callback adapters deliver while their context owns the marker; nested admissions are inline, never a queue of their own",
+          "mutation": "MU-4 the central-state proxy callback delivers untagged (no withSerial marking)",
+          "outcome": "KILLED"
+        },
+        {
+          "engines": [
+            "swift-host"
+          ],
+          "evidence": "T14/mutations/MU-5-t14.log (witness testCallbackFromUnexpectedQueueIsCarriedOntoTheExecutor down: the unexpected-queue delivery leaves no trace)",
+          "expected": "a delivery from an unexpected queue is carried onto the serial executor before anything is touched",
+          "mutation": "MU-5 the central-state entry loses its serial-executor wrapper",
+          "outcome": "KILLED"
+        }
+      ],
+      "next_action": "none - task complete",
+      "phase_gate": "P1",
+      "required_cases": [
+        "ReadinessT14Tests (8 cases iOS)"
+      ],
+      "status": "COMPLETE",
+      "task_id": "T14",
+      "tested_tree_sha": "41f3ca060dede06a01f11632be0bec55d80eb75f",
+      "unresolved": [
+        "device gates for the CoreBluetooth runtime stay open: real event interleaving across epochs, TCC authorisation prompts and state restoration under real restore identifiers belong to the T73-T75 physical evidence",
+        "the token re-check of the trust-work completions (seal and open) is defence-in-depth on the host: the synchronous serial executor admits no out-of-band completion window, so its teeth are cut for the device gates where completions arrive from real async queues; recorded, not exercised",
+        "activeManagerContext, lastRetiredManagerContext, isStarted and currentTransportEpoch remain plain vars: aligned single-word load/store of reference and word-sized values is race-benign on the arm64 target and every authoritative access funnels through the transport lock or the epoch executor; the repo ships no atomic box and none is introduced here; documented rather than fixed",
+        "the runner records test counts as UNKNOWN for command-kind specs, so the positive counts above were taken from the swift-test summaries of the recorded logs"
+      ]
     }
   },
   "current_task": null,
@@ -1178,15 +1293,15 @@
   ],
   "failed_attempts": [],
   "in_progress": null,
-  "last_code_head": "9c069622464fec4d3b32ce535ea5ecaac89a3172",
-  "last_observed_head": "9c069622464fec4d3b32ce535ea5ecaac89a3172",
+  "last_code_head": "6b760539adb7335294cd660005d5db1e7c67aa52",
+  "last_observed_head": "6b760539adb7335294cd660005d5db1e7c67aa52",
   "latest_verification": {
-    "note": "T13 narrow 8/8, GodstoneFoundation 704/704 green at 9c06962; five mutants killed on both sides of the source-identity gate",
-    "recorded_utc": "2026-09-09T21:30:11+00:00",
-    "source_sha": "9c069622464fec4d3b32ce535ea5ecaac89a3172",
-    "tested_tree_sha": "2900fa9b5a4129c5bd41dfd47193a1fae809e5bc"
+    "note": "T14 narrow 8/8, GodstoneFoundation 712/712 green at 6b76053; five mutants killed, each by its named witness case",
+    "recorded_utc": "2026-09-10T00:20:44+00:00",
+    "source_sha": "6b760539adb7335294cd660005d5db1e7c67aa52",
+    "tested_tree_sha": "41f3ca060dede06a01f11632be0bec55d80eb75f"
   },
-  "next_task": "T14",
+  "next_task": "T15",
   "phase": "P0",
   "plan_sha256": "685456b378662b0a40a53a6abc810041e37daf97b213f3efeb6cea879363934e",
   "planning_baseline_sha": "b5c3d3d394b70cf356cdde33b47511dad7cbb95c",
@@ -1204,6 +1319,7 @@
     "GATT profile is contract-driven on both engines (Generated A001-A004; legacy FD01/FD02 removed and refused; digest characteristic parity added to the Android server).",
     "Android scan callbacks are context-bound (ScanContext epoch/identity/lease; capture-before-deliver; reducer-only mutation) and the discovery surface is bounded (64, pin-aware, deterministic LRU eviction) on both the transport and the orchestration driver.",
     "Android terminal events (reject, timeout, local cancel) complete explicitly via the driver terminate authority: exact RelationKey transitions, once-leased, once-unpublished, captured-handle closes; production callbacks carry required tokens; late platform terminals are idempotent.",
-    "iOS transport epochs own their manager pair: every opening builds a fresh CBCentralManager/CBPeripheralManager pair with its own delegate proxies on a dedicated serial queue, wired once at birth; the reducer authenticates sender instance, wired delegate and named epoch together - events of closed epochs are dropped where they stand."
+    "iOS transport epochs own their manager pair: every opening builds a fresh CBCentralManager/CBPeripheralManager pair with its own delegate proxies on a dedicated serial queue, wired once at birth; the reducer authenticates sender instance, wired delegate and named epoch together - events of closed epochs are dropped where they stand.",
+    "iOS transport reduces each manager event as one uninterrupted operation on the epoch serial executor: validation, transition and effect scheduling never split; the lifecycle quiesces its epochs on the same queues, callback adapters deliver under their own context marker, and sealing and opening (trust work) never run while the transport lock is held - their completions re-check the admission token on the executor before any effect commits or the delegate is notified."
   ]
 }

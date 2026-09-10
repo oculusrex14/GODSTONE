@@ -1044,9 +1044,131 @@
         "the closeCapturedHandle true-branch requires a captured platform handle; on the JVM the context-null connect path returns before capturing, so the once-flag false-branches and the generation-stamp guards are what the internal evidence pins",
         "the runner records test counts as UNKNOWN for command-kind specs, so the positive counts above were derived from the fresh JUnit XML reports and the gradle summaries in the recorded logs"
       ]
+    },
+    "T13": {
+      "case_results": [
+        {
+          "collected": 8,
+          "counts_source": "fresh swift-test summary of the filtered run at this tree (8 cases, zero failures)",
+          "engine": "swift-host",
+          "executed": 8,
+          "failed": 0,
+          "passed": 8,
+          "skipped": 0,
+          "stage": "narrow",
+          "suite": "ReadinessT13Tests"
+        },
+        {
+          "collected": 704,
+          "counts_source": "fresh swift-test summary of the GodstoneFoundation suite at this tree",
+          "engine": "swift-host",
+          "executed": 704,
+          "failed": 0,
+          "passed": 704,
+          "skipped": 0,
+          "stage": "subsystem"
+        },
+        {
+          "executed": 3,
+          "failed": 0,
+          "passed": 3,
+          "skipped": 0,
+          "stage": "controls"
+        }
+      ],
+      "commands": [
+        "T13-narrow-swift",
+        "T13-subsystem-swift",
+        "T13-controls-python3",
+        "T13-controls-python3-002",
+        "T13-controls-python3-003"
+      ],
+      "device_gate_ids": [],
+      "implementation_commit": "9c069622464fec4d3b32ce535ea5ecaac89a3172",
+      "inputs": {
+        "baseline": "e352a8c",
+        "commit_c_initial": "4cb83b3",
+        "commit_c_whitespace": "post 4cb83b3 strip of the recorder seam",
+        "commit_c_witness": "9c06962",
+        "file_hashes": {
+          "ios/Godstone/Sources/GodstoneMesh/BleTransport.swift": {
+            "after_9c06962": "314ea9df04d58fb4398aad9196ecd6d5cbd3205f24409e99cf1fe96121fc192d",
+            "before_e352a8c": "1f0361a72beb321a5382b2198e0c74d83dcc5d249e6c3c0bbf796fad312cc387"
+          },
+          "ios/Godstone/Tests/GodstoneMeshTests/BleLinkSubstrateTests.swift": {
+            "after_9c06962": "565308f6993cbbb11709154ce7170311b9e9299af9821f111b1f260633bb8dac",
+            "before_e352a8c": "8a45ce2382f1ef8ca12e60802e5b2e2e8a6b982325c22d831c3a21d9161d7727"
+          },
+          "ios/Godstone/Tests/GodstoneMeshTests/ReadinessT13Tests.swift": {
+            "after_9c06962": "90bce4c60ae3ead70b177480caa0eb77098832d60d95b442ca2a4e7211ef6d3c",
+            "before_e352a8c": null
+          }
+        },
+        "mutation_worktree": "/Users/oculus/Projects/GODSTONE_T13_MUT"
+      },
+      "mutation_results": [
+        {
+          "engines": [
+            "swift-host"
+          ],
+          "evidence": "T13/mutations/MU-1-t13.log (4 of 8 cases failing, 14 assertion failures; the card-obligation mutant: reusing managers and substituting the current epoch in the delegate makes every source-identity and freshness case fail)",
+          "expected": "every epoch opens fresh pair objects on a fresh dedicated serial queue; a reused pair under re-stamped delegates is the defect the card names",
+          "mutation": "MU-1 the closed epoch is restarted on the same managers with freshly assigned delegates (the pre-T13 design returns)",
+          "outcome": "KILLED"
+        },
+        {
+          "engines": [
+            "swift-host"
+          ],
+          "evidence": "T13/mutations/MU-2-t13.log (the perfect-alibi stranger manager authenticates once the sender-identity check is blinded)",
+          "expected": "only the very manager instance the context created may source events of the epoch",
+          "mutation": "MU-2 the sender-identity check is blinded to a tautology",
+          "outcome": "KILLED"
+        },
+        {
+          "engines": [
+            "swift-host"
+          ],
+          "evidence": "T13/mutations/MU-3-t13.log (the zero token and the future token are admitted once the epoch-naming obligation is dropped)",
+          "expected": "an event must name its own epoch; absent tokens are never correlated to the current slot",
+          "mutation": "MU-3 the reducer stops requiring the event to name its epoch",
+          "outcome": "KILLED"
+        },
+        {
+          "engines": [
+            "swift-host"
+          ],
+          "evidence": "T13/mutations/MU-4-t13.log (a reassigned delegate again proves source identity once the wiring check is removed)",
+          "expected": "reassigning delegates proves nothing: the wired delegate must still be the context-own proxy",
+          "mutation": "MU-4 the wired-delegate identity check is removed",
+          "outcome": "KILLED"
+        },
+        {
+          "engines": [
+            "swift-host"
+          ],
+          "evidence": "T13/mutations/MU-5-t13.log (positive admissions fail across four cases when birth wires a look-alike proxy beside the context)",
+          "expected": "the pair is wired to the context-own proxies once at birth",
+          "mutation": "MU-5 the birth wires the central to a look-alike proxy created beside the context",
+          "outcome": "KILLED"
+        }
+      ],
+      "next_action": "none - task complete",
+      "phase_gate": "P1",
+      "required_cases": [
+        "ReadinessT13Tests (8 cases iOS)"
+      ],
+      "status": "COMPLETE",
+      "task_id": "T13",
+      "tested_tree_sha": "2900fa9b5a4129c5bd41dfd47193a1fae809e5bc",
+      "unresolved": [
+        "device gates for the CoreBluetooth runtime stay open: real event interleaving of closed epochs, TCC authorisation prompts and state restoration under real restore identifiers belong to the T73-T75 physical evidence",
+        "CBManager delegateQueue is not readable on the macOS overlay, so queue dedication is observed at the factory seam (the very queue object handed to both managers of a birth) plus the serialisation probe; a device run can additionally read delegateQueue directly",
+        "the runner records test counts as UNKNOWN for command-kind specs, so the positive counts above were taken from the swift-test summaries of the recorded logs"
+      ]
     }
   },
-  "current_task": "T13",
+  "current_task": "T14",
   "external_blockers": [
     "A06",
     "APPROVED_CONTENT",
@@ -1056,20 +1178,20 @@
   ],
   "failed_attempts": [],
   "in_progress": {
-    "claimed_head": "e352a8c72f4ffd20b73e3897f2bb8c067a4fc0e6",
-    "claimed_utc": "2026-09-09T20:19:19Z",
+    "claimed_head": "b54f3a48893c9f30480ef77ec328254b0afaa3e7",
+    "claimed_utc": "2026-09-09T21:30:45Z",
     "objective": "per card",
-    "task": "T13"
+    "task": "T14"
   },
-  "last_code_head": "d7376a640dfe5118e48e29339896dafc85c9b7d8",
-  "last_observed_head": "d7376a640dfe5118e48e29339896dafc85c9b7d8",
+  "last_code_head": "9c069622464fec4d3b32ce535ea5ecaac89a3172",
+  "last_observed_head": "9c069622464fec4d3b32ce535ea5ecaac89a3172",
   "latest_verification": {
-    "note": "T12 narrow 13/13, mesh subsystem 789/789 green at d7376a6; five mutants killed on both sides of the terminal authority",
-    "recorded_utc": "2026-09-09T20:18:36+00:00",
-    "source_sha": "d7376a640dfe5118e48e29339896dafc85c9b7d8",
-    "tested_tree_sha": "6349a7bca5e98198c62306ae7ed3406919fd2d75"
+    "note": "T13 narrow 8/8, GodstoneFoundation 704/704 green at 9c06962; five mutants killed on both sides of the source-identity gate",
+    "recorded_utc": "2026-09-09T21:30:11+00:00",
+    "source_sha": "9c069622464fec4d3b32ce535ea5ecaac89a3172",
+    "tested_tree_sha": "2900fa9b5a4129c5bd41dfd47193a1fae809e5bc"
   },
-  "next_task": "T13",
+  "next_task": "T14",
   "phase": "P0",
   "plan_sha256": "685456b378662b0a40a53a6abc810041e37daf97b213f3efeb6cea879363934e",
   "planning_baseline_sha": "b5c3d3d394b70cf356cdde33b47511dad7cbb95c",
@@ -1086,6 +1208,7 @@
     "Mesh advertising is UUID-only (canonical service UUID + flags); the 13-octet LinkInfo record is served by GATT and the air payload is budget-audited before dispatch.",
     "GATT profile is contract-driven on both engines (Generated A001-A004; legacy FD01/FD02 removed and refused; digest characteristic parity added to the Android server).",
     "Android scan callbacks are context-bound (ScanContext epoch/identity/lease; capture-before-deliver; reducer-only mutation) and the discovery surface is bounded (64, pin-aware, deterministic LRU eviction) on both the transport and the orchestration driver.",
-    "Android terminal events (reject, timeout, local cancel) complete explicitly via the driver terminate authority: exact RelationKey transitions, once-leased, once-unpublished, captured-handle closes; production callbacks carry required tokens; late platform terminals are idempotent."
+    "Android terminal events (reject, timeout, local cancel) complete explicitly via the driver terminate authority: exact RelationKey transitions, once-leased, once-unpublished, captured-handle closes; production callbacks carry required tokens; late platform terminals are idempotent.",
+    "iOS transport epochs own their manager pair: every opening builds a fresh CBCentralManager/CBPeripheralManager pair with its own delegate proxies on a dedicated serial queue, wired once at birth; the reducer authenticates sender instance, wired delegate and named epoch together - events of closed epochs are dropped where they stand."
   ]
 }

@@ -1,7 +1,7 @@
 # BUILD_STATE (generated view — not authoritative)
 
-- phase: P0  next task: **T14**
-- branch: `codex/production-blueprint`  last code head: `9c069622464f`
+- phase: P0  next task: **T15**
+- branch: `codex/production-blueprint`  last code head: `6b760539adb7`
 
 ## Completed tasks
 
@@ -20,6 +20,7 @@
 | T11 | COMPLETE | `72002d62e241` | narrow(android-jvm) 13/13, subsystem(android-jvm) 776/776, controls 2/2; mutants MU-A/MU-B/MU-C/MU-D/MU-E KILLED |
 | T12 | COMPLETE | `d7376a640dfe` | narrow(android-jvm) 13/13, subsystem(android-jvm) 789/789, controls 2/2; mutants MU-1/MU-2/MU-3/MU-4/MU-5 KILLED |
 | T13 | COMPLETE | `9c069622464f` | narrow(swift-host) 8/8, subsystem(swift-host) 704/704, controls 3/3; mutants MU-1/MU-2/MU-3/MU-4/MU-5 KILLED |
+| T14 | COMPLETE | `6b760539adb7` | narrow(swift-host) 8/8, subsystem(swift-host) 712/712, controls 3/3; mutants MU-1/MU-2/MU-3/MU-4/MU-5 KILLED |
 
 ## External blockers (open)
 
