@@ -88,7 +88,7 @@
     "Tests/GodstoneMeshTests/ReadinessT16Tests.swift": "9e95fbaad350da704e5d322989cb80599332803bdb37d3d6fbaa313b4357caf9",
     "Tests/GodstoneMeshTests/ReadinessT17Tests.swift": "c736b74da38a0236694a78452cbf0d16ab16e86e05a79106b28b4c739feb311d",
     "Tests/GodstoneMeshTests/ReadinessT19Tests.swift": "14a3bbc38a1eaa1e8e760fac0daefdf5410d4fff6b8fc331ebceee8b6266fa19",
-    "Tests/GodstoneMeshTests/ReadinessT20Tests.swift": "42a66fbf6b4afb64e3984188677ca1ca1431d4705f9802d9532dbd652e8dec55",
+    "Tests/GodstoneMeshTests/ReadinessT20Tests.swift": "fea93d171e16a6b530940192b42598160984bed7ec723207750416ab9d7336c6",
     "Tests/GodstoneMeshTests/ReadinessTrustedPairing.swift": "9bb208ad99db5602e10f0a7095aa6fb4bf8abaf79bdb96ba616dc90e4c396ba4",
     "Tests/GodstoneMeshTests/RouterTests.swift": "a5bbdc471993eaed835b19f4034b07ed0c88232d68c200367ae8bfaa42d6014d",
     "Tests/GodstoneMeshTests/SessionManagerConcurrencyTests.swift": "5528001819a79413a6a592becf854ca9c061d3dca4483326e79162bb0b778b52",
