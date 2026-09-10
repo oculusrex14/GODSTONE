@@ -1540,7 +1540,12 @@
     "SIGNING"
   ],
   "failed_attempts": [],
-  "in_progress": null,
+  "in_progress": {
+    "claimed_head": "ec8c9e91e6c8fbabf7453b6ce93dac619bd7e711",
+    "claimed_utc": "2026-09-10T03:38:08+00:00",
+    "objective": "Remove plaintext and synthetic READY from production paths: require a trusted SessionSlot dependency in transport constructors; replace Boolean/nullable ambiguous failures with typed TransportResult and CryptoOpenResult; restrict test readiness injection to nonshipping test adapters; a malformed packet produces a bounded rejection event and collector continuity and cannot create READY or throw through a platform callback.",
+    "task": "T17"
+  },
   "last_code_head": "9e103e388dcdc1c9d4ee4d3df0334f7278f26edb",
   "last_observed_head": "9e103e388dcdc1c9d4ee4d3df0334f7278f26edb",
   "latest_verification": {
