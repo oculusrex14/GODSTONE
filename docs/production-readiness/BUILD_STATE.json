@@ -1397,7 +1397,7 @@
       ]
     }
   },
-  "current_task": null,
+  "current_task": "T16",
   "external_blockers": [
     "A06",
     "APPROVED_CONTENT",
@@ -1406,7 +1406,12 @@
     "SIGNING"
   ],
   "failed_attempts": [],
-  "in_progress": null,
+  "in_progress": {
+    "claimed_head": "0c5c9e34c67aff8e1b1a47857e04d7450450f80a",
+    "claimed_utc": "2026-09-10T01:11:49Z",
+    "objective": "per card",
+    "task": "T16"
+  },
   "last_code_head": "8e3d9522727ab0af16bc4e861a824249d3efc35d",
   "last_observed_head": "8e3d9522727ab0af16bc4e861a824249d3efc35d",
   "latest_verification": {
