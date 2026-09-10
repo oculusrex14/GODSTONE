@@ -237,6 +237,21 @@ class BleConnection(
     }
 
     /**
+     * T18: the single consumption point of the outbound sequence number. The
+     * whole-record writer takes the number here, exactly once, after every
+     * admission check has passed; a refused reservation never burns one.
+     * The handshake fragmenters keep their own one consumption within
+     * [fragmentOutbound], so each record consumes a number once and only once.
+     */
+    internal fun takeOutboundSequence(): Int = synchronized(lock) {
+        val seq = nextOutboundSeq
+        nextOutboundSeq = (nextOutboundSeq + 1) and 0xFF
+        seq
+    }
+
+    internal fun peekOutboundSequenceForTest(): Int = synchronized(lock) { nextOutboundSeq }
+
+    /**
      * Ingest an inbound ATT value, decode it as a canonical BleRecord fragment, and reassemble.
      * Gating is strictly enforced BEFORE fragment is passed to the reassembler.
      */

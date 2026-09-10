@@ -38,6 +38,7 @@ import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Assert.fail
 import org.junit.Test
+import java.security.SecureRandom
 import java.util.concurrent.CopyOnWriteArrayList
 
 /**
@@ -125,7 +126,12 @@ class ReadinessT17Test {
             PeerTrustApplyResult.StorageFailure()
     }
 
-    private fun makeIdentity(): Identity = Identity.loadOrCreate(InMemoryIdentityStorage())
+    /** One generator, shared by every draw: fresh instances seeded in the
+     * same clock tick would otherwise repeat one another's stream. */
+    private val identityRng = SecureRandom()
+
+    private fun makeIdentity(): Identity =
+        Identity.loadOrCreate(InMemoryIdentityStorage(), identityRng)
 
     private fun hintAscending(x: ByteArray, y: ByteArray): Boolean {
         for (i in 0 until 4) {

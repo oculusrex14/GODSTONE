@@ -471,10 +471,10 @@ class GattClientConnection(
         g.requestMtu(mtu)
     }
 
-    suspend fun sendAttValue(bytes: ByteArray): Boolean = gattMutex.withLock {
-        val g = gatt ?: return false
-        val ch = inboxCharacteristic ?: return false
-        if (!isConnected) return false
+    suspend fun sendAttValueTyped(bytes: ByteArray): WriteCompletion = gattMutex.withLock {
+        val g = gatt ?: return WriteCompletion.Failed
+        val ch = inboxCharacteristic ?: return WriteCompletion.Failed
+        if (!isConnected) return WriteCompletion.Failed
 
         val deferred = CompletableDeferred<Boolean>()
         val opGen: Long
@@ -504,7 +504,8 @@ class GattClientConnection(
                     currentOp = null
                 }
             }
-            return false
+            // T18: the stack refused to start the write: busy, retry later.
+            return WriteCompletion.QueueFull
         }
 
         val success = withTimeoutOrNull(5000L) {
@@ -514,11 +515,16 @@ class GattClientConnection(
         if (success == null) {
             // Timed out: Invalidate and close this GATT generation so late callbacks from N1 cannot satisfy N2
             disconnect()
-            return false
+            return WriteCompletion.Failed
         }
 
-        return success
+        return if (success) WriteCompletion.Accepted else WriteCompletion.Failed
     }
+
+    /** The Boolean voice of the leg, kept for its existing callers:
+     * a value counts as travelled only when the completion is Accepted. */
+    suspend fun sendAttValue(bytes: ByteArray): Boolean =
+        sendAttValueTyped(bytes) == WriteCompletion.Accepted
 
     /**
      * T12: close exactly the handle this instance captured at connect

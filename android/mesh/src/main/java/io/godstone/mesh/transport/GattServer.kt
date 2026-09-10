@@ -600,21 +600,23 @@ class BleGattServer(
         else -> InboundRoute.NOT_SUPPORTED
     }
 
-    suspend fun sendNotification(deviceAddress: String, value: ByteArray): Boolean = notificationMutex.withLock {
-        if (isPoisoned) return false
-        val s = server ?: return false
-        val ch = inboxCharacteristic ?: return false
-        val device = connectedDevices[deviceAddress] ?: return false
+    suspend fun sendNotificationTyped(deviceAddress: String, value: ByteArray): WriteCompletion = notificationMutex.withLock {
+        if (isPoisoned) return WriteCompletion.Failed
+        val s = server ?: return WriteCompletion.Failed
+        val ch = inboxCharacteristic ?: return WriteCompletion.Failed
+        val device = connectedDevices[deviceAddress] ?: return WriteCompletion.Failed
 
         if (orchestrationDriver != null) {
-            if (!orchestrationDriver.beginNotification(deviceAddress)) return false
+            // T18: the driver's admission control refused the value: the
+            // outlet's own buffer is full, not the relation nor the record.
+            if (!orchestrationDriver.beginNotification(deviceAddress)) return WriteCompletion.QueueFull
         }
 
         if (subscribedDevices[deviceAddress] != true) {
-            return false
+            return WriteCompletion.Failed
         }
 
-        val pGen = peerGenerations[deviceAddress] ?: return false
+        val pGen = peerGenerations[deviceAddress] ?: return WriteCompletion.Failed
         val epoch = serverGeneration
         val gen = ++notificationGeneration
         val deferred = CompletableDeferred<Boolean>()
@@ -623,8 +625,9 @@ class BleGattServer(
         ch.value = value
         val initiated = s.notifyCharacteristicChanged(device, ch, false)
         if (!initiated) {
+            // T18: the stack refused to start the write: busy, retry later.
             pendingNotification = null
-            return false
+            return WriteCompletion.QueueFull
         }
 
         val result = withTimeoutOrNull(notificationTimeoutMs) {
@@ -648,10 +651,15 @@ class BleGattServer(
             } else {
                 invalidatePeerPhysicalConnection(deviceAddress, device)
             }
-            return false
+            return WriteCompletion.Failed
         }
-        return result
+        return if (result) WriteCompletion.Accepted else WriteCompletion.Failed
     }
+
+    /** The Boolean voice of the leg, kept for its existing callers:
+     * a value counts as travelled only when the completion is Accepted. */
+    suspend fun sendNotification(deviceAddress: String, value: ByteArray): Boolean =
+        sendNotificationTyped(deviceAddress, value) == WriteCompletion.Accepted
 
     private fun invalidatePeerPhysicalConnection(deviceAddress: String, device: BluetoothDevice?) {
         val pGen = peerGenerations.remove(deviceAddress) ?: 0L

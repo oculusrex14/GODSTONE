@@ -43,6 +43,18 @@ interface BleOutletHooks {
     suspend fun notifyPeer(address: String, value: ByteArray): Boolean
     fun isClientConnected(address: String): Boolean
     suspend fun writePeer(address: String, value: ByteArray): Boolean
+
+    /** T18: the typed voice of each leg; the Boolean voices stay for
+     * their existing callers. A leg that answers only true or false is
+     * read as accepted or queue-full - the conservative reading: a
+     * refusal to write is retried, a relation is never closed on an
+     * ambiguity. A leg that knows better, as the production bindings
+     * do, overrides. */
+    suspend fun notifyPeerTyped(address: String, value: ByteArray): WriteCompletion =
+        if (notifyPeer(address, value)) WriteCompletion.Accepted else WriteCompletion.QueueFull
+
+    suspend fun writePeerTyped(address: String, value: ByteArray): WriteCompletion =
+        if (writePeer(address, value)) WriteCompletion.Accepted else WriteCompletion.QueueFull
 }
 
 @SuppressLint("MissingPermission")
@@ -770,16 +782,10 @@ class BleTransport(
     }
 
     override suspend fun send(peerId: ByteArray, bytes: ByteArray): TransportResult {
-        // T17: nothing ships unsealed. The old require() escape and the
-        // twelve silent false returns are all answers now: admitted,
-        // backpressured, rejected with a reason, or closed.
-        if (bytes.size > Transport.BULK_THRESHOLD) {
-            recordRejection(peerId, "send", "frame exceeds the att payload ceiling")
-            return TransportResult.Rejected("frame exceeds the att payload ceiling")
-        }
-        // T17: the registry is consulted before anything else - a transport
-        // without a trusted session registry cannot speak at all, and never
-        // learns whether a connection stands or fell.
+        // T18: nothing is sealed and no sequence number is taken before the
+        // whole record stands reserved. The fixed five hundred twelve octet
+        // gate is gone: the ceiling is computed from the agreed attribute
+        // space, so a full digest travels where the old gate refused.
         val registry = sessions ?: run {
             recordRejection(peerId, "send", "no trusted session registry")
             return TransportResult.Rejected("no trusted session registry")
@@ -794,54 +800,30 @@ class BleTransport(
                              BleConnectionState.QUARANTINED)
 
         if (centralConn?.state == BleConnectionState.READY) {
-            val sealed = registry.seal(centralConn.peerId, bytes) ?: run {
-                recordRejection(peerId, "seal", "authentication refused")
-                return TransportResult.Rejected("seal refused")
-            }
-            val fragments = centralConn.fragmentOutbound(BleRecordType.DATA, sealed)
-            if (fragments.isEmpty()) {
-                recordRejection(peerId, "send.fragment", "fragmentation refused")
-                return TransportResult.Rejected("fragmentation refused")
-            }
             if (!outlet.isClientConnected(address)) {
                 recordRejection(peerId, "send.initiator", "no outlet: client absent or disconnected")
                 return TransportResult.Rejected("no outlet: client absent or disconnected")
             }
-            for (frag in fragments) {
-                if (!outlet.writePeer(address, frag)) {
-                    recordRejection(peerId, "send.initiator", "queue full")
-                    return TransportResult.Backpressured
-                }
-            }
-            return TransportResult.Admitted
+            val writer = centralWriterFor(address, centralConn)
+            return sendThrough(writer, peerId, bytes, registry, centralConn.peerId,
+                address, initiator = true)
         }
         if (centralConn != null && centralConn.state in terminal) {
+            centralWriterShutdown(address)
             return TransportResult.Closed
         }
 
         if (serverConn?.state == BleConnectionState.READY) {
-            val sealed = registry.seal(serverConn.peerId, bytes) ?: run {
-                recordRejection(peerId, "seal", "authentication refused")
-                return TransportResult.Rejected("seal refused")
-            }
-            val fragments = serverConn.fragmentOutbound(BleRecordType.DATA, sealed)
-            if (fragments.isEmpty()) {
-                recordRejection(peerId, "send.fragment", "fragmentation refused")
-                return TransportResult.Rejected("fragmentation refused")
-            }
             if (!outlet.isPeerSubscribed(address)) {
                 recordRejection(peerId, "send.responder", "no subscription towards the peer")
                 return TransportResult.Rejected("no subscription towards the peer")
             }
-            for (frag in fragments) {
-                if (!outlet.notifyPeer(address, frag)) {
-                    recordRejection(peerId, "send.responder", "queue full")
-                    return TransportResult.Backpressured
-                }
-            }
-            return TransportResult.Admitted
+            val writer = serverWriterFor(address, serverConn)
+            return sendThrough(writer, peerId, bytes, registry, serverConn.peerId,
+                address, initiator = false)
         }
         if (serverConn != null && serverConn.state in terminal) {
+            serverWriterShutdown(address)
             return TransportResult.Closed
         }
         if (centralConn != null || serverConn != null) {
@@ -850,8 +832,98 @@ class BleTransport(
             recordRejection(peerId, "send", "connection not ready")
             return TransportResult.Rejected("connection not ready")
         }
+        centralWriterShutdown(address)
+        serverWriterShutdown(address)
         recordRejection(peerId, "send", "no such connection")
         return TransportResult.Rejected("no such connection")
+    }
+
+    private suspend fun sendThrough(writer: RecordWriter, peerId: ByteArray, bytes: ByteArray,
+                                    registry: io.godstone.mesh.crypto.SessionManager,
+                                    key: ByteArray, address: String,
+                                    initiator: Boolean): TransportResult {
+        val site = if (initiator) "send.initiator" else "send.responder"
+        when (val answer = writer.reserve(BleRecordType.DATA, bytes.size)) {
+            is ReservationAnswer.Refused -> {
+                val why = describeAdmission(answer.error)
+                val eventSite = if (answer.error is AdmissionError.NotEnoughCapacity)
+                    "send.capacity" else site
+                recordRejection(peerId, eventSite, why)
+                return when (answer.error) {
+                    is AdmissionError.TooManyStaged, AdmissionError.BusyInFlight ->
+                        TransportResult.Backpressured
+                    AdmissionError.Inactive -> TransportResult.Closed
+                    else -> TransportResult.Rejected(why)
+                }
+            }
+            is ReservationAnswer.Admitted -> {
+                when (val seal = answer.reservation.sealAndQueue(bytes) { clear ->
+                        registry.seal(key, clear)
+                    }) {
+                    is SealAnswer.Refused -> {
+                        // The refusals of the seal are told in the voices the
+                        // recorded expectations know: the seal itself, the
+                        // fragmentation, the station of the relation.
+                        val reason = seal.reason
+                        val (eventSite, eventReason, answerReason) = when (reason) {
+                            "the seal refused" -> Triple("seal", "authentication refused", "seal refused")
+                            "the fragmenter refused the record" ->
+                                Triple("send.fragment", "fragmentation refused", "fragmentation refused")
+                            "the seal lied about the envelope" ->
+                                Triple("seal", reason, "seal refused")
+                            "the sealed record outgrew the ceiling" ->
+                                Triple("send.fragment", reason, "fragmentation refused")
+                            "the payload drifted from the reservation" ->
+                                Triple(site, reason, reason)
+                            "the staging filled before the seal" ->
+                                Triple(site, reason, reason)
+                            else -> Triple(site, reason, reason)
+                        }
+                        recordRejection(peerId, eventSite, eventReason)
+                        return when (reason) {
+                            "the relation fell before the seal" -> TransportResult.Closed
+                            "the staging filled before the seal" -> TransportResult.Backpressured
+                            else -> TransportResult.Rejected(answerReason)
+                        }
+                    }
+                    is SealAnswer.Queued ->
+                        // The window may stand full with the record's rest
+                        // yet to enter: that fullness is told, once, truly.
+                        if (writer.stagingSaturatedForTest()) {
+                            recordRejection(peerId, site, "the staging is full")
+                        }
+                }
+            }
+        }
+        // The pump: at most one value in flight, advanced only by real
+        // completions; a queue-full refusal re-hands the very same fragment
+        // on the next send, a mid-write failure closes the relation.
+        while (true) {
+            val out = writer.nextOut() ?: break
+            val completion = if (initiator) outlet.writePeerTyped(address, out.bytes)
+                else outlet.notifyPeerTyped(address, out.bytes)
+            when (completion) {
+                WriteCompletion.Accepted -> writer.completed(out.operation)
+                WriteCompletion.QueueFull -> {
+                    writer.rewindInFlight(out.operation)
+                    recordRejection(peerId, site, "queue full")
+                    return TransportResult.Backpressured
+                }
+                WriteCompletion.Failed -> {
+                    writer.failed(out.operation)
+                    recordRejection(peerId, site, "a write failed midway; the relation is closed")
+                    if (initiator) {
+                        centralWriters.remove(address)
+                        centralDriver.getActiveConnection(address)?.markDisconnected()
+                    } else {
+                        serverWriters.remove(address)
+                        serverDriver.getInboundConnection(address)?.markDisconnected()
+                    }
+                    return TransportResult.Closed
+                }
+            }
+        }
+        return TransportResult.Admitted
     }
 
     override fun received(): Flow<Pair<ByteArray, ByteArray>> = callbackFlow {
@@ -943,7 +1015,66 @@ class BleTransport(
                 activeClientConnections[address]?.isConnected == true
             override suspend fun writePeer(address: String, value: ByteArray): Boolean =
                 activeClientConnections[address]?.sendAttValue(value) ?: false
+            override suspend fun notifyPeerTyped(address: String, value: ByteArray): WriteCompletion =
+                gattServer.sendNotificationTyped(address, value)
+            override suspend fun writePeerTyped(address: String, value: ByteArray): WriteCompletion =
+                activeClientConnections[address]?.sendAttValueTyped(value) ?: WriteCompletion.Failed
         }
+    }
+
+    // T18: one whole-record writer per direction of a relation; the
+    // two arms of the transport speak over these two writers.
+    private val centralWriters = HashMap<String, RecordWriter>()
+    private val serverWriters = HashMap<String, RecordWriter>()
+
+    private fun centralWriterFor(address: String, connection: BleConnection): RecordWriter =
+        synchronized(centralWriters) {
+            val standing = centralWriters[address]
+            if (standing != null && standing.connection === connection) standing
+            else {
+                // A fresh session brings fresh writers: what stood under the
+                // old connection is released, the durable store is not touched.
+                standing?.shutdown()
+                val fresh = RecordWriter(connection, RelationKey(BleDirection.OUTBOUND, address, 0L))
+                centralWriters[address] = fresh
+                fresh
+            }
+        }
+
+    private fun serverWriterFor(address: String, connection: BleConnection): RecordWriter =
+        synchronized(serverWriters) {
+            val standing = serverWriters[address]
+            if (standing != null && standing.connection === connection) standing
+            else {
+                standing?.shutdown()
+                val fresh = RecordWriter(connection, RelationKey(BleDirection.INBOUND, address, 0L))
+                serverWriters[address] = fresh
+                fresh
+            }
+        }
+
+    private fun centralWriterShutdown(address: String) {
+        synchronized(centralWriters) { centralWriters.remove(address)?.shutdown() }
+    }
+
+    private fun serverWriterShutdown(address: String) {
+        synchronized(serverWriters) { serverWriters.remove(address)?.shutdown() }
+    }
+
+    internal fun centralWriterForTest(address: String): RecordWriter? =
+        synchronized(centralWriters) { centralWriters[address] }
+
+    internal fun serverWriterForTest(address: String): RecordWriter? =
+        synchronized(serverWriters) { serverWriters[address] }
+
+    private fun describeAdmission(error: AdmissionError): String = when (error) {
+        is AdmissionError.NotEnoughCapacity ->
+            "frame exceeds the payload ceiling: sealed " + error.sealedLength +
+                " octets against " + error.ceiling + " in " + error.fragmentCount + " fragments"
+        is AdmissionError.TooManyAdmitted -> "too many admitted records on the relation"
+        is AdmissionError.TooManyStaged -> "the staging is full"
+        AdmissionError.BusyInFlight -> "an operation stands in flight"
+        AdmissionError.Inactive -> "the relation has fallen"
     }
 
     private val handshakeReadyFlow = MutableSharedFlow<ByteArray>(extraBufferCapacity = 64)
