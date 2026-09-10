@@ -360,62 +360,50 @@ class BleLinkSubstrateTest {
         val conn = BleConnection(byteArrayOf(1, 2, 3))
         val hint = byteArrayOf(0x01, 0x02, 0x03, 0x04)
 
-        // 1. Generic transitionTo to ROLE_BOUND / HANDSHAKE_IN_PROGRESS / READY is forbidden
-        try {
-            conn.transitionTo(BleConnectionState.ROLE_BOUND)
-            fail("Direct transition to ROLE_BOUND must fail")
-        } catch (_: IllegalArgumentException) {}
+        // T17: the reserved states and the wrong-state binds are refused by
+        // answer, never by escape - and the state stands where it stood.
+        assertFalse("Direct transition to ROLE_BOUND must be refused",
+                    conn.transitionTo(BleConnectionState.ROLE_BOUND))
+        assertEquals(BleConnectionState.PROVISIONAL_CONNECTING, conn.state)
+        assertFalse("Direct transition to HANDSHAKE_IN_PROGRESS must be refused",
+                    conn.transitionTo(BleConnectionState.HANDSHAKE_IN_PROGRESS))
+        assertEquals(BleConnectionState.PROVISIONAL_CONNECTING, conn.state)
+        assertFalse("Direct transition to READY must be refused",
+                    conn.transitionTo(BleConnectionState.READY))
+        assertEquals(BleConnectionState.PROVISIONAL_CONNECTING, conn.state)
 
-        try {
-            conn.transitionTo(BleConnectionState.HANDSHAKE_IN_PROGRESS)
-            fail("Direct transition to HANDSHAKE_IN_PROGRESS must fail")
-        } catch (_: IllegalArgumentException) {}
+        // 2. Initiator binds from the wrong states are refused
+        assertFalse("Initiator bind from PROVISIONAL_CONNECTING must be refused",
+                    conn.bindInitiatorAfterLinkInfoWriteAck(hint))
+        assertTrue(conn.transitionTo(BleConnectionState.PROVISIONAL_CONNECTED))
+        assertFalse("Initiator bind from PROVISIONAL_CONNECTED must be refused",
+                    conn.bindInitiatorAfterLinkInfoWriteAck(hint))
+        assertEquals(BleConnectionState.PROVISIONAL_CONNECTED, conn.state)
 
-        try {
-            conn.transitionTo(BleConnectionState.READY)
-            fail("Direct transition to READY must fail")
-        } catch (_: IllegalArgumentException) {}
-
-        // 2. Initiator bind from PROVISIONAL_CONNECTING or PROVISIONAL_CONNECTED must fail
-        try {
-            conn.bindInitiatorAfterLinkInfoWriteAck(hint)
-            fail("Initiator bind from PROVISIONAL_CONNECTING must fail")
-        } catch (_: IllegalStateException) {}
-
-        conn.transitionTo(BleConnectionState.PROVISIONAL_CONNECTED)
-        try {
-            conn.bindInitiatorAfterLinkInfoWriteAck(hint)
-            fail("Initiator bind from PROVISIONAL_CONNECTED must fail")
-        } catch (_: IllegalStateException) {}
-
-        // 3. Responder bind from LINK_INFO_WRITING must fail
+        // 3. Responder bind from LINK_INFO_WRITING is refused
         val conn2 = BleConnection(byteArrayOf(4, 5, 6))
-        conn2.transitionTo(BleConnectionState.PROVISIONAL_CONNECTED)
-        conn2.transitionTo(BleConnectionState.LINK_INFO_READING)
-        conn2.transitionTo(BleConnectionState.LINK_INFO_WRITING)
-        try {
-            conn2.bindResponderFromAcceptedIncomingLinkInfo(hint)
-            fail("Responder bind from LINK_INFO_WRITING must fail")
-        } catch (_: IllegalStateException) {}
+        assertTrue(conn2.transitionTo(BleConnectionState.PROVISIONAL_CONNECTED))
+        assertTrue(conn2.transitionTo(BleConnectionState.LINK_INFO_READING))
+        assertTrue(conn2.transitionTo(BleConnectionState.LINK_INFO_WRITING))
+        assertFalse("Responder bind from LINK_INFO_WRITING must be refused",
+                    conn2.bindResponderFromAcceptedIncomingLinkInfo(hint))
+        assertEquals(BleConnectionState.LINK_INFO_WRITING, conn2.state)
 
         // 4. Successful initiator bind from LINK_INFO_WRITING
-        conn2.bindInitiatorAfterLinkInfoWriteAck(hint)
+        assertTrue(conn2.bindInitiatorAfterLinkInfoWriteAck(hint))
         assertEquals(BleConnectionState.ROLE_BOUND, conn2.state)
         assertEquals(BleRole.INITIATOR, conn2.localRole)
         assertTrue(conn2.isRoleBound)
 
-        // 5. Duplicate bind must fail
-        try {
-            conn2.bindInitiatorAfterLinkInfoWriteAck(hint)
-            fail("Duplicate bind must fail")
-        } catch (_: IllegalStateException) {}
+        // 5. Duplicate bind is refused; the first binding stands
+        assertFalse("Duplicate bind must be refused",
+                    conn2.bindInitiatorAfterLinkInfoWriteAck(hint))
+        assertEquals(BleConnectionState.ROLE_BOUND, conn2.state)
 
-        // 6. After close, bind must fail
-        conn2.transitionTo(BleConnectionState.CLOSED)
-        try {
-            conn2.bindInitiatorAfterLinkInfoWriteAck(hint)
-            fail("Bind on closed connection must fail")
-        } catch (_: IllegalStateException) {}
+        // 6. Bind after close is refused
+        assertTrue(conn2.transitionTo(BleConnectionState.CLOSED))
+        assertFalse("Bind on closed connection must be refused",
+                    conn2.bindInitiatorAfterLinkInfoWriteAck(hint))
     }
 
     @Test
@@ -457,10 +445,11 @@ class BleLinkSubstrateTest {
     @Test
     fun testTransitionToReady_ForbiddenInSubstrate() {
         val conn = BleConnection(byteArrayOf(1, 2, 3))
-        try {
-            conn.transitionTo(BleConnectionState.READY)
-            fail("transitionTo(READY) must throw")
-        } catch (_: IllegalArgumentException) {}
+        // T17: the reservation is told by value now, not by escape - and the
+        // state stands where it stood.
+        assertFalse("transitionTo(READY) must be refused",
+                    conn.transitionTo(BleConnectionState.READY))
+        assertEquals(BleConnectionState.PROVISIONAL_CONNECTING, conn.state)
     }
 
     @Test

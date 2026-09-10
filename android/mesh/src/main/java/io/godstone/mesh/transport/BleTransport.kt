@@ -24,28 +24,25 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.callbackFlow
+import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.launch
 import java.util.Collections
 import java.util.LinkedHashMap
 import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
 
-/** T17: the typed outcome of one transport-level submit of a frame for sending.
- * Admission, backpressure, rejection with a reason and the closed terminal are
- * four distinct answers; the old Boolean conflated them and the nullable error
- * paths let failures escape. */
-sealed class TransportResult {
-    /** The sealed fragments were queued or written; the submit is admitted. */
-    object Admitted : TransportResult()
 
-    /** The link queue is full; retry when the window opens again. */
-    object Backpressured : TransportResult()
-
-    /** The submit is refused; the reason names the refused precondition. */
-    data class Rejected(val reason: String) : TransportResult()
-
-    /** The relation is terminated for this peer; no retry applies. */
-    object Closed : TransportResult()
+/**
+ * T17: the transport's two GATT outlets behind one seam, as the advertising
+ * plane is behind [AdvertisingHooks]. Production binds the platform server
+ * and the client connections; suites inject a recording fake to observe the
+ * exact fragment stream the transport would put on the wire.
+ */
+interface BleOutletHooks {
+    fun isPeerSubscribed(address: String): Boolean
+    suspend fun notifyPeer(address: String, value: ByteArray): Boolean
+    fun isClientConnected(address: String): Boolean
+    suspend fun writePeer(address: String, value: ByteArray): Boolean
 }
 
 @SuppressLint("MissingPermission")
@@ -56,7 +53,8 @@ class BleTransport(
     private val sessions: io.godstone.mesh.crypto.SessionManager? = null,
     private val store: MessageStore? = null,
     private val coroutineScope: CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.IO),
-    private val advertisingHooks: AdvertisingHooks? = null
+    private val advertisingHooks: AdvertisingHooks? = null,
+    private val outletHooks: BleOutletHooks? = null
 ) : Transport {
 
     override val name = "BLE"
@@ -536,43 +534,43 @@ class BleTransport(
     }
 
     /** Test seam: the currently active scan context, or null. */
-    fun activeScanContextForTest(): ScanContext? = activeScanContext
+    internal fun activeScanContextForTest(): ScanContext? = activeScanContext
 
     /** Test seam: advance the epoch, as a replacement registration would. */
-    fun bumpScanEpochForTest() {
+    internal fun bumpScanEpochForTest() {
         synchronized(scanGateLock) {
             scanEpoch += 1L
         }
     }
 
     /** Test seam: the client stored for one address, or null. */
-    fun activeClientForTest(address: String): GattClientConnection? = activeClientConnections[address]
+    internal fun activeClientForTest(address: String): GattClientConnection? = activeClientConnections[address]
 
     /** Test seam: the discovery surface size of the current run. */
-    fun discoveredCountForTest(): Int = discoveryIndex.size
+    internal fun discoveredCountForTest(): Int = discoveryIndex.size
 
     /** Test seam: whether one address is currently discovered. */
-    fun isPeerDiscoveredForTest(address: String): Boolean = discoveryIndex.contains(address)
+    internal fun isPeerDiscoveredForTest(address: String): Boolean = discoveryIndex.contains(address)
 
     /** Test seam: the metadata of one discovered peer, or null. */
-    fun discoveredMetadataForTest(address: String): BleLinkInfoV1? = discoveryIndex.valueOf(address)?.metadata
+    internal fun discoveredMetadataForTest(address: String): BleLinkInfoV1? = discoveryIndex.valueOf(address)?.metadata
 
     /** Test seam: the signal of one discovered peer, or null. */
-    fun rssiForTest(address: String): Int? = discoveryIndex.valueOf(address)?.rssi
+    internal fun rssiForTest(address: String): Int? = discoveryIndex.valueOf(address)?.rssi
 
     /** Test seam: open a registration without a radio, for reducer driving. */
-    fun openScanContextForTest(): ScanContext = openScanContext()
+    internal fun openScanContextForTest(): ScanContext = openScanContext()
     /** Test seam: the observation-ordered survivor list of the bounded surface. */
-    fun discoveredAddressesForTest(): List<String> = discoveryIndex.addresses()
+    internal fun discoveredAddressesForTest(): List<String> = discoveryIndex.addresses()
 
     /** Test seam: scheduled outbound client count, the platform action trace. */
-    fun activeClientCountForTest(): Int = activeClientConnections.size
+    internal fun activeClientCountForTest(): Int = activeClientConnections.size
 
     /** Test seam: whether the provisional connect timeout job is pending. */
-    fun hasProvisionalJobForTest(address: String): Boolean = provisionalJobs.containsKey(address)
+    internal fun hasProvisionalJobForTest(address: String): Boolean = provisionalJobs.containsKey(address)
 
     /** Test seam: whether the transport run is started. */
-    fun isTransportStartedForTest(): Boolean = isStarted
+    internal fun isTransportStartedForTest(): Boolean = isStarted
 
     private val publicationLock = Any()
 
@@ -671,24 +669,46 @@ class BleTransport(
      * The production call sites reach it through the captured hooks; the
      * determinism tests of the terminal effects drive it directly.
      */
-    fun dispatchCentralActionForTest(address: String, action: BleCentralAction) {
+    internal fun dispatchCentralActionForTest(address: String, action: BleCentralAction) {
         processCentralAction(address, action)
     }
 
     fun handleCentralInboundNotification(peerAddress: String, value: ByteArray) {
         val conn = centralDriver.getActiveConnection(peerAddress) ?: return
         if (!conn.isRoleBound) return
-        val record = conn.ingestInboundAttValue(value).admittedRecord ?: return
-        val peerId = conn.peerId
-        inboundRecordFlow.tryEmit(peerId to record)
+        val ingested = conn.ingestInboundAttValue(value)
+        val record = ingested.admittedRecord
+        if (record == null) {
+            // T17: a rejected record is a bounded event, never a silent
+            // fall-through; an in-flight one is pending, not a failure.
+            if (ingested is BleRecordIngestResult.Rejected) {
+                recordRejection(conn.peerId, "ingest.notify", describeRejection(ingested.reason))
+            }
+            return
+        }
+        when (record.recordType) {
+            BleRecordType.DATA -> inboundRecordFlow.tryEmit(conn.peerId to record)
+            BleRecordType.HS2 -> handleInitiatorHandshakeRecord(peerAddress, conn, record)
+            else -> recordRejection(conn.peerId, "hs.read.initiator", "unexpected direction")
+        }
     }
 
     fun handleServerInboundWrite(peerAddress: String, value: ByteArray) {
         val conn = serverDriver.getInboundConnection(peerAddress) ?: return
         if (!conn.isRoleBound) return
-        val record = conn.ingestInboundAttValue(value).admittedRecord ?: return
-        val peerId = conn.peerId
-        inboundRecordFlow.tryEmit(peerId to record)
+        val ingested = conn.ingestInboundAttValue(value)
+        val record = ingested.admittedRecord
+        if (record == null) {
+            if (ingested is BleRecordIngestResult.Rejected) {
+                recordRejection(conn.peerId, "ingest.write", describeRejection(ingested.reason))
+            }
+            return
+        }
+        when (record.recordType) {
+            BleRecordType.DATA -> inboundRecordFlow.tryEmit(conn.peerId to record)
+            BleRecordType.HS1, BleRecordType.HS3 -> handleResponderHandshakeRecord(peerAddress, conn, record)
+            else -> recordRejection(conn.peerId, "hs.read.responder", "unexpected direction")
+        }
     }
 
     fun handleCentralDisconnected(peerAddress: String, clientToken: Long, gattGen: Long) {
@@ -749,47 +769,114 @@ class BleTransport(
         }
     }
 
-    override suspend fun send(peerId: ByteArray, bytes: ByteArray): Boolean {
-        require(bytes.size <= 512)
-        val address = PeerId.toAddress(peerId) ?: return false
+    override suspend fun send(peerId: ByteArray, bytes: ByteArray): TransportResult {
+        // T17: nothing ships unsealed. The old require() escape and the
+        // twelve silent false returns are all answers now: admitted,
+        // backpressured, rejected with a reason, or closed.
+        if (bytes.size > Transport.BULK_THRESHOLD) {
+            recordRejection(peerId, "send", "frame exceeds the att payload ceiling")
+            return TransportResult.Rejected("frame exceeds the att payload ceiling")
+        }
+        // T17: the registry is consulted before anything else - a transport
+        // without a trusted session registry cannot speak at all, and never
+        // learns whether a connection stands or fell.
+        val registry = sessions ?: run {
+            recordRejection(peerId, "send", "no trusted session registry")
+            return TransportResult.Rejected("no trusted session registry")
+        }
+        val address = resolvePeerAddress(peerId) ?: run {
+            recordRejection(peerId, "send", "malformed peer address")
+            return TransportResult.Rejected("malformed peer address")
+        }
         val centralConn = centralDriver.getActiveConnection(address)
         val serverConn = serverDriver.getInboundConnection(address)
+        val terminal = setOf(BleConnectionState.CLOSING, BleConnectionState.CLOSED,
+                             BleConnectionState.QUARANTINED)
 
         if (centralConn?.state == BleConnectionState.READY) {
-            val sealed = sessions?.seal(peerId, bytes) ?: return false
-            val fragments = centralConn.fragmentOutbound(BleRecordType.DATA, sealed)
-            if (fragments.isEmpty()) return false
-            val client = activeClientConnections[address] ?: return false
-            if (!client.isConnected) return false
-            for (frag in fragments) {
-                val ok = client.sendAttValue(frag)
-                if (!ok) return false
+            val sealed = registry.seal(centralConn.peerId, bytes) ?: run {
+                recordRejection(peerId, "seal", "authentication refused")
+                return TransportResult.Rejected("seal refused")
             }
-            return true
+            val fragments = centralConn.fragmentOutbound(BleRecordType.DATA, sealed)
+            if (fragments.isEmpty()) {
+                recordRejection(peerId, "send.fragment", "fragmentation refused")
+                return TransportResult.Rejected("fragmentation refused")
+            }
+            if (!outlet.isClientConnected(address)) {
+                recordRejection(peerId, "send.initiator", "no outlet: client absent or disconnected")
+                return TransportResult.Rejected("no outlet: client absent or disconnected")
+            }
+            for (frag in fragments) {
+                if (!outlet.writePeer(address, frag)) {
+                    recordRejection(peerId, "send.initiator", "queue full")
+                    return TransportResult.Backpressured
+                }
+            }
+            return TransportResult.Admitted
+        }
+        if (centralConn != null && centralConn.state in terminal) {
+            return TransportResult.Closed
         }
 
         if (serverConn?.state == BleConnectionState.READY) {
-            val sealed = sessions?.seal(peerId, bytes) ?: return false
-            val fragments = serverConn.fragmentOutbound(BleRecordType.DATA, sealed)
-            if (fragments.isEmpty()) return false
-            if (!gattServer.isSubscribed(address)) return false
-            for (frag in fragments) {
-                val ok = gattServer.sendNotification(address, frag)
-                if (!ok) return false
+            val sealed = registry.seal(serverConn.peerId, bytes) ?: run {
+                recordRejection(peerId, "seal", "authentication refused")
+                return TransportResult.Rejected("seal refused")
             }
-            return true
+            val fragments = serverConn.fragmentOutbound(BleRecordType.DATA, sealed)
+            if (fragments.isEmpty()) {
+                recordRejection(peerId, "send.fragment", "fragmentation refused")
+                return TransportResult.Rejected("fragmentation refused")
+            }
+            if (!outlet.isPeerSubscribed(address)) {
+                recordRejection(peerId, "send.responder", "no subscription towards the peer")
+                return TransportResult.Rejected("no subscription towards the peer")
+            }
+            for (frag in fragments) {
+                if (!outlet.notifyPeer(address, frag)) {
+                    recordRejection(peerId, "send.responder", "queue full")
+                    return TransportResult.Backpressured
+                }
+            }
+            return TransportResult.Admitted
         }
-
-        return false
+        if (serverConn != null && serverConn.state in terminal) {
+            return TransportResult.Closed
+        }
+        if (centralConn != null || serverConn != null) {
+            // T17: a standing relation that has not reached the ready state is
+            // a distinct answer from an absent one, as on the other side.
+            recordRejection(peerId, "send", "connection not ready")
+            return TransportResult.Rejected("connection not ready")
+        }
+        recordRejection(peerId, "send", "no such connection")
+        return TransportResult.Rejected("no such connection")
     }
 
     override fun received(): Flow<Pair<ByteArray, ByteArray>> = callbackFlow {
         val job = coroutineScope.launch {
             inboundRecordFlow.collect { (peerId, record) ->
                 if (record.recordType == BleRecordType.DATA) {
-                    val clear = sessions?.open(peerId, record.payload)
-                    if (clear != null) {
-                        trySend(peerId to clear)
+                    // T17: the open answers by result now, and an
+                    // unauthenticated frame is a bounded event - the
+                    // collector keeps running either way.
+                    val registry = sessions
+                    // T17: the collector is total: whatever the registry's
+                    // answer - by result or by exception - becomes a bounded
+                    // event, and the collect loop runs on regardless.
+                    val outcome = try {
+                        registry?.openWithResult(peerId, record.payload) ?: io.godstone.mesh.crypto.NoiseSession.CryptoOpenResult.Rejected
+                    } catch (_: Throwable) {
+                        io.godstone.mesh.crypto.NoiseSession.CryptoOpenResult.Rejected
+                    }
+                    when (outcome) {
+                        is io.godstone.mesh.crypto.NoiseSession.CryptoOpenResult.Authenticated ->
+                            trySend(peerId to outcome.plaintext)
+                        is io.godstone.mesh.crypto.NoiseSession.CryptoOpenResult.Rejected ->
+                            recordRejection(peerId, "receive", "unauthenticated payload")
+                        is io.godstone.mesh.crypto.NoiseSession.CryptoOpenResult.Expired ->
+                            recordRejection(peerId, "receive", "replay window")
                     }
                 }
             }
@@ -797,7 +884,243 @@ class BleTransport(
         awaitClose { job.cancel() }
     }
 
+    // MARK: - T17 bounded rejection events and the trusted handshake driver
+
+    /** The collector of rejection events is bounded: the eldest record
+     *  makes way and the overflow is counted, so continuity of the stream
+     *  survives any number of malformed packets. */
+    internal val rejectionRecordCapacity: Int get() = REJECTION_RECORD_CAPACITY
+
+    data class RejectionRecord(val peerId: ByteArray, val site: String, val reason: String)
+
+    private val rejectionLock = Any()
+    private val rejectionRecords = ArrayDeque<RejectionRecord>()
+    private var rejectionOverflow = 0
+
+    private fun recordRejection(peerId: ByteArray, site: String, reason: String) =
+        synchronized(rejectionLock) {
+            if (rejectionRecords.size >= REJECTION_RECORD_CAPACITY) {
+                rejectionRecords.removeFirst()
+                rejectionOverflow += 1
+            }
+            rejectionRecords.addLast(RejectionRecord(peerId.copyOf(), site, reason))
+        }
+
+    internal fun rejectionRecordsForTest(): List<RejectionRecord> =
+        synchronized(rejectionLock) { rejectionRecords.toList() }
+
+    internal fun rejectionOverflowCountForTest(): Int =
+        synchronized(rejectionLock) { rejectionOverflow }
+
+    internal fun clearRejectionRecordsForTest() = synchronized(rejectionLock) {
+        rejectionRecords.clear()
+        rejectionOverflow = 0
+    }
+
+    /** T17: a peer id reaches the air address by either representation -
+     *  the six octets on the wire or the colonned string a station keeps
+     *  in its records. Neither form is the registry key; the connection's
+     *  own peerId is, so both forms only locate. */
+    private fun resolvePeerAddress(peerId: ByteArray): String? {
+        PeerId.toAddress(peerId)?.let { return it }
+        if (peerId.isEmpty() || peerId.size > 17) return null
+        val text = peerId.decodeToString()
+        return if (text.matches(Regex("^[0-9A-Fa-f]{2}(:[0-9A-Fa-f]{2}){5}$"))) text else null
+    }
+
+    private fun describeRejection(reason: BleRecordRejection): String = when (reason) {
+        BleRecordRejection.INACTIVE -> "inactive connection"
+        BleRecordRejection.MALFORMED_RECORD -> "malformed record"
+        BleRecordRejection.UNEXPECTED_STAGE -> "unexpected stage"
+    }
+
+    private val outlet: BleOutletHooks by lazy {
+        outletHooks ?: object : BleOutletHooks {
+            override fun isPeerSubscribed(address: String): Boolean = gattServer.isSubscribed(address)
+            override suspend fun notifyPeer(address: String, value: ByteArray): Boolean =
+                gattServer.sendNotification(address, value)
+            override fun isClientConnected(address: String): Boolean =
+                activeClientConnections[address]?.isConnected == true
+            override suspend fun writePeer(address: String, value: ByteArray): Boolean =
+                activeClientConnections[address]?.sendAttValue(value) ?: false
+        }
+    }
+
+    private val handshakeReadyFlow = MutableSharedFlow<ByteArray>(extraBufferCapacity = 64)
+
+    /** The composition listens for the driver's proof that a peer's slot
+     *  reached the cryptographic ready state. */
+    fun handshakeReady(): Flow<ByteArray> = callbackFlow {
+        val job = coroutineScope.launch {
+            handshakeReadyFlow.collect { peerId -> trySend(peerId) }
+        }
+        awaitClose { job.cancel() }
+    }
+
+    private fun handleResponderHandshakeRecord(peerAddress: String, conn: BleConnection,
+                                                  record: BleReassembledRecord) {
+        val registry = sessions ?: run {
+            recordRejection(conn.peerId, "hs.read.responder", "no trusted session registry")
+            return
+        }
+        val hint = conn.remoteNodeHint ?: run {
+            recordRejection(conn.peerId, "hs.read.responder", "no remembered link-info hint")
+            return
+        }
+        if (!BleConnection.canBindRemoteHint(hint)) {
+            recordRejection(conn.peerId, "hs.read.responder", "malformed remembered hint")
+            return
+        }
+        when (record.recordType) {
+            BleRecordType.HS1 -> {
+                val hs2 = registry.responderProcessHs1(conn.peerId, hint, record.payload) ?: run {
+                    recordRejection(conn.peerId, "hs.read.responder", "hs1 rejected")
+                    return
+                }
+                conn.beginHandshake()
+                // T17: the record is written in the handler's own course, as
+                // the iOS twin does; the ready marking that follows can then
+                // observe a connection whose fragments have really travelled.
+                runBlocking(kotlinx.coroutines.Dispatchers.IO) {
+                    writeHandshakeRecordViaServer(peerAddress, conn, BleRecordType.HS2, hs2)
+                }
+            }
+            BleRecordType.HS3 -> {
+                if (!registry.responderProcessHs3(conn.peerId, record.payload, hint)) {
+                    recordRejection(conn.peerId, "hs.read.responder", "hs3 rejected")
+                    return
+                }
+                if (!conn.markTrustedReady()) {
+                    recordRejection(conn.peerId, "hs.read.responder",
+                                   "trusted ready refused from " + conn.state)
+                    return
+                }
+                handshakeReadyFlow.tryEmit(conn.peerId.copyOf())
+            }
+            else -> recordRejection(conn.peerId, "hs.read.responder", "unexpected direction")
+        }
+    }
+
+    private fun handleInitiatorHandshakeRecord(peerAddress: String, conn: BleConnection,
+                                                  record: BleReassembledRecord) {
+        val registry = sessions ?: run {
+            recordRejection(conn.peerId, "hs.read.initiator", "no trusted session registry")
+            return
+        }
+        if (record.recordType != BleRecordType.HS2) {
+            recordRejection(conn.peerId, "hs.read.initiator", "unexpected direction")
+            return
+        }
+        val advertised = discoveryIndexMetadataHint(peerAddress) ?: run {
+            recordRejection(conn.peerId, "hs.read.initiator", "no remembered discovery hint")
+            return
+        }
+        val hs3 = registry.initiatorProcessHs2(conn.peerId, record.payload, advertised) ?: run {
+            recordRejection(conn.peerId, "hs.read.initiator", "hs2 rejected")
+            return
+        }
+        conn.beginHandshake()
+        val verdict = runBlocking(kotlinx.coroutines.Dispatchers.IO) {
+            writeHandshakeRecordViaClient(peerAddress, conn, BleRecordType.HS3, hs3)
+        }
+        if (verdict !is TransportResult.Admitted) {
+            // the writer named its reason in the collector; the relation
+            // stays in the handshake phase for the record to be retried.
+            return
+        }
+        if (!conn.markTrustedReady()) {
+            recordRejection(conn.peerId, "hs.read.initiator", "trusted ready refused from " + conn.state)
+            return
+        }
+        handshakeReadyFlow.tryEmit(conn.peerId.copyOf())
+    }
+
+    private fun discoveryIndexMetadataHint(peerAddress: String): ByteArray? =
+        discoveredMetadataForTest(peerAddress)?.nodeHint?.copyOf()
+
+    /** The responder's record writer: handshake fragments travel to the
+     *  subscribed peer over the server's notification outlet. */
+    private suspend fun writeHandshakeRecordViaServer(address: String, conn: BleConnection,
+                                              type: BleRecordType,
+                                              payload: ByteArray): TransportResult {
+        if (!outlet.isPeerSubscribed(address)) {
+            recordRejection(conn.peerId, "hs.write.responder", "no subscription towards the peer")
+            return TransportResult.Rejected("no subscription towards the peer")
+        }
+        val fragments = conn.fragmentOutbound(type, payload)
+        if (fragments.isEmpty()) {
+            recordRejection(conn.peerId, "hs.write.responder", "the gate refused the record")
+            return TransportResult.Rejected("the gate refused the record")
+        }
+        for (frag in fragments) {
+            if (!outlet.notifyPeer(address, frag)) {
+                recordRejection(conn.peerId, "hs.write.responder", "queue full")
+                return TransportResult.Backpressured
+            }
+        }
+        return TransportResult.Admitted
+    }
+
+    /** The initiator's record writer: handshake fragments travel to the
+     *  connected peer over the client's write outlet. */
+    private suspend fun writeHandshakeRecordViaClient(address: String, conn: BleConnection,
+                                              type: BleRecordType,
+                                              payload: ByteArray): TransportResult {
+        val fragments = conn.fragmentOutbound(type, payload)
+        if (fragments.isEmpty()) {
+            recordRejection(conn.peerId, "hs.write.initiator", "the gate refused the record")
+            return TransportResult.Rejected("the gate refused the record")
+        }
+        if (!outlet.isClientConnected(address)) {
+            recordRejection(conn.peerId, "hs.write.initiator", "no outlet: client absent or disconnected")
+            return TransportResult.Rejected("no outlet: client absent or disconnected")
+        }
+        for (frag in fragments) {
+            if (!outlet.writePeer(address, frag)) {
+                recordRejection(conn.peerId, "hs.write.initiator", "queue full")
+                return TransportResult.Backpressured
+            }
+        }
+        return TransportResult.Admitted
+    }
+
+    /** The initiator's entrance: begin the trusted handshake with the
+     *  remote hint learned from discovery. The first record travels over
+     *  the outlet towards the connected peer; the exchange completes when
+     *  the notifications bring the responder's answer back. */
+    suspend fun beginTrustedHandshake(peerId: ByteArray, remoteHint: ByteArray): TransportResult {
+        if (!BleConnection.canBindRemoteHint(remoteHint)) {
+            recordRejection(peerId, "hs.begin", "malformed remote hint")
+            return TransportResult.Rejected("malformed remote hint")
+        }
+        val registry = sessions ?: run {
+            recordRejection(peerId, "hs.begin", "no trusted session registry")
+            return TransportResult.Rejected("no trusted session registry")
+        }
+        val address = resolvePeerAddress(peerId) ?: run {
+            recordRejection(peerId, "hs.begin", "malformed peer address")
+            return TransportResult.Rejected("malformed peer address")
+        }
+        val conn = centralDriver.getActiveConnection(address) ?: run {
+            recordRejection(peerId, "hs.begin", "no such connection")
+            return TransportResult.Rejected("no such connection")
+        }
+        if (conn.state != BleConnectionState.ROLE_BOUND &&
+            conn.state != BleConnectionState.HANDSHAKE_IN_PROGRESS) {
+            recordRejection(peerId, "hs.begin", "cannot begin from " + conn.state)
+            return TransportResult.Rejected("cannot begin from " + conn.state)
+        }
+        val hs1 = registry.beginInitiator(conn.peerId, remoteHint) ?: run {
+            recordRejection(peerId, "hs.begin", "begin initiator refused")
+            return TransportResult.Rejected("begin initiator refused")
+        }
+        conn.beginHandshake()
+        return writeHandshakeRecordViaClient(address, conn, BleRecordType.HS1, hs1)
+    }
+
     companion object {
+        const val REJECTION_RECORD_CAPACITY = 64
+
         // T10: every GATT identifier is the generated wire-contract value.
         // The historical hand-rolled FD short-form characteristic constants
         // (0000fd01/0000fd02) are the non-shipping legacy profile: removed,

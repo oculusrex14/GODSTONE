@@ -92,7 +92,7 @@ class BleGattServer(
      * stack. The backing field is the single authority the
      * [BleTransport.canonicalAdvertiseSettings] readiness gate reads.
      */
-    fun markServiceReadyForTest(ready: Boolean) {
+    internal fun markServiceReadyForTest(ready: Boolean) {
         isServiceReady = ready
     }
 
@@ -502,7 +502,7 @@ class BleGattServer(
     fun dispatchNotificationSent(device: BluetoothDevice, status: Int, callback: BluetoothGattServerCallback? = null) =
         (callback ?: activeCallback)?.onNotificationSent(device, status)
 
-    fun setServerGenerationForTesting(gen: Long) {
+    internal fun setServerGenerationForTesting(gen: Long) {
         serverGeneration = gen
     }
 

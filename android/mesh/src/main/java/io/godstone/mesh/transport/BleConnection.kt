@@ -84,18 +84,18 @@ class BleConnection(
     /**
      * Validates and executes state transitions. Direct transitions to ROLE_BOUND, HANDSHAKE_IN_PROGRESS, or READY are rejected.
      */
-    fun transitionTo(newState: BleConnectionState) = synchronized(lock) {
+    fun transitionTo(newState: BleConnectionState): Boolean = synchronized(lock) {
         val current = _state.get()
-        if (current == newState) return@synchronized
+        if (current == newState) return@synchronized true
 
-        require(newState != BleConnectionState.ROLE_BOUND) {
-            "ROLE_BOUND state can only be entered via bindInitiatorAfterLinkInfoWriteAck or bindResponderFromAcceptedIncomingLinkInfo"
-        }
-        require(newState != BleConnectionState.HANDSHAKE_IN_PROGRESS) {
-            "HANDSHAKE_IN_PROGRESS is reserved for Phase C8.4D2 trusted handshake driver"
-        }
-        require(newState != BleConnectionState.READY) {
-            "Cryptographic READY transitions reserved for C8.4D2 trusted handshake"
+        // T17: the reserved entrances reject by answer, never by escape -
+        // roleBound is reached only through the bind family, handshake
+        // progress only through beginHandshake, ready only through
+        // markTrustedReady. A rejected transition preserves the state.
+        if (newState == BleConnectionState.ROLE_BOUND ||
+            newState == BleConnectionState.HANDSHAKE_IN_PROGRESS ||
+            newState == BleConnectionState.READY) {
+            return@synchronized false
         }
 
         val valid = when (current) {
@@ -122,51 +122,69 @@ class BleConnection(
             BleConnectionState.CLOSED -> false
         }
 
-        check(valid) { "Illegal state transition from $current to $newState" }
+        if (!valid) return@synchronized false
         _state.set(newState)
+        return@synchronized true
     }
 
     /**
      * One-way binding of remote node hint and elected role.
      * Accessible only through authoritative bind methods.
      */
-    private fun bindRoleInternal(hint: ByteArray, role: BleRole) {
-        require(hint.size == BleRoleElection.NODE_HINT_BYTES) {
-            "remoteNodeHint must be exactly ${BleRoleElection.NODE_HINT_BYTES} bytes, got ${hint.size}"
-        }
-        check(_remoteNodeHint == null && _localRole == null) {
-            "Cannot rebind role: already bound to role $_localRole with hint ${_remoteNodeHint?.joinToString("") { "%02x".format(it) }}"
-        }
+    private fun bindRoleInternal(hint: ByteArray, role: BleRole): Boolean = synchronized(lock) {
+        if (hint.size != BleRoleElection.NODE_HINT_BYTES) return@synchronized false
+        if (_remoteNodeHint != null || _localRole != null) return@synchronized false
         val s = state
-        check(s != BleConnectionState.CLOSED && s != BleConnectionState.CLOSING && s != BleConnectionState.QUARANTINED) {
-            "Cannot bind role on inactive connection in state $s"
+        if (s == BleConnectionState.CLOSED || s == BleConnectionState.CLOSING || s == BleConnectionState.QUARANTINED) {
+            return@synchronized false
         }
-        check(s == BleConnectionState.LINK_INFO_WRITING || s == BleConnectionState.PROVISIONAL_CONNECTED) {
-            "Cannot bind role from state $s"
+        if (s != BleConnectionState.LINK_INFO_WRITING && s != BleConnectionState.PROVISIONAL_CONNECTED) {
+            return@synchronized false
         }
-
         _remoteNodeHint = hint.copyOf()
         _localRole = role
         _state.set(BleConnectionState.ROLE_BOUND)
+        return@synchronized true
     }
 
-    fun bindInitiatorAfterLinkInfoWriteAck(remoteHint: ByteArray) = synchronized(lock) {
-        val s = state
-        check(s == BleConnectionState.LINK_INFO_WRITING) {
-            "Cannot bind initiator from state $s: must be in LINK_INFO_WRITING"
-        }
-        bindRoleInternal(remoteHint, BleRole.INITIATOR)
+    fun bindInitiatorAfterLinkInfoWriteAck(remoteHint: ByteArray): Boolean = synchronized(lock) {
+        if (state != BleConnectionState.LINK_INFO_WRITING) return@synchronized false
+        return@synchronized bindRoleInternal(remoteHint, BleRole.INITIATOR)
     }
 
-    fun bindResponderFromAcceptedIncomingLinkInfo(remoteHint: ByteArray) = synchronized(lock) {
-        val s = state
-        check(s == BleConnectionState.PROVISIONAL_CONNECTED) {
-            "Cannot bind responder from state $s: must be in PROVISIONAL_CONNECTED"
-        }
-        bindRoleInternal(remoteHint, BleRole.RESPONDER)
+    fun bindResponderFromAcceptedIncomingLinkInfo(remoteHint: ByteArray): Boolean = synchronized(lock) {
+        if (state != BleConnectionState.PROVISIONAL_CONNECTED) return@synchronized false
+        return@synchronized bindRoleInternal(remoteHint, BleRole.RESPONDER)
     }
 
-    fun startLinkInfoRead() = synchronized(lock) {
+    /**
+     * T17: advances a role-bound connection whose physical duplex is ready
+     * into the handshake phase. False when either guard fails; the state is
+     * preserved.
+     */
+    internal fun beginHandshake(): Boolean = synchronized(lock) {
+        val s = _state.get()
+        // T17: idempotent for the handshake's own course: a station that has
+        // already entered the phase stays entitled to send its next record.
+        if (s == BleConnectionState.HANDSHAKE_IN_PROGRESS) return@synchronized true
+        if (s != BleConnectionState.ROLE_BOUND) return@synchronized false
+        if (!isHandshakeTransportReady) return@synchronized false
+        _state.set(BleConnectionState.HANDSHAKE_IN_PROGRESS)
+        return@synchronized true
+    }
+
+    /**
+     * T17: the only production entrance to cryptographic READY: the caller -
+     * the transport's trusted handshake driver - has proved the peer's slot
+     * ready in the session registry.
+     */
+    internal fun markTrustedReady(): Boolean = synchronized(lock) {
+        if (_state.get() != BleConnectionState.HANDSHAKE_IN_PROGRESS) return@synchronized false
+        _state.set(BleConnectionState.READY)
+        return@synchronized true
+    }
+
+    fun startLinkInfoRead(): Boolean = synchronized(lock) {
         transitionTo(BleConnectionState.LINK_INFO_READING)
     }
 
@@ -261,6 +279,13 @@ class BleConnection(
     }
 
     companion object {
+        /**
+         * T17: the pure predicate of the bind family - a caller that must
+         * not corrupt authoritative state validates the hint with it
+         * before attempting the bind.
+         */
+        fun canBindRemoteHint(hint: ByteArray): Boolean =
+            hint.size == BleRoleElection.NODE_HINT_BYTES
         const val DEFAULT_MAX_ATT_VALUE_LENGTH = 20 // Default legacy ATT MTU 23 - 3 bytes opcode/handle
     }
 }

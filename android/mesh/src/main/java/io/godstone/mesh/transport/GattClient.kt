@@ -86,7 +86,7 @@ class GattClientConnection(
 
     fun getCurrentPendingOp(): PendingGattOp? = synchronized(opLock) { currentOp }
 
-    fun enqueuePendingOpForTesting(opType: GattOpType, expectedUuid: UUID? = null) {
+    internal fun enqueuePendingOpForTesting(opType: GattOpType, expectedUuid: UUID? = null) {
         synchronized(opLock) {
             opGenCounter++
             currentOp = PendingGattOp(
@@ -345,7 +345,7 @@ class GattClientConnection(
     val callback: BluetoothGattCallback
         get() = makeGattCallback(currentLifetimeToken)
 
-    fun setMockGattForTesting(
+    internal fun setMockGattForTesting(
         mockGatt: BluetoothGatt,
         mockInbox: BluetoothGattCharacteristic? = null,
         mockLinkInfo: BluetoothGattCharacteristic? = null
@@ -355,7 +355,7 @@ class GattClientConnection(
         linkInfoCharacteristic = mockLinkInfo
     }
 
-    fun setGattGenerationForTesting(gen: Long) {
+    internal fun setGattGenerationForTesting(gen: Long) {
         gattGeneration = gen
     }
 

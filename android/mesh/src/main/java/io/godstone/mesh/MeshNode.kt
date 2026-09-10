@@ -11,6 +11,7 @@ import io.godstone.mesh.store.MessageStore
 import io.godstone.mesh.store.OutboundEnqueueResult
 import io.godstone.mesh.store.PersistResult
 import io.godstone.mesh.transport.BleTransport
+import io.godstone.mesh.transport.TransportResult
 import io.godstone.mesh.transport.PeerEvent
 import io.godstone.mesh.transport.PowerState
 import io.godstone.mesh.transport.WifiAwareTransport
@@ -196,7 +197,7 @@ class MeshNode(
         // try/catch (not runCatching) so the suspend dispatchSos call stays in the
         // coroutine body -- runCatching's lambda is non-suspend and cannot host it.
         try {
-            dispatchSos(payload) { peerId, bytes -> ble.send(peerId, bytes) }
+            dispatchSos(payload) { peerId, bytes -> ble.send(peerId, bytes) == TransportResult.Admitted }
         } catch (t: Throwable) {
             SosDispatchResult.Failed(t.message ?: "unknown mesh error")
         }

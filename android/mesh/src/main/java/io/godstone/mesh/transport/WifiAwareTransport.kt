@@ -78,9 +78,10 @@ class WifiAwareTransport(
 
     override fun peers(): Flow<PeerEvent> = kotlinx.coroutines.flow.emptyFlow()
 
-    override suspend fun send(peerId: ByteArray, bytes: ByteArray): Boolean {
-        // Fail closed until the ADR-006 bulk protocol is implemented.
-        return false
+    override suspend fun send(peerId: ByteArray, bytes: ByteArray): TransportResult {
+        // Fail closed until the ADR-006 bulk protocol is implemented: the
+        // plane is not open, which is the truth the closed terminal names.
+        return TransportResult.Closed
     }
 
     override fun received(): Flow<Pair<ByteArray, ByteArray>> = inbound

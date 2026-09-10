@@ -342,7 +342,14 @@ class SessionManager internal constructor(
      * vocabulary of the Noise layer's own CryptoOpenResult.
      */
     fun openWithResult(peerId: ByteArray, ciphertext: ByteArray): NoiseSession.CryptoOpenResult {
-        val clear = open(peerId, ciphertext) ?: return NoiseSession.CryptoOpenResult.Rejected
+        // T17: total by contract. A frame the cipher refuses is told by the
+        // rejected answer, whatever the underlying layer throws: a malformed
+        // packet must never travel further than the caller's when-clause.
+        val clear = try {
+            open(peerId, ciphertext)
+        } catch (_: Throwable) {
+            null
+        } ?: return NoiseSession.CryptoOpenResult.Rejected
         return NoiseSession.CryptoOpenResult.Authenticated(clear)
     }
 

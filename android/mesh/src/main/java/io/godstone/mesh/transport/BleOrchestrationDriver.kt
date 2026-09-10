@@ -73,12 +73,12 @@ class BleCentralOrchestrationDriver(
     )
 
     /** Test seam: the bounded scan record of one address, or null. */
-    fun driverScanRecordForTest(address: String): DriverScanRecord? = synchronized(lock) {
+    internal fun driverScanRecordForTest(address: String): DriverScanRecord? = synchronized(lock) {
         scanSurface.valueOf(address)
     }
 
     /** Test seam: the size of the bounded scan surface. */
-    fun driverScanCountForTest(): Int = synchronized(lock) {
+    internal fun driverScanCountForTest(): Int = synchronized(lock) {
         scanSurface.size
     }
     private val publishedFound = mutableSetOf<String>()
@@ -373,7 +373,7 @@ class BleCentralOrchestrationDriver(
     }
 
     /** Test seam: the registered outbound slot of one address. */
-    fun outboundSlotForTest(peerAddress: String): OutboundPeerSlot? = synchronized(lock) {
+    internal fun outboundSlotForTest(peerAddress: String): OutboundPeerSlot? = synchronized(lock) {
         outboundSlots[peerAddress]
     }
 
