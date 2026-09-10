@@ -1830,7 +1830,12 @@
     "SIGNING"
   ],
   "failed_attempts": [],
-  "in_progress": null,
+  "in_progress": {
+    "claimed_head": "73733f0057269ce267e5eb26916e5cebc3295403",
+    "claimed_utc": "2026-09-10T13:09:39+00:00",
+    "objective": "Implement the same RecordWriter contract using maximumWriteValueLength and CBCentral.maximumUpdateValueLength. updateValue false retains the same ciphertext fragment; peripheralManagerIsReady resumes that exact context. write-with-response uses exact operation completion; without-response uses platform readiness without claiming remote durability. Reserve complete record bytes while staging at most 16 ATT values.",
+    "task": "T19"
+  },
   "last_code_head": "af291f32ca671bf3db2f1a4a398a3a5ecc7a174c",
   "last_observed_head": "af291f32ca671bf3db2f1a4a398a3a5ecc7a174c",
   "latest_verification": {
