@@ -900,6 +900,23 @@ final class ReadinessT20Tests: XCTestCase {
                                                   from: trueManager)
         XCTAssertNotNil(bob.connection(for: centralId),
                         "a terminal naming the wrong generation is discarded")
+        // two more production-path witnesses of the authenticator's threefold
+        // counsel: a misrepresented epoch is refused, and a foreign source is
+        // refused, each by the gate itself - not by the fixture's bookkeeping
+        let foreignPM = CapturePeripheralManager(delegate: nil, queue: DispatchQueue.main)
+        pins.append(foreignPM)
+        _ = bob.reductionProcessInboundUnsubscribe(centralId: centralId, expectedGen: gen,
+                                                  characteristic: nil,
+                                                  sourceEpoch: bob.currentTransportEpoch &+ 7,
+                                                  from: trueManager)
+        XCTAssertNotNil(bob.connection(for: centralId),
+                        "a trace carrying a misrepresented epoch is refused by the authenticator")
+        _ = bob.reductionProcessInboundUnsubscribe(centralId: centralId, expectedGen: gen,
+                                                  characteristic: nil,
+                                                  sourceEpoch: bob.currentTransportEpoch,
+                                                  from: foreignPM)
+        XCTAssertNotNil(bob.connection(for: centralId),
+                        "a trace from a foreign manager is refused by the authenticator")
         XCTAssertTrue(bob.isRelationPublished(direction: .inboundPeripheral, peerId: centralId,
                                               generation: gen),
                       "the publication of the relation stands")
