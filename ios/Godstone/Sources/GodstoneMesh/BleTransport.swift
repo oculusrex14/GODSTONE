@@ -1087,8 +1087,12 @@ public final class BleTransport: NSObject, @unchecked Sendable {
 
     private var publishedRelations: Set<RelationKey> = []
     private var discoveredPeers: [UUID: BleDiscoveryMetadata] = [:]
-    private var pendingOutboundWrites: [UUID: [Data]] = [:]
-    private var pendingOutboundUpdates: [UUID: [Data]] = [:]
+    // T19: the whole-record writers of the two directions. The fixed
+    // sixteen-deep queues of the old path are gone: each direction keeps
+    // one RecordWriter, whose window slides as real completions retire
+    // values, and whose single in-flight token gates every hand.
+    private var centralWriters: [UUID: RecordWriter] = [:]
+    private var responderWriters: [UUID: RecordWriter] = [:]
     /// T17: the hints the responder remembered from the peer's link-info
     /// write, for the handshake records that follow. Cleared with the
     /// context, so it can never outlive the epoch that learned it.
@@ -1257,8 +1261,8 @@ public final class BleTransport: NSObject, @unchecked Sendable {
         return activeOutboundLifetimes.isEmpty && activeInboundLifetimes.isEmpty
             && timerLeases.isEmpty && subscribedCentrals.isEmpty
             && outboundCentralConnections.isEmpty && inboundPeripheralConnections.isEmpty
-            && connectedPeripherals.isEmpty && pendingOutboundUpdates.isEmpty
-            && pendingOutboundWrites.isEmpty && publishedRelations.isEmpty
+            && connectedPeripherals.isEmpty && writersQuiescentLocked()
+            && publishedRelations.isEmpty
     }
 
     /// Rotate a fully drained context whose admission budget is exhausted.
@@ -1352,8 +1356,10 @@ public final class BleTransport: NSObject, @unchecked Sendable {
 
         publishedRelations.removeAll()
         discoveredPeers.removeAll()
-        pendingOutboundWrites.removeAll()
-        pendingOutboundUpdates.removeAll()
+        for writer in centralWriters.values { writer.shutdown() }
+        centralWriters.removeAll()
+        for writer in responderWriters.values { writer.shutdown() }
+        responderWriters.removeAll()
         unlockTransport()
     }
 
@@ -1426,7 +1432,9 @@ public final class BleTransport: NSObject, @unchecked Sendable {
         digestCharacteristics.removeValue(forKey: peerId)
         linkInfoCharacteristics.removeValue(forKey: peerId)
         pendingInitiatorRemoteHints.removeValue(forKey: peerId)
-        pendingOutboundWrites.removeValue(forKey: peerId)
+        if let purged = centralWriters.removeValue(forKey: peerId) {
+            purged.shutdown()
+        }
         if cancelPeripheral, connectedPeripherals[peerId] != nil {
             recordCancelRequestLocked(peerId)
         }
@@ -1481,24 +1489,20 @@ public final class BleTransport: NSObject, @unchecked Sendable {
             recordRejection(peerId: peerId, site: "send", reason: "no such connection")
             return .rejected("no such connection")
         }
-        // T14: sealing is trust work. It runs outside the critical section,
-        // on the serial executor, and returns a completion that is
-        // token-checked before any effect commits. Authentication failure
-        // (nil) is distinguished from success throughout: false names the
-        // refusal, true names the queued write.
-        // T17: the plaintext fallback of the sessions-nil transport is
-        // removed. Without a trusted registry, or when the registry
-        // refuses to seal, the frame is rejected with a bounded event -
-        // no unauthenticated octet ever reaches the wire again.
+        // T19: the reservation precedes the seal. The leg is asked what it
+        // may carry, the whole record is measured against the direction's
+        // own ceiling, and only then does the nonce burn and the sequence
+        // number pass its single seat. A record that cannot be admitted is
+        // refused by value, having consumed nothing.
         recordTrustWorkForTest("seal")
         guard let registry = registryAtAdmission else {
             recordRejection(peerId: peerId, site: "send", reason: "no trusted session registry")
             return .rejected("no trusted session registry")
         }
-        guard let sealed = registry.seal(peerId, frame.encode()) else {
-            recordRejection(peerId: peerId, site: "seal", reason: "authentication refused")
-            return .rejected("seal refused")
-        }
+        let isInitiator = connection.localRole == .initiator
+        let site = isInitiator ? "send.initiator" : "send.responder"
+        let clear = frame.encode()
+
         lockTransport()
         guard isStarted, epochAtAdmission == currentTransportEpoch,
               let again = (outboundCentralConnections[peerId] ?? inboundPeripheralConnections[peerId]),
@@ -1507,104 +1511,243 @@ public final class BleTransport: NSObject, @unchecked Sendable {
             recordRejection(peerId: peerId, site: "send.revalidate", reason: "relation changed during commit")
             return .rejected("relation changed during commit")
         }
-        let fragments = connection.fragmentOutbound(recordType: .data, payload: sealed)
-        guard !fragments.isEmpty else {
-            unlockTransport()
-            recordRejection(peerId: peerId, site: "send.fragment", reason: "fragmentation refused")
-            return .rejected("fragmentation refused")
-        }
-
-        if connection.localRole == .initiator {
+        let capacity: Int
+        if isInitiator {
             guard let p = connectedPeripherals[peerId],
-                  let ch = inboxCharacteristics[peerId] else {
+                  inboxCharacteristics[peerId] != nil else {
                 unlockTransport()
-                recordRejection(peerId: peerId, site: "send.initiator", reason: "no outlet: peripheral or characteristic absent")
+                recordRejection(peerId: peerId, site: site, reason: "no outlet: peripheral or characteristic absent")
                 return .rejected("no outlet: peripheral or characteristic absent")
             }
-
-            var queue = pendingOutboundWrites[peerId] ?? []
-            if !queue.isEmpty {
-                if queue.count + fragments.count > BleTransport.maxQueuedAttValues {
-                    unlockTransport()
-                    recordRejection(peerId: peerId, site: "send.initiator", reason: "queue full")
-                    return .backpressured
-                }
-                queue.append(contentsOf: fragments)
-                pendingOutboundWrites[peerId] = queue
-                unlockTransport()
-                return .admitted
-            }
-
-            var remaining: [Data] = []
-            var idx = 0
-            while idx < fragments.count {
-                let frag = fragments[idx]
-                if p.canSendWriteWithoutResponse {
-                    p.writeValue(frag, for: ch, type: .withoutResponse)
-                    idx += 1
-                } else {
-                    remaining = Array(fragments[idx...])
-                    break
-                }
-            }
-
-            if !remaining.isEmpty {
-                if queue.count + remaining.count > BleTransport.maxQueuedAttValues {
-                    unlockTransport()
-                    recordRejection(peerId: peerId, site: "send.initiator", reason: "queue full")
-                    return .backpressured
-                }
-                queue.append(contentsOf: remaining)
-                pendingOutboundWrites[peerId] = queue
-            }
-            unlockTransport()
-            return .admitted
+            capacity = p.maximumWriteValueLength(for: .withoutResponse)
         } else {
-            // T16: notifications are sent through the central retained with
-            // the lease - the subscriber list entry alone cannot prove which
-            // very central presented the subscription. A quarantined
-            // identity is suppressed altogether.
             if activeManagerContext?.isQuarantined(peerId) == true {
                 unlockTransport()
-                recordRejection(peerId: peerId, site: "send.responder", reason: "quarantined identity")
+                recordRejection(peerId: peerId, site: site, reason: "quarantined identity")
                 return .rejected("quarantined identity")
             }
             guard let lease = activeInboundLifetimes[peerId],
                   let centralObj = lease.retainedCentral,
-                  let inboxChar = mutableInboxCharacteristic else {
+                  mutableInboxCharacteristic != nil else {
                 unlockTransport()
-                recordRejection(peerId: peerId, site: "send.responder", reason: "no retained central for notification")
+                recordRejection(peerId: peerId, site: site, reason: "no retained central for notification")
                 return .rejected("no retained central for notification")
             }
-
-            var queue = pendingOutboundUpdates[peerId] ?? []
-            for frag in fragments {
-                if !queue.isEmpty {
-                    if queue.count >= BleTransport.maxQueuedAttValues {
-                        unlockTransport()
-                        recordRejection(peerId: peerId, site: "send.responder", reason: "queue full")
-                        return .backpressured
-                    }
-                    queue.append(frag)
-                } else {
-                    let ok = peripheral?.updateValue(frag, for: inboxChar, onSubscribedCentrals: [centralObj]) ?? false
-                    recordResponderSendLocked(ResponderSendRecord(centralId: peerId, byteCount: frag.count,
-                                                        via: ObjectIdentifier(centralObj), viaRetained: true))
-                    if !ok {
-                        queue.append(frag)
-                    }
-                }
-            }
-
-            if queue.isEmpty {
-                pendingOutboundUpdates.removeValue(forKey: peerId)
-            } else {
-                pendingOutboundUpdates[peerId] = queue
-            }
+            capacity = centralObj.maximumUpdateValueLength
+        }
+        let writer = writerLocked(connection: connection, peerId: peerId, isInitiator: isInitiator)
+        let reservation: Reservation
+        switch writer.reserve(recordType: .data, clearLength: clear.count, capacity: capacity) {
+        case .refused(let error):
             unlockTransport()
-            return .admitted
+            let why = describeAdmissionLocked(error)
+            recordRejection(peerId: peerId, site: "send.capacity", reason: why)
+            if case .inactive = error {
+                return .closed
+            }
+            return .rejected(why)
+        case .admitted(let admitted):
+            reservation = admitted
+        }
+        unlockTransport()
+
+        // The seal runs off the critical section, as the T14 law of trust
+        // work bids: one call upon the registry, one nonce, one envelope.
+        let seal = reservation.sealAndQueue(clear) { payload in
+            registry.seal(peerId, payload)
+        }
+        if case .refused(let why) = seal {
+            lockTransport()
+            releaseWriterIfIdleLocked(peerId: peerId, isInitiator: isInitiator)
+            unlockTransport()
+            switch why {
+            case "the seal refused", "authentication refused":
+                recordRejection(peerId: peerId, site: "seal", reason: "authentication refused")
+                return .rejected("seal refused")
+            case "the fragmenter refused the record":
+                recordRejection(peerId: peerId, site: "send.fragment", reason: "fragmentation refused")
+                return .rejected("fragmentation refused")
+            case "the seal lied about the envelope":
+                recordRejection(peerId: peerId, site: "send", reason: why)
+                return .rejected(why)
+            case "the sealed record outgrew the ceiling":
+                recordRejection(peerId: peerId, site: "send.capacity", reason: why)
+                return .rejected(why)
+            case "the payload drifted from the reservation":
+                recordRejection(peerId: peerId, site: "send", reason: why)
+                return .rejected(why)
+            case "the staging filled before the seal":
+                recordRejection(peerId: peerId, site: site, reason: "the staging is full")
+                return .backpressured
+            case "the relation fell before the seal":
+                recordRejection(peerId: peerId, site: site, reason: why)
+                return .closed
+            default:
+                recordRejection(peerId: peerId, site: site, reason: why)
+                return .rejected(why)
+            }
+        }
+
+        lockTransport()
+        guard isStarted, epochAtAdmission == currentTransportEpoch,
+              let still = (outboundCentralConnections[peerId] ?? inboundPeripheralConnections[peerId]),
+              still === connection, still.state == .ready else {
+            unlockTransport()
+            recordRejection(peerId: peerId, site: "send.revalidate", reason: "relation changed during commit")
+            return .rejected("relation changed during commit")
+        }
+        // The pump hands values while the leg is ready, one in flight, and
+        // stops at the first refusal: whatever remains waits in the window
+        // for the very context that reports itself ready again.
+        let backpressured = pumpLocked(writer: writer, peerId: peerId, isInitiator: isInitiator)
+        let saturated = writer.stagingSaturated()
+        unlockTransport()
+        if saturated {
+            // The window stands full with values that await their drain: the
+            // truth is told once, by the station that sees it.
+            recordRejection(peerId: peerId, site: site, reason: "the staging is full")
+        }
+        if backpressured {
+            recordRejection(peerId: peerId, site: site, reason: "queue full")
+            return .backpressured
+        }
+        return .admitted
+    }
+
+    // MARK: - T19 the whole-record writers of the two directions
+
+    /// The one writer of the direction, created when the direction first
+    /// speaks and replaced only when the station itself is replaced: a
+    /// fresh connection identity brings a fresh window, and the old writer
+    /// is shut down so nothing it held can ever be handed again.
+    private func writerLocked(connection: BleConnection, peerId: UUID,
+                              isInitiator: Bool) -> RecordWriter {
+        if isInitiator {
+            if let standing = centralWriters[peerId], standing.speaksThrough(connection) {
+                return standing
+            }
+            if let stale = centralWriters.removeValue(forKey: peerId) { stale.shutdown() }
+            let fresh = RecordWriter(
+                connection: connection,
+                relationKey: RelationKey(direction: .outboundCentral, peerId: peerId))
+            centralWriters[peerId] = fresh
+            return fresh
+        } else {
+            if let standing = responderWriters[peerId], standing.speaksThrough(connection) {
+                return standing
+            }
+            if let stale = responderWriters.removeValue(forKey: peerId) { stale.shutdown() }
+            let fresh = RecordWriter(
+                connection: connection,
+                relationKey: RelationKey(direction: .inboundPeripheral, peerId: peerId))
+            responderWriters[peerId] = fresh
+            return fresh
         }
     }
+
+    /// The pump: hand values while the leg is ready, never more than one in
+    /// flight; stop at the first refusal and leave the very same fragment
+    /// staged for the context that reports itself ready again. The answer
+    /// says whether the leg refused; the caller tells the ring, in its own
+    /// words, at its own station.
+    private func pumpLocked(writer: RecordWriter, peerId: UUID,
+                             isInitiator: Bool) -> Bool {
+        while let hand = writer.nextOut() {
+            let operation = hand.operation
+            let bytes = hand.bytes
+            if isInitiator {
+                guard let p = connectedPeripherals[peerId],
+                      p.canSendWriteWithoutResponse,
+                      let ch = inboxCharacteristics[peerId] else {
+                    writer.rewindInFlight(operation)
+                    return true
+                }
+                // Without response, the platform's readiness is the only
+                // completion the stack owns: the value left, and nothing is
+                // claimed of the remote.
+                p.writeValue(bytes, for: ch, type: .withoutResponse)
+                writer.completed(operation)
+            } else {
+                if activeManagerContext?.isQuarantined(peerId) == true {
+                    // A quarantined identity is suppressed, not discarded:
+                    // the value keeps its place until the drop comes by the
+                    // paths that are entitled to make it.
+                    writer.rewindInFlight(operation)
+                    return true
+                }
+                guard let lease = activeInboundLifetimes[peerId],
+                      let centralObj = lease.retainedCentral,
+                      let inboxChar = mutableInboxCharacteristic,
+                      let pm = peripheral else {
+                    writer.rewindInFlight(operation)
+                    return true
+                }
+                let ok = pm.updateValue(bytes, for: inboxChar, onSubscribedCentrals: [centralObj])
+                // The census is kept for the attempt, refused or taken alike:
+                // the record names the very handle the value was carried by,
+                // as it has been since the T16 audit demanded it.
+                recordResponderSendLocked(ResponderSendRecord(
+                    centralId: peerId, byteCount: bytes.count,
+                    via: ObjectIdentifier(centralObj), viaRetained: true))
+                if ok {
+                    writer.completed(operation)
+                } else {
+                    // updateValue refused: the very same ciphertext fragment
+                    // keeps its place in the window, unaltered, for the next
+                    // report of readiness. It is never resealed on the retry.
+                    writer.rewindInFlight(operation)
+                    return true
+                }
+            }
+        }
+        return false
+    }
+
+    /// A record that the seal would not carry leaves no trace behind: a
+    /// writer that admitted it and staged nothing is withdrawn whole, so
+    /// the window never holds a ghost of a refused submission.
+    private func releaseWriterIfIdleLocked(peerId: UUID, isInitiator: Bool) {
+        if isInitiator {
+            if let writer = centralWriters[peerId], writer.admittedCount() == 0,
+               writer.stagedValues() == 0 {
+                centralWriters.removeValue(forKey: peerId)?.shutdown()
+            }
+        } else {
+            if let writer = responderWriters[peerId], writer.admittedCount() == 0,
+               writer.stagedValues() == 0 {
+                responderWriters.removeValue(forKey: peerId)?.shutdown()
+            }
+        }
+    }
+
+    /// Quiescence, as the stop path demands it: no direction holds a
+    /// record and nothing stands in flight.
+    private func writersQuiescentLocked() -> Bool {
+        for writer in centralWriters.values {
+            if writer.admittedCount() != 0 || writer.inFlightOperation() != nil { return false }
+        }
+        for writer in responderWriters.values {
+            if writer.admittedCount() != 0 || writer.inFlightOperation() != nil { return false }
+        }
+        return true
+    }
+
+    /// The words the ring reads for a refusal at the reservation: the
+    /// ceiling, the sealed length, and the fragment count, told whole.
+    private func describeAdmissionLocked(_ error: AdmissionError) -> String {
+        switch error {
+        case .notEnoughCapacity(let sealed, let ceiling, let fragments):
+            return "frame exceeds the payload ceiling: sealed \(sealed) octets against \(ceiling) in \(fragments) fragments"
+        case .tooManyAdmitted(let limit):
+            return "too many admitted records (limit \(limit))"
+        case .inactive:
+            return "the station cannot receive records now"
+        }
+    }
+
+    /// The witnesses the suite reads: the direction's writer, if one stands.
+    internal func centralWriterForTest(_ peerId: UUID) -> RecordWriter? { centralWriters[peerId] }
+    internal func responderWriterForTest(_ peerId: UUID) -> RecordWriter? { responderWriters[peerId] }
 
     // MARK: - T17 bounded rejection events and the trusted handshake driver
 
@@ -1667,12 +1810,17 @@ public final class BleTransport: NSObject, @unchecked Sendable {
     /// notification, through the central retained with the lease.
     @discardableResult
     internal func writeHandshakeRecord(_ recordType: BleRecordType, payload: Data,
-                                        toCentral centralId: UUID) -> TransportResult {
+        toCentral centralId: UUID) -> TransportResult {
+        // T19: the handshake records of the responder travel by the same
+        // window as the data they precede: one direction, one writer, one
+        // value in flight. The records arrive already sealed by the
+        // controller's own hand; the writer measures them, fragments them
+        // once at the destination central's own maximum, and stages them.
         lockTransport()
         let quarantineHit = activeManagerContext?.isQuarantined(centralId) ?? false
         guard let lease = activeInboundLifetimes[centralId],
               let centralObj = lease.retainedCentral,
-              let inboxChar = mutableInboxCharacteristic,
+              mutableInboxCharacteristic != nil,
               let conn = inboundPeripheralConnections[centralId],
               !quarantineHit else {
             unlockTransport()
@@ -1680,100 +1828,66 @@ public final class BleTransport: NSObject, @unchecked Sendable {
                             reason: quarantineHit ? "quarantined identity" : "no outlet towards the central")
             return quarantineHit ? .rejected("quarantined identity") : .rejected("no outlet towards the central")
         }
+        let capacity = centralObj.maximumUpdateValueLength
+        let writer = writerLocked(connection: conn, peerId: centralId, isInitiator: false)
+        switch writer.stageSealed(recordType: recordType, sealed: payload, capacity: capacity) {
+        case .refused(let why):
+            unlockTransport()
+            let told = why == "the fragmenter refused the record" ? "the gate refused the record" : why
+            recordRejection(peerId: centralId, site: "hs.write.responder", reason: told)
+            return .rejected(told)
+        case .queued:
+            break
+        }
+        let backpressured = pumpLocked(writer: writer, peerId: centralId, isInitiator: false)
         unlockTransport()
-        let fragments = conn.fragmentOutbound(recordType: recordType, payload: payload)
-        guard !fragments.isEmpty else {
-            recordRejection(peerId: centralId, site: "hs.write.responder", reason: "the gate refused the record")
-            return .rejected("the gate refused the record")
-        }
-        var verdict: TransportResult = .admitted
-        lockTransport()
-        var queue = pendingOutboundUpdates[centralId] ?? []
-        for frag in fragments {
-            if !queue.isEmpty {
-                if queue.count >= BleTransport.maxQueuedAttValues {
-                    verdict = .backpressured
-                    break
-                }
-                queue.append(frag)
-            } else {
-                let ok = peripheral?.updateValue(frag, for: inboxChar, onSubscribedCentrals: [centralObj]) ?? false
-                recordResponderSendLocked(ResponderSendRecord(centralId: centralId, byteCount: frag.count,
-                                                    via: ObjectIdentifier(centralObj), viaRetained: true))
-                if !ok {
-                    queue.append(frag)
-                }
-            }
-        }
-        if queue.isEmpty {
-            pendingOutboundUpdates.removeValue(forKey: centralId)
-        } else {
-            pendingOutboundUpdates[centralId] = queue
-        }
-        unlockTransport()
-        if case .backpressured = verdict {
+        if backpressured {
             recordRejection(peerId: centralId, site: "hs.write.responder", reason: "queue full")
+            return .backpressured
         }
-        return verdict
+        return .admitted
     }
 
+    /// The record writer's outlet towards one connected peripheral: the
+    /// handshake fragments travel over the inbox characteristic by
+    /// unsolicited writes, as the initiator's arm of send does for data.
     /// The record writer's outlet towards one connected peripheral: the
     /// handshake fragments travel over the inbox characteristic by
     /// unsolicited writes, as the initiator's arm of send does for data.
     @discardableResult
     internal func writeHandshakeRecord(_ recordType: BleRecordType, payload: Data,
                                         toPeripheral peerId: UUID) -> TransportResult {
+        // T19: one direction, one writer, one window. The initiator's
+        // handshake records enter the same staging as the data that
+        // follows them, measured against the peripheral's own maximum
+        // write length, and they leave only as the leg reports itself
+        // ready to receive another without-response.
         lockTransport()
         guard let p = connectedPeripherals[peerId],
-              let ch = inboxCharacteristics[peerId],
+              inboxCharacteristics[peerId] != nil,
               let conn = outboundCentralConnections[peerId] else {
             unlockTransport()
             recordRejection(peerId: peerId, site: "hs.write.initiator", reason: "no outlet towards the peripheral")
             return .rejected("no outlet towards the peripheral")
         }
-        unlockTransport()
-        let fragments = conn.fragmentOutbound(recordType: recordType, payload: payload)
-        guard !fragments.isEmpty else {
-            recordRejection(peerId: peerId, site: "hs.write.initiator", reason: "the gate refused the record")
-            return .rejected("the gate refused the record")
-        }
-        var verdict: TransportResult = .admitted
-        lockTransport()
-        guard let p2 = connectedPeripherals[peerId], let ch2 = inboxCharacteristics[peerId] else {
+        let capacity = p.maximumWriteValueLength(for: .withoutResponse)
+        let writer = writerLocked(connection: conn, peerId: peerId, isInitiator: true)
+        switch writer.stageSealed(recordType: recordType, sealed: payload, capacity: capacity) {
+        case .refused(let why):
             unlockTransport()
-            recordRejection(peerId: peerId, site: "hs.write.initiator", reason: "outlet withdrawn during commit")
-            return .rejected("outlet withdrawn during commit")
+            let told = why == "the fragmenter refused the record" ? "the gate refused the record" : why
+            recordRejection(peerId: peerId, site: "hs.write.initiator", reason: told)
+            return .rejected(told)
+        case .queued:
+            break
         }
-        var queue = pendingOutboundWrites[peerId] ?? []
-        var idx = 0
-        while idx < fragments.count {
-            if !queue.isEmpty {
-                if queue.count + (fragments.count - idx) > BleTransport.maxQueuedAttValues {
-                    verdict = .backpressured
-                    break
-                }
-                queue.append(contentsOf: Array(fragments[idx...]))
-                idx = fragments.count
-                break
-            }
-            if p2.canSendWriteWithoutResponse {
-                p2.writeValue(fragments[idx], for: ch2, type: .withoutResponse)
-                idx += 1
-            } else {
-                queue.append(contentsOf: Array(fragments[idx...]))
-                idx = fragments.count
-            }
-        }
-        if queue.isEmpty {
-            pendingOutboundWrites.removeValue(forKey: peerId)
-        } else {
-            pendingOutboundWrites[peerId] = queue
-        }
+        let backpressured = pumpLocked(writer: writer, peerId: peerId, isInitiator: true)
         unlockTransport()
-        if case .backpressured = verdict {
+        if backpressured {
             recordRejection(peerId: peerId, site: "hs.write.initiator", reason: "queue full")
+            return .backpressured
         }
-        return verdict
+        return .admitted
     }
 
     /// T17: the transport's trusted handshake driver. The two sides of
@@ -2081,7 +2195,9 @@ public final class BleTransport: NSObject, @unchecked Sendable {
         digestCharacteristics.removeValue(forKey: peerId)
         linkInfoCharacteristics.removeValue(forKey: peerId)
         pendingInitiatorRemoteHints.removeValue(forKey: peerId)
-        pendingOutboundWrites.removeValue(forKey: peerId)
+        if let purged = centralWriters.removeValue(forKey: peerId) {
+            purged.shutdown()
+        }
         unlockTransport()
 
         let action = snapshotCentral?.onFailedToConnect(peerId: peerId, error: error) ?? .noOp
@@ -2136,7 +2252,9 @@ public final class BleTransport: NSObject, @unchecked Sendable {
         digestCharacteristics.removeValue(forKey: peerId)
         linkInfoCharacteristics.removeValue(forKey: peerId)
         pendingInitiatorRemoteHints.removeValue(forKey: peerId)
-        pendingOutboundWrites.removeValue(forKey: peerId)
+        if let purged = centralWriters.removeValue(forKey: peerId) {
+            purged.shutdown()
+        }
         unlockTransport()
 
         let action = snapshotCentral?.onDisconnected(peerId: peerId, expectedGen: key.generation) ?? .noOp
@@ -2428,19 +2546,11 @@ public final class BleTransport: NSObject, @unchecked Sendable {
         lockTransport()
         defer { unlockTransport() }
         guard isStarted, delegate.transportEpoch == currentTransportEpoch else { return }
-        guard let ch = inboxCharacteristics[peerId] else { return }
-
-        var queue = pendingOutboundWrites[peerId] ?? []
-        while !queue.isEmpty && p.canSendWriteWithoutResponse {
-            let item = queue.removeFirst()
-            p.writeValue(item, for: ch, type: .withoutResponse)
-        }
-
-        if queue.isEmpty {
-            pendingOutboundWrites.removeValue(forKey: peerId)
-        } else {
-            pendingOutboundWrites[peerId] = queue
-        }
+        guard centralWriters[peerId] != nil else { return }
+        // T19: the delegate that reports itself ready resumes the very
+        // context it names: the pump hands values while the leg is ready,
+        // and the first refusal leaves the rest to wait for the next report.
+        _ = pumpLocked(writer: centralWriters[peerId]!, peerId: peerId, isInitiator: true)
     }
 
     public func handleOutboundTimeout(peerId: UUID, generation: UInt64 = 0) -> BleCentralAction {
@@ -2481,7 +2591,9 @@ public final class BleTransport: NSObject, @unchecked Sendable {
         digestCharacteristics.removeValue(forKey: peerId)
         linkInfoCharacteristics.removeValue(forKey: peerId)
         pendingInitiatorRemoteHints.removeValue(forKey: peerId)
-        pendingOutboundWrites.removeValue(forKey: peerId)
+        if let purged = centralWriters.removeValue(forKey: peerId) {
+            purged.shutdown()
+        }
         unlockTransport()
         if let p = p {
             central?.cancelPeripheralConnection(p)
@@ -2734,7 +2846,9 @@ public final class BleTransport: NSObject, @unchecked Sendable {
         cancelTimerLocked(matching: key)
         inboundPeripheralConnections.removeValue(forKey: centralId)?.markDisconnected()
         subscribedCentrals.removeValue(forKey: centralId)
-        pendingOutboundUpdates.removeValue(forKey: centralId)
+        if let purged = responderWriters.removeValue(forKey: centralId) {
+                purged.shutdown()
+            }
         unlockTransport()
 
         let action = driver.onCentralUnsubscribed(centralId: centralId, expectedGen: key.generation)
@@ -2783,7 +2897,9 @@ public final class BleTransport: NSObject, @unchecked Sendable {
         activeInboundLifetimes.removeValue(forKey: centralId)
         inboundPeripheralConnections.removeValue(forKey: centralId)?.markDisconnected()
         subscribedCentrals.removeValue(forKey: centralId)
-        pendingOutboundUpdates.removeValue(forKey: centralId)
+        if let purged = responderWriters.removeValue(forKey: centralId) {
+                purged.shutdown()
+            }
         unlockTransport()
         let key = RelationKey(direction: .inboundPeripheral, peerId: centralId, generation: effectiveGen)
         unpublishRelation(key)
@@ -3286,35 +3402,23 @@ public final class BleTransport: NSObject, @unchecked Sendable {
             return
         }
 
-        for (centralId, var queue) in pendingOutboundUpdates {
+        // T19: the manager that reports itself ready resumes the very
+        // contexts it names: each direction's writer pumps while the leg
+        // takes values, and the first refusal (updateValue answering false)
+        // leaves the very same ciphertext fragment staged for the next
+        // report. Nothing is resealed, nothing is re-fragmented.
+        for centralId in Array(responderWriters.keys) {
             // T16: send through the retained handle; suppress a quarantined
             // identity altogether.
             if activeManagerContext?.isQuarantined(centralId) == true {
                 continue
             }
-            guard let lease = activeInboundLifetimes[centralId],
-                  let centralObj = lease.retainedCentral else {
-                pendingOutboundUpdates.removeValue(forKey: centralId)
+            guard let writer = responderWriters[centralId] else { continue }
+            if writer.admittedCount() == 0 && writer.inFlightOperation() == nil {
+                responderWriters.removeValue(forKey: centralId)
                 continue
             }
-
-            while !queue.isEmpty {
-                let nextItem = queue[0]
-                let ok = pm.updateValue(nextItem, for: inboxChar, onSubscribedCentrals: [centralObj])
-                recordResponderSendLocked(ResponderSendRecord(centralId: centralId, byteCount: nextItem.count,
-                                                    via: ObjectIdentifier(centralObj), viaRetained: true))
-                if ok {
-                    queue.removeFirst()
-                } else {
-                    break
-                }
-            }
-
-            if queue.isEmpty {
-                pendingOutboundUpdates.removeValue(forKey: centralId)
-            } else {
-                pendingOutboundUpdates[centralId] = queue
-            }
+            _ = pumpLocked(writer: writer, peerId: centralId, isInitiator: false)
         }
         unlockTransport()
     }

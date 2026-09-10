@@ -38,6 +38,10 @@ final class ReadinessT17Tests: XCTestCase {
     private final class PresentCentral: NSObject, @unchecked Sendable {
         @objc let identifier: UUID
         let tag = UUID()
+        // T19: the responder send asks the destination central what it may
+        // carry as an update before it reserves the record; the answer is
+        // the att maximum of the subscription, here the house default.
+        @objc var maximumUpdateValueLength: Int = 512
         init(identifier: UUID) {
             self.identifier = identifier
             super.init()
@@ -59,7 +63,12 @@ final class ReadinessT17Tests: XCTestCase {
             self.identifier = identifier
             super.init()
         }
-        @objc func maximumWriteValueLength(for writeType: CBCharacteristicWriteType) -> Int { return 512 }
+        // T19: the initiator send asks the peer what it may write before
+        // reserving; the selector is pinned to the name the framework
+        // imports under its own declaration, as the crash taught.
+        var maxWrite = 512
+        @objc(maximumWriteValueLengthForType:)
+        func maximumWriteValueLength(for writeType: CBCharacteristicWriteType) -> Int { maxWrite }
         @objc(writeValue:forCharacteristic:type:)
         func writeValue(_ data: Data, for characteristic: CBCharacteristic, type: CBCharacteristicWriteType) {
             lk.lock(); stored.append(data); lk.unlock()
@@ -86,12 +95,30 @@ final class ReadinessT17Tests: XCTestCase {
         private let lk = NSLock()
         private var updates: [(bytes: Data, central: UUID)] = []
         private var answers: [CBATTError.Code] = []
+        // T19: the leg answers as the suite scripts it, and every attempt is
+        // recorded - refusals as faithfully as deliveries - for the ring of
+        // the queue full and the witness that the re-hand carries the very
+        // same fragment. capturedUpdates keeps its old meaning: the accepted
+        // notifications only.
+        var updateAnswer: (Data) -> Bool = { _ in true }
+        private var attempts: [Data] = []
         override func updateValue(_ value: Data, for characteristic: CBMutableCharacteristic,
                                  onSubscribedCentrals centrals: [CBCentral]?) -> Bool {
             lk.lock()
-            updates.append((value, centrals?.first.map { $0.identifier } ?? UUID()))
+            attempts.append(value)
+            let ok = updateAnswer(value)
+            if ok {
+                updates.append((value, centrals?.first.map { $0.identifier } ?? UUID()))
+            }
             lk.unlock()
-            return true
+            return ok
+        }
+        var updateAttempts: [Data] {
+            lk.lock(); defer { lk.unlock() }
+            return attempts
+        }
+        func clearAttempts() {
+            lk.lock(); attempts.removeAll(); lk.unlock()
         }
         override func respond(to request: CBATTRequest, withResult result: CBATTError.Code) {
             lk.lock(); answers.append(result); lk.unlock()
@@ -294,8 +321,9 @@ final class ReadinessT17Tests: XCTestCase {
 
     private var pins: [AnyObject] = []
 
-    private func centralPresent(_ identity: UUID) -> CBCentral {
+    private func centralPresent(_ identity: UUID, updateCapacity: Int = 512) -> CBCentral {
         let peer = PresentCentral(identifier: identity)
+        peer.maximumUpdateValueLength = updateCapacity
         pins.append(peer)
         return unsafeBitCast(peer, to: CBCentral.self)
     }
@@ -384,13 +412,15 @@ final class ReadinessT17Tests: XCTestCase {
     /// opened an epoch already: manager-sourced events need a live context,
     /// and the transport's precondition guards exactly that.
     private func advanceToResponderBound(_ bob: BleTransport, pm: CBPeripheralManager,
-                                         centralId: UUID, remoteHint: Data) -> (Bool, String) {
+                                         centralId: UUID, remoteHint: Data,
+                                         updateCapacity: Int = 512) -> (Bool, String) {
         let w = bob.processInboundWrite(centralId: centralId,
                                         rawData: ReadinessT17Tests.remoteLinkInfoStatic(hint: remoteHint),
                                         sourceEpoch: bob.currentTransportEpoch, from: pm)
         let sawWrite = String(describing: w)
         guard sawWrite.hasPrefix("accept") else { return (false, "write answered " + sawWrite) }
-        let s = bob.processInboundSubscribe(centralId: centralId, central: centralPresent(centralId),
+        let s = bob.processInboundSubscribe(centralId: centralId,
+                                            central: centralPresent(centralId, updateCapacity: updateCapacity),
                                             sourceEpoch: bob.currentTransportEpoch, from: pm)
         let sawSubscribe = String(describing: s)
         guard sawSubscribe.hasPrefix("accept") else { return (false, "subscribe answered " + sawSubscribe) }
@@ -814,10 +844,20 @@ final class ReadinessT17Tests: XCTestCase {
             XCTFail("an unbounded queue never reports its full; verdicts seen: \(seen)")
             return
         }
-        XCTAssertGreaterThan(first, 0, "the queue must admit something first")
+        // T19: under the window law the verdict follows the leg. With the
+        // channel closed the very first send may report backpressure while
+        // its value waits in the staging for the ready report; the event is
+        // raised and nothing is silently dropped. The case was written
+        // against the old queue's counting, where a few sends were admitted
+        // before the full was reached; the same truths are now told through
+        // the direction's writer, which must still hold what was committed.
         for v in verdicts[0..<first] { XCTAssertEqual(v, .admitted) }
         XCTAssertTrue(capturePeer.writes.isEmpty,
                       "while the channel is closed nothing may go out through the back door")
+        let writer = alice.centralWriterForTest(peerId)
+        XCTAssertNotNil(writer, "the committed records stand in the direction's writer")
+        XCTAssertGreaterThan(writer?.stagedValues() ?? 0, 0,
+                             "the closed leg holds its values; none is dropped")
         XCTAssertTrue(alice.rejectionRecordsForTest().contains(where: { $0.site == "send.initiator" && $0.reason == "queue full" }),
                       "the full queue must raise its event")
         alice.stop()

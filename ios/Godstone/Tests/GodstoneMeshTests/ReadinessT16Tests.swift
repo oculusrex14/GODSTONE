@@ -40,8 +40,31 @@ final class ReadinessT16Tests: XCTestCase {
     /// A central present: a real NSObject carrying the identifier the stack
     /// resolves, bridged to CBCentral by reference - the same idiom the
     /// substrate's responder sequences use.
+    /// T19: the responder's own capture manager. The house record of this
+    /// sandbox is that an update towards the retained handle reaches the
+    /// subscriber; the manager states that truth and nothing else.
+    private final class PinnedResponderManager: CBPeripheralManager, @unchecked Sendable {
+        override func updateValue(_ value: Data, for characteristic: CBMutableCharacteristic,
+                                  onSubscribedCentrals centrals: [CBCentral]?) -> Bool {
+            return true
+        }
+        override func respond(to request: CBATTRequest, withResult result: CBATTError.Code) {}
+    }
+
+    private final class PinnedResponderFactory: NSObject, TransportManagerFactory, @unchecked Sendable {
+        func makeCentralManager(queue: DispatchQueue, restoreIdentifier: String?) -> CBCentralManager {
+            return CBCentralManager(delegate: nil, queue: queue)
+        }
+        func makePeripheralManager(queue: DispatchQueue, restoreIdentifier: String?) -> CBPeripheralManager {
+            return PinnedResponderManager(delegate: nil, queue: queue)
+        }
+    }
+
     private final class PresentCentral: NSObject, @unchecked Sendable {
         @objc let identifier: UUID
+        // T19: the responder's send asks the destination central what it may
+        // carry as an update before it reserves the record; the house default.
+        @objc var maximumUpdateValueLength: Int = 512
         let tag = UUID()
         init(identifier: UUID) {
             self.identifier = identifier
@@ -177,7 +200,9 @@ final class ReadinessT16Tests: XCTestCase {
     func testDigestUnsubscribeLeavesTheInboxIntact() throws {
         let pairing = try ReadinessTrustedPairing.establish()
         defer { ReadinessTrustedPairing.tearDown(pairing) }
+        let pinnedFactory = PinnedResponderFactory()
         let transport = BleTransport(identity: pairing.bobIdentity, store: nil,
+                                     managerFactory: pinnedFactory,
                                      clock: TestClock(startingAt: 5_000))
         transport.sessions = pairing.bobManager
         transport.start()
@@ -188,6 +213,11 @@ final class ReadinessT16Tests: XCTestCase {
         }
         let ringBefore = transport.responderSendRecordsForTest().count
 
+        // T19 pins the responder's manager: the real stack's answer to an
+        // update towards a mock handle is its own business, and a fixture
+        // must not rest on it. The capture manager below answers as this
+        // house has always recorded in this sandbox: the update reaches the
+        // subscribed central through the retained handle.
         XCTAssertEqual(transport.send(makeFrame([1, 2, 3]), to: centralId), .admitted,
                        "the responder has data to send")
         XCTAssertEqual(transport.responderSendRecordsForTest().count, ringBefore + 1,

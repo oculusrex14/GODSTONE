@@ -275,22 +275,16 @@ public final class BleConnection: @unchecked Sendable {
     }
 
     /// Fragment an outbound record into ordered BLE record fragments using connection-local sequence state.
-    /// Enforces phase-specific record type restrictions.
-    public func fragmentOutbound(recordType: BleRecordType, payload: Data) -> [Data] {
+    /// Enforces phase-specific record type restrictions. The capacity is the
+    /// direction's own maximum when given (T19: the write leg and the update
+    /// leg may report different maxima); when omitted the connection fragments
+    /// at its negotiated attribute space, as before.
+    public func fragmentOutbound(recordType: BleRecordType, payload: Data,
+                                 capacity: Int? = nil) -> [Data] {
         lock.lock()
         defer { lock.unlock() }
         guard state != .closed && state != .closing && state != .quarantined else { return [] }
-
-        switch recordType {
-        case .data:
-            if state != .ready { return [] }
-        case .hs1, .hs2, .hs3:
-            if !isHandshakeTransportReadyLocked || (state != .roleBound && state != .handshakeInProgress) {
-                return []
-            }
-        case .close:
-            break
-        }
+        guard mayCarryLocked(recordType) else { return [] }
 
         let seq = nextOutboundSeq
         nextOutboundSeq = UInt8((Int(nextOutboundSeq) + 1) & 0xFF)
@@ -299,8 +293,44 @@ public final class BleConnection: @unchecked Sendable {
             recordType: recordType,
             recordSeq: seq,
             payload: payload,
-            maxAttValueLength: maxAttValueLength
+            maxAttValueLength: capacity ?? maxAttValueLength
         )) ?? []
+    }
+
+    /// T19: the phase gate of the fragmenter, factored out; the whole-record
+    /// writer consults it before taking a sequence number, so a record that
+    /// the station may not carry is refused with nothing consumed.
+    private func mayCarryLocked(_ recordType: BleRecordType) -> Bool {
+        switch recordType {
+        case .data:
+            return state == .ready
+        case .hs1, .hs2, .hs3:
+            return isHandshakeTransportReadyLocked &&
+                (state == .roleBound || state == .handshakeInProgress)
+        case .close:
+            return true
+        }
+    }
+
+    /// T19: the single consumption point of the outbound sequence number for
+    /// the whole-record writer. The phase gate is consulted under the same
+    /// lock as the take, so the number is consumed exactly once per record
+    /// the station may carry - and never at all for a record it may not.
+    public func takeOutboundSequenceIfReady(_ recordType: BleRecordType) -> UInt8? {
+        lock.lock()
+        defer { lock.unlock() }
+        guard state != .closed && state != .closing && state != .quarantined else { return nil }
+        guard mayCarryLocked(recordType) else { return nil }
+        let seq = nextOutboundSeq
+        nextOutboundSeq = UInt8((Int(nextOutboundSeq) + 1) & 0xFF)
+        return seq
+    }
+
+    /// The witness: the number the next take would hand, without consuming.
+    public func peekOutboundSequence() -> UInt8 {
+        lock.lock()
+        defer { lock.unlock() }
+        return nextOutboundSeq
     }
 
     /// Ingest an inbound ATT value, decode it as a canonical BleRecord fragment, and reassemble.
