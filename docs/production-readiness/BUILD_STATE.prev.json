@@ -1395,9 +1395,143 @@
         "the whole-key re-validation inside the fire reduction is defence-in-depth behind the fire-time check (the MU-2 campaign proved the observable weight falls on the first line of defence); its independent teeth are cut for the device gates",
         "the runner records test counts as UNKNOWN for command-kind specs, so the positive counts above were taken from the swift-test summaries of the recorded logs"
       ]
+    },
+    "T16": {
+      "case_results": [
+        {
+          "collected": 7,
+          "counts_source": "fresh swift-test summary of the filtered run at this tree (7 cases, zero failures)",
+          "engine": "swift-host",
+          "executed": 7,
+          "failed": 0,
+          "passed": 7,
+          "skipped": 0,
+          "stage": "narrow",
+          "suite": "ReadinessT16Tests"
+        },
+        {
+          "collected": 724,
+          "counts_source": "fresh swift-test summary of the GodstoneFoundation suite at this tree",
+          "engine": "swift-host",
+          "executed": 724,
+          "failed": 0,
+          "passed": 724,
+          "skipped": 0,
+          "stage": "subsystem"
+        },
+        {
+          "executed": 3,
+          "failed": 0,
+          "passed": 3,
+          "skipped": 0,
+          "stage": "controls"
+        }
+      ],
+      "commands": [
+        "T16-narrow-swift",
+        "T16-subsystem-swift",
+        "T16-controls-python3",
+        "T16-controls-python3-002",
+        "T16-controls-python3-003"
+      ],
+      "device_gate_ids": [],
+      "implementation_commit": "9e103e388dcdc1c9d4ee4d3df0334f7278f26edb",
+      "inputs": {
+        "baseline": "0c5c9e3",
+        "commit_c_initial": "9e103e388dcdc1c9d4ee4d3df0334f7278f26edb",
+        "commit_c_whitespace": "clean at first commit (git diff --check silent)",
+        "commit_c_witness": "9e103e388dcdc1c9d4ee4d3df0334f7278f26edb",
+        "file_hashes": {
+          "ios/Godstone/Sources/GodstoneMesh/BleOrchestrationDriver.swift": "75825407d589fd9f98215bd886d6fc36ea137d302b76bbcdc9ba68e3cafb5ffb",
+          "ios/Godstone/Sources/GodstoneMesh/BleTransport.swift": "13916a46b7d5923ddd76df201cea712ed63dc29f1f2030e723de450146744be7",
+          "ios/Godstone/Tests/GodstoneMeshTests/ReadinessT16Tests.swift": "4dfa7220b1dffdee27c30502feb89547d4435e4b263aa8df538e069a1c46ab9c",
+          "ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/BleOrchestrationDriver.swift": "75825407d589fd9f98215bd886d6fc36ea137d302b76bbcdc9ba68e3cafb5ffb",
+          "ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/BleTransport.swift": "13916a46b7d5923ddd76df201cea712ed63dc29f1f2030e723de450146744be7",
+          "ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/ReadinessT16Tests.swift": "4dfa7220b1dffdee27c30502feb89547d4435e4b263aa8df538e069a1c46ab9c"
+        },
+        "mutation_worktree": "/Users/oculus/Projects/GODSTONE_T16_MUT"
+      },
+      "mutation_results": [
+        {
+          "engines": [
+            "swift-host"
+          ],
+          "evidence": "T16/mutations/MU-1-t16.log (witness testStaleUnsubscribeCannotRemoveTheReplacement down: the 7777-numbered request proceeds and the replacement of the fresh context is taken)",
+          "expected": "the card-named defect: a stale request matches by construction and removes the standing subscription",
+          "mutation": "the unsubscribe resolves the current inbound generation instead of comparing the one the request carries",
+          "outcome": "KILLED"
+        },
+        {
+          "engines": [
+            "swift-host"
+          ],
+          "evidence": "T16/mutations/MU-2-t16.log (witness testDigestUnsubscribeLeavesTheInboxIntact down: the acknowledged digest request removed the subscription that must have stood)",
+          "expected": "the card-named defect: a digest unsubscribe is not distinguished from an inbox unsubscribe and the inbox is torn down",
+          "mutation": "the characteristic a request names is compared with itself, never with the inbox",
+          "outcome": "KILLED"
+        },
+        {
+          "engines": [
+            "swift-host"
+          ],
+          "evidence": "T16/mutations/MU-3-t16.log (witness testResponderNotificationUsesTheRetainedHandleNotTheLatestRenewal down: the frame went out to the quarantined identity; first pass of this spec did not compile and is retained as MU-3-firstpass-invalid-t16.log)",
+          "expected": "notifications must reach the retained handle of a live lease only; a quarantined identity is suppressed altogether",
+          "mutation": "the quarantine gate on the responder send degenerates to false",
+          "outcome": "KILLED"
+        },
+        {
+          "engines": [
+            "swift-host"
+          ],
+          "evidence": "T16/mutations/MU-4-t16.log (witnesses testAmbiguousUnsubscribeQuarantinesUntilRotationOnly and testResponderNotificationUsesTheRetainedHandleNotTheLatestRenewal down: nothing was held, nothing was suppressed)",
+          "expected": "an ambiguous identity must stand quarantined for the epoch; release is by rotation alone",
+          "mutation": "the quarantine predicate forgets its marks and answers false for everything",
+          "outcome": "KILLED"
+        },
+        {
+          "engines": [
+            "swift-host"
+          ],
+          "evidence": "T16/mutations/MU-5-t16.log (witness testQuarantineMetadataIsBoundedUnderContention down: the records grew to 2000 unbounded and the refusals ceased to be counted)",
+          "expected": "quarantine metadata must be bounded; refusals past the bound are counted, not stored",
+          "mutation": "the capacity bound is set beyond the reach of any counter",
+          "outcome": "KILLED"
+        },
+        {
+          "engines": [
+            "swift-host"
+          ],
+          "evidence": "T16/mutations/MU-6-t16.log (witness testRotationFollowsDrainedBudgetExhaustion down: the exhausted budget never rotated at the drained point - the negated guard refuses what production permits)",
+          "expected": "rotation takes place at a fully drained context only; a busy context must keep its ground",
+          "mutation": "the drained predicate is negated at the rotation point",
+          "outcome": "KILLED"
+        },
+        {
+          "engines": [
+            "swift-host"
+          ],
+          "evidence": "T16/mutations/MU-7-t16.log (witness testFailToConnectIsTerminalWithoutDisconnectRequest down: the connection stood after the failure, while the cancellation ring stayed empty)",
+          "expected": "didFailToConnect is terminal immediately, without a disconnect request",
+          "mutation": "the failed connection attempt is read, never removed",
+          "outcome": "KILLED"
+        }
+      ],
+      "next_action": "none - task complete",
+      "phase_gate": "P1",
+      "required_cases": [
+        "ReadinessT16Tests (7 cases iOS)"
+      ],
+      "status": "COMPLETE",
+      "task_id": "T16",
+      "tested_tree_sha": "c485271065f27ae631c55b0076f743698653a5b1",
+      "unresolved": [
+        "device gates for the CoreBluetooth runtime stay open: what a real subscription callback presents as the central, whether a real manager tolerates the punned handle on the cancel leg beyond the observed family, and the cross-process survival of the quarantine list across a genuine state reset belong to the T73-T75 physical evidence",
+        "the same gate bypass as MU-3 on the subscriber-update drain (reductionProcessPeripheralIsReadyToUpdateSubscribers) was not deployed: no case of the T16 suite exercises that drain, and an unwitnessed claim would be no claim at all",
+        "the runner records test counts as UNKNOWN for command-kind specs, so the positive counts above were taken from the swift-test summaries of the recorded logs"
+      ]
     }
   },
-  "current_task": "T16",
+  "current_task": null,
   "external_blockers": [
     "A06",
     "APPROVED_CONTENT",
@@ -1407,20 +1541,20 @@
   ],
   "failed_attempts": [],
   "in_progress": {
-    "claimed_head": "0c5c9e34c67aff8e1b1a47857e04d7450450f80a",
-    "claimed_utc": "2026-09-10T01:11:49Z",
-    "objective": "per card",
-    "task": "T16"
+    "claimed_head": "ec8c9e91e6c8fbabf7453b6ce93dac619bd7e711",
+    "claimed_utc": "2026-09-10T03:38:08+00:00",
+    "objective": "Remove plaintext and synthetic READY from production paths: require a trusted SessionSlot dependency in transport constructors; replace Boolean/nullable ambiguous failures with typed TransportResult and CryptoOpenResult; restrict test readiness injection to nonshipping test adapters; a malformed packet produces a bounded rejection event and collector continuity and cannot create READY or throw through a platform callback.",
+    "task": "T17"
   },
-  "last_code_head": "8e3d9522727ab0af16bc4e861a824249d3efc35d",
-  "last_observed_head": "8e3d9522727ab0af16bc4e861a824249d3efc35d",
+  "last_code_head": "9e103e388dcdc1c9d4ee4d3df0334f7278f26edb",
+  "last_observed_head": "9e103e388dcdc1c9d4ee4d3df0334f7278f26edb",
   "latest_verification": {
-    "note": "T15 narrow 5/5, GodstoneFoundation 717/717 green at 8e3d952; five mutants killed, each attributed to the case that actually fell",
-    "recorded_utc": "2026-09-10T01:09:46+00:00",
-    "source_sha": "8e3d9522727ab0af16bc4e861a824249d3efc35d",
-    "tested_tree_sha": "c7fecb172bc79e790de6396bcc4ea7480706d63a"
+    "note": "T16 narrow 7/7, GodstoneFoundation 724/724 green at 9e103e3; seven mutants killed, each attributed to the case that actually fell",
+    "recorded_utc": "2026-09-10T03:35:58+00:00",
+    "source_sha": "9e103e388dcdc1c9d4ee4d3df0334f7278f26edb",
+    "tested_tree_sha": "c485271065f27ae631c55b0076f743698653a5b1"
   },
-  "next_task": "T16",
+  "next_task": "T17",
   "phase": "P0",
   "plan_sha256": "685456b378662b0a40a53a6abc810041e37daf97b213f3efeb6cea879363934e",
   "planning_baseline_sha": "b5c3d3d394b70cf356cdde33b47511dad7cbb95c",
@@ -1440,6 +1574,7 @@
     "Android terminal events (reject, timeout, local cancel) complete explicitly via the driver terminate authority: exact RelationKey transitions, once-leased, once-unpublished, captured-handle closes; production callbacks carry required tokens; late platform terminals are idempotent.",
     "iOS transport epochs own their manager pair: every opening builds a fresh CBCentralManager/CBPeripheralManager pair with its own delegate proxies on a dedicated serial queue, wired once at birth; the reducer authenticates sender instance, wired delegate and named epoch together - events of closed epochs are dropped where they stand.",
     "iOS transport reduces each manager event as one uninterrupted operation on the epoch serial executor: validation, transition and effect scheduling never split; the lifecycle quiesces its epochs on the same queues, callback adapters deliver under their own context marker, and sealing and opening (trust work) never run while the transport lock is held - their completions re-check the admission token on the executor before any effect commits or the delegate is notified.",
-    "iOS timers are leases: TimerKey(relation, operation kind, unique id) names every window; storage, cancellation and replacement run only through reducer bodies on the epoch executor comparing whole keys before removing anything; the operation id source is monotone for the transport lifetime and deadlines are computed against the injected MonotonicClock; the connect advance re-arms through the same reducer."
+    "iOS timers are leases: TimerKey(relation, operation kind, unique id) names every window; storage, cancellation and replacement run only through reducer bodies on the epoch executor comparing whole keys before removing anything; the operation id source is monotone for the transport lifetime and deadlines are computed against the injected MonotonicClock; the connect advance re-arms through the same reducer.",
+    "an inbound subscription is a lease over the presented CBCentral: the actual handle is retained with the lease and responder notifications answer to it alone; unsubscribes are filtered by characteristic and matched against the generation the request carries; an ambiguity quarantines the identity for the epoch and only rotation of the manager context releases it - quarantine and admission histories are bounded, and an exhausted budget rotates a fully drained context, never a busy one; didFailToConnect is terminal without a disconnect request."
   ]
 }

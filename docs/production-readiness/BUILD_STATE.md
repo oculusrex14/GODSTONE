@@ -23,6 +23,7 @@
 | T14 | COMPLETE | `6b760539adb7` | narrow(swift-host) 8/8, subsystem(swift-host) 712/712, controls 3/3; mutants MU-1/MU-2/MU-3/MU-4/MU-5 KILLED |
 | T15 | COMPLETE | `8e3d9522727a` | narrow(swift-host) 5/5, subsystem(swift-host) 717/717, controls 3/3; mutants MU-1/MU-2/MU-5/MU-6/MU-8 KILLED |
 | T16 | COMPLETE | `9e103e388dcd` | narrow(swift-host) 7/7, subsystem(swift-host) 724/724, controls 3/3; mutants MU-1/MU-2/MU-3/MU-4/MU-5/MU-6/MU-7 KILLED |
+| T17 | COMPLETE | `d69ec8727f9c` | narrow(swift-host) 10/10, narrow(jvm-host) 10/10, subsystem 734/734 + 799/799, controls 3/3; mutants M1..M8 KILLED |
 
 ## External blockers (open)
 

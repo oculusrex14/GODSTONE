@@ -53,7 +53,7 @@
           "outcome": "KILLED"
         }
       ],
-      "next_action": "none — task complete",
+      "next_action": "none \u2014 task complete",
       "phase_gate": "P0",
       "required_cases": [
         "suite tools/readiness/tests/test_t01.py"
@@ -128,7 +128,7 @@
           "outcome": "KILLED"
         }
       ],
-      "next_action": "none — task complete",
+      "next_action": "none \u2014 task complete",
       "phase_gate": "P0",
       "required_cases": [
         "tools/readiness/tests/test_t02.py"
@@ -202,7 +202,7 @@
           "outcome": "KILLED"
         }
       ],
-      "next_action": "none — task complete",
+      "next_action": "none \u2014 task complete",
       "phase_gate": "P0",
       "required_cases": [
         "tools/readiness/tests/test_t03.py"
@@ -286,7 +286,7 @@
           "outcome": "KILLED"
         }
       ],
-      "next_action": "none — task complete; A-06 gate stays OPEN (typed UNAVAILABLE)",
+      "next_action": "none \u2014 task complete; A-06 gate stays OPEN (typed UNAVAILABLE)",
       "phase_gate": "P0",
       "required_cases": [
         "tools/readiness/tests/test_t04.py"
@@ -348,7 +348,7 @@
           "outcome": "KILLED"
         }
       ],
-      "next_action": "none — task complete",
+      "next_action": "none \u2014 task complete",
       "phase_gate": "P1",
       "required_cases": [
         "ReadinessT05Test (10 cases)"
@@ -417,7 +417,7 @@
           "outcome": "KILLED"
         }
       ],
-      "next_action": "none — task complete",
+      "next_action": "none \u2014 task complete",
       "phase_gate": "P1",
       "required_cases": [
         "ReadinessT06Test (8 cases Android)",
@@ -487,7 +487,7 @@
           "outcome": "KILLED"
         }
       ],
-      "next_action": "none — task complete",
+      "next_action": "none \u2014 task complete",
       "phase_gate": "P1",
       "required_cases": [
         "ReadinessT07Test (6 cases Android)",
@@ -1529,6 +1529,197 @@
         "the same gate bypass as MU-3 on the subscriber-update drain (reductionProcessPeripheralIsReadyToUpdateSubscribers) was not deployed: no case of the T16 suite exercises that drain, and an unwitnessed claim would be no claim at all",
         "the runner records test counts as UNKNOWN for command-kind specs, so the positive counts above were taken from the swift-test summaries of the recorded logs"
       ]
+    },
+    "T17": {
+      "case_results": [
+        {
+          "stage": "narrow",
+          "engine": "swift-host",
+          "suite": "ReadinessT17Tests",
+          "collected": 10,
+          "executed": 10,
+          "passed": 10,
+          "failed": 0,
+          "skipped": 0,
+          "counts_source": "the fresh swift-test summary line retained at T17/logs/T17-narrow-swift.log"
+        },
+        {
+          "stage": "narrow",
+          "engine": "jvm-host",
+          "suite": "ReadinessT17Test",
+          "collected": 10,
+          "executed": 10,
+          "passed": 10,
+          "failed": 0,
+          "skipped": 0,
+          "counts_source": "the fresh JUnit XML TEST-*ReadinessT17Test* at the narrow run (exit 0)"
+        },
+        {
+          "stage": "subsystem",
+          "engine": "swift-host",
+          "executed": 734,
+          "passed": 734,
+          "failed": 0,
+          "skipped": 0,
+          "counts_source": "the fresh swift-test summary line retained at T17/logs/T17-subsystem-swift.log"
+        },
+        {
+          "stage": "subsystem",
+          "engine": "jvm-host",
+          "executed": 799,
+          "passed": 799,
+          "failed": 0,
+          "skipped": 0,
+          "suites": 37,
+          "counts_source": "thirty-seven fresh JUnit XMLs tallied at the subsystem run; zero stale"
+        },
+        {
+          "stage": "controls",
+          "executed": 3,
+          "passed": 3,
+          "failed": 0,
+          "counts_source": "the controls logs; repository checks, release-gate status, whitespace audit"
+        }
+      ],
+      "commands": [
+        "T17-narrow-gradlew",
+        "T17-narrow-swift",
+        "T17-subsystem-gradlew",
+        "T17-subsystem-swift",
+        "T17-controls-python3",
+        "T17-controls-python3-002",
+        "T17-controls-python3-003"
+      ],
+      "device_gate_ids": [],
+      "implementation_commit": "d69ec8727f9cdad3809841e49140ba32a32af719",
+      "inputs": {
+        "baseline": "ec8c9e9",
+        "commit_c_initial": "92677438ee13f7c28658c7fb0b9a937f3ebc4e90",
+        "commit_c_whitespace": "clean at every commit: git diff --check silent throughout",
+        "commit_c_witness": "d69ec8727f9cdad3809841e49140ba32a32af719",
+        "file_hashes": {
+          "android/mesh/src/main/java/io/godstone/mesh/MeshNode.kt": "67a5ea978480d086f7ff066beec7375ed115c94081504d0625d6ee1e542399d7",
+          "android/mesh/src/main/java/io/godstone/mesh/crypto/SessionManager.kt": "4b6b561da63c03b48e7eddacc31fd07ad4c02b50dc1a21dc405a63da5d2be047",
+          "android/mesh/src/main/java/io/godstone/mesh/transport/BleConnection.kt": "793c04c3e968b4a583a7febdbb78b4f1ce81034f674912094741c2ee00afebca",
+          "android/mesh/src/main/java/io/godstone/mesh/transport/BleOrchestrationDriver.kt": "57788b2158b406e2f42a1c747db9b9453a14a497b4774407b750bf1b378197e4",
+          "android/mesh/src/main/java/io/godstone/mesh/transport/BleTransport.kt": "083c0db460ed11924532f6725f5db49a13c73c1c558be68a57415355bd3c5956",
+          "android/mesh/src/main/java/io/godstone/mesh/transport/GattClient.kt": "f1a89f63be766ac416fae530b22584a6a4d62c1daf5db92edb2aeda4b991fe8a",
+          "android/mesh/src/main/java/io/godstone/mesh/transport/GattServer.kt": "ba8ae482e525cda872ed915f4a3703b605fbcb3645cf9537f3f6c412df66317a",
+          "android/mesh/src/main/java/io/godstone/mesh/transport/Transport.kt": "7b0154877ca41b59134efd9219b94196715966a389584d91e00e28aafa9c4415",
+          "android/mesh/src/main/java/io/godstone/mesh/transport/WifiAwareTransport.kt": "10219481879172b8b6c1284923bc63a759d197469aec62786912c6582ea2a5e9",
+          "android/mesh/src/test/java/io/godstone/mesh/readiness/ReadinessT17Test.kt": "341ef8d49480263458d47ebc5ce2d530032fb7fb48ba4f4d49a415e9df4fd385",
+          "android/mesh/src/test/java/io/godstone/mesh/transport/BleLinkSubstrateTest.kt": "9792558fb61c4a0786f5964ce731b7160c533b8ccc62de31eecd93861956ffc0",
+          "ios/Godstone/Sources/GodstoneMesh/BleConnection.swift": "719989014261725b674ea5bf68b6261a0323b9dd772c6e7504dba1f06e2bc858",
+          "ios/Godstone/Sources/GodstoneMesh/BleTransport.swift": "f3dd4d3580bd32e611c9b6974b10265ff569c755770adff2b1d13a72c4aad3dc",
+          "ios/Godstone/Sources/GodstoneMesh/MeshNode.swift": "d62a8bd9a193c7254162876d60a3c4ffd2f1171e9a4222049f13fa0b933e999a",
+          "ios/Godstone/Sources/GodstoneMesh/SessionManager.swift": "77ef71a079bb70f1a5324f2549f5dd19035b4cb487769a6b35b7521896cf22b0",
+          "ios/Godstone/Tests/GodstoneMeshTests/BleLinkSubstrateTests.swift": "98be33cc6b65e3188401383b7c87a85b3c8d495c9506e4c36918d69ffbefc4f8",
+          "ios/Godstone/Tests/GodstoneMeshTests/ReadinessT14Tests.swift": "c23e1ebff6ca446646f2d9c1c249c1e614a0fae302fefa2c3d00236306adf2fd",
+          "ios/Godstone/Tests/GodstoneMeshTests/ReadinessT16Tests.swift": "57db0b26d69efa816d036afd9d8f2ecf4db9c29e7a97ebc4d9d7c3c638dc3145",
+          "ios/Godstone/Tests/GodstoneMeshTests/ReadinessT17Tests.swift": "4f06c89d27c9f54eb3ee1846fa0a7bb2d7d538cfbc4ced55e1caeca3236f3210",
+          "ios/Godstone/Tests/GodstoneMeshTests/ReadinessTrustedPairing.swift": "aa21a5ffc8a9cb084246db464b979a3b7ab31cd4d3f3390fde42a2a837bc0be2",
+          "ios/Packages/GodstoneFoundation/SOURCE_MANIFEST.json": "7f469b4bb7c5c530dafb3c7bd092d4e655272215d892cba9d446e2f2a71951da",
+          "ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/BleConnection.swift": "719989014261725b674ea5bf68b6261a0323b9dd772c6e7504dba1f06e2bc858",
+          "ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/BleTransport.swift": "f3dd4d3580bd32e611c9b6974b10265ff569c755770adff2b1d13a72c4aad3dc",
+          "ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/MeshNode.swift": "d62a8bd9a193c7254162876d60a3c4ffd2f1171e9a4222049f13fa0b933e999a",
+          "ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/SessionManager.swift": "77ef71a079bb70f1a5324f2549f5dd19035b4cb487769a6b35b7521896cf22b0",
+          "ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/BleLinkSubstrateTests.swift": "98be33cc6b65e3188401383b7c87a85b3c8d495c9506e4c36918d69ffbefc4f8",
+          "ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/ReadinessT14Tests.swift": "c23e1ebff6ca446646f2d9c1c249c1e614a0fae302fefa2c3d00236306adf2fd",
+          "ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/ReadinessT16Tests.swift": "57db0b26d69efa816d036afd9d8f2ecf4db9c29e7a97ebc4d9d7c3c638dc3145",
+          "ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/ReadinessT17Tests.swift": "4f06c89d27c9f54eb3ee1846fa0a7bb2d7d538cfbc4ced55e1caeca3236f3210",
+          "ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/ReadinessTrustedPairing.swift": "aa21a5ffc8a9cb084246db464b979a3b7ab31cd4d3f3390fde42a2a837bc0be2"
+        },
+        "mutation_worktree": "/Users/oculus/Projects/GODSTONE_T17_MUT (pinned at the witness head, removed after the campaign)"
+      },
+      "mutation_results": [
+        {
+          "mutation": "plaintext fallback revived: submit ships unsealed when no registry stands",
+          "expected": "declared witnesses testTransportWithoutRegistryRefusesToShipAnything, testFailClosedRegistryShipsNothingEither fall",
+          "outcome": "KILLED",
+          "engines": [
+            "swift-host"
+          ],
+          "evidence": "T17/mutations/logs/logs/T17-M1-170423.log (witnesses down: testTransportWithoutRegistryRefusesToShipAnything, testFailClosedRegistryShipsNothingEither)"
+        },
+        {
+          "mutation": "synthetic ready: the trusted door opens from role bound without a witness",
+          "expected": "declared witnesses testSealedReadyRequiresTrustedHandle fall",
+          "outcome": "KILLED",
+          "engines": [
+            "swift-host"
+          ],
+          "evidence": "T17/mutations/logs/logs/T17-M2-170426.log (witnesses down: testSealedReadyRequiresTrustedHandle)"
+        },
+        {
+          "mutation": "the unexpected stage answers untyped (detail stripped from the reason)",
+          "expected": "declared witnesses testPretrustDataFrameIsRejectedAndTheCollectorSurvives, testUnexpectedStageIsTypedAndBounded fall",
+          "outcome": "KILLED",
+          "engines": [
+            "swift-host"
+          ],
+          "evidence": "T17/mutations/logs/logs/T17-M3-170428.log (witnesses down: testUnexpectedStageIsTypedAndBounded)"
+        },
+        {
+          "mutation": "the collector stays silent on an unauthenticated arrival (write plane)",
+          "expected": "declared witnesses testPretrustDataFrameIsRejectedAndTheCollectorSurvives, testUnexpectedStageIsTypedAndBounded fall",
+          "outcome": "KILLED",
+          "engines": [
+            "swift-host"
+          ],
+          "evidence": "T17/mutations/logs/logs/T17-M4-170430.log (witnesses down: testPretrustDataFrameIsRejectedAndTheCollectorSurvives, testUnexpectedStageIsTypedAndBounded)"
+        },
+        {
+          "mutation": "plaintext fallback revived: seal failure ships the clear bytes",
+          "expected": "declared witnesses testTransportWithoutRegistryRefusesToShipAnything, testFailClosedRegistryShipsNothingEither fall",
+          "outcome": "KILLED",
+          "engines": [
+            "jvm-host"
+          ],
+          "evidence": "T17/mutations/logs/logs/T17-M5-170433.log (witnesses down: testTransportWithoutRegistryRefusesToShipAnything)"
+        },
+        {
+          "mutation": "a test seam re-exported to the world (reflection scan must catch it)",
+          "expected": "declared witnesses testReleaseSymbolsCarryNoTestFactories fall",
+          "outcome": "KILLED",
+          "engines": [
+            "jvm-host"
+          ],
+          "evidence": "T17/mutations/logs/logs/T17-M6-170437.log (witnesses down: testReleaseSymbolsCarryNoTestFactories)"
+        },
+        {
+          "mutation": "the reserved states become reachable through the generic entrance",
+          "expected": "declared witnesses testRoleBinding_NegativePreconditions, testTransitionToReady_ForbiddenInSubstrate fall",
+          "outcome": "KILLED",
+          "engines": [
+            "jvm-host"
+          ],
+          "evidence": "T17/mutations/logs/logs/T17-M7-170441.log (witnesses down: testRoleBinding_NegativePreconditions, testTransitionToReady_ForbiddenInSubstrate)"
+        },
+        {
+          "mutation": "the collector stays silent on an unauthenticated arrival",
+          "expected": "declared witnesses testAuthenticationFailureThenValidInputSucceeds fall",
+          "outcome": "KILLED",
+          "engines": [
+            "jvm-host"
+          ],
+          "evidence": "T17/mutations/logs/logs/T17-M8-170447.log (witnesses down: testAuthenticationFailureThenValidInputSucceeds)"
+        }
+      ],
+      "next_action": "none - task complete",
+      "phase_gate": "P1",
+      "required_cases": [
+        "ReadinessT17Tests (10 cases iOS)",
+        "ReadinessT17Test (10 cases Android)"
+      ],
+      "status": "COMPLETE",
+      "task_id": "T17",
+      "tested_tree_sha": "95ae4a783cf3c3b3ea5c5d2c55398dd7ec3d8536",
+      "unresolved": [
+        "device gates stay open: what a real controller presents on the wire, genuine MTU negotiation cadence, and the survival of the bounded rings across a process restart await T73-T75 physical evidence",
+        "on this JVM test harness the fork's bare scope.launch dispatches starve an unbounded wait while the sanctioned runBlocking bridge (the LinkInfoSnapshotAuthority precedent) delivers: the handshake writers travel the handler's own course, as the iOS twins do; recorded as an environment fact, not a production defect",
+        "the sessions seam remains optional on the Android primitive for testability; composition at MeshNode mandates a real registry and retains the fail-closed one when none is handed - a test fixture fact, witnessed by the reflection scan and by the re-exported-seam mutant",
+        "the runner records test counts as UNKNOWN for command-kind specs, so the positive counts above were taken from the fresh summary and XML lineages themselves, with staleness guarded by modification times"
+      ]
     }
   },
   "current_task": null,
@@ -1540,21 +1731,16 @@
     "SIGNING"
   ],
   "failed_attempts": [],
-  "in_progress": {
-    "claimed_head": "ec8c9e91e6c8fbabf7453b6ce93dac619bd7e711",
-    "claimed_utc": "2026-09-10T03:38:08+00:00",
-    "objective": "Remove plaintext and synthetic READY from production paths: require a trusted SessionSlot dependency in transport constructors; replace Boolean/nullable ambiguous failures with typed TransportResult and CryptoOpenResult; restrict test readiness injection to nonshipping test adapters; a malformed packet produces a bounded rejection event and collector continuity and cannot create READY or throw through a platform callback.",
-    "task": "T17"
-  },
-  "last_code_head": "9e103e388dcdc1c9d4ee4d3df0334f7278f26edb",
-  "last_observed_head": "9e103e388dcdc1c9d4ee4d3df0334f7278f26edb",
+  "in_progress": null,
+  "last_code_head": "d69ec8727f9cdad3809841e49140ba32a32af719",
+  "last_observed_head": "d69ec8727f9cdad3809841e49140ba32a32af719",
   "latest_verification": {
-    "note": "T16 narrow 7/7, GodstoneFoundation 724/724 green at 9e103e3; seven mutants killed, each attributed to the case that actually fell",
-    "recorded_utc": "2026-09-10T03:35:58+00:00",
-    "source_sha": "9e103e388dcdc1c9d4ee4d3df0334f7278f26edb",
-    "tested_tree_sha": "c485271065f27ae631c55b0076f743698653a5b1"
+    "note": "T17 narrow 10/10 on both engines, GodstoneFoundation 734/734 and mesh 799/799 green at d69ec87; eight mutants killed, each attributed to the case that actually fell",
+    "recorded_utc": "2026-48-10T11:48:17+00:00",
+    "source_sha": "d69ec8727f9cdad3809841e49140ba32a32af719",
+    "tested_tree_sha": "95ae4a783cf3c3b3ea5c5d2c55398dd7ec3d8536"
   },
-  "next_task": "T17",
+  "next_task": "T18",
   "phase": "P0",
   "plan_sha256": "685456b378662b0a40a53a6abc810041e37daf97b213f3efeb6cea879363934e",
   "planning_baseline_sha": "b5c3d3d394b70cf356cdde33b47511dad7cbb95c",

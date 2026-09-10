@@ -747,6 +747,138 @@
       "task_ids": [
         "T16"
       ]
+    },
+    {
+      "claim_id": "CLM-T17-CLEAR-OFF-AIR",
+      "command_ids": [
+        "T17-narrow-swift",
+        "T17-subsystem-swift"
+      ],
+      "evidence_class": "internal",
+      "evidence_sha256": null,
+      "latest_source_sha": "d69ec8727f9cdad3809841e49140ba32a32af719",
+      "limitations": "host-side evidence; what a real controller presents, genuine MTU cadence, and ring survival across a restart await T73-T75 device gates",
+      "production_path": "ios/Godstone/Sources/GodstoneMesh/BleTransport.swift",
+      "profile": "swift-host",
+      "required_case_ids": [
+        "ReadinessT17Tests"
+      ],
+      "requirement": "no frame leaves the transport unsealed: without a standing registry, or when the registry refuses to seal, or before the relation reaches the ready state, submission answers rejected with a bounded event and no octet reaches the wire; a forged arrival is told unauthenticated, the collector keeps running, and the accepted twin is delivered whole",
+      "result": "PASS",
+      "state_owner": "builder",
+      "task_ids": [
+        "T17"
+      ]
+    },
+    {
+      "claim_id": "CLM-T17-CLEAR-OFF-AIR-ANDROID",
+      "command_ids": [
+        "T17-narrow-gradlew",
+        "T17-subsystem-gradlew"
+      ],
+      "evidence_class": "internal",
+      "evidence_sha256": null,
+      "latest_source_sha": "d69ec8727f9cdad3809841e49140ba32a32af719",
+      "limitations": "host-side evidence; what a real controller presents, genuine MTU cadence, and ring survival across a restart await T73-T75 device gates",
+      "production_path": "android/mesh/src/main/java/io/godstone/mesh/transport/BleTransport.kt",
+      "profile": "jvm-host",
+      "required_case_ids": [
+        "ReadinessT17Test"
+      ],
+      "requirement": "the same law on Android: seal-before-send everywhere, fail-closed registry ships nothing, a pretrust data frame is refused at the state gate and a forged arrival is told unauthenticated while the collector survives both",
+      "result": "PASS",
+      "state_owner": "builder",
+      "task_ids": [
+        "T17"
+      ]
+    },
+    {
+      "claim_id": "CLM-T17-TRUSTED-DOORS",
+      "command_ids": [
+        "T17-narrow-swift",
+        "T17-subsystem-swift"
+      ],
+      "evidence_class": "internal",
+      "evidence_sha256": null,
+      "latest_source_sha": "d69ec8727f9cdad3809841e49140ba32a32af719",
+      "limitations": "host-side evidence; what a real controller presents, genuine MTU cadence, and ring survival across a restart await T73-T75 device gates",
+      "production_path": "ios/Godstone/Sources/GodstoneMesh/BleConnection.swift",
+      "profile": "swift-host",
+      "required_case_ids": [
+        "ReadinessT17Tests"
+      ],
+      "requirement": "the cryptographic ready is reachable only through the trusted handshake entries: the generic door refuses every reserved state by value and preserves the station, and a connection already in the handshake phase stays entitled to send its next record",
+      "result": "PASS",
+      "state_owner": "builder",
+      "task_ids": [
+        "T17"
+      ]
+    },
+    {
+      "claim_id": "CLM-T17-TRUSTED-DOORS-ANDROID",
+      "command_ids": [
+        "T17-narrow-gradlew",
+        "T17-subsystem-gradlew"
+      ],
+      "evidence_class": "internal",
+      "evidence_sha256": null,
+      "latest_source_sha": "d69ec8727f9cdad3809841e49140ba32a32af719",
+      "limitations": "host-side evidence; what a real controller presents, genuine MTU cadence, and ring survival across a restart await T73-T75 device gates",
+      "production_path": "android/mesh/src/main/java/io/godstone/mesh/transport/BleConnection.kt",
+      "profile": "jvm-host",
+      "required_case_ids": [
+        "ReadinessT17Test"
+      ],
+      "requirement": "the same doors on Android: transitionTo answers by value with refusal and preservation, markTrustedReady stands shut outside the handshake, and beginHandshake is idempotent for its own phase",
+      "result": "PASS",
+      "state_owner": "builder",
+      "task_ids": [
+        "T17"
+      ]
+    },
+    {
+      "claim_id": "CLM-T17-UNBABOVED-SYMBOLS",
+      "command_ids": [
+        "T17-narrow-swift",
+        "T17-subsystem-swift"
+      ],
+      "evidence_class": "internal",
+      "evidence_sha256": null,
+      "latest_source_sha": "d69ec8727f9cdad3809841e49140ba32a32af719",
+      "limitations": "host-side evidence; what a real controller presents, genuine MTU cadence, and ring survival across a restart await T73-T75 device gates",
+      "production_path": "ios/Godstone/Sources/GodstoneMesh/BleTransport.swift",
+      "profile": "swift-host",
+      "required_case_ids": [
+        "ReadinessT17Tests"
+      ],
+      "requirement": "no test factory is reachable from a shipping symbol: every ForTest seam is internal, and a restored public seam is caught by the reflection scan",
+      "result": "PASS",
+      "state_owner": "builder",
+      "task_ids": [
+        "T17"
+      ]
+    },
+    {
+      "claim_id": "CLM-T17-UNBABOVED-SYMBOLS-ANDROID",
+      "command_ids": [
+        "T17-narrow-gradlew",
+        "T17-subsystem-gradlew"
+      ],
+      "evidence_class": "internal",
+      "evidence_sha256": null,
+      "latest_source_sha": "d69ec8727f9cdad3809841e49140ba32a32af719",
+      "limitations": "host-side evidence; what a real controller presents, genuine MTU cadence, and ring survival across a restart await T73-T75 device gates",
+      "production_path": "android/mesh/src/main/java/io/godstone/mesh/transport/BleTransport.kt",
+      "profile": "jvm-host",
+      "required_case_ids": [
+        "ReadinessT17Test"
+      ],
+      "requirement": "the same on Android: the reflection scan of every production class names no unmangled ForTest symbol, and the promoted-seam mutant dies there",
+      "result": "PASS",
+      "state_owner": "builder",
+      "task_ids": [
+        "T17"
+      ]
     }
   ],
   "note": "Claims appended per task with real evidence; PASS requires positive case counts and matching command output. Device/independent claims never accept host-only results.",

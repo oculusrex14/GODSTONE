@@ -394,3 +394,55 @@ messages the stack will send it. (5) A compile-invalidated mutant run is not
 a kill: the first MU-3 used an Optional-Bool `&&` form, did not compile, was
 recorded INVALID (its log retained as MU-3-firstpass-invalid-t16.log) and
 was redeployed type-preserving before any verdict was read.
+
+## D-T17-a [ACCEPTED] The registry is a standing dependency of the shipping path
+The plaintext fallback of the sessions-nil transport is removed on both platforms: without a
+trusted registry, or when the registry refuses to seal, or before the relation reaches the
+cryptographic ready, submission answers rejected with a bounded event and no unauthenticated
+octet reaches the wire. The Android primitive keeps an optional sessions seam for testability
+only; composition at the node mandates a real registry and retains the fail-closed one when
+none is handed over, so the refusal is told at the admission gate, consulted before any
+connection is located. The ready is dual - the physical readiness (subscription and attribute
+space agreed) opens only the handshake door, and the cryptographic ready (a trusted session
+slot) is reachable only through the handshake entries; beginHandshake is idempotent for its
+own phase, exactly as the iOS twin always was. The openWithResult of the registry is total by
+contract: a frame the cipher refuses is told by the rejected answer, whatever the underlying
+layer throws, and the transport collector wraps its consultation in a catch of its own - a
+forged packet produces one bounded event and the collect loop runs on, witnessed by the case
+that ships the valid frame after the forgery.
+
+## D-T17-b [ACCEPTED] Outlets behind hooks, one keying law, the blocking bridge
+The Android outlets (notification and write legs of both planes) travel behind a BleOutletHooks
+seam, following the AdvertisingHooks precedent: production binds the real gattServer and client
+connections, tests inject the recording fake - the same separation the iOS suite performs with
+its punned protocol objects. The keying law is one: a connection's own peerId is the registry
+key on both planes (the drivers create connections from the colonned address bytes), while the
+caller's argument to send or begin is a locator only, resolved either as the six-octet wire
+id or as the seventeen-character address text. The handshake writers travel in the handler's
+own course through the sanctioned runBlocking bridge - the precedent the LinkInfoSnapshot-
+Authority sets in main - because the fork's bare scope.launch dispatches starve on this JVM
+test harness; the iOS twins have always written synchronously, so the platforms now agree not
+only in law but in motion. The demotion of every ForTest seam to internal, witnessed by the
+reflection scan (internal members compile to mangled names, so an unmangled sighting is a
+public escape), closes the release-symbol gate.
+
+## D-T17-c [ACCEPTED] Builder runtime facts (this environment)
+(1) The harness input layer and the display layer both mangle the fork's package brand: a
+brand token typed into a tool call arrives at the file without its final letter, and printed
+bytes collapse the other way; only byte-level inspection (od, hashes) is trustworthy, so the
+brand is never typed but harvested from production bytes by regex and pasted by substitution.
+(2) Two parser lineages must adjudicate a campaign: the summary line alone under-declares (a
+line is a total across suite groups, and taking the max over lines is safe, believing a lone
+min can mislead), and the case-line bracket capture must escape the class brackets the harness
+itself prints - the first LOGRE, missing the closing class bracket the quantifier should stand
+in, read the empty set and cried SURVIVED over eight killed. (3) A mutant is dead, not
+invalid, only when the declared witness fell: M2 laid no failures while the lab stood at a
+stale head, and the strengthened witness - which probes the trusted door from the bound state
+directly - buried it at the next campaign. Pinned heads, forced reverts, and liveness-guarded
+baselines are the campaign's own hygiene. (4) The in-repo evidence tree is tracked property:
+an earlier straggler EVIDENCE/ nested inside it on the case-insensitive filesystem and a
+sweep by name deleted the whole corpus; it returned from HEAD by checkout, and since then
+the builder writes campaign evidence to the private external root only, and never sweeps by
+name in either tree. (5) An unbounded wait is the fault of the observer, not of the observed:
+every await now names itself and dumps the bounded ring, and it was those names that confessed
+the premature ready-marking and the starved dispatch.

@@ -2,92 +2,142 @@
   "evidence_root": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE",
   "files": [
     {
-      "path": "T16/commands.json",
-      "sha256": "bc67686d70449a0ced7d649e09a295496568a1e9ca3dc0852997b905af644c75",
-      "size": 4363
+      "path": "T17/commands.json",
+      "sha256": "52a260d026b718d639fdc97acc9ca82415dcd583f597a7ce690ed8454ed62421",
+      "size": 6121
     },
     {
-      "path": "T16/logs/T16-controls-python3-002.log",
+      "path": "T17/logs/T17-controls-python3-002.log",
       "sha256": "0b1ac463307b9f7d907105bb19e85bdada5dcd05131d80c492ffd80b4ab3f5f4",
       "size": 234
     },
     {
-      "path": "T16/logs/T16-controls-python3-003.log",
+      "path": "T17/logs/T17-controls-python3-003.log",
       "sha256": "67493ebd28a55ece17214e55d318f34ba4af6ac7592268756f1b3dcc304afa21",
       "size": 125
     },
     {
-      "path": "T16/logs/T16-controls-python3.log",
+      "path": "T17/logs/T17-controls-python3.log",
       "sha256": "03f0bc422dc53a81fd7f41085300a28e42626c2a4554e8929d897d3c092bd014",
       "size": 1374
     },
     {
-      "path": "T16/logs/T16-narrow-swift.log",
-      "sha256": "3441e477d762355510eeca979adc06f7a5c917adb3d392362cca935e47fb49f3",
-      "size": 2746
+      "path": "T17/logs/T17-narrow-gradlew.log",
+      "sha256": "c546ae013d25a36b2458331106699a4bca802557d3b913f729fcaa9cbc80eb6f",
+      "size": 2527
     },
     {
-      "path": "T16/logs/T16-subsystem-swift.log",
-      "sha256": "4e671c2a79dcdc92109a764f7b96d485a02d7aa6f348e59720c78681d5ffbde7",
-      "size": 187630
+      "path": "T17/logs/T17-narrow-swift.log",
+      "sha256": "dd32e7b7d186bf03c941660c273d1a46e50961fe64ed1dccddd4f61e8d8ae326",
+      "size": 139484
     },
     {
-      "path": "T16/mutations/MU-1-t16.log",
-      "sha256": "df9a6c1eb5bf8224138b7f00ebd61d966121831cc4b3aa0f877c67193d276da7",
-      "size": 20941
+      "path": "T17/logs/T17-subsystem-gradlew.log",
+      "sha256": "7a2b065f904ccf8426ad5c3519fdab1ffd74d88d562ee2ccaa425412b6399b4e",
+      "size": 2500
     },
     {
-      "path": "T16/mutations/MU-2-t16.log",
-      "sha256": "829f926729686d3d60a1a18d3244f2646d0419a954dda2be1f6d8468e8e1ede9",
-      "size": 21323
+      "path": "T17/logs/T17-subsystem-swift.log",
+      "sha256": "7dc02fb54e3048d0eb5df193f941f67b10a5cdc2a4c33240bfde98140384a33f",
+      "size": 190069
     },
     {
-      "path": "T16/mutations/MU-3-firstpass-invalid-t16.log",
-      "sha256": "6e2e10bdb5a4a8d75f56f592d365a6f5e9fc1104033d33195e9202472c943b11",
-      "size": 18588
+      "path": "T17/mutations/baseline-android.log",
+      "sha256": "2ae37e269a99a7cc98d0711578c652c08253777422b12f4e8a42ac8732173457",
+      "size": 18015
     },
     {
-      "path": "T16/mutations/MU-3-t16.log",
-      "sha256": "546fe8e454aa9b6b3c8bbc81bd9cf6c24209cc9ec0d70dc568d7508bef60697f",
-      "size": 20935
+      "path": "T17/mutations/baseline-ios.log",
+      "sha256": "5cdf46088cb6afa92db0709a20c085c753cc49dd7178b00fa11116a1568cf2d5",
+      "size": 47275
     },
     {
-      "path": "T16/mutations/MU-4-t16.log",
-      "sha256": "e5798100b61d7212cab2949324cd73930c0e4ecfe28073f6a8ac8adbdba8109e",
-      "size": 21865
+      "path": "T17/mutations/logs/T17-M1-170319.log",
+      "sha256": "74803fb0561c77371df34e760726c845c7eb03dfe60ea05793403686c64af6c3",
+      "size": 50161
     },
     {
-      "path": "T16/mutations/MU-5-t16.log",
-      "sha256": "4c37324ed7dca651f5bc212e3bbdef98cd2ee1280b54b39103123a64754b8ced",
-      "size": 20910
+      "path": "T17/mutations/logs/T17-M1-170423.log",
+      "sha256": "5b2eaf7b72dae87c41b34c26343d99804f9b99ae6889c07e6b23b04ea6d4a7a0",
+      "size": 50161
     },
     {
-      "path": "T16/mutations/MU-6-t16.log",
-      "sha256": "ace0935bc2cc6b76c60d2f0c8d5a85f7ade3a7026566926d1cd5319fa1e03469",
-      "size": 21201
+      "path": "T17/mutations/logs/T17-M2-170321.log",
+      "sha256": "8af6077c5e07e52b278c401dc52967c8eba597d9306e2e3332c70767fce1c2a0",
+      "size": 47324
     },
     {
-      "path": "T16/mutations/MU-7-t16.log",
-      "sha256": "30a04aa6d373a91eaf59a604992eea6afb40eb36d930158a67844566a76f9596",
-      "size": 20568
+      "path": "T17/mutations/logs/T17-M2-170426.log",
+      "sha256": "f6eef83291204a026267c08096af54b861d05dd4e84ffc2d05e65356b7e6b374",
+      "size": 52017
     },
     {
-      "path": "T16/mutations/baseline-t16.log",
-      "sha256": "1292cf5db9c63dd6f6717a63276d2d80921ddeff0738bf26c47827f94962469e",
-      "size": 20258
+      "path": "T17/mutations/logs/T17-M3-170323.log",
+      "sha256": "1be23ab292b1acdca1f5cdc150609131f58c6c3f50c9acbd6419019ad66636b3",
+      "size": 48231
     },
     {
-      "path": "T16/mutations/manifest.json",
-      "sha256": "2b203a897790c30e98de7d6e31a56e2e60c555e39e93d169137c5e41e7ed5f35",
-      "size": 4535
+      "path": "T17/mutations/logs/T17-M3-170428.log",
+      "sha256": "57fabd18fa6826ac4ec8b9270d99e0dca4512bab3671fcf19e5657c4c36b85c1",
+      "size": 48231
     },
     {
-      "path": "T16/mutations/summary.json",
-      "sha256": "6983deaa24e18b3ba8dbd964c3198c360d8ec787454b8833061f73a96357c73d",
-      "size": 1507
+      "path": "T17/mutations/logs/T17-M4-170325.log",
+      "sha256": "2bc2aae9e750e6a094fc1afcbb17c793ca1f80d3d453c11e23063f977c6c4e12",
+      "size": 47919
+    },
+    {
+      "path": "T17/mutations/logs/T17-M4-170430.log",
+      "sha256": "ddc08bdba702416ac67a82dc1b7de01cd49744af01166efc6d3b493484d53676",
+      "size": 47919
+    },
+    {
+      "path": "T17/mutations/logs/T17-M5-170328.log",
+      "sha256": "f90debef479a67db423779621ea048b4b18d8934aa24b8302f4487a5df253b71",
+      "size": 6423
+    },
+    {
+      "path": "T17/mutations/logs/T17-M5-170433.log",
+      "sha256": "d00027d6885baa6b0031e699ea4641823623b6d65f83731667b28b6fc908584b",
+      "size": 6425
+    },
+    {
+      "path": "T17/mutations/logs/T17-M6-170332.log",
+      "sha256": "b6aa5131aad28bbba5c099c0b6a3d028e734816b33459f67f17979bb8a492815",
+      "size": 6435
+    },
+    {
+      "path": "T17/mutations/logs/T17-M6-170437.log",
+      "sha256": "ccd0e68f9ebbb61f2e46160aef544151c63320bee3009f8d8d47af1bf055f859",
+      "size": 6434
+    },
+    {
+      "path": "T17/mutations/logs/T17-M7-170344.log",
+      "sha256": "8c0dc4ac78be81f902c38b504b597b667be23b2097abd640225a0d8c2996a85d",
+      "size": 31509
+    },
+    {
+      "path": "T17/mutations/logs/T17-M7-170441.log",
+      "sha256": "a964fade1b2b085c07ac81807e7378cf3f3c1591e8fb3c70f90c3e2448fd263d",
+      "size": 35809
+    },
+    {
+      "path": "T17/mutations/logs/T17-M8-170350.log",
+      "sha256": "545feeb0f998129ff83be43b79aafde91b4cfa4ffc4b5ac7bd9a0c92ed01cb82",
+      "size": 10874
+    },
+    {
+      "path": "T17/mutations/logs/T17-M8-170447.log",
+      "sha256": "78866655cdc4c76f572b542b0c2d1e9afeb2a91e0e9f70b2f2c5acb7b9fd5713",
+      "size": 6425
+    },
+    {
+      "path": "T17/mutations/manifest.json",
+      "sha256": "526a0f4086d62e6ded6deeba34b4c06fc4fadafe48676bf91a88fd08d572dcf4",
+      "size": 4979
     }
   ],
-  "note": "nonsecret index; full logs live outside the repository",
+  "note": "T17 commands, gate logs, and the eight-mutant campaign record",
   "schema_version": 1,
-  "task": "T16"
+  "task": "T17"
 }
