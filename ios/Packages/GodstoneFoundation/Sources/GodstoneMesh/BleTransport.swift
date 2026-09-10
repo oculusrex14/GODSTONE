@@ -1441,6 +1441,7 @@ public final class BleTransport: NSObject, @unchecked Sendable {
         let periph = connectedPeripherals.removeValue(forKey: peerId)
         let conn = outboundCentralConnections.removeValue(forKey: peerId)
         conn?.markDisconnected()
+        sessions?.drop(peerId)
         _ = centralDriver?.onProvisionalTimeout(peerId: peerId, expectedGen: gen)
         unlockTransport()
 
@@ -2020,6 +2021,27 @@ public final class BleTransport: NSObject, @unchecked Sendable {
                                               from: manager)
     }
 
+    /// T21: the fall of the responder's relation through the platform's own
+    /// arm. The tokens are the ones the registration itself carries - never a
+    /// fresh lookup - and the direction's writer retires with the relation it
+    /// served. No HS is retransmitted within one session; application retries
+    /// survive in storage and travel by a fresh handshake hereafter.
+    private func closeResponderRelation(_ centralId: UUID) {
+        lockTransport()
+        let lifetime = activeInboundLifetimes[centralId]
+        let manager = peripheral
+        unlockTransport()
+        guard let lifetime = lifetime, let manager = manager else { return }
+        _ = reductionProcessInboundUnsubscribe(centralId: centralId,
+                                               expectedGen: lifetime.relationKey.generation,
+                                               characteristic: nil,
+                                               sourceEpoch: lifetime.transportEpoch,
+                                               from: manager)
+        // T21 (section 13, D2): the owners mandate of the fall consumeth the
+        // session slot; the platforms moment of a subscription doth not.
+        sessions?.drop(centralId)
+    }
+
     /// The initiator's entrance: begin the trusted handshake with the remote
     /// hint learned from discovery. The first record is written
     /// through the outlet towards the peripheral; the exchange completes
@@ -2069,6 +2091,14 @@ public final class BleTransport: NSObject, @unchecked Sendable {
     }
 
     @discardableResult
+    /// T21: the census of publications, for the suites' sight. Observation
+    /// only: nothing here alters what the publication door keeps.
+    internal func publishedRelationsForTest() -> [RelationKey] {
+        lockTransport()
+        defer { unlockTransport() }
+        return Array(publishedRelations)
+    }
+
     public func publishRelation(_ key: RelationKey) -> Bool {
         lockTransport()
         let hadAny = publishedRelations.contains(where: { $0.peerId == key.peerId })
@@ -2254,6 +2284,7 @@ public final class BleTransport: NSObject, @unchecked Sendable {
         cancelTimerLocked(matching: key)
         let conn = outboundCentralConnections.removeValue(forKey: peerId)
         conn?.markDisconnected()
+        sessions?.drop(peerId)
         connectedPeripherals.removeValue(forKey: peerId)
         inboxCharacteristics.removeValue(forKey: peerId)
         digestCharacteristics.removeValue(forKey: peerId)
@@ -2315,6 +2346,7 @@ public final class BleTransport: NSObject, @unchecked Sendable {
             _ = reductionProcessInboundUnsubscribe(centralId: e.centralId, expectedGen: e.gen,
                                                   characteristic: nil,
                                                   sourceEpoch: e.epoch, from: e.manager)
+            sessions?.drop(e.centralId)
         }
     }
 
@@ -2352,6 +2384,7 @@ public final class BleTransport: NSObject, @unchecked Sendable {
         relationDelegates.removeValue(forKey: peerId)
         cancelTimerLocked(matching: key)
         outboundCentralConnections.removeValue(forKey: peerId)?.markDisconnected()
+        sessions?.drop(peerId)
         connectedPeripherals.removeValue(forKey: peerId)
         inboxCharacteristics.removeValue(forKey: peerId)
         digestCharacteristics.removeValue(forKey: peerId)
@@ -2535,6 +2568,17 @@ public final class BleTransport: NSObject, @unchecked Sendable {
                 if case .rejected(let why) = ingested {
                     recordRejection(peerId: peerId, site: "ingest.notify",
                                     reason: BleTransport.describeRejection(why))
+                    // T21 (section 13): an out-of-order HANDSHAKE sequence is
+                    // a conflicting record - the exact relation closes, never
+                    // drifts. A DATA record at an unready stage remains the
+                    // T17 bounded refusal: typed, one event, the relation
+                    // stands; and a quarantined relation awaits its rotation,
+                    // it is not slain by the gate.
+                    if case .unexpectedStage(_, let observed, let kind) = why,
+                       observed != .quarantined,
+                       kind == .hs1 || kind == .hs2 || kind == .hs3 {
+                        closeInitiatorRelation(peerId)
+                    }
                 }
                 return .noOp
             }
@@ -2711,6 +2755,7 @@ public final class BleTransport: NSObject, @unchecked Sendable {
         relationDelegates.removeValue(forKey: peerId)
         let p = connectedPeripherals.removeValue(forKey: peerId)
         outboundCentralConnections.removeValue(forKey: peerId)?.markDisconnected()
+        sessions?.drop(peerId)
         inboxCharacteristics.removeValue(forKey: peerId)
         digestCharacteristics.removeValue(forKey: peerId)
         linkInfoCharacteristics.removeValue(forKey: peerId)
@@ -3429,6 +3474,7 @@ public final class BleTransport: NSObject, @unchecked Sendable {
                                                               characteristic: nil,
                                                               sourceEpoch: lifetime.transportEpoch,
                                                               from: pm)
+                        sessions?.drop(centralId)
                     }
                     continue
                 }
@@ -3437,6 +3483,15 @@ public final class BleTransport: NSObject, @unchecked Sendable {
                     // T17: bounded rejection event; the collector runs on.
                     recordRejection(peerId: centralId, site: "ingest.write",
                                     reason: BleTransport.describeRejection(why))
+                    // T21 (section 13): the out-of-order HANDSHAKE sequence
+                    // closes the exact relation through the inbound arm,
+                    // tokens and all; DATA at an unready stage and a
+                    // quarantined relation both abide, as T17 and T16 rule.
+                    if case .unexpectedStage(_, let observed, let kind) = why,
+                       observed != .quarantined,
+                       kind == .hs1 || kind == .hs2 || kind == .hs3 {
+                        closeResponderRelation(centralId)
+                    }
                 }
 
                 if let rec = record, rec.recordType == .data && conn.state == .ready {

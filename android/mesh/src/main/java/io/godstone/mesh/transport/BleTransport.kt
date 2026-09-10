@@ -711,9 +711,14 @@ class BleTransport(
             // fall-through; an in-flight one is pending, not a failure.
             if (ingested is BleRecordIngestResult.Rejected) {
                 recordRejection(conn.peerId, "ingest.notify", describeRejection(ingested.reason))
-                // T21 (section 13): an out-of-order stage is a conflicting
-                // sequence - the exact relation closes, never drifts.
-                if (ingested.reason == BleRecordRejection.UNEXPECTED_STAGE) {
+                // T21 (section 13): an out-of-order HANDSHAKE sequence is a
+                // conflicting record - the exact relation closes, never
+                // drifts. A DATA record at an unready stage remains the T17
+                // bounded refusal: typed, one event, the relation stands; and
+                // a quarantined relation awaits its rotation, slain by none.
+                if (ingested.reason == BleRecordRejection.UNEXPECTED_STAGE &&
+                    conn.state != BleConnectionState.QUARANTINED &&
+                    namesHandshakeRecord(value)) {
                     closeInitiatorRelation(peerAddress)
                 }
             }
@@ -746,6 +751,17 @@ class BleTransport(
         if (record == null) {
             if (ingested is BleRecordIngestResult.Rejected) {
                 recordRejection(conn.peerId, "ingest.write", describeRejection(ingested.reason))
+                // T21 (section 13): the out-of-order HANDSHAKE sequence closes
+                // the exact relation through the server arm, generation and
+                // all; DATA at an unready stage and a quarantined relation
+                // both abide, as T17 and T16 rule.
+                if (ingested.reason == BleRecordRejection.UNEXPECTED_STAGE &&
+                    conn.state != BleConnectionState.QUARANTINED &&
+                    namesHandshakeRecord(value)) {
+                    handleServerDisconnected(peerAddress,
+                        serverDriver.getClientGeneration(peerAddress) ?: return)
+                    serverWriters.remove(peerAddress)
+                }
             }
             return
         }
@@ -1268,6 +1284,18 @@ class BleTransport(
         val gen = serverDriver.getClientGeneration(peerAddress) ?: return
         handleServerDisconnected(peerAddress, gen)
         serverWriters.remove(peerAddress)
+    }
+
+    /** T21: does the refused fragment name a handshake record? The type
+     *  octet rides on every fragment of the header, so the door may judge
+     *  the counsel by it alone, ere the reassembler speaks. */
+    private fun namesHandshakeRecord(value: ByteArray): Boolean {
+        if (value.size < BleRecordConstants.HEADER_BYTES) return false
+        return when (value[1]) {
+            BleRecordType.HS1.typeCode, BleRecordType.HS2.typeCode,
+            BleRecordType.HS3.typeCode -> true
+            else -> false
+        }
     }
 
     private fun closeInitiatorRelation(peerAddress: String) {
