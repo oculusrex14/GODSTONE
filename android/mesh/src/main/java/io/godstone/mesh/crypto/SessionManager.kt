@@ -381,6 +381,19 @@ class SessionManager internal constructor(
         }
     }
 
+    /** T21 (section 13, D2): when a relation closes, its exact session
+     *  slot closes with it - removed from the map, the generation remembered
+     *  for the conflict law, retired and destroyed once outside every slot
+     *  lock. The call is idempotent: an absent slot answers false. */
+    fun destroyFor(peerId: ByteArray): Boolean {
+        lifecycleRwLock.read {
+            if (!isActive) return false
+            val slot = removeSlotFor(relationKey(peerId)) ?: return false
+            slot.retire()?.destroy()
+            return true
+        }
+    }
+
     fun invalidateForWipe() {
         testInvalidationAttemptHook?.invoke()
         lifecycleRwLock.write {

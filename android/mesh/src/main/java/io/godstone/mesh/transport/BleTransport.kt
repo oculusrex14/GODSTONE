@@ -711,6 +711,11 @@ class BleTransport(
             // fall-through; an in-flight one is pending, not a failure.
             if (ingested is BleRecordIngestResult.Rejected) {
                 recordRejection(conn.peerId, "ingest.notify", describeRejection(ingested.reason))
+                // T21 (section 13): an out-of-order stage is a conflicting
+                // sequence - the exact relation closes, never drifts.
+                if (ingested.reason == BleRecordRejection.UNEXPECTED_STAGE) {
+                    closeInitiatorRelation(peerAddress)
+                }
             }
             return
         }
@@ -761,6 +766,11 @@ class BleTransport(
      * terminals travel - nothing here invents a terminal the platform did
      * not deliver.
      */
+    /** T21: the census of publications, for the suites' sight. Observation
+     *  only: nothing here alters what the publication door keeps. */
+    internal fun publishedRelationsForTest(): List<RelationKey> =
+        synchronized(publicationLock) { publishedRelations.toList() }
+
     fun sweepInboundLeases() {
         for ((address, conn) in centralDriver.allActiveConnectionsForTest()) {
             if (conn.sweepLeases()) {
@@ -791,6 +801,9 @@ class BleTransport(
             return
         }
         val relationGen = client.relationGeneration
+        // T21 (section 13, D2): the validated terminal ruins the session
+        // slot with the relation - once, on this path, whatever follows.
+        val peerForRuin = centralDriver.getActiveConnection(peerAddress)?.peerId?.copyOf()
         provisionalJobs.remove(peerAddress)?.cancel()
         val act = centralDriver.onDisconnected(peerAddress, relationGen)
         processCentralAction(peerAddress, act)
@@ -799,6 +812,7 @@ class BleTransport(
             centralRemoteLinkInfo.remove(peerAddress)
         }
         unpublishRelation(RelationKey(BleDirection.OUTBOUND, peerAddress, relationGen))
+        if (peerForRuin != null) sessions?.destroyFor(peerForRuin)
     }
 
     fun handleServerDisconnected(peerAddress: String, generation: Long) {
@@ -812,10 +826,14 @@ class BleTransport(
         }
         inboundJobs.remove(peerAddress)?.cancel()
         val conn = serverDriver.getInboundConnection(peerAddress)
+        // T21 (section 13, D2): the exact session slot perishes with the
+        // exact relation, once the generation has matched the event.
+        val peerForRuin = conn?.peerId?.copyOf()
         conn?.markDisconnected()
         serverDriver.onClientDisconnected(peerAddress, generation)
         responderRemoteLinkInfo.remove(peerAddress)
         unpublishRelation(RelationKey(BleDirection.INBOUND, peerAddress, generation))
+        if (peerForRuin != null) sessions?.destroyFor(peerForRuin)
     }
 
     /**
@@ -1242,6 +1260,16 @@ class BleTransport(
      *  the direction's writer retires with the relation it served. No HS
      *  is retransmitted within the same session; application retries
      *  survive in storage and travel by a fresh handshake hereafter. */
+    /** T21 (section 13): the refusal at the responder's record door closes
+     *  the exact relation through the platform's own arm - the generation is
+     *  the one the registration carries - and the direction's writer retires
+     *  with the relation it served. */
+    private fun closeResponderRelation(peerAddress: String) {
+        val gen = serverDriver.getClientGeneration(peerAddress) ?: return
+        handleServerDisconnected(peerAddress, gen)
+        serverWriters.remove(peerAddress)
+    }
+
     private fun closeInitiatorRelation(peerAddress: String) {
         val client = activeClientConnections[peerAddress] ?: return
         handleCentralDisconnected(peerAddress, client.clientToken, client.gattGeneration)
