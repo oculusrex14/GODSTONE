@@ -967,6 +967,116 @@
       "task_ids": [
         "T18"
       ]
+    },
+    {
+      "claim_id": "CLM-T19-RESERVE-FIRST",
+      "command_ids": [
+        "T19-narrow-swift-004",
+        "T19-subsystem-swift-004"
+      ],
+      "evidence_class": "internal",
+      "evidence_sha256": null,
+      "latest_source_sha": "d9b300be102c5c880cab2491e15b79af2838d442",
+      "limitations": "host-side evidence behind pinned manager seams; the real controller completion cadence, genuine update readiness, and staging survival across a restart await the T73-T75 device gates",
+      "production_path": "ios/Godstone/Sources/GodstoneMesh/RecordWriter.swift",
+      "profile": "swift-host",
+      "required_case_ids": [
+        "ReadinessT19Tests"
+      ],
+      "requirement": "every check that can refuse a whole record refuses it at the reservation, by value, before the seal burns a nonce or the connection hands its sequence number: the sealed length against min(16384, 64 times the direction capacity less the eight-octet header), the fragment ceiling, the station and the budgets; the sixty-fifth fraction is named by number at the gate; the seal happens exactly once per submission and the fragmentation exactly once",
+      "result": "PASS",
+      "state_owner": "builder",
+      "task_ids": [
+        "T19"
+      ]
+    },
+    {
+      "claim_id": "CLM-T19-WINDOW",
+      "command_ids": [
+        "T19-narrow-swift-004",
+        "T19-subsystem-swift-004"
+      ],
+      "evidence_class": "internal",
+      "evidence_sha256": null,
+      "latest_source_sha": "d9b300be102c5c880cab2491e15b79af2838d442",
+      "limitations": "host-side evidence behind pinned manager seams; the real controller completion cadence, genuine update readiness, and staging survival across a restart await the T73-T75 device gates",
+      "production_path": "ios/Godstone/Sources/GodstoneMesh/RecordWriter.swift",
+      "profile": "swift-host",
+      "required_case_ids": [
+        "ReadinessT19Tests"
+      ],
+      "requirement": "a direction stages at most sixteen values, topped up only as real completions retire them, with at most four admitted records and one value in flight; a full window is told as the staging being full and never silently trims an admitted record",
+      "result": "PASS",
+      "state_owner": "builder",
+      "task_ids": [
+        "T19"
+      ]
+    },
+    {
+      "claim_id": "CLM-T19-RETAINED-REHAND",
+      "command_ids": [
+        "T19-narrow-swift-004",
+        "T19-subsystem-swift-004"
+      ],
+      "evidence_class": "internal",
+      "evidence_sha256": null,
+      "latest_source_sha": "d9b300be102c5c880cab2491e15b79af2838d442",
+      "limitations": "host-side evidence behind pinned manager seams; the real controller completion cadence, genuine update readiness, and staging survival across a restart await the T73-T75 device gates",
+      "production_path": "ios/Godstone/Sources/GodstoneMesh/RecordWriter.swift",
+      "profile": "swift-host",
+      "required_case_ids": [
+        "ReadinessT19Tests"
+      ],
+      "requirement": "an update the leg refuses returns to the window and, when that very context reports itself ready again, travels unchanged - octet for octet the same ciphertext fragment, never resealed, never reshaped, its head carrying the one nonce first drawn",
+      "result": "PASS",
+      "state_owner": "builder",
+      "task_ids": [
+        "T19"
+      ]
+    },
+    {
+      "claim_id": "CLM-T19-READINESS-NOT-DURABILITY",
+      "command_ids": [
+        "T19-narrow-swift-004",
+        "T19-subsystem-swift-004"
+      ],
+      "evidence_class": "internal",
+      "evidence_sha256": null,
+      "latest_source_sha": "d9b300be102c5c880cab2491e15b79af2838d442",
+      "limitations": "host-side evidence behind pinned manager seams; the real controller completion cadence, genuine update readiness, and staging survival across a restart await the T73-T75 device gates",
+      "production_path": "ios/Godstone/Sources/GodstoneMesh/BleTransport.swift",
+      "profile": "swift-host",
+      "required_case_ids": [
+        "ReadinessT19Tests"
+      ],
+      "requirement": "a write without response is retired upon the platform readiness that let it leave and claims nothing of the remote; a stalled leg holds every value it was given and the resumption hands them out in the selfsame order",
+      "result": "PASS",
+      "state_owner": "builder",
+      "task_ids": [
+        "T19"
+      ]
+    },
+    {
+      "claim_id": "CLM-T19-STALE-AUTH",
+      "command_ids": [
+        "T19-narrow-swift-004",
+        "T19-subsystem-swift-004"
+      ],
+      "evidence_class": "internal",
+      "evidence_sha256": null,
+      "latest_source_sha": "d9b300be102c5c880cab2491e15b79af2838d442",
+      "limitations": "host-side evidence behind pinned manager seams; the real controller completion cadence, genuine update readiness, and staging survival across a restart await the T73-T75 device gates",
+      "production_path": "ios/Godstone/Sources/GodstoneMesh/BleTransport.swift",
+      "profile": "swift-host",
+      "required_case_ids": [
+        "ReadinessT19Tests"
+      ],
+      "requirement": "a manager-sourced readiness is believed only when the sending manager is the very instance of the active context, its wired delegate the context own proxy, and the epoch the event names the current one; the window of a retired context is purged and not carried, and a pretender report moves neither attempts nor staging",
+      "result": "PASS",
+      "state_owner": "builder",
+      "task_ids": [
+        "T19"
+      ]
     }
   ],
   "note": "Claims appended per task with real evidence; PASS requires positive case counts and matching command output. Device/independent claims never accept host-only results.",

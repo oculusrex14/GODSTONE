@@ -2,57 +2,232 @@
   "evidence_root": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE",
   "files": [
     {
-      "path": "T18/commands.json",
-      "sha256": "6e298fcf0101ce3c1d6636e0effe5290904e62aa5373c93ca80c6582757b0c05",
-      "size": 3470
+      "path": "T19/commands.json",
+      "sha256": "7f06ffedf277985add4af366a973dde568f858c7a9028d84e73ca868ab862763",
+      "size": 17386
     },
     {
-      "path": "T18/logs/T18-controls-python3-002.log",
+      "path": "T19/logs/T19-controls-python3-002.log",
       "sha256": "0b1ac463307b9f7d907105bb19e85bdada5dcd05131d80c492ffd80b4ab3f5f4",
       "size": 234
     },
     {
-      "path": "T18/logs/T18-controls-python3.log",
+      "path": "T19/logs/T19-controls-python3-003.log",
+      "sha256": "67493ebd28a55ece17214e55d318f34ba4af6ac7592268756f1b3dcc304afa21",
+      "size": 125
+    },
+    {
+      "path": "T19/logs/T19-controls-python3-004.log",
       "sha256": "03f0bc422dc53a81fd7f41085300a28e42626c2a4554e8929d897d3c092bd014",
       "size": 1374
     },
     {
-      "path": "T18/logs/T18-narrow-gradlew.log",
-      "sha256": "e85bfce2b50ba40117b1aa9e90a0a18fdb81ff61ca66017236dfe5fa731401f6",
-      "size": 2514
+      "path": "T19/logs/T19-controls-python3-005.log",
+      "sha256": "0b1ac463307b9f7d907105bb19e85bdada5dcd05131d80c492ffd80b4ab3f5f4",
+      "size": 234
     },
     {
-      "path": "T18/logs/T18-subsystem-gradlew.log",
-      "sha256": "de8b456cc256c50e7bfc553e41e615bf5c49e61cb8979d6332af6516d0d8e2e5",
-      "size": 2500
+      "path": "T19/logs/T19-controls-python3-006.log",
+      "sha256": "67493ebd28a55ece17214e55d318f34ba4af6ac7592268756f1b3dcc304afa21",
+      "size": 125
     },
     {
-      "path": "T18/mutations/baseline-android.log",
-      "sha256": "9b4f54f7ade114357cccf36b8df7af6f2ce3eed138494406657342290403f473",
-      "size": 1670
+      "path": "T19/logs/T19-controls-python3-007.log",
+      "sha256": "03f0bc422dc53a81fd7f41085300a28e42626c2a4554e8929d897d3c092bd014",
+      "size": 1374
     },
     {
-      "path": "T18/mutations/logs/T18-M1-183525.log",
-      "sha256": "4755ce7b8e7bd0fc3967165d261342beacf23de12f3b2d4dd9de77bddf35c46d",
-      "size": 6072
+      "path": "T19/logs/T19-controls-python3-008.log",
+      "sha256": "0b1ac463307b9f7d907105bb19e85bdada5dcd05131d80c492ffd80b4ab3f5f4",
+      "size": 234
     },
     {
-      "path": "T18/mutations/logs/T18-M2-183533.log",
-      "sha256": "71091b88feb1dbc4e9953c869672d7efffe45e506be35637538c4bab971391e6",
-      "size": 6199
+      "path": "T19/logs/T19-controls-python3-009.log",
+      "sha256": "67493ebd28a55ece17214e55d318f34ba4af6ac7592268756f1b3dcc304afa21",
+      "size": 125
     },
     {
-      "path": "T18/mutations/logs/T18-M3-183540.log",
-      "sha256": "9a2106924797e3c8d4d4f18541408916cbb31ce023ef5eb35ccb74b25e774dee",
-      "size": 6232
+      "path": "T19/logs/T19-controls-python3-010.log",
+      "sha256": "03f0bc422dc53a81fd7f41085300a28e42626c2a4554e8929d897d3c092bd014",
+      "size": 1374
     },
     {
-      "path": "T18/mutations/manifest.json",
-      "sha256": "a668514d08e10170528d00a57ef29fd3d1737735d037a092cc03f80308474cb9",
-      "size": 1701
+      "path": "T19/logs/T19-controls-python3-011.log",
+      "sha256": "0b1ac463307b9f7d907105bb19e85bdada5dcd05131d80c492ffd80b4ab3f5f4",
+      "size": 234
+    },
+    {
+      "path": "T19/logs/T19-controls-python3-012.log",
+      "sha256": "67493ebd28a55ece17214e55d318f34ba4af6ac7592268756f1b3dcc304afa21",
+      "size": 125
+    },
+    {
+      "path": "T19/logs/T19-controls-python3.log",
+      "sha256": "03f0bc422dc53a81fd7f41085300a28e42626c2a4554e8929d897d3c092bd014",
+      "size": 1374
+    },
+    {
+      "path": "T19/logs/T19-narrow-swift-002.log",
+      "sha256": "20f542876571f4be49611e7fdee7434235a3f4092945610b1b2d576a5424452b",
+      "size": 3790
+    },
+    {
+      "path": "T19/logs/T19-narrow-swift-003.log",
+      "sha256": "615920b2478871f47686dfc4d232b21afb6954b91d4d4ee9d52bea9fe472eeba",
+      "size": 4051
+    },
+    {
+      "path": "T19/logs/T19-narrow-swift-004.log",
+      "sha256": "934d372dee290d0fe01119b57067e4282238a762433a2ab76c9b0272ed2e41c9",
+      "size": 167223
+    },
+    {
+      "path": "T19/logs/T19-narrow-swift.log",
+      "sha256": "2de2b5ca02b542543cab6232ed87b54d87d30900788697e5ca68d0ab9248d45a",
+      "size": 3790
+    },
+    {
+      "path": "T19/logs/T19-subsystem-swift-002.log",
+      "sha256": "0ad16544f6b6545add36bbcef106f583855f9956e5c1815fcdf424abaddb6112",
+      "size": 192958
+    },
+    {
+      "path": "T19/logs/T19-subsystem-swift-003.log",
+      "sha256": "63495f02d3bf458a7d9520761dc4dcfbfe580e949841fbbb446c0270e737de37",
+      "size": 193220
+    },
+    {
+      "path": "T19/logs/T19-subsystem-swift-004.log",
+      "sha256": "d2f23f7f3afd932a7b1be73fbd6e3b0cf4db4508bda634821a1089ab8c19b962",
+      "size": 193227
+    },
+    {
+      "path": "T19/logs/T19-subsystem-swift.log",
+      "sha256": "7309c39881ca05c3a624184950d50158e7120d969dbac3394eeb08cf50abdcb2",
+      "size": 128334
+    },
+    {
+      "path": "T19/logs/full-corpus-210618.log",
+      "sha256": "eb3f365e2be47ddec23a929f926d944474be871e9c58cdf96a377741442b5cf6",
+      "size": 193098
+    },
+    {
+      "path": "T19/logs/t19-suite-210618.log",
+      "sha256": "fa14c190ddecce30809b55298a4324088c6d127bb3482a7e6f98676c7dae600b",
+      "size": 3875
+    },
+    {
+      "path": "T19/mutations/baseline-ios.log",
+      "sha256": "b253f5bf17fe2c0ca06db9972c384c94d78b8ba1edebd8e4422ec920a86cb580",
+      "size": 167154
+    },
+    {
+      "path": "T19/mutations/logs/T19-M1-204654.log",
+      "sha256": "f319cd096038d5ba302cfc198324a6977d9172d300bc191121d74dd6c0dafc5d",
+      "size": 3875
+    },
+    {
+      "path": "T19/mutations/logs/T19-M1-204806.log",
+      "sha256": "01f8a41cff94823f8e38a9824ecea6c870c3160701bf6c1b09e32fd1212352b4",
+      "size": 16401
+    },
+    {
+      "path": "T19/mutations/logs/T19-M1-205022.log",
+      "sha256": "53ba754368c87dfb1477dccf176513c513e01ac72223383d8ee07742c1d8c8c9",
+      "size": 16401
+    },
+    {
+      "path": "T19/mutations/logs/T19-M1-205130.log",
+      "sha256": "2abffa8d06cd46b0049691ec11d8582c3e6f6ff84e2c46ce4248b61539afc05d",
+      "size": 16401
+    },
+    {
+      "path": "T19/mutations/logs/T19-M1-205236.log",
+      "sha256": "93061a4a21dfaaf890d8445d934ac4d6c5a008dd8bfa39a858e93cf865540fd4",
+      "size": 16401
+    },
+    {
+      "path": "T19/mutations/logs/T19-M2-204655.log",
+      "sha256": "d38d78efc859c9c47182142bc41184a1729593a34113083c8487b2edee9fd4a7",
+      "size": 3875
+    },
+    {
+      "path": "T19/mutations/logs/T19-M2-204808.log",
+      "sha256": "0a73a5254f33bdd2675cce9d5df864ddc46d2173d3f54e66ffb7d410b592fdfb",
+      "size": 18369
+    },
+    {
+      "path": "T19/mutations/logs/T19-M2-205024.log",
+      "sha256": "567c28d930df741f7106b59ee03aa60a574060c94589478ae93bba3be1ede1b8",
+      "size": 18369
+    },
+    {
+      "path": "T19/mutations/logs/T19-M2-205132.log",
+      "sha256": "2d79df721c35fa7d15665cfffff02396cda069359a661d679b7beb192806e59c",
+      "size": 18369
+    },
+    {
+      "path": "T19/mutations/logs/T19-M2-205237.log",
+      "sha256": "38cb260ed0272b74c520f0b3194c66e4b8f47011f952a1f23873bcafb00f84f7",
+      "size": 18369
+    },
+    {
+      "path": "T19/mutations/logs/T19-M3-204655.log",
+      "sha256": "0ebb1e56d7a48428538703c4d60c45a65a4797cb7e8d6d7c0dc687a3dc4597e7",
+      "size": 3875
+    },
+    {
+      "path": "T19/mutations/logs/T19-M3-204810.log",
+      "sha256": "872f3ccb197c0a4fd6e33016bd5362a7dd226527dcdf29795a4c2fb62bc92e48",
+      "size": 25932
+    },
+    {
+      "path": "T19/mutations/logs/T19-M3-205025.log",
+      "sha256": "9f6058c82c9de11c1975e1af5b6e77ef97d844add407089086956098c37dc7e5",
+      "size": 25932
+    },
+    {
+      "path": "T19/mutations/logs/T19-M3-205134.log",
+      "sha256": "138256081f80a7f072bee5483a578815d7f9a4742953f93a0ab2a712bfba17a9",
+      "size": 25932
+    },
+    {
+      "path": "T19/mutations/logs/T19-M3-205239.log",
+      "sha256": "f796d2b5d639514e9a359087e9b9fa3f399e11f24d84ebb97e2c062f85342501",
+      "size": 25932
+    },
+    {
+      "path": "T19/mutations/logs/T19-M4-204656.log",
+      "sha256": "4a3a83b1a87cc97aef016b8fe93e03964ecc1ec096d4e086e89d38b9b3fde61c",
+      "size": 3875
+    },
+    {
+      "path": "T19/mutations/logs/T19-M4-204812.log",
+      "sha256": "815795f1ab002b1e35671477d0f10afaca3938a85a6496f5c9021edef1d7c203",
+      "size": 25776
+    },
+    {
+      "path": "T19/mutations/logs/T19-M4-205027.log",
+      "sha256": "f5176b0943a41ee94a5a41274ea0c78ec121f700eb56e9e6fee14fd79d2e8eeb",
+      "size": 25776
+    },
+    {
+      "path": "T19/mutations/logs/T19-M4-205136.log",
+      "sha256": "efb9720ebc9c332c4bac9505f679009b570e5540915072731a3d93fb93edbe18",
+      "size": 25776
+    },
+    {
+      "path": "T19/mutations/logs/T19-M4-205241.log",
+      "sha256": "94fe07c6d97fec237aa40ca7490fdc2a26963b5ac752be2460da23d6e6dc57d8",
+      "size": 25776
+    },
+    {
+      "path": "T19/mutations/manifest.json",
+      "sha256": "efb6092846e3811d0d165ec30893d5f2c537bf59913bd9a90bb35f6ce4d02d35",
+      "size": 3084
     }
   ],
-  "note": "T18 commands, gate logs, and the three-mutant campaign record",
+  "note": "T19 commands, gate logs, and the four-mutant campaign record",
   "schema_version": 1,
-  "task": "T18"
+  "task": "T19"
 }

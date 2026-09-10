@@ -1720,6 +1720,105 @@
         "the sessions seam remains optional on the Android primitive for testability; composition at MeshNode mandates a real registry and retains the fail-closed one when none is handed - a test fixture fact, witnessed by the reflection scan and by the re-exported-seam mutant",
         "the runner records test counts as UNKNOWN for command-kind specs, so the positive counts above were taken from the fresh summary and XML lineages themselves, with staleness guarded by modification times"
       ]
+    },
+    "T18": {
+      "case_results": [
+        {
+          "stage": "narrow",
+          "engine": "jvm-host",
+          "suite": "ReadinessT18Test",
+          "collected": 8,
+          "executed": 8,
+          "passed": 8,
+          "failed": 0,
+          "skipped": 0,
+          "counts_source": "the fresh JUnit XML TEST-*ReadinessT18Test* at the narrow run (T18-narrow-gradlew exit 0)"
+        },
+        {
+          "stage": "subsystem",
+          "engine": "jvm-host",
+          "executed": 807,
+          "passed": 807,
+          "failed": 0,
+          "skipped": 0,
+          "suites": 38,
+          "counts_source": "thirty-eight fresh JUnit XMLs tallied at the subsystem run; zero stale by modification time"
+        },
+        {
+          "stage": "controls",
+          "executed": 2,
+          "passed": 2,
+          "failed": 0,
+          "counts_source": "the controls logs; repository check and release-gate status, as the frozen manifest commands"
+        }
+      ],
+      "commands": [
+        "T18-narrow-gradlew",
+        "T18-subsystem-gradlew",
+        "T18-controls-python3",
+        "T18-controls-python3-002"
+      ],
+      "device_gate_ids": [],
+      "implementation_commit": "af291f32ca671bf3db2f1a4a398a3a5ecc7a174c",
+      "inputs": {
+        "baseline": "a7099af",
+        "commit_c_initial": "cce564eb590a2d35f199249e74641022006f7570",
+        "commit_c_whitespace": "clean at every commit: git diff --check silent throughout",
+        "commit_c_witness": "af291f32ca671bf3db2f1a4a398a3a5ecc7a174c",
+        "file_hashes": {
+          "android/mesh/src/main/java/io/godstone/mesh/transport/BleConnection.kt": "ce9a3d4cfd2e9c096bc3f482a6211e6cf488b01500d5e1515e7b7d8de1ce5d38",
+          "android/mesh/src/main/java/io/godstone/mesh/transport/BleTransport.kt": "090556ebf0f88e3f0a441b1e402c83c0f26c4e8b017d3e523683a5d8bfc0db91",
+          "android/mesh/src/main/java/io/godstone/mesh/transport/GattClient.kt": "7e4394b3f8601f3763d93c8906b87722c7d0518a4db693a953e95fa296080e2f",
+          "android/mesh/src/main/java/io/godstone/mesh/transport/GattServer.kt": "72a614d144dffa7ede54ef2b93462e57c1cde602029252be5d9c12c976e80206",
+          "android/mesh/src/main/java/io/godstone/mesh/transport/RecordWriter.kt": "ca1635b7fad6c394a614b47f5ebf994939f997c01fc2a50a3dc5ef6c33e691ab",
+          "android/mesh/src/test/java/io/godstone/mesh/readiness/ReadinessT17Test.kt": "d614f0c4a5666d7762e7e200cdb60aa7cede242ca2bdb77786e60fcbe0efa281",
+          "android/mesh/src/test/java/io/godstone/mesh/readiness/ReadinessT18Test.kt": "9e21a4b69d6ae93e65b80488a072840cae98d70062e0318f24a34767e6b037ae"
+        },
+        "mutation_worktree": "/Users/oculus/Projects/GODSTONE_T18_MUT (pinned at the witness head, removed after the campaign)"
+      },
+      "mutation_results": [
+        {
+          "mutation": "the capacity gates are neutered: the doomed record is sealed before it is refused",
+          "expected": "declared witnesses testTheSixtyFifthFractionIsRefusedBeforeTheSeal, testTheWrongSizedPayloadIsRefusedBeforeTheSeal fall",
+          "outcome": "KILLED",
+          "engines": [
+            "jvm-host"
+          ],
+          "evidence": "T18/mutations/logs/logs/T18-M1-183525.log (witnesses down: testTheSixtyFifthFractionIsRefusedBeforeTheSeal)"
+        },
+        {
+          "mutation": "the in-flight identity is not demanded: a stale or duplicate completion advances the new operation",
+          "expected": "declared witnesses testCallbacksLostAndDuplicatesChangeNothing fall",
+          "outcome": "KILLED",
+          "engines": [
+            "jvm-host"
+          ],
+          "evidence": "T18/mutations/logs/logs/T18-M2-183533.log (witnesses down: testCallbacksLostAndDuplicatesChangeNothing)"
+        },
+        {
+          "mutation": "the sequence number is consumed at the door, before the checks",
+          "expected": "declared witnesses testTheSixtyFifthFractionIsRefusedBeforeTheSeal, testTheWrongSizedPayloadIsRefusedBeforeTheSeal fall",
+          "outcome": "KILLED",
+          "engines": [
+            "jvm-host"
+          ],
+          "evidence": "T18/mutations/logs/logs/T18-M3-183540.log (witnesses down: testTheWrongSizedPayloadIsRefusedBeforeTheSeal)"
+        }
+      ],
+      "next_action": "none - task complete",
+      "phase_gate": "P1",
+      "required_cases": [
+        "ReadinessT18Test (8 cases Android: the full digest at ATT 20, the sixty-four-fraction record, the sixty-fifth refused before the seal, the queue full, completions lost and duplicated, the mid-write failure with the durable store preserved, the nonce once per submission, the drifted payload refused)"
+      ],
+      "status": "COMPLETE",
+      "task_id": "T18",
+      "tested_tree_sha": "fd33eb9a7a4594cd7cb703a28410bebeae357b57",
+      "unresolved": [
+        "device gates stay open: the real controller write-completion cadence behind the typed legs, the genuine MTU negotiation, and the survival of the staging across a process restart await the T73-T75 physical evidence",
+        "the fork compiler refuses while(true) with continue inside an inline synchronized lambda (a Nothing-typed parse artefact) where the corpus elsewhere permits it; the hand-off is reformed as a total guard without a loop - recorded as an environment fact",
+        "the fixed 512-octet bulk gate left the send path, as the card commands; the interface property canBulk and its BULK_THRESHOLD constant remain for the transports that report them, and no recorded expectation asserted the old gate",
+        "the runner records test counts as UNKNOWN for command-kind specs, so the positive counts above were taken from the fresh summary and XML lineages themselves, with staleness guarded by modification times"
+      ]
     }
   },
   "current_task": null,
@@ -1732,20 +1831,20 @@
   ],
   "failed_attempts": [],
   "in_progress": {
-    "claimed_head": "a7099af5760eb62a9c695fa422668e9bf53f0ced",
-    "claimed_utc": "2026-50-10T11:50:31+00:00",
-    "objective": "Implement RecordWriter.reserve(kind, clearLength) before nonce/sequence consumption. Check min(16384,64*(ATT-8)) against ciphertext length including 24-byte overhead; then seal once and fragment once. Hold at most four admitted records per relation, at most 16 staged ATT values and one in-flight operation per direction. Pump lazily on real completion; a partial write failure closes the relation, preserving durable application data for a fresh session.",
-    "task": "T18"
+    "claimed_head": "73733f0057269ce267e5eb26916e5cebc3295403",
+    "claimed_utc": "2026-09-10T13:09:39+00:00",
+    "objective": "Implement the same RecordWriter contract using maximumWriteValueLength and CBCentral.maximumUpdateValueLength. updateValue false retains the same ciphertext fragment; peripheralManagerIsReady resumes that exact context. write-with-response uses exact operation completion; without-response uses platform readiness without claiming remote durability. Reserve complete record bytes while staging at most 16 ATT values.",
+    "task": "T19"
   },
-  "last_code_head": "d69ec8727f9cdad3809841e49140ba32a32af719",
-  "last_observed_head": "d69ec8727f9cdad3809841e49140ba32a32af719",
+  "last_code_head": "af291f32ca671bf3db2f1a4a398a3a5ecc7a174c",
+  "last_observed_head": "af291f32ca671bf3db2f1a4a398a3a5ecc7a174c",
   "latest_verification": {
-    "note": "T17 narrow 10/10 on both engines, GodstoneFoundation 734/734 and mesh 799/799 green at d69ec87; eight mutants killed, each attributed to the case that actually fell",
-    "recorded_utc": "2026-48-10T11:48:17+00:00",
-    "source_sha": "d69ec8727f9cdad3809841e49140ba32a32af719",
-    "tested_tree_sha": "95ae4a783cf3c3b3ea5c5d2c55398dd7ec3d8536"
+    "note": "T18 narrow 8/8 jvm-host, mesh 807/807 green at af291f3; three mutants killed, each attributed to the witness that actually fell",
+    "recorded_utc": "2026-08-10T13:08:17+00:00",
+    "source_sha": "af291f32ca671bf3db2f1a4a398a3a5ecc7a174c",
+    "tested_tree_sha": "fd33eb9a7a4594cd7cb703a28410bebeae357b57"
   },
-  "next_task": "T18",
+  "next_task": "T19",
   "phase": "P0",
   "plan_sha256": "685456b378662b0a40a53a6abc810041e37daf97b213f3efeb6cea879363934e",
   "planning_baseline_sha": "b5c3d3d394b70cf356cdde33b47511dad7cbb95c",
