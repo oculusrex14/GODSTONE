@@ -339,6 +339,73 @@ public final class PeripheralManagerEpochDelegate: NSObject, CBPeripheralManager
 
 }
 
+/// T15: every timer answers to an immutable whole key - the relation it
+/// guards, the kind of the operation it times out, and a unique operation
+/// id issued by the epoch's own counter. Fire, cancel and replace always
+/// compare the whole key; no counter and no generation is ever trusted
+/// without it.
+public enum TimerOperationKind: UInt8, Hashable, Sendable {
+    /// The provisional window of an outbound connect attempt.
+    case provisionalOutbound
+    /// The inactivity window of an accepted inbound subscription.
+    case inboundInactivity
+}
+
+/// The slot a lease occupies: one pending timer per peer and operation
+/// kind. It is always derived from the whole key, never held apart from it.
+public struct TimerSlot: Hashable, Sendable {
+    public let direction: BleDirection
+    public let peerId: UUID
+    public let operation: TimerOperationKind
+}
+
+public struct TimerKey: Hashable, Sendable {
+    public let relation: RelationKey
+    public let operation: TimerOperationKind
+    public let operationId: UInt64
+
+    public init(relation: RelationKey, operation: TimerOperationKind, operationId: UInt64) {
+        self.relation = relation
+        self.operation = operation
+        self.operationId = operationId
+    }
+
+    public var slot: TimerSlot {
+        return TimerSlot(direction: relation.direction, peerId: relation.peerId, operation: operation)
+    }
+}
+
+/// The held grant over the slot: the explicit deadline in the injected
+/// monotonic domain, the handle (whole key) it answers to, the scheduled
+/// fire, and the epoch context that armed it - the fire is carried back to
+/// that very executor, as in T14.
+public struct TimerLease: Sendable {
+    public let deadlineUptimeMillis: UInt64
+    public let handle: TimerKey
+    let timer: Timer
+    let context: ManagerContext?
+
+    init(deadlineUptimeMillis: UInt64, handle: TimerKey, timer: Timer, context: ManagerContext?) {
+        self.deadlineUptimeMillis = deadlineUptimeMillis
+        self.handle = handle
+        self.timer = timer
+        self.context = context
+    }
+}
+
+/// Injected monotonic time: deadlines are computed against it, never
+/// assumed from wall drift.
+public protocol MonotonicClock: Sendable {
+    func nowUptimeMillis() -> UInt64
+}
+
+public struct SystemMonotonicClock: MonotonicClock {
+    public init() {}
+    public func nowUptimeMillis() -> UInt64 {
+        return DispatchTime.now().uptimeNanoseconds / 1_000_000
+    }
+}
+
 public final class BleTransport: NSObject, @unchecked Sendable {
 
     public static let serviceUuid = CBUUID(string: FrameV2.serviceUuidString)
@@ -413,6 +480,7 @@ public final class BleTransport: NSObject, @unchecked Sendable {
     private var activeManagerContext: ManagerContext?
     private var lastRetiredManagerContext: ManagerContext?
     private let managerFactory: TransportManagerFactory
+    private let clock: MonotonicClock
 
     /// The pair of the active epoch, when one is open.
     private var central: CBCentralManager? {
@@ -422,6 +490,168 @@ public final class BleTransport: NSObject, @unchecked Sendable {
     /// The pair of the active epoch, when one is open.
     private var peripheral: CBPeripheralManager? {
         return activeManagerContext?.peripheral
+    }
+
+    // MARK: - T15 timer leases
+    //
+    // Timers are stored, cancelled and replaced only through these reducer
+    // bodies, each running on the epoch serial executor with the lock held
+    // for the store touch. Fire, cancel and replace compare the whole key
+    // before removing or transitioning anything.
+
+    /// Arm the slot for the given relation with a fresh operation id. A
+    /// current lease is compared by its whole key and only then cancelled:
+    /// the cancel releases exactly the handle that matches, never a blind
+    /// sweep of the slot that could catch a newer lease.
+    private func armTimerLocked(relation: RelationKey) {
+        let operation: TimerOperationKind
+        switch relation.direction {
+        case .outboundCentral:
+            operation = .provisionalOutbound
+        case .inboundPeripheral:
+            operation = .inboundInactivity
+        }
+        let slot = TimerSlot(direction: relation.direction, peerId: relation.peerId, operation: operation)
+        nextTimerOperationId += 1
+        let key = TimerKey(relation: relation, operation: operation, operationId: nextTimerOperationId)
+        if let current = timerSlots[slot], let lease = timerLeases[current] {
+            // identity confirmed against the slot's own current key before
+            // any removal
+            lease.timer.invalidate()
+            timerLeases.removeValue(forKey: current)
+        }
+        let deadline = clock.nowUptimeMillis() &+ UInt64((provisionalTimeoutSeconds * 1000).rounded())
+        let timer = Timer(timeInterval: provisionalTimeoutSeconds, repeats: false) { [weak self] _ in
+            self?.timerDidFire(key: key)
+        }
+        timerLeases[key] = TimerLease(deadlineUptimeMillis: deadline, handle: key, timer: timer,
+                                      context: activeManagerContext)
+        timerSlots[slot] = key
+        RunLoop.main.add(timer, forMode: .common)
+    }
+
+    /// Cancel the lease of the slot only when its whole key carries exactly
+    /// the given relation: cancel/release only resources owned by the exact
+    /// operation. A slot whose key names another generation is left alone.
+    private func cancelTimerLocked(matching relation: RelationKey) {
+        let slot = TimerSlot(direction: relation.direction, peerId: relation.peerId, operation: timerOperation(for: relation.direction))
+        if let current = timerSlots[slot], let lease = timerLeases[current], current.relation == relation {
+            lease.timer.invalidate()
+            timerLeases.removeValue(forKey: current)
+            timerSlots.removeValue(forKey: slot)
+        }
+    }
+
+    /// The terminal and lifecycle sweep: every held fire is invalidated and
+    /// every lease evicted - nothing is retained past the boundary.
+    private func cancelAllTimerLeasesLocked() {
+        for (_, lease) in timerLeases {
+            lease.timer.invalidate()
+        }
+        timerLeases.removeAll()
+        timerSlots.removeAll()
+    }
+
+    private func timerOperation(for direction: BleDirection) -> TimerOperationKind {
+        switch direction {
+        case .outboundCentral:
+            return .provisionalOutbound
+        case .inboundPeripheral:
+            return .inboundInactivity
+        }
+    }
+
+    /// The body every scheduled Timer runs: carry the fire, with its whole
+    /// key, onto the executor of the very context that armed the lease.
+    private func timerDidFire(key: TimerKey) {
+        lockTransport()
+        guard let lease = timerLeases[key], timerSlots[key.slot] == key else {
+            lastTimerFireActedForTest = false
+            unlockTransport()
+            return
+        }
+        let context = lease.context
+        unlockTransport()
+        guard let context else {
+            lastTimerFireActedForTest = false
+            return
+        }
+        _ = onExecutorOf(context) {
+            self.reductionTimerFired(key: key)
+        }
+    }
+
+    /// The reduction of one fire: the whole-key identity is verified again
+    /// under the lock before anything is removed, and only then the timed
+    /// out operation proceeds on the executor.
+    @discardableResult
+    private func reductionTimerFired(key: TimerKey) -> Bool {
+        lockTransport()
+        guard timerLeases[key] != nil, timerSlots[key.slot] == key else {
+            lastTimerFireActedForTest = false
+            unlockTransport()
+            return false
+        }
+        timerLeases.removeValue(forKey: key)
+        timerSlots.removeValue(forKey: key.slot)
+        unlockTransport()
+        switch key.operation {
+        case .provisionalOutbound:
+            _ = reductionHandleOutboundTimeout(peerId: key.relation.peerId, generation: key.relation.generation)
+        case .inboundInactivity:
+            reductionHandleInboundTimeout(centralId: key.relation.peerId, generation: key.relation.generation)
+        }
+        lastTimerFireActedForTest = true
+        return true
+    }
+
+    private var lastTimerFireActedForTest: Bool = false
+
+    /// Test seam: run the fire body for the given key - the same path the
+    /// scheduled Timer takes - and answer whether it acted.
+    @discardableResult
+    public func fireTimerForTest(_ key: TimerKey) -> Bool {
+        timerDidFire(key: key)
+        return lastTimerFireActedForTest
+    }
+
+    public struct TimerLeaseSnapshot: Sendable {
+        public let direction: BleDirection
+        public let peerId: UUID
+        public let operation: TimerOperationKind
+        public let generation: UInt64
+        public let operationId: UInt64
+        public let deadlineUptimeMillis: UInt64
+    }
+
+    /// Test seam: the held leases, ordered by slot then operation id.
+    public func timerLeaseSnapshotForTest() -> [TimerLeaseSnapshot] {
+        lockTransport()
+        let leases = Array(timerLeases.values)
+        unlockTransport()
+        return leases.map { lease in
+            TimerLeaseSnapshot(direction: lease.handle.relation.direction,
+                               peerId: lease.handle.relation.peerId,
+                               operation: lease.handle.operation,
+                               generation: lease.handle.relation.generation,
+                               operationId: lease.handle.operationId,
+                               deadlineUptimeMillis: lease.deadlineUptimeMillis)
+        }.sorted { lhs, rhs in
+            if lhs.peerId != rhs.peerId {
+                return lhs.peerId.uuidString < rhs.peerId.uuidString
+            }
+            if lhs.operation != rhs.operation {
+                return lhs.operation.rawValue < rhs.operation.rawValue
+            }
+            return lhs.operationId < rhs.operationId
+        }
+    }
+
+    public func timerLeaseCountForTest() -> Int {
+        lockTransport()
+        let count = timerLeases.count
+        unlockTransport()
+        return count
     }
 
     /// Test seam: the context of the active transport epoch, if any.
@@ -632,8 +862,13 @@ public final class BleTransport: NSObject, @unchecked Sendable {
     var outboundCentralConnections: [UUID: BleConnection] = [:]
     var inboundPeripheralConnections: [UUID: BleConnection] = [:]
 
-    private var provisionalTimers: [UUID: Timer] = [:]
-    private var inboundTimers: [UUID: Timer] = [:]
+    /// Leases by whole key, and the current key per slot. Both are
+    /// mutated only by the reducer bodies below, with the lock held.
+    private var timerLeases: [TimerKey: TimerLease] = [:]
+    private var timerSlots: [TimerSlot: TimerKey] = [:]
+    /// Per-epoch operation id source. Reset at every opening; never
+    /// relied on without the whole key that carries it.
+    private var nextTimerOperationId: UInt64 = 0
 
     private var publishedRelations: Set<RelationKey> = []
     private var discoveredPeers: [UUID: BleDiscoveryMetadata] = [:]
@@ -660,13 +895,15 @@ public final class BleTransport: NSObject, @unchecked Sendable {
         store: MessageStore? = nil,
         sessions: SessionManager? = nil,
         provisionalTimeoutSeconds: TimeInterval = 10.0,
-        managerFactory: TransportManagerFactory? = nil
+        managerFactory: TransportManagerFactory? = nil,
+        clock: MonotonicClock? = nil
     ) {
         self.identity = identity
         self.store = store
         self.sessions = sessions
         self.provisionalTimeoutSeconds = provisionalTimeoutSeconds
         self.managerFactory = managerFactory ?? DefaultTransportManagerFactory()
+        self.clock = clock ?? SystemMonotonicClock()
         super.init()
         self.snapshotAuthority = LinkInfoSnapshotAuthority(
             identityProvider: { [weak self] in self?.identity },
@@ -733,6 +970,13 @@ public final class BleTransport: NSObject, @unchecked Sendable {
             return
         }
         currentTransportEpoch += 1
+        // T15 by observation: the operation id source is never reset at an
+        // opening. Were it restarted, a successor epoch could issue a key
+        // equal to a retired one (same slot, same generation, same id) and
+        // a stale fire would pass the whole-key comparison. Monotone over
+        // the transport's lifetime, the id keeps every key unique across
+        // epochs - and no counter is ever relied on without its epoch: the
+        // lease binds the fire to the very context that armed it.
         // T13: the epoch opens with a fresh pair on a dedicated serial
         // queue, wired to its own proxies at birth. Reassigning delegates
         // on a reused manager is not the design: nothing here touches a
@@ -820,15 +1064,7 @@ public final class BleTransport: NSObject, @unchecked Sendable {
         central?.stopScan()
         peripheral?.stopAdvertising()
 
-        for (_, timer) in provisionalTimers {
-            timer.invalidate()
-        }
-        provisionalTimers.removeAll()
-
-        for (_, timer) in inboundTimers {
-            timer.invalidate()
-        }
-        inboundTimers.removeAll()
+        cancelAllTimerLeasesLocked()
 
         for (_, p) in connectedPeripherals {
             central?.cancelPeripheralConnection(p)
@@ -930,7 +1166,7 @@ public final class BleTransport: NSObject, @unchecked Sendable {
     private func purgeCentralConnection(peerId: UUID, cancelPeripheral: Bool) {
         let gen = centralDriver?.getConnectionGeneration(peerId) ?? 0
         lockTransport()
-        provisionalTimers.removeValue(forKey: peerId)?.invalidate()
+        cancelTimerLocked(matching: RelationKey(direction: .outboundCentral, peerId: peerId, generation: gen))
         inboxCharacteristics.removeValue(forKey: peerId)
         digestCharacteristics.removeValue(forKey: peerId)
         linkInfoCharacteristics.removeValue(forKey: peerId)
@@ -1150,15 +1386,9 @@ public final class BleTransport: NSObject, @unchecked Sendable {
             let conn = driver.getActiveConnection(pid) ?? BleConnection(peerId: pid)
             outboundCentralConnections[pid] = conn
 
-            let birthContext = activeManagerContext
-            let timer = Timer(timeInterval: provisionalTimeoutSeconds, repeats: false) { [weak self, birthContext] _ in
-                guard let self, let birthContext else { return }
-                _ = self.onExecutorOf(birthContext) {
-                    self.reductionHandleOutboundTimeout(peerId: pid, generation: gen)
-                }
-            }
-            RunLoop.main.add(timer, forMode: .common)
-            provisionalTimers[pid] = timer
+            // T15: the arm goes through the reducer; the lease captures the
+            // whole key, the injected deadline and the epoch context.
+            armTimerLocked(relation: key)
             unlockTransport()
         }
         return action
@@ -1203,6 +1433,14 @@ public final class BleTransport: NSObject, @unchecked Sendable {
         }
         let action = snapshotCentral?.onConnected(peerId: peerId) ?? .noOp
         if case .discoverServices = action {
+            lockTransport()
+            // T15: advancing into the handshake re-arms the slot's window
+            // through the reducer. The replacement compares the whole key
+            // of the current lease before cancelling exactly that handle,
+            // then installs a fresh operation id over the same relation -
+            // the mirrored shape of the Android driver's connect lease.
+            armTimerLocked(relation: lifetime.relationKey)
+            unlockTransport()
             if let p = peripheral ?? lifetime.peripheral {
                 p.discoverServices([BleTransport.serviceUuid])
             }
@@ -1246,7 +1484,7 @@ public final class BleTransport: NSObject, @unchecked Sendable {
         let key = lifetime.relationKey
         activeOutboundLifetimes.removeValue(forKey: peerId)
         relationDelegates.removeValue(forKey: peerId)
-        provisionalTimers.removeValue(forKey: peerId)?.invalidate()
+        cancelTimerLocked(matching: key)
         let conn = outboundCentralConnections.removeValue(forKey: peerId)
         conn?.markDisconnected()
         connectedPeripherals.removeValue(forKey: peerId)
@@ -1302,7 +1540,7 @@ public final class BleTransport: NSObject, @unchecked Sendable {
         }
         activeOutboundLifetimes.removeValue(forKey: peerId)
         relationDelegates.removeValue(forKey: peerId)
-        provisionalTimers.removeValue(forKey: peerId)?.invalidate()
+        cancelTimerLocked(matching: key)
         outboundCentralConnections.removeValue(forKey: peerId)?.markDisconnected()
         connectedPeripherals.removeValue(forKey: peerId)
         inboxCharacteristics.removeValue(forKey: peerId)
@@ -1558,7 +1796,7 @@ public final class BleTransport: NSObject, @unchecked Sendable {
             switch action {
             case .physicalDuplexReady:
                 lockTransport()
-                provisionalTimers.removeValue(forKey: peerId)?.invalidate()
+                cancelTimerLocked(matching: delegate.relationKey)
                 unlockTransport()
                 publishRelation(delegate.relationKey)
             case .disconnectPeripheral:
@@ -1617,7 +1855,7 @@ public final class BleTransport: NSObject, @unchecked Sendable {
 
         guard let driver = snapshotCentral else { return .noOp }
         lockTransport()
-        provisionalTimers.removeValue(forKey: peerId)?.invalidate()
+        cancelTimerLocked(matching: RelationKey(direction: .outboundCentral, peerId: peerId, generation: generation))
         unlockTransport()
         let currentGen = driver.getConnectionGeneration(peerId)
         if generation != 0 && currentGen != generation {
@@ -1702,16 +1940,10 @@ public final class BleTransport: NSObject, @unchecked Sendable {
             if let conn = inboundPeripheralConnections[cid], !conn.isRoleBound {
                 conn.bindResponderFromAcceptedIncomingLinkInfo(remoteHint: remoteHint)
             }
-            if inboundTimers[cid] == nil {
-                let birthContext = activeManagerContext
-                let timer = Timer(timeInterval: provisionalTimeoutSeconds, repeats: false) { [weak self, birthContext] _ in
-                    guard let self, let birthContext else { return }
-                    _ = self.onExecutorOf(birthContext) {
-                        self.reductionHandleInboundTimeout(centralId: cid, generation: gen)
-                    }
-                }
-                RunLoop.main.add(timer, forMode: .common)
-                inboundTimers[cid] = timer
+            if timerSlots[TimerSlot(direction: .inboundPeripheral, peerId: cid, operation: .inboundInactivity)] == nil {
+                // T15: no double-arm while a lease lives; the arm runs through
+                // the reducer with the whole key.
+                armTimerLocked(relation: key)
             }
             unlockTransport()
             if case .acceptWriteAndDuplexReady = action {
@@ -1761,7 +1993,8 @@ public final class BleTransport: NSObject, @unchecked Sendable {
         switch action {
         case .acceptSubscription(let cid), .acceptSubscriptionAndDuplexReady(let cid):
             lockTransport()
-            inboundTimers.removeValue(forKey: cid)?.invalidate()
+            let key = activeInboundLifetimes[cid]?.relationKey ?? RelationKey(direction: .inboundPeripheral, peerId: cid, generation: driver.getCentralGeneration(cid))
+            cancelTimerLocked(matching: key)
             if let c = central {
                 subscribedCentrals[cid] = c
             }
@@ -1771,7 +2004,6 @@ public final class BleTransport: NSObject, @unchecked Sendable {
             if let conn = inboundPeripheralConnections[cid] {
                 conn.markConnected(negotiatedAttValueLength: maxUpdateLength)
             }
-            let key = activeInboundLifetimes[cid]?.relationKey ?? RelationKey(direction: .inboundPeripheral, peerId: cid, generation: driver.getCentralGeneration(cid))
             unlockTransport()
             if case .acceptSubscriptionAndDuplexReady = action {
                 publishRelation(key)
@@ -1818,7 +2050,7 @@ public final class BleTransport: NSObject, @unchecked Sendable {
             return .noOp
         }
         activeInboundLifetimes.removeValue(forKey: centralId)
-        inboundTimers.removeValue(forKey: centralId)?.invalidate()
+        cancelTimerLocked(matching: key)
         inboundPeripheralConnections.removeValue(forKey: centralId)?.markDisconnected()
         subscribedCentrals.removeValue(forKey: centralId)
         pendingOutboundUpdates.removeValue(forKey: centralId)
@@ -1847,7 +2079,7 @@ public final class BleTransport: NSObject, @unchecked Sendable {
 
         guard let driver = snapshotPeripheral else { return }
         lockTransport()
-        inboundTimers.removeValue(forKey: centralId)?.invalidate()
+        cancelTimerLocked(matching: RelationKey(direction: .inboundPeripheral, peerId: centralId, generation: generation))
         unlockTransport()
         let currentGen = driver.getCentralGeneration(centralId)
         if generation != 0 && currentGen != generation {
