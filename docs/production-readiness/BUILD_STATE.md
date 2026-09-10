@@ -39,3 +39,4 @@ A06 · APPROVED_CONTENT · NATIVE_MODELS · HARDWARE · SIGNING — external by 
 - Session budget: 2^20 records/direction, 30 minutes; retirement is terminal.
 - SessionSlot is the single serialisation point of a relation and witnesses itself; retiring a slot reclaims its lock entry and the replacement carries the next lease generation.
 - No external review/model/content/device result may be fabricated.
+| T20 | Prove platform lifetime rules with semantic adapter controls | COMPLETE | 2026-09-10T20:18:40Z | android 818/0 failures, ios 759/0 failures; semantic 5/5 KILLED, structural 5 caught +1 documented ceiling | 194ccb5c2 |

@@ -539,3 +539,52 @@ T16 digest-unsubscribe case counted an admitted send as a delivery - with the ma
 the delivery is true again, the census records stand, and the two verdicts were brought back
 to that recorded truth rather than to the old silent queueing. No other expectation of the
 elder suites was touched; the whole package of seven hundred forty seven cases remains green.
+
+
+## D-T20-a - the absolute lease and the owner who alone closes
+The reassembler keeps its sliding courtesy untouched (byte-identical law, duplicates included)
+and gains one absolute token per admission: {relationKey, seq, admissionId, deadlineMono}, thirty
+seconds on the ingress clock, moved by no arrival. When the term passes the reassembler releases
+the buffers and raises a first-notice-wins token; only the owner, consulting the notice at the
+ingress after the fragment is processed, closes the relation - and closes it through the
+platforms own arms (handleCentralDisconnected with the peers tokens; the server fall with the
+drivers generation; on the island the sanctioned reductions with the registrations own generation,
+epoch and manager counsel). The close purges the registers whole and withdraws the publication;
+the heartbeat sweepInboundLeases serves the silent-peer case no delivery will ever arrive to
+trigger. This is documented local resource defence: the wire, the eight header bytes and the
+uint8 framing are untouched, and no external gate moved.
+
+## D-T20-b - the court of the epoch clause, found by elimination
+The epoch-bypass control escaped four times before the court was made sound. The reductions
+preamble keeps its own epoch clause (sourceEpoch == 0 || lifetime.transportEpoch == sourceEpoch),
+and it dams every event that the authenticator would also refuse - so an event bearing a
+misrepresented epoch is refused twice and the bypass of either clause alone is unobservable.
+The witness therefore carries the zero epoch: exempt by the reductions own clause, yet a value
+no live context can hold (the counter is bumped before the context opens and counts from one),
+so the authenticators first conjunct stands sole as the discriminating gate. With the whole line
+bypassed the case falls; with production standing it lives: killed, once, by the ledgers own hand.
+The elder trials also teach the oracles dialect: a method-form filter answers 'Test run with 0
+tests' on this harness - only the class-form filter speaks the truth - and the lab must carry
+the machines local.properties (provisioning, never content) and be mirror-synced after every
+install, or the compiler reads stale scrolls and the witness swears to an unmutated world.
+
+## D-T20-c - fixtures that speak only what the platform itself delivered
+The adapter-facing fixtures received one law: a trace event names only the arguments the real
+delegate receives (the peripheral identity, the value that travelled with the event, the octets
+as delivered) plus the object identities the factory injected at the managers birth; where the
+OS passes nil the trace carries nil. A trace from an uninjected manager, or crossing to another
+peers address, is refused at the fixture and makes no delivery at all - the refusal is witnessed
+as zero deliveries, never as an invented exception. The callback inventory is enumerated from the
+platforms real delegate surface; sources the host harness cannot reach are recorded SKIPPED with
+the reason, never quietly passed. The invariant ledger of each schedule reports every check by
+id, scenario and statement, so the record shows what was verified, not merely that something
+passed.
+
+## D-T20-d - attestation seals follow the files, brought forward at the boundary
+The boundary ladder found the MeshNode authority blobs behind the files: the T17 acts had
+legitimately amended both islands MeshNode (typed answers, the fail-closed seam deletion) without
+bringing the ARCHITECTURE_INVARIANTS seals forward. The windows of T03/T06/T35/T38/T40 govern the
+invariant values - those stand untouched and the vector tests green; the seals are attestations
+that follow the files, so they were recomputed, audited hunk by hunk against the T17 acts, and
+brought forward in their own committed act (2e0b3f7), never folded into the tasks own commits.
+The L0/L1 run that followed speaks green; the evidence rests in EVIDENCE/T20/ladder-boundary.
