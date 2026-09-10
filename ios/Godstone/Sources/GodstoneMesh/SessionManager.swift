@@ -57,6 +57,15 @@ internal final class ReadWriteLock {
 ///
 /// Invalidation for panic wipe destroys all sessions and permanently transitions
 /// the manager to invalidated state.
+/// T17: the typed outcome of one authenticated-open operation at the session
+/// registry, in the vocabulary shared with the Android Noise layer
+/// (CryptoOpenResult: Authenticated, Rejected, Expired).
+public enum CryptoOpenResult: Equatable, Sendable {
+    case authenticated(Data)
+    case rejected
+    case expired
+}
+
 public final class SessionManager {
 
     private enum ManagerState {
@@ -353,6 +362,25 @@ public final class SessionManager {
                 guard let ctrl = slot.controller else { return nil }
                 guard ctrl.isReady && ctrl.state == .ready else { return nil }
                 return ctrl.open(ciphertext)
+            }
+        }
+    }
+
+    /// T17: the typed twin of the nullable open. The arms that answer nil -
+    /// the inactive manager, the absent slot, the slot past its active life,
+    /// the absent or unready controller - are recorded as rejected; the
+    /// cleartext of a verified frame is recorded as authenticated.
+    public func openWithResult(_ peerId: UUID, _ ciphertext: Data) -> CryptoOpenResult {
+        return lifecycleRwLock.withReadLock {
+            guard isActive else { return .rejected }
+            testOperationHook?("open")
+            guard let slot = slotFor(peerId) else { return .rejected }
+            return slot.serialize { () -> CryptoOpenResult in
+                guard slot.state == .active else { return .rejected }
+                guard let ctrl = slot.controller else { return .rejected }
+                guard ctrl.isReady && ctrl.state == .ready else { return .rejected }
+                guard let clear = ctrl.open(ciphertext) else { return .rejected }
+                return .authenticated(clear)
             }
         }
     }

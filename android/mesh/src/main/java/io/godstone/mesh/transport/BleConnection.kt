@@ -222,18 +222,20 @@ class BleConnection(
      * Ingest an inbound ATT value, decode it as a canonical BleRecord fragment, and reassemble.
      * Gating is strictly enforced BEFORE fragment is passed to the reassembler.
      */
-    fun ingestInboundAttValue(bytes: ByteArray): BleReassembledRecord? = synchronized(lock) {
-        if (!isActive) return null
-        val frag = BleRecordCodec.decodeFragment(bytes) ?: return null
+    fun ingestInboundAttValue(bytes: ByteArray): BleRecordIngestResult = synchronized(lock) {
+        if (!isActive) return BleRecordIngestResult.Rejected(BleRecordRejection.INACTIVE)
+        val frag = BleRecordCodec.decodeFragment(bytes)
+            ?: return BleRecordIngestResult.Rejected(BleRecordRejection.MALFORMED_RECORD)
 
         when (frag.header.recordType) {
             BleRecordType.DATA -> {
-                if (state != BleConnectionState.READY) return null
+                if (state != BleConnectionState.READY) return BleRecordIngestResult.Rejected(
+                    BleRecordRejection.UNEXPECTED_STAGE)
             }
             BleRecordType.HS1, BleRecordType.HS2, BleRecordType.HS3 -> {
                 val s = state
                 if (!isHandshakeTransportReady || (s != BleConnectionState.ROLE_BOUND && s != BleConnectionState.HANDSHAKE_IN_PROGRESS)) {
-                    return null
+                    return BleRecordIngestResult.Rejected(BleRecordRejection.UNEXPECTED_STAGE)
                 }
             }
             BleRecordType.CLOSE -> {
@@ -241,7 +243,8 @@ class BleConnection(
             }
         }
 
-        return reassembler.receiveFragment(frag)
+        val record = reassembler.receiveFragment(frag) ?: return BleRecordIngestResult.Pending
+        return BleRecordIngestResult.Admitted(record)
     }
 
     /**
@@ -260,4 +263,27 @@ class BleConnection(
     companion object {
         const val DEFAULT_MAX_ATT_VALUE_LENGTH = 20 // Default legacy ATT MTU 23 - 3 bytes opcode/handle
     }
+}
+
+/** T17: the typed reason of one rejected inbound record at the connection's
+ * input queue: an inactive connection, a malformed fragment, or a record
+ * seen at a state that does not accept its type. */
+enum class BleRecordRejection {
+    INACTIVE,
+    MALFORMED_RECORD,
+    UNEXPECTED_STAGE
+}
+
+/** T17: the typed result of ingesting one inbound ATT value. The three
+ * outcomes a queue admits - a complete record, an incomplete one still in
+ * flight, and a rejection with its reason - are returned apart, where the
+ * old nullable answer conflated all four into null. */
+sealed class BleRecordIngestResult {
+    data class Admitted(val record: BleReassembledRecord) : BleRecordIngestResult()
+    object Pending : BleRecordIngestResult()
+    data class Rejected(val reason: BleRecordRejection) : BleRecordIngestResult()
+
+    val isRejected: Boolean get() = this is Rejected
+    val isPending: Boolean get() = this is Pending
+    val admittedRecord: BleReassembledRecord? get() = (this as? Admitted)?.record
 }

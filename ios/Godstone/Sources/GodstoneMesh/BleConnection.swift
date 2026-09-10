@@ -1,6 +1,41 @@
 import Foundation
 
 /// Authoritative connection state and lifecycle for a persistent BLE link (ADR-002, Phase C8.4D1-A1/R2/R2.1).
+/// T17: the typed reason of one rejected inbound record at the connection's
+/// input queue. A malformed fragment, an inactive connection and a record
+/// seen at a stage that does not accept its type are three distinct
+/// failures; the old code answered all of them - and a mere incomplete
+/// reassembly - with one and the same nothing.
+public enum BleRecordRejection: Equatable, Sendable {
+    case inactive
+    case malformedRecord
+    case unexpectedStage(expected: [BleConnectionState], observed: BleConnectionState, recordType: BleRecordType)
+}
+
+/// T17: the typed result of ingesting one inbound ATT value. The three
+/// outcomes a queue admits - a complete record, an incomplete one still
+/// in flight, and a rejection with its reason - are returned apart.
+public enum BleIngestResult: Sendable {
+    case admitted(BleReassembledRecord)
+    case pending
+    case rejected(BleRecordRejection)
+
+    public var admittedRecord: BleReassembledRecord? {
+        if case .admitted(let record) = self { return record }
+        return nil
+    }
+
+    public var isRejected: Bool {
+        if case .rejected = self { return true }
+        return false
+    }
+
+    public var isPending: Bool {
+        if case .pending = self { return true }
+        return false
+    }
+}
+
 public enum BleConnectionState: Sendable, Equatable {
     case discovered
     case provisionalConnecting
@@ -224,24 +259,35 @@ public final class BleConnection: @unchecked Sendable {
 
     /// Ingest an inbound ATT value, decode it as a canonical BleRecord fragment, and reassemble.
     /// Gating is strictly enforced BEFORE fragment is passed to the reassembler.
-    public func ingestInboundAttValue(_ data: Data) -> BleReassembledRecord? {
+    public func ingestInboundAttValue(_ data: Data) -> BleIngestResult {
         lock.lock()
         defer { lock.unlock() }
-        guard state != .closed && state != .closing && state != .quarantined else { return nil }
-        guard let frag = BleRecordCodec.decodeFragment(data) else { return nil }
+        guard state != .closed && state != .closing && state != .quarantined else {
+            return .rejected(.inactive)
+        }
+        guard let frag = BleRecordCodec.decodeFragment(data) else {
+            return .rejected(.malformedRecord)
+        }
 
         switch frag.header.recordType {
         case .data:
-            if state != .ready { return nil }
+            if state != .ready {
+                return .rejected(.unexpectedStage(expected: [.ready], observed: state,
+                                                recordType: frag.header.recordType))
+            }
         case .hs1, .hs2, .hs3:
             if !isHandshakeTransportReadyLocked || (state != .roleBound && state != .handshakeInProgress) {
-                return nil
+                return .rejected(.unexpectedStage(expected: [.roleBound, .handshakeInProgress],
+                                                observed: state, recordType: frag.header.recordType))
             }
         case .close:
             break
         }
 
-        return reassembler.receiveFragment(frag)
+        guard let record = reassembler.receiveFragment(frag) else {
+            return .pending
+        }
+        return .admitted(record)
     }
 
     /// Reset connection-local record state (purge in-flight and completed record state, reset sequence counter).

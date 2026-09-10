@@ -30,6 +30,24 @@ import java.util.LinkedHashMap
 import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
 
+/** T17: the typed outcome of one transport-level submit of a frame for sending.
+ * Admission, backpressure, rejection with a reason and the closed terminal are
+ * four distinct answers; the old Boolean conflated them and the nullable error
+ * paths let failures escape. */
+sealed class TransportResult {
+    /** The sealed fragments were queued or written; the submit is admitted. */
+    object Admitted : TransportResult()
+
+    /** The link queue is full; retry when the window opens again. */
+    object Backpressured : TransportResult()
+
+    /** The submit is refused; the reason names the refused precondition. */
+    data class Rejected(val reason: String) : TransportResult()
+
+    /** The relation is terminated for this peer; no retry applies. */
+    object Closed : TransportResult()
+}
+
 @SuppressLint("MissingPermission")
 class BleTransport(
     private val context: Context? = null,
@@ -660,7 +678,7 @@ class BleTransport(
     fun handleCentralInboundNotification(peerAddress: String, value: ByteArray) {
         val conn = centralDriver.getActiveConnection(peerAddress) ?: return
         if (!conn.isRoleBound) return
-        val record = conn.ingestInboundAttValue(value) ?: return
+        val record = conn.ingestInboundAttValue(value).admittedRecord ?: return
         val peerId = conn.peerId
         inboundRecordFlow.tryEmit(peerId to record)
     }
@@ -668,7 +686,7 @@ class BleTransport(
     fun handleServerInboundWrite(peerAddress: String, value: ByteArray) {
         val conn = serverDriver.getInboundConnection(peerAddress) ?: return
         if (!conn.isRoleBound) return
-        val record = conn.ingestInboundAttValue(value) ?: return
+        val record = conn.ingestInboundAttValue(value).admittedRecord ?: return
         val peerId = conn.peerId
         inboundRecordFlow.tryEmit(peerId to record)
     }

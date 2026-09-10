@@ -14,6 +14,17 @@ public struct OutboundPhysicalLifetime: Sendable {
     }
 }
 
+/// T17: the typed outcome of one transport-level submit of a frame for
+/// sending. Admission, backpressure, rejection with a reason and the closed
+/// terminal are four distinct answers; the old Boolean conflated them and
+/// the nullable error paths let failures escape.
+public enum TransportResult: Equatable, Sendable {
+    case admitted
+    case backpressured
+    case rejected(String)
+    case closed
+}
+
 /// The record that identifies an inbox subscription: which characteristic
 /// the subscription is for and the updated value acknowledged at the
 /// subscription. Presented by the subscribe callback, held with the lease.
@@ -1946,7 +1957,7 @@ public final class BleTransport: NSObject, @unchecked Sendable {
                 unlockTransport()
                 return .noOp
             }
-            guard let record = conn.ingestInboundAttValue(characteristic.value ?? Data()) else {
+            guard let record = conn.ingestInboundAttValue(characteristic.value ?? Data()).admittedRecord else {
                 unlockTransport()
                 return .noOp
             }
@@ -2800,7 +2811,7 @@ public final class BleTransport: NSObject, @unchecked Sendable {
                     continue
                 }
 
-                let record = conn.ingestInboundAttValue(v)
+                let record = conn.ingestInboundAttValue(v).admittedRecord
                 unlockTransport()
 
                 if let rec = record, rec.recordType == .data && conn.state == .ready {
@@ -2937,9 +2948,11 @@ public protocol TransportDelegate: AnyObject {
     func transportReady(peerId: UUID)
     func transportDidDisconnect(peerId: UUID)
     func transportDidReceive(data: Data, peerId: UUID)
+    func transportDidHandshakeReady(peerId: UUID)
 }
 
 public extension TransportDelegate {
+    func transportDidHandshakeReady(peerId: UUID) {}
     func transportPhysicalDuplexReady(peerId: UUID) {}
     func transportReady(peerId: UUID) {}
 }

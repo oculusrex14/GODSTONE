@@ -334,6 +334,18 @@ class SessionManager internal constructor(
         }
     }
 
+    /**
+     * T17: the typed twin of the nullable [open]. The arms that answer null -
+     * the inactive manager, the absent slot, the slot past its active life,
+     * the absent or unready controller - are recorded as Rejected; the
+     * cleartext of a verified frame is recorded as Authenticated, in the
+     * vocabulary of the Noise layer's own CryptoOpenResult.
+     */
+    fun openWithResult(peerId: ByteArray, ciphertext: ByteArray): NoiseSession.CryptoOpenResult {
+        val clear = open(peerId, ciphertext) ?: return NoiseSession.CryptoOpenResult.Rejected
+        return NoiseSession.CryptoOpenResult.Authenticated(clear)
+    }
+
     fun drop(peerId: ByteArray) {
         lifecycleRwLock.read {
             val slot = removeSlotFor(relationKey(peerId)) ?: return

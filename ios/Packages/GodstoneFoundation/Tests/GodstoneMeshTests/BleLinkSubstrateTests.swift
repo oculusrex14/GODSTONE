@@ -814,7 +814,7 @@ final class BleLinkSubstrateTests: XCTestCase {
 
         var reassembled: BleReassembledRecord?
         for f in frags {
-            if let r = connB.ingestInboundAttValue(f) {
+            if let r = connB.ingestInboundAttValue(f).admittedRecord {
                 reassembled = r
             }
         }
@@ -836,14 +836,14 @@ final class BleLinkSubstrateTests: XCTestCase {
 
         let hs1Payload = Data(repeating: 1, count: 32)
         let frags = conn.fragmentOutbound(recordType: .hs1, payload: hs1Payload)
-        XCTAssertNil(conn.ingestInboundAttValue(frags[0]))
+        XCTAssertNil(conn.ingestInboundAttValue(frags[0]).admittedRecord)
 
         conn.markDisconnected()
         XCTAssertFalse(conn.isActive)
         XCTAssertEqual(conn.state, .closed)
 
         // Fragments after disconnect are rejected
-        XCTAssertNil(conn.ingestInboundAttValue(frags[1]))
+        XCTAssertNil(conn.ingestInboundAttValue(frags[1]).admittedRecord)
 
         // Repeated disconnect is safe and idempotent
         conn.markDisconnected()
