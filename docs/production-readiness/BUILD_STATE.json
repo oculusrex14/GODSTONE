@@ -1944,7 +1944,12 @@
     "SIGNING"
   ],
   "failed_attempts": [],
-  "in_progress": null,
+  "in_progress": {
+    "claimed_head": "3139057f393d5c728d0bcba0840c39b0cdabd8da",
+    "claimed_utc": "2026-42-10T15:42:39+00:00",
+    "objective": "Create adapter-facing trace fixtures that supply only real callback arguments and injected OS object identities. Run identical schedules through production reducers. Add AssemblyLease with immutable admission token, independent of the sliding idle timeout; expiry closes/resets the affected relation through its owner. Sequence wrap across 256 records without altering uint8 framing. Semantic mutations: bypass an epoch check and advance assembly last-activity forever; behavior tests kill both.",
+    "task": "T20"
+  },
   "last_code_head": "d9b300be102c5c880cab2491e15b79af2838d442",
   "last_observed_head": "d9b300be102c5c880cab2491e15b79af2838d442",
   "latest_verification": {
