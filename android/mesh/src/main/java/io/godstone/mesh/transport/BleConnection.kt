@@ -101,6 +101,9 @@ class BleConnection(
         }
     }
 
+    /** Observation only: the standing notice, for the suites' sight. */
+    internal fun peekLeaseExpiryNoticeForTest(): AssemblyLease? = leaseExpiryNotice
+
     /** The owner asks once per ingress what lapsed; the notice is consumed. */
     internal fun takeLeaseExpiryNotice(): AssemblyLease? {
         val notice = leaseExpiryNotice
@@ -111,6 +114,16 @@ class BleConnection(
     internal fun activeLeaseOf(seq: Int): AssemblyLease? = reassembler.activeLeaseOf(seq)
     internal fun leaseCountForTest(): Int = reassembler.leaseCount()
     internal fun sweepLeasesForTest(nowSec: Long) = reassembler.sweepExpired(nowSec)
+
+    /**
+     * T20: the heartbeat's question - sweep at the connection's own clock
+     * instant and report whether a lease lapsed. The notice is consumed
+     * here; the owner who hears it performs the fall.
+     */
+    internal fun sweepLeases(): Boolean {
+        reassembler.sweepExpired(clock())
+        return takeLeaseExpiryNotice() != null
+    }
     private var nextOutboundSeq: Int = 0
     private val lock = Any()
 

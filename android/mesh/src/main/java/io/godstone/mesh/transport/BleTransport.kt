@@ -751,6 +751,34 @@ class BleTransport(
         }
     }
 
+    /**
+     * T20: the heartbeat of the absolute lease. The reassembler sweeps at
+     * every ingress as matter; this sweeps the relations whose peers have
+     * gone silent altogether, so a stalled dribble cannot pin a slot and a
+     * buffer until some unrelated event happens to arrive. Each lapsed
+     * lease is released and reported by the connection's own sweep, and
+     * the affected relation is closed through the very arms the platform's
+     * terminals travel - nothing here invents a terminal the platform did
+     * not deliver.
+     */
+    fun sweepInboundLeases() {
+        for ((address, conn) in centralDriver.allActiveConnectionsForTest()) {
+            if (conn.sweepLeases()) {
+                val client = activeClientConnections[address]
+                if (client != null) {
+                    handleCentralDisconnected(address, client.clientToken, client.gattGeneration)
+                }
+                centralWriters.remove(address)
+            }
+        }
+        for ((address, conn) in serverDriver.allInboundConnectionsForTest()) {
+            if (conn.sweepLeases()) {
+                handleServerDisconnected(address, serverDriver.getClientGeneration(address))
+                serverWriters.remove(address)
+            }
+        }
+    }
+
     fun handleCentralDisconnected(peerAddress: String, clientToken: Long, gattGen: Long) {
         // T12: the event must name the client registration it came from.
         // Validation first: an event that does not match the stored

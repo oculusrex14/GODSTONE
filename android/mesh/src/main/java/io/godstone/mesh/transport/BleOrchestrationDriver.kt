@@ -59,6 +59,17 @@ class BleCentralOrchestrationDriver(
 
     private val lock = Any()
     private val activeConnections = mutableMapOf<String, BleConnection>()
+
+    /**
+     * T20 seam: the clock handed to connections this driver creates, so
+     * the lifetime suites can stand the absolute term at known instants.
+     * Null keeps the wall clock; production never sets it.
+     */
+    @Volatile
+    internal var connectionClockForTest: (() -> Long)? = null
+
+    internal fun allActiveConnectionsForTest(): List<Pair<String, BleConnection>> =
+        synchronized(lock) { activeConnections.toList() }
     private val connectionGenerations = mutableMapOf<String, Long>()
     private val activeLeases = mutableMapOf<String, CapacityLease>()
     private val electionContexts = mutableMapOf<String, BleElectionContext>()
@@ -174,7 +185,10 @@ class BleCentralOrchestrationDriver(
         if (lease != null) {
             activeLeases[peerAddress] = lease
         }
-        val conn = BleConnection(peerAddress.toByteArray())
+        val conn = BleConnection(
+            peerAddress.toByteArray(),
+            clock = connectionClockForTest ?: { System.currentTimeMillis() / 1000L },
+        )
         activeConnections[peerAddress] = conn
         outboundSlots[peerAddress] = OutboundPeerSlot(OutboundPeerSlotState.ACTIVE, nextGen, peerAddress, lease)
         BleCentralAction.ConnectGatt(peerAddress)
@@ -452,6 +466,17 @@ class BleServerOrchestrationDriver(
     private val peerGenerations = mutableMapOf<String, Long>()
     private val inboundLeases = mutableMapOf<String, CapacityLease>()
     private val inboundConnections = mutableMapOf<String, BleConnection>()
+
+    /**
+     * T20 seam: the clock handed to connections this driver creates, so
+     * the lifetime suites can stand the absolute term at known instants.
+     * Null keeps the wall clock; production never sets it.
+     */
+    @Volatile
+    internal var connectionClockForTest: (() -> Long)? = null
+
+    internal fun allInboundConnectionsForTest(): List<Pair<String, BleConnection>> =
+        synchronized(lock) { inboundConnections.toList() }
     private val acceptedRemoteLinkInfo = mutableMapOf<String, BleLinkInfoV1>()
     private val publishedFound = mutableSetOf<String>()
     private val peerSlots = mutableMapOf<String, ServerPeerSlot>()
@@ -546,7 +571,10 @@ class BleServerOrchestrationDriver(
             inboundLeases[deviceAddress] = lease
         }
         admittedDevices.add(deviceAddress)
-        val conn = BleConnection(deviceAddress.toByteArray())
+        val conn = BleConnection(
+            deviceAddress.toByteArray(),
+            clock = connectionClockForTest ?: { System.currentTimeMillis() / 1000L },
+        )
         conn.transitionTo(BleConnectionState.PROVISIONAL_CONNECTED)
         inboundConnections[deviceAddress] = conn
         peerSlots[deviceAddress] = ServerPeerSlot(ServerPeerSlotState.ACTIVE, gen, deviceAddress, lease)

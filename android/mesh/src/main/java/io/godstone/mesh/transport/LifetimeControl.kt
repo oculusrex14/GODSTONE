@@ -106,6 +106,15 @@ class AdapterTraceEvent(
     val payload: ByteArray?,
     val managerIdentity: Long,
     val epochAtDelivery: Long,
+    /**
+     * The client registration token, for the entries the platform passes
+     * one (the disconnect terminal names the client it came from; a trace
+     * event for such an entry carries the very token the callback was
+     * handed). Nil where the source carries none.
+     */
+    val clientToken: Long? = null,
+    /** The registration generation, companion of the client token. */
+    val gattGeneration: Long? = null,
 )
 
 /**
@@ -138,6 +147,8 @@ class InvariantLedger(val owner: String) {
         entries.add(Entry(invariantId, scenario, statement + " (skipped: " + why + ")", Verdict.SKIPPED))
         return Verdict.SKIPPED
     }
+
+    fun entriesCount(): Int = entries.size
 
     fun broken(): List<Entry> = entries.filter { it.verdict == Verdict.BROKEN }
 
