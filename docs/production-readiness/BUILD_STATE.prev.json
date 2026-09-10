@@ -1281,9 +1281,123 @@
         "activeManagerContext, lastRetiredManagerContext, isStarted and currentTransportEpoch remain plain vars: aligned single-word load/store of reference and word-sized values is race-benign on the arm64 target and every authoritative access funnels through the transport lock or the epoch executor; the repo ships no atomic box and none is introduced here; documented rather than fixed",
         "the runner records test counts as UNKNOWN for command-kind specs, so the positive counts above were taken from the swift-test summaries of the recorded logs"
       ]
+    },
+    "T15": {
+      "case_results": [
+        {
+          "collected": 5,
+          "counts_source": "fresh swift-test summary of the filtered run at this tree (5 cases, zero failures)",
+          "engine": "swift-host",
+          "executed": 5,
+          "failed": 0,
+          "passed": 5,
+          "skipped": 0,
+          "stage": "narrow",
+          "suite": "ReadinessT15Tests"
+        },
+        {
+          "collected": 717,
+          "counts_source": "fresh swift-test summary of the GodstoneFoundation suite at this tree",
+          "engine": "swift-host",
+          "executed": 717,
+          "failed": 0,
+          "passed": 717,
+          "skipped": 0,
+          "stage": "subsystem"
+        },
+        {
+          "executed": 3,
+          "failed": 0,
+          "passed": 3,
+          "skipped": 0,
+          "stage": "controls"
+        }
+      ],
+      "commands": [
+        "T15-narrow-swift",
+        "T15-subsystem-swift",
+        "T15-controls-python3",
+        "T15-controls-python3-002",
+        "T15-controls-python3-003"
+      ],
+      "device_gate_ids": [],
+      "implementation_commit": "8e3d9522727ab0af16bc4e861a824249d3efc35d",
+      "inputs": {
+        "baseline": "eb2c960",
+        "commit_c_initial": "8e3d952",
+        "commit_c_whitespace": "clean at first commit (git diff --check silent)",
+        "commit_c_witness": "8e3d952",
+        "file_hashes": {
+          "ios/Godstone/Sources/GodstoneMesh/BleTransport.swift": "b0c21b6e9120f61bacbcf4bb108416e877281340a5b73d6b94229196d0c5568d",
+          "ios/Godstone/Tests/GodstoneMeshTests/ReadinessT15Tests.swift": "269064e531a076c1ff5da7b0eec7dcfb2912b248dac6f14772b450747039032e",
+          "ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/BleTransport.swift": "b0c21b6e9120f61bacbcf4bb108416e877281340a5b73d6b94229196d0c5568d",
+          "ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/ReadinessT15Tests.swift": "269064e531a076c1ff5da7b0eec7dcfb2912b248dac6f14772b450747039032e"
+        },
+        "mutation_worktree": "/Users/oculus/Projects/GODSTONE_T15_MUT"
+      },
+      "mutation_results": [
+        {
+          "engines": [
+            "swift-host"
+          ],
+          "evidence": "T15/mutations/MU-1-t15.log (witness testReplacedLeaseSurvivesTheStaleFiresOfItsSlot down with three companions: the blind cancel after install empties the slot of the newer lease)",
+          "expected": "the card-named defect: removing the current timer before comparing keys makes the replacement evict the wrong handle",
+          "mutation": "MU-1 the compare-cancel is moved behind the install and loses its key comparison",
+          "outcome": "KILLED"
+        },
+        {
+          "engines": [
+            "swift-host"
+          ],
+          "evidence": "T15/mutations/MU-2-t15.log (true witness testReplacedLeaseSurvivesTheStaleFiresOfItsSlot down: slot trust lets the superseded fire act through the current occupant)",
+          "expected": "the callback answers only to its own whole key; the slot alone proves nothing",
+          "mutation": "MU-2 fire and reduction trust the slot occupant instead of the captured whole key",
+          "outcome": "KILLED"
+        },
+        {
+          "engines": [
+            "swift-host"
+          ],
+          "evidence": "T15/mutations/MU-5-t15.log (witness testReplacedLeaseSurvivesTheStaleFiresOfItsSlot down: the replacement inherits the elder deadline)",
+          "expected": "deadlines are computed explicitly against the injected monotonic clock at each arm",
+          "mutation": "MU-5 the replacement inherits the superseded lease deadline instead of recomputing",
+          "outcome": "KILLED"
+        },
+        {
+          "engines": [
+            "swift-host"
+          ],
+          "evidence": "T15/mutations/MU-6-t15.log (witness testStaleFireAfterReopenCannotActOnTheReusedGeneration down: ids collide across epochs once the source is reset)",
+          "expected": "counters are never relied on without their epoch; a successor must not inherit a retired numbering",
+          "mutation": "MU-6 the operation id source is reset at every opening",
+          "outcome": "KILLED"
+        },
+        {
+          "engines": [
+            "swift-host"
+          ],
+          "evidence": "T15/mutations/MU-8-t15.log (witness testReplacedLeaseSurvivesTheStaleFiresOfItsSlot down with companions: no re-arm means no replacement coverage at all)",
+          "expected": "advancing into the handshake re-arms the window through the reducer, the mirrored shape of the Android connect lease",
+          "mutation": "MU-8 the connect advance forgets to re-arm",
+          "outcome": "KILLED"
+        }
+      ],
+      "next_action": "none - task complete",
+      "phase_gate": "P1",
+      "required_cases": [
+        "ReadinessT15Tests (5 cases iOS)"
+      ],
+      "status": "COMPLETE",
+      "task_id": "T15",
+      "tested_tree_sha": "c7fecb172bc79e790de6396bcc4ea7480706d63a",
+      "unresolved": [
+        "device gates for the CoreBluetooth runtime stay open: real run-loop expiry, the orphan-fire race between a live Timer and a concurrent stop, and TCC/device lifecycle timing belong to the T73-T75 physical evidence; the host suite exercises the fire through a ForTest mirror of the very closure body",
+        "the whole-key re-validation inside the fire reduction is defence-in-depth behind the fire-time check (the MU-2 campaign proved the observable weight falls on the first line of defence); its independent teeth are cut for the device gates",
+        "the runner records test counts as UNKNOWN for command-kind specs, so the positive counts above were taken from the swift-test summaries of the recorded logs"
+      ]
     }
   },
-  "current_task": "T15",
+  "current_task": "T16",
   "external_blockers": [
     "A06",
     "APPROVED_CONTENT",
@@ -1293,20 +1407,20 @@
   ],
   "failed_attempts": [],
   "in_progress": {
-    "claimed_head": "eb2c960bed0850aa67e86cdb216d648039bc6d8c",
-    "claimed_utc": "2026-09-10T00:23:28Z",
+    "claimed_head": "0c5c9e34c67aff8e1b1a47857e04d7450450f80a",
+    "claimed_utc": "2026-09-10T01:11:49Z",
     "objective": "per card",
-    "task": "T15"
+    "task": "T16"
   },
-  "last_code_head": "6b760539adb7335294cd660005d5db1e7c67aa52",
-  "last_observed_head": "6b760539adb7335294cd660005d5db1e7c67aa52",
+  "last_code_head": "8e3d9522727ab0af16bc4e861a824249d3efc35d",
+  "last_observed_head": "8e3d9522727ab0af16bc4e861a824249d3efc35d",
   "latest_verification": {
-    "note": "T14 narrow 8/8, GodstoneFoundation 712/712 green at 6b76053; five mutants killed, each by its named witness case",
-    "recorded_utc": "2026-09-10T00:20:44+00:00",
-    "source_sha": "6b760539adb7335294cd660005d5db1e7c67aa52",
-    "tested_tree_sha": "41f3ca060dede06a01f11632be0bec55d80eb75f"
+    "note": "T15 narrow 5/5, GodstoneFoundation 717/717 green at 8e3d952; five mutants killed, each attributed to the case that actually fell",
+    "recorded_utc": "2026-09-10T01:09:46+00:00",
+    "source_sha": "8e3d9522727ab0af16bc4e861a824249d3efc35d",
+    "tested_tree_sha": "c7fecb172bc79e790de6396bcc4ea7480706d63a"
   },
-  "next_task": "T15",
+  "next_task": "T16",
   "phase": "P0",
   "plan_sha256": "685456b378662b0a40a53a6abc810041e37daf97b213f3efeb6cea879363934e",
   "planning_baseline_sha": "b5c3d3d394b70cf356cdde33b47511dad7cbb95c",
@@ -1325,6 +1439,7 @@
     "Android scan callbacks are context-bound (ScanContext epoch/identity/lease; capture-before-deliver; reducer-only mutation) and the discovery surface is bounded (64, pin-aware, deterministic LRU eviction) on both the transport and the orchestration driver.",
     "Android terminal events (reject, timeout, local cancel) complete explicitly via the driver terminate authority: exact RelationKey transitions, once-leased, once-unpublished, captured-handle closes; production callbacks carry required tokens; late platform terminals are idempotent.",
     "iOS transport epochs own their manager pair: every opening builds a fresh CBCentralManager/CBPeripheralManager pair with its own delegate proxies on a dedicated serial queue, wired once at birth; the reducer authenticates sender instance, wired delegate and named epoch together - events of closed epochs are dropped where they stand.",
-    "iOS transport reduces each manager event as one uninterrupted operation on the epoch serial executor: validation, transition and effect scheduling never split; the lifecycle quiesces its epochs on the same queues, callback adapters deliver under their own context marker, and sealing and opening (trust work) never run while the transport lock is held - their completions re-check the admission token on the executor before any effect commits or the delegate is notified."
+    "iOS transport reduces each manager event as one uninterrupted operation on the epoch serial executor: validation, transition and effect scheduling never split; the lifecycle quiesces its epochs on the same queues, callback adapters deliver under their own context marker, and sealing and opening (trust work) never run while the transport lock is held - their completions re-check the admission token on the executor before any effect commits or the delegate is notified.",
+    "iOS timers are leases: TimerKey(relation, operation kind, unique id) names every window; storage, cancellation and replacement run only through reducer bodies on the epoch executor comparing whole keys before removing anything; the operation id source is monotone for the transport lifetime and deadlines are computed against the injected MonotonicClock; the connect advance re-arms through the same reducer."
   ]
 }

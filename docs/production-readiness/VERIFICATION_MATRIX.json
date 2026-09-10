@@ -703,6 +703,50 @@
       "task_ids": [
         "T15"
       ]
+    },
+    {
+      "claim_id": "CLM-T16-LEASE",
+      "command_ids": [
+        "T16-narrow-swift",
+        "T16-subsystem-swift"
+      ],
+      "evidence_class": "internal",
+      "evidence_sha256": null,
+      "latest_source_sha": "9e103e388dcdc1c9d4ee4d3df0334f7278f26edb",
+      "limitations": "host-side evidence; what a real subscription callback presents and whether a real manager tolerates the punned handle on the cancel leg await the T73-T75 device gates",
+      "production_path": "ios/Godstone/Sources/GodstoneMesh/BleTransport.swift",
+      "profile": "swift-host",
+      "required_case_ids": [
+        "ReadinessT16Tests"
+      ],
+      "requirement": "the actual CBCentral presented with a subscribe request is retained with the inbound lease and is the sole handle responder notifications travel by; unsubscribe requests are filtered by characteristic - a digest request leaves the inbox intact and is acknowledged distinguishably - and the generation a request carries is compared with the generation the subscription stands under, never resolved afresh, so a stale request cannot remove a replacement; a failed connection attempt is terminal immediately and requests no cancellation, while the lost-discovery path does",
+      "result": "PASS",
+      "state_owner": "iOS inbound lease retention and unsubscribe matching",
+      "task_ids": [
+        "T16"
+      ]
+    },
+    {
+      "claim_id": "CLM-T16-QUARANTINE",
+      "command_ids": [
+        "T16-narrow-swift",
+        "T16-subsystem-swift"
+      ],
+      "evidence_class": "internal",
+      "evidence_sha256": null,
+      "latest_source_sha": "9e103e388dcdc1c9d4ee4d3df0334f7278f26edb",
+      "limitations": "host-side evidence; the cross-process survival of the quarantine list across a genuine state reset awaits the device gates",
+      "production_path": "ios/Godstone/Sources/GodstoneMesh/BleTransport.swift",
+      "profile": "swift-host",
+      "required_case_ids": [
+        "ReadinessT16Tests"
+      ],
+      "requirement": "an unsubscribe the callbacks cannot distinguish - one that names no characteristic - or a reuse of one identity by two distinct real instances quarantines that identity for the epoch; the quarantine is held in the manager context, is bounded in extent with refusals counted, suppresses subscriptions and notifications for the marked identity, and is released by rotation of the context alone and never by a guessed timeout; the admission history is bounded and an exhausted budget rotates a fully drained context, never a busy one",
+      "result": "PASS",
+      "state_owner": "iOS epoch-scoped quarantine and context rotation",
+      "task_ids": [
+        "T16"
+      ]
     }
   ],
   "note": "Claims appended per task with real evidence; PASS requires positive case counts and matching command output. Device/independent claims never accept host-only results.",

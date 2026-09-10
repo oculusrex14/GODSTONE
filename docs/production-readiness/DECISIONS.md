@@ -340,3 +340,57 @@ exit status, not by displayed text - the output-token corruption family
 documented in D-T13-b/D-T14-b continues to strike long literals crossing
 tool channels, and structural derivation from the file's own bytes remains
 the durable defense.
+
+## D-T16-a [ACCEPTED] Ambiguous subscriptions are refused, not guessed through
+The actual CBCentral presented with a subscribe request is retained with the
+inbound lease together with an inbox-subscription record naming the
+characteristic and the maximum update length; responder notifications are
+sent through the retained handle alone - a subscriber-list entry by itself
+proves no more which central presented the subscription. Unsubscribe requests
+are filtered by characteristic: a request naming the digest characteristic is
+acknowledged leaving the inbox intact; a request that cannot name which
+characteristic was written is the ambiguity the platform callbacks must not
+guess through - the identity is quarantined for the epoch, the legacy removal
+still proceeds with the driver transiting the slot as recorded since T12, and
+only rotation of the manager context releases the quarantine, never a guessed
+timeout. Generation matching compares the number the request itself carries
+with the number the subscription stands under - the current one is never
+resolved in its place - and the rejection answers with the distinguishable
+rejectStaleUnsubscribe token against the driver's empty success. A failed
+connection attempt is terminal immediately and requests no cancellation; the
+lost-discovery path does, and the purge's cancel-record stash proves the
+distinction (MU-7 pins both legs). Quarantine metadata is bounded (1024
+marks, refusals counted); the admission history is bounded (4096 notes per
+context, overflow counted); a context that has exhausted its budget rotates
+at the next fully drained point - never while busy - and the rotation, which
+re-initialises the managers from the factory on a fresh dedicated queue, is
+the only release.
+
+## D-T16-b [ACCEPTED] Builder runtime facts (this environment)
+Five lessons, three from the corpus teaching. (1) The existing suites are the
+normative record of the callback shapes: the first strict gates I staged over
+subscribe/unsubscribe (nil-central claims quarantined; ambiguous-form
+quarantine without removal) broke 14 recorded substrate cases; the rework
+restored the documented behaviour - a missing handle claims nothing and
+renews the record, an ambiguous unsubscribe quarantines and still removes,
+answering with the driver's own action. New gates must be staged against the
+recorded suites before the campaign, not after. (2) On this host the system
+CoreBluetooth accepts punned present (NS)-objects on the central side
+(updateValue to subscribers, identifier reads), but the peripheral side is
+messaged with the whole family (discoverServices:, discoverCharacteristics:for:,
+writeValue:for:type:, setNotifyValue:for:) - an incomplete mock raises
+unrecognized selector; the responder declarations must enumerate every
+selector the stack sends, taken from the production source's own call sites.
+(3) The generation numbers are those of the drivers, and the drivers are
+re-initialised for every transport epoch, so numbers restart at 1 with each
+new context: staleness is judged within an epoch and the epoch token, not the
+number, authenticates a request. The first stale-unsubscribe staging assumed
+monotone numbers across a rotation and fell to this fact; the restaged case
+now asserts the restart and the epoch-token gate. (4) `as!` between
+unrelated NSObject classes is a checked cast and traps with SIGABRT; the
+corpus's unchecked unsafeBitCast resolves in the test target and is the
+idiom for punning - it must also keep the punned object alive for the
+messages the stack will send it. (5) A compile-invalidated mutant run is not
+a kill: the first MU-3 used an Optional-Bool `&&` form, did not compile, was
+recorded INVALID (its log retained as MU-3-firstpass-invalid-t16.log) and
+was redeployed type-preserving before any verdict was read.
