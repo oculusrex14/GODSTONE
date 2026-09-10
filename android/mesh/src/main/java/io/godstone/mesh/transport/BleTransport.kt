@@ -1192,18 +1192,25 @@ class BleTransport(
                                                   record: BleReassembledRecord) {
         val registry = sessions ?: run {
             recordRejection(conn.peerId, "hs.read.initiator", "no trusted session registry")
+            closeInitiatorRelation(peerAddress)
             return
         }
         if (record.recordType != BleRecordType.HS2) {
             recordRejection(conn.peerId, "hs.read.initiator", "unexpected direction")
+            closeInitiatorRelation(peerAddress)
             return
         }
         val advertised = discoveryIndexMetadataHint(peerAddress) ?: run {
+            // the full immutable advertised hint is an item of the relation's
+            // trust: without it the exchange can not proceed
             recordRejection(conn.peerId, "hs.read.initiator", "no remembered discovery hint")
+            closeInitiatorRelation(peerAddress)
             return
         }
         val hs3 = registry.initiatorProcessHs2(conn.peerId, record.payload, advertised) ?: run {
+            // trust rejected: HS3 is withheld and the exact relation closes
             recordRejection(conn.peerId, "hs.read.initiator", "hs2 rejected")
+            closeInitiatorRelation(peerAddress)
             return
         }
         conn.beginHandshake()
@@ -1211,15 +1218,34 @@ class BleTransport(
             writeHandshakeRecordViaClient(peerAddress, conn, BleRecordType.HS3, hs3)
         }
         if (verdict !is TransportResult.Admitted) {
-            // the writer named its reason in the collector; the relation
-            // stays in the handshake phase for the record to be retried.
+            // the reservation failed or the queue fell Closed: no HS3 is
+            // ordered, no capability is marked, the exact relation closes -
+            // the writer named its reason in the collector
+            recordRejection(conn.peerId, "hs.read.initiator", "hs3 reservation refused")
+            closeInitiatorRelation(peerAddress)
             return
         }
         if (!conn.markTrustedReady()) {
+            // the trusted capability could not be marked: a trust failure
+            // closes the relation; READY of the controller alone is no
+            // publication, and none was made
             recordRejection(conn.peerId, "hs.read.initiator", "trusted ready refused from " + conn.state)
+            closeInitiatorRelation(peerAddress)
             return
         }
         handshakeReadyFlow.tryEmit(conn.peerId.copyOf())
+    }
+
+    /** T21 (section 13): a refusal at the initiator's record door closes
+     *  the exact relation through the platform's own arm - the tokens are
+     *  the ones the registration itself carries, never a fresh lookup - and
+     *  the direction's writer retires with the relation it served. No HS
+     *  is retransmitted within the same session; application retries
+     *  survive in storage and travel by a fresh handshake hereafter. */
+    private fun closeInitiatorRelation(peerAddress: String) {
+        val client = activeClientConnections[peerAddress] ?: return
+        handleCentralDisconnected(peerAddress, client.clientToken, client.gattGeneration)
+        centralWriters.remove(peerAddress)
     }
 
     private fun discoveryIndexMetadataHint(peerAddress: String): ByteArray? =
@@ -1271,10 +1297,29 @@ class BleTransport(
         return TransportResult.Admitted
     }
 
+    /** T21: lexicographic order of the canonical node hints, unsigned
+     *  octet by octet; the shorter prefix is the lesser. The initiator
+     *  speaks only from the ascendant seat (section 13: localHint shall
+     *  be less than remoteHint at the begin of the trusted exchange). */
+    internal fun hintOrder(local: ByteArray, remote: ByteArray): Int {
+        val n = minOf(local.size, remote.size)
+        for (i in 0 until n) {
+            val a = local[i].toInt() and 0xFF
+            val b = remote[i].toInt() and 0xFF
+            if (a != b) return a - b
+        }
+        return local.size - remote.size
+    }
+
     /** The initiator's entrance: begin the trusted handshake with the
      *  remote hint learned from discovery. The first record travels over
      *  the outlet towards the connected peer; the exchange completes when
-     *  the notifications bring the responder's answer back. */
+     *  the notifications bring the responder's answer back.
+     *
+     *  T21 (section 13): the entrance requires the physical duplex of the
+     *  ADR-002 predicate witnessed upon the connection, and the hints in
+     *  their ascendant order - local less than remote. No SessionSlot is
+     *  created, and no HS1 reserved, before both counsels are kept. */
     suspend fun beginTrustedHandshake(peerId: ByteArray, remoteHint: ByteArray): TransportResult {
         if (!BleConnection.canBindRemoteHint(remoteHint)) {
             recordRejection(peerId, "hs.begin", "malformed remote hint")
@@ -1296,6 +1341,14 @@ class BleTransport(
             conn.state != BleConnectionState.HANDSHAKE_IN_PROGRESS) {
             recordRejection(peerId, "hs.begin", "cannot begin from " + conn.state)
             return TransportResult.Rejected("cannot begin from " + conn.state)
+        }
+        if (!conn.isHandshakeTransportReady) {
+            recordRejection(peerId, "hs.begin", "physical duplex not witnessed")
+            return TransportResult.Rejected("physical duplex not witnessed")
+        }
+        if (hintOrder(identity.nodeHint, remoteHint) >= 0) {
+            recordRejection(peerId, "hs.begin", "hint order not ascendant")
+            return TransportResult.Rejected("hint order not ascendant")
         }
         val hs1 = registry.beginInitiator(conn.peerId, remoteHint) ?: run {
             recordRejection(peerId, "hs.begin", "begin initiator refused")

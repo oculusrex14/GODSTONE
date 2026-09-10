@@ -1954,25 +1954,81 @@ public final class BleTransport: NSObject, @unchecked Sendable {
             recordRejection(peerId: peerId, site: "hs.read.initiator", reason: "no connection")
             return
         }
-        guard record.recordType == .hs2 else { return }
+        guard record.recordType == .hs2 else {
+            // an out-of-order stage at the initiator's door is a conflicting
+            // sequence: the exact relation closes
+            recordRejection(peerId: peerId, site: "hs.read.initiator", reason: "unexpected direction")
+            closeInitiatorRelation(peerId)
+            return
+        }
         guard let hs3 = registry.initiatorProcessHs2(peerId, hs2: record.payload, advertisedRemoteHint: advertised) else {
+            // trust rejected: HS3 is withheld and the exact relation closes
             recordRejection(peerId: peerId, site: "hs.read.initiator", reason: "hs2 rejected")
+            closeInitiatorRelation(peerId)
             return
         }
         _ = conn.beginHandshake()
-        _ = writeHandshakeRecord(.hs3, payload: hs3, toPeripheral: peerId)
+        let verdict = writeHandshakeRecord(.hs3, payload: hs3, toPeripheral: peerId)
+        guard verdict == .admitted else {
+            // the reservation failed or the queue fell Closed: no HS3 is
+            // ordered, no capability is marked, the exact relation closes
+            recordRejection(peerId: peerId, site: "hs.read.initiator", reason: "hs3 reservation refused")
+            closeInitiatorRelation(peerId)
+            return
+        }
         guard conn.markTrustedReady() else {
+            // the trusted capability could not be marked: a trust failure
+            // closes the relation; READY of the controller alone is no
+            // publication, and none is made here
             recordRejection(peerId: peerId, site: "hs.read.initiator",
                             reason: "trusted ready refused from \(conn.state)")
+            closeInitiatorRelation(peerId)
             return
         }
         delegate?.transportDidHandshakeReady(peerId: peerId)
     }
 
-    /// The initiator's entrance: begin the trusted handshake with the
-    /// remote hint learned from discovery. The first record is written
+    /// T21: lexicographic order of the canonical node hints, unsigned octet
+    /// by octet; the shorter prefix is the lesser. The initiator speaks only
+    /// from the ascendant seat (section 13: localHint shall be less than
+    /// remoteHint at the begin of the trusted exchange).
+    internal func hintOrder(local: Data, remote: Data) -> Int {
+        let n = Swift.min(local.count, remote.count)
+        for i in 0..<n {
+            let a = Int(local[i])
+            let b = Int(remote[i])
+            if a != b { return a - b }
+        }
+        return local.count - remote.count
+    }
+
+    /// T21: the fall of the initiator's relation through the platform's own
+    /// arm. The tokens are the ones the registration itself carries - never a
+    /// fresh lookup - and the direction's writer retires with the relation it
+    /// served. No HS is retransmitted within one session; application retries
+    /// survive in storage and travel by a fresh handshake hereafter.
+    private func closeInitiatorRelation(_ peerId: UUID) {
+        lockTransport()
+        let lifetime = activeOutboundLifetimes[peerId]
+        let manager = central
+        unlockTransport()
+        guard let lifetime = lifetime, let manager = manager else { return }
+        _ = reductionProcessOutboundDisconnect(peerId: peerId,
+                                              expectedGen: lifetime.relationKey.generation,
+                                              peripheral: lifetime.peripheral,
+                                              sourceEpoch: lifetime.transportEpoch,
+                                              from: manager)
+    }
+
+    /// The initiator's entrance: begin the trusted handshake with the remote
+    /// hint learned from discovery. The first record is written
     /// through the outlet towards the peripheral; the exchange completes
     /// when the notifications bring the responder's answer back.
+    ///
+    /// T21 (section 13): the entrance requires the physical duplex of the
+    /// ADR-002 predicate witnessed upon the connection, and the hints in
+    /// their ascendant order - local less than remote. No SessionSlot is
+    /// created, and no HS1 reserved, before both counsels are kept.
     @discardableResult
     public func beginTrustedHandshake(peerId: UUID, remoteHint: Data) -> TransportResult {
         guard BleConnection.canBindRemoteHint(remoteHint) else {
@@ -1994,6 +2050,14 @@ public final class BleTransport: NSObject, @unchecked Sendable {
         guard conn.state == .roleBound || conn.state == .handshakeInProgress else {
             recordRejection(peerId: peerId, site: "hs.begin", reason: "cannot begin from \(conn.state)")
             return .rejected("cannot begin from \(conn.state)")
+        }
+        guard conn.isHandshakeTransportReady else {
+            recordRejection(peerId: peerId, site: "hs.begin", reason: "physical duplex not witnessed")
+            return .rejected("physical duplex not witnessed")
+        }
+        guard let localHint = identity?.nodeHint, hintOrder(local: localHint, remote: remoteHint) < 0 else {
+            recordRejection(peerId: peerId, site: "hs.begin", reason: "hint order not ascendant")
+            return .rejected("hint order not ascendant")
         }
         recordTrustWorkForTest("seal")
         guard let hs1 = registry.beginInitiator(peerId, remoteHint: remoteHint) else {
