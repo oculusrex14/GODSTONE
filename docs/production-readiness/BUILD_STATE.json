@@ -1731,7 +1731,12 @@
     "SIGNING"
   ],
   "failed_attempts": [],
-  "in_progress": null,
+  "in_progress": {
+    "claimed_head": "a7099af5760eb62a9c695fa422668e9bf53f0ced",
+    "claimed_utc": "2026-50-10T11:50:31+00:00",
+    "objective": "Implement RecordWriter.reserve(kind, clearLength) before nonce/sequence consumption. Check min(16384,64*(ATT-8)) against ciphertext length including 24-byte overhead; then seal once and fragment once. Hold at most four admitted records per relation, at most 16 staged ATT values and one in-flight operation per direction. Pump lazily on real completion; a partial write failure closes the relation, preserving durable application data for a fresh session.",
+    "task": "T18"
+  },
   "last_code_head": "d69ec8727f9cdad3809841e49140ba32a32af719",
   "last_observed_head": "d69ec8727f9cdad3809841e49140ba32a32af719",
   "latest_verification": {
