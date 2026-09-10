@@ -2800,12 +2800,14 @@ final class BleLinkSubstrateTests: XCTestCase {
     }
 
     func testIosResponderSend_TargetsConcreteSubscribedCentral() throws {
-        let identity = try makeIdentity()
+        let pairing = try ReadinessTrustedPairing.establish()
+        defer { ReadinessTrustedPairing.tearDown(pairing) }
         let store = MockMessageStore()
-        let transport = BleTransport(identity: identity, store: store)
+        let transport = BleTransport(identity: pairing.bobIdentity, store: store)
+        transport.sessions = pairing.bobManager
         transport.start()
 
-        let centralId = UUID()
+        let centralId = pairing.viaAlice
         let rawInfo = BleLinkInfoCodec.encode(
             version: BleLinkInfoConstants.protocolVersion,
             flags: 0,
@@ -2840,9 +2842,10 @@ final class BleLinkSubstrateTests: XCTestCase {
             payload: Data([1, 2, 3, 4])
         )
 
-        // In responder branch, send targets the subscribed CBCentral and does not fail on missing central
+        // T17: the responder sends over the trusted path - the sealed
+        // record reaches the subscribed central through the retained handle.
         let sent = transport.send(testFrame, to: centralId)
-        XCTAssertTrue(sent)
+        XCTAssertEqual(sent, .admitted, "the sealed record reaches the subscribed central")
         transport.stop()
     }
 

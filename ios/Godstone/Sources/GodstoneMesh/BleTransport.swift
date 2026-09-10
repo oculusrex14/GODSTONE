@@ -349,7 +349,7 @@ public final class ManagerContext: @unchecked Sendable {
 
     /// Test seam: whether the calling thread executes within this
     /// executor, as the reduction trace records it.
-    public func isOnSerialExecutorForTest() -> Bool {
+    internal func isOnSerialExecutorForTest() -> Bool {
         return isOnSerialExecutor
     }
 
@@ -758,7 +758,7 @@ public final class BleTransport: NSObject, @unchecked Sendable {
     /// Test seam: run the fire body for the given key - the same path the
     /// scheduled Timer takes - and answer whether it acted.
     @discardableResult
-    public func fireTimerForTest(_ key: TimerKey) -> Bool {
+    internal func fireTimerForTest(_ key: TimerKey) -> Bool {
         timerDidFire(key: key)
         return lastTimerFireActedForTest
     }
@@ -773,7 +773,7 @@ public final class BleTransport: NSObject, @unchecked Sendable {
     }
 
     /// Test seam: the held leases, ordered by slot then operation id.
-    public func timerLeaseSnapshotForTest() -> [TimerLeaseSnapshot] {
+    internal func timerLeaseSnapshotForTest() -> [TimerLeaseSnapshot] {
         lockTransport()
         let leases = Array(timerLeases.values)
         unlockTransport()
@@ -820,49 +820,49 @@ public final class BleTransport: NSObject, @unchecked Sendable {
         }
     }
 
-    public func responderSendRecordsForTest() -> [ResponderSendRecord] {
+    internal func responderSendRecordsForTest() -> [ResponderSendRecord] {
         lockTransport()
         let value = responderSendsForTest
         unlockTransport()
         return value
     }
 
-    public func cancelRequestRecordsForTest() -> [UUID] {
+    internal func cancelRequestRecordsForTest() -> [UUID] {
         lockTransport()
         let value = cancelRequestsForTest
         unlockTransport()
         return value
     }
 
-    public func isIdentityQuarantinedForTest(_ identity: UUID) -> Bool {
+    internal func isIdentityQuarantinedForTest(_ identity: UUID) -> Bool {
         lockTransport()
         let context = activeManagerContext
         unlockTransport()
         return context?.isQuarantined(identity) ?? false
     }
 
-    public func quarantineRecordCountForTest() -> Int {
+    internal func quarantineRecordCountForTest() -> Int {
         lockTransport()
         let context = activeManagerContext
         unlockTransport()
         return context?.quarantineRecordCount() ?? 0
     }
 
-    public func quarantineOverflowRecordsForTest() -> Int {
+    internal func quarantineOverflowRecordsForTest() -> Int {
         lockTransport()
         let context = activeManagerContext
         unlockTransport()
         return context?.quarantineOverflowRecords() ?? 0
     }
 
-    public func admissionHistoryCountForTest() -> Int {
+    internal func admissionHistoryCountForTest() -> Int {
         lockTransport()
         let context = activeManagerContext
         unlockTransport()
         return context?.admissionHistoryCount() ?? 0
     }
 
-    public func timerLeaseCountForTest() -> Int {
+    internal func timerLeaseCountForTest() -> Int {
         lockTransport()
         let count = timerLeases.count
         unlockTransport()
@@ -870,7 +870,7 @@ public final class BleTransport: NSObject, @unchecked Sendable {
     }
 
     /// Test seam: the context of the active transport epoch, if any.
-    public func currentManagerContextForTest() -> ManagerContext? {
+    internal func currentManagerContextForTest() -> ManagerContext? {
         lockTransport()
         let value = activeManagerContext
         unlockTransport()
@@ -880,7 +880,7 @@ public final class BleTransport: NSObject, @unchecked Sendable {
     /// Test seam: the most recently retired context, kept so the
     /// late-callback cases can deliver through the very objects the
     /// previous epoch ran on.
-    public func lastRetiredManagerContextForTest() -> ManagerContext? {
+    internal func lastRetiredManagerContextForTest() -> ManagerContext? {
         lockTransport()
         let value = lastRetiredManagerContext
         unlockTransport()
@@ -916,7 +916,7 @@ public final class BleTransport: NSObject, @unchecked Sendable {
     /// Test seam: the central manager of the open epoch context; the
     /// composition harness attributes its dispatched central events to it,
     /// so no event travels without naming its source instance.
-    public func requireContextCentralForTest() -> CBCentralManager {
+    internal func requireContextCentralForTest() -> CBCentralManager {
         lockTransport()
         let value = activeManagerContext?.central ?? lastRetiredManagerContext?.central
         unlockTransport()
@@ -943,8 +943,8 @@ public final class BleTransport: NSObject, @unchecked Sendable {
     }
 
     /// Test seam: the trace of the most recent reduction admission.
-    public private(set) var lastReductionTraceForTest: ReductionTrace?
-    public func clearReductionTraceForTest() {
+    internal private(set) var lastReductionTraceForTest: ReductionTrace?
+    internal func clearReductionTraceForTest() {
         lastReductionTraceForTest = nil
     }
 
@@ -952,7 +952,7 @@ public final class BleTransport: NSObject, @unchecked Sendable {
     /// validation of an event and the scheduling of its effects, for the
     /// named reduction. Production never sets it; the deterministic
     /// barrier-interleaving case does, at a real dependency boundary.
-    public var failpointAfterValidationForTest: ((String) -> Void)?
+    internal var failpointAfterValidationForTest: ((String) -> Void)?
 
     func onExecutor<T>(_ body: () -> T) -> T {
         lockTransport()
@@ -1005,7 +1005,7 @@ public final class BleTransport: NSObject, @unchecked Sendable {
 
     /// Whether the transport lock is held at this instant. Trust-work
     /// sites are asserted never to run under it.
-    public func transportLockIsHeldForTest() -> Bool {
+    internal func transportLockIsHeldForTest() -> Bool {
         lockAccountingForTest.lock()
         let held = transportLockDepthForTest > 0
         lockAccountingForTest.unlock()
@@ -1021,9 +1021,9 @@ public final class BleTransport: NSObject, @unchecked Sendable {
         public let onExecutor: Bool
     }
 
-    public private(set) var lastTrustWorkProbeForTest: TrustWorkProbe?
+    internal private(set) var lastTrustWorkProbeForTest: TrustWorkProbe?
 
-    public func recordTrustWorkForTest(_ operation: String) {
+    internal func recordTrustWorkForTest(_ operation: String) {
         let key = "godstone.mesh.epoch.tag"
         let onExec = Thread.current.threadDictionary[key] != nil
         lockAccountingForTest.lock()
@@ -1035,7 +1035,7 @@ public final class BleTransport: NSObject, @unchecked Sendable {
     }
 
     /// Test seam: the peripheral manager of the open epoch context.
-    public func requireContextPeripheralForTest() -> CBPeripheralManager {
+    internal func requireContextPeripheralForTest() -> CBPeripheralManager {
         lockTransport()
         let value = activeManagerContext?.peripheral ?? lastRetiredManagerContext?.peripheral
         unlockTransport()
@@ -1045,7 +1045,7 @@ public final class BleTransport: NSObject, @unchecked Sendable {
 
     /// Test seam: deliver the authentication decision the reducer makes for
     /// one manager-sourced event, so the suite can pin refusals directly.
-    public func managerEventIsAuthenticForTest(
+    internal func managerEventIsAuthenticForTest(
         sourceEpoch: UInt64,
         isCentral: Bool,
         sender: AnyObject?
@@ -1089,6 +1089,10 @@ public final class BleTransport: NSObject, @unchecked Sendable {
     private var discoveredPeers: [UUID: BleDiscoveryMetadata] = [:]
     private var pendingOutboundWrites: [UUID: [Data]] = [:]
     private var pendingOutboundUpdates: [UUID: [Data]] = [:]
+    /// T17: the hints the responder remembered from the peer's link-info
+    /// write, for the handshake records that follow. Cleared with the
+    /// context, so it can never outlive the epoch that learned it.
+    private var inboundRemoteHints: [UUID: Data] = [:]
 
     private let transportLock = NSLock()
     public var identity: MeshIdentity? {
@@ -1242,6 +1246,7 @@ public final class BleTransport: NSObject, @unchecked Sendable {
         activeOutboundLifetimes.removeAll()
         activeInboundLifetimes.removeAll()
         relationDelegates.removeAll()
+        inboundRemoteHints.removeAll()
         isStarted = true
     }
 
@@ -1340,6 +1345,7 @@ public final class BleTransport: NSObject, @unchecked Sendable {
         activeOutboundLifetimes.removeAll()
         activeInboundLifetimes.removeAll()
         relationDelegates.removeAll()
+        inboundRemoteHints.removeAll()
         centralDriver?.reset()
         peripheralDriver?.reset()
         capacityAuthority.reset()
@@ -1406,7 +1412,7 @@ public final class BleTransport: NSObject, @unchecked Sendable {
         return discoveredPeers[peerId]
     }
 
-    public func setMutableInboxCharacteristicForTesting(_ char: CBMutableCharacteristic?) {
+    internal func setMutableInboxCharacteristicForTesting(_ char: CBMutableCharacteristic?) {
         lockTransport()
         defer { unlockTransport() }
         mutableInboxCharacteristic = char
@@ -1438,7 +1444,7 @@ public final class BleTransport: NSObject, @unchecked Sendable {
     }
 
     @discardableResult
-    public func send(_ frame: FrameV2, to peerId: UUID) -> Bool {
+    public func send(_ frame: FrameV2, to peerId: UUID) -> TransportResult {
         // T14: the whole reduction of this event - validation, transition,
         // effect scheduling - is one operation on the epoch serial executor.
         return onExecutor {
@@ -1446,55 +1452,87 @@ public final class BleTransport: NSObject, @unchecked Sendable {
         }
     }
 
-    public func reductionSend(_ frame: FrameV2, to peerId: UUID) -> Bool {
+    public func reductionSend(_ frame: FrameV2, to peerId: UUID) -> TransportResult {
         lockTransport()
         let conn = outboundCentralConnections[peerId] ?? inboundPeripheralConnections[peerId]
-        guard let connection = conn, connection.state == .ready else {
-            unlockTransport()
-            return false
+        let registryAtAdmission = sessions
+        var verdict: TransportResult
+        if let established = conn {
+            switch established.state {
+            case .ready:
+                verdict = .admitted
+            case .closed, .closing, .quarantined:
+                verdict = .closed
+            default:
+                verdict = .rejected("connection not ready")
+            }
+        } else {
+            verdict = .rejected("no such connection")
         }
         let epochAtAdmission = currentTransportEpoch
         unlockTransport()
+        guard case .admitted = verdict else {
+            if case .rejected(let why) = verdict {
+                recordRejection(peerId: peerId, site: "send", reason: why)
+            }
+            return verdict
+        }
+        guard let connection = conn else {
+            recordRejection(peerId: peerId, site: "send", reason: "no such connection")
+            return .rejected("no such connection")
+        }
         // T14: sealing is trust work. It runs outside the critical section,
         // on the serial executor, and returns a completion that is
         // token-checked before any effect commits. Authentication failure
         // (nil) is distinguished from success throughout: false names the
         // refusal, true names the queued write.
+        // T17: the plaintext fallback of the sessions-nil transport is
+        // removed. Without a trusted registry, or when the registry
+        // refuses to seal, the frame is rejected with a bounded event -
+        // no unauthenticated octet ever reaches the wire again.
         recordTrustWorkForTest("seal")
-        let sealedPayload = sessions?.seal(peerId, frame.encode()) ?? (sessions == nil ? frame.encode() : nil)
-        guard let sealed = sealedPayload else {
-            return false
+        guard let registry = registryAtAdmission else {
+            recordRejection(peerId: peerId, site: "send", reason: "no trusted session registry")
+            return .rejected("no trusted session registry")
+        }
+        guard let sealed = registry.seal(peerId, frame.encode()) else {
+            recordRejection(peerId: peerId, site: "seal", reason: "authentication refused")
+            return .rejected("seal refused")
         }
         lockTransport()
         guard isStarted, epochAtAdmission == currentTransportEpoch,
               let again = (outboundCentralConnections[peerId] ?? inboundPeripheralConnections[peerId]),
               again === connection, again.state == .ready else {
             unlockTransport()
-            return false
+            recordRejection(peerId: peerId, site: "send.revalidate", reason: "relation changed during commit")
+            return .rejected("relation changed during commit")
         }
         let fragments = connection.fragmentOutbound(recordType: .data, payload: sealed)
         guard !fragments.isEmpty else {
             unlockTransport()
-            return false
+            recordRejection(peerId: peerId, site: "send.fragment", reason: "fragmentation refused")
+            return .rejected("fragmentation refused")
         }
 
         if connection.localRole == .initiator {
             guard let p = connectedPeripherals[peerId],
                   let ch = inboxCharacteristics[peerId] else {
                 unlockTransport()
-                return false
+                recordRejection(peerId: peerId, site: "send.initiator", reason: "no outlet: peripheral or characteristic absent")
+                return .rejected("no outlet: peripheral or characteristic absent")
             }
 
             var queue = pendingOutboundWrites[peerId] ?? []
             if !queue.isEmpty {
                 if queue.count + fragments.count > BleTransport.maxQueuedAttValues {
                     unlockTransport()
-                    return false
+                    recordRejection(peerId: peerId, site: "send.initiator", reason: "queue full")
+                    return .backpressured
                 }
                 queue.append(contentsOf: fragments)
                 pendingOutboundWrites[peerId] = queue
                 unlockTransport()
-                return true
+                return .admitted
             }
 
             var remaining: [Data] = []
@@ -1513,13 +1551,14 @@ public final class BleTransport: NSObject, @unchecked Sendable {
             if !remaining.isEmpty {
                 if queue.count + remaining.count > BleTransport.maxQueuedAttValues {
                     unlockTransport()
-                    return false
+                    recordRejection(peerId: peerId, site: "send.initiator", reason: "queue full")
+                    return .backpressured
                 }
                 queue.append(contentsOf: remaining)
                 pendingOutboundWrites[peerId] = queue
             }
             unlockTransport()
-            return true
+            return .admitted
         } else {
             // T16: notifications are sent through the central retained with
             // the lease - the subscriber list entry alone cannot prove which
@@ -1527,13 +1566,15 @@ public final class BleTransport: NSObject, @unchecked Sendable {
             // identity is suppressed altogether.
             if activeManagerContext?.isQuarantined(peerId) == true {
                 unlockTransport()
-                return false
+                recordRejection(peerId: peerId, site: "send.responder", reason: "quarantined identity")
+                return .rejected("quarantined identity")
             }
             guard let lease = activeInboundLifetimes[peerId],
                   let centralObj = lease.retainedCentral,
                   let inboxChar = mutableInboxCharacteristic else {
                 unlockTransport()
-                return false
+                recordRejection(peerId: peerId, site: "send.responder", reason: "no retained central for notification")
+                return .rejected("no retained central for notification")
             }
 
             var queue = pendingOutboundUpdates[peerId] ?? []
@@ -1541,7 +1582,8 @@ public final class BleTransport: NSObject, @unchecked Sendable {
                 if !queue.isEmpty {
                     if queue.count >= BleTransport.maxQueuedAttValues {
                         unlockTransport()
-                        return false
+                        recordRejection(peerId: peerId, site: "send.responder", reason: "queue full")
+                        return .backpressured
                     }
                     queue.append(frag)
                 } else {
@@ -1560,8 +1602,292 @@ public final class BleTransport: NSObject, @unchecked Sendable {
                 pendingOutboundUpdates[peerId] = queue
             }
             unlockTransport()
-            return true
+            return .admitted
         }
+    }
+
+    // MARK: - T17 bounded rejection events and the trusted handshake driver
+
+    public struct RejectionRecord: Sendable {
+        public let peerId: UUID
+        public let site: String
+        public let reason: String
+    }
+
+    static let rejectionRecordCapacity = 64
+    private var pendingRejections: [RejectionRecord] = []
+    private var rejectionOverflow = 0
+
+    /// The collector of rejection events. It never blocks, never throws
+    /// and never grows past its capacity: the eldest record makes way and
+    /// the overflow is counted, so continuity of the stream survives any
+    /// number of malformed packets.
+    private func recordRejection(peerId: UUID, site: String, reason: String) {
+        lockTransport()
+        pendingRejections.append(RejectionRecord(peerId: peerId, site: site, reason: reason))
+        if pendingRejections.count > BleTransport.rejectionRecordCapacity {
+            pendingRejections.removeFirst()
+            rejectionOverflow += 1
+        }
+        unlockTransport()
+    }
+
+    internal func rejectionRecordsForTest() -> [RejectionRecord] {
+        lockTransport()
+        let value = pendingRejections
+        unlockTransport()
+        return value
+    }
+
+    internal func rejectionOverflowCountForTest() -> Int {
+        lockTransport()
+        let value = rejectionOverflow
+        unlockTransport()
+        return value
+    }
+
+    internal func clearRejectionRecordsForTest() {
+        lockTransport()
+        pendingRejections.removeAll()
+        rejectionOverflow = 0
+        unlockTransport()
+    }
+
+    private static func describeRejection(_ why: BleRecordRejection) -> String {
+        switch why {
+        case .inactive: return "inactive connection"
+        case .malformedRecord: return "malformed record"
+        case .unexpectedStage(let expected, let observed, let recordType):
+            return "record type \(recordType) at stage \(observed), expected one of \(expected)"
+        }
+    }
+
+    /// The record writer's outlet towards one subscribed central: the
+    /// handshake fragments travel over the inbox characteristic by
+    /// notification, through the central retained with the lease.
+    @discardableResult
+    internal func writeHandshakeRecord(_ recordType: BleRecordType, payload: Data,
+                                        toCentral centralId: UUID) -> TransportResult {
+        lockTransport()
+        let quarantineHit = activeManagerContext?.isQuarantined(centralId) ?? false
+        guard let lease = activeInboundLifetimes[centralId],
+              let centralObj = lease.retainedCentral,
+              let inboxChar = mutableInboxCharacteristic,
+              let conn = inboundPeripheralConnections[centralId],
+              !quarantineHit else {
+            unlockTransport()
+            recordRejection(peerId: centralId, site: "hs.write.responder",
+                            reason: quarantineHit ? "quarantined identity" : "no outlet towards the central")
+            return quarantineHit ? .rejected("quarantined identity") : .rejected("no outlet towards the central")
+        }
+        unlockTransport()
+        let fragments = conn.fragmentOutbound(recordType: recordType, payload: payload)
+        guard !fragments.isEmpty else {
+            recordRejection(peerId: centralId, site: "hs.write.responder", reason: "the gate refused the record")
+            return .rejected("the gate refused the record")
+        }
+        var verdict: TransportResult = .admitted
+        lockTransport()
+        var queue = pendingOutboundUpdates[centralId] ?? []
+        for frag in fragments {
+            if !queue.isEmpty {
+                if queue.count >= BleTransport.maxQueuedAttValues {
+                    verdict = .backpressured
+                    break
+                }
+                queue.append(frag)
+            } else {
+                let ok = peripheral?.updateValue(frag, for: inboxChar, onSubscribedCentrals: [centralObj]) ?? false
+                recordResponderSendLocked(ResponderSendRecord(centralId: centralId, byteCount: frag.count,
+                                                    via: ObjectIdentifier(centralObj), viaRetained: true))
+                if !ok {
+                    queue.append(frag)
+                }
+            }
+        }
+        if queue.isEmpty {
+            pendingOutboundUpdates.removeValue(forKey: centralId)
+        } else {
+            pendingOutboundUpdates[centralId] = queue
+        }
+        unlockTransport()
+        if case .backpressured = verdict {
+            recordRejection(peerId: centralId, site: "hs.write.responder", reason: "queue full")
+        }
+        return verdict
+    }
+
+    /// The record writer's outlet towards one connected peripheral: the
+    /// handshake fragments travel over the inbox characteristic by
+    /// unsolicited writes, as the initiator's arm of send does for data.
+    @discardableResult
+    internal func writeHandshakeRecord(_ recordType: BleRecordType, payload: Data,
+                                        toPeripheral peerId: UUID) -> TransportResult {
+        lockTransport()
+        guard let p = connectedPeripherals[peerId],
+              let ch = inboxCharacteristics[peerId],
+              let conn = outboundCentralConnections[peerId] else {
+            unlockTransport()
+            recordRejection(peerId: peerId, site: "hs.write.initiator", reason: "no outlet towards the peripheral")
+            return .rejected("no outlet towards the peripheral")
+        }
+        unlockTransport()
+        let fragments = conn.fragmentOutbound(recordType: recordType, payload: payload)
+        guard !fragments.isEmpty else {
+            recordRejection(peerId: peerId, site: "hs.write.initiator", reason: "the gate refused the record")
+            return .rejected("the gate refused the record")
+        }
+        var verdict: TransportResult = .admitted
+        lockTransport()
+        guard let p2 = connectedPeripherals[peerId], let ch2 = inboxCharacteristics[peerId] else {
+            unlockTransport()
+            recordRejection(peerId: peerId, site: "hs.write.initiator", reason: "outlet withdrawn during commit")
+            return .rejected("outlet withdrawn during commit")
+        }
+        var queue = pendingOutboundWrites[peerId] ?? []
+        var idx = 0
+        while idx < fragments.count {
+            if !queue.isEmpty {
+                if queue.count + (fragments.count - idx) > BleTransport.maxQueuedAttValues {
+                    verdict = .backpressured
+                    break
+                }
+                queue.append(contentsOf: Array(fragments[idx...]))
+                idx = fragments.count
+                break
+            }
+            if p2.canSendWriteWithoutResponse {
+                p2.writeValue(fragments[idx], for: ch2, type: .withoutResponse)
+                idx += 1
+            } else {
+                queue.append(contentsOf: Array(fragments[idx...]))
+                idx = fragments.count
+            }
+        }
+        if queue.isEmpty {
+            pendingOutboundWrites.removeValue(forKey: peerId)
+        } else {
+            pendingOutboundWrites[peerId] = queue
+        }
+        unlockTransport()
+        if case .backpressured = verdict {
+            recordRejection(peerId: peerId, site: "hs.write.initiator", reason: "queue full")
+        }
+        return verdict
+    }
+
+    /// T17: the transport's trusted handshake driver. The two sides of
+    /// the exchange read their records through the session registry and
+    /// answer the peer over the record writer's outlets; cryptographic
+    /// ready is reached only here, never by the test seam.
+    private func handleInboundHandshakeRecordResponderSide(_ record: BleReassembledRecord, centralId: UUID) {
+        lockTransport()
+        let registry = sessions
+        let conn = inboundPeripheralConnections[centralId]
+        let rememberedHint = inboundRemoteHints[centralId]
+        unlockTransport()
+        guard let registry else {
+            recordRejection(peerId: centralId, site: "hs.read.responder", reason: "no trusted session registry")
+            return
+        }
+        guard let conn else {
+            recordRejection(peerId: centralId, site: "hs.read.responder", reason: "no connection")
+            return
+        }
+        guard let hint = rememberedHint, BleConnection.canBindRemoteHint(hint) else {
+            lockTransport()
+            let seen = inboundRemoteHints.keys.count
+            unlockTransport()
+            recordRejection(peerId: centralId, site: "hs.read.responder",
+                            reason: "no remembered link-info hint (registry holds \(seen))")
+            return
+        }
+        switch record.recordType {
+        case .hs1:
+            guard let hs2 = registry.responderProcessHs1(centralId, remoteHint: hint, hs1: record.payload) else {
+                recordRejection(peerId: centralId, site: "hs.read.responder", reason: "hs1 rejected")
+                return
+            }
+            _ = conn.beginHandshake()
+            _ = writeHandshakeRecord(.hs2, payload: hs2, toCentral: centralId)
+        case .hs3:
+            guard registry.responderProcessHs3(centralId, hs3: record.payload, advertisedRemoteHint: hint) else {
+                recordRejection(peerId: centralId, site: "hs.read.responder", reason: "hs3 rejected")
+                return
+            }
+            guard conn.markTrustedReady() else {
+                recordRejection(peerId: centralId, site: "hs.read.responder",
+                                reason: "trusted ready refused from \(conn.state)")
+                return
+            }
+            delegate?.transportDidHandshakeReady(peerId: centralId)
+        default:
+            break
+        }
+    }
+
+    private func handleInboundHandshakeRecordInitiatorSide(_ record: BleReassembledRecord, peerId: UUID) {
+        lockTransport()
+        let registry = sessions
+        let conn = outboundCentralConnections[peerId]
+        unlockTransport()
+        let advertised = discoveryMetadata(for: peerId)?.nodeHint ?? Data()
+        guard let registry else {
+            recordRejection(peerId: peerId, site: "hs.read.initiator", reason: "no trusted session registry")
+            return
+        }
+        guard let conn else {
+            recordRejection(peerId: peerId, site: "hs.read.initiator", reason: "no connection")
+            return
+        }
+        guard record.recordType == .hs2 else { return }
+        guard let hs3 = registry.initiatorProcessHs2(peerId, hs2: record.payload, advertisedRemoteHint: advertised) else {
+            recordRejection(peerId: peerId, site: "hs.read.initiator", reason: "hs2 rejected")
+            return
+        }
+        _ = conn.beginHandshake()
+        _ = writeHandshakeRecord(.hs3, payload: hs3, toPeripheral: peerId)
+        guard conn.markTrustedReady() else {
+            recordRejection(peerId: peerId, site: "hs.read.initiator",
+                            reason: "trusted ready refused from \(conn.state)")
+            return
+        }
+        delegate?.transportDidHandshakeReady(peerId: peerId)
+    }
+
+    /// The initiator's entrance: begin the trusted handshake with the
+    /// remote hint learned from discovery. The first record is written
+    /// through the outlet towards the peripheral; the exchange completes
+    /// when the notifications bring the responder's answer back.
+    @discardableResult
+    public func beginTrustedHandshake(peerId: UUID, remoteHint: Data) -> TransportResult {
+        guard BleConnection.canBindRemoteHint(remoteHint) else {
+            recordRejection(peerId: peerId, site: "hs.begin", reason: "malformed remote hint")
+            return .rejected("malformed remote hint")
+        }
+        lockTransport()
+        let registry = sessions
+        let conn = outboundCentralConnections[peerId]
+        unlockTransport()
+        guard let registry else {
+            recordRejection(peerId: peerId, site: "hs.begin", reason: "no trusted session registry")
+            return .rejected("no trusted session registry")
+        }
+        guard let conn else {
+            recordRejection(peerId: peerId, site: "hs.begin", reason: "no such connection")
+            return .rejected("no such connection")
+        }
+        guard conn.state == .roleBound || conn.state == .handshakeInProgress else {
+            recordRejection(peerId: peerId, site: "hs.begin", reason: "cannot begin from \(conn.state)")
+            return .rejected("cannot begin from \(conn.state)")
+        }
+        recordTrustWorkForTest("seal")
+        guard let hs1 = registry.beginInitiator(peerId, remoteHint: remoteHint) else {
+            recordRejection(peerId: peerId, site: "hs.begin", reason: "begin initiator refused")
+            return .rejected("begin initiator refused")
+        }
+        _ = conn.beginHandshake()
+        return writeHandshakeRecord(.hs1, payload: hs1, toPeripheral: peerId)
     }
 
     @discardableResult
@@ -1957,11 +2283,19 @@ public final class BleTransport: NSObject, @unchecked Sendable {
                 unlockTransport()
                 return .noOp
             }
-            guard let record = conn.ingestInboundAttValue(characteristic.value ?? Data()).admittedRecord else {
-                unlockTransport()
+            let ingested = conn.ingestInboundAttValue(characteristic.value ?? Data())
+            let registry = sessions
+            unlockTransport()
+            guard let record = ingested.admittedRecord else {
+                // T17: an incomplete reassembly stays silent - it is in
+                // flight, not a failure; a rejected record is a bounded
+                // event, and the collector keeps running either way.
+                if case .rejected(let why) = ingested {
+                    recordRejection(peerId: peerId, site: "ingest.notify",
+                                    reason: BleTransport.describeRejection(why))
+                }
                 return .noOp
             }
-            unlockTransport()
 
             if record.recordType == .data && conn.state == .ready {
                 // T14: opening a received record is trust work: it runs
@@ -1970,7 +2304,9 @@ public final class BleTransport: NSObject, @unchecked Sendable {
                 // delegate ever hears of it. An unauthenticated payload
                 // (nil) is a failure, distinct from an empty success.
                 recordTrustWorkForTest("open")
-                if let clear = sessions?.open(peerId, record.payload) {
+                let outcome = registry?.openWithResult(peerId, record.payload) ?? .rejected
+                switch outcome {
+                case .authenticated(let clear):
                     self.onExecutor {
                         self.lockTransport()
                         let still = self.isStarted
@@ -1980,7 +2316,14 @@ public final class BleTransport: NSObject, @unchecked Sendable {
                         guard still else { return }
                         self.delegate?.transportDidReceive(data: clear, peerId: peerId)
                     }
+                case .rejected:
+                    recordRejection(peerId: peerId, site: "open.notify", reason: "unauthenticated payload")
+                case .expired:
+                    recordRejection(peerId: peerId, site: "open.notify", reason: "replay window")
                 }
+            } else if record.recordType == .hs2 {
+                // T17: the initiator reads the responder's record.
+                handleInboundHandshakeRecordInitiatorSide(record, peerId: peerId)
             }
         }
         return .noOp
@@ -2206,8 +2549,27 @@ public final class BleTransport: NSObject, @unchecked Sendable {
             if inboundPeripheralConnections[cid] == nil {
                 inboundPeripheralConnections[cid] = driver.getInboundConnection(cid)
             }
-            if let conn = inboundPeripheralConnections[cid], !conn.isRoleBound {
-                conn.bindResponderFromAcceptedIncomingLinkInfo(remoteHint: remoteHint)
+            if let conn = inboundPeripheralConnections[cid] {
+                // T17: validate the hint of the incoming record before
+                // anything is remembered or bound; a malformed link-info is
+                // a bounded rejection, never an abort through the callback.
+                guard BleConnection.canBindRemoteHint(remoteHint) else {
+                    unlockTransport()
+                    recordRejection(peerId: cid, site: "bind.responder", reason: "malformed link-info hint")
+                    return .rejectWrite(cid, "malformed link-info hint")
+                }
+                // The driver binds the connection it creates for an accepted
+                // write, so the remember-arm must not hide behind the bound
+                // gate: every accepted record refreshes the remembered hint.
+                inboundRemoteHints[cid] = remoteHint
+                if !conn.isRoleBound {
+                    if conn.bindResponderFromAcceptedIncomingLinkInfo(remoteHint: remoteHint) {
+                    } else {
+                        unlockTransport()
+                        recordRejection(peerId: cid, site: "bind.responder", reason: "bind rejected")
+                        return .rejectWrite(cid, "link-info bind rejected")
+                    }
+                }
             }
             if timerSlots[TimerSlot(direction: .inboundPeripheral, peerId: cid, operation: .inboundInactivity)] == nil {
                 // T15: no double-arm while a lease lives; the arm runs through
@@ -2811,14 +3173,23 @@ public final class BleTransport: NSObject, @unchecked Sendable {
                     continue
                 }
 
-                let record = conn.ingestInboundAttValue(v).admittedRecord
+                let ingested = conn.ingestInboundAttValue(v)
+                let registry = sessions
                 unlockTransport()
+                let record = ingested.admittedRecord
+                if record == nil, case .rejected(let why) = ingested {
+                    // T17: bounded rejection event; the collector runs on.
+                    recordRejection(peerId: centralId, site: "ingest.write",
+                                    reason: BleTransport.describeRejection(why))
+                }
 
                 if let rec = record, rec.recordType == .data && conn.state == .ready {
                     // T14: as above - trust work outside, completion revalidated
                     // on the executor against the very connection that earned it.
                     recordTrustWorkForTest("open")
-                    if let clear = sessions?.open(centralId, rec.payload) {
+                    let outcome = registry?.openWithResult(centralId, rec.payload) ?? .rejected
+                    switch outcome {
+                    case .authenticated(let clear):
                         self.onExecutor {
                             self.lockTransport()
                             let still = self.isStarted
@@ -2828,7 +3199,14 @@ public final class BleTransport: NSObject, @unchecked Sendable {
                             guard still else { return }
                             self.delegate?.transportDidReceive(data: clear, peerId: centralId)
                         }
+                    case .rejected:
+                        recordRejection(peerId: centralId, site: "open.write", reason: "unauthenticated payload")
+                    case .expired:
+                        recordRejection(peerId: centralId, site: "open.write", reason: "replay window")
                     }
+                } else if let rec = record, rec.recordType == .hs1 || rec.recordType == .hs3 {
+                    // T17: the responder reads the initiator's records.
+                    handleInboundHandshakeRecordResponderSide(rec, centralId: centralId)
                 }
                 pm.respond(to: r, withResult: .success)
                 continue

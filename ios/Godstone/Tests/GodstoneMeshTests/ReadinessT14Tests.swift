@@ -434,8 +434,11 @@ final class ReadinessT14Tests: XCTestCase {
     // MARK: - no blocking work under the lock held
 
     func testTrustWorkIsNeverPerformedUnderTheLock() throws {
-        let transport = BleTransport(identity: try makeIdentity(), store: T14MessageStore())
-        let peerId = UUID()
+        let pairing = try ReadinessTrustedPairing.establish()
+        defer { ReadinessTrustedPairing.tearDown(pairing) }
+        let transport = BleTransport(identity: pairing.aliceIdentity, store: T14MessageStore())
+        transport.sessions = pairing.aliceManager
+        let peerId = pairing.viaBob
         _ = advanceToRoleBound(transport, peerId: peerId)
         guard let conn = transport.connection(for: peerId) else {
             XCTFail("the relation was never established")
@@ -456,7 +459,9 @@ final class ReadinessT14Tests: XCTestCase {
         // when the write itself is refused later (no captured peripheral
         // stands at this address on the host).
         let sent = transport.send(frame, to: peerId)
-        XCTAssertFalse(sent, "the write is refused where the peripheral is missing")
+        XCTAssertFalse(sent == .admitted, "the write is refused where the peripheral is missing")
+        XCTAssertEqual(sent, .rejected("no outlet: peripheral or characteristic absent"),
+                       "the seal ran through the live controller before the missing outlet was found")
         guard let sealProbe = transport.lastTrustWorkProbeForTest else {
             XCTFail("the sealing site recorded nothing")
             return

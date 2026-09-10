@@ -175,18 +175,21 @@ final class ReadinessT16Tests: XCTestCase {
     // MARK: - digest unsubscribe leaves the inbox intact
 
     func testDigestUnsubscribeLeavesTheInboxIntact() throws {
-        let transport = BleTransport(identity: try makeIdentity(), store: nil,
+        let pairing = try ReadinessTrustedPairing.establish()
+        defer { ReadinessTrustedPairing.tearDown(pairing) }
+        let transport = BleTransport(identity: pairing.bobIdentity, store: nil,
                                      clock: TestClock(startingAt: 5_000))
+        transport.sessions = pairing.bobManager
         transport.start()
-        let centralId = UUID()
+        let centralId = pairing.viaAlice
         let handle = centralPresent(centralId)
         guard establishInbound(transport, centralId: centralId, central: handle) else {
             XCTFail("the inbound preamble did not establish"); return
         }
         let ringBefore = transport.responderSendRecordsForTest().count
 
-        XCTAssertTrue(transport.send(makeFrame([1, 2, 3]), to: centralId),
-                      "the responder has data to send")
+        XCTAssertEqual(transport.send(makeFrame([1, 2, 3]), to: centralId), .admitted,
+                       "the responder has data to send")
         XCTAssertEqual(transport.responderSendRecordsForTest().count, ringBefore + 1,
                        "the update reached the subscribers")
 
@@ -202,7 +205,7 @@ final class ReadinessT16Tests: XCTestCase {
                         "the inbox subscription stands untouched")
 
         // And notifications still flow through the retained handle.
-        XCTAssertTrue(transport.send(makeFrame([4, 5, 6]), to: centralId))
+        XCTAssertEqual(transport.send(makeFrame([4, 5, 6]), to: centralId), .admitted)
         let records = transport.responderSendRecordsForTest()
         XCTAssertEqual(records.count, ringBefore + 2)
         XCTAssertEqual(records.last?.via, ObjectIdentifier(handle),
@@ -214,10 +217,13 @@ final class ReadinessT16Tests: XCTestCase {
     // MARK: - the ambiguous (legacy) unsubscribe quarantines until rotation
 
     func testAmbiguousUnsubscribeQuarantinesUntilRotationOnly() throws {
+        let pairing = try ReadinessTrustedPairing.establish()
+        defer { ReadinessTrustedPairing.tearDown(pairing) }
         let clock = TestClock(startingAt: 5_000)
-        let transport = BleTransport(identity: try makeIdentity(), store: nil, clock: clock)
+        let transport = BleTransport(identity: pairing.bobIdentity, store: nil, clock: clock)
+        transport.sessions = pairing.bobManager
         transport.start()
-        let centralId = UUID()
+        let centralId = pairing.viaAlice
         let handle = centralPresent(centralId)
         guard establishInbound(transport, centralId: centralId, central: handle) else {
             XCTFail("the inbound preamble did not establish"); return
@@ -243,8 +249,8 @@ final class ReadinessT16Tests: XCTestCase {
                                                        sourceEpoch: transport.currentTransportEpoch,
                                                        from: transport.requireContextPeripheralForTest())
         XCTAssertEqual(refused, .rejectSubscription(centralId))
-        XCTAssertFalse(transport.send(makeFrame([9]), to: centralId),
-                       "nothing is sent to a quarantined identity")
+        XCTAssertFalse(transport.send(makeFrame([9]), to: centralId) == .admitted,
+                       "nothing is sent to a quarantined identity whose removal completed")
 
         // Rotation of the context is the only release.
         transport.stop()
@@ -253,6 +259,8 @@ final class ReadinessT16Tests: XCTestCase {
                        "the rotation retires the context that held the quarantine")
         XCTAssertTrue(establishInbound(transport, centralId: centralId, central: handle),
                       "after rotation the identity may subscribe anew")
+        XCTAssertEqual(transport.send(makeFrame([8]), to: centralId), .admitted,
+                       "after the rotation the trusted path admits again")
         transport.stop()
     }
 
@@ -342,10 +350,13 @@ final class ReadinessT16Tests: XCTestCase {
     // MARK: - responder notifications use the retained central
 
     func testResponderNotificationUsesTheRetainedHandleNotTheLatestRenewal() throws {
-        let transport = BleTransport(identity: try makeIdentity(), store: nil,
+        let pairing = try ReadinessTrustedPairing.establish()
+        defer { ReadinessTrustedPairing.tearDown(pairing) }
+        let transport = BleTransport(identity: pairing.bobIdentity, store: nil,
                                      clock: TestClock(startingAt: 1_000))
+        transport.sessions = pairing.bobManager
         transport.start()
-        let centralId = UUID()
+        let centralId = pairing.viaAlice
         let first = centralPresent(centralId)
         guard establishInbound(transport, centralId: centralId, central: first) else {
             XCTFail("the inbound preamble did not establish"); return
@@ -364,11 +375,27 @@ final class ReadinessT16Tests: XCTestCase {
 
         // While quarantined, notifications are suppressed: the ring stays.
         let ringBefore = transport.responderSendRecordsForTest().count
-        XCTAssertFalse(transport.send(makeFrame([7, 7]), to: centralId),
+        XCTAssertFalse(transport.send(makeFrame([7, 7]), to: centralId) == .admitted,
                        "sending to a quarantined identity is suppressed")
+        let suppressed = transport.rejectionRecordsForTest().last
+        XCTAssertEqual(suppressed?.site, "send.responder")
+        XCTAssertEqual(suppressed?.reason, "quarantined identity",
+                       "the connection stands, the registry is live, the seal ran - the gate is what stopped it")
         XCTAssertEqual(transport.responderSendRecordsForTest().count, ringBefore,
                        "no record was made - the map could have held the rival, the lease did not")
 
+        // The quarantine binds the epoch: rotation of the context is the
+        // only release. After a stop-start the identity may be subscribed
+        // anew and notifications flow again through the newly retained handle.
+        transport.stop()
+        transport.start()
+        let second = centralPresent(centralId)
+        XCTAssertTrue(establishInbound(transport, centralId: centralId, central: second),
+                      "after rotation the identity may be subscribed anew")
+        XCTAssertEqual(transport.send(makeFrame([6, 6]), to: centralId), .admitted,
+                       "the notification goes out over the trusted path")
+        XCTAssertEqual(transport.responderSendRecordsForTest().last?.via, ObjectIdentifier(second),
+                       "through the handle retained with the lease, not whatever the map last held")
         transport.stop()
     }
 

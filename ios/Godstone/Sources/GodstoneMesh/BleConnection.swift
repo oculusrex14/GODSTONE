@@ -126,14 +126,20 @@ public final class BleConnection: @unchecked Sendable {
     }
 
     /// Validates and executes state transitions. Direct transitions to roleBound, handshakeInProgress, or ready are rejected.
-    public func transitionTo(_ newState: BleConnectionState) {
+    @discardableResult
+    public func transitionTo(_ newState: BleConnectionState) -> Bool {
         lock.lock()
         defer { lock.unlock() }
-        if state == newState { return }
+        if state == newState { return true }
 
-        precondition(newState != .roleBound, "roleBound must be entered via bindInitiatorAfterLinkInfoWriteAck or bindResponderFromAcceptedIncomingLinkInfo")
-        precondition(newState != .handshakeInProgress, "handshakeInProgress is reserved for Phase C8.4D2 trusted handshake driver")
-        precondition(newState != .ready, "ready is reserved for Phase C8.4D2 trusted handshake")
+        // T17: the reserved entrances reject outright - roleBound is reached
+        // only through the bind family, handshakeInProgress only through
+        // beginHandshake, ready only through markTrustedReady. A rejected
+        // transition preserves the state and answers false: no platform
+        // callback aborts over a malformed record any more.
+        if newState == .roleBound || newState == .handshakeInProgress || newState == .ready {
+            return false
+        }
 
         let valid: Bool
         switch state {
@@ -161,43 +167,83 @@ public final class BleConnection: @unchecked Sendable {
             valid = false
         }
 
-        precondition(valid, "Illegal state transition from \(state) to \(newState)")
+        guard valid else { return false }
         state = newState
+        return true
     }
 
-    public func markReadyForTesting() {
+    /// T17: advances a role-bound connection whose physical duplex is ready
+    /// into the handshake phase. False when either guard fails; the state
+    /// is preserved.
+    @discardableResult
+    internal func beginHandshake() -> Bool {
         lock.lock()
         defer { lock.unlock() }
+        guard state == .roleBound, isHandshakeTransportReadyLocked else { return false }
+        state = .handshakeInProgress
+        return true
+    }
+
+    /// T17: the only production entrance to cryptographic ready: the caller
+    /// - the transport's trusted handshake driver - has proved the peer's
+    /// slot ready in the session registry. A synthetic ready created by
+    /// the test seam never opens this gate.
+    @discardableResult
+    internal func markTrustedReady() -> Bool {
+        lock.lock()
+        defer { lock.unlock() }
+        guard state == .handshakeInProgress else { return false }
         state = .ready
+        return true
+    }
+
+    /// Nonshipping test seam: advances the physical state for plumbing
+    /// exercises. It cannot open the trusted path - sends over it answer
+    /// rejected until a session slot proves ready through the handshake.
+    @discardableResult
+    internal func markReadyForTesting() -> Bool {
+        lock.lock()
+        defer { lock.unlock() }
+        guard state != .closed && state != .closing else { return false }
+        state = .ready
+        return true
     }
 
     /// One-way binding of remote node hint and elected role.
     /// Accessible only through authoritative bind methods.
-    private func bindRoleInternal(hint: Data, role: BleRole) {
-        precondition(hint.count == BleRoleElection.nodeHintBytes, "remoteNodeHint must be 4 bytes")
-        precondition(_remoteNodeHint == nil && _localRole == nil, "Cannot rebind role on BleConnection")
-        precondition(state != .closed && state != .closing && state != .quarantined, "Cannot bind role on inactive connection")
-        precondition(state == .linkInfoWriting || state == .provisionalConnected, "Cannot bind role from state \(state)")
+    /// T17: the pure predicate of the bind family - a caller that must not
+    /// corrupt authoritative state validates the hint with it before
+    /// attempting the bind.
+    public static func canBindRemoteHint(_ hint: Data) -> Bool {
+        return hint.count == BleRoleElection.nodeHintBytes
+    }
+
+    private func bindRoleInternal(hint: Data, role: BleRole) -> Bool {
+        guard hint.count == BleRoleElection.nodeHintBytes else { return false }
+        guard _remoteNodeHint == nil && _localRole == nil else { return false }
+        guard state != .closed && state != .closing && state != .quarantined else { return false }
+        guard state == .linkInfoWriting || state == .provisionalConnected else { return false }
 
         _remoteNodeHint = hint
         _localRole = role
         state = .roleBound
+        return true
     }
 
-    public func bindInitiatorAfterLinkInfoWriteAck(remoteHint: Data) {
+    @discardableResult
+    public func bindInitiatorAfterLinkInfoWriteAck(remoteHint: Data) -> Bool {
         lock.lock()
         defer { lock.unlock() }
-        let s = state
-        precondition(s == .linkInfoWriting, "Cannot bind initiator from state \(s): must be in linkInfoWriting")
-        bindRoleInternal(hint: remoteHint, role: .initiator)
+        guard state == .linkInfoWriting else { return false }
+        return bindRoleInternal(hint: remoteHint, role: .initiator)
     }
 
-    public func bindResponderFromAcceptedIncomingLinkInfo(remoteHint: Data) {
+    @discardableResult
+    public func bindResponderFromAcceptedIncomingLinkInfo(remoteHint: Data) -> Bool {
         lock.lock()
         defer { lock.unlock() }
-        let s = state
-        precondition(s == .provisionalConnected, "Cannot bind responder from state \(s): must be in provisionalConnected")
-        bindRoleInternal(hint: remoteHint, role: .responder)
+        guard state == .provisionalConnected else { return false }
+        return bindRoleInternal(hint: remoteHint, role: .responder)
     }
 
     public func startLinkInfoRead() {

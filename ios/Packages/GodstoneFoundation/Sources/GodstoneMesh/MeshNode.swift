@@ -75,16 +75,6 @@ public final class MeshNode {
         self.ble.identity = identity
     }
 
-    /// Convenience initializer for tests without explicit SessionManager.
-    public convenience init(identity: MeshIdentity, store: MessageStore,
-                            deliveryTracker: DeliveryTracker) {
-        let dummySessions = SessionManager(
-            identity: identity,
-            trustAuthority: FailClosedTrustAuthority()
-        )
-        self.init(identity: identity, store: store, deliveryTracker: deliveryTracker, sessions: dummySessions)
-    }
-
     internal func canStart(linkReady: Bool) -> Bool {
         return linkReady && sessions.isActive
     }
@@ -125,7 +115,7 @@ public final class MeshNode {
         guard Self.linkLayerReady else { return .unavailable(Self.linkLayerOpenReason) }
         return dispatchSos(payload: payload) { [weak self] frame, peer in
             guard let self else { return false }
-            return self.ble.send(frame, to: peer)
+            return self.ble.send(frame, to: peer) == .admitted
         }
     }
 
@@ -301,11 +291,5 @@ extension MeshNode: TransportDelegate {
         // `receivedFrom` records "sender not yet identified" -- honest, and this
         // path is unreachable while linkLayerReady=false in any case.
         ingestInbound(frame, receivedFrom: Data())
-    }
-}
-
-private struct FailClosedTrustAuthority: PeerBindingTrustAuthority {
-    func applyValidatedBinding(_ binding: ValidatedPeerBinding) -> PeerTrustApplyResult {
-        return .storageFailure
     }
 }
