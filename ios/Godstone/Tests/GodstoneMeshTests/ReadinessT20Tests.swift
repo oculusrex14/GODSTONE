@@ -1207,17 +1207,21 @@ final class ReadinessT20Tests: XCTestCase {
         }
         XCTAssertNotNil(conn.activeLeaseOf(UInt8(sealed[0].seq)),
                         "the true event stood admitted under the true epoch")
-        // the selfsame shape of event with one counsel false: the epoch
-        // misrepresented, every other counsel true (the very manager, the
-        // very generation) - the epoch clause alone can be refusing it
+        // the selfsame shape of event with the epoch counsel rendered as
+        // zero: the reduction's own clause (sourceEpoch == 0 || lifetime
+        // matches) EXEMPTS zero by its own terms, and the live context
+        // counts its epochs from one - so at this door only the
+        // authenticator's first clause can be refusing the event, the
+        // single witness of its doing
         let trueEpoch = bob.currentTransportEpoch
+        XCTAssertGreaterThan(trueEpoch, 0, "the house counts its epochs from one")
         let speakingPM = bob.requireContextPeripheralForTest()
         _ = bob.reductionProcessInboundUnsubscribe(centralId: centralId, expectedGen: gen,
                                                  characteristic: nil,
-                                                 sourceEpoch: trueEpoch &+ 1,
+                                                 sourceEpoch: 0,
                                                  from: speakingPM)
         XCTAssertNotNil(bob.connection(for: centralId),
-                        "the epoch clause alone refused the misrepresented event: the relation lives")
+                        "the authenticator's epoch clause alone refused the zero-epoch event: the relation lives")
         XCTAssertTrue(bob.isRelationPublished(direction: .inboundPeripheral, peerId: centralId,
                                              generation: gen),
                       "and the publication lives with it")
