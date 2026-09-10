@@ -1283,7 +1283,7 @@
       ]
     }
   },
-  "current_task": null,
+  "current_task": "T15",
   "external_blockers": [
     "A06",
     "APPROVED_CONTENT",
@@ -1292,7 +1292,12 @@
     "SIGNING"
   ],
   "failed_attempts": [],
-  "in_progress": null,
+  "in_progress": {
+    "claimed_head": "eb2c960bed0850aa67e86cdb216d648039bc6d8c",
+    "claimed_utc": "2026-09-10T00:23:28Z",
+    "objective": "per card",
+    "task": "T15"
+  },
   "last_code_head": "6b760539adb7335294cd660005d5db1e7c67aa52",
   "last_observed_head": "6b760539adb7335294cd660005d5db1e7c67aa52",
   "latest_verification": {
