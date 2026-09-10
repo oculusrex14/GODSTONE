@@ -52,6 +52,7 @@ import json
 import os
 import pathlib
 import re
+import shutil
 import subprocess
 import sys
 
@@ -254,10 +255,28 @@ SEMANTIC = [
         "id": "T20-SM3-ios-epoch-bypass",
         "platform": "swift",
         "file": "ios/Godstone/Sources/GodstoneMesh/BleTransport.swift",
+        # the first campaign confessed this needle EQUIVALENT in the steady
+        # rig - there the lifetime record's own identical epoch check,
+        # downstream, refuses the same misrepresented source, masking the
+        # bypass. The mask lifts under rotation: the elder stale-manager
+        # case rotates the context between the event's capture and its
+        # delivery, and there this first clause stands alone at the gate -
+        # observable, and killable. The witness is aimed at that case; the
+        # twin class runs beside it to keep the whole field honest.
         "find": "        guard sourceEpoch == context.epoch, context.epoch == currentTransportEpoch else { return false }",
-        "replace": "        guard true, context.epoch == currentTransportEpoch else { return false }",
+        # the second campaign's elimination argued further: the elder event
+        # is refused at the second conjunct (context.epoch against the
+        # transport's live counter), not the first - so a faithful bypass of
+        # THE epoch check sweeps the whole first line, as the card's name
+        # demands, and the retained clauses no longer stand keep
+        "replace": "        guard true else { return false }",
         "why": "the epoch revalidation of the threefold authenticator is short-circuited: a misrepresented epoch is admitted, with every symbol and test present",
-        "witness": "GodstoneMeshTests.ReadinessT20Tests/testTheCrossedTraceFromAForeignManagerIsRefusedAndTheWrongTokenDiscarded",
+        # the twelfth case of the twin suite is the court of this clause
+        # alone: the selfsame event shape at the selfsame door, every other
+        # counsel true, the epoch only misrepresented - and the control at
+        # the end proves the true epoch passes where the false one fell
+        "witness": "testTheStaleEpochAtTheUnsubscribeDoorIsRefusedByTheEpochClauseAlone",
+        "swift_filters": ["ReadinessT20Tests"],
     },
     {
         "id": "T20-SM4-ios-sender-bypass",
@@ -266,7 +285,8 @@ SEMANTIC = [
         "find": "        guard sender === expectedManager else { return false }",
         "replace": "        guard true || sender === expectedManager else { return false }",
         "why": "the source-instance identity of the threefold authenticator is short-circuited: a foreign manager speaks, with every symbol and test present",
-        "witness": "GodstoneMeshTests.ReadinessT20Tests/testTheCrossedTraceFromAForeignManagerIsRefusedAndTheWrongTokenDiscarded",
+        "witness": "testTheCrossedTraceFromAForeignManagerIsRefusedAndTheWrongTokenDiscarded",
+        "swift_filter": "ReadinessT20Tests",
     },
     {
         "id": "T20-SM5-ios-advance-forever",
@@ -275,12 +295,15 @@ SEMANTIC = [
         "find": "            if now >= asm.lease.deadlineMono {",
         "replace": "            if now >= asm.lastActivityTime + AssemblyLease.leaseSeconds {",
         "why": "the absolute term rides the refreshed activity stamp: a dribbling peer advances the deadline forever and the relation never falls through its owner",
-        "witness": "GodstoneMeshTests.ReadinessT20Tests/testTheAbsoluteTermExpiresTheDribbledAssemblyThoughTheSlidingWindowIsRefreshed",
+        "witness": "testTheAbsoluteTermExpiresTheDribbledAssemblyThoughTheSlidingWindowIsRefreshed",
+        "swift_filter": "ReadinessT20Tests",
     },
 ]
 
 EXEC_RE = re.compile(r"Executed ([0-9]+) tests, with ([0-9]+) failures")
-CASE_RE = re.compile(r"Test Case '-\[([^\]]+)\]' (passed|failed)")
+# the failed-case extractor, stated as one expression: each legacy line that
+# pronounces a method failed yields the method's name, and nothing else.
+FAILED_CASE_RE = re.compile(r"Test Case '-\[[^\]]*? ([A-Za-z][A-Za-z0-9_]*?)\]' failed")
 SWIFT_COMPILE_RE = re.compile(r"\.swift:[0-9]+:[0-9]+: error:")
 KT_COMPILE_RE = re.compile(r"^e: ", re.M)
 
@@ -327,22 +350,20 @@ def _run_harness(entry, wt_path, timeout=2400):
                 run += int(m.group(1))
                 fails += int(m.group(2)) + int(m.group(3))
                 for cn, _det in re.findall(
-                        r'<testcase name="([^"]+)"[^>]*>\s*<(?:failure|error)[^>]*message="', t):
+                        r'<testcase name="([^"]+)"[^>]*>\s*<(?:failure|error)[^>]*message="([^"]*)"', t):
                     failed.add(cn)
         return build_exit, (run if run else None), failed, blob
-    proc = subprocess.run(
-        ["swift", "test", "--package-path", "ios/Packages/GodstoneFoundation",
-         "--filter", entry["witness"]],
-        cwd=wt_path, capture_output=True, text=True, timeout=timeout)
+    # the class-form filter is this harness's dialect: the method-form
+    # filter answers 'Test run with 0 tests' and blinds the oracle
+    argv = ["swift", "test", "--package-path", "ios/Packages/GodstoneFoundation"]
+    for flt in entry.get("swift_filters", [entry.get("swift_filter", "ReadinessT20Tests")]):
+        argv += ["--filter", flt]
+    proc = subprocess.run(argv, cwd=wt_path, capture_output=True, text=True, timeout=timeout)
     blob = (proc.stdout or "") + (proc.stderr or "")
     build_exit = 1 if SWIFT_COMPILE_RE.search(blob) else 0
     totals = [int(a) for a, b in EXEC_RE.findall(blob) if int(a) >= 1]
     run = max(totals) if totals else None
-    failed = set()
-    for name, verdict in CASE_RE.findall(blob):
-        if verdict == "failed":
-            tail = name.rpartition(" ")[2]
-            failed.add(tail.rpartition("]")[0])
+    failed = {n for n in FAILED_CASE_RE.findall(blob) if n}
     return build_exit, run, failed, blob
 
 
@@ -382,11 +403,17 @@ def run_semantic(report_only, emit_dir, baseline_sha, work_parent):
             _worktree_remove(wt_path)
         try:
             _worktree_add(head, wt_path)
+            # machine-local provisioning: the SDK pointer is uncommitted by
+            # law, so the lab cannot inherit it from the revision. Copy it in
+            # (provisioning, not test content) before any harness may speak.
+            prov = os.path.join(ROOT, "android", "local.properties")
+            if os.path.exists(prov):
+                shutil.copyfile(prov, os.path.join(wt_path, "android", "local.properties"))
             # the mirrored package is the compiler's true input on the swift
             # side; regenerate it in the lab so the run reads the very sources
             # under audit, and let any drift show rather than be hidden
             subprocess.run([sys.executable, "scripts/sync_ios_foundation_package.py"],
-                           cwd=wt_path, capture_output=True, timeout=300)
+                           cwd=wt_path, capture_output=True, timeout=300, check=True)
             target = os.path.join(wt_path, entry["file"])
             text = open(target, encoding="utf-8").read()
             anchor_count = text.count(entry["find"])
@@ -408,6 +435,27 @@ def run_semantic(report_only, emit_dir, baseline_sha, work_parent):
             post = open(target, encoding="utf-8").read()
             assert post.count(entry["replace"]) == 1 and post.count(entry["find"]) == 0, \
                 "the mutation did not install cleanly"
+            # the island's compiler reads the mirrored package: after any
+            # mutation of a canonical source the mirror must be re-synced,
+            # or the mutant never reaches the binary and a false escape is
+            # recorded against a witness that never saw the mutation
+            subprocess.run([sys.executable, "scripts/sync_ios_foundation_package.py"],
+                           cwd=wt_path, capture_output=True, timeout=300, check=True)
+            if entry["platform"] == "swift":
+                # a witness may only swear upon the mirrored package it saw
+                # with its own eyes: confirm the mutation is in the compiler's
+                # true input, retrying the sync once should a racing teardown
+                # of the previous harness have obscured it
+                mir = os.path.join(wt_path, entry["file"].replace(
+                    "ios/Godstone/Sources/", "ios/Packages/GodstoneFoundation/Sources/"))
+                for _ in range(2):
+                    mt = open(mir, encoding="utf-8").read()
+                    if mt.count(entry["replace"]) == 1 and mt.count(entry["find"]) == 0:
+                        break
+                    subprocess.run([sys.executable, "scripts/sync_ios_foundation_package.py"],
+                                   cwd=wt_path, capture_output=True, timeout=300, check=True)
+                else:
+                    raise AssertionError("the mutation never reached the mirrored package: " + mir)
             # 3. run the witnesses against the mutant
             try:
                 be, run, failed, blob = _run_harness(entry, wt_path)

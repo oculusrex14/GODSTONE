@@ -1185,6 +1185,55 @@ final class ReadinessT20Tests: XCTestCase {
         aliceB.stop()
     }
 
+    func testTheStaleEpochAtTheUnsubscribeDoorIsRefusedByTheEpochClauseAlone() throws {
+        let pair = try ReadinessTrustedPairing.establish()
+        defer { ReadinessTrustedPairing.tearDown(pair) }
+        let centralId = pair.viaAlice
+        var now = TimeInterval(1_700_000_000)
+        let bob = BleTransport(identity: pair.bobIdentity, store: T17MessageStore(),
+                               sessions: pair.bobManager, managerFactory: CaptureFactory(),
+                               clock: TestClock(startingAt: 9_700))
+        let (pm, why) = try responderReady(bob, centralId: centralId,
+                                           remoteHint: pair.aliceIdentity.nodeHint,
+                                           leaseClock: { now })
+        guard let pm = pm else { XCTFail("the responder never stood ready: " + why); return }
+        let gen = bob.peripheralDriver?.getCentralGeneration(centralId) ?? 0
+        let (alice, capturePeer) = try standInitiator(pair)
+        let sealed = sealRecords(1, marker: 6060, clearLen: 1100, via: alice,
+                                 peerId: pair.viaBob, capturePeer: capturePeer)
+        pushWrite(bob, pm, centralId: centralId, bytes: sealed[0].frags[0])
+        guard let conn = bob.connection(for: centralId) else {
+            XCTFail("the write door refused even the true event"); return
+        }
+        XCTAssertNotNil(conn.activeLeaseOf(UInt8(sealed[0].seq)),
+                        "the true event stood admitted under the true epoch")
+        // the selfsame shape of event with one counsel false: the epoch
+        // misrepresented, every other counsel true (the very manager, the
+        // very generation) - the epoch clause alone can be refusing it
+        let trueEpoch = bob.currentTransportEpoch
+        let speakingPM = bob.requireContextPeripheralForTest()
+        _ = bob.reductionProcessInboundUnsubscribe(centralId: centralId, expectedGen: gen,
+                                                 characteristic: nil,
+                                                 sourceEpoch: trueEpoch &+ 1,
+                                                 from: speakingPM)
+        XCTAssertNotNil(bob.connection(for: centralId),
+                        "the epoch clause alone refused the misrepresented event: the relation lives")
+        XCTAssertTrue(bob.isRelationPublished(direction: .inboundPeripheral, peerId: centralId,
+                                             generation: gen),
+                      "and the publication lives with it")
+        // the control at the selfsame door: the true epoch passes the whole
+        // authenticator - proving the refusal above was the epoch's doing
+        // and none other clause's
+        _ = bob.reductionProcessInboundUnsubscribe(centralId: centralId, expectedGen: gen,
+                                                 characteristic: nil,
+                                                 sourceEpoch: trueEpoch,
+                                                 from: speakingPM)
+        XCTAssertNil(bob.connection(for: centralId),
+                     "the true epoch passes the whole authenticator and the relation falls")
+        bob.stop()
+        alice.stop()
+    }
+
     func testEverySourceOfTheCallbackSurfaceIsDeliveredOrNamedForTheRecord() throws {
         let fixture = AdapterTraceFixture(presenter: { id in self.centralPresent(id) })
         let ledger = InvariantLedger(owner: "T20 callback inventory")
