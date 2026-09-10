@@ -879,6 +879,94 @@
       "task_ids": [
         "T17"
       ]
+    },
+    {
+      "claim_id": "CLM-T18-RESERVE-FIRST",
+      "command_ids": [
+        "T18-narrow-gradlew",
+        "T18-subsystem-gradlew"
+      ],
+      "evidence_class": "internal",
+      "evidence_sha256": null,
+      "latest_source_sha": "af291f32ca671bf3db2f1a4a398a3a5ecc7a174c",
+      "limitations": "host-side evidence; the real controller completion cadence, genuine MTU negotiation, and staging survival across a restart await the T73-T75 device gates",
+      "production_path": "android/mesh/src/main/java/io/godstone/mesh/transport/RecordWriter.kt",
+      "profile": "jvm-host",
+      "required_case_ids": [
+        "ReadinessT18Test"
+      ],
+      "requirement": "every check that can refuse a whole record refuses it at the reservation, before the seal burns a nonce or the connection consumes a sequence number: the sealed length against min(16384, 64 times the agreed attribute space less the record header), the fragment ceiling, the station and the budgets; the sixty fifth fraction is told by name and number; the seal happens exactly once per submission and the fragmentation exactly once",
+      "result": "PASS",
+      "state_owner": "builder",
+      "task_ids": [
+        "T18"
+      ]
+    },
+    {
+      "claim_id": "CLM-T18-WINDOW",
+      "command_ids": [
+        "T18-narrow-gradlew",
+        "T18-subsystem-gradlew"
+      ],
+      "evidence_class": "internal",
+      "evidence_sha256": null,
+      "latest_source_sha": "af291f32ca671bf3db2f1a4a398a3a5ecc7a174c",
+      "limitations": "host-side evidence; the real controller completion cadence, genuine MTU negotiation, and staging survival across a restart await the T73-T75 device gates",
+      "production_path": "android/mesh/src/main/java/io/godstone/mesh/transport/RecordWriter.kt",
+      "profile": "jvm-host",
+      "required_case_ids": [
+        "ReadinessT18Test"
+      ],
+      "requirement": "the staging holds at most sixteen values per direction, topped up only as real completions retire values; at most one value flies; a queue-full refusal re-hands the very same fragment unburnt and unaltered; lost and duplicated completions change nothing and are told as stale",
+      "result": "PASS",
+      "state_owner": "builder",
+      "task_ids": [
+        "T18"
+      ]
+    },
+    {
+      "claim_id": "CLM-T18-MIDFAIL",
+      "command_ids": [
+        "T18-narrow-gradlew",
+        "T18-subsystem-gradlew"
+      ],
+      "evidence_class": "internal",
+      "evidence_sha256": null,
+      "latest_source_sha": "af291f32ca671bf3db2f1a4a398a3a5ecc7a174c",
+      "limitations": "host-side evidence; the real controller completion cadence, genuine MTU negotiation, and staging survival across a restart await the T73-T75 device gates",
+      "production_path": "android/mesh/src/main/java/io/godstone/mesh/transport/BleTransport.kt",
+      "profile": "jvm-host",
+      "required_case_ids": [
+        "ReadinessT18Test"
+      ],
+      "requirement": "a write that fails midway closes the relation: the staging is released, the writer accepts nothing further, the connection is closed, and the durable application data is preserved for a fresh session - witnessed by the store answering HELD_DUPLICATE for what it held and HELD_NEW for what follows",
+      "result": "PASS",
+      "state_owner": "builder",
+      "task_ids": [
+        "T18"
+      ]
+    },
+    {
+      "claim_id": "CLM-T18-TYPED-LEGS",
+      "command_ids": [
+        "T18-narrow-gradlew",
+        "T18-subsystem-gradlew"
+      ],
+      "evidence_class": "internal",
+      "evidence_sha256": null,
+      "latest_source_sha": "af291f32ca671bf3db2f1a4a398a3a5ecc7a174c",
+      "limitations": "host-side evidence; the real controller completion cadence, genuine MTU negotiation, and staging survival across a restart await the T73-T75 device gates",
+      "production_path": "android/mesh/src/main/java/io/godstone/mesh/transport/GattServer.kt",
+      "profile": "jvm-host",
+      "required_case_ids": [
+        "ReadinessT18Test"
+      ],
+      "requirement": "the write legs answer by type from their own homes: Accepted, QueueFull for the buffers and admission control that refuse, Failed for the state that cannot stand; the Boolean voices delegate to the typed ones and every former caller keeps its answer",
+      "result": "PASS",
+      "state_owner": "builder",
+      "task_ids": [
+        "T18"
+      ]
     }
   ],
   "note": "Claims appended per task with real evidence; PASS requires positive case counts and matching command output. Device/independent claims never accept host-only results.",

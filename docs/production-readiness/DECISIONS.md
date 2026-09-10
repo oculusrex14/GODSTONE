@@ -446,3 +446,45 @@ the builder writes campaign evidence to the private external root only, and neve
 name in either tree. (5) An unbounded wait is the fault of the observer, not of the observed:
 every await now names itself and dumps the bounded ring, and it was those names that confessed
 the premature ready-marking and the starved dispatch.
+
+## D-T18-a [ACCEPTED] The reservation precedes the seal; the window slides
+The whole-record writer of the outbound path takes its law from the card and the codec
+together: no nonce is burnt and no sequence number consumed until every refusal has been
+made - the sealed length (the clear plus the twenty-four-octet envelope the transport
+ciphertext format lays out: nonce eight, tag sixteen) against min(MAX_RECORD, MAX_FRAGMENTS
+times the agreed attribute space less the eight-octet record header), the fragment ceiling,
+the station of the relation, and the budgets of the direction. The seal then happens exactly
+once and the fragmentation exactly once, the sequence number is taken at that single seat
+(takeOutboundSequence), and the values enter the staging - at most sixteen held, at most one
+in flight, at most four records admitted - as an invariant kept by topping up on real
+completions, not as a bar at the gate: a record of sixty-four fractions enters while the
+window fills and drains about it, the queue-full refusal re-hands the very same fragment
+unaltered, and a write that fails midway closes the relation and releases the staging while
+the durable store stands untouched for a fresh session. The fixed five hundred twelve octet
+bulk gate left the send path as the card commands - the dynamic ceiling carries the full
+digest where the old gate refused - and the interface property canBulk with its constant
+remain for the transports that report them. The two voices of every leg (Boolean and typed)
+answer through one source, the Boolean delegating to the typed, so no caller old or new is
+deceived.
+
+## D-T18-b [ACCEPTED] Builder runtime facts (this environment)
+(1) A fresh generator seeded within one clock tick repeats its neighbour's stream: the
+fixture's identity draws, each instantiating its own SecureRandom inside the same
+millisecond, drew sixty-four equal hints and the pair loop despaired of an ascending
+relation. One generator, shared and called at load, cured it; witnesses that draw
+randomness share the source, they do not mint it afresh per call. (2) The fork compiler
+refuses while (true) with continue standing inside an inline synchronised lambda - it
+reports 'Nothing was expected' where the corpus elsewhere, in plain functions, permits
+the same construction; the hand-off was reformed as a total guard without a loop and the
+complaint ceased. (3) The testing framework's fail answers void in this language binding:
+an elvis whose right arm is fail() yields Any and poisons the locals' types; error(),
+which returns Nothing, is the right verb for the elvis, and fail() keeps its station as
+the bare statement. (4) The campaign's law proved itself again: a mutant must be
+equivalent to no surviving verdict - the first M2 struck only the in-flight identity and
+survived, because the duplicate it would misdirect arrived upon an empty flight; the
+witness was strengthened to name the travelled fragment while another value stood in
+flight, the mutant to strike both acknowledgement gates, and the kill then told the true
+tale. (5) The recording fake registers attempts as faithfully as completions - the two
+refused hands stand in the written list beside the eighteen values that travelled, and
+the expectations count all twenty; a witness that counted only the successes would have
+misspoken the queue.
