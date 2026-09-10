@@ -751,6 +751,9 @@ final class ReadinessT17Tests: XCTestCase {
         XCTAssertEqual(c.state, .roleBound)
 
         XCTAssertFalse(c.beginHandshake(), "the duplex is not ready: no subscription")
+        XCTAssertFalse(c.markTrustedReady(),
+                       "the trusted door stays shut while the handshake has not begun")
+        XCTAssertEqual(c.state, .roleBound, "the refusal preserved the stage")
         c.isNotificationSubscribed = true
         XCTAssertTrue(c.beginHandshake())
         XCTAssertEqual(c.state, .handshakeInProgress)
