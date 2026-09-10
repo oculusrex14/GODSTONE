@@ -488,3 +488,54 @@ tale. (5) The recording fake registers attempts as faithfully as completions - t
 refused hands stand in the written list beside the eighteen values that travelled, and
 the expectations count all twenty; a witness that counted only the successes would have
 misspoken the queue.
+
+
+## D-T19-a [ACCEPTED] The reservation precedes the seal; each direction carries its own maximum
+The whole-record writer of the outbound path speaks the selfsame contract the Android twin
+keeps, in the island's own speech: reserve(kind, clearLength, capacity) measures the sealed
+length - the clear text plus the twenty-four octets the transport ciphertext format lays out,
+nonce eight and tag sixteen - against min(MAX_RECORD, MAX_FRAGMENTS times (capacity minus the
+eight-octet record header)), and refuses by value with nothing consumed; the capacity is the
+direction's own, maximumWriteValueLength(for: .withoutResponse) upon the write leg and
+maximumUpdateValueLength upon the manager serving the update leg, so one record may lawfully
+fragment differently at the two ends (the card's own arithmetic: at capacity 264 the two
+ceilings meet exactly at 16384 octets, sixty-four whole fractions of 256). The seal then
+happens once, the fragmentation once, the sequence number passes its single seat
+(takeOutboundSequenceIfReady, gated by the phase under the same lock), and the window of the
+direction - sixteen held, one in flight, four admitted - slides by topping up only as real
+completions retire values. A refused update returns its very fragment unaltered for the next
+report of readiness; a write without response is retired upon the platform's acceptance and
+claims nothing of the remote; a failed leg closes the relation and releases the staging, the
+durable application data untouched. The responder-send census is kept for every attempt,
+refused or taken alike, through the very handle retained with the lease, as it has been kept
+since T16.
+
+## D-T19-b [ACCEPTED] Builder runtime facts (this island)
+(1) A method the framework imports speaks under the selector the header declares, not the one
+the Swift name would auto-derive: the write maximum is sent as maximumWriteValueLengthForType:,
+and a fake that answered the auto-derived name crashed the suite with an unrecognized selector -
+pinned by an explicit @objc annotation, as the crash in the field taught. (2) Each suite owns
+its witnesses: when production learns to ask a new question of a role, every fake standing for
+that role across the subscribing suites must be bidden to answer it - the responder's send now
+asks maximumUpdateValueLength of the destination central, and the central-acting fakes of the
+subscribing suites were amended. (3) The real manager's answer to an update towards a mock
+handle is the sandbox's own business and was observed to differ between runs; a fixture must
+not rest its verdicts on it - the responder's manager is pinned through the factory seam to
+answer as the house record states. (4) The test filter matches the qualified name
+(target.Class) on a freshly built bundle; a warm build may answer the bare class name - the
+gate logs use the bare dialect proven there, the lab the qualified. (5) The mirrored package
+under ios/Packages is the compiler's true input: the canonical sync script's outputs - sources
+and tests alike - must be committed together with the source they mirror, or a pinned lab
+builds the elder law and the campaign's mutants die of nothing; the mutants are installed
+where the build reads, upon the mirror.
+
+## D-T19-c [ACCEPTED] The elder fixtures restated to the window law
+Two witnessed cases of the elder suites counted in the old hard queue's semantics and were
+restated, each keeping every assertion that still speaks true: the T17 backpressure case once
+demanded that the queue admit a few sends before it reported its full - under the window law
+the verdict follows the leg, the very first send may report backpressure while its values
+wait, and the case now proves the holding through the direction's own writer witnesses; the
+T16 digest-unsubscribe case counted an admitted send as a delivery - with the manager pinned
+the delivery is true again, the census records stand, and the two verdicts were brought back
+to that recorded truth rather than to the old silent queueing. No other expectation of the
+elder suites was touched; the whole package of seven hundred forty seven cases remains green.
