@@ -32,11 +32,11 @@
           "path": "docs/adr/ADR-002-ble-record-layer.md"
         },
         {
-          "blob_sha1": "fdb9f281c05009fe26939a9781ac7a56fb2a8bd7",
+          "blob_sha1": "51be6ff2188542d4ff3f05917e1e1da1f2b261e0",
           "path": "android/mesh/src/main/java/io/godstone/mesh/MeshNode.kt"
         },
         {
-          "blob_sha1": "99c61f2ac7e823eaa9e611a45da780621aaeb3bf",
+          "blob_sha1": "87037c36f90029dbe6dee9338a49b78514c28752",
           "path": "ios/Godstone/Sources/GodstoneMesh/MeshNode.swift"
         }
       ],
