@@ -563,7 +563,12 @@ class ReadinessT18Test {
             assertEquals("the duplicate is told as stale", 1L, writer.staleCompletionsForTest())
             val second = writer.nextOut() ?: error("the second value must be handed")
             assertTrue("at most one value flies", writer.nextOut() == null)
-            assertEquals("the loss invented nothing", 1L, writer.staleCompletionsForTest())
+            // The card's own defect: acknowledging a stale write into the
+            // new operation. A token naming the already travelled fragment
+            // arrives while the second value stands in flight.
+            assertFalse("a stale token naming the travelled fragment is told",
+                        writer.completed(first.operation))
+            assertEquals("the loss invented nothing", 2L, writer.staleCompletionsForTest())
             assertTrue("the real completion travels at last", writer.completed(second.operation))
             assertTrue("the record retires whole", writer.nextOut() == null)
             assertEquals("nothing remains admitted", 0, writer.admittedCountForTest())
