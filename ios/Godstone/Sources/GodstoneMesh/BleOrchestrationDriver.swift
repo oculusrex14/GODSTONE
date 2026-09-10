@@ -608,6 +608,9 @@ public enum BlePeripheralAction: Equatable, Sendable {
     case acceptSubscription(UUID)
     case acceptSubscriptionAndDuplexReady(UUID)
     case rejectSubscription(UUID)
+    case acceptCharacteristicUnsubscribe(UUID, String)
+    case rejectStaleUnsubscribe(UUID)
+    case acceptQuarantinedUnsubscribe(UUID)
     case noOp
 }
 

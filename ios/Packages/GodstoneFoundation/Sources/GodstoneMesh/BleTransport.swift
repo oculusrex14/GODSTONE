@@ -14,13 +14,37 @@ public struct OutboundPhysicalLifetime: Sendable {
     }
 }
 
+/// The record that identifies an inbox subscription: which characteristic
+/// the subscription is for and the updated value acknowledged at the
+/// subscription. Presented by the subscribe callback, held with the lease.
+public struct InboxSubscription: Equatable, Sendable {
+    public let characteristicUuid: CBUUID
+    public let maxUpdateLength: Int
+
+    public init(characteristicUuid: CBUUID, maxUpdateLength: Int) {
+        self.characteristicUuid = characteristicUuid
+        self.maxUpdateLength = maxUpdateLength
+    }
+}
+
 public struct InboundSubscriptionLifetime: Sendable {
     public let relationKey: RelationKey
     public let transportEpoch: UInt64
+    /// T16: the actual CBCentral that presented the subscribe request,
+    /// retained with the lease. Responder notifications are sent through
+    /// this handle - never through a fresh lookup of the subscriber list,
+    /// which a reused identity could have renewed in the meantime.
+    public let retainedCentral: CBCentral?
+    /// The inbox subscription this lease stands for, as presented by the
+    /// callback; nil while the subscription was not distinguishable.
+    public let inboxSubscription: InboxSubscription?
 
-    public init(relationKey: RelationKey, transportEpoch: UInt64) {
+    public init(relationKey: RelationKey, transportEpoch: UInt64,
+                retainedCentral: CBCentral? = nil, inboxSubscription: InboxSubscription? = nil) {
         self.relationKey = relationKey
         self.transportEpoch = transportEpoch
+        self.retainedCentral = retainedCentral
+        self.inboxSubscription = inboxSubscription
     }
 }
 
@@ -78,6 +102,14 @@ public final class RelationPeripheralDelegate: NSObject, CBPeripheralDelegate, @
 public protocol TransportManagerFactory {
     func makeCentralManager(queue: DispatchQueue, restoreIdentifier: String?) -> CBCentralManager
     func makePeripheralManager(queue: DispatchQueue, restoreIdentifier: String?) -> CBPeripheralManager
+    /// T16: an implementation may lower the admission budget to exercise
+    /// rotation; absent an override, the transport's own budget rules.
+    var admissionBudgetOverride: Int? { get }
+
+}
+
+public extension TransportManagerFactory {
+    public var admissionBudgetOverride: Int? { return nil }
 }
 
 public final class DefaultTransportManagerFactory: TransportManagerFactory, @unchecked Sendable {
@@ -122,6 +154,7 @@ public final class ManagerContext: @unchecked Sendable {
         factory: TransportManagerFactory,
         restoresState: Bool
     ) {
+        self.factoryRef = factory
         self.epoch = epoch
         self.queue = DispatchQueue(
             label: "io.godstone.mesh.transport.epoch." + String(epoch),
@@ -145,6 +178,110 @@ public final class ManagerContext: @unchecked Sendable {
         // the queue the pair will run on, and is never repeated.
         self.central.delegate = self.centralProxy
         self.peripheral.delegate = self.peripheralProxy
+    }
+
+    // MARK: - T16 quarantine and admission history (bounded, per epoch)
+    //
+    // When a callback cannot distinguish the reuse of an identity within
+    // this epoch, the identity is quarantined for the epoch and released
+    // only by rotation of the context - never by guessing a timeout. The
+    // metadata is bounded: past the capacity the set holds its ground and
+    // counts the refusals.
+    static let quarantineCapacity = 1_024
+    static let admissionBudget = 4_096
+
+    private let quarantineLock = NSLock()
+    private var quarantinedIdentities: [UUID: String] = [:]
+    private var quarantineOverflowCount = 0
+    private let admissionLock = NSLock()
+    private var admittedIdentities: [UUID] = []
+    private var admissionOverflowCount = 0
+    private let factoryRef: TransportManagerFactory
+    private var rotationDueFlag = false
+
+    /// True while the identity stands quarantined in this context.
+    public func isQuarantined(_ identity: UUID) -> Bool {
+        quarantineLock.lock()
+        let value = quarantinedIdentities[identity] != nil
+        quarantineLock.unlock()
+        return value
+    }
+
+    /// Put the identity under quarantine for the epoch, with bounded
+    /// metadata. Answers false when the set is full and the identity is
+    /// new; the count of refusals keeps the record.
+    @discardableResult
+    public func quarantine(_ identity: UUID, reason: String) -> Bool {
+        quarantineLock.lock()
+        defer { quarantineLock.unlock() }
+        if quarantinedIdentities[identity] != nil {
+            return true
+        }
+        if quarantinedIdentities.count >= ManagerContext.quarantineCapacity {
+            quarantineOverflowCount += 1
+            return false
+        }
+        quarantinedIdentities[identity] = reason
+        return true
+    }
+
+    public func quarantineRecordCount() -> Int {
+        quarantineLock.lock()
+        let value = quarantinedIdentities.count
+        quarantineLock.unlock()
+        return value
+    }
+
+    public func quarantineOverflowRecords() -> Int {
+        quarantineLock.lock()
+        let value = quarantineOverflowCount
+        quarantineLock.unlock()
+        return value
+    }
+
+    public func releaseAllQuarantines() {
+        quarantineLock.lock()
+        quarantinedIdentities.removeAll()
+        quarantineLock.unlock()
+    }
+
+    /// Note one admission against the history. Answers true when the
+    /// budget is exhausted and a rotation of the context is due at the
+    /// next drained point.
+    @discardableResult
+    public func noteAdmission(_ identity: UUID) -> Bool {
+        admissionLock.lock()
+        let budget = factoryRef.admissionBudgetOverride ?? ManagerContext.admissionBudget
+        if admittedIdentities.count < budget {
+            admittedIdentities.append(identity)
+        } else {
+            admissionOverflowCount += 1
+        }
+        let due = admittedIdentities.count >= budget
+        admissionLock.unlock()
+        return due
+    }
+
+    /// Mark that the admission budget is exhausted: a rotation of the
+    /// context becomes due and executes at the next drained point.
+    public func markRotationDue() {
+        admissionLock.lock()
+        rotationDueFlag = true
+        admissionLock.unlock()
+    }
+
+    public func isRotationDue() -> Bool {
+        admissionLock.lock()
+        let value = rotationDueFlag
+        admissionLock.unlock()
+        return value
+    }
+
+    public func admissionHistoryCount() -> Int {
+        admissionLock.lock()
+        let value = admittedIdentities.count
+        admissionLock.unlock()
+        return value
     }
 
     public var isRetired: Bool {
@@ -647,6 +784,73 @@ public final class BleTransport: NSObject, @unchecked Sendable {
         }
     }
 
+    // MARK: - T16 observation rings (forget-only writers under the lock, read-only here)
+    static let responderSendRecordCapacity = 256
+    public struct ResponderSendRecord: Sendable {
+        public let centralId: UUID
+        public let byteCount: Int
+        public let via: ObjectIdentifier
+        public let viaRetained: Bool
+    }
+    private var responderSendsForTest: [ResponderSendRecord] = []
+    private var cancelRequestsForTest: [UUID] = []
+
+    private func recordResponderSendLocked(_ record: ResponderSendRecord) {
+        responderSendsForTest.append(record)
+        if responderSendsForTest.count > BleTransport.responderSendRecordCapacity {
+            responderSendsForTest.removeFirst()
+        }
+    }
+
+    private func recordCancelRequestLocked(_ identity: UUID) {
+        cancelRequestsForTest.append(identity)
+        if cancelRequestsForTest.count > BleTransport.responderSendRecordCapacity {
+            cancelRequestsForTest.removeFirst()
+        }
+    }
+
+    public func responderSendRecordsForTest() -> [ResponderSendRecord] {
+        lockTransport()
+        let value = responderSendsForTest
+        unlockTransport()
+        return value
+    }
+
+    public func cancelRequestRecordsForTest() -> [UUID] {
+        lockTransport()
+        let value = cancelRequestsForTest
+        unlockTransport()
+        return value
+    }
+
+    public func isIdentityQuarantinedForTest(_ identity: UUID) -> Bool {
+        lockTransport()
+        let context = activeManagerContext
+        unlockTransport()
+        return context?.isQuarantined(identity) ?? false
+    }
+
+    public func quarantineRecordCountForTest() -> Int {
+        lockTransport()
+        let context = activeManagerContext
+        unlockTransport()
+        return context?.quarantineRecordCount() ?? 0
+    }
+
+    public func quarantineOverflowRecordsForTest() -> Int {
+        lockTransport()
+        let context = activeManagerContext
+        unlockTransport()
+        return context?.quarantineOverflowRecords() ?? 0
+    }
+
+    public func admissionHistoryCountForTest() -> Int {
+        lockTransport()
+        let context = activeManagerContext
+        unlockTransport()
+        return context?.admissionHistoryCount() ?? 0
+    }
+
     public func timerLeaseCountForTest() -> Int {
         lockTransport()
         let count = timerLeases.count
@@ -969,6 +1173,21 @@ public final class BleTransport: NSObject, @unchecked Sendable {
             unlockTransport()
             return
         }
+        installFreshContextLocked()
+        let canAdv = isServiceRegistered && (peripheral?.state == .poweredOn)
+        unlockTransport()
+
+        if canAdv {
+            startAdvertising()
+        }
+        startScanning()
+    }
+
+    /// Install the fresh pair for an opening or a rotation; the caller
+    /// holds the lock. The epoch advances, the factory breeds the managers
+    /// on their dedicated serial queue, the proxies are wired once at
+    /// birth - the T13 discipline, shared by start() and by rotation.
+    private func installFreshContextLocked() {
         currentTransportEpoch += 1
         // T15 by observation: the operation id source is never reset at an
         // opening. Were it restarted, a successor epoch could issue a key
@@ -1013,13 +1232,32 @@ public final class BleTransport: NSObject, @unchecked Sendable {
         activeInboundLifetimes.removeAll()
         relationDelegates.removeAll()
         isStarted = true
-        let canAdv = isServiceRegistered && (peripheral?.state == .poweredOn)
-        unlockTransport()
+    }
 
-        if canAdv {
-            startAdvertising()
-        }
-        startScanning()
+    /// True when the maps hold nothing in flight: no lifetimes, leases,
+    /// subscriptions, connections, queued updates or publications. Rotation
+    /// takes place only where the context is fully drained.
+    private func contextIsFullyDrainedLocked() -> Bool {
+        return activeOutboundLifetimes.isEmpty && activeInboundLifetimes.isEmpty
+            && timerLeases.isEmpty && subscribedCentrals.isEmpty
+            && outboundCentralConnections.isEmpty && inboundPeripheralConnections.isEmpty
+            && connectedPeripherals.isEmpty && pendingOutboundUpdates.isEmpty
+            && pendingOutboundWrites.isEmpty && publishedRelations.isEmpty
+    }
+
+    /// Rotate a fully drained context whose admission budget is exhausted.
+    /// The pair leaves the stage as it came and a fresh pair is born from
+    /// the factory on a new dedicated queue; the epoch advances, so every
+    /// token, quarantine and history record of the retired context retires
+    /// together with it. Never called on a busy context. The caller holds
+    /// the lock and re-kicks scanning and advertising outside it.
+    private func executeRotationIfNeededLocked() -> Bool {
+        guard isStarted, let context = activeManagerContext, context.isRotationDue() else { return false }
+        guard contextIsFullyDrainedLocked() else { return false }
+        context.retire()
+        lastRetiredManagerContext = context
+        installFreshContextLocked()
+        return true
     }
 
     public func stop() {
@@ -1172,6 +1410,9 @@ public final class BleTransport: NSObject, @unchecked Sendable {
         linkInfoCharacteristics.removeValue(forKey: peerId)
         pendingInitiatorRemoteHints.removeValue(forKey: peerId)
         pendingOutboundWrites.removeValue(forKey: peerId)
+        if cancelPeripheral, connectedPeripherals[peerId] != nil {
+            recordCancelRequestLocked(peerId)
+        }
         let periph = connectedPeripherals.removeValue(forKey: peerId)
         let conn = outboundCentralConnections.removeValue(forKey: peerId)
         conn?.markDisconnected()
@@ -1269,7 +1510,16 @@ public final class BleTransport: NSObject, @unchecked Sendable {
             unlockTransport()
             return true
         } else {
-            guard let centralObj = subscribedCentrals[peerId],
+            // T16: notifications are sent through the central retained with
+            // the lease - the subscriber list entry alone cannot prove which
+            // very central presented the subscription. A quarantined
+            // identity is suppressed altogether.
+            if activeManagerContext?.isQuarantined(peerId) == true {
+                unlockTransport()
+                return false
+            }
+            guard let lease = activeInboundLifetimes[peerId],
+                  let centralObj = lease.retainedCentral,
                   let inboxChar = mutableInboxCharacteristic else {
                 unlockTransport()
                 return false
@@ -1285,6 +1535,8 @@ public final class BleTransport: NSObject, @unchecked Sendable {
                     queue.append(frag)
                 } else {
                     let ok = peripheral?.updateValue(frag, for: inboxChar, onSubscribedCentrals: [centralObj]) ?? false
+                    recordResponderSendLocked(ResponderSendRecord(centralId: peerId, byteCount: frag.count,
+                                                        via: ObjectIdentifier(centralObj), viaRetained: true))
                     if !ok {
                         queue.append(frag)
                     }
@@ -1932,7 +2184,13 @@ public final class BleTransport: NSObject, @unchecked Sendable {
             lockTransport()
             let gen = driver.getCentralGeneration(cid)
             let key = RelationKey(direction: .inboundPeripheral, peerId: cid, generation: gen)
-            activeInboundLifetimes[cid] = InboundSubscriptionLifetime(relationKey: key, transportEpoch: currentTransportEpoch)
+            let priorLease = activeInboundLifetimes[cid]
+            activeInboundLifetimes[cid] = InboundSubscriptionLifetime(relationKey: key, transportEpoch: currentTransportEpoch,
+                                                                      retainedCentral: priorLease?.retainedCentral,
+                                                                      inboxSubscription: priorLease?.inboxSubscription)
+            if let context = activeManagerContext, context.noteAdmission(cid) {
+                context.markRotationDue()
+            }
 
             if inboundPeripheralConnections[cid] == nil {
                 inboundPeripheralConnections[cid] = driver.getInboundConnection(cid)
@@ -1958,15 +2216,15 @@ public final class BleTransport: NSObject, @unchecked Sendable {
         return action
     }
 
-    public func processInboundSubscribe(centralId: UUID, central: CBCentral? = nil, maxUpdateLength: Int = 512, sourceEpoch: UInt64, from manager: CBPeripheralManager) -> BlePeripheralAction {
+    public func processInboundSubscribe(centralId: UUID, central: CBCentral? = nil, characteristic: CBUUID = BleTransport.inboxCharacteristicUuid, maxUpdateLength: Int = 512, sourceEpoch: UInt64, from manager: CBPeripheralManager) -> BlePeripheralAction {
         // T14: the whole reduction of this event - validation, transition,
         // effect scheduling - is one operation on the epoch serial executor.
         return onExecutor {
-            self.reductionProcessInboundSubscribe(centralId: centralId, central: central, maxUpdateLength: maxUpdateLength, sourceEpoch: sourceEpoch, from: manager)
+            self.reductionProcessInboundSubscribe(centralId: centralId, central: central, characteristic: characteristic, maxUpdateLength: maxUpdateLength, sourceEpoch: sourceEpoch, from: manager)
         }
     }
 
-    public func reductionProcessInboundSubscribe(centralId: UUID, central: CBCentral? = nil, maxUpdateLength: Int = 512, sourceEpoch: UInt64, from manager: CBPeripheralManager) -> BlePeripheralAction {
+    public func reductionProcessInboundSubscribe(centralId: UUID, central: CBCentral? = nil, characteristic: CBUUID = BleTransport.inboxCharacteristicUuid, maxUpdateLength: Int = 512, sourceEpoch: UInt64, from manager: CBPeripheralManager) -> BlePeripheralAction {
         // T14: read the drivers once, at the critical instant of admission,
         // under the lock that guards their assignment; the reduction below
         // proceeds on these captured references, outside any lock.
@@ -1993,10 +2251,39 @@ public final class BleTransport: NSObject, @unchecked Sendable {
         switch action {
         case .acceptSubscription(let cid), .acceptSubscriptionAndDuplexReady(let cid):
             lockTransport()
-            let key = activeInboundLifetimes[cid]?.relationKey ?? RelationKey(direction: .inboundPeripheral, peerId: cid, generation: driver.getCentralGeneration(cid))
+            // T16: distinguishability gate. A request that cannot tell which
+            // very central presents itself - none offered where a central is
+            // already retained, or another instance than the retained one
+            // for this identity - is the reuse the platform callbacks cannot
+            // distinguish within one manager epoch: quarantine the identity
+            // for the epoch and refuse the request. Release is by rotation of
+            // the context only, never by guessing a timeout.
+            let existingLease = activeInboundLifetimes[cid]
+            // A missing handle claims nothing: it renews the record and
+            // keeps the retention. Only two distinct real instances
+            // contending for one identity is the reuse the callbacks
+            // cannot distinguish within one epoch - that is quarantined.
+            if let lease = existingLease, let retained = lease.retainedCentral,
+               let offered = central, offered !== retained {
+                activeManagerContext?.quarantine(cid, reason: "indistinguishable-central-reuse")
+                unlockTransport()
+                return .rejectSubscription(cid)
+            }
+            if existingLease == nil, activeManagerContext?.isQuarantined(cid) == true {
+                unlockTransport()
+                return .rejectSubscription(cid)
+            }
+            let key = existingLease?.relationKey ?? RelationKey(direction: .inboundPeripheral, peerId: cid, generation: driver.getCentralGeneration(cid))
             cancelTimerLocked(matching: key)
             if let c = central {
                 subscribedCentrals[cid] = c
+            }
+            activeInboundLifetimes[cid] = InboundSubscriptionLifetime(
+                relationKey: key, transportEpoch: currentTransportEpoch,
+                retainedCentral: central ?? existingLease?.retainedCentral,
+                inboxSubscription: InboxSubscription(characteristicUuid: characteristic, maxUpdateLength: maxUpdateLength))
+            if let context = activeManagerContext, context.noteAdmission(cid) {
+                context.markRotationDue()
             }
             if inboundPeripheralConnections[cid] == nil {
                 inboundPeripheralConnections[cid] = driver.getInboundConnection(cid)
@@ -2014,15 +2301,15 @@ public final class BleTransport: NSObject, @unchecked Sendable {
         return action
     }
 
-    public func processInboundUnsubscribe(centralId: UUID, expectedGen: UInt64, sourceEpoch: UInt64, from manager: CBPeripheralManager) -> BlePeripheralAction {
+    public func processInboundUnsubscribe(centralId: UUID, expectedGen: UInt64, characteristic: CBUUID? = nil, sourceEpoch: UInt64, from manager: CBPeripheralManager) -> BlePeripheralAction {
         // T14: the whole reduction of this event - validation, transition,
         // effect scheduling - is one operation on the epoch serial executor.
         return onExecutor {
-            self.reductionProcessInboundUnsubscribe(centralId: centralId, expectedGen: expectedGen, sourceEpoch: sourceEpoch, from: manager)
+            self.reductionProcessInboundUnsubscribe(centralId: centralId, expectedGen: expectedGen, characteristic: characteristic, sourceEpoch: sourceEpoch, from: manager)
         }
     }
 
-    public func reductionProcessInboundUnsubscribe(centralId: UUID, expectedGen: UInt64, sourceEpoch: UInt64, from manager: CBPeripheralManager) -> BlePeripheralAction {
+    public func reductionProcessInboundUnsubscribe(centralId: UUID, expectedGen: UInt64, characteristic: CBUUID? = nil, sourceEpoch: UInt64, from manager: CBPeripheralManager) -> BlePeripheralAction {
         // T14: read the drivers once, at the critical instant of admission,
         // under the lock that guards their assignment; the reduction below
         // proceeds on these captured references, outside any lock.
@@ -2045,9 +2332,30 @@ public final class BleTransport: NSObject, @unchecked Sendable {
             return .noOp
         }
         let key = lifetime.relationKey
+        // T16: the characteristic filter. An unsubscribe request naming a
+        // characteristic other than the inbox leaves the inbox subscription
+        // intact - acknowledged, and nothing is touched. A request that
+        // cannot say which characteristic was unsubscribed is the ambiguity
+        // the callbacks must not guess through: the identity stands
+        // quarantined for the epoch, the state frozen meanwhile.
+        if let presented = characteristic, presented != BleTransport.inboxCharacteristicUuid {
+            unlockTransport()
+            return .acceptCharacteristicUnsubscribe(centralId, presented.uuidString)
+        }
+        // The legacy form cannot say which very characteristic was
+        // unsubscribed: the identity is quarantined for the epoch, and
+        // the removal proceeds all the same - the driver transitions the
+        // slot and answers with its own action, as recorded.
+        if characteristic == nil {
+            activeManagerContext?.quarantine(centralId, reason: "ambiguous-unsubscribe")
+        }
+        // The inbox CCC: compare the generation the request itself carries
+        // with the generation the subscription stands under - never resolve
+        // the current one here, which would let a stale request remove a
+        // replacement subscribed since.
         if expectedGen != 0 && key.generation != expectedGen {
             unlockTransport()
-            return .noOp
+            return .rejectStaleUnsubscribe(centralId)
         }
         activeInboundLifetimes.removeValue(forKey: centralId)
         cancelTimerLocked(matching: key)
@@ -2058,6 +2366,14 @@ public final class BleTransport: NSObject, @unchecked Sendable {
 
         let action = driver.onCentralUnsubscribed(centralId: centralId, expectedGen: key.generation)
         unpublishRelation(key)
+        lockTransport()
+        let rotated = executeRotationIfNeededLocked()
+        let canAdv = isStarted && isServiceRegistered && (peripheral?.state == .poweredOn)
+        unlockTransport()
+        if rotated {
+            if canAdv { startAdvertising() }
+            startScanning()
+        }
         return action
     }
 
@@ -2098,6 +2414,14 @@ public final class BleTransport: NSObject, @unchecked Sendable {
         unlockTransport()
         let key = RelationKey(direction: .inboundPeripheral, peerId: centralId, generation: effectiveGen)
         unpublishRelation(key)
+        lockTransport()
+        let rotated = executeRotationIfNeededLocked()
+        let canAdv = isStarted && isServiceRegistered && (peripheral?.state == .poweredOn)
+        unlockTransport()
+        if rotated {
+            if canAdv { startAdvertising() }
+            startScanning()
+        }
     }
 
     public func dispatchReceiveRead(centralId: UUID) -> BlePeripheralAction {
@@ -2574,7 +2898,13 @@ public final class BleTransport: NSObject, @unchecked Sendable {
         }
 
         for (centralId, var queue) in pendingOutboundUpdates {
-            guard let centralObj = subscribedCentrals[centralId] else {
+            // T16: send through the retained handle; suppress a quarantined
+            // identity altogether.
+            if activeManagerContext?.isQuarantined(centralId) == true {
+                continue
+            }
+            guard let lease = activeInboundLifetimes[centralId],
+                  let centralObj = lease.retainedCentral else {
                 pendingOutboundUpdates.removeValue(forKey: centralId)
                 continue
             }
@@ -2582,6 +2912,8 @@ public final class BleTransport: NSObject, @unchecked Sendable {
             while !queue.isEmpty {
                 let nextItem = queue[0]
                 let ok = pm.updateValue(nextItem, for: inboxChar, onSubscribedCentrals: [centralObj])
+                recordResponderSendLocked(ResponderSendRecord(centralId: centralId, byteCount: nextItem.count,
+                                                    via: ObjectIdentifier(centralObj), viaRetained: true))
                 if ok {
                     queue.removeFirst()
                 } else {
