@@ -688,7 +688,23 @@ class BleTransport(
     fun handleCentralInboundNotification(peerAddress: String, value: ByteArray) {
         val conn = centralDriver.getActiveConnection(peerAddress) ?: return
         if (!conn.isRoleBound) return
+        activeClientConnections[peerAddress]?.let { client ->
+            val boundGen = client.relationGeneration
+            conn.relationKeyProvider = { RelationKey(BleDirection.OUTBOUND, peerAddress, boundGen) }
+        }
         val ingested = conn.ingestInboundAttValue(value)
+        if (conn.takeLeaseExpiryNotice() != null) {
+            // T20: the absolute term of a whole-record assembly lapsed on
+            // this ingress. The reassembler has released its buffers; only
+            // the owner closes the relation, and it does so through the
+            // very arm the platform own disconnect travels.
+            val client = activeClientConnections[peerAddress]
+            if (client != null) {
+                handleCentralDisconnected(peerAddress, client.clientToken, client.gattGeneration)
+            }
+            centralWriters.remove(peerAddress)
+            return
+        }
         val record = ingested.admittedRecord
         if (record == null) {
             // T17: a rejected record is a bounded event, never a silent
@@ -708,7 +724,19 @@ class BleTransport(
     fun handleServerInboundWrite(peerAddress: String, value: ByteArray) {
         val conn = serverDriver.getInboundConnection(peerAddress) ?: return
         if (!conn.isRoleBound) return
+        serverDriver.getClientGeneration(peerAddress)?.let { gen ->
+            conn.relationKeyProvider = { RelationKey(BleDirection.INBOUND, peerAddress, gen) }
+        }
         val ingested = conn.ingestInboundAttValue(value)
+        if (conn.takeLeaseExpiryNotice() != null) {
+            // T20: the absolute term lapsed on this ingress; the owner
+            // closes through the server own disconnect arm, generation
+            // validated as ever, and the direction writer retires with the
+            // relation it served.
+            handleServerDisconnected(peerAddress, serverDriver.getClientGeneration(peerAddress) ?: return)
+            serverWriters.remove(peerAddress)
+            return
+        }
         val record = ingested.admittedRecord
         if (record == null) {
             if (ingested is BleRecordIngestResult.Rejected) {

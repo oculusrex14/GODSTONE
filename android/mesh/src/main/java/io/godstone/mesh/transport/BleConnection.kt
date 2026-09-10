@@ -77,7 +77,40 @@ class BleConnection(
             return isRoleBound && isNotificationSubscribed && maxAttValueLength >= DEFAULT_MAX_ATT_VALUE_LENGTH
         }
 
-    private val reassembler = BleRecordReassembler(clock)
+    private val reassembler = BleRecordReassembler(
+        clock,
+        onLeaseExpiry = { lease -> noteLeaseExpiry(lease) },
+        relationKeyOf = { relationKeyProvider() },
+    )
+
+    /**
+     * T20: the relation this connection ingress belongs to, as the owner
+     * binds it from the registration it currently holds. A bare connection
+     * (a vector test of the codec, say) keeps the documented unclaimed
+     * placeholder, whose leases govern no live relation and raise no fall.
+     */
+    @Volatile
+    internal var relationKeyProvider: () -> RelationKey = { UNCLAIMED_RELATION }
+
+    @Volatile
+    private var leaseExpiryNotice: AssemblyLease? = null
+
+    internal fun noteLeaseExpiry(lease: AssemblyLease) {
+        if (leaseExpiryNotice == null) {
+            leaseExpiryNotice = lease
+        }
+    }
+
+    /** The owner asks once per ingress what lapsed; the notice is consumed. */
+    internal fun takeLeaseExpiryNotice(): AssemblyLease? {
+        val notice = leaseExpiryNotice
+        leaseExpiryNotice = null
+        return notice
+    }
+
+    internal fun activeLeaseOf(seq: Int): AssemblyLease? = reassembler.activeLeaseOf(seq)
+    internal fun leaseCountForTest(): Int = reassembler.leaseCount()
+    internal fun sweepLeasesForTest(nowSec: Long) = reassembler.sweepExpired(nowSec)
     private var nextOutboundSeq: Int = 0
     private val lock = Any()
 

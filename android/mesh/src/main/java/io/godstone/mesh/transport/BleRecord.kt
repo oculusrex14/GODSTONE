@@ -253,6 +253,8 @@ object BleRecordFragmenter {
 
 class BleRecordReassembler(
     private val clock: () -> Long = { System.currentTimeMillis() / 1000L },
+    private val onLeaseExpiry: ((AssemblyLease) -> Unit)? = null,
+    private val relationKeyOf: () -> RelationKey = { UNCLAIMED_RELATION },
 ) {
     private class InFlightAssembly(
         val recordType: BleRecordType,
@@ -263,10 +265,12 @@ class BleRecordReassembler(
         val buffer: ByteArray,
         val createdTimeSec: Long,
         var lastActivityTimeSec: Long,
+        val lease: AssemblyLease,
     )
 
     private val inFlight = HashMap<Int, InFlightAssembly>()
     private val completedFingerprints = HashMap<Int, String>()
+    private var nextAdmissionId: Long = 1
 
     private fun evictExpired(nowSec: Long) {
         val expiredSeqs = inFlight.filter { (_, asm) ->
@@ -276,6 +280,31 @@ class BleRecordReassembler(
         for (seq in expiredSeqs) {
             inFlight.remove(seq)
         }
+
+        // T20: the absolute term of the assembly lease. Whatever the sliding
+        // window above has been made to forget by late arrivals - fresh or
+        // duplicate, each of which refreshes the activity stamp - the
+        // deadline the admission minted stands fast: no refresh moves it.
+        // When it passes, the buffers are released here and the owner is
+        // told below, so a dribbling peer cannot pin the slots and buffers
+        // indefinitely through the window courtesy.
+        val lapsed = inFlight.filter { (_, asm) ->
+            nowSec >= asm.lease.deadlineMono
+        }.values.map { it.lease }
+        for (lease in lapsed) {
+            inFlight.remove(lease.seq)
+        }
+        for (lease in lapsed) {
+            onLeaseExpiry?.invoke(lease)
+        }
+    }
+
+    /** The lease register probes, for the lifetime suites and the owner. */
+    internal fun activeLeaseOf(seq: Int): AssemblyLease? = inFlight[seq]?.lease
+    internal fun leaseCount(): Int = inFlight.size
+    /** The sweep every ingress runs, exposed for the timer-race schedules. */
+    internal fun sweepExpired(nowSec: Long) {
+        evictExpired(nowSec)
     }
 
     private fun computeFingerprint(recordType: BleRecordType, seq: Int, payload: ByteArray): String {
@@ -306,6 +335,16 @@ class BleRecordReassembler(
             }
 
             val stride = if (hdr.totalLen > 0) (hdr.totalLen + hdr.fragCount - 1) / hdr.fragCount else 0
+            // T20: the admission mints the absolute lease once. The token
+            // names the relation, the sequence, an admission identity that
+            // never repeats for this reassembler, and the deadline; nothing
+            // later received moves any of it.
+            val lease = AssemblyLease(
+                relationKey = relationKeyOf(),
+                seq = hdr.recordSeq.toInt() and 0xFF,
+                admissionId = nextAdmissionId++,
+                deadlineMono = nowSec + AssemblyLease.LEASE_SECONDS,
+            )
             asm = InFlightAssembly(
                 recordType = hdr.recordType,
                 totalLen = hdr.totalLen,
@@ -315,6 +354,7 @@ class BleRecordReassembler(
                 buffer = ByteArray(hdr.totalLen),
                 createdTimeSec = nowSec,
                 lastActivityTimeSec = nowSec,
+                lease = lease,
             )
             inFlight[seq] = asm
         }
