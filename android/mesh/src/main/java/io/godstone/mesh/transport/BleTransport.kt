@@ -692,6 +692,31 @@ class BleTransport(
             val boundGen = client.relationGeneration
             conn.relationKeyProvider = { RelationKey(BleDirection.OUTBOUND, peerAddress, boundGen) }
         }
+        // T23 (section 13): a half-spoken exchange that hath stalled past the
+        // ten-second monotonic hour, with no counsel in flight, is felled by the
+        // owners hand - but never one whose fragments are yet a-comming (that is
+        // the assemblers lease to govern) and never a seat that heareth yet.
+        if (conn.handshakeEngaged && conn.handshakeDeadlineExpired() &&
+            conn.leaseCountForTest() == 0) {
+            conn.handshakeDeadline.markFired()
+            conn.transcript.forgetAll()
+            conn.keyConfirmation.clear()
+            recordDispatchViolation(conn.peerId, "hs.deadline", HandshakeDispatchViolation.HANDSHAKE_DEADLINE_LAPSED)
+            recordRejection(conn.peerId, "ingest.notify", "handshake deadline lapsed")
+            closeInitiatorRelation(peerAddress)
+            return
+        }
+        // T23 (section 13): a sealed key-confirmation round whose echo doth never
+        // come home, past its half a minute, is a timeout of the confirming hour;
+        // the owners hand lett the exact relation fall, the standing clean'd.
+        if (conn.state == BleConnectionState.READY && conn.keyConfirmation.isAwaitingEcho() &&
+            conn.keyConfirmation.echoLapsed() && conn.leaseCountForTest() == 0) {
+            conn.keyConfirmation.clear()
+            recordDispatchViolation(conn.peerId, "hs.confirm", HandshakeDispatchViolation.KEY_CONFIRMATION_DEADLINE_LAPSED)
+            recordRejection(conn.peerId, "hs.confirm", "key confirmation timed out")
+            closeInitiatorRelation(peerAddress)
+            return
+        }
         val ingested = conn.ingestInboundAttValue(value)
         if (conn.takeLeaseExpiryNotice() != null) {
             // T20: the absolute term of a whole-record assembly lapsed on
@@ -719,6 +744,11 @@ class BleTransport(
                 if (ingested.reason == BleRecordRejection.UNEXPECTED_STAGE &&
                     conn.state != BleConnectionState.QUARANTINED &&
                     namesHandshakeRecord(value)) {
+                    recordDispatchViolation(
+                        conn.peerId, "hs.dispatch",
+                        if (conn.state == BleConnectionState.READY)
+                            HandshakeDispatchViolation.UNSOLICITED_HS_AFTER_READY
+                        else HandshakeDispatchViolation.OUT_OF_ORDER_COUNSEL)
                     closeInitiatorRelation(peerAddress)
                 }
             }
@@ -727,7 +757,19 @@ class BleTransport(
         when (record.recordType) {
             BleRecordType.DATA -> inboundRecordFlow.tryEmit(conn.peerId to record)
             BleRecordType.HS2 -> handleInitiatorHandshakeRecord(peerAddress, conn, record)
-            else -> recordRejection(conn.peerId, "hs.read.initiator", "unexpected direction")
+            else -> {
+                // T23 (section 13): an unexpected record at the initiators gate.
+                if (isFarewellRecord(value)) {
+                    recordRejection(conn.peerId, "hs.read.initiator", "farewell received")
+                    closeInitiatorRelation(peerAddress)
+                } else if (namesHandshakeRecord(value)) {
+                    recordDispatchViolation(conn.peerId, "hs.read.initiator", HandshakeDispatchViolation.OUT_OF_ORDER_COUNSEL)
+                    recordRejection(conn.peerId, "hs.read.initiator", "unexpected direction")
+                    closeInitiatorRelation(peerAddress)
+                } else {
+                    recordRejection(conn.peerId, "hs.read.initiator", "unexpected direction")
+                }
+            }
         }
     }
 
@@ -736,6 +778,32 @@ class BleTransport(
         if (!conn.isRoleBound) return
         serverDriver.getClientGeneration(peerAddress)?.let { gen ->
             conn.relationKeyProvider = { RelationKey(BleDirection.INBOUND, peerAddress, gen) }
+        }
+        // T23 (section 13): the half-spoken stall is felled by the owners hand,
+        // never a seat that heareth yet, and never one whose counsel are yet
+        // a-comming (the assemblers lease, of the absolute term, governeth those).
+        if (conn.handshakeEngaged && conn.handshakeDeadlineExpired() &&
+            conn.leaseCountForTest() == 0) {
+            conn.handshakeDeadline.markFired()
+            conn.transcript.forgetAll()
+            conn.keyConfirmation.clear()
+            recordDispatchViolation(conn.peerId, "hs.deadline", HandshakeDispatchViolation.HANDSHAKE_DEADLINE_LAPSED)
+            recordRejection(conn.peerId, "ingest.write", "handshake deadline lapsed")
+            handleServerDisconnected(peerAddress, serverDriver.getClientGeneration(peerAddress) ?: return)
+            serverWriters.remove(peerAddress)
+            return
+        }
+        // T23 (section 13): the confirming echo that never comes home, past its
+        // half a minute, is a timeout; the owners hand lett the exact relation
+        // fall by the server arm, generation and all, the standing clean'd.
+        if (conn.state == BleConnectionState.READY && conn.keyConfirmation.isAwaitingEcho() &&
+            conn.keyConfirmation.echoLapsed() && conn.leaseCountForTest() == 0) {
+            conn.keyConfirmation.clear()
+            recordDispatchViolation(conn.peerId, "hs.confirm", HandshakeDispatchViolation.KEY_CONFIRMATION_DEADLINE_LAPSED)
+            recordRejection(conn.peerId, "hs.confirm", "key confirmation timed out")
+            handleServerDisconnected(peerAddress, serverDriver.getClientGeneration(peerAddress) ?: return)
+            serverWriters.remove(peerAddress)
+            return
         }
         val ingested = conn.ingestInboundAttValue(value)
         if (conn.takeLeaseExpiryNotice() != null) {
@@ -758,6 +826,11 @@ class BleTransport(
                 if (ingested.reason == BleRecordRejection.UNEXPECTED_STAGE &&
                     conn.state != BleConnectionState.QUARANTINED &&
                     namesHandshakeRecord(value)) {
+                    recordDispatchViolation(
+                        conn.peerId, "hs.dispatch",
+                        if (conn.state == BleConnectionState.READY)
+                            HandshakeDispatchViolation.UNSOLICITED_HS_AFTER_READY
+                        else HandshakeDispatchViolation.OUT_OF_ORDER_COUNSEL)
                     handleServerDisconnected(peerAddress,
                         serverDriver.getClientGeneration(peerAddress) ?: return)
                     serverWriters.remove(peerAddress)
@@ -769,12 +842,18 @@ class BleTransport(
             BleRecordType.DATA -> inboundRecordFlow.tryEmit(conn.peerId to record)
             BleRecordType.HS1, BleRecordType.HS3 -> handleResponderHandshakeRecord(peerAddress, conn, record)
             else -> {
-                // T22: the responders own voice come again is a conflicting
-                // sequence; the exact relation falleth. The farewell record
-                // (CLOSE) is spared here - its policy is T23s charge.
-                recordRejection(conn.peerId, "hs.read.responder", "unexpected direction")
-                if (namesHandshakeRecord(value)) {
+                // T23 (section 13): the responders own voice come again is a
+                // conflicting sequence and falleth; the farewell (CLOSE), whose
+                // policy this record heretofore spared, endeth the relation.
+                if (isFarewellRecord(value)) {
+                    recordRejection(conn.peerId, "hs.read.responder", "farewell received")
                     closeResponderRelation(peerAddress)
+                } else if (namesHandshakeRecord(value)) {
+                    recordDispatchViolation(conn.peerId, "hs.read.responder", HandshakeDispatchViolation.OWN_VOICE_AT_THE_GATE)
+                    recordRejection(conn.peerId, "hs.read.responder", "unexpected direction")
+                    closeResponderRelation(peerAddress)
+                } else {
+                    recordRejection(conn.peerId, "hs.read.responder", "unexpected direction")
                 }
             }
         }
@@ -1041,8 +1120,13 @@ class BleTransport(
                         io.godstone.mesh.crypto.NoiseSession.CryptoOpenResult.Rejected
                     }
                     when (outcome) {
-                        is io.godstone.mesh.crypto.NoiseSession.CryptoOpenResult.Authenticated ->
-                            trySend(peerId to outcome.plaintext)
+                        is io.godstone.mesh.crypto.NoiseSession.CryptoOpenResult.Authenticated -> {
+                            // T23: a sealed key-confirmation control is hearkened by D2
+                            // and never carrieth to the application; all else moveth on.
+                            if (!takeInboundKeyConfirmation(peerId, outcome.plaintext)) {
+                                trySend(peerId to outcome.plaintext)
+                            }
+                        }
                         is io.godstone.mesh.crypto.NoiseSession.CryptoOpenResult.Rejected ->
                             recordRejection(peerId, "receive", "unauthenticated payload")
                         is io.godstone.mesh.crypto.NoiseSession.CryptoOpenResult.Expired ->
@@ -1186,6 +1270,194 @@ class BleTransport(
         awaitClose { job.cancel() }
     }
 
+    // MARK: - T23 the handshake failure, duplicate and key-confirmation policy
+    //
+    // Section thirteens instruments, hung upon the transport so the two doors
+    // and the receiver may consult them without a second mutable ready flag:
+    // the bounded transcript of counsels already heard, the ten-second
+    // monotonic hour-glass arm'd at the role binding, and the sealed
+    // key-confirmation round that must be proved before the application
+    // LinkReady is published. The lifecycle state aboven is the sole
+    // authority; these are its servants.
+
+    private val applicationLinkReadyFlow = MutableSharedFlow<ByteArray>(extraBufferCapacity = 64)
+
+    /** The court heareth the drivers own publication of the application
+     *  LinkReady, which is made upon the sealed key-confirmation and never at
+     *  the cryptographic hour alone. */
+    fun applicationLinkReady(): Flow<ByteArray> = callbackFlow {
+        val job = coroutineScope.launch {
+            applicationLinkReadyFlow.collect { peerId -> trySend(peerId) }
+        }
+        awaitClose { job.cancel() }
+    }
+
+    private val dispatchLock = Any()
+    private val dispatchRecords = ArrayDeque<HandshakeDispatchRecord>()
+    private var dispatchOverflow = 0
+
+    internal fun recordDispatchViolation(peerId: ByteArray, site: String, kind: HandshakeDispatchViolation) =
+        synchronized(dispatchLock) {
+            if (dispatchRecords.size >= REJECTION_RECORD_CAPACITY) {
+                dispatchRecords.removeFirst()
+                dispatchOverflow += 1
+            }
+            dispatchRecords.addLast(HandshakeDispatchRecord(peerId.copyOf(), site, kind))
+        }
+
+    internal fun dispatchViolationsForTest(): List<HandshakeDispatchRecord> =
+        synchronized(dispatchLock) { dispatchRecords.toList() }
+
+    internal fun dispatchOverflowCountForTest(): Int = synchronized(dispatchLock) { dispatchOverflow }
+
+    internal fun clearDispatchViolationsForTest() = synchronized(dispatchLock) {
+        dispatchRecords.clear()
+        dispatchOverflow = 0
+    }
+
+    private val linkReadyPublishLock = Any()
+    private val linkReadyPublished = ArrayDeque<ByteArray>()
+
+    internal fun linkReadyPeersForTest(): List<ByteArray> =
+        synchronized(linkReadyPublishLock) { linkReadyPublished.toList() }
+
+    internal fun clearLinkReadyForTest() = synchronized(linkReadyPublishLock) { linkReadyPublished.clear() }
+
+    /** The owners hand, at the proving of the sealed round, publisheth the
+     *  application LinkReady once and only once for a relation. */
+    private fun publishApplicationLinkReadyOnce(peerId: ByteArray): Boolean = synchronized(linkReadyPublishLock) {
+        if (linkReadyPublished.any { it.contentEquals(peerId) }) return@synchronized false
+        if (linkReadyPublished.size >= MAX_ACTIVE_CONNECTIONS) linkReadyPublished.removeFirst()
+        linkReadyPublished.addLast(peerId.copyOf())
+        applicationLinkReadyFlow.tryEmit(peerId.copyOf())
+        return@synchronized true
+    }
+
+    private fun connectionFor(peerId: ByteArray): BleConnection? {
+        val address = resolvePeerAddress(peerId) ?: return null
+        return centralDriver.getActiveConnection(address) ?: serverDriver.getInboundConnection(address)
+    }
+
+    /** The sealed key-confirmation round may be attempted but upon a station
+     *  that is trusted and cryptographically ready; it taketh a fresh CSPRNG
+     *  challenge (or the one the court provideth, for determinism), recordeth
+     *  it upon the relation, and sendeth it forth as an ordinary sealed DATA
+     *  record - never a fourth Noise counsel, never persisted, never relayed. */
+    internal fun beginKeyConfirmation(peerId: ByteArray, supplied: ByteArray? = null): TransportResult {
+        val registry = sessions ?: run {
+            recordRejection(peerId, "hs.confirm", "no trusted session registry")
+            return TransportResult.Rejected("no trusted session registry")
+        }
+        val address = resolvePeerAddress(peerId) ?: run {
+            recordRejection(peerId, "hs.confirm", "malformed peer address")
+            return TransportResult.Rejected("malformed peer address")
+        }
+        val centralConn = centralDriver.getActiveConnection(address)
+        val serverConn = serverDriver.getInboundConnection(address)
+        val conn = centralConn ?: serverConn ?: run {
+            recordRejection(peerId, "hs.confirm", "no such connection")
+            return TransportResult.Rejected("no such connection")
+        }
+        if (conn.state != BleConnectionState.READY) {
+            recordRejection(peerId, "hs.confirm", "key confirmation before the trusted hour")
+            return TransportResult.Rejected("key confirmation before the trusted hour")
+        }
+        if (!registry.isReady(conn.peerId)) {
+            recordRejection(peerId, "hs.confirm", "the slot is not ready")
+            return TransportResult.Rejected("the slot is not ready")
+        }
+        val challenge = supplied?.copyOf() ?: KeyConfirmationControl.newChallenge()
+        conn.keyConfirmation.issue(challenge)
+        val plain = KeyConfirmationControl.encodeChallenge(challenge)
+        val initiator = centralConn != null
+        val writer = if (initiator) centralWriterFor(address, conn) else serverWriterFor(address, conn)
+        return runBlocking(kotlinx.coroutines.Dispatchers.IO) {
+            sendThrough(writer, conn.peerId, plain, registry, conn.peerId, address, initiator)
+        }
+    }
+
+    /** The echo of a standing challenge, sent forth as a sealed DATA record. */
+    internal fun answerKeyConfirmation(peerId: ByteArray, challenge: ByteArray): TransportResult {
+        val registry = sessions ?: return TransportResult.Rejected("no trusted session registry")
+        val address = resolvePeerAddress(peerId) ?: return TransportResult.Rejected("malformed peer address")
+        val centralConn = centralDriver.getActiveConnection(address)
+        val serverConn = serverDriver.getInboundConnection(address)
+        val conn = centralConn ?: serverConn ?: return TransportResult.Rejected("no such connection")
+        if (conn.state != BleConnectionState.READY) return TransportResult.Rejected("not ready")
+        if (!registry.isReady(conn.peerId)) return TransportResult.Rejected("slot not ready")
+        val plain = KeyConfirmationControl.encodeResponse(challenge)
+        val initiator = centralConn != null
+        val writer = if (initiator) centralWriterFor(address, conn) else serverWriterFor(address, conn)
+        return runBlocking(kotlinx.coroutines.Dispatchers.IO) {
+            sendThrough(writer, conn.peerId, plain, registry, conn.peerId, address, initiator)
+        }
+    }
+
+    /**
+     * D2 heareth an opened, authenticated DATA plaintext. If it be a sealed
+     * key-confirmation control it is CONSUMED here and never carried to the
+     * application (section thirteen: control PING is never forwarded); the
+     * caller is told it was taken. Else false, and the frame travelleth on as
+     * ordinary application matter.
+     */
+    private fun takeInboundKeyConfirmation(peerId: ByteArray, opened: ByteArray): Boolean {
+        val frame = KeyConfirmationControl.parse(opened) ?: return false
+        val conn = connectionFor(peerId) ?: return true   // a control for a relation we know not: drop, do not app-deliver
+        if (conn.state != BleConnectionState.READY) return true   // control before the trusted hour: not for the application
+        if (frame.isChallenge) {
+            val standing = conn.keyConfirmation.outstanding()
+            if (standing != null && standing.contentEquals(frame.challenge)) {
+                // our own challenge came home: a reflection, hearkened not
+                recordDispatchViolation(conn.peerId, "hs.confirm", HandshakeDispatchViolation.REFLECTED_CHALLENGE)
+                return true
+            }
+            answerKeyConfirmation(peerId, frame.challenge)
+            return true
+        }
+        // a response
+        if (conn.keyConfirmation.matchesAndConsume(frame.challenge)) {
+            conn.markKeyConfirmed()
+            publishApplicationLinkReadyOnce(conn.peerId)
+        } else {
+            recordDispatchViolation(conn.peerId, "hs.confirm", HandshakeDispatchViolation.FORGED_OR_STALE_ECHO)
+        }
+        return true
+    }
+
+    /** The courts sealed hand: put an arbitrary key-confirmation control frame
+     *  upon the wire to a trusted, ready peer, over the very DATA channel and
+     *  the selfsame whole-record writer - the frame is sealed, fragmented and
+     *  pump'd as any application record, that the D2 policy of the receiver may
+     *  be proved from the outmost ingress. It ISSUETH nothing of its own. */
+    internal fun transmitKeyConfirmationControlForTest(peerId: ByteArray, frame: ByteArray): TransportResult {
+        val registry = sessions ?: return TransportResult.Rejected("no trusted session registry")
+        val address = resolvePeerAddress(peerId) ?: return TransportResult.Rejected("malformed peer address")
+        val centralConn = centralDriver.getActiveConnection(address)
+        val serverConn = serverDriver.getInboundConnection(address)
+        val conn = centralConn ?: serverConn ?: return TransportResult.Rejected("no such connection")
+        if (conn.state != BleConnectionState.READY) return TransportResult.Rejected("not ready")
+        if (!registry.isReady(conn.peerId)) return TransportResult.Rejected("slot not ready")
+        val initiator = centralConn != null
+        val writer = if (initiator) centralWriterFor(address, conn) else serverWriterFor(address, conn)
+        return runBlocking(kotlinx.coroutines.Dispatchers.IO) {
+            sendThrough(writer, conn.peerId, frame, registry, conn.peerId, address, initiator)
+        }
+    }
+
+    /** The courts entry to the responders door: one whole record, presented
+     *  as the reassembler would have delivered it, so that the duplicate
+     *  policy may be proved without a race upon the executor. */
+    internal fun feedResponderHandshakeRecordForTest(peerAddress: String, record: BleReassembledRecord) {
+        val conn = serverDriver.getInboundConnection(peerAddress) ?: return
+        handleResponderHandshakeRecord(peerAddress, conn, record)
+    }
+
+    /** The courts entry to the initiators door, for the selfsame proof. */
+    internal fun feedInitiatorHandshakeRecordForTest(peerAddress: String, record: BleReassembledRecord) {
+        val conn = centralDriver.getActiveConnection(peerAddress) ?: return
+        handleInitiatorHandshakeRecord(peerAddress, conn, record)
+    }
+
     private fun handleResponderHandshakeRecord(peerAddress: String, conn: BleConnection,
                                                   record: BleReassembledRecord) {
         val registry = sessions ?: run {
@@ -1218,6 +1490,10 @@ class BleTransport(
         }
         when (record.recordType) {
             BleRecordType.HS1 -> {
+                if (conn.transcript.knows(BleRecordType.HS1.typeCode.toInt() and 0xFF, record.recordSeq, record.payload)) {
+                    recordRejection(conn.peerId, "hs.read.responder", "hs1 duplicate hearkened not")
+                    return
+                }
                 if (conn.state != BleConnectionState.ROLE_BOUND) {
                     // exactly the expected first is accepted: a message twice
                     // told in hand, or one that comes after the trust, is a
@@ -1227,6 +1503,7 @@ class BleTransport(
                     closeResponderRelation(peerAddress)
                     return
                 }
+                conn.markHandshakeEngaged()
                 val hs2 = registry.responderProcessHs1(conn.peerId, hint, record.payload) ?: run {
                     // trust refused: the counsel is not true; the relation
                     // becometh nothing, and the slot perisheth with it
@@ -1234,6 +1511,7 @@ class BleTransport(
                     closeResponderRelation(peerAddress)
                     return
                 }
+                conn.transcript.remember(BleRecordType.HS1.typeCode.toInt() and 0xFF, record.recordSeq, record.payload)
                 conn.beginHandshake()
                 // T17: the record is written in the handlers own course, as
                 // the iOS twin does; the ready marking that follows can then
@@ -1249,6 +1527,10 @@ class BleTransport(
                 }
             }
             BleRecordType.HS3 -> {
+                if (conn.transcript.knows(BleRecordType.HS3.typeCode.toInt() and 0xFF, record.recordSeq, record.payload)) {
+                    recordRejection(conn.peerId, "hs.read.responder", "hs3 duplicate hearkened not")
+                    return
+                }
                 if (conn.state != BleConnectionState.HANDSHAKE_IN_PROGRESS) {
                     // the third before the first is out of order; the third
                     // again after the trust is a late counsel: either way
@@ -1263,6 +1545,7 @@ class BleTransport(
                     closeResponderRelation(peerAddress)
                     return
                 }
+                conn.transcript.remember(BleRecordType.HS3.typeCode.toInt() and 0xFF, record.recordSeq, record.payload)
                 if (!conn.markTrustedReady()) {
                     // only the trusted third installes a usable session; a
                     // mark that can not be set is a trust failure, and the
@@ -1297,12 +1580,19 @@ class BleTransport(
             closeInitiatorRelation(peerAddress)
             return
         }
+        if (conn.transcript.knows(BleRecordType.HS2.typeCode.toInt() and 0xFF, record.recordSeq, record.payload)) {
+            // T23 (section 13): the selfsame second re-presented is hearkened
+            // not - a retry must NEVER rerun the Noise transitions (the gate).
+            recordRejection(conn.peerId, "hs.read.initiator", "hs2 duplicate hearkened not")
+            return
+        }
         val hs3 = registry.initiatorProcessHs2(conn.peerId, record.payload, advertised) ?: run {
             // trust rejected: HS3 is withheld and the exact relation closes
             recordRejection(conn.peerId, "hs.read.initiator", "hs2 rejected")
             closeInitiatorRelation(peerAddress)
             return
         }
+        conn.transcript.remember(BleRecordType.HS2.typeCode.toInt() and 0xFF, record.recordSeq, record.payload)
         conn.beginHandshake()
         val verdict = runBlocking(kotlinx.coroutines.Dispatchers.IO) {
             writeHandshakeRecordViaClient(peerAddress, conn, BleRecordType.HS3, hs3)
@@ -1352,6 +1642,13 @@ class BleTransport(
             BleRecordType.HS3.typeCode -> true
             else -> false
         }
+    }
+
+    /** T23 (section 13): the peers lawful farewell, known by the CLOSE type
+     *  octet; its policy endeth the relation cleanly. */
+    private fun isFarewellRecord(value: ByteArray): Boolean {
+        if (value.size < BleRecordConstants.HEADER_BYTES) return false
+        return value[1] == BleRecordType.CLOSE.typeCode
     }
 
     private fun closeInitiatorRelation(peerAddress: String) {
@@ -1467,6 +1764,7 @@ class BleTransport(
             return TransportResult.Rejected("begin initiator refused")
         }
         conn.beginHandshake()
+        conn.markHandshakeEngaged()
         return writeHandshakeRecordViaClient(address, conn, BleRecordType.HS1, hs1)
     }
 
