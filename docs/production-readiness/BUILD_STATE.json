@@ -2775,7 +2775,7 @@
       ]
     }
   },
-  "current_task": null,
+  "current_task": "T25",
   "external_blockers": [
     "A06",
     "APPROVED_CONTENT",
@@ -2784,7 +2784,12 @@
     "SIGNING"
   ],
   "failed_attempts": [],
-  "in_progress": null,
+  "in_progress": {
+    "claimed_head": "d63bd1ee025ce327ab5e25dc0cdcece02e376d71",
+    "claimed_utc": "2026-09-11T15:30:55Z",
+    "objective": "Make LinkInfo snapshots nonblocking and subscription-owned: compute held-set digest/queue depth on the store executor after successful commit; no synchronous DB work inside the GATT read callback; single observer registration per runtime start/stop.",
+    "task": "T25"
+  },
   "last_code_head": "12c014f9c41bbf0b22c02744c0428e5c7482b67f",
   "last_observed_head": "12c014f9c41bbf0b22c02744c0428e5c7482b67f",
   "latest_verification": {
