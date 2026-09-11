@@ -150,4 +150,46 @@ final class ReadinessT28Tests: XCTestCase {
         XCTAssertNotEqual(leaseA.leaseId, leaseB.leaseId, "the fresh lease is a distinct globally-unique token")
         XCTAssertEqual(b.liveContextCount(), 1, "the fresh authority begins exactly one context")
     }
+
+    // ---- integration: the authority composed over the REAL Transport contract via the production adapter ----
+    private final class RecordingTransport: Transport {
+        var starts = 0
+        var stops = 0
+        let name = "recording"
+        let isBulkCapable = false
+        func start() { starts += 1 }
+        func stop() { stops += 1 }
+    }
+
+    func testAdapterGovernsTheRealTransportAndBackgroundCannotStartAStoppedRuntime() {
+        let t = RecordingTransport()
+        let a = UnifiedRuntimeLifecycle(seam: LifecycleTransportAdapter(transport: t), nowMillis: { Int64(1_700_000_000_000) })
+        a.start()
+        XCTAssertEqual(t.starts, 1, "a single activation starts the real transport exactly once")
+        a.stop()
+        XCTAssertEqual(t.stops, 1, "a drain stops the real transport exactly once")
+        let before = t.starts
+        a.onBackgrounded(); a.onBackgrounded()
+        XCTAssertEqual(t.starts, before, "a background event on a stopped runtime must not re-start the real transport")
+    }
+
+    func testAdapterPowerOffUniformlyStopsTheRealTransportAndIsTerminal() {
+        let t = RecordingTransport()
+        let a = UnifiedRuntimeLifecycle(seam: LifecycleTransportAdapter(transport: t), nowMillis: { Int64(1_700_000_000_000) })
+        a.start()
+        a.onPowerLoss()
+        XCTAssertGreaterThanOrEqual(t.stops, 1, "power-off drove the real transport to stop once (uniform invalidation)")
+        XCTAssertFalse(a.isReady(), "a powered-off runtime is never READY")
+        let before = t.starts
+        a.start(); a.onBackgrounded()
+        XCTAssertEqual(t.starts, before, "a terminal runtime cannot re-start the real transport")
+        XCTAssertFalse(a.isReady(), "still terminal, never READY")
+    }
+
+    func testAdapterRepeatedAuthorityStartStartsTheRealTransportOnce() {
+        let t = RecordingTransport()
+        let a = UnifiedRuntimeLifecycle(seam: LifecycleTransportAdapter(transport: t), nowMillis: { Int64(1_700_000_000_000) })
+        a.start(); a.start(); a.start()
+        XCTAssertEqual(t.starts, 1, "repeated authority start issues exactly one real Transport.start")
+    }
 }
