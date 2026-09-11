@@ -18,6 +18,11 @@ import io.godstone.mesh.identity.CapabilityStatus
 import io.godstone.mesh.identity.RuntimeTransportLease
 import io.godstone.mesh.identity.TransportSeam
 import io.godstone.mesh.identity.UnifiedRuntimeLifecycle
+import io.godstone.mesh.transport.LifecycleTransportAdapter
+import io.godstone.mesh.transport.PeerEvent
+import io.godstone.mesh.transport.Transport
+import io.godstone.mesh.transport.TransportResult
+import kotlinx.coroutines.flow.Flow
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -165,5 +170,57 @@ class ReadinessT28Test {
         assertFalse("the fresh authority acquires its OWN lease, never the inherited one", leaseA === leaseB)
         assertTrue("the fresh lease is a distinct token", leaseA.leaseId != leaseB.leaseId)
         assertEquals("the fresh authority begins exactly one context", 1, b.liveContextCount())
+    }
+
+    // ---- integration: the authority composed over the REAL Transport contract via the production adapter ----
+    private class RecordingTransport: Transport {
+        var starts = 0
+        var stops = 0
+        override val name: String get() = "recording"
+        override val isBulkCapable: Boolean get() = false
+        override fun start() { starts += 1 }
+        override fun stop() { stops += 1 }
+        override fun peers(): Flow<PeerEvent> = throw UnsupportedOperationException("not exercised by the lifecycle witnesses")
+        override suspend fun send(peerId: ByteArray, bytes: ByteArray): TransportResult = throw UnsupportedOperationException("not exercised by the lifecycle witnesses")
+        override fun received(): Flow<Pair<ByteArray, ByteArray>> = throw UnsupportedOperationException("not exercised by the lifecycle witnesses")
+    }
+
+    @Test
+    fun testAdapterGovernsTheRealTransportAndBackgroundCannotStartAStoppedRuntime() {
+        val t = RecordingTransport()
+        val a = UnifiedRuntimeLifecycle(LifecycleTransportAdapter(t), { clock })
+        a.start()
+        assertEquals("a single activation starts the real transport exactly once", 1, t.starts)
+        a.stop()
+        assertEquals("a drain stops the real transport exactly once", 1, t.stops)
+        val before = t.starts
+        a.onBackgrounded()
+        a.onBackgrounded()
+        assertEquals("a background event on a stopped runtime must not re-start the real transport", before, t.starts)
+    }
+
+    @Test
+    fun testAdapterPowerOffUniformlyStopsTheRealTransportAndIsTerminal() {
+        val t = RecordingTransport()
+        val a = UnifiedRuntimeLifecycle(LifecycleTransportAdapter(t), { clock })
+        a.start()
+        a.onPowerLoss()
+        assertTrue("power-off drove the real transport to stop once (uniform invalidation)", t.stops >= 1)
+        assertFalse("a powered-off runtime is never READY", a.isReady())
+        val before = t.starts
+        a.start()
+        a.onBackgrounded()
+        assertEquals("a terminal runtime cannot re-start the real transport", before, t.starts)
+        assertFalse("still terminal, never READY", a.isReady())
+    }
+
+    @Test
+    fun testAdapterRepeatedAuthorityStartStartsTheRealTransportOnce() {
+        val t = RecordingTransport()
+        val a = UnifiedRuntimeLifecycle(LifecycleTransportAdapter(t), { clock })
+        a.start()
+        a.start()
+        a.start()
+        assertEquals("repeated authority start issues exactly one real Transport.start", 1, t.starts)
     }
 }
