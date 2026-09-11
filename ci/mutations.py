@@ -231,6 +231,14 @@ def run_structural(report_only, emit_dir, baseline_sha):
 # pinned head; the oracle is the named witness case of the readiness suites.
 # --------------------------------------------------------------------------
 SEMANTIC = [
+    # -------------------------------------------------------------- T24 (replay)
+    #
+    #   The bounded conduits late-subscriber replay, at the real iOS transport
+    #   seam. Unlike the saturated-emit branch (which no public path reacheth),
+    #   a late-joiner replay is reachable by the public API, so this control is
+    #   genuinely court-controllable and CAUGHT by its named witness (verified
+    #   KILLED). It complements the publisher-side SM1..SM4.
+    {'id': 'T24-SM5-ios-replay-late-subscriber', 'platform': 'swift', 'file': 'ios/Godstone/Sources/GodstoneMesh/BleTransport.swift', 'find': '        for peer in replay { subscriber(peer) }', 'replace': '        // (mutant) the replay to a late joiner is suppressd', 'why': 'the present ready state is never replayed to a late subscriber; a consumer that attacheth after the sealed round is left in ignorance of what is already ready, so the conduit loseth its late-joiner guarantee', 'witness': 'testALateSubscriberDothSeeThePresentReadyState', 'swift_filter': 'ReadinessT23Tests'},
     # -------------------------------------------------------------- T24
     #
     #   The bounded reliable publisher / router core. The cards two named
