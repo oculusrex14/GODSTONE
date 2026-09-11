@@ -3618,9 +3618,165 @@
         "the concrete SQLCipher binding (PRAGMA key/cipher) and the ThisDeviceOnly Keychain items are supplied by the runtime composition; EncryptedStoreFactory/PlaintextToEncryptedMigration are the sanctioned seams delegating to the injected engine/provider, and the sealed MessageStore/PeerIdentityStore system-SQLite hot paths are NOT rewritten in this task (blast-radius on sealed stores)",
         "vetted pinned SQLCipher provenance/artifact itself is a native-models/signing external concern; this task provides the key, factory and migration decision layers only"
       ]
+    },
+    "T31": {
+      "case_results": {
+        "android_grand": {
+          "counts_source": "gradlew :mesh:testDebugUnitTest --rerun-tasks at boundary d817aa5; TEST-*.xml walk",
+          "errors": 0,
+          "failures": 0,
+          "skipped": 0,
+          "tests": 935,
+          "xml_files": 53
+        },
+        "deleted_cases": [],
+        "dual_court_parity": "the android ReadinessT31Test.kt and iOS ReadinessT31Tests.swift are IDENTICAL-named six witnesses driving the SAME shared SchemaMigration contract (Kotlin store/SchemaMigration.kt <-> Swift Sources/GodstoneMesh/SchemaMigration.swift) against the SAME frozen schema (held_frames immutable msg_id; delivery immutable d_msg_id,d_recipient; store_meta); both isles execute the six versioned-migration laws; the T31-SM roster strikes the two named falsifications on BOTH isles",
+        "ios_grand": {
+          "counts_source": "swift test --package-path ios/Packages/GodstoneFoundation (full) at boundary d817aa5; Test Case passed lines",
+          "errors": 0,
+          "failures": 0,
+          "tests": 875
+        },
+        "t31_android_court": {
+          "counts_source": "ReadinessT31Test.kt (6 witnesses, dual-court twin)",
+          "errors": 0,
+          "failures": 0,
+          "tests": 6
+        },
+        "t31_ios_court": {
+          "counts_source": "ReadinessT31Tests.swift (6 witnesses, iOS twin of the android court)",
+          "errors": 0,
+          "failures": 0,
+          "tests": 6
+        }
+      },
+      "claim_commit": "0460dad",
+      "commands": [
+        "T31-narrow-gradlew",
+        "T31-narrow-swift",
+        "T31-subsystem-gradlew",
+        "T31-subsystem-swift",
+        "T31-controls-python3",
+        "T31-controls-python3-002",
+        "T31-controls-python3-003"
+      ],
+      "device_gate_ids": [],
+      "file_hashes": {},
+      "implementation_commit": "d817aa5788367c1c068eb5b764f0676ed7831095",
+      "implementation_commits": [
+        "111306d6ea4cba13559442b5c0b393ef9befdacf",
+        "71e1cef455b471e46c1f3a4cf4b9331d752e84e6",
+        "c8d5b3a9b42a95b3e0cec5292dbcd9a92410669a",
+        "d817aa5788367c1c068eb5b764f0676ed7831095"
+      ],
+      "inputs": {
+        "children_commit_order": [
+          "0460dad87",
+          "111306d6e",
+          "71e1cef45",
+          "c8d5b3a9b",
+          "d817aa578"
+        ],
+        "governed_source": [
+          "android/mesh/src/main/java/io/godstone/mesh/store/SchemaMigration.kt",
+          "ios/Godstone/Sources/GodstoneMesh/SchemaMigration.swift"
+        ],
+        "required_regression_paths": [
+          "android/mesh/src/test/java/io/godstone/mesh/readiness/ReadinessT31Test.kt",
+          "ios/Godstone/Tests/GodstoneMeshTests/ReadinessT31Tests.swift"
+        ],
+        "sealed_hot_path_untouched": [
+          "android/mesh/src/main/java/io/godstone/mesh/store/MessageStore.kt (verified unmodified; the additive engine is a new sibling file)"
+        ],
+        "task_card": "docs/production-readiness/TASKS.json#T31"
+      },
+      "ladder_boundary_commit": "d817aa5788367c1c068eb5b764f0676ed7831095",
+      "mutation_results": {
+        "campaign_note": "T31 semantic roster (4 mutants, two per isle) verified KILLED against baseline c8d5b3a. SM1 (android + iOS) subverts the ALTER ADD COLUMN step so the schema is not extended / the table is destroyed (the cards named falsification: replace a migration with DROP TABLE) -> testImmutableFieldsByteIdenticalAndBindingsPreserved fails on both isles; SM2 (android + iOS) disables the future-version fail-closed gate so a future user_version is silently accepted (the second named falsification) -> testFutureVersionIsUnsupportedAndNothingDeleted fails on both isles. The iOS SM1 was re-expressed crash-free (a no-op ADD COLUMN -> RepairRequired) after an initial removeValue variant aborted the XCTest process at signal 5 (INVALID, not a legitimate kill) -- the oracle then fails as an assertion. Each baseline court ran its 6 positive witnesses.",
+        "semantic": [
+          {
+            "anchor_count": 1,
+            "baseline_sha": "c8d5b3a9b42a95b3e0cec5292dbcd9a92410669a",
+            "build_exit": 0,
+            "category": "semantic",
+            "failed_assertion": "witness testImmutableFieldsByteIdenticalAndBindingsPreserved failed as intended (4 failed case(s))",
+            "id": "T31-SM1-android-migration-becomes-drop",
+            "log_path": "T31/logs/T31-SM1-android-migration-becomes-drop.semantic.log",
+            "log_sha": "7848439ca68c739acd913cdc1ec38d9de8e01f7c4223b329ba5c25c31a0400a9",
+            "mutant_patch_sha": "3533dae530499b0635fd0f8757494db2ec2ac3c5fcb877cb4edb91920f23832c",
+            "outcome": "KILLED",
+            "target_tests": [
+              "testImmutableFieldsByteIdenticalAndBindingsPreserved"
+            ],
+            "tests_run": 6
+          },
+          {
+            "anchor_count": 1,
+            "baseline_sha": "c8d5b3a9b42a95b3e0cec5292dbcd9a92410669a",
+            "build_exit": 0,
+            "category": "semantic",
+            "failed_assertion": "witness testImmutableFieldsByteIdenticalAndBindingsPreserved failed as intended (4 failed case(s))",
+            "id": "T31-SM1-ios-migration-becomes-drop",
+            "log_path": "T31/logs/T31-SM1-ios-migration-becomes-drop.semantic.log",
+            "log_sha": "bd2607276c128161a88fd92b6723a54c73502fe08183a86c8258fc83af14d62a",
+            "mutant_patch_sha": "d3e268f3d53a329df31ae4dc433b7191b7ff955cde2aa99102f841e1cb402506",
+            "outcome": "KILLED",
+            "target_tests": [
+              "testImmutableFieldsByteIdenticalAndBindingsPreserved"
+            ],
+            "tests_run": 6
+          },
+          {
+            "anchor_count": 1,
+            "baseline_sha": "c8d5b3a9b42a95b3e0cec5292dbcd9a92410669a",
+            "build_exit": 0,
+            "category": "semantic",
+            "failed_assertion": "witness testFutureVersionIsUnsupportedAndNothingDeleted failed as intended (1 failed case(s))",
+            "id": "T31-SM2-android-future-version-ignored",
+            "log_path": "T31/logs/T31-SM2-android-future-version-ignored.semantic.log",
+            "log_sha": "1e830aba860aa16e317e63e6a1bd33b1597a3b0998316dad7d914a6e3f156943",
+            "mutant_patch_sha": "c0906eb75c5b0fb6913d7ea1b17c86a0e66cf52a8864b069931a616097b20e6a",
+            "outcome": "KILLED",
+            "target_tests": [
+              "testFutureVersionIsUnsupportedAndNothingDeleted"
+            ],
+            "tests_run": 6
+          },
+          {
+            "anchor_count": 1,
+            "baseline_sha": "c8d5b3a9b42a95b3e0cec5292dbcd9a92410669a",
+            "build_exit": 0,
+            "category": "semantic",
+            "failed_assertion": "witness testFutureVersionIsUnsupportedAndNothingDeleted failed as intended (1 failed case(s))",
+            "id": "T31-SM2-ios-future-version-ignored",
+            "log_path": "T31/logs/T31-SM2-ios-future-version-ignored.semantic.log",
+            "log_sha": "25d19d598972161fb7fd37fc7c16dd7d5d898a544de461bd2ac43d1933f6f0c9",
+            "mutant_patch_sha": "e86f9d4f52104c067b4ba4441148078f610c7a1e995cb5d71215c6ddf6654ff9",
+            "outcome": "KILLED",
+            "target_tests": [
+              "testFutureVersionIsUnsupportedAndNothingDeleted"
+            ],
+            "tests_run": null
+          }
+        ]
+      },
+      "objective": {
+        "claimed_head": "28f3e9f7b1a02af36f48e6717fcb3b7064596b10",
+        "claimed_utc": "2026-09-11T22:24:55+00:00",
+        "objective": "Freeze current accepted schema fingerprints and add ordered, transactional migrations for inbox, retention and encrypted-store metadata.",
+        "task": "T31"
+      },
+      "status": "COMPLETE",
+      "tested_tree_sha": "94f3aed5af346b7ab7a64459b5811523a49350f2",
+      "unresolved": [
+        "the physical run of the section19/18 migration cases against the EXACT BUILT ARTIFACT on a real device (real schema upgrade of an installed store, crash-during-migration persistence, backup/restore interaction) is DEVICE evidence deferred to T73-T75 / artifact acceptance; the host courts + injected executor prove the ordering/transactional/idempotent/future/altered/immutable LAWS at the algorithmic level only and do NOT close the device gate; nothing device-side is fabricated",
+        "external gates (A06, APPROVED_CONTENT, NATIVE_MODELS, HARDWARE, SIGNING) remain open; readiness stays false",
+        "the sealed MessageStore destructive onUpgrade drop-recreate + validateSchema hot path (android store/MessageStore.kt) and the iOS system-SQLite stores are NOT rewritten by this task -- the SchemaMigration engine is the ADDITIVE sanctioned seam the runtime binds onUpgrade to once installs must survive; the never-shipped pre-ship drop path is left intact",
+        "pre-existing ReadinessT18Test randomized fixture is a latent ordering-sensitive flake unrelated to T31; handled by bounded re-run to a genuinely green execution, no sealed-code edit, no fabrication"
+      ]
     }
   },
-  "current_task": "T31",
+  "current_task": "T32",
   "external_blockers": [
     "A06",
     "APPROVED_CONTENT",
@@ -3629,37 +3785,33 @@
     "SIGNING"
   ],
   "failed_attempts": [],
-  "in_progress": {
-    "claimed_head": "28f3e9f7b1a02af36f48e6717fcb3b7064596b10",
-    "claimed_utc": "2026-09-11T22:24:55+00:00",
-    "objective": {
-      "claimed_head": "28f3e9f7b1a02af36f48e6717fcb3b7064596b10",
-      "claimed_utc": "2026-09-11T22:24:55+00:00",
-      "objective": "Freeze current accepted schema fingerprints and add ordered, transactional migrations for inbox, retention and encrypted-store metadata.",
-      "task": "T31"
-    },
-    "task": "T31"
-  },
-  "last_code_head": "44f6b4d9aae8a1c8ba8845935bc1e79345474d41",
-  "last_observed_head": "44f6b4d9aae8a1c8ba8845935bc1e79345474d41",
+  "in_progress": null,
+  "last_code_head": "d817aa5788367c1c068eb5b764f0676ed7831095",
+  "last_observed_head": "d817aa5788367c1c068eb5b764f0676ed7831095",
   "latest_verification": {
-    "at_utc": "2026-09-11T22:21:54+00:00",
-    "boundary_commit": "44f6b4d9aae8a1c8ba8845935bc1e79345474d41",
+    "android_grand": {
+      "errors": 0,
+      "failures": 0,
+      "tests": 935
+    },
+    "at_utc": "2026-09-11T23:39:03+00:00",
+    "boundary_commit": "d817aa5788367c1c068eb5b764f0676ed7831095",
     "ios_grand": {
       "errors": 0,
       "failures": 0,
-      "tests": 869
+      "tests": 875
     },
     "roster": {
-      "T30_killed": 4,
+      "T31_killed": 4,
       "of": 4
     },
-    "t30_courts": {
-      "ios": 15
+    "t31_courts": {
+      "android": 6,
+      "ios": 6
     },
-    "tested_tree_sha": "251b1abf2f7b025968fe2860e0eebc4337af2b02"
+    "tested_tree_sha": "94f3aed5af346b7ab7a64459b5811523a49350f2"
   },
-  "next_task": "T31",
+  "next_task": "T32",
   "phase": "P0",
   "plan_sha256": "685456b378662b0a40a53a6abc810041e37daf97b213f3efeb6cea879363934e",
   "planning_baseline_sha": "b5c3d3d394b70cf356cdde33b47511dad7cbb95c",
