@@ -2,152 +2,67 @@
   "evidence_root": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE",
   "files": [
     {
-      "path": "T25/commands.json",
-      "sha256": "a6667fdc63d10f9099fff535cffa61113e7b4e584f9deb1127e855c1e23c0fe8",
-      "size": 10489
+      "path": "T26/commands.json",
+      "sha256": "6797bca0bf5268c2635b98227dbca0f348325131539380aec2f8498338ee7115",
+      "size": 3470
     },
     {
-      "path": "T25/logs/T25-SM1-android-read-traverses-store.semantic.log",
-      "sha256": "46862e25de1719f25cae30863a4e3f5b91f85090cbc76fffacbccabb9180b0ef",
-      "size": 675
+      "path": "T26/logs/T26-SM1-android-allocate-before-global-admission.semantic.log",
+      "sha256": "33b5849ae0a90a6c61f8e2797eed2451609142cd124ded83951111b7e63008fc",
+      "size": 686
     },
     {
-      "path": "T25/logs/T25-SM2-ios-read-traverses-store.semantic.log",
-      "sha256": "aaaa21074702cffb20bd010fdd21a5cce100a487e933ba657176aa4ed5727490",
-      "size": 16029
-    },
-    {
-      "path": "T25/logs/T25-SM3-android-rerun-loop-disabled.semantic.log",
-      "sha256": "ba814a73ec7bd41a7389ec9964f61690425dbcfddcc4c75a1831b52d4ba3f8f3",
-      "size": 674
-    },
-    {
-      "path": "T25/logs/T25-SM4-ios-rerun-loop-disabled.semantic.log",
-      "sha256": "379c778b2e77e3d9375de8b2733ec73aa4c1c84c099b5b4ce7b32ac2d8f14053",
-      "size": 16029
-    },
-    {
-      "path": "T25/logs/T25-SM5-android-lease-gate-removed.semantic.log",
-      "sha256": "bdd0303b215e83ea7871d19ac1619f46f6bab8acb6832866cfe79b07dc38f339",
+      "path": "T26/logs/T26-SM2-android-bypass-SOS-charging.semantic.log",
+      "sha256": "c1a3b7ce4ba77066902967ad30737e7b0803dfe290bc6709f6cb7fbe6e32e22a",
       "size": 673
     },
     {
-      "path": "T25/logs/T25-SM6-ios-lease-gate-removed.semantic.log",
-      "sha256": "8739ed0c28a1baba90a86b36e55aa322bc38b405c14693d30c77c21763dd777d",
-      "size": 16029
-    },
-    {
-      "path": "T25/logs/T25-SM7-android-saturation-cap-wrong.semantic.log",
-      "sha256": "dce4c88952486afb318117312afaf5c2f2b98d826e8e6c68f98e4e386de9f614",
-      "size": 675
-    },
-    {
-      "path": "T25/logs/T25-SM8-ios-saturation-cap-wrong.semantic.log",
-      "sha256": "e0ace211f86b266cb2c587c4fcd404f43c4686400390e2d5aa638c7951a1a6d2",
-      "size": 16029
-    },
-    {
-      "path": "T25/logs/T25-controls-python3-002.log",
+      "path": "T26/logs/T26-controls-python3-002.log",
       "sha256": "0b1ac463307b9f7d907105bb19e85bdada5dcd05131d80c492ffd80b4ab3f5f4",
       "size": 234
     },
     {
-      "path": "T25/logs/T25-controls-python3-003.log",
-      "sha256": "67493ebd28a55ece17214e55d318f34ba4af6ac7592268756f1b3dcc304afa21",
-      "size": 125
-    },
-    {
-      "path": "T25/logs/T25-controls-python3-004.log",
+      "path": "T26/logs/T26-controls-python3.log",
       "sha256": "03f0bc422dc53a81fd7f41085300a28e42626c2a4554e8929d897d3c092bd014",
       "size": 1374
     },
     {
-      "path": "T25/logs/T25-controls-python3-005.log",
-      "sha256": "0b1ac463307b9f7d907105bb19e85bdada5dcd05131d80c492ffd80b4ab3f5f4",
-      "size": 234
+      "path": "T26/logs/T26-narrow-gradlew.log",
+      "sha256": "8ebb62f5b32b172426d6035e070f244e57063fba43e8c0c1124f0a23f3399a93",
+      "size": 2873
     },
     {
-      "path": "T25/logs/T25-controls-python3-006.log",
-      "sha256": "67493ebd28a55ece17214e55d318f34ba4af6ac7592268756f1b3dcc304afa21",
-      "size": 125
-    },
-    {
-      "path": "T25/logs/T25-controls-python3.log",
-      "sha256": "03f0bc422dc53a81fd7f41085300a28e42626c2a4554e8929d897d3c092bd014",
-      "size": 1374
-    },
-    {
-      "path": "T25/logs/T25-narrow-gradlew-002.log",
-      "sha256": "19ab6730d3b7de486509779d100d0c4de9b5f2521a85ac94777154dd88894b9e",
-      "size": 2513
-    },
-    {
-      "path": "T25/logs/T25-narrow-gradlew.log",
-      "sha256": "032478a24475b18898b922b0a84f1838da3dd719d430bc265321a9c6a702183d",
-      "size": 2859
-    },
-    {
-      "path": "T25/logs/T25-narrow-swift-002.log",
-      "sha256": "f55197f462c083d886017708aa3cd40cc2f72458a72d28e7df4c1b5a4ba51880",
-      "size": 3728
-    },
-    {
-      "path": "T25/logs/T25-narrow-swift.log",
-      "sha256": "ed2ab964120bfb446e16c6418dc2b536704057b43daf9285e18d3e03c9dd56c7",
-      "size": 2481
-    },
-    {
-      "path": "T25/logs/T25-subsystem-gradlew.log",
-      "sha256": "9033c3514d3538bceeed221d6fefe17390174c5c81be4eebaba43c04605a0339",
+      "path": "T26/logs/T26-subsystem-gradlew.log",
+      "sha256": "f7dabd4a56a0ae8d50df3bdee9cb8efe0f62293b829ab4eb1302a5e0b526fded",
       "size": 2500
     },
     {
-      "path": "T25/logs/T25-subsystem-swift.log",
-      "sha256": "c8b3566c2e01ce079136e857cfc5f6fd6cbebae604fc055718a39dbfc3bcb5ed",
-      "size": 219320
+      "path": "T26/manifest.json",
+      "sha256": "b35728579aa1207215bf538365b1c6df3782f7196863888a13a48b8f7a509f5b",
+      "size": 1639
     },
     {
-      "path": "T25/manifest.json",
-      "sha256": "6f64c5eb745e690e95089866b20b5c8352e218e404ab311a704d83a86ea8747b",
-      "size": 6535
+      "path": "T26/milestones/baseline-milestone.json",
+      "sha256": "4b72694f901f9379842d3a8a11596eebbfa941c2b57a5ab8953d6de2f21b2250",
+      "size": 2298
     },
     {
-      "path": "T25/milestones/android-platform-child.json",
-      "sha256": "58fa033e2250ccb38a770bcb0edaa60667a402ee3f5af387bab0ce1de38f83a1",
-      "size": 1954
+      "path": "T26/milestones/controls-roster.json",
+      "sha256": "2bb36db740fd7fb00c816a16da56f80e9507882bd04fcae972d4074def6b3ecf",
+      "size": 1704
     },
     {
-      "path": "T25/milestones/baseline-milestone.json",
-      "sha256": "2f732d77209d43af866a325e085e30d7729d51dcd5ec3a5a4bb01d0dc2a3cde6",
-      "size": 3995
+      "path": "T26/milestones/design-grounding-milestone.json",
+      "sha256": "e1d3733af1ba9132e00e969d19303525aa4819a1682fc5560d1710fc7da09d82",
+      "size": 2367
     },
     {
-      "path": "T25/milestones/contract-child-milestone.json",
-      "sha256": "d937c5201a14394c1bd799853040465d8427c13ca2fb7c4ab48671764b30be82",
-      "size": 1984
-    },
-    {
-      "path": "T25/milestones/controls-roster.json",
-      "sha256": "be272c29200f7d428e3805cec7eae3920d7359d771e202dc8d5da8ccef7d8c50",
-      "size": 4847
-    },
-    {
-      "path": "T25/milestones/evidence-root-integrity-correction.json",
-      "sha256": "f5f85c6ad2e4e6604757414180d8d12828b7359501d1375fcdd19cc7ba9cefe2",
-      "size": 1207
-    },
-    {
-      "path": "T25/milestones/ios-platform-child.json",
-      "sha256": "7404718da3b9f0100c1f366bbab2fba6ec95059368f67ecc1b79bc4209fc6cbc",
-      "size": 1898
-    },
-    {
-      "path": "T25/milestones/platform-design-grounding-milestone.json",
-      "sha256": "41999aabce2f3173466c0236d57696c07a0fa2150fdfac32729316998abd4fe4",
-      "size": 4521
+      "path": "T26/milestones/platform-court-child.json",
+      "sha256": "c3398fb7c4db343f7bfb92541e75960f066b44aa8d40bf38efd3b6d4bf52b0d3",
+      "size": 1539
     }
   ],
-  "note": "T25 (nonblocking, subscription-owned LinkInfo snapshots) seal evidence: both-isle narrow/subsystem/controls commands, frozen-invariant controls, the 8/8 KILLED semantic roster, and the child milestones. readiness remains false; external gates open.",
+  "note": "T26 (bound Android admission and authenticated traffic budgets) seal evidence: the executed android narrow/subsystem/controls commands, the frozen-invariant controls, the 2/2 KILLED semantic roster, and the child milestones. readiness remains false; external gates open.",
   "schema_version": 1,
-  "task": "T25"
+  "task": "T26"
 }
