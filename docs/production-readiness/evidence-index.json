@@ -2,162 +2,77 @@
   "evidence_root": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE",
   "files": [
     {
-      "path": "T23/commands.json",
-      "sha256": "97e8c636f3b1fc78a107520b2fd289856d235a64494acd325350a4f3320feaef",
-      "size": 6121
+      "path": "T24/commands.json",
+      "sha256": "7f044d88e0b827be316bac0e9fa5336bbe4ce25cdacb1bd645a9d9a37f26164d",
+      "size": 14143
     },
     {
-      "path": "T23/mutations/manifest.json",
-      "sha256": "b700c8e05f0e3c24593394b7215dc8b15371cac06cff85dfe065071bf511a5d2",
-      "size": 17334
-    },
-    {
-      "path": "T23/mutations/logs/T20-SM1-android-token-bypass.semantic.log",
-      "sha256": "d763b4de0dfa7fe47bbfc93c32f6f58f1c8c7276c3a7a74fec6594354ebd0f69",
-      "size": 689
-    },
-    {
-      "path": "T23/mutations/logs/T20-SM2-android-advance-forever.semantic.log",
-      "sha256": "3ce8e77a496005071411be2a21648978fd2faeecfc3fafe6822373b917cbef1f",
-      "size": 692
-    },
-    {
-      "path": "T23/mutations/logs/T20-SM3-ios-epoch-bypass.semantic.log",
-      "sha256": "6bca8cfe794b1cd7ad7c12c30c2c672f38b464f20a8bec5a2f3fd72a20b995f4",
-      "size": 16029
-    },
-    {
-      "path": "T23/mutations/logs/T20-SM4-ios-sender-bypass.semantic.log",
-      "sha256": "6915d8b5ce77deb816a9aaa883fc2370a5c362e2f61107175f145db72cd88352",
-      "size": 16029
-    },
-    {
-      "path": "T23/mutations/logs/T20-SM5-ios-advance-forever.semantic.log",
-      "sha256": "285886551e92463d83b3360e7b7843d5a3e0fb1208e044195eb7364973e487c1",
-      "size": 16029
-    },
-    {
-      "path": "T23/mutations/logs/T21-HS1-android-ready-before-admission.semantic.log",
-      "sha256": "0661eac14f2c6e7a3b5c8e557d46710a06db3e13d4ca3cc46791df3aee661893",
-      "size": 699
-    },
-    {
-      "path": "T23/mutations/logs/T21-HS2-android-raw-noise-direct.semantic.log",
-      "sha256": "b71ff7e49ff5fff96857abd8cac11ef3d218c9e207acc0f8d37ddfb6b2fa1037",
-      "size": 694
-    },
-    {
-      "path": "T23/mutations/logs/T22-SM1-android-ready-at-first.semantic.log",
-      "sha256": "b2548ab7134a11594f65d10814162f8eeaf1730a45f880f4a891eedb801b5da4",
-      "size": 693
-    },
-    {
-      "path": "T23/mutations/logs/T22-SM2-android-stage-gate-open.semantic.log",
-      "sha256": "75e38ec13d074707349d65dc7b1cee6ef9e1dc7159490e9d7ddf6a699f7ec48b",
-      "size": 692
-    },
-    {
-      "path": "T23/mutations/logs/T22-SM3-swift-ready-at-first.semantic.log",
-      "sha256": "dbfc18de6f43edc31fbc265d5d396cff1dde622d63ef436197cf3163434eb24b",
-      "size": 16029
-    },
-    {
-      "path": "T23/mutations/logs/T22-SM4-swift-accept-unsealed-third.semantic.log",
-      "sha256": "eb256775ad30fcecff601dbc4f77131c2883ba7666eecbd90b48ede3935d0396",
-      "size": 16029
-    },
-    {
-      "path": "T23/mutations/logs/T23-SM1-android-dup-hs2-reruns-controller.semantic.log",
-      "sha256": "29f5cf6f9122fc379aa6c9a2599284a66a6085ee069cd2da66fa8ed6c3bdc2ac",
-      "size": 702
-    },
-    {
-      "path": "T23/mutations/logs/T23-SM1-ios-dup-hs2-reruns-controller.semantic.log",
-      "sha256": "6711d23343c7ac8b5202b676ff331b652a0446351b8d7f599871be731d21ccb4",
-      "size": 16029
-    },
-    {
-      "path": "T23/mutations/logs/T23-SM2-android-linkready-before-confirmation.semantic.log",
-      "sha256": "1d7e3d73a0d13fff77a9396d4a117da11e8259c2cf008485536e174392560a9e",
-      "size": 706
-    },
-    {
-      "path": "T23/mutations/logs/T23-SM2-ios-linkready-before-confirmation.semantic.log",
-      "sha256": "35eaf87c7fa05b02d1c36bc6edaf607fbdc280d342e702323b6f86601c8f0484",
-      "size": 16029
-    },
-    {
-      "path": "T23/mutations/logs/T23-SM3-android-accept-forged-echo.semantic.log",
-      "sha256": "44fb1a26975a4b49b985f16ad8c09ebcaec7eec049a26b1bda38da469e32ba0c",
-      "size": 696
-    },
-    {
-      "path": "T23/mutations/logs/T23-SM3-ios-accept-forged-echo.semantic.log",
-      "sha256": "8640f2382e3dbb2e2f32589e41b6268d81f4863d25b94a8804fd12eb96acf041",
-      "size": 16029
-    },
-    {
-      "path": "T23/mutations/logs/T23-SM4-android-deadline-reaps-inflight.semantic.log",
-      "sha256": "3339aca2e2a2713f485651d3c1b076e31cc9057a5720ebe8892bebbdafd7fe4b",
-      "size": 700
-    },
-    {
-      "path": "T23/mutations/logs/T23-SM4-ios-deadline-reaps-inflight.semantic.log",
-      "sha256": "4f21a2e3751d98b8eb921576c1e113997d8c0fdd27d418203528c9b3d1f801aa",
-      "size": 16029
-    },
-    {
-      "path": "T23/mutations/logs/T23-SM5-android-control-forwarded.semantic.log",
-      "sha256": "d79db4c0b1805d363a15c94c3670f7fcc271a6ddf33ed645f218fd27f217f7df",
-      "size": 694
-    },
-    {
-      "path": "T23/mutations/logs/T23-SM5-ios-control-forwarded.semantic.log",
-      "sha256": "d31b21506572b294e3d2f51ca6774086eed5a3902326b68a6552c981f72eee36",
-      "size": 16029
-    },
-    {
-      "path": "T23/logs/T23-controls-python3-002.log",
-      "sha256": "0b1ac463307b9f7d907105bb19e85bdada5dcd05131d80c492ffd80b4ab3f5f4",
-      "size": 234
-    },
-    {
-      "path": "T23/logs/T23-controls-python3-003.log",
-      "sha256": "67493ebd28a55ece17214e55d318f34ba4af6ac7592268756f1b3dcc304afa21",
-      "size": 125
-    },
-    {
-      "path": "T23/logs/T23-controls-python3.log",
+      "path": "T24/logs/T24-controls-python3-004.log",
       "sha256": "03f0bc422dc53a81fd7f41085300a28e42626c2a4554e8929d897d3c092bd014",
       "size": 1374
     },
     {
-      "path": "T23/logs/T23-narrow-gradlew.log",
-      "sha256": "3308dd668c5a843c7df54950b08376bdf51fcd5ead7ffb1bd6a457c4b8eddeb1",
-      "size": 2873
+      "path": "T24/logs/T24-controls-python3-005.log",
+      "sha256": "0b1ac463307b9f7d907105bb19e85bdada5dcd05131d80c492ffd80b4ab3f5f4",
+      "size": 234
     },
     {
-      "path": "T23/logs/T23-narrow-swift.log",
-      "sha256": "220263c0c4748a549a433970586c2616d7ed71c44b7de728194118379ce7bf8f",
-      "size": 4617
+      "path": "T24/logs/T24-controls-python3-006.log",
+      "sha256": "67493ebd28a55ece17214e55d318f34ba4af6ac7592268756f1b3dcc304afa21",
+      "size": 125
     },
     {
-      "path": "T23/logs/T23-subsystem-gradlew.log",
-      "sha256": "2a1512516b4f7c58564c354d9953e9a4e20d9ec1906cd35e773d6b397fc6f3a7",
+      "path": "T24/logs/T24-narrow-gradlew-004.log",
+      "sha256": "348d948518fde2d78fb3bebc3225d6544195719df6d45de7727fbfec54de0d35",
+      "size": 2527
+    },
+    {
+      "path": "T24/logs/T24-narrow-swift-004.log",
+      "sha256": "5494272a7c4f0594d8ea53aa7caaa793be25e0a1b53d08d757d1e061ae4725ce",
+      "size": 2597
+    },
+    {
+      "path": "T24/logs/T24-subsystem-gradlew.log",
+      "sha256": "e354934dc3f9340f96de10d97120a8754f22b488891062b91d265991e448836c",
       "size": 2500
     },
     {
-      "path": "T23/logs/T23-subsystem-swift.log",
-      "sha256": "a83cd2bf44519b62ba5decc8cb1ff8458b0e987bde14fbf4fbb21549563cea60",
-      "size": 208154
+      "path": "T24/logs/T24-subsystem-swift.log",
+      "sha256": "d020eb30a218207e817d00ddf5a220b016714d4285dc688ea972b8c9ec92a81b",
+      "size": 216465
     },
     {
-      "path": "T23/ladder-boundary/ladder-L0-L9-green.log",
-      "sha256": "1ef7ed05f0ef72b412c8f5638e2538b077a1fd5d4b619cef2b37dbea08ac6979",
-      "size": 368
+      "path": "T24/mutations/logs/T24-SM1-android-swallow-offer-verdict.semantic.log",
+      "sha256": "c5bbe4fee660d2974fa6505542b1455ab2ad1641bd1b6fd788b12db16e6e628c",
+      "size": 675
+    },
+    {
+      "path": "T24/mutations/logs/T24-SM2-android-route-lookups-current-peer-by-handle.semantic.log",
+      "sha256": "8080586c6bf52264c7db99f0006da17f88d0c0903db580328546445bea8ffd29",
+      "size": 690
+    },
+    {
+      "path": "T24/mutations/logs/T24-SM3-ios-swallow-offer-verdict.semantic.log",
+      "sha256": "704ed81094958070716b0ffb169927c2df457fc840c2684cbbde4f659c07a130",
+      "size": 16029
+    },
+    {
+      "path": "T24/mutations/logs/T24-SM4-ios-route-lookups-current-peer-by-handle.semantic.log",
+      "sha256": "6022582558bf04638a87b5f260be4b29b7124925102e96ea5db11f95532860a8",
+      "size": 16029
+    },
+    {
+      "path": "T24/mutations/logs/T24-SM5-ios-replay-late-subscriber.semantic.log",
+      "sha256": "3ce896ba702bc198d3a7282522666a2f7d3828937613822d5c71f04a3ca4cd1b",
+      "size": 16029
+    },
+    {
+      "path": "T24/mutations/manifest.json",
+      "sha256": "6700b11a95b357c51d1a3929524814d632c3fbf38df235a2bc480127348ab80a",
+      "size": 21563
     }
   ],
-  "note": "T23 commands, gate logs, the semantic campaign (register run whole: 21/21 KILLED), and the boundary ladder L0:L9 lab-mesh (L0 PASSED x2, L1 PASSED; L2+ await their command manifests).",
+  "note": "T24 commands (narrow/subsystem/controls, all PASSED at C=12c014f9; positive counts recorded in BUILD_STATE.case_results: android grand 886/0/0/0 over 47 XMLs, iOS grand 828/0/0, canonical courts 6/6), and the semantic campaign (T24 SM1-SM5 all KILLED, tests_run 6/6/6/6/16; full semantic roster at C = 26/26 KILLED). No boundary ladder run recorded at T24 (deferred to the phase/five-task cadence).",
   "schema_version": 1,
-  "task": "T23"
+  "task": "T24"
 }
