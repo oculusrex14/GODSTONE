@@ -50,6 +50,7 @@
     "Sources/GodstoneMesh/PeerIdentityStore.swift": "2667ff341bd99de2dec5bfb57b6f58831e6b08821b84ec7986c0a6c8eddcc264",
     "Sources/GodstoneMesh/PeerTrustEngine.swift": "f2c4a4c8faf88a3b589ae1a7753a23d9676c5c8b59944f6adfee11dd8615028c",
     "Sources/GodstoneMesh/PeerTrustModels.swift": "9ed720b085e8f65451f6dc0adbc8c880afead24858b898bd86f2f71897d481fe",
+    "Sources/GodstoneMesh/PlaintextToEncryptedMigration.swift": "61d5355b710ce6bf661113b7e2e59007aca09b9d1908c6187555fb22f6650b22",
     "Sources/GodstoneMesh/Priority.swift": "c6d739221a893c0551ca4228c30d5d8e82c39179fa559614fcd18d9f81690048",
     "Sources/GodstoneMesh/PrivateStoreKeyProvider.swift": "a54485c2a24255b7df3abddf45fac2eba92836fa7535f8575a42ce7c8a54a46f",
     "Sources/GodstoneMesh/RecordWriter.swift": "28ebb78d2e72d54cf7256937d9f4db36dc2b20243bd9e8b4e624b1194e6a53c0",
