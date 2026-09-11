@@ -2279,11 +2279,20 @@ public final class BleTransport: NSObject, @unchecked Sendable {
 
     /// The court heareth the drivers own publication of the application LinkReady,
     /// which is made upon the sealed key-confirmation and never at the
-    /// cryptographic hour alone.
+    /// cryptographic hour alone. A consumer that attacheth AFTER the round is
+    /// replayed the present ready state (T24), as upon the Android twin, so it
+    /// needeth not await a fresh publication to learn what already is ready.
     internal func applicationLinkReady(_ subscriber: @escaping (UUID) -> Void) {
         lockTransport()
         applicationLinkReadyFlow.append(subscriber)
+        // The present ready state is snapshotted under the selfsame lock that
+        // guardeth the register; the telling itself is done beyond the critical
+        // section, as every other tale, that no ear be heard while the lock is held.
+        let replay = linkReadyPublished
         unlockTransport()
+        // Onely THIS new joiner is told the present state; the elder ears keep
+        // their one tale unmultipled.
+        for peer in replay { subscriber(peer) }
     }
 
     internal func linkReadyPeersForTest() -> [UUID] {

@@ -774,6 +774,47 @@ final class ReadinessT23Tests: XCTestCase {
                       "nor was the control forward'd at the responders application either")
     }
 
+    // MARK: - case the seventh-and-a-half: a late subscriber is replayed the present ready state (T24)
+
+    func testALateSubscriberDothSeeThePresentReadyState() throws {
+        // T24 (replay the present ready state to a late subscriber). The iOS
+        // application link-ready conduit, like its Android twin, must tell a
+        // consumer that attacheth AFTER the sealed round what already is ready.
+        let r = try standDoor()
+        guard let _ = try driveToReady(r) else { return }
+        try warmAliceStream(r)                                     // the control ear, attach'd early (replay is empty for it)
+        let challenge = Data((0..<16).map { UInt8($0 &+ 0x71) })
+        r.capturePeer.clearWrites()
+        XCTAssertEqual(r.alice.beginKeyConfirmation(peerId: r.handleB, supplied: challenge), .admitted,
+                       "the challenge must go forth; ring: " + ringOf(r.alice))
+        guard let ping = sample({ r.capturePeer.writes.last }) else {
+            XCTFail("the challenge never reach'd the wire; ring: " + ringOf(r.alice)); return
+        }
+        r.capturePeer.clearWrites()
+        pushToResponder(r, [ping])
+        guard let echo = sample({ lastResponderCapture(r) }) else {
+            XCTFail("the answer never reach'd the wire; ring: " + ringOf(r.bob)); return
+        }
+        clearResponderCaptures(r)
+        pushToInitiator(r, [echo])
+        XCTAssertTrue(waitUntil2({ r.alice.linkReadyPeersForTest() == [r.handleB] }),
+                      "the sealed round must first publish the ready state; ring: " + ringOf(r.alice))
+
+        // NOW a LATE consumer attacheth; it must be told the present ready state at once.
+        var latePeers: [UUID] = []
+        r.alice.applicationLinkReady { uuid in latePeers.append(uuid) }
+        XCTAssertEqual(latePeers, [r.handleB], "a late subscriber must be replay'd the present ready state")
+
+        // A second late joiner likewise seeth the same, and but once each.
+        var late2: [UUID] = []
+        r.alice.applicationLinkReady { uuid in late2.append(uuid) }
+        XCTAssertEqual(late2, [r.handleB], "every late joiner is replay'd the present state, once")
+
+        // The EARLY control ear heard but the one publication: the replay must not
+        // have multiplic'd its tale.
+        XCTAssertEqual(r.aliceSpy.linkReadyPeers.count, 1, "the elder ear is not double-told by the replay")
+    }
+
     // MARK: - case the eighth: the publication is idempotent
 
     func testThePublicationIsIdempotentAndTheEchoSingleShotten() throws {
