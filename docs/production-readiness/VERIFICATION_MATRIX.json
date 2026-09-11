@@ -1428,6 +1428,140 @@
         "EVIDENCE/T22/ladder-boundary"
       ],
       "verified_utc": "2026-09-11T04:03:59Z"
+    },
+    {
+      "id": "CLM-T23-HANDSHAKE-DEADLINE",
+      "statement": "the ten-second monotonic hour-glass is armed at the role binding and stopt at the trusted hour; the owners hand reapeth a stalled, half-spoken exchange only when it is engaged, past the hour, and with nothing in flight - an idle, unspoken seat and a travelling reassembly (which the absolute-term lease governeth) abide unmoved, and the reap falleth the exact relation through the owners disconnect arm, the peer untouched",
+      "required_case_ids": [
+        "ReadinessT23Test.testTheHalfSpokenExchangeFallethAtTheTenSecondHour",
+        "ReadinessT23Tests.testTheHalfSpokenExchangeFallethAtTheTenSecondHour",
+        "ReadinessT23Test.testAnUnspokenSeatAbidethTheHourUnmoved",
+        "ReadinessT23Tests.testAnUnspokenSeatAbidethTheHourUnmoved",
+        "ReadinessT23Test.testATravellingReassemblyIsLeftUntoTheLeaseNotReapedByTheHour",
+        "ReadinessT23Tests.testATravellingReassemblyIsLeftUntoTheLeaseNotReapedByTheHour"
+      ],
+      "task": "T23",
+      "profile": [
+        "jvm-host",
+        "swift-host"
+      ],
+      "kind": "behavioural",
+      "production_paths": [
+        "android/mesh/src/main/java/io/godstone/mesh/transport/BleTransport.kt",
+        "android/mesh/src/main/java/io/godstone/mesh/transport/BleConnection.kt",
+        "android/mesh/src/main/java/io/godstone/mesh/transport/BleHandshake.kt",
+        "ios/Godstone/Sources/GodstoneMesh/BleTransport.swift",
+        "ios/Godstone/Sources/GodstoneMesh/BleConnection.swift",
+        "ios/Godstone/Sources/GodstoneMesh/BleHandshake.swift"
+      ],
+      "evidence": [
+        "EVIDENCE/T23/commands.json",
+        "EVIDENCE/T23/logs",
+        "EVIDENCE/T23/mutations/manifest.json",
+        "EVIDENCE/T23/ladder-boundary"
+      ],
+      "verified_utc": "2026-09-11T10:09:26Z"
+    },
+    {
+      "id": "CLM-T23-NO-IN-PLACE-RETRANSMISSION",
+      "statement": "no counsel is retransmitted in place: a byte-for-byte, sequence-for-sequence re-presenting of a whole frame is hearkened not and the Noise controller is never run a second time for it, while a fresh sequence at a spent stage is a conflicting counsel and perisheth; the transcript keyeth upon the whole frame identity (kind, sequence, bytes), and the application publication is idempotent and the echo single-shotten",
+      "required_case_ids": [
+        "ReadinessT23Test.testTheDuplicateSecondTaleRunnethNotTheControllerTwice",
+        "ReadinessT23Tests.testTheDuplicateSecondTaleRunnethNotTheControllerTwice",
+        "ReadinessT23Test.testTheExactDuplicateIsSparedTheFreshSequencePerisheth",
+        "ReadinessT23Tests.testTheExactDuplicateIsSparedTheFreshSequencePerisheth",
+        "ReadinessT23Test.testThePublicationIsIdempotentAndTheEchoSingleShotten",
+        "ReadinessT23Tests.testThePublicationIsIdempotentAndTheEchoSingleShotten"
+      ],
+      "task": "T23",
+      "profile": [
+        "jvm-host",
+        "swift-host"
+      ],
+      "kind": "behavioural",
+      "production_paths": [
+        "android/mesh/src/main/java/io/godstone/mesh/transport/BleTransport.kt",
+        "android/mesh/src/main/java/io/godstone/mesh/transport/BleConnection.kt",
+        "ios/Godstone/Sources/GodstoneMesh/BleTransport.swift",
+        "ios/Godstone/Sources/GodstoneMesh/BleConnection.swift"
+      ],
+      "evidence": [
+        "EVIDENCE/T23/commands.json",
+        "EVIDENCE/T23/logs",
+        "EVIDENCE/T23/mutations/manifest.json",
+        "EVIDENCE/T23/ladder-boundary"
+      ],
+      "verified_utc": "2026-09-11T10:09:26Z"
+    },
+    {
+      "id": "CLM-T23-KEY-CONFIRMATION-GATE",
+      "statement": "the trusted crypto hour alone publisheth no application readiness; only the sealed key-confirmation round - a challenge and its echoing answer riding the DATA channel of an established relation, never a fourth Noise message, never forwarded nor persisted - carrieth the peer to the single application LinkReady; a forged, a reflected, or a misshapen control is refused and publisheth nothing, and the confirming hour unanswered felleth the relation",
+      "required_case_ids": [
+        "ReadinessT23Test.testTheTrustedHourAlonePublishethNoApplicationReadiness",
+        "ReadinessT23Tests.testTheTrustedHourAlonePublishethNoApplicationReadiness",
+        "ReadinessT23Test.testTheSealedRoundCarriethToApplicationReadinessOnce",
+        "ReadinessT23Tests.testTheSealedRoundCarriethToApplicationReadinessOnce",
+        "ReadinessT23Test.testAForgedEchoIsRefusedAndPublishethNothing",
+        "ReadinessT23Tests.testAForgedEchoIsRefusedAndPublishethNothing",
+        "ReadinessT23Test.testAReflectedChallengeIsNotEchoedAgain",
+        "ReadinessT23Tests.testAReflectedChallengeIsNotEchoedAgain",
+        "ReadinessT23Test.testAMisshapenControlIsTakenForOrdinaryMatter",
+        "ReadinessT23Tests.testAMisshapenControlIsTakenForOrdinaryMatter",
+        "ReadinessT23Test.testTheConfirmingHourUnansweredFellethTheRelation",
+        "ReadinessT23Tests.testTheConfirmingHourUnansweredFellethTheRelation"
+      ],
+      "task": "T23",
+      "profile": [
+        "jvm-host",
+        "swift-host"
+      ],
+      "kind": "behavioural",
+      "production_paths": [
+        "android/mesh/src/main/java/io/godstone/mesh/transport/BleTransport.kt",
+        "android/mesh/src/main/java/io/godstone/mesh/transport/BleConnection.kt",
+        "android/mesh/src/main/java/io/godstone/mesh/transport/BleHandshake.kt",
+        "ios/Godstone/Sources/GodstoneMesh/BleTransport.swift",
+        "ios/Godstone/Sources/GodstoneMesh/BleConnection.swift",
+        "ios/Godstone/Sources/GodstoneMesh/BleHandshake.swift"
+      ],
+      "evidence": [
+        "EVIDENCE/T23/commands.json",
+        "EVIDENCE/T23/logs",
+        "EVIDENCE/T23/mutations/manifest.json",
+        "EVIDENCE/T23/ladder-boundary"
+      ],
+      "verified_utc": "2026-09-11T10:09:26Z"
+    },
+    {
+      "id": "CLM-T23-WAYWARD-AND-ONE-SIDED",
+      "statement": "an unexpected counsel at a trusted gate is OBSERVED as a typed dispatch violation and the exact relation falleth; a peers lawful farewell endeth the relation cleanly; one-sided readiness of the others trust alone publisheth no matter; and a fresh course, with fresh keys, re-establisheth the trust upon an empty memory, an unengaged seat, and no standing challenge - the prior state is preserved or the relation reacheth its specified terminal state",
+      "required_case_ids": [
+        "ReadinessT23Test.testAWaywardCounselAtTheGateIsObservedAndClosed",
+        "ReadinessT23Tests.testAWaywardCounselAtTheGateIsObservedAndClosed",
+        "ReadinessT23Test.testOneSidedReadinessPublishethNoMatter",
+        "ReadinessT23Tests.testOneSidedReadinessPublishethNoMatter",
+        "ReadinessT23Test.testAFreshCourseWithFreshKeysReestablishethTrust",
+        "ReadinessT23Tests.testAFreshCourseWithFreshKeysReestablishethTrust"
+      ],
+      "task": "T23",
+      "profile": [
+        "jvm-host",
+        "swift-host"
+      ],
+      "kind": "behavioural",
+      "production_paths": [
+        "android/mesh/src/main/java/io/godstone/mesh/transport/BleTransport.kt",
+        "android/mesh/src/main/java/io/godstone/mesh/transport/BleConnection.kt",
+        "ios/Godstone/Sources/GodstoneMesh/BleTransport.swift",
+        "ios/Godstone/Sources/GodstoneMesh/BleConnection.swift"
+      ],
+      "evidence": [
+        "EVIDENCE/T23/commands.json",
+        "EVIDENCE/T23/logs",
+        "EVIDENCE/T23/mutations/manifest.json",
+        "EVIDENCE/T23/ladder-boundary"
+      ],
+      "verified_utc": "2026-09-11T10:09:26Z"
     }
   ],
   "note": "Claims appended per task with real evidence; PASS requires positive case counts and matching command output. Device/independent claims never accept host-only results.",

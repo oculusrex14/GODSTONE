@@ -659,3 +659,46 @@ hour: the binder proveth the static key against its own remembrance and the rela
 discovery hint that the responder boundeth from the link-info exchange is immutable for the life of
 the relation: the selfsame bound remembrance answereth the true counsel still, though a lesser
 advertisement is shouted after the binding. Proven identically on both isles.
+
+## D-T23-a - the trusted hour is split from the published readiness, destructively guarded
+The authoritative connection state stayeth the sole measure of the trusted DATA capability (every `state ==
+ready` data court of the elder tasks standeth green upon it). The application LinkReady is a SEPARATE
+publication, gated upon the KeyConfirmation projection - the truth of confirmation dwelleth in the
+KeyConfirmation (isConfirmed / confirmExternally), exposed as the derived isKeyConfirmed. There is no
+parallel ready-boolean and no new enum state: a court that would publish application readiness before the
+sealed round findeth nothing published, and the mutation that moved the publication to the crypto hour
+(SM2, both isles) was KILLED.
+## D-T23-b - the transcript keyeth upon the WHOLE frame identity, not the payload alone
+The transcript remembereth a frame by the mark of its (kind, sequence, payload). Were it keyed upon the
+payload alone, the four elder duplicate-and-conflict cases of T22 - which push a FRESH sequence number at a
+spent stage and must CLOSE at the doors stage-law - would be wrongly hush'd as duplicates and the relation
+would stand. Keying upon the whole identity letteth a fresh-sequence re-presenting fall through to the
+stage-law and perish (T22 abideth green), while onely the byte-for-byte, sequence-for-sequence frame is the
+idempotent duplicate the controller doth not run twice. Proven on both isles by the SM1 twin controls.
+## D-T23-c - the hour-glass and the lease divide their domain by a three-part witness
+The deadline and the assemblers absolute-term lease share one clock and would quarrel: a naive deadline
+observance felled relations that the T20 courts (which advance the selfsame rigNow to base+30 and base+35 to
+lapse an assembly) expecte to survive. The owners hand therefore reapeth a stalled exchange onely upon the
+threefold witness - ENGAGED (a counsel was heard or spoken), EXPIRED (past the ten-second hour, the glass
+ne'r stopt nor unturn'd), and NOTHING IN FLIGHT (the assemblers lease, of the absolute term, counteth nought).
+Placed at the very mouth of the ingress, before the reassembly is afoot, it never pre-empteth a travelling
+reassembly; an idle, unspoken seat is no half-spoken exchange. The T20 suite standeth green (11) and the
+deadline court (testTheHalfSpokenExchange) falleth a stalled relation as it ought.
+## D-T23-d - the sealed round rideth the DATA channel, never a fourth Noise message
+The key-confirmation control is the very plaintext of an ordinary trusted DATA record: sealed by the
+selfsame session the third counsel established, fragmented and pump'd by the selfsame whole-record writer,
+and opened by the selfsame collector. It is recognised onely by its strict shape (a PING frame, ttl 0, hop 0,
+no flags, an eighteen-octet payload [version=1, mode, challenge(16)]) and is CONSUMED at the opened gate -
+never forwarded to the application, never persisted, never relayed by the router. There is no fourth Noise
+handshake message. The court warmUpStream attacheth the initiators own received() ear to witness that a
+control is taken up and the ordinary matter floweth not.
+## D-T23-e - the two isles keep their own clock, and the parent veriped both
+Android bindeth the hour-glass and the confirming watch to the relations wall-clock (`clock: () -> Long`,
+the selfsame rigNow seam the T20 assembly-lease courts drive); iOS bindeth them to the relations own
+MonotonicClock (uptime-millis), the seam the iOS courts age by `connectionMonotonicClockForTest`, that a
+relation may be aged as a whole and asunder never. The windows are ten seconds and an half-minute alike.
+The iOS half was compleated under a two-writer race: the parent hand-port of the foundational
+BleHandshake/BleConnection was ADOPTED after the racing agents produced a coherent monotonic design,
+VERIFIED by the parents own build and full test (800/0) and by the ten dual-isle mutation controls (all
+KILLED), not upon the agents say-so. Where the agents deliverance was unverifiable it was reclaimed; where
+the design was coherent and proven it was kept.

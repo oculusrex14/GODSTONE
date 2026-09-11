@@ -2368,6 +2368,251 @@
         "android BluetoothDevice constructor remains package-private; responder found-event via subscription hook is device-gated",
         "the ci structural G-invariant registry remains a text-scanner lineage: category=structural, recorded apart; reachability ceiling documented at M2"
       ]
+    },
+    "T23": {
+      "status": "COMPLETE",
+      "objective": {
+        "task": "T23",
+        "objective": "Use a 10-second monotonic handshake deadline from ROLE_BOUND.",
+        "claimed_head": "ebd852688b321e9f710a1ab1f13f8b24c7328927",
+        "claimed_utc": "2026-09-11T04:09:04Z"
+      },
+      "tested_tree_sha": "2812b094d2509347e20ece3773d74bb9a57cb57f",
+      "implementation_commits": [
+        "6644c87",
+        "73704e7"
+      ],
+      "claim_commit": "db77d37",
+      "ladder_boundary_commit": "73704e7e8",
+      "case_results": {
+        "android_grand": {
+          "tests": 859,
+          "skipped": 0,
+          "failures": 0,
+          "errors": 0,
+          "xml_files": 42,
+          "counts_source": "fresh TEST-*.xml walk (mtime > 2026-09-11T06:49:26Z guard), summed"
+        },
+        "ios_grand": {
+          "executed": 800,
+          "failures": 0,
+          "counts_source": "max of the Executed lines in the stage logs (max-not-sum law)"
+        },
+        "t23_android_suite": {
+          "tests": 15,
+          "failures": 0,
+          "errors": 0,
+          "counts_source": "fresh XML TEST-*ReadinessT23Test*, mtime-guarded"
+        },
+        "t23_ios_suite": {
+          "tests": 15,
+          "failures": 0,
+          "counts_source": "the filtered twin run: 'Executed 15 tests, with 0 failures'"
+        },
+        "deleted_cases": []
+      },
+      "mutation_results": {
+        "semantic": [
+          {
+            "id": "T23-SM1-android-dup-hs2-reruns-controller",
+            "baseline_sha": "73704e7e8bf25b3f7aa64248ef7fe8ae1930c6b7",
+            "mutant_patch_sha": "c08037c1fb2a4cc25837dc9dff9b9b091ad452267c53d9b754c2e037d5b171f0",
+            "category": "semantic",
+            "anchor_count": 1,
+            "build_exit": 0,
+            "target_tests": [
+              "testTheDuplicateSecondTaleRunnethNotTheControllerTwice"
+            ],
+            "tests_run": 15,
+            "outcome": "KILLED",
+            "failed_assertion": "witness testTheDuplicateSecondTaleRunnethNotTheControllerTwice failed as intended (1 failed case(s))",
+            "log_sha": "29f5cf6f9122fc379aa6c9a2599284a66a6085ee069cd2da66fa8ed6c3bdc2ac",
+            "log_path": "mutations/logs/T23-SM1-android-dup-hs2-reruns-controller.semantic.log"
+          },
+          {
+            "id": "T23-SM2-android-linkready-before-confirmation",
+            "baseline_sha": "73704e7e8bf25b3f7aa64248ef7fe8ae1930c6b7",
+            "mutant_patch_sha": "180c12c1776f521f8081a3d09bc8a5bec40ae5a8a079e6b339ab2e386f5318a3",
+            "category": "semantic",
+            "anchor_count": 1,
+            "build_exit": 0,
+            "target_tests": [
+              "testTheTrustedHourAlonePublishethNoApplicationReadiness"
+            ],
+            "tests_run": 15,
+            "outcome": "KILLED",
+            "failed_assertion": "witness testTheTrustedHourAlonePublishethNoApplicationReadiness failed as intended (1 failed case(s))",
+            "log_sha": "1d7e3d73a0d13fff77a9396d4a117da11e8259c2cf008485536e174392560a9e",
+            "log_path": "mutations/logs/T23-SM2-android-linkready-before-confirmation.semantic.log"
+          },
+          {
+            "id": "T23-SM3-android-accept-forged-echo",
+            "baseline_sha": "73704e7e8bf25b3f7aa64248ef7fe8ae1930c6b7",
+            "mutant_patch_sha": "73b04e90fbf3a074298c8ba97dd6e0ff1855d8c55a8542f03b7262e85ce1fbdf",
+            "category": "semantic",
+            "anchor_count": 1,
+            "build_exit": 0,
+            "target_tests": [
+              "testAForgedEchoIsRefusedAndPublishethNothing"
+            ],
+            "tests_run": 15,
+            "outcome": "KILLED",
+            "failed_assertion": "witness testAForgedEchoIsRefusedAndPublishethNothing failed as intended (3 failed case(s))",
+            "log_sha": "44fb1a26975a4b49b985f16ad8c09ebcaec7eec049a26b1bda38da469e32ba0c",
+            "log_path": "mutations/logs/T23-SM3-android-accept-forged-echo.semantic.log"
+          },
+          {
+            "id": "T23-SM4-android-deadline-reaps-inflight",
+            "baseline_sha": "73704e7e8bf25b3f7aa64248ef7fe8ae1930c6b7",
+            "mutant_patch_sha": "b3879cf5a9a1e7ffc5f1f71c92a2001761a3e16dd9e7aab72b3d792f5a2a0108",
+            "category": "semantic",
+            "anchor_count": 1,
+            "build_exit": 0,
+            "target_tests": [
+              "testATravellingReassemblyIsLeftUntoTheLeaseNotReapedByTheHour"
+            ],
+            "tests_run": 15,
+            "outcome": "KILLED",
+            "failed_assertion": "witness testATravellingReassemblyIsLeftUntoTheLeaseNotReapedByTheHour failed as intended (1 failed case(s))",
+            "log_sha": "3339aca2e2a2713f485651d3c1b076e31cc9057a5720ebe8892bebbdafd7fe4b",
+            "log_path": "mutations/logs/T23-SM4-android-deadline-reaps-inflight.semantic.log"
+          },
+          {
+            "id": "T23-SM5-android-control-forwarded",
+            "baseline_sha": "73704e7e8bf25b3f7aa64248ef7fe8ae1930c6b7",
+            "mutant_patch_sha": "0962e6ccb06a69bf64489504224cd2947fddcf3ce242a3465bb799051602b917",
+            "category": "semantic",
+            "anchor_count": 1,
+            "build_exit": 0,
+            "target_tests": [
+              "testTheSealedRoundCarriethToApplicationReadinessOnce"
+            ],
+            "tests_run": 15,
+            "outcome": "KILLED",
+            "failed_assertion": "witness testTheSealedRoundCarriethToApplicationReadinessOnce failed as intended (2 failed case(s))",
+            "log_sha": "d79db4c0b1805d363a15c94c3670f7fcc271a6ddf33ed645f218fd27f217f7df",
+            "log_path": "mutations/logs/T23-SM5-android-control-forwarded.semantic.log"
+          },
+          {
+            "id": "T23-SM1-ios-dup-hs2-reruns-controller",
+            "baseline_sha": "73704e7e8bf25b3f7aa64248ef7fe8ae1930c6b7",
+            "mutant_patch_sha": "be18c71444be5d1ee90e999960138965e2b7aee1885fa24aad73cd23bdbfdfbb",
+            "category": "semantic",
+            "anchor_count": 1,
+            "build_exit": 0,
+            "target_tests": [
+              "testTheDuplicateSecondTaleRunnethNotTheControllerTwice"
+            ],
+            "tests_run": 15,
+            "outcome": "KILLED",
+            "failed_assertion": "witness testTheDuplicateSecondTaleRunnethNotTheControllerTwice failed as intended (1 failed case(s))",
+            "log_sha": "6711d23343c7ac8b5202b676ff331b652a0446351b8d7f599871be731d21ccb4",
+            "log_path": "mutations/logs/T23-SM1-ios-dup-hs2-reruns-controller.semantic.log"
+          },
+          {
+            "id": "T23-SM2-ios-linkready-before-confirmation",
+            "baseline_sha": "73704e7e8bf25b3f7aa64248ef7fe8ae1930c6b7",
+            "mutant_patch_sha": "996c67dd354183d20821dfe2848d2e8f82299a3190fba21fa1d6fc7bbf3f09e0",
+            "category": "semantic",
+            "anchor_count": 1,
+            "build_exit": 0,
+            "target_tests": [
+              "testTheTrustedHourAlonePublishethNoApplicationReadiness"
+            ],
+            "tests_run": 15,
+            "outcome": "KILLED",
+            "failed_assertion": "witness testTheTrustedHourAlonePublishethNoApplicationReadiness failed as intended (1 failed case(s))",
+            "log_sha": "35eaf87c7fa05b02d1c36bc6edaf607fbdc280d342e702323b6f86601c8f0484",
+            "log_path": "mutations/logs/T23-SM2-ios-linkready-before-confirmation.semantic.log"
+          },
+          {
+            "id": "T23-SM3-ios-accept-forged-echo",
+            "baseline_sha": "73704e7e8bf25b3f7aa64248ef7fe8ae1930c6b7",
+            "mutant_patch_sha": "7f6b31df0bf027010ff4756dd1e3893c8a7b8e3fc6cc39407461b1fb57ac7bc6",
+            "category": "semantic",
+            "anchor_count": 1,
+            "build_exit": 0,
+            "target_tests": [
+              "testAForgedEchoIsRefusedAndPublishethNothing"
+            ],
+            "tests_run": 15,
+            "outcome": "KILLED",
+            "failed_assertion": "witness testAForgedEchoIsRefusedAndPublishethNothing failed as intended (3 failed case(s))",
+            "log_sha": "8640f2382e3dbb2e2f32589e41b6268d81f4863d25b94a8804fd12eb96acf041",
+            "log_path": "mutations/logs/T23-SM3-ios-accept-forged-echo.semantic.log"
+          },
+          {
+            "id": "T23-SM4-ios-deadline-reaps-inflight",
+            "baseline_sha": "73704e7e8bf25b3f7aa64248ef7fe8ae1930c6b7",
+            "mutant_patch_sha": "8beb473748bd31ebcad73536ad9d6ce766f5f6b1f61a698fa5a77db2e754af7a",
+            "category": "semantic",
+            "anchor_count": 1,
+            "build_exit": 0,
+            "target_tests": [
+              "testATravellingReassemblyIsLeftUntoTheLeaseNotReapedByTheHour"
+            ],
+            "tests_run": null,
+            "outcome": "KILLED",
+            "failed_assertion": "witness testATravellingReassemblyIsLeftUntoTheLeaseNotReapedByTheHour failed as intended (1 failed case(s))",
+            "log_sha": "4f21a2e3751d98b8eb921576c1e113997d8c0fdd27d418203528c9b3d1f801aa",
+            "log_path": "mutations/logs/T23-SM4-ios-deadline-reaps-inflight.semantic.log"
+          },
+          {
+            "id": "T23-SM5-ios-control-forwarded",
+            "baseline_sha": "73704e7e8bf25b3f7aa64248ef7fe8ae1930c6b7",
+            "mutant_patch_sha": "d8eba034636143461e4d3a98a9b9df6f33bcd396eb6a6edc934f524edd319579",
+            "category": "semantic",
+            "anchor_count": 1,
+            "build_exit": 0,
+            "target_tests": [
+              "testTheSealedRoundCarriethToApplicationReadinessOnce"
+            ],
+            "tests_run": 15,
+            "outcome": "KILLED",
+            "failed_assertion": "witness testTheSealedRoundCarriethToApplicationReadinessOnce failed as intended (2 failed case(s))",
+            "log_sha": "d31b21506572b294e3d2f51ca6774086eed5a3902326b68a6552c981f72eee36",
+            "log_path": "mutations/logs/T23-SM5-ios-control-forwarded.semantic.log"
+          }
+        ],
+        "campaign_note": "the full register was run: 21 of 21 entries KILLED, none skipped, invalid, timed out or escaped; the two lineages are reported apart and never summed"
+      },
+      "commands": [
+        "T23-narrow-gradlew",
+        "T23-narrow-swift",
+        "T23-subsystem-gradlew",
+        "T23-subsystem-swift",
+        "T23-controls-python3",
+        "T23-controls-python3-002",
+        "T23-controls-python3-003"
+      ],
+      "file_hashes": {
+        "android/mesh/src/main/java/io/godstone/mesh/transport/BleConnection.kt": "b0bbb61a7377e9436355a750573cbeaeaf9b0240a459918c9167c4aafd6b6ab5",
+        "android/mesh/src/main/java/io/godstone/mesh/transport/BleHandshake.kt": "53d85a2a26d8dd52383ca5efc63b1f526a638e9e7bee2d26b92811265010cb48",
+        "android/mesh/src/main/java/io/godstone/mesh/transport/BleTransport.kt": "de6251c8ee44d04991f36f8585e0dda438023820671087e2dc21344e5360dd38",
+        "android/mesh/src/test/java/io/godstone/mesh/readiness/ReadinessT23Test.kt": "cd0ef6a6b62deb6b0e7ee3798bb7af06194c716c09ef65a266b1ab7447b79c9c",
+        "ios/Godstone/Sources/GodstoneMesh/BleConnection.swift": "165ceb73143f9376a171d0f45077e202cc2e73216c1c2f0a74da042b6c389f8d",
+        "ios/Godstone/Sources/GodstoneMesh/BleHandshake.swift": "c009ba3781fd15e5ade5968abb2efd6958210cacee8b2bc9e718de2e6a40a28b",
+        "ios/Godstone/Sources/GodstoneMesh/BleOrchestrationDriver.swift": "bdc5909ae26140aeabeefd0e2ac90a12ef5773e320601b5300268e57b54a0495",
+        "ios/Godstone/Sources/GodstoneMesh/BleTransport.swift": "1ba8d4b1ab890541d2b3eb67857fa396b6c157f9a293951c0caa9df2fcbfc763",
+        "ios/Godstone/Tests/GodstoneMeshTests/ReadinessT23Tests.swift": "dbdc2f373f5fed16d8ceff61079e9cccc44ab1af61673dda43e12f5346de7293",
+        "ios/Packages/GodstoneFoundation/SOURCE_MANIFEST.json": "87f91c7a07a800ef8e0987dcaf6a191d1360d4d1e9e02941044cebbc8efce44d",
+        "ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/BleConnection.swift": "165ceb73143f9376a171d0f45077e202cc2e73216c1c2f0a74da042b6c389f8d",
+        "ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/BleHandshake.swift": "c009ba3781fd15e5ade5968abb2efd6958210cacee8b2bc9e718de2e6a40a28b",
+        "ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/BleOrchestrationDriver.swift": "bdc5909ae26140aeabeefd0e2ac90a12ef5773e320601b5300268e57b54a0495",
+        "ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/BleTransport.swift": "1ba8d4b1ab890541d2b3eb67857fa396b6c157f9a293951c0caa9df2fcbfc763",
+        "ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/ReadinessT23Tests.swift": "dbdc2f373f5fed16d8ceff61079e9cccc44ab1af61673dda43e12f5346de7293"
+      },
+      "inputs": {
+        "baseline_pre": "ebd852688",
+        "claim": "db77d37",
+        "whitespace": "clean",
+        "ladder_L0_L1": "green at the boundary (EVIDENCE/T23/ladder-boundary)"
+      },
+      "unresolved": [
+        "real-device subscription-side found-event publication awaits device gates T73-T77",
+        "android BluetoothDevice constructor remains package-private; responder found-event via subscription hook is device-gated",
+        "the ci structural G-invariant registry remains a text-scanner lineage: category=structural, recorded apart; reachability ceiling documented at M2"
+      ]
     }
   },
   "current_task": null,
@@ -2379,37 +2624,32 @@
     "SIGNING"
   ],
   "failed_attempts": [],
-  "in_progress": {
-    "task": "T23",
-    "objective": "Use a 10-second monotonic handshake deadline from ROLE_BOUND.",
-    "claimed_head": "ebd852688b321e9f710a1ab1f13f8b24c7328927",
-    "claimed_utc": "2026-09-11T04:09:04Z"
-  },
+  "in_progress": {},
   "last_code_head": "194ccb5c27a8440fae18327312b9148a088c718b",
   "last_observed_head": "d9b300be102c5c880cab2491e15b79af2838d442",
   "latest_verification": {
-    "utc": "2026-09-11T04:03:59Z",
-    "task": "T22",
+    "utc": "2026-09-11T10:09:26Z",
+    "task": "T23",
     "android": {
-      "tests": 844,
+      "tests": 859,
       "failures": 0,
       "errors": 0,
-      "task": "T22"
+      "task": "T23"
     },
     "ios": {
-      "executed": 785,
+      "executed": 800,
       "failures": 0,
-      "task": "T22"
+      "task": "T23"
     },
     "mutation": {
       "semantic_killed": 5,
       "semantic_total": 5,
-      "task": "T22",
-      "killed": 11,
-      "total": 11
+      "task": "T23",
+      "killed": 21,
+      "total": 21
     }
   },
-  "next_task": "T23",
+  "next_task": "T24",
   "phase": "P0",
   "plan_sha256": "685456b378662b0a40a53a6abc810041e37daf97b213f3efeb6cea879363934e",
   "planning_baseline_sha": "b5c3d3d394b70cf356cdde33b47511dad7cbb95c",
