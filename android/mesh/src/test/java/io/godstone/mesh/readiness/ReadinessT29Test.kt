@@ -15,8 +15,11 @@ package io.godstone.mesh.readiness
 // wrong-key/corruption bytes on the real native are device evidence (T73-T75).
 // ---------------------------------------------------------------------------
 
+import io.godstone.mesh.store.CipherNativeBinding
+import io.godstone.mesh.store.NativeOpenFacts
 import io.godstone.mesh.store.RawStoreOpener
 import io.godstone.mesh.store.SUPPORTED_STORE_VERSION
+import io.godstone.mesh.store.SqlcipherStoreOpener
 import io.godstone.mesh.store.StoreHandle
 import io.godstone.mesh.store.StoreOpenResult
 import io.godstone.mesh.store.StoreOpener
@@ -127,5 +130,43 @@ class ReadinessT29Test {
         val res2 = StoreOpener.runAtomic(staged2) { list -> list.add(1); list.add(2) }
         assertTrue("an unbroken commit reports Committed", res2 is StoreTransactionResult.Committed)
         assertEquals("a committed enqueue keeps both rows", 2, staged2.size)
+    }
+
+    // ---- platform integration: the SqlcipherStoreOpener adapter composes with the classifier over a realistic binding ----
+    private class FakeBinding(
+        override val cipherEnabled: Boolean,
+        override val backupRulesExcludeDatabase: Boolean,
+        private val facts: () -> NativeOpenFacts,
+    ) : CipherNativeBinding {
+        override fun openEncrypted(path: String, key: ByteArray): NativeOpenFacts = facts()
+    }
+
+    @Test
+    fun testSqlcipherAdapterCompositionYieldsAvailableForAGenuineEncryptedStore() {
+        val b = FakeBinding(true, true) { NativeOpenFacts("wal", SUPPORTED_STORE_VERSION) }
+        val r = StoreOpener.open(SqlcipherStoreOpener(b, "/data/local/godstone.db", ByteArray(32)))
+        assertTrue("a genuine encrypted, backup-excluded store composes to Available", r is StoreOpenResult.Available)
+    }
+
+    @Test
+    fun testSqlcipherAdapterRejectsAPlainBindingViaTheEncryptedAtRestPredicate() {
+        val b = FakeBinding(false, true) { NativeOpenFacts("wal", SUPPORTED_STORE_VERSION) }   // a plain SQLite build
+        val r = StoreOpener.open(SqlcipherStoreOpener(b, "/data/local/godstone.db", ByteArray(32)))
+        assertFalse("a plain (cipherEnabled=false) binding must NOT compose to a healthy Available", r is StoreOpenResult.Available)
+        assertTrue("the composition rejects a plain store as Locked", r is StoreOpenResult.Locked)
+    }
+
+    @Test
+    fun testSqlcipherAdapterMapsNativeWrongKeyFaultThroughTheClassifier() {
+        val b = FakeBinding(true, true) { throw IllegalStateException("file is not a database or is not encrypted") }
+        val r = StoreOpener.open(SqlcipherStoreOpener(b, "/data/local/godstone.db", ByteArray(32)))
+        assertTrue("a native wrong-key fault composes to Locked", r is StoreOpenResult.Locked)
+    }
+
+    @Test
+    fun testSqlcipherAdapterSurfacesUnsupportedVersionFromTheNativeHeader() {
+        val b = FakeBinding(true, true) { NativeOpenFacts("wal", 7) }
+        val r = StoreOpener.open(SqlcipherStoreOpener(b, "/data/local/godstone.db", ByteArray(32)))
+        assertTrue("an unknown native header version composes to UnsupportedVersion", r is StoreOpenResult.UnsupportedVersion)
     }
 }
