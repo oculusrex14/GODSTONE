@@ -2975,9 +2975,105 @@
         "external gates (A06, APPROVED_CONTENT, NATIVE_MODELS, HARDWARE, SIGNING) remain open; readiness stays false",
         "iOS MessageStore.forEachHeldMsgId is non-throwing by frozen contract, so the failed-storage law is enforced via the store committed-only-notify gate (rolled-back commit fire'th no observer) on iOS, mirrored by the android try/catch retain-prior path; an intentional platform-faithful asymmetry, not a defect"
       ]
+    },
+    "T26": {
+      "case_results": {
+        "android_grand": {
+          "counts_source": "fresh :mesh:testDebugUnitTest XML walk at boundary ec566bb (executed --rerun-tasks): 49 TEST-*.xml",
+          "errors": 0,
+          "failures": 0,
+          "skipped": 0,
+          "tests": 904,
+          "xml_files": 49
+        },
+        "deleted_cases": [],
+        "t26_android_suite": {
+          "counts_source": "fresh TEST-*ReadinessT26Test.xml (canonical court, 7 required behavioural witnesses)",
+          "errors": 0,
+          "failures": 0,
+          "tests": 7
+        }
+      },
+      "claim_commit": "a72afa1",
+      "commands": [
+        "T26-narrow-gradlew",
+        "T26-subsystem-gradlew",
+        "T26-controls-python3",
+        "T26-controls-python3-002"
+      ],
+      "device_gate_ids": [],
+      "file_hashes": {},
+      "implementation_commit": "ec566bb071952978cc829468672427e2333e77be",
+      "implementation_commits": [
+        "1736136316fb98a303a9f874f2425b213a237b0b",
+        "ec566bb071952978cc829468672427e2333e77be"
+      ],
+      "inputs": {
+        "consumer_checked": [
+          "android/mesh/src/main/java/io/godstone/mesh/router/Router.kt (allowInbound/penalise/reward call-sites intact; RouterTest 42/0)"
+        ],
+        "governed_source": [
+          "android/mesh/src/main/java/io/godstone/mesh/abuse/PeerGovernor.kt"
+        ],
+        "required_regression_paths": [
+          "android/mesh/src/test/java/io/godstone/mesh/readiness/ReadinessT26Test.kt"
+        ],
+        "task_card": "docs/production-readiness/TASKS.json#T26"
+      },
+      "ladder_boundary_commit": "ec566bb071952978cc829468672427e2333e77be",
+      "mutation_results": {
+        "campaign_note": "T26 semantic roster (2 android mutants) verified KILLED against baseline 1736136. SM1 strikes the bounded-identity-governor law (allocate a governor entry before consulting the global bound -> unbounded Sybil registry growth), caught by testSybilFloodIsBoundedByTheGovernorAdmittingBeforeAllocating; SM2 strikes the SOS-charging law (exempt SOS from the token bucket -> unbounded exempt channel), caught by testSustainedSOSIsChargedAndBoundedNotExempt. These are the cards two named falsifications; the baseline court ran 7 positive each.",
+        "semantic": [
+          {
+            "anchor_count": 1,
+            "baseline_sha": "1736136316fb98a303a9f874f2425b213a237b0b",
+            "build_exit": 0,
+            "category": "semantic",
+            "failed_assertion": "witness testSybilFloodIsBoundedByTheGovernorAdmittingBeforeAllocating failed as intended (1 failed case(s))",
+            "id": "T26-SM1-android-allocate-before-global-admission",
+            "log_path": "T26/logs/T26-SM1-android-allocate-before-global-admission.semantic.log",
+            "log_sha": "33b5849ae0a90a6c61f8e2797eed2451609142cd124ded83951111b7e63008fc",
+            "mutant_patch_sha": "d598293acd7a088be854b49bbecb44039e3a0ac17342898217212963381d21a4",
+            "outcome": "KILLED",
+            "target_tests": [
+              "testSybilFloodIsBoundedByTheGovernorAdmittingBeforeAllocating"
+            ],
+            "tests_run": 7
+          },
+          {
+            "anchor_count": 1,
+            "baseline_sha": "1736136316fb98a303a9f874f2425b213a237b0b",
+            "build_exit": 0,
+            "category": "semantic",
+            "failed_assertion": "witness testSustainedSOSIsChargedAndBoundedNotExempt failed as intended (1 failed case(s))",
+            "id": "T26-SM2-android-bypass-SOS-charging",
+            "log_path": "T26/logs/T26-SM2-android-bypass-SOS-charging.semantic.log",
+            "log_sha": "c1a3b7ce4ba77066902967ad30737e7b0803dfe290bc6709f6cb7fbe6e32e22a",
+            "mutant_patch_sha": "4f56248430c8be9664fbcb2d4db0cdb5b9cdb226dff760285842dd3d9b4ff712",
+            "outcome": "KILLED",
+            "target_tests": [
+              "testSustainedSOSIsChargedAndBoundedNotExempt"
+            ],
+            "tests_run": 7
+          }
+        ]
+      },
+      "objective": {
+        "claimed_head": "8545c0b3c281b386228639d68719b63ef29a5965",
+        "claimed_utc": "2026-09-11T18:13:15+00:00",
+        "objective": "Use the transport executor for pre-auth record/byte budgets and a bounded identity governor after AEAD.",
+        "task": "T26"
+      },
+      "status": "COMPLETE",
+      "tested_tree_sha": "2accfd03d943efd384de5f07830b2b16e11f916f",
+      "unresolved": [
+        "real-device admission under radio load and sustained-flood battery impact await the hardware gates (deferred to T73-T75 / artifact acceptance); internal implementation does not close the device gate",
+        "external gates (A06, APPROVED_CONTENT, NATIVE_MODELS, HARDWARE, SIGNING) remain open; readiness stays false",
+        "android-only task by the card (required_regression_paths name just the android court; command_stages carry no swift target); no iOS twin is in scope for T26"
+      ]
     }
   },
-  "current_task": "T26",
+  "current_task": "T27",
   "external_blockers": [
     "A06",
     "APPROVED_CONTENT",
@@ -2986,42 +3082,27 @@
     "SIGNING"
   ],
   "failed_attempts": [],
-  "in_progress": {
-    "claimed_head": "8545c0b3c281b386228639d68719b63ef29a5965",
-    "claimed_utc": "2026-09-11T18:13:15+00:00",
-    "objective": {
-      "claimed_head": "8545c0b3c281b386228639d68719b63ef29a5965",
-      "claimed_utc": "2026-09-11T18:13:15+00:00",
-      "objective": "Use the transport executor for pre-auth record/byte budgets and a bounded identity governor after AEAD.",
-      "task": "T26"
-    },
-    "task": "T26"
-  },
-  "last_code_head": "36a95559b87945dfe7e0589cfd236848a1cc7a70",
-  "last_observed_head": "36a95559b87945dfe7e0589cfd236848a1cc7a70",
+  "in_progress": null,
+  "last_code_head": "ec566bb071952978cc829468672427e2333e77be",
+  "last_observed_head": "ec566bb071952978cc829468672427e2333e77be",
   "latest_verification": {
     "android_grand": {
       "errors": 0,
       "failures": 0,
-      "tests": 897
+      "tests": 904
     },
-    "at_utc": "2026-09-11T18:06:52+00:00",
-    "boundary_commit": "36a95559b87945dfe7e0589cfd236848a1cc7a70",
-    "ios_grand": {
-      "executed": 839,
-      "failures": 0
-    },
+    "at_utc": "2026-09-11T18:45:30+00:00",
+    "boundary_commit": "ec566bb071952978cc829468672427e2333e77be",
     "roster": {
-      "T25_killed": 8,
-      "of": 8
+      "T26_killed": 2,
+      "of": 2
     },
-    "t25_courts": {
-      "android": 11,
-      "ios": 11
+    "t26_courts": {
+      "android": 7
     },
-    "tested_tree_sha": "e12e43348b677d28a2d1808f213e211630281901"
+    "tested_tree_sha": "2accfd03d943efd384de5f07830b2b16e11f916f"
   },
-  "next_task": "T26",
+  "next_task": "T27",
   "phase": "P0",
   "plan_sha256": "685456b378662b0a40a53a6abc810041e37daf97b213f3efeb6cea879363934e",
   "planning_baseline_sha": "b5c3d3d394b70cf356cdde33b47511dad7cbb95c",
