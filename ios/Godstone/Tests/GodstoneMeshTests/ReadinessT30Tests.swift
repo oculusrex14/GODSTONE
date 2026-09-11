@@ -200,6 +200,16 @@ final class ReadinessT30Tests: XCTestCase {
         XCTAssertGreaterThanOrEqual(kc.protectionCalls, 1)
     }
 
+    // (7c) ignore-protection-failure on the REOPEN path must also fail (drives the reopen protection guard)
+    func testReopenProtectionFailureIsNeverSwallowed() throws {
+        let kc = FakeKeychain(); dek(kc, tag)                 // DEK present -> fetch succeeds on reopen
+        kc.protectionResult = .failure(.protectionFailure(status: -1, operation: "setAttributes"))
+        let r = pair(kc, FakeEngine()).reopenExisting(path: "/var/db/msg", tag: tag)
+        XCTAssertFalse(r.isAvailable, "a failed file-protection apply on reopen must not be swallowed to a usable store")
+        XCTAssertEqual(r, .unavailable)
+        XCTAssertGreaterThanOrEqual(kc.protectionCalls, 1)
+    }
+
     // (8) failed migration preserves a recoverable source; verify runs BEFORE select
     func testFailedMigrationPreservesRecoverableSource() throws {
         let kc = FakeKeychain(); dek(kc, tag)
