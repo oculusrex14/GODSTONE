@@ -106,4 +106,26 @@ class ReadinessT24CaptureTest {
         assertEquals("the captures agree by content", a, b)
         assertEquals("and agree in hash", a.hashCode(), b.hashCode())
     }
+
+    // Cross-platform invariant (section 5: preserve the canonical generated identity
+    // formula). The android and iOS capture primitive MUST derive the selfsame node id
+    // from the selfsame authenticated identity. For the fixed identity below, BOTH
+    // isles' canonical BLAKE2s-128 derivations were observ'd to yield the identical
+    // sixteen-octet vector here pinned; any divergence of the two crypto implementations
+    // (which no single-isle suite can see) is caught by this one assertion.
+    @Test
+    fun testTheIdentityDerivationAgreethAcrossIslesForAFixedVector() {
+        val pub = identityPub(13)
+        val expected = intArrayOf(
+            0x3B, 0xAF, 0x31, 0xFE, 0x8B, 0xE5, 0x64, 0xAC,
+            0xAA, 0xD5, 0xD4, 0xA7, 0xD9, 0xB4, 0x40, 0x3D,
+        ).map { it.toByte() }.toByteArray()
+        val captured = TrustedPeer.capture(relation(1L), pub, 0L)
+            ?: throw AssertionError("a well-form'd capture must succeed")
+        assertArrayEquals(
+            "the identity derivation matcheth the canonical cross-isle vector",
+            expected, captured.copyNodeId(),
+        )
+        assertEquals("the node id is sixteene octets", 16, captured.copyNodeId().size)
+    }
 }

@@ -109,4 +109,23 @@ final class ReadinessT24CaptureTests: XCTestCase {
         XCTAssertEqual(a, b, "the captures agree by content")
         XCTAssertEqual(a?.hashValue, b?.hashValue, "and agree in hash")
     }
+
+    // Cross-platform invariant (section 5: preserve the canonical generated identity
+    // formula). The android and iOS capture primitive MUST derive the selfsame node id
+    // from the selfsame authenticated identity. For the fixed identity below, BOTH
+    // isles' canonical BLAKE2s-128 derivations were observ'd to yield the identical
+    // sixteen-octet vector here pinned; any divergence of the two crypto implementations
+    // (which no single-isle suite can see) is caught by this one assertion.
+    func testTheIdentityDerivationAgreethAcrossIslesForAFixedVector() throws {
+        let pub = identityPub(13)
+        let expected = Data([
+            0x3B, 0xAF, 0x31, 0xFE, 0x8B, 0xE5, 0x64, 0xAC,
+            0xAA, 0xD5, 0xD4, 0xA7, 0xD9, 0xB4, 0x40, 0x3D,
+        ].map { UInt8($0) })
+        guard let captured = TrustedPeer.capture(relation: relation(1), authenticatedIdentityPub32: pub, trustVersion: 0) else {
+            return XCTFail("a well-form'd capture must succeed")
+        }
+        XCTAssertEqual(captured.nodeId16, expected, "the identity derivation matcheth the canonical cross-isle vector")
+        XCTAssertEqual(captured.nodeId16.count, 16, "the node id is sixteene octets")
+    }
 }

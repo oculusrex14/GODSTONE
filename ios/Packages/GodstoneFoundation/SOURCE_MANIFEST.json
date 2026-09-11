@@ -95,7 +95,7 @@
     "Tests/GodstoneMeshTests/ReadinessT21Tests.swift": "169493e7788d78aa8e27498056bedc638f7540fec1b550499cf6fd1a925a6362",
     "Tests/GodstoneMeshTests/ReadinessT22Tests.swift": "bf3552f4cbb42edff1e9f121e7778f561596e045355555e7eb9f83e71bb6e6b4",
     "Tests/GodstoneMeshTests/ReadinessT23Tests.swift": "f47634465d867e1d93b0972b96cb90e650d5d20afa344b65fb5de6523ac794ad",
-    "Tests/GodstoneMeshTests/ReadinessT24CaptureTests.swift": "e577653c85069c5644c869e7ff6db69b1c1952606db129eee3c91410024d7690",
+    "Tests/GodstoneMeshTests/ReadinessT24CaptureTests.swift": "6188e76c317d95e1f22c72c14fac17a3943cc0a602a0c22be7704a4a7e71c137",
     "Tests/GodstoneMeshTests/ReadinessT24ContractTests.swift": "2143a410ab56dcad0455946c8b31c34cd6771c6fed8fe16aca8dbd7a0c06ed1f",
     "Tests/GodstoneMeshTests/ReadinessT24IntegrationTests.swift": "3dff6fcb84adfc05ed32e33d02401121dc984c153882fcec0a38bb87332af2b2",
     "Tests/GodstoneMeshTests/ReadinessT24PublicationTests.swift": "591e5757b215f07fd1cf1ca2cde8d60cf85757762564ce13a2fa8248ca38e4fd",
