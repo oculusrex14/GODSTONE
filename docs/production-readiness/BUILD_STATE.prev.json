@@ -3193,9 +3193,171 @@
         "T27 card stages are iOS-only (the manifest regression path names the iOS court; command_stages carry swift + python controls, no gradle); the android parity court + android full suite are executed supplementary evidence, not T27 card stages",
         "pre-existing ReadinessT18Test randomized fixture (64-draw cap under shared/global RNG, ordering-sensitive) is a latent flake unrelated to T27; handled by bounded re-run to a genuinely green 907/0/0 execution, no sealed T18 edit and no fabrication"
       ]
+    },
+    "T28": {
+      "case_results": {
+        "android_grand": {
+          "counts_source": "gradlew :mesh:testDebugUnitTest --rerun-tasks at boundary 130e3e7; TEST-*.xml walk",
+          "errors": 0,
+          "failures": 0,
+          "skipped": 0,
+          "tests": 917,
+          "xml_files": 51
+        },
+        "deleted_cases": [],
+        "dual_court_parity": "the android and iOS courts assert the SAME seven lifecycle laws against the mirrored contract (start idempotent one context/lease/scan; background cannot start a stopped runtime -> no OS call; power-off/permission uniformly invalidate and are terminal never READY; retired context drops late callbacks; wipe drains before erasure; process recreation inherits no session/lease); three integration witnesses compose the authority over the production adapter onto each isle transport contract",
+        "ios_grand": {
+          "counts_source": "swift test --package-path ios/Packages/GodstoneFoundation (full) at boundary 130e3e7; Test Case passed lines",
+          "errors": 0,
+          "failures": 0,
+          "tests": 854
+        },
+        "t28_android_court": {
+          "counts_source": "ReadinessT28Test.kt (7 contract + 3 integration witnesses)",
+          "errors": 0,
+          "failures": 0,
+          "tests": 10
+        },
+        "t28_ios_court": {
+          "counts_source": "ReadinessT28Tests.swift (7 contract + 3 integration witnesses)",
+          "errors": 0,
+          "failures": 0,
+          "tests": 10
+        }
+      },
+      "claim_commit": "131b02e",
+      "commands": [
+        "T28-narrow-gradlew",
+        "T28-narrow-swift",
+        "T28-subsystem-gradlew",
+        "T28-subsystem-swift",
+        "T28-controls-python3",
+        "T28-controls-python3-002",
+        "T28-controls-python3-003"
+      ],
+      "device_gate_ids": [],
+      "file_hashes": {},
+      "implementation_commit": "130e3e7e71d56802577a53f07fe24d8e3e1af8ab",
+      "implementation_commits": [
+        "a5a47d32cd95ff2c74fbaf0bd464140a299daee2",
+        "16ade52751a9e81b0e40a8d71349105625b1e2be",
+        "00657750d3d05fa0f7cb57b7740586904671c8f5",
+        "bdc0a6030b9c5b78f7917191b309b89a382c7e8d",
+        "130e3e7e71d56802577a53f07fe24d8e3e1af8ab"
+      ],
+      "inputs": {
+        "adapters": [
+          "android/mesh/src/main/java/io/godstone/mesh/transport/LifecycleTransportAdapter.kt",
+          "ios/Godstone/Sources/GodstoneMesh/LifecycleTransportAdapter.swift"
+        ],
+        "children_commit_order": [
+          "a5a47d3 contract-android",
+          "16ade52 ios-contract-court",
+          "0065775 integration-android",
+          "bdc0a60 integration-ios",
+          "130e3e7 controls"
+        ],
+        "governed_source": [
+          "android/mesh/src/main/java/io/godstone/mesh/identity/RuntimeLifecycle.kt",
+          "ios/Godstone/Sources/GodstoneMesh/UnifiedRuntimeLifecycle.swift"
+        ],
+        "required_regression_paths": [
+          "android/mesh/src/test/java/io/godstone/mesh/readiness/ReadinessT28Test.kt",
+          "ios/Godstone/Tests/GodstoneMeshTests/ReadinessT28Tests.swift"
+        ],
+        "task_card": "docs/production-readiness/TASKS.json#T28"
+      },
+      "ladder_boundary_commit": "130e3e7e71d56802577a53f07fe24d8e3e1af8ab",
+      "mutation_results": {
+        "campaign_note": "T28 semantic roster (4 mutants, two per isle) verified KILLED against baseline bdc0a60. SM1 lets a background event start a scanner on a STOPPED runtime (the cards named falsification: allow setBackgrounded to start a stopped scanner) -> the no-OS-calls witness testBackgroundCanNotStartAStoppedRuntimeMakesNoOsCalls fails; SM2 lets power-off merely toggle advertising (leaving the scanner/session live and the capability non-terminal) -> testPowerLossUniformlyInvalidatesAndIsTerminalNeverReady fails. Struck on BOTH identity/RuntimeLifecycle.kt (android) and Sources/GodstoneMesh/UnifiedRuntimeLifecycle.swift (iOS); each baseline court ran 10 positive.",
+        "semantic": [
+          {
+            "anchor_count": 1,
+            "baseline_sha": "bdc0a6030b9c5b78f7917191b309b89a382c7e8d",
+            "build_exit": 0,
+            "category": "semantic",
+            "failed_assertion": "witness testBackgroundCanNotStartAStoppedRuntimeMakesNoOsCalls failed as intended (5 failed case(s))",
+            "id": "T28-SM1-android-background-starts-stopped-runtime",
+            "log_path": "T28/logs/T28-SM1-android-background-starts-stopped-runtime.semantic.log",
+            "log_sha": "490d14e9d8e2fe842dfbbd616f243cbf3578b4bda766b25f62a3106db186e66b",
+            "mutant_patch_sha": "a283018eaab39c90a8335f6371470be6de566dbb6aee717fcb4cd94fc1981811",
+            "outcome": "KILLED",
+            "platform": null,
+            "target_tests": [
+              "testBackgroundCanNotStartAStoppedRuntimeMakesNoOsCalls"
+            ],
+            "tests_run": 10
+          },
+          {
+            "anchor_count": 1,
+            "baseline_sha": "bdc0a6030b9c5b78f7917191b309b89a382c7e8d",
+            "build_exit": 0,
+            "category": "semantic",
+            "failed_assertion": "witness testBackgroundCanNotStartAStoppedRuntimeMakesNoOsCalls failed as intended (5 failed case(s))",
+            "id": "T28-SM1-ios-background-starts-stopped-runtime",
+            "log_path": "T28/logs/T28-SM1-ios-background-starts-stopped-runtime.semantic.log",
+            "log_sha": "016b4942d6cd535fe246b408ce33efdbd76eced3bd85ec4f551b630dff19f72d",
+            "mutant_patch_sha": "246d98759cf42f3a6e11d2d883cbf464df7b8014b1aeb264b168c5e7e3d91e16",
+            "outcome": "KILLED",
+            "platform": null,
+            "target_tests": [
+              "testBackgroundCanNotStartAStoppedRuntimeMakesNoOsCalls"
+            ],
+            "tests_run": 10
+          },
+          {
+            "anchor_count": 1,
+            "baseline_sha": "bdc0a6030b9c5b78f7917191b309b89a382c7e8d",
+            "build_exit": 0,
+            "category": "semantic",
+            "failed_assertion": "witness testPowerLossUniformlyInvalidatesAndIsTerminalNeverReady failed as intended (2 failed case(s))",
+            "id": "T28-SM2-android-power-loss-not-uniform",
+            "log_path": "T28/logs/T28-SM2-android-power-loss-not-uniform.semantic.log",
+            "log_sha": "a0994cc1c817e03572e0c61091b263f6fee8796af6042f268d186f7ca5b18279",
+            "mutant_patch_sha": "330e8c5808667e5fed725301fb42d073f03138cde18c7d4233ad3072587d69bf",
+            "outcome": "KILLED",
+            "platform": null,
+            "target_tests": [
+              "testPowerLossUniformlyInvalidatesAndIsTerminalNeverReady"
+            ],
+            "tests_run": 10
+          },
+          {
+            "anchor_count": 1,
+            "baseline_sha": "bdc0a6030b9c5b78f7917191b309b89a382c7e8d",
+            "build_exit": 0,
+            "category": "semantic",
+            "failed_assertion": "witness testPowerLossUniformlyInvalidatesAndIsTerminalNeverReady failed as intended (2 failed case(s))",
+            "id": "T28-SM2-ios-power-loss-not-uniform",
+            "log_path": "T28/logs/T28-SM2-ios-power-loss-not-uniform.semantic.log",
+            "log_sha": "56426a5efc24d5b8ca4cc5ab107dcbf07e6ea74e9bc904ff9f6ff3ab9394472d",
+            "mutant_patch_sha": "931ec99bc57b21801a017ceb64b7e0f59667e84998ad03a77493ac39594500f4",
+            "outcome": "KILLED",
+            "platform": null,
+            "target_tests": [
+              "testPowerLossUniformlyInvalidatesAndIsTerminalNeverReady"
+            ],
+            "tests_run": 10
+          }
+        ]
+      },
+      "objective": {
+        "claimed_head": "bbc6ab11bc1b9b7c9242407cb1bf051b3908b04a",
+        "claimed_utc": "2026-09-11T19:55:52+00:00",
+        "objective": "RuntimeLifecycleGate owns a transport lease.",
+        "task": "T28"
+      },
+      "status": "COMPLETE",
+      "tested_tree_sha": "5b78fca0df338a0dd5e9a5bbc672ad7236de7531",
+      "unresolved": [
+        "real-device power/permission/CoreBluetooth behaviour and sustained radio lifecycle await the hardware gates (deferred to T73-T75 / artifact acceptance); host tests prove the control-flow law only, not the platform adapters",
+        "external gates (A06, APPROVED_CONTENT, NATIVE_MODELS, HARDWARE, SIGNING) remain open; readiness stays false",
+        "the unified authority is delivered as a contract + production adapters bound to each isle transport contract (LifecycleTransportAdapter); the concrete BleTransport/MeshNode internals are not rewritten (blast-radius on sealed hot paths) -- the adapters are the sanctioned composition seam the runtime binds",
+        "pre-existing ReadinessT18Test randomized fixture is a latent, ordering-sensitive flake unrelated to T28; handled by a bounded re-run to a genuinely green 917/0/0, no sealed T18 edit and no fabrication"
+      ]
     }
   },
-  "current_task": "T28",
+  "current_task": "T29",
   "external_blockers": [
     "A06",
     "APPROVED_CONTENT",
@@ -3204,39 +3366,33 @@
     "SIGNING"
   ],
   "failed_attempts": [],
-  "in_progress": {
-    "claimed_head": "bbc6ab11bc1b9b7c9242407cb1bf051b3908b04a",
-    "claimed_utc": "2026-09-11T19:55:52+00:00",
-    "objective": {
-      "claimed_head": "bbc6ab11bc1b9b7c9242407cb1bf051b3908b04a",
-      "claimed_utc": "2026-09-11T19:55:52+00:00",
-      "objective": "RuntimeLifecycleGate owns a transport lease.",
-      "task": "T28"
-    },
-    "task": "T28"
-  },
-  "last_code_head": "0a411cf3a0c24404b682646aaf75c19f11e0604e",
-  "last_observed_head": "0a411cf3a0c24404b682646aaf75c19f11e0604e",
+  "in_progress": null,
+  "last_code_head": "130e3e7e71d56802577a53f07fe24d8e3e1af8ab",
+  "last_observed_head": "130e3e7e71d56802577a53f07fe24d8e3e1af8ab",
   "latest_verification": {
-    "at_utc": "2026-09-11T19:52:46+00:00",
-    "boundary_commit": "0a411cf3a0c24404b682646aaf75c19f11e0604e",
+    "android_grand": {
+      "errors": 0,
+      "failures": 0,
+      "tests": 917
+    },
+    "at_utc": "2026-09-11T20:52:17+00:00",
+    "boundary_commit": "130e3e7e71d56802577a53f07fe24d8e3e1af8ab",
     "ios_grand": {
       "errors": 0,
       "failures": 0,
-      "tests": 844
+      "tests": 854
     },
     "roster": {
-      "T27_killed": 2,
-      "of": 2
+      "T28_killed": 4,
+      "of": 4
     },
-    "shared_vector_events": 312,
-    "t27_courts": {
-      "android_parity": 3,
-      "ios": 5
+    "t28_courts": {
+      "android": 10,
+      "ios": 10
     },
-    "tested_tree_sha": "d560af895d4aabef90e1fabcd344af9824a71cce"
+    "tested_tree_sha": "5b78fca0df338a0dd5e9a5bbc672ad7236de7531"
   },
-  "next_task": "T28",
+  "next_task": "T29",
   "phase": "P0",
   "plan_sha256": "685456b378662b0a40a53a6abc810041e37daf97b213f3efeb6cea879363934e",
   "planning_baseline_sha": "b5c3d3d394b70cf356cdde33b47511dad7cbb95c",
