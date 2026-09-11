@@ -768,7 +768,15 @@ class BleTransport(
         when (record.recordType) {
             BleRecordType.DATA -> inboundRecordFlow.tryEmit(conn.peerId to record)
             BleRecordType.HS1, BleRecordType.HS3 -> handleResponderHandshakeRecord(peerAddress, conn, record)
-            else -> recordRejection(conn.peerId, "hs.read.responder", "unexpected direction")
+            else -> {
+                // T22: the responders own voice come again is a conflicting
+                // sequence; the exact relation falleth. The farewell record
+                // (CLOSE) is spared here - its policy is T23s charge.
+                recordRejection(conn.peerId, "hs.read.responder", "unexpected direction")
+                if (namesHandshakeRecord(value)) {
+                    closeResponderRelation(peerAddress)
+                }
+            }
         }
     }
 
@@ -1182,38 +1190,86 @@ class BleTransport(
                                                   record: BleReassembledRecord) {
         val registry = sessions ?: run {
             recordRejection(conn.peerId, "hs.read.responder", "no trusted session registry")
+            closeResponderRelation(peerAddress)
             return
         }
         val hint = conn.remoteNodeHint ?: run {
             recordRejection(conn.peerId, "hs.read.responder", "no remembered link-info hint")
+            closeResponderRelation(peerAddress)
             return
         }
         if (!BleConnection.canBindRemoteHint(hint)) {
             recordRejection(conn.peerId, "hs.read.responder", "malformed remembered hint")
+            closeResponderRelation(peerAddress)
+            return
+        }
+        if (conn.localRole != BleRole.RESPONDER) {
+            // T22 (section 13): the door is the responders, by the assigndment
+            // of the LinkInfo exchange; a record that comes to the wrong gate
+            // is a conflicting sequence, and the relation of that peer
+            // perisheth by the hand that ruleth its side of the link.
+            recordRejection(conn.peerId, "hs.read.responder", "unexpected direction")
+            if (conn.localRole == BleRole.INITIATOR) {
+                closeInitiatorRelation(peerAddress)
+            } else {
+                closeResponderRelation(peerAddress)
+            }
             return
         }
         when (record.recordType) {
             BleRecordType.HS1 -> {
+                if (conn.state != BleConnectionState.ROLE_BOUND) {
+                    // exactly the expected first is accepted: a message twice
+                    // told in hand, or one that comes after the trust, is a
+                    // conflicting sequence - the relation closes, it drifts not
+                    recordRejection(conn.peerId, "hs.read.responder",
+                                    "hs1 at stage " + conn.state.name)
+                    closeResponderRelation(peerAddress)
+                    return
+                }
                 val hs2 = registry.responderProcessHs1(conn.peerId, hint, record.payload) ?: run {
+                    // trust refused: the counsel is not true; the relation
+                    // becometh nothing, and the slot perisheth with it
                     recordRejection(conn.peerId, "hs.read.responder", "hs1 rejected")
+                    closeResponderRelation(peerAddress)
                     return
                 }
                 conn.beginHandshake()
-                // T17: the record is written in the handler's own course, as
+                // T17: the record is written in the handlers own course, as
                 // the iOS twin does; the ready marking that follows can then
                 // observe a connection whose fragments have really travelled.
-                runBlocking(kotlinx.coroutines.Dispatchers.IO) {
+                // T22: and the verdict of that writing is hearkened for.
+                val verdict = runBlocking(kotlinx.coroutines.Dispatchers.IO) {
                     writeHandshakeRecordViaServer(peerAddress, conn, BleRecordType.HS2, hs2)
+                }
+                if (verdict !is TransportResult.Admitted) {
+                    recordRejection(conn.peerId, "hs.read.responder", "hs2 reservation refused")
+                    closeResponderRelation(peerAddress)
+                    return
                 }
             }
             BleRecordType.HS3 -> {
+                if (conn.state != BleConnectionState.HANDSHAKE_IN_PROGRESS) {
+                    // the third before the first is out of order; the third
+                    // again after the trust is a late counsel: either way
+                    // the relation falleth
+                    recordRejection(conn.peerId, "hs.read.responder",
+                                   "hs3 at stage " + conn.state.name)
+                    closeResponderRelation(peerAddress)
+                    return
+                }
                 if (!registry.responderProcessHs3(conn.peerId, record.payload, hint)) {
                     recordRejection(conn.peerId, "hs.read.responder", "hs3 rejected")
+                    closeResponderRelation(peerAddress)
                     return
                 }
                 if (!conn.markTrustedReady()) {
+                    // only the trusted third installes a usable session; a
+                    // mark that can not be set is a trust failure, and the
+                    // relation closes with it
                     recordRejection(conn.peerId, "hs.read.responder",
                                    "trusted ready refused from " + conn.state)
+                    closeResponderRelation(peerAddress)
                     return
                 }
                 handshakeReadyFlow.tryEmit(conn.peerId.copyOf())
