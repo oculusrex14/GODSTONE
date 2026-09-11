@@ -3204,7 +3204,17 @@
     "SIGNING"
   ],
   "failed_attempts": [],
-  "in_progress": null,
+  "in_progress": {
+    "claimed_head": "bbc6ab11bc1b9b7c9242407cb1bf051b3908b04a",
+    "claimed_utc": "2026-09-11T19:55:52+00:00",
+    "objective": {
+      "claimed_head": "bbc6ab11bc1b9b7c9242407cb1bf051b3908b04a",
+      "claimed_utc": "2026-09-11T19:55:52+00:00",
+      "objective": "RuntimeLifecycleGate owns a transport lease.",
+      "task": "T28"
+    },
+    "task": "T28"
+  },
   "last_code_head": "0a411cf3a0c24404b682646aaf75c19f11e0604e",
   "last_observed_head": "0a411cf3a0c24404b682646aaf75c19f11e0604e",
   "latest_verification": {

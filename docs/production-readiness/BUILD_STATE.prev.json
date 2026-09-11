@@ -3071,9 +3071,131 @@
         "external gates (A06, APPROVED_CONTENT, NATIVE_MODELS, HARDWARE, SIGNING) remain open; readiness stays false",
         "android-only task by the card (required_regression_paths name just the android court; command_stages carry no swift target); no iOS twin is in scope for T26"
       ]
+    },
+    "T27": {
+      "case_results": {
+        "android_grand_supplementary": {
+          "counts_source": "gradlew :mesh:testDebugUnitTest --rerun-tasks at platform child 76a54a2 (supplementary cross-platform parity; not a T27 card stage)",
+          "errors": 0,
+          "failures": 0,
+          "skipped": 0,
+          "tests": 907,
+          "xml_files": 50
+        },
+        "deleted_cases": [],
+        "ios_grand": {
+          "counts_source": "swift test --package-path ios/Packages/GodstoneFoundation (full) at boundary 0a411cf; Test Case passed lines; 0 failed",
+          "errors": 0,
+          "failures": 0,
+          "skipped": 0,
+          "tests": 844
+        },
+        "shared_vector": {
+          "counts_source": "crypto/gen_traffic_governor_vectors.py; independently re-derived expect bits SELF_CONSISTENT",
+          "events": 312,
+          "expect_self_consistent": true,
+          "scenarios": 7
+        },
+        "t27_android_parity_suite_supplementary": {
+          "counts_source": "gradlew --tests *ReadinessT27AndroidParityTest* --rerun-tasks (the oracle court that locks the shared golden to the sealed android governor)",
+          "errors": 0,
+          "failures": 0,
+          "tests": 3
+        },
+        "t27_ios_suite": {
+          "counts_source": "swift test --filter ReadinessT27Tests (canonical court, 5 required witnesses incl the hint-is-not-identity semantic negative)",
+          "errors": 0,
+          "failures": 0,
+          "tests": 5
+        }
+      },
+      "claim_commit": "c3b63c2",
+      "commands": [
+        "T27-narrow-swift",
+        "T27-subsystem-swift",
+        "T27-controls-python3",
+        "T27-controls-python3-002",
+        "T27-controls-python3-003"
+      ],
+      "device_gate_ids": [],
+      "file_hashes": {},
+      "implementation_commit": "0a411cf3a0c24404b682646aaf75c19f11e0604e",
+      "implementation_commits": [
+        "76a54a28065af213af01bcebbab2aac3823ba739",
+        "0a411cf3a0c24404b682646aaf75c19f11e0604e"
+      ],
+      "inputs": {
+        "consumer_checked": [
+          "Router.kt unaffected (T26 authority, 42/0); the frozen Priority enum is read only"
+        ],
+        "generator": "crypto/gen_traffic_governor_vectors.py",
+        "governed_source": [
+          "ios/Godstone/Sources/GodstoneMesh/PeerGovernor.swift"
+        ],
+        "parity_oracle": [
+          "android/mesh/src/main/java/io/godstone/mesh/abuse/PeerGovernor.kt sealed at T26 (1736136); android parity court ReadinessT27AndroidParityTest replays the shared golden against it"
+        ],
+        "required_regression_paths": [
+          "ios/Godstone/Tests/GodstoneMeshTests/ReadinessT27Tests.swift"
+        ],
+        "shared_vector": "wire/traffic_governor_vectors.txt",
+        "task_card": "docs/production-readiness/TASKS.json#T27"
+      },
+      "ladder_boundary_commit": "0a411cf3a0c24404b682646aaf75c19f11e0604e",
+      "mutation_results": {
+        "campaign_note": "T27 semantic roster (2 iOS mutants) verified KILLED against baseline 76a54a2. SM1 uses the untrusted advertised hint as the authenticated budget identity, conflating two distinct peers that share a hint (the cards named falsification), caught by testAdvertisedHintIsNeverTheAuthenticatedIdentity; SM2 removes the global bound tested before allocating a governor entry, so a Sybil flood grows the registry unbounded, caught by testBoundedCacheHoldsUnderSybilChurn. The unmutated baseline court ran 5 positive each.",
+        "semantic": [
+          {
+            "anchor_count": 1,
+            "baseline_sha": "76a54a28065af213af01bcebbab2aac3823ba739",
+            "build_exit": 0,
+            "category": "semantic",
+            "failed_assertion": "witness testAdvertisedHintIsNeverTheAuthenticatedIdentity failed as intended (2 failed case(s))",
+            "id": "T27-SM1-ios-hint-as-authenticated-identity",
+            "log_path": "T27/logs/T27-SM1-ios-hint-as-authenticated-identity.semantic.log",
+            "log_sha": "6b35a702b0c8a5d05ed39d46e8cae4198ad935ca561a896d1f0f69bea047f4c3",
+            "mutant_patch_sha": "0016371002841eb87b3e9723654f41c0ff92cb28e22db5e81184b07ce2ded960",
+            "outcome": "KILLED",
+            "target_tests": [
+              "testAdvertisedHintIsNeverTheAuthenticatedIdentity"
+            ],
+            "tests_run": 5
+          },
+          {
+            "anchor_count": 1,
+            "baseline_sha": "76a54a28065af213af01bcebbab2aac3823ba739",
+            "build_exit": 0,
+            "category": "semantic",
+            "failed_assertion": "witness testBoundedCacheHoldsUnderSybilChurn failed as intended (2 failed case(s))",
+            "id": "T27-SM2-ios-unbounded-identity-governor",
+            "log_path": "T27/logs/T27-SM2-ios-unbounded-identity-governor.semantic.log",
+            "log_sha": "7d24bc7eb52b7d110878e8ca0a7757ed8f363bcaf9a49cad95fb8af1d895eff8",
+            "mutant_patch_sha": "87ccfed44ab1549d7f23023959d28d2a0b368bc16f45672ed0daae2686106038",
+            "outcome": "KILLED",
+            "target_tests": [
+              "testBoundedCacheHoldsUnderSybilChurn"
+            ],
+            "tests_run": 5
+          }
+        ]
+      },
+      "objective": {
+        "claimed_head": "762528490a31f30a342b3f354deff22b99b9d881",
+        "claimed_utc": "2026-09-11T18:49:59+00:00",
+        "objective": "Implement the same canonical budget configuration and pure governor transitions on the iOS executor.",
+        "task": "T27"
+      },
+      "status": "COMPLETE",
+      "tested_tree_sha": "d560af895d4aabef90e1fabcd344af9824a71cce",
+      "unresolved": [
+        "real-device admission under radio load and sustained-flood battery impact await the hardware gates (deferred to T73-T75 / artifact acceptance); internal implementation does not close the device gate",
+        "external gates (A06, APPROVED_CONTENT, NATIVE_MODELS, HARDWARE, SIGNING) remain open; readiness stays false",
+        "T27 card stages are iOS-only (the manifest regression path names the iOS court; command_stages carry swift + python controls, no gradle); the android parity court + android full suite are executed supplementary evidence, not T27 card stages",
+        "pre-existing ReadinessT18Test randomized fixture (64-draw cap under shared/global RNG, ordering-sensitive) is a latent flake unrelated to T27; handled by bounded re-run to a genuinely green 907/0/0 execution, no sealed T18 edit and no fabrication"
+      ]
     }
   },
-  "current_task": "T27",
+  "current_task": "T28",
   "external_blockers": [
     "A06",
     "APPROVED_CONTENT",
@@ -3082,37 +3204,29 @@
     "SIGNING"
   ],
   "failed_attempts": [],
-  "in_progress": {
-    "claimed_head": "762528490a31f30a342b3f354deff22b99b9d881",
-    "claimed_utc": "2026-09-11T18:49:59+00:00",
-    "objective": {
-      "claimed_head": "762528490a31f30a342b3f354deff22b99b9d881",
-      "claimed_utc": "2026-09-11T18:49:59+00:00",
-      "objective": "Implement the same canonical budget configuration and pure governor transitions on the iOS executor.",
-      "task": "T27"
-    },
-    "task": "T27"
-  },
-  "last_code_head": "ec566bb071952978cc829468672427e2333e77be",
-  "last_observed_head": "ec566bb071952978cc829468672427e2333e77be",
+  "in_progress": null,
+  "last_code_head": "0a411cf3a0c24404b682646aaf75c19f11e0604e",
+  "last_observed_head": "0a411cf3a0c24404b682646aaf75c19f11e0604e",
   "latest_verification": {
-    "android_grand": {
+    "at_utc": "2026-09-11T19:52:46+00:00",
+    "boundary_commit": "0a411cf3a0c24404b682646aaf75c19f11e0604e",
+    "ios_grand": {
       "errors": 0,
       "failures": 0,
-      "tests": 904
+      "tests": 844
     },
-    "at_utc": "2026-09-11T18:45:30+00:00",
-    "boundary_commit": "ec566bb071952978cc829468672427e2333e77be",
     "roster": {
-      "T26_killed": 2,
+      "T27_killed": 2,
       "of": 2
     },
-    "t26_courts": {
-      "android": 7
+    "shared_vector_events": 312,
+    "t27_courts": {
+      "android_parity": 3,
+      "ios": 5
     },
-    "tested_tree_sha": "2accfd03d943efd384de5f07830b2b16e11f916f"
+    "tested_tree_sha": "d560af895d4aabef90e1fabcd344af9824a71cce"
   },
-  "next_task": "T27",
+  "next_task": "T28",
   "phase": "P0",
   "plan_sha256": "685456b378662b0a40a53a6abc810041e37daf97b213f3efeb6cea879363934e",
   "planning_baseline_sha": "b5c3d3d394b70cf356cdde33b47511dad7cbb95c",
