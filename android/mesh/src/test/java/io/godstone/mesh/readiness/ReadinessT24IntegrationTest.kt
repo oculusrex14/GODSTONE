@@ -80,7 +80,7 @@ class ReadinessT24IntegrationTest {
     }
 
     @Test
-    fun testThePeerStatusFollowethFoundAndLostByContent() {
+    fun testThePeerStatusFollowethPresenceTransitionsByContent() {
         val n = node()
         val a = ByteArray(16) { 0x11 }
         val b = ByteArray(16) { 0x22 }

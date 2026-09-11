@@ -51,7 +51,7 @@ final class ReadinessT24IntegrationTests: XCTestCase {
 
     // MARK: - the start order: attach consumers, then open the adapter
 
-    func testTheStartSequenceAttachethConsumersEreTheAdapterBeOpened() throws {
+    func testTheStartSequenceAttachethConsumersEreTheAdaptersBeOpened() throws {
         let node = makeNode()
         var order: [String] = []
         node.startInOrder(
@@ -63,7 +63,7 @@ final class ReadinessT24IntegrationTests: XCTestCase {
 
     // MARK: - the peer view followeth connect / disconnect / re-present by content
 
-    func testThePeerStatusFollowethConnectDisconnectAndRePresentByContent() throws {
+    func testThePeerStatusFollowethPresenceTransitionsByContent() throws {
         let node = makeNode()
         let a = UUID(uuidString: "AAAAAAAA-AAAA-AAAA-AAAA-AAAAAAAAAAAA")!
         let b = UUID(uuidString: "BBBBBBBB-BBBB-BBBB-BBBB-BBBBBBBBBBBB")!
