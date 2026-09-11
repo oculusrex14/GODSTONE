@@ -1,6 +1,7 @@
 import XCTest
 import Foundation
 @testable import GodstoneMesh
+import GodstoneCore
 
 // ---------------------------------------------------------------------------
 // T25 - the CANONICAL designated regression court (iOS), the symmetric twin of
@@ -105,5 +106,163 @@ final class ReadinessT25Tests: XCTestCase {
         let live = SnapshotObservationLease(onRelease: {})
         if live.isActive { computes += 1 }
         XCTAssertEqual(computes, 1, "an active lease's gate admisseth exactly one compute")
+    }
+
+    // =====================================================================
+    // PLATFORM child -- the five required behavioural cases, at the live
+    // store<->authority seam (symmetric to the Kotlin court; design A: the same-
+    // thread synchronous compute is kept; a generation token + revalidate-before-
+    // publish drop a stale in-flight result; the owned lease gates the store
+    // callback; a rolled-back commit fire'th no observer so no snapshot is born).
+    // =====================================================================
+
+    private func msgId(_ n: Int) -> Data { Data((0..<16).map { j in UInt8((n &* 16 &+ j) % 256) }) }
+
+    private func bloomDigest(_ ids: [Data]) -> Data {
+        var b = BloomDigest()
+        for id in ids { b.add(id) }
+        return Data(b.toBytes().prefix(BleLinkInfoConstants.shortDigestBytes))
+    }
+
+    // (7) A GATT read copieth the last committed snapshot WITHOUT touching the
+    //     store -- a blocked/unavailable store cannot stall or falsify a read.
+    func testTheReadPathCopiethTheCommittedValueEvenWhileTheStoreIsBlocked() throws {
+        let identity = try makeIdentity()
+        let store = ProbeStoreDouble()
+        store.seed([msgId(10), msgId(11)])
+        let auth = LinkInfoSnapshotAuthority(identityProvider: { identity }, storeProvider: { store })
+        let held0 = auth.currentHeldSnapshot(); XCTAssertNotNil(held0)
+        let data0 = auth.currentData(); XCTAssertNotNil(data0)
+        let depth0 = auth.currentSnapshot()?.queueDepth
+        let traversalsAtPrime = store.traversalCount
+        store.blockNextTraversal = true                     // any NEW traversal would fault and visit nothing
+        for _ in 0..<64 {
+            XCTAssertEqual(held0, auth.currentHeldSnapshot(), "the held-snapshot is a pure copy")
+            XCTAssertEqual(data0, auth.currentData(), "the data is a pure copy")
+            XCTAssertEqual(depth0, auth.currentSnapshot()?.queueDepth, "the on-wire snapshot is a pure copy")
+        }
+        XCTAssertEqual(traversalsAtPrime, store.traversalCount, "a read trigger'd NO durable traversal")
+    }
+
+    // (8) A nested (reentrant) commit notified DURING a traversal must not let the
+    //     stale in-flight result win: the compute that captur'd an older token is
+    //     DROPP'D and the latest is published exactly once (bounded re-run).
+    func testObserverReentrancyPublishethTheLatestValueExactlyOnce() throws {
+        let identity = try makeIdentity()
+        let store = ProbeStoreDouble()
+        store.seed([msgId(1)])
+        let auth = LinkInfoSnapshotAuthority(identityProvider: { identity }, storeProvider: { store })
+        let prime = auth.currentHeldSnapshot(); XCTAssertNotNil(prime)
+        XCTAssertEqual(prime!.queueDepth, 1, "the prime reflecteth the one seeded item")
+        let vBefore = prime!.storeVersion
+        let b = msgId(2)
+        store.reentrantOnce = { store.held.append(b); store.emitObservers() }   // fires DURING the next traversal
+        _ = auth.refresh()
+        let snap = auth.currentHeldSnapshot(); XCTAssertNotNil(snap)
+        XCTAssertEqual(snap!.queueDepth, 2, "the reentrant latest commit is reflected exactly once")
+        XCTAssertEqual(snap!.digest6, bloomDigest(store.held), "the digest covereth both the pre- and mid-traversal item")
+        XCTAssertGreaterThan(snap!.storeVersion, vBefore, "the generation advanced past the pre-hook token")
+    }
+
+    // (9) A commit that ROLLED BACK fire'th no observer and must change NO snapshot;
+    //     only a genuinely committed change advance'th it (the contrast is the proof).
+    func testARolledBackCommitCausethNoNewSnapshot() throws {
+        let identity = try makeIdentity()
+        let store = ProbeStoreDouble()
+        store.seed([msgId(20)])
+        let auth = LinkInfoSnapshotAuthority(identityProvider: { identity }, storeProvider: { store })
+        let before = auth.currentHeldSnapshot()
+        let dataBefore = auth.currentData()
+        let tr = store.traversalCount
+        store.simulateRolledBackCommit([msgId(20), msgId(21)])    // no durable change survives, NO observer fire'n
+        XCTAssertEqual(tr, store.traversalCount, "a rolled-back commit fire'th no observer")
+        XCTAssertEqual(before, auth.currentHeldSnapshot(), "the snapshot is unchang'd")
+        XCTAssertEqual(dataBefore, auth.currentData(), "the bytes are unchang'd")
+        store.committed([msgId(20), msgId(21)])                  // contrast: a genuine commit advance'th
+        XCTAssertEqual(auth.currentHeldSnapshot()?.queueDepth, 2, "a committed change advance'th the snapshot")
+        XCTAssertGreaterThan(auth.currentHeldSnapshot()?.storeVersion ?? 0, before?.storeVersion ?? 0, "and the generation")
+    }
+
+    // (10) Repeated runtime start/stop leaveth exactly ONE registration (the grow-only
+    //      registry is gated, never re-added); while stopp'd the observation is zero-
+    //      active (no recompute); while start'd it observeth again on the same registration.
+    func testRepeatedRuntimeStartStopLeavethOneRegistrationThenZeroActive() throws {
+        let identity = try makeIdentity()
+        let store = ProbeStoreDouble()
+        store.seed([msgId(30)])
+        let auth = LinkInfoSnapshotAuthority(identityProvider: { identity }, storeProvider: { store })
+        XCTAssertEqual(store.registrations, 1, "exactly one registration at construction")
+        XCTAssertTrue(auth.isObserving())
+        for _ in 0..<3 { auth.stopObserving(); auth.startObserving() }
+        XCTAssertEqual(store.registrations, 1, "repeated start/stop addeth no second registration")
+        auth.stopObserving()
+        XCTAssertFalse(auth.isObserving(), "the lease readeth as stopp'd")
+        let trStop = store.traversalCount
+        let qStop = auth.currentHeldSnapshot()?.queueDepth
+        store.committed([msgId(30), msgId(31)])                  // gated: reacheth no observer effect
+        XCTAssertEqual(trStop, store.traversalCount, "while stopp'd the observation is zero-active (no recompute)")
+        XCTAssertEqual(qStop, auth.currentHeldSnapshot()?.queueDepth, "the snapshot is frozen while stopp'd")
+        auth.startObserving()
+        XCTAssertTrue(auth.isObserving(), "the lease readeth as start'd")
+        store.committed([msgId(30), msgId(31)])                  // now it recomputeth on the SAME registration
+        XCTAssertGreaterThan(store.traversalCount, trStop, "while start'd the observation recomputeth")
+        XCTAssertEqual(auth.currentHeldSnapshot()?.queueDepth, 2, "the committed change is reflect'd")
+    }
+
+    // (11) The held count saturateth at the one-byte bound (255) and the digest is the
+    //      frozen generator over the FULL held set (not a fresh formula).
+    func testQueueDepthSaturatethAtTheOneByteBoundViaTheFrozenGenerators() throws {
+        let identity = try makeIdentity()
+        let store = ProbeStoreDouble()
+        let many = (0..<300).map { msgId($0) }
+        store.seed(many)
+        let auth = LinkInfoSnapshotAuthority(identityProvider: { identity }, storeProvider: { store })
+        let held = auth.currentHeldSnapshot(); XCTAssertNotNil(held)
+        XCTAssertEqual(held!.queueDepth, 255, "the held count saturateth at the one-byte cap")
+        XCTAssertEqual(held!.digest6, bloomDigest(many), "the digest is the frozen generator over the FULL held set")
+        XCTAssertEqual(auth.currentSnapshot()?.queueDepth, UInt8(255), "the on-wire snapshot agree'th with the held-snapshot")
+    }
+
+    // ---- deterministic double for the store<->authority boundary ----
+    private final class ProbeStoreDouble: MessageStore {
+        var held: [Data] = []
+        private var observers: [@Sendable () -> Void] = []
+        private let slock = NSLock()
+        var registrations = 0
+        var traversalCount = 0
+        var blockNextTraversal = false
+        var reentrantOnce: (() -> Void)? = nil
+        func seed(_ ids: [Data]) { held = ids }
+        func committed(_ ids: [Data]) { held = ids; emitObservers() }
+        /// Models a transaction that rolled back: no durable change survives, and the store fire'th NO observer.
+        func simulateRolledBackCommit(_ ids: [Data]) { /* deliberately inert: no mutation, no notify */ }
+        func emitObservers() { slock.lock(); let obs = observers; slock.unlock(); obs.forEach { $0() } }
+        func registerHeldSetObserver(_ observer: @escaping @Sendable () -> Void) {
+            slock.lock(); observers.append(observer); registrations += 1; slock.unlock()
+        }
+        func persist(_ frame: FrameV2, receivedFrom: Data) -> PersistResult { .heldNew }
+        func enqueueDirectOutbound(_ frame: FrameV2, expectedRecipient: Data, localOriginNodeId: Data) -> OutboundEnqueueResult {
+            .canonicalFrameMismatch
+        }
+        func allHeldOrderedByPriority() -> [FrameV2] { [] }
+        func allHeldMsgIds() -> [Data] { slock.lock(); defer { slock.unlock() }; return held }
+        func forEachHeldOrderedByPriority(_ visit: (FrameV2) -> Bool) {}
+        func forEachHeldMsgId(_ visit: (Data) -> Bool) {
+            slock.lock(); let copy = held; slock.unlock()
+            traversalCount += 1
+            if blockNextTraversal { blockNextTraversal = false; return }        // the store is unavail'able: visit nothing
+            for id in copy { if !visit(id) { break } }
+            if let hook = reentrantOnce { reentrantOnce = nil; hook() }          // fire the nested commit-notify once
+        }
+        var heldBytes: Int64 { Int64(held.count &* 32) }
+    }
+
+    private func makeIdentity() throws -> MeshIdentity {
+        let kc = InMemoryKeychain()
+        let edSeed = Data(repeating: 1, count: 32)
+        let xPriv = Data(repeating: 2, count: 32)
+        let state = try LocalIdentityStateV1(generation: 0, ed25519Seed: edSeed, x25519PrivateKey: xPriv)
+        kc.storage[MeshIdentity.v1Tag] = state.encode()
+        return try MeshIdentity.loadFromKeychain(keychain: kc)
     }
 }
