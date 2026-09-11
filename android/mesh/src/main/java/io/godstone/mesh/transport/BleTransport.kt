@@ -1327,9 +1327,16 @@ class BleTransport(
      *  application LinkReady once and only once for a relation. */
     private fun publishApplicationLinkReadyOnce(peerId: ByteArray): Boolean = synchronized(linkReadyPublishLock) {
         if (linkReadyPublished.any { it.contentEquals(peerId) }) return@synchronized false
+        val copy = peerId.copyOf()
+        // T24: the emit's verdict is OBSERV'd, never discard'd. The relation is registred
+        // as publish'd - and success is claim'd - onely if the conduit ACCEPTED the octets.
+        // A refus'd emit (the bounded buffer full) neither advance'th the ring nor marketh
+        // the relation publish'd, so a later attempt may retry it; and it is surface'd as
+        // a failure rather than swallow'd as success. This is the very law the bounded
+        // ReliablePeerEventChannel enforce'th, brought to the transport's own seam.
+        if (!applicationLinkReadyFlow.tryEmit(copy)) return@synchronized false
         if (linkReadyPublished.size >= MAX_ACTIVE_CONNECTIONS) linkReadyPublished.removeFirst()
-        linkReadyPublished.addLast(peerId.copyOf())
-        applicationLinkReadyFlow.tryEmit(peerId.copyOf())
+        linkReadyPublished.addLast(copy)
         return@synchronized true
     }
 
