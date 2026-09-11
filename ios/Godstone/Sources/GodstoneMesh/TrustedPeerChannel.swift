@@ -46,6 +46,32 @@ struct TrustedPeer: Equatable, Hashable, Sendable {
         guard trustVersion >= 0 else { return nil }
     }
 
+    /// Capture the authenticated relation as an immutable identity AT THE
+    /// AUTHENTICATED MOMENT, forcing the frozen identity law upon the capture:
+    /// the node id is DERIV'D as `BLAKE2s-128(identityPub)` by the very routine
+    /// the identity layer employeth (`IdentityBindingV1.deriveNodeId`, whose body
+    /// is the plain `Blake2s.hash(_, digestLength: 16)` over the key's octets) -
+    /// never trusted from a caller's bytes. The failable init accepteth any
+    /// sixteen-octet node id the caller supplyeth; this factory leaveth no such
+    /// freedom, so a captured peer can never disagree with its own identity. It
+    /// refuseth a malformed authenticated identity (a wrong-width public key) and
+    /// a negative trust version at the gate, ere any derivation, by return'ing
+    /// nil. No frozen wire/identity code is touch'd: the derivation is onely
+    /// CALL'D, never re-implemented. (Android's twin calleth Identity.nodeIdOf;
+    /// both reduce to the selfsame plain BLAKE2s-128 of the thirty-two-octet
+    /// identity, which is what maketh the two isles agree by construction.)
+    static func capture(
+        relation: RelationKey,
+        authenticatedIdentityPub32: Data,
+        trustVersion: Int
+    ) -> TrustedPeer? {
+        guard authenticatedIdentityPub32.count == TrustedPeerSpec.identityPubBytes else { return nil }
+        guard trustVersion >= 0 else { return nil }
+        // Defer wholly to the canonical derivation; duplicate no hash here.
+        let nodeId16 = IdentityBindingV1.deriveNodeId(signingPublicKey: authenticatedIdentityPub32)
+        return TrustedPeer(relation: relation, nodeId16: nodeId16, identityPub32: authenticatedIdentityPub32, trustVersion: trustVersion)
+    }
+
     // Content equality & hash are synthesiz'd from the four stored properties:
     // Data compareth bytewise, RelationKey is Hashable, Int compareth by value -
     // therefore two independently-built peers with the selfsame bytes are equal,
