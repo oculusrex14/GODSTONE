@@ -318,6 +318,53 @@ SEMANTIC = [
         "witness": "testTheTrustRejectionWithholdsHS3AndClosesTheRelationExactly",
         "gradle_filter": "*ReadinessT21Test*",
     },
+    # ---------------------------------------------------------------- T22
+    #
+    #   The responders record path. The cards named control (mark ready after
+    #   HS1 or HS2 rather than after the trusted HS3) is SM1/SM3; the stage gate
+    #   and the unsealed third are SM2/SM4. Each witness is a case of the
+    #   ReadinessT22 court; each must FAIL under the mutation and pass beside.
+
+    {
+        "id": "T22-SM1-android-ready-at-first",
+        "platform": "jvm",
+        "file": "android/mesh/src/main/java/io/godstone/mesh/transport/BleTransport.kt",
+        "find": '                conn.beginHandshake()',
+        "replace": '                if (conn.beginHandshake() != false) conn.markTrustedReady()',
+        "why": "the responders first arm marketh the connection trusted-ready at once, so the second is never proved - the card forbids marking ready before the trusted third",
+        "witness": "testTheResponderAnswerethTheExpectedFirstWithTheQueuedSecond",
+        "gradle_filter": "*ReadinessT22Test*",
+    },
+    {
+        "id": "T22-SM2-android-stage-gate-open",
+        "platform": "jvm",
+        "file": "android/mesh/src/main/java/io/godstone/mesh/transport/BleTransport.kt",
+        "find": '                if (conn.state != BleConnectionState.HANDSHAKE_IN_PROGRESS) {',
+        "replace": '                if (false) {',
+        "why": "the stage gate of the third arm is cut away, so a third spoken out of order is carried to the registry instead of felled - section thirteen forbids this",
+        "witness": "testTheThirdRecordBeforeTheFirstIsRefusedAndTheRelationFalleth",
+        "gradle_filter": "*ReadinessT22Test*",
+    },
+    {
+        "id": "T22-SM3-swift-ready-at-first",
+        "platform": "swift",
+        "file": "ios/Godstone/Sources/GodstoneMesh/BleTransport.swift",
+        "find": '            _ = conn.beginHandshake()',
+        "replace": '            if conn.beginHandshake() { conn.markTrustedReady() }',
+        "why": "the responders first arm upon the isle marketh ready at once, the second unproved - the selfsame card-forbidden mutation, isle dialect",
+        "witness": "testTheResponderAnswerethTheExpectedFirstWithTheQueuedSecond",
+        "swift_filters": ["ReadinessT22Tests"],
+    },
+    {
+        "id": "T22-SM4-swift-accept-unsealed-third",
+        "platform": "swift",
+        "file": "ios/Godstone/Sources/GodstoneMesh/BleTransport.swift",
+        "find": '            guard registry.responderProcessHs3(centralId, hs3: record.payload, advertisedRemoteHint: hint) else {',
+        "replace": '            guard true else {',
+        "why": "the responders third arm accepteth the counsel though the controller never sealed it - the card saith only a trusted HS3 install eth a usable session",
+        "witness": "testTheTamperedThirdPerishethTheRelationExactly",
+        "swift_filters": ["ReadinessT22Tests"],
+    },
 ]
 
 EXEC_RE = re.compile(r"Executed ([0-9]+) tests, with ([0-9]+) failures")

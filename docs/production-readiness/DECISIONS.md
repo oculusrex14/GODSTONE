@@ -624,3 +624,38 @@ found by the test, not a defect. The absence witness (the controller's READY pub
 link-ready relation) is proved by the equality of the census before and after the exchange;
 the instrument itself is proved by withdrawing the ladders own enrollment and re-enlisting it,
 the census falling and rising accordingly.
+
+## D-T22-a - the court must be driven through the transports own begin
+A court that minted the first counsel by calling the session manager directly left the initiators
+transport behind the handshake: the second was never answered, the third never came forth, and three
+witnesses failed with silent rings. The law of section thirteen bindeth the exchange to the transports
+entry (beginTrustedHandshake), which witnesseth the duplex, elects by the hint order and advanceth the
+stage machine; the court therefore driveth every exchange through that door, and the harvest of the
+third baselines the capture-peripherals writes BEFORE the push and filtereth by the type octet - the
+selfsame recipe the T21 twins established.
+## D-T22-b - the ingress gate is the first to speak; the doors stage-guards are the second
+A late or duplicate handshake counsel is refused by the ingress gate with the cry "at stage" before
+the door is reached; the doors own stage-guards (hs1 at stage, hs3 at stage) ring when the gate hath
+admitted the record and the hand itself must refuse. The courts therefore witness the ring by substring
+("at stage" or "unexpected"), not by one exact phrase, and every such witness also proveth the fall of
+the relation - a bounded refusal that let the relation stand would be the deeper defect.
+## D-T22-c - the flood of the queued second is made by the fragment-bound, not by a knob
+The writers pump on both isles draineth as it runneth, synchronously under the lock, and the staging
+is private: no public handle stayeth the flood between the stage and the drain. The reservation-refusal
+branch is therefore reached by making the destination central answer a capacity of ten octets: the
+two-hundred-and-twenty-nine-octet second then requireth one hundred fifteen fragments, past the frozen
+bound of sixty-four, and the fragmenter itself refuseth the record. The door hearkeneth the verdict,
+ringeth "hs2 reservation refused", and the owners hand closeth the exact relation.
+## D-T22-d - trust is never inferred from the subscription the ladders brought
+The ladders rise and the subscriptions come; yet when the authority denieth the binding (revoked or
+rolled back), the exchange foundereth at the third: the binder consulteth the authority as it openeth
+the third counsel, refuseth the seal, and the relation perisheth with its slot - no session stands
+trusted, no announcement riseth. The refusing authority is injected at the pairing forge, the selfsame
+SessionManager entrance the production pairing useth.
+## D-T22-e - the public discovery field and the authenticated identity are kept separate
+An alien first counsel of the right shape is ANSWERED (the gate is bounded by the public discovery
+field alone), while the alien third - right of length, false of seal - is CAST OUT at the authenticated
+hour: the binder proveth the static key against its own remembrance and the relation falleth. The
+discovery hint that the responder boundeth from the link-info exchange is immutable for the life of
+the relation: the selfsame bound remembrance answereth the true counsel still, though a lesser
+advertisement is shouted after the binding. Proven identically on both isles.

@@ -2226,6 +2226,148 @@
         "android BluetoothDevice constructor remains package-private; responder found-event via subscription hook is device-gated",
         "the ci structural G-invariant registry remains a text-scanner lineage: category=structural, recorded apart; reachability ceiling documented at M2"
       ]
+    },
+    "T22": {
+      "status": "COMPLETE",
+      "objective": {
+        "task": "T22",
+        "objective": "After ROLE_BOUND with remoteHint<localHint, accept exactly the expected HS1 and call beginResponder(remoteHint,hs1); queue returned HS2. Pass HS3 into responderProcessHs3 with the same immutable hint. Only success installs a usable cryptographic session. Keep public discovery identity separate from authenticated full node identity.",
+        "claimed_head": "30f9a360d4882d137362727285998390d5db7149",
+        "claimed_utc": "2026-09-11T00:27:51Z"
+      },
+      "tested_tree_sha": "8e72aa885acbad8b333e4f516205f4aeef28a8e8",
+      "implementation_commits": [
+        "5bd4497",
+        "31d6742",
+        "db38419",
+        "20725e6"
+      ],
+      "claim_commit": "4fb1875",
+      "ladder_boundary_commit": "20725e6c4",
+      "case_results": {
+        "android_grand": {
+          "tests": 844,
+          "skipped": 0,
+          "failures": 0,
+          "errors": 0,
+          "xml_files": 41,
+          "counts_source": "fresh TEST-*.xml walk (mtime > 2026-09-11T00:43:59Z guard), summed; cross-checked against the runner row of T22-subsystem-gradlew"
+        },
+        "ios_grand": {
+          "executed": 785,
+          "failures": 0,
+          "counts_source": "max of the Executed lines in the stage logs (max-not-sum law)"
+        },
+        "t22_android_suite": {
+          "tests": 13,
+          "failures": 0,
+          "counts_source": "fresh XML TEST-*ReadinessT22Test*, mtime-guarded"
+        },
+        "t22_ios_suite": {
+          "tests": 13,
+          "failures": 0,
+          "counts_source": "the filtered twin run: 'Executed 13 tests, with 0 failures'"
+        },
+        "deleted_cases": []
+      },
+      "mutation_results": {
+        "semantic": [
+          {
+            "id": "T22-SM1-android-ready-at-first",
+            "baseline_sha": "20725e6c497ea4beae5bc3832d054ff5ef2c3d0e",
+            "mutant_patch_sha": "2af06fc12afd4d54dd18dfbf7570e79a4d5d8ae618b791633c83669813c79f04",
+            "category": "semantic",
+            "anchor_count": 1,
+            "build_exit": 0,
+            "target_tests": [
+              "testTheResponderAnswerethTheExpectedFirstWithTheQueuedSecond"
+            ],
+            "tests_run": 13,
+            "outcome": "KILLED",
+            "failed_assertion": "witness testTheResponderAnswerethTheExpectedFirstWithTheQueuedSecond failed as intended (12 failed case(s))",
+            "log_sha": "c4b04f4633ed4d3b10c121cd2608e6a074396d1ac90132e2a18d44ae434798bd",
+            "log_path": "mutations/logs/T22-SM1-android-ready-at-first.semantic.log"
+          },
+          {
+            "id": "T22-SM2-android-stage-gate-open",
+            "baseline_sha": "20725e6c497ea4beae5bc3832d054ff5ef2c3d0e",
+            "mutant_patch_sha": "e89edf91d27c099a4ab50195372a071203a50f12a14dec750f9b5ba529ee98f0",
+            "category": "semantic",
+            "anchor_count": 1,
+            "build_exit": 0,
+            "target_tests": [
+              "testTheThirdRecordBeforeTheFirstIsRefusedAndTheRelationFalleth"
+            ],
+            "tests_run": 13,
+            "outcome": "KILLED",
+            "failed_assertion": "witness testTheThirdRecordBeforeTheFirstIsRefusedAndTheRelationFalleth failed as intended (1 failed case(s))",
+            "log_sha": "7d6b886b3de33c183021b963b35962fb05c6e3b191975aa6e6b70a0409bec912",
+            "log_path": "mutations/logs/T22-SM2-android-stage-gate-open.semantic.log"
+          },
+          {
+            "id": "T22-SM3-swift-ready-at-first",
+            "baseline_sha": "20725e6c497ea4beae5bc3832d054ff5ef2c3d0e",
+            "mutant_patch_sha": "039e34971c5011fa7071cf4081aae2f22d28ad48d1bf243f6d274f59354d512c",
+            "category": "semantic",
+            "anchor_count": 1,
+            "build_exit": 0,
+            "target_tests": [
+              "testTheResponderAnswerethTheExpectedFirstWithTheQueuedSecond"
+            ],
+            "tests_run": 13,
+            "outcome": "KILLED",
+            "failed_assertion": "witness testTheResponderAnswerethTheExpectedFirstWithTheQueuedSecond failed as intended (11 failed case(s))",
+            "log_sha": "d256afb7d544489f547d9b5ff6c813582cb13fded2f4ba976105f35a7b755a14",
+            "log_path": "mutations/logs/T22-SM3-swift-ready-at-first.semantic.log"
+          },
+          {
+            "id": "T22-SM4-swift-accept-unsealed-third",
+            "baseline_sha": "20725e6c497ea4beae5bc3832d054ff5ef2c3d0e",
+            "mutant_patch_sha": "60356c8749b0c80d11c634d8cabe603cb1faa577a956104fb35b53b05357434c",
+            "category": "semantic",
+            "anchor_count": 1,
+            "build_exit": 0,
+            "target_tests": [
+              "testTheTamperedThirdPerishethTheRelationExactly"
+            ],
+            "tests_run": 13,
+            "outcome": "KILLED",
+            "failed_assertion": "witness testTheTamperedThirdPerishethTheRelationExactly failed as intended (8 failed case(s))",
+            "log_sha": "4ff6faf71d5c2a7e8556570a1ec72962ff94125d355d87741147446c0d8e5f61",
+            "log_path": "mutations/logs/T22-SM4-swift-accept-unsealed-third.semantic.log"
+          }
+        ],
+        "campaign_note": "the full register was run: 11 of 11 entries KILLED, none skipped, invalid, timed out or escaped; the two lineages are reported apart and never summed"
+      },
+      "commands": [
+        "T22-narrow-gradlew",
+        "T22-narrow-swift",
+        "T22-subsystem-gradlew",
+        "T22-subsystem-swift",
+        "T22-controls-python3",
+        "T22-controls-python3-002",
+        "T22-controls-python3-003"
+      ],
+      "file_hashes": {
+        "android/mesh/src/main/java/io/godstone/mesh/transport/BleTransport.kt": "7d79445e4481aa55a8a72e15c08e02d788935dbcb9ff2a4f15ade817543762b1",
+        "android/mesh/src/test/java/io/godstone/mesh/readiness/ReadinessT22Test.kt": "1e334361e673c3bfc550b2f1a331246a0a4b7f5c2e9263bd523d6716a541971d",
+        "ios/Godstone/Sources/GodstoneMesh/BleTransport.swift": "7d831c6b2815d188c540d7db9c6fd2e407ae32eed88eaa2ffcc31cbe1c6546e0",
+        "ios/Godstone/Tests/GodstoneMeshTests/ReadinessT22Tests.swift": "9c22b906230b84cf0ceb523985f1fe7d4b9f680d5cd6d6cd1a8332d56aa92726",
+        "ios/Packages/GodstoneFoundation/SOURCE_MANIFEST.json": "b03612684b00c5b359ace6ffeb3f0cedd4dd3d486ac3489338c5bed0035670da",
+        "ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/BleTransport.swift": "7d831c6b2815d188c540d7db9c6fd2e407ae32eed88eaa2ffcc31cbe1c6546e0",
+        "ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/ReadinessT22Tests.swift": "9c22b906230b84cf0ceb523985f1fe7d4b9f680d5cd6d6cd1a8332d56aa92726"
+      },
+      "inputs": {
+        "baseline_pre": "30f9a360d",
+        "claim": "4fb1875",
+        "whitespace": "clean",
+        "ladder_L0_L1": "green at the boundary (EVIDENCE/T22/ladder-boundary)"
+      },
+      "unresolved": [
+        "real-device subscription-side found-event publication awaits device gates T73-T77",
+        "android BluetoothDevice constructor remains package-private; responder found-event via subscription hook is device-gated",
+        "the ci structural G-invariant registry remains a text-scanner lineage: category=structural, recorded apart; reachability ceiling documented at M2"
+      ]
     }
   },
   "current_task": null,
@@ -2237,37 +2379,32 @@
     "SIGNING"
   ],
   "failed_attempts": [],
-  "in_progress": {
-    "task": "T22",
-    "objective": "After ROLE_BOUND with remoteHint<localHint, accept exactly the expected HS1 and call beginResponder(remoteHint,hs1); queue returned HS2. Pass HS3 into responderProcessHs3 with the same immutable hint. Only success installs a usable cryptographic session. Keep public discovery identity separate from authenticated full node identity.",
-    "claimed_head": "30f9a360d4882d137362727285998390d5db7149",
-    "claimed_utc": "2026-09-11T00:27:51Z"
-  },
+  "in_progress": {},
   "last_code_head": "194ccb5c27a8440fae18327312b9148a088c718b",
   "last_observed_head": "d9b300be102c5c880cab2491e15b79af2838d442",
   "latest_verification": {
-    "utc": "2026-09-11T00:21:00Z",
-    "task": "T21",
+    "utc": "2026-09-11T04:03:59Z",
+    "task": "T22",
     "android": {
-      "tests": 831,
+      "tests": 844,
       "failures": 0,
       "errors": 0,
-      "task": "T21"
+      "task": "T22"
     },
     "ios": {
-      "executed": 772,
+      "executed": 785,
       "failures": 0,
-      "task": "T21"
+      "task": "T22"
     },
     "mutation": {
       "semantic_killed": 5,
       "semantic_total": 5,
-      "task": "T21",
-      "killed": 7,
-      "total": 7
+      "task": "T22",
+      "killed": 11,
+      "total": 11
     }
   },
-  "next_task": "T22",
+  "next_task": "T23",
   "phase": "P0",
   "plan_sha256": "685456b378662b0a40a53a6abc810041e37daf97b213f3efeb6cea879363934e",
   "planning_baseline_sha": "b5c3d3d394b70cf356cdde33b47511dad7cbb95c",

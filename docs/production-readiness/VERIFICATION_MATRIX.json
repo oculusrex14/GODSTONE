@@ -1325,6 +1325,109 @@
         "EVIDENCE/T21/ladder-boundary"
       ],
       "verified_utc": "2026-09-11T00:24:04Z"
+    },
+    {
+      "id": "CLM-T22-RESPONDER-HALF-ANSWERED",
+      "statement": "after the duplex is witnessed and the remote hint lies below the local, the responders door accepteth exactly the expected first counsel and answereth it with the queued second of two hundred twenty-nine octets, keeping the relation mid-handshake; neither the first nor the second alone maketh a trusted session, no announcement riseth before the third, no application stream rideth the untrusted hour, and the third alone, when trusted, publisheth the link-ready relation",
+      "required_case_ids": [
+        "ReadinessT22Test.testTheResponderAnswerethTheExpectedFirstWithTheQueuedSecond",
+        "ReadinessT22Tests.testTheResponderAnswerethTheExpectedFirstWithTheQueuedSecond",
+        "ReadinessT22Test.testTheResponderIsNotTrustedByTheFirstNorTheSecondAloneAndNoDATARidesTheStream",
+        "ReadinessT22Tests.testTheResponderIsNotTrustedByTheFirstNorTheSecondAloneAndNoDATARidesTheStream",
+        "ReadinessT22Test.testTheResponderPublishethNoughtTillTheThirdIsTrusted",
+        "ReadinessT22Tests.testTheResponderPublishethNoughtTillTheThirdIsTrusted"
+      ],
+      "task": "T22",
+      "profile": [
+        "jvm-host",
+        "swift-host"
+      ],
+      "kind": "behavioural",
+      "production_paths": [
+        "android/mesh/src/main/java/io/godstone/mesh/transport/BleTransport.kt",
+        "ios/Godstone/Sources/GodstoneMesh/BleTransport.swift",
+        "android/mesh/src/main/java/io/godstone/mesh/transport/BleRecord.kt",
+        "ios/Godstone/Sources/GodstoneMesh/BleRecord.swift"
+      ],
+      "evidence": [
+        "EVIDENCE/T22/commands.json",
+        "EVIDENCE/T22/logs",
+        "EVIDENCE/T22/mutations/manifest.json",
+        "EVIDENCE/T22/ladder-boundary"
+      ],
+      "verified_utc": "2026-09-11T04:03:59Z"
+    },
+    {
+      "id": "CLM-T22-RESPONDER-STAGE-KEEPING",
+      "statement": "the responders door keepeth its stage and its direction: the tampered, the stunted and the alien third are refused at the seal, the first twice told in hand, the late and the out of order are refused at the stage, the own voice that come again is refused as a conflicting sequence - and every refusal ringeth its reason in the collector and falleth the exact relation, the session slot perishing with it, the other side standing whole",
+      "required_case_ids": [
+        "ReadinessT22Test.testTheTamperedThirdPerishethTheRelationExactly",
+        "ReadinessT22Tests.testTheTamperedThirdPerishethTheRelationExactly",
+        "ReadinessT22Test.testTheSecondSpokenAtTheRespondersGateIsAConflictingSequence",
+        "ReadinessT22Tests.testTheSecondSpokenAtTheRespondersGateIsAConflictingSequence",
+        "ReadinessT22Test.testTheThirdRecordBeforeTheFirstIsRefusedAndTheRelationFalleth",
+        "ReadinessT22Tests.testTheThirdRecordBeforeTheFirstIsRefusedAndTheRelationFalleth",
+        "ReadinessT22Test.testTheDuplicateFirstMessageInHandPerishethTheRelation",
+        "ReadinessT22Tests.testTheDuplicateFirstMessageInHandPerishethTheRelation",
+        "ReadinessT22Test.testTheLateFirstMessageAfterTheTrustClosethTheRelationExactly",
+        "ReadinessT22Tests.testTheLateFirstMessageAfterTheTrustClosethTheRelationExactly",
+        "ReadinessT22Test.testTheThirdSpokenAgainAfterTheTrustIsAConflictingSequence",
+        "ReadinessT22Tests.testTheThirdSpokenAgainAfterTheTrustIsAConflictingSequence",
+        "ReadinessT22Test.testTheWrongSizedRecordsAreRefusedAndTheTruthPreserved",
+        "ReadinessT22Tests.testTheWrongSizedRecordsAreRefusedAndTheTruthPreserved"
+      ],
+      "task": "T22",
+      "profile": [
+        "jvm-host",
+        "swift-host"
+      ],
+      "kind": "behavioural",
+      "production_paths": [
+        "android/mesh/src/main/java/io/godstone/mesh/transport/BleTransport.kt",
+        "android/mesh/src/main/java/io/godstone/mesh/transport/BleConnection.kt",
+        "ios/Godstone/Sources/GodstoneMesh/BleTransport.swift",
+        "ios/Godstone/Sources/GodstoneMesh/BleConnection.swift"
+      ],
+      "evidence": [
+        "EVIDENCE/T22/commands.json",
+        "EVIDENCE/T22/logs",
+        "EVIDENCE/T22/mutations/manifest.json",
+        "EVIDENCE/T22/ladder-boundary"
+      ],
+      "verified_utc": "2026-09-11T04:03:59Z"
+    },
+    {
+      "id": "CLM-T22-RESPONDER-VERDICT-AND-INDEPENDENCE",
+      "statement": "the door hearkeneth the verdict of the queued second: when the writers hand cannot stage the record the relation perisheth upon the refused verdict; the public discovery field serveth the gate alone (an alien first counsel of the right shape is answered, bounded), while the authenticated field is separate (the alien third is cast out at the seal), and bindings rejected as revoked or rolled back perish the relation at the third counsel, so that trust is never inferred from the subscription the ladders brought",
+      "required_case_ids": [
+        "ReadinessT22Test.testTheResponderHearkentheVerdictOfTheQueuedSecond",
+        "ReadinessT22Tests.testTheResponderHearkentheVerdictOfTheQueuedSecond",
+        "ReadinessT22Test.testThePublicShapeAdmittethTheAlienSealDenieth",
+        "ReadinessT22Tests.testThePublicShapeAdmittethTheAlienSealDenieth",
+        "ReadinessT22Test.testTheRejectedAndRevokedBindingsPerishTheRelationAtTheThirdCounsel",
+        "ReadinessT22Tests.testTheRejectedAndRevokedBindingsPerishTheRelationAtTheThirdCounsel"
+      ],
+      "task": "T22",
+      "profile": [
+        "jvm-host",
+        "swift-host"
+      ],
+      "kind": "behavioural",
+      "production_paths": [
+        "android/mesh/src/main/java/io/godstone/mesh/transport/BleTransport.kt",
+        "android/mesh/src/main/java/io/godstone/mesh/transport/BleConnection.kt",
+        "android/mesh/src/main/java/io/godstone/mesh/crypto/SessionManager.kt",
+        "ios/Godstone/Sources/GodstoneMesh/BleTransport.swift",
+        "ios/Godstone/Sources/GodstoneMesh/BleConnection.swift",
+        "ios/Godstone/Sources/GodstoneMesh/SessionManager.swift"
+      ],
+      "evidence": [
+        "EVIDENCE/T22/commands.json",
+        "EVIDENCE/T22/logs",
+        "EVIDENCE/T22/mutations/manifest.json",
+        "EVIDENCE/T22/ladder-boundary"
+      ],
+      "verified_utc": "2026-09-11T04:03:59Z"
     }
   ],
   "note": "Claims appended per task with real evidence; PASS requires positive case counts and matching command output. Device/independent claims never accept host-only results.",
