@@ -234,6 +234,14 @@ public final class BleCentralOrchestrationDriver: @unchecked Sendable {
     /// Nil keeps the wall clock; production never sets it.
     internal var connectionClockForTest: (() -> TimeInterval)?
 
+    /// T23 seam: the monotonic clock handed to connections this driver
+    /// creates, in uptime millis. The transport bindeth it from the very
+    /// instance it was itself given, so the hour-glass of the handshake and
+    /// the confirming hour are measur'd upon the clock the rig ruleth - and
+    /// a court which advancech it may lapse them. Nil keeps the system
+    /// clock; production never sets it.
+    internal var connectionMonotonicClockForTest: MonotonicClock?
+
     public let localHint: Data
     public let localLinkInfoProvider: @Sendable () -> Data?
     public let capacityAuthority: BleGlobalCapacityAuthority?
@@ -381,7 +389,8 @@ public final class BleCentralOrchestrationDriver: @unchecked Sendable {
 
         connectionGenerations[peerId] = nextGen
         let conn = BleConnection(peerId: peerId,
-                                 timeProvider: connectionClockForTest ?? { Date().timeIntervalSince1970 })
+                                 timeProvider: connectionClockForTest ?? { Date().timeIntervalSince1970 },
+                                 clock: connectionMonotonicClockForTest)
         activeConnections[peerId] = conn
         outboundSlots[peerId] = OutboundPeerSlot(state: .active(nextGen), generation: nextGen, peerId: peerId, lease: lease)
         return .connectPeripheral(peerId)
@@ -628,6 +637,14 @@ public final class BlePeripheralOrchestrationDriver: @unchecked Sendable {
     /// Nil keeps the wall clock; production never sets it.
     internal var connectionClockForTest: (() -> TimeInterval)?
 
+    /// T23 seam: the monotonic clock handed to connections this driver
+    /// creates, in uptime millis. The transport bindeth it from the very
+    /// instance it was itself given, so the hour-glass of the handshake and
+    /// the confirming hour are measur'd upon the clock the rig ruleth - and
+    /// a court which advancech it may lapse them. Nil keeps the system
+    /// clock; production never sets it.
+    internal var connectionMonotonicClockForTest: MonotonicClock?
+
     public let localHint: Data
     public let localLinkInfoProvider: @Sendable () -> Data?
     public let capacityAuthority: BleGlobalCapacityAuthority?
@@ -820,7 +837,8 @@ public final class BlePeripheralOrchestrationDriver: @unchecked Sendable {
                 acceptedRemoteLinkInfo[centralId] = remoteInfo
 
                 let conn = BleConnection(peerId: centralId,
-                                         timeProvider: connectionClockForTest ?? { Date().timeIntervalSince1970 })
+                                         timeProvider: connectionClockForTest ?? { Date().timeIntervalSince1970 },
+                                         clock: connectionMonotonicClockForTest)
                 conn.transitionTo(.provisionalConnected)
                 conn.bindResponderFromAcceptedIncomingLinkInfo(remoteHint: remoteInfo.nodeHint)
                 inboundConnections[centralId] = conn

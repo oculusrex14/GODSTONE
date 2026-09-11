@@ -119,6 +119,14 @@ public final class BleConnection: @unchecked Sendable {
     /// live relation and raise no fall.
     internal var relationKeyProvider: (() -> RelationKey)?
 
+    // T23: the shadow projections of the handshake law, each a servant of this
+    // relation alone. They mutate no authoritative state.
+    internal let transcript = TranscriptCache()
+    internal let handshakeDeadline: HandshakeDeadline
+    internal let keyConfirmation: KeyConfirmation
+    internal private(set) var handshakeStage: HandshakeStage = .idle
+    internal private(set) var handshakeEngaged: Bool = false
+
     private let noticeLock = NSLock()
     private var leaseExpiryNotice: AssemblyLease?
 
@@ -154,18 +162,37 @@ public final class BleConnection: @unchecked Sendable {
 
     internal func activeLeaseOf(_ seq: UInt8) -> AssemblyLease? { reassembler.activeLeaseOf(seq) }
     internal func leaseCount() -> Int { reassembler.leaseCount() }
+    /// T23: the in-flight witness of the assemblers lease, in the name the
+    /// Android twin weareth. The owners hand consulteth it before it letteth a
+    /// stalled exchange fall, that a counsel afoot be never pre-empted by the
+    /// hour-glass, which is not its to govern.
+    internal func leaseCountForTest() -> Int { reassembler.leaseCount() }
     internal func sweepLeasesAt(_ now: TimeInterval) { reassembler.sweepExpiredAt(now) }
     private var nextOutboundSeq: UInt8 = 0
     private let lock = NSLock()
 
+    /// T23: the relations monotonic clock, in uptime millis. The owner (the
+    /// transport) bindeth it from the very instance it was itself given, so a
+    /// rig which advancech that clock lapseth the hour-glass and the
+    /// confirming hour; a bare connection keepeth the system clock.
+    private let relationClock: MonotonicClock
+
     public init(
         peerId: UUID,
         initialMaxAttValueLength: Int = 20,
-        timeProvider: @escaping () -> TimeInterval = { Date().timeIntervalSince1970 }
+        timeProvider: @escaping () -> TimeInterval = { Date().timeIntervalSince1970 },
+        clock: MonotonicClock? = nil
     ) {
         self.peerId = peerId
         self.maxAttValueLength = initialMaxAttValueLength
         self.reassembler = BleRecordReassembler(timeProvider: timeProvider)
+        // T23: the two hour-keepers are turn'd upon the relations monotonic
+        // clock - the uptime-MILLIS domain, where the handshake hour is
+        // 10_000 and the confirming hour 30_000.
+        let hour = clock ?? SystemMonotonicClock()
+        self.relationClock = hour
+        self.handshakeDeadline = HandshakeDeadline(now: { hour.nowUptimeMillis() })
+        self.keyConfirmation = KeyConfirmation(now: { hour.nowUptimeMillis() })
         // T20: the owner's seats are bound once the connection stands whole
         // - weak on the connection, so the reassembler never keeps its own
         // alive; the binding order is law: the last to be bound is the
@@ -175,6 +202,10 @@ public final class BleConnection: @unchecked Sendable {
             (self?.relationKeyProvider ?? { LifetimeControl.unclaimedRelation })()
         }
     }
+
+    /// The present instant of the relations clock, for the instruments and
+    /// for the courts inspection of the hour.
+    internal func nowUptimeMillis() -> UInt64 { relationClock.nowUptimeMillis() }
 
     /// Validates and executes state transitions. Direct transitions to roleBound, handshakeInProgress, or ready are rejected.
     @discardableResult
@@ -232,6 +263,7 @@ public final class BleConnection: @unchecked Sendable {
         defer { lock.unlock() }
         guard state == .roleBound, isHandshakeTransportReadyLocked else { return false }
         state = .handshakeInProgress
+        handshakeStage = .hsIn
         return true
     }
 
@@ -245,6 +277,8 @@ public final class BleConnection: @unchecked Sendable {
         defer { lock.unlock() }
         guard state == .handshakeInProgress else { return false }
         state = .ready
+        handshakeDeadline.stop()
+        handshakeStage = .trustedCryptoReady
         return true
     }
 
@@ -257,8 +291,34 @@ public final class BleConnection: @unchecked Sendable {
         defer { lock.unlock() }
         guard state != .closed && state != .closing else { return false }
         state = .ready
+        handshakeDeadline.stop()
+        handshakeStage = .trustedCryptoReady
         return true
     }
+
+    // MARK: - T23 the doors servants (called by the transport, never under the lock)
+    internal func markHandshakeEngaged() {
+        lock.lock(); defer { lock.unlock() }
+        handshakeEngaged = true
+    }
+    internal func advanceStage(to stage: HandshakeStage) {
+        lock.lock(); defer { lock.unlock() }
+        if stage.rawValue > handshakeStage.rawValue { handshakeStage = stage }
+    }
+    internal func handshakeDeadlineExpired() -> Bool {
+        lock.lock(); defer { lock.unlock() }
+        guard state == .roleBound || state == .handshakeInProgress else { return false }
+        return handshakeDeadline.expired()
+    }
+    var isKeyConfirmed: Bool { keyConfirmation.isConfirmed }
+    @discardableResult
+    internal func markKeyConfirmed() -> Bool {
+        guard keyConfirmation.isConfirmed else { return false }
+        advanceStage(to: .keyConfirmed)
+        return true
+    }
+    internal func armHandshakeDeadline() { handshakeDeadline.arm() }
+    internal func stopHandshakeDeadline() { handshakeDeadline.stop() }
 
     /// One-way binding of remote node hint and elected role.
     /// Accessible only through authoritative bind methods.
@@ -278,6 +338,8 @@ public final class BleConnection: @unchecked Sendable {
         _remoteNodeHint = hint
         _localRole = role
         state = .roleBound
+        handshakeDeadline.arm()
+        handshakeStage = .roleBound
         return true
     }
 
@@ -428,6 +490,10 @@ public final class BleConnection: @unchecked Sendable {
         reassembler.reset()
         nextOutboundSeq = 0
         isNotificationSubscribed = false
+        transcript.forgetAll()
+        keyConfirmation.clear()
+        handshakeDeadline.reset()
+        handshakeEngaged = false
     }
 }
 

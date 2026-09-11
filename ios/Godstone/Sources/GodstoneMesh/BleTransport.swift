@@ -1240,12 +1240,20 @@ public final class BleTransport: NSObject, @unchecked Sendable {
             localLinkInfoProvider: { [weak self] in self?.getLocalLinkInfoData() },
             capacityAuthority: capacityAuthority
         )
+        // T23: the relations this driver birtheth shall keep their hour upon
+        // the very monotonic clock the transport was given - that the rig
+        // which advancech it may lapse the handshake hour and the confirming
+        // hour of the connection, as the Android twin turneth both upon one.
+        centralDriver?.connectionMonotonicClockForTest = clock
         _ = centralDriver?.startNewTransportEpoch(currentTransportEpoch)
         peripheralDriver = BlePeripheralOrchestrationDriver(
             localHint: localHint,
             localLinkInfoProvider: { [weak self] in self?.getLocalLinkInfoData() },
             capacityAuthority: capacityAuthority
         )
+        // T23: as the initiator's driver, so the responder's: the inbound
+        // relations keep their hour upon the transport's own monotonic clock.
+        peripheralDriver?.connectionMonotonicClockForTest = clock
         _ = peripheralDriver?.startNewTransportEpoch(currentTransportEpoch)
         activeOutboundLifetimes.removeAll()
         activeInboundLifetimes.removeAll()
@@ -1461,7 +1469,28 @@ public final class BleTransport: NSObject, @unchecked Sendable {
         }
     }
 
+    @discardableResult
+    public func send(clear: Data, to peerId: UUID) -> TransportResult {
+        // T14: as the frame plane, one admitted reduction upon the epoch serial
+        // executor; a caller already within the executor is carry'd along.
+        return onExecutor {
+            self.reductionSendClear(clear, to: peerId)
+        }
+    }
+
     public func reductionSend(_ frame: FrameV2, to peerId: UUID) -> TransportResult {
+        // T23: the frame plane onely encodeth and moveth on to the bytes plane,
+        // that the sealed key-confirmation control - which is no application
+        // frame at all, but the very plaintext of a DATA record - travel over
+        // the selfsame reservation, the selfsame seal and the selfsame pump.
+        return reductionSendClear(frame.encode(), to: peerId)
+    }
+
+    /// T23: the one whole-record DATA writer, at the bytes level. The clear
+    /// given here is what the peer shall open as the payload of an ordinary,
+    /// authenticated DATA record; nothing of it is invented, and nothing of it
+    /// is spared the sessions seal.
+    public func reductionSendClear(_ clear: Data, to peerId: UUID) -> TransportResult {
         lockTransport()
         let conn = outboundCentralConnections[peerId] ?? inboundPeripheralConnections[peerId]
         let registryAtAdmission = sessions
@@ -1502,7 +1531,6 @@ public final class BleTransport: NSObject, @unchecked Sendable {
         }
         let isInitiator = connection.localRole == .initiator
         let site = isInitiator ? "send.initiator" : "send.responder"
-        let clear = frame.encode()
 
         lockTransport()
         guard isStarted, epochAtAdmission == currentTransportEpoch,
@@ -1933,6 +1961,18 @@ public final class BleTransport: NSObject, @unchecked Sendable {
         }
         switch record.recordType {
         case .hs1:
+            // T23 (section 13): the selfsame first re-presented, byte for byte and
+            // sequence for sequence, is an idle re-telling: it is hearkened not,
+            // and the controller is NEVER run the second time for it. The knowin
+            // goeth before the stage law, that a duplicate be told from a late
+            // counsel; the remembring abideth until the controller hath proved it.
+            if conn.transcript.knows(kind: Self.hsKind(.hs1),
+                                     sequence: Int(record.recordSeq),
+                                     payload: record.payload) {
+                recordRejection(peerId: centralId, site: "hs.read.responder",
+                                reason: "hs1 duplicate hearkened not")
+                return
+            }
             guard conn.state == .roleBound else {
                 // exactly the expected first is accepted: a message twice told
                 // in hand, or one that comes after the trust, is a conflicting
@@ -1942,6 +1982,9 @@ public final class BleTransport: NSObject, @unchecked Sendable {
                 closeResponderRelation(centralId)
                 return
             }
+            // T23: the exchange is ENGAGED - the first counsel of it is heard at
+            // the door and answerd; the hour-glass may now fell a stalled half.
+            conn.markHandshakeEngaged()
             guard let hs2 = registry.responderProcessHs1(centralId, remoteHint: hint, hs1: record.payload) else {
                 // trust refused: the counsel is not true; the relation
                 // becometh nothing, and the slot perisheth with it
@@ -1949,6 +1992,11 @@ public final class BleTransport: NSObject, @unchecked Sendable {
                 closeResponderRelation(centralId)
                 return
             }
+            // T23: whole, true and answerd - the tale is remembred, that a
+            // re-presenting of the selfsame frame be hearkened not.
+            conn.transcript.remember(kind: Self.hsKind(.hs1),
+                                     sequence: Int(record.recordSeq),
+                                     payload: record.payload)
             _ = conn.beginHandshake()
             // T22: and the verdict of the queued second is hearkened for
             let verdict = writeHandshakeRecord(.hs2, payload: hs2, toCentral: centralId)
@@ -1958,6 +2006,15 @@ public final class BleTransport: NSObject, @unchecked Sendable {
                 return
             }
         case .hs3:
+            // T23 (section 13): the selfsame third re-presented is hearkened
+            // not; the controller is never run twice for one tale.
+            if conn.transcript.knows(kind: Self.hsKind(.hs3),
+                                     sequence: Int(record.recordSeq),
+                                     payload: record.payload) {
+                recordRejection(peerId: centralId, site: "hs.read.responder",
+                                reason: "hs3 duplicate hearkened not")
+                return
+            }
             guard conn.state == .handshakeInProgress else {
                 // the third before the first is out of order; the third again
                 // after the trust is a late counsel: either way the relation
@@ -1972,6 +2029,11 @@ public final class BleTransport: NSObject, @unchecked Sendable {
                 closeResponderRelation(centralId)
                 return
             }
+            // T23: the third is opened and proved by the binder - the tale of
+            // it is remembred ere the trust is mark'd.
+            conn.transcript.remember(kind: Self.hsKind(.hs3),
+                                     sequence: Int(record.recordSeq),
+                                     payload: record.payload)
             guard conn.markTrustedReady() else {
                 // only the trusted third installes a usable session; a mark
                 // that can not be set is a trust failure, and the relation
@@ -2008,12 +2070,26 @@ public final class BleTransport: NSObject, @unchecked Sendable {
             closeInitiatorRelation(peerId)
             return
         }
+        // T23 (section 13): the selfsame second re-presented is hearkened not -
+        // a retry must NEVER rerun the Noise transitions (the gate). The knowin
+        // is first; the remembring abideth the health of the counsel.
+        if conn.transcript.knows(kind: Self.hsKind(.hs2),
+                                 sequence: Int(record.recordSeq),
+                                 payload: record.payload) {
+            recordRejection(peerId: peerId, site: "hs.read.initiator",
+                            reason: "hs2 duplicate hearkened not")
+            return
+        }
         guard let hs3 = registry.initiatorProcessHs2(peerId, hs2: record.payload, advertisedRemoteHint: advertised) else {
             // trust rejected: HS3 is withheld and the exact relation closes
             recordRejection(peerId: peerId, site: "hs.read.initiator", reason: "hs2 rejected")
             closeInitiatorRelation(peerId)
             return
         }
+        // T23: the tale is remembred, whole and true, ere the third be order'd.
+        conn.transcript.remember(kind: Self.hsKind(.hs2),
+                                 sequence: Int(record.recordSeq),
+                                 payload: record.payload)
         _ = conn.beginHandshake()
         let verdict = writeHandshakeRecord(.hs3, payload: hs3, toPeripheral: peerId)
         guard verdict == .admitted else {
@@ -2133,7 +2209,290 @@ public final class BleTransport: NSObject, @unchecked Sendable {
             return .rejected("begin initiator refused")
         }
         _ = conn.beginHandshake()
+        // T23 (section 13): the half hath spoken its first counsel under way -
+        // the exchange is ENGAGED from this breath, and the hour-glass that was
+        // turn'd at the binding of the seat gaineth its reaper.
+        conn.markHandshakeEngaged()
+        conn.advanceStage(to: .hsOut)
         return writeHandshakeRecord(.hs1, payload: hs1, toPeripheral: peerId)
+    }
+
+    // MARK: - T23 the handshake failure, duplicate and key-confirmation policy
+    //
+    // Section thirteens instruments, hung upon the transport so the two doors
+    // and the receiver may consult them without a second mutable ready flag: the
+    // bounded transcript of counsels already heard (which the connection weareth),
+    // the ten-second monotonic hour-glass arm'd at the role binding, and the
+    // sealed key-confirmation round that must be proved before the application
+    // LinkReady is published. The lifecycle state of the connection is the sole
+    // authority; these are its servants, and none of them is a ready flag.
+
+    // ------------------------------------------------------------ the observations
+
+    private var dispatchRecords: [HandshakeDispatchRecord] = []
+    private var dispatchOverflow = 0
+
+    /// A heard fall of the law, bounded as the ring of rejections is bounded: the
+    /// eldest record maketh way and the overflow is counted, so continuity of
+    /// the stream surviveth any number of wayward packets.
+    internal func recordDispatchViolation(peerId: UUID, site: String,
+                                          kind: HandshakeDispatchViolation) {
+        lockTransport()
+        dispatchRecords.append(HandshakeDispatchRecord(peerId: Self.peerOctets(peerId),
+                                                       site: site, kind: kind))
+        if dispatchRecords.count > BleTransport.rejectionRecordCapacity {
+            dispatchRecords.removeFirst()
+            dispatchOverflow += 1
+        }
+        unlockTransport()
+    }
+
+    internal func dispatchViolationsForTest() -> [HandshakeDispatchRecord] {
+        lockTransport()
+        let value = dispatchRecords
+        unlockTransport()
+        return value
+    }
+
+    internal func dispatchOverflowCountForTest() -> Int {
+        lockTransport()
+        let value = dispatchOverflow
+        unlockTransport()
+        return value
+    }
+
+    internal func clearDispatchViolationsForTest() {
+        lockTransport()
+        dispatchRecords.removeAll()
+        dispatchOverflow = 0
+        unlockTransport()
+    }
+
+    // ------------------------------------------- the application LinkReady plane
+    //
+    // The trusted crypto-ready hour publisheth NO application readiness: that
+    // gate is the sealed key-confirmation alone, and it is opened once and but
+    // once for a relation.
+
+    private var linkReadyPublished: [UUID] = []
+    private var applicationLinkReadyFlow: [(UUID) -> Void] = []
+
+    /// The court heareth the drivers own publication of the application LinkReady,
+    /// which is made upon the sealed key-confirmation and never at the
+    /// cryptographic hour alone.
+    internal func applicationLinkReady(_ subscriber: @escaping (UUID) -> Void) {
+        lockTransport()
+        applicationLinkReadyFlow.append(subscriber)
+        unlockTransport()
+    }
+
+    internal func linkReadyPeersForTest() -> [UUID] {
+        lockTransport()
+        let value = linkReadyPublished
+        unlockTransport()
+        return value
+    }
+
+    internal func clearLinkReadyForTest() {
+        lockTransport()
+        linkReadyPublished.removeAll()
+        unlockTransport()
+    }
+
+    /// The owners hand, at the proving of the sealed round, publisheth the
+    /// application LinkReady once and only once for a relation. The register is
+    /// key'd by the relations peer, so an elder relation echo that come again
+    /// after the confirmation can not win a selfsame publication twice.
+    private func publishApplicationLinkReadyOnce(_ peerId: UUID) -> Bool {
+        lockTransport()
+        if linkReadyPublished.contains(peerId) {
+            unlockTransport()
+            return false
+        }
+        if linkReadyPublished.count >= BleTransport.maxActiveConnections {
+            linkReadyPublished.removeFirst()
+        }
+        linkReadyPublished.append(peerId)
+        let watchers = applicationLinkReadyFlow
+        unlockTransport()
+        // The tale is told beyond the critical section: a subscriber is the
+        // application own ear, and no ear may be heard while the lock is held.
+        for watcher in watchers { watcher(peerId) }
+        delegate?.transportApplicationLinkReady(peerId: peerId)
+        return true
+    }
+
+    /// The relation of a peer, of either direction, as the doors and the
+    /// receiver know it. (The island hath no air address to resolve: the peer
+    /// id IS the handle the station keepeth, which is why the Android twins
+    /// malformed-peer-address arm can have no here.)
+    private func connectionFor(_ peerId: UUID) -> BleConnection? {
+        lockTransport()
+        let conn = outboundCentralConnections[peerId] ?? inboundPeripheralConnections[peerId]
+        unlockTransport()
+        return conn
+    }
+
+    // --------------------------------------------------- the sealed confirmation
+
+    /// The sealed key-confirmation round may be attempted but upon a station
+    /// that is trusted and cryptographically ready; it taketh a fresh CSPRNG
+    /// challenge (or the one the court provideth, for determinism), recordeth it
+    /// upon the relation, and sendeth it forth as an ordinary sealed DATA
+    /// record - never a fourth Noise counsel, never persisted, never relayed.
+    @discardableResult
+    internal func beginKeyConfirmation(peerId: UUID, supplied: Data? = nil) -> TransportResult {
+        guard let registry = sessions else {
+            recordRejection(peerId: peerId, site: "hs.confirm", reason: "no trusted session registry")
+            return .rejected("no trusted session registry")
+        }
+        let centralConn = centralConnectionSnapshot(peerId)
+        let serverConn = inboundConnectionSnapshot(peerId)
+        guard let conn = centralConn ?? serverConn else {
+            recordRejection(peerId: peerId, site: "hs.confirm", reason: "no such connection")
+            return .rejected("no such connection")
+        }
+        guard conn.state == .ready else {
+            recordRejection(peerId: peerId, site: "hs.confirm",
+                            reason: "key confirmation before the trusted hour")
+            return .rejected("key confirmation before the trusted hour")
+        }
+        guard registry.isReady(conn.peerId) else {
+            recordRejection(peerId: peerId, site: "hs.confirm", reason: "the slot is not ready")
+            return .rejected("the slot is not ready")
+        }
+        let challenge = supplied.map { Data($0) } ?? KeyConfirmationControl.newChallenge()
+        conn.keyConfirmation.issue(challenge)
+        return send(clear: KeyConfirmationControl.encodeChallenge(challenge), to: peerId)
+    }
+
+    /// The echo of a standing challenge, sent forth as a sealed DATA record.
+    @discardableResult
+    internal func answerKeyConfirmation(peerId: UUID, challenge: Data) -> TransportResult {
+        guard let registry = sessions else { return .rejected("no trusted session registry") }
+        guard let conn = connectionFor(peerId) else { return .rejected("no such connection") }
+        guard conn.state == .ready else { return .rejected("not ready") }
+        guard registry.isReady(conn.peerId) else { return .rejected("slot not ready") }
+        return send(clear: KeyConfirmationControl.encodeResponse(challenge), to: peerId)
+    }
+
+    /// D2 heareth an opened, authenticated DATA plaintext. If it be a sealed
+    /// key-confirmation control it is CONSUMED here and never carrieth to the
+    /// application (section thirteen: control PING is never forwarded); the
+    /// caller is told it was taken. Else false, and the frame travelleth on as
+    /// ordinary application matter.
+    private func takeInboundKeyConfirmation(peerId: UUID, opened: Data) -> Bool {
+        guard let frame = KeyConfirmationControl.parse(opened) else { return false }
+        // a control for a relation we know not: drop, do not app-deliver
+        guard let conn = connectionFor(peerId) else { return true }
+        // control before the trusted hour: not for the application
+        guard conn.state == .ready else { return true }
+        if frame.isChallenge {
+            let standing = conn.keyConfirmation.outstanding()
+            if let standing = standing, standing == frame.challenge {
+                // our own challenge came home: a reflection, hearkened not, and
+                // never echo'd again - that were a loop of the very token
+                recordDispatchViolation(peerId: conn.peerId, site: "hs.confirm",
+                                        kind: .reflectedChallenge)
+                return true
+            }
+            _ = answerKeyConfirmation(peerId: peerId, challenge: frame.challenge)
+            return true
+        }
+        // a response: it must mate THIS relations standing challenge, or it is
+        // a forged or an elder relations echo, and is observ'd as such
+        if conn.keyConfirmation.matchesAndConsume(frame.challenge) {
+            _ = conn.markKeyConfirmed()
+            _ = publishApplicationLinkReadyOnce(conn.peerId)
+        } else {
+            recordDispatchViolation(peerId: conn.peerId, site: "hs.confirm",
+                                    kind: .forgedOrStaleEcho)
+        }
+        return true
+    }
+
+    /// The courts sealed hand: put an arbitrary key-confirmation control frame
+    /// upon the wire to a trusted, ready peer, over the very DATA channel and
+    /// the selfsame whole-record writer - the frame is sealed, fragmented and
+    /// pump'd as any application record, that the D2 policy of the receiver may
+    /// be proved from the outmost ingress. IT ISSUETH NOTHING of its own, so a
+    /// forged echo, a reflection or a misshapen tale may be indited.
+    @discardableResult
+    internal func transmitKeyConfirmationControlForTest(peerId: UUID, frame: Data) -> TransportResult {
+        guard let registry = sessions else { return .rejected("no trusted session registry") }
+        guard let conn = connectionFor(peerId) else { return .rejected("no such connection") }
+        guard conn.state == .ready else { return .rejected("not ready") }
+        guard registry.isReady(conn.peerId) else { return .rejected("slot not ready") }
+        return send(clear: Data(frame), to: peerId)
+    }
+
+    /// The courts entry to the responders door: one whole record, presented as
+    /// the reassembler would have deliver'd it, so that the duplicate policy may
+    /// be proved without a race upon the executor.
+    internal func feedResponderHandshakeRecordForTest(_ centralId: UUID, record: BleReassembledRecord) {
+        handleInboundHandshakeRecordResponderSide(record, centralId: centralId)
+    }
+
+    /// The courts entry to the initiators door, for the selfsame proof.
+    internal func feedInitiatorHandshakeRecordForTest(_ peerId: UUID, record: BleReassembledRecord) {
+        handleInboundHandshakeRecordInitiatorSide(record, peerId: peerId)
+    }
+
+    // ------------------------------------------------------- the marks of a record
+
+    /// T23: the kind the transcript keepeth of a counsel, the type octet of the
+    /// record masked to the eight and twenty bits of an octet, as the Android
+    /// twin masketh it at the door.
+    private static func hsKind(_ type: BleRecordType) -> Int {
+        return Int(type.rawValue) & 0xFF
+    }
+
+    /// The octets of a relations peer, as a dispatch record keepeth them.
+    private static func peerOctets(_ peerId: UUID) -> Data {
+        var uuid = peerId.uuid
+        return Data(bytes: [
+            UInt8(uuid.0), UInt8(uuid.1), UInt8(uuid.2), UInt8(uuid.3),
+            UInt8(uuid.4), UInt8(uuid.5), UInt8(uuid.6), UInt8(uuid.7),
+            UInt8(uuid.8), UInt8(uuid.9), UInt8(uuid.10), UInt8(uuid.11),
+            UInt8(uuid.12), UInt8(uuid.13), UInt8(uuid.14), UInt8(uuid.15),
+        ])
+    }
+
+    /// T21: doth the refused fragment name a handshake record? The type octet
+    /// rideth on every fragment of the header, so the door may judge the counsel
+    /// by it alone, ere the reassembler speaketh.
+    private func namesHandshakeRecord(_ value: Data) -> Bool {
+        if value.count < BleRecordConstants.headerBytes { return false }
+        switch value[value.startIndex.advanced(by: 1)] {
+        case BleRecordType.hs1.rawValue, BleRecordType.hs2.rawValue,
+             BleRecordType.hs3.rawValue:
+            return true
+        default:
+            return false
+        }
+    }
+
+    /// T23 (section 13): the peers lawful farewell, known by the CLOSE type
+    /// octet; its policy endeth the relation cleanly.
+    private func isFarewellRecord(_ value: Data) -> Bool {
+        if value.count < BleRecordConstants.headerBytes { return false }
+        return value[value.startIndex.advanced(by: 1)] == BleRecordType.close.rawValue
+    }
+
+    /// The relation of the outbound direction, as the receiver knoweth it.
+    private func centralConnectionSnapshot(_ peerId: UUID) -> BleConnection? {
+        lockTransport()
+        let conn = outboundCentralConnections[peerId]
+        unlockTransport()
+        return conn
+    }
+
+    /// The relation of the inbound direction, as the receiver knoweth it.
+    private func inboundConnectionSnapshot(_ peerId: UUID) -> BleConnection? {
+        lockTransport()
+        let conn = inboundPeripheralConnections[peerId]
+        unlockTransport()
+        return conn
     }
 
     @discardableResult
@@ -2226,7 +2585,8 @@ public final class BleTransport: NSObject, @unchecked Sendable {
                 connectedPeripherals[pid] = p
                 p.delegate = proxy
             }
-            let conn = driver.getActiveConnection(pid) ?? BleConnection(peerId: pid)
+            let conn = driver.getActiveConnection(pid)
+                ?? BleConnection(peerId: pid, clock: clock)
             outboundCentralConnections[pid] = conn
 
             // T15: the arm goes through the reducer; the lease captures the
@@ -2585,12 +2945,54 @@ public final class BleTransport: NSObject, @unchecked Sendable {
                 unlockTransport()
                 return .noOp
             }
+            // T23 (section 13): the two reaps of the owners hand, witness'd at
+            // the very mouth of the ingress, BEFORE the reassembly is afoot or a
+            // dispatch is made: a half-spoken exchange that hath stalled past
+            // the ten-second hour with nothing in flight, and a sealed round
+            // whose echo doth never come home past its half a minute. Neither
+            // pre-empteth the assemblers lease, nor an idle, unspoken seat.
+            let stalledExchange = conn.handshakeEngaged && conn.handshakeDeadlineExpired()
+                && conn.leaseCount() == 0
+            let unansweredRound = conn.state == .ready && conn.keyConfirmation.isAwaitingEcho()
+                && conn.keyConfirmation.echoLapsed() && conn.leaseCount() == 0
             let ingested = conn.ingestInboundAttValue(characteristic.value ?? Data())
             let registry = sessions
             let leaseLapsed = conn.takeLeaseExpiryNotice() != nil
             let standingOut = leaseLapsed ? activeOutboundLifetimes[peerId] : nil
             let speakingCentral = central
             unlockTransport()
+            // T23 (section 13): the two reaps of the owners hand are witness'd
+            // at the very mouth of the ingress - BEFORE the reassembly is afoot,
+            // before the lease is heard and before any dispatch is made, that a
+            // stalled half be felled by an ingress which bringeth no whole
+            // record at all (the Android twin reaper thus, at the top).
+            if stalledExchange {
+                // T23: the hour is spent upon a half-spoken exchange. The glass
+                // is mark'd, the remembrance of the counsel and the standing
+                // round are wound away, the fall is told in the ring and
+                // observ'd as a distinct lapse, and the exact relation falleth
+                // by the very arm the platform own disconnect travelseth.
+                conn.handshakeDeadline.markFired()
+                conn.transcript.forgetAll()
+                conn.keyConfirmation.clear()
+                recordDispatchViolation(peerId: peerId, site: "hs.deadline",
+                                        kind: .handshakeDeadlineLapsed)
+                recordRejection(peerId: peerId, site: "ingest.notify",
+                                reason: "handshake deadline lapsed")
+                closeInitiatorRelation(peerId)
+                return .noOp
+            }
+            if unansweredRound {
+                // T23: the confirming hour ran out unanswered; the standing is
+                // clean'd and the exact relation fallth.
+                conn.keyConfirmation.clear()
+                recordDispatchViolation(peerId: peerId, site: "hs.confirm",
+                                        kind: .keyConfirmationDeadlineLapsed)
+                recordRejection(peerId: peerId, site: "hs.confirm",
+                                reason: "key confirmation timed out")
+                closeInitiatorRelation(peerId)
+                return .noOp
+            }
             if leaseLapsed {
                 // T20: the absolute term of a whole-record assembly lapsed on
                 // this ingress. The reassembler has released its buffers; only
@@ -2623,6 +3025,16 @@ public final class BleTransport: NSObject, @unchecked Sendable {
                     if case .unexpectedStage(_, let observed, let kind) = why,
                        observed != .quarantined,
                        kind == .hs1 || kind == .hs2 || kind == .hs3 {
+                        // T23 (section 13): the silent stage filter of the
+                        // reassembler must not be the last word - the wayward
+                        // counsel is OBSERVED as well as fenced, that an audit
+                        // may tell an unsolicited tale after the trust from a
+                        // plain out of order one.
+                        recordDispatchViolation(
+                            peerId: peerId, site: "hs.dispatch",
+                            kind: conn.state == .ready
+                                ? HandshakeDispatchViolation.unsolicitedHSAfterReady
+                                : HandshakeDispatchViolation.outOfOrderCounsel)
                         closeInitiatorRelation(peerId)
                     }
                 }
@@ -2646,6 +3058,14 @@ public final class BleTransport: NSObject, @unchecked Sendable {
                             && conn.state == .ready
                         self.unlockTransport()
                         guard still else { return }
+                        // T23 (section 13): a sealed key-confirmation control is
+                        // hearkened by D2 at this, the one gate where an opened,
+                        // authenticated DATA plaintext is surfac'd to the
+                        // application: it is CONSUMED here and never carrieth to
+                        // the delegate. All else moveth on undisturb'd.
+                        if self.takeInboundKeyConfirmation(peerId: peerId, opened: clear) {
+                            return
+                        }
                         self.delegate?.transportDidReceive(data: clear, peerId: peerId)
                     }
                 case .rejected:
@@ -2656,6 +3076,26 @@ public final class BleTransport: NSObject, @unchecked Sendable {
             } else if record.recordType == .hs2 {
                 // T17: the initiator reads the responder's record.
                 handleInboundHandshakeRecordInitiatorSide(record, peerId: peerId)
+            } else {
+                // T23 (section 13): an unexpected whole record at the initiators
+                // gate. The peers lawful farewell endeth the relation cleanly -
+                // no fall of the law, so no observation is made - while a counsel
+                // of the handshake that was not look'd for is observ'd and fated.
+                let value = characteristic.value ?? Data()
+                if isFarewellRecord(value) {
+                    recordRejection(peerId: peerId, site: "hs.read.initiator",
+                                    reason: "farewell received")
+                    closeInitiatorRelation(peerId)
+                } else if namesHandshakeRecord(value) {
+                    recordDispatchViolation(peerId: peerId, site: "hs.read.initiator",
+                                          kind: .outOfOrderCounsel)
+                    recordRejection(peerId: peerId, site: "hs.read.initiator",
+                                    reason: "unexpected direction")
+                    closeInitiatorRelation(peerId)
+                } else {
+                    recordRejection(peerId: peerId, site: "hs.read.initiator",
+                                    reason: "unexpected direction")
+                }
             }
         }
         return .noOp
@@ -3504,11 +3944,46 @@ public final class BleTransport: NSObject, @unchecked Sendable {
                     continue
                 }
 
+                // T23 (section 13): the two reaps of the owners hand, at the very
+                // mouth of the responders ingress, ere a reassembly be afoot or a
+                // dispatch made. Never a seat that heareth yet, never a counsel
+                // afoot (the assemblers lease, of the absolute term, governeth
+                // those), never a relation already come to its trusted hour.
+                let stalledExchange = conn.handshakeEngaged && conn.handshakeDeadlineExpired()
+                    && conn.leaseCount() == 0
+                let unansweredRound = conn.state == .ready && conn.keyConfirmation.isAwaitingEcho()
+                    && conn.keyConfirmation.echoLapsed() && conn.leaseCount() == 0
                 let ingested = conn.ingestInboundAttValue(v)
                 let registry = sessions
                 let leaseLapsed = conn.takeLeaseExpiryNotice() != nil
                 let standingIn = leaseLapsed ? activeInboundLifetimes[centralId] : nil
                 unlockTransport()
+                // T23 (section 13): the two reaps are witness'd at the very mouth
+                // of the ingress - BEFORE the lease is heard and before any
+                // dispatch is made, that a stalled half be felled by an ingress
+                // which bringeth no whole record at all (the Android twin
+                // reaper thus, at the top). Never a seat that heareth yet, never
+                // a counsel afoot, never a relation already come to its fall.
+                if stalledExchange {
+                    conn.handshakeDeadline.markFired()
+                    conn.transcript.forgetAll()
+                    conn.keyConfirmation.clear()
+                    recordDispatchViolation(peerId: centralId, site: "hs.deadline",
+                                          kind: .handshakeDeadlineLapsed)
+                    recordRejection(peerId: centralId, site: "ingest.write",
+                                    reason: "handshake deadline lapsed")
+                    closeResponderRelation(centralId)
+                    continue
+                }
+                if unansweredRound {
+                    conn.keyConfirmation.clear()
+                    recordDispatchViolation(peerId: centralId, site: "hs.confirm",
+                                          kind: .keyConfirmationDeadlineLapsed)
+                    recordRejection(peerId: centralId, site: "hs.confirm",
+                                    reason: "key confirmation timed out")
+                    closeResponderRelation(centralId)
+                    continue
+                }
                 if leaseLapsed {
                     // T20: the absolute term lapsed on this ingress; the owner
                     // closes through the inbound arm, generation and epoch
@@ -3536,6 +4011,13 @@ public final class BleTransport: NSObject, @unchecked Sendable {
                     if case .unexpectedStage(_, let observed, let kind) = why,
                        observed != .quarantined,
                        kind == .hs1 || kind == .hs2 || kind == .hs3 {
+                        // T23 (section 13): observed as well as fenced - the
+                        // silent stage filter must not be the last word.
+                        recordDispatchViolation(
+                            peerId: centralId, site: "hs.dispatch",
+                            kind: conn.state == .ready
+                                ? HandshakeDispatchViolation.unsolicitedHSAfterReady
+                                : HandshakeDispatchViolation.outOfOrderCounsel)
                         closeResponderRelation(centralId)
                     }
                 }
@@ -3554,6 +4036,12 @@ public final class BleTransport: NSObject, @unchecked Sendable {
                                 && conn.state == .ready
                             self.unlockTransport()
                             guard still else { return }
+                            // T23 (section 13): as at the initiators gate - the
+                            // control is hearkened by D2 and never carrieth to the
+                            // application; all else moveth on.
+                            if self.takeInboundKeyConfirmation(peerId: centralId, opened: clear) {
+                                return
+                            }
                             self.delegate?.transportDidReceive(data: clear, peerId: centralId)
                         }
                     case .rejected:
@@ -3566,11 +4054,34 @@ public final class BleTransport: NSObject, @unchecked Sendable {
                     handleInboundHandshakeRecordResponderSide(rec, centralId: centralId)
                 } else if let rec = record, rec.recordType == .hs2 {
                     // T22: the responders own voice come again, or a stranger
-                    // at the gate - the exact relation falleth. The farewell
-                    // (.close) abideth its policy in T23.
+                    // at the gate - the exact relation falleth.
+                    // T23 (section 13): and the fall is OBSERVED, that the
+                    // respondent that spake its own second aloud at the gate be
+                    // told from a plain out of order counsel.
+                    recordDispatchViolation(peerId: centralId, site: "hs.read.responder",
+                                          kind: .ownVoiceAtTheGate)
                     recordRejection(peerId: centralId, site: "hs.read.responder",
                                    reason: "unexpected direction")
                     closeResponderRelation(centralId)
+                } else if record != nil {
+                    // T23 (section 13): the peers lawful farewell, whose policy
+                    // this record heretofore spared, endeth the relation cleanly:
+                    // the ring witnesseth the token, and no observation of a
+                    // violation is made, for a farewell is no fall of the law.
+                    if isFarewellRecord(v) {
+                        recordRejection(peerId: centralId, site: "hs.read.responder",
+                                        reason: "farewell received")
+                        closeResponderRelation(centralId)
+                    } else if namesHandshakeRecord(v) {
+                        recordDispatchViolation(peerId: centralId, site: "hs.read.responder",
+                                              kind: .ownVoiceAtTheGate)
+                        recordRejection(peerId: centralId, site: "hs.read.responder",
+                                        reason: "unexpected direction")
+                        closeResponderRelation(centralId)
+                    } else {
+                        recordRejection(peerId: centralId, site: "hs.read.responder",
+                                        reason: "unexpected direction")
+                    }
                 }
                 pm.respond(to: r, withResult: .success)
                 continue
@@ -3679,10 +4190,16 @@ public protocol TransportDelegate: AnyObject {
     func transportDidDisconnect(peerId: UUID)
     func transportDidReceive(data: Data, peerId: UUID)
     func transportDidHandshakeReady(peerId: UUID)
+    /// T23 (section 13): the drivers own publication of the APPLICATION
+    /// LinkReady, which is made upon the sealed key-confirmation round and
+    /// never at the cryptographic hour alone. It is an ear, not a state: the
+    /// transport keepeth the register, and this tellth of it.
+    func transportApplicationLinkReady(peerId: UUID)
 }
 
 public extension TransportDelegate {
     func transportDidHandshakeReady(peerId: UUID) {}
+    func transportApplicationLinkReady(peerId: UUID) {}
     func transportPhysicalDuplexReady(peerId: UUID) {}
     func transportReady(peerId: UUID) {}
 }
