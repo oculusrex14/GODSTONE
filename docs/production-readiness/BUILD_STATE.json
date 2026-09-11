@@ -3474,7 +3474,17 @@
     "SIGNING"
   ],
   "failed_attempts": [],
-  "in_progress": null,
+  "in_progress": {
+    "claimed_head": "4e40d57fb6bdffa9bc4604d18d073d4d60a77017",
+    "claimed_utc": "2026-09-11T21:30:06+00:00",
+    "objective": {
+      "claimed_head": "4e40d57fb6bdffa9bc4604d18d073d4d60a77017",
+      "claimed_utc": "2026-09-11T21:30:06+00:00",
+      "objective": "Use vetted pinned SQLCipher for private message and peer stores with a separate random per-install store DEK protected by ThisDeviceOnly Keychain.",
+      "task": "T30"
+    },
+    "task": "T30"
+  },
   "last_code_head": "4c92950297c139e268bccbbfcb71d91abe95c626",
   "last_observed_head": "4c92950297c139e268bccbbfcb71d91abe95c626",
   "latest_verification": {

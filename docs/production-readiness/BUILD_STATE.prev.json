@@ -3355,9 +3355,117 @@
         "the unified authority is delivered as a contract + production adapters bound to each isle transport contract (LifecycleTransportAdapter); the concrete BleTransport/MeshNode internals are not rewritten (blast-radius on sealed hot paths) -- the adapters are the sanctioned composition seam the runtime binds",
         "pre-existing ReadinessT18Test randomized fixture is a latent, ordering-sensitive flake unrelated to T28; handled by a bounded re-run to a genuinely green 917/0/0, no sealed T18 edit and no fabrication"
       ]
+    },
+    "T29": {
+      "case_results": {
+        "android_grand": {
+          "counts_source": "gradlew :mesh:testDebugUnitTest --rerun-tasks at boundary 4c92950; TEST-*.xml walk",
+          "errors": 0,
+          "failures": 0,
+          "skipped": 0,
+          "tests": 929,
+          "xml_files": 52
+        },
+        "deleted_cases": [],
+        "ios": null,
+        "note": "android-only per the card (command_stages carry gradle + python controls, no swift; single regression path ReadinessT29Test.kt); the host JVM court proves the typed classification + fail-closed + encrypted-at-rest-required + atomic-rollback LAWS via an injected RawStoreOpener seam and the SqlcipherStoreOpener adapter; the physical SQLCipher native wrong-key/corruption bytes are device evidence",
+        "t29_android_court": {
+          "counts_source": "ReadinessT29Test.kt (8 contract + 4 platform-integration witnesses)",
+          "errors": 0,
+          "failures": 0,
+          "tests": 12
+        }
+      },
+      "claim_commit": "8c73d85",
+      "commands": [
+        "T29-narrow-gradlew",
+        "T29-subsystem-gradlew",
+        "T29-controls-python3",
+        "T29-controls-python3-002"
+      ],
+      "device_gate_ids": [],
+      "file_hashes": {},
+      "implementation_commit": "4c92950297c139e268bccbbfcb71d91abe95c626",
+      "implementation_commits": [
+        "5a7eaa2fb49d1e544031134ccec594f8d6ded957",
+        "e8e07200ab51f7cc5351834caff1c4a7d5a24e97",
+        "4c92950297c139e268bccbbfcb71d91abe95c626"
+      ],
+      "inputs": {
+        "children_commit_order": [
+          "5a7eaa2 contract",
+          "e8e0720 platform",
+          "4c92950 controls"
+        ],
+        "governed_source": [
+          "android/mesh/src/main/java/io/godstone/mesh/store/StoreOpenResult.kt",
+          "android/mesh/src/main/java/io/godstone/mesh/store/SqlcipherStoreOpener.kt"
+        ],
+        "required_regression_paths": [
+          "android/mesh/src/test/java/io/godstone/mesh/readiness/ReadinessT29Test.kt"
+        ],
+        "sealed_hot_path_untouched": [
+          "android/mesh/src/main/java/io/godstone/mesh/store/MessageStore.kt (SqlcipherStoreDb/JdbcStoreDb) verified unmodified since HEAD"
+        ],
+        "task_card": "docs/production-readiness/TASKS.json#T29"
+      },
+      "ladder_boundary_commit": "4c92950297c139e268bccbbfcb71d91abe95c626",
+      "mutation_results": {
+        "campaign_note": "T29 semantic roster (2 android mutants) verified KILLED against baseline e8e0720. SM1 makes SqlcipherStoreOpener claim encrypted-at-rest regardless of the native cipher binding, so a plain (cipherEnabled=false) store is accepted as if encrypted (the cards named falsification: replace the production encrypted opener with plain SQLite) -> testSqlcipherAdapterRejectsAPlainBindingViaTheEncryptedAtRestPredicate fails; SM2 breaks the total fail-closed classifier so an unclassified fault masquerades as a healthy empty Available store -> testUnclassifiedFaultFailsClosedNeverAvailable fails. Each baseline court ran 12 positive.",
+        "semantic": [
+          {
+            "anchor_count": 1,
+            "baseline_sha": "e8e07200ab51f7cc5351834caff1c4a7d5a24e97",
+            "build_exit": 0,
+            "category": "semantic",
+            "failed_assertion": "witness testSqlcipherAdapterRejectsAPlainBindingViaTheEncryptedAtRestPredicate failed as intended (1 failed case(s))",
+            "id": "T29-SM1-android-plain-opener-accepted-as-encrypted",
+            "log_path": "T29/logs/T29-SM1-android-plain-opener-accepted-as-encrypted.semantic.log",
+            "log_sha": "484529cf193dd9ba5e214b5c97098464cce033f50fc74ce69626da0f8c23f3b5",
+            "mutant_patch_sha": "e2313a301dbf8ecc176f2e63110182a9cf8fe7c9b7fede768a79458758f7c45f",
+            "outcome": "KILLED",
+            "platform": null,
+            "target_tests": [
+              "testSqlcipherAdapterRejectsAPlainBindingViaTheEncryptedAtRestPredicate"
+            ],
+            "tests_run": 12
+          },
+          {
+            "anchor_count": 1,
+            "baseline_sha": "e8e07200ab51f7cc5351834caff1c4a7d5a24e97",
+            "build_exit": 0,
+            "category": "semantic",
+            "failed_assertion": "witness testUnclassifiedFaultFailsClosedNeverAvailable failed as intended (1 failed case(s))",
+            "id": "T29-SM2-android-unclassified-fault-not-fail-closed",
+            "log_path": "T29/logs/T29-SM2-android-unclassified-fault-not-fail-closed.semantic.log",
+            "log_sha": "4c26868345dfad83e5a2ed5b2a7b30a2e442ace32f009b1d885056fced91f98b",
+            "mutant_patch_sha": "92be3afc8e5383ef8c8d3b537f993f17310629579fb84f7e61ef3f6b5f3d20c6",
+            "outcome": "KILLED",
+            "platform": null,
+            "target_tests": [
+              "testUnclassifiedFaultFailsClosedNeverAvailable"
+            ],
+            "tests_run": 12
+          }
+        ]
+      },
+      "objective": {
+        "claimed_head": "5fb4d1722f1f63a67a23d29eabe41d0cf5723353",
+        "claimed_utc": "2026-09-11T20:56:34+00:00",
+        "objective": "Test the actual Android SQLCipher adapter with key acquisition failures, wrong keys, full/read-only disk and corruption.",
+        "task": "T29"
+      },
+      "status": "COMPLETE",
+      "tested_tree_sha": "8ecf6c48995372e179bc5fd1c26cebbe4e0d4b81",
+      "unresolved": [
+        "physical SQLCipher behaviour on the real Android native (open/reopen with a wrong key, corruption bytes, disk-full/read-only at the OS) is DEVICE evidence deferred to T73-T75 / artifact acceptance; the host-JVM court proves the control-flow and typed-classification law at the injected seam + adapter, not the native cipher bytes; the internal implementation does not close the device gate",
+        "external gates (A06, APPROVED_CONTENT, NATIVE_MODELS, HARDWARE, SIGNING) remain open; readiness stays false",
+        "the concrete SqlcipherStoreDb is not refactored to call StoreOpener at its open site (blast-radius on a sealed hot path -- MessageStore.kt verified unmodified since HEAD); the SqlcipherStoreOpener adapter is the sanctioned composition seam the runtime binds, delegating classification verbatim",
+        "pre-existing ReadinessT18Test randomized fixture is a latent, ordering-sensitive flake unrelated to T29; handled by bounded re-run to a genuinely green execution, no sealed-code edit, no fabrication"
+      ]
     }
   },
-  "current_task": "T29",
+  "current_task": "T30",
   "external_blockers": [
     "A06",
     "APPROVED_CONTENT",
@@ -3366,43 +3474,27 @@
     "SIGNING"
   ],
   "failed_attempts": [],
-  "in_progress": {
-    "claimed_head": "5fb4d1722f1f63a67a23d29eabe41d0cf5723353",
-    "claimed_utc": "2026-09-11T20:56:34+00:00",
-    "objective": {
-      "claimed_head": "5fb4d1722f1f63a67a23d29eabe41d0cf5723353",
-      "claimed_utc": "2026-09-11T20:56:34+00:00",
-      "objective": "Test the actual Android SQLCipher adapter with key acquisition failures, wrong keys, full/read-only disk and corruption.",
-      "task": "T29"
-    },
-    "task": "T29"
-  },
-  "last_code_head": "130e3e7e71d56802577a53f07fe24d8e3e1af8ab",
-  "last_observed_head": "130e3e7e71d56802577a53f07fe24d8e3e1af8ab",
+  "in_progress": null,
+  "last_code_head": "4c92950297c139e268bccbbfcb71d91abe95c626",
+  "last_observed_head": "4c92950297c139e268bccbbfcb71d91abe95c626",
   "latest_verification": {
     "android_grand": {
       "errors": 0,
       "failures": 0,
-      "tests": 917
+      "tests": 929
     },
-    "at_utc": "2026-09-11T20:52:17+00:00",
-    "boundary_commit": "130e3e7e71d56802577a53f07fe24d8e3e1af8ab",
-    "ios_grand": {
-      "errors": 0,
-      "failures": 0,
-      "tests": 854
-    },
+    "at_utc": "2026-09-11T21:18:47+00:00",
+    "boundary_commit": "4c92950297c139e268bccbbfcb71d91abe95c626",
     "roster": {
-      "T28_killed": 4,
-      "of": 4
+      "T29_killed": 2,
+      "of": 2
     },
-    "t28_courts": {
-      "android": 10,
-      "ios": 10
+    "t29_courts": {
+      "android": 12
     },
-    "tested_tree_sha": "5b78fca0df338a0dd5e9a5bbc672ad7236de7531"
+    "tested_tree_sha": "8ecf6c48995372e179bc5fd1c26cebbe4e0d4b81"
   },
-  "next_task": "T29",
+  "next_task": "T30",
   "phase": "P0",
   "plan_sha256": "685456b378662b0a40a53a6abc810041e37daf97b213f3efeb6cea879363934e",
   "planning_baseline_sha": "b5c3d3d394b70cf356cdde33b47511dad7cbb95c",
