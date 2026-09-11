@@ -3366,7 +3366,17 @@
     "SIGNING"
   ],
   "failed_attempts": [],
-  "in_progress": null,
+  "in_progress": {
+    "claimed_head": "5fb4d1722f1f63a67a23d29eabe41d0cf5723353",
+    "claimed_utc": "2026-09-11T20:56:34+00:00",
+    "objective": {
+      "claimed_head": "5fb4d1722f1f63a67a23d29eabe41d0cf5723353",
+      "claimed_utc": "2026-09-11T20:56:34+00:00",
+      "objective": "Test the actual Android SQLCipher adapter with key acquisition failures, wrong keys, full/read-only disk and corruption.",
+      "task": "T29"
+    },
+    "task": "T29"
+  },
   "last_code_head": "130e3e7e71d56802577a53f07fe24d8e3e1af8ab",
   "last_observed_head": "130e3e7e71d56802577a53f07fe24d8e3e1af8ab",
   "latest_verification": {

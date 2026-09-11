@@ -2,107 +2,72 @@
   "evidence_root": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE",
   "files": [
     {
-      "path": "T28/commands.json",
-      "sha256": "90f8220d8d708c63ed3b21dd10e24f43e5bf765c63eab4b30bc4c8791d6f2bea",
-      "size": 6121
+      "path": "T29/commands.json",
+      "sha256": "ebb145359f439e4d03476781d10ca4672b27069de85f5e9370e0c1543bba19c6",
+      "size": 3470
     },
     {
-      "path": "T28/logs/T28-SM1-android-background-starts-stopped-runtime.semantic.log",
-      "sha256": "490d14e9d8e2fe842dfbbd616f243cbf3578b4bda766b25f62a3106db186e66b",
-      "size": 688
+      "path": "T29/logs/T29-SM1-android-plain-opener-accepted-as-encrypted.semantic.log",
+      "sha256": "484529cf193dd9ba5e214b5c97098464cce033f50fc74ce69626da0f8c23f3b5",
+      "size": 689
     },
     {
-      "path": "T28/logs/T28-SM1-ios-background-starts-stopped-runtime.semantic.log",
-      "sha256": "016b4942d6cd535fe246b408ce33efdbd76eced3bd85ec4f551b630dff19f72d",
-      "size": 16029
+      "path": "T29/logs/T29-SM2-android-unclassified-fault-not-fail-closed.semantic.log",
+      "sha256": "4c26868345dfad83e5a2ed5b2a7b30a2e442ace32f009b1d885056fced91f98b",
+      "size": 689
     },
     {
-      "path": "T28/logs/T28-SM2-android-power-loss-not-uniform.semantic.log",
-      "sha256": "a0994cc1c817e03572e0c61091b263f6fee8796af6042f268d186f7ca5b18279",
-      "size": 677
-    },
-    {
-      "path": "T28/logs/T28-SM2-ios-power-loss-not-uniform.semantic.log",
-      "sha256": "56426a5efc24d5b8ca4cc5ab107dcbf07e6ea74e9bc904ff9f6ff3ab9394472d",
-      "size": 16029
-    },
-    {
-      "path": "T28/logs/T28-controls-python3-002.log",
+      "path": "T29/logs/T29-controls-python3-002.log",
       "sha256": "0b1ac463307b9f7d907105bb19e85bdada5dcd05131d80c492ffd80b4ab3f5f4",
       "size": 234
     },
     {
-      "path": "T28/logs/T28-controls-python3-003.log",
-      "sha256": "67493ebd28a55ece17214e55d318f34ba4af6ac7592268756f1b3dcc304afa21",
-      "size": 125
-    },
-    {
-      "path": "T28/logs/T28-controls-python3.log",
+      "path": "T29/logs/T29-controls-python3.log",
       "sha256": "03f0bc422dc53a81fd7f41085300a28e42626c2a4554e8929d897d3c092bd014",
       "size": 1374
     },
     {
-      "path": "T28/logs/T28-narrow-gradlew.log",
-      "sha256": "c247bc5114b8aae1b3929d92eee161e38b204b53ef2b198a125590eef4aa3d70",
+      "path": "T29/logs/T29-narrow-gradlew.log",
+      "sha256": "209190d504c0c77d1b44aabeedeb97217d3bd2f89795cecf4b62044e6fd14eb1",
       "size": 2873
     },
     {
-      "path": "T28/logs/T28-narrow-swift.log",
-      "sha256": "b6c26261706d36241ec4bb633805f00a3111c8b3a4956c8bc187f4981391f9df",
-      "size": 3526
-    },
-    {
-      "path": "T28/logs/T28-subsystem-gradlew.log",
-      "sha256": "1497d7871004ae0e9c370bc5c7983020b679b25a1177b3ec801fb60aa39cd7e3",
+      "path": "T29/logs/T29-subsystem-gradlew.log",
+      "sha256": "9ddac5e78e32dc6a91b58c506ba5fdc4e1c4b030c1fc2ed85e6f85500d01f954",
       "size": 2500
     },
     {
-      "path": "T28/logs/T28-subsystem-swift.log",
-      "sha256": "e9ceb2d41539e32c89a9762cde5604d9868b53d7d9e4a58e7c93463b80fc6aac",
-      "size": 223301
+      "path": "T29/manifest.json",
+      "sha256": "79e36df76f2ad480835ec661b855de353b1f6a7cfd3d34302373cb8d90c803b2",
+      "size": 1697
     },
     {
-      "path": "T28/manifest.json",
-      "sha256": "f50aab1b77512d3f16555b411df79ebb353cb4efd0631ad4942b0bd31810df2e",
-      "size": 3299
+      "path": "T29/milestones/baseline-milestone.json",
+      "sha256": "38dd7b347f93ba806df0fe85b797c25b3c999d7acca82732aac07c0f0146aa60",
+      "size": 2507
     },
     {
-      "path": "T28/milestones/baseline-milestone.json",
-      "sha256": "42eb99a64c3562b728b31e55529127dfda42a905fdcfa5ec239ec675f11e137b",
-      "size": 3196
+      "path": "T29/milestones/contract-child.json",
+      "sha256": "bf7c810da34b8b15ed2e2f17e4bd94daeddea6cfb0ab2d7f6a9014f3b491653c",
+      "size": 2849
     },
     {
-      "path": "T28/milestones/contract-android-child.json",
-      "sha256": "847d23fef509f010599f54a5c5b13d3ae1451595da238bdaf772f4dd90d5310c",
-      "size": 2693
+      "path": "T29/milestones/controls-roster.json",
+      "sha256": "b3b9d773ddc64f7644c7b71cb4ed738767cc47a497427b0bd9268ae560818969",
+      "size": 1776
     },
     {
-      "path": "T28/milestones/controls-roster.json",
-      "sha256": "519a4e7df6dfadd035e4549f59ca11208957114e06fc8221a4fff389a5678915",
-      "size": 2703
+      "path": "T29/milestones/design-grounding-milestone.json",
+      "sha256": "406c171c858d8cb552525e15b2ee5ef28bf50474dcd2f7075394efef142b47c0",
+      "size": 3716
     },
     {
-      "path": "T28/milestones/design-grounding-milestone.json",
-      "sha256": "06bb82f5a7a2e8aa443a47f710b8e54c50ffb560179473fe78515ec368aa5f03",
-      "size": 3627
-    },
-    {
-      "path": "T28/milestones/integration-android-child.json",
-      "sha256": "9f9ba08c43ddfe1e903fc78b2c90045648e868a6808dec4a8252f9bb6191368d",
-      "size": 2271
-    },
-    {
-      "path": "T28/milestones/integration-ios-child.json",
-      "sha256": "77c7db02cdfb45b2a07c651470abfd4025d304a0eb3d8201c8d4caec285f2160",
-      "size": 1852
-    },
-    {
-      "path": "T28/milestones/ios-contract-court-child.json",
-      "sha256": "bda9fc265e20d064500dd1ff844ff1791b816f5af38a0b4e70dcab1fe20519d8",
-      "size": 1866
+      "path": "T29/milestones/platform-child.json",
+      "sha256": "c14e442687f6a4fd0a7710ee3249c615e99452a5cbe4ab17ae9705fcdd70d2da",
+      "size": 2764
     }
   ],
-  "note": "T28 (unify runtime stop/start, power and transport invalidation) seal evidence: the executed dual-platform narrow/subsystem/controls commands, the 4/4 KILLED semantic roster, and the child milestones (contract, ios-contract-court, dual integration, controls). readiness remains false; external gates open; device evidence deferred T73-T75.",
+  "note": "T29 (prove Android private-store encryption and failure behavior) seal evidence: the executed android narrow/subsystem/controls commands, the 2/2 KILLED semantic roster, and the child milestones (contract, platform, controls). readiness remains false; external gates open; physical SQLCipher native instrumentation deferred T73-T75.",
   "schema_version": 1,
-  "task": "T28"
+  "task": "T29"
 }
