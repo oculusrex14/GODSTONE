@@ -3629,7 +3629,17 @@
     "SIGNING"
   ],
   "failed_attempts": [],
-  "in_progress": null,
+  "in_progress": {
+    "claimed_head": "28f3e9f7b1a02af36f48e6717fcb3b7064596b10",
+    "claimed_utc": "2026-09-11T22:24:55+00:00",
+    "objective": {
+      "claimed_head": "28f3e9f7b1a02af36f48e6717fcb3b7064596b10",
+      "claimed_utc": "2026-09-11T22:24:55+00:00",
+      "objective": "Freeze current accepted schema fingerprints and add ordered, transactional migrations for inbox, retention and encrypted-store metadata.",
+      "task": "T31"
+    },
+    "task": "T31"
+  },
   "last_code_head": "44f6b4d9aae8a1c8ba8845935bc1e79345474d41",
   "last_observed_head": "44f6b4d9aae8a1c8ba8845935bc1e79345474d41",
   "latest_verification": {
