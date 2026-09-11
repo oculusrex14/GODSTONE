@@ -588,3 +588,39 @@ invariant values - those stand untouched and the vector tests green; the seals a
 that follow the files, so they were recomputed, audited hunk by hunk against the T17 acts, and
 brought forward in their own committed act (2e0b3f7), never folded into the tasks own commits.
 The L0/L1 run that followed speaks green; the evidence rests in EVIDENCE/T20/ladder-boundary.
+
+## D-T21-a - the drop belongeth to the owners hand
+The destruction of the session slot is the mandate of the relation's owner: the close, the
+heartbeat sweep, and the lease consult at the writers door. It was found dwelling inside the
+shared inbound arm, which the platforms ambiguous-unsubscribe moment also traverseth - and
+there it slew the T16 rotation law, which bideth the quarantined relation keep its trusted
+session until the rotation. The drop was therefore excised from the arm and re-inlisted at the
+three owners' hands, each of which is a true termination. The android island, whose disconnect
+arms are wholly terminations, heard the same law at both arms and stood it unchanged.
+## D-T21-b - the gate closings are narrowed to the handshake word
+A record out of order at the initiators door is a conflicting sequence: the exact relation
+perisheth. The first gate closings slew too wide - they fell upon every unexpected stage alike -
+and were cured by narrowing: the closing reacheth only records whose type is HS1, HS2 or HS3,
+and never upon a quarantined relation, which awaiteth its rotation. A DATA record at an unready
+stage remaineth the T17 bounded refusal: typed, one event, the relation standeth.
+## D-T21-c - the mid-flight duplicate case was deleted, not weakened
+The section thirteen permiteth no retransmission within the same session: the bounded
+transcript ignoreth exact duplicates only at the expected or just-consumed stages, and after the
+trust an unexpected handshake record is refused by the gate and the relation is closed. A case
+that replayed an in-flight duplicate mid-exchange was therefore tried and found to be no
+distinct law from the T20 transcript witness, and it was deleted. On the island the reachable
+form of the same law stands as the duplicate counsel refused by the gate after the trust.
+## D-T21-d - the reservation flood is beyond the tests reach on the island
+The writers pump draineth as it runneth, synchronously under the lock, and the staging is
+private: no public handleth stayeth the flood between the stage and the drain. The reservation
+refusal branch is accordingly proven on the android island by the flooder (the campaign witness
+testTheHS3ReservationFailureClosesTheRelationExactly, KILLED), and on the island by inspection
+of the very arm that recordeth 'hs3 reservation refused' and closit the exact relation. The
+island court keepeth the duplicate-counsel witness in its place.
+## D-T21-e - one entrance per peer, and the census that proved it
+The publication ledger keepeth but one entrance per peer: the hand-stand of a second key
+under a central already enrolled by the ladder was refused by that law - a production truth
+found by the test, not a defect. The absence witness (the controller's READY publisheth no
+link-ready relation) is proved by the equality of the census before and after the exchange;
+the instrument itself is proved by withdrawing the ladders own enrollment and re-enlisting it,
+the census falling and rising accordingly.

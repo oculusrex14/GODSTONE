@@ -298,6 +298,26 @@ SEMANTIC = [
         "witness": "testTheAbsoluteTermExpiresTheDribbledAssemblyThoughTheSlidingWindowIsRefreshed",
         "swift_filter": "ReadinessT20Tests",
     },
+    {
+        "id": "T21-HS1-android-ready-before-admission",
+        "platform": "jvm",
+        "file": "android/mesh/src/main/java/io/godstone/mesh/transport/BleTransport.kt",
+        "find": "        if (verdict !is TransportResult.Admitted) {\n            // the reservation failed or the queue fell Closed: no HS3 is",
+        "replace": "        if (false) {\n            // the reservation failed or the queue fell Closed: no HS3 is",
+        "why": "the HS3 reservation gate is short-circuited: the transport marketh the relation trusted READY though the writer refused the record, publishing a link that was never admitted",
+        "witness": "testTheHS3ReservationFailureClosesTheRelationExactly",
+        "gradle_filter": "*ReadinessT21Test*",
+    },
+    {
+        "id": "T21-HS2-android-raw-noise-direct",
+        "platform": "jvm",
+        "file": "android/mesh/src/main/java/io/godstone/mesh/transport/BleTransport.kt",
+        "find": "        val hs3 = registry.initiatorProcessHs2(conn.peerId, record.payload, advertised) ?: run {\n            // trust rejected: HS3 is withheld and the exact relation closes\n            recordRejection(conn.peerId, \"hs.read.initiator\", \"hs2 rejected\")\n            closeInitiatorRelation(peerAddress)\n            return\n        }",
+        "replace": "        val hs3 = registry.initiatorProcessHs2(conn.peerId, record.payload, advertised) ?: ByteArray(0)",
+        "why": "the trust gate of the second message is swallowed: a rejected controller still marcheth, the transport carrying an empty HS3 into the ready state - untrusted raw Noise spoken directly over the link",
+        "witness": "testTheTrustRejectionWithholdsHS3AndClosesTheRelationExactly",
+        "gradle_filter": "*ReadinessT21Test*",
+    },
 ]
 
 EXEC_RE = re.compile(r"Executed ([0-9]+) tests, with ([0-9]+) failures")

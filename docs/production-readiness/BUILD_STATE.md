@@ -40,3 +40,4 @@ A06 · APPROVED_CONTENT · NATIVE_MODELS · HARDWARE · SIGNING — external by 
 - SessionSlot is the single serialisation point of a relation and witnesses itself; retiring a slot reclaims its lock entry and the replacement carries the next lease generation.
 - No external review/model/content/device result may be fabricated.
 | T20 | Prove platform lifetime rules with semantic adapter controls | COMPLETE | 2026-09-10T20:18:40Z | android 818/0 failures, ios 759/0 failures; semantic 5/5 KILLED, structural 5 caught +1 documented ceiling | 194ccb5c2 |
+| T21 | On the duplex witness and the ascendant hint the initiator speaketh HS1; every refusal closeth the exact relation | COMPLETE | 2026-09-11T00:24:04Z | android 831/0 failures 0 errors, ios 772/0 failures; semantic T21 2/2 KILLED (campaign whole: 7/7); boundary ladder L0/L1 green | f8222e0ba |

@@ -1,1210 +1,1332 @@
 {
- "claims": [
-  {
-   "claim_id": "CLM-T01-COPIES",
-   "command_ids": [
-    "t01-cmd-12"
-   ],
-   "evidence_class": "internal",
-   "evidence_sha256": "26c11ef518f2a5bdea743df22e0c464e415667c0181030774f785e03232637cb",
-   "latest_source_sha": "b33d790818c1019a5508917d653546f166ece983",
-   "limitations": "host-only evidence; device and independent gates remain external",
-   "production_path": "tools/readiness/preserve.py",
-   "profile": "host-tooling",
-   "required_case_ids": [
-    "test_t01 suite"
-   ],
-   "requirement": "all required copies match the inventory byte-for-byte",
-   "result": "PASS",
-   "state_owner": "build/release controller",
-   "task_ids": [
-    "T01"
-   ]
-  },
-  {
-   "claim_id": "CLM-T01-MUTATION",
-   "command_ids": [
-    "t01-cmd-12"
-   ],
-   "evidence_class": "internal",
-   "evidence_sha256": "26c11ef518f2a5bdea743df22e0c464e415667c0181030774f785e03232637cb",
-   "latest_source_sha": "b33d790818c1019a5508917d653546f166ece983",
-   "limitations": "host-only evidence; device and independent gates remain external",
-   "production_path": "tools/readiness/tests/test_t01.py",
-   "profile": "host-tooling",
-   "required_case_ids": [
-    "test_t01 suite"
-   ],
-   "requirement": "preservation verification detects removal and tampering of copies",
-   "result": "PASS",
-   "state_owner": "build/release controller",
-   "task_ids": [
-    "T01"
-   ]
-  },
-  {
-   "claim_id": "CLM-T01-PATCH",
-   "command_ids": [
-    "t01-cmd-12"
-   ],
-   "evidence_class": "internal",
-   "evidence_sha256": "26c11ef518f2a5bdea743df22e0c464e415667c0181030774f785e03232637cb",
-   "latest_source_sha": "b33d790818c1019a5508917d653546f166ece983",
-   "limitations": "host-only evidence; device and independent gates remain external",
-   "production_path": "docs/production/BASELINE.md",
-   "profile": "host-tooling",
-   "required_case_ids": [
-    "test_t01 suite"
-   ],
-   "requirement": "tracked patch reconstructs byte-identically in a disposable checkout",
-   "result": "PASS",
-   "state_owner": "build/release controller",
-   "task_ids": [
-    "T01"
-   ]
-  },
-  {
-   "claim_id": "CLM-T02-CONTROLS",
-   "command_ids": [
-    "T02-controls-python3",
-    "T02-controls-python3-002"
-   ],
-   "evidence_class": "internal",
-   "evidence_sha256": null,
-   "latest_source_sha": null,
-   "limitations": "host-only evidence; Android/device gates remain external",
-   "production_path": "ci/check_repository.py",
-   "profile": "host-tooling",
-   "required_case_ids": [
-    "test_t02 suite"
-   ],
-   "requirement": "repository controls pass at the T02 tree",
-   "result": "PASS",
-   "state_owner": "build/release controller",
-   "task_ids": [
-    "T02"
-   ]
-  },
-  {
-   "claim_id": "CLM-T02-GATES",
-   "command_ids": [
-    "T02-narrow-python3"
-   ],
-   "evidence_class": "internal",
-   "evidence_sha256": null,
-   "latest_source_sha": null,
-   "limitations": "host-only evidence; Android/device gates remain external",
-   "production_path": "tools/readiness/tests/test_t02.py",
-   "profile": "host-tooling",
-   "required_case_ids": [
-    "test_t02 suite"
-   ],
-   "requirement": "exact-SHA and zero-test mutation gates reject tampered evidence",
-   "result": "PASS",
-   "state_owner": "build/release controller",
-   "task_ids": [
-    "T02"
-   ]
-  },
-  {
-   "claim_id": "CLM-T02-RUNNER",
-   "command_ids": [
-    "T02-narrow-python3",
-    "T02-subsystem-python3"
-   ],
-   "evidence_class": "internal",
-   "evidence_sha256": null,
-   "latest_source_sha": null,
-   "limitations": "host-only evidence; Android/device gates remain external",
-   "production_path": "tools/readiness/run.py",
-   "profile": "host-tooling",
-   "required_case_ids": [
-    "test_t02 suite"
-   ],
-   "requirement": "argv-only runner classifies zero-tests, timeouts and blocked executors honestly",
-   "result": "PASS",
-   "state_owner": "build/release controller",
-   "task_ids": [
-    "T02"
-   ]
-  },
-  {
-   "claim_id": "CLM-T03-CONTRACTS",
-   "command_ids": [
-    "T03-narrow-python3"
-   ],
-   "evidence_class": "internal",
-   "evidence_sha256": "7519ed9000d1a1730b865f08da35fb53f824f72c01bb4f2490497ddf6671a7ed",
-   "latest_source_sha": "34adfba3f4c4b32ce1bc144cbf0c490df59c17bc",
-   "limitations": "host-only evidence; device and independent gates remain external",
-   "production_path": "tools/readiness/contract_check.py",
-   "profile": "host-tooling",
-   "required_case_ids": [
-    "test_t03 suite"
-   ],
-   "requirement": "normative links resolve; authority blob shas match; frozen constants validated",
-   "result": "PASS",
-   "state_owner": "build/release controller",
-   "task_ids": [
-    "T03"
-   ]
-  },
-  {
-   "claim_id": "CLM-T03-CONTROLS",
-   "command_ids": [
-    "T03-controls-python3",
-    "T03-controls-python3-002"
-   ],
-   "evidence_class": "internal",
-   "evidence_sha256": "7519ed9000d1a1730b865f08da35fb53f824f72c01bb4f2490497ddf6671a7ed",
-   "latest_source_sha": "34adfba3f4c4b32ce1bc144cbf0c490df59c17bc",
-   "limitations": "host-only evidence; device and independent gates remain external",
-   "production_path": "ci/check_release_gates_status.py",
-   "profile": "host-tooling",
-   "required_case_ids": [
-    "test_t03 suite"
-   ],
-   "requirement": "repository + release-gate controls pass after contract normalization",
-   "result": "PASS",
-   "state_owner": "build/release controller",
-   "task_ids": [
-    "T03"
-   ]
-  },
-  {
-   "claim_id": "CLM-T03-PROFILES",
-   "command_ids": [
-    "T03-narrow-python3"
-   ],
-   "evidence_class": "internal",
-   "evidence_sha256": "7519ed9000d1a1730b865f08da35fb53f824f72c01bb4f2490497ddf6671a7ed",
-   "latest_source_sha": "34adfba3f4c4b32ce1bc144cbf0c490df59c17bc",
-   "limitations": "host-only evidence; device and independent gates remain external",
-   "production_path": "docs/production-readiness/CAPABILITY_PROFILES.json",
-   "profile": "host-tooling",
-   "required_case_ids": [
-    "test_t03 suite"
-   ],
-   "requirement": "shipping stays LIGHT Archive-only; disabled features and readiness false; mutations detected",
-   "result": "PASS",
-   "state_owner": "build/release controller",
-   "task_ids": [
-    "T03"
-   ]
-  },
-  {
-   "claim_id": "CLM-T04-CONTROLS",
-   "command_ids": [
-    "T04-controls-python3",
-    "T04-controls-python3-002"
-   ],
-   "evidence_class": "internal",
-   "evidence_sha256": "a91564b801b0da8350c35ca5238024963560947a877b0461c7d942704fb3fbb7",
-   "latest_source_sha": "a067c1b9ea5c366e85af52f8d9758dcf3afe2fc1",
-   "limitations": "host-only evidence; the independent A-06 artifact remains external",
-   "production_path": "ci/check_parity.py",
-   "profile": "host-tooling",
-   "required_case_ids": [
-    "test_t04 suite"
-   ],
-   "requirement": "repository + release-gate controls pass at the T04 tree",
-   "result": "PASS",
-   "state_owner": "build/release controller",
-   "task_ids": [
-    "T04"
-   ]
-  },
-  {
-   "claim_id": "CLM-T04-LOCK",
-   "command_ids": [
-    "T04-narrow-python3"
-   ],
-   "evidence_class": "internal",
-   "evidence_sha256": "a91564b801b0da8350c35ca5238024963560947a877b0461c7d942704fb3fbb7",
-   "latest_source_sha": "a067c1b9ea5c366e85af52f8d9758dcf3afe2fc1",
-   "limitations": "host-only evidence; the independent A-06 artifact remains external",
-   "production_path": "crypto/noise_lock.py",
-   "profile": "host-tooling",
-   "required_case_ids": [
-    "test_t04 suite"
-   ],
-   "requirement": "ExternalNoiseLockV1 rejects missing/tampered/mislabeled inputs and keeps UNAVAILABLE typed with nonzero release exit",
-   "result": "PASS",
-   "state_owner": "build/release controller",
-   "task_ids": [
-    "T04"
-   ]
-  },
-  {
-   "claim_id": "CLM-T05-REPLAY",
-   "command_ids": [
-    "T05-narrow-gradlew",
-    "T05-mutation-commit-before-aead"
-   ],
-   "evidence_class": "internal",
-   "evidence_sha256": null,
-   "latest_source_sha": "4e22a3f1279b08ba281656666594d463b9b7c699",
-   "limitations": "JVM-only evidence; instrumented-device crypto evidence remains a separate device gate",
-   "production_path": "android/mesh/src/main/java/io/godstone/mesh/crypto/ReplayWindow.kt",
-   "profile": "jvm-host",
-   "required_case_ids": [
-    "ReadinessT05Test"
-   ],
-   "requirement": "replay window commits only after AEAD; forged frames cannot poison the window; nonce parsing rejects reserved/out-of-policy before subtraction",
-   "result": "PASS",
-   "state_owner": "crypto/session owner",
-   "task_ids": [
-    "T05"
-   ]
-  },
-  {
-   "claim_id": "CLM-T05-SUBSYSTEM",
-   "command_ids": [
-    "T05-subsystem-gradlew"
-   ],
-   "evidence_class": "internal",
-   "evidence_sha256": null,
-   "latest_source_sha": "4e22a3f1279b08ba281656666594d463b9b7c699",
-   "limitations": "JVM-only evidence; instrumented-device crypto evidence remains a separate device gate",
-   "production_path": "android/mesh",
-   "profile": "jvm-host",
-   "required_case_ids": [
-    "ReadinessT05Test"
-   ],
-   "requirement": "full :mesh JVM suite passes with the T05 change",
-   "result": "PASS",
-   "state_owner": "crypto/session owner",
-   "task_ids": [
-    "T05"
-   ]
-  },
-  {
-   "claim_id": "CLM-T06-CROSS",
-   "command_ids": [
-    "T06-narrow-gradlew",
-    "T06-narrow-swift"
-   ],
-   "evidence_class": "internal",
-   "evidence_sha256": null,
-   "latest_source_sha": "b86f16603f23f2adc2374dbf4019fd1a7a8ccb3c",
-   "limitations": "host-only evidence; instrumented-device evidence remains a separate device gate",
-   "production_path": "wire/transport_vectors_android.json",
-   "profile": "jvm-host+swift-host",
-   "required_case_ids": [
-    "ReadinessT06Test",
-    "ReadinessT06Tests"
-   ],
-   "requirement": "the two engines verify each other through the shared transport vector manifest (byte-identical ciphertexts)",
-   "result": "PASS",
-   "state_owner": "crypto/session owner",
-   "task_ids": [
-    "T06"
-   ]
-  },
-  {
-   "claim_id": "CLM-T06-FRAMING",
-   "command_ids": [
-    "T06-narrow-gradlew",
-    "T06-narrow-swift"
-   ],
-   "evidence_class": "internal",
-   "evidence_sha256": null,
-   "latest_source_sha": "b86f16603f23f2adc2374dbf4019fd1a7a8ccb3c",
-   "limitations": "host-only evidence; instrumented-device evidence remains a separate device gate",
-   "production_path": "ios/Godstone/Sources/GodstoneMesh/ReplayWindow.swift",
-   "profile": "jvm-host+swift-host",
-   "required_case_ids": [
-    "ReadinessT06Test",
-    "ReadinessT06Tests"
-   ],
-   "requirement": "DATA ciphertext = uint64_be(nonce) || ct || tag on both engines; internal nonce zero32||LE preserved; legacy frames never auto-detected",
-   "result": "PASS",
-   "state_owner": "crypto/session owner",
-   "task_ids": [
-    "T06"
-   ]
-  },
-  {
-   "claim_id": "CLM-T07-RETIREMENT",
-   "command_ids": [
-    "T07-narrow-gradlew",
-    "T07-narrow-swift"
-   ],
-   "evidence_class": "internal",
-   "evidence_sha256": null,
-   "latest_source_sha": "b1d51529ddc7a2df0c2755ce0a99577ea21d34b7",
-   "limitations": "host-only evidence; instrumented-device evidence remains a separate device gate",
-   "production_path": "android/mesh/src/main/java/io/godstone/mesh/crypto/NoiseSession.kt",
-   "profile": "jvm-host+swift-host",
-   "required_case_ids": [
-    "ReadinessT07Test",
-    "ReadinessT07Tests"
-   ],
-   "requirement": "monotonic SessionBudget enforced terminally (2^20/direction, 30 min); no rekey-in-place; peer nonces beyond budget rejected before window math",
-   "result": "PASS",
-   "state_owner": "crypto/session owner",
-   "task_ids": [
-    "T07"
-   ]
-  },
-  {
-   "claim_id": "CLM-T08-RECLAIM",
-   "command_ids": [
-    "T08-narrow-gradlew-002",
-    "T08-narrow-swift-002"
-   ],
-   "evidence_class": "internal",
-   "evidence_sha256": null,
-   "latest_source_sha": "ae0c5390e895a90c7b49867ab151094ee76f8308",
-   "limitations": "host-only evidence; 10000 reconnects observed on the host only",
-   "production_path": "ios/Godstone/Sources/GodstoneMesh/SessionManager.swift",
-   "profile": "jvm-host+swift-host",
-   "required_case_ids": [
-    "ReadinessT08Test",
-    "ReadinessT08Tests"
-   ],
-   "requirement": "reclaiming a retired slot reclaims its lock entry, and the replacement for the same transport handle carries the next lease generation from a bounded last-generation registry",
-   "result": "PASS",
-   "state_owner": "crypto/session owner",
-   "task_ids": [
-    "T08"
-   ]
-  },
-  {
-   "claim_id": "CLM-T08-SERIALISATION",
-   "command_ids": [
-    "T08-narrow-gradlew-002",
-    "T08-narrow-swift-002"
-   ],
-   "evidence_class": "internal",
-   "evidence_sha256": null,
-   "latest_source_sha": "ae0c5390e895a90c7b49867ab151094ee76f8308",
-   "limitations": "host-only evidence; the device runtime path stays a separate gate",
-   "production_path": "android/mesh/src/main/java/io/godstone/mesh/crypto/SessionSlot.kt",
-   "profile": "jvm-host+swift-host",
-   "required_case_ids": [
-    "ReadinessT08Test",
-    "ReadinessT08Tests"
-   ],
-   "requirement": "one SessionSlot per immutable RelationKey holds the controller, terminal state and lease, and every operation - handshake, seal, open, isReady, retire - enters through the same slot serialisation, witnessed by the slot",
-   "result": "PASS",
-   "state_owner": "crypto/session owner",
-   "task_ids": [
-    "T08"
-   ]
-  },
-  {
-   "claim_id": "CLM-T09-UUID-ONLY",
-   "command_ids": [
-    "T09-narrow-gradlew-005",
-    "T09-subsystem-gradlew-002"
-   ],
-   "evidence_class": "internal",
-   "evidence_sha256": null,
-   "latest_source_sha": "5b75481cb3a40dd7ee2f527e721972fe61e70825",
-   "limitations": "host-only evidence; real controller behaviour belongs to the T73-T75 device gates",
-   "production_path": "android/mesh/src/main/java/io/godstone/mesh/transport/BleAdvertisingPayload.kt",
-   "profile": "jvm-host",
-   "required_case_ids": [
-    "ReadinessT09Test"
-   ],
-   "requirement": "the legacy advertisement carries exactly the Flags AD and the complete 128-bit canonical service UUID list; no LinkInfo service data, manufacturer data, local name or identity hint rides the air; the full 13-octet record is served by GATT and the scanner filter shares the one canonical UUID",
-   "result": "PASS",
-   "state_owner": "transport advertising payload (BleAdvertiser adapter)",
-   "task_ids": [
-    "T09"
-   ]
-  },
-  {
-   "claim_id": "CLM-T09-TYPED-RESULTS",
-   "command_ids": [
-    "T09-narrow-gradlew-005",
-    "T09-subsystem-gradlew-002"
-   ],
-   "evidence_class": "internal",
-   "evidence_sha256": null,
-   "latest_source_sha": "5b75481cb3a40dd7ee2f527e721972fe61e70825",
-   "limitations": "host-only evidence; platform callback wiring is exercised through injectable hooks; the real BluetoothLeAdvertiser path is device-gated",
-   "production_path": "android/mesh/src/main/java/io/godstone/mesh/transport/BleAdvertiser.kt",
-   "profile": "jvm-host",
-   "required_case_ids": [
-    "ReadinessT09Test"
-   ],
-   "requirement": "every advertising attempt yields a typed AdvertisingResult: adapter unavailable, service not ready, oversized payload refused before dispatch, permission denial and platform start failures are surfaced observably; a stop without an outstanding submission is a no-op, never a failure",
-   "result": "PASS",
-   "state_owner": "transport advertising lifecycle (BleAdvertiser via AdvertisingHooks)",
-   "task_ids": [
-    "T09"
-   ]
-  },
-  {
-   "claim_id": "CLM-T10-PROFILE",
-   "command_ids": [
-    "T10-narrow-gradlew-003",
-    "T10-narrow-swift-003"
-   ],
-   "evidence_class": "internal",
-   "evidence_sha256": null,
-   "latest_source_sha": "afddada23d905d3231b0196ae0e6ed6121eeff43",
-   "limitations": "host-only evidence; real controller installation and subscription belong to the T73-T75 device gates",
-   "production_path": "android/mesh/src/main/java/io/godstone/mesh/transport/GattServiceContract.kt",
-   "profile": "jvm-host+swift-host",
-   "required_case_ids": [
-    "ReadinessT10Test",
-    "ReadinessT10Tests"
-   ],
-   "requirement": "the GATT service and all three characteristics resolve to the generated wire-contract values (A001 service, A002 inbox W/WR/N, A003 digest R/N, A004 link info R/W) on both engines; the server installs its tree data-driven from the contract; the hand-rolled FD short-form legacy values are removed and refused wherever a resolver meets them",
-   "result": "PASS",
-   "state_owner": "transport gatt profile (RequiredCharacteristicSet)",
-   "task_ids": [
-    "T10"
-   ]
-  },
-  {
-   "claim_id": "CLM-T10-GATE",
-   "command_ids": [
-    "T10-narrow-gradlew-003",
-    "T10-narrow-swift-003",
-    "T10-subsystem-gradlew-003",
-    "T10-subsystem-swift-003"
-   ],
-   "evidence_class": "internal",
-   "evidence_sha256": null,
-   "latest_source_sha": "afddada23d905d3231b0196ae0e6ed6121eeff43",
-   "limitations": "host-only evidence; the platform callback bodies run on real controllers only",
-   "production_path": "android/mesh/src/main/java/io/godstone/mesh/transport/GattClient.kt",
-   "profile": "jvm-host+swift-host",
-   "required_case_ids": [
-    "ReadinessT10Test",
-    "ReadinessT10Tests"
-   ],
-   "requirement": "the central provisioning gate resolves the whole discovered tree against the contract (duplicate first, then unknown, then property gaps) and fails provisioning on any deviation instead of half-connecting; inbound writes route by the classify authority so LinkInfo records never reach the record decoder and frame records never reach the link info store; CCC writes on non-inbox descriptors are accepted silently, mirroring CoreBluetooth",
-   "result": "PASS",
-   "state_owner": "transport provisioning gate (central) and server routing",
-   "task_ids": [
-    "T10"
-   ]
-  },
-  {
-   "claim_id": "CLM-T11-SCANCTX",
-   "command_ids": [
-    "T11-narrow-gradlew"
-   ],
-   "evidence_class": "internal",
-   "evidence_sha256": null,
-   "latest_source_sha": "72002d62e241d2604f8bff388a2e40b220ddd786",
-   "limitations": "JVM-facade evidence; real controller callbacks, radio flood behavior and permission transitions belong to the T73-T75 device gates",
-   "production_path": "android/mesh/src/main/java/io/godstone/mesh/transport/ScanContext.kt",
-   "profile": "jvm-host",
-   "required_case_ids": [
-    "ReadinessT11Test"
-   ],
-   "requirement": "scan callbacks are bound to their registration: ScanContext(epoch, callback identity, lease) is created before startScan, the boundary only captures an immutable ScanEvent, the reducer mutates state only for the exact active context of a started transport in the currently open epoch with a live lease (epoch read at arrival), a scan failure terminates only its own context, and old-result replay changes nothing",
-   "result": "PASS",
-   "state_owner": "transport scan reducer (scan gate)",
-   "task_ids": [
-    "T11"
-   ]
-  },
-  {
-   "claim_id": "CLM-T11-BOUNDED",
-   "command_ids": [
-    "T11-narrow-gradlew",
-    "T11-subsystem-gradlew"
-   ],
-   "evidence_class": "internal",
-   "evidence_sha256": null,
-   "latest_source_sha": "72002d62e241d2604f8bff388a2e40b220ddd786",
-   "limitations": "JVM-facade evidence with 10000-address floods at the reducer; the platform scanner delivers the same records on real hardware only under the device gates",
-   "production_path": "android/mesh/src/main/java/io/godstone/mesh/transport/BoundedDiscoveryIndex.kt",
-   "profile": "jvm-host",
-   "required_case_ids": [
-    "ReadinessT11Test"
-   ],
-   "requirement": "the 64-discovered-peer bound is applied before inserting any peer metadata on the transport and the orchestration driver surfaces: least recently observed unpinned entries are evicted first and deterministically in observation order, active relations are pinned and never evicted, and re-observation refreshes without duplicating",
-   "result": "PASS",
-   "state_owner": "transport and driver discovery surfaces (BoundedDiscoveryIndex)",
-   "task_ids": [
-    "T11"
-   ]
-  },
-  {
-   "claim_id": "CLM-T12-TERMINAL",
-   "command_ids": [
-    "T12-narrow-gradlew-002",
-    "T12-subsystem-gradlew-002"
-   ],
-   "evidence_class": "internal",
-   "evidence_sha256": null,
-   "latest_source_sha": "d7376a640dfe5118e48e29339896dafc85c9b7d8",
-   "limitations": "JVM-facade evidence; real handle-close timing and platform disconnection delivery belong to the T73-T75 device gates",
-   "production_path": "android/mesh/src/main/java/io/godstone/mesh/transport/Terminal.kt",
-   "profile": "jvm-host",
-   "required_case_ids": [
-    "ReadinessT12Test"
-   ],
-   "requirement": "on reject, provisional timeout and local cancel the exact RelationKey (direction, address, generation) transitions to terminal atomically under the driver lock: the lease leaves the authority once, the publication comes down once, and only then the captured GATT handle of that very attempt is closed; no slot awaits a didDisconnect that a locally closed handle can no longer deliver, and late platform terminals for ended generations are idempotent no-ops",
-   "result": "PASS",
-   "state_owner": "transport terminal authority (driver terminate)",
-   "task_ids": [
-    "T12"
-   ]
-  },
-  {
-   "claim_id": "CLM-T12-TOKENS",
-   "command_ids": [
-    "T12-narrow-gradlew-002",
-    "T12-subsystem-gradlew-002"
-   ],
-   "evidence_class": "internal",
-   "evidence_sha256": null,
-   "latest_source_sha": "d7376a640dfe5118e48e29339896dafc85c9b7d8",
-   "limitations": "JVM-facade evidence; the true-branch of the captured-handle close needs a platform-captured handle and awaits instrumented exercise",
-   "production_path": "android/mesh/src/main/java/io/godstone/mesh/transport/BleTransport.kt",
-   "profile": "jvm-host",
-   "required_case_ids": [
-    "ReadinessT12Test"
-   ],
-   "requirement": "production callbacks carry their required tokens: central and server disconnect handlers, inbound timeouts and admission arrivals name their exact registrations - default-zero fallbacks are removed, absent arrival tokens are refused rather than correlated to the current slot, foreign-generation terminals are refused entirely, and effects (DisconnectGatt, PublishLost) travel with their generation so no executor re-reads current state to decide what to close or unpublish",
-   "result": "PASS",
-   "state_owner": "transport callback token discipline",
-   "task_ids": [
-    "T12"
-   ]
-  },
-  {
-   "claim_id": "CLM-T13-EPOCHCTX",
-   "command_ids": [
-    "T13-narrow-swift",
-    "T13-subsystem-swift"
-   ],
-   "evidence_class": "internal",
-   "evidence_sha256": null,
-   "latest_source_sha": "9c069622464fec4d3b32ce535ea5ecaac89a3172",
-   "limitations": "host-side evidence; device runs add the delegateQueue read and real state-restoration identifiers",
-   "production_path": "ios/Godstone/Sources/GodstoneMesh/BleTransport.swift",
-   "profile": "swift-host",
-   "required_case_ids": [
-    "ReadinessT13Tests"
-   ],
-   "requirement": "every transport epoch opens with a fresh CBCentralManager/CBPeripheralManager pair and its own delegate proxies on a dedicated serial queue named for the epoch; the pair is created through the injected TransportManagerFactory, wired once at birth and never rewired; stopping retires the context and the successor shares no manager, proxy or queue object with its predecessor",
-   "result": "PASS",
-   "state_owner": "iOS transport executor and ManagerContext",
-   "task_ids": [
-    "T13"
-   ]
-  },
-  {
-   "claim_id": "CLM-T13-SRCID",
-   "command_ids": [
-    "T13-narrow-swift",
-    "T13-subsystem-swift"
-   ],
-   "evidence_class": "internal",
-   "evidence_sha256": null,
-   "latest_source_sha": "9c069622464fec4d3b32ce535ea5ecaac89a3172",
-   "limitations": "host-side evidence; real CoreBluetooth interleaving of late closures awaits the T73-T75 device gates",
-   "production_path": "ios/Godstone/Sources/GodstoneMesh/BleTransport.swift",
-   "profile": "swift-host",
-   "required_case_ids": [
-    "ReadinessT13Tests"
-   ],
-   "requirement": "a manager-sourced event is reduced only when the sending manager is the very instance of the active context, the wired delegate is still that context-own proxy, and the event names the context epoch; no token wildcard, no current-state stand-in; the central connect/fail/disconnect/discover and inbound write/subscribe/unsubscribe families and their dispatcher surface carry required tokens and required source managers, and default-zero fallbacks are removed from the production callbacks",
-   "result": "PASS",
-   "state_owner": "iOS transport callback identity discipline",
-   "task_ids": [
-    "T13"
-   ]
-  },
-  {
-   "claim_id": "CLM-T14-SERIALREDUCE",
-   "command_ids": [
-    "T14-narrow-swift",
-    "T14-subsystem-swift"
-   ],
-   "evidence_class": "internal",
-   "evidence_sha256": null,
-   "latest_source_sha": "6b760539adb7335294cd660005d5db1e7c67aa52",
-   "limitations": "host-side evidence; real CoreBluetooth event interleaving, restore identifiers and delegate-queue reads on device remain with the T73-T75 physical gates",
-   "production_path": "ios/Godstone/Sources/GodstoneMesh/BleTransport.swift",
-   "profile": "swift-host",
-   "required_case_ids": [
-    "ReadinessT14Tests"
-   ],
-   "requirement": "all connection state, capacity, publication and driver actions of a transport epoch are reduced on the ManagerContext serial executor: callback adapters package immutable events only, validation and transition and effect scheduling form one uninterrupted operation, actions retain the validated context, the lifecycle quiesces its epochs on the same queues, and a deterministic barrier interleaving (pause between validation and action, queue a stop/start, resume the old work) shows the queued lifecycle cannot overtake the in-flight reduction and stale events mutate no new state",
-   "result": "PASS",
-   "state_owner": "iOS transport serial executor",
-   "task_ids": [
-    "T14"
-   ]
-  },
-  {
-   "claim_id": "CLM-T14-TRUSTOUT",
-   "command_ids": [
-    "T14-narrow-swift",
-    "T14-subsystem-swift"
-   ],
-   "evidence_class": "internal",
-   "evidence_sha256": null,
-   "latest_source_sha": "6b760539adb7335294cd660005d5db1e7c67aa52",
-   "limitations": "host-side evidence; the completion token re-check is defence-in-depth on the synchronous host executor and earns its independent teeth at the device gates",
-   "production_path": "ios/Godstone/Sources/GodstoneMesh/BleTransport.swift",
-   "profile": "swift-host",
-   "required_case_ids": [
-    "ReadinessT14Tests"
-   ],
-   "requirement": "no storage or trust work runs while a lock is held: sealing after admission and opening of received records execute outside the critical section on the executor, their completions return token-checked before any effect commits or the delegate is notified, authentication failure is distinguished from empty success throughout, and duplicate terminals and stale timeouts act exactly once",
-   "result": "PASS",
-   "state_owner": "iOS transport trust-work discipline",
-   "task_ids": [
-    "T14"
-   ]
-  },
-  {
-   "claim_id": "CLM-T15-TIMERKEY",
-   "command_ids": [
-    "T15-narrow-swift",
-    "T15-subsystem-swift"
-   ],
-   "evidence_class": "internal",
-   "evidence_sha256": null,
-   "latest_source_sha": "8e3d9522727ab0af16bc4e861a824249d3efc35d",
-   "limitations": "host-side evidence; real run-loop expiry and orphan-fire timing races await the T73-T75 device gates",
-   "production_path": "ios/Godstone/Sources/GodstoneMesh/BleTransport.swift",
-   "profile": "swift-host",
-   "required_case_ids": [
-    "ReadinessT15Tests"
-   ],
-   "requirement": "every iOS timer owns an immutable whole key (relation + operation kind + unique operation id); timers are stored, cancelled and replaced only through reducer bodies on the epoch serial executor; the fire captures the whole key and compares its identity before removing or transitioning anything; the operation id source is monotone for the transport lifetime so no successor epoch can collide with a retired key; terminals and the closing sweep retain no lease",
-   "result": "PASS",
-   "state_owner": "iOS timer lease discipline",
-   "task_ids": [
-    "T15"
-   ]
-  },
-  {
-   "claim_id": "CLM-T15-DEADLINE",
-   "command_ids": [
-    "T15-narrow-swift",
-    "T15-subsystem-swift"
-   ],
-   "evidence_class": "internal",
-   "evidence_sha256": null,
-   "latest_source_sha": "8e3d9522727ab0af16bc4e861a824249d3efc35d",
-   "limitations": "host-side evidence with the production SystemMonotonicClock replaced by a deterministic test clock at the real dependency boundary",
-   "production_path": "ios/Godstone/Sources/GodstoneMesh/BleTransport.swift",
-   "profile": "swift-host",
-   "required_case_ids": [
-    "ReadinessT15Tests"
-   ],
-   "requirement": "lease deadlines are explicit in the injected MonotonicClock domain, recomputed at every arm including the replacement path; counters are never relied on without their epoch, and the connect advance re-arms the provisional window through the same reducer as the admission path",
-   "result": "PASS",
-   "state_owner": "iOS monotonic deadline and numbering discipline",
-   "task_ids": [
-    "T15"
-   ]
-  },
-  {
-   "claim_id": "CLM-T16-LEASE",
-   "command_ids": [
-    "T16-narrow-swift",
-    "T16-subsystem-swift"
-   ],
-   "evidence_class": "internal",
-   "evidence_sha256": null,
-   "latest_source_sha": "9e103e388dcdc1c9d4ee4d3df0334f7278f26edb",
-   "limitations": "host-side evidence; what a real subscription callback presents and whether a real manager tolerates the punned handle on the cancel leg await the T73-T75 device gates",
-   "production_path": "ios/Godstone/Sources/GodstoneMesh/BleTransport.swift",
-   "profile": "swift-host",
-   "required_case_ids": [
-    "ReadinessT16Tests"
-   ],
-   "requirement": "the actual CBCentral presented with a subscribe request is retained with the inbound lease and is the sole handle responder notifications travel by; unsubscribe requests are filtered by characteristic - a digest request leaves the inbox intact and is acknowledged distinguishably - and the generation a request carries is compared with the generation the subscription stands under, never resolved afresh, so a stale request cannot remove a replacement; a failed connection attempt is terminal immediately and requests no cancellation, while the lost-discovery path does",
-   "result": "PASS",
-   "state_owner": "iOS inbound lease retention and unsubscribe matching",
-   "task_ids": [
-    "T16"
-   ]
-  },
-  {
-   "claim_id": "CLM-T16-QUARANTINE",
-   "command_ids": [
-    "T16-narrow-swift",
-    "T16-subsystem-swift"
-   ],
-   "evidence_class": "internal",
-   "evidence_sha256": null,
-   "latest_source_sha": "9e103e388dcdc1c9d4ee4d3df0334f7278f26edb",
-   "limitations": "host-side evidence; the cross-process survival of the quarantine list across a genuine state reset awaits the device gates",
-   "production_path": "ios/Godstone/Sources/GodstoneMesh/BleTransport.swift",
-   "profile": "swift-host",
-   "required_case_ids": [
-    "ReadinessT16Tests"
-   ],
-   "requirement": "an unsubscribe the callbacks cannot distinguish - one that names no characteristic - or a reuse of one identity by two distinct real instances quarantines that identity for the epoch; the quarantine is held in the manager context, is bounded in extent with refusals counted, suppresses subscriptions and notifications for the marked identity, and is released by rotation of the context alone and never by a guessed timeout; the admission history is bounded and an exhausted budget rotates a fully drained context, never a busy one",
-   "result": "PASS",
-   "state_owner": "iOS epoch-scoped quarantine and context rotation",
-   "task_ids": [
-    "T16"
-   ]
-  },
-  {
-   "claim_id": "CLM-T17-CLEAR-OFF-AIR",
-   "command_ids": [
-    "T17-narrow-swift",
-    "T17-subsystem-swift"
-   ],
-   "evidence_class": "internal",
-   "evidence_sha256": null,
-   "latest_source_sha": "d69ec8727f9cdad3809841e49140ba32a32af719",
-   "limitations": "host-side evidence; what a real controller presents, genuine MTU cadence, and ring survival across a restart await T73-T75 device gates",
-   "production_path": "ios/Godstone/Sources/GodstoneMesh/BleTransport.swift",
-   "profile": "swift-host",
-   "required_case_ids": [
-    "ReadinessT17Tests"
-   ],
-   "requirement": "no frame leaves the transport unsealed: without a standing registry, or when the registry refuses to seal, or before the relation reaches the ready state, submission answers rejected with a bounded event and no octet reaches the wire; a forged arrival is told unauthenticated, the collector keeps running, and the accepted twin is delivered whole",
-   "result": "PASS",
-   "state_owner": "builder",
-   "task_ids": [
-    "T17"
-   ]
-  },
-  {
-   "claim_id": "CLM-T17-CLEAR-OFF-AIR-ANDROID",
-   "command_ids": [
-    "T17-narrow-gradlew",
-    "T17-subsystem-gradlew"
-   ],
-   "evidence_class": "internal",
-   "evidence_sha256": null,
-   "latest_source_sha": "d69ec8727f9cdad3809841e49140ba32a32af719",
-   "limitations": "host-side evidence; what a real controller presents, genuine MTU cadence, and ring survival across a restart await T73-T75 device gates",
-   "production_path": "android/mesh/src/main/java/io/godstone/mesh/transport/BleTransport.kt",
-   "profile": "jvm-host",
-   "required_case_ids": [
-    "ReadinessT17Test"
-   ],
-   "requirement": "the same law on Android: seal-before-send everywhere, fail-closed registry ships nothing, a pretrust data frame is refused at the state gate and a forged arrival is told unauthenticated while the collector survives both",
-   "result": "PASS",
-   "state_owner": "builder",
-   "task_ids": [
-    "T17"
-   ]
-  },
-  {
-   "claim_id": "CLM-T17-TRUSTED-DOORS",
-   "command_ids": [
-    "T17-narrow-swift",
-    "T17-subsystem-swift"
-   ],
-   "evidence_class": "internal",
-   "evidence_sha256": null,
-   "latest_source_sha": "d69ec8727f9cdad3809841e49140ba32a32af719",
-   "limitations": "host-side evidence; what a real controller presents, genuine MTU cadence, and ring survival across a restart await T73-T75 device gates",
-   "production_path": "ios/Godstone/Sources/GodstoneMesh/BleConnection.swift",
-   "profile": "swift-host",
-   "required_case_ids": [
-    "ReadinessT17Tests"
-   ],
-   "requirement": "the cryptographic ready is reachable only through the trusted handshake entries: the generic door refuses every reserved state by value and preserves the station, and a connection already in the handshake phase stays entitled to send its next record",
-   "result": "PASS",
-   "state_owner": "builder",
-   "task_ids": [
-    "T17"
-   ]
-  },
-  {
-   "claim_id": "CLM-T17-TRUSTED-DOORS-ANDROID",
-   "command_ids": [
-    "T17-narrow-gradlew",
-    "T17-subsystem-gradlew"
-   ],
-   "evidence_class": "internal",
-   "evidence_sha256": null,
-   "latest_source_sha": "d69ec8727f9cdad3809841e49140ba32a32af719",
-   "limitations": "host-side evidence; what a real controller presents, genuine MTU cadence, and ring survival across a restart await T73-T75 device gates",
-   "production_path": "android/mesh/src/main/java/io/godstone/mesh/transport/BleConnection.kt",
-   "profile": "jvm-host",
-   "required_case_ids": [
-    "ReadinessT17Test"
-   ],
-   "requirement": "the same doors on Android: transitionTo answers by value with refusal and preservation, markTrustedReady stands shut outside the handshake, and beginHandshake is idempotent for its own phase",
-   "result": "PASS",
-   "state_owner": "builder",
-   "task_ids": [
-    "T17"
-   ]
-  },
-  {
-   "claim_id": "CLM-T17-UNBABOVED-SYMBOLS",
-   "command_ids": [
-    "T17-narrow-swift",
-    "T17-subsystem-swift"
-   ],
-   "evidence_class": "internal",
-   "evidence_sha256": null,
-   "latest_source_sha": "d69ec8727f9cdad3809841e49140ba32a32af719",
-   "limitations": "host-side evidence; what a real controller presents, genuine MTU cadence, and ring survival across a restart await T73-T75 device gates",
-   "production_path": "ios/Godstone/Sources/GodstoneMesh/BleTransport.swift",
-   "profile": "swift-host",
-   "required_case_ids": [
-    "ReadinessT17Tests"
-   ],
-   "requirement": "no test factory is reachable from a shipping symbol: every ForTest seam is internal, and a restored public seam is caught by the reflection scan",
-   "result": "PASS",
-   "state_owner": "builder",
-   "task_ids": [
-    "T17"
-   ]
-  },
-  {
-   "claim_id": "CLM-T17-UNBABOVED-SYMBOLS-ANDROID",
-   "command_ids": [
-    "T17-narrow-gradlew",
-    "T17-subsystem-gradlew"
-   ],
-   "evidence_class": "internal",
-   "evidence_sha256": null,
-   "latest_source_sha": "d69ec8727f9cdad3809841e49140ba32a32af719",
-   "limitations": "host-side evidence; what a real controller presents, genuine MTU cadence, and ring survival across a restart await T73-T75 device gates",
-   "production_path": "android/mesh/src/main/java/io/godstone/mesh/transport/BleTransport.kt",
-   "profile": "jvm-host",
-   "required_case_ids": [
-    "ReadinessT17Test"
-   ],
-   "requirement": "the same on Android: the reflection scan of every production class names no unmangled ForTest symbol, and the promoted-seam mutant dies there",
-   "result": "PASS",
-   "state_owner": "builder",
-   "task_ids": [
-    "T17"
-   ]
-  },
-  {
-   "claim_id": "CLM-T18-RESERVE-FIRST",
-   "command_ids": [
-    "T18-narrow-gradlew",
-    "T18-subsystem-gradlew"
-   ],
-   "evidence_class": "internal",
-   "evidence_sha256": null,
-   "latest_source_sha": "af291f32ca671bf3db2f1a4a398a3a5ecc7a174c",
-   "limitations": "host-side evidence; the real controller completion cadence, genuine MTU negotiation, and staging survival across a restart await the T73-T75 device gates",
-   "production_path": "android/mesh/src/main/java/io/godstone/mesh/transport/RecordWriter.kt",
-   "profile": "jvm-host",
-   "required_case_ids": [
-    "ReadinessT18Test"
-   ],
-   "requirement": "every check that can refuse a whole record refuses it at the reservation, before the seal burns a nonce or the connection consumes a sequence number: the sealed length against min(16384, 64 times the agreed attribute space less the record header), the fragment ceiling, the station and the budgets; the sixty fifth fraction is told by name and number; the seal happens exactly once per submission and the fragmentation exactly once",
-   "result": "PASS",
-   "state_owner": "builder",
-   "task_ids": [
-    "T18"
-   ]
-  },
-  {
-   "claim_id": "CLM-T18-WINDOW",
-   "command_ids": [
-    "T18-narrow-gradlew",
-    "T18-subsystem-gradlew"
-   ],
-   "evidence_class": "internal",
-   "evidence_sha256": null,
-   "latest_source_sha": "af291f32ca671bf3db2f1a4a398a3a5ecc7a174c",
-   "limitations": "host-side evidence; the real controller completion cadence, genuine MTU negotiation, and staging survival across a restart await the T73-T75 device gates",
-   "production_path": "android/mesh/src/main/java/io/godstone/mesh/transport/RecordWriter.kt",
-   "profile": "jvm-host",
-   "required_case_ids": [
-    "ReadinessT18Test"
-   ],
-   "requirement": "the staging holds at most sixteen values per direction, topped up only as real completions retire values; at most one value flies; a queue-full refusal re-hands the very same fragment unburnt and unaltered; lost and duplicated completions change nothing and are told as stale",
-   "result": "PASS",
-   "state_owner": "builder",
-   "task_ids": [
-    "T18"
-   ]
-  },
-  {
-   "claim_id": "CLM-T18-MIDFAIL",
-   "command_ids": [
-    "T18-narrow-gradlew",
-    "T18-subsystem-gradlew"
-   ],
-   "evidence_class": "internal",
-   "evidence_sha256": null,
-   "latest_source_sha": "af291f32ca671bf3db2f1a4a398a3a5ecc7a174c",
-   "limitations": "host-side evidence; the real controller completion cadence, genuine MTU negotiation, and staging survival across a restart await the T73-T75 device gates",
-   "production_path": "android/mesh/src/main/java/io/godstone/mesh/transport/BleTransport.kt",
-   "profile": "jvm-host",
-   "required_case_ids": [
-    "ReadinessT18Test"
-   ],
-   "requirement": "a write that fails midway closes the relation: the staging is released, the writer accepts nothing further, the connection is closed, and the durable application data is preserved for a fresh session - witnessed by the store answering HELD_DUPLICATE for what it held and HELD_NEW for what follows",
-   "result": "PASS",
-   "state_owner": "builder",
-   "task_ids": [
-    "T18"
-   ]
-  },
-  {
-   "claim_id": "CLM-T18-TYPED-LEGS",
-   "command_ids": [
-    "T18-narrow-gradlew",
-    "T18-subsystem-gradlew"
-   ],
-   "evidence_class": "internal",
-   "evidence_sha256": null,
-   "latest_source_sha": "af291f32ca671bf3db2f1a4a398a3a5ecc7a174c",
-   "limitations": "host-side evidence; the real controller completion cadence, genuine MTU negotiation, and staging survival across a restart await the T73-T75 device gates",
-   "production_path": "android/mesh/src/main/java/io/godstone/mesh/transport/GattServer.kt",
-   "profile": "jvm-host",
-   "required_case_ids": [
-    "ReadinessT18Test"
-   ],
-   "requirement": "the write legs answer by type from their own homes: Accepted, QueueFull for the buffers and admission control that refuse, Failed for the state that cannot stand; the Boolean voices delegate to the typed ones and every former caller keeps its answer",
-   "result": "PASS",
-   "state_owner": "builder",
-   "task_ids": [
-    "T18"
-   ]
-  },
-  {
-   "claim_id": "CLM-T19-RESERVE-FIRST",
-   "command_ids": [
-    "T19-narrow-swift-004",
-    "T19-subsystem-swift-004"
-   ],
-   "evidence_class": "internal",
-   "evidence_sha256": null,
-   "latest_source_sha": "d9b300be102c5c880cab2491e15b79af2838d442",
-   "limitations": "host-side evidence behind pinned manager seams; the real controller completion cadence, genuine update readiness, and staging survival across a restart await the T73-T75 device gates",
-   "production_path": "ios/Godstone/Sources/GodstoneMesh/RecordWriter.swift",
-   "profile": "swift-host",
-   "required_case_ids": [
-    "ReadinessT19Tests"
-   ],
-   "requirement": "every check that can refuse a whole record refuses it at the reservation, by value, before the seal burns a nonce or the connection hands its sequence number: the sealed length against min(16384, 64 times the direction capacity less the eight-octet header), the fragment ceiling, the station and the budgets; the sixty-fifth fraction is named by number at the gate; the seal happens exactly once per submission and the fragmentation exactly once",
-   "result": "PASS",
-   "state_owner": "builder",
-   "task_ids": [
-    "T19"
-   ]
-  },
-  {
-   "claim_id": "CLM-T19-WINDOW",
-   "command_ids": [
-    "T19-narrow-swift-004",
-    "T19-subsystem-swift-004"
-   ],
-   "evidence_class": "internal",
-   "evidence_sha256": null,
-   "latest_source_sha": "d9b300be102c5c880cab2491e15b79af2838d442",
-   "limitations": "host-side evidence behind pinned manager seams; the real controller completion cadence, genuine update readiness, and staging survival across a restart await the T73-T75 device gates",
-   "production_path": "ios/Godstone/Sources/GodstoneMesh/RecordWriter.swift",
-   "profile": "swift-host",
-   "required_case_ids": [
-    "ReadinessT19Tests"
-   ],
-   "requirement": "a direction stages at most sixteen values, topped up only as real completions retire them, with at most four admitted records and one value in flight; a full window is told as the staging being full and never silently trims an admitted record",
-   "result": "PASS",
-   "state_owner": "builder",
-   "task_ids": [
-    "T19"
-   ]
-  },
-  {
-   "claim_id": "CLM-T19-RETAINED-REHAND",
-   "command_ids": [
-    "T19-narrow-swift-004",
-    "T19-subsystem-swift-004"
-   ],
-   "evidence_class": "internal",
-   "evidence_sha256": null,
-   "latest_source_sha": "d9b300be102c5c880cab2491e15b79af2838d442",
-   "limitations": "host-side evidence behind pinned manager seams; the real controller completion cadence, genuine update readiness, and staging survival across a restart await the T73-T75 device gates",
-   "production_path": "ios/Godstone/Sources/GodstoneMesh/RecordWriter.swift",
-   "profile": "swift-host",
-   "required_case_ids": [
-    "ReadinessT19Tests"
-   ],
-   "requirement": "an update the leg refuses returns to the window and, when that very context reports itself ready again, travels unchanged - octet for octet the same ciphertext fragment, never resealed, never reshaped, its head carrying the one nonce first drawn",
-   "result": "PASS",
-   "state_owner": "builder",
-   "task_ids": [
-    "T19"
-   ]
-  },
-  {
-   "claim_id": "CLM-T19-READINESS-NOT-DURABILITY",
-   "command_ids": [
-    "T19-narrow-swift-004",
-    "T19-subsystem-swift-004"
-   ],
-   "evidence_class": "internal",
-   "evidence_sha256": null,
-   "latest_source_sha": "d9b300be102c5c880cab2491e15b79af2838d442",
-   "limitations": "host-side evidence behind pinned manager seams; the real controller completion cadence, genuine update readiness, and staging survival across a restart await the T73-T75 device gates",
-   "production_path": "ios/Godstone/Sources/GodstoneMesh/BleTransport.swift",
-   "profile": "swift-host",
-   "required_case_ids": [
-    "ReadinessT19Tests"
-   ],
-   "requirement": "a write without response is retired upon the platform readiness that let it leave and claims nothing of the remote; a stalled leg holds every value it was given and the resumption hands them out in the selfsame order",
-   "result": "PASS",
-   "state_owner": "builder",
-   "task_ids": [
-    "T19"
-   ]
-  },
-  {
-   "claim_id": "CLM-T19-STALE-AUTH",
-   "command_ids": [
-    "T19-narrow-swift-004",
-    "T19-subsystem-swift-004"
-   ],
-   "evidence_class": "internal",
-   "evidence_sha256": null,
-   "latest_source_sha": "d9b300be102c5c880cab2491e15b79af2838d442",
-   "limitations": "host-side evidence behind pinned manager seams; the real controller completion cadence, genuine update readiness, and staging survival across a restart await the T73-T75 device gates",
-   "production_path": "ios/Godstone/Sources/GodstoneMesh/BleTransport.swift",
-   "profile": "swift-host",
-   "required_case_ids": [
-    "ReadinessT19Tests"
-   ],
-   "requirement": "a manager-sourced readiness is believed only when the sending manager is the very instance of the active context, its wired delegate the context own proxy, and the epoch the event names the current one; the window of a retired context is purged and not carried, and a pretender report moves neither attempts nor staging",
-   "result": "PASS",
-   "state_owner": "builder",
-   "task_ids": [
-    "T19"
-   ]
-  },
-  {
-   "id": "CLM-T20-ABSOLUTE-TERM",
-   "task": "T20",
-   "statement": "an inbound whole-record assembly carries an absolute lease no arrival moves; at the term the reassembler releases the buffers and the owner alone closes the relation through theplatform's own arms; the sliding window remains silent and unaltered",
-   "profile": [
-    "jvm-host",
-    "swift-host"
-   ],
-   "kind": "behavioural",
-   "required_case_ids": [
-    "ReadinessT20Test.testTheAbsoluteTermExpiresTheDribbledAssemblyThoughTheSlidingWindowIsRefreshed",
-    "ReadinessT20Tests.testTheAbsoluteTermExpiresTheDribbledAssemblyThoughTheSlidingWindowIsRefreshed",
-    "ReadinessT20Tests.testTheSilentPeerFallsToTheHeartbeatAlone"
-   ],
-   "production_paths": [
-    "android/mesh/src/main/java/io/godstone/mesh/transport/BleRecord.kt",
-    "android/mesh/src/main/java/io/godstone/mesh/transport/BleTransport.kt",
-    "ios/Godstone/Sources/GodstoneMesh/BleRecord.swift",
-    "ios/Godstone/Sources/GodstoneMesh/BleTransport.swift"
-   ],
-   "evidence": [
-    "EVIDENCE/T20/commands.json",
-    "EVIDENCE/T20/logs",
-    "EVIDENCE/T20/mutations/manifest.json"
-   ],
-   "verified_utc": "2026-09-10T20:18:40Z"
-  },
-  {
-   "id": "CLM-T20-PURGE-ON-FALL",
-   "task": "T20",
-   "statement": "the close purges the registers whole and withdraws the publication; the shut door admits no later traffic; re-admission never bears an admission identity twice",
-   "profile": [
-    "jvm-host",
-    "swift-host"
-   ],
-   "kind": "behavioural",
-   "required_case_ids": [
-    "ReadinessT20Test.testTheLedgerOfInvariantsStandsWholeAndReportsEveryCheck",
-    "ReadinessT20Tests.testTheLedgerOfInvariantsStandsWholeAndReportsEveryCheck"
-   ],
-   "production_paths": [
-    "android/mesh/src/main/java/io/godstone/mesh/transport/BleRecord.kt",
-    "android/mesh/src/main/java/io/godstone/mesh/transport/BleTransport.kt",
-    "ios/Godstone/Sources/GodstoneMesh/BleRecord.swift",
-    "ios/Godstone/Sources/GodstoneMesh/BleTransport.swift"
-   ],
-   "evidence": [
-    "EVIDENCE/T20/commands.json",
-    "EVIDENCE/T20/logs",
-    "EVIDENCE/T20/mutations/manifest.json"
-   ],
-   "verified_utc": "2026-09-10T20:18:40Z"
-  },
-  {
-   "id": "CLM-T20-WRAP-REFRAMED",
-   "task": "T20",
-   "statement": "two hundred fifty-seven whole records ride the uint8 sequence across the wrap unaltered; duplicates stand, conflicting duplicates fail closed at the gate before the reassembler",
-   "profile": [
-    "jvm-host",
-    "swift-host"
-   ],
-   "kind": "behavioural",
-   "required_case_ids": [
-    "ReadinessT20Test.testTheSequenceWrapsAtTwoHundredFiftySixWholeRecordsAndTheDuplicateIsRefused",
-    "ReadinessT20Tests.testTheSequenceWrapsAtTwoHundredFiftySixWholeRecordsAndTheDuplicateIsRefused",
-    "ReadinessT20Test.testTheStaleStragglerAtTheWrapFailsClosedAtTheGateAndTheRetransmissionCompletes"
-   ],
-   "production_paths": [
-    "android/mesh/src/main/java/io/godstone/mesh/transport/BleRecord.kt",
-    "android/mesh/src/main/java/io/godstone/mesh/transport/BleTransport.kt",
-    "ios/Godstone/Sources/GodstoneMesh/BleRecord.swift",
-    "ios/Godstone/Sources/GodstoneMesh/BleTransport.swift"
-   ],
-   "evidence": [
-    "EVIDENCE/T20/commands.json",
-    "EVIDENCE/T20/logs",
-    "EVIDENCE/T20/mutations/manifest.json"
-   ],
-   "verified_utc": "2026-09-10T20:18:40Z"
-  },
-  {
-   "id": "CLM-T20-EPOCH-COURT",
-   "task": "T20",
-   "statement": "the threefold authenticator keeps an epoch clause that stands alone at its court: the zero-epoch event, exempt at the reductions own clause by its terms, is refused at the gate; bypass the clause and the twin case falls - killed by the semantic control",
-   "profile": [
-    "swift-host"
-   ],
-   "kind": "behavioural",
-   "required_case_ids": [
-    "ReadinessT20Tests.testTheStaleEpochAtTheUnsubscribeDoorIsRefusedByTheEpochClauseAlone",
-    "ReadinessT20Tests.testTheCrossedTraceFromAForeignManagerIsRefusedAndTheWrongTokenDiscarded"
-   ],
-   "production_paths": [
-    "android/mesh/src/main/java/io/godstone/mesh/transport/BleRecord.kt",
-    "android/mesh/src/main/java/io/godstone/mesh/transport/BleTransport.kt",
-    "ios/Godstone/Sources/GodstoneMesh/BleRecord.swift",
-    "ios/Godstone/Sources/GodstoneMesh/BleTransport.swift"
-   ],
-   "evidence": [
-    "EVIDENCE/T20/commands.json",
-    "EVIDENCE/T20/logs",
-    "EVIDENCE/T20/mutations/manifest.json"
-   ],
-   "verified_utc": "2026-09-10T20:18:40Z"
-  },
-  {
-   "id": "CLM-T20-SEMANTIC-CONTROLS-REFORMED",
-   "task": "T20",
-   "statement": "the mutation ledger is reformed per master section 21: two lineages reported apart and never summed, schema verbatim, disposable worktrees, the SKIPPED honesty that names drifted anchors, five named semantic mutants all KILLED by behaviour witnesses",
-   "profile": [
-    "python"
-   ],
-   "kind": "control",
-   "required_case_ids": [
-    "ci/mutations.py --all"
-   ],
-   "production_paths": [
-    "ci/mutations.py"
-   ],
-   "evidence": [
-    "EVIDENCE/T20/commands.json",
-    "EVIDENCE/T20/logs",
-    "EVIDENCE/T20/mutations/manifest.json"
-   ],
-   "verified_utc": "2026-09-10T20:18:40Z"
-  }
- ],
- "note": "Claims appended per task with real evidence; PASS requires positive case counts and matching command output. Device/independent claims never accept host-only results.",
- "schema_version": 1
+  "claims": [
+    {
+      "claim_id": "CLM-T01-COPIES",
+      "command_ids": [
+        "t01-cmd-12"
+      ],
+      "evidence_class": "internal",
+      "evidence_sha256": "26c11ef518f2a5bdea743df22e0c464e415667c0181030774f785e03232637cb",
+      "latest_source_sha": "b33d790818c1019a5508917d653546f166ece983",
+      "limitations": "host-only evidence; device and independent gates remain external",
+      "production_path": "tools/readiness/preserve.py",
+      "profile": "host-tooling",
+      "required_case_ids": [
+        "test_t01 suite"
+      ],
+      "requirement": "all required copies match the inventory byte-for-byte",
+      "result": "PASS",
+      "state_owner": "build/release controller",
+      "task_ids": [
+        "T01"
+      ]
+    },
+    {
+      "claim_id": "CLM-T01-MUTATION",
+      "command_ids": [
+        "t01-cmd-12"
+      ],
+      "evidence_class": "internal",
+      "evidence_sha256": "26c11ef518f2a5bdea743df22e0c464e415667c0181030774f785e03232637cb",
+      "latest_source_sha": "b33d790818c1019a5508917d653546f166ece983",
+      "limitations": "host-only evidence; device and independent gates remain external",
+      "production_path": "tools/readiness/tests/test_t01.py",
+      "profile": "host-tooling",
+      "required_case_ids": [
+        "test_t01 suite"
+      ],
+      "requirement": "preservation verification detects removal and tampering of copies",
+      "result": "PASS",
+      "state_owner": "build/release controller",
+      "task_ids": [
+        "T01"
+      ]
+    },
+    {
+      "claim_id": "CLM-T01-PATCH",
+      "command_ids": [
+        "t01-cmd-12"
+      ],
+      "evidence_class": "internal",
+      "evidence_sha256": "26c11ef518f2a5bdea743df22e0c464e415667c0181030774f785e03232637cb",
+      "latest_source_sha": "b33d790818c1019a5508917d653546f166ece983",
+      "limitations": "host-only evidence; device and independent gates remain external",
+      "production_path": "docs/production/BASELINE.md",
+      "profile": "host-tooling",
+      "required_case_ids": [
+        "test_t01 suite"
+      ],
+      "requirement": "tracked patch reconstructs byte-identically in a disposable checkout",
+      "result": "PASS",
+      "state_owner": "build/release controller",
+      "task_ids": [
+        "T01"
+      ]
+    },
+    {
+      "claim_id": "CLM-T02-CONTROLS",
+      "command_ids": [
+        "T02-controls-python3",
+        "T02-controls-python3-002"
+      ],
+      "evidence_class": "internal",
+      "evidence_sha256": null,
+      "latest_source_sha": null,
+      "limitations": "host-only evidence; Android/device gates remain external",
+      "production_path": "ci/check_repository.py",
+      "profile": "host-tooling",
+      "required_case_ids": [
+        "test_t02 suite"
+      ],
+      "requirement": "repository controls pass at the T02 tree",
+      "result": "PASS",
+      "state_owner": "build/release controller",
+      "task_ids": [
+        "T02"
+      ]
+    },
+    {
+      "claim_id": "CLM-T02-GATES",
+      "command_ids": [
+        "T02-narrow-python3"
+      ],
+      "evidence_class": "internal",
+      "evidence_sha256": null,
+      "latest_source_sha": null,
+      "limitations": "host-only evidence; Android/device gates remain external",
+      "production_path": "tools/readiness/tests/test_t02.py",
+      "profile": "host-tooling",
+      "required_case_ids": [
+        "test_t02 suite"
+      ],
+      "requirement": "exact-SHA and zero-test mutation gates reject tampered evidence",
+      "result": "PASS",
+      "state_owner": "build/release controller",
+      "task_ids": [
+        "T02"
+      ]
+    },
+    {
+      "claim_id": "CLM-T02-RUNNER",
+      "command_ids": [
+        "T02-narrow-python3",
+        "T02-subsystem-python3"
+      ],
+      "evidence_class": "internal",
+      "evidence_sha256": null,
+      "latest_source_sha": null,
+      "limitations": "host-only evidence; Android/device gates remain external",
+      "production_path": "tools/readiness/run.py",
+      "profile": "host-tooling",
+      "required_case_ids": [
+        "test_t02 suite"
+      ],
+      "requirement": "argv-only runner classifies zero-tests, timeouts and blocked executors honestly",
+      "result": "PASS",
+      "state_owner": "build/release controller",
+      "task_ids": [
+        "T02"
+      ]
+    },
+    {
+      "claim_id": "CLM-T03-CONTRACTS",
+      "command_ids": [
+        "T03-narrow-python3"
+      ],
+      "evidence_class": "internal",
+      "evidence_sha256": "7519ed9000d1a1730b865f08da35fb53f824f72c01bb4f2490497ddf6671a7ed",
+      "latest_source_sha": "34adfba3f4c4b32ce1bc144cbf0c490df59c17bc",
+      "limitations": "host-only evidence; device and independent gates remain external",
+      "production_path": "tools/readiness/contract_check.py",
+      "profile": "host-tooling",
+      "required_case_ids": [
+        "test_t03 suite"
+      ],
+      "requirement": "normative links resolve; authority blob shas match; frozen constants validated",
+      "result": "PASS",
+      "state_owner": "build/release controller",
+      "task_ids": [
+        "T03"
+      ]
+    },
+    {
+      "claim_id": "CLM-T03-CONTROLS",
+      "command_ids": [
+        "T03-controls-python3",
+        "T03-controls-python3-002"
+      ],
+      "evidence_class": "internal",
+      "evidence_sha256": "7519ed9000d1a1730b865f08da35fb53f824f72c01bb4f2490497ddf6671a7ed",
+      "latest_source_sha": "34adfba3f4c4b32ce1bc144cbf0c490df59c17bc",
+      "limitations": "host-only evidence; device and independent gates remain external",
+      "production_path": "ci/check_release_gates_status.py",
+      "profile": "host-tooling",
+      "required_case_ids": [
+        "test_t03 suite"
+      ],
+      "requirement": "repository + release-gate controls pass after contract normalization",
+      "result": "PASS",
+      "state_owner": "build/release controller",
+      "task_ids": [
+        "T03"
+      ]
+    },
+    {
+      "claim_id": "CLM-T03-PROFILES",
+      "command_ids": [
+        "T03-narrow-python3"
+      ],
+      "evidence_class": "internal",
+      "evidence_sha256": "7519ed9000d1a1730b865f08da35fb53f824f72c01bb4f2490497ddf6671a7ed",
+      "latest_source_sha": "34adfba3f4c4b32ce1bc144cbf0c490df59c17bc",
+      "limitations": "host-only evidence; device and independent gates remain external",
+      "production_path": "docs/production-readiness/CAPABILITY_PROFILES.json",
+      "profile": "host-tooling",
+      "required_case_ids": [
+        "test_t03 suite"
+      ],
+      "requirement": "shipping stays LIGHT Archive-only; disabled features and readiness false; mutations detected",
+      "result": "PASS",
+      "state_owner": "build/release controller",
+      "task_ids": [
+        "T03"
+      ]
+    },
+    {
+      "claim_id": "CLM-T04-CONTROLS",
+      "command_ids": [
+        "T04-controls-python3",
+        "T04-controls-python3-002"
+      ],
+      "evidence_class": "internal",
+      "evidence_sha256": "a91564b801b0da8350c35ca5238024963560947a877b0461c7d942704fb3fbb7",
+      "latest_source_sha": "a067c1b9ea5c366e85af52f8d9758dcf3afe2fc1",
+      "limitations": "host-only evidence; the independent A-06 artifact remains external",
+      "production_path": "ci/check_parity.py",
+      "profile": "host-tooling",
+      "required_case_ids": [
+        "test_t04 suite"
+      ],
+      "requirement": "repository + release-gate controls pass at the T04 tree",
+      "result": "PASS",
+      "state_owner": "build/release controller",
+      "task_ids": [
+        "T04"
+      ]
+    },
+    {
+      "claim_id": "CLM-T04-LOCK",
+      "command_ids": [
+        "T04-narrow-python3"
+      ],
+      "evidence_class": "internal",
+      "evidence_sha256": "a91564b801b0da8350c35ca5238024963560947a877b0461c7d942704fb3fbb7",
+      "latest_source_sha": "a067c1b9ea5c366e85af52f8d9758dcf3afe2fc1",
+      "limitations": "host-only evidence; the independent A-06 artifact remains external",
+      "production_path": "crypto/noise_lock.py",
+      "profile": "host-tooling",
+      "required_case_ids": [
+        "test_t04 suite"
+      ],
+      "requirement": "ExternalNoiseLockV1 rejects missing/tampered/mislabeled inputs and keeps UNAVAILABLE typed with nonzero release exit",
+      "result": "PASS",
+      "state_owner": "build/release controller",
+      "task_ids": [
+        "T04"
+      ]
+    },
+    {
+      "claim_id": "CLM-T05-REPLAY",
+      "command_ids": [
+        "T05-narrow-gradlew",
+        "T05-mutation-commit-before-aead"
+      ],
+      "evidence_class": "internal",
+      "evidence_sha256": null,
+      "latest_source_sha": "4e22a3f1279b08ba281656666594d463b9b7c699",
+      "limitations": "JVM-only evidence; instrumented-device crypto evidence remains a separate device gate",
+      "production_path": "android/mesh/src/main/java/io/godstone/mesh/crypto/ReplayWindow.kt",
+      "profile": "jvm-host",
+      "required_case_ids": [
+        "ReadinessT05Test"
+      ],
+      "requirement": "replay window commits only after AEAD; forged frames cannot poison the window; nonce parsing rejects reserved/out-of-policy before subtraction",
+      "result": "PASS",
+      "state_owner": "crypto/session owner",
+      "task_ids": [
+        "T05"
+      ]
+    },
+    {
+      "claim_id": "CLM-T05-SUBSYSTEM",
+      "command_ids": [
+        "T05-subsystem-gradlew"
+      ],
+      "evidence_class": "internal",
+      "evidence_sha256": null,
+      "latest_source_sha": "4e22a3f1279b08ba281656666594d463b9b7c699",
+      "limitations": "JVM-only evidence; instrumented-device crypto evidence remains a separate device gate",
+      "production_path": "android/mesh",
+      "profile": "jvm-host",
+      "required_case_ids": [
+        "ReadinessT05Test"
+      ],
+      "requirement": "full :mesh JVM suite passes with the T05 change",
+      "result": "PASS",
+      "state_owner": "crypto/session owner",
+      "task_ids": [
+        "T05"
+      ]
+    },
+    {
+      "claim_id": "CLM-T06-CROSS",
+      "command_ids": [
+        "T06-narrow-gradlew",
+        "T06-narrow-swift"
+      ],
+      "evidence_class": "internal",
+      "evidence_sha256": null,
+      "latest_source_sha": "b86f16603f23f2adc2374dbf4019fd1a7a8ccb3c",
+      "limitations": "host-only evidence; instrumented-device evidence remains a separate device gate",
+      "production_path": "wire/transport_vectors_android.json",
+      "profile": "jvm-host+swift-host",
+      "required_case_ids": [
+        "ReadinessT06Test",
+        "ReadinessT06Tests"
+      ],
+      "requirement": "the two engines verify each other through the shared transport vector manifest (byte-identical ciphertexts)",
+      "result": "PASS",
+      "state_owner": "crypto/session owner",
+      "task_ids": [
+        "T06"
+      ]
+    },
+    {
+      "claim_id": "CLM-T06-FRAMING",
+      "command_ids": [
+        "T06-narrow-gradlew",
+        "T06-narrow-swift"
+      ],
+      "evidence_class": "internal",
+      "evidence_sha256": null,
+      "latest_source_sha": "b86f16603f23f2adc2374dbf4019fd1a7a8ccb3c",
+      "limitations": "host-only evidence; instrumented-device evidence remains a separate device gate",
+      "production_path": "ios/Godstone/Sources/GodstoneMesh/ReplayWindow.swift",
+      "profile": "jvm-host+swift-host",
+      "required_case_ids": [
+        "ReadinessT06Test",
+        "ReadinessT06Tests"
+      ],
+      "requirement": "DATA ciphertext = uint64_be(nonce) || ct || tag on both engines; internal nonce zero32||LE preserved; legacy frames never auto-detected",
+      "result": "PASS",
+      "state_owner": "crypto/session owner",
+      "task_ids": [
+        "T06"
+      ]
+    },
+    {
+      "claim_id": "CLM-T07-RETIREMENT",
+      "command_ids": [
+        "T07-narrow-gradlew",
+        "T07-narrow-swift"
+      ],
+      "evidence_class": "internal",
+      "evidence_sha256": null,
+      "latest_source_sha": "b1d51529ddc7a2df0c2755ce0a99577ea21d34b7",
+      "limitations": "host-only evidence; instrumented-device evidence remains a separate device gate",
+      "production_path": "android/mesh/src/main/java/io/godstone/mesh/crypto/NoiseSession.kt",
+      "profile": "jvm-host+swift-host",
+      "required_case_ids": [
+        "ReadinessT07Test",
+        "ReadinessT07Tests"
+      ],
+      "requirement": "monotonic SessionBudget enforced terminally (2^20/direction, 30 min); no rekey-in-place; peer nonces beyond budget rejected before window math",
+      "result": "PASS",
+      "state_owner": "crypto/session owner",
+      "task_ids": [
+        "T07"
+      ]
+    },
+    {
+      "claim_id": "CLM-T08-RECLAIM",
+      "command_ids": [
+        "T08-narrow-gradlew-002",
+        "T08-narrow-swift-002"
+      ],
+      "evidence_class": "internal",
+      "evidence_sha256": null,
+      "latest_source_sha": "ae0c5390e895a90c7b49867ab151094ee76f8308",
+      "limitations": "host-only evidence; 10000 reconnects observed on the host only",
+      "production_path": "ios/Godstone/Sources/GodstoneMesh/SessionManager.swift",
+      "profile": "jvm-host+swift-host",
+      "required_case_ids": [
+        "ReadinessT08Test",
+        "ReadinessT08Tests"
+      ],
+      "requirement": "reclaiming a retired slot reclaims its lock entry, and the replacement for the same transport handle carries the next lease generation from a bounded last-generation registry",
+      "result": "PASS",
+      "state_owner": "crypto/session owner",
+      "task_ids": [
+        "T08"
+      ]
+    },
+    {
+      "claim_id": "CLM-T08-SERIALISATION",
+      "command_ids": [
+        "T08-narrow-gradlew-002",
+        "T08-narrow-swift-002"
+      ],
+      "evidence_class": "internal",
+      "evidence_sha256": null,
+      "latest_source_sha": "ae0c5390e895a90c7b49867ab151094ee76f8308",
+      "limitations": "host-only evidence; the device runtime path stays a separate gate",
+      "production_path": "android/mesh/src/main/java/io/godstone/mesh/crypto/SessionSlot.kt",
+      "profile": "jvm-host+swift-host",
+      "required_case_ids": [
+        "ReadinessT08Test",
+        "ReadinessT08Tests"
+      ],
+      "requirement": "one SessionSlot per immutable RelationKey holds the controller, terminal state and lease, and every operation - handshake, seal, open, isReady, retire - enters through the same slot serialisation, witnessed by the slot",
+      "result": "PASS",
+      "state_owner": "crypto/session owner",
+      "task_ids": [
+        "T08"
+      ]
+    },
+    {
+      "claim_id": "CLM-T09-UUID-ONLY",
+      "command_ids": [
+        "T09-narrow-gradlew-005",
+        "T09-subsystem-gradlew-002"
+      ],
+      "evidence_class": "internal",
+      "evidence_sha256": null,
+      "latest_source_sha": "5b75481cb3a40dd7ee2f527e721972fe61e70825",
+      "limitations": "host-only evidence; real controller behaviour belongs to the T73-T75 device gates",
+      "production_path": "android/mesh/src/main/java/io/godstone/mesh/transport/BleAdvertisingPayload.kt",
+      "profile": "jvm-host",
+      "required_case_ids": [
+        "ReadinessT09Test"
+      ],
+      "requirement": "the legacy advertisement carries exactly the Flags AD and the complete 128-bit canonical service UUID list; no LinkInfo service data, manufacturer data, local name or identity hint rides the air; the full 13-octet record is served by GATT and the scanner filter shares the one canonical UUID",
+      "result": "PASS",
+      "state_owner": "transport advertising payload (BleAdvertiser adapter)",
+      "task_ids": [
+        "T09"
+      ]
+    },
+    {
+      "claim_id": "CLM-T09-TYPED-RESULTS",
+      "command_ids": [
+        "T09-narrow-gradlew-005",
+        "T09-subsystem-gradlew-002"
+      ],
+      "evidence_class": "internal",
+      "evidence_sha256": null,
+      "latest_source_sha": "5b75481cb3a40dd7ee2f527e721972fe61e70825",
+      "limitations": "host-only evidence; platform callback wiring is exercised through injectable hooks; the real BluetoothLeAdvertiser path is device-gated",
+      "production_path": "android/mesh/src/main/java/io/godstone/mesh/transport/BleAdvertiser.kt",
+      "profile": "jvm-host",
+      "required_case_ids": [
+        "ReadinessT09Test"
+      ],
+      "requirement": "every advertising attempt yields a typed AdvertisingResult: adapter unavailable, service not ready, oversized payload refused before dispatch, permission denial and platform start failures are surfaced observably; a stop without an outstanding submission is a no-op, never a failure",
+      "result": "PASS",
+      "state_owner": "transport advertising lifecycle (BleAdvertiser via AdvertisingHooks)",
+      "task_ids": [
+        "T09"
+      ]
+    },
+    {
+      "claim_id": "CLM-T10-PROFILE",
+      "command_ids": [
+        "T10-narrow-gradlew-003",
+        "T10-narrow-swift-003"
+      ],
+      "evidence_class": "internal",
+      "evidence_sha256": null,
+      "latest_source_sha": "afddada23d905d3231b0196ae0e6ed6121eeff43",
+      "limitations": "host-only evidence; real controller installation and subscription belong to the T73-T75 device gates",
+      "production_path": "android/mesh/src/main/java/io/godstone/mesh/transport/GattServiceContract.kt",
+      "profile": "jvm-host+swift-host",
+      "required_case_ids": [
+        "ReadinessT10Test",
+        "ReadinessT10Tests"
+      ],
+      "requirement": "the GATT service and all three characteristics resolve to the generated wire-contract values (A001 service, A002 inbox W/WR/N, A003 digest R/N, A004 link info R/W) on both engines; the server installs its tree data-driven from the contract; the hand-rolled FD short-form legacy values are removed and refused wherever a resolver meets them",
+      "result": "PASS",
+      "state_owner": "transport gatt profile (RequiredCharacteristicSet)",
+      "task_ids": [
+        "T10"
+      ]
+    },
+    {
+      "claim_id": "CLM-T10-GATE",
+      "command_ids": [
+        "T10-narrow-gradlew-003",
+        "T10-narrow-swift-003",
+        "T10-subsystem-gradlew-003",
+        "T10-subsystem-swift-003"
+      ],
+      "evidence_class": "internal",
+      "evidence_sha256": null,
+      "latest_source_sha": "afddada23d905d3231b0196ae0e6ed6121eeff43",
+      "limitations": "host-only evidence; the platform callback bodies run on real controllers only",
+      "production_path": "android/mesh/src/main/java/io/godstone/mesh/transport/GattClient.kt",
+      "profile": "jvm-host+swift-host",
+      "required_case_ids": [
+        "ReadinessT10Test",
+        "ReadinessT10Tests"
+      ],
+      "requirement": "the central provisioning gate resolves the whole discovered tree against the contract (duplicate first, then unknown, then property gaps) and fails provisioning on any deviation instead of half-connecting; inbound writes route by the classify authority so LinkInfo records never reach the record decoder and frame records never reach the link info store; CCC writes on non-inbox descriptors are accepted silently, mirroring CoreBluetooth",
+      "result": "PASS",
+      "state_owner": "transport provisioning gate (central) and server routing",
+      "task_ids": [
+        "T10"
+      ]
+    },
+    {
+      "claim_id": "CLM-T11-SCANCTX",
+      "command_ids": [
+        "T11-narrow-gradlew"
+      ],
+      "evidence_class": "internal",
+      "evidence_sha256": null,
+      "latest_source_sha": "72002d62e241d2604f8bff388a2e40b220ddd786",
+      "limitations": "JVM-facade evidence; real controller callbacks, radio flood behavior and permission transitions belong to the T73-T75 device gates",
+      "production_path": "android/mesh/src/main/java/io/godstone/mesh/transport/ScanContext.kt",
+      "profile": "jvm-host",
+      "required_case_ids": [
+        "ReadinessT11Test"
+      ],
+      "requirement": "scan callbacks are bound to their registration: ScanContext(epoch, callback identity, lease) is created before startScan, the boundary only captures an immutable ScanEvent, the reducer mutates state only for the exact active context of a started transport in the currently open epoch with a live lease (epoch read at arrival), a scan failure terminates only its own context, and old-result replay changes nothing",
+      "result": "PASS",
+      "state_owner": "transport scan reducer (scan gate)",
+      "task_ids": [
+        "T11"
+      ]
+    },
+    {
+      "claim_id": "CLM-T11-BOUNDED",
+      "command_ids": [
+        "T11-narrow-gradlew",
+        "T11-subsystem-gradlew"
+      ],
+      "evidence_class": "internal",
+      "evidence_sha256": null,
+      "latest_source_sha": "72002d62e241d2604f8bff388a2e40b220ddd786",
+      "limitations": "JVM-facade evidence with 10000-address floods at the reducer; the platform scanner delivers the same records on real hardware only under the device gates",
+      "production_path": "android/mesh/src/main/java/io/godstone/mesh/transport/BoundedDiscoveryIndex.kt",
+      "profile": "jvm-host",
+      "required_case_ids": [
+        "ReadinessT11Test"
+      ],
+      "requirement": "the 64-discovered-peer bound is applied before inserting any peer metadata on the transport and the orchestration driver surfaces: least recently observed unpinned entries are evicted first and deterministically in observation order, active relations are pinned and never evicted, and re-observation refreshes without duplicating",
+      "result": "PASS",
+      "state_owner": "transport and driver discovery surfaces (BoundedDiscoveryIndex)",
+      "task_ids": [
+        "T11"
+      ]
+    },
+    {
+      "claim_id": "CLM-T12-TERMINAL",
+      "command_ids": [
+        "T12-narrow-gradlew-002",
+        "T12-subsystem-gradlew-002"
+      ],
+      "evidence_class": "internal",
+      "evidence_sha256": null,
+      "latest_source_sha": "d7376a640dfe5118e48e29339896dafc85c9b7d8",
+      "limitations": "JVM-facade evidence; real handle-close timing and platform disconnection delivery belong to the T73-T75 device gates",
+      "production_path": "android/mesh/src/main/java/io/godstone/mesh/transport/Terminal.kt",
+      "profile": "jvm-host",
+      "required_case_ids": [
+        "ReadinessT12Test"
+      ],
+      "requirement": "on reject, provisional timeout and local cancel the exact RelationKey (direction, address, generation) transitions to terminal atomically under the driver lock: the lease leaves the authority once, the publication comes down once, and only then the captured GATT handle of that very attempt is closed; no slot awaits a didDisconnect that a locally closed handle can no longer deliver, and late platform terminals for ended generations are idempotent no-ops",
+      "result": "PASS",
+      "state_owner": "transport terminal authority (driver terminate)",
+      "task_ids": [
+        "T12"
+      ]
+    },
+    {
+      "claim_id": "CLM-T12-TOKENS",
+      "command_ids": [
+        "T12-narrow-gradlew-002",
+        "T12-subsystem-gradlew-002"
+      ],
+      "evidence_class": "internal",
+      "evidence_sha256": null,
+      "latest_source_sha": "d7376a640dfe5118e48e29339896dafc85c9b7d8",
+      "limitations": "JVM-facade evidence; the true-branch of the captured-handle close needs a platform-captured handle and awaits instrumented exercise",
+      "production_path": "android/mesh/src/main/java/io/godstone/mesh/transport/BleTransport.kt",
+      "profile": "jvm-host",
+      "required_case_ids": [
+        "ReadinessT12Test"
+      ],
+      "requirement": "production callbacks carry their required tokens: central and server disconnect handlers, inbound timeouts and admission arrivals name their exact registrations - default-zero fallbacks are removed, absent arrival tokens are refused rather than correlated to the current slot, foreign-generation terminals are refused entirely, and effects (DisconnectGatt, PublishLost) travel with their generation so no executor re-reads current state to decide what to close or unpublish",
+      "result": "PASS",
+      "state_owner": "transport callback token discipline",
+      "task_ids": [
+        "T12"
+      ]
+    },
+    {
+      "claim_id": "CLM-T13-EPOCHCTX",
+      "command_ids": [
+        "T13-narrow-swift",
+        "T13-subsystem-swift"
+      ],
+      "evidence_class": "internal",
+      "evidence_sha256": null,
+      "latest_source_sha": "9c069622464fec4d3b32ce535ea5ecaac89a3172",
+      "limitations": "host-side evidence; device runs add the delegateQueue read and real state-restoration identifiers",
+      "production_path": "ios/Godstone/Sources/GodstoneMesh/BleTransport.swift",
+      "profile": "swift-host",
+      "required_case_ids": [
+        "ReadinessT13Tests"
+      ],
+      "requirement": "every transport epoch opens with a fresh CBCentralManager/CBPeripheralManager pair and its own delegate proxies on a dedicated serial queue named for the epoch; the pair is created through the injected TransportManagerFactory, wired once at birth and never rewired; stopping retires the context and the successor shares no manager, proxy or queue object with its predecessor",
+      "result": "PASS",
+      "state_owner": "iOS transport executor and ManagerContext",
+      "task_ids": [
+        "T13"
+      ]
+    },
+    {
+      "claim_id": "CLM-T13-SRCID",
+      "command_ids": [
+        "T13-narrow-swift",
+        "T13-subsystem-swift"
+      ],
+      "evidence_class": "internal",
+      "evidence_sha256": null,
+      "latest_source_sha": "9c069622464fec4d3b32ce535ea5ecaac89a3172",
+      "limitations": "host-side evidence; real CoreBluetooth interleaving of late closures awaits the T73-T75 device gates",
+      "production_path": "ios/Godstone/Sources/GodstoneMesh/BleTransport.swift",
+      "profile": "swift-host",
+      "required_case_ids": [
+        "ReadinessT13Tests"
+      ],
+      "requirement": "a manager-sourced event is reduced only when the sending manager is the very instance of the active context, the wired delegate is still that context-own proxy, and the event names the context epoch; no token wildcard, no current-state stand-in; the central connect/fail/disconnect/discover and inbound write/subscribe/unsubscribe families and their dispatcher surface carry required tokens and required source managers, and default-zero fallbacks are removed from the production callbacks",
+      "result": "PASS",
+      "state_owner": "iOS transport callback identity discipline",
+      "task_ids": [
+        "T13"
+      ]
+    },
+    {
+      "claim_id": "CLM-T14-SERIALREDUCE",
+      "command_ids": [
+        "T14-narrow-swift",
+        "T14-subsystem-swift"
+      ],
+      "evidence_class": "internal",
+      "evidence_sha256": null,
+      "latest_source_sha": "6b760539adb7335294cd660005d5db1e7c67aa52",
+      "limitations": "host-side evidence; real CoreBluetooth event interleaving, restore identifiers and delegate-queue reads on device remain with the T73-T75 physical gates",
+      "production_path": "ios/Godstone/Sources/GodstoneMesh/BleTransport.swift",
+      "profile": "swift-host",
+      "required_case_ids": [
+        "ReadinessT14Tests"
+      ],
+      "requirement": "all connection state, capacity, publication and driver actions of a transport epoch are reduced on the ManagerContext serial executor: callback adapters package immutable events only, validation and transition and effect scheduling form one uninterrupted operation, actions retain the validated context, the lifecycle quiesces its epochs on the same queues, and a deterministic barrier interleaving (pause between validation and action, queue a stop/start, resume the old work) shows the queued lifecycle cannot overtake the in-flight reduction and stale events mutate no new state",
+      "result": "PASS",
+      "state_owner": "iOS transport serial executor",
+      "task_ids": [
+        "T14"
+      ]
+    },
+    {
+      "claim_id": "CLM-T14-TRUSTOUT",
+      "command_ids": [
+        "T14-narrow-swift",
+        "T14-subsystem-swift"
+      ],
+      "evidence_class": "internal",
+      "evidence_sha256": null,
+      "latest_source_sha": "6b760539adb7335294cd660005d5db1e7c67aa52",
+      "limitations": "host-side evidence; the completion token re-check is defence-in-depth on the synchronous host executor and earns its independent teeth at the device gates",
+      "production_path": "ios/Godstone/Sources/GodstoneMesh/BleTransport.swift",
+      "profile": "swift-host",
+      "required_case_ids": [
+        "ReadinessT14Tests"
+      ],
+      "requirement": "no storage or trust work runs while a lock is held: sealing after admission and opening of received records execute outside the critical section on the executor, their completions return token-checked before any effect commits or the delegate is notified, authentication failure is distinguished from empty success throughout, and duplicate terminals and stale timeouts act exactly once",
+      "result": "PASS",
+      "state_owner": "iOS transport trust-work discipline",
+      "task_ids": [
+        "T14"
+      ]
+    },
+    {
+      "claim_id": "CLM-T15-TIMERKEY",
+      "command_ids": [
+        "T15-narrow-swift",
+        "T15-subsystem-swift"
+      ],
+      "evidence_class": "internal",
+      "evidence_sha256": null,
+      "latest_source_sha": "8e3d9522727ab0af16bc4e861a824249d3efc35d",
+      "limitations": "host-side evidence; real run-loop expiry and orphan-fire timing races await the T73-T75 device gates",
+      "production_path": "ios/Godstone/Sources/GodstoneMesh/BleTransport.swift",
+      "profile": "swift-host",
+      "required_case_ids": [
+        "ReadinessT15Tests"
+      ],
+      "requirement": "every iOS timer owns an immutable whole key (relation + operation kind + unique operation id); timers are stored, cancelled and replaced only through reducer bodies on the epoch serial executor; the fire captures the whole key and compares its identity before removing or transitioning anything; the operation id source is monotone for the transport lifetime so no successor epoch can collide with a retired key; terminals and the closing sweep retain no lease",
+      "result": "PASS",
+      "state_owner": "iOS timer lease discipline",
+      "task_ids": [
+        "T15"
+      ]
+    },
+    {
+      "claim_id": "CLM-T15-DEADLINE",
+      "command_ids": [
+        "T15-narrow-swift",
+        "T15-subsystem-swift"
+      ],
+      "evidence_class": "internal",
+      "evidence_sha256": null,
+      "latest_source_sha": "8e3d9522727ab0af16bc4e861a824249d3efc35d",
+      "limitations": "host-side evidence with the production SystemMonotonicClock replaced by a deterministic test clock at the real dependency boundary",
+      "production_path": "ios/Godstone/Sources/GodstoneMesh/BleTransport.swift",
+      "profile": "swift-host",
+      "required_case_ids": [
+        "ReadinessT15Tests"
+      ],
+      "requirement": "lease deadlines are explicit in the injected MonotonicClock domain, recomputed at every arm including the replacement path; counters are never relied on without their epoch, and the connect advance re-arms the provisional window through the same reducer as the admission path",
+      "result": "PASS",
+      "state_owner": "iOS monotonic deadline and numbering discipline",
+      "task_ids": [
+        "T15"
+      ]
+    },
+    {
+      "claim_id": "CLM-T16-LEASE",
+      "command_ids": [
+        "T16-narrow-swift",
+        "T16-subsystem-swift"
+      ],
+      "evidence_class": "internal",
+      "evidence_sha256": null,
+      "latest_source_sha": "9e103e388dcdc1c9d4ee4d3df0334f7278f26edb",
+      "limitations": "host-side evidence; what a real subscription callback presents and whether a real manager tolerates the punned handle on the cancel leg await the T73-T75 device gates",
+      "production_path": "ios/Godstone/Sources/GodstoneMesh/BleTransport.swift",
+      "profile": "swift-host",
+      "required_case_ids": [
+        "ReadinessT16Tests"
+      ],
+      "requirement": "the actual CBCentral presented with a subscribe request is retained with the inbound lease and is the sole handle responder notifications travel by; unsubscribe requests are filtered by characteristic - a digest request leaves the inbox intact and is acknowledged distinguishably - and the generation a request carries is compared with the generation the subscription stands under, never resolved afresh, so a stale request cannot remove a replacement; a failed connection attempt is terminal immediately and requests no cancellation, while the lost-discovery path does",
+      "result": "PASS",
+      "state_owner": "iOS inbound lease retention and unsubscribe matching",
+      "task_ids": [
+        "T16"
+      ]
+    },
+    {
+      "claim_id": "CLM-T16-QUARANTINE",
+      "command_ids": [
+        "T16-narrow-swift",
+        "T16-subsystem-swift"
+      ],
+      "evidence_class": "internal",
+      "evidence_sha256": null,
+      "latest_source_sha": "9e103e388dcdc1c9d4ee4d3df0334f7278f26edb",
+      "limitations": "host-side evidence; the cross-process survival of the quarantine list across a genuine state reset awaits the device gates",
+      "production_path": "ios/Godstone/Sources/GodstoneMesh/BleTransport.swift",
+      "profile": "swift-host",
+      "required_case_ids": [
+        "ReadinessT16Tests"
+      ],
+      "requirement": "an unsubscribe the callbacks cannot distinguish - one that names no characteristic - or a reuse of one identity by two distinct real instances quarantines that identity for the epoch; the quarantine is held in the manager context, is bounded in extent with refusals counted, suppresses subscriptions and notifications for the marked identity, and is released by rotation of the context alone and never by a guessed timeout; the admission history is bounded and an exhausted budget rotates a fully drained context, never a busy one",
+      "result": "PASS",
+      "state_owner": "iOS epoch-scoped quarantine and context rotation",
+      "task_ids": [
+        "T16"
+      ]
+    },
+    {
+      "claim_id": "CLM-T17-CLEAR-OFF-AIR",
+      "command_ids": [
+        "T17-narrow-swift",
+        "T17-subsystem-swift"
+      ],
+      "evidence_class": "internal",
+      "evidence_sha256": null,
+      "latest_source_sha": "d69ec8727f9cdad3809841e49140ba32a32af719",
+      "limitations": "host-side evidence; what a real controller presents, genuine MTU cadence, and ring survival across a restart await T73-T75 device gates",
+      "production_path": "ios/Godstone/Sources/GodstoneMesh/BleTransport.swift",
+      "profile": "swift-host",
+      "required_case_ids": [
+        "ReadinessT17Tests"
+      ],
+      "requirement": "no frame leaves the transport unsealed: without a standing registry, or when the registry refuses to seal, or before the relation reaches the ready state, submission answers rejected with a bounded event and no octet reaches the wire; a forged arrival is told unauthenticated, the collector keeps running, and the accepted twin is delivered whole",
+      "result": "PASS",
+      "state_owner": "builder",
+      "task_ids": [
+        "T17"
+      ]
+    },
+    {
+      "claim_id": "CLM-T17-CLEAR-OFF-AIR-ANDROID",
+      "command_ids": [
+        "T17-narrow-gradlew",
+        "T17-subsystem-gradlew"
+      ],
+      "evidence_class": "internal",
+      "evidence_sha256": null,
+      "latest_source_sha": "d69ec8727f9cdad3809841e49140ba32a32af719",
+      "limitations": "host-side evidence; what a real controller presents, genuine MTU cadence, and ring survival across a restart await T73-T75 device gates",
+      "production_path": "android/mesh/src/main/java/io/godstone/mesh/transport/BleTransport.kt",
+      "profile": "jvm-host",
+      "required_case_ids": [
+        "ReadinessT17Test"
+      ],
+      "requirement": "the same law on Android: seal-before-send everywhere, fail-closed registry ships nothing, a pretrust data frame is refused at the state gate and a forged arrival is told unauthenticated while the collector survives both",
+      "result": "PASS",
+      "state_owner": "builder",
+      "task_ids": [
+        "T17"
+      ]
+    },
+    {
+      "claim_id": "CLM-T17-TRUSTED-DOORS",
+      "command_ids": [
+        "T17-narrow-swift",
+        "T17-subsystem-swift"
+      ],
+      "evidence_class": "internal",
+      "evidence_sha256": null,
+      "latest_source_sha": "d69ec8727f9cdad3809841e49140ba32a32af719",
+      "limitations": "host-side evidence; what a real controller presents, genuine MTU cadence, and ring survival across a restart await T73-T75 device gates",
+      "production_path": "ios/Godstone/Sources/GodstoneMesh/BleConnection.swift",
+      "profile": "swift-host",
+      "required_case_ids": [
+        "ReadinessT17Tests"
+      ],
+      "requirement": "the cryptographic ready is reachable only through the trusted handshake entries: the generic door refuses every reserved state by value and preserves the station, and a connection already in the handshake phase stays entitled to send its next record",
+      "result": "PASS",
+      "state_owner": "builder",
+      "task_ids": [
+        "T17"
+      ]
+    },
+    {
+      "claim_id": "CLM-T17-TRUSTED-DOORS-ANDROID",
+      "command_ids": [
+        "T17-narrow-gradlew",
+        "T17-subsystem-gradlew"
+      ],
+      "evidence_class": "internal",
+      "evidence_sha256": null,
+      "latest_source_sha": "d69ec8727f9cdad3809841e49140ba32a32af719",
+      "limitations": "host-side evidence; what a real controller presents, genuine MTU cadence, and ring survival across a restart await T73-T75 device gates",
+      "production_path": "android/mesh/src/main/java/io/godstone/mesh/transport/BleConnection.kt",
+      "profile": "jvm-host",
+      "required_case_ids": [
+        "ReadinessT17Test"
+      ],
+      "requirement": "the same doors on Android: transitionTo answers by value with refusal and preservation, markTrustedReady stands shut outside the handshake, and beginHandshake is idempotent for its own phase",
+      "result": "PASS",
+      "state_owner": "builder",
+      "task_ids": [
+        "T17"
+      ]
+    },
+    {
+      "claim_id": "CLM-T17-UNBABOVED-SYMBOLS",
+      "command_ids": [
+        "T17-narrow-swift",
+        "T17-subsystem-swift"
+      ],
+      "evidence_class": "internal",
+      "evidence_sha256": null,
+      "latest_source_sha": "d69ec8727f9cdad3809841e49140ba32a32af719",
+      "limitations": "host-side evidence; what a real controller presents, genuine MTU cadence, and ring survival across a restart await T73-T75 device gates",
+      "production_path": "ios/Godstone/Sources/GodstoneMesh/BleTransport.swift",
+      "profile": "swift-host",
+      "required_case_ids": [
+        "ReadinessT17Tests"
+      ],
+      "requirement": "no test factory is reachable from a shipping symbol: every ForTest seam is internal, and a restored public seam is caught by the reflection scan",
+      "result": "PASS",
+      "state_owner": "builder",
+      "task_ids": [
+        "T17"
+      ]
+    },
+    {
+      "claim_id": "CLM-T17-UNBABOVED-SYMBOLS-ANDROID",
+      "command_ids": [
+        "T17-narrow-gradlew",
+        "T17-subsystem-gradlew"
+      ],
+      "evidence_class": "internal",
+      "evidence_sha256": null,
+      "latest_source_sha": "d69ec8727f9cdad3809841e49140ba32a32af719",
+      "limitations": "host-side evidence; what a real controller presents, genuine MTU cadence, and ring survival across a restart await T73-T75 device gates",
+      "production_path": "android/mesh/src/main/java/io/godstone/mesh/transport/BleTransport.kt",
+      "profile": "jvm-host",
+      "required_case_ids": [
+        "ReadinessT17Test"
+      ],
+      "requirement": "the same on Android: the reflection scan of every production class names no unmangled ForTest symbol, and the promoted-seam mutant dies there",
+      "result": "PASS",
+      "state_owner": "builder",
+      "task_ids": [
+        "T17"
+      ]
+    },
+    {
+      "claim_id": "CLM-T18-RESERVE-FIRST",
+      "command_ids": [
+        "T18-narrow-gradlew",
+        "T18-subsystem-gradlew"
+      ],
+      "evidence_class": "internal",
+      "evidence_sha256": null,
+      "latest_source_sha": "af291f32ca671bf3db2f1a4a398a3a5ecc7a174c",
+      "limitations": "host-side evidence; the real controller completion cadence, genuine MTU negotiation, and staging survival across a restart await the T73-T75 device gates",
+      "production_path": "android/mesh/src/main/java/io/godstone/mesh/transport/RecordWriter.kt",
+      "profile": "jvm-host",
+      "required_case_ids": [
+        "ReadinessT18Test"
+      ],
+      "requirement": "every check that can refuse a whole record refuses it at the reservation, before the seal burns a nonce or the connection consumes a sequence number: the sealed length against min(16384, 64 times the agreed attribute space less the record header), the fragment ceiling, the station and the budgets; the sixty fifth fraction is told by name and number; the seal happens exactly once per submission and the fragmentation exactly once",
+      "result": "PASS",
+      "state_owner": "builder",
+      "task_ids": [
+        "T18"
+      ]
+    },
+    {
+      "claim_id": "CLM-T18-WINDOW",
+      "command_ids": [
+        "T18-narrow-gradlew",
+        "T18-subsystem-gradlew"
+      ],
+      "evidence_class": "internal",
+      "evidence_sha256": null,
+      "latest_source_sha": "af291f32ca671bf3db2f1a4a398a3a5ecc7a174c",
+      "limitations": "host-side evidence; the real controller completion cadence, genuine MTU negotiation, and staging survival across a restart await the T73-T75 device gates",
+      "production_path": "android/mesh/src/main/java/io/godstone/mesh/transport/RecordWriter.kt",
+      "profile": "jvm-host",
+      "required_case_ids": [
+        "ReadinessT18Test"
+      ],
+      "requirement": "the staging holds at most sixteen values per direction, topped up only as real completions retire values; at most one value flies; a queue-full refusal re-hands the very same fragment unburnt and unaltered; lost and duplicated completions change nothing and are told as stale",
+      "result": "PASS",
+      "state_owner": "builder",
+      "task_ids": [
+        "T18"
+      ]
+    },
+    {
+      "claim_id": "CLM-T18-MIDFAIL",
+      "command_ids": [
+        "T18-narrow-gradlew",
+        "T18-subsystem-gradlew"
+      ],
+      "evidence_class": "internal",
+      "evidence_sha256": null,
+      "latest_source_sha": "af291f32ca671bf3db2f1a4a398a3a5ecc7a174c",
+      "limitations": "host-side evidence; the real controller completion cadence, genuine MTU negotiation, and staging survival across a restart await the T73-T75 device gates",
+      "production_path": "android/mesh/src/main/java/io/godstone/mesh/transport/BleTransport.kt",
+      "profile": "jvm-host",
+      "required_case_ids": [
+        "ReadinessT18Test"
+      ],
+      "requirement": "a write that fails midway closes the relation: the staging is released, the writer accepts nothing further, the connection is closed, and the durable application data is preserved for a fresh session - witnessed by the store answering HELD_DUPLICATE for what it held and HELD_NEW for what follows",
+      "result": "PASS",
+      "state_owner": "builder",
+      "task_ids": [
+        "T18"
+      ]
+    },
+    {
+      "claim_id": "CLM-T18-TYPED-LEGS",
+      "command_ids": [
+        "T18-narrow-gradlew",
+        "T18-subsystem-gradlew"
+      ],
+      "evidence_class": "internal",
+      "evidence_sha256": null,
+      "latest_source_sha": "af291f32ca671bf3db2f1a4a398a3a5ecc7a174c",
+      "limitations": "host-side evidence; the real controller completion cadence, genuine MTU negotiation, and staging survival across a restart await the T73-T75 device gates",
+      "production_path": "android/mesh/src/main/java/io/godstone/mesh/transport/GattServer.kt",
+      "profile": "jvm-host",
+      "required_case_ids": [
+        "ReadinessT18Test"
+      ],
+      "requirement": "the write legs answer by type from their own homes: Accepted, QueueFull for the buffers and admission control that refuse, Failed for the state that cannot stand; the Boolean voices delegate to the typed ones and every former caller keeps its answer",
+      "result": "PASS",
+      "state_owner": "builder",
+      "task_ids": [
+        "T18"
+      ]
+    },
+    {
+      "claim_id": "CLM-T19-RESERVE-FIRST",
+      "command_ids": [
+        "T19-narrow-swift-004",
+        "T19-subsystem-swift-004"
+      ],
+      "evidence_class": "internal",
+      "evidence_sha256": null,
+      "latest_source_sha": "d9b300be102c5c880cab2491e15b79af2838d442",
+      "limitations": "host-side evidence behind pinned manager seams; the real controller completion cadence, genuine update readiness, and staging survival across a restart await the T73-T75 device gates",
+      "production_path": "ios/Godstone/Sources/GodstoneMesh/RecordWriter.swift",
+      "profile": "swift-host",
+      "required_case_ids": [
+        "ReadinessT19Tests"
+      ],
+      "requirement": "every check that can refuse a whole record refuses it at the reservation, by value, before the seal burns a nonce or the connection hands its sequence number: the sealed length against min(16384, 64 times the direction capacity less the eight-octet header), the fragment ceiling, the station and the budgets; the sixty-fifth fraction is named by number at the gate; the seal happens exactly once per submission and the fragmentation exactly once",
+      "result": "PASS",
+      "state_owner": "builder",
+      "task_ids": [
+        "T19"
+      ]
+    },
+    {
+      "claim_id": "CLM-T19-WINDOW",
+      "command_ids": [
+        "T19-narrow-swift-004",
+        "T19-subsystem-swift-004"
+      ],
+      "evidence_class": "internal",
+      "evidence_sha256": null,
+      "latest_source_sha": "d9b300be102c5c880cab2491e15b79af2838d442",
+      "limitations": "host-side evidence behind pinned manager seams; the real controller completion cadence, genuine update readiness, and staging survival across a restart await the T73-T75 device gates",
+      "production_path": "ios/Godstone/Sources/GodstoneMesh/RecordWriter.swift",
+      "profile": "swift-host",
+      "required_case_ids": [
+        "ReadinessT19Tests"
+      ],
+      "requirement": "a direction stages at most sixteen values, topped up only as real completions retire them, with at most four admitted records and one value in flight; a full window is told as the staging being full and never silently trims an admitted record",
+      "result": "PASS",
+      "state_owner": "builder",
+      "task_ids": [
+        "T19"
+      ]
+    },
+    {
+      "claim_id": "CLM-T19-RETAINED-REHAND",
+      "command_ids": [
+        "T19-narrow-swift-004",
+        "T19-subsystem-swift-004"
+      ],
+      "evidence_class": "internal",
+      "evidence_sha256": null,
+      "latest_source_sha": "d9b300be102c5c880cab2491e15b79af2838d442",
+      "limitations": "host-side evidence behind pinned manager seams; the real controller completion cadence, genuine update readiness, and staging survival across a restart await the T73-T75 device gates",
+      "production_path": "ios/Godstone/Sources/GodstoneMesh/RecordWriter.swift",
+      "profile": "swift-host",
+      "required_case_ids": [
+        "ReadinessT19Tests"
+      ],
+      "requirement": "an update the leg refuses returns to the window and, when that very context reports itself ready again, travels unchanged - octet for octet the same ciphertext fragment, never resealed, never reshaped, its head carrying the one nonce first drawn",
+      "result": "PASS",
+      "state_owner": "builder",
+      "task_ids": [
+        "T19"
+      ]
+    },
+    {
+      "claim_id": "CLM-T19-READINESS-NOT-DURABILITY",
+      "command_ids": [
+        "T19-narrow-swift-004",
+        "T19-subsystem-swift-004"
+      ],
+      "evidence_class": "internal",
+      "evidence_sha256": null,
+      "latest_source_sha": "d9b300be102c5c880cab2491e15b79af2838d442",
+      "limitations": "host-side evidence behind pinned manager seams; the real controller completion cadence, genuine update readiness, and staging survival across a restart await the T73-T75 device gates",
+      "production_path": "ios/Godstone/Sources/GodstoneMesh/BleTransport.swift",
+      "profile": "swift-host",
+      "required_case_ids": [
+        "ReadinessT19Tests"
+      ],
+      "requirement": "a write without response is retired upon the platform readiness that let it leave and claims nothing of the remote; a stalled leg holds every value it was given and the resumption hands them out in the selfsame order",
+      "result": "PASS",
+      "state_owner": "builder",
+      "task_ids": [
+        "T19"
+      ]
+    },
+    {
+      "claim_id": "CLM-T19-STALE-AUTH",
+      "command_ids": [
+        "T19-narrow-swift-004",
+        "T19-subsystem-swift-004"
+      ],
+      "evidence_class": "internal",
+      "evidence_sha256": null,
+      "latest_source_sha": "d9b300be102c5c880cab2491e15b79af2838d442",
+      "limitations": "host-side evidence behind pinned manager seams; the real controller completion cadence, genuine update readiness, and staging survival across a restart await the T73-T75 device gates",
+      "production_path": "ios/Godstone/Sources/GodstoneMesh/BleTransport.swift",
+      "profile": "swift-host",
+      "required_case_ids": [
+        "ReadinessT19Tests"
+      ],
+      "requirement": "a manager-sourced readiness is believed only when the sending manager is the very instance of the active context, its wired delegate the context own proxy, and the epoch the event names the current one; the window of a retired context is purged and not carried, and a pretender report moves neither attempts nor staging",
+      "result": "PASS",
+      "state_owner": "builder",
+      "task_ids": [
+        "T19"
+      ]
+    },
+    {
+      "id": "CLM-T20-ABSOLUTE-TERM",
+      "task": "T20",
+      "statement": "an inbound whole-record assembly carries an absolute lease no arrival moves; at the term the reassembler releases the buffers and the owner alone closes the relation through theplatform's own arms; the sliding window remains silent and unaltered",
+      "profile": [
+        "jvm-host",
+        "swift-host"
+      ],
+      "kind": "behavioural",
+      "required_case_ids": [
+        "ReadinessT20Test.testTheAbsoluteTermExpiresTheDribbledAssemblyThoughTheSlidingWindowIsRefreshed",
+        "ReadinessT20Tests.testTheAbsoluteTermExpiresTheDribbledAssemblyThoughTheSlidingWindowIsRefreshed",
+        "ReadinessT20Tests.testTheSilentPeerFallsToTheHeartbeatAlone"
+      ],
+      "production_paths": [
+        "android/mesh/src/main/java/io/godstone/mesh/transport/BleRecord.kt",
+        "android/mesh/src/main/java/io/godstone/mesh/transport/BleTransport.kt",
+        "ios/Godstone/Sources/GodstoneMesh/BleRecord.swift",
+        "ios/Godstone/Sources/GodstoneMesh/BleTransport.swift"
+      ],
+      "evidence": [
+        "EVIDENCE/T20/commands.json",
+        "EVIDENCE/T20/logs",
+        "EVIDENCE/T20/mutations/manifest.json"
+      ],
+      "verified_utc": "2026-09-10T20:18:40Z"
+    },
+    {
+      "id": "CLM-T20-PURGE-ON-FALL",
+      "task": "T20",
+      "statement": "the close purges the registers whole and withdraws the publication; the shut door admits no later traffic; re-admission never bears an admission identity twice",
+      "profile": [
+        "jvm-host",
+        "swift-host"
+      ],
+      "kind": "behavioural",
+      "required_case_ids": [
+        "ReadinessT20Test.testTheLedgerOfInvariantsStandsWholeAndReportsEveryCheck",
+        "ReadinessT20Tests.testTheLedgerOfInvariantsStandsWholeAndReportsEveryCheck"
+      ],
+      "production_paths": [
+        "android/mesh/src/main/java/io/godstone/mesh/transport/BleRecord.kt",
+        "android/mesh/src/main/java/io/godstone/mesh/transport/BleTransport.kt",
+        "ios/Godstone/Sources/GodstoneMesh/BleRecord.swift",
+        "ios/Godstone/Sources/GodstoneMesh/BleTransport.swift"
+      ],
+      "evidence": [
+        "EVIDENCE/T20/commands.json",
+        "EVIDENCE/T20/logs",
+        "EVIDENCE/T20/mutations/manifest.json"
+      ],
+      "verified_utc": "2026-09-10T20:18:40Z"
+    },
+    {
+      "id": "CLM-T20-WRAP-REFRAMED",
+      "task": "T20",
+      "statement": "two hundred fifty-seven whole records ride the uint8 sequence across the wrap unaltered; duplicates stand, conflicting duplicates fail closed at the gate before the reassembler",
+      "profile": [
+        "jvm-host",
+        "swift-host"
+      ],
+      "kind": "behavioural",
+      "required_case_ids": [
+        "ReadinessT20Test.testTheSequenceWrapsAtTwoHundredFiftySixWholeRecordsAndTheDuplicateIsRefused",
+        "ReadinessT20Tests.testTheSequenceWrapsAtTwoHundredFiftySixWholeRecordsAndTheDuplicateIsRefused",
+        "ReadinessT20Test.testTheStaleStragglerAtTheWrapFailsClosedAtTheGateAndTheRetransmissionCompletes"
+      ],
+      "production_paths": [
+        "android/mesh/src/main/java/io/godstone/mesh/transport/BleRecord.kt",
+        "android/mesh/src/main/java/io/godstone/mesh/transport/BleTransport.kt",
+        "ios/Godstone/Sources/GodstoneMesh/BleRecord.swift",
+        "ios/Godstone/Sources/GodstoneMesh/BleTransport.swift"
+      ],
+      "evidence": [
+        "EVIDENCE/T20/commands.json",
+        "EVIDENCE/T20/logs",
+        "EVIDENCE/T20/mutations/manifest.json"
+      ],
+      "verified_utc": "2026-09-10T20:18:40Z"
+    },
+    {
+      "id": "CLM-T20-EPOCH-COURT",
+      "task": "T20",
+      "statement": "the threefold authenticator keeps an epoch clause that stands alone at its court: the zero-epoch event, exempt at the reductions own clause by its terms, is refused at the gate; bypass the clause and the twin case falls - killed by the semantic control",
+      "profile": [
+        "swift-host"
+      ],
+      "kind": "behavioural",
+      "required_case_ids": [
+        "ReadinessT20Tests.testTheStaleEpochAtTheUnsubscribeDoorIsRefusedByTheEpochClauseAlone",
+        "ReadinessT20Tests.testTheCrossedTraceFromAForeignManagerIsRefusedAndTheWrongTokenDiscarded"
+      ],
+      "production_paths": [
+        "android/mesh/src/main/java/io/godstone/mesh/transport/BleRecord.kt",
+        "android/mesh/src/main/java/io/godstone/mesh/transport/BleTransport.kt",
+        "ios/Godstone/Sources/GodstoneMesh/BleRecord.swift",
+        "ios/Godstone/Sources/GodstoneMesh/BleTransport.swift"
+      ],
+      "evidence": [
+        "EVIDENCE/T20/commands.json",
+        "EVIDENCE/T20/logs",
+        "EVIDENCE/T20/mutations/manifest.json"
+      ],
+      "verified_utc": "2026-09-10T20:18:40Z"
+    },
+    {
+      "id": "CLM-T20-SEMANTIC-CONTROLS-REFORMED",
+      "task": "T20",
+      "statement": "the mutation ledger is reformed per master section 21: two lineages reported apart and never summed, schema verbatim, disposable worktrees, the SKIPPED honesty that names drifted anchors, five named semantic mutants all KILLED by behaviour witnesses",
+      "profile": [
+        "python"
+      ],
+      "kind": "control",
+      "required_case_ids": [
+        "ci/mutations.py --all"
+      ],
+      "production_paths": [
+        "ci/mutations.py"
+      ],
+      "evidence": [
+        "EVIDENCE/T20/commands.json",
+        "EVIDENCE/T20/logs",
+        "EVIDENCE/T20/mutations/manifest.json"
+      ],
+      "verified_utc": "2026-09-10T20:18:40Z"
+    },
+    {
+      "id": "CLM-T21-DUPLEX-GATED-BEGIN",
+      "statement": "the begin is not spoken before the physical duplex is witnessed and the hint order is ascendant; HS1 issues forth in one fragment bearing the thirty-two-octet message; every refusal rings at the begin door and stirs neither slot nor wire",
+      "required_case_ids": [
+        "ReadinessT21Test.testTheInitiatorEmitsHS1UponTheDuplexWitnessedInAscendantOrder",
+        "ReadinessT21Tests.testTheInitiatorEmittehHS1UponTheDuplexWitnessedInAscendantOrder",
+        "ReadinessT21Test.testTheBeginIsRefusedWhileTheDuplexLiesUnwitnessed",
+        "ReadinessT21Tests.testTheBeginIsRefusedWhileTheDuplexLiesUnwitnessed",
+        "ReadinessT21Test.testTheBeginIsRefusedWhenTheHintsDescendOrMeet",
+        "ReadinessT21Tests.testTheBeginIsRefusedWhenTheHintsDescendOrMeet",
+        "ReadinessT21Test.testTheComparatorOrdersAsTheLawStates",
+        "ReadinessT21Tests.testTheComparatorOrderedAsTheLawStates"
+      ],
+      "task": "T21",
+      "profile": [
+        "jvm-host",
+        "swift-host"
+      ],
+      "kind": "behavioural",
+      "production_paths": [
+        "android/mesh/src/main/java/io/godstone/mesh/transport/BleTransport.kt",
+        "ios/Godstone/Sources/GodstoneMesh/BleTransport.swift"
+      ],
+      "evidence": [
+        "EVIDENCE/T21/commands.json",
+        "EVIDENCE/T21/logs",
+        "EVIDENCE/T21/mutations/manifest.json",
+        "EVIDENCE/T21/ladder-boundary"
+      ],
+      "verified_utc": "2026-09-11T00:24:04Z"
+    },
+    {
+      "id": "CLM-T21-EXACT-CLOSE-ON-REFUSAL",
+      "statement": "every refusal at the initiators hand closeth the exact relation and the session slot perisheth with it; the late and the duplicate counsel are refused by the gate and the relation falleth likewise",
+      "required_case_ids": [
+        "ReadinessT21Test.testTheTrustRejectionWithholdsHS3AndClosesTheRelationExactly",
+        "ReadinessT21Tests.testTheTrustRejectionWithheldHS3AndClosedTheRelationExactly",
+        "ReadinessT21Test.testAnUnexpectedRecordAfterTheTrustClosesTheRelationExactly",
+        "ReadinessT21Tests.testAnUnexpectedRecordAfterTheTrustClosedTheRelationExactly",
+        "ReadinessT21Test.testTheHS3ReservationFailureClosesTheRelationExactly",
+        "ReadinessT21Tests.testTheHS3ReservationFailureClosedTheRelationExactly"
+      ],
+      "task": "T21",
+      "profile": [
+        "jvm-host",
+        "swift-host"
+      ],
+      "kind": "behavioural",
+      "production_paths": [
+        "android/mesh/src/main/java/io/godstone/mesh/transport/BleTransport.kt",
+        "android/mesh/src/main/java/io/godstone/mesh/crypto/SessionManager.kt",
+        "ios/Godstone/Sources/GodstoneMesh/BleTransport.swift",
+        "ios/Godstone/Sources/GodstoneMesh/SessionManager.swift"
+      ],
+      "evidence": [
+        "EVIDENCE/T21/commands.json",
+        "EVIDENCE/T21/logs",
+        "EVIDENCE/T21/mutations/manifest.json",
+        "EVIDENCE/T21/ladder-boundary"
+      ],
+      "verified_utc": "2026-09-11T00:24:04Z"
+    },
+    {
+      "id": "CLM-T21-HS3-BEFORE-DATA",
+      "statement": "the third message precedeth every DATA record in writer order; no DATA goeth forth before the trusted READY, none from a fained store, and the controllers READY alone publisheth no link-ready relation",
+      "required_case_ids": [
+        "ReadinessT21Test.testTheHS3PrecedesEveryDATAInTheWriterOrder",
+        "ReadinessT21Tests.testTheHS3PrecededEveryDATAInTheWriterOrder",
+        "ReadinessT21Test.testNoApplicationDATAProceedsBeforeTheTrustedCryptographicReady",
+        "ReadinessT21Tests.testNoApplicationDATAProceededBeforeTheTrustedCryptographicReady",
+        "ReadinessT21Test.testTheControllerReadyAlonePublishesNoLinkReady",
+        "ReadinessT21Tests.testTheControllerReadyAlonePublishedNoLinkReady",
+        "ReadinessT21Test.testTheStorageFailureKeepsThePriorTruthUnmutated",
+        "ReadinessT21Tests.testTheStorageFailureKeptThePriorTruthUnmutated"
+      ],
+      "task": "T21",
+      "profile": [
+        "jvm-host",
+        "swift-host"
+      ],
+      "kind": "behavioural",
+      "production_paths": [
+        "android/mesh/src/main/java/io/godstone/mesh/transport/BleTransport.kt",
+        "ios/Godstone/Sources/GodstoneMesh/BleTransport.swift"
+      ],
+      "evidence": [
+        "EVIDENCE/T21/commands.json",
+        "EVIDENCE/T21/logs",
+        "EVIDENCE/T21/mutations/manifest.json",
+        "EVIDENCE/T21/ladder-boundary"
+      ],
+      "verified_utc": "2026-09-11T00:24:04Z"
+    },
+    {
+      "id": "CLM-T21-HS2-OWN-RELATION",
+      "statement": "the second travelleth to their own relation alone, bearing the full immutable advertised hint; the tampered spans - binding, static key, and the tainted hint - are each refused and the relation closed exactly",
+      "required_case_ids": [
+        "ReadinessT21Test.testTheHS2TravelsToItsOwnRelationAloneAndBearsTheImmutableHint",
+        "ReadinessT21Tests.testTheHS2TraveltToItsOwnRelationAloneAndBoreTheImmutableHint",
+        "ReadinessT21Test.testTheBadBindingAndBadStaticKeyAndBadHintEachWithholdAllApplicationData",
+        "ReadinessT21Tests.testTheBadBindingAndBadStaticKeyAndBadHintEachWithheldAllApplicationData"
+      ],
+      "task": "T21",
+      "profile": [
+        "jvm-host",
+        "swift-host"
+      ],
+      "kind": "behavioural",
+      "production_paths": [
+        "android/mesh/src/main/java/io/godstone/mesh/transport/BleTransport.kt",
+        "android/mesh/src/main/java/io/godstone/mesh/crypto/SessionManager.kt",
+        "ios/Godstone/Sources/GodstoneMesh/BleTransport.swift",
+        "ios/Godstone/Sources/GodstoneMesh/SessionManager.swift"
+      ],
+      "evidence": [
+        "EVIDENCE/T21/commands.json",
+        "EVIDENCE/T21/logs",
+        "EVIDENCE/T21/mutations/manifest.json",
+        "EVIDENCE/T21/ladder-boundary"
+      ],
+      "verified_utc": "2026-09-11T00:24:04Z"
+    }
+  ],
+  "note": "Claims appended per task with real evidence; PASS requires positive case counts and matching command output. Device/independent claims never accept host-only results.",
+  "schema_version": 1
 }
