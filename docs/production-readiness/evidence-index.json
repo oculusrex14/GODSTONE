@@ -2,72 +2,107 @@
   "evidence_root": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE",
   "files": [
     {
-      "path": "T27/commands.json",
-      "sha256": "0b455d73052c03dc2bd8c3263252ef3e5b87834573a683a8b543ceeab99882e7",
-      "size": 4363
+      "path": "T28/commands.json",
+      "sha256": "90f8220d8d708c63ed3b21dd10e24f43e5bf765c63eab4b30bc4c8791d6f2bea",
+      "size": 6121
     },
     {
-      "path": "T27/logs/T27-SM1-ios-hint-as-authenticated-identity.semantic.log",
-      "sha256": "6b35a702b0c8a5d05ed39d46e8cae4198ad935ca561a896d1f0f69bea047f4c3",
+      "path": "T28/logs/T28-SM1-android-background-starts-stopped-runtime.semantic.log",
+      "sha256": "490d14e9d8e2fe842dfbbd616f243cbf3578b4bda766b25f62a3106db186e66b",
+      "size": 688
+    },
+    {
+      "path": "T28/logs/T28-SM1-ios-background-starts-stopped-runtime.semantic.log",
+      "sha256": "016b4942d6cd535fe246b408ce33efdbd76eced3bd85ec4f551b630dff19f72d",
       "size": 16029
     },
     {
-      "path": "T27/logs/T27-SM2-ios-unbounded-identity-governor.semantic.log",
-      "sha256": "7d24bc7eb52b7d110878e8ca0a7757ed8f363bcaf9a49cad95fb8af1d895eff8",
+      "path": "T28/logs/T28-SM2-android-power-loss-not-uniform.semantic.log",
+      "sha256": "a0994cc1c817e03572e0c61091b263f6fee8796af6042f268d186f7ca5b18279",
+      "size": 677
+    },
+    {
+      "path": "T28/logs/T28-SM2-ios-power-loss-not-uniform.semantic.log",
+      "sha256": "56426a5efc24d5b8ca4cc5ab107dcbf07e6ea74e9bc904ff9f6ff3ab9394472d",
       "size": 16029
     },
     {
-      "path": "T27/logs/T27-controls-python3-002.log",
+      "path": "T28/logs/T28-controls-python3-002.log",
       "sha256": "0b1ac463307b9f7d907105bb19e85bdada5dcd05131d80c492ffd80b4ab3f5f4",
       "size": 234
     },
     {
-      "path": "T27/logs/T27-controls-python3-003.log",
+      "path": "T28/logs/T28-controls-python3-003.log",
       "sha256": "67493ebd28a55ece17214e55d318f34ba4af6ac7592268756f1b3dcc304afa21",
       "size": 125
     },
     {
-      "path": "T27/logs/T27-controls-python3.log",
+      "path": "T28/logs/T28-controls-python3.log",
       "sha256": "03f0bc422dc53a81fd7f41085300a28e42626c2a4554e8929d897d3c092bd014",
       "size": 1374
     },
     {
-      "path": "T27/logs/T27-narrow-swift.log",
-      "sha256": "19c46dae30ec631e483b786ccc51fc47c2b870d79a985e238ffc83feb94b8f90",
-      "size": 2244
+      "path": "T28/logs/T28-narrow-gradlew.log",
+      "sha256": "c247bc5114b8aae1b3929d92eee161e38b204b53ef2b198a125590eef4aa3d70",
+      "size": 2873
     },
     {
-      "path": "T27/logs/T27-subsystem-swift.log",
-      "sha256": "b535fba376d4810bea43bd9486bbdd707a78ef5fa08a8681400250469868b2bf",
-      "size": 220670
+      "path": "T28/logs/T28-narrow-swift.log",
+      "sha256": "b6c26261706d36241ec4bb633805f00a3111c8b3a4956c8bc187f4981391f9df",
+      "size": 3526
     },
     {
-      "path": "T27/manifest.json",
-      "sha256": "5e316ec9171ee9ba33a9029cf644bf9a1c8fd5a1cb46a0e1730e964d0e469d62",
-      "size": 1595
+      "path": "T28/logs/T28-subsystem-gradlew.log",
+      "sha256": "1497d7871004ae0e9c370bc5c7983020b679b25a1177b3ec801fb60aa39cd7e3",
+      "size": 2500
     },
     {
-      "path": "T27/milestones/baseline-milestone.json",
-      "sha256": "4331c6386e90aa2b35f4d3d0cc2201cfd52011cab497da18eb186d3c819e8fef",
-      "size": 2022
+      "path": "T28/logs/T28-subsystem-swift.log",
+      "sha256": "e9ceb2d41539e32c89a9762cde5604d9868b53d7d9e4a58e7c93463b80fc6aac",
+      "size": 223301
     },
     {
-      "path": "T27/milestones/controls-roster.json",
-      "sha256": "2b452e3ee6d3acab78784521624e9ab3bf9c8a4887f51f36e97c4bd5dc104122",
-      "size": 1659
+      "path": "T28/manifest.json",
+      "sha256": "f50aab1b77512d3f16555b411df79ebb353cb4efd0631ad4942b0bd31810df2e",
+      "size": 3299
     },
     {
-      "path": "T27/milestones/design-grounding-milestone.json",
-      "sha256": "16779e851261535b4767ee091b12cffeb597acc1d9e43799a039194cb8e77707",
-      "size": 2975
+      "path": "T28/milestones/baseline-milestone.json",
+      "sha256": "42eb99a64c3562b728b31e55529127dfda42a905fdcfa5ec239ec675f11e137b",
+      "size": 3196
     },
     {
-      "path": "T27/milestones/platform-court-child.json",
-      "sha256": "683a33e9d168c0d430590c3098547b646ff63e312ed4070bef4328c4e6325678",
-      "size": 2967
+      "path": "T28/milestones/contract-android-child.json",
+      "sha256": "847d23fef509f010599f54a5c5b13d3ae1451595da238bdaf772f4dd90d5310c",
+      "size": 2693
+    },
+    {
+      "path": "T28/milestones/controls-roster.json",
+      "sha256": "519a4e7df6dfadd035e4549f59ca11208957114e06fc8221a4fff389a5678915",
+      "size": 2703
+    },
+    {
+      "path": "T28/milestones/design-grounding-milestone.json",
+      "sha256": "06bb82f5a7a2e8aa443a47f710b8e54c50ffb560179473fe78515ec368aa5f03",
+      "size": 3627
+    },
+    {
+      "path": "T28/milestones/integration-android-child.json",
+      "sha256": "9f9ba08c43ddfe1e903fc78b2c90045648e868a6808dec4a8252f9bb6191368d",
+      "size": 2271
+    },
+    {
+      "path": "T28/milestones/integration-ios-child.json",
+      "sha256": "77c7db02cdfb45b2a07c651470abfd4025d304a0eb3d8201c8d4caec285f2160",
+      "size": 1852
+    },
+    {
+      "path": "T28/milestones/ios-contract-court-child.json",
+      "sha256": "bda9fc265e20d064500dd1ff844ff1791b816f5af38a0b4e70dcab1fe20519d8",
+      "size": 1866
     }
   ],
-  "note": "T27 (implement equivalent iOS traffic governance) seal evidence: the executed iOS narrow/subsystem/controls commands, the shared cross-platform budget vector and its generator, the 2/2 KILLED semantic roster, and the child milestones. readiness remains false; external gates open.",
+  "note": "T28 (unify runtime stop/start, power and transport invalidation) seal evidence: the executed dual-platform narrow/subsystem/controls commands, the 4/4 KILLED semantic roster, and the child milestones (contract, ios-contract-court, dual integration, controls). readiness remains false; external gates open; device evidence deferred T73-T75.",
   "schema_version": 1,
-  "task": "T27"
+  "task": "T28"
 }
