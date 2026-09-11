@@ -2624,7 +2624,12 @@
     "SIGNING"
   ],
   "failed_attempts": [],
-  "in_progress": {},
+  "in_progress": {
+    "task": "T24",
+    "objective": "Publish only relation-bound authenticated peers: one LinkReady and LinkLost per relation through a bounded reliable channel, carrying the immutable TrustedPeer rather than any transport id, with MeshNode snapshots derived from driver authority.",
+    "claimed_head": "5247f15578de7647fa32f71f353bd36372b3c22a",
+    "claimed_utc": "2026-09-11T10:26:59Z"
+  },
   "last_code_head": "194ccb5c27a8440fae18327312b9148a088c718b",
   "last_observed_head": "d9b300be102c5c880cab2491e15b79af2838d442",
   "latest_verification": {
