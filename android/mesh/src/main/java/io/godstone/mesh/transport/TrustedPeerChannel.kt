@@ -30,10 +30,16 @@ internal object TrustedPeerSpec {
  */
 internal class TrustedPeer(
     val relation: RelationKey,
-    val nodeId16: ByteArray,
-    val identityPub32: ByteArray,
+    suppliedNodeId: ByteArray,
+    suppliedIdentityPub: ByteArray,
     val trustVersion: Long,
 ) {
+    // The captured identity is IMMUTABLE: the value owneth private copies of the
+    // authenticated bytes, so no later mutation of a caller's buffer may corrupt a
+    // peer that hath already been trusted (the section-5 immutability law).
+    val nodeId16: ByteArray = suppliedNodeId.copyOf()
+    val identityPub32: ByteArray = suppliedIdentityPub.copyOf()
+
     init {
         require(nodeId16.size == TrustedPeerSpec.NODE_ID_BYTES) {
             "a trusted peer carrieth a ${TrustedPeerSpec.NODE_ID_BYTES}-byte node id"
@@ -42,6 +48,35 @@ internal class TrustedPeer(
             "a trusted peer carrieth a ${TrustedPeerSpec.IDENTITY_PUB_BYTES}-byte identity public key"
         }
         require(trustVersion >= 0L) { "a trust version may not be negative" }
+    }
+
+    companion object {
+        /**
+         * Capture the authenticated relation as an immutable identity AT THE
+         * AUTHENTICATED MOMENT, forcing the frozen identity law upon the capture:
+         * the node id is DERIVED as `BLAKE2s-128(identityPub)` by the very routine
+         * the identity layer employs (section 5), never trusted from a caller's
+         * bytes. The raw constructor accepteth any node id the caller supplyeth;
+         * this factory leaveth no such freedom, so a captured peer can never
+         * disagree with its own identity public key.
+         *
+         * @param authenticatedIdentityPub32 the remote Ed25519 identity public key
+         *        (32 bytes) as the transport learned it when the relation was sealed.
+         * @param trustVersion a NON-NEGATIVE, monotonic trust epoch of that identity.
+         */
+        fun capture(
+            relation: RelationKey,
+            authenticatedIdentityPub32: ByteArray,
+            trustVersion: Long,
+        ): TrustedPeer {
+            require(authenticatedIdentityPub32.size == TrustedPeerSpec.IDENTITY_PUB_BYTES) {
+                "onely a ${TrustedPeerSpec.IDENTITY_PUB_BYTES}-byte authenticated identity public key may be captured"
+            }
+            require(trustVersion >= 0L) { "a trust version may not be negative" }
+            // Defer wholly to the canonical derivation; duplicate no hash here.
+            val nodeId16 = io.godstone.mesh.identity.Identity.nodeIdOf(authenticatedIdentityPub32)
+            return TrustedPeer(relation, nodeId16, authenticatedIdentityPub32, trustVersion)
+        }
     }
 
     /** A defensive read of the node id, that no caller may mutate our copy. */
