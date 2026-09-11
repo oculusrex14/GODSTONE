@@ -1909,30 +1909,76 @@ public final class BleTransport: NSObject, @unchecked Sendable {
             recordRejection(peerId: centralId, site: "hs.read.responder", reason: "no connection")
             return
         }
+        if conn.localRole != .responder {
+            // T22 (section 13): the door is the responders, by the assigndment
+            // of the LinkInfo exchange; a record that comes to the wrong gate
+            // is a conflicting sequence, and the relation of that peer
+            // perisheth by the hand that ruleth its side of the link.
+            recordRejection(peerId: centralId, site: "hs.read.responder", reason: "unexpected direction")
+            if conn.localRole == .initiator {
+                closeInitiatorRelation(centralId)
+            } else {
+                closeResponderRelation(centralId)
+            }
+            return
+        }
         guard let hint = rememberedHint, BleConnection.canBindRemoteHint(hint) else {
             lockTransport()
             let seen = inboundRemoteHints.keys.count
             unlockTransport()
             recordRejection(peerId: centralId, site: "hs.read.responder",
                             reason: "no remembered link-info hint (registry holds \(seen))")
+            closeResponderRelation(centralId)
             return
         }
         switch record.recordType {
         case .hs1:
+            guard conn.state == .roleBound else {
+                // exactly the expected first is accepted: a message twice told
+                // in hand, or one that comes after the trust, is a conflicting
+                // sequence - the relation closes, it drifts not
+                recordRejection(peerId: centralId, site: "hs.read.responder",
+                                reason: "hs1 at stage " + String(describing: conn.state))
+                closeResponderRelation(centralId)
+                return
+            }
             guard let hs2 = registry.responderProcessHs1(centralId, remoteHint: hint, hs1: record.payload) else {
+                // trust refused: the counsel is not true; the relation
+                // becometh nothing, and the slot perisheth with it
                 recordRejection(peerId: centralId, site: "hs.read.responder", reason: "hs1 rejected")
+                closeResponderRelation(centralId)
                 return
             }
             _ = conn.beginHandshake()
-            _ = writeHandshakeRecord(.hs2, payload: hs2, toCentral: centralId)
+            // T22: and the verdict of the queued second is hearkened for
+            let verdict = writeHandshakeRecord(.hs2, payload: hs2, toCentral: centralId)
+            guard verdict == .admitted else {
+                recordRejection(peerId: centralId, site: "hs.read.responder", reason: "hs2 reservation refused")
+                closeResponderRelation(centralId)
+                return
+            }
         case .hs3:
+            guard conn.state == .handshakeInProgress else {
+                // the third before the first is out of order; the third again
+                // after the trust is a late counsel: either way the relation
+                // falleth
+                recordRejection(peerId: centralId, site: "hs.read.responder",
+                                reason: "hs3 at stage " + String(describing: conn.state))
+                closeResponderRelation(centralId)
+                return
+            }
             guard registry.responderProcessHs3(centralId, hs3: record.payload, advertisedRemoteHint: hint) else {
                 recordRejection(peerId: centralId, site: "hs.read.responder", reason: "hs3 rejected")
+                closeResponderRelation(centralId)
                 return
             }
             guard conn.markTrustedReady() else {
+                // only the trusted third installes a usable session; a mark
+                // that can not be set is a trust failure, and the relation
+                // closes with it
                 recordRejection(peerId: centralId, site: "hs.read.responder",
                                 reason: "trusted ready refused from \(conn.state)")
+                closeResponderRelation(centralId)
                 return
             }
             delegate?.transportDidHandshakeReady(peerId: centralId)
@@ -3518,6 +3564,13 @@ public final class BleTransport: NSObject, @unchecked Sendable {
                 } else if let rec = record, rec.recordType == .hs1 || rec.recordType == .hs3 {
                     // T17: the responder reads the initiator's records.
                     handleInboundHandshakeRecordResponderSide(rec, centralId: centralId)
+                } else if let rec = record, rec.recordType == .hs2 {
+                    // T22: the responders own voice come again, or a stranger
+                    // at the gate - the exact relation falleth. The farewell
+                    // (.close) abideth its policy in T23.
+                    recordRejection(peerId: centralId, site: "hs.read.responder",
+                                   reason: "unexpected direction")
+                    closeResponderRelation(centralId)
                 }
                 pm.respond(to: r, withResult: .success)
                 continue
