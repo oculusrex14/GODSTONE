@@ -2237,7 +2237,12 @@
     "SIGNING"
   ],
   "failed_attempts": [],
-  "in_progress": {},
+  "in_progress": {
+    "task": "T22",
+    "objective": "After ROLE_BOUND with remoteHint<localHint, accept exactly the expected HS1 and call beginResponder(remoteHint,hs1); queue returned HS2. Pass HS3 into responderProcessHs3 with the same immutable hint. Only success installs a usable cryptographic session. Keep public discovery identity separate from authenticated full node identity.",
+    "claimed_head": "30f9a360d4882d137362727285998390d5db7149",
+    "claimed_utc": "2026-09-11T00:27:51Z"
+  },
   "last_code_head": "194ccb5c27a8440fae18327312b9148a088c718b",
   "last_observed_head": "d9b300be102c5c880cab2491e15b79af2838d442",
   "latest_verification": {
