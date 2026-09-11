@@ -2,72 +2,97 @@
   "evidence_root": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE",
   "files": [
     {
-      "path": "T29/commands.json",
-      "sha256": "ebb145359f439e4d03476781d10ca4672b27069de85f5e9370e0c1543bba19c6",
-      "size": 3470
+      "path": "T30/commands.json",
+      "sha256": "3520775857fb0b0ec4b8295ec10511c404a37f64127a7b0a9ff17d4caa9c29f5",
+      "size": 4363
     },
     {
-      "path": "T29/logs/T29-SM1-android-plain-opener-accepted-as-encrypted.semantic.log",
-      "sha256": "484529cf193dd9ba5e214b5c97098464cce033f50fc74ce69626da0f8c23f3b5",
-      "size": 689
+      "path": "T30/logs/T30-SM1-ios-swallow-protection-failure-openstore.semantic.log",
+      "sha256": "793139bd4b74168dc22efccf60278c10da76d139d1e401aa29bef4479e77bbae",
+      "size": 16029
     },
     {
-      "path": "T29/logs/T29-SM2-android-unclassified-fault-not-fail-closed.semantic.log",
-      "sha256": "4c26868345dfad83e5a2ed5b2a7b30a2e442ace32f009b1d885056fced91f98b",
-      "size": 689
+      "path": "T30/logs/T30-SM2-ios-swallow-protection-failure-reopen.semantic.log",
+      "sha256": "9de655b1becb8ccfa924f985bafe751fae05aa06ce5fbdc4b5c894e46bf11f6a",
+      "size": 16029
     },
     {
-      "path": "T29/logs/T29-controls-python3-002.log",
+      "path": "T30/logs/T30-SM3-ios-reopen-without-dek-accepted.semantic.log",
+      "sha256": "774c97cf740eae32ff877b86c4e51a5fd618d24edf4e19f1a8625dd321366f49",
+      "size": 16029
+    },
+    {
+      "path": "T30/logs/T30-SM4-ios-select-before-verify.semantic.log",
+      "sha256": "20d933be1f2bc6469e4052dcb3ee574e39ae403bba6a02245d934f6049452630",
+      "size": 16029
+    },
+    {
+      "path": "T30/logs/T30-controls-python3-002.log",
       "sha256": "0b1ac463307b9f7d907105bb19e85bdada5dcd05131d80c492ffd80b4ab3f5f4",
       "size": 234
     },
     {
-      "path": "T29/logs/T29-controls-python3.log",
+      "path": "T30/logs/T30-controls-python3-003.log",
+      "sha256": "67493ebd28a55ece17214e55d318f34ba4af6ac7592268756f1b3dcc304afa21",
+      "size": 125
+    },
+    {
+      "path": "T30/logs/T30-controls-python3.log",
       "sha256": "03f0bc422dc53a81fd7f41085300a28e42626c2a4554e8929d897d3c092bd014",
       "size": 1374
     },
     {
-      "path": "T29/logs/T29-narrow-gradlew.log",
-      "sha256": "209190d504c0c77d1b44aabeedeb97217d3bd2f89795cecf4b62044e6fd14eb1",
-      "size": 2873
+      "path": "T30/logs/T30-narrow-swift.log",
+      "sha256": "463fba0ed3a0592b0aca03187d5af6f1ea43995bbdeb1f7fa33ada1a6d5acc7b",
+      "size": 4423
     },
     {
-      "path": "T29/logs/T29-subsystem-gradlew.log",
-      "sha256": "9ddac5e78e32dc6a91b58c506ba5fdc4e1c4b030c1fc2ed85e6f85500d01f954",
-      "size": 2500
+      "path": "T30/logs/T30-subsystem-swift.log",
+      "sha256": "1a122d859e198a3fcdf279f2d4bf7a3c40f8d38726dbc632aa3c768c2cb42b62",
+      "size": 226825
     },
     {
-      "path": "T29/manifest.json",
-      "sha256": "79e36df76f2ad480835ec661b855de353b1f6a7cfd3d34302373cb8d90c803b2",
-      "size": 1697
+      "path": "T30/manifest.json",
+      "sha256": "6b268b57ca40cd4fef45394aca16ac4e804946afe29574267f396530a5005e7b",
+      "size": 3199
     },
     {
-      "path": "T29/milestones/baseline-milestone.json",
-      "sha256": "38dd7b347f93ba806df0fe85b797c25b3c999d7acca82732aac07c0f0146aa60",
-      "size": 2507
+      "path": "T30/milestones/baseline-milestone.json",
+      "sha256": "8edcaf80a6d6065f669c755bb287f820984b9ae305c00e0e7792093619ec3708",
+      "size": 2884
     },
     {
-      "path": "T29/milestones/contract-child.json",
-      "sha256": "bf7c810da34b8b15ed2e2f17e4bd94daeddea6cfb0ab2d7f6a9014f3b491653c",
-      "size": 2849
+      "path": "T30/milestones/contract-child.json",
+      "sha256": "4dd0eb192e9de196495e1f16fa05c512fc43cc2b548021856a9a445a199f5b60",
+      "size": 3617
     },
     {
-      "path": "T29/milestones/controls-roster.json",
-      "sha256": "b3b9d773ddc64f7644c7b71cb4ed738767cc47a497427b0bd9268ae560818969",
-      "size": 1776
+      "path": "T30/milestones/controls-roster.json",
+      "sha256": "e69c06c816e442f1ede2037397102182a2cd622610742119912db1aa53b646aa",
+      "size": 3702
     },
     {
-      "path": "T29/milestones/design-grounding-milestone.json",
-      "sha256": "406c171c858d8cb552525e15b2ee5ef28bf50474dcd2f7075394efef142b47c0",
-      "size": 3716
+      "path": "T30/milestones/court-child.json",
+      "sha256": "eb59441f07a114ddee22b39ffd71f2997bcad25cf270f03433bd3824d60b7e24",
+      "size": 3863
     },
     {
-      "path": "T29/milestones/platform-child.json",
-      "sha256": "c14e442687f6a4fd0a7710ee3249c615e99452a5cbe4ab17ae9705fcdd70d2da",
-      "size": 2764
+      "path": "T30/milestones/design-grounding-milestone.json",
+      "sha256": "21557ef2d05864fd5aa8458f320e9f0825b7f3d0023a56293bb7d2b21fe261e9",
+      "size": 3196
+    },
+    {
+      "path": "T30/milestones/factory-child.json",
+      "sha256": "f267465f8eeff64883b53f05e05ddfe177824372666f1d26ea244ee680d4ccbb",
+      "size": 3230
+    },
+    {
+      "path": "T30/milestones/migration-child.json",
+      "sha256": "d14fe6c657ba0740c306373003b6c65c6143006521a7d5134bdd1db06f390c20",
+      "size": 3229
     }
   ],
-  "note": "T29 (prove Android private-store encryption and failure behavior) seal evidence: the executed android narrow/subsystem/controls commands, the 2/2 KILLED semantic roster, and the child milestones (contract, platform, controls). readiness remains false; external gates open; physical SQLCipher native instrumentation deferred T73-T75.",
+  "note": "T30 (give iOS private stores an erasable encryption key) seal evidence: the executed iOS narrow/subsystem/controls commands, the 4/4 KILLED semantic roster, and the child milestones (contract, factory, migration, court, court-amendment, controls). readiness remains false; external gates open; physical Keychain/Data-Protection/SQLCipher-at-rest evidence deferred to the device gate.",
   "schema_version": 1,
-  "task": "T29"
+  "task": "T30"
 }

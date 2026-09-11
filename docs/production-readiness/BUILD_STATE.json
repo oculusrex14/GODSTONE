@@ -3463,9 +3463,164 @@
         "the concrete SqlcipherStoreDb is not refactored to call StoreOpener at its open site (blast-radius on a sealed hot path -- MessageStore.kt verified unmodified since HEAD); the SqlcipherStoreOpener adapter is the sanctioned composition seam the runtime binds, delegating classification verbatim",
         "pre-existing ReadinessT18Test randomized fixture is a latent, ordering-sensitive flake unrelated to T29; handled by bounded re-run to a genuinely green execution, no sealed-code edit, no fabrication"
       ]
+    },
+    "T30": {
+      "case_results": {
+        "android": null,
+        "deleted_cases": [],
+        "ios_grand": {
+          "breakdown": "854 baseline + 15 ReadinessT30Tests",
+          "counts_source": "swift test --package-path ios/Packages/GodstoneFoundation (full) at boundary 44f6b4d; Test Case passed lines",
+          "errors": 0,
+          "failures": 0,
+          "tests": 869
+        },
+        "note": "iOS-only per the card (command_stages are swift-host + python controls incl. sync --check; single regression path ReadinessT30Tests.swift). The host court drives the factory/migration/Keychain-seam decision LAWS through four deterministic injected fakes; the concrete SQLCipher binding, the real ThisDeviceOnly Keychain, Data-Protection and locked-device behaviour are DEVICE evidence (device_evidence: physical iOS device with lock/unlock and Keychain/Data Protection evidence) deferred to the device gate -- not closable with fixtures",
+        "t30_ios_court": {
+          "counts_source": "ReadinessT30Tests.swift (15 witnesses)",
+          "errors": 0,
+          "failures": 0,
+          "tests": 15
+        }
+      },
+      "claim_commit": "602b1fd",
+      "commands": [
+        "T30-narrow-swift",
+        "T30-subsystem-swift",
+        "T30-controls-python3",
+        "T30-controls-python3-002",
+        "T30-controls-python3-003"
+      ],
+      "device_gate_ids": [],
+      "file_hashes": {},
+      "implementation_commit": "44f6b4d9aae8a1c8ba8845935bc1e79345474d41",
+      "implementation_commits": [
+        "2a04ee0a872a25cf6ad2dc86eb95d3ae7ce60345",
+        "588bfe11d5b90d3ad7bf470c5caa5522aac4d52f",
+        "4df111043af301a60106a1983db2fe5a2b4b7335",
+        "9d9db8f7d60d94ddb87638d64093ba25517690b3",
+        "1dea6f23cb9184d1a09c08ac113ee851f4313f87",
+        "71ffdfe91d53892a84e83cb35d7ff46aed17fdc9",
+        "44f6b4d9aae8a1c8ba8845935bc1e79345474d41"
+      ],
+      "inputs": {
+        "children_commit_order": [
+          "602b1fd claim",
+          "2a04ee0 contract",
+          "588bfe1 factory",
+          "4df1110 migration",
+          "9d9db8f court",
+          "1dea6f2 court-amend reopen-protection witness",
+          "71ffdfe manifest-sync",
+          "44f6b4d controls"
+        ],
+        "governed_source": [
+          "ios/Godstone/Sources/GodstoneMesh/PrivateStoreKeyProvider.swift",
+          "ios/Godstone/Sources/GodstoneMesh/EncryptedStoreFactory.swift",
+          "ios/Godstone/Sources/GodstoneMesh/PlaintextToEncryptedMigration.swift"
+        ],
+        "mirror": [
+          "ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/PrivateStoreKeyProvider.swift",
+          "ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/EncryptedStoreFactory.swift",
+          "ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/PlaintextToEncryptedMigration.swift",
+          "ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/ReadinessT30Tests.swift"
+        ],
+        "required_regression_paths": [
+          "ios/Godstone/Tests/GodstoneMeshTests/ReadinessT30Tests.swift"
+        ],
+        "task_card": "docs/production-readiness/TASKS.json#T30"
+      },
+      "ladder_boundary_commit": "44f6b4d9aae8a1c8ba8845935bc1e79345474d41",
+      "mutation_results": {
+        "campaign_note": "T30 semantic roster (4 iOS mutants) verified KILLED against baseline 44f6b4d. SM1/SM2 swallow a file-protection failure on the openStore/reopenExisting paths (the cards named falsification: ignore a protection failure) -> the two never-swallow witnesses fail; SM3 accepts a missing DEK on reopen as an encrypted Available store (the second named falsification: reopen without DEK) -> testReopenWithoutDEKIsRejectedNeverEmptyHealthy fails; SM4 selects the migrated encrypted copy despite a verify mismatch -> testFailedMigrationPreservesRecoverableSource fails. Each baseline court ran 15 positive. Provenance: SM2 first ran with a mislabelled oracle and read ESCAPED though the reopen mutant was in fact detected by the reopen-protection witness; the correct reopen-protection witness was added to the court and SM2 relabelled to it, and this roster is the honest re-run -- no mutant deleted to force a pass.",
+        "semantic": [
+          {
+            "anchor_count": 1,
+            "baseline_sha": "44f6b4d9aae8a1c8ba8845935bc1e79345474d41",
+            "build_exit": 0,
+            "category": "semantic",
+            "failed_assertion": "witness testProtectionFailureIsNeverSwallowed failed as intended (1 failed case(s))",
+            "id": "T30-SM1-ios-swallow-protection-failure-openstore",
+            "log_path": "T30/logs/T30-SM1-ios-swallow-protection-failure-openstore.semantic.log",
+            "log_sha": "793139bd4b74168dc22efccf60278c10da76d139d1e401aa29bef4479e77bbae",
+            "mutant_patch_sha": "8c9816abbfcbcc8ee968441bf6fb2f25d8994ae05c77a635dc4173dd2fdb978f",
+            "outcome": "KILLED",
+            "platform": null,
+            "target_tests": [
+              "testProtectionFailureIsNeverSwallowed"
+            ],
+            "tests_run": 15
+          },
+          {
+            "anchor_count": 1,
+            "baseline_sha": "44f6b4d9aae8a1c8ba8845935bc1e79345474d41",
+            "build_exit": 0,
+            "category": "semantic",
+            "failed_assertion": "witness testReopenProtectionFailureIsNeverSwallowed failed as intended (1 failed case(s))",
+            "id": "T30-SM2-ios-swallow-protection-failure-reopen",
+            "log_path": "T30/logs/T30-SM2-ios-swallow-protection-failure-reopen.semantic.log",
+            "log_sha": "9de655b1becb8ccfa924f985bafe751fae05aa06ce5fbdc4b5c894e46bf11f6a",
+            "mutant_patch_sha": "6682ba38d5a930ef8810b4ec5081b114144f88b72d38ed427f90d6bcabc5af0a",
+            "outcome": "KILLED",
+            "platform": null,
+            "target_tests": [
+              "testReopenProtectionFailureIsNeverSwallowed"
+            ],
+            "tests_run": 15
+          },
+          {
+            "anchor_count": 1,
+            "baseline_sha": "44f6b4d9aae8a1c8ba8845935bc1e79345474d41",
+            "build_exit": 0,
+            "category": "semantic",
+            "failed_assertion": "witness testReopenWithoutDEKIsRejectedNeverEmptyHealthy failed as intended (2 failed case(s))",
+            "id": "T30-SM3-ios-reopen-without-dek-accepted",
+            "log_path": "T30/logs/T30-SM3-ios-reopen-without-dek-accepted.semantic.log",
+            "log_sha": "774c97cf740eae32ff877b86c4e51a5fd618d24edf4e19f1a8625dd321366f49",
+            "mutant_patch_sha": "17809b118cce1f2dbf71860952e886ef5e03c84204fdb727bf09a02055f87e77",
+            "outcome": "KILLED",
+            "platform": null,
+            "target_tests": [
+              "testReopenWithoutDEKIsRejectedNeverEmptyHealthy"
+            ],
+            "tests_run": 15
+          },
+          {
+            "anchor_count": 1,
+            "baseline_sha": "44f6b4d9aae8a1c8ba8845935bc1e79345474d41",
+            "build_exit": 0,
+            "category": "semantic",
+            "failed_assertion": "witness testFailedMigrationPreservesRecoverableSource failed as intended (1 failed case(s))",
+            "id": "T30-SM4-ios-select-before-verify",
+            "log_path": "T30/logs/T30-SM4-ios-select-before-verify.semantic.log",
+            "log_sha": "20d933be1f2bc6469e4052dcb3ee574e39ae403bba6a02245d934f6049452630",
+            "mutant_patch_sha": "81b29777026822a6ae6685bc5b5b1e382543771e2894622d0c1cdb3b03975e9a",
+            "outcome": "KILLED",
+            "platform": null,
+            "target_tests": [
+              "testFailedMigrationPreservesRecoverableSource"
+            ],
+            "tests_run": 15
+          }
+        ]
+      },
+      "objective": {
+        "claimed_head": "4e40d57fb6bdffa9bc4604d18d073d4d60a77017",
+        "claimed_utc": "2026-09-11T21:30:06+00:00",
+        "objective": "Use vetted pinned SQLCipher for private message and peer stores with a separate random per-install store DEK protected by ThisDeviceOnly Keychain.",
+        "task": "T30"
+      },
+      "status": "COMPLETE",
+      "tested_tree_sha": "251b1abf2f7b025968fe2860e0eebc4337af2b02",
+      "unresolved": [
+        "physical iOS device evidence (real ThisDeviceOnly Keychain availability, Data-Protection .complete enforcement, locked-device behaviour, actual SQLCipher-at-rest DB/WAL/SHM bytes, real restore-from-backup migration) is DEFERRED to the device gate T73-T75 / artifact acceptance; the host court proves the control-flow / decision law at the injected seams only; this internal task does not and cannot close the device gate, and no device/SDK result is fabricated",
+        "external gates (A06, APPROVED_CONTENT, NATIVE_MODELS, HARDWARE, SIGNING) remain open; readiness stays false",
+        "the concrete SQLCipher binding (PRAGMA key/cipher) and the ThisDeviceOnly Keychain items are supplied by the runtime composition; EncryptedStoreFactory/PlaintextToEncryptedMigration are the sanctioned seams delegating to the injected engine/provider, and the sealed MessageStore/PeerIdentityStore system-SQLite hot paths are NOT rewritten in this task (blast-radius on sealed stores)",
+        "vetted pinned SQLCipher provenance/artifact itself is a native-models/signing external concern; this task provides the key, factory and migration decision layers only"
+      ]
     }
   },
-  "current_task": "T30",
+  "current_task": "T31",
   "external_blockers": [
     "A06",
     "APPROVED_CONTENT",
@@ -3474,37 +3629,27 @@
     "SIGNING"
   ],
   "failed_attempts": [],
-  "in_progress": {
-    "claimed_head": "4e40d57fb6bdffa9bc4604d18d073d4d60a77017",
-    "claimed_utc": "2026-09-11T21:30:06+00:00",
-    "objective": {
-      "claimed_head": "4e40d57fb6bdffa9bc4604d18d073d4d60a77017",
-      "claimed_utc": "2026-09-11T21:30:06+00:00",
-      "objective": "Use vetted pinned SQLCipher for private message and peer stores with a separate random per-install store DEK protected by ThisDeviceOnly Keychain.",
-      "task": "T30"
-    },
-    "task": "T30"
-  },
-  "last_code_head": "4c92950297c139e268bccbbfcb71d91abe95c626",
-  "last_observed_head": "4c92950297c139e268bccbbfcb71d91abe95c626",
+  "in_progress": null,
+  "last_code_head": "44f6b4d9aae8a1c8ba8845935bc1e79345474d41",
+  "last_observed_head": "44f6b4d9aae8a1c8ba8845935bc1e79345474d41",
   "latest_verification": {
-    "android_grand": {
+    "at_utc": "2026-09-11T22:21:54+00:00",
+    "boundary_commit": "44f6b4d9aae8a1c8ba8845935bc1e79345474d41",
+    "ios_grand": {
       "errors": 0,
       "failures": 0,
-      "tests": 929
+      "tests": 869
     },
-    "at_utc": "2026-09-11T21:18:47+00:00",
-    "boundary_commit": "4c92950297c139e268bccbbfcb71d91abe95c626",
     "roster": {
-      "T29_killed": 2,
-      "of": 2
+      "T30_killed": 4,
+      "of": 4
     },
-    "t29_courts": {
-      "android": 12
+    "t30_courts": {
+      "ios": 15
     },
-    "tested_tree_sha": "8ecf6c48995372e179bc5fd1c26cebbe4e0d4b81"
+    "tested_tree_sha": "251b1abf2f7b025968fe2860e0eebc4337af2b02"
   },
-  "next_task": "T30",
+  "next_task": "T31",
   "phase": "P0",
   "plan_sha256": "685456b378662b0a40a53a6abc810041e37daf97b213f3efeb6cea879363934e",
   "planning_baseline_sha": "b5c3d3d394b70cf356cdde33b47511dad7cbb95c",
