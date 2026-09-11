@@ -2,67 +2,72 @@
   "evidence_root": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE",
   "files": [
     {
-      "path": "T26/commands.json",
-      "sha256": "6797bca0bf5268c2635b98227dbca0f348325131539380aec2f8498338ee7115",
-      "size": 3470
+      "path": "T27/commands.json",
+      "sha256": "0b455d73052c03dc2bd8c3263252ef3e5b87834573a683a8b543ceeab99882e7",
+      "size": 4363
     },
     {
-      "path": "T26/logs/T26-SM1-android-allocate-before-global-admission.semantic.log",
-      "sha256": "33b5849ae0a90a6c61f8e2797eed2451609142cd124ded83951111b7e63008fc",
-      "size": 686
+      "path": "T27/logs/T27-SM1-ios-hint-as-authenticated-identity.semantic.log",
+      "sha256": "6b35a702b0c8a5d05ed39d46e8cae4198ad935ca561a896d1f0f69bea047f4c3",
+      "size": 16029
     },
     {
-      "path": "T26/logs/T26-SM2-android-bypass-SOS-charging.semantic.log",
-      "sha256": "c1a3b7ce4ba77066902967ad30737e7b0803dfe290bc6709f6cb7fbe6e32e22a",
-      "size": 673
+      "path": "T27/logs/T27-SM2-ios-unbounded-identity-governor.semantic.log",
+      "sha256": "7d24bc7eb52b7d110878e8ca0a7757ed8f363bcaf9a49cad95fb8af1d895eff8",
+      "size": 16029
     },
     {
-      "path": "T26/logs/T26-controls-python3-002.log",
+      "path": "T27/logs/T27-controls-python3-002.log",
       "sha256": "0b1ac463307b9f7d907105bb19e85bdada5dcd05131d80c492ffd80b4ab3f5f4",
       "size": 234
     },
     {
-      "path": "T26/logs/T26-controls-python3.log",
+      "path": "T27/logs/T27-controls-python3-003.log",
+      "sha256": "67493ebd28a55ece17214e55d318f34ba4af6ac7592268756f1b3dcc304afa21",
+      "size": 125
+    },
+    {
+      "path": "T27/logs/T27-controls-python3.log",
       "sha256": "03f0bc422dc53a81fd7f41085300a28e42626c2a4554e8929d897d3c092bd014",
       "size": 1374
     },
     {
-      "path": "T26/logs/T26-narrow-gradlew.log",
-      "sha256": "8ebb62f5b32b172426d6035e070f244e57063fba43e8c0c1124f0a23f3399a93",
-      "size": 2873
+      "path": "T27/logs/T27-narrow-swift.log",
+      "sha256": "19c46dae30ec631e483b786ccc51fc47c2b870d79a985e238ffc83feb94b8f90",
+      "size": 2244
     },
     {
-      "path": "T26/logs/T26-subsystem-gradlew.log",
-      "sha256": "f7dabd4a56a0ae8d50df3bdee9cb8efe0f62293b829ab4eb1302a5e0b526fded",
-      "size": 2500
+      "path": "T27/logs/T27-subsystem-swift.log",
+      "sha256": "b535fba376d4810bea43bd9486bbdd707a78ef5fa08a8681400250469868b2bf",
+      "size": 220670
     },
     {
-      "path": "T26/manifest.json",
-      "sha256": "b35728579aa1207215bf538365b1c6df3782f7196863888a13a48b8f7a509f5b",
-      "size": 1639
+      "path": "T27/manifest.json",
+      "sha256": "5e316ec9171ee9ba33a9029cf644bf9a1c8fd5a1cb46a0e1730e964d0e469d62",
+      "size": 1595
     },
     {
-      "path": "T26/milestones/baseline-milestone.json",
-      "sha256": "4b72694f901f9379842d3a8a11596eebbfa941c2b57a5ab8953d6de2f21b2250",
-      "size": 2298
+      "path": "T27/milestones/baseline-milestone.json",
+      "sha256": "4331c6386e90aa2b35f4d3d0cc2201cfd52011cab497da18eb186d3c819e8fef",
+      "size": 2022
     },
     {
-      "path": "T26/milestones/controls-roster.json",
-      "sha256": "2bb36db740fd7fb00c816a16da56f80e9507882bd04fcae972d4074def6b3ecf",
-      "size": 1704
+      "path": "T27/milestones/controls-roster.json",
+      "sha256": "2b452e3ee6d3acab78784521624e9ab3bf9c8a4887f51f36e97c4bd5dc104122",
+      "size": 1659
     },
     {
-      "path": "T26/milestones/design-grounding-milestone.json",
-      "sha256": "e1d3733af1ba9132e00e969d19303525aa4819a1682fc5560d1710fc7da09d82",
-      "size": 2367
+      "path": "T27/milestones/design-grounding-milestone.json",
+      "sha256": "16779e851261535b4767ee091b12cffeb597acc1d9e43799a039194cb8e77707",
+      "size": 2975
     },
     {
-      "path": "T26/milestones/platform-court-child.json",
-      "sha256": "c3398fb7c4db343f7bfb92541e75960f066b44aa8d40bf38efd3b6d4bf52b0d3",
-      "size": 1539
+      "path": "T27/milestones/platform-court-child.json",
+      "sha256": "683a33e9d168c0d430590c3098547b646ff63e312ed4070bef4328c4e6325678",
+      "size": 2967
     }
   ],
-  "note": "T26 (bound Android admission and authenticated traffic budgets) seal evidence: the executed android narrow/subsystem/controls commands, the frozen-invariant controls, the 2/2 KILLED semantic roster, and the child milestones. readiness remains false; external gates open.",
+  "note": "T27 (implement equivalent iOS traffic governance) seal evidence: the executed iOS narrow/subsystem/controls commands, the shared cross-platform budget vector and its generator, the 2/2 KILLED semantic roster, and the child milestones. readiness remains false; external gates open.",
   "schema_version": 1,
-  "task": "T26"
+  "task": "T27"
 }

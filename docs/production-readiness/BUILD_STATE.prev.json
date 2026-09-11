@@ -3082,7 +3082,17 @@
     "SIGNING"
   ],
   "failed_attempts": [],
-  "in_progress": null,
+  "in_progress": {
+    "claimed_head": "762528490a31f30a342b3f354deff22b99b9d881",
+    "claimed_utc": "2026-09-11T18:49:59+00:00",
+    "objective": {
+      "claimed_head": "762528490a31f30a342b3f354deff22b99b9d881",
+      "claimed_utc": "2026-09-11T18:49:59+00:00",
+      "objective": "Implement the same canonical budget configuration and pure governor transitions on the iOS executor.",
+      "task": "T27"
+    },
+    "task": "T27"
+  },
   "last_code_head": "ec566bb071952978cc829468672427e2333e77be",
   "last_observed_head": "ec566bb071952978cc829468672427e2333e77be",
   "latest_verification": {
