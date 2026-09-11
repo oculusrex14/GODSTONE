@@ -84,6 +84,33 @@ public final class MeshNode {
         guard canStart(linkReady: Self.linkLayerReady) else { return false }
         guard !isStarted else { return true }
         isStarted = true
+        // T24 (section 6, "observers/flow emissions can ... lose authoritative
+        // events"): the authoritative consumers (the transport delegate that
+        // receiveth connect / ready / receive / disconnect, and the router's
+        // forward fan-out) are install'd BEFORE the radio adapter is open'd, so
+        // no event the link emiteth in the instant it waketh is lost in a window
+        // between open and subscribe. The order is fixed by construction via the
+        // selfsame startInOrder decision point the witnesses funnel through.
+        startInOrder(
+            attach: { [weak self] in self?.attachConsumers() },
+            open: { [weak self] in self?.openAdapters() }
+        )
+        return true
+    }
+
+    /// Fix the start ordering by construction: register the consumers first,
+    /// only then open the adapter. Both production `start()` and its witnesses
+    /// funnel through this single decision point, so the consume-before-open
+    /// law holdeth wherever it is observ'd (section 6; T24).
+    internal func startInOrder(attach: () -> Void, open: () -> Void) {
+        attach()
+        open()
+    }
+
+    /// Install the transport delegate (the peer-presence / inbound consumers) and
+    /// the router's forward fan-out, ere the adapter is open'd. Extracted
+    /// verbatim from the former `start()` body (behaviour preserved).
+    private func attachConsumers() {
         ble.delegate = self
         ble.sessions = sessions
         ble.identity = identity
@@ -92,8 +119,11 @@ public final class MeshNode {
             guard let self else { return }
             for peer in self.currentPeers() { _ = self.ble.send(frame, to: peer) }
         }
+    }
+
+    /// Open the radio adapter, once its consumers are already install'd.
+    private func openAdapters() {
         ble.start()
-        return true
     }
 
     public func stop() {
@@ -108,6 +138,39 @@ public final class MeshNode {
     private func currentPeers() -> [UUID] {
         peerLock.lock(); defer { peerLock.unlock() }
         return Array(peers)
+    }
+
+    /// Apply one peer-connect event to the durable view, under the peer lock, and
+    /// report the resulting peer count. Extracted verbatim from the former
+    /// `transportDidConnect` body (behaviour preserved) so the consumer's
+    /// substance is witness'd without a live radio.
+    @discardableResult
+    internal func handlePeerConnect(_ peerId: UUID) -> Int {
+        peerLock.lock()
+        peers.insert(peerId)
+        let count = peers.count
+        peerLock.unlock()
+        return count
+    }
+
+    /// Apply one peer-disconnect event: remove it from the durable view under the
+    /// peer lock, drop its session, and report the resulting peer count. Extracted
+    /// verbatim from the former `transportDidDisconnect` body (behaviour
+    /// preserved: the session is dropped after the lock is releas'd, as before).
+    @discardableResult
+    internal func handlePeerDisconnect(_ peerId: UUID) -> Int {
+        peerLock.lock()
+        peers.remove(peerId)
+        let count = peers.count
+        peerLock.unlock()
+        sessions.drop(peerId)
+        return count
+    }
+
+    /// The peers currently held in the durable view (witnesses only).
+    internal func knownPeersForTest() -> Set<UUID> {
+        peerLock.lock(); defer { peerLock.unlock() }
+        return peers
     }
 
     /// V4 does not fabricate a successful SOS while ADR-004 and M2-link remain open.
@@ -264,7 +327,7 @@ public final class MeshNode {
 
 extension MeshNode: TransportDelegate {
     public func transportDidConnect(peerId: UUID) {
-        peerLock.lock(); peers.insert(peerId); let count = peers.count; peerLock.unlock()
+        let count = handlePeerConnect(peerId)
         onPeerCountChanged?(count)
     }
 
@@ -274,22 +337,39 @@ extension MeshNode: TransportDelegate {
     }
 
     public func transportDidDisconnect(peerId: UUID) {
-        peerLock.lock(); peers.remove(peerId); let count = peers.count; peerLock.unlock()
-        sessions.drop(peerId)
+        let count = handlePeerDisconnect(peerId)
         onPeerCountChanged?(count)
     }
 
     public func transportDidReceive(data: Data, peerId: UUID) {
-        guard Self.linkLayerReady, let frame = FrameV2.decode(data) else { return }
+        guard Self.linkLayerReady, let frame = decodeInbound(data) else { return }
         // Stage 4C / C7: route ACK frames to the delivery tracker, all other
         // frames to the epidemic router, via the ungated `ingestInbound` seam.
-        // The authenticated sender node_id is not available in the v2 header
-        // (the sealed sender lives inside the encrypted payload) and the iOS BLE
-        // transport exposes only a local peer UUID, not the remote node_id; the
-        // real `receivedFrom` is wired when the M2-link layer (ADR-002, Stage 4H)
-        // exposes the authenticated peer node_id. Until then an empty
-        // `receivedFrom` records "sender not yet identified" -- honest, and this
-        // path is unreachable while linkLayerReady=false in any case.
-        ingestInbound(frame, receivedFrom: Data())
+        // T24 (the `receivedFrom` carriage is the INTEGRATION slice, its own child
+        // commit): the authenticated sender node_id is not in the v2 header (the
+        // sealed sender liveth inside the encrypted payload) and the iOS BLE
+        // transport exposeth onely a local peer UUID, not the remote node_id; the
+        // real `receivedFrom` (the immutable TrustedPeer's node id) is wired when
+        // the M2-link layer (ADR-002, Stage 4H) exposeth the authenticated peer
+        // node_id. Until then an empty `receivedFrom` recordeth "sender not yet
+        // identified" -- honest, and this path is unreachability while
+        // linkLayerReady=false in any case.
+        handleInboundFrame(frame, receivedFrom: Data())
+    }
+
+    /// Decode an inbound clear, fail-closed: nil on any desync / magic / version /
+    /// CRC / length error. Pure and non-throwing, so the fail-closed gate is
+    /// witness'd without a radio; the consumer ingests onely when this yieldeth a
+    /// frame. Extracted from the former `transportDidReceive` body.
+    internal func decodeInbound(_ data: Data) -> FrameV2? {
+        return FrameV2.decode(data)
+    }
+
+    /// Decode-then-ingest for an already-decod'd frame, preserving the former
+    /// collector body verbatim (behaviour preserved): ACK frames go to the
+    /// delivery tracker, all others to the epidemic router.
+    @discardableResult
+    internal func handleInboundFrame(_ frame: FrameV2, receivedFrom: Data) -> Bool {
+        return ingestInbound(frame, receivedFrom: receivedFrom)
     }
 }
