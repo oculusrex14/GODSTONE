@@ -2773,9 +2773,211 @@
         "the live inbound routing carriage that would replace the MAC-derived transport id with the captured authenticated identity is the nonshipping lab composition the card assigns to T54; the TrustedPeer/capture/publisher law it consumes is committed & control-tested at C",
         "iOS receivedFrom carriage is BLOCKED_EXTERNAL on the M2-link layer (ADR-002, Stage 4H); recorded, not fixture-closed"
       ]
+    },
+    "T25": {
+      "case_results": {
+        "android_grand": {
+          "counts_source": "fresh :mesh:testDebugUnitTest XML walk (@36a9555, executed --rerun-tasks): 48 TEST-*.xml",
+          "errors": 0,
+          "failures": 0,
+          "skipped": 0,
+          "tests": 897,
+          "xml_files": 48
+        },
+        "deleted_cases": [],
+        "ios_grand": {
+          "counts_source": "full 'swift test' @36a9555: \"Test Suite 'All tests' passed\"; \"Executed 839 tests, with 0 failures (0 unexpected)\"",
+          "executed": 839,
+          "failures": 0
+        },
+        "t25_android_suite": {
+          "counts_source": "fresh TEST-*ReadinessT25Test.xml (canonical court: 6 contract + 5 platform)",
+          "errors": 0,
+          "failures": 0,
+          "tests": 11
+        },
+        "t25_ios_suite": {
+          "counts_source": "'swift test --filter ReadinessT25Tests' @36a9555: \"Executed 11 tests, with 0 failures\" (log T25-narrow-swift-002)",
+          "failures": 0,
+          "tests": 11
+        }
+      },
+      "claim_commit": "70b5652",
+      "commands": [
+        "T25-narrow-gradlew-002",
+        "T25-narrow-swift-002",
+        "T25-subsystem-gradlew",
+        "T25-subsystem-swift",
+        "T25-controls-python3-004",
+        "T25-controls-python3-005",
+        "T25-controls-python3-006"
+      ],
+      "device_gate_ids": [],
+      "file_hashes": {},
+      "implementation_commit": "36a95559b87945dfe7e0589cfd236848a1cc7a70",
+      "implementation_commits": [
+        "39765eaa17b1275d3a6cbd1aefd17d295ff2d2e1",
+        "94432d27594f91bc8ed8cba362e1630a402f0784",
+        "4230c2c03bf8caff98431a481d8198111d16494e",
+        "5d68b0590bf7f9aa13be467a435c6809ecea336f",
+        "36a95559b87945dfe7e0589cfd236848a1cc7a70"
+      ],
+      "inputs": {
+        "authority_sources": [
+          "android/mesh/src/main/java/io/godstone/mesh/transport/LinkInfoSnapshotAuthority.kt",
+          "ios/Godstone/Sources/GodstoneMesh/LinkInfoSnapshotAuthority.swift"
+        ],
+        "required_regression_paths": [
+          "android/mesh/src/test/java/io/godstone/mesh/readiness/ReadinessT25Test.kt",
+          "ios/Godstone/Tests/GodstoneMeshTests/ReadinessT25Tests.swift"
+        ],
+        "task_card": "docs/production-readiness/TASKS.json#T25"
+      },
+      "ladder_boundary_commit": "36a95559b87945dfe7e0589cfd236848a1cc7a70",
+      "mutation_results": {
+        "campaign_note": "T25 semantic roster (8 isle-symmetric mutants) verified KILLED against baseline 5d68b05 (authority sources unchanged through boundary 36a9555). SM1/SM2 falsify the cards required_semantic_negative (synchronous DB work inside the read callback) on both isles via the read-purity witness; SM3/SM4 break bounded-reentrancy latest-wins, SM5/SM6 the observation-lease gate, SM7/SM8 the one-byte saturation cap - each caught by its named canonical-court witness. The T20-T24 roster lineage remains as previously sealed.",
+        "semantic": [
+          {
+            "anchor_count": 1,
+            "baseline_sha": "5d68b0590bf7f9aa13be467a435c6809ecea336f",
+            "build_exit": 0,
+            "category": "semantic",
+            "failed_assertion": "witness testTheReadPathCopiethTheCommittedValueEvenWhileTheStoreIsBlocked failed as intended (1 failed case(s))",
+            "id": "T25-SM1-android-read-traverses-store",
+            "log_path": "T25/logs/T25-SM1-android-read-traverses-store.semantic.log",
+            "log_sha": "46862e25de1719f25cae30863a4e3f5b91f85090cbc76fffacbccabb9180b0ef",
+            "mutant_patch_sha": "7e1add3a11b0db6f14dddaf625ade08533a030c6d65327ea39721621f9ebbc6e",
+            "outcome": "KILLED",
+            "target_tests": [
+              "testTheReadPathCopiethTheCommittedValueEvenWhileTheStoreIsBlocked"
+            ],
+            "tests_run": 11
+          },
+          {
+            "anchor_count": 1,
+            "baseline_sha": "5d68b0590bf7f9aa13be467a435c6809ecea336f",
+            "build_exit": 0,
+            "category": "semantic",
+            "failed_assertion": "witness testTheReadPathCopiethTheCommittedValueEvenWhileTheStoreIsBlocked failed as intended (2 failed case(s))",
+            "id": "T25-SM2-ios-read-traverses-store",
+            "log_path": "T25/logs/T25-SM2-ios-read-traverses-store.semantic.log",
+            "log_sha": "aaaa21074702cffb20bd010fdd21a5cce100a487e933ba657176aa4ed5727490",
+            "mutant_patch_sha": "2db9eeca834c95245fba6c3fa71b7c8136a44ffc3765695482840fbb25e1c788",
+            "outcome": "KILLED",
+            "target_tests": [
+              "testTheReadPathCopiethTheCommittedValueEvenWhileTheStoreIsBlocked"
+            ],
+            "tests_run": 11
+          },
+          {
+            "anchor_count": 1,
+            "baseline_sha": "5d68b0590bf7f9aa13be467a435c6809ecea336f",
+            "build_exit": 0,
+            "category": "semantic",
+            "failed_assertion": "witness testObserverReentrancyPublishethTheLatestValueExactlyOnce failed as intended (1 failed case(s))",
+            "id": "T25-SM3-android-rerun-loop-disabled",
+            "log_path": "T25/logs/T25-SM3-android-rerun-loop-disabled.semantic.log",
+            "log_sha": "ba814a73ec7bd41a7389ec9964f61690425dbcfddcc4c75a1831b52d4ba3f8f3",
+            "mutant_patch_sha": "55ef84476ec465998d9e2356c611a1b06d4b0e00553d0a7251148c8c4a3d83c0",
+            "outcome": "KILLED",
+            "target_tests": [
+              "testObserverReentrancyPublishethTheLatestValueExactlyOnce"
+            ],
+            "tests_run": 11
+          },
+          {
+            "anchor_count": 1,
+            "baseline_sha": "5d68b0590bf7f9aa13be467a435c6809ecea336f",
+            "build_exit": 0,
+            "category": "semantic",
+            "failed_assertion": "witness testObserverReentrancyPublishethTheLatestValueExactlyOnce failed as intended (1 failed case(s))",
+            "id": "T25-SM4-ios-rerun-loop-disabled",
+            "log_path": "T25/logs/T25-SM4-ios-rerun-loop-disabled.semantic.log",
+            "log_sha": "379c778b2e77e3d9375de8b2733ec73aa4c1c84c099b5b4ce7b32ac2d8f14053",
+            "mutant_patch_sha": "1e68e1e9251c368bf235cffc2196e34ab7d1d730a3905ceeb4888a382fc408df",
+            "outcome": "KILLED",
+            "target_tests": [
+              "testObserverReentrancyPublishethTheLatestValueExactlyOnce"
+            ],
+            "tests_run": 11
+          },
+          {
+            "anchor_count": 1,
+            "baseline_sha": "5d68b0590bf7f9aa13be467a435c6809ecea336f",
+            "build_exit": 0,
+            "category": "semantic",
+            "failed_assertion": "witness testRepeatedRuntimeStartStopLeavethOneRegistrationThenZeroActive failed as intended (1 failed case(s))",
+            "id": "T25-SM5-android-lease-gate-removed",
+            "log_path": "T25/logs/T25-SM5-android-lease-gate-removed.semantic.log",
+            "log_sha": "bdd0303b215e83ea7871d19ac1619f46f6bab8acb6832866cfe79b07dc38f339",
+            "mutant_patch_sha": "20d79f6d4c07bd17b52b10f8870dfb7cf12291ca71a660e7dfacc5947070035e",
+            "outcome": "KILLED",
+            "target_tests": [
+              "testRepeatedRuntimeStartStopLeavethOneRegistrationThenZeroActive"
+            ],
+            "tests_run": 11
+          },
+          {
+            "anchor_count": 1,
+            "baseline_sha": "5d68b0590bf7f9aa13be467a435c6809ecea336f",
+            "build_exit": 0,
+            "category": "semantic",
+            "failed_assertion": "witness testRepeatedRuntimeStartStopLeavethOneRegistrationThenZeroActive failed as intended (1 failed case(s))",
+            "id": "T25-SM6-ios-lease-gate-removed",
+            "log_path": "T25/logs/T25-SM6-ios-lease-gate-removed.semantic.log",
+            "log_sha": "8739ed0c28a1baba90a86b36e55aa322bc38b405c14693d30c77c21763dd777d",
+            "mutant_patch_sha": "348ace90a62ad3fad1989eb07150d49effb700deac1a2b930ca4e148a74a8b50",
+            "outcome": "KILLED",
+            "target_tests": [
+              "testRepeatedRuntimeStartStopLeavethOneRegistrationThenZeroActive"
+            ],
+            "tests_run": 11
+          },
+          {
+            "anchor_count": 1,
+            "baseline_sha": "5d68b0590bf7f9aa13be467a435c6809ecea336f",
+            "build_exit": 0,
+            "category": "semantic",
+            "failed_assertion": "witness testQueueDepthSaturatethAtTheOneByteBound failed as intended (1 failed case(s))",
+            "id": "T25-SM7-android-saturation-cap-wrong",
+            "log_path": "T25/logs/T25-SM7-android-saturation-cap-wrong.semantic.log",
+            "log_sha": "dce4c88952486afb318117312afaf5c2f2b98d826e8e6c68f98e4e386de9f614",
+            "mutant_patch_sha": "67405d48a906d3eaee7c4b159274e04935f797a04cec857b4470a7f266d617b2",
+            "outcome": "KILLED",
+            "target_tests": [
+              "testQueueDepthSaturatethAtTheOneByteBound"
+            ],
+            "tests_run": 11
+          },
+          {
+            "anchor_count": 1,
+            "baseline_sha": "5d68b0590bf7f9aa13be467a435c6809ecea336f",
+            "build_exit": 0,
+            "category": "semantic",
+            "failed_assertion": "witness testQueueDepthSaturatethAtTheOneByteBoundViaTheFrozenGenerators failed as intended (1 failed case(s))",
+            "id": "T25-SM8-ios-saturation-cap-wrong",
+            "log_path": "T25/logs/T25-SM8-ios-saturation-cap-wrong.semantic.log",
+            "log_sha": "e0ace211f86b266cb2c587c4fcd404f43c4686400390e2d5aa638c7951a1a6d2",
+            "mutant_patch_sha": "6b8b907f5bed026f477e6eb99ce6df3a1020541b446911f09d027b040c7e37ce",
+            "outcome": "KILLED",
+            "target_tests": [
+              "testQueueDepthSaturatethAtTheOneByteBoundViaTheFrozenGenerators"
+            ],
+            "tests_run": 11
+          }
+        ]
+      },
+      "objective": "Make LinkInfo snapshots nonblocking and subscription-owned: compute held-set digest/queue depth on the store executor after successful commit; no synchronous DB work inside the GATT read callback; single observer registration per runtime start/stop.",
+      "status": "COMPLETE",
+      "tested_tree_sha": "e12e43348b677d28a2d1808f213e211630281901",
+      "unresolved": [
+        "real-device GATT read-under-load and subscription-side snapshot freshness await the hardware gates (deferred to T73-T75 / artifact acceptance); internal implementation does not close the device gate",
+        "external gates (A06, APPROVED_CONTENT, NATIVE_MODELS, HARDWARE, SIGNING) remain open; readiness stays false",
+        "iOS MessageStore.forEachHeldMsgId is non-throwing by frozen contract, so the failed-storage law is enforced via the store committed-only-notify gate (rolled-back commit fire'th no observer) on iOS, mirrored by the android try/catch retain-prior path; an intentional platform-faithful asymmetry, not a defect"
+      ]
     }
   },
-  "current_task": "T25",
+  "current_task": "T26",
   "external_blockers": [
     "A06",
     "APPROVED_CONTENT",
@@ -2784,37 +2986,32 @@
     "SIGNING"
   ],
   "failed_attempts": [],
-  "in_progress": {
-    "claimed_head": "d63bd1ee025ce327ab5e25dc0cdcece02e376d71",
-    "claimed_utc": "2026-09-11T15:30:55Z",
-    "objective": "Make LinkInfo snapshots nonblocking and subscription-owned: compute held-set digest/queue depth on the store executor after successful commit; no synchronous DB work inside the GATT read callback; single observer registration per runtime start/stop.",
-    "task": "T25"
-  },
-  "last_code_head": "12c014f9c41bbf0b22c02744c0428e5c7482b67f",
-  "last_observed_head": "12c014f9c41bbf0b22c02744c0428e5c7482b67f",
+  "in_progress": null,
+  "last_code_head": "36a95559b87945dfe7e0589cfd236848a1cc7a70",
+  "last_observed_head": "36a95559b87945dfe7e0589cfd236848a1cc7a70",
   "latest_verification": {
-    "android": {
+    "android_grand": {
       "errors": 0,
       "failures": 0,
-      "task": "T24",
-      "tests": 886
+      "tests": 897
     },
-    "ios": {
-      "executed": 828,
-      "failures": 0,
-      "task": "T24"
+    "at_utc": "2026-09-11T18:06:52+00:00",
+    "boundary_commit": "36a95559b87945dfe7e0589cfd236848a1cc7a70",
+    "ios_grand": {
+      "executed": 839,
+      "failures": 0
     },
-    "mutation": {
-      "killed": 5,
-      "semantic_killed": 5,
-      "semantic_total": 5,
-      "task": "T24",
-      "total": 5
+    "roster": {
+      "T25_killed": 8,
+      "of": 8
     },
-    "task": "T24",
-    "utc": "2026-09-11T15:23:31Z"
+    "t25_courts": {
+      "android": 11,
+      "ios": 11
+    },
+    "tested_tree_sha": "e12e43348b677d28a2d1808f213e211630281901"
   },
-  "next_task": "T25",
+  "next_task": "T26",
   "phase": "P0",
   "plan_sha256": "685456b378662b0a40a53a6abc810041e37daf97b213f3efeb6cea879363934e",
   "planning_baseline_sha": "b5c3d3d394b70cf356cdde33b47511dad7cbb95c",
