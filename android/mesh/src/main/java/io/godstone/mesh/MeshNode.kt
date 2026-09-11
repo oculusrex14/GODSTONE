@@ -154,28 +154,79 @@ class MeshNode(
             if (isStarted) return true
             isStarted = true
         }
-        ble.start()
-        if (wifi.isSupported) wifi.start()
-        ble.peers().onEach { event ->
-            synchronized(peerLock) {
-                when (event) {
-                    is PeerEvent.Found -> peers[event.peerId.toHexKey()] = event.peerId
-                    is PeerEvent.Lost -> peers.remove(event.peerId.toHexKey())
-                }
-                publishStatus()
-            }
-        }.launchIn(scope)
-        ble.received().onEach { (peer, clear) ->
-            // GMP/2.1 frame path (ADR-001/008): decode is fail-closed (null on any
-            // desync/magic/version/CRC/length error). The inbound frame then goes
-            // to [ingestInbound], which routes ACK frames to the delivery tracker
-            // (C7) and every other type to the epidemic router.
-            runCatching { io.godstone.mesh.wire.v2.FrameV2.decode(clear) }
-                .getOrNull()?.let { ingestInbound(it, peer) }
-        }.launchIn(scope)
+        // T24 (section 6, "observers/flow emissions can ... lose authoritative
+        // events"): the consumers of peer-presence and inbound traffic are
+        // registered BEFORE the radio adapters are opened, so no event emitted
+        // the instant the link wakes is lost in a window between open and
+        // subscribe. The order is fixed by construction via startInOrder.
+        startInOrder({ attachConsumers() }, { openAdapters() })
         publishStatus()
         return true
     }
+
+    /**
+     * Fix the start ordering by construction: register the authoritative
+     * consumers first, only then open the adapters. Both the production
+     * [start] path and its witnesses funnel through this single decision
+     * point, so the "consume-before-open" law holdeth wherever it is applied.
+     */
+    internal fun startInOrder(attach: () -> Unit, open: () -> Unit) {
+        attach()
+        open()
+    }
+
+    /** Subscribe the peer-presence and inbound-frame collectors to the transport. */
+    private fun attachConsumers() {
+        ble.peers().onEach { event -> handlePeerEvent(event) }.launchIn(scope)
+        ble.received().onEach { (peer, clear) -> handleInboundFrame(peer, clear) }.launchIn(scope)
+    }
+
+    /** Open the radio adapters, once their consumers are already attached. */
+    private fun openAdapters() {
+        ble.start()
+        if (wifi.isSupported) wifi.start()
+    }
+
+    /**
+     * Apply one peer-presence event to the durable view, under the peer lock.
+     * Extracted verbatim from the former peers() collector body (behaviour
+     * preserved) so the consumer's substance is witnessed without a live
+     * Android Context.
+     */
+    internal fun handlePeerEvent(event: PeerEvent) {
+        synchronized(peerLock) {
+            when (event) {
+                is PeerEvent.Found -> peers[event.peerId.toHexKey()] = event.peerId
+                is PeerEvent.Lost -> peers.remove(event.peerId.toHexKey())
+            }
+            publishStatus()
+        }
+    }
+
+    /**
+     * Decode an inbound clear, fail-closed: null on any desync/magic/version/
+     * CRC/length error. Pure and non-suspend, so the fail-closed gate is
+     * witnessed without a coroutine; the collector ingests onely when this
+     * yieldeth a frame.
+     */
+    internal fun decodeInbound(clear: ByteArray): io.godstone.mesh.wire.v2.FrameV2? =
+        runCatching { io.godstone.mesh.wire.v2.FrameV2.decode(clear) }.getOrNull()
+
+    /**
+     * Decode and ingest one inbound clear, fail-closed. A null decode is dropt
+     * (reported as false) and naught is ingested; a decoded frame goeth to
+     * [ingestInbound], which routeth ACK frames to the delivery tracker (C7) and
+     * every other type to the epidemic router. Extracted from the former
+     * received() collector body (behaviour preserved; ingests in the collector's
+     * suspend context).
+     */
+    internal suspend fun handleInboundFrame(fromPeer: ByteArray, clear: ByteArray): Boolean {
+        val frame = decodeInbound(clear) ?: return false
+        return ingestInbound(frame, fromPeer)
+    }
+
+    /** The hex keys of the peers currently held in the durable view (witnesses only). */
+    internal fun knownPeersForTest(): Set<String> = synchronized(peerLock) { peers.keys.toSet() }
 
     fun stop() {
         synchronized(peerLock) {
