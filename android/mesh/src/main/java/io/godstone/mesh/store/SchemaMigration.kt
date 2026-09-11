@@ -190,35 +190,64 @@ class InMemoryMigrationExecutor(
     override fun markCheckpointed(step: MigrationStep) { if (step.to > checkpoint) checkpoint = step.to }
 
     override fun execute(step: MigrationStep, statements: List<String>) {
+        // Transactional: snapshot the live schema (deep, via toList() copies), mutate LIVE, and on ANY fault
+        // restore the snapshot -- so a mid-step crash rolls the ENTIRE step back (no partial application) and a
+        // re-run after the crash re-applies it exactly once (idempotence). toMutableList() on the read-only
+        // snapshot yields a fresh mutable copy, avoiding the MutableList self-aliasing that a naive stage had.
+        val snapT = copyTables(tables)
+        val snapR = copyRows(rows)
+        val snapViol = newStrList(violations)
+        val snapExec = newStrList(executed)
         var ran = 0
-        val scratchExecuted = mutableListOf<String>()
-        for (s in statements) {
-            if (crashAfterStatement in 0..ran) throw MigrationCrashSimulation("crash at statement '$s' of step ${step.from}->${step.to}")
-            applyStatement(s, scratchExecuted)
-            ran += 1
+        try {
+            for (s in statements) {
+                if (crashAfterStatement in 0..ran) throw MigrationCrashSimulation("crash at statement '$s' of step ${step.from}->${step.to}")
+                applyStatement(s)
+                ran += 1
+            }
+        } catch (t: Throwable) {
+            tables.clear(); for ((k, v) in snapT) tables[k] = v
+            rows.clear(); for ((k, v) in snapR) rows[k] = v
+            violations.clear(); violations.addAll(snapViol)
+            executed.clear(); executed.addAll(snapExec)
+            throw t
         }
-        executed.addAll(scratchExecuted)     // commit the whole step only after every statement survived (transactional)
     }
 
-    private fun applyStatement(s: String, into: MutableList<String>) {
-        into.add(s)
+    private fun copyTables(src: Map<String, MutableList<String>>): MutableMap<String, MutableList<String>> {
+        val out = mutableMapOf<String, MutableList<String>>()
+        for ((k, v) in src) { val c = mutableListOf<String>(); c.addAll(v); out[k] = c }
+        return out
+    }
+
+    private fun copyRows(src: Map<String, MutableList<Row>>): MutableMap<String, MutableList<Row>> {
+        val out = mutableMapOf<String, MutableList<Row>>()
+        for ((k, v) in src) { val c = mutableListOf<Row>(); c.addAll(v); out[k] = c }
+        return out
+    }
+
+    private fun newStrList(src: List<String>): MutableList<String> {
+        val c = mutableListOf<String>(); c.addAll(src); return c
+    }
+
+    private fun applyStatement(s: String) {
+        executed.add(s)
         // Token-parse the DDL on a lowercased view (no regex -- the identifier class would otherwise be fragile).
         val tk = s.lowercase().trim().split(' ', '\t').filter { it.isNotEmpty() && it != "if" && it != "exists" }
         if (tk.size >= 3 && tk[0] == "drop" && tk[1] == "table") {
-            val t = tk[2]
-            if ((immutableDomains[t] ?: emptySet()).isNotEmpty()) violations += "dropped protected table $t"
-            rows.remove(t); tables.remove(t)
+            val tn = tk[2]
+            if ((immutableDomains[tn] ?: emptySet()).isNotEmpty()) violations += "dropped protected table $tn"
+            rows.remove(tn); tables.remove(tn)
             return
         }
-        if (tk.size >= 5 && tk[0] == "alter" && tk[1] == "table" && tk[2] == "add" && tk[3] == "column") {
-            val t = tk[4]; val c = if (tk.size >= 6) tk[5] else return
-            val cols = tables[t]; if (cols != null && !cols.contains(c)) cols.add(c)
+        if (tk.size >= 6 && tk[0] == "alter" && tk[1] == "table" && tk[3] == "add" && tk[4] == "column") {
+            val tn = tk[2]; val c = tk[5]                                                   // ALTER TABLE <tn> ADD COLUMN <c>
+            val cols = tables[tn]; if (cols != null && !cols.contains(c)) cols.add(c)
             return
         }
-        if (tk.size >= 4 && tk[0] == "update" && tk[1] == "set") {
-            val t = tk.getOrNull(2); val c = tk.getOrNull(4)   // UPDATE <t> [WHERE] SET <c>=...
-            val t2 = if (t != null && c != null) t else tk.getOrNull(1)
-            if (t2 != null && c != null && isImmutableCol(t2, c)) violations += "attempted to mutate immutable column $t2.$c"
+        if (tk.size >= 4 && tk[0] == "update" && tk[2] == "set") {
+            val tn = tk[1]; val c = tk[3].substringBefore('=')                             // UPDATE <tn> SET <c>=...
+            if (isImmutableCol(tn, c)) violations += "attempted to mutate immutable column $tn.$c"
         }
     }
 }
