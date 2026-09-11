@@ -29,6 +29,7 @@
     "Sources/GodstoneMesh/BoundRecipientKeyResolver.swift": "ad2a4d2437c3c141fee75fb82353328fdd0f348ff4916adafec71be09e362ca4",
     "Sources/GodstoneMesh/BulkTransport.swift": "c2be42952af4055bc7abea67fa0a2377b044a78435e0919702773cd838232bb0",
     "Sources/GodstoneMesh/DeliveryTracker.swift": "99d9aac14b86a26fdc6550c1b5586498245125c0d0828b94ab737ffa258c5ef3",
+    "Sources/GodstoneMesh/EncryptedStoreFactory.swift": "c4150a75e2968e08553bf3321126612115e80d12563ed5578fda45e031fa66fc",
     "Sources/GodstoneMesh/GattServiceContract.swift": "b89d0032f719fdb8f571256ebabdaa26c580f6c7a297faa88fff2db26d2275f3",
     "Sources/GodstoneMesh/IdentityBindingV1.swift": "446cdefc6e9b89fcb58700db2bee1baa4c6aedebfe181925f52a94130bb5b7ba",
     "Sources/GodstoneMesh/LifecycleTransportAdapter.swift": "97be64114f24e2ef1723af66cc1e7b527cd190ae9be810b75fe855dcbb6cda94",
