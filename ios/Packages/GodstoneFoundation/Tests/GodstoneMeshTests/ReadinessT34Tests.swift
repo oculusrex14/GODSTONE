@@ -53,9 +53,17 @@ final class ReadinessT34Tests: XCTestCase {
     fileprivate final class T34Runtime: TransportRuntimeSeam {
         var quiesced = false
         var drainCalls = 0
+        var drainAttempts = 0                                 // every drain attempt, success or not
+        var drainFails = 0                                    // scripted: next N drains report NotDrained
         var delivered: [String] = []
         var sends: [String] = []
-        func drainTransport() -> RuntimeDrainReceipt { drainCalls += 1; quiesced = true; return .drained(closedTransports: 3, quiescedRuntime: true) }
+        func drainTransport() -> RuntimeDrainReceipt {
+            drainAttempts += 1
+            if drainFails > 0 { drainFails -= 1; return .notDrained(reason: "radio pairing in progress") }
+            drainCalls += 1
+            quiesced = true
+            return .drained(closedTransports: 3, quiescedRuntime: true)
+        }
         func isQuiesced() -> Bool { quiesced }
         func fireRadio(_ msg: String) -> Bool { if !quiesced { return false }; delivered.append(msg); return true }
         func sendVia(_ msg: String) -> Bool { if !quiesced { return false }; sends.append(msg); return true }
@@ -269,6 +277,27 @@ final class ReadinessT34Tests: XCTestCase {
         XCTAssertFalse(e2.isSupportedJournal(), "an unsupported journal is not well-formed")
         XCTAssertTrue(isRefused(try e2.resume()), "resume REFUSES an unsupported journal fail-closed")
         XCTAssertEqual(rig2.store.lines.count, 2, "nothing was appended to the unsupported journal")
+    }
+
+    // (10) the drain is a PROOF before destruction: while it reports NotDrained nothing may die
+    func testRuntimeDrainIsProvenBeforeAnyDestruction() throws {
+        let rig = T34Rig(crashBefore: nil)
+        rig.runtime.drainFails = 2                                  // the first two drain attempts refuse to quiesce
+        let e = rig.engine()
+        let r1 = try e.requestWipe()
+        XCTAssertTrue(retryAt(r1, .requested), "the ladder parks at REQUESTED without a Drained receipt")
+        XCTAssertEqual(rig.store.lines, ["REQUESTED"], "only REQUESTED is journaled while the transport is live")
+        XCTAssertFalse(rig.runtime.quiesced, "the runtime was NOT quiesced, so the point of no return was not crossed")
+        XCTAssertEqual(rig.vault.alive.count, WipeScope.privateKeys.count, "no key was erased while a radio frame could still be in flight")
+        XCTAssertTrue(rig.fs.files.values.allSatisfy { $0 }, "no artifact was deleted while the transport was live")
+        let r2 = try e.step()
+        XCTAssertTrue(retryAt(r2, .requested), "a second failed drain still parks the ladder")
+        XCTAssertEqual(rig.vault.alive.count, WipeScope.privateKeys.count, "still nothing destroyed")
+        XCTAssertFalse(rig.runtime.quiesced, "still not quiesced")
+        let r3 = try e.step()
+        XCTAssertTrue(advanced(r3, .idle), "once the drain is proven, the ladder completes")
+        XCTAssertEqual(rig.runtime.drainAttempts, 3, "the drain was attempted exactly the scripted three times")
+        XCTAssertEqual(rig.runtime.drainCalls, 1, "exactly one drain actually succeeded")
     }
 
     // -- helpers ------------------------------------------------------------------------

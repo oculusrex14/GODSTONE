@@ -70,9 +70,13 @@ public class ReadinessT34Test {
     private class FakeRuntime : TransportRuntimeSeam {
         var quiesced = false
         var drainCalls = 0
+        var drainAttempts = 0                                 // every drain attempt, success or not
+        var drainFails = 0                                  // scripted: next N drains report NotDrained
         val delivered = mutableListOf<String>()
         val sends = mutableListOf<String>()
         override fun drainTransport(): RuntimeDrainReceipt {
+            drainAttempts += 1
+            if (drainFails > 0) { drainFails -= 1; return RuntimeDrainReceipt.NotDrained("radio pairing in progress") }
             drainCalls += 1
             quiesced = true
             return RuntimeDrainReceipt.Drained(3, true)
@@ -290,5 +294,26 @@ public class ReadinessT34Test {
         val r2 = e2.resume()
         Assert.assertTrue("resume REFUSES an unsupported journal fail-closed", r2 is WipeStepResult.Refused)
         Assert.assertEquals("nothing was appended to the unsupported journal", 2, rig2.store.lines.size)
+    }
+
+    // (10) the drain is a PROOF before destruction: while it reports NotDrained nothing may die
+    @Test
+    fun testRuntimeDrainIsProvenBeforeAnyDestruction() {
+        val rig = Rig()
+        rig.runtime.drainFails = 2                                  // the first two drain attempts refuse to quiesce
+        val e = rig.engine()
+        val r1 = e.requestWipe()
+        Assert.assertTrue("the ladder parks at REQUESTED without a Drained receipt", r1 is WipeStepResult.RetryLater && r1.at == WipeJournalState.REQUESTED)
+        Assert.assertEquals("only REQUESTED is journaled while the transport is live", listOf("REQUESTED"), rig.store.lines)
+        Assert.assertFalse("the runtime was NOT quiesced, so the point of no return was not crossed", rig.runtime.quiesced)
+        Assert.assertTrue("no key was erased while a radio frame could still be in flight", rig.vault.alive.size == WipeScope.PRIVATE_KEYS.size)
+        Assert.assertTrue("no artifact was deleted while the transport was live", rig.fs.files.values.all { it })
+        val r2 = e.step()
+        Assert.assertTrue("a second failed drain still parks the ladder", r2 is WipeStepResult.RetryLater && r2.at == WipeJournalState.REQUESTED)
+        Assert.assertTrue("still nothing destroyed", rig.vault.alive.size == WipeScope.PRIVATE_KEYS.size && !rig.runtime.quiesced)
+        val r3 = e.step()
+        Assert.assertTrue("once the drain is proven, the ladder completes", r3 is WipeStepResult.Advanced && r3.to == WipeJournalState.IDLE)
+        Assert.assertSame("the drain was attempted exactly the scripted three times", 3, rig.runtime.drainAttempts)
+        Assert.assertSame("exactly one drain actually succeeded", 1, rig.runtime.drainCalls)
     }
 }
