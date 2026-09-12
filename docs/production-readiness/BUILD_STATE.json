@@ -3774,9 +3774,198 @@
         "the sealed MessageStore destructive onUpgrade drop-recreate + validateSchema hot path (android store/MessageStore.kt) and the iOS system-SQLite stores are NOT rewritten by this task -- the SchemaMigration engine is the ADDITIVE sanctioned seam the runtime binds onUpgrade to once installs must survive; the never-shipped pre-ship drop path is left intact",
         "pre-existing ReadinessT18Test randomized fixture is a latent ordering-sensitive flake unrelated to T31; handled by bounded re-run to a genuinely green execution, no sealed-code edit, no fabrication"
       ]
+    },
+    "T32": {
+      "case_results": {
+        "android_grand": {
+          "counts_source": "gradlew :mesh:testDebugUnitTest --rerun-tasks at boundary; TEST-*.xml walk",
+          "errors": 0,
+          "failures": 0,
+          "skipped": 0,
+          "tests": 942,
+          "xml_files": 54
+        },
+        "deleted_cases": [],
+        "dual_court_parity": "the android ReadinessT32Test.kt and iOS ReadinessT32Tests.swift are IDENTICAL-named seven witnesses driving the SAME shared RetentionPolicy/RetentionTx contract (Kotlin store/RetentionClock.kt <-> Swift Sources/GodstoneMesh/RetentionClock.swift), asserting the exact section14 rows 57-72 laws (persisted non-replenishing remaining lifetime, monotonic checkpoints, boot identity, nonnegative wall-delta hints, finite 32-discontinuity restart allowance, MAX_HOLD 7d, canonical DIRECT7d/SOS-GROUP-BROADCAST24h/BULK1h/tombstone8d local policy with sender time never controlling); the T32-RC1/RC2/RC3 roster strikes the three named falsifications on BOTH isles",
+        "ios_grand": {
+          "counts_source": "swift test --package-path ios/Packages/GodstoneFoundation (full) at boundary; Test Case passed lines",
+          "errors": 0,
+          "failures": 0,
+          "tests": 882
+        },
+        "t32_android_court": {
+          "counts_source": "ReadinessT32Test.kt (7 witnesses, dual-court twin)",
+          "errors": 0,
+          "failures": 0,
+          "tests": 7
+        },
+        "t32_ios_court": {
+          "counts_source": "ReadinessT32Tests.swift (7 witnesses, iOS twin)",
+          "errors": 0,
+          "failures": 0,
+          "tests": 7
+        }
+      },
+      "claim_commit": "0b63f0e",
+      "commands": [
+        "T32-narrow-gradlew",
+        "T32-narrow-swift",
+        "T32-subsystem-gradlew",
+        "T32-subsystem-swift",
+        "T32-controls-python3",
+        "T32-controls-python3-002",
+        "T32-controls-python3-003"
+      ],
+      "device_gate_ids": [],
+      "file_hashes": {},
+      "implementation_commit": "349defe2cfa5176941ab7ccf85df96a1145c0f19",
+      "implementation_commits": [
+        "856fd4a3561d040d732eb9b203ffedab16368af2",
+        "3bdb496fb204e8f3c62f1584d153a75a38ca02fc"
+      ],
+      "inputs": {
+        "children_commit_order": [
+          "0b63f0e",
+          "856fd4a35",
+          "3bdb496fb",
+          "349defe"
+        ],
+        "governed_source": [
+          "android/mesh/src/main/java/io/godstone/mesh/store/RetentionClock.kt",
+          "ios/Godstone/Sources/GodstoneMesh/RetentionClock.swift"
+        ],
+        "required_regression_paths": [
+          "android/mesh/src/test/java/io/godstone/mesh/readiness/ReadinessT32Test.kt",
+          "ios/Godstone/Tests/GodstoneMeshTests/ReadinessT32Tests.swift"
+        ],
+        "sealed_hot_paths_untouched": [
+          "android/.../MessageStore.kt",
+          "ios/.../MessageStore.swift",
+          "android/.../SqliteDeliveryRepository.kt",
+          "ios/.../SqliteDeliveryRepository.swift"
+        ],
+        "task_card": "docs/production-readiness/TASKS.json#T32"
+      },
+      "ladder_boundary_commit": "349defe2cfa5176941ab7ccf85df96a1145c0f19",
+      "mutation_results": {
+        "campaign_note": "T32 semantic roster (6 mutants, three per isle) verified KILLED against baseline 3bdb496. RC1 reopen drains from the FULL canonical lifetime instead of the persisted remainder (the cards named falsification: reset full retention on every reopen) -> testRepeatedMaliciousCrashBoundAndTombstoneDiscipline fails both isles; RC2 drops the discontinuityCount increment so the finite 32-strike bound never trips -> testRebootWithoutContinuityIsBoundedAndEventuallyExpires fails both isles; RC3 removes the conservative max(1h,..) floor so a rolled-back wall clock yields a negative debit that EXTENDS retention -> testClockRollbackNeverExtendsRetention fails both isles. Each baseline court ran all 7 positives (tests_run 7), every mutant compiled (build_exit 0), anchors unique, installs clean. Two earlier roster iterations were honestly rejected (a shared/embedded find crashing clean-install; an INVALID non-compiling block-replace + an EQUIVALENT clamp-only RC3 that ESCAPED) and fixed at the MUTANT level, never by weakening an oracle.",
+        "semantic": [
+          {
+            "anchor_count": 1,
+            "baseline_sha": "3bdb496fb204e8f3c62f1584d153a75a38ca02fc",
+            "build_exit": 0,
+            "category": "semantic",
+            "failed_assertion": "witness testRepeatedMaliciousCrashBoundAndTombstoneDiscipline failed as intended (3 failed case(s))",
+            "id": "T32-RC1-android-replenish-on-reopen",
+            "log_path": "T32/logs/T32-RC1-android-replenish-on-reopen.semantic.log",
+            "log_sha": "babb9f0958b10b5e97cd6dde22a86959873c12ee832b11672f5ce881b5f45ee2",
+            "mutant_patch_sha": "03760855baf49d873b1a19cb89842e84b6e36c164fd3e49f0cc268e06966a7b4",
+            "outcome": "KILLED",
+            "target_tests": [
+              "testRepeatedMaliciousCrashBoundAndTombstoneDiscipline"
+            ],
+            "tests_run": 7
+          },
+          {
+            "anchor_count": 1,
+            "baseline_sha": "3bdb496fb204e8f3c62f1584d153a75a38ca02fc",
+            "build_exit": 0,
+            "category": "semantic",
+            "failed_assertion": "witness testRepeatedMaliciousCrashBoundAndTombstoneDiscipline failed as intended (3 failed case(s))",
+            "id": "T32-RC1-ios-replenish-on-reopen",
+            "log_path": "T32/logs/T32-RC1-ios-replenish-on-reopen.semantic.log",
+            "log_sha": "94095739e17eead03b4072d7a6e7eef64f949dd15e2fa98905db3ff9a7a98172",
+            "mutant_patch_sha": "8b9194e867ef5ede4838db07b1d329718fb550fa718dcad7b576f1959d10ce2b",
+            "outcome": "KILLED",
+            "target_tests": [
+              "testRepeatedMaliciousCrashBoundAndTombstoneDiscipline"
+            ],
+            "tests_run": 7
+          },
+          {
+            "anchor_count": 1,
+            "baseline_sha": "3bdb496fb204e8f3c62f1584d153a75a38ca02fc",
+            "build_exit": 0,
+            "category": "semantic",
+            "failed_assertion": "witness testRebootWithoutContinuityIsBoundedAndEventuallyExpires failed as intended (4 failed case(s))",
+            "id": "T32-RC2-android-discontinuity-no-increment",
+            "log_path": "T32/logs/T32-RC2-android-discontinuity-no-increment.semantic.log",
+            "log_sha": "045ef9e927bc17d1e2e7a3abb58302188edfbfc7fa3716747046c84a8a30dd27",
+            "mutant_patch_sha": "76a72512725c03470db76a43b34aa54162b844b5f6cf8413e74eec3472a96f86",
+            "outcome": "KILLED",
+            "target_tests": [
+              "testRebootWithoutContinuityIsBoundedAndEventuallyExpires"
+            ],
+            "tests_run": 7
+          },
+          {
+            "anchor_count": 1,
+            "baseline_sha": "3bdb496fb204e8f3c62f1584d153a75a38ca02fc",
+            "build_exit": 0,
+            "category": "semantic",
+            "failed_assertion": "witness testRebootWithoutContinuityIsBoundedAndEventuallyExpires failed as intended (4 failed case(s))",
+            "id": "T32-RC2-ios-discontinuity-no-increment",
+            "log_path": "T32/logs/T32-RC2-ios-discontinuity-no-increment.semantic.log",
+            "log_sha": "85a33883886a01037ff6f7b05c16cfb6b72efe32c94e024d814ce25512c26146",
+            "mutant_patch_sha": "76a72512725c03470db76a43b34aa54162b844b5f6cf8413e74eec3472a96f86",
+            "outcome": "KILLED",
+            "target_tests": [
+              "testRebootWithoutContinuityIsBoundedAndEventuallyExpires"
+            ],
+            "tests_run": 7
+          },
+          {
+            "anchor_count": 1,
+            "baseline_sha": "3bdb496fb204e8f3c62f1584d153a75a38ca02fc",
+            "build_exit": 0,
+            "category": "semantic",
+            "failed_assertion": "witness testClockRollbackNeverExtendsRetention failed as intended (2 failed case(s))",
+            "id": "T32-RC3-android-wall-rollback-extends",
+            "log_path": "T32/logs/T32-RC3-android-wall-rollback-extends.semantic.log",
+            "log_sha": "62a5199a7f26c94b9af4389c21c1797266ac5540517ccf1f03b31fd1fa44a2d4",
+            "mutant_patch_sha": "41ee824bb8cdb6bc6f14d90d4a851fdaa3773e60aae4813fd908f7ad89ae9648",
+            "outcome": "KILLED",
+            "target_tests": [
+              "testClockRollbackNeverExtendsRetention"
+            ],
+            "tests_run": 7
+          },
+          {
+            "anchor_count": 1,
+            "baseline_sha": "3bdb496fb204e8f3c62f1584d153a75a38ca02fc",
+            "build_exit": 0,
+            "category": "semantic",
+            "failed_assertion": "witness testClockRollbackNeverExtendsRetention failed as intended (2 failed case(s))",
+            "id": "T32-RC3-ios-wall-rollback-extends",
+            "log_path": "T32/logs/T32-RC3-ios-wall-rollback-extends.semantic.log",
+            "log_sha": "563cef9594fe4065d25b1e03b8f5564837bb4a744c001d0043f8cc8b1ed7d728",
+            "mutant_patch_sha": "afe864147e59d14e6f13a1ee5b5b139bcb4119780452c9ad8b8dfa0e190f2b6d",
+            "outcome": "KILLED",
+            "target_tests": [
+              "testClockRollbackNeverExtendsRetention"
+            ],
+            "tests_run": 7
+          }
+        ]
+      },
+      "objective": {
+        "claimed_head": "80c903b04764166b626ae0e5b7d93ed12881eabd",
+        "claimed_utc": "2026-09-11T23:50:28+00:00",
+        "objective": "Implement the exact RetentionClock algorithm in section14: persisted remaining lifetime with monotonic checkpoints, boot identity, nonnegative wall-delta hints and a finite restart allowance.",
+        "task": "T32"
+      },
+      "status": "COMPLETE",
+      "tested_tree_sha": "37f1d1b330d2681754016218e23d8e9c4735c8a2",
+      "unresolved": [
+        "the physical run of the section19/18 retention cases against the EXACT BUILT ARTIFACT on a real device (wall-clock rollback/forward under the real platform clock, reboot continuity proofs, crash-during-checkpoint persistence, backup/restore) is DEVICE evidence deferred to T73-T75 / artifact acceptance; the host courts + the injected MonotonicClockAdapter fakes prove the bounded-retention LAWS at the algorithmic level only and do NOT close the device gate; nothing device-side is fabricated",
+        "external gates (A06, APPROVED_CONTENT, NATIVE_MODELS, HARDWARE, SIGNING) remain open; readiness stays false",
+        "the sealed MessageStore.kt/.swift wall-clock received_at path and the SqliteDeliveryRepository.kt/.swift are NOT rewritten by this task -- the RetentionPolicy/RetentionTx engine is the ADDITIVE sanctioned seam the runtime binds to; blast-radius discipline preserved (as T29/T30/T31 adapters)",
+        "a real MonotonicClockAdapter must PROVE continuity from tested platform information (uptime alone after a reboot is insufficient) and take the conservative branch when it cannot; the host exercises the algorithm through deterministic injected fakes only, which is not evidence about any platform clock adapter; product/hardware acceptance must review the recovery reasons (notably the 32-strike CLOCK_CONTINUITY_LOST discard) -- the finite-uncertainty policy can discard still-useful data after repeated discontinuities",
+        "pre-existing ReadinessT18Test randomized fixture is a latent ordering-sensitive flake unrelated to T32; handled by bounded re-run to a genuinely green execution, no sealed-code edit, no fabrication"
+      ]
     }
   },
-  "current_task": "T32",
+  "current_task": "T33",
   "external_blockers": [
     "A06",
     "APPROVED_CONTENT",
@@ -3785,43 +3974,33 @@
     "SIGNING"
   ],
   "failed_attempts": [],
-  "in_progress": {
-    "claimed_head": "80c903b04764166b626ae0e5b7d93ed12881eabd",
-    "claimed_utc": "2026-09-11T23:50:28+00:00",
-    "objective": {
-      "claimed_head": "80c903b04764166b626ae0e5b7d93ed12881eabd",
-      "claimed_utc": "2026-09-11T23:50:28+00:00",
-      "objective": "Implement the exact RetentionClock algorithm in section14: persisted remaining lifetime with monotonic checkpoints, boot identity, nonnegative wall-delta hints and a finite restart allowance.",
-      "task": "T32"
-    },
-    "task": "T32"
-  },
-  "last_code_head": "d817aa5788367c1c068eb5b764f0676ed7831095",
-  "last_observed_head": "d817aa5788367c1c068eb5b764f0676ed7831095",
+  "in_progress": null,
+  "last_code_head": "349defe2cfa5176941ab7ccf85df96a1145c0f19",
+  "last_observed_head": "349defe2cfa5176941ab7ccf85df96a1145c0f19",
   "latest_verification": {
     "android_grand": {
       "errors": 0,
       "failures": 0,
-      "tests": 935
+      "tests": 942
     },
-    "at_utc": "2026-09-11T23:39:03+00:00",
-    "boundary_commit": "d817aa5788367c1c068eb5b764f0676ed7831095",
+    "at_utc": "2026-09-12T00:44:29+00:00",
+    "boundary_commit": "349defe2cfa5176941ab7ccf85df96a1145c0f19",
     "ios_grand": {
       "errors": 0,
       "failures": 0,
-      "tests": 875
+      "tests": 882
     },
     "roster": {
-      "T31_killed": 4,
-      "of": 4
+      "T32_killed": 6,
+      "of": 6
     },
-    "t31_courts": {
-      "android": 6,
-      "ios": 6
+    "t32_courts": {
+      "android": 7,
+      "ios": 7
     },
-    "tested_tree_sha": "94f3aed5af346b7ab7a64459b5811523a49350f2"
+    "tested_tree_sha": "37f1d1b330d2681754016218e23d8e9c4735c8a2"
   },
-  "next_task": "T32",
+  "next_task": "T33",
   "phase": "P0",
   "plan_sha256": "685456b378662b0a40a53a6abc810041e37daf97b213f3efeb6cea879363934e",
   "planning_baseline_sha": "b5c3d3d394b70cf356cdde33b47511dad7cbb95c",

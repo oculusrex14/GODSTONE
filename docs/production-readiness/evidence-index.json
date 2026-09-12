@@ -2,102 +2,102 @@
   "evidence_root": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE",
   "files": [
     {
-      "path": "T31/commands.json",
-      "sha256": "19e244e524c70c7823e7f907e4e21b49acf3248a366e53da78ba56d35362ffc2",
+      "path": "T32/commands.json",
+      "sha256": "33443ee88265eaf8a0b722cf8962eb0293a77e3f6177744ae803d8ef69a69b0a",
       "size": 6121
     },
     {
-      "path": "T31/logs/T31-SM1-android-migration-becomes-drop.semantic.log",
-      "sha256": "7848439ca68c739acd913cdc1ec38d9de8e01f7c4223b329ba5c25c31a0400a9",
-      "size": 676
+      "path": "T32/logs/T32-RC1-android-replenish-on-reopen.semantic.log",
+      "sha256": "babb9f0958b10b5e97cd6dde22a86959873c12ee832b11672f5ce881b5f45ee2",
+      "size": 673
     },
     {
-      "path": "T31/logs/T31-SM1-ios-migration-becomes-drop.semantic.log",
-      "sha256": "bd2607276c128161a88fd92b6723a54c73502fe08183a86c8258fc83af14d62a",
+      "path": "T32/logs/T32-RC1-ios-replenish-on-reopen.semantic.log",
+      "sha256": "94095739e17eead03b4072d7a6e7eef64f949dd15e2fa98905db3ff9a7a98172",
       "size": 16029
     },
     {
-      "path": "T31/logs/T31-SM2-android-future-version-ignored.semantic.log",
-      "sha256": "1e830aba860aa16e317e63e6a1bd33b1597a3b0998316dad7d914a6e3f156943",
-      "size": 676
+      "path": "T32/logs/T32-RC2-android-discontinuity-no-increment.semantic.log",
+      "sha256": "045ef9e927bc17d1e2e7a3abb58302188edfbfc7fa3716747046c84a8a30dd27",
+      "size": 680
     },
     {
-      "path": "T31/logs/T31-SM2-ios-future-version-ignored.semantic.log",
-      "sha256": "25d19d598972161fb7fd37fc7c16dd7d5d898a544de461bd2ac43d1933f6f0c9",
+      "path": "T32/logs/T32-RC2-ios-discontinuity-no-increment.semantic.log",
+      "sha256": "85a33883886a01037ff6f7b05c16cfb6b72efe32c94e024d814ce25512c26146",
       "size": 16029
     },
     {
-      "path": "T31/logs/T31-controls-python3-002.log",
+      "path": "T32/logs/T32-RC3-android-wall-rollback-extends.semantic.log",
+      "sha256": "62a5199a7f26c94b9af4389c21c1797266ac5540517ccf1f03b31fd1fa44a2d4",
+      "size": 675
+    },
+    {
+      "path": "T32/logs/T32-RC3-ios-wall-rollback-extends.semantic.log",
+      "sha256": "563cef9594fe4065d25b1e03b8f5564837bb4a744c001d0043f8cc8b1ed7d728",
+      "size": 16029
+    },
+    {
+      "path": "T32/logs/T32-controls-python3-002.log",
       "sha256": "0b1ac463307b9f7d907105bb19e85bdada5dcd05131d80c492ffd80b4ab3f5f4",
       "size": 234
     },
     {
-      "path": "T31/logs/T31-controls-python3-003.log",
+      "path": "T32/logs/T32-controls-python3-003.log",
       "sha256": "67493ebd28a55ece17214e55d318f34ba4af6ac7592268756f1b3dcc304afa21",
       "size": 125
     },
     {
-      "path": "T31/logs/T31-controls-python3.log",
+      "path": "T32/logs/T32-controls-python3.log",
       "sha256": "03f0bc422dc53a81fd7f41085300a28e42626c2a4554e8929d897d3c092bd014",
       "size": 1374
     },
     {
-      "path": "T31/logs/T31-narrow-gradlew.log",
-      "sha256": "3e685c54ad43494785a4219acc1e9a2e023084023f1afe139a02cd46a291d1cf",
+      "path": "T32/logs/T32-narrow-gradlew.log",
+      "sha256": "2988011bef99a2e47383069e3af92916ffd54b0e7b5faa5355b7033ad606d962",
       "size": 2873
     },
     {
-      "path": "T31/logs/T31-narrow-swift.log",
-      "sha256": "2ebc48117fb567ec9e6dd4a35a254e50bb57e5a85d54d93dbfa63baca80bc93a",
-      "size": 2449
+      "path": "T32/logs/T32-narrow-swift.log",
+      "sha256": "fa34dce4d7341c227b0b7f7304bcf3f2daf0d52dbf8ff7d589f4a84afea9c68a",
+      "size": 231652
     },
     {
-      "path": "T31/logs/T31-subsystem-gradlew.log",
-      "sha256": "0e343111223e9c076c766c3c7bb11919da1cb151c34582fabcd0af75cbf3c285",
+      "path": "T32/logs/T32-subsystem-gradlew.log",
+      "sha256": "8a815489d7177755f93b5568884abbd01c9da3e227b331d4103a27d97eceeef7",
       "size": 2500
     },
     {
-      "path": "T31/logs/T31-subsystem-swift.log",
-      "sha256": "eb9e9b99c4e947f56ba62b89bea7c773cbd52450a4bcbe683e95d59c886457ce",
-      "size": 228382
+      "path": "T32/logs/T32-subsystem-swift.log",
+      "sha256": "0dcb29bbf557d31b1506f950ffcd94910fd2814268f1e63eccbce1d8cbd0bca6",
+      "size": 230167
     },
     {
-      "path": "T31/manifest.json",
-      "sha256": "ff36e55e62db6f7dd37ba81134cbe0f30726b09eb507831b56bfd3ffbb409bd5",
-      "size": 3210
+      "path": "T32/manifest.json",
+      "sha256": "ba9753d5643854cfead585b3f5406e93356312fc377701c960e0484e7b138c25",
+      "size": 4803
     },
     {
-      "path": "T31/milestones/baseline-milestone.json",
-      "sha256": "426f28119ddba19d4559c206068fd5aaf02bc50281fdeaaaafdb78031f1c666d",
-      "size": 3371
+      "path": "T32/milestones/contract-court-android-child.json",
+      "sha256": "d02f79ce5d0bdb001687b1dd849088c6950b14197f9ab93e8041bf38d67cd03c",
+      "size": 3613
     },
     {
-      "path": "T31/milestones/contract-child.json",
-      "sha256": "60608b3a0e09d37af226904ce084b052293384aaeb1413414f391e9a412c75b1",
-      "size": 3370
+      "path": "T32/milestones/controls-roster.json",
+      "sha256": "fae63c0e46a18f97f947a6fc40aadd9bbca63a5829b6057d2b2bc4c79171536b",
+      "size": 3613
     },
     {
-      "path": "T31/milestones/controls-roster.json",
-      "sha256": "f714cabf9a71ab9b8db6a31448c50a7d72380d023d8ebcd9565388bdd3d5b985",
-      "size": 3015
+      "path": "T32/milestones/court-ios-child.json",
+      "sha256": "9316e959cde5d0bdcc122205cc28ef7a8e031c836a78ed28672177df04772609",
+      "size": 2693
     },
     {
-      "path": "T31/milestones/court-android-child.json",
-      "sha256": "ef156098a82877cf7f02ab6d98b8232be2d90757f6047a61d62ad0b190889adc",
-      "size": 4282
-    },
-    {
-      "path": "T31/milestones/court-ios-child.json",
-      "sha256": "07c987635e96375ab7e88fe786d4de9209ca31404834363d67e4411ece5f6b96",
-      "size": 2468
-    },
-    {
-      "path": "T31/milestones/design-grounding-milestone.json",
-      "sha256": "cdb43f4256aa0c0648e32de0659312f865642b1f97ae99aba2cf15fbfe138509",
-      "size": 4952
+      "path": "T32/milestones/design-grounding-milestone.json",
+      "sha256": "a16199135dbbd97cd6862ad09951bc2a0186910f96d1f97fcb2058f7e06420cf",
+      "size": 5328
     }
   ],
-  "note": "T31 (replace destructive schema upgrades with versioned migrations) seal evidence: the executed DUAL-isle narrow/subsystem/controls commands (7 records), the 4/4 KILLED semantic roster (two per isle), and the child milestones (contract, court-android+contract-fixes, court-ios+engine-twin, controls-roster). Dual-court parity: android and iOS courts assert the same six laws against the same shared SchemaMigration contract. readiness remains false; external gates open; the physical section19/18 artifact-run cases are device evidence deferred to the device gate.",
+  "note": "T32 (bounded receipt-relative retention across restarts) seal evidence: the executed DUAL-isle narrow/subsystem/controls commands (7 records), the 6/6 KILLED semantic roster (three per isle), and the child milestones (contract+court-android, court-ios+engine-twin, controls-roster). Dual-court parity: android and iOS courts assert the same seven section14 retention laws against the same shared RetentionPolicy contract. readiness remains false; external gates open; the physical section19/18 retention cases are device evidence deferred to the device gate.",
   "schema_version": 1,
-  "task": "T31"
+  "task": "T32"
 }

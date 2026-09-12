@@ -3785,7 +3785,17 @@
     "SIGNING"
   ],
   "failed_attempts": [],
-  "in_progress": null,
+  "in_progress": {
+    "claimed_head": "80c903b04764166b626ae0e5b7d93ed12881eabd",
+    "claimed_utc": "2026-09-11T23:50:28+00:00",
+    "objective": {
+      "claimed_head": "80c903b04764166b626ae0e5b7d93ed12881eabd",
+      "claimed_utc": "2026-09-11T23:50:28+00:00",
+      "objective": "Implement the exact RetentionClock algorithm in section14: persisted remaining lifetime with monotonic checkpoints, boot identity, nonnegative wall-delta hints and a finite restart allowance.",
+      "task": "T32"
+    },
+    "task": "T32"
+  },
   "last_code_head": "d817aa5788367c1c068eb5b764f0676ed7831095",
   "last_observed_head": "d817aa5788367c1c068eb5b764f0676ed7831095",
   "latest_verification": {
