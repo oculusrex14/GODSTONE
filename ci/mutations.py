@@ -333,6 +333,115 @@ SEMANTIC = [
     {'id': 'T30-SM4-ios-select-before-verify', 'platform': 'swift', 'file': 'ios/Godstone/Sources/GodstoneMesh/PlaintextToEncryptedMigration.swift', 'find': '        guard verification.isGood else { return .sourcePreservedOnFailure(.verificationMismatch) }  // never select an unverified copy', 'replace': '        if verification.isGood { _ = 0 }   // (mutant) select the encrypted copy even when verification says it is not good', 'why': 'the encrypted copy is selected even when the verify-before-select check reports a mismatch, so an unverified or corrupt copy could be promoted and the plaintext source retired; the failed-migration-preserves-recoverable-source witness falleth', 'witness': 'testFailedMigrationPreservesRecoverableSource', 'swift_filter': 'ReadinessT30Tests'},
     # -------------------------------------------------------------- T32 (bounded receipt-relative retention across restarts, dual-isle)
 
+
+    # -------------------------------------------------------------- T34 (crash-resumable wipe across transport and storage, dual-isle)
+    #
+    #   The durable wipe ladder (identity/CrashResumableWipe.kt + iOS twin Sources/GodstoneMesh/CrashResumableWipe.swift)
+    #   must PROVE the transport drained before destruction (no resurrection of the wiped session across the point of no
+    #   return), erase keys before file cleanup with FAILED erasures never treated as satisfaction (old ciphertext must
+    #   die cryptographically), verify delete results distinguishing absent from busy-failed, keep the journal-bound gate
+    #   unbypassable by stale UI sends, and honour the sealed journal's legacy KEY_ERASED spelling on resume. Five
+    #   falsifications, struck on BOTH isles. Disposable worktrees; the live tree is never touched.
+    {
+        'id': 'T34-RC1-android-skip-runtime-drain',
+        'platform': 'jvm',
+        'file': 'android/mesh/src/main/java/io/godstone/mesh/identity/CrashResumableWipe.kt',
+        'find': '                    val receipt = runtime.drainTransport()\n                    if (!receipt.isDrained) {',
+        'replace': '                    val receipt = runtime.drainTransport()\n                    if (false) {',
+        'why': 'the ladder advances past REQUESTED without a Drained RuntimeDrainReceipt, so transport queues are never proven drained and an in-flight radio frame can resurrect the wiped session across the point of no return; the proof-before-destruction law falleth',
+        'witness': 'testRuntimeDrainIsProvenBeforeAnyDestruction',
+        'gradle_filter': '*ReadinessT34Test*',
+    },
+    {
+        'id': 'T34-RC1-ios-skip-runtime-drain',
+        'platform': 'swift',
+        'file': 'ios/Godstone/Sources/GodstoneMesh/CrashResumableWipe.swift',
+        'find': '                let receipt = runtime.drainTransport()\n                if !receipt.isDrained {',
+        'replace': '                let receipt = runtime.drainTransport()\n                if false {',
+        'why': 'the ladder advances past REQUESTED without a Drained receipt so the drain is no longer proven before destruction; the proof-before-destruction oracle on the iOS twin falleth',
+        'witness': 'testRuntimeDrainIsProvenBeforeAnyDestruction',
+        'swift_filter': 'ReadinessT34Tests',
+    },
+    {
+        'id': 'T34-RC2-android-ignore-failed-key-deletion',
+        'platform': 'jvm',
+        'file': 'android/mesh/src/main/java/io/godstone/mesh/identity/CrashResumableWipe.kt',
+        'find': '                    if (failed.isNotEmpty()) {\n                        return WipeStepResult.RetryLater(from, failed.joinToString(",") { it.keyName })',
+        'replace': '                    if (false) {\n                        return WipeStepResult.RetryLater(from, failed.joinToString(",") { it.keyName })',
+        'why': 'a retryable key-erasure failure is ignored and KEYS_ERASED journaled while a live key remains, so files deleted afterwards leave OLD CIPHERTEXT still decryptable; the cryptographically-erased claim dies with the ignored failure',
+        'witness': 'testFailedKeyDeletionRetriesDurablyBeforeErase',
+        'gradle_filter': '*ReadinessT34Test*',
+    },
+    {
+        'id': 'T34-RC2-ios-ignore-failed-key-deletion',
+        'platform': 'swift',
+        'file': 'ios/Godstone/Sources/GodstoneMesh/CrashResumableWipe.swift',
+        'find': '                if !failedKeys.isEmpty {\n                    return .retryLater(at: from, reason: failedKeys.map { $0.keyName }.joined(separator: ","))',
+        'replace': '                if false {\n                    return .retryLater(at: from, reason: failedKeys.map { $0.keyName }.joined(separator: ","))',
+        'why': 'a retryable key-erasure failure is treated as satisfaction and the ladder advances with a live key; the old-ciphertext oracle on the iOS twin falleth',
+        'witness': 'testFailedKeyDeletionRetriesDurablyBeforeErase',
+        'swift_filter': 'ReadinessT34Tests',
+    },
+    {
+        'id': 'T34-RC3-android-swallow-busy-delete',
+        'platform': 'jvm',
+        'file': 'android/mesh/src/main/java/io/godstone/mesh/identity/CrashResumableWipe.kt',
+        'find': '                    if (failed.isNotEmpty()) {\n                        return WipeStepResult.RetryLater(from, failed.joinToString(",") { it.path })',
+        'replace': '                    if (false) {\n                        return WipeStepResult.RetryLater(from, failed.joinToString(",") { it.path })',
+        'why': 'a busy database deletion failure is swallowed and ARTIFACTS_DELETED journaled while the db file still exists, so the durable record CLAIMS cleanup that never happened and the busy copy survives un-retried; the verify-delete-results law falleth',
+        'witness': 'testBusyDatabaseFileIsRetriedAbsentIsNotFailure',
+        'gradle_filter': '*ReadinessT34Test*',
+    },
+    {
+        'id': 'T34-RC3-ios-swallow-busy-delete',
+        'platform': 'swift',
+        'file': 'ios/Godstone/Sources/GodstoneMesh/CrashResumableWipe.swift',
+        'find': '                if !failedPaths.isEmpty {\n                    return .retryLater(at: from, reason: failedPaths.joined(separator: ","))',
+        'replace': '                if false {\n                    return .retryLater(at: from, reason: failedPaths.joined(separator: ","))',
+        'why': 'a busy file-deletion failure is swallowed and the journal advances claiming deleted while the file lives; the busy-retry oracle on the iOS twin falleth',
+        'witness': 'testBusyDatabaseFileIsRetriedAbsentIsNotFailure',
+        'swift_filter': 'ReadinessT34Tests',
+    },
+    {
+        'id': 'T34-RC4-android-gate-bypass-stale-send',
+        'platform': 'jvm',
+        'file': 'android/mesh/src/main/java/io/godstone/mesh/identity/CrashResumableWipe.kt',
+        'find': '    fun submitUi(msg: String): Boolean {\n        if (isWipePending) {',
+        'replace': '    fun submitUi(msg: String): Boolean {\n        if (false) {',
+        'why': 'the journal-bound gate is bypassed and a stale UI send is admitted mid-wipe, so the old session can publish across the point of no return; the cannot-bypass RuntimeLifecycleGate law falleth',
+        'witness': 'testStaleUiSendWhilePendingIsRefused',
+        'gradle_filter': '*ReadinessT34Test*',
+    },
+    {
+        'id': 'T34-RC4-ios-gate-bypass-stale-send',
+        'platform': 'swift',
+        'file': 'ios/Godstone/Sources/GodstoneMesh/CrashResumableWipe.swift',
+        'find': '    public func submitUi(_ msg: String) -> Bool {\n        if isWipePending { bypassAttempts += 1; return false }',
+        'replace': '    public func submitUi(_ msg: String) -> Bool {\n        if false { bypassAttempts += 1; return false }',
+        'why': 'the gate admits stale UI sends while the ladder is pending; the cannot-bypass gate oracle on the iOS twin falleth',
+        'witness': 'testStaleUiSendWhilePendingIsRefused',
+        'swift_filter': 'ReadinessT34Tests',
+    },
+    {
+        'id': 'T34-RC5-android-break-legacy-compat',
+        'platform': 'jvm',
+        'file': 'android/mesh/src/main/java/io/godstone/mesh/identity/CrashResumableWipe.kt',
+        'find': '            "KEY_ERASED" -> WipeJournalState.KEYS_ERASED',
+        'replace': '            "KEY_ERASED" -> null',
+        'why': 'the legacy KEY_ERASED spelling of the sealed journal no longer maps onto the new ladder, so an interrupted pre-T34 wipe is refused as unsupported and the device is bricked mid-wipe with keys live; the honor-current-journal-compatibility law falleth',
+        'witness': 'testLegacyJournalHonoredAndUnsupportedVersionRefused',
+        'gradle_filter': '*ReadinessT34Test*',
+    },
+    {
+        'id': 'T34-RC5-ios-break-legacy-compat',
+        'platform': 'swift',
+        'file': 'ios/Godstone/Sources/GodstoneMesh/CrashResumableWipe.swift',
+        'find': '        if name == "KEY_ERASED" { return .keysErased }',
+        'replace': '        if name == "KEY_ERASED" { return nil }',
+        'why': 'the legacy spelling stops mapping onto the canonical state and a pre-T34 in-flight journal is refused; the compatibility oracle on the iOS twin falleth',
+        'witness': 'testLegacyJournalHonoredAndUnsupportedVersionRefused',
+        'swift_filter': 'ReadinessT34Tests',
+    },
     # -------------------------------------------------------------- T33 (bounded store growth & observer lifetimes, dual-isle)
     #
     #   The quota/eviction/lease contract (android store/StoreQuota.kt + iOS twin Sources/GodstoneMesh/StoreQuota.swift)
