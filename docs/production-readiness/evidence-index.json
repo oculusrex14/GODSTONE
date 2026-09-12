@@ -2,122 +2,117 @@
   "evidence_root": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE",
   "files": [
     {
-      "path": "T33/commands.json",
-      "sha256": "0c4cbe1c0a80f30a64834217302c1c95a3c2b84f48633af94baecc633c01cbde",
+      "path": "T34/commands.json",
+      "sha256": "365ad2f3ff3d54fceff04972e69b266dabf4102cc08e0d3ce5bb69465595172f",
       "size": 6121
     },
     {
-      "path": "T33/logs/T33-RC1-android-fabricate-zero-heldbytes.semantic.log",
-      "sha256": "6f9dc7c180b1502bae09c28b76565206e51c2ffb4b312739d393b724aa917d88",
-      "size": 678
+      "path": "T34/logs/T34-RC1-android-skip-runtime-drain.semantic.log",
+      "sha256": "9a29d34e885d64deb668a760ca8b45b78d9b732c4a066be1917a4d96d3ce2625",
+      "size": 673
     },
     {
-      "path": "T33/logs/T33-RC1-ios-fabricate-zero-heldbytes.semantic.log",
-      "sha256": "94105bb1825d97d1f7c08d1f6aa745f69d113c448f8107129457b599bf447919",
+      "path": "T34/logs/T34-RC1-ios-skip-runtime-drain.semantic.log",
+      "sha256": "ec14b27b7a07ba5e6d6adb3566ba04bb7551fcabbe1ef81ea24f59a2c08a79f4",
       "size": 16029
     },
     {
-      "path": "T33/logs/T33-RC2-android-eviction-leaves-delivery-unchanged.semantic.log",
-      "sha256": "9dc6614d0dcfaf978fb032159007194ef62538ae93382ed31b1c5c8bd48e7f76",
-      "size": 688
+      "path": "T34/logs/T34-RC2-android-ignore-failed-key-deletion.semantic.log",
+      "sha256": "286421ce5f66b6de1040ca0e17d162c2437e5d1639d0f1c76c5514812459cfb7",
+      "size": 681
     },
     {
-      "path": "T33/logs/T33-RC2-ios-eviction-leaves-delivery-unchanged.semantic.log",
-      "sha256": "2c015a38db26fd8da67eb58ab901bcadde798313c4e21018ebb2035a804e8448",
+      "path": "T34/logs/T34-RC2-ios-ignore-failed-key-deletion.semantic.log",
+      "sha256": "4616a0180e703485a327ee030babc2519c48a9b4a9cc9e4fd5a69074f1523ab8",
       "size": 16029
     },
     {
-      "path": "T33/logs/T33-RC3-android-held-cap-excludes-sos.semantic.log",
-      "sha256": "a5f6821e4962d6f9cb60d34702106bfbabda1cda88abceb8937112e267e1bfa4",
-      "size": 675
+      "path": "T34/logs/T34-RC3-android-swallow-busy-delete.semantic.log",
+      "sha256": "132e70d00b17b7455db798ac65ed20c8bb3ee97158ce0cf01ff246f0020fed7a",
+      "size": 674
     },
     {
-      "path": "T33/logs/T33-RC3-ios-held-cap-excludes-sos.semantic.log",
-      "sha256": "6389a026b58e5d8d87c402020ab78b6fcda7fd8d290502d7016f836951ef24b4",
+      "path": "T34/logs/T34-RC3-ios-swallow-busy-delete.semantic.log",
+      "sha256": "69bc751868b6b1af83a39e13d9da6538ed3e24b2f428ab6419d920e82d549679",
       "size": 16029
     },
     {
-      "path": "T33/logs/T33-RC4-android-observer-fires-before-commit.semantic.log",
-      "sha256": "fafdf3a6552a403d3f7618b373e1b0ad951cd444c7e548213b62f238a0ca2d1b",
-      "size": 682
+      "path": "T34/logs/T34-RC4-android-gate-bypass-stale-send.semantic.log",
+      "sha256": "2f6335dfb45cbfde6b3533aef5bb9a3818a61d383f7ba5390a9fb9d31cf59518",
+      "size": 677
     },
     {
-      "path": "T33/logs/T33-RC4-ios-observer-fires-before-commit.semantic.log",
-      "sha256": "6f1d52c0ce39595fe0054ad2d1c9bc7c00f10dff857b2f0c4ff7bf193e895859",
+      "path": "T34/logs/T34-RC4-ios-gate-bypass-stale-send.semantic.log",
+      "sha256": "4cecae2d5e8dcb27b38112cab317bd7533a57bbcd265242f97f4db5439059af4",
       "size": 16029
     },
     {
-      "path": "T33/logs/T33-RC5-android-cursor-unbounded.semantic.log",
-      "sha256": "25792247e24d5072b509e76c67ccb1cfc058c7e6a8f78a7074deda377015abf8",
-      "size": 670
+      "path": "T34/logs/T34-RC5-android-break-legacy-compat.semantic.log",
+      "sha256": "bc1e4620915f38e36b6b2774b1c6857c7f3c8f43adaeb9319286cd2f3aaf5e03",
+      "size": 674
     },
     {
-      "path": "T33/logs/T33-RC5-ios-cursor-unbounded.semantic.log",
-      "sha256": "d9d0fa215d2ebac459ff649596b191eb42be040202e3fb0d4669e70acde19cb7",
+      "path": "T34/logs/T34-RC5-ios-break-legacy-compat.semantic.log",
+      "sha256": "82bfd115b5c6c4d73dd1dd10892fed9b70607d4b60b26564e02a4e5660542798",
       "size": 16029
     },
     {
-      "path": "T33/logs/T33-controls-python3-002.log",
+      "path": "T34/logs/T34-controls-python3-002.log",
       "sha256": "0b1ac463307b9f7d907105bb19e85bdada5dcd05131d80c492ffd80b4ab3f5f4",
       "size": 234
     },
     {
-      "path": "T33/logs/T33-controls-python3-003.log",
+      "path": "T34/logs/T34-controls-python3-003.log",
       "sha256": "67493ebd28a55ece17214e55d318f34ba4af6ac7592268756f1b3dcc304afa21",
       "size": 125
     },
     {
-      "path": "T33/logs/T33-controls-python3.log",
+      "path": "T34/logs/T34-controls-python3.log",
       "sha256": "03f0bc422dc53a81fd7f41085300a28e42626c2a4554e8929d897d3c092bd014",
       "size": 1374
     },
     {
-      "path": "T33/logs/T33-narrow-gradlew.log",
-      "sha256": "400c4a03689aa0e12b9bf18673f122f00e6c1be01f3034fa074525d45658d5c1",
-      "size": 2859
+      "path": "T34/logs/T34-narrow-gradlew.log",
+      "sha256": "c2b18ba5787e542a9c20270b4b73e6890e58723bd66bcc8aa70a22a3ba01987c",
+      "size": 2874
     },
     {
-      "path": "T33/logs/T33-narrow-swift.log",
-      "sha256": "73f7f1e215c4869645b4832004e61e149810ac5adae5d9724be9667e3841eb32",
-      "size": 348468
+      "path": "T34/logs/T34-narrow-swift.log",
+      "sha256": "5a52f1b771d2f45ae9047db945beb4d6649ae1023cc770b94ff8e1f0aff7edac",
+      "size": 16239
     },
     {
-      "path": "T33/logs/T33-subsystem-gradlew.log",
-      "sha256": "5ede9f96b0330c9425f820f6db114ae87045acf7f40b325aba9290d52a0e6ced",
+      "path": "T34/logs/T34-subsystem-gradlew.log",
+      "sha256": "b199f58fede0fdffae71daac6ca7939c3ef88586ff6b5d6d1e351b622a06b6fd",
       "size": 2488
     },
     {
-      "path": "T33/logs/T33-subsystem-swift.log",
-      "sha256": "0e052607319fb6bbec1780c475402dfc699536ed61e936708867c394ebe17b22",
-      "size": 232288
+      "path": "T34/logs/T34-subsystem-swift.log",
+      "sha256": "1b5157c4e6103ffee6ababd1ad1dbc8869f5f22a6e98c1f5d23810072d090af8",
+      "size": 234833
     },
     {
-      "path": "T33/manifest.json",
-      "sha256": "2e4f239e8b2f28f84fcdfe19889ba7e3232684f0ec56861a43ef7b7f559a85fa",
-      "size": 8050
+      "path": "T34/manifest.json",
+      "sha256": "5986e59e3e9ebee69d5c5bd958f43d063cc668cb0b5f06c2c4dd2d94209d83e9",
+      "size": 7909
     },
     {
-      "path": "T33/milestones/contract-court-android-child.json",
-      "sha256": "41a19db07948783716151928565367fc2fe5692fbe7809f887a0e88b4baaeaa0",
-      "size": 3947
+      "path": "T34/milestones/controls-roster.json",
+      "sha256": "10e8e30e585f6afa7c591b9d12d1287eda40bf7207bc81a1dd9fd537071a4bde",
+      "size": 4621
     },
     {
-      "path": "T33/milestones/controls-roster.json",
-      "sha256": "06f14649184e1d349cd1c8dc4491532501b773cba642585bc1cddee7dfc850dc",
-      "size": 5450
+      "path": "T34/milestones/design-grounding-milestone.json",
+      "sha256": "3bb49ab2978d49a4eb9fb6958f32edb31440fcbc4cb88bfa1aec898955cd0de7",
+      "size": 5619
     },
     {
-      "path": "T33/milestones/court-ios-child.json",
-      "sha256": "445cccc7eb411b3d34d600b4bb97d1ed44a01439df289b0bcc8561c162740bcc",
-      "size": 2609
-    },
-    {
-      "path": "T33/milestones/design-grounding-milestone.json",
-      "sha256": "9b77a77a04383605f94f7a51f9385bf5ea33b5b393327093adafb7002b157766",
-      "size": 5546
+      "path": "T34/milestones/dual-court-contract.json",
+      "sha256": "b5b3cb0987cc9a4be9ebdd28b100eb83ffbdaf04f8dda09c285310a2aa3b19d8",
+      "size": 4945
     }
   ],
-  "note": "T33 (bound total store growth and observer lifetimes) seal evidence: the executed DUAL-isle narrow/subsystem/controls commands (7 records), the 10/10 KILLED semantic roster (five per isle), and the child milestones (contract+court-android, court-ios+engine-twin, the roster-forced ObservationLease defect fix + bounded-cursor witness strengthening, controls-roster). Dual-court parity: android and iOS courts assert the same eight store-growth/observer-lifetime laws against the same shared StoreQuota/ObservationLease contract. readiness remains false; external gates open; the physical section19/18 capacity cases are device evidence deferred to the device gate.",
+  "note": "T34 (finish crash-resumable wipe across transport and storage) seal evidence: seven executed stage records, the 10/10 KILLED dual-isle semantic roster, and the design/court/controls milestones. Dual-court parity: ten identical witnesses on both isles driving the same CrashResumableWipe ladder; five card-named falsifications (skip-drain and ignore-failed-key-deletion among them) struck on both isles. readiness false; device erasure evidence deferred to the gate.",
   "schema_version": 1,
-  "task": "T33"
+  "task": "T34"
 }

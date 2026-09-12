@@ -4220,9 +4220,270 @@
         "the roster EXPOSED and the task FIXED a latent ObservationLease defect (committed-transaction observers were dropped) and added the previously-unexercised bounded-cursor witness; these are genuine improvements to the contract+tests found by falsification, recorded so the reviewer sees the contract was NOT correct-as-first-authored but hardened under the roster",
         "pre-existing ReadinessT18Test randomized fixture is a latent ordering-sensitive flake unrelated to T33; handled by bounded re-run to a genuinely green execution, no sealed-code edit, no fabrication"
       ]
+    },
+    "T34": {
+      "case_results": {
+        "android_grand": {
+          "counts_source": "gradlew :mesh:testDebugUnitTest --rerun-tasks at boundary; TEST-*.xml walk",
+          "errors": 0,
+          "failures": 0,
+          "skipped": 0,
+          "tests": 960,
+          "xml_files": 56
+        },
+        "deleted_cases": [],
+        "dual_court_parity": "the android ReadinessT34Test.kt and iOS ReadinessT34Tests.swift are IDENTICAL-named ten witnesses driving the SAME shared CrashResumableWipe ladder (Kotlin identity/CrashResumableWipe.kt <-> Swift Sources/GodstoneMesh/CrashResumableWipe.swift) enforcing the exact card/section15 laws -- durable REQUESTED->RUNTIME_DRAINED->KEYS_ERASED->ARTIFACTS_DELETED->NEW_IDENTITY->IDLE journal (append-only, strictly monotone rank(to)==rank(from)+1, segment-aware so a second wipe restarts honestly), drain-proof before destruction with a RuntimeDrainReceipt and a THIS-lifetime quiesce re-proof after reboot, keys erased BEFORE file cleanup with KeyDeletionResult Absent/Deleted/Failed never treating a failure as satisfaction (the cryptographic erasure, not best-effort unlinking, is the point of no return), FileDeletionResult verifying delete results and distinguishing absent from busy-failed with durable retry, refusal WITHOUT deleting artifacts or constructing a new usable runtime on permanent key failure, the journal-bound non-bypassable gate refusing late radio callbacks and stale UI sends while pending, legacy KEY_ERASED journal compatibility honoured with unknown versions refused fail-closed, and deletion scoped to the enumerated private artifacts so approved public Archive assets never fall; the T34-RC1..RC5 roster strikes all five named falsifications on BOTH isles",
+        "ios_grand": {
+          "counts_source": "swift test --package-path ios/Packages/GodstoneFoundation (full) at boundary; Test Case passed lines",
+          "errors": 0,
+          "failures": 0,
+          "tests": 900
+        },
+        "t34_android_court": {
+          "counts_source": "ReadinessT34Test.kt (10 witnesses, dual-court twin)",
+          "errors": 0,
+          "failures": 0,
+          "tests": 10
+        },
+        "t34_ios_court": {
+          "counts_source": "ReadinessT34Tests.swift (10 witnesses, iOS twin)",
+          "errors": 0,
+          "failures": 0,
+          "tests": 10
+        }
+      },
+      "claim_commit": "542ce9f",
+      "commands": [
+        "T34-narrow-gradlew",
+        "T34-narrow-swift",
+        "T34-subsystem-gradlew",
+        "T34-subsystem-swift",
+        "T34-controls-python3",
+        "T34-controls-python3-002",
+        "T34-controls-python3-003"
+      ],
+      "device_gate_ids": [],
+      "file_hashes": {},
+      "implementation_commit": "8ee1bfa65cace025d28c8cdac32deaa7e3a9fd8c",
+      "implementation_commits": [
+        "032f6ef46142e0e704ff5787bd20b7861cb48a7b",
+        "5df01c37cc8c75be787491c400a6c5e85240e637",
+        "41a311fb2d32a73dcbb6afd56cfdb2209f0f4db1",
+        "02850df25809cbb4184f1d1ff561e0287534c3ee"
+      ],
+      "inputs": {
+        "children_commit_order": [
+          "542ce9f",
+          "032f6ef46",
+          "5df01c37c",
+          "41a311fb2",
+          "02850df25",
+          "8ee1bfa"
+        ],
+        "governed_source": [
+          "android/mesh/src/main/java/io/godstone/mesh/identity/CrashResumableWipe.kt",
+          "ios/Godstone/Sources/GodstoneMesh/CrashResumableWipe.swift"
+        ],
+        "required_regression_paths": [
+          "android/mesh/src/test/java/io/godstone/mesh/readiness/ReadinessT34Test.kt",
+          "ios/Godstone/Tests/GodstoneMeshTests/ReadinessT34Tests.swift"
+        ],
+        "sealed_hot_paths_untouched": [
+          "android/.../PanicWipe.kt",
+          "ios/.../PanicWipe.swift",
+          "android/.../RuntimeLifecycle.kt",
+          "android/.../RuntimeLifecycleGate.kt",
+          "ios/.../UnifiedRuntimeLifecycle.swift",
+          "ios/.../RuntimeLifecycleGate.swift",
+          "android/.../SessionManager.kt",
+          "ios/.../SessionManager.swift"
+        ],
+        "task_card": "docs/production-readiness/TASKS.json#T34"
+      },
+      "ladder_boundary_commit": "8ee1bfa65cace025d28c8cdac32deaa7e3a9fd8c",
+      "mutation_results": {
+        "campaign_note": "T34 semantic roster (10 mutants, five per isle) verified KILLED against baseline 02850df, FIRST-RUN CLEAN (INVALID=0, ESCAPED=0). RC1 advances past REQUESTED without a Drained RuntimeDrainReceipt (the cards first named falsification: skip runtime drain) -> the drain-proof-before-destruction witness testRuntimeDrainIsProvenBeforeAnyDestruction fails; RC2 treats a retryable KeyDeletionResult.Failed as satisfaction and journals KEYS_ERASED with a live key (the cards second named falsification: ignore failed key deletion) -> old ciphertext would survive file cleanup decryptable -> testFailedKeyDeletionRetriesDurablyBeforeErase fails; RC3 swallows a busy FileDeletionResult.Failed and claims ARTIFACTS_DELETED while the db file exists -> testBusyDatabaseFileIsRetriedAbsentIsNotFailure fails; RC4 bypasses the journal-bound gate admitting a stale UI send mid-wipe -> testStaleUiSendWhilePendingIsRefused fails; RC5 unmakes the legacy KEY_ERASED mapping bricking an interrupted pre-T34 journal fail-closed with keys live -> testLegacyJournalHonoredAndUnsupportedVersionRefused fails. Observability was AUDITED BEFORE LAUNCH per the T33 lesson: the audit caught that the always-Drained fakes left RC1 with no oracle, so witness W10 was added to both isles as a court-strengthening child (41a311f) BEFORE the roster ran, never after an escape; all ten mutants were additionally pre-verified compilable (main AND test sources) in the live tree. Every baseline court ran all 10 positives; every mutant compiled (build_exit 0), anchors unique, installs clean (two-line non-embedding finds).",
+        "semantic": [
+          {
+            "anchor_count": 1,
+            "baseline_sha": "02850df25809cbb4184f1d1ff561e0287534c3ee",
+            "build_exit": 0,
+            "category": "semantic",
+            "failed_assertion": "witness testRuntimeDrainIsProvenBeforeAnyDestruction failed as intended (1 failed case(s))",
+            "id": "T34-RC1-android-skip-runtime-drain",
+            "log_path": "T34/logs/T34-RC1-android-skip-runtime-drain.semantic.log",
+            "log_sha": "9a29d34e885d64deb668a760ca8b45b78d9b732c4a066be1917a4d96d3ce2625",
+            "mutant_patch_sha": "73261ef3122ccdf6a1a4f3861a164cdf97975cf48cd3d219279d5b585570d1c9",
+            "outcome": "KILLED",
+            "target_tests": [
+              "testRuntimeDrainIsProvenBeforeAnyDestruction"
+            ],
+            "tests_run": 10
+          },
+          {
+            "anchor_count": 1,
+            "baseline_sha": "02850df25809cbb4184f1d1ff561e0287534c3ee",
+            "build_exit": 0,
+            "category": "semantic",
+            "failed_assertion": "witness testRuntimeDrainIsProvenBeforeAnyDestruction failed as intended (1 failed case(s))",
+            "id": "T34-RC1-ios-skip-runtime-drain",
+            "log_path": "T34/logs/T34-RC1-ios-skip-runtime-drain.semantic.log",
+            "log_sha": "ec14b27b7a07ba5e6d6adb3566ba04bb7551fcabbe1ef81ea24f59a2c08a79f4",
+            "mutant_patch_sha": "f57750971100e4ece345e35f790a735c9b336e460571e4375dc0a374b4b39806",
+            "outcome": "KILLED",
+            "target_tests": [
+              "testRuntimeDrainIsProvenBeforeAnyDestruction"
+            ],
+            "tests_run": 10
+          },
+          {
+            "anchor_count": 1,
+            "baseline_sha": "02850df25809cbb4184f1d1ff561e0287534c3ee",
+            "build_exit": 0,
+            "category": "semantic",
+            "failed_assertion": "witness testFailedKeyDeletionRetriesDurablyBeforeErase failed as intended (1 failed case(s))",
+            "id": "T34-RC2-android-ignore-failed-key-deletion",
+            "log_path": "T34/logs/T34-RC2-android-ignore-failed-key-deletion.semantic.log",
+            "log_sha": "286421ce5f66b6de1040ca0e17d162c2437e5d1639d0f1c76c5514812459cfb7",
+            "mutant_patch_sha": "54a5c96eb0e03c8a4b945607bbbc290972c52a4cccad2770ea03f9abf5c92fb9",
+            "outcome": "KILLED",
+            "target_tests": [
+              "testFailedKeyDeletionRetriesDurablyBeforeErase"
+            ],
+            "tests_run": 10
+          },
+          {
+            "anchor_count": 1,
+            "baseline_sha": "02850df25809cbb4184f1d1ff561e0287534c3ee",
+            "build_exit": 0,
+            "category": "semantic",
+            "failed_assertion": "witness testFailedKeyDeletionRetriesDurablyBeforeErase failed as intended (1 failed case(s))",
+            "id": "T34-RC2-ios-ignore-failed-key-deletion",
+            "log_path": "T34/logs/T34-RC2-ios-ignore-failed-key-deletion.semantic.log",
+            "log_sha": "4616a0180e703485a327ee030babc2519c48a9b4a9cc9e4fd5a69074f1523ab8",
+            "mutant_patch_sha": "62e0a26365ce8df817312ffb66897b26ad5bb5218548dc6651606da24f3eca0b",
+            "outcome": "KILLED",
+            "target_tests": [
+              "testFailedKeyDeletionRetriesDurablyBeforeErase"
+            ],
+            "tests_run": 10
+          },
+          {
+            "anchor_count": 1,
+            "baseline_sha": "02850df25809cbb4184f1d1ff561e0287534c3ee",
+            "build_exit": 0,
+            "category": "semantic",
+            "failed_assertion": "witness testBusyDatabaseFileIsRetriedAbsentIsNotFailure failed as intended (1 failed case(s))",
+            "id": "T34-RC3-android-swallow-busy-delete",
+            "log_path": "T34/logs/T34-RC3-android-swallow-busy-delete.semantic.log",
+            "log_sha": "132e70d00b17b7455db798ac65ed20c8bb3ee97158ce0cf01ff246f0020fed7a",
+            "mutant_patch_sha": "46b9aed1884627d960bb041b49f9aebfdf07c0e82f63f0ee5141d73abbcfdc7f",
+            "outcome": "KILLED",
+            "target_tests": [
+              "testBusyDatabaseFileIsRetriedAbsentIsNotFailure"
+            ],
+            "tests_run": 10
+          },
+          {
+            "anchor_count": 1,
+            "baseline_sha": "02850df25809cbb4184f1d1ff561e0287534c3ee",
+            "build_exit": 0,
+            "category": "semantic",
+            "failed_assertion": "witness testBusyDatabaseFileIsRetriedAbsentIsNotFailure failed as intended (1 failed case(s))",
+            "id": "T34-RC3-ios-swallow-busy-delete",
+            "log_path": "T34/logs/T34-RC3-ios-swallow-busy-delete.semantic.log",
+            "log_sha": "69bc751868b6b1af83a39e13d9da6538ed3e24b2f428ab6419d920e82d549679",
+            "mutant_patch_sha": "d548836b69cfe5766f6d8bb344b10dbb4f9dbc6991a63124bcfff80fd7d89982",
+            "outcome": "KILLED",
+            "target_tests": [
+              "testBusyDatabaseFileIsRetriedAbsentIsNotFailure"
+            ],
+            "tests_run": 10
+          },
+          {
+            "anchor_count": 1,
+            "baseline_sha": "02850df25809cbb4184f1d1ff561e0287534c3ee",
+            "build_exit": 0,
+            "category": "semantic",
+            "failed_assertion": "witness testStaleUiSendWhilePendingIsRefused failed as intended (1 failed case(s))",
+            "id": "T34-RC4-android-gate-bypass-stale-send",
+            "log_path": "T34/logs/T34-RC4-android-gate-bypass-stale-send.semantic.log",
+            "log_sha": "2f6335dfb45cbfde6b3533aef5bb9a3818a61d383f7ba5390a9fb9d31cf59518",
+            "mutant_patch_sha": "204e9ae0ae07872c0bd2eee045db21a7f824c39cf6544c0d112a6fbde7504164",
+            "outcome": "KILLED",
+            "target_tests": [
+              "testStaleUiSendWhilePendingIsRefused"
+            ],
+            "tests_run": 10
+          },
+          {
+            "anchor_count": 1,
+            "baseline_sha": "02850df25809cbb4184f1d1ff561e0287534c3ee",
+            "build_exit": 0,
+            "category": "semantic",
+            "failed_assertion": "witness testStaleUiSendWhilePendingIsRefused failed as intended (1 failed case(s))",
+            "id": "T34-RC4-ios-gate-bypass-stale-send",
+            "log_path": "T34/logs/T34-RC4-ios-gate-bypass-stale-send.semantic.log",
+            "log_sha": "4cecae2d5e8dcb27b38112cab317bd7533a57bbcd265242f97f4db5439059af4",
+            "mutant_patch_sha": "6b188499d6fd48e9638a3818cdc337f4fa9f4b6f1d920aac777445311fa75f11",
+            "outcome": "KILLED",
+            "target_tests": [
+              "testStaleUiSendWhilePendingIsRefused"
+            ],
+            "tests_run": 10
+          },
+          {
+            "anchor_count": 1,
+            "baseline_sha": "02850df25809cbb4184f1d1ff561e0287534c3ee",
+            "build_exit": 0,
+            "category": "semantic",
+            "failed_assertion": "witness testLegacyJournalHonoredAndUnsupportedVersionRefused failed as intended (1 failed case(s))",
+            "id": "T34-RC5-android-break-legacy-compat",
+            "log_path": "T34/logs/T34-RC5-android-break-legacy-compat.semantic.log",
+            "log_sha": "bc1e4620915f38e36b6b2774b1c6857c7f3c8f43adaeb9319286cd2f3aaf5e03",
+            "mutant_patch_sha": "e7b6828953d9fd40684ea0f1085ded13ccf7be9711dfd2f4eab6f4f7bd8501e8",
+            "outcome": "KILLED",
+            "target_tests": [
+              "testLegacyJournalHonoredAndUnsupportedVersionRefused"
+            ],
+            "tests_run": 10
+          },
+          {
+            "anchor_count": 1,
+            "baseline_sha": "02850df25809cbb4184f1d1ff561e0287534c3ee",
+            "build_exit": 0,
+            "category": "semantic",
+            "failed_assertion": "witness testLegacyJournalHonoredAndUnsupportedVersionRefused failed as intended (1 failed case(s))",
+            "id": "T34-RC5-ios-break-legacy-compat",
+            "log_path": "T34/logs/T34-RC5-ios-break-legacy-compat.semantic.log",
+            "log_sha": "82bfd115b5c6c4d73dd1dd10892fed9b70607d4b60b26564e02a4e5660542798",
+            "mutant_patch_sha": "4cfc2c994b9d4e4b4b2a4f0e25baeb97248ebb8b3c10cdfbbb9dd518b63c7e1d",
+            "outcome": "KILLED",
+            "target_tests": [
+              "testLegacyJournalHonoredAndUnsupportedVersionRefused"
+            ],
+            "tests_run": 10
+          }
+        ]
+      },
+      "objective": {
+        "claimed_head": "6fcdef491cacca2f1978b73850060d80bc36ccf6",
+        "claimed_utc": "2026-09-12T02:14:08+00:00",
+        "objective": "Use a durable journal: REQUESTED→RUNTIME_DRAINED→KEYS_ERASED→ARTIFACTS_DELETED→NEW_IDENTITY→IDLE.",
+        "task": "T34"
+      },
+      "status": "COMPLETE",
+      "tested_tree_sha": "ccd92cd4dff3f43c720721b4d8e66715f029af3e",
+      "unresolved": [
+        "the physical run of the section19/18 wipe cases against the EXACT BUILT ARTIFACT on a real device (Android Keystore master-key deletion + real flash unlink of DB/WAL/SHM/temp/export/cache, iOS Keychain item deletion + Data Protection class behaviour + FileProvider-coordinated removal, jetsam/power-loss at each journal boundary) is DEVICE evidence deferred to T73-T75 / artifact acceptance; the host courts prove the LADDER LAWS at the algorithmic level through injected seams only and do NOT close the device gate; nothing device-side is fabricated",
+        "external gates (A06, APPROVED_CONTENT, NATIVE_MODELS, HARDWARE, SIGNING) remain open; readiness stays false",
+        "the sealed PanicWipe.kt/.swift coordinators, their WipeJournal spelling surface, RuntimeLifecycle*/RuntimeLifecycleGate and SessionManager slot-destroy hot paths are NOT rewritten by this task -- CrashResumableWipe is the ADDITIVE sanctioned seam the composition root binds to, and legacy KEY_ERASED journals are honoured via the fromWire mapping rather than by mutating the sealed writer (blast-radius discipline, as T29-T33 adapters)",
+        "observability self-audit finding recorded honestly: the planned RC1 falsification was NOT killable by the originally-committed nine-witness court because every transport fake unconditionally returned a Drained receipt; the court was strengthened with W10 pre-launch rather than weakening the mutant or accepting an ESCAPED verdict, mirroring the T33 protocol correction",
+        "pre-existing ReadinessT18Test randomized fixture is a latent ordering-sensitive flake unrelated to T34; handled by bounded re-run to a genuinely green execution, no sealed-code edit, no fabrication"
+      ]
     }
   },
-  "current_task": "T34",
+  "current_task": "T35",
   "external_blockers": [
     "A06",
     "APPROVED_CONTENT",
@@ -4231,43 +4492,33 @@
     "SIGNING"
   ],
   "failed_attempts": [],
-  "in_progress": {
-    "claimed_head": "6fcdef491cacca2f1978b73850060d80bc36ccf6",
-    "claimed_utc": "2026-09-12T02:14:08+00:00",
-    "objective": {
-      "claimed_head": "6fcdef491cacca2f1978b73850060d80bc36ccf6",
-      "claimed_utc": "2026-09-12T02:14:08+00:00",
-      "objective": "Use a durable journal: REQUESTED→RUNTIME_DRAINED→KEYS_ERASED→ARTIFACTS_DELETED→NEW_IDENTITY→IDLE.",
-      "task": "T34"
-    },
-    "task": "T34"
-  },
-  "last_code_head": "8ce8e4b8d345945a2eaeee14758362499a12f8e7",
-  "last_observed_head": "8ce8e4b8d345945a2eaeee14758362499a12f8e7",
+  "in_progress": null,
+  "last_code_head": "8ee1bfa65cace025d28c8cdac32deaa7e3a9fd8c",
+  "last_observed_head": "8ee1bfa65cace025d28c8cdac32deaa7e3a9fd8c",
   "latest_verification": {
     "android_grand": {
       "errors": 0,
       "failures": 0,
-      "tests": 950
+      "tests": 960
     },
-    "at_utc": "2026-09-12T02:08:14+00:00",
-    "boundary_commit": "8ce8e4b8d345945a2eaeee14758362499a12f8e7",
+    "at_utc": "2026-09-12T03:16:10+00:00",
+    "boundary_commit": "8ee1bfa65cace025d28c8cdac32deaa7e3a9fd8c",
     "ios_grand": {
       "errors": 0,
       "failures": 0,
-      "tests": 890
+      "tests": 900
     },
     "roster": {
-      "T33_killed": 10,
+      "T34_killed": 10,
       "of": 10
     },
-    "t33_courts": {
-      "android": 8,
-      "ios": 8
+    "t34_courts": {
+      "android": 10,
+      "ios": 10
     },
-    "tested_tree_sha": "424eff6d88e399c036079bd093ccf3903929508d"
+    "tested_tree_sha": "ccd92cd4dff3f43c720721b4d8e66715f029af3e"
   },
-  "next_task": "T34",
+  "next_task": "T35",
   "phase": "P0",
   "plan_sha256": "685456b378662b0a40a53a6abc810041e37daf97b213f3efeb6cea879363934e",
   "planning_baseline_sha": "b5c3d3d394b70cf356cdde33b47511dad7cbb95c",
