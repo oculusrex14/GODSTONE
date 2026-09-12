@@ -3963,9 +3963,266 @@
         "a real MonotonicClockAdapter must PROVE continuity from tested platform information (uptime alone after a reboot is insufficient) and take the conservative branch when it cannot; the host exercises the algorithm through deterministic injected fakes only, which is not evidence about any platform clock adapter; product/hardware acceptance must review the recovery reasons (notably the 32-strike CLOCK_CONTINUITY_LOST discard) -- the finite-uncertainty policy can discard still-useful data after repeated discontinuities",
         "pre-existing ReadinessT18Test randomized fixture is a latent ordering-sensitive flake unrelated to T32; handled by bounded re-run to a genuinely green execution, no sealed-code edit, no fabrication"
       ]
+    },
+    "T33": {
+      "case_results": {
+        "android_grand": {
+          "counts_source": "gradlew :mesh:testDebugUnitTest --rerun-tasks at boundary; TEST-*.xml walk",
+          "errors": 0,
+          "failures": 0,
+          "skipped": 0,
+          "tests": 950,
+          "xml_files": 55
+        },
+        "deleted_cases": [],
+        "dual_court_parity": "the android ReadinessT33Test.kt and iOS ReadinessT33Tests.swift are IDENTICAL-named eight witnesses driving the SAME shared StoreQuota/ObservationLease contract (Kotlin store/StoreQuota.kt <-> Swift Sources/GodstoneMesh/StoreQuota.swift) enforcing the exact section14 store-growth & observer-lifetime laws (64MiB held hard cap INCLUDING SOS with SOS retained-LAST, 128MiB total private-store quota, delivery/inbox/tombstone row caps 100000 / trust 4096, authority-preserving measurement -- a query failure is never a fabricated 0, transaction-owned eviction that pairs each removed held row with its delivery EVICTED transition, commit-only non-reentrant fire-once observer lease whose aborted transactions discard their pending notifications, bounded cursor reads); the T33-RC1..RC5 roster strikes the five named falsifications on BOTH isles",
+        "ios_grand": {
+          "counts_source": "swift test --package-path ios/Packages/GodstoneFoundation (full) at boundary; Test Case passed lines",
+          "errors": 0,
+          "failures": 0,
+          "tests": 890
+        },
+        "t33_android_court": {
+          "counts_source": "ReadinessT33Test.kt (8 witnesses, dual-court twin)",
+          "errors": 0,
+          "failures": 0,
+          "tests": 8
+        },
+        "t33_ios_court": {
+          "counts_source": "ReadinessT33Tests.swift (8 witnesses, iOS twin)",
+          "errors": 0,
+          "failures": 0,
+          "tests": 8
+        }
+      },
+      "claim_commit": "a40fce1",
+      "commands": [
+        "T33-narrow-gradlew",
+        "T33-narrow-swift",
+        "T33-subsystem-gradlew",
+        "T33-subsystem-swift",
+        "T33-controls-python3",
+        "T33-controls-python3-002",
+        "T33-controls-python3-003"
+      ],
+      "device_gate_ids": [],
+      "file_hashes": {},
+      "implementation_commit": "8ce8e4b8d345945a2eaeee14758362499a12f8e7",
+      "implementation_commits": [
+        "691b5d626150eec5d9c440fb849187e0ee7b0cc7",
+        "965197004e9979fd2678f11f50826e583d114d5c",
+        "489897392bd9e680999f6e6d87ff57566d1fd95c",
+        "5f7bf06ecc2a7305569986c3bc7b81a88c96b7ba"
+      ],
+      "inputs": {
+        "children_commit_order": [
+          "a40fce1",
+          "691b5d626",
+          "965197004",
+          "489897392",
+          "5f7bf06ec",
+          "8ce8e4b"
+        ],
+        "governed_source": [
+          "android/mesh/src/main/java/io/godstone/mesh/store/StoreQuota.kt",
+          "ios/Godstone/Sources/GodstoneMesh/StoreQuota.swift"
+        ],
+        "required_regression_paths": [
+          "android/mesh/src/test/java/io/godstone/mesh/readiness/ReadinessT33Test.kt",
+          "ios/Godstone/Tests/GodstoneMeshTests/ReadinessT33Tests.swift"
+        ],
+        "sealed_hot_paths_untouched": [
+          "android/.../MessageStore.kt",
+          "ios/.../MessageStore.swift",
+          "android/.../SqliteDeliveryRepository.kt",
+          "ios/.../SqliteDeliveryRepository.swift"
+        ],
+        "task_card": "docs/production-readiness/TASKS.json#T33"
+      },
+      "ladder_boundary_commit": "8ce8e4b8d345945a2eaeee14758362499a12f8e7",
+      "mutation_results": {
+        "campaign_note": "T33 semantic roster (10 mutants, five per isle) verified KILLED against baseline 5f7bf06. RC1 a heldBytes query failure fabricated as a real 0 -> the no-fabricated-empty-set authority oracle testSqlFailureInHeldBytesNeverFabricatesZeroAndRefusesAdmission fails both isles; RC2 transaction-owned eviction leaves the delivery record unchanged -> the same-transaction delivery-pairing oracle testEvictionUpdatesDeliveryStateInTheSameTransaction fails; RC3 the policy order is inverted so SOS is evicted FIRST not retained-last -> the stable-eviction-order oracle testStableEvictionOrderIsDeterministic fails; RC4 an aborted transaction fails to discard its pending notifications (an observer fires on an aborted tx) -> the commit-only non-reentrant lease oracle testObserverReentryIsDeferredAndFiresOnlyAfterCommit fails; RC5 the bounded cursor ignores its limit and over-reads the full backing -> the bounded-cursor assertions in testStableEvictionOrderIsDeterministic fail. Two iterations were honestly rejected (RC4/RC5 ESCAPED) and diagnosed as (a) a latent ObservationLease defect -- committed-transaction observers were silently dropped so the abort-discard was inert -- fixed in the CONTRACT, and (b) a missing bounded-cursor witness -- added on BOTH isles; never by weakening an oracle or deleting a mutant. Each baseline court ran all 8 positives; every mutant compiled (build_exit 0), anchors unique, installs clean.",
+        "semantic": [
+          {
+            "anchor_count": 1,
+            "baseline_sha": "5f7bf06ecc2a7305569986c3bc7b81a88c96b7ba",
+            "build_exit": 0,
+            "category": "semantic",
+            "failed_assertion": "witness testSqlFailureInHeldBytesNeverFabricatesZeroAndRefusesAdmission failed as intended (2 failed case(s))",
+            "id": "T33-RC1-android-fabricate-zero-heldbytes",
+            "log_path": "T33/logs/T33-RC1-android-fabricate-zero-heldbytes.semantic.log",
+            "log_sha": "6f9dc7c180b1502bae09c28b76565206e51c2ffb4b312739d393b724aa917d88",
+            "mutant_patch_sha": "a507460df63c4086e00682bbd4ea3fcc4f86030c33ff81f51330778587ddb498",
+            "outcome": "KILLED",
+            "target_tests": [
+              "testSqlFailureInHeldBytesNeverFabricatesZeroAndRefusesAdmission"
+            ],
+            "tests_run": 8
+          },
+          {
+            "anchor_count": 1,
+            "baseline_sha": "5f7bf06ecc2a7305569986c3bc7b81a88c96b7ba",
+            "build_exit": 0,
+            "category": "semantic",
+            "failed_assertion": "witness testSqlFailureInHeldBytesNeverFabricatesZeroAndRefusesAdmission failed as intended (2 failed case(s))",
+            "id": "T33-RC1-ios-fabricate-zero-heldbytes",
+            "log_path": "T33/logs/T33-RC1-ios-fabricate-zero-heldbytes.semantic.log",
+            "log_sha": "94105bb1825d97d1f7c08d1f6aa745f69d113c448f8107129457b599bf447919",
+            "mutant_patch_sha": "418942aa727b183c2ed4b1da31baf4e44d49a65466d8d5ba98b9e36f66f65cac",
+            "outcome": "KILLED",
+            "target_tests": [
+              "testSqlFailureInHeldBytesNeverFabricatesZeroAndRefusesAdmission"
+            ],
+            "tests_run": 8
+          },
+          {
+            "anchor_count": 1,
+            "baseline_sha": "5f7bf06ecc2a7305569986c3bc7b81a88c96b7ba",
+            "build_exit": 0,
+            "category": "semantic",
+            "failed_assertion": "witness testEvictionUpdatesDeliveryStateInTheSameTransaction failed as intended (1 failed case(s))",
+            "id": "T33-RC2-android-eviction-leaves-delivery-unchanged",
+            "log_path": "T33/logs/T33-RC2-android-eviction-leaves-delivery-unchanged.semantic.log",
+            "log_sha": "9dc6614d0dcfaf978fb032159007194ef62538ae93382ed31b1c5c8bd48e7f76",
+            "mutant_patch_sha": "ff45d3222c414bc5986062b55fd312c48755f0cdcd03e15dbb402f60a2e8497b",
+            "outcome": "KILLED",
+            "target_tests": [
+              "testEvictionUpdatesDeliveryStateInTheSameTransaction"
+            ],
+            "tests_run": 8
+          },
+          {
+            "anchor_count": 1,
+            "baseline_sha": "5f7bf06ecc2a7305569986c3bc7b81a88c96b7ba",
+            "build_exit": 0,
+            "category": "semantic",
+            "failed_assertion": "witness testEvictionUpdatesDeliveryStateInTheSameTransaction failed as intended (1 failed case(s))",
+            "id": "T33-RC2-ios-eviction-leaves-delivery-unchanged",
+            "log_path": "T33/logs/T33-RC2-ios-eviction-leaves-delivery-unchanged.semantic.log",
+            "log_sha": "2c015a38db26fd8da67eb58ab901bcadde798313c4e21018ebb2035a804e8448",
+            "mutant_patch_sha": "433cd77b697904c9e7da5a45becfc9929aabe830278fdce8f1f8e1d3eb9359ac",
+            "outcome": "KILLED",
+            "target_tests": [
+              "testEvictionUpdatesDeliveryStateInTheSameTransaction"
+            ],
+            "tests_run": 8
+          },
+          {
+            "anchor_count": 1,
+            "baseline_sha": "5f7bf06ecc2a7305569986c3bc7b81a88c96b7ba",
+            "build_exit": 0,
+            "category": "semantic",
+            "failed_assertion": "witness testStableEvictionOrderIsDeterministic failed as intended (1 failed case(s))",
+            "id": "T33-RC3-android-held-cap-excludes-sos",
+            "log_path": "T33/logs/T33-RC3-android-held-cap-excludes-sos.semantic.log",
+            "log_sha": "a5f6821e4962d6f9cb60d34702106bfbabda1cda88abceb8937112e267e1bfa4",
+            "mutant_patch_sha": "87dc1d3f2010ef0d2626d1d07c2cfd2efd91b2d8bd18fec547f066cc8c1f215d",
+            "outcome": "KILLED",
+            "target_tests": [
+              "testStableEvictionOrderIsDeterministic"
+            ],
+            "tests_run": 8
+          },
+          {
+            "anchor_count": 1,
+            "baseline_sha": "5f7bf06ecc2a7305569986c3bc7b81a88c96b7ba",
+            "build_exit": 0,
+            "category": "semantic",
+            "failed_assertion": "witness testStableEvictionOrderIsDeterministic failed as intended (1 failed case(s))",
+            "id": "T33-RC3-ios-held-cap-excludes-sos",
+            "log_path": "T33/logs/T33-RC3-ios-held-cap-excludes-sos.semantic.log",
+            "log_sha": "6389a026b58e5d8d87c402020ab78b6fcda7fd8d290502d7016f836951ef24b4",
+            "mutant_patch_sha": "095a0f495c68b7134350a7d9a172c1ea15b0a18afb27c075d09ea162d3a347e4",
+            "outcome": "KILLED",
+            "target_tests": [
+              "testStableEvictionOrderIsDeterministic"
+            ],
+            "tests_run": 8
+          },
+          {
+            "anchor_count": 1,
+            "baseline_sha": "5f7bf06ecc2a7305569986c3bc7b81a88c96b7ba",
+            "build_exit": 0,
+            "category": "semantic",
+            "failed_assertion": "witness testObserverReentryIsDeferredAndFiresOnlyAfterCommit failed as intended (1 failed case(s))",
+            "id": "T33-RC4-android-observer-fires-before-commit",
+            "log_path": "T33/logs/T33-RC4-android-observer-fires-before-commit.semantic.log",
+            "log_sha": "fafdf3a6552a403d3f7618b373e1b0ad951cd444c7e548213b62f238a0ca2d1b",
+            "mutant_patch_sha": "315200f18df4a6677518f656bb852bb9ed58e273e658f768774fbe1506a65551",
+            "outcome": "KILLED",
+            "target_tests": [
+              "testObserverReentryIsDeferredAndFiresOnlyAfterCommit"
+            ],
+            "tests_run": 8
+          },
+          {
+            "anchor_count": 1,
+            "baseline_sha": "5f7bf06ecc2a7305569986c3bc7b81a88c96b7ba",
+            "build_exit": 0,
+            "category": "semantic",
+            "failed_assertion": "witness testObserverReentryIsDeferredAndFiresOnlyAfterCommit failed as intended (1 failed case(s))",
+            "id": "T33-RC4-ios-observer-fires-before-commit",
+            "log_path": "T33/logs/T33-RC4-ios-observer-fires-before-commit.semantic.log",
+            "log_sha": "6f1d52c0ce39595fe0054ad2d1c9bc7c00f10dff857b2f0c4ff7bf193e895859",
+            "mutant_patch_sha": "4191bf88c1ec20b47c4360c333ef57bb69bd005f460484c41d20081ebce3a94a",
+            "outcome": "KILLED",
+            "target_tests": [
+              "testObserverReentryIsDeferredAndFiresOnlyAfterCommit"
+            ],
+            "tests_run": null
+          },
+          {
+            "anchor_count": 1,
+            "baseline_sha": "5f7bf06ecc2a7305569986c3bc7b81a88c96b7ba",
+            "build_exit": 0,
+            "category": "semantic",
+            "failed_assertion": "witness testStableEvictionOrderIsDeterministic failed as intended (1 failed case(s))",
+            "id": "T33-RC5-android-cursor-unbounded",
+            "log_path": "T33/logs/T33-RC5-android-cursor-unbounded.semantic.log",
+            "log_sha": "25792247e24d5072b509e76c67ccb1cfc058c7e6a8f78a7074deda377015abf8",
+            "mutant_patch_sha": "7964d9fb0bac8dc7764087f922d09bf7ff39396eed99a5946c94febf0ab830da",
+            "outcome": "KILLED",
+            "target_tests": [
+              "testStableEvictionOrderIsDeterministic"
+            ],
+            "tests_run": 8
+          },
+          {
+            "anchor_count": 1,
+            "baseline_sha": "5f7bf06ecc2a7305569986c3bc7b81a88c96b7ba",
+            "build_exit": 0,
+            "category": "semantic",
+            "failed_assertion": "witness testStableEvictionOrderIsDeterministic failed as intended (1 failed case(s))",
+            "id": "T33-RC5-ios-cursor-unbounded",
+            "log_path": "T33/logs/T33-RC5-ios-cursor-unbounded.semantic.log",
+            "log_sha": "d9d0fa215d2ebac459ff649596b191eb42be040202e3fb0d4669e70acde19cb7",
+            "mutant_patch_sha": "82f7739ca25a0794ec63e42772a23a5cbd9fa9671436f9fed0e0923afef55827",
+            "outcome": "KILLED",
+            "target_tests": [
+              "testStableEvictionOrderIsDeterministic"
+            ],
+            "tests_run": 8
+          }
+        ]
+      },
+      "objective": {
+        "claimed_head": "1c4a1168f15ebd7633b75120abbb401d8bad0550",
+        "claimed_utc": "2026-09-12T00:48:30+00:00",
+        "objective": "Keep the64MiB held-frame hard cap including SOS.",
+        "task": "T33"
+      },
+      "status": "COMPLETE",
+      "tested_tree_sha": "424eff6d88e399c036079bd093ccf3903929508d",
+      "unresolved": [
+        "the physical run of the section19/18 store-capacity & observer cases against the EXACT BUILT ARTIFACT on a real device (real 64MiB/128MiB accounting against the on-disk SQLite/SQLCipher page+WAL files, real concurrent-insert pressure, real process-death/reboot of the observer lease) is DEVICE evidence deferred to T73-T75 / artifact acceptance; the host courts + the injected QuotaSnapshot measurements prove the capacity/authority/consistency/lease LAWS at the algorithmic level only and do NOT close the device gate; nothing device-side is fabricated",
+        "external gates (A06, APPROVED_CONTENT, NATIVE_MODELS, HARDWARE, SIGNING) remain open; readiness stays false",
+        "the sealed MessageStore.kt/.swift wall-clock held-cap/eviction/observer hot paths and the SqliteDeliveryRepository.kt/.swift are NOT rewritten by this task -- the StoreQuota/ObservationLease engine is the ADDITIVE sanctioned seam the runtime binds to; blast-radius discipline preserved (as T29/T30/T31/T32 adapters)",
+        "the roster EXPOSED and the task FIXED a latent ObservationLease defect (committed-transaction observers were dropped) and added the previously-unexercised bounded-cursor witness; these are genuine improvements to the contract+tests found by falsification, recorded so the reviewer sees the contract was NOT correct-as-first-authored but hardened under the roster",
+        "pre-existing ReadinessT18Test randomized fixture is a latent ordering-sensitive flake unrelated to T33; handled by bounded re-run to a genuinely green execution, no sealed-code edit, no fabrication"
+      ]
     }
   },
-  "current_task": "T33",
+  "current_task": "T34",
   "external_blockers": [
     "A06",
     "APPROVED_CONTENT",
@@ -3974,43 +4231,33 @@
     "SIGNING"
   ],
   "failed_attempts": [],
-  "in_progress": {
-    "claimed_head": "1c4a1168f15ebd7633b75120abbb401d8bad0550",
-    "claimed_utc": "2026-09-12T00:48:30+00:00",
-    "objective": {
-      "claimed_head": "1c4a1168f15ebd7633b75120abbb401d8bad0550",
-      "claimed_utc": "2026-09-12T00:48:30+00:00",
-      "objective": "Keep the64MiB held-frame hard cap including SOS.",
-      "task": "T33"
-    },
-    "task": "T33"
-  },
-  "last_code_head": "349defe2cfa5176941ab7ccf85df96a1145c0f19",
-  "last_observed_head": "349defe2cfa5176941ab7ccf85df96a1145c0f19",
+  "in_progress": null,
+  "last_code_head": "8ce8e4b8d345945a2eaeee14758362499a12f8e7",
+  "last_observed_head": "8ce8e4b8d345945a2eaeee14758362499a12f8e7",
   "latest_verification": {
     "android_grand": {
       "errors": 0,
       "failures": 0,
-      "tests": 942
+      "tests": 950
     },
-    "at_utc": "2026-09-12T00:44:29+00:00",
-    "boundary_commit": "349defe2cfa5176941ab7ccf85df96a1145c0f19",
+    "at_utc": "2026-09-12T02:08:14+00:00",
+    "boundary_commit": "8ce8e4b8d345945a2eaeee14758362499a12f8e7",
     "ios_grand": {
       "errors": 0,
       "failures": 0,
-      "tests": 882
+      "tests": 890
     },
     "roster": {
-      "T32_killed": 6,
-      "of": 6
+      "T33_killed": 10,
+      "of": 10
     },
-    "t32_courts": {
-      "android": 7,
-      "ios": 7
+    "t33_courts": {
+      "android": 8,
+      "ios": 8
     },
-    "tested_tree_sha": "37f1d1b330d2681754016218e23d8e9c4735c8a2"
+    "tested_tree_sha": "424eff6d88e399c036079bd093ccf3903929508d"
   },
-  "next_task": "T33",
+  "next_task": "T34",
   "phase": "P0",
   "plan_sha256": "685456b378662b0a40a53a6abc810041e37daf97b213f3efeb6cea879363934e",
   "planning_baseline_sha": "b5c3d3d394b70cf356cdde33b47511dad7cbb95c",

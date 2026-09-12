@@ -4231,7 +4231,17 @@
     "SIGNING"
   ],
   "failed_attempts": [],
-  "in_progress": null,
+  "in_progress": {
+    "claimed_head": "6fcdef491cacca2f1978b73850060d80bc36ccf6",
+    "claimed_utc": "2026-09-12T02:14:08+00:00",
+    "objective": {
+      "claimed_head": "6fcdef491cacca2f1978b73850060d80bc36ccf6",
+      "claimed_utc": "2026-09-12T02:14:08+00:00",
+      "objective": "Use a durable journal: REQUESTED→RUNTIME_DRAINED→KEYS_ERASED→ARTIFACTS_DELETED→NEW_IDENTITY→IDLE.",
+      "task": "T34"
+    },
+    "task": "T34"
+  },
   "last_code_head": "8ce8e4b8d345945a2eaeee14758362499a12f8e7",
   "last_observed_head": "8ce8e4b8d345945a2eaeee14758362499a12f8e7",
   "latest_verification": {
