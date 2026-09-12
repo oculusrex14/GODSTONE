@@ -5617,7 +5617,7 @@
       "unresolved": []
     }
   },
-  "current_task": "T37",
+  "current_task": "T38",
   "external_blockers": [
     "A06",
     "APPROVED_CONTENT",
@@ -5627,33 +5627,39 @@
   ],
   "failed_attempts": [],
   "in_progress": null,
-  "last_code_head": "c43996fdc7e514d501cfed1fa12809d4f3379e2d",
-  "last_observed_head": "c43996fdc7e514d501cfed1fa12809d4f3379e2d",
+  "last_code_head": "f5fcc40a8c6fc3e793d8969d9c7fee7bc4f996ab",
+  "last_observed_head": "f5fcc40a8c6fc3e793d8969d9c7fee7bc4f996ab",
   "latest_verification": {
     "android_grand": {
       "errors": 0,
       "failures": 0,
-      "tests": 992
+      "tests": 1003
     },
-    "at_utc": "2026-09-12T12:05:04+00:00",
-    "boundary_commit": "c43996fdc7e514d501cfed1fa12809d4f3379e2d",
+    "at_utc": "2026-09-12T14:36:23+00:00",
+    "boundary_commit": "f5fcc40a8c6fc3e793d8969d9c7fee7bc4f996ab",
     "ios_grand": {
       "errors": 0,
       "failures": 0,
-      "tests": 931
+      "tests": 942
     },
     "roster": {
-      "T83_killed": 10,
+      "T37_killed": 10,
       "of": 10
     }
   },
-  "next_task": "T37",
+  "next_task": "T38",
   "phase": "P0",
   "plan_sha256": "685456b378662b0a40a53a6abc810041e37daf97b213f3efeb6cea879363934e",
   "planning_baseline_sha": "b5c3d3d394b70cf356cdde33b47511dad7cbb95c",
   "schema_version": 1,
   "task_catalog_sha256": "b7cf90483cde63b67099a996d2139823e79d029e2b2481d81a756da70c3ef97a",
   "unresolved_defects": [],
+  "warnings": [
+    "T18 randomized-draw pair-cap flake family struck again in the T37 subsystem campaign (no ascending hint pair within 64 draws); the FAILED record T37-subsystem-gradlew stands in the ledger as history, the green retry -002 rides beside it; the sealed T18 court was NOT edited -- policy: green-retry to 6, never rewrite the ledger, never touch sealed courts.",
+    "roster law learned (fixup-1): append-style find/replace rows violate the ledger post-invariant -- the pre-anchor must NOT survive the mutant verbatim; re-express insertions as destructive substitutions (rewrite one shared line, reuse the closer) and simulate the runner gates before launching a campaign.",
+    "kotlin law learned (fixup-2): a when-arm carrying two statements demands a braced block; an unbraced arm aborts the mutant compile -- and the classifier did-not-compile verdict was real here, verified against the row log rather than the daemon-flake pattern.",
+    "swift dialect law learned (fixup-2): the iOS assertion shim is NON-FATAL -- failed assertions record and continue, so a court must guard every indexed read (guard-let + XCTFail + return) or a rejecting mutant can trap the whole xctest process and the row miscategorizes as executed-nothing."
+  ],
   "warnings_for_next_invocation": [
     "Android toolchain provisioned: JDK 17.0.20.1 + SDK 35 on mac-primary.",
     "Readiness flags remain false. D2 absent at planning baseline.",
