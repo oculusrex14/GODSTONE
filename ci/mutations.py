@@ -976,7 +976,7 @@ SEMANTIC = [
         'platform': 'jvm',
         'file': 'android/mesh/src/main/java/io/godstone/mesh/delivery/SendDirectAuthority.kt',
         'find': '        if (pinned != null && pinned.bindingDigest.contentEquals(digest)) {',
-        'replace': '        if (false && pinned != null && pinned.bindingDigest.contentEquals(digest)) {',
+        'replace': '        if (pinned != null && pinned.bindingDigest.contentEquals(digest) && false) {',
         'why': 'the replay branch never answers; the retry of the same intent token falls through to the fresh path and MINTS a new nonce and a NEW logical id -- identical persisted bytes are broken at the source',
         'witness': 'testRetryOfSameIntentTokenLoadsIdenticalPersistedBytes',
         'gradle_filter': '*ReadinessT36Test*',
