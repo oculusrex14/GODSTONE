@@ -5,6 +5,8 @@ import io.godstone.mesh.delivery.AckMode
 import io.godstone.mesh.delivery.AckResult
 import io.godstone.mesh.delivery.DeliveryTracker
 import io.godstone.mesh.delivery.EnqueueResult
+import io.godstone.mesh.delivery.InboxCommitResult
+import io.godstone.mesh.delivery.RecipientInboxRepository
 import io.godstone.mesh.identity.Identity
 import io.godstone.mesh.router.Router
 import io.godstone.mesh.store.MessageStore
@@ -93,6 +95,18 @@ class MeshNode(
     internal val deliveryTracker: DeliveryTracker,
     val sessions: io.godstone.mesh.crypto.SessionManager,
 ) {
+    /**
+     * T37 (section 14): the recipient inbox transaction of the authenticated
+     * link -- injectable and absent by default, so the relay/ACK-ingest
+     * behaviour of every existing composition is preserved byte-for-byte.
+     * When set, a sealed DIRECT MESSAGE additionally gets the local
+     * destination attempt; its typed outcome never alters the relay decision
+     * in [ingestInbound] (the router remains the relay truth), and an
+     * accepted delivery's canonical recipient ACK is queued on the bounded
+     * outbox for the trusted link's writer (the physical pump is T54/T73-T75
+     * territory; the production wiring point is the lab composition root).
+     */
+    internal var recipientInbox: RecipientInboxRepository? = null
     /**
      * Pure JVM test convenience constructor: builds a fail-closed SessionManager from the SAME [identity].
      */
@@ -378,11 +392,68 @@ class MeshNode(
                 else -> false
             }
         } else {
-            router.onFrameReceived(frame, fromPeer)
+            val relay = router.onFrameReceived(frame, fromPeer)
+            val inbox = recipientInbox
+            if (inbox != null &&
+                frame.type == io.godstone.mesh.wire.v2.TypeV2.MESSAGE &&
+                (frame.flags and io.godstone.mesh.wire.v2.FrameV2.SEALED) != 0
+            ) {
+                // T37: the local destination attempt rides beside the relay -- it
+                // decides nothing about forwarding (the router's decision above
+                // stands untouched) and only queues an accepted delivery's
+                // canonical ACK for the link's writer.
+                // try/catch (not runCatching): the suspend accept must stay in
+                // the coroutine body; a receiver fault must never escape the
+                // collector and must never touch the relay decision below.
+                val accepted = try {
+                    inbox.acceptVerifiedAndRequireAck(frame, fromPeer)
+                } catch (_: Throwable) {
+                    null
+                }
+                val ack = when (accepted) {
+                    is InboxCommitResult.New -> accepted.ack
+                    is InboxCommitResult.Duplicate -> accepted.ack
+                    else -> null
+                }
+                if (ack != null) offerAckForLink(ack)
+            }
+            relay
         }
     }
 
     private fun knownPeers(): List<ByteArray> = synchronized(peerLock) { peers.values.toList() }
+
+    // ------------------------------------------------------------------ T37 ACK outbox
+    // Runtime scheduling only -- the durable truth of a recipient ACK is the
+    // ack_frames row filed inside the repository's pair step. Drop-oldest keeps
+    // the bound honest under flood: the freshest canonical answer wins the
+    // single slot, the elder is superseded by the durable row's re-read path.
+
+    private val ackOutboxLock = Any()
+    private val ackOutbox = ArrayDeque<io.godstone.mesh.wire.v2.FrameV2>()
+
+    /** Queue one canonical recipient ACK for the trusted link's writer. */
+    internal fun offerAckForLink(ack: io.godstone.mesh.wire.v2.FrameV2): Boolean = synchronized(ackOutboxLock) {
+        while (ackOutbox.size >= MAX_OUTBOUND_ACKS) {
+            ackOutbox.removeFirst()
+        }
+        ackOutbox.addLast(ack)
+        true
+    }
+
+    /** Drain up to [max] queued ACKs for the link writer (the T54 lab pump seam). */
+    internal fun drainAckOutboxForLink(max: Int): List<io.godstone.mesh.wire.v2.FrameV2> = synchronized(ackOutboxLock) {
+        val out = ArrayList<io.godstone.mesh.wire.v2.FrameV2>()
+        var n = 0
+        while (n < max && ackOutbox.size > 0) {
+            out.add(ackOutbox.removeFirst())
+            n += 1
+        }
+        out
+    }
+
+    /** Outbox depth for witnesses -- telemetry only, never authority. */
+    internal fun ackOutboxDepthForTest(): Int = synchronized(ackOutboxLock) { ackOutbox.size }
 
     /**
      * Test-only seam: inject a connected peer so `dispatchSos` has a recipient
@@ -414,5 +485,8 @@ class MeshNode(
     companion object {
         /** Flipped only when ADR-001/M1-wire and ADR-002/M2-link acceptance tests pass. */
         const val LINK_LAYER_READY = false
+
+        /** T37: the bounded runtime outbox of canonical recipient ACKs awaiting the link. */
+        const val MAX_OUTBOUND_ACKS: Int = 64
     }
 }
