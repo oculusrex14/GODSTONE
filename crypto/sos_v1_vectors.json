@@ -95,6 +95,8 @@
       "tampered_field": "signature",
       "expected_reason": "signature",
       "base": "accept_signed_ok_min",
+      "msg_id_hex": "f276b313ab856d77799b1302e423ebaa",
+      "node_id": "ee05264d36263b13b179179ecc1a0a09",
       "frame_payload_hex": "534f5331000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000101000000004721b5b632272e65a68dda7ac25b4185f8b01916db185c14287db92e2b770faedb48257e1237976a74ad8cfedca00213408fe89ac6251f1b930245f242b5c31a60b9a293ac2c380e9657e5a0ca882b656f910de2fd0a34d34c39350750b3dc4e30b4babb3a8746540902b30c3154aa9156def02a56d6daef9250998dd6b80405c8f1536501c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3000468656c70",
       "header": {
         "type": 240,
@@ -111,6 +113,8 @@
       "tampered_field": "signature",
       "expected_reason": "signature",
       "base": "accept_signed_ok_min",
+      "msg_id_hex": "f276b313ab856d77799b1302e423ebaa",
+      "node_id": "ee05264d36263b13b179179ecc1a0a09",
       "frame_payload_hex": "534f5331fc2978a13298a02a3384b23fcc328e86470ee8d66f619259631d58620a59bf1dfe4ca4eb33f2cf52d94f171b9e6c543b756747f8c68103768f8055fcd937aa040101000000004721b5b632272e65a68dda7ac25b4185f8b01916db185c14287db92e2b770faedb48257e1237976a74ad8cfedca00213408fe89ac6251f1b930245f242b5c31a60b9a293ac2c380e9657e5a0ca882b656f910de2fd0a34d34c39350750b3dc4e30b4babb3a8746540902b30c3154aa9156def02a56d6daef9250998dd6b80405c8f1536501c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3000468656c70",
       "header": {
         "type": 240,
@@ -126,6 +130,8 @@
       "tampered_field": "body",
       "expected_reason": "message_id_mismatch",
       "base": "accept_signed_ok_min",
+      "msg_id_hex": "f276b313ab856d77799b1302e423ebaa",
+      "node_id": "ee05264d36263b13b179179ecc1a0a09",
       "frame_payload_hex": "534f5331fc2978a13298a02a3385b23fcc328e86470ee8d66f619259631d58620a59bf1dfe4ca4eb33f2cf52d94f171b9e6c543b756747f8c68103768f8055fcd937aa040101000000004721b5b632272e65a68dda7ac25b4185f8b01916db185c14287db92e2b770faedb48257e1237976a74ad8cfedca00213408fe89ac6251f1b930245f242b5c31a60b9a293ac2c380e9657e5a0ca882b656f910de2fd0a34d34c39350750b3dc4e30b4babb3a8746540902b30c3154aa9156def02a56d6daef9250998dd6b80405c8f1536501c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3000468656c71",
       "header": {
         "type": 240,
@@ -141,6 +147,8 @@
       "tampered_field": "body_len_be",
       "expected_reason": "body_length",
       "base": "accept_signed_ok_min",
+      "msg_id_hex": "f276b313ab856d77799b1302e423ebaa",
+      "node_id": "ee05264d36263b13b179179ecc1a0a09",
       "frame_payload_hex": "534f5331fc2978a13298a02a3385b23fcc328e86470ee8d66f619259631d58620a59bf1dfe4ca4eb33f2cf52d94f171b9e6c543b756747f8c68103768f8055fcd937aa040101000000004721b5b632272e65a68dda7ac25b4185f8b01916db185c14287db92e2b770faedb48257e1237976a74ad8cfedca00213408fe89ac6251f1b930245f242b5c31a60b9a293ac2c380e9657e5a0ca882b656f910de2fd0a34d34c39350750b3dc4e30b4babb3a8746540902b30c3154aa9156def02a56d6daef9250998dd6b80405c8f1536501c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3000568656c70",
       "header": {
         "type": 240,
@@ -155,8 +163,10 @@
       "kind": "reject",
       "name": "reject_truncated_binding",
       "tampered_field": "identity_binding",
-      "expected_reason": "malformed",
+      "expected_reason": "body_length",
       "base": "accept_signed_ok_min",
+      "msg_id_hex": "f276b313ab856d77799b1302e423ebaa",
+      "node_id": "ee05264d36263b13b179179ecc1a0a09",
       "frame_payload_hex": "534f5331fc2978a13298a02a3385b23fcc328e86470ee8d66f619259631d58620a59bf1dfe4ca4eb33f2cf52d94f171b9e6c543b756747f8c68103768f8055fcd937aa040101000000004721b5b632272e65a68dda7ac25b4185f8b01916db185c14287db92e2b770faedb48257e1237976a74ad8cfedca00213408fe89ac6251f1b930245f242b5c31a60b9a293ac2c380e9657e5a0ca882b656f910de2fd0a34d34c39350750b3dc4e30b4babb3a8746540902b30c3154aa9156def02a56d6daef9250998dd6b804c8f1536501c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3000468656c70",
       "header": {
         "type": 240,
@@ -165,7 +175,7 @@
         "flags": 48,
         "routing_tag": "00000000"
       },
-      "note": "binding field is 132 bytes long; the exact-shape gate refuses before any cryptographic work"
+      "note": "one byte dropped from the 133-byte binding shifts every fixed offset behind it; the total-length obligation (unsigned size must equal 157 + the declared body length) speaks first in the documented validator order, before any binding is consulted"
     },
     {
       "kind": "reject",
@@ -173,6 +183,8 @@
       "tampered_field": "version",
       "expected_reason": "malformed",
       "base": "accept_signed_ok_min",
+      "msg_id_hex": "f276b313ab856d77799b1302e423ebaa",
+      "node_id": "ee05264d36263b13b179179ecc1a0a09",
       "frame_payload_hex": "534f5331fc2978a13298a02a3385b23fcc328e86470ee8d66f619259631d58620a59bf1dfe4ca4eb33f2cf52d94f171b9e6c543b756747f8c68103768f8055fcd937aa040201000000004721b5b632272e65a68dda7ac25b4185f8b01916db185c14287db92e2b770faedb48257e1237976a74ad8cfedca00213408fe89ac6251f1b930245f242b5c31a60b9a293ac2c380e9657e5a0ca882b656f910de2fd0a34d34c39350750b3dc4e30b4babb3a8746540902b30c3154aa9156def02a56d6daef9250998dd6b80405c8f1536501c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3000468656c70",
       "header": {
         "type": 240,
@@ -189,6 +201,8 @@
       "tampered_field": "time_quality",
       "expected_reason": "time_quality",
       "base": "accept_signed_ok_min",
+      "msg_id_hex": "f276b313ab856d77799b1302e423ebaa",
+      "node_id": "ee05264d36263b13b179179ecc1a0a09",
       "frame_payload_hex": "534f5331fc2978a13298a02a3385b23fcc328e86470ee8d66f619259631d58620a59bf1dfe4ca4eb33f2cf52d94f171b9e6c543b756747f8c68103768f8055fcd937aa040101000000004721b5b632272e65a68dda7ac25b4185f8b01916db185c14287db92e2b770faedb48257e1237976a74ad8cfedca00213408fe89ac6251f1b930245f242b5c31a60b9a293ac2c380e9657e5a0ca882b656f910de2fd0a34d34c39350750b3dc4e30b4babb3a8746540902b30c3154aa9156def02a56d6daef9250998dd6b80405c8f1536503c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3000468656c70",
       "header": {
         "type": 240,
@@ -204,6 +218,8 @@
       "tampered_field": "created_at",
       "expected_reason": "unknown_time_pairing",
       "base": "accept_signed_ok_min",
+      "msg_id_hex": "f276b313ab856d77799b1302e423ebaa",
+      "node_id": "ee05264d36263b13b179179ecc1a0a09",
       "frame_payload_hex": "534f5331fc2978a13298a02a3385b23fcc328e86470ee8d66f619259631d58620a59bf1dfe4ca4eb33f2cf52d94f171b9e6c543b756747f8c68103768f8055fcd937aa040101000000004721b5b632272e65a68dda7ac25b4185f8b01916db185c14287db92e2b770faedb48257e1237976a74ad8cfedca00213408fe89ac6251f1b930245f242b5c31a60b9a293ac2c380e9657e5a0ca882b656f910de2fd0a34d34c39350750b3dc4e30b4babb3a8746540902b30c3154aa9156def02a56d6daef9250998dd6b804050000000001c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3000468656c70",
       "header": {
         "type": 240,
@@ -220,6 +236,8 @@
       "tampered_field": "identity_binding.signature",
       "expected_reason": "identity_binding",
       "base": "accept_signed_ok_min",
+      "msg_id_hex": "f276b313ab856d77799b1302e423ebaa",
+      "node_id": "ee05264d36263b13b179179ecc1a0a09",
       "frame_payload_hex": "534f5331fc2978a13298a02a3385b23fcc328e86470ee8d66f619259631d58620a59bf1dfe4ca4eb33f2cf52d94f171b9e6c543b756747f8c68103768f8055fcd937aa040101000000004721b5b632272e65a68dda7ac25b4185f8b01916db185c14287db92e2b770faedb48257e1237976a74ad8cfedca00213408fe89ac6251f1b930245f242b5c31ae52de85c30ba4593f943da87c5aacc7b0773acd45e30a9aaf52f4946037ef7dde2ead5562598b8066c8f2ed2c682394e32a7811072035da238450ea44a593f07c8f1536501c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3000468656c70",
       "header": {
         "type": 240,
@@ -236,7 +254,9 @@
       "tampered_field": "identity_binding.signing_public_key",
       "expected_reason": "identity_binding",
       "base": "accept_signed_ok_min",
-      "frame_payload_hex": "534f5331fc2978a13298a02a3385b23fcc328e86470ee8d66f619259631d58620a59bf1dfe4ca4eb33f2cf52d94f171b9e6c543b756747f8c68103768f8055fcd937aa0401010000000051bfae7fa92c515512cd3ad442760e41612e59dfec3913f670b721c04255b068db48257e1237976a74ad8cfedca00213408fe89ac6251f1b930245f242b5c31ad43700d9cf7e1d440670b47a2f6eeee2f56910d3c7f5253689ee223b330552c49d28ba8699813e6d96c8d4f76e9c628460efe1f29204be225c1fd17c98b59a02c8f1536501c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3000468656c70",
+      "msg_id_hex": "a7bdf49cd620e435e7c1918d2b1cefcc",
+      "node_id": "ee05264d36263b13b179179ecc1a0a09",
+      "frame_payload_hex": "534f53316839a0b801b714cb513b4e75188c27310d7abb350e29442e28604ad47955d969514efcbea115ac785853a5bf7ae51220ccbc0b9570ca615738895ef7ddadf40b01010000000051bfae7fa92c515512cd3ad442760e41612e59dfec3913f670b721c04255b068db48257e1237976a74ad8cfedca00213408fe89ac6251f1b930245f242b5c31ad43700d9cf7e1d440670b47a2f6eeee2f56910d3c7f5253689ee223b330552c49d28ba8699813e6d96c8d4f76e9c628460efe1f29204be225c1fd17c98b59a02c8f1536501c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3000468656c70",
       "header": {
         "type": 240,
         "ttl": 16,
@@ -244,7 +264,7 @@
         "flags": 48,
         "routing_tag": "00000000"
       },
-      "note": "everything else re-verifies for the stranger's own key pair; the only falsehood is that BLAKE2s-128(embedded signing pub) does not equal the node_id the msg_id was derived over -- the receiver must DERIVE, never trust the claim"
+      "note": "the stranger's own honest distress: it verifies end to end under its own key pair; the refusal arises only when the court presents it under the victim's claimed node id -- the receiver must DERIVE node identity from the embedded key, never trust the claim"
     },
     {
       "kind": "reject",
@@ -252,6 +272,8 @@
       "tampered_field": "header.flags",
       "expected_reason": "missing_required_flags",
       "base": "accept_signed_ok_min",
+      "msg_id_hex": "f276b313ab856d77799b1302e423ebaa",
+      "node_id": "ee05264d36263b13b179179ecc1a0a09",
       "frame_payload_hex": "534f5331fc2978a13298a02a3385b23fcc328e86470ee8d66f619259631d58620a59bf1dfe4ca4eb33f2cf52d94f171b9e6c543b756747f8c68103768f8055fcd937aa040101000000004721b5b632272e65a68dda7ac25b4185f8b01916db185c14287db92e2b770faedb48257e1237976a74ad8cfedca00213408fe89ac6251f1b930245f242b5c31a60b9a293ac2c380e9657e5a0ca882b656f910de2fd0a34d34c39350750b3dc4e30b4babb3a8746540902b30c3154aa9156def02a56d6daef9250998dd6b80405c8f1536501c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3000468656c70",
       "header": {
         "type": 240,
@@ -267,6 +289,8 @@
       "tampered_field": "header.type",
       "expected_reason": "wrong_type",
       "base": "accept_signed_ok_min",
+      "msg_id_hex": "f276b313ab856d77799b1302e423ebaa",
+      "node_id": "ee05264d36263b13b179179ecc1a0a09",
       "frame_payload_hex": "534f5331fc2978a13298a02a3385b23fcc328e86470ee8d66f619259631d58620a59bf1dfe4ca4eb33f2cf52d94f171b9e6c543b756747f8c68103768f8055fcd937aa040101000000004721b5b632272e65a68dda7ac25b4185f8b01916db185c14287db92e2b770faedb48257e1237976a74ad8cfedca00213408fe89ac6251f1b930245f242b5c31a60b9a293ac2c380e9657e5a0ca882b656f910de2fd0a34d34c39350750b3dc4e30b4babb3a8746540902b30c3154aa9156def02a56d6daef9250998dd6b80405c8f1536501c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3000468656c70",
       "header": {
         "type": 224,
@@ -282,6 +306,8 @@
       "tampered_field": "header.msg_id",
       "expected_reason": "message_id_mismatch",
       "base": "accept_signed_ok_min",
+      "msg_id_hex": "f276b313ab856d77799b1302e423ebaa",
+      "node_id": "ee05264d36263b13b179179ecc1a0a09",
       "frame_payload_hex": "534f5331fc2978a13298a02a3385b23fcc328e86470ee8d66f619259631d58620a59bf1dfe4ca4eb33f2cf52d94f171b9e6c543b756747f8c68103768f8055fcd937aa040101000000004721b5b632272e65a68dda7ac25b4185f8b01916db185c14287db92e2b770faedb48257e1237976a74ad8cfedca00213408fe89ac6251f1b930245f242b5c31a60b9a293ac2c380e9657e5a0ca882b656f910de2fd0a34d34c39350750b3dc4e30b4babb3a8746540902b30c3154aa9156def02a56d6daef9250998dd6b80405c8f1536501c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3000468656c70",
       "header": {
         "type": 240,

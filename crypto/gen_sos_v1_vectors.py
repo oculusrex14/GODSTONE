@@ -180,13 +180,16 @@ def generate_vectors() -> dict:
             "header": dict(HEADER),
         })
 
-    def reject(name, field, reason, payload, header=None, note=None):
+    def reject(name, field, reason, payload, header=None, note=None,
+               msg_hex=None, node_hex=None):
         entry = {
             "kind": "reject",
             "name": name,
             "tampered_field": field,
             "expected_reason": reason,
             "base": "accept_signed_ok_min",
+            "msg_id_hex": (msg_hex if msg_hex is not None else base["mid"].hex()),
+            "node_id": (node_hex if node_hex is not None else base["node"].hex()),
             "frame_payload_hex": payload.hex() if payload is not None else None,
             "header": dict(header if header is not None else HEADER),
         }
@@ -221,10 +224,12 @@ def generate_vectors() -> dict:
     # The unsigned payload lies about its binding: one byte dropped from the
     # 133-byte binding field shifts every fixed offset behind it.
     short = (base["unsigned"][:1 + 132] + base["unsigned"][134:])
-    reject("reject_truncated_binding", "identity_binding", "malformed",
+    reject("reject_truncated_binding", "identity_binding", "body_length",
            tamper_payload(base, unsigned=short),
-           note="binding field is 132 bytes long; the exact-shape gate refuses "
-                "before any cryptographic work")
+           note="one byte dropped from the 133-byte binding shifts every fixed "
+                "offset behind it; the total-length obligation (unsigned size "
+                "must equal 157 + the declared body length) speaks first in the "
+                "documented validator order, before any binding is consulted")
     # The leading version byte claims 0x02; the table knows exactly one.
     badver = bytearray(base["unsigned"])
     badver[0] = 0x02
@@ -280,13 +285,24 @@ def generate_vectors() -> dict:
         base["fix"]["generation"], s2pub, base["static_dh_pub"],
         stranger2.sign(s2pre), version=BINDING_VERSION)
     s2unsigned = bytes([PAYLOAD_VERSION]) + s2binding + base["unsigned"][134:]
+    # the stranger strikes its OWN honest envelope under its own key pair:
+    # every gate passes for the stranger. The falsity lives only in the claim
+    # the court presents it under (the victim's node id): the receiver must
+    # DERIVE node identity from the embedded key, never trust the claim.
+    s2node = derive_node_id(s2pub)
+    s2mid = msg_id(s2node, base["fix"]["created_at"],
+                 bytes.fromhex(base["fix"]["nonce_hex"]), s2unsigned)
+    s2sig = stranger2.sign(s2mid + SOS_MAGIC + s2unsigned)
+    s2payload = SOS_MAGIC + s2sig + s2unsigned
     reject("reject_underived_node_claim", "identity_binding.signing_public_key",
            "identity_binding",
-           tamper_payload(base, unsigned=s2unsigned),
-           note="everything else re-verifies for the stranger's own key pair; "
-                "the only falsehood is that BLAKE2s-128(embedded signing pub) "
-                "does not equal the node_id the msg_id was derived over -- "
-                "the receiver must DERIVE, never trust the claim")
+           s2payload,
+           msg_hex=s2mid.hex(),
+           note="the stranger's own honest distress: it verifies end to end "
+                "under its own key pair; the refusal arises only when the "
+                "court presents it under the victim's claimed node id -- the "
+                "receiver must DERIVE node identity from the embedded key, "
+                "never trust the claim")
     # Header tampering: the required flags are not both set.
     reject("reject_flags_missing_required", "header.flags", "missing_required_flags",
            SOS_MAGIC + base["sig"] + base["unsigned"],
@@ -302,6 +318,16 @@ def generate_vectors() -> dict:
            SOS_MAGIC + base["sig"] + base["unsigned"],
            header={**HEADER, "msg_id_flip_byte": 0,
                    "flip_note": "court flips bit 0 of msg_id byte 0"})
+
+    # normalization pass: every reject row carries the pinned header fields of
+    # its base frame, so a court reads one uniform table (missing members are
+    # filled from the base, never left for a court to guess)
+    for v in vectors:
+        if v.get("kind") == "reject":
+            v.setdefault("msg_id_hex", base["mid"].hex())
+            v.setdefault("node_id", base["node"].hex())
+            if v.get("frame_payload_hex") is None:
+                v["frame_payload_hex"] = (SOS_MAGIC + base["sig"] + base["unsigned"]).hex()
 
     doc = {
         "schema": 1,
