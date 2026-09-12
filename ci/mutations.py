@@ -334,6 +334,115 @@ SEMANTIC = [
     # -------------------------------------------------------------- T32 (bounded receipt-relative retention across restarts, dual-isle)
 
 
+    # T35 — SignedMessageV1 authorship binding inside the sealed envelope (section 15: version 0x01
+    #   closed layout, domain-separated Ed25519 preimage over GMP2-SIGNED-MESSAGE-V1, BLAKE2s128
+    #   sender-id/key binding, intended-local-recipient equality before inbox/ACK, exact-span and
+    #   strict UTF-8 obligations, unknown-version fail-closed with NO legacy plaintext fallback).
+    #   The randomized iOS signer (RFC 8032 section 9.1) forbids byte-identity claims: the court
+    #   proves bidirectional AUTHENTICATION parity over pinned vectors. Five falsifications, struck
+    #   on BOTH isles, each with a non-shadowed oracle (trailing-byte probe for the exact-span gate,
+    #   attacker-self-signed hostile frames for the version and UTF-8 gates -- the signature alone
+    #   cannot see outside the signed span). Disposable worktrees; the live tree is never touched.
+    {
+        'id': 'T35-RC1-android-trust-sealed-sender-without-verifying-signature',
+        'platform': 'jvm',
+        'file': 'android/mesh/src/main/java/io/godstone/mesh/wire/v2/SignedMessageV1.kt',
+        'find': '        if (!ok) return SenderVerificationResult.Invalid("signature does not verify over the domain preimage")',
+        'replace': '        if (false) return SenderVerificationResult.Invalid("signature does not verify over the domain preimage")',
+        'why': 'the receiver admits any frame whose fields parse: the attacker-authored envelope (every tampered priority/creation/body/signature variant) walks into the inbox unchallenged; the authorship binding of the sealed sender ID falleth',
+        'witness': 'testModifiedPriorityTimeOrBodyBreaksTheSignature',
+        'gradle_filter': '*ReadinessT35Test*',
+    },
+    {
+        'id': 'T35-RC1-ios-trust-sealed-sender-without-verifying-signature',
+        'platform': 'swift',
+        'file': 'ios/Godstone/Sources/GodstoneMesh/SignedMessageV1.swift',
+        'find': '        if !key.isValidSignature(signature, for: preimage) { return .invalid(reason: "signature does not verify over the domain preimage") }',
+        'replace': '        if false { return .invalid(reason: "signature does not verify over the domain preimage") }',
+        'why': 'the iOS twin admits any frame whose fields parse without authenticating the Ed25519 binding; the attacker-authored envelope walks in; the authorship law on this isle falleth',
+        'witness': 'testModifiedPriorityTimeOrBodyBreaksTheSignature',
+        'swift_filter': 'ReadinessT35Tests',
+    },
+    {
+        'id': 'T35-RC2-android-drop-intended-recipient-equality',
+        'platform': 'jvm',
+        'file': 'android/mesh/src/main/java/io/godstone/mesh/wire/v2/SignedMessageV1.kt',
+        'find': '        if (!recipientLocalNodeId.contentEquals(embeddedRecipient)) {',
+        'replace': '        if (false) {',
+        'why': 'a valid signature over the WRONG recipient is delivered: the frame reaches an inbox it was never addressed to and the ACK path commits to a peer that holds no such message; the intended-local-recipient obligation falleth',
+        'witness': 'testValidSignatureWrongRecipientRejectedBeforeInbox',
+        'gradle_filter': '*ReadinessT35Test*',
+    },
+    {
+        'id': 'T35-RC2-ios-drop-intended-recipient-equality',
+        'platform': 'swift',
+        'file': 'ios/Godstone/Sources/GodstoneMesh/SignedMessageV1.swift',
+        'find': '        if embeddedRecipient != recipientLocalNodeId {',
+        'replace': '        if false {',
+        'why': 'the iOS twin delivers a validly signed frame to any local endpoint regardless of the embedded recipientNodeId; the wrong-recipient oracle falleth',
+        'witness': 'testValidSignatureWrongRecipientRejectedBeforeInbox',
+        'swift_filter': 'ReadinessT35Tests',
+    },
+    {
+        'id': 'T35-RC3-android-drop-exact-length-obligation',
+        'platform': 'jvm',
+        'file': 'android/mesh/src/main/java/io/godstone/mesh/wire/v2/SignedMessageV1.kt',
+        'find': '        if (signedPlaintext.size != expectedTotal) return SenderVerificationResult.Invalid("bodyLength does not match the actual tail; the frame is not exact")',
+        'replace': '        if (false) return SenderVerificationResult.Invalid("bodyLength does not match the actual tail; the frame is not exact")',
+        'why': 'frames whose declared bodyLength does not match their actual tail (and frames with one byte smuggled past the signature) are accepted: the exact-span obligation of the wire format falleth',
+        'witness': 'testMalformedLengthAndUtf8RejectedFailClosed',
+        'gradle_filter': '*ReadinessT35Test*',
+    },
+    {
+        'id': 'T35-RC3-ios-drop-exact-length-obligation',
+        'platform': 'swift',
+        'file': 'ios/Godstone/Sources/GodstoneMesh/SignedMessageV1.swift',
+        'find': '        if b.count != expectedTotal { return .invalid(reason: "bodyLength does not match the actual tail; the frame is not exact") }\n        let body = Data(b[(bodyLenPos + 2) ..< (bodyLenPos + 2 + bodyLength)])\n        let signature = Data(b[(bodyLenPos + 2 + bodyLength) ..< (bodyLenPos + 2 + bodyLength + sigLen)])',
+        'replace': '        if false { return .invalid(reason: "bodyLength does not match the actual tail; the frame is not exact") }\n        let body = Data(b[Swift.min(bodyLenPos + 2, b.count) ..< Swift.min(bodyLenPos + 2 + bodyLength, b.count)])\n        let signature = Data(b[Swift.min(bodyLenPos + 2 + bodyLength, b.count) ..< Swift.min(bodyLenPos + 2 + bodyLength + sigLen, b.count)])',
+        'why': 'the iOS twin accepts mis-declared spans and smuggled trailing bytes; slices are clamped so the mutant dies by the oracle, not by a fatal trap (a trap would report INVALID, not KILLED); the exact-span obligation on this isle falleth',
+        'witness': 'testMalformedLengthAndUtf8RejectedFailClosed',
+        'swift_filter': 'ReadinessT35Tests',
+    },
+    {
+        'id': 'T35-RC4-android-drop-utf8-validator',
+        'platform': 'jvm',
+        'file': 'android/mesh/src/main/java/io/godstone/mesh/wire/v2/SignedMessageV1.kt',
+        'find': '        if (!isWellFormedUtf8(body)) return SenderVerificationResult.Invalid("body is not well-formed UTF-8")',
+        'replace': '        if (false) return SenderVerificationResult.Invalid("body is not well-formed UTF-8")',
+        'why': 'a self-signed body carrying a lone continuation byte (surrogates, overlongs, truncations) passes: no receiver validates the UTF-8 obligation of the application body and the presentation layer chokes downstream; the validator falleth',
+        'witness': 'testMalformedLengthAndUtf8RejectedFailClosed',
+        'gradle_filter': '*ReadinessT35Test*',
+    },
+    {
+        'id': 'T35-RC4-ios-drop-utf8-validator',
+        'platform': 'swift',
+        'file': 'ios/Godstone/Sources/GodstoneMesh/SignedMessageV1.swift',
+        'find': '        if !isWellFormedUtf8([UInt8](body)) { return .invalid(reason: "body is not well-formed UTF-8") }',
+        'replace': '        if false { return .invalid(reason: "body is not well-formed UTF-8") }',
+        'why': 'the iOS twin accepts a self-signed malformed body; the UTF-8 validation obligation on this isle falleth',
+        'witness': 'testMalformedLengthAndUtf8RejectedFailClosed',
+        'swift_filter': 'ReadinessT35Tests',
+    },
+    {
+        'id': 'T35-RC5-android-drop-version-rejection',
+        'platform': 'jvm',
+        'file': 'android/mesh/src/main/java/io/godstone/mesh/wire/v2/SignedMessageV1.kt',
+        'find': '        if (signedPlaintext[i].toInt() and 0xFF != VERSION) return SenderVerificationResult.Invalid("unknown version; there is no legacy plaintext fallback")',
+        'replace': '        if (false) return SenderVerificationResult.Invalid("unknown version; there is no legacy plaintext fallback")',
+        'why': 'a self-signed frame claiming version 0x02 is accepted beside the closed 0x01 layout: the version gate falleth and an unknown encoding is quietly admitted, which the card forbids -- there is no legacy plaintext fallback',
+        'witness': 'testMalformedLengthAndUtf8RejectedFailClosed',
+        'gradle_filter': '*ReadinessT35Test*',
+    },
+    {
+        'id': 'T35-RC5-ios-drop-version-rejection',
+        'platform': 'swift',
+        'file': 'ios/Godstone/Sources/GodstoneMesh/SignedMessageV1.swift',
+        'find': '        if b[0] != version { return .invalid(reason: "unknown version; there is no legacy plaintext fallback") }',
+        'replace': '        if false { return .invalid(reason: "unknown version; there is no legacy plaintext fallback") }',
+        'why': 'the iOS twin admits a self-signed unknown-version frame; the closed-layout version gate on this isle falleth',
+        'witness': 'testMalformedLengthAndUtf8RejectedFailClosed',
+        'swift_filter': 'ReadinessT35Tests',
+    },
     # -------------------------------------------------------------- T34 (crash-resumable wipe across transport and storage, dual-isle)
     #
     #   The durable wipe ladder (identity/CrashResumableWipe.kt + iOS twin Sources/GodstoneMesh/CrashResumableWipe.swift)
