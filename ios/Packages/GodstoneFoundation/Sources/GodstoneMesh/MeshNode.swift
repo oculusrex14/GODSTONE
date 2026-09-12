@@ -56,6 +56,58 @@ public final class MeshNode {
     public let router: Router
     public let sessions: SessionManager
 
+    /// T37 (section 14): the recipient inbox transaction of the authenticated
+    /// link -- injectable and absent by default, so the relay/ACK-ingest
+    /// behaviour of every existing composition is preserved byte-for-byte.
+    /// When set, a sealed DIRECT MESSAGE additionally gets the local
+    /// destination attempt; its typed outcome never alters the relay decision
+    /// in `ingestInbound` (the router remains the relay truth), and an
+    /// accepted delivery's canonical recipient ACK is queued on the bounded
+    /// outbox for the trusted link's writer (the physical pump is T54/T73-T75
+    /// territory; the production wiring point is the lab composition root).
+    internal var recipientInbox: RecipientInboxRepository?
+    private let ackOutboxLock = NSLock()
+    private var ackOutbox: [FrameV2] = []
+
+    /// T37: the bounded runtime outbox of canonical recipient ACKs awaiting
+    /// the link. Runtime scheduling only -- the durable truth of a recipient
+    /// ACK is the ack_frames row filed inside the repository's pair step.
+    /// Drop-oldest keeps the bound honest under flood: the freshest canonical
+    /// answer wins the single slot, the elder is superseded by the durable
+    /// row's re-read path.
+    internal static let maxOutboundAcks = 64
+
+    /// Queue one canonical recipient ACK for the trusted link's writer.
+    @discardableResult
+    internal func offerAckForLink(_ ack: FrameV2) -> Bool {
+        ackOutboxLock.lock()
+        while ackOutbox.count >= Self.maxOutboundAcks { ackOutbox.removeFirst() }
+        ackOutbox.append(ack)
+        ackOutboxLock.unlock()
+        return true
+    }
+
+    /// Drain up to `max` queued ACKs for the link writer (the T54 lab pump seam).
+    internal func drainAckOutboxForLink(_ max: Int) -> [FrameV2] {
+        var out: [FrameV2] = []
+        ackOutboxLock.lock()
+        var n = 0
+        while n < max && !ackOutbox.isEmpty {
+            out.append(ackOutbox.removeFirst())
+            n += 1
+        }
+        ackOutboxLock.unlock()
+        return out
+    }
+
+    /// Outbox depth for witnesses -- telemetry only, never authority.
+    internal func ackOutboxDepthForTest() -> Int {
+        ackOutboxLock.lock()
+        let d = ackOutbox.count
+        ackOutboxLock.unlock()
+        return d
+    }
+
     private var peers: Set<UUID> = []
     private let peerLock = NSLock()
     public var onPeerCountChanged: ((Int) -> Void)?
@@ -320,8 +372,32 @@ public final class MeshNode {
                 return false
             }
         }
-        return router.ingest(frame, isAddressedToMe: frame.routingTag == identity.nodeHint,
-                             receivedFrom: receivedFrom)
+        let relay = router.ingest(frame, isAddressedToMe: frame.routingTag == identity.nodeHint,
+                                  receivedFrom: receivedFrom)
+        let inbox = recipientInbox
+        if let inbox = inbox, frame.type == .message,
+           (frame.flags & FrameV2.Flags.sealed) != 0 {
+            // T37: the local destination attempt rides beside the relay -- it
+            // decides nothing about forwarding (the router's decision above
+            // stands untouched) and only queues an accepted delivery's
+            // canonical ACK for the link's writer. try/catch: a receiver fault
+            // must never escape the collector and never touches the relay
+            // truth (the suspend-propagating fault seam of the T83 doctrine).
+            do {
+                let accepted = try inbox.acceptVerifiedAndRequireAck(
+                    frame, receivedFrom: receivedFrom, fault: nil)
+                var ack: FrameV2? = nil
+                switch accepted {
+                case .new(ack: let a): ack = a
+                case .duplicate(ack: let a): ack = a
+                case .rejected: ack = nil
+                }
+                if let a = ack { offerAckForLink(a) }
+            } catch {
+                // the durable authorities stand; the outbox stays as it is
+            }
+        }
+        return relay
     }
 }
 
