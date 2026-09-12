@@ -5326,7 +5326,7 @@
       "unresolved": []
     }
   },
-  "current_task": null,
+  "current_task": "T37",
   "external_blockers": [
     "A06",
     "APPROVED_CONTENT",
@@ -5356,7 +5356,7 @@
       "of": 10
     }
   },
-  "next_task": null,
+  "next_task": "T37",
   "phase": "P0",
   "plan_sha256": "685456b378662b0a40a53a6abc810041e37daf97b213f3efeb6cea879363934e",
   "planning_baseline_sha": "b5c3d3d394b70cf356cdde33b47511dad7cbb95c",
@@ -5379,6 +5379,11 @@
     "iOS timers are leases: TimerKey(relation, operation kind, unique id) names every window; storage, cancellation and replacement run only through reducer bodies on the epoch executor comparing whole keys before removing anything; the operation id source is monotone for the transport lifetime and deadlines are computed against the injected MonotonicClock; the connect advance re-arms through the same reducer.",
     "an inbound subscription is a lease over the presented CBCentral: the actual handle is retained with the lease and responder notifications answer to it alone; unsubscribes are filtered by characteristic and matched against the generation the request carries; an ambiguity quarantines the identity for the epoch and only rotation of the manager context releases it - quarantine and admission histories are bounded, and an exhausted budget rotates a fully drained context, never a busy one; didFailToConnect is terminal without a disconnect request.",
     "ReadinessT17Test.makeTrustedPair (sealed, T17 era) carries the same randomized 64-draw pair-cap flake family as T18: at the T35 boundary the full-suite stage went red ONCE on \"no ascending hint pair within 64 draws\" (ReadinessT17Test.kt:162) and passed the immediate bounded re-run (records T35-subsystem-*-002, cited; the FAILED first attempt remains in the ledger for honesty). Handle ONLY by the bounded green-retry loop; never edit the sealed court; never fabricate.",
-    "roster-dialect law (earned at T36): swift roster rows must carry the CLASS-form filter (ReadinessTNNTests) -- the method form runs a single test, prints the singular 'Executed 1 test,', the plural EXEC_RE pattern misses it, and the baseline gate judges an unmutated tree failing (INVALID). Witness adjudication is by Test Case line membership, so suite-level execution is the correct oracle scope. The leading-false conjunct is also a Kotlin trap: it breaks the analyzer's type flow where a null test drives a smart cast; put falsity last in a conjunct."
+    "roster-dialect law (earned at T36): swift roster rows must carry the CLASS-form filter (ReadinessTNNTests) -- the method form runs a single test, prints the singular 'Executed 1 test,', the plural EXEC_RE pattern misses it, and the baseline gate judges an unmutated tree failing (INVALID). Witness adjudication is by Test Case line membership, so suite-level execution is the correct oracle scope. The leading-false conjunct is also a Kotlin trap: it breaks the analyzer's type flow where a null test drives a smart cast; put falsity last in a conjunct.",
+    "T83 seal-evidence facts: the iOS host Ed25519 layer signs RANDOMIZED (same seed+preimage, distinct signature bytes) -- never assert cross-isle signature byte-determinism; the section-14 ACK laws are carried by the verifier + digest-of-stored-parts + Duplicate-on-identical-bytes forms (see the T83 court milestone).",
+    "Roster law reinforced at T83: a falsifier must stand where its named witness can see it -- the host SQL-leg witnesses drive JdbcStoreDb, not the Android-Context-bound SQLCipher engine; attempt-2's clean 11/0 ESCAPE proved an unreachable mutation is a ledger bug, not a witness gap (roster-fixup-2 redirected RC1-android; scratch-preverify every redirected row before the campaign).",
+    "Gradle 'The daemon has terminated unexpectedly...' console noise begins with the Kotlin diagnostic prefix 'e: ' and can make the harness report INVALID 'the mutant did not compile' for a row whose own XML shows a completed run -- read the row log before believing the verdict; the ledger was NOT changed for that (the attempt-2 archive shows the completed 11/5 mutant run).",
+    "Kotlin when-subjects bound as 'val r = <SingletonObject>' narrow the static type to the singleton and the exhaustiveness checker then rejects sealed-parent subclass arms -- annotate the subject with the sealed parent type (val r: Sealed = Singleton) in any future singleton-subject when.",
+    "The T17 makeTrustedPair 64-draw pair-cap flake family stayed silent at the T83 boundary (both grands green first tour, 992/931); the bounded green-retry policy (<=6, cite the -002 suffixed records, keep FAILED attempts in the ledger) remains the standing remedy."
   ]
 }

@@ -5335,7 +5335,17 @@
     "SIGNING"
   ],
   "failed_attempts": [],
-  "in_progress": null,
+  "in_progress": {
+    "claimed_head": "531419cae749c104544756f9fcb8c36dffb0d0b2",
+    "claimed_utc": "2026-09-12T12:08:47+00:00",
+    "objective": {
+      "claimed_head": "531419cae749c104544756f9fcb8c36dffb0d0b2",
+      "claimed_utc": "2026-09-12T12:08:47+00:00",
+      "objective": "Use authenticated TrustedPeer only as immediate-hop identity.",
+      "task": "T37"
+    },
+    "task": "T37"
+  },
   "last_code_head": "c43996fdc7e514d501cfed1fa12809d4f3379e2d",
   "last_observed_head": "c43996fdc7e514d501cfed1fa12809d4f3379e2d",
   "latest_verification": {
