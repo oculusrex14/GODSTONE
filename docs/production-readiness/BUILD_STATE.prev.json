@@ -4492,7 +4492,17 @@
     "SIGNING"
   ],
   "failed_attempts": [],
-  "in_progress": null,
+  "in_progress": {
+    "claimed_head": "47d1a1b1e90a14b811e3139cf2678c841f265fa9",
+    "claimed_utc": "2026-09-12T03:22:30+00:00",
+    "objective": {
+      "claimed_head": "47d1a1b1e90a14b811e3139cf2678c841f265fa9",
+      "claimed_utc": "2026-09-12T03:22:30+00:00",
+      "objective": "Implement SignedMessageV1 exactly as section15: signed canonical body inside the existing29-byte prefix and sealed-sender layer.",
+      "task": "T35"
+    },
+    "task": "T35"
+  },
   "last_code_head": "8ee1bfa65cace025d28c8cdac32deaa7e3a9fd8c",
   "last_observed_head": "8ee1bfa65cace025d28c8cdac32deaa7e3a9fd8c",
   "latest_verification": {

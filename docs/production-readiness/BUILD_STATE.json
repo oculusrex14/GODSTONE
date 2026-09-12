@@ -4481,9 +4481,290 @@
         "observability self-audit finding recorded honestly: the planned RC1 falsification was NOT killable by the originally-committed nine-witness court because every transport fake unconditionally returned a Drained receipt; the court was strengthened with W10 pre-launch rather than weakening the mutant or accepting an ESCAPED verdict, mirroring the T33 protocol correction",
         "pre-existing ReadinessT18Test randomized fixture is a latent ordering-sensitive flake unrelated to T34; handled by bounded re-run to a genuinely green execution, no sealed-code edit, no fabrication"
       ]
+    },
+    "T35": {
+      "case_results": {
+        "android_grand": {
+          "counts_source": "gradlew :mesh:testDebugUnitTest --rerun-tasks at boundary; TEST-*.xml walk",
+          "errors": 0,
+          "failures": 0,
+          "skipped": 0,
+          "tests": 970,
+          "xml_files": 57
+        },
+        "deleted_cases": [],
+        "dual_court_parity": "the android ReadinessT35Test.kt (10 witnesses incl. the W6b bidirectional-authentication completion) and iOS ReadinessT35Tests.swift (9 witnesses, W6 carrying both directions of pinned-vector authentication on-islele) drive the SAME SignedMessageV1 contract law (Kotlin wire/v2/SignedMessageV1.kt <-> Swift Sources/GodstoneMesh/SignedMessageV1.swift): section15 closed 162-byte layout (version 0x01, pub32, recipient16, timeQuality1, bodyLength u16-be, <=400-byte body, signature64), Ed25519 over the domain-separated preimage ASCII(GMP2-SIGNED-MESSAGE-V1)||senderNodeId16||recipientNodeId16||messageNonce16||createdAt_u32_le||priorityCode1||unsigned with the PoW nonce deliberately EXCLUDED (no circular search dependence), msgID via the FROZEN MessageId.derive over the signed plaintext with no circular inclusion, the BLAKE2s128(senderIdentityPub) idempotent sender-id/key binding checked BEFORE any inbox/ACK admission, intended-local-recipient equality, the closed TimeQuality enum with the unknown-time binding createdAt==0 iff UNKNOWN, fail-closed malformed length/UTF-8/version rejection with NO legacy plaintext fallback and a verifier that never throws out of the receiver loop, DIRECT-only authorship per the lab profile, and the X25519 sealed DH input filter refusing the all-zero identity element and every non-canonical u>=p with the sign bit rule. The roster strikes all five named falsifications on BOTH isles; the randomized Curve25519 signer (RFC 8032 section 9.1) is met with pinned-once vectors and bidirectional authentication parity -- the JVM reproduces the openssl-signed vector byte for byte, the JVM authenticates the pinned iOS-authored frame (W6b), and the iOS isle authenticates the JVM/openssl-signed pinned vector -- while signing-byte determinism across isles is NOT claimed and the sealed Ed25519Keys.kt docstring making that claim is recorded (unrewritten, out of blast radius) for the reviewer",
+        "ios_grand": {
+          "counts_source": "swift test --package-path ios/Packages/GodstoneFoundation (full) at boundary; Test Case passed lines",
+          "errors": 0,
+          "failures": 0,
+          "tests": 909
+        },
+        "t35_android_court": {
+          "counts_source": "ReadinessT35Test.kt (10 witnesses, dual-court twin with the W6b bidirectional completion)",
+          "errors": 0,
+          "failures": 0,
+          "tests": 10
+        },
+        "t35_ios_court": {
+          "counts_source": "ReadinessT35Tests.swift (9 witnesses, iOS twin, W6 carries both pinned authentication directions)",
+          "errors": 0,
+          "failures": 0,
+          "tests": 9
+        }
+      },
+      "claim_commit": "7507cdb8cd8a11c420c169b70af28bfcabbbd2de",
+      "commands": [
+        "T35-narrow-gradlew",
+        "T35-narrow-swift",
+        "T35-subsystem-gradlew-002",
+        "T35-subsystem-swift-002",
+        "T35-controls-python3",
+        "T35-controls-python3-002",
+        "T35-controls-python3-003"
+      ],
+      "device_gate_ids": [],
+      "file_hashes": {},
+      "implementation_commit": "9ff7bbf0308046ee7c29c06d101987c44e785828",
+      "implementation_commits": [
+        "95dc63236da06dbc156034c6362061e83390655a",
+        "fc1e21991fdaa9fb1b5a792ff9d459d34a98b76f",
+        "4414b5d3b254e38ef26f99cbaf75e6603d4ed8d5",
+        "781c2dbe5bb933520c11d99a7832da1e329b627f",
+        "b8d5272776cdea7b97df37d9422d423a3b4ffc74",
+        "b6319d27b94db389629b7a519a87ae00c40a8495"
+      ],
+      "inputs": {
+        "children_commit_order": [
+          "7507cdb8c",
+          "95dc63236",
+          "fc1e21991",
+          "4414b5d3b",
+          "781c2dbe5",
+          "b8d527277",
+          "b6319d27b",
+          "9ff7bbf03"
+        ],
+        "governed_source": [
+          "android/mesh/src/main/java/io/godstone/mesh/wire/v2/SignedMessageV1.kt",
+          "ios/Godstone/Sources/GodstoneMesh/SignedMessageV1.swift"
+        ],
+        "required_regression_paths": [
+          "android/mesh/src/test/java/io/godstone/mesh/readiness/ReadinessT35Test.kt",
+          "ios/Godstone/Tests/GodstoneMeshTests/ReadinessT35Tests.swift"
+        ],
+        "sealed_hot_paths_untouched": [
+          "android/.../wire/v2/MessageId.kt",
+          "android/.../wire/v2/Priority.kt",
+          "android/.../wire/v2/WireV2*.kt",
+          "android/.../seal/SealedSender.kt",
+          "android/.../router/ProofOfWork.kt",
+          "android/.../crypto/Identity.kt",
+          "crypto/gmp21_vectors.json",
+          "ios/.../GodstoneCore/MessageId.swift",
+          "ios/.../GodstoneCore/Blake2s.swift",
+          "ios/.../GodstoneMesh/Priority.swift"
+        ],
+        "task_card": "docs/production-readiness/TASKS.json#T35"
+      },
+      "ladder_boundary_commit": "9ff7bbf0308046ee7c29c06d101987c44e785828",
+      "mutation_results": {
+        "campaign_note": "T35 semantic roster (10 mutants, five per isle) verified KILLED against baseline b6319d2, FIRST-RUN CLEAN (INVALID=0, ESCAPED=0). RC1 accepts sealed sender IDs without verifying the signature (the card-registered required_semantic_negative: attacker-authored envelopes walk in; witness testModifiedPriorityTimeOrBodyBreaksTheSignature) -- the receiver admits any frame whose fields parse and the authorship binding of the sealed sender ID falleth; RC2 drops the intended-local-recipient equality comparison so a validly signed frame reaches an inbox it was never addressed to (witness testValidSignatureWrongRecipientRejectedBeforeInbox); RC3 drops the exact-span obligation -- killed by the trailing-byte probe, the unique oracle outside the signed span that the signature gate provably cannot see (witness testMalformedLengthAndUtf8RejectedFailClosed); RC4 drops the UTF-8 validator -- killed by the attacker-SELF-SIGNED lone-continuation body whose signature VALIDATES, isolating the gate as sole defence; RC5 drops the version-byte rejection -- killed by the attacker-self-signed 0x02 frame. Pre-launch observability discipline (per T33/T34): tamper-of-honest-frames probes are provably shadowed by the signature cascade, so W4 was hardened (court children 781c2db, b8d5272) with self-signed hostile frames and the trailing-byte oracle BEFORE launch; four force-unwrap trap-sites in the iOS court (fatal signal 5 would have aborted the xctest process before the runner could print judgable Test-Case lines) were rewritten guard-let + XCTFail (b6319d2) and pre-verified under the very RC1 mutant in a disposable worktree; the iOS RC3 row clamps its slices (Swift.min) so the mutant dies by the oracle, not by a range trap -- Kotlin copyOfRange clamps natively. The randomized Curve25519 signer (RFC 8032 section 9.1 hedged) makes cross-isle byte-identity of signatures an unsound claim -- refuted by probe and met with pinned-once vectors and bidirectional authentication parity (W6b proves JVM authentication of the iOS-signed frame; W6 proves iOS authentication of the openssl/JVM-signed frame); the sealed Ed25519Keys.kt docstring asserting byte-identical signing is recorded for the reviewer, NOT rewritten (out of blast radius), and no readiness claim rests on it.",
+        "semantic": [
+          {
+            "anchor_count": 1,
+            "baseline_sha": "b6319d27b94db389629b7a519a87ae00c40a8495",
+            "build_exit": 0,
+            "category": "semantic",
+            "ended_utc": "2026-09-12T05:11:56Z",
+            "failed_assertion": "witness testModifiedPriorityTimeOrBodyBreaksTheSignature failed as intended (3 failed case(s))",
+            "id": "T35-RC1-android-trust-sealed-sender-without-verifying-signature",
+            "log_path": "T35/roster/logs/T35-RC1-android-trust-sealed-sender-without-verifying-signature.semantic.log",
+            "log_sha": "0d58265d91aea8fe57c27a0d2dfc748cb91c027c9f74a92360aa9a7a1a4f5952",
+            "mutant_patch_sha": "be9e79c44b25d09f0846bf832bf3e1306b61347678dfd8af8279bee189701b27",
+            "outcome": "KILLED",
+            "started_utc": "2026-09-12T05:11:46Z",
+            "target_tests": [
+              "testModifiedPriorityTimeOrBodyBreaksTheSignature"
+            ],
+            "tests_run": 10
+          },
+          {
+            "anchor_count": 1,
+            "baseline_sha": "b6319d27b94db389629b7a519a87ae00c40a8495",
+            "build_exit": 0,
+            "category": "semantic",
+            "ended_utc": "2026-09-12T05:12:18Z",
+            "failed_assertion": "witness testModifiedPriorityTimeOrBodyBreaksTheSignature failed as intended (4 failed case(s))",
+            "id": "T35-RC1-ios-trust-sealed-sender-without-verifying-signature",
+            "log_path": "T35/roster/logs/T35-RC1-ios-trust-sealed-sender-without-verifying-signature.semantic.log",
+            "log_sha": "3056683c45b679a7a13c4d099a42a004a0a174ad0bb465555948e5aa38467472",
+            "mutant_patch_sha": "e51a19a55203c2614b17b1fc6a3b60404128d143333253a676674c98587c937a",
+            "outcome": "KILLED",
+            "started_utc": "2026-09-12T05:11:56Z",
+            "target_tests": [
+              "testModifiedPriorityTimeOrBodyBreaksTheSignature"
+            ],
+            "tests_run": 9
+          },
+          {
+            "anchor_count": 1,
+            "baseline_sha": "b6319d27b94db389629b7a519a87ae00c40a8495",
+            "build_exit": 0,
+            "category": "semantic",
+            "ended_utc": "2026-09-12T05:12:29Z",
+            "failed_assertion": "witness testValidSignatureWrongRecipientRejectedBeforeInbox failed as intended (1 failed case(s))",
+            "id": "T35-RC2-android-drop-intended-recipient-equality",
+            "log_path": "T35/roster/logs/T35-RC2-android-drop-intended-recipient-equality.semantic.log",
+            "log_sha": "216e6c68c35e7482214ab5deaaf7136d89b6777a6129a70f1f8689444401969d",
+            "mutant_patch_sha": "bb81e5df0a8df9dfa19c0bd1f66368300cd666688c0a7bf5d9f6841af3cbdd22",
+            "outcome": "KILLED",
+            "started_utc": "2026-09-12T05:12:18Z",
+            "target_tests": [
+              "testValidSignatureWrongRecipientRejectedBeforeInbox"
+            ],
+            "tests_run": 10
+          },
+          {
+            "anchor_count": 1,
+            "baseline_sha": "b6319d27b94db389629b7a519a87ae00c40a8495",
+            "build_exit": 0,
+            "category": "semantic",
+            "ended_utc": "2026-09-12T05:12:54Z",
+            "failed_assertion": "witness testValidSignatureWrongRecipientRejectedBeforeInbox failed as intended (1 failed case(s))",
+            "id": "T35-RC2-ios-drop-intended-recipient-equality",
+            "log_path": "T35/roster/logs/T35-RC2-ios-drop-intended-recipient-equality.semantic.log",
+            "log_sha": "22eebd815595d82c4cead73f1d418b65dab9921b11911fe76f8f8f07956418d3",
+            "mutant_patch_sha": "013a7c85b23d5134758f8e1ede6f63a03385754a84fd91fccd1cd626e9f54b61",
+            "outcome": "KILLED",
+            "started_utc": "2026-09-12T05:12:29Z",
+            "target_tests": [
+              "testValidSignatureWrongRecipientRejectedBeforeInbox"
+            ],
+            "tests_run": 9
+          },
+          {
+            "anchor_count": 1,
+            "baseline_sha": "b6319d27b94db389629b7a519a87ae00c40a8495",
+            "build_exit": 0,
+            "category": "semantic",
+            "ended_utc": "2026-09-12T05:13:05Z",
+            "failed_assertion": "witness testMalformedLengthAndUtf8RejectedFailClosed failed as intended (1 failed case(s))",
+            "id": "T35-RC3-android-drop-exact-length-obligation",
+            "log_path": "T35/roster/logs/T35-RC3-android-drop-exact-length-obligation.semantic.log",
+            "log_sha": "239cc45f140c1a4bd935acbf56e56ec81f06daffdd8708f1b889da9bdb236f8d",
+            "mutant_patch_sha": "7515923185bef147379a0627d4b077f5311e16703831b34e196b56eac84475a6",
+            "outcome": "KILLED",
+            "started_utc": "2026-09-12T05:12:54Z",
+            "target_tests": [
+              "testMalformedLengthAndUtf8RejectedFailClosed"
+            ],
+            "tests_run": 10
+          },
+          {
+            "anchor_count": 1,
+            "baseline_sha": "b6319d27b94db389629b7a519a87ae00c40a8495",
+            "build_exit": 0,
+            "category": "semantic",
+            "ended_utc": "2026-09-12T05:13:31Z",
+            "failed_assertion": "witness testMalformedLengthAndUtf8RejectedFailClosed failed as intended (1 failed case(s))",
+            "id": "T35-RC3-ios-drop-exact-length-obligation",
+            "log_path": "T35/roster/logs/T35-RC3-ios-drop-exact-length-obligation.semantic.log",
+            "log_sha": "90a93cb4f9cfb511bc4ef8ed685fd5e109d18c76b0bca13b54ae61d055a6a8aa",
+            "mutant_patch_sha": "26b6e2047e50bc1bb4ee62840d43a1413c7093dda9a1acfb67cdb5528e3dd53d",
+            "outcome": "KILLED",
+            "started_utc": "2026-09-12T05:13:06Z",
+            "target_tests": [
+              "testMalformedLengthAndUtf8RejectedFailClosed"
+            ],
+            "tests_run": 9
+          },
+          {
+            "anchor_count": 1,
+            "baseline_sha": "b6319d27b94db389629b7a519a87ae00c40a8495",
+            "build_exit": 0,
+            "category": "semantic",
+            "ended_utc": "2026-09-12T05:13:42Z",
+            "failed_assertion": "witness testMalformedLengthAndUtf8RejectedFailClosed failed as intended (1 failed case(s))",
+            "id": "T35-RC4-android-drop-utf8-validator",
+            "log_path": "T35/roster/logs/T35-RC4-android-drop-utf8-validator.semantic.log",
+            "log_sha": "82b8617fc81720ee1bb4429b5c0a63ea419599f94b43c540f1b88f7f027e33f9",
+            "mutant_patch_sha": "0b80715e913998d36c56724d17075ac3170a9c542619ad6dd2072508c5daf9da",
+            "outcome": "KILLED",
+            "started_utc": "2026-09-12T05:13:31Z",
+            "target_tests": [
+              "testMalformedLengthAndUtf8RejectedFailClosed"
+            ],
+            "tests_run": 10
+          },
+          {
+            "anchor_count": 1,
+            "baseline_sha": "b6319d27b94db389629b7a519a87ae00c40a8495",
+            "build_exit": 0,
+            "category": "semantic",
+            "ended_utc": "2026-09-12T05:14:07Z",
+            "failed_assertion": "witness testMalformedLengthAndUtf8RejectedFailClosed failed as intended (1 failed case(s))",
+            "id": "T35-RC4-ios-drop-utf8-validator",
+            "log_path": "T35/roster/logs/T35-RC4-ios-drop-utf8-validator.semantic.log",
+            "log_sha": "25bc4690a4c600b49e19190c6607086e5ea36fed8fcdd86b66dd9589d29c91d2",
+            "mutant_patch_sha": "005033970097f973257ed64fe7b4d4826bdaad5fbed2385d60dd535e3c1fa16e",
+            "outcome": "KILLED",
+            "started_utc": "2026-09-12T05:13:42Z",
+            "target_tests": [
+              "testMalformedLengthAndUtf8RejectedFailClosed"
+            ],
+            "tests_run": null
+          },
+          {
+            "anchor_count": 1,
+            "baseline_sha": "b6319d27b94db389629b7a519a87ae00c40a8495",
+            "build_exit": 0,
+            "category": "semantic",
+            "ended_utc": "2026-09-12T05:14:18Z",
+            "failed_assertion": "witness testMalformedLengthAndUtf8RejectedFailClosed failed as intended (1 failed case(s))",
+            "id": "T35-RC5-android-drop-version-rejection",
+            "log_path": "T35/roster/logs/T35-RC5-android-drop-version-rejection.semantic.log",
+            "log_sha": "548f40c7ac011d42e8b7965ac75c59ca94b584b6771b5928fb445c10df550024",
+            "mutant_patch_sha": "a641365fa5036ba22716f229a406ffa4de838ef7292f6e54e4a456c7675768d3",
+            "outcome": "KILLED",
+            "started_utc": "2026-09-12T05:14:07Z",
+            "target_tests": [
+              "testMalformedLengthAndUtf8RejectedFailClosed"
+            ],
+            "tests_run": 10
+          },
+          {
+            "anchor_count": 1,
+            "baseline_sha": "b6319d27b94db389629b7a519a87ae00c40a8495",
+            "build_exit": 0,
+            "category": "semantic",
+            "ended_utc": "2026-09-12T05:14:43Z",
+            "failed_assertion": "witness testMalformedLengthAndUtf8RejectedFailClosed failed as intended (1 failed case(s))",
+            "id": "T35-RC5-ios-drop-version-rejection",
+            "log_path": "T35/roster/logs/T35-RC5-ios-drop-version-rejection.semantic.log",
+            "log_sha": "c7548427cefa5c9448c98f1e72947f0964ea08f5e71265367ea48e8e9ca4d935",
+            "mutant_patch_sha": "c68b3c1c41c73d456f965c920052e129794858956767a5e852832fa9a2815bd7",
+            "outcome": "KILLED",
+            "started_utc": "2026-09-12T05:14:18Z",
+            "target_tests": [
+              "testMalformedLengthAndUtf8RejectedFailClosed"
+            ],
+            "tests_run": null
+          }
+        ]
+      },
+      "objective": {
+        "claimed_head": "47d1a1b1e90a14b811e3139cf2678c841f265fa9",
+        "claimed_utc": "2026-09-12T03:22:30+00:00",
+        "objective": "Implement SignedMessageV1 exactly as section15: signed canonical body inside the existing29-byte prefix and sealed-sender layer.",
+        "task": "T35"
+      },
+      "status": "COMPLETE",
+      "tested_tree_sha": "eb0814f3a47864d8221fbb3f78ea4012ca1b3eae",
+      "unresolved": []
     }
   },
-  "current_task": "T35",
+  "current_task": "T36",
   "external_blockers": [
     "A06",
     "APPROVED_CONTENT",
@@ -4492,43 +4773,28 @@
     "SIGNING"
   ],
   "failed_attempts": [],
-  "in_progress": {
-    "claimed_head": "47d1a1b1e90a14b811e3139cf2678c841f265fa9",
-    "claimed_utc": "2026-09-12T03:22:30+00:00",
-    "objective": {
-      "claimed_head": "47d1a1b1e90a14b811e3139cf2678c841f265fa9",
-      "claimed_utc": "2026-09-12T03:22:30+00:00",
-      "objective": "Implement SignedMessageV1 exactly as section15: signed canonical body inside the existing29-byte prefix and sealed-sender layer.",
-      "task": "T35"
-    },
-    "task": "T35"
-  },
-  "last_code_head": "8ee1bfa65cace025d28c8cdac32deaa7e3a9fd8c",
-  "last_observed_head": "8ee1bfa65cace025d28c8cdac32deaa7e3a9fd8c",
+  "in_progress": null,
+  "last_code_head": "9ff7bbf0308046ee7c29c06d101987c44e785828",
+  "last_observed_head": "9ff7bbf0308046ee7c29c06d101987c44e785828",
   "latest_verification": {
     "android_grand": {
       "errors": 0,
       "failures": 0,
-      "tests": 960
+      "tests": 970
     },
-    "at_utc": "2026-09-12T03:16:10+00:00",
-    "boundary_commit": "8ee1bfa65cace025d28c8cdac32deaa7e3a9fd8c",
+    "at_utc": "2026-09-12T05:32:46+00:00",
+    "boundary_commit": "9ff7bbf0308046ee7c29c06d101987c44e785828",
     "ios_grand": {
       "errors": 0,
       "failures": 0,
-      "tests": 900
+      "tests": 909
     },
     "roster": {
-      "T34_killed": 10,
+      "T35_killed": 10,
       "of": 10
-    },
-    "t34_courts": {
-      "android": 10,
-      "ios": 10
-    },
-    "tested_tree_sha": "ccd92cd4dff3f43c720721b4d8e66715f029af3e"
+    }
   },
-  "next_task": "T35",
+  "next_task": "T36",
   "phase": "P0",
   "plan_sha256": "685456b378662b0a40a53a6abc810041e37daf97b213f3efeb6cea879363934e",
   "planning_baseline_sha": "b5c3d3d394b70cf356cdde33b47511dad7cbb95c",
@@ -4549,6 +4815,7 @@
     "iOS transport epochs own their manager pair: every opening builds a fresh CBCentralManager/CBPeripheralManager pair with its own delegate proxies on a dedicated serial queue, wired once at birth; the reducer authenticates sender instance, wired delegate and named epoch together - events of closed epochs are dropped where they stand.",
     "iOS transport reduces each manager event as one uninterrupted operation on the epoch serial executor: validation, transition and effect scheduling never split; the lifecycle quiesces its epochs on the same queues, callback adapters deliver under their own context marker, and sealing and opening (trust work) never run while the transport lock is held - their completions re-check the admission token on the executor before any effect commits or the delegate is notified.",
     "iOS timers are leases: TimerKey(relation, operation kind, unique id) names every window; storage, cancellation and replacement run only through reducer bodies on the epoch executor comparing whole keys before removing anything; the operation id source is monotone for the transport lifetime and deadlines are computed against the injected MonotonicClock; the connect advance re-arms through the same reducer.",
-    "an inbound subscription is a lease over the presented CBCentral: the actual handle is retained with the lease and responder notifications answer to it alone; unsubscribes are filtered by characteristic and matched against the generation the request carries; an ambiguity quarantines the identity for the epoch and only rotation of the manager context releases it - quarantine and admission histories are bounded, and an exhausted budget rotates a fully drained context, never a busy one; didFailToConnect is terminal without a disconnect request."
+    "an inbound subscription is a lease over the presented CBCentral: the actual handle is retained with the lease and responder notifications answer to it alone; unsubscribes are filtered by characteristic and matched against the generation the request carries; an ambiguity quarantines the identity for the epoch and only rotation of the manager context releases it - quarantine and admission histories are bounded, and an exhausted budget rotates a fully drained context, never a busy one; didFailToConnect is terminal without a disconnect request.",
+    "ReadinessT17Test.makeTrustedPair (sealed, T17 era) carries the same randomized 64-draw pair-cap flake family as T18: at the T35 boundary the full-suite stage went red ONCE on \"no ascending hint pair within 64 draws\" (ReadinessT17Test.kt:162) and passed the immediate bounded re-run (records T35-subsystem-*-002, cited; the FAILED first attempt remains in the ledger for honesty). Handle ONLY by the bounded green-retry loop; never edit the sealed court; never fabricate."
   ]
 }

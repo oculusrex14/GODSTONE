@@ -2,117 +2,137 @@
   "evidence_root": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE",
   "files": [
     {
-      "path": "T34/commands.json",
-      "sha256": "365ad2f3ff3d54fceff04972e69b266dabf4102cc08e0d3ce5bb69465595172f",
-      "size": 6121
+      "path": "T35/commands.json",
+      "sha256": "0938062a444a9e35edf60052dff2097ec5f7b33d3df5229538614279d31160ba",
+      "size": 7868
     },
     {
-      "path": "T34/logs/T34-RC1-android-skip-runtime-drain.semantic.log",
-      "sha256": "9a29d34e885d64deb668a760ca8b45b78d9b732c4a066be1917a4d96d3ce2625",
-      "size": 673
-    },
-    {
-      "path": "T34/logs/T34-RC1-ios-skip-runtime-drain.semantic.log",
-      "sha256": "ec14b27b7a07ba5e6d6adb3566ba04bb7551fcabbe1ef81ea24f59a2c08a79f4",
-      "size": 16029
-    },
-    {
-      "path": "T34/logs/T34-RC2-android-ignore-failed-key-deletion.semantic.log",
-      "sha256": "286421ce5f66b6de1040ca0e17d162c2437e5d1639d0f1c76c5514812459cfb7",
-      "size": 681
-    },
-    {
-      "path": "T34/logs/T34-RC2-ios-ignore-failed-key-deletion.semantic.log",
-      "sha256": "4616a0180e703485a327ee030babc2519c48a9b4a9cc9e4fd5a69074f1523ab8",
-      "size": 16029
-    },
-    {
-      "path": "T34/logs/T34-RC3-android-swallow-busy-delete.semantic.log",
-      "sha256": "132e70d00b17b7455db798ac65ed20c8bb3ee97158ce0cf01ff246f0020fed7a",
-      "size": 674
-    },
-    {
-      "path": "T34/logs/T34-RC3-ios-swallow-busy-delete.semantic.log",
-      "sha256": "69bc751868b6b1af83a39e13d9da6538ed3e24b2f428ab6419d920e82d549679",
-      "size": 16029
-    },
-    {
-      "path": "T34/logs/T34-RC4-android-gate-bypass-stale-send.semantic.log",
-      "sha256": "2f6335dfb45cbfde6b3533aef5bb9a3818a61d383f7ba5390a9fb9d31cf59518",
-      "size": 677
-    },
-    {
-      "path": "T34/logs/T34-RC4-ios-gate-bypass-stale-send.semantic.log",
-      "sha256": "4cecae2d5e8dcb27b38112cab317bd7533a57bbcd265242f97f4db5439059af4",
-      "size": 16029
-    },
-    {
-      "path": "T34/logs/T34-RC5-android-break-legacy-compat.semantic.log",
-      "sha256": "bc1e4620915f38e36b6b2774b1c6857c7f3c8f43adaeb9319286cd2f3aaf5e03",
-      "size": 674
-    },
-    {
-      "path": "T34/logs/T34-RC5-ios-break-legacy-compat.semantic.log",
-      "sha256": "82bfd115b5c6c4d73dd1dd10892fed9b70607d4b60b26564e02a4e5660542798",
-      "size": 16029
-    },
-    {
-      "path": "T34/logs/T34-controls-python3-002.log",
+      "path": "T35/logs/T35-controls-python3-002.log",
       "sha256": "0b1ac463307b9f7d907105bb19e85bdada5dcd05131d80c492ffd80b4ab3f5f4",
       "size": 234
     },
     {
-      "path": "T34/logs/T34-controls-python3-003.log",
+      "path": "T35/logs/T35-controls-python3-003.log",
       "sha256": "67493ebd28a55ece17214e55d318f34ba4af6ac7592268756f1b3dcc304afa21",
       "size": 125
     },
     {
-      "path": "T34/logs/T34-controls-python3.log",
+      "path": "T35/logs/T35-controls-python3.log",
       "sha256": "03f0bc422dc53a81fd7f41085300a28e42626c2a4554e8929d897d3c092bd014",
       "size": 1374
     },
     {
-      "path": "T34/logs/T34-narrow-gradlew.log",
-      "sha256": "c2b18ba5787e542a9c20270b4b73e6890e58723bd66bcc8aa70a22a3ba01987c",
+      "path": "T35/logs/T35-narrow-gradlew.log",
+      "sha256": "860abc2bb967c9ec591cfb372324a0ca0877767ca677798f21540d926928b045",
       "size": 2874
     },
     {
-      "path": "T34/logs/T34-narrow-swift.log",
-      "sha256": "5a52f1b771d2f45ae9047db945beb4d6649ae1023cc770b94ff8e1f0aff7edac",
-      "size": 16239
+      "path": "T35/logs/T35-narrow-swift.log",
+      "sha256": "59911c5ee9e4158869db28544082191aaa6009097615add4b1cb99987f5a6cab",
+      "size": 3116
     },
     {
-      "path": "T34/logs/T34-subsystem-gradlew.log",
-      "sha256": "b199f58fede0fdffae71daac6ca7939c3ef88586ff6b5d6d1e351b622a06b6fd",
+      "path": "T35/logs/T35-subsystem-gradlew-002.log",
+      "sha256": "0d4ed6db151575ecee86764607660ada907fd83370f18981b36b706b5a60f489",
       "size": 2488
     },
     {
-      "path": "T34/logs/T34-subsystem-swift.log",
-      "sha256": "1b5157c4e6103ffee6ababd1ad1dbc8869f5f22a6e98c1f5d23810072d090af8",
-      "size": 234833
+      "path": "T35/logs/T35-subsystem-gradlew.log",
+      "sha256": "37b863a24faf36227ca502b2a07de0296793aa3a9aa5732c134aa6d135f1ea36",
+      "size": 3007
     },
     {
-      "path": "T34/manifest.json",
-      "sha256": "5986e59e3e9ebee69d5c5bd958f43d063cc668cb0b5f06c2c4dd2d94209d83e9",
-      "size": 7909
+      "path": "T35/logs/T35-subsystem-swift-002.log",
+      "sha256": "e8fe0af404986824c90d9e7bb7dd772bcdfaf7909fa2e9ee9461d1129d58d9eb",
+      "size": 237058
     },
     {
-      "path": "T34/milestones/controls-roster.json",
-      "sha256": "10e8e30e585f6afa7c591b9d12d1287eda40bf7207bc81a1dd9fd537071a4bde",
-      "size": 4621
+      "path": "T35/logs/T35-subsystem-swift.log",
+      "sha256": "e10e2edd21256dfddaf62a2a6420a25b4a24ec320e62faeac772dd86cf3b39e0",
+      "size": 237054
     },
     {
-      "path": "T34/milestones/design-grounding-milestone.json",
-      "sha256": "3bb49ab2978d49a4eb9fb6958f32edb31440fcbc4cb88bfa1aec898955cd0de7",
-      "size": 5619
+      "path": "T35/milestones/contract-court-android.json",
+      "sha256": "de304b484fdd0c44e011ab88d48af9804bb49748388a5a7faa93cfb0fc63bb60",
+      "size": 2621
     },
     {
-      "path": "T34/milestones/dual-court-contract.json",
-      "sha256": "b5b3cb0987cc9a4be9ebdd28b100eb83ffbdaf04f8dda09c285310a2aa3b19d8",
-      "size": 4945
+      "path": "T35/milestones/court-hardening-and-roster-launch.json",
+      "sha256": "72dd9214ad45b1dbc5418e09efe062dd4c928a7ca7949b6068a0da2f5488c914",
+      "size": 3366
+    },
+    {
+      "path": "T35/milestones/court-ios-and-bidirectional-parity.json",
+      "sha256": "9bf4e805d14415a2da18c59cf669c622156191e2b14e7c7b627c7ef200b51412",
+      "size": 4476
+    },
+    {
+      "path": "T35/milestones/design-grounding-milestone.json",
+      "sha256": "b56a13c38a3971e701a46d0664fc070c7333ec077530a27df3c002940235dd18",
+      "size": 7902
+    },
+    {
+      "path": "T35/milestones/roster-adjudication.json",
+      "sha256": "706c0f1d5a07812f5dd295f53a843cd6515638d57795d784f59a8c2dd13ef5ed",
+      "size": 3075
+    },
+    {
+      "path": "T35/roster/logs/T35-RC1-android-trust-sealed-sender-without-verifying-signature.semantic.log",
+      "sha256": "0d58265d91aea8fe57c27a0d2dfc748cb91c027c9f74a92360aa9a7a1a4f5952",
+      "size": 702
+    },
+    {
+      "path": "T35/roster/logs/T35-RC1-ios-trust-sealed-sender-without-verifying-signature.semantic.log",
+      "sha256": "3056683c45b679a7a13c4d099a42a004a0a174ad0bb465555948e5aa38467472",
+      "size": 16029
+    },
+    {
+      "path": "T35/roster/logs/T35-RC2-android-drop-intended-recipient-equality.semantic.log",
+      "sha256": "216e6c68c35e7482214ab5deaaf7136d89b6777a6129a70f1f8689444401969d",
+      "size": 687
+    },
+    {
+      "path": "T35/roster/logs/T35-RC2-ios-drop-intended-recipient-equality.semantic.log",
+      "sha256": "22eebd815595d82c4cead73f1d418b65dab9921b11911fe76f8f8f07956418d3",
+      "size": 16029
+    },
+    {
+      "path": "T35/roster/logs/T35-RC3-android-drop-exact-length-obligation.semantic.log",
+      "sha256": "239cc45f140c1a4bd935acbf56e56ec81f06daffdd8708f1b889da9bdb236f8d",
+      "size": 683
+    },
+    {
+      "path": "T35/roster/logs/T35-RC3-ios-drop-exact-length-obligation.semantic.log",
+      "sha256": "90a93cb4f9cfb511bc4ef8ed685fd5e109d18c76b0bca13b54ae61d055a6a8aa",
+      "size": 16029
+    },
+    {
+      "path": "T35/roster/logs/T35-RC4-android-drop-utf8-validator.semantic.log",
+      "sha256": "82b8617fc81720ee1bb4429b5c0a63ea419599f94b43c540f1b88f7f027e33f9",
+      "size": 674
+    },
+    {
+      "path": "T35/roster/logs/T35-RC4-ios-drop-utf8-validator.semantic.log",
+      "sha256": "25bc4690a4c600b49e19190c6607086e5ea36fed8fcdd86b66dd9589d29c91d2",
+      "size": 16029
+    },
+    {
+      "path": "T35/roster/logs/T35-RC5-android-drop-version-rejection.semantic.log",
+      "sha256": "548f40c7ac011d42e8b7965ac75c59ca94b584b6771b5928fb445c10df550024",
+      "size": 677
+    },
+    {
+      "path": "T35/roster/logs/T35-RC5-ios-drop-version-rejection.semantic.log",
+      "sha256": "c7548427cefa5c9448c98f1e72947f0964ea08f5e71265367ea48e8e9ca4d935",
+      "size": 16029
+    },
+    {
+      "path": "T35/roster/manifest.json",
+      "sha256": "513eee1de123e4d232e685ea51ba7e54de8c029b580d011d8a4d2044d394eaf8",
+      "size": 8180
     }
   ],
-  "note": "T34 (finish crash-resumable wipe across transport and storage) seal evidence: seven executed stage records, the 10/10 KILLED dual-isle semantic roster, and the design/court/controls milestones. Dual-court parity: ten identical witnesses on both isles driving the same CrashResumableWipe ladder; five card-named falsifications (skip-drain and ignore-failed-key-deletion among them) struck on both isles. readiness false; device erasure evidence deferred to the gate.",
+  "note": "T35 (SignedMessageV1 authorship binding inside the sealed envelope, exactly as section15) seal evidence: seven executed stage records (narrow x2, subsystem x2 via the honest bounded green-retry of the sealed ReadinessT17 64-draw pair-cap flake, controls x3), the 10/10 KILLED semantic roster (five falsifications struck on BOTH isles: trust-sealed-sender-without-verifying-signature, drop-intended-recipient-equality, drop-exact-length-obligation via the non-shadowed trailing-byte oracle, drop-utf8-validator and drop-version-rejection via the attacker-self-signed hostile frames whose signatures VALIDATE), and the five milestones (design grounding, contract+court-android, court-ios bidirectional-parity discovery of the randomized Curve25519 signer, court hardenings x2, roster adjudication). Courts: android 10/0/0, iOS 9/0; android grand 970/0/0 (57 XMLs), iOS grand 909/0/0. The sealed Ed25519Keys.kt byte-identical-signing docstring is recorded probe-refuted for CryptoKit (RFC 8032 s 9.1 randomized) and no readiness claim rests on it; bidirectional AUTHENTICATION parity proven over pinned foreign vectors instead. No frozen wire/identity/ACK/BLE/golden file altered; device evidence deferred to the T73-T75 hardware gates; readiness=false.",
   "schema_version": 1,
-  "task": "T34"
+  "task": "T35"
 }
