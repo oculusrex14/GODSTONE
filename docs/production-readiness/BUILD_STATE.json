@@ -5039,7 +5039,7 @@
       "unresolved": []
     }
   },
-  "current_task": "T37",
+  "current_task": "T83",
   "external_blockers": [
     "A06",
     "APPROVED_CONTENT",
@@ -5048,9 +5048,19 @@
     "SIGNING"
   ],
   "failed_attempts": [],
-  "in_progress": null,
+  "in_progress": {
+    "claimed_head": "02f4c5e585a8862df8d66ac6430f9ec1490d7942",
+    "claimed_utc": "2026-09-12T08:42:01+00:00",
+    "objective": {
+      "claimed_head": "02f4c5e585a8862df8d66ac6430f9ec1490d7942",
+      "claimed_utc": "2026-09-12T08:42:01+00:00",
+      "objective": "Add ack_obligations and ack_frames namespaces as section14 specifies.",
+      "task": "T83"
+    },
+    "task": "T83"
+  },
   "last_code_head": "778e67aa020cbae77f9f7061c4eb146e415bbd63",
-  "last_observed_head": "778e67aa020cbae77f9f7061c4eb146e415bbd63",
+  "last_observed_head": "02f4c5e585a8862df8d66ac6430f9ec1490d7942",
   "latest_verification": {
     "android_grand": {
       "errors": 0,
@@ -5069,7 +5079,7 @@
       "of": 10
     }
   },
-  "next_task": "T37",
+  "next_task": "T83",
   "phase": "P0",
   "plan_sha256": "685456b378662b0a40a53a6abc810041e37daf97b213f3efeb6cea879363934e",
   "planning_baseline_sha": "b5c3d3d394b70cf356cdde33b47511dad7cbb95c",

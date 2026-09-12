@@ -4762,9 +4762,284 @@
       "status": "COMPLETE",
       "tested_tree_sha": "eb0814f3a47864d8221fbb3f78ea4012ca1b3eae",
       "unresolved": []
+    },
+    "T36": {
+      "case_results": {
+        "android_grand": {
+          "counts_source": "gradlew :mesh:testDebugUnitTest --rerun-tasks at boundary; TEST-*.xml walk",
+          "errors": 0,
+          "failures": 0,
+          "skipped": 0,
+          "tests": 981,
+          "xml_files": 58
+        },
+        "deleted_cases": [],
+        "dual_court_parity": "eleven witnesses share one name set across the isles (W1..W11); the laws asserted are the card's; per-isle adaptations recorded at the court-ios milestone (suspend/runTest vs async XCTest; by-delegation vs explicit forwarding; the scalar backing-fields defect was android-only, Swift Data value semantics are safe by construction). The 64-draw pair-cap flake family did NOT appear at this boundary's grand tours (both first attempts green).",
+        "ios_grand": {
+          "counts_source": "swift test --package-path ios/Packages/GodstoneFoundation (full) at boundary; Test Case passed lines",
+          "errors": 0,
+          "failures": 0,
+          "tests": 920
+        },
+        "t36_android_court": {
+          "counts_source": "ReadinessT36Test.kt (11 witnesses; runTest-suspend; FaultStore by-delegation; counters as oracles)",
+          "errors": 0,
+          "failures": 0,
+          "tests": 11
+        },
+        "t36_ios_court": {
+          "counts_source": "ReadinessT36Tests.swift (11 witnesses, iOS twin, async XCTest; explicit-forwarding FaultStore; guard-let discipline)",
+          "errors": 0,
+          "failures": 0,
+          "tests": 11
+        }
+      },
+      "claim_commit": "0bdbbbecc5f09ba49bd9ac90931ed2ddecbcca9f",
+      "commands": [
+        "T36-narrow-gradlew",
+        "T36-narrow-swift",
+        "T36-subsystem-gradlew",
+        "T36-subsystem-swift",
+        "T36-controls-python3",
+        "T36-controls-python3-002",
+        "T36-controls-python3-003"
+      ],
+      "device_gate_ids": [],
+      "file_hashes": {},
+      "implementation_commit": "778e67aa020cbae77f9f7061c4eb146e415bbd63",
+      "implementation_commits": [
+        "b365cbf6b8ed0d74052337f3c0f4085a75765c32",
+        "0d11f2ba36a1a6f4a04ce19ecbf2f6c620cdcae7",
+        "e42806f7f6ab817b9bc4488efc594208752d1ad2",
+        "778e67aa020cbae77f9f7061c4eb146e415bbd63"
+      ],
+      "inputs": {
+        "children_commit_order": [
+          "0bdbbbecc",
+          "b365cbf6b",
+          "0d11f2ba3",
+          "e42806f7f",
+          "778e67aa0",
+          "778e67aa0"
+        ],
+        "governed_source": [
+          "android/mesh/src/main/java/io/godstone/mesh/delivery/SendDirectAuthority.kt",
+          "ios/Godstone/Sources/GodstoneMesh/SendDirectAuthority.swift"
+        ],
+        "required_regression_paths": [
+          "android/mesh/src/test/java/io/godstone/mesh/readiness/ReadinessT36Test.kt",
+          "ios/Godstone/Tests/GodstoneMeshTests/ReadinessT36Tests.swift",
+          "ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/SendDirectAuthority.swift",
+          "ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/ReadinessT36Tests.swift",
+          "ios/Packages/GodstoneFoundation/SOURCE_MANIFEST.json"
+        ],
+        "sealed_hot_paths_untouched": [
+          "android/.../store/MessageStore.kt (enqueueDirectOutbound + OutboundEnqueueResult taxonomy composed-via, not rewritten)",
+          "android/.../router/Router.kt (buildSealedMessage the canonical sealing call site)",
+          "android/.../wire/v2/{MessageId,Priority,WireV2,LogicalMessageIdentity}.kt",
+          "android/.../seal/SealedSender.kt",
+          "android/.../wire/v2/SignedMessageV1.kt (T35 authority)"
+        ],
+        "task_card": "docs/production-readiness/TASKS.json#T35"
+      },
+      "ladder_boundary_commit": "778e67aa020cbae77f9f7061c4eb146e415bbd63",
+      "mutation_results": {
+        "campaign_note": "Campaign at boundary 778e67aa020c -- five named falsifications x two isles, ten rows, all KILLED, none escaped. RC1 the retry regenerates the logical identity (replay gate silenced, fresh mint per retry); RC2 the retry re-resolves the recipient (trust table consulted behind the pinned token); RC3 the immutable id ships before the durable commit proved itself (storage fault answers durablyEnqueued); RC4 the 400-byte profile gate moved after authoring (oversize bodies reach resolver/factory/signing); RC5 changed content replays the pinned row (digest comparison suppressed). Attempt-1 INVALIDated five iOS rows by driver misconfiguration (method-form filters print the singular 'Executed 1 test,' the plural EXEC_RE cannot see) -- re-earned in the class-form dialect per the harness's own comment; the JVM halves were re-earned deterministically too. Collateral failures recorded per row verbatim from the manifest.",
+        "semantic": [
+          {
+            "anchor_count": 1,
+            "baseline_sha": "778e67aa020cbae77f9f7061c4eb146e415bbd63",
+            "build_exit": 0,
+            "category": "semantic",
+            "ended_utc": "2026-09-12T08:06:13Z",
+            "failed_assertion": "witness testRetryOfSameIntentTokenLoadsIdenticalPersistedBytes failed as intended (4 failed case(s))",
+            "id": "T36-RC1-android-retry-recreated-the-logical-identity",
+            "log_path": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/T36/roster/logs/T36-RC1-android-retry-recreated-the-logical-identity.semantic.log",
+            "log_sha": "132677d916cfca1f433fcbaced06d6aa25175846b2949ba3c2eb7f921cff0f24",
+            "mutant_patch_sha": "8b60e325ce55c848de9e99f16b69f1d9c54070dfa74ce4c0b1b1233177f43091",
+            "outcome": "KILLED",
+            "started_utc": "2026-09-12T08:06:02Z",
+            "target_tests": [
+              "testRetryOfSameIntentTokenLoadsIdenticalPersistedBytes"
+            ],
+            "tests_run": 11
+          },
+          {
+            "anchor_count": 1,
+            "baseline_sha": "778e67aa020cbae77f9f7061c4eb146e415bbd63",
+            "build_exit": 0,
+            "category": "semantic",
+            "ended_utc": "2026-09-12T08:06:39Z",
+            "failed_assertion": "witness testRetryOfSameIntentTokenLoadsIdenticalPersistedBytes failed as intended (4 failed case(s))",
+            "id": "T36-RC1-ios-retry-recreated-the-logical-identity",
+            "log_path": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/T36/roster/logs/T36-RC1-ios-retry-recreated-the-logical-identity.semantic.log",
+            "log_sha": "c79b89af76eac2ed56040166e7826b36cc48fab3fcd4ea120d13b0c2663a5082",
+            "mutant_patch_sha": "b998504f9a61396f42c3037d732dd719064c4acd28536b1af5eb1df6e7493688",
+            "outcome": "KILLED",
+            "started_utc": "2026-09-12T08:06:13Z",
+            "target_tests": [
+              "testRetryOfSameIntentTokenLoadsIdenticalPersistedBytes"
+            ],
+            "tests_run": 11
+          },
+          {
+            "anchor_count": 1,
+            "baseline_sha": "778e67aa020cbae77f9f7061c4eb146e415bbd63",
+            "build_exit": 0,
+            "category": "semantic",
+            "ended_utc": "2026-09-12T08:06:50Z",
+            "failed_assertion": "witness testKeyRotationRacePinsTheAcceptedGeneration failed as intended (4 failed case(s))",
+            "id": "T36-RC2-android-replay-re-resolved-the-recipient",
+            "log_path": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/T36/roster/logs/T36-RC2-android-replay-re-resolved-the-recipient.semantic.log",
+            "log_sha": "92809ae571421be8c486c91fb979f12304b2f3e78d189ca70c1254542e2c016f",
+            "mutant_patch_sha": "7a347e7d87257dacd9141778ff6e6d9c6ea39b341f6e368c82dd0f45b70450d1",
+            "outcome": "KILLED",
+            "started_utc": "2026-09-12T08:06:40Z",
+            "target_tests": [
+              "testKeyRotationRacePinsTheAcceptedGeneration"
+            ],
+            "tests_run": 11
+          },
+          {
+            "anchor_count": 1,
+            "baseline_sha": "778e67aa020cbae77f9f7061c4eb146e415bbd63",
+            "build_exit": 0,
+            "category": "semantic",
+            "ended_utc": "2026-09-12T08:07:16Z",
+            "failed_assertion": "witness testKeyRotationRacePinsTheAcceptedGeneration failed as intended (4 failed case(s))",
+            "id": "T36-RC2-ios-replay-re-resolved-the-recipient",
+            "log_path": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/T36/roster/logs/T36-RC2-ios-replay-re-resolved-the-recipient.semantic.log",
+            "log_sha": "dd10670b6d08049d2a062d361e902169c641b87736ca45cd94357c7d239e2186",
+            "mutant_patch_sha": "e1132bac7ec9f1ca223218741c04ff64b4aa28dcf4531da05ab36c6ffeed3469",
+            "outcome": "KILLED",
+            "started_utc": "2026-09-12T08:06:50Z",
+            "target_tests": [
+              "testKeyRotationRacePinsTheAcceptedGeneration"
+            ],
+            "tests_run": 11
+          },
+          {
+            "anchor_count": 1,
+            "baseline_sha": "778e67aa020cbae77f9f7061c4eb146e415bbd63",
+            "build_exit": 0,
+            "category": "semantic",
+            "ended_utc": "2026-09-12T08:07:27Z",
+            "failed_assertion": "witness testDiskFullRefusesSendDistinguishingFailureFromEmpty failed as intended (2 failed case(s))",
+            "id": "T36-RC3-android-id-handed-out-before-the-commit-proved",
+            "log_path": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/T36/roster/logs/T36-RC3-android-id-handed-out-before-the-commit-proved.semantic.log",
+            "log_sha": "fa53f49fe171db9088f286ab89c3d2d4b7c812ae770ced1ef4eb9202129e84d4",
+            "mutant_patch_sha": "48d6b6b4bd84e1d657b9e0c0af31fbc00932313eccd8ec957b0c704e521a1cca",
+            "outcome": "KILLED",
+            "started_utc": "2026-09-12T08:07:16Z",
+            "target_tests": [
+              "testDiskFullRefusesSendDistinguishingFailureFromEmpty"
+            ],
+            "tests_run": 11
+          },
+          {
+            "anchor_count": 1,
+            "baseline_sha": "778e67aa020cbae77f9f7061c4eb146e415bbd63",
+            "build_exit": 0,
+            "category": "semantic",
+            "ended_utc": "2026-09-12T08:07:53Z",
+            "failed_assertion": "witness testDiskFullRefusesSendDistinguishingFailureFromEmpty failed as intended (2 failed case(s))",
+            "id": "T36-RC3-ios-id-handed-out-before-the-commit-proved",
+            "log_path": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/T36/roster/logs/T36-RC3-ios-id-handed-out-before-the-commit-proved.semantic.log",
+            "log_sha": "f207c354cfe64466bb5caad78031429d2e44445e73d19df84c354caf039df44b",
+            "mutant_patch_sha": "acb227f41111e3cb7a352f24d0cbdc999f4801de93cf51e92c23c94cf72e9bbf",
+            "outcome": "KILLED",
+            "started_utc": "2026-09-12T08:07:27Z",
+            "target_tests": [
+              "testDiskFullRefusesSendDistinguishingFailureFromEmpty"
+            ],
+            "tests_run": 11
+          },
+          {
+            "anchor_count": 1,
+            "baseline_sha": "778e67aa020cbae77f9f7061c4eb146e415bbd63",
+            "build_exit": 0,
+            "category": "semantic",
+            "ended_utc": "2026-09-12T08:08:03Z",
+            "failed_assertion": "witness testBodyProfileGateBeforeAnyAuthoring failed as intended (1 failed case(s))",
+            "id": "T36-RC4-android-profile-gate-moved-after-authoring",
+            "log_path": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/T36/roster/logs/T36-RC4-android-profile-gate-moved-after-authoring.semantic.log",
+            "log_sha": "30e21dce662c06772a07237c8342f5802a1255cea7447847154638012479ab96",
+            "mutant_patch_sha": "48178ace6a6b7de82d1ab7b5b3365c557569dc8ac879932602a40f95201cc5e2",
+            "outcome": "KILLED",
+            "started_utc": "2026-09-12T08:07:53Z",
+            "target_tests": [
+              "testBodyProfileGateBeforeAnyAuthoring"
+            ],
+            "tests_run": 11
+          },
+          {
+            "anchor_count": 1,
+            "baseline_sha": "778e67aa020cbae77f9f7061c4eb146e415bbd63",
+            "build_exit": 0,
+            "category": "semantic",
+            "ended_utc": "2026-09-12T08:08:29Z",
+            "failed_assertion": "witness testBodyProfileGateBeforeAnyAuthoring failed as intended (1 failed case(s))",
+            "id": "T36-RC4-ios-profile-gate-moved-after-authoring",
+            "log_path": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/T36/roster/logs/T36-RC4-ios-profile-gate-moved-after-authoring.semantic.log",
+            "log_sha": "4f94f8a52755c64035281d433e7d4b2b57afb577992082a8f53226fabe288d89",
+            "mutant_patch_sha": "c059e58dd94c20eb6d685ad3d91cbfee2f184dbbff36739784c957e5b8b60a3b",
+            "outcome": "KILLED",
+            "started_utc": "2026-09-12T08:08:04Z",
+            "target_tests": [
+              "testBodyProfileGateBeforeAnyAuthoring"
+            ],
+            "tests_run": 11
+          },
+          {
+            "anchor_count": 1,
+            "baseline_sha": "778e67aa020cbae77f9f7061c4eb146e415bbd63",
+            "build_exit": 0,
+            "category": "semantic",
+            "ended_utc": "2026-09-12T08:08:40Z",
+            "failed_assertion": "witness testChangedRecipientOrBodyOrPriorityCreatesNewLogicalSend failed as intended (1 failed case(s))",
+            "id": "T36-RC5-android-changed-content-replayed-the-pinned-row",
+            "log_path": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/T36/roster/logs/T36-RC5-android-changed-content-replayed-the-pinned-row.semantic.log",
+            "log_sha": "47b8a8161851dc10b02d1041cb52e44654271f4c9de8d7c2ca97fe82b64060cf",
+            "mutant_patch_sha": "e1c5f246e6e0ccf06d5a518740f43cfc748b927fea105a3bf50ad2cb7ce26e1b",
+            "outcome": "KILLED",
+            "started_utc": "2026-09-12T08:08:30Z",
+            "target_tests": [
+              "testChangedRecipientOrBodyOrPriorityCreatesNewLogicalSend"
+            ],
+            "tests_run": 11
+          },
+          {
+            "anchor_count": 1,
+            "baseline_sha": "778e67aa020cbae77f9f7061c4eb146e415bbd63",
+            "build_exit": 0,
+            "category": "semantic",
+            "ended_utc": "2026-09-12T08:09:07Z",
+            "failed_assertion": "witness testChangedRecipientOrBodyOrPriorityCreatesNewLogicalSend failed as intended (1 failed case(s))",
+            "id": "T36-RC5-ios-changed-content-replayed-the-pinned-row",
+            "log_path": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/T36/roster/logs/T36-RC5-ios-changed-content-replayed-the-pinned-row.semantic.log",
+            "log_sha": "cf019ce152e94b3962b8a8cd9ccc35082793e440685017b4795e183b689161c9",
+            "mutant_patch_sha": "1d1fdcaf55c45470f761929b7f68c01e1a1c3656e42cab943e6fdae471169234",
+            "outcome": "KILLED",
+            "started_utc": "2026-09-12T08:08:40Z",
+            "target_tests": [
+              "testChangedRecipientOrBodyOrPriorityCreatesNewLogicalSend"
+            ],
+            "tests_run": 11
+          }
+        ]
+      },
+      "objective": {
+        "claimed_head": "921340e747c67abfe149b9279c853e14a4f42da5",
+        "claimed_utc": "2026-09-12T05:50:39+00:00",
+        "objective": "Add SendDirect(recipientTrustRef,utf8Body) returning an immutable logical message ID only after durable enqueue.",
+        "task": "T36"
+      },
+      "status": "COMPLETE",
+      "tested_tree_sha": "d3d108f225b95ad38193b1902778733368872a0b",
+      "unresolved": []
     }
   },
-  "current_task": "T36",
+  "current_task": "T37",
   "external_blockers": [
     "A06",
     "APPROVED_CONTENT",
@@ -4773,38 +5048,28 @@
     "SIGNING"
   ],
   "failed_attempts": [],
-  "in_progress": {
-    "claimed_head": "921340e747c67abfe149b9279c853e14a4f42da5",
-    "claimed_utc": "2026-09-12T05:50:39+00:00",
-    "objective": {
-      "claimed_head": "921340e747c67abfe149b9279c853e14a4f42da5",
-      "claimed_utc": "2026-09-12T05:50:39+00:00",
-      "objective": "Add SendDirect(recipientTrustRef,utf8Body) returning an immutable logical message ID only after durable enqueue.",
-      "task": "T36"
-    },
-    "task": "T36"
-  },
-  "last_code_head": "9ff7bbf0308046ee7c29c06d101987c44e785828",
-  "last_observed_head": "9ff7bbf0308046ee7c29c06d101987c44e785828",
+  "in_progress": null,
+  "last_code_head": "778e67aa020cbae77f9f7061c4eb146e415bbd63",
+  "last_observed_head": "778e67aa020cbae77f9f7061c4eb146e415bbd63",
   "latest_verification": {
     "android_grand": {
       "errors": 0,
       "failures": 0,
-      "tests": 970
+      "tests": 981
     },
-    "at_utc": "2026-09-12T05:32:46+00:00",
-    "boundary_commit": "9ff7bbf0308046ee7c29c06d101987c44e785828",
+    "at_utc": "2026-09-12T08:23:13+00:00",
+    "boundary_commit": "778e67aa020cbae77f9f7061c4eb146e415bbd63",
     "ios_grand": {
       "errors": 0,
       "failures": 0,
-      "tests": 909
+      "tests": 920
     },
     "roster": {
-      "T35_killed": 10,
+      "T36_killed": 10,
       "of": 10
     }
   },
-  "next_task": "T36",
+  "next_task": "T37",
   "phase": "P0",
   "plan_sha256": "685456b378662b0a40a53a6abc810041e37daf97b213f3efeb6cea879363934e",
   "planning_baseline_sha": "b5c3d3d394b70cf356cdde33b47511dad7cbb95c",
@@ -4826,6 +5091,7 @@
     "iOS transport reduces each manager event as one uninterrupted operation on the epoch serial executor: validation, transition and effect scheduling never split; the lifecycle quiesces its epochs on the same queues, callback adapters deliver under their own context marker, and sealing and opening (trust work) never run while the transport lock is held - their completions re-check the admission token on the executor before any effect commits or the delegate is notified.",
     "iOS timers are leases: TimerKey(relation, operation kind, unique id) names every window; storage, cancellation and replacement run only through reducer bodies on the epoch executor comparing whole keys before removing anything; the operation id source is monotone for the transport lifetime and deadlines are computed against the injected MonotonicClock; the connect advance re-arms through the same reducer.",
     "an inbound subscription is a lease over the presented CBCentral: the actual handle is retained with the lease and responder notifications answer to it alone; unsubscribes are filtered by characteristic and matched against the generation the request carries; an ambiguity quarantines the identity for the epoch and only rotation of the manager context releases it - quarantine and admission histories are bounded, and an exhausted budget rotates a fully drained context, never a busy one; didFailToConnect is terminal without a disconnect request.",
-    "ReadinessT17Test.makeTrustedPair (sealed, T17 era) carries the same randomized 64-draw pair-cap flake family as T18: at the T35 boundary the full-suite stage went red ONCE on \"no ascending hint pair within 64 draws\" (ReadinessT17Test.kt:162) and passed the immediate bounded re-run (records T35-subsystem-*-002, cited; the FAILED first attempt remains in the ledger for honesty). Handle ONLY by the bounded green-retry loop; never edit the sealed court; never fabricate."
+    "ReadinessT17Test.makeTrustedPair (sealed, T17 era) carries the same randomized 64-draw pair-cap flake family as T18: at the T35 boundary the full-suite stage went red ONCE on \"no ascending hint pair within 64 draws\" (ReadinessT17Test.kt:162) and passed the immediate bounded re-run (records T35-subsystem-*-002, cited; the FAILED first attempt remains in the ledger for honesty). Handle ONLY by the bounded green-retry loop; never edit the sealed court; never fabricate.",
+    "roster-dialect law (earned at T36): swift roster rows must carry the CLASS-form filter (ReadinessTNNTests) -- the method form runs a single test, prints the singular 'Executed 1 test,', the plural EXEC_RE pattern misses it, and the baseline gate judges an unmutated tree failing (INVALID). Witness adjudication is by Test Case line membership, so suite-level execution is the correct oracle scope. The leading-false conjunct is also a Kotlin trap: it breaks the analyzer's type flow where a null test drives a smart cast; put falsity last in a conjunct."
   ]
 }
