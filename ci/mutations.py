@@ -332,6 +332,113 @@ SEMANTIC = [
     {'id': 'T30-SM3-ios-reopen-without-dek-accepted', 'platform': 'swift', 'file': 'ios/Godstone/Sources/GodstoneMesh/EncryptedStoreFactory.swift', 'find': '            case .dekNotFound, .keychainUnavailable, .deviceLocked, .dekWrongLength, .protectionFailure: return .unavailable', 'replace': '            case .dekNotFound: return .available(EncryptedStoreHandle(path: "x", kind: .pinnedSQLCipher, encryptedAtRest: true, cipherVersion: 4))\n            case .keychainUnavailable, .deviceLocked, .dekWrongLength, .protectionFailure: return .unavailable', 'why': 'a missing DEK on reopen is accepted as an encrypted Available store instead of refused, so the erasability guarantee collapses and a store reopens without its key; the reopen-without-DEK witness falleth (the cards named falsification)', 'witness': 'testReopenWithoutDEKIsRejectedNeverEmptyHealthy', 'swift_filter': 'ReadinessT30Tests'},
     {'id': 'T30-SM4-ios-select-before-verify', 'platform': 'swift', 'file': 'ios/Godstone/Sources/GodstoneMesh/PlaintextToEncryptedMigration.swift', 'find': '        guard verification.isGood else { return .sourcePreservedOnFailure(.verificationMismatch) }  // never select an unverified copy', 'replace': '        if verification.isGood { _ = 0 }   // (mutant) select the encrypted copy even when verification says it is not good', 'why': 'the encrypted copy is selected even when the verify-before-select check reports a mismatch, so an unverified or corrupt copy could be promoted and the plaintext source retired; the failed-migration-preserves-recoverable-source witness falleth', 'witness': 'testFailedMigrationPreservesRecoverableSource', 'swift_filter': 'ReadinessT30Tests'},
     # -------------------------------------------------------------- T32 (bounded receipt-relative retention across restarts, dual-isle)
+
+    # -------------------------------------------------------------- T33 (bounded store growth & observer lifetimes, dual-isle)
+    #
+    #   The quota/eviction/lease contract (android store/StoreQuota.kt + iOS twin Sources/GodstoneMesh/StoreQuota.swift)
+    #   must never fabricate a 0 on a failed measurement; must update the delivery record in the SAME transaction as the
+    #   held eviction; keep non-SOS-first / SOS-retained-LAST stable order; fire observers only on commit (an aborted tx
+    #   discards its notifications); and keep cursor reads bounded. Five falsifications, on BOTH isles. Disposable worktrees.
+    {
+        'id': 'T33-RC1-android-fabricate-zero-heldbytes',
+        'platform': 'jvm',
+        'file': 'android/mesh/src/main/java/io/godstone/mesh/store/StoreQuota.kt',
+        'find': '    private fun Measured.valueOrFailed(): Long? = (this as? Measured.Values)?.value',
+        'replace': '    private fun Measured.valueOrFailed(): Long? = 0L   // (mutant) a failed read is fabricated as 0',
+        'why': 'a heldBytes query failure is fabricated as a real 0 so admission proceeds on a fake empty measurement and the store can grow unbounded; the no-fabricated-empty-set authority oracle falleth',
+        'witness': 'testSqlFailureInHeldBytesNeverFabricatesZeroAndRefusesAdmission',
+        'gradle_filter': '*ReadinessT33Test*',
+    },
+    {
+        'id': 'T33-RC1-ios-fabricate-zero-heldbytes',
+        'platform': 'swift',
+        'file': 'ios/Godstone/Sources/GodstoneMesh/StoreQuota.swift',
+        'find': '    public static func valueOrFailed(_ m: Measured) -> Int64? { if case let .values(v) = m { return v }; return nil }',
+        'replace': '    public static func valueOrFailed(_ m: Measured) -> Int64? { 0 }   // (mutant) a failed read is fabricated as 0',
+        'why': 'a heldBytes query failure is fabricated as a real 0 so admission proceeds on a fake empty measurement; the authority oracle on the iOS twin falleth',
+        'witness': 'testSqlFailureInHeldBytesNeverFabricatesZeroAndRefusesAdmission',
+        'swift_filter': 'ReadinessT33Tests',
+    },
+    {
+        'id': 'T33-RC2-android-eviction-leaves-delivery-unchanged',
+        'platform': 'jvm',
+        'file': 'android/mesh/src/main/java/io/godstone/mesh/store/StoreQuota.kt',
+        'find': '            transitions.add(Pair(r.id, DeliveryState.EVICTED))   // SAME-transaction delivery update',
+        'replace': '            transitions.add(Pair(r.id, r.deliveryState))   // (mutant) delivery left unchanged by the eviction',
+        'why': 'the transaction-owned eviction removes the held row but leaves its delivery record in the prior state so a stale delivery survives and held/delivery diverge; the same-transaction delivery-pairing oracle falleth',
+        'witness': 'testEvictionUpdatesDeliveryStateInTheSameTransaction',
+        'gradle_filter': '*ReadinessT33Test*',
+    },
+    {
+        'id': 'T33-RC2-ios-eviction-leaves-delivery-unchanged',
+        'platform': 'swift',
+        'file': 'ios/Godstone/Sources/GodstoneMesh/StoreQuota.swift',
+        'find': '            evicted.append(r.id); trans.append((r.id, .evicted)); cum += r.size; overshoot -= r.size',
+        'replace': '            evicted.append(r.id); trans.append((r.id, r.deliveryState)); cum += r.size; overshoot -= r.size   // (mutant) delivery left unchanged',
+        'why': 'the eviction removes the held row but leaves the delivery in the prior state so held/delivery diverge; the delivery-pairing oracle on the iOS twin falleth',
+        'witness': 'testEvictionUpdatesDeliveryStateInTheSameTransaction',
+        'swift_filter': 'ReadinessT33Tests',
+    },
+    {
+        'id': 'T33-RC3-android-held-cap-excludes-sos',
+        'platform': 'jvm',
+        'file': 'android/mesh/src/main/java/io/godstone/mesh/store/StoreQuota.kt',
+        'find': '        if (a.priority != b.priority) return@Comparator b.priority - a.priority',
+        'replace': '        if (a.priority != b.priority) return@Comparator a.priority - b.priority',
+        'why': 'the policy order is inverted so SOS (priority 0) is evicted FIRST instead of retained-last, letting a flood of non-critical rows discard the retained emergency traffic and break the stable order; the stable-eviction-order oracle falleth',
+        'witness': 'testStableEvictionOrderIsDeterministic',
+        'gradle_filter': '*ReadinessT33Test*',
+    },
+    {
+        'id': 'T33-RC3-ios-held-cap-excludes-sos',
+        'platform': 'swift',
+        'file': 'ios/Godstone/Sources/GodstoneMesh/StoreQuota.swift',
+        'find': '        if a.priority != b.priority { return a.priority > b.priority }',
+        'replace': '        if a.priority != b.priority { return a.priority < b.priority }',
+        'why': 'the policy order is inverted so SOS is evicted FIRST instead of retained-last, breaking stable order and emergency retention; the stable-eviction-order oracle on the iOS twin falleth',
+        'witness': 'testStableEvictionOrderIsDeterministic',
+        'swift_filter': 'ReadinessT33Tests',
+    },
+    {
+        'id': 'T33-RC4-android-observer-fires-before-commit',
+        'platform': 'jvm',
+        'file': 'android/mesh/src/main/java/io/godstone/mesh/store/StoreQuota.kt',
+        'find': '    fun abort() { inTx = false; deferred.clear() }',
+        'replace': '    fun abort() { inTx = false }   // (mutant) an aborted transaction no longer discards its notifications',
+        'why': 'an aborted transaction no longer discards its pending notifications, so a rolled-back tx still fires its observers and a stale/foreign event mutates committed state; the commit-only notification oracle falleth',
+        'witness': 'testObserverReentryIsDeferredAndFiresOnlyAfterCommit',
+        'gradle_filter': '*ReadinessT33Test*',
+    },
+    {
+        'id': 'T33-RC4-ios-observer-fires-before-commit',
+        'platform': 'swift',
+        'file': 'ios/Godstone/Sources/GodstoneMesh/StoreQuota.swift',
+        'find': '    public func abort() { inTx = false; deferred.removeAll() }',
+        'replace': '    public func abort() { inTx = false }   // (mutant) an aborted transaction no longer discards its notifications',
+        'why': 'an aborted transaction no longer discards its pending notifications so a rolled-back tx still fires; the commit-only notification oracle on the iOS twin falleth',
+        'witness': 'testObserverReentryIsDeferredAndFiresOnlyAfterCommit',
+        'swift_filter': 'ReadinessT33Tests',
+    },
+    {
+        'id': 'T33-RC5-android-cursor-unbounded',
+        'platform': 'jvm',
+        'file': 'android/mesh/src/main/java/io/godstone/mesh/store/StoreQuota.kt',
+        'find': '        return source.subList(start, minOf(start + limit, source.size))',
+        'replace': '        return source.subList(start, source.size)   // (mutant) the cursor ignores its limit and over-reads the full backing',
+        'why': 'the bounded cursor ignores its limit and over-reads the full backing store, an unbounded read that defeats the bounded-read contract and the DoS defence; the bounded-cursor oracle falleth',
+        'witness': 'testStableEvictionOrderIsDeterministic',
+        'gradle_filter': '*ReadinessT33Test*',
+    },
+    {
+        'id': 'T33-RC5-ios-cursor-unbounded',
+        'platform': 'swift',
+        'file': 'ios/Godstone/Sources/GodstoneMesh/StoreQuota.swift',
+        'find': '        return Array(source[start..<min(start + limit, source.count)])',
+        'replace': '        return Array(source[start..<source.count])   // (mutant) the cursor ignores its limit and over-reads the full backing',
+        'why': 'the bounded cursor ignores its limit and over-reads the full backing store, an unbounded read defeating the bounded-read contract; the bounded-cursor oracle on the iOS twin falleth',
+        'witness': 'testStableEvictionOrderIsDeterministic',
+        'swift_filter': 'ReadinessT33Tests',
+    },
     #
     #   The retention contract (android store/RetentionClock.kt + iOS twin
     #   Sources/GodstoneMesh/RetentionClock.swift) must implement the exact section14
