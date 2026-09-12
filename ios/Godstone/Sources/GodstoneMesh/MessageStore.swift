@@ -201,7 +201,11 @@ internal enum StoreSchema {
     /// transactionally recreated (C6.4.1-D), a CURRENT file is DDL-fingerprint
     /// validated (C6.4.1-E), and a FUTURE file is rejected fail-closed untouched
     /// (C6.4.1-C). No installed base to preserve (ADR-001 §5).
-    static let dbVersion: Int32 = 6
+    /// T83-A: bumped 6 -> 7 to add the two section 14 recipient-ACK namespaces
+    /// (ack_obligations + ack_frames) to the same db file, on the same
+    /// destructive-recreate doctrine (no installed base, ADR-001 §5). Android
+    /// `StoreSchema.DB_VERSION` is the same 7 (byte-identical schema contract).
+    static let dbVersion: Int32 = 7
     static let table = "held_frames"
     static let colMsgId = "msg_id"
     static let colType = "type"
@@ -365,6 +369,150 @@ internal enum StoreSchema {
 
     /// Drop the held frame for msg_id (C7.4 atomic ACK retirement). Bind: (1) msg_id.
     static let deleteHeldSql = "DELETE FROM \(table) WHERE \(colMsgId) = ?"
+
+    // ------------------------------------------------------------------
+    // T83 (section 14) -- the recipient ACK return path: TWO new namespaces in
+    // the SAME db file (same state owner, same transaction engine, shared quota):
+    //   * ack_obligations: keyed by (msg_id, recipient_node_id); inserted in the
+    //     SAME recipient inbox transaction (commitInboundWithObligation); the
+    //     bounded worker marks PENDING -> SIGNED with a single guarded CAS and
+    //     retires (DELETE) atomically with the frame insert. The state codes are
+    //     the cross-platform persistence contract (AckObligationState.rawValue),
+    //     NOT enum ordinals; 0 PENDING / 1 SIGNED are the only legal durable rows.
+    //   * ack_frames: keyed by ack_key -- the LOCAL cache key
+    //     SHA256(ASCII("GMP2-ACK-CACHE") || msg_id || recipient || signature);
+    //     it introduces NO wire field. A MESSAGE and its ACK coexist: this table
+    //     never shares held_frames' primary key. verification_class codes are the
+    //     cross-platform contract (AckVerificationClass.rawValue): 1
+    //     VERIFIED_RECIPIENT, 2 OPAQUE_CANDIDATE; 0 / unknown decodes corrupt
+    //     (fail closed, C6.5 doctrine). The CHECKs are defense-in-depth exactly
+    //     as for delivery_state. Mirrors Android StoreSchema's T83 block.
+    // ------------------------------------------------------------------
+    static let ackObligationTable = "ack_obligations"
+    static let colOMsgId = "msg_id"
+    static let colORecipient = "recipient_node_id"
+    static let colOGeneration = "identity_generation"
+    static let colORemaining = "remaining_lifetime_ms"
+    static let colOState = "state"
+
+    static let ackFrameTable = "ack_frames"
+    static let colKAckKey = "ack_key"
+    static let colKMsgId = "msg_id"
+    static let colKRecipient = "recipient_node_id"
+    static let colKSignature = "signature"
+    static let colKEncoded = "encoded_frame"
+    static let colKReceivedFrom = "received_from"
+    static let colKRemain = "remaining_lifetime_ms"
+    static let colKClass = "verification_class"
+
+    static let createObligationSql = """
+        CREATE TABLE \(ackObligationTable) (
+            \(colOMsgId) BLOB NOT NULL,
+            \(colORecipient) BLOB NOT NULL,
+            \(colOGeneration) INTEGER NOT NULL,
+            \(colORemaining) INTEGER NOT NULL,
+            \(colOState) INTEGER NOT NULL,
+            PRIMARY KEY (\(colOMsgId), \(colORecipient)),
+            CHECK (length(\(colOMsgId)) = 16),
+            CHECK (length(\(colORecipient)) = 16),
+            CHECK (\(colOGeneration) >= 0),
+            CHECK (\(colORemaining) >= 0),
+            CHECK (\(colOState) IN (0, 1))
+        )
+        """
+
+    /// Idempotent create for engines that reopen an existing file.
+    static let createObligationSqlIfNotExists =
+        createObligationSql.replacingOccurrences(of: "CREATE TABLE ", with: "CREATE TABLE IF NOT EXISTS ")
+
+    static let createAckFrameSql = """
+        CREATE TABLE \(ackFrameTable) (
+            \(colKAckKey) BLOB PRIMARY KEY NOT NULL,
+            \(colKMsgId) BLOB NOT NULL,
+            \(colKRecipient) BLOB NOT NULL,
+            \(colKSignature) BLOB NOT NULL,
+            \(colKEncoded) BLOB NOT NULL,
+            \(colKReceivedFrom) BLOB,
+            \(colKRemain) INTEGER NOT NULL,
+            \(colKClass) INTEGER NOT NULL,
+            CHECK (length(\(colKAckKey)) = 32),
+            CHECK (length(\(colKMsgId)) = 16),
+            CHECK (length(\(colKRecipient)) = 16),
+            CHECK (length(\(colKSignature)) = 64),
+            CHECK (length(\(colKEncoded)) > 0),
+            CHECK ((\(colKReceivedFrom) IS NULL) OR (length(\(colKReceivedFrom)) = 16)),
+            CHECK (\(colKRemain) >= 0),
+            CHECK (\(colKClass) IN (1, 2))
+        )
+        """
+
+    /// Idempotent create for engines that reopen an existing file.
+    static let createAckFrameSqlIfNotExists =
+        createAckFrameSql.replacingOccurrences(of: "CREATE TABLE ", with: "CREATE TABLE IF NOT EXISTS ")
+
+    /// Insert a fresh obligation; ON CONFLICT of the pair key DO NOTHING (the
+    /// inbox re-delivery is idempotent -- the EXISTING row, its generation pin and
+    /// its remaining lifetime are NEVER updated). Bind: (1) msg, (2) recipient,
+    /// (3) generation, (4) remaining, (5) state.
+    static let insertObligationSql =
+        "INSERT INTO \(ackObligationTable) (\(colOMsgId), \(colORecipient), \(colOGeneration), " +
+        "\(colORemaining), \(colOState)) VALUES (?, ?, ?, ?, ?) " +
+        "ON CONFLICT(\(colOMsgId), \(colORecipient)) DO NOTHING"
+
+    /// Bind: (1) msg, (2) recipient. Columns: generation, remaining, state.
+    static let readObligationSql =
+        "SELECT \(colOGeneration), \(colORemaining), \(colOState) FROM \(ackObligationTable) " +
+        "WHERE \(colOMsgId) = ? AND \(colORecipient) = ?"
+
+    /// The worker's resume scan: PENDING or SIGNED rows, stable rowid order.
+    /// Bind: (1) the row bound. An empty result is a TRUE empty, never a failure.
+    static let listPendingObligationSql =
+        "SELECT \(colOMsgId), \(colORecipient), \(colOGeneration), \(colORemaining), \(colOState) " +
+        "FROM \(ackObligationTable) WHERE \(colOState) IN (0, 1) ORDER BY rowid LIMIT ?"
+
+    static let countObligationSql =
+        "SELECT COUNT(*) FROM \(ackObligationTable)"
+
+    /// The guarded single UPDATE advancing PENDING -> SIGNED (the worker's mark).
+    /// Bind: (1) msg, (2) recipient. 1 == advanced; 0 == re-read to classify.
+    static let markSignedObligationSql =
+        "UPDATE \(ackObligationTable) SET \(colOState) = 1 " +
+        "WHERE \(colOMsgId) = ? AND \(colORecipient) = ? AND \(colOState) = 0"
+
+    /// The retirement DELETE of a fulfilled obligation. Bind: (1) msg, (2) recipient.
+    static let retireObligationSql =
+        "DELETE FROM \(ackObligationTable) WHERE \(colOMsgId) = ? AND \(colORecipient) = ?"
+
+    /// Insert an ack_frames row; ON CONFLICT of the local cache key DO NOTHING
+    /// (the same candidate arriving again is a Duplicate, never an update).
+    /// Bind: (1) ack_key, (2) msg, (3) recipient, (4) signature, (5) encoded,
+    /// (6) received_from (nullable), (7) remaining, (8) verification class.
+    static let insertAckFrameSql =
+        "INSERT INTO \(ackFrameTable) (\(colKAckKey), \(colKMsgId), \(colKRecipient), " +
+        "\(colKSignature), \(colKEncoded), \(colKReceivedFrom), \(colKRemain), \(colKClass)) " +
+        "VALUES (?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT(\(colKAckKey)) DO NOTHING"
+
+    /// Bind: (1) ack_key. Columns: msg, recipient, signature, encoded, from,
+    /// remaining, class.
+    static let readAckFrameSql =
+        "SELECT \(colKMsgId), \(colKRecipient), \(colKSignature), \(colKEncoded), " +
+        "\(colKReceivedFrom), \(colKRemain), \(colKClass) FROM \(ackFrameTable) " +
+        "WHERE \(colKAckKey) = ?"
+
+    /// Bind: (1) msg, (2) recipient, (3) bound. Columns: key + the seven above.
+    static let listAckFrameForPairSql =
+        "SELECT \(colKAckKey), \(colKMsgId), \(colKRecipient), \(colKSignature), \(colKEncoded), " +
+        "\(colKReceivedFrom), \(colKRemain), \(colKClass) FROM \(ackFrameTable) " +
+        "WHERE \(colKMsgId) = ? AND \(colKRecipient) = ? ORDER BY rowid LIMIT ?"
+
+    static let countAckFrameForPairSql =
+        "SELECT COUNT(*) FROM \(ackFrameTable) WHERE \(colKMsgId) = ? AND \(colKRecipient) = ?"
+
+    static let countAckFrameTotalSql =
+        "SELECT COUNT(*) FROM \(ackFrameTable)"
+
+    /// The quota-governed wipe of the whole namespace (retention policy hook).
+    static let clearAckFramesSql = "DELETE FROM \(ackFrameTable)"
 }
 
 /// One `delivery_state` row before it is typed into a `DeliveryRecord` (the
@@ -1063,6 +1211,8 @@ public final class SqliteMessageStore: MessageStore {
     private func validateSchema(_ db: OpaquePointer) throws {
         try checkTableDdl(db, name: StoreSchema.table, expected: StoreSchema.createSql)
         try checkTableDdl(db, name: StoreSchema.deliveryTable, expected: StoreSchema.createDeliverySql)
+        try checkTableDdl(db, name: StoreSchema.ackObligationTable, expected: StoreSchema.createObligationSql)
+        try checkTableDdl(db, name: StoreSchema.ackFrameTable, expected: StoreSchema.createAckFrameSql)
     }
 
     private func checkTableDdl(_ db: OpaquePointer, name: String, expected: String) throws {
@@ -1100,9 +1250,13 @@ public final class SqliteMessageStore: MessageStore {
             try execStrict(db, "BEGIN")
             do {
                 try execStrict(db, "DROP TABLE IF EXISTS \(StoreSchema.deliveryTable)")
+                try execStrict(db, "DROP TABLE IF EXISTS \(StoreSchema.ackFrameTable)")
+                try execStrict(db, "DROP TABLE IF EXISTS \(StoreSchema.ackObligationTable)")
                 try execStrict(db, "DROP TABLE IF EXISTS \(StoreSchema.table)")
                 try execStrict(db, StoreSchema.createSql)
                 try execStrict(db, StoreSchema.createDeliverySql)
+                try execStrict(db, StoreSchema.createObligationSql)
+                try execStrict(db, StoreSchema.createAckFrameSql)
                 try setUserVersion(db, StoreSchema.dbVersion)
                 try execStrict(db, "COMMIT")
             } catch {
@@ -1480,6 +1634,14 @@ internal final class InMemoryMessageStore: MessageStore {
     private let maxBytes: Int64
     private var rows: [Data: Held] = [:]
     private var deliveryRows: [Data: DeliveryRow] = [:]
+    // T83 (section 14): the paired in-memory namespaces. Same single-thread
+    // doctrine as the held/delivery maps (the NSLock is held across the pair
+    // step); the inbox commit writes the obligation row through this store so
+    // the court can observe the very rows the worker drives.
+    private let ackStoreInternal = InMemoryAckStore()
+
+    /// The paired obligation/frame store the bounded worker drives against.
+    internal var ackStore: InMemoryAckStore { ackStoreInternal }
     private var heldSetObservers: [@Sendable () -> Void] = []
 
     internal init(maxBytes: Int64 = .max) { self.maxBytes = maxBytes }
@@ -1519,6 +1681,71 @@ internal final class InMemoryMessageStore: MessageStore {
             notifyHeldSetChanged()
         }
         return result
+    }
+
+    /**
+     * T83 (section 14): the recipient inbox commit in ONE atomic step -- insert
+     * the held frame AND its pending ACK obligation, bound to the local recipient
+     * identity generation. Re-delivery of the same msg_id is idempotent: neither
+     * the held row nor the obligation row is ever updated (the lifetime pin and
+     * the generation pin persist -- non-replenishing, section 14). A fault at the
+     * named seam rolls the WHOLE commit back: no held row, no obligation row (the
+     * both-or-neither law the SQL engines inherit from the transaction).
+     */
+    internal func commitInboundWithObligationAtWithFault(
+        _ frame: FrameV2, receivedFrom: Data, localRecipientNodeId: Data,
+        identityGeneration: Int64, obligationLifetimeMs: Int64, receivedAt: Int64,
+        fault: ((String) throws -> Void)?
+    ) -> InboundCommitResult {
+        guard frame.msgId.count == 16,
+              frame.routingTag.count == 4,
+              receivedFrom.count == 16,
+              localRecipientNodeId.count == 16,
+              identityGeneration >= 0,
+              obligationLifetimeMs >= 0,
+              frame.ttl <= FrameV2.maxTtl,
+              frame.hopCount <= FrameV2.maxTtl,
+              frame.flags <= 0xFFFF,
+              frame.payload.count <= FrameV2.maxPayload,
+              frame.type == .message,
+              Priority.fromFlagsStrict(frame.flags) == .direct,
+              (frame.flags & FrameV2.Flags.sealed) != 0,
+              (frame.flags & FrameV2.Flags.has_pow) == 0
+        else { return .invalidArgument }
+        guard let ob = AckObligation.of(msgId: frame.msgId, recipientNodeId: localRecipientNodeId,
+                                        identityGeneration: identityGeneration,
+                                        remainingLifetimeMs: obligationLifetimeMs, state: .pending)
+        else { return .invalidArgument }
+        lock.lock()
+        let isNew = rows[frame.msgId] == nil
+        if isNew {
+            rows[frame.msgId] = Held(frame: frame, receivedFrom: receivedFrom, receivedAt: receivedAt)
+        }
+        if totalBytesNoLock > maxBytes { evictUntilUnderCapNoLock() }
+        if rows[frame.msgId] == nil {
+            lock.unlock()
+            return .rejectedCapacity
+        }
+        do {
+            try fault?("obligation")
+        } catch {
+            if isNew { rows[frame.msgId] = nil }   // the whole commit rolls back
+            lock.unlock()
+            return .storageFailure
+        }
+        let insert = ackStoreInternal.insertIfAbsent(ob)
+        var obligationNew = false
+        switch insert {
+        case .stored: obligationNew = true
+        case .duplicate: obligationNew = false
+        case .storageFailure:
+            if isNew { rows[frame.msgId] = nil }
+            lock.unlock()
+            return .storageFailure
+        }
+        lock.unlock()
+        if isNew { notifyHeldSetChanged() }
+        return .committed(heldNew: isNew, obligationStored: obligationNew, duplicate: !isNew)
     }
 
     func enqueueDirectOutbound(_ frame: FrameV2, expectedRecipient: Data, localOriginNodeId: Data) -> OutboundEnqueueResult {
@@ -1700,5 +1927,325 @@ internal final class InMemoryMessageStore: MessageStore {
     var heldBytes: Int64 {
         lock.lock(); defer { lock.unlock() }
         return totalBytesNoLock
+    }
+}
+
+// MARK: - T83 (section 14) recipient ACK return path (throwing primitives)
+//
+// The two paired namespaces in the SAME db file as held_frames/delivery_state.
+// Same single-statement atomic discipline as the delivery_state rows; a storage
+// failure THROWS and the paired-store boundary maps it to the typed
+// .storageFailure. Absence is a nil / 0 sentinels, never folded into failure
+// (C6.4-A doctrine). Mirrors the Android StoreDb T83 block.
+
+extension SqliteMessageStore: AckObligationEngine {
+    func insertObligation(_ msgId: Data, recipientNodeId: Data, identityGeneration: Int64,
+                          remainingLifetimeMs: Int64, stateCode: Int32) throws -> Bool {
+        try withDbThrowing { db in
+            try insertObligationNoLock(
+                db, msgId, recipientNodeId: recipientNodeId,
+                identityGeneration: identityGeneration, remainingLifetimeMs: remainingLifetimeMs,
+                stateCode: stateCode
+            )
+        }
+    }
+
+    private func insertObligationNoLock(
+        _ db: OpaquePointer, _ msgId: Data, recipientNodeId: Data,
+        identityGeneration: Int64, remainingLifetimeMs: Int64, stateCode: Int32
+    ) throws -> Bool {
+        var stmt: OpaquePointer?
+        guard sqlite3_prepare_v2(db, StoreSchema.insertObligationSql, -1, &stmt, nil) == SQLITE_OK else {
+            sqlite3_finalize(stmt); throw StoreError.prepareFailed
+        }
+        defer { sqlite3_finalize(stmt) }
+        bindBlob(stmt, 1, msgId)
+        bindBlob(stmt, 2, recipientNodeId)
+        sqlite3_bind_int64(stmt, 3, identityGeneration)
+        sqlite3_bind_int64(stmt, 4, remainingLifetimeMs)
+        sqlite3_bind_int(stmt, 5, stateCode)
+        guard sqlite3_step(stmt) == SQLITE_DONE else { throw StoreError.stepFailed }
+        return sqlite3_changes(db) > 0   // 1 inserted, 0 on pair-key conflict (DO NOTHING)
+    }
+
+    func readObligation(_ msgId: Data, recipientNodeId: Data) throws -> ObligationEntryRow? {
+        try withDbThrowing { db in
+            try readObligationNoLock(db, msgId, recipientNodeId: recipientNodeId)
+        }
+    }
+
+    private func readObligationNoLock(_ db: OpaquePointer, _ msgId: Data,
+                                      recipientNodeId: Data) throws -> ObligationEntryRow? {
+        var stmt: OpaquePointer?
+        guard sqlite3_prepare_v2(db, StoreSchema.readObligationSql, -1, &stmt, nil) == SQLITE_OK else {
+            sqlite3_finalize(stmt); throw StoreError.prepareFailed
+        }
+        defer { sqlite3_finalize(stmt) }
+        bindBlob(stmt, 1, msgId)
+        bindBlob(stmt, 2, recipientNodeId)
+        let rc = sqlite3_step(stmt)
+        if rc == SQLITE_DONE { return nil }   // no row -- absence, NOT failure
+        guard rc == SQLITE_ROW else { throw StoreError.stepFailed }
+        return ObligationEntryRow(
+            msgId: Data(msgId), recipientNodeId: Data(recipientNodeId),
+            identityGeneration: sqlite3_column_int64(stmt, 0),
+            remainingLifetimeMs: sqlite3_column_int64(stmt, 1),
+            stateCode: sqlite3_column_int(stmt, 2)
+        )
+    }
+
+    func listPendingObligations(_ bound: Int32) throws -> [ObligationEntryRow] {
+        try withDbThrowing { db in
+            var stmt: OpaquePointer?
+            guard sqlite3_prepare_v2(db, StoreSchema.listPendingObligationSql, -1, &stmt, nil) == SQLITE_OK else {
+                sqlite3_finalize(stmt); throw StoreError.prepareFailed
+            }
+            defer { sqlite3_finalize(stmt) }
+            sqlite3_bind_int64(stmt, 1, Int64(bound))
+            var out: [ObligationEntryRow] = []
+            while sqlite3_step(stmt) == SQLITE_ROW {
+                out.append(ObligationEntryRow(
+                    msgId: readBlob(stmt, 0), recipientNodeId: readBlob(stmt, 1),
+                    identityGeneration: sqlite3_column_int64(stmt, 2),
+                    remainingLifetimeMs: sqlite3_column_int64(stmt, 3),
+                    stateCode: sqlite3_column_int(stmt, 4)
+                ))
+            }
+            return out
+        }
+    }
+
+    func countObligationRows() throws -> Int {
+        try withDbThrowing { db in
+            var stmt: OpaquePointer?
+            guard sqlite3_prepare_v2(db, StoreSchema.countObligationSql, -1, &stmt, nil) == SQLITE_OK else {
+                sqlite3_finalize(stmt); throw StoreError.prepareFailed
+            }
+            defer { sqlite3_finalize(stmt) }
+            guard sqlite3_step(stmt) == SQLITE_ROW else { return 0 }
+            return Int(sqlite3_column_int(stmt, 0))
+        }
+    }
+
+    func casMarkObligationSigned(_ msgId: Data, recipientNodeId: Data) throws -> Int {
+        try withDbThrowing { db in
+            try execGuardedNoLock(db, StoreSchema.markSignedObligationSql, [msgId, recipientNodeId])
+        }
+    }
+
+    func deleteObligation(_ msgId: Data, recipientNodeId: Data) throws -> Int {
+        try withDbThrowing { db in
+            try execGuardedNoLock(db, StoreSchema.retireObligationSql, [msgId, recipientNodeId])
+        }
+    }
+
+    /// A guarded UPDATE/DELETE over fixed statement text with BLOB binds only:
+    /// affected-row count, never a fabricated zero (a step failure THROWS).
+    private func execGuardedNoLock(_ db: OpaquePointer, _ sql: String, _ binds: [Data]) throws -> Int {
+        var stmt: OpaquePointer?
+        guard sqlite3_prepare_v2(db, sql, -1, &stmt, nil) == SQLITE_OK else {
+            sqlite3_finalize(stmt); throw StoreError.prepareFailed
+        }
+        defer { sqlite3_finalize(stmt) }
+        for (i, arg) in binds.enumerated() { bindBlob(stmt, Int32(i + 1), arg) }
+        guard sqlite3_step(stmt) == SQLITE_DONE else { throw StoreError.stepFailed }
+        return Int(sqlite3_changes(db))
+    }
+
+    func insertAckFrameRow(_ row: AckFrameRowView) throws -> Bool {
+        try withDbThrowing { db in
+            try insertAckFrameRowNoLock(db, row)
+        }
+    }
+
+    private func insertAckFrameRowNoLock(_ db: OpaquePointer, _ row: AckFrameRowView) throws -> Bool {
+        var stmt: OpaquePointer?
+        guard sqlite3_prepare_v2(db, StoreSchema.insertAckFrameSql, -1, &stmt, nil) == SQLITE_OK else {
+            sqlite3_finalize(stmt); throw StoreError.prepareFailed
+        }
+        defer { sqlite3_finalize(stmt) }
+        bindBlob(stmt, 1, row.ackKey)
+        bindBlob(stmt, 2, row.msgId)
+        bindBlob(stmt, 3, row.recipientNodeId)
+        bindBlob(stmt, 4, row.signature)
+        bindBlob(stmt, 5, row.encodedFrame)
+        if let from = row.receivedFrom { bindBlob(stmt, 6, from) } else { sqlite3_bind_null(stmt, 6) }
+        sqlite3_bind_int64(stmt, 7, row.remainingLifetimeMs)
+        sqlite3_bind_int(stmt, 8, row.verificationClassCode)
+        guard sqlite3_step(stmt) == SQLITE_DONE else { throw StoreError.stepFailed }
+        return sqlite3_changes(db) > 0   // 1 inserted, 0 on ack_key conflict (DO NOTHING)
+    }
+
+    func readAckFrameRowByAckKey(_ ackKey: Data) throws -> AckFrameRowView? {
+        try withDbThrowing { db in
+            var stmt: OpaquePointer?
+            guard sqlite3_prepare_v2(db, StoreSchema.readAckFrameSql, -1, &stmt, nil) == SQLITE_OK else {
+                sqlite3_finalize(stmt); throw StoreError.prepareFailed
+            }
+            defer { sqlite3_finalize(stmt) }
+            bindBlob(stmt, 1, ackKey)
+            let rc = sqlite3_step(stmt)
+            if rc == SQLITE_DONE { return nil }   // absence, NOT failure
+            guard rc == SQLITE_ROW else { throw StoreError.stepFailed }
+            return AckFrameRowView(
+                ackKey: Data(ackKey),
+                msgId: readBlob(stmt, 0), recipientNodeId: readBlob(stmt, 1),
+                signature: readBlob(stmt, 2), encodedFrame: readBlob(stmt, 3),
+                receivedFrom: sqlite3_column_type(stmt, 4) == SQLITE_NULL ? nil : readBlob(stmt, 4),
+                remainingLifetimeMs: sqlite3_column_int64(stmt, 5),
+                verificationClassCode: sqlite3_column_int(stmt, 6)
+            )
+        }
+    }
+
+    func listAckFrameRowsForPair(_ msgId: Data, recipientNodeId: Data, bound: Int32) throws -> [AckFrameRowView] {
+        try withDbThrowing { db in
+            var stmt: OpaquePointer?
+            guard sqlite3_prepare_v2(db, StoreSchema.listAckFrameForPairSql, -1, &stmt, nil) == SQLITE_OK else {
+                sqlite3_finalize(stmt); throw StoreError.prepareFailed
+            }
+            defer { sqlite3_finalize(stmt) }
+            bindBlob(stmt, 1, msgId)
+            bindBlob(stmt, 2, recipientNodeId)
+            sqlite3_bind_int64(stmt, 3, Int64(bound))
+            var out: [AckFrameRowView] = []
+            while sqlite3_step(stmt) == SQLITE_ROW {
+                out.append(AckFrameRowView(
+                    ackKey: readBlob(stmt, 0),
+                    msgId: readBlob(stmt, 1), recipientNodeId: readBlob(stmt, 2),
+                    signature: readBlob(stmt, 3), encodedFrame: readBlob(stmt, 4),
+                    receivedFrom: sqlite3_column_type(stmt, 5) == SQLITE_NULL ? nil : readBlob(stmt, 5),
+                    remainingLifetimeMs: sqlite3_column_int64(stmt, 6),
+                    verificationClassCode: sqlite3_column_int(stmt, 7)
+                ))
+            }
+            return out
+        }
+    }
+
+    func countAckFrameRowsForPair(_ msgId: Data, recipientNodeId: Data) throws -> Int {
+        try withDbThrowing { db in
+            var stmt: OpaquePointer?
+            guard sqlite3_prepare_v2(db, StoreSchema.countAckFrameForPairSql, -1, &stmt, nil) == SQLITE_OK else {
+                sqlite3_finalize(stmt); throw StoreError.prepareFailed
+            }
+            defer { sqlite3_finalize(stmt) }
+            bindBlob(stmt, 1, msgId)
+            bindBlob(stmt, 2, recipientNodeId)
+            guard sqlite3_step(stmt) == SQLITE_ROW else { return 0 }
+            return Int(sqlite3_column_int(stmt, 0))
+        }
+    }
+
+    func countAckFrameRowsTotal() throws -> Int {
+        try withDbThrowing { db in
+            var stmt: OpaquePointer?
+            guard sqlite3_prepare_v2(db, StoreSchema.countAckFrameTotalSql, -1, &stmt, nil) == SQLITE_OK else {
+                sqlite3_finalize(stmt); throw StoreError.prepareFailed
+            }
+            defer { sqlite3_finalize(stmt) }
+            guard sqlite3_step(stmt) == SQLITE_ROW else { return 0 }
+            return Int(sqlite3_column_int(stmt, 0))
+        }
+    }
+
+    func deleteAllAckFrameRows() throws -> Int {
+        try withDbThrowing { db in
+            try execGuardedNoLock(db, StoreSchema.clearAckFramesSql, [])
+        }
+    }
+
+    /// ONE engine transaction: insert the frame row AND retire the obligation
+    /// (both-or-neither; a throw rolls the whole pair step back). The quota
+    /// censuses run inside the same snapshot, so the bound and the write agree.
+    func commitAckPair(_ row: AckFrameRowView, msgId: Data, recipientNodeId: Data) throws -> FrameCommitOutcome {
+        try withTransaction { db in
+            var presentStmt: OpaquePointer?
+            guard sqlite3_prepare_v2(db, StoreSchema.readAckFrameSql, -1, &presentStmt, nil) == SQLITE_OK else {
+                sqlite3_finalize(presentStmt); throw StoreError.prepareFailed
+            }
+            defer { sqlite3_finalize(presentStmt) }
+            bindBlob(presentStmt, 1, row.ackKey)
+            let present = sqlite3_step(presentStmt) == SQLITE_ROW
+            if !present {
+                var pairStmt: OpaquePointer?
+                guard sqlite3_prepare_v2(db, StoreSchema.countAckFrameForPairSql, -1, &pairStmt, nil) == SQLITE_OK else {
+                    sqlite3_finalize(pairStmt); throw StoreError.prepareFailed
+                }
+                defer { sqlite3_finalize(pairStmt) }
+                bindBlob(pairStmt, 1, row.msgId)
+                bindBlob(pairStmt, 2, row.recipientNodeId)
+                let pairCount = sqlite3_step(pairStmt) == SQLITE_ROW ? Int(sqlite3_column_int(pairStmt, 0)) : 0
+                if pairCount >= ackCandidatesPerPairLimit { return .refusedQuotaPair }
+                var totalStmt: OpaquePointer?
+                guard sqlite3_prepare_v2(db, StoreSchema.countAckFrameTotalSql, -1, &totalStmt, nil) == SQLITE_OK else {
+                    sqlite3_finalize(totalStmt); throw StoreError.prepareFailed
+                }
+                defer { sqlite3_finalize(totalStmt) }
+                let total = sqlite3_step(totalStmt) == SQLITE_ROW ? Int(sqlite3_column_int(totalStmt, 0)) : 0
+                if total >= ackCandidatesTotalLimit { return .refusedQuotaGlobal }
+                _ = try insertAckFrameRowNoLock(db, row)
+            }
+            _ = try execGuardedNoLock(db, StoreSchema.retireObligationSql, [msgId, recipientNodeId])
+            return present ? .idempotent : .committed
+        }
+    }
+}
+
+// MARK: - T83 (section 14) the recipient inbox commit through the real engine
+
+extension SqliteMessageStore {
+    /// T83 (section 14): the recipient inbox commit through the REAL engine --
+    /// held frame insert, capacity enforcement, and the pending ACK obligation all
+    /// inside ONE engine transaction (BEGIN IMMEDIATE ... COMMIT). Any exception --
+    /// including a fault thrown at the named "obligation" seam -- rolls the whole
+    /// commit back, so a half-delivered inbox can never strand an obligation
+    /// without its held row or the other way round.
+    internal func commitInboundWithObligationAtWithFault(
+        _ frame: FrameV2, receivedFrom: Data, localRecipientNodeId: Data,
+        identityGeneration: Int64, obligationLifetimeMs: Int64, receivedAt: Int64,
+        fault: ((String, OpaquePointer?) throws -> Void)?
+    ) -> InboundCommitResult {
+        guard frame.msgId.count == 16,
+              frame.routingTag.count == 4,
+              receivedFrom.count == 16,
+              localRecipientNodeId.count == 16,
+              identityGeneration >= 0,
+              obligationLifetimeMs >= 0,
+              frame.ttl <= FrameV2.maxTtl,
+              frame.hopCount <= FrameV2.maxTtl,
+              frame.flags <= 0xFFFF,
+              frame.payload.count <= FrameV2.maxPayload,
+              frame.type == .message,
+              Priority.fromFlagsStrict(frame.flags) == .direct,
+              (frame.flags & FrameV2.Flags.sealed) != 0,
+              (frame.flags & FrameV2.Flags.has_pow) == 0
+        else { return .invalidArgument }
+        do {
+            let outcome = try withTransaction { db -> InboundCommitResult in
+                let isNew = try insertRowNoLockStrict(db, frame, receivedFrom: receivedFrom, receivedAt: receivedAt)
+                if isNew {
+                    let held = try heldBytesNoLockStrict(db)
+                    if held > maxBytes {
+                        try evictOldestPrefixNoLockStrict(db, overshoot: held - maxBytes)
+                    }
+                }
+                let present = try containsNoLockStrict(db, frame.msgId)
+                if !present { return .rejectedCapacity }
+                try fault?("obligation", db)   // a throw here rolls the WHOLE commit back
+                let obligationNew = try insertObligationNoLock(
+                    db, frame.msgId, recipientNodeId: localRecipientNodeId,
+                    identityGeneration: identityGeneration, remainingLifetimeMs: obligationLifetimeMs,
+                    stateCode: AckObligationState.pending.rawValue
+                )
+                return .committed(heldNew: isNew, obligationStored: obligationNew, duplicate: !isNew)
+            }
+            if case .committed(let heldNew, _, _) = outcome, heldNew {
+                notifyHeldSetChanged()
+            }
+            return outcome
+        } catch {
+            return .storageFailure
+        }
     }
 }

@@ -1293,6 +1293,8 @@ final class SqliteMessageStoreTests: XCTestCase {
         // current-version reopen, so the seed must create delivery_state too
         // (otherwise validateSchema rejects the file as malformed fail-closed).
         sqlite3_exec(db, StoreSchema.createDeliverySqlIfNotExists, nil, nil, nil)
+        sqlite3_exec(db, StoreSchema.createObligationSqlIfNotExists, nil, nil, nil)
+        sqlite3_exec(db, StoreSchema.createAckFrameSqlIfNotExists, nil, nil, nil)
         let sql = "INSERT INTO \(StoreSchema.table) (" +
             "\(StoreSchema.colMsgId), \(StoreSchema.colType), \(StoreSchema.colTtl), " +
             "\(StoreSchema.colHopCount), \(StoreSchema.colFlags), \(StoreSchema.colPriority), " +
