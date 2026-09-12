@@ -181,29 +181,30 @@ public struct StoreQuota {
 public final class ObservationLease: @unchecked Sendable {
     public final class LeaseToken: @unchecked Sendable { public let id: Int; init(_ id: Int) { self.id = id } }
     private var registrations: [(LeaseToken, () -> Void)] = []
-    private var deferred: [(LeaseToken, () -> Void)] = []     // registered within an open tx (abandoned on abort)
-    private var promote: [(LeaseToken, () -> Void)] = []      // registered during dispatch -> fired NEXT round
+    private var deferred: [(LeaseToken, () -> Void)] = []     // registered in an open tx (abandoned on abort) or during dispatch (fire NEXT round)
     private var nextId = 0
     private var inTx = false
     private var dispatching = false
     public init() {}
     public var active: Bool { inTx }
     public func beginTransaction() { inTx = true }
+    // a commit ends the transaction; notifications registered within it stay pending and are promoted by the next afterCommit
     public func commit() { inTx = false }
+    // an abort DISCARDS the notifications registered within the transaction -- they must never be promoted/fired
     public func abort() { inTx = false; deferred.removeAll() }
     @discardableResult public func register(_ observer: @escaping () -> Void) -> LeaseToken {
         let t = LeaseToken(nextId); nextId += 1
-        if dispatching { promote.append((t, observer)) } else if inTx { deferred.append((t, observer)) } else { registrations.append((t, observer)) }
+        if dispatching || inTx { deferred.append((t, observer)) } else { registrations.append((t, observer)) }
         return t
     }
     public func unregisterBy(_ token: LeaseToken) {
-        registrations.removeAll { $0.0 === token }; deferred.removeAll { $0.0 === token }; promote.removeAll { $0.0 === token }
+        registrations.removeAll { $0.0 === token }; deferred.removeAll { $0.0 === token }
     }
     public func afterCommit() {
         if inTx { return }
+        registrations.append(contentsOf: deferred); deferred.removeAll()
         dispatching = true
-        var pending = promote; promote.removeAll()
-        pending.append(contentsOf: registrations)
+        let pending = registrations
         var fired = Set<Int>()
         var i = 0
         while i < pending.count { if fired.insert(pending[i].0.id).inserted { pending[i].1() }; i += 1 }

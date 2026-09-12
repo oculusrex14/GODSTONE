@@ -189,8 +189,7 @@ class ObservationLease {
     class LeaseToken internal constructor(val id: Int)
 
     private val registrations = ArrayList<Pair<LeaseToken, () -> Unit>>()
-    private val deferred = ArrayList<Pair<LeaseToken, () -> Unit>>()   // registered within an open tx (abandoned on abort)
-    private val promote = ArrayList<Pair<LeaseToken, () -> Unit>>()    // registered during dispatch -> fired NEXT round
+    private val deferred = ArrayList<Pair<LeaseToken, () -> Unit>>()   // registered in an open tx (abandoned on abort) or during dispatch (fire NEXT round)
     private var nextId = 0
     private var inTx = false
     private var dispatching = false
@@ -198,32 +197,34 @@ class ObservationLease {
     val active: Boolean get() = inTx
 
     fun beginTransaction() { inTx = true }
+    // a commit ends the transaction; notifications registered within it stay pending and are promoted by the next afterCommit
     fun commit() { inTx = false }
-    fun abort() { inTx = false; deferred.clear() }   // an aborted transaction discards the notifications registered within it
+    // an abort DISCARDS the notifications registered within the transaction -- they must never be promoted/fired
+    fun abort() { inTx = false; deferred.clear() }
 
     fun register(observer: () -> Unit): LeaseToken {
         val t = LeaseToken(nextId++)
-        val bucket = if (dispatching) promote else if (inTx) deferred else registrations
+        val bucket = if (dispatching || inTx) deferred else registrations
         bucket.add(Pair(t, observer))
         return t
     }
 
     fun unregisterBy(token: LeaseToken) {
-        for (b in listOf(registrations, deferred, promote)) { val it = b.iterator(); while (it.hasNext()) if (it.next().first === token) it.remove() }
+        for (b in listOf(registrations, deferred)) { val it = b.iterator(); while (it.hasNext()) if (it.next().first === token) it.remove() }
     }
 
     /**
-     * Fire the promoted-from-last-round observers and the standing registrations once
-     * each, in order, NOT reentrantly: an observer registered while dispatching is
-     * carried to the NEXT commit round and is never dropped. An open (uncommitted)
-     * transaction fires nothing.
+     * Promote the notifications that committed since the last round (or were registered
+     * reentrantly during the last dispatch) into the standing set, then fire the standing
+     * set once each, in order, NOT reentrantly. An open transaction promotes/fires nothing;
+     * an aborted transaction has already discarded its pending notifications so they never fire.
      */
     fun afterCommit() {
         if (inTx) return
+        registrations.addAll(deferred); deferred.clear()
         dispatching = true
         try {
-            val pending = ArrayList(promote); promote.clear()
-            pending.addAll(registrations)
+            val pending = ArrayList(registrations)
             val fired = HashSet<Int>()
             var i = 0
             while (i < pending.size) { val e = pending[i]; if (fired.add(e.first.id)) e.second(); i++ }

@@ -120,6 +120,12 @@ final class ReadinessT33Tests: XCTestCase {
         XCTAssertEqual(plan.cumulativeBytes, 5, "the drained cumulative bytes equal the sum of the evicted sizes")
         XCTAssertTrue(StoreQuota.hardCapHoldsAfter(rows: rows, measuredHeldBytes: total), "the hard cap holds after the plan")
         XCTAssertFalse(plan.evictedIds.contains("sos-a"), "no unexpired tombstone / trust pin is silently evicted")
+        // bounded-cursor law (the cards required bounded cursor reads): fetchPage respects its limit and never over-reads the backing
+        let backing = ["r0", "r1", "r2", "r3", "r4"]
+        XCTAssertLessThanOrEqual(StoreQuota.fetchPage(backing, start: 0, limit: 2).count, 2, "a page never exceeds its limit")
+        XCTAssertEqual(StoreQuota.fetchPage(backing, start: 0, limit: 3), ["r0", "r1", "r2"], "a bounded page reads exactly the limit many rows")
+        XCTAssertEqual(StoreQuota.fetchPage(backing, start: 3, limit: 10), ["r3", "r4"], "a page reads the residual tail when the limit would overrun")
+        XCTAssertLessThanOrEqual(StoreQuota.fetchPage(backing, start: 0, limit: 99).count, backing.count, "the cursor never reads past the backing")
     }
 
     // (8) eviction moves the delivery record EVICTED in the SAME transaction (the second named falsification)
