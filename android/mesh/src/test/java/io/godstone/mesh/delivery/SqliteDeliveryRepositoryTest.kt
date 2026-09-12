@@ -703,6 +703,22 @@ class SqliteDeliveryRepositoryTest {
 
         override fun execRawSql(sql: String) = synchronized(lock) { inner.execRawSql(sql) }
         override fun close() = inner.close()
+
+        override fun insertObligation(msgId: ByteArray, recipientNodeId: ByteArray, identityGeneration: Long, remainingLifetimeMs: Long, stateCode: Int): Boolean =
+            inner.insertObligation(msgId, recipientNodeId, identityGeneration, remainingLifetimeMs, stateCode)
+        override fun readObligation(msgId: ByteArray, recipientNodeId: ByteArray): io.godstone.mesh.store.ObligationEntryRow? = inner.readObligation(msgId, recipientNodeId)
+        override fun listPendingObligations(bound: Int): List<io.godstone.mesh.store.ObligationEntryRow> = inner.listPendingObligations(bound)
+        override fun countObligationRows(): Int = inner.countObligationRows()
+        override fun casMarkObligationSigned(msgId: ByteArray, recipientNodeId: ByteArray): Int = inner.casMarkObligationSigned(msgId, recipientNodeId)
+        override fun deleteObligation(msgId: ByteArray, recipientNodeId: ByteArray): Int = inner.deleteObligation(msgId, recipientNodeId)
+        override fun insertAckFrameRow(row: io.godstone.mesh.store.AckFrameRowView): Boolean = inner.insertAckFrameRow(row)
+        override fun readAckFrameRowByAckKey(ackKey: ByteArray): io.godstone.mesh.store.AckFrameRowView? = inner.readAckFrameRowByAckKey(ackKey)
+        override fun listAckFrameRowsForPair(msgId: ByteArray, recipientNodeId: ByteArray, bound: Int): List<io.godstone.mesh.store.AckFrameRowView> = inner.listAckFrameRowsForPair(msgId, recipientNodeId, bound)
+        override fun countAckFrameRowsForPair(msgId: ByteArray, recipientNodeId: ByteArray): Int = inner.countAckFrameRowsForPair(msgId, recipientNodeId)
+        override fun countAckFrameRowsTotal(): Int = inner.countAckFrameRowsTotal()
+        override fun deleteAllAckFrameRows(): Int = inner.deleteAllAckFrameRows()
+        override fun commitAckPair(row: io.godstone.mesh.store.AckFrameRowView, msgId: ByteArray, recipientNodeId: ByteArray): io.godstone.mesh.store.FrameCommitOutcome =
+            inner.commitAckPair(row, msgId, recipientNodeId)
     }
 
     @Test
@@ -2640,6 +2656,22 @@ class SqliteDeliveryRepositoryTest {
         override fun deleteHeld(msgId: ByteArray): Int = underlyingDb.deleteHeld(msgId)
         override fun execRawSql(sql: String) = underlyingDb.execRawSql(sql)
         override fun close() = underlyingDb.close()
+
+        override fun insertObligation(msgId: ByteArray, recipientNodeId: ByteArray, identityGeneration: Long, remainingLifetimeMs: Long, stateCode: Int): Boolean =
+            underlyingDb.insertObligation(msgId, recipientNodeId, identityGeneration, remainingLifetimeMs, stateCode)
+        override fun readObligation(msgId: ByteArray, recipientNodeId: ByteArray): io.godstone.mesh.store.ObligationEntryRow? = underlyingDb.readObligation(msgId, recipientNodeId)
+        override fun listPendingObligations(bound: Int): List<io.godstone.mesh.store.ObligationEntryRow> = underlyingDb.listPendingObligations(bound)
+        override fun countObligationRows(): Int = underlyingDb.countObligationRows()
+        override fun casMarkObligationSigned(msgId: ByteArray, recipientNodeId: ByteArray): Int = underlyingDb.casMarkObligationSigned(msgId, recipientNodeId)
+        override fun deleteObligation(msgId: ByteArray, recipientNodeId: ByteArray): Int = underlyingDb.deleteObligation(msgId, recipientNodeId)
+        override fun insertAckFrameRow(row: io.godstone.mesh.store.AckFrameRowView): Boolean = underlyingDb.insertAckFrameRow(row)
+        override fun readAckFrameRowByAckKey(ackKey: ByteArray): io.godstone.mesh.store.AckFrameRowView? = underlyingDb.readAckFrameRowByAckKey(ackKey)
+        override fun listAckFrameRowsForPair(msgId: ByteArray, recipientNodeId: ByteArray, bound: Int): List<io.godstone.mesh.store.AckFrameRowView> = underlyingDb.listAckFrameRowsForPair(msgId, recipientNodeId, bound)
+        override fun countAckFrameRowsForPair(msgId: ByteArray, recipientNodeId: ByteArray): Int = underlyingDb.countAckFrameRowsForPair(msgId, recipientNodeId)
+        override fun countAckFrameRowsTotal(): Int = underlyingDb.countAckFrameRowsTotal()
+        override fun deleteAllAckFrameRows(): Int = underlyingDb.deleteAllAckFrameRows()
+        override fun commitAckPair(row: io.godstone.mesh.store.AckFrameRowView, msgId: ByteArray, recipientNodeId: ByteArray): io.godstone.mesh.store.FrameCommitOutcome =
+            underlyingDb.commitAckPair(row, msgId, recipientNodeId)
     }
 
     @Test
