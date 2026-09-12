@@ -159,6 +159,32 @@ public class ReadinessT35Test {
             Assert.assertTrue("${c.first} is Invalid", r is SenderVerificationResult.Invalid)
             Assert.assertTrue("${c.first} carries a non-empty reason", (r as SenderVerificationResult.Invalid).reason.isNotEmpty())
         }
+        // attacker-SELF-SIGNED hostile frames: the intruder holds a key pair and signs the EXACT hostile
+        // bytes, so the Ed25519 check VALIDATES over them; only the receiving structural gates (version,
+        // UTF-8, exact length) can refuse. Without these cases the gates are defense-in-depth shadowed by
+        // the signature and a mutant that removes one would escape every tamper-of-honest-frame probe.
+        val carol = newPair(rng); val carolNode = nodeIdOf(carol.pub)
+        fun attackerSigned(unsigned: ByteArray): ByteArray {
+            val pre = SignedMessageV1.signaturePreimage(carolNode, RCP, NON, CREAT, Priority.DIRECT.code, unsigned)
+            return unsigned + Ed25519Keys.sign(pre, carol.priv)
+        }
+        val baseUnsigned = SignedMessageV1.buildUnsigned(carol.pub, RCP, TimeQuality.USER_CONFIRMED, BOD)
+        val hostileVersion = baseUnsigned.copyOf().also { it[0] = 0x02 }                       // attacker claims a different version
+        val hostileUtf = baseUnsigned.copyOf().also { it[52] = 0x80.toByte() }                 // lone continuation in the signed body
+        val hostileLied = baseUnsigned.copyOf().also { it[51] = (it[51].toInt() + 1).toByte() } // bodyLength claims one more than the tail holds
+        for (c in listOf(
+            Triple("attacker-signed unknown version", attackerSigned(hostileVersion), "version"),
+            Triple("attacker-signed malformed body", attackerSigned(hostileUtf), "UTF-8"),
+            Triple("attacker-signed lied length", attackerSigned(hostileLied), "exact"),
+        )) {
+            var r: SenderVerificationResult? = null
+            var thrown: Throwable? = null
+            try { r = SignedMessageV1.verify(c.second, carolNode, RCP, NON, CREAT, Priority.DIRECT.code) }
+            catch (e: Throwable) { thrown = e }
+            Assert.assertNull("${c.first}: the verifier must not throw, it fails closed", thrown)
+            Assert.assertTrue("${c.first} is Invalid (the signature validates; only the gate stands)", r is SenderVerificationResult.Invalid)
+            Assert.assertTrue("${c.first} refused by the ${c.third} gate", (r as SenderVerificationResult.Invalid).reason.contains(c.third))
+        }
     }
 
     // (5) low-order / non-canonical sealed DH inputs are refused by the input filter

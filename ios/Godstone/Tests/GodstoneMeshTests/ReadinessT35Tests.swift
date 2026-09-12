@@ -167,6 +167,34 @@ final class ReadinessT35Tests: XCTestCase {
             XCTAssertNotNil(reason, "\(name) is Invalid")
             XCTAssertFalse(reason!.isEmpty, "\(name) carries a non-empty reason")
         }
+        // attacker-SELF-SIGNED hostile frames: the intruder holds a key pair and signs the EXACT hostile
+        // bytes, so the Ed25519 check VALIDATES over them; only the receiving structural gates (version,
+        // UTF-8, exact length) can refuse. Without these cases the gates are defense-in-depth shadowed by
+        // the signature and a mutant that removes one would escape every tamper-of-honest-frame probe.
+        let carol = try newPair(); let carolNode = SignedMessageV1.nodeIdOf(carol.pub)
+        func attackerSigned(_ unsigned: Data) throws -> Data {
+            let pre = try SignedMessageV1.signaturePreimage(senderNodeId: carolNode, recipientNodeId: Self.RCP,
+                messageNonce: Self.NON, createdAtEpochSeconds: Self.CREAT, priorityCode: Priority.direct.rawValue, unsigned: unsigned)
+            let sig = try Curve25519.Signing.PrivateKey(rawRepresentation: carol.priv).signature(for: pre)
+            return unsigned + sig
+        }
+        let baseU = try SignedMessageV1.buildUnsigned(senderIdentityPub: carol.pub, recipientNodeId: Self.RCP,
+                                                      timeQuality: .userConfirmed, bodyUtf8: Self.BOD)
+        var vB = [UInt8](baseU); vB[0] = 0x02
+        var uB = [UInt8](baseU); uB[52] = 0x80
+        var lB = [UInt8](baseU); lB[51] = lB[51] &+ 1
+        let hostiles: [(String, Data, String)] = [
+            ("attacker-signed unknown version", try attackerSigned(Data(vB)), "version"),
+            ("attacker-signed malformed body", try attackerSigned(Data(uB)), "UTF-8"),
+            ("attacker-signed lied length", try attackerSigned(Data(lB)), "exact"),
+        ]
+        for (name, frame, marker) in hostiles {
+            let r = SignedMessageV1.verify(signedPlaintext: frame, senderNodeId: carolNode, recipientLocalNodeId: Self.RCP,
+                                          messageNonce: Self.NON, createdAtEpochSeconds: Self.CREAT, priorityCode: Priority.direct.rawValue)
+            let reason = invalidReason(r)
+            XCTAssertNotNil(reason, "\(name) must be Invalid -- the signature validates over these exact bytes; only the receiving gate stands")
+            XCTAssertTrue(reason!.contains(marker), "\(name) refused by the \(marker) gate")
+        }
     }
 
     // (5) low-order / non-canonical sealed DH inputs are refused by the input filter
