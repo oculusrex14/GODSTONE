@@ -2,242 +2,182 @@
  "evidence_root": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE",
  "files": [
   {
-   "path": "T83/commands.json",
-   "sha256": "1822c892a25786c45a41a5052006c2f1baa7318846e1fb410829655b6cac08c2",
-   "size": 5476
+   "path": "T37/commands.json",
+   "sha256": "d980a87e15b6936f6ef3daee1ec6725be783ffceade4516b09019b1b2ce0ac38",
+   "size": 7037
   },
   {
-   "path": "T83/logs/T83-controls-python3-002.log",
+   "path": "T37/logs/T37-controls-python3-002.log",
    "sha256": "0b1ac463307b9f7d907105bb19e85bdada5dcd05131d80c492ffd80b4ab3f5f4",
    "size": 234
   },
   {
-   "path": "T83/logs/T83-controls-python3-003.log",
+   "path": "T37/logs/T37-controls-python3-003.log",
    "sha256": "67493ebd28a55ece17214e55d318f34ba4af6ac7592268756f1b3dcc304afa21",
    "size": 125
   },
   {
-   "path": "T83/logs/T83-controls-python3.log",
+   "path": "T37/logs/T37-controls-python3.log",
    "sha256": "03f0bc422dc53a81fd7f41085300a28e42626c2a4554e8929d897d3c092bd014",
    "size": 1374
   },
   {
-   "path": "T83/logs/T83-narrow-gradlew.log",
-   "sha256": "eb22da6436794f04aa8883187ee9e0c22ce40fc440afae96a6e2ab2af2daade3",
-   "size": 2514
+   "path": "T37/logs/T37-narrow-gradlew.log",
+   "sha256": "6ccf22ce479317a932c8d862f58837f94da41041932ab32c6bfd2bb0f4624e86",
+   "size": 2513
   },
   {
-   "path": "T83/logs/T83-narrow-swift.log",
-   "sha256": "10d5fc4ad6d5e6f1d612da7208dac196399da40f6b14d6b21f258d5d6c2a96ce",
-   "size": 3824
+   "path": "T37/logs/T37-narrow-swift.log",
+   "sha256": "1a7ebbf8a2bbcd4cc1685b032ed6316f2529d58e28c46bd021efdab878596140",
+   "size": 3749
   },
   {
-   "path": "T83/logs/T83-subsystem-gradlew.log",
-   "sha256": "4f796bfc2d9f4245019f4e82d84653750008c004af22a47c859f18a8811934ac",
-   "size": 2500
+   "path": "T37/logs/T37-subsystem-gradlew-002.log",
+   "sha256": "f258f0496619618cbd8e29ad54d8a7657743dd93be404bfa3811c4e42da3488c",
+   "size": 2488
   },
   {
-   "path": "T83/logs/T83-subsystem-swift.log",
-   "sha256": "303b657fb89c5d6f5cbb4dbf68066303324a6c85d5710e4afcfa9df6e6ef65b2",
-   "size": 242645
+   "path": "T37/logs/T37-subsystem-gradlew.log",
+   "sha256": "b83fb9090ef45088c970640c438aaddb966b4e51bc624f6a5ae49e94baa1bbbc",
+   "size": 2997
   },
   {
-   "path": "T83/logs/controls-mirror-sync-check-001.log",
-   "sha256": "072dc7e55ab7ab31acdf3b1b9fb3f9f6c4acce99cd2ed55888a250307f9dda3b",
-   "size": 244
+   "path": "T37/logs/T37-subsystem-swift-002.log",
+   "sha256": "b19592c00eb9a76607f7245d3474bda92c7de9141ea02d644f20a51734de2506",
+   "size": 245511
   },
   {
-   "path": "T83/logs/controls-release-gates-001.log",
-   "sha256": "1a0333c8799cab11ddeffffd7b2eeedc81a0b2a445e0a776b6843bd49710d42f",
-   "size": 350
+   "path": "T37/logs/T37-subsystem-swift.log",
+   "sha256": "0e7f5c48d69514352ef9021490f0cc45964ed8d5f9e9ff990f44c9d29ea25296",
+   "size": 245504
   },
   {
-   "path": "T83/logs/controls-repository-001.log",
-   "sha256": "f2b97cfe961cf47b8d3e8c5ffc1b44651c206f7189963ba2444ba6d0be533556",
-   "size": 1486
+   "path": "T37/milestones/contract-court-milestone.json",
+   "sha256": "2f0c995d3ac05d7db178801254005c2d19a1657ca193f6b1f73703ff6d20893b",
+   "size": 2754
   },
   {
-   "path": "T83/milestones/contract-court-milestone.json",
-   "sha256": "ccaa4db3ebcd639085b51ad261afd3f20a66483d8a06059d1fbdd462e2ff066b",
-   "size": 7426
+   "path": "T37/milestones/design-grounding-milestone.json",
+   "sha256": "0c7c2b734edb88110d0114c1885d9edf5a07bb9821f6437da9c3022c3b88e584",
+   "size": 15132
   },
   {
-   "path": "T83/milestones/design-grounding-milestone.json",
-   "sha256": "01a92c54ab4607db5e133032d352daca4a506f6d4dce20f27d67e507f5f0e4ad",
-   "size": 7387
+   "path": "T37/milestones/roster-verification-milestone.json",
+   "sha256": "1736491e76731055b3c91cef6e0a6fb9d4a62ca7715fd85c5009f66275a73ea7",
+   "size": 3390
   },
   {
-   "path": "T83/milestones/roster-verification-milestone.json",
-   "sha256": "f6b7b646cab73e5cfaa12b4b0e216ca2b9738cafc8f62263d4d15db77dfbd5ee",
-   "size": 5100
+   "path": "T37/roster-attempt-1/logs/T37-RC1-android-ack-signed-and-filed-before-the-inbox-commit.semantic.log",
+   "sha256": "b358712cac102e7a0c4f49a1a8ab7901f26f5c3d495499a7f6d0bee10b9b5f2b",
+   "size": 685
   },
   {
-   "path": "T83/roster-attempt-1/logs/T83-RC1-android-ack-rows-stored-in-the-message-namespace.semantic.log",
-   "sha256": "37eb65f99f2f81f13bb04d018c71954f08ff7836526a33ea8c31894d63d17c23",
-   "size": 428
-  },
-  {
-   "path": "T83/roster-attempt-1/logs/T83-RC1-ios-ack-rows-stored-in-the-message-namespace.semantic.log",
-   "sha256": "c2551f1e6f8602ebd93cf4d7110270907d1051371141795155d43585d02d4b60",
+   "path": "T37/roster-attempt-1/logs/T37-RC1-ios-ack-signed-and-filed-before-the-inbox-commit.semantic.log",
+   "sha256": "375d54389ade976c02d649d508889cfef429e7b6a6e2f20e80408306347be8f4",
    "size": 16029
   },
   {
-   "path": "T83/roster-attempt-1/logs/T83-RC2-android-obligation-omitted-from-the-inbox-transaction.semantic.log",
-   "sha256": "072529a21faf78f6d724c7966aed68dcfd586f435431211ddfe911b8f8e5906e",
-   "size": 1043
+   "path": "T37/roster-attempt-1/logs/T37-RC2-android-routing-tag-gate-is-identity.semantic.log",
+   "sha256": "0629be7e3ce71c0467a55aab0975e7a2eb49b5887911296caab3570cb50e00d5",
+   "size": 669
   },
   {
-   "path": "T83/roster-attempt-1/logs/T83-RC2-ios-obligation-omitted-from-the-inbox-transaction.semantic.log",
-   "sha256": "3b4b46bc3ab1f4dc4cf4d658f0cbe35edf466223a6fac96764b75c241f69582e",
+   "path": "T37/roster-attempt-1/logs/T37-RC2-ios-routing-tag-gate-is-identity.semantic.log",
+   "sha256": "34e00c5453418b9c173f7a1c478f83e8c8430642fc099157aa7142a56d2c6efb",
    "size": 16029
   },
   {
-   "path": "T83/roster-attempt-1/logs/T83-RC3-android-ackkey-ignores-the-signature-candidates-collapse.semantic.log",
-   "sha256": "64e3db8ade356bb10873ea371363b50168e63c84f54b81c700a68cc22b4c258c",
-   "size": 704
+   "path": "T37/roster-attempt-1/logs/T37-RC3-android-duplicate-forgets-the-filed-row-and-re-signs.semantic.log",
+   "sha256": "9e9e7a93872d316c76cf54459f1d381dc3e8c14ffc72b51b7957636d487b1118",
+   "size": 685
   },
   {
-   "path": "T83/roster-attempt-1/logs/T83-RC3-ios-ackkey-ignores-the-signature-candidates-collapse.semantic.log",
-   "sha256": "29e5044456c359689fb9634ea4248bcbdfd52f6d6bcc8c5dbb4dd96fe13768b0",
+   "path": "T37/roster-attempt-1/logs/T37-RC3-ios-duplicate-forgets-the-filed-row-and-re-signs.semantic.log",
+   "sha256": "72ccabff2de9e668fb18d7f1ba8eb4075687c13f0ad5986fe9efa4d67c7e0242",
    "size": 16029
   },
   {
-   "path": "T83/roster-attempt-1/logs/T83-RC4-android-pair-quota-removed-fifth-candidate-admitted.semantic.log",
-   "sha256": "ebc18e2e81fa0971289448e1a6e6ca7fdf8bae560e7415c049b7d5e2cfbb8666",
-   "size": 698
+   "path": "T37/roster-attempt-1/logs/T37-RC4-android-storage-failure-still-hands-out-an-ack.semantic.log",
+   "sha256": "82082bf22f831c12c6f1dc1dfaed534893d2ccbee90842d7ff467a00a4a5f3b0",
+   "size": 1183
   },
   {
-   "path": "T83/roster-attempt-1/logs/T83-RC4-ios-pair-quota-removed-fifth-candidate-admitted.semantic.log",
-   "sha256": "48d0bf6d683e43cd7bac4ed3b596eed4f33d82bb67f444e1534de7b6a06e464a",
+   "path": "T37/roster-attempt-1/logs/T37-RC4-ios-storage-failure-still-hands-out-an-ack.semantic.log",
+   "sha256": "494ef8bdd24443535d19d4acecf17c4e676c6c60e3033f0aab4e3465dfd2014f",
    "size": 16029
   },
   {
-   "path": "T83/roster-attempt-1/logs/T83-RC5-android-retirement-unbound-from-the-frame-insert.semantic.log",
-   "sha256": "849e82cb534687c379881e2ac5040ec8b9559453257dcb5a767678928bcd89a2",
-   "size": 695
+   "path": "T37/roster-attempt-1/logs/T37-RC5-android-immediate-hop-stands-in-for-the-sender.semantic.log",
+   "sha256": "0c36b0886acf92ecdddf86f83851aaeb36512592a77e02b8f3f2da4c290f73d2",
+   "size": 679
   },
   {
-   "path": "T83/roster-attempt-1/logs/T83-RC5-ios-retirement-unbound-from-the-frame-insert.semantic.log",
-   "sha256": "8fe8a1abae638be6b6d5a1f941b530d15fe35352ce06e3e317fab707db17e47d",
+   "path": "T37/roster-attempt-1/logs/T37-RC5-ios-immediate-hop-stands-in-for-the-sender.semantic.log",
+   "sha256": "e133873f014d189f263cf01634d2968ca755c387231b596fc8a9a69a0a2f52df",
    "size": 16029
   },
   {
-   "path": "T83/roster-attempt-1/manifest.json",
-   "sha256": "4c5fb4b4f46f0cee65e8e14cdfbf4691d1c5d53339a35f1a983e9ae954527109",
-   "size": 8043
+   "path": "T37/roster-attempt-1/manifest.json",
+   "sha256": "76d078dd4499b992e7b2f6f2f720685a37b2a185fa97aadbeb1392635bb1329d",
+   "size": 8010
   },
   {
-   "path": "T83/roster-attempt-2/logs/T83-RC1-android-ack-rows-stored-in-the-message-namespace.semantic.log",
-   "sha256": "4e0bda063e87c8e279f57f2ba9d5f1216e3843512295542db08a02a4ab98d620",
-   "size": 279
+   "path": "T37/roster/logs/T37-RC1-android-ack-signed-and-filed-before-the-inbox-commit.semantic.log",
+   "sha256": "b358712cac102e7a0c4f49a1a8ab7901f26f5c3d495499a7f6d0bee10b9b5f2b",
+   "size": 685
   },
   {
-   "path": "T83/roster-attempt-2/logs/T83-RC1-ios-ack-rows-stored-in-the-message-namespace.semantic.log",
-   "sha256": "2be3abc92c76fced6e8b03dadffed52e1cfa159c300fdc87281e363b43bf4520",
+   "path": "T37/roster/logs/T37-RC1-ios-ack-signed-and-filed-before-the-inbox-commit.semantic.log",
+   "sha256": "130b36728c4ff8801b3fa72fbf27dc6291eec745b2487433e37cf802bcc5e785",
    "size": 16029
   },
   {
-   "path": "T83/roster-attempt-2/logs/T83-RC2-android-obligation-omitted-from-the-inbox-transaction.semantic.log",
-   "sha256": "ffcfbb576e1e526ee39a975355b3c8794c2747f87b9560dbf45bdeb8f42e678b",
-   "size": 850
+   "path": "T37/roster/logs/T37-RC2-android-routing-tag-gate-is-identity.semantic.log",
+   "sha256": "a1138a3230c0b8fa5b4ca7b25d7ad0901aafc811046d901e3f6331c214e5004a",
+   "size": 669
   },
   {
-   "path": "T83/roster-attempt-2/logs/T83-RC2-ios-obligation-omitted-from-the-inbox-transaction.semantic.log",
-   "sha256": "b79ff259c046f15a974aafe8f2aa814f99868ca140974198c16d3eba0816f6c4",
+   "path": "T37/roster/logs/T37-RC2-ios-routing-tag-gate-is-identity.semantic.log",
+   "sha256": "29e8be544bbd2639acf520ae8c6a6ee0f8aefd8058ab40ad97b7019540021ecf",
    "size": 16029
   },
   {
-   "path": "T83/roster-attempt-2/logs/T83-RC3-android-ackkey-ignores-the-signature-candidates-collapse.semantic.log",
-   "sha256": "456b19322f878e66cda8425d3e13f67932ae88f745cb0b19463335017690fcd3",
-   "size": 703
+   "path": "T37/roster/logs/T37-RC3-android-duplicate-forgets-the-filed-row-and-re-signs.semantic.log",
+   "sha256": "6d8a528a9b6015b4d9e07deb700f53672c4d6f6b1143d9f41e5d95d7d6ef61f9",
+   "size": 685
   },
   {
-   "path": "T83/roster-attempt-2/logs/T83-RC3-ios-ackkey-ignores-the-signature-candidates-collapse.semantic.log",
-   "sha256": "08282fc3e639e8464e8df9ea57c7c6539dcf7f64056485ccf98d019ab402a26f",
+   "path": "T37/roster/logs/T37-RC3-ios-duplicate-forgets-the-filed-row-and-re-signs.semantic.log",
+   "sha256": "7ddaa145f35b971941edd6092eb47baae482fd675b133a02b8d74475dd376ed8",
    "size": 16029
   },
   {
-   "path": "T83/roster-attempt-2/logs/T83-RC4-android-pair-quota-removed-fifth-candidate-admitted.semantic.log",
-   "sha256": "d71bba5cc0026363f908e5f5782a71bbeba853b1d77185d97a4b6bcf9ffcd812",
-   "size": 698
+   "path": "T37/roster/logs/T37-RC4-android-storage-failure-still-hands-out-an-ack.semantic.log",
+   "sha256": "9b7a168abb2ceff5c34739049006c40a30b03b49913e5efa7d51f6cb87c5a8ef",
+   "size": 679
   },
   {
-   "path": "T83/roster-attempt-2/logs/T83-RC4-ios-pair-quota-removed-fifth-candidate-admitted.semantic.log",
-   "sha256": "efc0a6cace38bd333836465575e99a689bbf03c829166c08d4159607304203ee",
+   "path": "T37/roster/logs/T37-RC4-ios-storage-failure-still-hands-out-an-ack.semantic.log",
+   "sha256": "725333d390d4b6a2fda5bb9102e1e5214327f547fe7d51fda408f63952850a64",
    "size": 16029
   },
   {
-   "path": "T83/roster-attempt-2/logs/T83-RC5-android-retirement-unbound-from-the-frame-insert.semantic.log",
-   "sha256": "5ff3593b3ec400fc27c14692e68e0c26bb81e7dcb46fa757c889c84d086b6b70",
-   "size": 695
+   "path": "T37/roster/logs/T37-RC5-android-immediate-hop-stands-in-for-the-sender.semantic.log",
+   "sha256": "5097cf9864e047d6a8baa1c6dc49759e3dcd92bf31daba7543f3ef3a1795a241",
+   "size": 679
   },
   {
-   "path": "T83/roster-attempt-2/logs/T83-RC5-ios-retirement-unbound-from-the-frame-insert.semantic.log",
-   "sha256": "f7fd17ad41a41e05025fd3dada5ffd02fb7830020ac9e5679f31a722669b93cc",
+   "path": "T37/roster/logs/T37-RC5-ios-immediate-hop-stands-in-for-the-sender.semantic.log",
+   "sha256": "9d70e4d0d6b96f8332662af09305d469203da47980366ec1c24eb86224549edb",
    "size": 16029
   },
   {
-   "path": "T83/roster-attempt-2/manifest.json",
-   "sha256": "922b1bc0e346f2a51288ecd0ea28a2d897776339beda7c6c5bbfa7bad6933efe",
-   "size": 8060
-  },
-  {
-   "path": "T83/roster/logs/T83-RC1-android-ack-rows-stored-in-the-message-namespace.semantic.log",
-   "sha256": "048ace004aa69e1a55453678e216433867c64a968db2afce5a3e832822959105",
-   "size": 695
-  },
-  {
-   "path": "T83/roster/logs/T83-RC1-ios-ack-rows-stored-in-the-message-namespace.semantic.log",
-   "sha256": "75d787be6ad0d28b7f91331b1b8aab1a8a85542c3ecc8cb624041442ea88b25b",
-   "size": 16029
-  },
-  {
-   "path": "T83/roster/logs/T83-RC2-android-obligation-omitted-from-the-inbox-transaction.semantic.log",
-   "sha256": "475493bbeb981b7d13c884d28f3d51ca62402b9902ce65000f71b45ca42d50b9",
-   "size": 700
-  },
-  {
-   "path": "T83/roster/logs/T83-RC2-ios-obligation-omitted-from-the-inbox-transaction.semantic.log",
-   "sha256": "1c507a22d35b324220cf4133261c55099abcf6eb10e0cb91730f401cb72c24b5",
-   "size": 16029
-  },
-  {
-   "path": "T83/roster/logs/T83-RC3-android-ackkey-ignores-the-signature-candidates-collapse.semantic.log",
-   "sha256": "7304af440995409b30ed951e398e959af54bfd37313d26c74f2875ac8182f28c",
-   "size": 703
-  },
-  {
-   "path": "T83/roster/logs/T83-RC3-ios-ackkey-ignores-the-signature-candidates-collapse.semantic.log",
-   "sha256": "b2f4f254a8d740c16a330f5ab881e31dcb0a32306f9ce94a37c616155f08ea51",
-   "size": 16029
-  },
-  {
-   "path": "T83/roster/logs/T83-RC4-android-pair-quota-removed-fifth-candidate-admitted.semantic.log",
-   "sha256": "d71bba5cc0026363f908e5f5782a71bbeba853b1d77185d97a4b6bcf9ffcd812",
-   "size": 698
-  },
-  {
-   "path": "T83/roster/logs/T83-RC4-ios-pair-quota-removed-fifth-candidate-admitted.semantic.log",
-   "sha256": "b308daaf0f30c6569a5506feeb396f574b1b557318e3d41d506640cf155295f5",
-   "size": 16029
-  },
-  {
-   "path": "T83/roster/logs/T83-RC5-android-retirement-unbound-from-the-frame-insert.semantic.log",
-   "sha256": "e4cb991b7a860a5a6131947103188d37212e650b0ad8e08138d6b76db0688b04",
-   "size": 695
-  },
-  {
-   "path": "T83/roster/logs/T83-RC5-ios-retirement-unbound-from-the-frame-insert.semantic.log",
-   "sha256": "3276930d39f3cf925ef1a1f5a34776fb7765bb8ec8c886a56a400f31b03d5f04",
-   "size": 16029
-  },
-  {
-   "path": "T83/roster/manifest.json",
-   "sha256": "fba85be56f8a4c91c4878c1b13c63705bbb58bcc82df7b515eedf3b1f031def2",
-   "size": 8596
+   "path": "T37/roster/manifest.json",
+   "sha256": "cb3131b2e8b18194c2f82de69f8f8e4123f574690fc16a2abdb8e0c6541d7682",
+   "size": 8530
   }
  ],
- "note": "T83 (recipient ACK return path: ack_obligations + ack_frames on the durable SQLite transaction engine, inbox-transaction obligation pairing, bounded candidate census, local cache-key dedup, both-or-neither retirement) seal evidence, boundary commit c43996fdc7e514d501cfed1fa12809d4f3379e2d",
+ "note": "T37 (persist received inbox messages before generating recipient ACKs, using the authenticated TrustedPeer only as immediate-hop identity): complete -- both isles 11/11 courts green at boundary f5fcc40a8, ten-of-ten roster KILLED at pin f5fcc40a8 (attempt 2; attempt 1 archived), grand android 1003/0/0/0 via green-retried subsystem -002 (first-record flake kept as history), iOS grand 942/0; readiness remains false; five external gates open; frozen contracts reused untouched.",
  "schema_version": 1,
- "task": "T83"
+ "task": "T37"
 }

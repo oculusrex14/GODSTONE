@@ -5038,6 +5038,297 @@
       "tested_tree_sha": "d3d108f225b95ad38193b1902778733368872a0b",
       "unresolved": []
     },
+    "T37": {
+      "case_results": {
+        "android_grand": {
+          "counts_source": "runner stage subsystem at boundary f5fcc40a8 (green retry -002): TEST-*.xml walk of android/mesh/build/test-results/testDebugUnitTest (task purges stale results per run); the first subsystem record T37-subsystem-gradlew FAILED rc=1 stands in the ledger as history -- the sealed T18 court randomized-draw flake (no ascending hint pair within 64 draws), retried green in the same stage per policy, court untouched",
+          "errors": 0,
+          "failures": 0,
+          "skipped": 0,
+          "tests": 1003,
+          "xml_files": 60
+        },
+        "deleted_cases": [],
+        "dual_court_parity": "Eleven witnesses share one name set across the isles (W1..W11), each asserting the same section-14 laws. Host-crypto doctrine (the T83 finding, honored): the iOS Ed25519 layer signs RANDOMIZED, so no iOS witness asserts byte-identity against a directly built re-signature -- the laws ride on verifier acceptance, key==digest-of-own-parts, and stored-row read-back equality; the android isle adds the deterministic byte-identity legs. Non-fatal-shim law: iOS assertions record and continue, so every indexed read stands behind a guard (fixup-2).",
+        "ios_grand": {
+          "counts_source": "swift test --package-path ios/Packages/GodstoneFoundation (full) at boundary via runner stage subsystem; run-total Executed 942 tests, with 0 failures line (last line, not sum)",
+          "errors": 0,
+          "failures": 0,
+          "tests": 942
+        },
+        "t37_android_court": {
+          "counts_source": "runner stage narrow at boundary: gradlew :mesh:testDebugUnitTest --tests *ReadinessT37Test*; TEST-xml census 11/0/0/0",
+          "errors": 0,
+          "failures": 0,
+          "skipped": 0,
+          "tests": 11
+        },
+        "t37_ios_court": {
+          "counts_source": "runner stage narrow at boundary: swift test --filter ReadinessT37Tests; Executed 11 tests, with 0 failures",
+          "errors": 0,
+          "failures": 0,
+          "tests": 11
+        }
+      },
+      "claim_commit": "e87bef3aa72eeb716a1794cf829a0c2b109f7fb3",
+      "commands": [
+        "T37-narrow-gradlew",
+        "T37-narrow-swift",
+        "T37-subsystem-gradlew",
+        "T37-subsystem-swift",
+        "T37-subsystem-gradlew-002",
+        "T37-subsystem-swift-002",
+        "T37-controls-python3",
+        "T37-controls-python3-002",
+        "T37-controls-python3-003"
+      ],
+      "device_gate_ids": [],
+      "file_hashes": {},
+      "implementation_commit": "f5fcc40a8c6fc3e793d8969d9c7fee7bc4f996ab",
+      "implementation_commits": [
+        "d196b30b8b6ff27d36cac263f5a9f8a8114059b5",
+        "ca3c86f5992c065429618bc5958ab07bfed17d14",
+        "120429be11a9d4e5644a2e58f98abe47112c041c",
+        "269d780aac0c5260ec6663b13854d563ccedfa28",
+        "f5fcc40a8c6fc3e793d8969d9c7fee7bc4f996ab"
+      ],
+      "inputs": {
+        "children_commit_order": [
+          "e87bef3aa",
+          "d196b30b8",
+          "ca3c86f59",
+          "120429be1",
+          "269d780aa",
+          "f5fcc40a8",
+          "f5fcc40a8"
+        ],
+        "governed_source": [
+          "android/mesh/src/main/java/io/godstone/mesh/delivery/RecipientInboxRepository.kt",
+          "android/mesh/src/main/java/io/godstone/mesh/MeshNode.kt",
+          "ios/Godstone/Sources/GodstoneMesh/RecipientInboxRepository.swift",
+          "ios/Godstone/Sources/GodstoneMesh/MeshNode.swift"
+        ],
+        "required_regression_paths": [
+          "android/mesh/src/test/java/io/godstone/mesh/readiness/ReadinessT37Test.kt",
+          "ios/Godstone/Tests/GodstoneMeshTests/ReadinessT37Tests.swift",
+          "android/mesh/src/main/java/io/godstone/mesh/delivery/RecipientInboxRepository.kt",
+          "ios/Godstone/Sources/GodstoneMesh/RecipientInboxRepository.swift",
+          "android/mesh/src/main/java/io/godstone/mesh/MeshNode.kt",
+          "ios/Godstone/Sources/GodstoneMesh/MeshNode.swift",
+          "ci/mutations.py"
+        ],
+        "sealed_hot_paths_untouched": [
+          "wire: WireV2/FrameV2 + MessageId.derive -- reused, never rewritten",
+          "identity: SignedMessageV1 author/verify binding laws + Identity -- reused verbatim, literals matched not edited",
+          "unseal: Router.openSealedMessage closed typed ladder -- composed, not widened",
+          "ack canon: AckFrame.build + Ed25519AckAuthenticator.verify + AckCacheKey.compute -- the section-14 ttl 12 is a CALL-SITE constant; the builder default 4 stands",
+          "pair laws: AckObligationStore insertIfAbsent/lookup/retire/candidatesForPair/commitFrameAndRetireObligation -- both-or-neither kept",
+          "T83: commitInboundWithObligationAtWithFault -- sealed store methods reused as bound; the duplicate-obligation resurrection is retired at the T37 layer, the store itself untouched",
+          "keys: RecipientKeyResolver/BoundRecipientKeyResolver pins consulted for the self-check, never widened"
+        ],
+        "task_card": "docs/production-readiness/TASKS.json#T37"
+      },
+      "ladder_boundary_commit": "f5fcc40a8c6fc3e793d8969d9c7fee7bc4f996ab",
+      "mutation_results": {
+        "campaign_note": "Attempt 1 (pin 269d780a): 8 KILLED, 2 INVALID -- RC4-android unbraced two-statement when-arm genuinely did not compile (verified against the row log, not the daemon-flake pattern) and RC5-ios walked an unguarded indexed read into an xctest process trap under the non-fatal assertion shim. Fixup-2 hardened the court (guard-let reads) and re-expressed the failing rows; the append-style RC2/RC5 rows were rebuilt as destructive substitutions honoring the ledger post-invariant (fixup-1). Attempt 2 (pin f5fcc40a8): 10/10 KILLED, 0 invalid, 0 escaped, 0 timeout. Archives: evidence T37/roster-attempt-1/ and T37/roster/.",
+        "semantic": [
+          {
+            "anchor_count": 1,
+            "baseline_sha": "f5fcc40a8c6fc3e793d8969d9c7fee7bc4f996ab",
+            "build_exit": 0,
+            "category": "semantic",
+            "ended_utc": "2026-09-12T14:12:14Z",
+            "failed_assertion": "witness testProcessKillAfterCommitBeforeAckRegeneratesExactlyOnce failed as intended (5 failed case(s))",
+            "id": "T37-RC1-android-ack-signed-and-filed-before-the-inbox-commit",
+            "log_path": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/T37/roster/logs/T37-RC1-android-ack-signed-and-filed-before-the-inbox-commit.semantic.log",
+            "log_sha": "b358712cac102e7a0c4f49a1a8ab7901f26f5c3d495499a7f6d0bee10b9b5f2b",
+            "mutant_patch_sha": "17292a919b597ad93cf93e68637b9fe2858f57966382e0d7c6352300efe127f7",
+            "outcome": "KILLED",
+            "started_utc": "2026-09-12T14:12:04Z",
+            "target_tests": [
+              "testProcessKillAfterCommitBeforeAckRegeneratesExactlyOnce"
+            ],
+            "tests_run": 11
+          },
+          {
+            "anchor_count": 1,
+            "baseline_sha": "f5fcc40a8c6fc3e793d8969d9c7fee7bc4f996ab",
+            "build_exit": 0,
+            "category": "semantic",
+            "ended_utc": "2026-09-12T14:12:24Z",
+            "failed_assertion": "witness testStaleTagStillDeliversAndMatchedTagAdmitsNothingAlone failed as intended (1 failed case(s))",
+            "id": "T37-RC2-android-routing-tag-gate-is-identity",
+            "log_path": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/T37/roster/logs/T37-RC2-android-routing-tag-gate-is-identity.semantic.log",
+            "log_sha": "a1138a3230c0b8fa5b4ca7b25d7ad0901aafc811046d901e3f6331c214e5004a",
+            "mutant_patch_sha": "5586c06924fde07631c120cef257b13b3ca6e93f9565a513fd1ecabb9a1a9e1c",
+            "outcome": "KILLED",
+            "started_utc": "2026-09-12T14:12:14Z",
+            "target_tests": [
+              "testStaleTagStillDeliversAndMatchedTagAdmitsNothingAlone"
+            ],
+            "tests_run": 11
+          },
+          {
+            "anchor_count": 1,
+            "baseline_sha": "f5fcc40a8c6fc3e793d8969d9c7fee7bc4f996ab",
+            "build_exit": 0,
+            "category": "semantic",
+            "ended_utc": "2026-09-12T14:12:34Z",
+            "failed_assertion": "witness testDuplicateValidDeliveryRegeneratesSameAckWithoutDuplicateInbox failed as intended (2 failed case(s))",
+            "id": "T37-RC3-android-duplicate-forgets-the-filed-row-and-re-signs",
+            "log_path": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/T37/roster/logs/T37-RC3-android-duplicate-forgets-the-filed-row-and-re-signs.semantic.log",
+            "log_sha": "6d8a528a9b6015b4d9e07deb700f53672c4d6f6b1143d9f41e5d95d7d6ef61f9",
+            "mutant_patch_sha": "76afac0aff59e5de75e24fc6b2d078530076e25f796c1dde6abf64e551f6b9be",
+            "outcome": "KILLED",
+            "started_utc": "2026-09-12T14:12:25Z",
+            "target_tests": [
+              "testDuplicateValidDeliveryRegeneratesSameAckWithoutDuplicateInbox"
+            ],
+            "tests_run": 11
+          },
+          {
+            "anchor_count": 1,
+            "baseline_sha": "f5fcc40a8c6fc3e793d8969d9c7fee7bc4f996ab",
+            "build_exit": 0,
+            "category": "semantic",
+            "ended_utc": "2026-09-12T14:12:47Z",
+            "failed_assertion": "witness testDiskFailureYieldsNeitherAckNorClaimedAcceptance failed as intended (1 failed case(s))",
+            "id": "T37-RC4-android-storage-failure-still-hands-out-an-ack",
+            "log_path": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/T37/roster/logs/T37-RC4-android-storage-failure-still-hands-out-an-ack.semantic.log",
+            "log_sha": "9b7a168abb2ceff5c34739049006c40a30b03b49913e5efa7d51f6cb87c5a8ef",
+            "mutant_patch_sha": "222ff8e6a13bad34ca357823f83162e2cc0a2600a091dac3931ba7e4ee2ab954",
+            "outcome": "KILLED",
+            "started_utc": "2026-09-12T14:12:34Z",
+            "target_tests": [
+              "testDiskFailureYieldsNeitherAckNorClaimedAcceptance"
+            ],
+            "tests_run": 11
+          },
+          {
+            "anchor_count": 1,
+            "baseline_sha": "f5fcc40a8c6fc3e793d8969d9c7fee7bc4f996ab",
+            "build_exit": 0,
+            "category": "semantic",
+            "ended_utc": "2026-09-12T14:12:57Z",
+            "failed_assertion": "witness testImmediateHopIsNotTheSenderAndReceiptStands failed as intended (8 failed case(s))",
+            "id": "T37-RC5-android-immediate-hop-stands-in-for-the-sender",
+            "log_path": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/T37/roster/logs/T37-RC5-android-immediate-hop-stands-in-for-the-sender.semantic.log",
+            "log_sha": "5097cf9864e047d6a8baa1c6dc49759e3dcd92bf31daba7543f3ef3a1795a241",
+            "mutant_patch_sha": "abf021c22f8526c2c54a9bde34f6ebf22233bddac05edabba3cad833f5663d9d",
+            "outcome": "KILLED",
+            "started_utc": "2026-09-12T14:12:47Z",
+            "target_tests": [
+              "testImmediateHopIsNotTheSenderAndReceiptStands"
+            ],
+            "tests_run": 11
+          },
+          {
+            "anchor_count": 1,
+            "baseline_sha": "f5fcc40a8c6fc3e793d8969d9c7fee7bc4f996ab",
+            "build_exit": 0,
+            "category": "semantic",
+            "ended_utc": "2026-09-12T14:13:26Z",
+            "failed_assertion": "witness testProcessKillAfterCommitBeforeAckRegeneratesExactlyOnce failed as intended (5 failed case(s))",
+            "id": "T37-RC1-ios-ack-signed-and-filed-before-the-inbox-commit",
+            "log_path": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/T37/roster/logs/T37-RC1-ios-ack-signed-and-filed-before-the-inbox-commit.semantic.log",
+            "log_sha": "130b36728c4ff8801b3fa72fbf27dc6291eec745b2487433e37cf802bcc5e785",
+            "mutant_patch_sha": "3931906ab9691448803c1827f35fb410917329707576e2e5d150bf95cb0958f8",
+            "outcome": "KILLED",
+            "started_utc": "2026-09-12T14:12:57Z",
+            "target_tests": [
+              "testProcessKillAfterCommitBeforeAckRegeneratesExactlyOnce"
+            ],
+            "tests_run": 11
+          },
+          {
+            "anchor_count": 1,
+            "baseline_sha": "f5fcc40a8c6fc3e793d8969d9c7fee7bc4f996ab",
+            "build_exit": 0,
+            "category": "semantic",
+            "ended_utc": "2026-09-12T14:13:53Z",
+            "failed_assertion": "witness testStaleTagStillDeliversAndMatchedTagAdmitsNothingAlone failed as intended (1 failed case(s))",
+            "id": "T37-RC2-ios-routing-tag-gate-is-identity",
+            "log_path": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/T37/roster/logs/T37-RC2-ios-routing-tag-gate-is-identity.semantic.log",
+            "log_sha": "29e8be544bbd2639acf520ae8c6a6ee0f8aefd8058ab40ad97b7019540021ecf",
+            "mutant_patch_sha": "c2eb598c80b29259048f5bee641b2d71dbc0bde8e3b595df1adfb11022bb0278",
+            "outcome": "KILLED",
+            "started_utc": "2026-09-12T14:13:26Z",
+            "target_tests": [
+              "testStaleTagStillDeliversAndMatchedTagAdmitsNothingAlone"
+            ],
+            "tests_run": 11
+          },
+          {
+            "anchor_count": 1,
+            "baseline_sha": "f5fcc40a8c6fc3e793d8969d9c7fee7bc4f996ab",
+            "build_exit": 0,
+            "category": "semantic",
+            "ended_utc": "2026-09-12T14:14:22Z",
+            "failed_assertion": "witness testDuplicateValidDeliveryRegeneratesSameAckWithoutDuplicateInbox failed as intended (2 failed case(s))",
+            "id": "T37-RC3-ios-duplicate-forgets-the-filed-row-and-re-signs",
+            "log_path": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/T37/roster/logs/T37-RC3-ios-duplicate-forgets-the-filed-row-and-re-signs.semantic.log",
+            "log_sha": "7ddaa145f35b971941edd6092eb47baae482fd675b133a02b8d74475dd376ed8",
+            "mutant_patch_sha": "5780258f7d37c5361c794c10b6fc268856e98ff23e6258eb74da8347af1d639d",
+            "outcome": "KILLED",
+            "started_utc": "2026-09-12T14:13:54Z",
+            "target_tests": [
+              "testDuplicateValidDeliveryRegeneratesSameAckWithoutDuplicateInbox"
+            ],
+            "tests_run": 11
+          },
+          {
+            "anchor_count": 1,
+            "baseline_sha": "f5fcc40a8c6fc3e793d8969d9c7fee7bc4f996ab",
+            "build_exit": 0,
+            "category": "semantic",
+            "ended_utc": "2026-09-12T14:14:50Z",
+            "failed_assertion": "witness testDiskFailureYieldsNeitherAckNorClaimedAcceptance failed as intended (1 failed case(s))",
+            "id": "T37-RC4-ios-storage-failure-still-hands-out-an-ack",
+            "log_path": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/T37/roster/logs/T37-RC4-ios-storage-failure-still-hands-out-an-ack.semantic.log",
+            "log_sha": "725333d390d4b6a2fda5bb9102e1e5214327f547fe7d51fda408f63952850a64",
+            "mutant_patch_sha": "56c97d8b4ff27cf5d5addf632181a6762c0ee61d92f402a62ad8b3e978f23f8f",
+            "outcome": "KILLED",
+            "started_utc": "2026-09-12T14:14:22Z",
+            "target_tests": [
+              "testDiskFailureYieldsNeitherAckNorClaimedAcceptance"
+            ],
+            "tests_run": 11
+          },
+          {
+            "anchor_count": 1,
+            "baseline_sha": "f5fcc40a8c6fc3e793d8969d9c7fee7bc4f996ab",
+            "build_exit": 0,
+            "category": "semantic",
+            "ended_utc": "2026-09-12T14:15:18Z",
+            "failed_assertion": "witness testImmediateHopIsNotTheSenderAndReceiptStands failed as intended (8 failed case(s))",
+            "id": "T37-RC5-ios-immediate-hop-stands-in-for-the-sender",
+            "log_path": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/T37/roster/logs/T37-RC5-ios-immediate-hop-stands-in-for-the-sender.semantic.log",
+            "log_sha": "9d70e4d0d6b96f8332662af09305d469203da47980366ec1c24eb86224549edb",
+            "mutant_patch_sha": "909b6078e05e8a8a8c57f675b334d777e9949b73d6ef1d9f0e8a158f5298a601",
+            "outcome": "KILLED",
+            "started_utc": "2026-09-12T14:14:50Z",
+            "target_tests": [
+              "testImmediateHopIsNotTheSenderAndReceiptStands"
+            ],
+            "tests_run": 11
+          }
+        ]
+      },
+      "objective": {
+        "claimed_head": "531419cae749c104544756f9fcb8c36dffb0d0b2",
+        "claimed_utc": "2026-09-12T12:08:47+00:00",
+        "objective": {
+          "claimed_head": "531419cae749c104544756f9fcb8c36dffb0d0b2",
+          "claimed_utc": "2026-09-12T12:08:47+00:00",
+          "objective": "Use authenticated TrustedPeer only as immediate-hop identity.",
+          "task": "T37"
+        },
+        "task": "T37"
+      },
+      "status": "COMPLETE",
+      "tested_tree_sha": "a471d2fa47d131acd81d7e4b242764d6cd9e2c90",
+      "unresolved": []
+    },
     "T83": {
       "case_results": {
         "android_grand": {
