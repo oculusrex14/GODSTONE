@@ -65,9 +65,13 @@ internal class JdbcStoreDb(file: File) : StoreDb {
                 conn.autoCommit = false
                 try {
                     conn.createStatement().use { it.execute("DROP TABLE IF EXISTS ${StoreSchema.DELIVERY_TABLE}") }
+                    conn.createStatement().use { it.execute("DROP TABLE IF EXISTS ${StoreSchema.ACK_FRAME_TABLE}") }
+                    conn.createStatement().use { it.execute("DROP TABLE IF EXISTS ${StoreSchema.ACK_OBLIGATION_TABLE}") }
                     conn.createStatement().use { it.execute("DROP TABLE IF EXISTS ${StoreSchema.TABLE}") }
                     conn.createStatement().use { it.execute(StoreSchema.CREATE_SQL) }
                     conn.createStatement().use { it.execute(StoreSchema.CREATE_DELIVERY_SQL) }
+                    conn.createStatement().use { it.execute(StoreSchema.CREATE_OBLIGATION_SQL) }
+                    conn.createStatement().use { it.execute(StoreSchema.CREATE_ACK_FRAME_SQL) }
                     conn.commit()
                 } catch (e: Throwable) {
                     runCatching { conn.rollback() }
@@ -85,11 +89,13 @@ internal class JdbcStoreDb(file: File) : StoreDb {
         }
     }
 
-    /** DDL-fingerprint validation against `sqlite_master` for BOTH tables
-     *  (C6.4.1-E/F). Throws on a missing table or DDL mismatch. */
+    /** DDL-fingerprint validation against `sqlite_master` for ALL FOUR tables
+     *  (C6.4.1-E/F + T83 section 14). Throws on a missing table or DDL mismatch. */
     private fun validateSchema() {
         checkTableDdl(StoreSchema.TABLE, StoreSchema.CREATE_SQL)
         checkTableDdl(StoreSchema.DELIVERY_TABLE, StoreSchema.CREATE_DELIVERY_SQL)
+        checkTableDdl(StoreSchema.ACK_OBLIGATION_TABLE, StoreSchema.CREATE_OBLIGATION_SQL)
+        checkTableDdl(StoreSchema.ACK_FRAME_TABLE, StoreSchema.CREATE_ACK_FRAME_SQL)
     }
 
     private fun checkTableDdl(name: String, expected: String) {
@@ -284,6 +290,193 @@ internal class JdbcStoreDb(file: File) : StoreDb {
             ps.setBytes(1, msgId)
             ps.executeUpdate()
         }
+    }
+
+    // --- T83 (section 14): the recipient ACK return path, JDBC mirror of the
+    // SQLCipher primitives above (same SQL texts from StoreSchema; JDBC column
+    // indexes are 1-based, the SQLite cursor indexes 0-based).
+
+    override fun insertObligation(
+        msgId: ByteArray,
+        recipientNodeId: ByteArray,
+        identityGeneration: Long,
+        remainingLifetimeMs: Long,
+        stateCode: Int,
+    ): Boolean = synchronized(conn) {
+        conn.prepareStatement(StoreSchema.insertObligationSql()).use { ps ->
+            ps.setBytes(1, msgId)
+            ps.setBytes(2, recipientNodeId)
+            ps.setLong(3, identityGeneration)
+            ps.setLong(4, remainingLifetimeMs)
+            ps.setLong(5, stateCode.toLong())
+            ps.executeUpdate() > 0
+        }
+    }
+
+    override fun readObligation(msgId: ByteArray, recipientNodeId: ByteArray): ObligationEntryRow? =
+        synchronized(conn) {
+            conn.prepareStatement(StoreSchema.readObligationSql()).use { ps ->
+                ps.setBytes(1, msgId)
+                ps.setBytes(2, recipientNodeId)
+                ps.executeQuery().use { rs ->
+                    if (!rs.next()) return null
+                    ObligationEntryRow(
+                        msgId = msgId.copyOf(),
+                        recipientNodeId = recipientNodeId.copyOf(),
+                        identityGeneration = rs.getLong(1),
+                        remainingLifetimeMs = rs.getLong(2),
+                        stateCode = rs.getInt(3),
+                    )
+                }
+            }
+        }
+
+    override fun listPendingObligations(bound: Int): List<ObligationEntryRow> = synchronized(conn) {
+        conn.prepareStatement(StoreSchema.listPendingObligationSql()).use { ps ->
+            ps.setLong(1, bound.toLong())
+            ps.executeQuery().use { rs ->
+                val out = ArrayList<ObligationEntryRow>()
+                while (rs.next()) {
+                    out.add(
+                        ObligationEntryRow(
+                            msgId = rs.getBytes(1),
+                            recipientNodeId = rs.getBytes(2),
+                            identityGeneration = rs.getLong(3),
+                            remainingLifetimeMs = rs.getLong(4),
+                            stateCode = rs.getInt(5),
+                        ),
+                    )
+                }
+                out
+            }
+        }
+    }
+
+    override fun countObligationRows(): Int = synchronized(conn) {
+        conn.prepareStatement(StoreSchema.countObligationSql()).use { ps ->
+            ps.executeQuery().use { rs -> if (!rs.next()) 0 else rs.getInt(1) }
+        }
+    }
+
+    override fun casMarkObligationSigned(msgId: ByteArray, recipientNodeId: ByteArray): Int =
+        synchronized(conn) {
+            conn.prepareStatement(StoreSchema.markSignedObligationSql()).use { ps ->
+                ps.setBytes(1, msgId)
+                ps.setBytes(2, recipientNodeId)
+                ps.executeUpdate()
+            }
+        }
+
+    override fun deleteObligation(msgId: ByteArray, recipientNodeId: ByteArray): Int =
+        synchronized(conn) {
+            conn.prepareStatement(StoreSchema.retireObligationSql()).use { ps ->
+                ps.setBytes(1, msgId)
+                ps.setBytes(2, recipientNodeId)
+                ps.executeUpdate()
+            }
+        }
+
+    override fun insertAckFrameRow(row: AckFrameRowView): Boolean = synchronized(conn) {
+        conn.prepareStatement(StoreSchema.insertAckFrameSql()).use { ps ->
+            ps.setBytes(1, row.ackKey)
+            ps.setBytes(2, row.msgId)
+            ps.setBytes(3, row.recipientNodeId)
+            ps.setBytes(4, row.signature)
+            ps.setBytes(5, row.encodedFrame)
+            if (row.receivedFrom == null) ps.setNull(6, Types.BLOB) else ps.setBytes(6, row.receivedFrom)
+            ps.setLong(7, row.remainingLifetimeMs)
+            ps.setLong(8, row.verificationClassCode.toLong())
+            ps.executeUpdate() > 0
+        }
+    }
+
+    override fun readAckFrameRowByAckKey(ackKey: ByteArray): AckFrameRowView? = synchronized(conn) {
+        conn.prepareStatement(StoreSchema.readAckFrameSql()).use { ps ->
+            ps.setBytes(1, ackKey)
+            ps.executeQuery().use { rs ->
+                if (!rs.next()) return null
+                AckFrameRowView(
+                    ackKey = ackKey.copyOf(),
+                    msgId = rs.getBytes(1),
+                    recipientNodeId = rs.getBytes(2),
+                    signature = rs.getBytes(3),
+                    encodedFrame = rs.getBytes(4),
+                    receivedFrom = rs.getBytes(5),
+                    remainingLifetimeMs = rs.getLong(6),
+                    verificationClassCode = rs.getInt(7),
+                )
+            }
+        }
+    }
+
+    override fun listAckFrameRowsForPair(
+        msgId: ByteArray,
+        recipientNodeId: ByteArray,
+        bound: Int,
+    ): List<AckFrameRowView> = synchronized(conn) {
+        conn.prepareStatement(StoreSchema.listAckFrameForPairSql()).use { ps ->
+            ps.setBytes(1, msgId)
+            ps.setBytes(2, recipientNodeId)
+            ps.setLong(3, bound.toLong())
+            ps.executeQuery().use { rs ->
+                val out = ArrayList<AckFrameRowView>()
+                while (rs.next()) {
+                    out.add(
+                        AckFrameRowView(
+                            ackKey = rs.getBytes(1),
+                            msgId = rs.getBytes(2),
+                            recipientNodeId = rs.getBytes(3),
+                            signature = rs.getBytes(4),
+                            encodedFrame = rs.getBytes(5),
+                            receivedFrom = rs.getBytes(6),
+                            remainingLifetimeMs = rs.getLong(7),
+                            verificationClassCode = rs.getInt(8),
+                        ),
+                    )
+                }
+                out
+            }
+        }
+    }
+
+    override fun countAckFrameRowsForPair(msgId: ByteArray, recipientNodeId: ByteArray): Int =
+        synchronized(conn) {
+            conn.prepareStatement(StoreSchema.countAckFrameForPairSql()).use { ps ->
+                ps.setBytes(1, msgId)
+                ps.setBytes(2, recipientNodeId)
+                ps.executeQuery().use { rs -> if (!rs.next()) 0 else rs.getInt(1) }
+            }
+        }
+
+    override fun countAckFrameRowsTotal(): Int = synchronized(conn) {
+        conn.prepareStatement(StoreSchema.countAckFrameTotalSql()).use { ps ->
+            ps.executeQuery().use { rs -> if (!rs.next()) 0 else rs.getInt(1) }
+        }
+    }
+
+    override fun deleteAllAckFrameRows(): Int = synchronized(conn) {
+        conn.prepareStatement(StoreSchema.clearAckFramesSql()).use { it.executeUpdate() }
+    }
+
+    override fun commitAckPair(
+        row: AckFrameRowView,
+        msgId: ByteArray,
+        recipientNodeId: ByteArray,
+    ): FrameCommitOutcome = inTransaction { db ->
+        val present = db.readAckFrameRowByAckKey(row.ackKey) != null
+        if (!present) {
+            if (db.countAckFrameRowsForPair(row.msgId, row.recipientNodeId) >=
+                io.godstone.mesh.delivery.ACK_CANDIDATES_PER_PAIR_LIMIT
+            ) {
+                return@inTransaction FrameCommitOutcome.REFUSED_QUOTA_PAIR
+            }
+            if (db.countAckFrameRowsTotal() >= io.godstone.mesh.delivery.ACK_CANDIDATES_TOTAL_LIMIT) {
+                return@inTransaction FrameCommitOutcome.REFUSED_QUOTA_GLOBAL
+            }
+            db.insertAckFrameRow(row)
+        }
+        db.deleteObligation(msgId, recipientNodeId)
+        if (present) FrameCommitOutcome.IDEMPOTENT else FrameCommitOutcome.COMMITTED
     }
 
     override fun close() = synchronized(conn) { conn.close() }

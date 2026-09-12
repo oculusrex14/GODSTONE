@@ -17,7 +17,14 @@ import net.zetetic.database.sqlcipher.SQLiteDatabase
 import net.zetetic.database.sqlcipher.SQLiteOpenHelper
 import androidx.security.crypto.EncryptedSharedPreferences
 import androidx.security.crypto.MasterKey
+import io.godstone.mesh.delivery.ACK_CANDIDATES_PER_PAIR_LIMIT
+import io.godstone.mesh.delivery.ACK_CANDIDATES_TOTAL_LIMIT
 import io.godstone.mesh.delivery.AckMode
+import io.godstone.mesh.delivery.AckObligation
+import io.godstone.mesh.delivery.AckObligationState
+import io.godstone.mesh.delivery.InMemoryAckStore
+import io.godstone.mesh.delivery.InboundCommitResult
+import io.godstone.mesh.delivery.ObligationInsertResult
 import io.godstone.mesh.delivery.DeliveryState
 import io.godstone.mesh.wire.v2.FrameV2
 import io.godstone.mesh.wire.v2.Priority
@@ -172,7 +179,11 @@ internal object StoreSchema {
     // CREATE_DELIVERY_SQL). No installed base (GMP/1 + V3 never shipped) so the
     // onUpgrade recreate is correct (ADR-001 §5). iOS StoreSchema.dbVersion is
     // the same 6 (byte-identical schema contract).
-    const val DB_VERSION = 6
+    // T83-A: bumped 6 -> 7 to add the two section 14 recipient-ACK namespaces
+    // (ack_obligations + ack_frames) to the same db file, on the same
+    // destructive-recreate doctrine (no installed base, ADR-001 §5). iOS
+    // StoreSchema.dbVersion is the same 7 (byte-identical schema contract).
+    const val DB_VERSION = 7
     const val TABLE = "held_frames"
     const val COL_MSG_ID = "msg_id"
     const val COL_TYPE = "type"
@@ -328,6 +339,148 @@ internal object StoreSchema {
     val CREATE_DELIVERY_SQL_IF_NOT_EXISTS: String =
         CREATE_DELIVERY_SQL.replace("CREATE TABLE ", "CREATE TABLE IF NOT EXISTS ")
 
+    // ------------------------------------------------------------------
+    // T83 (section 14) -- the recipient ACK return path: TWO new namespaces in
+    // the SAME db file (same state owner, same transaction engine, shared quota):
+    //   * ack_obligations: keyed by (msg_id, recipient_node_id); inserted in the
+    //     SAME recipient inbox transaction (commitInboundWithObligation); the
+    //     bounded worker marks PENDING -> SIGNED with a single guarded CAS and
+    //     retires (DELETE) atomically with the frame insert. The state codes are
+    //     the cross-platform persistence contract (AckObligationState.code), NOT
+    //     enum ordinals; 0 PENDING / 1 SIGNED are the only legal durable rows.
+    //   * ack_frames: keyed by ack_key -- the LOCAL cache key
+    //     SHA256(ASCII("GMP2-ACK-CACHE") || msg_id || recipient || signature);
+    //     it introduces NO wire field. A MESSAGE and its ACK coexist: this table
+    //     never shares held_frames' primary key. verification_class codes are the
+    //     cross-platform contract (AckVerificationClass.code): 1
+    //     VERIFIED_RECIPIENT, 2 OPAQUE_CANDIDATE; 0 / unknown decodes Corrupt
+    //     (fail closed, C6.5 doctrine). The CHECKs are defense-in-depth exactly
+    //     as for delivery_state. Mirrors iOS StoreSchema.
+    // ------------------------------------------------------------------
+    const val ACK_OBLIGATION_TABLE = "ack_obligations"
+    const val COL_O_MSG_ID = "msg_id"
+    const val COL_O_RECIPIENT = "recipient_node_id"
+    const val COL_O_GENERATION = "identity_generation"
+    const val COL_O_REMAINING = "remaining_lifetime_ms"
+    const val COL_O_STATE = "state"
+
+    const val ACK_FRAME_TABLE = "ack_frames"
+    const val COL_K_ACK_KEY = "ack_key"
+    const val COL_K_MSG_ID = "msg_id"
+    const val COL_K_RECIPIENT = "recipient_node_id"
+    const val COL_K_SIGNATURE = "signature"
+    const val COL_K_ENCODED = "encoded_frame"
+    const val COL_K_RECEIVED_FROM = "received_from"
+    const val COL_K_REMAINING = "remaining_lifetime_ms"
+    const val COL_K_CLASS = "verification_class"
+
+    val CREATE_OBLIGATION_SQL: String = """
+        CREATE TABLE $ACK_OBLIGATION_TABLE (
+            $COL_O_MSG_ID BLOB NOT NULL,
+            $COL_O_RECIPIENT BLOB NOT NULL,
+            $COL_O_GENERATION INTEGER NOT NULL,
+            $COL_O_REMAINING INTEGER NOT NULL,
+            $COL_O_STATE INTEGER NOT NULL,
+            PRIMARY KEY ($COL_O_MSG_ID, $COL_O_RECIPIENT),
+            CHECK (length($COL_O_MSG_ID) = 16),
+            CHECK (length($COL_O_RECIPIENT) = 16),
+            CHECK ($COL_O_GENERATION >= 0),
+            CHECK ($COL_O_REMAINING >= 0),
+            CHECK ($COL_O_STATE IN (0, 1))
+        )
+    """.trimIndent()
+
+    val CREATE_OBLIGATION_SQL_IF_NOT_EXISTS: String =
+        CREATE_OBLIGATION_SQL.replace("CREATE TABLE ", "CREATE TABLE IF NOT EXISTS ")
+
+    val CREATE_ACK_FRAME_SQL: String = """
+        CREATE TABLE $ACK_FRAME_TABLE (
+            $COL_K_ACK_KEY BLOB PRIMARY KEY NOT NULL,
+            $COL_K_MSG_ID BLOB NOT NULL,
+            $COL_K_RECIPIENT BLOB NOT NULL,
+            $COL_K_SIGNATURE BLOB NOT NULL,
+            $COL_K_ENCODED BLOB NOT NULL,
+            $COL_K_RECEIVED_FROM BLOB,
+            $COL_K_REMAINING INTEGER NOT NULL,
+            $COL_K_CLASS INTEGER NOT NULL,
+            CHECK (length($COL_K_ACK_KEY) = 32),
+            CHECK (length($COL_K_MSG_ID) = 16),
+            CHECK (length($COL_K_RECIPIENT) = 16),
+            CHECK (length($COL_K_SIGNATURE) = 64),
+            CHECK (length($COL_K_ENCODED) > 0),
+            CHECK (($COL_K_RECEIVED_FROM IS NULL) OR (length($COL_K_RECEIVED_FROM) = 16)),
+            CHECK ($COL_K_REMAINING >= 0),
+            CHECK ($COL_K_CLASS IN (1, 2))
+        )
+    """.trimIndent()
+
+    val CREATE_ACK_FRAME_SQL_IF_NOT_EXISTS: String =
+        CREATE_ACK_FRAME_SQL.replace("CREATE TABLE ", "CREATE TABLE IF NOT EXISTS ")
+
+    /** Insert a fresh obligation; ON CONFLICT of the pair key DO NOTHING (the
+     *  inbox re-delivery is idempotent -- the EXISTING row, its generation pin
+     *  and its remaining lifetime are NEVER updated). Bind: (1) msg,
+     *  (2) recipient, (3) generation, (4) remaining, (5) state. */
+    fun insertObligationSql(): String =
+        "INSERT INTO $ACK_OBLIGATION_TABLE " +
+            "($COL_O_MSG_ID, $COL_O_RECIPIENT, $COL_O_GENERATION, $COL_O_REMAINING, $COL_O_STATE) " +
+            "VALUES (?, ?, ?, ?, ?) " +
+            "ON CONFLICT ($COL_O_MSG_ID, $COL_O_RECIPIENT) DO NOTHING"
+
+    /** Bind: (1) msg, (2) recipient. Columns: generation, remaining, state. */
+    fun readObligationSql(): String =
+        "SELECT $COL_O_GENERATION, $COL_O_REMAINING, $COL_O_STATE FROM $ACK_OBLIGATION_TABLE " +
+            "WHERE $COL_O_MSG_ID = ? AND $COL_O_RECIPIENT = ?"
+
+    /** The worker's resume scan: PENDING or SIGNED rows, stable rowid order.
+     *  Bind: (1) the row bound. */
+    fun listPendingObligationSql(): String =
+        "SELECT $COL_O_MSG_ID, $COL_O_RECIPIENT, $COL_O_GENERATION, $COL_O_REMAINING, $COL_O_STATE " +
+            "FROM $ACK_OBLIGATION_TABLE WHERE $COL_O_STATE IN (0, 1) ORDER BY rowid LIMIT ?"
+
+    fun countObligationSql(): String =
+        "SELECT COUNT(*) FROM $ACK_OBLIGATION_TABLE"
+
+    /** The guarded single UPDATE advancing PENDING -> SIGNED (the worker's mark).
+     *  Bind: (1) msg, (2) recipient. 1 == advanced; 0 == re-read to classify. */
+    fun markSignedObligationSql(): String =
+        "UPDATE $ACK_OBLIGATION_TABLE SET $COL_O_STATE = 1 " +
+            "WHERE $COL_O_MSG_ID = ? AND $COL_O_RECIPIENT = ? AND $COL_O_STATE = 0"
+
+    /** The retirement DELETE of a fulfilled obligation. Bind: (1) msg, (2) recipient. */
+    fun retireObligationSql(): String =
+        "DELETE FROM $ACK_OBLIGATION_TABLE WHERE $COL_O_MSG_ID = ? AND $COL_O_RECIPIENT = ?"
+
+    /** Bind: (1) ack_key, (2) msg, (3) recipient, (4) signature, (5) encoded,
+     *  (6) received_from (nullable), (7) remaining, (8) verification class. */
+    fun insertAckFrameSql(): String =
+        "INSERT INTO $ACK_FRAME_TABLE " +
+            "($COL_K_ACK_KEY, $COL_K_MSG_ID, $COL_K_RECIPIENT, $COL_K_SIGNATURE, $COL_K_ENCODED, " +
+            "$COL_K_RECEIVED_FROM, $COL_K_REMAINING, $COL_K_CLASS) VALUES (?, ?, ?, ?, ?, ?, ?, ?) " +
+            "ON CONFLICT ($COL_K_ACK_KEY) DO NOTHING"
+
+    /** Bind: (1) ack_key. Columns: msg, recipient, signature, encoded, from,
+     *  remaining, class. */
+    fun readAckFrameSql(): String =
+        "SELECT $COL_K_MSG_ID, $COL_K_RECIPIENT, $COL_K_SIGNATURE, $COL_K_ENCODED, " +
+            "$COL_K_RECEIVED_FROM, $COL_K_REMAINING, $COL_K_CLASS FROM $ACK_FRAME_TABLE " +
+            "WHERE $COL_K_ACK_KEY = ?"
+
+    /** Bind: (1) msg, (2) recipient, (3) bound. Columns: key + the seven above. */
+    fun listAckFrameForPairSql(): String =
+        "SELECT $COL_K_ACK_KEY, $COL_K_MSG_ID, $COL_K_RECIPIENT, $COL_K_SIGNATURE, $COL_K_ENCODED, " +
+            "$COL_K_RECEIVED_FROM, $COL_K_REMAINING, $COL_K_CLASS FROM $ACK_FRAME_TABLE " +
+            "WHERE $COL_K_MSG_ID = ? AND $COL_K_RECIPIENT = ? ORDER BY rowid LIMIT ?"
+
+    fun countAckFrameForPairSql(): String =
+        "SELECT COUNT(*) FROM $ACK_FRAME_TABLE WHERE $COL_K_MSG_ID = ? AND $COL_K_RECIPIENT = ?"
+
+    fun countAckFrameTotalSql(): String =
+        "SELECT COUNT(*) FROM $ACK_FRAME_TABLE"
+
+    /** The quota-governed wipe of the whole namespace (retention policy hook). */
+    fun clearAckFramesSql(): String = "DELETE FROM $ACK_FRAME_TABLE"
+
     /** Read the delivery row: (state code, ack_mode code, expected recipient or
      *  NULL). Bind: (1) msg_id. */
     fun readDeliverySql(): String =
@@ -397,6 +550,8 @@ internal object StoreSchema {
     fun validateSchema(db: SQLiteDatabase) {
         checkTableDdl(db, TABLE, CREATE_SQL)
         checkTableDdl(db, DELIVERY_TABLE, CREATE_DELIVERY_SQL)
+        checkTableDdl(db, ACK_OBLIGATION_TABLE, CREATE_OBLIGATION_SQL)
+        checkTableDdl(db, ACK_FRAME_TABLE, CREATE_ACK_FRAME_SQL)
     }
 
     private fun checkTableDdl(db: SQLiteDatabase, name: String, expected: String) {
@@ -472,6 +627,36 @@ internal class StoreRow(
  * ordering logic in [SqliteMessageStore] runs against this interface, so it is
  * the same code path in production and in CI.
  */
+internal data class ObligationEntryRow(
+    val msgId: ByteArray,
+    val recipientNodeId: ByteArray,
+    val identityGeneration: Long,
+    val remainingLifetimeMs: Long,
+    val stateCode: Int,
+)
+
+internal data class AckFrameRowView(
+    val ackKey: ByteArray,
+    val msgId: ByteArray,
+    val recipientNodeId: ByteArray,
+    val signature: ByteArray,
+    val encodedFrame: ByteArray,
+    val receivedFrom: ByteArray?,
+    val remainingLifetimeMs: Long,
+    val verificationClassCode: Int,
+)
+
+/** The outcome of the ONE-transaction pair step (frame insert + obligation
+ *  retirement). The quota gates run INSIDE the transaction so the census and the
+ *  write share one snapshot; refusals leave the obligation pending (retry later),
+ *  never touching any other namespace. */
+internal enum class FrameCommitOutcome {
+    COMMITTED,
+    IDEMPOTENT,
+    REFUSED_QUOTA_PAIR,
+    REFUSED_QUOTA_GLOBAL,
+}
+
 internal interface StoreDb {
     /** Insert [frame] (or ignore on a duplicate msg_id). Returns the rowid, or -1 if ignored. */
     fun insert(frame: FrameV2, receivedFrom: ByteArray, receivedAt: Long): Long
@@ -506,6 +691,68 @@ internal interface StoreDb {
      * production.
      */
     fun <T> inTransaction(block: (StoreDb) -> T): T
+
+    // --- T83 (section 14) -- the recipient ACK return path: two paired
+    // namespaces. Same single-statement atomic discipline as the delivery_state
+    // rows; a storage failure THROWS and the paired-store boundary maps it to
+    // the typed StorageFailure. Absence is a null / 0 sentinels, never folded
+    // into failure (C6.4-A doctrine).
+
+    /** Insert an ack_obligations row (INSERT OR IGNORE on the pair key). Returns
+     *  true iff a NEW row was inserted; false when the pair already stands --
+     *  the existing row is NEVER updated (lifetime and generation pin persist). */
+    fun insertObligation(
+        msgId: ByteArray,
+        recipientNodeId: ByteArray,
+        identityGeneration: Long,
+        remainingLifetimeMs: Long,
+        stateCode: Int,
+    ): Boolean
+
+    /** Read the obligation triple for the pair, or null when NO row exists. */
+    fun readObligation(msgId: ByteArray, recipientNodeId: ByteArray): ObligationEntryRow?
+
+    /** The worker's resume scan: PENDING or SIGNED rows, stable rowid order,
+     *  capped at [bound]. An empty list is a TRUE empty, never a failure. */
+    fun listPendingObligations(bound: Int): List<ObligationEntryRow>
+
+    /** Total obligation census (audit reports; never a fabricated set). */
+    fun countObligationRows(): Int
+
+    /** Guarded single UPDATE PENDING(0) -> SIGNED(1). Returns the affected count
+     *  (1 advanced; 0 re-read by the caller to classify absent vs drift). */
+    fun casMarkObligationSigned(msgId: ByteArray, recipientNodeId: ByteArray): Int
+
+    /** The retirement DELETE. Returns the affected count (1 retired, 0 absent). */
+    fun deleteObligation(msgId: ByteArray, recipientNodeId: ByteArray): Int
+
+    /** Insert an ack_frames row (INSERT OR IGNORE on the local cache key). */
+    fun insertAckFrameRow(row: AckFrameRowView): Boolean
+
+    fun readAckFrameRowByAckKey(ackKey: ByteArray): AckFrameRowView?
+
+    fun listAckFrameRowsForPair(
+        msgId: ByteArray,
+        recipientNodeId: ByteArray,
+        bound: Int,
+    ): List<AckFrameRowView>
+
+    fun countAckFrameRowsForPair(msgId: ByteArray, recipientNodeId: ByteArray): Int
+
+    fun countAckFrameRowsTotal(): Int
+
+    /** The quota-governed wipe of the whole namespace. Returns rows removed. */
+    fun deleteAllAckFrameRows(): Int
+
+    /** ONE engine transaction: insert the frame row AND retire the obligation
+     *  (both-or-neither; a throw rolls the whole pair step back). The quota
+     *  censuses run inside the same snapshot. */
+    fun commitAckPair(
+        row: AckFrameRowView,
+        msgId: ByteArray,
+        recipientNodeId: ByteArray,
+    ): FrameCommitOutcome
+
 
     // --- Stage 4C.1 / C6.1 / C6.4 / C7.4 -- delivery_state row ---
     // Transitions are guarded SQL CAS statements built by the repository
@@ -698,6 +945,70 @@ class SqliteMessageStore internal constructor(
         localOriginNodeId: ByteArray,
     ): OutboundEnqueueResult =
         enqueueDirectOutboundAtWithFault(frame, expectedRecipient, localOriginNodeId, System.currentTimeMillis(), faultInjector)
+
+    /**
+     * T83 (section 14): the recipient inbox commit through the REAL engine --
+     * held frame insert, capacity enforcement, and the pending ACK obligation
+     * all inside ONE engine transaction (BEGIN IMMEDIATE ... COMMIT). Any
+     * exception -- including a fault thrown at the named "obligation" seam --
+     * rolls the whole commit back, so a half-delivered inbox can never strand
+     * an obligation without its held row or the other way round.
+     */
+    internal suspend fun commitInboundWithObligationAtWithFault(
+        frame: FrameV2,
+        receivedFrom: ByteArray,
+        localRecipientNodeId: ByteArray,
+        identityGeneration: Long,
+        obligationLifetimeMs: Long,
+        receivedAt: Long,
+        fault: ((String) -> Unit)?,
+    ): InboundCommitResult {
+        if (frame.msgId.size != 16) return InboundCommitResult.InvalidArgument
+        if (frame.routingTag.size != 4) return InboundCommitResult.InvalidArgument
+        if (receivedFrom.size != 16) return InboundCommitResult.InvalidArgument
+        if (localRecipientNodeId.size != 16) return InboundCommitResult.InvalidArgument
+        if (identityGeneration < 0L) return InboundCommitResult.InvalidArgument
+        if (obligationLifetimeMs < 0L) return InboundCommitResult.InvalidArgument
+        if (frame.ttl !in 0..FrameV2.MAX_TTL) return InboundCommitResult.InvalidArgument
+        if (frame.hopCount !in 0..FrameV2.MAX_TTL) return InboundCommitResult.InvalidArgument
+        if (frame.flags !in 0..0xFFFF) return InboundCommitResult.InvalidArgument
+        if (frame.payload.size > FrameV2.MAX_PAYLOAD) return InboundCommitResult.InvalidArgument
+        if (frame.type != TypeV2.MESSAGE) return InboundCommitResult.InvalidArgument
+        val prio = Priority.fromFlagsStrict(frame.flags) ?: return InboundCommitResult.InvalidArgument
+        if (prio != Priority.DIRECT) return InboundCommitResult.InvalidArgument
+        if ((frame.flags and FrameV2.SEALED) == 0) return InboundCommitResult.InvalidArgument
+        if ((frame.flags and FrameV2.HAS_POW) != 0) return InboundCommitResult.InvalidArgument
+
+        val outcome = try {
+            engine.inTransaction { db ->
+                val rowId = db.insert(frame, receivedFrom, receivedAt)
+                val isNew = rowId != -1L   // -1 == CONFLICT_IGNORE duplicate
+                if (isNew) {
+                    val held = db.heldBytes()
+                    if (held > maxBytes) db.evictOldestPrefix(held - maxBytes)
+                }
+                if (!db.contains(frame.msgId)) {
+                    return@inTransaction InboundCommitResult.RejectedCapacity
+                }
+                fault?.invoke("obligation")   // a throw here rolls the WHOLE commit back
+                val obligationNew = db.insertObligation(
+                    frame.msgId, localRecipientNodeId, identityGeneration,
+                    obligationLifetimeMs, AckObligationState.PENDING.code,
+                )
+                return@inTransaction InboundCommitResult.Committed(
+                    heldNew = isNew,
+                    obligationStored = obligationNew,
+                    duplicate = !isNew,
+                )
+            }
+        } catch (_e: Exception) {
+            InboundCommitResult.StorageFailure
+        }
+        if (outcome is InboundCommitResult.Committed && outcome.heldNew) {
+            notifyHeldSetChanged()
+        }
+        return outcome
+    }
 
     /**
      * Atomic outbound DIRECT enqueue with explicit received_at and fault injection (C6.6 / C6.6.1).
@@ -1050,6 +1361,159 @@ internal class SqlcipherStoreDb(ctx: Context) : StoreDb {
             stmt.executeUpdateDelete()
         }
 
+    override fun insertObligation(
+        msgId: ByteArray,
+        recipientNodeId: ByteArray,
+        identityGeneration: Long,
+        remainingLifetimeMs: Long,
+        stateCode: Int,
+    ): Boolean = helper.writableDatabase
+        .compileStatement(StoreSchema.insertObligationSql()).use { stmt ->
+            stmt.bindBlob(1, msgId)
+            stmt.bindBlob(2, recipientNodeId)
+            stmt.bindLong(3, identityGeneration)
+            stmt.bindLong(4, remainingLifetimeMs)
+            stmt.bindLong(5, stateCode.toLong())
+            stmt.executeUpdateDelete() > 0   // 1 inserted, 0 on pair-key conflict
+        }
+
+    override fun readObligation(msgId: ByteArray, recipientNodeId: ByteArray): ObligationEntryRow? =
+        helper.readableDatabase
+            .rawQuery(StoreSchema.readObligationSql(), arrayOf(msgId, recipientNodeId)).use { c ->
+                if (!c.moveToFirst()) null
+                else ObligationEntryRow(
+                    msgId = msgId.copyOf(),
+                    recipientNodeId = recipientNodeId.copyOf(),
+                    identityGeneration = c.getLong(0),
+                    remainingLifetimeMs = c.getLong(1),
+                    stateCode = c.getInt(2),
+                )
+            }
+
+    override fun listPendingObligations(bound: Int): List<ObligationEntryRow> =
+        helper.readableDatabase
+            .rawQuery(StoreSchema.listPendingObligationSql(), arrayOf(bound.toString())).use { c ->
+                val out = ArrayList<ObligationEntryRow>()
+                while (c.moveToNext()) {
+                    out.add(
+                        ObligationEntryRow(
+                            msgId = c.getBlob(0),
+                            recipientNodeId = c.getBlob(1),
+                            identityGeneration = c.getLong(2),
+                            remainingLifetimeMs = c.getLong(3),
+                            stateCode = c.getInt(4),
+                        ),
+                    )
+                }
+                out
+            }
+
+    override fun countObligationRows(): Int =
+        helper.readableDatabase.rawQuery(StoreSchema.countObligationSql(), arrayOf()).use { c ->
+            if (!c.moveToFirst()) 0 else c.getInt(0)
+        }
+
+    override fun casMarkObligationSigned(msgId: ByteArray, recipientNodeId: ByteArray): Int =
+        helper.writableDatabase.compileStatement(StoreSchema.markSignedObligationSql()).use { stmt ->
+            stmt.bindBlob(1, msgId)
+            stmt.bindBlob(2, recipientNodeId)
+            stmt.executeUpdateDelete()
+        }
+
+    override fun deleteObligation(msgId: ByteArray, recipientNodeId: ByteArray): Int =
+        helper.writableDatabase.compileStatement(StoreSchema.retireObligationSql()).use { stmt ->
+            stmt.bindBlob(1, msgId)
+            stmt.bindBlob(2, recipientNodeId)
+            stmt.executeUpdateDelete()
+        }
+
+    override fun insertAckFrameRow(row: AckFrameRowView): Boolean =
+        helper.writableDatabase.compileStatement(StoreSchema.insertAckFrameSql()).use { stmt ->
+            stmt.bindBlob(1, row.ackKey)
+            stmt.bindBlob(2, row.msgId)
+            stmt.bindBlob(3, row.recipientNodeId)
+            stmt.bindBlob(4, row.signature)
+            stmt.bindBlob(5, row.encodedFrame)
+            if (row.receivedFrom == null) stmt.bindNull(6) else stmt.bindBlob(6, row.receivedFrom)
+            stmt.bindLong(7, row.remainingLifetimeMs)
+            stmt.bindLong(8, row.verificationClassCode.toLong())
+            stmt.executeUpdateDelete() > 0   // 1 inserted, 0 on ack_key conflict (DO NOTHING)
+        }
+
+    override fun readAckFrameRowByAckKey(ackKey: ByteArray): AckFrameRowView? =
+        helper.readableDatabase.rawQuery(StoreSchema.readAckFrameSql(), arrayOf(ackKey)).use { c ->
+            if (!c.moveToFirst()) null
+            else AckFrameRowView(
+                ackKey = ackKey.copyOf(),
+                msgId = c.getBlob(0),
+                recipientNodeId = c.getBlob(1),
+                signature = c.getBlob(2),
+                encodedFrame = c.getBlob(3),
+                receivedFrom = if (c.isNull(4)) null else c.getBlob(4),
+                remainingLifetimeMs = c.getLong(5),
+                verificationClassCode = c.getInt(6),
+            )
+        }
+
+    override fun listAckFrameRowsForPair(
+        msgId: ByteArray,
+        recipientNodeId: ByteArray,
+        bound: Int,
+    ): List<AckFrameRowView> =
+        helper.readableDatabase
+            .rawQuery(StoreSchema.listAckFrameForPairSql(), arrayOf(msgId, recipientNodeId, bound.toString()))
+            .use { c ->
+                val out = ArrayList<AckFrameRowView>()
+                while (c.moveToNext()) {
+                    out.add(
+                        AckFrameRowView(
+                            ackKey = c.getBlob(0),
+                            msgId = c.getBlob(1),
+                            recipientNodeId = c.getBlob(2),
+                            signature = c.getBlob(3),
+                            encodedFrame = c.getBlob(4),
+                            receivedFrom = if (c.isNull(5)) null else c.getBlob(5),
+                            remainingLifetimeMs = c.getLong(6),
+                            verificationClassCode = c.getInt(7),
+                        ),
+                    )
+                }
+                out
+            }
+
+    override fun countAckFrameRowsForPair(msgId: ByteArray, recipientNodeId: ByteArray): Int =
+        helper.readableDatabase
+            .rawQuery(StoreSchema.countAckFrameForPairSql(), arrayOf(msgId, recipientNodeId)).use { c ->
+                if (!c.moveToFirst()) 0 else c.getInt(0)
+            }
+
+    override fun countAckFrameRowsTotal(): Int =
+        helper.readableDatabase.rawQuery(StoreSchema.countAckFrameTotalSql(), arrayOf()).use { c ->
+            if (!c.moveToFirst()) 0 else c.getInt(0)
+        }
+
+    override fun deleteAllAckFrameRows(): Int =
+        helper.writableDatabase.compileStatement(StoreSchema.clearAckFramesSql()).use { it.executeUpdateDelete() }
+
+    override fun commitAckPair(
+        row: AckFrameRowView,
+        msgId: ByteArray,
+        recipientNodeId: ByteArray,
+    ): FrameCommitOutcome = inTransaction { db ->
+        val present = db.readAckFrameRowByAckKey(row.ackKey) != null
+        if (!present) {
+            if (db.countAckFrameRowsForPair(row.msgId, row.recipientNodeId) >= ACK_CANDIDATES_PER_PAIR_LIMIT) {
+                return@inTransaction FrameCommitOutcome.REFUSED_QUOTA_PAIR
+            }
+            if (db.countAckFrameRowsTotal() >= ACK_CANDIDATES_TOTAL_LIMIT) {
+                return@inTransaction FrameCommitOutcome.REFUSED_QUOTA_GLOBAL
+            }
+            db.insertAckFrameRow(row)
+        }
+        db.deleteObligation(msgId, recipientNodeId)
+        if (present) FrameCommitOutcome.IDEMPOTENT else FrameCommitOutcome.COMMITTED
+    }
+
     override fun close() = helper.close()
 
     private class Helper(ctx: Context, key: ByteArray) :
@@ -1064,6 +1528,9 @@ internal class SqlcipherStoreDb(ctx: Context) : StoreDb {
             // the C6.1 binding CHECK and the C6.4.1-G explicit `NOT NULL` on
             // msg_id (no installed base -> destructive recreate, ADR-001 §5).
             db.execSQL(StoreSchema.CREATE_DELIVERY_SQL)
+            // T83 (section 14): the two recipient-ACK namespaces in the SAME db file.
+            db.execSQL(StoreSchema.CREATE_OBLIGATION_SQL)
+            db.execSQL(StoreSchema.CREATE_ACK_FRAME_SQL)
         }
 
         override fun onUpgrade(db: SQLiteDatabase, oldVersion: Int, newVersion: Int) {
@@ -1076,6 +1543,8 @@ internal class SqlcipherStoreDb(ctx: Context) : StoreDb {
             if (oldVersion == newVersion) return
             db.execSQL("DROP TABLE IF EXISTS ${StoreSchema.TABLE}")
             db.execSQL("DROP TABLE IF EXISTS ${StoreSchema.DELIVERY_TABLE}")
+            db.execSQL("DROP TABLE IF EXISTS ${StoreSchema.ACK_OBLIGATION_TABLE}")
+            db.execSQL("DROP TABLE IF EXISTS ${StoreSchema.ACK_FRAME_TABLE}")
             onCreate(db)
         }
 
@@ -1193,6 +1662,15 @@ internal class InMemoryMessageStore(
 
     private val held = LinkedHashMap<BytesKey, Held>()
     private val deliveryRows = LinkedHashMap<BytesKey, DeliveryRow>()
+    // T83 (section 14): the paired in-memory namespaces. Same single-thread
+    // doctrine as the held/delivery maps (no locks in the host fake); the inbox
+    // commit writes the obligation row through this store so the court can
+    // observe the very rows the worker drives.
+    private val ackStoreInternal = InMemoryAckStore()
+
+    /** The paired obligation/frame store the bounded worker drives against. */
+    internal val ackStore: InMemoryAckStore
+        get() = ackStoreInternal
 
     private fun bytesOf(f: FrameV2): Long = f.payload.size.toLong() + StoreSchema.ROW_OVERHEAD
 
@@ -1318,6 +1796,72 @@ internal class InMemoryMessageStore(
     }
 
     /** Evict oldest non-SOS first (then SOS, oldest first) until <= maxBytes, protecting active delivery rows. */
+    /**
+     * T83 (section 14): the recipient inbox commit in ONE atomic step -- insert
+     * the held frame AND its pending ACK obligation, bound to the local recipient
+     * identity generation. Re-delivery of the same msg_id is idempotent: neither
+     * the held row nor the obligation row is ever updated (the lifetime pin and
+     * the generation pin persist -- non-replenishing, section 14). A fault at the
+     * named seam rolls the WHOLE commit back: no held row, no obligation row
+     * (the both-or-neither law the SQL engines inherit from inTransaction).
+     */
+    internal suspend fun commitInboundWithObligationAtWithFault(
+        frame: FrameV2,
+        receivedFrom: ByteArray,
+        localRecipientNodeId: ByteArray,
+        identityGeneration: Long,
+        obligationLifetimeMs: Long,
+        receivedAt: Long,
+        fault: ((String) -> Unit)?,
+    ): InboundCommitResult {
+        if (frame.msgId.size != 16) return InboundCommitResult.InvalidArgument
+        if (frame.routingTag.size != 4) return InboundCommitResult.InvalidArgument
+        if (receivedFrom.size != 16) return InboundCommitResult.InvalidArgument
+        if (localRecipientNodeId.size != 16) return InboundCommitResult.InvalidArgument
+        if (identityGeneration < 0L) return InboundCommitResult.InvalidArgument
+        if (obligationLifetimeMs < 0L) return InboundCommitResult.InvalidArgument
+        if (frame.ttl !in 0..FrameV2.MAX_TTL) return InboundCommitResult.InvalidArgument
+        if (frame.hopCount !in 0..FrameV2.MAX_TTL) return InboundCommitResult.InvalidArgument
+        if (frame.flags !in 0..0xFFFF) return InboundCommitResult.InvalidArgument
+        if (frame.payload.size > FrameV2.MAX_PAYLOAD) return InboundCommitResult.InvalidArgument
+        if (frame.type != TypeV2.MESSAGE) return InboundCommitResult.InvalidArgument
+        val prio = Priority.fromFlagsStrict(frame.flags) ?: return InboundCommitResult.InvalidArgument
+        if (prio != Priority.DIRECT) return InboundCommitResult.InvalidArgument
+        if ((frame.flags and FrameV2.SEALED) == 0) return InboundCommitResult.InvalidArgument
+        if ((frame.flags and FrameV2.HAS_POW) != 0) return InboundCommitResult.InvalidArgument
+
+        val ob = AckObligation.of(
+            frame.msgId, localRecipientNodeId, identityGeneration,
+            obligationLifetimeMs, AckObligationState.PENDING,
+        ) ?: return InboundCommitResult.InvalidArgument
+
+        val key = BytesKey(frame.msgId)
+        val isNew = !held.containsKey(key)
+        if (isNew) held[key] = Held(frame, receivedFrom.copyOf(), receivedAt)
+        if (held.values.sumOf { bytesOf(it.frame) } > maxBytes) evictUntilUnderCap()
+        if (!held.containsKey(key)) return InboundCommitResult.RejectedCapacity
+        try {
+            fault?.invoke("obligation")
+        } catch (_e: Throwable) {
+            if (isNew) held.remove(key)   // the whole commit rolls back
+            return InboundCommitResult.StorageFailure
+        }
+        val obligationNew = when (val r = ackStoreInternal.insertIfAbsent(ob)) {
+            ObligationInsertResult.Stored -> true
+            ObligationInsertResult.Duplicate -> false
+            ObligationInsertResult.StorageFailure -> {
+                if (isNew) held.remove(key)
+                return InboundCommitResult.StorageFailure
+            }
+        }
+        if (isNew) notifyHeldSetChanged()
+        return InboundCommitResult.Committed(
+            heldNew = isNew,
+            obligationStored = obligationNew,
+            duplicate = !isNew,
+        )
+    }
+
     private fun evictUntilUnderCap() {
         // Eviction order: non-SOS (priority != 0) first, oldest received; then SOS, oldest.
         // Candidate set excludes rows whose delivery state is QUEUED_DURABLY (1) or HANDED_TO_RELAY (2).

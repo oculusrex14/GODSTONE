@@ -284,12 +284,14 @@ class SqliteMessageStoreTest {
         // C6.4.1-BCDEFG: the JDBC engine now runs version + DDL-fingerprint
         // validation on open. A fresh file (user_version=0) would be
         // drop+recreated, destroying the seed. So the seed stamps the CURRENT
-        // version and creates BOTH tables (validateSchema checks both DDL
-        // fingerprints), making the open a current-version validate path that
+        // version and creates ALL FOUR tables (validateSchema checks all four
+        // DDL fingerprints), making the open a current-version validate path that
         // preserves the seeded bad-type row.
         val direct = DriverManager.getConnection("jdbc:sqlite:" + tmp.absolutePath)
         direct.createStatement().use { it.execute(StoreSchema.CREATE_SQL) }
         direct.createStatement().use { it.execute(StoreSchema.CREATE_DELIVERY_SQL) }
+        direct.createStatement().use { it.execute(StoreSchema.CREATE_OBLIGATION_SQL) }
+        direct.createStatement().use { it.execute(StoreSchema.CREATE_ACK_FRAME_SQL) }
         direct.createStatement().use { it.execute("PRAGMA user_version = ${StoreSchema.DB_VERSION}") }
         direct.prepareStatement(
             "INSERT INTO ${StoreSchema.TABLE} (" +
