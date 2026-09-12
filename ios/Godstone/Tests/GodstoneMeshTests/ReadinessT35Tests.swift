@@ -85,9 +85,11 @@ final class ReadinessT35Tests: XCTestCase {
             createdAtEpochSeconds: Self.CREAT, priority: .direct, timeQuality: .userConfirmed, bodyUtf8: Self.BOD)
         let r = SignedMessageV1.verify(signedPlaintext: forged, senderNodeId: victimNode, recipientLocalNodeId: Self.RCP,
                                        messageNonce: Self.NON, createdAtEpochSeconds: Self.CREAT, priorityCode: Priority.direct.rawValue)
-        let reason = invalidReason(r)
-        XCTAssertNotNil(reason, "a stranger cannot sign as the victim: the id/key binding rejects it")
-        XCTAssertTrue(reason!.contains("BLAKE2s128"), "the rejection names the id/key binding")
+        if let reason = invalidReason(r) {
+            XCTAssertTrue(reason.contains("BLAKE2s128"), "the rejection names the id/key binding")
+        } else {
+            XCTFail("a stranger cannot sign as the victim: the id/key binding must reject it -- got a verdict that is not Invalid")
+        }
         // an honest message under the victim's own key verifies -- the rejection is not blanket
         let honest = try honestSign(victim.priv, victim.pub, victimNode, Self.RCP, Self.NON, Self.CREAT, Self.BOD)
         XCTAssertTrue(isVerified(SignedMessageV1.verify(signedPlaintext: honest, senderNodeId: victimNode, recipientLocalNodeId: Self.RCP,
@@ -131,9 +133,11 @@ final class ReadinessT35Tests: XCTestCase {
                       "the untouched sealed frame authenticates")
         let rp = SignedMessageV1.verify(signedPlaintext: sp, senderNodeId: aliceNode, recipientLocalNodeId: Self.RCP,
                                         messageNonce: Self.NON, createdAtEpochSeconds: Self.CREAT, priorityCode: Priority.bulk.rawValue)
-        let rps = invalidReason(rp)
-        XCTAssertNotNil(rps, "a relay cannot rewrite the sealed priority byte: the signature covers it")
-        XCTAssertTrue(rps!.contains("signature"), "the failure is the signature, named as such")
+        if let rps = invalidReason(rp) {
+            XCTAssertTrue(rps.contains("signature"), "the failure is the signature, named as such")
+        } else {
+            XCTFail("a relay cannot rewrite the sealed priority byte: the signature covers it -- got a verdict that is not Invalid")
+        }
         XCTAssertNotNil(invalidReason(SignedMessageV1.verify(signedPlaintext: sp, senderNodeId: aliceNode, recipientLocalNodeId: Self.RCP,
             messageNonce: Self.NON, createdAtEpochSeconds: Self.CREAT &+ 1, priorityCode: Priority.direct.rawValue)),
             "a shifted creation time breaks the signature")
@@ -163,9 +167,11 @@ final class ReadinessT35Tests: XCTestCase {
         for (name, bad) in cases {
             let r = SignedMessageV1.verify(signedPlaintext: bad, senderNodeId: aliceNode, recipientLocalNodeId: Self.RCP,
                                            messageNonce: Self.NON, createdAtEpochSeconds: Self.CREAT, priorityCode: Priority.direct.rawValue)
-            let reason = invalidReason(r)
-            XCTAssertNotNil(reason, "\(name) is Invalid")
-            XCTAssertFalse(reason!.isEmpty, "\(name) carries a non-empty reason")
+            if let reason = invalidReason(r) {
+                XCTAssertFalse(reason.isEmpty, "\(name) carries a non-empty reason")
+            } else {
+                XCTFail("\(name) is Invalid -- got a verdict that is not Invalid (a removed gate admitted it)")
+            }
         }
         // attacker-SELF-SIGNED hostile frames: the intruder holds a key pair and signs the EXACT hostile
         // bytes, so the Ed25519 check VALIDATES over them; only the receiving structural gates (version,
@@ -196,9 +202,11 @@ final class ReadinessT35Tests: XCTestCase {
         for (name, frame, marker) in hostiles {
             let r = SignedMessageV1.verify(signedPlaintext: frame, senderNodeId: carolNode, recipientLocalNodeId: Self.RCP,
                                           messageNonce: Self.NON, createdAtEpochSeconds: Self.CREAT, priorityCode: Priority.direct.rawValue)
-            let reason = invalidReason(r)
-            XCTAssertNotNil(reason, "\(name) must be Invalid -- the signature validates over these exact bytes; only the receiving gate stands")
-            XCTAssertTrue(reason!.contains(marker), "\(name) refused by the \(marker) gate")
+            if let reason = invalidReason(r) {
+                XCTAssertTrue(reason.contains(marker), "\(name) refused by the \(marker) gate")
+            } else {
+                XCTFail("\(name) must be Invalid -- the signature validates over these exact bytes; only the receiving gate stands")
+            }
         }
     }
 
