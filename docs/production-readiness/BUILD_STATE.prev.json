@@ -5926,7 +5926,15 @@
     "SIGNING"
   ],
   "failed_attempts": [],
-  "in_progress": null,
+  "in_progress": {
+    "claimed_head": "56a7d790e86696cc7324a128c20a29e183729b91",
+    "claimed_utc": "2026-09-12T17:51:35+00:00",
+    "objective": {
+      "claimed_head": "56a7d790e86696cc7324a128c20a29e183729b91",
+      "claimed_utc": "2026-09-12T17:51:35+00:00",
+      "objective": "Commit SOS held frame plus NONE-mode delivery row atomically."
+    }
+  },
   "last_code_head": "85299dc4b4d8c6b47e12d9a7ccaec9dc09580c14",
   "last_observed_head": "85299dc4b4d8c6b47e12d9a7ccaec9dc09580c14",
   "latest_verification": {
