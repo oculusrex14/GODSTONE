@@ -6215,7 +6215,15 @@
     "SIGNING"
   ],
   "failed_attempts": [],
-  "in_progress": null,
+  "in_progress": {
+    "claimed_head": "d7e3ae9da729fac27dc5d20126bddee51bbb1c67",
+    "claimed_utc": "2026-09-12T20:18:53+00:00",
+    "objective": {
+      "claimed_head": "d7e3ae9da729fac27dc5d20126bddee51bbb1c67",
+      "claimed_utc": "2026-09-12T20:18:53+00:00",
+      "objective": "Specify versioned payloads in existing HELLO/DIGEST/WANT/PING types using section14."
+    }
+  },
   "last_code_head": "759c8d4ee1eda16b7ebe150a0b0c00edb91bbd43",
   "last_observed_head": "759c8d4ee1eda16b7ebe150a0b0c00edb91bbd43",
   "latest_verification": {
