@@ -144,3 +144,85 @@ sos_requirements:
     signature over msg_id || ASCII("SOS1") || UNSIGNED payload, struck under
     the key bound by its identity binding. A parse error can no longer
     fabricate a distress broadcast.
+
+# T40 (ADR-009): the anti-entropy control-plane payload scope freeze.
+# Codegen reads the structural keys above only -- the generated tables do not
+# shift; this section is the law the hand-written control codecs
+# (router.ControlPayloadV1.kt / ControlPayloadV1.swift) and the per-relation
+# owner (SyncControlOwner) realise on top of the frozen envelope. The one
+# independent reference is wire/anti_entropy_reference.py; the vectors are
+# struck by crypto/gen_anti_entropy_vectors.py from crypto/gmp21.py alone.
+control_payloads:
+  version: 1                       # every control payload begins with this u8
+  arms: [digest, want, inventory_request, inventory_page, reset, ping]
+  typecodes:                       # frozen outer codes; NO new outer codes
+    digest: 0x12
+    want: 0x14
+    inventory_request: 0x11        # HELLO subtype 1
+    inventory_page: 0x11           # HELLO subtype 2
+    reset: 0x11                    # HELLO subtype 3
+    ping: 0x28
+  layouts:
+    digest: "version u8(1) || snapshotId u64_be (nonzero) || bloom[512]"
+    want: >
+      version u8(1) || snapshotId u64_be (nonzero) || count u8 (1..32) ||
+      msgID[count][16]; ids distinct; applies only to the current sync
+      snapshot; split as required by writer capacity (ATT value 20).
+    inventory_request: >
+      version u8(1) || u8(1) || snapshotId u64_be || cursorPresent u8 ||
+      cursor[16]; cursorPresent=0 denotes the start and requires the all-zero
+      filler; cursorPresent=1 permits every 16-byte id including all-zero;
+      cursors are exclusive lexicographic last-seen msgIDs, not SQL offsets.
+    inventory_page: >
+      version u8(1) || u8(2) || snapshotId u64_be || done u8 || count u8 ||
+      msgID[count][16]; maximum 32 ids per page; count 0 is allowed only with
+      done=1.
+    reset: "version u8(1) || u8(3) || newSnapshotId u64_be (nonzero)"
+    ping: >
+      version u8(1) || reply u8 (0..1) || nonce u64_be; a request is answered
+      by one reply echoing the nonce; a reply is never answered; the nonce is
+      the relation's replay discriminator and its monotonic pair the RTT
+      sample (ADR-009 records this, the one field the frozen table left open).
+  typed_failures: [truncated, wrong_size, unsupported_version, count_out_of_range,
+                   duplicate_ids, bad_cursor, bad_done, bad_reply, zero_snapshot_id,
+                   unknown_subtype, sequence_break]
+  envelope_law: >
+    Control frames ride the trusted encrypted link inside DATA records, never
+    raw GATT plaintext; flags, ttl and hop_count carry control-only zero
+    values; a ttl-0 control frame is local to the authenticated link, is never
+    forwarded, and never enters the generic message expiration; control frames
+    never enter held message storage.
+  dispatch_law: >
+    decoded PING/HELLO/DIGEST/WANT go to the per-relation sync/control owner
+    before the generic Router TTL/dedup/storage; ACK goes to the ACK
+    dispatcher; only supported MESSAGE/SOS enter durable message routing;
+    unknown or bulk control types are rejected in this profile.
+  snapshot_law: >
+    the authority (the store executor) builds the stable immutable sorted id
+    vector from a consistent short read transaction, bounded by 100000 rows
+    and 1.6MiB of ids; snapshotId is a nonzero monotonic u64 allocated by the
+    context (exhaustion retires the context); at most two snapshots are
+    shared (current and one referenced predecessor), maximum age five
+    minutes; at most one new build per thirty seconds under a two-second
+    read-transaction budget -- abort safely when the budget breaks; pages are
+    pinned to the captured vector, never to a changing SQL offset; a
+    consumer requesting a stale snapshot receives the reset subtype plus the
+    current digest and restarts with cursorPresent=0; ordinary new holds do
+    not restart an active immutable snapshot; control state and producer
+    leases release on relation terminal.
+  sync_run_budget:
+    max_pages_per_run: 64
+    max_wants_per_run: 256
+    periodic_inventory_ms: 300000
+  bloom_law: >
+    the canonical bit index is
+    ((BE64(BLAKE2s64(msgID16 || round u32_be)) >> 1) & 0x7fffffff) % 4096
+    for rounds 0..3 -- crypto/gmp21.py is the authority; do not simplify the
+    formula to a raw modulo 4096 from stale comments. The LinkInfo six-byte
+    digest stays a short change hint only; the full 512-byte bloom travels in
+    the DIGEST payload.
+  vectors: crypto/anti_entropy_vectors.json
+  semantic_negative_law: >
+    a digest built from seen-but-not-held ids, or an exact-ID reconciliation
+    that is disabled, must fail the eviction and collision tests: the bloom
+    may suppress, the walk must never lie.
