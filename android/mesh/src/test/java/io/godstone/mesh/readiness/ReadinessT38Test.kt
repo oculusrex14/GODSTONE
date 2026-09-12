@@ -423,6 +423,16 @@ class ReadinessT38Test {
             SosFrameValidator.Verdict.WRONG_TYPE, SosFrameValidator.validate(asMessage))
         rejectWithReason(SignedSosV1.verify(asMessage, null), "wrong_type",
             "a MESSAGE wearing SOS clothing is refused")
+
+        // required flags: a frame born without ACK_REQ|RELAY_OK is refused by the
+        // named gate -- the frozen table's required flags are load-bearing, not
+        // advisory, and the roster's RC5 demands this leg be walked, not waved.
+        val flagsVec = locateVectors().first { it.name == "reject_flags_missing_required" }
+        Assert.assertEquals("the table keeps the deficient flag word", 0x0010,
+            flagsVec.headerFlags)
+        rejectWithReason(SignedSosV1.verify(
+            frameOf(TypeV2.SOS, flagsVec.headerFlags, flagsVec.msgId, flagsVec.payload), null),
+            flagsVec.reason, "the flags arm the verdict")
     }
 
     // ------------------------------------------------------------------ W5 malformed binding

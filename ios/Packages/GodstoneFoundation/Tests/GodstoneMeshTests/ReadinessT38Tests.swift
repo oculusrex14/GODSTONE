@@ -523,6 +523,17 @@ final class ReadinessT38Tests: XCTestCase {
             "the type gate precedes the magic gate")
         expectRefusal(SignedSosV1.verify(asMessage, expectedNodeId: nil), .wrongType,
             "a MESSAGE wearing SOS clothing is refused")
+        // required flags: a frame born without ACK_REQ|RELAY_OK is refused by the
+        // named gate -- the frozen table's required flags are load-bearing, not
+        // advisory, and the roster's RC5 demands this leg be walked, not waved.
+        let flagsVec = vec("reject_flags_missing_required")
+        XCTAssertEqual(flagsVec.headerFlags, 0x0010, "the table keeps the deficient flag word")
+        guard let wantFlags = SosReason(rawValue: flagsVec.reason) else {
+            XCTFail("no such reason word in the table: " + flagsVec.reason); return
+        }
+        expectRefusal(SignedSosV1.verify(
+            t38Frame(.sos, flagsVec.headerFlags, flagsVec.msgId, flagsVec.payload),
+            expectedNodeId: nil), wantFlags, "the flags arm the verdict")
     }
 
     // ---------------------------------------------------------- W5 malformed bindings
