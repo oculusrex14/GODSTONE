@@ -5626,7 +5626,15 @@
     "SIGNING"
   ],
   "failed_attempts": [],
-  "in_progress": null,
+  "in_progress": {
+    "claimed_head": "732b00e521cc458bfb07669bbdba81604c3f9b2c",
+    "claimed_utc": "2026-09-12T14:53:52+00:00",
+    "objective": {
+      "claimed_head": "732b00e521cc458bfb07669bbdba81604c3f9b2c",
+      "claimed_utc": "2026-09-12T14:53:52+00:00",
+      "objective": "Keep outer SOS code/required flags and canonical signature rule."
+    }
+  },
   "last_code_head": "f5fcc40a8c6fc3e793d8969d9c7fee7bc4f996ab",
   "last_observed_head": "f5fcc40a8c6fc3e793d8969d9c7fee7bc4f996ab",
   "latest_verification": {

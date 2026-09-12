@@ -5329,6 +5329,306 @@
       "tested_tree_sha": "a471d2fa47d131acd81d7e4b242764d6cd9e2c90",
       "unresolved": []
     },
+    "T38": {
+      "case_results": {
+        "android_grand": {
+          "counts_source": "runner stage subsystem at boundary 85299dc (final rerun -003 after the roster-reflection court strengthening; the -001 record T38-subsystem-gradlew FAILED rc=1 stands in the ledger as history -- the sealed T17 witness randomized-draw flake (no ascending hint pair within 64 draws), retried green per policy, sealed court untouched); TEST-*.xml walk (task purges stale results per run)",
+          "errors": 0,
+          "failures": 0,
+          "skipped": 0,
+          "tests": 1014,
+          "xml_files": 61
+        },
+        "deleted_cases": [],
+        "dual_court_parity": "Eleven witnesses share one name set across the isles (W1..W11) over ONE runtime-read table (crypto/sos_v1_vectors.json): the pinned JVM-struck signatures VERIFY cryptographically under the iOS Curve25519 verifier over the exact transcript -- cross-isle golden seal proven, not merely byte-compared. Android adds the deterministic byte-identity legs; iOS rides verification forms and structure per the T83 randomized-signing doctrine. The nine named refusals are one string table both isles enforce.",
+        "ios_grand": {
+          "counts_source": "swift test --package-path ios/Packages/GodstoneFoundation (full) at the boundary via runner stage subsystem (-003 final); run-total last \"Executed 953 tests, with 0 failures\" line (last line, not sum)",
+          "errors": 0,
+          "failures": 0,
+          "tests": 953
+        },
+        "t38_android_court": {
+          "counts_source": "runner stage narrow at boundary: gradlew :mesh:testDebugUnitTest --tests *ReadinessT37Test*; TEST-xml census 11/0/0/0",
+          "errors": 0,
+          "failures": 0,
+          "skipped": 0,
+          "tests": 11
+        },
+        "t38_ios_court": {
+          "counts_source": "runner stage narrow at boundary: swift test --filter ReadinessT37Tests; Executed 11 tests, with 0 failures",
+          "errors": 0,
+          "failures": 0,
+          "tests": 11
+        }
+      },
+      "claim_commit": "5883eaaf8a418808bac4d978fc75f56d44454c28",
+      "commands": [
+        "T38-narrow-gradlew",
+        "T38-narrow-swift",
+        "T38-subsystem-gradlew",
+        "T38-subsystem-swift",
+        "T38-subsystem-gradlew-002",
+        "T38-subsystem-swift-002",
+        "T38-controls-python3",
+        "T38-controls-python3-002",
+        "T38-controls-python3-003",
+        "T38-narrow-gradlew-002",
+        "T38-narrow-swift-002",
+        "T38-subsystem-gradlew-003",
+        "T38-subsystem-swift-003"
+      ],
+      "device_gate_ids": [],
+      "file_hashes": {},
+      "implementation_commit": "85299dc4b4d8c6b47e12d9a7ccaec9dc09580c14",
+      "implementation_commits": [
+        "e9a56e9efcb4eaf054e837b62147aa550c451289",
+        "86a4b2c6b4d28170ce1e7d51365f9764910b04c7",
+        "1f96a6115e3342d5a7a99dc11aad73e911ded884",
+        "6beac0689d9f60d0247989b10f3e8e114dda8ac3",
+        "8b2e6ed5795b8c4322a34432ddbc164519ef6b38",
+        "be87493576a2fd8ccd41ba3206efe242974ba871",
+        "8aae2e958a066069fe1867ae316ee4ca1655909f",
+        "85299dc4b4d8c6b47e12d9a7ccaec9dc09580c14"
+      ],
+      "inputs": {
+        "children_commit_order": [
+          "5883eaaf8",
+          "e9a56e9ef",
+          "86a4b2c6b",
+          "1f96a6115",
+          "6beac0689",
+          "8b2e6ed57",
+          "be8749357",
+          "8aae2e958",
+          "85299dc4b",
+          "85299dc4b"
+        ],
+        "governed_source": [
+          "android/mesh/src/main/java/io/godstone/mesh/wire/v2/SignedSosV1.kt",
+          "android/mesh/src/main/java/io/godstone/mesh/MeshNode.kt",
+          "ios/Godstone/Sources/GodstoneMesh/SignedSosV1.swift",
+          "ios/Godstone/Sources/GodstoneMesh/MeshNode.swift"
+        ],
+        "required_regression_paths": [
+          "android/mesh/src/test/java/io/godstone/mesh/readiness/ReadinessT38Test.kt",
+          "ios/Godstone/Tests/GodstoneMeshTests/ReadinessT38Tests.swift",
+          "android/mesh/src/main/java/io/godstone/mesh/wire/v2/SignedSosV1.kt",
+          "ios/Godstone/Sources/GodstoneMesh/SignedSosV1.swift",
+          "crypto/sos_v1_vectors.json",
+          "crypto/gen_sos_v1_vectors.py",
+          "wire/wire_v2.yaml (amended additive; generated tables byte-identical)",
+          "docs/adr/ADR-005-sos-and-lifecycle.md (amendment appended)"
+        ],
+        "sealed_hot_paths_untouched": [
+          "wire: WireV2/FrameV2 tables + codegen constants -- frozen; regeneration after the amendment rewrites them byte-identically; Hamming audit re-passes (min SOS distance 4)",
+          "msg-id: MessageId.derive -- the frozen formula, composed over the UNSIGNED span, never rewritten",
+          "identity: IdentityBindingV1 + crypto/identity_binding.py -- T13 reused whole (preimage80, GMP2-IDBIND, BLAKE2s-128 key-to-node)",
+          "ed25519: Ed25519Keys / Curve25519 layer -- as the platform supplies (deterministic JVM isle, randomized host isle, T83 finding honoured)",
+          "validator: SosFrameValidator patch-15 structural scope -- delegated to, never widened",
+          "fixtures: wire/golden_vectors.json zero-signature structural family -- untouched; runtime authentication refuses them by name (section 15)",
+          "courts: sealed T01-T37+T83 suites; ci/mutations.py prior rows (additive-only install)"
+        ],
+        "task_card": "docs/production-readiness/TASKS.json#T38"
+      },
+      "ladder_boundary_commit": "85299dc4b4d8c6b47e12d9a7ccaec9dc09580c14",
+      "mutation_results": {
+        "campaign_note": "Two attempts, told whole in roster-verification-milestone.json. Attempt 1 at the roster-block pin: 7 KILLED / 1 INVALID / 2 ESCAPED -- the INVALID honoured the guard-else law (mended to the vacuous-clause form), the ESCAPES were real court-completeness gaps (no witness consumed the required-flags vector) and drove the courts to strengthen W4 on both isles. Retry at the post-reflection boundary: 3/3 KILLED. Canonical manifest: 10/10 KILLED, 0 invalid, 0 escaped, 0 timeout; five falsifications x two isles; worktrees pruned.",
+        "semantic": [
+          {
+            "anchor_count": 1,
+            "baseline_sha": "8aae2e958a066069fe1867ae316ee4ca1655909f",
+            "build_exit": 0,
+            "category": "semantic",
+            "ended_utc": "2026-09-12T17:10:37Z",
+            "failed_assertion": "witness testRuntimeRejectsZeroSignatureStructuralFixture failed as intended (3 failed case(s))",
+            "id": "T38-RC1-android-zero-seal-sails-through",
+            "log_path": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/T38/roster/logs/T38-RC1-android-zero-seal-sails-through.semantic.log",
+            "log_sha": "d701f94e7891b998080c630a1e7deaacece59be9d66978fb030f73f80426fac0",
+            "mutant_patch_sha": "78951b393edd9385b06338c31411eed81218892dec8b75a5ddeae45c0a07a6a6",
+            "outcome": "KILLED",
+            "started_utc": "2026-09-12T17:10:21Z",
+            "target_tests": [
+              "testRuntimeRejectsZeroSignatureStructuralFixture"
+            ],
+            "tests_run": 11
+          },
+          {
+            "anchor_count": 1,
+            "baseline_sha": "85299dc4b4d8c6b47e12d9a7ccaec9dc09580c14",
+            "build_exit": 0,
+            "category": "semantic",
+            "ended_utc": "2026-09-12T17:24:19Z",
+            "failed_assertion": "witness testRuntimeRejectsZeroSignatureStructuralFixture failed as intended (3 failed case(s))",
+            "id": "T38-RC1-ios-zero-seal-sails-through",
+            "log_path": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/T38/roster/logs/T38-RC1-ios-zero-seal-sails-through.semantic.log",
+            "log_sha": "3cfd18399212dba7bfc0086dff29b24578802a4afa8b14de35f176e21bbb1c7d",
+            "mutant_patch_sha": "7b6a1e6f17631ea201f27af2ad37ee3ee476b0d1a3c386c5ff58202e6528a0f6",
+            "outcome": "KILLED",
+            "started_utc": "2026-09-12T17:23:49Z",
+            "target_tests": [
+              "testRuntimeRejectsZeroSignatureStructuralFixture"
+            ],
+            "tests_run": 11
+          },
+          {
+            "anchor_count": 1,
+            "baseline_sha": "8aae2e958a066069fe1867ae316ee4ca1655909f",
+            "build_exit": 0,
+            "category": "semantic",
+            "ended_utc": "2026-09-12T17:11:17Z",
+            "failed_assertion": "witness testAuthorProducesVerifiableSignatureAcrossIsles failed as intended (6 failed case(s))",
+            "id": "T38-RC2-android-transcript-without-magic",
+            "log_path": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/T38/roster/logs/T38-RC2-android-transcript-without-magic.semantic.log",
+            "log_sha": "93a1de75d3b403e5dfe4b2cdce2a74d2839da327891353a0aad68f98eb3bd410",
+            "mutant_patch_sha": "580c6cf1b77eac2b059073f88b8b5f56ca135338e2249d5407e8eb9a757717db",
+            "outcome": "KILLED",
+            "started_utc": "2026-09-12T17:11:02Z",
+            "target_tests": [
+              "testAuthorProducesVerifiableSignatureAcrossIsles"
+            ],
+            "tests_run": 11
+          },
+          {
+            "anchor_count": 1,
+            "baseline_sha": "8aae2e958a066069fe1867ae316ee4ca1655909f",
+            "build_exit": 0,
+            "category": "semantic",
+            "ended_utc": "2026-09-12T17:11:42Z",
+            "failed_assertion": "witness testAuthorProducesVerifiableSignatureAcrossIsles failed as intended (6 failed case(s))",
+            "id": "T38-RC2-ios-transcript-without-magic",
+            "log_path": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/T38/roster/logs/T38-RC2-ios-transcript-without-magic.semantic.log",
+            "log_sha": "2274845208e431dcda1db48831ac1b1d2a97ffff38576fd7fea296bd0a0f03ab",
+            "mutant_patch_sha": "3d9a1dcb504f0987e772ab846135a518fc39239fdaa9bda1202427e678e8190a",
+            "outcome": "KILLED",
+            "started_utc": "2026-09-12T17:11:17Z",
+            "target_tests": [
+              "testAuthorProducesVerifiableSignatureAcrossIsles"
+            ],
+            "tests_run": 11
+          },
+          {
+            "anchor_count": 1,
+            "baseline_sha": "8aae2e958a066069fe1867ae316ee4ca1655909f",
+            "build_exit": 0,
+            "category": "semantic",
+            "ended_utc": "2026-09-12T17:11:57Z",
+            "failed_assertion": "witness testAuthorProducesVerifiableSignatureAcrossIsles failed as intended (10 failed case(s))",
+            "id": "T38-RC3-android-msg-id-over-signed-span",
+            "log_path": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/T38/roster/logs/T38-RC3-android-msg-id-over-signed-span.semantic.log",
+            "log_sha": "dc7860e7141a7dff60996951b461b5da8768874608f337c905a4d151940474be",
+            "mutant_patch_sha": "2cd418eaaf1794620b9d84d4140db64c5c41a48555736100728ed345887382e4",
+            "outcome": "KILLED",
+            "started_utc": "2026-09-12T17:11:42Z",
+            "target_tests": [
+              "testAuthorProducesVerifiableSignatureAcrossIsles"
+            ],
+            "tests_run": 11
+          },
+          {
+            "anchor_count": 1,
+            "baseline_sha": "8aae2e958a066069fe1867ae316ee4ca1655909f",
+            "build_exit": 0,
+            "category": "semantic",
+            "ended_utc": "2026-09-12T17:12:28Z",
+            "failed_assertion": "witness testRuntimeRejectsZeroSignatureStructuralFixture failed as intended (10 failed case(s))",
+            "id": "T38-RC3-ios-msg-id-over-signed-span",
+            "log_path": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/T38/roster/logs/T38-RC3-ios-msg-id-over-signed-span.semantic.log",
+            "log_sha": "9a5563590ceaf9ed35d718d4e77c06e6c0392a3c8f8fff3f196084eb4420c8bb",
+            "mutant_patch_sha": "3b33bccf9b7e81b96bf70009e7a973c39edded7fa142248a0116981512a395ac",
+            "outcome": "KILLED",
+            "started_utc": "2026-09-12T17:11:57Z",
+            "target_tests": [
+              "testRuntimeRejectsZeroSignatureStructuralFixture"
+            ],
+            "tests_run": 11
+          },
+          {
+            "anchor_count": 1,
+            "baseline_sha": "8aae2e958a066069fe1867ae316ee4ca1655909f",
+            "build_exit": 0,
+            "category": "semantic",
+            "ended_utc": "2026-09-12T17:12:43Z",
+            "failed_assertion": "witness testMalformedIdentityBindingRefused failed as intended (6 failed case(s))",
+            "id": "T38-RC4-android-person-equation-flipped",
+            "log_path": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/T38/roster/logs/T38-RC4-android-person-equation-flipped.semantic.log",
+            "log_sha": "721f7e063d545ab2e689218e0ce41a05a33280053a82398723c2faed4bd55a44",
+            "mutant_patch_sha": "59ff836af180cf3661e86b23af183cce61a4f9f54d5fcddc2bb22315a5dad236",
+            "outcome": "KILLED",
+            "started_utc": "2026-09-12T17:12:28Z",
+            "target_tests": [
+              "testMalformedIdentityBindingRefused"
+            ],
+            "tests_run": 11
+          },
+          {
+            "anchor_count": 1,
+            "baseline_sha": "8aae2e958a066069fe1867ae316ee4ca1655909f",
+            "build_exit": 0,
+            "category": "semantic",
+            "ended_utc": "2026-09-12T17:13:14Z",
+            "failed_assertion": "witness testMalformedIdentityBindingRefused failed as intended (6 failed case(s))",
+            "id": "T38-RC4-ios-person-equation-flipped",
+            "log_path": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/T38/roster/logs/T38-RC4-ios-person-equation-flipped.semantic.log",
+            "log_sha": "12ba917a9159cf466c78e1cbfc14d0bd44eadc8875af7511b5b8739be087e688",
+            "mutant_patch_sha": "fa1a8a0bada0ab049b94b2427204ec6fde699b96ff28c538ee27217a12785c6d",
+            "outcome": "KILLED",
+            "started_utc": "2026-09-12T17:12:43Z",
+            "target_tests": [
+              "testMalformedIdentityBindingRefused"
+            ],
+            "tests_run": 11
+          },
+          {
+            "anchor_count": 1,
+            "baseline_sha": "85299dc4b4d8c6b47e12d9a7ccaec9dc09580c14",
+            "build_exit": 0,
+            "category": "semantic",
+            "ended_utc": "2026-09-12T17:24:35Z",
+            "failed_assertion": "witness testFakeSosByOneBitTypeChangeRefused failed as intended (1 failed case(s))",
+            "id": "T38-RC5-android-missing-flags-gate-skipped",
+            "log_path": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/T38/roster/logs/T38-RC5-android-missing-flags-gate-skipped.semantic.log",
+            "log_sha": "4e0bda063e87c8e279f57f2ba9d5f1216e3843512295542db08a02a4ab98d620",
+            "mutant_patch_sha": "cb7ea72a648795d2225fcc83bcf8739c2981d41c0362b5611d4102698441c965",
+            "outcome": "KILLED",
+            "started_utc": "2026-09-12T17:24:19Z",
+            "target_tests": [
+              "testFakeSosByOneBitTypeChangeRefused"
+            ],
+            "tests_run": 11
+          },
+          {
+            "anchor_count": 1,
+            "baseline_sha": "85299dc4b4d8c6b47e12d9a7ccaec9dc09580c14",
+            "build_exit": 0,
+            "category": "semantic",
+            "ended_utc": "2026-09-12T17:25:01Z",
+            "failed_assertion": "witness testFakeSosByOneBitTypeChangeRefused failed as intended (1 failed case(s))",
+            "id": "T38-RC5-ios-missing-flags-gate-skipped",
+            "log_path": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/T38/roster/logs/T38-RC5-ios-missing-flags-gate-skipped.semantic.log",
+            "log_sha": "49f165f0b6696eb887ec1ea7efe176f5607e61c1262d5e70eaf02a591d412102",
+            "mutant_patch_sha": "597ede02dc856414738a5813d253e9dc8137ccbdc576cbfacd57ff08823de202",
+            "outcome": "KILLED",
+            "started_utc": "2026-09-12T17:24:36Z",
+            "target_tests": [
+              "testFakeSosByOneBitTypeChangeRefused"
+            ],
+            "tests_run": null
+          }
+        ]
+      },
+      "objective": {
+        "claimed_head": "732b00e521cc458bfb07669bbdba81604c3f9b2c",
+        "claimed_utc": "2026-09-12T14:53:52+00:00",
+        "objective": {
+          "claimed_head": "732b00e521cc458bfb07669bbdba81604c3f9b2c",
+          "claimed_utc": "2026-09-12T14:53:52+00:00",
+          "objective": "Keep outer SOS code/required flags and canonical signature rule."
+        }
+      },
+      "status": "COMPLETE",
+      "tested_tree_sha": "190291adfa7b8f7b2fb9ede93f3c62be97a76249",
+      "unresolved": []
+    },
     "T83": {
       "case_results": {
         "android_grand": {
@@ -5626,32 +5926,25 @@
     "SIGNING"
   ],
   "failed_attempts": [],
-  "in_progress": {
-    "claimed_head": "732b00e521cc458bfb07669bbdba81604c3f9b2c",
-    "claimed_utc": "2026-09-12T14:53:52+00:00",
-    "objective": {
-      "claimed_head": "732b00e521cc458bfb07669bbdba81604c3f9b2c",
-      "claimed_utc": "2026-09-12T14:53:52+00:00",
-      "objective": "Keep outer SOS code/required flags and canonical signature rule."
-    }
-  },
-  "last_code_head": "f5fcc40a8c6fc3e793d8969d9c7fee7bc4f996ab",
-  "last_observed_head": "f5fcc40a8c6fc3e793d8969d9c7fee7bc4f996ab",
+  "in_progress": null,
+  "last_code_head": "85299dc4b4d8c6b47e12d9a7ccaec9dc09580c14",
+  "last_observed_head": "85299dc4b4d8c6b47e12d9a7ccaec9dc09580c14",
   "latest_verification": {
     "android_grand": {
       "errors": 0,
       "failures": 0,
-      "tests": 1003
+      "skipped": 0,
+      "tests": 1014
     },
-    "at_utc": "2026-09-12T14:36:23+00:00",
-    "boundary_commit": "f5fcc40a8c6fc3e793d8969d9c7fee7bc4f996ab",
+    "at_utc": "",
+    "boundary_commit": "85299dc4b4d8c6b47e12d9a7ccaec9dc09580c14",
     "ios_grand": {
       "errors": 0,
       "failures": 0,
-      "tests": 942
+      "tests": 953
     },
     "roster": {
-      "T37_killed": 10,
+      "T38_killed": 10,
       "of": 10
     }
   },
@@ -5666,7 +5959,11 @@
     "T18 randomized-draw pair-cap flake family struck again in the T37 subsystem campaign (no ascending hint pair within 64 draws); the FAILED record T37-subsystem-gradlew stands in the ledger as history, the green retry -002 rides beside it; the sealed T18 court was NOT edited -- policy: green-retry to 6, never rewrite the ledger, never touch sealed courts.",
     "roster law learned (fixup-1): append-style find/replace rows violate the ledger post-invariant -- the pre-anchor must NOT survive the mutant verbatim; re-express insertions as destructive substitutions (rewrite one shared line, reuse the closer) and simulate the runner gates before launching a campaign.",
     "kotlin law learned (fixup-2): a when-arm carrying two statements demands a braced block; an unbraced arm aborts the mutant compile -- and the classifier did-not-compile verdict was real here, verified against the row log rather than the daemon-flake pattern.",
-    "swift dialect law learned (fixup-2): the iOS assertion shim is NON-FATAL -- failed assertions record and continue, so a court must guard every indexed read (guard-let + XCTFail + return) or a rejecting mutant can trap the whole xctest process and the row miscategorizes as executed-nothing."
+    "swift dialect law learned (fixup-2): the iOS assertion shim is NON-FATAL -- failed assertions record and continue, so a court must guard every indexed read (guard-let + XCTFail + return) or a rejecting mutant can trap the whole xctest process and the row miscategorizes as executed-nothing.",
+    "T38 roster law learned: an untested requirement survives its court -- RC5 escaped both isles until W4 consumed the reject_flags_missing_required vector; the roster is the regression net for court completeness itself, and table vectors must be walked whole, not sliced.",
+    "swift guard-else law: a guard body must transfer control out; \"else { }\" does not compile. To neuter a guard gate vacuously, make the clause itself true (\"true || …\") in a shared-line destructive substitution that leaves the needle absent after.",
+    "iOS court doctrine (T83 finding operational): never byte-pin a freshly authored signature on the randomized isle; pin the deterministic msg_id derivation and the cryptographic validity of the pinned seal (isValidSignature over the exact transcript); assert fresh authorship structurally; the duplicate the seen cache guards is the retransmission of the SAME envelope.",
+    "cross-isle golden vector law: courts on both isles read the one table crypto/sos_v1_vectors.json at runtime (walk-up from #filePath / user.dir); transcription drift becomes impossible by construction and the nine named refusals are one string table both isles enforce."
   ],
   "warnings_for_next_invocation": [
     "Android toolchain provisioned: JDK 17.0.20.1 + SDK 35 on mac-primary.",
@@ -5689,6 +5986,7 @@
     "Roster law reinforced at T83: a falsifier must stand where its named witness can see it -- the host SQL-leg witnesses drive JdbcStoreDb, not the Android-Context-bound SQLCipher engine; attempt-2's clean 11/0 ESCAPE proved an unreachable mutation is a ledger bug, not a witness gap (roster-fixup-2 redirected RC1-android; scratch-preverify every redirected row before the campaign).",
     "Gradle 'The daemon has terminated unexpectedly...' console noise begins with the Kotlin diagnostic prefix 'e: ' and can make the harness report INVALID 'the mutant did not compile' for a row whose own XML shows a completed run -- read the row log before believing the verdict; the ledger was NOT changed for that (the attempt-2 archive shows the completed 11/5 mutant run).",
     "Kotlin when-subjects bound as 'val r = <SingletonObject>' narrow the static type to the singleton and the exhaustiveness checker then rejects sealed-parent subclass arms -- annotate the subject with the sealed parent type (val r: Sealed = Singleton) in any future singleton-subject when.",
-    "The T17 makeTrustedPair 64-draw pair-cap flake family stayed silent at the T83 boundary (both grands green first tour, 992/931); the bounded green-retry policy (<=6, cite the -002 suffixed records, keep FAILED attempts in the ledger) remains the standing remedy."
+    "The T17 makeTrustedPair 64-draw pair-cap flake family stayed silent at the T83 boundary (both grands green first tour, 992/931); the bounded green-retry policy (<=6, cite the -002 suffixed records, keep FAILED attempts in the ledger) remains the standing remedy.",
+    "T38 sealed at boundary 85299dc (courts 11/11 both isles; roster 10/10 KILLED across two honest attempts; grand android 1014, iOS 953). Next: T38 per the catalog. The signed-SOS envelope is law -- reuse SignedSosV1 as the single authority; do not fork a second signing path."
   ]
 }

@@ -2,182 +2,222 @@
  "evidence_root": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE",
  "files": [
   {
-   "path": "T37/commands.json",
-   "sha256": "d980a87e15b6936f6ef3daee1ec6725be783ffceade4516b09019b1b2ce0ac38",
-   "size": 7037
+   "path": "T38/commands.json",
+   "sha256": "65bd45c04aef6dcd88689730d7a331f357312e79c3b757cffb5e93b2e6ca6f91",
+   "size": 12085
   },
   {
-   "path": "T37/logs/T37-controls-python3-002.log",
+   "path": "T38/logs/T38-controls-python3-002.log",
    "sha256": "0b1ac463307b9f7d907105bb19e85bdada5dcd05131d80c492ffd80b4ab3f5f4",
    "size": 234
   },
   {
-   "path": "T37/logs/T37-controls-python3-003.log",
+   "path": "T38/logs/T38-controls-python3-003.log",
    "sha256": "67493ebd28a55ece17214e55d318f34ba4af6ac7592268756f1b3dcc304afa21",
    "size": 125
   },
   {
-   "path": "T37/logs/T37-controls-python3.log",
+   "path": "T38/logs/T38-controls-python3.log",
    "sha256": "03f0bc422dc53a81fd7f41085300a28e42626c2a4554e8929d897d3c092bd014",
    "size": 1374
   },
   {
-   "path": "T37/logs/T37-narrow-gradlew.log",
-   "sha256": "6ccf22ce479317a932c8d862f58837f94da41041932ab32c6bfd2bb0f4624e86",
+   "path": "T38/logs/T38-narrow-gradlew-002.log",
+   "sha256": "4b588f40e647bda612212493d20fd39028b9ffe514758ebdfb05fa9e6ad645b2",
    "size": 2513
   },
   {
-   "path": "T37/logs/T37-narrow-swift.log",
-   "sha256": "1a7ebbf8a2bbcd4cc1685b032ed6316f2529d58e28c46bd021efdab878596140",
-   "size": 3749
+   "path": "T38/logs/T38-narrow-gradlew.log",
+   "sha256": "6cce63635b5aa03f73141fbc91b73a8f8fb93fb081bd7532d2d4ac3346c7eebf",
+   "size": 2513
   },
   {
-   "path": "T37/logs/T37-subsystem-gradlew-002.log",
-   "sha256": "f258f0496619618cbd8e29ad54d8a7657743dd93be404bfa3811c4e42da3488c",
+   "path": "T38/logs/T38-narrow-swift-002.log",
+   "sha256": "24d9cbb32a28bca5095c3ba2a086296ee9f62ce8639cc20b046964f00b4cfdac",
+   "size": 3525
+  },
+  {
+   "path": "T38/logs/T38-narrow-swift.log",
+   "sha256": "a9cd93096c42f471ae43c9fc9bd224f9c9affabda742ce644156f0f53289931c",
+   "size": 3525
+  },
+  {
+   "path": "T38/logs/T38-subsystem-gradlew-002.log",
+   "sha256": "c16af94100767f593d0dca02f77034fe711604220ba497da0c7f8a97b8066f78",
    "size": 2488
   },
   {
-   "path": "T37/logs/T37-subsystem-gradlew.log",
-   "sha256": "b83fb9090ef45088c970640c438aaddb966b4e51bc624f6a5ae49e94baa1bbbc",
-   "size": 2997
+   "path": "T38/logs/T38-subsystem-gradlew-003.log",
+   "sha256": "487c871b245b84d8b608d0281a43bc1519a38d394cae57b977402a5db921c9c3",
+   "size": 2488
   },
   {
-   "path": "T37/logs/T37-subsystem-swift-002.log",
-   "sha256": "b19592c00eb9a76607f7245d3474bda92c7de9141ea02d644f20a51734de2506",
-   "size": 245511
+   "path": "T38/logs/T38-subsystem-gradlew.log",
+   "sha256": "e6469862c7f870f76d5421dd3df0a63cd6952b87c75ccfe18075e0117b47db42",
+   "size": 3008
   },
   {
-   "path": "T37/logs/T37-subsystem-swift.log",
-   "sha256": "0e7f5c48d69514352ef9021490f0cc45964ed8d5f9e9ff990f44c9d29ea25296",
-   "size": 245504
+   "path": "T38/logs/T38-subsystem-swift-002.log",
+   "sha256": "c2d8a5f547a79d3f671c98e215862b42bf82fd88282651c5b50c0e1a96057711",
+   "size": 248135
   },
   {
-   "path": "T37/milestones/contract-court-milestone.json",
-   "sha256": "2f0c995d3ac05d7db178801254005c2d19a1657ca193f6b1f73703ff6d20893b",
-   "size": 2754
+   "path": "T38/logs/T38-subsystem-swift-003.log",
+   "sha256": "e55932deefe3af85f9b493fc4b5479ce73beead4c78a274a741a3cb2c4d01aa7",
+   "size": 248155
   },
   {
-   "path": "T37/milestones/design-grounding-milestone.json",
-   "sha256": "0c7c2b734edb88110d0114c1885d9edf5a07bb9821f6437da9c3022c3b88e584",
-   "size": 15132
+   "path": "T38/logs/T38-subsystem-swift.log",
+   "sha256": "6412687748213abac86af308d530bd5719a00c49095c53bb041b7a12bd4b0e76",
+   "size": 248139
   },
   {
-   "path": "T37/milestones/roster-verification-milestone.json",
-   "sha256": "1736491e76731055b3c91cef6e0a6fb9d4a62ca7715fd85c5009f66275a73ea7",
-   "size": 3390
+   "path": "T38/milestones/contract-court-milestone.json",
+   "sha256": "c75915fe8855d10aa470caf0a9f83b0e18486d1750ba3b3def556ec13798e902",
+   "size": 3536
   },
   {
-   "path": "T37/roster-attempt-1/logs/T37-RC1-android-ack-signed-and-filed-before-the-inbox-commit.semantic.log",
-   "sha256": "b358712cac102e7a0c4f49a1a8ab7901f26f5c3d495499a7f6d0bee10b9b5f2b",
-   "size": 685
+   "path": "T38/milestones/design-grounding-milestone.json",
+   "sha256": "2e1664f936ab4a28ddaef8a18c09eaabdaf2fcefe65a1c66778361c9ab48f19a",
+   "size": 9545
   },
   {
-   "path": "T37/roster-attempt-1/logs/T37-RC1-ios-ack-signed-and-filed-before-the-inbox-commit.semantic.log",
-   "sha256": "375d54389ade976c02d649d508889cfef429e7b6a6e2f20e80408306347be8f4",
+   "path": "T38/milestones/roster-verification-milestone.json",
+   "sha256": "390fe1313a2412cc4c3b1ccea3368d6be78cd41380448de9535f0f9e61ada3ab",
+   "size": 10306
+  },
+  {
+   "path": "T38/roster-attempt-1/logs/T38-RC1-android-zero-seal-sails-through.semantic.log",
+   "sha256": "d701f94e7891b998080c630a1e7deaacece59be9d66978fb030f73f80426fac0",
+   "size": 700
+  },
+  {
+   "path": "T38/roster-attempt-1/logs/T38-RC1-ios-zero-seal-sails-through.semantic.log",
+   "sha256": "3cfd18399212dba7bfc0086dff29b24578802a4afa8b14de35f176e21bbb1c7d",
    "size": 16029
   },
   {
-   "path": "T37/roster-attempt-1/logs/T37-RC2-android-routing-tag-gate-is-identity.semantic.log",
-   "sha256": "0629be7e3ce71c0467a55aab0975e7a2eb49b5887911296caab3570cb50e00d5",
-   "size": 669
+   "path": "T38/roster-attempt-1/logs/T38-RC2-android-transcript-without-magic.semantic.log",
+   "sha256": "93a1de75d3b403e5dfe4b2cdce2a74d2839da327891353a0aad68f98eb3bd410",
+   "size": 701
   },
   {
-   "path": "T37/roster-attempt-1/logs/T37-RC2-ios-routing-tag-gate-is-identity.semantic.log",
-   "sha256": "34e00c5453418b9c173f7a1c478f83e8c8430642fc099157aa7142a56d2c6efb",
+   "path": "T38/roster-attempt-1/logs/T38-RC2-ios-transcript-without-magic.semantic.log",
+   "sha256": "2274845208e431dcda1db48831ac1b1d2a97ffff38576fd7fea296bd0a0f03ab",
    "size": 16029
   },
   {
-   "path": "T37/roster-attempt-1/logs/T37-RC3-android-duplicate-forgets-the-filed-row-and-re-signs.semantic.log",
-   "sha256": "9e9e7a93872d316c76cf54459f1d381dc3e8c14ffc72b51b7957636d487b1118",
-   "size": 685
+   "path": "T38/roster-attempt-1/logs/T38-RC3-android-msg-id-over-signed-span.semantic.log",
+   "sha256": "dc7860e7141a7dff60996951b461b5da8768874608f337c905a4d151940474be",
+   "size": 701
   },
   {
-   "path": "T37/roster-attempt-1/logs/T37-RC3-ios-duplicate-forgets-the-filed-row-and-re-signs.semantic.log",
-   "sha256": "72ccabff2de9e668fb18d7f1ba8eb4075687c13f0ad5986fe9efa4d67c7e0242",
+   "path": "T38/roster-attempt-1/logs/T38-RC3-ios-msg-id-over-signed-span.semantic.log",
+   "sha256": "9a5563590ceaf9ed35d718d4e77c06e6c0392a3c8f8fff3f196084eb4420c8bb",
    "size": 16029
   },
   {
-   "path": "T37/roster-attempt-1/logs/T37-RC4-android-storage-failure-still-hands-out-an-ack.semantic.log",
-   "sha256": "82082bf22f831c12c6f1dc1dfaed534893d2ccbee90842d7ff467a00a4a5f3b0",
-   "size": 1183
+   "path": "T38/roster-attempt-1/logs/T38-RC4-android-person-equation-flipped.semantic.log",
+   "sha256": "721f7e063d545ab2e689218e0ce41a05a33280053a82398723c2faed4bd55a44",
+   "size": 700
   },
   {
-   "path": "T37/roster-attempt-1/logs/T37-RC4-ios-storage-failure-still-hands-out-an-ack.semantic.log",
-   "sha256": "494ef8bdd24443535d19d4acecf17c4e676c6c60e3033f0aab4e3465dfd2014f",
+   "path": "T38/roster-attempt-1/logs/T38-RC4-ios-person-equation-flipped.semantic.log",
+   "sha256": "12ba917a9159cf466c78e1cbfc14d0bd44eadc8875af7511b5b8739be087e688",
    "size": 16029
   },
   {
-   "path": "T37/roster-attempt-1/logs/T37-RC5-android-immediate-hop-stands-in-for-the-sender.semantic.log",
-   "sha256": "0c36b0886acf92ecdddf86f83851aaeb36512592a77e02b8f3f2da4c290f73d2",
-   "size": 679
+   "path": "T38/roster-attempt-1/logs/T38-RC5-android-missing-flags-gate-skipped.semantic.log",
+   "sha256": "4e0bda063e87c8e279f57f2ba9d5f1216e3843512295542db08a02a4ab98d620",
+   "size": 279
   },
   {
-   "path": "T37/roster-attempt-1/logs/T37-RC5-ios-immediate-hop-stands-in-for-the-sender.semantic.log",
-   "sha256": "e133873f014d189f263cf01634d2968ca755c387231b596fc8a9a69a0a2f52df",
+   "path": "T38/roster-attempt-1/logs/T38-RC5-ios-missing-flags-gate-skipped.semantic.log",
+   "sha256": "49f165f0b6696eb887ec1ea7efe176f5607e61c1262d5e70eaf02a591d412102",
    "size": 16029
   },
   {
-   "path": "T37/roster-attempt-1/manifest.json",
-   "sha256": "76d078dd4499b992e7b2f6f2f720685a37b2a185fa97aadbeb1392635bb1329d",
-   "size": 8010
+   "path": "T38/roster-attempt-1/manifest.json",
+   "sha256": "bcf7a64b152a6ff10e8dd13c311fb5a9091dd54d079ca86e34e2fef1da3ec15e",
+   "size": 7860
   },
   {
-   "path": "T37/roster/logs/T37-RC1-android-ack-signed-and-filed-before-the-inbox-commit.semantic.log",
-   "sha256": "b358712cac102e7a0c4f49a1a8ab7901f26f5c3d495499a7f6d0bee10b9b5f2b",
-   "size": 685
-  },
-  {
-   "path": "T37/roster/logs/T37-RC1-ios-ack-signed-and-filed-before-the-inbox-commit.semantic.log",
-   "sha256": "130b36728c4ff8801b3fa72fbf27dc6291eec745b2487433e37cf802bcc5e785",
+   "path": "T38/roster-retry/logs/T38-RC1-ios-zero-seal-sails-through.semantic.log",
+   "sha256": "3c3f374b54e0e1334683455318173c30f4186e2481282090ee09f3d407b52095",
    "size": 16029
   },
   {
-   "path": "T37/roster/logs/T37-RC2-android-routing-tag-gate-is-identity.semantic.log",
-   "sha256": "a1138a3230c0b8fa5b4ca7b25d7ad0901aafc811046d901e3f6331c214e5004a",
-   "size": 669
+   "path": "T38/roster-retry/logs/T38-RC5-android-missing-flags-gate-skipped.semantic.log",
+   "sha256": "afeed8f56f8fc07f5bb66e667ce50f1d230d6d1ce54c083afa53f03eb48bb359",
+   "size": 703
   },
   {
-   "path": "T37/roster/logs/T37-RC2-ios-routing-tag-gate-is-identity.semantic.log",
-   "sha256": "29e8be544bbd2639acf520ae8c6a6ee0f8aefd8058ab40ad97b7019540021ecf",
+   "path": "T38/roster-retry/logs/T38-RC5-ios-missing-flags-gate-skipped.semantic.log",
+   "sha256": "3f09f29af8c55a76f51075878e6b4a58753cc3cd868ab1052750ccea6662d563",
    "size": 16029
   },
   {
-   "path": "T37/roster/logs/T37-RC3-android-duplicate-forgets-the-filed-row-and-re-signs.semantic.log",
-   "sha256": "6d8a528a9b6015b4d9e07deb700f53672c4d6f6b1143d9f41e5d95d7d6ef61f9",
-   "size": 685
+   "path": "T38/roster-retry/manifest.json",
+   "sha256": "63dd0e3c96d54c1f0ed1e1df3880a12865b7c1acb45c249b1e7f501a0e1aa875",
+   "size": 2407
   },
   {
-   "path": "T37/roster/logs/T37-RC3-ios-duplicate-forgets-the-filed-row-and-re-signs.semantic.log",
-   "sha256": "7ddaa145f35b971941edd6092eb47baae482fd675b133a02b8d74475dd376ed8",
+   "path": "T38/roster/logs/T38-RC1-android-zero-seal-sails-through.semantic.log",
+   "sha256": "d701f94e7891b998080c630a1e7deaacece59be9d66978fb030f73f80426fac0",
+   "size": 700
+  },
+  {
+   "path": "T38/roster/logs/T38-RC1-ios-zero-seal-sails-through.semantic.log",
+   "sha256": "3cfd18399212dba7bfc0086dff29b24578802a4afa8b14de35f176e21bbb1c7d",
    "size": 16029
   },
   {
-   "path": "T37/roster/logs/T37-RC4-android-storage-failure-still-hands-out-an-ack.semantic.log",
-   "sha256": "9b7a168abb2ceff5c34739049006c40a30b03b49913e5efa7d51f6cb87c5a8ef",
-   "size": 679
+   "path": "T38/roster/logs/T38-RC2-android-transcript-without-magic.semantic.log",
+   "sha256": "93a1de75d3b403e5dfe4b2cdce2a74d2839da327891353a0aad68f98eb3bd410",
+   "size": 701
   },
   {
-   "path": "T37/roster/logs/T37-RC4-ios-storage-failure-still-hands-out-an-ack.semantic.log",
-   "sha256": "725333d390d4b6a2fda5bb9102e1e5214327f547fe7d51fda408f63952850a64",
+   "path": "T38/roster/logs/T38-RC2-ios-transcript-without-magic.semantic.log",
+   "sha256": "2274845208e431dcda1db48831ac1b1d2a97ffff38576fd7fea296bd0a0f03ab",
    "size": 16029
   },
   {
-   "path": "T37/roster/logs/T37-RC5-android-immediate-hop-stands-in-for-the-sender.semantic.log",
-   "sha256": "5097cf9864e047d6a8baa1c6dc49759e3dcd92bf31daba7543f3ef3a1795a241",
-   "size": 679
+   "path": "T38/roster/logs/T38-RC3-android-msg-id-over-signed-span.semantic.log",
+   "sha256": "dc7860e7141a7dff60996951b461b5da8768874608f337c905a4d151940474be",
+   "size": 701
   },
   {
-   "path": "T37/roster/logs/T37-RC5-ios-immediate-hop-stands-in-for-the-sender.semantic.log",
-   "sha256": "9d70e4d0d6b96f8332662af09305d469203da47980366ec1c24eb86224549edb",
+   "path": "T38/roster/logs/T38-RC3-ios-msg-id-over-signed-span.semantic.log",
+   "sha256": "9a5563590ceaf9ed35d718d4e77c06e6c0392a3c8f8fff3f196084eb4420c8bb",
    "size": 16029
   },
   {
-   "path": "T37/roster/manifest.json",
-   "sha256": "cb3131b2e8b18194c2f82de69f8f8e4123f574690fc16a2abdb8e0c6541d7682",
-   "size": 8530
+   "path": "T38/roster/logs/T38-RC4-android-person-equation-flipped.semantic.log",
+   "sha256": "721f7e063d545ab2e689218e0ce41a05a33280053a82398723c2faed4bd55a44",
+   "size": 700
+  },
+  {
+   "path": "T38/roster/logs/T38-RC4-ios-person-equation-flipped.semantic.log",
+   "sha256": "12ba917a9159cf466c78e1cbfc14d0bd44eadc8875af7511b5b8739be087e688",
+   "size": 16029
+  },
+  {
+   "path": "T38/roster/logs/T38-RC5-android-missing-flags-gate-skipped.semantic.log",
+   "sha256": "4e0bda063e87c8e279f57f2ba9d5f1216e3843512295542db08a02a4ab98d620",
+   "size": 279
+  },
+  {
+   "path": "T38/roster/logs/T38-RC5-ios-missing-flags-gate-skipped.semantic.log",
+   "sha256": "49f165f0b6696eb887ec1ea7efe176f5607e61c1262d5e70eaf02a591d412102",
+   "size": 16029
+  },
+  {
+   "path": "T38/roster/manifest.json",
+   "sha256": "397243888fdba3bb3d2254668d14167e9e13a95a7d02506da12e2c9b4dcf3bfa",
+   "size": 8352
   }
  ],
- "note": "T37 (persist received inbox messages before generating recipient ACKs, using the authenticated TrustedPeer only as immediate-hop identity): complete -- both isles 11/11 courts green at boundary f5fcc40a8, ten-of-ten roster KILLED at pin f5fcc40a8 (attempt 2; attempt 1 archived), grand android 1003/0/0/0 via green-retried subsystem -002 (first-record flake kept as history), iOS grand 942/0; readiness remains false; five external gates open; frozen contracts reused untouched.",
+ "note": "T38 evidence: runner commands (11 records incl. the T17-flake FAILED pair and the post-reflection reruns), per-command logs, design-grounding + contract-court + roster-verification milestones, the canonical 10/10-KILLED roster manifest with per-row logs, the first-attempt archive and the retry manifest.",
  "schema_version": 1,
- "task": "T37"
+ "task": "T38"
 }
