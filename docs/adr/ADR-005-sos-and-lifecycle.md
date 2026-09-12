@@ -116,3 +116,70 @@ Noise_XX handshake / contact registry (tested here with an injected resolver);
 and SOS-specific UI-phrase-vs-evidence rules are not yet wired. The radio/link
 layer is disabled, so `ACKNOWLEDGED_BY_RECIPIENT` is reachable only in the
 host-side state-machine tests.
+
+### Amendment (T38): the one signed-SOS envelope
+
+Before this amendment the isles signed distress **differently**: Android's
+`Router.buildSos` emitted a structural frame whose 64-octet signature slot was
+all zeros, and iOS `dispatchSos` signed an ad-hoc transcript of a different
+shape. Two isles, two envelopes, no single word about what an authenticated
+SOS *is*. This amendment fixes the canon; the runtime helpers
+`wire/v2/SignedSosV1.{kt,swift}` (hand-written under the codegen exclusion,
+following the `MessageId`/`SignedMessageV1` precedent) realise it on both
+isles, composing the frozen authorities only -- `MessageId.derive`,
+`IdentityBindingV1` (T13), the Ed25519 layer.
+
+The canon, as recorded in `wire/wire_v2.yaml sos_requirements`:
+
+```text
+frame.payload    = ASCII("SOS1") || signature(64) || unsigned payload
+unsigned payload = version(1)=0x01 || identityBinding(133)
+                 || created_at(4, LE) || time_quality(1) || nonce(16)
+                 || body_len(2, BE) || body (strict UTF-8, at most 400 octets)
+msg_id           = BLAKE2s-128("GMP2-MSGID" || node || created_at LE || nonce
+                               || UNSIGNED payload)      -- MessageId.derive,
+                                 frozen formula, run over the UNSIGNED span
+signature        = Ed25519(signing seed,
+                           msg_id || ASCII("SOS1") || unsigned payload)
+node             = BLAKE2s-128(embedded signing public key)  -- derived, never trusted
+```
+
+Five decisions, stated once:
+
+1. **The structural fixtures stay structural.** The zero-signature golden SOS
+   fixtures (§15) pass `SosFrameValidator` -- that is their purpose -- and are
+   **refused by runtime authentication** under nine named reasons
+   (`wrong_type, missing_required_flags, malformed, body_length,
+   time_quality, unknown_time_pairing, message_id_mismatch,
+   identity_binding, signature`). A structural codec test is not a
+   signature-validity test, and no receiver may confuse the two.
+2. **The authenticated key is not the verified person.** `verify` resolves the
+   binding's embedded key and the node it hashes to; a caller may present a
+   claimed identity (`expectedNodeId`) and the equation is checked against
+   the *derivation*. Nothing on this path moves trust or approval state --
+   that is the peer directory's separate layer (T26/T30 lineage).
+3. **The relay decides first.** The router's epidemic verdict is computed and
+   returned untouched; authentication rides beside it and only ever gates
+   *indication promotion* to `SosObserver`. A refused frame still floods.
+4. **Randomized signing is the platform, not a bug.** The host Ed25519 layer
+   signs randomized (T83 finding), so cross-isle proof runs on **verification
+   forms**: the pinned JVM-struck signatures of `crypto/sos_v1_vectors.json`
+   must verify under the iOS verifier over the exact transcript, and fresh
+   iOS authorship is asserted structurally plus by verifier acceptance --
+   never byte-pinned. Because the msg_id hashes the binding that bears the
+   seal, two hand-offs of one logical distress carry distinct msg_ids; the
+   duplicate the seen cache speaks of is the retransmission of the **same
+   envelope**, which is what idempotency is asserted across.
+5. **Nil by default, loud at receivers.** `MeshNode.sosAuthority` and
+   `sosObserver` are nil until the T54 lab composition root wires them; the
+   legacy structural arm stays available and is refused by every conforming
+   receiver. No composition outside ever presents an unauthenticated frame
+   as an indication.
+
+Evidence: both courts (`ReadinessT38Test.kt`, `ReadinessT38Tests.swift`)
+read the **same** vector table at runtime -- one source of truth; eleven
+witnesses per isle. The amendment moved no generated artefact: re-running
+`wire/codegen.py` after it rewrites `WireV2.{kt,swift}` and the golden
+vectors byte-identically (the generator reads the structural keys only; the
+Hamming audit re-passes: minimum SOS distance 4), and the structural
+zero-signature fixtures in `wire/golden_vectors.json` are untouched.

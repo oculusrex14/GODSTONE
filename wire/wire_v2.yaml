@@ -102,7 +102,45 @@ sos_requirements:
   required_flags: [ACK_REQ, RELAY_OK]
   signature: ed25519
   signature_len: 64
+  # T38 (ADR-005 amendment): the one signed-SOS envelope, byte canon shared by
+  # both isles. The keys above stay FOREVER as the structural gate records
+  # them; the keys below state the cryptographic canon that the hand-written
+  # runtime helpers SignedSosV1.{kt,swift} realise on top of the frozen
+  # authorities (MessageId.derive, IdentityBindingV1, Ed25519). They are
+  # documentation for the courts and the roster; codegen reads the structural
+  # keys only, so the generated tables do not shift.
+  payload_layout: >
+    frame.payload = ASCII("SOS1") || signature(64) || unsigned payload;
+    unsigned payload = version(1)=0x01 || identityBinding(133) ||
+    created_at(4, little-endian) || time_quality(1) || message_nonce(16) ||
+    body_len(2, big-endian) || body (UTF-8, at most 400 octets, strict).
+  signature_transcript: >
+    signature = Ed25519(signing seed, msg_id || ASCII("SOS1") || unsigned
+    payload). The signature covers the magic AND the unsigned span; the
+    identity binding embedded in the unsigned span is the T13 serialization
+    (version || generation big-endian || signing pub || static DH pub ||
+    binding signature) whose 80-octet preimage runs under the GMP2-IDBIND
+    domain, and the sender node id is BLAKE2s-128 of the embedded signing
+    key -- derived, never trusted.
+  msg_id_over: >
+    msg_id = MessageId.derive(sender node id, created_at, message nonce,
+    UNSIGNED payload). The frozen formula runs over the unsigned span only;
+    the signature slot is never hashed into the id that it signs.
+  vectors: crypto/sos_v1_vectors.json
+  structural_fixture_law: >
+    Signed-SOS vectors and structural zero-signature golden SOS fixtures are
+    SEPARATE families. The structural fixtures (including every golden_vectors
+    SOS entry, whose signature slot is 64 zero octets) remain structural
+    validation material and are never proof of signature validity.
+  runtime_auth_law: >
+    An SOS is authenticated, not merely validated: the receiving runtime
+    (SignedSosV1.verify) refuses the zero-signature fixtures by name; an
+    unauthenticated frame never reaches a distress consumer, never moves
+    trust or approval state, and the relay decision is computed first and
+    returned untouched -- refusal to authenticate is a verdict about the
+    indication, never about the frame's epidemic duty.
   note: >
     An SOS must carry the payload magic, both flags, and a valid Ed25519
-    signature over msg_id || payload. A parse error can no longer fabricate a
-    distress broadcast.
+    signature over msg_id || ASCII("SOS1") || UNSIGNED payload, struck under
+    the key bound by its identity binding. A parse error can no longer
+    fabricate a distress broadcast.
