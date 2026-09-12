@@ -1,138 +1,178 @@
 {
-  "evidence_root": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE",
-  "files": [
-    {
-      "path": "T35/commands.json",
-      "sha256": "0938062a444a9e35edf60052dff2097ec5f7b33d3df5229538614279d31160ba",
-      "size": 7868
-    },
-    {
-      "path": "T35/logs/T35-controls-python3-002.log",
-      "sha256": "0b1ac463307b9f7d907105bb19e85bdada5dcd05131d80c492ffd80b4ab3f5f4",
-      "size": 234
-    },
-    {
-      "path": "T35/logs/T35-controls-python3-003.log",
-      "sha256": "67493ebd28a55ece17214e55d318f34ba4af6ac7592268756f1b3dcc304afa21",
-      "size": 125
-    },
-    {
-      "path": "T35/logs/T35-controls-python3.log",
-      "sha256": "03f0bc422dc53a81fd7f41085300a28e42626c2a4554e8929d897d3c092bd014",
-      "size": 1374
-    },
-    {
-      "path": "T35/logs/T35-narrow-gradlew.log",
-      "sha256": "860abc2bb967c9ec591cfb372324a0ca0877767ca677798f21540d926928b045",
-      "size": 2874
-    },
-    {
-      "path": "T35/logs/T35-narrow-swift.log",
-      "sha256": "59911c5ee9e4158869db28544082191aaa6009097615add4b1cb99987f5a6cab",
-      "size": 3116
-    },
-    {
-      "path": "T35/logs/T35-subsystem-gradlew-002.log",
-      "sha256": "0d4ed6db151575ecee86764607660ada907fd83370f18981b36b706b5a60f489",
-      "size": 2488
-    },
-    {
-      "path": "T35/logs/T35-subsystem-gradlew.log",
-      "sha256": "37b863a24faf36227ca502b2a07de0296793aa3a9aa5732c134aa6d135f1ea36",
-      "size": 3007
-    },
-    {
-      "path": "T35/logs/T35-subsystem-swift-002.log",
-      "sha256": "e8fe0af404986824c90d9e7bb7dd772bcdfaf7909fa2e9ee9461d1129d58d9eb",
-      "size": 237058
-    },
-    {
-      "path": "T35/logs/T35-subsystem-swift.log",
-      "sha256": "e10e2edd21256dfddaf62a2a6420a25b4a24ec320e62faeac772dd86cf3b39e0",
-      "size": 237054
-    },
-    {
-      "path": "T35/milestones/contract-court-android.json",
-      "sha256": "de304b484fdd0c44e011ab88d48af9804bb49748388a5a7faa93cfb0fc63bb60",
-      "size": 2621
-    },
-    {
-      "path": "T35/milestones/court-hardening-and-roster-launch.json",
-      "sha256": "72dd9214ad45b1dbc5418e09efe062dd4c928a7ca7949b6068a0da2f5488c914",
-      "size": 3366
-    },
-    {
-      "path": "T35/milestones/court-ios-and-bidirectional-parity.json",
-      "sha256": "9bf4e805d14415a2da18c59cf669c622156191e2b14e7c7b627c7ef200b51412",
-      "size": 4476
-    },
-    {
-      "path": "T35/milestones/design-grounding-milestone.json",
-      "sha256": "b56a13c38a3971e701a46d0664fc070c7333ec077530a27df3c002940235dd18",
-      "size": 7902
-    },
-    {
-      "path": "T35/milestones/roster-adjudication.json",
-      "sha256": "706c0f1d5a07812f5dd295f53a843cd6515638d57795d784f59a8c2dd13ef5ed",
-      "size": 3075
-    },
-    {
-      "path": "T35/roster/logs/T35-RC1-android-trust-sealed-sender-without-verifying-signature.semantic.log",
-      "sha256": "0d58265d91aea8fe57c27a0d2dfc748cb91c027c9f74a92360aa9a7a1a4f5952",
-      "size": 702
-    },
-    {
-      "path": "T35/roster/logs/T35-RC1-ios-trust-sealed-sender-without-verifying-signature.semantic.log",
-      "sha256": "3056683c45b679a7a13c4d099a42a004a0a174ad0bb465555948e5aa38467472",
-      "size": 16029
-    },
-    {
-      "path": "T35/roster/logs/T35-RC2-android-drop-intended-recipient-equality.semantic.log",
-      "sha256": "216e6c68c35e7482214ab5deaaf7136d89b6777a6129a70f1f8689444401969d",
-      "size": 687
-    },
-    {
-      "path": "T35/roster/logs/T35-RC2-ios-drop-intended-recipient-equality.semantic.log",
-      "sha256": "22eebd815595d82c4cead73f1d418b65dab9921b11911fe76f8f8f07956418d3",
-      "size": 16029
-    },
-    {
-      "path": "T35/roster/logs/T35-RC3-android-drop-exact-length-obligation.semantic.log",
-      "sha256": "239cc45f140c1a4bd935acbf56e56ec81f06daffdd8708f1b889da9bdb236f8d",
-      "size": 683
-    },
-    {
-      "path": "T35/roster/logs/T35-RC3-ios-drop-exact-length-obligation.semantic.log",
-      "sha256": "90a93cb4f9cfb511bc4ef8ed685fd5e109d18c76b0bca13b54ae61d055a6a8aa",
-      "size": 16029
-    },
-    {
-      "path": "T35/roster/logs/T35-RC4-android-drop-utf8-validator.semantic.log",
-      "sha256": "82b8617fc81720ee1bb4429b5c0a63ea419599f94b43c540f1b88f7f027e33f9",
-      "size": 674
-    },
-    {
-      "path": "T35/roster/logs/T35-RC4-ios-drop-utf8-validator.semantic.log",
-      "sha256": "25bc4690a4c600b49e19190c6607086e5ea36fed8fcdd86b66dd9589d29c91d2",
-      "size": 16029
-    },
-    {
-      "path": "T35/roster/logs/T35-RC5-android-drop-version-rejection.semantic.log",
-      "sha256": "548f40c7ac011d42e8b7965ac75c59ca94b584b6771b5928fb445c10df550024",
-      "size": 677
-    },
-    {
-      "path": "T35/roster/logs/T35-RC5-ios-drop-version-rejection.semantic.log",
-      "sha256": "c7548427cefa5c9448c98f1e72947f0964ea08f5e71265367ea48e8e9ca4d935",
-      "size": 16029
-    },
-    {
-      "path": "T35/roster/manifest.json",
-      "sha256": "513eee1de123e4d232e685ea51ba7e54de8c029b580d011d8a4d2044d394eaf8",
-      "size": 8180
-    }
-  ],
-  "note": "T35 (SignedMessageV1 authorship binding inside the sealed envelope, exactly as section15) seal evidence: seven executed stage records (narrow x2, subsystem x2 via the honest bounded green-retry of the sealed ReadinessT17 64-draw pair-cap flake, controls x3), the 10/10 KILLED semantic roster (five falsifications struck on BOTH isles: trust-sealed-sender-without-verifying-signature, drop-intended-recipient-equality, drop-exact-length-obligation via the non-shadowed trailing-byte oracle, drop-utf8-validator and drop-version-rejection via the attacker-self-signed hostile frames whose signatures VALIDATE), and the five milestones (design grounding, contract+court-android, court-ios bidirectional-parity discovery of the randomized Curve25519 signer, court hardenings x2, roster adjudication). Courts: android 10/0/0, iOS 9/0; android grand 970/0/0 (57 XMLs), iOS grand 909/0/0. The sealed Ed25519Keys.kt byte-identical-signing docstring is recorded probe-refuted for CryptoKit (RFC 8032 s 9.1 randomized) and no readiness claim rests on it; bidirectional AUTHENTICATION parity proven over pinned foreign vectors instead. No frozen wire/identity/ACK/BLE/golden file altered; device evidence deferred to the T73-T75 hardware gates; readiness=false.",
-  "schema_version": 1,
-  "task": "T35"
+ "evidence_root": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE",
+ "files": [
+  {
+   "path": "T36/commands.json",
+   "sha256": "25d5a273d4ebd1936e96cadbd2ea1b54b200ab2e8d2c08ff847daed935f9b2dc",
+   "size": 6121
+  },
+  {
+   "path": "T36/logs/T36-controls-python3-002.log",
+   "sha256": "0b1ac463307b9f7d907105bb19e85bdada5dcd05131d80c492ffd80b4ab3f5f4",
+   "size": 234
+  },
+  {
+   "path": "T36/logs/T36-controls-python3-003.log",
+   "sha256": "67493ebd28a55ece17214e55d318f34ba4af6ac7592268756f1b3dcc304afa21",
+   "size": 125
+  },
+  {
+   "path": "T36/logs/T36-controls-python3.log",
+   "sha256": "03f0bc422dc53a81fd7f41085300a28e42626c2a4554e8929d897d3c092bd014",
+   "size": 1374
+  },
+  {
+   "path": "T36/logs/T36-narrow-gradlew.log",
+   "sha256": "350b9184232cbbbb5813a3d88cbbf6dde0893a01357191713dca86cf2b12f6c0",
+   "size": 2859
+  },
+  {
+   "path": "T36/logs/T36-narrow-swift.log",
+   "sha256": "8ce07f0641054d69c9ca7d39a7d9552e2c1be3a140b3807f4f903cd9c48069bf",
+   "size": 3565
+  },
+  {
+   "path": "T36/logs/T36-subsystem-gradlew.log",
+   "sha256": "5db659989d1047cf0e79a33f566e0d2fbbeccd53da7651952a67d9def67b599c",
+   "size": 2488
+  },
+  {
+   "path": "T36/logs/T36-subsystem-swift.log",
+   "sha256": "c34124381790c033d022b218a62a88f82de61b8128e03f67eb1375b2ccf022dc",
+   "size": 239728
+  },
+  {
+   "path": "T36/milestones/contract-court-android.json",
+   "sha256": "e9406aee84c7de4c3e9df7a330ca1bcd8d6ba40209756624c40596eb24cd9b23",
+   "size": 3339
+  },
+  {
+   "path": "T36/milestones/court-ios.json",
+   "sha256": "d7353724819dd68138eded19764bff89d1ebbcec1e742aacf5c18245b61bb911",
+   "size": 1764
+  },
+  {
+   "path": "T36/milestones/design-grounding-milestone.json",
+   "sha256": "4aaa3b5deeff7b44173738c6a758bf00f7e40e34ae953acbb108021b441ac266",
+   "size": 10940
+  },
+  {
+   "path": "T36/milestones/roster-verification.json",
+   "sha256": "da8e7a6b3d29f82cf1218efc892814e50f1182f0618333d040a1f96980a3ed65",
+   "size": 2468
+  },
+  {
+   "path": "T36/roster-attempt-1/logs/T36-RC1-android-retry-recreated-the-logical-identity.semantic.log",
+   "sha256": "132677d916cfca1f433fcbaced06d6aa25175846b2949ba3c2eb7f921cff0f24",
+   "size": 691
+  },
+  {
+   "path": "T36/roster-attempt-1/logs/T36-RC1-ios-retry-recreated-the-logical-identity.semantic.log",
+   "sha256": "9205752e5d2a9717ba9425ae8f0b909cb569de20cfefe2a734f86737cbe5fbdd",
+   "size": 16029
+  },
+  {
+   "path": "T36/roster-attempt-1/logs/T36-RC2-android-replay-re-resolved-the-recipient.semantic.log",
+   "sha256": "92809ae571421be8c486c91fb979f12304b2f3e78d189ca70c1254542e2c016f",
+   "size": 687
+  },
+  {
+   "path": "T36/roster-attempt-1/logs/T36-RC2-ios-replay-re-resolved-the-recipient.semantic.log",
+   "sha256": "b1a46f9947377772fc471d49ce66809ae725b8333bc8461c888e308955a47c2a",
+   "size": 16029
+  },
+  {
+   "path": "T36/roster-attempt-1/logs/T36-RC3-android-id-handed-out-before-the-commit-proved.semantic.log",
+   "sha256": "fa53f49fe171db9088f286ab89c3d2d4b7c812ae770ced1ef4eb9202129e84d4",
+   "size": 693
+  },
+  {
+   "path": "T36/roster-attempt-1/logs/T36-RC3-ios-id-handed-out-before-the-commit-proved.semantic.log",
+   "sha256": "3181e11d24cd284ab25a3c6d71f6807cb8dbde9d4fae60495a51410e9caf04fb",
+   "size": 16029
+  },
+  {
+   "path": "T36/roster-attempt-1/logs/T36-RC4-android-profile-gate-moved-after-authoring.semantic.log",
+   "sha256": "c9b6cb0f72e0527ec8605cb5abd1ae18ca30fcfd41140e4db9a12240ee5c42b7",
+   "size": 689
+  },
+  {
+   "path": "T36/roster-attempt-1/logs/T36-RC4-ios-profile-gate-moved-after-authoring.semantic.log",
+   "sha256": "34f8631a5df17ecd712db37f3efd2c3dc685d47974051baa79df505899ba8c4c",
+   "size": 16029
+  },
+  {
+   "path": "T36/roster-attempt-1/logs/T36-RC5-android-changed-content-replayed-the-pinned-row.semantic.log",
+   "sha256": "47b8a8161851dc10b02d1041cb52e44654271f4c9de8d7c2ca97fe82b64060cf",
+   "size": 694
+  },
+  {
+   "path": "T36/roster-attempt-1/logs/T36-RC5-ios-changed-content-replayed-the-pinned-row.semantic.log",
+   "sha256": "08ff9227232ad1a6838e2f04ef40a5defc0ad980409748c18555f26f1e628669",
+   "size": 16029
+  },
+  {
+   "path": "T36/roster-attempt-1/manifest.json",
+   "sha256": "1c54a8ce5b0d2007f517240d5d598a186759ff09aab5e22a18e2ce21bf9ae229",
+   "size": 8109
+  },
+  {
+   "path": "T36/roster/logs/T36-RC1-android-retry-recreated-the-logical-identity.semantic.log",
+   "sha256": "132677d916cfca1f433fcbaced06d6aa25175846b2949ba3c2eb7f921cff0f24",
+   "size": 691
+  },
+  {
+   "path": "T36/roster/logs/T36-RC1-ios-retry-recreated-the-logical-identity.semantic.log",
+   "sha256": "c79b89af76eac2ed56040166e7826b36cc48fab3fcd4ea120d13b0c2663a5082",
+   "size": 16029
+  },
+  {
+   "path": "T36/roster/logs/T36-RC2-android-replay-re-resolved-the-recipient.semantic.log",
+   "sha256": "92809ae571421be8c486c91fb979f12304b2f3e78d189ca70c1254542e2c016f",
+   "size": 687
+  },
+  {
+   "path": "T36/roster/logs/T36-RC2-ios-replay-re-resolved-the-recipient.semantic.log",
+   "sha256": "dd10670b6d08049d2a062d361e902169c641b87736ca45cd94357c7d239e2186",
+   "size": 16029
+  },
+  {
+   "path": "T36/roster/logs/T36-RC3-android-id-handed-out-before-the-commit-proved.semantic.log",
+   "sha256": "fa53f49fe171db9088f286ab89c3d2d4b7c812ae770ced1ef4eb9202129e84d4",
+   "size": 693
+  },
+  {
+   "path": "T36/roster/logs/T36-RC3-ios-id-handed-out-before-the-commit-proved.semantic.log",
+   "sha256": "f207c354cfe64466bb5caad78031429d2e44445e73d19df84c354caf039df44b",
+   "size": 16029
+  },
+  {
+   "path": "T36/roster/logs/T36-RC4-android-profile-gate-moved-after-authoring.semantic.log",
+   "sha256": "30e21dce662c06772a07237c8342f5802a1255cea7447847154638012479ab96",
+   "size": 689
+  },
+  {
+   "path": "T36/roster/logs/T36-RC4-ios-profile-gate-moved-after-authoring.semantic.log",
+   "sha256": "4f94f8a52755c64035281d433e7d4b2b57afb577992082a8f53226fabe288d89",
+   "size": 16029
+  },
+  {
+   "path": "T36/roster/logs/T36-RC5-android-changed-content-replayed-the-pinned-row.semantic.log",
+   "sha256": "47b8a8161851dc10b02d1041cb52e44654271f4c9de8d7c2ca97fe82b64060cf",
+   "size": 694
+  },
+  {
+   "path": "T36/roster/logs/T36-RC5-ios-changed-content-replayed-the-pinned-row.semantic.log",
+   "sha256": "cf019ce152e94b3962b8a8cd9ccc35082793e440685017b4795e183b689161c9",
+   "size": 16029
+  },
+  {
+   "path": "T36/roster/manifest.json",
+   "sha256": "bfed759aaa0be58046dd055a314b9642f436f80d12adb2e2121dea50bda5799c",
+   "size": 8359
+  }
+ ],
+ "note": "T36 (SendDirect: the atomic authored DIRECT send command -- immutable logical id only after durable enqueue) seal evidence: seven executed stage records (narrow 2, subsystem 2 first-attempt greens -- the 64-draw pair-cap family did not appear, controls 3), all source_sha == boundary 778e67aa020c; the dual courts (11 android runTest-suspend + 11 iOS async XCTest, name-for-name twins); the ten-row semantic roster manifest + logs, all KILLED at uniform baseline 778e67aa020c, with attempt-1's five INVALID iOS rows archived in full for honesty (driver dialect misconfiguration, re-earned class-form); four milestones (design-grounding, contract-court-android, court-ios, roster-verification). readiness stays FALSE; external gates untouched; no device claims.",
+ "schema_version": 1,
+ "task": "T36"
 }
