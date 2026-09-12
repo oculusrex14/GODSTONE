@@ -989,7 +989,7 @@ SEMANTIC = [
         'replace': '        if let row = journal.load(command.intentId), false, row.bindingDigest == digest {',
         'why': 'the iOS twin: the pinned row is never recognised, the retry re-creates through the factory -- the replay-loads-identical-bytes law dies on this isle too',
         'witness': 'testRetryOfSameIntentTokenLoadsIdenticalPersistedBytes',
-        'swift_filter': 'ReadinessT36Tests/testRetryOfSameIntentTokenLoadsIdenticalPersistedBytes',
+        'swift_filter': 'ReadinessT36Tests',
     },
     {
         'id': 'T36-RC2-android-replay-re-resolved-the-recipient',
@@ -1009,7 +1009,7 @@ SEMANTIC = [
         'replace': '        if let row = journal.load(command.intentId), trustResolver.resolve(recipientTrustRef: command.recipientTrustRef) == ResolvedRecipient.absent || true, row.bindingDigest == digest {',
         'why': 'the iOS twin resolves behind the pinned token on every replay; the resolver counter increments where the sealed law demands silence',
         'witness': 'testKeyRotationRacePinsTheAcceptedGeneration',
-        'swift_filter': 'ReadinessT36Tests/testKeyRotationRacePinsTheAcceptedGeneration',
+        'swift_filter': 'ReadinessT36Tests',
     },
     {
         'id': 'T36-RC3-android-id-handed-out-before-the-commit-proved',
@@ -1029,7 +1029,7 @@ SEMANTIC = [
         'replace': '        switch enq {\n        case .created:\n            advanceQuietly(intentId: command.intentId, from: .authored, to: .committed)\n            return .durablyEnqueued(logicalMessageId: expectId, fromRetry: false)\n        case .alreadyQueuedSameBinding:\n            advanceQuietly(intentId: command.intentId, from: .authored, to: .committed)\n            return .durablyEnqueued(logicalMessageId: expectId, fromRetry: true)\n        case .canonicalFrameMismatch: return .rejected(reason: .enqueueCanonicMismatch)\n        case .rejectedCapacity:       return .rejected(reason: .enqueueCapacity)\n        case .conflictRecipient:      return .rejected(reason: .enqueueConflictRecipient)\n        case .rejectedTerminalState:  return .rejected(reason: .enqueueTerminalState)\n        case .inconsistentState:      return .rejected(reason: .enqueueInconsistent)\n        case .storageFailure:         return .durablyEnqueued(logicalMessageId: expectId, fromRetry: false)',
         'why': 'the iOS twin hands the id even when the store reports the storage fault; rejected carries no id is violated end to end',
         'witness': 'testDiskFullRefusesSendDistinguishingFailureFromEmpty',
-        'swift_filter': 'ReadinessT36Tests/testDiskFullRefusesSendDistinguishingFailureFromEmpty',
+        'swift_filter': 'ReadinessT36Tests',
     },
     {
         'id': 'T36-RC4-android-profile-gate-moved-after-authoring',
@@ -1049,7 +1049,7 @@ SEMANTIC = [
         'replace': '        guard command.bodyUtf8.count <= 4000 else { return .rejected(reason: .bodyTooLarge) }',
         'why': 'the iOS profile widens to let the oversize body travel to the authoring boundary before refusal; creates and resolves move where the gate must have stopped them',
         'witness': 'testBodyProfileGateBeforeAnyAuthoring',
-        'swift_filter': 'ReadinessT36Tests/testBodyProfileGateBeforeAnyAuthoring',
+        'swift_filter': 'ReadinessT36Tests',
     },
     {
         'id': 'T36-RC5-android-changed-content-replayed-the-pinned-row',
@@ -1069,7 +1069,7 @@ SEMANTIC = [
         'replace': '        if let row = journal.load(command.intentId) {',
         'why': 'the iOS twin ignores the digest: the changed body under the same token replays the old id; the court counts the created sends and finds them short',
         'witness': 'testChangedRecipientOrBodyOrPriorityCreatesNewLogicalSend',
-        'swift_filter': 'ReadinessT36Tests/testChangedRecipientOrBodyOrPriorityCreatesNewLogicalSend',
+        'swift_filter': 'ReadinessT36Tests',
     },
 ]
 
