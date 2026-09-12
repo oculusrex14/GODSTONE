@@ -66,6 +66,17 @@ public final class MeshNode {
     /// outbox for the trusted link's writer (the physical pump is T54/T73-T75
     /// territory; the production wiring point is the lab composition root).
     internal var recipientInbox: RecipientInboxRepository?
+
+    /// T38 (section 15): the signed-SOS authority seam. Absent by default --
+    /// dispatch then keeps the legacy structural shape (documented, refused
+    /// by the receiver's runtime authentication exactly as section 15 demands;
+    /// byte-parity with the android legacy arm). The T54 lab composition root
+    /// binds this to the durable identity.
+    internal var sosAuthority: SosSigningAuthority?
+    /// T38: consumers of authenticated distress indications only. An
+    /// unauthenticated frame never reaches an observer; no trust or approval
+    /// state moves on this path (the peer directory's own layer).
+    internal var sosObserver: SosObserver?
     private let ackOutboxLock = NSLock()
     private var ackOutbox: [FrameV2] = []
 
@@ -254,27 +265,48 @@ public final class MeshNode {
         // The creation time and message_nonce are bound into the id (little-endian)
         // and authenticated alongside the payload by the signature below. Byte-identical to
         // Android Router.buildSos / MessageId.derive (see MessageIdTests).
-        let createdAt = Int64(Date().timeIntervalSince1970)
-        let messageNonce = MessageId.generateNonce()
-        let msgId = MessageId.derive(
-            senderNodeId: identity.nodeId,
-            createdAtEpochSeconds: createdAt,
-            messageNonce: messageNonce,
-            payload: payload)
-
-        let magic = Data("SOS1".utf8)
-        guard let signature = try? identity.sign(message: msgId + magic + payload) else {
-            return .failed("SOS signing failed")
+        // T38: with the authority wired, the distress call is authored through
+        // the single signed-SOS authority (section 15 layout, cross-isle byte
+        // parity). Without it the node emits the legacy structural shape --
+        // documented, refused by the receiver's runtime authentication, and
+        // unreachable for real radios while the link layer stays closed.
+        let frame: FrameV2
+        if let authority = sosAuthority,
+           let seed = authority.currentSigningSeed(),
+           let dhPub = authority.currentStaticDhPublicKey() {
+            let clock = authority.currentTimeEpochSeconds()
+            let quality: TimeQuality = (clock == 0) ? .unknown : .userConfirmed
+            do {
+                frame = try SignedSosV1.author(
+                    signingSeed: seed,
+                    staticDhPublicKey: dhPub,
+                    generation: authority.currentGeneration(),
+                    createdAtEpochSeconds: clock,
+                    timeQuality: quality,
+                    messageNonce: authority.currentNonce(),
+                    bodyUtf8: payload)
+            } catch {
+                return .failed("SOS authoring refused non-canonical material")
+            }
+        } else {
+            let createdAt = Int64(Date().timeIntervalSince1970)
+            let messageNonce = MessageId.generateNonce()
+            let msgId = MessageId.derive(
+                senderNodeId: identity.nodeId,
+                createdAtEpochSeconds: createdAt,
+                messageNonce: messageNonce,
+                payload: payload)
+            let magic = Data("SOS1".utf8)
+            let sealed = magic + Data(repeating: 0, count: 64) + payload
+            frame = FrameV2(
+                type: .sos,
+                msgId: msgId,
+                routingTag: identity.nodeHint,
+                ttl: FrameV2.maxTtl,
+                hopCount: 0,
+                flags: UInt16(FrameV2.Flags.ack_req | FrameV2.Flags.relay_ok),
+                payload: sealed)
         }
-        let sealed = magic + signature + payload
-        let frame = FrameV2(
-            type: .sos,
-            msgId: msgId,
-            routingTag: identity.nodeHint,
-            ttl: FrameV2.maxTtl,
-            hopCount: 0,
-            flags: UInt16(FrameV2.Flags.ack_req | FrameV2.Flags.relay_ok),
-            payload: sealed)
 
         switch store.persist(frame, receivedFrom: identity.nodeId) {
         case .heldNew, .heldDuplicate:
@@ -395,6 +427,19 @@ public final class MeshNode {
                 if let a = ack { offerAckForLink(a) }
             } catch {
                 // the durable authorities stand; the outbox stays as it is
+            }
+        }
+        if frame.type == .sos, let observer = sosObserver {
+            // T38: the distress indication is announced only to consumers of an
+            // authenticated key binding. The relay decision above was computed
+            // FIRST and stands untouched -- refusing to authenticate is a
+            // verdict about the INDICATION, never about the frame's epidemic
+            // duty.
+            switch SignedSosV1.verify(frame, expectedNodeId: nil) {
+            case .authenticated(let view):
+                observer.onSosAuthenticated(view: view)
+            case .unauthenticated(let reason, _):
+                observer.onSosUnauthenticated(frame: frame, reason: reason)
             }
         }
         return relay
