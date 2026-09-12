@@ -415,4 +415,32 @@ public final class SqliteDeliveryRepository: DeliveryRepository {
             return r.count == 16
         }
     }
+
+    /// T39 THE OVERRIDE: the broadcast pair-commit over the one shared
+    /// authority. When this repository sits on the concrete `SqliteMessageStore`
+    /// (the production wiring: the same handle, the same tables, the same
+    /// transaction machinery as the C7.5 retiring transitions), the held frame
+    /// and the NONE-mode row commit together in ONE transaction via the store's
+    /// own primitive -- a second-write failure rolls the whole pair back, never
+    /// a silent half. Absent that concrete store (a bare `DeliveryStore` seam in
+    /// the witnesses), the repository walks the compatible two-step route (see
+    /// `compatibleSosOutboundTwoStep`) -- the very sequence of operations the
+    /// sealed T24/T38 journals observed pre-T39, byte for byte.
+    public func enqueueSosOutbound(
+        _ frame: FrameV2,
+        localOriginNodeId: Data,
+        persist: () -> PersistResult
+    ) -> OutboundEnqueueResult {
+        if let shared = store as? SqliteMessageStore {
+            return shared.enqueueSosOutboundAtWithFault(
+                frame,
+                localOriginNodeId: localOriginNodeId,
+                receivedAt: Int64(Date().timeIntervalSince1970 * 1000),
+                fault: nil
+            )
+        }
+        return compatibleSosOutboundTwoStep(
+            self, frame, localOriginNodeId: localOriginNodeId, persist: persist
+        )
+    }
 }

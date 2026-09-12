@@ -917,6 +917,124 @@ public final class SqliteMessageStore: MessageStore {
         }
     }
 
+    /// T39 (section 14): the broadcast PAIR-COMMIT over the shared handle -- the
+    /// held frame AND the initial NONE-mode delivery row in ONE transaction on
+    /// the same handle the delivery repository shares (the C7.5 retiring
+    /// transitions are this method's siblings). The SOS policy is checked
+    /// beforehand: the fixed widths, the type octet SOS, and BOTH required flag
+    /// bits (ack_req | relay_ok) -- no priority gate is consulted and no
+    /// recipient is bound, for a distress call is a broadcast, not a directed
+    /// obligation. A standing pair is classified, never blindly doubled: same
+    /// binding and same canonical bytes give `.alreadyQueuedSameBinding`, a
+    /// different binding or a terminal row is refused, a torn pair is reported
+    /// `.inconsistentState`. A fresh pair inserts the held row, enforces the hard
+    /// capacity, proves the read-back against the authored canonical frame, then
+    /// records the delivery row (queuedDurably, NONE, no recipient) -- and any
+    /// error at the named fault seams rolls the WHOLE pair back: no held frame
+    /// without its row, no row without its frame (the both-or-neither law).
+    /// Observers are notified only after the commit, as the DIRECT twin does.
+    internal func enqueueSosOutboundAtWithFault(
+        _ frame: FrameV2,
+        localOriginNodeId: Data,
+        receivedAt: Int64 = Int64(Date().timeIntervalSince1970 * 1000),
+        fault: ((String, OpaquePointer?) throws -> Void)? = nil
+    ) -> OutboundEnqueueResult {
+        guard frame.msgId.count == 16,
+              frame.routingTag.count == 4,
+              frame.ttl <= FrameV2.maxTtl,
+              frame.hopCount <= FrameV2.maxTtl,
+              frame.flags <= 0xFFFF,
+              frame.payload.count <= FrameV2.maxPayload,
+              localOriginNodeId.count == 16,
+              frame.type == .sos,
+              (frame.flags & FrameV2.Flags.ack_req) != 0,
+              (frame.flags & FrameV2.Flags.relay_ok) != 0
+        else {
+            return .invalidArgument
+        }
+
+        do {
+            let result = try withTransaction { (db: OpaquePointer) -> OutboundEnqueueResult in
+                let existingDelivery = try readDeliveryNoLockStrict(db, frame.msgId)
+                let heldRow = try readHeldNoLockStrict(db, frame.msgId)
+
+                if let existing = existingDelivery {
+                    guard let state = DeliveryState.fromPersistedCode(existing.state),
+                          let ackMode = AckMode.fromCode(existing.ackMode),
+                          existing.expectedRecipient == nil
+                    else {
+                        return .inconsistentState
+                    }
+                    if state.isTerminal {
+                        return .rejectedTerminalState
+                    }
+                    guard let held = heldRow, let heldFrame = held.frame else {
+                        return .inconsistentState
+                    }
+                    guard held.receivedFrom == localOriginNodeId else {
+                        return .inconsistentState
+                    }
+                    if ackMode != .none {
+                        // a broadcast row is bound to NO recipient; a row that carries
+                        // one is another obligation's, never this authority's to touch
+                        return .conflictRecipient
+                    }
+                    if heldFrame != frame {
+                        return .canonicalFrameMismatch
+                    }
+                    return .alreadyQueuedSameBinding(heldFrame)
+                }
+
+                if heldRow != nil {
+                    return .inconsistentState
+                }
+
+                let isNew = try insertRowNoLockStrict(db, frame, receivedFrom: localOriginNodeId, receivedAt: receivedAt)
+                guard isNew else { throw StoreError.stepFailed }
+
+                try fault?("after_held_insert", db)
+
+                let held = try heldBytesNoLockStrict(db)
+                if held > maxBytes {
+                    try evictOldestPrefixNoLockStrict(db, overshoot: held - maxBytes)
+                }
+
+                try fault?("after_evict", db)
+
+                guard let persisted = try readHeldNoLockStrict(db, frame.msgId) else {
+                    throw DirectEnqueueError.capacityEvicted
+                }
+                guard let persistedFrame = persisted.frame,
+                      persistedFrame == frame && persisted.receivedFrom == localOriginNodeId else {
+                    throw StoreError.stepFailed
+                }
+
+                try fault?("before_delivery_insert", db)
+
+                let inserted = try insertDeliveryNoLockStrict(
+                    db,
+                    msgId: frame.msgId,
+                    stateOrdinal: DeliveryState.queuedDurably.code,
+                    ackModeOrdinal: AckMode.none.rawValue,
+                    expectedRecipient: nil
+                )
+                guard inserted else { throw StoreError.stepFailed }
+
+                try fault?("after_delivery_insert", db)
+
+                return OutboundEnqueueResult.created(persistedFrame)
+            }
+            if case .created = result {
+                notifyHeldSetChanged()
+            }
+            return result
+        } catch DirectEnqueueError.capacityEvicted {
+            return .rejectedCapacity
+        } catch {
+            return .storageFailure // the transaction rolled back: no pair, no promise
+        }
+    }
+
     /// Remove held frame for `msgId` and notify observers if deleted.
     @discardableResult
     public func removeHeld(_ msgId: Data) -> Bool {
@@ -1864,6 +1982,134 @@ internal final class InMemoryMessageStore: MessageStore {
                 expectedRecipient: existing.expectedRecipient
             )
         }
+    }
+
+    /// T39: classify-then-mutate row insert, the map twin of the engine's
+    /// ON CONFLICT DO NOTHING. True when THIS call created the row; false when
+    /// one already stood (the caller re-reads and classifies, C6.4-T).
+    internal func insertDeliveryRowIfAbsent(
+        _ msgId: Data, state: Int32, ackMode: Int32, expectedRecipient: Data?
+    ) -> Bool {
+        lock.lock(); defer { lock.unlock() }
+        if deliveryRows[msgId] != nil { return false }
+        deliveryRows[msgId] = DeliveryRow(state: state, ackMode: ackMode, expectedRecipient: expectedRecipient)
+        return true
+    }
+
+    /// T39: drop the delivery row alone (the typed per-msg clear is the
+    /// repository's; this is the table operation underneath). True when a row
+    /// was removed.
+    internal func deleteDeliveryRow(_ msgId: Data) -> Bool {
+        lock.lock(); defer { lock.unlock() }
+        return deliveryRows.removeValue(forKey: msgId) != nil
+    }
+
+    /// T39: the held row for `msgId` as copies -- (frame, receivedFrom) -- or
+    /// nil. Snapshots cannot alias the tables, so the pair-commit and the
+    /// store-backed repository may prove cross-table shape without tearing.
+    internal func heldSnapshot(_ msgId: Data) -> (frame: FrameV2, receivedFrom: Data)? {
+        lock.lock(); defer { lock.unlock() }
+        guard let h = rows[msgId] else { return nil }
+        return (h.frame, h.receivedFrom)
+    }
+
+    /// T39 (section 14): the broadcast PAIR-COMMIT in the store's one lock --
+    /// the held frame AND the NONE-mode delivery row appear together or not at
+    /// all (the both-or-neither law the SQL engines inherit from the
+    /// transaction; here enforced by classify-first, prepare-both,
+    /// publish-once). Validation runs beforehand -- the fixed widths, the type
+    /// octet SOS, both required flag bits (ack_req | relay_ok); nothing is
+    /// written when any gate refuses. A standing pair is classified, never
+    /// blindly doubled; a torn pair (row without frame, frame without row) is
+    /// `.inconsistentState` and is left whole. The fault seams at the named
+    /// points roll the WHOLE commit back -- no held frame without its row, no
+    /// row without its frame. The read-back proves the persisted bytes equal
+    /// the authored canonical frame; the capacity law (T33) evicts only
+    /// unprotected obligations. A fresh pair reports `.created` carrying the
+    /// read-back canonical frame; the identical re-delivery is
+    /// `.alreadyQueuedSameBinding`; observers hear the tables only after the
+    /// pair stands complete.
+    internal func enqueueSosOutboundAtWithFault(
+        _ frame: FrameV2,
+        localOriginNodeId: Data,
+        receivedAt: Int64 = Int64(Date().timeIntervalSince1970 * 1000),
+        fault: ((String) throws -> Void)? = nil
+    ) -> OutboundEnqueueResult {
+        guard frame.msgId.count == 16,
+              frame.routingTag.count == 4,
+              frame.ttl <= FrameV2.maxTtl,
+              frame.hopCount <= FrameV2.maxTtl,
+              frame.flags <= 0xFFFF,
+              frame.payload.count <= FrameV2.maxPayload,
+              localOriginNodeId.count == 16,
+              frame.type == .sos,
+              (frame.flags & FrameV2.Flags.ack_req) != 0,
+              (frame.flags & FrameV2.Flags.relay_ok) != 0
+        else { return .invalidArgument }
+
+        let result: OutboundEnqueueResult = {
+            lock.lock(); defer { lock.unlock() }
+            let heldEntry = rows[frame.msgId]
+            let existingDelivery = deliveryRows[frame.msgId]
+            if let existing = existingDelivery {
+                guard let state = DeliveryState.fromPersistedCode(existing.state),
+                      let ackMode = AckMode.fromCode(existing.ackMode),
+                      existing.expectedRecipient == nil
+                else { return .inconsistentState }
+                if state.isTerminal { return .rejectedTerminalState }
+                guard let held = heldEntry else { return .inconsistentState }
+                guard held.receivedFrom == localOriginNodeId else { return .inconsistentState }
+                if ackMode != .none { return .conflictRecipient }
+                if held.frame != frame { return .canonicalFrameMismatch }
+                return .alreadyQueuedSameBinding(held.frame)
+            }
+            if heldEntry != nil { return .inconsistentState }
+
+            let backupRows = rows
+            let backupDeliveryRows = deliveryRows
+            do {
+                try fault?("before_held_insert")
+                rows[frame.msgId] = Held(frame: frame, receivedFrom: localOriginNodeId, receivedAt: receivedAt)
+                try fault?("after_held_insert")
+                if totalBytesNoLock > maxBytes { evictUntilUnderCapNoLock() }
+                if rows[frame.msgId] == nil {
+                    // the just-inserted frame was evicted before its row could
+                    // stand: nothing published, nothing promised
+                    deliveryRows[frame.msgId] = nil
+                    return .rejectedCapacity
+                }
+                try fault?("before_delivery_insert")
+                deliveryRows[frame.msgId] = DeliveryRow(
+                    state: DeliveryState.queuedDurably.code,
+                    ackMode: AckMode.none.rawValue,
+                    expectedRecipient: nil
+                )
+                try fault?("after_delivery_insert")
+            } catch {
+                rows = backupRows
+                deliveryRows = backupDeliveryRows
+                return .storageFailure
+            }
+            // read-back proof: the persisted bytes are the bytes that were authored
+            guard let persisted = rows[frame.msgId],
+                  let standing = deliveryRows[frame.msgId],
+                  persisted.frame == frame,
+                  persisted.receivedFrom == localOriginNodeId,
+                  standing.state == DeliveryState.queuedDurably.code,
+                  standing.ackMode == AckMode.none.rawValue,
+                  standing.expectedRecipient == nil
+            else {
+                rows = backupRows
+                deliveryRows = backupDeliveryRows
+                return .inconsistentState
+            }
+            return .created(persisted.frame)
+        }()
+
+        if case .created = result {
+            notifyHeldSetChanged()
+        }
+        return result
     }
 
     private var totalBytesNoLock: Int64 {

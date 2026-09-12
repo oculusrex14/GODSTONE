@@ -442,6 +442,102 @@ public protocol DeliveryRepository: AnyObject {
     /// `.invalidArgument` (C6.4-D). C6.4.1-K: `.corrupt` is removed -- `clear` is a
     /// single DELETE; a corrupt read is impossible (no row is decoded).
     func clear(_ msgId: Data) -> ClearResult
+
+    /// T39 (section 14): commit the broadcast author's PAIR -- the held frame AND
+    /// its NONE-mode delivery row -- as ONE durable operation. This is the card's
+    /// "one durable authority" for the SOS path; validation runs first and
+    /// nothing is written when any gate refuses (fail closed).
+    ///
+    /// The DEFAULT (see `compatibleSosOutboundTwoStep`) is the compatible
+    /// two-step route the sealed journals of T24/T38 already speak with, byte
+    /// for byte: run the caller's `persist` closure over the frame table, then
+    /// record the row through `enqueue` with (AckMode.none, no recipient).
+    /// Journals that keep the two tables apart see the very sequence of
+    /// operations of the pre-T39 dispatch -- no observer is broken by this
+    /// addition.
+    ///
+    /// A repository that owns BOTH tables in one authority -- the SQL store over
+    /// the shared handle, the store-backed in-memory repository over the store's
+    /// one lock -- OVERRIDES this member with the atomic pair-commit: either both
+    /// rows appear or neither does, and a second-write failure rolls the whole
+    /// pair back (`.storageFailure`, never a silent half). A fresh pair reports
+    /// `.created` carrying the read-back canonical frame; a re-delivery of the
+    /// identical pair is the idempotent `.alreadyQueuedSameBinding`; conflicts
+    /// and terminal rows are classified apart, never conflated.
+    func enqueueSosOutbound(
+        _ frame: FrameV2,
+        localOriginNodeId: Data,
+        persist: () -> PersistResult
+    ) -> OutboundEnqueueResult
+}
+
+/// T39: the shared SOS pair-commit policy -- validation BEFORE any write, so a
+/// refused command leaves the previous authoritative state whole (fail closed).
+/// The fixed widths, the type octet, and BOTH required flag bits stand forever
+/// as the tables record them (T38/section 15); a distress call is a broadcast:
+/// bound to no recipient, gated by no priority.
+internal func sosOutboundPolicyChecked(
+    _ frame: FrameV2,
+    localOriginNodeId: Data
+) -> Bool {
+    guard frame.msgId.count == 16,
+          frame.routingTag.count == 4,
+          frame.ttl <= FrameV2.maxTtl,
+          frame.hopCount <= FrameV2.maxTtl,
+          frame.flags <= 0xFFFF,
+          frame.payload.count <= FrameV2.maxPayload,
+          localOriginNodeId.count == 16,
+          frame.type == .sos,
+          (frame.flags & FrameV2.Flags.ack_req) != 0,
+          (frame.flags & FrameV2.Flags.relay_ok) != 0
+    else { return false }
+    return true
+}
+
+/// T39: the compatible two-step route, factored out so the protocol DEFAULT and
+/// any override that lacks a shared authority can walk the very same road the
+/// sealed T24/T38 journals observed pre-T39: persist the frame, then record the
+/// row (AckMode.none, no recipient). Classifications map onto the
+/// `OutboundEnqueueResult` taxonomy without conflation; the read-back canonical
+/// frame is the authored one on this route (the caller's bytes verbatim).
+internal func compatibleSosOutboundTwoStep(
+    _ repo: DeliveryRepository,
+    _ frame: FrameV2,
+    localOriginNodeId: Data,
+    persist: () -> PersistResult
+) -> OutboundEnqueueResult {
+    guard sosOutboundPolicyChecked(frame, localOriginNodeId: localOriginNodeId) else {
+        return .invalidArgument
+    }
+    switch persist() {
+    case .heldNew, .heldDuplicate:
+        switch repo.enqueue(frame.msgId, ackMode: .none, expectedRecipient: nil) {
+        case .created:                      return .created(frame)
+        case .alreadyQueuedSameBinding:     return .alreadyQueuedSameBinding(frame)
+        case .conflictRecipient:            return .conflictRecipient
+        case .rejectedTerminalState:        return .rejectedTerminalState
+        case .corrupt:                      return .inconsistentState
+        case .storageFailure:               return .storageFailure
+        case .invalidArgument:              return .invalidArgument
+        }
+    case .rejectedCapacity:
+        return .rejectedCapacity
+    case .failedStorage:
+        return .storageFailure
+    }
+}
+
+public extension DeliveryRepository {
+    /// T39 DEFAULT: the compatible two-step route (see
+    /// `compatibleSosOutboundTwoStep`). Authorities that own both tables override
+    /// with the atomic pair-commit.
+    func enqueueSosOutbound(
+        _ frame: FrameV2,
+        localOriginNodeId: Data,
+        persist: () -> PersistResult
+    ) -> OutboundEnqueueResult {
+        compatibleSosOutboundTwoStep(self, frame, localOriginNodeId: localOriginNodeId, persist: persist)
+    }
 }
 
 public protocol AckAuthenticator: AnyObject {
@@ -578,4 +674,212 @@ public final class DeliveryTracker {
     /// success.
     @discardableResult
     public func forget(_ msgId: Data) -> ClearResult { repo.clear(msgId) }
+
+    /// T39: forward the broadcast PAIR-COMMIT (held frame + NONE-mode row) to
+    /// the repository authority. A repository that owns both tables commits them
+    /// in one transaction; a plain journal inherits the compatible two-step route
+    /// (persist, then record) defined on `DeliveryRepository.enqueueSosOutbound`.
+    /// The tracker adds no policy of its own -- the validation ladder lives in
+    /// one place, and no silent half-commits are reachable from either route.
+    @discardableResult
+    public func enqueueSosOutbound(
+        _ frame: FrameV2,
+        localOriginNodeId: Data,
+        persist: () -> PersistResult
+    ) -> OutboundEnqueueResult {
+        repo.enqueueSosOutbound(frame, localOriginNodeId: localOriginNodeId, persist: persist)
+    }
+
+    /// T39 (section 14): the ONE durable cancellation for a broadcast obligation.
+    /// The row moves queuedDurably/handedToRelay -> cancelledLocally through the
+    /// repository's guarded CAS, and the held frame is retired with it -- in one
+    /// transaction under the authority that owns both tables (the SQL store's
+    /// C7.5 machinery; the store-backed repository under the store's one lock).
+    /// Cancellation cannot recall copies already relayed: the truth of what had
+    /// gone out is reported in `.cancelled(wasRelayed:)` and the UI must say it.
+    /// Duplicate cancellation is the idempotent `.alreadyCancelled`, never an
+    /// error; a directed (singleRecipient) obligation is `.notBroadcast` and is
+    /// touched by no hand here. Nothing moves on any refused path.
+    @discardableResult
+    public func cancelSosBroadcast(_ msgId: Data) -> SosCancelResult {
+        guard msgId.count == 16 else { return .invalidArgument }
+        switch repo.get(msgId) {
+        case .notFound:                     return .unknownMessage
+        case .corrupt:                      return .corrupt
+        case .storageFailure:               return .storageFailure
+        case .invalidArgument:              return .invalidArgument
+        case .found(let rec):
+            if rec.ackMode != .none { return .notBroadcast }
+            let derived: Bool
+            switch rec.state {
+            case .queuedDurably:            derived = false
+            case .handedToRelay:            derived = true
+            case .cancelledLocally:         return .alreadyCancelled(wasRelayed: nil)
+            case .expired, .acknowledgedByRecipient:
+                return .rejectedTerminal(rec.state)
+            case .unavailable:              return .corrupt
+            }
+            switch repo.transition(msgId, .cancel) {
+            case .applied:
+                return .cancelled(wasRelayed: derived)
+            case .alreadyInTarget:
+                return .alreadyCancelled(wasRelayed: derived)
+            case .rejectedState, .unknownMessage:
+                // raced to another terminal state (or forgotten) meanwhile: re-read
+                // ONCE and classify honestly, touch nothing
+                switch repo.get(msgId) {
+                case .notFound:             return .unknownMessage
+                case .corrupt:              return .corrupt
+                case .storageFailure:       return .storageFailure
+                case .invalidArgument:      return .invalidArgument
+                case .found(let again):
+                    switch again.state {
+                    case .cancelledLocally:
+                        return .alreadyCancelled(wasRelayed: derived)
+                    case .expired, .acknowledgedByRecipient:
+                        return .rejectedTerminal(again.state)
+                    case .queuedDurably, .handedToRelay:
+                        // the CAS refused yet the row still stands live: the
+                        // transition machinery itself failed -- report it, do not
+                        // pretend the cancel moved
+                        return .storageFailure
+                    case .unavailable:      return .corrupt
+                    }
+                }
+            case .corrupt:                  return .corrupt
+            case .storageFailure:           return .storageFailure
+            case .invalidArgument:          return .invalidArgument
+            }
+        }
+    }
+}
+/// T39 (section 14): the in-memory authority over BOTH tables -- the held frames
+/// and the delivery rows -- under the store's one lock. This is the durable
+/// repository for the broadcast path where the SQL store over the shared handle
+/// is the durable repository in production: same classifications, same guarded
+/// transitions, same both-or-neither law for the pair-commit
+/// (`enqueueSosOutbound`) and for the retiring CANCEL/EXPIRE (C7.5: guarded
+/// terminal CAS + exact held-frame removal in one transaction). Validation
+/// precedes every write; a refused operation leaves the previous authoritative
+/// state whole; every typed result names its cause (failure is distinguished
+/// from idempotent no-op, C6.4-A/J).
+internal final class InMemoryStoreDeliveryRepository: DeliveryRepository {
+    private let store: InMemoryMessageStore
+
+    internal init(store: InMemoryMessageStore) { self.store = store }
+
+    private func bindingConsistent(ackMode: AckMode, expectedRecipient: Data?) -> Bool {
+        switch ackMode {
+        case .none:            return expectedRecipient == nil
+        case .singleRecipient: return expectedRecipient?.count == 16
+        }
+    }
+
+    public func get(_ msgId: Data) -> DeliveryLookup {
+        guard msgId.count == 16 else { return .invalidArgument }
+        guard let row = store.readDeliveryRow(msgId) else { return .notFound }
+        guard let state = DeliveryState.fromPersistedCode(row.state),
+              let ackMode = AckMode.fromCode(row.ackMode),
+              bindingConsistent(ackMode: ackMode, expectedRecipient: row.expectedRecipient)
+        else { return .corrupt }
+        return .found(DeliveryRecord(msgId: msgId, state: state, ackMode: ackMode,
+                                     expectedRecipientNodeId: row.expectedRecipient))
+    }
+
+    public func enqueue(_ msgId: Data, ackMode: AckMode, expectedRecipient: Data?) -> EnqueueResult {
+        guard msgId.count == 16 else { return .invalidArgument }
+        guard bindingConsistent(ackMode: ackMode, expectedRecipient: expectedRecipient) else {
+            return .corrupt
+        }
+        if store.insertDeliveryRowIfAbsent(
+            msgId,
+            state: DeliveryState.queuedDurably.code,
+            ackMode: ackMode.rawValue,
+            expectedRecipient: expectedRecipient
+        ) {
+            return .created
+        }
+        // ON CONFLICT DO NOTHING -- re-read the row and classify it once (C6.4-T)
+        switch get(msgId) {
+        case .notFound:         return .storageFailure // vanished mid-classification: report, do not invent
+        case .corrupt:          return .corrupt
+        case .storageFailure:   return .storageFailure
+        case .invalidArgument:  return .invalidArgument
+        case .found(let rec):
+            if rec.state.isTerminal { return .rejectedTerminalState }
+            if rec.ackMode != ackMode || rec.expectedRecipientNodeId != expectedRecipient {
+                return .conflictRecipient
+            }
+            return .alreadyQueuedSameBinding
+        }
+    }
+
+    public func transition(_ msgId: Data, _ transition: DeliveryTransition) -> TransitionResult {
+        guard msgId.count == 16 else { return .invalidArgument }
+        let spec = transitionSpec(transition)
+        switch get(msgId) {
+        case .notFound:         return .unknownMessage
+        case .corrupt:          return .corrupt
+        case .storageFailure:   return .storageFailure
+        case .invalidArgument:  return .invalidArgument
+        case .found(let rec):
+            let st = rec.state
+            if st == spec.target { return .alreadyInTarget }
+            if !spec.validFroms.contains(st) { return .rejectedState }
+            if spec.heldDisposition == .retireAtomically && store.heldSnapshot(msgId) == nil {
+                // C7.5: an active obligation without its held frame is cross-table
+                // corruption -- the transaction would roll back; nothing moves here
+                return .corrupt
+            }
+            store.updateDeliveryState(msgId, state: spec.target.code)
+            if spec.heldDisposition == .retireAtomically { _ = store.removeHeld(msgId) }
+            return .applied
+        }
+    }
+
+    public func acknowledgeBoundAndRetire(_ msgId: Data, expectedRecipient: Data) -> AckResult {
+        guard msgId.count == 16, expectedRecipient.count == 16 else { return .invalidArgument }
+        switch get(msgId) {
+        case .notFound:         return .unknownMessage
+        case .corrupt:          return .corrupt
+        case .storageFailure:   return .storageFailure
+        case .invalidArgument:  return .invalidArgument
+        case .found(let rec):
+            if rec.state == .acknowledgedByRecipient {
+                return .duplicateAuthenticatedAck // option B short-circuit, no writes
+            }
+            if rec.state.isTerminal { return .rejectedState }
+            if rec.ackMode != .singleRecipient || rec.expectedRecipientNodeId != expectedRecipient {
+                return .unknownMessage // the guarded WHERE binds the exact recipient
+            }
+            // atomic commit (C7.4): state -> acknowledged and the held frame retires together
+            if store.heldSnapshot(msgId) == nil { return .corrupt }
+            store.updateDeliveryState(msgId, state: DeliveryState.acknowledgedByRecipient.code)
+            _ = store.removeHeld(msgId)
+            return .applied
+        }
+    }
+
+    public func clear(_ msgId: Data) -> ClearResult {
+        guard msgId.count == 16 else { return .invalidArgument }
+        return store.deleteDeliveryRow(msgId) ? .cleared : .alreadyAbsent
+    }
+
+    /// T39 THE OVERRIDE: the pair-commit over the one authority. Delegates to
+    /// `InMemoryMessageStore.enqueueSosOutboundAtWithFault`, which writes BOTH
+    /// tables under the store's single lock with the both-or-neither law and the
+    /// named fault seams -- the atomic in-memory twin of the shared handle's
+    /// transactional pair-commit.
+    public func enqueueSosOutbound(
+        _ frame: FrameV2,
+        localOriginNodeId: Data,
+        persist: () -> PersistResult
+    ) -> OutboundEnqueueResult {
+        store.enqueueSosOutboundAtWithFault(
+            frame,
+            localOriginNodeId: localOriginNodeId,
+            receivedAt: Int64(Date().timeIntervalSince1970 * 1000),
+            fault: nil
+        )
+    }
 }

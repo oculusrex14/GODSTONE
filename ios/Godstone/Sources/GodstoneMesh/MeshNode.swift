@@ -77,6 +77,13 @@ public final class MeshNode {
     /// unauthenticated frame never reaches an observer; no trust or approval
     /// state moves on this path (the peer directory's own layer).
     internal var sosObserver: SosObserver?
+
+    /// T39: the remembered Active-SOS projection of the one durable authority
+    /// (section 14). The observable mirror `hasActiveSosBroadcast` is only ever
+    /// re-published FROM this projection or a fresh scan of the tables -- it is
+    /// no longer a token a stray call can spend.
+    private let sosRowLock = NSLock()
+    private var sosRowMemory: ActiveSos?
     private let ackOutboxLock = NSLock()
     private var ackOutbox: [FrameV2] = []
 
@@ -308,38 +315,226 @@ public final class MeshNode {
                 payload: sealed)
         }
 
-        switch store.persist(frame, receivedFrom: identity.nodeId) {
-        case .heldNew, .heldDuplicate:
-            // Stage 4C.1 / C6.1: record the delivery lifecycle AFTER durable hold
-            // (persist-before-tracker, extending the 4B.1 persist-before-forward
-            // gate to the delivery state). SOS is a broadcast (no single intended
-            // recipient), so it is enqueued with `AckMode.none` and no expected
-            // recipient binding -- a none-mode message can NEVER be acknowledged
-            // via this tracker (an inbound ACK for it yields `.notAckEligible` and
-            // the authenticator is not invoked). Idempotent: a re-dispatch of the
-            // same SOS is `.alreadyQueuedSameBinding`; only a genuine enqueue
-            // rejection aborts before any BLE write. Each successful relay
-            // hand-off calls `markHandedToRelay` (idempotent: first transitions
-            // queued -> handed).
-            switch deliveryTracker.enqueue(frame.msgId, ackMode: .none, expectedRecipient: nil) {
-            case .created, .alreadyQueuedSameBinding:
-                break
-            default:
-                return .failed("delivery enqueue rejected")
-            }
-            let handed = currentPeers().reduce(into: 0) { count, peer in
-                if send(frame, peer) {
-                    count += 1
-                    deliveryTracker.markHandedToRelay(frame.msgId)
-                }
-            }
-            return handed == 0 ? .queuedDurably : .handedToRelays(handed)
-        case .rejectedCapacity, .failedStorage:
-            // Persistence failed: exit BEFORE any transport operation. Zero sends.
-            // The delivery tracker is NOT touched -- no delivery is claimed for a
-            // message this node does not durably hold (persist-before-tracker).
-            return .notPersisted
+        // T39: the held frame AND its NONE-mode delivery row commit as ONE durable
+        // pair (section 14's both-or-neither law for the broadcast path). The
+        // repository is the authority: the SQL store over the shared handle runs
+        // the pair in one transaction, the store-backed repository writes both
+        // tables under the store's one lock, and a plain journal inherits the
+        // compatible two-step route (persist, then record) the pre-T39 dispatch
+        // spoke -- its observable sequence of operations is byte-unchanged. A
+        // half-committed pair is unnameable now: every rejection leaves no held
+        // orphan behind and no orphan row, and the failure is reported typed,
+        // never fabled. The B4 gate stands covering both tables: a pair this
+        // node cannot durably hold is NOT sent (zero sends) and reported
+        // `.notPersisted` so the UI does not lie.
+        let pair = deliveryTracker.enqueueSosOutbound(
+            frame,
+            localOriginNodeId: identity.nodeId
+        ) {
+            // Stage 4C.1 / C6.1: the compatible route records the delivery
+            // lifecycle AFTER durable hold (persist-before-tracker, extending the
+            // 4B.1 persist-before-forward gate to the delivery state). SOS is a
+            // broadcast (no single intended recipient), so the row is enqueued
+            // with `AckMode.none` and no expected recipient binding -- a
+            // none-mode message can NEVER be acknowledged via this tracker (an
+            // inbound ACK for it yields `.notAckEligible` and the authenticator
+            // is not invoked). Idempotent: a re-delivery of the identical pair is
+            // `.alreadyQueuedSameBinding`; only a genuine rejection aborts
+            // before any BLE write.
+            store.persist(frame, receivedFrom: identity.nodeId)
         }
+        switch pair {
+        case .created, .alreadyQueuedSameBinding:
+            break
+        case .rejectedCapacity, .storageFailure:
+            // The pair was not held (capacity, or a rolled-back storage attempt at
+            // either table): exit BEFORE any transport operation. Zero sends. No
+            // delivery is claimed for a message this node does not durably hold.
+            return .notPersisted
+        default:
+            // conflict / terminal / torn / invalid: the standing authority refuses
+            // the pair; nothing moved, nothing is promised.
+            return .failed("delivery pair commit rejected")
+        }
+        // Each successful relay hand-off calls `markHandedToRelay` (idempotent:
+        // first transitions queued -> handed; a terminal row refuses, the
+        // writer's follow cannot resurrect it).
+        let handed = currentPeers().reduce(into: 0) { count, peer in
+            if send(frame, peer) {
+                count += 1
+                deliveryTracker.markHandedToRelay(frame.msgId)
+            }
+        }
+        rememberSosCommit(frame: frame)
+        return handed == 0 ? .queuedDurably : .handedToRelays(handed)
+    }
+
+    // ---- T39 (section 14): the one durable authority for the SOS lifecycle ----
+    //
+    // The commands below never mutate authoritative state on a validation
+    // failure; every result is typed so that failure is distinguishable from
+    // the idempotent no-op (C6.4-A/J law, applied to the broadcast path).
+
+    /// The observable mirror of the durable projection (UI parity with the
+    /// Android status field). Read-only; refreshed only from the tables or the
+    /// remembered projection they justified.
+    public private(set) var hasActiveSosBroadcast: Bool = false
+
+    private func publishSosMirrorFromMemory() {
+        sosRowLock.lock()
+        let active = sosRowMemory != nil
+        sosRowLock.unlock()
+        hasActiveSosBroadcast = active
+    }
+
+    /// Remember the projection this node just committed -- reading the row back
+    /// FROM the tables (the authority, not the caller's hope, decides whether
+    /// the projection lives: a cancellation that landed mid-send must not be
+    /// remembered as active).
+    private func rememberSosCommit(frame: FrameV2) {
+        var live: DeliveryState? = nil
+        switch deliveryTracker.lookup(frame.msgId) {
+        case .found(let rec) where rec.ackMode == .none:
+            if rec.state == .queuedDurably || rec.state == .handedToRelay {
+                live = rec.state
+            }
+        default:
+            break
+        }
+        guard let state = live else {
+            sosRowLock.lock(); sosRowMemory = nil; sosRowLock.unlock()
+            publishSosMirrorFromMemory()
+            return
+        }
+        let projection = ActiveSos(
+            msgId: frame.msgId, state: state, frame: frame,
+            committedAtMillis: Int64(Date().timeIntervalSince1970 * 1000)
+        )
+        sosRowLock.lock(); sosRowMemory = projection; sosRowLock.unlock()
+        publishSosMirrorFromMemory()
+    }
+
+    /// T39: resume the SAME authored bytes of a still-live broadcast call. The
+    /// held frame is read back from the durable authority and re-handed to the
+    /// relays verbatim -- no re-derivation, no fresh seal: the msg_id is
+    /// immutable content and a retry that re-authored would betray it. A
+    /// terminal row (cancelled, expired, acknowledged) refuses the resume; a
+    /// vanished frame or row fails typed, never masquerading as an empty
+    /// success.
+    @discardableResult
+    internal func retrySos(msgId: Data, send: (FrameV2, UUID) -> Bool) -> SosDispatchResult {
+        guard msgId.count == 16 else { return .failed("retry: msg_id must be 16 bytes") }
+        let row: DeliveryRecord
+        switch deliveryTracker.lookup(msgId) {
+        case .found(let rec): row = rec
+        case .notFound: return .failed("retry: no durable row for this msg_id")
+        case .corrupt: return .failed("retry: corrupt delivery row")
+        case .storageFailure: return .failed("retry: storage failure reading the row")
+        case .invalidArgument: return .failed("retry: invalid msg_id")
+        }
+        if row.ackMode != .none { return .failed("retry: not a broadcast row") }
+        if row.state != .queuedDurably && row.state != .handedToRelay {
+            return .failed("retry: obligation already terminal (\(row.state))")
+        }
+        guard let frame = store.allHeldOrderedByPriority().first(where: {
+            $0.msgId == msgId && $0.type == .sos
+        }) else {
+            return .failed("retry: no held frame to resume")
+        }
+        let handed = currentPeers().reduce(into: 0) { count, peer in
+            if send(frame, peer) {
+                count += 1
+                deliveryTracker.markHandedToRelay(msgId)
+            }
+        }
+        rememberSosCommit(frame: frame)
+        return handed == 0 ? .queuedDurably : .handedToRelays(handed)
+    }
+
+    /// T39: cancel one broadcast call DURABLY -- the guarded terminal CAS on the
+    /// row plus the retirement of the held/scheduled work, in the authority's one
+    /// transaction. Already relayed copies cannot be recalled: the result carries
+    /// the truth of whether any had gone out (`.cancelled(wasRelayed:)`) so the
+    /// UI can say so too. Duplicate cancellation is the idempotent
+    /// `.alreadyCancelled`, never an error; a directed obligation is
+    /// `.notBroadcast` and stands untouched.
+    @discardableResult
+    internal func cancelSos(_ msgId: Data) -> SosCancelResult {
+        let outcome = deliveryTracker.cancelSosBroadcast(msgId)
+        sosRowLock.lock()
+        if let seen = sosRowMemory, seen.msgId == msgId { sosRowMemory = nil }
+        sosRowLock.unlock()
+        publishSosMirrorFromMemory()
+        return outcome
+    }
+
+    /// T39: the command surface. Author runs the established dispatch arm
+    /// (returns the same `SosDispatchResult` taxonomy the sealed courts speak);
+    /// Retry resumes the same bytes; Cancel retires durably. One entry point,
+    /// three honest outcomes -- no arm reports a success the tables do not show.
+    @discardableResult
+    internal func handleSosCommand(_ command: SosCommand, send: (FrameV2, UUID) -> Bool) -> SosCommandResult {
+        switch command {
+        case .author(let payload):
+            return .enqueued(dispatchSos(payload: payload, send: send))
+        case .retry(let msgId):
+            return .enqueued(retrySos(msgId: msgId, send: send))
+        case .cancel(let msgId):
+            return .cancelled(cancelSos(msgId))
+        }
+    }
+
+    /// T39: the durable Active-SOS projection, read FROM the delivery row joined
+    /// with the held frame -- never from a UI memory. A call counts active while
+    /// its row is NONE-mode and queuedDurably or handedToRelay and its frame is
+    /// still held; terminal rows (cancelled, expired) are not active. After a
+    /// restart the very same scan re-exposes what the tables still carry, which
+    /// is what the plain UI flag could never promise. Broadcast shows the local
+    /// queue only: nothing here claims recipient-delivered or guaranteed rescue.
+    internal func activeSosSnapshot() -> ActiveSos? {
+        for frame in store.allHeldOrderedByPriority() {
+            guard frame.type == .sos else { continue }
+            var row: DeliveryRecord? = nil
+            switch deliveryTracker.lookup(frame.msgId) {
+            case .found(let rec): row = rec
+            default: continue
+            }
+            guard let rec = row, rec.ackMode == .none,
+                  rec.state == .queuedDurably || rec.state == .handedToRelay
+            else { continue }
+            var remembered: Int64? = nil
+            sosRowLock.lock()
+            if let seen = sosRowMemory, seen.msgId == frame.msgId {
+                remembered = seen.committedAtMillis
+            }
+            sosRowLock.unlock()
+            let seen = ActiveSos(msgId: frame.msgId, state: rec.state, frame: frame,
+                                 committedAtMillis: remembered)
+            sosRowLock.lock(); sosRowMemory = seen; sosRowLock.unlock()
+            publishSosMirrorFromMemory()
+            return seen
+        }
+        sosRowLock.lock(); sosRowMemory = nil; sosRowLock.unlock()
+        publishSosMirrorFromMemory()
+        return nil
+    }
+
+    /// The last projection this node published through its own arms (may be
+    /// stale across a restart; `activeSosSnapshot` re-derives it from the
+    /// tables).
+    internal func lastKnownActiveSos() -> ActiveSos? {
+        sosRowLock.lock(); defer { sosRowLock.unlock() }
+        return sosRowMemory
+    }
+
+    /// The authoritative route: scan the tables, re-derive the projection, and
+    /// refresh the mirror from what the store actually holds. This is what the
+    /// restart cases exercise; it returns what it saw.
+    @discardableResult
+    internal func refreshSosStatusAfterScan() -> ActiveSos? {
+        let seen = activeSosSnapshot()
+        publishSosMirrorFromMemory()
+        return seen
     }
 
     /// Stage 4C / C6.6 -- atomic DIRECT outbound enqueue and dispatch.
