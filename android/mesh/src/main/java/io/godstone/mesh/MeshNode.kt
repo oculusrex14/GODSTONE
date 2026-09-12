@@ -107,6 +107,17 @@ class MeshNode(
      * territory; the production wiring point is the lab composition root).
      */
     internal var recipientInbox: RecipientInboxRepository? = null
+
+    /** T38: the signed-SOS authority seam. Absent by default -- dispatch then
+     * keeps emitting the legacy structural shape (documented, and refused by
+     * the receiver's runtime authentication exactly as section 15 demands).
+     * The T54 lab composition root binds this to the durable identity. */
+    internal var sosAuthority: io.godstone.mesh.wire.v2.SosSigningAuthority? = null
+
+    /** T38: consumers of authenticated distress indications only. An
+     * unauthenticated frame never reaches an observer; no trust or approval
+     * state moves on this path (that is the peer directory's own layer). */
+    internal var sosObserver: io.godstone.mesh.wire.v2.SosObserver? = null
     /**
      * Pure JVM test convenience constructor: builds a fail-closed SessionManager from the SAME [identity].
      */
@@ -297,7 +308,9 @@ class MeshNode(
         payload: ByteArray,
         send: suspend (peerId: ByteArray, bytes: ByteArray) -> Boolean,
     ): SosDispatchResult {
-        val frame = router.buildSos(payload)
+        val authority = sosAuthority
+        val frame = if (authority != null) authorSignedSos(authority, payload)
+        else router.buildSos(payload) // legacy structural shape; runtime auth refuses it
         when (store.persist(frame, receivedFrom = identity.nodeId)) {
             PersistResult.HELD_NEW,
             PersistResult.HELD_DUPLICATE -> Unit
@@ -324,6 +337,26 @@ class MeshNode(
         _status.value = _status.value.copy(activeSos = true)
         return if (handed == 0) SosDispatchResult.QueuedLocally
         else SosDispatchResult.HandedToRelays(handed)
+    }
+
+    /** Author one signed SOS under the wired authority. An authority that
+     * cannot yield canonical material falls back to the structural shape --
+     * loud at the receiver (authentication refuses it), never silently trusted
+     * here. Non-canonical material throws; broadcastSos already wraps dispatch
+     * in try/catch to a typed Failed outcome. */
+    private fun authorSignedSos(
+        authority: io.godstone.mesh.wire.v2.SosSigningAuthority,
+        payload: ByteArray,
+    ): io.godstone.mesh.wire.v2.FrameV2 {
+        val seed = authority.currentSigningSeed() ?: return router.buildSos(payload)
+        val dhPub = authority.currentStaticDhPublicKey() ?: return router.buildSos(payload)
+        val nonce = authority.currentNonce()
+        val clock = authority.currentTimeEpochSeconds()
+        val quality = if (clock == 0L) io.godstone.mesh.wire.v2.TimeQuality.UNKNOWN
+        else io.godstone.mesh.wire.v2.TimeQuality.USER_CONFIRMED
+        return io.godstone.mesh.wire.v2.SignedSosV1.author(
+            seed, dhPub, authority.currentGeneration(), clock, quality, nonce, payload,
+        )
     }
 
     /**
@@ -416,6 +449,29 @@ class MeshNode(
                     else -> null
                 }
                 if (ack != null) offerAckForLink(ack)
+            }
+            if (frame.type == io.godstone.mesh.wire.v2.TypeV2.SOS) {
+                val observer = sosObserver
+                if (observer != null) {
+                    // T38: the distress indication is announced only to consumers
+                    // of an authenticated key binding. The relay decision above was
+                    // computed FIRST and stands untouched -- refusing to
+                    // authenticate is a verdict about the INDICATION, never about
+                    // the frame's epidemic duty.
+                    val result = try {
+                        io.godstone.mesh.wire.v2.SignedSosV1.verify(frame, null)
+                    } catch (_: Throwable) {
+                        null
+                    }
+                    when {
+                        result is io.godstone.mesh.wire.v2.SosAuthResult.Authenticated ->
+                            observer.onSosAuthenticated(result.verified)
+                        result is io.godstone.mesh.wire.v2.SosAuthResult.Unauthenticated ->
+                            observer.onSosUnauthenticated(frame, result.reason)
+                        result == null -> observer.onSosUnauthenticated(
+                            frame, io.godstone.mesh.wire.v2.SignedSosV1.Reason.MALFORMED)
+                    }
+                }
             }
             relay
         }
