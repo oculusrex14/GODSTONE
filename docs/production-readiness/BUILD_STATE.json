@@ -3974,7 +3974,17 @@
     "SIGNING"
   ],
   "failed_attempts": [],
-  "in_progress": null,
+  "in_progress": {
+    "claimed_head": "1c4a1168f15ebd7633b75120abbb401d8bad0550",
+    "claimed_utc": "2026-09-12T00:48:30+00:00",
+    "objective": {
+      "claimed_head": "1c4a1168f15ebd7633b75120abbb401d8bad0550",
+      "claimed_utc": "2026-09-12T00:48:30+00:00",
+      "objective": "Keep the64MiB held-frame hard cap including SOS.",
+      "task": "T33"
+    },
+    "task": "T33"
+  },
   "last_code_head": "349defe2cfa5176941ab7ccf85df96a1145c0f19",
   "last_observed_head": "349defe2cfa5176941ab7ccf85df96a1145c0f19",
   "latest_verification": {
