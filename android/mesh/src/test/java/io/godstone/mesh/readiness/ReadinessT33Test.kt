@@ -150,6 +150,12 @@ class ReadinessT33Test {
         assertTrue("the hard cap holds after the plan", StoreQuota.hardCapHoldsAfter(rows, total))
         assertTrue("no unexpired tombstone / trust pin is silently evicted",
             plan.evictedIds.none { it == "sos-a" } && plan.evictedIds.none { it.startsWith("sos-b") })
+        // bounded-cursor law (the cards required bounded cursor reads): fetchPage respects its limit and never over-reads the backing
+        val backing = listOf("r0","r1","r2","r3","r4")
+        assertTrue("a page never exceeds its limit", StoreQuota.fetchPage(backing, 0, 2).size <= 2)
+        assertEquals("a bounded page reads exactly the limit many rows from the start", listOf("r0","r1","r2"), StoreQuota.fetchPage(backing, 0, 3))
+        assertEquals("a page reads the residual tail when the limit would overrun the backing", listOf("r3","r4"), StoreQuota.fetchPage(backing, 3, 10))
+        assertTrue("the cursor never reads past the backing (no fabricated rows)", StoreQuota.fetchPage(backing, 0, 99).size <= backing.size)
     }
 
     // (8) eviction moves the delivery record EVICTED in the SAME transaction (the second named falsification)
