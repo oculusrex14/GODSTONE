@@ -176,6 +176,9 @@ public class ReadinessT35Test {
             Triple("attacker-signed unknown version", attackerSigned(hostileVersion), "version"),
             Triple("attacker-signed malformed body", attackerSigned(hostileUtf), "UTF-8"),
             Triple("attacker-signed lied length", attackerSigned(hostileLied), "exact"),
+            // one EXTRA trailing byte sits OUTSIDE the signed span: the signature gate cannot see it,
+            // the UTF-8 validator never reaches it -- only the exact-length obligation rejects it
+            Triple("attacker-signed trailing byte", attackerSigned(baseUnsigned) + byteArrayOf(0x41), "exact"),
         )) {
             var r: SenderVerificationResult? = null
             var thrown: Throwable? = null

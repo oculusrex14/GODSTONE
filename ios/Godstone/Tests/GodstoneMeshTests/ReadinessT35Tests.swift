@@ -186,6 +186,11 @@ final class ReadinessT35Tests: XCTestCase {
         let hostiles: [(String, Data, String)] = [
             ("attacker-signed unknown version", try attackerSigned(Data(vB)), "version"),
             ("attacker-signed malformed body", try attackerSigned(Data(uB)), "UTF-8"),
+            // one EXTRA trailing byte sits OUTSIDE the signed span: the signature gate cannot see it,
+            // the UTF-8 validator never reaches it -- only the exact-length obligation rejects it.
+            // Ordered before the lied-length probe deliberately: under an exact-length-removal mutant
+            // this is the observable kill BEFORE any unclamped downstream slice could trap the runner.
+            ("attacker-signed trailing byte", try attackerSigned(baseU) + Data([0x41]), "exact"),
             ("attacker-signed lied length", try attackerSigned(Data(lB)), "exact"),
         ]
         for (name, frame, marker) in hostiles {
