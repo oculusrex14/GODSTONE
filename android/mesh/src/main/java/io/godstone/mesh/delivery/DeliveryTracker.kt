@@ -1,6 +1,9 @@
 package io.godstone.mesh.delivery
 
+import io.godstone.mesh.store.OutboundEnqueueResult
+import io.godstone.mesh.store.PersistResult
 import io.godstone.mesh.wire.v2.FrameV2
+import io.godstone.mesh.wire.v2.TypeV2
 
 // Stage 4C.1 / C6.1 -- durable, recipient-authenticated delivery state machine
 // (ADR-005; A-03). The lifecycle from ADR-005:
@@ -474,6 +477,66 @@ interface DeliveryRepository {
      * single DELETE; a corrupt read is impossible (no row is decoded).
      */
     fun clear(msgId: ByteArray): ClearResult
+
+    /**
+     * T39 (section 14): commit the broadcast author's PAIR -- the held frame AND
+     * its NONE-mode delivery row -- as ONE durable operation. This is the card's
+     * "one durable authority" for the SOS path; validation runs first and
+     * nothing is written when any gate refuses (fail closed).
+     *
+     * The DEFAULT body is the compatible two-step route the sealed journals of
+     * T24/T38 already speak with, byte for byte: run the caller's [persist]
+     * closure over the frame table, then record the row through [enqueue] with
+     * (AckMode.NONE, no recipient). Journals that keep the two tables apart see
+     * the very sequence of operations of the pre-T39 dispatch -- no observer is
+     * broken by this addition.
+     *
+     * A repository that owns BOTH tables in one authority -- the shared SQL
+     * engine (one transaction), the store-backed in-memory repository (one
+     * monitor) -- OVERRIDES this member with the atomic pair-commit: either both
+     * rows appear or neither does, and a second-write failure rolls the whole
+     * pair back ([OutboundEnqueueResult.StorageFailure], never a silent half).
+     * A fresh pair reports [OutboundEnqueueResult.Created] carrying the
+     * read-back canonical frame; a re-delivery of the identical pair is the
+     * idempotent [OutboundEnqueueResult.AlreadyQueuedSameBinding]; conflicts and
+     * terminal rows are classified apart, never conflated.
+     */
+    suspend fun enqueueSosOutbound(
+        frame: FrameV2,
+        localOriginNodeId: ByteArray,
+        persist: suspend () -> PersistResult,
+    ): OutboundEnqueueResult {
+        // -- policy gates, before any write ---------------------------------------
+        if (frame.msgId.size != 16) return OutboundEnqueueResult.InvalidArgument
+        if (frame.routingTag.size != 4) return OutboundEnqueueResult.InvalidArgument
+        if (frame.ttl !in 0..FrameV2.MAX_TTL) return OutboundEnqueueResult.InvalidArgument
+        if (frame.hopCount !in 0..FrameV2.MAX_TTL) return OutboundEnqueueResult.InvalidArgument
+        if (frame.flags !in 0..0xFFFF) return OutboundEnqueueResult.InvalidArgument
+        if (frame.payload.size > FrameV2.MAX_PAYLOAD) return OutboundEnqueueResult.InvalidArgument
+        if (localOriginNodeId.size != 16) return OutboundEnqueueResult.InvalidArgument
+        if (frame.type != TypeV2.SOS) return OutboundEnqueueResult.InvalidArgument
+        // the outer code and the required flags stand forever as the tables
+        // record them (T38/section 15): a distress frame must carry BOTH bits.
+        if ((frame.flags and FrameV2.ACK_REQ) == 0 ||
+            (frame.flags and FrameV2.RELAY_OK) == 0
+        ) return OutboundEnqueueResult.InvalidArgument
+        // -- the compatible two-step route (persist, then record) ------------------
+        return when (val p = persist()) {
+            PersistResult.HELD_NEW, PersistResult.HELD_DUPLICATE ->
+                when (val e = enqueue(frame.msgId, AckMode.NONE, null)) {
+                    EnqueueResult.Created -> OutboundEnqueueResult.Created(frame)
+                    EnqueueResult.AlreadyQueuedSameBinding ->
+                        OutboundEnqueueResult.AlreadyQueuedSameBinding(frame)
+                    EnqueueResult.ConflictRecipient -> OutboundEnqueueResult.ConflictRecipient
+                    EnqueueResult.RejectedTerminalState -> OutboundEnqueueResult.RejectedTerminalState
+                    EnqueueResult.Corrupt -> OutboundEnqueueResult.InconsistentState
+                    EnqueueResult.StorageFailure -> OutboundEnqueueResult.StorageFailure
+                    EnqueueResult.InvalidArgument -> OutboundEnqueueResult.InvalidArgument
+                }
+            PersistResult.REJECTED_CAPACITY -> OutboundEnqueueResult.RejectedCapacity
+            PersistResult.FAILED_STORAGE -> OutboundEnqueueResult.StorageFailure
+        }
+    }
 }
 
 /**
@@ -603,4 +666,237 @@ class DeliveryTracker(
      * success.
      */
     fun forget(msgId: ByteArray): ClearResult = repo.clear(msgId)
+
+    /**
+     * T39: forward the broadcast PAIR-COMMIT (held frame + NONE-mode row) to
+     * the repository authority. A repository that owns both tables commits them
+     * in one transaction; a plain journal inherits the compatible two-step route
+     * (persist, then record) defined on [DeliveryRepository.enqueueSosOutbound].
+     * The tracker adds no policy of its own -- the validation ladder lives in
+     * one place, and no silent half-commits are reachable from either route.
+     */
+    suspend fun enqueueSosOutbound(
+        frame: io.godstone.mesh.wire.v2.FrameV2,
+        localOriginNodeId: ByteArray,
+        persist: suspend () -> io.godstone.mesh.store.PersistResult,
+    ): io.godstone.mesh.store.OutboundEnqueueResult =
+        repo.enqueueSosOutbound(frame, localOriginNodeId, persist)
+
+    /**
+     * T39 (section 14): the ONE durable cancellation for a broadcast obligation.
+     * The row moves QUEUED_DURABLY/HANDED_TO_RELAY -> CANCELLED_LOCALLY through
+     * the repository's guarded CAS, and the held frame is retired with it -- in
+     * one transaction under the authority that owns both tables (the shared SQL
+     * engine's C7.5 machinery; the store-backed repository under the store's one
+     * monitor). Cancellation cannot recall copies already relayed: the truth of
+     * what had gone out is reported in [SosCancelResult.Cancelled.wasRelayed]
+     * and the UI must tell it. Duplicate cancellation is the idempotent
+     * [SosCancelResult.AlreadyCancelled], never an error; a directed
+     * (SINGLE_RECIPIENT) obligation is [SosCancelResult.NotBroadcast] and is
+     * touched by no hand here. Nothing moves on any refused path.
+     */
+    fun cancelSosBroadcast(msgId: ByteArray): io.godstone.mesh.SosCancelResult {
+        if (msgId.size != 16) return io.godstone.mesh.SosCancelResult.InvalidArgument
+        return when (val peek = repo.get(msgId)) {
+            DeliveryLookup.NotFound -> io.godstone.mesh.SosCancelResult.UnknownMessage
+            DeliveryLookup.Corrupt -> io.godstone.mesh.SosCancelResult.Corrupt
+            DeliveryLookup.StorageFailure -> io.godstone.mesh.SosCancelResult.StorageFailure
+            DeliveryLookup.InvalidArgument -> io.godstone.mesh.SosCancelResult.InvalidArgument
+            is DeliveryLookup.Found -> {
+                val rec = peek.record
+                if (rec.ackMode != AckMode.NONE)
+                    return io.godstone.mesh.SosCancelResult.NotBroadcast
+                val derived = when (rec.state) {
+                    DeliveryState.QUEUED_DURABLY, DeliveryState.HANDED_TO_RELAY ->
+                        rec.state == DeliveryState.HANDED_TO_RELAY
+                    DeliveryState.CANCELLED_LOCALLY ->
+                        return io.godstone.mesh.SosCancelResult.AlreadyCancelled(null)
+                    DeliveryState.EXPIRED, DeliveryState.ACKNOWLEDGED_BY_RECIPIENT ->
+                        return io.godstone.mesh.SosCancelResult.RejectedTerminal(rec.state)
+                    DeliveryState.UNAVAILABLE ->
+                        return io.godstone.mesh.SosCancelResult.Corrupt
+                }
+                when (val t = repo.transition(msgId, DeliveryTransition.CANCEL)) {
+                    TransitionResult.Applied ->
+                        io.godstone.mesh.SosCancelResult.Cancelled(derived)
+                    TransitionResult.AlreadyInTarget ->
+                        io.godstone.mesh.SosCancelResult.AlreadyCancelled(derived)
+                    TransitionResult.RejectedState, TransitionResult.UnknownMessage ->
+                        // raced to another terminal state (or forgotten) meanwhile:
+                        // re-read ONCE and classify honestly, touch nothing
+                        when (val again = repo.get(msgId)) {
+                            DeliveryLookup.NotFound ->
+                                io.godstone.mesh.SosCancelResult.UnknownMessage
+                            DeliveryLookup.Corrupt -> io.godstone.mesh.SosCancelResult.Corrupt
+                            DeliveryLookup.StorageFailure ->
+                                io.godstone.mesh.SosCancelResult.StorageFailure
+                            DeliveryLookup.InvalidArgument ->
+                                io.godstone.mesh.SosCancelResult.InvalidArgument
+                            is DeliveryLookup.Found -> when (again.record.state) {
+                                DeliveryState.CANCELLED_LOCALLY ->
+                                    io.godstone.mesh.SosCancelResult.AlreadyCancelled(derived)
+                                DeliveryState.EXPIRED, DeliveryState.ACKNOWLEDGED_BY_RECIPIENT ->
+                                    io.godstone.mesh.SosCancelResult.RejectedTerminal(again.record.state)
+                                DeliveryState.QUEUED_DURABLY, DeliveryState.HANDED_TO_RELAY ->
+                                    // the CAS refused yet the row still stands live: the
+                                    // transition machinery itself failed -- report it,
+                                    // do not pretend the cancel moved
+                                    io.godstone.mesh.SosCancelResult.StorageFailure
+                                DeliveryState.UNAVAILABLE -> io.godstone.mesh.SosCancelResult.Corrupt
+                            }
+                        }
+                    TransitionResult.Corrupt -> io.godstone.mesh.SosCancelResult.Corrupt
+                    TransitionResult.StorageFailure -> io.godstone.mesh.SosCancelResult.StorageFailure
+                    TransitionResult.InvalidArgument -> io.godstone.mesh.SosCancelResult.InvalidArgument
+                }
+            }
+        }
+    }
+}
+
+/**
+ * T39 (section 14): the in-memory authority over BOTH tables -- the held frames
+ * and the delivery rows -- under the store's one monitor. This is the durable
+ * repository for the broadcast path where the shared SQL engine is the durable
+ * repository in production: same classifications, same guarded transitions, same
+ * both-or-neither law for the pair-commit ([enqueueSosOutbound]) and for the
+ * retiring CANCEL/EXPIRE (C7.5: guarded terminal CAS + exact held-frame removal
+ * in one transaction). Validation precedes every write; a refused operation
+ * leaves the previous authoritative state whole; every typed result names its
+ * cause (failure is distinguished from idempotent no-op, C6.4-A/J).
+ */
+internal class InMemoryStoreDeliveryRepository(
+    private val store: io.godstone.mesh.store.InMemoryMessageStore,
+) : DeliveryRepository {
+
+    private class Spec(
+        val target: DeliveryState,
+        val validFroms: Set<DeliveryState>,
+        val retiresHeld: Boolean,
+    )
+
+    private fun specOf(transition: DeliveryTransition): Spec = when (transition) {
+        DeliveryTransition.MARK_HANDED -> Spec(
+            DeliveryState.HANDED_TO_RELAY, setOf(DeliveryState.QUEUED_DURABLY), false)
+        DeliveryTransition.EXPIRE -> Spec(
+            DeliveryState.EXPIRED,
+            setOf(DeliveryState.QUEUED_DURABLY, DeliveryState.HANDED_TO_RELAY), true)
+        DeliveryTransition.CANCEL -> Spec(
+            DeliveryState.CANCELLED_LOCALLY,
+            setOf(DeliveryState.QUEUED_DURABLY, DeliveryState.HANDED_TO_RELAY), true)
+    }
+
+    private fun bindingConsistent(
+        ackMode: AckMode,
+        expectedRecipient: ByteArray?,
+    ): Boolean = when (ackMode) {
+        AckMode.NONE -> expectedRecipient == null
+        AckMode.SINGLE_RECIPIENT -> expectedRecipient?.size == 16
+    }
+
+    override fun get(msgId: ByteArray): DeliveryLookup {
+        if (msgId.size != 16) return DeliveryLookup.InvalidArgument
+        val row = store.readDeliveryRow(msgId) ?: return DeliveryLookup.NotFound
+        val state = DeliveryState.fromPersistedCode(row.state) ?: return DeliveryLookup.Corrupt
+        val ackMode = AckMode.fromCode(row.ackMode) ?: return DeliveryLookup.Corrupt
+        if (!bindingConsistent(ackMode, row.expectedRecipient)) return DeliveryLookup.Corrupt
+        return DeliveryLookup.Found(DeliveryRecord(msgId, state, ackMode, row.expectedRecipient))
+    }
+
+    override fun enqueue(
+        msgId: ByteArray,
+        ackMode: AckMode,
+        expectedRecipient: ByteArray?,
+    ): EnqueueResult {
+        if (msgId.size != 16) return EnqueueResult.InvalidArgument
+        if (!bindingConsistent(ackMode, expectedRecipient)) return EnqueueResult.Corrupt
+        if (store.insertDeliveryRowIfAbsent(
+                msgId, DeliveryState.QUEUED_DURABLY.code, ackMode.code, expectedRecipient)
+        ) return EnqueueResult.Created
+        // ON CONFLICT DO NOTHING -- re-read the row and classify it once (C6.4-T)
+        return when (val l = get(msgId)) {
+            DeliveryLookup.NotFound -> EnqueueResult.StorageFailure // vanished mid-classification: report, do not invent
+            DeliveryLookup.Corrupt -> EnqueueResult.Corrupt
+            DeliveryLookup.StorageFailure -> EnqueueResult.StorageFailure
+            DeliveryLookup.InvalidArgument -> EnqueueResult.InvalidArgument
+            is DeliveryLookup.Found -> {
+                val rec = l.record
+                if (rec.state.isTerminal) return EnqueueResult.RejectedTerminalState
+                if (rec.ackMode != ackMode ||
+                    !(rec.expectedRecipientNodeId?.contentEquals(expectedRecipient) ?: (expectedRecipient == null))
+                ) return EnqueueResult.ConflictRecipient
+                EnqueueResult.AlreadyQueuedSameBinding
+            }
+        }
+    }
+
+    override fun transition(msgId: ByteArray, transition: DeliveryTransition): TransitionResult {
+        if (msgId.size != 16) return TransitionResult.InvalidArgument
+        val spec = specOf(transition)
+        return when (val l = get(msgId)) {
+            DeliveryLookup.NotFound -> TransitionResult.UnknownMessage
+            DeliveryLookup.Corrupt -> TransitionResult.Corrupt
+            DeliveryLookup.StorageFailure -> TransitionResult.StorageFailure
+            DeliveryLookup.InvalidArgument -> TransitionResult.InvalidArgument
+            is DeliveryLookup.Found -> {
+                val st = l.record.state
+                if (st == spec.target) return TransitionResult.AlreadyInTarget
+                if (st !in spec.validFroms) return TransitionResult.RejectedState
+                if (spec.retiresHeld && store.heldSnapshot(msgId) == null) {
+                    // C7.5: an active obligation without its held frame is cross-table
+                    // corruption -- the transaction would roll back; nothing moves here
+                    return TransitionResult.Corrupt
+                }
+                store.updateDeliveryState(msgId, spec.target.code)
+                if (spec.retiresHeld) store.removeHeld(msgId)
+                TransitionResult.Applied
+            }
+        }
+    }
+
+    override fun acknowledgeBoundAndRetire(
+        msgId: ByteArray,
+        expectedRecipient: ByteArray,
+    ): AckResult {
+        if (msgId.size != 16 || expectedRecipient.size != 16) return AckResult.InvalidArgument
+        return when (val l = get(msgId)) {
+            DeliveryLookup.NotFound -> AckResult.UnknownMessage
+            DeliveryLookup.Corrupt -> AckResult.Corrupt
+            DeliveryLookup.StorageFailure -> AckResult.StorageFailure
+            DeliveryLookup.InvalidArgument -> AckResult.InvalidArgument
+            is DeliveryLookup.Found -> {
+                val rec = l.record
+                if (rec.state == DeliveryState.ACKNOWLEDGED_BY_RECIPIENT)
+                    return AckResult.DuplicateAuthenticatedAck // option B short-circuit, no writes
+                if (rec.state.isTerminal) return AckResult.RejectedState
+                if (rec.ackMode != AckMode.SINGLE_RECIPIENT ||
+                    !expectedRecipient.contentEquals(rec.expectedRecipientNodeId)
+                ) return AckResult.UnknownMessage // the guarded WHERE binds the exact recipient
+                // atomic commit (C7.4): state -> ACKED and the held frame retires together
+                if (store.heldSnapshot(msgId) == null) return AckResult.Corrupt
+                store.updateDeliveryState(msgId, DeliveryState.ACKNOWLEDGED_BY_RECIPIENT.code)
+                store.removeHeld(msgId)
+                AckResult.Applied
+            }
+        }
+    }
+
+    override fun clear(msgId: ByteArray): ClearResult {
+        if (msgId.size != 16) return ClearResult.InvalidArgument
+        return if (store.deleteDeliveryRow(msgId)) ClearResult.Cleared else ClearResult.AlreadyAbsent
+    }
+
+    /**
+     * T39 THE OVERRIDE: the pair-commit over the one authority. Delegates to
+     * [io.godstone.mesh.store.InMemoryMessageStore.enqueueSosOutboundAtWithFault],
+     * which writes BOTH tables under the store's monitor with the both-or-neither
+     * law and named fault seams -- the atomic in-memory twin of the shared
+     * engine's inTransaction pair-commit.
+     */
+    override suspend fun enqueueSosOutbound(
+        frame: io.godstone.mesh.wire.v2.FrameV2,
+        localOriginNodeId: ByteArray,
+        persist: suspend () -> io.godstone.mesh.store.PersistResult,
+    ): io.godstone.mesh.store.OutboundEnqueueResult =
+        store.enqueueSosOutboundAtWithFault(frame, localOriginNodeId, System.currentTimeMillis(), null)
 }

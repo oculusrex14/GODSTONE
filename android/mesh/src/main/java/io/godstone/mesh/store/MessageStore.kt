@@ -1130,6 +1130,132 @@ class SqliteMessageStore internal constructor(
         return result
     }
 
+    /**
+     * T39 (section 14): the broadcast PAIR-COMMIT over the shared engine -- the
+     * held frame AND the initial NONE-mode delivery row in ONE transaction on
+     * [engine] (the same database the delivery repository shares; the C7.5
+     * retiring transitions are this method's siblings). The SOS policy is
+     * checked beforehand: the fixed widths, the type octet SOS, and BOTH required
+     * flag bits (ACK_REQ | RELAY_OK) -- no priority gate is consulted and no
+     * recipient is bound, for a distress call is a broadcast, not a directed
+     * obligation. A standing pair is classified, never blindly doubled: same
+     * binding and same canonical bytes give [OutboundEnqueueResult.AlreadyQueuedSameBinding],
+     * a different binding or a terminal row is refused, a torn pair is reported
+     * [OutboundEnqueueResult.InconsistentState]. A fresh pair inserts the held
+     * row, enforces the hard capacity (T33: the bytes ever so recorded), proves
+     * the read-back against the authored canonical frame, then records the
+     * delivery row (QUEUED_DURABLY, NONE, no recipient) -- and any exception at
+     * the named fault seams rolls the WHOLE pair back: no held frame without its
+     * row, no row without its frame (the both-or-neither law). Observers are
+     * notified only after the commit, outside the transaction, as the DIRECT
+     * twin and [enqueueDirectOutbound] do.
+     */
+    internal suspend fun enqueueSosOutboundAtWithFault(
+        frame: FrameV2,
+        localOriginNodeId: ByteArray,
+        receivedAt: Long,
+        fault: ((String) -> Unit)?,
+    ): OutboundEnqueueResult {
+        if (frame.msgId.size != 16) return OutboundEnqueueResult.InvalidArgument
+        if (frame.routingTag.size != 4) return OutboundEnqueueResult.InvalidArgument
+        if (frame.ttl !in 0..FrameV2.MAX_TTL) return OutboundEnqueueResult.InvalidArgument
+        if (frame.hopCount !in 0..FrameV2.MAX_TTL) return OutboundEnqueueResult.InvalidArgument
+        if (frame.flags !in 0..0xFFFF) return OutboundEnqueueResult.InvalidArgument
+        if (frame.payload.size > FrameV2.MAX_PAYLOAD) return OutboundEnqueueResult.InvalidArgument
+        if (localOriginNodeId.size != 16) return OutboundEnqueueResult.InvalidArgument
+        if (frame.type != TypeV2.SOS) return OutboundEnqueueResult.InvalidArgument
+        if ((frame.flags and FrameV2.ACK_REQ) == 0 ||
+            (frame.flags and FrameV2.RELAY_OK) == 0
+        ) return OutboundEnqueueResult.InvalidArgument
+
+        val result = try {
+            engine.inTransaction { db ->
+                val existingDelivery = db.readDelivery(frame.msgId)
+                val heldRow = db.readHeld(frame.msgId)
+
+                if (existingDelivery != null) {
+                    val state = DeliveryState.fromPersistedCode(existingDelivery.state)
+                    val ackMode = AckMode.fromCode(existingDelivery.ackMode)
+                    if (state == null || ackMode == null ||
+                        existingDelivery.expectedRecipient != null
+                    ) {
+                        return@inTransaction OutboundEnqueueResult.InconsistentState
+                    }
+                    if (state.isTerminal) {
+                        return@inTransaction OutboundEnqueueResult.RejectedTerminalState
+                    }
+                    if (heldRow == null) {
+                        return@inTransaction OutboundEnqueueResult.InconsistentState
+                    }
+                    val heldFrame = heldRow.toFrame()
+                        ?: return@inTransaction OutboundEnqueueResult.InconsistentState
+                    if (!heldRow.receivedFrom.contentEquals(localOriginNodeId)) {
+                        return@inTransaction OutboundEnqueueResult.InconsistentState
+                    }
+                    if (ackMode != AckMode.NONE) {
+                        // a broadcast row is bound to NO recipient; a row that carries
+                        // one is another obligation's, never this authority's to touch
+                        return@inTransaction OutboundEnqueueResult.ConflictRecipient
+                    }
+                    if (heldFrame != frame) {
+                        return@inTransaction OutboundEnqueueResult.CanonicalFrameMismatch
+                    }
+                    return@inTransaction OutboundEnqueueResult.AlreadyQueuedSameBinding(heldFrame)
+                }
+
+                if (heldRow != null) {
+                    return@inTransaction OutboundEnqueueResult.InconsistentState
+                }
+
+                val rowId = db.insert(frame, receivedFrom = localOriginNodeId, receivedAt = receivedAt)
+                if (rowId == -1L) {
+                    return@inTransaction OutboundEnqueueResult.InconsistentState
+                }
+
+                fault?.invoke("after_held_insert")
+
+                val held = db.heldBytes()
+                if (held > maxBytes) {
+                    db.evictOldestPrefix(held - maxBytes)
+                }
+
+                fault?.invoke("after_evict")
+
+                val persistedRow = db.readHeld(frame.msgId) ?: throw DirectCapacityEvictedException()
+                val persistedFrame = persistedRow.toFrame()
+                if (persistedFrame == null || persistedFrame != frame ||
+                    !persistedRow.receivedFrom.contentEquals(localOriginNodeId)
+                ) {
+                    throw IllegalStateException("persisted held frame mismatch on fresh insert")
+                }
+
+                fault?.invoke("before_delivery_insert")
+
+                val inserted = db.insertDelivery(
+                    frame.msgId,
+                    DeliveryState.QUEUED_DURABLY.code,
+                    AckMode.NONE.code,
+                    null,
+                )
+                if (!inserted) {
+                    throw IllegalStateException("insertDelivery conflict on fresh row")
+                }
+
+                fault?.invoke("after_delivery_insert")
+
+                OutboundEnqueueResult.Created(persistedFrame)
+            }
+        } catch (e: DirectCapacityEvictedException) {
+            OutboundEnqueueResult.RejectedCapacity
+        } catch (e: Exception) {
+            OutboundEnqueueResult.StorageFailure // the transaction rolled back: no pair, no promise
+        }
+        if (result is OutboundEnqueueResult.Created) {
+            notifyHeldSetChanged()
+        }
+        return result
+    }
+
     /** Remove held frame for [msgId] and notify observers on change. */
     fun removeHeld(msgId: ByteArray): Boolean {
         val deleted = engine.deleteHeld(msgId) > 0
@@ -1793,6 +1919,135 @@ internal class InMemoryMessageStore(
         val key = BytesKey(msgId)
         val existing = deliveryRows[key] ?: return
         deliveryRows[key] = DeliveryRow(state, existing.ackMode, existing.expectedRecipient)
+    }
+
+    /** T39: classify-then-mutate row insert, the map twin of the engine's
+     *  ON CONFLICT DO NOTHING. True when THIS call created the row; false when
+     *  one already stood (the caller re-reads and classifies, C6.4-T). */
+    internal fun insertDeliveryRowIfAbsent(
+        msgId: ByteArray,
+        state: Int,
+        ackMode: Int,
+        expectedRecipient: ByteArray?,
+    ): Boolean {
+        val key = BytesKey(msgId)
+        if (deliveryRows.containsKey(key)) return false
+        deliveryRows[key] = DeliveryRow(state, ackMode, expectedRecipient)
+        return true
+    }
+
+    /** T39: drop the delivery row alone (the typed per-msg clear is the
+     *  repository's; this is the table operation underneath). True when a row
+     *  was removed. */
+    internal fun deleteDeliveryRow(msgId: ByteArray): Boolean =
+        deliveryRows.remove(BytesKey(msgId)) != null
+
+    /** T39: the held row for [msgId] as copies -- (frame, receivedFrom) -- or
+     *  null. Snapshots cannot alias the tables, so the pair-commit and the
+     *  store-backed repository may prove cross-table shape without tearing. */
+    internal fun heldSnapshot(msgId: ByteArray): Pair<FrameV2, ByteArray>? {
+        val h = held[BytesKey(msgId)] ?: return null
+        return Pair(h.frame, h.receivedFrom.copyOf())
+    }
+
+    /**
+     * T39 (section 14): the broadcast PAIR-COMMIT in the store's one monitor --
+     * the held frame AND the NONE-mode delivery row appear together or not at
+     * all (the both-or-neither law the SQL engines inherit from inTransaction;
+     * here enforced by classify-first, prepare-both, publish-once). Validation
+     * runs beforehand -- the fixed widths, the type octet SOS, both required
+     * flag bits (ACK_REQ | RELAY_OK); nothing is written when any gate refuses.
+     * A standing pair is classified, never blindly doubled; a torn pair (row
+     * without frame, frame without row) is [OutboundEnqueueResult.InconsistentState]
+     * and is left whole. The fault seams at the named points roll the WHOLE
+     * commit back -- no held frame without its row, no row without its frame.
+     * The read-back proves the persisted bytes equal the authored canonical
+     * frame; the capacity law (T33) evicts only unprotected rows. A fresh pair
+     * reports [OutboundEnqueueResult.Created] carrying the read-back canonical
+     * frame; the identical re-delivery is
+     * [OutboundEnqueueResult.AlreadyQueuedSameBinding]; observers hear the table
+     * only after the pair stands complete.
+     */
+    internal suspend fun enqueueSosOutboundAtWithFault(
+        frame: FrameV2,
+        localOriginNodeId: ByteArray,
+        receivedAt: Long,
+        fault: ((String) -> Unit)?,
+    ): OutboundEnqueueResult {
+        if (frame.msgId.size != 16) return OutboundEnqueueResult.InvalidArgument
+        if (frame.routingTag.size != 4) return OutboundEnqueueResult.InvalidArgument
+        if (frame.ttl !in 0..FrameV2.MAX_TTL) return OutboundEnqueueResult.InvalidArgument
+        if (frame.hopCount !in 0..FrameV2.MAX_TTL) return OutboundEnqueueResult.InvalidArgument
+        if (frame.flags !in 0..0xFFFF) return OutboundEnqueueResult.InvalidArgument
+        if (frame.payload.size > FrameV2.MAX_PAYLOAD) return OutboundEnqueueResult.InvalidArgument
+        if (localOriginNodeId.size != 16) return OutboundEnqueueResult.InvalidArgument
+        if (frame.type != TypeV2.SOS) return OutboundEnqueueResult.InvalidArgument
+        if ((frame.flags and FrameV2.ACK_REQ) == 0 ||
+            (frame.flags and FrameV2.RELAY_OK) == 0
+        ) return OutboundEnqueueResult.InvalidArgument
+
+        val key = BytesKey(frame.msgId)
+        // -- classify the standing pair before writing anything -------------------
+        val standingRow = deliveryRows[key]
+        val standingHeld = held[key]
+        if (standingRow != null) {
+            val state = DeliveryState.fromPersistedCode(standingRow.state)
+                ?: return OutboundEnqueueResult.InconsistentState
+            val ackMode = AckMode.fromCode(standingRow.ackMode)
+                ?: return OutboundEnqueueResult.InconsistentState
+            if (state.isTerminal) return OutboundEnqueueResult.RejectedTerminalState
+            if (standingHeld == null) return OutboundEnqueueResult.InconsistentState
+            if (!standingHeld.receivedFrom.contentEquals(localOriginNodeId))
+                return OutboundEnqueueResult.InconsistentState
+            if (ackMode != AckMode.NONE || standingRow.expectedRecipient != null)
+                return OutboundEnqueueResult.ConflictRecipient
+            if (standingHeld.frame != frame)
+                return OutboundEnqueueResult.CanonicalFrameMismatch
+            return OutboundEnqueueResult.AlreadyQueuedSameBinding(standingHeld.frame)
+        }
+        if (standingHeld != null) return OutboundEnqueueResult.InconsistentState
+
+        // -- prepare both, publish under the one monitor; any throw rolls back ----
+        try {
+            fault?.invoke("before_held_insert")
+            held[key] = Held(frame, localOriginNodeId.copyOf(), receivedAt)
+            fault?.invoke("after_held_insert")
+            if (held.values.sumOf { bytesOf(it.frame) } > maxBytes) {
+                evictUntilUnderCap() // T33: protects QUEUED/HANDED obligations from eviction
+            }
+            if (!held.containsKey(key)) {
+                // the just-inserted frame was evicted before its row could stand:
+                // nothing published, nothing promised
+                deliveryRows.remove(key)
+                notifyHeldSetChanged()
+                return OutboundEnqueueResult.RejectedCapacity
+            }
+            fault?.invoke("before_delivery_insert")
+            deliveryRows[key] = DeliveryRow(
+                DeliveryState.QUEUED_DURABLY.code, AckMode.NONE.code, null,
+            )
+            fault?.invoke("after_delivery_insert")
+        } catch (_e: Throwable) {
+            held.remove(key)
+            deliveryRows.remove(key)
+            notifyHeldSetChanged()
+            return OutboundEnqueueResult.StorageFailure
+        }
+        // -- read-back proof: the persisted bytes are the bytes that were authored
+        val proved = held[key]
+        val provedRow = deliveryRows[key]
+        if (proved == null || proved.frame != frame ||
+            !proved.receivedFrom.contentEquals(localOriginNodeId) ||
+            provedRow == null || provedRow.state != DeliveryState.QUEUED_DURABLY.code ||
+            provedRow.ackMode != AckMode.NONE.code || provedRow.expectedRecipient != null
+        ) {
+            held.remove(key)
+            deliveryRows.remove(key)
+            notifyHeldSetChanged()
+            return OutboundEnqueueResult.InconsistentState
+        }
+        notifyHeldSetChanged()
+        return OutboundEnqueueResult.Created(proved.frame)
     }
 
     /** Evict oldest non-SOS first (then SOS, oldest first) until <= maxBytes, protecting active delivery rows. */

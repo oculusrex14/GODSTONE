@@ -3,6 +3,9 @@ package io.godstone.mesh
 import android.content.Context
 import io.godstone.mesh.delivery.AckMode
 import io.godstone.mesh.delivery.AckResult
+import io.godstone.mesh.delivery.DeliveryLookup
+import io.godstone.mesh.delivery.DeliveryRecord
+import io.godstone.mesh.delivery.DeliveryState
 import io.godstone.mesh.delivery.DeliveryTracker
 import io.godstone.mesh.delivery.EnqueueResult
 import io.godstone.mesh.delivery.InboxCommitResult
@@ -185,6 +188,11 @@ class MeshNode(
         // the instant the link wakes is lost in a window between open and
         // subscribe. The order is fixed by construction via startInOrder.
         startInOrder({ attachConsumers() }, { openAdapters() })
+        // T39: after a cold restart the remembered projection is empty -- the flag
+        // starts false rather than lie; the first [refreshSosStatusAfterScan] (or
+        // any commit/cancel arm) re-derives it FROM the durable rows, which is how
+        // "restart with active SOS" re-exposes a call the tables still carry.
+        refreshSosStatusFromDurable()
         publishStatus()
         return true
     }
@@ -268,6 +276,149 @@ class MeshNode(
 
     fun hasActiveSos(): Boolean = _status.value.activeSos
 
+    // ---- T39 (section 14): the one durable authority for the SOS lifecycle ----
+    //
+    // The commands below never mutate authoritative state on a validation
+    // failure; every result is typed so that failure is distinguishable from
+    // the idempotent no-op (C6.4-A/J law, applied to the broadcast path).
+
+    @Volatile
+    private var activeSosRow: ActiveSos? = null
+
+    /**
+     * T39: resume the SAME authored bytes of a still-live broadcast call. The
+     * held frame is read back from the durable authority and re-handed to the
+     * relays verbatim -- no re-derivation, no fresh seal: the msg_id is immutable
+     * content and a retry that re-authored would betray it. A terminal row
+     * (cancelled, expired, acknowledged) refuses the resume; a vanished frame or
+     * row fails typed, never masquerading as an empty success.
+     */
+    internal suspend fun retrySos(
+        msgId: ByteArray,
+        send: suspend (peerId: ByteArray, bytes: ByteArray) -> Boolean,
+    ): SosDispatchResult {
+        if (msgId.size != 16) return SosDispatchResult.Failed("retry: msg_id must be 16 bytes")
+        val row: DeliveryRecord = when (val l = deliveryTracker.lookup(msgId)) {
+            is DeliveryLookup.Found -> l.record
+            DeliveryLookup.NotFound ->
+                return SosDispatchResult.Failed("retry: no durable row for this msg_id")
+            DeliveryLookup.Corrupt ->
+                return SosDispatchResult.Failed("retry: corrupt delivery row")
+            DeliveryLookup.StorageFailure ->
+                return SosDispatchResult.Failed("retry: storage failure reading the row")
+            DeliveryLookup.InvalidArgument ->
+                return SosDispatchResult.Failed("retry: invalid msg_id")
+        }
+        if (row.ackMode != AckMode.NONE)
+            return SosDispatchResult.Failed("retry: not a broadcast row")
+        when (row.state) {
+            DeliveryState.QUEUED_DURABLY, DeliveryState.HANDED_TO_RELAY -> Unit
+            else -> return SosDispatchResult.Failed(
+                "retry: obligation already terminal (" + row.state + ")",
+            )
+        }
+        val frame = store.allHeldOrderedByPriority().firstOrNull {
+            it.msgId.contentEquals(msgId) && it.type == io.godstone.mesh.wire.v2.TypeV2.SOS
+        } ?: return SosDispatchResult.Failed("retry: no held frame to resume")
+        val bytes = frame.encode()
+        var handed = 0
+        for (peerId in knownPeers()) {
+            if (send(peerId, bytes)) {
+                handed++
+                deliveryTracker.markHandedToRelay(msgId)
+            }
+        }
+        if (handed > 0 && activeSosRow?.msgId?.contentEquals(msgId) == true) {
+            activeSosRow = ActiveSos(msgId.copyOf(), DeliveryState.HANDED_TO_RELAY, frame,
+                activeSosRow?.committedAtMillis)
+        }
+        refreshSosStatusFromDurable()
+        return if (handed == 0) SosDispatchResult.QueuedLocally
+        else SosDispatchResult.HandedToRelays(handed)
+    }
+
+    /**
+     * T39: cancel one broadcast call DURABLY -- the guarded terminal CAS on the
+     * row plus the retirement of the scheduled/held work, in the authority's one
+     * transaction. Already relayed copies cannot be recalled: the result carries
+     * the truth of whether any had gone out ([SosCancelResult.Cancelled.wasRelayed])
+     * so the UI can say so too. Duplicate cancellation is the idempotent
+     * [SosCancelResult.AlreadyCancelled], never an error; a directed obligation
+     * is [SosCancelResult.NotBroadcast] and stands untouched.
+     */
+    internal suspend fun cancelSos(msgId: ByteArray): SosCancelResult {
+        val result = deliveryTracker.cancelSosBroadcast(msgId)
+        if (activeSosRow?.msgId?.contentEquals(msgId) == true) activeSosRow = null
+        refreshSosStatusFromDurable()
+        return result
+    }
+
+    /**
+     * T39: the command surface. Author runs the established dispatch arm
+     * (returns the same [SosDispatchResult] taxonomy the sealed courts speak);
+     * Retry resumes the same bytes; Cancel retires durably. One entry point,
+     * three honest outcomes -- no arm reports a success it did not achieve.
+     */
+    internal suspend fun handleSosCommand(
+        command: SosCommand,
+        send: suspend (peerId: ByteArray, bytes: ByteArray) -> Boolean,
+    ): SosCommandResult = when (command) {
+        is SosCommand.Author -> SosCommandResult.Enqueued(dispatchSos(command.payload, send))
+        is SosCommand.Retry -> SosCommandResult.Enqueued(retrySos(command.msgId, send))
+        is SosCommand.Cancel -> SosCommandResult.Cancelled(cancelSos(command.msgId))
+    }
+
+    /**
+     * T39: the durable Active-SOS projection, read FROM the delivery row joined
+     * with the held frame -- never from a UI memory. A call counts active while
+     * its row is NONE-mode and QUEUED_DURABLY or HANDED_TO_RELAY and its frame
+     * is still held; terminal rows (cancelled, expired) are not active. After a
+     * restart the very same scan re-exposes what the tables still carry, which
+     * is what the plain UI flag could never promise. Broadcast shows the local
+     * queue only: nothing here claims recipient-delivered or guaranteed rescue.
+     */
+    internal suspend fun activeSosSnapshot(): ActiveSos? {
+        for (frame in store.allHeldOrderedByPriority()) {
+            if (frame.type != io.godstone.mesh.wire.v2.TypeV2.SOS) continue
+            val row = when (val l = deliveryTracker.lookup(frame.msgId)) {
+                is DeliveryLookup.Found -> l.record
+                else -> continue
+            }
+            if (row.ackMode != AckMode.NONE) continue
+            if (row.state != DeliveryState.QUEUED_DURABLY &&
+                row.state != DeliveryState.HANDED_TO_RELAY
+            ) continue
+            val remembered = if (activeSosRow?.msgId?.contentEquals(frame.msgId) == true)
+                activeSosRow?.committedAtMillis else null
+            val seen = ActiveSos(frame.msgId.copyOf(), row.state, frame, remembered)
+            activeSosRow = seen
+            return seen
+        }
+        activeSosRow = null
+        return null
+    }
+
+    /** The last projection this node published through its own arms (may be
+     *  stale across a restart; [activeSosSnapshot] re-derives it from the
+     *  tables). */
+    internal fun lastKnownActiveSos(): ActiveSos? = activeSosRow
+
+    /** Re-publish the observable flag from the remembered projection. Cheap,
+     *  idempotent, non-suspending: the flag only ever says what the durable row
+     *  said last time this node looked. */
+    internal fun refreshSosStatusFromDurable() {
+        _status.value = _status.value.copy(activeSos = activeSosRow != null)
+    }
+
+    /** The authoritative route: scan the tables, re-derive the projection, and
+     *  refresh the flag from what the store actually holds. This is what the
+     *  restart cases exercise; it returns what it saw. */
+    internal suspend fun refreshSosStatusAfterScan(): ActiveSos? {
+        val seen = activeSosSnapshot()
+        refreshSosStatusFromDurable()
+        return seen
+    }
+
     suspend fun broadcastSos(payload: ByteArray): SosDispatchResult = withContext(Dispatchers.IO) {
         if (!LINK_LAYER_READY) return@withContext SosDispatchResult.Unavailable(LINK_LAYER_OPEN_REASON)
         // try/catch (not runCatching) so the suspend dispatchSos call stays in the
@@ -311,20 +462,24 @@ class MeshNode(
         val authority = sosAuthority
         val frame = if (authority != null) authorSignedSos(authority, payload)
         else router.buildSos(payload) // legacy structural shape; runtime auth refuses it
-        when (store.persist(frame, receivedFrom = identity.nodeId)) {
-            PersistResult.HELD_NEW,
-            PersistResult.HELD_DUPLICATE -> Unit
-            PersistResult.REJECTED_CAPACITY,
-            PersistResult.FAILED_STORAGE -> return SosDispatchResult.NotPersisted
-        }
-        // C6.1: record the delivery lifecycle AFTER durable hold. SOS is a
-        // broadcast -> AckMode.NONE, no recipient binding (a NONE-mode message can
-        // never be acknowledged). Idempotent: a re-dispatch of the same SOS is
-        // AlreadyQueuedSameBinding; only a genuine enqueue rejection (terminal
-        // state / conflict / storage failure) aborts before any BLE write.
-        when (val er = deliveryTracker.enqueue(frame.msgId, AckMode.NONE, expectedRecipient = null)) {
-            EnqueueResult.Created, EnqueueResult.AlreadyQueuedSameBinding -> Unit
-            else -> return SosDispatchResult.Failed("delivery enqueue rejected: $er")
+        // T39: the held frame AND its NONE-mode delivery row commit as ONE durable
+        // pair (section 14's both-or-neither law for the broadcast path). The
+        // repository is the authority: the shared SQL engine runs the pair in one
+        // transaction, the store-backed repository writes both tables under the
+        // store's one monitor, and a plain journal inherits the compatible
+        // two-step route (persist, then record) the pre-T39 dispatch spoke --
+        // its observable sequence of operations is byte-unchanged. A half-committed
+        // pair is unnameable now: every rejection leaves no held orphan behind and
+        // no orphan row, and the failure is reported typed, never fabled.
+        when (val pair = deliveryTracker.enqueueSosOutbound(frame, identity.nodeId) {
+                store.persist(frame, receivedFrom = identity.nodeId)
+            }
+        ) {
+            is OutboundEnqueueResult.Created,
+            is OutboundEnqueueResult.AlreadyQueuedSameBinding -> Unit
+            OutboundEnqueueResult.RejectedCapacity,
+            OutboundEnqueueResult.StorageFailure -> return SosDispatchResult.NotPersisted
+            else -> return SosDispatchResult.Failed("delivery pair commit rejected: " + pair)
         }
         val bytes = frame.encode()
         var handed = 0
@@ -334,7 +489,16 @@ class MeshNode(
                 deliveryTracker.markHandedToRelay(frame.msgId)
             }
         }
-        _status.value = _status.value.copy(activeSos = true)
+        // T39: remember the projection this node committed, then publish the
+        // observable flag FROM it -- the flag only ever says what the durable row
+        // said last (a NONE-mode row that stands QUEUED or HANDED).
+        activeSosRow = ActiveSos(
+            frame.msgId.copyOf(),
+            if (handed == 0) DeliveryState.QUEUED_DURABLY else DeliveryState.HANDED_TO_RELAY,
+            frame,
+            System.currentTimeMillis(),
+        )
+        refreshSosStatusFromDurable()
         return if (handed == 0) SosDispatchResult.QueuedLocally
         else SosDispatchResult.HandedToRelays(handed)
     }
@@ -523,7 +687,12 @@ class MeshNode(
     }
 
     fun onSosAcknowledgedByRecipient() {
-        _status.value = _status.value.copy(activeSos = false)
+        // T39: the flag is no longer a token to spend. A NONE-mode obligation can
+        // never be acknowledged (C6.1), and this call may not retire what the
+        // durable row still carries: it re-publishes what the remembered
+        // authority projection says, no more and no less. A rogue or mistaken
+        // call here changes nothing that the tables do not already say.
+        refreshSosStatusFromDurable()
     }
 
     fun setNightMode(enabled: Boolean) { _nightMode.value = enabled }
