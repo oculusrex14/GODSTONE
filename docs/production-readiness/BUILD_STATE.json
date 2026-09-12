@@ -4773,7 +4773,17 @@
     "SIGNING"
   ],
   "failed_attempts": [],
-  "in_progress": null,
+  "in_progress": {
+    "claimed_head": "921340e747c67abfe149b9279c853e14a4f42da5",
+    "claimed_utc": "2026-09-12T05:50:39+00:00",
+    "objective": {
+      "claimed_head": "921340e747c67abfe149b9279c853e14a4f42da5",
+      "claimed_utc": "2026-09-12T05:50:39+00:00",
+      "objective": "Add SendDirect(recipientTrustRef,utf8Body) returning an immutable logical message ID only after durable enqueue.",
+      "task": "T36"
+    },
+    "task": "T36"
+  },
   "last_code_head": "9ff7bbf0308046ee7c29c06d101987c44e785828",
   "last_observed_head": "9ff7bbf0308046ee7c29c06d101987c44e785828",
   "latest_verification": {
