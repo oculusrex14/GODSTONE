@@ -243,6 +243,7 @@ final class ReadinessT37Tests: XCTestCase {
         XCTAssertTrue(relayed, "the relay decision stands: the frame was novel")
         let queued = node.drainAckOutboxForLink(4)
         XCTAssertEqual(queued.count, 1, "exactly one canonical ACK queued for the link")
+        guard queued.count == 1 else { XCTFail("exactly one queued answer is required to inspect"); return }
         let ack = queued[0]
         XCTAssertEqual(ack.msgId, frame.msgId, "the answer names the original msg")
         XCTAssertEqual(ack.payload.count, 80, "the payload is signature64||recipient16")
@@ -541,6 +542,7 @@ final class ReadinessT37Tests: XCTestCase {
                                                      bound: Int32(4)) {
         case .records(let rows):
             XCTAssertEqual(rows.count, 1, "exactly one filed row")
+            guard rows.count >= 1 else { XCTFail("a filed row is required to inspect"); return }
             let row = rows[0]
             if let rf = row.receivedFrom {
                 XCTAssertEqual(rf, hopA,
@@ -581,6 +583,7 @@ final class ReadinessT37Tests: XCTestCase {
                                                      bound: Int32(4)) {
         case .records(let rows):
             XCTAssertEqual(rows.count, 1, "one row filed")
+            guard rows.count >= 1 else { XCTFail("a filed row is required to inspect"); return }
             let row = rows[0]
             guard let stored = FrameV2.decode(row.encodedFrame) else {
                 XCTFail("the stored encoding decodes"); return
@@ -601,6 +604,7 @@ final class ReadinessT37Tests: XCTestCase {
         XCTAssertEqual(r.base.ackStore.countFrames(), 1, "the answer lives beside it")
         let held = r.base.allHeldOrderedByPriority()
         XCTAssertEqual(held.count, 1, "one held frame")
+        guard held.count >= 1 else { XCTFail("a held frame is required to inspect"); return }
         XCTAssertEqual(held[0].encode(), frame.encode(), "the held row is the original bytes")
     }
 }
