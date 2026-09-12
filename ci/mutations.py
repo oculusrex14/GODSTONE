@@ -331,6 +331,60 @@ SEMANTIC = [
     {'id': 'T30-SM2-ios-swallow-protection-failure-reopen', 'platform': 'swift', 'file': 'ios/Godstone/Sources/GodstoneMesh/EncryptedStoreFactory.swift', 'find': '        let protection = provider.applyFileProtection(paths: [path], protection: .complete)\n        guard protection.isSuccess else { return .unavailable }\n        return finalize { try self.engine.reopenRequiringDEK(path: path, dek: dek) }', 'replace': '        let protection = provider.applyFileProtection(paths: [path], protection: .complete)\n        if protection.isSuccess { _ = 0 }\n        return finalize { try self.engine.reopenRequiringDEK(path: path, dek: dek) }', 'why': 'a failed file-protection apply on the REOPEN path is swallowed instead of failing closed, so a store that lost its at-rest protection is reopened as usable; the reopen-path never-swallow witness falleth', 'witness': 'testReopenProtectionFailureIsNeverSwallowed', 'swift_filter': 'ReadinessT30Tests'},
     {'id': 'T30-SM3-ios-reopen-without-dek-accepted', 'platform': 'swift', 'file': 'ios/Godstone/Sources/GodstoneMesh/EncryptedStoreFactory.swift', 'find': '            case .dekNotFound, .keychainUnavailable, .deviceLocked, .dekWrongLength, .protectionFailure: return .unavailable', 'replace': '            case .dekNotFound: return .available(EncryptedStoreHandle(path: "x", kind: .pinnedSQLCipher, encryptedAtRest: true, cipherVersion: 4))\n            case .keychainUnavailable, .deviceLocked, .dekWrongLength, .protectionFailure: return .unavailable', 'why': 'a missing DEK on reopen is accepted as an encrypted Available store instead of refused, so the erasability guarantee collapses and a store reopens without its key; the reopen-without-DEK witness falleth (the cards named falsification)', 'witness': 'testReopenWithoutDEKIsRejectedNeverEmptyHealthy', 'swift_filter': 'ReadinessT30Tests'},
     {'id': 'T30-SM4-ios-select-before-verify', 'platform': 'swift', 'file': 'ios/Godstone/Sources/GodstoneMesh/PlaintextToEncryptedMigration.swift', 'find': '        guard verification.isGood else { return .sourcePreservedOnFailure(.verificationMismatch) }  // never select an unverified copy', 'replace': '        if verification.isGood { _ = 0 }   // (mutant) select the encrypted copy even when verification says it is not good', 'why': 'the encrypted copy is selected even when the verify-before-select check reports a mismatch, so an unverified or corrupt copy could be promoted and the plaintext source retired; the failed-migration-preserves-recoverable-source witness falleth', 'witness': 'testFailedMigrationPreservesRecoverableSource', 'swift_filter': 'ReadinessT30Tests'},
+    # -------------------------------------------------------------- T32 (bounded receipt-relative retention across restarts, dual-isle)
+    #
+    #   The retention contract (android store/RetentionClock.kt + iOS twin
+    #   Sources/GodstoneMesh/RetentionClock.swift) must implement the exact section14
+    #   algorithm: NEVER replenish remaining lifetime on a reopen, COUNT a discontinuity
+    #   on every unprovable reopen, and let a wall-clock ROLLBACK only shrink retention.
+    #   RC1 injects the full-lifetime admit at the reopen site (the cards named
+    #   falsification: reset full retention on every reopen), caught by the non-replenishing
+    #   same-boot/repeat-crash oracle. RC2 removes the discontinuity increment, caught by the
+    #   32-strike CLOCK_CONTINUITY_LOST oracle. RC3 removes the nonnegative clamp so a negative
+    #   wall hint yields a negative debit that EXTENDS retention, caught by the rollback-never-
+    #   extends oracle. Struck on BOTH isles. Roster runs in disposable worktrees; live tree untouched.
+    {
+        'id': 'T32-RC1-android-replenish-on-reopen',
+        'platform': 'jvm',
+        'file': 'android/mesh/src/main/java/io/godstone/mesh/store/RetentionClock.kt',
+        'find': '        val remaining = (cp.remainingMs - debit).coerceAtLeast(0L)                       // never below 0; never replenished',
+        'replace': '        val remaining = (lifetimeMs.getValue(cp.kind) - debit).coerceAtLeast(0L)                       // (mutant) drain from the FULL lifetime, never the persisted remainder',
+        'why': 'a reopen drains from the full canonical lifetime instead of the persisted remainder, so a malicious restart loop never loses the granted lifetime and the non-replenishing repeated-restart bound is lost; the repeated-malicious-crash (drain-only) oracle falleth',
+        'witness': 'testRepeatedMaliciousCrashBoundAndTombstoneDiscipline',
+        'gradle_filter': '*ReadinessT32Test*',
+    },
+    {'id': 'T32-RC2-android-discontinuity-no-increment', 'platform': 'jvm', 'file': 'android/mesh/src/main/java/io/godstone/mesh/store/RetentionClock.kt', 'find': '            disc += 1', 'replace': '            // (mutant) the discontinuity is not counted, so the 32-strike clock-continuity bound never trips', 'why': 'unprovable reopens never accumulate toward the finite discontinuity limit, so a reboot loop is retained indefinitely instead of expiring CLOCK_CONTINUITY_LOST; the bounded-reboot oracle falleth', 'witness': 'testRebootWithoutContinuityIsBoundedAndEventuallyExpires', 'gradle_filter': '*ReadinessT32Test*'},
+    {
+        'id': 'T32-RC3-android-wall-rollback-extends',
+        'platform': 'jvm',
+        'file': 'android/mesh/src/main/java/io/godstone/mesh/store/RetentionClock.kt',
+        'find': '            debit = boundedWall.coerceAtLeast(MS_PER_HOUR)',
+        'replace': '            debit = boundedWall   // (mutant) drop the one-hour floor: a negative hint yields a negative debit that EXTENDS retention',
+        'why': 'the conservative one-hour floor is removed, so a rolled-back wall clock produces a negative debit that grows remainingMs beyond its start, defeating the rollback-never-extends law; the wall-rollback oracle falleth',
+        'witness': 'testClockRollbackNeverExtendsRetention',
+        'gradle_filter': '*ReadinessT32Test*',
+    },
+    {
+        'id': 'T32-RC1-ios-replenish-on-reopen',
+        'platform': 'swift',
+        'file': 'ios/Godstone/Sources/GodstoneMesh/RetentionClock.swift',
+        'find': '        let remaining = max(0, cp.remainingMs - debit)                        // never below 0; never replenished',
+        'replace': '        let remaining = max(0, RetentionPolicy.lifetimeMs[cp.kind]! - debit)                        // (mutant) drain from the FULL lifetime, never the persisted remainder',
+        'why': 'a reopen drains from the full canonical lifetime instead of the persisted remainder, so a malicious restart loop never loses the granted lifetime and the non-replenishing repeated-restart bound is lost; the repeated-malicious-crash (drain-only) oracle falleth',
+        'witness': 'testRepeatedMaliciousCrashBoundAndTombstoneDiscipline',
+        'swift_filter': 'ReadinessT32Tests',
+    },
+    {'id': 'T32-RC2-ios-discontinuity-no-increment', 'platform': 'swift', 'file': 'ios/Godstone/Sources/GodstoneMesh/RetentionClock.swift', 'find': '            disc += 1', 'replace': '            // (mutant) the discontinuity is not counted, so the 32-strike clock-continuity bound never trips', 'why': 'unprovable reopens never accumulate toward the finite discontinuity limit, so a reboot loop is retained indefinitely instead of expiring clockContinuityLost; the bounded-reboot oracle on the iOS twin falleth', 'witness': 'testRebootWithoutContinuityIsBoundedAndEventuallyExpires', 'swift_filter': 'ReadinessT32Tests'},
+    {
+        'id': 'T32-RC3-ios-wall-rollback-extends',
+        'platform': 'swift',
+        'file': 'ios/Godstone/Sources/GodstoneMesh/RetentionClock.swift',
+        'find': '            debit = max(msPerHour, boundedWall)',
+        'replace': '            debit = boundedWall   // (mutant) drop the one-hour floor: a negative hint yields a negative debit that EXTENDS retention',
+        'why': 'the conservative one-hour floor is removed, so a rolled-back wall clock produces a negative debit that grows remainingMs beyond its start, defeating the rollback-never-extends law; the wall-rollback oracle falleth',
+        'witness': 'testClockRollbackNeverExtendsRetention',
+        'swift_filter': 'ReadinessT32Tests',
+    },
     # -------------------------------------------------------------- T31 (versioned schema migrations, dual-isle)
     #
     #   The migration engine/executor (android store/SchemaMigration.kt + its iOS twin
