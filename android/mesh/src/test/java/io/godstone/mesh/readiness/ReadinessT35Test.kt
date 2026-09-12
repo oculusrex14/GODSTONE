@@ -40,6 +40,10 @@ public class ReadinessT35Test {
             "5369676e65644d65737361676556312063726f73732d706c6174666f726d2070696e6e656420766563746f722121" +
             "172ba189d6c1bd8f7b50e0ce045212ad32afc65e243ed1acd95a8e7328a0b1bf5003a2e65b711464338309ac3fc74df845901ba6680564d9904f2336097d420e")
         val MID: ByteArray = hex("3ec672aca155b2678c7533b46d944156")
+        // iOS-AUTHORED frame (native CryptoKit Curve25519 signer, randomized per RFC 8032 section 9.1 --
+        // pinned once at capture from a real iOS court run); this isle's verifier MUST authenticate it:
+        // authentication parity is bidirectional, while signing determinism is not claimed across isles.
+        val SPD2: ByteArray = hex("01a720fa37a67ee233c29f4c7473852e73e4bd2e90dcf4abbc288b0d7a6b3935dc72656369702d6e6f646521210000000001002e5369676e65644d65737361676556312063726f73732d706c6174666f726d2070696e6e656420766563746f72212105743cc3b6833727a6a83f93adaba49257a2b81f37e4e915ce8762743075238c0db142eedcdcf8663cfa33cc15055a567638bb7b12779505576b078492833400")
 
         fun hex(s: String): ByteArray = s.chunked(2).map { it.toInt(16).toByte() }.toByteArray()
         fun newPair(rng: SecureRandom): KeyPair = Ed25519Keys.generate(rng)
@@ -189,6 +193,24 @@ public class ReadinessT35Test {
             MessageId.derive(NOD, CREAT, NON, SPD), m.msgId)
         Assert.assertEquals("the signed plaintext has the exact pinned length", 162, SPD.size)
         Assert.assertSame("and its version byte is 0x01", 1, SPD[0].toInt())
+    }
+
+    // (6b) the iOS-AUTHORED pinned vector authenticates on the JVM isle (bidirectional parity)
+    @Test
+    fun testIosSignedVectorAuthenticatesOnJvmIsle() {
+        val r = SignedMessageV1.verify(SPD2, NOD, RCP, NON, CREAT, Priority.DIRECT.code)
+        Assert.assertTrue("the iOS-signed frame authenticates under the shared key on this isle",
+            r is SenderVerificationResult.Verified)
+        val m = (r as SenderVerificationResult.Verified).message
+        // section15: msgID uses signedPlaintext EXACTLY -- the signature bytes are inside the
+        // hashed span, so the randomized-signer frame carries its own (different) msgID; the law
+        // that must hold is self-consistency of the frozen derivation over THIS frame's bytes.
+        Assert.assertArrayEquals("its msgID is the frozen derivation over its own signed plaintext",
+            MessageId.derive(NOD, CREAT, NON, SPD2), m.msgId)
+        Assert.assertFalse("and it differs from the JVM-signed vector msgID exactly as the formula demands",
+            m.msgId.contentEquals(MID))
+        Assert.assertTrue("only the signature region differs between the two isles signed frames",
+            SPD2.copyOfRange(0, 98).contentEquals(SPD.copyOfRange(0, 98)))
     }
 
     // (7) msgID binds the signed plaintext; the PoW nonce stays outside (no circular inclusion)
