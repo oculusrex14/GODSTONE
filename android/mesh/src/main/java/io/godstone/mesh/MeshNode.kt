@@ -11,7 +11,9 @@ import io.godstone.mesh.delivery.EnqueueResult
 import io.godstone.mesh.delivery.InboxCommitResult
 import io.godstone.mesh.delivery.RecipientInboxRepository
 import io.godstone.mesh.identity.Identity
+import io.godstone.mesh.router.InventorySnapshotAuthority
 import io.godstone.mesh.router.Router
+import io.godstone.mesh.router.SyncControlOwner
 import io.godstone.mesh.store.MessageStore
 import io.godstone.mesh.store.OutboundEnqueueResult
 import io.godstone.mesh.store.PersistResult
@@ -121,6 +123,59 @@ class MeshNode(
      * unauthenticated frame never reaches an observer; no trust or approval
      * state moves on this path (that is the peer directory's own layer). */
     internal var sosObserver: io.godstone.mesh.wire.v2.SosObserver? = null
+
+    /** T40 (ADR-009): the per-relation sync/control owner and its snapshot
+     * authority. Internal and settable so the readiness court can drive the
+     * pump with an injected monotonic clock; the production default reads the
+     * node's own monotonic nanosecond clock. The owner consumes the link
+     * controls at the ingress demultiplex and nothing else does; T41 wires
+     * the outbound pump onto this same instance. */
+    internal var controlClock: () -> Long = { System.nanoTime() / 1_000_000L }
+    internal var snapshotAuthority: InventorySnapshotAuthority =
+        InventorySnapshotAuthority(store, controlClock)
+    internal var syncControlOwner: SyncControlOwner =
+        SyncControlOwner(store, snapshotAuthority, controlClock, identity.nodeId)
+
+    /** The owner's last decision -- the observation face of the courts. */
+    internal var lastControlDecision: SyncControlOwner.OwnerDecision =
+        SyncControlOwner.OwnerDecision.Accepted
+        private set
+
+    private val controlOutbox = ArrayList<io.godstone.mesh.wire.v2.FrameV2>()
+    private val controlOutboxLock = Any()
+
+    /** Bounded at 64; drop-oldest, the freshest truth wins the slot (T37 outbox idiom). */
+    private fun offerControlFrames(frames: List<io.godstone.mesh.wire.v2.FrameV2>) = synchronized(controlOutboxLock) {
+        for (f in frames) {
+            if (controlOutbox.size >= 64) controlOutbox.removeAt(0)
+            controlOutbox.add(f)
+        }
+    }
+
+    /** Drain the bounded control outbox (T41's pump takes the route from here). */
+    internal fun drainControlOutbox(): List<io.godstone.mesh.wire.v2.FrameV2> = synchronized(controlOutboxLock) {
+        val out = controlOutbox.toList()
+        controlOutbox.clear()
+        out
+    }
+
+    /** One ingress control frame: the owner decides; any answer rides back out. */
+    internal suspend fun handleControlFrame(frame: io.godstone.mesh.wire.v2.FrameV2, fromPeer: ByteArray): Boolean {
+        val decision = syncControlOwner.handleControlFrame(frame, fromPeer)
+        lastControlDecision = decision
+        val replies = when (decision) {
+            is SyncControlOwner.OwnerDecision.Answered -> listOf(decision.frame)
+            is SyncControlOwner.OwnerDecision.Delivered -> decision.frames
+            else -> emptyList<io.godstone.mesh.wire.v2.FrameV2>()
+        }
+        if (replies.isNotEmpty()) offerControlFrames(replies)
+        return when (decision) {
+            is SyncControlOwner.OwnerDecision.Accepted,
+            is SyncControlOwner.OwnerDecision.Answered,
+            is SyncControlOwner.OwnerDecision.Delivered -> true
+            else -> false
+        }
+    }
     /**
      * Pure JVM test convenience constructor: builds a fail-closed SessionManager from the SAME [identity].
      */
@@ -583,6 +638,23 @@ class MeshNode(
         // UI "delivered" claim is made from host-only evidence). Every other
         // AckResult (NotAckEligible / UnknownMessage / RejectedAuthentication /
         // RejectedState / StorageFailure / Corrupt) is a rejection.
+        if (frame.type == io.godstone.mesh.wire.v2.TypeV2.PING ||
+            frame.type == io.godstone.mesh.wire.v2.TypeV2.HELLO ||
+            frame.type == io.godstone.mesh.wire.v2.TypeV2.DIGEST ||
+            frame.type == io.godstone.mesh.wire.v2.TypeV2.WANT) {
+            // T40 (ADR-009 section 5): link controls are demultiplexed to the
+            // per-relation owner BEFORE the generic Router -- policy, the seen
+            // window, the TTL gate and persistence never see a control frame.
+            return handleControlFrame(frame, fromPeer)
+        }
+        if (frame.type != io.godstone.mesh.wire.v2.TypeV2.ACK &&
+            frame.type != io.godstone.mesh.wire.v2.TypeV2.MESSAGE &&
+            frame.type != io.godstone.mesh.wire.v2.TypeV2.SOS) {
+            // the bulk pair, GOODBYE and anything unknown: refused in this
+            // profile (section 14 dispatch statute); nothing is stored,
+            // nothing is relayed, no trust is moved
+            return false
+        }
         return if (frame.type == io.godstone.mesh.wire.v2.TypeV2.ACK) {
             when (deliveryTracker.acknowledge(frame.msgId, frame)) {
                 AckResult.Applied, AckResult.AlreadyAcknowledged, AckResult.DuplicateAuthenticatedAck -> true

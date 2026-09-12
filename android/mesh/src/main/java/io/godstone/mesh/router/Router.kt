@@ -58,6 +58,14 @@ class Router(
      * Returns true when the frame is novel and should be relayed onward.
      */
     suspend fun onFrameReceived(frame: FrameV2, fromPeer: ByteArray): Boolean = mutex.withLock {
+        // T40 (ADR-009 section 5), the gate in depth: the epidemic router is
+        // the domain of MESSAGE and SOS only. Every other outer type -- link
+        // control (HELLO, DIGEST, WANT, PING), the bulk pair, GOODBYE, any
+        // unknown -- is refused BY NAME here, before policy, before the dedup
+        // window, before the store: a control frame can neither be persisted
+        // nor relayed, even by a caller that skipped the ingress demultiplex.
+        if (frame.type != TypeV2.MESSAGE && frame.type != TypeV2.SOS) return false
+
         // 0. Anti-abuse FIRST, before any payload work (PROTOCOL.md section 8).
         //    An unbounded inbound rate on a mesh whose premise is "battery is
         //    life" is a remote power-off switch, not a spam problem.
