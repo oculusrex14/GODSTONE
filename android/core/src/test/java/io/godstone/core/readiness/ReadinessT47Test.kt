@@ -770,7 +770,7 @@ class ReadinessT47Test {
             torn is InstallOutcome.Unavailable)
         assertTrue("the torn report must name its cause, got " +
             (torn as InstallOutcome.Unavailable).reason,
-            (torn as InstallOutcome.Unavailable).reason.isNotEmpty())
+            (torn as InstallOutcome.Unavailable).reason.contains("record"))
         assertEquals("the torn file must be preserved, not purged",
             built.file.length() - 1L, built.installer.currentFile().length())
         assertFalse("the whole file's digest can no longer be the trusted one",
@@ -781,21 +781,23 @@ class ReadinessT47Test {
             healed is InstallOutcome.Selected || healed is InstallOutcome.Refreshed)
         assertTrue("the healed root must serve",
             built.installer.status(built.facts) is InstallOutcome.Selected)
-        // (d) the deepest proof: bytes smeared where both the record and a
-        // rebuilt honest manifest agree with the smear -- only the engine's
-        // own integrity probe can tell truth from rot. The road must refuse,
-        // and say probe.
+        // (d) the deepest proof: bytes smeared where the record and a rebuilt
+        // honest manifest both agree with the smear. Only pages 2 and 3 are
+        // defaced -- the master page keepeth the schema whole, so the open,
+        // the required-tables probe (which readeth sqlite_master alone), the
+        // version scalar, and the :memory: canary all must passe. The
+        // integrity check is the one arm left able to cry. The assertion is
+        // made against the word integrity -- not against the word probe,
+        // which every staged refusal beareth by the installer's own prefix
+        // and therefore proveeth nothing.
         val smeared = File(built.root, "smeared.db")
         val body = built.file.readBytes()
-        // smear the b-tree head of every page but the master: cell counts
-        // and free-block pointers become 0xFFFF. The master page is left
-        // whole so the required-tables probe and the canary may pass --
-        // what is left to tell the truth is the integrity probe alone.
         val pageSize = 4096
-        var pageNo = 2
-        while ((pageNo - 1) * pageSize + 8 <= body.size) {
-            for (k in 0 until 8) body[(pageNo - 1) * pageSize + k] = 0xFF.toByte()
-            pageNo += 1
+        for (page in 2..3) {
+            val at = (page - 1) * pageSize
+            if (at + 8 <= body.size) {
+                for (k in 0 until 8) body[at + k] = 0xFF.toByte()
+            }
         }
         smeared.writeBytes(body)
         val smearedSha = Sha256.hexOf(smeared)
@@ -805,9 +807,21 @@ class ReadinessT47Test {
             { smeared.readBytes() }, smearedFacts)
         assertTrue("an integrity-failing bundle with a true record must be Refused, got " + deep,
             deep is InstallOutcome.Rejected)
-        assertTrue("the refusal must speak of the probe, got " +
+        assertTrue("the refusal must come from the integrity arm, got " +
             (deep as InstallOutcome.Rejected).cause,
-            (deep as InstallOutcome.Rejected).cause.contains("probe"))
+            (deep as InstallOutcome.Rejected).cause.contains("integrity"))
+        // (e) the self-same bytes unsmared install and serve: the cry above
+        // is the rot's own voice, not the fixture's disposition.
+        val clean = File(built.root, "clean-copy.db")
+        clean.writeBytes(built.file.readBytes())
+        val cleanFacts = ArchiveManifestFacts.fromJson(
+            manifestJson(clean.length(), Sha256.hexOf(clean)))
+        val cleanInstaller = ArchiveInstaller(freshRoot("clean-control"))
+        val cleanOut = cleanInstaller.install({ clean.readBytes() }, cleanFacts)
+        assertTrue("the unsmared copy must install, got " + cleanOut,
+            cleanOut is InstallOutcome.Selected || cleanOut is InstallOutcome.Refreshed)
+        assertTrue("the unsmared copy must serve",
+            cleanInstaller.status(cleanFacts) is InstallOutcome.Selected)
     }
 
     @Test
