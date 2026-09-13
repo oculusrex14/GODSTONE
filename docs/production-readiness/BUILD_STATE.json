@@ -8006,7 +8006,15 @@
     "SIGNING"
   ],
   "failed_attempts": [],
-  "in_progress": null,
+  "in_progress": {
+    "claimed_head": "825329085e44eda9cd838dd0ebbaa967857b2079",
+    "claimed_utc": "2026-09-13T11:31:53+00:00",
+    "objective": {
+      "claimed_head": "825329085e44eda9cd838dd0ebbaa967857b2079",
+      "claimed_utc": "2026-09-13T11:31:53+00:00",
+      "objective": "Wire the main-actor reader model into ArchiveView with full document presentation and query/back restoration."
+    }
+  },
   "last_code_head": "5e1e8483a9ce14d94765de5e58a245b92c93925c",
   "last_observed_head": "5e1e8483a9ce14d94765de5e58a245b92c93925c",
   "latest_verification": {
