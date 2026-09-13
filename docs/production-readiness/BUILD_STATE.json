@@ -10058,7 +10058,16 @@
     "SIGNING"
   ],
   "failed_attempts": [],
-  "in_progress": null,
+  "in_progress": {
+    "claimed_head": "71378e29211a43cc9c75a13843f5c77ae63c51ee",
+    "claimed_utc": "2026-09-13T20:09:24+00:00",
+    "objective": {
+      "claimed_head": "71378e29211a43cc9c75a13843f5c77ae63c51ee",
+      "claimed_utc": "2026-09-13T20:09:24+00:00",
+      "objective": "Define native/model provenance and compatibility locks: strict ModelLockV1/NativeLockV1 locks (source commit, filename/hash/size/license, tokenizer, context, embedding pooling/normalization, compatible native ABI; llama.cpp revision + build flags/toolchains), bounded-temp atomic-promotion fetch with no shipping-runtime network, bash3-safe tested-Python replacement for the fetch logic, twin readiness courts on both isles, and the in-lane repair of the two integration.py wounds my probes found bleeding (the stale G3 Noise-routing expectations and the selftest m.run drift)."
+    },
+    "task": "T61"
+  },
   "last_code_head": "dfee6be2920d783492899055b3a825d26ae7c404",
   "last_observed_head": "dfee6be2920d783492899055b3a825d26ae7c404",
   "latest_verification": {
