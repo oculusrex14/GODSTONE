@@ -9491,7 +9491,16 @@
     "SIGNING"
   ],
   "failed_attempts": [],
-  "in_progress": null,
+  "in_progress": {
+    "claimed_head": "28671c48e9c12fe6770fc4583e4006367ad9e4c2",
+    "claimed_utc": "2026-09-13T17:48:13+00:00",
+    "objective": {
+      "claimed_head": "28671c48e9c12fe6770fc4583e4006367ad9e4c2",
+      "claimed_utc": "2026-09-13T17:48:13+00:00",
+      "objective": "Make gate status exact-SHA, complete and profile-aware: review the WIP validator changes, deepen the gates validator (schema, IDs, duplicates, vocabulary, full SHAs, artifact checksums, executor and test results, historical/ancestor classification, profiled closure preconditions, --release wiring, UNAVAILABLE never PASS)."
+    },
+    "task": "T53"
+  },
   "last_code_head": "51fcfa31731df0b842da59850bc5a1f559798646",
   "last_observed_head": "51fcfa31731df0b842da59850bc5a1f559798646",
   "latest_verification": {
