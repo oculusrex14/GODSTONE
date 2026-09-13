@@ -7003,7 +7003,11 @@
     "SIGNING"
   ],
   "failed_attempts": [],
-  "in_progress": null,
+  "in_progress": {
+    "claimed_head": "b85fb760f4aeecef08e54196067e013760ceaf6f",
+    "claimed_utc": "2026-09-13T04:42:35+00:00",
+    "objective": "Review/port WIP ArchiveDatabase/ArchiveInstaller around pinned AndroidX bundled SQLite."
+  },
   "last_code_head": "e9236111596f2a67ffce0bb31732f4538ecbde72",
   "last_observed_head": "759c8d4ee1eda16b7ebe150a0b0c00edb91bbd43",
   "latest_verification": {
