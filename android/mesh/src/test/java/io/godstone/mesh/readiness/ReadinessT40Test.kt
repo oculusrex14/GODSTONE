@@ -444,6 +444,17 @@ class ReadinessT40Test {
             Assert.assertEquals("the run closed by the final done", true, rel.runDone)
             Assert.assertNull("the coherent stream certifies", owner.checkSequence(rel))
 
+            // the advertisement of this node speaks only of its captured vector:
+            // the store holds nothing, so the filter must be empty -- though
+            // thirty-six received ids wait unclaimed in the queue (a digest
+            // built from the seen-but-unheld union would paint bits here and
+            // be taken)
+            val advert = owner.buildDigestFrame()
+            Assert.assertNotNull("the node cannot advertise its store", advert)
+            Assert.assertArrayEquals("the advertisement is the empty vector's own bloom",
+                ByteArray(512), advert!!.second.bloom)
+            Assert.assertEquals("thirty-six received ids wait unclaimed", 36, rel.wantQueue.size)
+
             val wants = owner.pumpNextInventoryFrames(peer)          // the wants drain after the close
             pumpedWants.addAll(wants.filter { it.type == TypeV2.WANT })
             Assert.assertEquals("the missing ids are requested in four want frames", 4, pumpedWants.size)

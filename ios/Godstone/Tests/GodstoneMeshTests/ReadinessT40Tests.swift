@@ -423,11 +423,9 @@ final class ReadinessT40Tests: XCTestCase {
                 XCTAssertEqual(g.bloom, unhex(jString(struct_["bloom"])), "\(name): bloom")
             case (.want(let g), .want):
                 XCTAssertEqual(g.snapshotId, jU64(struct_["snapshot_id"]), "\(name): sid")
-                XCTAssertEqual(g.ids.count, jInt(struct_["count"]), "\(name): count")
-                let ids = jList(struct_["ids"])
-                for (k, e) in ids.enumerated() {
-                    XCTAssertEqual(g.ids[k], unhex(jString(e)), "\(name): ids[\(k)] order preserved")
-                }
+                let ids = jList(struct_["ids"]).map { unhex(jString($0)) }
+                XCTAssertEqual(g.ids.count, ids.count, "\(name): count")
+                XCTAssertEqual(g.ids, ids, "\(name): the very ids in the very order")
             case (.inventoryRequest(let g), .inventoryRequest):
                 XCTAssertEqual(g.snapshotId, jU64(struct_["snapshot_id"]), "\(name): sid")
                 XCTAssertEqual(Int(g.cursorPresent), jInt(struct_["cursor_present"]), "\(name): cursorPresent")
@@ -435,11 +433,9 @@ final class ReadinessT40Tests: XCTestCase {
             case (.inventoryPage(let g), .inventoryPage):
                 XCTAssertEqual(g.snapshotId, jU64(struct_["snapshot_id"]), "\(name): sid")
                 XCTAssertEqual(Int(g.done), jInt(struct_["done"]), "\(name): done")
-                XCTAssertEqual(g.ids.count, jInt(struct_["count"]), "\(name): count")
-                let ids = jList(struct_["ids"])
-                for (k, e) in ids.enumerated() {
-                    XCTAssertEqual(g.ids[k], unhex(jString(e)), "\(name): ids[\(k)]")
-                }
+                let ids = jList(struct_["ids"]).map { unhex(jString($0)) }
+                XCTAssertEqual(g.ids.count, ids.count, "\(name): count")
+                XCTAssertEqual(g.ids, ids, "\(name): the very ids in the very order")
             case (.reset(let g), .reset):
                 XCTAssertEqual(g.newSnapshotId, jU64(struct_["new_snapshot_id"]), "\(name): new sid")
             case (.ping(let g), .ping):
@@ -570,8 +566,13 @@ final class ReadinessT40Tests: XCTestCase {
         let ids = (0..<30).map { n in Data((0..<16).map { u8($0 + n + 1) }) }
         let parts = try ControlPayloadV1.wantSplit(snapshotId: 7, ids: ids, maxPerWant: 16)
         XCTAssertEqual(parts.map { $0.ids.count }, [16, 14], "the split keeps its measures")
-        XCTAssertEqual(parts[0].ids[0], ids[0], "order preserved at the head")
-        XCTAssertEqual(parts[1].ids[13], ids[29], "order preserved at the tail")
+        guard parts.count == 2, let p0 = parts.first, let p1 = parts.last,
+              let head = p0.ids.first, let tail = p1.ids.last else {
+            XCTFail("the split is not what it is said to be")
+            return
+        }
+        XCTAssertEqual(head, ids[0], "order preserved at the head")
+        XCTAssertEqual(tail, ids[29], "order preserved at the tail")
         XCTAssertGreaterThanOrEqual(checked, 22, "builder validations counted")
     }
 
@@ -599,7 +600,8 @@ final class ReadinessT40Tests: XCTestCase {
         XCTAssertTrue(owner.startInventoryRun(thePeer), "the run opens")
         let first = owner.pumpNextInventoryFrames(thePeer)
         XCTAssertEqual(first.count, 1, "one request frame on the opening turn")
-        guard case .ok(.inventoryRequest(let req0)) = ControlPayloadV1.decodeFor(type: first[0].type, first[0].payload) else {
+        guard let requestFrame = first.first else { XCTFail("the opening turn yielded no request"); return }
+        guard case .ok(.inventoryRequest(let req0)) = ControlPayloadV1.decodeFor(type: requestFrame.type, requestFrame.payload) else {
             XCTFail("the request is canonical")
             return
         }
@@ -657,6 +659,13 @@ final class ReadinessT40Tests: XCTestCase {
         XCTAssertTrue(rel.runDone, "the run closed by the final done")
         XCTAssertNil(owner.checkSequence(rel), "the coherent stream certifies")
 
+        // the advertisement of this node speaks only of its captured vector:
+        // the store holds nothing, so the filter must be empty -- though
+        // thirty-six received ids wait unclaimed in the queue (a digest built
+        // from the seen-but-unheld union would paint bits here and be taken)
+        guard let advert = owner.buildDigestFrame() else { XCTFail("the node cannot advertise its store"); return }
+        XCTAssertEqual(advert.payload.bloom, Data(repeating: 0, count: 512), "the advertisement is the empty vector's own bloom")
+        XCTAssertEqual(rel.wantQueue.count, 36, "thirty-six received ids wait unclaimed")
         pumpedWants += owner.pumpNextInventoryFrames(thePeer).filter { $0.type == .want }
         XCTAssertEqual(pumpedWants.count, 4, "the missing ids are requested in four want frames")
         var requested = 0
@@ -788,11 +797,9 @@ final class ReadinessT40Tests: XCTestCase {
         for (k, p) in pages.enumerated() {
             let page = try snap.pageAfter(cursor: cursor, maxPerPage: 32)
             XCTAssertEqual(Int(page.done), jInt(p["done"]), "page \(k + 1) done")
-            XCTAssertEqual(page.ids.count, jInt(p["count"]), "page \(k + 1) count")
-            let ids = jList(p["ids"])
-            for (m, e) in ids.enumerated() {
-                XCTAssertEqual(page.ids[m], unhex(jString(e)), "page \(k + 1) id \(m)")
-            }
+            let expectIds = jList(p["ids"]).map { unhex(jString($0)) }
+            XCTAssertEqual(page.ids.count, expectIds.count, "page \(k + 1) count")
+            XCTAssertEqual(page.ids, expectIds, "page \(k + 1) ids in the very order")
             if let last = page.ids.last { cursor = last }
             walked += 1
         }
@@ -805,16 +812,19 @@ final class ReadinessT40Tests: XCTestCase {
         let rz = jDict(clean["restart_from_zero"])
         XCTAssertEqual(restart.ids.count, jInt(rz["count"]), "restart count")
         XCTAssertEqual(Int(restart.done), jInt(rz["done"]), "restart done")
-        let rzids = jList(rz["ids"])
-        for (m, e) in rzids.enumerated() {
-            XCTAssertEqual(restart.ids[m], unhex(jString(e)), "restart id \(m)")
-        }
+        let rzids = jList(rz["ids"]).map { unhex(jString($0)) }
+        XCTAssertEqual(restart.ids.count, rzids.count, "restart count")
+        XCTAssertEqual(restart.ids, rzids, "restart walks from the very first id")
 
         // the pages are pinned to the captured vector: new holds do not disturb a running walk
         _ = store.persist(messageFrame(evictId(900_001), 8), receivedFrom: peer(1))
         _ = store.persist(messageFrame(evictId(900_002), 8), receivedFrom: peer(2))
         let pinned = try snap.pageAfter(cursor: nil, maxPerPage: 32)
-        XCTAssertEqual(pinned.ids[0], restart.ids[0], "the first page is pinned to the capture")
+        guard let pinnedHead = pinned.ids.first, let restartHead = restart.ids.first else {
+            XCTFail("the restart or pinned page came empty")
+            return
+        }
+        XCTAssertEqual(pinnedHead, restartHead, "the first page is pinned to the capture")
         XCTAssertEqual(snap.ids.count, 100, "the vector keeps its count")
         XCTAssertEqual(store.allHeldMsgIds().count, 102, "while the store grew by two")
 
@@ -958,15 +968,18 @@ final class ReadinessT40Tests: XCTestCase {
             return
         }
         XCTAssertEqual(answerPages.count, 1, "one page frame")
-        guard case .ok(.inventoryPage(let page)) = ControlPayloadV1.decodeFor(type: answerPages[0].type, answerPages[0].payload) else {
+        guard let firstPageFrame = answerPages.first else { XCTFail("no page frame to inspect"); return }
+        guard case .ok(.inventoryPage(let page)) = ControlPayloadV1.decodeFor(type: firstPageFrame.type, firstPageFrame.payload) else {
             XCTFail("the page is canonical")
             return
         }
         XCTAssertEqual(page.ids.count, 1, "the page lists exactly the id B holds")
-        XCTAssertEqual(page.ids[0], foreign, "the exact id, bytewise")
+        guard let listed = page.ids.first else { XCTFail("the page lists nothing"); return }
+        XCTAssertEqual(listed, foreign, "the exact id, bytewise")
 
         // A receives the page: absent locally, the id waits in the want queue
-        guard case .accepted = ownerA.handleControlFrame(answerPages[0], from: peerB) else {
+        guard let pageFrame = answerPages.first else { XCTFail("no page to receive"); return }
+        guard case .accepted = ownerA.handleControlFrame(pageFrame, from: peerB) else {
             XCTFail("A accepts the page")
             return
         }
@@ -974,7 +987,8 @@ final class ReadinessT40Tests: XCTestCase {
         XCTAssertTrue(relA.runDone, "the run is closed by the done")
         XCTAssertNil(ownerA.checkSequence(relA), "the stream certifies")
         XCTAssertEqual(relA.wantQueue.count, 1, "the want queue holds the one missing id")
-        XCTAssertEqual(relA.wantQueue[0], foreign, "waiting for the exact id")
+        guard let queued = relA.wantQueue.first else { XCTFail("the queue kept nothing"); return }
+        XCTAssertEqual(queued, foreign, "waiting for the exact id")
 
         // A must not advertise what it does not hold: the digest the owner
         // builds now speaks over A's own captured vector only -- were it built
@@ -991,23 +1005,25 @@ final class ReadinessT40Tests: XCTestCase {
         // A pumps the want (the drain runs even when the page walk is closed); B answers from the store
         let wantFrames = ownerA.pumpNextInventoryFrames(peerB).filter { $0.type == .want }
         XCTAssertEqual(wantFrames.count, 1, "one want frame")
-        guard case .ok(.want(let want)) = ControlPayloadV1.decode(arm: .want, wantFrames[0].payload) else {
+        guard let wantFrame = wantFrames.first else { XCTFail("no want frame to inspect"); return }
+        guard case .ok(.want(let want)) = ControlPayloadV1.decode(arm: .want, wantFrame.payload) else {
             XCTFail("the want is canonical")
             return
         }
         XCTAssertEqual(want.ids.count, 1, "asking for one id")
-        guard case .delivered(frames: let answers) = ownerB.handleControlFrame(wantFrames[0], from: peerA) else {
+        guard case .delivered(frames: let answers) = ownerB.handleControlFrame(wantFrame, from: peerA) else {
             XCTFail("B answers")
             return
         }
         XCTAssertEqual(answers.count, 1, "the held frame is delivered")
-        XCTAssertEqual(answers[0].msgId, foreign, "with the very msg_id that collides")
-        XCTAssertEqual(answers[0].payload.count, 24, "bytes as stored, verbatim")
+        guard let answer = answers.first else { XCTFail("nothing was conveyed"); return }
+        XCTAssertEqual(answer.msgId, foreign, "with the very msg_id that collides")
+        XCTAssertEqual(answer.payload.count, 24, "bytes as stored, verbatim")
 
         // A converges: the once-suppressed id is now durably A's own
         tA += 30_001
         let before = storeA.allHeldMsgIds().count
-        _ = storeA.persist(answers[0], receivedFrom: peerB)
+        _ = storeA.persist(answer, receivedFrom: peerB)
         let after = storeA.allHeldMsgIds().count
         XCTAssertEqual(after - before, 1, "A gained exactly one frame")
         XCTAssertTrue(storeA.allHeldMsgIds().contains { $0 == foreign }, "the converged id is held by A now")
@@ -1220,7 +1236,8 @@ final class ReadinessT40Tests: XCTestCase {
         let out = node.drainControlOutbox()
         let replies = out.filter { $0.type == .ping }
         XCTAssertEqual(replies.count, 1, "the ping was answered once")
-        guard case .ok(.ping(let pingBack)) = ControlPayloadV1.decode(arm: .ping, replies[0].payload) else {
+        guard let replyFrame = replies.first else { XCTFail("no reply rode out"); return }
+        guard case .ok(.ping(let pingBack)) = ControlPayloadV1.decode(arm: .ping, replyFrame.payload) else {
             XCTFail("the reply is canonical")
             return
         }
@@ -1235,7 +1252,8 @@ final class ReadinessT40Tests: XCTestCase {
         let msg = messageFrame(evictId(777), 32)
         XCTAssertTrue(node.ingestInbound(msg, receivedFrom: thePeer), "a MESSAGE is still accepted")
         XCTAssertEqual(counting.persistCount, 1, "and reached the durable store")
-        XCTAssertEqual(counting.seenAll[0], msg.msgId, "the very id the node saw")
+        guard let firstSeen = counting.seenAll.first else { XCTFail("the seen list stayed empty"); return }
+        XCTAssertEqual(firstSeen, msg.msgId, "the very id the node saw")
         let sos = FrameV2(type: .sos,
                           msgId: evictId(778),
                           routingTag: Data(repeating: 0, count: 4),
