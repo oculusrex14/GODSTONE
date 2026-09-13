@@ -198,6 +198,12 @@ dependencies {
     implementation("androidx.sqlite:sqlite:2.5.2")
     implementation("androidx.sqlite:sqlite-bundled:2.5.2")
     testImplementation(project(":llm"))
+    // T49 (s17): the court's real-road witness walketh the FROZEN DDL through
+    // the same host-built driver class the core courts proved. The android
+    // variant above carrieth no host native (its loader searcheth jniLibs and
+    // findeth none in a unit-test JVM); the -jvm twin is the court's road,
+    // while the shipping APK keepeth the android variant whole.
+    testImplementation("androidx.sqlite:sqlite-bundled-jvm:2.5.2")
 
     implementation(platform("androidx.compose:compose-bom:2024.09.02"))
     implementation("androidx.compose.ui:ui")

@@ -1,13 +1,19 @@
 package io.godstone.app.readiness
 
+import androidx.sqlite.SQLiteConnection
+import androidx.sqlite.driver.bundled.BundledSQLiteDriver
 import io.godstone.app.ui.browse.BrowseMode
 import io.godstone.app.ui.browse.BrowsePhase
 import io.godstone.app.ui.browse.BrowseViewModel
+import io.godstone.core.archive.ArchiveBridge
+import io.godstone.core.archive.ArchiveDrivers
 import io.godstone.core.archive.ArchiveDocument
 import io.godstone.core.archive.ArchivePassage
 import io.godstone.core.archive.ArchiveReader
+import io.godstone.core.archive.ArchiveRepository
 import io.godstone.core.archive.ArchiveSourceMetadata
 import io.godstone.core.archive.ArchiveState
+import java.io.File
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
@@ -40,7 +46,161 @@ import org.junit.Assert.assertTrue
  journey survives process recreation. Fixture content is development-only.
  ============================================================================ */
 
+/* ------------------------------------------------------------------
+ * W15's real-road witnesses: the very FROZEN DDL executed verbatim
+ * through the bundled engine (the T47 idiom, ported), a filesystem
+ * bridge, and the REAL ArchiveRepository -- that the projection SQL,
+ * the status() override and the whole read road be proved on the true
+ * storage, not upon a fake's word. Fixture content is development-only.
+ * ------------------------------------------------------------------ */
+
+private const val T49_ASSET: String = "godstone_light.db"
+private const val T49_MANIFEST: String = "godstone_light.db.manifest"
+
+private fun t49Sha256(bytes: ByteArray): String =
+    java.security.MessageDigest.getInstance("SHA-256").digest(bytes)
+        .joinToString("") { b -> "%02x".format(b.toInt() and 0xFF) }
+
+private fun t49TempRoot(prefix: String): File {
+    val dir = File("/tmp/" + prefix + "-" + System.nanoTime())
+    dir.mkdirs()
+    dir.deleteOnExit()
+    return dir
+}
+
+private fun SQLiteConnection.speak(sql: String) {
+    try {
+        prepare(sql).use { it.step() }
+    } catch (exc: Throwable) {
+        System.err.println("SPOKE-FALSE[" + sql.replace("\n", "|") + "]")
+        throw exc
+    }
+}
+
+private fun t49SpeakScript(conn: SQLiteConnection, script: String) {
+    // Statements end at a semicolon that stands outside a string literal and
+    // outside a comment -- the law the python builder's executescript keeps;
+    // a naive split is a lie (the frozen DDL carries semicolons in comments).
+    val buf = StringBuilder()
+    var i = 0
+    while (i < script.length) {
+        val c = script[i]
+        when {
+            c == '\'' -> {
+                buf.append(c)
+                i++
+                while (i < script.length) {
+                    val d = script[i]
+                    buf.append(d)
+                    i++
+                    if (d == '\'') {
+                        if (i < script.length && script[i] == '\'') {
+                            buf.append(script[i])
+                            i++
+                        } else {
+                            break
+                        }
+                    }
+                }
+            }
+            c == '-' && i + 1 < script.length && script[i + 1] == '-' -> {
+                while (i < script.length && script[i] != '\n') {
+                    buf.append(script[i])
+                    i++
+                }
+            }
+            c == '/' && i + 1 < script.length && script[i + 1] == '*' -> {
+                buf.append(c)
+                buf.append(script[i + 1])
+                i += 2
+                while (i + 1 < script.length && !(script[i] == '*' && script[i + 1] == '/')) {
+                    buf.append(script[i])
+                    i++
+                }
+                if (i + 1 < script.length) {
+                    buf.append('*').append('/')
+                    i += 2
+                }
+            }
+            c == ';' -> {
+                val stmt = buf.toString().trim()
+                if (stmt.isNotEmpty()) conn.speak(stmt)
+                buf.clear()
+                i++
+            }
+            else -> {
+                buf.append(c)
+                i++
+            }
+        }
+    }
+    val tail = buf.toString().trim()
+    if (tail.isNotEmpty()) conn.speak(tail)
+}
+
+private fun t49BuildArchive(target: File) {
+    var probe: File? = File(System.getProperty("user.dir")).absoluteFile
+    var repoRoot: File? = null
+    while (probe != null) {
+        if (File(probe, "content/db/schema.sql").isFile) { repoRoot = probe; break }
+        probe = probe.parentFile
+    }
+    val root = repoRoot ?: error("the court could not find content/db/schema.sql from " +
+        System.getProperty("user.dir"))
+    val schema = File(root, "content/db/schema.sql").readText()
+    val indexes = File(root, "content/db/indexes.sql").readText()
+    val conn = BundledSQLiteDriver().open(target.absolutePath)
+    try {
+        t49SpeakScript(conn, schema)
+        conn.prepare("INSERT INTO documents(document_id,title,domain,source_id,licence,revision,is_critical) VALUES(?,?,?,?,?,?,?)").use { st ->
+            st.bindLong(1, 7L); st.bindText(2, "Archive guide"); st.bindText(3, "reference")
+            st.bindText(4, "src-001"); st.bindText(5, "CC0-BY"); st.bindText(6, "r7")
+            st.bindLong(7, 0L); st.step()
+        }
+        conn.prepare("INSERT INTO chunks(chunk_id,document_id,ordinal,section,text,token_count) VALUES(?,?,?,?,?,?)").use { st ->
+            st.bindLong(1, 11L); st.bindLong(2, 7L); st.bindLong(3, 1L)
+            st.bindText(4, "Search"); st.bindText(5, "Read the full guide."); st.bindLong(6, 4L)
+            st.step()
+        }
+        conn.prepare("INSERT INTO chunks(chunk_id,document_id,ordinal,section,text,token_count) VALUES(?,?,?,?,?,?)").use { st ->
+            st.bindLong(1, 12L); st.bindLong(2, 7L); st.bindLong(3, 2L)
+            st.bindText(4, "Search"); st.bindText(5, "Remaining context."); st.bindLong(6, 2L)
+            st.step()
+        }
+        conn.prepare("INSERT INTO archive_meta(key,value) VALUES(?,?)").use { st ->
+            st.bindText(1, "schema_version"); st.bindText(2, "3"); st.step()
+        }
+        t49SpeakScript(conn, indexes)
+    } finally {
+        conn.close()
+    }
+}
+
+private class T49Bridge(
+    private val root: File,
+    private var bytes: ByteArray?,
+) : ArchiveBridge {
+    override fun assetBytes(name: String): ByteArray? = when (name) {
+        T49_ASSET -> bytes
+        T49_MANIFEST -> bytes?.let { b ->
+            ("{\"archive_bytes\":${b.size},\"archive_file\":\"$T49_ASSET\",\"archive_schema\":3," +
+                "\"archive_sha256\":\"${t49Sha256(b)}\",\"schema\":1,\"tier\":\"LIGHT\"}")
+                .toByteArray()
+        }
+        else -> null
+    }
+    override fun cacheRoot(): File = root
+}
+
 class ReadinessT49Test {
+
+    companion object {
+        init {
+            // The very class the LIGHT APK installs out of band; the host
+            // road runseth the same driver over the same native stock.
+            ArchiveDrivers.install { BundledSQLiteDriver() }
+        }
+    }
 
     private val document = ArchiveDocument(7, "Archive guide", "reference", false, "src-001", "r7")
     private val passage = ArchivePassage(11, 7, "Archive guide", "reference", "Search", "Read the full guide.")
@@ -208,6 +368,8 @@ class ReadinessT49Test {
         assertEquals("W5: stale documents must be removed", emptyList<ArchiveDocument>(), s.documents)
         assertFalse("W5: the old content must not masquerade as the new", s.loading)
         assertTrue("W5: a failed request may be retried", s.canRetry)
+        requireThat(!s.phase.toString().contains("private database path"),
+            "W5b: the banner reason must not carry the cause's own words either, got [${s.phase}]")
         reader.failSearch = false
         vm.retry(); advanceUntilIdle()
         val r = vm.state.value
@@ -402,6 +564,71 @@ class ReadinessT49Test {
             "W14: and name the cause")
         requireThat(vm.state.value.phase is BrowsePhase.Unavailable,
             "W14: the journey must stand told as Unavailable")
+    }
+
+    @Test
+    fun testTheRealFrozenRoadCarriethProvenanceAndTellethTruth() {
+        // W15: the REAL repository over the REAL bundled engine upon bytes
+        // built by executing the FROZEN DDL verbatim -- the projection SQL,
+        // the status() override and the falsifier end to end, on the true
+        // storage. A fake's word is not proof; this is.
+        val root = t49TempRoot("t49-court")
+        val staged = File(root, "staged.db")
+        t49BuildArchive(staged)
+        val bytes = staged.readBytes()
+
+        val bridge = T49Bridge(File(root, "cache"), bytes)
+        val repo = ArchiveRepository(bridge, T49_ASSET)
+        val s0 = repo.status()
+        requireThat(s0 is ArchiveState.Ready, "W15: the real road must arm ready, got [$s0]")
+
+        val docs = repo.listDocuments(null)
+        assertEquals("W15: one document stands", 1, docs.size)
+        assertEquals("W15: the source travelleth from the frozen column", "src-001", docs[0].sourceId)
+        assertEquals("W15: the revision likewise", "r7", docs[0].revision)
+
+        assertEquals("W15: the whole provenance projection, from the real SELECT",
+            ArchiveSourceMetadata(7L, "Archive guide", "src-001", "CC0-BY", "r7", false),
+            repo.sourceMetadata(7L))
+        assertNull("W15: an unheard document nameth no provenance", repo.sourceMetadata(404L))
+
+        val found = repo.passages(7L)
+        assertEquals("W15: the whole document, in ordinal order, off real storage",
+            listOf("Read the full guide.", "Remaining context."), found.map { it.text })
+
+        assertTrue("W15: the FTS engine is truly alive upon the host",
+            repo.search("guide", 40).isNotEmpty())
+
+        // the defaced middle: the magic stands, the body is smeared over a
+        // whole page's worth -- the integrity walk must feel it
+        val rotten = bytes.copyOf()
+        val at = rotten.size / 2
+        for (k in at until minOf(at + 4096, rotten.size)) {
+            rotten[k] = (rotten[k].toInt() xor 0xFF).toByte()
+        }
+        val bridge2 = T49Bridge(File(root, "cache2"), rotten)
+        val repo2 = ArchiveRepository(bridge2, T49_ASSET)
+        val s1 = repo2.status()
+        requireThat(s1 is ArchiveState.Unavailable,
+            "W15: the defaced archive must be told unavailable, got [$s1]")
+
+        // and the viewmodel upon that truth-telling reader must call the
+        // card's falsifier down end to end: no empty masquerade
+        runTest {
+            Dispatchers.setMain(StandardTestDispatcher(testScheduler))
+            try {
+                val vm = BrowseViewModel(repo2, StandardTestDispatcher(testScheduler))
+                vm.onQueryChanged("power"); vm.search(); advanceUntilIdle()
+                val p = vm.state.value.phase
+                requireThat(p is BrowsePhase.Unavailable,
+                    "W15: the falsifier, end to end -- the defaced archive is Unavailable, never an empty search result, got [$p]")
+                requireThat((p as BrowsePhase.Unavailable).reason.isNotBlank(),
+                    "W15: the cause must be named")
+                assertFalse("W15: no retry knock upon a defaced wall", vm.state.value.canRetry)
+            } finally {
+                Dispatchers.resetMain()
+            }
+        }
     }
 
     @After
