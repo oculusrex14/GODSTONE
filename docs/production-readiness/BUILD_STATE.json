@@ -8379,7 +8379,16 @@
     "SIGNING"
   ],
   "failed_attempts": [],
-  "in_progress": null,
+  "in_progress": {
+    "claimed_head": "9c32c1137e93e1934afee5b21f4e6b6bd2fa32dd",
+    "claimed_utc": "2026-09-13T13:59:28+00:00",
+    "objective": {
+      "claimed_head": "9c32c1137e93e1934afee5b21f4e6b6bd2fa32dd",
+      "claimed_utc": "2026-09-13T13:59:28+00:00",
+      "objective": "Fix iOS resource intake and installable bundle metadata: generate an explicit source-only project manifest with no absent resource references and an approved-resource manifest only after successful staging."
+    },
+    "task": "T51"
+  },
   "last_code_head": "e508e565e7e67fcfe2592a391cea1e657336b270",
   "last_observed_head": "e508e565e7e67fcfe2592a391cea1e657336b270",
   "latest_verification": {
