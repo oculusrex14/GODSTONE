@@ -185,6 +185,14 @@ def main() -> int:
     add_bad("page_unsupported_version", 'inventory_page', bytes([3]) + pg[1:], "unsupported_version")
     add_bad("page_zero_snapshot_id", 'inventory_page', bytes([1, 2]) + (0).to_bytes(8, "big") + pg[10:],
             "zero_snapshot_id")
+    # cross-arm confusion: a page read under the request arm (and back) is
+    # not that arm's creature -- the subtype names the arm, reject by name
+    rq_any = bytes([1, 1]) + (42).to_bytes(8, "big") + bytes([0]) + bytes(16)
+    pg_any = bytes([1, 2]) + (42).to_bytes(8, "big") + bytes([1, 1]) + bytes.fromhex(store[0])
+    add_bad("request_under_page_arm", "inventory_page", rq_any, "unknown_subtype")
+    add_bad("page_under_request_arm", "inventory_request", pg_any, "unknown_subtype")
+    add_bad("reset_under_page_arm", "inventory_page", bytes([1, 3]) + (42).to_bytes(8, "big"),
+            "unknown_subtype")
     rs = AE.encode({"arm": "reset", "new_snapshot_id": 42})
     add_bad("reset_truncated", "reset", rs[:6], "truncated")
     add_bad("reset_wrong_size_over", "reset", rs + b"\x00", "wrong_size")
@@ -203,7 +211,7 @@ def main() -> int:
     walk_vectors = [{
         "name": "walk_100_by_32",
         "snapshot_id": 42,
-        "pages": [{"done": p["done"], "count": p["count"], "ids": p["ids"]} for p in pages],
+        "pages": [{"snapshot_id": p["snapshot_id"], "done": p["done"], "count": p["count"], "ids": p["ids"]} for p in pages],
         "after_end_empty": {"done": 1, "count": 0, "ids": []},
         "restart_from_zero": {"done": pages[0]["done"], "count": pages[0]["count"],
                               "ids": pages[0]["ids"]},
@@ -227,7 +235,7 @@ def main() -> int:
         got = AE.check_sequence(plist, 42)
         assert got == why, (nm, got, why)
         walk_vectors.append({"name": nm, "snapshot_id": 42,
-                             "pages": [{"done": p["done"], "count": p["count"],
+                             "pages": [{"snapshot_id": p["snapshot_id"], "done": p["done"], "count": p["count"],
                                         "ids": p["ids"]} for p in plist],
                              "expect_failure": why})
 

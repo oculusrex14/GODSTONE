@@ -230,6 +230,8 @@ def decode(arm: str, buf: bytes) -> Tuple[Optional[Dict], Optional[str]]:
             return None, "unsupported_version"
         subtype = buf[1]
         if subtype == SUBTYPE_INVENTORY_REQUEST:
+            if arm != ARM_INVENTORY_REQUEST:
+                return None, "unknown_subtype"
             need = 2 + 8 + 1 + 16
             if len(buf) < need:
                 return None, "truncated"
@@ -248,6 +250,8 @@ def decode(arm: str, buf: bytes) -> Tuple[Optional[Dict], Optional[str]]:
                      "subtype": subtype, "snapshot_id": sid,
                      "cursor_present": cp, "cursor": cur}, None)
         if subtype == SUBTYPE_INVENTORY_PAGE:
+            if arm != ARM_INVENTORY_PAGE:
+                return None, "unknown_subtype"
             if len(buf) < 4:
                 return None, "truncated"
             sid = _u64_be(buf, 2)
@@ -273,6 +277,8 @@ def decode(arm: str, buf: bytes) -> Tuple[Optional[Dict], Optional[str]]:
                      "subtype": subtype, "snapshot_id": sid, "done": done,
                      "count": count, "ids": ids}, None)
         if subtype == SUBTYPE_RESET:
+            if arm != ARM_RESET:
+                return None, "unknown_subtype"
             need = 2 + 8
             if len(buf) < need:
                 return None, "truncated"
