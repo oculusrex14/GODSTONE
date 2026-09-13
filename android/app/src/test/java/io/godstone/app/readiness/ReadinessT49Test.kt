@@ -422,11 +422,12 @@ class ReadinessT49Test {
 
     @Test
     fun testAnObsoleteFailureCannotOverwriteNewerResults() {
-        // Two real workers race upon the road; the deterministic main keeps
-        // the publishes. The slow, obsolete search fails LAST -- and must
-        // publish nothing at all.
+        // Two real workers travel the road; the deterministic main keeps the
+        // sample. The elder must not publish until the younger's tale hath
+        // landed -- else the sample would race the very violation it judges.
         val started = CountDownLatch(1)
         val release = CountDownLatch(1)
+        val witnessBox = Array<BrowseViewModel?>(1) { null }
         val reader = FakeReader().apply {
             searchHook = { query ->
                 if (query == "slow") {
@@ -434,6 +435,15 @@ class ReadinessT49Test {
                     try {
                         assertTrue("W9: the worker must be released",
                             release.await(2, TimeUnit.SECONDS))
+                        // determinism law: wait until the younger search hath
+                        // published its truth (bounded spin, one heart-beat a
+                        // time); only then may the elder's woe be raised
+                        val until = System.currentTimeMillis() + 2000L
+                        while (!(witnessBox[0]?.state?.value?.let {
+                                    it.searchedQuery == "latest" && !it.loading } == true) &&
+                                System.currentTimeMillis() < until) {
+                            Thread.sleep(1)
+                        }
                     } catch (exc: InterruptedException) {
                         throw RuntimeException(exc)
                     }
@@ -448,13 +458,16 @@ class ReadinessT49Test {
                 Dispatchers.setMain(StandardTestDispatcher(testScheduler))
                 try {
                     val vm = BrowseViewModel(reader, workerSeat)
+                    witnessBox[0] = vm
                     runCurrent()
                     vm.onQueryChanged("slow"); vm.search()
                     assertTrue("W9: the slow search must have started",
                         started.await(2, TimeUnit.SECONDS))
                     vm.onQueryChanged("latest"); vm.search()
                     release.countDown()
-                    // drain the deterministic main, then let the real workers settle
+                    // let the elder's whole post-wake path (spin, throw, fold)
+                    // complete before the sample is taken
+                    Thread.sleep(150)
                     kotlinx.coroutines.withContext(workerSeat) { }
                     advanceUntilIdle()
                     while (vm.state.value.loading) {
