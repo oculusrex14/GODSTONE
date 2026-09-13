@@ -1,6 +1,7 @@
 package io.godstone.app.di
 
 import android.content.Context
+import androidx.sqlite.driver.bundled.BundledSQLiteDriver
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn

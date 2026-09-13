@@ -26,6 +26,9 @@ data class BrowseUiState(
 @HiltViewModel
 class BrowseViewModel @Inject constructor(
     private val archive: ArchiveRepository
+) : ViewModel() {
+    private val _state = MutableStateFlow(BrowseUiState())
+    val state: StateFlow<BrowseUiState> = _state.asStateFlow()
 
     // T47 (s17): the typed availability of the Archive path travels to the
     // UI -- "why nothing answers" is said, not implied by a bare boolean.
@@ -41,9 +44,6 @@ class BrowseViewModel @Inject constructor(
                 }
         }
     }
-) : ViewModel() {
-    private val _state = MutableStateFlow(BrowseUiState())
-    val state: StateFlow<BrowseUiState> = _state.asStateFlow()
 
     init { loadDocuments() }
 

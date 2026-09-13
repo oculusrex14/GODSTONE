@@ -307,7 +307,7 @@ class ReadinessT47Test {
             val spoken = handle.driverClassName
             assertTrue("the road must run upon the bundled driver, got " + spoken,
                 spoken.startsWith("androidx.") && spoken.contains(".driver.bundled.") &&
-                    spoken.endsWith("Connection"))
+                    spoken.contains("Bundled") && spoken.endsWith("Connection"))
             assertFalse("never the platform engine, got " + spoken,
                 spoken.startsWith("android.database"))
             // the actual engine answers, of the bundled stock
@@ -374,6 +374,14 @@ class ReadinessT47Test {
             (after as InstallOutcome.Unavailable).reason.contains("do not match"))
         assertTrue("the bytes must be PRESERVED for the mender, not deleted",
             first.installer.currentFile().isFile)
+        // and the telling must stand BLIND too -- without any manifest to
+        // compare against, the record itself is the serve-time anchor
+        val blind = first.installer.status()
+        assertTrue("a tampered cache must be refused blind too, got " + blind,
+            blind is InstallOutcome.Unavailable)
+        assertTrue("the blind report must name the record, got " +
+            (blind as InstallOutcome.Unavailable).reason,
+            (blind as InstallOutcome.Unavailable).reason.contains("record"))
         // reinstalling the approved bytes mendeth the slot
         val mended = first.installer.install({ second.readBytes() }, secondFacts)
         assertTrue("a reinstall of the approved bundle must land, got " + mended,
@@ -773,6 +781,33 @@ class ReadinessT47Test {
             healed is InstallOutcome.Selected || healed is InstallOutcome.Refreshed)
         assertTrue("the healed root must serve",
             built.installer.status(built.facts) is InstallOutcome.Selected)
+        // (d) the deepest proof: bytes smeared where both the record and a
+        // rebuilt honest manifest agree with the smear -- only the engine's
+        // own integrity probe can tell truth from rot. The road must refuse,
+        // and say probe.
+        val smeared = File(built.root, "smeared.db")
+        val body = built.file.readBytes()
+        // smear the b-tree head of every page but the master: cell counts
+        // and free-block pointers become 0xFFFF. The master page is left
+        // whole so the required-tables probe and the canary may pass --
+        // what is left to tell the truth is the integrity probe alone.
+        val pageSize = 4096
+        var pageNo = 2
+        while ((pageNo - 1) * pageSize + 8 <= body.size) {
+            for (k in 0 until 8) body[(pageNo - 1) * pageSize + k] = 0xFF.toByte()
+            pageNo += 1
+        }
+        smeared.writeBytes(body)
+        val smearedSha = Sha256.hexOf(smeared)
+        val smearedFacts = ArchiveManifestFacts.fromJson(
+            manifestJson(smeared.length(), smearedSha))
+        val deep = ArchiveInstaller(freshRoot("smeared-deep")).install(
+            { smeared.readBytes() }, smearedFacts)
+        assertTrue("an integrity-failing bundle with a true record must be Refused, got " + deep,
+            deep is InstallOutcome.Rejected)
+        assertTrue("the refusal must speak of the probe, got " +
+            (deep as InstallOutcome.Rejected).cause,
+            (deep as InstallOutcome.Rejected).cause.contains("probe"))
     }
 
     @Test
