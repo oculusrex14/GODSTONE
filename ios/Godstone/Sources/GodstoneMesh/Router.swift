@@ -32,6 +32,12 @@ public final class Router {
     /// True when the frame was new and has been accepted.
     @discardableResult
     public func ingest(_ frame: FrameV2, isAddressedToMe: Bool, receivedFrom: Data) -> Bool {
+        // T40 (ADR-009 section 5): only MESSAGE and SOS enter durable message
+        // routing. Control frames are demultiplexed to the per-relation owner
+        // at the ingress ahead of this door; the bulk pair and GOODBYE are
+        // refused in this profile. Gate in depth: the seal of the seen window
+        // and the TTL law below stand exactly as sealed.
+        guard frame.type == .message || frame.type == .sos else { return false }
         guard frame.ttl <= Router.maxTtl,
               frame.hopCount <= Router.maxTtl else { return false }
 

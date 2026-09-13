@@ -78,6 +78,56 @@ public final class MeshNode {
     /// state moves on this path (the peer directory's own layer).
     internal var sosObserver: SosObserver?
 
+    // T40 (ADR-009): the per-relation sync/control owner and its snapshot
+    // authority. Internal and settable so the readiness court can drive the
+    // pump with an injected monotonic clock; the production default reads the
+    // system clock. The owner consumes the link controls at the ingress
+    // demultiplex and nothing else does; T41 wires the outbound pump onto
+    // this same instance.
+    internal var controlClock: () -> Int64 = { Int64((Date().timeIntervalSince1970 * 1000).rounded()) }
+    internal var snapshotAuthority: InventorySnapshotAuthority!
+    internal var syncControlOwner: SyncControlOwner!
+
+    /// The owner's last decision -- the observation face of the courts.
+    internal var lastControlDecision: SyncControlOwner.OwnerDecision = .accepted
+
+    private var controlOutbox: [FrameV2] = []
+    private let controlOutboxLock = NSLock()
+
+    /// Bounded at 64; drop-oldest, the freshest truth wins the slot (the house outbox idiom).
+    private func offerControlFrames(_ frames: [FrameV2]) {
+        controlOutboxLock.lock(); defer { controlOutboxLock.unlock() }
+        for f in frames {
+            if controlOutbox.count >= 64 { controlOutbox.removeFirst() }
+            controlOutbox.append(f)
+        }
+    }
+
+    /// Drain the bounded control outbox (T41's pump takes the route from here).
+    internal func drainControlOutbox() -> [FrameV2] {
+        controlOutboxLock.lock(); defer { controlOutboxLock.unlock() }
+        let out = controlOutbox
+        controlOutbox.removeAll()
+        return out
+    }
+
+    /// One ingress control frame: the owner decides; any answer rides back out.
+    internal func handleControlFrame(_ frame: FrameV2, fromPeer: Data) -> Bool {
+        let decision = syncControlOwner.handleControlFrame(frame, from: fromPeer)
+        lastControlDecision = decision
+        let replies: [FrameV2]
+        switch decision {
+        case .answered(let f): replies = [f]
+        case .delivered(let fs): replies = fs
+        default: replies = []
+        }
+        if !replies.isEmpty { offerControlFrames(replies) }
+        switch decision {
+        case .accepted, .answered, .delivered: return true
+        default: return false
+        }
+    }
+
     /// T39: the remembered Active-SOS projection of the one durable authority
     /// (section 14). The observable mirror `hasActiveSosBroadcast` is only ever
     /// re-published FROM this projection or a fresh scan of the tables -- it is
@@ -143,6 +193,11 @@ public final class MeshNode {
         self.router.store = store
         self.ble.store = store
         self.ble.identity = identity
+        // T40: the control plane rides the same durable store and clock.
+        self.snapshotAuthority = InventorySnapshotAuthority(store: store, monotonicNowMillis: { Int64((Date().timeIntervalSince1970 * 1000).rounded()) })
+        self.syncControlOwner = SyncControlOwner(store: store, authority: snapshotAuthority,
+                                                  monotonicNowMillis: { Int64((Date().timeIntervalSince1970 * 1000).rounded()) },
+                                                  localNodeId: identity.nodeId)
     }
 
     internal func canStart(linkReady: Bool) -> Bool {
@@ -591,6 +646,18 @@ public final class MeshNode {
     /// host-only evidence). Every other `AckResult` is a rejection -> false.
     @discardableResult
     internal func ingestInbound(_ frame: FrameV2, receivedFrom: Data) -> Bool {
+        if frame.type == .ping || frame.type == .hello || frame.type == .digest || frame.type == .want {
+            // T40 (ADR-009 section 5): link controls are demultiplexed to the
+            // per-relation owner BEFORE the generic Router -- policy, the seen
+            // window, the TTL gate and persistence never see a control frame.
+            return handleControlFrame(frame, fromPeer: receivedFrom)
+        }
+        if frame.type != .ack && frame.type != .message && frame.type != .sos {
+            // the bulk pair, GOODBYE and anything unknown: refused in this
+            // profile (section 14 dispatch statute); nothing is stored,
+            // nothing is relayed, no trust is moved
+            return false
+        }
         if frame.type == .ack {
             switch deliveryTracker.acknowledge(frame.msgId, frame) {
             case .applied, .alreadyAcknowledged, .duplicateAuthenticatedAck:
