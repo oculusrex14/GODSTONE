@@ -18,7 +18,9 @@ REPOSITORY_ROOT = Path(__file__).resolve().parents[1]
 if str(REPOSITORY_ROOT) not in sys.path:
     sys.path.insert(0, str(REPOSITORY_ROOT))
 
-from content.archive_manifest import load_trust_store, verify_manifest
+from content.archive_manifest import (
+    ArchiveManifestError, load_trust_store, strict_json_loads,
+    verify_manifest)
 
 ALLOWED_NAMES = {"archive_light.db", "generation.gguf", "embedding.gguf"}
 ALLOWED_ROLES = {"archive", "generation_model", "embedding_model"}
@@ -34,7 +36,11 @@ def sha256(path: Path) -> str:
 
 def validate(manifest_path: Path) -> tuple[dict[str, Any], list[tuple[Path, str]]]:
     root = manifest_path.resolve().parent
-    data = json.loads(manifest_path.read_text(encoding="utf-8"))
+    try:
+        data = strict_json_loads(manifest_path.read_text(encoding="utf-8"),
+                                  str(manifest_path))
+    except ArchiveManifestError as exc:
+        raise ValueError(str(exc)) from exc
     if not isinstance(data, Mapping):
         raise ValueError("asset manifest root must be an object")
     errors: list[str] = []
@@ -49,6 +55,7 @@ def validate(manifest_path: Path) -> tuple[dict[str, Any], list[tuple[Path, str]
     staged: list[tuple[Path, str]] = []
     roles: set[str] = set()
     names: set[str] = set()
+    sources_seen: set[Path] = set()
     archive_path: Path | None = None
     for index, item in enumerate(assets):
         if not isinstance(item, Mapping):
@@ -60,9 +67,15 @@ def validate(manifest_path: Path) -> tuple[dict[str, Any], list[tuple[Path, str]
         if name not in ALLOWED_NAMES: errors.append(f"assets[{index}].name is invalid or cross-tier")
         if name in names: errors.append(f"duplicate asset name: {name}")
         names.add(name)
-        source = (root / str(item.get("source", ""))).resolve()
+        source_ref = str(item.get("source", ""))
+        if "\0" in source_ref:
+            errors.append(f"assets[{index}].source bears a NUL byte"); continue
+        source = (root / source_ref).resolve()
         try: source.relative_to(root)
         except ValueError: errors.append(f"assets[{index}].source escapes manifest directory"); continue
+        if source in sources_seen:
+            errors.append(f"duplicate asset source: {source_ref}"); continue
+        sources_seen.add(source)
         if not source.is_file(): errors.append(f"missing asset: {source}"); continue
         if int(item.get("bytes", -1)) != source.stat().st_size: errors.append(f"size mismatch: {name}")
         expected = str(item.get("sha256", ""))
@@ -77,12 +90,29 @@ def validate(manifest_path: Path) -> tuple[dict[str, Any], list[tuple[Path, str]
         if not manifest_ref or not trust_ref:
             errors.append("signed archive manifest and trust store are required")
         else:
-            result = verify_manifest(
-                (root / str(manifest_ref)).resolve(), archive_path,
-                load_trust_store((root / str(trust_ref)).resolve()),
-                expected_tier="LIGHT", expected_archive_schema=3,
-            )
-            errors.extend(result.errors)
+            refs: list[Path] = []
+            for label, ref in (("archive_manifest", manifest_ref),
+                               ("archive_trust_store", trust_ref)):
+                text_ref = str(ref)
+                if "\0" in text_ref:
+                    errors.append(f"{label} bears a NUL byte"); break
+                candidate = (root / text_ref).resolve()
+                try:
+                    candidate.relative_to(root)
+                except ValueError:
+                    errors.append(f"{label} escapes the manifest directory")
+                    break
+                refs.append(candidate)
+            if len(refs) == 2:
+                try:
+                    result = verify_manifest(
+                        refs[0], archive_path, load_trust_store(refs[1]),
+                        expected_tier="LIGHT", expected_archive_schema=3,
+                    )
+                    errors.extend(result.errors)
+                except (OSError, json.JSONDecodeError,
+                        ArchiveManifestError) as exc:
+                    errors.append(f"archive signature evidence unreadable: {exc}")
     if errors:
         raise ValueError("release assets rejected:\n- " + "\n- ".join(errors))
     return dict(data), staged

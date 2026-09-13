@@ -41,6 +41,20 @@ def _canonical(value: Any) -> bytes:
     return json.dumps(value, sort_keys=True, separators=(",", ":"), ensure_ascii=False).encode("utf-8")
 
 
+def strict_json_loads(text: str, origin: str = "<json>") -> Any:
+    """Parse JSON, refusing duplicate keys at any depth: a collapsing
+    reader that letteth the last key win is a smuggling gap, not a parser."""
+    def _hooks(pairs: list) -> dict:
+        seen: set[str] = set()
+        for key, _value in pairs:
+            if key in seen:
+                raise ArchiveManifestError(f"duplicate key {key!r} in {origin}")
+            seen.add(key)
+        return dict(pairs)
+
+    return json.loads(text, object_pairs_hook=_hooks)
+
+
 def _signable(manifest: Mapping[str, Any]) -> bytes:
     unsigned = dict(manifest)
     unsigned.pop("signature", None)
@@ -55,7 +69,7 @@ def load_private_key(path: Path) -> Ed25519PrivateKey:
 
 
 def load_trust_store(path: Path) -> dict[str, Ed25519PublicKey]:
-    data = json.loads(path.read_text(encoding="utf-8"))
+    data = strict_json_loads(path.read_text(encoding="utf-8"), str(path))
     keys = data.get("keys") if isinstance(data, Mapping) else None
     if not isinstance(keys, Mapping):
         raise ArchiveManifestError("trust store must contain a keys mapping")
@@ -155,8 +169,9 @@ def verify_manifest(
 ) -> VerificationResult:
     errors: list[str] = []
     try:
-        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
-    except (OSError, json.JSONDecodeError) as exc:
+        manifest = strict_json_loads(
+            manifest_path.read_text(encoding="utf-8"), str(manifest_path))
+    except (OSError, json.JSONDecodeError, ArchiveManifestError) as exc:
         return VerificationResult(False, (f"manifest unreadable: {exc}",))
     if not isinstance(manifest, Mapping):
         return VerificationResult(False, ("manifest root is not an object",))

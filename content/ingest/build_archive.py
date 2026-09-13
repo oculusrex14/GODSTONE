@@ -45,7 +45,10 @@ import yaml
 
 from .chunker import Chunk, chunk_document
 from .embedder import Embedder
-from content.release_gate import validate_release_corpus
+from content.release_gate import (
+    ReleaseGateError, TrustPolicyError, TrustedReviewerKeySet,
+    assert_independent_store, set_digest, validate_release_corpus,
+    verify_chunk_approvals, yaml_load_strict)
 
 SCHEMA_VERSION = 3
 
@@ -140,6 +143,16 @@ class ArchiveDependencyError(ArchiveBuildError):
 class ArchiveUnsafeDestinationError(ArchiveBuildError):
     """The destination would overwrite a frozen contract, live inside the
     corpus or the schema directory, or is otherwise not a plain file path."""
+
+
+class ArchiveUnsafeContentError(ArchiveBuildError):
+    """A media row that would travel outside the seed, or a path that is
+    not in its canonical clean form, is refused before any row is made."""
+
+
+class ArchiveApprovalError(ArchiveBuildError):
+    """The shipped chunks are not covered by fresh, properly signed
+    approvals from independently configured reviewer keys."""
 
 
 class ArchiveTooLargeError(ArchiveBuildError):
@@ -272,7 +285,7 @@ def parse_front_matter(path: Path) -> Document:
         raise ValueError(f"{path}: missing YAML front matter")
 
     _, fm_text, body = raw.split("---", 2)
-    fm = yaml.safe_load(fm_text) or {}
+    fm = yaml_load_strict(fm_text, str(path)) or {}
 
     missing = [k for k in REQUIRED_FRONT_MATTER if k not in fm]
     if missing:
@@ -317,7 +330,8 @@ def load_corpus(tier: str, *, seed_root: Path | None = None) -> list[Document]:
     taxonomy_path = seed / "taxonomy.yaml"
     if not taxonomy_path.is_file():
         raise ArchiveEmptyError(f"no taxonomy at {taxonomy_path}")
-    taxonomy = yaml.safe_load(taxonomy_path.read_text(encoding="utf-8")) or {}
+    taxonomy = yaml_load_strict(
+        taxonomy_path.read_text(encoding="utf-8"), str(taxonomy_path)) or {}
     known_domains = {d["id"] for d in taxonomy.get("domains", [])}
 
     limit = TIER_RANK[tier]
@@ -643,6 +657,8 @@ def build(tier: str, out_path: Path, embed: bool = True,
           max_staged_bytes: int = MAX_STAGED_BYTES,
           fault_hook: Callable[[str], None] | None = None,
           embedder_factory: Callable[[Mapping[str, Any]], Any] | None = None,
+          approvals_dir: Path | None = None,
+          reviewer_keyset: Path | None = None,
           ) -> ArchiveBuildResult:
     """Build one tier atomically and deterministically.
 
@@ -677,6 +693,21 @@ def build(tier: str, out_path: Path, embed: bool = True,
     docs = load_corpus(tier, seed_root=seed)
     print(f"tier {tier}: {len(docs)} documents")
 
+    # The final chunks are computed once, up front: the approvals leg must
+    # read the very forms that will be inserted, and the insert loop shall
+    # not derive them afresh by another road.
+    chunked: list[tuple[Document, list[Chunk]]] = [
+        (doc, list(chunk_document(
+            doc.body, max_tokens=cfg["chunk_tokens"],
+            overlap_tokens=cfg["chunk_overlap"])))
+        for doc in docs
+    ]
+
+    mroot = (Path(manifests_root) if manifests_root is not None
+             else ROOT / "content" / "manifests" / "documents")
+    eroot = (Path(evidence_root) if evidence_root is not None
+             else ROOT / "content" / "manifests")
+
     # ---- editorial gate (A-09) -------------------------------------------
     unreviewed = [d for d in docs if d.reviewed_by == UNREVIEWED_SENTINEL]
     if unreviewed:
@@ -693,14 +724,70 @@ def build(tier: str, out_path: Path, embed: bool = True,
 
     release_validation = None
     if release:
-        mroot = (Path(manifests_root) if manifests_root is not None
-                 else ROOT / "content" / "manifests" / "documents")
-        eroot = (Path(evidence_root) if evidence_root is not None
-                 else ROOT / "content" / "manifests")
-        release_validation = validate_release_corpus(
-            docs, mroot, evidence_root=eroot, today=today)
+        try:
+            release_validation = validate_release_corpus(
+                docs, mroot, evidence_root=eroot, today=today)
+        except ReleaseGateError as exc:
+            raise ArchiveApprovalError(
+                f"release content gate refused the build: {exc}") from exc
         print(f"validated {len(release_validation.documents)} production "
               f"document manifest(s)")
+
+    approvals_digest: str | None = None
+    approvals_covered = 0
+    if approvals_dir is not None or reviewer_keyset is not None:
+        if approvals_dir is None or reviewer_keyset is None:
+            raise TypeError(
+                "approvals_dir and reviewer_keyset go together; half a "
+                "policy is no policy")
+        if not release or release_validation is None:
+            raise ArchiveApprovalError(
+                "chunk approvals are a release-path instrument; naming them "
+                "for a non-release build is a configuration fault")
+        if today is None:
+            raise ArchiveApprovalError(
+                "approvals are observed against an injected clock; the "
+                "build was given none")
+        home = Path(approvals_dir)
+        bundle_digests: list[str] = []
+        try:
+            store = assert_independent_store(
+                Path(reviewer_keyset),
+                forbidden_roots=(seed, mroot, eroot, home,
+                                destination.parent),
+                what="reviewer trust store")
+            keyset = TrustedReviewerKeySet.load(store)
+            for (doc, chunks), validated in zip(
+                    chunked, release_validation.documents):
+                if validated.document_id != doc.source_id:
+                    raise ArchiveApprovalError(
+                        f"validated document {validated.document_id!r} doth "
+                        f"not answer to source {doc.source_id!r}")
+                coverage = verify_chunk_approvals(
+                    source_id=doc.source_id,
+                    document_sha256=validated.source_sha256,
+                    rights_sha256=validated.rights_evidence_sha256,
+                    manifest_path=validated.manifest_path,
+                    evidence_root=eroot,
+                    chunks=chunks,
+                    approvals_dir=home,
+                    keyset=keyset,
+                    today=today)
+                if coverage.chunk_approved != coverage.chunk_total:
+                    raise ArchiveApprovalError(
+                        f"{doc.source_id}: coverage proved incomplete")
+                bundle_digests.append(coverage.bundle_sha256)
+                approvals_covered += coverage.chunk_approved
+        except TrustPolicyError as exc:
+            raise ArchiveApprovalError(
+                f"trust policy refused the build: {exc}") from exc
+        except ReleaseGateError as exc:
+            raise ArchiveApprovalError(
+                f"approvals refused the build: {exc}") from exc
+        approvals_digest = set_digest(bundle_digests)
+        print(f"approvals proved: {approvals_covered} chunk(s) covered by "
+              f"{len(bundle_digests)} bundle(s); digest "
+              f"{approvals_digest[:12]}")
 
     out = AtomicArchiveOutput(destination, _next_token())
     out.ensure_parent()
@@ -712,7 +799,7 @@ def build(tier: str, out_path: Path, embed: bool = True,
         conn.executescript(schema_sql)
         fire("after_temp_created")
 
-        for document_id, doc in enumerate(docs, start=1):
+        for document_id, (doc, chunks) in enumerate(chunked, start=1):
             conn.execute(
                 "INSERT INTO documents (document_id, title, domain, source_id, "
                 "licence, revision, tier_min, reading_level, is_critical) "
@@ -720,11 +807,6 @@ def build(tier: str, out_path: Path, embed: bool = True,
                 (document_id, doc.title, doc.domain, doc.source_id,
                  doc.licence, doc.revision, doc.tier_min, doc.reading_level,
                  int(doc.is_critical)),
-            )
-            chunks = chunk_document(
-                doc.body,
-                max_tokens=cfg["chunk_tokens"],
-                overlap_tokens=cfg["chunk_overlap"],
             )
             for ordinal, ch in enumerate(chunks):
                 chunk_id += 1
@@ -791,6 +873,9 @@ def build(tier: str, out_path: Path, embed: bool = True,
                 "release_manifest_set_sha256":
                     release_validation.manifest_set_sha256,
             })
+        if approvals_digest is not None:
+            meta["approvals_sha256"] = approvals_digest
+            meta["approvals_covered"] = str(approvals_covered)
 
         conn.executemany(
             "INSERT INTO archive_meta (key, value) VALUES (?, ?)",
@@ -860,6 +945,35 @@ def build(tier: str, out_path: Path, embed: bool = True,
     )
 
 
+def _media_path_fault(rel: Any) -> str | None:
+    """Why a media path is refused, or None when it is fit to ship.
+
+    The path must already be clean: absolute ways, drive letters, NUL
+    bytes, backslashes, tilde expansion, empty or doubled separators,
+    and any '.' or '..' segment -- even ones that would normpath home --
+    are refused. A traversed path is not made honest by normpath; the
+    canonical form is required at the gate.
+    """
+    text = str(rel)
+    if not text:
+        return "the path is empty"
+    if "\0" in text:
+        return "the path bears a NUL byte"
+    if "\\" in text:
+        return "the path bears a backslash"
+    if text.startswith("~"):
+        return "the path begins a tilde"
+    if text.startswith("/"):
+        return "the path is absolute"
+    if len(text) > 1 and text[1] == ":":
+        return "the path bears a drive letter"
+    parts = text.split("/")
+    if any(part in ("", ".", "..") for part in parts):
+        return ("the path is not in canonical clean form ('.', '..', "
+                "empty or doubled segments)")
+    return None
+
+
 def insert_media(conn: sqlite3.Connection, manifest: Path, tier: str,
                  doc_ids: dict[str, int]) -> None:
     """Register media that this tier is allowed to carry.
@@ -873,14 +987,25 @@ def insert_media(conn: sqlite3.Connection, manifest: Path, tier: str,
         "LARGE": {"diagram", "audio", "video_480", "video_1080"},
     }[tier]
 
-    entries = yaml.safe_load(manifest.read_text(encoding="utf-8")) or {}
+    entries = yaml_load_strict(
+        manifest.read_text(encoding="utf-8"), str(manifest)) or {}
     media_id = 0
+    seen_paths: set[str] = set()
     for item in entries.get("media", []):
         if item["kind"] not in allowed:
             continue
         document_id = doc_ids.get(item["source"])
         if document_id is None:
             continue
+        rel = str(item["path"])
+        fault = _media_path_fault(rel)
+        if fault is not None:
+            raise ArchiveUnsafeContentError(
+                f"{manifest}: media path refused: {rel!r} ({fault})")
+        if rel in seen_paths:
+            raise ArchiveUnsafeContentError(
+                f"{manifest}: duplicate media path: {rel!r}")
+        seen_paths.add(rel)
         media_id += 1
         conn.execute(
             "INSERT INTO media (media_id, document_id, kind, relpath, caption, "
@@ -900,6 +1025,15 @@ def main() -> None:
     ap.add_argument("--print-config", action="store_true")
     ap.add_argument("--release", action="store_true",
                     help="refuse to build if any document lacks clinical review")
+    ap.add_argument("--approvals-dir", type=Path, default=None,
+                    help="home of the {source_id}.approvals.json bundles; with "
+                         "--release, every shipped chunk must be covered by a "
+                         "fresh approval signed by an independently configured "
+                         "reviewer key")
+    ap.add_argument("--reviewer-keyset", type=Path, default=None,
+                    help="operator-configured reviewer trust store; it may "
+                         "not live inside the corpus, the manifests, the "
+                         "approvals home or the destination tree")
     args = ap.parse_args()
 
     if args.print_config:
@@ -908,7 +1042,9 @@ def main() -> None:
 
     out = args.out or (ROOT / "dist" / TIERS[args.tier]["db_name"])
     try:
-        build(args.tier, out, embed=not args.no_embed, release=args.release)
+        build(args.tier, out, embed=not args.no_embed, release=args.release,
+              approvals_dir=args.approvals_dir,
+              reviewer_keyset=args.reviewer_keyset)
     except ArchiveBuildError as exc:
         print(f"::error::{exc}", file=sys.stderr)
         raise SystemExit(2) from exc
