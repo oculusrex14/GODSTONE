@@ -427,6 +427,7 @@ class T52PresenceCourt(unittest.TestCase):
     def testTheArtifactInventoryIsDeterministicInItsRecordStructure(self):
         good = ins._make_archive_bytes()
         readings = []
+        first_records = None
         for _ in range(2):
             with tempfile.TemporaryDirectory() as td:
                 root, build, out = self._world(td, self._apk_entries(good))
@@ -438,8 +439,24 @@ class T52PresenceCourt(unittest.TestCase):
                 for record in records:
                     record.pop("path")            # the temporary world's name is not the record
                     record.pop("sha256")           # the container digest carries the zip's clock
+                if first_records is None:
+                    first_records = records
                 readings.append(json.dumps(records, sort_keys=True))
         self.assertEqual(readings[0], readings[1])
+        # the order oath: a parse-and-re-dump equality is blind to key ORDER --
+        # an unordered publication readeth the same tale twice and no disorder
+        # would be seen; the oath requireth the sorted publication at every
+        # depth, which the parse preservedeth as the file's own sequence
+        for rec in first_records:
+            self.assertEqual(list(rec), sorted(rec),
+                             "the inventory must be published in sorted key order")
+            arch = rec["archive"]
+            self.assertEqual(list(arch), sorted(arch),
+                             "the presence report must be published in sorted key order")
+            self.assertEqual(list(arch["counts"]), sorted(arch["counts"]),
+                             "the counts must be published in sorted key order")
+            self.assertEqual(list(arch["declared_counts"]), sorted(arch["declared_counts"]),
+                             "the declared counts must be published in sorted key order")
 
     def testThePresenceReportIsDeterministicAndFullyShaped(self):
         good = ins._make_archive_bytes()
@@ -462,6 +479,15 @@ class T52PresenceCourt(unittest.TestCase):
                          ["artifacts", "evidence", "expected_sha256", "schema", "verdict"])
         self.assertEqual(first_shape["schema"], 1)
         self.assertEqual(first_shape["verdict"], "pass")
+        self.assertEqual(list(first_shape), sorted(first_shape),
+                         "the presence report must be published in sorted key order")
+        art = first_shape["artifacts"][0]
+        self.assertEqual(list(art), sorted(art),
+                         "the artifact record must be published in sorted key order")
+        self.assertEqual(list(art["counts"]), sorted(art["counts"]),
+                         "the counts must be published in sorted key order")
+        self.assertEqual(list(art["declared_counts"]), sorted(art["declared_counts"]),
+                         "the declared counts must be published in sorted key order")
         promised = {"bytes", "counts", "declared_counts", "dangerous_modes",
                     "development_fixture_key", "dex_entries", "duplicate_entries",
                     "entries_found", "entry", "errors", "evidence", "expected_sha256",
@@ -633,6 +659,38 @@ class T52PresenceCourt(unittest.TestCase):
                               "--selftest"], capture_output=True, text=True, cwd=str(REPO))
         self.assertEqual(proc.returncode, 0, msg=proc.stdout + proc.stderr)
         self.assertIn("refuseth 12 of 12 malformed/false-closure controls", proc.stdout)
+
+    def testTheEvidenceShapeIsSwornFullLowercaseHex(self):
+        # the in-process eye upon the gates checker: a CLOSED gate must carry
+        # a full, non-zero, lower-case hexadecimal commit. The sworn shape
+        # must stand clean; the forgeries -- non-hex, all-zeroes, upper-case
+        # forty-char shapes -- must each be refused, and refused BY NAME.
+        import importlib.util
+        spec = importlib.util.spec_from_file_location(
+            "dsh_t52_gates", str(REPO / "ci" / "check_release_gates_status.py"))
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        fixture = {"gates": [
+            {"gate": name, "status": "CLOSED", "evidence_commit": "a" * 40,
+             "ci_job": ("not-runnable-in-ci" if kind == "not-runnable-in-ci"
+                        else f"release-gates.yml / {name}")}
+            for name, kind in mod.REQUIRED.items()]}
+        for gate in fixture["gates"]:
+            if gate["ci_job"] == "not-runnable-in-ci":
+                gate["closure_requirement"] = "on-device evidence recorded in the field"
+        self.assertEqual(mod.validate_status(fixture), [],
+                         "the sworn evidence shape must stand clean")
+        for name in sorted(mod.REQUIRED):
+            for forgery, label in (("z" * 40, "non-hexadecimal"), ("0" * 40, "all-zeroes"),
+                                   ("A" * 40, "upper-case")):
+                forged = json.loads(json.dumps(fixture))
+                for gate in forged["gates"]:
+                    if gate["gate"] == name:
+                        gate["evidence_commit"] = forgery
+                errors = mod.validate_status(forged)
+                self.assertTrue(any("full nonzero lowercase" in e for e in errors),
+                                f"{name}: the {label} forty-char shape must be refused by"
+                                f" name; got {errors}")
 
     def testTheIntegrationCheckerCountethItsFacesTruthfully(self):
         proc = subprocess.run([sys.executable, "-B", "ci/check_content_release_integration.py"],
