@@ -2,277 +2,367 @@
   "evidence_root": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE",
   "files": [
     {
-      "path": "T51/commands.json",
-      "sha256": "7e2d906e7fee12f3df295c6bebe3eee744825d2421c78283c3cfacbca3275622",
-      "size": 13045
+      "path": "T52/commands.json",
+      "sha256": "03abe8181fe445531967f5fe07899626320480a509b405b8e6f1c82fddd49368",
+      "size": 7036
     },
     {
-      "path": "T51/logs/T51-controls-python3-002.log",
-      "sha256": "0b1ac463307b9f7d907105bb19e85bdada5dcd05131d80c492ffd80b4ab3f5f4",
-      "size": 234
+      "path": "T52/logs/T52-controls-python3-002.log",
+      "sha256": "1d5f10acd7107227e79a918ea44e65afb4b34c7b4ea5318614e47ed90fbcf981",
+      "size": 317
     },
     {
-      "path": "T51/logs/T51-controls-python3-003.log",
-      "sha256": "67493ebd28a55ece17214e55d318f34ba4af6ac7592268756f1b3dcc304afa21",
-      "size": 125
+      "path": "T52/logs/T52-controls-python3-003.log",
+      "sha256": "c14e170c8ee6d83798ec3f98ea450d8c3bebb5043a8bb1d01f8c59eb7cb11ffb",
+      "size": 1576
     },
     {
-      "path": "T51/logs/T51-controls-python3-004.log",
-      "sha256": "03f0bc422dc53a81fd7f41085300a28e42626c2a4554e8929d897d3c092bd014",
-      "size": 1374
+      "path": "T52/logs/T52-controls-python3-004.log",
+      "sha256": "1d5f10acd7107227e79a918ea44e65afb4b34c7b4ea5318614e47ed90fbcf981",
+      "size": 317
     },
     {
-      "path": "T51/logs/T51-controls-python3-005.log",
-      "sha256": "0b1ac463307b9f7d907105bb19e85bdada5dcd05131d80c492ffd80b4ab3f5f4",
-      "size": 234
+      "path": "T52/logs/T52-controls-python3.log",
+      "sha256": "c14e170c8ee6d83798ec3f98ea450d8c3bebb5043a8bb1d01f8c59eb7cb11ffb",
+      "size": 1576
     },
     {
-      "path": "T51/logs/T51-controls-python3-006.log",
-      "sha256": "67493ebd28a55ece17214e55d318f34ba4af6ac7592268756f1b3dcc304afa21",
-      "size": 125
+      "path": "T52/logs/T52-narrow-python3-002.log",
+      "sha256": "3d26051537bba588917c1a5b215d8aba7ce737686a0a49f13a443e7336aa09d8",
+      "size": 4517
     },
     {
-      "path": "T51/logs/T51-controls-python3-007.log",
-      "sha256": "03f0bc422dc53a81fd7f41085300a28e42626c2a4554e8929d897d3c092bd014",
-      "size": 1374
+      "path": "T52/logs/T52-narrow-python3.log",
+      "sha256": "04068ff9b768b67601b6b3a086fd18ca0260d3f876bb7447b5bfd676848519fc",
+      "size": 4394
     },
     {
-      "path": "T51/logs/T51-controls-python3-008.log",
-      "sha256": "0b1ac463307b9f7d907105bb19e85bdada5dcd05131d80c492ffd80b4ab3f5f4",
-      "size": 234
+      "path": "T52/logs/T52-subsystem-python3-002.log",
+      "sha256": "f96351b4cd25f5cfeb28a67dc6a1bc9a2a74fb513964a61dbe2f8ca6d8d3a248",
+      "size": 44024
     },
     {
-      "path": "T51/logs/T51-controls-python3-009.log",
-      "sha256": "67493ebd28a55ece17214e55d318f34ba4af6ac7592268756f1b3dcc304afa21",
-      "size": 125
+      "path": "T52/logs/T52-subsystem-python3.log",
+      "sha256": "f590812fd3a8d13617ce439a51835e85d9a0be964d2cf4cfcc6db4d3168e966d",
+      "size": 43901
     },
     {
-      "path": "T51/logs/T51-controls-python3.log",
-      "sha256": "03f0bc422dc53a81fd7f41085300a28e42626c2a4554e8929d897d3c092bd014",
-      "size": 1374
+      "path": "T52/milestones/contract-court-milestone.json",
+      "sha256": "112e06805f90d7b690ccde1ba81a1d74bae87f1b604cff31f765568887a12484",
+      "size": 9827
     },
     {
-      "path": "T51/logs/T51-narrow-swift-002.log",
-      "sha256": "2586b5693497d6249ad82c53dfb0bc49149242664f2dc2eb225b526f9c1d0c81",
-      "size": 4474
+      "path": "T52/milestones/design-grounding-milestone.json",
+      "sha256": "cec5a12ab067d855f15db0898c86cccf24c85588694d4b111a317c9d813842b3",
+      "size": 9215
     },
     {
-      "path": "T51/logs/T51-narrow-swift-003.log",
-      "sha256": "309e982ba94340967ec4f6ac0cc5c92232418fd094ccdfc1f584a8c6c7cfc933",
-      "size": 4474
+      "path": "T52/milestones/roster-verification-milestone.json",
+      "sha256": "a273154c1118d25caa335860ef211f15863035357e4b4efc40007a15d41f08ce",
+      "size": 7350
     },
     {
-      "path": "T51/logs/T51-narrow-swift.log",
-      "sha256": "2e999794c5788755c576989d5b5c2e854c23479ce85f13823e004810a1edeca0",
-      "size": 4495
+      "path": "T52/roster-attempt-1-first-campaign-six-escaped-against-the-unfortified-court/logs/T52-SM00-empty-census-muzzled.semantic.log",
+      "sha256": "280b090aa55f7c5937b76392d9a13241f94ae87fa1af7cabf70a7355a2b5e0ad",
+      "size": 988
     },
     {
-      "path": "T51/logs/T51-subsystem-swift-002.log",
-      "sha256": "3dd79d986e298506ad5074731f266c1468c054b6d23acde1b50d80a1174d7bc4",
-      "size": 264451
+      "path": "T52/roster-attempt-1-first-campaign-six-escaped-against-the-unfortified-court/logs/T52-SM01-dupe-guard-struck.semantic.log",
+      "sha256": "98c2317b0d1dbb52b1a52a86f7752bad2a3263835eb566b33cc4b3b117a948fa",
+      "size": 1669
     },
     {
-      "path": "T51/logs/T51-subsystem-swift-003.log",
-      "sha256": "ce8916a2703fb2b96bfbf5ecf7fe22efd0ebbe88954f046f3ac5ed52498386f6",
-      "size": 264448
+      "path": "T52/roster-attempt-1-first-campaign-six-escaped-against-the-unfortified-court/logs/T52-SM02-symlink-census-zeroed.semantic.log",
+      "sha256": "5725b0a1abf940f94edf0da3878a1ce3ee3d2c33c5806e1380f6bfa4cfb731a5",
+      "size": 926
     },
     {
-      "path": "T51/logs/T51-subsystem-swift.log",
-      "sha256": "ca487a41af98ef6295b1c4dd035bf4834fcb132c48666b7f791ea3d81088b916",
-      "size": 264448
+      "path": "T52/roster-attempt-1-first-campaign-six-escaped-against-the-unfortified-court/logs/T52-SM03-traversal-body-struck.semantic.log",
+      "sha256": "6c7586c915683c8149e6175faa1a84b2393fad85c6d278a365d5973cd79f9112",
+      "size": 1057
     },
     {
-      "path": "T51/milestones/contract-court-milestone.json",
-      "sha256": "951666ce0aa7be64aea8855df15b2a9b2c5be2d3ecdf21e7135f2043437e1d2d",
-      "size": 8355
+      "path": "T52/roster-attempt-1-first-campaign-six-escaped-against-the-unfortified-court/logs/T52-SM04-mode-guard-asleep.semantic.log",
+      "sha256": "d0963a73cc8f3081bb85c41d4d874698ce30e229c50c5395b9f8873c949d259e",
+      "size": 964
     },
     {
-      "path": "T51/milestones/design-grounding-milestone.json",
-      "sha256": "0d5a586b36ba409d47d2d84f3c09c7732448cc0dce85eff3edb012ee4b18787d",
-      "size": 8194
+      "path": "T52/roster-attempt-1-first-campaign-six-escaped-against-the-unfortified-court/logs/T52-SM05-empty-husk-guard-asleep.semantic.log",
+      "sha256": "7ca320073b98c53f532f8863137e18274a8c23ca15ec3127dec65b266c5bfd91",
+      "size": 1235
     },
     {
-      "path": "T51/milestones/roster-verification-milestone.json",
-      "sha256": "da492cc7766d8e19027efb9df89d204211a21fd46d386257bfbf6e4026be1877",
-      "size": 5139
+      "path": "T52/roster-attempt-1-first-campaign-six-escaped-against-the-unfortified-court/logs/T52-SM06-tier-gate-wide.semantic.log",
+      "sha256": "d8d9cacd8e22f96e0afe927147c5f0a6fc6f41ef52c1b2ba5b10379d025c07f0",
+      "size": 1800
     },
     {
-      "path": "T51/roster-attempt-1/logs/T51-SM1-name-length-cap-loosed.semantic.log",
-      "sha256": "f272fe899e03461767e33cd0967882059dd6d4b2c44b14ccd7285cff291c3b78",
-      "size": 16029
+      "path": "T52/roster-attempt-1-first-campaign-six-escaped-against-the-unfortified-court/logs/T52-SM07-counts-truth-struck.semantic.log",
+      "sha256": "0cc6ba77619cd9ddecd204b2262334d829ba7a3c7a68953f819eeae2fa01521d",
+      "size": 903
     },
     {
-      "path": "T51/roster-attempt-1/logs/T51-SM10-schema-gate-wide.semantic.log",
-      "sha256": "d011606056b090cba100953c2d063482c080bf4d7820d84635b89330c42202e4",
-      "size": 16029
+      "path": "T52/roster-attempt-1-first-campaign-six-escaped-against-the-unfortified-court/logs/T52-SM08-fts-proof-blinded.semantic.log",
+      "sha256": "4e4b916f7b693be6c7b5766224e589767ff8e6a8240c4359fcfd46d4657ff314",
+      "size": 1040
     },
     {
-      "path": "T51/roster-attempt-1/logs/T51-SM11-role-binding-loosed.semantic.log",
-      "sha256": "85f614636d356e677760e0dacd4c24112627edc83ec1ff676d158dcdac966bc8",
-      "size": 16029
+      "path": "T52/roster-attempt-1-first-campaign-six-escaped-against-the-unfortified-court/logs/T52-SM09-unrestorable-muzzled.semantic.log",
+      "sha256": "c582fbd7729233ea9bcb2fbf3a8643648b7004bb9dd3dac903d61c9dc4f38dfe",
+      "size": 960
     },
     {
-      "path": "T51/roster-attempt-1/logs/T51-SM12-hex-alphabet-enlarged.semantic.log",
-      "sha256": "23c45425815f1b4f5e6f87f8a8bb0f4fa4d126d3355921f79d784481551e6b28",
-      "size": 16029
+      "path": "T52/roster-attempt-1-first-campaign-six-escaped-against-the-unfortified-court/logs/T52-SM10-absence-not-claimed.semantic.log",
+      "sha256": "dcef012a8f91fee140ad63ef69c13e7e2a3b7b3d672a6769da58253bc5b960f7",
+      "size": 973
     },
     {
-      "path": "T51/roster-attempt-1/logs/T51-SM13-self-nomination-muzzled.semantic.log",
-      "sha256": "5ef79bf80f2787d16ecb3c4bdbfb25499dce26e60ca1679d52a4606435b108f6",
-      "size": 1456
+      "path": "T52/roster-attempt-1-first-campaign-six-escaped-against-the-unfortified-court/logs/T52-SM11-fixture-prohibition-struck.semantic.log",
+      "sha256": "0e3d4c8005961c7c37a7d5498b19707fe052b05ffb841d1f312d954737381c64",
+      "size": 1392
     },
     {
-      "path": "T51/roster-attempt-1/logs/T51-SM14-reverification-slept.semantic.log",
-      "sha256": "680492b42b9c31c996d560a1c6dfc243737c8984f9ca1b1a9901361ccac4aaec",
-      "size": 1306
+      "path": "T52/roster-attempt-1-first-campaign-six-escaped-against-the-unfortified-court/logs/T52-SM12-stale-publication-blind.semantic.log",
+      "sha256": "aeb6e78f464891907eb89b3de30b575eaec576721c5c11507ed3f7b356d51665",
+      "size": 1019
     },
     {
-      "path": "T51/roster-attempt-1/logs/T51-SM15-keyset-equality-struck.semantic.log",
-      "sha256": "5ebd5d6c3bad701b1b1aca1166b11e58638b209f6b4511f1c7941f8c08626e9b",
-      "size": 16029
+      "path": "T52/roster-attempt-1-first-campaign-six-escaped-against-the-unfortified-court/logs/T52-SM13-schema-gate-wide.semantic.log",
+      "sha256": "57a07c3ecdb00f8f68e16802d22959b9e6260cc400ccc5806d0f87b2edd27c43",
+      "size": 1274
     },
     {
-      "path": "T51/roster-attempt-1/logs/T51-SM16-golden-space-inserted.semantic.log",
-      "sha256": "f0492a518032c2d62c6e4ad39e1705c2b3c3bdae915744f050c731243328cc4a",
-      "size": 16029
+      "path": "T52/roster-attempt-1-first-campaign-six-escaped-against-the-unfortified-court/logs/T52-SM14-radio-scan-muzzled.semantic.log",
+      "sha256": "81ffa253ac666c0f369e837cf5a55951b53286b8ec9e9717c28b9bfb9513a355",
+      "size": 1183
     },
     {
-      "path": "T51/roster-attempt-1/logs/T51-SM2-characterset-gate-down.semantic.log",
-      "sha256": "6ac6cefa067ef2be49593bb0541cde72253292da9dd2a213f21deffb99f64129",
-      "size": 16029
+      "path": "T52/roster-attempt-1-first-campaign-six-escaped-against-the-unfortified-court/logs/T52-SM15-engine-claim-struck.semantic.log",
+      "sha256": "0cfff7908e46844a9f1e4b5d8a2bd20bb6d0d4cf2ddbbc62a89b2de39c15669c",
+      "size": 980
     },
     {
-      "path": "T51/roster-attempt-1/logs/T51-SM3-first-last-rule-struck.semantic.log",
-      "sha256": "c1ebea3ba28a843c630d9eacce65d5283698efb5c7f9da2631c22599b161cfd8",
-      "size": 16029
+      "path": "T52/roster-attempt-1-first-campaign-six-escaped-against-the-unfortified-court/logs/T52-SM16-dex-claim-struck.semantic.log",
+      "sha256": "aec5331529c3fee61d054e25982f3a882afe68a5d75d9a3fe786e72ca9ab6104",
+      "size": 907
     },
     {
-      "path": "T51/roster-attempt-1/logs/T51-SM4-ending-set-poisoned.semantic.log",
-      "sha256": "6d9d57bc85d6ef9d3db5dbf71454b53574d86e84663b93477335c60d68b79c90",
-      "size": 16029
+      "path": "T52/roster-attempt-1-first-campaign-six-escaped-against-the-unfortified-court/logs/T52-SM17-plist-oath-muzzled.semantic.log",
+      "sha256": "b12b279db44b18da2caaa510e321e1b8172c536ea1470f5d186094d9b9fb324b",
+      "size": 1276
     },
     {
-      "path": "T51/roster-attempt-1/logs/T51-SM5-resolver-guard-slept.semantic.log",
-      "sha256": "944f4653760aeb35dc45e7058290b498c20d139069737ac6a015dab75c51d00e",
-      "size": 16029
+      "path": "T52/roster-attempt-1-first-campaign-six-escaped-against-the-unfortified-court/logs/T52-SM18-inventory-undeterminéd.semantic.log",
+      "sha256": "57d08e846545008ec718097ca54ed97c701cbf22ca2fbcde4890b25817d3f245",
+      "size": 533
     },
     {
-      "path": "T51/roster-attempt-1/logs/T51-SM6-missing-cry-muzzled.semantic.log",
-      "sha256": "c9d01ee588c59ca7f65cb846956c1ea045bd97c680f1e8e00f3aabd4b129c01b",
-      "size": 16029
+      "path": "T52/roster-attempt-1-first-campaign-six-escaped-against-the-unfortified-court/logs/T52-SM19-presence-undeterminéd.semantic.log",
+      "sha256": "7813701bdf1f0b0a73a3231d491dfcbffa8ea9cff24e087ac3a6792cca4886b5",
+      "size": 497
     },
     {
-      "path": "T51/roster-attempt-1/logs/T51-SM7-placeholder-veil-rent.semantic.log",
-      "sha256": "8cdbb122022ce84078ea32a8c5a04a4cd58ffaab825d3173cce94ee0f8aa636c",
-      "size": 16029
+      "path": "T52/roster-attempt-1-first-campaign-six-escaped-against-the-unfortified-court/logs/T52-SM20-absence-claimed.semantic.log",
+      "sha256": "c601e4bfe3e4cf29f2eeb10bef7d1fe0041ee3605cd4a93657a55b9a306d1cbe",
+      "size": 1028
     },
     {
-      "path": "T51/roster-attempt-1/logs/T51-SM8-prefix-rule-asleep.semantic.log",
-      "sha256": "b095b91808329d63c57f72bbce42891edd2be2772e23b6df3cf74deeb71895ef",
-      "size": 16029
+      "path": "T52/roster-attempt-1-first-campaign-six-escaped-against-the-unfortified-court/logs/T52-SM21-release-guard-asleep.semantic.log",
+      "sha256": "5dce4044b0d6725d432fbcf8921177846cedd0c08267eb5d53418df61a57c9ac",
+      "size": 1023
     },
     {
-      "path": "T51/roster-attempt-1/logs/T51-SM9-phone-counsel-struck.semantic.log",
-      "sha256": "65ea51d9688cc688a76426d98b78cf0044195e27fb6a4332a2b854bb816a8847",
-      "size": 16029
+      "path": "T52/roster-attempt-1-first-campaign-six-escaped-against-the-unfortified-court/logs/T52-SM22-operator-refusal-muzzled.semantic.log",
+      "sha256": "f72eb68dd2b93caa363bc5f17834ba2adaba8005d9efb7bd35493306b460d79d",
+      "size": 1413
     },
     {
-      "path": "T51/roster-attempt-1/manifest.json",
-      "sha256": "4e2ae288cc0d4af66ea60b61d4269d82d33b95d854141f985e888cb6050c94e5",
-      "size": 12637
+      "path": "T52/roster-attempt-1-first-campaign-six-escaped-against-the-unfortified-court/logs/T52-SM23-dispatch-all-operator.semantic.log",
+      "sha256": "2c9addf4fc00fcb11dee7b2dde76fcfaa533266c6b466f807503c4626b0f657c",
+      "size": 1388
     },
     {
-      "path": "T51/roster/logs/T51-SM1-name-length-cap-loosed.semantic.log",
-      "sha256": "0822878613dc4d0884d0466654c87ef82e96d345948b7760ef26015f1cf1090c",
-      "size": 16029
+      "path": "T52/roster-attempt-1-first-campaign-six-escaped-against-the-unfortified-court/logs/T52-SM24-deputy-required-guard-struck.semantic.log",
+      "sha256": "10fec344fc9e50d49fe848521dc2f469ea26c2da02f53c1fe91780124da1934b",
+      "size": 1511
     },
     {
-      "path": "T51/roster/logs/T51-SM10-schema-gate-wide.semantic.log",
-      "sha256": "5ee3838f7e74cb1d66252dbe41078e55158319d8d7b7ba322e2864521251a2e0",
-      "size": 16029
+      "path": "T52/roster-attempt-1-first-campaign-six-escaped-against-the-unfortified-court/logs/T52-SM25-gates-alarm-sleepeth.semantic.log",
+      "sha256": "213909722db654838d938ec8b630da15f05ab9c27c85595ef4fd424797c2ccd6",
+      "size": 465
     },
     {
-      "path": "T51/roster/logs/T51-SM11-role-binding-loosed.semantic.log",
-      "sha256": "354094bfa8fda7eac3a1fba0d5e4fa1d500da8d59a129f86572e3026eaa18025",
-      "size": 16029
+      "path": "T52/roster-attempt-1-first-campaign-six-escaped-against-the-unfortified-court/logs/T52-SM26-evidence-shape-widened.semantic.log",
+      "sha256": "17693fcf6e78ec244dd81c05c6785be98e1da73af144a473e91625541c2698b1",
+      "size": 465
     },
     {
-      "path": "T51/roster/logs/T51-SM12-hex-alphabet-enlarged.semantic.log",
-      "sha256": "bb1aceca47f5bfb5edb167d5397e67209854e000f5535004133211d66639e73a",
-      "size": 16029
+      "path": "T52/roster-attempt-1-first-campaign-six-escaped-against-the-unfortified-court/logs/T52-SM27-wiring-first-blind.semantic.log",
+      "sha256": "0d53060aac34af78de3c198c4dc099b91dd04a9bc1b7eb1815fa4834ab1051d7",
+      "size": 501
     },
     {
-      "path": "T51/roster/logs/T51-SM13-self-nomination-muzzled.semantic.log",
-      "sha256": "0b5c2af71423fb0ec7f3b26f705e2731f09f57857579a9706c3d6c81b676d76c",
-      "size": 1456
+      "path": "T52/roster-attempt-1-first-campaign-six-escaped-against-the-unfortified-court/logs/T52-SM28-presence-faces-unseen.semantic.log",
+      "sha256": "0d53060aac34af78de3c198c4dc099b91dd04a9bc1b7eb1815fa4834ab1051d7",
+      "size": 501
     },
     {
-      "path": "T51/roster/logs/T51-SM14-reverification-slept.semantic.log",
-      "sha256": "3479e99d90a5bc11fa8d4214a12df908b0ae732a14928acde4fb49ae2e68e95a",
-      "size": 1306
+      "path": "T52/roster-attempt-1-first-campaign-six-escaped-against-the-unfortified-court/manifest.json",
+      "sha256": "750eeb42ba0c39dcd02ff2ec74a13e389563d9c3c077bc6f7fff5f99e293a15f",
+      "size": 22431
     },
     {
-      "path": "T51/roster/logs/T51-SM15-keyset-equality-struck.semantic.log",
-      "sha256": "1a9df65a328f6afd7fdb1ae52c41bb3c896a779ff1f999e94fc09486fa04554a",
-      "size": 16029
+      "path": "T52/roster/logs/T52-SM00-empty-census-muzzled.semantic.log",
+      "sha256": "29e931670fe0cb998293d3a33ce6851b1f6192ed1e6fea15e1bd4a5874d75183",
+      "size": 990
     },
     {
-      "path": "T51/roster/logs/T51-SM16-golden-space-inserted.semantic.log",
-      "sha256": "32902d3bbe29495e3aeed33c3a213037373dfcb095fc94284018f0e1c7d89f7f",
-      "size": 16029
+      "path": "T52/roster/logs/T52-SM01-dupe-guard-struck.semantic.log",
+      "sha256": "91392205f0977f4d245b4c20b3c8e914fd5c3bf9bfb9f46b38b0a5bd0a34e454",
+      "size": 1671
     },
     {
-      "path": "T51/roster/logs/T51-SM17-optional-phantom-restored.semantic.log",
-      "sha256": "ba23db770c08efb5c4e5befe54003993a90954c9b2bf8bde3d951a7e7b2ce0f4",
-      "size": 16029
+      "path": "T52/roster/logs/T52-SM02-symlink-census-zeroed.semantic.log",
+      "sha256": "393761681f717a6a8ef414cb45949bc305d80b2e99f42f8439b52dd975d41c51",
+      "size": 928
     },
     {
-      "path": "T51/roster/logs/T51-SM2-characterset-gate-down.semantic.log",
-      "sha256": "910f161a7a7d1cc057021d69e5caceb7797475f52be9673e65f9b619b72d8367",
-      "size": 16029
+      "path": "T52/roster/logs/T52-SM03-traversal-body-struck.semantic.log",
+      "sha256": "f2f1114eb2aea600d13d292b985bf12638fce01cc0a36581993023fb5c6ded6d",
+      "size": 1059
     },
     {
-      "path": "T51/roster/logs/T51-SM3-first-last-rule-struck.semantic.log",
-      "sha256": "f02310eabe7331f4c296c9949f797cea23019de4dc80d5f3998799c66f9856fe",
-      "size": 16029
+      "path": "T52/roster/logs/T52-SM04-mode-guard-asleep.semantic.log",
+      "sha256": "3c1b33572bedb0efbfc803c1c5ccae46b74036d94d2cead01e253c738d702fae",
+      "size": 966
     },
     {
-      "path": "T51/roster/logs/T51-SM4-ending-set-poisoned.semantic.log",
-      "sha256": "25f17a15b5499e1f25f35aa003d4dded52b77ae6e0d69eab6778015682c6af3f",
-      "size": 16029
+      "path": "T52/roster/logs/T52-SM05-empty-husk-guard-asleep.semantic.log",
+      "sha256": "712c0e20bb79a4737bec846aadec1f411ff25c5faf1e346b347e417af6ee7b35",
+      "size": 1237
     },
     {
-      "path": "T51/roster/logs/T51-SM5-resolver-guard-slept.semantic.log",
-      "sha256": "3f85d064c6a9df2f579f435bf224cd557680c0a1a6fc76ab9954433fb90e0ba4",
-      "size": 16029
+      "path": "T52/roster/logs/T52-SM06-tier-gate-wide.semantic.log",
+      "sha256": "99fd1cb3eb84e015cb9d72767d5cf7e5c726ef118e2b91750618c98b929692c5",
+      "size": 1804
     },
     {
-      "path": "T51/roster/logs/T51-SM6-missing-cry-muzzled.semantic.log",
-      "sha256": "6b57cba4b69d6e1ded601cbae0f979925793f1350635d24c5d975e8a21450072",
-      "size": 16029
+      "path": "T52/roster/logs/T52-SM07-counts-truth-struck.semantic.log",
+      "sha256": "b6a2d32c299ae703af667411cd0c370ddf34597790dab9079832a69cae9a552e",
+      "size": 905
     },
     {
-      "path": "T51/roster/logs/T51-SM7-placeholder-veil-rent.semantic.log",
-      "sha256": "17d6a4290cfa391086b97abc29fc9265d7ebbcec024c91fc60f969637ce94bfa",
-      "size": 16029
+      "path": "T52/roster/logs/T52-SM08-fts-proof-blinded.semantic.log",
+      "sha256": "73e3a1dfc91e8082b5d1510dfda84b4dbcf9ed1a27802b0ccb6a9a3dd6675cad",
+      "size": 1042
     },
     {
-      "path": "T51/roster/logs/T51-SM8-prefix-rule-asleep.semantic.log",
-      "sha256": "97e6abd1527b44c1534a06a5141b1628fc9a4994fa5fc53fe85ca1befc90e537",
-      "size": 16029
+      "path": "T52/roster/logs/T52-SM09-unrestorable-muzzled.semantic.log",
+      "sha256": "d445b6a89197cb7b511659977b363bf9ffc20dd4b5c695b6b83e8344c903dc8a",
+      "size": 962
     },
     {
-      "path": "T51/roster/logs/T51-SM9-phone-counsel-struck.semantic.log",
-      "sha256": "cfd30fc53b4e8051aeaf33afb0689868108aa99dc467e4c48b78f62d27a60a24",
-      "size": 16029
+      "path": "T52/roster/logs/T52-SM10-absence-not-claimed.semantic.log",
+      "sha256": "3e402d0a22d6f0d74f0afb63a1d6c937d4e37b15f67d00609f349b6a51ffd8c8",
+      "size": 975
     },
     {
-      "path": "T51/roster/manifest.json",
-      "sha256": "3c5dcee9168d13274ae85409212f8f3a6bbf0b6bf1ab56f6900ea0c0dffe891f",
-      "size": 13467
+      "path": "T52/roster/logs/T52-SM11-fixture-prohibition-struck.semantic.log",
+      "sha256": "63c6ca98d247adac97864185b28cc7ef07eb0b6d2a401f015f7163612e6138c3",
+      "size": 1394
+    },
+    {
+      "path": "T52/roster/logs/T52-SM12-stale-publication-blind.semantic.log",
+      "sha256": "fdc2b7eda8ab6eb81cb0649f8fdde8f8dbfe51f977d367c5f17e09fafedae244",
+      "size": 1021
+    },
+    {
+      "path": "T52/roster/logs/T52-SM13-schema-gate-wide.semantic.log",
+      "sha256": "d216505210f5e6ff574c8d669c706d4d0be3bcfff6de35d52bb2fd1c30ccb96e",
+      "size": 1276
+    },
+    {
+      "path": "T52/roster/logs/T52-SM14-radio-scan-muzzled.semantic.log",
+      "sha256": "95a0b2db0533e4264e9e249ed536ee7ae45ed9a6b4b30e2b3936a399cf7f2f56",
+      "size": 1185
+    },
+    {
+      "path": "T52/roster/logs/T52-SM15-engine-claim-struck.semantic.log",
+      "sha256": "9b0a4d042eb6d0c1920d84b19feb38c8ea1c243c7960f6b49168752ad64f0f8a",
+      "size": 982
+    },
+    {
+      "path": "T52/roster/logs/T52-SM16-dex-claim-struck.semantic.log",
+      "sha256": "953c0c674905188c66a54fbc520317d85bf08cae4f6e709133dc4e1212a2f1f4",
+      "size": 909
+    },
+    {
+      "path": "T52/roster/logs/T52-SM17-plist-oath-muzzled.semantic.log",
+      "sha256": "b5d29c426d86b20260b117ef5af263bc27800b412074c0b801eb75ec0e16e04f",
+      "size": 1278
+    },
+    {
+      "path": "T52/roster/logs/T52-SM18-inventory-undeterminéd.semantic.log",
+      "sha256": "3a836253cbf6a9b1a9a61c03e381c72d0adfc8c48e9f92bc6acfe121dc6cdc9e",
+      "size": 1689
+    },
+    {
+      "path": "T52/roster/logs/T52-SM19-presence-undeterminéd.semantic.log",
+      "sha256": "fb43a179e64cb08081f1eb56fd85025647eab3b8f9985f4667c3c6af6607a285",
+      "size": 1701
+    },
+    {
+      "path": "T52/roster/logs/T52-SM20-absence-claimed.semantic.log",
+      "sha256": "36a4fce7eba762c27d3b7087790e3397d6590e865f508cd074b118477dab1b7e",
+      "size": 1030
+    },
+    {
+      "path": "T52/roster/logs/T52-SM21-release-guard-asleep.semantic.log",
+      "sha256": "cc082f33388f81fa92a83ac36f843cf824a4256e3013455a1429222754deb273",
+      "size": 1025
+    },
+    {
+      "path": "T52/roster/logs/T52-SM22-operator-refusal-muzzled.semantic.log",
+      "sha256": "005ac0a626ed39f9c02f64be51e00c1f897f6c7763c3f17a475ec134b633e922",
+      "size": 1415
+    },
+    {
+      "path": "T52/roster/logs/T52-SM23-dispatch-all-operator.semantic.log",
+      "sha256": "06112fe89ae5181126fa6fc5c890e5b8b99638d5cf42bd87a8888230335720aa",
+      "size": 1390
+    },
+    {
+      "path": "T52/roster/logs/T52-SM24-deputy-required-guard-struck.semantic.log",
+      "sha256": "c19ed348e9e01adaadb3741f774c00a43cc2775a022448d2464bc0e6dc6dfdce",
+      "size": 1513
+    },
+    {
+      "path": "T52/roster/logs/T52-SM25-gates-alarm-sleepeth.semantic.log",
+      "sha256": "3b19e6a20e5e7053c325c5e9fa1a390aa622bd5cef1801940cd0bfbbf0311534",
+      "size": 1250
+    },
+    {
+      "path": "T52/roster/logs/T52-SM26-evidence-shape-widened.semantic.log",
+      "sha256": "c085d97db0053c12e4ebc698ac3ab352159372f940dd14b0975705c32d8801f1",
+      "size": 1482
+    },
+    {
+      "path": "T52/roster/logs/T52-SM27-wiring-first-blind.semantic.log",
+      "sha256": "c754f90206347fc9ba83bfc27826a58d6498bc3a5382bdee7ded0f6338acfbfe",
+      "size": 1365
+    },
+    {
+      "path": "T52/roster/logs/T52-SM28-presence-faces-unseen.semantic.log",
+      "sha256": "3a4eb17c26365f3097cb2ed56927f04e3b12f9e55117bdcbd54d49486be94eff",
+      "size": 1855
+    },
+    {
+      "path": "T52/roster/manifest.json",
+      "sha256": "fedf535eb54e656da9cb985567cec75f184e967bc4c9e4dd60d2f9eb51e58cf1",
+      "size": 22740
     }
   ],
-  "note": "T51 evidence: runner commands (fifteen records in three firings of the stage manifest, all PASSED; the final five bound to the boundary c38ce9455619 -- narrow-swift-003, subsystem-swift-003, controls-python3-007/-008/-009; swift records carry kind=command tests=n/a by the runner's tongue, the sealed T06-T50 precedent -- the positive counts 15/0/0 court, 1021/0/0 whole-package live verbatim in the stage logs, and the python lane's 20/0 and sealed 36 in the milestones and corroboration logs); three milestones telling the design (the quarry reviewed and kept, the seven defects of the present road, the scope refusal of neighbouring WIP), the courts (fifteen swift seats incl. the guardian witness with two REAL planted archives and twenty python seats upon the gate itself, the sittings with cause), and the roster (seventeen rows seventeen kills in one canonical campaign, the install-gate refusal of the first seventeenth form told in full, the card's two falsifiers executed over, the guardian row proved); the roster manifest 17/17 KILLED at the canonical pin with every named witness named; the first campaign archived entire, never deleted",
+  "note": "T52 evidence: runner commands (eight records in two firings of the stage manifest, all PASSED; the final four bound to the boundary 51fcfa31731d -- narrow-python3-002 with tests=35/35 and subsystem-python3-002 with tests=144/144 read by the python classifier from the verbatim \"Ran N tests\" faces, controls-python3-003/-004 rc=0; the verbatim logs preserve every count); three milestones telling the design (the three lawful lanes, the per-kind canons, the quarry adoption with provenance, the discover-all discoveries and the two vintages of the staging gate), the courts (thirty-five witnesses, four seatings with cause, the two-faces adjudication entire), and the roster (the canonical 29/29 campaign at the boundary with the first harvest's six escapes adjudicated rod by rod -- three court-blindnesses amended by the order oath and the in-process eye, three inert rods reforged to strike the censuses themselves, and the method-law of proving upon committed pins writ large); the roster manifest 29/29 KILLED with every named witness named; the first campaign archived entire under its tale of six escapes, nothing deleted",
   "schema_version": 1,
-  "task": "T51"
+  "task": "T52"
 }

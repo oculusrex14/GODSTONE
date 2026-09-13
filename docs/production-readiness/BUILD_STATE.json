@@ -8528,6 +8528,672 @@
         "the A06/APPROVED_CONTENT gates remain open: the court's archives are development fixtures with benign prose, labelled as such by the planter's own words; the APPROVED_ASSETS.json publication is a staging instrument, not an approval; no external gate was closed by fixture; NATIVE_MODELS/HARDWARE/SIGNING stand unmeddled; readiness=false"
       ]
     },
+    "T52": {
+      "case_results": {
+        "added_cases": [
+          "testTheExclusionLanePassethACleanLightPackage",
+          "testAbsenceIsReportedNotClaimed",
+          "testTheExclusionLaneStillDeferencethTheSealedProhibitions",
+          "testPresenceLaneRequirethTheArchive",
+          "testChangedBytesAreRefusedAsStale",
+          "testEmptyHuskIsRefused",
+          "testDuplicateZipEntriesAreRefused",
+          "testSymlinkEntriesAreRefused",
+          "testTraversalNamesAreRefused",
+          "testWorldWritableEntriesAreRefused",
+          "testTheUsableArchiveIsSwornIntoTheReport",
+          "testFixtureMarksAreRecordedInDebugPresence",
+          "testTheReleaseLaneProhibitethTheFixturesProse",
+          "testLyingCountsAreRefused",
+          "testTheUnrestorableIndexIsRefused",
+          "testTheHuskThatIsNoDatabaseAtAllIsRefused",
+          "testTheRoadRequirethTheBundledEngine",
+          "testTheRoadRequirethTheDex",
+          "testTheCrossTierMasqueradeIsRefused",
+          "testTheAabAndApkDifferByTheirCanonicalPaths",
+          "testTheIpaCarriethExecutablePlistAndArchive",
+          "testTheArtifactInventoryIsDeterministicInItsRecordStructure",
+          "testThePresenceReportIsDeterministicAndFullyShaped",
+          "testTheStalePublicationIsRefusedAtTheGate",
+          "testTheFutureSchemaAndFalseWitnessesAreRefused",
+          "testTheMergedManifestGrantScanIsKept",
+          "testNoArtifactsNoVerdictNoPublication",
+          "testTheReleaseLaneRequirethAnExpectedTruth",
+          "testTheSelftestSpeaksForItself",
+          "testTheDeputyFaceReadethTheDocumentPointersLawfully",
+          "testTheOperatorFaceStillRefusethSelfNomination",
+          "testTheCliDeputyFaceRunnethWithoutTheFlag",
+          "testTheGatesCheckerRefusethAllTwelveByName",
+          "testTheEvidenceShapeIsSwornFullLowercaseHex",
+          "testTheIntegrationCheckerCountethItsFacesTruthfully"
+        ],
+        "deleted_cases": [],
+        "dual_court_parity": "the python courts keep one road with the sealed lanes: the presence inspector planter executeth the frozen DDL (schema.sql, indexes.sql executed verbatim by the court planter and by ci/archive_fixture.py, not one byte moved); the staging gate is witnessed together by T51's sealed content/tests court (twenty witnesses upon the publication law) and this court's five gate-witnesses W29-W33 (the two lawful faces) -- two ages of one law, one register, no relaxation; the inspector's verifier bindeth the same verify_manifest and load_trust_store that the T18/T36 lineage bindeth",
+        "isle_grands_standing": {
+          "android_grand": "1067 stand (sealed at T49; no android source path was touched; the two workflow files and the python tooling that govern the android roads are python-side faces)",
+          "content_lane": "56 stand (the sealed content/tests courts with T51's twenty upon the publication law re-passed entire at the restoration seatings; not a recorded T52 stage, told in the milestones)",
+          "counts_source": "the runner's python classifier read the unittest face aright: the narrow record carrieth tests=35/35 and the subsystem record tests=144/144, the verbatim \"Ran N tests\" lines preserved in T52/logs; the sealed T06-T50 precedent of tests=n/a belongs to the swift/gradle tongues, not to this lane",
+          "ios_grand": "1021 stand (sealed at T51; the ios isle walked not this round -- no ios path is in the round's name-list, the mirror covenant resteth from T51's seal; sync --check is no recorded T52 control by the registry's own argv and was not needed)",
+          "python_grand": "144 re-passed whole at the boundary -- the discover-all road of tools/readiness/tests: the sealed T01-T04 contract courts (t03 eighteen, the registry repair re-recorded three authority blobs with full attribution, child 1066060), T45 and T46 entire (the three witnesses T51's required kwarg had put out of the roll restored by the T46-era deputy face, child 4a9f18b), and this court's thirty-five; the recorded subsystem log verbatim: \"Ran 144 tests\" OK"
+        },
+        "t52_controls": {
+          "counts_source": "the card's fourth command git diff --check over the round range 9c97cb0..HEAD came clean (rc=0, round audit); the frozen-face name-list, sealed-court name-list and ios name-list audits all emptied",
+          "records": "T52-controls-python3-003/-004 PASSED exit=0 (ci/check_repository.py; ci/check_release_gates_status.py ever-self-testifying: \"refuseth 12 of 12\" + \"8 release gates represented; CLOSED gates have well-formed evidence pointers\" -- the eight stand as sealed, android-archive-only-release keeping its lawful CLOSED evidence 3ddb6f68368a3877afacc189d348b0dde8a9941e shape-verified unmeddled, A06/production-corpus/model-native-stack OPEN, the four device gates BLOCKED; none closed, none opened that should not)"
+        },
+        "t52_narrow_court": {
+          "counts_source": "T52-narrow-python3-002 PASSED exit=0, log verbatim \"Ran 35 tests\" OK; the first firing T52-narrow-python3 recorded 34/34 at the pre-fortification boundary; the court was seated four times with cause: the first seating's three cries were the court's own offences (the record-reader at the top document, the empty-vs-absent index world, the dict-union precedence), the second rose 29 green, the third heard the restored gate at 34, the fourth the fortifications at 35",
+          "errors": 0,
+          "failures": 0,
+          "tests": 35
+        },
+        "t52_subsystem": {
+          "counts_source": "T52-subsystem-python3-002 PASSED exit=0 -- the whole discover-all road, every sealed court of tools/readiness/tests with this one, \"Ran 144 tests\" OK; this road was FIRST travelled by any task of the registry (narrow-patterned lanes before) and it laid bare the two latent wounds both healed this round",
+          "errors": 0,
+          "failures": 0,
+          "tests": 144
+        }
+      },
+      "claim_commit": "5510525d73c25fb0b286bb981fb6e44bab1d6417",
+      "commands": [
+        "T52-narrow-python3-002",
+        "T52-subsystem-python3-002",
+        "T52-controls-python3-003",
+        "T52-controls-python3-004"
+      ],
+      "device_gate_ids": [],
+      "file_hashes": {},
+      "implementation_commit": "51fcfa31731df0b842da59850bc5a1f559798646",
+      "implementation_commits": [
+        "dea269dd4d2b49f405a554ba8ce89e3ecb2732cd",
+        "1066060a768171a40f36b4a25a51dcd5d97f7371",
+        "4a9f18bc8fba706d6a740ff4c4df06a507c4971c",
+        "81618e4238ca5867c0fb0ff2c26776c45306d944",
+        "123ade174e36c121db08c5d4299da5b2dc9f84b5",
+        "3dfac34cd59cf758d232a02e5de32beca19ccfd0",
+        "51fcfa31731df0b842da59850bc5a1f559798646"
+      ],
+      "inputs": {
+        "children_commit_order": [
+          "5510525d73c25fb0b286bb981fb6e44bab1d6417",
+          "dea269dd4d2b49f405a554ba8ce89e3ecb2732cd",
+          "1066060a768171a40f36b4a25a51dcd5d97f7371",
+          "4a9f18bc8fba706d6a740ff4c4df06a507c4971c",
+          "81618e4238ca5867c0fb0ff2c26776c45306d944",
+          "123ade174e36c121db08c5d4299da5b2dc9f84b5",
+          "3dfac34cd59cf758d232a02e5de32beca19ccfd0",
+          "51fcfa31731df0b842da59850bc5a1f559798646"
+        ],
+        "governed_source": [
+          "scripts/inspect_android_artifacts.py (three lawful lanes; the exclusion, presence and release-candidate forms; the per-kind canonical Archive paths; duplicate, traversal, symlink, mode, tier, count, fts, engine, dex, plist and grant scans; ApprovedArchivePresenceReport and the inventory published deterministically, only upon complete success)",
+          "scripts/prepare_release_assets.py (two faces of one gate: the operator arm byte-identical to T51's seal; the deputy arm verbatim the T46-era face f28323d as last seen at 9c32c11; staging and publication kept operator-only)",
+          "ci/check_release_gates_status.py (the quarry's strengthening adopted; the ever-living twelve-control selftest; refusals counted and printed truthfully)",
+          "ci/check_content_release_integration.py (the wiring census: 3-of-3 builder faces, 19-of-19 presence faces, the guarded release step, the debug prove-bytes road)",
+          ".github/workflows/repository-verification.yml (the quarry's nineteen lines adopted: codex trigger, dev-requirements split, core unit tests, fixture feed, prove-the-bytes step)",
+          ".github/workflows/release-gates.yml (the guarded presence form added to the android-archive-only-release job: dormant while the external content gates stand OPEN, fail-closed the moment approved bytes are staged)",
+          "ci/archive_fixture.py + content/requirements-dev.txt (brought from the quarry verbatim; the fixture is visibly labelled and can not pass production staging)",
+          "docs/production-readiness/ARCHITECTURE_INVARIANTS.json (three stale authority blobs re-recorded after review with full attribution -- the drift tale in the registry-repair child)",
+          "tools/readiness/tests/test_t52.py (the court, thirty-five witnesses)",
+          "ci/mutations.py (twenty-nine rods sown additively; the sealed rows unmeddled)"
+        ],
+        "required_regression_paths": [
+          "tools/readiness/tests/test_t52.py",
+          "the whole discover-all road of tools/readiness/tests (144: the sealed T01-T04, T45, T46 courts with this one) and the content/tests road (56, companion rehearsed)"
+        ],
+        "sealed_hot_paths_untouched": [
+          "BLE/LinkInfo/wire/identity contracts: the round's name-list is empty of them (round audit: no content/db, no wire/, no LinkInfo, no BLE, no Identity, no crypto)",
+          "content/db/schema.sql and content/db/indexes.sql: FROZEN; executed verbatim by the court's planter and by the adopted fixture script; not one byte moved",
+          "the sealed courts T01-T51+T83: unedited -- the three T51-wounded witnesses were HEARD (restored to green by the gate's two faces) and their files not meddled with; the 144-road re-passes them entire",
+          "docs/production/RELEASE_GATES_STATUS.json: unmeddled -- eight gates, the external five OPEN or BLOCKED, none closed by fixture; readiness=false",
+          "the original checkout and its WIP: read-only throughout; the adopted faces came by copy with provenance told in the builder child; neighbouring WIP lanes named in the card's inspect list yet unspoken of by the quarry were left unmedled",
+          "tools/readiness: the runner, the validator, the register of tasks untravelled; the ios canonical faces and the mirror package unmeddled this round"
+        ]
+      },
+      "ladder_boundary_commit": "51fcfa31731df0b842da59850bc5a1f559798646",
+      "mutation_results": {
+        "attempts_archived": [
+          "T52/roster-attempt-1-first-campaign-six-escaped-against-the-unfortified-court (twenty-three killed, six escaped at pin 123ade174e36 -- kept entire: the six escapes adjudicated rod by rod and witness by witness in the roster-verification milestone; nothing deleted)",
+          "T52/roster (canonical: twenty-nine rows, 29/29 KILLED at 51fcfa31731d, every row dying to its own named witness selected by unittest -k)"
+        ],
+        "campaign_note": "twenty-nine rows, twenty-nine kills, at the canonical pin 51fcfa31731d, in one campaign that stands canonical. The first harvest (23 killed, 6 escaped) is told with its adjudication entire: three escapes were the court's own blindness -- the determinism witnesses tried their publications by parse-and-re-dump equality, a trial blind to key ORDER, and the evidence-shape witness numbered none of the twelve controls carryeth a forty-char non-hex forgery -- and three were the rods' own faithlessness: the alarm flip and the two gate flips struck guards whose counted printouts were computed from the very lists they examined, and so were INERT. The court learned to read the keys as published (the order oath at every depth); an in-process eye was seated for the evidence shape (importlib upon the checker's own file location, the eight-gate sworn shape standing clean, the three forgeries z*40, 0*40, A*40 refused by name); the three inert rods were reforged to strike the control roll and the censuses themselves (inverted comprehensions), each killing its named witness alone, two pairs sharing one victim by the T51 four-rods-one-witness precedent. A method-lesson lies writ large: a hand-proof worktree added from HEAD proveth the COMMITTED court only -- three rods were misjudged faithless on a stale ground before the raw empirics (the published key sequence printed, the forged shapes before the in-process gate) discovered all; fortifications are committed before the campaign relauncheth. The card's own falsifiers were executed over: absence-of-archive-in-presence (SM10), duplicate entries (SM01), stale asset (SM12), cross-tier (SM06), fixture-as-production (SM11); the two faces of the restored gate were roven whole (SM22-SM24). Unkillable candidates (the deputy's return, the status ladder, the provenance loop, the ipa empty-executable branch) were named and NOT sown.",
+        "roster_manifest": "T52/roster/manifest.json",
+        "semantic": [
+          {
+            "anchor_count": 1,
+            "baseline_sha": "51fcfa31731df0b842da59850bc5a1f559798646",
+            "build_exit": 0,
+            "category": "semantic",
+            "ended_utc": "2026-09-13T17:30:19Z",
+            "failed_assertion": "witness testNoArtifactsNoVerdictNoPublication failed as intended (1 failed case(s))",
+            "id": "T52-SM00-empty-census-muzzled",
+            "log_path": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/T52/roster-attempt-2/logs/T52-SM00-empty-census-muzzled.semantic.log",
+            "log_sha": "29e931670fe0cb998293d3a33ce6851b1f6192ed1e6fea15e1bd4a5874d75183",
+            "mutant_patch_sha": "6f37b017b75c2c66e5ab46360021c8f4fd9b75f6a650319bb966d9cf468055f1",
+            "outcome": "KILLED",
+            "started_utc": "2026-09-13T17:30:19Z",
+            "target_tests": [
+              "testNoArtifactsNoVerdictNoPublication"
+            ],
+            "tests_run": 1
+          },
+          {
+            "anchor_count": 1,
+            "baseline_sha": "51fcfa31731df0b842da59850bc5a1f559798646",
+            "build_exit": 0,
+            "category": "semantic",
+            "ended_utc": "2026-09-13T17:30:20Z",
+            "failed_assertion": "witness testDuplicateZipEntriesAreRefused failed as intended (1 failed case(s))",
+            "id": "T52-SM01-dupe-guard-struck",
+            "log_path": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/T52/roster-attempt-2/logs/T52-SM01-dupe-guard-struck.semantic.log",
+            "log_sha": "91392205f0977f4d245b4c20b3c8e914fd5c3bf9bfb9f46b38b0a5bd0a34e454",
+            "mutant_patch_sha": "30f034c3e89b0ee10e68fe2916f9920a3cd7c15926ed8db2cb46903fdadf9581",
+            "outcome": "KILLED",
+            "started_utc": "2026-09-13T17:30:19Z",
+            "target_tests": [
+              "testDuplicateZipEntriesAreRefused"
+            ],
+            "tests_run": 1
+          },
+          {
+            "anchor_count": 1,
+            "baseline_sha": "51fcfa31731df0b842da59850bc5a1f559798646",
+            "build_exit": 0,
+            "category": "semantic",
+            "ended_utc": "2026-09-13T17:30:21Z",
+            "failed_assertion": "witness testSymlinkEntriesAreRefused failed as intended (1 failed case(s))",
+            "id": "T52-SM02-symlink-census-zeroed",
+            "log_path": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/T52/roster-attempt-2/logs/T52-SM02-symlink-census-zeroed.semantic.log",
+            "log_sha": "393761681f717a6a8ef414cb45949bc305d80b2e99f42f8439b52dd975d41c51",
+            "mutant_patch_sha": "ee6da6fb94ef54292e516469d3d4c5cffd75c50cb0d232fa7dedf3e852347acb",
+            "outcome": "KILLED",
+            "started_utc": "2026-09-13T17:30:20Z",
+            "target_tests": [
+              "testSymlinkEntriesAreRefused"
+            ],
+            "tests_run": 1
+          },
+          {
+            "anchor_count": 1,
+            "baseline_sha": "51fcfa31731df0b842da59850bc5a1f559798646",
+            "build_exit": 0,
+            "category": "semantic",
+            "ended_utc": "2026-09-13T17:30:21Z",
+            "failed_assertion": "witness testTraversalNamesAreRefused failed as intended (1 failed case(s))",
+            "id": "T52-SM03-traversal-body-struck",
+            "log_path": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/T52/roster-attempt-2/logs/T52-SM03-traversal-body-struck.semantic.log",
+            "log_sha": "f2f1114eb2aea600d13d292b985bf12638fce01cc0a36581993023fb5c6ded6d",
+            "mutant_patch_sha": "ec07e1a6672d0f0c56582fd0d3c3dbc52ecde2d1495f7f39ffd6950517beb695",
+            "outcome": "KILLED",
+            "started_utc": "2026-09-13T17:30:21Z",
+            "target_tests": [
+              "testTraversalNamesAreRefused"
+            ],
+            "tests_run": 1
+          },
+          {
+            "anchor_count": 1,
+            "baseline_sha": "51fcfa31731df0b842da59850bc5a1f559798646",
+            "build_exit": 0,
+            "category": "semantic",
+            "ended_utc": "2026-09-13T17:30:22Z",
+            "failed_assertion": "witness testWorldWritableEntriesAreRefused failed as intended (1 failed case(s))",
+            "id": "T52-SM04-mode-guard-asleep",
+            "log_path": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/T52/roster-attempt-2/logs/T52-SM04-mode-guard-asleep.semantic.log",
+            "log_sha": "3c1b33572bedb0efbfc803c1c5ccae46b74036d94d2cead01e253c738d702fae",
+            "mutant_patch_sha": "c926074cf2dd3def0e3c5ef910bb19fa82766f67dd6558fd54e268713341a022",
+            "outcome": "KILLED",
+            "started_utc": "2026-09-13T17:30:21Z",
+            "target_tests": [
+              "testWorldWritableEntriesAreRefused"
+            ],
+            "tests_run": 1
+          },
+          {
+            "anchor_count": 1,
+            "baseline_sha": "51fcfa31731df0b842da59850bc5a1f559798646",
+            "build_exit": 0,
+            "category": "semantic",
+            "ended_utc": "2026-09-13T17:30:23Z",
+            "failed_assertion": "witness testEmptyHuskIsRefused failed as intended (1 failed case(s))",
+            "id": "T52-SM05-empty-husk-guard-asleep",
+            "log_path": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/T52/roster-attempt-2/logs/T52-SM05-empty-husk-guard-asleep.semantic.log",
+            "log_sha": "712c0e20bb79a4737bec846aadec1f411ff25c5faf1e346b347e417af6ee7b35",
+            "mutant_patch_sha": "55ecdbe28caf0e0c8a79bbf429a32025aaf80e45a36482a5b7972f3550b4097d",
+            "outcome": "KILLED",
+            "started_utc": "2026-09-13T17:30:22Z",
+            "target_tests": [
+              "testEmptyHuskIsRefused"
+            ],
+            "tests_run": 1
+          },
+          {
+            "anchor_count": 1,
+            "baseline_sha": "51fcfa31731df0b842da59850bc5a1f559798646",
+            "build_exit": 0,
+            "category": "semantic",
+            "ended_utc": "2026-09-13T17:30:23Z",
+            "failed_assertion": "witness testTheCrossTierMasqueradeIsRefused failed as intended (1 failed case(s))",
+            "id": "T52-SM06-tier-gate-wide",
+            "log_path": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/T52/roster-attempt-2/logs/T52-SM06-tier-gate-wide.semantic.log",
+            "log_sha": "99fd1cb3eb84e015cb9d72767d5cf7e5c726ef118e2b91750618c98b929692c5",
+            "mutant_patch_sha": "be0e99e5db73a12f9e0537f0825fe8fb97c0eff14f5a65578631f32143be0397",
+            "outcome": "KILLED",
+            "started_utc": "2026-09-13T17:30:23Z",
+            "target_tests": [
+              "testTheCrossTierMasqueradeIsRefused"
+            ],
+            "tests_run": 1
+          },
+          {
+            "anchor_count": 1,
+            "baseline_sha": "51fcfa31731df0b842da59850bc5a1f559798646",
+            "build_exit": 0,
+            "category": "semantic",
+            "ended_utc": "2026-09-13T17:30:24Z",
+            "failed_assertion": "witness testLyingCountsAreRefused failed as intended (1 failed case(s))",
+            "id": "T52-SM07-counts-truth-struck",
+            "log_path": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/T52/roster-attempt-2/logs/T52-SM07-counts-truth-struck.semantic.log",
+            "log_sha": "b6a2d32c299ae703af667411cd0c370ddf34597790dab9079832a69cae9a552e",
+            "mutant_patch_sha": "3999e46bac2832e8e5323c782ce6623baa77225610347954cf821534393d9ab5",
+            "outcome": "KILLED",
+            "started_utc": "2026-09-13T17:30:23Z",
+            "target_tests": [
+              "testLyingCountsAreRefused"
+            ],
+            "tests_run": 1
+          },
+          {
+            "anchor_count": 1,
+            "baseline_sha": "51fcfa31731df0b842da59850bc5a1f559798646",
+            "build_exit": 0,
+            "category": "semantic",
+            "ended_utc": "2026-09-13T17:30:24Z",
+            "failed_assertion": "witness testTheUsableArchiveIsSwornIntoTheReport failed as intended (1 failed case(s))",
+            "id": "T52-SM08-fts-proof-blinded",
+            "log_path": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/T52/roster-attempt-2/logs/T52-SM08-fts-proof-blinded.semantic.log",
+            "log_sha": "73e3a1dfc91e8082b5d1510dfda84b4dbcf9ed1a27802b0ccb6a9a3dd6675cad",
+            "mutant_patch_sha": "e31cc02b4eae60d45a1dfc827533020cdb004da17b1828869c232030fdb27130",
+            "outcome": "KILLED",
+            "started_utc": "2026-09-13T17:30:24Z",
+            "target_tests": [
+              "testTheUsableArchiveIsSwornIntoTheReport"
+            ],
+            "tests_run": 1
+          },
+          {
+            "anchor_count": 1,
+            "baseline_sha": "51fcfa31731df0b842da59850bc5a1f559798646",
+            "build_exit": 0,
+            "category": "semantic",
+            "ended_utc": "2026-09-13T17:30:25Z",
+            "failed_assertion": "witness testTheUnrestorableIndexIsRefused failed as intended (1 failed case(s))",
+            "id": "T52-SM09-unrestorable-muzzled",
+            "log_path": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/T52/roster-attempt-2/logs/T52-SM09-unrestorable-muzzled.semantic.log",
+            "log_sha": "d445b6a89197cb7b511659977b363bf9ffc20dd4b5c695b6b83e8344c903dc8a",
+            "mutant_patch_sha": "29c674ca6c0a47b8b981e654753a09919e066a8fc36d06640089e46f90258c77",
+            "outcome": "KILLED",
+            "started_utc": "2026-09-13T17:30:24Z",
+            "target_tests": [
+              "testTheUnrestorableIndexIsRefused"
+            ],
+            "tests_run": 1
+          },
+          {
+            "anchor_count": 1,
+            "baseline_sha": "51fcfa31731df0b842da59850bc5a1f559798646",
+            "build_exit": 0,
+            "category": "semantic",
+            "ended_utc": "2026-09-13T17:30:25Z",
+            "failed_assertion": "witness testPresenceLaneRequirethTheArchive failed as intended (1 failed case(s))",
+            "id": "T52-SM10-absence-not-claimed",
+            "log_path": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/T52/roster-attempt-2/logs/T52-SM10-absence-not-claimed.semantic.log",
+            "log_sha": "3e402d0a22d6f0d74f0afb63a1d6c937d4e37b15f67d00609f349b6a51ffd8c8",
+            "mutant_patch_sha": "d821c99bc7c1644176e8c6e69434568b165e0de7b74d8b11212e9f128a00ae2d",
+            "outcome": "KILLED",
+            "started_utc": "2026-09-13T17:30:25Z",
+            "target_tests": [
+              "testPresenceLaneRequirethTheArchive"
+            ],
+            "tests_run": 1
+          },
+          {
+            "anchor_count": 1,
+            "baseline_sha": "51fcfa31731df0b842da59850bc5a1f559798646",
+            "build_exit": 0,
+            "category": "semantic",
+            "ended_utc": "2026-09-13T17:30:26Z",
+            "failed_assertion": "witness testTheReleaseLaneProhibitethTheFixturesProse failed as intended (1 failed case(s))",
+            "id": "T52-SM11-fixture-prohibition-struck",
+            "log_path": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/T52/roster-attempt-2/logs/T52-SM11-fixture-prohibition-struck.semantic.log",
+            "log_sha": "63c6ca98d247adac97864185b28cc7ef07eb0b6d2a401f015f7163612e6138c3",
+            "mutant_patch_sha": "2122564165c4a6915072ef636c1a20235729309569cccd1856ceb8fb01ff549f",
+            "outcome": "KILLED",
+            "started_utc": "2026-09-13T17:30:25Z",
+            "target_tests": [
+              "testTheReleaseLaneProhibitethTheFixturesProse"
+            ],
+            "tests_run": 1
+          },
+          {
+            "anchor_count": 1,
+            "baseline_sha": "51fcfa31731df0b842da59850bc5a1f559798646",
+            "build_exit": 0,
+            "category": "semantic",
+            "ended_utc": "2026-09-13T17:30:26Z",
+            "failed_assertion": "witness testTheStalePublicationIsRefusedAtTheGate failed as intended (1 failed case(s))",
+            "id": "T52-SM12-stale-publication-blind",
+            "log_path": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/T52/roster-attempt-2/logs/T52-SM12-stale-publication-blind.semantic.log",
+            "log_sha": "fdc2b7eda8ab6eb81cb0649f8fdde8f8dbfe51f977d367c5f17e09fafedae244",
+            "mutant_patch_sha": "c76eb2c98422a18e0ef157d2c554d72695932072f1f405ad5f5643e11be3f403",
+            "outcome": "KILLED",
+            "started_utc": "2026-09-13T17:30:26Z",
+            "target_tests": [
+              "testTheStalePublicationIsRefusedAtTheGate"
+            ],
+            "tests_run": 1
+          },
+          {
+            "anchor_count": 1,
+            "baseline_sha": "51fcfa31731df0b842da59850bc5a1f559798646",
+            "build_exit": 0,
+            "category": "semantic",
+            "ended_utc": "2026-09-13T17:30:27Z",
+            "failed_assertion": "witness testTheFutureSchemaAndFalseWitnessesAreRefused failed as intended (1 failed case(s))",
+            "id": "T52-SM13-schema-gate-wide",
+            "log_path": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/T52/roster-attempt-2/logs/T52-SM13-schema-gate-wide.semantic.log",
+            "log_sha": "d216505210f5e6ff574c8d669c706d4d0be3bcfff6de35d52bb2fd1c30ccb96e",
+            "mutant_patch_sha": "d63cd705f1e7e44d03816d48e25e9030a1c5165643ba8201fa7e15a9e07eafbc",
+            "outcome": "KILLED",
+            "started_utc": "2026-09-13T17:30:27Z",
+            "target_tests": [
+              "testTheFutureSchemaAndFalseWitnessesAreRefused"
+            ],
+            "tests_run": 1
+          },
+          {
+            "anchor_count": 1,
+            "baseline_sha": "51fcfa31731df0b842da59850bc5a1f559798646",
+            "build_exit": 0,
+            "category": "semantic",
+            "ended_utc": "2026-09-13T17:30:28Z",
+            "failed_assertion": "witness testTheMergedManifestGrantScanIsKept failed as intended (1 failed case(s))",
+            "id": "T52-SM14-radio-scan-muzzled",
+            "log_path": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/T52/roster-attempt-2/logs/T52-SM14-radio-scan-muzzled.semantic.log",
+            "log_sha": "95a0b2db0533e4264e9e249ed536ee7ae45ed9a6b4b30e2b3936a399cf7f2f56",
+            "mutant_patch_sha": "33ae6ebce60224a36510f08b766ae9e1a573c82eb51c80797a813af28fae9091",
+            "outcome": "KILLED",
+            "started_utc": "2026-09-13T17:30:27Z",
+            "target_tests": [
+              "testTheMergedManifestGrantScanIsKept"
+            ],
+            "tests_run": 1
+          },
+          {
+            "anchor_count": 1,
+            "baseline_sha": "51fcfa31731df0b842da59850bc5a1f559798646",
+            "build_exit": 0,
+            "category": "semantic",
+            "ended_utc": "2026-09-13T17:30:28Z",
+            "failed_assertion": "witness testTheRoadRequirethTheBundledEngine failed as intended (1 failed case(s))",
+            "id": "T52-SM15-engine-claim-struck",
+            "log_path": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/T52/roster-attempt-2/logs/T52-SM15-engine-claim-struck.semantic.log",
+            "log_sha": "9b0a4d042eb6d0c1920d84b19feb38c8ea1c243c7960f6b49168752ad64f0f8a",
+            "mutant_patch_sha": "6646cc811ecad0d909ff4742df9a522ac5290533fbbb60f0775f86b22abf2e74",
+            "outcome": "KILLED",
+            "started_utc": "2026-09-13T17:30:28Z",
+            "target_tests": [
+              "testTheRoadRequirethTheBundledEngine"
+            ],
+            "tests_run": 1
+          },
+          {
+            "anchor_count": 1,
+            "baseline_sha": "51fcfa31731df0b842da59850bc5a1f559798646",
+            "build_exit": 0,
+            "category": "semantic",
+            "ended_utc": "2026-09-13T17:30:29Z",
+            "failed_assertion": "witness testTheRoadRequirethTheDex failed as intended (1 failed case(s))",
+            "id": "T52-SM16-dex-claim-struck",
+            "log_path": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/T52/roster-attempt-2/logs/T52-SM16-dex-claim-struck.semantic.log",
+            "log_sha": "953c0c674905188c66a54fbc520317d85bf08cae4f6e709133dc4e1212a2f1f4",
+            "mutant_patch_sha": "dd98c8b010b6c1e646b10b958eb3189a1392534d0ded32a05bd1802c59f1b0dc",
+            "outcome": "KILLED",
+            "started_utc": "2026-09-13T17:30:28Z",
+            "target_tests": [
+              "testTheRoadRequirethTheDex"
+            ],
+            "tests_run": 1
+          },
+          {
+            "anchor_count": 1,
+            "baseline_sha": "51fcfa31731df0b842da59850bc5a1f559798646",
+            "build_exit": 0,
+            "category": "semantic",
+            "ended_utc": "2026-09-13T17:30:29Z",
+            "failed_assertion": "witness testTheIpaCarriethExecutablePlistAndArchive failed as intended (1 failed case(s))",
+            "id": "T52-SM17-plist-oath-muzzled",
+            "log_path": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/T52/roster-attempt-2/logs/T52-SM17-plist-oath-muzzled.semantic.log",
+            "log_sha": "b5d29c426d86b20260b117ef5af263bc27800b412074c0b801eb75ec0e16e04f",
+            "mutant_patch_sha": "d646e9d6f9e427e42d69d5661f70cd2695224045fb6cdd11cc6bb7c8140c2a65",
+            "outcome": "KILLED",
+            "started_utc": "2026-09-13T17:30:29Z",
+            "target_tests": [
+              "testTheIpaCarriethExecutablePlistAndArchive"
+            ],
+            "tests_run": 1
+          },
+          {
+            "anchor_count": 1,
+            "baseline_sha": "51fcfa31731df0b842da59850bc5a1f559798646",
+            "build_exit": 0,
+            "category": "semantic",
+            "ended_utc": "2026-09-13T17:30:30Z",
+            "failed_assertion": "witness testTheArtifactInventoryIsDeterministicInItsRecordStructure failed as intended (1 failed case(s))",
+            "id": "T52-SM18-inventory-undeterminéd",
+            "log_path": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/T52/roster-attempt-2/logs/T52-SM18-inventory-undeterminéd.semantic.log",
+            "log_sha": "3a836253cbf6a9b1a9a61c03e381c72d0adfc8c48e9f92bc6acfe121dc6cdc9e",
+            "mutant_patch_sha": "9401c5a706510fb8ca2744793b94cf625d66d3a2537c4bed1bc4ac415ad30839",
+            "outcome": "KILLED",
+            "started_utc": "2026-09-13T17:30:29Z",
+            "target_tests": [
+              "testTheArtifactInventoryIsDeterministicInItsRecordStructure"
+            ],
+            "tests_run": 1
+          },
+          {
+            "anchor_count": 1,
+            "baseline_sha": "51fcfa31731df0b842da59850bc5a1f559798646",
+            "build_exit": 0,
+            "category": "semantic",
+            "ended_utc": "2026-09-13T17:30:30Z",
+            "failed_assertion": "witness testThePresenceReportIsDeterministicAndFullyShaped failed as intended (1 failed case(s))",
+            "id": "T52-SM19-presence-undeterminéd",
+            "log_path": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/T52/roster-attempt-2/logs/T52-SM19-presence-undeterminéd.semantic.log",
+            "log_sha": "fb43a179e64cb08081f1eb56fd85025647eab3b8f9985f4667c3c6af6607a285",
+            "mutant_patch_sha": "684780cbf82985bbe830265ad7439f536acb96c274b343b817316eef0c153b97",
+            "outcome": "KILLED",
+            "started_utc": "2026-09-13T17:30:30Z",
+            "target_tests": [
+              "testThePresenceReportIsDeterministicAndFullyShaped"
+            ],
+            "tests_run": 1
+          },
+          {
+            "anchor_count": 1,
+            "baseline_sha": "51fcfa31731df0b842da59850bc5a1f559798646",
+            "build_exit": 0,
+            "category": "semantic",
+            "ended_utc": "2026-09-13T17:30:31Z",
+            "failed_assertion": "witness testAbsenceIsReportedNotClaimed failed as intended (1 failed case(s))",
+            "id": "T52-SM20-absence-claimed",
+            "log_path": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/T52/roster-attempt-2/logs/T52-SM20-absence-claimed.semantic.log",
+            "log_sha": "36a4fce7eba762c27d3b7087790e3397d6590e865f508cd074b118477dab1b7e",
+            "mutant_patch_sha": "8055d6a97017733451f8d28752ba1ed847f409e5115b7117d3c826e3dbca78c5",
+            "outcome": "KILLED",
+            "started_utc": "2026-09-13T17:30:30Z",
+            "target_tests": [
+              "testAbsenceIsReportedNotClaimed"
+            ],
+            "tests_run": 1
+          },
+          {
+            "anchor_count": 1,
+            "baseline_sha": "51fcfa31731df0b842da59850bc5a1f559798646",
+            "build_exit": 0,
+            "category": "semantic",
+            "ended_utc": "2026-09-13T17:30:32Z",
+            "failed_assertion": "witness testTheReleaseLaneRequirethAnExpectedTruth failed as intended (1 failed case(s))",
+            "id": "T52-SM21-release-guard-asleep",
+            "log_path": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/T52/roster-attempt-2/logs/T52-SM21-release-guard-asleep.semantic.log",
+            "log_sha": "cc082f33388f81fa92a83ac36f843cf824a4256e3013455a1429222754deb273",
+            "mutant_patch_sha": "d384c184b3ef853074f9eb1518bd1a207586dfc6f5f2220f77e93d71c0488dfe",
+            "outcome": "KILLED",
+            "started_utc": "2026-09-13T17:30:31Z",
+            "target_tests": [
+              "testTheReleaseLaneRequirethAnExpectedTruth"
+            ],
+            "tests_run": 1
+          },
+          {
+            "anchor_count": 1,
+            "baseline_sha": "51fcfa31731df0b842da59850bc5a1f559798646",
+            "build_exit": 0,
+            "category": "semantic",
+            "ended_utc": "2026-09-13T17:30:32Z",
+            "failed_assertion": "witness testTheOperatorFaceStillRefusethSelfNomination failed as intended (1 failed case(s))",
+            "id": "T52-SM22-operator-refusal-muzzled",
+            "log_path": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/T52/roster-attempt-2/logs/T52-SM22-operator-refusal-muzzled.semantic.log",
+            "log_sha": "005ac0a626ed39f9c02f64be51e00c1f897f6c7763c3f17a475ec134b633e922",
+            "mutant_patch_sha": "de66c71f7111b5c1776d87d50acf3cb581ccefa3f6d79eb96dddc9f56313412d",
+            "outcome": "KILLED",
+            "started_utc": "2026-09-13T17:30:32Z",
+            "target_tests": [
+              "testTheOperatorFaceStillRefusethSelfNomination"
+            ],
+            "tests_run": 1
+          },
+          {
+            "anchor_count": 1,
+            "baseline_sha": "51fcfa31731df0b842da59850bc5a1f559798646",
+            "build_exit": 0,
+            "category": "semantic",
+            "ended_utc": "2026-09-13T17:30:33Z",
+            "failed_assertion": "witness testTheDeputyFaceReadethTheDocumentPointersLawfully failed as intended (1 failed case(s))",
+            "id": "T52-SM23-dispatch-all-operator",
+            "log_path": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/T52/roster-attempt-2/logs/T52-SM23-dispatch-all-operator.semantic.log",
+            "log_sha": "06112fe89ae5181126fa6fc5c890e5b8b99638d5cf42bd87a8888230335720aa",
+            "mutant_patch_sha": "87281bc54f02fc518d34879c67ce64c0c65e45d297e9cfc6ae8897cfae0144ef",
+            "outcome": "KILLED",
+            "started_utc": "2026-09-13T17:30:32Z",
+            "target_tests": [
+              "testTheDeputyFaceReadethTheDocumentPointersLawfully"
+            ],
+            "tests_run": 1
+          },
+          {
+            "anchor_count": 1,
+            "baseline_sha": "51fcfa31731df0b842da59850bc5a1f559798646",
+            "build_exit": 0,
+            "category": "semantic",
+            "ended_utc": "2026-09-13T17:30:33Z",
+            "failed_assertion": "witness testTheDeputyFaceReadethTheDocumentPointersLawfully failed as intended (1 failed case(s))",
+            "id": "T52-SM24-deputy-required-guard-struck",
+            "log_path": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/T52/roster-attempt-2/logs/T52-SM24-deputy-required-guard-struck.semantic.log",
+            "log_sha": "c19ed348e9e01adaadb3741f774c00a43cc2775a022448d2464bc0e6dc6dfdce",
+            "mutant_patch_sha": "249bc675a7ffe6431d01702d5e627e18127c69fec01009892b9af8bcc221dec7",
+            "outcome": "KILLED",
+            "started_utc": "2026-09-13T17:30:33Z",
+            "target_tests": [
+              "testTheDeputyFaceReadethTheDocumentPointersLawfully"
+            ],
+            "tests_run": 1
+          },
+          {
+            "anchor_count": 1,
+            "baseline_sha": "51fcfa31731df0b842da59850bc5a1f559798646",
+            "build_exit": 0,
+            "category": "semantic",
+            "ended_utc": "2026-09-13T17:30:34Z",
+            "failed_assertion": "witness testTheGatesCheckerRefusethAllTwelveByName failed as intended (1 failed case(s))",
+            "id": "T52-SM25-gates-alarm-sleepeth",
+            "log_path": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/T52/roster-attempt-2/logs/T52-SM25-gates-alarm-sleepeth.semantic.log",
+            "log_sha": "3b19e6a20e5e7053c325c5e9fa1a390aa622bd5cef1801940cd0bfbbf0311534",
+            "mutant_patch_sha": "7132cfcffacf88071ceacc66dd55e438a79f03feca450737decea25fe2683f3b",
+            "outcome": "KILLED",
+            "started_utc": "2026-09-13T17:30:33Z",
+            "target_tests": [
+              "testTheGatesCheckerRefusethAllTwelveByName"
+            ],
+            "tests_run": 1
+          },
+          {
+            "anchor_count": 1,
+            "baseline_sha": "51fcfa31731df0b842da59850bc5a1f559798646",
+            "build_exit": 0,
+            "category": "semantic",
+            "ended_utc": "2026-09-13T17:30:34Z",
+            "failed_assertion": "witness testTheEvidenceShapeIsSwornFullLowercaseHex failed as intended (1 failed case(s))",
+            "id": "T52-SM26-evidence-shape-widened",
+            "log_path": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/T52/roster-attempt-2/logs/T52-SM26-evidence-shape-widened.semantic.log",
+            "log_sha": "c085d97db0053c12e4ebc698ac3ab352159372f940dd14b0975705c32d8801f1",
+            "mutant_patch_sha": "9c06a2dd3db77349b0471ca1e1813b69407938fc7da7b58810af2a5f5e96ed37",
+            "outcome": "KILLED",
+            "started_utc": "2026-09-13T17:30:34Z",
+            "target_tests": [
+              "testTheEvidenceShapeIsSwornFullLowercaseHex"
+            ],
+            "tests_run": 1
+          },
+          {
+            "anchor_count": 1,
+            "baseline_sha": "51fcfa31731df0b842da59850bc5a1f559798646",
+            "build_exit": 0,
+            "category": "semantic",
+            "ended_utc": "2026-09-13T17:30:35Z",
+            "failed_assertion": "witness testTheIntegrationCheckerCountethItsFacesTruthfully failed as intended (1 failed case(s))",
+            "id": "T52-SM27-wiring-first-blind",
+            "log_path": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/T52/roster-attempt-2/logs/T52-SM27-wiring-first-blind.semantic.log",
+            "log_sha": "c754f90206347fc9ba83bfc27826a58d6498bc3a5382bdee7ded0f6338acfbfe",
+            "mutant_patch_sha": "7fa401fe9331e4de642303e37f2fd2c2aa5409f7478f452e785f7d1b79c45776",
+            "outcome": "KILLED",
+            "started_utc": "2026-09-13T17:30:34Z",
+            "target_tests": [
+              "testTheIntegrationCheckerCountethItsFacesTruthfully"
+            ],
+            "tests_run": 1
+          },
+          {
+            "anchor_count": 1,
+            "baseline_sha": "51fcfa31731df0b842da59850bc5a1f559798646",
+            "build_exit": 0,
+            "category": "semantic",
+            "ended_utc": "2026-09-13T17:30:35Z",
+            "failed_assertion": "witness testTheIntegrationCheckerCountethItsFacesTruthfully failed as intended (1 failed case(s))",
+            "id": "T52-SM28-presence-faces-unseen",
+            "log_path": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/T52/roster-attempt-2/logs/T52-SM28-presence-faces-unseen.semantic.log",
+            "log_sha": "3a4eb17c26365f3097cb2ed56927f04e3b12f9e55117bdcbd54d49486be94eff",
+            "mutant_patch_sha": "33c53a8075eb38bbc15a75ea5d0fd8fd4e2afb2446672b5fe5c50b77f519fef9",
+            "outcome": "KILLED",
+            "started_utc": "2026-09-13T17:30:35Z",
+            "target_tests": [
+              "testTheIntegrationCheckerCountethItsFacesTruthfully"
+            ],
+            "tests_run": 1
+          }
+        ]
+      },
+      "objective": {
+        "claimed_head": "51fcfa31731df0b842da59850bc5a1f559798646",
+        "claimed_utc": "2026-09-13T15:34:33+00:00",
+        "objective": "Require exact approved Archive bytes inside APK/AAB/IPA: inspectors distinguish source-only exclusion evidence from release-candidate content presence; the approved bytes must be seen inside the package or the gate falleth."
+      },
+      "status": "COMPLETE",
+      "tested_tree_sha": "e33704db6374f28969df1fb3ae19b407d419ddc1",
+      "unresolved": [
+        "the instrumented device leg is NOT closed here: the IPA inspection is host-side zip reading only; the 200% Dynamic Type reflow, VoiceOver order and the on-device comparison of the EMBEDDED Info.plist against the built bundle await the instrumented runs of T73-T75 (physical evidence); the host lanes proved the gate's substance: the three lanes, the fifteen scans, the two faces",
+        "the guarded presence step in the release-gates job is DORMANT by design: while A06/APPROVED_CONTENT stand OPEN no bytes are staged, the step recordieth dormancy and exiteth 0; its fail-closed branch is witnessed by the court's synthetic sworn worlds and by rods SM12/SM22/SM23/SM24, not by a real approved archive (none exist -- no fixture may close an external gate)",
+        "the deputy face is honest archaeology: its vintage is the T46-era file (f28323d, last seen at 9c32c11), restoréd verbatim; should any future task claim the deputy said more than the T46 builder said, the diff against 9c32c11 is the witness"
+      ]
+    },
     "T83": {
       "case_results": {
         "android_grand": {
@@ -8816,7 +9482,7 @@
       "unresolved": []
     }
   },
-  "current_task": "T52",
+  "current_task": "T53",
   "external_blockers": [
     "A06",
     "APPROVED_CONTENT",
@@ -8825,47 +9491,39 @@
     "SIGNING"
   ],
   "failed_attempts": [],
-  "in_progress": {
-    "claimed_head": "9c97cb0711ce535293c02a5c82e05957b0173ecc",
-    "claimed_utc": "2026-09-13T15:34:33+00:00",
-    "objective": {
-      "claimed_head": "9c97cb0711ce535293c02a5c82e05957b0173ecc",
-      "claimed_utc": "2026-09-13T15:34:33+00:00",
-      "objective": "Require exact approved Archive bytes inside APK/AAB/IPA: extend inspectors to distinguish source-only exclusion evidence from release-candidate content presence."
-    },
-    "task": "T52"
-  },
-  "last_code_head": "c38ce9455619346e26b58f8ae0db2167cc2c4604",
-  "last_observed_head": "c38ce9455619346e26b58f8ae0db2167cc2c4604",
+  "in_progress": null,
+  "last_code_head": "51fcfa31731df0b842da59850bc5a1f559798646",
+  "last_observed_head": "51fcfa31731df0b842da59850bc5a1f559798646",
   "latest_verification": {
-    "at_utc": "2026-09-13T15:24:53+00:00",
-    "boundary_commit": "c38ce9455619346e26b58f8ae0db2167cc2c4604",
+    "at_utc": "2026-09-13T17:39:03+00:00",
+    "boundary_commit": "51fcfa31731df0b842da59850bc5a1f559798646",
     "controls": {
-      "boundary_records": 3,
+      "boundary_records": 2,
       "first_pair_failure": "none this round",
-      "outcomes": "3/3 PASSED at the boundary (check_repository, check_release_gates_status, sync --check)"
+      "outcomes": "2/2 PASSED at the boundary (check_repository; check_release_gates_status ever-self-testifying)"
     },
     "isle_grands": {
-      "android_grand": "1067 stand (untouched this round; round-range path audit empty)",
-      "ios_grand": "1021 re-passed whole this round (the 1006 sealed through T50 + this court's 15, from the recorded subsystem log at the boundary)",
-      "python_content_lane": "56 (4 sealed + 26 + 6 + the new 20) all pass, three sittings"
+      "android_grand": "1067 stand (sealed at T49; no android source path touched)",
+      "content_lane": "56 stand (companion rehearsed; not a recorded stage this round)",
+      "ios_grand": "1021 stand (sealed at T51; the isle walked not this round; no ios path in the round)",
+      "python_grand": "144 re-passed whole this round (the sealed T01-T04, T45, T46 courts with the T52 court, from the recorded subsystem log)"
     },
     "narrow": {
       "errors": 0,
       "failures": 0,
-      "tests": 15
+      "tests": 35
     },
     "roster": {
-      "T51_killed": 17,
-      "of": 17
+      "T52_killed": 29,
+      "of": 29
     },
     "subsystem": {
       "errors": 0,
       "failures": 0,
-      "tests": 1021
+      "tests": 144
     }
   },
-  "next_task": "T52",
+  "next_task": "T53",
   "phase": "P0",
   "plan_sha256": "685456b378662b0a40a53a6abc810041e37daf97b213f3efeb6cea879363934e",
   "planning_baseline_sha": "b5c3d3d394b70cf356cdde33b47511dad7cbb95c",
@@ -8903,7 +9561,10 @@
     "a concurrency witness must sample AFTER the settle window it granteth: assertions set before the drain, where the sleeping gate and the waking agree, proveth nothing. The observation belongeth after the late arrival's release -- bounded waits, bounded drains, then the sample (W8's mis-seated window, re-seated, turned SM4 from INVALID to KILLED)",
     "a mutation rod's replacement must BURST its anchor: the campaign's install gate requireth the installed text to carry the replace exactly once AND the find NOWHERE -- a pure insertion (replacement embedding the find whole) passeth a needle-audit and faileth the campaign; break the anchor within the replacement (for YAML: a space before a duplicated key's colon, which the parser trimmeth away, the sense remaining) or anchor upon a region the mutation rewriteth entire",
     "the property-list family of this world hideth its methods behind a pointer-shaped veil (propertyList(from:format:) with format: UnsafeMutablePointer<PropertyListFormat>? and no .xml1 member reachable); when the standard reader denieth the commodity, grow a reader of the written grammar in the court itself (components(separatedBy:) over the known shapes) -- it proveth more than a borrowed parser, for it reads the bytes as the world's own build read them",
-    "the world's canonical spellings (<?xml prologue, <plist version=\"1.0\">, http:// double-slash, b5c3-prefixed hashes) must be proved by ORDINALS (python bytes, both copies compared) before any normalisation is dreamt: the display foldeth identifiers, and a well-meant sower's \"correction\" corrupteth committed artifacts if it trusteth the eye over the rank"
+    "the world's canonical spellings (<?xml prologue, <plist version=\"1.0\">, http:// double-slash, b5c3-prefixed hashes) must be proved by ORDINALS (python bytes, both copies compared) before any normalisation is dreamt: the display foldeth identifiers, and a well-meant sower's \"correction\" corrupteth committed artifacts if it trusteth the eye over the rank",
+    "a witness that normaliseth what it trialeth is blind to the very disorder it was sown to escape: a determinism trial that parse-and-re-dumpeth (json.loads then dumps with sort_keys=True) cannot see key ORDER, and an unordered publication passeth such a judge for ever -- try the publication AS IT LYETH UPON THE DISK: assertEqual(list(keys), sorted(keys)) at every depth of the published document",
+    "a rod that striketh only a GUARD (if failed: / if missing: / if absent:) whose counted printout is computed from the same lists is INERT -- the count and the rc ring true either way and the witness liveth. Refound such rods to strike the CENSUS itself (invert the comprehension's membership) or the CONTROL ROLL (supplant one control's mutation with an idle lambda): let the count or the exit code itself lie when the guard sleepeth",
+    "prove rods upon the COMMITTED pin, never upon the working tree: a hand-proof worktree added from HEAD proveth the COMMITTED court only, and a fortification lying yet uncommitted maketh faithful rods seem faithless (three escapes were misadjudged so this round, until the raw empirics -- printing the published key sequence, and the forged shapes before the in-process gate -- discovered the stale ground). Commit the fortification, prove at the pin, then launch the campaign"
   ],
   "warnings_for_next_invocation": [
     "Android toolchain provisioned: JDK 17.0.20.1 + SDK 35 on mac-primary.",
@@ -8937,6 +9598,7 @@
     "T48 sealed at 19bbda4: the iOS archive road speaketh typed truths (availability, checked faces, generation tokens); sixteen witnesses, 991 grand, twelve-of-twelve roster at the first firing; the device leg rides to T73-T75",
     "T49 sealed at 5e1e848: the android browse journey speaketh its phases (Loading/Ready/NoResults/Unavailable with cause), the token gates the road in both directions, the banner carrieth no private words, retry is earned, the journey survives recreation, and the fifteenth witness walketh the FROZEN DDL on the true engine; 15 witnesses, 1067 android grand, 14-of-14 roster; the device leg rides to T73-T75",
     "T50 sealed at e508e56: the iOS reading journey speaketh its phases (Loading/Ready/NoResults/Unavailable with cause), the road is split at the dispatch (SearchPetition; no publication without leave of the epoch), the banner carrieth no SQL whispers, retry is earned, the journey surviveth recreation by handle, the scroll is remembered, and the twelfth witness walketh the FROZEN DDL on the true engine end to end; 15 witnesses, ios grand 1006, 14-of-14 roster; the device leg rides to T73-T75; the toolchain taught also: name configurations truly (LightDebug/LightRelease), the bare func name in a ViewBuilder context is a function reference (call it with parentheses), compound assignment yieldeth Void (capture the new value in a separate let)",
-    "T51 sealed at c38ce94: the intake road is set in order -- names proved before the filesystem is asked, metadata sworn before the bundle is shipped, the approved-resource manifest published only after the bytes are true, the source-only face by construction, the guardian at the resolver made provable by the real planted archive; 15 swift + 20 python witnesses, ios grand 1021, roster 17-of-17; the device legs (simulator install/launch, embedded-Info.plist comparison) ride to T73-T75; the gates stand open"
+    "T51 sealed at c38ce94: the intake road is set in order -- names proved before the filesystem is asked, metadata sworn before the bundle is shipped, the approved-resource manifest published only after the bytes are true, the source-only face by construction, the guardian at the resolver made provable by the real planted archive; 15 swift + 20 python witnesses, ios grand 1021, roster 17-of-17; the device legs (simulator install/launch, embedded-Info.plist comparison) ride to T73-T75; the gates stand open",
+    "T52 sealed at 51fcfa3: the presence inspector distinguisheth the three lanes (exclusion / presence / release-candidate) and nameth its evidence accordingly; the fifteen scans keep the package in awe; the staging gate is two-faced ever (operator face byte-identical to T51's seal, deputy face verbatim the T46 vintage) and the three T51-wounded sealed witnesses ride again; the two latent wounds of the discover-all road (stale authority blobs, the required-kwarg inversion) are healed with attribution; 35 witnesses, python grand 144, roster 29-of-29; the device legs ride to T73-T75; the guarded presence step sleepeth until A06/APPROVED_CONTENT awake the approved bytes; continue T53"
   ]
 }
