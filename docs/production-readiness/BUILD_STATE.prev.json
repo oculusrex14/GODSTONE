@@ -5918,6 +5918,310 @@
       "tested_tree_sha": "109c1184fa351f910055a716057ffd5264e18c88",
       "unresolved": []
     },
+    "T40": {
+      "case_results": {
+        "android_grand": {
+          "counts_source": "android grand at the boundary via runner stage subsystem (T40-subsystem-gradlew-004, the fourth firing pinning 45fadb9); TEST-xml walk of android/mesh/build/test-results/testDebugUnitTest, 63 files; the -002 subsystem-gradlew firing failed its only failures in the sealed T17/T18 identity-draw harness ('no ascending hint pair within 64 draws' -- the classes' own redraw guard, whose comment records the platform hazard that fresh generator instances seeded in one clock tick can repeat one another's stream); three full-suite probes on the live tree and four class-scope probes, and three full-suite probes at the sealed baseline pin, showed 0 failures; the -003/-004 re-fires at the boundary are green. Attributed to a transient environmental flake: no T40 bytes lie on the draw path (identity mint consumes only the passed rng; nodeId is BLAKE2s-160 over the Ed25519 public key)",
+          "errors": 0,
+          "failures": 0,
+          "skipped": 0,
+          "tests": 1036,
+          "xml_files": 63
+        },
+        "deleted_cases": [],
+        "dual_court_parity": "Eleven witnesses share one name set across the isles (W1..W11), both measured against the one table crypto/anti_entropy_vectors.json (18 payload, 40 malformed, 18 frame, 5 walk, 1 att vectors); the decode gate names the same refusal for the same bytes on both isles by construction -- branch-for-branch port of the sealed Kotlin gate, cross-checked at W2 against the reference alphabet; the walk, the bloom, the advertisement and the campaign censuses read alike.",
+        "ios_grand": {
+          "counts_source": "ios grand at the boundary via runner stage subsystem (T40-subsystem-swift-004); last \"Executed N tests, with M failures\" line",
+          "errors": 0,
+          "failures": 0,
+          "tests": 975
+        },
+        "t40_android_court": {
+          "counts_source": "android court at the boundary via runner stage narrow (T40-narrow-gradlew-003); TEST-xml census of ReadinessT40Test",
+          "errors": 0,
+          "failures": 0,
+          "skipped": 0,
+          "tests": 11,
+          "xml_files": 1
+        },
+        "t40_ios_court": {
+          "counts_source": "ios court at the boundary via runner stage narrow (T40-narrow-swift-003); last Executed line",
+          "errors": 0,
+          "failures": 0,
+          "tests": 11
+        }
+      },
+      "claim_commit": "05a9d16172effb290e02210f55d0effbdcc5731f",
+      "commands": [
+        "T40-narrow-gradlew",
+        "T40-narrow-swift",
+        "T40-subsystem-gradlew",
+        "T40-subsystem-swift",
+        "T40-controls-python3",
+        "T40-controls-python3-002",
+        "T40-controls-python3-003",
+        "T40-narrow-gradlew-002",
+        "T40-narrow-swift-002",
+        "T40-subsystem-swift-002",
+        "T40-controls-python3-004",
+        "T40-controls-python3-005",
+        "T40-controls-python3-006",
+        "T40-subsystem-gradlew-003",
+        "T40-subsystem-swift-003",
+        "T40-controls-python3-007",
+        "T40-controls-python3-008",
+        "T40-controls-python3-009",
+        "T40-narrow-gradlew-003",
+        "T40-narrow-swift-003",
+        "T40-subsystem-gradlew-004",
+        "T40-subsystem-swift-004"
+      ],
+      "device_gate_ids": [],
+      "file_hashes": {},
+      "implementation_commit": "45fadb92ff3648738ff69e7877dfe7b7e9fe463d",
+      "implementation_commits": [
+        "52b0fce7fdda9cd59d894e8ccbccc78c5d45df43",
+        "d28be00c0282c93cac264c34aee50e99b05f1747",
+        "2a911242067903846b9a096d52ae763c8ea7d85b",
+        "567b4b63a3613cdb95e6d085fdfebf1f217d19cb",
+        "0fb677329484c4e4aaa13b5c7701542392a0e652",
+        "59209166099e6900858b443eda7473ebd2427608",
+        "e257836585e8a112267b70f1ffed028b8b2e5224",
+        "45fadb92ff3648738ff69e7877dfe7b7e9fe463d"
+      ],
+      "inputs": {
+        "children_commit_order": [
+          "05a9d16172effb290e02210f55d0effbdcc5731f",
+          "52b0fce7fdda9cd59d894e8ccbccc78c5d45df43",
+          "d28be00c0282c93cac264c34aee50e99b05f1747",
+          "2a911242067903846b9a096d52ae763c8ea7d85b",
+          "567b4b63a3613cdb95e6d085fdfebf1f217d19cb",
+          "0fb677329484c4e4aaa13b5c7701542392a0e652",
+          "59209166099e6900858b443eda7473ebd2427608",
+          "e257836585e8a112267b70f1ffed028b8b2e5224",
+          "45fadb92ff3648738ff69e7877dfe7b7e9fe463d"
+        ],
+        "governed_source": [
+          "android/mesh/src/main/java/io/godstone/mesh/router/ControlPayloadV1.kt",
+          "android/mesh/src/main/java/io/godstone/mesh/router/StableInventorySnapshot.kt",
+          "android/mesh/src/main/java/io/godstone/mesh/router/SyncControlOwner.kt",
+          "android/mesh/src/main/java/io/godstone/mesh/MeshNode.kt",
+          "android/mesh/src/main/java/io/godstone/mesh/router/Router.kt",
+          "ios/Godstone/Sources/GodstoneMesh/ControlPayloadV1.swift",
+          "ios/Godstone/Sources/GodstoneMesh/StableInventorySnapshot.swift",
+          "ios/Godstone/Sources/GodstoneMesh/SyncControlOwner.swift",
+          "ios/Godstone/Sources/GodstoneMesh/MeshNode.swift",
+          "ios/Godstone/Sources/GodstoneMesh/Router.swift"
+        ],
+        "required_regression_paths": [
+          "android/mesh/src/test/java/io/godstone/mesh/readiness/ReadinessT40Test.kt",
+          "ios/Godstone/Tests/GodstoneMeshTests/ReadinessT40Tests.swift"
+        ],
+        "sealed_hot_paths_untouched": [
+          "wire: FrameV2/TypeV2 tables, the frozen envelope and crc16 law, codegen constants -- frozen; the control_payloads yaml section is law text invisible to codegen (regeneration byte-identical, git-clean verified at the spec-block)",
+          "identity: MessageId.derive and the frozen id formula -- the control stamper derives ids by the very same formula with ttl/hop/flags zero by construction; no identity or trust bytes minted",
+          "delivery: the sealed five delivery routes, the ACK dispatcher, the seen window, the TTL/hop policy -- the ingress gates were added in depth: control frames cannot reach them; MESSAGE/SOS pass exactly as sealed",
+          "ble: the BleRecord fragmenter/reassembler sealed law -- read through the ATT-20 leg witnesses, unmoved",
+          "the sealed courts T01-T39+T83 incl. their repositories, fixtures and journals; ci/mutations.py prior 138 rows (additive-only: ten appended, no prior row edited)",
+          "external gates A06/APPROVED_CONTENT/NATIVE_MODELS/HARDWARE/SIGNING stand open; none closed by this task; readiness=false"
+        ],
+        "task_card": "docs/production-readiness/TASKS.json#T40"
+      },
+      "ladder_boundary_commit": "45fadb92ff3648738ff69e7877dfe7b7e9fe463d",
+      "mutation_results": {
+        "campaign_note": "ten rows, ten kills; the RC1 pair re-fired at pin e257836 after re-nomination (attempt logs archived at roster-attempt-1); rows otherwise from pin 5920916 The single FAILED record (T40-subsystem-gradlew-002) is history, told whole in the android_grand counts_source: a transient environmental flake in the sealed T17/T18 draw harness, 0 failures across seven full-suite and four class-scope probes on the live tree plus three full-suite probes at the sealed baseline pin; the -003/-004 re-fires at the boundary are green; the sealed commands list omits it and every listed id verifies PASSED with its log hash.",
+        "semantic": [
+          {
+            "anchor_count": 1,
+            "baseline_sha": "e257836585e8a112267b70f1ffed028b8b2e5224",
+            "build_exit": 0,
+            "category": "semantic",
+            "ended_utc": "2026-09-13T00:49:20Z",
+            "failed_assertion": "witness testSequenceDisciplineOnReceivedPages failed as intended (1 failed case(s))",
+            "id": "T40-RC1-android-digest-from-seen-union",
+            "log_path": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/T40/roster-rc1-refire/logs/T40-RC1-android-digest-from-seen-union.semantic.log",
+            "log_sha": "a2f6df70f1a1232385fa1dd0b5d8642d951894ef8cd377529de3206505d3cf5b",
+            "mutant_patch_sha": "f309a72b9cf8052a929d232f5cab7bf8a224f0b590087318d57854c0aee86c03",
+            "outcome": "KILLED",
+            "started_utc": "2026-09-13T00:49:09Z",
+            "target_tests": [
+              "testSequenceDisciplineOnReceivedPages"
+            ],
+            "tests_run": 11
+          },
+          {
+            "anchor_count": 1,
+            "baseline_sha": "e257836585e8a112267b70f1ffed028b8b2e5224",
+            "build_exit": 0,
+            "category": "semantic",
+            "ended_utc": "2026-09-13T00:49:48Z",
+            "failed_assertion": "witness testSequenceDisciplineOnReceivedPages failed as intended (1 failed case(s))",
+            "id": "T40-RC1-ios-digest-from-seen-union",
+            "log_path": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/T40/roster-rc1-refire/logs/T40-RC1-ios-digest-from-seen-union.semantic.log",
+            "log_sha": "84ac34734b0ef5e03747aafc4e56ce2eade7d2516dfd91d6a3498cd24445780d",
+            "mutant_patch_sha": "187010ca587922f76493d0ceb36df52d1aadfdcc9ab1f2da13ba973d16bcf1ae",
+            "outcome": "KILLED",
+            "started_utc": "2026-09-13T00:49:20Z",
+            "target_tests": [
+              "testSequenceDisciplineOnReceivedPages"
+            ],
+            "tests_run": null
+          },
+          {
+            "anchor_count": 1,
+            "baseline_sha": "59209166099e6900858b443eda7473ebd2427608",
+            "build_exit": 0,
+            "category": "semantic",
+            "ended_utc": "2026-09-13T00:41:29Z",
+            "failed_assertion": "witness testForcedBloomCollisionConvergesByExactReconciliation failed as intended (1 failed case(s))",
+            "id": "T40-RC2-android-exact-reconciliation-silent",
+            "log_path": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/T40/roster/logs/T40-RC2-android-exact-reconciliation-silent.semantic.log",
+            "log_sha": "96f0da86ab9a97d52238e98512257e989a52d61a648ad27c5ad99827ceafe190",
+            "mutant_patch_sha": "3a220cedfa72d625982b1b4eb6b9ba8b856c1d3ffc2c4f6bd4c07fd290a7ff75",
+            "outcome": "KILLED",
+            "started_utc": "2026-09-13T00:41:17Z",
+            "target_tests": [
+              "testForcedBloomCollisionConvergesByExactReconciliation"
+            ],
+            "tests_run": 11
+          },
+          {
+            "anchor_count": 1,
+            "baseline_sha": "59209166099e6900858b443eda7473ebd2427608",
+            "build_exit": 0,
+            "category": "semantic",
+            "ended_utc": "2026-09-13T00:41:58Z",
+            "failed_assertion": "witness testForcedBloomCollisionConvergesByExactReconciliation failed as intended (1 failed case(s))",
+            "id": "T40-RC2-ios-exact-reconciliation-silent",
+            "log_path": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/T40/roster/logs/T40-RC2-ios-exact-reconciliation-silent.semantic.log",
+            "log_sha": "c560d1b6766fff8fd81b76ed3e2e7bd75930aa3dd2467488cdd197e695d32d5a",
+            "mutant_patch_sha": "b772f0ef0df1ac7607c9d5d19dc4a016c207b56c537f71c386f3e01aa9d83ca3",
+            "outcome": "KILLED",
+            "started_utc": "2026-09-13T00:41:30Z",
+            "target_tests": [
+              "testForcedBloomCollisionConvergesByExactReconciliation"
+            ],
+            "tests_run": 11
+          },
+          {
+            "anchor_count": 1,
+            "baseline_sha": "59209166099e6900858b443eda7473ebd2427608",
+            "build_exit": 0,
+            "category": "semantic",
+            "ended_utc": "2026-09-13T00:42:11Z",
+            "failed_assertion": "witness testSequenceDisciplineOnReceivedPages failed as intended (1 failed case(s))",
+            "id": "T40-RC3-android-ordering-predicate-inverted",
+            "log_path": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/T40/roster/logs/T40-RC3-android-ordering-predicate-inverted.semantic.log",
+            "log_sha": "15823a3659ad4a3f3aed73c2a4b190b4d062cd8cb8a55fdd310015ef05fffe33",
+            "mutant_patch_sha": "4834133e9cfd0f03a7afaa2ba705e62e413ce75cca72be8ee20381862907e230",
+            "outcome": "KILLED",
+            "started_utc": "2026-09-13T00:41:58Z",
+            "target_tests": [
+              "testSequenceDisciplineOnReceivedPages"
+            ],
+            "tests_run": 11
+          },
+          {
+            "anchor_count": 1,
+            "baseline_sha": "59209166099e6900858b443eda7473ebd2427608",
+            "build_exit": 0,
+            "category": "semantic",
+            "ended_utc": "2026-09-13T00:42:39Z",
+            "failed_assertion": "witness testSequenceDisciplineOnReceivedPages failed as intended (1 failed case(s))",
+            "id": "T40-RC3-ios-ordering-predicate-inverted",
+            "log_path": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/T40/roster/logs/T40-RC3-ios-ordering-predicate-inverted.semantic.log",
+            "log_sha": "6d1126e0c4538c29655487b37819c2635992c313013cbf37f4ee81db90473b30",
+            "mutant_patch_sha": "7e88d2f3782fabd86089cf3e85042c4c8b01353035a1f73f2a1d772a685f786a",
+            "outcome": "KILLED",
+            "started_utc": "2026-09-13T00:42:11Z",
+            "target_tests": [
+              "testSequenceDisciplineOnReceivedPages"
+            ],
+            "tests_run": null
+          },
+          {
+            "anchor_count": 1,
+            "baseline_sha": "59209166099e6900858b443eda7473ebd2427608",
+            "build_exit": 0,
+            "category": "semantic",
+            "ended_utc": "2026-09-13T00:42:52Z",
+            "failed_assertion": "witness testStaleDigestIsIgnoredTheTrackedOneStands failed as intended (1 failed case(s))",
+            "id": "T40-RC4-android-stale-digest-adopted",
+            "log_path": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/T40/roster/logs/T40-RC4-android-stale-digest-adopted.semantic.log",
+            "log_sha": "5579346a3720bd7ae878fffb89514dc92d738731404c9aeef1e9cc305db24c20",
+            "mutant_patch_sha": "43fbdef2ed7903cbeb238bb51ffad901266ed7c9c66e0e2b059bdceab3f60b38",
+            "outcome": "KILLED",
+            "started_utc": "2026-09-13T00:42:40Z",
+            "target_tests": [
+              "testStaleDigestIsIgnoredTheTrackedOneStands"
+            ],
+            "tests_run": 11
+          },
+          {
+            "anchor_count": 1,
+            "baseline_sha": "59209166099e6900858b443eda7473ebd2427608",
+            "build_exit": 0,
+            "category": "semantic",
+            "ended_utc": "2026-09-13T00:43:21Z",
+            "failed_assertion": "witness testStaleDigestIsIgnoredTheTrackedOneStands failed as intended (1 failed case(s))",
+            "id": "T40-RC4-ios-stale-digest-adopted",
+            "log_path": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/T40/roster/logs/T40-RC4-ios-stale-digest-adopted.semantic.log",
+            "log_sha": "46d8b5ef250d0591d44e973748e7db4f0bb2cd4500df09396f447fa60431efd7",
+            "mutant_patch_sha": "3ac9eaba934004d30bb8d561224dd7249fb64a41a7008a8269570e007ae99af6",
+            "outcome": "KILLED",
+            "started_utc": "2026-09-13T00:42:52Z",
+            "target_tests": [
+              "testStaleDigestIsIgnoredTheTrackedOneStands"
+            ],
+            "tests_run": null
+          },
+          {
+            "anchor_count": 1,
+            "baseline_sha": "59209166099e6900858b443eda7473ebd2427608",
+            "build_exit": 0,
+            "category": "semantic",
+            "ended_utc": "2026-09-13T00:43:34Z",
+            "failed_assertion": "witness testControlCampaignNeverTouchesTheDurableStore failed as intended (1 failed case(s))",
+            "id": "T40-RC5-android-controls-not-demultiplexed",
+            "log_path": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/T40/roster/logs/T40-RC5-android-controls-not-demultiplexed.semantic.log",
+            "log_sha": "c7486c3fbf803b02631eeefd72611d6c082fff17f441ce66df1a003c6b17dee8",
+            "mutant_patch_sha": "9e4b6c2f5a9e114d0ade776a4f2951023be53a24f8203adf397de83a1522bce2",
+            "outcome": "KILLED",
+            "started_utc": "2026-09-13T00:43:21Z",
+            "target_tests": [
+              "testControlCampaignNeverTouchesTheDurableStore"
+            ],
+            "tests_run": 11
+          },
+          {
+            "anchor_count": 1,
+            "baseline_sha": "59209166099e6900858b443eda7473ebd2427608",
+            "build_exit": 0,
+            "category": "semantic",
+            "ended_utc": "2026-09-13T00:44:02Z",
+            "failed_assertion": "witness testControlCampaignNeverTouchesTheDurableStore failed as intended (1 failed case(s))",
+            "id": "T40-RC5-ios-controls-not-demultiplexed",
+            "log_path": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/T40/roster/logs/T40-RC5-ios-controls-not-demultiplexed.semantic.log",
+            "log_sha": "a7b422d4c8d07f1b7491cd54e75b21feb4a7307c291ed2f28c5bc8996fb4521d",
+            "mutant_patch_sha": "a35cfa9682579ede9096144fb43e93210c92c53c436de5745db0c76cbc7b1a12",
+            "outcome": "KILLED",
+            "started_utc": "2026-09-13T00:43:34Z",
+            "target_tests": [
+              "testControlCampaignNeverTouchesTheDurableStore"
+            ],
+            "tests_run": 11
+          }
+        ]
+      },
+      "objective": {
+        "claimed_head": "e257836585e8a112267b70f1ffed028b8b2e5224",
+        "claimed_utc": "2026-09-12T20:18:53+00:00",
+        "objective": "Specify versioned payloads in existing HELLO/DIGEST/WANT/PING types using section14."
+      },
+      "status": "COMPLETE",
+      "tested_tree_sha": "423d9717a3749f7a45513f5a7fab86b89377a4f0",
+      "unresolved": []
+    },
     "T83": {
       "case_results": {
         "android_grand": {
@@ -6206,7 +6510,7 @@
       "unresolved": []
     }
   },
-  "current_task": "T40",
+  "current_task": "T41",
   "external_blockers": [
     "A06",
     "APPROVED_CONTENT",
@@ -6216,28 +6520,28 @@
   ],
   "failed_attempts": [],
   "in_progress": null,
-  "last_code_head": "759c8d4ee1eda16b7ebe150a0b0c00edb91bbd43",
+  "last_code_head": "45fadb92ff3648738ff69e7877dfe7b7e9fe463d",
   "last_observed_head": "759c8d4ee1eda16b7ebe150a0b0c00edb91bbd43",
   "latest_verification": {
     "android_grand": {
       "errors": 0,
       "failures": 0,
       "skipped": 0,
-      "tests": 1025
+      "tests": 1036
     },
-    "at_utc": "2026-09-12T20:14:46+00:00",
-    "boundary_commit": "759c8d4ee1eda16b7ebe150a0b0c00edb91bbd43",
+    "at_utc": "2026-09-13T01:49:38+00:00",
+    "boundary_commit": "45fadb92ff3648738ff69e7877dfe7b7e9fe463d",
     "ios_grand": {
       "errors": 0,
       "failures": 0,
-      "tests": 964
+      "tests": 975
     },
     "roster": {
-      "T39_killed": 10,
+      "T40_killed": 10,
       "of": 10
     }
   },
-  "next_task": "T40",
+  "next_task": "T41",
   "phase": "P0",
   "plan_sha256": "685456b378662b0a40a53a6abc810041e37daf97b213f3efeb6cea879363934e",
   "planning_baseline_sha": "b5c3d3d394b70cf356cdde33b47511dad7cbb95c",
@@ -6254,7 +6558,10 @@
     "iOS court doctrine (T83 finding operational): never byte-pin a freshly authored signature on the randomized isle; pin the deterministic msg_id derivation and the cryptographic validity of the pinned seal (isValidSignature over the exact transcript); assert fresh authorship structurally; the duplicate the seen cache guards is the retransmission of the SAME envelope.",
     "cross-isle golden vector law: courts on both isles read the one table crypto/sos_v1_vectors.json at runtime (walk-up from #filePath / user.dir); transcription drift becomes impossible by construction and the nine named refusals are one string table both isles enforce.",
     "roster single-witness field law (T39): a row's witness names exactly one test method -- joined strings defeat the tail-match classifier and misrecord true kills as ESCAPED; read the manifest failed-sets before believing an escape, and retract the row (roster-reflection), do not blind the court.",
-    "isle send-closure parameter law (T39): the iOS send takes (frame, peer) -- the frame FIRST, unlike the android (peerId, bytes); swapped it resolves UUID's encode(to:) against FrameV2.encode() and reads 'missing argument for to:', a parameter-order artifact not an encoding defect; and Data(4)/Data(3) parse as initializers needing 'repeating:count:', not zero-filled buffers."
+    "isle send-closure parameter law (T39): the iOS send takes (frame, peer) -- the frame FIRST, unlike the android (peerId, bytes); swapped it resolves UUID's encode(to:) against FrameV2.encode() and reads 'missing argument for to:', a parameter-order artifact not an encoding defect; and Data(4)/Data(3) parse as initializers needing 'repeating:count:', not zero-filled buffers.",
+    "T40 demultiplex statute: at both isles’ ingresses PING/HELLO/DIGEST/WANT are decided by the per-relation SyncControlOwner before the generic Router; ACK keeps its sealed dispatcher; only MESSAGE and SOS enter durable message routing; the bulk pair and GOODBYE are refused in this profile; control frames reach neither held storage, the seen window, nor the relay.",
+    "T40 roster nomination law: the harness runs a row’s nominated witness alone -- the nomination is a pledge that the named case convicts; verify observability at the mutation site before arming (the RC1 pair learned it: over the forced collision the foreign bits are by construction already in the store’s set, so the W8 advertisement is blind there; W4’s empty-store full-queue witness sees it) -- and retract and re-fire the row, never blind the court.",
+    "T40 grand flake, told whole: the -002 subsystem-gradlew firing fell only to the sealed T17/T18 identity-draw harness (\"no ascending hint pair within 64 draws\", the classes’ own redraw guard against same-tick-seeded generators); ten subsequent probes (7 full-suite live, 4 class-scope live, 3 full-suite baseline) showed 0 failures and the boundary re-fires are green -- attributed to a transient environmental flake, no T40 bytes on the draw path; future grands: re-fire, do not edit sealed courts."
   ],
   "warnings_for_next_invocation": [
     "Android toolchain provisioned: JDK 17.0.20.1 + SDK 35 on mac-primary.",
@@ -6280,6 +6587,7 @@
     "The T17 makeTrustedPair 64-draw pair-cap flake family stayed silent at the T83 boundary (both grands green first tour, 992/931); the bounded green-retry policy (<=6, cite the -002 suffixed records, keep FAILED attempts in the ledger) remains the standing remedy.",
     "T38 sealed at boundary 85299dc (courts 11/11 both isles; roster 10/10 KILLED across two honest attempts; grand android 1014, iOS 953). Next: T38 per the catalog. The signed-SOS envelope is law -- reuse SignedSosV1 as the single authority; do not fork a second signing path.",
     "T39 sealed at boundary 759c8d4 (courts 11/11 both isles; roster 10/10 KILLED across two honest attempts -- the six escapes were classifier artifacts, the courts whole and sound; grand android 1025/0/0/0, iOS 964/0). Next: T40 per the catalog. The SOS broadcast pair is ONE authority on both isles -- reuse DeliveryRepository.enqueueSosOutbound (the compatible two-step default; the store-backed and SQL repositories override atomically); never re-fork persist-then-record; the durable cancel rides the C7.5 retiring machinery and tells the wasRelayed truth the UI must speak.",
-    "The T17 randomized-draw flake family stayed silent at the T39 boundary (both grands green on the first tour and the -002 re-fires); the bounded green-retry policy (<=6, cite the -002 suffixed records, keep FAILED attempts in the ledger) remains the standing remedy."
+    "The T17 randomized-draw flake family stayed silent at the T39 boundary (both grands green on the first tour and the -002 re-fires); the bounded green-retry policy (<=6, cite the -002 suffixed records, keep FAILED attempts in the ledger) remains the standing remedy.",
+    "T40 sealed at boundary 45fadb92f (courts 11/11 both isles; roster 10/10 KILLED across three firings -- two observation-site repairs and one nomination re-pledge, all lawful; grand android 1036/0/0/0 over 63 xml files, iOS 975/0; one recorded FAILED subsystem firing stands as history, a flake in the sealed T17/T18 draw harness, told whole in the seal). Next: T41 per the catalog."
   ]
 }

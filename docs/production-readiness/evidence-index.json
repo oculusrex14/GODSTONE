@@ -1,193 +1,253 @@
 {
- "evidence_root": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE",
- "files": [
-  {
-   "path": "T39/commands.json",
-   "sha256": "db12b5965d1cf6ca6c81e02aaec8689b00535d1d3f4583d300d39758c1b517be",
-   "size": 9695
-  },
-  {
-   "path": "T39/logs/T39-controls-python3-002.log",
-   "sha256": "0b1ac463307b9f7d907105bb19e85bdada5dcd05131d80c492ffd80b4ab3f5f4",
-   "size": 234
-  },
-  {
-   "path": "T39/logs/T39-controls-python3-003.log",
-   "sha256": "67493ebd28a55ece17214e55d318f34ba4af6ac7592268756f1b3dcc304afa21",
-   "size": 125
-  },
-  {
-   "path": "T39/logs/T39-controls-python3.log",
-   "sha256": "03f0bc422dc53a81fd7f41085300a28e42626c2a4554e8929d897d3c092bd014",
-   "size": 1374
-  },
-  {
-   "path": "T39/logs/T39-narrow-gradlew-002.log",
-   "sha256": "02be25bd85b5506f26719a9aecb305340a4f4a28820d0d84f4a00adf87714e8e",
-   "size": 2527
-  },
-  {
-   "path": "T39/logs/T39-narrow-gradlew.log",
-   "sha256": "fab5574dfb57a39a7808fbdae2a2301006520e3dabc3edfc88a132e7ebd6f0ca",
-   "size": 2513
-  },
-  {
-   "path": "T39/logs/T39-narrow-swift-002.log",
-   "sha256": "c57f521d350d5ee6f394a1a5767219ff2cc9cc3e47224ca7513d562ef68c4ad9",
-   "size": 3612
-  },
-  {
-   "path": "T39/logs/T39-narrow-swift.log",
-   "sha256": "2417b7fc12dd4b12044c9a21e7475bc6205598df3e25249c5a51c27765e74aa4",
-   "size": 3633
-  },
-  {
-   "path": "T39/logs/T39-subsystem-gradlew-002.log",
-   "sha256": "baccf870fb648f13c3e10279b0e3d47d555b106fd4ba41d84b65e953d886d21e",
-   "size": 2500
-  },
-  {
-   "path": "T39/logs/T39-subsystem-gradlew.log",
-   "sha256": "4e01004069cf6dc445887468a9ae50a8e06f85a87c1e48ae442b8b4f94caff91",
-   "size": 2488
-  },
-  {
-   "path": "T39/logs/T39-subsystem-swift-002.log",
-   "sha256": "601481e62637a660679702c63f5f379cf6df2f054d1683d550c3514a338954ff",
-   "size": 250876
-  },
-  {
-   "path": "T39/logs/T39-subsystem-swift.log",
-   "sha256": "9fd9ad86c98d89c296d1ffeb61a36f1e41a4a3e433260b5646ac8461b7fb2be1",
-   "size": 250877
-  },
-  {
-   "path": "T39/milestones/contract-court-milestone.json",
-   "sha256": "9de557f81505bfd88a162083869fad94e15108bc1634dc4d58a1e81b9f539f8b",
-   "size": 5917
-  },
-  {
-   "path": "T39/milestones/design-grounding-milestone.json",
-   "sha256": "1e7c9117be6e701a61022861a67d95e3fd57eaa524c12a4d467b5a0ec42cb2cb",
-   "size": 10283
-  },
-  {
-   "path": "T39/milestones/roster-verification-milestone.json",
-   "sha256": "e7dc5fe0f63ead68f6b5fcfca2ff6529912743995a89a3f216e1c287b3d439d1",
-   "size": 10236
-  },
-  {
-   "path": "T39/roster-attempt-1/logs/T39-RC1-android-cancel-is-ui-only.semantic.log",
-   "sha256": "df9795c73595e1770b07b235849d404cfb49374a605a2917faadfccc89d3c306",
-   "size": 695
-  },
-  {
-   "path": "T39/roster-attempt-1/logs/T39-RC1-ios-cancel-is-ui-only.semantic.log",
-   "sha256": "67cebe954324ea199518e451bba6610e9731c3b992fe17ba230494d4c3e869a7",
-   "size": 16029
-  },
-  {
-   "path": "T39/roster-attempt-1/logs/T39-RC2-android-pair-rollback-leaks-frame.semantic.log",
-   "sha256": "92f73eaeab1af3173bc0f9b24228c39964556b0de2832f4e542a63f67771f30a",
-   "size": 703
-  },
-  {
-   "path": "T39/roster-attempt-1/logs/T39-RC2-ios-pair-rollback-leaks-frame.semantic.log",
-   "sha256": "9240479428e11fa7ccc2a82cfcf99e9e29c6a56cec8f10d461bc4bfcea53e261",
-   "size": 16029
-  },
-  {
-   "path": "T39/roster-attempt-1/logs/T39-RC3-android-retry-stops-resuming.semantic.log",
-   "sha256": "d690bcaafe89ea13c4b8336c561ccd9e1eac4355c1b9dd40f7d0f7665e8bee1b",
-   "size": 697
-  },
-  {
-   "path": "T39/roster-attempt-1/logs/T39-RC3-ios-retry-stops-resuming.semantic.log",
-   "sha256": "a468e239af4ca9c9c291b181e837ed0aedc37692eb1a55a2b6a95fcb9fabce12",
-   "size": 16029
-  },
-  {
-   "path": "T39/roster-attempt-1/logs/T39-RC4-android-cancel-leaves-held-work.semantic.log",
-   "sha256": "e04cb52929e7cb9201688e27c09dff4d8ef5ee52fd46e8fbf54ea4088c61d0c2",
-   "size": 700
-  },
-  {
-   "path": "T39/roster-attempt-1/logs/T39-RC4-ios-cancel-leaves-held-work.semantic.log",
-   "sha256": "b5d2e8aa02feb757be146490eabe44ef1df96d1661a45ec1b8329524cee2a860",
-   "size": 16029
-  },
-  {
-   "path": "T39/roster-attempt-1/logs/T39-RC5-android-none-mode-admits-acks.semantic.log",
-   "sha256": "b89b5b522e24d8cf5bb2741fd72d299455ed59af6f3be0bfca9a1834cabed2ef",
-   "size": 698
-  },
-  {
-   "path": "T39/roster-attempt-1/logs/T39-RC5-ios-none-mode-admits-acks.semantic.log",
-   "sha256": "80b4af7641ad263313c37984d57a441ef947c12aabc3f613e0dec191fbcdc2a7",
-   "size": 16029
-  },
-  {
-   "path": "T39/roster-attempt-1/manifest.json",
-   "sha256": "b7c429ccb1911c1ab2e11b901bd4b9761001bbdceadd651fefb60a9f9eca4ee8",
-   "size": 9725
-  },
-  {
-   "path": "T39/roster/logs/T39-RC1-android-cancel-is-ui-only.semantic.log",
-   "sha256": "e3e9c25945aab9926766abb32318b86162eae853ac928f2f6e7f382aaf119d4f",
-   "size": 694
-  },
-  {
-   "path": "T39/roster/logs/T39-RC1-ios-cancel-is-ui-only.semantic.log",
-   "sha256": "4c036884c858cba8143a7255ccb9c900b5246ffe3bc1fb07344ac9c36f547a4d",
-   "size": 16029
-  },
-  {
-   "path": "T39/roster/logs/T39-RC2-android-pair-rollback-leaks-frame.semantic.log",
-   "sha256": "92f73eaeab1af3173bc0f9b24228c39964556b0de2832f4e542a63f67771f30a",
-   "size": 703
-  },
-  {
-   "path": "T39/roster/logs/T39-RC2-ios-pair-rollback-leaks-frame.semantic.log",
-   "sha256": "9240479428e11fa7ccc2a82cfcf99e9e29c6a56cec8f10d461bc4bfcea53e261",
-   "size": 16029
-  },
-  {
-   "path": "T39/roster/logs/T39-RC3-android-retry-stops-resuming.semantic.log",
-   "sha256": "27dd1a7ebad9377c865c240dc3bfeeba71256be7d13c9c8f6782bef1eee9f34d",
-   "size": 697
-  },
-  {
-   "path": "T39/roster/logs/T39-RC3-ios-retry-stops-resuming.semantic.log",
-   "sha256": "653abeb6df67e3b04eda62ab1ec16385a428d6350653a18d888c2981db225eba",
-   "size": 16029
-  },
-  {
-   "path": "T39/roster/logs/T39-RC4-android-cancel-leaves-held-work.semantic.log",
-   "sha256": "22f7e743d941abdc5d1c35a4474db0bd37badf6aad2b3668c8f9b1518c9c7491",
-   "size": 700
-  },
-  {
-   "path": "T39/roster/logs/T39-RC4-ios-cancel-leaves-held-work.semantic.log",
-   "sha256": "8809109301436272042a7ee097715412e7aff63a0c3531ea594455691fa354f1",
-   "size": 16029
-  },
-  {
-   "path": "T39/roster/logs/T39-RC5-android-none-mode-admits-acks.semantic.log",
-   "sha256": "b89b5b522e24d8cf5bb2741fd72d299455ed59af6f3be0bfca9a1834cabed2ef",
-   "size": 698
-  },
-  {
-   "path": "T39/roster/logs/T39-RC5-ios-none-mode-admits-acks.semantic.log",
-   "sha256": "80b4af7641ad263313c37984d57a441ef947c12aabc3f613e0dec191fbcdc2a7",
-   "size": 16029
-  },
-  {
-   "path": "T39/roster/manifest.json",
-   "sha256": "e3ce84623b3ef5ba77cdbf7fd4c9ead19339b9ec06b3b887712a4dbc385bd256",
-   "size": 8020
-  }
- ],
- "note": "T39 evidence: runner commands (7 records at the boundary pin plus the four -002 reruns at the reflection boundary, all PASSED, logs sha256-verified), per-command logs, design-grounding + contract-court + roster-verification milestones, the canonical roster manifest (10/10 KILLED) with per-row logs and both campaign archives (roster-attempt-1, roster).",
- "schema_version": 1,
- "task": "T39"
+  "evidence_root": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE",
+  "files": [
+    {
+      "path": "T40/commands.json",
+      "sha256": "0f3402e68bb624a47da0dfe186197bf572f53e7aefd2dec909402290d21231f4",
+      "size": 20098
+    },
+    {
+      "path": "T40/logs/T40-controls-python3-002.log",
+      "sha256": "0b1ac463307b9f7d907105bb19e85bdada5dcd05131d80c492ffd80b4ab3f5f4",
+      "size": 234
+    },
+    {
+      "path": "T40/logs/T40-controls-python3-003.log",
+      "sha256": "67493ebd28a55ece17214e55d318f34ba4af6ac7592268756f1b3dcc304afa21",
+      "size": 125
+    },
+    {
+      "path": "T40/logs/T40-controls-python3-004.log",
+      "sha256": "03f0bc422dc53a81fd7f41085300a28e42626c2a4554e8929d897d3c092bd014",
+      "size": 1374
+    },
+    {
+      "path": "T40/logs/T40-controls-python3-005.log",
+      "sha256": "0b1ac463307b9f7d907105bb19e85bdada5dcd05131d80c492ffd80b4ab3f5f4",
+      "size": 234
+    },
+    {
+      "path": "T40/logs/T40-controls-python3-006.log",
+      "sha256": "67493ebd28a55ece17214e55d318f34ba4af6ac7592268756f1b3dcc304afa21",
+      "size": 125
+    },
+    {
+      "path": "T40/logs/T40-controls-python3-007.log",
+      "sha256": "03f0bc422dc53a81fd7f41085300a28e42626c2a4554e8929d897d3c092bd014",
+      "size": 1374
+    },
+    {
+      "path": "T40/logs/T40-controls-python3-008.log",
+      "sha256": "0b1ac463307b9f7d907105bb19e85bdada5dcd05131d80c492ffd80b4ab3f5f4",
+      "size": 234
+    },
+    {
+      "path": "T40/logs/T40-controls-python3-009.log",
+      "sha256": "67493ebd28a55ece17214e55d318f34ba4af6ac7592268756f1b3dcc304afa21",
+      "size": 125
+    },
+    {
+      "path": "T40/logs/T40-controls-python3.log",
+      "sha256": "03f0bc422dc53a81fd7f41085300a28e42626c2a4554e8929d897d3c092bd014",
+      "size": 1374
+    },
+    {
+      "path": "T40/logs/T40-narrow-gradlew-002.log",
+      "sha256": "ab0b7831756c6d7e2983969e8e8251f66be1a54ee62512a0d0664535a2e80c32",
+      "size": 2513
+    },
+    {
+      "path": "T40/logs/T40-narrow-gradlew-003.log",
+      "sha256": "de86526e1d158a60ae2bcfb9e9e7cbadd40c9eb96aa61e61f5f28357ff99439a",
+      "size": 2527
+    },
+    {
+      "path": "T40/logs/T40-narrow-gradlew.log",
+      "sha256": "039588bf82b88a4790e252755fb3dee469c08a2a344697945fcf6f94b6799f1c",
+      "size": 2860
+    },
+    {
+      "path": "T40/logs/T40-narrow-swift-002.log",
+      "sha256": "4575321a83dfff7f2065697bc88c8647101163bd92545480c6467b9249c0fda0",
+      "size": 3505
+    },
+    {
+      "path": "T40/logs/T40-narrow-swift-003.log",
+      "sha256": "fc04e08a2d5ebbcadf6d2618e9134726c7c59e6b53199ab330a0ebe462e571a8",
+      "size": 3484
+    },
+    {
+      "path": "T40/logs/T40-narrow-swift.log",
+      "sha256": "8d1660ce457e2a11d30878d942950b79286ae6cd239d851f9a3eff272495dbdd",
+      "size": 3505
+    },
+    {
+      "path": "T40/logs/T40-subsystem-gradlew-002.log",
+      "sha256": "5e8f4d2b3a63f067721395aa84f8f83dcd73eaa3698d9c48b26d54ade8fdc840",
+      "size": 3139
+    },
+    {
+      "path": "T40/logs/T40-subsystem-gradlew-003.log",
+      "sha256": "7f3aa660e77781a8b809860b1ab9ce69f5eda6c6ad20fc6a06946dcf5ef245b2",
+      "size": 2486
+    },
+    {
+      "path": "T40/logs/T40-subsystem-gradlew-004.log",
+      "sha256": "16e3bbce368a2a45c5379d0426bd59f0de6f27358601bad5f569d21666043179",
+      "size": 2500
+    },
+    {
+      "path": "T40/logs/T40-subsystem-gradlew.log",
+      "sha256": "1446f25581af5fb1cd4ce3538745fbc131d0cc15ea34f24b92c4b29a769c8146",
+      "size": 2500
+    },
+    {
+      "path": "T40/logs/T40-subsystem-swift-002.log",
+      "sha256": "0c2ff83531c92ef532b58c88dc866b7a88ef01ed04a31d409134f232e689f982",
+      "size": 253482
+    },
+    {
+      "path": "T40/logs/T40-subsystem-swift-003.log",
+      "sha256": "2dc78bca5856f43daaeae1dceae66ee6c79138c933cfdeb58d6c01b96328c936",
+      "size": 253486
+    },
+    {
+      "path": "T40/logs/T40-subsystem-swift-004.log",
+      "sha256": "5013c34a8026d79664e341f20e4f25f7e0832713d299511403e76f5b676aa059",
+      "size": 253490
+    },
+    {
+      "path": "T40/logs/T40-subsystem-swift.log",
+      "sha256": "a5303783a9e992620875e005baa4bde9bd2cab61637d49211167137c8110e9a1",
+      "size": 253491
+    },
+    {
+      "path": "T40/milestones/contract-court-milestone.json",
+      "sha256": "ece788bd52efd67f9052cc1e5bb56ea980917c544f32b1eba666579909552f1d",
+      "size": 5158
+    },
+    {
+      "path": "T40/milestones/design-grounding-milestone.json",
+      "sha256": "b53c25aafdc4dd2db7c43bef5f18be1a953a84eef9b45ebc09625d5968812ceb",
+      "size": 11188
+    },
+    {
+      "path": "T40/milestones/roster-verification-milestone.json",
+      "sha256": "fca19e59f5b1f8765712c278130506d106387169ea855b6eb0ce679be1fc2f42",
+      "size": 2189
+    },
+    {
+      "path": "T40/roster-attempt-1/logs/T40-RC1-android-digest-from-seen-union.semantic.log",
+      "sha256": "4e0bda063e87c8e279f57f2ba9d5f1216e3843512295542db08a02a4ab98d620",
+      "size": 279
+    },
+    {
+      "path": "T40/roster-attempt-1/logs/T40-RC1-ios-digest-from-seen-union.semantic.log",
+      "sha256": "64b0e1a85d56aaa4c20fe367354d9c1cdff0d3f56f34fcee86861f5e0f5de584",
+      "size": 16029
+    },
+    {
+      "path": "T40/roster-attempt-1/logs/T40-RC2-android-exact-reconciliation-silent.semantic.log",
+      "sha256": "18f74772dc5c5f0029f79670c9f1ae5cef08829c5d549cbca719a073ffd3a5b1",
+      "size": 676
+    },
+    {
+      "path": "T40/roster-attempt-1/logs/T40-RC2-ios-exact-reconciliation-silent.semantic.log",
+      "sha256": "dd1f1ef5646c4170b0aec8c412877c7e615c4db943c908692edf863f9fd78771",
+      "size": 16029
+    },
+    {
+      "path": "T40/roster-attempt-1/logs/T40-RC3-android-ordering-predicate-inverted.semantic.log",
+      "sha256": "1e92665334141bdd05239f233250ca72330f1f498367eff9153344fb29a10f33",
+      "size": 676
+    },
+    {
+      "path": "T40/roster-attempt-1/logs/T40-RC3-ios-ordering-predicate-inverted.semantic.log",
+      "sha256": "e7844683751aa0f6a819fef49d62870463f14b87b9073fc3e836ea3e6027f12e",
+      "size": 16029
+    },
+    {
+      "path": "T40/roster-attempt-1/logs/T40-RC4-android-stale-digest-adopted.semantic.log",
+      "sha256": "4aa9b43445afaaef930d7f38dab47f253e91dc3bad7e623156d00c7301d5d8ef",
+      "size": 669
+    },
+    {
+      "path": "T40/roster-attempt-1/logs/T40-RC4-ios-stale-digest-adopted.semantic.log",
+      "sha256": "8e29513eba6d5cc5e9f1915a0014e594bee7b42ec2c84ba320240b3cbf71f517",
+      "size": 16029
+    },
+    {
+      "path": "T40/roster-attempt-1/logs/T40-RC5-android-controls-not-demultiplexed.semantic.log",
+      "sha256": "6812c65957b7893b0bda12ebb0d712da3b4abf81a8a2d771686a51efea843b8a",
+      "size": 675
+    },
+    {
+      "path": "T40/roster-attempt-1/logs/T40-RC5-ios-controls-not-demultiplexed.semantic.log",
+      "sha256": "e399a742cb9f52f9c3de233b14db4edc8fcf2971d6de5740ac7771f17de98a8f",
+      "size": 16029
+    },
+    {
+      "path": "T40/roster-attempt-1/manifest.json",
+      "sha256": "06814ac58687d9c1b682bf08936fe374584d0488ae78739a4107511d3a735bd6",
+      "size": 7849
+    },
+    {
+      "path": "T40/roster/logs/T40-RC1-android-digest-from-seen-union.semantic.log",
+      "sha256": "a2f6df70f1a1232385fa1dd0b5d8642d951894ef8cd377529de3206505d3cf5b",
+      "size": 672
+    },
+    {
+      "path": "T40/roster/logs/T40-RC1-ios-digest-from-seen-union.semantic.log",
+      "sha256": "84ac34734b0ef5e03747aafc4e56ce2eade7d2516dfd91d6a3498cd24445780d",
+      "size": 16029
+    },
+    {
+      "path": "T40/roster/logs/T40-RC2-android-exact-reconciliation-silent.semantic.log",
+      "sha256": "96f0da86ab9a97d52238e98512257e989a52d61a648ad27c5ad99827ceafe190",
+      "size": 676
+    },
+    {
+      "path": "T40/roster/logs/T40-RC2-ios-exact-reconciliation-silent.semantic.log",
+      "sha256": "c560d1b6766fff8fd81b76ed3e2e7bd75930aa3dd2467488cdd197e695d32d5a",
+      "size": 16029
+    },
+    {
+      "path": "T40/roster/logs/T40-RC3-android-ordering-predicate-inverted.semantic.log",
+      "sha256": "15823a3659ad4a3f3aed73c2a4b190b4d062cd8cb8a55fdd310015ef05fffe33",
+      "size": 676
+    },
+    {
+      "path": "T40/roster/logs/T40-RC3-ios-ordering-predicate-inverted.semantic.log",
+      "sha256": "6d1126e0c4538c29655487b37819c2635992c313013cbf37f4ee81db90473b30",
+      "size": 16029
+    },
+    {
+      "path": "T40/roster/logs/T40-RC4-android-stale-digest-adopted.semantic.log",
+      "sha256": "5579346a3720bd7ae878fffb89514dc92d738731404c9aeef1e9cc305db24c20",
+      "size": 669
+    },
+    {
+      "path": "T40/roster/logs/T40-RC4-ios-stale-digest-adopted.semantic.log",
+      "sha256": "46d8b5ef250d0591d44e973748e7db4f0bb2cd4500df09396f447fa60431efd7",
+      "size": 16029
+    },
+    {
+      "path": "T40/roster/logs/T40-RC5-android-controls-not-demultiplexed.semantic.log",
+      "sha256": "c7486c3fbf803b02631eeefd72611d6c082fff17f441ce66df1a003c6b17dee8",
+      "size": 675
+    },
+    {
+      "path": "T40/roster/logs/T40-RC5-ios-controls-not-demultiplexed.semantic.log",
+      "sha256": "a7b422d4c8d07f1b7491cd54e75b21feb4a7307c291ed2f28c5bc8996fb4521d",
+      "size": 16029
+    },
+    {
+      "path": "T40/roster/manifest.json",
+      "sha256": "44c09dc78110958a3446e1d049ab8f5d29206745a0f83f5c4c49401d74da924f",
+      "size": 9044
+    }
+  ],
+  "note": "T40 evidence: runner commands (23 records -- 22 PASSED sealed, the single FAILED subsystem firing held as history and told whole in the seal), per-command logs, design-grounding + contract-court + roster-verification milestones, the roster manifest (10/10 KILLED with log-hash verification) and its attempt archives. Boundary pin 45fadb9. readiness=false; no external gate closed.",
+  "schema_version": 1,
+  "task": "T40"
 }
