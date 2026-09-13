@@ -7633,7 +7633,15 @@
     "SIGNING"
   ],
   "failed_attempts": [],
-  "in_progress": null,
+  "in_progress": {
+    "claimed_head": "008335d29b95bd417a4667598d635d19b33c8254",
+    "claimed_utc": "2026-09-13T10:02:21+00:00",
+    "objective": {
+      "claimed_head": "008335d29b95bd417a4667598d635d19b33c8254",
+      "claimed_utc": "2026-09-13T10:02:21+00:00",
+      "objective": "Review/port Browse WIP."
+    }
+  },
   "last_code_head": "19bbda47b8327861e2401c69e43d5ab0c0da922a",
   "last_observed_head": "19bbda47b8327861e2401c69e43d5ab0c0da922a",
   "latest_verification": {
