@@ -444,7 +444,10 @@ final class ReadinessT50Tests: XCTestCase {
         await scene.loadDocuments()
         await seat(scene)
         scene.onQueryChanged("obsolete")
-        let elder = Task { await scene.search() }
+        // the petition is BORN before the supersession: the dispatch runneth
+        // now (token taken, pre-arm published), the travel is in the task
+        let elderPetition = scene.dispatchSearch()
+        let elder = Task { if let elderPetition { await scene.travel(elderPetition) } }
         scene.backToDocuments()                       // the navigation superseded it
         for _ in 0..<80 { await Task.yield() }        // let the elder's body begin its run
         await elder.value
@@ -466,10 +469,12 @@ final class ReadinessT50Tests: XCTestCase {
         await seat(scene)
         fake.pause(on: "slow")
         scene.onQueryChanged("slow")
-        let elder = Task { await scene.search() }
+        let elderPetition = scene.dispatchSearch()
+        let elder = Task { if let elderPetition { await scene.travel(elderPetition) } }
         for _ in 0..<80 { await Task.yield() }        // the elder arriveth and blocketh
         scene.onQueryChanged("latest")
-        let younger = Task { await scene.search() }
+        let youngerPetition = scene.dispatchSearch()
+        let younger = Task { if let youngerPetition { await scene.travel(youngerPetition) } }
         for _ in 0..<500 {                            // the younger runneth home first
             await Task.yield()
             if scene.searchedQuery == "latest" { break }

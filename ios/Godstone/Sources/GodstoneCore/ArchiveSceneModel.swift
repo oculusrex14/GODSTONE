@@ -96,6 +96,17 @@ private struct Scene {
 /// The journey's state owner. @MainActor, as the sealed reader model: the
 /// view bindeth to its published fields; every road runneth through the
 /// injected ArchiveReading, off the main thread's shoulder.
+/// A captured petition: the phrase, the token, and the moment of its
+/// taking. Dispatch is synchronous and observeth the epoch as it stands;
+/// travel is asynchronous and gateh both ways. A petition born before a
+/// supersession cannot travel unobserved (the T50 court's second campaign
+/// taught it: a token taken at the body's start observeth nothing that
+/// came before the body).
+public struct SearchPetition: Sendable {
+    public let phrase: String
+    public let token: UInt64
+}
+
 @MainActor
 public final class ArchiveSceneModel: ObservableObject {
 
@@ -133,23 +144,34 @@ public final class ArchiveSceneModel: ObservableObject {
         query = String(value.prefix(ArchiveSearchQuery.maxPhraseChars))
     }
 
-    public func search() async {
+    /// The synchronous prologue of the search road: the phrase and the token
+    /// are taken NOW, the pre-arm publisheth under the current epoch, and the
+    /// petition is born. nil answereth when the field is blank -- the caller
+    /// returneth to the root instead (the blank-petition law).
+    @discardableResult
+    public func dispatchSearch() -> SearchPetition? {
         let trimmed = query.trimmingCharacters(in: .whitespacesAndNewlines)
-        if trimmed.isEmpty {
-            backToDocuments()
-            return
-        }
+        guard !trimmed.isEmpty else { return nil }
         epoch &+= 1
-        let mine = epoch
-        lastRequest = { [weak self] in await self?.search() }
-        if epoch != mine { return }   // stale before the road -- and before any publication
-        // the pre-arm publisheth only once the petition is known current:
-        // a superseded petition leaveth not even its loading mark behind
+        let petition = SearchPetition(phrase: trimmed, token: epoch)
+        lastRequest = { [weak self] in
+            guard let self else { return }
+            if let fresh = self.dispatchSearch() { await self.travel(fresh) }
+            else { self.backToDocuments() }
+        }
         phase = .loading
         error = nil
         canRetry = false
-        await model.load(.search(trimmed))
-        if epoch != mine { return }                       // stale after the road
+        return petition
+    }
+
+    /// The asynchronous way of the search road: gateh before the engine,
+    /// travelleth, gateh again after it -- a petition whose epoch hath been
+    /// supanted over publisheth nothing at all.
+    public func travel(_ petition: SearchPetition) async {
+        if epoch != petition.token { return }   // stale before the road
+        await model.load(.search(petition.phrase))
+        if epoch != petition.token { return }   // stale after the road
         if case .failed(let archiveError) = model.state {
             publishFailure(archiveError)
             return
@@ -159,8 +181,8 @@ public final class ArchiveSceneModel: ObservableObject {
         let hits = passagesOf(model.state)
         switch reading.availability {
         case .ready:
-            searchedQuery = trimmed
-            query = trimmed   // the trim publish: the field telleth what stands published
+            searchedQuery = petition.phrase
+            query = petition.phrase   // the trim publish: the field telleth what stands published
             documents = []
             passages = hits ?? []
             openedDocumentId = nil
@@ -173,6 +195,16 @@ public final class ArchiveSceneModel: ObservableObject {
             }
         case .missing, .corrupt, .incompatible, .readFailure:
             publishAbsent()
+        }
+    }
+
+    /// The single-call form for callers that cannot split: dispatch and
+    /// travel in one breath.
+    public func search() async {
+        if let petition = dispatchSearch() {
+            await travel(petition)
+        } else {
+            backToDocuments()
         }
     }
 
@@ -191,12 +223,11 @@ public final class ArchiveSceneModel: ObservableObject {
         epoch &+= 1
         let mine = epoch
         lastRequest = { [weak self] in await self?.openDocumentInternal(id: id, title: title) }
-        if epoch != mine { return }   // stale before the road -- and before any publication
         phase = .loading
         error = nil
         canRetry = false
         await model.load(.document(id))
-        if epoch != mine { return }                       // stale after the road
+        if epoch != mine { return }   // stale after the road (the model's token gate is the second belt)
         if case .failed(let archiveError) = model.state {
             publishFailure(archiveError)
             return
