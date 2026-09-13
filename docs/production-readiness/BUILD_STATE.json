@@ -8082,6 +8082,452 @@
         "the A06/APPROVED_CONTENT gates remain open: W12 buildeth its fixture from the FROZEN DDL with benign fixture prose only, labelled development-only in the court's own words; no external gate was closed by fixture; NATIVE_MODELS/HARDWARE/SIGNING stand unmeddled; readiness=false"
       ]
     },
+    "T51": {
+      "case_results": {
+        "added_cases": [
+          "testTheSourceOnlyVerifyRefusethAbsentListedPaths",
+          "testTheSourceOnlyRenderingIsDeterministicAndGolden",
+          "testTheSourceOnlySectionReferencethNoApprovedNothing",
+          "testTheApprovedReceiptOfStagedBytesIsAccepted",
+          "testTheApprovedGateRefusethForeignReceipts",
+          "testTheApprovedSectionListethTheStagedPathsAndOnlyThem",
+          "testTheCommittedProjectManifestIsSourceOnlyUponInspection",
+          "testTheCommittedBundleMetadataIsInstallable",
+          "testALaunchServicesRefusethAnUnexecutableBundle",
+          "testPlaceholderRemnantsAreExposed",
+          "testTheOrientationCounselIsKept",
+          "testTheIdentifierMustBearTheFirm",
+          "testPackageTypeAndDictionaryVersionAreSworn",
+          "testTheResourceNameLawKeepethTheRoad",
+          "testTheResolverRefusethForgeardNamesBeforeTheFilesystem",
+          "test_valid_signed_archive_atomically_replaces_previous_file",
+          "test_signed_development_archive_cannot_be_staged",
+          "test_production_digests_must_match_signed_manifest",
+          "test_manifest_cannot_select_its_own_trust_root",
+          "test_role_and_name_mapping_rejects_models_and_cross_tier_assets",
+          "test_additional_model_asset_is_rejected",
+          "test_path_escape_and_absolute_input_paths_are_rejected",
+          "test_symlink_input_cannot_escape_manifest_directory",
+          "test_corrupt_source_preserves_existing_output",
+          "test_copy_failure_preserves_existing_output",
+          "test_source_mutation_during_copy_preserves_existing_output",
+          "test_publish_failure_preserves_existing_output",
+          "test_output_directory_symlink_is_rejected",
+          "test_output_file_symlink_is_rejected",
+          "test_unexpected_destination_content_is_never_deleted",
+          "test_output_cannot_overwrite_input_bundle",
+          "test_approved_manifest_is_published_only_after_the_archive",
+          "test_approved_manifest_bytes_are_deterministic",
+          "test_failure_never_publishes_a_manifest_to_a_clean_destination",
+          "test_check_only_validates_without_publishing"
+        ],
+        "deleted_cases": [],
+        "dual_court_parity": "the two courts keep one intake: the swift court proveth the laws (names, metadata, the two faces of the generated manifest, the guardian at the resolver) and the python court driveth the very gate (stage, refuse, publish) with real Ed25519 signatures through the sealed create_manifest/verify_manifest machinery of the T18/T36 lineage; the frozen name archive_light.db is the sworn style of every lane, and the world's canonical spellings (the <?xml prologue, the <plist version=\"1.0\"> form) were proved by ordinals, both copies, before any judgement",
+        "isle_grands_standing": {
+          "android_grand": "1067 stand (sealed at T49; no android path was touched this round -- round-range path audit empty)",
+          "counts_source": "the recorded stage logs under T51/logs (narrow T51-narrow-swift-003: \"Executed 15 tests, with 0 failures (0 unexpected)\"; subsystem 1021/0/0); the python tallies from the unrecorded corroboration runs (Ran N ... OK, recorded in the milestones); the runner records kind=command tests=n/a by its own tongue (the sealed T06-T50 precedent) -- the positive counts live in the logs and these milestones",
+          "ios_grand": "1021 re-passed whole this round at the boundary -- the 1006 sealed through T50 (the T48 court of sixteen, the T50 court of fifteen, the mesh suites all) entire beneath the resolver's new guard, plus this court's fifteen; from the recorded subsystem log verbatim: \"Executed 1021 tests, with 0 failures (0 unexpected)\"",
+          "python_content_lane": "the new court of twenty seats sate with the sealed three (test_archive_manifest 4, test_build_archive 26, test_release_gate 6): 56 tests, all pass, three sittings, zero failures -- the VerificationResult.manifest addition is proveably additive"
+        },
+        "t51_controls": {
+          "counts_source": "the three checkers green at the boundary; the card's fourth command git diff --check over the round range 9c32c11..HEAD came clean (rc=0, round audit)",
+          "records": "T51-controls-python3-007/-008/-009 PASSED exit=0 (ci/check_repository.py, ci/check_release_gates_status.py -- eight gates represented, the external five kept OPEN/BLOCKED, none closed -- and scripts/sync_ios_foundation_package.py --check: mirrors and SOURCE_MANIFEST in covenant)"
+        },
+        "t51_narrow_court": {
+          "counts_source": "T51-narrow-swift-003 PASSED exit=0, log verbatim \"Executed 15 tests, with 0 failures (0 unexpected)\"; two earlier firings passed at the two earlier boundaries; the court was seated twice with cause: the first brought four compile cries (two bare arrays where tuples belonged, a call-site speaking of the optional after the guard unwrapped, the golden literal's indentation) and the property-list family was found hidden behind a pointer-shaped veil -- the court grew its own reader of the written grammar instead",
+          "errors": 0,
+          "failures": 0,
+          "tests": 15
+        },
+        "t51_subsystem": {
+          "counts_source": "the whole-package road (swift test, unfiltered): T51-subsystem-swift-003 PASSED exit=0 -- every sealed court re-passed entire beneath the extended guard, which alone proveth the guard hurteth none of the lawful roads",
+          "errors": 0,
+          "failures": 0,
+          "tests": 1021
+        }
+      },
+      "claim_commit": "90a577c43268ed90ff5738bbb4d1785319fd0c7d",
+      "commands": [
+        "T51-narrow-swift-003",
+        "T51-subsystem-swift-003",
+        "T51-controls-python3-007",
+        "T51-controls-python3-008",
+        "T51-controls-python3-009"
+      ],
+      "device_gate_ids": [],
+      "file_hashes": {},
+      "implementation_commit": "c38ce9455619346e26b58f8ae0db2167cc2c4604",
+      "implementation_commits": [
+        "b2422b493152e021fbd7e349b6059e88a8b9439b",
+        "6951a5c1ade9d2fdbda0147f17b042f7aafe7c03",
+        "8834c129fbadabbc929dcfb8c4fb10ee8b0a80a5",
+        "49d6db831e5d88bf7c2a32471bdc8e07f9c64eda",
+        "c38ce9455619346e26b58f8ae0db2167cc2c4604"
+      ],
+      "inputs": {
+        "children_commit_order": [
+          "90a577c43268ed90ff5738bbb4d1785319fd0c7d",
+          "b2422b493152e021fbd7e349b6059e88a8b9439b",
+          "6951a5c1ade9d2fdbda0147f17b042f7aafe7c03",
+          "8834c129fbadabbc929dcfb8c4fb10ee8b0a80a5",
+          "49d6db831e5d88bf7c2a32471bdc8e07f9c64eda",
+          "c38ce9455619346e26b58f8ae0db2167cc2c4604"
+        ],
+        "governed_source": [
+          "ios/Godstone/Sources/GodstoneCore/ReleaseIntake.swift (new: ArchiveResourceName, BundleMetadata, the Approved receipt gates, ProjectInputManifest with the two deterministic renderers)",
+          "ios/Godstone/Sources/GodstoneCore/ArchiveRepository.swift (the resolver guard: no unproved name asked of the bundle nor of application-support)",
+          "ios/Godstone/Info.plist (the installable metadata adopted: executable, name, package type, dictionary version, tier and archive file, orientation counsel, launch screen)",
+          "scripts/prepare_release_assets.py (the merged gate: operator-selected trust, role/name binding, provenance cross-check, guarded destination, atomic replace, approved manifest published last)",
+          "content/archive_manifest.py (VerificationResult.manifest -- additive, defaulted)",
+          "ios/Godstone/Tests/GodstoneCoreTests/ReadinessT51Tests.swift (the court, fifteen witnesses)",
+          "content/tests/test_prepare_release_assets.py + content/tests/archive_fixtures.py (the python court, twenty witnesses, and its support)",
+          "ios/Packages/GodstoneFoundation/** (mirrors REGENERATED, SOURCE_MANIFEST in covenant)",
+          "ci/mutations.py (seventeen rows sown additively; the sealed rows' bytes unmeddled)"
+        ],
+        "required_regression_paths": [
+          "ios/Godstone/Tests/GodstoneCoreTests/ReadinessT51Tests.swift",
+          "content/tests/test_prepare_release_assets.py",
+          "the whole package road at the boundary (the 1021, every sealed court among them) and the whole content/tests road (56)"
+        ],
+        "sealed_hot_paths_untouched": [
+          "BLE/LinkInfo/wire/identity contracts: no file on those paths was opened for writing (round audit empty of them)",
+          "content/db/schema.sql and content/db/indexes.sql: FROZEN; executed verbatim by the court's planter through the literate splitter; not one byte moved",
+          "the sealed courts T01-T50+T83 and the sealed suites: unedited; the 1006 swift grand and the 36 sealed python tests re-passed whole at the boundary to prove it",
+          "docs/production/RELEASE_GATES_STATUS.json: unmeddled -- eight gates, the external five OPEN or BLOCKED, android-archive-only-release keeping its lawful CLOSED evidence 3ddb6f68368a3877afacc189d348b0dde8a9941e (shape-verified, not touched); readiness=false",
+          "the WIP quarry in the original checkout (its project.yml optional:true phantom, its plist, its staging script, its tests): REVIEWED and kept or refused upon the card's own clause; the original checkout standeth untouched; neighbouring WIP lanes (build_archive's atomic publish, the release-gates selftest) were NOT absorbed -- \"do not absorb neighbouring WIP\" executed",
+          "tools/readiness: untravelled; ios/project.yml: its committed source-only face preserved byte for byte (the phantom entry lives only as a sown mutant in the roster)"
+        ]
+      },
+      "ladder_boundary_commit": "c38ce9455619346e26b58f8ae0db2167cc2c4604",
+      "mutation_results": {
+        "attempts_archived": [
+          "T51/roster-attempt-1 (sixteen rows, 16/16 KILLED at 49d6db831e5d -- the first campaign, archived entire when the roster was re-seated with the seventeenth rod)",
+          "T51/roster-stray-first-sowing-refused (the sowing-audit refusal of the first seventeenth form: the replacement kept the anchor whole; no campaign seat was wasted)",
+          "T51/roster (canonical: seventeen rows, 17/17 KILLED at c38ce9455619)"
+        ],
+        "campaign_note": "seventeen rows, seventeen kills, at the canonical pin c38ce9455619, in one campaign that stands canonical (the sixteen-row harvest at 49d6db831e5d came first and is archived entire; the seventeenth rod was conceived after it, when the sowing audit refused the first form: a replacement that keepeth the find-region whole cannot pass the campaign's own install gate -- post.count(find) must be nought -- and the lawful form breaketh the anchor within, a space before the colon of the duplicated YAML key which the parser trimmeth away, the sense remaining). 0 escaped, 0 invalid, 0 timeout, 0 skipped. Every row died to its own named witness; where the singular summary line hid from the harness EXEC_RE the per-case cry stood witnessed (run=None tolerated per the sealed T48 precedent, 0 unexpected on every row); the python rows were selected by unittest -k and spake their run=1 record. The card's own falsifiers were executed over: SM17 restored the WIP's optional:true phantom to the committed project.yml and the source-only witness condemned it; SM6 muzzled the missing-executable cry and the launchservices witness fell as the card commanded. The guardian row SM5 struck the resolver's guard and the forged traversal walked onto the REAL planted archive and the road called it READY -- the isAvailable flip and the wrong-typed tale together condemned the sleeper to its single named witness. The families: name law four ways (SM1-SM4 to the truth table), metadata four ways (SM6-SM9 to W9/W10/W12/W11), the receipt gate four ways (SM10/SM11/SM12/SM15 to the refusals witness), determinism one way (SM16 one space into the golden bytes), the python gate two ways (SM13 self-nomination, SM14 the neglected re-verification). Unkillable candidates (the renderer's shuffle-invariance beyond the golden pin, the recursive substitution's nested descent, the generated_by string beyond equality) were named and NOT sown",
+        "roster_manifest": "T51/roster/manifest.json",
+        "semantic": [
+          {
+            "anchor_count": 1,
+            "baseline_sha": "c38ce9455619346e26b58f8ae0db2167cc2c4604",
+            "build_exit": 0,
+            "category": "semantic",
+            "ended_utc": "2026-09-13T15:13:04Z",
+            "failed_assertion": "witness testTheResourceNameLawKeepethTheRoad failed as intended (1 failed case(s))",
+            "id": "T51-SM1-name-length-cap-loosed",
+            "log_path": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/T51/roster-attempt-2/logs/T51-SM1-name-length-cap-loosed.semantic.log",
+            "log_sha": "0822878613dc4d0884d0466654c87ef82e96d345948b7760ef26015f1cf1090c",
+            "mutant_patch_sha": "119b82afdc57486a3d8f285df8044bdb8af419d7bcca44aea54213462bd05791",
+            "outcome": "KILLED",
+            "started_utc": "2026-09-13T15:12:34Z",
+            "target_tests": [
+              "testTheResourceNameLawKeepethTheRoad"
+            ],
+            "tests_run": null
+          },
+          {
+            "anchor_count": 1,
+            "baseline_sha": "c38ce9455619346e26b58f8ae0db2167cc2c4604",
+            "build_exit": 0,
+            "category": "semantic",
+            "ended_utc": "2026-09-13T15:13:33Z",
+            "failed_assertion": "witness testTheResourceNameLawKeepethTheRoad failed as intended (1 failed case(s))",
+            "id": "T51-SM2-characterset-gate-down",
+            "log_path": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/T51/roster-attempt-2/logs/T51-SM2-characterset-gate-down.semantic.log",
+            "log_sha": "910f161a7a7d1cc057021d69e5caceb7797475f52be9673e65f9b619b72d8367",
+            "mutant_patch_sha": "596fc1a739760d132584b06f7f1b51e66f3c4deaa481830033285d0a3404a820",
+            "outcome": "KILLED",
+            "started_utc": "2026-09-13T15:13:05Z",
+            "target_tests": [
+              "testTheResourceNameLawKeepethTheRoad"
+            ],
+            "tests_run": 15
+          },
+          {
+            "anchor_count": 1,
+            "baseline_sha": "c38ce9455619346e26b58f8ae0db2167cc2c4604",
+            "build_exit": 0,
+            "category": "semantic",
+            "ended_utc": "2026-09-13T15:14:02Z",
+            "failed_assertion": "witness testTheResourceNameLawKeepethTheRoad failed as intended (1 failed case(s))",
+            "id": "T51-SM3-first-last-rule-struck",
+            "log_path": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/T51/roster-attempt-2/logs/T51-SM3-first-last-rule-struck.semantic.log",
+            "log_sha": "f02310eabe7331f4c296c9949f797cea23019de4dc80d5f3998799c66f9856fe",
+            "mutant_patch_sha": "88ac46a87235ac78426a470a5efcba58f8807e4099b4bdcb47beeb886c87b6e2",
+            "outcome": "KILLED",
+            "started_utc": "2026-09-13T15:13:33Z",
+            "target_tests": [
+              "testTheResourceNameLawKeepethTheRoad"
+            ],
+            "tests_run": null
+          },
+          {
+            "anchor_count": 1,
+            "baseline_sha": "c38ce9455619346e26b58f8ae0db2167cc2c4604",
+            "build_exit": 0,
+            "category": "semantic",
+            "ended_utc": "2026-09-13T15:14:32Z",
+            "failed_assertion": "witness testTheResourceNameLawKeepethTheRoad failed as intended (1 failed case(s))",
+            "id": "T51-SM4-ending-set-poisoned",
+            "log_path": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/T51/roster-attempt-2/logs/T51-SM4-ending-set-poisoned.semantic.log",
+            "log_sha": "25f17a15b5499e1f25f35aa003d4dded52b77ae6e0d69eab6778015682c6af3f",
+            "mutant_patch_sha": "ed194dc101b28560b1ec63f3ae0b4cda653e4f3a1fe4baacf9dc82c70a3da1e5",
+            "outcome": "KILLED",
+            "started_utc": "2026-09-13T15:14:03Z",
+            "target_tests": [
+              "testTheResourceNameLawKeepethTheRoad"
+            ],
+            "tests_run": null
+          },
+          {
+            "anchor_count": 1,
+            "baseline_sha": "c38ce9455619346e26b58f8ae0db2167cc2c4604",
+            "build_exit": 0,
+            "category": "semantic",
+            "ended_utc": "2026-09-13T15:15:02Z",
+            "failed_assertion": "witness testTheResolverRefusethForgeardNamesBeforeTheFilesystem failed as intended (1 failed case(s))",
+            "id": "T51-SM5-resolver-guard-slept",
+            "log_path": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/T51/roster-attempt-2/logs/T51-SM5-resolver-guard-slept.semantic.log",
+            "log_sha": "3f85d064c6a9df2f579f435bf224cd557680c0a1a6fc76ab9954433fb90e0ba4",
+            "mutant_patch_sha": "75eca6f2b2e5700ad340c29f57cf79c198b2de4f8e5d4a46f25ad6c7e57a7dcf",
+            "outcome": "KILLED",
+            "started_utc": "2026-09-13T15:14:32Z",
+            "target_tests": [
+              "testTheResolverRefusethForgeardNamesBeforeTheFilesystem"
+            ],
+            "tests_run": 15
+          },
+          {
+            "anchor_count": 1,
+            "baseline_sha": "c38ce9455619346e26b58f8ae0db2167cc2c4604",
+            "build_exit": 0,
+            "category": "semantic",
+            "ended_utc": "2026-09-13T15:15:31Z",
+            "failed_assertion": "witness testALaunchServicesRefusethAnUnexecutableBundle failed as intended (1 failed case(s))",
+            "id": "T51-SM6-missing-cry-muzzled",
+            "log_path": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/T51/roster-attempt-2/logs/T51-SM6-missing-cry-muzzled.semantic.log",
+            "log_sha": "6b57cba4b69d6e1ded601cbae0f979925793f1350635d24c5d975e8a21450072",
+            "mutant_patch_sha": "7d5e0ff778962b5be81b418b3b6b5a3f8ab9529bb09de18ea33c56432cf2f8fc",
+            "outcome": "KILLED",
+            "started_utc": "2026-09-13T15:15:02Z",
+            "target_tests": [
+              "testALaunchServicesRefusethAnUnexecutableBundle"
+            ],
+            "tests_run": null
+          },
+          {
+            "anchor_count": 1,
+            "baseline_sha": "c38ce9455619346e26b58f8ae0db2167cc2c4604",
+            "build_exit": 0,
+            "category": "semantic",
+            "ended_utc": "2026-09-13T15:16:01Z",
+            "failed_assertion": "witness testPlaceholderRemnantsAreExposed failed as intended (1 failed case(s))",
+            "id": "T51-SM7-placeholder-veil-rent",
+            "log_path": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/T51/roster-attempt-2/logs/T51-SM7-placeholder-veil-rent.semantic.log",
+            "log_sha": "17d6a4290cfa391086b97abc29fc9265d7ebbcec024c91fc60f969637ce94bfa",
+            "mutant_patch_sha": "48529f2a630de357cab960a8eb13842c9c9757e7a672702853f9ac9459911197",
+            "outcome": "KILLED",
+            "started_utc": "2026-09-13T15:15:32Z",
+            "target_tests": [
+              "testPlaceholderRemnantsAreExposed"
+            ],
+            "tests_run": null
+          },
+          {
+            "anchor_count": 1,
+            "baseline_sha": "c38ce9455619346e26b58f8ae0db2167cc2c4604",
+            "build_exit": 0,
+            "category": "semantic",
+            "ended_utc": "2026-09-13T15:16:30Z",
+            "failed_assertion": "witness testTheIdentifierMustBearTheFirm failed as intended (1 failed case(s))",
+            "id": "T51-SM8-prefix-rule-asleep",
+            "log_path": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/T51/roster-attempt-2/logs/T51-SM8-prefix-rule-asleep.semantic.log",
+            "log_sha": "97e6abd1527b44c1534a06a5141b1628fc9a4994fa5fc53fe85ca1befc90e537",
+            "mutant_patch_sha": "4a1935262219eeb8f249ae0f1619a281f1a50c7ca9a71c7ffdedb575b8f1a480",
+            "outcome": "KILLED",
+            "started_utc": "2026-09-13T15:16:01Z",
+            "target_tests": [
+              "testTheIdentifierMustBearTheFirm"
+            ],
+            "tests_run": null
+          },
+          {
+            "anchor_count": 1,
+            "baseline_sha": "c38ce9455619346e26b58f8ae0db2167cc2c4604",
+            "build_exit": 0,
+            "category": "semantic",
+            "ended_utc": "2026-09-13T15:17:00Z",
+            "failed_assertion": "witness testTheOrientationCounselIsKept failed as intended (1 failed case(s))",
+            "id": "T51-SM9-phone-counsel-struck",
+            "log_path": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/T51/roster-attempt-2/logs/T51-SM9-phone-counsel-struck.semantic.log",
+            "log_sha": "cfd30fc53b4e8051aeaf33afb0689868108aa99dc467e4c48b78f62d27a60a24",
+            "mutant_patch_sha": "a556bfb8fc52995e8bcf3999a3e357178b32c27d2e6d9d36a754a43668d47aa7",
+            "outcome": "KILLED",
+            "started_utc": "2026-09-13T15:16:30Z",
+            "target_tests": [
+              "testTheOrientationCounselIsKept"
+            ],
+            "tests_run": null
+          },
+          {
+            "anchor_count": 1,
+            "baseline_sha": "c38ce9455619346e26b58f8ae0db2167cc2c4604",
+            "build_exit": 0,
+            "category": "semantic",
+            "ended_utc": "2026-09-13T15:17:31Z",
+            "failed_assertion": "witness testTheApprovedGateRefusethForeignReceipts failed as intended (1 failed case(s))",
+            "id": "T51-SM10-schema-gate-wide",
+            "log_path": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/T51/roster-attempt-2/logs/T51-SM10-schema-gate-wide.semantic.log",
+            "log_sha": "5ee3838f7e74cb1d66252dbe41078e55158319d8d7b7ba322e2864521251a2e0",
+            "mutant_patch_sha": "fb48e4a70edbde12063f968a0febedb080c135fbd118f6e123e6e62eb239ba49",
+            "outcome": "KILLED",
+            "started_utc": "2026-09-13T15:17:00Z",
+            "target_tests": [
+              "testTheApprovedGateRefusethForeignReceipts"
+            ],
+            "tests_run": 15
+          },
+          {
+            "anchor_count": 1,
+            "baseline_sha": "c38ce9455619346e26b58f8ae0db2167cc2c4604",
+            "build_exit": 0,
+            "category": "semantic",
+            "ended_utc": "2026-09-13T15:18:00Z",
+            "failed_assertion": "witness testTheApprovedGateRefusethForeignReceipts failed as intended (1 failed case(s))",
+            "id": "T51-SM11-role-binding-loosed",
+            "log_path": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/T51/roster-attempt-2/logs/T51-SM11-role-binding-loosed.semantic.log",
+            "log_sha": "354094bfa8fda7eac3a1fba0d5e4fa1d500da8d59a129f86572e3026eaa18025",
+            "mutant_patch_sha": "36de8b19da305cee06006eea0b6d409e63cd91791458da7354dac4a11848ab60",
+            "outcome": "KILLED",
+            "started_utc": "2026-09-13T15:17:31Z",
+            "target_tests": [
+              "testTheApprovedGateRefusethForeignReceipts"
+            ],
+            "tests_run": null
+          },
+          {
+            "anchor_count": 1,
+            "baseline_sha": "c38ce9455619346e26b58f8ae0db2167cc2c4604",
+            "build_exit": 0,
+            "category": "semantic",
+            "ended_utc": "2026-09-13T15:18:30Z",
+            "failed_assertion": "witness testTheApprovedGateRefusethForeignReceipts failed as intended (1 failed case(s))",
+            "id": "T51-SM12-hex-alphabet-enlarged",
+            "log_path": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/T51/roster-attempt-2/logs/T51-SM12-hex-alphabet-enlarged.semantic.log",
+            "log_sha": "bb1aceca47f5bfb5edb167d5397e67209854e000f5535004133211d66639e73a",
+            "mutant_patch_sha": "03c2bf18f33f87405c300a667db154c4dd5e918e0aaa9f2ff7cdf0728899fc65",
+            "outcome": "KILLED",
+            "started_utc": "2026-09-13T15:18:00Z",
+            "target_tests": [
+              "testTheApprovedGateRefusethForeignReceipts"
+            ],
+            "tests_run": 15
+          },
+          {
+            "anchor_count": 1,
+            "baseline_sha": "c38ce9455619346e26b58f8ae0db2167cc2c4604",
+            "build_exit": 0,
+            "category": "semantic",
+            "ended_utc": "2026-09-13T15:18:31Z",
+            "failed_assertion": "witness test_manifest_cannot_select_its_own_trust_root failed as intended (1 failed case(s))",
+            "id": "T51-SM13-self-nomination-muzzled",
+            "log_path": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/T51/roster-attempt-2/logs/T51-SM13-self-nomination-muzzled.semantic.log",
+            "log_sha": "0b5c2af71423fb0ec7f3b26f705e2731f09f57857579a9706c3d6c81b676d76c",
+            "mutant_patch_sha": "95180910479517eccd591b4b9290ca82595f97d3c9c8c9ae55f4d8f19d192464",
+            "outcome": "KILLED",
+            "started_utc": "2026-09-13T15:18:30Z",
+            "target_tests": [
+              "test_manifest_cannot_select_its_own_trust_root"
+            ],
+            "tests_run": 1
+          },
+          {
+            "anchor_count": 1,
+            "baseline_sha": "c38ce9455619346e26b58f8ae0db2167cc2c4604",
+            "build_exit": 0,
+            "category": "semantic",
+            "ended_utc": "2026-09-13T15:18:31Z",
+            "failed_assertion": "witness test_source_mutation_during_copy_preserves_existing_output failed as intended (1 failed case(s))",
+            "id": "T51-SM14-reverification-slept",
+            "log_path": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/T51/roster-attempt-2/logs/T51-SM14-reverification-slept.semantic.log",
+            "log_sha": "3479e99d90a5bc11fa8d4214a12df908b0ae732a14928acde4fb49ae2e68e95a",
+            "mutant_patch_sha": "f0c3d578563c689ef871b6cc34e9fd262c3e2197f9a22c73635ff7d9e31898bc",
+            "outcome": "KILLED",
+            "started_utc": "2026-09-13T15:18:31Z",
+            "target_tests": [
+              "test_source_mutation_during_copy_preserves_existing_output"
+            ],
+            "tests_run": 1
+          },
+          {
+            "anchor_count": 1,
+            "baseline_sha": "c38ce9455619346e26b58f8ae0db2167cc2c4604",
+            "build_exit": 0,
+            "category": "semantic",
+            "ended_utc": "2026-09-13T15:19:00Z",
+            "failed_assertion": "witness testTheApprovedGateRefusethForeignReceipts failed as intended (1 failed case(s))",
+            "id": "T51-SM15-keyset-equality-struck",
+            "log_path": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/T51/roster-attempt-2/logs/T51-SM15-keyset-equality-struck.semantic.log",
+            "log_sha": "1a9df65a328f6afd7fdb1ae52c41bb3c896a779ff1f999e94fc09486fa04554a",
+            "mutant_patch_sha": "5c1bfe48acc3c033fafdbf122e15e413c14036104ee756218e4c36b78f54e954",
+            "outcome": "KILLED",
+            "started_utc": "2026-09-13T15:18:32Z",
+            "target_tests": [
+              "testTheApprovedGateRefusethForeignReceipts"
+            ],
+            "tests_run": null
+          },
+          {
+            "anchor_count": 1,
+            "baseline_sha": "c38ce9455619346e26b58f8ae0db2167cc2c4604",
+            "build_exit": 0,
+            "category": "semantic",
+            "ended_utc": "2026-09-13T15:19:30Z",
+            "failed_assertion": "witness testTheSourceOnlyRenderingIsDeterministicAndGolden failed as intended (1 failed case(s))",
+            "id": "T51-SM16-golden-space-inserted",
+            "log_path": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/T51/roster-attempt-2/logs/T51-SM16-golden-space-inserted.semantic.log",
+            "log_sha": "32902d3bbe29495e3aeed33c3a213037373dfcb095fc94284018f0e1c7d89f7f",
+            "mutant_patch_sha": "573758da3b0278ae4a7a536d67338fa39f7a399df8a0858abc136cf140d669d0",
+            "outcome": "KILLED",
+            "started_utc": "2026-09-13T15:19:00Z",
+            "target_tests": [
+              "testTheSourceOnlyRenderingIsDeterministicAndGolden"
+            ],
+            "tests_run": null
+          },
+          {
+            "anchor_count": 1,
+            "baseline_sha": "c38ce9455619346e26b58f8ae0db2167cc2c4604",
+            "build_exit": 0,
+            "category": "semantic",
+            "ended_utc": "2026-09-13T15:20:00Z",
+            "failed_assertion": "witness testTheCommittedProjectManifestIsSourceOnlyUponInspection failed as intended (1 failed case(s))",
+            "id": "T51-SM17-optional-phantom-restored",
+            "log_path": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/T51/roster-attempt-2/logs/T51-SM17-optional-phantom-restored.semantic.log",
+            "log_sha": "ba23db770c08efb5c4e5befe54003993a90954c9b2bf8bde3d951a7e7b2ce0f4",
+            "mutant_patch_sha": "0b7fd0540398c648a52eeacdc858ab923c4c02baf8168f5fa99350251b64ceca",
+            "outcome": "KILLED",
+            "started_utc": "2026-09-13T15:19:30Z",
+            "target_tests": [
+              "testTheCommittedProjectManifestIsSourceOnlyUponInspection"
+            ],
+            "tests_run": 15
+          }
+        ]
+      },
+      "objective": {
+        "claimed_head": "c38ce9455619346e26b58f8ae0db2167cc2c4604",
+        "claimed_utc": "2026-09-13T13:59:28+00:00",
+        "objective": "Fix iOS resource intake and installable bundle metadata: source-only manifest by construction, approved manifest only after staged bytes were sworn."
+      },
+      "status": "COMPLETE",
+      "tested_tree_sha": "6a311ef93adec9869cc8ff0aacb99e54d1743c4a",
+      "unresolved": [
+        "the instrumented device leg is NOT closed here: simulator install/launch and the embedded-Info.plist comparison upon the built artifact (the card's fourth required case), the 200% Dynamic Type reflow and VoiceOver order upon the rendered hierarchy, await the instrumented runs of T73-T75 (physical evidence); the host lanes proveth the gate's substance: the name law, the metadata law, the two faces, the guardian at the resolver, and the staging gate's refusals with real signatures",
+        "the A06/APPROVED_CONTENT gates remain open: the court's archives are development fixtures with benign prose, labelled as such by the planter's own words; the APPROVED_ASSETS.json publication is a staging instrument, not an approval; no external gate was closed by fixture; NATIVE_MODELS/HARDWARE/SIGNING stand unmeddled; readiness=false"
+      ]
+    },
     "T83": {
       "case_results": {
         "android_grand": {
@@ -8370,7 +8816,7 @@
       "unresolved": []
     }
   },
-  "current_task": "T51",
+  "current_task": "T52",
   "external_blockers": [
     "A06",
     "APPROVED_CONTENT",
@@ -8379,21 +8825,12 @@
     "SIGNING"
   ],
   "failed_attempts": [],
-  "in_progress": {
-    "claimed_head": "9c32c1137e93e1934afee5b21f4e6b6bd2fa32dd",
-    "claimed_utc": "2026-09-13T13:59:28+00:00",
-    "objective": {
-      "claimed_head": "9c32c1137e93e1934afee5b21f4e6b6bd2fa32dd",
-      "claimed_utc": "2026-09-13T13:59:28+00:00",
-      "objective": "Fix iOS resource intake and installable bundle metadata: generate an explicit source-only project manifest with no absent resource references and an approved-resource manifest only after successful staging."
-    },
-    "task": "T51"
-  },
-  "last_code_head": "e508e565e7e67fcfe2592a391cea1e657336b270",
-  "last_observed_head": "e508e565e7e67fcfe2592a391cea1e657336b270",
+  "in_progress": null,
+  "last_code_head": "c38ce9455619346e26b58f8ae0db2167cc2c4604",
+  "last_observed_head": "c38ce9455619346e26b58f8ae0db2167cc2c4604",
   "latest_verification": {
-    "at_utc": "2026-09-13T13:41:31+00:00",
-    "boundary_commit": "e508e565e7e67fcfe2592a391cea1e657336b270",
+    "at_utc": "2026-09-13T15:24:53+00:00",
+    "boundary_commit": "c38ce9455619346e26b58f8ae0db2167cc2c4604",
     "controls": {
       "boundary_records": 3,
       "first_pair_failure": "none this round",
@@ -8401,7 +8838,8 @@
     },
     "isle_grands": {
       "android_grand": "1067 stand (untouched this round; round-range path audit empty)",
-      "ios_grand": "1006 re-passed whole this round (the 991 sealed at T48 + this court's 15, from the recorded subsystem log at the boundary)"
+      "ios_grand": "1021 re-passed whole this round (the 1006 sealed through T50 + this court's 15, from the recorded subsystem log at the boundary)",
+      "python_content_lane": "56 (4 sealed + 26 + 6 + the new 20) all pass, three sittings"
     },
     "narrow": {
       "errors": 0,
@@ -8409,16 +8847,16 @@
       "tests": 15
     },
     "roster": {
-      "T50_killed": 14,
-      "of": 14
+      "T51_killed": 17,
+      "of": 17
     },
     "subsystem": {
       "errors": 0,
       "failures": 0,
-      "tests": 1006
+      "tests": 1021
     }
   },
-  "next_task": "T51",
+  "next_task": "T52",
   "phase": "P0",
   "plan_sha256": "685456b378662b0a40a53a6abc810041e37daf97b213f3efeb6cea879363934e",
   "planning_baseline_sha": "b5c3d3d394b70cf356cdde33b47511dad7cbb95c",
@@ -8453,7 +8891,10 @@
     "a concurrency witness must gate the interleaving it judgeh: where the law forbids an obsolete publication to land, the court must WAIT (bounded) until the present publication hath landed, and grant the late mover a settle window before the sample -- an unsequenced sample acquitteth a guilty road (W9's escape and its healing, told in full in the roster milestone)",
     "a token captured at a task body's own beginning observeth nothing that came before the body: the gate before the road is unfalsifiable ceremony unless the token is taken SYNCHRONOUSLY at the dispatch, where the petition is born under the epoch as it standeth NOW. Split the road: dispatch taketh the phrase and the token; travel knocketh at both gates. A roster row that cannot be made to die revealeth such ceremony (SM3's two escapes, and the healing, told in full in the roster milestone)",
     "extension defaults upon UNDECLARED protocol requirements are statically dispatched through the existential -- the concrete fake's witness lieth hidden and the counterfeit masqueradeth (the first campaign's absent arm got \"ready\" where \"missing\" was sworn). Declare the requirement, provide the default: the witness table restorith dynamic speech, and sealed conformations compile unchanged thereby (proved by the re-passed 991 within the 1006)",
-    "a concurrency witness must sample AFTER the settle window it granteth: assertions set before the drain, where the sleeping gate and the waking agree, proveth nothing. The observation belongeth after the late arrival's release -- bounded waits, bounded drains, then the sample (W8's mis-seated window, re-seated, turned SM4 from INVALID to KILLED)"
+    "a concurrency witness must sample AFTER the settle window it granteth: assertions set before the drain, where the sleeping gate and the waking agree, proveth nothing. The observation belongeth after the late arrival's release -- bounded waits, bounded drains, then the sample (W8's mis-seated window, re-seated, turned SM4 from INVALID to KILLED)",
+    "a mutation rod's replacement must BURST its anchor: the campaign's install gate requireth the installed text to carry the replace exactly once AND the find NOWHERE -- a pure insertion (replacement embedding the find whole) passeth a needle-audit and faileth the campaign; break the anchor within the replacement (for YAML: a space before a duplicated key's colon, which the parser trimmeth away, the sense remaining) or anchor upon a region the mutation rewriteth entire",
+    "the property-list family of this world hideth its methods behind a pointer-shaped veil (propertyList(from:format:) with format: UnsafeMutablePointer<PropertyListFormat>? and no .xml1 member reachable); when the standard reader denieth the commodity, grow a reader of the written grammar in the court itself (components(separatedBy:) over the known shapes) -- it proveth more than a borrowed parser, for it reads the bytes as the world's own build read them",
+    "the world's canonical spellings (<?xml prologue, <plist version=\"1.0\">, http:// double-slash, b5c3-prefixed hashes) must be proved by ORDINALS (python bytes, both copies compared) before any normalisation is dreamt: the display foldeth identifiers, and a well-meant sower's \"correction\" corrupteth committed artifacts if it trusteth the eye over the rank"
   ],
   "warnings_for_next_invocation": [
     "Android toolchain provisioned: JDK 17.0.20.1 + SDK 35 on mac-primary.",
@@ -8486,6 +8927,7 @@
     "T47 sealed at b85fb76: bundled-driver archive road stands; ten rows ten kills at attempt three; the device leg rides to T73-T75",
     "T48 sealed at 19bbda4: the iOS archive road speaketh typed truths (availability, checked faces, generation tokens); sixteen witnesses, 991 grand, twelve-of-twelve roster at the first firing; the device leg rides to T73-T75",
     "T49 sealed at 5e1e848: the android browse journey speaketh its phases (Loading/Ready/NoResults/Unavailable with cause), the token gates the road in both directions, the banner carrieth no private words, retry is earned, the journey survives recreation, and the fifteenth witness walketh the FROZEN DDL on the true engine; 15 witnesses, 1067 android grand, 14-of-14 roster; the device leg rides to T73-T75",
-    "T50 sealed at e508e56: the iOS reading journey speaketh its phases (Loading/Ready/NoResults/Unavailable with cause), the road is split at the dispatch (SearchPetition; no publication without leave of the epoch), the banner carrieth no SQL whispers, retry is earned, the journey surviveth recreation by handle, the scroll is remembered, and the twelfth witness walketh the FROZEN DDL on the true engine end to end; 15 witnesses, ios grand 1006, 14-of-14 roster; the device leg rides to T73-T75; the toolchain taught also: name configurations truly (LightDebug/LightRelease), the bare func name in a ViewBuilder context is a function reference (call it with parentheses), compound assignment yieldeth Void (capture the new value in a separate let)"
+    "T50 sealed at e508e56: the iOS reading journey speaketh its phases (Loading/Ready/NoResults/Unavailable with cause), the road is split at the dispatch (SearchPetition; no publication without leave of the epoch), the banner carrieth no SQL whispers, retry is earned, the journey surviveth recreation by handle, the scroll is remembered, and the twelfth witness walketh the FROZEN DDL on the true engine end to end; 15 witnesses, ios grand 1006, 14-of-14 roster; the device leg rides to T73-T75; the toolchain taught also: name configurations truly (LightDebug/LightRelease), the bare func name in a ViewBuilder context is a function reference (call it with parentheses), compound assignment yieldeth Void (capture the new value in a separate let)",
+    "T51 sealed at c38ce94: the intake road is set in order -- names proved before the filesystem is asked, metadata sworn before the bundle is shipped, the approved-resource manifest published only after the bytes are true, the source-only face by construction, the guardian at the resolver made provable by the real planted archive; 15 swift + 20 python witnesses, ios grand 1021, roster 17-of-17; the device legs (simulator install/launch, embedded-Info.plist comparison) ride to T73-T75; the gates stand open"
   ]
 }
