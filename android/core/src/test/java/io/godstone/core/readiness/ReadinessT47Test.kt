@@ -702,8 +702,8 @@ class ReadinessT47Test {
             refuses { ArchiveManifestFacts.fromJson(future) } != null)
         val futureManifest = good.replace("\"schema\":1", "\"schema\":2")
         val why = refuses { ArchiveManifestFacts.fromJson(futureManifest) }
-        assertTrue("the refusal must name the future it seeth, got " + (why.message ?: "<none>"),
-            why != null && (why.message ?: "").contains("future"))
+        assertTrue("the refusal must name the future it seeth, got " + (why?.message ?: "<none>"),
+            why != null && (why?.message ?: "").contains("future"))
 
         // shape faults, each named
         val shapeFaults = mapOf(
