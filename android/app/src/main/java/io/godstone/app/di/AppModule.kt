@@ -24,6 +24,16 @@ import javax.inject.Singleton
 @Module
 @InstallIn(SingletonComponent::class)
 object AppModule {
+    init {
+        // T47 (s17): the Archive read path runseth on the PINNED AndroidX
+        // bundled driver -- installed as a thunk so the native library loads
+        // at first use, never at class-init of the wiring. There is no
+        // silent fallback to the platform engine by design.
+        io.godstone.core.archive.ArchiveDrivers.install {
+            BundledSQLiteDriver()
+        }
+    }
+
     @Provides @Singleton
     fun provideArchiveRepository(@ApplicationContext ctx: Context): ArchiveRepository =
         ArchiveRepository(ctx, archiveAsset = BuildConfig.ARCHIVE_FILE)

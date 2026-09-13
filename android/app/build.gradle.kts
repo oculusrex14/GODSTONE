@@ -190,6 +190,13 @@ dependencies {
     // sources; the Archive-only APK contract is enforced by
     // scripts/inspect_android_artifacts.py.
     implementation(project(":core"))
+    // T47 (s17): the Archive browse path carries its OWN pinned SQLite
+    // (blueprint s17: platform FTS5 availability is not a portable
+    // contract). :sqlite holds the stable interfaces the installer
+    // compileth against; :sqlite-bundled ships the concrete driver and
+    // the native for the LIGHT APK on every abi.
+    implementation("androidx.sqlite:sqlite:2.5.2")
+    implementation("androidx.sqlite:sqlite-bundled:2.5.2")
     testImplementation(project(":llm"))
 
     implementation(platform("androidx.compose:compose-bom:2024.09.02"))

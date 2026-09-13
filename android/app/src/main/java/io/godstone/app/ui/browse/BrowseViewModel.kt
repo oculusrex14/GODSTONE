@@ -26,6 +26,21 @@ data class BrowseUiState(
 @HiltViewModel
 class BrowseViewModel @Inject constructor(
     private val archive: ArchiveRepository
+
+    // T47 (s17): the typed availability of the Archive path travels to the
+    // UI -- "why nothing answers" is said, not implied by a bare boolean.
+    private val _archiveStatus = MutableStateFlow<io.godstone.core.archive.ArchiveState?>(null)
+    val archiveStatus: StateFlow<io.godstone.core.archive.ArchiveState?> = _archiveStatus.asStateFlow()
+
+    fun refreshArchiveStatus() {
+        viewModelScope.launch(Dispatchers.IO) {
+            _archiveStatus.value = runCatching { archive.state }
+                .getOrElse { exc ->
+                    io.godstone.core.archive.ArchiveState.Unavailable(
+                        "status probe threw: " + (exc.message ?: exc::class.simpleName))
+                }
+        }
+    }
 ) : ViewModel() {
     private val _state = MutableStateFlow(BrowseUiState())
     val state: StateFlow<BrowseUiState> = _state.asStateFlow()
