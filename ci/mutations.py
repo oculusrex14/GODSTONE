@@ -1204,8 +1204,18 @@ def _run_harness(entry, wt_path, timeout=2400):
         # and the verbose per-test lines. A SyntaxError or ImportError
         # that keeps the named witness from ever speaking is a broken
         # mutant, not an escape.
+        # before the court sits, purge every stale bytecode cache: an equal-
+        # length mutation landed inside one second of the checkout keeps the
+        # (mtime, size) cache key of the faithful file and the timestamp pyc
+        # would stay believed -- the court would execute old code against new
+        # bytes and acquit the guilty (learned the hard way from the SM6
+        # ArchiveEmptyError/ArchiveBuildError pair, seventeen bytes both).
+        for _dirpath, _dirnames, _filenames in os.walk(wt_path):
+            if _dirnames and _dirpath.endswith("__pycache__"):
+                shutil.rmtree(_dirpath, ignore_errors=True)
+                _dirnames[:] = []
         proc = subprocess.run(
-            [sys.executable, "-m", "unittest", "discover",
+            [sys.executable, "-B", "-m", "unittest", "discover",
              "-s", entry.get("py_dir", "tools/readiness/tests"),
              "-p", entry.get("py_pattern", "test_t45.py"),
              "-k", entry["witness"], "-v"],
