@@ -1,5 +1,6 @@
 import XCTest
 import Foundation
+import SQLite3
 @testable import GodstoneCore
 
 /* ============================================================================
@@ -114,6 +115,98 @@ final class ReadinessT51Tests: XCTestCase {
             }
         }
         return out
+    }
+
+    /// Split on semicolons that lie outside quoted and comment regions (the
+    /// frozen DDL hideth a semicolon in prose and in the tokenizer string).
+    private func splitStatements(_ script: String) -> [String] {
+        enum Region { case plain, lineComment, blockComment, singleQuote, doubleQuote }
+        var region = Region.plain
+        var statements: [String] = []
+        var current = ""
+        let chars = Array(script)
+        var i = 0
+        while i < chars.count {
+            let ch = chars[i]
+            let peek: Character? = (i + 1 < chars.count) ? chars[i + 1] : nil
+            switch (region, ch) {
+            case (.plain, "'"):
+                region = .singleQuote; current.append(ch)
+            case (.plain, "\""):
+                region = .doubleQuote; current.append(ch)
+            case (.plain, "-") where peek == "-":
+                region = .lineComment; current.append(ch)
+            case (.plain, "/") where peek == "*":
+                region = .blockComment; current.append("/*"); i += 1
+            case (.plain, ";"):
+                statements.append(current); current = ""
+            case (.singleQuote, "'") where peek == "'":
+                current.append("''"); i += 1
+            case (.singleQuote, "'"):
+                region = .plain; current.append(ch)
+            case (.doubleQuote, "\"") where peek == "\"":
+                current.append("\"\""); i += 1
+            case (.doubleQuote, "\""):
+                region = .plain; current.append(ch)
+            case (.lineComment, "\n"):
+                region = .plain; current.append(ch)
+            case (.blockComment, "*") where peek == "/":
+                region = .plain; current.append("*/"); i += 1
+            default:
+                current.append(ch)
+            }
+            i += 1
+        }
+        statements.append(current)
+        return statements
+            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .filter { !$0.isEmpty }
+    }
+
+    private func execStatements(_ db: OpaquePointer?, _ script: String, from origin: String) {
+        for statement in splitStatements(script) {
+            var err: UnsafeMutablePointer<Int8>?
+            let rc = sqlite3_exec(db, statement, nil, nil, &err)
+            if rc != SQLITE_OK {
+                let why = err.map { String(cString: $0) ?? "?" } ?? "rc \(rc)"
+                if let e = err { sqlite3_free(e) }
+                XCTFail("plant DDL from \(origin) cried on \"\(String(statement.prefix(72)))…\": \(why)")
+                return
+            }
+        }
+    }
+
+    /// A REAL archive at the given path: the FROZEN DDL executed verbatim,
+    /// one document, one chunk, the sworn metadata, the indexes -- the very
+    /// bytes that make the road ready. The escape probe and the ready probe
+    /// are born of this one planter, that neither be a tale of convenience.
+    private func plantRealArchive(at path: String) throws {
+        let schema = try repoFile(named: "content/db/schema.sql")
+        let indexes = try repoFile(named: "content/db/indexes.sql")
+        var db: OpaquePointer?
+        let rc = sqlite3_open_v2(path, &db, SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE, nil)
+        guard rc == SQLITE_OK, let db else {
+            XCTFail("the plant could not be opened for building: rc \(rc)")
+            return
+        }
+        defer { sqlite3_close_v2(db) }
+        execStatements(db, schema, from: "schema.sql")
+        for sql in [
+            "INSERT INTO documents (document_id, title, domain, source_id, licence, revision, tier_min, reading_level, is_critical) VALUES (1, 'Escape probe', 'reference', 'src-p', 'CC0', 'r1', 'LIGHT', 8, 0)",
+            "INSERT INTO chunks (chunk_id, document_id, ordinal, section, text, token_count) VALUES (11, 1, 1, 'Prose', 'The quick brown fox jogs past the lazy riverbank', 9)",
+            "INSERT INTO archive_meta (key, value) VALUES ('schema_version', '3')",
+            "INSERT INTO archive_meta (key, value) VALUES ('built_by', 't51-court')",
+        ] {
+            var err: UnsafeMutablePointer<Int8>?
+            let prc = sqlite3_exec(db, sql, nil, nil, &err)
+            if prc != SQLITE_OK {
+                let why = err.map { String(cString: $0) ?? "?" } ?? "rc \(prc)"
+                if let e = err { sqlite3_free(e) }
+                XCTFail("plant insert cried: \(why) on \(String(sql.prefix(72)))…")
+                return
+            }
+        }
+        execStatements(db, indexes, from: "indexes.sql")
     }
 
     private func supportDirectory() throws -> URL {
@@ -458,25 +551,33 @@ final class ReadinessT51Tests: XCTestCase {
         try fm.createDirectory(at: archives, withIntermediateDirectories: true)
         let siblingName = "t51_escape_probe.db"
         let sibling = base.appendingPathComponent(siblingName, isDirectory: false)
-        let payload = Data("not an archive; a planted probe".utf8)
-        try payload.write(to: sibling, options: Data.WritingOptions.atomic)
+        try? fm.removeItem(atPath: sibling.path)
+        try plantRealArchive(at: sibling.path)                 // a REAL archive, just outside the gate
         defer { try? fm.removeItem(atPath: sibling.path) }
         XCTAssertTrue(fm.fileExists(atPath: sibling.path),
                       "the witness proveth nothing unless the plant is there")
+        let readyName = "t51_ready_probe.db"
+        let readyUrl = archives.appendingPathComponent(readyName, isDirectory: false)
+        try? fm.removeItem(atPath: readyUrl.path)
+        try plantRealArchive(at: readyUrl.path)                 // and one within, for the lawful road
+        defer { try? fm.removeItem(atPath: readyUrl.path) }
 
-        // the forged traversal: the very name the old resolver would have
-        // walked out of archives/ onto the sibling
+        // the forged traversal: under the faithful guard the name is refused
+        // before the filesystem is asked; were the guard asleep, the old road
+        // (appendingPathComponent resolving '..') would walk out of archives/
+        // onto this very file and FIND IT -- the isAvailable flip below is
+        // the absence made heard
         let smuggled = ArchiveRepository(databaseName: "../" + siblingName, expectedTier: nil)
         defer { smuggled.close() }
         XCTAssertFalse(smuggled.isAvailable,
-                       "the traversal name must never reach the sibling")
+                       "the traversal name must never reach the sibling -- the guard must refuse it before the filesystem")
         guard case .missing(let why) = smuggled.availability else {
             XCTFail("a forged traversal must be told .missing, got \(smuggled.availability.reasonForDisplay)")
             return
         }
         XCTAssertTrue(why.contains(siblingName), "the tale shall name the file asked for, got \(why)")
 
-        // and other forged shapes of the same road
+        // other forged shapes of the same road
         for forged in ["..", "t51/../../escape.db", "\0hidden.db"] {
             let repo = ArchiveRepository(databaseName: forged, expectedTier: nil)
             defer { repo.close() }
@@ -484,10 +585,15 @@ final class ReadinessT51Tests: XCTestCase {
         }
 
         // the honest name for the same sibling (not under archives/) is
-        // honestly told missing too -- the guard changed nothing of the
-        // lawful roads
+        // honestly told missing -- the guard changed nothing of the lawful
+        // roads...
         let honest = ArchiveRepository(databaseName: siblingName, expectedTier: nil)
         defer { honest.close() }
         XCTAssertFalse(honest.isAvailable, "the honest name, file absent from the sanctioned places, is .missing")
+        // ...and the honest name within the sanctioned place STANDETH ready
+        let ready = ArchiveRepository(databaseName: readyName, expectedTier: nil)
+        defer { ready.close() }
+        XCTAssertTrue(ready.isAvailable,
+                      "the guard must not obstruct the lawful road: a real archive within archives/ is ready, got \(ready.availability.reasonForDisplay)")
     }
 }
