@@ -559,6 +559,12 @@ public final class ArchiveRepository: @unchecked Sendable {
     }
 
     private static func resolveDatabasePath(databaseName: String) -> String? {
+        // T51 (s17): the name is proved before it is ever asked of the
+        // bundle or of the application-support tree -- a forged name
+        // (separators, traversal, hidden, oversized, unknown ending) is
+        // refused here, where the refusal is cheap and honest, and the
+        // caller telleth the missing tale from the typed availability.
+        guard ArchiveResourceName.isWellFormed(databaseName) else { return nil }
         let ns = databaseName as NSString
         let base = ns.deletingPathExtension
         let ext = ns.pathExtension.isEmpty ? "db" : ns.pathExtension

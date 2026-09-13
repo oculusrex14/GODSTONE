@@ -27,6 +27,11 @@ class ArchiveManifestError(RuntimeError):
 class VerificationResult:
     ok: bool
     errors: tuple[str, ...]
+    # T51 (s17): the parsed manifest travels with the verdict, so the release
+    # gate may consult the signed provenance fields without re-trusting an
+    # on-disk file the signature never covered. Additive and defaulted:
+    # sealed callers and assertions stand unmeant.
+    manifest: Mapping[str, Any] | None = None
 
 
 def _sha256(path: Path) -> str:
@@ -226,7 +231,7 @@ def verify_manifest(
         embedding = manifest.get("embedding")
         if not isinstance(embedding, Mapping) or embedding.get("sha256") != expected_embedding_sha256:
             errors.append("embedding model is incompatible with the archive")
-    return VerificationResult(not errors, tuple(errors))
+    return VerificationResult(not errors, tuple(errors), manifest)
 
 
 def generate_test_keypair(private_path: Path, trust_path: Path, key_id: str = "TEST-ONLY") -> None:
