@@ -315,8 +315,11 @@ jobs:
         run: scripts/fetch_models.sh
       - name: build MEDIUM archive with embeddings
         run: |
+          # T53: production content jobs pass --release -- the builder refuseth examples,
+          # missing approval coverage and unsealed provenance (the default mode warneth only);
+          # the LIGHT no-embed gate build keepeth its own, separate lane above.
           python -m content.ingest.build_archive \
-            --tier MEDIUM --out dist/archive_medium.db
+            --tier MEDIUM --out dist/archive_medium.db --release
       - name: provenance (final -- tree still clean)
         run: python ci/provenance.py --out provenance-final.json
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02

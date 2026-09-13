@@ -1,5 +1,6 @@
 {
-  "_comment": "Authoritative release-gate status (ADR-008 Stage 3). External gates that CANNOT run in repository-verification are represented here explicitly as OPEN/BLOCKED with their closure requirement -- they are never turned green by being skipped. ci/check_release_gates_status.py validates this file: a gate may be marked CLOSED only with an evidence_commit pointer to executable evidence. Repository-verification (the green-capable, repo-owned job) and the runnable fail-closed jobs live in .github/workflows/release-gates.yml.",
+  "_comment": "Authoritative release-gate status (ADR-008 Stage 3). External gates that CANNOT run in repository-verification are represented here explicitly as OPEN/BLOCKED with their closure requirement -- they are never turned green by being skipped. ci/check_release_gates_status.py validates this file: a gate may be marked CLOSED only with an evidence_commit pointer to executable evidence. Repository-verification (the green-capable, repo-owned job) and the runnable fail-closed jobs live in .github/workflows/release-gates.yml. T53 (schema_version 2): CLOSED gates additionally carry a structured evidence block (run id, executor, artifact SHA-256 checksums, byte counts, and -- for candidate-class closures -- test results); evidence_commit pointers are resolved against the real repository history and classified candidate or ancestor-historical; test results unavailable are never mapped to PASS; the profiled gates android-archive-only-release (LIGHT, no embeddings) and production-corpus (future embedded MEDIUM, --release) are kept apart by ProfileRequirements in ci/check_release_gates_status.py.",
+  "schema_version": 2,
   "generated_from_branch": "remediation/stage-4-link-release",
   "gates": [
     {
@@ -24,6 +25,14 @@
       "reason": "Stage 4A split the Android gate. The Archive-only LIGHT binary (links only :core; :llm is testImplementation-only) does NOT need llama.cpp/model/Oracle. This repo-owned shipping-artifact gate runs the scoped :app:lintLightRelease/:app:assembleLightRelease/:app:bundleLightRelease, captures the resolved lightRelease classpath (rejecting :llm/:mesh/llama/ggml/godstone_llm), and inspects the real APK/AAB + merged manifest. GREEN: release-gates.yml / android-archive-only-release run 31384944062 @ 3ddb6f6 SUCCEEDED. APK SHA-256 e1b8211714bcbbbddee2f70c3be3b703ebe1dc4c3906375a4e40c2e0dcc107ae (2,381,429 B); AAB SHA-256 b77411487af3b672aeff10755db87231b7a2bff7cad0323fed700fb6acc2bb97 (4,045,846 B); lightRelease runtime+compile classpath has no :llm/:mesh/llama/ggml/godstone_llm edge; merged lightRelease manifest grants no INTERNET/BLE/radio/location permission; APK/AAB namelist contains no .gguf/libllama/libggml/libgodstone_llm/LlamaBridge/:mesh/Oracle/cross-tier asset. This gate covers the repo-owned archive-only build + binary inspection only; the binary is UNSIGNED and on-device/signing evidence are separate external gates (signing-store-approval BLOCKED, device-interoperability BLOCKED).",
       "closure_requirement": "Green release-gates.yml / android-archive-only-release run on the branch tip; record the run ID, commit SHA, APK SHA-256, AAB SHA-256, the resolved lightRelease dependency graph artifact, and the binary+manifest inspection result. The merged lightRelease manifest must grant no INTERNET/BLE/radio/location permission and the APK/AAB must contain no .gguf/libllama/libggml/libgodstone_llm/LlamaBridge/:mesh/Oracle/cross-tier asset.",
       "evidence_commit": "3ddb6f68368a3877afacc189d348b0dde8a9941e",
+      "evidence": {
+        "run_id": "31384944062",
+        "executor": "release-gates.yml / android-archive-only-release",
+        "apk_sha256": "e1b8211714bcbbbddee2f70c3be3b703ebe1dc4c3906375a4e40c2e0dcc107ae",
+        "aab_sha256": "b77411487af3b672aeff10755db87231b7a2bff7cad0323fed700fb6acc2bb97",
+        "apk_bytes": 2381429,
+        "aab_bytes": 4045846
+      },
       "ci_job": "release-gates.yml / android-archive-only-release"
     },
     {
