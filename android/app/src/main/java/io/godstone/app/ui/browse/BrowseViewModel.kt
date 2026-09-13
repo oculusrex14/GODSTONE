@@ -63,7 +63,7 @@ data class BrowseUiState(
  *  and revalidateth it after the road: a stale completion publisheth nothing.
  */
 @HiltViewModel
-class BrowseViewModel private constructor(
+class BrowseViewModel(
     private val reader: ArchiveReader,
     private val dispatcher: CoroutineDispatcher
 ) : ViewModel() {
@@ -71,9 +71,6 @@ class BrowseViewModel private constructor(
     /** The shipping composition: the real repository, off the main thread. */
     @Inject
     constructor(archive: ArchiveRepository) : this(archive, Dispatchers.Default)
-
-    /** Test-facing seat: courts inject a deterministic main dispatcher. */
-    constructor(reader: ArchiveReader) : this(reader, Dispatchers.Default)
 
     private val _state = MutableStateFlow(BrowseUiState())
     val state: StateFlow<BrowseUiState> = _state.asStateFlow()
@@ -157,6 +154,9 @@ class BrowseViewModel private constructor(
                             _state.value = _state.value.copy(
                                 loading = false,
                                 phase = if (hits.isEmpty()) BrowsePhase.NoResults else BrowsePhase.Ready,
+                                // the field tellth what stands published: the trimmed
+                                // identity, as the WIP law commandeth
+                                query = query,
                                 searchedQuery = query,
                                 mode = BrowseMode.SEARCH,
                                 documents = emptyList(),
@@ -170,6 +170,7 @@ class BrowseViewModel private constructor(
                             _state.value = _state.value.copy(
                                 loading = false,
                                 phase = BrowsePhase.Unavailable(verdict.reason, recoverable = false),
+                                query = query,
                                 searchedQuery = query,
                                 mode = BrowseMode.SEARCH,
                                 documents = emptyList(),
