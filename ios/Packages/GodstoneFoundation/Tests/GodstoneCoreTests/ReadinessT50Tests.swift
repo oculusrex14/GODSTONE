@@ -451,6 +451,9 @@ final class ReadinessT50Tests: XCTestCase {
         await seat(scene)
         XCTAssertEqual(fake.searched, [], "the superseded petition never toucheth the road")
         XCTAssertEqual(scene.mode, .documents, "and the navigation standeth")
+        XCTAssertEqual(scene.phase, .ready,
+                       "a superseded petition leaveth not even its loading mark -- the gates precede every publication")
+        XCTAssertNil(scene.error, "and no woe is told by the stricken petition")
     }
 
     /// W8 -- the gate AFTER the road: an obsolete FAILURE, wakened only
@@ -479,6 +482,9 @@ final class ReadinessT50Tests: XCTestCase {
         XCTAssertNil(scene.error, "the obsolete failure may not show")
         XCTAssertEqual(scene.phase, .ready, "the newer tale abideth")
         XCTAssertEqual(scene.passages.count, 1, "the younger's hits stand")
+        XCTAssertEqual(scene.searchedQuery, "latest",
+                       "the elder's stale tale, late wakened, may not supplant the younger's published truth")
+        XCTAssertEqual(scene.query, "latest", "nor relabel the field behind")
         XCTAssertEqual(fake.searched, ["slow", "latest"],
                        "yet the engine saw them both -- the record proveth the road was walked twice and gated once")
     }

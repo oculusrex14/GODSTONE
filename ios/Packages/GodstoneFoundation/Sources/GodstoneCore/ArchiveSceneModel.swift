@@ -139,13 +139,15 @@ public final class ArchiveSceneModel: ObservableObject {
             backToDocuments()
             return
         }
-        phase = .loading
-        error = nil
-        canRetry = false
         epoch &+= 1
         let mine = epoch
         lastRequest = { [weak self] in await self?.search() }
-        if epoch != mine { return }                       // stale before the road
+        if epoch != mine { return }   // stale before the road -- and before any publication
+        // the pre-arm publisheth only once the petition is known current:
+        // a superseded petition leaveth not even its loading mark behind
+        phase = .loading
+        error = nil
+        canRetry = false
         await model.load(.search(trimmed))
         if epoch != mine { return }                       // stale after the road
         if case .failed(let archiveError) = model.state {
@@ -186,13 +188,13 @@ public final class ArchiveSceneModel: ObservableObject {
     }
 
     private func openDocumentInternal(id: Int64, title: String) async {
-        phase = .loading
-        error = nil
-        canRetry = false
         epoch &+= 1
         let mine = epoch
         lastRequest = { [weak self] in await self?.openDocumentInternal(id: id, title: title) }
-        if epoch != mine { return }                       // stale before the road
+        if epoch != mine { return }   // stale before the road -- and before any publication
+        phase = .loading
+        error = nil
+        canRetry = false
         await model.load(.document(id))
         if epoch != mine { return }                       // stale after the road
         if case .failed(let archiveError) = model.state {
