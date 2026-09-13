@@ -6762,7 +6762,7 @@
       "unresolved": []
     }
   },
-  "current_task": "T45",
+  "current_task": "T46",
   "external_blockers": [
     "A06",
     "APPROVED_CONTENT",
@@ -6794,7 +6794,7 @@
       "tests": 36
     }
   },
-  "next_task": "T45",
+  "next_task": "T46",
   "phase": "P0",
   "plan_sha256": "685456b378662b0a40a53a6abc810041e37daf97b213f3efeb6cea879363934e",
   "planning_baseline_sha": "b5c3d3d394b70cf356cdde33b47511dad7cbb95c",

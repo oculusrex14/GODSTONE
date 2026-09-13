@@ -6771,7 +6771,15 @@
     "SIGNING"
   ],
   "failed_attempts": [],
-  "in_progress": null,
+  "in_progress": {
+    "claimed_head": "b829071abedc862c95fca2d390b6f022251d7686",
+    "claimed_utc": "2026-09-13T03:34:53+00:00",
+    "objective": {
+      "claimed_head": "b829071abedc862c95fca2d390b6f022251d7686",
+      "claimed_utc": "2026-09-13T03:34:53+00:00",
+      "objective": "Canonicalize final chunk text and metadata; bind each approval to its final hash, source rights/version, reviewer identity/credential evidence, expiry, contraindications and warnings."
+    }
+  },
   "last_code_head": "29ead290711c8f76c75249759bbc6db2bac29d46",
   "last_observed_head": "759c8d4ee1eda16b7ebe150a0b0c00edb91bbd43",
   "latest_verification": {
