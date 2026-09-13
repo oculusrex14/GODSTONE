@@ -3,26 +3,43 @@
 
     python -m content.ingest.build_archive --tier LIGHT --out dist/archive_light.db
 
-The build is deterministic: the same corpus and the same tier always produce
-byte-identical chunk text, chunk ordering and chunk ids. That is what makes
-corpus_sha256 meaningful, and it is what lets a user verify that the database
-on their phone is the one that was published (constraint C2 - no accounts, so
-a hash is the only trust anchor we have).
+The build is deterministic and atomic. The same corpus and the same tier
+produce byte-identical chunk text, chunk ordering, chunk ids and, on one
+machine with one SQLite, byte-identical files. The build writes ONLY into a
+sibling temporary database; the schema, counts, foreign keys, FTS
+answerability, canonical row ordering, metadata round-trip and size ceiling
+are validated THERE; only then is the destination replaced, in one promoted,
+serialized publication. A failed or interrupted build leaves the previous
+bytes exactly as they were -- the destination is never opened for writing,
+so there is nothing to restore.
+
+That is what makes corpus_sha256 meaningful, and it is what lets a user
+verify that the database on their phone is the one that was published
+(constraint C2 - no accounts, so a hash is the only trust anchor we have).
 
 Nothing here touches the network (C1). Sources are vendored under content/seed
 and models are already on disk; if a path is missing the build fails loudly
-rather than fetching anything.
+rather than fetching anything. The embedding model is an OPTIONAL native
+dependency: a --no-embed build runs on the lightweight tooling requirements
+alone (content/requirements-dev.txt) and must never import llama-cpp.
 """
 
 from __future__ import annotations
 
 import argparse
 import hashlib
+import itertools
 import json
+import os
+import re
 import sqlite3
 import sys
+import threading
+import unicodedata
 from dataclasses import dataclass
+from datetime import date
 from pathlib import Path
+from typing import Any, Callable, Mapping
 
 import yaml
 
@@ -36,6 +53,14 @@ ROOT = Path(__file__).resolve().parents[2]
 SEED = ROOT / "content" / "seed"
 DB_DIR = ROOT / "content" / "db"
 
+# Section 18: "Archive import/build ... 1GiB parser/staging ceiling ...
+# explicit error for larger artifact". The ceiling is checked on the staged
+# file, before anything may be promoted.
+MAX_STAGED_BYTES = 1 << 30
+
+# The sidecar that records the final byte hash beside the logical digest.
+SIDECAR_SUFFIX = ".sha256.json"
+SIDECAR_SCHEMA = 1
 
 # Mirrors the tier table in 00_README section 3 and docs/packaging/TIERS.md.
 # These three dicts are the single source of truth for what ships in a build;
@@ -88,6 +113,137 @@ REQUIRED_FRONT_MATTER = ("title", "domain", "source", "licence", "revision")
 REVIEW_FIELDS = ("reviewed_by", "reviewed_on")
 UNREVIEWED_SENTINEL = "UNREVIEWED-EXAMPLE"
 
+# Tables the frozen schema contract (content/db/schema.sql) must yield.
+REQUIRED_TABLES = frozenset((
+    "documents", "chunks", "chunks_fts", "vectors", "media", "archive_meta",
+))
+REQUIRED_VIEWS = frozenset(("chunk_citations",))
+
+_WORD_RE = re.compile(r"[A-Za-z]{3,}")
+
+
+class ArchiveBuildError(RuntimeError):
+    """Any failure of the archive build. The destination never moved."""
+
+
+class ArchiveEmptyError(ArchiveBuildError):
+    """The corpus selects no documents for this tier. An empty production
+    archive is a refusal, not a success that built nothing."""
+
+
+class ArchiveDependencyError(ArchiveBuildError):
+    """An optional native dependency (the embedding engine or its model file)
+    is absent. Distinct from every validation failure so a caller can tell a
+    missing toolchain from a broken artifact."""
+
+
+class ArchiveUnsafeDestinationError(ArchiveBuildError):
+    """The destination would overwrite a frozen contract, live inside the
+    corpus or the schema directory, or is otherwise not a plain file path."""
+
+
+class ArchiveTooLargeError(ArchiveBuildError):
+    """The staged artifact overruns the section 18 staging ceiling."""
+
+
+class ArchiveValidationError(ArchiveBuildError):
+    """The staged database failed one or more of the pre-publication checks.
+    The report names each; the previous bytes at the destination stand."""
+
+    def __init__(self, report: "ArchiveValidationReport") -> None:
+        self.report = report
+        super().__init__(
+            "archive validation failed: " + ", ".join(report.failures)
+            + " (checks run: " + ", ".join(report.checks) + ")")
+
+
+@dataclass(frozen=True)
+class ArchiveValidationReport:
+    """Everything the validator observed on the staged database, before the
+    world was allowed to see it."""
+    ok: bool
+    schema_version: str
+    tier: str
+    counts: Mapping[str, int]
+    integrity_check: str
+    fts_probe_query: str
+    fts_probe_hits: int
+    foreign_key_violations: int
+    ordering_verified: bool
+    metadata_roundtrip_verified: bool
+    checks: tuple[str, ...]
+    failures: tuple[str, ...]
+
+
+@dataclass(frozen=True)
+class ArchiveBuildResult:
+    """The receipt of one successful atomic build."""
+    tier: str
+    destination: Path
+    archive_bytes: int
+    archive_sha256: str
+    corpus_sha256: str
+    document_count: int
+    chunk_count: int
+    vector_count: int
+    validation: ArchiveValidationReport
+    release_manifest_set_sha256: str | None
+    sidecar: Path
+
+
+class AtomicArchiveOutput:
+    """A destination plus the sibling temporary file it is built in.
+
+    The destination is opened NEVER. Only publish() touches it, once, under
+    the promotion lock; discard() releases exactly the temporary this object
+    created and nothing else (cancel/release only resources owned by the
+    exact operation). Both are idempotent.
+    """
+
+    def __init__(self, destination: Path, token: str) -> None:
+        self.destination = Path(destination)
+        self.temp = self.destination.with_name(
+            f".{self.destination.name}.tmp-{token}")
+        self._published = False
+        self._discarded = False
+
+    @property
+    def committed(self) -> bool:
+        return self._published
+
+    def ensure_parent(self) -> None:
+        self.destination.parent.mkdir(parents=True, exist_ok=True)
+
+    def publish(self) -> None:
+        if self._published:
+            return
+        if self._discarded or not self.temp.exists():
+            raise ArchiveBuildError(
+                f"nothing is staged to publish for {self.destination}")
+        with _PROMOTION_LOCK:
+            os.replace(self.temp, self.destination)
+        self._published = True
+
+    def discard(self) -> None:
+        if self._published or self._discarded:
+            return
+        self._discarded = True
+        if self.temp.exists():
+            self.temp.unlink()
+
+
+# Artifact promotion and state-file writes are serialized (section 16: pure
+# build tasks serialize artifact promotion). One process-wide lock suffices:
+# the build is a batch job and the critical sections are single syscalls.
+_PROMOTION_LOCK = threading.Lock()
+_TOKEN_LOCK = threading.Lock()
+_TOKEN_COUNTER = itertools.count(1)
+
+
+def _next_token() -> str:
+    with _TOKEN_LOCK:
+        return f"{os.getpid()}-{next(_TOKEN_COUNTER)}"
+
 
 @dataclass
 class Document:
@@ -127,6 +283,10 @@ def parse_front_matter(path: Path) -> Document:
         print(f"warning: {path} reads at grade {reading_level}; "
               f"aim for 9 or below (C7)", file=sys.stderr)
 
+    tier_min = str(fm.get("tier_min", "LIGHT")).strip().upper()
+    if tier_min not in TIER_RANK:
+        raise ValueError(f"{path}: unknown tier_min {tier_min!r}")
+
     return Document(
         path=path,
         title=str(fm["title"]).strip(),
@@ -134,7 +294,7 @@ def parse_front_matter(path: Path) -> Document:
         source_id=str(fm["source"]).strip(),
         licence=str(fm["licence"]).strip(),
         revision=str(fm["revision"]).strip(),
-        tier_min=str(fm.get("tier_min", "LIGHT")).strip().upper(),
+        tier_min=tier_min,
         reading_level=reading_level,
         is_critical=bool(fm.get("critical", False)),
         reviewed_by=str(fm.get("reviewed_by", UNREVIEWED_SENTINEL)).strip(),
@@ -143,20 +303,27 @@ def parse_front_matter(path: Path) -> Document:
     )
 
 
-def load_corpus(tier: str) -> list[Document]:
+def load_corpus(tier: str, *, seed_root: Path | None = None) -> list[Document]:
     """Collect every seed document that belongs in this tier.
 
     Sorted by path so document_id and chunk_id are stable across machines and
     across runs. Filesystem iteration order is not, and a nondeterministic id
     would make corpus_sha256 worthless.
     """
-    taxonomy = yaml.safe_load((SEED / "taxonomy.yaml").read_text(encoding="utf-8"))
-    known_domains = {d["id"] for d in taxonomy["domains"]}
+    if tier not in TIER_RANK:
+        raise ArchiveBuildError(f"unknown tier {tier!r}")
+    seed = Path(seed_root) if seed_root is not None else SEED
+
+    taxonomy_path = seed / "taxonomy.yaml"
+    if not taxonomy_path.is_file():
+        raise ArchiveEmptyError(f"no taxonomy at {taxonomy_path}")
+    taxonomy = yaml.safe_load(taxonomy_path.read_text(encoding="utf-8")) or {}
+    known_domains = {d["id"] for d in taxonomy.get("domains", [])}
 
     limit = TIER_RANK[tier]
     docs: list[Document] = []
 
-    for path in sorted((SEED / "docs").rglob("*.md")):
+    for path in sorted((seed / "docs").rglob("*.md"), key=lambda p: str(p)):
         doc = parse_front_matter(path)
         if doc.domain not in known_domains:
             raise ValueError(f"{path}: unknown domain {doc.domain!r}")
@@ -164,36 +331,350 @@ def load_corpus(tier: str) -> list[Document]:
             docs.append(doc)
 
     if not docs:
-        raise SystemExit(f"no documents qualify for tier {tier}")
+        raise ArchiveEmptyError(f"no documents qualify for tier {tier}")
     return docs
+
+
+def _digest_field(h: "hashlib._Hash", value: str) -> None:
+    """Length-prefix every field. Without the length the pairs ('ab','c') and
+    ('a','bc') would chain to one and the same hash, and a digest that
+    collides on construction is not a trust anchor."""
+    encoded = value.encode("utf-8")
+    h.update(str(len(encoded)).encode("ascii"))
+    h.update(b"\x1f")
+    h.update(encoded)
+    h.update(b"\x1e")
 
 
 def corpus_digest(docs: list[Document], chunks: list[Chunk]) -> str:
     """Hash of everything that ends up in the database.
 
-    Covers document metadata and chunk text but deliberately not the embedding
+    Covers document metadata and chunk rows but deliberately not the embedding
     bytes: a different embedding model produces the same knowledge and should
-    not look like a different corpus.
+    not look like a different corpus. The document fields covered are exactly
+    the columns persisted into `documents`; the chunk fields are exactly the
+    columns persisted into `chunks`. Field boundaries are domain-separated by
+    the length prefixes of _digest_field.
     """
     h = hashlib.sha256()
+    h.update(b"GS-ARCHIVE-LOGICAL-V2\x1c")
+    _digest_field(h, str(len(docs)))
+    _digest_field(h, str(len(chunks)))
     for doc in docs:
-        h.update(doc.title.encode("utf-8"))
-        h.update(doc.revision.encode("utf-8"))
-        h.update(doc.source_id.encode("utf-8"))
+        for value in (doc.title, doc.domain, doc.source_id, doc.licence,
+                      doc.revision, doc.tier_min, str(doc.reading_level),
+                      str(int(doc.is_critical))):
+            _digest_field(h, value)
     for ch in chunks:
-        h.update(ch.section.encode("utf-8"))
-        h.update(ch.text.encode("utf-8"))
+        # The ordinal the row carries is the insert position the caller chose;
+        # the validator compares that against the stored rows. The digest
+        # speaks of what the chunk object itself holds, keyed by its global
+        # chunk_id -- which encodes the very sequence.
+        for value in (str(ch.chunk_id), str(ch.document_id),
+                      ch.section, ch.text, str(ch.token_count)):
+            _digest_field(h, value)
     return h.hexdigest()
 
 
-def build(tier: str, out_path: Path, embed: bool = True,
-          release: bool = False) -> None:
-    cfg = TIERS[tier]
-    out_path.parent.mkdir(parents=True, exist_ok=True)
-    if out_path.exists():
-        out_path.unlink()
+def _guard_destination(destination: Path, db_dir: Path, seed: Path) -> None:
+    """Refuse, before touching anything, every destination that could do harm.
 
-    docs = load_corpus(tier)
+    The frozen schema sources and the corpus are the crown jewels of the
+    build; a destination that resolves inside them -- or masquerades as one of
+    them -- is refused with a name, and so is anything that is not a plain
+    file path."""
+    if not isinstance(destination, Path):
+        raise TypeError("out_path must be a pathlib.Path")
+    text = str(destination)
+    if not text or "\0" in text:
+        raise ArchiveUnsafeDestinationError("destination path is empty or NUL-torn")
+    name = destination.name
+    if not name or name in {".", ".."}:
+        raise ArchiveUnsafeDestinationError(
+            f"destination has no file name: {destination}")
+    if name.endswith(SIDECAR_SUFFIX):
+        raise ArchiveUnsafeDestinationError(
+            f"a sidecar name is reserved for the hash record: {destination}")
+    try:
+        exists = destination.exists()
+    except OSError as exc:
+        raise ArchiveUnsafeDestinationError(f"destination is unreachable: {exc}")
+    if exists and not destination.is_file():
+        raise ArchiveUnsafeDestinationError(
+            f"destination exists and is not a regular file: {destination}")
+    resolved = destination.resolve()
+    for guarded, label in ((Path(db_dir).resolve(), "schema directory"),
+                           (Path(seed).resolve(), "corpus directory")):
+        try:
+            resolved.relative_to(guarded)
+        except ValueError:
+            continue
+        raise ArchiveUnsafeDestinationError(
+            f"destination resolves inside the {label} ({guarded}); the build "
+            f"may not write there")
+    if name in {"schema.sql", "indexes.sql"}:
+        raise ArchiveUnsafeDestinationError(
+            f"{name!r} is a frozen schema source name; a database file may "
+            f"not be published under it")
+
+
+def _sha256_file(path: Path) -> str:
+    h = hashlib.sha256()
+    with path.open("rb") as stream:
+        for block in iter(lambda: stream.read(1024 * 1024), b""):
+            h.update(block)
+    return h.hexdigest()
+
+
+def _canonical_json(value: Any) -> bytes:
+    return json.dumps(value, sort_keys=True, separators=(",", ":"),
+                      ensure_ascii=False).encode("utf-8")
+
+
+def write_sidecar(destination: Path, record: Mapping[str, Any]) -> Path:
+    """Record the logical-content digest and the final byte hash beside the
+    archive, versioned and atomic. Unknown future schema is refused."""
+    sidecar = Path(str(destination) + SIDECAR_SUFFIX)
+    payload = dict(record)
+    payload["schema"] = SIDECAR_SCHEMA
+    staging = sidecar.with_name(
+        f".{sidecar.name}.tmp-{_next_token()}")
+    staging.write_bytes(_canonical_json(payload) + b"\n")
+    with _PROMOTION_LOCK:
+        os.replace(staging, sidecar)
+    return sidecar
+
+
+def read_sidecar(sidecar: Path) -> dict[str, Any]:
+    """Read a sidecar; a tool of yesterday may understand it, an unknown
+    future schema may not be silently obeyed."""
+    record = json.loads(sidecar.read_text(encoding="utf-8"))
+    if not isinstance(record, dict):
+        raise ArchiveBuildError(f"sidecar {sidecar} is not an object")
+    version = record.get("schema")
+    if version != SIDECAR_SCHEMA:
+        raise ArchiveBuildError(
+            f"sidecar {sidecar} schema {version!r} is not the supported "
+            f"{SIDECAR_SCHEMA}; refusing an unknown version rather than "
+            f"guessing")
+    return record
+
+
+def _default_embedder_factory(cfg: Mapping[str, Any]) -> Any:
+    return Embedder(model_file=cfg["embed_model"], dim=cfg["embed_dim"])
+
+
+def _validate(staged: Path, tier: str, docs: list[Document],
+              chunks: list[Chunk], meta: Mapping[str, str], *,
+              expect_vectors: bool, embed_dim: int) -> ArchiveValidationReport:
+    """Observe the staged database as a user would: read-only, immutable.
+
+    Every check is named; a failure names itself in the report. None of this
+    can harm the destination -- the staged file is the only thing opened and
+    it is opened mode=ro immutable=1. When the contract tables themselves are
+    absent the deep probes are skipped and reported, not crashed into.
+    """
+    failures: list[str] = []
+    checks: list[str] = []
+    integrity = "skipped"
+    fk_rows: list[Any] = []
+    counts: dict[str, int] = {}
+    probe = ""
+    hits = 0
+    roundtrip = False
+    uri = f"file:{staged.resolve()}?mode=ro&immutable=1"
+    conn = sqlite3.connect(uri, uri=True)
+    try:
+        names = {row[0] for row in conn.execute(
+            "SELECT name FROM sqlite_master WHERE type IN ('table','view')")}
+        missing_tables = sorted(REQUIRED_TABLES - names)
+        if missing_tables:
+            failures.append(
+                "tables:missing:" + ", ".join(missing_tables))
+        else:
+            checks.append("tables")
+        missing_views = sorted(REQUIRED_VIEWS - names)
+        if missing_views:
+            failures.append("views:missing:" + ", ".join(missing_views))
+        else:
+            checks.append("views")
+
+        if not missing_tables and not missing_views:
+            integrity = str(
+                conn.execute("PRAGMA integrity_check").fetchone()[0])
+            if integrity != "ok":
+                failures.append(f"integrity:{integrity}")
+            else:
+                checks.append("integrity_check")
+
+            fk_rows = conn.execute("PRAGMA foreign_key_check").fetchall()
+            if fk_rows:
+                failures.append(f"foreign_keys:{len(fk_rows)} violations")
+            checks.append("foreign_key_check")
+
+            stored_meta = {str(k): str(v) for k, v in conn.execute(
+                "SELECT key, value FROM archive_meta")}
+            if stored_meta != dict(meta):
+                seen = set(stored_meta) | set(meta)
+                differ = sorted(k for k in seen
+                               if stored_meta.get(k) != meta.get(k))
+                failures.append(
+                    "metadata_roundtrip:" + (", ".join(differ[:12])
+                                             or "mismatch"))
+                roundtrip = False
+            else:
+                roundtrip = True
+            if "schema_version" not in stored_meta:
+                failures.append("schema_version:absent")
+            elif stored_meta["schema_version"] != str(SCHEMA_VERSION):
+                failures.append(
+                    f"schema_version:{stored_meta['schema_version']!r}")
+            else:
+                checks.append("schema_version")
+
+            document_rows = conn.execute(
+                "SELECT document_id, title, domain, source_id, licence, "
+                "revision, tier_min, reading_level, is_critical FROM documents "
+                "ORDER BY document_id").fetchall()
+            expected_document_rows = [
+                (i, d.title, d.domain, d.source_id, d.licence, d.revision,
+                 d.tier_min, d.reading_level, int(d.is_critical))
+                for i, d in enumerate(docs, start=1)]
+            if document_rows != expected_document_rows:
+                failures.append("ordering:documents")
+            else:
+                checks.append("ordering_documents")
+
+            chunk_rows = conn.execute(
+                "SELECT chunk_id, document_id, ordinal, section, text, "
+                "token_count FROM chunks ORDER BY chunk_id").fetchall()
+            # The ordinal is positional truth: the number of earlier chunks
+            # that share this document, in the very sequence that was staged.
+            in_document = {}
+            expected_chunk_rows = []
+            for c in chunks:
+                seen_so_far = in_document.get(c.document_id, 0)
+                in_document[c.document_id] = seen_so_far + 1
+                expected_chunk_rows.append(
+                    (c.chunk_id, c.document_id, seen_so_far, c.section,
+                     c.text, c.token_count))
+            if (chunk_rows != expected_chunk_rows
+                    or [r[0] for r in chunk_rows]
+                    != list(range(1, len(chunks) + 1))):
+                failures.append("ordering:chunks")
+            else:
+                checks.append("ordering_chunks")
+
+            counts = {
+                "documents": int(conn.execute(
+                    "SELECT COUNT(*) FROM documents").fetchone()[0]),
+                "chunks": int(conn.execute(
+                    "SELECT COUNT(*) FROM chunks").fetchone()[0]),
+                "vectors": int(conn.execute(
+                    "SELECT COUNT(*) FROM vectors").fetchone()[0]),
+            }
+            if counts["documents"] != len(docs):
+                failures.append(f"count_documents:{counts['documents']}")
+            else:
+                checks.append("count_documents")
+            if counts["chunks"] != len(chunks):
+                failures.append(f"count_chunks:{counts['chunks']}")
+            else:
+                checks.append("count_chunks")
+            want_vectors = len(chunks) if expect_vectors else 0
+            if counts["vectors"] != want_vectors:
+                failures.append(f"count_vectors:{counts['vectors']}")
+            else:
+                checks.append("count_vectors")
+            if expect_vectors:
+                bad = conn.execute(
+                    "SELECT COUNT(*) FROM vectors WHERE dim != ? OR "
+                    "LENGTH(vec) != ?", (embed_dim, embed_dim)).fetchone()[0]
+                if bad:
+                    failures.append(f"vectors_shape:{bad}")
+                else:
+                    checks.append("vectors_shape")
+
+            if not chunks or not docs:
+                failures.append("empty_archive:no rows to speak")
+            else:
+                word = next(
+                    (w for w in _WORD_RE.findall(chunks[0].text)
+                     if unicodedata.normalize("NFKD", w).isalnum()), None)
+                if word is None:
+                    failures.append("fts_probe:no probe word in the first chunk")
+                else:
+                    probe = '"' + word.replace('"', '""') + '"'
+                    hits = int(conn.execute(
+                        "SELECT COUNT(*) FROM chunks_fts "
+                        "WHERE chunks_fts MATCH ?", (probe,)).fetchone()[0])
+                    if hits < 1:
+                        failures.append(f"fts_probe:{probe!r} answered nothing")
+                    else:
+                        checks.append("fts_probe")
+    finally:
+        conn.close()
+
+    if not failures:
+        checks.append("all")
+    return ArchiveValidationReport(
+        ok=not failures,
+        schema_version=str(meta.get("schema_version", "")),
+        tier=tier,
+        counts=counts,
+        integrity_check=integrity,
+        fts_probe_query=probe,
+        fts_probe_hits=hits,
+        foreign_key_violations=len(fk_rows),
+        ordering_verified=not any(f.startswith("ordering") for f in failures),
+        metadata_roundtrip_verified=roundtrip,
+        checks=tuple(checks),
+        failures=tuple(failures),
+    )
+
+
+def build(tier: str, out_path: Path, embed: bool = True,
+          release: bool = False, *,
+          seed_root: Path | None = None,
+          db_dir: Path | None = None,
+          manifests_root: Path | None = None,
+          evidence_root: Path | None = None,
+          today: date | None = None,
+          max_staged_bytes: int = MAX_STAGED_BYTES,
+          fault_hook: Callable[[str], None] | None = None,
+          embedder_factory: Callable[[Mapping[str, Any]], Any] | None = None,
+          ) -> ArchiveBuildResult:
+    """Build one tier atomically and deterministically.
+
+    Inputs are validated first; the build writes ONLY a sibling temporary;
+    the staged database is validated; only a validated artifact is promoted
+    over the destination, under the promotion lock. Any failure -- a bad
+    corpus, an absent model, an injected fault, an over-large artifact --
+    leaves the previous destination bytes untouched. The five hooks of the
+    process are named for the fault-injection seams: after_temp_created,
+    rows_inserted, vectors_done, indexed, before_validate, after_validate,
+    before_publish, after_publish.
+    """
+    if not isinstance(max_staged_bytes, int) or isinstance(
+            max_staged_bytes, bool) or max_staged_bytes <= 0:
+        raise TypeError("max_staged_bytes must be a positive integer")
+
+    def fire(stage: str) -> None:
+        if fault_hook is not None:
+            fault_hook(stage)
+
+    if tier not in TIERS:
+        raise ArchiveBuildError(f"unknown tier {tier!r}")
+    cfg = TIERS[tier]
+    seed = Path(seed_root) if seed_root is not None else SEED
+    schema_dir = Path(db_dir) if db_dir is not None else DB_DIR
+    destination = out_path
+    _guard_destination(destination, schema_dir, seed)
+
+    schema_sql = (schema_dir / "schema.sql").read_text(encoding="utf-8")
+    indexes_sql = (schema_dir / "indexes.sql").read_text(encoding="utf-8")
+
+    docs = load_corpus(tier, seed_root=seed)
     print(f"tier {tier}: {len(docs)} documents")
 
     # ---- editorial gate (A-09) -------------------------------------------
@@ -212,94 +693,171 @@ def build(tier: str, out_path: Path, embed: bool = True,
 
     release_validation = None
     if release:
+        mroot = (Path(manifests_root) if manifests_root is not None
+                 else ROOT / "content" / "manifests" / "documents")
+        eroot = (Path(evidence_root) if evidence_root is not None
+                 else ROOT / "content" / "manifests")
         release_validation = validate_release_corpus(
-            docs,
-            ROOT / "content" / "manifests" / "documents",
-            evidence_root=ROOT / "content" / "manifests",
-        )
-        print(f"validated {len(release_validation.documents)} production document manifest(s)")
+            docs, mroot, evidence_root=eroot, today=today)
+        print(f"validated {len(release_validation.documents)} production "
+              f"document manifest(s)")
 
-    conn = sqlite3.connect(out_path)
-    conn.executescript((DB_DIR / "schema.sql").read_text(encoding="utf-8"))
-
+    out = AtomicArchiveOutput(destination, _next_token())
+    out.ensure_parent()
     all_chunks: list[Chunk] = []
     chunk_id = 0
+    try:
+      conn = sqlite3.connect(out.temp)
+      try:
+        conn.executescript(schema_sql)
+        fire("after_temp_created")
 
-    for document_id, doc in enumerate(docs, start=1):
-        conn.execute(
-            "INSERT INTO documents (document_id, title, domain, source_id, "
-            "licence, revision, tier_min, reading_level, is_critical) "
-            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
-            (document_id, doc.title, doc.domain, doc.source_id, doc.licence,
-             doc.revision, doc.tier_min, doc.reading_level, int(doc.is_critical)),
-        )
-
-        chunks = chunk_document(
-            doc.body,
-            max_tokens=cfg["chunk_tokens"],
-            overlap_tokens=cfg["chunk_overlap"],
-        )
-        for ordinal, ch in enumerate(chunks):
-            chunk_id += 1
-            ch.chunk_id = chunk_id
-            ch.document_id = document_id
+        for document_id, doc in enumerate(docs, start=1):
             conn.execute(
-                "INSERT INTO chunks (chunk_id, document_id, ordinal, section, "
-                "text, token_count) VALUES (?, ?, ?, ?, ?, ?)",
-                (chunk_id, document_id, ordinal, ch.section, ch.text, ch.token_count),
+                "INSERT INTO documents (document_id, title, domain, source_id, "
+                "licence, revision, tier_min, reading_level, is_critical) "
+                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                (document_id, doc.title, doc.domain, doc.source_id,
+                 doc.licence, doc.revision, doc.tier_min, doc.reading_level,
+                 int(doc.is_critical)),
             )
-            all_chunks.append(ch)
-
-    print(f"tier {tier}: {len(all_chunks)} chunks "
-          f"(target ~{cfg['target_chunks']:,})")
-
-    if embed:
-        embedder = Embedder(model_file=cfg["embed_model"], dim=cfg["embed_dim"])
-        for ch in all_chunks:
-            # The heading path is prepended before embedding. 'Apply above the
-            # wound' is nearly meaningless on its own; with its section title
-            # it retrieves correctly.
-            vec, scale = embedder.encode_int8(f"{ch.section}\n{ch.text}")
-            conn.execute(
-                "INSERT INTO vectors (chunk_id, dim, scale, vec) VALUES (?, ?, ?, ?)",
-                (ch.chunk_id, cfg["embed_dim"], scale, vec),
+            chunks = chunk_document(
+                doc.body,
+                max_tokens=cfg["chunk_tokens"],
+                overlap_tokens=cfg["chunk_overlap"],
             )
-        embedder.close()
+            for ordinal, ch in enumerate(chunks):
+                chunk_id += 1
+                ch.chunk_id = chunk_id
+                ch.document_id = document_id
+                conn.execute(
+                    "INSERT INTO chunks (chunk_id, document_id, ordinal, "
+                    "section, text, token_count) VALUES (?, ?, ?, ?, ?, ?)",
+                    (chunk_id, document_id, ordinal, ch.section, ch.text,
+                     ch.token_count),
+                )
+                all_chunks.append(ch)
+        fire("rows_inserted")
+        print(f"tier {tier}: {len(all_chunks)} chunks "
+              f"(target ~{cfg['target_chunks']:,})")
 
-    media_path = SEED / "media_manifest.yaml"
-    if media_path.exists():
-        insert_media(conn, media_path, tier, {d.source_id: i + 1
-                                              for i, d in enumerate(docs)})
+        if embed:
+            factory = embedder_factory or _default_embedder_factory
+            try:
+                embedder = factory(cfg)
+            except (SystemExit, ImportError, OSError) as exc:
+                raise ArchiveDependencyError(
+                    f"embedding dependency unavailable: {exc}") from exc
+            try:
+                for ch in all_chunks:
+                    # The heading path is prepended before embedding. 'Apply
+                    # above the wound' is nearly meaningless on its own; with
+                    # its section title it retrieves correctly.
+                    vec, scale = embedder.encode_int8(
+                        f"{ch.section}\n{ch.text}")
+                    conn.execute(
+                        "INSERT INTO vectors (chunk_id, dim, scale, vec) "
+                        "VALUES (?, ?, ?, ?)",
+                        (ch.chunk_id, cfg["embed_dim"], scale, vec),
+                    )
+            finally:
+                embedder.close()
+        fire("vectors_done")
 
-    digest = corpus_digest(docs, all_chunks)
-    meta = {
-        "schema_version": str(SCHEMA_VERSION),
+        media_path = seed / "media_manifest.yaml"
+        if media_path.exists():
+            insert_media(conn, media_path, tier,
+                         {d.source_id: i + 1
+                          for i, d in enumerate(docs)})
+
+        digest = corpus_digest(docs, all_chunks)
+        meta = {
+            "schema_version": str(SCHEMA_VERSION),
+            "tier": tier,
+            "embed_dim": str(cfg["embed_dim"]),
+            "embed_model": cfg["embed_model"],
+            "model_file": cfg["model_file"],
+            "context_tokens": str(cfg["context_tokens"]),
+            "document_count": str(len(docs)),
+            "chunk_count": str(len(all_chunks)),
+            "corpus_sha256": digest,
+        }
+        if release_validation is not None:
+            meta.update({
+                "source_manifest_sha256":
+                    release_validation.source_set_sha256,
+                "review_manifest_sha256":
+                    release_validation.review_set_sha256,
+                "release_manifest_set_sha256":
+                    release_validation.manifest_set_sha256,
+            })
+
+        conn.executemany(
+            "INSERT INTO archive_meta (key, value) VALUES (?, ?)",
+            sorted(meta.items()))
+
+        conn.executescript(indexes_sql)
+        conn.commit()
+      finally:
+        conn.close()
+      fire("indexed")
+
+      fire("before_validate")
+      report = _validate(out.temp, tier, docs, all_chunks, meta,
+                         expect_vectors=embed, embed_dim=cfg["embed_dim"])
+      fire("after_validate")
+      if not report.ok:
+          raise ArchiveValidationError(report)
+
+      size = out.temp.stat().st_size
+      if size > max_staged_bytes:
+          raise ArchiveTooLargeError(
+              f"staged artifact is {size} bytes, over the ceiling of "
+              f"{max_staged_bytes}")
+
+      fire("before_publish")
+      out.publish()
+      fire("after_publish")
+
+      final_bytes = destination.read_bytes()
+      archive_sha = hashlib.sha256(final_bytes).hexdigest()
+      sidecar = write_sidecar(destination, {
+        "schema": SIDECAR_SCHEMA,
         "tier": tier,
-        "embed_dim": str(cfg["embed_dim"]),
-        "embed_model": cfg["embed_model"],
-        "model_file": cfg["model_file"],
-        "context_tokens": str(cfg["context_tokens"]),
-        "document_count": str(len(docs)),
-        "chunk_count": str(len(all_chunks)),
+        "archive_file": destination.name,
+        "archive_bytes": len(final_bytes),
+        "archive_sha256": archive_sha,
         "corpus_sha256": digest,
-    }
-    if release_validation is not None:
-        meta.update({
-            "source_manifest_sha256": release_validation.source_set_sha256,
-            "review_manifest_sha256": release_validation.review_set_sha256,
-            "release_manifest_set_sha256": release_validation.manifest_set_sha256,
-        })
+        "document_count": len(docs),
+          "chunk_count": len(all_chunks),
+          "vector_count": len(all_chunks) if embed else 0,
+      })
+    except BaseException:
+      # Nothing below the promotion may leave a residue: the temp is ours to
+      # discard (idempotent, and a no-op once published); the destination was
+      # never opened and stands exactly as it was. The cause travels on.
+      out.discard()
+      raise
 
-    conn.executemany("INSERT INTO archive_meta (key, value) VALUES (?, ?)",
-                     sorted(meta.items()))
-
-    conn.executescript((DB_DIR / "indexes.sql").read_text(encoding="utf-8"))
-    conn.commit()
-    conn.close()
-
-    size_mb = out_path.stat().st_size / (1024 * 1024)
-    print(f"wrote {out_path} ({size_mb:.1f} MB)")
+    print(f"wrote {destination} ({len(final_bytes) / (1024 * 1024):.1f} MB)")
     print(f"corpus_sha256 {digest}")
+    print(f"archive_sha256 {archive_sha}")
+
+    return ArchiveBuildResult(
+        tier=tier,
+        destination=destination,
+        archive_bytes=len(final_bytes),
+        archive_sha256=archive_sha,
+        corpus_sha256=digest,
+        document_count=len(docs),
+        chunk_count=len(all_chunks),
+        vector_count=len(all_chunks) if embed else 0,
+        validation=report,
+        release_manifest_set_sha256=(
+            None if release_validation is None
+            else release_validation.manifest_set_sha256),
+        sidecar=sidecar,
+    )
 
 
 def insert_media(conn: sqlite3.Connection, manifest: Path, tier: str,
@@ -328,7 +886,8 @@ def insert_media(conn: sqlite3.Connection, manifest: Path, tier: str,
             "INSERT INTO media (media_id, document_id, kind, relpath, caption, "
             "bytes, sha256) VALUES (?, ?, ?, ?, ?, ?, ?)",
             (media_id, document_id, item["kind"], item["path"],
-             item["caption"], int(item.get("bytes", 0)), item.get("sha256", "")),
+             item["caption"], int(item.get("bytes", 0)),
+             item.get("sha256", "")),
         )
 
 
@@ -348,7 +907,11 @@ def main() -> None:
         return
 
     out = args.out or (ROOT / "dist" / TIERS[args.tier]["db_name"])
-    build(args.tier, out, embed=not args.no_embed, release=args.release)
+    try:
+        build(args.tier, out, embed=not args.no_embed, release=args.release)
+    except ArchiveBuildError as exc:
+        print(f"::error::{exc}", file=sys.stderr)
+        raise SystemExit(2) from exc
 
 
 if __name__ == "__main__":
