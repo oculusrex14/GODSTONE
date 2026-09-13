@@ -6222,6 +6222,258 @@
       "tested_tree_sha": "423d9717a3749f7a45513f5a7fab86b89377a4f0",
       "unresolved": []
     },
+    "T45": {
+      "case_results": {
+        "deleted_cases": [],
+        "dual_court_parity": "n/a on the isles -- T45 is one python court: eleven witnesses in tools/readiness/tests/test_t45.py over the whole call path (licensed source to final chunks to approval verification to immutable DB to signed manifest to staging, and the absence of the side effect when a staged byte is forged), twenty-six unit witnesses in content/tests/test_build_archive.py at the builder bench",
+        "isle_grands_standing": {
+          "android_grand": 1036,
+          "counts_source": "not re-run by this task: none of the six children toucheth an isle path (verified child by child against the sealed T40 boundary); the T40 grands stand as recorded",
+          "ios_grand": 975
+        },
+        "t45_narrow_court": {
+          "counts_source": "runner stage narrow at the boundary (T45-narrow-python3-002, pinned 29ead2907): unittest discover -s tools/readiness/tests -p test_t45.py -v; \"Ran 11 tests\" ... OK",
+          "errors": 0,
+          "failures": 0,
+          "tests": 11
+        },
+        "t45_subsystem": {
+          "counts_source": "runner stage subsystem at the boundary (T45-subsystem-python3-002): content/tests discovery; the sealed test_archive_manifest (10) and test_release_gate (10) answer with the 26 new build witnesses unweakened",
+          "errors": 0,
+          "failures": 0,
+          "tests": 36
+        }
+      },
+      "claim_commit": "c9d789627616d4e96746dbf5a0afd55ce5a255fb",
+      "commands": [
+        "T45-narrow-python3",
+        "T45-subsystem-python3",
+        "T45-controls-python3",
+        "T45-controls-python3-002",
+        "T45-narrow-python3-002",
+        "T45-subsystem-python3-002",
+        "T45-controls-python3-003",
+        "T45-controls-python3-004"
+      ],
+      "device_gate_ids": [],
+      "file_hashes": {},
+      "implementation_commit": "29ead290711c8f76c75249759bbc6db2bac29d46",
+      "implementation_commits": [
+        "7ae824a42b63bac37da035b1f64687bc7f0ea482",
+        "f15a8e773e9f891df1e040da3d15d735d478f75d",
+        "881dec6ecadacb146ab1015a9630aec9c4c19c48",
+        "baa0de20748c995142802bed20850db0b7bc8944",
+        "29ead290711c8f76c75249759bbc6db2bac29d46"
+      ],
+      "inputs": {
+        "children_commit_order": [
+          "c9d789627616d4e96746dbf5a0afd55ce5a255fb",
+          "7ae824a42b63bac37da035b1f64687bc7f0ea482",
+          "f15a8e773e9f891df1e040da3d15d735d478f75d",
+          "881dec6ecadacb146ab1015a9630aec9c4c19c48",
+          "baa0de20748c995142802bed20850db0b7bc8944",
+          "29ead290711c8f76c75249759bbc6db2bac29d46"
+        ],
+        "governed_source": [
+          "content/ingest/build_archive.py",
+          "content/requirements-dev.txt",
+          "content/tests/test_build_archive.py",
+          "tools/readiness/tests/test_t45.py",
+          "ci/mutations.py"
+        ],
+        "required_regression_paths": [
+          "tools/readiness/tests/test_t45.py",
+          "content/tests/test_build_archive.py",
+          "content/tests/test_archive_manifest.py",
+          "content/tests/test_release_gate.py"
+        ],
+        "sealed_hot_paths_untouched": [
+          "content/db/schema.sql and indexes.sql: consumed verbatim by the builder, not one byte moved (both shipping retrievers read them byte-identical)",
+          "content/archive_manifest.py, content/release_gate.py, scripts/prepare_release_assets.py: the sealed legs, called through as they stand -- no signature widened, no behaviour altered, the trust policy of the gate unchanged",
+          "the android and iOS isles: no path of this lineage toucheth them; the sealed T40 grands (1036 and 975) stand",
+          "the sealed content suites test_archive_manifest and test_release_gate: unedited, still answering in the subsystem discovery",
+          "ci/mutations.py prior 148 rows unedited (additive: nine T45 rows); the jvm and swift roads of the harness untravelled by the new python branch",
+          "external gates A06/APPROVED_CONTENT/NATIVE_MODELS/HARDWARE/SIGNING stand open; none closed by this task; readiness=false"
+        ],
+        "task_card": "docs/production-readiness/TASKS.json#T45"
+      },
+      "ladder_boundary_commit": "29ead290711c8f76c75249759bbc6db2bac29d46",
+      "mutation_results": {
+        "campaign_note": "nine rows, nine kills, at the canonical pin 29ead2907 after three firings: attempt one brought 9 INVALID from harness/parser defects alone (two mis-writen witness names; the singular \"Ran 1 test\" unknown to the parser); attempt two brought 8 KILLED and 1 ESCAPED, and the escape was perjury of the evidence chain -- SM6 renameth ArchiveEmptyError to ArchiveBuildError, seventeen bytes each, within the same second as the checkout, so the timestamp pycache sealed by the baseline stayed believed and the mutant court sat upon faithful bytes; the purge law (rip every __pycache__ before the court sits; -B behind) was enacted and the SM6 single re-fire convicted; the canonical third firing: 9/9 KILLED, 0 escaped, 0 invalid, 0 timeout, every log sha256 re-verified, every baseline green before its mutation. The launcher refuseth to fire unless every named witness walks a real bench method. Attempts archived at roster-attempt-1, roster-attempt-2 and the roster-sm6-probe diagnostic; nothing deleted.",
+        "semantic": [
+          {
+            "anchor_count": 1,
+            "baseline_sha": "29ead290711c8f76c75249759bbc6db2bac29d46",
+            "build_exit": 0,
+            "category": "semantic",
+            "ended_utc": "2026-09-13T03:20:39Z",
+            "failed_assertion": "witness testValidationReportCoversTheWholeContract failed as intended (1 failed case(s))",
+            "id": "T45-SM1-publish-without-validation",
+            "log_path": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/T45/roster/logs/T45-SM1-publish-without-validation.semantic.log",
+            "log_sha": "0430e82730784a555514abca41026a397cc5019061bf1a7234eadd813d5a94f4",
+            "mutant_patch_sha": "ae753b8e6391129c48de1dec71b542cf65301b6493d9856c0a24db167e466b83",
+            "outcome": "KILLED",
+            "started_utc": "2026-09-13T03:20:38Z",
+            "target_tests": [
+              "testValidationReportCoversTheWholeContract"
+            ],
+            "tests_run": 1
+          },
+          {
+            "anchor_count": 1,
+            "baseline_sha": "29ead290711c8f76c75249759bbc6db2bac29d46",
+            "build_exit": 0,
+            "category": "semantic",
+            "ended_utc": "2026-09-13T03:20:39Z",
+            "failed_assertion": "witness testFtsQueryAnswersAfterANoEmbeddingBuild failed as intended (1 failed case(s))",
+            "id": "T45-SM2-indexes-never-built",
+            "log_path": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/T45/roster/logs/T45-SM2-indexes-never-built.semantic.log",
+            "log_sha": "c10b5f7b041a6e162e25b2412e0d55bd1bd257bb3676c2b72ef9abb4a487853d",
+            "mutant_patch_sha": "9b97a662e79b4015a15f1d78bdf12aba6b3220cb335ec4dd1ec7dd1f5765d3fa",
+            "outcome": "KILLED",
+            "started_utc": "2026-09-13T03:20:39Z",
+            "target_tests": [
+              "testFtsQueryAnswersAfterANoEmbeddingBuild"
+            ],
+            "tests_run": 1
+          },
+          {
+            "anchor_count": 1,
+            "baseline_sha": "29ead290711c8f76c75249759bbc6db2bac29d46",
+            "build_exit": 0,
+            "category": "semantic",
+            "ended_utc": "2026-09-13T03:20:40Z",
+            "failed_assertion": "witness testRepeatedBuildPublishesByteIdenticalArchives failed as intended (1 failed case(s))",
+            "id": "T45-SM3-copy-not-replace",
+            "log_path": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/T45/roster/logs/T45-SM3-copy-not-replace.semantic.log",
+            "log_sha": "42ebf394a70f140fecc1882045c532b4d27c618f33b66025b262bcf95b6b1bdd",
+            "mutant_patch_sha": "7678c548844d204a1464d6f481118fa88fe96f0f98c081307412f5da2fd589fd",
+            "outcome": "KILLED",
+            "started_utc": "2026-09-13T03:20:39Z",
+            "target_tests": [
+              "testRepeatedBuildPublishesByteIdenticalArchives"
+            ],
+            "tests_run": 1
+          },
+          {
+            "anchor_count": 1,
+            "baseline_sha": "29ead290711c8f76c75249759bbc6db2bac29d46",
+            "build_exit": 0,
+            "category": "semantic",
+            "ended_utc": "2026-09-13T03:20:40Z",
+            "failed_assertion": "witness testUnsafeDestinationsAreRefusedBeforeAnyWrite failed as intended (1 failed case(s))",
+            "id": "T45-SM4-frozen-dir-guard-sleepeth",
+            "log_path": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/T45/roster/logs/T45-SM4-frozen-dir-guard-sleepeth.semantic.log",
+            "log_sha": "f5ba49d7d15d84d0e0b8db097da10eb8d099ef0530c15650e088c2b9b3e8da48",
+            "mutant_patch_sha": "4752c0fc248104b6ae28f6178e19a539a3e94c0f41aae4319f656302398790cd",
+            "outcome": "KILLED",
+            "started_utc": "2026-09-13T03:20:40Z",
+            "target_tests": [
+              "testUnsafeDestinationsAreRefusedBeforeAnyWrite"
+            ],
+            "tests_run": 1
+          },
+          {
+            "anchor_count": 1,
+            "baseline_sha": "29ead290711c8f76c75249759bbc6db2bac29d46",
+            "build_exit": 0,
+            "category": "semantic",
+            "ended_utc": "2026-09-13T03:20:41Z",
+            "failed_assertion": "witness testOverLargeArtifactIsRefusedWithANamedError failed as intended (1 failed case(s))",
+            "id": "T45-SM5-ceiling-removed",
+            "log_path": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/T45/roster/logs/T45-SM5-ceiling-removed.semantic.log",
+            "log_sha": "d5f00388c8e4ef2f9b749a3f484b3f96f619f715bc2247073da9808860f759df",
+            "mutant_patch_sha": "f9137018a64d719483387746970a1aa6dc46913fca4711846799dbdd49d47570",
+            "outcome": "KILLED",
+            "started_utc": "2026-09-13T03:20:40Z",
+            "target_tests": [
+              "testOverLargeArtifactIsRefusedWithANamedError"
+            ],
+            "tests_run": 1
+          },
+          {
+            "anchor_count": 1,
+            "baseline_sha": "29ead290711c8f76c75249759bbc6db2bac29d46",
+            "build_exit": 0,
+            "category": "semantic",
+            "ended_utc": "2026-09-13T03:20:41Z",
+            "failed_assertion": "witness testEmptyCorpusIsRefusedAsEmptyNotAsSilentSuccess failed as intended (1 failed case(s))",
+            "id": "T45-SM6-emptiness-misnomed",
+            "log_path": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/T45/roster/logs/T45-SM6-emptiness-misnomed.semantic.log",
+            "log_sha": "3405f3b8c0a360623b4e1cb931ec5ebace37d323e695aa697e59b84ee12963e3",
+            "mutant_patch_sha": "79c7fa0b897868d4867ce8799047b09d0bd1e54c2d55cc3127331af6a3f3c356",
+            "outcome": "KILLED",
+            "started_utc": "2026-09-13T03:20:41Z",
+            "target_tests": [
+              "testEmptyCorpusIsRefusedAsEmptyNotAsSilentSuccess"
+            ],
+            "tests_run": 1
+          },
+          {
+            "anchor_count": 1,
+            "baseline_sha": "29ead290711c8f76c75249759bbc6db2bac29d46",
+            "build_exit": 0,
+            "category": "semantic",
+            "ended_utc": "2026-09-13T03:20:42Z",
+            "failed_assertion": "witness test_corpus_is_sorted_and_culled_by_tier failed as intended (1 failed case(s))",
+            "id": "T45-SM7-corpus-read-backwards",
+            "log_path": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/T45/roster/logs/T45-SM7-corpus-read-backwards.semantic.log",
+            "log_sha": "4566b4084eb138af20ecd2321926097dff63d2b7d02895e00064a307f2a95afc",
+            "mutant_patch_sha": "0da19da5d7e8b9f75f8be9f490c02110a9e05950b97621043dfe936f6f146a40",
+            "outcome": "KILLED",
+            "started_utc": "2026-09-13T03:20:41Z",
+            "target_tests": [
+              "test_corpus_is_sorted_and_culled_by_tier"
+            ],
+            "tests_run": 1
+          },
+          {
+            "anchor_count": 1,
+            "baseline_sha": "29ead290711c8f76c75249759bbc6db2bac29d46",
+            "build_exit": 0,
+            "category": "semantic",
+            "ended_utc": "2026-09-13T03:20:43Z",
+            "failed_assertion": "witness testResultRecordsLogicalDigestAndFinalByteHashTruthfully failed as intended (1 failed case(s))",
+            "id": "T45-SM8-sidecar-version-gate-blind",
+            "log_path": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/T45/roster/logs/T45-SM8-sidecar-version-gate-blind.semantic.log",
+            "log_sha": "5ca66afbd8500518cd27d05e533059f3eb7661b25555efa5dc1370cd5800361c",
+            "mutant_patch_sha": "7554cf7da07041c620c263549bf807320e821f7661169e1463251b5e992898cd",
+            "outcome": "KILLED",
+            "started_utc": "2026-09-13T03:20:42Z",
+            "target_tests": [
+              "testResultRecordsLogicalDigestAndFinalByteHashTruthfully"
+            ],
+            "tests_run": 1
+          },
+          {
+            "anchor_count": 1,
+            "baseline_sha": "29ead290711c8f76c75249759bbc6db2bac29d46",
+            "build_exit": 0,
+            "category": "semantic",
+            "ended_utc": "2026-09-13T03:20:43Z",
+            "failed_assertion": "witness testFtsQueryAnswersAfterANoEmbeddingBuild failed as intended (1 failed case(s))",
+            "id": "T45-SM9-dependency-misnamed",
+            "log_path": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/T45/roster/logs/T45-SM9-dependency-misnamed.semantic.log",
+            "log_sha": "12cb1b764b0813536b894ebddee386a19de669cfde40233c21f6d6e1f34b2233",
+            "mutant_patch_sha": "9a4bf53d064232346c041c9cb2617f00ed7f6638cb00ee38f9462e60e5b76175",
+            "outcome": "KILLED",
+            "started_utc": "2026-09-13T03:20:43Z",
+            "target_tests": [
+              "testFtsQueryAnswersAfterANoEmbeddingBuild"
+            ],
+            "tests_run": 1
+          }
+        ]
+      },
+      "objective": {
+        "claimed_head": "29ead290711c8f76c75249759bbc6db2bac29d46",
+        "claimed_utc": "2026-09-13T01:56:31+00:00",
+        "objective": "Selectively port build_archive WIP."
+      },
+      "status": "COMPLETE",
+      "tested_tree_sha": "281511ec4b01a2c0fbe8d2166263d7e8773b7ba1",
+      "unresolved": []
+    },
     "T83": {
       "case_results": {
         "android_grand": {
@@ -6520,25 +6772,26 @@
   ],
   "failed_attempts": [],
   "in_progress": null,
-  "last_code_head": "45fadb92ff3648738ff69e7877dfe7b7e9fe463d",
+  "last_code_head": "29ead290711c8f76c75249759bbc6db2bac29d46",
   "last_observed_head": "759c8d4ee1eda16b7ebe150a0b0c00edb91bbd43",
   "latest_verification": {
-    "android_grand": {
-      "errors": 0,
-      "failures": 0,
-      "skipped": 0,
-      "tests": 1036
+    "at_utc": "2026-09-13T03:26:00+00:00",
+    "boundary_commit": "29ead290711c8f76c75249759bbc6db2bac29d46",
+    "controls": {
+      "outcomes": "PASSED",
+      "records": 2
     },
-    "at_utc": "2026-09-13T01:49:38+00:00",
-    "boundary_commit": "45fadb92ff3648738ff69e7877dfe7b7e9fe463d",
-    "ios_grand": {
-      "errors": 0,
+    "narrow": {
       "failures": 0,
-      "tests": 975
+      "tests": 11
     },
     "roster": {
-      "T40_killed": 10,
-      "of": 10
+      "T45_killed": 9,
+      "of": 9
+    },
+    "subsystem": {
+      "failures": 0,
+      "tests": 36
     }
   },
   "next_task": "T45",
@@ -6561,7 +6814,9 @@
     "isle send-closure parameter law (T39): the iOS send takes (frame, peer) -- the frame FIRST, unlike the android (peerId, bytes); swapped it resolves UUID's encode(to:) against FrameV2.encode() and reads 'missing argument for to:', a parameter-order artifact not an encoding defect; and Data(4)/Data(3) parse as initializers needing 'repeating:count:', not zero-filled buffers.",
     "T40 demultiplex statute: at both isles’ ingresses PING/HELLO/DIGEST/WANT are decided by the per-relation SyncControlOwner before the generic Router; ACK keeps its sealed dispatcher; only MESSAGE and SOS enter durable message routing; the bulk pair and GOODBYE are refused in this profile; control frames reach neither held storage, the seen window, nor the relay.",
     "T40 roster nomination law: the harness runs a row’s nominated witness alone -- the nomination is a pledge that the named case convicts; verify observability at the mutation site before arming (the RC1 pair learned it: over the forced collision the foreign bits are by construction already in the store’s set, so the W8 advertisement is blind there; W4’s empty-store full-queue witness sees it) -- and retract and re-fire the row, never blind the court.",
-    "T40 grand flake, told whole: the -002 subsystem-gradlew firing fell only to the sealed T17/T18 identity-draw harness (\"no ascending hint pair within 64 draws\", the classes’ own redraw guard against same-tick-seeded generators); ten subsequent probes (7 full-suite live, 4 class-scope live, 3 full-suite baseline) showed 0 failures and the boundary re-fires are green -- attributed to a transient environmental flake, no T40 bytes on the draw path; future grands: re-fire, do not edit sealed courts."
+    "T40 grand flake, told whole: the -002 subsystem-gradlew firing fell only to the sealed T17/T18 identity-draw harness (\"no ascending hint pair within 64 draws\", the classes’ own redraw guard against same-tick-seeded generators); ten subsequent probes (7 full-suite live, 4 class-scope live, 3 full-suite baseline) showed 0 failures and the boundary re-fires are green -- attributed to a transient environmental flake, no T40 bytes on the draw path; future grands: re-fire, do not edit sealed courts.",
+    "T45 builder statute: an archive build shall write only into .<dest>.tmp-<token> beside the destination, be validated whole (integrity, foreign keys, contract tables, metadata round-trip, row order, counts, vectors shape, an answering FTS probe) before any promotion, be promoted by one os.replace under a process-wide lock, and fail into the previous bytes un harmed; the empty corpus is ArchiveEmptyError, the absent native leg ArchiveDependencyError, the over-large ArchiveTooLargeError, the unsafe way ArchiveUnsafeDestinationError -- each named, none confounded.",
+    "T45 campaign law, learned the hard way: an equal-length mutation landed within the same second hid behind the (mtime, size) key of a timestamp pycache and the mutant court heard faithful bytes -- nine of nine kills are naught if the evidence chain is not clean; the py court now rippeth up every __pycache__ before it sitteth and the interpreter writeth none behind (-B); the parser knoweth the singular (\"Ran 1 test\"); a witness name must be walked as writen, checked against the bench before any campaign fireth."
   ],
   "warnings_for_next_invocation": [
     "Android toolchain provisioned: JDK 17.0.20.1 + SDK 35 on mac-primary.",
@@ -6588,6 +6843,7 @@
     "T38 sealed at boundary 85299dc (courts 11/11 both isles; roster 10/10 KILLED across two honest attempts; grand android 1014, iOS 953). Next: T38 per the catalog. The signed-SOS envelope is law -- reuse SignedSosV1 as the single authority; do not fork a second signing path.",
     "T39 sealed at boundary 759c8d4 (courts 11/11 both isles; roster 10/10 KILLED across two honest attempts -- the six escapes were classifier artifacts, the courts whole and sound; grand android 1025/0/0/0, iOS 964/0). Next: T40 per the catalog. The SOS broadcast pair is ONE authority on both isles -- reuse DeliveryRepository.enqueueSosOutbound (the compatible two-step default; the store-backed and SQL repositories override atomically); never re-fork persist-then-record; the durable cancel rides the C7.5 retiring machinery and tells the wasRelayed truth the UI must speak.",
     "The T17 randomized-draw flake family stayed silent at the T39 boundary (both grands green on the first tour and the -002 re-fires); the bounded green-retry policy (<=6, cite the -002 suffixed records, keep FAILED attempts in the ledger) remains the standing remedy.",
-    "T40 sealed at boundary 45fadb92f (courts 11/11 both isles; roster 10/10 KILLED across three firings -- two observation-site repairs and one nomination re-pledge, all lawful; grand android 1036/0/0/0 over 63 xml files, iOS 975/0; one recorded FAILED subsystem firing stands as history, a flake in the sealed T17/T18 draw harness, told whole in the seal). Next: T45 -- the catalog’s topological order (T41 waits on T84; T42-T44 chain behind it, so the ready frontier names T45)."
+    "T40 sealed at boundary 45fadb92f (courts 11/11 both isles; roster 10/10 KILLED across three firings -- two observation-site repairs and one nomination re-pledge, all lawful; grand android 1036/0/0/0 over 63 xml files, iOS 975/0; one recorded FAILED subsystem firing stands as history, a flake in the sealed T17/T18 draw harness, told whole in the seal). Next: T45 -- the catalog’s topological order (T41 waits on T84; T42-T44 chain behind it, so the ready frontier names T45).",
+    "T45 sealed at boundary 29ead2907 (court 11/11, unit bench 26, subsystem 36/36 with the sealed suites unweakened, controls 2/2, roster 9/9 KILLED across three honest firings -- the escape was a cache artefact, cured by the purge law; git diff --check clean over the whole lineage). Next: T46 per the runner."
   ]
 }
