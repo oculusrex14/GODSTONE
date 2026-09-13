@@ -2,282 +2,352 @@
   "evidence_root": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE",
   "files": [
     {
-      "path": "T49/commands.json",
-      "sha256": "712614ea83b803c1d504ed9f2ea3cd1964ac0c4738e05f98c310b25779c18441",
-      "size": 17302
+      "path": "T50/commands.json",
+      "sha256": "f9a4d7100279d3fe10faedefa4ba87d64d7f5c239bf0b8f01e257bd6f239ca05",
+      "size": 17386
     },
     {
-      "path": "T49/logs/T49-controls-python3-002.log",
+      "path": "T50/logs/T50-controls-python3-002.log",
       "sha256": "0b1ac463307b9f7d907105bb19e85bdada5dcd05131d80c492ffd80b4ab3f5f4",
       "size": 234
     },
     {
-      "path": "T49/logs/T49-controls-python3-003.log",
+      "path": "T50/logs/T50-controls-python3-003.log",
+      "sha256": "67493ebd28a55ece17214e55d318f34ba4af6ac7592268756f1b3dcc304afa21",
+      "size": 125
+    },
+    {
+      "path": "T50/logs/T50-controls-python3-004.log",
       "sha256": "03f0bc422dc53a81fd7f41085300a28e42626c2a4554e8929d897d3c092bd014",
       "size": 1374
     },
     {
-      "path": "T49/logs/T49-controls-python3-004.log",
+      "path": "T50/logs/T50-controls-python3-005.log",
       "sha256": "0b1ac463307b9f7d907105bb19e85bdada5dcd05131d80c492ffd80b4ab3f5f4",
       "size": 234
     },
     {
-      "path": "T49/logs/T49-controls-python3-005.log",
+      "path": "T50/logs/T50-controls-python3-006.log",
+      "sha256": "67493ebd28a55ece17214e55d318f34ba4af6ac7592268756f1b3dcc304afa21",
+      "size": 125
+    },
+    {
+      "path": "T50/logs/T50-controls-python3-007.log",
       "sha256": "03f0bc422dc53a81fd7f41085300a28e42626c2a4554e8929d897d3c092bd014",
       "size": 1374
     },
     {
-      "path": "T49/logs/T49-controls-python3-006.log",
+      "path": "T50/logs/T50-controls-python3-008.log",
       "sha256": "0b1ac463307b9f7d907105bb19e85bdada5dcd05131d80c492ffd80b4ab3f5f4",
       "size": 234
     },
     {
-      "path": "T49/logs/T49-controls-python3-007.log",
+      "path": "T50/logs/T50-controls-python3-009.log",
+      "sha256": "67493ebd28a55ece17214e55d318f34ba4af6ac7592268756f1b3dcc304afa21",
+      "size": 125
+    },
+    {
+      "path": "T50/logs/T50-controls-python3-010.log",
       "sha256": "03f0bc422dc53a81fd7f41085300a28e42626c2a4554e8929d897d3c092bd014",
       "size": 1374
     },
     {
-      "path": "T49/logs/T49-controls-python3-008.log",
+      "path": "T50/logs/T50-controls-python3-011.log",
       "sha256": "0b1ac463307b9f7d907105bb19e85bdada5dcd05131d80c492ffd80b4ab3f5f4",
       "size": 234
     },
     {
-      "path": "T49/logs/T49-controls-python3-009.log",
+      "path": "T50/logs/T50-controls-python3-012.log",
+      "sha256": "67493ebd28a55ece17214e55d318f34ba4af6ac7592268756f1b3dcc304afa21",
+      "size": 125
+    },
+    {
+      "path": "T50/logs/T50-controls-python3.log",
       "sha256": "03f0bc422dc53a81fd7f41085300a28e42626c2a4554e8929d897d3c092bd014",
       "size": 1374
     },
     {
-      "path": "T49/logs/T49-controls-python3-010.log",
-      "sha256": "0b1ac463307b9f7d907105bb19e85bdada5dcd05131d80c492ffd80b4ab3f5f4",
-      "size": 234
+      "path": "T50/logs/T50-narrow-swift-002.log",
+      "sha256": "4414894809e4883df19d955014abbbfe45d16ca34efb4bccc822f1c5bec61cd3",
+      "size": 4528
     },
     {
-      "path": "T49/logs/T49-controls-python3.log",
-      "sha256": "03f0bc422dc53a81fd7f41085300a28e42626c2a4554e8929d897d3c092bd014",
-      "size": 1374
+      "path": "T50/logs/T50-narrow-swift-003.log",
+      "sha256": "521129977e4f4fd27ccab922a1ab66743e093f5d3863209e0eb70be2032718ca",
+      "size": 4549
     },
     {
-      "path": "T49/logs/T49-narrow-gradlew-002.log",
-      "sha256": "a955fb6e532b010eba24fa3e09997a899be97511240e512464eadfcb699e26f9",
-      "size": 4222
+      "path": "T50/logs/T50-narrow-swift-004.log",
+      "sha256": "5bc45cf18af150fc580ba1be7e201f2a64b0b0d5e5c8b49819038e1f1292a36e",
+      "size": 4549
     },
     {
-      "path": "T49/logs/T49-narrow-gradlew-003.log",
-      "sha256": "d1b140e318c2681f20e5919a311fbd83dc34ea8eb80bb824d848209da609ad4f",
-      "size": 4236
+      "path": "T50/logs/T50-narrow-swift.log",
+      "sha256": "24a17b2f7dcf64a52df6805e56fc242b385d34c3d9dac492c8309ae1617488fd",
+      "size": 493293
     },
     {
-      "path": "T49/logs/T49-narrow-gradlew-004.log",
-      "sha256": "e561557718477bcdeef6bdba9f36f5dc092f814299945973240222ab7bd014d8",
-      "size": 4236
+      "path": "T50/logs/T50-subsystem-swift-002.log",
+      "sha256": "df7190acf055a4db84efbefec65e911bc61de490950e3c5588b65312e0f76d51",
+      "size": 260848
     },
     {
-      "path": "T49/logs/T49-narrow-gradlew-005.log",
-      "sha256": "8273872a67fb58e6881aeb802cc4699282b9ab9cd0fa19a6cc72a3b461bc8cfc",
-      "size": 4222
+      "path": "T50/logs/T50-subsystem-swift-003.log",
+      "sha256": "158c8a9024165631d6eca1956aa2c58b6df4e8a65d5dbd1d74f632c29373f87f",
+      "size": 260846
     },
     {
-      "path": "T49/logs/T49-narrow-gradlew.log",
-      "sha256": "c3fe6e424ef3dcb1099bb3483f2592e8c02a4720f9a2af83fd543f563d74503c",
-      "size": 4222
+      "path": "T50/logs/T50-subsystem-swift-004.log",
+      "sha256": "ddaaeaf8c491d35007c92a0503831d92eb9ed64b7902c365892f1c598ed71481",
+      "size": 260850
     },
     {
-      "path": "T49/logs/T49-subsystem-gradlew-002.log",
-      "sha256": "1d8db82ba74e7b8382d4d26d91e55624542f9f8824411f6d2defcfee0aeb0a69",
-      "size": 4277
+      "path": "T50/logs/T50-subsystem-swift.log",
+      "sha256": "a22bedce15966705594e096c9f2aefa37d89941ca08c07fa285317337894a902",
+      "size": 260847
     },
     {
-      "path": "T49/logs/T49-subsystem-gradlew-003.log",
-      "sha256": "ad662c2d08b66a7cfe7f98b777b2c4a0bb61df5989a1a590ebd0f31c6ce289af",
-      "size": 4209
+      "path": "T50/milestones/contract-court-milestone.json",
+      "sha256": "c18f32e0d3d6713a6cbfc3c7c5c85b34a512ddda54163bc1cafec47168721364",
+      "size": 7779
     },
     {
-      "path": "T49/logs/T49-subsystem-gradlew-004.log",
-      "sha256": "6cc13a97b52e0459e5cfbb563d550c6d6ad9330f9879386540674e1c7626e1a4",
-      "size": 4209
+      "path": "T50/milestones/design-grounding-milestone.json",
+      "sha256": "1597a555bba56e3556e92824ce02a1299c22ef32f5c8c4f3038c7ce86fdf5e19",
+      "size": 7639
     },
     {
-      "path": "T49/logs/T49-subsystem-gradlew-005.log",
-      "sha256": "d7c6123e564a0925186be58947d9f75125343148f5e4c7aebda5e8310862f0a9",
-      "size": 4196
+      "path": "T50/milestones/roster-verification-milestone.json",
+      "sha256": "cafb4c2ad5f08666345d64ee7a03cba4d421c0f92e098d8ea74b98d6814f2a21",
+      "size": 5949
     },
     {
-      "path": "T49/logs/T49-subsystem-gradlew.log",
-      "sha256": "e9513ac06bd3d9ccd38be4fce31045aee01c07e94ae7feb9df17b72d8c71005a",
-      "size": 4267
+      "path": "T50/roster-attempt-1/logs/T50-SM1-absent-masqueth-ready.semantic.log",
+      "sha256": "4b6f4ad060926f4bcccd9bdef90cee55484b16ff24da85b26d069cd4156f7b92",
+      "size": 16029
     },
     {
-      "path": "T49/milestones/contract-court-milestone.json",
-      "sha256": "5b4b902d6a070deb606e02e311f6abaaa646ae7b49b1e93da0314c2254a0ae3a",
-      "size": 7148
+      "path": "T50/roster-attempt-1/logs/T50-SM10-retry-unearned.semantic.log",
+      "sha256": "541ee8cda4dc71a82d3f45ae0eed8fd2b65c5522267bebe701d2d947fca8584b",
+      "size": 16029
     },
     {
-      "path": "T49/milestones/design-grounding-milestone.json",
-      "sha256": "e0c9bde1ecdf194dbf858effaa08b9b0169196884cf11904347aeed33f10fc17",
-      "size": 6780
+      "path": "T50/roster-attempt-1/logs/T50-SM11-recreation-amnesic.semantic.log",
+      "sha256": "0e832168d1fc5ffe36b622d176a87a7c6772208f584494f6f45662a31a8541df",
+      "size": 16029
     },
     {
-      "path": "T49/milestones/roster-verification-milestone.json",
-      "sha256": "f550b422f5d0c75669ee640de9c77e9611c2fc0757e5b48523bb9506dfe8f82e",
-      "size": 5774
+      "path": "T50/roster-attempt-1/logs/T50-SM12-anchor-amnesic.semantic.log",
+      "sha256": "78a02c16f0b68bf3867277186019a7a81cbd35f507550eafdb8cc3e6c053dc2c",
+      "size": 16029
     },
     {
-      "path": "T49/roster-attempt-1-canonical/logs/T49-SM1-empty-lie-conflated.semantic.log",
-      "sha256": "51853e343e06383b98bd9044949ef84ea7666833ff68b72c0ba26aac4f5ae78a",
-      "size": 1076
+      "path": "T50/roster-attempt-1/logs/T50-SM13-provenance-lied.semantic.log",
+      "sha256": "db8c56ac5a7ef05309d63af116d02e798f61c0ab09f2e2e94bed0ab1d243fa73",
+      "size": 16029
     },
     {
-      "path": "T49/roster-attempt-1-canonical/logs/T49-SM10-restore-amnesial-mode.semantic.log",
-      "sha256": "497afe69141128cae23516d2b5187caf25ae52a205d6c0c8bb76f14b25793833",
-      "size": 929
+      "path": "T50/roster-attempt-1/logs/T50-SM14-projection-unbound.semantic.log",
+      "sha256": "1c627916562783414512b3c06e28997549861c220f394ecf34e6ccea88ec401d",
+      "size": 16029
     },
     {
-      "path": "T49/roster-attempt-1-canonical/logs/T49-SM11-restore-amnesial-identity.semantic.log",
-      "sha256": "292e48c01c7119ee681be3e27433dca4c0974e3f0104d07bc1f8334264ffeae1",
-      "size": 933
+      "path": "T50/roster-attempt-1/logs/T50-SM2-empty-conflated-ready.semantic.log",
+      "sha256": "1b3579cefcbd85ca562651e05da6f90256bc6fe4399f3747b345b6d940f99cbb",
+      "size": 16029
     },
     {
-      "path": "T49/roster-attempt-1-canonical/logs/T49-SM12-status-muzzled.semantic.log",
-      "sha256": "2231fa2d0f0887d83d56740214059fc8e700bbbf6be01b5c71fc884b813e2f9b",
-      "size": 1111
+      "path": "T50/roster-attempt-1/logs/T50-SM3-before-gate-sleepeth.semantic.log",
+      "sha256": "dbdd1549dd41310633c70c800631c01ea9e05033dbae23614ae1885e578693f0",
+      "size": 16029
     },
     {
-      "path": "T49/roster-attempt-1-canonical/logs/T49-SM13-provenance-lie.semantic.log",
-      "sha256": "2231fa2d0f0887d83d56740214059fc8e700bbbf6be01b5c71fc884b813e2f9b",
-      "size": 1111
+      "path": "T50/roster-attempt-1/logs/T50-SM4-after-gate-sleepeth.semantic.log",
+      "sha256": "c2d6ed8c225c48b917eb7f1a5da5f91af6143a131db450960148fe7afa0b2ebd",
+      "size": 16029
     },
     {
-      "path": "T49/roster-attempt-1-canonical/logs/T49-SM14-projection-unbound.semantic.log",
-      "sha256": "2231fa2d0f0887d83d56740214059fc8e700bbbf6be01b5c71fc884b813e2f9b",
-      "size": 1111
+      "path": "T50/roster-attempt-1/logs/T50-SM5-banner-leaketh.semantic.log",
+      "sha256": "52179202953df80e13f684745f64cf4f1d1cb753b29f1ce83ce6ba90bdf74199",
+      "size": 16029
     },
     {
-      "path": "T49/roster-attempt-1-canonical/logs/T49-SM2-presence-trusted-not-verdict.semantic.log",
-      "sha256": "27ce8a19943e6ab72aa588feb2cbf11cfcde099d8cd2a84e6a5fd62f5090a933",
-      "size": 935
+      "path": "T50/roster-attempt-1/logs/T50-SM6-field-not-trimmed.semantic.log",
+      "sha256": "f40f451ed415b7c1f6afb837d99e3782d15e0361821d95f9bfd2620d207d858c",
+      "size": 16029
     },
     {
-      "path": "T49/roster-attempt-1-canonical/logs/T49-SM3-before-gate-sleepeth.semantic.log",
-      "sha256": "78eeb83554822cf5e8ad688043442d63faeb065b1b007fa744090b0b1ff22de6",
-      "size": 927
+      "path": "T50/roster-attempt-1/logs/T50-SM7-field-relabelleth.semantic.log",
+      "sha256": "1bcad60f73ddcc3891188a07a7ff8e12d33f98ab36cf4cc7f96377efc317c3c7",
+      "size": 16029
     },
     {
-      "path": "T49/roster-attempt-1-canonical/logs/T49-SM4-after-gate-sleepeth.semantic.log",
-      "sha256": "78a65f128ce8ed8bf9aa7d134510edd4b414d20216ad5d1c1a0523a0c0b91e99",
-      "size": 529
+      "path": "T50/roster-attempt-1/logs/T50-SM8-blank-became-petition.semantic.log",
+      "sha256": "7ee277a12978e83f96ee25938489b6204847fe9bf483543e9028d96076051da6",
+      "size": 16029
     },
     {
-      "path": "T49/roster-attempt-1-canonical/logs/T49-SM5-the-banner-leaketh.semantic.log",
-      "sha256": "f8d8a4c4cb6e3fbdf157781440cd95477f294e661f9d955b1a3959c2b2e4ee37",
-      "size": 925
+      "path": "T50/roster-attempt-1/logs/T50-SM9-bound-unbounded.semantic.log",
+      "sha256": "23fe1cad5c8bea87522f82ed1c0da910117e848244598bb6b0babe81eaa7ef65",
+      "size": 16029
     },
     {
-      "path": "T49/roster-attempt-1-canonical/logs/T49-SM6-field-relabelleth.semantic.log",
-      "sha256": "691ace310ffff74f1358bf5c4dc186abefb43f519e88e471fac38175a205512b",
-      "size": 924
+      "path": "T50/roster-attempt-1/manifest.json",
+      "sha256": "df0e1086ea9c1a6dc2f271c062c28c9ebe60b847d52e8048d05f827a4c4f235b",
+      "size": 11024
     },
     {
-      "path": "T49/roster-attempt-1-canonical/logs/T49-SM7-bound-striken.semantic.log",
-      "sha256": "b69ead1d34fcdcdc5001259e99c1b54b8aea03d42c21e17328fb54f10eaf58a0",
-      "size": 920
+      "path": "T50/roster-attempt-2-stray-before-gate-unfalsifiable/logs/T50-SM1-absent-masqueth-ready.semantic.log",
+      "sha256": "5cdf010e04fdf26eb5113a97662ed68d1c0873f257fd40b2118cb754eefd307d",
+      "size": 16029
     },
     {
-      "path": "T49/roster-attempt-1-canonical/logs/T49-SM8-blank-became-search.semantic.log",
-      "sha256": "93a41b078b4b996a1f4803f544660b7788e9640d673467787cf20d4e5b43ed56",
-      "size": 926
+      "path": "T50/roster-attempt-2-stray-before-gate-unfalsifiable/logs/T50-SM10-retry-unearned.semantic.log",
+      "sha256": "3fa1a934ac252e1c68c082c45a34810d8d527b93f07f31952c4eb62ab2a3a98a",
+      "size": 16029
     },
     {
-      "path": "T49/roster-attempt-1-canonical/logs/T49-SM9-retry-unearned.semantic.log",
-      "sha256": "9cc9669d889fa4ce68d3b3a0afeb561dec287fa8d0e1168c33578604a74dff1f",
-      "size": 921
+      "path": "T50/roster-attempt-2-stray-before-gate-unfalsifiable/logs/T50-SM11-recreation-amnesic.semantic.log",
+      "sha256": "0d7f336aaf3519b636182f5a45147eff6203af8df8b1201d9a330596bbc40cff",
+      "size": 16029
     },
     {
-      "path": "T49/roster-attempt-1-canonical/manifest.json",
-      "sha256": "100eb20959b31a8fe197bd3155a2bc7d0224e24f9bdd288ae51772ed6fa82691",
-      "size": 11083
+      "path": "T50/roster-attempt-2-stray-before-gate-unfalsifiable/logs/T50-SM12-anchor-amnesic.semantic.log",
+      "sha256": "fcd0f20672c6bb623ee4a32284fe6d70104e083fe82006885cae571374d47129",
+      "size": 16029
     },
     {
-      "path": "T49/roster-attempt-2/logs/T49-SM1-empty-lie-conflated.semantic.log",
-      "sha256": "75d0996378999c9ea7d9126c894d433b15900e7577d777da0f63062ce5149bbb",
-      "size": 926
+      "path": "T50/roster-attempt-2-stray-before-gate-unfalsifiable/logs/T50-SM13-provenance-lied.semantic.log",
+      "sha256": "233b0443f40675290a783885dac6a19ea44ffcb83da912845f8377cdd672e33b",
+      "size": 16029
     },
     {
-      "path": "T49/roster-attempt-2/logs/T49-SM10-restore-amnesial-mode.semantic.log",
-      "sha256": "71b15d783d3b0c2e43e96d4a47e15e9639514d98314cae5ba9135f21a51e8a60",
-      "size": 929
+      "path": "T50/roster-attempt-2-stray-before-gate-unfalsifiable/logs/T50-SM14-projection-unbound.semantic.log",
+      "sha256": "3b334b49c6aa3c970da484e7b0c18e0d04db1d77a7965baa47cde54c0d3fbe31",
+      "size": 16029
     },
     {
-      "path": "T49/roster-attempt-2/logs/T49-SM11-restore-amnesial-identity.semantic.log",
-      "sha256": "708aed451fb477239c6261dafe8232bd0b5230f52df5ba259884bb27dc89b457",
-      "size": 933
+      "path": "T50/roster-attempt-2-stray-before-gate-unfalsifiable/logs/T50-SM2-empty-conflated-ready.semantic.log",
+      "sha256": "323d05fa61f6220bd1ddda84561f3fc0bbf4640b862a8d12fe6ba64f1322c4f9",
+      "size": 16029
     },
     {
-      "path": "T49/roster-attempt-2/logs/T49-SM12-status-muzzled.semantic.log",
-      "sha256": "f38d6402dc96fe7bb86cbba2aacf041958f30202a7441e3dac20c1251f9f9113",
-      "size": 922
+      "path": "T50/roster-attempt-2-stray-before-gate-unfalsifiable/logs/T50-SM3-before-gate-sleepeth.semantic.log",
+      "sha256": "f1ac2e2c5bbb959793fa2b5cd765e0aa18f6a56c05c77f5e94851be7a7571b9e",
+      "size": 16029
     },
     {
-      "path": "T49/roster-attempt-2/logs/T49-SM13-provenance-lie.semantic.log",
-      "sha256": "4ab4a68265515679f95c0436c248c4abae632ae03016f769eca2cf25462bd70e",
-      "size": 922
+      "path": "T50/roster-attempt-2-stray-before-gate-unfalsifiable/logs/T50-SM4-after-gate-sleepeth.semantic.log",
+      "sha256": "6c628931463c904ac3afd96c5591f319f12895a3b610e43923d7484aa601b432",
+      "size": 16029
     },
     {
-      "path": "T49/roster-attempt-2/logs/T49-SM14-projection-unbound.semantic.log",
-      "sha256": "6e68c64f7221fc2240ca70d34a6d191fe9e368a473cd0b731af52ee4bfd3e0fb",
-      "size": 926
+      "path": "T50/roster-attempt-2-stray-before-gate-unfalsifiable/logs/T50-SM5-banner-leaketh.semantic.log",
+      "sha256": "076b59f11ce160971b1be061f5e0920cc4b234bfa46c9386a318154ecd80d0ef",
+      "size": 16029
     },
     {
-      "path": "T49/roster-attempt-2/logs/T49-SM2-presence-trusted-not-verdict.semantic.log",
-      "sha256": "4b343f2336e355b81daa4b095eda920f1e28403e58167b0dfd605b271b407e8a",
-      "size": 935
+      "path": "T50/roster-attempt-2-stray-before-gate-unfalsifiable/logs/T50-SM6-field-not-trimmed.semantic.log",
+      "sha256": "e000332e8610c4c3317f8ad86c1be83c6ebe656fa6a5911968b7507548849abd",
+      "size": 16029
     },
     {
-      "path": "T49/roster-attempt-2/logs/T49-SM3-before-gate-sleepeth.semantic.log",
-      "sha256": "7afb969a1ac2ddc74a8ccf8f2328e93767a96e9037b2d13672eb9329e757a9cc",
-      "size": 927
+      "path": "T50/roster-attempt-2-stray-before-gate-unfalsifiable/logs/T50-SM7-field-relabelleth.semantic.log",
+      "sha256": "db415c247699af4e40fc62736c1c86e0a4d7b3168e3730dff053555560319e57",
+      "size": 16029
     },
     {
-      "path": "T49/roster-attempt-2/logs/T49-SM4-after-gate-sleepeth.semantic.log",
-      "sha256": "e198005a1972768007c40fc247dd77600813535fc65dad3dde733ef5412b2c8f",
-      "size": 926
+      "path": "T50/roster-attempt-2-stray-before-gate-unfalsifiable/logs/T50-SM8-blank-became-petition.semantic.log",
+      "sha256": "e465305139630a3ce7ca264ab4d67cb0ab1406d0bf00c59d62537166a5f7d47c",
+      "size": 16029
     },
     {
-      "path": "T49/roster-attempt-2/logs/T49-SM5-the-banner-leaketh.semantic.log",
-      "sha256": "d6e7160382462ba0e4ea96f1bcf848cf25a8c1fd164bbcab3be103e3e2d3cd57",
-      "size": 925
+      "path": "T50/roster-attempt-2-stray-before-gate-unfalsifiable/logs/T50-SM9-bound-unbounded.semantic.log",
+      "sha256": "5bb76991ed81147f40e83b96ba5312a01549e3d4f95a3cfc92e134b5c73bf7a3",
+      "size": 16029
     },
     {
-      "path": "T49/roster-attempt-2/logs/T49-SM6-field-relabelleth.semantic.log",
-      "sha256": "2908eb592b29057c773fc21708a3733c0cab364d2f3c4bd3244004ddf9031f15",
-      "size": 924
+      "path": "T50/roster-attempt-2-stray-before-gate-unfalsifiable/manifest.json",
+      "sha256": "18c3c6acb5b40b454af067dc34092cc7a0394117cc2b958b10ede644585e0ea0",
+      "size": 11087
     },
     {
-      "path": "T49/roster-attempt-2/logs/T49-SM7-bound-striken.semantic.log",
-      "sha256": "f21bc6cdbeb44902fe038cbe93273316fc7cca33cda1e6499bd6e133a0922238",
-      "size": 920
+      "path": "T50/roster/logs/T50-SM1-absent-masqueth-ready.semantic.log",
+      "sha256": "86f5238e7fd10c3ab0ad122d127f9a32d78a7cd819b98d37e621f88eb438830f",
+      "size": 16029
     },
     {
-      "path": "T49/roster-attempt-2/logs/T49-SM8-blank-became-search.semantic.log",
-      "sha256": "574f0ef815a22ce6b562b2d5c10d16404e2ac2610c6780d9e91c7432d9e69290",
-      "size": 926
+      "path": "T50/roster/logs/T50-SM10-retry-unearned.semantic.log",
+      "sha256": "788c1f3b3b6e1fb39ea7a24371ced119544ebc0125894d91ad9b770a6d6e671c",
+      "size": 16029
     },
     {
-      "path": "T49/roster-attempt-2/logs/T49-SM9-retry-unearned.semantic.log",
-      "sha256": "7ea470d2653ee306342f867e9dc086893bb0fc1d431ab6084d03de1dced5bc2b",
-      "size": 921
+      "path": "T50/roster/logs/T50-SM11-recreation-amnesic.semantic.log",
+      "sha256": "813fc124bdb530ab2d538c0d38a3961d7e248cb4516a7b18a0b61268d44b69b1",
+      "size": 16029
     },
     {
-      "path": "T49/roster-attempt-2/manifest.json",
-      "sha256": "824b2457e6f5647918a52278885e22132ef717fdf868c6b453485720a06c3567",
-      "size": 11231
+      "path": "T50/roster/logs/T50-SM12-anchor-amnesic.semantic.log",
+      "sha256": "5576deb7ee632dc79b026f56682203ebde087f7dce11092576bd4d1dec3a61a0",
+      "size": 16029
     },
     {
-      "path": "T49/roster/manifest.json",
-      "sha256": "824b2457e6f5647918a52278885e22132ef717fdf868c6b453485720a06c3567",
-      "size": 11231
+      "path": "T50/roster/logs/T50-SM13-provenance-lied.semantic.log",
+      "sha256": "b964ba81be7c76ff449bdb227100e34c0f805c3691c5d90982e357ebfcca18f8",
+      "size": 16029
+    },
+    {
+      "path": "T50/roster/logs/T50-SM14-projection-unbound.semantic.log",
+      "sha256": "9dbb19597221a067ce081f616c7d494967377fab682bc97d865af591d85ad267",
+      "size": 16029
+    },
+    {
+      "path": "T50/roster/logs/T50-SM2-empty-conflated-ready.semantic.log",
+      "sha256": "6f8b172fb5892bfc850ff8260fa8ec9a072d64bca94fe1cfa8ddf900f327b6b9",
+      "size": 16029
+    },
+    {
+      "path": "T50/roster/logs/T50-SM3-before-gate-sleepeth.semantic.log",
+      "sha256": "42352ebd605c80ccb5472fc70480305c90e945c83aa294c0404aa581d49f609c",
+      "size": 16029
+    },
+    {
+      "path": "T50/roster/logs/T50-SM4-after-gate-sleepeth.semantic.log",
+      "sha256": "36893b7965b4b8b8c41bdbc0cc9227a54b50ff93885ac3bdcf58389ccb0084db",
+      "size": 16029
+    },
+    {
+      "path": "T50/roster/logs/T50-SM5-banner-leaketh.semantic.log",
+      "sha256": "efd5f470b19a32e596a332e1c5863f6e2c92f9ac9a0c6ccd758dbce1cf7d2176",
+      "size": 16029
+    },
+    {
+      "path": "T50/roster/logs/T50-SM6-field-not-trimmed.semantic.log",
+      "sha256": "adf5f7baa38db4fa2d7db08be88c5104afd5bbf65217c66159d9a55484bbea18",
+      "size": 16029
+    },
+    {
+      "path": "T50/roster/logs/T50-SM7-field-relabelleth.semantic.log",
+      "sha256": "17aa394daaa0b351e951ac01b1b86293c612ccce19c4ff4209e17e488f45c97f",
+      "size": 16029
+    },
+    {
+      "path": "T50/roster/logs/T50-SM8-blank-became-petition.semantic.log",
+      "sha256": "850a21d90998f81e42142bd07df88108f35f26b9e1a6e4c44998977fbb4b5b97",
+      "size": 16029
+    },
+    {
+      "path": "T50/roster/logs/T50-SM9-bound-unbounded.semantic.log",
+      "sha256": "36823722d90114e7d396cb03c2e0fe27ea14be64392d7d3393ffce70238f7610",
+      "size": 16029
+    },
+    {
+      "path": "T50/roster/manifest.json",
+      "sha256": "d70a75c68610830d6281d10b8f046115d7ae50f310530e0a9150643b2f6151e1",
+      "size": 11145
     }
   ],
-  "note": "T49 evidence: runner commands (twenty records in five fires of the stage manifest, all PASSED; the final four bound to the boundary 5e1e8483a9ce -- narrow-gradlew-005, subsystem-gradlew-005, controls-python3-009/-010; gradle records carry kind=command tests=n/a by the runner's tongue, the sealed T47 precedent -- the positive counts 15/0/0 court, 21/0/0 app isle, 11/0/0 core and 1036/0/0 mesh live in the JUnit XMLs and the milestones); three milestones telling the design with the quarry's eight true names, the court's five firings with both self-taught strengthenings (W9 determinism, the classifier immunity), and the roster's three campaigns in full lineage; the roster manifest 14/14 KILLED at the canonical pin with every row's named witness named; the two rehearsals archived entire, never deleted",
+  "note": "T50 evidence: runner commands (twenty records in four firings of the stage manifest, all PASSED; the final five bound to the boundary e508e565e7e6 -- narrow-swift-004, subsystem-swift-004, controls-python3-010/-011/-012; swift records carry kind=command tests=n/a by the runner's tongue, the sealed T06-T49 precedent -- the positive counts 15/0/0 court and 1006/0/0 whole-package live verbatim in the stage logs and the milestones); three milestones telling the design (the quarry reviewed and kept, the six defects of the present road, the toolchain's discoveries), the court (fifteen witnesses, three seatings with cause, the xcodebuild corroboration), and the roster (three campaigns in full lineage: 12K/1E/1I, the stray ended by hand, 14/14 canonical -- SM3's two escapes proving the dispatch-split law, SM4's window re-seated); the roster manifest 14/14 KILLED at the canonical pin with every row's named witness named; the rehearsals archived entire, never deleted",
   "schema_version": 1,
-  "task": "T49"
+  "task": "T50"
 }
