@@ -94,12 +94,27 @@ def check(root: Path) -> list[str]:
             bad.append(f"G2 {label}: BLE UUID is not taken from the generated spec")
 
     # -- G3: no plaintext send path, and a session must be establishABLE ------
+    # T61 verification-repair: the T17 seals (99ba545 android, 70d329a ios)
+    # refounded the send path in the reservation voice -- the seal now floweth
+    # through a registry bound to the session manager (`val registry = sessions
+    # ?: ...` / `let registryAtAdmission = sessions`) and crieth
+    # `registry.seal(...)`. The textual gate accepteth the ancient voice
+    # (sessions?.seal) and the new one (registry.seal behind the sessions
+    # binding); the behavioural law itself -- nothing ships unsealed, nothing
+    # lands unauthenticated -- is adjudicated by the sealed T17 courts, which
+    # stand unmeddled. A plaintext transport satisfyeth neither voice.
+    def _sealed_through_sessions(src: str) -> bool:
+        if re.search(r"sessions\??\.seal\w*\s*\(", src):
+            return True
+        return (re.search(r"=\s*sessions\b", src) is not None
+                and re.search(r"\bregistry\.seal\w*\s*\(", src) is not None)
+
     kt = code(kt_ble)
-    if not re.search(r"sessions\??\.seal\s*\(", kt):
+    if not _sealed_through_sessions(kt):
         bad.append("G3 android: BleTransport.send does not route through a Noise "
                    "session -- the mesh would transmit plaintext")
     sw = code(sw_ble)
-    if not re.search(r"sessions\??\.seal\s*\(", sw):
+    if not _sealed_through_sessions(sw):
         bad.append("G3 ios: BleTransport.send does not route through a Noise session")
 
     # A seal path with no way to REACH an established session is not encryption,

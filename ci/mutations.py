@@ -1512,6 +1512,20 @@ def run_semantic(report_only, emit_dir, baseline_sha, work_parent):
     return 0
 
 
+def run(report_only):
+    """T61 verification-repair: the pre-reform face that ci/integration.py's
+    --selftest delegate still expecteth. The baseline carried
+    `def run(report_only: bool) -> int` (the MUTATIONS negative-control walk);
+    T20's two-lineage reform (fc93abc) divided the ledger into
+    run_structural/run_semantic and the old single entry point perished with
+    it, leaving integration --selftest crying AttributeError. The structural
+    lineage is its faithful modern counterpart: the ledger's anchors,
+    categories and evidence invariants, judged without touching the live
+    tree. The semantic lineage remaineth the heavy negative control, run by
+    the campaigns alone."""
+    return run_structural(report_only, None, "live-tree")
+
+
 def main(argv=None):
     ap = argparse.ArgumentParser()
     ap.add_argument("--report", action="store_true", help="do not fail on findings")
