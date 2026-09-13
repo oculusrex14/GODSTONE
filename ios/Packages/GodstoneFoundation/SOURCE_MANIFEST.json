@@ -1,9 +1,10 @@
 {
   "files": {
     "Package.swift": "a2946020fe2eba176b451d29438c8028535c392b711cd855471cd7f3a91f913c",
-    "Sources/GodstoneCore/ArchiveAvailability.swift": "550fea196a8d50ab11b20e47d9a4cb34536060dc1bdaf562e5353e683cb79b85",
-    "Sources/GodstoneCore/ArchiveReaderModel.swift": "018580f79d491a6f27a2a660da976d10ebc261983e6eebe2808c92cd50d02f3e",
-    "Sources/GodstoneCore/ArchiveRepository.swift": "2a3dc4262ac275f7e721061cbec05ae1213b23308947fa4f9dee59d8bbcd037d",
+    "Sources/GodstoneCore/ArchiveAvailability.swift": "4073377b1b1fa7e5a2e46e19a713f5903316ba1d2647f1ece992d1d325cbae70",
+    "Sources/GodstoneCore/ArchiveReaderModel.swift": "3919494499f8a29432202d019524e17187a55a636b2564ca193a2bc49cd4c892",
+    "Sources/GodstoneCore/ArchiveRepository.swift": "90564f7787d51c83968f6e0d277a475ccc66164d332a5224faaaea75b36d973c",
+    "Sources/GodstoneCore/ArchiveSceneModel.swift": "d85a0893c76e0a0daf6213fcd04f4e919b87c7610a491ca999fe391bbb030419",
     "Sources/GodstoneCore/Bip39.swift": "257bb27f26f19d2410a0e5f13a258b031d75bdc8e647c05205fb0060ea5a87a4",
     "Sources/GodstoneCore/Blake2s.swift": "45f06f51b8bbed97787d56b834df5ebb2730e140c9e4723dfe0da6cc993febcc",
     "Sources/GodstoneCore/BloomDigest.swift": "efb3505b4f84a23183b15c6682ae3810c2369b572b06525c9d57c1dc8f517e85",

@@ -8,11 +8,41 @@ public struct ArchiveDocument: Identifiable, Sendable, Hashable {
     public let title: String
     public let domain: String
     public let isCritical: Bool
+    /* T50 (s17): the provenance projection of the frozen documents table --
+     * defaulted, that every sealed four-argument construction remaineth
+     * lawful (the android ArchiveDocument keepeth the same pace). */
+    public let sourceId: String
+    public let revision: String
 
-    public init(id: Int64, title: String, domain: String, isCritical: Bool) {
+    public init(id: Int64, title: String, domain: String, isCritical: Bool,
+                sourceId: String = "", revision: String = "") {
         self.id = id
         self.title = title
         self.domain = domain
+        self.isCritical = isCritical
+        self.sourceId = sourceId
+        self.revision = revision
+    }
+}
+
+/// The provenance projection shown when a document is opened whole (T50:
+/// 'source/revision display'). A separate projection, that the sealed
+/// ArchiveDocument equality abideth undisturbed.
+public struct ArchiveSourceMetadata: Sendable, Equatable {
+    public let documentId: Int64
+    public let title: String
+    public let sourceId: String
+    public let licence: String
+    public let revision: String
+    public let isCritical: Bool
+
+    public init(documentId: Int64, title: String, sourceId: String, licence: String,
+                revision: String, isCritical: Bool) {
+        self.documentId = documentId
+        self.title = title
+        self.sourceId = sourceId
+        self.licence = licence
+        self.revision = revision
         self.isCritical = isCritical
     }
 }
@@ -99,7 +129,9 @@ public final class ArchiveRepository: @unchecked Sendable {
     // MARK: - checked faces (the T48 road: failures are told, not swallowed)
 
     public func listDocumentsChecked(domain: String? = nil) throws -> [ArchiveDocument] {
-        var sql = "SELECT document_id, title, domain, is_critical FROM documents"
+        // T50 (s17): the projection carriageth the frozen source_id and
+        // revision columns whole -- the display shall speak provenance.
+        var sql = "SELECT document_id, title, domain, is_critical, source_id, revision FROM documents"
         if domain != nil { sql += " WHERE domain = ?" }
         sql += " ORDER BY is_critical DESC, domain, title"
         let filter = domain
@@ -114,9 +146,35 @@ public final class ArchiveRepository: @unchecked Sendable {
                 id: sqlite3_column_int64(stmt, 0),
                 title: columnString(stmt, 1),
                 domain: columnString(stmt, 2),
-                isCritical: sqlite3_column_int(stmt, 3) != 0
+                isCritical: sqlite3_column_int(stmt, 3) != 0,
+                sourceId: columnString(stmt, 4),
+                revision: columnString(stmt, 5)
             )
         }
+    }
+
+    /// T50 (s17): the whole provenance projection of one document, or nil
+    /// when the document is unheard of. Failures are told, not swallowed.
+    public func sourceMetadataChecked(documentId: Int64) throws -> ArchiveSourceMetadata? {
+        let sql = "SELECT document_id, title, source_id, licence, revision, is_critical "
+            + "FROM documents WHERE document_id = ?"
+        let rows = try run(sql, binds: { stmt in sqlite3_bind_int64(stmt, 1, documentId) }) { stmt in
+            ArchiveSourceMetadata(
+                documentId: sqlite3_column_int64(stmt, 0),
+                title: columnString(stmt, 1),
+                sourceId: columnString(stmt, 2),
+                licence: columnString(stmt, 3),
+                revision: columnString(stmt, 4),
+                isCritical: sqlite3_column_int(stmt, 5) != 0
+            )
+        }
+        return rows.first
+    }
+
+    /// The compat shim: the checked face's woe collapseth to nil, as the old
+    /// roads taught. The scene useth this; the court proveth the checked.
+    public func sourceMetadata(documentId: Int64) -> ArchiveSourceMetadata? {
+        (try? sourceMetadataChecked(documentId: documentId)) ?? nil
     }
 
     public func listDomainsChecked() throws -> [String] {

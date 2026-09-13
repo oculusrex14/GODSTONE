@@ -24,7 +24,10 @@ import Combine
 public actor ArchiveLibrary: ArchiveReading {
     private let databaseName: String
     private let tier: Tier
-    private let repository: ArchiveRepository
+    // T50 (s17): the repository binding, exposed nonisolated -- an immutable
+    // let of a Sendable type, published once in init; the synchronous
+    // witnesses below may read it without hopping the actor's executor.
+    nonisolated private let repository: ArchiveRepository
 
     public init(databaseName: String, tier: Tier) {
         self.databaseName = databaseName
@@ -37,7 +40,13 @@ public actor ArchiveLibrary: ArchiveReading {
 
     /// The typed verdict, for the view that wisheth to tell the user why nothing
     /// answers. Never a bare boolean.
-    public var availability: ArchiveAvailability { repository.availability }
+    nonisolated public var availability: ArchiveAvailability { repository.availability }
+
+    /// T50 (s17): the provenance probe, forwarded nonisolated to the
+    /// repository's own locked roads -- thread-safe by the repository's lock.
+    nonisolated public func sourceMetadata(documentId: Int64) -> ArchiveSourceMetadata? {
+        repository.sourceMetadata(documentId: documentId)
+    }
 
     /// Release the native handle now rather than trust the timing of ARC --
     /// the stop half of the stop/start lifecycle the boundary must exercise.

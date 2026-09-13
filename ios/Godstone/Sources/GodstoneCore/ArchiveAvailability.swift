@@ -116,7 +116,23 @@ public enum ArchivePage: Sendable, Equatable {
 /// pause, wound and resurrect a library without a disk in sight.
 public protocol ArchiveReading: Sendable {
     func read(_ request: ArchiveRequest) async throws -> ArchivePage
+    // T50 (s17): optional requirements -- declared here, so the existential
+    // dispatcheth dynamically to the concrete witness, not statically to the
+    // extension default. Sealed conformations are served by the defaults
+    // provided below and compile unchanged.
+    var availability: ArchiveAvailability { get }
+    func sourceMetadata(documentId: Int64) -> ArchiveSourceMetadata?
 }
+
+/* T50 (s17): the typed verdict of the stock, defaulting to ready that the
+ * sealed fakes compile unchanged; the real faces override it, and a court
+ * may make a fake report otherwise -- an unavailable archive must never
+ * masquerade as an honest empty result, and the scene consulteth this first. */
+public extension ArchiveReading {
+    var availability: ArchiveAvailability { .ready(origin: "the reader reporteth itself ready") }
+    func sourceMetadata(documentId: Int64) -> ArchiveSourceMetadata? { nil }
+}
+
 
 /// The bounds of a search petition, enforced before the database is
 /// approached. The twin of the sealed Android SearchQuery: the same
