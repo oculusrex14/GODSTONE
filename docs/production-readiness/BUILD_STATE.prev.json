@@ -6474,6 +6474,238 @@
       "tested_tree_sha": "281511ec4b01a2c0fbe8d2166263d7e8773b7ba1",
       "unresolved": []
     },
+    "T46": {
+      "case_results": {
+        "deleted_cases": [],
+        "dual_court_parity": "n/a on the isles -- T46 is one python court: eleven witnesses in tools/readiness/tests/test_t46.py over the seal and the trust, the whole route walked end to end (W10), the transplant of seals proving the deed (W11)",
+        "isle_grands_standing": {
+          "android_grand": 1036,
+          "counts_source": "not re-run by this task: none of the five children toucheth an isle path (verified child by child); the T40 grands stand as recorded",
+          "ios_grand": 975
+        },
+        "t46_narrow_court": {
+          "counts_source": "runner stage narrow at the boundary (T46-narrow-python3-002, pinned e92361115): unittest discover -s tools/readiness/tests -p test_t46.py -v; \"Ran 11 tests\" ... OK",
+          "errors": 0,
+          "failures": 0,
+          "tests": 11
+        },
+        "t46_subsystem": {
+          "counts_source": "runner stage subsystem at the boundary (T46-subsystem-python3-002): content/tests discovery; the sealed test_archive_manifest (10), test_release_gate (10) and the T45 bench (26) answer unweakened by the strictening",
+          "errors": 0,
+          "failures": 0,
+          "tests": 36
+        }
+      },
+      "claim_commit": "9af02b76b1f74d42a9ceb42128edb51c40b1dbf1",
+      "commands": [
+        "T46-narrow-python3",
+        "T46-subsystem-python3",
+        "T46-controls-python3-002",
+        "T46-narrow-python3-002",
+        "T46-subsystem-python3-002",
+        "T46-controls-python3-003",
+        "T46-controls-python3-004"
+      ],
+      "device_gate_ids": [],
+      "file_hashes": {},
+      "implementation_commit": "e9236111596f2a67ffce0bb31732f4538ecbde72",
+      "implementation_commits": [
+        "f28323d04c129b7c14ddfa1497040d877a9ac4df",
+        "77125bea0832f4074e7744760b4a9e9fad51f116",
+        "dc4c68b7ae59773f6af5f65521ac006e4f6d94b6",
+        "e9236111596f2a67ffce0bb31732f4538ecbde72"
+      ],
+      "inputs": {
+        "children_commit_order": [
+          "9af02b76b1f74d42a9ceb42128edb51c40b1dbf1",
+          "f28323d04c129b7c14ddfa1497040d877a9ac4df",
+          "77125bea0832f4074e7744760b4a9e9fad51f116",
+          "dc4c68b7ae59773f6af5f65521ac006e4f6d94b6",
+          "e9236111596f2a67ffce0bb31732f4538ecbde72"
+        ],
+        "governed_source": [
+          "content/release_gate.py",
+          "content/archive_manifest.py",
+          "content/ingest/build_archive.py",
+          "scripts/prepare_release_assets.py",
+          "content/manifests/README.md",
+          "tools/readiness/tests/test_t46.py",
+          "ci/mutations.py"
+        ],
+        "required_regression_paths": [
+          "tools/readiness/tests/test_t46.py",
+          "content/tests/test_release_gate.py",
+          "content/tests/test_archive_manifest.py",
+          "content/tests/test_build_archive.py"
+        ],
+        "sealed_hot_paths_untouched": [
+          "content/db/schema.sql and indexes.sql: not one byte moved",
+          "the sealed courts T01-T45+T83 and the sealed content suites: unedited; the ValidatedDocument face kept; the error messages of verify_manifest kept whole",
+          "the android and iOS isles: no path of this lineage toucheth them; the sealed T40 grands (1036 and 975) stand",
+          "ci/mutations.py prior 157 rows unedited (additive eight); the jvm and swift roads of the harness untravelled",
+          "external gates A06/APPROVED_CONTENT/NATIVE_MODELS/HARDWARE/SIGNING stand open; none closed by this task; readiness=false"
+        ],
+        "task_card": "docs/production-readiness/TASKS.json#T46"
+      },
+      "ladder_boundary_commit": "e9236111596f2a67ffce0bb31732f4538ecbde72",
+      "mutation_results": {
+        "campaign_note": "eight rows, eight kills, at the canonical pin e92361115; the campaign fired twice: attempt one at dc4c68b brought 8/8 and was archived entire at roster-attempt-1 when the builder-compliance child moved the boundary; the canonical firing at the boundary brought 8/9... 8/8, 0 escaped, 0 invalid, 0 timeout, every log sha256 re-verified, every baseline green before its mutation. The two corruptions the card nameth -- counting nonempty seals for verification, trusting a key the payload carrieth -- were struck by SM1 and SM2 and both died to their nominated witnesses. The T45 harvest (purge law, singular-tolerant parser, names-must-walk-the-bench launcher) held the whole campaign without one INVALID.",
+        "semantic": [
+          {
+            "anchor_count": 1,
+            "baseline_sha": "e9236111596f2a67ffce0bb31732f4538ecbde72",
+            "build_exit": 0,
+            "category": "semantic",
+            "ended_utc": "2026-09-13T04:36:24Z",
+            "failed_assertion": "witness testNonemptySignatureIsNotApproval failed as intended (1 failed case(s))",
+            "id": "T46-SM1-nonempty-is-enough",
+            "log_path": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/T46/roster/logs/T46-SM1-nonempty-is-enough.semantic.log",
+            "log_sha": "a91a7b3336aaeb076e60d6f7fd6f1d7595badcac2409031dcc1c8249db5b7697",
+            "mutant_patch_sha": "cdb2d46e7c1e916f2d187f51cfb79d28c52d7cb20da8e468255d8c46c60824ba",
+            "outcome": "KILLED",
+            "started_utc": "2026-09-13T04:36:23Z",
+            "target_tests": [
+              "testNonemptySignatureIsNotApproval"
+            ],
+            "tests_run": 1
+          },
+          {
+            "anchor_count": 1,
+            "baseline_sha": "e9236111596f2a67ffce0bb31732f4538ecbde72",
+            "build_exit": 0,
+            "category": "semantic",
+            "ended_utc": "2026-09-13T04:36:24Z",
+            "failed_assertion": "witness testSelfSignedBundleIsRefused failed as intended (1 failed case(s))",
+            "id": "T46-SM2-payload-nominates-keys",
+            "log_path": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/T46/roster/logs/T46-SM2-payload-nominates-keys.semantic.log",
+            "log_sha": "f185bf64ade77b03e261b9dddf667f387ba50527a0793e62a65f9d018ca96983",
+            "mutant_patch_sha": "354574cc15b53adae4a77afe8960504e02011fdea10b4210636c5f935a27f625",
+            "outcome": "KILLED",
+            "started_utc": "2026-09-13T04:36:24Z",
+            "target_tests": [
+              "testSelfSignedBundleIsRefused"
+            ],
+            "tests_run": 1
+          },
+          {
+            "anchor_count": 1,
+            "baseline_sha": "e9236111596f2a67ffce0bb31732f4538ecbde72",
+            "build_exit": 0,
+            "category": "semantic",
+            "ended_utc": "2026-09-13T04:36:25Z",
+            "failed_assertion": "witness testChangedWarningBreaksTheApproval failed as intended (1 failed case(s))",
+            "id": "T46-SM3-warnings-unbound",
+            "log_path": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/T46/roster/logs/T46-SM3-warnings-unbound.semantic.log",
+            "log_sha": "15bfd9f7b8994ae57e74af470e0c045f234c0da741ba813aa83c0649ba4ad73a",
+            "mutant_patch_sha": "c24974f7c45532b7a51c0854fcd823fe5bd2aac772dae02beb125d17d9f0a632",
+            "outcome": "KILLED",
+            "started_utc": "2026-09-13T04:36:24Z",
+            "target_tests": [
+              "testChangedWarningBreaksTheApproval"
+            ],
+            "tests_run": 1
+          },
+          {
+            "anchor_count": 1,
+            "baseline_sha": "e9236111596f2a67ffce0bb31732f4538ecbde72",
+            "build_exit": 0,
+            "category": "semantic",
+            "ended_utc": "2026-09-13T04:36:25Z",
+            "failed_assertion": "witness testMissingCoverageIsRefused failed as intended (1 failed case(s))",
+            "id": "T46-SM4-coverage-blinded",
+            "log_path": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/T46/roster/logs/T46-SM4-coverage-blinded.semantic.log",
+            "log_sha": "c030535b708e2865bd7c22f099914d822003df1ed20d2b25beb701e77e8f5d2f",
+            "mutant_patch_sha": "50886b57e727f237f9e55ba5d269ea1651fdfb5c438460a14cd6d53ee2d2a1c1",
+            "outcome": "KILLED",
+            "started_utc": "2026-09-13T04:36:25Z",
+            "target_tests": [
+              "testMissingCoverageIsRefused"
+            ],
+            "tests_run": 1
+          },
+          {
+            "anchor_count": 1,
+            "baseline_sha": "e9236111596f2a67ffce0bb31732f4538ecbde72",
+            "build_exit": 0,
+            "category": "semantic",
+            "ended_utc": "2026-09-13T04:36:26Z",
+            "failed_assertion": "witness testExpiryIsRefusedBothWays failed as intended (1 failed case(s))",
+            "id": "T46-SM5-clock-inverted",
+            "log_path": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/T46/roster/logs/T46-SM5-clock-inverted.semantic.log",
+            "log_sha": "3306ca4139741e03b74d0db1dac27b22285eedd14546a0f634dbfa95d425c943",
+            "mutant_patch_sha": "a2c17481ee3f68ba05154a444f44e6b3cd1cb1c10c3783b9878cde2f8a898dce",
+            "outcome": "KILLED",
+            "started_utc": "2026-09-13T04:36:25Z",
+            "target_tests": [
+              "testExpiryIsRefusedBothWays"
+            ],
+            "tests_run": 1
+          },
+          {
+            "anchor_count": 1,
+            "baseline_sha": "e9236111596f2a67ffce0bb31732f4538ecbde72",
+            "build_exit": 0,
+            "category": "semantic",
+            "ended_utc": "2026-09-13T04:36:27Z",
+            "failed_assertion": "witness testDuplicateManifestEntriesAreRefused failed as intended (1 failed case(s))",
+            "id": "T46-SM6-collapsing-reader",
+            "log_path": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/T46/roster/logs/T46-SM6-collapsing-reader.semantic.log",
+            "log_sha": "1f23f90bd1cc95bce9c6bc96a258d7b6aa0fa30510f664dca223933723f0f773",
+            "mutant_patch_sha": "e6f86df4163ff769f6404188323e7272b9a3fd31deb2ed1350c0bb4ff33d1cc9",
+            "outcome": "KILLED",
+            "started_utc": "2026-09-13T04:36:26Z",
+            "target_tests": [
+              "testDuplicateManifestEntriesAreRefused"
+            ],
+            "tests_run": 1
+          },
+          {
+            "anchor_count": 1,
+            "baseline_sha": "e9236111596f2a67ffce0bb31732f4538ecbde72",
+            "build_exit": 0,
+            "category": "semantic",
+            "ended_utc": "2026-09-13T04:36:28Z",
+            "failed_assertion": "witness testPathTraversalIsRefused failed as intended (1 failed case(s))",
+            "id": "T46-SM7-warden-discharged",
+            "log_path": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/T46/roster/logs/T46-SM7-warden-discharged.semantic.log",
+            "log_sha": "360478b9f411b2d6e206ba056d84cf5906a61a29d79c9ccdf892155894c58dea",
+            "mutant_patch_sha": "deca2d766aab3a9b73d21bacff9bda990b7658f28ec1d6246ef55d8deca12cce",
+            "outcome": "KILLED",
+            "started_utc": "2026-09-13T04:36:27Z",
+            "target_tests": [
+              "testPathTraversalIsRefused"
+            ],
+            "tests_run": 1
+          },
+          {
+            "anchor_count": 1,
+            "baseline_sha": "e9236111596f2a67ffce0bb31732f4538ecbde72",
+            "build_exit": 0,
+            "category": "semantic",
+            "ended_utc": "2026-09-13T04:36:28Z",
+            "failed_assertion": "witness testDuplicateManifestEntriesAreRefused failed as intended (1 failed case(s))",
+            "id": "T46-SM8-post-dup-blind",
+            "log_path": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/T46/roster/logs/T46-SM8-post-dup-blind.semantic.log",
+            "log_sha": "a583398a64c4e7e38b2dd57351e9ea8f2906b4e5277a2dec00c0f351d6e035da",
+            "mutant_patch_sha": "22bca3eeeef3dc2a4b7356ec92afa5d800a03caf8b0966d2dd96fe27ef85ed9a",
+            "outcome": "KILLED",
+            "started_utc": "2026-09-13T04:36:28Z",
+            "target_tests": [
+              "testDuplicateManifestEntriesAreRefused"
+            ],
+            "tests_run": 1
+          }
+        ]
+      },
+      "objective": {
+        "claimed_head": "e9236111596f2a67ffce0bb31732f4538ecbde72",
+        "claimed_utc": "2026-09-13T03:34:53+00:00",
+        "objective": "Canonicalize final chunk text and metadata; bind each approval to its final hash, source rights/version, reviewer identity/credential evidence, expiry, contraindications and warnings."
+      },
+      "status": "COMPLETE",
+      "tested_tree_sha": "41c3fdc2066cf33fb5da1fc63eda8cc64d8584f5",
+      "unresolved": []
+    },
     "T83": {
       "case_results": {
         "android_grand": {
@@ -6772,22 +7004,23 @@
   ],
   "failed_attempts": [],
   "in_progress": null,
-  "last_code_head": "29ead290711c8f76c75249759bbc6db2bac29d46",
+  "last_code_head": "e9236111596f2a67ffce0bb31732f4538ecbde72",
   "last_observed_head": "759c8d4ee1eda16b7ebe150a0b0c00edb91bbd43",
   "latest_verification": {
-    "at_utc": "2026-09-13T03:26:00+00:00",
-    "boundary_commit": "29ead290711c8f76c75249759bbc6db2bac29d46",
+    "at_utc": "2026-09-13T04:40:00+00:00",
+    "boundary_commit": "e9236111596f2a67ffce0bb31732f4538ecbde72",
     "controls": {
-      "outcomes": "PASSED",
-      "records": 2
+      "boundary_records": 2,
+      "first_pair_failure": "T46-controls-python3 FAILED exit=1 (the integration checker blinded by the parenthesed import); told whole in the milestones, cured by the builder-compliance child",
+      "outcomes": "2/2 PASSED at the boundary"
     },
     "narrow": {
       "failures": 0,
       "tests": 11
     },
     "roster": {
-      "T45_killed": 9,
-      "of": 9
+      "T46_killed": 8,
+      "of": 8
     },
     "subsystem": {
       "failures": 0,
@@ -6816,7 +7049,9 @@
     "T40 roster nomination law: the harness runs a row’s nominated witness alone -- the nomination is a pledge that the named case convicts; verify observability at the mutation site before arming (the RC1 pair learned it: over the forced collision the foreign bits are by construction already in the store’s set, so the W8 advertisement is blind there; W4’s empty-store full-queue witness sees it) -- and retract and re-fire the row, never blind the court.",
     "T40 grand flake, told whole: the -002 subsystem-gradlew firing fell only to the sealed T17/T18 identity-draw harness (\"no ascending hint pair within 64 draws\", the classes’ own redraw guard against same-tick-seeded generators); ten subsequent probes (7 full-suite live, 4 class-scope live, 3 full-suite baseline) showed 0 failures and the boundary re-fires are green -- attributed to a transient environmental flake, no T40 bytes on the draw path; future grands: re-fire, do not edit sealed courts.",
     "T45 builder statute: an archive build shall write only into .<dest>.tmp-<token> beside the destination, be validated whole (integrity, foreign keys, contract tables, metadata round-trip, row order, counts, vectors shape, an answering FTS probe) before any promotion, be promoted by one os.replace under a process-wide lock, and fail into the previous bytes un harmed; the empty corpus is ArchiveEmptyError, the absent native leg ArchiveDependencyError, the over-large ArchiveTooLargeError, the unsafe way ArchiveUnsafeDestinationError -- each named, none confounded.",
-    "T45 campaign law, learned the hard way: an equal-length mutation landed within the same second hid behind the (mtime, size) key of a timestamp pycache and the mutant court heard faithful bytes -- nine of nine kills are naught if the evidence chain is not clean; the py court now rippeth up every __pycache__ before it sitteth and the interpreter writeth none behind (-B); the parser knoweth the singular (\"Ran 1 test\"); a witness name must be walked as writen, checked against the bench before any campaign fireth."
+    "T45 campaign law, learned the hard way: an equal-length mutation landed within the same second hid behind the (mtime, size) key of a timestamp pycache and the mutant court heard faithful bytes -- nine of nine kills are naught if the evidence chain is not clean; the py court now rippeth up every __pycache__ before it sitteth and the interpreter writeth none behind (-B); the parser knoweth the singular (\"Ran 1 test\"); a witness name must be walked as writen, checked against the bench before any campaign fireth.",
+    "T46 approval statute: an approval bindeth a reviewer to the final bytes (GS-CHUNK-FINAL-V1 over identity, revision, ordinal, path, text, measure, warning sets) and is verified detached against an INDEPENDENTLY configured keyset; a bundle that nominateth its own trusted keys, a seal that is merely nonempty, an expired window, a wanting coverage, a foreign or double claim, a future schema, a duplicate key or a traversing path are every one refused with a name of its own; the clock is injected, never wall-watched; the proof (approvals_sha256, approvals_covered) rideth in the archive_meta and through the signed manifest to the staging post.",
+    "T46 checker law, learned the plain way: ci checkers read LITERALS -- when widening an import that a checker greps for, restore the exact single-name line verbatim (the builder-compliance child); and canonical JSON speaketh without spaces, so text surgery on generated bytes must target the compact form."
   ],
   "warnings_for_next_invocation": [
     "Android toolchain provisioned: JDK 17.0.20.1 + SDK 35 on mac-primary.",
@@ -6844,6 +7079,7 @@
     "T39 sealed at boundary 759c8d4 (courts 11/11 both isles; roster 10/10 KILLED across two honest attempts -- the six escapes were classifier artifacts, the courts whole and sound; grand android 1025/0/0/0, iOS 964/0). Next: T40 per the catalog. The SOS broadcast pair is ONE authority on both isles -- reuse DeliveryRepository.enqueueSosOutbound (the compatible two-step default; the store-backed and SQL repositories override atomically); never re-fork persist-then-record; the durable cancel rides the C7.5 retiring machinery and tells the wasRelayed truth the UI must speak.",
     "The T17 randomized-draw flake family stayed silent at the T39 boundary (both grands green on the first tour and the -002 re-fires); the bounded green-retry policy (<=6, cite the -002 suffixed records, keep FAILED attempts in the ledger) remains the standing remedy.",
     "T40 sealed at boundary 45fadb92f (courts 11/11 both isles; roster 10/10 KILLED across three firings -- two observation-site repairs and one nomination re-pledge, all lawful; grand android 1036/0/0/0 over 63 xml files, iOS 975/0; one recorded FAILED subsystem firing stands as history, a flake in the sealed T17/T18 draw harness, told whole in the seal). Next: T45 -- the catalog’s topological order (T41 waits on T84; T42-T44 chain behind it, so the ready frontier names T45).",
-    "T45 sealed at boundary 29ead2907 (court 11/11, unit bench 26, subsystem 36/36 with the sealed suites unweakened, controls 2/2, roster 9/9 KILLED across three honest firings -- the escape was a cache artefact, cured by the purge law; git diff --check clean over the whole lineage). Next: T46 per the runner."
+    "T45 sealed at boundary 29ead2907 (court 11/11, unit bench 26, subsystem 36/36 with the sealed suites unweakened, controls 2/2, roster 9/9 KILLED across three honest firings -- the escape was a cache artefact, cured by the purge law; git diff --check clean over the whole lineage). Next: T46 per the runner.",
+    "T46 sealed at boundary e92361115 (court 11/11, subsystem 36/36 with the sealed suites unweakened, controls 2/2 at the boundary after the told-first controls failure, roster 8/8 KILLED across two honest firings). Next: per the runner."
   ]
 }
