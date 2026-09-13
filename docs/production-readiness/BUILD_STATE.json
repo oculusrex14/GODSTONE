@@ -6519,7 +6519,15 @@
     "SIGNING"
   ],
   "failed_attempts": [],
-  "in_progress": null,
+  "in_progress": {
+    "claimed_head": "b2194ea0d4d6814b4f651619347dff2bc5aac340",
+    "claimed_utc": "2026-09-13T01:56:31+00:00",
+    "objective": {
+      "claimed_head": "b2194ea0d4d6814b4f651619347dff2bc5aac340",
+      "claimed_utc": "2026-09-13T01:56:31+00:00",
+      "objective": "Selectively port build_archive WIP."
+    }
+  },
   "last_code_head": "45fadb92ff3648738ff69e7877dfe7b7e9fe463d",
   "last_observed_head": "759c8d4ee1eda16b7ebe150a0b0c00edb91bbd43",
   "latest_verification": {

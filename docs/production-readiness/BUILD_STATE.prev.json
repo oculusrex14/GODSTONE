@@ -6510,7 +6510,7 @@
       "unresolved": []
     }
   },
-  "current_task": "T41",
+  "current_task": "T45",
   "external_blockers": [
     "A06",
     "APPROVED_CONTENT",
@@ -6541,7 +6541,7 @@
       "of": 10
     }
   },
-  "next_task": "T41",
+  "next_task": "T45",
   "phase": "P0",
   "plan_sha256": "685456b378662b0a40a53a6abc810041e37daf97b213f3efeb6cea879363934e",
   "planning_baseline_sha": "b5c3d3d394b70cf356cdde33b47511dad7cbb95c",
@@ -6588,6 +6588,6 @@
     "T38 sealed at boundary 85299dc (courts 11/11 both isles; roster 10/10 KILLED across two honest attempts; grand android 1014, iOS 953). Next: T38 per the catalog. The signed-SOS envelope is law -- reuse SignedSosV1 as the single authority; do not fork a second signing path.",
     "T39 sealed at boundary 759c8d4 (courts 11/11 both isles; roster 10/10 KILLED across two honest attempts -- the six escapes were classifier artifacts, the courts whole and sound; grand android 1025/0/0/0, iOS 964/0). Next: T40 per the catalog. The SOS broadcast pair is ONE authority on both isles -- reuse DeliveryRepository.enqueueSosOutbound (the compatible two-step default; the store-backed and SQL repositories override atomically); never re-fork persist-then-record; the durable cancel rides the C7.5 retiring machinery and tells the wasRelayed truth the UI must speak.",
     "The T17 randomized-draw flake family stayed silent at the T39 boundary (both grands green on the first tour and the -002 re-fires); the bounded green-retry policy (<=6, cite the -002 suffixed records, keep FAILED attempts in the ledger) remains the standing remedy.",
-    "T40 sealed at boundary 45fadb92f (courts 11/11 both isles; roster 10/10 KILLED across three firings -- two observation-site repairs and one nomination re-pledge, all lawful; grand android 1036/0/0/0 over 63 xml files, iOS 975/0; one recorded FAILED subsystem firing stands as history, a flake in the sealed T17/T18 draw harness, told whole in the seal). Next: T41 per the catalog."
+    "T40 sealed at boundary 45fadb92f (courts 11/11 both isles; roster 10/10 KILLED across three firings -- two observation-site repairs and one nomination re-pledge, all lawful; grand android 1036/0/0/0 over 63 xml files, iOS 975/0; one recorded FAILED subsystem firing stands as history, a flake in the sealed T17/T18 draw harness, told whole in the seal). Next: T45 -- the catalog’s topological order (T41 waits on T84; T42-T44 chain behind it, so the ready frontier names T45)."
   ]
 }
