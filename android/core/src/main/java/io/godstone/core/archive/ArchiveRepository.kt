@@ -30,6 +30,22 @@ data class ArchiveDocument(
     val id: Long,
     val title: String,
     val domain: String,
+    val isCritical: Boolean,
+    // T49 (s17): the source/revision projection of the frozen documents table.
+    // Defaulted, that every sealed four-argument construction stayeth lawful.
+    val sourceId: String = "",
+    val revision: String = ""
+)
+
+/** The provenance projection shown when a document is opened whole (T49:
+ *  'source/revision display'). A separate projection, that the sealed
+ *  [ArchiveDocument] equality abideth undisturbed. */
+data class ArchiveSourceMetadata(
+    val documentId: Long,
+    val title: String,
+    val sourceId: String,
+    val licence: String,
+    val revision: String,
     val isCritical: Boolean
 )
 
@@ -56,6 +72,17 @@ interface ArchiveReader {
     fun listDomains(): List<String>
     fun passages(documentId: Long): List<ArchivePassage>
     fun search(query: String, limit: Int = 40): List<ArchivePassage>
+
+    /** T49 (s17): the typed availability of the read path. The default
+     *  sayeth ready, that the sealed fakes compile unchanged; the real
+     *  repository answereth with its arm's verdict and a court may make a
+     *  fake report otherwise. An unavailable archive must never masquerade
+     *  as an honest empty result -- the caller consulteth this first. */
+    fun status(): ArchiveState = ArchiveState.Ready(origin = "assumed", sha256 = "")
+
+    /** T49 (s17): the source/revision projection of one document, or null
+     *  when the reader cannot speak of provenance. */
+    fun sourceMetadata(documentId: Long): ArchiveSourceMetadata? = null
 }
 
 /** The seam to the android world; the host court drive driveth a filesystem fake. */
@@ -144,14 +171,37 @@ class ArchiveRepository(
     val isAvailable: Boolean
         get() = arm.state is ArchiveState.Ready
 
+    // T49 (s17): the reader face speaketh the same typed truth the arm keeps.
+    override fun status(): ArchiveState = arm.state
+
+    override fun sourceMetadata(documentId: Long): ArchiveSourceMetadata? {
+        val h = arm.handle ?: return null
+        return runCatching {
+            h.rows(
+                "SELECT document_id, title, source_id, licence, revision, is_critical " +
+                    "FROM documents WHERE document_id = ?",
+                arrayOf(documentId),
+            ).firstOrNull()?.let { row ->
+                ArchiveSourceMetadata(
+                    documentId = row[0] as Long,
+                    title = row[1] as String,
+                    sourceId = row[2] as String,
+                    licence = row[3] as String,
+                    revision = row[4] as String,
+                    isCritical = (row[5] as Long) != 0L,
+                )
+            }
+        }.getOrNull()
+    }
+
     override fun listDocuments(domain: String?): List<ArchiveDocument> {
         val h = arm.handle ?: return emptyList()
         val where = if (domain.isNullOrBlank()) "" else "WHERE domain = ?"
         val args: Array<Any?> = if (domain.isNullOrBlank()) emptyArray() else arrayOf(domain)
         return runCatching {
             h.rows(
-                "SELECT document_id, title, domain, is_critical FROM documents " +
-                    "$where ORDER BY is_critical DESC, domain, title",
+                "SELECT document_id, title, domain, is_critical, source_id, revision " +
+                    "FROM documents $where ORDER BY is_critical DESC, domain, title",
                 args,
             ).map { row ->
                 ArchiveDocument(
@@ -159,6 +209,8 @@ class ArchiveRepository(
                     title = row[1] as String,
                     domain = row[2] as String,
                     isCritical = (row[3] as Long) != 0L,
+                    sourceId = row[4] as String,
+                    revision = row[5] as String,
                 )
             }
         }.getOrDefault(emptyList())

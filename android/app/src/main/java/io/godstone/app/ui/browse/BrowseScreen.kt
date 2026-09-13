@@ -44,8 +44,21 @@ fun BrowseScreen(vm: BrowseViewModel = hiltViewModel()) {
             verticalAlignment = Alignment.CenterVertically
         ) {
             Text(state.openedTitle ?: "Archive", style = MaterialTheme.typography.titleLarge)
+            state.openedSource?.let { provenance ->
+                // T49 (s17): source/revision display -- where a passage came from
+                Text(
+                    "source " + provenance.sourceId + " . revision " + provenance.revision +
+                        " . licence " + provenance.licence,
+                    style = MaterialTheme.typography.bodySmall
+                )
+            }
             if (state.openedTitle != null || state.passages.isNotEmpty()) {
                 Button(onClick = vm::backToDocuments) { Text("All documents") }
+            }
+            if (state.mode == BrowseMode.DOCUMENT) {
+                Button(onClick = vm::back) { Text("Back") }
+            } else if (state.mode == BrowseMode.SEARCH) {
+                Button(onClick = vm::back) { Text("Documents") }
             }
         }
 
@@ -67,6 +80,29 @@ fun BrowseScreen(vm: BrowseViewModel = hiltViewModel()) {
                     contentColor = MaterialTheme.colorScheme.onErrorContainer
                 )
             ) { Text(it, modifier = Modifier.padding(16.dp)) }
+        }
+
+        // T49 (s17): the typed phases speak for themselves. An unavailable
+        // archive nameth its cause; retry is offered only where the road may
+        // mend (canRetry), never to knock upon an absent installation.
+        (state.phase as? BrowsePhase.Unavailable)?.let { unavailable ->
+            Card(
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.errorContainer,
+                    contentColor = MaterialTheme.colorScheme.onErrorContainer
+                )
+            ) {
+                Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text("Archive unavailable: " + unavailable.reason)
+                    if (unavailable.recoverable) {
+                        Text("This may be tried again once the archive is installed.",
+                            style = MaterialTheme.typography.bodySmall)
+                    }
+                }
+            }
+        }
+        if (state.canRetry) {
+            Button(onClick = vm::retry, modifier = Modifier.fillMaxWidth()) { Text("Retry") }
         }
 
         if (state.loading) {

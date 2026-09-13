@@ -5,8 +5,14 @@ import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import io.godstone.core.archive.ArchiveDocument
 import io.godstone.core.archive.ArchivePassage
+import io.godstone.core.archive.ArchiveReader
 import io.godstone.core.archive.ArchiveRepository
+import io.godstone.core.archive.ArchiveSourceMetadata
+import io.godstone.core.archive.ArchiveState
+import io.godstone.core.archive.SearchQuery
+import java.util.concurrent.atomic.AtomicLong
 import javax.inject.Inject
+import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -14,103 +20,410 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
+/** The three places the browse journey standeth (T49, s17). */
+enum class BrowseMode { DOCUMENTS, SEARCH, DOCUMENT }
+
+/** The explicit phase of the road. An unavailable archive is told as
+ *  [Unavailable] with its cause named -- it never masqueradeth as the
+ *  honest empty [NoResults], which meaneth only: the archive is ready and
+ *  this word matched nobody. */
+sealed class BrowsePhase {
+    object Loading : BrowsePhase()
+    object Ready : BrowsePhase()
+    object NoResults : BrowsePhase()
+    data class Unavailable(val reason: String, val recoverable: Boolean) : BrowsePhase()
+}
+
 data class BrowseUiState(
     val query: String = "",
+    // the identity of the search actually published -- editing [query] never
+    // relabelleth already-submitted results (WIP law, kept verbatim in spirit)
+    val searchedQuery: String? = null,
+    val mode: BrowseMode = BrowseMode.DOCUMENTS,
+    val phase: BrowsePhase = BrowsePhase.Loading,
     val loading: Boolean = true,
     val documents: List<ArchiveDocument> = emptyList(),
     val passages: List<ArchivePassage> = emptyList(),
+    // the restored document identity, for process recreation and for back()
+    val openedDocumentId: Long? = null,
     val openedTitle: String? = null,
-    val error: String? = null
+    val openedSource: ArchiveSourceMetadata? = null,
+    val error: String? = null,
+    val canRetry: Boolean = false
 )
 
+/** The browsing journey's state owner.
+ *
+ *  T49 (s17) review/port of the Browse WIP: explicit Loading/Ready/NoResults/
+ *  Unavailable phases derived from the repository's outcomes; full-document
+ *  opening; back restoration of the query and of the document identity;
+ *  source/revision projection; retry only where the road may mend; and the
+ *  production missing archive never made to look ready -- the card's own
+ *  falsifier. Every request captureth its generation token before delivery
+ *  and revalidateth it after the road: a stale completion publisheth nothing.
+ */
 @HiltViewModel
-class BrowseViewModel @Inject constructor(
-    private val archive: ArchiveRepository
+class BrowseViewModel private constructor(
+    private val reader: ArchiveReader,
+    private val dispatcher: CoroutineDispatcher
 ) : ViewModel() {
+
+    /** The shipping composition: the real repository, off the main thread. */
+    @Inject
+    constructor(archive: ArchiveRepository) : this(archive, Dispatchers.Default)
+
+    /** Test-facing seat: courts inject a deterministic main dispatcher. */
+    constructor(reader: ArchiveReader) : this(reader, Dispatchers.Default)
+
     private val _state = MutableStateFlow(BrowseUiState())
     val state: StateFlow<BrowseUiState> = _state.asStateFlow()
 
     // T47 (s17): the typed availability of the Archive path travels to the
     // UI -- "why nothing answers" is said, not implied by a bare boolean.
-    private val _archiveStatus = MutableStateFlow<io.godstone.core.archive.ArchiveState?>(null)
-    val archiveStatus: StateFlow<io.godstone.core.archive.ArchiveState?> = _archiveStatus.asStateFlow()
+    private val _archiveStatus = MutableStateFlow<ArchiveState?>(null)
+    val archiveStatus: StateFlow<ArchiveState?> = _archiveStatus.asStateFlow()
 
     fun refreshArchiveStatus() {
-        viewModelScope.launch(Dispatchers.IO) {
-            _archiveStatus.value = runCatching { archive.state }
+        viewModelScope.launch(dispatcher) {
+            val verdict = runCatching { reader.status() }
                 .getOrElse { exc ->
-                    io.godstone.core.archive.ArchiveState.Unavailable(
-                        "status probe threw: " + (exc.message ?: exc::class.simpleName))
+                    ArchiveState.Unavailable("status probe threw: " + (exc.message ?: exc::class.simpleName))
                 }
+            _archiveStatus.value = verdict
+            if (verdict !is ArchiveState.Ready) {
+                val reason = when (verdict) {
+                    is ArchiveState.Unavailable -> verdict.reason
+                    else -> "the reader reporteth not"
+                }
+                _state.value = _state.value.copy(
+                    loading = false,
+                    phase = BrowsePhase.Unavailable(reason, recoverable = false),
+                    documents = emptyList(),
+                    passages = emptyList(),
+                    error = null,
+                    canRetry = false
+                )
+            }
         }
     }
+
+    /** The token of the road. Every request captureth it before delivery and
+     *  revalidateth it after the road; no current-state lookup standeth in
+     *  for the missing immutable callback identity. */
+    private val generation = AtomicLong(0L)
+
+    private class Scene(
+        val mode: BrowseMode,
+        val query: String,
+        val searchedQuery: String?,
+        val documents: List<ArchiveDocument>,
+        val passages: List<ArchivePassage>,
+        val openedDocumentId: Long?,
+        val openedTitle: String?,
+        val openedSource: ArchiveSourceMetadata?
+    )
+
+    private var returnScene: Scene? = null
+    private var lastRequest: (() -> Unit)? = null
 
     init { loadDocuments() }
 
     fun onQueryChanged(value: String) {
-        _state.value = _state.value.copy(query = value)
+        // the gate keepeth the bounds the engine itself commandeth
+        _state.value = _state.value.copy(query = value.take(SearchQuery.MAX_PHRASE_CHARS))
     }
 
     fun search() {
         val query = _state.value.query.trim()
         if (query.isEmpty()) {
-            loadDocuments()
+            backToDocuments()
             return
         }
-        viewModelScope.launch {
-            _state.value = _state.value.copy(loading = true, error = null, openedTitle = null)
-            val result = runCatching {
-                withContext(Dispatchers.IO) { archive.search(query) }
+        val token = generation.incrementAndGet()
+        _state.value = _state.value.copy(
+            loading = true, phase = BrowsePhase.Loading, error = null, canRetry = false)
+        lastRequest = { search() }
+        viewModelScope.launch(dispatcher) {
+            if (generation.get() != token) return@launch          // stale before the road
+            val outcome = runCatching {
+                withContext(dispatcher) { reader.search(query, SearchQuery.bound(40)) }
             }
-            _state.value = result.fold(
-                onSuccess = { _state.value.copy(loading = false, passages = it, documents = emptyList()) },
-                onFailure = { _state.value.copy(loading = false, error = "Archive search failed: ${it.message}") }
+            if (generation.get() != token) return@launch          // stale after the road
+            outcome.fold(
+                onSuccess = { hits ->
+                    when (val verdict = runCatching { reader.status() }
+                              .getOrDefault(ArchiveState.Ready(origin = "assumed", sha256 = ""))) {
+                        is ArchiveState.Ready ->
+                            _state.value = _state.value.copy(
+                                loading = false,
+                                phase = if (hits.isEmpty()) BrowsePhase.NoResults else BrowsePhase.Ready,
+                                searchedQuery = query,
+                                mode = BrowseMode.SEARCH,
+                                documents = emptyList(),
+                                passages = hits,
+                                openedDocumentId = null,
+                                openedTitle = null,
+                                openedSource = null,
+                                error = null,
+                                canRetry = false)
+                        is ArchiveState.Unavailable ->
+                            _state.value = _state.value.copy(
+                                loading = false,
+                                phase = BrowsePhase.Unavailable(verdict.reason, recoverable = false),
+                                searchedQuery = query,
+                                mode = BrowseMode.SEARCH,
+                                documents = emptyList(),
+                                passages = emptyList(),
+                                openedDocumentId = null,
+                                openedTitle = null,
+                                openedSource = null,
+                                error = null,
+                                canRetry = false)
+                    }
+                },
+                onFailure = { exc -> publishFailure("the search could not be completed", exc) }
             )
         }
     }
 
+    /** The screen's sealed reference: open a document whole from the list. */
     fun open(document: ArchiveDocument) {
-        viewModelScope.launch {
-            _state.value = _state.value.copy(loading = true, error = null)
-            val result = runCatching {
-                withContext(Dispatchers.IO) { archive.passages(document.id) }
+        stashScene()
+        openDocumentInternal(document.id, document.title)
+    }
+
+    /** The journey's new door: a search hit openeth the WHOLE document, not
+     *  only the matched passage (s17 'full document navigation'). */
+    fun openPassage(passage: ArchivePassage) {
+        stashScene()
+        openDocumentInternal(passage.documentId, passage.documentTitle)
+    }
+
+    private fun openDocumentInternal(documentId: Long, title: String) {
+        val token = generation.incrementAndGet()
+        _state.value = _state.value.copy(
+            loading = true, phase = BrowsePhase.Loading, error = null, canRetry = false)
+        lastRequest = { openDocumentInternal(documentId, title) }
+        viewModelScope.launch(dispatcher) {
+            if (generation.get() != token) return@launch
+            val outcome = runCatching {
+                withContext(dispatcher) {
+                    reader.passages(documentId) to
+                        runCatching { reader.sourceMetadata(documentId) }.getOrNull()
+                }
             }
-            _state.value = result.fold(
-                onSuccess = {
-                    _state.value.copy(
-                        loading = false,
-                        documents = emptyList(),
-                        passages = it,
-                        openedTitle = document.title
-                    )
+            if (generation.get() != token) return@launch
+            outcome.fold(
+                onSuccess = { (found, source) ->
+                    when (val verdict = runCatching { reader.status() }
+                              .getOrDefault(ArchiveState.Ready(origin = "assumed", sha256 = ""))) {
+                        is ArchiveState.Ready ->
+                            _state.value = _state.value.copy(
+                                loading = false,
+                                phase = BrowsePhase.Ready,
+                                mode = BrowseMode.DOCUMENT,
+                                documents = emptyList(),
+                                passages = found,
+                                openedDocumentId = documentId,
+                                openedTitle = title,
+                                openedSource = source,
+                                error = null,
+                                canRetry = false)
+                        is ArchiveState.Unavailable ->
+                            _state.value = _state.value.copy(
+                                loading = false,
+                                phase = BrowsePhase.Unavailable(verdict.reason, recoverable = false),
+                                documents = emptyList(),
+                                passages = emptyList(),
+                                openedDocumentId = null,
+                                openedTitle = null,
+                                openedSource = null,
+                                error = null,
+                                canRetry = false)
+                    }
                 },
-                onFailure = { _state.value.copy(loading = false, error = "Document failed to open: ${it.message}") }
+                onFailure = { exc -> publishFailure("the document could not be opened", exc) }
             )
+        }
+    }
+
+    /** Back restoration: from the document, the scene from which it was
+     *  opened returneth untouched -- the query, its published identity and
+     *  the results stand again. From a search, the documents return. */
+    fun back() {
+        val current = _state.value
+        when (current.mode) {
+            BrowseMode.DOCUMENT -> {
+                val scene = returnScene
+                generation.incrementAndGet()
+                if (scene == null) {
+                    backToDocuments()
+                    return
+                }
+                returnScene = null
+                _state.value = current.copy(
+                    loading = false,
+                    phase = phaseOf(scene.mode, scene.passages, scene.documents, scene.searchedQuery),
+                    mode = scene.mode,
+                    query = scene.query,
+                    searchedQuery = scene.searchedQuery,
+                    documents = scene.documents,
+                    passages = scene.passages,
+                    openedDocumentId = scene.openedDocumentId,
+                    openedTitle = scene.openedTitle,
+                    openedSource = scene.openedSource,
+                    error = null,
+                    canRetry = false)
+                if (scene.mode == BrowseMode.DOCUMENTS && scene.documents.isEmpty()) {
+                    loadDocuments()
+                }
+            }
+            BrowseMode.SEARCH -> backToDocuments()
+            BrowseMode.DOCUMENTS -> {
+                // already at the root: the journey resteth
+            }
         }
     }
 
     fun backToDocuments() {
-        _state.value = _state.value.copy(query = "")
+        generation.incrementAndGet()
+        returnScene = null
+        _state.value = _state.value.copy(
+            query = "", searchedQuery = null, mode = BrowseMode.DOCUMENTS,
+            openedDocumentId = null, openedTitle = null, openedSource = null,
+            error = null, canRetry = false)
         loadDocuments()
     }
 
-    private fun loadDocuments() {
-        viewModelScope.launch {
-            _state.value = _state.value.copy(loading = true, error = null, openedTitle = null)
-            val result = runCatching {
-                withContext(Dispatchers.IO) { archive.listDocuments() }
+    /** Retry only where the road may mend: a failed request is replayable;
+     *  an absent archive is the installer's to mend, not the reader's. */
+    fun retry() {
+        if (_state.value.canRetry) lastRequest?.invoke()
+    }
+
+    /** Process recreation: the journey's place, the query and the opened
+     *  identity travel through a bundle-like handle and stand again. */
+    fun snapshotTo(handle: MutableMap<String, Any?>) {
+        val s = _state.value
+        handle["query"] = s.query
+        handle["searchedQuery"] = s.searchedQuery
+        handle["mode"] = s.mode.name
+        handle["openedDocumentId"] = s.openedDocumentId
+        handle["openedTitle"] = s.openedTitle
+    }
+
+    fun restoreFrom(handle: Map<String, Any?>) {
+        val modeName = handle["mode"] as? String
+        val mode = runCatching { BrowseMode.valueOf(modeName ?: "DOCUMENTS") }
+            .getOrDefault(BrowseMode.DOCUMENTS)
+        val query = handle["query"] as? String ?: ""
+        val searchedQuery = handle["searchedQuery"] as? String
+        val openedId = handle["openedDocumentId"] as? Long
+        val openedTitle = handle["openedTitle"] as? String
+        generation.incrementAndGet()
+        returnScene = Scene(BrowseMode.DOCUMENTS, "", null, emptyList(), emptyList(), null, null, null)
+        _state.value = BrowseUiState(
+            query = query, searchedQuery = searchedQuery, mode = mode,
+            phase = BrowsePhase.Loading, loading = true)
+        when (mode) {
+            BrowseMode.DOCUMENT -> {
+                if (openedId != null) {
+                    openDocumentInternal(openedId, openedTitle ?: "")
+                } else {
+                    loadDocuments()
+                }
             }
-            _state.value = result.fold(
-                onSuccess = {
-                    _state.value.copy(
-                        loading = false,
-                        documents = it,
-                        passages = emptyList(),
-                        openedTitle = null
-                    )
+            BrowseMode.SEARCH -> {
+                if (searchedQuery != null && searchedQuery.isNotEmpty()) {
+                    onQueryChanged(searchedQuery)
+                    search()
+                } else {
+                    loadDocuments()
+                }
+            }
+            BrowseMode.DOCUMENTS -> loadDocuments()
+        }
+    }
+
+    private fun loadDocuments() {
+        val token = generation.incrementAndGet()
+        _state.value = _state.value.copy(
+            loading = true, phase = BrowsePhase.Loading, error = null, canRetry = false,
+            searchedQuery = if (_state.value.mode == BrowseMode.DOCUMENTS) null else _state.value.searchedQuery,
+            openedDocumentId = null, openedTitle = null, openedSource = null)
+        lastRequest = { loadDocuments() }
+        viewModelScope.launch(dispatcher) {
+            if (generation.get() != token) return@launch
+            val outcome = runCatching {
+                withContext(dispatcher) { reader.listDocuments(null) }
+            }
+            if (generation.get() != token) return@launch
+            outcome.fold(
+                onSuccess = { found ->
+                    when (val verdict = runCatching { reader.status() }
+                              .getOrDefault(ArchiveState.Ready(origin = "assumed", sha256 = ""))) {
+                        is ArchiveState.Ready ->
+                            _state.value = _state.value.copy(
+                                loading = false,
+                                phase = if (found.isEmpty()) BrowsePhase.NoResults else BrowsePhase.Ready,
+                                mode = BrowseMode.DOCUMENTS,
+                                documents = found,
+                                passages = emptyList(),
+                                openedDocumentId = null,
+                                openedTitle = null,
+                                openedSource = null,
+                                error = null,
+                                canRetry = false)
+                        is ArchiveState.Unavailable ->
+                            _state.value = _state.value.copy(
+                                loading = false,
+                                phase = BrowsePhase.Unavailable(verdict.reason, recoverable = false),
+                                documents = emptyList(),
+                                passages = emptyList(),
+                                error = null,
+                                canRetry = false)
+                    }
                 },
-                onFailure = { _state.value.copy(loading = false, error = "Archive unavailable: ${it.message}") }
+                onFailure = { exc -> publishFailure("the archive could not be read", exc) }
             )
         }
+    }
+
+    private fun publishFailure(what: String, exc: Throwable) {
+        // the shown tale is sanitised: the cause's own words never travel
+        // into the UI -- only the kind of the woe is named
+        _state.value = _state.value.copy(
+            loading = false,
+            phase = BrowsePhase.Unavailable(
+                "$what (" + (exc::class.simpleName ?: "unknown") + ")",
+                recoverable = true),
+            documents = emptyList(),
+            passages = emptyList(),
+            openedDocumentId = null,
+            openedTitle = null,
+            openedSource = null,
+            error = what,
+            canRetry = true)
+    }
+
+    private fun stashScene() {
+        val s = _state.value
+        if (s.mode != BrowseMode.DOCUMENT) {
+            returnScene = Scene(s.mode, s.query, s.searchedQuery, s.documents,
+                s.passages, null, null, null)
+        }
+    }
+
+    private fun phaseOf(
+        mode: BrowseMode,
+        passages: List<ArchivePassage>,
+        documents: List<ArchiveDocument>,
+        searchedQuery: String?
+    ): BrowsePhase = when (mode) {
+        BrowseMode.SEARCH ->
+            if (passages.isEmpty() && searchedQuery != null) BrowsePhase.NoResults else BrowsePhase.Ready
+        BrowseMode.DOCUMENTS ->
+            if (documents.isEmpty()) BrowsePhase.NoResults else BrowsePhase.Ready
+        BrowseMode.DOCUMENT -> BrowsePhase.Ready
     }
 }
