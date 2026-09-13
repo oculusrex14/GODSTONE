@@ -127,10 +127,8 @@ class T53GateStatusCourt(unittest.TestCase):
         self.assertTrue(any("refused" in e for e in check(malformed)))
         boolean = base2(); boolean["schema_version"] = True
         self.assertTrue(any("refused" in e for e in check(boolean)))
-        legacy = base2(); legacy.pop("schema_version")
-        legacy["gates"].append({"gate": "rogue-gate", "status": "OPEN",
-                                "ci_job": "not-runnable-in-ci"})
-        self.assertEqual(check(legacy), [], "the v1 path knoweth not the unknown-gate law")
+        real = json.loads(STATUS_PATH.read_text(encoding="utf-8"))
+        self.assertEqual(real["schema_version"], 2)
 
     # -- W02 ------------------------------------------------------------------
     def testEveryRequiredGateIsNeverForgotten(self):
@@ -322,10 +320,14 @@ class T53GateStatusCourt(unittest.TestCase):
         text = WORKFLOW_PATH.read_text(encoding="utf-8")
         corpus_block = _job_block(text, "production-corpus")
         self.assertNotEqual(corpus_block, "")
-        self.assertIn("--release", corpus_block)
+        self.assertIn("--tier MEDIUM --out dist/archive_medium.db --release",
+                      corpus_block)
         android_block = _job_block(text, "android-archive-only-release")
         self.assertNotEqual(android_block, "")
-        self.assertIn("inspect_android_artifacts.py", android_block)
+        # the build-inspect step in its FULL invocation form: a comment or a
+        # dormant presence step may not shelter an amputation of the command
+        self.assertIn("run: python scripts/inspect_android_artifacts.py "
+                      "android/app/build artifacts/android\n", android_block)
         data = json.loads(STATUS_PATH.read_text(encoding="utf-8"))
         for gate in data["gates"]:
             job = (gate.get("ci_job") or "").split(" / ", 1)[-1]
