@@ -766,6 +766,20 @@ class ReadinessT40Test {
             Assert.assertEquals("the want queue holds the one missing id", 1, relA.wantQueue.size)
             Assert.assertArrayEquals("waiting for the exact id", foreign, relA.wantQueue[0])
 
+            // A must not advertise what it does not hold: the digest the owner
+            // builds now speaks over A's own captured vector only -- were it
+            // built from the seen-but-unheld union (the queue below holds the
+            // very foreign id), the filter bits would differ from the vector's
+            // own bloom and the card's first negative stands condemned
+            val aAdvert = ownerA.buildDigestFrame()
+            Assert.assertNotNull("A can advertise its own store", aAdvert)
+            val aVector = authA.currentSnapshotOrNull()
+            Assert.assertNotNull("the vector stands captured", aVector)
+            val honest = BloomDigest()
+            for (vid in aVector!!.ids) honest.add(vid)
+            Assert.assertArrayEquals("the advertisement is the captured vector's own bloom", honest.toBytes(), aAdvert!!.second.bloom)
+            Assert.assertEquals("one id waits in the queue", 1, relA.wantQueue.size)
+
             // A pumps the want (the drain runs even when the page walk is done); B answers from the store
             val wantFrames = ownerA.pumpNextInventoryFrames(peerB).filter { it.type == TypeV2.WANT }
             Assert.assertEquals("one want frame", 1, wantFrames.size)
@@ -780,6 +794,7 @@ class ReadinessT40Test {
             Assert.assertEquals("bytes as stored, verbatim", 24, answers[0].payload.size)
 
             // A converges: the once-suppressed id is now durably A's own
+            tA += 30_001
             val before = storeA.allHeldMsgIds().size
             storeA.persist(answers[0], peerB)
             val after = storeA.allHeldMsgIds().size

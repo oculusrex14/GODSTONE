@@ -976,6 +976,18 @@ final class ReadinessT40Tests: XCTestCase {
         XCTAssertEqual(relA.wantQueue.count, 1, "the want queue holds the one missing id")
         XCTAssertEqual(relA.wantQueue[0], foreign, "waiting for the exact id")
 
+        // A must not advertise what it does not hold: the digest the owner
+        // builds now speaks over A's own captured vector only -- were it built
+        // from the seen-but-unheld union (the queue below holds the very
+        // foreign id), the filter bits would differ from the vector's own
+        // bloom and the card's first negative stands condemned
+        guard let aAdvert = ownerA.buildDigestFrame() else { XCTFail("A can advertise its own store"); return }
+        guard let aVector = authA.currentSnapshotOrNull() else { XCTFail("the vector stands captured"); return }
+        let honest = BloomDigest()
+        for vid in aVector.ids { honest.add(vid) }
+        XCTAssertEqual(aAdvert.payload.bloom, honest.toBytes(), "the advertisement is the captured vector's own bloom")
+        XCTAssertEqual(relA.wantQueue.count, 1, "one id waits in the queue")
+
         // A pumps the want (the drain runs even when the page walk is closed); B answers from the store
         let wantFrames = ownerA.pumpNextInventoryFrames(peerB).filter { $0.type == .want }
         XCTAssertEqual(wantFrames.count, 1, "one want frame")
@@ -993,6 +1005,7 @@ final class ReadinessT40Tests: XCTestCase {
         XCTAssertEqual(answers[0].payload.count, 24, "bytes as stored, verbatim")
 
         // A converges: the once-suppressed id is now durably A's own
+        tA += 30_001
         let before = storeA.allHeldMsgIds().count
         _ = storeA.persist(answers[0], receivedFrom: peerB)
         let after = storeA.allHeldMsgIds().count
