@@ -45,9 +45,10 @@ import yaml
 
 from .chunker import Chunk, chunk_document
 from .embedder import Embedder
+from content.release_gate import validate_release_corpus
 from content.release_gate import (
     ReleaseGateError, TrustPolicyError, TrustedReviewerKeySet,
-    assert_independent_store, set_digest, validate_release_corpus,
+    assert_independent_store, set_digest,
     verify_chunk_approvals, yaml_load_strict)
 
 SCHEMA_VERSION = 3
