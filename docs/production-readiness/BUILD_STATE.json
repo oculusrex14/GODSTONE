@@ -8825,7 +8825,16 @@
     "SIGNING"
   ],
   "failed_attempts": [],
-  "in_progress": null,
+  "in_progress": {
+    "claimed_head": "9c97cb0711ce535293c02a5c82e05957b0173ecc",
+    "claimed_utc": "2026-09-13T15:34:33+00:00",
+    "objective": {
+      "claimed_head": "9c97cb0711ce535293c02a5c82e05957b0173ecc",
+      "claimed_utc": "2026-09-13T15:34:33+00:00",
+      "objective": "Require exact approved Archive bytes inside APK/AAB/IPA: extend inspectors to distinguish source-only exclusion evidence from release-candidate content presence."
+    },
+    "task": "T52"
+  },
   "last_code_head": "c38ce9455619346e26b58f8ae0db2167cc2c4604",
   "last_observed_head": "c38ce9455619346e26b58f8ae0db2167cc2c4604",
   "latest_verification": {
