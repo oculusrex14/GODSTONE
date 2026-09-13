@@ -7303,7 +7303,15 @@
     "SIGNING"
   ],
   "failed_attempts": [],
-  "in_progress": null,
+  "in_progress": {
+    "claimed_head": "72f6bec6acf15add9b6901ac1d99750ab9d9b114",
+    "claimed_utc": "2026-09-13T08:33:25+00:00",
+    "objective": {
+      "claimed_head": "72f6bec6acf15add9b6901ac1d99750ab9d9b114",
+      "claimed_utc": "2026-09-13T08:33:25+00:00",
+      "objective": "Review/port WIP actor repository and ArchiveReaderModel."
+    }
+  },
   "last_code_head": "b85fb760f4aeecef08e54196067e013760ceaf6f",
   "last_observed_head": "b85fb760f4aeecef08e54196067e013760ceaf6f",
   "latest_verification": {
