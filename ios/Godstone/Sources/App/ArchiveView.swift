@@ -16,7 +16,10 @@ struct ArchiveView: View {
                     emptyState(
                         icon: "externaldrive.badge.exclamationmark",
                         title: "Archive unavailable",
-                        detail: "The tier database is missing or could not be opened read-only."
+                        // T48 (s17): the typed verdict speaks verbatim. Missing,
+                        // corrupt, incompatible and read-failure each tell their own
+                        // tale; "No matches" stays reserved for the honest empty.
+                        detail: container.archive.availability.reasonForDisplay
                     )
                 } else if documents.isEmpty && passages.isEmpty {
                     emptyState(

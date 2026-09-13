@@ -10,6 +10,8 @@ final class AppContainer: ObservableObject {
 
     init() {
         tier = Tier.current
-        archive = ArchiveRepository(databaseName: tier.archiveDatabaseName)
+        // T48 (s17): the pairing is sealed at the composition root -- the
+        // repository will refuse the file that is not its tier's own.
+        archive = ArchiveRepository(databaseName: tier.archiveDatabaseName, expectedTier: tier)
     }
 }

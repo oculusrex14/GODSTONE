@@ -42,88 +42,116 @@ public struct ArchivePassage: Identifiable, Sendable, Hashable {
 ///
 /// Browsing and FTS5 search never load llama.cpp or an embedding model. This is
 /// the system's last surviving capability when inference and every radio fail.
+///
+/// T48 (s17): an opened file is NOT a usable archive, and an empty list is NOT
+/// an error. The open performeth a full validation and the verdict is carried
+/// in `availability`; every checked query face saith which of the woes it met,
+/// where the old road returned []. The array-returning faces below are kept
+/// for the sealed call sites (AppContainer's browse, the RAG retriever) and are
+/// documented shims that collapse failures to [] exactly as before -- the lie
+/// is preserved for them, not extended to the new road.
 public final class ArchiveRepository: @unchecked Sendable {
-    private var handle: OpaquePointer?
+    private let handle: OpaquePointer?
     private let lock = NSLock()
+    private var closed = false
 
-    public init(databaseName: String) {
-        handle = Self.openReadOnly(databaseName: databaseName)
-        if let db = handle {
-            sqlite3_exec(db, "PRAGMA query_only = ON", nil, nil, nil)
-            sqlite3_exec(db, "PRAGMA mmap_size = 268435456", nil, nil, nil)
-        }
+    /// The open-time verdict. A repository that is not `.ready` refuseth
+    /// service and nameth its cause; it never serveth the empty lie.
+    public let availability: ArchiveAvailability
+
+    /// The schema this build understandeth, as archive_meta records it.
+    public static let schemaVersion = "3"
+    /// Tables the read road cannot walk without.
+    public static let requiredTables = ["documents", "chunks", "chunks_fts", "archive_meta"]
+
+    public init(databaseName: String, expectedTier: Tier? = nil) {
+        let opened = Self.openAndValidate(databaseName: databaseName, expectedTier: expectedTier)
+        self.handle = opened.handle
+        self.availability = opened.availability
     }
 
     deinit {
+        // The one close of the hand that opened, guarded against the explicit
+        // close() so a released repository is never closed twice.
+        if !closed, let db = handle { sqlite3_close_v2(db) }
+    }
+
+    /// Release the native handle now, not whenever the pool fancy of ARC
+    /// decideth. Idempotent; after a close the checked faces refuse service
+    /// (as they do for any unready road) and the bytes on disk abide whole.
+    public func close() {
+        lock.lock(); defer { lock.unlock() }
+        guard !closed else { return }
         if let db = handle { sqlite3_close_v2(db) }
+        closed = true
     }
 
-    public var isAvailable: Bool { handle != nil }
+    public var isAvailable: Bool { availability.isReady }
 
-    public func listDocuments(domain: String? = nil) -> [ArchiveDocument] {
-        withDatabase { db in
-            var sql = "SELECT document_id, title, domain, is_critical FROM documents"
-            if domain != nil { sql += " WHERE domain = ?" }
-            sql += " ORDER BY is_critical DESC, domain, title"
-            var stmt: OpaquePointer?
-            guard sqlite3_prepare_v2(db, sql, -1, &stmt, nil) == SQLITE_OK else {
-                sqlite3_finalize(stmt); return []
-            }
-            defer { sqlite3_finalize(stmt) }
-            if let domain {
-                domain.withCString { sqlite3_bind_text(stmt, 1, $0, -1, sqliteTransient) }
-            }
-            var out: [ArchiveDocument] = []
-            while sqlite3_step(stmt) == SQLITE_ROW {
-                out.append(ArchiveDocument(
-                    id: sqlite3_column_int64(stmt, 0),
-                    title: columnString(stmt, 1),
-                    domain: columnString(stmt, 2),
-                    isCritical: sqlite3_column_int(stmt, 3) != 0
-                ))
-            }
-            return out
-        } ?? []
+    /// The provenance line of a ready archive; the verdict's own tale otherwise.
+    public var originDescription: String {
+        switch availability {
+        case .ready(let origin): return origin
+        default: return availability.reasonForDisplay
+        }
     }
 
-    public func listDomains() -> [String] {
-        withDatabase { db in
-            var stmt: OpaquePointer?
-            guard sqlite3_prepare_v2(db,
-                    "SELECT DISTINCT domain FROM documents ORDER BY domain",
-                    -1, &stmt, nil) == SQLITE_OK else {
-                sqlite3_finalize(stmt); return []
+    // MARK: - checked faces (the T48 road: failures are told, not swallowed)
+
+    public func listDocumentsChecked(domain: String? = nil) throws -> [ArchiveDocument] {
+        var sql = "SELECT document_id, title, domain, is_critical FROM documents"
+        if domain != nil { sql += " WHERE domain = ?" }
+        sql += " ORDER BY is_critical DESC, domain, title"
+        let filter = domain
+        return try run(sql, binds: filter.map { d in
+            { stmt in
+                d.withCString { ptr in
+                    _ = sqlite3_bind_text(stmt, 1, ptr, -1, sqliteTransient)
+                }
             }
-            defer { sqlite3_finalize(stmt) }
-            var out: [String] = []
-            while sqlite3_step(stmt) == SQLITE_ROW { out.append(columnString(stmt, 0)) }
-            return out
-        } ?? []
+        }) { stmt in
+            ArchiveDocument(
+                id: sqlite3_column_int64(stmt, 0),
+                title: columnString(stmt, 1),
+                domain: columnString(stmt, 2),
+                isCritical: sqlite3_column_int(stmt, 3) != 0
+            )
+        }
     }
 
-    public func passages(documentId: Int64) -> [ArchivePassage] {
-        withDatabase { db in
-            let sql = """
-                SELECT c.chunk_id, c.document_id, d.title, d.domain, c.section, c.text
-                FROM chunks c JOIN documents d ON d.document_id = c.document_id
-                WHERE c.document_id = ? ORDER BY c.ordinal
-                """
-            var stmt: OpaquePointer?
-            guard sqlite3_prepare_v2(db, sql, -1, &stmt, nil) == SQLITE_OK else {
-                sqlite3_finalize(stmt); return []
-            }
-            defer { sqlite3_finalize(stmt) }
-            sqlite3_bind_int64(stmt, 1, documentId)
-            var out: [ArchivePassage] = []
-            while sqlite3_step(stmt) == SQLITE_ROW { out.append(passage(stmt)) }
-            return out
-        } ?? []
+    public func listDomainsChecked() throws -> [String] {
+        try run("SELECT DISTINCT domain FROM documents ORDER BY domain") { stmt in
+            columnString(stmt, 0)
+        }
     }
 
-    public func search(_ query: String, limit: Int = 40) -> [ArchivePassage] {
-        let fts = sanitiseFts(query)
-        guard !fts.isEmpty else { return [] }
-        return withDatabase { db in
+    public func documentTitlesChecked(criticalOnly: Bool = false) throws -> [String] {
+        let sql = "SELECT title FROM documents"
+            + (criticalOnly ? " WHERE is_critical = 1" : "")
+            + " ORDER BY is_critical DESC, domain, title"
+        return try run(sql) { stmt in columnString(stmt, 0) }
+    }
+
+    public func passagesChecked(documentId: Int64) throws -> [ArchivePassage] {
+        let sql = """
+            SELECT c.chunk_id, c.document_id, d.title, d.domain, c.section, c.text
+            FROM chunks c JOIN documents d ON d.document_id = c.document_id
+            WHERE c.document_id = ? ORDER BY c.ordinal
+            """
+        return try run(sql, binds: { stmt in sqlite3_bind_int64(stmt, 1, documentId) }) { stmt in
+            passage(stmt)
+        }
+    }
+
+    /// The bounded, quarantined search. A refused or empty build matcheth
+    /// nothing and crieth nothing: it returneth [] without approaching the
+    /// index. A genuine SQL woe raiseth ArchiveError.queryFailed naming the
+    /// errno and the errmsg -- never the silent empty list of the old road.
+    public func searchChecked(_ query: String, limit: Int = 40) throws -> [ArchivePassage] {
+        switch ArchiveSearchQuery.build(query) {
+        case .empty, .refused:
+            return []
+        case .ready(let match, _):
             let sql = """
                 SELECT c.chunk_id, c.document_id, d.title, d.domain, c.section, c.text,
                        bm25(chunks_fts) AS rank
@@ -132,22 +160,47 @@ public final class ArchiveRepository: @unchecked Sendable {
                 JOIN documents d ON d.document_id = c.document_id
                 WHERE chunks_fts MATCH ? ORDER BY rank LIMIT ?
                 """
-            var stmt: OpaquePointer?
-            guard sqlite3_prepare_v2(db, sql, -1, &stmt, nil) == SQLITE_OK else {
-                sqlite3_finalize(stmt); return []
+            let bound = Int64(ArchiveSearchQuery.bound(limit))
+            return try run(sql, binds: { stmt in
+                match.withCString { sqlite3_bind_text(stmt, 1, $0, -1, sqliteTransient) }
+                sqlite3_bind_int64(stmt, 2, bound)
+            }) { stmt in
+                passage(stmt, score: -sqlite3_column_double(stmt, 6))
             }
-            defer { sqlite3_finalize(stmt) }
-            fts.withCString { sqlite3_bind_text(stmt, 1, $0, -1, sqliteTransient) }
-            sqlite3_bind_int64(stmt, 2, Int64(limit))
-            var out: [ArchivePassage] = []
-            while sqlite3_step(stmt) == SQLITE_ROW {
-                out.append(passage(stmt, score: -sqlite3_column_double(stmt, 6)))
-            }
-            return out
-        } ?? []
+        }
     }
 
-    // MARK: - RAG-facing operations
+    /// The integrity of the opened archive, in the engine's own words.
+    public func integrityReport() throws -> String {
+        try run("PRAGMA integrity_check") { stmt in columnString(stmt, 0) }
+            .first ?? "no answer"
+    }
+
+    /// The version of the very stock the handle walketh upon.
+    public func versionString() throws -> String {
+        try run("SELECT sqlite_version()") { stmt in columnString(stmt, 0) }
+            .first ?? (String(cString: sqlite3_libversion()) ?? "unknown")
+    }
+
+    // MARK: - compat shims (sealed call sites; the old collapse preserved verbatim)
+
+    public func listDocuments(domain: String? = nil) -> [ArchiveDocument] {
+        (try? listDocumentsChecked(domain: domain)) ?? []
+    }
+
+    public func listDomains() -> [String] {
+        (try? listDomainsChecked()) ?? []
+    }
+
+    public func passages(documentId: Int64) -> [ArchivePassage] {
+        (try? passagesChecked(documentId: documentId)) ?? []
+    }
+
+    public func search(_ query: String, limit: Int = 40) -> [ArchivePassage] {
+        (try? searchChecked(query, limit: limit)) ?? []
+    }
+
+    // MARK: - RAG-facing operations (unchanged road; internal to the isle)
 
     func searchLexical(_ query: String, limit: Int) -> [RetrievedChunk] {
         search(query, limit: limit).map {
@@ -248,6 +301,40 @@ public final class ArchiveRepository: @unchecked Sendable {
         return denom == 0 ? 0 : dot / denom
     }
 
+    // MARK: - the one true runner (single finalize; step AND finalize watched)
+
+    /// Prepare, bind, step, finalize -- exactly once each. The step rc is
+    /// kept, the finalize rc is kept: the probe of the host stock proved the
+    /// error of a refused write walketh out through the FINALIZE return, not
+    /// the step, so both must be watched or the woe goeth untold.
+    private func run<T>(_ sql: String,
+                        binds: ((OpaquePointer?) -> Void)? = nil,
+                        row: (OpaquePointer?) -> T?) throws -> [T] {
+        guard availability.isReady, !closed, let db = handle else { throw availability.asArchiveError() }
+        lock.lock(); defer { lock.unlock() }
+        var stmt: OpaquePointer?
+        guard sqlite3_prepare_v2(db, sql, -1, &stmt, nil) == SQLITE_OK else {
+            let why = Self.describe(db)
+            sqlite3_finalize(stmt)
+            throw ArchiveError.queryFailed("\(why) [prepare \(Self.ellipsis(sql))]")
+        }
+        binds?(stmt)
+        var out: [T] = []
+        var step = sqlite3_step(stmt)
+        while step == SQLITE_ROW {
+            if let value = row(stmt) { out.append(value) }
+            step = sqlite3_step(stmt)
+        }
+        let fin = sqlite3_finalize(stmt)
+        if step != SQLITE_DONE {
+            throw ArchiveError.queryFailed("\(Self.describe(db)) [step \(step) \(Self.ellipsis(sql))]")
+        }
+        if fin != SQLITE_OK {
+            throw ArchiveError.queryFailed("\(Self.describe(db)) [finalize \(fin) \(Self.ellipsis(sql))]")
+        }
+        return out
+    }
+
     private func withDatabase<T>(_ body: (OpaquePointer) -> T) -> T? {
         lock.lock(); defer { lock.unlock() }
         guard let db = handle else { return nil }
@@ -271,22 +358,146 @@ public final class ArchiveRepository: @unchecked Sendable {
         return String(cString: value)
     }
 
-    private func sanitiseFts(_ value: String) -> String {
-        let stripped = value.map { "\"*():^-".contains($0) ? " " : String($0) }.joined()
-        return stripped.split(whereSeparator: { $0.isWhitespace })
-            .filter { !$0.isEmpty }
-            .map { "\"\($0)\"" }
-            .joined(separator: " OR ")
-    }
+    // MARK: - the open that dareth not speak its name falsely
 
-    private static func openReadOnly(databaseName: String) -> OpaquePointer? {
-        guard let path = resolveDatabasePath(databaseName: databaseName) else { return nil }
+    private static func openAndValidate(databaseName: String,
+                                        expectedTier: Tier?) -> (handle: OpaquePointer?,
+                                                                  availability: ArchiveAvailability) {
+        func refuse(_ db: OpaquePointer?, _ why: ArchiveAvailability) -> (OpaquePointer?, ArchiveAvailability) {
+            if let db { sqlite3_close_v2(db) }
+            return (nil, why)
+        }
+        guard let path = resolveDatabasePath(databaseName: databaseName) else {
+            return refuse(nil, .missing("no archive named \(databaseName) was found in the bundle nor in the application-support archives directory"))
+        }
         var db: OpaquePointer?
         let flags = SQLITE_OPEN_READONLY | SQLITE_OPEN_FULLMUTEX
         guard sqlite3_open_v2(path, &db, flags, nil) == SQLITE_OK else {
-            sqlite3_close_v2(db); return nil
+            let why = db.map { String(cString: sqlite3_errmsg($0)) ?? "?" } ?? "open refused"
+            return refuse(db, .corrupt("the file at \(path) could not be opened read-only: \(why)"))
         }
-        return db
+        guard let handle = db else {
+            return refuse(nil, .readFailure("the open answered with a null handle"))
+        }
+        // The seals of the read-only road. Both must answer, or the way is
+        // blocked and no claim of soundness may be made.
+        for pragma in ["PRAGMA query_only = ON", "PRAGMA mmap_size = 268435456"] {
+            let rc = sqlite3_exec(handle, pragma, nil, nil, nil)
+            if rc != SQLITE_OK {
+                let why = String(cString: sqlite3_errmsg(handle)) ?? "rc \(rc)"
+                return refuse(handle, .readFailure("the seal \(pragma) would not seat: \(why)"))
+            }
+        }
+        // The required tables.
+        for name in requiredTables {
+            if !hasTable(handle, name) {
+                return refuse(handle, .incompatible(ArchiveError.noSuchTable(name).localizedDescription))
+            }
+        }
+        // The schema covenant.
+        let schema = scalarOne(handle, "SELECT value FROM archive_meta WHERE key = 'schema_version'")
+        guard let schema else {
+            return refuse(handle, .incompatible(ArchiveError.schemaVersion(
+                "archive_meta beareth no schema_version key").localizedDescription))
+        }
+        guard schema == schemaVersion else {
+            return refuse(handle, .incompatible(ArchiveError.schemaVersion(
+                "found \(schema); this build understandeth \(schemaVersion)").localizedDescription))
+        }
+        // The tier pairing: the file named must be the file the tier owns.
+        if let expectedTier, databaseName != expectedTier.archiveDatabaseName {
+            return refuse(handle, .incompatible(
+                "the file \(databaseName) is not the database of tier "
+                + "\(String(describing: expectedTier)) (\(expectedTier.archiveDatabaseName) was named)"))
+        }
+        // The counts: a husk with no rows is a corrupt archive, whatever
+        // well-shaped tables it carrieth.
+        if countScalar(handle, "SELECT COUNT(*) FROM documents") == 0 {
+            return refuse(handle, .corrupt("the archive holdeth no documents"))
+        }
+        if countScalar(handle, "SELECT COUNT(*) FROM chunks") == 0 {
+            return refuse(handle, .corrupt("the archive holdeth no chunks"))
+        }
+        // The engine's own cry.
+        let report = scalarOne(handle, "PRAGMA integrity_check") ?? "no answer"
+        if report != "ok" {
+            return refuse(handle, .corrupt(ArchiveError.integrity(report).localizedDescription))
+        }
+        // The FTS5 canary, sung on a fresh :memory: road of the very same
+        // stock -- an honest probe need not defile the thing it proveth.
+        if let fault = ftsCanaryFault() {
+            return refuse(handle, .incompatible(ArchiveError.ftsUnavailable(fault).localizedDescription))
+        }
+        let stock = String(cString: sqlite3_libversion()) ?? "unknown"
+        return (handle, .ready(origin: "file \(path) | sqlite \(stock) | read-only"))
+    }
+
+    private static func hasTable(_ db: OpaquePointer, _ name: String) -> Bool {
+        scalarOne(db, "SELECT name FROM sqlite_master WHERE type IN ('table','view') AND name = ?",
+                  bind: name) != nil
+    }
+
+    private static func scalarOne(_ db: OpaquePointer, _ sql: String, bind: String? = nil) -> String? {
+        var stmt: OpaquePointer?
+        guard sqlite3_prepare_v2(db, sql, -1, &stmt, nil) == SQLITE_OK else {
+            sqlite3_finalize(stmt); return nil
+        }
+        if let bind { bind.withCString { sqlite3_bind_text(stmt, 1, $0, -1, sqliteTransient) } }
+        var out: String?
+        if sqlite3_step(stmt) == SQLITE_ROW, let value = sqlite3_column_text(stmt, 0) {
+            out = String(cString: value)
+        }
+        sqlite3_finalize(stmt)
+        return out
+    }
+
+    private static func countScalar(_ db: OpaquePointer, _ sql: String) -> Int {
+        scalarOne(db, sql).flatMap { Int($0) } ?? -1
+    }
+
+    /// The canary singeth the frozen tokenizer string verbatim, as the
+    /// builder writeth it into content/db/schema.sql.
+    private static func ftsCanaryFault() -> String? {
+        var mem: OpaquePointer?
+        guard sqlite3_open_v2(":memory:", &mem, SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE, nil) == SQLITE_OK else {
+            return "the :memory: road could not be opened"
+        }
+        defer { if let mem { sqlite3_close_v2(mem) } }
+        guard let mem else { return "the :memory: road answered with a null handle" }
+        let verses = [
+            "CREATE VIRTUAL TABLE t48_canary USING fts5(body, tokenize=\"porter unicode61 remove_diacritics 2\", prefix=\"2 3 4\")",
+            "INSERT INTO t48_canary VALUES('generated generators generate electricity')",
+        ]
+        for verse in verses {
+            if sqlite3_exec(mem, verse, nil, nil, nil) != SQLITE_OK {
+                let why = String(cString: sqlite3_errmsg(mem)) ?? "?"
+                return "\(ellipsis(verse)) cried: \(why)"
+            }
+        }
+        var stmt: OpaquePointer?
+        guard sqlite3_prepare_v2(mem, "SELECT rowid FROM t48_canary WHERE t48_canary MATCH 'generate'",
+                                 -1, &stmt, nil) == SQLITE_OK else {
+            let why = String(cString: sqlite3_errmsg(mem)) ?? "?"
+            sqlite3_finalize(stmt)
+            return "the stem match would not prepare: \(why)"
+        }
+        let sang = sqlite3_step(stmt) == SQLITE_ROW
+        let fin = sqlite3_finalize(stmt)
+        if sang == false || fin != SQLITE_OK {
+            return "the stem match 'generate' found nobody"
+        }
+        return nil
+    }
+
+    private static func describe(_ db: OpaquePointer?) -> String {
+        guard let db else { return "no handle" }
+        let code = sqlite3_errcode(db)
+        let msg = String(cString: sqlite3_errmsg(db)) ?? "?"
+        return "errno \(code) errmsg \(msg)"
+    }
+
+    private static func ellipsis(_ text: String) -> String {
+        text.count > 64 ? String(text.prefix(64)) + "..." : text
     }
 
     private static func resolveDatabasePath(databaseName: String) -> String? {

@@ -1,7 +1,9 @@
 {
   "files": {
     "Package.swift": "a2946020fe2eba176b451d29438c8028535c392b711cd855471cd7f3a91f913c",
-    "Sources/GodstoneCore/ArchiveRepository.swift": "222b4116875f19d05321cfbf9afb42dc382812fa80e0ad8f9b0d81db6d941e7e",
+    "Sources/GodstoneCore/ArchiveAvailability.swift": "550fea196a8d50ab11b20e47d9a4cb34536060dc1bdaf562e5353e683cb79b85",
+    "Sources/GodstoneCore/ArchiveReaderModel.swift": "018580f79d491a6f27a2a660da976d10ebc261983e6eebe2808c92cd50d02f3e",
+    "Sources/GodstoneCore/ArchiveRepository.swift": "2a3dc4262ac275f7e721061cbec05ae1213b23308947fa4f9dee59d8bbcd037d",
     "Sources/GodstoneCore/Bip39.swift": "257bb27f26f19d2410a0e5f13a258b031d75bdc8e647c05205fb0060ea5a87a4",
     "Sources/GodstoneCore/Blake2s.swift": "45f06f51b8bbed97787d56b834df5ebb2730e140c9e4723dfe0da6cc993febcc",
     "Sources/GodstoneCore/BloomDigest.swift": "efb3505b4f84a23183b15c6682ae3810c2369b572b06525c9d57c1dc8f517e85",
