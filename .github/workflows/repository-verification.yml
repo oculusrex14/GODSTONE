@@ -11,6 +11,7 @@ on:
     branches:
       - main
       - 'remediation/**'
+      - 'codex/**'
   pull_request:
 
 permissions:
@@ -89,7 +90,7 @@ jobs:
           python-version: '3.12'
       - name: provenance (start -- clean checkout)
         run: python ci/provenance.py --out provenance-start.json
-      - run: pip install -r content/requirements.txt
+      - run: pip install -r content/requirements-dev.txt
       - name: build archive for the gate (no embeddings -- repo-owned)
         run: |
           python -m content.ingest.build_archive \
@@ -195,7 +196,7 @@ jobs:
       - name: provenance (start -- clean checkout)
         run: python ci/provenance.py --out provenance-start.json
       - name: install
-        run: pip install -r content/requirements.txt
+        run: pip install -r content/requirements-dev.txt
       - name: build a LIGHT archive without embeddings
         run: |
           python -m content.ingest.build_archive \
@@ -314,12 +315,22 @@ jobs:
         working-directory: android
         run: |
           ./gradlew \
-            :core:assembleDebug \
+            :core:assembleDebug :core:testDebugUnitTest \
             :mesh:testDebugUnitTest \
             :llm:testDebugUnitTest \
             :app:compileLightDebugKotlin \
-            :app:testLightDebugUnitTest --tests '*OracleViewModelTest*' \
+            :app:testLightDebugUnitTest \
             --no-daemon
+      - name: build a usable debug Archive with a harmless development fixture
+        run: |
+          python ci/archive_fixture.py --out android/app/src/lightDebug/assets/archive_light.db
+          cd android
+          ./gradlew :app:assembleLightDebug --no-daemon
+      - name: prove the selected Archive bytes reached the APK
+        run: |
+          python scripts/inspect_android_artifacts.py --selftest
+          python scripts/inspect_android_artifacts.py android/app/build/outputs/apk artifacts/android-debug \
+            --expected-archive android/app/src/lightDebug/assets/archive_light.db
       - name: verify merged manifest has no INTERNET permission
         run: |
           manifest=$(find android -name AndroidManifest.xml -path '*merged*' | head -1)

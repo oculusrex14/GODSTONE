@@ -1,26 +1,4 @@
-# Lightweight tooling requirements for the GODSTONE content pipeline.
-#
-# Everything here is pure-Python wheel material: the build, its validation,
-# the signed-manifest leg, the staging verification and the whole unittest
-# suite run on these alone. The production posture of section 16 --
-# `--release --no-embed` for an approved LIGHT archive -- needs nothing
-# else. A build that cannot import llama-cpp must still produce, validate
-# and publish a byte-deterministic lexical archive; the readiness court
-# ReadinessT45Tests watches that absence as a positive witness.
-#
-# Install into a venv:
-#     python -m venv .venv && . .venv/bin/activate
-#     pip install -r content/requirements-dev.txt
-#     python -m unittest discover -s content/tests -v
-#
-# The OPTIONAL embedding/native legs -- the llama-cpp binding that produces
-# int8 vectors for the future embedded MEDIUM/LARGE profiles, and numpy for
-# the offline retrieval evaluation in tab 12 -- are declared in
-# content/requirements.txt, which keeps the full historical pin record
-# undisturbed: "a build that cannot be reproduced in five years is not an
-# offline archive, it is a rumour". Do not thin that file and do not fatten
-# this one: the split is the contract.
+# Repository verification and lexical Archive builds need no native/model stack.
+# Keep these versions aligned with content/requirements.txt.
 PyYAML==6.0.2
-markdown-it-py==3.0.0
-textstat==0.7.4
 cryptography==50.0.0

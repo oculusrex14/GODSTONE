@@ -203,6 +203,28 @@ jobs:
       # A3: inspect the REAL APK and AAB (not just the static scanner).
       - name: inspect release artifacts (no cross-tier / model / mesh / :llm contamination)
         run: python scripts/inspect_android_artifacts.py android/app/build artifacts/android
+      # T52: the step above is EXCLUSION evidence only -- it would pass an app that
+      # contains no usable archive at all. The guarded step below is the PRESENCE
+      # form: when (and only when) the production content gates have staged real
+      # approved bytes, it requireth exactly those bytes -- singular, byte-true,
+      # integrity-checked, counts sworn, FTS-answering, engine-resolved -- in every
+      # artifact, and prohibiteth fixtures packaged as production. While
+      # A06/APPROVED_CONTENT stand OPEN nothing is staged: the step recordeth
+      # dormancy and exiteth 0, never a false closure.
+      - name: prove the approved Archive bytes inside the release artifacts (guarded presence form)
+        run: |
+          approved="artifacts/approved/archive_light.db"
+          manifest="artifacts/approved/APPROVED_ASSETS.json"
+          if [ ! -f "$approved" ] || [ ! -f "$manifest" ]; then
+            echo "no approved Archive staged (external content gates stand OPEN); exclusion-only evidence recorded above"
+            exit 0
+          fi
+          python scripts/inspect_android_artifacts.py android/app/build artifacts/android-presence \
+            --expected-archive "$approved" --approved-manifest "$manifest" --release-candidate
+          mkdir -p artifacts/android/presence
+          cp artifacts/android-presence/artifact-inventory.json \
+             artifacts/android-presence/approved-archive-presence.json \
+             artifacts/android/presence/
       - name: record artifact namelists, merged manifest, and checksums
         run: |
           set -e
