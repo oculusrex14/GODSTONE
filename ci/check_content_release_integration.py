@@ -80,6 +80,67 @@ def main() -> int:
             print(f"repository-verification is not wired for the debug presence proof ({face})")
             return 1
     print("the debug lane feédeth a labelled fixture and proveth the bytes arrived")
+
+    # T77: the UPDATE is transactional and the previous authoritative bytes stay
+    # available. Three faces are the contract: the staging gate carrieth the
+    # retention record and refuses a half pair; the recovery authority carrieth
+    # the compatibility matrix and the journal; and a repo-owned lane runneth
+    # the rehearsal, so an amputation of any of them is refused by name rather
+    # than discovered at a release.
+    t77_staging_faces = (
+        "RETENTION.json",
+        "half pair is never retained",
+        "PUBLISH_BOUNDARIES",
+        "def publish_verified(",
+        "--retain-previous",
+    )
+    staging_absent = [face for face in t77_staging_faces if face not in staging]
+    if staging_absent:
+        print("the staging gate lost its transactional-update faces: " +
+              ", ".join(staging_absent))
+        return 1
+    print(f"the staging gate keepeth {len(t77_staging_faces) - len(staging_absent)} of "
+          f"{len(t77_staging_faces)} transactional-update faces")
+
+    recovery = ROOT / "scripts" / "upgrade_recovery.py"
+    if not recovery.is_file():
+        print("scripts/upgrade_recovery.py missing: the update has no recovery authority")
+        return 1
+    recovery_faces = (
+        "class RollbackCompatibilityMatrix",
+        "class UpgradeCase",
+        "class RecoveryResult",
+        "RollbackCompatibilityMatrix(",
+        "SHIPPED_MATRIX = RollbackCompatibilityMatrix(",
+        "unsupported archive schema",
+        "unknown future schema",
+        "unsupported downgrade",
+        "never recreated empty",
+        "def estate_record_dir(",
+        "def recovery_instructions(",
+        "DEVICE_CLAIM",
+        "class Journal",
+        "def resume(",
+        "def rollback(",
+        "def wipe(",
+        "from content.ingest.build_archive import SCHEMA_VERSION as ARCHIVE_SCHEMA_VERSION",
+    )
+    body = recovery.read_text(encoding="utf-8")
+    recovery_absent = [face for face in recovery_faces if face not in body]
+    if recovery_absent:
+        print("the recovery authority lost its faces: " + ", ".join(recovery_absent))
+        return 1
+    print(f"the recovery authority keepeth {len(recovery_faces) - len(recovery_absent)} of "
+          f"{len(recovery_faces)} faces")
+
+    lane_faces = ("python3 scripts/upgrade_recovery.py --selftest",
+                  "scripts/upgrade_recovery.py rehearse", "test_t77.py")
+    lane_absent = [face for face in lane_faces if face not in verification]
+    if lane_absent:
+        print("repository-verification is not wired for the recovery lane: " +
+              ", ".join(lane_absent))
+        return 1
+    print("repository-verification runneth the recovery selftest, the rehearsal and the court")
     return 0
 
 if __name__ == "__main__":

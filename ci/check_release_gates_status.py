@@ -304,6 +304,116 @@ def _workflow_job_block(text: str, job: str) -> str:
     return rest[:nxt.start()] if nxt else rest
 
 
+# ---------------------------------------------------------------------------
+# T77: the repo-owned lanes, and the faces that keep them from being amputated
+# ---------------------------------------------------------------------------
+# The register above representeth the gates that CANNOT run in
+# repository-verification. The lanes below are the opposite: they run in the
+# green-capable, repository-owned workflow, and their evidence is a command
+# that actually fired there. An external gate can never be turned green by
+# being skipped; a repo-owned lane can never be turned green by having its
+# command removed either. This roll judgeth only the WIRING -- it maketh no
+# claim about what any lane measured.
+VERIFICATION_WORKFLOW = ROOT / ".github" / "workflows" / "repository-verification.yml"
+
+REPO_OWNED_LANES: dict[str, dict[str, Any]] = {
+    # T77: the update is a transaction. Three commands must stand in the
+    # workflow: the authority's own selftest (a control that never fired is
+    # not a control), the declared rehearsal ladder, and the court that
+    # witnesseth the refusals by name.
+    "archive-update-recovery": {
+        "workflow": "repository-verification.yml",
+        "job_hint": "content",
+        "must_hold": (
+            "python3 scripts/upgrade_recovery.py --selftest",
+            "scripts/upgrade_recovery.py rehearse",
+            "test_t77.py",
+        ),
+        "authority": "scripts/upgrade_recovery.py",
+        "support": ("scripts/prepare_release_assets.py", "docs/production/RECOVERY.md"),
+    },
+    # T52's presence proof: the debug lane must feed a labelled fixture and
+    # prove the bytes arrived, or an exclusion-only run could pass for content.
+    "debug-archive-presence": {
+        "workflow": "repository-verification.yml",
+        "job_hint": "android",
+        "must_hold": ("ci/archive_fixture.py", "--expected-archive"),
+        "authority": "ci/archive_fixture.py",
+        "support": ("scripts/inspect_android_artifacts.py",),
+    },
+}
+
+
+def _lane_block(text: str, lane: Mapping[str, Any]) -> str:
+    """The workflow block the lane's commands live in, by job name."""
+    block = _workflow_job_block(text, str(lane["job_hint"]))
+    if block:
+        return block
+    return text
+
+
+def validate_repo_owned_lanes(*, verification_text: str | None) -> list[str]:
+    """Refuse an amputated repo-owned lane BY NAME (T77).
+
+    ``verification_text`` is the repository-verification workflow; None means
+    the text is not at hand and no lane is judged (the caller decides whether
+    that is acceptable).
+    """
+    errors: list[str] = []
+    if verification_text is None:
+        return errors
+    for lane_name, lane in REPO_OWNED_LANES.items():
+        block = _lane_block(verification_text, lane)
+        for face in lane["must_hold"]:
+            if face not in block:
+                errors.append(
+                    f"repo-owned lane {lane_name!r} wanteth {face!r}: the lane may not go "
+                    "green by having its command cut away")
+        authority = ROOT / str(lane["authority"])
+        if not authority.is_file():
+            errors.append(f"repo-owned lane {lane_name!r} nameth an absent authority "
+                          f"{lane['authority']}")
+        else:
+            body = authority.read_text(encoding="utf-8")
+            if len(body.strip()) < 200:
+                errors.append(f"repo-owned lane {lane_name!r}: {lane['authority']} is a husk")
+        for support in lane["support"]:
+            if not (ROOT / support).is_file():
+                errors.append(f"repo-owned lane {lane_name!r} wanteth its support {support}")
+    return errors
+
+
+def selftest_repo_owned_lanes() -> int:
+    """The lane roll: every amputation of a repo-owned lane must be refused."""
+    live = VERIFICATION_WORKFLOW.read_text(encoding="utf-8")
+    if validate_repo_owned_lanes(verification_text=live):
+        print("::error::repo-owned lane baseline failed")
+        for error in validate_repo_owned_lanes(verification_text=live):
+            print(f"::error::{error}")
+        return 1
+    cases: list[tuple[str, str]] = []
+    for lane_name, lane in REPO_OWNED_LANES.items():
+        for face in lane["must_hold"]:
+            cases.append((f"{lane_name}: {face} cut away", live.replace(face, "echo removed")))
+    cases.append(("the whole verification workflow emptied", ""))
+    cases.append(("None text is not judged (the caller's own decision)", None))
+    failed: list[str] = []
+    for label, text in cases:
+        errors = validate_repo_owned_lanes(verification_text=text)
+        if text is None:
+            if errors:
+                failed.append(label)
+        elif not errors:
+            failed.append(label)
+    refused = len(cases) - len(failed)
+    for label in failed:
+        print(f"::error::lane selftest failed to reject {label}")
+    print(f"ok: repo-owned lane selftest refuseth {refused} of {len(cases)} amputation controls")
+    if failed:
+        return 1
+    return 0
+
+
 def validate_status(data: Any, *,
                     resolve_evidence: Callable[[str], str] | None = None,
                     is_ancestor: Callable[[str], bool] | None = None,
@@ -546,13 +656,19 @@ def main() -> int:
     if args.selftest:
         rc = selftest()
         rc2 = selftest_evidence()
-        return rc if rc != 0 else rc2
+        rc3 = selftest_repo_owned_lanes()
+        if rc != 0:
+            return rc
+        return rc2 if rc2 != 0 else rc3
     # A checker that can not refuse the false can not approve the true: the
     # inner selftests are ever-living, and they judge before the live file does.
     rc = selftest()
     if rc != 0:
         return rc
     rc = selftest_evidence()
+    if rc != 0:
+        return rc
+    rc = selftest_repo_owned_lanes()
     if rc != 0:
         return rc
     try:
@@ -566,6 +682,12 @@ def main() -> int:
         print(f"::error::cannot read workflow {args.workflow}: {exc}")
         return 1
     errors = validate_status(data, workflow_text=workflow_text)
+    try:
+        verification_text = VERIFICATION_WORKFLOW.read_text(encoding="utf-8")
+    except OSError as exc:
+        print(f"::error::cannot read the repository-verification workflow: {exc}")
+        return 1
+    errors.extend(validate_repo_owned_lanes(verification_text=verification_text))
 
     if errors:
         for e in errors:
@@ -584,6 +706,8 @@ def main() -> int:
     print(f"ok: {len(data['gates'])} release gates represented; CLOSED gates have "
           f"well-formed, resolved and classified evidence pointers (evidence content is "
           f"not verified here){suffix}.")
+    print(f"ok: {len(REPO_OWNED_LANES)} repository-owned lanes carry every face they must "
+          f"hold; an amputated lane is refused by name.")
     return 0
 
 

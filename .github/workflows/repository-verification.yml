@@ -242,6 +242,23 @@ jobs:
           fi
           echo "ok: reproducible ($a)"
       - run: python -m unittest discover -s content/tests -v
+      # T77: the UPDATE is a transaction, and this lane proveth it. The
+      # recovery authority's selftest fireth first -- a control that never
+      # fired is not a control -- then the declared rehearsal ladder runneth
+      # every required case (content replacement, a declared schema migration
+      # and an undeclared one refused, an unsupported downgrade refused, an
+      # unknown future schema refused and never recreated empty, interrupted
+      # update, interrupted staging, disk full, rollback, wipe in progress and
+      # the offline refusal), then the court itself sits. Everything here is
+      # repo-owned and built from harmless, visibly labelled development
+      # fixtures signed with a TEST-ONLY key; the report sayeth so, closes no
+      # external gate and claims nothing about any device.
+      - name: archive update recovery (upgrade, rollback, interruption, wipe)
+        run: |
+          python3 scripts/upgrade_recovery.py --selftest
+          python3 scripts/upgrade_recovery.py rehearse \
+            --work "$(mktemp -d)/recovery-rehearsal" --report recovery-rehearsal.json
+          python3 -m unittest discover -s tools/readiness/tests -p test_t77.py
       - name: provenance (final -- tree still clean)
         run: python ci/provenance.py --out provenance-final.json
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02

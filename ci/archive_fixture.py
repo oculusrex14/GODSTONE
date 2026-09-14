@@ -32,7 +32,25 @@ DOCUMENTS = (
 )
 
 
-def build(output: Path) -> None:
+def build(output: Path, *, variant: str = "default", schema_version: int = 3) -> None:
+    """Write one harmless development Archive.
+
+    ``variant`` (T77) addeth a visible marker to every passage so that two
+    variants of the same corpus are DISTINCT bytes -- a rehearsal of content
+    replacement needeth two archives that differ, and a fixture that silently
+    reproduced the first one would prove nothing. The default variant and the
+    default schema version produce byte-identical output to the pre-T77 build.
+    ``schema_version`` (T77) letteth a rehearsal declare an estate's schema,
+    including an unknown FUTURE one that the release path must refuse.
+    """
+    if variant != "default":
+        suffix = f" [variant {variant}]"
+    else:
+        suffix = ""
+    documents = tuple(
+        (f"{title}{suffix}", domain,
+         tuple((section, f"{text}{suffix}") for section, text in passages))
+        for title, domain, passages in DOCUMENTS)
     output.parent.mkdir(parents=True, exist_ok=True)
     fd, candidate_name = tempfile.mkstemp(prefix=".archive-fixture-", suffix=".db", dir=output.parent)
     os.close(fd)
@@ -41,7 +59,7 @@ def build(output: Path) -> None:
         with sqlite3.connect(candidate) as db:
             db.executescript((ROOT / "content/db/schema.sql").read_text())
             chunk_id = 0
-            for document_id, (title, domain, passages) in enumerate(DOCUMENTS, 1):
+            for document_id, (title, domain, passages) in enumerate(documents, 1):
                 db.execute("INSERT INTO documents (document_id,title,domain,source_id,licence,revision) VALUES (?,?,?,?,?,?)",
                            (document_id, title, domain, "development-fixture", "TEST-ONLY", "1"))
                 for ordinal, (section, text) in enumerate(passages):
@@ -49,10 +67,13 @@ def build(output: Path) -> None:
                     db.execute("INSERT INTO chunks VALUES (?,?,?,?,?,?)",
                                (chunk_id, document_id, ordinal, section, text, len(text.split())))
             metadata = {
-                "schema_version": "3", "tier": "LIGHT", "development_fixture": "true",
-                "document_count": str(len(DOCUMENTS)), "chunk_count": str(chunk_id),
-                "corpus_sha256": hashlib.sha256(json.dumps(DOCUMENTS, ensure_ascii=False).encode()).hexdigest(),
+                "schema_version": str(schema_version), "tier": "LIGHT",
+                "development_fixture": "true",
+                "document_count": str(len(documents)), "chunk_count": str(chunk_id),
+                "corpus_sha256": hashlib.sha256(json.dumps(documents, ensure_ascii=False).encode()).hexdigest(),
             }
+            if variant != "default":
+                metadata["development_fixture_variant"] = variant
             db.executemany("INSERT INTO archive_meta VALUES (?,?)", sorted(metadata.items()))
             db.executescript((ROOT / "content/db/indexes.sql").read_text())
             assert db.execute("SELECT count(*) FROM chunks_fts WHERE chunks_fts MATCH 'lantern'").fetchone()[0] > 0
@@ -62,13 +83,20 @@ def build(output: Path) -> None:
         os.replace(candidate, output)
     finally:
         candidate.unlink(missing_ok=True)
-    print(f"Development fixture only: {output} ({len(DOCUMENTS)} documents, {chunk_id} passages)")
+    print(f"Development fixture only: {output} ({len(documents)} documents, {chunk_id} passages, "
+          f"variant {variant}, schema {schema_version})")
 
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--out", required=True, type=Path)
-    build(parser.parse_args().out)
+    parser.add_argument("--variant", default="default",
+                        help="T77: a label that maketh this build DISTINCT bytes from another "
+                             "variant of the same corpus (default: byte-identical to the old build)")
+    parser.add_argument("--schema-version", type=int, default=3,
+                        help="T77: the schema_version this fixture carrieth in archive_meta")
+    args = parser.parse_args()
+    build(args.out, variant=args.variant, schema_version=args.schema_version)
 
 
 if __name__ == "__main__":

@@ -36,6 +36,25 @@ itself -- that is the release owner's call through
 --require-heldout-evaluation -- because the held-out manifest and the
 clinical review behind it are external artifacts this repository cannot
 manufacture.
+
+T77: the update is TRANSACTIONAL and the last-approved bytes remain
+available under an explicit policy. When the release owner supplieth
+--retain-previous (a retention directory OUTSIDE the estate), the previous
+authoritative pair -- the archive and its published APPROVED_ASSETS.json --
+is copied and fsynced into that directory, together with a RETENTION.json
+record naming both digests, BEFORE either file of the pair is replaced. A
+half pair (one file present without the other) is refused by name rather
+than retained as if it had been sworn, and no retention directory may live
+inside the estate it retaineth. The default (no --retain-previous) is
+byte-for-byte the old behavior: the sealed courts and their fixtures are
+untouched. The publication boundaries -- validated, retained,
+before_archive_replace, after_archive_replace, before_manifest_publish,
+published -- may be observed (and, by a caller that is PROVING recovery,
+interrupted) through the PublishHooks seam. The default hook speaketh not.
+The recovery authority that consumes this seam and the compatibility matrix
+that decideth which schema may replace which is
+scripts/upgrade_recovery.py; the policy of what may be rolled back is NOT
+decided here.
 """
 from __future__ import annotations
 import argparse
@@ -66,6 +85,103 @@ ALLOWED_ROLES = set(ROLE_NAMES)
 APPROVED_MANIFEST_NAME = "APPROVED_ASSETS.json"
 APPROVED_MANIFEST_SCHEMA = 1
 SHA256_RE = re.compile(r"[0-9a-f]{64}")
+
+# T77: the retention record and the publication boundaries. The retention
+# directory holdeth the previous authoritative PAIR (the archive and the
+# published manifest that named it) plus one record swearing both digests.
+RETENTION_RECORD_NAME = "RETENTION.json"
+RETENTION_SCHEMA = 1
+
+# The publication boundaries, in the order the transaction reacheth them. A
+# caller proving recovery interrupteth at one of these NAMES; nothing else is
+# a boundary, and a name outside this tuple is a caller's fault.
+PUBLISH_BOUNDARIES = (
+    "validated",
+    "retained",
+    "before_archive_replace",
+    "after_archive_replace",
+    "before_manifest_publish",
+    "published",
+)
+
+
+class PublishHooks:
+    """The observation seam over one publication (T77).
+
+    The default instance speaketh not and raiseth never: a caller that
+    merely wanteth the old behavior passeth nothing at all. A prover of
+    recovery passeth a subclass whose ``at`` raiseth at the named boundary,
+    or a callable, and the transaction is then observed to leave the
+    previous authoritative estate whole.
+    """
+
+    def at(self, boundary: str) -> None:  # pragma: no cover -- the default is a no-op
+        return None
+
+
+def _boundary(hooks: "PublishHooks | None", boundary: str) -> None:
+    if boundary not in PUBLISH_BOUNDARIES:
+        raise ValueError(f"unknown publication boundary: {boundary}")
+    if hooks is not None:
+        hooks.at(boundary)
+
+
+def _swear(path: Path) -> dict[str, Any]:
+    """One file's immutable identity as the retention record telleth it."""
+    return {"name": path.name, "bytes": path.stat().st_size, "sha256": sha256(path)}
+
+
+def _retain_previous_estate(output: Path, retention: Path, name: str) -> dict[str, Any] | None:
+    """Copy the previous authoritative pair into ``retention`` before it is
+    replaced, and swear it (T77).
+
+    Returneth the record that was published, or None when no estate standeth
+    yet (a fresh install retaineth nothing, and a first install is never
+    called an update). A HALF pair -- one of the two files present without
+    the other -- is refused by name: it is a wipe in progress or a broken
+    estate, and neither may be retained as though it had been whole. The
+    previous pair is copied whole and fsynced, then the record is published
+    last, so a retention directory that carrieth a record carrieth sworn
+    bytes behind it.
+    """
+    archive = output / name
+    manifest = output / APPROVED_MANIFEST_NAME
+    present = (archive.is_file(), manifest.is_file())
+    if present == (False, False):
+        return None
+    if present != (True, True):
+        absent = APPROVED_MANIFEST_NAME if present[0] else name
+        raise ValueError(
+            "the previous estate is incomplete: " + absent + " is missing beside " +
+            "its pair; a half pair is never retained as though it had been sworn")
+    if retention.resolve() == output.resolve() or retention.resolve().is_relative_to(output.resolve()):
+        raise ValueError("the retention directory must not live inside the estate it retaineth")
+    retention.mkdir(parents=True, exist_ok=True)
+    work = Path(tempfile.mkdtemp(prefix=".godstone-retain-", dir=retention.parent
+                                 if retention.parent.is_dir() else retention))
+    try:
+        for source in (archive, manifest):
+            copied = work / source.name
+            shutil.copyfile(source, copied)
+            with copied.open("rb") as stream:
+                os.fsync(stream.fileno())
+            os.replace(copied, retention / source.name)
+        record = {
+            "schema": RETENTION_SCHEMA,
+            "reason": "the previous authoritative estate, retained before replacement",
+            "archive": _swear(retention / name),
+            "approved_manifest": _swear(retention / APPROVED_MANIFEST_NAME),
+        }
+        record_path = work / RETENTION_RECORD_NAME
+        record_path.write_text(
+            json.dumps(record, sort_keys=True, indent=2, ensure_ascii=False) + "\n",
+            encoding="utf-8")
+        with record_path.open("rb") as stream:
+            os.fsync(stream.fileno())
+        os.replace(record_path, retention / RETENTION_RECORD_NAME)
+        return record
+    finally:
+        shutil.rmtree(work, ignore_errors=True)
 
 # The archive's own meta must carry these production review digests, and
 # the signed manifest must swear the same values: a development fixture
@@ -407,11 +523,69 @@ def validate(manifest_path: Path, *, trust_store_path: Path | None = None,
     return _validate_legacy_deputy(manifest_path)
 
 
+def publish_verified(name: str, source: Path, *, output: Path,
+                     expected_hash: str, expected_bytes: int,
+                     approved_document: Mapping[str, Any],
+                     retention: Path | None = None,
+                     hooks: "PublishHooks | None" = None) -> None:
+    """The publication transaction, and its ONLY owner (T77 split it out of
+    ``stage`` so that the recovery authority can drive the very same order).
+
+    A caller must have verified ``source`` already -- this function re-verifieth
+    the copy it made, but it decideth nothing about approval. ``stage`` calleth
+    it only after the release asset gate accepted the bundle; the rehearsal
+    face of scripts/upgrade_recovery.py calleth it only after the same verifier
+    primitives accepted a labelled development candidate, and it is the
+    CALLER that must label what it published.
+
+    The order is unchanged and remains the law: validate (by the caller) ->
+    retain the previous authoritative pair -> copy and RE-verify -> replace the
+    archive -> publish the manifest. Every refusal precedeth every write.
+    """
+    output = Path(output)
+    target = output / name
+    # T77: the previous pair is sworn into the retention directory BEFORE
+    # either file of it is replaced, so a refusal or an interruption always
+    # leaveth a rollback target behind.
+    _boundary(hooks, "validated")
+    if retention is not None:
+        _retain_previous_estate(output, retention, name)
+    _boundary(hooks, "retained")
+    # The archive is replaced in place (never deleted-then-copied: no gap in
+    # which a build could observe an Approved dir without its bytes), and the
+    # approved-resource manifest is published only after the archive, the
+    # copy re-verified, and the replacement sworn.
+    with tempfile.TemporaryDirectory(prefix=".godstone-assets-", dir=output.parent) as work:
+        candidate = Path(work) / name
+        shutil.copyfile(source, candidate)
+        if candidate.stat().st_size != expected_bytes or sha256(candidate) != expected_hash:
+            raise ValueError("archive changed during staging")
+        with candidate.open("rb") as stream:
+            os.fsync(stream.fileno())
+        _boundary(hooks, "before_archive_replace")
+        os.replace(candidate, target)
+        _boundary(hooks, "after_archive_replace")
+        # The archive is in place and true; now publish its manifest, and
+        # only now. A consumer that findeth the manifest findeth verified
+        # bytes behind it; a failed publish leaveth the old pair as it was.
+        manifest_candidate = Path(work) / APPROVED_MANIFEST_NAME
+        manifest_candidate.write_text(
+            json.dumps(approved_document, sort_keys=True, indent=2, ensure_ascii=False) + "\n",
+            encoding="utf-8")
+        with manifest_candidate.open("rb") as stream:
+            os.fsync(stream.fileno())
+        _boundary(hooks, "before_manifest_publish")
+        os.replace(manifest_candidate, output / APPROVED_MANIFEST_NAME)
+        _boundary(hooks, "published")
+
+
 def stage(manifest_path: Path, output: Path, *, trust_store_path: Path,
           heldout_evaluation: Path | None = None,
           heldout_manifest: Path | None = None,
           model_lock_path: Path | None = None,
-          require_heldout_evaluation: bool = False) -> None:
+          require_heldout_evaluation: bool = False,
+          retention: Path | None = None,
+          hooks: "PublishHooks | None" = None) -> None:
     data, assets = validate(manifest_path, trust_store_path=trust_store_path,
                             heldout_evaluation=heldout_evaluation,
                             heldout_manifest=heldout_manifest,
@@ -438,31 +612,11 @@ def stage(manifest_path: Path, output: Path, *, trust_store_path: Path,
     if any(entry.name not in {name, APPROVED_MANIFEST_NAME} or entry.is_symlink() or not entry.is_file()
            for entry in entries):
         raise ValueError("output directory contains unexpected entries; use a dedicated Archive asset directory")
-    expected_hash = data["assets"][0]["sha256"]
-    expected_bytes = data["assets"][0]["bytes"]
-    # The archive is replaced in place (never deleted-then-copied: no gap in
-    # which a build could observe an Approved dir without its bytes), and the
-    # approved-resource manifest is published only after the archive, the
-    # copy re-verified, and the replacement sworn.
-    with tempfile.TemporaryDirectory(prefix=".godstone-assets-", dir=output.parent) as work:
-        candidate = Path(work) / name
-        shutil.copyfile(source, candidate)
-        if candidate.stat().st_size != expected_bytes or sha256(candidate) != expected_hash:
-            raise ValueError("archive changed during staging")
-        with candidate.open("rb") as stream:
-            os.fsync(stream.fileno())
-        os.replace(candidate, target)
-        # The archive is in place and true; now publish its manifest, and
-        # only now. A consumer that findeth the manifest findeth verified
-        # bytes behind it; a failed publish leaveth the old pair as it was.
-        manifest_document = _approved_manifest_document(data, evaluation)
-        manifest_candidate = Path(work) / APPROVED_MANIFEST_NAME
-        manifest_candidate.write_text(
-            json.dumps(manifest_document, sort_keys=True, indent=2, ensure_ascii=False) + "\n",
-            encoding="utf-8")
-        with manifest_candidate.open("rb") as stream:
-            os.fsync(stream.fileno())
-        os.replace(manifest_candidate, output / APPROVED_MANIFEST_NAME)
+    publish_verified(name, source, output=output,
+                     expected_hash=data["assets"][0]["sha256"],
+                     expected_bytes=data["assets"][0]["bytes"],
+                     approved_document=_approved_manifest_document(data, evaluation),
+                     retention=retention, hooks=hooks)
 
 
 def main() -> int:
@@ -487,6 +641,11 @@ def main() -> int:
                              "docs/packaging/MODELS.lock.json)")
     parser.add_argument("--require-heldout-evaluation", action="store_true",
                         help="refuse to stage when no held-out evaluation is furnished")
+    parser.add_argument("--retain-previous", type=Path, default=None,
+                        help="T77: a directory OUTSIDE the estate into which the previous "
+                             "authoritative pair and a RETENTION.json record are sworn before "
+                             "either file is replaced; the last-approved bytes stay available "
+                             "under the operator's policy, and a half pair is refused")
     args = parser.parse_args()
     if not args.check_only and args.trust_store is None:
         parser.error("staging requireth the operator-selected --trust-store")
@@ -505,7 +664,8 @@ def main() -> int:
             else:
                 validate(args.manifest, **options)
         else:
-            stage(args.manifest, args.out, trust_store_path=args.trust_store, **options)
+            stage(args.manifest, args.out, trust_store_path=args.trust_store,
+                  retention=args.retain_previous, **options)
     except (ArchiveManifestError, OSError, ValueError) as exc:
         print(exc)
         return 1
