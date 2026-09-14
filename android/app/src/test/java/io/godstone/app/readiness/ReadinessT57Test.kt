@@ -178,6 +178,16 @@ class ReadinessT57Test {
         val queued = view.uiState()
         Assert.assertEquals(MessageStatus.QUEUED, queued.messages.single().status)
         Assert.assertFalse("a queued message claimeth nothing", queued.messages.single().claimsDelivery)
+        // the WORDS are the interface at this layer: a queued row may not be
+        // rendered as "Sent", and the ATT words may not be the DELIVERY words
+        Assert.assertTrue("a queued row is rendered as Queued",
+            statusWords(MessageStatus.QUEUED).contains("Queued"))
+        Assert.assertFalse("and never as Sent",
+            statusWords(MessageStatus.QUEUED).contains("Sent"))
+        Assert.assertNotEquals("the ATT words differ from the DELIVERY words",
+            statusWords(MessageStatus.ATTEMPTING), statusWords(MessageStatus.DELIVERED))
+        Assert.assertFalse("and the ATT words do not claim a delivery",
+            statusWords(MessageStatus.ATTEMPTING).contains("Delivered"))
 
         // 2. A PEER APPEARS: the link is up, and the message is still not delivered
         port.link = LinkState.Connected(peers = 1)
@@ -379,6 +389,10 @@ class ReadinessT57Test {
 
         // case A: no copy had left this device
         port.relayCopiesMayBeOut = false
+        val activeRow = view.uiState().sos
+        Assert.assertNotNull(activeRow)
+        Assert.assertTrue("the SCREEN's words sayeth no copy has left",
+            activeRow!!.cancelExplanation.contains("No copy has left"))
         val quiet = view.onCommand(MeshCommand.CancelSos(msgId))
         Assert.assertTrue(quiet.lastOutcome!!.contains("no copy had left"))
         Assert.assertNull(quiet.sos)
@@ -389,6 +403,10 @@ class ReadinessT57Test {
         val view2 = model(port2)
         view2.onCommand(MeshCommand.ArmSos)
         val placed2 = view2.onCommand(MeshCommand.ConfirmSos)
+        val loudRow = view2.uiState().sos
+        Assert.assertNotNull(loudRow)
+        Assert.assertTrue("the SCREEN's words state the limitation",
+            loudRow!!.cancelExplanation.contains("cannot be recalled"))
         val loud = view2.onCommand(MeshCommand.CancelSos(placed2.sos!!.msgIdCopy()))
         Assert.assertTrue(loud.lastOutcome!!.contains("cannot be recalled"))
         Assert.assertFalse("the outcome NEVER claimeth recall",
