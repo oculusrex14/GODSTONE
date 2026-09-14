@@ -11835,6 +11835,274 @@
         "the matrix's Android foreground-service requirement is asserted against the platform's rule, not against a service this repository runneth."
       ]
     },
+    "T60": {
+      "case_results": {
+        "added_cases": {
+          "android/mesh/src/test/java/io/godstone/mesh/readiness/ReadinessT60Test.kt": [
+            "test_w01_the_contract_carrieth_requirement_classes",
+            "test_w02_contrast_is_computed_for_real",
+            "test_w03_an_essential_control_without_a_label_is_refused",
+            "test_w04_a_clipped_status_is_refused_at_large_text",
+            "test_w05_no_colour_only_state",
+            "test_w06_the_touch_target_minimums_differ_by_platform",
+            "test_w07_the_reading_order_is_contiguous_and_complete",
+            "test_w08_rtl_mirror_may_not_move_a_meaning",
+            "test_w09_long_content_locale_fixtures_fit",
+            "test_w10_the_restoration_checkpoints_distinguish_human_checks",
+            "test_w11_the_hold_gesture_is_spoken",
+            "test_w12_the_words_are_the_durable_vocabulary",
+            "test_w13_every_check_refuseth_by_name"
+          ],
+          "ios/Godstone/Tests/GodstoneMeshTests/ReadinessT60Tests.swift": [
+            "testW01TheContractCarriethRequirementClasses",
+            "testW02ContrastIsComputedForReal",
+            "testW03AnEssentialControlWithoutALabelIsRefused",
+            "testW04AClippedStatusIsRefusedAtLargeText",
+            "testW05NoColourOnlyState",
+            "testW06TheTouchTargetMinimumsDifferByPlatform",
+            "testW07TheReadingOrderIsContiguousAndComplete",
+            "testW08RtlMirrorMayNotMoveAMeaning",
+            "testW09LongContentLocaleFixturesFit",
+            "testW10TheRestorationCheckpointsDistinguishHumanChecks",
+            "testW11TheHoldGestureIsSpoken",
+            "testW12TheWordsAreTheDurableVocabulary",
+            "testW13TheIslesShareTheirVocabularyAndEveryCheckRefusethByName"
+          ],
+          "tools/readiness/tests/test_t60.py": [
+            "test_w01_the_conductor_carrieth_requirement_classes",
+            "test_w02_contrast_is_computed_for_real",
+            "test_w03_an_essential_control_without_a_label_is_refused",
+            "test_w04_a_clipped_status_is_refused_at_large_text",
+            "test_w05_no_colour_only_state",
+            "test_w06_the_touch_target_minimums_differ_by_platform",
+            "test_w07_the_reading_order_is_contiguous_and_complete",
+            "test_w08_rtl_mirror_may_not_move_a_meaning",
+            "test_w09_long_content_locale_fixtures_fit",
+            "test_w10_the_restoration_checkpoints_distinguish_human_checks",
+            "test_w11_automated_results_never_stand_in_for_the_human_audit",
+            "test_w12_the_verification_matrix_agreeth_with_the_conductor",
+            "test_w13_every_active_profile_is_covered"
+          ]
+        },
+        "corrected_cases": {
+          "note": "no pre-T60 assertion was changed. THREE of this task's own expectations were corrected while it was being written, each because the MODEL was right and the witness was wrong:",
+          "witness_expectations_corrected": [
+            "the reading-order fixture was 1-based where the law is 0-based (W07)",
+            "the Android TextScale carried a dead companion alias that SHADOWED an enum member, so the witness's comparison was meaningless; the alias was removed and the witness now asserteth the largest-scale PREDICATE",
+            "the clipping message named the enum ('LARGEST_ACCESSIBILITY') where a reader wanteth the scale's own words; the CONTRACT's message was amended to lowercase, and the witness asserteth that"
+          ]
+        },
+        "counts": {
+          "narrow_android": 13,
+          "narrow_ios": 13,
+          "narrow_python": 13,
+          "subsystem_android": 1102,
+          "subsystem_ios": 1140,
+          "subsystem_python": 351
+        },
+        "counts_source": "all three lanes genuinely EXECUTED at the implementation head: a TEST-*.xml walk of android/mesh/build/test-results/testDebugUnitTest after purging stale results and passing --no-build-cache (13/0 narrow, 1102/0 subsystem), swift's own 'Executed N tests, with M failures' line (13/0 narrow, 1140/0 subsystem -- up from 1127), and the python harness's artifacts (13 '... ok' lines for the T60 court alone; 'Ran 351 tests' for the whole readiness suite, up from 338). The runner's gradle/swift records carry tests=UNKNOWN because its classifier parses only the python summary, except the python lane where it readeth 13/13 and 351/351 itself.",
+        "courts": {
+          "android": "android/mesh/src/test/java/io/godstone/mesh/readiness/ReadinessT60Test.kt (13 witnesses, driven by the real AccessibilityContract)",
+          "controls": "ci/check_repository.py, ci/check_release_gates_status.py",
+          "ios": "ios/Godstone/Tests/GodstoneMeshTests/ReadinessT60Tests.swift (13 witnesses, the twin)",
+          "python": "tools/readiness/tests/test_t60.py (13 witnesses, driven by the real conductor)"
+        },
+        "deleted_cases": [],
+        "executed_scenarios": {
+          "clipping": "a status clipped at the largest scale is refused with its words and the scale in the reason, at any simulated scale (W04)",
+          "colour": "no two states share words; two states MAY share a colour; a colour with no words is refused, and words with no colour are refused (W05)",
+          "contrast": "the WCAG 2.1 ratio computed for real: 21:1 for white on black, a weak body pair below 4.5:1, a large-text pair at >= 3:1 but below 4.5:1, the repository's own error-on-light pair above AA, and a malformed colour refused (W02)",
+          "device": "NOT EXECUTED: no device, no screen reader, no screenshot. The section 18/19 physical matrix is external and T73-T75 own it; the human audit is T74's.",
+          "human_boundary": "the conductor's report carrieth the automated and human-required counts, names T74, and no automated result standeth in for the human audit (W11)",
+          "journeys": "seven: airplane-mode cold launch, restored query after a recreation, active SOS restoration, locked protected store, error retry, RTL + long content, and the LIGHT Archive-only profile (W01, W13)",
+          "labels": "an essential control with no visible label, no description, or ABSENT entirely is refused BY NAME (W03 on every lane)",
+          "long_content": "five locale fixtures (including Arabic); an overflowing container is fine while the label standeth whole; a clipped label -- with OR without overflow -- is refused (W09)",
+          "matrix_agreement": "the verification matrix's own words keep the accessibility/device rows fail-closed and the device row BLOCKED; no automated assertion claimeth a device observation (W12)",
+          "reading_order": "the essential controls' order is contiguous, and every node in it carrieth a description (W07)",
+          "restoration": "every journey carrieth an AUTOMATED durable checkpoint that surviveth an airplane-mode cold start, AND a HUMAN_REQUIRED one whose durable fact sayeth it is a human observation (W10)",
+          "rtl": "a mirrored LAYOUT passeth; a mirrored MEANING is refused (W08)",
+          "touch_targets": "48dp on Android and 44pt on iOS: a 44-unit control PASSETH on one isle and FAILETH on the other; a static text node is not a target (W06)"
+        },
+        "produced_artifacts": {
+          "android": {
+            "note": "the same checks in Kotlin, with 48dp and the fontScale vocabulary",
+            "path": "android/mesh/src/main/java/io/godstone/mesh/a11y/AccessibilityContract.kt"
+          },
+          "conductor": {
+            "laws": "no colour-only state; an essential control always carrieth a label; a status is never clipped; a touch target meeteth its platform minimum and the order is contiguous; the RTL mirror may not move a meaning; long content fitteth",
+            "path": "tools/readiness/accessibility.py",
+            "types": [
+              "Requirement",
+              "TextScale",
+              "Platform",
+              "Profile",
+              "JourneyCase",
+              "AccessibilityAssertion",
+              "RestorationCheckpoint",
+              "UiNode",
+              "ControlRole",
+              "DeliveryState",
+              "check_assertion",
+              "conductor_report"
+            ]
+          },
+          "ios": {
+            "note": "the same checks in Swift, with 44pt and the Dynamic Type vocabulary (AX5)",
+            "path": "ios/Godstone/Sources/GodstoneMesh/AccessibilityContract.swift"
+          }
+        },
+        "roster_campaigns": {
+          "pass_1": {
+            "causes": "RC7 escaped because W09's only refusal arm required an overflow AND a truncation together; RC11/RC12 were INVALID because their Swift mutants wrote an untyped empty array literal, which will not compile",
+            "repair": "6143e8d9",
+            "rods": 12,
+            "tally": {
+              "ESCAPED": 1,
+              "INVALID": 2,
+              "KILLED": 9
+            }
+          },
+          "pass_2": {
+            "causes": "the two iOS rods were STILL uncompilable: the ledger edit for them had not taken effect (the stored text differed from what was searched for)",
+            "repair": "d3e04323d66f4a16333601269e01d2435437d16e",
+            "rods": 12,
+            "tally": {
+              "INVALID": 2,
+              "KILLED": 10
+            }
+          },
+          "pass_3": {
+            "baseline": "6143e8d9",
+            "note": "the final official pass ran with the ledger in exactly the state d3e04323d66f4a16333601269e01d2435437d16e commits",
+            "rods": 12,
+            "tally": {
+              "ESCAPED": 0,
+              "INVALID": 0,
+              "KILLED": 12,
+              "SKIPPED": 0,
+              "TIMEOUT": 0
+            }
+          }
+        }
+      },
+      "claim_commit": "d6d428b1cec007ff3093770788243c4e98d1610f",
+      "commands": [
+        "T60-narrow-gradlew",
+        "T60-narrow-swift",
+        "T60-narrow-python3",
+        "T60-subsystem-gradlew",
+        "T60-subsystem-swift",
+        "T60-subsystem-python3",
+        "T60-controls-python3-002",
+        "T60-controls-python3-003"
+      ],
+      "device_gate_ids": [],
+      "file_hashes": {
+        "android/mesh/src/main/java/io/godstone/mesh/a11y/AccessibilityContract.kt": "b66056768e799dfff431dda017320740a9f21081bc3626fe4edb1ca55ba5d5b1",
+        "android/mesh/src/test/java/io/godstone/mesh/readiness/ReadinessT60Test.kt": "c6cdd31ae75c7e8f01441a3c99319d83a0a58378f759a79f8852f2091ab53189",
+        "ci/mutations.py": "4ce34754bf25b8339362bacf9bbf171dff708a36b400ecce52efdb59439e33ad",
+        "ios/Godstone/Sources/GodstoneMesh/AccessibilityContract.swift": "1371043d754840d476dc4d225775b740015f7e218c3062f73f92b7223fa3249c",
+        "ios/Godstone/Tests/GodstoneMeshTests/ReadinessT60Tests.swift": "692f3b2c6a947bacd9c29bfd6c623438606b978daf2c7ff6437309c7d026ce72",
+        "tools/readiness/accessibility.py": "68e950bf3c5cae01d7d74329d691b795f0a10fa08a85632ded8dd47896b03f00",
+        "tools/readiness/tests/test_t60.py": "802f78901ab4505d91bc75bfe60f13555a49eb61e4216f5014a26b2b404b2bf2"
+      },
+      "implementation_commit": "d3e04323d66f4a16333601269e01d2435437d16e",
+      "implementation_commits": [
+        "461a0a3373b4b892b8470368d98a3fddbc203a49",
+        "6143e8d9c3ac029363d39b348447e5b17f0e4091",
+        "d3e04323d66f4a16333601269e01d2435437d16e"
+      ],
+      "inputs": {
+        "children_commit_order": [
+          "T60(claim)",
+          "T60(builder)",
+          "T60(builder-roster-repair)",
+          "T60(builder-rods-repair-2)",
+          "T60(M)"
+        ],
+        "claim_ordering_note": "the claim was taken at d6d428b1cec007ff3093770788243c4e98d1610f; the stages and the final roster were run at the implementation head d3e04323d66f4a16333601269e01d2435437d16e. Runner logs and executed logs live in distinct directories (T60/logs, T60/executed) so no pass can overwrite another.",
+        "governed_source": [
+          "tools/readiness/accessibility.py",
+          "tools/readiness/tests/test_t60.py",
+          "android/mesh/src/main/java/io/godstone/mesh/a11y/AccessibilityContract.kt",
+          "android/mesh/src/test/java/io/godstone/mesh/readiness/ReadinessT60Test.kt",
+          "ios/Godstone/Sources/GodstoneMesh/AccessibilityContract.swift",
+          "ios/Godstone/Tests/GodstoneMeshTests/ReadinessT60Tests.swift",
+          "ci/mutations.py"
+        ],
+        "required_regression_paths": [
+          "android/mesh/src/test/java/io/godstone/mesh/readiness/ReadinessT60Test.kt",
+          "ios/Godstone/Tests/GodstoneMeshTests/ReadinessT60Tests.swift",
+          "tools/readiness/tests/test_t60.py"
+        ],
+        "sealed_hot_paths_untouched": [
+          "the verification-matrix documents: READ and asserted against, not changed (their accessibility and device rows already keep the human boundary)",
+          "the shipping LIGHT surface, its manifests, Info.plist and entitlements: untouched",
+          "the durable status vocabulary: the accessibility words CONSUME it (they are the projection's own six states) and redefine nothing",
+          "the five external gates and docs/production/RELEASE_GATES_STATUS.json",
+          "the readiness statements: both flags stay false; A-01 stays OPEN"
+        ]
+      },
+      "ladder_boundary_commit": "d3e04323d66f4a16333601269e01d2435437d16e",
+      "mutation_results": {
+        "attempts_archived": [
+          {
+            "baseline": "461a0a33",
+            "pass": 1,
+            "repaired_in": "6143e8d9",
+            "rods": 12,
+            "tally": {
+              "ESCAPED": 1,
+              "INVALID": 2,
+              "KILLED": 9
+            }
+          },
+          {
+            "baseline": "6143e8d9",
+            "pass": 2,
+            "repaired_in": "d3e04323d66f4a16333601269e01d2435437d16e",
+            "rods": 12,
+            "tally": {
+              "INVALID": 2,
+              "KILLED": 10
+            }
+          }
+        ],
+        "campaign_note": "the twelve rods ran in the FINAL official pass, fail-closed, at baseline 6143e8d9 (with the ledger in the state d3e04323d66f4a16333601269e01d2435437d16e commits): 12 KILLED of 12, SKIPPED=0, INVALID=0, TIMEOUT=0, ESCAPED=0. The card's named semantic negative is RC1/RC2 ('Remove an essential control label or clip status at large text'), struck on the python conductor; RC8/RC9/RC11 strike the same laws on the two isles, so the negative cannot be closed on one lane and open on another. THREE passes are recorded rather than folded away, and pass 2's cause is the instructive one: a ledger edit that did not take effect, verified only by the pass itself.",
+        "of": 12,
+        "roster_manifest": "T60/roster/manifest.json",
+        "semantic": {
+          "harness": "ci/mutations.py run_semantic (the ledger filtered to the T60- prefix)",
+          "platforms": [
+            "python",
+            "jvm",
+            "swift"
+          ],
+          "work_parent": "/Users/oculus/.cache/godstone-mutation-worktrees-t60 (disposable; the live tree is never touched)"
+        },
+        "tally": {
+          "ESCAPED": 0,
+          "INVALID": 0,
+          "KILLED": 12,
+          "SKIPPED": 0,
+          "TIMEOUT": 0
+        }
+      },
+      "objective": {
+        "claimed_head": "d6d428b1cec007ff3093770788243c4e98d1610f",
+        "claimed_utc": "2026-09-14T22:20:28+00:00",
+        "objective": "Automate the accessibility and restoration checks: a JourneyCase / AccessibilityAssertion / RestorationCheckpoint conductor with semantic UI assertions, contrast checks (WCAG AA, never colour alone), scalable layouts at the largest system font, platform touch-target minimums, screen-reader label completeness and order, switch-navigation reachability, RTL and long-content locale fixtures, and instrumented cold launch / restored query / active SOS / locked store / error retry (including an airplane-mode cold start and a process recreation) at each ACTIVE profile -- with every automated result distinguished from the human-required checks the T74 audit owneth, on all three lanes (the Android mesh court, the iOS court and the python matrix court), so that removing an essential control label or clipping a status at large text falleth the accessibility check."
+      },
+      "status": "COMPLETE",
+      "tested_tree_sha": "e3617378c803d8ae149c8b238ade650ace725907",
+      "unresolved": [
+        "NO DEVICE and NO REAL SCREEN READER: this court decideth the SEMANTIC MODEL (labels, words, orders, target sizes, mirroring). A person with VoiceOver/TalkBack and the physical matrix remain T74's and T73-T75's.",
+        "the Requirement.HUMAN_REQUIRED checks are NOT executed here: they are carried in the model precisely so an automated result cannot silently stand in for them.",
+        "no screenshots were captured: the card's 'record platform screenshots without private user content' is a policy for the device audit, not a host action.",
+        "the journeys are the MODEL's, not the app's: wiring JourneyCase into the real Compose/SwiftUI screens is future work, exactly as T59's capability matrix is not yet consulted by the view-models.",
+        "the contrast numbers are computed from colour TOKENS the caller supplieth; no rendered theme was sampled."
+      ]
+    },
     "T61": {
       "case_results": {
         "added_cases": [
@@ -14258,7 +14526,7 @@
       ]
     }
   },
-  "current_task": "T60",
+  "current_task": null,
   "external_blockers": [
     "A06",
     "APPROVED_CONTENT",
@@ -14267,54 +14535,45 @@
     "SIGNING"
   ],
   "failed_attempts": [],
-  "in_progress": {
-    "claimed_head": "d6d428b1cec007ff3093770788243c4e98d1610f",
-    "claimed_utc": "2026-09-14T22:20:28+00:00",
-    "objective": {
-      "claimed_head": "d6d428b1cec007ff3093770788243c4e98d1610f",
-      "claimed_utc": "2026-09-14T22:20:28+00:00",
-      "objective": "Automate the accessibility and restoration checks: a JourneyCase / AccessibilityAssertion / RestorationCheckpoint conductor with semantic UI assertions, contrast checks (WCAG AA, never colour alone), scalable layouts at the largest system font, platform touch-target minimums, screen-reader label completeness and order, switch-navigation reachability, RTL and long-content locale fixtures, and instrumented cold launch / restored query / active SOS / locked store / error retry (including an airplane-mode cold start and a process recreation) at each ACTIVE profile -- with every automated result distinguished from the human-required checks the T74 audit owneth, on all three lanes (the Android mesh court, the iOS court and the python matrix court), so that removing an essential control label or clipping a status at large text falleth the accessibility check."
-    },
-    "task": "T60"
-  },
-  "last_code_head": "196f5ca609f1e66e6c034623cf0d8eeeb487d2a3",
-  "last_observed_head": "196f5ca609f1e66e6c034623cf0d8eeeb487d2a3",
+  "in_progress": null,
+  "last_code_head": "d3e04323d66f4a16333601269e01d2435437d16e",
+  "last_observed_head": "d3e04323d66f4a16333601269e01d2435437d16e",
   "latest_verification": {
-    "at_utc": "2026-09-15T10:40:00+00:00",
-    "boundary_commit": "196f5ca609f1e66e6c034623cf0d8eeeb487d2a3",
+    "at_utc": "2026-09-15T12:00:00+00:00",
+    "boundary_commit": "d3e04323d66f4a16333601269e01d2435437d16e",
     "controls": {
       "boundary_records": 2,
-      "outcomes": "2/2 PASSED at the boundary (check_repository rc=0 with the lab gate wired in, the release-gates checker rc=0)"
+      "outcomes": "2/2 PASSED at the boundary (check_repository rc=0, the release-gates checker rc=0)"
     },
     "isle_grands": {
-      "android_grand": "no android court in this round: T59 is a model/declaration task. The manifest it asserteth against was READ, not changed",
-      "counts_source": "see completed_tasks.T59.case_results.counts_source",
-      "ios_grand": "no iOS court in this round either: the Info.plist and entitlements were READ and asserted against the matrix",
-      "python_grand": "the readiness suite 338 OK (up from 325 by the thirteen T59 witnesses), the printed matrix rc=0, the lab gate's selftest rc=0, structural lineage rc=0, diff clean, sync --check clean"
+      "android_grand": "the T60 court 13/13 and the whole :mesh suite 1102/0 at the boundary, genuinely EXECUTED (--no-build-cache, stale results purged)",
+      "counts_source": "see completed_tasks.T60.case_results.counts_source",
+      "ios_grand": "the T60 court 13/13 and the whole package 1140/0 at the boundary (up from 1127)",
+      "python_grand": "the T60 court 13/13 and the readiness suite 351 OK (up from 338), the conductor's report rc=0, structural lineage rc=0, diff clean, sync --check clean"
     },
     "ladder": {
       "L0": "1 PASSED (check_repository), 1 FAILED (ci/symbols.py --selftest: PRE-EXISTING)",
-      "L1": "PASSED (the python readiness suite plus both isles)",
+      "L1": "PASSED (all three lanes plus the python readiness suite)",
       "L2_L4": "unavailable: no command manifest yet"
     },
     "narrow": {
       "errors": 0,
       "failures": 0,
-      "lane": "python3 -m unittest discover -s tools/readiness/tests -p test_t59.py -v",
-      "tests": 13
+      "lane": "gradle :mesh --tests *ReadinessT60Test* / swift --filter ReadinessT60Tests / python -p test_t60.py",
+      "tests": 39
     },
     "roster": {
-      "T59_killed": 12,
+      "T60_killed": 12,
       "of": 12
     },
     "subsystem": {
       "errors": 0,
       "failures": 0,
-      "lane": "python3 -m unittest discover -s tools/readiness/tests -v",
-      "tests": 338
+      "lane": "gradle :mesh (1102) + swift package (1140) + python readiness (351)",
+      "tests": 2593
     }
   },
-  "next_task": "T60",
+  "next_task": "T67",
   "phase": "P0",
   "plan_sha256": "685456b378662b0a40a53a6abc810041e37daf97b213f3efeb6cea879363934e",
   "planning_baseline_sha": "b5c3d3d394b70cf356cdde33b47511dad7cbb95c",
@@ -14403,7 +14662,11 @@
     "T58 boundary: a witness may not scan SOURCE TEXT for a word it forbiddeth (a text scan cannot tell a comment from a rendering). W13 asserteth the WORDS the surface renders.",
     "T58 boundary: next_task was first written as T67 in this round's state record, and the frontier RECOMPUTED from PLANNING_VALIDATION's topological order sayeth T59 (which dependeth on T56/T57/T58 and is ready). Corrected BEFORE the M commit rather than left as drift -- the same check the T84 errata taught.",
     "T59 boundary: a MUTATION ROD must carrieth 'find', not a synonym: the pass-1 abort was a rod written with 'follow', which the harness refuseth before it can judge anything. Check the ledger's own key names before spending a campaign.",
-    "T59 boundary: the capability matrix exists but is NOT yet consulted by the app layers (T57's and T58's LinkState explanations are hand-written and merely consistent with it). Wiring it in is future work, not a claim of this task."
+    "T59 boundary: the capability matrix exists but is NOT yet consulted by the app layers (T57's and T58's LinkState explanations are hand-written and merely consistent with it). Wiring it in is future work, not a claim of this task.",
+    "T60 boundary: a LEDGER EDIT must be verified by READING THE STORED TEXT, not by assuming the string matched. T60's pass 2 lost two rods to a repair that silently did not take effect (the stored 'replace' differed from the searched text), so the mutants stayed uncompilable for a whole campaign. Two habits now: rebuild a whole rod line with json.dumps when its text is fiddly, and re-assert post.count(replace)==1 and post.count(find)==0 after every ledger edit.",
+    "T60 boundary: a witness must own the BRANCH its rod strike. W09's only refusal arm demanded an overflow AND a truncation together, so the branch that owneth 'a clipped essential label' was never reached and its rod escaped. When a check carrieth several refusal arms, the witness must carry one arm per arm.",
+    "T60 boundary: the accessibility conductor and the two isle contracts are NOT yet wired into the real screens (as T59's capability matrix is not yet consulted by the view-models). The models are asserted; the wiring is future work.",
+    "T60 boundary: next_task was first written as T81 by taking the first READY task in topological order. T81 is ready by DEPENDENCY but carrieth external_requirement=APPROVED_NATIVE_MODEL_ARTIFACTS, which no fixture may close -- so the frontier now preferreth a ready task with NO external requirement (T67), and the externally gated ones (T81, T79, T74, T80) are listed for their own BLOCKED_EXTERNAL records when the internal chain is exhausted. Corrected BEFORE the M commit."
   ],
   "warnings_for_next_invocation": [
     "T41 IS THE NEXT TASK (deps T40, T24, T26, T37, T39, T84 all complete; no external requirement). After T41 cometh T42, T43, T44, then T54 and the platform chain.",
