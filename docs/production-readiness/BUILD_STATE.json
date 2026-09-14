@@ -15008,7 +15008,7 @@
       ]
     }
   },
-  "current_task": null,
+  "current_task": "T72",
   "external_blockers": [
     "A06",
     "APPROVED_CONTENT",
@@ -15017,7 +15017,16 @@
     "SIGNING"
   ],
   "failed_attempts": [],
-  "in_progress": null,
+  "in_progress": {
+    "claimed_head": "941999d20135b721212644a503816491ec93b5c8",
+    "claimed_utc": "2026-09-14T23:21:10+00:00",
+    "objective": {
+      "claimed_head": "941999d20135b721212644a503816491ec93b5c8",
+      "claimed_utc": "2026-09-14T23:21:10+00:00",
+      "objective": "Run bounded production-path stress and deterministic fault campaigns: ten thousand lifecycle cycles over multiple peers with a SEED-RECORDED randomized trace, bounded fault schedules (clock discontinuities, disk-full, corruption, a slow ATT and malformed records) driven through the real compositions, and the invariants that a mesh simulation cannot cover -- ZERO leaked leases, timers or sessions after shutdown, a BOUNDED internal census plateau standing in for RSS, NO duplicate inbox or delivery row, NO uncaught malformed-input exception (malformed input is refused and counted), and a FAILED SEED recorded and REPRODUCIBLE so a red run can be replayed exactly -- on all three lanes, so that disabling one capacity release or one retry cap falleth the stress invariant."
+    },
+    "task": "T72"
+  },
   "last_code_head": "fbc2e0677a153f83bbc65b2419e4b5fb2dd1d76a",
   "last_observed_head": "fbc2e0677a153f83bbc65b2419e4b5fb2dd1d76a",
   "latest_verification": {
