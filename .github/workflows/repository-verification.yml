@@ -311,6 +311,16 @@ jobs:
           grep -q distributionSha256Sum gradle/wrapper/gradle-wrapper.properties \
             || { echo "::error::distributionSha256Sum missing from gradle-wrapper.properties"; exit 1; }
           echo "ok: committed wrapper verified (jar+properties+gradlew, distributionSha256Sum pinned)"
+      # T68: the reviewed supply-chain documents are themselves checked into this
+      # repository, so this audit is host-independent: it verifies the toolchain
+      # lock against the current digests of the input files it names (a changed
+      # NDK/CMake/JDK pin without a re-capture is a failure), the hash-locked
+      # dependency manifest against the requirement sources, the Gradle
+      # verification metadata (every component must carry a SHA-256), the SBOM
+      # against every component those locks name, and the recorded determinism
+      # comparison. It needs no network and no wheelhouse.
+      - name: verify the pinned build supply chain
+        run: python3 tools/supplychain/supply_chain.py verify --all
       - name: compile Kotlin surfaces and run host unit tests
         working-directory: android
         run: |
