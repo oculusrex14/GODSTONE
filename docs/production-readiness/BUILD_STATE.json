@@ -10310,6 +10310,277 @@
         "check_parity Invariants C and F are pre-existing red at the planning baseline (measured at b5c3d3d) -- not T61 regressions; left untouched, recorded"
       ]
     },
+    "T66": {
+      "case_results": {
+        "added_cases": {
+          "content/tests/test_heldout_staging.py": [
+            "test_a_complete_evaluation_travels_with_the_staged_archive",
+            "test_a_corrupt_model_lock_is_refused_by_name",
+            "test_a_different_corpus_cannot_borrow_this_evaluation",
+            "test_a_false_allow_cannot_reach_the_approved_directory",
+            "test_a_hand_struck_case_is_caught_by_the_published_census",
+            "test_a_model_lock_that_moved_since_the_run_is_refused",
+            "test_a_placeholder_review_cannot_complete_a_release",
+            "test_an_unreviewed_ledger_cannot_be_staged",
+            "test_check_only_binds_the_evaluation_without_publishing",
+            "test_published_bytes_stay_deterministic_with_an_evaluation",
+            "test_release_owner_may_demand_an_evaluation",
+            "test_staging_without_an_evaluation_keeps_its_published_face",
+            "test_the_deputy_face_refuseth_to_carry_an_evaluation"
+          ],
+          "tools/readiness/tests/test_t66.py": [
+            "test_w01_a_supported_answer_passes_and_an_unsupported_number_is_refused",
+            "test_w02_an_allowed_case_the_manifest_refuses_standeth_a_false_allow",
+            "test_w03_a_refused_case_the_manifest_requires_answered_is_a_false_block",
+            "test_w04_a_struck_case_is_a_completeness_failure",
+            "test_w05_an_accepted_answer_with_uncited_numbers_faileth_completeness",
+            "test_w06_an_absent_review_is_undecided_and_never_an_acceptance",
+            "test_w07_a_placeholder_reviewer_cannot_complete_a_release",
+            "test_w08_duplicate_completion_is_refused",
+            "test_w09_a_stale_review_is_refused",
+            "test_w10_a_token_the_packet_never_issued_is_refused",
+            "test_w11_the_packet_withholds_the_family_the_expectation_and_the_category",
+            "test_w12_a_decision_carrying_a_field_the_packet_hid_is_refused",
+            "test_w13_packets_are_determinist_and_blind_across_reviewers",
+            "test_w14_the_ledger_is_reproducible_and_carrieth_no_case_text",
+            "test_w15_a_manifest_authored_against_another_corpus_is_refused",
+            "test_w16_a_corrupt_model_lock_faileth_the_evaluation",
+            "test_w17_a_corrupt_or_foreign_approval_is_refused",
+            "test_w18_the_archive_facts_must_agree_with_the_manifest",
+            "test_w19_the_manifest_door_refuseth_incomplete_taxonomy",
+            "test_w20_the_manifest_door_refuseth_future_schemas_and_bad_json",
+            "test_w21_a_must_answer_case_without_evidence_is_refused",
+            "test_w22_an_archive_retrieval_case_is_graded_on_the_production_join",
+            "test_w23_the_ledger_rederiveth_its_own_census",
+            "test_w24_an_excluded_case_refuseth_completeness",
+            "test_w25_two_reviewers_who_disagree_refuse_the_ledger",
+            "test_w26_the_gate_configuration_is_transcribed_into_the_ledger",
+            "test_w27_the_command_door_reporteth_zero_and_one",
+            "test_w28_an_interrupted_write_leaveth_no_partial_ledger",
+            "test_w29_a_missing_dependency_is_refused_by_name",
+            "test_w30_the_review_pool_is_the_only_door_to_a_packet",
+            "test_w31_a_number_without_a_citation_is_refused"
+          ]
+        },
+        "counts": {
+          "integration_content": 13,
+          "narrow_python": 31,
+          "subsystem_content": 69
+        },
+        "courts": {
+          "controls": "ci/check_repository.py, ci/check_release_gates_status.py",
+          "narrow": "tools/readiness/tests/test_t66.py",
+          "subsystem": "content/tests (test_heldout_staging.py within it)"
+        },
+        "deleted_cases": [],
+        "family_census": {
+          "context_conflict": 1,
+          "harmful_source_substitution": 2,
+          "malicious_retrieved_instruction": 2,
+          "numerical_conflict": 2,
+          "qualifier_conflict": 1,
+          "unanswerable": 2,
+          "well_supported": 3
+        }
+      },
+      "claim_commit": "1633d7054414281d5e137926e22a539be845b734",
+      "commands": [
+        "T66-narrow-python3",
+        "T66-subsystem-python3",
+        "T66-controls-python3",
+        "T66-controls-python3-002"
+      ],
+      "device_gate_ids": [],
+      "file_hashes": {
+        "ci/mutations.py": "2ca9640efe0e17190e7421ff65c9cfadd2b52eca594fa7a3ac9106c776b48d80",
+        "content/eval/heldout.py": "7804afc4f7e17be0b78e69eb54a507193bed76b11c79b67062a1d2edd860b273",
+        "content/tests/heldout_fixtures.py": "55f2f74316f31889a0267d91ba42fbc24471e3653702ff3ac92c75cc68d39831",
+        "content/tests/test_heldout_staging.py": "4e6ffbf5689eaf1435670c944ffb5a626de1cdb243f9ddd9a5b15ee22b598f0f",
+        "docs/editorial/REVIEW.md": "de1f1b46682e6ea2dc7993963551b967be42db6f29260f59bf34304fd901f6bd",
+        "scripts/prepare_release_assets.py": "4550f6b3f5d23a1510cd2bbb939f649d867bdceb05a8714e4ad9241e20cc7e87",
+        "tools/readiness/tests/test_t66.py": "858fcd3d18283e47c3bee45797dbb9e90a0f812e530b286f744c8d503e50ac05"
+      },
+      "implementation_commit": "b439f35f08f1bf932437399b0b815b2d3a687f3a",
+      "implementation_commits": [
+        "1633d7054414281d5e137926e22a539be845b734",
+        "506c939e16357b958c0fcb7bfae251724cea96ba",
+        "b439f35f08f1bf932437399b0b815b2d3a687f3a"
+      ],
+      "inputs": {
+        "children_commit_order": [
+          "T66(claim)",
+          "T66(builder)",
+          "T66(roster)"
+        ],
+        "governed_source": [
+          "ci/mutations.py",
+          "content/eval/heldout.py",
+          "content/tests/heldout_fixtures.py",
+          "content/tests/test_heldout_staging.py",
+          "docs/editorial/REVIEW.md",
+          "scripts/prepare_release_assets.py",
+          "tools/readiness/tests/test_t66.py"
+        ],
+        "required_regression_paths": [
+          "tools/readiness/tests/test_t66.py",
+          "content/tests/test_heldout_staging.py"
+        ],
+        "sealed_hot_paths_untouched": [
+          "crypto/ (the Noise/LinkInfo vectors and their laws)",
+          "wire/ (the generated canonical codecs and their golden fixtures)",
+          "ios/Godstone/Package.swift (sealed bytes; the mirror covenant regenerateth the Foundation package, never hand-edited)",
+          "android/llm/src/main/cpp/godstone_llm_jni.cpp and ios/Godstone/Sources/GodstoneLLMBridge/LlamaBridge.mm",
+          "third_party/llama.cpp/ (git-ignored machine-local provisioning)"
+        ]
+      },
+      "ladder_boundary_commit": "b439f35f08f1bf932437399b0b815b2d3a687f3a",
+      "mutation_results": {
+        "attempts_archived": [
+          "roster-attempt-1-scoped (report-only; PM04 INVALID by an empty baseline, repaired by committing the witness before the official run)"
+        ],
+        "campaign_note": "the fifteen rods were run twice: a scoped report-only pass (which caught one invalid row -- PM04 named a witness the baseline tree did not yet carry, and the harness said so rather than counting it) and the official fail-closed pass, 15 KILLED of 15, SKIPPED=0, INVALID=0, TIMEOUT=0, ESCAPED=0, at baseline b439f35f08f1bf932437399b0b815b2d3a687f3a",
+        "roster_manifest": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/T66/roster/manifest.json",
+        "semantic": [
+          {
+            "anchor_count": 1,
+            "id": "T66-PM01-missing-case-censure-asleep",
+            "note": "witness test_w04_a_struck_case_is_a_completeness_failure failed as intended (1 failed case(s))",
+            "outcome": "KILLED",
+            "tests_run": 1,
+            "witness": "test_w04_a_struck_case_is_a_completeness_failure"
+          },
+          {
+            "anchor_count": 1,
+            "id": "T66-PM02-accepted-uncited-numeric-tolerated",
+            "note": "witness test_w05_an_accepted_answer_with_uncited_numbers_faileth_completeness failed as intended (1 failed case(s))",
+            "outcome": "KILLED",
+            "tests_run": 1,
+            "witness": "test_w05_an_accepted_answer_with_uncited_numbers_faileth_completeness"
+          },
+          {
+            "anchor_count": 1,
+            "id": "T66-PM03-numeric-provenance-blind",
+            "note": "witness test_w01_a_supported_answer_passes_and_an_unsupported_number_is_refused failed as intended (1 failed case(s))",
+            "outcome": "KILLED",
+            "tests_run": 1,
+            "witness": "test_w01_a_supported_answer_passes_and_an_unsupported_number_is_refused"
+          },
+          {
+            "anchor_count": 1,
+            "id": "T66-PM04-citation-limb-asleep",
+            "note": "witness test_w31_a_number_without_a_citation_is_refused failed as intended (1 failed case(s))",
+            "outcome": "KILLED",
+            "tests_run": 1,
+            "witness": "test_w31_a_number_without_a_citation_is_refused"
+          },
+          {
+            "anchor_count": 1,
+            "id": "T66-PM05-absent-review-as-consent",
+            "note": "witness test_w06_an_absent_review_is_undecided_and_never_an_acceptance failed as intended (1 failed case(s))",
+            "outcome": "KILLED",
+            "tests_run": 1,
+            "witness": "test_w06_an_absent_review_is_undecided_and_never_an_acceptance"
+          },
+          {
+            "anchor_count": 1,
+            "id": "T66-PM06-false-allow-uncounted",
+            "note": "witness test_w02_an_allowed_case_the_manifest_refuses_standeth_a_false_allow failed as intended (1 failed case(s))",
+            "outcome": "KILLED",
+            "tests_run": 1,
+            "witness": "test_w02_an_allowed_case_the_manifest_refuses_standeth_a_false_allow"
+          },
+          {
+            "anchor_count": 1,
+            "id": "T66-PM07-corpus-binding-asleep",
+            "note": "witness test_w15_a_manifest_authored_against_another_corpus_is_refused failed as intended (1 failed case(s))",
+            "outcome": "KILLED",
+            "tests_run": 1,
+            "witness": "test_w15_a_manifest_authored_against_another_corpus_is_refused"
+          },
+          {
+            "anchor_count": 1,
+            "id": "T66-PM08-corrupt-lock-door-asleep",
+            "note": "witness test_w16_a_corrupt_model_lock_faileth_the_evaluation failed as intended (1 failed case(s))",
+            "outcome": "KILLED",
+            "tests_run": 1,
+            "witness": "test_w16_a_corrupt_model_lock_faileth_the_evaluation"
+          },
+          {
+            "anchor_count": 1,
+            "id": "T66-PM09-blinding-leaketh-the-family",
+            "note": "witness test_w11_the_packet_withholds_the_family_the_expectation_and_the_category failed as intended (1 failed case(s))",
+            "outcome": "KILLED",
+            "tests_run": 1,
+            "witness": "test_w11_the_packet_withholds_the_family_the_expectation_and_the_category"
+          },
+          {
+            "anchor_count": 1,
+            "id": "T66-PM10-stale-review-door-asleep",
+            "note": "witness test_w09_a_stale_review_is_refused failed as intended (1 failed case(s))",
+            "outcome": "KILLED",
+            "tests_run": 1,
+            "witness": "test_w09_a_stale_review_is_refused"
+          },
+          {
+            "anchor_count": 1,
+            "id": "T66-PM11-duplicate-decision-asleep",
+            "note": "witness test_w08_duplicate_completion_is_refused failed as intended (1 failed case(s))",
+            "outcome": "KILLED",
+            "tests_run": 1,
+            "witness": "test_w08_duplicate_completion_is_refused"
+          },
+          {
+            "anchor_count": 1,
+            "id": "T66-PM12-reviewer-pool-door-asleep",
+            "note": "witness test_w30_the_review_pool_is_the_only_door_to_a_packet failed as intended (1 failed case(s))",
+            "outcome": "KILLED",
+            "tests_run": 1,
+            "witness": "test_w30_the_review_pool_is_the_only_door_to_a_packet"
+          },
+          {
+            "anchor_count": 1,
+            "id": "T66-PM13-future-schema-door-asleep",
+            "note": "witness test_w20_the_manifest_door_refuseth_future_schemas_and_bad_json failed as intended (1 failed case(s))",
+            "outcome": "KILLED",
+            "tests_run": 1,
+            "witness": "test_w20_the_manifest_door_refuseth_future_schemas_and_bad_json"
+          },
+          {
+            "anchor_count": 1,
+            "id": "T66-PM14-staging-evaluation-findings-discarded",
+            "note": "witness test_a_false_allow_cannot_reach_the_approved_directory failed as intended (1 failed case(s))",
+            "outcome": "KILLED",
+            "tests_run": 1,
+            "witness": "test_a_false_allow_cannot_reach_the_approved_directory"
+          },
+          {
+            "anchor_count": 1,
+            "id": "T66-PM15-published-evaluation-block-dropped",
+            "note": "witness test_a_complete_evaluation_travels_with_the_staged_archive failed as intended (1 failed case(s))",
+            "outcome": "KILLED",
+            "tests_run": 1,
+            "witness": "test_a_complete_evaluation_travels_with_the_staged_archive"
+          }
+        ],
+        "tally": {
+          "KILLED": 15
+        }
+      },
+      "objective": {
+        "claimed_head": "b439f35f08f1bf932437399b0b815b2d3a687f3a",
+        "claimed_utc": "2026-09-14T13:30:53+00:00",
+        "objective": "Build the content/Oracle held-out adversarial evaluation tooling: versioned EvaluationManifest bound to the approved corpus digest and the model lock, HeldOutCase families (numerical, qualifier and context conflicts, unanswerable queries, malicious retrieved instructions, harmful source substitutions), blinded human ReviewerDecisions that the tool can never fabricate or unblind early, a PerCategoryReport of false-allow/false-block with an explicit uncertainty bucket, and a complete-case ledger whose completeness check faileth whenever a case is silently excluded or uncited numeric guidance is allowed through; the released-asset staging path refuseth to publish an evaluation it cannot bind to the very archive it stages. Clinical acceptance stayeth external."
+      },
+      "status": "COMPLETE",
+      "tested_tree_sha": "d355268f9ad338428e5a10cb829fc93c8b00a628",
+      "unresolved": [
+        "the held-out manifest itself is external: this repository carrieth the machinery, the ledger law and a staging gate that refuseth an unbindable evaluation, but no clinically authored held-out manifest and no real reviewer decision exist here -- the courts exercise the review leg with synthetic fixtures marked provisional, which can never complete a release evaluation",
+        "clinical acceptance stayeth external and is never closed by this task: no reviewer recorded by this tool is a clinician, and every record it publisheth carrieth clinical_acceptance = EXTERNAL",
+        "the model lock standeth UNPINNED, so an evaluation bindeth coordinates and the lock byte-for-byte, never an independently verified artifact digest (external gate NATIVE_MODELS)",
+        "the numeric-provenance leg catcheth changed and uncited numbers, not a poisoned claim that citeth its own substituted passage; such content is caught by the six-point corpus approval gate and by human review, as docs/editorial/REVIEW.md now stateth plainly",
+        "the staging gate requireth an evaluation only when the release owner asketh (--require-heldout-evaluation): the held-out artifacts are external, and closing that gate from inside this repository would be a fixture wearing an approval"
+      ]
+    },
     "T83": {
       "case_results": {
         "android_grand": {
@@ -10598,7 +10869,7 @@
       "unresolved": []
     }
   },
-  "current_task": "T66",
+  "current_task": "T68",
   "external_blockers": [
     "A06",
     "APPROVED_CONTENT",
@@ -10607,51 +10878,41 @@
     "SIGNING"
   ],
   "failed_attempts": [],
-  "in_progress": {
-    "claimed_head": "2ab05d77afb024c8372c9c52000b597fc127f97c",
-    "claimed_utc": "2026-09-14T13:30:53+00:00",
-    "objective": {
-      "claimed_head": "2ab05d77afb024c8372c9c52000b597fc127f97c",
-      "claimed_utc": "2026-09-14T13:30:53+00:00",
-      "objective": "Build the content/Oracle held-out adversarial evaluation tooling: versioned EvaluationManifest bound to the approved corpus digest and the model lock, HeldOutCase families (numerical, qualifier and context conflicts, unanswerable queries, malicious retrieved instructions, harmful source substitutions), blinded human ReviewerDecisions that the tool can never fabricate or unblind early, a PerCategoryReport of false-allow/false-block with an explicit uncertainty bucket, and a complete-case ledger whose completeness check faileth whenever a case is silently excluded or uncited numeric guidance is allowed through; the released-asset staging path refuseth to publish an evaluation it cannot bind to the very archive it stages. Clinical acceptance stayeth external."
-    },
-    "task": "T66"
-  },
-  "last_code_head": "f60d2cde510abaa8e762d747c9fd955ebd857c56",
-  "last_observed_head": "f60d2cde510abaa8e762d747c9fd955ebd857c56",
+  "in_progress": null,
+  "last_code_head": "b439f35f08f1bf932437399b0b815b2d3a687f3a",
+  "last_observed_head": "b439f35f08f1bf932437399b0b815b2d3a687f3a",
   "latest_verification": {
-    "at_utc": "2026-09-14T08:52:05+00:00",
-    "boundary_commit": "f60d2cde510abaa8e762d747c9fd955ebd857c56",
+    "at_utc": "2026-09-14T13:45:56+00:00",
+    "boundary_commit": "b439f35f08f1bf932437399b0b815b2d3a687f3a",
     "controls": {
-      "boundary_records": 3,
+      "boundary_records": 2,
       "first_pair_failure": "none this round",
-      "outcomes": "3/3 PASSED at the boundary (check_repository rc=0; the gates checker rc=0, selftest 15-of-15 with 8 gates represented and the HISTORICAL classification; the mirror covenant --check rc=0)"
+      "outcomes": "2/2 PASSED at the boundary (check_repository rc=0 over its five scanners; the release-gates status checker rc=0, its own selftests refusing 12-of-12 and 15-of-15)"
     },
     "isle_grands": {
-      "android_grand": "the :llm road ran 39 tests 0 failing this round (the T61 court's 21/21 within it, TEST-*.xml walk); the sealed mesh grand standeth at 1067 (T49) untouched -- no mesh path in this round's name-list",
-      "counts_source": "the runner's classifier readeth the gradle/swift tongues as tests=n/a (kind=command, the sealed T06-T50 precedent); the positive counts cited here come from the builder's TEST-*.xml walks and the roads' own 'Executed N tests' lines, preserved in the evidence logs",
-      "ios_grand": "the mirrored road (the compiler's true input; no bridge within) ran 1043 tests 0 failures this round; the T61 isle court 22/22; the campaign's six isle rods KILLED; the registered mac-native lane (swift test --package-path ios/Godstone) standeth BLOCKED by the executor capability and the absent machine-local vendor provisioning (third_party/llama.cpp is git-ignored at .gitignore:42 and holdeth but README.md, so GodstoneLLMBridge cannot compile: LlamaBridge.mm:3 'llama.h' file not found) -- pending, never fixtured",
-      "python_grand": "the T61 court ran 26 OK; the authority selftest 27 of 27; validate/fetch/verify rc 0/1/1 (the UNPINNED refusals at their sealed heights)"
+      "android_grand": "no Android path in this round (a python/content task): the sealed :llm and :mesh roads are untouched by the name-list",
+      "counts_source": "the runner's classifier read the python courts as kind=test with positive counts (tests=31/31 and 69/69) and the two control commands as tests=n/a; every log is preserved under T66/logs/",
+      "ios_grand": "no isle path in this round; the mirror covenant is not even invoked, since no file under ios/ was touched",
+      "python_grand": "the T66 court 31/31, the content subsystem 69/69 (the held-out staging court 13 of them), the campaign 15/15 KILLED"
     },
     "narrow": {
       "errors": 0,
       "failures": 0,
-      "isle_lane": "BLOCKED (mac-native capability not provisioned; the vendored header absent; recorded, never fixtured)",
-      "tests": 21
+      "lane": "python3 -m unittest discover -s tools/readiness/tests -p test_t66.py",
+      "tests": 31
     },
     "roster": {
-      "T61_killed": 23,
-      "of": 23
+      "T66_killed": 15,
+      "of": 15
     },
     "subsystem": {
       "errors": 0,
       "failures": 0,
-      "isle_lane": "BLOCKED (mac-native)",
-      "isle_mirror_road": 1043,
-      "tests": 39
+      "lane": "python3 -m unittest discover -s content/tests",
+      "tests": 69
     }
   },
-  "next_task": "T66",
+  "next_task": "T68",
   "phase": "P0",
   "plan_sha256": "685456b378662b0a40a53a6abc810041e37daf97b213f3efeb6cea879363934e",
   "planning_baseline_sha": "b5c3d3d394b70cf356cdde33b47511dad7cbb95c",
@@ -10732,6 +10993,8 @@
     "T50 sealed at e508e56: the iOS reading journey speaketh its phases (Loading/Ready/NoResults/Unavailable with cause), the road is split at the dispatch (SearchPetition; no publication without leave of the epoch), the banner carrieth no SQL whispers, retry is earned, the journey surviveth recreation by handle, the scroll is remembered, and the twelfth witness walketh the FROZEN DDL on the true engine end to end; 15 witnesses, ios grand 1006, 14-of-14 roster; the device leg rides to T73-T75; the toolchain taught also: name configurations truly (LightDebug/LightRelease), the bare func name in a ViewBuilder context is a function reference (call it with parentheses), compound assignment yieldeth Void (capture the new value in a separate let)",
     "T51 sealed at c38ce94: the intake road is set in order -- names proved before the filesystem is asked, metadata sworn before the bundle is shipped, the approved-resource manifest published only after the bytes are true, the source-only face by construction, the guardian at the resolver made provable by the real planted archive; 15 swift + 20 python witnesses, ios grand 1021, roster 17-of-17; the device legs (simulator install/launch, embedded-Info.plist comparison) ride to T73-T75; the gates stand open",
     "T52 sealed at 51fcfa3: the presence inspector distinguisheth the three lanes (exclusion / presence / release-candidate) and nameth its evidence accordingly; the fifteen scans keep the package in awe; the staging gate is two-faced ever (operator face byte-identical to T51's seal, deputy face verbatim the T46 vintage) and the three T51-wounded sealed witnesses ride again; the two latent wounds of the discover-all road (stale authority blobs, the required-kwarg inversion) are healed with attribution; 35 witnesses, python grand 144, roster 29-of-29; the device legs ride to T73-T75; the guarded presence step sleepeth until A06/APPROVED_CONTENT awake the approved bytes; continue T53",
-    "T53 sealed at dfee6be: the gate status regime is exact-SHA, complete and profile-aware -- GateStatusV1 versions the register (futures refused), GateEvidence swears run id, executor agreement, full digests, positive counts and results, ProfileRequirements keep the LIGHT no-embed gate and the future MEDIUM corpus apart, evidence commits resolve against the real history (candidate closures must carry results, ancestors are recorded HISTORICAL with computed drift, the unresolvable die as stale), a skipped or missing job is UNAVAILABLE and never PASS, the production-corpus job holdeth --release; 19 witnesses, road 163, roster 25-of-25 at the pin; the eight gates stand as sealed, readiness=false; the device legs and fresh candidate-class closures ride to T73-T75; continue T54"
+    "T53 sealed at dfee6be: the gate status regime is exact-SHA, complete and profile-aware -- GateStatusV1 versions the register (futures refused), GateEvidence swears run id, executor agreement, full digests, positive counts and results, ProfileRequirements keep the LIGHT no-embed gate and the future MEDIUM corpus apart, evidence commits resolve against the real history (candidate closures must carry results, ancestors are recorded HISTORICAL with computed drift, the unresolvable die as stale), a skipped or missing job is UNAVAILABLE and never PASS, the production-corpus job holdeth --release; 19 witnesses, road 163, roster 25-of-25 at the pin; the eight gates stand as sealed, readiness=false; the device legs and fresh candidate-class closures ride to T73-T75; continue T54",
+    "T66: a mutation row whose named witness is absent from the baseline tree runneth zero tests and is reported INVALID, never KILLED -- commit the witness (or the court) before the official campaign, and let the report-only pass catch it; the harness told the truth about an empty baseline and the repair was one commit, not a reinterpretation.",
+    "T66: the held-out evaluation is machinery, not acceptance. The staging gate refuseth an evaluation it cannot bind to the very Archive (COMPLETE, same corpus digest, same model-lock digest and status, zero false allows, zero reviewer rejections) and publisheth the verified summary inside APPROVED_ASSETS.json; no fixture may stand in for a held-out manifest or a clinician, and none was used."
   ]
 }
