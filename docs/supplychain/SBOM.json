@@ -1,5 +1,5 @@
 {
-  "built_utc": "2026-09-14T14:06:07+00:00",
+  "built_utc": "2026-09-14T15:39:04+00:00",
   "components": [
     {
       "digest": "661c298b4821edebead0c91edd2b00374d67ad7c5a1f7a91d4442633b79d6a72",
@@ -5526,6 +5526,17 @@
       "version": "0.1.0-rc2"
     },
     {
+      "digest": "4a4832720a65eaf7f4d6fd7ede52087b994dc5633c076f9e994dc0c8b4b0b4fa",
+      "digest_status": "PINNED",
+      "ecosystem": "maven",
+      "lane": "android",
+      "license": "unknown",
+      "license_source": "not carried by the metadata",
+      "name": "org.xerial:sqlite-jdbc",
+      "supplied_by": "android/gradle/verification-metadata.xml",
+      "version": "3.46.1.3"
+    },
+    {
       "digest": null,
       "digest_status": "UNPINNED",
       "ecosystem": "model",
@@ -5704,7 +5715,7 @@
   ],
   "licence_census": {
     "n/a": 11,
-    "unknown": 501
+    "unknown": 502
   },
   "note": "An unknown licence is counted, never omitted: a component whose licence nobody recorded is a fact about this inventory, not a blank to be filled in later.",
   "schema": 1,
@@ -5715,6 +5726,6 @@
     "model:generation-large standeth UNPINNED (external gate NATIVE_MODELS)",
     "model:embedding-small standeth UNPINNED (external gate NATIVE_MODELS)",
     "model:embedding-base standeth UNPINNED (external gate NATIVE_MODELS)",
-    "501 component(s) carry an unknown licence; the inventory recordeth them by name rather than omitting them"
+    "502 component(s) carry an unknown licence; the inventory recordeth them by name rather than omitting them"
   ]
 }

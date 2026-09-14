@@ -1,6 +1,8 @@
 package io.godstone.mesh
 
 import android.content.Context
+import io.godstone.mesh.delivery.AckDispatch
+import io.godstone.mesh.delivery.AckDispatcher
 import io.godstone.mesh.delivery.AckMode
 import io.godstone.mesh.delivery.AckResult
 import io.godstone.mesh.delivery.DeliveryLookup
@@ -112,6 +114,21 @@ class MeshNode(
      * territory; the production wiring point is the lab composition root).
      */
     internal var recipientInbox: RecipientInboxRepository? = null
+
+    /**
+     * T84 (section 14, the durable ACK return path): the ACK dispatcher. Bound
+     * by the composition that OWNETH the ack_frames namespace -- the same
+     * authority that binds [recipientInbox] -- and absent by default, so the
+     * historical point-to-point face below standeth byte-for-byte for every
+     * composition that carrieth no such namespace.
+     *
+     * With it bound, an inbound ACK is classified BEFORE any generic message
+     * TTL/dedup/store handling: a durable delivery row maketh it ORIGIN
+     * verification (the only road to DELIVERED), and the ABSENCE of one maketh
+     * it RELAY TRAFFIC to be carried home, rather than the UnknownMessage
+     * discard that loseth every multihop receipt.
+     */
+    internal var ackDispatcher: AckDispatcher? = null
 
     /** T38: the signed-SOS authority seam. Absent by default -- dispatch then
      * keeps emitting the legacy structural shape (documented, and refused by
@@ -655,12 +672,24 @@ class MeshNode(
             // nothing is relayed, no trust is moved
             return false
         }
-        return if (frame.type == io.godstone.mesh.wire.v2.TypeV2.ACK) {
-            when (deliveryTracker.acknowledge(frame.msgId, frame)) {
-                AckResult.Applied, AckResult.AlreadyAcknowledged, AckResult.DuplicateAuthenticatedAck -> true
-                else -> false
+        if (frame.type == io.godstone.mesh.wire.v2.TypeV2.ACK) {
+            val dispatcher = ackDispatcher
+                // the historical point-to-point face: no ack_frames namespace
+                // is bound, so there is nowhere to carry relay custody. A
+                // receipt is never claimed on it (UnresolvedRecipientKeyResolver
+                // is fail-closed, and no relay ever sees these bytes leave).
+                ?: return when (deliveryTracker.acknowledge(frame.msgId, frame)) {
+                    AckResult.Applied, AckResult.AlreadyAcknowledged,
+                    AckResult.DuplicateAuthenticatedAck -> true
+                    else -> false
+                }
+            return when (val verdict = dispatcher.dispatch(frame, fromPeer)) {
+                is AckDispatch.OriginVerification -> verdict.accepted
+                is AckDispatch.OpaqueRelay -> verdict.accepted
+                is AckDispatch.Refused -> false
             }
-        } else {
+        }
+        return run {
             val relay = router.onFrameReceived(frame, fromPeer)
             val inbox = recipientInbox
             if (inbox != null &&

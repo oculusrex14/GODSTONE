@@ -458,6 +458,56 @@ internal class JdbcStoreDb(file: File) : StoreDb {
         conn.prepareStatement(StoreSchema.clearAckFramesSql()).use { it.executeUpdate() }
     }
 
+    // --- T84: the durable ACK pump's faces, over the real JDBC engine ---
+
+    override fun listAckFrameRows(bound: Int): List<AckFrameRowView> = synchronized(conn) {
+        conn.prepareStatement(StoreSchema.listAckFrameSql()).use { ps ->
+            ps.setInt(1, bound)
+            ps.executeQuery().use { rs ->
+                val out = ArrayList<AckFrameRowView>()
+                while (rs.next()) {
+                    out.add(
+                        AckFrameRowView(
+                            ackKey = rs.getBytes(1),
+                            msgId = rs.getBytes(2),
+                            recipientNodeId = rs.getBytes(3),
+                            signature = rs.getBytes(4),
+                            encodedFrame = rs.getBytes(5),
+                            receivedFrom = rs.getBytes(6),
+                            remainingLifetimeMs = rs.getLong(7),
+                            verificationClassCode = rs.getInt(8),
+                        ),
+                    )
+                }
+                out
+            }
+        }
+    }
+
+    override fun debitAckFrameLifetime(ackKey: ByteArray, remainingLifetimeMs: Long): Boolean =
+        synchronized(conn) {
+            conn.prepareStatement(StoreSchema.debitAckFrameSql()).use { ps ->
+                ps.setLong(1, remainingLifetimeMs)
+                ps.setBytes(2, ackKey)
+                ps.setLong(3, remainingLifetimeMs)
+                ps.executeUpdate() > 0
+            }
+        }
+
+    override fun deleteAckFrameRow(ackKey: ByteArray): Boolean = synchronized(conn) {
+        conn.prepareStatement(StoreSchema.deleteAckFrameSql()).use { ps ->
+            ps.setBytes(1, ackKey)
+            ps.executeUpdate() > 0
+        }
+    }
+
+    override fun countAckFrameRowsFromPeer(peer: ByteArray): Int = synchronized(conn) {
+        conn.prepareStatement(StoreSchema.countAckFrameFromPeerSql()).use { ps ->
+            ps.setBytes(1, peer)
+            ps.executeQuery().use { rs -> if (!rs.next()) 0 else rs.getInt(1) }
+        }
+    }
+
     override fun commitAckPair(
         row: AckFrameRowView,
         msgId: ByteArray,

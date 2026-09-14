@@ -513,6 +513,37 @@ internal enum StoreSchema {
 
     /// The quota-governed wipe of the whole namespace (retention policy hook).
     static let clearAckFramesSql = "DELETE FROM \(ackFrameTable)"
+
+    // --- T84: the durable ACK pump's SQL over the SAME ack_frames namespace ---
+    // The pump enumerates, debits and expires candidates. None of these touch
+    // held_frames, the delivery rows or the dedup/tombstone tables: an ACK
+    // candidate is never a message (section 14).
+
+    /// Enumerate candidates oldest-first. Bind: (1) bound. Columns: the eight
+    /// of the row, ack_key first.
+    static let listAckFrameSql =
+        "SELECT \(colKAckKey), \(colKMsgId), \(colKRecipient), \(colKSignature), \(colKEncoded), " +
+        "\(colKReceivedFrom), \(colKRemain), \(colKClass) FROM \(ackFrameTable) " +
+        "ORDER BY rowid LIMIT ?"
+
+    /// T84 -- a strictly DECREASING lifetime debit. Bind: (1) the new remaining
+    /// lifetime, (2) ack_key, (3) the SAME new remaining lifetime. The
+    /// `\(colKRemain) > ?` guard maketh replenishment structurally impossible:
+    /// an equal or greater value updateth no row, so no restart, duplicate or
+    /// clock jump can ever extend a candidate's life (section 14: "never
+    /// replenish remaining lifetime for duplicates or process restart").
+    static let debitAckFrameSql =
+        "UPDATE \(ackFrameTable) SET \(colKRemain) = ? " +
+        "WHERE \(colKAckKey) = ? AND \(colKRemain) > ?"
+
+    /// T84 -- the expiry DELETE of one candidate by its local cache key.
+    /// Bind: (1) ack_key.
+    static let deleteAckFrameSql = "DELETE FROM \(ackFrameTable) WHERE \(colKAckKey) = ?"
+
+    /// T84 -- the per-peer ACK admission census (section 14: "under global and
+    /// per-peer ACK admission budgets"). Bind: (1) received_from.
+    static let countAckFrameFromPeerSql =
+        "SELECT COUNT(*) FROM \(ackFrameTable) WHERE \(colKReceivedFrom) = ?"
 }
 
 /// One `delivery_state` row before it is typed into a `DeliveryRecord` (the
@@ -2398,6 +2429,74 @@ extension SqliteMessageStore: AckObligationEngine {
     func deleteAllAckFrameRows() throws -> Int {
         try withDbThrowing { db in
             try execGuardedNoLock(db, StoreSchema.clearAckFramesSql, [])
+        }
+    }
+
+    // --- T84: the durable ACK pump's faces over the real engine ---
+
+    func listAckFrameRows(_ bound: Int32) throws -> [AckFrameRowView] {
+        try withDbThrowing { db in
+            var stmt: OpaquePointer?
+            guard sqlite3_prepare_v2(db, StoreSchema.listAckFrameSql, -1, &stmt, nil) == SQLITE_OK else {
+                sqlite3_finalize(stmt); throw StoreError.prepareFailed
+            }
+            defer { sqlite3_finalize(stmt) }
+            sqlite3_bind_int(stmt, 1, bound)
+            var out: [AckFrameRowView] = []
+            while sqlite3_step(stmt) == SQLITE_ROW {
+                out.append(AckFrameRowView(
+                    ackKey: readBlob(stmt, 0), msgId: readBlob(stmt, 1),
+                    recipientNodeId: readBlob(stmt, 2), signature: readBlob(stmt, 3),
+                    encodedFrame: readBlob(stmt, 4),
+                    receivedFrom: sqlite3_column_type(stmt, 5) == SQLITE_NULL
+                        ? nil : readBlob(stmt, 5),
+                    remainingLifetimeMs: sqlite3_column_int64(stmt, 6),
+                    verificationClassCode: sqlite3_column_int(stmt, 7)))
+            }
+            return out
+        }
+    }
+
+    /// True iff a STRICTLY decreasing row was updated (an equal or greater value
+    /// updates nothing, so a restart can never extend a candidate's life).
+    func debitAckFrameLifetime(_ ackKey: Data, remainingLifetimeMs: Int64) throws -> Bool {
+        try withDbThrowing { db in
+            var stmt: OpaquePointer?
+            guard sqlite3_prepare_v2(db, StoreSchema.debitAckFrameSql, -1, &stmt, nil) == SQLITE_OK else {
+                sqlite3_finalize(stmt); throw StoreError.prepareFailed
+            }
+            defer { sqlite3_finalize(stmt) }
+            sqlite3_bind_int64(stmt, 1, remainingLifetimeMs)
+            bindBlob(stmt, 2, ackKey)
+            sqlite3_bind_int64(stmt, 3, remainingLifetimeMs)
+            guard sqlite3_step(stmt) == SQLITE_DONE else { throw StoreError.stepFailed }
+            return sqlite3_changes(db) > 0
+        }
+    }
+
+    func deleteAckFrameRow(_ ackKey: Data) throws -> Bool {
+        try withDbThrowing { db in
+            var stmt: OpaquePointer?
+            guard sqlite3_prepare_v2(db, StoreSchema.deleteAckFrameSql, -1, &stmt, nil) == SQLITE_OK else {
+                sqlite3_finalize(stmt); throw StoreError.prepareFailed
+            }
+            defer { sqlite3_finalize(stmt) }
+            bindBlob(stmt, 1, ackKey)
+            guard sqlite3_step(stmt) == SQLITE_DONE else { throw StoreError.stepFailed }
+            return sqlite3_changes(db) > 0
+        }
+    }
+
+    func countAckFrameRowsFromPeer(_ peer: Data) throws -> Int {
+        try withDbThrowing { db in
+            var stmt: OpaquePointer?
+            guard sqlite3_prepare_v2(db, StoreSchema.countAckFrameFromPeerSql, -1, &stmt, nil) == SQLITE_OK else {
+                sqlite3_finalize(stmt); throw StoreError.prepareFailed
+            }
+            defer { sqlite3_finalize(stmt) }
+            bindBlob(stmt, 1, peer)
+            guard sqlite3_step(stmt) == SQLITE_ROW else { return 0 }
+            return Int(sqlite3_column_int(stmt, 0))
         }
     }
 

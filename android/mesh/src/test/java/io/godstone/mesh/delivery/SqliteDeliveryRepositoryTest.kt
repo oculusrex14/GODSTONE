@@ -717,6 +717,20 @@ class SqliteDeliveryRepositoryTest {
         override fun countAckFrameRowsForPair(msgId: ByteArray, recipientNodeId: ByteArray): Int = inner.countAckFrameRowsForPair(msgId, recipientNodeId)
         override fun countAckFrameRowsTotal(): Int = inner.countAckFrameRowsTotal()
         override fun deleteAllAckFrameRows(): Int = inner.deleteAllAckFrameRows()
+
+        // T84: the durable ACK pump's faces, delegated unchanged (this double
+        // faulteth delivery reads/writes, not ACK custody; the T84 court owns
+        // the custody faults).
+        override fun listAckFrameRows(bound: Int): List<io.godstone.mesh.store.AckFrameRowView> =
+            inner.listAckFrameRows(bound)
+
+        override fun debitAckFrameLifetime(ackKey: ByteArray, remainingLifetimeMs: Long): Boolean =
+            inner.debitAckFrameLifetime(ackKey, remainingLifetimeMs)
+
+        override fun deleteAckFrameRow(ackKey: ByteArray): Boolean = inner.deleteAckFrameRow(ackKey)
+
+        override fun countAckFrameRowsFromPeer(peer: ByteArray): Int =
+            inner.countAckFrameRowsFromPeer(peer)
         override fun commitAckPair(row: io.godstone.mesh.store.AckFrameRowView, msgId: ByteArray, recipientNodeId: ByteArray): io.godstone.mesh.store.FrameCommitOutcome =
             inner.commitAckPair(row, msgId, recipientNodeId)
     }
@@ -2670,6 +2684,19 @@ class SqliteDeliveryRepositoryTest {
         override fun countAckFrameRowsForPair(msgId: ByteArray, recipientNodeId: ByteArray): Int = underlyingDb.countAckFrameRowsForPair(msgId, recipientNodeId)
         override fun countAckFrameRowsTotal(): Int = underlyingDb.countAckFrameRowsTotal()
         override fun deleteAllAckFrameRows(): Int = underlyingDb.deleteAllAckFrameRows()
+
+        // T84: delegated unchanged (see the sibling double above).
+        override fun listAckFrameRows(bound: Int): List<io.godstone.mesh.store.AckFrameRowView> =
+            underlyingDb.listAckFrameRows(bound)
+
+        override fun debitAckFrameLifetime(ackKey: ByteArray, remainingLifetimeMs: Long): Boolean =
+            underlyingDb.debitAckFrameLifetime(ackKey, remainingLifetimeMs)
+
+        override fun deleteAckFrameRow(ackKey: ByteArray): Boolean =
+            underlyingDb.deleteAckFrameRow(ackKey)
+
+        override fun countAckFrameRowsFromPeer(peer: ByteArray): Int =
+            underlyingDb.countAckFrameRowsFromPeer(peer)
         override fun commitAckPair(row: io.godstone.mesh.store.AckFrameRowView, msgId: ByteArray, recipientNodeId: ByteArray): io.godstone.mesh.store.FrameCommitOutcome =
             underlyingDb.commitAckPair(row, msgId, recipientNodeId)
     }

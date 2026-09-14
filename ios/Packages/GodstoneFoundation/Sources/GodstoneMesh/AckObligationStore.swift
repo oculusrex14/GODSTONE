@@ -163,6 +163,17 @@ struct AckFrameRecord: Equatable, @unchecked Sendable {
                               remainingLifetimeMs: remainingLifetimeMs, verificationClass: verificationClass)
     }
 
+    /// T84: the same candidate with a SHORTER life, or nil when the new value
+    /// is not strictly smaller -- the in-memory twin of the SQL guard. A
+    /// candidate's life is never extended by a debit, a duplicate or a restart.
+    func withRemainingLifetime(_ newRemainingMs: Int64) -> AckFrameRecord? {
+        if newRemainingMs < 0 || newRemainingMs >= remainingLifetimeMs { return nil }
+        return AckFrameRecord(ackKey: ackKey, msgId: msgId, recipientNodeId: recipientNodeId,
+                              signature: signature, encodedFrame: encodedFrame,
+                              receivedFrom: receivedFrom, remainingLifetimeMs: newRemainingMs,
+                              verificationClass: verificationClass)
+    }
+
     func toView() -> AckFrameRowView {
         return AckFrameRowView(ackKey: ackKey, msgId: msgId, recipientNodeId: recipientNodeId,
                                signature: signature, encodedFrame: encodedFrame,
@@ -259,6 +270,13 @@ enum PairList: Equatable {
     case storageFailure
 }
 
+/// T84: the candidate enumeration the durable ACK pump walketh.
+enum CandidateList: Equatable {
+    case records([AckFrameRecord])
+    case corrupt(String)
+    case storageFailure
+}
+
 enum FrameLookup: Equatable {
     case found(AckFrameRecord)
     case absent
@@ -297,6 +315,25 @@ protocol AckObligationStore: AnyObject {
     /// The atomic pair step: insert the frame row AND retire the obligation.
     func commitFrameAndRetireObligation(_ record: AckFrameRecord, msgId: Data,
                                          recipientNodeId: Data) -> FrameCommitResult
+
+    // --- T84: the durable ACK pump's faces over the ack_frames namespace ---
+    // An ACK candidate liveth in ITS OWN namespace. These four operations never
+    // touch held_frames, the delivery rows or the dedup/tombstone tables, so a
+    // relay can never make an ACK masquerade as a message (section 14).
+
+    /// Enumerate admitted candidates oldest-first, bounded by `bound`.
+    func listCandidates(_ bound: Int32) -> CandidateList
+
+    /// The non-replenishing lifetime debit: true iff the stored remaining
+    /// lifetime STRICTLY fell. An equal or greater value changeth nothing, so
+    /// no restart and no duplicate can extend a candidate's life.
+    func debitCandidateLifetime(_ ackKey: Data, remainingLifetimeMs: Int64) -> Bool
+
+    /// Expire one candidate by its local cache key. True iff a row fell.
+    func expireCandidate(_ ackKey: Data) -> Bool
+
+    /// The per-peer admission census (section 14's per-peer ACK budget).
+    func countCandidatesFromPeer(_ peer: Data) -> Int
 }
 
 // ------------------------------------------------------------------ in-memory engine
@@ -419,6 +456,35 @@ final class InMemoryAckStore: AckObligationStore, @unchecked Sendable {
         return n
     }
 
+    // --- T84: the pump's faces, in memory ---
+
+    func listCandidates(_ bound: Int32) -> CandidateList {
+        lock.lock(); defer { lock.unlock() }
+        if bound <= 0 { return .records([]) }
+        // oldest-first: the dictionary's insertion order is the admission order
+        return .records(Array(frames.values.prefix(Int(bound))))
+    }
+
+    func debitCandidateLifetime(_ ackKey: Data, remainingLifetimeMs: Int64) -> Bool {
+        lock.lock(); defer { lock.unlock() }
+        guard let cur = frames[ackKey] else { return false }
+        // STRICTLY decreasing: the in-memory arm carrieth the very law the SQL
+        // guard enforceth.
+        guard let shorter = cur.withRemainingLifetime(remainingLifetimeMs) else { return false }
+        frames[ackKey] = shorter
+        return true
+    }
+
+    func expireCandidate(_ ackKey: Data) -> Bool {
+        lock.lock(); defer { lock.unlock() }
+        return frames.removeValue(forKey: ackKey) != nil
+    }
+
+    func countCandidatesFromPeer(_ peer: Data) -> Int {
+        lock.lock(); defer { lock.unlock() }
+        return frames.values.filter { $0.receivedFrom == peer }.count
+    }
+
     func commitFrameAndRetireObligation(_ record: AckFrameRecord, msgId: Data,
                                         recipientNodeId: Data) -> FrameCommitResult {
         lock.lock(); defer { lock.unlock() }
@@ -467,6 +533,22 @@ protocol AckObligationEngine: AnyObject {
     func countAckFrameRowsTotal() throws -> Int
     func deleteAllAckFrameRows() throws -> Int
     func commitAckPair(_ row: AckFrameRowView, msgId: Data, recipientNodeId: Data) throws -> FrameCommitOutcome
+
+    // --- T84: the durable ACK pump's faces over the same namespace ---
+
+    /// Enumerate candidates oldest-first, bounded by `bound`.
+    func listAckFrameRows(_ bound: Int32) throws -> [AckFrameRowView]
+
+    /// The non-replenishing lifetime debit. True iff a STRICTLY decreasing row
+    /// was updated (an equal or greater value updates nothing, so a restart can
+    /// never extend a candidate's life).
+    func debitAckFrameLifetime(_ ackKey: Data, remainingLifetimeMs: Int64) throws -> Bool
+
+    /// Expire one candidate by its local cache key. True iff a row fell.
+    func deleteAckFrameRow(_ ackKey: Data) throws -> Bool
+
+    /// How many candidates were received FROM this peer (the admission budget).
+    func countAckFrameRowsFromPeer(_ peer: Data) throws -> Int
 }
 
 struct ObligationEntryRow: Equatable {
@@ -689,6 +771,31 @@ final class SqliteAckStore: AckObligationStore, @unchecked Sendable {
 
     func deleteAllFrames() -> Int {
         do { return try engine.deleteAllAckFrameRows() } catch { return -1 }
+    }
+
+    // --- T84: the pump's faces over the real engine. A storage fault is
+    //     reported as such and is NEVER read as "no candidates stand" (a
+    //     fabricated empty set is what the doctrine forbids).
+
+    func listCandidates(_ bound: Int32) -> CandidateList {
+        do {
+            return .records(try engine.listAckFrameRows(bound).compactMap { fromView($0) })
+        } catch {
+            return .storageFailure
+        }
+    }
+
+    func debitCandidateLifetime(_ ackKey: Data, remainingLifetimeMs: Int64) -> Bool {
+        do { return try engine.debitAckFrameLifetime(ackKey, remainingLifetimeMs: remainingLifetimeMs) }
+        catch { return false }
+    }
+
+    func expireCandidate(_ ackKey: Data) -> Bool {
+        do { return try engine.deleteAckFrameRow(ackKey) } catch { return false }
+    }
+
+    func countCandidatesFromPeer(_ peer: Data) -> Int {
+        do { return try engine.countAckFrameRowsFromPeer(peer) } catch { return -1 }
     }
 
     func commitFrameAndRetireObligation(_ record: AckFrameRecord, msgId: Data,

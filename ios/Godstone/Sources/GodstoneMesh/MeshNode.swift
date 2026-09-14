@@ -67,6 +67,20 @@ public final class MeshNode {
     /// territory; the production wiring point is the lab composition root).
     internal var recipientInbox: RecipientInboxRepository?
 
+    /// T84 (section 14, the durable ACK return path): the ACK dispatcher. Bound
+    /// by the composition that OWNETH the ack_frames namespace -- the same
+    /// authority that binds `recipientInbox` -- and absent by default, so the
+    /// historical point-to-point face below standeth byte-for-byte for every
+    /// composition that carrieth no such namespace.
+    ///
+    /// With it bound, an inbound ACK is classified BEFORE any generic message
+    /// TTL/dedup/store handling: a durable delivery row maketh it ORIGIN
+    /// verification (the only road to DELIVERED), and the ABSENCE of one maketh
+    /// it RELAY TRAFFIC to be carried home, rather than the UnknownMessage
+    /// discard that loseth every multihop receipt. Mirrors Android
+    /// `MeshNode.ackDispatcher`.
+    internal var ackDispatcher: AckDispatcher?
+
     /// T38 (section 15): the signed-SOS authority seam. Absent by default --
     /// dispatch then keeps the legacy structural shape (documented, refused
     /// by the receiver's runtime authentication exactly as section 15 demands;
@@ -659,12 +673,18 @@ public final class MeshNode {
             return false
         }
         if frame.type == .ack {
-            switch deliveryTracker.acknowledge(frame.msgId, frame) {
-            case .applied, .alreadyAcknowledged, .duplicateAuthenticatedAck:
-                return true
-            default:
-                return false
+            guard let dispatcher = ackDispatcher else {
+                // the historical point-to-point face: no ack_frames namespace is
+                // bound, so there is nowhere to carry relay custody. A receipt is
+                // never claimed on it.
+                switch deliveryTracker.acknowledge(frame.msgId, frame) {
+                case .applied, .alreadyAcknowledged, .duplicateAuthenticatedAck:
+                    return true
+                default:
+                    return false
+                }
             }
+            return dispatcher.dispatch(frame, receivedFrom: receivedFrom).accepted
         }
         let relay = router.ingest(frame, isAddressedToMe: frame.routingTag == identity.nodeHint,
                                   receivedFrom: receivedFrom)

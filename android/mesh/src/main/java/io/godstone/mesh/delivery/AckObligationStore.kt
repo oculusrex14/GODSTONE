@@ -224,6 +224,17 @@ class AckFrameRecord private constructor(
         remainingLifetimeMs = _remainingLifetimeMs, verificationClassCode = _verificationClass.code,
     )
 
+    /**
+     * T84: the same candidate with a SHORTER life, or null when the new value
+     * is not strictly smaller -- the in-memory twin of the SQL guard. A
+     * candidate's life is never extended by a debit, a duplicate or a restart.
+     */
+    internal fun withRemainingLifetime(newRemainingMs: Long): AckFrameRecord? {
+        if (newRemainingMs < 0L || newRemainingMs >= _remainingLifetimeMs) return null
+        return AckFrameRecord(_ackKey, _msgId, _recipientNodeId, _signature, _encodedFrame,
+            _receivedFrom, newRemainingMs, _verificationClass)
+    }
+
     override fun equals(other: Any?): Boolean {
         if (other === this) return true
         if (other !is AckFrameRecord) return false
@@ -337,6 +348,13 @@ sealed class FrameLookup {
     object StorageFailure : FrameLookup()
 }
 
+/** T84: the candidate enumeration the durable ACK pump walketh. */
+sealed class CandidateList {
+    data class Records(val records: List<AckFrameRecord>) : CandidateList()
+    data class Corrupt(val reason: String) : CandidateList()
+    object StorageFailure : CandidateList()
+}
+
 // ------------------------------------------------------------------ the paired store
 
 interface AckSignerSeam {
@@ -374,6 +392,25 @@ interface AckObligationStore {
         msgId: ByteArray,
         recipientNodeId: ByteArray,
     ): FrameCommitResult
+
+    // --- T84: the durable ACK pump's faces over the ack_frames namespace ---
+    // An ACK candidate liveth in ITS OWN namespace. These four operations never
+    // touch held_frames, the delivery rows or the dedup/tombstone tables, so a
+    // relay can never make an ACK masquerade as a message (section 14).
+
+    /** Enumerate admitted candidates oldest-first, bounded by [bound]. */
+    fun listCandidates(bound: Int): CandidateList
+
+    /** The non-replenishing lifetime debit: true iff the stored remaining
+     *  lifetime STRICTLY fell. An equal or greater value changeth nothing, so
+     *  no restart and no duplicate can extend a candidate's life. */
+    fun debitCandidateLifetime(ackKey: ByteArray, remainingLifetimeMs: Long): Boolean
+
+    /** Expire one candidate by its local cache key. True iff a row fell. */
+    fun expireCandidate(ackKey: ByteArray): Boolean
+
+    /** The per-peer admission census (section 14's per-peer ACK budget). */
+    fun countCandidatesFromPeer(peer: ByteArray): Int
 }
 
 // ------------------------------------------------------------------ in-memory engine
@@ -508,6 +545,32 @@ internal class InMemoryAckStore : AckObligationStore {
         val n = frames.size
         frames.clear()
         n
+    }
+
+    // --- T84: the pump's faces, in memory ---
+
+    override fun listCandidates(bound: Int): CandidateList = synchronized(lock) {
+        if (bound <= 0) return@synchronized CandidateList.Records(emptyList())
+        CandidateList.Records(frames.values.take(bound))
+    }
+
+    override fun debitCandidateLifetime(ackKey: ByteArray, remainingLifetimeMs: Long): Boolean =
+        synchronized(lock) {
+            val k = Key(ackKey)
+            val cur = frames[k] ?: return@synchronized false
+            // STRICTLY decreasing: an equal or greater value is refused, so the
+            // in-memory arm carrieth the very law the SQL guard enforceth.
+            if (remainingLifetimeMs >= cur.remainingLifetimeMs) return@synchronized false
+            frames[k] = cur.withRemainingLifetime(remainingLifetimeMs) ?: return@synchronized false
+            true
+        }
+
+    override fun expireCandidate(ackKey: ByteArray): Boolean = synchronized(lock) {
+        frames.remove(Key(ackKey)) != null
+    }
+
+    override fun countCandidatesFromPeer(peer: ByteArray): Int = synchronized(lock) {
+        frames.values.count { it.receivedFrom != null && it.receivedFrom.contentEquals(peer) }
     }
 
     override fun commitFrameAndRetireObligation(
@@ -710,6 +773,34 @@ internal class SqliteAckStore(private val engine: StoreDb) : AckObligationStore 
 
     override fun deleteAllFrames(): Int = try {
         engine.deleteAllAckFrameRows()
+    } catch (_e: Exception) {
+        -1
+    }
+
+    // --- T84: the pump's faces over the real engine. A storage fault is
+    //     reported as such and is NEVER read as "no candidates stand" (a
+    //     fabricated empty set is what the doctrine forbids).
+
+    override fun listCandidates(bound: Int): CandidateList = try {
+        CandidateList.Records(engine.listAckFrameRows(bound).mapNotNull { fromView(it) })
+    } catch (e: Exception) {
+        CandidateList.StorageFailure
+    }
+
+    override fun debitCandidateLifetime(ackKey: ByteArray, remainingLifetimeMs: Long): Boolean = try {
+        engine.debitAckFrameLifetime(ackKey, remainingLifetimeMs)
+    } catch (_e: Exception) {
+        false
+    }
+
+    override fun expireCandidate(ackKey: ByteArray): Boolean = try {
+        engine.deleteAckFrameRow(ackKey)
+    } catch (_e: Exception) {
+        false
+    }
+
+    override fun countCandidatesFromPeer(peer: ByteArray): Int = try {
+        engine.countAckFrameRowsFromPeer(peer)
     } catch (_e: Exception) {
         -1
     }

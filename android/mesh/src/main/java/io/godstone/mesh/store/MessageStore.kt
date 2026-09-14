@@ -481,6 +481,40 @@ internal object StoreSchema {
     /** The quota-governed wipe of the whole namespace (retention policy hook). */
     fun clearAckFramesSql(): String = "DELETE FROM $ACK_FRAME_TABLE"
 
+    // --- T84: the durable ACK pump's SQL over the SAME ack_frames namespace ---
+    // The pump enumerates, debits and expires candidates. None of these touch
+    // held_frames, the delivery rows or the dedup/tombstone tables: an ACK
+    // candidate is never a message (section 14).
+
+    /** Enumerate candidates oldest-first. Bind: (1) bound. Columns: the eight
+     *  of the row, ack_key first. */
+    fun listAckFrameSql(): String =
+        "SELECT $COL_K_ACK_KEY, $COL_K_MSG_ID, $COL_K_RECIPIENT, $COL_K_SIGNATURE, $COL_K_ENCODED, " +
+            "$COL_K_RECEIVED_FROM, $COL_K_REMAINING, $COL_K_CLASS FROM $ACK_FRAME_TABLE " +
+            "ORDER BY rowid LIMIT ?"
+
+    /**
+     * T84 -- a strictly DECREASING lifetime debit. Bind: (1) the new remaining
+     * lifetime, (2) ack_key, (3) the SAME new remaining lifetime. The
+     * `$COL_K_REMAINING > ?` guard maketh replenishment structurally
+     * impossible: an equal or greater value updateth no row, so no restart,
+     * duplicate or clock jump can ever extend a candidate's life (section 14:
+     * "never replenish remaining lifetime for duplicates or process restart").
+     */
+    fun debitAckFrameSql(): String =
+        "UPDATE $ACK_FRAME_TABLE SET $COL_K_REMAINING = ? " +
+            "WHERE $COL_K_ACK_KEY = ? AND $COL_K_REMAINING > ?"
+
+    /** T84 -- the expiry DELETE of one candidate by its local cache key.
+     *  Bind: (1) ack_key. */
+    fun deleteAckFrameSql(): String =
+        "DELETE FROM $ACK_FRAME_TABLE WHERE $COL_K_ACK_KEY = ?"
+
+    /** T84 -- the per-peer ACK admission census (section 14: "under global and
+     *  per-peer ACK admission budgets"). Bind: (1) received_from. */
+    fun countAckFrameFromPeerSql(): String =
+        "SELECT COUNT(*) FROM $ACK_FRAME_TABLE WHERE $COL_K_RECEIVED_FROM = ?"
+
     /** Read the delivery row: (state code, ack_mode code, expected recipient or
      *  NULL). Bind: (1) msg_id. */
     fun readDeliverySql(): String =
@@ -743,6 +777,22 @@ internal interface StoreDb {
 
     /** The quota-governed wipe of the whole namespace. Returns rows removed. */
     fun deleteAllAckFrameRows(): Int
+
+    // --- T84: the durable ACK pump's faces over the same namespace ---
+
+    /** Enumerate candidates oldest-first, bounded by [bound]. */
+    fun listAckFrameRows(bound: Int): List<AckFrameRowView>
+
+    /** The non-replenishing lifetime debit. Returns true iff a STRICTLY
+     *  decreasing row was updated (an equal or greater value updates nothing,
+     *  so a restart can never extend a candidate's life). */
+    fun debitAckFrameLifetime(ackKey: ByteArray, remainingLifetimeMs: Long): Boolean
+
+    /** Expire one candidate by its local cache key. Returns true iff a row fell. */
+    fun deleteAckFrameRow(ackKey: ByteArray): Boolean
+
+    /** How many candidates were received FROM this peer (the admission budget). */
+    fun countAckFrameRowsFromPeer(peer: ByteArray): Int
 
     /** ONE engine transaction: insert the frame row AND retire the obligation
      *  (both-or-neither; a throw rolls the whole pair step back). The quota
@@ -1620,6 +1670,48 @@ internal class SqlcipherStoreDb(ctx: Context) : StoreDb {
 
     override fun deleteAllAckFrameRows(): Int =
         helper.writableDatabase.compileStatement(StoreSchema.clearAckFramesSql()).use { it.executeUpdateDelete() }
+
+    override fun listAckFrameRows(bound: Int): List<AckFrameRowView> =
+        helper.readableDatabase
+            .rawQuery(StoreSchema.listAckFrameSql(), arrayOf(bound.toString()))
+            .use { c ->
+                val out = ArrayList<AckFrameRowView>()
+                while (c.moveToNext()) {
+                    out.add(
+                        AckFrameRowView(
+                            ackKey = c.getBlob(0),
+                            msgId = c.getBlob(1),
+                            recipientNodeId = c.getBlob(2),
+                            signature = c.getBlob(3),
+                            encodedFrame = c.getBlob(4),
+                            receivedFrom = if (c.isNull(5)) null else c.getBlob(5),
+                            remainingLifetimeMs = c.getLong(6),
+                            verificationClassCode = c.getInt(7),
+                        ),
+                    )
+                }
+                out
+            }
+
+    override fun debitAckFrameLifetime(ackKey: ByteArray, remainingLifetimeMs: Long): Boolean =
+        helper.writableDatabase.compileStatement(StoreSchema.debitAckFrameSql()).use { stmt ->
+            stmt.bindLong(1, remainingLifetimeMs)
+            stmt.bindBlob(2, ackKey)
+            stmt.bindLong(3, remainingLifetimeMs)
+            stmt.executeUpdateDelete() > 0   // 1 iff the new value is STRICTLY smaller
+        }
+
+    override fun deleteAckFrameRow(ackKey: ByteArray): Boolean =
+        helper.writableDatabase.compileStatement(StoreSchema.deleteAckFrameSql()).use { stmt ->
+            stmt.bindBlob(1, ackKey)
+            stmt.executeUpdateDelete() > 0
+        }
+
+    override fun countAckFrameRowsFromPeer(peer: ByteArray): Int =
+        helper.readableDatabase
+            .rawQuery(StoreSchema.countAckFrameFromPeerSql(), arrayOf(peer)).use { c ->
+                if (!c.moveToFirst()) 0 else c.getInt(0)
+            }
 
     override fun commitAckPair(
         row: AckFrameRowView,
