@@ -14066,6 +14066,253 @@
         "the release-gates register (docs/production/RELEASE_GATES_STATUS.json) was READ but not modified: no gate was closed by this task, and the artifact evidence gathered here belongeth to the platform/device gate T73-T75"
       ]
     },
+    "T71": {
+      "case_results": {
+        "added_cases": {
+          "android/mesh/src/test/java/io/godstone/mesh/readiness/ReadinessT71Test.kt": [
+            "test_w01_the_recorder_is_opt_in",
+            "test_w02_a_body_or_a_key_is_refused_by_name",
+            "test_w03_the_ring_is_bounded_and_drop_oldest_is_counted",
+            "test_w04_counters_saturate_and_gauges_never_go_negative",
+            "test_w05_durations_are_monotonic_microseconds",
+            "test_w06_relation_ids_are_ephemeral_and_opaque",
+            "test_w07_the_five_scenarios_run_against_a_live_recorder",
+            "test_w08_the_sentinels_appear_nowhere_in_any_scenario",
+            "test_w09_the_vocabulary_is_closed",
+            "test_w10_redaction_is_by_refusal",
+            "test_w11_the_ring_bound_is_a_construction",
+            "test_w12_nothing_is_transmitted",
+            "test_w13_the_isles_share_one_vocabulary"
+          ],
+          "ios/Godstone/Tests/GodstoneMeshTests/ReadinessT71Tests.swift": [
+            "testW01TheRecorderIsOptIn",
+            "testW02ABodyOrAKeyIsRefusedByName",
+            "testW03TheRingIsBoundedAndDropOldestIsCounted",
+            "testW04CountersSaturateAndGaugesNeverGoNegative",
+            "testW05DurationsAreMonotonicMicroseconds",
+            "testW06RelationIdsAreEphemeralAndOpaque",
+            "testW07TheFiveScenariosRunAgainstALiveRecorder",
+            "testW08TheSentinelsAppearNowhereInAnyScenario",
+            "testW09TheVocabularyIsClosed",
+            "testW10RedactionIsByRefusal",
+            "testW11TheRingBoundIsAConstruction",
+            "testW12NothingIsTransmitted",
+            "testW13TheIslesShareOneVocabularyAndSentinelSet"
+          ],
+          "tools/readiness/tests/test_t71.py": [
+            "test_w01_the_recorder_is_opt_in",
+            "test_w02_a_body_or_a_key_is_refused_by_name",
+            "test_w03_the_ring_is_bounded_and_drop_oldest_is_counted",
+            "test_w04_counters_saturate_and_gauges_never_go_negative",
+            "test_w05_durations_are_monotonic_microseconds",
+            "test_w06_relation_ids_are_ephemeral_and_opaque",
+            "test_w07_the_five_scenarios_run_against_a_live_recorder",
+            "test_w08_the_sentinels_appear_nowhere_in_any_scenario",
+            "test_w09_the_vocabulary_is_closed",
+            "test_w10_redaction_is_by_refusal",
+            "test_w11_the_ring_bound_is_a_construction",
+            "test_w12_the_declarations_agree_that_nothing_is_transmitted",
+            "test_w13_the_three_lanes_share_one_vocabulary_and_sentinel_set"
+          ]
+        },
+        "corrected_cases": {
+          "mutants_repaired": [
+            "T71-RC8 and T71-RC10 did not compile (a dangling return after an unchecked vocabulary; a `when` branch rewritten with an unreachable throw). Both were rewritten as REAL mutations -- an unchecked vocabulary, and an accepted non-number -- and the second pass killed all twelve."
+          ],
+          "note": "no pre-T71 assertion was changed. FOUR of this task's own witness expectations were wrong while the MODEL was right, and two mutants did not compile:",
+          "witness_expectations_corrected": [
+            "the Android court's live() fixture IGNORED its own capacity argument, so W03 measured the default bound (caught by the test failing)",
+            "the 'nothing is transmitted' scan tripped over its own KDoc that NAMES what it forbids: it now scans the CODE, not the prose",
+            "the Android court's relative paths pointed one level OUTSIDE the repository (user.dir is android/mesh)",
+            "the shared-vocabulary witness claimed the sentinels live in the MAIN files, when they are injection FIXTURES that live in the COURTS: the conductor carrieth the literals, the courts reference them"
+          ]
+        },
+        "counts": {
+          "narrow_android": 13,
+          "narrow_ios": 13,
+          "narrow_python": 13,
+          "subsystem_android": 1115,
+          "subsystem_ios": 1153,
+          "subsystem_python": 377
+        },
+        "counts_source": "all three lanes genuinely EXECUTED at the implementation head: a TEST-*.xml walk of android/mesh/build/test-results/testDebugUnitTest after purging stale results and passing --no-build-cache (13/0 narrow, 1115/0 subsystem), swift's own 'Executed N tests, with M failures' line (13/0 narrow, 1153/0 subsystem -- up from 1140), and the python harness's artifacts (13 '... ok' lines for the T71 court alone; 'Ran 377 tests' for the whole readiness suite, up from 364).",
+        "courts": {
+          "android": "android/mesh/src/test/java/io/godstone/mesh/readiness/ReadinessT71Test.kt (13 witnesses, driven by io.godstone.mesh.diag.Diagnostics)",
+          "controls": "ci/check_repository.py, ci/check_release_gates_status.py",
+          "ios": "ios/Godstone/Tests/GodstoneMeshTests/ReadinessT71Tests.swift (13 witnesses, the twin)",
+          "python": "tools/readiness/tests/test_t71.py (13 witnesses, driven by the real conductor)"
+        },
+        "deleted_cases": [],
+        "executed_scenarios": {
+          "bounds": "the ring is bounded under a 5k flood and under 10k churn; the capacity and ceiling are asserted as constants (W11)",
+          "device": "NOT EXECUTED: T71 is a host model of load; no device traffic, memory or thermal measurement was taken -- T73-T75 own the physical matrix",
+          "ephemeral": "one relation carrieth one ordinal while the process liveth; a reset forgetteth every relation and restarts the ordinals (W06)",
+          "monotonic": "a duration is microseconds; no calendar date and no epoch-like number may appear (W05)",
+          "opt_in": "OFF counts nothing and rings nothing, yet the VOCABULARY is still enforced while OFF (W01)",
+          "redaction": "a string, a byte string, a list, a dict, nil and a float are all refused; a boolean is normalized to a number (W10)",
+          "scenarios": "tampered data, ten-thousand-peer churn, a queue flood, a large archive and a cancelled inference -- each run against a LIVE recorder, each asserted BOUNDED, each asserted to carry only vocabulary metrics (W07)",
+          "sentinel_law": "a message body, a key and a node id are injected into the measured data and asserted absent from the rendered output of EVERY scenario, from the census, and from every line's metric and relation (W08)",
+          "transmission": "the shipping manifest REMOVETH INTERNET, and the code (not the prose) is scanned for network types (W12)",
+          "vocabulary": "the vocabulary is closed: an unknown name -- including a body, a peer id, a key, an empty string or a case variant -- is refused by name (W09)"
+        },
+        "produced_artifacts": {
+          "android": {
+            "note": "the twin in :mesh, with the same vocabulary, bounds and refusal laws",
+            "path": "android/mesh/src/main/java/io/godstone/mesh/diag/Diagnostics.kt"
+          },
+          "conductor": {
+            "laws": "opt-in; a closed vocabulary; bounded saturating counters; monotonic microsecond durations; ephemeral relation ordinals; a bounded drop-oldest ring; redaction by refusal",
+            "path": "tools/readiness/diagnostics.py",
+            "types": [
+              "Diagnostics",
+              "DiagnosticsMode",
+              "DiagnosticsRefusal",
+              "DiagnosticsLine",
+              "METRIC_NAMES",
+              "SCENARIOS",
+              "run_scenario",
+              "census_report",
+              "SENTINEL_BODY",
+              "SENTINEL_KEY",
+              "SENTINEL_NODE_ID"
+            ]
+          },
+          "ios": {
+            "note": "the Swift twin, with the same vocabulary, bounds and refusal laws",
+            "path": "ios/Godstone/Sources/GodstoneMesh/Diagnostics.swift"
+          }
+        },
+        "roster_campaigns": {
+          "pass_1": {
+            "causes": "the two Android rods did not compile: a dangling `return` after an unchecked vocabulary, and a `when` branch rewritten with an unreachable throw",
+            "repair": "fbc2e0677a153f83bbc65b2419e4b5fb2dd1d76a",
+            "rods": 12,
+            "tally": {
+              "INVALID": 2,
+              "KILLED": 10
+            }
+          },
+          "pass_2": {
+            "baseline": "9ea1c043",
+            "note": "the final official pass ran with the ledger in exactly the state fbc2e0677a153f83bbc65b2419e4b5fb2dd1d76a commits",
+            "rods": 12,
+            "tally": {
+              "ESCAPED": 0,
+              "INVALID": 0,
+              "KILLED": 12,
+              "SKIPPED": 0,
+              "TIMEOUT": 0
+            }
+          }
+        }
+      },
+      "claim_commit": "5303d96d55d2fa9a4e4aaf4f7daa139d7632c2cf",
+      "commands": [
+        "T71-narrow-gradlew",
+        "T71-narrow-swift",
+        "T71-narrow-python3",
+        "T71-subsystem-gradlew",
+        "T71-subsystem-swift",
+        "T71-subsystem-python3",
+        "T71-controls-python3-002",
+        "T71-controls-python3-003"
+      ],
+      "device_gate_ids": [],
+      "file_hashes": {
+        "android/mesh/src/main/java/io/godstone/mesh/diag/Diagnostics.kt": "2947d9b49589089466feeea6ba00300e8742d093ee8439bb3510303cb4f8b524",
+        "android/mesh/src/test/java/io/godstone/mesh/readiness/ReadinessT71Test.kt": "9836e553f02feab0731960d59ba190d2ed71e4b6353ffa154e8b4d7bac621bb2",
+        "ci/mutations.py": "98e600500b24ff8d02ebb6975b94aaabbf92c9ec41b0709647ee44ea1f517602",
+        "ios/Godstone/Sources/GodstoneMesh/Diagnostics.swift": "2c84015e6d912adeab7403d591e1ed7244ec3823e8b858c1e1e38c4c9ee28dd3",
+        "ios/Godstone/Tests/GodstoneMeshTests/ReadinessT71Tests.swift": "da43190667879dfefd19790235d5b532f7d3bb6b28e6aa7459cedb94ba958591",
+        "tools/readiness/diagnostics.py": "af4b7415859de975dd0b0fea7b5661b8913289b675dcd71544eb21b5b4b15fdd",
+        "tools/readiness/tests/test_t71.py": "ca8ce2a7e01490c011b309e88d8040a094e5c9c03b255b1af4384a6509b31253"
+      },
+      "implementation_commit": "fbc2e0677a153f83bbc65b2419e4b5fb2dd1d76a",
+      "implementation_commits": [
+        "368e360a13e637eae47058568a8a5294bb785cde",
+        "9ea1c043b2dd2269865b7e2e8d6e8d766bd64db8",
+        "fbc2e0677a153f83bbc65b2419e4b5fb2dd1d76a"
+      ],
+      "inputs": {
+        "children_commit_order": [
+          "T71(claim)",
+          "T71(builder)",
+          "T71(builder-rods)",
+          "T71(builder-rods-repair)",
+          "T71(M)"
+        ],
+        "claim_ordering_note": "the claim was taken at 5303d96d55d2fa9a4e4aaf4f7daa139d7632c2cf; the stages and the final roster were run at the implementation head fbc2e0677a153f83bbc65b2419e4b5fb2dd1d76a. Runner logs and executed logs live in distinct directories (T71/logs, T71/executed) so no pass can overwrite another.",
+        "governed_source": [
+          "tools/readiness/diagnostics.py",
+          "tools/readiness/tests/test_t71.py",
+          "android/mesh/src/main/java/io/godstone/mesh/diag/Diagnostics.kt",
+          "android/mesh/src/test/java/io/godstone/mesh/readiness/ReadinessT71Test.kt",
+          "ios/Godstone/Sources/GodstoneMesh/Diagnostics.swift",
+          "ios/Godstone/Tests/GodstoneMeshTests/ReadinessT71Tests.swift",
+          "ci/mutations.py"
+        ],
+        "required_regression_paths": [
+          "android/mesh/src/test/java/io/godstone/mesh/readiness/ReadinessT71Test.kt",
+          "ios/Godstone/Tests/GodstoneMeshTests/ReadinessT71Tests.swift",
+          "tools/readiness/tests/test_t71.py"
+        ],
+        "sealed_hot_paths_untouched": [
+          "the shipping manifests, Info.plist and entitlements: READ and asserted against (the INTERNET removal is already there), never changed",
+          "the verification-matrix documents: untouched (T60 asserted their human boundary)",
+          "the crypto, wire, identity and BLE contracts: the diagnostics consume none of them and redefine none",
+          "the five external gates and docs/production/RELEASE_GATES_STATUS.json",
+          "the readiness statements: both flags stay false; A-01 stays OPEN"
+        ]
+      },
+      "ladder_boundary_commit": "fbc2e0677a153f83bbc65b2419e4b5fb2dd1d76a",
+      "mutation_results": {
+        "attempts_archived": [
+          {
+            "baseline": "9ea1c043",
+            "pass": 1,
+            "repaired_in": "fbc2e0677a153f83bbc65b2419e4b5fb2dd1d76a",
+            "rods": 12,
+            "tally": {
+              "INVALID": 2,
+              "KILLED": 10
+            }
+          }
+        ],
+        "campaign_note": "the twelve rods ran in the FINAL official pass, fail-closed, at baseline 9ea1c043 (with the ledger in the state fbc2e0677a153f83bbc65b2419e4b5fb2dd1d76a commits): 12 KILLED of 12, SKIPPED=0, INVALID=0, TIMEOUT=0, ESCAPED=0. The card's named semantic negative has TWO limbs -- logging a message body (RC1/RC2/RC8/RC10) and letting the ring grow unbounded (RC3/RC9/RC11) -- and both are struck on all three lanes, so neither can be closed on one lane and open on another. Pass 1 is recorded: its two INVALIDs were mutants that did not compile, repaired as REAL mutations.",
+        "of": 12,
+        "roster_manifest": "T71/roster/manifest.json",
+        "semantic": {
+          "harness": "ci/mutations.py run_semantic (the ledger filtered to the T71- prefix)",
+          "platforms": [
+            "python",
+            "jvm",
+            "swift"
+          ],
+          "work_parent": "/Users/oculus/.cache/godstone-mutation-worktrees-t71 (disposable; the live tree is never touched)"
+        },
+        "tally": {
+          "ESCAPED": 0,
+          "INVALID": 0,
+          "KILLED": 12,
+          "SKIPPED": 0,
+          "TIMEOUT": 0
+        }
+      },
+      "objective": {
+        "claimed_head": "5303d96d55d2fa9a4e4aaf4f7daa139d7632c2cf",
+        "claimed_utc": "2026-09-14T23:00:26+00:00",
+        "objective": "Instrument the resource budgets WITHOUT private telemetry: an opt-in, local-only diagnostics model with BOUNDED counters over a FIXED metric vocabulary, MONOTONIC durations (never wall-clock timestamps that could correlate), EPHEMERAL per-process relation identifiers (never a node id, never persisted), a BOUNDED drop-oldest ring whose supersessions are counted, and a redaction policy that refuseth message bodies, key material, node ids, fingerprints and free text outright -- exercised under tampered data, ten-thousand-peer churn, a queue flood, a large archive and a cancelled inference, where private sentinels must never appear in the output and the ring must stay within its bound -- on all three lanes (the android mesh court, the iOS court and the python conductor), so that logging a message body or letting the diagnostic ring grow unbounded falleth the privacy/resource check."
+      },
+      "status": "COMPLETE",
+      "tested_tree_sha": "37f7a14281362465f8f22127e2f55b6c80664f51",
+      "unresolved": [
+        "NO DEVICE CAPTURE: nothing on-device was inspected. The witness proveth that the code importeth no network type and that the shipping manifest removeth INTERNET; it proveth nothing about bytes actually leaving a phone.",
+        "the scenarios are MODELS of load (10k churn, a 5k flood, a large archive census), not real device load; battery, thermal and real memory measurements stay external (T73-T75).",
+        "the recorder is NOT yet wired into the production call paths: the model and its bounds are asserted, exactly as T59's capability matrix and T60's journeys are not yet consulted by the view-models.",
+        "the sentinels are FIXTURES: they prove the renderer leaks nothing for the values it was given, not that no other code path could log private data.",
+        "the metric vocabulary is asserted as a SET: nothing structurally preventeth a future edit from adding a name that carrieth private data, though the court asserteth no name containeth 'body', 'key' or 'node'."
+      ]
+    },
     "T77": {
       "case_results": {
         "added_cases": {
@@ -14761,7 +15008,7 @@
       ]
     }
   },
-  "current_task": "T71",
+  "current_task": "T72",
   "external_blockers": [
     "A06",
     "APPROVED_CONTENT",
@@ -14771,53 +15018,53 @@
   ],
   "failed_attempts": [],
   "in_progress": {
-    "claimed_head": "5303d96d55d2fa9a4e4aaf4f7daa139d7632c2cf",
-    "claimed_utc": "2026-09-14T23:00:26+00:00",
+    "claimed_head": "941999d20135b721212644a503816491ec93b5c8",
+    "claimed_utc": "2026-09-14T23:21:10+00:00",
     "objective": {
-      "claimed_head": "5303d96d55d2fa9a4e4aaf4f7daa139d7632c2cf",
-      "claimed_utc": "2026-09-14T23:00:26+00:00",
-      "objective": "Instrument the resource budgets WITHOUT private telemetry: an opt-in, local-only diagnostics model with BOUNDED counters over a FIXED metric vocabulary, MONOTONIC durations (never wall-clock timestamps that could correlate), EPHEMERAL per-process relation identifiers (never a node id, never persisted), a BOUNDED drop-oldest ring whose supersessions are counted, and a redaction policy that refuseth message bodies, key material, node ids, fingerprints and free text outright -- exercised under tampered data, ten-thousand-peer churn, a queue flood, a large archive and a cancelled inference, where private sentinels must never appear in the output and the ring must stay within its bound -- on all three lanes (the android mesh court, the iOS court and the python conductor), so that logging a message body or letting the diagnostic ring grow unbounded falleth the privacy/resource check."
+      "claimed_head": "941999d20135b721212644a503816491ec93b5c8",
+      "claimed_utc": "2026-09-14T23:21:10+00:00",
+      "objective": "Run bounded production-path stress and deterministic fault campaigns: ten thousand lifecycle cycles over multiple peers with a SEED-RECORDED randomized trace, bounded fault schedules (clock discontinuities, disk-full, corruption, a slow ATT and malformed records) driven through the real compositions, and the invariants that a mesh simulation cannot cover -- ZERO leaked leases, timers or sessions after shutdown, a BOUNDED internal census plateau standing in for RSS, NO duplicate inbox or delivery row, NO uncaught malformed-input exception (malformed input is refused and counted), and a FAILED SEED recorded and REPRODUCIBLE so a red run can be replayed exactly -- on all three lanes, so that disabling one capacity release or one retry cap falleth the stress invariant."
     },
-    "task": "T71"
+    "task": "T72"
   },
-  "last_code_head": "a9520f0daa474b89dac04699943cf1133ca5a44d",
-  "last_observed_head": "a9520f0daa474b89dac04699943cf1133ca5a44d",
+  "last_code_head": "fbc2e0677a153f83bbc65b2419e4b5fb2dd1d76a",
+  "last_observed_head": "fbc2e0677a153f83bbc65b2419e4b5fb2dd1d76a",
   "latest_verification": {
-    "at_utc": "2026-09-15T13:30:00+00:00",
-    "boundary_commit": "a9520f0daa474b89dac04699943cf1133ca5a44d",
+    "at_utc": "2026-09-15T15:00:00+00:00",
+    "boundary_commit": "fbc2e0677a153f83bbc65b2419e4b5fb2dd1d76a",
     "controls": {
       "boundary_records": 2,
-      "outcomes": "2/2 PASSED at the boundary (check_repository rc=0 -- now including the harness selftest as one of its checks -- and the release-gates checker rc=0)"
+      "outcomes": "2/2 PASSED at the boundary (check_repository rc=0, the release-gates checker rc=0, and the harness selftest rc=0 beside them)"
     },
     "isle_grands": {
-      "android_grand": "no android court in this round, but the two controls that strike android authorities were exercised through their REAL courts in disposable worktrees (T84 and T37, both run by the campaign)",
-      "counts_source": "see completed_tasks.T67.case_results.counts_source",
-      "ios_grand": "no iOS path in this round: T67 is a control-plane task and the mirrored package is untouched (sync --check clean)",
-      "python_grand": "the readiness suite 364 OK (up from 351), the harness selftest rc=0 with nine known-answer cases and seven broken policies caught, the structural lineage rc=0, diff hygiene clean, sync --check clean"
+      "android_grand": "the T71 court 13/13 and the whole :mesh suite 1115/0 at the boundary, genuinely EXECUTED (--no-build-cache, stale results purged)",
+      "counts_source": "see completed_tasks.T71.case_results.counts_source",
+      "ios_grand": "the T71 court 13/13 and the whole package 1153/0 at the boundary (up from 1140)",
+      "python_grand": "the T71 court 13/13 and the readiness suite 377 OK (up from 364), the conductor's census rc=0, structural lineage rc=0, diff clean, sync --check clean"
     },
     "ladder": {
-      "L0": "1 PASSED (check_repository, now including the harness selftest), 1 FAILED (ci/symbols.py --selftest: PRE-EXISTING)",
-      "L1": "PASSED (the python readiness suite)",
+      "L0": "1 PASSED (check_repository, including the harness selftest), 1 FAILED (ci/symbols.py --selftest: PRE-EXISTING)",
+      "L1": "PASSED (all three lanes plus the python readiness suite)",
       "L2_L4": "unavailable: no command manifest yet"
     },
     "narrow": {
       "errors": 0,
       "failures": 0,
-      "lane": "python3 -m unittest discover -s tools/readiness/tests -p test_t67.py -v",
-      "tests": 13
+      "lane": "gradle :mesh --tests *ReadinessT71Test* / swift --filter ReadinessT71Tests / python -p test_t71.py",
+      "tests": 39
     },
     "roster": {
-      "T67_controls_killed": 5,
-      "of": 5
+      "T71_killed": 12,
+      "of": 12
     },
     "subsystem": {
       "errors": 0,
       "failures": 0,
-      "lane": "python3 -m unittest discover -s tools/readiness/tests -v",
-      "tests": 364
+      "lane": "gradle :mesh (1115) + swift package (1153) + python readiness (377)",
+      "tests": 2645
     }
   },
-  "next_task": "T71",
+  "next_task": "T72",
   "phase": "P0",
   "plan_sha256": "685456b378662b0a40a53a6abc810041e37daf97b213f3efeb6cea879363934e",
   "planning_baseline_sha": "b5c3d3d394b70cf356cdde33b47511dad7cbb95c",
@@ -14913,7 +15160,10 @@
     "T60 boundary: next_task was first written as T81 by taking the first READY task in topological order. T81 is ready by DEPENDENCY but carrieth external_requirement=APPROVED_NATIVE_MODEL_ARTIFACTS, which no fixture may close -- so the frontier now preferreth a ready task with NO external requirement (T67), and the externally gated ones (T81, T79, T74, T80) are listed for their own BLOCKED_EXTERNAL records when the internal chain is exhausted. Corrected BEFORE the M commit.",
     "T67 boundary: a CONTROL ROD must strike a line its witness REACHES. Three of T67's five controls escaped or failed to compile on the first pass because the anchor was in a branch the witness never executes (a second sweep branch), in a seam the court INJECTS (run.py's subprocess ancestor check), behind refusal arms that were still standing (a behavioural no-op), or used an enum member that does not exist. Locate the witness's own road BEFORE writing the anchor.",
     "T67 boundary: the mutation harness now carrieth its own selftest (`ci/mutations.py --selftest`), wired into ci/check_repository.py. Any future edit to the classifier's rules, to the worktree helpers or to the tally MUST keep that selftest at rc=0 -- it is the only thing that proveth the harness cannot count a skipped rod as a catch.",
-    "T67 boundary: the selftest's known-answer table carrieth a case that existeth BECAUSE the table was blind: a compile failure WITH test output, so the build rule can be seen falling asleep. A table whose cases can all be satisfied by another rule cannot see any of them."
+    "T67 boundary: the selftest's known-answer table carrieth a case that existeth BECAUSE the table was blind: a compile failure WITH test output, so the build rule can be seen falling asleep. A table whose cases can all be satisfied by another rule cannot see any of them.",
+    "T71 boundary: a COURT FIXTURE may silently ignore its own argument -- the Android T71 court's live() built the recorder without passing the capacity, so a boundedness witness measured the default bound and passed for the wrong reason. When a fixture carrieth a parameter, assert the parameter is USED.",
+    "T71 boundary: a 'must not contain X' scan must scan the CODE, not the prose: T71's transmission witness failed on its own KDoc, which NAMES the words it forbids. Filter comments before a forbidden-token scan.",
+    "T71 boundary: the diagnostics recorder is NOT yet wired into the production call paths, and no device traffic was captured. The bounds and the redaction are asserted of the MODEL; the shipping manifest's INTERNET removal is the only end-to-end claim, and it is pre-existing."
   ],
   "warnings_for_next_invocation": [
     "T41 IS THE NEXT TASK (deps T40, T24, T26, T37, T39, T84 all complete; no external requirement). After T41 cometh T42, T43, T44, then T54 and the platform chain.",
