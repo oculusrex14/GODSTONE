@@ -12923,6 +12923,241 @@
         "the staging gate requireth an evaluation only when the release owner asketh (--require-heldout-evaluation): the held-out artifacts are external, and closing that gate from inside this repository would be a fixture wearing an approval"
       ]
     },
+    "T67": {
+      "case_results": {
+        "added_cases": {
+          "tools/readiness/tests/test_t67.py": [
+            "test_w01_the_rules_are_data_and_the_default_is_honest",
+            "test_w02_a_missing_or_duplicate_anchor_is_never_a_catch",
+            "test_w03_a_compile_failure_is_invalid_even_with_test_output",
+            "test_w04_a_failed_baseline_is_invalid",
+            "test_w05_a_run_that_executed_nothing_is_invalid",
+            "test_w06_a_surviving_mutant_is_escaped_and_sayeth_which_cases_failed",
+            "test_w07_the_named_negative_falleth_the_selftest",
+            "test_w08_the_selftest_executeth_the_disposable_worktree_discipline",
+            "test_w09_only_killed_counteth_and_the_exit_code_refuseth_the_rest",
+            "test_w10_the_expected_escape_is_never_counted_as_success",
+            "test_w11_the_five_production_path_controls_are_in_the_ledger",
+            "test_w12_the_selftest_is_wired_into_the_repository_checks",
+            "test_w13_the_lineages_are_never_summed"
+          ]
+        },
+        "corrected_cases": {
+          "controls_repaired": [
+            "T67-C1 first struck the dispatcher's SECOND sweep branch, which its witness never reaches; it now striketh the STORE's non-replenishing debit guard, and names the T84 relay-process-death witness that actually condemneth it",
+            "T67-C2 first used an enum member that does not exist (AckAdmissionResult.Admitted) and did not compile; it now removeth the signature refusal at the driver",
+            "T67-C3 first mutated a line whose refusal arms were STILL STANDING above it -- a behavioural no-op; it now removeth the commit-outcome arms entirely (with the cast that maketh the mutant compile)",
+            "T67-C5 first struck run.py's subprocess ancestor check, which the T53 court never reacheth (it injecteth the seam); it now striketh the ANCESTOR CLASSIFICATION in the gate-status checker that the witness exerciseth"
+          ],
+          "harness_reform": [
+            "the classifier's rules became DATA (ClassifyPolicy) with the anchor count decided FIRST, so a missing or duplicate anchor can never be a catch",
+            "_classify now receiveth the anchor count, and the runner passeth it",
+            "run_selftest() was added with nine known-answer cases, seven broken policies, a LIVE disposable-worktree control, the tally rule and the expected-escape rule",
+            "the selftest was wired into ci/check_repository.py"
+          ],
+          "note": "no pre-T67 assertion was changed. The harness itself was reformed, and THREE of the five new controls were repaired after their first campaign, each because the rod did not own a witness that reaches its line:"
+        },
+        "counts": {
+          "narrow_python": 13,
+          "subsystem_python": 364
+        },
+        "counts_source": "the runner's own records at the implementation head (13/13 narrow, 364/364 subsystem), confirmed by the harness's artifacts: T67/executed/T67-narrow-python-executed.log carrieth 13 '... ok' lines for the T67 court alone and T67-subsystem-python-executed.log proclaymeth 'Ran 364 tests' for the whole readiness suite (up from 351).",
+        "courts": {
+          "controls": "ci/check_repository.py -- which now RUNNETH the harness selftest as one of its checks",
+          "harness_selftest": "ci/mutations.py --selftest (9 known-answer cases, 7 broken policies, the disposable-worktree control, the tally rule and the expected-escape rule)",
+          "narrow": "tools/readiness/tests/test_t67.py (13 witnesses)",
+          "subsystem": "tools/readiness/tests (the whole python readiness suite)"
+        },
+        "deleted_cases": [],
+        "executed_scenarios": {
+          "classifier": "the anchor count (missing, duplicate) decided first; a compile failure with and without test output; a failed baseline; a worker that executed nothing; a surviving mutant that NAMES the other cases that failed; and a genuine kill (W01-W06)",
+          "controls": "the five production-path controls are in the ledger, their anchors are seen EXACTLY ONCE in the live tree, and each nameth a real witness (W11)",
+          "device": "NOT EXECUTED: T67 is a control-plane task; no device is involved and none is claimed",
+          "expected_escape": "EXPECTED_ESCAPES is empty, and the source sayeth an escape is never a success (W10)",
+          "lineages": "the two lineages are never summed (W13)",
+          "named_negative": "a harness that counteth SKIPPED as KILLED misclassifies a moved anchor, and the selftest's known-answer table CATCHES it (W07)",
+          "tally": "only KILLED counteth: the runner's refusal path is asserted in the source, and every outcome is one of the five (W09)",
+          "wiring": "ci/check_repository.py carrieth --selftest, and a live run of it standeth at rc=0 with SELFTEST OK (W12)",
+          "worktree_discipline": "the selftest createth, useth and removeth a disposable worktree and compareth the live tree's HEAD and status before and after; the court asserteth it independently (W08)"
+        },
+        "produced_artifacts": {
+          "controls": {
+            "ids": [
+              "T67-C1-lifetime-bypass-an-expired-candidate-standeth",
+              "T67-C2-pre-auth-replay-commit",
+              "T67-C3-ack-offered-before-the-persist",
+              "T67-C4-plaintext-fallback-accepted",
+              "T67-C5-stale-status-evidence-accepted"
+            ],
+            "note": "each striketh the REAL authority (the ack store's debit guard, the ack driver's signature check, the inbox's commit-then-ACK sequencing, the frozen sender's version check, the gate-status ancestor classification) and is witnessed by an existing court (T84, T37, T35, T53)"
+          },
+          "court": {
+            "path": "tools/readiness/tests/test_t67.py"
+          },
+          "harness": {
+            "laws": "the rules are data; the anchor count decideth first; only KILLED counteth; the disposable-worktree rule is EXECUTED; the expected escape is never a success",
+            "path": "ci/mutations.py",
+            "types": [
+              "ClassifyPolicy",
+              "DEFAULT_POLICY",
+              "KNOWN_ANSWER_CASES",
+              "BROKEN_POLICIES",
+              "EXPECTED_ESCAPES",
+              "classify_selftest",
+              "run_selftest"
+            ]
+          }
+        },
+        "roster_campaigns": {
+          "pass_1": {
+            "causes": "four rods struck lines their witnesses never reach (a second sweep branch, an injected seam, a no-op mutant, a nonexistent enum member)",
+            "repair": "667bbc49",
+            "rods": 5,
+            "tally": {
+              "ESCAPED": 3,
+              "INVALID": 1,
+              "KILLED": 1
+            }
+          },
+          "pass_2": {
+            "causes": "the lifetime control named a witness that stayed green while ANOTHER witness condemned it; the ACK mutant still did not compile (the narrowed Committed type)",
+            "repair": "a9520f0daa474b89dac04699943cf1133ca5a44d",
+            "rods": 5,
+            "tally": {
+              "ESCAPED": 1,
+              "INVALID": 1,
+              "KILLED": 3
+            }
+          },
+          "pass_3": {
+            "baseline": "667bbc49",
+            "note": "the final official pass ran with the ledger in exactly the state a9520f0daa474b89dac04699943cf1133ca5a44d commits",
+            "rods": 5,
+            "tally": {
+              "ESCAPED": 0,
+              "INVALID": 0,
+              "KILLED": 5,
+              "SKIPPED": 0,
+              "TIMEOUT": 0
+            }
+          }
+        }
+      },
+      "claim_commit": "08a8b5b597e88249715d4350c90a0849b3402937",
+      "commands": [
+        "T67-narrow-python3",
+        "T67-subsystem-python3",
+        "T67-controls-python3",
+        "T67-controls-python3-002"
+      ],
+      "device_gate_ids": [],
+      "file_hashes": {
+        "android/mesh/src/main/java/io/godstone/mesh/delivery/AckObligationStore.kt": "2dfb36173e499ea97ec972c6b8af9f4ac0f453c77666eeee8e5aa5e0626d994b",
+        "android/mesh/src/main/java/io/godstone/mesh/delivery/RecipientInboxRepository.kt": "e05a62164bd4edb6d0606eb7f911f0cbee5da112c58563b1e305ed02fd254e19",
+        "android/mesh/src/main/java/io/godstone/mesh/wire/v2/SignedMessageV1.kt": "65e083aba92046b86e11f2a7ee2baa8b6675e400bee72ced655d68c1169472a3",
+        "ci/check_release_gates_status.py": "b5ef2609594eee0c570a42736b6a9b39f17151937791528d4c32ea4ba54b7eae",
+        "ci/check_repository.py": "4bb19485f7ee825edda7b0d1c48619aa02696e85f3fe8a4e83f18fa4b5d396a6",
+        "ci/mutations.py": "70a2e0d3f1bb0cbd87f5434e1b41b334f7fc04d660a4b5fb2d1daa6ab906d9d5",
+        "tools/readiness/tests/test_t67.py": "10aad58d9e93f7306f44afcda577185a5bb97ab9caa47dbed261fc7791ae013e"
+      },
+      "implementation_commit": "a9520f0daa474b89dac04699943cf1133ca5a44d",
+      "implementation_commits": [
+        "acd0ef5cf19dc60616712f69752c6ce1c8a9186e",
+        "667bbc4934d7d605e862e3e34e41c41f77d864d4",
+        "a9520f0daa474b89dac04699943cf1133ca5a44d"
+      ],
+      "inputs": {
+        "children_commit_order": [
+          "T67(claim)",
+          "T67(builder)",
+          "T67(builder-controls-repair)",
+          "T67(builder-controls-repair-2)",
+          "T67(M)"
+        ],
+        "claim_ordering_note": "the claim was taken at 08a8b5b597e88249715d4350c90a0849b3402937; the stages and the final controls pass were run at the implementation head a9520f0daa474b89dac04699943cf1133ca5a44d. Runner logs and executed logs live in distinct directories (T67/logs, T67/executed) so no pass can overwrite another.",
+        "governed_source": [
+          "ci/mutations.py",
+          "ci/check_repository.py",
+          "tools/readiness/tests/test_t67.py"
+        ],
+        "required_regression_paths": [
+          "tools/readiness/tests/test_t67.py"
+        ],
+        "sealed_hot_paths_untouched": [
+          "the FIVE production authorities the controls strike: they were READ (their seams located) and NEVER edited -- a rod striketh a copy in a disposable worktree",
+          "the frozen sender/ACK/wire laws: the controls test them, they do not change them",
+          "the shipping LIGHT surface and its manifests",
+          "the five external gates and docs/production/RELEASE_GATES_STATUS.json",
+          "the readiness statements: both flags stay false"
+        ]
+      },
+      "ladder_boundary_commit": "a9520f0daa474b89dac04699943cf1133ca5a44d",
+      "mutation_results": {
+        "attempts_archived": [
+          {
+            "baseline": "acd0ef5c",
+            "pass": 1,
+            "repaired_in": "667bbc49",
+            "rods": 5,
+            "tally": {
+              "ESCAPED": 3,
+              "INVALID": 1,
+              "KILLED": 1
+            }
+          },
+          {
+            "baseline": "667bbc49",
+            "pass": 2,
+            "repaired_in": "a9520f0daa474b89dac04699943cf1133ca5a44d",
+            "rods": 5,
+            "tally": {
+              "ESCAPED": 1,
+              "INVALID": 1,
+              "KILLED": 3
+            }
+          }
+        ],
+        "campaign_note": "the five production-path controls ran in the FINAL official pass, fail-closed, at baseline 667bbc49 (with the ledger in the state a9520f0daa474b89dac04699943cf1133ca5a44d commits): 5 KILLED of 5, SKIPPED=0, INVALID=0, TIMEOUT=0, ESCAPED=0. The card's named semantic negative is the SELFTEST's first control ('mark skipped as killed in the harness: harness selftest must fail'), proven by nine known-answer cases -- it is not a rod at all, because the discipline it defendeth belongeth to the harness itself. THREE passes are recorded: pass 1 lost four rods to lines their witnesses never reach, pass 2 lost two to a witness-field mismatch and a non-compiling mutant.",
+        "harness_selftest": {
+          "blind_spot_found": "a compile failure with NO test output is also refused by the 'executed nothing' rule, so the table could not see the BUILD rule fall asleep; a case with test output beside a compile error was added",
+          "broken_policies": 7,
+          "known_answer_cases": 9,
+          "log": "T67/executed/T67-harness-selftest.log",
+          "outcome": "rc=0: every known-answer case matched under the honest rules AND every broken policy was caught by name"
+        },
+        "of": 5,
+        "roster_manifest": "T67/roster/manifest.json",
+        "semantic": {
+          "harness": "ci/mutations.py run_semantic (the ledger filtered to the T67- prefix)",
+          "platforms": [
+            "python",
+            "jvm"
+          ],
+          "work_parent": "/Users/oculus/.cache/godstone-mutation-worktrees-t67 (disposable; the live tree is never touched -- and now PROVEN by the selftest)"
+        },
+        "tally": {
+          "ESCAPED": 0,
+          "INVALID": 0,
+          "KILLED": 5,
+          "SKIPPED": 0,
+          "TIMEOUT": 0
+        }
+      },
+      "objective": {
+        "claimed_head": "08a8b5b597e88249715d4350c90a0849b3402937",
+        "claimed_utc": "2026-09-14T22:43:52+00:00",
+        "objective": "Replace the misleading mutation scores with executable proof: run every mutant only in a disposable worktree, require an EXACT anchor count, a passing baseline, a compiling mutant and a TARGETED semantic assertion failure before anything may be called killed; classify KILLED / ESCAPED / INVALID / SKIPPED / TIMEOUT separately with only KILLED counting and the documented expected escape never counted as success; prove the harness's own discipline with an executable selftest whose controls include a harness that would count SKIPPED as KILLED (missing anchor, duplicate anchor, compile failure, timeout, surviving mutant, worker crash and source restoration after termination); and add the five production-path controls (lifetime bypass, pre-auth replay commit, ACK-before-persist, plaintext fallback and stale status evidence) so that marking skipped as killed falleth the harness selftest."
+      },
+      "status": "COMPLETE",
+      "tested_tree_sha": "5dfee3e66921eef2acb0757b7f47f9600eb938d0",
+      "unresolved": [
+        "the five controls are HOST controls: they strike the authorities on the host and are witnessed by host courts. No device and no radio is involved.",
+        "the selftest proveth the HARNESS, not the product: it sayeth the classifier and the worktree discipline behave, and nothing about the mesh's correctness.",
+        "the documented-escape rule is enforced by an EMPTY tuple plus the selftest's note: nothing structurally forbiddeth adding an entry to EXPECTED_ESCAPES, and the court asserteth it is empty so that adding one would be a visible change.",
+        "the classifier's known-answer table is a MODEL of the harness's inputs, not a live mutant run: a rod that escapes for a reason outside the seven broken policies would still be caught only by the campaign itself.",
+        "the runner's EXEC_RE still requireth the PLURAL 'failures', so a swift run with exactly one failure recordeth run=None (recorded at T42 and still open)."
+      ]
+    },
     "T68": {
       "case_results": {
         "added_cases": {
@@ -14526,7 +14761,7 @@
       ]
     }
   },
-  "current_task": "T67",
+  "current_task": "T71",
   "external_blockers": [
     "A06",
     "APPROVED_CONTENT",
@@ -14536,53 +14771,53 @@
   ],
   "failed_attempts": [],
   "in_progress": {
-    "claimed_head": "08a8b5b597e88249715d4350c90a0849b3402937",
-    "claimed_utc": "2026-09-14T22:43:52+00:00",
+    "claimed_head": "5303d96d55d2fa9a4e4aaf4f7daa139d7632c2cf",
+    "claimed_utc": "2026-09-14T23:00:26+00:00",
     "objective": {
-      "claimed_head": "08a8b5b597e88249715d4350c90a0849b3402937",
-      "claimed_utc": "2026-09-14T22:43:52+00:00",
-      "objective": "Replace the misleading mutation scores with executable proof: run every mutant only in a disposable worktree, require an EXACT anchor count, a passing baseline, a compiling mutant and a TARGETED semantic assertion failure before anything may be called killed; classify KILLED / ESCAPED / INVALID / SKIPPED / TIMEOUT separately with only KILLED counting and the documented expected escape never counted as success; prove the harness's own discipline with an executable selftest whose controls include a harness that would count SKIPPED as KILLED (missing anchor, duplicate anchor, compile failure, timeout, surviving mutant, worker crash and source restoration after termination); and add the five production-path controls (lifetime bypass, pre-auth replay commit, ACK-before-persist, plaintext fallback and stale status evidence) so that marking skipped as killed falleth the harness selftest."
+      "claimed_head": "5303d96d55d2fa9a4e4aaf4f7daa139d7632c2cf",
+      "claimed_utc": "2026-09-14T23:00:26+00:00",
+      "objective": "Instrument the resource budgets WITHOUT private telemetry: an opt-in, local-only diagnostics model with BOUNDED counters over a FIXED metric vocabulary, MONOTONIC durations (never wall-clock timestamps that could correlate), EPHEMERAL per-process relation identifiers (never a node id, never persisted), a BOUNDED drop-oldest ring whose supersessions are counted, and a redaction policy that refuseth message bodies, key material, node ids, fingerprints and free text outright -- exercised under tampered data, ten-thousand-peer churn, a queue flood, a large archive and a cancelled inference, where private sentinels must never appear in the output and the ring must stay within its bound -- on all three lanes (the android mesh court, the iOS court and the python conductor), so that logging a message body or letting the diagnostic ring grow unbounded falleth the privacy/resource check."
     },
-    "task": "T67"
+    "task": "T71"
   },
-  "last_code_head": "d3e04323d66f4a16333601269e01d2435437d16e",
-  "last_observed_head": "d3e04323d66f4a16333601269e01d2435437d16e",
+  "last_code_head": "a9520f0daa474b89dac04699943cf1133ca5a44d",
+  "last_observed_head": "a9520f0daa474b89dac04699943cf1133ca5a44d",
   "latest_verification": {
-    "at_utc": "2026-09-15T12:00:00+00:00",
-    "boundary_commit": "d3e04323d66f4a16333601269e01d2435437d16e",
+    "at_utc": "2026-09-15T13:30:00+00:00",
+    "boundary_commit": "a9520f0daa474b89dac04699943cf1133ca5a44d",
     "controls": {
       "boundary_records": 2,
-      "outcomes": "2/2 PASSED at the boundary (check_repository rc=0, the release-gates checker rc=0)"
+      "outcomes": "2/2 PASSED at the boundary (check_repository rc=0 -- now including the harness selftest as one of its checks -- and the release-gates checker rc=0)"
     },
     "isle_grands": {
-      "android_grand": "the T60 court 13/13 and the whole :mesh suite 1102/0 at the boundary, genuinely EXECUTED (--no-build-cache, stale results purged)",
-      "counts_source": "see completed_tasks.T60.case_results.counts_source",
-      "ios_grand": "the T60 court 13/13 and the whole package 1140/0 at the boundary (up from 1127)",
-      "python_grand": "the T60 court 13/13 and the readiness suite 351 OK (up from 338), the conductor's report rc=0, structural lineage rc=0, diff clean, sync --check clean"
+      "android_grand": "no android court in this round, but the two controls that strike android authorities were exercised through their REAL courts in disposable worktrees (T84 and T37, both run by the campaign)",
+      "counts_source": "see completed_tasks.T67.case_results.counts_source",
+      "ios_grand": "no iOS path in this round: T67 is a control-plane task and the mirrored package is untouched (sync --check clean)",
+      "python_grand": "the readiness suite 364 OK (up from 351), the harness selftest rc=0 with nine known-answer cases and seven broken policies caught, the structural lineage rc=0, diff hygiene clean, sync --check clean"
     },
     "ladder": {
-      "L0": "1 PASSED (check_repository), 1 FAILED (ci/symbols.py --selftest: PRE-EXISTING)",
-      "L1": "PASSED (all three lanes plus the python readiness suite)",
+      "L0": "1 PASSED (check_repository, now including the harness selftest), 1 FAILED (ci/symbols.py --selftest: PRE-EXISTING)",
+      "L1": "PASSED (the python readiness suite)",
       "L2_L4": "unavailable: no command manifest yet"
     },
     "narrow": {
       "errors": 0,
       "failures": 0,
-      "lane": "gradle :mesh --tests *ReadinessT60Test* / swift --filter ReadinessT60Tests / python -p test_t60.py",
-      "tests": 39
+      "lane": "python3 -m unittest discover -s tools/readiness/tests -p test_t67.py -v",
+      "tests": 13
     },
     "roster": {
-      "T60_killed": 12,
-      "of": 12
+      "T67_controls_killed": 5,
+      "of": 5
     },
     "subsystem": {
       "errors": 0,
       "failures": 0,
-      "lane": "gradle :mesh (1102) + swift package (1140) + python readiness (351)",
-      "tests": 2593
+      "lane": "python3 -m unittest discover -s tools/readiness/tests -v",
+      "tests": 364
     }
   },
-  "next_task": "T67",
+  "next_task": "T71",
   "phase": "P0",
   "plan_sha256": "685456b378662b0a40a53a6abc810041e37daf97b213f3efeb6cea879363934e",
   "planning_baseline_sha": "b5c3d3d394b70cf356cdde33b47511dad7cbb95c",
@@ -14675,7 +14910,10 @@
     "T60 boundary: a LEDGER EDIT must be verified by READING THE STORED TEXT, not by assuming the string matched. T60's pass 2 lost two rods to a repair that silently did not take effect (the stored 'replace' differed from the searched text), so the mutants stayed uncompilable for a whole campaign. Two habits now: rebuild a whole rod line with json.dumps when its text is fiddly, and re-assert post.count(replace)==1 and post.count(find)==0 after every ledger edit.",
     "T60 boundary: a witness must own the BRANCH its rod strike. W09's only refusal arm demanded an overflow AND a truncation together, so the branch that owneth 'a clipped essential label' was never reached and its rod escaped. When a check carrieth several refusal arms, the witness must carry one arm per arm.",
     "T60 boundary: the accessibility conductor and the two isle contracts are NOT yet wired into the real screens (as T59's capability matrix is not yet consulted by the view-models). The models are asserted; the wiring is future work.",
-    "T60 boundary: next_task was first written as T81 by taking the first READY task in topological order. T81 is ready by DEPENDENCY but carrieth external_requirement=APPROVED_NATIVE_MODEL_ARTIFACTS, which no fixture may close -- so the frontier now preferreth a ready task with NO external requirement (T67), and the externally gated ones (T81, T79, T74, T80) are listed for their own BLOCKED_EXTERNAL records when the internal chain is exhausted. Corrected BEFORE the M commit."
+    "T60 boundary: next_task was first written as T81 by taking the first READY task in topological order. T81 is ready by DEPENDENCY but carrieth external_requirement=APPROVED_NATIVE_MODEL_ARTIFACTS, which no fixture may close -- so the frontier now preferreth a ready task with NO external requirement (T67), and the externally gated ones (T81, T79, T74, T80) are listed for their own BLOCKED_EXTERNAL records when the internal chain is exhausted. Corrected BEFORE the M commit.",
+    "T67 boundary: a CONTROL ROD must strike a line its witness REACHES. Three of T67's five controls escaped or failed to compile on the first pass because the anchor was in a branch the witness never executes (a second sweep branch), in a seam the court INJECTS (run.py's subprocess ancestor check), behind refusal arms that were still standing (a behavioural no-op), or used an enum member that does not exist. Locate the witness's own road BEFORE writing the anchor.",
+    "T67 boundary: the mutation harness now carrieth its own selftest (`ci/mutations.py --selftest`), wired into ci/check_repository.py. Any future edit to the classifier's rules, to the worktree helpers or to the tally MUST keep that selftest at rc=0 -- it is the only thing that proveth the harness cannot count a skipped rod as a catch.",
+    "T67 boundary: the selftest's known-answer table carrieth a case that existeth BECAUSE the table was blind: a compile failure WITH test output, so the build rule can be seen falling asleep. A table whose cases can all be satisfied by another rule cannot see any of them."
   ],
   "warnings_for_next_invocation": [
     "T41 IS THE NEXT TASK (deps T40, T24, T26, T37, T39, T84 all complete; no external requirement). After T41 cometh T42, T43, T44, then T54 and the platform chain.",
