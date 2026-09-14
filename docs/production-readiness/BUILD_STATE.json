@@ -10579,6 +10579,233 @@
         "the keeper's branch-identity clause expecteth still \"remediation/stage-4-link-release\" -- its own sealed face (tracked, quarry-unmodified, beyond the card's modify list): T53 heard it sleeping and let it be; the court's W14 sweareth it waketh clean upon the amended register"
       ]
     },
+    "T54": {
+      "case_results": {
+        "added_cases": {
+          "tools/readiness/tests/test_t54.py": [
+            "test_w01_the_profiles_are_resolved_from_build_config_evidence",
+            "test_w12_a_declared_srcDir_is_seen_even_when_not_materialized",
+            "test_w02_the_light_release_carrieth_no_lab_and_no_mesh_edge",
+            "test_w03_a_readiness_override_in_the_light_flavour_is_refused",
+            "test_w04_the_light_ios_app_links_only_the_core_product",
+            "test_w05_the_lab_carrieth_its_own_distinct_identity",
+            "test_w06_the_lab_reacheth_the_canonical_components",
+            "test_w07_the_lab_cannot_manufacture_readiness",
+            "test_w08_the_lab_carrieth_its_own_test_capability",
+            "test_w09_the_release_manifest_is_unchanged",
+            "test_w10_the_gate_controls_are_exercised_and_all_killed",
+            "test_w11_the_real_repository_standeth_clean_and_the_gate_is_wired"
+          ]
+        },
+        "corrected_cases": {
+          "note": "no pre-T54 court assertion was changed. TWO EXISTING CHECKS were REPAIRED because a second application target exposed a positional assumption in them:",
+          "repaired": [
+            "ci/check_shipping_path.py resolved 'the type: application target' POSITIONALLY and therefore judged the LabMesh target's sources and products as the shipping app's; it now resolves the SHIPPING target BY NAME (Godstone)",
+            "the T54 roster's own three escaping witnesses were repaired at the cause: they judged the CLEAN repository instead of feeding the gate the mutated input (W02 arms the resolved profile with a mesh edge; W07 and W09 build fixtures carrying a READY setter and a lab citation)"
+          ]
+        },
+        "counts": {
+          "narrow_python": 12,
+          "subsystem_python": 325
+        },
+        "counts_source": "the runner's own records at the implementation head (tests=12/12 narrow, 325/325 subsystem), confirmed by the harness's artifacts: T54/executed/T54-narrow-python-executed.log carrieth 12 '... ok' lines for the T54 court alone and T54-subsystem-python-executed.log proclaymeth 'Ran 325 tests' for the whole readiness suite.",
+        "courts": {
+          "controls": "ci/check_repository.py, ci/check_release_gates_status.py",
+          "gate_controls": "ci/check_lab_isolation.py --selftest (10 corrupted fixtures)",
+          "narrow": "tools/readiness/tests/test_t54.py (12 witnesses)",
+          "subsystem": "tools/readiness/tests (the whole python readiness suite)"
+        },
+        "deleted_cases": [],
+        "executed_scenarios": {
+          "device": "NOT EXECUTED: the section 18/19 physical matrix is external and T73-T75 own it; the lab targets' isolation is a HOST-side build-config fact",
+          "gate_selftest": "ten corrupted fixtures, each refused by name (a lab source set in LIGHT, a :mesh shipping edge, a readiness override, a masquerading lab, a lab without :mesh, a synthetic READY setter, a LIGHT app linking GodstoneMesh, a shared bundle id, readiness true, a gate citing the lab)",
+          "lab_canonical": "the lab reacheth :mesh / GodstoneMesh -- the canonical runtime, never a twin",
+          "lab_identity": "the lab carrieth io.godstone.labmesh on both platforms, distinct from io.godstone.app",
+          "lab_test_capability": "3 cases per isle drive a real handshake; the iOS twin executes on the host (the Foundation package went from 1098 to 1101 tests)",
+          "light_isolation": "the LIGHT android link map is exactly ['core'] with no lab source; the LIGHT iOS app product-links only GodstoneCore",
+          "no_ready_setter": "no synthetic readiness setter in the lab's sources; readinessStatement() carrieth no parameter",
+          "profile_resolution": "every profile's compiled set and link map, resolved from build-config evidence (T54/executed/T54-profiles-resolved.log)"
+        },
+        "produced_artifacts": {
+          "gate": {
+            "path": "ci/check_lab_isolation.py",
+            "wired_into": [
+              "ci/check_repository.py",
+              ".github/workflows/repository-verification.yml"
+            ]
+          },
+          "lab_android": {
+            "identity": "io.godstone.labmesh",
+            "link_map": [
+              "core",
+              "mesh"
+            ],
+            "note": "a SEPARATE application module, never a flavour of :app (scripts/check_tiers.py requires exactly the shipping tiers)",
+            "path": "android/labmesh"
+          },
+          "lab_entry": {
+            "android": "android/mesh/src/main/java/io/godstone/mesh/lab/LabRuntime.kt",
+            "ios": "ios/Godstone/Sources/GodstoneMesh/LabRuntime.swift",
+            "surface": "labels, an honest readiness statement, and a durable state NAME -- the internal authorities stay inside"
+          },
+          "lab_ios": {
+            "bundle": "io.godstone.labmesh",
+            "products": [
+              "GodstoneMesh",
+              "GodstoneCore"
+            ],
+            "targets": [
+              "LabMesh",
+              "LabMeshTests"
+            ]
+          },
+          "resolver": {
+            "law": "resolveth the compiled set and link map per profile, including EXPLICIT srcDir(...) declarations",
+            "path": "ci/profile_resolver.py"
+          }
+        },
+        "roster_campaigns": {
+          "pass_1": {
+            "escapes": "W02/W07/W09 judged only the clean repository, so a gate whose rule had been deleted looked identical to a gate with nothing to refuse",
+            "repair": "8129eaabab900dfa60bebdf24432dae3c9cf872a",
+            "rods": 8,
+            "tally": {
+              "ESCAPED": 3,
+              "KILLED": 5
+            }
+          },
+          "pass_2": {
+            "baseline": "3d8c275393739b43629d9521b0948de5f23dbcb9",
+            "note": "the final official pass ran with the court in exactly the state 8129eaabab900dfa60bebdf24432dae3c9cf872a commits",
+            "rods": 8,
+            "tally": {
+              "ESCAPED": 0,
+              "INVALID": 0,
+              "KILLED": 8,
+              "SKIPPED": 0,
+              "TIMEOUT": 0
+            }
+          }
+        }
+      },
+      "claim_commit": "a68ff4d4f1759e344ee55982ad8a0a6e6e666f0e",
+      "commands": [
+        "T54-narrow-python3-002",
+        "T54-subsystem-python3-002",
+        "T54-controls-python3-003",
+        "T54-controls-python3-004"
+      ],
+      "device_gate_ids": [],
+      "file_hashes": {
+        "android/labmesh/build.gradle.kts": "a98afa33b56cfd62993464e687281f813672537523d2c75e9522ebab1c3c52bc",
+        "android/mesh/src/main/java/io/godstone/mesh/lab/LabRuntime.kt": "7f6296f7c7bb19818089a21bfc84e56a811723f7bd101707bbb17e7de46294eb",
+        "ci/check_lab_isolation.py": "b62f24e564072d53cdfb6117367fbf984b4d47885b39c0fc646d0a0cde8b7cae",
+        "ci/check_repository.py": "887ba5cb5cb86ab2213f41b3f9fe04530fc9731f33cce485e66b6929193dabfc",
+        "ci/check_shipping_path.py": "61403c9f149abe208a92bb21b1c9d075910679ad1ebd9f0fcf504efbecc8d4fa",
+        "ci/mutations.py": "e1741a5a1b42d2d5f784bfc6557030fce66978ff2ca90b187d01f5eb2252d4ea",
+        "ci/profile_resolver.py": "8f1112f0532754d7c55fc2590100757e0bcbacaffcc8f84708c52e0db589ae0a",
+        "ios/Godstone/Sources/GodstoneMesh/LabRuntime.swift": "2c49bef1a8e09e8ea42050ee3775d8f16af7d2cdc57e0959155a1558e992adef",
+        "ios/project.yml": "9dd06d76a4692fdb6768cfb0c57112f6ed4a8e3262bd49dc0d8f80710ae1f09c",
+        "tools/readiness/tests/test_t54.py": "453b3b7a0ad1d9171981be877901c7cf3d8e65375da941c1d1ada489f528b7eb"
+      },
+      "implementation_commit": "8129eaabab900dfa60bebdf24432dae3c9cf872a",
+      "implementation_commits": [
+        "cec9c9c8c94a894c184b706de68cde91dbe7fad2",
+        "3d8c275393739b43629d9521b0948de5f23dbcb9",
+        "8129eaabab900dfa60bebdf24432dae3c9cf872a"
+      ],
+      "inputs": {
+        "children_commit_order": [
+          "T54(claim)",
+          "T54(builder)",
+          "T54(builder-rods)",
+          "T54(builder-roster-repair)",
+          "T54(M)"
+        ],
+        "claim_ordering_note": "the claim was taken at a68ff4d4f1759e344ee55982ad8a0a6e6e666f0e; the stages and the final roster were run at the implementation head 8129eaabab900dfa60bebdf24432dae3c9cf872a. Runner logs and executed logs live in distinct directories (T54/logs, T54/executed) so no pass can overwrite another.",
+        "governed_source": [
+          "ci/profile_resolver.py",
+          "ci/check_lab_isolation.py",
+          "ci/check_shipping_path.py",
+          "ci/check_repository.py",
+          "tools/readiness/tests/test_t54.py",
+          "android/settings.gradle.kts",
+          "android/labmesh/build.gradle.kts",
+          "android/labmesh/src/main/AndroidManifest.xml",
+          "android/labmesh/src/main/java/io/godstone/labmesh/LabMeshApp.kt",
+          "android/labmesh/src/test/java/io/godstone/labmesh/LabMeshAppTest.kt",
+          "android/mesh/src/main/java/io/godstone/mesh/lab/LabRuntime.kt",
+          "ios/project.yml",
+          "ios/Godstone/Package.swift",
+          "ios/Godstone/Sources/LabMesh/LabMeshApp.swift",
+          "ios/Godstone/Tests/LabMeshTests/LabMeshAppTests.swift",
+          "ios/Godstone/Sources/GodstoneMesh/LabRuntime.swift",
+          "ios/Packages/GodstoneFoundation/Package.swift",
+          "scripts/sync_ios_foundation_package.py",
+          ".github/workflows/repository-verification.yml",
+          "ci/mutations.py"
+        ],
+        "required_regression_paths": [
+          "tools/readiness/tests/test_t54.py"
+        ],
+        "sealed_hot_paths_untouched": [
+          "crypto/, wire/ and the generated codecs",
+          "the shipping LIGHT release surface: no permission, plist key or manifest entry moved; ci/check_release_surface.py still passeth",
+          "the tier invariant: the lab is a module, not a flavour, so scripts/check_tiers.py's law is intact",
+          "the five external gates and docs/production/RELEASE_GATES_STATUS.json",
+          "the readiness statements: both flags stay false and the manifest citeth no lab"
+        ]
+      },
+      "ladder_boundary_commit": "8129eaabab900dfa60bebdf24432dae3c9cf872a",
+      "mutation_results": {
+        "additional_controls": {
+          "gate_selftest": "ci/check_lab_isolation.py --selftest exerciseth ten corrupted fixtures and reporteth each by name; its log is T54/executed/T54-gate-selftest.log",
+          "semantic": {
+            "harness": "ci/mutations.py run_semantic (the ledger filtered to the T54- prefix)",
+            "platforms": [
+              "python"
+            ],
+            "work_parent": "/Users/oculus/.cache/godstone-mutation-worktrees-t54 (disposable; the live tree is never touched)"
+          },
+          "shipping_path_selftest": "ci/check_shipping_path.py --selftest still passeth its 4 negative controls + 4 dep-edge controls + 2 sanity checks after the by-name repair"
+        },
+        "attempts_archived": [
+          {
+            "baseline": "3d8c275393739b43629d9521b0948de5f23dbcb9",
+            "pass": 1,
+            "repaired_in": "8129eaabab900dfa60bebdf24432dae3c9cf872a",
+            "rods": 8,
+            "tally": {
+              "ESCAPED": 3,
+              "KILLED": 5
+            }
+          }
+        ],
+        "campaign_note": "the eight rods ran in the FINAL official pass, fail-closed, at baseline 3d8c275393739b43629d9521b0948de5f23dbcb9 (with the court in the state 8129eaabab900dfa60bebdf24432dae3c9cf872a commits): 8 KILLED of 8, SKIPPED=0, INVALID=0, TIMEOUT=0, ESCAPED=0. The card's named semantic negative is RC1/RC2 ('Include a lab source set or readiness override in LIGHT release: binary/profile gate fails'), struck on the gate itself. Pass 1's three escapes are recorded: every one was a witness that judged the clean repository instead of feeding the gate the mutated input.",
+        "of": 8,
+        "roster_manifest": "T54/roster/manifest.json",
+        "tally": {
+          "ESCAPED": 0,
+          "INVALID": 0,
+          "KILLED": 8,
+          "SKIPPED": 0,
+          "TIMEOUT": 0
+        }
+      },
+      "objective": {
+        "claimed_head": "a68ff4d4f1759e344ee55982ad8a0a6e6e666f0e",
+        "claimed_utc": "2026-09-14T20:05:26+00:00",
+        "objective": "Create isolated experimental runtime targets: add nonshipping LabMesh targets on both platforms with distinct bundle/application IDs that depend on the SAME canonical runtime components, resolve the ACTUAL classpaths and link maps for every profile from build-config evidence, and gate it -- the LIGHT/Archive release must carry no lab source set, no readiness override and no synthetic READY setter, the archive binary must contain no Lab factories, the lab must compose real stores/trust/adapters, and the release manifest must be unchanged -- so that slipping a lab source set or a readiness override into the LIGHT release falleth the binary/profile gate."
+      },
+      "status": "COMPLETE",
+      "tested_tree_sha": "3d915913709fbe59e86c8bdcb523e08f9070bde9",
+      "unresolved": [
+        "the section 18/19 PHYSICAL device matrix is NOT executed: T73-T75 own it. The lab targets' isolation is a host-side build-config fact, not device behaviour.",
+        "the iOS LabMesh application target was not built with xcodebuild in this environment: its sources and bundle identity are resolved from project.yml, and its behaviour is executed on the host through the mirrored Foundation package.",
+        ":labmesh:assembleDebug was not run (the module compiles and its unit road runs 3/3); packaging an experimental APK is outside this task's declared stages.",
+        "the lab's Android manifest carries the Bluetooth permissions the shipping app refuses, deliberately, because the lab exists to exercise real adapters on a real device; the gate asserteth that they appear in the LAB profile only."
+      ]
+    },
     "T61": {
       "case_results": {
         "added_cases": [
@@ -13002,7 +13229,7 @@
       ]
     }
   },
-  "current_task": "T54",
+  "current_task": null,
   "external_blockers": [
     "A06",
     "APPROVED_CONTENT",
@@ -13011,30 +13238,21 @@
     "SIGNING"
   ],
   "failed_attempts": [],
-  "in_progress": {
-    "claimed_head": "a68ff4d4f1759e344ee55982ad8a0a6e6e666f0e",
-    "claimed_utc": "2026-09-14T20:05:26+00:00",
-    "objective": {
-      "claimed_head": "a68ff4d4f1759e344ee55982ad8a0a6e6e666f0e",
-      "claimed_utc": "2026-09-14T20:05:26+00:00",
-      "objective": "Create isolated experimental runtime targets: add nonshipping LabMesh targets on both platforms with distinct bundle/application IDs that depend on the SAME canonical runtime components, resolve the ACTUAL classpaths and link maps for every profile from build-config evidence, and gate it -- the LIGHT/Archive release must carry no lab source set, no readiness override and no synthetic READY setter, the archive binary must contain no Lab factories, the lab must compose real stores/trust/adapters, and the release manifest must be unchanged -- so that slipping a lab source set or a readiness override into the LIGHT release falleth the binary/profile gate."
-    },
-    "task": "T54"
-  },
-  "last_code_head": "3a5394a716fbe23784c346647bfa0e79f2138f5a",
-  "last_observed_head": "3a5394a716fbe23784c346647bfa0e79f2138f5a",
+  "in_progress": null,
+  "last_code_head": "8129eaabab900dfa60bebdf24432dae3c9cf872a",
+  "last_observed_head": "8129eaabab900dfa60bebdf24432dae3c9cf872a",
   "latest_verification": {
-    "at_utc": "2026-09-15T03:30:00+00:00",
-    "boundary_commit": "3a5394a716fbe23784c346647bfa0e79f2138f5a",
+    "at_utc": "2026-09-15T04:20:00+00:00",
+    "boundary_commit": "8129eaabab900dfa60bebdf24432dae3c9cf872a",
     "controls": {
-      "boundary_records": 3,
-      "outcomes": "3/3 PASSED at the boundary (check_repository rc=0; the release-gates checker rc=0 with its own 12-of-12, 15-of-15 and 7-of-7 selftests; sync --check clean)"
+      "boundary_records": 2,
+      "outcomes": "2/2 PASSED at the boundary (check_repository rc=0 with the lab gate now wired in; the release-gates checker rc=0). The shipping-path and tiers gates were run beside them and stand rc=0 after the by-name repair"
     },
     "isle_grands": {
-      "android_grand": "the T44 court 12/12 and the whole :mesh suite 1089/0 at the boundary, genuinely EXECUTED (--no-build-cache, stale results purged)",
-      "counts_source": "see completed_tasks.T44.case_results.counts_source",
-      "ios_grand": "the T44 court 12/12 and the whole package 1098/0 at the boundary",
-      "python_grand": "the python readiness suite 313 OK, the structural lineage rc=0, diff hygiene clean, sync --check clean"
+      "android_grand": "no android court in this round: T54 is a build/control task. :mesh:testDebugUnitTest still passeth and :labmesh:testDebugUnitTest runneth 3/3 (the lab's own test capability)",
+      "counts_source": "see completed_tasks.T54.case_results.counts_source",
+      "ios_grand": "the mirrored Foundation package standeth at 1101/0, up from 1098, the three new cases being the lab's own",
+      "python_grand": "the readiness suite 325 OK (up from 313 by the twelve T54 witnesses), the gate's own selftest 10/10 controls refused, structural lineage rc=0, diff clean, sync --check clean"
     },
     "ladder": {
       "L0": "1 PASSED (check_repository), 1 FAILED (ci/symbols.py --selftest: PRE-EXISTING)",
@@ -13044,21 +13262,21 @@
     "narrow": {
       "errors": 0,
       "failures": 0,
-      "lane": "gradlew :mesh:testDebugUnitTest --tests *ReadinessT44Test* + swift test --filter ReadinessT44Tests",
-      "tests": 24
+      "lane": "python3 -m unittest discover -s tools/readiness/tests -p test_t54.py -v",
+      "tests": 12
     },
     "roster": {
-      "T44_killed": 12,
-      "of": 12
+      "T54_killed": 8,
+      "of": 8
     },
     "subsystem": {
       "errors": 0,
       "failures": 0,
-      "lane": "gradlew :mesh:testDebugUnitTest (1089) + swift test --package-path ios/Packages/GodstoneFoundation (1098)",
-      "tests": 2187
+      "lane": "python3 -m unittest discover -s tools/readiness/tests -v",
+      "tests": 325
     }
   },
-  "next_task": "T54",
+  "next_task": "T55",
   "phase": "P0",
   "plan_sha256": "685456b378662b0a40a53a6abc810041e37daf97b213f3efeb6cea879363934e",
   "planning_baseline_sha": "b5c3d3d394b70cf356cdde33b47511dad7cbb95c",
@@ -13130,7 +13348,10 @@
     "T44 boundary: a rod whose ANCHOR no longer existeth is SKIPPED, never a kill -- and that is exactly what happened to T44-RC7 in pass 2 after the replay statute was rewritten. Whenever a mutation rod's subject is edited by a later repair, the rod's needle must be re-anchored in the same commit.",
     "T44 boundary: FIVE rods escaped the first campaign because their witnesses did not own their law (the sender's estate versus the receiver's, a bound respected but never exercised, and a replay whose re-entry nothing observed). The repairs were made IN THE COURTS; the verdicts were never adjusted to fit.",
     "T44 boundary: a trace emitted by one isle has not been replayed by the other in a committed artifact, and the physical device matrix is external. Both are recorded; neither may be cited as evidence.",
-    "PUBLISHING: the builder branch codex/production-blueprint must be pushed to origin at every task boundary (after the M commit). Verify with `git status -sb` that the branch is level with origin/codex/production-blueprint before declaring a task sealed; if the push would not be a fast-forward, stop and report instead of forcing."
+    "PUBLISHING: the builder branch codex/production-blueprint must be pushed to origin at every task boundary (after the M commit). Verify with `git status -sb` that the branch is level with origin/codex/production-blueprint before declaring a task sealed; if the push would not be a fast-forward, stop and report instead of forcing.",
+    "T54 boundary: ci/check_shipping_path.py resolved 'the type: application target' POSITIONALLY in ios/project.yml, so a SECOND application target (the T54 lab) made it judge the lab's sources and products as the shipping app's. It now resolveth the SHIPPING target BY NAME. Any future gate that walketh a target list must key on identity, never on position.",
+    "T54 boundary: a witness that asserteth 'the gate stayed silent on the CLEAN repository' cannot kill a rod that DELETES the gate's rule -- the two look identical. All three T54 escapes were that mistake; the repairs FEED the mutated input (an armed profile, or a fixture carrying the violation). Whenever a rod strikes a CHECKER rather than a behaviour, its witness must supply the violating input.",
+    "T54 boundary: ci/profile_resolver.py's first form read only the source roots AGP auto-wires, so a lab source set DECLARED with srcDir(...) was invisible to every check built on it. It now honours declared roots; W12 pins that, and the gate's selftest is what caught the hole."
   ],
   "warnings_for_next_invocation": [
     "T41 IS THE NEXT TASK (deps T40, T24, T26, T37, T39, T84 all complete; no external requirement). After T41 cometh T42, T43, T44, then T54 and the platform chain.",
