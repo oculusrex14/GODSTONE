@@ -11262,7 +11262,16 @@
     "SIGNING"
   ],
   "failed_attempts": [],
-  "in_progress": null,
+  "in_progress": {
+    "claimed_head": "1658591071dc9c56d53868b1b336412c3c18793c",
+    "claimed_utc": "2026-09-14T14:11:24+00:00",
+    "objective": {
+      "claimed_head": "1658591071dc9c56d53868b1b336412c3c18793c",
+      "claimed_utc": "2026-09-14T14:11:24+00:00",
+      "objective": "Audit and verify the real iOS release artifact: an inspector that readeth the Mach-O itself (load commands, dylibs, rpaths, platform, minimum OS, UUID) rather than shelling out to otool, that classifieth a source-only build distinctly from approved content, that refuseth the excluded lab/mesh/LLM surfaces, models, test bundles and cross-tier archives, that checketh the privacy manifest, the entitlements and the deployment floor, and that carrieth the device claim as UNVERIFIED -- with the artifact built for real by xcodegen + xcodebuild on this host."
+    },
+    "task": "T69"
+  },
   "last_code_head": "e26e69065df6ee077c28c89dc672023016ae731d",
   "last_observed_head": "e26e69065df6ee077c28c89dc672023016ae731d",
   "latest_verification": {
