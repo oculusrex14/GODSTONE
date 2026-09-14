@@ -271,7 +271,7 @@ final class ReadinessT56Tests: XCTestCase {
 
         let refused = built.onCommand(.approveRotation(displayed))
         XCTAssertNotNil(refused.error)
-        XCTAssertTrue(refused.error!.contains("no longer pending"))
+        XCTAssertTrue((refused.error ?? "<no error was reported>").contains("no longer pending"))
         XCTAssertEqual(refused.contact(row.nodeId)?.pendingRotation, newer,
                        "the newer candidate standeth")
         XCTAssertEqual(authority.row(row.nodeId)?.acceptedGeneration,
@@ -310,7 +310,7 @@ final class ReadinessT56Tests: XCTestCase {
         // a mutating command while locked is refused, and the estate standeth
         let refused = built.onCommand(.revoke(row.nodeId))
         XCTAssertNotNil(refused.error)
-        XCTAssertTrue(refused.error!.contains("locked"))
+        XCTAssertTrue((refused.error ?? "<no error was reported>").contains("locked"))
         XCTAssertEqual(authority.row(row.nodeId)?.trust, .verified)
 
         // after unlock the REAL estate appeareth
@@ -319,6 +319,15 @@ final class ReadinessT56Tests: XCTestCase {
         XCTAssertTrue(unlocked.isAvailable)
         XCTAssertEqual(unlocked.contacts.count, 1)
         XCTAssertNotNil(unlocked.own)
+
+        // ... and locking AGAIN claimeth nothing, even though the previous
+        // projection carrieth a contact and an identity: a stale cache is not an
+        // estate, and this arm is what condemneth one being rendered as if it were
+        gate.setAvailable(false)
+        let relocked = built.refresh()
+        XCTAssertEqual(relocked.availability, .protectedDataUnavailable)
+        XCTAssertTrue(relocked.contacts.isEmpty, "the previous projection is NOT rendered")
+        XCTAssertNil(relocked.own, "nor the previously shown identity")
     }
 
     // ------------------------------------------------------------ W05
@@ -430,8 +439,8 @@ final class ReadinessT56Tests: XCTestCase {
         let refusedByAuthority = built.onCommand(.compareAndConfirmFingerprint(
             nodeId: row.nodeId, displayedFingerprintHex: displayed))
         XCTAssertNotNil(refusedByAuthority.error)
-        XCTAssertTrue(refusedByAuthority.error!.contains("not the one you compared"),
-                      "the DURABLE CAS refuseth a stale confirmation: \(refusedByAuthority.error!)")
+        XCTAssertTrue((refusedByAuthority.error ?? "<no error was reported>").contains("not the one you compared"),
+                      "the DURABLE CAS refuseth a stale confirmation: \((refusedByAuthority.error ?? "<no error was reported>"))")
         XCTAssertEqual(authority.row(row.nodeId)?.trust, .tofuUnverified)
 
         // ARM 2 -- the user reads out an OLD fingerprint: the model refuseth it
@@ -440,7 +449,7 @@ final class ReadinessT56Tests: XCTestCase {
         let refusedLocally = stale.onCommand(.compareAndConfirmFingerprint(
             nodeId: row.nodeId, displayedFingerprintHex: String(repeating: "0", count: 64)))
         XCTAssertNotNil(refusedLocally.error)
-        XCTAssertTrue(refusedLocally.error!.contains("differ"))
+        XCTAssertTrue((refusedLocally.error ?? "<no error was reported>").contains("differ"))
         XCTAssertEqual(authority.row(row.nodeId)?.trust, .tofuUnverified)
 
         // a malformed digest is refused before anything is compared
@@ -511,10 +520,16 @@ final class ReadinessT56Tests: XCTestCase {
 
         for payload in ["", BindingPayloadPolicy.prefix,
                         BindingPayloadPolicy.prefix + "not*base64!",
-                        BindingPayloadPolicy.prefix + "AAAA", oversized] {
+                        BindingPayloadPolicy.prefix + "AAAA"] {
             let refused = built.onCommand(.importRecipientBinding(payload))
             XCTAssertNotNil(refused.error, "payload \(payload.prefix(12)) must be refused visibly")
         }
+        // the OVERSIZED case must be refused BY THE SIZE BOUND, before any decoding:
+        // without that reason the payload would be walked character by character
+        let oversizedRefusal = built.onCommand(.importRecipientBinding(oversized))
+        XCTAssertNotNil(oversizedRefusal.error)
+        XCTAssertTrue((oversizedRefusal.error ?? "").contains("over the"),
+                      "an oversized payload is refused by the BOUND: \(oversizedRefusal.error ?? "")")
 
         // a WELL-FORMED payload imports and lands on first-use trust
         let nodeId = SharedTrustFixture.nodeId(0x77)
