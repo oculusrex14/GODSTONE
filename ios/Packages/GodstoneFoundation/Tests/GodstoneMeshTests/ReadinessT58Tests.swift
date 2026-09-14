@@ -178,7 +178,10 @@ final class ReadinessT58Tests: XCTestCase {
         XCTAssertTrue(built.uiState().canSend)
         let sent = built.onCommand(.sendDirect)
         XCTAssertEqual(sent.messages.first?.status, .queued)
-        XCTAssertFalse(sent.messages.first!.status.claimsDelivery)
+        guard let sentRow = sent.messages.first else {
+            return XCTFail("the send must have queued a row")
+        }
+        XCTAssertFalse(sentRow.status.claimsDelivery)
         // THE WORDS are the interface: queued is never "sent"
         XCTAssertTrue(voiceLabel(for: .queued).contains("queued"))
         XCTAssertFalse(voiceLabel(for: .queued).contains("sent"))
@@ -194,16 +197,22 @@ final class ReadinessT58Tests: XCTestCase {
         XCTAssertEqual(connected.messages.first?.status, .queued)
 
         // 3. the radio takes the bytes: ATTEMPTING, no delivery claim
-        authority.transportAccepted(sent.messages.first!.msgId)
+        authority.transportAccepted(sentRow.msgId)
         let attempting = built.refresh()
         XCTAssertEqual(attempting.messages.first?.status, .attempting)
-        XCTAssertFalse(attempting.messages.first!.status.claimsDelivery)
+        guard let attemptingRow = attempting.messages.first else {
+            return XCTFail("the row must stand")
+        }
+        XCTAssertFalse(attemptingRow.status.claimsDelivery)
 
         // 4. the recipient's ACK commits: NOW, and only now
-        authority.recipientAcked(sent.messages.first!.msgId)
+        authority.recipientAcked(sentRow.msgId)
         let delivered = built.refresh()
         XCTAssertEqual(delivered.messages.first?.status, .delivered)
-        XCTAssertTrue(delivered.messages.first!.status.claimsDelivery)
+        guard let deliveredRow = delivered.messages.first else {
+            return XCTFail("the row must stand")
+        }
+        XCTAssertTrue(deliveredRow.status.claimsDelivery)
         XCTAssertTrue(voiceLabel(for: .delivered).contains("delivered"))
     }
 
@@ -217,7 +226,10 @@ final class ReadinessT58Tests: XCTestCase {
         let built = model(authority, recipients: [peer.nodeId])
         selectAndDraft(built, peer, "meet me at the hall")
         let sent = built.onCommand(.sendDirect)
-        let msgId = sent.messages.first!.msgId
+        guard let sentMessage = sent.messages.first else {
+            return XCTFail("the send must have queued a row")
+        }
+        let msgId = sentMessage.msgId
         authority.transportAccepted(msgId)
         XCTAssertEqual(built.refresh().messages.count, 1, "the work standeth")
 
@@ -239,7 +251,8 @@ final class ReadinessT58Tests: XCTestCase {
                        "a discarded scene must re-expose the remaining work")
         XCTAssertEqual(.attempting, discarded.uiState().messages.first?.status)
         // and the words sayeth it is NOT delivered
-        XCTAssertFalse(discarded.uiState().messages.first!.status.claimsDelivery)
+        XCTAssertFalse(discarded.uiState().messages.first?.status.claimsDelivery ?? false,
+                       "and the words sayeth it is NOT delivered")
     }
 
     // ------------------------------------------------------------ W03
@@ -304,7 +317,7 @@ final class ReadinessT58Tests: XCTestCase {
         let state = built.refresh()
         XCTAssertEqual(1, state.messages.count, "a duplicate arrival is ONE row")
         XCTAssertEqual(.delivered, state.messages.first?.status)
-        XCTAssertFalse(state.messages.first!.outgoing, "and it is inbound")
+        XCTAssertEqual(state.messages.first?.outgoing, false, "and it is inbound")
         XCTAssertEqual(state.messages.count, 1,
                        "and the VoiceOver summary counteth it once")
         XCTAssertTrue(state.voiceSummary().contains("1 messages"))
@@ -398,7 +411,8 @@ final class ReadinessT58Tests: XCTestCase {
         _ = first.onCommand(.armSos)
         let placed = first.onCommand(.confirmSos)
         XCTAssertTrue((first.uiState().sos?.cancelExplanation ?? "").contains("No copy has left"))
-        let cancelled = first.onCommand(.cancelSos(placed.sos!.msgId))
+        guard let placedCall = placed.sos else { return XCTFail("a call must stand") }
+        let cancelled = first.onCommand(.cancelSos(placedCall.msgId))
         XCTAssertTrue((cancelled.lastOutcome ?? "").contains("no copy had left"))
         XCTAssertNil(cancelled.sos)
 
@@ -409,7 +423,8 @@ final class ReadinessT58Tests: XCTestCase {
         let placed2 = second.onCommand(.confirmSos)
         XCTAssertTrue((second.uiState().sos?.cancelExplanation ?? "").contains("cannot be recalled"),
                       second.uiState().sos?.cancelExplanation ?? "")
-        let cancelled2 = second.onCommand(.cancelSos(placed2.sos!.msgId))
+        guard let placedCall2 = placed2.sos else { return XCTFail("a call must stand") }
+        let cancelled2 = second.onCommand(.cancelSos(placedCall2.msgId))
         XCTAssertTrue((cancelled2.lastOutcome ?? "").contains("cannot be recalled"))
         XCTAssertFalse((cancelled2.lastOutcome ?? "").contains("recalled successfully"))
     }
