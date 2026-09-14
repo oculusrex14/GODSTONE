@@ -129,6 +129,15 @@ class T54LightIsolationTest(unittest.TestCase):
         findings = gate.Findings()
         gate.check_light_android(findings, android)
         self.assertEqual(findings.errors, [])
+        # ... and the witness FEEDETH the gate a profile that carrieth the edge:
+        # asserting only over the clean repository would leave the law untested
+        # (the first form of this witness did exactly that, and its rod escaped)
+        armed = resolver.resolve_profiles(ROOT)["LIGHT_ANDROID"]["profile"]
+        armed.link_map = ["core", "mesh"]
+        armed_findings = gate.Findings()
+        gate.check_light_android(armed_findings, armed)
+        self.assertTrue(any("reacheth :mesh" in e for e in armed_findings.errors),
+                        armed_findings.errors)
 
     def test_w03_a_readiness_override_in_the_light_flavour_is_refused(self):
         android = resolver.resolve_profiles(ROOT)["LIGHT_ANDROID"]["profile"]
@@ -216,7 +225,8 @@ class T54LabTargetTest(unittest.TestCase):
                                   (self.profiles["LAB_IOS"]["profile"], "ios")):
             findings = gate.Findings()
             gate.check_lab(findings, platform, profile, ROOT, "io.godstone.app")
-            self.assertEqual([e for e in findings.errors if "READY setter" in e], [])
+            self.assertEqual([e for e in findings.errors
+                              if "synthetic readiness setter" in e], [])
 
         kt = (ROOT / "android/mesh/src/main/java/io/godstone/mesh/lab/LabRuntime.kt").read_text(encoding="utf-8")
         self.assertIn("MANUFACTURES_READINESS: Boolean = false", kt)
@@ -229,6 +239,19 @@ class T54LabTargetTest(unittest.TestCase):
         self.assertIn("fun readinessStatement(): LabReadiness = LabReadiness(",
                       kt)
         self.assertIn("static func readinessStatement() -> LabReadiness {", swift)
+
+        # ... and a lab that DID carry one is refused, in a fixture: the law is
+        # exercised, not merely observed to be absent (its rod escaped the first
+        # campaign for exactly that reason)
+        with tempfile.TemporaryDirectory() as tmp:
+            fixture = Path(tmp)
+            gate._copy_tree(ROOT, fixture, gate.SELFTEST_FILES)
+            lab_file = fixture / "android/labmesh/src/main/java/io/godstone/labmesh/LabMeshApp.kt"
+            lab_file.write_text(lab_file.read_text(encoding="utf-8")
+                                + "\nfun forceReady() { }\n", encoding="utf-8")
+            refused = gate.run(fixture)
+            self.assertTrue(any("synthetic readiness setter" in e for e in refused.errors),
+                            refused.errors)
 
     def test_w08_the_lab_carrieth_its_own_test_capability(self):
         findings = gate.Findings()
@@ -262,6 +285,20 @@ class T54ManifestAndControlsTest(unittest.TestCase):
             .read_text(encoding="utf-8"))
         self.assertIs(invariants["readiness"]["android_LINK_LAYER_READY"], False)
         self.assertIs(invariants["readiness"]["ios_linkLayerReady"], False)
+
+        # a gate that CITETH the lab is refused, in a fixture: no gate may rest on
+        # an experimental target (its rod escaped the first campaign because the
+        # witness only read the clean manifest)
+        with tempfile.TemporaryDirectory() as tmp:
+            fixture = Path(tmp)
+            gate._copy_tree(ROOT, fixture, gate.SELFTEST_FILES)
+            gate_file = fixture / "docs/production/RELEASE_GATES_STATUS.json"
+            text = gate_file.read_text(encoding="utf-8")
+            gate_file.write_text(text.replace("{", '{"lab_note": "measured on LabMesh",', 1),
+                                 encoding="utf-8")
+            refused = gate.run(fixture)
+            self.assertTrue(any("referenceth the lab" in e for e in refused.errors),
+                            refused.errors)
 
     def test_w10_the_gate_controls_are_exercised_and_all_killed(self):
         rc = gate.selftest(ROOT)
