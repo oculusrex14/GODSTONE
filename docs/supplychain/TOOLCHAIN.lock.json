@@ -1,0 +1,173 @@
+{
+  "captured_utc": "2026-09-14T13:55:33+00:00",
+  "host": {
+    "arch": "arm64",
+    "build": "25G83",
+    "os": "macOS 26.6.2"
+  },
+  "inputs": [
+    {
+      "bytes": 714,
+      "path": "android/gradle/wrapper/gradle-wrapper.properties",
+      "role": "the Gradle wrapper's distribution URL and its pinned SHA-256",
+      "sha256": "4d3372b4adbf1f6818169fac062820a05c966ec63abdfda06ddafa32166e864e"
+    },
+    {
+      "bytes": 1781,
+      "path": "android/llm/build.gradle.kts",
+      "role": "the NDK, CMake, JDK and ABI pins of the native module",
+      "sha256": "dfd484694bda2b7bed0450b2ab4ee5c85fc15da59de46fa30bea9bbd710f839d"
+    },
+    {
+      "bytes": 12558,
+      "path": "android/app/build.gradle.kts",
+      "role": "the application's compile/target SDK and JDK",
+      "sha256": "5a3e2dd9e82cc2d745d241e62ee8253c4aaeb3b87d9a3d934bc98467d80edc79"
+    },
+    {
+      "bytes": 503,
+      "path": "android/build.gradle.kts",
+      "role": "the root build's plugin and repository pins",
+      "sha256": "a815d44a29e006ec99fda6c39030c46d0553c426822d37ec855e91bd4cab51c8"
+    },
+    {
+      "bytes": 1156,
+      "path": "ios/Godstone/Package.swift",
+      "role": "the Swift tools version, platforms and package pins",
+      "sha256": "edf2ad0fc26282874eaf6b4d4e623c8a30782414bd700c4d39571b8596e8f24e"
+    },
+    {
+      "bytes": 4436,
+      "path": "ios/project.yml",
+      "role": "the Xcode project specification XcodeGen regenerateth from",
+      "sha256": "09600e3a567a1456847b219389922c538e8c6a978eb0bb5273ddd9690a9d4eb9"
+    },
+    {
+      "bytes": 916,
+      "path": "content/requirements.txt",
+      "role": "the content pipeline's exact pins",
+      "sha256": "5e91131e635b2273155dad4f2240244d79d69fd0a34cce28886d6218cb2c09aa"
+    },
+    {
+      "bytes": 177,
+      "path": "content/requirements-dev.txt",
+      "role": "the verification lane's exact pins",
+      "sha256": "30043a5ba98fed5414c14c85db2b99420dce00ce23cb6735e05c4fc7a3a70c91"
+    },
+    {
+      "bytes": 3645,
+      "path": "docs/packaging/MODELS.lock.json",
+      "role": "the model register's coordinates and native toolchain",
+      "sha256": "69d652fb2e455b57a045eefac6f4543955962a31ccc1e5de288fef82c3d6fe66"
+    }
+  ],
+  "models_lock": {
+    "status": "UNPINNED",
+    "toolchains": {
+      "cmake": "3.22.1",
+      "ndk": "27.0.12077973"
+    }
+  },
+  "schema": 1,
+  "status": "UNPINNED",
+  "tools": [
+    {
+      "expected": null,
+      "measured": "3.14.4",
+      "name": "python",
+      "note": "the interpreter the courts and the content pipeline run under; the repo carrieth no pin for it, so it is recorded rather than expected",
+      "probe": "python3 -V",
+      "status": "UNEXPECTED"
+    },
+    {
+      "expected": null,
+      "measured": "17.0.20.1",
+      "name": "java",
+      "note": "the measured JDK; the repository pinneth the LANGUAGE LEVEL (17), recorded separately as jdk-target, not the JDK build",
+      "probe": "java -version",
+      "status": "UNEXPECTED"
+    },
+    {
+      "expected": "17",
+      "measured": "17",
+      "name": "jdk-target",
+      "note": "sourceCompatibility/targetCompatibility/jvmTarget, read from android/llm/build.gradle.kts rather than probed",
+      "probe": "read android/llm/build.gradle.kts",
+      "status": "MEASURED"
+    },
+    {
+      "expected": null,
+      "measured": "6.3.3",
+      "name": "swift",
+      "note": "the compiler; Package.swift's swift-tools-version is recorded separately as swift-tools",
+      "probe": "swift --version",
+      "status": "UNEXPECTED"
+    },
+    {
+      "expected": "5.9",
+      "measured": "5.9",
+      "name": "swift-tools",
+      "note": "swift-tools-version, read from the manifest rather than probed",
+      "probe": "read ios/Godstone/Package.swift",
+      "status": "MEASURED"
+    },
+    {
+      "expected": null,
+      "measured": "26.6",
+      "name": "xcode",
+      "note": "the App Store toolchain cannot be pinned from inside the repository; it is recorded so a change is visible",
+      "probe": "xcodebuild -version",
+      "status": "UNEXPECTED"
+    },
+    {
+      "expected": null,
+      "measured": "macOS 26.6.2",
+      "name": "macos",
+      "note": "build 25G83, arch arm64",
+      "probe": "sw_vers",
+      "status": "UNEXPECTED"
+    },
+    {
+      "expected": "2.46.0",
+      "measured": "2.46.0",
+      "name": "xcodegen",
+      "note": "the CI lane installeth xcodegen unpinned (brew install xcodegen); the expectation recorded here is the version this repository's evidence was produced with, and a run that disagrees is visible",
+      "probe": "xcodegen --version",
+      "status": "MEASURED"
+    },
+    {
+      "expected": "3.22.1",
+      "measured": null,
+      "name": "cmake",
+      "note": "expected from android/llm/build.gradle.kts (externalNativeBuild)",
+      "probe": "cmake --version",
+      "status": "ABSENT"
+    },
+    {
+      "expected": "27.0.12077973",
+      "measured": "27.0.12077973",
+      "name": "ndk",
+      "note": "installed under /opt/homebrew/share/android-commandlinetools/ndk: ['27.0.12077973']",
+      "probe": "ls /opt/homebrew/share/android-commandlinetools/ndk",
+      "status": "MEASURED"
+    },
+    {
+      "expected": "8.9",
+      "measured": "8.9",
+      "name": "gradle-wrapper",
+      "note": "distribution https\\://services.gradle.org/distributions/gradle-8.9-bin.zip pinned by sha256 d725d707bfab...",
+      "probe": "read android/gradle/wrapper/gradle-wrapper.properties",
+      "status": "MEASURED"
+    }
+  ],
+  "unpinned": [
+    "python measureth 3.14.4 and the repository carrieth no expectation to compare it against: recorded, not pinned",
+    "java measureth 17.0.20.1 and the repository carrieth no expectation to compare it against: recorded, not pinned",
+    "swift measureth 6.3.3 and the repository carrieth no expectation to compare it against: recorded, not pinned",
+    "xcode measureth 26.6 and the repository carrieth no expectation to compare it against: recorded, not pinned",
+    "macos measureth macOS 26.6.2 and the repository carrieth no expectation to compare it against: recorded, not pinned"
+  ],
+  "unresolved": [
+    "cmake is absent on this host while 3.22.1 is expected; the lane that needeth it must be provisioned before it can be claimed"
+  ]
+}

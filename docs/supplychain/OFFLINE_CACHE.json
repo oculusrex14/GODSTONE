@@ -1,0 +1,105 @@
+{
+  "blobs": [
+    {
+      "bytes": 184962,
+      "name": "cffi-2.1.1-cp314-cp314-macosx_11_0_arm64.whl",
+      "sha256": "661c298b4821edebead0c91edd2b00374d67ad7c5a1f7a91d4442633b79d6a72"
+    },
+    {
+      "bytes": 4001252,
+      "name": "cryptography-50.0.0-cp311-abi3-macosx_11_0_arm64.whl",
+      "sha256": "031e2d5dd4bb9caa3ca9c82e5a197fd8ae680232cee62603d1a813f3f07e3d03"
+    },
+    {
+      "bytes": 45550,
+      "name": "diskcache-5.6.3-py3-none-any.whl",
+      "sha256": "5e31b2d5fbad117cc363ebaf6b689474db18a1f6438bc82358b024abd4c2ca19"
+    },
+    {
+      "bytes": 134899,
+      "name": "jinja2-3.1.6-py3-none-any.whl",
+      "sha256": "85ece4451f492d0c13c5dd7c13a64681a86afae63a5f347908daf103ce6d2f67"
+    },
+    {
+      "bytes": 64964148,
+      "name": "llama_cpp_python-0.3.2.tar.gz",
+      "sha256": "8fbf246a55a999f45015ed0d48f91b4ae04ae959827fac1cd6ac6ec65aed2e2f"
+    },
+    {
+      "bytes": 87528,
+      "name": "markdown_it_py-3.0.0-py3-none-any.whl",
+      "sha256": "355216845c60bd96232cd8d8c40e8f9765cc86f46880e43a8fd22dc1a1a8cab1"
+    },
+    {
+      "bytes": 12029,
+      "name": "markupsafe-3.0.3-cp314-cp314-macosx_11_0_arm64.whl",
+      "sha256": "c47a551199eb8eb2121d4f0f15ae0f923d31350ab9280078d1e5f12b249e0026"
+    },
+    {
+      "bytes": 9979,
+      "name": "mdurl-0.1.2-py3-none-any.whl",
+      "sha256": "84008a41e51615a49fc9966191ff91509e3c40b939176e643fd50a5c2196b8f8"
+    },
+    {
+      "bytes": 20166090,
+      "name": "numpy-2.1.3.tar.gz",
+      "sha256": "aa08e04e08aaf974d4458def539dece0d28146d866a39da5639596f4921fd761"
+    },
+    {
+      "bytes": 48172,
+      "name": "pycparser-3.0-py3-none-any.whl",
+      "sha256": "b727414169a36b7d524c1c3e31839a521725078d7b2ff038656844266160a992"
+    },
+    {
+      "bytes": 2116143,
+      "name": "pyphen-0.18.1-py3-none-any.whl",
+      "sha256": "0aa9051e15928cecadd4c632cea0258ba57215b2a197a39baa46abcdb0f47e84"
+    },
+    {
+      "bytes": 130631,
+      "name": "pyyaml-6.0.2.tar.gz",
+      "sha256": "d584d9ec91ad65861cc08d42e834324ef890a082e591037abe114850ff7bbc3e"
+    },
+    {
+      "bytes": 137346,
+      "name": "resolution-content.json",
+      "sha256": "180401907390a4d8e2f243c3dd75e12f00030848670ace0f0505cd6bf3861401"
+    },
+    {
+      "bytes": 21904,
+      "name": "resolution-dev.json",
+      "sha256": "c30a6a460d430f78afbb7415b86460e02715cad294e16cc5272f86b07426f33b"
+    },
+    {
+      "bytes": 8569,
+      "name": "resolution-eval.json",
+      "sha256": "1a8e3f556ecdecb3e9da0857670f28e0bb386d42638cd65d2f2a727ddf61a055"
+    },
+    {
+      "bytes": 818216,
+      "name": "setuptools-84.0.0-py3-none-any.whl",
+      "sha256": "51a52592b3b99e102b609654876bd65f19f999935166d1352678931132b0c670"
+    },
+    {
+      "bytes": 105138,
+      "name": "textstat-0.7.4-py3-none-any.whl",
+      "sha256": "53a36cbcf4d21312d28cdc5a316917031667a57303e375a184d83fd52b95a407"
+    },
+    {
+      "bytes": 45571,
+      "name": "typing_extensions-4.16.0-py3-none-any.whl",
+      "sha256": "481caa481374e813c1b176ada14e97f1f67a4539ce9cfeb3f350d78d6370c2e8"
+    }
+  ],
+  "built_utc": "2026-09-14T13:58:36+00:00",
+  "restore": {
+    "command": "python3 tools/supplychain/supply_chain.py restore --lane <lane> --wheelhouse <cache> --venv <dir>",
+    "law": "every blob's digest is verified before any file is written, so a cache whose bytes changed restoreth nothing",
+    "network": "refused: the restore passeth --no-index to pip, so a dependency that is not in this cache cannot be fetched"
+  },
+  "schema": 1,
+  "status": "PINNED",
+  "unresolved": [
+    "the Gradle module cache is provisioned by the machine (419 MB under ~/.gradle/caches/modules-2) and is not manifested here: a gradle --offline build on this host cannot resolve com.android.application:8.6.0 from it, which was measured and recorded rather than papered over"
+  ]
+}

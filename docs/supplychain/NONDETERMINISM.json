@@ -1,0 +1,33 @@
+{
+  "at_utc": "2026-09-14T14:00:07+00:00",
+  "comparisons": [
+    {
+      "first": "665c5c63d97c981545d79fc03b342c8d62c3c6b2a13a07390689d304327868b3",
+      "identical": false,
+      "name": "app-light-debug.apk",
+      "reason": "the multidex partition differeth between two builds of the same clean tree: the six classes*.dex entries disagree in content and in size (46364 vs 46316, 98708 vs 98440 bytes) while the other 188 entries are byte-identical; the debug variant dexeth through the incremental build cache, so the class-to-dex partition is not a function of the sources alone, and byte-reproducibility of an unsigned debug APK is NOT claimed",
+      "second": "d3659db3a0dba03f6b45ecd6147a27b4e7fd5d2992acb51351c1884ee589d392",
+      "status": "DIVERGENT"
+    },
+    {
+      "first": "9113b585bbed7bca1c4d362eb82292c37d16bb528243c56d9cdf0c41f6ba4301",
+      "identical": true,
+      "name": "requirements.lock",
+      "reason": "",
+      "second": "9113b585bbed7bca1c4d362eb82292c37d16bb528243c56d9cdf0c41f6ba4301",
+      "status": "IDENTICAL"
+    },
+    {
+      "first": "bd70f4668b3d4b31775fbee6e63c44eebb446e22de60f661637307c8296ac8ca",
+      "identical": true,
+      "name": "DEPENDENCIES.json",
+      "reason": "",
+      "second": "bd70f4668b3d4b31775fbee6e63c44eebb446e22de60f661637307c8296ac8ca",
+      "status": "IDENTICAL"
+    }
+  ],
+  "note": "An unsigned binary is rarely byte-identical across runs: zip entry timestamps, build metadata and debug paths all move. Every divergence here carrieth its cause or is counted unexplained; no divergence is ever averaged into a pass.",
+  "schema": 1,
+  "status": "NONDETERMINISTIC",
+  "unexplained": []
+}

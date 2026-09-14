@@ -1,0 +1,648 @@
+{
+  "built_utc": "2026-09-14T14:00:58+00:00",
+  "caveats": [
+    "lane native: its closure includeth a distribution that must be compiled against the NDK toolchain, which belongeth to the external NATIVE_MODELS gate; the digests are pinned, the restoration is not claimed here"
+  ],
+  "lanes": {
+    "content": {
+      "closure": [
+        {
+          "distributions": [
+            {
+              "bytes": 184962,
+              "file": "cffi-2.1.1-cp314-cp314-macosx_11_0_arm64.whl",
+              "kind": "wheel",
+              "sha256": "661c298b4821edebead0c91edd2b00374d67ad7c5a1f7a91d4442633b79d6a72"
+            }
+          ],
+          "name": "cffi",
+          "origin": "transitive",
+          "resolved_sha256": "661c298b4821edebead0c91edd2b00374d67ad7c5a1f7a91d4442633b79d6a72",
+          "status": "PINNED",
+          "version": "2.1.1"
+        },
+        {
+          "distributions": [
+            {
+              "bytes": 4001252,
+              "file": "cryptography-50.0.0-cp311-abi3-macosx_11_0_arm64.whl",
+              "kind": "wheel",
+              "sha256": "031e2d5dd4bb9caa3ca9c82e5a197fd8ae680232cee62603d1a813f3f07e3d03"
+            }
+          ],
+          "name": "cryptography",
+          "origin": "pinned",
+          "resolved_sha256": "031e2d5dd4bb9caa3ca9c82e5a197fd8ae680232cee62603d1a813f3f07e3d03",
+          "status": "PINNED",
+          "version": "50.0.0"
+        },
+        {
+          "distributions": [
+            {
+              "bytes": 45550,
+              "file": "diskcache-5.6.3-py3-none-any.whl",
+              "kind": "wheel",
+              "sha256": "5e31b2d5fbad117cc363ebaf6b689474db18a1f6438bc82358b024abd4c2ca19"
+            }
+          ],
+          "name": "diskcache",
+          "origin": "transitive",
+          "resolved_sha256": "5e31b2d5fbad117cc363ebaf6b689474db18a1f6438bc82358b024abd4c2ca19",
+          "status": "PINNED",
+          "version": "5.6.3"
+        },
+        {
+          "distributions": [
+            {
+              "bytes": 134899,
+              "file": "jinja2-3.1.6-py3-none-any.whl",
+              "kind": "wheel",
+              "sha256": "85ece4451f492d0c13c5dd7c13a64681a86afae63a5f347908daf103ce6d2f67"
+            }
+          ],
+          "name": "jinja2",
+          "origin": "transitive",
+          "resolved_sha256": "85ece4451f492d0c13c5dd7c13a64681a86afae63a5f347908daf103ce6d2f67",
+          "status": "PINNED",
+          "version": "3.1.6"
+        },
+        {
+          "distributions": [
+            {
+              "bytes": 64964148,
+              "file": "llama_cpp_python-0.3.2.tar.gz",
+              "kind": "sdist",
+              "sha256": "8fbf246a55a999f45015ed0d48f91b4ae04ae959827fac1cd6ac6ec65aed2e2f"
+            }
+          ],
+          "name": "llama-cpp-python",
+          "origin": "pinned",
+          "resolved_sha256": "8fbf246a55a999f45015ed0d48f91b4ae04ae959827fac1cd6ac6ec65aed2e2f",
+          "status": "PINNED",
+          "version": "0.3.2"
+        },
+        {
+          "distributions": [
+            {
+              "bytes": 87528,
+              "file": "markdown_it_py-3.0.0-py3-none-any.whl",
+              "kind": "wheel",
+              "sha256": "355216845c60bd96232cd8d8c40e8f9765cc86f46880e43a8fd22dc1a1a8cab1"
+            }
+          ],
+          "name": "markdown-it-py",
+          "origin": "pinned",
+          "resolved_sha256": "355216845c60bd96232cd8d8c40e8f9765cc86f46880e43a8fd22dc1a1a8cab1",
+          "status": "PINNED",
+          "version": "3.0.0"
+        },
+        {
+          "distributions": [
+            {
+              "bytes": 12029,
+              "file": "markupsafe-3.0.3-cp314-cp314-macosx_11_0_arm64.whl",
+              "kind": "wheel",
+              "sha256": "c47a551199eb8eb2121d4f0f15ae0f923d31350ab9280078d1e5f12b249e0026"
+            }
+          ],
+          "name": "markupsafe",
+          "origin": "transitive",
+          "resolved_sha256": "c47a551199eb8eb2121d4f0f15ae0f923d31350ab9280078d1e5f12b249e0026",
+          "status": "PINNED",
+          "version": "3.0.3"
+        },
+        {
+          "distributions": [
+            {
+              "bytes": 9979,
+              "file": "mdurl-0.1.2-py3-none-any.whl",
+              "kind": "wheel",
+              "sha256": "84008a41e51615a49fc9966191ff91509e3c40b939176e643fd50a5c2196b8f8"
+            }
+          ],
+          "name": "mdurl",
+          "origin": "transitive",
+          "resolved_sha256": "84008a41e51615a49fc9966191ff91509e3c40b939176e643fd50a5c2196b8f8",
+          "status": "PINNED",
+          "version": "0.1.2"
+        },
+        {
+          "distributions": [
+            {
+              "bytes": 20166090,
+              "file": "numpy-2.1.3.tar.gz",
+              "kind": "sdist",
+              "sha256": "aa08e04e08aaf974d4458def539dece0d28146d866a39da5639596f4921fd761"
+            }
+          ],
+          "name": "numpy",
+          "origin": "pinned",
+          "resolved_sha256": "aa08e04e08aaf974d4458def539dece0d28146d866a39da5639596f4921fd761",
+          "status": "PINNED",
+          "version": "2.1.3"
+        },
+        {
+          "distributions": [
+            {
+              "bytes": 48172,
+              "file": "pycparser-3.0-py3-none-any.whl",
+              "kind": "wheel",
+              "sha256": "b727414169a36b7d524c1c3e31839a521725078d7b2ff038656844266160a992"
+            }
+          ],
+          "name": "pycparser",
+          "origin": "transitive",
+          "resolved_sha256": "b727414169a36b7d524c1c3e31839a521725078d7b2ff038656844266160a992",
+          "status": "PINNED",
+          "version": "3.0"
+        },
+        {
+          "distributions": [
+            {
+              "bytes": 2116143,
+              "file": "pyphen-0.18.1-py3-none-any.whl",
+              "kind": "wheel",
+              "sha256": "0aa9051e15928cecadd4c632cea0258ba57215b2a197a39baa46abcdb0f47e84"
+            }
+          ],
+          "name": "pyphen",
+          "origin": "transitive",
+          "resolved_sha256": "0aa9051e15928cecadd4c632cea0258ba57215b2a197a39baa46abcdb0f47e84",
+          "status": "PINNED",
+          "version": "0.18.1"
+        },
+        {
+          "distributions": [
+            {
+              "bytes": 130631,
+              "file": "pyyaml-6.0.2.tar.gz",
+              "kind": "sdist",
+              "sha256": "d584d9ec91ad65861cc08d42e834324ef890a082e591037abe114850ff7bbc3e"
+            }
+          ],
+          "name": "pyyaml",
+          "origin": "pinned",
+          "resolved_sha256": "d584d9ec91ad65861cc08d42e834324ef890a082e591037abe114850ff7bbc3e",
+          "status": "PINNED",
+          "version": "6.0.2"
+        },
+        {
+          "distributions": [
+            {
+              "bytes": 818216,
+              "file": "setuptools-84.0.0-py3-none-any.whl",
+              "kind": "wheel",
+              "sha256": "51a52592b3b99e102b609654876bd65f19f999935166d1352678931132b0c670"
+            }
+          ],
+          "name": "setuptools",
+          "origin": "transitive",
+          "resolved_sha256": "51a52592b3b99e102b609654876bd65f19f999935166d1352678931132b0c670",
+          "status": "PINNED",
+          "version": "84.0.0"
+        },
+        {
+          "distributions": [
+            {
+              "bytes": 105138,
+              "file": "textstat-0.7.4-py3-none-any.whl",
+              "kind": "wheel",
+              "sha256": "53a36cbcf4d21312d28cdc5a316917031667a57303e375a184d83fd52b95a407"
+            }
+          ],
+          "name": "textstat",
+          "origin": "pinned",
+          "resolved_sha256": "53a36cbcf4d21312d28cdc5a316917031667a57303e375a184d83fd52b95a407",
+          "status": "PINNED",
+          "version": "0.7.4"
+        },
+        {
+          "distributions": [
+            {
+              "bytes": 45571,
+              "file": "typing_extensions-4.16.0-py3-none-any.whl",
+              "kind": "wheel",
+              "sha256": "481caa481374e813c1b176ada14e97f1f67a4539ce9cfeb3f350d78d6370c2e8"
+            }
+          ],
+          "name": "typing-extensions",
+          "origin": "transitive",
+          "resolved_sha256": "481caa481374e813c1b176ada14e97f1f67a4539ce9cfeb3f350d78d6370c2e8",
+          "status": "PINNED",
+          "version": "4.16.0"
+        }
+      ],
+      "direct": [
+        "cryptography",
+        "llama-cpp-python",
+        "markdown-it-py",
+        "numpy",
+        "pyyaml",
+        "textstat"
+      ],
+      "rationale": "the full content pipeline, including the native model stack whose build needs an NDK toolchain and the external NATIVE_MODELS gate",
+      "requires_native_build": false,
+      "resolution_source": "content",
+      "source": "content/requirements.txt",
+      "status": "PINNED"
+    },
+    "dev": {
+      "closure": [
+        {
+          "distributions": [
+            {
+              "bytes": 184962,
+              "file": "cffi-2.1.1-cp314-cp314-macosx_11_0_arm64.whl",
+              "kind": "wheel",
+              "sha256": "661c298b4821edebead0c91edd2b00374d67ad7c5a1f7a91d4442633b79d6a72"
+            }
+          ],
+          "name": "cffi",
+          "origin": "transitive",
+          "resolved_sha256": "661c298b4821edebead0c91edd2b00374d67ad7c5a1f7a91d4442633b79d6a72",
+          "status": "PINNED",
+          "version": "2.1.1"
+        },
+        {
+          "distributions": [
+            {
+              "bytes": 4001252,
+              "file": "cryptography-50.0.0-cp311-abi3-macosx_11_0_arm64.whl",
+              "kind": "wheel",
+              "sha256": "031e2d5dd4bb9caa3ca9c82e5a197fd8ae680232cee62603d1a813f3f07e3d03"
+            }
+          ],
+          "name": "cryptography",
+          "origin": "pinned",
+          "resolved_sha256": "031e2d5dd4bb9caa3ca9c82e5a197fd8ae680232cee62603d1a813f3f07e3d03",
+          "status": "PINNED",
+          "version": "50.0.0"
+        },
+        {
+          "distributions": [
+            {
+              "bytes": 48172,
+              "file": "pycparser-3.0-py3-none-any.whl",
+              "kind": "wheel",
+              "sha256": "b727414169a36b7d524c1c3e31839a521725078d7b2ff038656844266160a992"
+            }
+          ],
+          "name": "pycparser",
+          "origin": "transitive",
+          "resolved_sha256": "b727414169a36b7d524c1c3e31839a521725078d7b2ff038656844266160a992",
+          "status": "PINNED",
+          "version": "3.0"
+        },
+        {
+          "distributions": [
+            {
+              "bytes": 130631,
+              "file": "pyyaml-6.0.2.tar.gz",
+              "kind": "sdist",
+              "sha256": "d584d9ec91ad65861cc08d42e834324ef890a082e591037abe114850ff7bbc3e"
+            }
+          ],
+          "name": "pyyaml",
+          "origin": "pinned",
+          "resolved_sha256": "d584d9ec91ad65861cc08d42e834324ef890a082e591037abe114850ff7bbc3e",
+          "status": "PINNED",
+          "version": "6.0.2"
+        }
+      ],
+      "direct": [
+        "cryptography",
+        "pyyaml"
+      ],
+      "rationale": "repository verification and lexical Archive builds; the source stateth that no native or model stack is needed, so its closure is small enough to restore whole from a local wheelhouse",
+      "requires_native_build": false,
+      "resolution_source": "dev",
+      "source": "content/requirements-dev.txt",
+      "status": "PINNED"
+    },
+    "eval": {
+      "closure": [
+        {
+          "distributions": [
+            {
+              "bytes": 20166090,
+              "file": "numpy-2.1.3.tar.gz",
+              "kind": "sdist",
+              "sha256": "aa08e04e08aaf974d4458def539dece0d28146d866a39da5639596f4921fd761"
+            }
+          ],
+          "name": "numpy",
+          "origin": "pinned",
+          "resolved_sha256": "aa08e04e08aaf974d4458def539dece0d28146d866a39da5639596f4921fd761",
+          "status": "PINNED",
+          "version": "2.1.3"
+        }
+      ],
+      "direct": [
+        "numpy"
+      ],
+      "rationale": "the offline retrieval evaluation, which the source noteth is the only consumer of numpy",
+      "requires_native_build": false,
+      "resolution_source": "eval",
+      "source": "content/requirements.txt",
+      "status": "PINNED"
+    },
+    "native": {
+      "closure": [
+        {
+          "distributions": [
+            {
+              "bytes": 184962,
+              "file": "cffi-2.1.1-cp314-cp314-macosx_11_0_arm64.whl",
+              "kind": "wheel",
+              "sha256": "661c298b4821edebead0c91edd2b00374d67ad7c5a1f7a91d4442633b79d6a72"
+            }
+          ],
+          "name": "cffi",
+          "origin": "transitive",
+          "resolved_sha256": "661c298b4821edebead0c91edd2b00374d67ad7c5a1f7a91d4442633b79d6a72",
+          "status": "PINNED",
+          "version": "2.1.1"
+        },
+        {
+          "distributions": [
+            {
+              "bytes": 4001252,
+              "file": "cryptography-50.0.0-cp311-abi3-macosx_11_0_arm64.whl",
+              "kind": "wheel",
+              "sha256": "031e2d5dd4bb9caa3ca9c82e5a197fd8ae680232cee62603d1a813f3f07e3d03"
+            }
+          ],
+          "name": "cryptography",
+          "origin": "transitive",
+          "resolved_sha256": "031e2d5dd4bb9caa3ca9c82e5a197fd8ae680232cee62603d1a813f3f07e3d03",
+          "status": "PINNED",
+          "version": "50.0.0"
+        },
+        {
+          "distributions": [
+            {
+              "bytes": 45550,
+              "file": "diskcache-5.6.3-py3-none-any.whl",
+              "kind": "wheel",
+              "sha256": "5e31b2d5fbad117cc363ebaf6b689474db18a1f6438bc82358b024abd4c2ca19"
+            }
+          ],
+          "name": "diskcache",
+          "origin": "transitive",
+          "resolved_sha256": "5e31b2d5fbad117cc363ebaf6b689474db18a1f6438bc82358b024abd4c2ca19",
+          "status": "PINNED",
+          "version": "5.6.3"
+        },
+        {
+          "distributions": [
+            {
+              "bytes": 134899,
+              "file": "jinja2-3.1.6-py3-none-any.whl",
+              "kind": "wheel",
+              "sha256": "85ece4451f492d0c13c5dd7c13a64681a86afae63a5f347908daf103ce6d2f67"
+            }
+          ],
+          "name": "jinja2",
+          "origin": "transitive",
+          "resolved_sha256": "85ece4451f492d0c13c5dd7c13a64681a86afae63a5f347908daf103ce6d2f67",
+          "status": "PINNED",
+          "version": "3.1.6"
+        },
+        {
+          "distributions": [
+            {
+              "bytes": 64964148,
+              "file": "llama_cpp_python-0.3.2.tar.gz",
+              "kind": "sdist",
+              "sha256": "8fbf246a55a999f45015ed0d48f91b4ae04ae959827fac1cd6ac6ec65aed2e2f"
+            }
+          ],
+          "name": "llama-cpp-python",
+          "origin": "pinned",
+          "resolved_sha256": "8fbf246a55a999f45015ed0d48f91b4ae04ae959827fac1cd6ac6ec65aed2e2f",
+          "status": "PINNED",
+          "version": "0.3.2"
+        },
+        {
+          "distributions": [
+            {
+              "bytes": 87528,
+              "file": "markdown_it_py-3.0.0-py3-none-any.whl",
+              "kind": "wheel",
+              "sha256": "355216845c60bd96232cd8d8c40e8f9765cc86f46880e43a8fd22dc1a1a8cab1"
+            }
+          ],
+          "name": "markdown-it-py",
+          "origin": "transitive",
+          "resolved_sha256": "355216845c60bd96232cd8d8c40e8f9765cc86f46880e43a8fd22dc1a1a8cab1",
+          "status": "PINNED",
+          "version": "3.0.0"
+        },
+        {
+          "distributions": [
+            {
+              "bytes": 12029,
+              "file": "markupsafe-3.0.3-cp314-cp314-macosx_11_0_arm64.whl",
+              "kind": "wheel",
+              "sha256": "c47a551199eb8eb2121d4f0f15ae0f923d31350ab9280078d1e5f12b249e0026"
+            }
+          ],
+          "name": "markupsafe",
+          "origin": "transitive",
+          "resolved_sha256": "c47a551199eb8eb2121d4f0f15ae0f923d31350ab9280078d1e5f12b249e0026",
+          "status": "PINNED",
+          "version": "3.0.3"
+        },
+        {
+          "distributions": [
+            {
+              "bytes": 9979,
+              "file": "mdurl-0.1.2-py3-none-any.whl",
+              "kind": "wheel",
+              "sha256": "84008a41e51615a49fc9966191ff91509e3c40b939176e643fd50a5c2196b8f8"
+            }
+          ],
+          "name": "mdurl",
+          "origin": "transitive",
+          "resolved_sha256": "84008a41e51615a49fc9966191ff91509e3c40b939176e643fd50a5c2196b8f8",
+          "status": "PINNED",
+          "version": "0.1.2"
+        },
+        {
+          "distributions": [
+            {
+              "bytes": 20166090,
+              "file": "numpy-2.1.3.tar.gz",
+              "kind": "sdist",
+              "sha256": "aa08e04e08aaf974d4458def539dece0d28146d866a39da5639596f4921fd761"
+            }
+          ],
+          "name": "numpy",
+          "origin": "transitive",
+          "resolved_sha256": "aa08e04e08aaf974d4458def539dece0d28146d866a39da5639596f4921fd761",
+          "status": "PINNED",
+          "version": "2.1.3"
+        },
+        {
+          "distributions": [
+            {
+              "bytes": 48172,
+              "file": "pycparser-3.0-py3-none-any.whl",
+              "kind": "wheel",
+              "sha256": "b727414169a36b7d524c1c3e31839a521725078d7b2ff038656844266160a992"
+            }
+          ],
+          "name": "pycparser",
+          "origin": "transitive",
+          "resolved_sha256": "b727414169a36b7d524c1c3e31839a521725078d7b2ff038656844266160a992",
+          "status": "PINNED",
+          "version": "3.0"
+        },
+        {
+          "distributions": [
+            {
+              "bytes": 2116143,
+              "file": "pyphen-0.18.1-py3-none-any.whl",
+              "kind": "wheel",
+              "sha256": "0aa9051e15928cecadd4c632cea0258ba57215b2a197a39baa46abcdb0f47e84"
+            }
+          ],
+          "name": "pyphen",
+          "origin": "transitive",
+          "resolved_sha256": "0aa9051e15928cecadd4c632cea0258ba57215b2a197a39baa46abcdb0f47e84",
+          "status": "PINNED",
+          "version": "0.18.1"
+        },
+        {
+          "distributions": [
+            {
+              "bytes": 130631,
+              "file": "pyyaml-6.0.2.tar.gz",
+              "kind": "sdist",
+              "sha256": "d584d9ec91ad65861cc08d42e834324ef890a082e591037abe114850ff7bbc3e"
+            }
+          ],
+          "name": "pyyaml",
+          "origin": "transitive",
+          "resolved_sha256": "d584d9ec91ad65861cc08d42e834324ef890a082e591037abe114850ff7bbc3e",
+          "status": "PINNED",
+          "version": "6.0.2"
+        },
+        {
+          "distributions": [
+            {
+              "bytes": 818216,
+              "file": "setuptools-84.0.0-py3-none-any.whl",
+              "kind": "wheel",
+              "sha256": "51a52592b3b99e102b609654876bd65f19f999935166d1352678931132b0c670"
+            }
+          ],
+          "name": "setuptools",
+          "origin": "transitive",
+          "resolved_sha256": "51a52592b3b99e102b609654876bd65f19f999935166d1352678931132b0c670",
+          "status": "PINNED",
+          "version": "84.0.0"
+        },
+        {
+          "distributions": [
+            {
+              "bytes": 105138,
+              "file": "textstat-0.7.4-py3-none-any.whl",
+              "kind": "wheel",
+              "sha256": "53a36cbcf4d21312d28cdc5a316917031667a57303e375a184d83fd52b95a407"
+            }
+          ],
+          "name": "textstat",
+          "origin": "transitive",
+          "resolved_sha256": "53a36cbcf4d21312d28cdc5a316917031667a57303e375a184d83fd52b95a407",
+          "status": "PINNED",
+          "version": "0.7.4"
+        },
+        {
+          "distributions": [
+            {
+              "bytes": 45571,
+              "file": "typing_extensions-4.16.0-py3-none-any.whl",
+              "kind": "wheel",
+              "sha256": "481caa481374e813c1b176ada14e97f1f67a4539ce9cfeb3f350d78d6370c2e8"
+            }
+          ],
+          "name": "typing-extensions",
+          "origin": "transitive",
+          "resolved_sha256": "481caa481374e813c1b176ada14e97f1f67a4539ce9cfeb3f350d78d6370c2e8",
+          "status": "PINNED",
+          "version": "4.16.0"
+        }
+      ],
+      "direct": [
+        "llama-cpp-python"
+      ],
+      "rationale": "the model stack: its closure is a subset of the content lane's, so it reuseth that resolution rather than downloading the same blobs twice, and its sdist must be compiled against the NDK toolchain, which belongeth to the external NATIVE_MODELS gate",
+      "requires_native_build": true,
+      "resolution_source": "content",
+      "source": "content/requirements.txt",
+      "status": "PINNED"
+    },
+    "signing": {
+      "closure": [
+        {
+          "distributions": [
+            {
+              "bytes": 184962,
+              "file": "cffi-2.1.1-cp314-cp314-macosx_11_0_arm64.whl",
+              "kind": "wheel",
+              "sha256": "661c298b4821edebead0c91edd2b00374d67ad7c5a1f7a91d4442633b79d6a72"
+            }
+          ],
+          "name": "cffi",
+          "origin": "transitive",
+          "resolved_sha256": "661c298b4821edebead0c91edd2b00374d67ad7c5a1f7a91d4442633b79d6a72",
+          "status": "PINNED",
+          "version": "2.1.1"
+        },
+        {
+          "distributions": [
+            {
+              "bytes": 4001252,
+              "file": "cryptography-50.0.0-cp311-abi3-macosx_11_0_arm64.whl",
+              "kind": "wheel",
+              "sha256": "031e2d5dd4bb9caa3ca9c82e5a197fd8ae680232cee62603d1a813f3f07e3d03"
+            }
+          ],
+          "name": "cryptography",
+          "origin": "pinned",
+          "resolved_sha256": "031e2d5dd4bb9caa3ca9c82e5a197fd8ae680232cee62603d1a813f3f07e3d03",
+          "status": "PINNED",
+          "version": "50.0.0"
+        },
+        {
+          "distributions": [
+            {
+              "bytes": 48172,
+              "file": "pycparser-3.0-py3-none-any.whl",
+              "kind": "wheel",
+              "sha256": "b727414169a36b7d524c1c3e31839a521725078d7b2ff038656844266160a992"
+            }
+          ],
+          "name": "pycparser",
+          "origin": "transitive",
+          "resolved_sha256": "b727414169a36b7d524c1c3e31839a521725078d7b2ff038656844266160a992",
+          "status": "PINNED",
+          "version": "3.0"
+        }
+      ],
+      "direct": [
+        "cryptography"
+      ],
+      "rationale": "the Ed25519 signing and verification path of content/archive_manifest.py; its closure is a subset of the dev lane's and is delivered as wheels, so it is the lane that can be restored whole offline on any interpreter",
+      "requires_native_build": false,
+      "resolution_source": "signing",
+      "source": "content/requirements.txt",
+      "status": "PINNED"
+    }
+  },
+  "schema": 1,
+  "status": "PINNED",
+  "unresolved": [],
+  "wheelhouse": "/Users/oculus/.cache/godstone-wheelhouse"
+}
