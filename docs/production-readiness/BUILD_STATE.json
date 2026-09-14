@@ -11029,6 +11029,231 @@
         "the section 18/19 PHYSICAL device matrix is NOT executed: T73-T75 own it."
       ]
     },
+    "T56": {
+      "case_results": {
+        "added_cases": {
+          "ios/Godstone/Tests/GodstoneMeshTests/ReadinessT56Tests.swift": [
+            "testW01UserVerifiedAppearethOnlyAfterTheDurableCas",
+            "testW02ARefusedCasNeverShowethUserVerified",
+            "testW03TheDisplayedCandidateIsTheOneApproved",
+            "testW04ALockedPrivateStoreClaimethNothing",
+            "testW05ALockDuringVerificationPromotethNothing",
+            "testW06ASceneRecreationReprojectsTheSameState",
+            "testW07VoiceLabelsDistinguishEveryTrustLevel",
+            "testW08AFailedWipeSurvivethARelaunch",
+            "testW09AStaleConfirmationPromotethNothing",
+            "testW10RotationAndRevocationInvalidateSessions",
+            "testW11NoBiometricSuccessSubstitutesForPeerAuthentication",
+            "testW12TheBindingPayloadIsBounded",
+            "testW13TheIslesShareTheirFixturesAndTheCasContract"
+          ]
+        },
+        "corrected_cases": {
+          "note": "no assertion was deleted or weakened. TWO ISLES WERE REPAIRED, each because this task's court caught a REAL defect:",
+          "production_defects_found": [
+            "ExactRotationCandidateRef (BOTH isles, introduced by the sealed T55) carried only a DIGEST of the pending key, but the durable CAS bindeth on the KEY (approvePendingRotation(nodeId, expectedPendingGeneration, expectedPendingStaticDhPublicKey)) -- so a ref could never actually approve anything. It now carrieth the pending static PUBLIC key and deriveth the digest for display. T55's court (13/13), its rod RC12 and the shared-fixture witness all follow",
+            "the label vocabulary diverged (Android said VERIFIED, iOS USER_VERIFIED): Android's label is now USER_VERIFIED, so the shared fixtures mean the same thing on both isles",
+            "W05 now demandeth the LOCK's own refusal rather than any error; W04 now re-locks AFTER a populated projection; W12 now demandeth that an oversized payload be refused BY THE BOUND; and the court's five force-unwrapped optionals are guarded, because an unguarded unwrap ABORTED the test process and blinded the harness (three rods were misreported as INVALID as a result)"
+          ]
+        },
+        "counts": {
+          "narrow_ios": 13,
+          "subsystem_ios": 1114
+        },
+        "counts_source": "the runner's own records at the implementation head (both PASSED; the runner parses only the python summary, so its swift records carry UNKNOWN) plus swift's own 'Executed N tests, with M failures' line: T56/executed/T56-narrow-swift-executed.log 13/0 and T56-subsystem-swift-executed.log 1114/0 (up from 1101, the thirteen new witnesses being this court).",
+        "courts": {
+          "beside": "gradlew :app:testLightDebugUnitTest + :mesh:testDebugUnitTest (both rc=0 after the shared-ref repair)",
+          "controls": "ci/check_repository.py, ci/check_release_gates_status.py",
+          "narrow": "ios/Godstone/Tests/GodstoneMeshTests/ReadinessT56Tests.swift (13 witnesses, driven by the real TrustUXModel)",
+          "subsystem": "swift test --package-path ios/Packages/GodstoneFoundation"
+        },
+        "deleted_cases": [],
+        "executed_scenarios": {
+          "bounded_payload": "malformed and oversized binding payloads are refused, the oversized one BY THE BOUND before any decoding (W12)",
+          "competing_rotations": "the DISPLAYED ref is refused as stale while the authority's newer candidate standeth and the old trust is untouched; a DISMISSAL approveth nothing; approving the current ref succeeds (W03)",
+          "device": "NOT EXECUTED: the section 18/19 physical matrix is external and T73-T75 own it; no SwiftUI screen was rendered",
+          "durable_cas": "USER_VERIFIED appeareth only after the authority's confirmation CAS succeeds; a REFUSED CAS never showeth it, and the durable row is what moves (W01, W02)",
+          "no_biometrics": "the model carrieth no LocalAuthentication road at all: a biometric success may not stand in for peer authentication (W11)",
+          "protected_data": "a locked private store is a typed .protectedDataUnavailable: no contact, no own identity, and a mutating command refused by the lock itself -- before AND after a populated projection (W04), and no half-applied promotion when the lock lands mid-verification (W05)",
+          "scene_recreation": "a fresh model over the same estate reproduces the same projection, in words and in voice (W06)",
+          "session_invalidation": "an approved rotation and a revocation both invalidate the affected sessions, idempotently (W10)",
+          "shared_fixtures": "the two isles' courts carrieth the SAME fixture values and ONE label vocabulary, and the durable CAS signature they bind on is asserted from the authority's own source (W13)",
+          "stale_confirmation": "a stale confirmation is refused by the DURABLE CAS, and an outright mismatch by the model's local compare (W09)",
+          "voice_accessibility": "every trust level speaketh a distinct form, and a verified contact is audibly distinguishable from a first-use one (W07)",
+          "wipe_after_relaunch": "a failed Keychain deletion stayeth resumable, a relaunch re-projects it, and resume reacheth the terminal state (W08)"
+        },
+        "produced_artifacts": {
+          "court": {
+            "path": "ios/Godstone/Tests/GodstoneMeshTests/ReadinessT56Tests.swift"
+          },
+          "model": {
+            "path": "ios/Godstone/Sources/GodstoneMesh/TrustUXModel.swift",
+            "types": [
+              "TrustUXModel",
+              "TrustUnavailability",
+              "ContactTrustLabel",
+              "ExactRotationCandidateRef",
+              "WipeProgressState",
+              "ContactProjection",
+              "OwnIdentityProjection",
+              "TrustCommand",
+              "TrustUIState",
+              "ProtectedDataGate",
+              "BindingPayloadPolicy",
+              "TrustAuthorityPort"
+            ]
+          },
+          "shared_repairs": {
+            "android": [
+              "android/app/src/main/java/io/godstone/app/trust/TrustContracts.kt",
+              "android/app/src/test/java/io/godstone/app/readiness/ReadinessT55Test.kt"
+            ],
+            "note": "the ref now carrieth the pending static key, and the label is USER_VERIFIED, on BOTH isles"
+          }
+        },
+        "roster_campaigns": {
+          "pass_1": {
+            "causes": "the three INVALIDs were witness crashes on force-unwrapped optionals that blinded the harness; RC3's witness locked the device from the start (nothing cached to leak); RC11's witness accepted a refusal by the WRONG rule",
+            "repair": "050da672999a3e1e5175850e7932a0419ce44a0b",
+            "rods": 12,
+            "tally": {
+              "ESCAPED": 2,
+              "INVALID": 3,
+              "KILLED": 7
+            }
+          },
+          "pass_2": {
+            "causes": "two witness-FIELD mismatches: the named-negative rod named W01, which the mutant satisfieth (its call line really does move the durable row), and W05 accepted any error rather than the lock's",
+            "repair": "a67a0c8ae7bf98976f4a923617c2096ad6a7633c",
+            "rods": 12,
+            "tally": {
+              "ESCAPED": 2,
+              "KILLED": 10
+            }
+          },
+          "pass_3": {
+            "baseline": "a67a0c8ae7bf98976f4a923617c2096ad6a7633c",
+            "note": "the final official pass ran with the court and ledger in exactly the state a67a0c8ae7bf98976f4a923617c2096ad6a7633c commits",
+            "rods": 12,
+            "tally": {
+              "ESCAPED": 0,
+              "INVALID": 0,
+              "KILLED": 12,
+              "SKIPPED": 0,
+              "TIMEOUT": 0
+            }
+          }
+        }
+      },
+      "claim_commit": "d500e8a0e4aa43ed8046080fb506658ac4d12482",
+      "commands": [
+        "T56-narrow-swift-002",
+        "T56-subsystem-swift-002",
+        "T56-controls-python3-005",
+        "T56-controls-python3-006"
+      ],
+      "device_gate_ids": [],
+      "file_hashes": {
+        "android/app/src/main/java/io/godstone/app/trust/TrustContracts.kt": "33b3e275ff4f7da0cb71771791afb44bb6eecd0a016541315b5b8cde756b6133",
+        "android/app/src/test/java/io/godstone/app/readiness/ReadinessT55Test.kt": "39f3c5f26876061bb1a9e366838a67958f95071b95e6c6475341bf97abbde8ce",
+        "ci/mutations.py": "15604caf51a88cf07112ffc5e0be77037e04ebd9a3b5c545a2abd9b4441b3864",
+        "ios/Godstone/Sources/GodstoneMesh/PeerTrustModels.swift": "2d82967ddf251dbd1d6152263caecac442f5ccb9aa0b189c52cdd547b7400c2e",
+        "ios/Godstone/Sources/GodstoneMesh/TrustUXModel.swift": "f4048d434dd3579c5be1875903b61add363f1b3dfc564f36387e316be83c697e",
+        "ios/Godstone/Tests/GodstoneMeshTests/ReadinessT56Tests.swift": "4a4eeeffdee8c52b1aea4235cc1b914149a9a03378a76b167f2872d0a52134cc"
+      },
+      "implementation_commit": "a67a0c8ae7bf98976f4a923617c2096ad6a7633c",
+      "implementation_commits": [
+        "33e0bf536af4c112d814a40199e0db7773747ac6",
+        "050da672999a3e1e5175850e7932a0419ce44a0b",
+        "a67a0c8ae7bf98976f4a923617c2096ad6a7633c"
+      ],
+      "inputs": {
+        "children_commit_order": [
+          "T56(claim)",
+          "T56(builder)",
+          "T56(builder-roster-repair)",
+          "T56(builder-roster-repair-2)",
+          "T56(M)"
+        ],
+        "claim_ordering_note": "the claim was taken at d500e8a0e4aa43ed8046080fb506658ac4d12482; the stages and the final roster were run at the implementation head a67a0c8ae7bf98976f4a923617c2096ad6a7633c. Runner logs and executed logs live in distinct directories (T56/logs, T56/executed) so no pass can overwrite another.",
+        "governed_source": [
+          "ios/Godstone/Sources/GodstoneMesh/TrustUXModel.swift",
+          "ios/Godstone/Sources/GodstoneMesh/PeerTrustModels.swift",
+          "ios/Godstone/Tests/GodstoneMeshTests/ReadinessT56Tests.swift",
+          "android/app/src/main/java/io/godstone/app/trust/TrustContracts.kt",
+          "android/app/src/main/java/io/godstone/app/ui/trust/TrustScreens.kt",
+          "android/app/src/test/java/io/godstone/app/readiness/ReadinessT55Test.kt",
+          "ci/mutations.py"
+        ],
+        "required_regression_paths": [
+          "ios/Godstone/Tests/GodstoneMeshTests/ReadinessT56Tests.swift"
+        ],
+        "sealed_hot_paths_untouched": [
+          "the frozen peer-trust SCHEMA: no column, migration or store write road was added, which is WHY the absent userVerified promotion is an asserted open item rather than a quiet edit",
+          "the shipping LIGHT surface: the model liveth in the nonshipping mesh module, which the app target never links; ci/check_shipping_path.py passeth",
+          "the crypto, wire and identity contracts: T56 consumeth the existing ones and changes none",
+          "the five external gates and docs/production/RELEASE_GATES_STATUS.json",
+          "the readiness statements: both flags stay false"
+        ]
+      },
+      "ladder_boundary_commit": "a67a0c8ae7bf98976f4a923617c2096ad6a7633c",
+      "mutation_results": {
+        "attempts_archived": [
+          {
+            "baseline": "33e0bf536af4c112d814a40199e0db7773747ac6",
+            "pass": 1,
+            "repaired_in": "050da672999a3e1e5175850e7932a0419ce44a0b",
+            "rods": 12,
+            "tally": {
+              "ESCAPED": 2,
+              "INVALID": 3,
+              "KILLED": 7
+            }
+          },
+          {
+            "baseline": "050da672999a3e1e5175850e7932a0419ce44a0b",
+            "pass": 2,
+            "repaired_in": "a67a0c8ae7bf98976f4a923617c2096ad6a7633c",
+            "rods": 12,
+            "tally": {
+              "ESCAPED": 2,
+              "KILLED": 10
+            }
+          }
+        ],
+        "campaign_note": "the twelve rods ran in the FINAL official pass, fail-closed, at baseline a67a0c8ae7bf98976f4a923617c2096ad6a7633c: 12 KILLED of 12, SKIPPED=0, INVALID=0, TIMEOUT=0, ESCAPED=0. The card's named semantic negative is RC1/RC2 ('Show USER_VERIFIED before durable CAS succeeds: UI authority test fails'), witnessed by W02. Two earlier passes are recorded rather than folded away: pass 1's three INVALIDs were witness CRASHES on force-unwrapped optionals (a blinded harness, not an escape), and pass 2's two escapes were witness-field mismatches.",
+        "of": 12,
+        "roster_manifest": "T56/roster/manifest.json",
+        "semantic": {
+          "harness": "ci/mutations.py run_semantic (the ledger filtered to the T56- prefix)",
+          "platforms": [
+            "swift"
+          ],
+          "work_parent": "/Users/oculus/.cache/godstone-mutation-worktrees-t56 (disposable; the live tree is never touched)"
+        },
+        "tally": {
+          "ESCAPED": 0,
+          "INVALID": 0,
+          "KILLED": 12,
+          "SKIPPED": 0,
+          "TIMEOUT": 0
+        }
+      },
+      "objective": {
+        "claimed_head": "d500e8a0e4aa43ed8046080fb506658ac4d12482",
+        "claimed_utc": "2026-09-14T20:52:37+00:00",
+        "objective": "Add the equivalent iOS identity and recovery UX: a MainActor model projected from ONE MeshRuntime that implements the Android-equivalent flows through the same PeerIdentityRepository semantics; a locked Keychain/private store showing an explicit unavailable-until-unlock state that claimeth NOTHING; user verification requiring an explicit fingerprint comparison (never a biometric success standing in for peer authentication); rotation approval bound to the EXACT displayed candidate through the durable CAS so USER_VERIFIED is never shown before the CAS succeedeth; rotation and revocation invalidating the affected sessions; a resumable wipe state surviving a failed Keychain deletion and a scene recreation; voice-accessibility labels that distinguish verified from first-use trust; and SHARED contact/rotation fixtures so both isles provably speak the same semantics -- so that showing USER_VERIFIED before the durable CAS succeedeth falleth the UI authority witness."
+      },
+      "status": "COMPLETE",
+      "tested_tree_sha": "38af668d9fd80c03b7e70af9932e101fb6230f61",
+      "unresolved": [
+        "THE iOS ISLE EXPOSES NO DURABLE ROAD THAT PROMOTES A CONTACT TO userVerified. The model's confirmation CAS is therefore exercised against the authority seam, exactly as T55 did on Android, and W13 FAILS DELIBERATELY if `confirmUserVerified` ever appears in the repository -- that is the signal to revisit this boundary. Adding such a road would touch the frozen peer-trust schema and wants its own ADR.",
+        "no SwiftUI screen was rendered: the court judges the state value the views render.",
+        "the protected-data gate is a SEAM: the app binds it to the real platform state, and the court drives it with a switchable double.",
+        "the section 18/19 PHYSICAL device matrix is NOT executed: T73-T75 own it.",
+        "T55's sealed evidence index was regenerated by THIS task, because T56 repaired files T55's index hasheth (the ref shape and the label vocabulary). The T55 record's own claims are unchanged and its court still passeth 13/13; the regeneration is recorded here rather than left as silent drift."
+      ]
+    },
     "T61": {
       "case_results": {
         "added_cases": [
@@ -13452,7 +13677,7 @@
       ]
     }
   },
-  "current_task": "T56",
+  "current_task": null,
   "external_blockers": [
     "A06",
     "APPROVED_CONTENT",
@@ -13461,54 +13686,45 @@
     "SIGNING"
   ],
   "failed_attempts": [],
-  "in_progress": {
-    "claimed_head": "d500e8a0e4aa43ed8046080fb506658ac4d12482",
-    "claimed_utc": "2026-09-14T20:52:37+00:00",
-    "objective": {
-      "claimed_head": "d500e8a0e4aa43ed8046080fb506658ac4d12482",
-      "claimed_utc": "2026-09-14T20:52:37+00:00",
-      "objective": "Add the equivalent iOS identity and recovery UX: a MainActor model projected from ONE MeshRuntime that implements the Android-equivalent flows through the same PeerIdentityRepository semantics; a locked Keychain/private store showing an explicit unavailable-until-unlock state that claimeth NOTHING; user verification requiring an explicit fingerprint comparison (never a biometric success standing in for peer authentication); rotation approval bound to the EXACT displayed candidate through the durable CAS so USER_VERIFIED is never shown before the CAS succeedeth; rotation and revocation invalidating the affected sessions; a resumable wipe state surviving a failed Keychain deletion and a scene recreation; voice-accessibility labels that distinguish verified from first-use trust; and SHARED contact/rotation fixtures so both isles provably speak the same semantics -- so that showing USER_VERIFIED before the durable CAS succeedeth falleth the UI authority witness."
-    },
-    "task": "T56"
-  },
-  "last_code_head": "d573d74856db7d70d7572f3b6ad8cdf175885934",
-  "last_observed_head": "d573d74856db7d70d7572f3b6ad8cdf175885934",
+  "in_progress": null,
+  "last_code_head": "a67a0c8ae7bf98976f4a923617c2096ad6a7633c",
+  "last_observed_head": "a67a0c8ae7bf98976f4a923617c2096ad6a7633c",
   "latest_verification": {
-    "at_utc": "2026-09-15T05:40:00+00:00",
-    "boundary_commit": "d573d74856db7d70d7572f3b6ad8cdf175885934",
+    "at_utc": "2026-09-15T07:10:00+00:00",
+    "boundary_commit": "a67a0c8ae7bf98976f4a923617c2096ad6a7633c",
     "controls": {
       "boundary_records": 2,
-      "outcomes": "2/2 PASSED at the boundary (check_repository rc=0 -- including the shipping-path gate that caught this task's own comment -- and the release-gates checker rc=0). The lab-isolation gate and the :mesh suite were run beside them and stand rc=0"
+      "outcomes": "2/2 PASSED at the boundary (check_repository rc=0, the release-gates checker rc=0). The android isles were run beside them and stand rc=0 after the shared-ref repair"
     },
     "isle_grands": {
-      "android_grand": "the T55 court 13/13 and the whole LIGHT app suite 34/0 at the boundary, genuinely EXECUTED (--no-build-cache, stale results purged); the :mesh suite still green beside it",
-      "counts_source": "see completed_tasks.T55.case_results.counts_source",
-      "ios_grand": "no iOS path in this round: the card is an Android UX task, and the mirrored Foundation package is untouched (sync --check clean)",
+      "android_grand": "no android court in this round, but both isles were re-run after the shared-ref repair: :app:testLightDebugUnitTest (34) and :mesh:testDebugUnitTest both pass, and T55's court still standeth 13/13",
+      "counts_source": "see completed_tasks.T56.case_results.counts_source",
+      "ios_grand": "the T56 court 13/13 and the whole package 1114/0 at the boundary (up from 1101), genuinely EXECUTED",
       "python_grand": "the readiness suite 325 OK, the structural lineage rc=0, diff hygiene clean, sync --check clean"
     },
     "ladder": {
       "L0": "1 PASSED (check_repository), 1 FAILED (ci/symbols.py --selftest: PRE-EXISTING)",
-      "L1": "PASSED (the python readiness suite plus the app and mesh isles)",
+      "L1": "PASSED (the python readiness suite plus both isles)",
       "L2_L4": "unavailable: no command manifest yet"
     },
     "narrow": {
       "errors": 0,
       "failures": 0,
-      "lane": "gradlew :app:testLightDebugUnitTest --tests *ReadinessT55Test*",
+      "lane": "swift test --package-path ios/Packages/GodstoneFoundation --filter ReadinessT56Tests",
       "tests": 13
     },
     "roster": {
-      "T55_killed": 12,
+      "T56_killed": 12,
       "of": 12
     },
     "subsystem": {
       "errors": 0,
       "failures": 0,
-      "lane": "gradlew :app:testLightDebugUnitTest",
-      "tests": 34
+      "lane": "swift test --package-path ios/Packages/GodstoneFoundation",
+      "tests": 1114
     }
   },
-  "next_task": "T56",
+  "next_task": "T57",
   "phase": "P0",
   "plan_sha256": "685456b378662b0a40a53a6abc810041e37daf97b213f3efeb6cea879363934e",
   "planning_baseline_sha": "b5c3d3d394b70cf356cdde33b47511dad7cbb95c",
@@ -13586,7 +13802,10 @@
     "T54 boundary: ci/profile_resolver.py's first form read only the source roots AGP auto-wires, so a lab source set DECLARED with srcDir(...) was invisible to every check built on it. It now honours declared roots; W12 pins that, and the gate's selftest is what caught the hole.",
     "T55 boundary: the shipping-path gate is a TEXT scan over compiled :app sources, so a COMMENT that NAMES a non-shipping module is a violation -- and it caught this task's own docstring. A shipping surface must not speak of them at all; reword rather than exempt.",
     "T55 boundary: a rod whose mutant is semantically a NO-OP can never be killed (T55-RC10 changed a line into its own meaning), and a rod whose replacement RETAINS its own needle is refused outright by the ledger. Both were caught before the final pass by checking, for every rod, that `post.count(replace) == 1 and post.count(find) == 0`. Run that check before spending a campaign.",
-    "T55 boundary: a rod must strike code the TASK owns. The sixth rod originally targeted the pending-rotation retirement, which the AUTHORITY performs, not the ViewModel -- a rod aimed at a neighbour's law can only escape. It was replaced by the dismissal law the app genuinely owns."
+    "T55 boundary: a rod must strike code the TASK owns. The sixth rod originally targeted the pending-rotation retirement, which the AUTHORITY performs, not the ViewModel -- a rod aimed at a neighbour's law can only escape. It was replaced by the dismissal law the app genuinely owns.",
+    "T56 boundary: an unguarded force-unwrap in a COURT aborts the whole test process, so the harness seeth no summary line and no named failure and reports INVALID -- three T56 rods were misreported that way. Guard every optional read in a court, even where the value is 'obviously' present.",
+    "T56 boundary: ExactRotationCandidateRef (BOTH isles) carried only a DIGEST while the durable CAS bindeth on the pending static KEY, so a ref could never approve anything -- a latent flaw in the sealed T55 that only surfaced when the iOS twin's court drove a real approval. A ref that nameth a candidate must carry the operands the authority compareth.",
+    "T56 boundary: the iOS isle still exposes NO durable road that promoteth a contact to userVerified. The confirmation CAS is exercised against the authority seam, and W13 failable asserteth the absence: if that witness ever starteth failing, the road appeared and this boundary must be revisited. Adding it touches the frozen peer-trust schema and wanteth an ADR."
   ],
   "warnings_for_next_invocation": [
     "T41 IS THE NEXT TASK (deps T40, T24, T26, T37, T39, T84 all complete; no external requirement). After T41 cometh T42, T43, T44, then T54 and the platform chain.",
