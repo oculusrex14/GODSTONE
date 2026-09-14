@@ -275,6 +275,18 @@ class ReadinessT55Test {
         Assert.assertNotEquals("nothing was accepted at the new generation",
             3L, after.acceptedGeneration)
 
+        // ... and a DISMISSAL is not an approval: the pending candidate standeth,
+        // the old trust keepeth working, and nothing is accepted (the card: "a
+        // canceled rotation leaves old trust unchanged")
+        val dismissed = model.onCommand(ContactVerificationCommand.DismissRotation(newer))
+        val stillPending = dismissed.contact(nodeId)!!
+        Assert.assertEquals("a dismissal approveth nothing",
+            ContactTrustLabel.ROTATION_PENDING, stillPending.trust)
+        Assert.assertEquals("the candidate standeth for a later decision",
+            newer, stillPending.pendingRotation)
+        Assert.assertEquals("and the accepted generation did not move",
+            1L, stillPending.acceptedGeneration)
+
         // approving the ref the screen NOW carrieth succeedeth
         val approved = model.onCommand(ContactVerificationCommand.ApproveRotation(newer))
         val settled = approved.contact(nodeId)!!
