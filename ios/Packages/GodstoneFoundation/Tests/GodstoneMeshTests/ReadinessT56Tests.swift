@@ -344,6 +344,12 @@ final class ReadinessT56Tests: XCTestCase {
         let whileLocked = built.onCommand(.compareAndConfirmFingerprint(
             nodeId: row.nodeId, displayedFingerprintHex: fingerprint))
         XCTAssertNotNil(whileLocked.error)
+        // the refusal must be the LOCK'S refusal, not some incidental error: with
+        // the lock check removed the command proceedeth and reports "no such
+        // contact" instead, which this arm condemneth (its rod escaped until the
+        // witness demanded the reason)
+        XCTAssertTrue((whileLocked.error ?? "").contains("locked"),
+                      "a locked attempt is refused BY THE LOCK: \(whileLocked.error ?? "")")
         XCTAssertEqual(authority.row(row.nodeId)?.trust, .tofuUnverified,
                        "the durable row is untouched by a locked attempt")
 
