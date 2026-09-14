@@ -11538,7 +11538,16 @@
     "SIGNING"
   ],
   "failed_attempts": [],
-  "in_progress": null,
+  "in_progress": {
+    "claimed_head": "724b8284cce93db3565f54da557490919d8eda94",
+    "claimed_utc": "2026-09-14T14:17:23+00:00",
+    "objective": {
+      "claimed_head": "724b8284cce93db3565f54da557490919d8eda94",
+      "claimed_utc": "2026-09-14T14:17:23+00:00",
+      "objective": "Audit the Android release artifact as built: ABI coverage across the APK and the App Bundle, the 16 KiB page-size question answered from each ELF's own PT_LOAD alignment, R8 judged by what it actually kept in the dex while excluded-module rules are recorded as evidence of the exclusion, the merged manifest's permissions and backup surface, the release runtime classpath's freedom from :llm/:mesh, the exact approved Archive's bytes inside the package, and the device claims left UNVERIFIED -- every face exercised against the real release lane's own output."
+    },
+    "task": "T70"
+  },
   "last_code_head": "3989c01449be6d4f5cfeb35a93a000a55343f6ba",
   "last_observed_head": "3989c01449be6d4f5cfeb35a93a000a55343f6ba",
   "latest_verification": {
