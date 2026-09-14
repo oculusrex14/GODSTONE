@@ -5,13 +5,14 @@
       "class": "independent-review",
       "closure_evidence": null,
       "dependent_tasks": [
-        "T04",
-        "T21-T28",
-        "T79"
+        "T79",
+        "T73",
+        "T75",
+        "T78"
       ],
       "id": "A06",
       "internal_prerequisites_completed": false,
-      "reason": "Independent Noise/conformance review artifact not supplied. The ExternalNoiseLockV1 validator (T04) is ready; the gate stays UNAVAILABLE until a real fixture + lock arrive.",
+      "reason": "Independent Noise/conformance review artifact not supplied. The ExternalNoiseLockV1 validator (T04) is ready; the gate stays UNAVAILABLE until a real fixture + lock arrive. T79 (consume independently approved A-06 fixtures) is the task that consumes them, and T73/T75/T78 inherit the block.",
       "recheck_trigger": "receipt of reviewed artifact",
       "required_artifact_schema": "structured PINNED/matched-case conformance report + tamper controls",
       "status": "BLOCKED_EXTERNAL",
@@ -26,8 +27,8 @@
       "class": "content",
       "closure_evidence": null,
       "dependent_tasks": [
-        "T45-T53",
-        "T80"
+        "T80",
+        "T78"
       ],
       "id": "APPROVED_CONTENT",
       "internal_prerequisites_completed": false,
@@ -42,8 +43,12 @@
       "class": "native",
       "closure_evidence": null,
       "dependent_tasks": [
-        "T61-T66",
-        "T81"
+        "T81",
+        "T62",
+        "T63",
+        "T64",
+        "T65",
+        "T78"
       ],
       "id": "NATIVE_MODELS",
       "internal_prerequisites_completed": false,
@@ -58,12 +63,11 @@
       "class": "device",
       "closure_evidence": null,
       "dependent_tasks": [
-        "T13",
-        "T17",
-        "T25",
-        "T33",
-        "T60",
-        "T69-T75"
+        "T73",
+        "T74",
+        "T75",
+        "T76",
+        "T78"
       ],
       "id": "HARDWARE",
       "internal_prerequisites_completed": false,
@@ -78,7 +82,8 @@
       "class": "release",
       "closure_evidence": null,
       "dependent_tasks": [
-        "T76-T78"
+        "T76",
+        "T78"
       ],
       "id": "SIGNING",
       "internal_prerequisites_completed": false,
@@ -89,5 +94,6 @@
       "verification_commands": []
     }
   ],
+  "frontier_note": "Recomputed after T84 (08e5694): every still-pending task is blocked by one of these five artifacts, directly or transitively. T41 is the ONLY pending task with complete dependencies and no external requirement, and it is the next the loop selecteth.",
   "schema_version": 1
 }
