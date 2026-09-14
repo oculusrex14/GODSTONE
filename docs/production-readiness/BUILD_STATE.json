@@ -13002,7 +13002,7 @@
       ]
     }
   },
-  "current_task": null,
+  "current_task": "T54",
   "external_blockers": [
     "A06",
     "APPROVED_CONTENT",
@@ -13011,7 +13011,16 @@
     "SIGNING"
   ],
   "failed_attempts": [],
-  "in_progress": null,
+  "in_progress": {
+    "claimed_head": "a68ff4d4f1759e344ee55982ad8a0a6e6e666f0e",
+    "claimed_utc": "2026-09-14T20:05:26+00:00",
+    "objective": {
+      "claimed_head": "a68ff4d4f1759e344ee55982ad8a0a6e6e666f0e",
+      "claimed_utc": "2026-09-14T20:05:26+00:00",
+      "objective": "Create isolated experimental runtime targets: add nonshipping LabMesh targets on both platforms with distinct bundle/application IDs that depend on the SAME canonical runtime components, resolve the ACTUAL classpaths and link maps for every profile from build-config evidence, and gate it -- the LIGHT/Archive release must carry no lab source set, no readiness override and no synthetic READY setter, the archive binary must contain no Lab factories, the lab must compose real stores/trust/adapters, and the release manifest must be unchanged -- so that slipping a lab source set or a readiness override into the LIGHT release falleth the binary/profile gate."
+    },
+    "task": "T54"
+  },
   "last_code_head": "3a5394a716fbe23784c346647bfa0e79f2138f5a",
   "last_observed_head": "3a5394a716fbe23784c346647bfa0e79f2138f5a",
   "latest_verification": {
