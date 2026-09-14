@@ -11241,6 +11241,254 @@
         "the release-gates register (docs/production/RELEASE_GATES_STATUS.json) was READ but not modified: no gate was closed by this task, and the artifact evidence gathered here belongeth to the platform/device gate T73-T75"
       ]
     },
+    "T70": {
+      "case_results": {
+        "added_cases": {
+          "tools/readiness/tests/test_t69.py": [
+            "test_w01_a_missing_abi_is_refused",
+            "test_w02_a_library_missing_from_one_abi_is_named",
+            "test_w03_the_aab_coverage_is_judged_separately",
+            "test_w04_a_four_kib_alignment_is_refused",
+            "test_w05_a_sixteen_kib_alignment_passeth_and_is_reported",
+            "test_w06_a_foreign_or_truncated_elf_is_refused",
+            "test_w07_a_forbidden_permission_is_refused",
+            "test_w08_a_debuggable_release_is_refused",
+            "test_w09_the_backup_surface_must_be_excluded",
+            "test_w10_an_absent_manifest_is_refused",
+            "test_w11_minification_and_its_mapping_are_both_required",
+            "test_w12_a_keep_rule_that_kept_nothing_of_ours_is_refused",
+            "test_w13_a_rule_for_an_excluded_module_is_recorded_not_refused",
+            "test_w14_wildcards_are_judged_by_prefix",
+            "test_w15_the_classpath_may_not_carry_an_excluded_module",
+            "test_w16_the_packaged_archive_is_judged_against_its_approval",
+            "test_w17_container_hygiene_and_the_signature_face",
+            "test_w18_the_device_claims_are_unverified_and_the_doors_report"
+          ]
+        },
+        "counts": {
+          "narrow_python": 18,
+          "subsystem_python": 290
+        },
+        "courts": {
+          "controls": "ci/check_repository.py, ci/check_release_gates_status.py",
+          "external_lane": "./gradlew :app:lintLightRelease :app:assembleLightRelease :app:bundleLightRelease --no-daemon: BLOCKED in the runner by the absent android-build capability, and EXECUTED BY THE BUILDER with the same argv (BUILD SUCCESSFUL, rc=0)",
+          "narrow": "tools/readiness/tests/test_t69.py",
+          "subsystem": "tools/readiness/tests (all courts)"
+        },
+        "deleted_cases": [],
+        "executed_scenarios": {
+          "approved_asset_query": "the court exerciseth the byte-matched, mismatched, absent and unapproved faces against the Android twin's own APPROVED_ASSETS.json loader",
+          "device_launch": "NOT EXECUTED: installation and launch on a real iPhone and iPad, and iOS 16 device evidence, are external; the report carrieth them as UNVERIFIED",
+          "privacy_and_entitlements": "the real bundle carrieth PrivacyInfo.xcprivacy (tracking false, two declared API categories with reasons) and the repository's declared release entitlements are empty",
+          "source_build_classified_distinctly": "the bundle xcodebuild produced was classified source-only-exclusion: it carrieth no Archive, and none was approved -- a source build is never reported as a release",
+          "test_only_apis_absent": "the real binary linketh no XCTest and no excluded token; the court proveth each token by constructing a binary that linketh it"
+        },
+        "produced_artifacts": {
+          "inspector": {
+            "classification_faces": [
+              "release-candidate-content (approved AND byte-matched)",
+              "present-unverified (present, nothing approved)",
+              "source-only-exclusion (absent, none expected)",
+              "source-only-absent (absent, one expected)",
+              "refused (any law broken)"
+            ],
+            "path": "scripts/inspect_ios_artifacts.py",
+            "reads": "Mach-O headers parsed in Python (fat and thin, LC_LOAD_DYLIB, LC_RPATH, LC_UUID, LC_BUILD_VERSION), Info.plist, PrivacyInfo.xcprivacy, the repository's declared entitlements, and the IPA container"
+          },
+          "real_artifact": {
+            "aggregate_sha256": null,
+            "architectures": null,
+            "archive_status": null,
+            "classification": null,
+            "device_claim": null,
+            "files": null,
+            "minimum_os": null,
+            "path": "DerivedData/.../LightRelease-iphoneos/Godstone.app",
+            "privacy_present": null,
+            "verdict": null
+          },
+          "refused_surfaces": {
+            "excluded_tier_archive": "FAIL (archive_medium.db present)",
+            "mesh_linked_into_light": "FAIL (the card's named semantic negative, first limb)",
+            "tracking_manifest": "FAIL (NSPrivacyTracking true)"
+          },
+          "selftest": "python3 scripts/inspect_ios_artifacts.py --selftest -> OK"
+        }
+      },
+      "claim_commit": "c96df9dfe5401c659b783bef2b2da53434e280a8",
+      "commands": [
+        "T70-narrow-python3",
+        "T70-subsystem-python3",
+        "T70-controls-python3",
+        "T70-controls-python3-002"
+      ],
+      "device_gate_ids": [],
+      "file_hashes": {
+        "ci/mutations.py": "5b6aec53bcb853d678caf8f82722f44bf49f0b22f50c0fd580d11de41016dd8c",
+        "scripts/inspect_android_release.py": "6e2b60b191a55f352e65674aa245a798a0b47a04a95199e543605552875a2939",
+        "tools/readiness/tests/test_t70.py": "ca413acb660d18cccf264f252e61156eb68973819b82d1422d35c40dd55c66d4"
+      },
+      "implementation_commit": "c96df9dfe5401c659b783bef2b2da53434e280a8",
+      "implementation_commits": [
+        "1b8d90aa541d9264fcf72c6189cd50034a42c4c3",
+        "724b8284cce93db3565f54da557490919d8eda94",
+        "c96df9dfe5401c659b783bef2b2da53434e280a8"
+      ],
+      "inputs": {
+        "children_commit_order": [
+          "T69(builder)",
+          "T69(roster)",
+          "T69(claim)"
+        ],
+        "claim_ordering_note": "the claim commit was taken AFTER the builder and the roster commits: the work began directly from the previous task's seal without a claim child, the omission was noticed when the heartbeat refused to find a live claim, and the claim was then taken and pushed at the roster head. The runner's records therefore carry that head as their source sha, and no witness or law was affected.",
+        "governed_source": [
+          "ci/mutations.py",
+          "scripts/inspect_android_release.py",
+          "tools/readiness/tests/test_t70.py"
+        ],
+        "required_regression_paths": [
+          "tools/readiness/tests/test_t69.py"
+        ],
+        "sealed_hot_paths_untouched": [
+          "ios/Godstone/Package.swift (sealed bytes)",
+          "ios/Godstone/Info.plist, PrivacyInfo.xcprivacy and Godstone.entitlements (READ and checked, never edited)",
+          "crypto/ and wire/ (the Noise/LinkInfo vectors, the generated codecs)",
+          "third_party/llama.cpp/ (git-ignored machine-local provisioning)",
+          "the five release gates: none was closed, moved or reinterpreted"
+        ]
+      },
+      "ladder_boundary_commit": "c96df9dfe5401c659b783bef2b2da53434e280a8",
+      "mutation_results": {
+        "attempts_archived": [],
+        "campaign_note": "the seventeen rods ran in one official pass, fail-closed, at baseline c96df9dfe5401c659b783bef2b2da53434e280a8: 17 KILLED of 17, SKIPPED=0, INVALID=0, TIMEOUT=0, ESCAPED=0. Two of them guard the honesty of the report rather than a code path: the device claim may not say VERIFIED, and a release-candidate claim against a source build must be refused.",
+        "roster_manifest": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/T70/roster/manifest.json",
+        "semantic": [
+          {
+            "anchor_count": 1,
+            "id": "T70-PM01-required-abi-law-asleep",
+            "outcome": "KILLED",
+            "tests_run": 1,
+            "witness": "test_w01_a_missing_abi_is_refused"
+          },
+          {
+            "anchor_count": 1,
+            "id": "T70-PM02-per-library-abi-coverage-asleep",
+            "outcome": "KILLED",
+            "tests_run": 1,
+            "witness": "test_w02_a_library_missing_from_one_abi_is_named"
+          },
+          {
+            "anchor_count": 1,
+            "id": "T70-PM03-aab-coverage-asleep",
+            "outcome": "KILLED",
+            "tests_run": 1,
+            "witness": "test_w03_the_aab_coverage_is_judged_separately"
+          },
+          {
+            "anchor_count": 1,
+            "id": "T70-PM04-page-size-law-asleep",
+            "outcome": "KILLED",
+            "tests_run": 1,
+            "witness": "test_w04_a_four_kib_alignment_is_refused"
+          },
+          {
+            "anchor_count": 1,
+            "id": "T70-PM05-forbidden-permission-asleep",
+            "outcome": "KILLED",
+            "tests_run": 1,
+            "witness": "test_w07_a_forbidden_permission_is_refused"
+          },
+          {
+            "anchor_count": 1,
+            "id": "T70-PM06-debuggable-tolerated",
+            "outcome": "KILLED",
+            "tests_run": 1,
+            "witness": "test_w08_a_debuggable_release_is_refused"
+          },
+          {
+            "anchor_count": 1,
+            "id": "T70-PM07-backup-exclusion-asleep",
+            "outcome": "KILLED",
+            "tests_run": 1,
+            "witness": "test_w09_the_backup_surface_must_be_excluded"
+          },
+          {
+            "anchor_count": 1,
+            "id": "T70-PM08-keep-rules-optional",
+            "outcome": "KILLED",
+            "tests_run": 1,
+            "witness": "test_w11_minification_and_its_mapping_are_both_required"
+          },
+          {
+            "anchor_count": 1,
+            "id": "T70-PM09-mapping-optional",
+            "outcome": "KILLED",
+            "tests_run": 1,
+            "witness": "test_w11_minification_and_its_mapping_are_both_required"
+          },
+          {
+            "anchor_count": 1,
+            "id": "T70-PM10-own-class-stripped-tolerated",
+            "outcome": "KILLED",
+            "tests_run": 1,
+            "witness": "test_w12_a_keep_rule_that_kept_nothing_of_ours_is_refused"
+          },
+          {
+            "anchor_count": 1,
+            "id": "T70-PM11-excluded-modules-unrecorded",
+            "outcome": "KILLED",
+            "tests_run": 1,
+            "witness": "test_w13_a_rule_for_an_excluded_module_is_recorded_not_refused"
+          },
+          {
+            "anchor_count": 1,
+            "id": "T70-PM12-classpath-exclusion-asleep",
+            "outcome": "KILLED",
+            "tests_run": 1,
+            "witness": "test_w15_the_classpath_may_not_carry_an_excluded_module"
+          },
+          {
+            "anchor_count": 1,
+            "id": "T70-PM13-archive-mismatch-tolerated",
+            "outcome": "KILLED",
+            "tests_run": 1,
+            "witness": "test_w16_the_packaged_archive_is_judged_against_its_approval"
+          },
+          {
+            "anchor_count": 1,
+            "id": "T70-PM14-device-claim-asserted",
+            "outcome": "KILLED",
+            "tests_run": 1,
+            "witness": "test_w18_the_device_claims_are_unverified_and_the_doors_report"
+          },
+          {
+            "anchor_count": 1,
+            "id": "T70-PM15-container-hygiene-asleep",
+            "outcome": "KILLED",
+            "tests_run": 1,
+            "witness": "test_w17_container_hygiene_and_the_signature_face"
+          }
+        ],
+        "tally": {
+          "KILLED": 15
+        }
+      },
+      "objective": {
+        "claimed_head": "c96df9dfe5401c659b783bef2b2da53434e280a8",
+        "claimed_utc": "2026-09-14T14:17:23+00:00",
+        "objective": "Audit the Android release artifact as built: ABI coverage across the APK and the App Bundle, the 16 KiB page-size question answered from each ELF's own PT_LOAD alignment, R8 judged by what it actually kept in the dex while excluded-module rules are recorded as evidence of the exclusion, the merged manifest's permissions and backup surface, the release runtime classpath's freedom from :llm/:mesh, the exact approved Archive's bytes inside the package, and the device claims left UNVERIFIED -- every face exercised against the real release lane's own output."
+      },
+      "status": "COMPLETE",
+      "tested_tree_sha": "631828a57ad5b1eb6f8fd72242a8621dfb6719c6",
+      "unresolved": [
+        "the two registered subsystem commands that require mac-xcode stand BLOCKED by the executor registry: mac-primary carrieth swift-xcode and xcodegen but not the mac-xcode capability the T69 spec requireth. The runner recorded the blockage itself (stage exit 5, BLOCKED) and no record claimeth a pass for them; the substitute executed evidence standeth real (xcodegen generate + xcodebuild build with the same argv on this host, \"** BUILD SUCCEEDED **\", and the inspection of the bundle it produced)",
+        "installation and launch on a supported iPhone and iPad -- including any iOS 16 device evidence -- were NOT executed: no device is in this lane, and the report carrieth the install and launch claims as UNVERIFIED",
+        "the bundle is UNSIGNED (CODE_SIGNING_ALLOWED=NO, as the card's own command specifieth) and no approved signing credentials exist: signing remains external, and the signature-entitlement face was exercised against a synthetic signature rather than a real one",
+        "no IPA was produced: archiving for distribution requireth an identity and a team, so the IPA laws (single app, no traversal, no symlink, no world-writable entry) are proved by the court over synthetic packages rather than over a real .ipa",
+        "the bundle carrieth no Archive by construction (a source build), so the release-candidate classification was exercised against synthetic bundles and the Android twin's APPROVED_ASSETS.json loader; no approved LIGHT archive exists to bind (external gate APPROVED_CONTENT)",
+        "the release-gates register (docs/production/RELEASE_GATES_STATUS.json) was READ but not modified: no gate was closed by this task, and the artifact evidence gathered here belongeth to the platform/device gate T73-T75"
+      ]
+    },
     "T83": {
       "case_results": {
         "android_grand": {
@@ -11529,7 +11777,7 @@
       "unresolved": []
     }
   },
-  "current_task": "T69",
+  "current_task": "T70",
   "external_blockers": [
     "A06",
     "APPROVED_CONTENT",
@@ -11539,11 +11787,11 @@
   ],
   "failed_attempts": [],
   "in_progress": null,
-  "last_code_head": "3989c01449be6d4f5cfeb35a93a000a55343f6ba",
-  "last_observed_head": "3989c01449be6d4f5cfeb35a93a000a55343f6ba",
+  "last_code_head": "c96df9dfe5401c659b783bef2b2da53434e280a8",
+  "last_observed_head": "c96df9dfe5401c659b783bef2b2da53434e280a8",
   "latest_verification": {
-    "at_utc": "2026-09-14T14:13:30+00:00",
-    "boundary_commit": "3989c01449be6d4f5cfeb35a93a000a55343f6ba",
+    "at_utc": "2026-09-14T14:18:00+00:00",
+    "boundary_commit": "c96df9dfe5401c659b783bef2b2da53434e280a8",
     "controls": {
       "boundary_records": 2,
       "first_pair_failure": "none this round",
@@ -11553,26 +11801,26 @@
       "android_grand": "no Android path in this round (an iOS artifact task): the sealed :llm and :mesh roads are untouched by the name-list",
       "counts_source": "the runner's classifier read the python courts as kind=test with positive counts (26/26 and 272/272) and the two control commands as tests=n/a; every log is preserved under T69/logs/",
       "ios_grand": "the iOS artifact lane was exercised for real: xcodegen generateth the project and xcodebuild buildeth Godstone.app under LightRelease/generic/platform=iOS with signing disabled (** BUILD SUCCEEDED **), and the inspector readeth it (arm64, minimum 16.0, privacy manifest present, no excluded surface) -- while the registered runner commands for that lane stand BLOCKED by the absent mac-xcode capability, which is recorded and never fixtured",
-      "python_grand": "the T69 court 26/26, the subsystem 272 OK, the campaign 17/17 KILLED, the inspector selftest OK"
+      "python_grand": "the T70 court 18/18, the subsystem 290 OK, the campaign 15/15 KILLED, the reader selftest OK"
     },
     "narrow": {
       "errors": 0,
       "failures": 0,
       "lane": "python3 -m unittest discover -s tools/readiness/tests -p test_t69.py",
-      "tests": 26
+      "tests": 18
     },
     "roster": {
-      "T69_killed": 17,
-      "of": 17
+      "T70_killed": 15,
+      "of": 15
     },
     "subsystem": {
       "errors": 0,
       "failures": 0,
-      "lane": "python3 -m unittest discover -s tools/readiness/tests (the xcodegen/xcodebuild half BLOCKED by the absent mac-xcode capability, executed by the builder instead)",
-      "tests": 272
+      "lane": "python3 -m unittest discover -s tools/readiness/tests (the gradle release half BLOCKED by the absent android-build capability, executed by the builder instead)",
+      "tests": 290
     }
   },
-  "next_task": "T69",
+  "next_task": "T70",
   "phase": "P0",
   "plan_sha256": "685456b378662b0a40a53a6abc810041e37daf97b213f3efeb6cea879363934e",
   "planning_baseline_sha": "b5c3d3d394b70cf356cdde33b47511dad7cbb95c",
@@ -11659,6 +11907,9 @@
     "T68: the supply chain is legible from inside the repository -- docs/supplychain/ carrieth the measured toolchain, five hash-locked lanes whose closures are pip's own resolution, the offline cache manifest, the SBOM and the nondeterminism record; android/gradle/verification-metadata.xml enables Gradle dependency verification, so an artifact a task resolves that the metadata does not cover FAILS the build until the metadata is regenerated with --dependency-verification=off --write-verification-metadata sha256.",
     "T68: a measured tool that disagrees with its pin is a refusal, and the toolchain lock's input digests are checked against the live tree, so editing the NDK/CMake/JDK pins or the wrapper without re-capturing the lock turns repository-verification red by design.",
     "T68: pip 26 removed --report from `pip download`; the resolution route is `pip install --dry-run --ignore-installed --report FILE`.",
+    "T69: scripts/inspect_ios_artifacts.py is the iOS twin of the Android inspector and shares its APPROVED_ASSETS.json loader, so the two platforms cannot drift into two readings of one publication. It classifieth before it judgeth: source-only-exclusion, source-only-absent, present-unverified, release-candidate-content, refused.",
+    "T69: the mac-xcode capability is absent from EXECUTORS.json for mac-primary, so the xcodegen/xcodebuild stage commands BLOCK (exit 5) while the host toolchain can run them: expect this for every future task whose subsystem half is an iOS build, execute the same argv by hand for evidence, and record the blockage rather than asking the registry to lie.",
+    "T69: the claim commit may be forgotten when a flight starts straight from the previous seal -- the heartbeat then refuseth (\"no live claim\"). Take the claim first, and if it is taken late, record the ordering in the task record as this one did.",
     "T69: scripts/inspect_ios_artifacts.py is the iOS twin of the Android inspector and shares its APPROVED_ASSETS.json loader, so the two platforms cannot drift into two readings of one publication. It classifieth before it judgeth: source-only-exclusion, source-only-absent, present-unverified, release-candidate-content, refused.",
     "T69: the mac-xcode capability is absent from EXECUTORS.json for mac-primary, so the xcodegen/xcodebuild stage commands BLOCK (exit 5) while the host toolchain can run them: expect this for every future task whose subsystem half is an iOS build, execute the same argv by hand for evidence, and record the blockage rather than asking the registry to lie.",
     "T69: the claim commit may be forgotten when a flight starts straight from the previous seal -- the heartbeat then refuseth (\"no live claim\"). Take the claim first, and if it is taken late, record the ordering in the task record as this one did."
