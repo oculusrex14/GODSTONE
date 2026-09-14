@@ -9761,6 +9761,555 @@
         "the keeper's branch-identity clause expecteth still \"remediation/stage-4-link-release\" -- its own sealed face (tracked, quarry-unmodified, beyond the card's modify list): T53 heard it sleeping and let it be; the court's W14 sweareth it waketh clean upon the amended register"
       ]
     },
+    "T61": {
+      "case_results": {
+        "added_cases": [
+          "test_w01_wrong_digest_is_refused_and_nothing_standeth_promoted",
+          "test_w02_missing_hash_field_is_refused_at_the_register_door",
+          "test_w02b_malformed_digest_length_is_refused_at_the_register_door",
+          "test_w03_mutable_branch_head_coordinate_is_refused",
+          "test_w04_absent_licence_oath_is_refused",
+          "test_w05_path_traversal_is_refused_at_both_doors",
+          "test_w05b_duplicate_destination_is_refused",
+          "test_w07b_duplicate_identifier_is_refused",
+          "test_w06_strange_architecture_is_refused",
+          "test_w07_truncated_container_is_refused_though_name_and_length_agree",
+          "test_w08_repeated_restore_is_determinist_and_leaveth_no_temporary",
+          "test_w09_name_and_length_alone_are_not_trusted",
+          "test_w10_corrupt_standing_file_is_not_overwritten_by_the_sworn_gate",
+          "test_w11_half_pinned_register_is_refused",
+          "test_w12_unpinned_lock_may_not_name_a_verifier",
+          "test_w13_strict_estate_demands_the_native_tale",
+          "test_w14_legacy_estate_knoweth_not_the_native_block",
+          "test_w15_legacy_empty_native_is_tolerated_verbatim",
+          "test_w16_the_selftest_refuseth_all_it_telleth",
+          "test_w17_zero_sized_sworn_thing_is_refused",
+          "test_w18_unsworn_context_is_refused",
+          "test_w19_legacy_digests_must_stand_null",
+          "test_w20_unknown_fields_and_future_schemas_are_refused",
+          "test_w21_the_fetch_preferreth_the_armed_transport_over_the_wire",
+          "test_w22_native_abi_must_be_told_by_the_native_tale",
+          "test_w23_the_strict_reader_refuseth_malformed_documents"
+        ],
+        "deleted_cases": [],
+        "dual_court_parity": "three isles, one law: the python authority scripts/model_provenance.py and its two twins refuse the identical set; the island reader is stricter by design (duplicate JSON keys, C0 escapes refused); the legacy UNPINNED digest law is carried verbatim by all three (\"must keep sha256 null\"); the register of the house standeth UNPINNED and wholly unsworn in every isle; the witness families share their names across the isles (wrong digest, missing hash, malformed length, mutable revision, absent licence, traversal at both doors, duplicate id and destination, strange architecture, abi off the native tale, truncated container, repeated restore determinism, name-and-length-not-trusted, corrupt standing file, half-pinned register, verifier oath, native-tale demand, legacy tolerances, the token gate, the armed transport)",
+        "isle_grands_standing": {
+          "android_grand": "the :llm road ran 39 tests 0 failing this round (the T61 court's 21/21 within it, TEST-*.xml walk); the sealed mesh grand standeth at 1067 (T49) untouched -- no mesh path in this round's name-list",
+          "counts_source": "the runner's classifier readeth the gradle/swift tongues as tests=n/a (kind=command, the sealed T06-T50 precedent); the positive counts cited here come from the builder's TEST-*.xml walks and the roads' own 'Executed N tests' lines, preserved in the evidence logs",
+          "ios_grand": "the mirrored road (the compiler's true input; no bridge within) ran 1043 tests 0 failures this round; the T61 isle court 22/22; the campaign's six isle rods KILLED; the registered mac-native lane (swift test --package-path ios/Godstone) standeth BLOCKED by the executor capability and the absent machine-local vendor provisioning (third_party/llama.cpp is git-ignored at .gitignore:42 and holdeth but README.md, so GodstoneLLMBridge cannot compile: LlamaBridge.mm:3 'llama.h' file not found) -- pending, never fixtured",
+          "python_grand": "the T61 court ran 26 OK; the authority selftest 27 of 27; validate/fetch/verify rc 0/1/1 (the UNPINNED refusals at their sealed heights)"
+        },
+        "t61_courts": {
+          "island_mirrored": "22 witnesses, 0 failures (swift test --package-path ios/Packages/GodstoneFoundation --filter ReadinessT61Tests; the campaign lane)",
+          "jvm": "21 witnesses, 0 failing (gradle :llm:testDebugUnitTest --tests *ReadinessT61Test*, XML walk)",
+          "python": "26 witnesses OK (unittest discover, python3 -B)"
+        },
+        "t61_stages": {
+          "controls": "3/3 PASSED (check_repository; the gates checker 15-of-15 with 8 gates represented and the HISTORICAL classification; the mirror covenant --check)",
+          "narrow": "T61-narrow-gradlew PASSED exit=0 (the court 21/21); the swift half BLOCKED (mac-native) -- stage exit 5; no record claimeth a pass for a blocked command",
+          "subsystem": "T61-subsystem-gradlew PASSED exit=0 (the :llm road 39/39); the swift half BLOCKED (mac-native); the mirror road ran 1043/1043 as supplementary executed evidence"
+        },
+        "the_ever_living_selftest": "ok: model-provenance selftest refuseth 27 of 27 corruptions; the lawful register, the atomic promotion and the determinist repeat all pass"
+      },
+      "claim_commit": "e5214382d567feb72f1ea3625cd002796b4bb560",
+      "commands": [
+        "T61-narrow-gradlew",
+        "T61-subsystem-gradlew",
+        "T61-controls-python3",
+        "T61-controls-python3-002",
+        "T61-controls-python3-003"
+      ],
+      "device_gate_ids": [],
+      "file_hashes": {},
+      "implementation_commit": "f60d2cde510abaa8e762d747c9fd955ebd857c56",
+      "implementation_commits": [
+        "e5214382d567feb72f1ea3625cd002796b4bb560",
+        "3eed2ea308a7e8b667b2812197960927753acf86",
+        "331ec332166a3cfb29c725ef313ac0951ded0981",
+        "e6e32a0db50351585368c2e4e60d9d1fb0f0f79f",
+        "f60d2cde510abaa8e762d747c9fd955ebd857c56"
+      ],
+      "inputs": {
+        "children_commit_order": [
+          "e5214382d567feb72f1ea3625cd002796b4bb560",
+          "3eed2ea308a7e8b667b2812197960927753acf86",
+          "331ec332166a3cfb29c725ef313ac0951ded0981",
+          "e6e32a0db50351585368c2e4e60d9d1fb0f0f79f",
+          "f60d2cde510abaa8e762d747c9fd955ebd857c56"
+        ],
+        "governed_source": [
+          "scripts/model_provenance.py",
+          "scripts/fetch_models.sh",
+          "scripts/quantise.sh",
+          "docs/packaging/MODELS.lock.json",
+          "android/llm/src/main/java/io/godstone/llm/provenance/ModelLock.kt",
+          "android/llm/src/main/java/io/godstone/llm/provenance/ModelStaging.kt",
+          "android/llm/src/main/java/io/godstone/llm/LlamaBridge.kt",
+          "android/llm/src/main/java/io/godstone/llm/ModelManager.kt",
+          "android/llm/src/test/java/io/godstone/llm/readiness/ReadinessT61Test.kt",
+          "ios/Godstone/Sources/GodstoneCore/ModelProvenance.swift",
+          "ios/Godstone/Tests/GodstoneCoreTests/ReadinessT61Tests.swift",
+          "ios/Godstone/Sources/GodstoneLLM/LlamaRunner.swift",
+          "ios/Packages/GodstoneFoundation/Sources/GodstoneCore/ModelProvenance.swift",
+          "ios/Packages/GodstoneFoundation/Tests/GodstoneCoreTests/ReadinessT61Tests.swift",
+          "ios/Packages/GodstoneFoundation/SOURCE_MANIFEST.json",
+          "tools/readiness/tests/test_t61.py"
+        ],
+        "required_regression_paths": [
+          "tools/readiness/tests/test_t61.py",
+          "android/llm/src/test/java/io/godstone/llm/readiness/ReadinessT61Test.kt",
+          "ios/Godstone/Tests/GodstoneCoreTests/ReadinessT61Tests.swift",
+          "ios/Packages/GodstoneFoundation/Tests/GodstoneCoreTests/ReadinessT61Tests.swift",
+          "scripts/model_provenance.py",
+          "docs/packaging/MODELS.lock.json",
+          "scripts/fetch_models.sh",
+          "scripts/quantise.sh"
+        ],
+        "sealed_hot_paths_untouched": [
+          "android/llm/src/main/cpp/godstone_llm_jni.cpp (untouched)",
+          "ios/Godstone/Sources/GodstoneLLMBridge/LlamaBridge.mm (untouched)",
+          "android/llm/src/main/cpp/CMakeLists.txt (untouched)",
+          "ios/Godstone/Package.swift (sealed bytes preserved; the law rides GodstoneCore, so no manifest stroke was needed)",
+          "BLE/LinkInfo/wire/identity surfaces both isles (untouched)",
+          "ios/Packages/** mirror trees regenerated only via scripts/sync_ios_foundation_package.py; no hand edits"
+        ]
+      },
+      "ladder_boundary_commit": "f60d2cde510abaa8e762d747c9fd955ebd857c56",
+      "mutation_results": {
+        "attempts_archived": "attempt-1 (roster-attempt-1): an unscoped firing of the whole ledger, stayed by hand ere completion; its logs are the whole-ledger campaign labours, not this task roster. attempt-2-scoped: the honest verdicts that taught the re-polarity lesson (KILLED=9, INVALID=7 -- the jvm rows named no module and rode the default :mesh: road -- and ESCAPED=7 -- the _require/swear sleep-rods were false-joined, making assertion-guards hyperactive rather than asleep). attempt-3: the re-polarised rods, 23/23 KILLED report-only. The official campaign followed at the same baseline.",
+        "campaign_note": "Official campaign at baseline f60d2cd: KILLED=23, SKIPPED=0, INVALID=0, TIMEOUT=0, ESCAPED=0; every named witness reddened for the right reason; determinist with attempt-3 (identical verdicts twice). Ten python rods upon the authority, seven jvm rods (module llm, the court road), six island rods (the mirrored lane). The if-guard rods (digest limb, walk bound, token gate, promotion) sleep by never-firing (false &&); the assertion-guard rods (_require/swear/t61Swear) sleep by always-true (True or / true ||); the class rods widen or mute. Every find-string was sliced from the live bytes; every replacement absent from its file; every witness proved present in its court.",
+        "roster_manifest": "T61/roster/manifest.json (the official fail-closed manifest; attempts under roster-attempt-1, roster-attempt-2-scoped, roster-attempt-3)",
+        "semantic": [
+          {
+            "anchor_count": 1,
+            "baseline_sha": "f60d2cde510abaa8e762d747c9fd955ebd857c56",
+            "build_exit": 0,
+            "category": "semantic",
+            "ended_utc": "2026-09-14T08:39:47Z",
+            "failed_assertion": "witness test_w02b_malformed_digest_length_is_refused_at_the_register_door failed as intended (1 failed case(s))",
+            "id": "T61-PM01-hex64-class-widened",
+            "log_path": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/T61/roster/logs/T61-PM01-hex64-class-widened.semantic.log",
+            "log_sha": "588278b0d43131c1f339aed690279f097f55563a246e183d1ce779eb8ba488e2",
+            "mutant_patch_sha": "21ff619a3332d3cfbac6b91d5e18da9bdb1cb9c0f857c69a4012a8cf38afe187",
+            "outcome": "KILLED",
+            "started_utc": "2026-09-14T08:39:46Z",
+            "target_tests": [
+              "test_w02b_malformed_digest_length_is_refused_at_the_register_door"
+            ],
+            "tests_run": 1
+          },
+          {
+            "anchor_count": 1,
+            "baseline_sha": "f60d2cde510abaa8e762d747c9fd955ebd857c56",
+            "build_exit": 0,
+            "category": "semantic",
+            "ended_utc": "2026-09-14T08:39:48Z",
+            "failed_assertion": "witness test_w09_name_and_length_alone_are_not_trusted failed as intended (1 failed case(s))",
+            "id": "T61-PM02-digest-limb-asleep",
+            "log_path": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/T61/roster/logs/T61-PM02-digest-limb-asleep.semantic.log",
+            "log_sha": "10cf68bc8ec081aee4711349b1915e440093f072e3e77250de1cf064624f0609",
+            "mutant_patch_sha": "7d96437e32001b2a0e578cb07b928c6e2423743d6c458917559b857b24d1bab7",
+            "outcome": "KILLED",
+            "started_utc": "2026-09-14T08:39:47Z",
+            "target_tests": [
+              "test_w09_name_and_length_alone_are_not_trusted"
+            ],
+            "tests_run": 1
+          },
+          {
+            "anchor_count": 1,
+            "baseline_sha": "f60d2cde510abaa8e762d747c9fd955ebd857c56",
+            "build_exit": 0,
+            "category": "semantic",
+            "ended_utc": "2026-09-14T08:39:48Z",
+            "failed_assertion": "witness test_w22_native_abi_must_be_told_by_the_native_tale failed as intended (1 failed case(s))",
+            "id": "T61-PM03-abi-compat-cross-check-asleep",
+            "log_path": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/T61/roster/logs/T61-PM03-abi-compat-cross-check-asleep.semantic.log",
+            "log_sha": "fd2f5e1abcfbfcedbea804c7a72474581116f0d47deaefd80e604ed76868936d",
+            "mutant_patch_sha": "eb781ca20b671c4cce95aea3f2ab52fdd64e25fe17f0bd0de9246d26194ed8eb",
+            "outcome": "KILLED",
+            "started_utc": "2026-09-14T08:39:48Z",
+            "target_tests": [
+              "test_w22_native_abi_must_be_told_by_the_native_tale"
+            ],
+            "tests_run": 1
+          },
+          {
+            "anchor_count": 1,
+            "baseline_sha": "f60d2cde510abaa8e762d747c9fd955ebd857c56",
+            "build_exit": 0,
+            "category": "semantic",
+            "ended_utc": "2026-09-14T08:39:49Z",
+            "failed_assertion": "witness test_w17_zero_sized_sworn_thing_is_refused failed as intended (1 failed case(s))",
+            "id": "T61-PM04-positive-integer-law-asleep",
+            "log_path": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/T61/roster/logs/T61-PM04-positive-integer-law-asleep.semantic.log",
+            "log_sha": "6deac995581de7eacd802c4f15950598f993313cfec0f103f954351a855eb7b9",
+            "mutant_patch_sha": "87c2603e49206fc56a831892f132f721d1767275852230d6366965388041b432",
+            "outcome": "KILLED",
+            "started_utc": "2026-09-14T08:39:48Z",
+            "target_tests": [
+              "test_w17_zero_sized_sworn_thing_is_refused"
+            ],
+            "tests_run": 1
+          },
+          {
+            "anchor_count": 1,
+            "baseline_sha": "f60d2cde510abaa8e762d747c9fd955ebd857c56",
+            "build_exit": 0,
+            "category": "semantic",
+            "ended_utc": "2026-09-14T08:39:49Z",
+            "failed_assertion": "witness test_w11_half_pinned_register_is_refused failed as intended (1 failed case(s))",
+            "id": "T61-PM05-unpinned-null-census-silent",
+            "log_path": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/T61/roster/logs/T61-PM05-unpinned-null-census-silent.semantic.log",
+            "log_sha": "fa045ca9ce9ffcf4e92b8b5da03c528de4ab9df5e8c51de34695cd6b056fa970",
+            "mutant_patch_sha": "d8ea6ad9470f15d6294f4fe627399534977c7f7e99918d7d01e53ccea383f563",
+            "outcome": "KILLED",
+            "started_utc": "2026-09-14T08:39:49Z",
+            "target_tests": [
+              "test_w11_half_pinned_register_is_refused"
+            ],
+            "tests_run": 1
+          },
+          {
+            "anchor_count": 1,
+            "baseline_sha": "f60d2cde510abaa8e762d747c9fd955ebd857c56",
+            "build_exit": 0,
+            "category": "semantic",
+            "ended_utc": "2026-09-14T08:39:50Z",
+            "failed_assertion": "witness test_w08_repeated_restore_is_determinist_and_leaveth_no_temporary failed as intended (1 failed case(s))",
+            "id": "T61-PM06-atomic-promotion-forgot",
+            "log_path": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/T61/roster/logs/T61-PM06-atomic-promotion-forgot.semantic.log",
+            "log_sha": "e5a12f220b5658d2472d049b5774093d8103f9cc35705c5f2f924e5275ca0274",
+            "mutant_patch_sha": "4209a155ff135aba143c9ca749d5dce2d4a01c5244bfcd458d966af6a9910d17",
+            "outcome": "KILLED",
+            "started_utc": "2026-09-14T08:39:49Z",
+            "target_tests": [
+              "test_w08_repeated_restore_is_determinist_and_leaveth_no_temporary"
+            ],
+            "tests_run": 1
+          },
+          {
+            "anchor_count": 1,
+            "baseline_sha": "f60d2cde510abaa8e762d747c9fd955ebd857c56",
+            "build_exit": 0,
+            "category": "semantic",
+            "ended_utc": "2026-09-14T08:39:50Z",
+            "failed_assertion": "witness test_w07b_duplicate_identifier_is_refused failed as intended (1 failed case(s))",
+            "id": "T61-PM07-duplicate-censures-both-asleep",
+            "log_path": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/T61/roster/logs/T61-PM07-duplicate-censures-both-asleep.semantic.log",
+            "log_sha": "70ee8eae04c020ce1842490ed3b36c07de475c243b12cbfaf8b9989f0f1f113a",
+            "mutant_patch_sha": "af01df6cfd013c5b1f172d26f66aa67bfa7262ff7251b333571dafaaf5c678d8",
+            "outcome": "KILLED",
+            "started_utc": "2026-09-14T08:39:50Z",
+            "target_tests": [
+              "test_w07b_duplicate_identifier_is_refused"
+            ],
+            "tests_run": 1
+          },
+          {
+            "anchor_count": 1,
+            "baseline_sha": "f60d2cde510abaa8e762d747c9fd955ebd857c56",
+            "build_exit": 0,
+            "category": "semantic",
+            "ended_utc": "2026-09-14T08:39:51Z",
+            "failed_assertion": "witness test_w05b_duplicate_destination_is_refused failed as intended (1 failed case(s))",
+            "id": "T61-PM08-destination-census-asleep",
+            "log_path": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/T61/roster/logs/T61-PM08-destination-census-asleep.semantic.log",
+            "log_sha": "f4d0cc8d82766a029d0fb73c4c8d76f83768e544f0060d84a9bc372e60011290",
+            "mutant_patch_sha": "8fa18c1048089c6f3e4a2e0200a3d4312191d1f6c8168228549ad1700b7a91ec",
+            "outcome": "KILLED",
+            "started_utc": "2026-09-14T08:39:50Z",
+            "target_tests": [
+              "test_w05b_duplicate_destination_is_refused"
+            ],
+            "tests_run": 1
+          },
+          {
+            "anchor_count": 1,
+            "baseline_sha": "f60d2cde510abaa8e762d747c9fd955ebd857c56",
+            "build_exit": 0,
+            "category": "semantic",
+            "ended_utc": "2026-09-14T08:39:51Z",
+            "failed_assertion": "witness test_w07_truncated_container_is_refused_though_name_and_length_agree failed as intended (1 failed case(s))",
+            "id": "T61-PM09-walk-bound-asleep",
+            "log_path": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/T61/roster/logs/T61-PM09-walk-bound-asleep.semantic.log",
+            "log_sha": "446a42f592e8376548fd069cf03bd0881c13ab7161e427c87dcc6232f9a11aa1",
+            "mutant_patch_sha": "aa78cde531f7087c42186d0d9e2e756a65361de064dce9fe27da2d8854afe642",
+            "outcome": "KILLED",
+            "started_utc": "2026-09-14T08:39:51Z",
+            "target_tests": [
+              "test_w07_truncated_container_is_refused_though_name_and_length_agree"
+            ],
+            "tests_run": 1
+          },
+          {
+            "anchor_count": 1,
+            "baseline_sha": "f60d2cde510abaa8e762d747c9fd955ebd857c56",
+            "build_exit": 0,
+            "category": "semantic",
+            "ended_utc": "2026-09-14T08:39:52Z",
+            "failed_assertion": "witness test_w19_legacy_digests_must_stand_null failed as intended (1 failed case(s))",
+            "id": "T61-PM10-legacy-null-digest-law-asleep",
+            "log_path": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/T61/roster/logs/T61-PM10-legacy-null-digest-law-asleep.semantic.log",
+            "log_sha": "af04ce79356b56c56b1e35612620e92014a2806871e41fb09b254b9e28c55e66",
+            "mutant_patch_sha": "b97691a752fa13b82e7751c9cc454fc376057c7f022651859529478d17e8528f",
+            "outcome": "KILLED",
+            "started_utc": "2026-09-14T08:39:51Z",
+            "target_tests": [
+              "test_w19_legacy_digests_must_stand_null"
+            ],
+            "tests_run": 1
+          },
+          {
+            "anchor_count": 1,
+            "baseline_sha": "f60d2cde510abaa8e762d747c9fd955ebd857c56",
+            "build_exit": 0,
+            "category": "semantic",
+            "ended_utc": "2026-09-14T08:40:01Z",
+            "failed_assertion": "witness testShortHexDigestIsRefusedAtTheRegisterDoor failed as intended (1 failed case(s))",
+            "id": "T61-JM01-hex64-class-widened",
+            "log_path": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/T61/roster/logs/T61-JM01-hex64-class-widened.semantic.log",
+            "log_sha": "8d32019629d25eacf6df88e18e0d4578688a57ff262a868d79c11b437a46290e",
+            "mutant_patch_sha": "e2f81f7daef87c594a3fae238b6de975a60d881a928b0a18aac5724193d6e8d8",
+            "outcome": "KILLED",
+            "started_utc": "2026-09-14T08:39:52Z",
+            "target_tests": [
+              "testShortHexDigestIsRefusedAtTheRegisterDoor"
+            ],
+            "tests_run": 21
+          },
+          {
+            "anchor_count": 1,
+            "baseline_sha": "f60d2cde510abaa8e762d747c9fd955ebd857c56",
+            "build_exit": 0,
+            "category": "semantic",
+            "ended_utc": "2026-09-14T08:40:08Z",
+            "failed_assertion": "witness testFileNameAndLengthAloneAreNotTrusted failed as intended (3 failed case(s))",
+            "id": "T61-JM02-digest-limb-asleep",
+            "log_path": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/T61/roster/logs/T61-JM02-digest-limb-asleep.semantic.log",
+            "log_sha": "35bc3ef53eff6939dd5421dc88df2e1739311727fd8818d28b996e7ef83963be",
+            "mutant_patch_sha": "cd13bf026cb31d2dce63eca025d0bba09561a85c0ab5fb87b598f579b2d7c31b",
+            "outcome": "KILLED",
+            "started_utc": "2026-09-14T08:40:01Z",
+            "target_tests": [
+              "testFileNameAndLengthAloneAreNotTrusted"
+            ],
+            "tests_run": 21
+          },
+          {
+            "anchor_count": 1,
+            "baseline_sha": "f60d2cde510abaa8e762d747c9fd955ebd857c56",
+            "build_exit": 0,
+            "category": "semantic",
+            "ended_utc": "2026-09-14T08:40:17Z",
+            "failed_assertion": "witness testUnsupportedArchitectureIsRefused failed as intended (1 failed case(s))",
+            "id": "T61-JM03-abi-compat-cross-check-asleep",
+            "log_path": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/T61/roster/logs/T61-JM03-abi-compat-cross-check-asleep.semantic.log",
+            "log_sha": "e57f2c7985ffe346fe3abe42482ec67ee603b6ce67e5b51ae9320dc2b93c8740",
+            "mutant_patch_sha": "0e3d3f030807fa8ef511c4f4821b21028b6eab6cf6476914dba34e2f7a921b51",
+            "outcome": "KILLED",
+            "started_utc": "2026-09-14T08:40:08Z",
+            "target_tests": [
+              "testUnsupportedArchitectureIsRefused"
+            ],
+            "tests_run": 21
+          },
+          {
+            "anchor_count": 1,
+            "baseline_sha": "f60d2cde510abaa8e762d747c9fd955ebd857c56",
+            "build_exit": 0,
+            "category": "semantic",
+            "ended_utc": "2026-09-14T08:40:24Z",
+            "failed_assertion": "witness testDuplicateIdentifiersAreRefused failed as intended (1 failed case(s))",
+            "id": "T61-JM04-duplicate-censures-both-asleep",
+            "log_path": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/T61/roster/logs/T61-JM04-duplicate-censures-both-asleep.semantic.log",
+            "log_sha": "99182dbb092372a53f7e2587e8e745ff9885d4716a3fc58adc931c867a1afc1f",
+            "mutant_patch_sha": "6a5443027e72cb2f6d0579710c616e2595da7ee55f0e7073d77be71e600665cc",
+            "outcome": "KILLED",
+            "started_utc": "2026-09-14T08:40:17Z",
+            "target_tests": [
+              "testDuplicateIdentifiersAreRefused"
+            ],
+            "tests_run": 21
+          },
+          {
+            "anchor_count": 1,
+            "baseline_sha": "f60d2cde510abaa8e762d747c9fd955ebd857c56",
+            "build_exit": 0,
+            "category": "semantic",
+            "ended_utc": "2026-09-14T08:40:32Z",
+            "failed_assertion": "witness testTruncatedGgufIsRefusedThoughNameAndLengthAgree failed as intended (1 failed case(s))",
+            "id": "T61-JM05-walk-bound-asleep",
+            "log_path": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/T61/roster/logs/T61-JM05-walk-bound-asleep.semantic.log",
+            "log_sha": "f322644a31379f5fbc3e05e2ff6c93c5cfe4c4432fcef7559025c09c921dd3ac",
+            "mutant_patch_sha": "e42dda9a738aab2c3829e9159a5c241546c382926603479ac03245dc75cc815e",
+            "outcome": "KILLED",
+            "started_utc": "2026-09-14T08:40:24Z",
+            "target_tests": [
+              "testTruncatedGgufIsRefusedThoughNameAndLengthAgree"
+            ],
+            "tests_run": 21
+          },
+          {
+            "anchor_count": 1,
+            "baseline_sha": "f60d2cde510abaa8e762d747c9fd955ebd857c56",
+            "build_exit": 0,
+            "category": "semantic",
+            "ended_utc": "2026-09-14T08:40:39Z",
+            "failed_assertion": "witness testTheTokenCeasethForwardingAndTheGateKeepethRecord failed as intended (1 failed case(s))",
+            "id": "T61-JM06-token-gate-asleep",
+            "log_path": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/T61/roster/logs/T61-JM06-token-gate-asleep.semantic.log",
+            "log_sha": "035f02e42afdd9c017e9642977a033956fa1f0f73d216384aeb89452b9736597",
+            "mutant_patch_sha": "59c1d5f2a0e4056ae8fbb386d67b681fcd809a916528fa62eeedd8d81d53bde6",
+            "outcome": "KILLED",
+            "started_utc": "2026-09-14T08:40:32Z",
+            "target_tests": [
+              "testTheTokenCeasethForwardingAndTheGateKeepethRecord"
+            ],
+            "tests_run": 21
+          },
+          {
+            "anchor_count": 1,
+            "baseline_sha": "f60d2cde510abaa8e762d747c9fd955ebd857c56",
+            "build_exit": 0,
+            "category": "semantic",
+            "ended_utc": "2026-09-14T08:40:47Z",
+            "failed_assertion": "witness testRepeatedRestoreIsDeterministAndLeavethNoTemporary failed as intended (1 failed case(s))",
+            "id": "T61-JM07-atomic-promotion-forgot",
+            "log_path": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/T61/roster/logs/T61-JM07-atomic-promotion-forgot.semantic.log",
+            "log_sha": "69ce847baa7ce9f684ac2c7672d8a40b53bd08e5fe0c1d09ec00f4d50b5bdf8d",
+            "mutant_patch_sha": "501590e0bc549e7d1b71b1d53ea79f9ad9ee33de9fdc02c7fb4f426170a14f8c",
+            "outcome": "KILLED",
+            "started_utc": "2026-09-14T08:40:39Z",
+            "target_tests": [
+              "testRepeatedRestoreIsDeterministAndLeavethNoTemporary"
+            ],
+            "tests_run": 21
+          },
+          {
+            "anchor_count": 1,
+            "baseline_sha": "f60d2cde510abaa8e762d747c9fd955ebd857c56",
+            "build_exit": 0,
+            "category": "semantic",
+            "ended_utc": "2026-09-14T08:41:18Z",
+            "failed_assertion": "witness testW22MalformedDigestLengthIsRefusedAtTheRegisterDoor failed as intended (1 failed case(s))",
+            "id": "T61-SM01-hex-width-law-widened",
+            "log_path": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/T61/roster/logs/T61-SM01-hex-width-law-widened.semantic.log",
+            "log_sha": "a87aa353201ceb7b49f4e3942d07e942c55a8d663ed9bf1d528575fc58d8081e",
+            "mutant_patch_sha": "826be5e0a7b51a17c5229171d38700accbff63560db4dee77faf915bb9acedb3",
+            "outcome": "KILLED",
+            "started_utc": "2026-09-14T08:40:47Z",
+            "target_tests": [
+              "testW22MalformedDigestLengthIsRefusedAtTheRegisterDoor"
+            ],
+            "tests_run": null
+          },
+          {
+            "anchor_count": 1,
+            "baseline_sha": "f60d2cde510abaa8e762d747c9fd955ebd857c56",
+            "build_exit": 0,
+            "category": "semantic",
+            "ended_utc": "2026-09-14T08:41:49Z",
+            "failed_assertion": "witness testW10FileNameAndLengthAloneAreNotTrusted failed as intended (3 failed case(s))",
+            "id": "T61-SM02-digest-limb-asleep",
+            "log_path": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/T61/roster/logs/T61-SM02-digest-limb-asleep.semantic.log",
+            "log_sha": "03b1186581294ce69d67ea4c1abd1211f2b997d000bc25d4f33ac21ca46680f5",
+            "mutant_patch_sha": "285908e36d280a91086e1235b81fcbaa31564184eb2ce9c7bf88cf9c7243aa43",
+            "outcome": "KILLED",
+            "started_utc": "2026-09-14T08:41:18Z",
+            "target_tests": [
+              "testW10FileNameAndLengthAloneAreNotTrusted"
+            ],
+            "tests_run": 22
+          },
+          {
+            "anchor_count": 1,
+            "baseline_sha": "f60d2cde510abaa8e762d747c9fd955ebd857c56",
+            "build_exit": 0,
+            "category": "semantic",
+            "ended_utc": "2026-09-14T08:42:16Z",
+            "failed_assertion": "witness testW08UnsupportedArchitectureIsRefused failed as intended (1 failed case(s))",
+            "id": "T61-SM03-abi-compat-cross-check-asleep",
+            "log_path": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/T61/roster/logs/T61-SM03-abi-compat-cross-check-asleep.semantic.log",
+            "log_sha": "4fccb3fc1a4e521c7ef9462d8b5901efd5df373b819938de749e81b0bafbd052",
+            "mutant_patch_sha": "17fc39e11bfc4db631ed7a818534e6acd6e44450b4279d78da29ea2cd7a56794",
+            "outcome": "KILLED",
+            "started_utc": "2026-09-14T08:41:50Z",
+            "target_tests": [
+              "testW08UnsupportedArchitectureIsRefused"
+            ],
+            "tests_run": null
+          },
+          {
+            "anchor_count": 1,
+            "baseline_sha": "f60d2cde510abaa8e762d747c9fd955ebd857c56",
+            "build_exit": 0,
+            "category": "semantic",
+            "ended_utc": "2026-09-14T08:42:43Z",
+            "failed_assertion": "witness testW07DuplicateIdentifiersAreRefused failed as intended (1 failed case(s))",
+            "id": "T61-SM04-duplicate-censures-both-asleep",
+            "log_path": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/T61/roster/logs/T61-SM04-duplicate-censures-both-asleep.semantic.log",
+            "log_sha": "81578dfd3b1704fb909f33edb5df3f89979fbd868dc8db90e7e359f6be3ad15c",
+            "mutant_patch_sha": "8c807392b89dfcc748363777ebe90da54b158b0b94151e5ec4f1d6e24a45130b",
+            "outcome": "KILLED",
+            "started_utc": "2026-09-14T08:42:16Z",
+            "target_tests": [
+              "testW07DuplicateIdentifiersAreRefused"
+            ],
+            "tests_run": 22
+          },
+          {
+            "anchor_count": 1,
+            "baseline_sha": "f60d2cde510abaa8e762d747c9fd955ebd857c56",
+            "build_exit": 0,
+            "category": "semantic",
+            "ended_utc": "2026-09-14T08:43:14Z",
+            "failed_assertion": "witness testW06TruncatedGgufIsRefusedThoughNameAndLengthAgree failed as intended (1 failed case(s))",
+            "id": "T61-SM05-header-cry-muted",
+            "log_path": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/T61/roster/logs/T61-SM05-header-cry-muted.semantic.log",
+            "log_sha": "7bf14956a9d9cc3c6b0731b1eebc6e9b28019b1c43cc7af6f56e2d0f2e78e71c",
+            "mutant_patch_sha": "6eaca2d65a91821ea29cef1bdc9f58c2e122a946d357f8fe5c0d79709d0b9e94",
+            "outcome": "KILLED",
+            "started_utc": "2026-09-14T08:42:43Z",
+            "target_tests": [
+              "testW06TruncatedGgufIsRefusedThoughNameAndLengthAgree"
+            ],
+            "tests_run": null
+          },
+          {
+            "anchor_count": 1,
+            "baseline_sha": "f60d2cde510abaa8e762d747c9fd955ebd857c56",
+            "build_exit": 0,
+            "category": "semantic",
+            "ended_utc": "2026-09-14T08:43:45Z",
+            "failed_assertion": "witness testW14TheTokenCeasethForwardingAndTheGateKeepethRecord failed as intended (1 failed case(s))",
+            "id": "T61-SM06-token-gate-asleep",
+            "log_path": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/T61/roster/logs/T61-SM06-token-gate-asleep.semantic.log",
+            "log_sha": "b7713d0c415992f4a1a8222042bb20b72ad827d62a50ed85d959af4b8cbdff54",
+            "mutant_patch_sha": "d6eb7a5af34bd83383f8b89732648f3250f6da88ecbab9ee824a0f7d6673f52e",
+            "outcome": "KILLED",
+            "started_utc": "2026-09-14T08:43:15Z",
+            "target_tests": [
+              "testW14TheTokenCeasethForwardingAndTheGateKeepethRecord"
+            ],
+            "tests_run": 22
+          }
+        ]
+      },
+      "objective": {
+        "claimed_head": "f60d2cde510abaa8e762d747c9fd955ebd857c56",
+        "claimed_utc": "2026-09-13T20:09:24+00:00",
+        "objective": "Define native/model provenance and compatibility locks: strict ModelLockV1/NativeLockV1 locks (source commit, filename/hash/size/license, tokenizer, context, embedding pooling/normalization, compatible native ABI; llama.cpp revision + build flags/toolchains), bounded-temp atomic-promotion fetch with no shipping-runtime network, bash3-safe tested-Python replacement for the fetch logic, twin readiness courts on both isles, and the in-lane repair of the two integration.py wounds my probes found bleeding (the stale G3 Noise-routing expectations and the selftest m.run drift)."
+      },
+      "status": "COMPLETE",
+      "tested_tree_sha": "d5794f0e1517ee2730282ee409d320fed04b7e36",
+      "unresolved": [
+        "the registered isle-half commands (swift test --package-path ios/Godstone ...) stand BLOCKED by the executor registry: mac-primary carrieth swift-host/swift-xcode but not the mac-native capability the T61 spec requireth; beneath the capability gap lieth the provisioning gap: third_party/llama.cpp/ is git-ignored (.gitignore:42, the same class as android/local.properties) and holdeth but README.md, so GodstoneLLMBridge cannot compile (LlamaBridge.mm:3 llama.h file not found) and any whole-package swift test buildeth that target and perisheth; the runner recorded the blockage itself (stage exit 5, BLOCKED) and no record claimeth a pass for those commands; the substitute executed evidence standeth real (the mirrored road 1043/1043, the isle court 22/22, the campaign isle rods KILLED, the scoped GodstoneCore target build complete); discharging this lane awaiteth the provisioning lane own act (the vendor and the capability), never a fixture",
+        "GodstoneLLM (ios/Godstone/Sources/GodstoneLLM) is compile-deferred behind the same gate: the LlamaRunner seams (verifiedBy artifact / token) are recorded as instrumented-lane evidence, never as a host build",
+        "the ios ModelManager standeth deliberately untouched: the runtime seam is carried by the defaulted parameters on LlamaRunner; binding a register awaiteth the PINNED estate (the register of the house standeth UNPINNED until independently verified upstream artifacts exist)",
+        "check_parity Invariants C and F are pre-existing red at the planning baseline (measured at b5c3d3d) -- not T61 regressions; left untouched, recorded"
+      ]
+    },
     "T83": {
       "case_results": {
         "android_grand": {
@@ -10049,7 +10598,7 @@
       "unresolved": []
     }
   },
-  "current_task": "T61",
+  "current_task": "T66",
   "external_blockers": [
     "A06",
     "APPROVED_CONTENT",
@@ -10058,48 +10607,42 @@
     "SIGNING"
   ],
   "failed_attempts": [],
-  "in_progress": {
-    "claimed_head": "71378e29211a43cc9c75a13843f5c77ae63c51ee",
-    "claimed_utc": "2026-09-13T20:09:24+00:00",
-    "objective": {
-      "claimed_head": "71378e29211a43cc9c75a13843f5c77ae63c51ee",
-      "claimed_utc": "2026-09-13T20:09:24+00:00",
-      "objective": "Define native/model provenance and compatibility locks: strict ModelLockV1/NativeLockV1 locks (source commit, filename/hash/size/license, tokenizer, context, embedding pooling/normalization, compatible native ABI; llama.cpp revision + build flags/toolchains), bounded-temp atomic-promotion fetch with no shipping-runtime network, bash3-safe tested-Python replacement for the fetch logic, twin readiness courts on both isles, and the in-lane repair of the two integration.py wounds my probes found bleeding (the stale G3 Noise-routing expectations and the selftest m.run drift)."
-    },
-    "task": "T61"
-  },
-  "last_code_head": "dfee6be2920d783492899055b3a825d26ae7c404",
-  "last_observed_head": "dfee6be2920d783492899055b3a825d26ae7c404",
+  "in_progress": null,
+  "last_code_head": "f60d2cde510abaa8e762d747c9fd955ebd857c56",
+  "last_observed_head": "f60d2cde510abaa8e762d747c9fd955ebd857c56",
   "latest_verification": {
-    "at_utc": "2026-09-13T19:39:10+00:00",
-    "boundary_commit": "dfee6be2920d783492899055b3a825d26ae7c404",
+    "at_utc": "2026-09-14T08:52:05+00:00",
+    "boundary_commit": "f60d2cde510abaa8e762d747c9fd955ebd857c56",
     "controls": {
-      "boundary_records": 2,
+      "boundary_records": 3,
       "first_pair_failure": "none this round",
-      "outcomes": "2/2 PASSED at the boundary (check_repository; the gates checker ever-self-testifying 12-of-12 and 15-of-15, the real register judged clean with the HISTORICAL classification and its seventeen-fold drift note)"
+      "outcomes": "3/3 PASSED at the boundary (check_repository rc=0; the gates checker rc=0, selftest 15-of-15 with 8 gates represented and the HISTORICAL classification; the mirror covenant --check rc=0)"
     },
     "isle_grands": {
-      "android_grand": "1067 stand (sealed at T49; no android source path touched)",
-      "content_lane": "56 stand (sealed content courts; not a recorded stage this round)",
-      "ios_grand": "1021 stand (sealed at T51; the isle walked not this round; no ios path in the round)",
-      "python_grand": "163 re-passed whole this round (the sealed T01-T52 courts with the T53 court, from the recorded subsystem log \"Ran 163 tests\" OK)"
+      "android_grand": "the :llm road ran 39 tests 0 failing this round (the T61 court's 21/21 within it, TEST-*.xml walk); the sealed mesh grand standeth at 1067 (T49) untouched -- no mesh path in this round's name-list",
+      "counts_source": "the runner's classifier readeth the gradle/swift tongues as tests=n/a (kind=command, the sealed T06-T50 precedent); the positive counts cited here come from the builder's TEST-*.xml walks and the roads' own 'Executed N tests' lines, preserved in the evidence logs",
+      "ios_grand": "the mirrored road (the compiler's true input; no bridge within) ran 1043 tests 0 failures this round; the T61 isle court 22/22; the campaign's six isle rods KILLED; the registered mac-native lane (swift test --package-path ios/Godstone) standeth BLOCKED by the executor capability and the absent machine-local vendor provisioning (third_party/llama.cpp is git-ignored at .gitignore:42 and holdeth but README.md, so GodstoneLLMBridge cannot compile: LlamaBridge.mm:3 'llama.h' file not found) -- pending, never fixtured",
+      "python_grand": "the T61 court ran 26 OK; the authority selftest 27 of 27; validate/fetch/verify rc 0/1/1 (the UNPINNED refusals at their sealed heights)"
     },
     "narrow": {
       "errors": 0,
       "failures": 0,
-      "tests": 19
+      "isle_lane": "BLOCKED (mac-native capability not provisioned; the vendored header absent; recorded, never fixtured)",
+      "tests": 21
     },
     "roster": {
-      "T53_killed": 25,
-      "of": 25
+      "T61_killed": 23,
+      "of": 23
     },
     "subsystem": {
       "errors": 0,
       "failures": 0,
-      "tests": 163
+      "isle_lane": "BLOCKED (mac-native)",
+      "isle_mirror_road": 1043,
+      "tests": 39
     }
   },
-  "next_task": "T61",
+  "next_task": "T66",
   "phase": "P0",
   "plan_sha256": "685456b378662b0a40a53a6abc810041e37daf97b213f3efeb6cea879363934e",
   "planning_baseline_sha": "b5c3d3d394b70cf356cdde33b47511dad7cbb95c",
@@ -10143,7 +10686,8 @@
     "prove rods upon the COMMITTED pin, never upon the working tree: a hand-proof worktree added from HEAD proveth the COMMITTED court only, and a fortification lying yet uncommitted maketh faithful rods seem faithless (three escapes were misadjudged so this round, until the raw empirics -- printing the published key sequence, and the forged shapes before the in-process gate -- discovered the stale ground). Commit the fortification, prove at the pin, then launch the campaign",
     "arm every selftest control with TWO independent refusers (a shape fault beside a value fault, a run-id beside an agreement, the must-hold beside the skipped-search): a control that falls to the same blow as the witness it mirrors can no longer witness the count -- the register must cry \"refuseth N of N\" under every single rod, and the fifteenth rod's twin-metal lesson is that the installer's own nets (replace seen ONCE, find seen NOT, whole face compilable) are the sower's law before any row is laid",
     "let the audit eate upon the NEW metal, not upon the disk's hoard: exec the composed register in memory and judge the installed face there -- twice the reforging scripts died clean WITHOUT writing because a probe read the old file from disk; and uniqueness of the needle is not enough, the replacement must be singular in the installed whole: a replacement text that twins a line elsewhere in the file is unfaithful metal though the needle be unique",
-    "swear workflow witnesses upon FULL invocation forms, not bare tokens: a comment's prose (the word --release in a remark) or a dormant step's shadow (a second inspector call elsewhere in the same job block) may shelter an amputated command from an assertIn of the token alone; the whole line -- flags, order and all -- is the only form a rod cannot forge"
+    "swear workflow witnesses upon FULL invocation forms, not bare tokens: a comment's prose (the word --release in a remark) or a dormant step's shadow (a second inspector call elsewhere in the same job block) may shelter an amputated command from an assertIn of the token alone; the whole line -- flags, order and all -- is the only form a rod cannot forge",
+    "T61 seal lesson: the registered mac-native lane (swift test --package-path ios/Godstone) is blocked by the executor registry (mac-primary carrieth swift-host/swift-xcode, not mac-native) and beneath it by the absent machine-local vendor provisioning (third_party/llama.cpp git-ignored at .gitignore:42, README only); whole-package swift test buildeth GodstoneLLMBridge and perisheth at LlamaBridge.mm:3 (llama.h) -- the mirror road (ios/Packages/GodstoneFoundation) is the isle executable road; do not fixture the vendor; the lane awaiteth the provisioning lane own act"
   ],
   "warnings_for_next_invocation": [
     "Android toolchain provisioned: JDK 17.0.20.1 + SDK 35 on mac-primary.",
