@@ -5,6 +5,8 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.Dispatchers
+import io.godstone.llm.provenance.CancellationToken
+import io.godstone.llm.provenance.StreamGate
 
 /**
  * Thin Kotlin surface over the JNI bridge. Owns no policy: loading decisions and
@@ -33,11 +35,17 @@ class LlamaBridge {
         handle = 0L
     }
 
-    /** Streams generated tokens as they are produced. */
-    fun generate(prompt: String, maxTokens: Int): Flow<String> = callbackFlow {
+    /**
+     * Streams generated tokens as they are produced. T61: an optional
+     * cancellation token is held by the consumer and standeth independent of
+     * this flow's own queue -- striking it stoppeth the forwarding between
+     * pieces; the single native worker handle is never disturbed.
+     */
+    fun generate(prompt: String, maxTokens: Int, token: CancellationToken? = null): Flow<String> = callbackFlow {
         check(isLoaded) { "model not loaded" }
 
-        val cb = TokenCallback { token -> trySend(token) }
+        val gate = StreamGate(token)
+        val cb = TokenCallback { piece -> if (gate.forward(piece)) trySend(piece) }
         val produced = nativeGenerate(handle, prompt, maxTokens, cb)
 
         when (produced) {

@@ -1,49 +1,99 @@
 {
-  "schema": 1,
+  "schema": 2,
   "status": "UNPINNED",
   "verified_on": null,
   "verified_by": null,
-  "notes": "Proposed artifact coordinates only. Every sha256 must be independently verified before status may become PINNED.",
+  "notes": "Strict provenance register (ModelLockV1/NativeLockV1; scripts/model_provenance.py is its authority). Coordinates only: every provenance field (source_commit, sha256, size_bytes, license, tokenizer, context_tokens, embedding, native_abi) stands null while status is UNPINNED, and the authority refuseth any half-sworn mixture. The external NATIVE_MODELS gate must independently verify each upstream artifact -- its immutable commit, digest, length, license, tokenizer, window and embedding fingerprint -- record who verified it and when, and only then may status become PINNED; no fixture closes that gate. Fetches address immutable commit coordinates (source_commit), never mutable branch heads such as 'main'. The native block transcribes this repository's own build files (android/llm/build.gradle.kts, android/llm/src/main/cpp/CMakeLists.txt, ios/Godstone/Package.swift); llama_revision stays null until third_party/llama.cpp is pinned by the same external gate.",
+  "native": {
+    "llama_revision": null,
+    "source_repo": "ggml-org/llama.cpp",
+    "build_flags": ["-O3", "-ffast-math", "-funroll-loops", "-fno-exceptions", "-fno-rtti"],
+    "toolchains": [
+      {"name": "ndk", "version": "27.0.12077973"},
+      {"name": "cmake", "version": "3.22.1"}
+    ],
+    "abis": ["arm64-v8a"]
+  },
   "artifacts": [
     {
       "id": "generation-light",
+      "kind": "generation",
       "tiers": ["LIGHT"],
       "repo": "Qwen/Qwen3-0.6B-GGUF",
+      "source_commit": null,
       "source_file": "Qwen3-0.6B-Q4_K_M.gguf",
       "output_file": "qwen3-0.6b-q4km.gguf",
-      "sha256": null
+      "sha256": null,
+      "size_bytes": null,
+      "license": null,
+      "tokenizer": null,
+      "context_tokens": null,
+      "embedding": null,
+      "native_abi": null
     },
     {
       "id": "generation-medium",
+      "kind": "generation",
       "tiers": ["MEDIUM"],
       "repo": "ggml-org/Qwen3-1.7B-GGUF",
+      "source_commit": null,
       "source_file": "Qwen3-1.7B-Q4_K_M.gguf",
       "output_file": "qwen3-1.7b-q4km.gguf",
-      "sha256": null
+      "sha256": null,
+      "size_bytes": null,
+      "license": null,
+      "tokenizer": null,
+      "context_tokens": null,
+      "embedding": null,
+      "native_abi": null
     },
     {
       "id": "generation-large",
+      "kind": "generation",
       "tiers": ["LARGE"],
       "repo": "Qwen/Qwen3-4B-GGUF",
+      "source_commit": null,
       "source_file": "Qwen3-4B-Q5_K_M.gguf",
       "output_file": "qwen3-4b-q5km.gguf",
-      "sha256": null
+      "sha256": null,
+      "size_bytes": null,
+      "license": null,
+      "tokenizer": null,
+      "context_tokens": null,
+      "embedding": null,
+      "native_abi": null
     },
     {
       "id": "embedding-small",
+      "kind": "embedding",
       "tiers": ["LIGHT", "MEDIUM"],
       "repo": "CompendiumLabs/bge-small-en-v1.5-gguf",
+      "source_commit": null,
       "source_file": "bge-small-en-v1.5-q8_0.gguf",
       "output_file": "bge-small-en-v1.5-q8.gguf",
-      "sha256": null
+      "sha256": null,
+      "size_bytes": null,
+      "license": null,
+      "tokenizer": null,
+      "context_tokens": null,
+      "embedding": null,
+      "native_abi": null
     },
     {
       "id": "embedding-base",
+      "kind": "embedding",
       "tiers": ["LARGE"],
       "repo": "CompendiumLabs/bge-base-en-v1.5-gguf",
+      "source_commit": null,
       "source_file": "bge-base-en-v1.5-q8_0.gguf",
       "output_file": "bge-base-en-v1.5-q8.gguf",
-      "sha256": null
+      "sha256": null,
+      "size_bytes": null,
+      "license": null,
+      "tokenizer": null,
+      "context_tokens": null,
+      "embedding": null,
+      "native_abi": null
     }
   ]
 }

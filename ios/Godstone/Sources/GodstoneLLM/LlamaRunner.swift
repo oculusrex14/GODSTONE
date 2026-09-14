@@ -44,8 +44,15 @@ public actor LlamaRunner {
 
     public var isLoaded: Bool { bridge.isLoaded }
 
-    public func load(path: String, contextTokens: Int, gpuLayers: Int, threads: Int) throws {
+    public func load(path: String, contextTokens: Int, gpuLayers: Int, threads: Int,
+                     verifiedBy artifact: ContentAddressedArtifact? = nil) throws {
         if loadedPath == path && bridge.isLoaded { return }
+
+        // The content-addressed gate: never hand the bridge a file that doth
+        // not answer to its sworn digest, length and header (T61).
+        if let artifact = artifact {
+            try ModelStaging().verifyInPlace(atPath: path, verifiedBy: artifact)
+        }
 
         let status = bridge.loadModel(atPath: path,
                                       contextTokens: contextTokens,
@@ -79,7 +86,9 @@ public actor LlamaRunner {
     /// Streaming generation. The AsyncStream is the only interface the UI ever
     /// sees, so a slow model shows words appearing rather than a frozen screen.
     public func generate(prompt: String,
-                         sampling: Sampling = Sampling()) -> AsyncThrowingStream<String, Error> {
+                         sampling: Sampling = Sampling(),
+                         token: T61CancellationToken? = nil) -> AsyncThrowingStream<String, Error> {
+        let gate = T61StreamGate(token)
 
         AsyncThrowingStream { continuation in
             Task.detached(priority: .userInitiated) {
@@ -88,8 +97,11 @@ public actor LlamaRunner {
                     return
                 }
 
-                let out = await self.runBlocking(prompt: prompt, sampling: sampling) { token in
-                    continuation.yield(token)
+                let out = await self.runBlocking(prompt: prompt, sampling: sampling) { piece in
+                    // The gate wardeth the forwarding: once the token is struck the
+                    // callback answereth false and the bridge breaketh (T61).
+                    if !gate.forward(piece) { return false }
+                    continuation.yield(piece)
                     return true
                 }
 

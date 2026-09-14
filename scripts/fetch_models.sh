@@ -8,6 +8,22 @@
 # replace a missing checksum with a guessed value: verify the upstream artifact,
 # record who verified it and when, then change status to PINNED.
 #
+# T61 reformation: the download/verify/promote machinery lived here in bash
+# once and carried a bash-4-only array-slurping builtin unknown to macOS's
+# bash 3.2, a mutable
+# 'resolve/main/' coordinate and an unverified mv -- each a defect the card
+# nameth. It now liveth in the tested Python authority
+# scripts/model_provenance.py: bounded temporary files (.part with a hard
+# ceiling at the declared size), verification of digest, length AND the
+# parseable GGUF header before any promotion, atomic os.replace promotion, a
+# corrupt standing destination refused rather than silently overwritten, and
+# immutable commit coordinates (source_commit, never a branch head such as
+# 'main'). This shell keepeth only its fail-closed preflight -- so the CI's
+# textual gate (ci/integration.py, letter K) still seeth the refusal at its
+# source -- and than delegateth. Nothing here is ever wired into the shipping
+# runtime; the apps carry packaged bytes and verify them through the
+# provenance gates on each isle (io.godstone.llm.provenance / GodstoneLLMProvenance).
+#
 # Usage:
 #     scripts/fetch_models.sh
 #     scripts/fetch_models.sh LIGHT
@@ -30,7 +46,12 @@ command -v python3 >/dev/null 2>&1 || {
   exit 1
 }
 
-ROWS_TEXT="$(python3 - "$LOCK" "$WANT_TIER" <<'PY'
+# Fail-closed preflight. A simple command under `set -e` propagateth its
+# exit code directly (unlike the old captured `ROWS_TEXT="$(python3 ...)"`,
+# whose SystemExit could perish silently into an empty list and a FALSE
+# GREEN on the production-corpus gate). The authority re-checketh every
+# claim below independently and in its own voice.
+python3 - "$LOCK" "$WANT_TIER" <<'PY'
 import json, pathlib, re, sys
 
 path = pathlib.Path(sys.argv[1])
@@ -40,7 +61,7 @@ try:
 except Exception as exc:
     raise SystemExit(f"error: cannot read model lock: {exc}")
 
-if lock.get("schema") != 1:
+if lock.get("schema") not in {1, 2}:
     raise SystemExit("error: unsupported model-lock schema")
 if lock.get("status") != "PINNED":
     raise SystemExit(
@@ -50,89 +71,21 @@ if lock.get("status") != "PINNED":
 if not lock.get("verified_on") or not lock.get("verified_by"):
     raise SystemExit("error: PINNED lock requires verified_on and verified_by")
 
-rows = []
+selected = 0
 for item in lock.get("artifacts", []):
-    tiers = item.get("tiers", [])
-    if tier != "ALL" and tier not in tiers:
+    if tier != "ALL" and tier not in item.get("tiers", []):
         continue
+    selected += 1
     sha = item.get("sha256")
     if not isinstance(sha, str) or not re.fullmatch(r"[0-9a-f]{64}", sha):
         raise SystemExit(f"error: invalid or missing sha256 for {item.get('id')}")
-    fields = [item.get("repo"), item.get("source_file"), item.get("output_file")]
-    if any(not isinstance(v, str) or not v for v in fields):
-        raise SystemExit(f"error: incomplete coordinates for {item.get('id')}")
-    if "/" in item["output_file"] or item["output_file"] in {".", ".."}:
-        raise SystemExit(f"error: unsafe output_file for {item.get('id')}")
-    rows.append("|".join([item["repo"], item["source_file"], item["output_file"], sha]))
-
-if not rows:
+if not selected:
     raise SystemExit(f"error: no locked artifacts selected for tier {tier}")
-print("\n".join(rows))
 PY
-)"
-# `var=$(cmd)` does NOT trigger `set -e` when cmd fails (a bash gotcha), so the
-# Python SystemExit above (UNPINNED / missing checksum / bad coordinates) would
-# otherwise be swallowed into an empty ROWS list and the script would exit 0 --
-# a FALSE GREEN on the fail-closed production-corpus gate. Guard it explicitly.
-rc=$?
-if [ "$rc" -ne 0 ]; then
-  exit "$rc"
-fi
-mapfile -t ROWS <<< "$ROWS_TEXT"
-if [ "${#ROWS[@]}" -eq 0 ]; then
-  echo "error: model lock produced no fetchable artifacts for tier $WANT_TIER" >&2
-  exit 1
-fi
 
-mkdir -p "$MODEL_DIR"
-
-checksum() {
-  if command -v sha256sum >/dev/null 2>&1; then
-    sha256sum "$1" | cut -d' ' -f1
-  elif command -v shasum >/dev/null 2>&1; then
-    shasum -a 256 "$1" | cut -d' ' -f1
-  else
-    echo "error: need sha256sum or shasum" >&2
-    return 1
-  fi
-}
-
-download() {
-  local url="$1" dest="$2"
-  if command -v curl >/dev/null 2>&1; then
-    curl --fail --location --retry 3 --continue-at - --output "$dest" "$url"
-  elif command -v wget >/dev/null 2>&1; then
-    wget --continue --output-document="$dest" "$url"
-  else
-    echo "error: need curl or wget" >&2
-    return 1
-  fi
-}
-
-for row in "${ROWS[@]}"; do
-  IFS='|' read -r repo source_file output_file want_sha <<< "$row"
-  dest="$MODEL_DIR/$output_file"
-  part="$dest.part"
-
-  if [[ -f "$dest" && "$(checksum "$dest")" == "$want_sha" ]]; then
-    echo "ok       $output_file (already verified)"
-    continue
-  fi
-
-  rm -f "$part"
-  echo "fetching $source_file from $repo"
-  download "https://huggingface.co/$repo/resolve/main/$source_file" "$part"
-
-  got="$(checksum "$part")"
-  if [[ "$got" != "$want_sha" ]]; then
-    echo "error: checksum failed for $output_file" >&2
-    echo "       expected $want_sha" >&2
-    echo "       got      $got" >&2
-    rm -f "$part"
-    exit 1
-  fi
-  mv "$part" "$dest"
-  echo "ok       $output_file"
-done
-
-echo "locked model artifacts are in $MODEL_DIR"
+# The delegation: bounded temporary files, digest/length/header verification,
+# atomic promotion and immutable coordinates all live in the tested Python
+# authority, whose ever-living selftest refuseth its own corruptions before
+# any verdict is given.
+exec python3 "$ROOT/scripts/model_provenance.py" fetch \
+    --lock "$LOCK" --dest "$MODEL_DIR" --tier "$WANT_TIER"

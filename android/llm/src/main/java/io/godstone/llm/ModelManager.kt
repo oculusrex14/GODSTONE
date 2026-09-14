@@ -2,6 +2,9 @@ package io.godstone.llm
 
 import android.app.ActivityManager
 import android.content.Context
+import io.godstone.llm.provenance.ContentAddressedArtifact
+import io.godstone.llm.provenance.CancellationToken
+import io.godstone.llm.provenance.ModelStaging
 import java.io.File
 
 /**
@@ -14,23 +17,28 @@ import java.io.File
 class ModelManager(
     private val context: Context,
     private val modelAsset: String,
-    private val contextTokens: Int
+    private val contextTokens: Int,
+    private val artifact: ContentAddressedArtifact? = null
 ) {
 
     private val bridge = LlamaBridge()
+    private val staging = ModelStaging()
 
     val isLoaded: Boolean get() = bridge.isLoaded
 
-    /** Resolve the model path without touching the weights. */
-    fun prepareWithoutLoading(): File {
-        val dest = File(context.filesDir, modelAsset)
-        if (!dest.exists()) {
-            context.assets.open(modelAsset).use { input ->
-                dest.outputStream().use { output -> input.copyTo(output) }
-            }
-        }
-        return dest
-    }
+    /**
+     * Resolve the model path. T61: the packaged asset is staged to a bounded
+     * temporary file, verified against the sworn artifact (digest, length,
+     * GGUF header) when one is given, and promoted atomically -- the old
+     * bare-exists trust, whereby a perished mid-copy left a truncated file
+     * believed forever after, is extinguished by this gate.
+     */
+    fun prepareWithoutLoading(): File =
+        staging.stage(
+            { name -> context.assets.open(name) },
+            File(context.filesDir, modelAsset),
+            artifact
+        )
 
     /**
      * Load the model. Returns false when loading is impossible, in which case
@@ -44,7 +52,8 @@ class ModelManager(
 
     fun release() = bridge.release()
 
-    fun generate(prompt: String, maxTokens: Int) = bridge.generate(prompt, maxTokens)
+    fun generate(prompt: String, maxTokens: Int, token: CancellationToken? = null) =
+        bridge.generate(prompt, maxTokens, token)
 
     /**
      * Use the big cores only. Spawning a thread per core including efficiency
