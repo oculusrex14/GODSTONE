@@ -23,6 +23,19 @@ into Approved'. The publication order below is the law of this file:
 validate -> stage -> re-verify -> replace archive -> publish manifest.
 Every refusal precedes every write; no failing path toucheth the
 authoritative output.
+
+T66: the held-out evaluation rides the same publication order. When the
+release owner supplieth --heldout-evaluation (a record published by
+content.eval.heldout), the archive now being staged must BE the corpus that
+evaluation was run against, the model lock it bound must still stand as it
+stood, the ledger must be COMPLETE, and no case may have been allowed that
+the manifest requires refused. The verified summary is published inside
+APPROVED_ASSETS.json, so a consumer of the staged bytes can see which
+evaluation those bytes carry. The gate never demanded an evaluation by
+itself -- that is the release owner's call through
+--require-heldout-evaluation -- because the held-out manifest and the
+clinical review behind it are external artifacts this repository cannot
+manufacture.
 """
 from __future__ import annotations
 import argparse
@@ -86,12 +99,15 @@ def local_file(root: Path, value: Any, field: str) -> Path:
     return path
 
 
-def _approved_manifest_document(staged: Mapping[str, Any]) -> dict[str, Any]:
+def _approved_manifest_document(staged: Mapping[str, Any],
+                                evaluation: Mapping[str, Any] | None = None) -> dict[str, Any]:
     """The approved-resource manifest's own bytes: deterministic (no
     timestamps, sorted keys, fixed fields), so a rendered project refereth
-    to the very same document twice and readeth the same."""
+    to the very same document twice and readeth the same. The evaluation
+    block, when the release owner furnished one, is transcribed from the
+    record rather than from the clock."""
     asset = staged["assets"][0]
-    return {
+    document = {
         "schema": APPROVED_MANIFEST_SCHEMA,
         "tier": staged["tier"],
         "application_id": staged["application_id"],
@@ -104,9 +120,50 @@ def _approved_manifest_document(staged: Mapping[str, Any]) -> dict[str, Any]:
             "build_phase": "resources",
         }],
     }
+    if evaluation is not None:
+        document["evaluation"] = dict(evaluation)
+    return document
 
 
-def _validate_operator_selected(manifest_path: Path, *, trust_store_path: Path) -> tuple[dict[str, Any], list[tuple[Path, str]]]:
+EVALUATION_BLOCK_SCHEMA = 1
+
+
+def _heldout_evaluation(evaluation_path: Path, *,
+                        heldout_manifest_path: Path | None,
+                        model_lock_path: Path | None,
+                        expected_corpus_sha256: str) -> tuple[list[str], dict[str, Any] | None]:
+    """Verify a held-out evaluation record against the archive being staged.
+
+    The import is deliberately lazy: a staging run that carrieth no
+    evaluation neither loads nor depends on the evaluation package."""
+    from content.eval import heldout as heldout_eval
+    try:
+        record = heldout_eval.load_record(Path(evaluation_path))
+        manifest = (heldout_eval.load_manifest(Path(heldout_manifest_path))
+                    if heldout_manifest_path is not None else None)
+        errors, summary = heldout_eval.verify_record(
+            record, manifest=manifest, expected_corpus_sha256=expected_corpus_sha256,
+            model_lock_path=Path(model_lock_path) if model_lock_path is not None else None)
+    except heldout_eval.HeldOutError as exc:
+        return [f"held-out evaluation rejected: {exc}"], None
+    except (OSError, ValueError) as exc:
+        return [f"held-out evaluation unreadable: {exc}"], None
+    if errors:
+        return [f"held-out evaluation rejected: {item}" for item in errors], None
+    summary = dict(summary)
+    summary["schema"] = EVALUATION_BLOCK_SCHEMA
+    summary["record_sha256"] = hashlib.sha256(
+        Path(evaluation_path).read_bytes()).hexdigest()
+    summary["record_path"] = Path(evaluation_path).name
+    return [], summary
+
+
+def _validate_operator_selected(manifest_path: Path, *, trust_store_path: Path,
+                                heldout_evaluation: Path | None = None,
+                                heldout_manifest: Path | None = None,
+                                model_lock_path: Path | None = None,
+                                require_heldout_evaluation: bool = False,
+                                ) -> tuple[dict[str, Any], list[tuple[Path, str]]]:
     root = manifest_path.resolve().parent
     try:
         data = strict_json_loads(manifest_path.read_text(encoding="utf-8"),
@@ -200,9 +257,30 @@ def _validate_operator_selected(manifest_path: Path, *, trust_store_path: Path) 
                                         errors.append(f"signed production provenance mismatch: {field}")
                 except (ArchiveManifestError, OSError, ValueError) as exc:
                     errors.append(str(exc))
+    # T66: the held-out evaluation of the very bytes being staged. Checked
+    # only once the artifact itself standeth sound, so the operator readeth
+    # the primary fault first rather than a cascade.
+    summary: dict[str, Any] | None = None
+    if not errors:
+        if require_heldout_evaluation and heldout_evaluation is None:
+            errors.append("the release owner requireth a held-out evaluation and none "
+                          "was furnished (--heldout-evaluation)")
+        elif heldout_evaluation is not None:
+            if archive_path is None:
+                errors.append("a held-out evaluation requireth the Archive it was run "
+                              "against")
+            else:
+                problems, summary = _heldout_evaluation(
+                    heldout_evaluation, heldout_manifest_path=heldout_manifest,
+                    model_lock_path=model_lock_path,
+                    expected_corpus_sha256=sha256(archive_path))
+                errors.extend(problems)
     if errors:
         raise ValueError("release assets rejected:\n- " + "\n- ".join(errors))
-    return dict(data), staged
+    document = dict(data)
+    if summary is not None:
+        document["_heldout_evaluation"] = summary
+    return document, staged
 
 
 DEPUTY_ALLOWED_NAMES = {"archive_light.db", "generation.gguf", "embedding.gguf"}
@@ -303,19 +381,43 @@ def _validate_legacy_deputy(manifest_path: Path) -> tuple[dict[str, Any], list[t
     return dict(data), staged
 
 
-def validate(manifest_path: Path, *, trust_store_path: Path | None = None) -> tuple[dict[str, Any], list[tuple[Path, str]]]:
+def validate(manifest_path: Path, *, trust_store_path: Path | None = None,
+             heldout_evaluation: Path | None = None,
+             heldout_manifest: Path | None = None,
+             model_lock_path: Path | None = None,
+             require_heldout_evaluation: bool = False,
+             ) -> tuple[dict[str, Any], list[tuple[Path, str]]]:
     """Two lawful faces of one gate (T52, under the T39 back-compatibility
     precedent). The operator standing present selecteth the trust store
     explicitly -- the T51 law, arm unchanged byte for byte. Absent the
     operator, the legacy deputy face of the pre-T51 era readeth the
-    document's own pointers and bindeth the same verifier."""
+    document's own pointers and bindeth the same verifier. The deputy
+    faceth never publish'th, so a held-out evaluation -- which existeth to
+    be published beside staged bytes -- is refused there by name."""
     if trust_store_path is not None:
-        return _validate_operator_selected(manifest_path, trust_store_path=trust_store_path)
+        return _validate_operator_selected(
+            manifest_path, trust_store_path=trust_store_path,
+            heldout_evaluation=heldout_evaluation, heldout_manifest=heldout_manifest,
+            model_lock_path=model_lock_path,
+            require_heldout_evaluation=require_heldout_evaluation)
+    if heldout_evaluation is not None or require_heldout_evaluation:
+        raise ValueError(
+            "a held-out evaluation is the operator-selected face's law: staging "
+            "requireth --trust-store before an evaluation can be bound to it")
     return _validate_legacy_deputy(manifest_path)
 
 
-def stage(manifest_path: Path, output: Path, *, trust_store_path: Path) -> None:
-    data, assets = validate(manifest_path, trust_store_path=trust_store_path)
+def stage(manifest_path: Path, output: Path, *, trust_store_path: Path,
+          heldout_evaluation: Path | None = None,
+          heldout_manifest: Path | None = None,
+          model_lock_path: Path | None = None,
+          require_heldout_evaluation: bool = False) -> None:
+    data, assets = validate(manifest_path, trust_store_path=trust_store_path,
+                            heldout_evaluation=heldout_evaluation,
+                            heldout_manifest=heldout_manifest,
+                            model_lock_path=model_lock_path,
+                            require_heldout_evaluation=require_heldout_evaluation)
+    evaluation = data.pop("_heldout_evaluation", None)
     root = manifest_path.resolve().parent
     # An output that contains its own inputs could overwrite approved source
     # files or their evidence. Symlinks are not output directories or files.
@@ -353,7 +455,7 @@ def stage(manifest_path: Path, output: Path, *, trust_store_path: Path) -> None:
         # The archive is in place and true; now publish its manifest, and
         # only now. A consumer that findeth the manifest findeth verified
         # bytes behind it; a failed publish leaveth the old pair as it was.
-        manifest_document = _approved_manifest_document(data)
+        manifest_document = _approved_manifest_document(data, evaluation)
         manifest_candidate = Path(work) / APPROVED_MANIFEST_NAME
         manifest_candidate.write_text(
             json.dumps(manifest_document, sort_keys=True, indent=2, ensure_ascii=False) + "\n",
@@ -372,17 +474,38 @@ def main() -> int:
                              "manifest); required for staging, omitted on --check-only the legacy "
                              "deputy face readeth the document's own pointers")
     parser.add_argument("--check-only", action="store_true")
+    parser.add_argument("--heldout-evaluation", type=Path, default=None,
+                        help="the held-out evaluation record (content.eval.heldout) "
+                             "that was run against this very Archive; it must be "
+                             "COMPLETE, bound to the same corpus and model lock, and "
+                             "free of false allows, or staging is refused")
+    parser.add_argument("--heldout-manifest", type=Path, default=None,
+                        help="the held-out manifest the record answers, for the full "
+                             "case-by-case cross-check")
+    parser.add_argument("--model-lock", type=Path, default=None,
+                        help="the model lock the evaluation bound (defaults to "
+                             "docs/packaging/MODELS.lock.json)")
+    parser.add_argument("--require-heldout-evaluation", action="store_true",
+                        help="refuse to stage when no held-out evaluation is furnished")
     args = parser.parse_args()
     if not args.check_only and args.trust_store is None:
         parser.error("staging requireth the operator-selected --trust-store")
+    if args.heldout_evaluation is not None and args.model_lock is None:
+        args.model_lock = REPOSITORY_ROOT / "docs" / "packaging" / "MODELS.lock.json"
     try:
+        options = {
+            "heldout_evaluation": args.heldout_evaluation,
+            "heldout_manifest": args.heldout_manifest,
+            "model_lock_path": args.model_lock,
+            "require_heldout_evaluation": args.require_heldout_evaluation,
+        }
         if args.check_only:
             if args.trust_store is not None:
-                validate(args.manifest, trust_store_path=args.trust_store)
+                validate(args.manifest, trust_store_path=args.trust_store, **options)
             else:
-                validate(args.manifest)
+                validate(args.manifest, **options)
         else:
-            stage(args.manifest, args.out, trust_store_path=args.trust_store)
+            stage(args.manifest, args.out, trust_store_path=args.trust_store, **options)
     except (ArchiveManifestError, OSError, ValueError) as exc:
         print(exc)
         return 1
