@@ -13229,7 +13229,7 @@
       ]
     }
   },
-  "current_task": null,
+  "current_task": "T55",
   "external_blockers": [
     "A06",
     "APPROVED_CONTENT",
@@ -13238,7 +13238,16 @@
     "SIGNING"
   ],
   "failed_attempts": [],
-  "in_progress": null,
+  "in_progress": {
+    "claimed_head": "a0ce9ac3b143b731966954d131e6b39e6c25a713",
+    "claimed_utc": "2026-09-14T20:30:15+00:00",
+    "objective": {
+      "claimed_head": "a0ce9ac3b143b731966954d131e6b39e6c25a713",
+      "claimed_utc": "2026-09-14T20:30:15+00:00",
+      "objective": "Add the Android identity verification, rotation and wipe UX: a ViewModel layer projected from the durable trust and wipe authority with ContactVerificationCommand, ExactRotationCandidateRef and WipeProgressState; lab UI for the own fingerprint and QR (size/type bounded, no private-key export, no screenshot or log leak); exact recipient-binding import; a TOFU-versus-verified contact distinction; a compare/confirm fingerprint flow; pending key-rotation approval BOUND TO THE EXACT CANDIDATE VERSION the user was shown (never whichever rotation is current), through the existing durable repository CAS; revocation during an active session; and a resumable wipe state that surviveth a failed or interrupted wipe and a relaunch -- so that approving the current rotation instead of the displayed candidate falleth the CAS/UI integration witness."
+    },
+    "task": "T55"
+  },
   "last_code_head": "8129eaabab900dfa60bebdf24432dae3c9cf872a",
   "last_observed_head": "8129eaabab900dfa60bebdf24432dae3c9cf872a",
   "latest_verification": {
