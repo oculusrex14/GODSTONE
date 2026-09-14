@@ -10806,6 +10806,229 @@
         "the lab's Android manifest carries the Bluetooth permissions the shipping app refuses, deliberately, because the lab exists to exercise real adapters on a real device; the gate asserteth that they appear in the LAB profile only."
       ]
     },
+    "T55": {
+      "case_results": {
+        "added_cases": {
+          "android/app/src/test/java/io/godstone/app/readiness/ReadinessT55Test.kt": [
+            "test_w01_one_contact_is_verified_only_after_the_compare",
+            "test_w02_the_displayed_candidate_is_the_one_approved",
+            "test_w03_a_stale_ref_leaveth_the_estate_unchanged",
+            "test_w04_revocation_during_an_active_session",
+            "test_w05_a_corrupt_trust_store_claimeth_nothing",
+            "test_w06_a_failed_wipe_surviveth_a_relaunch",
+            "test_w07_a_malformed_payload_is_refused",
+            "test_w08_an_oversized_payload_is_refused_before_decoding",
+            "test_w09_no_private_material_is_exported_or_leaked",
+            "test_w10_the_screenshot_policy_followeth_the_material",
+            "test_w11_a_mismatching_fingerprint_is_refused",
+            "test_w12_a_refused_command_never_mutates_the_estate",
+            "test_w13_the_ref_matcheth_the_durable_cas_signature"
+          ]
+        },
+        "corrected_cases": {
+          "note": "no pre-T55 assertion was changed. TWO REAL PRODUCTION DEFECTS were found by this court while it was being written, and both were fixed in the production code:",
+          "production_defects_found_by_the_court": [
+            "WipeProgressState.blocksOrdinaryUse said `this !is Idle`, so a COMPLETE wipe claimed to block ordinary use -- the opposite of the truth (W06 caught it)",
+            "the compare/confirm flow promoted first-use trust WITHOUT asking the authority to record it, so a verified contact would be forgotten at the next launch; TrustPort gained confirmVerified, a durable CAS on the fingerprint digest (W01 caught it)"
+          ],
+          "witness_expectations_corrected": [
+            "W07 no longer asserteth that a locally-refused command re-projects: it must not touch the authority at all",
+            "W12 asserteth the LAW (the estate is unchanged) rather than call counts, which conflated 'consulted' with 'mutated'",
+            "W02 gained the dismissal arm after the sixth rod proved the app owned that law and not the authority's"
+          ]
+        },
+        "counts": {
+          "narrow_android": 13,
+          "subsystem_android": 34
+        },
+        "counts_source": "the runner's own records at the implementation head (both PASSED) plus the harness's artifacts: a TEST-*.xml walk of android/app/build/test-results/testLightDebugUnitTest after purging stale results and passing --no-build-cache (T55/executed/T55-narrow-gradlew-executed.log 13/0 and T55-subsystem-gradlew-executed.log 34/0). The runner's gradle records carry tests=UNKNOWN because its classifier parses only the python summary.",
+        "courts": {
+          "beside": "gradlew :mesh:testDebugUnitTest (the mesh isle, unchanged and green)",
+          "controls": "ci/check_repository.py, ci/check_release_gates_status.py",
+          "narrow": "android/app/src/test/java/io/godstone/app/readiness/ReadinessT55Test.kt (13 witnesses, driven by the REAL IdentityTrustViewModel and the REAL QrPayloadPolicy)",
+          "subsystem": "gradlew :app:testLightDebugUnitTest (the whole LIGHT app suite)"
+        },
+        "deleted_cases": [],
+        "executed_scenarios": {
+          "cas_contract": "a witness readeth the durable authority's own source to prove the app's ref carrieth exactly the node, generation and key digest its CAS bindeth on (W13)",
+          "competing_rotations": "the screen holds the ELDER candidate while the authority's pending row is newer: approving the DISPLAYED ref is refused as stale, the newer candidate standeth, the old trust is untouched; and a DISMISSAL approveth nothing (W02)",
+          "corrupt_store": "a corrupt trust store is a typed CORRUPT marker: no contact and no own identity is claimed (W05)",
+          "device": "NOT EXECUTED: the section 18/19 physical matrix is external and T73-T75 own it; no Compose screen was rendered",
+          "mismatch": "a mismatching or malformed fingerprint promotes nothing (W11)",
+          "no_key_export": "the QR payload is the public binding form, the approval carries a digest and never material, and no projection or message renders private material (W09)",
+          "no_mutation_on_refusal": "no generation moved and no pending rotation was created or consumed (W12)",
+          "qr_bounds": "malformed (prefix/charset/width) and oversized payloads are refused by name, with the authority's import road never entered (W07, W08)",
+          "revocation": "revoking during an active session retires the pending rotation, refuses a late approval, and is idempotent (W04)",
+          "screenshot_policy": "protection follows the material on screen: true while the own identity standeth, false when a corrupt store claims none (W10)",
+          "stale_or_foreign_ref": "the estate is byte-identical after a refused approval (W03)",
+          "tofu_vs_verified": "first-use trust promoted to VERIFIED only through the authority's CAS; the two labels never read alike (W01)",
+          "wipe_after_relaunch": "a failed wipe stays resumable; a FRESH ViewModel over the same journal re-projects it and resume reacheth the terminal state (W06)"
+        },
+        "produced_artifacts": {
+          "compose": {
+            "laws": "every screen is a pure function of TrustUiState; screenshotProtectionWanted followeth the material; a TOFU contact and a VERIFIED contact never read alike",
+            "path": "android/app/src/main/java/io/godstone/app/ui/trust/TrustScreens.kt"
+          },
+          "contracts": {
+            "path": "android/app/src/main/java/io/godstone/app/trust/TrustContracts.kt",
+            "types": [
+              "ExactRotationCandidateRef",
+              "ContactVerificationCommand",
+              "WipeProgressState",
+              "TrustPort",
+              "TrustCensus",
+              "ConfirmOutcome",
+              "ContactProjection",
+              "OwnIdentityProjection",
+              "UnavailableTrustPort"
+            ]
+          },
+          "qr_policy": {
+            "bounds": [
+              "versioned prefix godstone-binding:v1:",
+              "base64url charset",
+              "512-character ceiling",
+              "exact 112-octet decoded width",
+              "no all-zero node id or key"
+            ],
+            "path": "android/app/src/main/java/io/godstone/app/trust/QrPayloadPolicy.kt"
+          },
+          "viewmodel": {
+            "laws": "the DISPLAYED candidate is the one approved; no authoritative state moveth on a validation failure; two error roads (local refusal reacheth no store, an authority refusal re-projects); nothing here is a secret",
+            "path": "android/app/src/main/java/io/godstone/app/trust/IdentityTrustViewModel.kt"
+          }
+        },
+        "roster_campaigns": {
+          "ledger_repairs": [
+            "the rods were written without gradle_filter, so the harness could not invoke them at all",
+            "the compare rod's replacement retained its own needle, which the ledger rightly refuses",
+            "the sixth rod struck code the ViewModel does not own (the authority retires the pending rotation): replaced by the dismissal law with its witness arm added",
+            "the tenth rod was the no-op described above"
+          ],
+          "pass_1": {
+            "escapes": "RC10 was a NO-OP mutant: its 'changed' line meant exactly what the original did, so it could never be killed",
+            "repair": "d573d74856db7d70d7572f3b6ad8cdf175885934",
+            "rods": 12,
+            "tally": {
+              "ESCAPED": 1,
+              "KILLED": 11
+            }
+          },
+          "pass_2": {
+            "baseline": "d573d74856db7d70d7572f3b6ad8cdf175885934",
+            "note": "the final official pass ran with the ledger in exactly the state d573d74856db7d70d7572f3b6ad8cdf175885934 commits",
+            "rods": 12,
+            "tally": {
+              "ESCAPED": 0,
+              "INVALID": 0,
+              "KILLED": 12,
+              "SKIPPED": 0,
+              "TIMEOUT": 0
+            }
+          }
+        }
+      },
+      "claim_commit": "a0ce9ac3b143b731966954d131e6b39e6c25a713",
+      "commands": [
+        "T55-narrow-gradlew-003",
+        "T55-subsystem-gradlew-003",
+        "T55-controls-python3-005",
+        "T55-controls-python3-006"
+      ],
+      "device_gate_ids": [],
+      "file_hashes": {
+        "android/app/src/main/java/io/godstone/app/trust/IdentityTrustViewModel.kt": "654f37c4f163b5bd561610d4395241a65ca7e0a250d961c266c28719e3b5bf66",
+        "android/app/src/main/java/io/godstone/app/trust/QrPayloadPolicy.kt": "b9b830b81742da526be52a166bb2460830238bea76bbdb0eb14c0d83aa687fa3",
+        "android/app/src/main/java/io/godstone/app/trust/TrustContracts.kt": "b09b59e32cd4bc4f4bb9dd29e18cda81a2c27a97a16c2937c908b4587b2ab6fa",
+        "android/app/src/main/java/io/godstone/app/ui/trust/TrustScreens.kt": "1dd58e9af12736208e98bbc9a38f51fbfcc0e980245aeb76bca75acebab2f0bc",
+        "android/app/src/test/java/io/godstone/app/readiness/ReadinessT55Test.kt": "b98caee5e41bc17b5eb2e813e4439890c35ac69691e29389813bd9d356fb1fcf",
+        "ci/mutations.py": "d6ade67b217df12a6104058db876893ce116b8a127cc2c3db0b890ce60b2be62"
+      },
+      "implementation_commit": "d573d74856db7d70d7572f3b6ad8cdf175885934",
+      "implementation_commits": [
+        "4c88511115dacbf723a58f9a51decb4512be0854",
+        "885147e7fc01d22eafd64b36db3dcb254f945e07",
+        "d573d74856db7d70d7572f3b6ad8cdf175885934"
+      ],
+      "inputs": {
+        "children_commit_order": [
+          "T55(claim)",
+          "T55(builder)",
+          "T55(builder-repair)",
+          "T55(builder-rods)",
+          "T55(builder-rods-repair)",
+          "T55(builder-rods-repair-2)",
+          "T55(builder-rods-repair-3)",
+          "T55(builder-rods-repair-4)",
+          "T55(builder-rods-repair-5)",
+          "T55(M)"
+        ],
+        "claim_ordering_note": "the claim was taken at a0ce9ac3b143b731966954d131e6b39e6c25a713; the stages and the final roster were run at the implementation head d573d74856db7d70d7572f3b6ad8cdf175885934. Runner logs and executed logs live in distinct directories (T55/logs, T55/executed) so no pass can overwrite another.",
+        "governed_source": [
+          "android/app/src/main/java/io/godstone/app/trust/TrustContracts.kt",
+          "android/app/src/main/java/io/godstone/app/trust/IdentityTrustViewModel.kt",
+          "android/app/src/main/java/io/godstone/app/trust/QrPayloadPolicy.kt",
+          "android/app/src/main/java/io/godstone/app/ui/trust/TrustScreens.kt",
+          "android/app/src/test/java/io/godstone/app/readiness/ReadinessT55Test.kt",
+          "ci/mutations.py"
+        ],
+        "required_regression_paths": [
+          "android/app/src/test/java/io/godstone/app/readiness/ReadinessT55Test.kt"
+        ],
+        "sealed_hot_paths_untouched": [
+          "the shipping LIGHT surface: no permission, plist key or manifest entry moved; ci/check_release_surface.py and ci/check_shipping_path.py both pass",
+          "the shipping dependency graph: :app still depends on :core alone, and the trust layer nameth no non-shipping module anywhere (the gate caught the first form of a comment that did)",
+          "the meshs' durable trust authority and its CAS: T55 CONSUMES the contract and changes neither the repository nor its schema",
+          "the five external gates and docs/production/RELEASE_GATES_STATUS.json",
+          "the readiness statements: both flags stay false"
+        ]
+      },
+      "ladder_boundary_commit": "d573d74856db7d70d7572f3b6ad8cdf175885934",
+      "mutation_results": {
+        "attempts_archived": [
+          {
+            "baseline": "885147e7fc01d22eafd64b36db3dcb254f945e07",
+            "pass": 1,
+            "repaired_in": "d573d74856db7d70d7572f3b6ad8cdf175885934",
+            "rods": 12,
+            "tally": {
+              "ESCAPED": 1,
+              "KILLED": 11
+            }
+          }
+        ],
+        "campaign_note": "the twelve rods ran in the FINAL official pass, fail-closed, at baseline d573d74856db7d70d7572f3b6ad8cdf175885934: 12 KILLED of 12, SKIPPED=0, INVALID=0, TIMEOUT=0, ESCAPED=0. The card's named semantic negative is RC1 ('Approve whichever rotation is current instead of the displayed candidate: CAS/UI integration fails'), killed by W02 on pass 1 and again in the final pass. Pass 1's single escape was a NO-OP mutant, which is recorded rather than hidden: a rod that changes nothing cannot be killed.",
+        "of": 12,
+        "roster_manifest": "T55/roster/manifest.json",
+        "semantic": {
+          "harness": "ci/mutations.py run_semantic (the ledger filtered to the T55- prefix; every rod nameth its app module and its testLightDebugUnitTest task)",
+          "platforms": [
+            "jvm"
+          ],
+          "work_parent": "/Users/oculus/.cache/godstone-mutation-worktrees-t55 (disposable; the live tree is never touched)"
+        },
+        "tally": {
+          "ESCAPED": 0,
+          "INVALID": 0,
+          "KILLED": 12,
+          "SKIPPED": 0,
+          "TIMEOUT": 0
+        }
+      },
+      "objective": {
+        "claimed_head": "a0ce9ac3b143b731966954d131e6b39e6c25a713",
+        "claimed_utc": "2026-09-14T20:30:15+00:00",
+        "objective": "Add the Android identity verification, rotation and wipe UX: a ViewModel layer projected from the durable trust and wipe authority with ContactVerificationCommand, ExactRotationCandidateRef and WipeProgressState; lab UI for the own fingerprint and QR (size/type bounded, no private-key export, no screenshot or log leak); exact recipient-binding import; a TOFU-versus-verified contact distinction; a compare/confirm fingerprint flow; pending key-rotation approval BOUND TO THE EXACT CANDIDATE VERSION the user was shown (never whichever rotation is current), through the existing durable repository CAS; revocation during an active session; and a resumable wipe state that surviveth a failed or interrupted wipe and a relaunch -- so that approving the current rotation instead of the displayed candidate falleth the CAS/UI integration witness."
+      },
+      "status": "COMPLETE",
+      "tested_tree_sha": "bb1934e5a0158edd58f47749765218e90e5edf91",
+      "unresolved": [
+        "the TrustPort binding to the REAL repository is NOT claimed here: the production path is exercised through the port's contract, the real binding belongs to the lab composition (T54's targets), and the shipping app ships UnavailableTrustPort. W13 proves the app's ref carrieth exactly the three fields the durable CAS bindeth on -- a CONTRACT proof, not an end-to-end one.",
+        "no Compose screen was rendered: the court judges the state object the screens render, not pixels.",
+        "no screenshot behaviour was executed: screenshotProtectionWanted is a policy the Activity applies, and the court proves the policy followeth the material.",
+        "the section 18/19 PHYSICAL device matrix is NOT executed: T73-T75 own it."
+      ]
+    },
     "T61": {
       "case_results": {
         "added_cases": [
@@ -13229,7 +13452,7 @@
       ]
     }
   },
-  "current_task": "T55",
+  "current_task": null,
   "external_blockers": [
     "A06",
     "APPROVED_CONTENT",
@@ -13238,54 +13461,45 @@
     "SIGNING"
   ],
   "failed_attempts": [],
-  "in_progress": {
-    "claimed_head": "a0ce9ac3b143b731966954d131e6b39e6c25a713",
-    "claimed_utc": "2026-09-14T20:30:15+00:00",
-    "objective": {
-      "claimed_head": "a0ce9ac3b143b731966954d131e6b39e6c25a713",
-      "claimed_utc": "2026-09-14T20:30:15+00:00",
-      "objective": "Add the Android identity verification, rotation and wipe UX: a ViewModel layer projected from the durable trust and wipe authority with ContactVerificationCommand, ExactRotationCandidateRef and WipeProgressState; lab UI for the own fingerprint and QR (size/type bounded, no private-key export, no screenshot or log leak); exact recipient-binding import; a TOFU-versus-verified contact distinction; a compare/confirm fingerprint flow; pending key-rotation approval BOUND TO THE EXACT CANDIDATE VERSION the user was shown (never whichever rotation is current), through the existing durable repository CAS; revocation during an active session; and a resumable wipe state that surviveth a failed or interrupted wipe and a relaunch -- so that approving the current rotation instead of the displayed candidate falleth the CAS/UI integration witness."
-    },
-    "task": "T55"
-  },
-  "last_code_head": "8129eaabab900dfa60bebdf24432dae3c9cf872a",
-  "last_observed_head": "8129eaabab900dfa60bebdf24432dae3c9cf872a",
+  "in_progress": null,
+  "last_code_head": "d573d74856db7d70d7572f3b6ad8cdf175885934",
+  "last_observed_head": "d573d74856db7d70d7572f3b6ad8cdf175885934",
   "latest_verification": {
-    "at_utc": "2026-09-15T04:20:00+00:00",
-    "boundary_commit": "8129eaabab900dfa60bebdf24432dae3c9cf872a",
+    "at_utc": "2026-09-15T05:40:00+00:00",
+    "boundary_commit": "d573d74856db7d70d7572f3b6ad8cdf175885934",
     "controls": {
       "boundary_records": 2,
-      "outcomes": "2/2 PASSED at the boundary (check_repository rc=0 with the lab gate now wired in; the release-gates checker rc=0). The shipping-path and tiers gates were run beside them and stand rc=0 after the by-name repair"
+      "outcomes": "2/2 PASSED at the boundary (check_repository rc=0 -- including the shipping-path gate that caught this task's own comment -- and the release-gates checker rc=0). The lab-isolation gate and the :mesh suite were run beside them and stand rc=0"
     },
     "isle_grands": {
-      "android_grand": "no android court in this round: T54 is a build/control task. :mesh:testDebugUnitTest still passeth and :labmesh:testDebugUnitTest runneth 3/3 (the lab's own test capability)",
-      "counts_source": "see completed_tasks.T54.case_results.counts_source",
-      "ios_grand": "the mirrored Foundation package standeth at 1101/0, up from 1098, the three new cases being the lab's own",
-      "python_grand": "the readiness suite 325 OK (up from 313 by the twelve T54 witnesses), the gate's own selftest 10/10 controls refused, structural lineage rc=0, diff clean, sync --check clean"
+      "android_grand": "the T55 court 13/13 and the whole LIGHT app suite 34/0 at the boundary, genuinely EXECUTED (--no-build-cache, stale results purged); the :mesh suite still green beside it",
+      "counts_source": "see completed_tasks.T55.case_results.counts_source",
+      "ios_grand": "no iOS path in this round: the card is an Android UX task, and the mirrored Foundation package is untouched (sync --check clean)",
+      "python_grand": "the readiness suite 325 OK, the structural lineage rc=0, diff hygiene clean, sync --check clean"
     },
     "ladder": {
       "L0": "1 PASSED (check_repository), 1 FAILED (ci/symbols.py --selftest: PRE-EXISTING)",
-      "L1": "PASSED (the python readiness suite plus both mesh isles)",
+      "L1": "PASSED (the python readiness suite plus the app and mesh isles)",
       "L2_L4": "unavailable: no command manifest yet"
     },
     "narrow": {
       "errors": 0,
       "failures": 0,
-      "lane": "python3 -m unittest discover -s tools/readiness/tests -p test_t54.py -v",
-      "tests": 12
+      "lane": "gradlew :app:testLightDebugUnitTest --tests *ReadinessT55Test*",
+      "tests": 13
     },
     "roster": {
-      "T54_killed": 8,
-      "of": 8
+      "T55_killed": 12,
+      "of": 12
     },
     "subsystem": {
       "errors": 0,
       "failures": 0,
-      "lane": "python3 -m unittest discover -s tools/readiness/tests -v",
-      "tests": 325
+      "lane": "gradlew :app:testLightDebugUnitTest",
+      "tests": 34
     }
   },
-  "next_task": "T55",
+  "next_task": "T56",
   "phase": "P0",
   "plan_sha256": "685456b378662b0a40a53a6abc810041e37daf97b213f3efeb6cea879363934e",
   "planning_baseline_sha": "b5c3d3d394b70cf356cdde33b47511dad7cbb95c",
@@ -13360,7 +13574,10 @@
     "PUBLISHING: the builder branch codex/production-blueprint must be pushed to origin at every task boundary (after the M commit). Verify with `git status -sb` that the branch is level with origin/codex/production-blueprint before declaring a task sealed; if the push would not be a fast-forward, stop and report instead of forcing.",
     "T54 boundary: ci/check_shipping_path.py resolved 'the type: application target' POSITIONALLY in ios/project.yml, so a SECOND application target (the T54 lab) made it judge the lab's sources and products as the shipping app's. It now resolveth the SHIPPING target BY NAME. Any future gate that walketh a target list must key on identity, never on position.",
     "T54 boundary: a witness that asserteth 'the gate stayed silent on the CLEAN repository' cannot kill a rod that DELETES the gate's rule -- the two look identical. All three T54 escapes were that mistake; the repairs FEED the mutated input (an armed profile, or a fixture carrying the violation). Whenever a rod strikes a CHECKER rather than a behaviour, its witness must supply the violating input.",
-    "T54 boundary: ci/profile_resolver.py's first form read only the source roots AGP auto-wires, so a lab source set DECLARED with srcDir(...) was invisible to every check built on it. It now honours declared roots; W12 pins that, and the gate's selftest is what caught the hole."
+    "T54 boundary: ci/profile_resolver.py's first form read only the source roots AGP auto-wires, so a lab source set DECLARED with srcDir(...) was invisible to every check built on it. It now honours declared roots; W12 pins that, and the gate's selftest is what caught the hole.",
+    "T55 boundary: the shipping-path gate is a TEXT scan over compiled :app sources, so a COMMENT that NAMES a non-shipping module is a violation -- and it caught this task's own docstring. A shipping surface must not speak of them at all; reword rather than exempt.",
+    "T55 boundary: a rod whose mutant is semantically a NO-OP can never be killed (T55-RC10 changed a line into its own meaning), and a rod whose replacement RETAINS its own needle is refused outright by the ledger. Both were caught before the final pass by checking, for every rod, that `post.count(replace) == 1 and post.count(find) == 0`. Run that check before spending a campaign.",
+    "T55 boundary: a rod must strike code the TASK owns. The sixth rod originally targeted the pending-rotation retirement, which the AUTHORITY performs, not the ViewModel -- a rod aimed at a neighbour's law can only escape. It was replaced by the dismissal law the app genuinely owns."
   ],
   "warnings_for_next_invocation": [
     "T41 IS THE NEXT TASK (deps T40, T24, T26, T37, T39, T84 all complete; no external requirement). After T41 cometh T42, T43, T44, then T54 and the platform chain.",
