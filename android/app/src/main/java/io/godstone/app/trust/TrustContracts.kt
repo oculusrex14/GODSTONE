@@ -32,37 +32,48 @@ import java.security.MessageDigest
 // logged.
 // ---------------------------------------------------------------------------
 
-/** The exact pending rotation the user was shown. */
+/**
+ * The exact pending rotation the user was shown.
+ *
+ * It carrieth the pending STATIC DH PUBLIC key itself -- public material -- and
+ * not merely a digest of it, BECAUSE THE DURABLE CAS BINDETH ON THE KEY:
+ * `approvePendingRotation(nodeId, expectedPendingGeneration,
+ * expectedPendingStaticDhPublicKey)` cannot be satisfied by a digest, so a ref
+ * that carried one could never approve anything. The digest is DERIVED, for
+ * display and comparison only. (T56 found this while building the iOS twin's
+ * court; both isles now carry the same three operands the authority binds on.)
+ */
 data class ExactRotationCandidateRef(
     /** The contact's 16-octet node id. */
     val nodeId: ByteArray,
     /** The pending generation the screen displayed. */
     val pendingGeneration: Long,
-    /** SHA-256 of the pending static DH public key the screen displayed. */
-    val pendingKeyDigestHex: String,
-    /** When the candidate was first observed (monotonic), for ordering only. */
-    val firstSeenMonoMillis: Long,
+    /** The pending static DH public key the screen displayed (32 octets). */
+    val pendingStaticDhPublicKey: ByteArray,
 ) {
     init {
         require(nodeId.size == 16) { "a rotation candidate names a 16-octet node id" }
         require(pendingGeneration >= 0) { "a pending generation is non-negative" }
-        require(pendingKeyDigestHex.length == 64) { "a key digest is 32 octets of hex" }
+        require(pendingStaticDhPublicKey.size == 32) { "a pending static key is 32 octets" }
     }
 
-    fun nodeIdCopy(): ByteArray = nodeId.copyOf()
+    /** The digest, derived from the key: display and comparison only. */
+    val pendingKeyDigestHex: String get() = digestHex(pendingStaticDhPublicKey)
 
-    /** Two refs name the same candidate only if ALL THREE fields agree. */
+    fun nodeIdCopy(): ByteArray = nodeId.copyOf()
+    fun pendingKeyCopy(): ByteArray = pendingStaticDhPublicKey.copyOf()
+
+    /** Two refs name the same candidate only if ALL THREE operands agree. */
     fun sameCandidateAs(other: ExactRotationCandidateRef): Boolean =
         nodeId.contentEquals(other.nodeId) &&
             pendingGeneration == other.pendingGeneration &&
-            pendingKeyDigestHex == other.pendingKeyDigestHex
+            pendingStaticDhPublicKey.contentEquals(other.pendingStaticDhPublicKey)
 
     override fun equals(other: Any?): Boolean =
-        other is ExactRotationCandidateRef && sameCandidateAs(other) &&
-            firstSeenMonoMillis == other.firstSeenMonoMillis
+        other is ExactRotationCandidateRef && sameCandidateAs(other)
 
     override fun hashCode(): Int = nodeId.contentHashCode() * 31 +
-        pendingGeneration.hashCode() * 31 + pendingKeyDigestHex.hashCode()
+        pendingGeneration.hashCode() * 31 + pendingStaticDhPublicKey.contentHashCode()
 
     override fun toString(): String =
         "ExactRotationCandidateRef(node=${fingerprintOf(nodeId)}, gen=$pendingGeneration, " +
@@ -86,8 +97,12 @@ enum class ContactTrustLabel {
     UNKNOWN,
     /** Pinned on first use: a key we accepted because we had nothing else. */
     TOFU_UNVERIFIED,
-    /** The user compared and confirmed the fingerprint out of band. */
-    VERIFIED,
+    /**
+     * The user compared and confirmed the fingerprint out of band. The NAME is
+     * shared verbatim with the iOS isle (T56), so the two courts speak ONE
+     * vocabulary -- and a shared fixture meaneth the same thing on both.
+     */
+    USER_VERIFIED,
     /** The user revoked the contact. */
     REVOKED,
     /** A pending rotation standeth, awaiting the user's decision. */
@@ -113,7 +128,7 @@ data class ContactProjection(
     fun nodeIdCopy(): ByteArray = nodeId.copyOf()
 
     /** The exact bytes a compare/confirm command must echo back. */
-    val isVerified: Boolean get() = trust == ContactTrustLabel.VERIFIED
+    val isVerified: Boolean get() = trust == ContactTrustLabel.USER_VERIFIED
     val isTofu: Boolean get() = trust == ContactTrustLabel.TOFU_UNVERIFIED
 }
 
@@ -223,6 +238,8 @@ interface TrustPort {
      * Approve the EXACT pending candidate. The authority refuseth a ref that no
      * longer matcheth its pending row (a CAS on generation + key), which is what
      * maketh "the displayed candidate" a binding instruction rather than a guess.
+     * The ref carrieth the pending static PUBLIC key itself because that is what
+     * the durable CAS bindeth on -- a digest could not satisfy it.
      */
     fun approveRotation(ref: ExactRotationCandidateRef): RotationApprovalOutcome
 

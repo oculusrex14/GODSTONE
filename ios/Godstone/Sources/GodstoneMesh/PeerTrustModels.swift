@@ -272,3 +272,37 @@ public struct PendingPeerIdentity: Sendable, Equatable {
         )
     }
 }
+
+
+// ---------------------------------------------------------------------------
+// T56: test-only factories for the durable projections.
+//
+// The models' real initializers stay `fileprivate` to the module, so a court that
+// liveth in the module's TEST target cannot build one directly. These factories
+// exist for the courts alone: they mint a projection VALUE for a fixture, never a
+// durable row, and they cannot be reached from a shipping path (this file is in
+// the nonshipping GodstoneMesh module).
+// ---------------------------------------------------------------------------
+extension VerifiedPeerIdentity {
+    internal static func makeForTesting(nodeId: Data, staticDh: Data,
+                                        acceptedGeneration: UInt32,
+                                        trustLevel: PeerTrustLevel) -> VerifiedPeerIdentity {
+        VerifiedPeerIdentity(nodeId: nodeId, signingPublicKey: Data(repeating: 0x77, count: 32),
+                             acceptedStaticDhPublicKey: staticDh,
+                             acceptedGeneration: acceptedGeneration, trustLevel: trustLevel)
+    }
+}
+
+extension PendingPeerIdentity {
+    internal static func makeForTesting(nodeId: Data, staticDh: Data,
+                                        acceptedGeneration: UInt32,
+                                        pendingStatic: Data,
+                                        pendingGeneration: UInt32) -> PendingPeerIdentity {
+        PendingPeerIdentity(nodeId: nodeId, signingPublicKey: Data(repeating: 0x77, count: 32),
+                            acceptedStaticDhPublicKey: staticDh,
+                            acceptedGeneration: acceptedGeneration,
+                            trustLevel: .tofuPinned,
+                            pendingStaticDhPublicKey: pendingStatic,
+                            pendingGeneration: pendingGeneration)
+    }
+}

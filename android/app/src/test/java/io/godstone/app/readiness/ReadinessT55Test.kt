@@ -76,10 +76,11 @@ class ReadinessT55Test {
 
         fun seedVerified(seed: Byte, label: String, generation: Long = 1L): ExactRotationCandidateRef {
             val nodeId = ByteArray(16) { (it + seed).toByte() }
-            val keyDigest = ExactRotationCandidateRef.digestHex(ByteArray(32) { (it + seed).toByte() })
-            rows[nodeId.toHex()] = Row(nodeId, label, ContactTrustLabel.VERIFIED,
-                acceptedGeneration = generation, acceptedKeyDigest = keyDigest, pending = null)
-            return ExactRotationCandidateRef(nodeId, generation, keyDigest, 0L)
+            val staticKey = ByteArray(32) { (it + seed).toByte() }
+            rows[nodeId.toHex()] = Row(nodeId, label, ContactTrustLabel.USER_VERIFIED,
+                acceptedGeneration = generation,
+                acceptedKeyDigest = ExactRotationCandidateRef.digestHex(staticKey), pending = null)
+            return ExactRotationCandidateRef(nodeId, generation, staticKey)
         }
 
         fun seedTofu(seed: Byte, label: String): ByteArray {
@@ -92,8 +93,7 @@ class ReadinessT55Test {
 
         fun offerRotation(nodeId: ByteArray, generation: Long, keySeed: Byte): ExactRotationCandidateRef {
             val ref = ExactRotationCandidateRef(
-                nodeId, generation,
-                ExactRotationCandidateRef.digestHex(ByteArray(32) { (it + keySeed).toByte() }), 0L,
+                nodeId, generation, ByteArray(32) { (it + keySeed).toByte() },
             )
             rows.getValue(nodeId.toHex()).pending = ref
             rows.getValue(nodeId.toHex()).trust = ContactTrustLabel.ROTATION_PENDING
@@ -157,20 +157,20 @@ class ReadinessT55Test {
             }
             row.acceptedGeneration = ref.pendingGeneration
             row.acceptedKeyDigest = ref.pendingKeyDigestHex
-            row.trust = ContactTrustLabel.VERIFIED
+            row.trust = ContactTrustLabel.USER_VERIFIED
             row.pending = null
             return RotationApprovalOutcome.Approved(ref.nodeIdCopy(), ref.pendingGeneration)
         }
 
         override fun confirmVerified(nodeId: ByteArray, fingerprintHex: String): ConfirmOutcome {
             val row = rows[nodeId.toHex()] ?: return ConfirmOutcome.PeerNotFound
-            if (row.trust == ContactTrustLabel.VERIFIED) return ConfirmOutcome.AlreadyVerified
+            if (row.trust == ContactTrustLabel.USER_VERIFIED) return ConfirmOutcome.AlreadyVerified
             if (row.trust == ContactTrustLabel.REVOKED) return ConfirmOutcome.Refused("revoked")
             // THE CAS: the digest must be the durable one, or nothing is promoted
             if (!row.acceptedKeyDigest.equals(fingerprintHex, ignoreCase = true)) {
                 return ConfirmOutcome.Mismatch
             }
-            row.trust = ContactTrustLabel.VERIFIED
+            row.trust = ContactTrustLabel.USER_VERIFIED
             return ConfirmOutcome.Confirmed(nodeId.copyOf(), row.acceptedGeneration)
         }
 
@@ -224,13 +224,13 @@ class ReadinessT55Test {
         Assert.assertEquals(ContactTrustLabel.TOFU_UNVERIFIED, tofu.trust)
         Assert.assertTrue("TOFU must never look verified", tofu.isTofu && !tofu.isVerified)
         Assert.assertNotEquals("TOFU and VERIFIED must read differently",
-            trustLabel(ContactTrustLabel.TOFU_UNVERIFIED), trustLabel(ContactTrustLabel.VERIFIED))
+            trustLabel(ContactTrustLabel.TOFU_UNVERIFIED), trustLabel(ContactTrustLabel.USER_VERIFIED))
 
         val confirmed = model.onCommand(
             ContactVerificationCommand.CompareAndConfirmFingerprint(nodeId, tofu.fingerprintHex))
         val after = confirmed.contact(nodeId)!!
         Assert.assertEquals("a matching compare promotes to VERIFIED",
-            ContactTrustLabel.VERIFIED, after.trust)
+            ContactTrustLabel.USER_VERIFIED, after.trust)
         Assert.assertTrue(after.isVerified)
         Assert.assertNull(confirmed.error)
     }
@@ -290,7 +290,7 @@ class ReadinessT55Test {
         // approving the ref the screen NOW carrieth succeedeth
         val approved = model.onCommand(ContactVerificationCommand.ApproveRotation(newer))
         val settled = approved.contact(nodeId)!!
-        Assert.assertEquals(ContactTrustLabel.VERIFIED, settled.trust)
+        Assert.assertEquals(ContactTrustLabel.USER_VERIFIED, settled.trust)
         Assert.assertEquals(3L, settled.acceptedGeneration)
         Assert.assertNull(settled.pendingRotation)
     }
@@ -307,7 +307,7 @@ class ReadinessT55Test {
         val model = viewModel(port)
         val before = model.refresh()
 
-        val foreign = ExactRotationCandidateRef(nodeId, 5L, "0".repeat(64), 0L)
+        val foreign = ExactRotationCandidateRef(nodeId, 5L, ByteArray(32) { 0 })
         val refused = model.onCommand(ContactVerificationCommand.ApproveRotation(foreign))
         Assert.assertNotNull(refused.error)
         val after = refused.contact(nodeId)!!
@@ -558,7 +558,7 @@ class ReadinessT55Test {
         // each is refused, and the ESTATE is what must be unchanged -- an authority
         // may be consulted and refuse without a single row moving
         model.onCommand(ContactVerificationCommand.ApproveRotation(
-            ExactRotationCandidateRef(ByteArray(16) { 9 }, 1L, "a".repeat(64), 0L)))
+            ExactRotationCandidateRef(ByteArray(16) { 9 }, 1L, ByteArray(32) { 0x0a })))
         model.onCommand(ContactVerificationCommand.Revoke(ByteArray(5)))
         model.onCommand(ContactVerificationCommand.CompareAndConfirmFingerprint(
             ByteArray(16) { 9 }, "b".repeat(64)))
@@ -605,14 +605,17 @@ class ReadinessT55Test {
         Assert.assertTrue("and a stale candidate is refused by name",
             text.contains("object StaleCandidate"))
 
-        val ref = ExactRotationCandidateRef(ByteArray(16) { 1 }, 7L, "c".repeat(64), 0L)
+        val ref = ExactRotationCandidateRef(ByteArray(16) { 1 }, 7L, ByteArray(32) { 0x0c })
         Assert.assertEquals("the ref carrieth the node id", 16, ref.nodeIdCopy().size)
         Assert.assertEquals("the ref carrieth the generation", 7L, ref.pendingGeneration)
-        Assert.assertEquals("the ref carrieth the key digest", 64, ref.pendingKeyDigestHex.length)
+        Assert.assertEquals("the ref carrieth the pending KEY itself, which the CAS bindeth on",
+            32, ref.pendingKeyCopy().size)
+        Assert.assertEquals("and the digest is derived from it", 64, ref.pendingKeyDigestHex.length)
         Assert.assertFalse("two refs differing in generation are different candidates",
             ref.sameCandidateAs(ref.copy(pendingGeneration = 8L)))
         Assert.assertFalse("two refs differing in key are different candidates",
-            ref.sameCandidateAs(ref.copy(pendingKeyDigestHex = "d".repeat(64))))
-        Assert.assertTrue(ref.sameCandidateAs(ref.copy(firstSeenMonoMillis = 999L)))
+            ref.sameCandidateAs(ref.copy(pendingStaticDhPublicKey = ByteArray(32) { 0x0d })))
+        Assert.assertTrue("and the same three operands are the SAME candidate",
+            ref.sameCandidateAs(ref.copy()))
     }
 }

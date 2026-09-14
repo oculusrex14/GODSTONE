@@ -128,7 +128,7 @@ private fun WipeBanner(wipe: WipeProgressState) {
 
 /** The user-facing words for a trust label. Verified and TOFU must never look alike. */
 fun trustLabel(trust: ContactTrustLabel): String = when (trust) {
-    ContactTrustLabel.VERIFIED -> "Verified: you compared this fingerprint."
+    ContactTrustLabel.USER_VERIFIED -> "Verified: you compared this fingerprint."
     ContactTrustLabel.TOFU_UNVERIFIED -> "Not verified: trusted on first use only."
     ContactTrustLabel.ROTATION_PENDING -> "A new key is offered; the old one still stands."
     ContactTrustLabel.REVOKED -> "Revoked: this contact is blocked."
