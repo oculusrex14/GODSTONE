@@ -12184,7 +12184,7 @@
       ]
     }
   },
-  "current_task": null,
+  "current_task": "T41",
   "external_blockers": [
     "A06",
     "APPROVED_CONTENT",
@@ -12193,7 +12193,16 @@
     "SIGNING"
   ],
   "failed_attempts": [],
-  "in_progress": null,
+  "in_progress": {
+    "claimed_head": "3e17b96576bcacfbf96395e76d57c7b05ddce88b",
+    "claimed_utc": "2026-09-14T16:49:30+00:00",
+    "objective": {
+      "claimed_head": "3e17b96576bcacfbf96395e76d57c7b05ddce88b",
+      "claimed_utc": "2026-09-14T16:49:30+00:00",
+      "objective": "Create a per-TrustedPeer bounded sync pump on the Android mesh path: snapshot the durable held ids, exchange DIGEST/inventory/WANT, fetch frames by cursor, and forward only AFTER durable acceptance -- never back to receivedFrom, TTL decremented and hop incremented exactly once per forwarded copy, in priority order within bounded admitted work, with ACK control routed separately to the delivery authority and the relation's scheduling cancelled on relation loss while application retry state stays durable; a send that precedes its persist, or a scheduler left unregistered, must fail the real MeshNode path test."
+    },
+    "task": "T41"
+  },
   "last_code_head": "08e5694c671efcb975fa7238878eef272e54b8de",
   "last_observed_head": "08e5694c671efcb975fa7238878eef272e54b8de",
   "latest_verification": {
