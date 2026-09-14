@@ -10581,6 +10581,390 @@
         "the staging gate requireth an evaluation only when the release owner asketh (--require-heldout-evaluation): the held-out artifacts are external, and closing that gate from inside this repository would be a fixture wearing an approval"
       ]
     },
+    "T68": {
+      "case_results": {
+        "added_cases": {
+          "tools/readiness/tests/test_t68.py": [
+            "test_w01_a_line_that_is_not_an_exact_pin_is_refused",
+            "test_w02_comments_are_ignored_and_a_repeated_pin_is_one_pin",
+            "test_w03_a_lane_table_that_forgetteth_a_package_is_refused",
+            "test_w04_a_distribution_that_is_not_pips_digest_is_refused",
+            "test_w05_a_half_sworn_manifest_is_refused",
+            "test_w06_a_malformed_digest_or_byte_count_is_refused",
+            "test_w07_a_resolution_that_disagrees_with_the_pin_is_refused",
+            "test_w08_a_transitive_package_the_wheelhouse_lacketh_is_recorded_unpinned",
+            "test_w09_a_resolution_without_a_digest_is_refused",
+            "test_w10_the_rendered_lock_carrieth_every_digest_as_pip_requireth",
+            "test_w11_a_symlink_or_a_changed_blob_in_the_cache_is_refused",
+            "test_w12_a_refusal_precedeth_every_write",
+            "test_w13_the_secret_scanner_refuseth_what_it_claimeth",
+            "test_w14_an_unpinned_lane_cannot_be_restored",
+            "test_w15_a_changed_distribution_is_refused_at_the_install_door",
+            "test_w16_a_lane_is_restored_offline_with_required_hashes",
+            "test_w17_the_sbom_must_carry_every_component_the_locks_name",
+            "test_w18_an_unknown_licence_is_counted_and_named",
+            "test_w19_a_measured_tool_that_disagrees_with_its_pin_is_refused",
+            "test_w20_the_capture_is_deterministic_and_the_host_is_untouched",
+            "test_w21_the_metadata_is_parsed_through_its_namespace",
+            "test_w22_a_same_version_artifact_with_different_bytes_is_refused",
+            "test_w23_two_runs_are_compared_by_content",
+            "test_w24_the_command_door_reporteth_zero_and_one",
+            "test_w25_the_scanner_flaggeth_nothing_in_an_honest_log",
+            "test_w26_an_interrupted_write_leaveth_the_previous_document"
+          ]
+        },
+        "counts": {
+          "narrow_python": 26,
+          "subsystem_python": 246
+        },
+        "courts": {
+          "controls": "ci/check_repository.py, ci/check_release_gates_status.py",
+          "narrow": "tools/readiness/tests/test_t68.py",
+          "subsystem": "tools/readiness/tests (all courts)"
+        },
+        "deleted_cases": [],
+        "executed_scenarios": {
+          "corrupted_cache": "a wheel corrupted in place was refused by name and the destination was left empty (no partial restoration)",
+          "document_door": "verify --all was executed at rc=0 over the five reviewed documents (T68/logs/supply-chain-pipeline.log), and the same command is now a step of repository-verification",
+          "offline_restoration": "the signing lane (cryptography 50.0.0 + cffi 2.1.1 + pycparser 3.0, real PyPI wheels) was installed into a fresh venv with --no-index --require-hashes from the local wheelhouse alone, and Ed25519 signing ran inside that venv (T68/restore-signing-offline.log)",
+          "same_version_other_bytes": "the installation door refused the poisoned distribution before pip ran",
+          "two_runs_compared": "the debug APK was built twice from the same clean tree: 188 of 194 entries byte-identical, the six classes*.dex entries divergent in content and size, recorded with its cause"
+        },
+        "produced_artifacts": {
+          "cache": {
+            "blobs": 15,
+            "path": "docs/supplychain/OFFLINE_CACHE.json"
+          },
+          "dependency_manifest": {
+            "lanes": {
+              "content": {
+                "closure": 15,
+                "direct": [
+                  "cryptography",
+                  "llama-cpp-python",
+                  "markdown-it-py",
+                  "numpy",
+                  "pyyaml",
+                  "textstat"
+                ],
+                "status": "PINNED"
+              },
+              "dev": {
+                "closure": 4,
+                "direct": [
+                  "cryptography",
+                  "pyyaml"
+                ],
+                "status": "PINNED"
+              },
+              "eval": {
+                "closure": 1,
+                "direct": [
+                  "numpy"
+                ],
+                "status": "PINNED"
+              },
+              "native": {
+                "closure": 15,
+                "direct": [
+                  "llama-cpp-python"
+                ],
+                "status": "PINNED"
+              },
+              "signing": {
+                "closure": 3,
+                "direct": [
+                  "cryptography"
+                ],
+                "status": "PINNED"
+              }
+            },
+            "path": "docs/supplychain/DEPENDENCIES.json",
+            "resolution": "pip install --dry-run --ignore-installed --report, one report per lane: the closure and every hash are pip's own (pip 26 removed --report from `pip download`, which was measured)",
+            "status": "PINNED"
+          },
+          "determinism": {
+            "comparisons": [
+              {
+                "name": "app-light-debug.apk",
+                "status": "DIVERGENT"
+              },
+              {
+                "name": "requirements.lock",
+                "status": "IDENTICAL"
+              },
+              {
+                "name": "DEPENDENCIES.json",
+                "status": "IDENTICAL"
+              }
+            ],
+            "path": "docs/supplychain/NONDETERMINISM.json",
+            "status": "NONDETERMINISTIC"
+          },
+          "gradle_verification": {
+            "components": 481,
+            "every_component_carries_sha256": true,
+            "generated_by": "./gradlew --dependency-verification=off --write-verification-metadata sha256 over the CI task union, then :core:testDebugUnitTest and :llm:testDebugUnitTest with --rerun-tasks and verification ON: BUILD SUCCESSFUL, 30 tasks executed (T68/logs/gradle-verification-on.log)",
+            "note": "Gradle verified the graph the first time it was enabled: an aapt2 pom the `help` run never resolved was refused mid-build, which is the mechanism firing, and the metadata was then completed over the union of the tasks the workflows run",
+            "path": "android/gradle/verification-metadata.xml",
+            "signatures": "off (checksum verification only; recorded)"
+          },
+          "requirements_lock": {
+            "note": "reforged by the tool: five lanes, every closure entry hash-locked in pip's --require-hashes form, and the stale 46.0.4/6.0.3 face replaced by what the requirement sources pin",
+            "path": "requirements.lock"
+          },
+          "sbom": {
+            "components": 512,
+            "licence_census": {
+              "n/a": 11,
+              "unknown": 501
+            },
+            "path": "docs/supplychain/SBOM.json",
+            "status": "UNPINNED"
+          },
+          "toolchain_lock": {
+            "absent": [
+              "cmake"
+            ],
+            "measured": [
+              "gradle-wrapper",
+              "jdk-target",
+              "ndk",
+              "swift-tools",
+              "xcodegen"
+            ],
+            "path": "docs/supplychain/TOOLCHAIN.lock.json",
+            "status": "UNPINNED",
+            "tools": 11,
+            "unpinned": [
+              "java",
+              "macos",
+              "python",
+              "swift",
+              "xcode"
+            ]
+          }
+        }
+      },
+      "claim_commit": "7f42c7431e9ae661cd3c7dbdb24a59c988e6ba21",
+      "commands": [
+        "T68-narrow-python3",
+        "T68-subsystem-python3",
+        "T68-controls-python3",
+        "T68-controls-python3-002"
+      ],
+      "device_gate_ids": [],
+      "file_hashes": {
+        ".github/workflows/repository-verification.yml": "3a76586958b4b27f5d74f0b66324a666260c6d80134022773603a8c5020c9b5a",
+        "android/gradle/verification-metadata.xml": "b0f13dbf7c10b390a997a4306c51fddc9b6a3dd0b2a44a373cb71cd3f403ea24",
+        "ci/mutations.py": "326e1bc81d395ca75c88c710b642603e4e8b3291ba4602e4e864e7651e4ff3b0",
+        "docs/supplychain/DEPENDENCIES.json": "a3009a2c18e6d77b68decdf91e6f39319a1e7751d08b053b890fb9d765711f79",
+        "docs/supplychain/NONDETERMINISM.json": "e46a4e7f4d3f09430839c93bc897d04570274178b5af7dfb1b44ce1eb8c29f17",
+        "docs/supplychain/OFFLINE_CACHE.json": "6d3f29f3342e65e0dfe93642c3de7f6a5270d22cab740c7599ac65f957eb479d",
+        "docs/supplychain/SBOM.json": "6938ab3081c94ff0c43f4a7a14f3824c6b15d128bc9fa5deecf4fd9f997eb1e9",
+        "docs/supplychain/TOOLCHAIN.lock.json": "b977b7323f9599984c921018dfdbb896af29e0cee412e370e4c89eb0c2a835e7",
+        "requirements.lock": "2abc8f77bcc4705b6d9c1ee66fda3d63931e9f226a7b359d6a23273e252e6ad9",
+        "tools/readiness/tests/test_t68.py": "9aab834a506a5427ca1558eced02bbd4c76412bacc26dbf48041cd3feb5824b2",
+        "tools/supplychain/supply_chain.py": "14426722a08a9dab6649a28012501a60fbb8712222a7faae902a9be0c8a75b90"
+      },
+      "implementation_commit": "e26e69065df6ee077c28c89dc672023016ae731d",
+      "implementation_commits": [
+        "7f42c7431e9ae661cd3c7dbdb24a59c988e6ba21",
+        "448b9befbfd1402aeff5c1e5fb6e7bec8faa8656",
+        "3924c3872887f8979880e76df240271f33e7d387",
+        "49782f7e723694976cc801059ba25ab6db5a8452",
+        "6f055412a14f1b7545a6698c7e53e6981098223e",
+        "e26e69065df6ee077c28c89dc672023016ae731d"
+      ],
+      "inputs": {
+        "children_commit_order": [
+          "T68(claim)",
+          "T68(builder)",
+          "T68(roster)",
+          "T68(roster-reforging)",
+          "T68(builder-wiring)",
+          "T68(builder-refresh)"
+        ],
+        "documents_refresh_note": "the stage commands were fired at the roster-reforging/wiring head; the four supply-chain documents were then regenerated so the cache manifest listeth the distributions a restore needeth rather than the resolution reports that had been staged beside them. That refresh commit toucheth no tested file (its own name-list is four documents), so the court, the tool and the ledger stand byte-identical to the tree the runner exercised.",
+        "governed_source": [
+          ".github/workflows/repository-verification.yml",
+          "android/gradle/verification-metadata.xml",
+          "ci/mutations.py",
+          "docs/supplychain/DEPENDENCIES.json",
+          "docs/supplychain/NONDETERMINISM.json",
+          "docs/supplychain/OFFLINE_CACHE.json",
+          "docs/supplychain/SBOM.json",
+          "docs/supplychain/TOOLCHAIN.lock.json",
+          "requirements.lock",
+          "tools/readiness/tests/test_t68.py",
+          "tools/supplychain/supply_chain.py"
+        ],
+        "required_regression_paths": [
+          "tools/readiness/tests/test_t68.py"
+        ],
+        "sealed_hot_paths_untouched": [
+          "crypto/ and wire/ (the Noise/LinkInfo vectors, the generated codecs)",
+          "ios/Godstone/Package.swift (sealed bytes; its pins are RECORDED in the toolchain lock, never edited)",
+          "android/llm/src/main/cpp/godstone_llm_jni.cpp, ios/Godstone/Sources/GodstoneLLMBridge/LlamaBridge.mm and android/llm/src/main/cpp/CMakeLists.txt (hashed by the lock, untouched)",
+          "third_party/llama.cpp/ (git-ignored machine-local provisioning)",
+          "the five release gates: none was closed, moved or reinterpreted"
+        ]
+      },
+      "ladder_boundary_commit": "e26e69065df6ee077c28c89dc672023016ae731d",
+      "mutation_results": {
+        "attempts_archived": [
+          "roster/ (the first official pass, kept verbatim: 13 KILLED before its own assertion stopped it)"
+        ],
+        "campaign_note": "the eighteen rods were run twice. The first official pass stopped on the harness's own integrity assertion: PM01's cut left an unclosed tuple (named INVALID -- a mutant that did not compile -- rather than counted as a catch) and PM14's replacement was the empty string, which the harness refuseth because it cannot verify that the mutant installed. Both rods were re-cut, the ledger reforged and pushed, and the official campaign then ran 18 KILLED of 18, SKIPPED=0, INVALID=0, TIMEOUT=0, ESCAPED=0 at baseline e26e69065df6ee077c28c89dc672023016ae731d",
+        "roster_manifest": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/T68/roster/manifest.json",
+        "semantic": [
+          {
+            "anchor_count": 1,
+            "id": "T68-PM01-named-pin-refusals-asleep",
+            "outcome": "KILLED",
+            "tests_run": 1,
+            "witness": "test_w01_a_line_that_is_not_an_exact_pin_is_refused"
+          },
+          {
+            "anchor_count": 1,
+            "id": "T68-PM02-closure-digest-cross-check-asleep",
+            "outcome": "KILLED",
+            "tests_run": 1,
+            "witness": "test_w04_a_distribution_that_is_not_pips_digest_is_refused"
+          },
+          {
+            "anchor_count": 1,
+            "id": "T68-PM03-half-sworn-entry-tolerated",
+            "outcome": "KILLED",
+            "tests_run": 1,
+            "witness": "test_w05_a_half_sworn_manifest_is_refused"
+          },
+          {
+            "anchor_count": 1,
+            "id": "T68-PM04-pin-resolution-disagreement-tolerated",
+            "outcome": "KILLED",
+            "tests_run": 1,
+            "witness": "test_w07_a_resolution_that_disagrees_with_the_pin_is_refused"
+          },
+          {
+            "anchor_count": 1,
+            "id": "T68-PM05-hash-invented-for-a-missing-blob",
+            "outcome": "KILLED",
+            "tests_run": 1,
+            "witness": "test_w08_a_transitive_package_the_wheelhouse_lacketh_is_recorded_unpinned"
+          },
+          {
+            "anchor_count": 1,
+            "id": "T68-PM06-resolution-without-digest-tolerated",
+            "outcome": "KILLED",
+            "tests_run": 1,
+            "witness": "test_w09_a_resolution_without_a_digest_is_refused"
+          },
+          {
+            "anchor_count": 1,
+            "id": "T68-PM07-cache-symlink-tolerated",
+            "outcome": "KILLED",
+            "tests_run": 1,
+            "witness": "test_w11_a_symlink_or_a_changed_blob_in_the_cache_is_refused"
+          },
+          {
+            "anchor_count": 1,
+            "id": "T68-PM08-restore-writeth-before-it-verify'th",
+            "outcome": "KILLED",
+            "tests_run": 1,
+            "witness": "test_w12_a_refusal_precedeth_every_write"
+          },
+          {
+            "anchor_count": 1,
+            "id": "T68-PM09-secret-scanner-asleep",
+            "outcome": "KILLED",
+            "tests_run": 1,
+            "witness": "test_w13_the_secret_scanner_refuseth_what_it_claimeth"
+          },
+          {
+            "anchor_count": 1,
+            "id": "T68-PM10-unpinned-lane-restored-as-pinned",
+            "outcome": "KILLED",
+            "tests_run": 1,
+            "witness": "test_w14_an_unpinned_lane_cannot_be_restored"
+          },
+          {
+            "anchor_count": 1,
+            "id": "T68-PM11-install-door-believeth-a-changed-wheel",
+            "outcome": "KILLED",
+            "tests_run": 1,
+            "witness": "test_w15_a_changed_distribution_is_refused_at_the_install_door"
+          },
+          {
+            "anchor_count": 1,
+            "id": "T68-PM12-sbom-may-omit-a-component",
+            "outcome": "KILLED",
+            "tests_run": 1,
+            "witness": "test_w17_the_sbom_must_carry_every_component_the_locks_name"
+          },
+          {
+            "anchor_count": 1,
+            "id": "T68-PM13-licence-omission-tolerated",
+            "outcome": "KILLED",
+            "tests_run": 1,
+            "witness": "test_w17_the_sbom_must_carry_every_component_the_locks_name"
+          },
+          {
+            "anchor_count": 1,
+            "id": "T68-PM14-measured-mismatch-tolerated",
+            "outcome": "KILLED",
+            "tests_run": 1,
+            "witness": "test_w19_a_measured_tool_that_disagrees_with_its_pin_is_refused"
+          },
+          {
+            "anchor_count": 1,
+            "id": "T68-PM15-namespace-blind-metadata-reader",
+            "outcome": "KILLED",
+            "tests_run": 1,
+            "witness": "test_w21_the_metadata_is_parsed_through_its_namespace"
+          },
+          {
+            "anchor_count": 1,
+            "id": "T68-PM16-same-version-bytes-tolerated",
+            "outcome": "KILLED",
+            "tests_run": 1,
+            "witness": "test_w22_a_same_version_artifact_with_different_bytes_is_refused"
+          },
+          {
+            "anchor_count": 1,
+            "id": "T68-PM17-unexplained-divergence-tolerated",
+            "outcome": "KILLED",
+            "tests_run": 1,
+            "witness": "test_w23_two_runs_are_compared_by_content"
+          },
+          {
+            "anchor_count": 1,
+            "id": "T68-PM18-interrupted-write-leaveth-a-partial-document",
+            "outcome": "KILLED",
+            "tests_run": 1,
+            "witness": "test_w26_an_interrupted_write_leaveth_the_previous_document"
+          }
+        ],
+        "tally": {
+          "KILLED": 18
+        }
+      },
+      "objective": {
+        "claimed_head": "6f055412a14f1b7545a6698c7e53e6981098223e",
+        "claimed_utc": "2026-09-14T13:46:56+00:00",
+        "objective": "Pin the build supply chain and prove offline restoration: a ToolchainLock capturing the exact measured Xcode/SDK/NDK/JDK/Swift/Python/XcodeGen/Gradle-wrapper versions beside the digests of every reviewed input file, a DependencyVerificationManifest (Gradle dependency verification generated from the local cache, and a function-split hash-locked Python environment that stays UNPINNED rather than inventing a hash it cannot compute), an SBOM/licence inventory over the reviewed artifacts, an OfflineCacheManifest whose restore path refuseth a same-version blob with different bytes, and an explicit nondeterminism record from building the same clean tree twice -- with no external gate closed and readiness left false."
+      },
+      "status": "COMPLETE",
+      "tested_tree_sha": "c43a8a0db419aa4a7f74e904a38de04ff27f4336",
+      "unresolved": [
+        "a pip-level offline restoration of the dev lane FAILED on this host and is recorded as such: PyYAML 6.0.2 has no wheel for python 3.14.4, so its sdist must be built, and the isolated build environment's own dependencies are not in the wheelhouse (\"Failed to build pyyaml when installing build dependencies\"). The lane's digests are pinned; its restoration awaiteth either an interpreter whose wheels exist or a cache that carrieth the build-dependency closure. No success is claimed for it.",
+        "cmake is ABSENT on this host while android/llm/build.gradle.kts pinneth 3.22.1, so :llm:assembleDebug cannot be built here; the llama-cpp-python clause of the content and native closures therefore carrieth pinned digests but no executed restoration (external gate NATIVE_MODELS)",
+        "Gradle signature verification is off in the committed metadata (checksum verification only); enabling PGP verification awaiteth keyring provisioning",
+        "the toolchain lock standeth UNPINNED: python, java, swift, xcode and macOS are MEASURED and recorded, but the repository carrieth no expected version for them, and xcodegen is still installed unpinned by the CI lane (brew install xcodegen). A mismatch would now be refused; nothing yet pinneth it.",
+        "the debug APK is NOT byte-reproducible (six multidex entries diverge) and the release APK's byte-reproducibility was NOT tested at all; the record sayeth so rather than implying a determinism nobody measured",
+        "the supply-chain door was wired into repository-verification.yml, but that workflow was not executed here (it runneth on GitHub's runners): its command was executed locally at rc=0 and the wiring is reviewed, not observed in CI"
+      ]
+    },
     "T83": {
       "case_results": {
         "android_grand": {
@@ -10869,7 +11253,7 @@
       "unresolved": []
     }
   },
-  "current_task": "T68",
+  "current_task": "T69",
   "external_blockers": [
     "A06",
     "APPROVED_CONTENT",
@@ -10878,50 +11262,41 @@
     "SIGNING"
   ],
   "failed_attempts": [],
-  "in_progress": {
-    "claimed_head": "fec357af52bcb6db9487dbfa558048743c6c1f1f",
-    "claimed_utc": "2026-09-14T13:46:56+00:00",
-    "objective": {
-      "claimed_head": "fec357af52bcb6db9487dbfa558048743c6c1f1f",
-      "claimed_utc": "2026-09-14T13:46:56+00:00",
-      "objective": "Pin the build supply chain and prove offline restoration: a ToolchainLock capturing the exact measured Xcode/SDK/NDK/JDK/Swift/Python/XcodeGen/Gradle-wrapper versions beside the digests of every reviewed input file, a DependencyVerificationManifest (Gradle dependency verification generated from the local cache, and a function-split hash-locked Python environment that stays UNPINNED rather than inventing a hash it cannot compute), an SBOM/licence inventory over the reviewed artifacts, an OfflineCacheManifest whose restore path refuseth a same-version blob with different bytes, and an explicit nondeterminism record from building the same clean tree twice -- with no external gate closed and readiness left false."
-    },
-    "task": "T68"
-  },
-  "last_code_head": "b439f35f08f1bf932437399b0b815b2d3a687f3a",
-  "last_observed_head": "b439f35f08f1bf932437399b0b815b2d3a687f3a",
+  "in_progress": null,
+  "last_code_head": "e26e69065df6ee077c28c89dc672023016ae731d",
+  "last_observed_head": "e26e69065df6ee077c28c89dc672023016ae731d",
   "latest_verification": {
-    "at_utc": "2026-09-14T13:45:56+00:00",
-    "boundary_commit": "b439f35f08f1bf932437399b0b815b2d3a687f3a",
+    "at_utc": "2026-09-14T14:06:24+00:00",
+    "boundary_commit": "e26e69065df6ee077c28c89dc672023016ae731d",
     "controls": {
       "boundary_records": 2,
       "first_pair_failure": "none this round",
-      "outcomes": "2/2 PASSED at the boundary (check_repository rc=0 over its five scanners; the release-gates status checker rc=0, its own selftests refusing 12-of-12 and 15-of-15)"
+      "outcomes": "2/2 PASSED at the boundary (check_repository rc=0; the release-gates status checker rc=0 with its own 12-of-12 and 15-of-15 selftests)"
     },
     "isle_grands": {
-      "android_grand": "no Android path in this round (a python/content task): the sealed :llm and :mesh roads are untouched by the name-list",
-      "counts_source": "the runner's classifier read the python courts as kind=test with positive counts (tests=31/31 and 69/69) and the two control commands as tests=n/a; every log is preserved under T66/logs/",
-      "ios_grand": "no isle path in this round; the mirror covenant is not even invoked, since no file under ios/ was touched",
-      "python_grand": "the T66 court 31/31, the content subsystem 69/69 (the held-out staging court 13 of them), the campaign 15/15 KILLED"
+      "android_grand": "the Gradle lanes were exercised for this task: the verification metadata was collected over the CI task union, then :core:testDebugUnitTest and :llm:testDebugUnitTest ran with --rerun-tasks and verification ON -- BUILD SUCCESSFUL, 30 tasks executed; :llm:assembleDebug cannot run here (cmake absent, native provisioning external)",
+      "counts_source": "the runner's classifier read the python courts as kind=test with positive counts (26/26 and 246/246) and the two control commands as tests=n/a; every log is preserved under T68/logs/",
+      "ios_grand": "no isle path in this round; Package.swift was hashed into the lock, never edited",
+      "python_grand": "the T68 court 26/26, the subsystem 246 OK, the supply-chain door rc=0 over five documents, the campaign 18/18 KILLED"
     },
     "narrow": {
       "errors": 0,
       "failures": 0,
-      "lane": "python3 -m unittest discover -s tools/readiness/tests -p test_t66.py",
-      "tests": 31
+      "lane": "python3 -m unittest discover -s tools/readiness/tests -p test_t68.py",
+      "tests": 26
     },
     "roster": {
-      "T66_killed": 15,
-      "of": 15
+      "T68_killed": 18,
+      "of": 18
     },
     "subsystem": {
       "errors": 0,
       "failures": 0,
-      "lane": "python3 -m unittest discover -s content/tests",
-      "tests": 69
+      "lane": "python3 -m unittest discover -s tools/readiness/tests",
+      "tests": 246
     }
   },
-  "next_task": "T68",
+  "next_task": "T69",
   "phase": "P0",
   "plan_sha256": "685456b378662b0a40a53a6abc810041e37daf97b213f3efeb6cea879363934e",
   "planning_baseline_sha": "b5c3d3d394b70cf356cdde33b47511dad7cbb95c",
@@ -11004,6 +11379,9 @@
     "T52 sealed at 51fcfa3: the presence inspector distinguisheth the three lanes (exclusion / presence / release-candidate) and nameth its evidence accordingly; the fifteen scans keep the package in awe; the staging gate is two-faced ever (operator face byte-identical to T51's seal, deputy face verbatim the T46 vintage) and the three T51-wounded sealed witnesses ride again; the two latent wounds of the discover-all road (stale authority blobs, the required-kwarg inversion) are healed with attribution; 35 witnesses, python grand 144, roster 29-of-29; the device legs ride to T73-T75; the guarded presence step sleepeth until A06/APPROVED_CONTENT awake the approved bytes; continue T53",
     "T53 sealed at dfee6be: the gate status regime is exact-SHA, complete and profile-aware -- GateStatusV1 versions the register (futures refused), GateEvidence swears run id, executor agreement, full digests, positive counts and results, ProfileRequirements keep the LIGHT no-embed gate and the future MEDIUM corpus apart, evidence commits resolve against the real history (candidate closures must carry results, ancestors are recorded HISTORICAL with computed drift, the unresolvable die as stale), a skipped or missing job is UNAVAILABLE and never PASS, the production-corpus job holdeth --release; 19 witnesses, road 163, roster 25-of-25 at the pin; the eight gates stand as sealed, readiness=false; the device legs and fresh candidate-class closures ride to T73-T75; continue T54",
     "T66: a mutation row whose named witness is absent from the baseline tree runneth zero tests and is reported INVALID, never KILLED -- commit the witness (or the court) before the official campaign, and let the report-only pass catch it; the harness told the truth about an empty baseline and the repair was one commit, not a reinterpretation.",
-    "T66: the held-out evaluation is machinery, not acceptance. The staging gate refuseth an evaluation it cannot bind to the very Archive (COMPLETE, same corpus digest, same model-lock digest and status, zero false allows, zero reviewer rejections) and publisheth the verified summary inside APPROVED_ASSETS.json; no fixture may stand in for a held-out manifest or a clinician, and none was used."
+    "T66: the held-out evaluation is machinery, not acceptance. The staging gate refuseth an evaluation it cannot bind to the very Archive (COMPLETE, same corpus digest, same model-lock digest and status, zero false allows, zero reviewer rejections) and publisheth the verified summary inside APPROVED_ASSETS.json; no fixture may stand in for a held-out manifest or a clinician, and none was used.",
+    "T68: the supply chain is legible from inside the repository -- docs/supplychain/ carrieth the measured toolchain, five hash-locked lanes whose closures are pip's own resolution, the offline cache manifest, the SBOM and the nondeterminism record; android/gradle/verification-metadata.xml enables Gradle dependency verification, so an artifact a task resolves that the metadata does not cover FAILS the build until the metadata is regenerated with --dependency-verification=off --write-verification-metadata sha256.",
+    "T68: a measured tool that disagrees with its pin is a refusal, and the toolchain lock's input digests are checked against the live tree, so editing the NDK/CMake/JDK pins or the wrapper without re-capturing the lock turns repository-verification red by design.",
+    "T68: pip 26 removed --report from `pip download`; the resolution route is `pip install --dry-run --ignore-installed --report FILE`."
   ]
 }

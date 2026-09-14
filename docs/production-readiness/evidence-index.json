@@ -1,198 +1,148 @@
 {
-  "evidence_root": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/T66",
+  "evidence_root": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/T68",
   "files": [
     {
-      "path": "T66/.DS_Store",
-      "sha256": "695dafcd2abf33d8266a80ce1a23b44118e618788d68bd9e476002ad05f2d782",
-      "size": 6148
+      "path": "T68/commands.json",
+      "sha256": "c4cdff363eb16a1262d0ba43b8ff3b24f936ca1d32a3419cffd1cc6a7fd86e36",
+      "size": 3529
     },
     {
-      "path": "T66/commands.json",
-      "sha256": "bd5f5a4994f0d92861ebc2e2c435db2a75d8453dec73fdbd828a7e038ee2a44a",
-      "size": 3518
-    },
-    {
-      "path": "T66/logs/T66-controls-python3-002.log",
+      "path": "T68/logs/T68-controls-python3-002.log",
       "sha256": "a6c79fe24c238d80a7c79c5acbef8c2cfad7dd756824b7de0dd367931edf7264",
       "size": 484
     },
     {
-      "path": "T66/logs/T66-controls-python3.log",
+      "path": "T68/logs/T68-controls-python3.log",
       "sha256": "c14e170c8ee6d83798ec3f98ea450d8c3bebb5043a8bb1d01f8c59eb7cb11ffb",
       "size": 1576
     },
     {
-      "path": "T66/logs/T66-narrow-python3.log",
-      "sha256": "ef0b4631f4618957bb0570a983aa05de1b49d3e7e4bfa101d8b445f79cd68ef6",
-      "size": 5345
+      "path": "T68/logs/T68-narrow-python3.log",
+      "sha256": "4fdbc7bab73c3269c082c1acb7b1a581f713b74c43ea9570973c7d96f793918a",
+      "size": 9424
     },
     {
-      "path": "T66/logs/T66-subsystem-python3.log",
-      "sha256": "848772f3967c7610195b1a3c6dbef11c6d33f110caba1700228fc7b6701ec0a2",
-      "size": 10239
+      "path": "T68/logs/T68-subsystem-python3.log",
+      "sha256": "0bf2f67573ca0803f217756027fd1df26eafe6df822c1f9702d34965484089e1",
+      "size": 64134
     },
     {
-      "path": "T66/roster/logs/T66-PM01-missing-case-censure-asleep.semantic.log",
-      "sha256": "00d2253ad275b576a4e4b2d7a876adcb006bf2c1b0fbd238feb5dda9554d9b4a",
-      "size": 1466
+      "path": "T68/logs/gradle-verification-on.log",
+      "sha256": "cff93e3155b9867c64dda71b45adb864bb8898e3723860d525e588e90c2cca88",
+      "size": 3740
     },
     {
-      "path": "T66/roster/logs/T66-PM02-accepted-uncited-numeric-tolerated.semantic.log",
-      "sha256": "bb90901dbe07f32d21ce32a51a36b11b8512f50b2bac4f38443d30b2d0058c4a",
-      "size": 1372
+      "path": "T68/logs/restore-dev-offline.log",
+      "sha256": "47ef353ab12aa4ffbee3c6d9912e690733c0929bde6d6bcea17a5fd783a9bee4",
+      "size": 1714
     },
     {
-      "path": "T66/roster/logs/T66-PM03-numeric-provenance-blind.semantic.log",
-      "sha256": "6780479c39933914be8c8dcf52e36da77e7b9cb963c526b4bf91ee4a3cf6ebb1",
-      "size": 1325
+      "path": "T68/logs/restore-signing-offline.log",
+      "sha256": "5c13ceef9bf75dee99653c9eba59f3cd3ba7cd6460ece279c3bec58ad49f0d63",
+      "size": 810
     },
     {
-      "path": "T66/roster/logs/T66-PM04-citation-limb-asleep.semantic.log",
-      "sha256": "1d33048a46001f74304390d5bc7b2b6ed8c295609781179179255c99ddc16e17",
-      "size": 1241
+      "path": "T68/logs/supply-chain-pipeline.log",
+      "sha256": "3fc60d77e0e9302fb9ba6cc57b3be3cf2c95346f5188f97d0ddbab593cd0bd46",
+      "size": 2180
     },
     {
-      "path": "T66/roster/logs/T66-PM05-absent-review-as-consent.semantic.log",
-      "sha256": "0a657b96dee1194857a8423ede40bc6e82660cb3b14948fdb6eb49b9806b0d1c",
-      "size": 1279
+      "path": "T68/roster/logs/T68-PM01-named-pin-refusals-asleep.semantic.log",
+      "sha256": "f02985239cdd83d22eb9e513e042a54ce19036aa72fe21d06433d8a9019c9762",
+      "size": 9340
     },
     {
-      "path": "T66/roster/logs/T66-PM06-false-allow-uncounted.semantic.log",
-      "sha256": "0ad9ed63fb174c4fbe550422740d41668372d5cd0fcab5ba8f99f7a7abce8299",
-      "size": 1339
+      "path": "T68/roster/logs/T68-PM02-closure-digest-cross-check-asleep.semantic.log",
+      "sha256": "6dcce36368979f34b6d4e02dfb5fe44cefab596d64176bd2c7831041655b5b48",
+      "size": 1597
     },
     {
-      "path": "T66/roster/logs/T66-PM07-corpus-binding-asleep.semantic.log",
-      "sha256": "29139f0364eff6d509af0c86b5a301627ab2340f23b02a14dfe6c591dfdb4285",
-      "size": 1294
+      "path": "T68/roster/logs/T68-PM03-half-sworn-entry-tolerated.semantic.log",
+      "sha256": "71a860470b1eadd56994cf1304aff41b863a01b039a1aae60dc7cd474d981124",
+      "size": 1441
     },
     {
-      "path": "T66/roster/logs/T66-PM08-corrupt-lock-door-asleep.semantic.log",
-      "sha256": "56464c7bf2466e659e2786cb93b043ade6b251974c8c1eed870f02ecaad6c500",
-      "size": 1213
+      "path": "T68/roster/logs/T68-PM04-pin-resolution-disagreement-tolerated.semantic.log",
+      "sha256": "d5d4c43ba3acd8f12a9efa28dd9fd9aee2e942dd7f4c9a63ad6dbea50d8eec17",
+      "size": 1442
     },
     {
-      "path": "T66/roster/logs/T66-PM09-blinding-leaketh-the-family.semantic.log",
-      "sha256": "a9bff4323500be0300203233d42246e3d046d4ba4a0de58ebbe7fb1d4c0c684c",
-      "size": 1528
+      "path": "T68/roster/logs/T68-PM05-hash-invented-for-a-missing-blob.semantic.log",
+      "sha256": "cfb9d263a942dedc43874c92b685851406f5f4fe055689b0fe17fcf5e04f1f82",
+      "size": 1378
     },
     {
-      "path": "T66/roster/logs/T66-PM10-stale-review-door-asleep.semantic.log",
-      "sha256": "7c1ce2b2b177da9aae0ece4df964bfbc5fb9afe0eed72583fe9027c611f46e7a",
-      "size": 1069
+      "path": "T68/roster/logs/T68-PM06-resolution-without-digest-tolerated.semantic.log",
+      "sha256": "55a5bc2c8885bf772aa864ed3ee411383ed2a2c489b3614e6dbfcf6f10ea74d4",
+      "size": 1239
     },
     {
-      "path": "T66/roster/logs/T66-PM11-duplicate-decision-asleep.semantic.log",
-      "sha256": "80b745871e90b6305fb0f6a7dcfb57b7625032e78f994cc6140a49c412b588e9",
-      "size": 1128
+      "path": "T68/roster/logs/T68-PM07-cache-symlink-tolerated.semantic.log",
+      "sha256": "7d5fedceeeca64d1297007ee5303e49b7a9f0f493213c8fd06e34f8274a89eda",
+      "size": 1286
     },
     {
-      "path": "T66/roster/logs/T66-PM12-reviewer-pool-door-asleep.semantic.log",
-      "sha256": "b958633fada01f8055dfcfb5f7d486e2884720ca3868c6b79f47a519abd2c0d4",
-      "size": 1245
+      "path": "T68/roster/logs/T68-PM08-restore-writeth-before-it-verify'th.semantic.log",
+      "sha256": "3cb8e1d21031e96263ddb7cba761b7acd8de11f3b677e74a4c83648f77ed7331",
+      "size": 1420
     },
     {
-      "path": "T66/roster/logs/T66-PM13-future-schema-door-asleep.semantic.log",
-      "sha256": "5487f4960c4178bbded25e923dcd838ed3b4691d9c4460c3c9787319a25e2cf7",
-      "size": 1571
+      "path": "T68/roster/logs/T68-PM09-secret-scanner-asleep.semantic.log",
+      "sha256": "81e9c76932fc3b8c16aee783222ad3e9ce3656ee4e0e77cce9e93bf31564a6e2",
+      "size": 6810
     },
     {
-      "path": "T66/roster/logs/T66-PM14-staging-evaluation-findings-discarded.semantic.log",
-      "sha256": "a639fd9b65c886284ba526ffc024b054527921c998369322c7a4ab63f9c9e130",
-      "size": 1271
+      "path": "T68/roster/logs/T68-PM10-unpinned-lane-restored-as-pinned.semantic.log",
+      "sha256": "1cbc4b79a794487fa42f24daed81715d4ce53ba84fa81ce34c4dd6113209132f",
+      "size": 1621
     },
     {
-      "path": "T66/roster/logs/T66-PM15-published-evaluation-block-dropped.semantic.log",
-      "sha256": "b21e1e8bc38a4d128d227578fb329886e950c5751d7b1fd6c0b6e6301e24769c",
-      "size": 1234
+      "path": "T68/roster/logs/T68-PM11-install-door-believeth-a-changed-wheel.semantic.log",
+      "sha256": "aa2ccc942e09b75939654e46d4e4f516d8c505a3d5fb6ba7f6afb0389be4d85c",
+      "size": 1710
     },
     {
-      "path": "T66/roster/manifest.json",
-      "sha256": "240b3848b7f77e5cccff04a6b548452991ab2a8c447617b008f745914461addb",
-      "size": 12320
+      "path": "T68/roster/logs/T68-PM12-sbom-may-omit-a-component.semantic.log",
+      "sha256": "f9c0f17f18ca0a4cb3630a8ca30d69a849fa8e6c275e0e29bfcd82a0135f77d4",
+      "size": 1352
     },
     {
-      "path": "T66/roster-attempt-1-scoped/logs/T66-PM01-missing-case-censure-asleep.semantic.log",
-      "sha256": "969de8d57de154585e31dc8996bf05a95f8f0c192986ab32ce1b026b1119335e",
-      "size": 1466
+      "path": "T68/roster/logs/T68-PM13-licence-omission-tolerated.semantic.log",
+      "sha256": "592134180e991b090bfbed6446bb5fe670d57bbd1e385cd40cc0565ce1231870",
+      "size": 1368
     },
     {
-      "path": "T66/roster-attempt-1-scoped/logs/T66-PM02-accepted-uncited-numeric-tolerated.semantic.log",
-      "sha256": "c859b71dd50728e8ba8d6ef38d43d179f712902b8fd5dd42e391c2e4ead0107d",
-      "size": 1372
+      "path": "T68/roster/logs/T68-PM14-measured-mismatch-tolerated.semantic.log",
+      "sha256": "f2b8a51eeee4b6f5743b1e91ace38831472818a5bf5d0f4e7c3962e73d8f2cc6",
+      "size": 1403
     },
     {
-      "path": "T66/roster-attempt-1-scoped/logs/T66-PM03-numeric-provenance-blind.semantic.log",
-      "sha256": "9313b8657d44a77b8b0217ec78130c53a6e4eaf7adc40ed45b90dad9fcb9afaa",
-      "size": 1325
+      "path": "T68/roster/logs/T68-PM15-namespace-blind-metadata-reader.semantic.log",
+      "sha256": "5b5f36064622912d92f4b14acc543211219d692abf3d5c63705dd7dadc51e19f",
+      "size": 1181
     },
     {
-      "path": "T66/roster-attempt-1-scoped/logs/T66-PM04-citation-limb-asleep.semantic.log",
-      "sha256": "d0c53b98ad425641d2ca47058d5c64ca40e3d87dcc145bb0ee26683c5ba0f475",
-      "size": 245
+      "path": "T68/roster/logs/T68-PM16-same-version-bytes-tolerated.semantic.log",
+      "sha256": "99cd63f2df03a800c93e141b4a41477825135352fb7801969a39061f1e364ec7",
+      "size": 1385
     },
     {
-      "path": "T66/roster-attempt-1-scoped/logs/T66-PM05-absent-review-as-consent.semantic.log",
-      "sha256": "4f85e51a2af292441bc217dfc89c7493ec44e8fdcaf4d149af02a0ea8b046073",
-      "size": 1279
+      "path": "T68/roster/logs/T68-PM17-unexplained-divergence-tolerated.semantic.log",
+      "sha256": "63be67a17dc61fe5a322b68da4bedc05385ace99abe92e9dafe0f7c8ade9ec70",
+      "size": 1251
     },
     {
-      "path": "T66/roster-attempt-1-scoped/logs/T66-PM06-false-allow-uncounted.semantic.log",
-      "sha256": "823aa3b490cb0f58c1cf536b27d82aada2f9bc33467b2695c434f25170ab5b66",
-      "size": 1339
+      "path": "T68/roster/logs/T68-PM18-interrupted-write-leaveth-a-partial-document.semantic.log",
+      "sha256": "6ecd374e5fecc935805388cd95dad83c6858681dea73b7ffa00c3879df8bbd34",
+      "size": 1215
     },
     {
-      "path": "T66/roster-attempt-1-scoped/logs/T66-PM07-corpus-binding-asleep.semantic.log",
-      "sha256": "ab4789d65b62315b42278298113f2e30c482e1e79d6f1e6bdca7ccd6d154347c",
-      "size": 1294
-    },
-    {
-      "path": "T66/roster-attempt-1-scoped/logs/T66-PM08-corrupt-lock-door-asleep.semantic.log",
-      "sha256": "a4abf9550023c48b13fcbbe2a1feeb2018ffeda49dad66305b8f7d5059c534c7",
-      "size": 1213
-    },
-    {
-      "path": "T66/roster-attempt-1-scoped/logs/T66-PM09-blinding-leaketh-the-family.semantic.log",
-      "sha256": "b81db24c2d423c2223f00eaea9f06f59f826de6729124168c492b5e6995fc754",
-      "size": 1528
-    },
-    {
-      "path": "T66/roster-attempt-1-scoped/logs/T66-PM10-stale-review-door-asleep.semantic.log",
-      "sha256": "d254cb146c4ba97767fe2c8997e497dc87cecd4c60a8013cd58a9e0daa4e80f8",
-      "size": 1069
-    },
-    {
-      "path": "T66/roster-attempt-1-scoped/logs/T66-PM11-duplicate-decision-asleep.semantic.log",
-      "sha256": "85b17efe964364b227339811aee75e697a412f57026adfd30785f35521c2ccad",
-      "size": 1128
-    },
-    {
-      "path": "T66/roster-attempt-1-scoped/logs/T66-PM12-reviewer-pool-door-asleep.semantic.log",
-      "sha256": "4cc8ecd3e4dac38132deed7b819451b18536a323c4b0a8b6cb66701b39b6649c",
-      "size": 1245
-    },
-    {
-      "path": "T66/roster-attempt-1-scoped/logs/T66-PM13-future-schema-door-asleep.semantic.log",
-      "sha256": "cf2baba65ec4067c90df444eff0c602d257bf03ef3002af5efed897041dc5d4d",
-      "size": 1571
-    },
-    {
-      "path": "T66/roster-attempt-1-scoped/logs/T66-PM14-staging-evaluation-findings-discarded.semantic.log",
-      "sha256": "d553c032d68d7c8fb2454b00508796afac2985eea389053cf5cbf92c4ff6e260",
-      "size": 1271
-    },
-    {
-      "path": "T66/roster-attempt-1-scoped/logs/T66-PM15-published-evaluation-block-dropped.semantic.log",
-      "sha256": "4a4c1d04042a0fa439177e1196893b3032c85950822533dd0bfd99add37d84b8",
-      "size": 1234
-    },
-    {
-      "path": "T66/roster-attempt-1-scoped/manifest.json",
-      "sha256": "1769d95b4772f87f7c7040311ece832034e3491b911048b86106a9fa65153b7f",
-      "size": 12525
+      "path": "T68/roster/manifest.json",
+      "sha256": "711c9ee36e25076551e1320067b573f57a4c290090d18d2dc904d607ae1733d3",
+      "size": 14871
     }
   ],
-  "note": "Complete evidence index for T66: the runner command records and logs, the stage firing logs, the roster manifest and its per-row logs, and the archived report-only attempt. Paths are relative to the evidence root.",
+  "note": "Complete evidence index for T68: the runner command records and logs, the stage firing logs, the roster manifest with its per-row logs, and the executed supply-chain runs (capture, lock, cache, sbom, verify, the offline restoration of the signing lane, the refusals of a poisoned cache and of a changed wheel, the Gradle verification runs, and the double-build comparison). Paths are relative to the evidence root.",
   "schema_version": 1,
-  "task": "T66"
+  "task": "T68"
 }
