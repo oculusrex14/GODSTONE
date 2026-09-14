@@ -6222,6 +6222,160 @@
       "tested_tree_sha": "423d9717a3749f7a45513f5a7fab86b89377a4f0",
       "unresolved": []
     },
+    "T41": {
+      "case_results": {
+        "added_cases": {
+          "android/mesh/src/test/java/io/godstone/mesh/readiness/ReadinessT41Test.kt": [
+            "test_w01_a_present_peer_gets_a_registered_scheduler",
+            "test_w02_the_three_node_path_forwards_after_durable_acceptance",
+            "test_w03_a_refused_persist_forwards_nothing",
+            "test_w04_the_forward_copy_is_prepared_exactly_once",
+            "test_w05_ttl_exhaustion_and_the_hop_ceiling_refuse_by_name",
+            "test_w06_relation_loss_cancels_the_schedule_and_the_estate_survives",
+            "test_w07_disjoint_held_sets_converge",
+            "test_w08_a_forced_bloom_false_positive_does_not_suppress_a_fetch",
+            "test_w09_an_evicted_frame_is_not_served_and_nothing_is_fabricated",
+            "test_w10_a_slow_peer_neither_starves_another_nor_blocks_the_turn",
+            "test_w11_the_typed_dispatcher_routeth_in_the_statute_order",
+            "test_w12_the_forward_leg_is_strictly_priority_ordered",
+            "test_w13_the_forward_queue_is_bounded",
+            "test_w14_a_stale_turn_emits_nothing_after_cancellation"
+          ]
+        },
+        "counts": {
+          "narrow_android": 14,
+          "subsystem_android": 1064
+        },
+        "counts_source": "The runner's classifier parses only the python 'Ran N tests' summary, so its gradle records carry tests_executed = UNKNOWN. The positive counts were read from the harness's own artifacts at the same head: a TEST-*.xml walk of android/mesh/build/test-results/testDebugUnitTest after purging the stale results directory AND passing --no-build-cache, so the task genuinely executed rather than being restored from the Gradle build cache. Logs: T41/executed/T41-narrow-gradlew-executed.log and T41/executed/T41-subsystem-gradlew-executed.log (attempt 1, rc=0, no retry needed).",
+        "courts": {
+          "controls": "ci/check_repository.py, ci/check_release_gates_status.py",
+          "narrow": "android/mesh/src/test/java/io/godstone/mesh/readiness/ReadinessT41Test.kt (14 witnesses)",
+          "subsystem": "gradlew :mesh:testDebugUnitTest (the whole :mesh suite)"
+        },
+        "deleted_cases": [],
+        "executed_scenarios": {
+          "bloom_false_positive": "a SATURATED bloom (every bit set) provably would suppress a bloom-based offer (framesPeerLacks returns nothing), and the exact inventory/page/WANT road delivers the frame anyway, byte-identical (W08)",
+          "convergence": "two peers with DISJOINT held sets converge through the real DIGEST / inventory / WANT protocol driven by the pump's turns: each ends up holding the union (W07)",
+          "device": "NOT EXECUTED: the section 18/19 physical matrix is external and T73-T75 own it",
+          "eviction": "a capacity-bounded store evicts the eldest frame; it is never resurrected at a peer and no copy of it is offered (W09)",
+          "scheduler_unregistered": "before the presence event an unregistered peer yields NOT_REGISTERED and nothing; the event registers it and a DIGEST is due at once (W01) -- the card's named falsification, second limb",
+          "send_before_persist": "a store whose persist is REFUSED leaves the frame unheld and queues/sends NOTHING (W03) -- the card's named falsification, first limb",
+          "slow_peer_and_reconnect": "a slow peer neither starves a fast one nor blocks a turn (both bounded at 32); a relation loss cancels the schedule and releases the queue while the durable frame survives, and a reconnect resumes (W06, W10)",
+          "three_node_forward": "A -> R -> B through the REAL MeshNode dispatch: R durably holds the frame, queues exactly one copy for B (and none for A), and B receives ttl 11 / hop 1 with the payload, msgId and flags preserved byte for byte (W02)",
+          "ttl_and_hop": "TTL 0 and 1 are refused as TTL_EXHAUSTED, hop MAX_TTL as HOP_LIMIT, a control frame as NotForwardable, and a frame from the only registered peer as NO_OTHER_PEER -- each by name, with nothing queued (W05)"
+        },
+        "produced_artifacts": {
+          "dispatcher": {
+            "laws": "control -> owner, ACK -> delivery authority (or the historical face as the same verdict type), MESSAGE/SOS -> the generic road, everything else refused by name",
+            "path": "android/mesh/src/main/java/io/godstone/mesh/router/FrameDispatcher.kt",
+            "types": [
+              "FrameDispatcher",
+              "DispatchVerdict",
+              "DispatchClass",
+              "DispatchRefusal"
+            ]
+          },
+          "not_duplicated": "the WANT answer remains the control owner's own onWant (one owner); a second serve leg was written and then REMOVED before the commit",
+          "pump": {
+            "laws": "register on presence, cancel on loss; DIGEST at the initial encounter and every 5 minutes; <=32 copies per turn; a 256-copy queue with counted supersessions; strict priority SOS..BULK; TTL-1/hop+1 exactly once per copy; never echoed to receivedFrom; the source token captured and revalidated per turn",
+            "path": "android/mesh/src/main/java/io/godstone/mesh/router/SyncPump.kt",
+            "types": [
+              "SyncPump",
+              "SyncRelation",
+              "ForwardCopy",
+              "ForwardOffer",
+              "SyncPumpBatch",
+              "SyncRefusal"
+            ]
+          },
+          "wiring": {
+            "laws": "relations registered/cancelled on the production presence events; the forward queued only when the router reported durable acceptance; drainSyncFramesForPeer merges the owner's control outbox with the pump's turn as the link writer's ONE source",
+            "path": "android/mesh/src/main/java/io/godstone/mesh/MeshNode.kt"
+          }
+        }
+      },
+      "claim_commit": "3e17b96576bcacfbf96395e76d57c7b05ddce88b",
+      "commands": [
+        "T41-narrow-gradlew",
+        "T41-subsystem-gradlew",
+        "T41-controls-python3",
+        "T41-controls-python3-002"
+      ],
+      "device_gate_ids": [],
+      "file_hashes": {
+        "android/mesh/src/main/java/io/godstone/mesh/MeshNode.kt": "ecc1c0865facdaba0d39a4d333e24e3abee838369fa570134838e6bd7f6a78ee",
+        "android/mesh/src/main/java/io/godstone/mesh/delivery/AckDispatcher.kt": "3f2af2565a20cd1f7c7dc73d7db3bc238066913764e9ef191f18664aa93b73be",
+        "android/mesh/src/main/java/io/godstone/mesh/router/FrameDispatcher.kt": "e1c6d391d719d0ffe455e8b6982c8b9d08fd3983bab82b623bc0c8a1716d6f59",
+        "android/mesh/src/main/java/io/godstone/mesh/router/SyncPump.kt": "34918f3c5ed4e033f53b544b0c5c578fea4e18cfa0788087e31c76d4eed3ec68",
+        "android/mesh/src/test/java/io/godstone/mesh/readiness/ReadinessT41Test.kt": "5daf93f4c2d41f7b08aa75418683f3a83045528cf5c2a0d3fff5a0c73b3b87d7",
+        "ci/mutations.py": "15e2682a4ca74bfb95b86ff3310311d8e6bb4bab2102dcced67d86773b34dd7d",
+        "docs/production-readiness/ARCHITECTURE_INVARIANTS.json": "359b59dc955a95d7ee1a04fcc83f247e7a23ec2f226310d2b94cd1cb1f94a4e5"
+      },
+      "implementation_commit": "2682fd2d51d3c01ef5dbb5c68ae6fd119148dde3",
+      "implementation_commits": [
+        "2682fd2d51d3c01ef5dbb5c68ae6fd119148dde3"
+      ],
+      "inputs": {
+        "children_commit_order": [
+          "T41(claim)",
+          "T41(builder)",
+          "T41(M)"
+        ],
+        "claim_ordering_note": "the claim was taken at 3e17b96576bcacfbf96395e76d57c7b05ddce88b before any work; the three declared stages and the roster were then run at the implementation head 2682fd2d51d3c01ef5dbb5c68ae6fd119148dde3. Both the runner logs and the executed logs are snapshotted in DISTINCT filenames (T41/logs/ for the runner, T41/executed/ for the forced executions) so that no pass can overwrite another -- the erratum T84 recorded.",
+        "governed_source": [
+          "android/mesh/src/main/java/io/godstone/mesh/router/SyncPump.kt",
+          "android/mesh/src/main/java/io/godstone/mesh/router/FrameDispatcher.kt",
+          "android/mesh/src/main/java/io/godstone/mesh/MeshNode.kt",
+          "android/mesh/src/main/java/io/godstone/mesh/delivery/AckDispatcher.kt",
+          "android/mesh/src/test/java/io/godstone/mesh/readiness/ReadinessT41Test.kt",
+          "ci/mutations.py",
+          "docs/production-readiness/ARCHITECTURE_INVARIANTS.json"
+        ],
+        "required_regression_paths": [
+          "android/mesh/src/test/java/io/godstone/mesh/readiness/ReadinessT41Test.kt"
+        ],
+        "sealed_hot_paths_untouched": [
+          "crypto/, wire/ and the generated codecs (no wire field, vector or frame layout changed)",
+          "the T40 control protocol: SyncControlOwner, ControlPayloadV1, StableInventorySnapshot and BloomDigest are untouched",
+          "the T37/T39 courts' ACK call sites: the historical face is expressed as the same verdict type, so their assertions stand",
+          "the five external gates and docs/production/RELEASE_GATES_STATUS.json",
+          "the shipping LIGHT graph: ci/check_shipping_path.py PASS, LINK_LAYER_READY untouched, readiness false",
+          "INV-READINESS-FALSE's STATEMENT: only its MeshNode authority blob was re-pinned (the T03 mechanism)"
+        ]
+      },
+      "ladder_boundary_commit": "2682fd2d51d3c01ef5dbb5c68ae6fd119148dde3",
+      "mutation_results": {
+        "attempts_archived": [],
+        "campaign_note": "the twelve rods ran in ONE official pass, fail-closed, at baseline 2682fd2d51d3c01ef5dbb5c68ae6fd119148dde3: 12 KILLED of 12, SKIPPED=0, INVALID=0, TIMEOUT=0, ESCAPED=0 -- no repair pass was needed. The card's named semantic negative is carried by PM01 (send before persist) and PM02 (scheduler left unregistered), both witnessed on the real MeshNode path. The other ten rods guard the laws the design resteth on: the single TTL/hop application, the never-echo rule, TTL exhaustion, strict priority, the queue and turn bounds, the DIGEST schedule, cancellation releasing the queue, the control shepherd, and the unsupported-type refusal.",
+        "of": 12,
+        "roster_manifest": "T41/roster/manifest.json",
+        "semantic": {
+          "harness": "ci/mutations.py run_semantic (the ledger filtered to the T41- prefix)",
+          "platform": "jvm",
+          "work_parent": "/Users/oculus/.cache/godstone-mutation-worktrees-t41 (disposable; the live tree is never touched)"
+        },
+        "tally": {
+          "ESCAPED": 0,
+          "INVALID": 0,
+          "KILLED": 12,
+          "SKIPPED": 0,
+          "TIMEOUT": 0
+        }
+      },
+      "objective": {
+        "claimed_head": "3e17b96576bcacfbf96395e76d57c7b05ddce88b",
+        "claimed_utc": "2026-09-14T16:49:30+00:00",
+        "objective": "Create a per-TrustedPeer bounded sync pump on the Android mesh path: snapshot the durable held ids, exchange DIGEST/inventory/WANT, fetch frames by cursor, and forward only AFTER durable acceptance -- never back to receivedFrom, TTL decremented and hop incremented exactly once per forwarded copy, in priority order within bounded admitted work, with ACK control routed separately to the delivery authority and the relation's scheduling cancelled on relation loss while application retry state stays durable; a send that precedes its persist, or a scheduler left unregistered, must fail the real MeshNode path test."
+      },
+      "status": "COMPLETE",
+      "tested_tree_sha": "ac48abd1b9073845e5c8bbe96497c7dd85b7d1a0",
+      "unresolved": [
+        "the section 18/19 PHYSICAL device matrix is NOT executed: Android<->iOS interoperability over BLE, lifecycle, permissions and battery/thermal are external, and T73-T75 own that evidence.",
+        "the lab composition root (T54) does NOT yet consume drainSyncFramesForPeer: the schedule, the forward leg and the dispatch statute are proved at the MeshNode seam, and the runtime wiring of the link writer remains T54's.",
+        "the DIGEST is re-sent every turn until a snapshot exists at the first encounter; the authority's own 30-second build rate limit boundeth how often a NEW digest can be produced, so a turn inside that window may carry the standing snapshot (which is correct -- the snapshot is immutable and leased).",
+        "TTL and hop remain unauthenticated transport metadata: a malicious relay can rewrite them, so they bound forwarding but do not attest path length (section 14)."
+      ]
+    },
     "T45": {
       "case_results": {
         "deleted_cases": [],
@@ -12184,7 +12338,7 @@
       ]
     }
   },
-  "current_task": "T41",
+  "current_task": "T42",
   "external_blockers": [
     "A06",
     "APPROVED_CONTENT",
@@ -12194,53 +12348,53 @@
   ],
   "failed_attempts": [],
   "in_progress": {
-    "claimed_head": "3e17b96576bcacfbf96395e76d57c7b05ddce88b",
-    "claimed_utc": "2026-09-14T16:49:30+00:00",
+    "claimed_head": "20d721666fed9d4a435972e8a48f9a735126469d",
+    "claimed_utc": "2026-09-14T17:15:46+00:00",
     "objective": {
-      "claimed_head": "3e17b96576bcacfbf96395e76d57c7b05ddce88b",
-      "claimed_utc": "2026-09-14T16:49:30+00:00",
-      "objective": "Create a per-TrustedPeer bounded sync pump on the Android mesh path: snapshot the durable held ids, exchange DIGEST/inventory/WANT, fetch frames by cursor, and forward only AFTER durable acceptance -- never back to receivedFrom, TTL decremented and hop incremented exactly once per forwarded copy, in priority order within bounded admitted work, with ACK control routed separately to the delivery authority and the relation's scheduling cancelled on relation loss while application retry state stays durable; a send that precedes its persist, or a scheduler left unregistered, must fail the real MeshNode path test."
+      "claimed_head": "20d721666fed9d4a435972e8a48f9a735126469d",
+      "claimed_utc": "2026-09-14T17:15:46+00:00",
+      "objective": "Wire iOS durable anti-entropy and forwarding: require a real MessageStore (an absent one must refuse construction), delete the memory-only success from the production Router.accept path so a persist that did not happen is never reported accepted, implement the Android-equivalent per-TrustedPeer bounded SyncPump and the typed FrameDispatcher on an owned executor, sort by the canonical priority bits and consume durable cursors, route decrypted messages to the inbox and authenticated ACKs to the delivery authority, never route a recipient by nodeHint, and replay the same three-node/convergence traces across iOS->Android->iOS and the reverse."
     },
-    "task": "T41"
+    "task": "T42"
   },
-  "last_code_head": "08e5694c671efcb975fa7238878eef272e54b8de",
-  "last_observed_head": "08e5694c671efcb975fa7238878eef272e54b8de",
+  "last_code_head": "2682fd2d51d3c01ef5dbb5c68ae6fd119148dde3",
+  "last_observed_head": "2682fd2d51d3c01ef5dbb5c68ae6fd119148dde3",
   "latest_verification": {
-    "at_utc": "2026-09-14T22:05:00+00:00",
-    "boundary_commit": "08e5694c671efcb975fa7238878eef272e54b8de",
+    "at_utc": "2026-09-14T23:30:00+00:00",
+    "boundary_commit": "2682fd2d51d3c01ef5dbb5c68ae6fd119148dde3",
     "controls": {
-      "boundary_records": 3,
-      "outcomes": "3/3 PASSED at the boundary (check_repository rc=0; the release-gates status checker rc=0 with its own 12-of-12, 15-of-15 and 7-of-7 selftests; sync_ios_foundation_package --check clean)"
+      "boundary_records": 2,
+      "outcomes": "2/2 PASSED at the boundary (check_repository rc=0; the release-gates checker rc=0 with its own 12-of-12, 15-of-15 and 7-of-7 selftests)"
     },
     "isle_grands": {
-      "android_grand": "the T84 court 14/14 and the whole :mesh suite 1050/0 at the boundary, both genuinely EXECUTED (--no-build-cache, stale results purged)",
-      "counts_source": "see completed_tasks.T84.case_results.counts_source -- the runner reports UNKNOWN for gradle/swift, so the positive counts were read from the harnesses' own artifacts under an explicit execution",
-      "ios_grand": "the T84 court 14/14 and the whole package suite 1057/0 at the boundary",
-      "python_grand": "the structural lineage rc=0, the supply chain green, the content-integration checker green, diff hygiene clean"
+      "android_grand": "the T41 court 14/14 and the whole :mesh suite 1064/0 at the boundary, both genuinely EXECUTED (--no-build-cache, stale results purged, green on attempt 1)",
+      "counts_source": "see completed_tasks.T41.case_results.counts_source",
+      "ios_grand": "no iOS path in this round: the card's iOS implication is 'no unrelated iOS runtime change', and the generated Foundation package is untouched (sync --check clean)",
+      "python_grand": "the python readiness suite 313 OK, the structural lineage rc=0, diff hygiene clean"
     },
     "ladder": {
       "L0": "1 PASSED (check_repository), 1 FAILED (ci/symbols.py --selftest: PRE-EXISTING, reproduced at four earlier commits in T77)",
-      "L1": "PASSED at T77's boundary (the T84 subsystem covers the same readiness suites plus the two mesh isles)",
+      "L1": "PASSED (the python readiness suite), plus the :mesh and Swift subsystem isles green",
       "L2_L4": "unavailable: no command manifest yet"
     },
     "narrow": {
       "errors": 0,
       "failures": 0,
-      "lane": "gradlew :mesh:testDebugUnitTest --tests *ReadinessT84Test* + swift test --filter ReadinessT84Tests",
-      "tests": 28
+      "lane": "gradlew :mesh:testDebugUnitTest --tests *ReadinessT41Test*",
+      "tests": 14
     },
     "roster": {
-      "T84_killed": 14,
-      "of": 14
+      "T41_killed": 12,
+      "of": 12
     },
     "subsystem": {
       "errors": 0,
       "failures": 0,
-      "lane": "gradlew :mesh:testDebugUnitTest (1050) + swift test --package-path ios/Packages/GodstoneFoundation (1057)",
-      "tests": 2107
+      "lane": "gradlew :mesh:testDebugUnitTest",
+      "tests": 1064
     }
   },
-  "next_task": "T41",
+  "next_task": "T42",
   "phase": "P0",
   "plan_sha256": "685456b378662b0a40a53a6abc810041e37daf97b213f3efeb6cea879363934e",
   "planning_baseline_sha": "b5c3d3d394b70cf356cdde33b47511dad7cbb95c",
@@ -12293,7 +12447,8 @@
     "T84 boundary: the runner reuses command ids and log filenames, so re-running a stage OVERWRITES the previous pass's logs. Snapshot each pass into its own directory before re-running a stage.",
     "T84 boundary: android/gradle/verification-metadata.xml and docs/supplychain/SBOM.json were REPAIRED: T68's capture carried no pin for org.xerial:sqlite-jdbc:3.46.1.3 (a :mesh TESTImplementation), which made the declared android lane unrunnable once the POM had to be re-fetched. Both were regenerated by their own tools; the supply-chain gate is green.",
     "T84 CORRECTIVE CHECKPOINT (this commit): the T84(M) commit's message and the state it wrote claim that no internally actionable task remaineth and set next_task = null. THAT WAS WRONG. The dependency frontier recomputed from TASKS.json at 08e5694 showeth that T41 (Wire Android durable anti-entropy and forwarding; deps T40, T24, T26, T37, T39, T84 -- all complete, no external requirement) is READY, and T42..T44, T54..T60, T62..T65, T67, T71..T76, T78, T82 form a long internal chain behind it. next_task is corrected to T41 here, and EXTERNAL_BLOCKERS.json now carrieth the true blocking frontier (T79/T80/T81 direct; T73..T78/SIGNING transitively). The wrong null is superseded, never rewritten: the T84(M) commit standeth as history.",
-    "T84(M) ERRATUM: that commit's message citeth 'tree fbe1c9a2' for the implementation head. The real tree of 08e5694c671efcb975fa7238878eef272e54b8de is 194a8d9a3a3d6d95361191b6c01ad9854011eb39 (git rev-parse 08e5694^{tree}), which is what completed_tasks.T84.tested_tree_sha carrieth. The message is not amended (no history rewrite)."
+    "T84(M) ERRATUM: that commit's message citeth 'tree fbe1c9a2' for the implementation head. The real tree of 08e5694c671efcb975fa7238878eef272e54b8de is 194a8d9a3a3d6d95361191b6c01ad9854011eb39 (git rev-parse 08e5694^{tree}), which is what completed_tasks.T84.tested_tree_sha carrieth. The message is not amended (no history rewrite).",
+    "T41 boundary: INV-READINESS-FALSE's MeshNode authority blob was re-pinned a SECOND time (7b50868d -> cae014b7) because the ingest seam changed again. The statement is unchanged and readiness is still false. Any task that edits MeshNode.kt or MeshNode.swift must re-pin the blob or the sealed T03 witness will fail -- that is the mechanism working, not a defect."
   ],
   "warnings_for_next_invocation": [
     "T41 IS THE NEXT TASK (deps T40, T24, T26, T37, T39, T84 all complete; no external requirement). After T41 cometh T42, T43, T44, then T54 and the platform chain.",

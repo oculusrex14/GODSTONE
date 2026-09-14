@@ -6376,6 +6376,180 @@
         "TTL and hop remain unauthenticated transport metadata: a malicious relay can rewrite them, so they bound forwarding but do not attest path length (section 14)."
       ]
     },
+    "T42": {
+      "case_results": {
+        "added_cases": {
+          "ios/Godstone/Tests/GodstoneMeshTests/ReadinessT42Tests.swift": [
+            "testW01ATrustedPeerGetsARegisteredScheduler",
+            "testW02TheThreeNodeTraceForwardsAfterDurableAcceptance",
+            "testW03ARefusedPersistForwardsNothingAndReportsNothing",
+            "testW04MemoryOnlyAcceptanceIsRejected",
+            "testW05DisjointHeldSetsConverge",
+            "testW06TheSameTraceReplaysInReverse",
+            "testW07AForcedBloomFalsePositiveDoesNotSuppressAFetch",
+            "testW08TtlExhaustionAndTheHopCeilingRefuseByName",
+            "testW09RelationLossCancelsTheScheduleAndTheEstateSurvives",
+            "testW10TheForwardLegIsStrictlyPriorityOrdered",
+            "testW11TheForwardQueueAndTheTurnAreBounded",
+            "testW12TheTypedDispatcherRoutethInTheStatuteOrder",
+            "testW13TheHintNeverRoutethARecipient",
+            "testW14TheTurnRunnethOnThePumpsOwnExecutor",
+            "testW15TheSameTraceIsReplayedOnBothIsles",
+            "testW16AuthenticatedAcksGoToDeliveryNeverTheMessageRoad"
+          ]
+        },
+        "corrected_cases": {
+          "ios/Godstone/Tests/GodstoneMeshTests/RouterTests.swift": "testDedupLRUEvictionUnderCapacity asserted the MEMORY-ONLY acceptance the card removes (the fourth arrival of a held frame was EXPECTED accepted). It is now testDedupUnderCapacityNeverResurrectsAHeldFrame and asserts the durable law instead: the duplicate is refused, the held set is unchanged, each frame forwarded once. The contradiction is named in the test's own doc comment and in T42/BUILDER_NOTE.md."
+        },
+        "counts": {
+          "narrow_ios": 16,
+          "subsystem_ios": 1073
+        },
+        "counts_source": "swift's own 'Executed N tests, with M failures' line from the harness output at the implementation head: T42/executed/T42-narrow-swift-executed.log (16/0) and T42/executed/T42-subsystem-swift-executed.log (1073/0). The runner's records carry tests_executed = UNKNOWN because its classifier parses only the python summary.",
+        "courts": {
+          "controls": "ci/check_repository.py, ci/check_release_gates_status.py, scripts/sync_ios_foundation_package.py --check",
+          "narrow": "ios/Godstone/Tests/GodstoneMeshTests/ReadinessT42Tests.swift (16 witnesses)",
+          "subsystem": "swift test --package-path ios/Packages/GodstoneFoundation (the whole package)"
+        },
+        "deleted_cases": [],
+        "executed_scenarios": {
+          "bloom_false_positive": "a saturated bloom provably suppresses a bloom-based offer and cannot suppress the exact road (W07)",
+          "convergence": "disjoint held sets converge through the real DIGEST/inventory/WANT protocol driven by the pump's turns (W05)",
+          "cross_isle": "the court reads the Android twin's own source and asserts the canonical facts (TTL-1, hop 1, the priority order, the trace's msgId seed, the store-failure trace) are the ones it replays (W15)",
+          "device": "NOT EXECUTED: the section 18/19 physical matrix is external and T73-T75 own it",
+          "hint_not_a_route": "a directed message whose tag is NOT the local hint is still durably held and still offered to the verified inbox; the hint's only power is suppressing a needless relay (W13)",
+          "store_failure": "a store whose persist FAILS: the frame is refused, nothing is held, nothing queued, nothing sent (W03); an absent store refuses construction and a failed persist is not an acceptance (W04)",
+          "three_node": "A -> R -> B through the REAL iOS dispatch: R durably holds, queues one copy for B (none for A), and B receives ttl 11 / hop 1 with payload and flags byte-identical (W02); the reverse direction (W06)"
+        },
+        "mechanical_updates": {
+          "files": [
+            "ReadinessT21Tests.swift",
+            "ReadinessT36Tests.swift",
+            "ReadinessT37Tests.swift",
+            "ReadinessT83Tests.swift",
+            "RouterTests.swift",
+            "SqliteDeliveryRepositoryTests.swift"
+          ],
+          "note": "every Router construction site now passes the required store; where the site already declared one that instance is passed and the later `.store =` assignment is gone. No other assertion in those files was touched, and the whole package is green after it.",
+          "sites": 40
+        },
+        "produced_artifacts": {
+          "dispatcher": {
+            "laws": "control -> owner, ACK -> the T84 authority (or the historical face as the same verdict), MESSAGE/SOS -> the generic road, everything else refused by name",
+            "path": "ios/Godstone/Sources/GodstoneMesh/FrameDispatcher.swift"
+          },
+          "meshnode": {
+            "laws": "trustedPeerDidConnect/Disconnect key a relation by NODE ID (never a transport UUID); the forward is queued only after durable acceptance; drainSyncFrames(for:) is the link writer's ONE source",
+            "path": "ios/Godstone/Sources/GodstoneMesh/MeshNode.swift"
+          },
+          "pump": {
+            "laws": "register/cancel; DIGEST at the initial encounter and every 5 minutes; <=32 copies per turn; a 256-copy queue; strict canonical priority; never echoed to receivedFrom; TTL applied exactly once; the source token revalidated per turn; EVERY TURN ON THE PUMP'S OWN SERIAL EXECUTOR",
+            "path": "ios/Godstone/Sources/GodstoneMesh/SyncPump.swift",
+            "types": [
+              "SyncPump",
+              "SyncRelation",
+              "ForwardCopy",
+              "ForwardOffer",
+              "SyncPumpBatch",
+              "SyncRefusal"
+            ]
+          },
+          "router": {
+            "laws": "the store is a required let; Router.make refuseth a nil store; the memory-only acceptance arm is deleted; forwardCopy is the ONE owner of TTL-1/hop+1; the relay queue sorts by Priority.fromFlags; framesPeerLacks joins the isle",
+            "path": "ios/Godstone/Sources/GodstoneMesh/Router.swift"
+          }
+        }
+      },
+      "claim_commit": "20d721666fed9d4a435972e8a48f9a735126469d",
+      "commands": [
+        "T42-narrow-swift",
+        "T42-subsystem-swift",
+        "T42-controls-python3",
+        "T42-controls-python3-002",
+        "T42-controls-python3-003"
+      ],
+      "device_gate_ids": [],
+      "file_hashes": {
+        "ci/mutations.py": "49fa4df270f0eed4c75085c8bf3237a0c74b4505d2b00e787d37ba0e5057f9f0",
+        "docs/production-readiness/ARCHITECTURE_INVARIANTS.json": "211ec310d59be8b44a35c4385a09977618a1aa402f9c3e2fc7d9f2153a347c21",
+        "ios/Godstone/Sources/GodstoneMesh/FrameDispatcher.swift": "4186a73c7e409efdd0a27563836f5d6bb0e759c02460a6b29713d2b6c8b9ff20",
+        "ios/Godstone/Sources/GodstoneMesh/MeshNode.swift": "3686e1f5c01e2769d303061a4401b1862a5de452723146ff05b738b09f18faae",
+        "ios/Godstone/Sources/GodstoneMesh/Router.swift": "242d0a17d12f65ca76db2205af0a1f39a2b11895177cc92c23133b72178d4ce4",
+        "ios/Godstone/Sources/GodstoneMesh/SyncPump.swift": "8f37273a2350fdce91096a986f1da9f6535a59bfba7f7c12d258c4b82bab8a98",
+        "ios/Godstone/Tests/GodstoneMeshTests/ReadinessT42Tests.swift": "162e1a204dece16ffb394a8f431b0123868d590730a803ed543ad3888667c6a5",
+        "ios/Godstone/Tests/GodstoneMeshTests/RouterTests.swift": "f614ecd6a82d433119c6ddd5203826bf7a04ba805fe5bca71d265e8adff2e71a"
+      },
+      "implementation_commit": "010a621e49cdf2314838e98b02514e8155ec5781",
+      "implementation_commits": [
+        "010a621e49cdf2314838e98b02514e8155ec5781"
+      ],
+      "inputs": {
+        "children_commit_order": [
+          "T42(claim)",
+          "T42(builder)",
+          "T42(M)"
+        ],
+        "claim_ordering_note": "the claim was taken at 20d721666fed9d4a435972e8a48f9a735126469d; the three declared stages and the roster were run at the implementation head 010a621e49cdf2314838e98b02514e8155ec5781. Runner logs and executed logs live in distinct directories (T42/logs and T42/executed) so no pass can overwrite another.",
+        "governed_source": [
+          "ios/Godstone/Sources/GodstoneMesh/Router.swift",
+          "ios/Godstone/Sources/GodstoneMesh/SyncPump.swift",
+          "ios/Godstone/Sources/GodstoneMesh/FrameDispatcher.swift",
+          "ios/Godstone/Sources/GodstoneMesh/MeshNode.swift",
+          "ios/Godstone/Tests/GodstoneMeshTests/ReadinessT42Tests.swift",
+          "ios/Godstone/Tests/GodstoneMeshTests/RouterTests.swift",
+          "ios/Godstone/Tests/GodstoneMeshTests/ReadinessT21Tests.swift",
+          "ios/Godstone/Tests/GodstoneMeshTests/ReadinessT36Tests.swift",
+          "ios/Godstone/Tests/GodstoneMeshTests/ReadinessT37Tests.swift",
+          "ios/Godstone/Tests/GodstoneMeshTests/ReadinessT83Tests.swift",
+          "ios/Godstone/Tests/GodstoneMeshTests/SqliteDeliveryRepositoryTests.swift",
+          "ci/mutations.py",
+          "docs/production-readiness/ARCHITECTURE_INVARIANTS.json"
+        ],
+        "required_regression_paths": [
+          "ios/Godstone/Tests/GodstoneMeshTests/ReadinessT42Tests.swift"
+        ],
+        "sealed_hot_paths_untouched": [
+          "crypto/, wire/ and the generated codecs",
+          "the T40 control protocol (SyncControlOwner, ControlPayloadV1, StableInventorySnapshot, BloomDigest)",
+          "the T84 ACK road: the historical point-to-point face is expressed as the same verdict type, so the sealed ACK courts stand",
+          "the five external gates and docs/production/RELEASE_GATES_STATUS.json",
+          "the shipping LIGHT graph and the readiness statements (only the iOS MeshNode authority blob was re-pinned)"
+        ]
+      },
+      "ladder_boundary_commit": "010a621e49cdf2314838e98b02514e8155ec5781",
+      "mutation_results": {
+        "attempts_archived": [],
+        "campaign_note": "the thirteen rods ran in ONE official pass, fail-closed, at baseline 010a621e49cdf2314838e98b02514e8155ec5781: 13 KILLED of 13, SKIPPED=0, INVALID=0, TIMEOUT=0, ESCAPED=0. The card's named semantic negative is RC1 (a failed persist reported accepted). Four rows record tests_run = null because the ledger's summary pattern requireth the PLURAL 'failures' and Swift printeth the singular 'with 1 failure'; the classification reads the witness's own failure line, and RC8 was verified BY HAND in a probe worktree (the assertion failed and 'Executed 16 tests, with 1 failure' was printed). The ledger's oracle was not touched by this task.",
+        "of": 13,
+        "roster_manifest": "T42/roster/manifest.json",
+        "semantic": {
+          "harness": "ci/mutations.py run_semantic (the ledger filtered to the T42- prefix)",
+          "platform": "swift",
+          "work_parent": "/Users/oculus/.cache/godstone-mutation-worktrees-t42 (disposable; the live tree is never touched)"
+        },
+        "tally": {
+          "ESCAPED": 0,
+          "INVALID": 0,
+          "KILLED": 13,
+          "SKIPPED": 0,
+          "TIMEOUT": 0
+        }
+      },
+      "objective": {
+        "claimed_head": "20d721666fed9d4a435972e8a48f9a735126469d",
+        "claimed_utc": "2026-09-14T17:15:46+00:00",
+        "objective": "Wire iOS durable anti-entropy and forwarding: require a real MessageStore (an absent one must refuse construction), delete the memory-only success from the production Router.accept path so a persist that did not happen is never reported accepted, implement the Android-equivalent per-TrustedPeer bounded SyncPump and the typed FrameDispatcher on an owned executor, sort by the canonical priority bits and consume durable cursors, route decrypted messages to the inbox and authenticated ACKs to the delivery authority, never route a recipient by nodeHint, and replay the same three-node/convergence traces across iOS->Android->iOS and the reverse."
+      },
+      "status": "COMPLETE",
+      "tested_tree_sha": "766e46ffdecb1ce25702eaa130d991e76581b5cd",
+      "unresolved": [
+        "the section 18/19 PHYSICAL device matrix is NOT executed: Android<->iOS interoperability over BLE, lifecycle, permissions and battery/thermal are external; T73-T75 own that evidence. The cross-isle trace proved here is a HOST replay against the Android court's own source, not a device-to-device run.",
+        "the lab composition root (T54) does not yet consume drainSyncFrames(for:).",
+        "the runner's semantic oracle cannot count a Swift run whose failure count is 1 (its pattern requireth the plural 'failures'); four T42 rods therefore record tests_run = null. The ledger was NOT touched; the observation is recorded for whichever task owns ci/mutations.py.",
+        "the roster log files are truncated tails (the runner writes the last 12000 characters), so a rod's log may omit its own verdict line; the manifest's failed_assertion is authoritative.",
+        "TTL and hop remain unauthenticated transport metadata (section 14)."
+      ]
+    },
     "T45": {
       "case_results": {
         "deleted_cases": [],
@@ -12338,7 +12512,7 @@
       ]
     }
   },
-  "current_task": "T42",
+  "current_task": null,
   "external_blockers": [
     "A06",
     "APPROVED_CONTENT",
@@ -12347,54 +12521,45 @@
     "SIGNING"
   ],
   "failed_attempts": [],
-  "in_progress": {
-    "claimed_head": "20d721666fed9d4a435972e8a48f9a735126469d",
-    "claimed_utc": "2026-09-14T17:15:46+00:00",
-    "objective": {
-      "claimed_head": "20d721666fed9d4a435972e8a48f9a735126469d",
-      "claimed_utc": "2026-09-14T17:15:46+00:00",
-      "objective": "Wire iOS durable anti-entropy and forwarding: require a real MessageStore (an absent one must refuse construction), delete the memory-only success from the production Router.accept path so a persist that did not happen is never reported accepted, implement the Android-equivalent per-TrustedPeer bounded SyncPump and the typed FrameDispatcher on an owned executor, sort by the canonical priority bits and consume durable cursors, route decrypted messages to the inbox and authenticated ACKs to the delivery authority, never route a recipient by nodeHint, and replay the same three-node/convergence traces across iOS->Android->iOS and the reverse."
-    },
-    "task": "T42"
-  },
-  "last_code_head": "2682fd2d51d3c01ef5dbb5c68ae6fd119148dde3",
-  "last_observed_head": "2682fd2d51d3c01ef5dbb5c68ae6fd119148dde3",
+  "in_progress": null,
+  "last_code_head": "010a621e49cdf2314838e98b02514e8155ec5781",
+  "last_observed_head": "010a621e49cdf2314838e98b02514e8155ec5781",
   "latest_verification": {
-    "at_utc": "2026-09-14T23:30:00+00:00",
-    "boundary_commit": "2682fd2d51d3c01ef5dbb5c68ae6fd119148dde3",
+    "at_utc": "2026-09-15T00:10:00+00:00",
+    "boundary_commit": "010a621e49cdf2314838e98b02514e8155ec5781",
     "controls": {
-      "boundary_records": 2,
-      "outcomes": "2/2 PASSED at the boundary (check_repository rc=0; the release-gates checker rc=0 with its own 12-of-12, 15-of-15 and 7-of-7 selftests)"
+      "boundary_records": 3,
+      "outcomes": "3/3 PASSED at the boundary (check_repository rc=0; the release-gates checker rc=0 with its own 12-of-12, 15-of-15 and 7-of-7 selftests; sync --check clean)"
     },
     "isle_grands": {
-      "android_grand": "the T41 court 14/14 and the whole :mesh suite 1064/0 at the boundary, both genuinely EXECUTED (--no-build-cache, stale results purged, green on attempt 1)",
-      "counts_source": "see completed_tasks.T41.case_results.counts_source",
-      "ios_grand": "no iOS path in this round: the card's iOS implication is 'no unrelated iOS runtime change', and the generated Foundation package is untouched (sync --check clean)",
-      "python_grand": "the python readiness suite 313 OK, the structural lineage rc=0, diff hygiene clean"
+      "android_grand": "no Android path in this round: the card is the iOS twin of T41, T41's own court is untouched, and the python readiness suite (which covereth the Android side's controls) is 313 OK",
+      "counts_source": "see completed_tasks.T42.case_results.counts_source",
+      "ios_grand": "the T42 court 16/16 and the whole GodstoneFoundation package 1073/0 at the boundary (up from 1057)",
+      "python_grand": "the structural lineage rc=0, diff hygiene clean, sync --check clean"
     },
     "ladder": {
-      "L0": "1 PASSED (check_repository), 1 FAILED (ci/symbols.py --selftest: PRE-EXISTING, reproduced at four earlier commits in T77)",
-      "L1": "PASSED (the python readiness suite), plus the :mesh and Swift subsystem isles green",
+      "L0": "1 PASSED (check_repository), 1 FAILED (ci/symbols.py --selftest: PRE-EXISTING)",
+      "L1": "PASSED (the python readiness suite plus the Swift package isle)",
       "L2_L4": "unavailable: no command manifest yet"
     },
     "narrow": {
       "errors": 0,
       "failures": 0,
-      "lane": "gradlew :mesh:testDebugUnitTest --tests *ReadinessT41Test*",
-      "tests": 14
+      "lane": "swift test --filter ReadinessT42Tests",
+      "tests": 16
     },
     "roster": {
-      "T41_killed": 12,
-      "of": 12
+      "T42_killed": 13,
+      "of": 13
     },
     "subsystem": {
       "errors": 0,
       "failures": 0,
-      "lane": "gradlew :mesh:testDebugUnitTest",
-      "tests": 1064
+      "lane": "swift test --package-path ios/Packages/GodstoneFoundation",
+      "tests": 1073
     }
   },
-  "next_task": "T42",
+  "next_task": "T43",
   "phase": "P0",
   "plan_sha256": "685456b378662b0a40a53a6abc810041e37daf97b213f3efeb6cea879363934e",
   "planning_baseline_sha": "b5c3d3d394b70cf356cdde33b47511dad7cbb95c",
@@ -12448,7 +12613,10 @@
     "T84 boundary: android/gradle/verification-metadata.xml and docs/supplychain/SBOM.json were REPAIRED: T68's capture carried no pin for org.xerial:sqlite-jdbc:3.46.1.3 (a :mesh TESTImplementation), which made the declared android lane unrunnable once the POM had to be re-fetched. Both were regenerated by their own tools; the supply-chain gate is green.",
     "T84 CORRECTIVE CHECKPOINT (this commit): the T84(M) commit's message and the state it wrote claim that no internally actionable task remaineth and set next_task = null. THAT WAS WRONG. The dependency frontier recomputed from TASKS.json at 08e5694 showeth that T41 (Wire Android durable anti-entropy and forwarding; deps T40, T24, T26, T37, T39, T84 -- all complete, no external requirement) is READY, and T42..T44, T54..T60, T62..T65, T67, T71..T76, T78, T82 form a long internal chain behind it. next_task is corrected to T41 here, and EXTERNAL_BLOCKERS.json now carrieth the true blocking frontier (T79/T80/T81 direct; T73..T78/SIGNING transitively). The wrong null is superseded, never rewritten: the T84(M) commit standeth as history.",
     "T84(M) ERRATUM: that commit's message citeth 'tree fbe1c9a2' for the implementation head. The real tree of 08e5694c671efcb975fa7238878eef272e54b8de is 194a8d9a3a3d6d95361191b6c01ad9854011eb39 (git rev-parse 08e5694^{tree}), which is what completed_tasks.T84.tested_tree_sha carrieth. The message is not amended (no history rewrite).",
-    "T41 boundary: INV-READINESS-FALSE's MeshNode authority blob was re-pinned a SECOND time (7b50868d -> cae014b7) because the ingest seam changed again. The statement is unchanged and readiness is still false. Any task that edits MeshNode.kt or MeshNode.swift must re-pin the blob or the sealed T03 witness will fail -- that is the mechanism working, not a defect."
+    "T41 boundary: INV-READINESS-FALSE's MeshNode authority blob was re-pinned a SECOND time (7b50868d -> cae014b7) because the ingest seam changed again. The statement is unchanged and readiness is still false. Any task that edits MeshNode.kt or MeshNode.swift must re-pin the blob or the sealed T03 witness will fail -- that is the mechanism working, not a defect.",
+    "T42 boundary: the ledger's semantic oracle cannot count a Swift run whose failure count is 1 -- EXEC_RE requireth the PLURAL 'failures' and Swift printeth 'with 1 failure'. Four T42 rods therefore record tests_run = null while the classification correctly returneth KILLED (it readeth the witness's own failure line). Verified by hand for T42-RC8. The ledger was not touched by T42; whichever task owns ci/mutations.py should widen that pattern.",
+    "T42 boundary: the roster log files are TRUNCATED TAILS (the runner wrote blob[-12000:]). A rod's log may therefore omit its own verdict line even though the classification saw the full output; the manifest's failed_assertion field is the authoritative record.",
+    "T42 boundary: INV-READINESS-FALSE's iOS MeshNode authority blob was re-pinned (b3f205c3 -> 8a817168). The statement is unchanged; the re-pin is the T03 mechanism working."
   ],
   "warnings_for_next_invocation": [
     "T41 IS THE NEXT TASK (deps T40, T24, T26, T37, T39, T84 all complete; no external requirement). After T41 cometh T42, T43, T44, then T54 and the platform chain.",
