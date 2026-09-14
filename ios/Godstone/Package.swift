@@ -24,6 +24,10 @@ let package = Package(
         ),
         .target(name: "GodstoneLLM", dependencies: ["GodstoneCore", "GodstoneLLMBridge"]),
         .testTarget(name: "GodstoneCoreTests", dependencies: ["GodstoneCore"]),
-        .testTarget(name: "GodstoneMeshTests", dependencies: ["GodstoneMesh", "GodstoneCore"])
+        .testTarget(name: "GodstoneMeshTests", dependencies: ["GodstoneMesh", "GodstoneCore"]),
+        // T54: the nonshipping LabMesh target's test capability -- it driveth the
+        // REAL composition (adapters, durable store, trusted handshake, inbox,
+        // ACK road) and can never manufacture readiness.
+        .testTarget(name: "LabMeshTests", dependencies: ["GodstoneMesh", "GodstoneCore"])
     ]
 )

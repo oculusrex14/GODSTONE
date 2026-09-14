@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+
+    <!-- The lab is EXPERIMENTAL and nonshipping. It carrieth the mesh radio
+         permissions the shipping Archive-only app deliberately refuses, because
+         the point of the lab is to exercise the real adapters on a real device.
+         ci/check_lab_isolation.py asserteth that these permissions appear in the
+         LAB profile ONLY, and that the LIGHT release surface stayeth clean. -->
+    <uses-permission android:name="android.permission.BLUETOOTH_ADVERTISE" />
+    <uses-permission android:name="android.permission.BLUETOOTH_SCAN" />
+    <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
+    <uses-feature android:name="android.hardware.bluetooth_le" android:required="false" />
+
+    <!-- The lab is NEVER a store candidate: allowBackup false, no INTERNET -->
+    <uses-permission android:name="android.permission.INTERNET" tools:node="remove" />
+
+    <application
+        android:allowBackup="false"
+        android:label="Godstone LabMesh (experimental)"
+        android:supportsRtl="true"
+        tools:ignore="MissingApplicationIcon" />
+</manifest>

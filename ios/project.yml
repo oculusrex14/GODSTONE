@@ -65,6 +65,57 @@ targets:
           ENABLE_TESTABILITY: NO
           SWIFT_ACTIVE_COMPILATION_CONDITIONS: ARCHIVE_ONLY
 
+  # T54: the nonshipping LabMesh application. A SEPARATE target with its OWN
+  # bundle identity (io.godstone.labmesh), depending on the SAME canonical
+  # runtime components the mesh tests use (GodstoneMesh + GodstoneCore) -- never
+  # a lab-only twin. It is visibly experimental, it is not a store candidate, and
+  # ci/check_lab_isolation.py asserteth that it and its sources can never reach
+  # the LIGHT Archive-only application (whose source allowlist below is
+  # unchanged).
+  LabMesh:
+    type: application
+    platform: iOS
+    sources:
+      - path: Godstone/Sources/LabMesh
+    dependencies:
+      - package: GodstonePackages
+        product: GodstoneMesh
+      - package: GodstonePackages
+        product: GodstoneCore
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: io.godstone.labmesh
+        PRODUCT_NAME: GodstoneLabMesh
+        GENERATE_INFOPLIST_FILE: YES
+        TARGETED_DEVICE_FAMILY: "1,2"
+        INFOPLIST_KEY_GodstoneTier: LAB
+        INFOPLIST_KEY_GodstoneProfile: LABMESH
+      configs:
+        LightDebug:
+          SWIFT_ACTIVE_COMPILATION_CONDITIONS: DEBUG LABMESH
+        LightRelease:
+          SWIFT_ACTIVE_COMPILATION_CONDITIONS: LABMESH
+
+  # T54: the lab's own test capability -- a hostless bundle that EXECUTES the real
+  # composition (adapters, durable store, trusted handshake, recipient inbox, ACK
+  # road). It links only the canonical packages, never a model binary.
+  LabMeshTests:
+    type: bundle.unit-test
+    platform: iOS
+    sources:
+      - path: Godstone/Tests/LabMeshTests
+    dependencies:
+      - package: GodstonePackages
+        product: GodstoneMesh
+      - package: GodstonePackages
+        product: GodstoneCore
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: io.godstone.labmeshtests
+        PRODUCT_NAME: LabMeshTests
+        GENERATE_INFOPLIST_FILE: YES
+        TARGETED_DEVICE_FAMILY: "1,2"
+
   # ADR-008 patch 21: the iOS cross-platform-conformance gate. A real
   # `xcodebuild test` target that EXECUTES the GMP/2.1 wire vectors, the
   # Blake2s port vectors, the router, and -- added in patch 21 -- the Noise_XX

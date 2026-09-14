@@ -2,7 +2,7 @@
 """Materialize the host-testable iOS Core+Mesh package deterministically.
 
 Authoritative sources: ios/Godstone/Sources/{GodstoneCore,GodstoneMesh} and
-ios/Godstone/Tests/{GodstoneCoreTests,GodstoneMeshTests}. This script COPIES
+ios/Godstone/Tests/{GodstoneCoreTests,GodstoneMeshTests,LabMeshTests}. This script COPIES
 them (destructively: rmtree + copyfile) into ios/Packages/GodstoneFoundation
 so the Core+Mesh closure can be `swift test`-ed on a host/CI without building
 the iOS-only GodstoneLLMBridge (llama.cpp) target.
@@ -31,6 +31,10 @@ MAPPINGS = {
     ROOT / "ios" / "Godstone" / "Sources" / "GodstoneMesh": PACKAGE / "Sources" / "GodstoneMesh",
     ROOT / "ios" / "Godstone" / "Tests" / "GodstoneCoreTests": PACKAGE / "Tests" / "GodstoneCoreTests",
     ROOT / "ios" / "Godstone" / "Tests" / "GodstoneMeshTests": PACKAGE / "Tests" / "GodstoneMeshTests",
+    # T54: the nonshipping LabMesh target's own test capability. It is mirrored so
+    # the lab's real-composition cases EXECUTE on the host beside the mesh courts,
+    # rather than existing only as an Xcode target no host run reacheth.
+    ROOT / "ios" / "Godstone" / "Tests" / "LabMeshTests": PACKAGE / "Tests" / "LabMeshTests",
 }
 
 

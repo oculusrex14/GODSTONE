@@ -347,7 +347,17 @@ jobs:
             :llm:testDebugUnitTest \
             :app:compileLightDebugKotlin \
             :app:testLightDebugUnitTest \
+            :labmesh:testDebugUnitTest \
             --no-daemon
+      - name: lab-isolation gate (T54) -- prove the nonshipping LabMesh targets
+          # The lab is a SEPARATE application identity (io.godstone.labmesh) that
+          # reaches the canonical runtime components; the LIGHT Archive-only
+          # profile must carry no lab source set, no :mesh edge and no readiness
+          # override. The gate resolves both profiles from build-config evidence
+          # and refuses each violation by name; --selftest exercises its controls.
+        run: |
+          python3 ci/check_lab_isolation.py --explain
+          python3 ci/check_lab_isolation.py --selftest
       - name: build a usable debug Archive with a harmless development fixture
         run: |
           python ci/archive_fixture.py --out android/app/src/lightDebug/assets/archive_light.db

@@ -13,6 +13,12 @@ CHECKS = [
     # ci/inventory_dormant_wire.py is intentionally NOT here -- it is a
     # non-passing technical-debt inventory, not a gate. It does not close A-01.
     [sys.executable, "ci/check_shipping_path.py"],
+    # T54 lab-isolation gate: fails iff a lab source set, a lab module edge, a
+    # readiness override or a synthetic READY setter is reachable from the LIGHT
+    # Archive-only profile, or iff a lab target carrieth anything but the
+    # canonical components. The profile resolver it drives lives beside it
+    # (ci/profile_resolver.py). It closes no external gate and moves no flag.
+    [sys.executable, "ci/check_lab_isolation.py"],
 ]
 
 

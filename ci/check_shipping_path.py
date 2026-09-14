@@ -196,8 +196,19 @@ def android_excluded_sources(app_src_main: Path, excludes: list[str]) -> list[tu
 # iOS build-config evidence
 # ---------------------------------------------------------------------------
 
-def parse_ios_app_target(project_yml: Path) -> tuple[list[str], list[tuple[str, str]]]:
-    """Return (sources, deps) for the ``type: application`` target.
+# The SHIPPING iOS target's name. The gate resolveth the target BY NAME, never by
+# "the last/first `type: application` target": T54 addeth a second application
+# target (the nonshipping LabMesh lab), and a positional resolver would have
+# judged the LAB's sources and products as the shipping app's -- which is exactly
+# what it did before this line existed.
+SHIPPING_IOS_TARGET = "Godstone"
+
+
+def parse_ios_app_target(
+    project_yml: Path,
+    target_name: str = SHIPPING_IOS_TARGET,
+) -> tuple[list[str], list[tuple[str, str]]]:
+    """Return (sources, deps) for the named ``type: application`` target.
 
     Dependency-free, indentation-aware. Sources are the ``- path:`` entries of
     the ``sources:`` block; deps are the (package, product) pairs of the
@@ -222,6 +233,7 @@ def parse_ios_app_target(project_yml: Path) -> tuple[list[str], list[tuple[str, 
         if indent == 0:
             break
         if indent == 2 and line.strip().endswith(":"):
+            current_target = line.strip()[:-1]
             i += 1
             t_type: str | None = None
             t_sources: list[str] = []
@@ -278,7 +290,7 @@ def parse_ios_app_target(project_yml: Path) -> tuple[list[str], list[tuple[str, 
                     continue
                 i += 1
             flush_dep()
-            if t_type == "application":
+            if t_type == "application" and current_target == target_name:
                 app_sources, app_deps = t_sources, t_deps
         else:
             i += 1
