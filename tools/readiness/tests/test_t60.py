@@ -266,6 +266,18 @@ class T60LayoutTest(unittest.TestCase):
         self.assertIn("recipient_select", reason2)
         self.assertIn("clipped", reason2)
 
+        # ... and an ESSENTIAL label clipped WITHOUT any overflow is refused too:
+        # this is the arm that owneth the law, and the rod that struck it escaped
+        # until the witness carried it (the overflow arm alone proved nothing)
+        nodes3 = healthy_nodes()
+        nodes3[1] = UiNode("compose_send", ControlRole.BUTTON, "Se", "Send the message",
+                           48, 48, 1, truncated=True)
+        passed3, reason3 = check_assertion(
+            assertion("long_content_fits", locale="fi"), nodes3)
+        self.assertFalse(passed3, "a clipped essential label is refused on its own")
+        self.assertIn("compose_send", reason3)
+        self.assertIn("clipped", reason3)
+
 
 class T60RestorationTest(unittest.TestCase):
     """W10-W13 -- restoration, the human boundary, the prose, and the profiles."""
