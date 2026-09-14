@@ -10878,7 +10878,16 @@
     "SIGNING"
   ],
   "failed_attempts": [],
-  "in_progress": null,
+  "in_progress": {
+    "claimed_head": "fec357af52bcb6db9487dbfa558048743c6c1f1f",
+    "claimed_utc": "2026-09-14T13:46:56+00:00",
+    "objective": {
+      "claimed_head": "fec357af52bcb6db9487dbfa558048743c6c1f1f",
+      "claimed_utc": "2026-09-14T13:46:56+00:00",
+      "objective": "Pin the build supply chain and prove offline restoration: a ToolchainLock capturing the exact measured Xcode/SDK/NDK/JDK/Swift/Python/XcodeGen/Gradle-wrapper versions beside the digests of every reviewed input file, a DependencyVerificationManifest (Gradle dependency verification generated from the local cache, and a function-split hash-locked Python environment that stays UNPINNED rather than inventing a hash it cannot compute), an SBOM/licence inventory over the reviewed artifacts, an OfflineCacheManifest whose restore path refuseth a same-version blob with different bytes, and an explicit nondeterminism record from building the same clean tree twice -- with no external gate closed and readiness left false."
+    },
+    "task": "T68"
+  },
   "last_code_head": "b439f35f08f1bf932437399b0b815b2d3a687f3a",
   "last_observed_head": "b439f35f08f1bf932437399b0b815b2d3a687f3a",
   "latest_verification": {
