@@ -11787,10 +11787,10 @@
   ],
   "failed_attempts": [],
   "in_progress": {
-    "claimed_head": "1ba129cc3b654a51b41ba649203e87780967aff7",
+    "claimed_head": "4fc93bb0f1b96b2d61c5b09b45d7f359b11a526d",
     "claimed_utc": "2026-09-14T14:19:08+00:00",
     "objective": {
-      "claimed_head": "1ba129cc3b654a51b41ba649203e87780967aff7",
+      "claimed_head": "4fc93bb0f1b96b2d61c5b09b45d7f359b11a526d",
       "claimed_utc": "2026-09-14T14:19:08+00:00",
       "objective": "Prove upgrade, failed-update and rollback recovery: execute the supported upgrade paths with content replacement and schema migration, an interrupted install and staging, and a wipe in progress, preserving the previous authoritative estate on every refusal and refusing an unsupported downgrade explicitly; a future schema opened and recreated empty must fail the preservation test."
     },
