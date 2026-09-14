@@ -11645,6 +11645,196 @@
         "the section 18/19 PHYSICAL device matrix is NOT executed: T73-T75 own it."
       ]
     },
+    "T59": {
+      "case_results": {
+        "added_cases": {
+          "tools/readiness/tests/test_t59.py": [
+            "test_w01_the_matrix_is_resolved_from_facts",
+            "test_w02_ios_central_is_never_forced_from_the_platform",
+            "test_w03_background_availability_is_never_independent_of_the_hint",
+            "test_w04_deny_permanent_deny_revoke_restore",
+            "test_w05_the_power_toggle_refuseth_both_ways",
+            "test_w06_a_force_quit_is_unsupported",
+            "test_w07_no_scan_from_a_stopped_state",
+            "test_w08_android_background_needeth_its_foreground_service",
+            "test_w09_a_locked_store_carrieth_no_custody_claim",
+            "test_w10_the_light_profile_carrieth_no_radio_capability",
+            "test_w11_the_manifests_agree_with_the_matrix",
+            "test_w12_the_adr_prose_agreeth_with_the_matrix",
+            "test_w13_the_matrix_is_total"
+          ]
+        },
+        "corrected_cases": {
+          "note": "no pre-T59 assertion was changed. FIVE of this court's own expectations were corrected while it was being written, each because the MODEL was right and the witness was wrong:",
+          "witness_expectations_corrected": [
+            "W02 compared the two SCAN verdicts, which are both false for unrelated reasons, and proved nothing: it now compares the ADVERTISE verdicts AND the refusal REASONS, with the platform identical in both cases",
+            "W03 expected a central-role background scan to be allowed; the model correctly refuses it by the iOS BACKGROUND rule rather than by the role, and the witness now asserteth that exact reason",
+            "W04 named an enum member that the model spells PERMISSION_PERMANENTLY_DENIED",
+            "W10 looked for the word 'Archive-only' in an explanation that said it differently: the MODEL's words were amended to use the repository's own term for the LIGHT release",
+            "W13's expected product counted four platforms; there are two (2*2*5*3*4*2*3*2 = 2880 combinations)"
+          ]
+        },
+        "counts": {
+          "narrow_python": 13,
+          "subsystem_python": 338
+        },
+        "counts_source": "the runner's own records at the implementation head (tests=13/13 narrow, 338/338 subsystem), confirmed by the harness's artifacts: T59/executed/T59-narrow-python-executed.log carrieth 13 '... ok' lines for the T59 court alone and T59-subsystem-python-executed.log proclaymeth 'Ran 338 tests' for the whole readiness suite (up from 325).",
+        "courts": {
+          "beside": "ci/check_lab_isolation.py --selftest (rc=0) and its court (rc=0), which own the profile/permission separation this task's matrix also speaketh of",
+          "controls": "ci/check_repository.py, ci/check_release_gates_status.py",
+          "narrow": "tools/readiness/tests/test_t59.py (13 witnesses)",
+          "subsystem": "tools/readiness/tests (the whole python readiness suite)"
+        },
+        "deleted_cases": [],
+        "executed_scenarios": {
+          "adr_agreement": "the ADR's own prose ('background-discovery limitation', 'cannot discover peripherals', 'NOT CLOSED') and section 19's force-quit caveat are asserted against the model's own reasons and words (W12)",
+          "android_background": "background work requireth the foreground service of type connectedDevice, and its absence is refused by name; Android promiseth no process restoration (W08)",
+          "declarations": "the shipping Android manifest declares no Bluetooth permission while the lab's declares all three; the iOS app declares no background mode, no Bluetooth usage string, and carrieth EMPTY entitlements -- each asserted against the matrix's verdict for that profile (W11)",
+          "device": "NOT EXECUTED: the section 18/19 physical matrix is external and T73-T75 own it. This court proveth the MODEL and the DECLARATIONS, never a radio.",
+          "force_quit": "nothing runs, the reason is FORCE_QUIT_UNSUPPORTED, and NO restoration is promised -- while a merely backgrounded iOS process DOES support it (W06)",
+          "light_profile": "every fact granted, and the LIGHT build still refuseth every radio verdict with PROFILE_CARRIES_NO_RADIO (W10)",
+          "locked_store": "the radio may run while the device is locked, and no key material may be written (W09)",
+          "permissions": "granted / denied / permanently-denied / restricted / not-determined, each with its own typed reason, and requestability is true only for a plain denial or an unasked permission; a revoke returneth to the refused state and a restore returneth every verdict (W04)",
+          "power": "off and UNKNOWN both refuse, and an UNKNOWN never guesses (W05)",
+          "role_from_hint": "the same iOS platform, the same background state, two hint roles: the verdicts and the REFUSAL REASONS differ, so no capability is derived from the platform name (W01, W02, W03)",
+          "stopped": "a stopped process neither advertises, scans nor connects, and its reason differeth from a force quit's (W07)",
+          "totality": "all 2880 combinations of the eight facts resolve to a verdict with a typed reason and words; no combination crashes; no LIGHT case claims a radio; no force-quit case claims restoration (W13)"
+        },
+        "produced_artifacts": {
+          "court": {
+            "path": "tools/readiness/tests/test_t59.py"
+          },
+          "matrix": {
+            "laws": "the role cometh from the HINT; no scan from a stopped state; a force quit is unsupported; a permanently-denied permission is not requestable; a locked store carrieth no custody claim; the LIGHT profile carrieth no radio capability",
+            "path": "tools/readiness/capabilities.py",
+            "types": [
+              "Platform",
+              "Profile",
+              "Authorization",
+              "Power",
+              "AppState",
+              "ProtectedData",
+              "HintRole",
+              "RefusalReason",
+              "Verdict",
+              "CapabilityInputs",
+              "CapabilityState",
+              "capability_state",
+              "describe_matrix"
+            ]
+          }
+        },
+        "roster_campaigns": {
+          "pass_1": {
+            "causes": "the run ABORTED on the fifth rod: it carrieth 'follow' where the ledger requireth 'find', and the harness refuseth such a rod before it can judge anything",
+            "repair": "196f5ca609f1e66e6c034623cf0d8eeeb487d2a3",
+            "rods": 12,
+            "tally": {
+              "ABORTED": 1,
+              "KILLED": 4
+            }
+          },
+          "pass_2": {
+            "baseline": "b7838f8a9b5b0f40972a6bcd9ce7af905a91449e",
+            "note": "the final official pass ran with the ledger in exactly the state 196f5ca609f1e66e6c034623cf0d8eeeb487d2a3 commits",
+            "rods": 12,
+            "tally": {
+              "ESCAPED": 0,
+              "INVALID": 0,
+              "KILLED": 12,
+              "SKIPPED": 0,
+              "TIMEOUT": 0
+            }
+          }
+        }
+      },
+      "claim_commit": "3b84673236603c9c7d08353188fc066d40f7778b",
+      "commands": [
+        "T59-narrow-python3",
+        "T59-subsystem-python3",
+        "T59-controls-python3",
+        "T59-controls-python3-002"
+      ],
+      "device_gate_ids": [],
+      "file_hashes": {
+        "ci/mutations.py": "ca73c4d2f8c32d59e5b65936f6e515e496177cc252e2b904fdc9c9585f251f30",
+        "tools/readiness/capabilities.py": "e613dad20c22f8a95d17e9a2c20f98db7122accd5fff86a6c0242090c3bb0965",
+        "tools/readiness/tests/test_t59.py": "10c2ef75f7c3c4c55c84cc54476ae5424a564e9b9e2f2ab54998ab40b42ac18f"
+      },
+      "implementation_commit": "196f5ca609f1e66e6c034623cf0d8eeeb487d2a3",
+      "implementation_commits": [
+        "b7838f8a9b5b0f40972a6bcd9ce7af905a91449e",
+        "196f5ca609f1e66e6c034623cf0d8eeeb487d2a3"
+      ],
+      "inputs": {
+        "children_commit_order": [
+          "T59(claim)",
+          "T59(builder)",
+          "T59(builder-rods-repair)",
+          "T59(M)"
+        ],
+        "claim_ordering_note": "the claim was taken at 3b84673236603c9c7d08353188fc066d40f7778b; the stages and the final roster were run at the implementation head 196f5ca609f1e66e6c034623cf0d8eeeb487d2a3. Runner logs and executed logs live in distinct directories (T59/logs, T59/executed) so no pass can overwrite another.",
+        "governed_source": [
+          "tools/readiness/capabilities.py",
+          "tools/readiness/tests/test_t59.py",
+          "ci/mutations.py"
+        ],
+        "required_regression_paths": [
+          "tools/readiness/tests/test_t59.py"
+        ],
+        "sealed_hot_paths_untouched": [
+          "NO manifest, Info.plist, entitlement or workflow was changed: the shipping declarations were already truthful and the lab's already declare the radio, so this task's value is that the agreement is now CHECKED rather than assumed",
+          "the shipping LIGHT surface and its Archive-only contract: untouched; readiness stays false and A-01 stays OPEN",
+          "the crypto, wire, identity and BLE contracts: the matrix CONSUMES facts about them and redefines none",
+          "the five external gates and docs/production/RELEASE_GATES_STATUS.json"
+        ]
+      },
+      "ladder_boundary_commit": "196f5ca609f1e66e6c034623cf0d8eeeb487d2a3",
+      "mutation_results": {
+        "attempts_archived": [
+          {
+            "aborted": "the fifth rod carrieth 'follow' instead of 'find'",
+            "baseline": "b7838f8a9b5b0f40972a6bcd9ce7af905a91449e",
+            "pass": 1,
+            "repaired_in": "196f5ca609f1e66e6c034623cf0d8eeeb487d2a3",
+            "rods": 12,
+            "tally": {
+              "KILLED": 4
+            }
+          }
+        ],
+        "campaign_note": "the twelve rods ran in the FINAL official pass, fail-closed, at baseline b7838f8a9b5b0f40972a6bcd9ce7af905a91449e (with the ledger in the state 196f5ca609f1e66e6c034623cf0d8eeeb487d2a3 commits): 12 KILLED of 12, SKIPPED=0, INVALID=0, TIMEOUT=0, ESCAPED=0. The card's named semantic negative is RC1/RC2 ('Force iOS central based on platform or claim background availability independent of hint role'), both killed by their own orientation witnesses. Pass 1 ABORTED on a malformed rod ('follow' where the ledger requireth 'find'); the rule was repaired and the pass re-run.",
+        "of": 12,
+        "roster_manifest": "T59/roster/manifest.json",
+        "semantic": {
+          "harness": "ci/mutations.py run_semantic (the ledger filtered to the T59- prefix)",
+          "platforms": [
+            "python"
+          ],
+          "work_parent": "/Users/oculus/.cache/godstone-mutation-worktrees-t59 (disposable; the live tree is never touched)"
+        },
+        "tally": {
+          "ESCAPED": 0,
+          "INVALID": 0,
+          "KILLED": 12,
+          "SKIPPED": 0,
+          "TIMEOUT": 0
+        }
+      },
+      "objective": {
+        "claimed_head": "3b84673236603c9c7d08353188fc066d40f7778b",
+        "claimed_utc": "2026-09-14T22:13:23+00:00",
+        "objective": "Encode the platform permission and background-capability TRUTH as one CapabilityState derived from OS authorization, power, foreground/background, protected-data availability, the selected profile and the ELECTION HINT ROLE -- so that iOS background discovery is stated ASYMMETRICALLY (a peripheral hint may advertise, a central hint may not), the role is never forced from the platform or the device model, no scan is claimed from a stopped or force-quit state (force quit is unsupported, not merely degraded), a permanently-denied permission is not re-requestable, a locked protected store carrieth no custody claim, the LIGHT profile carrieth NO radio capability at all, and the manifests, the privacy declarations and the ADR's own prose agree with the matrix -- so that forcing iOS central from the platform or claiming background availability independent of the hint role falleth the capability-matrix witness."
+      },
+      "status": "COMPLETE",
+      "tested_tree_sha": "7862c81b9273461eba4f610f38191406c3673597",
+      "unresolved": [
+        "the matrix is NOT yet consulted by the app layers: T57's and T58's LinkState explanations are hand-written and consistent with it, but wiring CapabilityState into those view-models is not done here.",
+        "this court proveth the MODEL and the DECLARATIONS agree; it proves nothing about CoreBluetooth behaviour, and no radio was exercised. The section 18/19 physical matrix is external (T73-T75).",
+        "the iOS background-mode declarations for a FUTURE iOS radio build are modelled (bluetooth-peripheral) but no such build existeth today: the shipping app declares no background mode and the lab is Android-only.",
+        "the matrix's Android foreground-service requirement is asserted against the platform's rule, not against a service this repository runneth."
+      ]
+    },
     "T61": {
       "case_results": {
         "added_cases": [
@@ -14068,7 +14258,7 @@
       ]
     }
   },
-  "current_task": "T59",
+  "current_task": null,
   "external_blockers": [
     "A06",
     "APPROVED_CONTENT",
@@ -14077,30 +14267,21 @@
     "SIGNING"
   ],
   "failed_attempts": [],
-  "in_progress": {
-    "claimed_head": "3b84673236603c9c7d08353188fc066d40f7778b",
-    "claimed_utc": "2026-09-14T22:13:23+00:00",
-    "objective": {
-      "claimed_head": "3b84673236603c9c7d08353188fc066d40f7778b",
-      "claimed_utc": "2026-09-14T22:13:23+00:00",
-      "objective": "Encode the platform permission and background-capability TRUTH as one CapabilityState derived from OS authorization, power, foreground/background, protected-data availability, the selected profile and the ELECTION HINT ROLE -- so that iOS background discovery is stated ASYMMETRICALLY (a peripheral hint may advertise, a central hint may not), the role is never forced from the platform or the device model, no scan is claimed from a stopped or force-quit state (force quit is unsupported, not merely degraded), a permanently-denied permission is not re-requestable, a locked protected store carrieth no custody claim, the LIGHT profile carrieth NO radio capability at all, and the manifests, the privacy declarations and the ADR's own prose agree with the matrix -- so that forcing iOS central from the platform or claiming background availability independent of the hint role falleth the capability-matrix witness."
-    },
-    "task": "T59"
-  },
-  "last_code_head": "d942478daa6bbf83df9c0ed16926d8b25281ffc3",
-  "last_observed_head": "d942478daa6bbf83df9c0ed16926d8b25281ffc3",
+  "in_progress": null,
+  "last_code_head": "196f5ca609f1e66e6c034623cf0d8eeeb487d2a3",
+  "last_observed_head": "196f5ca609f1e66e6c034623cf0d8eeeb487d2a3",
   "latest_verification": {
-    "at_utc": "2026-09-15T09:40:00+00:00",
-    "boundary_commit": "d942478daa6bbf83df9c0ed16926d8b25281ffc3",
+    "at_utc": "2026-09-15T10:40:00+00:00",
+    "boundary_commit": "196f5ca609f1e66e6c034623cf0d8eeeb487d2a3",
     "controls": {
       "boundary_records": 2,
-      "outcomes": "2/2 PASSED at the boundary (check_repository rc=0, the release-gates checker rc=0). The android isles were run beside them and stand rc=0"
+      "outcomes": "2/2 PASSED at the boundary (check_repository rc=0 with the lab gate wired in, the release-gates checker rc=0)"
     },
     "isle_grands": {
-      "android_grand": "no android court in this round, but both android isles were run beside it and pass (:app 47, :mesh green)",
-      "counts_source": "see completed_tasks.T58.case_results.counts_source",
-      "ios_grand": "the T58 court 13/13 and the whole package 1127/0 at the boundary (up from 1114), genuinely EXECUTED",
-      "python_grand": "the readiness suite 325 OK, the structural lineage rc=0, diff hygiene clean, sync --check clean"
+      "android_grand": "no android court in this round: T59 is a model/declaration task. The manifest it asserteth against was READ, not changed",
+      "counts_source": "see completed_tasks.T59.case_results.counts_source",
+      "ios_grand": "no iOS court in this round either: the Info.plist and entitlements were READ and asserted against the matrix",
+      "python_grand": "the readiness suite 338 OK (up from 325 by the thirteen T59 witnesses), the printed matrix rc=0, the lab gate's selftest rc=0, structural lineage rc=0, diff clean, sync --check clean"
     },
     "ladder": {
       "L0": "1 PASSED (check_repository), 1 FAILED (ci/symbols.py --selftest: PRE-EXISTING)",
@@ -14110,21 +14291,21 @@
     "narrow": {
       "errors": 0,
       "failures": 0,
-      "lane": "swift test --package-path ios/Packages/GodstoneFoundation --filter ReadinessT58Tests",
+      "lane": "python3 -m unittest discover -s tools/readiness/tests -p test_t59.py -v",
       "tests": 13
     },
     "roster": {
-      "T58_killed": 12,
+      "T59_killed": 12,
       "of": 12
     },
     "subsystem": {
       "errors": 0,
       "failures": 0,
-      "lane": "swift test --package-path ios/Packages/GodstoneFoundation",
-      "tests": 1127
+      "lane": "python3 -m unittest discover -s tools/readiness/tests -v",
+      "tests": 338
     }
   },
-  "next_task": "T59",
+  "next_task": "T60",
   "phase": "P0",
   "plan_sha256": "685456b378662b0a40a53a6abc810041e37daf97b213f3efeb6cea879363934e",
   "planning_baseline_sha": "b5c3d3d394b70cf356cdde33b47511dad7cbb95c",
@@ -14211,7 +14392,9 @@
     "T58 boundary: an unguarded force-unwrap in a court aborts the whole test PROCESS, so the harness seeth no summary line and no named failure and misreports a KILL as INVALID. T58's pass 1 lost one rod that way even though the lesson was already recorded at T56 -- guarding optional reads in a new court must be a HABIT, not a recalled rule (all ten reads in this court are now guarded).",
     "T58 boundary: a VIEWMODEL's own state (a selection, a draft, an armed control) is NOT a claim about the durable estate and must survive a scene changeover, a scene discard and even a LOCK -- but any TRUST VERDICT it carrieth must be degraded while the store is unreadable. T58's locked branch originally lost both the draft and the choice, the same defect class the Android isle had at T57.",
     "T58 boundary: a witness may not scan SOURCE TEXT for a word it forbiddeth (a text scan cannot tell a comment from a rendering). W13 asserteth the WORDS the surface renders.",
-    "T58 boundary: next_task was first written as T67 in this round's state record, and the frontier RECOMPUTED from PLANNING_VALIDATION's topological order sayeth T59 (which dependeth on T56/T57/T58 and is ready). Corrected BEFORE the M commit rather than left as drift -- the same check the T84 errata taught."
+    "T58 boundary: next_task was first written as T67 in this round's state record, and the frontier RECOMPUTED from PLANNING_VALIDATION's topological order sayeth T59 (which dependeth on T56/T57/T58 and is ready). Corrected BEFORE the M commit rather than left as drift -- the same check the T84 errata taught.",
+    "T59 boundary: a MUTATION ROD must carrieth 'find', not a synonym: the pass-1 abort was a rod written with 'follow', which the harness refuseth before it can judge anything. Check the ledger's own key names before spending a campaign.",
+    "T59 boundary: the capability matrix exists but is NOT yet consulted by the app layers (T57's and T58's LinkState explanations are hand-written and merely consistent with it). Wiring it in is future work, not a claim of this task."
   ],
   "warnings_for_next_invocation": [
     "T41 IS THE NEXT TASK (deps T40, T24, T26, T37, T39, T84 all complete; no external requirement). After T41 cometh T42, T43, T44, then T54 and the platform chain.",

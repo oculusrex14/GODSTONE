@@ -1,148 +1,148 @@
 {
-  "evidence_root": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/T58",
+  "evidence_root": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/T59",
   "files": [
     {
-      "path": "T58/BUILDER_NOTE.md",
-      "sha256": "d46f1aa44e0b987b5c67445ba60033bc019695febae5f08340afa7cafe1a9ca6",
-      "size": 3531
+      "path": "T59/BUILDER_NOTE.md",
+      "sha256": "01f6c23db737ccb998d98f4ef6ed9274b2892808eee0275cb9ffaf621d4d829e",
+      "size": 4549
     },
     {
-      "path": "T58/commands.json",
-      "sha256": "142b68997cb0d9d5c0187dddd786beb2f58d0569bf86760072b003d9118fcd8b",
-      "size": 4363
+      "path": "T59/commands.json",
+      "sha256": "66a4cdfa090c8c3dfa2d03a227e4d2fe7b93bad474fd70f2800afb43e536712b",
+      "size": 3529
     },
     {
-      "path": "T58/executed/T58-android-isles.log",
-      "sha256": "59f007bc920bda886e595cc36275436c02b1794dda1627aeb1da995261356ceb",
-      "size": 5379
+      "path": "T59/executed/T59-capability-matrix.log",
+      "sha256": "60779c64b788cba8bb9c796ac14842c7f704eec1b5d8e0cbc652bac1da43c5da",
+      "size": 637
     },
     {
-      "path": "T58/executed/T58-diff-check.log",
+      "path": "T59/executed/T59-diff-check.log",
       "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
       "size": 0
     },
     {
-      "path": "T58/executed/T58-implementation-commit.log",
-      "sha256": "0aa116ea3483e557fe59a71707c540eca34b0ed742e1b509614baadc683903e7",
-      "size": 4644
+      "path": "T59/executed/T59-implementation-commit.log",
+      "sha256": "14beb235e768b35a07d8e0ff38e39d0efc5a1213143127c03cdc2a5e581d9f21",
+      "size": 3514
     },
     {
-      "path": "T58/executed/T58-narrow-swift-executed.log",
-      "sha256": "d0391e14531a54d94588392c3b6f9fb64e3a4a5044fb2bc8cdd14e6fd092bdcc",
-      "size": 3774
+      "path": "T59/executed/T59-lab-gate-court.log",
+      "sha256": "900ea5168b5dd2cea935cca59879a5bc08694f1860d226cca393602ab4ca24b3",
+      "size": 739
     },
     {
-      "path": "T58/executed/T58-python-subsystem.log",
-      "sha256": "a3a97c1449fd422d3cd147c235c118204c0277c489234dbf1080abe41a691c45",
-      "size": 76721
+      "path": "T59/executed/T59-lab-gate-selftest.log",
+      "sha256": "94cf5ec0b4d19c19b4aca00abafb658dc7047cd153656e73f27635818d59d0bd",
+      "size": 628
     },
     {
-      "path": "T58/executed/T58-structural-lineage.log",
+      "path": "T59/executed/T59-narrow-python-executed.log",
+      "sha256": "a62eb3672151e138c6c60908c22854671a252b0cc5a86cba7b81428772197e6c",
+      "size": 1878
+    },
+    {
+      "path": "T59/executed/T59-structural-lineage.log",
       "sha256": "3731a17d5b5ad7c7c6603f14622a2922fb12b8e105442e96b73c4cd33b67764d",
       "size": 903
     },
     {
-      "path": "T58/executed/T58-subsystem-swift-executed.log",
-      "sha256": "3215cf8b7c519438b95139617b53513dec0f431060fca7da8a01ca3ddbe7b64c",
-      "size": 290201
+      "path": "T59/executed/T59-subsystem-python-executed.log",
+      "sha256": "b07bee325a4d78a7bcce9f94e449079ce11ad9af28e6e0670f09c78835ebd83b",
+      "size": 122480
     },
     {
-      "path": "T58/executed/T58-sync-check.log",
+      "path": "T59/executed/T59-sync-check.log",
       "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
       "size": 0
     },
     {
-      "path": "T58/logs/T58-controls-python3-002.log",
+      "path": "T59/logs/T59-controls-python3-002.log",
       "sha256": "604476d6f067a942c6e64efefd5ae147930eb142f02a903d28a598e72596a8a4",
       "size": 649
     },
     {
-      "path": "T58/logs/T58-controls-python3-003.log",
-      "sha256": "67493ebd28a55ece17214e55d318f34ba4af6ac7592268756f1b3dcc304afa21",
-      "size": 125
-    },
-    {
-      "path": "T58/logs/T58-controls-python3.log",
+      "path": "T59/logs/T59-controls-python3.log",
       "sha256": "d7c332b87cf060bb7c2d77d08303cea33d6ae10ab1091008d67dd5ff97fdd34c",
       "size": 1883
     },
     {
-      "path": "T58/logs/T58-narrow-swift.log",
-      "sha256": "43e12b50a2600bef4cd792f3d8f13f71661d421984d97b33d1a25d4c9798c029",
-      "size": 3929
+      "path": "T59/logs/T59-narrow-python3.log",
+      "sha256": "1535ae8c666a3144b3415a54a3ec1372a797073c377408f70efa32f868d7b513",
+      "size": 2020
     },
     {
-      "path": "T58/logs/T58-subsystem-swift.log",
-      "sha256": "6a9c67ca8628d130c527aa983593d65a1cff40c3a05c3d4863adb5caa2a3dd42",
-      "size": 290327
+      "path": "T59/logs/T59-subsystem-python3.log",
+      "sha256": "59c12410d194dbb39a6071d7c2dc0fcb37816fa26bf030363e39b211e1f2875c",
+      "size": 122607
     },
     {
-      "path": "T58/roster/logs/T58-RC1-a-scene-changeover-resetteth-the-work.semantic.log",
-      "sha256": "88ae3fb2c7a3c977d517e7e8f3bd1eaf743a8c7ab95615e85e08444f4f73b7d7",
-      "size": 16029
+      "path": "T59/roster/logs/T59-RC1-the-role-is-forced-from-the-platform.semantic.log",
+      "sha256": "1c4adb1e47b3a7ee322ce2ab0a0d497b803cfb803c65694c47a64e4db7987226",
+      "size": 1542
     },
     {
-      "path": "T58/roster/logs/T58-RC10-a-duplicate-arrival-becometh-two-rows.semantic.log",
-      "sha256": "4d6f12f983ddc01c1b7ed0f6600345e1bcc5461fbdd080f60b4dda2edd6e945c",
-      "size": 16029
+      "path": "T59/roster/logs/T59-RC10-android-background-needeth-no-service.semantic.log",
+      "sha256": "0eb43d3caf090906d78ea7c9b9b0be15c6c40e715cf60f163d1e2f24e0c500f3",
+      "size": 1301
     },
     {
-      "path": "T58/roster/logs/T58-RC11-a-denied-permission-is-not-explained.semantic.log",
-      "sha256": "c37abe992dfa3436ef873b12ff32d708ab1e0c146dd660f49529ac3368296540",
-      "size": 16029
+      "path": "T59/roster/logs/T59-RC11-a-refusal-carrieth-no-reason.semantic.log",
+      "sha256": "0d5596031910314dc0a2a753f70dacec492656a195c681e247740e99d5997fec",
+      "size": 1521
     },
     {
-      "path": "T58/roster/logs/T58-RC12-the-models-own-state-is-dropped.semantic.log",
-      "sha256": "32a83001331181e474e5ac40bdd8cdf3f1f9e043a027b90275c42e212a89f0f4",
-      "size": 16029
+      "path": "T59/roster/logs/T59-RC12-the-hint-role-is-ignored-for-advertising.semantic.log",
+      "sha256": "3478ea5ab3b061baee615d9ce37f97992eeb0a35dd647514b3acdf4e0e119e42",
+      "size": 1133
     },
     {
-      "path": "T58/roster/logs/T58-RC2-delivered-on-the-transport-boolean.semantic.log",
-      "sha256": "4b2b8ba1d85239255689fa53cb251dc9d274be0eafb36001c7d6e0504f69ca77",
-      "size": 16029
+      "path": "T59/roster/logs/T59-RC2-background-availability-ignores-the-hint.semantic.log",
+      "sha256": "cb64e390202b4fab8ce701b9e66b41ad227591e3f19a35ec25868765bbd1cc94",
+      "size": 1557
     },
     {
-      "path": "T58/roster/logs/T58-RC3-an-att-acceptance-is-spoken-as-delivered.semantic.log",
-      "sha256": "08d5b92706cd8bd67d92772fb5c5c961121c509291ee6e065a72e311374000ad",
-      "size": 16029
+      "path": "T59/roster/logs/T59-RC3-a-permanently-denied-permission-is-requestable.semantic.log",
+      "sha256": "2924e40fb89ca7b256d32614c9c46c55703614a7bfa62ce8f919a470ce17a4e5",
+      "size": 1359
     },
     {
-      "path": "T58/roster/logs/T58-RC4-secure-without-a-confirmed-key.semantic.log",
-      "sha256": "2acb0982067b6a261e61b0ccd3fca913df1a229778ff3d07c74d4ac756bf5c79",
-      "size": 16029
+      "path": "T59/roster/logs/T59-RC4-a-locked-store-may-be-written.semantic.log",
+      "sha256": "932aa052eceff5f5b4e1fd887e85aab9d95578dcad1449ff486e5288713efcf3",
+      "size": 1328
     },
     {
-      "path": "T58/roster/logs/T58-RC5-a-locked-store-claimeth-its-cache.semantic.log",
-      "sha256": "e2e686ee156ddfc65befac047137655d595ecc80a85e03f7ad1feb1db7d46b25",
-      "size": 16029
+      "path": "T59/roster/logs/T59-RC5-a-force-quit-promiseth-restoration.semantic.log",
+      "sha256": "5ccbb6dd872749b520816c52638ad9e6a04454710572cb8a3b7d6860ff19d82f",
+      "size": 1244
     },
     {
-      "path": "T58/roster/logs/T58-RC6-a-locked-device-letteth-a-send-through.semantic.log",
-      "sha256": "f415c9522ac208d2b4fb74189d2340d5c19949141c9cc07d9de3c1ffe102a300",
-      "size": 16029
+      "path": "T59/roster/logs/T59-RC6-a-force-quit-may-still-scan.semantic.log",
+      "sha256": "08391b5b0b48694b735535069d7512dc912f42f900cf92a71281b95558e41ed1",
+      "size": 1067
     },
     {
-      "path": "T58/roster/logs/T58-RC7-the-compose-bound-is-characters.semantic.log",
-      "sha256": "7f28e844a504bc7bf8ae3498a5214bf2add7a8145b989fd4e26484da3c57a530",
-      "size": 16029
+      "path": "T59/roster/logs/T59-RC7-a-stopped-process-may-scan.semantic.log",
+      "sha256": "66d7a72eebe6587049821fecdaa77d0b657c2134b6b70c2b904ace1b4effcd14",
+      "size": 1086
     },
     {
-      "path": "T58/roster/logs/T58-RC8-a-bare-confirm-placeth-a-call.semantic.log",
-      "sha256": "d58ebd740777d6d0794d0d2aa133f00cde0d44ba3ed9f1c973c0bceb1933f15d",
-      "size": 16029
+      "path": "T59/roster/logs/T59-RC8-an-unknown-power-state-guesseth.semantic.log",
+      "sha256": "df2a7ca7fa599e1452b78406cecbdf4938c90c3d3ab46274194b0c807bd32679",
+      "size": 1285
     },
     {
-      "path": "T58/roster/logs/T58-RC9-cancel-implieth-recall.semantic.log",
-      "sha256": "90f7ce510adf7e6a3413aada4a7077630513756c3985a72f5abdc838f597df82",
-      "size": 16029
+      "path": "T59/roster/logs/T59-RC9-the-light-profile-claimeth-the-radio.semantic.log",
+      "sha256": "57608470ac6eeea5106a171b826558ab0183a0b27b678c1a1d14365003b6ba56",
+      "size": 1223
     },
     {
-      "path": "T58/roster/manifest.json",
-      "sha256": "0c1bac9195717c6635a5be08592bfac8b8e202c889ddbf3ca3e4fa39cf06ba0f",
-      "size": 9583
+      "path": "T59/roster/manifest.json",
+      "sha256": "c9c82487aacdac08424f9fd266a5173d444c9def979ba974c01912fccf4ea12b",
+      "size": 9759
     }
   ],
-  "note": "Complete evidence index for T58: the runner's command records and logs for the three declared stages at the implementation head d942478d, the EXECUTED swift logs the positive counts were read from (including the subsystem run that took the package from 1114 to 1127), the roster manifest with its twelve per-rod logs (its failed_assertion field is authoritative; the log files are truncated tails), the control checkers' output, the android isles run beside it, both builder children's stat records, and the builder note carrying the counting rule, the two production defects the court found, the roster campaign and its repair, and the explicit non-claims. No keys, no private content, no device result.",
+  "note": "Complete evidence index for T59: the runner's command records and logs for the three declared stages at the implementation head 196f5ca6, the EXECUTED unittest logs the witness counts were read from (the subsystem suite rising from 325 to 338), the printed capability matrix, the roster manifest with its twelve per-rod logs (its failed_assertion field is authoritative; the log files are truncated tails), the control checkers' output, the lab gate's court and selftest standing beside it, both builder children's stat records, and the builder note carrying the counting rule, the named negative's two limbs, and the explicit non-claims. No keys, no private content, no device result.",
   "schema_version": 1,
-  "task": "T58"
+  "task": "T59"
 }
