@@ -564,5 +564,25 @@ class HeldOutCourt(unittest.TestCase):
                           H.blinded_packet(manifest, first, reviewer_token="reviewer-a1"))
 
 
+    def test_w31_a_number_without_a_citation_is_refused(self):
+        # The number itself is in the evidence, so the support limb is
+        # satisfied; the citation limb is what refuseth it.
+        evidence = [F.fixture_chunk(1)]
+        audit = H.audit_answer("Boil the water for 1 minute.", evidence)
+        self.assertEqual(["1 minute"], audit["uncited"])
+        self.assertEqual([], audit["unsupported"])
+        self.assertFalse(H.answer_compliant(audit))
+        cited = H.audit_answer("Boil the water for 1 minute [1].", evidence)
+        self.assertEqual([], cited["uncited"])
+        self.assertTrue(H.answer_compliant(cited))
+        cases = self.flipped("ws-water-boil",
+                             expectation="must_reject_uncited_numeric",
+                             answer="Boil the water for 1 minute.")
+        document = self.sealed(self.manifest(cases=cases))
+        by_id = {entry["case_id"]: entry for entry in document["cases"]}
+        self.assertEqual("pass", by_id["ws-water-boil"]["outcome"])
+        self.assertEqual(["1 minute"], by_id["ws-water-boil"]["audit"]["uncited"])
+
+
 if __name__ == "__main__":
     unittest.main()
