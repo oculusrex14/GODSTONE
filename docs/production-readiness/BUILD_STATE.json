@@ -12761,7 +12761,7 @@
       ]
     }
   },
-  "current_task": null,
+  "current_task": "T44",
   "external_blockers": [
     "A06",
     "APPROVED_CONTENT",
@@ -12770,7 +12770,16 @@
     "SIGNING"
   ],
   "failed_attempts": [],
-  "in_progress": null,
+  "in_progress": {
+    "claimed_head": "fae24d38ab95a98d39d302209b117e661163ed0f",
+    "claimed_utc": "2026-09-14T19:06:18+00:00",
+    "objective": {
+      "claimed_head": "fae24d38ab95a98d39d302209b117e661163ed0f",
+      "claimed_utc": "2026-09-14T19:06:18+00:00",
+      "objective": "Prove crash-safe multihop behaviour through COMPOSED runtimes: build a deterministic host integration harness that uses the real composition roots, adapters, stores and codecs with only the OS facades substituted, capture every side effect, and exercise directed delivery, SOS broadcast, no relay plaintext, intended-recipient-only ACK, a crash after each transaction and handshake stage, a wipe during a send, replay after reconnect and finite resource growth across A<->relay<->B mixed platforms via serialized traces and durable checkpoints -- while keeping the meshsim algorithm simulation explicitly separate from production-path integration evidence, so that bypassing the trusted runtime composition or the durable inbound commit falleth the composed trace."
+    },
+    "task": "T44"
+  },
   "last_code_head": "5cbb5b13453fdfa9d95c84a7f658f5e3d0129975",
   "last_observed_head": "5cbb5b13453fdfa9d95c84a7f658f5e3d0129975",
   "latest_verification": {
