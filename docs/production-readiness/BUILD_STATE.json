@@ -10965,6 +10965,282 @@
         "the supply-chain door was wired into repository-verification.yml, but that workflow was not executed here (it runneth on GitHub's runners): its command was executed locally at rc=0 and the wiring is reviewed, not observed in CI"
       ]
     },
+    "T69": {
+      "case_results": {
+        "added_cases": {
+          "tools/readiness/tests/test_t69.py": [
+            "test_w01_a_source_build_is_classified_as_source_only",
+            "test_w02_a_byte_matched_approval_is_the_only_candidate",
+            "test_w03_an_unapproved_archive_is_present_unverified",
+            "test_w04_an_absent_expected_archive_is_refused",
+            "test_w05_a_mismatched_archive_is_refused",
+            "test_w06_the_approval_must_name_this_application",
+            "test_w07_the_census_is_hashed_and_a_symlink_is_refused",
+            "test_w08_an_excluded_tier_archive_is_refused",
+            "test_w09_models_dylibs_and_test_bundles_are_refused_resources",
+            "test_w10_the_mesh_linked_into_light_is_refused",
+            "test_w11_the_llm_and_ble_surfaces_are_refused_where_named",
+            "test_w12_a_simulator_slice_is_not_a_release_candidate",
+            "test_w13_the_deployment_minimum_is_enforced",
+            "test_w14_the_disabled_info_plist_capabilities_are_refused",
+            "test_w15_the_declared_release_entitlements_must_be_empty",
+            "test_w16_a_signed_bundle_entitlements_are_read_from_the_signature",
+            "test_w17_the_privacy_manifest_must_be_present",
+            "test_w18_tracking_must_be_false",
+            "test_w19_every_accessed_api_carrieth_a_reason",
+            "test_w20_collected_data_types_are_refused",
+            "test_w21_test_only_surfaces_are_refused",
+            "test_w22_a_fat_binary_yieldeth_one_slice_per_architecture",
+            "test_w23_a_truncated_or_foreign_binary_is_refused",
+            "test_w24_an_ipa_must_carrieth_one_clean_app",
+            "test_w25_a_release_candidate_claim_against_a_source_build_is_refused",
+            "test_w26_the_device_claim_is_unverified_and_the_door_reporteth"
+          ]
+        },
+        "counts": {
+          "narrow_python": 26,
+          "subsystem_python": 272
+        },
+        "courts": {
+          "controls": "ci/check_repository.py, ci/check_release_gates_status.py",
+          "external_lane": "xcodegen generate + xcodebuild -scheme Godstone-Light -configuration LightRelease -destination generic/platform=iOS CODE_SIGNING_ALLOWED=NO build: BLOCKED in the runner by the absent mac-xcode capability, and EXECUTED BY THE BUILDER with the same argv",
+          "narrow": "tools/readiness/tests/test_t69.py",
+          "subsystem": "tools/readiness/tests (all courts)"
+        },
+        "deleted_cases": [],
+        "executed_scenarios": {
+          "approved_asset_query": "the court exerciseth the byte-matched, mismatched, absent and unapproved faces against the Android twin's own APPROVED_ASSETS.json loader",
+          "device_launch": "NOT EXECUTED: installation and launch on a real iPhone and iPad, and iOS 16 device evidence, are external; the report carrieth them as UNVERIFIED",
+          "privacy_and_entitlements": "the real bundle carrieth PrivacyInfo.xcprivacy (tracking false, two declared API categories with reasons) and the repository's declared release entitlements are empty",
+          "source_build_classified_distinctly": "the bundle xcodebuild produced was classified source-only-exclusion: it carrieth no Archive, and none was approved -- a source build is never reported as a release",
+          "test_only_apis_absent": "the real binary linketh no XCTest and no excluded token; the court proveth each token by constructing a binary that linketh it"
+        },
+        "produced_artifacts": {
+          "inspector": {
+            "classification_faces": [
+              "release-candidate-content (approved AND byte-matched)",
+              "present-unverified (present, nothing approved)",
+              "source-only-exclusion (absent, none expected)",
+              "source-only-absent (absent, one expected)",
+              "refused (any law broken)"
+            ],
+            "path": "scripts/inspect_ios_artifacts.py",
+            "reads": "Mach-O headers parsed in Python (fat and thin, LC_LOAD_DYLIB, LC_RPATH, LC_UUID, LC_BUILD_VERSION), Info.plist, PrivacyInfo.xcprivacy, the repository's declared entitlements, and the IPA container"
+          },
+          "real_artifact": {
+            "aggregate_sha256": "b24c4d581ba0f83d495d784dd4963b50bbce992cf688139ac06aedf00d0d174c",
+            "architectures": [
+              "arm64"
+            ],
+            "archive_status": "absent-expected-none",
+            "classification": "source-only-exclusion",
+            "device_claim": {
+              "installed": "UNVERIFIED (external: no device in this lane)",
+              "launched": "UNVERIFIED (external: no device in this lane)",
+              "note": "installation and launch on a supported iPhone and iPad, and signing with approved credentials, are external evidence; this report carrieth none of it"
+            },
+            "files": 4,
+            "minimum_os": "16.0",
+            "path": "DerivedData/.../LightRelease-iphoneos/Godstone.app",
+            "privacy_present": true,
+            "verdict": "PASS"
+          },
+          "refused_surfaces": {
+            "excluded_tier_archive": "FAIL (archive_medium.db present)",
+            "mesh_linked_into_light": "FAIL (the card's named semantic negative, first limb)",
+            "tracking_manifest": "FAIL (NSPrivacyTracking true)"
+          },
+          "selftest": "python3 scripts/inspect_ios_artifacts.py --selftest -> OK"
+        }
+      },
+      "claim_commit": "3989c01449be6d4f5cfeb35a93a000a55343f6ba",
+      "commands": [
+        "T69-narrow-python3",
+        "T69-subsystem-python3",
+        "T69-controls-python3",
+        "T69-controls-python3-002"
+      ],
+      "device_gate_ids": [],
+      "file_hashes": {
+        "ci/mutations.py": "c972315b8ce7b15db606095fefa2c88f1bad57fbbcd08de36b339458b7cfe58e",
+        "scripts/inspect_ios_artifacts.py": "0f3001bedee22fb009ce2a707929da17b173352c4056ffb8d9a6ff184f9304f4",
+        "tools/readiness/tests/test_t69.py": "7541241b01b0fa79b693d5bd480723e9120d14205991de43a2d68fda45aa3a35"
+      },
+      "implementation_commit": "3989c01449be6d4f5cfeb35a93a000a55343f6ba",
+      "implementation_commits": [
+        "1658591071dc9c56d53868b1b336412c3c18793c",
+        "cb7daae6fdc2e6c66452e3fe665b6c221e620d02",
+        "3989c01449be6d4f5cfeb35a93a000a55343f6ba"
+      ],
+      "inputs": {
+        "children_commit_order": [
+          "T69(builder)",
+          "T69(roster)",
+          "T69(claim)"
+        ],
+        "claim_ordering_note": "the claim commit was taken AFTER the builder and the roster commits: the work began directly from the previous task's seal without a claim child, the omission was noticed when the heartbeat refused to find a live claim, and the claim was then taken and pushed at the roster head. The runner's records therefore carry that head as their source sha, and no witness or law was affected.",
+        "governed_source": [
+          "ci/mutations.py",
+          "scripts/inspect_ios_artifacts.py",
+          "tools/readiness/tests/test_t69.py"
+        ],
+        "required_regression_paths": [
+          "tools/readiness/tests/test_t69.py"
+        ],
+        "sealed_hot_paths_untouched": [
+          "ios/Godstone/Package.swift (sealed bytes)",
+          "ios/Godstone/Info.plist, PrivacyInfo.xcprivacy and Godstone.entitlements (READ and checked, never edited)",
+          "crypto/ and wire/ (the Noise/LinkInfo vectors, the generated codecs)",
+          "third_party/llama.cpp/ (git-ignored machine-local provisioning)",
+          "the five release gates: none was closed, moved or reinterpreted"
+        ]
+      },
+      "ladder_boundary_commit": "3989c01449be6d4f5cfeb35a93a000a55343f6ba",
+      "mutation_results": {
+        "attempts_archived": [],
+        "campaign_note": "the seventeen rods ran in one official pass, fail-closed, at baseline 3989c01449be6d4f5cfeb35a93a000a55343f6ba: 17 KILLED of 17, SKIPPED=0, INVALID=0, TIMEOUT=0, ESCAPED=0. Two of them guard the honesty of the report rather than a code path: the device claim may not say VERIFIED, and a release-candidate claim against a source build must be refused.",
+        "roster_manifest": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/T69/roster/manifest.json",
+        "semantic": [
+          {
+            "anchor_count": 1,
+            "id": "T69-PM01-mesh-token-asleep",
+            "outcome": "KILLED",
+            "tests_run": 1,
+            "witness": "test_w10_the_mesh_linked_into_light_is_refused"
+          },
+          {
+            "anchor_count": 1,
+            "id": "T69-PM02-resource-exclusions-asleep",
+            "outcome": "KILLED",
+            "tests_run": 1,
+            "witness": "test_w09_models_dylibs_and_test_bundles_are_refused_resources"
+          },
+          {
+            "anchor_count": 1,
+            "id": "T69-PM03-absent-archive-tolerated",
+            "outcome": "KILLED",
+            "tests_run": 1,
+            "witness": "test_w04_an_absent_expected_archive_is_refused"
+          },
+          {
+            "anchor_count": 1,
+            "id": "T69-PM04-mismatched-archive-tolerated",
+            "outcome": "KILLED",
+            "tests_run": 1,
+            "witness": "test_w05_a_mismatched_archive_is_refused"
+          },
+          {
+            "anchor_count": 1,
+            "id": "T69-PM05-presence-called-a-candidate",
+            "outcome": "KILLED",
+            "tests_run": 1,
+            "witness": "test_w03_an_unapproved_archive_is_present_unverified"
+          },
+          {
+            "anchor_count": 1,
+            "id": "T69-PM06-privacy-may-be-absent",
+            "outcome": "KILLED",
+            "tests_run": 1,
+            "witness": "test_w17_the_privacy_manifest_must_be_present"
+          },
+          {
+            "anchor_count": 1,
+            "id": "T69-PM07-tracking-tolerated",
+            "outcome": "KILLED",
+            "tests_run": 1,
+            "witness": "test_w18_tracking_must_be_false"
+          },
+          {
+            "anchor_count": 1,
+            "id": "T69-PM08-reason-code-asleep",
+            "outcome": "KILLED",
+            "tests_run": 1,
+            "witness": "test_w19_every_accessed_api_carrieth_a_reason"
+          },
+          {
+            "anchor_count": 1,
+            "id": "T69-PM09-collected-data-tolerated",
+            "outcome": "KILLED",
+            "tests_run": 1,
+            "witness": "test_w20_collected_data_types_are_refused"
+          },
+          {
+            "anchor_count": 1,
+            "id": "T69-PM10-simulator-slice-tolerated",
+            "outcome": "KILLED",
+            "tests_run": 1,
+            "witness": "test_w12_a_simulator_slice_is_not_a_release_candidate"
+          },
+          {
+            "anchor_count": 1,
+            "id": "T69-PM11-minimum-os-asleep",
+            "outcome": "KILLED",
+            "tests_run": 1,
+            "witness": "test_w13_the_deployment_minimum_is_enforced"
+          },
+          {
+            "anchor_count": 1,
+            "id": "T69-PM12-entitlements-emptiness-asleep",
+            "outcome": "KILLED",
+            "tests_run": 1,
+            "witness": "test_w15_the_declared_release_entitlements_must_be_empty"
+          },
+          {
+            "anchor_count": 1,
+            "id": "T69-PM13-census-symlink-tolerated",
+            "outcome": "KILLED",
+            "tests_run": 1,
+            "witness": "test_w07_the_census_is_hashed_and_a_symlink_is_refused"
+          },
+          {
+            "anchor_count": 1,
+            "id": "T69-PM14-truncated-header-tolerated",
+            "outcome": "KILLED",
+            "tests_run": 1,
+            "witness": "test_w23_a_truncated_or_foreign_binary_is_refused"
+          },
+          {
+            "anchor_count": 1,
+            "id": "T69-PM15-ipa-traversal-tolerated",
+            "outcome": "KILLED",
+            "tests_run": 1,
+            "witness": "test_w24_an_ipa_must_carrieth_one_clean_app"
+          },
+          {
+            "anchor_count": 1,
+            "id": "T69-PM16-device-claim-asserted",
+            "outcome": "KILLED",
+            "tests_run": 1,
+            "witness": "test_w26_the_device_claim_is_unverified_and_the_door_reporteth"
+          },
+          {
+            "anchor_count": 1,
+            "id": "T69-PM17-candidate-claim-tolerated",
+            "outcome": "KILLED",
+            "tests_run": 1,
+            "witness": "test_w25_a_release_candidate_claim_against_a_source_build_is_refused"
+          }
+        ],
+        "tally": {
+          "KILLED": 17
+        }
+      },
+      "objective": {
+        "claimed_head": "3989c01449be6d4f5cfeb35a93a000a55343f6ba",
+        "claimed_utc": "2026-09-14T14:11:24+00:00",
+        "objective": "Audit and verify the real iOS release artifact: an inspector that readeth the Mach-O itself (load commands, dylibs, rpaths, platform, minimum OS, UUID) rather than shelling out to otool, that classifieth a source-only build distinctly from approved content, that refuseth the excluded lab/mesh/LLM surfaces, models, test bundles and cross-tier archives, that checketh the privacy manifest, the entitlements and the deployment floor, and that carrieth the device claim as UNVERIFIED -- with the artifact built for real by xcodegen + xcodebuild on this host."
+      },
+      "status": "COMPLETE",
+      "tested_tree_sha": "22b46af1ad10e923c247ff2dc020752a1111d50e",
+      "unresolved": [
+        "the two registered subsystem commands that require mac-xcode stand BLOCKED by the executor registry: mac-primary carrieth swift-xcode and xcodegen but not the mac-xcode capability the T69 spec requireth. The runner recorded the blockage itself (stage exit 5, BLOCKED) and no record claimeth a pass for them; the substitute executed evidence standeth real (xcodegen generate + xcodebuild build with the same argv on this host, \"** BUILD SUCCEEDED **\", and the inspection of the bundle it produced)",
+        "installation and launch on a supported iPhone and iPad -- including any iOS 16 device evidence -- were NOT executed: no device is in this lane, and the report carrieth the install and launch claims as UNVERIFIED",
+        "the bundle is UNSIGNED (CODE_SIGNING_ALLOWED=NO, as the card's own command specifieth) and no approved signing credentials exist: signing remains external, and the signature-entitlement face was exercised against a synthetic signature rather than a real one",
+        "no IPA was produced: archiving for distribution requireth an identity and a team, so the IPA laws (single app, no traversal, no symlink, no world-writable entry) are proved by the court over synthetic packages rather than over a real .ipa",
+        "the bundle carrieth no Archive by construction (a source build), so the release-candidate classification was exercised against synthetic bundles and the Android twin's APPROVED_ASSETS.json loader; no approved LIGHT archive exists to bind (external gate APPROVED_CONTENT)",
+        "the release-gates register (docs/production/RELEASE_GATES_STATUS.json) was READ but not modified: no gate was closed by this task, and the artifact evidence gathered here belongeth to the platform/device gate T73-T75"
+      ]
+    },
     "T83": {
       "case_results": {
         "android_grand": {
@@ -11253,7 +11529,7 @@
       "unresolved": []
     }
   },
-  "current_task": "T69",
+  "current_task": "T70",
   "external_blockers": [
     "A06",
     "APPROVED_CONTENT",
@@ -11262,50 +11538,41 @@
     "SIGNING"
   ],
   "failed_attempts": [],
-  "in_progress": {
-    "claimed_head": "1658591071dc9c56d53868b1b336412c3c18793c",
-    "claimed_utc": "2026-09-14T14:11:24+00:00",
-    "objective": {
-      "claimed_head": "1658591071dc9c56d53868b1b336412c3c18793c",
-      "claimed_utc": "2026-09-14T14:11:24+00:00",
-      "objective": "Audit and verify the real iOS release artifact: an inspector that readeth the Mach-O itself (load commands, dylibs, rpaths, platform, minimum OS, UUID) rather than shelling out to otool, that classifieth a source-only build distinctly from approved content, that refuseth the excluded lab/mesh/LLM surfaces, models, test bundles and cross-tier archives, that checketh the privacy manifest, the entitlements and the deployment floor, and that carrieth the device claim as UNVERIFIED -- with the artifact built for real by xcodegen + xcodebuild on this host."
-    },
-    "task": "T69"
-  },
-  "last_code_head": "e26e69065df6ee077c28c89dc672023016ae731d",
-  "last_observed_head": "e26e69065df6ee077c28c89dc672023016ae731d",
+  "in_progress": null,
+  "last_code_head": "3989c01449be6d4f5cfeb35a93a000a55343f6ba",
+  "last_observed_head": "3989c01449be6d4f5cfeb35a93a000a55343f6ba",
   "latest_verification": {
-    "at_utc": "2026-09-14T14:06:24+00:00",
-    "boundary_commit": "e26e69065df6ee077c28c89dc672023016ae731d",
+    "at_utc": "2026-09-14T14:13:30+00:00",
+    "boundary_commit": "3989c01449be6d4f5cfeb35a93a000a55343f6ba",
     "controls": {
       "boundary_records": 2,
       "first_pair_failure": "none this round",
       "outcomes": "2/2 PASSED at the boundary (check_repository rc=0; the release-gates status checker rc=0 with its own 12-of-12 and 15-of-15 selftests)"
     },
     "isle_grands": {
-      "android_grand": "the Gradle lanes were exercised for this task: the verification metadata was collected over the CI task union, then :core:testDebugUnitTest and :llm:testDebugUnitTest ran with --rerun-tasks and verification ON -- BUILD SUCCESSFUL, 30 tasks executed; :llm:assembleDebug cannot run here (cmake absent, native provisioning external)",
-      "counts_source": "the runner's classifier read the python courts as kind=test with positive counts (26/26 and 246/246) and the two control commands as tests=n/a; every log is preserved under T68/logs/",
-      "ios_grand": "no isle path in this round; Package.swift was hashed into the lock, never edited",
-      "python_grand": "the T68 court 26/26, the subsystem 246 OK, the supply-chain door rc=0 over five documents, the campaign 18/18 KILLED"
+      "android_grand": "no Android path in this round (an iOS artifact task): the sealed :llm and :mesh roads are untouched by the name-list",
+      "counts_source": "the runner's classifier read the python courts as kind=test with positive counts (26/26 and 272/272) and the two control commands as tests=n/a; every log is preserved under T69/logs/",
+      "ios_grand": "the iOS artifact lane was exercised for real: xcodegen generateth the project and xcodebuild buildeth Godstone.app under LightRelease/generic/platform=iOS with signing disabled (** BUILD SUCCEEDED **), and the inspector readeth it (arm64, minimum 16.0, privacy manifest present, no excluded surface) -- while the registered runner commands for that lane stand BLOCKED by the absent mac-xcode capability, which is recorded and never fixtured",
+      "python_grand": "the T69 court 26/26, the subsystem 272 OK, the campaign 17/17 KILLED, the inspector selftest OK"
     },
     "narrow": {
       "errors": 0,
       "failures": 0,
-      "lane": "python3 -m unittest discover -s tools/readiness/tests -p test_t68.py",
+      "lane": "python3 -m unittest discover -s tools/readiness/tests -p test_t69.py",
       "tests": 26
     },
     "roster": {
-      "T68_killed": 18,
-      "of": 18
+      "T69_killed": 17,
+      "of": 17
     },
     "subsystem": {
       "errors": 0,
       "failures": 0,
-      "lane": "python3 -m unittest discover -s tools/readiness/tests",
-      "tests": 246
+      "lane": "python3 -m unittest discover -s tools/readiness/tests (the xcodegen/xcodebuild half BLOCKED by the absent mac-xcode capability, executed by the builder instead)",
+      "tests": 272
     }
   },
-  "next_task": "T69",
+  "next_task": "T70",
   "phase": "P0",
   "plan_sha256": "685456b378662b0a40a53a6abc810041e37daf97b213f3efeb6cea879363934e",
   "planning_baseline_sha": "b5c3d3d394b70cf356cdde33b47511dad7cbb95c",
@@ -11391,6 +11658,9 @@
     "T66: the held-out evaluation is machinery, not acceptance. The staging gate refuseth an evaluation it cannot bind to the very Archive (COMPLETE, same corpus digest, same model-lock digest and status, zero false allows, zero reviewer rejections) and publisheth the verified summary inside APPROVED_ASSETS.json; no fixture may stand in for a held-out manifest or a clinician, and none was used.",
     "T68: the supply chain is legible from inside the repository -- docs/supplychain/ carrieth the measured toolchain, five hash-locked lanes whose closures are pip's own resolution, the offline cache manifest, the SBOM and the nondeterminism record; android/gradle/verification-metadata.xml enables Gradle dependency verification, so an artifact a task resolves that the metadata does not cover FAILS the build until the metadata is regenerated with --dependency-verification=off --write-verification-metadata sha256.",
     "T68: a measured tool that disagrees with its pin is a refusal, and the toolchain lock's input digests are checked against the live tree, so editing the NDK/CMake/JDK pins or the wrapper without re-capturing the lock turns repository-verification red by design.",
-    "T68: pip 26 removed --report from `pip download`; the resolution route is `pip install --dry-run --ignore-installed --report FILE`."
+    "T68: pip 26 removed --report from `pip download`; the resolution route is `pip install --dry-run --ignore-installed --report FILE`.",
+    "T69: scripts/inspect_ios_artifacts.py is the iOS twin of the Android inspector and shares its APPROVED_ASSETS.json loader, so the two platforms cannot drift into two readings of one publication. It classifieth before it judgeth: source-only-exclusion, source-only-absent, present-unverified, release-candidate-content, refused.",
+    "T69: the mac-xcode capability is absent from EXECUTORS.json for mac-primary, so the xcodegen/xcodebuild stage commands BLOCK (exit 5) while the host toolchain can run them: expect this for every future task whose subsystem half is an iOS build, execute the same argv by hand for evidence, and record the blockage rather than asking the registry to lie.",
+    "T69: the claim commit may be forgotten when a flight starts straight from the previous seal -- the heartbeat then refuseth (\"no live claim\"). Take the claim first, and if it is taken late, record the ordering in the task record as this one did."
   ]
 }

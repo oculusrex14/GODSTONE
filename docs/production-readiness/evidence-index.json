@@ -1,148 +1,138 @@
 {
-  "evidence_root": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/T68",
+  "evidence_root": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/T69",
   "files": [
     {
-      "path": "T68/commands.json",
-      "sha256": "c4cdff363eb16a1262d0ba43b8ff3b24f936ca1d32a3419cffd1cc6a7fd86e36",
+      "path": "T69/commands.json",
+      "sha256": "02a7c4ead2cf90a2bdb4ce88e0253972868699316513c2febc6b826075190c6e",
       "size": 3529
     },
     {
-      "path": "T68/logs/T68-controls-python3-002.log",
+      "path": "T69/logs/T69-controls-python3-002.log",
       "sha256": "a6c79fe24c238d80a7c79c5acbef8c2cfad7dd756824b7de0dd367931edf7264",
       "size": 484
     },
     {
-      "path": "T68/logs/T68-controls-python3.log",
+      "path": "T69/logs/T69-controls-python3.log",
       "sha256": "c14e170c8ee6d83798ec3f98ea450d8c3bebb5043a8bb1d01f8c59eb7cb11ffb",
       "size": 1576
     },
     {
-      "path": "T68/logs/T68-narrow-python3.log",
-      "sha256": "4fdbc7bab73c3269c082c1acb7b1a581f713b74c43ea9570973c7d96f793918a",
-      "size": 9424
+      "path": "T69/logs/T69-narrow-python3.log",
+      "sha256": "f4f32cca2e7313faa5375a703a40225caf921107e4ceb964360af8a963dc7aa5",
+      "size": 4049
     },
     {
-      "path": "T68/logs/T68-subsystem-python3.log",
-      "sha256": "0bf2f67573ca0803f217756027fd1df26eafe6df822c1f9702d34965484089e1",
-      "size": 64134
+      "path": "T69/logs/T69-stage-subsystem.firing.log",
+      "sha256": "79ce3f907432b61bae12779c57f7e335e7e7a368ec8880febd827161732a75e8",
+      "size": 74
     },
     {
-      "path": "T68/logs/gradle-verification-on.log",
-      "sha256": "cff93e3155b9867c64dda71b45adb864bb8898e3723860d525e588e90c2cca88",
-      "size": 3740
+      "path": "T69/logs/T69-subsystem-python3.log",
+      "sha256": "fcd9b6076657a7c3e0566e40a1b239e477014ff76c6cdb9e0f8d1485f103dbe2",
+      "size": 67942
     },
     {
-      "path": "T68/logs/restore-dev-offline.log",
-      "sha256": "47ef353ab12aa4ffbee3c6d9912e690733c0929bde6d6bcea17a5fd783a9bee4",
-      "size": 1714
+      "path": "T69/logs/ios-artifact-build-and-audit.log",
+      "sha256": "3efb0dd5160016a581ab3f1cb20e9c3cc6022ebd5b8a50a3fe3b28d09d076162",
+      "size": 1983
     },
     {
-      "path": "T68/logs/restore-signing-offline.log",
-      "sha256": "5c13ceef9bf75dee99653c9eba59f3cd3ba7cd6460ece279c3bec58ad49f0d63",
-      "size": 810
+      "path": "T69/logs/real-bundle-report.json",
+      "sha256": "b2b9b6b388c6a013aedec17c7b407bb4c166223813532d029ca021a11446ed89",
+      "size": 5679
     },
     {
-      "path": "T68/logs/supply-chain-pipeline.log",
-      "sha256": "3fc60d77e0e9302fb9ba6cc57b3be3cf2c95346f5188f97d0ddbab593cd0bd46",
-      "size": 2180
+      "path": "T69/roster/logs/T69-PM01-mesh-token-asleep.semantic.log",
+      "sha256": "d77a97f6285a49a8aa88a363025b70bd377d3deb43ab49ae03e81015ad16a003",
+      "size": 1133
     },
     {
-      "path": "T68/roster/logs/T68-PM01-named-pin-refusals-asleep.semantic.log",
-      "sha256": "f02985239cdd83d22eb9e513e042a54ce19036aa72fe21d06433d8a9019c9762",
-      "size": 9340
+      "path": "T69/roster/logs/T69-PM02-resource-exclusions-asleep.semantic.log",
+      "sha256": "583b7595bd2099cd71e106472288190a4e98c28ac72b49434d355f6f80f575e7",
+      "size": 4371
     },
     {
-      "path": "T68/roster/logs/T68-PM02-closure-digest-cross-check-asleep.semantic.log",
-      "sha256": "6dcce36368979f34b6d4e02dfb5fe44cefab596d64176bd2c7831041655b5b48",
-      "size": 1597
+      "path": "T69/roster/logs/T69-PM03-absent-archive-tolerated.semantic.log",
+      "sha256": "e8e7f31a4bb0cca8b2a858e27a7f739fe77bc15b3b2700ae07de58a0b245b1b4",
+      "size": 1140
     },
     {
-      "path": "T68/roster/logs/T68-PM03-half-sworn-entry-tolerated.semantic.log",
-      "sha256": "71a860470b1eadd56994cf1304aff41b863a01b039a1aae60dc7cd474d981124",
-      "size": 1441
+      "path": "T69/roster/logs/T69-PM04-mismatched-archive-tolerated.semantic.log",
+      "sha256": "8468b4264ad629cc935a38347af1e9879d3772402b9174233b74748429ec7697",
+      "size": 1102
     },
     {
-      "path": "T68/roster/logs/T68-PM04-pin-resolution-disagreement-tolerated.semantic.log",
-      "sha256": "d5d4c43ba3acd8f12a9efa28dd9fd9aee2e942dd7f4c9a63ad6dbea50d8eec17",
-      "size": 1442
+      "path": "T69/roster/logs/T69-PM05-presence-called-a-candidate.semantic.log",
+      "sha256": "8a6290c340ca609acea247351d4fdd7c10c2c63cb394a19b2bd96cb7161319c9",
+      "size": 1297
     },
     {
-      "path": "T68/roster/logs/T68-PM05-hash-invented-for-a-missing-blob.semantic.log",
-      "sha256": "cfb9d263a942dedc43874c92b685851406f5f4fe055689b0fe17fcf5e04f1f82",
-      "size": 1378
+      "path": "T69/roster/logs/T69-PM06-privacy-may-be-absent.semantic.log",
+      "sha256": "71e802872e24a938575d1ea8878e39b67cae1a896d9b9777a8e00f6350d2c8c7",
+      "size": 1429
     },
     {
-      "path": "T68/roster/logs/T68-PM06-resolution-without-digest-tolerated.semantic.log",
-      "sha256": "55a5bc2c8885bf772aa864ed3ee411383ed2a2c489b3614e6dbfcf6f10ea74d4",
-      "size": 1239
+      "path": "T69/roster/logs/T69-PM07-tracking-tolerated.semantic.log",
+      "sha256": "c698c3068bf158a94a4ff52ca5b16503ead0d2a9f563f8e8b07f17e8d63ab245",
+      "size": 1029
     },
     {
-      "path": "T68/roster/logs/T68-PM07-cache-symlink-tolerated.semantic.log",
-      "sha256": "7d5fedceeeca64d1297007ee5303e49b7a9f0f493213c8fd06e34f8274a89eda",
-      "size": 1286
+      "path": "T69/roster/logs/T69-PM08-reason-code-asleep.semantic.log",
+      "sha256": "0364741634423751de8cf5127c868c3bb476669e79dfd03455cca2daed54a248",
+      "size": 1343
     },
     {
-      "path": "T68/roster/logs/T68-PM08-restore-writeth-before-it-verify'th.semantic.log",
-      "sha256": "3cb8e1d21031e96263ddb7cba761b7acd8de11f3b677e74a4c83648f77ed7331",
-      "size": 1420
+      "path": "T69/roster/logs/T69-PM09-collected-data-tolerated.semantic.log",
+      "sha256": "50065945b1ea96c68f9ce8d98906eea32e75e18feb702646acf6f659d7f6642f",
+      "size": 1105
     },
     {
-      "path": "T68/roster/logs/T68-PM09-secret-scanner-asleep.semantic.log",
-      "sha256": "81e9c76932fc3b8c16aee783222ad3e9ce3656ee4e0e77cce9e93bf31564a6e2",
-      "size": 6810
+      "path": "T69/roster/logs/T69-PM10-simulator-slice-tolerated.semantic.log",
+      "sha256": "3ee3fae8054ea1c4cf297d67079ab36c8d0cc16516d3e578f0496bebc7faae43",
+      "size": 1190
     },
     {
-      "path": "T68/roster/logs/T68-PM10-unpinned-lane-restored-as-pinned.semantic.log",
-      "sha256": "1cbc4b79a794487fa42f24daed81715d4ce53ba84fa81ce34c4dd6113209132f",
-      "size": 1621
+      "path": "T69/roster/logs/T69-PM11-minimum-os-asleep.semantic.log",
+      "sha256": "ed4b4bb2bdaca9c87780c3d1e2ff20e38c3d7c07e92a37cd30af1928b36c6084",
+      "size": 1112
     },
     {
-      "path": "T68/roster/logs/T68-PM11-install-door-believeth-a-changed-wheel.semantic.log",
-      "sha256": "aa2ccc942e09b75939654e46d4e4f516d8c505a3d5fb6ba7f6afb0389be4d85c",
-      "size": 1710
+      "path": "T69/roster/logs/T69-PM12-entitlements-emptiness-asleep.semantic.log",
+      "sha256": "d7e9e1a851ec14d602b8cdd8518ce13ca96ffe8090cf157558a4d111b63ff28d",
+      "size": 1541
     },
     {
-      "path": "T68/roster/logs/T68-PM12-sbom-may-omit-a-component.semantic.log",
-      "sha256": "f9c0f17f18ca0a4cb3630a8ca30d69a849fa8e6c275e0e29bfcd82a0135f77d4",
-      "size": 1352
+      "path": "T69/roster/logs/T69-PM13-census-symlink-tolerated.semantic.log",
+      "sha256": "db72431ea231c7ef48570b3cbec2795859e9e0ee740f31389a80edb7fc82f9a5",
+      "size": 1236
     },
     {
-      "path": "T68/roster/logs/T68-PM13-licence-omission-tolerated.semantic.log",
-      "sha256": "592134180e991b090bfbed6446bb5fe670d57bbd1e385cd40cc0565ce1231870",
-      "size": 1368
+      "path": "T69/roster/logs/T69-PM14-truncated-header-tolerated.semantic.log",
+      "sha256": "18018c035153f205ca1acae938fcd898bb216cff46fb42a1349fea59c6e9abd0",
+      "size": 2177
     },
     {
-      "path": "T68/roster/logs/T68-PM14-measured-mismatch-tolerated.semantic.log",
-      "sha256": "f2b8a51eeee4b6f5743b1e91ace38831472818a5bf5d0f4e7c3962e73d8f2cc6",
-      "size": 1403
+      "path": "T69/roster/logs/T69-PM15-ipa-traversal-tolerated.semantic.log",
+      "sha256": "9f42a9497cf53ff26971092ff2e4da81ec03730af44dc89ff60117826c8b6a6a",
+      "size": 2578
     },
     {
-      "path": "T68/roster/logs/T68-PM15-namespace-blind-metadata-reader.semantic.log",
-      "sha256": "5b5f36064622912d92f4b14acc543211219d692abf3d5c63705dd7dadc51e19f",
-      "size": 1181
+      "path": "T69/roster/logs/T69-PM16-device-claim-asserted.semantic.log",
+      "sha256": "a662a25e9b882a897043561a1e47d3b458a1e9a1a5a823bab173b62bcae7cdcf",
+      "size": 1535
     },
     {
-      "path": "T68/roster/logs/T68-PM16-same-version-bytes-tolerated.semantic.log",
-      "sha256": "99cd63f2df03a800c93e141b4a41477825135352fb7801969a39061f1e364ec7",
-      "size": 1385
+      "path": "T69/roster/logs/T69-PM17-candidate-claim-tolerated.semantic.log",
+      "sha256": "42370cbeb3c532e148f0bdccfb2a51bb3904254dc01f917240d23545ecc0fcc4",
+      "size": 1295
     },
     {
-      "path": "T68/roster/logs/T68-PM17-unexplained-divergence-tolerated.semantic.log",
-      "sha256": "63be67a17dc61fe5a322b68da4bedc05385ace99abe92e9dafe0f7c8ade9ec70",
-      "size": 1251
-    },
-    {
-      "path": "T68/roster/logs/T68-PM18-interrupted-write-leaveth-a-partial-document.semantic.log",
-      "sha256": "6ecd374e5fecc935805388cd95dad83c6858681dea73b7ffa00c3879df8bbd34",
-      "size": 1215
-    },
-    {
-      "path": "T68/roster/manifest.json",
-      "sha256": "711c9ee36e25076551e1320067b573f57a4c290090d18d2dc904d607ae1733d3",
-      "size": 14871
+      "path": "T69/roster/manifest.json",
+      "sha256": "f757de8b39f28586589d078232a2a25dbbd8403e48f18915cfa60a78dcd577c8",
+      "size": 13594
     }
   ],
-  "note": "Complete evidence index for T68: the runner command records and logs, the stage firing logs, the roster manifest with its per-row logs, and the executed supply-chain runs (capture, lock, cache, sbom, verify, the offline restoration of the signing lane, the refusals of a poisoned cache and of a changed wheel, the Gradle verification runs, and the double-build comparison). Paths are relative to the evidence root.",
+  "note": "Complete evidence index for T69: the runner command records and logs, the stage firing logs (including the mac-xcode blockage), the roster manifest with its per-row logs, the real iOS build and audit log (xcodegen, xcodebuild, the inspection of the bundle it produced, and the refusals of the excluded surfaces), and the report over the real bundle. Paths are relative to the evidence root.",
   "schema_version": 1,
-  "task": "T68"
+  "task": "T69"
 }
