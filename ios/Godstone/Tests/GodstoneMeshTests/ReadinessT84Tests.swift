@@ -246,6 +246,26 @@ final class ReadinessT84Tests: XCTestCase {
         XCTAssertEqual(w.a.tracker.markHandedToRelay(mid), .applied)
     }
 
+    /// A failing arm must FAIL its test, never crash the whole process: an
+    /// unguarded subscript would abort the run and hide every other witness.
+    private func firstCopy(_ batch: AckPumpBatch, _ label: String,
+                           file: StaticString = #filePath, line: UInt = #line) -> AckForwardCopy? {
+        guard let copy = batch.copies.first else {
+            XCTFail("expected at least one forward copy: \(label)", file: file, line: line)
+            return nil
+        }
+        return copy
+    }
+
+    private func firstVerdict(_ verdicts: [AckDispatch], _ label: String,
+                              file: StaticString = #filePath, line: UInt = #line) -> AckDispatch? {
+        guard let verdict = verdicts.first else {
+            XCTFail("expected at least one verdict: \(label)", file: file, line: line)
+            return nil
+        }
+        return verdict
+    }
+
     private func isOrigin(_ verdict: AckDispatch) -> Bool {
         if case .originVerification = verdict { return true }
         return false
@@ -301,8 +321,9 @@ final class ReadinessT84Tests: XCTestCase {
 
         let forwards = w.forwardTurn(w.a, now: 1_000)
         XCTAssertEqual(forwards.count, 1, "exactly one copy homeward")
-        XCTAssertTrue(isOrigin(forwards[0]))
-        XCTAssertTrue(forwards[0].accepted)
+        guard let homeward = firstVerdict(forwards, "one copy homeward") else { return }
+        XCTAssertTrue(isOrigin(homeward))
+        XCTAssertTrue(homeward.accepted)
         XCTAssertEqual(stateOf(w.a.tracker, mid), .acknowledgedByRecipient,
                        "A reacheth the only truthful terminal state")
         XCTAssertEqual(w.r.ackStore.countFrames(), 1,
@@ -318,8 +339,17 @@ final class ReadinessT84Tests: XCTestCase {
         let mid = msgId(3)
         let ack = ackOf(mid, w.b.local)
         let before = heldFrames(w.r.store)
-        _ = w.hopBtoR(ack)
+        let atRelay = w.hopBtoR(ack)
         XCTAssertEqual(w.r.ackStore.countFrames(), 1)
+        guard case .opaqueRelay(let admitted) = atRelay else {
+            return XCTFail("expected opaque relay custody")
+        }
+        guard let admittedKey = admitted.ackKey else {
+            return XCTFail("the admitted candidate carrieth its local cache key")
+        }
+        XCTAssertNotEqual(admittedKey, mid,
+                          "the candidate's key is NOT the message id (the named falsification, second limb)")
+        XCTAssertEqual(admitted.verificationClass, AckVerificationClass.opaqueCandidate)
         XCTAssertEqual(heldFrames(w.r.store), before, "the message store is untouched by an ACK")
 
         let signature = ack.payload.prefix(ackSigLen)
@@ -333,6 +363,8 @@ final class ReadinessT84Tests: XCTestCase {
         }
         XCTAssertEqual(rows.count, 1)
         XCTAssertEqual(rows[0].verificationClass, .opaqueCandidate)
+        XCTAssertEqual(rows[0].ackKey, admittedKey, "the stored row carrieth the very key the admission named")
+        XCTAssertEqual(rows[0].ackKey, key, "and that key is the canonical ACK-cache key")
     }
 
     // ------------------------------------------------------------ W4
@@ -362,7 +394,7 @@ final class ReadinessT84Tests: XCTestCase {
         w.r.pump.onLinkReady(Data(w.a.local.id.nodeId), now: 5)
         let batch = w.r.pump.nextBatch(Data(w.a.local.id.nodeId), now: 5)
         XCTAssertEqual(batch.copies.count, 1)
-        let copy = batch.copies[0]
+        guard let copy = firstCopy(batch, "the canonical copy") else { return }
         XCTAssertEqual(copy.ttl, ackRelayInitialTtl - 1)
         XCTAssertEqual(copy.hopCount, 1)
         let decoded = try FrameV2.decode(copy.encodedFrame)!
@@ -374,10 +406,11 @@ final class ReadinessT84Tests: XCTestCase {
 
         let again = w.r.pump.nextBatch(Data(w.a.local.id.nodeId), now: 5 + ackRelayRetryIntervalMs)
         XCTAssertEqual(again.copies.count, 1)
-        XCTAssertEqual(again.copies[0].encodedFrame, copy.encodedFrame,
+        guard let retried = again.copies.first else { return XCTFail("the retry must offer a copy") }
+        XCTAssertEqual(retried.encodedFrame, copy.encodedFrame,
                        "the retry re-emiteth the IDENTICAL bytes: never a second decrement")
-        XCTAssertEqual(again.copies[0].ttl, copy.ttl)
-        XCTAssertEqual(again.copies[0].hopCount, copy.hopCount)
+        XCTAssertEqual(retried.ttl, copy.ttl)
+        XCTAssertEqual(retried.hopCount, copy.hopCount)
 
         let exhausted = try world()
         _ = exhausted.hopBtoR(ackOf(msgId(51), exhausted.b.local, ttl: 1))
@@ -438,7 +471,8 @@ final class ReadinessT84Tests: XCTestCase {
         let w = try world()
         _ = w.hopBtoR(ackOf(msgId(7), w.b.local))
         w.r.pump.onLinkReady(Data(w.a.local.id.nodeId), now: 20)
-        let copy = w.r.pump.nextBatch(Data(w.a.local.id.nodeId), now: 20).copies[0]
+        guard let copy = firstCopy(w.r.pump.nextBatch(Data(w.a.local.id.nodeId), now: 20),
+                                   "the custody copy") else { return }
         w.r.pump.onForwardOutcome(copy, peer: Data(w.a.local.id.nodeId), accepted: true, now: 20)
         XCTAssertTrue(w.r.pump.custodyHolds(copy.ackKey),
                       "the radio accepted some bytes; the custody standeth")
@@ -525,7 +559,8 @@ final class ReadinessT84Tests: XCTestCase {
         reborn.onLinkReady(Data(w.a.local.id.nodeId), now: 50)
         let batch = reborn.nextBatch(Data(w.a.local.id.nodeId), now: 50)
         XCTAssertEqual(batch.copies.count, 1)
-        let verdict = w.a.dispatcher.dispatch(try FrameV2.decode(batch.copies[0].encodedFrame)!,
+        guard let rebornCopy = firstCopy(batch, "the reborn copy") else { return }
+        let verdict = w.a.dispatcher.dispatch(try FrameV2.decode(rebornCopy.encodedFrame)!,
                                              receivedFrom: Data(w.r.local.id.nodeId))
         XCTAssertTrue(verdict.accepted)
         XCTAssertEqual(stateOf(w.a.tracker, mid), .acknowledgedByRecipient)
@@ -542,7 +577,7 @@ final class ReadinessT84Tests: XCTestCase {
             return XCTFail("the estate must be enumerable")
         }
         XCTAssertEqual(standing.count, 1, "the estate standeth after a one-hour debit")
-        let candidate = standing[0]
+        guard let candidate = standing.first else { return XCTFail("the estate must be enumerable") }
         XCTAssertFalse(w.r.ackStore.debitCandidateLifetime(candidate.ackKey,
                                                            remainingLifetimeMs: Int64.max),
                        "a debit may never EXTEND a candidate's life")

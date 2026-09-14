@@ -225,15 +225,14 @@ class AckFrameRecord private constructor(
     )
 
     /**
-     * T84: the same candidate with a SHORTER life, or null when the new value
-     * is not strictly smaller -- the in-memory twin of the SQL guard. A
-     * candidate's life is never extended by a debit, a duplicate or a restart.
+     * T84: the same candidate with a DIFFERENT remaining life. UNCONDITIONAL by
+     * design: the strict-decrease law has ONE owner, the guarded debit of the
+     * store (`debitCandidateLifetime`, whose SQL twin carrieth the same
+     * `remaining > ?` guard), so there is no second arm to disagree with it.
      */
-    internal fun withRemainingLifetime(newRemainingMs: Long): AckFrameRecord? {
-        if (newRemainingMs < 0L || newRemainingMs >= _remainingLifetimeMs) return null
-        return AckFrameRecord(_ackKey, _msgId, _recipientNodeId, _signature, _encodedFrame,
+    internal fun withLifetime(newRemainingMs: Long): AckFrameRecord =
+        AckFrameRecord(_ackKey, _msgId, _recipientNodeId, _signature, _encodedFrame,
             _receivedFrom, newRemainingMs, _verificationClass)
-    }
 
     override fun equals(other: Any?): Boolean {
         if (other === this) return true
@@ -558,10 +557,12 @@ internal class InMemoryAckStore : AckObligationStore {
         synchronized(lock) {
             val k = Key(ackKey)
             val cur = frames[k] ?: return@synchronized false
+            if (remainingLifetimeMs < 0L) return@synchronized false
             // STRICTLY decreasing: an equal or greater value is refused, so the
-            // in-memory arm carrieth the very law the SQL guard enforceth.
+            // in-memory arm carrieth the very law the SQL guard enforceth, and
+            // a restart can never extend a candidate's life.
             if (remainingLifetimeMs >= cur.remainingLifetimeMs) return@synchronized false
-            frames[k] = cur.withRemainingLifetime(remainingLifetimeMs) ?: return@synchronized false
+            frames[k] = cur.withLifetime(remainingLifetimeMs)
             true
         }
 

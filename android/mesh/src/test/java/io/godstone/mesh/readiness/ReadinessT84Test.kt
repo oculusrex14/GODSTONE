@@ -347,8 +347,15 @@ class ReadinessT84Test {
         val mid = msgId(3)
         val ack = ackOf(mid, w.b.local)
         val before = heldFrames(w.r.store)
-        w.hopBtoR(ack)
+        val atRelay = w.hopBtoR(ack)
         Assert.assertEquals(1, w.r.ackStore.countFrames())
+        val admitted = atRelay as AckDispatch.OpaqueRelay
+        Assert.assertNotNull("the admitted candidate carrieth its local cache key", admitted.ackKey)
+        Assert.assertNotEquals(
+            "the candidate's key is NOT the message id (the named falsification, second limb)",
+            mid.toList(), admitted.ackKey!!.toList(),
+        )
+        Assert.assertEquals(AckVerificationClass.OPAQUE_CANDIDATE, admitted.verificationClass)
         Assert.assertEquals("the message store is untouched by an ACK", before, heldFrames(w.r.store))
         // ... and the candidate's local cache key is the ACK-CACHE domain, never
         // the message identity: the same msg_id may carry FOUR candidates.
@@ -362,6 +369,10 @@ class ReadinessT84Test {
         val rows = w.r.ackStore.listCandidates(64) as CandidateList.Records
         Assert.assertEquals(1, rows.records.size)
         Assert.assertEquals(AckVerificationClass.OPAQUE_CANDIDATE, rows.records[0].verificationClass)
+        Assert.assertArrayEquals("the stored row carrieth the very key the admission named",
+            admitted.ackKey, rows.records[0].ackKey)
+        Assert.assertArrayEquals("and that key is the canonical ACK-cache key",
+            key, rows.records[0].ackKey)
     }
 
     // ------------------------------------------------------------ W4
