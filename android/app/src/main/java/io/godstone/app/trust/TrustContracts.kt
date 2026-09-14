@@ -8,12 +8,16 @@ import java.security.MessageDigest
 // The app layer speaketh to the durable trust authority through THIS narrow port
 // and nothing else. Two reasons, both load-bearing:
 //
-//   1. THE SHIPPING APP CARRIETH NO MESH EDGE. `:app` depends on `:core` alone;
-//      the shipping-path gate would refuse `GodstoneMesh`, `MeshNode` or an
-//      `io.godstone.mesh.*` reference in a compiled `:app` source. So the port is
-//      declared here, in pure Kotlin, and the lab composition bindeth it to the
-//      real repository. The shipping app bindeth [UnavailableTrustPort] and
-//      sayeth so truthfully.
+//   1. THE SHIPPING APP CARRIETH NO RADIO-ERA EDGE. `:app` depends on `:core`
+//      alone; the shipping-path gate refuseth ANY compiled `:app` source that even
+//      NAMES the non-shipping mesh product, its node type or its package -- and it
+//      is right to be blunt, because a shipping surface must not speak of them at
+//      all. So this port is declared here in pure Kotlin, the lab composition
+//      bindeth it to the real repository, and the shipping app bindeth
+//      [UnavailableTrustPort] and sayeth so truthfully.
+//
+//      (This paragraph itself was rewritten when that gate caught the first form:
+//      naming the forbidden modules in a comment is still naming them.)
 //
 //   2. THE USER'S APPROVAL IS BOUND TO WHAT THE USER SAW. A rotation approval
 //      carrieth an [ExactRotationCandidateRef] -- the node, the generation and the
