@@ -13053,6 +13053,14 @@
   "phase": "P0",
   "plan_sha256": "685456b378662b0a40a53a6abc810041e37daf97b213f3efeb6cea879363934e",
   "planning_baseline_sha": "b5c3d3d394b70cf356cdde33b47511dad7cbb95c",
+  "publishing": {
+    "branch": "codex/production-blueprint",
+    "discipline": "the operator asked that progress be SAVED to the remote periodically, so every task boundary endeth with a fast-forward push of this branch. Never force, never to main, never a history rewrite; if the remote has moved so that the push would not be a fast-forward, STOP and report rather than resolving it destructively.",
+    "last_pushed_head": "ce69ac9b86b997ce76da7dc41fbd3c45a13a021a",
+    "last_pushed_utc": "2026-09-14T20:03:36+00:00",
+    "note": "the push publishes the builder children AND the M state checkpoint, so a reader of the remote seeth exactly what BUILD_STATE sayeth locally.",
+    "remote": "https://github.com/oculusrex14/GODSTONE.git"
+  },
   "schema_version": 1,
   "task_catalog_sha256": "b7cf90483cde63b67099a996d2139823e79d029e2b2481d81a756da70c3ef97a",
   "unresolved_defects": [],
@@ -13112,7 +13120,8 @@
     "T43 boundary: INV-READINESS-FALSE's MeshNode authority blobs were re-pinned on BOTH isles (cae014b7 -> 83e095b7 android, 8a817168 -> 53141dea ios). Statements unchanged; readiness still false.",
     "T44 boundary: a rod whose ANCHOR no longer existeth is SKIPPED, never a kill -- and that is exactly what happened to T44-RC7 in pass 2 after the replay statute was rewritten. Whenever a mutation rod's subject is edited by a later repair, the rod's needle must be re-anchored in the same commit.",
     "T44 boundary: FIVE rods escaped the first campaign because their witnesses did not own their law (the sender's estate versus the receiver's, a bound respected but never exercised, and a replay whose re-entry nothing observed). The repairs were made IN THE COURTS; the verdicts were never adjusted to fit.",
-    "T44 boundary: a trace emitted by one isle has not been replayed by the other in a committed artifact, and the physical device matrix is external. Both are recorded; neither may be cited as evidence."
+    "T44 boundary: a trace emitted by one isle has not been replayed by the other in a committed artifact, and the physical device matrix is external. Both are recorded; neither may be cited as evidence.",
+    "PUBLISHING: the builder branch codex/production-blueprint must be pushed to origin at every task boundary (after the M commit). Verify with `git status -sb` that the branch is level with origin/codex/production-blueprint before declaring a task sealed; if the push would not be a fast-forward, stop and report instead of forcing."
   ],
   "warnings_for_next_invocation": [
     "T41 IS THE NEXT TASK (deps T40, T24, T26, T37, T39, T84 all complete; no external requirement). After T41 cometh T42, T43, T44, then T54 and the platform chain.",

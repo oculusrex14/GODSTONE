@@ -6799,6 +6799,247 @@
         "TTL, hop and link offers remain unauthenticated, ephemeral telemetry; nothing in this task claimeth custody or delivery from them."
       ]
     },
+    "T44": {
+      "case_results": {
+        "added_cases": {
+          "android/mesh/src/test/java/io/godstone/mesh/readiness/ReadinessT44Test.kt": [
+            "test_w01_directed_delivery_reacheth_delivered_through_the_composition",
+            "test_w02_sos_broadcast_claimeth_no_recipient_and_no_delivery",
+            "test_w03_no_relay_plaintext_is_ever_captured",
+            "test_w04_only_the_intended_recipients_ack_delivereth",
+            "test_w05_a_crash_before_the_link_sendeth_nothing",
+            "test_w06_a_crash_after_the_inbound_commit_claimeth_no_delivery",
+            "test_w07_a_wipe_during_a_send_stops_every_epoch",
+            "test_w08_a_replay_after_reconnect_is_a_duplicate",
+            "test_w09_resource_growth_is_finite",
+            "test_w10_the_trace_round_trippeth_and_refuseth_a_future_schema",
+            "test_w11_a_refused_link_leaveth_the_durable_estate_standing",
+            "test_w12_every_relayed_byte_belongeth_to_a_durably_held_frame"
+          ],
+          "ios/Godstone/Tests/GodstoneMeshTests/ReadinessT44Tests.swift": [
+            "testW01DirectedDeliveryReachethDeliveredThroughTheComposition",
+            "testW02SosBroadcastClaimethNoRecipientAndNoDelivery",
+            "testW03NoRelayPlaintextIsEverCaptured",
+            "testW04OnlyTheIntendedRecipientsAckDelivereth",
+            "testW05ACrashBeforeTheLinkSendethNothing",
+            "testW06ACrashAfterTheInboundCommitClaimethNoDelivery",
+            "testW07AWipeDuringASendStopsEveryEpoch",
+            "testW08AReplayAfterReconnectIsADuplicate",
+            "testW09ResourceGrowthIsFinite",
+            "testW10TheTraceRoundTrippethAndRefusethAFutureSchema",
+            "testW11ARefusedLinkLeavethTheDurableEstateStanding",
+            "testW12EveryRelayedByteBelongethToADurablyHeldFrame"
+          ]
+        },
+        "corrected_cases": {
+          "in_place": [
+            "W12 now requireth that every content byte which ARRIVED at a recipient entered THAT recipient's durable estate (the card's named negative), not merely that the sender still holdeth what it sent",
+            "W09 now proveth the trace bound on a SMALL trace (eight stand, twelve counted) instead of relying on a burst that never reached 4096",
+            "W08 now asserteth the replay's recorded RE-ENTRY (replay_ingested) -- a replay that never reached the statute leaveth no such event",
+            "W08 no longer asserteth the re-ingest's boolean verdict, WEAKENED WITH ITS REASON NAMED: this isle's statute answereth the delivery road's verdict, and the law this witness owneth is the estate census plus the recorded re-entry"
+          ],
+          "note": "W08's first form in BOTH courts re-authored a fresh frame and called it a 'replay', which proved nothing about replay; both now replay the exact captured bytes. The roster's escapes then taught three more corrections, recorded below."
+        },
+        "counts": {
+          "narrow_android": 12,
+          "narrow_ios": 12,
+          "subsystem_android": 1089,
+          "subsystem_ios": 1098
+        },
+        "counts_source": "The runner parses only the python summary, so its gradle/swift records carry UNKNOWN. The counts come from the harnesses' OWN artifacts at the implementation head: a TEST-*.xml walk of android/mesh/build/test-results/testDebugUnitTest after purging stale results and passing --no-build-cache (T44/executed/T44-narrow-gradlew-executed.log 12/0 and T44-subsystem-gradlew-executed.log 1089/0), and swift's own 'Executed N tests, with M failures' line (T44-narrow-swift-executed.log 12/0 and T44-subsystem-swift-executed.log 1098/0).",
+        "courts": {
+          "controls": "ci/check_repository.py, ci/check_release_gates_status.py, scripts/sync_ios_foundation_package.py --check",
+          "narrow_android": "android/mesh/src/test/java/io/godstone/mesh/readiness/ReadinessT44Test.kt (12 witnesses)",
+          "narrow_ios": "ios/Godstone/Tests/GodstoneMeshTests/ReadinessT44Tests.swift (12 witnesses, the SAME name set)",
+          "subsystem_android": "gradlew :mesh:testDebugUnitTest",
+          "subsystem_ios": "swift test --package-path ios/Packages/GodstoneFoundation"
+        },
+        "deleted_cases": [],
+        "executed_scenarios": {
+          "composed_trace_law": "every MESSAGE/SOS byte on the wire belongs to a frame the sender durably holdeth AND that entered the receiver's durable estate (W12)",
+          "crash_after_inbound_commit": "the recipient committed and issued its ACK (census acksIssued=1, acksRefusedKey=0) while the author claimeth nothing (W06)",
+          "crash_before_link": "the durable enqueue stands, the radio carried nothing, and the checkpoint carrieth the queued row (W05)",
+          "device": "NOT EXECUTED: the section 18/19 physical matrix is external and T73-T75 own it",
+          "directed_delivery": "author -> durable enqueue -> link -> recipient inbox (SignedMessageV1 container verified) -> signed ACK -> DELIVERED at the author (W01)",
+          "finite_growth": "the capture ledger and the trace stop at their bounds, supersessions are counted, and the estate digest is stable (W09)",
+          "no_relay_plaintext": "every captured byte and the sealed payload are searched for the plaintext; the frame is SEALED (W03)",
+          "refused_link": "nothing admitted, every attempt recorded REFUSED, the durable row queued and retryable, the label QUEUED (W11)",
+          "replay_after_reconnect": "exact captured bytes re-enter the statute after a relink; the recipient's estate does not grow and the terminal claim stands (W08)",
+          "sos_broadcast": "mode NONE, no recipient bound, OFFERED and never delivered (W02)",
+          "trace_format": "the schema-1 document round-trips, carries no plaintext, and a future schema is refused rather than auto-detected; the simulation's evidence class is read and asserted (W10)",
+          "wipe_during_send": "no link byte is admitted mid-wipe and the refusal is traced (W07)",
+          "wrong_recipient": "a stranger's ACK is refused at the author and no delivery is claimed (W04)"
+        },
+        "produced_artifacts": {
+          "harness": {
+            "android": "android/mesh/src/main/java/io/godstone/mesh/runtime/ComposedRuntime.kt",
+            "ios": "ios/Godstone/Sources/GodstoneMesh/ComposedRuntime.swift (+ the generated Foundation mirror)",
+            "types": [
+              "HostClock",
+              "FixedHostClock",
+              "LinkFacade",
+              "ComposedNode",
+              "ComposedRuntimeHarness",
+              "DurableCheckpoint",
+              "TraceEvent",
+              "MeshTrace",
+              "ComposedOutcome",
+              "ComposedRefusal"
+            ]
+          },
+          "simulation_separation": {
+            "markers": [
+              "EVIDENCE_CLASS = simulation-algorithm-NOT-production-path-integration",
+              "COMPOSES_REAL_AUTHORITIES = False"
+            ],
+            "note": "a witness reads the file and asserts the simulator imports no production authority and instantiates no composed harness",
+            "path": "meshsim/run.py"
+          }
+        },
+        "roster_campaigns": {
+          "pass_1": {
+            "escapes": "RC2/RC8 (W12 checked only the sender), RC5/RC12 (W09 never exercised the bound), RC7 (W08 proved nothing about re-entry)",
+            "repair": "9fc4846a37afff793f9db1444eea8969528c41db",
+            "rods": 12,
+            "tally": {
+              "ESCAPED": 5,
+              "KILLED": 7
+            }
+          },
+          "pass_2": {
+            "repair": "3a5394a716fbe23784c346647bfa0e79f2138f5a",
+            "rods": 12,
+            "skipped": "RC7's anchor no longer existed after the replay was rewritten -- a rod whose needle moved is SKIPPED, never a kill",
+            "tally": {
+              "KILLED": 11,
+              "SKIPPED": 1
+            }
+          },
+          "pass_3": {
+            "baseline": "9fc4846a37afff793f9db1444eea8969528c41db",
+            "note": "the final official pass ran with the ledger in exactly the state 3a5394a716fbe23784c346647bfa0e79f2138f5a commits",
+            "rods": 12,
+            "tally": {
+              "ESCAPED": 0,
+              "INVALID": 0,
+              "KILLED": 12,
+              "SKIPPED": 0,
+              "TIMEOUT": 0
+            }
+          }
+        }
+      },
+      "claim_commit": "fae24d38ab95a98d39d302209b117e661163ed0f",
+      "commands": [
+        "T44-narrow-gradlew-002",
+        "T44-narrow-swift-002",
+        "T44-subsystem-gradlew-002",
+        "T44-subsystem-swift-002",
+        "T44-controls-python3-004",
+        "T44-controls-python3-005",
+        "T44-controls-python3-006"
+      ],
+      "device_gate_ids": [],
+      "file_hashes": {
+        "android/mesh/src/main/java/io/godstone/mesh/runtime/ComposedRuntime.kt": "46dabdb855c11ea87134a17d6feb2b8466ea6da03a0146d37a47ee8784adb2d5",
+        "android/mesh/src/test/java/io/godstone/mesh/readiness/ReadinessT44Test.kt": "e21aefd571e49db0aa566a019c90a8c4013e4affa1e425812d3fcfe126039562",
+        "ci/mutations.py": "a8c84b60001a426dbaacc2a5318e40ca8bce9808dec09baf6f71b293af26520c",
+        "ios/Godstone/Sources/GodstoneMesh/ComposedRuntime.swift": "5f70b2f5709077fe439f8e6b8e531b451d6b6a3687d545b62280fe578a8c43a8",
+        "ios/Godstone/Tests/GodstoneMeshTests/ReadinessT44Tests.swift": "2a58aa353a1b318d93cf5d5f5f1d925518cd4700704aad508e13b37cb0ef9177",
+        "meshsim/run.py": "72d2988f08f24549c4bcb9d66b169fd6a6b66b09f6ab9daa5a97cf4000e638ea"
+      },
+      "implementation_commit": "3a5394a716fbe23784c346647bfa0e79f2138f5a",
+      "implementation_commits": [
+        "223ab02aed503fef7b69bc352f1b4ad6cd516773",
+        "0afad1d50b9c2226ecc91754fa737789398cdcc5",
+        "9fc4846a37afff793f9db1444eea8969528c41db"
+      ],
+      "inputs": {
+        "children_commit_order": [
+          "T44(claim)",
+          "T44(builder)",
+          "T44(builder-rods)",
+          "T44(builder-roster-repair)",
+          "T44(builder-roster-repair-2)",
+          "T44(M)"
+        ],
+        "claim_ordering_note": "the claim was taken at fae24d38ab95a98d39d302209b117e661163ed0f; the stages and the final roster were run at the implementation head 3a5394a716fbe23784c346647bfa0e79f2138f5a. Runner logs and executed logs live in distinct directories (T44/logs, T44/executed) so no pass can overwrite another.",
+        "governed_source": [
+          "android/mesh/src/main/java/io/godstone/mesh/runtime/ComposedRuntime.kt",
+          "android/mesh/src/test/java/io/godstone/mesh/readiness/ReadinessT44Test.kt",
+          "ios/Godstone/Sources/GodstoneMesh/ComposedRuntime.swift",
+          "ios/Godstone/Tests/GodstoneMeshTests/ReadinessT44Tests.swift",
+          "meshsim/run.py",
+          "ci/mutations.py"
+        ],
+        "required_regression_paths": [
+          "android/mesh/src/test/java/io/godstone/mesh/readiness/ReadinessT44Test.kt",
+          "ios/Godstone/Tests/GodstoneMeshTests/ReadinessT44Tests.swift"
+        ],
+        "sealed_hot_paths_untouched": [
+          "crypto/, wire/ and the generated codecs: the harness CONSUMES SignedMessageV1 and SealedSender; it changes neither",
+          "the T31 migration engine, the T37/T83 inbox and obligation laws, the T84 ACK authority, the T41/T42 sync pump: all consumed as-is",
+          "the five external gates and docs/production/RELEASE_GATES_STATUS.json",
+          "the shipping LIGHT graph and the readiness statements (no authority blob drifted: the harness is new code and MeshNode was not edited)"
+        ]
+      },
+      "ladder_boundary_commit": "3a5394a716fbe23784c346647bfa0e79f2138f5a",
+      "mutation_results": {
+        "attempts_archived": [
+          {
+            "baseline": "0afad1d50b9c2226ecc91754fa737789398cdcc5",
+            "pass": 1,
+            "repaired_in": "9fc4846a37afff793f9db1444eea8969528c41db",
+            "rods": 12,
+            "tally": {
+              "ESCAPED": 5,
+              "KILLED": 7
+            }
+          },
+          {
+            "baseline": "9fc4846a37afff793f9db1444eea8969528c41db",
+            "pass": 2,
+            "repaired_in": "3a5394a716fbe23784c346647bfa0e79f2138f5a",
+            "rods": 12,
+            "tally": {
+              "KILLED": 11,
+              "SKIPPED": 1
+            }
+          }
+        ],
+        "campaign_note": "the twelve rods ran in the FINAL official pass, fail-closed, at baseline 9fc4846a37afff793f9db1444eea8969528c41db (with the ledger in the state 3a5394a716fbe23784c346647bfa0e79f2138f5a commits): 12 KILLED of 12, SKIPPED=0, INVALID=0, TIMEOUT=0, ESCAPED=0. The card's named semantic negative is RC2/RC8 ('Bypass the trusted runtime composition or durable inbound commit while keeping unit tests green: composed trace must fail'), witnessed on both isles. Two earlier passes are recorded rather than folded away: pass 1's five escapes were all witnesses that did not own their law, and pass 2's skipped rod had lost its anchor.",
+        "of": 12,
+        "roster_manifest": "T44/roster/manifest.json",
+        "semantic": {
+          "harness": "ci/mutations.py run_semantic (the ledger filtered to the T44- prefix)",
+          "platforms": [
+            "jvm",
+            "swift"
+          ],
+          "work_parent": "/Users/oculus/.cache/godstone-mutation-worktrees-t44 (disposable; the live tree is never touched)"
+        },
+        "tally": {
+          "ESCAPED": 0,
+          "INVALID": 0,
+          "KILLED": 12,
+          "SKIPPED": 0,
+          "TIMEOUT": 0
+        }
+      },
+      "objective": {
+        "claimed_head": "fae24d38ab95a98d39d302209b117e661163ed0f",
+        "claimed_utc": "2026-09-14T19:06:18+00:00",
+        "objective": "Prove crash-safe multihop behaviour through COMPOSED runtimes: build a deterministic host integration harness that uses the real composition roots, adapters, stores and codecs with only the OS facades substituted, capture every side effect, and exercise directed delivery, SOS broadcast, no relay plaintext, intended-recipient-only ACK, a crash after each transaction and handshake stage, a wipe during a send, replay after reconnect and finite resource growth across A<->relay<->B mixed platforms via serialized traces and durable checkpoints -- while keeping the meshsim algorithm simulation explicitly separate from production-path integration evidence, so that bypassing the trusted runtime composition or the durable inbound commit falleth the composed trace."
+      },
+      "status": "COMPLETE",
+      "tested_tree_sha": "0245e86c72f34c8efada4d63747e510c73345160",
+      "unresolved": [
+        "the section 18/19 PHYSICAL device matrix is NOT executed: T73-T75 own it. The 'radio' here is a recording facade that proves nothing about BLE.",
+        "a trace emitted by ONE isle has not been replayed by the OTHER in a committed artifact: both share schema 1 and the reader refuses a future schema, but the cross-isle fixture exchange remains for the lab composition root (T54).",
+        "the iOS transport handeth a UUID, so a link offer nameth the LINK (a UUID is neither a node id nor a recipient): the harness maps handles to labels for its own links, and the asymmetry with android (node ids) is deliberate and recorded.",
+        "meshsim/run.py still models no cryptography and is not evidence for delivery semantics; its evidence class is declared and checked, not implied."
+      ]
+    },
     "T45": {
       "case_results": {
         "deleted_cases": [],
@@ -12761,7 +13002,7 @@
       ]
     }
   },
-  "current_task": "T44",
+  "current_task": null,
   "external_blockers": [
     "A06",
     "APPROVED_CONTENT",
@@ -12770,29 +13011,20 @@
     "SIGNING"
   ],
   "failed_attempts": [],
-  "in_progress": {
-    "claimed_head": "fae24d38ab95a98d39d302209b117e661163ed0f",
-    "claimed_utc": "2026-09-14T19:06:18+00:00",
-    "objective": {
-      "claimed_head": "fae24d38ab95a98d39d302209b117e661163ed0f",
-      "claimed_utc": "2026-09-14T19:06:18+00:00",
-      "objective": "Prove crash-safe multihop behaviour through COMPOSED runtimes: build a deterministic host integration harness that uses the real composition roots, adapters, stores and codecs with only the OS facades substituted, capture every side effect, and exercise directed delivery, SOS broadcast, no relay plaintext, intended-recipient-only ACK, a crash after each transaction and handshake stage, a wipe during a send, replay after reconnect and finite resource growth across A<->relay<->B mixed platforms via serialized traces and durable checkpoints -- while keeping the meshsim algorithm simulation explicitly separate from production-path integration evidence, so that bypassing the trusted runtime composition or the durable inbound commit falleth the composed trace."
-    },
-    "task": "T44"
-  },
-  "last_code_head": "5cbb5b13453fdfa9d95c84a7f658f5e3d0129975",
-  "last_observed_head": "5cbb5b13453fdfa9d95c84a7f658f5e3d0129975",
+  "in_progress": null,
+  "last_code_head": "3a5394a716fbe23784c346647bfa0e79f2138f5a",
+  "last_observed_head": "3a5394a716fbe23784c346647bfa0e79f2138f5a",
   "latest_verification": {
-    "at_utc": "2026-09-15T01:40:00+00:00",
-    "boundary_commit": "5cbb5b13453fdfa9d95c84a7f658f5e3d0129975",
+    "at_utc": "2026-09-15T03:30:00+00:00",
+    "boundary_commit": "3a5394a716fbe23784c346647bfa0e79f2138f5a",
     "controls": {
       "boundary_records": 3,
       "outcomes": "3/3 PASSED at the boundary (check_repository rc=0; the release-gates checker rc=0 with its own 12-of-12, 15-of-15 and 7-of-7 selftests; sync --check clean)"
     },
     "isle_grands": {
-      "android_grand": "the T43 court 13/13 and the whole :mesh suite 1077/0 at the boundary, genuinely EXECUTED (--no-build-cache, stale results purged)",
-      "counts_source": "see completed_tasks.T43.case_results.counts_source",
-      "ios_grand": "the T43 court 13/13 and the whole package 1086/0 at the boundary",
+      "android_grand": "the T44 court 12/12 and the whole :mesh suite 1089/0 at the boundary, genuinely EXECUTED (--no-build-cache, stale results purged)",
+      "counts_source": "see completed_tasks.T44.case_results.counts_source",
+      "ios_grand": "the T44 court 12/12 and the whole package 1098/0 at the boundary",
       "python_grand": "the python readiness suite 313 OK, the structural lineage rc=0, diff hygiene clean, sync --check clean"
     },
     "ladder": {
@@ -12803,21 +13035,21 @@
     "narrow": {
       "errors": 0,
       "failures": 0,
-      "lane": "gradlew :mesh:testDebugUnitTest --tests *ReadinessT43Test* + swift test --filter ReadinessT43Tests",
-      "tests": 26
+      "lane": "gradlew :mesh:testDebugUnitTest --tests *ReadinessT44Test* + swift test --filter ReadinessT44Tests",
+      "tests": 24
     },
     "roster": {
-      "T43_killed": 13,
-      "of": 13
+      "T44_killed": 12,
+      "of": 12
     },
     "subsystem": {
       "errors": 0,
       "failures": 0,
-      "lane": "gradlew :mesh:testDebugUnitTest (1077) + swift test --package-path ios/Packages/GodstoneFoundation (1086)",
-      "tests": 2163
+      "lane": "gradlew :mesh:testDebugUnitTest (1089) + swift test --package-path ios/Packages/GodstoneFoundation (1098)",
+      "tests": 2187
     }
   },
-  "next_task": "T44",
+  "next_task": "T54",
   "phase": "P0",
   "plan_sha256": "685456b378662b0a40a53a6abc810041e37daf97b213f3efeb6cea879363934e",
   "planning_baseline_sha": "b5c3d3d394b70cf356cdde33b47511dad7cbb95c",
@@ -12877,7 +13109,10 @@
     "T42 boundary: INV-READINESS-FALSE's iOS MeshNode authority blob was re-pinned (b3f205c3 -> 8a817168). The statement is unchanged; the re-pin is the T03 mechanism working.",
     "T43 boundary: SEVEN pre-T43 assertions across T38/T39 and the MeshNode integration tests (both isles) required the durable delivery row to reach HANDED_TO_RELAY on the Boolean send -- the exact behaviour T43's card removes. Each was corrected narrowly, in place, with its contradiction named in the comment; ReadinessT39's cancel-of-a-relayed-call witness still passes UNCHANGED because the ephemeral ledger supplies the honest answer. Future tasks must not read 'HANDED_TO_RELAY' as reachable from the send path.",
     "T43 boundary: a rod's `witness` FIELD is part of the oracle. The second pass recorded RC2 as ESCAPED even though its mutant WAS killed (by W13) -- the field still named the DIRECT witness. When a rod's site and a witness's subject drift apart, the ledger must be repaired, not the verdict.",
-    "T43 boundary: INV-READINESS-FALSE's MeshNode authority blobs were re-pinned on BOTH isles (cae014b7 -> 83e095b7 android, 8a817168 -> 53141dea ios). Statements unchanged; readiness still false."
+    "T43 boundary: INV-READINESS-FALSE's MeshNode authority blobs were re-pinned on BOTH isles (cae014b7 -> 83e095b7 android, 8a817168 -> 53141dea ios). Statements unchanged; readiness still false.",
+    "T44 boundary: a rod whose ANCHOR no longer existeth is SKIPPED, never a kill -- and that is exactly what happened to T44-RC7 in pass 2 after the replay statute was rewritten. Whenever a mutation rod's subject is edited by a later repair, the rod's needle must be re-anchored in the same commit.",
+    "T44 boundary: FIVE rods escaped the first campaign because their witnesses did not own their law (the sender's estate versus the receiver's, a bound respected but never exercised, and a replay whose re-entry nothing observed). The repairs were made IN THE COURTS; the verdicts were never adjusted to fit.",
+    "T44 boundary: a trace emitted by one isle has not been replayed by the other in a committed artifact, and the physical device matrix is external. Both are recorded; neither may be cited as evidence."
   ],
   "warnings_for_next_invocation": [
     "T41 IS THE NEXT TASK (deps T40, T24, T26, T37, T39, T84 all complete; no external requirement). After T41 cometh T42, T43, T44, then T54 and the platform chain.",
