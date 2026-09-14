@@ -381,6 +381,37 @@ final class ReadinessT43Tests: XCTestCase {
         XCTAssertEqual(r.node.cancelSos(stranger), .unknownMessage,
                        "an unknown msg_id is a typed refusal, not a silent success")
     }
+    // ------------------------------------------------------------ W13
+
+    /// W13 -- the SOS arm carrieth the same law on this isle: a broadcast whose
+    /// bytes a radio admitted standeth QUEUED_DURABLY (mode none, no recipient),
+    /// and the send is an EPHEMERAL offer. The first campaign proved this witness
+    /// necessary on the android twin; it is mirrored here so the SOS send site
+    /// cannot re-acquire the custody advance unobserved on either isle.
+    func testW13ABroadcastSendLeavethTheSosLabelQueued() throws {
+        let r = try rig(0x51)
+        r.node.transportDidConnect(peerId: UUID())
+        r.node.transportDidConnect(peerId: UUID())
+
+        let result = r.node.dispatchSos(payload: Data("medic".utf8)) { _, _ in true }
+        XCTAssertEqual(result, .handedToRelays(2), "two links took the bytes")
+        guard let mid = r.store.allHeldMsgIds().first else {
+            return XCTFail("the broadcast must be durably held")
+        }
+        XCTAssertEqual(stateOf(r.tracker, mid), .queuedDurably,
+                       "the DURABLE state did not advance")
+        let projection = r.node.deliveryProjection(mid)
+        XCTAssertEqual(projection.label, .offered)
+        XCTAssertEqual(projection.linkOffers, 2, "both admissions are ephemeral telemetry")
+        XCTAssertTrue(projection.retryable)
+        XCTAssertFalse(projection.claimsDelivery)
+        XCTAssertFalse(projection.claimsRelayCustody)
+        if case .found(let rec) = r.tracker.lookup(mid) {
+            XCTAssertEqual(rec.ackMode, .none, "and the row standeth none-mode")
+        } else {
+            XCTFail("the row must stand")
+        }
+    }
 }
 
 /// The minimal in-memory delivery repository this court requireth (the durable

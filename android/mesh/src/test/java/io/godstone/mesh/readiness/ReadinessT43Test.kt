@@ -418,6 +418,37 @@ class ReadinessT43Test {
         Assert.assertEquals("an unknown msg_id is a typed refusal, not a silent success",
             SosCancelResult.UnknownMessage, r.node.cancelSos(stranger))
     }
+
+    // ------------------------------------------------------------ W13
+
+    /**
+     * W13 -- the SOS arm carrieth the same law: a broadcast whose bytes a radio
+     * admitted standeth QUEUED_DURABLY (mode NONE, no recipient), and the send is
+     * an EPHEMERAL offer. The first campaign proved this witness necessary:
+     * without it the SOS send site could re-acquire the custody advance
+     * unobserved (the roster's T43-RC2 escaped before this witness existed).
+     */
+    @Test
+    fun test_w13_a_broadcast_send_leaveth_the_sos_label_queued() = runTest {
+        val r = rig()
+        r.node.injectPeerForTest(ByteArray(16) { 0x51 })
+        r.node.injectPeerForTest(ByteArray(16) { 0x52 })
+
+        val result = r.node.dispatchSos("medic".toByteArray()) { _, _ -> true }
+        Assert.assertTrue("two links took the bytes: " + result,
+            result is io.godstone.mesh.SosDispatchResult.HandedToRelays)
+        val mid = r.store.allHeldMsgIds().single()
+        Assert.assertEquals("the DURABLE state did not advance",
+            DeliveryState.QUEUED_DURABLY, stateOf(r.tracker, mid))
+        val projection = r.node.deliveryProjection(mid)
+        Assert.assertEquals(DeliveryLabel.OFFERED, projection.label)
+        Assert.assertEquals("both admissions are ephemeral telemetry", 2, projection.linkOffers)
+        Assert.assertTrue(projection.retryable)
+        Assert.assertFalse(projection.claimsDelivery)
+        Assert.assertFalse(projection.claimsRelayCustody)
+        Assert.assertEquals("and the row standeth NONE-mode, binding no recipient",
+            AckMode.NONE, (r.tracker.lookup(mid) as DeliveryLookup.Found).record.ackMode)
+    }
 }
 
 /** The minimal in-memory delivery repository the T43 court requireth (the
