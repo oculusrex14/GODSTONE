@@ -19,6 +19,12 @@ CHECKS = [
     # canonical components. The profile resolver it drives lives beside it
     # (ci/profile_resolver.py). It closes no external gate and moves no flag.
     [sys.executable, "ci/check_lab_isolation.py"],
+    # T67: the MUTATION HARNESS'S OWN DISCIPLINE. The selftest exerciseth the
+    # classifier against nine known-answer cases and seven deliberately broken
+    # policies (including a harness that would count SKIPPED as KILLED), and
+    # EXECUTETH the disposable-worktree rule: a worktree is created, used and
+    # removed, and the live tree's HEAD and status are compared before and after.
+    [sys.executable, "ci/mutations.py", "--selftest"],
 ]
 
 

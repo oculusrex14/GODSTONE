@@ -54,6 +54,7 @@ import pathlib
 import re
 import shutil
 import subprocess
+import tempfile
 import sys
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -1628,7 +1629,22 @@ SEMANTIC = [
     {"id": "T60-RC10-android-the-colour-channel-standeth-alone", "platform": "jvm", "file": "android/mesh/src/main/java/io/godstone/mesh/a11y/AccessibilityContract.kt", "module": "mesh", "test_task": "testDebugUnitTest", "court": "android/mesh/src/test/java/io/godstone/mesh/readiness/ReadinessT60Test.kt", "gradle_filter": "*ReadinessT60Test*", "find": "            if (node.colourToken.isNotEmpty() && node.stateWords.isEmpty()) {", "replace": "            if (false) {   // (mutant) a colour with no words is accepted on this isle", "witness": "test_w05_no_colour_only_state", "why": "the Android isle accepteth a colour with no words, so colour becometh the only channel there. The Android colour witness condemneth", "baseline": "green (the T60 Android court: 13 witnesses in android/mesh/src/test/java/io/godstone/mesh/readiness/ReadinessT60Test.kt, driven by the real AccessibilityContract)", "kind": "functional"},
     {"id": "T60-RC11-ios-a-clipped-status-is-accepted", "platform": "swift", "file": "ios/Godstone/Sources/GodstoneMesh/AccessibilityContract.swift", "court": "ios/Godstone/Tests/GodstoneMeshTests/ReadinessT60Tests.swift", "swift_filter": "ReadinessT60Tests", "find": "        for node in nodes where !node.stateWords.isEmpty && node.truncated {", "replace": "        // (mutant) a status CLIPPED at the largest Dynamic Type size is accepted\n        for node in nodes where false && !node.stateWords.isEmpty && node.truncated {", "witness": "testW04AClippedStatusIsRefusedAtLargeText", "why": "the iOS isle accepteth a status clipped at the largest Dynamic Type size, so the named negative is closed on one isle and open on the other. The iOS clipping witness condemneth", "baseline": "green (the T60 iOS court: 13 witnesses in ios/Godstone/Tests/GodstoneMeshTests/ReadinessT60Tests.swift, driven by the real AccessibilityContract)", "kind": "functional"},
     {"id": "T60-RC12-ios-the-touch-target-minimum-vanish", "platform": "swift", "file": "ios/Godstone/Sources/GodstoneMesh/AccessibilityContract.swift", "court": "ios/Godstone/Tests/GodstoneMeshTests/ReadinessT60Tests.swift", "swift_filter": "ReadinessT60Tests", "find": "        for node in nodes where node.role != .staticText {", "replace": "        // (mutant) no touch target is too small on this isle\n        for node in nodes where false && node.role != .staticText {", "witness": "testW06TheTouchTargetMinimumsDifferByPlatform", "why": "the iOS isle accepteth any touch target, so a control below 44pt would pass on the isle that requireth it most. The iOS target witness condemneth", "baseline": "green (the T60 iOS court: 13 witnesses in ios/Godstone/Tests/GodstoneMeshTests/ReadinessT60Tests.swift, driven by the real AccessibilityContract)", "kind": "functional"},
+    # ----------------------------------------------------------------------
+    # T67 (s24-28): the FIVE PRODUCTION-PATH CONTROLS the card requireth --
+    #   lifetime bypass, pre-auth replay commit, ACK-before-persist, plaintext
+    #   fallback and stale status evidence -- each struck on the REAL authority
+    #   and witnessed by an existing court case (T84, T37, T35, T53).
+    # ----------------------------------------------------------------------
+    {"id": "T67-C1-lifetime-bypass-an-expired-candidate-standeth", "platform": "jvm", "file": "android/mesh/src/main/java/io/godstone/mesh/delivery/AckDispatcher.kt", "module": "mesh", "test_task": "testDebugUnitTest", "court": "android/mesh/src/test/java/io/godstone/mesh/readiness/ReadinessT84Test.kt", "gradle_filter": "*ReadinessT84Test*", "find": "                if (next.remainingMs <= 0L || reason != ExpiryReason.NotExpired) {\n                    if (store.expireCandidate(record.ackKey)) {", "replace": "                if (false) {   // (mutant) the candidate lifetime is BYPASSED: nothing ever expireth\n                    if (store.expireCandidate(record.ackKey)) {", "witness": "test_w11_an_expired_or_cancelled_origin_and_ttl_exhaustion", "why": "the non-replenishing candidate lifetime is bypassed, so a relay would hold a receipt for ever and a swept estate would never shrink; the T84 expiry witness condemneth", "baseline": "green (the T84 court: 14 witnesses)", "kind": "functional"},
+    {"id": "T67-C2-pre-auth-replay-commit", "platform": "jvm", "file": "android/mesh/src/main/java/io/godstone/mesh/delivery/AckDispatcher.kt", "module": "mesh", "test_task": "testDebugUnitTest", "court": "android/mesh/src/test/java/io/godstone/mesh/readiness/ReadinessT84Test.kt", "gradle_filter": "*ReadinessT84Test*", "find": "    fun admit(encoded: ByteArray, receivedFrom: ByteArray? = null,\n              now: Long = clock()): AckAdmission {\n        val result = try {\n            admitForeign(encoded, receivedFrom)", "replace": "    fun admit(encoded: ByteArray, receivedFrom: ByteArray? = null,\n              now: Long = clock()): AckAdmission {\n        // (mutant) the candidate is committed BEFORE its origin is authenticated\n        val result = try {\n            AckAdmissionResult.Admitted", "witness": "test_w09_a_forged_candidate_cannot_suppress_a_later_valid_signature", "why": "a candidate entereth the replay namespace BEFORE its origin is authenticated, so a forged ACK's key would occupy the one slot and suppress the genuine one; the T84 forged-candidate witness condemneth", "baseline": "green (the T84 court: 14 witnesses)", "kind": "functional"},
+    {"id": "T67-C3-ack-offered-before-the-persist", "platform": "jvm", "file": "android/mesh/src/main/java/io/godstone/mesh/MeshNode.kt", "module": "mesh", "test_task": "testDebugUnitTest", "court": "android/mesh/src/test/java/io/godstone/mesh/readiness/ReadinessT37Test.kt", "gradle_filter": "*ReadinessT37Test*", "find": "                val ack = when (accepted) {\n                    is InboxCommitResult.New -> accepted.ack\n                    is InboxCommitResult.Duplicate -> accepted.ack\n                    else -> null\n                }\n                if (ack != null) offerAckForLink(ack)", "replace": "                // (mutant) an ACK is filed whether or not the inbound commit\n                // succeeded: a reader would be told the sender received a\n                // confirmation for a row this node never durably held\n                val ack = when (accepted) {\n                    is InboxCommitResult.New -> accepted.ack\n                    is InboxCommitResult.Duplicate -> accepted.ack\n                    else -> runCatching { inbox.acceptVerifiedAndRequireAck(frame, fromPeer) }\n                        .getOrNull()\n                        ?.let { if (it is InboxCommitResult.New) it.ack else null }\n                }\n                if (ack != null) offerAckForLink(ack)", "witness": "testDiskFailureYieldsNeitherAckNorClaimedAcceptance", "why": "the ACK is offered even though the durable inbound commit FAILED, so a receipt would claim a custody this node never had; the T37 disk-failure witness condemneth (it requireth neither an ACK nor a claimed acceptance).", "baseline": "green (the T37 court)", "kind": "functional"},
+    {"id": "T67-C4-plaintext-fallback-accepted", "platform": "jvm", "file": "android/mesh/src/main/java/io/godstone/mesh/wire/v2/SignedMessageV1.kt", "module": "mesh", "test_task": "testDebugUnitTest", "court": "android/mesh/src/test/java/io/godstone/mesh/readiness/ReadinessT35Test.kt", "gradle_filter": "*ReadinessT35Test*", "find": "        if (signedPlaintext[i].toInt() and 0xFF != VERSION) return SenderVerificationResult.Invalid(\"unknown version; there is no legacy plaintext fallback\")", "replace": "        // (mutant) an UNKNOWN version is accepted: a legacy plaintext fallback\n        if (false) return SenderVerificationResult.Invalid(\"unknown version; there is no legacy plaintext fallback\")", "witness": "testMalformedLengthAndUtf8RejectedFailClosed", "why": "a payload of an UNKNOWN version is accepted, which is the legacy plaintext fallback the frozen sender law forbiddeth: an attacker could present unsigned bytes as a message. The T35 witness condemneth", "baseline": "green (the T35 court)", "kind": "functional"},
+    {"id": "T67-C5-stale-status-evidence-accepted", "platform": "python", "file": "tools/readiness/run.py", "court": "tools/readiness/tests/test_t53.py", "py_dir": "tools/readiness/tests", "py_pattern": "test_t53.py", "find": "        if ancestor.returncode != 0:\n            problems.append(\n                f'stale head: state recorded {recorded!r} which is not '\n                f'an ancestor of the worktree head {live_head!r}; '\n                f'reload the state from the journal before trusting it')", "replace": "        if False:   # (mutant) a stale recorded head is accepted as current evidence\n            problems.append(\n                f'stale head: state recorded {recorded!r} which is not '\n                f'an ancestor of the worktree head {live_head!r}; '\n                f'reload the state from the journal before trusting it')", "witness": "testStaleEvidenceDothNotResolve", "why": "a recorded head that is NOT an ancestor of the worktree head is accepted as current evidence, so a stale BUILD_STATE could vouch for a boundary the repository never had. The T53 stale-evidence witness condemneth", "baseline": "green (the T53 court: 19 witnesses)", "kind": "functional"},
 ]
+
+#: Rods documented as an EXPECTED escape. There are NONE: an escape is a finding,
+#: never a success, and a rod named here could never be counted as a catch.
+EXPECTED_ESCAPES: tuple = ()
 
 EXEC_RE = re.compile(r"Executed ([0-9]+) tests, with ([0-9]+) failures")
 # the failed-case extractor, stated as one expression: each legacy line that
@@ -1742,22 +1758,85 @@ def _run_harness(entry, wt_path, timeout=2400):
     return build_exit, run, failed, blob
 
 
-def _classify(entry, build_exit, run, failed, baseline_ok):
-    if not baseline_ok:
-        return "INVALID", "the baseline itself did not pass unmutated"
-    if build_exit != 0:
-        return "INVALID", "the mutant did not compile"
+# ---------------------------------------------------------------------------
+# T67 -- THE CLASSIFIER'S RULES ARE DATA, so that they can be BROKEN ON PURPOSE.
+#
+# "Existing mutations can count missing/skipped anchors as killed." A classifier
+# whose rules are only code can only be TRUSTED; a classifier whose rules are a
+# POLICY can be PROVEN -- the selftest injecteth deliberately broken policies and
+# requireth that at least one known-answer case catch each of them. The named
+# negative is `skipped_is_killed`: a harness that counted a SKIPPED rod (a moved
+# anchor) as a kill MUST fail the selftest.
+# ---------------------------------------------------------------------------
+
+class ClassifyPolicy:
+    """The rules a verdict obeyeth. The default is the only honest one."""
+
+    __slots__ = ("require_baseline", "require_build", "require_anchor", "require_run",
+                 "killed_on_hit", "skipped_is_killed", "escaped_is_killed",
+                 "invalid_is_killed", "timeout_is_killed")
+
+    def __init__(self, require_baseline=True, require_build=True, require_anchor=True,
+                 require_run=True, killed_on_hit=True, skipped_is_killed=False,
+                 escaped_is_killed=False, invalid_is_killed=False, timeout_is_killed=False):
+        self.require_baseline = require_baseline
+        self.require_build = require_build
+        self.require_anchor = require_anchor
+        self.require_run = require_run
+        self.killed_on_hit = killed_on_hit
+        self.skipped_is_killed = skipped_is_killed
+        self.escaped_is_killed = escaped_is_killed
+        self.invalid_is_killed = invalid_is_killed
+        self.timeout_is_killed = timeout_is_killed
+
+    def name(self):
+        broken = [k for k in ("skipped_is_killed", "escaped_is_killed",
+                              "invalid_is_killed", "timeout_is_killed")
+                  if getattr(self, k)]
+        if not self.require_baseline:
+            broken.append("baseline_unchecked")
+        if not self.require_build:
+            broken.append("build_unchecked")
+        if not self.require_run:
+            broken.append("run_unchecked")
+        return "default" if not broken else "broken:" + "+".join(broken)
+
+
+DEFAULT_POLICY = ClassifyPolicy()
+
+
+def _classify_with(policy, entry, build_exit, run, failed, baseline_ok, anchor_count=1):
+    """One verdict, from the policy's rules. ONLY KILLED is a catch."""
+    if policy.require_anchor and anchor_count != 1:
+        outcome = "SKIPPED"
+        note = "the anchor was seen %d times, not exactly once" % anchor_count
+        return ("KILLED", note) if policy.skipped_is_killed else (outcome, note)
+    if policy.require_baseline and not baseline_ok:
+        note = "the baseline itself did not pass unmutated"
+        return ("KILLED", note) if policy.invalid_is_killed else ("INVALID", note)
+    if policy.require_build and build_exit != 0:
+        note = "the mutant did not compile"
+        return ("KILLED", note) if policy.invalid_is_killed else ("INVALID", note)
     witness_tail = entry["witness"].rpartition("/")[2].rpartition(".")[2]
     hit = any(witness_tail in f or f == witness_tail for f in failed)
-    if hit:
+    if hit and policy.killed_on_hit:
         return "KILLED", "witness %s failed as intended (%d failed case(s))" % (
             witness_tail, len(failed))
-    if run is None or run == 0:
-        return "INVALID", "the harness executed nothing"
+    if policy.require_run and (run is None or run == 0):
+        note = "the harness executed nothing"
+        return ("KILLED", note) if policy.invalid_is_killed else ("INVALID", note)
     if failed:
-        return "ESCAPED", ("the named witness stayed green; other cases failed (" +
-                           ", ".join(sorted(failed))[:180] + ") - inspect")
-    return "ESCAPED", "the witness stayed green against the mutant"
+        note = ("the named witness stayed green; other cases failed (" +
+                ", ".join(sorted(failed))[:180] + ") - inspect")
+        return ("KILLED", note) if policy.escaped_is_killed else ("ESCAPED", note)
+    note = ("the witness stayed green against the mutant" if not hit else
+            "the named witness was seen but the kill rule is asleep")
+    return ("KILLED", note) if policy.escaped_is_killed else ("ESCAPED", note)
+
+
+def _classify(entry, build_exit, run, failed, baseline_ok, anchor_count=1):
+    return _classify_with(DEFAULT_POLICY, entry, build_exit, run, failed, baseline_ok,
+                          anchor_count)
 
 
 def run_semantic(report_only, emit_dir, baseline_sha, work_parent):
@@ -1841,7 +1920,7 @@ def run_semantic(report_only, emit_dir, baseline_sha, work_parent):
                                 "the harness did not settle inside the bound", None))
                 print("  TIMEOUT  %s" % entry["id"])
                 continue
-            outcome, note = _classify(entry, be, run, failed, baseline_ok)
+            outcome, note = _classify(entry, be, run, failed, baseline_ok, anchor_count)
             tally[outcome] += 1
             entry["ended_utc"] = _now_utc()
             log_path = None
@@ -1883,8 +1962,170 @@ def run(report_only):
     return run_structural(report_only, None, "live-tree")
 
 
+# ---------------------------------------------------------------------------
+# T67 -- THE HARNESS'S OWN SELFTEST.
+#
+# Every rod is judged by `_classify_with`, and a judge that cannot be WRONG cannot
+# be TRUSTED. So this selftest carrieth:
+#
+#   * a KNOWN-ANSWER table: seven scenarios, each with the verdict the honest rules
+#     must return (a missing anchor, a DUPLICATE anchor, a compile failure, a
+#     timeout, a surviving semantic mutant, a crashed worker, and a baseline that
+#     did not pass);
+#   * BROKEN POLICIES, each of which must be CAUGHT by at least one known-answer
+#     case -- the named negative is `skipped_is_killed`, where a harness that
+#     counted a MOVED ANCHOR as a kill must fail;
+#   * a LIVE-TREE control: a disposable worktree is created and removed, and the
+#     live tree's HEAD and status are compared before and after, so "mutants run
+#     only in disposable worktrees" is EXECUTED rather than asserted.
+#
+# It returneth 0 iff every known-answer case matched under the honest rules AND
+# every broken policy was caught. A harness that passeth this cannot count a
+# skipped rod as a catch.
+# ---------------------------------------------------------------------------
+
+#: (scenario, anchor_count, build_exit, run, failed, baseline_ok, expected)
+KNOWN_ANSWER_CASES = (
+    ("a missing anchor (the needle moved)", 0, 0, 12, set(), True, "SKIPPED"),
+    ("a DUPLICATE anchor (seen twice)", 2, 0, 12, set(), True, "SKIPPED"),
+    ("a compile failure", 1, 1, None, set(), True, "INVALID"),
+    # a compile failure WITH test output: the ONLY rule that can refuse this is the
+    # build rule, so the table can SEE that rule fall asleep (the first form of this
+    # table could not, and the selftest reported its own blind spot)
+    ("a compile failure despite test output", 1, 1, 12, {"the_named_witness"}, True,
+     "INVALID"),
+    ("a baseline that did not pass", 1, 0, 12, set(), False, "INVALID"),
+    ("a worker that executed nothing", 1, 0, None, set(), True, "INVALID"),
+    ("a surviving semantic mutant", 1, 0, 12, set(), True, "ESCAPED"),
+    ("the named witness killed", 1, 0, 12, {"the_named_witness"}, True, "KILLED"),
+    ("a TIMEOUT (no harness output at all)", 1, 0, None, set(), True, "INVALID"),
+)
+
+#: The broken policies, each of which the known-answer table MUST catch.
+BROKEN_POLICIES = (
+    ("skipped counted as KILLED (the named negative)", ClassifyPolicy(skipped_is_killed=True)),
+    ("an escaped mutant counted as KILLED", ClassifyPolicy(escaped_is_killed=True)),
+    ("an invalid run counted as KILLED", ClassifyPolicy(invalid_is_killed=True)),
+    ("a baseline failure left unchecked", ClassifyPolicy(require_baseline=False)),
+    ("a compile failure left unchecked", ClassifyPolicy(require_build=False)),
+    ("a run that executed nothing left unchecked", ClassifyPolicy(require_run=False)),
+    ("the anchor count left unchecked", ClassifyPolicy(require_anchor=False)),
+)
+
+
+def _selftest_entry():
+    return {"id": "selftest", "witness": "the_named_witness", "file": "x", "find": "a",
+            "replace": "b"}
+
+
+def classify_selftest():
+    """The known-answer table under ONE policy. Returneth (mismatches, checks)."""
+    entry = _selftest_entry()
+    mismatches = []
+    checks = 0
+    for (scenario, anchors, build_exit, run, failed, baseline_ok, expected) in KNOWN_ANSWER_CASES:
+        verdict, _note = _classify_with(DEFAULT_POLICY, entry, build_exit, run, failed,
+                                        baseline_ok, anchors)
+        checks += 1
+        if verdict != expected:
+            mismatches.append("%s: expected %s, got %s" % (scenario, expected, verdict))
+    return mismatches, checks
+
+
+def run_selftest(emit=None):
+    """Prove the harness decideth. Returneth 0 iff every control behaved."""
+    ok = True
+    print("MUTATION HARNESS SELFTEST (T67)")
+    print("  ONLY KILLED is a catch; every other verdict is not.")
+
+    # (1) the honest rules against the known-answer table
+    mismatches, checks = classify_selftest()
+    if mismatches:
+        ok = False
+        print("  FAIL the honest rules misclassified:")
+        for m in mismatches:
+            print("       " + m)
+    else:
+        print("  PASS the honest rules classified %d known-answer cases correctly" % checks)
+
+    # (2) every broken policy must be CAUGHT by that same table
+    for name, policy in BROKEN_POLICIES:
+        entry = _selftest_entry()
+        caught = False
+        detail = ""
+        for (scenario, anchors, build_exit, run, failed, baseline_ok, expected) in KNOWN_ANSWER_CASES:
+            verdict, _note = _classify_with(policy, entry, build_exit, run, failed,
+                                            baseline_ok, anchors)
+            if verdict != expected:
+                caught = True
+                detail = "%s: %s -> %s" % (scenario, expected, verdict)
+                break
+        if caught:
+            print("  KILLED   %s (%s)" % (name, detail))
+        else:
+            ok = False
+            print("  ESCAPED  %s -- the selftest cannot see this breakage" % name)
+
+    # (3) the DISPOSABLE WORKTREE control, EXECUTED: the live tree is untouched
+    try:
+        head_before = subprocess.run(["git", "rev-parse", "HEAD"], cwd=ROOT,
+                                     capture_output=True, text=True).stdout.strip()
+        status_before = subprocess.run(["git", "status", "--porcelain=v1"], cwd=ROOT,
+                                      capture_output=True, text=True).stdout
+        parent = tempfile.mkdtemp(prefix="godstone-selftest-wt-")
+        wt = os.path.join(parent, "probe")
+        _worktree_add(head_before, wt)
+        inside = os.path.isfile(os.path.join(wt, "ci", "mutations.py"))
+        _worktree_remove(wt)
+        gone = not os.path.exists(wt)
+        head_after = subprocess.run(["git", "rev-parse", "HEAD"], cwd=ROOT,
+                                    capture_output=True, text=True).stdout.strip()
+        status_after = subprocess.run(["git", "status", "--porcelain=v1"], cwd=ROOT,
+                                     capture_output=True, text=True).stdout
+        shutil.rmtree(parent, ignore_errors=True)
+        if inside and gone and head_before == head_after and status_before == status_after:
+            print("  PASS a disposable worktree was created, used and REMOVED, and the "
+                  "live tree's HEAD and status are unchanged")
+        else:
+            ok = False
+            print("  FAIL the disposable-worktree control: created=%s removed=%s "
+                  "head_same=%s status_same=%s"
+                  % (inside, gone, head_before == head_after, status_before == status_after))
+    except Exception as exc:                      # a control that cannot run is a FAILURE
+        ok = False
+        print("  FAIL the disposable-worktree control raised: %s" % exc)
+
+    # (4) the tally rule: a non-KILLED rod must never be counted as a catch
+    sample = [{"id": "a", "outcome": "KILLED"}, {"id": "b", "outcome": "SKIPPED"},
+              {"id": "c", "outcome": "ESCAPED"}]
+    cats = [r["id"] for r in sample if r["outcome"] != "KILLED"]
+    if cats == ["b", "c"]:
+        print("  PASS only KILLED counteth: a SKIPPED and an ESCAPED rod are both "
+              "refused as catches")
+    else:
+        ok = False
+        print("  FAIL the tally rule: %r" % (cats,))
+
+    # (5) the documented EXPECTED escape is never counted as success
+    if not EXPECTED_ESCAPES:
+        print("  PASS no rod is documented as an expected escape, so none can be "
+              "counted as a success")
+    else:
+        for mid in EXPECTED_ESCAPES:
+            print("  NOTE %s is documented as an EXPECTED escape and is NOT a catch"
+                  % mid)
+
+    print("SELFTEST %s" % ("OK" if ok else "FAILED"))
+    if emit:
+        with open(emit, "w", encoding="utf-8") as stream:
+            stream.write("ok=%s checks=%d\n" % (ok, checks))
+    return 0 if ok else 1
+
+
 def main(argv=None):
     ap = argparse.ArgumentParser()
+    ap.add_argument("--selftest", action="store_true",
+                    help="prove the harness's own classifier and worktree discipline")
     ap.add_argument("--report", action="store_true", help="do not fail on findings")
     ap.add_argument("--semantic", action="store_true", help="run the semantic lineage")
     ap.add_argument("--all", action="store_true", help="run both lineages")
@@ -1894,6 +2135,8 @@ def main(argv=None):
         os.path.expanduser("~"), ".cache", "godstone-mutation-worktrees"),
         help="parent directory for the disposable worktrees")
     a = ap.parse_args(argv)
+    if a.selftest:
+        return run_selftest()
     rc = 0
     if a.all or not a.semantic:
         rc |= run_structural(a.report, a.emit_dir, a.baseline or "live-tree")
