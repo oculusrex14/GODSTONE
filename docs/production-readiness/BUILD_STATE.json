@@ -14526,7 +14526,7 @@
       ]
     }
   },
-  "current_task": null,
+  "current_task": "T67",
   "external_blockers": [
     "A06",
     "APPROVED_CONTENT",
@@ -14535,7 +14535,16 @@
     "SIGNING"
   ],
   "failed_attempts": [],
-  "in_progress": null,
+  "in_progress": {
+    "claimed_head": "08a8b5b597e88249715d4350c90a0849b3402937",
+    "claimed_utc": "2026-09-14T22:43:52+00:00",
+    "objective": {
+      "claimed_head": "08a8b5b597e88249715d4350c90a0849b3402937",
+      "claimed_utc": "2026-09-14T22:43:52+00:00",
+      "objective": "Replace the misleading mutation scores with executable proof: run every mutant only in a disposable worktree, require an EXACT anchor count, a passing baseline, a compiling mutant and a TARGETED semantic assertion failure before anything may be called killed; classify KILLED / ESCAPED / INVALID / SKIPPED / TIMEOUT separately with only KILLED counting and the documented expected escape never counted as success; prove the harness's own discipline with an executable selftest whose controls include a harness that would count SKIPPED as KILLED (missing anchor, duplicate anchor, compile failure, timeout, surviving mutant, worker crash and source restoration after termination); and add the five production-path controls (lifetime bypass, pre-auth replay commit, ACK-before-persist, plaintext fallback and stale status evidence) so that marking skipped as killed falleth the harness selftest."
+    },
+    "task": "T67"
+  },
   "last_code_head": "d3e04323d66f4a16333601269e01d2435437d16e",
   "last_observed_head": "d3e04323d66f4a16333601269e01d2435437d16e",
   "latest_verification": {
