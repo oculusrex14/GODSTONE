@@ -11,6 +11,7 @@
     "master_import_path": "docs/production-readiness/MASTER_IMPLEMENTATION_BLUEPRINT.md",
     "section": 5
   },
+  "authority_note_t84": "T84 re-pinned the two MeshNode authority blobs (INV-READINESS-FALSE): the ingest seam was edited on both isles, so the recorded blob_sha1 values followed the bytes. The invariant STATEMENTS are unchanged -- readiness is still false on both platforms -- and the re-pin is exactly the mechanism the T03 witness existeth to enforce.",
   "ble_record": {
     "encrypt_then_fragment": true,
     "fragmentation": "balanced-stride",
@@ -32,11 +33,11 @@
           "path": "docs/adr/ADR-002-ble-record-layer.md"
         },
         {
-          "blob_sha1": "6f3f05e775acef8295e8c7b95c3c0f0b488840e7",
+          "blob_sha1": "7b50868d850641fd5f655e52a999830c3dd7071b",
           "path": "android/mesh/src/main/java/io/godstone/mesh/MeshNode.kt"
         },
         {
-          "blob_sha1": "0892de28d0f2e7c8c50b396f3183282fb9a7c65c",
+          "blob_sha1": "b3f205c3aed98b0eef9546282d48fc93eace435a",
           "path": "ios/Godstone/Sources/GodstoneMesh/MeshNode.swift"
         }
       ],
