@@ -13,9 +13,12 @@ import io.godstone.mesh.delivery.EnqueueResult
 import io.godstone.mesh.delivery.InboxCommitResult
 import io.godstone.mesh.delivery.RecipientInboxRepository
 import io.godstone.mesh.identity.Identity
+import io.godstone.mesh.router.DispatchVerdict
+import io.godstone.mesh.router.FrameDispatcher
 import io.godstone.mesh.router.InventorySnapshotAuthority
 import io.godstone.mesh.router.Router
 import io.godstone.mesh.router.SyncControlOwner
+import io.godstone.mesh.router.SyncPump
 import io.godstone.mesh.store.MessageStore
 import io.godstone.mesh.store.OutboundEnqueueResult
 import io.godstone.mesh.store.PersistResult
@@ -130,6 +133,27 @@ class MeshNode(
      */
     internal var ackDispatcher: AckDispatcher? = null
 
+    /**
+     * T41 (section 14): the per-TrustedPeer bounded sync pump -- the scheduler and
+     * forwarder whose absence left an Android node receiving and persisting frames
+     * without ever connecting them into a complete peer sync/forward road. It is
+     * ACTIVE by default; the seam existeth so a court may inject its own.
+     */
+    internal var syncPump: SyncPump? = null
+
+    private val defaultSyncPump: SyncPump by lazy {
+        SyncPump(syncControlOwner, store, router, controlClock)
+    }
+
+    /** The pump in force: the injected one, else the default (never null). */
+    internal fun pumpFor(): SyncPump = syncPump ?: defaultSyncPump
+
+    private val frameDispatcher: FrameDispatcher by lazy {
+        FrameDispatcher(syncControlOwner, { ackDispatcher }) { frame ->
+            deliveryTracker.acknowledge(frame.msgId, frame)
+        }
+    }
+
     /** T38: the signed-SOS authority seam. Absent by default -- dispatch then
      * keeps emitting the legacy structural shape (documented, and refused by
      * the receiver's runtime authentication exactly as section 15 demands).
@@ -178,20 +202,12 @@ class MeshNode(
 
     /** One ingress control frame: the owner decides; any answer rides back out. */
     internal suspend fun handleControlFrame(frame: io.godstone.mesh.wire.v2.FrameV2, fromPeer: ByteArray): Boolean {
-        val decision = syncControlOwner.handleControlFrame(frame, fromPeer)
-        lastControlDecision = decision
-        val replies = when (decision) {
-            is SyncControlOwner.OwnerDecision.Answered -> listOf(decision.frame)
-            is SyncControlOwner.OwnerDecision.Delivered -> decision.frames
-            else -> emptyList<io.godstone.mesh.wire.v2.FrameV2>()
-        }
+        val verdict = frameDispatcher.dispatch(frame, fromPeer)
+        if (verdict !is DispatchVerdict.Control) return false
+        lastControlDecision = verdict.decision
+        val replies = frameDispatcher.replies(verdict.decision)
         if (replies.isNotEmpty()) offerControlFrames(replies)
-        return when (decision) {
-            is SyncControlOwner.OwnerDecision.Accepted,
-            is SyncControlOwner.OwnerDecision.Answered,
-            is SyncControlOwner.OwnerDecision.Delivered -> true
-            else -> false
-        }
+        return verdict.accepted
     }
     /**
      * Pure JVM test convenience constructor: builds a fail-closed SessionManager from the SAME [identity].
@@ -306,6 +322,31 @@ class MeshNode(
             }
             publishStatus()
         }
+        // T41: a peer that became present must have a REGISTERED sync relation, or
+        // no DIGEST is ever scheduled and its held set never reconciles; a peer
+        // that went away must have its relation cancelled (the run state and the
+        // snapshot leases release; the durable estate stays). Called OUTSIDE the
+        // peer lock: the pump owneth its own monitor and never nesteth one.
+        when (event) {
+            is PeerEvent.Found -> pumpFor().register(event.peerId)
+            is PeerEvent.Lost -> pumpFor().cancel(event.peerId)
+        }
+    }
+
+    /**
+     * T41: one bounded sync/forward turn for [peer] -- the link writer's source.
+     * Control (DIGEST / inventory / WANT) first, then the frames the peer asked
+     * for (fetched from the durable held set), then the epidemic forwards. A peer
+     * with no registered relation yields nothing.
+     */
+    internal suspend fun drainSyncFramesForPeer(peer: ByteArray): List<io.godstone.mesh.wire.v2.FrameV2> {
+        // The owner's answers (a WANT's served frames, an inventory page, a PING
+        // reply) ride the control outbox T40 built; the pump addeth the schedule
+        // and the epidemic forward copies. ONE call for the link writer, so no
+        // caller has to remember two sources.
+        val out = ArrayList<io.godstone.mesh.wire.v2.FrameV2>(drainControlOutbox())
+        out.addAll(pumpFor().pump(peer).frames)
+        return out
     }
 
     /**
@@ -655,39 +696,19 @@ class MeshNode(
         // UI "delivered" claim is made from host-only evidence). Every other
         // AckResult (NotAckEligible / UnknownMessage / RejectedAuthentication /
         // RejectedState / StorageFailure / Corrupt) is a rejection.
-        if (frame.type == io.godstone.mesh.wire.v2.TypeV2.PING ||
-            frame.type == io.godstone.mesh.wire.v2.TypeV2.HELLO ||
-            frame.type == io.godstone.mesh.wire.v2.TypeV2.DIGEST ||
-            frame.type == io.godstone.mesh.wire.v2.TypeV2.WANT) {
-            // T40 (ADR-009 section 5): link controls are demultiplexed to the
-            // per-relation owner BEFORE the generic Router -- policy, the seen
-            // window, the TTL gate and persistence never see a control frame.
-            return handleControlFrame(frame, fromPeer)
-        }
-        if (frame.type != io.godstone.mesh.wire.v2.TypeV2.ACK &&
-            frame.type != io.godstone.mesh.wire.v2.TypeV2.MESSAGE &&
-            frame.type != io.godstone.mesh.wire.v2.TypeV2.SOS) {
-            // the bulk pair, GOODBYE and anything unknown: refused in this
-            // profile (section 14 dispatch statute); nothing is stored,
-            // nothing is relayed, no trust is moved
-            return false
-        }
-        if (frame.type == io.godstone.mesh.wire.v2.TypeV2.ACK) {
-            val dispatcher = ackDispatcher
-                // the historical point-to-point face: no ack_frames namespace
-                // is bound, so there is nowhere to carry relay custody. A
-                // receipt is never claimed on it (UnresolvedRecipientKeyResolver
-                // is fail-closed, and no relay ever sees these bytes leave).
-                ?: return when (deliveryTracker.acknowledge(frame.msgId, frame)) {
-                    AckResult.Applied, AckResult.AlreadyAcknowledged,
-                    AckResult.DuplicateAuthenticatedAck -> true
-                    else -> false
-                }
-            return when (val verdict = dispatcher.dispatch(frame, fromPeer)) {
-                is AckDispatch.OriginVerification -> verdict.accepted
-                is AckDispatch.OpaqueRelay -> verdict.accepted
-                is AckDispatch.Refused -> false
+        // T41: the dispatch statute is a TYPE now, in one place and in one order:
+        // control -> ACK -> the generic durable road, and a refusal by name for
+        // anything this profile carrieth not.
+        when (val verdict = frameDispatcher.dispatch(frame, fromPeer)) {
+            is DispatchVerdict.Control -> {
+                lastControlDecision = verdict.decision
+                val replies = frameDispatcher.replies(verdict.decision)
+                if (replies.isNotEmpty()) offerControlFrames(replies)
+                return verdict.accepted
             }
+            is DispatchVerdict.Ack -> return verdict.accepted
+            is DispatchVerdict.Refused -> return false
+            DispatchVerdict.Message, DispatchVerdict.Sos -> Unit   // the generic road below
         }
         return run {
             val relay = router.onFrameReceived(frame, fromPeer)
@@ -738,6 +759,11 @@ class MeshNode(
                     }
                 }
             }
+            // T41: FORWARD ONLY AFTER DURABLE ACCEPTANCE. `relay` is true exactly
+            // when the router accepted the frame for persist+relay, i.e. the store
+            // committed it; the copy is prepared once (TTL-1 / hop+1) and queued
+            // for every registered TrustedPeer except the one it arrived from.
+            if (relay) pumpFor().enqueueForward(frame, fromPeer)
             relay
         }
     }

@@ -114,13 +114,17 @@ class AckAdmission(
 sealed class AckDispatch {
     abstract val dispatchClass: AckDispatchClass
 
+    /** Whether this verdict meaneth "accepted" to the caller (an origin accept, or
+     *  relay custody taken). A refusal is never an acceptance. */
+    abstract val accepted: Boolean
+
     /** A durable delivery row standeth: only this road may reach DELIVERED. */
     class OriginVerification(val result: AckResult) : AckDispatch() {
         override val dispatchClass: AckDispatchClass get() = AckDispatchClass.ORIGIN_VERIFICATION
 
         /** Idempotent accept: a newly verified recipient is accepted, an
          *  already-terminal row is accepted, everything else is a rejection. */
-        val accepted: Boolean
+        override val accepted: Boolean
             get() = result == AckResult.Applied ||
                 result == AckResult.AlreadyAcknowledged ||
                 result == AckResult.DuplicateAuthenticatedAck
@@ -129,7 +133,7 @@ sealed class AckDispatch {
     /** No delivery row: relay traffic, carried in the separate namespace. */
     class OpaqueRelay(val admission: AckAdmission) : AckDispatch() {
         override val dispatchClass: AckDispatchClass get() = AckDispatchClass.OPAQUE_RELAY
-        val accepted: Boolean get() = admission.accepted
+        override val accepted: Boolean get() = admission.accepted
         val ackKey: ByteArray? get() = admission.ackKey
         val verificationClass: AckVerificationClass? get() = admission.verificationClass
     }
@@ -137,6 +141,7 @@ sealed class AckDispatch {
     /** Refused by name; nothing was written anywhere. */
     class Refused(val reason: AckRefusalReason, val detail: String = "") : AckDispatch() {
         override val dispatchClass: AckDispatchClass get() = AckDispatchClass.ORIGIN_VERIFICATION
+        override val accepted: Boolean get() = false
     }
 }
 
