@@ -13,6 +13,7 @@
   },
   "authority_note_t41": "T41 re-pinned the MeshNode authority blob (INV-READINESS-FALSE) again: the ingest seam learned the typed dispatch statute and the forward-after-durable-acceptance law. The STATEMENT is unchanged -- readiness is still false -- and the re-pin is the mechanism the T03 witness enforceth.",
   "authority_note_t42": "T42 re-pinned the iOS MeshNode authority blob (INV-READINESS-FALSE): the ingest seam learned the typed dispatch statute, the trusted-relation registration and the forward-after-durable-acceptance law. The STATEMENT is unchanged -- ios_linkLayerReady is still false -- and the re-pin is the mechanism the T03 witness enforceth.",
+  "authority_note_t43": "T43 re-pinned the MeshNode authority blobs on BOTH isles (INV-READINESS-FALSE): the send paths learned that a local link admission is ephemeral telemetry and the durable label is advanced only by an intended recipient's authenticated ACK. The STATEMENTS are unchanged -- readiness is still false on both platforms -- and the re-pin is the mechanism the T03 witness enforceth.",
   "authority_note_t84": "T84 re-pinned the two MeshNode authority blobs (INV-READINESS-FALSE): the ingest seam was edited on both isles, so the recorded blob_sha1 values followed the bytes. The invariant STATEMENTS are unchanged -- readiness is still false on both platforms -- and the re-pin is exactly the mechanism the T03 witness existeth to enforce.",
   "ble_record": {
     "encrypt_then_fragment": true,
@@ -35,11 +36,11 @@
           "path": "docs/adr/ADR-002-ble-record-layer.md"
         },
         {
-          "blob_sha1": "cae014b70fb5b60b59fa4877701b2d7fada3e02f",
+          "blob_sha1": "83e095b793e57da81cd3342b2c7dbb39c29063e7",
           "path": "android/mesh/src/main/java/io/godstone/mesh/MeshNode.kt"
         },
         {
-          "blob_sha1": "8a81716897e757365d03e51de4480224aa0b35b7",
+          "blob_sha1": "53141deab495bfffa41feaab881508990481a342",
           "path": "ios/Godstone/Sources/GodstoneMesh/MeshNode.swift"
         }
       ],

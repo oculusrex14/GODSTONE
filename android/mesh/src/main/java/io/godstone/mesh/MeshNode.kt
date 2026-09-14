@@ -4,6 +4,8 @@ import android.content.Context
 import io.godstone.mesh.delivery.AckDispatch
 import io.godstone.mesh.delivery.AckDispatcher
 import io.godstone.mesh.delivery.AckMode
+import io.godstone.mesh.delivery.DeliveryLabel
+import io.godstone.mesh.delivery.DeliveryProjection
 import io.godstone.mesh.delivery.AckResult
 import io.godstone.mesh.delivery.DeliveryLookup
 import io.godstone.mesh.delivery.DeliveryRecord
@@ -132,6 +134,28 @@ class MeshNode(
      * discard that loseth every multihop receipt.
      */
     internal var ackDispatcher: AckDispatcher? = null
+
+    /**
+     * T43: the EPHEMERAL ledger of local link admissions. A Boolean `send`
+     * provecth only that a radio accepted some bytes -- never that a relay holdeth
+     * them and never that a recipient received them -- so it is recorded HERE, in
+     * memory, and the durable delivery row is left alone. A restart forgetteth
+     * every offer, which is exactly why no custody label may rest on one.
+     */
+    internal val linkOffers = io.godstone.mesh.delivery.LinkOfferLedger()
+
+    /** T43: the honest label a consumer may read for [msgId]. */
+    internal fun deliveryProjection(msgId: ByteArray): DeliveryProjection =
+        when (val lookup = deliveryTracker.lookup(msgId)) {
+            is DeliveryLookup.Found -> DeliveryProjection.of(
+                msgId, lookup.record.state,
+                linkOffers = linkOffers.admittedCountFor(msgId),
+                refusedOffers = linkOffers.refusedCountFor(msgId),
+                lastOfferMonoMillis = linkOffers.lastOfferMonoFor(msgId),
+            )
+            // a corrupt or unreadable row is never labelled queued (fail closed)
+            else -> DeliveryProjection.unavailable(msgId)
+        }
 
     /**
      * T41 (section 14): the per-TrustedPeer bounded sync pump -- the scheduler and
@@ -425,6 +449,9 @@ class MeshNode(
         if (row.ackMode != AckMode.NONE)
             return SosDispatchResult.Failed("retry: not a broadcast row")
         when (row.state) {
+            // T43: HANDED_TO_RELAY is a LEGACY label a pre-T43 row may still
+            // carry (the migration rewriteth it); it is read here as the queued,
+            // retryable estate it always was -- never as custody.
             DeliveryState.QUEUED_DURABLY, DeliveryState.HANDED_TO_RELAY -> Unit
             else -> return SosDispatchResult.Failed(
                 "retry: obligation already terminal (" + row.state + ")",
@@ -436,13 +463,18 @@ class MeshNode(
         val bytes = frame.encode()
         var handed = 0
         for (peerId in knownPeers()) {
-            if (send(peerId, bytes)) {
-                handed++
-                deliveryTracker.markHandedToRelay(msgId)
-            }
+            val admitted = send(peerId, bytes)
+            // T43: a LINK OFFER, not a custody claim. The durable row is NOT
+            // advanced -- it standeth QUEUED_DURABLY until an intended
+            // recipient's authenticated ACK moveth it.
+            linkOffers.record(msgId, peerId, admitted, controlClock())
+            if (admitted) handed++
         }
+        // T43: the remembered projection carrieth the DURABLE state -- a link
+        // offer is telemetry, so the SOS row standeth QUEUED_DURABLY whether or
+        // not a radio admitted its bytes.
         if (handed > 0 && activeSosRow?.msgId?.contentEquals(msgId) == true) {
-            activeSosRow = ActiveSos(msgId.copyOf(), DeliveryState.HANDED_TO_RELAY, frame,
+            activeSosRow = ActiveSos(msgId.copyOf(), DeliveryState.QUEUED_DURABLY, frame,
                 activeSosRow?.committedAtMillis)
         }
         refreshSosStatusFromDurable()
@@ -463,6 +495,17 @@ class MeshNode(
         val result = deliveryTracker.cancelSosBroadcast(msgId)
         if (activeSosRow?.msgId?.contentEquals(msgId) == true) activeSosRow = null
         refreshSosStatusFromDurable()
+        // T43: "wasRelayed" meaneth "copies MAY be out", and the only honest
+        // source for that is the EPHEMERAL link-offer ledger -- a durable row no
+        // longer carrieth a relayed flag, because a local ATT admission was never
+        // custody. A pre-T43 row that still carrieth the legacy label keepeth its
+        // own answer (the tracker's), and an offer that was ADMITTED upgrades a
+        // false to the truthful "some bytes left this device".
+        if (result is SosCancelResult.Cancelled && !result.wasRelayed &&
+            linkOffers.anyAdmitted(msgId)
+        ) {
+            return SosCancelResult.Cancelled(wasRelayed = true)
+        }
         return result
     }
 
@@ -498,6 +541,7 @@ class MeshNode(
                 else -> continue
             }
             if (row.ackMode != AckMode.NONE) continue
+            // T43: the legacy label is tolerated on READ (it is queued in truth)
             if (row.state != DeliveryState.QUEUED_DURABLY &&
                 row.state != DeliveryState.HANDED_TO_RELAY
             ) continue
@@ -563,8 +607,7 @@ class MeshNode(
      * binding -- a NONE-mode message can NEVER be acknowledged via this tracker
      * (an inbound ACK for it yields [AckResult.NotAckEligible] and the
      * authenticator is not invoked). Each successful relay hand-off calls
-     * `markHandedToRelay` (idempotent: the first transitions queued -> handed;
-     * further sends no-op). The body is unreachable while
+     * an EPHEMERAL link offer (T43). The body is unreachable while
      * `LINK_LAYER_READY=false` via `broadcastSos`; tests drive it directly through
      * this seam.
      */
@@ -597,17 +640,19 @@ class MeshNode(
         val bytes = frame.encode()
         var handed = 0
         for (peerId in knownPeers()) {
-            if (send(peerId, bytes)) {
-                handed++
-                deliveryTracker.markHandedToRelay(frame.msgId)
-            }
+            val admitted = send(peerId, bytes)
+            linkOffers.record(frame.msgId, peerId, admitted, controlClock())
+            if (admitted) handed++
         }
-        // T39: remember the projection this node committed, then publish the
-        // observable flag FROM it -- the flag only ever says what the durable row
-        // said last (a NONE-mode row that stands QUEUED or HANDED).
+        // T39 + T43: remember the projection this node committed, then publish the
+        // observable flag FROM it -- the flag only says what the DURABLE row said.
+        // A successful send is an ephemeral link offer, so the remembered state is
+        // QUEUED_DURABLY whether or not a radio admitted the bytes: the SOS row
+        // reacheth a terminal state only through cancellation or the durable
+        // estate (a NONE-mode call can never be acknowledged).
         activeSosRow = ActiveSos(
             frame.msgId.copyOf(),
-            if (handed == 0) DeliveryState.QUEUED_DURABLY else DeliveryState.HANDED_TO_RELAY,
+            DeliveryState.QUEUED_DURABLY,
             frame,
             System.currentTimeMillis(),
         )
@@ -643,8 +688,9 @@ class MeshNode(
      * delivery_state (QUEUED_DURABLY, SINGLE_RECIPIENT, [expectedRecipient]).
      * Only upon successful commit is the transport [send] callback invoked.
      *
-     * Each successful relay hand-off calls [deliveryTracker.markHandedToRelay]
-     * (advancing QUEUED_DURABLY -> HANDED_TO_RELAY; never ACKNOWLEDGED_BY_RECIPIENT).
+     * Each successful relay hand-off records an EPHEMERAL link offer (T43): the
+     * durable state standeth QUEUED_DURABLY and is advanced ONLY by an intended
+     * recipient's authenticated ACK.
      */
     internal suspend fun dispatchDirect(
         frame: io.godstone.mesh.wire.v2.FrameV2,
@@ -661,10 +707,9 @@ class MeshNode(
         val bytes = canonicalFrame.encode()
         var handed = 0
         for (peerId in knownPeers()) {
-            if (send(peerId, bytes)) {
-                handed++
-                deliveryTracker.markHandedToRelay(canonicalFrame.msgId)
-            }
+            val admitted = send(peerId, bytes)
+            linkOffers.record(canonicalFrame.msgId, peerId, admitted, controlClock())
+            if (admitted) handed++
         }
         return if (handed == 0) DirectDispatchResult.QueuedLocally
         else DirectDispatchResult.HandedToRelays(handed)

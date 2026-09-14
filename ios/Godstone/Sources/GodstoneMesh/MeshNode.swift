@@ -88,6 +88,33 @@ public final class MeshNode {
     /// T42: the typed dispatch statute, as the courts observe it.
     internal func dispatcherForTest() -> FrameDispatcher { frameDispatcher }
 
+    /// T43: the EPHEMERAL ledger of local link admissions. A Boolean `send`
+    /// provecth only that a radio accepted some bytes -- never that a relay
+    /// holdeth them and never that a recipient received them -- so it is recorded
+    /// HERE, in memory, and the durable delivery row is left alone. A restart
+    /// forgetteth every offer, which is why no custody label may rest on one.
+    internal let linkOffers = LinkOfferLedger()
+
+    /// The link's identity bytes: the transport's UUID, verbatim. It is NOT a
+    /// node id and NOT a recipient -- it only sayeth WHERE bytes were offered.
+    internal static func linkBytes(_ peerId: UUID) -> Data {
+        withUnsafeBytes(of: peerId.uuid) { Data($0) }
+    }
+
+    /// T43: the honest label a consumer may read for `msgId`.
+    internal func deliveryProjection(_ msgId: Data) -> DeliveryProjection {
+        switch deliveryTracker.lookup(msgId) {
+        case .found(let record):
+            return DeliveryProjection.of(msgId, state: record.state,
+                                         linkOffers: linkOffers.admittedCountFor(msgId),
+                                         refusedOffers: linkOffers.refusedCountFor(msgId),
+                                         lastOfferMonoMillis: linkOffers.lastOfferMonoFor(msgId))
+        default:
+            // a corrupt or unreadable row is never labelled queued (fail closed)
+            return DeliveryProjection.unavailable(msgId)
+        }
+    }
+
     /// T42: a TRUSTED relation came up for `nodeId` (a 16-octet NODE id -- never
     /// the transport's UUID and never the 4-byte hint). The sync pump is
     /// scheduled here, and the DIGEST becomes due at once.
@@ -467,14 +494,14 @@ public final class MeshNode {
             // the pair; nothing moved, nothing is promised.
             return .failed("delivery pair commit rejected")
         }
-        // Each successful relay hand-off calls `markHandedToRelay` (idempotent:
-        // first transitions queued -> handed; a terminal row refuses, the
-        // writer's follow cannot resurrect it).
+        // T43: each send records an EPHEMERAL link offer, never a custody claim.
+        // The durable row standeth QUEUED_DURABLY until an intended recipient's
+        // authenticated ACK moveth it.
         let handed = currentPeers().reduce(into: 0) { count, peer in
-            if send(frame, peer) {
-                count += 1
-                deliveryTracker.markHandedToRelay(frame.msgId)
-            }
+            let admitted = send(frame, peer)
+            linkOffers.record(frame.msgId, linkId: Self.linkBytes(peer), admitted: admitted,
+                              atMonoMillis: controlClock())
+            if admitted { count += 1 }
         }
         rememberSosCommit(frame: frame)
         return handed == 0 ? .queuedDurably : .handedToRelays(handed)
@@ -553,10 +580,10 @@ public final class MeshNode {
             return .failed("retry: no held frame to resume")
         }
         let handed = currentPeers().reduce(into: 0) { count, peer in
-            if send(frame, peer) {
-                count += 1
-                deliveryTracker.markHandedToRelay(msgId)
-            }
+            let admitted = send(frame, peer)
+            linkOffers.record(msgId, linkId: Self.linkBytes(peer), admitted: admitted,
+                              atMonoMillis: controlClock())
+            if admitted { count += 1 }
         }
         rememberSosCommit(frame: frame)
         return handed == 0 ? .queuedDurably : .handedToRelays(handed)
@@ -576,6 +603,15 @@ public final class MeshNode {
         if let seen = sosRowMemory, seen.msgId == msgId { sosRowMemory = nil }
         sosRowLock.unlock()
         publishSosMirrorFromMemory()
+        // T43: "wasRelayed" meaneth "copies MAY be out", and the only honest source
+        // for that is the EPHEMERAL link-offer ledger -- a durable row no longer
+        // carrieth a relayed flag, because a local ATT admission was never custody.
+        // The ADJUSTMENT happeneth after the mirror refresh, never instead of it:
+        // the first attempt returned early and left the mirror lit, which the T39
+        // witness caught at once.
+        if case .cancelled(false) = outcome, linkOffers.anyAdmitted(msgId) {
+            return .cancelled(wasRelayed: true)
+        }
         return outcome
     }
 
@@ -654,8 +690,9 @@ public final class MeshNode {
     /// delivery_state (QUEUED_DURABLY, SINGLE_RECIPIENT, `expectedRecipient`).
     /// Only upon successful commit is the transport `send` callback invoked.
     ///
-    /// Each successful relay hand-off calls `deliveryTracker.markHandedToRelay`
-    /// (advancing QUEUED_DURABLY -> HANDED_TO_RELAY; never ACKNOWLEDGED_BY_RECIPIENT).
+    /// Each successful relay hand-off records an EPHEMERAL link offer (T43): the
+    /// durable state standeth QUEUED_DURABLY and is advanced ONLY by an intended
+    /// recipient's authenticated ACK.
     @discardableResult
     internal func dispatchDirect(
         _ frame: FrameV2,
@@ -676,10 +713,10 @@ public final class MeshNode {
         }
 
         let handed = currentPeers().reduce(into: 0) { count, peer in
-            if send(canonicalFrame, peer) {
-                count += 1
-                deliveryTracker.markHandedToRelay(canonicalFrame.msgId)
-            }
+            let admitted = send(canonicalFrame, peer)
+            linkOffers.record(canonicalFrame.msgId, linkId: Self.linkBytes(peer), admitted: admitted,
+                              atMonoMillis: controlClock())
+            if admitted { count += 1 }
         }
         return handed == 0 ? .queuedLocally : .handedToRelays(handed)
     }

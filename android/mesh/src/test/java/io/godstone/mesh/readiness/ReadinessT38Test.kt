@@ -672,13 +672,21 @@ class ReadinessT38Test {
             store.allHeldMsgIds().any { it.contentEquals(frame.msgId) })
         // the captured side effect of the C6 sender leg: exactly one durable
         // delivery record, mode NONE, no recipient bound (a none-mode message
-        // can never be acknowledged), and it advanced to handed-after-relay.
+        // can never be acknowledged), and -- T43 -- it STANDETH QUEUED_DURABLY:
+        // the send is a local link admission, not a custody claim.
         Assert.assertEquals("one delivery record", 1, journal.records.size)
         val rec = journal.records[frame.msgId.toList()]
         Assert.assertNotNull("the record is keyed by the authored msg_id", rec)
         Assert.assertEquals("the distress is broadcast: mode none", AckMode.NONE, rec!!.ackMode)
         Assert.assertNull("none-mode binds no recipient", rec.expectedRecipientNodeId)
-        Assert.assertEquals("the hand-off was recorded", DeliveryState.HANDED_TO_RELAY, rec.state)
+        Assert.assertEquals(
+            "T43: the hand-off leaves the durable label queued and retryable",
+            DeliveryState.QUEUED_DURABLY, rec.state)
+        Assert.assertTrue("the hand-off IS recorded, as an ephemeral link offer",
+            node.linkOffers.anyAdmitted(frame.msgId))
+        Assert.assertEquals("and the projection saith OFFERED, never delivered",
+            io.godstone.mesh.delivery.DeliveryLabel.OFFERED,
+            node.deliveryProjection(frame.msgId).label)
         // the legacy arm: unwired authority, the structural shape still goes
         // out (documented) and the receiver refuses it by the named reason.
         val bareJournal = T38Journal()

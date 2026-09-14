@@ -262,12 +262,18 @@ class MeshNodeDeliveryIntegrationTest {
 
     // --- C6: outbound SOS dispatch drives the delivery tracker ---
 
-    /** C6: persist succeeds + 1 successful send -> HandedToRelays(1) and the
-     *  tracker reaches HANDED_TO_RELAY with AckMode.NONE and NO recipient binding
-     *  (persist-before-tracker: enqueue runs only after persist succeeded,
-     *  markHandedToRelay after the send returned true). */
+    /** C6 + T43: persist succeeds + 1 successful send -> HandedToRelays(1), the
+     *  tracker stays QUEUED_DURABLY with AckMode.NONE and NO recipient binding,
+     *  and the send is recorded as an EPHEMERAL link offer.
+     *
+     *  T43 CORRECTION of a pre-T43 assertion, with the contradiction named: this
+     *  test used to require the row to reach HANDED_TO_RELAY. The card "Align
+     *  delivery labels with durable evidence" makes that the defect -- a Boolean
+     *  send proveth only a local ATT admission ("ATT success without remote
+     *  storage leaves queued"), so the durable label may not advance. The
+     *  ephemeral offer is asserted instead, and the retryability with it. */
     @Test
-    fun `C6 dispatchSos with a successful send reaches HANDED_TO_RELAY as NONE`() = runTest {
+    fun `C6 dispatchSos with a successful send stays QUEUED_DURABLY as NONE with a link offer`() = runTest {
         val store = InMemoryMessageStore()
         val (node, journal) = makeNode(store, UnresolvedRecipientKeyResolver)
         node.injectPeerForTest(ByteArray(16) { 0x10 })
@@ -275,9 +281,18 @@ class MeshNodeDeliveryIntegrationTest {
         assertEquals(SosDispatchResult.HandedToRelays(1), result)
         val mid = store.allHeldMsgIds().single()
         val r = rec(journal, mid)
-        assertEquals(DeliveryState.HANDED_TO_RELAY, r.state)
+        assertEquals(DeliveryState.QUEUED_DURABLY, r.state)
         assertEquals(AckMode.NONE, r.ackMode, "SOS broadcast is AckMode.NONE")
         assertNull(r.expectedRecipientNodeId, "SOS broadcast binds NO recipient")
+        // the message is a String, not a lazy-message lambda (kotlin.test)
+        assertEquals(1, node.linkOffers.countFor(mid),
+            "the local admission is recorded as an EPHEMERAL offer")
+        assertTrue(node.linkOffers.anyAdmitted(mid),
+            "the admitted offer is the honest 'copies may be out' fact")
+        val projection = node.deliveryProjection(mid)
+        assertEquals(io.godstone.mesh.delivery.DeliveryLabel.OFFERED, projection.label)
+        assertTrue(projection.retryable, "a link offer NEVER clear retryability")
+        assertFalse(projection.claimsRelayCustody, "and it claimeth no custody")
     }
 
     /** C6: persist succeeds + 0 peers -> QueuedLocally and the tracker reaches
@@ -443,7 +458,12 @@ class MeshNodeDeliveryIntegrationTest {
 
         assertEquals(DirectDispatchResult.HandedToRelays(2), result)
         assertEquals(2, sends)
-        assertEquals(DeliveryState.HANDED_TO_RELAY, stateOf(node.deliveryTracker, frame.msgId))
+        // T43: the durable state stayeth QUEUED_DURABLY (the two sends are local
+        // link admissions, not custody); the offers are asserted instead.
+        assertEquals(DeliveryState.QUEUED_DURABLY, stateOf(node.deliveryTracker, frame.msgId))
+        assertEquals(2, node.linkOffers.countFor(frame.msgId))
+        assertTrue(node.deliveryProjection(frame.msgId).retryable)
+        assertFalse(node.deliveryProjection(frame.msgId).claimsDelivery)
     }
 
     @Test

@@ -239,8 +239,12 @@ class ReadinessT39Test {
         Assert.assertTrue("two relays must have taken the frame: " + dispatched,
             dispatched is SosDispatchResult.HandedToRelays && dispatched.count == 2)
         val before = rowOf(r.tracker, mid)
-        Assert.assertTrue("the row must stand handed",
-            before is DeliveryLookup.Found && before.record.state == DeliveryState.HANDED_TO_RELAY)
+        // T43 CORRECTION of a pre-T43 assertion: the row used to reach
+        // HANDED_TO_RELAY on the Boolean send. The card makes that the defect, so
+        // the durable row standeth QUEUED_DURABLY -- and the ACTIVE CALL is still
+        // re-exposed from it after a restart, which is what this witness is for.
+        Assert.assertTrue("the row must stand queued and retryable",
+            before is DeliveryLookup.Found && before.record.state == DeliveryState.QUEUED_DURABLY)
         val node2 = MeshNode(
             ctx = null,
             identity = newIdentity(),
@@ -254,7 +258,7 @@ class ReadinessT39Test {
         Assert.assertNotNull("the durable row must re-expose the active call after restart", projection)
         Assert.assertTrue("the projection must name the same msg_id", projection!!.msgId.contentEquals(mid))
         Assert.assertEquals("the restarted projection must read the durable state",
-            DeliveryState.HANDED_TO_RELAY, projection.state)
+            DeliveryState.QUEUED_DURABLY, projection.state)
         val stillHeld = firstHeldFrame(r.store)
         Assert.assertTrue("the restarted projection carries the held frame verbatim",
             projection.frame.encode().contentEquals(stillHeld.encode()))
@@ -262,8 +266,13 @@ class ReadinessT39Test {
         var cancelled: SosCancelResult? = null
         runTest { cancelled = node2.cancelSos(mid) }
         val restartCancel = cancelled
-        Assert.assertTrue("the restart's cancel must know it was relayed: " + restartCancel,
-            restartCancel is SosCancelResult.Cancelled && restartCancel.wasRelayed)
+        // T43: after a restart the honest answer is "we cannot know whether copies
+        // went out" -- the link offers are EPHEMERAL by law, so `wasRelayed` is
+        // false rather than a claim the node cannot support. The cancellation
+        // itself still moved the row durably and retired the held frame.
+        Assert.assertTrue("the restart's cancel must still move the row: " + restartCancel,
+            restartCancel is SosCancelResult.Cancelled && !restartCancel.wasRelayed)
+        Assert.assertFalse("the call is no longer active after the cancellation", node2.hasActiveSos())
     }
 
     // ------------------------------------------------------------------ W3 cancel versus the queued writer
@@ -378,8 +387,9 @@ class ReadinessT39Test {
         Assert.assertTrue("the direct tracker path must return NotAckEligible",
             r.tracker.acknowledge(mid, ack) is AckResult.NotAckEligible)
         val l = rowOf(r.tracker, mid)
+        // T43: "as it was" is now the QUEUED_DURABLY the send left behind.
         Assert.assertTrue("the row must stand as it was",
-            l is DeliveryLookup.Found && l.record.state == DeliveryState.HANDED_TO_RELAY &&
+            l is DeliveryLookup.Found && l.record.state == DeliveryState.QUEUED_DURABLY &&
                 l.record.ackMode == AckMode.NONE)
         Assert.assertEquals("the held frame must stand as it was", 1, heldIdsOf(r.store).size)
         Assert.assertTrue("and the projection must still say active", r.node.hasActiveSos())
@@ -409,8 +419,10 @@ class ReadinessT39Test {
         Assert.assertTrue("the bytes must be verbatim, not re-authored",
             again[0].contentEquals(firstHand[0]) && again[1].contentEquals(firstHand[1]))
         val l = rowOf(r.tracker, mid)
-        Assert.assertTrue("the row stays handed (idempotent target)",
-            l is DeliveryLookup.Found && l.record.state == DeliveryState.HANDED_TO_RELAY)
+        // T43: the retry's idempotent target is the QUEUED_DURABLY row the sends
+        // left behind -- the resumed bytes are still an offer, not custody.
+        Assert.assertTrue("the row stays queued (idempotent target)",
+            l is DeliveryLookup.Found && l.record.state == DeliveryState.QUEUED_DURABLY)
         // unknown msg_id: failure, not an empty success
         val stranger = ByteArray(16) { (it + 0x77).toByte() }
         var sends = 0

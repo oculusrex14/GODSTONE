@@ -212,8 +212,13 @@ final class ReadinessT39Tests: XCTestCase {
         let r = try newRig()
         let (mid, dispatched) = try authorOnce(r, Data("medic".utf8), peers: 2)
         XCTAssertEqual(dispatched, .handedToRelays(2), "two relays must have taken the frame")
+        // T43 CORRECTION of a pre-T43 assertion: the row used to reach
+        // handedToRelay on the Boolean send. The card makes that the defect, so
+        // the durable row standeth queued and retryable -- and the ACTIVE CALL is
+        // still re-exposed from it after a restart, which is what this witness is
+        // for.
         if case .found(let rec) = rowOf(r.tracker, mid) {
-            XCTAssertEqual(rec.state, .handedToRelay, "the row must stand handed")
+            XCTAssertEqual(rec.state, .queuedDurably, "the row must stand queued and retryable")
         } else { XCTFail("the row must stand") }
         let node2 = MeshNode(
             identity: try newIdentity(0xCA, 0xE2),
@@ -224,14 +229,20 @@ final class ReadinessT39Tests: XCTestCase {
         XCTAssertFalse(node2.hasActiveSosBroadcast, "a cold node must not claim an active SOS from thin air")
         let seen = try XCTUnwrap(node2.refreshSosStatusAfterScan())
         XCTAssertEqual(seen.msgId, mid, "the projection must name the same msg_id")
-        XCTAssertEqual(seen.state, .handedToRelay, "the restarted projection must read the durable state")
+        XCTAssertEqual(seen.state, .queuedDurably,
+                       "the restarted projection must read the durable state")
         let stillHeld = try firstHeldFrame(r.store)
         XCTAssertEqual(seen.frame.encode(), stillHeld.encode(),
                        "the restarted projection carries the held frame verbatim")
         XCTAssertTrue(node2.hasActiveSosBroadcast, "the flag must follow the row after the scan")
         let restartCancel = node2.cancelSos(mid)
-        XCTAssertEqual(restartCancel, .cancelled(wasRelayed: true),
-                       "the restart's cancel must know it was relayed")
+        // T43: after a restart the honest answer is "we cannot know whether copies
+        // went out" -- the link offers are EPHEMERAL by law, so wasRelayed is false
+        // rather than a claim the node cannot support. The cancellation still moved
+        // the row durably and retired the held frame.
+        XCTAssertEqual(restartCancel, .cancelled(wasRelayed: false),
+                       "the restart's cancel must not claim a relayed fact it cannot support")
+        XCTAssertFalse(node2.hasActiveSosBroadcast, "and the call is no longer active")
     }
 
     // --------------------------------------- W3 cancel versus the queued writer
@@ -331,7 +342,8 @@ final class ReadinessT39Tests: XCTestCase {
         XCTAssertEqual(r.tracker.acknowledge(mid, ack), .notAckEligible,
                        "the direct tracker path must return notAckEligible")
         if case .found(let rec) = rowOf(r.tracker, mid) {
-            XCTAssertEqual(rec.state, .handedToRelay, "the row must stand as it was")
+            // T43: "as it was" is now the queuedDurably the send left behind.
+            XCTAssertEqual(rec.state, .queuedDurably, "the row must stand as it was")
             XCTAssertEqual(rec.ackMode, .none)
         } else { XCTFail("the row must stand") }
         XCTAssertEqual(heldIds(r.store).count, 1, "the held frame must stand as it was")
@@ -361,7 +373,9 @@ final class ReadinessT39Tests: XCTestCase {
         XCTAssertEqual(resume, .handedToRelays(2), "the resume must hand the same count")
         XCTAssertEqual(again, firstHand, "the bytes must be verbatim, not re-authored")
         if case .found(let rec) = rowOf(r.tracker, mid) {
-            XCTAssertEqual(rec.state, .handedToRelay, "the row stays handed (idempotent target)")
+            // T43: the retry's idempotent target is the queuedDurably row the
+            // sends left behind -- the resumed bytes are still an offer.
+            XCTAssertEqual(rec.state, .queuedDurably, "the row stays queued (idempotent target)")
         } else { XCTFail("the row must stand") }
         // unknown msg_id: failure, not an empty success
         let stranger = Data((0..<16).map { UInt8(truncatingIfNeeded: $0 &+ 0x77) })

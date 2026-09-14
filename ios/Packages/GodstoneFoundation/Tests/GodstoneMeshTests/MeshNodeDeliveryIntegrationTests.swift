@@ -221,7 +221,13 @@ final class MeshNodeDeliveryIntegrationTests: XCTestCase {
     /// C6: persist succeeds + 1 successful send -> .handedToRelays(1) and the
     /// tracker reaches .handedToRelay (persist-before-tracker: enqueue runs only
     /// after persist succeeded, markHandedToRelay after the send returned true).
-    func testC6DispatchSosWithASuccessfulSendReachesHandedToRelay() {
+    /// T43 CORRECTION of a pre-T43 assertion, with the contradiction named: this
+    /// witness used to require the row to reach .handedToRelay on the Boolean
+    /// send. The card "Align delivery labels with durable evidence" makes that the
+    /// defect -- a send proveth only a local ATT admission ("ATT success without
+    /// remote storage leaves queued") -- so the durable label may not advance and
+    /// the local admission is asserted as an EPHEMERAL link offer instead.
+    func testC6DispatchSosWithASuccessfulSendStaysQueuedDurablyWithALinkOffer() {
         let store = InMemoryMessageStore()
         let (node, journal) = makeNode(store: store, resolver: UnresolvedRecipientKeyResolver())
         node.transportDidConnect(peerId: UUID())
@@ -232,7 +238,15 @@ final class MeshNodeDeliveryIntegrationTests: XCTestCase {
         }
         XCTAssertEqual(result, .handedToRelays(1))
         guard let mid = sentFrame?.msgId else { return XCTFail("send must receive the frame") }
-        XCTAssertEqual(stateOf(node.deliveryTracker, mid), .handedToRelay)
+        XCTAssertEqual(stateOf(node.deliveryTracker, mid), .queuedDurably)
+        XCTAssertEqual(node.linkOffers.countFor(mid), 1,
+                       "the local admission is recorded as an EPHEMERAL offer")
+        XCTAssertTrue(node.linkOffers.anyAdmitted(mid),
+                      "the admitted offer is the honest 'copies may be out' fact")
+        let projection = node.deliveryProjection(mid)
+        XCTAssertEqual(projection.label, .offered)
+        XCTAssertTrue(projection.retryable, "a link offer NEVER clears retryability")
+        XCTAssertFalse(projection.claimsRelayCustody, "and it claims no custody")
         // SOS broadcast is AckMode.none and binds NO recipient (C6.1).
         guard let rec = journal.map[mid] else { return XCTFail("tracker must record the handed SOS") }
         XCTAssertEqual(rec.ackMode, .none)
@@ -412,7 +426,12 @@ final class MeshNodeDeliveryIntegrationTests: XCTestCase {
 
         XCTAssertEqual(result, DirectDispatchResult.handedToRelays(2))
         XCTAssertEqual(sends, 2)
-        XCTAssertEqual(stateOf(node.deliveryTracker, frame.msgId), .handedToRelay)
+        // T43: the durable state stays .queuedDurably (two local link admissions
+        // are not custody); the offers are asserted instead.
+        XCTAssertEqual(stateOf(node.deliveryTracker, frame.msgId), .queuedDurably)
+        XCTAssertEqual(node.linkOffers.countFor(frame.msgId), 2)
+        XCTAssertTrue(node.deliveryProjection(frame.msgId).retryable)
+        XCTAssertFalse(node.deliveryProjection(frame.msgId).claimsDelivery)
     }
 
     func testC66DispatchDirectOnAtomicEnqueueFailureAttempts0SendsAndYieldsRejected() {
