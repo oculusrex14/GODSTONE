@@ -14068,7 +14068,7 @@
       ]
     }
   },
-  "current_task": null,
+  "current_task": "T59",
   "external_blockers": [
     "A06",
     "APPROVED_CONTENT",
@@ -14077,7 +14077,16 @@
     "SIGNING"
   ],
   "failed_attempts": [],
-  "in_progress": null,
+  "in_progress": {
+    "claimed_head": "3b84673236603c9c7d08353188fc066d40f7778b",
+    "claimed_utc": "2026-09-14T22:13:23+00:00",
+    "objective": {
+      "claimed_head": "3b84673236603c9c7d08353188fc066d40f7778b",
+      "claimed_utc": "2026-09-14T22:13:23+00:00",
+      "objective": "Encode the platform permission and background-capability TRUTH as one CapabilityState derived from OS authorization, power, foreground/background, protected-data availability, the selected profile and the ELECTION HINT ROLE -- so that iOS background discovery is stated ASYMMETRICALLY (a peripheral hint may advertise, a central hint may not), the role is never forced from the platform or the device model, no scan is claimed from a stopped or force-quit state (force quit is unsupported, not merely degraded), a permanently-denied permission is not re-requestable, a locked protected store carrieth no custody claim, the LIGHT profile carrieth NO radio capability at all, and the manifests, the privacy declarations and the ADR's own prose agree with the matrix -- so that forcing iOS central from the platform or claiming background availability independent of the hint role falleth the capability-matrix witness."
+    },
+    "task": "T59"
+  },
   "last_code_head": "d942478daa6bbf83df9c0ed16926d8b25281ffc3",
   "last_observed_head": "d942478daa6bbf83df9c0ed16926d8b25281ffc3",
   "latest_verification": {
