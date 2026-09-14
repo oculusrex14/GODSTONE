@@ -287,8 +287,13 @@ class T82ClosureTest(unittest.TestCase):
             findings = check(ROOT)
             self.assertTrue(any(f.rule == "open-decision-unrecorded" for f in findings),
                             [str(f) for f in findings])
-        # ... and a CLOSED capability that nameth NO decision is refused too: a
+        # EVERY CLOSED capability must name a decision, in the REAL ledger: a
         # research-only tier that pointeth at nothing would look deliberately closed
+        for capability in CAPABILITIES:
+            if capability.closed_in:
+                self.assertTrue(capability.external_decision,
+                                "%s is closed but nameth no decision" % capability.id)
+        # ... and a CLOSED capability that nameth NO decision is refused too
         with _PatchedLedger({"medium_tier": {"external_decision": ""}}):
             findings = check(ROOT)
             self.assertTrue(any(f.rule == "closure-without-decision" for f in findings),
@@ -305,8 +310,10 @@ class T82ClosureTest(unittest.TestCase):
         # ... and an ADVERTISED stub is refused by name
         with _PatchedLedger({"multipeer_transport": {"advertised_in": ("docs/packaging/TIERS.md",)}}):
             findings = check(ROOT)
-            self.assertTrue(any(f.rule in ("stub-advertised", "advertised-but-not-enabled")
-                                for f in findings), [str(f) for f in findings])
+            # the STUB rule alone: an either/or assertion let it fall asleep behind
+            # the advertised-but-not-enabled rule (its rod escaped until this)
+            self.assertTrue(any(f.rule == "stub-advertised" for f in findings),
+                            [str(f) for f in findings])
 
 
 class T82RepositoryTest(unittest.TestCase):
