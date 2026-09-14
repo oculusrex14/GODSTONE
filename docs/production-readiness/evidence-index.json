@@ -1,138 +1,148 @@
 {
-  "evidence_root": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/T57",
+  "evidence_root": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/T58",
   "files": [
     {
-      "path": "T57/BUILDER_NOTE.md",
-      "sha256": "f959ab07146f418f878d567bd0149dc7389fce025583d612d59f317902195805",
-      "size": 4210
+      "path": "T58/BUILDER_NOTE.md",
+      "sha256": "d46f1aa44e0b987b5c67445ba60033bc019695febae5f08340afa7cafe1a9ca6",
+      "size": 3531
     },
     {
-      "path": "T57/commands.json",
-      "sha256": "858ef83d286698fe092667152fc26d842565992ff0f261bdbc832d1fb44fb7cd",
-      "size": 3478
+      "path": "T58/commands.json",
+      "sha256": "142b68997cb0d9d5c0187dddd786beb2f58d0569bf86760072b003d9118fcd8b",
+      "size": 4363
     },
     {
-      "path": "T57/executed/T57-diff-check.log",
+      "path": "T58/executed/T58-android-isles.log",
+      "sha256": "59f007bc920bda886e595cc36275436c02b1794dda1627aeb1da995261356ceb",
+      "size": 5379
+    },
+    {
+      "path": "T58/executed/T58-diff-check.log",
       "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
       "size": 0
     },
     {
-      "path": "T57/executed/T57-implementation-commit.log",
-      "sha256": "e451030688b3712284b3b3fc1eaed901519de385b31b922152397d08b9fbfa53",
-      "size": 3787
+      "path": "T58/executed/T58-implementation-commit.log",
+      "sha256": "0aa116ea3483e557fe59a71707c540eca34b0ed742e1b509614baadc683903e7",
+      "size": 4644
     },
     {
-      "path": "T57/executed/T57-narrow-gradlew-executed.log",
-      "sha256": "e3f7dfb2629feb4bdd12a0f29b0a57019bb0c3c0709faa637e74a512d8d49818",
-      "size": 4068
+      "path": "T58/executed/T58-narrow-swift-executed.log",
+      "sha256": "d0391e14531a54d94588392c3b6f9fb64e3a4a5044fb2bc8cdd14e6fd092bdcc",
+      "size": 3774
     },
     {
-      "path": "T57/executed/T57-python-subsystem.log",
-      "sha256": "3254519b09fb9772a88f2e2d179bddc7bdeb4e833fbb1c59ff596f0e8a1d325a",
+      "path": "T58/executed/T58-python-subsystem.log",
+      "sha256": "a3a97c1449fd422d3cd147c235c118204c0277c489234dbf1080abe41a691c45",
       "size": 76721
     },
     {
-      "path": "T57/executed/T57-structural-lineage.log",
+      "path": "T58/executed/T58-structural-lineage.log",
       "sha256": "3731a17d5b5ad7c7c6603f14622a2922fb12b8e105442e96b73c4cd33b67764d",
       "size": 903
     },
     {
-      "path": "T57/executed/T57-subsystem-gradlew-executed.log",
-      "sha256": "54022c129b224343abf7cf5de0918a22359dbfc9b2e05820eb86a8fdfa82d259",
-      "size": 4068
+      "path": "T58/executed/T58-subsystem-swift-executed.log",
+      "sha256": "3215cf8b7c519438b95139617b53513dec0f431060fca7da8a01ca3ddbe7b64c",
+      "size": 290201
     },
     {
-      "path": "T57/executed/T57-sync-check.log",
+      "path": "T58/executed/T58-sync-check.log",
       "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
       "size": 0
     },
     {
-      "path": "T57/logs/T57-controls-python3-002.log",
+      "path": "T58/logs/T58-controls-python3-002.log",
       "sha256": "604476d6f067a942c6e64efefd5ae147930eb142f02a903d28a598e72596a8a4",
       "size": 649
     },
     {
-      "path": "T57/logs/T57-controls-python3.log",
+      "path": "T58/logs/T58-controls-python3-003.log",
+      "sha256": "67493ebd28a55ece17214e55d318f34ba4af6ac7592268756f1b3dcc304afa21",
+      "size": 125
+    },
+    {
+      "path": "T58/logs/T58-controls-python3.log",
       "sha256": "d7c332b87cf060bb7c2d77d08303cea33d6ae10ab1091008d67dd5ff97fdd34c",
       "size": 1883
     },
     {
-      "path": "T57/logs/T57-narrow-gradlew.log",
-      "sha256": "13734c386cc72277513dc2c359e7c94025d2db43b5371ccacdce89218963c0fb",
-      "size": 4222
+      "path": "T58/logs/T58-narrow-swift.log",
+      "sha256": "43e12b50a2600bef4cd792f3d8f13f71661d421984d97b33d1a25d4c9798c029",
+      "size": 3929
     },
     {
-      "path": "T57/logs/T57-subsystem-gradlew.log",
-      "sha256": "3dabf04258b7c2de9a7f2ce99655a36888a8e05c50b1ac3fe0f7da5ea7548f1a",
-      "size": 4196
+      "path": "T58/logs/T58-subsystem-swift.log",
+      "sha256": "6a9c67ca8628d130c527aa983593d65a1cff40c3a05c3d4863adb5caa2a3dd42",
+      "size": 290327
     },
     {
-      "path": "T57/roster/logs/T57-RC1-delivered-on-the-transport-boolean.semantic.log",
-      "sha256": "5bdbd9ec0b714131084b906215f52795d7263ce4825274149c5e7ab61b9e1520",
-      "size": 965
+      "path": "T58/roster/logs/T58-RC1-a-scene-changeover-resetteth-the-work.semantic.log",
+      "sha256": "88ae3fb2c7a3c977d517e7e8f3bd1eaf743a8c7ab95615e85e08444f4f73b7d7",
+      "size": 16029
     },
     {
-      "path": "T57/roster/logs/T57-RC10-the-draft-is-discarded-on-a-refusal.semantic.log",
-      "sha256": "d5ecef4dd619f3f1967fd557944f67213b64ade3d57f62909b105113493de340",
-      "size": 967
+      "path": "T58/roster/logs/T58-RC10-a-duplicate-arrival-becometh-two-rows.semantic.log",
+      "sha256": "4d6f12f983ddc01c1b7ed0f6600345e1bcc5461fbdd080f60b4dda2edd6e945c",
+      "size": 16029
     },
     {
-      "path": "T57/roster/logs/T57-RC11-a-duplicate-tap-sendeth-twice.semantic.log",
-      "sha256": "5621c3d23960c8aa4ec272dd03b82ed395afdb070f3c205f4b43fbf96d2772db",
-      "size": 961
+      "path": "T58/roster/logs/T58-RC11-a-denied-permission-is-not-explained.semantic.log",
+      "sha256": "c37abe992dfa3436ef873b12ff32d708ab1e0c146dd660f49529ac3368296540",
+      "size": 16029
     },
     {
-      "path": "T57/roster/logs/T57-RC12-the-relaunch-inventeth-an-armed-control.semantic.log",
-      "sha256": "a1483d55d3807e5a96b7af2d5a16c5c2392b8ed4fc478dbadd812c162bb65261",
-      "size": 971
+      "path": "T58/roster/logs/T58-RC12-the-models-own-state-is-dropped.semantic.log",
+      "sha256": "32a83001331181e474e5ac40bdd8cdf3f1f9e043a027b90275c42e212a89f0f4",
+      "size": 16029
     },
     {
-      "path": "T57/roster/logs/T57-RC2-an-att-acceptance-is-called-sent.semantic.log",
-      "sha256": "c94d3e7c2ee8b2e953a68798f9449a9c311f8a9ad3f135253ee5bb51209c21d9",
-      "size": 963
+      "path": "T58/roster/logs/T58-RC2-delivered-on-the-transport-boolean.semantic.log",
+      "sha256": "4b2b8ba1d85239255689fa53cb251dc9d274be0eafb36001c7d6e0504f69ca77",
+      "size": 16029
     },
     {
-      "path": "T57/roster/logs/T57-RC3-attempting-is-rendered-as-delivered.semantic.log",
-      "sha256": "a3a8a995bc75d8f17094db0329eab9209c072e6ae3a63328aae137336c778c93",
-      "size": 966
+      "path": "T58/roster/logs/T58-RC3-an-att-acceptance-is-spoken-as-delivered.semantic.log",
+      "sha256": "08d5b92706cd8bd67d92772fb5c5c961121c509291ee6e065a72e311374000ad",
+      "size": 16029
     },
     {
-      "path": "T57/roster/logs/T57-RC4-secure-without-a-confirmed-key.semantic.log",
-      "sha256": "cd290fe3681a958b1ffa52e5d8ecdc0ae3f6ac3b1253c6249e210844b370745d",
-      "size": 961
+      "path": "T58/roster/logs/T58-RC4-secure-without-a-confirmed-key.semantic.log",
+      "sha256": "2acb0982067b6a261e61b0ccd3fca913df1a229778ff3d07c74d4ac756bf5c79",
+      "size": 16029
     },
     {
-      "path": "T57/roster/logs/T57-RC5-the-compose-bound-is-characters-not-bytes.semantic.log",
-      "sha256": "2da07072cd4c64d7d6caf729272d162daaabaa19e5531d32d131c4a08b553063",
-      "size": 972
+      "path": "T58/roster/logs/T58-RC5-a-locked-store-claimeth-its-cache.semantic.log",
+      "sha256": "e2e686ee156ddfc65befac047137655d595ecc80a85e03f7ad1feb1db7d46b25",
+      "size": 16029
     },
     {
-      "path": "T57/roster/logs/T57-RC6-truncation-splitteth-a-character.semantic.log",
-      "sha256": "6a0d0f95accef151350847abfb0d86cd07e1018ff2cdbda0359f8aedddb40dcd",
-      "size": 963
+      "path": "T58/roster/logs/T58-RC6-a-locked-device-letteth-a-send-through.semantic.log",
+      "sha256": "f415c9522ac208d2b4fb74189d2340d5c19949141c9cc07d9de3c1ffe102a300",
+      "size": 16029
     },
     {
-      "path": "T57/roster/logs/T57-RC7-a-bare-tap-placeth-a-call.semantic.log",
-      "sha256": "d900b097c3b334670f8c069dfc275ffb8bef286ec323cac7d22cdd77d01bea2a",
-      "size": 956
+      "path": "T58/roster/logs/T58-RC7-the-compose-bound-is-characters.semantic.log",
+      "sha256": "7f28e844a504bc7bf8ae3498a5214bf2add7a8145b989fd4e26484da3c57a530",
+      "size": 16029
     },
     {
-      "path": "T57/roster/logs/T57-RC8-cancel-implieth-recall.semantic.log",
-      "sha256": "6f3daa5422a149bd33bc419cb9f0e5200b749c05f576e7fcf2f7aab65569eb90",
-      "size": 953
+      "path": "T58/roster/logs/T58-RC8-a-bare-confirm-placeth-a-call.semantic.log",
+      "sha256": "d58ebd740777d6d0794d0d2aa133f00cde0d44ba3ed9f1c973c0bceb1933f15d",
+      "size": 16029
     },
     {
-      "path": "T57/roster/logs/T57-RC9-a-denied-permission-is-not-explained.semantic.log",
-      "sha256": "d9bbad926b7b51e9e3a159e2d1cefb469fcae12e3e81dfa78ad049957feab361",
-      "size": 967
+      "path": "T58/roster/logs/T58-RC9-cancel-implieth-recall.semantic.log",
+      "sha256": "90f7ce510adf7e6a3413aada4a7077630513756c3985a72f5abdc838f597df82",
+      "size": 16029
     },
     {
-      "path": "T57/roster/manifest.json",
-      "sha256": "4ae8340c16e7dc4082384ee242a236541e6c7b7acc20310f111b3f759c6415c1",
-      "size": 9761
+      "path": "T58/roster/manifest.json",
+      "sha256": "0c1bac9195717c6635a5be08592bfac8b8e202c889ddbf3ca3e4fa39cf06ba0f",
+      "size": 9583
     }
   ],
-  "note": "Complete evidence index for T57: the runner's command records and logs for the three declared stages at the implementation head bf9b57e8, the EXECUTED gradle logs the positive counts were read from, the roster manifest with its twelve per-rod logs (its failed_assertion field is authoritative; the log files are truncated tails), the control checkers' output, both builder children's stat records, and the builder note carrying the counting rule, the production defect the court found, the roster campaign and its repair, and the explicit non-claims. No keys, no private content, no device result.",
+  "note": "Complete evidence index for T58: the runner's command records and logs for the three declared stages at the implementation head d942478d, the EXECUTED swift logs the positive counts were read from (including the subsystem run that took the package from 1114 to 1127), the roster manifest with its twelve per-rod logs (its failed_assertion field is authoritative; the log files are truncated tails), the control checkers' output, the android isles run beside it, both builder children's stat records, and the builder note carrying the counting rule, the two production defects the court found, the roster campaign and its repair, and the explicit non-claims. No keys, no private content, no device result.",
   "schema_version": 1,
-  "task": "T57"
+  "task": "T58"
 }
