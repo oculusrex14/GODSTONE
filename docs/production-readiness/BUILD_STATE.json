@@ -13876,7 +13876,7 @@
       ]
     }
   },
-  "current_task": null,
+  "current_task": "T58",
   "external_blockers": [
     "A06",
     "APPROVED_CONTENT",
@@ -13885,7 +13885,16 @@
     "SIGNING"
   ],
   "failed_attempts": [],
-  "in_progress": null,
+  "in_progress": {
+    "claimed_head": "b4241f6cfb543c19bdc82f05d2bd7fe7b1023a44",
+    "claimed_utc": "2026-09-14T21:45:09+00:00",
+    "objective": {
+      "claimed_head": "b4241f6cfb543c19bdc82f05d2bd7fe7b1023a44",
+      "claimed_utc": "2026-09-14T21:45:09+00:00",
+      "objective": "Add the equivalent iOS message and SOS journeys: a MainActor scenes model observing the shared runtime state, carrying the SAME fixtures and vocabulary as the Android isle -- an inbox, conversation and exact recipient selection with a DIRECT compose bounded at 400 UTF-8 bytes, statuses projected strictly from the durable authority so nothing is shown delivered on a transport Boolean nor secure before the recipient's key is confirmed, a hold-to-confirm SOS with active-call restoration and the relayed-copy limitation stated, and honest explanations for a denied permission or an unsupported radio -- across background/foreground transitions, a locked device, a scene discard and recreation, VoiceOver hold/cancel labels and an incoming duplicate; and NO coordinator UI reset may hide remaining work, so that resetting the coordinator UI only on cancel falleth the relaunch witness."
+    },
+    "task": "T58"
+  },
   "last_code_head": "bf9b57e8f2417d69c61a6b184a1357998362846d",
   "last_observed_head": "bf9b57e8f2417d69c61a6b184a1357998362846d",
   "latest_verification": {
