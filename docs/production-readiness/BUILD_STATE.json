@@ -15295,7 +15295,7 @@
       ]
     }
   },
-  "current_task": null,
+  "current_task": "T82",
   "external_blockers": [
     "A06",
     "APPROVED_CONTENT",
@@ -15304,7 +15304,16 @@
     "SIGNING"
   ],
   "failed_attempts": [],
-  "in_progress": null,
+  "in_progress": {
+    "claimed_head": "15b4575ade5aa16a8e24f2560023e8fa4b64854c",
+    "claimed_utc": "2026-09-14T23:49:28+00:00",
+    "objective": {
+      "claimed_head": "15b4575ade5aa16a8e24f2560023e8fa4b64854c",
+      "claimed_utc": "2026-09-14T23:49:28+00:00",
+      "objective": "Close the unsupported tier and bulk-plane promises EXPLICITLY: keep bulk transfer, GROUP/BROADCAST authoring and the MEDIUM/LARGE store products DISABLED, map every ADVERTISED capability to the profile code that actually enableth it (or close it by name as an explicitly disabled, unsupported-stub or externally-open decision), prove that the shipping binary carrieth no bulk, model, tier or INTERNET edge, and make the documentation state the unresolved external decisions rather than promising media/tier delivery that no store-compatible design backeth -- across the manifests, the tier table, the bulk-plane ADR, the transport stubs and the release manifest -- so that advertising bulk transfer or introducing INTERNET into the Archive-only build falleth the profile/release constraint check."
+    },
+    "task": "T82"
+  },
   "last_code_head": "85d071f54bde43e640e758f640a615de58ef7f3d",
   "last_observed_head": "85d071f54bde43e640e758f640a615de58ef7f3d",
   "latest_verification": {
