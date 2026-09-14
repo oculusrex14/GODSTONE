@@ -10607,7 +10607,16 @@
     "SIGNING"
   ],
   "failed_attempts": [],
-  "in_progress": null,
+  "in_progress": {
+    "claimed_head": "2ab05d77afb024c8372c9c52000b597fc127f97c",
+    "claimed_utc": "2026-09-14T13:30:53+00:00",
+    "objective": {
+      "claimed_head": "2ab05d77afb024c8372c9c52000b597fc127f97c",
+      "claimed_utc": "2026-09-14T13:30:53+00:00",
+      "objective": "Build the content/Oracle held-out adversarial evaluation tooling: versioned EvaluationManifest bound to the approved corpus digest and the model lock, HeldOutCase families (numerical, qualifier and context conflicts, unanswerable queries, malicious retrieved instructions, harmful source substitutions), blinded human ReviewerDecisions that the tool can never fabricate or unblind early, a PerCategoryReport of false-allow/false-block with an explicit uncertainty bucket, and a complete-case ledger whose completeness check faileth whenever a case is silently excluded or uncited numeric guidance is allowed through; the released-asset staging path refuseth to publish an evaluation it cannot bind to the very archive it stages. Clinical acceptance stayeth external."
+    },
+    "task": "T66"
+  },
   "last_code_head": "f60d2cde510abaa8e762d747c9fd955ebd857c56",
   "last_observed_head": "f60d2cde510abaa8e762d747c9fd955ebd857c56",
   "latest_verification": {
