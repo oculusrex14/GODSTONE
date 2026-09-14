@@ -6550,6 +6550,255 @@
         "TTL and hop remain unauthenticated transport metadata (section 14)."
       ]
     },
+    "T43": {
+      "case_results": {
+        "added_cases": {
+          "android/mesh/src/test/java/io/godstone/mesh/readiness/ReadinessT43Test.kt": [
+            "test_w01_att_success_without_remote_storage_leaveth_it_queued",
+            "test_w02_a_refused_send_leaveth_the_label_queued",
+            "test_w03_the_intended_recipients_ack_produceth_delivered",
+            "test_w04_a_wrong_recipients_ack_is_rejected",
+            "test_w05_a_duplicate_ack_is_idempotent",
+            "test_w06_cancellation_and_expiry_win_over_a_late_ack",
+            "test_w07_a_restart_preserveth_the_honest_status",
+            "test_w08_a_legacy_handed_row_is_read_as_queued",
+            "test_w09_the_legacy_migration_rewriteth_through_the_engine",
+            "test_w10_no_relay_receipt_is_ever_claimed",
+            "test_w11_the_offer_ledger_is_bounded_and_fail_closed",
+            "test_w12_an_unreadable_row_is_never_labelled_queued",
+            "test_w13_a_broadcast_send_leaveth_the_sos_label_queued"
+          ],
+          "ios/Godstone/Tests/GodstoneMeshTests/ReadinessT43Tests.swift": [
+            "testW01AttSuccessWithoutRemoteStorageLeavethItQueued",
+            "testW02ARefusedSendLeavethTheLabelQueued",
+            "testW03TheIntendedRecipientsAckProducethDelivered",
+            "testW04AWrongRecipientsAckIsRejected",
+            "testW05ADuplicateAckIsIdempotent",
+            "testW06CancellationAndExpiryWinOverALateAck",
+            "testW07ARestartPreservethTheHonestStatus",
+            "testW08ALegacyHandedRowIsReadAsQueued",
+            "testW09TheLegacyMigrationRewritethThroughTheEngine",
+            "testW10NoRelayReceiptIsEverClaimed",
+            "testW11TheOfferLedgerIsBoundedAndFailClosed",
+            "testW12AnUnreadableRowIsNeverLabelledQueued",
+            "testW13ABroadcastSendLeavethTheSosLabelQueued"
+          ]
+        },
+        "corrected_cases": {
+          "android": [
+            "ReadinessT39Test.testRestartRevealsTheActiveSosFromTheDurableRow (row stands queued; the post-restart cancel honestly reports wasRelayed=false because the offers are ephemeral)",
+            "ReadinessT39Test.testNoneModeAckIsRejectedBeforeCryptography (''as it was'' = queued)",
+            "ReadinessT39Test.testRetryResumesTheSameAuthoredBytesAndFailsTyped (the idempotent target is the queued row)",
+            "ReadinessT38Test.testComposedNodeAuthorsSignedDistress (the hand-off leaves the label queued; the offer is asserted)",
+            "MeshNodeDeliveryIntegrationTest.C6 dispatchSos (stays QUEUED_DURABLY + 1 offer)",
+            "MeshNodeDeliveryIntegrationTest.C6_6 dispatchDirect (stays QUEUED_DURABLY + 2 offers)"
+          ],
+          "ios": [
+            "ReadinessT39Tests.testRestartRevealsTheActiveSosFromTheDurableRow (three assertions)",
+            "ReadinessT39Tests.testNoneModeAckIsRejectedBeforeCryptography",
+            "ReadinessT39Tests.testRetryResumesTheSameAuthoredBytesAndFailsTyped",
+            "MeshNodeDeliveryIntegrationTests.testC6DispatchSos... (renamed: stays queued with a link offer)",
+            "MeshNodeDeliveryIntegrationTests.testC66DispatchDirect... (stays queued + 2 offers)"
+          ],
+          "not_corrected": "ReadinessT39Test/Tests.testCancelOfARelayedCallTellsTheRelayedTruth still passes UNCHANGED: the ephemeral ledger supplies the honest 'copies may be out' answer.",
+          "note": "SEVEN pre-T43 assertions required the durable row to reach HANDED_TO_RELAY on the Boolean send -- the exact behaviour the card removes. Each was corrected NARROWLY and in place, with the contradiction named in its own comment, and each still detects the original risk by asserting the QUEUED_DURABLY row plus the ephemeral offer beside it."
+        },
+        "counts": {
+          "narrow_android": 13,
+          "narrow_ios": 13,
+          "subsystem_android": 1077,
+          "subsystem_ios": 1086
+        },
+        "counts_source": "The runner parses only the python summary, so its gradle/swift records carry UNKNOWN. The counts come from the harnesses' OWN artifacts at the implementation head: a TEST-*.xml walk of android/mesh/build/test-results/testDebugUnitTest after purging stale results and passing --no-build-cache (T43/executed/T43-narrow-gradlew-executed.log 13/0 and T43-subsystem-gradlew-executed.log 1077/0 on attempt 1), and swift's own 'Executed N tests, with M failures' line (T43-narrow-swift-executed.log 13/0 and T43-subsystem-swift-executed.log 1086/0).",
+        "courts": {
+          "controls": "ci/check_repository.py, ci/check_release_gates_status.py, scripts/sync_ios_foundation_package.py --check",
+          "narrow_android": "android/mesh/src/test/java/io/godstone/mesh/readiness/ReadinessT43Test.kt (13 witnesses)",
+          "narrow_ios": "ios/Godstone/Tests/GodstoneMeshTests/ReadinessT43Tests.swift (13 witnesses, the SAME name set)",
+          "subsystem_android": "gradlew :mesh:testDebugUnitTest",
+          "subsystem_ios": "swift test --package-path ios/Packages/GodstoneFoundation"
+        },
+        "deleted_cases": [],
+        "executed_scenarios": {
+          "ack_vs_cancel_expiry": "a cancelled or expired row REJECTS a late ACK and the label stays CANCELLED/EXPIRED (W06)",
+          "att_success": "a successful send leaves the durable label QUEUED_DURABLY, the projection OFFERED and retryable, and claimeth neither delivery nor custody (W01 DIRECT, W13 SOS)",
+          "bounds": "the offer ledger is bounded, drop-oldest, counted, and refuses a malformed key (W11)",
+          "device": "NOT EXECUTED: the section 18/19 physical matrix is external and T73-T75 own it",
+          "duplicate_ack": "a duplicate ACK is idempotent AND the authenticator is not consulted again (W05)",
+          "fail_closed": "an unreadable row projects UNAVAILABLE, never QUEUED; an unknown msg_id is a typed refusal (W12)",
+          "legacy_migration": "a legacy handed row is READ as queued, and the T31 engine rewrites 2 -> 1 in one transaction through its own executor, deleting nothing and moving nothing immutable (W08, W09)",
+          "no_relay_receipt": "nothing a relay observeth can raise a label above OFFERED (W10)",
+          "refused_send": "a refused send is no offer at all: the label stays QUEUED and only the refused-offer census moves (W02)",
+          "restart": "a cold node over the same store keeps the durable label and finds the offers GONE (W07)",
+          "wrong_recipient": "a stranger's ACK is rejected and the label never claims delivery (W04)"
+        },
+        "produced_artifacts": {
+          "projection": {
+            "android": "android/mesh/src/main/java/io/godstone/mesh/delivery/DeliveryProjection.kt",
+            "ios": "ios/Godstone/Sources/GodstoneMesh/DeliveryProjection.swift (+ the generated Foundation mirror)",
+            "types": [
+              "DeliveryProjection",
+              "DeliveryLabel",
+              "LinkOffer",
+              "LinkOfferLedger",
+              "LegacyHandedLabels"
+            ]
+          },
+          "wiring": {
+            "note": "MeshNode (both isles) records an EPHEMERAL offer on every send and never advances the durable label; cancelSos reports 'copies may be out' from the ledger (and from a legacy row); the legacy migration is a T31 MigrationStep whose apply rewrites 2 -> 1 through the engine's own executor."
+          }
+        },
+        "roster_campaigns": {
+          "pass_1": {
+            "escaping": "T43-RC2 (the SOS send site had no witness of its own)",
+            "repair": "18db072eb885fedee9ada81303538f549a99ffb6",
+            "rods": 12,
+            "tally": {
+              "ESCAPED": 1,
+              "KILLED": 11
+            }
+          },
+          "pass_2": {
+            "escaping": "T43-RC2 again, with the runner's own note 'the named witness stayed green; other cases failed (test_w13_a_broadcast_send_leaveth_the_sos_label_queued)' -- the mutant WAS killed by W13, but the rod's witness FIELD still named the DIRECT witness",
+            "repair": "5cbb5b13453fdfa9d95c84a7f658f5e3d0129975",
+            "rods": 13,
+            "tally": {
+              "ESCAPED": 1,
+              "KILLED": 12
+            }
+          },
+          "pass_3": {
+            "baseline": "18db072eb885fedee9ada81303538f549a99ffb6",
+            "note": "the final official pass ran with the ledger in exactly the state 5cbb5b13453fdfa9d95c84a7f658f5e3d0129975 commits",
+            "rods": 13,
+            "tally": {
+              "ESCAPED": 0,
+              "INVALID": 0,
+              "KILLED": 13,
+              "SKIPPED": 0,
+              "TIMEOUT": 0
+            }
+          }
+        }
+      },
+      "claim_commit": "1a5f026353b22aa2126aadde64004757edd7175a",
+      "commands": [
+        "T43-narrow-gradlew-003",
+        "T43-narrow-swift-003",
+        "T43-subsystem-gradlew-003",
+        "T43-subsystem-swift-003",
+        "T43-controls-python3-007",
+        "T43-controls-python3-008",
+        "T43-controls-python3-009"
+      ],
+      "device_gate_ids": [],
+      "file_hashes": {
+        "android/mesh/src/main/java/io/godstone/mesh/MeshNode.kt": "1602879a4c5db80dc0619d256f509145b1a97bf7d3d20f9a88c5dd99256316c7",
+        "android/mesh/src/main/java/io/godstone/mesh/delivery/DeliveryProjection.kt": "269aa269a6833dddde3f075a063fca7fafa81250758479d5dcf244e955cf2cec",
+        "android/mesh/src/test/java/io/godstone/mesh/readiness/ReadinessT43Test.kt": "daab3b2fa2fdf73144a156083eed080ea28f50795ea681ae41d21a764f844243",
+        "ci/mutations.py": "54a44a56b39f02c678f23f88b0c469f0a892dc4bc3545eef7b25a80d3cfc7345",
+        "ios/Godstone/Sources/GodstoneMesh/DeliveryProjection.swift": "c828b383172297a14ea2415b0fbf76bd4f90e9211b6a565e000098ffa5fae2e9",
+        "ios/Godstone/Sources/GodstoneMesh/MeshNode.swift": "9f181d5703df77d5fe86d95a501b6e80abb5c2f98134bad62a9f3eca9186c226",
+        "ios/Godstone/Tests/GodstoneMeshTests/ReadinessT43Tests.swift": "aadd13649e8c8303ee74f3e73030d5c24bab5f9771d1cafad3551bd202768bb9"
+      },
+      "implementation_commit": "5cbb5b13453fdfa9d95c84a7f658f5e3d0129975",
+      "implementation_commits": [
+        "5be8cb9134ef5fea28e639b2541c2308725e92f0",
+        "18db072eb885fedee9ada81303538f549a99ffb6",
+        "5cbb5b13453fdfa9d95c84a7f658f5e3d0129975"
+      ],
+      "inputs": {
+        "children_commit_order": [
+          "T43(claim)",
+          "T43(builder)",
+          "T43(builder-roster-repair)",
+          "T43(builder-roster-repair-2)",
+          "T43(M)"
+        ],
+        "claim_ordering_note": "the claim was taken at 1a5f026353b22aa2126aadde64004757edd7175a; the stages and the final roster were run at the implementation head 5cbb5b13453fdfa9d95c84a7f658f5e3d0129975. Runner logs and executed logs live in distinct directories (T43/logs, T43/executed) so no pass can overwrite another.",
+        "governed_source": [
+          "android/mesh/src/main/java/io/godstone/mesh/delivery/DeliveryProjection.kt",
+          "android/mesh/src/main/java/io/godstone/mesh/MeshNode.kt",
+          "android/mesh/src/test/java/io/godstone/mesh/readiness/ReadinessT43Test.kt",
+          "android/mesh/src/test/java/io/godstone/mesh/readiness/ReadinessT38Test.kt",
+          "android/mesh/src/test/java/io/godstone/mesh/readiness/ReadinessT39Test.kt",
+          "android/mesh/src/test/java/io/godstone/mesh/MeshNodeDeliveryIntegrationTest.kt",
+          "ios/Godstone/Sources/GodstoneMesh/DeliveryProjection.swift",
+          "ios/Godstone/Sources/GodstoneMesh/MeshNode.swift",
+          "ios/Godstone/Tests/GodstoneMeshTests/ReadinessT43Tests.swift",
+          "ios/Godstone/Tests/GodstoneMeshTests/ReadinessT39Tests.swift",
+          "ios/Godstone/Tests/GodstoneMeshTests/MeshNodeDeliveryIntegrationTests.swift",
+          "ci/mutations.py",
+          "docs/production-readiness/ARCHITECTURE_INVARIANTS.json"
+        ],
+        "required_regression_paths": [
+          "android/mesh/src/test/java/io/godstone/mesh/readiness/ReadinessT43Test.kt",
+          "ios/Godstone/Tests/GodstoneMeshTests/ReadinessT43Tests.swift"
+        ],
+        "sealed_hot_paths_untouched": [
+          "crypto/, wire/ and the generated codecs",
+          "the DeliveryTracker state machine and its CAS: markHanded/markHandedToRelay survive unchanged and are still exercised directly by the sealed courts",
+          "the T31 migration engine: T43 DECLARES a step and runs it through the engine; the engine itself is untouched",
+          "the five external gates and docs/production/RELEASE_GATES_STATUS.json",
+          "the shipping LIGHT graph and the readiness statements (only the MeshNode authority blobs were re-pinned, on both isles)"
+        ]
+      },
+      "ladder_boundary_commit": "5cbb5b13453fdfa9d95c84a7f658f5e3d0129975",
+      "mutation_results": {
+        "attempts_archived": [
+          {
+            "baseline": "5be8cb9134ef5fea28e639b2541c2308725e92f0",
+            "pass": 1,
+            "repaired_in": "18db072eb885fedee9ada81303538f549a99ffb6",
+            "rods": 12,
+            "tally": {
+              "ESCAPED": 1,
+              "KILLED": 11
+            }
+          },
+          {
+            "baseline": "18db072eb885fedee9ada81303538f549a99ffb6",
+            "pass": 2,
+            "repaired_in": "5cbb5b13453fdfa9d95c84a7f658f5e3d0129975",
+            "rods": 13,
+            "tally": {
+              "ESCAPED": 1,
+              "KILLED": 12
+            }
+          }
+        ],
+        "campaign_note": "the thirteen rods ran in the FINAL official pass, fail-closed, at baseline 18db072eb885fedee9ada81303538f549a99ffb6 (with the ledger in the state 5cbb5b13453fdfa9d95c84a7f658f5e3d0129975 commits): 13 KILLED of 13, SKIPPED=0, INVALID=0, TIMEOUT=0, ESCAPED=0. The card's named semantic negative is RC1/RC9 ('Advance delivered/handed on send Boolean: authority projection tests fail'), witnessed on the real MeshNode path on both isles. TWO earlier passes are recorded rather than folded away: pass 1 escaped because the SOS send site had no witness (repaired by adding W13 and RC13), and pass 2 escaped because the rod's witness FIELD still named the DIRECT witness while W13 was the case that killed it (repaired in the one-field child commit 5cbb5b13453fdfa9d95c84a7f658f5e3d0129975).",
+        "of": 13,
+        "roster_manifest": "T43/roster/manifest.json",
+        "semantic": {
+          "harness": "ci/mutations.py run_semantic (the ledger filtered to the T43- prefix)",
+          "platforms": [
+            "jvm",
+            "swift"
+          ],
+          "work_parent": "/Users/oculus/.cache/godstone-mutation-worktrees-t43 (disposable; the live tree is never touched)"
+        },
+        "tally": {
+          "ESCAPED": 0,
+          "INVALID": 0,
+          "KILLED": 13,
+          "SKIPPED": 0,
+          "TIMEOUT": 0
+        }
+      },
+      "objective": {
+        "claimed_head": "1a5f026353b22aa2126aadde64004757edd7175a",
+        "claimed_utc": "2026-09-14T17:57:43+00:00",
+        "objective": "Align the delivery labels with durable evidence: keep QUEUED_DURABLY until an intended recipient ACK produces DELIVERED, treat local record/ATT completion as ephemeral LinkOffer telemetry and never as a durable relay custody claim, expose a DeliveryProjection whose label never claims more than the durable state supporteth, migrate legacy HANDED_TO_RELAY rows conservatively to queued/retryable with their history preserved, introduce no relay receipts in this release profile, and keep ACK matching exact on expected recipient/key/trust/CAS with cancellation and expiry winning according to committed state -- so that advancing delivered or handed on a send Boolean falleth the authority projection tests."
+      },
+      "status": "COMPLETE",
+      "tested_tree_sha": "5b2bde64f36145c3d40f36343add7a23967916aa",
+      "unresolved": [
+        "the section 18/19 PHYSICAL device matrix is NOT executed: T73-T75 own it. Host tests prove no CoreBluetooth or Data Protection behaviour.",
+        "the legacy migration is proved as a LAW on the host through the T31 engine's injected executor; the physical run against a built artifact in the field remains device evidence.",
+        "the iOS peer view is a set of transport UUIDs, so a LinkOffer names the LINK (its UUID bytes), not a node id: an offer says WHERE bytes were offered and never WHO the recipient is. That asymmetry is deliberate and recorded.",
+        "TTL, hop and link offers remain unauthenticated, ephemeral telemetry; nothing in this task claimeth custody or delivery from them."
+      ]
+    },
     "T45": {
       "case_results": {
         "deleted_cases": [],
@@ -12512,7 +12761,7 @@
       ]
     }
   },
-  "current_task": "T43",
+  "current_task": "T44",
   "external_blockers": [
     "A06",
     "APPROVED_CONTENT",
@@ -12522,53 +12771,53 @@
   ],
   "failed_attempts": [],
   "in_progress": {
-    "claimed_head": "1a5f026353b22aa2126aadde64004757edd7175a",
-    "claimed_utc": "2026-09-14T17:57:43+00:00",
+    "claimed_head": "fae24d38ab95a98d39d302209b117e661163ed0f",
+    "claimed_utc": "2026-09-14T19:06:18+00:00",
     "objective": {
-      "claimed_head": "1a5f026353b22aa2126aadde64004757edd7175a",
-      "claimed_utc": "2026-09-14T17:57:43+00:00",
-      "objective": "Align the delivery labels with durable evidence: keep QUEUED_DURABLY until an intended recipient ACK produces DELIVERED, treat local record/ATT completion as ephemeral LinkOffer telemetry and never as a durable relay custody claim, expose a DeliveryProjection whose label never claims more than the durable state supporteth, migrate legacy HANDED_TO_RELAY rows conservatively to queued/retryable with their history preserved, introduce no relay receipts in this release profile, and keep ACK matching exact on expected recipient/key/trust/CAS with cancellation and expiry winning according to committed state -- so that advancing delivered or handed on a send Boolean falleth the authority projection tests."
+      "claimed_head": "fae24d38ab95a98d39d302209b117e661163ed0f",
+      "claimed_utc": "2026-09-14T19:06:18+00:00",
+      "objective": "Prove crash-safe multihop behaviour through COMPOSED runtimes: build a deterministic host integration harness that uses the real composition roots, adapters, stores and codecs with only the OS facades substituted, capture every side effect, and exercise directed delivery, SOS broadcast, no relay plaintext, intended-recipient-only ACK, a crash after each transaction and handshake stage, a wipe during a send, replay after reconnect and finite resource growth across A<->relay<->B mixed platforms via serialized traces and durable checkpoints -- while keeping the meshsim algorithm simulation explicitly separate from production-path integration evidence, so that bypassing the trusted runtime composition or the durable inbound commit falleth the composed trace."
     },
-    "task": "T43"
+    "task": "T44"
   },
-  "last_code_head": "010a621e49cdf2314838e98b02514e8155ec5781",
-  "last_observed_head": "010a621e49cdf2314838e98b02514e8155ec5781",
+  "last_code_head": "5cbb5b13453fdfa9d95c84a7f658f5e3d0129975",
+  "last_observed_head": "5cbb5b13453fdfa9d95c84a7f658f5e3d0129975",
   "latest_verification": {
-    "at_utc": "2026-09-15T00:10:00+00:00",
-    "boundary_commit": "010a621e49cdf2314838e98b02514e8155ec5781",
+    "at_utc": "2026-09-15T01:40:00+00:00",
+    "boundary_commit": "5cbb5b13453fdfa9d95c84a7f658f5e3d0129975",
     "controls": {
       "boundary_records": 3,
       "outcomes": "3/3 PASSED at the boundary (check_repository rc=0; the release-gates checker rc=0 with its own 12-of-12, 15-of-15 and 7-of-7 selftests; sync --check clean)"
     },
     "isle_grands": {
-      "android_grand": "no Android path in this round: the card is the iOS twin of T41, T41's own court is untouched, and the python readiness suite (which covereth the Android side's controls) is 313 OK",
-      "counts_source": "see completed_tasks.T42.case_results.counts_source",
-      "ios_grand": "the T42 court 16/16 and the whole GodstoneFoundation package 1073/0 at the boundary (up from 1057)",
-      "python_grand": "the structural lineage rc=0, diff hygiene clean, sync --check clean"
+      "android_grand": "the T43 court 13/13 and the whole :mesh suite 1077/0 at the boundary, genuinely EXECUTED (--no-build-cache, stale results purged)",
+      "counts_source": "see completed_tasks.T43.case_results.counts_source",
+      "ios_grand": "the T43 court 13/13 and the whole package 1086/0 at the boundary",
+      "python_grand": "the python readiness suite 313 OK, the structural lineage rc=0, diff hygiene clean, sync --check clean"
     },
     "ladder": {
       "L0": "1 PASSED (check_repository), 1 FAILED (ci/symbols.py --selftest: PRE-EXISTING)",
-      "L1": "PASSED (the python readiness suite plus the Swift package isle)",
+      "L1": "PASSED (the python readiness suite plus both mesh isles)",
       "L2_L4": "unavailable: no command manifest yet"
     },
     "narrow": {
       "errors": 0,
       "failures": 0,
-      "lane": "swift test --filter ReadinessT42Tests",
-      "tests": 16
+      "lane": "gradlew :mesh:testDebugUnitTest --tests *ReadinessT43Test* + swift test --filter ReadinessT43Tests",
+      "tests": 26
     },
     "roster": {
-      "T42_killed": 13,
+      "T43_killed": 13,
       "of": 13
     },
     "subsystem": {
       "errors": 0,
       "failures": 0,
-      "lane": "swift test --package-path ios/Packages/GodstoneFoundation",
-      "tests": 1073
+      "lane": "gradlew :mesh:testDebugUnitTest (1077) + swift test --package-path ios/Packages/GodstoneFoundation (1086)",
+      "tests": 2163
     }
   },
-  "next_task": "T43",
+  "next_task": "T44",
   "phase": "P0",
   "plan_sha256": "685456b378662b0a40a53a6abc810041e37daf97b213f3efeb6cea879363934e",
   "planning_baseline_sha": "b5c3d3d394b70cf356cdde33b47511dad7cbb95c",
@@ -12625,7 +12874,10 @@
     "T41 boundary: INV-READINESS-FALSE's MeshNode authority blob was re-pinned a SECOND time (7b50868d -> cae014b7) because the ingest seam changed again. The statement is unchanged and readiness is still false. Any task that edits MeshNode.kt or MeshNode.swift must re-pin the blob or the sealed T03 witness will fail -- that is the mechanism working, not a defect.",
     "T42 boundary: the ledger's semantic oracle cannot count a Swift run whose failure count is 1 -- EXEC_RE requireth the PLURAL 'failures' and Swift printeth 'with 1 failure'. Four T42 rods therefore record tests_run = null while the classification correctly returneth KILLED (it readeth the witness's own failure line). Verified by hand for T42-RC8. The ledger was not touched by T42; whichever task owns ci/mutations.py should widen that pattern.",
     "T42 boundary: the roster log files are TRUNCATED TAILS (the runner wrote blob[-12000:]). A rod's log may therefore omit its own verdict line even though the classification saw the full output; the manifest's failed_assertion field is the authoritative record.",
-    "T42 boundary: INV-READINESS-FALSE's iOS MeshNode authority blob was re-pinned (b3f205c3 -> 8a817168). The statement is unchanged; the re-pin is the T03 mechanism working."
+    "T42 boundary: INV-READINESS-FALSE's iOS MeshNode authority blob was re-pinned (b3f205c3 -> 8a817168). The statement is unchanged; the re-pin is the T03 mechanism working.",
+    "T43 boundary: SEVEN pre-T43 assertions across T38/T39 and the MeshNode integration tests (both isles) required the durable delivery row to reach HANDED_TO_RELAY on the Boolean send -- the exact behaviour T43's card removes. Each was corrected narrowly, in place, with its contradiction named in the comment; ReadinessT39's cancel-of-a-relayed-call witness still passes UNCHANGED because the ephemeral ledger supplies the honest answer. Future tasks must not read 'HANDED_TO_RELAY' as reachable from the send path.",
+    "T43 boundary: a rod's `witness` FIELD is part of the oracle. The second pass recorded RC2 as ESCAPED even though its mutant WAS killed (by W13) -- the field still named the DIRECT witness. When a rod's site and a witness's subject drift apart, the ledger must be repaired, not the verdict.",
+    "T43 boundary: INV-READINESS-FALSE's MeshNode authority blobs were re-pinned on BOTH isles (cae014b7 -> 83e095b7 android, 8a817168 -> 53141dea ios). Statements unchanged; readiness still false."
   ],
   "warnings_for_next_invocation": [
     "T41 IS THE NEXT TASK (deps T40, T24, T26, T37, T39, T84 all complete; no external requirement). After T41 cometh T42, T43, T44, then T54 and the platform chain.",
