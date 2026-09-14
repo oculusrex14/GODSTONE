@@ -12338,7 +12338,7 @@
       ]
     }
   },
-  "current_task": null,
+  "current_task": "T42",
   "external_blockers": [
     "A06",
     "APPROVED_CONTENT",
@@ -12347,7 +12347,16 @@
     "SIGNING"
   ],
   "failed_attempts": [],
-  "in_progress": null,
+  "in_progress": {
+    "claimed_head": "20d721666fed9d4a435972e8a48f9a735126469d",
+    "claimed_utc": "2026-09-14T17:15:46+00:00",
+    "objective": {
+      "claimed_head": "20d721666fed9d4a435972e8a48f9a735126469d",
+      "claimed_utc": "2026-09-14T17:15:46+00:00",
+      "objective": "Wire iOS durable anti-entropy and forwarding: require a real MessageStore (an absent one must refuse construction), delete the memory-only success from the production Router.accept path so a persist that did not happen is never reported accepted, implement the Android-equivalent per-TrustedPeer bounded SyncPump and the typed FrameDispatcher on an owned executor, sort by the canonical priority bits and consume durable cursors, route decrypted messages to the inbox and authenticated ACKs to the delivery authority, never route a recipient by nodeHint, and replay the same three-node/convergence traces across iOS->Android->iOS and the reverse."
+    },
+    "task": "T42"
+  },
   "last_code_head": "2682fd2d51d3c01ef5dbb5c68ae6fd119148dde3",
   "last_observed_head": "2682fd2d51d3c01ef5dbb5c68ae6fd119148dde3",
   "latest_verification": {
