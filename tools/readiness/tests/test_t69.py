@@ -46,7 +46,9 @@ installation, launch and signing are EXTERNAL and no witness claimeth them.
 """
 from __future__ import annotations
 
+import contextlib
 import hashlib
+import io
 import json
 import os
 import plistlib
@@ -387,8 +389,15 @@ class IosArtifactCourt(unittest.TestCase):
         with self.assertRaisesRegex(I.ArtifactError, "not a Mach-O"):
             I.inspect(bundle)
         device = (self.bundle("Truncated.app") / "Fixture").read_bytes()
+        # 20 bytes: the magic is intact and the header is not, so the refusal
+        # must be the header's own, named exactly (a looser regex would let a
+        # mutant that skippeth the header check escape on a later complaint)
+        (self.root / "Truncated.app" / "Fixture").write_bytes(device[:20])
+        with self.assertRaisesRegex(I.ArtifactError, "the Mach-O header is truncated"):
+            I.inspect(self.root / "Truncated.app")
+        # 40 bytes: header intact, first load command truncated, refused by its own law
         (self.root / "Truncated.app" / "Fixture").write_bytes(device[:40])
-        with self.assertRaisesRegex(I.ArtifactError, "truncated|leaveth the file"):
+        with self.assertRaisesRegex(I.ArtifactError, "leaveth the file|is truncated"):
             I.inspect(self.root / "Truncated.app")
         fat = struct.pack(">II", 0xcafebabe, 1) + struct.pack(">IIIII", 0x0100000c, 0,
                                                              1024, 4096, 0)
@@ -451,21 +460,37 @@ class IosArtifactCourt(unittest.TestCase):
         self.assertIn("UNVERIFIED", report["device"]["installed"])
         self.assertIn("UNVERIFIED", report["device"]["launched"])
         self.assertIn("external evidence", report["device"]["note"])
-        self.assertEqual(0, I.main([str(bundle)]))
+        # The door's own words are captured rather than printed: a bare
+        # "FAIL:" line on stdout is indistinguishable from a unittest verdict
+        # line, and the mutation harness readeth exactly those.
+        def door(argv):
+            captured = io.StringIO()
+            with contextlib.redirect_stdout(captured):
+                code = I.main(argv)
+            return code, captured.getvalue()
+
+        code, said = door([str(bundle)])
+        self.assertEqual(0, code)
+        self.assertIn("PASS: source-only-exclusion", said)
         (bundle / "archive_medium.db").write_bytes(b"x")
-        self.assertEqual(1, I.main([str(bundle)]))
-        self.assertEqual(0, I.main(["--selftest"]))
+        code, said = door([str(bundle)])
+        self.assertEqual(1, code)
+        self.assertIn("FAIL: refused", said)
+        self.assertIn("::error::", said)
+        code, said = door(["--selftest"])
+        self.assertEqual(0, code)
+        self.assertIn("selftest OK", said)
         out = self.root / "report"
         out.mkdir()
-        self.assertEqual(0, I.main([str(self.bundle("Reported.app")), "--out",
-                                    str(out)]))
+        code, said = door([str(self.bundle("Reported.app")), "--out", str(out)])
+        self.assertEqual(0, code)
         document = json.loads((out / "ios-artifact-report.json").read_text())
         self.assertEqual("source-only-exclusion", document["classification"])
         for key in ("hashes", "resources", "linkMap", "architectures", "entitlements",
                     "privacy", "bundleMetadata"):
             self.assertIn(key, document)
-        self.assertEqual(1, I.main([str(self.root / "absent.app")]))
-        self.assertEqual(1, I.main([str(self.asset_that_is_not_a_bundle())]))
+        self.assertEqual(1, door([str(self.root / "absent.app")])[0])
+        self.assertEqual(1, door([str(self.asset_that_is_not_a_bundle())])[0])
 
     def asset_that_is_not_a_bundle(self) -> Path:
         path = self.root / "not-a-bundle.txt"
