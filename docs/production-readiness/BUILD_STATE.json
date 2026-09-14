@@ -14258,7 +14258,7 @@
       ]
     }
   },
-  "current_task": null,
+  "current_task": "T60",
   "external_blockers": [
     "A06",
     "APPROVED_CONTENT",
@@ -14267,7 +14267,16 @@
     "SIGNING"
   ],
   "failed_attempts": [],
-  "in_progress": null,
+  "in_progress": {
+    "claimed_head": "d6d428b1cec007ff3093770788243c4e98d1610f",
+    "claimed_utc": "2026-09-14T22:20:28+00:00",
+    "objective": {
+      "claimed_head": "d6d428b1cec007ff3093770788243c4e98d1610f",
+      "claimed_utc": "2026-09-14T22:20:28+00:00",
+      "objective": "Automate the accessibility and restoration checks: a JourneyCase / AccessibilityAssertion / RestorationCheckpoint conductor with semantic UI assertions, contrast checks (WCAG AA, never colour alone), scalable layouts at the largest system font, platform touch-target minimums, screen-reader label completeness and order, switch-navigation reachability, RTL and long-content locale fixtures, and instrumented cold launch / restored query / active SOS / locked store / error retry (including an airplane-mode cold start and a process recreation) at each ACTIVE profile -- with every automated result distinguished from the human-required checks the T74 audit owneth, on all three lanes (the Android mesh court, the iOS court and the python matrix court), so that removing an essential control label or clipping a status at large text falleth the accessibility check."
+    },
+    "task": "T60"
+  },
   "last_code_head": "196f5ca609f1e66e6c034623cf0d8eeeb487d2a3",
   "last_observed_head": "196f5ca609f1e66e6c034623cf0d8eeeb487d2a3",
   "latest_verification": {
