@@ -14761,7 +14761,7 @@
       ]
     }
   },
-  "current_task": null,
+  "current_task": "T71",
   "external_blockers": [
     "A06",
     "APPROVED_CONTENT",
@@ -14770,7 +14770,16 @@
     "SIGNING"
   ],
   "failed_attempts": [],
-  "in_progress": null,
+  "in_progress": {
+    "claimed_head": "5303d96d55d2fa9a4e4aaf4f7daa139d7632c2cf",
+    "claimed_utc": "2026-09-14T23:00:26+00:00",
+    "objective": {
+      "claimed_head": "5303d96d55d2fa9a4e4aaf4f7daa139d7632c2cf",
+      "claimed_utc": "2026-09-14T23:00:26+00:00",
+      "objective": "Instrument the resource budgets WITHOUT private telemetry: an opt-in, local-only diagnostics model with BOUNDED counters over a FIXED metric vocabulary, MONOTONIC durations (never wall-clock timestamps that could correlate), EPHEMERAL per-process relation identifiers (never a node id, never persisted), a BOUNDED drop-oldest ring whose supersessions are counted, and a redaction policy that refuseth message bodies, key material, node ids, fingerprints and free text outright -- exercised under tampered data, ten-thousand-peer churn, a queue flood, a large archive and a cancelled inference, where private sentinels must never appear in the output and the ring must stay within its bound -- on all three lanes (the android mesh court, the iOS court and the python conductor), so that logging a message body or letting the diagnostic ring grow unbounded falleth the privacy/resource check."
+    },
+    "task": "T71"
+  },
   "last_code_head": "a9520f0daa474b89dac04699943cf1133ca5a44d",
   "last_observed_head": "a9520f0daa474b89dac04699943cf1133ca5a44d",
   "latest_verification": {
