@@ -67,6 +67,53 @@ public final class MeshNode {
     /// territory; the production wiring point is the lab composition root).
     internal var recipientInbox: RecipientInboxRepository?
 
+    /// T42: the per-TrustedPeer bounded sync pump and the typed dispatcher. Both
+    /// are ACTIVE by default (the default pump is built lazily from this node's
+    /// own owner, store and router); the seams exist so a court may inject its
+    /// own, exactly as the T84 dispatcher seam doth.
+    internal var syncPumpOverride: SyncPump?
+    private lazy var defaultSyncPump: SyncPump = SyncPump(
+        owner: syncControlOwner, store: store, router: router,
+        clock: { [clock = self.controlClock] in clock() })
+    internal func pumpFor() -> SyncPump { syncPumpOverride ?? defaultSyncPump }
+
+    private lazy var frameDispatcher: FrameDispatcher = FrameDispatcher(
+        owner: syncControlOwner,
+        ackAuthority: { [weak self] in self?.ackDispatcher },
+        acknowledgeHistorically: { [weak self] frame in
+            guard let self else { return .unknownMessage }
+            return self.deliveryTracker.acknowledge(frame.msgId, frame)
+        })
+
+    /// T42: the typed dispatch statute, as the courts observe it.
+    internal func dispatcherForTest() -> FrameDispatcher { frameDispatcher }
+
+    /// T42: a TRUSTED relation came up for `nodeId` (a 16-octet NODE id -- never
+    /// the transport's UUID and never the 4-byte hint). The sync pump is
+    /// scheduled here, and the DIGEST becomes due at once.
+    @discardableResult
+    internal func trustedPeerDidConnect(nodeId: Data) -> Bool {
+        pumpFor().register(nodeId)
+    }
+
+    /// T42: the trusted relation went away. The run state, the leases and the
+    /// peer's queue release; the DURABLE estate is untouched, so a reconnect
+    /// resumes.
+    @discardableResult
+    internal func trustedPeerDidDisconnect(nodeId: Data) -> Bool {
+        pumpFor().cancel(nodeId)
+    }
+
+    /// T42: one bounded sync/forward turn for `nodeId` -- the link writer's
+    /// source. The owner's control answers ride the control outbox T40 built; the
+    /// pump addeth the schedule and the epidemic forward copies. ONE call, so no
+    /// caller has to remember two sources.
+    internal func drainSyncFrames(for nodeId: Data) -> [FrameV2] {
+        var out = drainControlOutbox()
+        out.append(contentsOf: pumpFor().turn(peer: nodeId).frames)
+        return out
+    }
+
     /// T84 (section 14, the durable ACK return path): the ACK dispatcher. Bound
     /// by the composition that OWNETH the ack_frames namespace -- the same
     /// authority that binds `recipientInbox` -- and absent by default, so the
@@ -126,20 +173,15 @@ public final class MeshNode {
     }
 
     /// One ingress control frame: the owner decides; any answer rides back out.
+    /// T42: the decision cometh back through the typed dispatch statute, so the
+    /// order is the same one `ingestInbound` walketh.
     internal func handleControlFrame(_ frame: FrameV2, fromPeer: Data) -> Bool {
-        let decision = syncControlOwner.handleControlFrame(frame, from: fromPeer)
+        let verdict = frameDispatcher.dispatch(frame, from: fromPeer)
+        guard case .control(let decision, let accepted) = verdict else { return false }
         lastControlDecision = decision
-        let replies: [FrameV2]
-        switch decision {
-        case .answered(let f): replies = [f]
-        case .delivered(let fs): replies = fs
-        default: replies = []
-        }
+        let replies = frameDispatcher.replies(decision)
         if !replies.isEmpty { offerControlFrames(replies) }
-        switch decision {
-        case .accepted, .answered, .delivered: return true
-        default: return false
-        }
+        return accepted
     }
 
     /// T39: the remembered Active-SOS projection of the one durable authority
@@ -202,9 +244,9 @@ public final class MeshNode {
         self.store = store
         self.deliveryTracker = deliveryTracker
         self.sessions = sessions
-        self.router = Router(selfNodeId: identity.nodeId)
-        // Inject the durable store into the router before start (Stage 4B).
-        self.router.store = store
+        // T42: the store is REQUIRED at construction -- a router without one
+        // could report a frame accepted on memory alone.
+        self.router = Router(selfNodeId: identity.nodeId, store: store)
         self.ble.store = store
         self.ble.identity = identity
         // T40: the control plane rides the same durable store and clock.
@@ -660,31 +702,21 @@ public final class MeshNode {
     /// host-only evidence). Every other `AckResult` is a rejection -> false.
     @discardableResult
     internal func ingestInbound(_ frame: FrameV2, receivedFrom: Data) -> Bool {
-        if frame.type == .ping || frame.type == .hello || frame.type == .digest || frame.type == .want {
-            // T40 (ADR-009 section 5): link controls are demultiplexed to the
-            // per-relation owner BEFORE the generic Router -- policy, the seen
-            // window, the TTL gate and persistence never see a control frame.
-            return handleControlFrame(frame, fromPeer: receivedFrom)
-        }
-        if frame.type != .ack && frame.type != .message && frame.type != .sos {
-            // the bulk pair, GOODBYE and anything unknown: refused in this
-            // profile (section 14 dispatch statute); nothing is stored,
-            // nothing is relayed, no trust is moved
+        // T42: the dispatch statute is a TYPE, in one place and in one order:
+        // control -> ACK -> the generic durable road, and a refusal BY NAME for
+        // anything this profile carries not.
+        switch frameDispatcher.dispatch(frame, from: receivedFrom) {
+        case .control(let decision, let accepted):
+            lastControlDecision = decision
+            let replies = frameDispatcher.replies(decision)
+            if !replies.isEmpty { offerControlFrames(replies) }
+            return accepted
+        case .ack(let dispatch):
+            return dispatch.accepted
+        case .refused:
             return false
-        }
-        if frame.type == .ack {
-            guard let dispatcher = ackDispatcher else {
-                // the historical point-to-point face: no ack_frames namespace is
-                // bound, so there is nowhere to carry relay custody. A receipt is
-                // never claimed on it.
-                switch deliveryTracker.acknowledge(frame.msgId, frame) {
-                case .applied, .alreadyAcknowledged, .duplicateAuthenticatedAck:
-                    return true
-                default:
-                    return false
-                }
-            }
-            return dispatcher.dispatch(frame, receivedFrom: receivedFrom).accepted
+        case .message, .sos:
+            break   // the generic durable road below
         }
         let relay = router.ingest(frame, isAddressedToMe: frame.routingTag == identity.nodeHint,
                                   receivedFrom: receivedFrom)
@@ -711,6 +743,11 @@ public final class MeshNode {
                 // the durable authorities stand; the outbox stays as it is
             }
         }
+        // T42: FORWARD ONLY AFTER DURABLE ACCEPTANCE. `relay` is true exactly when
+        // the router accepted the frame for persist+relay, i.e. the store
+        // committed it; the copy is prepared once (TTL-1 / hop+1) and queued for
+        // every registered TrustedPeer except the one it arrived from.
+        if relay { _ = pumpFor().enqueueForward(frame, fromPeer: receivedFrom) }
         if frame.type == .sos, let observer = sosObserver {
             // T38: the distress indication is announced only to consumers of an
             // authenticated key binding. The relay decision above was computed

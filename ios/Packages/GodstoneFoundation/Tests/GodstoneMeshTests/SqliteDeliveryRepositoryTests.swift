@@ -2298,8 +2298,7 @@ final class SqliteDeliveryRepositoryTests: XCTestCase {
         let repo = SqliteDeliveryRepository(store)
         let (pubA, _) = realKeypair()
         let tracker = DeliveryTracker(repo: repo, authenticator: Ed25519AckAuthenticator(resolver: SingleRecipientResolver(nodeA(), pubA)))
-        let router = Router(selfNodeId: localNode(1))
-        router.store = store
+        let router = Router(selfNodeId: localNode(1), store: store)
 
         let midExpire = msgId(191)
         let frameExpire = directFrame(13, payloadSize: 64, msgIdOverride: midExpire)

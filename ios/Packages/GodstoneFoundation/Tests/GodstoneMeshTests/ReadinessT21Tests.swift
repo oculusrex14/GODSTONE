@@ -933,8 +933,7 @@ final class ReadinessT21Tests: XCTestCase {
         // taken at its first true admission when the store is whole, and
         // only then doth the ledger refuse it, twice told
         let store = T21MessageStore()
-        let router = Router(selfNodeId: Data(repeating: 0x0A, count: 16))
-        router.store = store
+        let router = Router(selfNodeId: Data(repeating: 0x0A, count: 16), store: store)
         let f1 = frameWithByte(0x7E)
         let f2 = frameWithByte(0x7F)
         store.failNextPersist = true

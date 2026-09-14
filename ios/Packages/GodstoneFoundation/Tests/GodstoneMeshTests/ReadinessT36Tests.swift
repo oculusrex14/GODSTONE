@@ -198,8 +198,7 @@ final class ReadinessT36Tests: XCTestCase {
         let (snd, seed, xPriv) = try identityWithMaterial(seedByte, xByte)
         let base = InMemoryMessageStore()
         let store = FaultStore(base: base)
-        let router = Router(selfNodeId: snd.nodeId)
-        router.store = store
+        let router = Router(selfNodeId: snd.nodeId, store: store)
         let journal = InMemoryOutboundIntentJournal()
         let trust = TrustSource()
         let factory = RecordingIdentityFactory()
@@ -601,8 +600,7 @@ final class ReadinessT36Tests: XCTestCase {
         let frame = f.store.allHeldOrderedByPriority()[0]
         XCTAssertEqual(frame.msgId, enqId, "the offered frame is the handed logical send")
         let bobBase = InMemoryMessageStore()
-        let bobRouter = Router(selfNodeId: bob.nodeId)
-        bobRouter.store = bobBase
+        let bobRouter = Router(selfNodeId: bob.nodeId, store: bobBase)
         XCTAssertTrue(bobRouter.ingest(frame, isAddressedToMe: true, receivedFrom: f.id.nodeId),
                       "the inbox admitted the frame")
         XCTAssertEqual(bobBase.allHeldMsgIds().count, 1, "the inbox holds exactly the one frame")

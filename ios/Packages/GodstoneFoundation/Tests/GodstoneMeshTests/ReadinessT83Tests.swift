@@ -75,7 +75,7 @@ final class ReadinessT83Tests: XCTestCase {
         let me = try newLocal(UInt8((tag & 0x7F) + 1), 0x22)
         let origin = nodeOf(tag, 0x11)
         let base = InMemoryMessageStore()
-        let router = Router(selfNodeId: origin)
+        let router = Router(selfNodeId: origin, store: InMemoryMessageStore())
         let keys = KeyTable()
         return Rig(me: me, originId: origin, store: base, router: router,
                    keys: keys, authenticator: Ed25519AckAuthenticator(resolver: keys))
@@ -516,8 +516,7 @@ final class ReadinessT83Tests: XCTestCase {
             .appendingPathComponent("godstone-t83-\(UUID().uuidString).db")
         defer { try? FileManager.default.removeItem(at: url) }
         let db = SqliteMessageStore(url: url, maxBytes: .max, fileProtection: .complete)
-        let originRouter = Router(selfNodeId: r.originId)
-        originRouter.store = db
+        let originRouter = Router(selfNodeId: r.originId, store: db)
         let sqlIdentity = LogicalMessageIdentity.of(createdAtEpochSeconds: 1700000205, messageNonce: Data(nonceOf(93)))
         let sqlFrame = try await originRouter.buildSealedMessage(
             plaintext: Data("t83-sql-93".utf8), recipientNodeId: r.me.id.nodeId,

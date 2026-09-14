@@ -111,7 +111,7 @@ final class ReadinessT37Tests: XCTestCase {
         keys.put(me.id.nodeId, me.id.signingPublicKey) // own key resolvable: the self-check walks this pin
         let signer = TestSigner(me)
         let repo = RecipientInboxRepository(
-            router: Router(selfNodeId: me.id.nodeId),
+            router: Router(selfNodeId: me.id.nodeId, store: base),
             ourNodeId: me.id.nodeId,
             localDhPrivate: { Data(me.xPriv) },
             signer: signer,
@@ -181,7 +181,7 @@ final class ReadinessT37Tests: XCTestCase {
     private func inboundFrame(_ r: Rig37, _ sender: Local, _ nonceSeed: Int) async throws -> FrameV2 {
         let container = try signedContainer(sender, r.me.id.nodeId, nonceSeed, t37Created,
                                             "t37-body-\(nonceSeed)")
-        let authoring = Router(selfNodeId: sender.id.nodeId)
+        let authoring = Router(selfNodeId: sender.id.nodeId, store: InMemoryMessageStore())
         let identity = LogicalMessageIdentity.of(createdAtEpochSeconds: t37Created,
                                                  messageNonce: nonceOf(nonceSeed))
         let built = try await authoring.buildSealedMessage(
@@ -300,7 +300,7 @@ final class ReadinessT37Tests: XCTestCase {
         r.keys.put(sender.id.nodeId, sender.id.signingPublicKey)
         var container = [UInt8](try signedContainer(sender, r.me.id.nodeId, 23, t37Created, "t37-tampered"))
         container[container.count - 1] = container[container.count - 1] ^ 0x01
-        let authoring = Router(selfNodeId: sender.id.nodeId)
+        let authoring = Router(selfNodeId: sender.id.nodeId, store: InMemoryMessageStore())
         let identity = LogicalMessageIdentity.of(createdAtEpochSeconds: t37Created, messageNonce: nonceOf(23))
         let built = try await authoring.buildSealedMessage(
             plaintext: Data(container),
@@ -354,7 +354,7 @@ final class ReadinessT37Tests: XCTestCase {
         r.keys.put(sender.id.nodeId, sender.id.signingPublicKey)
         let other = try newLocal(0x71, 0x72) // the container names this other node instead
         let container = try signedContainer(sender, other.id.nodeId, 25, t37Created, "t37-other")
-        let authoring = Router(selfNodeId: sender.id.nodeId)
+        let authoring = Router(selfNodeId: sender.id.nodeId, store: InMemoryMessageStore())
         let identity = LogicalMessageIdentity.of(createdAtEpochSeconds: t37Created, messageNonce: nonceOf(25))
         let built = try await authoring.buildSealedMessage(
             plaintext: container,
@@ -499,7 +499,7 @@ final class ReadinessT37Tests: XCTestCase {
         var forgedBytes = [UInt8](try signedContainer(s2, r2.me.id.nodeId, 129, t37Created,
                                                      "t37-forged-under-honest-tag"))
         forgedBytes[forgedBytes.count - 10] = forgedBytes[forgedBytes.count - 10] ^ 0x40
-        let authoring = Router(selfNodeId: s2.id.nodeId)
+        let authoring = Router(selfNodeId: s2.id.nodeId, store: InMemoryMessageStore())
         let identity = LogicalMessageIdentity.of(createdAtEpochSeconds: t37Created, messageNonce: nonceOf(129))
         let built = try await authoring.buildSealedMessage(
             plaintext: Data(forgedBytes),

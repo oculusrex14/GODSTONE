@@ -27,14 +27,14 @@ final class RouterTests: XCTestCase {
     }
 
     func testDuplicateIsSuppressed() {
-        let router = Router(selfNodeId: Self.testSelfNodeId)
+        let router = Router(selfNodeId: Self.testSelfNodeId, store: InMemoryMessageStore())
         let f = frame("msg-1")
         XCTAssertTrue(router.ingest(f, isAddressedToMe: false, receivedFrom: Data()))
         XCTAssertFalse(router.ingest(f, isAddressedToMe: false, receivedFrom: Data()))
     }
 
     func testTtlAndHopCountChangeOnRelay() throws {
-        let router = Router(selfNodeId: Self.testSelfNodeId)
+        let router = Router(selfNodeId: Self.testSelfNodeId, store: InMemoryMessageStore())
         XCTAssertTrue(router.ingest(frame("msg-2", ttl: 5), isAddressedToMe: false, receivedFrom: Data()))
         let relayed = try XCTUnwrap(router.drain(limit: 1).first)
         XCTAssertEqual(relayed.ttl, 4)
@@ -42,7 +42,7 @@ final class RouterTests: XCTestCase {
     }
 
     func testSosIsDeliveredLocallyAndStillRelayed() {
-        let router = Router(selfNodeId: Self.testSelfNodeId)
+        let router = Router(selfNodeId: Self.testSelfNodeId, store: InMemoryMessageStore())
         var delivered: FrameV2?
         router.onDeliverLocally = { delivered = $0 }
 
@@ -54,7 +54,7 @@ final class RouterTests: XCTestCase {
     }
 
     func testNonSosLocalDeliveryDoesNotRelay() {
-        let router = Router(selfNodeId: Self.testSelfNodeId)
+        let router = Router(selfNodeId: Self.testSelfNodeId, store: InMemoryMessageStore())
         XCTAssertTrue(router.ingest(frame("local"), isAddressedToMe: true, receivedFrom: Data()))
         XCTAssertTrue(router.drain(limit: 8).isEmpty)
     }
@@ -64,9 +64,8 @@ final class RouterTests: XCTestCase {
     /// duplicate ingest does not change the held set, so the digest is stable,
     /// and the held msg_id is present in the 512-byte filter.
     func testBloomDigestIsStableAcrossDuplicate() {
-        let router = Router(selfNodeId: Self.testSelfNodeId)
         let store = InMemoryMessageStore()
-        router.store = store
+        let router = Router(selfNodeId: Self.testSelfNodeId, store: store)
         let f = frame("msg-bloom")
         XCTAssertTrue(router.ingest(f, isAddressedToMe: false, receivedFrom: Data()))
         let first = router.bloomDigest()
@@ -76,21 +75,24 @@ final class RouterTests: XCTestCase {
         XCTAssertEqual(first, router.bloomDigest())
     }
 
-    /// Stage 4B: a storeless router returns an empty digest (the previous
-    /// `seen.elements` fallback is removed -- it described a different set).
-    func testStorelessBloomDigestIsEmpty() {
-        let router = Router(selfNodeId: Self.testSelfNodeId)
+    /// Stage 4B + T42: an EMPTY store yields an empty digest (the previous
+    /// `seen.elements` fallback is removed -- it described a different set), and
+    /// a STORELESS router is no longer constructible at all: the fail-closed
+    /// door refuseth it, so the memory-only digest can never be produced.
+    func testEmptyStoreYieldsAnEmptyDigestAndAStorelessRouterIsRefused() {
+        let router = Router(selfNodeId: Self.testSelfNodeId, store: InMemoryMessageStore())
         let digest = router.bloomDigest()
         XCTAssertEqual(digest.count, 512)
         XCTAssertEqual(digest, Data(repeating: 0, count: 512))
+        XCTAssertNil(Router.make(selfNodeId: Self.testSelfNodeId, store: nil),
+                     "an absent store must refuse construction")
     }
 
     /// Stage 4B: persist before forward (ADR-004). A novel accepted frame is
     /// durably held AND forwarded to the relay queue.
     func testIngestPersistsBeforeForwardWhenStoreAttached() {
-        let router = Router(selfNodeId: Self.testSelfNodeId)
         let store = InMemoryMessageStore()
-        router.store = store
+        let router = Router(selfNodeId: Self.testSelfNodeId, store: store)
         var delivered = 0
         router.onDeliverLocally = { _ in delivered += 1 }
         let fromPeer = Data(repeating: 0xAB, count: 16)
@@ -106,8 +108,7 @@ final class RouterTests: XCTestCase {
     /// frame, the router does NOT forward or deliver it -- relaying what this
     /// node cannot itself carry would let the only copy be dropped.
     func testIngestDoesNotForwardWhenPersistFails() {
-        let router = Router(selfNodeId: Self.testSelfNodeId)
-        router.store = FailingStore()
+        let router = Router(selfNodeId: Self.testSelfNodeId, store: FailingStore())
         var delivered = 0
         router.onDeliverLocally = { _ in delivered += 1 }
         let f = frame("msg-fail")
@@ -115,15 +116,14 @@ final class RouterTests: XCTestCase {
         XCTAssertFalse(router.ingest(f, isAddressedToMe: false, receivedFrom: Data()))
         XCTAssertTrue(router.drain(limit: 8).isEmpty)             // not forwarded
         XCTAssertEqual(delivered, 0)                              // not delivered
-        XCTAssertEqual(router.store!.allHeldMsgIds(), [])         // not held
+        XCTAssertEqual(router.store.allHeldMsgIds(), [])         // not held
     }
 
     /// Stage 4B: an addressed non-SOS frame is delivered locally and is NOT
     /// relayed, but it IS durably held (persist before forward/delivery).
     func testAddressedNonSosIsPersistedAndDeliveredButNotRelayed() {
-        let router = Router(selfNodeId: Self.testSelfNodeId)
         let store = InMemoryMessageStore()
-        router.store = store
+        let router = Router(selfNodeId: Self.testSelfNodeId, store: store)
         var delivered: FrameV2?
         router.onDeliverLocally = { delivered = $0 }
         let f = frame("local-2")
@@ -143,8 +143,7 @@ final class RouterTests: XCTestCase {
     /// once, and a third (now-duplicate) arrival must be suppressed.
     func testPersistFailureDoesNotPoisonRetry() {
         let store = FailThenSucceedStore()
-        let router = Router(selfNodeId: Self.testSelfNodeId)
-        router.store = store
+        let router = Router(selfNodeId: Self.testSelfNodeId, store: store)
         var delivered = 0
         router.onDeliverLocally = { _ in delivered += 1 }
         let f = frame("msg-retry", ttl: 5)
@@ -174,8 +173,7 @@ final class RouterTests: XCTestCase {
     /// durable UNIQUE(msg_id) and reported `.heldDuplicate` -- not re-forwarded.
     func testDurableUniqueCatchesDuplicateAgedOutOfLru() {
         let store = InMemoryMessageStore()
-        let router = Router(selfNodeId: Self.testSelfNodeId, seenCacheCapacity: 2)
-        router.store = store
+        let router = Router(selfNodeId: Self.testSelfNodeId, store: store, seenCacheCapacity: 2)
         let f = frame("msg-aged", ttl: 5)
 
         // Persist f -> .heldNew, seen=[f], forwarded.
@@ -194,7 +192,7 @@ final class RouterTests: XCTestCase {
     }
 
     func testIngestForwardCopyPreservesCanonicalFields() throws {
-        let router = Router(selfNodeId: Self.testSelfNodeId)
+        let router = Router(selfNodeId: Self.testSelfNodeId, store: InMemoryMessageStore())
         let original = frame("msg-fwd-fields", ttl: 7, flags: UInt16(FrameV2.Flags.relay_ok))
         XCTAssertTrue(router.ingest(original, isAddressedToMe: false, receivedFrom: Data()))
         let forwarded = try XCTUnwrap(router.drain(limit: 1).first)
@@ -207,8 +205,17 @@ final class RouterTests: XCTestCase {
         XCTAssertEqual(forwarded.hopCount, 1)
     }
 
-    func testDedupLRUEvictionUnderCapacity() {
-        let router = Router(selfNodeId: Self.testSelfNodeId, seenCacheCapacity: 2)
+    /// T42 CORRECTION of a pre-T42 assertion, with the contradiction named: the
+    /// fourth arrival of `f1` used to be asserted ACCEPTED, because the router
+    /// carried no store and the seen window's LRU eviction made it look novel
+    /// again -- a MEMORY-ONLY success. The card "Require a real MessageStore ...
+    /// Remove memory-only success from production Router.accept" makes that
+    /// behaviour the defect, and the durable store now decides: `f1` is still
+    /// HELD, so the fourth arrival is a duplicate and is REFUSED. The window's
+    /// capacity stays a hint; it can no longer resurrect a held frame.
+    func testDedupUnderCapacityNeverResurrectsAHeldFrame() {
+        let store = InMemoryMessageStore()
+        let router = Router(selfNodeId: Self.testSelfNodeId, store: store, seenCacheCapacity: 2)
         let f1 = frame("msg-1")
         let f2 = frame("msg-2")
         let f3 = frame("msg-3")
@@ -216,13 +223,16 @@ final class RouterTests: XCTestCase {
         XCTAssertTrue(router.ingest(f1, isAddressedToMe: false, receivedFrom: Data()))
         XCTAssertTrue(router.ingest(f2, isAddressedToMe: false, receivedFrom: Data()))
         XCTAssertTrue(router.ingest(f3, isAddressedToMe: false, receivedFrom: Data()))
-        XCTAssertTrue(router.ingest(f1, isAddressedToMe: false, receivedFrom: Data()))
+        XCTAssertFalse(router.ingest(f1, isAddressedToMe: false, receivedFrom: Data()),
+                       "the durable store refuseth the duplicate: no memory-only acceptance")
+        XCTAssertEqual(Set(store.allHeldMsgIds()), Set([f1.msgId, f2.msgId, f3.msgId]),
+                       "and the held set is unchanged")
+        XCTAssertEqual(router.drain(limit: 16).count, 3, "each frame was forwarded exactly once")
     }
 
     func testConcurrentIngestOfSameMsgIdForwardsAtMostOnce() {
         let store = InMemoryMessageStore()
-        let router = Router(selfNodeId: Self.testSelfNodeId)
-        router.store = store
+        let router = Router(selfNodeId: Self.testSelfNodeId, store: store)
         let f = frame("msg-concurrent", ttl: 5)
         let n = 8
         let group = DispatchGroup()
@@ -247,7 +257,7 @@ final class RouterTests: XCTestCase {
 
     func testBuildSealedMessageAndOpenSealedMessageAccepted() async throws {
         let senderNodeId = Data((0..<16).map { UInt8($0) })
-        let router = Router(selfNodeId: senderNodeId)
+        let router = Router(selfNodeId: senderNodeId, store: InMemoryMessageStore())
 
         let recipientPrivKey = Curve25519.KeyAgreement.PrivateKey()
         let recipientPriv = recipientPrivKey.rawRepresentation
@@ -303,7 +313,7 @@ final class RouterTests: XCTestCase {
 
     func testGroupMessageWithLockedPowKatVerifiesOnOpen() async throws {
         let senderNodeId = Data((0..<16).map { UInt8($0) })
-        let router = Router(selfNodeId: senderNodeId)
+        let router = Router(selfNodeId: senderNodeId, store: InMemoryMessageStore())
 
         let recipientPrivKey = Curve25519.KeyAgreement.PrivateKey()
         let recipientPriv = recipientPrivKey.rawRepresentation
@@ -365,7 +375,7 @@ final class RouterTests: XCTestCase {
     /// and proves recipient rejects with .policyMismatch.
     func testDowngradeAttackOnGroupMessageToDirectHeaderIsRejectedWithPolicyMismatch() async throws {
         let senderNodeId = Data((0..<16).map { UInt8($0) })
-        let router = Router(selfNodeId: senderNodeId)
+        let router = Router(selfNodeId: senderNodeId, store: InMemoryMessageStore())
 
         let recipientPrivKey = Curve25519.KeyAgreement.PrivateKey()
         let recipientPriv = recipientPrivKey.rawRepresentation
@@ -415,7 +425,7 @@ final class RouterTests: XCTestCase {
 
     func testGroupToDirectHeaderDowngradeRetainingHasPowIsRejectedWithPolicyMismatch() async throws {
         let senderNodeId = Data((0..<16).map { UInt8($0) })
-        let router = Router(selfNodeId: senderNodeId)
+        let router = Router(selfNodeId: senderNodeId, store: InMemoryMessageStore())
         let recipientPrivKey = Curve25519.KeyAgreement.PrivateKey()
         let recipientPriv = recipientPrivKey.rawRepresentation
         let recipientPub = recipientPrivKey.publicKey.rawRepresentation
@@ -438,7 +448,7 @@ final class RouterTests: XCTestCase {
 
     func testGroupMessageWithStrippedHasPowFlagIsRejectedWithPolicyMismatch() async throws {
         let senderNodeId = Data((0..<16).map { UInt8($0) })
-        let router = Router(selfNodeId: senderNodeId)
+        let router = Router(selfNodeId: senderNodeId, store: InMemoryMessageStore())
         let recipientPrivKey = Curve25519.KeyAgreement.PrivateKey()
         let recipientPriv = recipientPrivKey.rawRepresentation
         let recipientPub = recipientPrivKey.publicKey.rawRepresentation
@@ -461,7 +471,7 @@ final class RouterTests: XCTestCase {
 
     func testDirectMessageWithHasPowFlagInjectedIsRejectedWithPolicyMismatch() async throws {
         let senderNodeId = Data((0..<16).map { UInt8($0) })
-        let router = Router(selfNodeId: senderNodeId)
+        let router = Router(selfNodeId: senderNodeId, store: InMemoryMessageStore())
         let recipientPrivKey = Curve25519.KeyAgreement.PrivateKey()
         let recipientPriv = recipientPrivKey.rawRepresentation
         let recipientPub = recipientPrivKey.publicKey.rawRepresentation
@@ -484,7 +494,7 @@ final class RouterTests: XCTestCase {
 
     func testGroupHeaderChangedToBroadcastWhileSealedPriorityIsGroupIsRejectedWithPolicyMismatch() async throws {
         let senderNodeId = Data((0..<16).map { UInt8($0) })
-        let router = Router(selfNodeId: senderNodeId)
+        let router = Router(selfNodeId: senderNodeId, store: InMemoryMessageStore())
         let recipientPrivKey = Curve25519.KeyAgreement.PrivateKey()
         let recipientPriv = recipientPrivKey.rawRepresentation
         let recipientPub = recipientPrivKey.publicKey.rawRepresentation
@@ -507,7 +517,7 @@ final class RouterTests: XCTestCase {
 
     func testMissingSealedFlagIsRejectedWithMissingSealedFlag() async throws {
         let senderNodeId = Data((0..<16).map { UInt8($0) })
-        let router = Router(selfNodeId: senderNodeId)
+        let router = Router(selfNodeId: senderNodeId, store: InMemoryMessageStore())
 
         let recipientPrivKey = Curve25519.KeyAgreement.PrivateKey()
         let recipientPriv = recipientPrivKey.rawRepresentation
@@ -535,7 +545,7 @@ final class RouterTests: XCTestCase {
 
     func testWrongFrameTypeIsRejectedWithWrongFrameType() async throws {
         let senderNodeId = Data((0..<16).map { UInt8($0) })
-        let router = Router(selfNodeId: senderNodeId)
+        let router = Router(selfNodeId: senderNodeId, store: InMemoryMessageStore())
 
         let recipientPrivKey = Curve25519.KeyAgreement.PrivateKey()
         let recipientPriv = recipientPrivKey.rawRepresentation
@@ -563,7 +573,7 @@ final class RouterTests: XCTestCase {
 
     func testDirectMessageWithNonZeroPowNonceIsRejectedWithPolicyMismatch() async throws {
         let senderNodeId = Data((0..<16).map { UInt8($0) })
-        let router = Router(selfNodeId: senderNodeId)
+        let router = Router(selfNodeId: senderNodeId, store: InMemoryMessageStore())
 
         let recipientPrivKey = Curve25519.KeyAgreement.PrivateKey()
         let recipientPriv = recipientPrivKey.rawRepresentation
@@ -602,7 +612,7 @@ final class RouterTests: XCTestCase {
     func testUnknownHeaderPriorityCodesAreRejectedWithPolicyMismatch() async throws {
         for code in [UInt16(5), UInt16(6), UInt16(7)] {
             let senderNodeId = Data((0..<16).map { UInt8($0) })
-            let router = Router(selfNodeId: senderNodeId)
+            let router = Router(selfNodeId: senderNodeId, store: InMemoryMessageStore())
             let recipientPrivKey = Curve25519.KeyAgreement.PrivateKey()
             let recipientPriv = recipientPrivKey.rawRepresentation
             let recipientPub = recipientPrivKey.publicKey.rawRepresentation
@@ -636,7 +646,7 @@ final class RouterTests: XCTestCase {
     func testInvalidSealedPriorityCodesAreRejectedWithPolicyMismatch() async throws {
         for code in [UInt8(0), UInt8(4), UInt8(5), UInt8(6), UInt8(7)] {
             let senderNodeId = Data((0..<16).map { UInt8($0) })
-            let router = Router(selfNodeId: senderNodeId)
+            let router = Router(selfNodeId: senderNodeId, store: InMemoryMessageStore())
             let recipientPrivKey = Curve25519.KeyAgreement.PrivateKey()
             let recipientPriv = recipientPrivKey.rawRepresentation
             let recipientPub = recipientPrivKey.publicKey.rawRepresentation
@@ -674,7 +684,7 @@ final class RouterTests: XCTestCase {
 
     func testExactOld28ByteSealedInnerPrefixWithoutPriorityByteIsRejectedWithMalformed() async throws {
         let senderNodeId = Data((0..<16).map { UInt8($0) })
-        let router = Router(selfNodeId: senderNodeId)
+        let router = Router(selfNodeId: senderNodeId, store: InMemoryMessageStore())
         let recipientPrivKey = Curve25519.KeyAgreement.PrivateKey()
         let recipientPriv = recipientPrivKey.rawRepresentation
         let recipientPub = recipientPrivKey.publicKey.rawRepresentation
@@ -710,7 +720,7 @@ final class RouterTests: XCTestCase {
 
     func testTruncatedSealedInnerPayloadIsRejectedWithMalformed() async throws {
         let senderNodeId = Data((0..<16).map { UInt8($0) })
-        let router = Router(selfNodeId: senderNodeId)
+        let router = Router(selfNodeId: senderNodeId, store: InMemoryMessageStore())
 
         let recipientPrivKey = Curve25519.KeyAgreement.PrivateKey()
         let recipientPriv = recipientPrivKey.rawRepresentation
@@ -775,7 +785,7 @@ final class RouterTests: XCTestCase {
 
     func testAuthorSealedMessageConcurrentSendsToAliceAndBob() async throws {
         let senderNodeId = Data((0..<16).map { UInt8($0) })
-        let router = Router(selfNodeId: senderNodeId)
+        let router = Router(selfNodeId: senderNodeId, store: InMemoryMessageStore())
 
         let alicePrivKey = Curve25519.KeyAgreement.PrivateKey()
         let alicePriv = alicePrivKey.rawRepresentation

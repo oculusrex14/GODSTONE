@@ -18,14 +18,27 @@ public final class Router {
     public var onDeliverLocally: ((FrameV2) -> Void)?
     public var onForward: ((FrameV2) -> Void)?
 
-    /// Optional durable hold. When attached, the anti-entropy digest is built
-    /// from the store's held msg_ids (the set of frames this node CARRIES),
-    /// matching Android.
-    public var store: MessageStore?
+    /// THE durable hold, REQUIRED (T42). It was optional, and an absent store
+    /// made `accept` report a frame accepted on MEMORY ALONE -- a success the
+    /// node could not honour after a restart, and a relay it never held. A
+    /// router is now constructed WITH its store or not at all; the anti-entropy
+    /// digest is built from the store's held msg_ids (the set of frames this node
+    /// CARRIES), matching Android.
+    public let store: MessageStore
 
-    public init(selfNodeId: Data, seenCacheCapacity: Int = Router.seenCacheCapacity) {
+    /// The fail-closed door: a nil store REFUSES construction, so the
+    /// memory-only face is not merely discouraged but unreachable.
+    public static func make(selfNodeId: Data, store: MessageStore?,
+                            seenCacheCapacity: Int = Router.seenCacheCapacity) -> Router? {
+        guard let store else { return nil }
+        return Router(selfNodeId: selfNodeId, store: store, seenCacheCapacity: seenCacheCapacity)
+    }
+
+    public init(selfNodeId: Data, store: MessageStore,
+                seenCacheCapacity: Int = Router.seenCacheCapacity) {
         precondition(selfNodeId.count == MessageId.nodeIdBytes, "selfNodeId must be \(MessageId.nodeIdBytes) bytes")
         self.selfNodeId = selfNodeId
+        self.store = store
         self.seen = LruSet<Data>(capacity: seenCacheCapacity)
     }
 
@@ -61,33 +74,44 @@ public final class Router {
 
         if seen.contains(frame.msgId) { return none }
 
-        if let store {
-            switch store.persist(frame, receivedFrom: receivedFrom) {
-            case .heldNew:
-                seen.insert(frame.msgId)
-            case .heldDuplicate:
-                seen.insert(frame.msgId)
-                return none
-            case .rejectedCapacity, .failedStorage:
-                return none
-            }
-        } else {
+        // T42: the durable acceptance is the ONLY acceptance. A persist that did
+        // not happen is a refusal -- never a memory-only success.
+        switch store.persist(frame, receivedFrom: receivedFrom) {
+        case .heldNew:
             seen.insert(frame.msgId)
+        case .heldDuplicate:
+            seen.insert(frame.msgId)
+            return none
+        case .rejectedCapacity, .failedStorage:
+            return none
         }
 
+        // The hint's ONLY power is to suppress a needless relay (section 14:
+        // "public rotating routing tags are optimization hints"). It never
+        // decideth a RECIPIENT: the recipient decision is the verified sealed
+        // inner policy, taken at the inbox (T37) -- and a directed message whose
+        // tag does not match is still attempted there, bounded.
         let deliver = isAddressedToMe
         let shouldRelay = !(isAddressedToMe && frame.type != .sos)
-        var forwardCopy: FrameV2? = nil
-        if shouldRelay && frame.ttl > 1 && frame.hopCount < Router.maxTtl {
-            forwardCopy = FrameV2(type: frame.type,
-                                  msgId: frame.msgId,
-                                  routingTag: frame.routingTag,
-                                  ttl: frame.ttl - 1,
-                                  hopCount: frame.hopCount + 1,
-                                  flags: frame.flags,
-                                  payload: frame.payload)
-        }
+        let forwardCopy = shouldRelay ? Router.forwardCopyOf(frame) : nil
         return IngestDecision(accepted: true, deliver: deliver, forwardCopy: forwardCopy)
+    }
+
+    /// Returns the copy of `frame` ready to be relayed: TTL decremented and hop
+    /// count incremented EXACTLY ONCE. The one owner of that arithmetic -- the
+    /// accept path and the T42 pump both call it, and neither rewrites TTL again.
+    public func forwardCopy(_ frame: FrameV2) -> FrameV2? { Router.forwardCopyOf(frame) }
+
+    /// The pure form, usable without an instance (the pump holdeth one too).
+    public static func forwardCopyOf(_ frame: FrameV2) -> FrameV2? {
+        guard frame.ttl > 1, Int(frame.hopCount) + 1 <= FrameV2.maxTtl else { return nil }
+        return FrameV2(type: frame.type,
+                       msgId: frame.msgId,
+                       routingTag: frame.routingTag,
+                       ttl: frame.ttl - 1,
+                       hopCount: frame.hopCount + 1,
+                       flags: frame.flags,
+                       payload: frame.payload)
     }
 
     private func enqueue(_ frame: FrameV2) {
@@ -99,16 +123,12 @@ public final class Router {
         }
     }
 
+    /// T42: the order is the CANONICAL priority bits (3-bit priority_mask:
+    /// SOS 0 / DIRECT 1 / GROUP 2 / BROADCAST 3 / BULK 4), not a table over the
+    /// frame TYPE. A DIRECT message and a GROUP message are both `.message`, and
+    /// the old table sorted them alike; the wire carrieth the truth.
     private func priority(_ f: FrameV2) -> Int {
-        switch f.type {
-        case .sos:        return 0
-        case .ack:        return 1
-        case .hello:      return 2
-        case .message:    return 3
-        case .digest, .want: return 4
-        case .ping, .goodbye: return 5
-        case .bulk_offer, .bulk_chunk: return 6
-        }
+        Priority.fromFlags(f.flags).rawValue
     }
 
     public func drain(limit: Int) -> [FrameV2] {
@@ -118,9 +138,25 @@ public final class Router {
         return out
     }
 
+    /// Compute what a peer appears to lack, in strict canonical priority order.
+    /// The Swift twin of Android `Router.framesPeerLacks`: the bloom is a HINT,
+    /// so a saturated one suppresses an offer here -- which is exactly why the
+    /// EXACT inventory/WANT road must exist beside it (T42's W07 witness).
+    public func framesPeerLacks(_ peerDigest: BloomDigest, limit: Int = 32) -> [FrameV2] {
+        if limit <= 0 { return [] }
+        var out: [FrameV2] = []
+        store.forEachHeldOrderedByPriority { frame in
+            if !peerDigest.mightContain(frame.msgId) {
+                out.append(frame)
+                if out.count >= limit { return false }
+            }
+            return true
+        }
+        return out
+    }
+
     public func bloomDigest() -> Data {
         lock.lock(); defer { lock.unlock() }
-        guard let store else { return BloomDigest.build(from: []) }
         return BloomDigest.build(from: store.allHeldMsgIds())
     }
 
