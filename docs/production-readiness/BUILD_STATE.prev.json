@@ -11970,9 +11970,221 @@
       "status": "COMPLETE",
       "tested_tree_sha": "d418daae9dc0b9826d10944af3ec4390bd82d487",
       "unresolved": []
+    },
+    "T84": {
+      "case_results": {
+        "added_cases": {
+          "android/mesh/src/test/java/io/godstone/mesh/readiness/ReadinessT84Test.kt": [
+            "test_w01_an_ack_with_a_durable_row_is_origin_verification",
+            "test_w02_the_three_node_receipt_returneth_home_without_a_direct_link",
+            "test_w03_relay_custody_never_entereth_the_message_namespace",
+            "test_w04_a_candidate_is_never_echoed_to_receivedFrom",
+            "test_w05_the_forward_copy_taketh_ttl_and_hop_exactly_once",
+            "test_w06_the_pump_is_scheduled_bounded_and_rate_limited",
+            "test_w07_a_local_att_acceptance_never_retireth_custody",
+            "test_w08_an_ack_preceding_its_message_is_carried_not_discarded",
+            "test_w09_a_forged_candidate_cannot_suppress_a_later_valid_signature",
+            "test_w10_relay_process_death_and_reconnect_still_returneth_the_receipt",
+            "test_w11_an_expired_or_cancelled_origin_and_ttl_exhaustion",
+            "test_w12_candidate_capacity_is_refused_explicitly",
+            "test_w13_malformed_frames_and_a_failed_lookup_are_refused_by_name",
+            "test_w14_meshnode_dispatcheth_the_ack_and_never_discardeth_relay_traffic"
+          ],
+          "ios/Godstone/Tests/GodstoneMeshTests/ReadinessT84Tests.swift": [
+            "testW01AnAckWithADurableRowIsOriginVerification",
+            "testW02TheThreeNodeReceiptReturnethHomeWithoutADirectLink",
+            "testW03RelayCustodyNeverEnterethTheMessageNamespace",
+            "testW04ACandidateIsNeverEchoedToReceivedFrom",
+            "testW05TheForwardCopyTakethTtlAndHopExactlyOnce",
+            "testW06ThePumpIsScheduledBoundedAndRateLimited",
+            "testW07ALocalAttAcceptanceNeverRetirethCustody",
+            "testW08AnAckPrecedingItsMessageIsCarriedNotDiscarded",
+            "testW09AForgedCandidateCannotSuppressALaterValidSignature",
+            "testW10RelayProcessDeathAndReconnectStillReturnethTheReceipt",
+            "testW11AnExpiredOrCancelledOriginAndTtlExhaustion",
+            "testW12CandidateCapacityIsRefusedExplicitly",
+            "testW13MalformedFramesAndAFailedLookupAreRefusedByName",
+            "testW14MeshNodeDispatchethTheAckAndNeverDiscardethRelayTraffic"
+          ]
+        },
+        "counts": {
+          "narrow_android": 14,
+          "narrow_ios": 14,
+          "subsystem_android": 1050,
+          "subsystem_ios": 1057
+        },
+        "counts_source": "The runner's own classifier parses ONLY the python 'Ran N tests' summary, so its gradle and swift records carry tests_executed = UNKNOWN (never 0 and never passed). The positive counts were therefore read from the harness's OWN artifacts at the same head: the gradle lane by a TEST-*.xml walk of android/mesh/build/test-results/testDebugUnitTest after purging the stale results directory and passing --no-build-cache so the task genuinely EXECUTED rather than being restored from the Gradle build cache (logs T84-narrow-gradlew-executed.log and T84-subsystem-gradlew-executed.log); the swift lane from the harness's own 'Executed N tests, with M failures' line, which the runner's log already contains (logs T84-narrow-swift-executed.log and T84-subsystem-swift-executed.log).",
+        "courts": {
+          "controls": "ci/check_repository.py, ci/check_release_gates_status.py, scripts/sync_ios_foundation_package.py --check",
+          "narrow_android": "android/mesh/src/test/java/io/godstone/mesh/readiness/ReadinessT84Test.kt (14 witnesses)",
+          "narrow_ios": "ios/Godstone/Tests/GodstoneMeshTests/ReadinessT84Tests.swift (14 witnesses, the SAME name set)",
+          "subsystem_android": "gradlew :mesh:testDebugUnitTest (the whole :mesh suite)",
+          "subsystem_ios": "swift test --package-path ios/Packages/GodstoneFoundation (the whole package)"
+        },
+        "deleted_cases": [],
+        "executed_scenarios": {
+          "ack_before_and_during": "an ACK arriving before its message is carried, not discarded; the same signature again is ONE candidate; the origin road decides once the row appears (W8)",
+          "budgets": "no LinkReady no offer; batch 32; one retry per candidate/peer per 30 s; burst 16 with a 1/s refill; four candidates per pair and 4096 total, refused explicitly (W6, W12)",
+          "device": "NOT EXECUTED: the section 18/19 physical matrix (Android<->iOS interoperability, lifecycle, battery/thermal) is external; T73-T75 own that evidence and no host test is claimed as it",
+          "disk_and_ttl": "a TTL below 2 is TTL_EXHAUSTED and a TTL above the production initial 12 is refused by name; the canonical copy is ttl 11 / hop 1 and a retry re-emits the IDENTICAL bytes (W5, W11)",
+          "interrupted_process": "a fresh pump over the same durable store rebuilds custody from the store alone, forwards on the next LinkReady, and reaches the origin; the sweep takes the conservative branch once and the store REFUSES any debit that would not strictly shorten the life (W10)",
+          "malformed": "a payload that is not 80 bytes, a msgId that is not 16 and a non-zero flag are refused before any write; a corrupt or failed delivery lookup is refused by name and never read as relay traffic (W13)",
+          "origin_verification": "a durable delivery row routes to the existing tracker verification; a rejected candidate leaves delivery unchanged and cannot suppress a later valid signature (W1, W9)",
+          "separate_namespace": "the candidate lives in ack_frames (keyed by the canonical GMP2-ACK-CACHE key, NOT the message id); held_frames is untouched and the message census is zero (W3, W12)",
+          "three_node_return": "A -> R -> B and B's ACK -> R -> A with NO A/B link: the relay carries the candidate as OPAQUE_CANDIDATE, its pump forwards exactly one copy homeward on LinkReady, and A reaches ACKNOWLEDGED_BY_RECIPIENT (W2)"
+        },
+        "produced_artifacts": {
+          "dispatcher": {
+            "android": "android/mesh/src/main/java/io/godstone/mesh/delivery/AckDispatcher.kt",
+            "ios": "ios/Godstone/Sources/GodstoneMesh/AckDispatcher.swift (+ the generated Foundation mirror)",
+            "types": [
+              "AckDispatcher",
+              "AckDispatch (OriginVerification|OpaqueRelay|Refused)",
+              "AckDispatchClass",
+              "AckRefusalReason",
+              "AckAdmission"
+            ]
+          },
+          "meshnode": {
+            "note": "MeshNode ingestInbound routes an ACK to the dispatcher BEFORE any generic message TTL/dedup/store handling, and keeps the historical point-to-point face when no ack_frames namespace is bound (the T37/T38/T40 seam idiom). The composition that owns the namespace binds it; T54 owns the lab wiring."
+          },
+          "pump": {
+            "laws": "scheduled on LinkReady; batch 32; one retry per candidate/peer per 30 s; 1 ACK/s with burst 16 per peer; never echoed to receivedFrom; TTL-1/hop+1 exactly once per copy; local ATT acceptance never retires custody; the 8-day window is never replenished",
+            "types": [
+              "DurableAckPump",
+              "AckForwardCopy",
+              "AckPumpBatch",
+              "AckSweepReport",
+              "AckForwardRefusal"
+            ]
+          },
+          "store_faces": {
+            "note": "the ack_frames namespace gained ONLY its pump faces: listCandidates, a strictly-decreasing debit (SQL 'remaining > ?' and its in-memory twin, ONE owner), expireCandidate and countCandidatesFromPeer. T83's pair step, quotas and retirement are untouched, and none of the four touches held_frames, the delivery rows or the dedup/tombstone tables."
+          }
+        }
+      },
+      "claim_commit": "208fb7421220e925237355efbc72f3a600633a4d",
+      "commands": [
+        "T84-narrow-gradlew",
+        "T84-narrow-swift",
+        "T84-subsystem-gradlew",
+        "T84-subsystem-swift",
+        "T84-controls-python3",
+        "T84-controls-python3-002",
+        "T84-controls-python3-003"
+      ],
+      "device_gate_ids": [],
+      "file_hashes": {
+        "android/gradle/verification-metadata.xml": "bea3baedd718d12da5c19e56cc9fb0cc752d0eee27df36fd80d48f006363a3f6",
+        "android/mesh/src/main/java/io/godstone/mesh/MeshNode.kt": "daa98e7f0a4535a4a00d2f1a65259d14b61603ac75cca57df2a78be9eb88d94c",
+        "android/mesh/src/main/java/io/godstone/mesh/delivery/AckDispatcher.kt": "795066099933623a8fc4881f6007facdd3de1310783628e0a7d4c4817dfffc50",
+        "android/mesh/src/main/java/io/godstone/mesh/delivery/AckObligationStore.kt": "2dfb36173e499ea97ec972c6b8af9f4ac0f453c77666eeee8e5aa5e0626d994b",
+        "android/mesh/src/main/java/io/godstone/mesh/store/MessageStore.kt": "af5c5a4d5f583f3aa45313463c85e8aeffa95f26a81a11436985dfc0958136c6",
+        "android/mesh/src/test/java/io/godstone/mesh/readiness/ReadinessT84Test.kt": "afff424f2cd136f0312b4c5f4c65273a4df45833fa7933bd1f02297d93167fe0",
+        "ci/mutations.py": "f3ed5f21488632f7a467589ca48e7259513cf6e8617a83dd19f9acb6b81e4b15",
+        "docs/supplychain/SBOM.json": "e0383ac4bf3b3547f98a83b12fd13a2edf2762fb8d5642d3b28b4391ff796fe9",
+        "ios/Godstone/Sources/GodstoneMesh/AckDispatcher.swift": "0255f1f0417ef60d7e7a6208ff89c127183ead589e8733139aac3e0cb1e6c67b",
+        "ios/Godstone/Sources/GodstoneMesh/AckObligationStore.swift": "56d41f3a07423312dcf04037c0400f4f0ce4a8e60c4478796698e83ec3b95f6c",
+        "ios/Godstone/Sources/GodstoneMesh/MeshNode.swift": "36eacd8b05eb9648e10a4cf9669e2638e1115898bb5249a52a44b4ca583d5eda",
+        "ios/Godstone/Sources/GodstoneMesh/MessageStore.swift": "9af15f7dfffe97e865c062e1f8b1189f3ce1394ae86498d9ae2e107003e07ad7",
+        "ios/Godstone/Tests/GodstoneMeshTests/ReadinessT84Tests.swift": "842846fa170d0af1bf2dcb3267e9f52c722cd49e6a98ae1260aa0207558d7a08"
+      },
+      "implementation_commit": "08e5694c671efcb975fa7238878eef272e54b8de",
+      "implementation_commits": [
+        "d4b84d4184396940389f58dc868e07f20f478e63",
+        "08e5694c671efcb975fa7238878eef272e54b8de"
+      ],
+      "inputs": {
+        "children_commit_order": [
+          "T84(claim)",
+          "T84(builder)",
+          "T84(builder-roster-repair)",
+          "T84(M)"
+        ],
+        "claim_ordering_note": "the claim was taken at 208fb7421220e925237355efbc72f3a600633a4d before any work; the three stages were then run twice -- once at the first builder child d4b84d4184396940389f58dc868e07f20f478e63 and once at the implementation head 08e5694c671efcb975fa7238878eef272e54b8de -- so that the boundary evidence carries the exact-SHA of the tree that was tested. The runner reuses command ids and log filenames across passes, so the pass-1 log files were overwritten by the pass-2 ones; the pass-1 records stand as history only and this is stated as an erratum in T84/BUILDER_NOTE.md rather than papered over.",
+        "governed_source": [
+          "android/mesh/src/main/java/io/godstone/mesh/delivery/AckDispatcher.kt",
+          "android/mesh/src/main/java/io/godstone/mesh/delivery/AckObligationStore.kt",
+          "android/mesh/src/main/java/io/godstone/mesh/store/MessageStore.kt",
+          "android/mesh/src/main/java/io/godstone/mesh/MeshNode.kt",
+          "android/mesh/src/test/java/io/godstone/mesh/store/JdbcStoreDb.kt",
+          "android/mesh/src/test/java/io/godstone/mesh/delivery/SqliteDeliveryRepositoryTest.kt",
+          "android/mesh/src/test/java/io/godstone/mesh/readiness/ReadinessT84Test.kt",
+          "ios/Godstone/Sources/GodstoneMesh/AckDispatcher.swift",
+          "ios/Godstone/Sources/GodstoneMesh/AckObligationStore.swift",
+          "ios/Godstone/Sources/GodstoneMesh/MessageStore.swift",
+          "ios/Godstone/Sources/GodstoneMesh/MeshNode.swift",
+          "ios/Godstone/Tests/GodstoneMeshTests/ReadinessT84Tests.swift",
+          "ci/mutations.py",
+          "android/gradle/verification-metadata.xml",
+          "docs/supplychain/SBOM.json"
+        ],
+        "prerequisite_repair": "android/gradle/verification-metadata.xml carried no pin for org.xerial:sqlite-jdbc:3.46.1.3 (a :mesh TESTImplementation T68's capture never resolved), so once the POM had to be re-fetched the declared android lane could not run at all. Gradle regenerated exactly one component and the T68 SBOM was regenerated by its own tool (licence recorded as unknown, never invented). Both files are part of this task's diff and the supply-chain gate is green.",
+        "required_regression_paths": [
+          "android/mesh/src/test/java/io/godstone/mesh/readiness/ReadinessT84Test.kt",
+          "ios/Godstone/Tests/GodstoneMeshTests/ReadinessT84Tests.swift"
+        ],
+        "sealed_hot_paths_untouched": [
+          "crypto/ and wire/ (the Noise/LinkInfo vectors and the generated codecs)",
+          "the canonical ACK payload (80 bytes), flags 0, the 40-byte GMP2-ACK preimage and ack_initial_ttl = 12",
+          "T83's ack_obligations/ack_frames pair step, quotas and retirement",
+          "the sealed T37/T39 courts' ACK call sites: an ACK for a message WITH a delivery row takes the identical origin road, so their assertions stand byte-for-byte",
+          "the five external gates and docs/production/RELEASE_GATES_STATUS.json",
+          "the shipping LIGHT graph: ci/check_shipping_path.py PASS, LINK_LAYER_READY untouched, readiness false"
+        ]
+      },
+      "ladder_boundary_commit": "08e5694c671efcb975fa7238878eef272e54b8de",
+      "mutation_results": {
+        "attempts_archived": [
+          {
+            "baseline": "d4b84d4184396940389f58dc868e07f20f478e63",
+            "note": "the escape/invalid diagnoses and their repairs are recorded in T84/BUILDER_NOTE.md; the pass-1 roster logs were overwritten by the pass-2 roster run (same runner log names), and no claim is made that they survive.",
+            "pass": 1,
+            "repaired_in": "08e5694c671efcb975fa7238878eef272e54b8de",
+            "rods": 13,
+            "tally": {
+              "ESCAPED": 2,
+              "INVALID": 1,
+              "KILLED": 10
+            }
+          }
+        ],
+        "campaign_note": "the fourteen rods ran in one official pass, fail-closed, at baseline 08e5694c671efcb975fa7238878eef272e54b8de: 14 KILLED of 14, SKIPPED=0, INVALID=0, TIMEOUT=0, ESCAPED=0. The card's named semantic negative is carried by RC1/RC2/RC3 and their iOS twins RC12/RC14/RC13 ('Drop relay UnknownMessage ACK, dedup it against the MESSAGE ID or retire after local ATT success: three-node delivery test fails'). The FIRST pass (13 rods at d4b84d4184396940389f58dc868e07f20f478e63) returned KILLED=10, ESCAPED=2, INVALID=1; all three were campaign defects, repaired at their cause in the child commit 08e5694c671efcb975fa7238878eef272e54b8de (a witness reading the store instead of the dispatcher, a two-owner non-replenishing guard, and an unguarded subscript that aborted the test process so a kill was recorded as INVALID). No assertion was weakened and no rod was dropped; the repair is described in T84/BUILDER_NOTE.md.",
+        "of": 14,
+        "roster_manifest": "T84/roster/manifest.json",
+        "semantic": {
+          "harness": "ci/mutations.py run_semantic (the ledger filtered to the T84- prefix so the campaign is this task's roster)",
+          "platforms": [
+            "jvm",
+            "swift"
+          ],
+          "work_parent": "/Users/oculus/.cache/godstone-mutation-worktrees-t84 (disposable; the live tree is never touched)"
+        },
+        "tally": {
+          "ESCAPED": 0,
+          "INVALID": 0,
+          "KILLED": 14,
+          "SKIPPED": 0,
+          "TIMEOUT": 0
+        }
+      },
+      "objective": {
+        "claimed_head": "208fb7421220e925237355efbc72f3a600633a4d",
+        "claimed_utc": "2026-09-14T15:30:44+00:00",
+        "objective": "Forward durable recipient ACKs through intermediate relays: dispatch an inbound ACK BEFORE generic message TTL/dedup/store handling, classify it as origin verification when a durable delivery row standeth and as bounded opaque relay custody when it doth not (never an automatic discard), and carry it home through a separate bounded epidemic ACK pump that survives process death and reconnect -- with the canonical 80-byte signature payload, flags 0, an explicit initial TTL of 12 decremented and a hop incremented exactly once per forwarded copy, so that dropping a relay UnknownMessage ACK, deduping it against the MESSAGE id, or retiring it after a local ATT success make the three-node delivery test fail."
+      },
+      "status": "COMPLETE",
+      "tested_tree_sha": "194a8d9a3a3d6d95361191b6c01ad9854011eb39",
+      "unresolved": [
+        "the section 18/19 PHYSICAL device matrix (Android<->iOS interoperability over BLE, lifecycle, permissions, battery/thermal) is NOT executed: it is external and T73-T75 own it. Host tests prove no CoreBluetooth and no Data Protection behaviour.",
+        "the lab composition root does NOT yet bind the dispatcher: the seam is ready and proved, and until T54 wires it a runtime that binds no ack_frames namespace keeps the historical point-to-point face (documented, and never reported as a delivered receipt).",
+        "TTL and hop are NOT cryptographic proof of path length (section 14): a malicious relay can rewrite unauthenticated hop metadata. The bounds limit honest forwarding; they do not attest it.",
+        "the T17/T18 randomized-draw pair-cap FLAKE family struck once at the first full-suite execution (two cases, 'no ascending hint pair within 64 draws'); green on the next run. Its log was overwritten by a later pass (erratum recorded) and the family remains a known nondeterminism owned by whoever repairs the sealed T17/T18 courts.",
+        "the pass-1 stage/roster logs were overwritten by the pass-2 runs (the runner reuses log filenames); the pass-1 records stand as history only. Future tasks should snapshot each pass into its own subdirectory before re-running a stage."
+      ]
     }
   },
-  "current_task": "T84",
+  "current_task": "T41",
   "external_blockers": [
     "A06",
     "APPROVED_CONTENT",
@@ -11982,54 +12194,53 @@
   ],
   "failed_attempts": [],
   "in_progress": {
-    "claimed_head": "208fb7421220e925237355efbc72f3a600633a4d",
-    "claimed_utc": "2026-09-14T15:30:44+00:00",
+    "claimed_head": "3e17b96576bcacfbf96395e76d57c7b05ddce88b",
+    "claimed_utc": "2026-09-14T16:49:30+00:00",
     "objective": {
-      "claimed_head": "208fb7421220e925237355efbc72f3a600633a4d",
-      "claimed_utc": "2026-09-14T15:30:44+00:00",
-      "objective": "Forward durable recipient ACKs through intermediate relays: dispatch an inbound ACK BEFORE generic message TTL/dedup/store handling, classify it as origin verification when a durable delivery row standeth and as bounded opaque relay custody when it doth not (never an automatic discard), and carry it home through a separate bounded epidemic ACK pump that survives process death and reconnect -- with the canonical 80-byte signature payload, flags 0, an explicit initial TTL of 12 decremented and a hop incremented exactly once per forwarded copy, so that dropping a relay UnknownMessage ACK, deduping it against the MESSAGE id, or retiring it after a local ATT success make the three-node delivery test fail."
+      "claimed_head": "3e17b96576bcacfbf96395e76d57c7b05ddce88b",
+      "claimed_utc": "2026-09-14T16:49:30+00:00",
+      "objective": "Create a per-TrustedPeer bounded sync pump on the Android mesh path: snapshot the durable held ids, exchange DIGEST/inventory/WANT, fetch frames by cursor, and forward only AFTER durable acceptance -- never back to receivedFrom, TTL decremented and hop incremented exactly once per forwarded copy, in priority order within bounded admitted work, with ACK control routed separately to the delivery authority and the relation's scheduling cancelled on relation loss while application retry state stays durable; a send that precedes its persist, or a scheduler left unregistered, must fail the real MeshNode path test."
     },
-    "task": "T84"
+    "task": "T41"
   },
-  "last_code_head": "ed297081fd241a25db6d2e8aaa07512b01b60c5b",
-  "last_observed_head": "ed297081fd241a25db6d2e8aaa07512b01b60c5b",
+  "last_code_head": "08e5694c671efcb975fa7238878eef272e54b8de",
+  "last_observed_head": "08e5694c671efcb975fa7238878eef272e54b8de",
   "latest_verification": {
-    "at_utc": "2026-09-14T15:22:00+00:00",
-    "boundary_commit": "ed297081fd241a25db6d2e8aaa07512b01b60c5b",
+    "at_utc": "2026-09-14T22:05:00+00:00",
+    "boundary_commit": "08e5694c671efcb975fa7238878eef272e54b8de",
     "controls": {
-      "boundary_records": 2,
-      "outcomes": "2/2 PASSED at the boundary (check_repository rc=0; the release-gates status checker rc=0 with its own 12-of-12, 15-of-15 and 7-of-7 selftests)"
+      "boundary_records": 3,
+      "outcomes": "3/3 PASSED at the boundary (check_repository rc=0; the release-gates status checker rc=0 with its own 12-of-12, 15-of-15 and 7-of-7 selftests; sync_ios_foundation_package --check clean)"
     },
     "isle_grands": {
-      "android_grand": "no Android path in this round: the card's declared stages are python-only and its Android implication is 'no unrelated Android runtime change'",
-      "counts_source": "the runner's classifier read the narrow and subsystem lanes as kind=test with positive counts (23/23 and 313/313) and the two control commands as tests=n/a; every log is preserved under T77/logs/",
-      "ios_grand": "no iOS path in this round: likewise, and the generated Foundation package is untouched",
-      "python_grand": "the T77 court 23/23, the subsystem 313 OK, the campaign 20/20 KILLED, the authority selftest PASS, the rehearsal 12 of 12 declared cases agreed"
+      "android_grand": "the T84 court 14/14 and the whole :mesh suite 1050/0 at the boundary, both genuinely EXECUTED (--no-build-cache, stale results purged)",
+      "counts_source": "see completed_tasks.T84.case_results.counts_source -- the runner reports UNKNOWN for gradle/swift, so the positive counts were read from the harnesses' own artifacts under an explicit execution",
+      "ios_grand": "the T84 court 14/14 and the whole package suite 1057/0 at the boundary",
+      "python_grand": "the structural lineage rc=0, the supply chain green, the content-integration checker green, diff hygiene clean"
     },
     "ladder": {
-      "L0": "1 PASSED (check_repository), 1 FAILED (ci/symbols.py --selftest: PRE-EXISTING, reproduced at four earlier commits)",
-      "L1": "PASSED",
-      "L2_L4": "unavailable: no command manifest yet",
-      "log": "T77/logs/T77-ladder-archive.log"
+      "L0": "1 PASSED (check_repository), 1 FAILED (ci/symbols.py --selftest: PRE-EXISTING, reproduced at four earlier commits in T77)",
+      "L1": "PASSED at T77's boundary (the T84 subsystem covers the same readiness suites plus the two mesh isles)",
+      "L2_L4": "unavailable: no command manifest yet"
     },
     "narrow": {
       "errors": 0,
       "failures": 0,
-      "lane": "python3 -m unittest discover -s tools/readiness/tests -p test_t77.py",
-      "tests": 23
+      "lane": "gradlew :mesh:testDebugUnitTest --tests *ReadinessT84Test* + swift test --filter ReadinessT84Tests",
+      "tests": 28
     },
     "roster": {
-      "T77_killed": 20,
-      "of": 20
+      "T84_killed": 14,
+      "of": 14
     },
     "subsystem": {
       "errors": 0,
       "failures": 0,
-      "lane": "python3 -m unittest discover -s tools/readiness/tests (all courts)",
-      "tests": 313
+      "lane": "gradlew :mesh:testDebugUnitTest (1050) + swift test --package-path ios/Packages/GodstoneFoundation (1057)",
+      "tests": 2107
     }
   },
-  "next_task": "T84",
+  "next_task": "T41",
   "phase": "P0",
   "plan_sha256": "685456b378662b0a40a53a6abc810041e37daf97b213f3efeb6cea879363934e",
   "planning_baseline_sha": "b5c3d3d394b70cf356cdde33b47511dad7cbb95c",
@@ -12077,15 +12288,27 @@
     "T61 seal lesson: the registered mac-native lane (swift test --package-path ios/Godstone) is blocked by the executor registry (mac-primary carrieth swift-host/swift-xcode, not mac-native) and beneath it by the absent machine-local vendor provisioning (third_party/llama.cpp git-ignored at .gitignore:42, README only); whole-package swift test buildeth GodstoneLLMBridge and perisheth at LlamaBridge.mm:3 (llama.h) -- the mirror road (ios/Packages/GodstoneFoundation) is the isle executable road; do not fixture the vendor; the lane awaiteth the provisioning lane own act",
     "T77 boundary: ci/symbols.py --selftest FAILETH (rc=1, 'restored tree: 25 unresolved (BROKEN)'). PRE-EXISTING, not a T77 regression: reproduced identically in disposable worktrees at eaec822, 1ba129c, 3989c01 and c4c129c. It is recorded as FAILED in the L0 record and never dressed as green; the symbol-resolver selftest's restored-tree check belongs to whichever task owns that tool.",
     "T77 next-task selection: T79, T80 and T81 are numerically lower than T84 and their dependencies are complete, but each carrieth an EXTERNAL REQUIREMENT with no artifact present (T79 APPROVED_INDEPENDENT_ARTIFACT behind A06; T80 APPROVED_CONTENT_HUMAN_REVIEW; T81 APPROVED_NATIVE_MODEL_ARTIFACTS). Their inputs are therefore unavailable, so the rule 'lowest numeric pending task with complete dependencies AND AVAILABLE INPUTS' selecteth T84 (dependencies T83, T40, T24 all complete; no external requirement).",
-    "docs/production-readiness/BUILD_STATE.md is STALE (last regenerated at the T23 metadata checkpoint, 5247f15) and has been through every task since. It is a generated human view and explicitly NOT a second authority, so no task's evidence dependeth on it; regenerating it is adjacent cleanup and is left to a task that owns the state tooling."
+    "docs/production-readiness/BUILD_STATE.md is STALE (last regenerated at the T23 metadata checkpoint, 5247f15) and has been through every task since. It is a generated human view and explicitly NOT a second authority, so no task's evidence dependeth on it; regenerating it is adjacent cleanup and is left to a task that owns the state tooling.",
+    "T84 boundary: the T17/T18 randomized-draw pair-cap FLAKE family struck once (two cases, 'no ascending hint pair within 64 draws') at the first full android suite execution and was green on the next. The sealed T18 court was NOT edited; the FAILED log was overwritten by a later pass and that erratum is recorded in T84's evidence, not hidden.",
+    "T84 boundary: the runner reuses command ids and log filenames, so re-running a stage OVERWRITES the previous pass's logs. Snapshot each pass into its own directory before re-running a stage.",
+    "T84 boundary: android/gradle/verification-metadata.xml and docs/supplychain/SBOM.json were REPAIRED: T68's capture carried no pin for org.xerial:sqlite-jdbc:3.46.1.3 (a :mesh TESTImplementation), which made the declared android lane unrunnable once the POM had to be re-fetched. Both were regenerated by their own tools; the supply-chain gate is green.",
+    "T84 CORRECTIVE CHECKPOINT (this commit): the T84(M) commit's message and the state it wrote claim that no internally actionable task remaineth and set next_task = null. THAT WAS WRONG. The dependency frontier recomputed from TASKS.json at 08e5694 showeth that T41 (Wire Android durable anti-entropy and forwarding; deps T40, T24, T26, T37, T39, T84 -- all complete, no external requirement) is READY, and T42..T44, T54..T60, T62..T65, T67, T71..T76, T78, T82 form a long internal chain behind it. next_task is corrected to T41 here, and EXTERNAL_BLOCKERS.json now carrieth the true blocking frontier (T79/T80/T81 direct; T73..T78/SIGNING transitively). The wrong null is superseded, never rewritten: the T84(M) commit standeth as history.",
+    "T84(M) ERRATUM: that commit's message citeth 'tree fbe1c9a2' for the implementation head. The real tree of 08e5694c671efcb975fa7238878eef272e54b8de is 194a8d9a3a3d6d95361191b6c01ad9854011eb39 (git rev-parse 08e5694^{tree}), which is what completed_tasks.T84.tested_tree_sha carrieth. The message is not amended (no history rewrite)."
   ],
   "warnings_for_next_invocation": [
+    "T41 IS THE NEXT TASK (deps T40, T24, T26, T37, T39, T84 all complete; no external requirement). After T41 cometh T42, T43, T44, then T54 and the platform chain.",
+    "Readiness flags remain false.",
+    "A-06 stays UNAVAILABLE until an independent fixture + lock arrive.",
+    "No external review/model/content/device result may be fabricated.",
+    "T79, T80 and T81 each carry an EXTERNAL REQUIREMENT whose artifact is absent, so their inputs are unavailable; T78 inherits every one of them. They are recorded as BLOCKED_EXTERNAL in docs/production-readiness/EXTERNAL_BLOCKERS.json with the recomputed frontier.",
+    "The durable ACK pump's dispatcher is proved but NOT bound by the lab composition root: T54 owns that wiring, and a runtime that binds no ack_frames namespace keeps the historical point-to-point face (documented, never reported as a delivered receipt).",
+    "The runner reuses command ids and log filenames: snapshot each pass into its own directory before re-running a stage, or a second pass will overwrite the first pass's logs.",
+    "ALL INTERNALLY ACTIONABLE TASKS APPEAR COMPLETE OR EXTERNALLY BLOCKED. The remaining pending tasks are T41-T44, T54-T60, T62-T65, T67, T71-T76, T78, T79, T80, T81, T82 and T84(done). Of those, every one except the external-gate consumers is blocked by an unfinished dependency: T79 (APPROVED_INDEPENDENT_ARTIFACT / A06), T80 (APPROVED_CONTENT_HUMAN_REVIEW), T81 (APPROVED_NATIVE_MODEL_ARTIFACTS) require artifacts that do not exist; T78 requires all of them.",
+    "The durable ACK pump's dispatcher is proved but NOT bound by the lab composition root: T54 owns that wiring, and a runtime that binds no ack_frames namespace keeps the historical point-to-point face (documented, never reported as a delivered receipt).",
     "Android toolchain provisioned: JDK 17.0.20.1 + SDK 35 on mac-primary.",
     "Readiness flags remain false. D2 absent at planning baseline.",
-    "A-06 stays UNAVAILABLE until an independent fixture + lock arrive.",
     "Session budget: 2^20 records/direction, 30 minutes; retirement is terminal.",
     "SessionSlot is the single serialisation point of a relation and witnesses itself; retiring a slot reclaims its lock entry and the replacement carries the next lease generation.",
-    "No external review/model/content/device result may be fabricated.",
     "Mesh advertising is UUID-only (canonical service UUID + flags); the 13-octet LinkInfo record is served by GATT and the air payload is budget-audited before dispatch.",
     "GATT profile is contract-driven on both engines (Generated A001-A004; legacy FD01/FD02 removed and refused; digest characteristic parity added to the Android server).",
     "Android scan callbacks are context-bound (ScanContext epoch/identity/lease; capture-before-deliver; reducer-only mutation) and the discovery surface is bounded (64, pin-aware, deterministic LRU eviction) on both the transport and the orchestration driver.",
