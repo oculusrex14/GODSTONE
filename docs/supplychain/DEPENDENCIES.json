@@ -1,5 +1,5 @@
 {
-  "built_utc": "2026-09-14T14:00:58+00:00",
+  "built_utc": "2026-09-14T14:06:07+00:00",
   "caveats": [
     "lane native: its closure includeth a distribution that must be compiled against the NDK toolchain, which belongeth to the external NATIVE_MODELS gate; the digests are pinned, the restoration is not claimed here"
   ],
