@@ -11,9 +11,23 @@ It models topology, mobility, radio range, duty cycling and battery drain. It
 deliberately does NOT model the cryptography - that is unit tested, it is
 constant time per message, and including it would make a 200 node run take
 hours for no additional insight.
+
+EVIDENCE CLASS: this module is a SIMULATION of the routing ALGORITHM, and it is
+NOT production-path integration evidence. Nothing here composes the real
+MeshNode, the real store, the real delivery tracker or the real codecs, so a run
+of this file - however green - may never be cited for durable delivery,
+lifecycle, trust or recovery semantics (T44's card: "Separate simulation
+algorithm tests from production-path integration evidence"). That evidence lives
+in the ComposedRuntimeHarness courts, which compose the real authorities and
+substitute only the OS facades.
 """
 
 from __future__ import annotations
+
+# The machine-readable form of the EVIDENCE CLASS note above: a court may read
+# this file and assert the separation is DECLARED, not merely implied.
+EVIDENCE_CLASS = "simulation-algorithm-NOT-production-path-integration"
+COMPOSES_REAL_AUTHORITIES = False
 
 import argparse
 import random
