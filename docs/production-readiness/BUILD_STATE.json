@@ -13677,7 +13677,7 @@
       ]
     }
   },
-  "current_task": null,
+  "current_task": "T57",
   "external_blockers": [
     "A06",
     "APPROVED_CONTENT",
@@ -13686,7 +13686,16 @@
     "SIGNING"
   ],
   "failed_attempts": [],
-  "in_progress": null,
+  "in_progress": {
+    "claimed_head": "9cfc9c1cb56417e0e4f9fc7d29782a213a6d7e24",
+    "claimed_utc": "2026-09-14T21:32:09+00:00",
+    "objective": {
+      "claimed_head": "9cfc9c1cb56417e0e4f9fc7d29782a213a6d7e24",
+      "claimed_utc": "2026-09-14T21:32:09+00:00",
+      "objective": "Add the Android direct messaging and honest SOS controls: a lab inbox, conversation view and exact recipient selection with a DIRECT compose bounded at 400 UTF-8 BYTES; status rendered strictly from the durable authority (queued, attempting, delivered, cancelled, expired, failed) so a message is NEVER shown as delivered on a transport Boolean or as sent on ATT acceptance, and never shown secure or connected before the recipient's trusted key is confirmed; a hold-to-confirm SOS with active-call restoration from the durable row and a durable cancel that nameth the relayed-copy limitation; and honest, specific explanations for a denied permission or an unsupported direction -- so that projecting DELIVERED from a transport Boolean falleth the end-to-end UI witness."
+    },
+    "task": "T57"
+  },
   "last_code_head": "a67a0c8ae7bf98976f4a923617c2096ad6a7633c",
   "last_observed_head": "a67a0c8ae7bf98976f4a923617c2096ad6a7633c",
   "latest_verification": {
