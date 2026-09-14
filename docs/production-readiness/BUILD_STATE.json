@@ -12512,7 +12512,7 @@
       ]
     }
   },
-  "current_task": null,
+  "current_task": "T43",
   "external_blockers": [
     "A06",
     "APPROVED_CONTENT",
@@ -12521,7 +12521,16 @@
     "SIGNING"
   ],
   "failed_attempts": [],
-  "in_progress": null,
+  "in_progress": {
+    "claimed_head": "1a5f026353b22aa2126aadde64004757edd7175a",
+    "claimed_utc": "2026-09-14T17:57:43+00:00",
+    "objective": {
+      "claimed_head": "1a5f026353b22aa2126aadde64004757edd7175a",
+      "claimed_utc": "2026-09-14T17:57:43+00:00",
+      "objective": "Align the delivery labels with durable evidence: keep QUEUED_DURABLY until an intended recipient ACK produces DELIVERED, treat local record/ATT completion as ephemeral LinkOffer telemetry and never as a durable relay custody claim, expose a DeliveryProjection whose label never claims more than the durable state supporteth, migrate legacy HANDED_TO_RELAY rows conservatively to queued/retryable with their history preserved, introduce no relay receipts in this release profile, and keep ACK matching exact on expected recipient/key/trust/CAS with cancellation and expiry winning according to committed state -- so that advancing delivered or handed on a send Boolean falleth the authority projection tests."
+    },
+    "task": "T43"
+  },
   "last_code_head": "010a621e49cdf2314838e98b02514e8155ec5781",
   "last_observed_head": "010a621e49cdf2314838e98b02514e8155ec5781",
   "latest_verification": {
