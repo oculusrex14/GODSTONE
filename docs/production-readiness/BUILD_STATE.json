@@ -11787,10 +11787,10 @@
   ],
   "failed_attempts": [],
   "in_progress": {
-    "claimed_head": "4fc93bb0f1b96b2d61c5b09b45d7f359b11a526d",
+    "claimed_head": "70d689c9323c0810e7be1ec227f2404dcd706135",
     "claimed_utc": "2026-09-14T14:19:08+00:00",
     "objective": {
-      "claimed_head": "4fc93bb0f1b96b2d61c5b09b45d7f359b11a526d",
+      "claimed_head": "70d689c9323c0810e7be1ec227f2404dcd706135",
       "claimed_utc": "2026-09-14T14:19:08+00:00",
       "objective": "Prove upgrade, failed-update and rollback recovery: execute the supported upgrade paths with content replacement and schema migration, an interrupted install and staging, and a wipe in progress, preserving the previous authoritative estate on every refusal and refusing an unsupported downgrade explicitly; a future schema opened and recreated empty must fail the preservation test."
     },
@@ -11921,6 +11921,7 @@
     "T69: the claim commit may be forgotten when a flight starts straight from the previous seal -- the heartbeat then refuseth (\"no live claim\"). Take the claim first, and if it is taken late, record the ordering in the task record as this one did.",
     "T69: scripts/inspect_ios_artifacts.py is the iOS twin of the Android inspector and shares its APPROVED_ASSETS.json loader, so the two platforms cannot drift into two readings of one publication. It classifieth before it judgeth: source-only-exclusion, source-only-absent, present-unverified, release-candidate-content, refused.",
     "T69: the mac-xcode capability is absent from EXECUTORS.json for mac-primary, so the xcodegen/xcodebuild stage commands BLOCK (exit 5) while the host toolchain can run them: expect this for every future task whose subsystem half is an iOS build, execute the same argv by hand for evidence, and record the blockage rather than asking the registry to lie.",
-    "T69: the claim commit may be forgotten when a flight starts straight from the previous seal -- the heartbeat then refuseth (\"no live claim\"). Take the claim first, and if it is taken late, record the ordering in the task record as this one did."
+    "T69: the claim commit may be forgotten when a flight starts straight from the previous seal -- the heartbeat then refuseth (\"no live claim\"). Take the claim first, and if it is taken late, record the ordering in the task record as this one did.",
+    "ORDERING, STATED PLAINLY (asked and answered at T77's claim): the run moved from T53 to T61 because TASKS.json's selection_rule alloweth only 'the lowest numeric task with COMPLETE dependencies and available required executor/artifacts', and at that moment T54-T60 were not dependency-ready (T54 awaitteth T44, which awaiteth T43 <- T42 <- T41 <- T84). Every later jump followeth the same rule. The blocking chain, as the registry computeth it: T84 -> T41 -> T42 -> T43 -> T44 -> {T54, T67, T71}; T81 -> T62 -> T63 -> T64 -> T65; T81 and T79/T80 belong to external gates (NATIVE_MODELS, A-06, APPROVED_CONTENT). So the fastest honest path to the end is T77, T79, T80, T81, T84 first, then the chain they unblock. Nothing was skipped: an unready task is never sealed, and no BLOCKED or SKIPPED record is ever mapped to COMPLETE."
   ]
 }
