@@ -135,11 +135,17 @@ class StressCampaign(
     fun cycle(step: Int) {
         val msg = next(maxOf(1, cycles / 4))
 
+        // A SHUTDOWN ARRIVETH WITH WORK IN FLIGHT: the final cycle leaveth its
+        // resources HELD, so "shutdown releaseth everything" is a real law
+        val inFlight = step >= cycles - 1
+
         if (defect == CampaignDefect.UNBOUNDED_CENSUS || leases < LEASE_CAPACITY) leases++
-        if (defect != CampaignDefect.NO_LEASE_RELEASE &&
+        if (!inFlight && defect != CampaignDefect.NO_LEASE_RELEASE &&
             defect != CampaignDefect.UNBOUNDED_CENSUS) leases = maxOf(0, leases - 1)
-        timers++; timers = maxOf(0, timers - 1)
-        sessions++; sessions = maxOf(0, sessions - 1)
+        timers++
+        if (!inFlight) timers = maxOf(0, timers - 1)
+        sessions++
+        if (!inFlight) sessions = maxOf(0, sessions - 1)
 
         if (defect == CampaignDefect.NO_DEDUP || !inbox.containsKey(msg)) {
             inbox[msg] = (inbox[msg] ?: 0) + 1

@@ -190,18 +190,27 @@ class StressCampaign:
         peer = self.rng.randrange(self.peers)
         msg = self.rng.randrange(max(1, self.cycles // 4))
 
-        # (1) a lease is taken and RELEASED, under the capacity
+        # A SHUTDOWN ARRIVETH WITH WORK IN FLIGHT: the final cycle leaveth its
+        # resources HELD, so "shutdown releaseth everything it owned" is a real law
+        # with something to release (the first form released every cycle, which made
+        # a shutdown that released nothing a NO-OP -- the T55-RC10 lesson).
+        in_flight = step >= self.cycles - 1
+
+        # (1) a lease is taken and RELEASED, under the capacity -- unless the
+        # UNBOUNDED_CENSUS defect saith both the capacity and the release are gone
         if self.defect == CampaignDefect.UNBOUNDED_CENSUS or self.leases < LEASE_CAPACITY:
-            self.leases += 1                       # the capacity is bypassed
-        if self.defect not in (CampaignDefect.NO_LEASE_RELEASE,
-                              CampaignDefect.UNBOUNDED_CENSUS):
+            self.leases += 1
+        if not in_flight and self.defect not in (CampaignDefect.NO_LEASE_RELEASE,
+                                                CampaignDefect.UNBOUNDED_CENSUS):
             self.leases = max(0, self.leases - 1)
         # (2) a timer is armed and cancelled
         self.timers += 1
-        self.timers = max(0, self.timers - 1)
+        if not in_flight:
+            self.timers = max(0, self.timers - 1)
         # (3) a session is opened and closed
         self.sessions += 1
-        self.sessions = max(0, self.sessions - 1)
+        if not in_flight:
+            self.sessions = max(0, self.sessions - 1)
 
         # (4) a record is delivered: DEDUP, so one msg_id entereth the inbox once
         if self.defect == CampaignDefect.NO_DEDUP or msg not in self.inbox:

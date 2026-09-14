@@ -147,14 +147,21 @@ public final class StressCampaign {
     public func cycle(_ step: Int) {
         let msg = next(max(1, cycles / 4))
 
+        // A SHUTDOWN ARRIVETH WITH WORK IN FLIGHT: the final cycle leaveth its
+        // resources HELD, so "shutdown releaseth everything" is a real law
+        let inFlight = step >= cycles - 1
+
         if defect == CampaignDefect.unboundedCensus || leases < StressCampaign.leaseCapacity {
             leases += 1
         }
-        if defect != CampaignDefect.noLeaseRelease && defect != CampaignDefect.unboundedCensus {
+        if !inFlight && defect != CampaignDefect.noLeaseRelease
+            && defect != CampaignDefect.unboundedCensus {
             leases = max(0, leases - 1)
         }
-        timers += 1; timers = max(0, timers - 1)
-        sessions += 1; sessions = max(0, sessions - 1)
+        timers += 1
+        if !inFlight { timers = max(0, timers - 1) }
+        sessions += 1
+        if !inFlight { sessions = max(0, sessions - 1) }
 
         if defect == CampaignDefect.noDedup || inbox[msg] == nil {
             inbox[msg] = (inbox[msg] ?? 0) + 1
