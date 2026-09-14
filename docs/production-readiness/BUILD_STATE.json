@@ -13452,7 +13452,7 @@
       ]
     }
   },
-  "current_task": null,
+  "current_task": "T56",
   "external_blockers": [
     "A06",
     "APPROVED_CONTENT",
@@ -13461,7 +13461,16 @@
     "SIGNING"
   ],
   "failed_attempts": [],
-  "in_progress": null,
+  "in_progress": {
+    "claimed_head": "d500e8a0e4aa43ed8046080fb506658ac4d12482",
+    "claimed_utc": "2026-09-14T20:52:37+00:00",
+    "objective": {
+      "claimed_head": "d500e8a0e4aa43ed8046080fb506658ac4d12482",
+      "claimed_utc": "2026-09-14T20:52:37+00:00",
+      "objective": "Add the equivalent iOS identity and recovery UX: a MainActor model projected from ONE MeshRuntime that implements the Android-equivalent flows through the same PeerIdentityRepository semantics; a locked Keychain/private store showing an explicit unavailable-until-unlock state that claimeth NOTHING; user verification requiring an explicit fingerprint comparison (never a biometric success standing in for peer authentication); rotation approval bound to the EXACT displayed candidate through the durable CAS so USER_VERIFIED is never shown before the CAS succeedeth; rotation and revocation invalidating the affected sessions; a resumable wipe state surviving a failed Keychain deletion and a scene recreation; voice-accessibility labels that distinguish verified from first-use trust; and SHARED contact/rotation fixtures so both isles provably speak the same semantics -- so that showing USER_VERIFIED before the durable CAS succeedeth falleth the UI authority witness."
+    },
+    "task": "T56"
+  },
   "last_code_head": "d573d74856db7d70d7572f3b6ad8cdf175885934",
   "last_observed_head": "d573d74856db7d70d7572f3b6ad8cdf175885934",
   "latest_verification": {
