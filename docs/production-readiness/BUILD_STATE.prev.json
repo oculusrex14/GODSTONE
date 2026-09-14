@@ -11489,6 +11489,201 @@
         "the release-gates register (docs/production/RELEASE_GATES_STATUS.json) was READ but not modified: no gate was closed by this task, and the artifact evidence gathered here belongeth to the platform/device gate T73-T75"
       ]
     },
+    "T77": {
+      "case_results": {
+        "added_cases": {
+          "tools/readiness/tests/test_t77.py": [
+            "test_w01_the_unknown_future_schema_is_refused_by_name",
+            "test_w02_the_unsupported_downgrade_is_refused_by_name",
+            "test_w03_a_declared_migration_is_applied_and_an_undeclared_one_is_not",
+            "test_w04_the_matrix_may_not_publish_a_schema_the_build_may_not_run",
+            "test_w05_the_authority_is_bound_to_the_shipped_schema_and_the_real_verifier",
+            "test_w06_an_absent_trust_store_is_refused_by_name_before_any_write",
+            "test_w07_a_partial_estate_is_refused_as_partial_never_as_empty",
+            "test_w08_the_published_manifest_must_name_bytes_that_are_present",
+            "test_w09_an_untrusted_signature_is_refused_by_name_and_preserves_the_estate",
+            "test_w10_the_replacement_is_applied_and_the_previous_pair_is_retained",
+            "test_w11_the_rollback_returneth_the_previous_authoritative_bytes_exactly",
+            "test_w12_a_rollback_to_a_schema_the_build_may_not_run_is_refused",
+            "test_w13_an_interruption_after_the_placement_leaveth_the_previous_estate_whole",
+            "test_w14_an_interruption_mid_staging_leaveth_the_previous_estate_standing",
+            "test_w15_a_real_crash_is_resumed_from_the_record_alone",
+            "test_w16_a_full_disk_is_named_and_the_previous_estate_is_restored",
+            "test_w17_a_future_schema_is_refused_and_the_estate_is_never_recreated_empty",
+            "test_w18_the_published_manifest_never_nameth_absent_bytes_at_any_boundary",
+            "test_w19_the_wipe_is_journaled_and_a_mid_wipe_estate_resumeth_to_wiped",
+            "test_w20_the_instructions_name_every_artifact_and_nothing_is_fetched",
+            "test_w21_the_production_staging_face_carrieth_the_same_transaction",
+            "test_w22_the_report_carrieth_unverified_device_claims_and_is_deterministic",
+            "test_w23_both_doors_speak_for_themselves"
+          ]
+        },
+        "counts": {
+          "narrow_python": 23,
+          "subsystem_python": 313
+        },
+        "courts": {
+          "controls": "ci/check_repository.py, ci/check_release_gates_status.py",
+          "narrow": "tools/readiness/tests/test_t77.py (23 named witnesses)",
+          "subsystem": "tools/readiness/tests (all courts, 313 executed)"
+        },
+        "deleted_cases": [],
+        "executed_scenarios": {
+          "content_replacement": "schema 3 -> schema 3 over real sqlite bytes: APPLIED, the previous pair retained with a sworn RETENTION.json",
+          "declared_migration": "schema 2 -> 3 under the rehearsal matrix: APPLIED (UPGRADE), rollback to schema 2 permitted",
+          "device": "NOT EXECUTED: installation, launch, upgrade and rollback on a real device are external; every report carrieth UNVERIFIED (external: no device in this lane)",
+          "disk_full": "ENOSPC injected at before_archive_replace and after_archive_replace: INTERRUPTED, 'the disk was full' named, previous estate restored",
+          "failed_signature": "a candidate signed by an untrusted key: REFUSED by name (the real verify_manifest), estate preserved",
+          "future_schema": "schema 4 candidate and schema 4 installed: REFUSED by name, estate preserved byte for byte, never recreated empty",
+          "interrupted_staging": "interruption at validated/retained/before_archive_replace: INTERRUPTED, the previous estate never moved",
+          "interrupted_update": "interruption after the archive was placed: INTERRUPTED, the previous estate restored whole and verified",
+          "offline": "an absent trust store is refused by name before any write; the authority imports no network module (AST-checked)",
+          "production_face": "the REAL staging gate accepteth a self-fabricated labelled bundle and stage() carrieth the retention + the boundary seam; a half pair and a retention inside the estate are refused",
+          "real_crash": "settle_on_fault=False: the process dieth at after_archive_replace, the estate is refused as inconsistent, and resume() reacheth RECOVERED from the record alone",
+          "rollback": "a completed replacement then a rollback: the previous authoritative bytes restored exactly and re-verified",
+          "undeclared_migration": "the same upgrade under the SHIPPED matrix: REFUSED by name, estate byte-identical",
+          "unsupported_downgrade": "schema 3 installed against a schema-2 candidate: REFUSED by name before any write",
+          "wipe_in_progress": "a wipe interrupted after the archive unlink: the estate is refused as PARTIAL (never as empty) and the resumption reacheth WIPED"
+        },
+        "produced_artifacts": {
+          "authority": {
+            "doors": [
+              "--selftest",
+              "verify",
+              "rehearse",
+              "resume",
+              "rollback",
+              "wipe"
+            ],
+            "path": "scripts/upgrade_recovery.py",
+            "shipped_matrix": "accepted_schema = content.ingest.build_archive.SCHEMA_VERSION (3); supported_installed = (3,); migrations = () -- this baseline declares no supported earlier version, so a lower schema is refused by name",
+            "types": [
+              "UpgradeCase",
+              "RollbackCompatibilityMatrix",
+              "RecoveryResult",
+              "InstalledEstate",
+              "CandidateEstate",
+              "Journal"
+            ]
+          },
+          "docs": {
+            "content": "the offline procedure, the estate's three files, the compatibility matrix, the transaction order, the rollback policy, the resumption and an explicit still-open list",
+            "path": "docs/production/RECOVERY.md"
+          },
+          "lane": {
+            "steps": [
+              "python3 scripts/upgrade_recovery.py --selftest",
+              "python3 scripts/upgrade_recovery.py rehearse --work <tmp> --report recovery-rehearsal.json",
+              "python3 -m unittest discover -s tools/readiness/tests -p test_t77.py"
+            ],
+            "wiring_checks": [
+              "ci/check_content_release_integration.py: 17 recovery faces + 5 transactional-update faces",
+              "ci/check_release_gates_status.py: repo-owned lane roll, 7 of 7 amputations refused"
+            ],
+            "workflow": ".github/workflows/repository-verification.yml (content job)"
+          },
+          "rehearsal": {
+            "label": "development fixtures only -- NOT an approval, NOT a device result",
+            "report": "T77/logs/T77-recovery-rehearsal-report.json",
+            "result": "12 of 12 declared cases agreed"
+          },
+          "staging_seam": {
+            "default_behavior": "unchanged: with no --retain-previous the output is byte-for-byte the pre-T77 staging",
+            "new": [
+              "publish_verified() (the only owner of the publication transaction)",
+              "PublishHooks + PUBLISH_BOUNDARIES",
+              "--retain-previous / RETENTION.json / _retain_previous_estate()"
+            ],
+            "path": "scripts/prepare_release_assets.py"
+          }
+        }
+      },
+      "claim_commit": "eaec8226fcb0ea9c1918e7598bab1bf6e3105ceb",
+      "commands": [
+        "T77-narrow-python3",
+        "T77-subsystem-python3",
+        "T77-controls-python3",
+        "T77-controls-python3-002"
+      ],
+      "device_gate_ids": [],
+      "file_hashes": {
+        ".github/workflows/repository-verification.yml": "77eac6f13f7be730acbd60aa5e4b613b87c5406764c16e6f4c9f3bba5fdbef04",
+        "ci/archive_fixture.py": "87ce7b336d8177abb811f9b2560bfd6af46f03644403607aa31c5eec17888501",
+        "ci/check_content_release_integration.py": "be199f94f7163dd18b066ed2fbb2d65d23ecf0aa665e5c7bd9cb8d6d2123286d",
+        "ci/check_release_gates_status.py": "b5ef2609594eee0c570a42736b6a9b39f17151937791528d4c32ea4ba54b7eae",
+        "ci/mutations.py": "6a7128512251735347a810cbc7459afd2afbb075abcd5e732b989e3c1bd67e21",
+        "docs/production/RECOVERY.md": "3a6295cc8aa20a27e373912303744a9fb9dfc2f25ea866a6931bf950fb829ca6",
+        "scripts/prepare_release_assets.py": "1263ae1b0205a4247776f0ea36a5e7dad9c9c4df18e4adc24d44043216eadc1a",
+        "scripts/upgrade_recovery.py": "41ec1a1d3be192469bdc0a4fcd306799e1c819a971afd9cf49c1454a2af52628",
+        "tools/readiness/tests/test_t77.py": "6edd376db4b5f0561cc345c7767dca8f547ae516e0bfd02492984bb0bb6c1fcc"
+      },
+      "implementation_commit": "ed297081fd241a25db6d2e8aaa07512b01b60c5b",
+      "implementation_commits": [
+        "ed297081fd241a25db6d2e8aaa07512b01b60c5b"
+      ],
+      "inputs": {
+        "children_commit_order": [
+          "T77(claim)",
+          "T77(builder)",
+          "T77(M)"
+        ],
+        "claim_ordering_note": "the claim was taken before the builder commit (four claim children: the original claim, the refreshed heartbeat, the head-corrected heartbeat and the ordering note). The runner's stage records therefore carry source_sha ed297081fd241a25db6d2e8aaa07512b01b60c5b, the implementation commit, because the three stages were re-run AFTER C was committed so that the tested tree and the committed tree are the same bytes.",
+        "governed_source": [
+          "scripts/upgrade_recovery.py",
+          "scripts/prepare_release_assets.py",
+          "ci/archive_fixture.py",
+          "ci/mutations.py",
+          "ci/check_release_gates_status.py",
+          "ci/check_content_release_integration.py",
+          ".github/workflows/repository-verification.yml",
+          "docs/production/RECOVERY.md",
+          "tools/readiness/tests/test_t77.py"
+        ],
+        "required_regression_paths": [
+          "tools/readiness/tests/test_t77.py"
+        ],
+        "sealed_hot_paths_untouched": [
+          "crypto/ and wire/ (the Noise/LinkInfo vectors and the generated codecs)",
+          "android/ and ios/ (no Kotlin, no Swift, no project.yml: this task is the python release path)",
+          "the sealed T45/T46/T51/T52/T66 courts: the default staging behavior is byte-identical, so their rods' anchors still match exactly once",
+          "the five external gates: none was closed, moved or reinterpreted",
+          "docs/production/RELEASE_GATES_STATUS.json: the register itself is untouched; the checker gained a SEPARATE repo-owned-lane roll, so the sealed 12-of-12 and 15-of-15 counts stand"
+        ]
+      },
+      "ladder_boundary_commit": "ed297081fd241a25db6d2e8aaa07512b01b60c5b",
+      "mutation_results": {
+        "attempts_archived": [],
+        "campaign_note": "the twenty rods ran in one official pass, fail-closed, at baseline ed297081fd241a25db6d2e8aaa07512b01b60c5b: 20 KILLED of 20, SKIPPED=0, INVALID=0, TIMEOUT=0, ESCAPED=0. The card's named semantic negative is carried by PM01/PM02 ('Open future schema and recreate it empty: upgrade/rollback preservation test fails'), and PM16/PM17 guard the honesty of the report rather than a code path: the device claim may not say VERIFIED, and a rehearsal may not be relabelled an approval.",
+        "of": 20,
+        "roster_manifest": "T77/roster/manifest.json",
+        "semantic": {
+          "harness": "ci/mutations.py run_semantic (the ledger filtered to the T77- prefix so the campaign is this task's roster)",
+          "platform": "python",
+          "work_parent": "/Users/oculus/.cache/godstone-mutation-worktrees-t77 (disposable; the live tree is never touched)"
+        },
+        "tally": {
+          "ESCAPED": 0,
+          "INVALID": 0,
+          "KILLED": 20,
+          "SKIPPED": 0,
+          "TIMEOUT": 0
+        }
+      },
+      "objective": {
+        "claimed_head": "eaec8226fcb0ea9c1918e7598bab1bf6e3105ceb",
+        "claimed_utc": "2026-09-14T14:19:08+00:00",
+        "objective": "Prove upgrade, failed-update and rollback recovery: execute the supported upgrade paths with content replacement and schema migration, an interrupted install and staging, and a wipe in progress, preserving the previous authoritative estate on every refusal and refusing an unsupported downgrade explicitly; a future schema opened and recreated empty must fail the preservation test."
+      },
+      "status": "COMPLETE",
+      "tested_tree_sha": "d1062f24639bc729a68bcf9d2a628d54a1de3431",
+      "unresolved": [
+        "installation, launch, upgrade and rollback ON A DEVICE are UNVERIFIED: the platform/device gate is external and no fixture claimeth it",
+        "the on-device Archive promotion path (android :core ArchiveInstaller, ported and sealed in T47) was NOT touched: this task's declared stages are python-only. Its own schema-compatibility law standeth in ArchiveManifestFacts, and any device-level upgrade/rollback claim remaineth for the explicit device gate",
+        "the rehearsal's schema-2 estate is a SYNTHETIC prior-version label over the current DDL: the shipped matrix declares no supported earlier version, so production refuseth it by name; a real fixture-based migration from a supported version is required before such a step may be declared",
+        "ci/symbols.py --selftest FAILETH at the boundary ('restored tree: 25 unresolved (BROKEN)', rc=1). It is PRE-EXISTING: reproduced identically in disposable worktrees at eaec822, 1ba129c, 3989c01 and c4c129c. T77 changes no symbol resolution. Recorded as FAILED, never dressed as green",
+        "the L2-L4 ladder levels remain 'unavailable: no command manifest yet'"
+      ]
+    },
     "T83": {
       "case_results": {
         "android_grand": {
@@ -11777,7 +11972,7 @@
       "unresolved": []
     }
   },
-  "current_task": "T77",
+  "current_task": "T84",
   "external_blockers": [
     "A06",
     "APPROVED_CONTENT",
@@ -11787,49 +11982,54 @@
   ],
   "failed_attempts": [],
   "in_progress": {
-    "claimed_head": "eaec8226fcb0ea9c1918e7598bab1bf6e3105ceb",
-    "claimed_utc": "2026-09-14T14:19:08+00:00",
+    "claimed_head": "208fb7421220e925237355efbc72f3a600633a4d",
+    "claimed_utc": "2026-09-14T15:30:44+00:00",
     "objective": {
-      "claimed_head": "eaec8226fcb0ea9c1918e7598bab1bf6e3105ceb",
-      "claimed_utc": "2026-09-14T14:19:08+00:00",
-      "objective": "Prove upgrade, failed-update and rollback recovery: execute the supported upgrade paths with content replacement and schema migration, an interrupted install and staging, and a wipe in progress, preserving the previous authoritative estate on every refusal and refusing an unsupported downgrade explicitly; a future schema opened and recreated empty must fail the preservation test."
+      "claimed_head": "208fb7421220e925237355efbc72f3a600633a4d",
+      "claimed_utc": "2026-09-14T15:30:44+00:00",
+      "objective": "Forward durable recipient ACKs through intermediate relays: dispatch an inbound ACK BEFORE generic message TTL/dedup/store handling, classify it as origin verification when a durable delivery row standeth and as bounded opaque relay custody when it doth not (never an automatic discard), and carry it home through a separate bounded epidemic ACK pump that survives process death and reconnect -- with the canonical 80-byte signature payload, flags 0, an explicit initial TTL of 12 decremented and a hop incremented exactly once per forwarded copy, so that dropping a relay UnknownMessage ACK, deduping it against the MESSAGE id, or retiring it after a local ATT success make the three-node delivery test fail."
     },
-    "task": "T77"
+    "task": "T84"
   },
-  "last_code_head": "c96df9dfe5401c659b783bef2b2da53434e280a8",
-  "last_observed_head": "c96df9dfe5401c659b783bef2b2da53434e280a8",
+  "last_code_head": "ed297081fd241a25db6d2e8aaa07512b01b60c5b",
+  "last_observed_head": "ed297081fd241a25db6d2e8aaa07512b01b60c5b",
   "latest_verification": {
-    "at_utc": "2026-09-14T14:18:00+00:00",
-    "boundary_commit": "c96df9dfe5401c659b783bef2b2da53434e280a8",
+    "at_utc": "2026-09-14T15:22:00+00:00",
+    "boundary_commit": "ed297081fd241a25db6d2e8aaa07512b01b60c5b",
     "controls": {
       "boundary_records": 2,
-      "first_pair_failure": "none this round",
-      "outcomes": "2/2 PASSED at the boundary (check_repository rc=0; the release-gates status checker rc=0 with its own 12-of-12 and 15-of-15 selftests)"
+      "outcomes": "2/2 PASSED at the boundary (check_repository rc=0; the release-gates status checker rc=0 with its own 12-of-12, 15-of-15 and 7-of-7 selftests)"
     },
     "isle_grands": {
-      "android_grand": "no Android path in this round (an iOS artifact task): the sealed :llm and :mesh roads are untouched by the name-list",
-      "counts_source": "the runner's classifier read the python courts as kind=test with positive counts (26/26 and 272/272) and the two control commands as tests=n/a; every log is preserved under T69/logs/",
-      "ios_grand": "the iOS artifact lane was exercised for real: xcodegen generateth the project and xcodebuild buildeth Godstone.app under LightRelease/generic/platform=iOS with signing disabled (** BUILD SUCCEEDED **), and the inspector readeth it (arm64, minimum 16.0, privacy manifest present, no excluded surface) -- while the registered runner commands for that lane stand BLOCKED by the absent mac-xcode capability, which is recorded and never fixtured",
-      "python_grand": "the T70 court 18/18, the subsystem 290 OK, the campaign 15/15 KILLED, the reader selftest OK"
+      "android_grand": "no Android path in this round: the card's declared stages are python-only and its Android implication is 'no unrelated Android runtime change'",
+      "counts_source": "the runner's classifier read the narrow and subsystem lanes as kind=test with positive counts (23/23 and 313/313) and the two control commands as tests=n/a; every log is preserved under T77/logs/",
+      "ios_grand": "no iOS path in this round: likewise, and the generated Foundation package is untouched",
+      "python_grand": "the T77 court 23/23, the subsystem 313 OK, the campaign 20/20 KILLED, the authority selftest PASS, the rehearsal 12 of 12 declared cases agreed"
+    },
+    "ladder": {
+      "L0": "1 PASSED (check_repository), 1 FAILED (ci/symbols.py --selftest: PRE-EXISTING, reproduced at four earlier commits)",
+      "L1": "PASSED",
+      "L2_L4": "unavailable: no command manifest yet",
+      "log": "T77/logs/T77-ladder-archive.log"
     },
     "narrow": {
       "errors": 0,
       "failures": 0,
-      "lane": "python3 -m unittest discover -s tools/readiness/tests -p test_t69.py",
-      "tests": 18
+      "lane": "python3 -m unittest discover -s tools/readiness/tests -p test_t77.py",
+      "tests": 23
     },
     "roster": {
-      "T70_killed": 15,
-      "of": 15
+      "T77_killed": 20,
+      "of": 20
     },
     "subsystem": {
       "errors": 0,
       "failures": 0,
-      "lane": "python3 -m unittest discover -s tools/readiness/tests (the gradle release half BLOCKED by the absent android-build capability, executed by the builder instead)",
-      "tests": 290
+      "lane": "python3 -m unittest discover -s tools/readiness/tests (all courts)",
+      "tests": 313
     }
   },
-  "next_task": "T77",
+  "next_task": "T84",
   "phase": "P0",
   "plan_sha256": "685456b378662b0a40a53a6abc810041e37daf97b213f3efeb6cea879363934e",
   "planning_baseline_sha": "b5c3d3d394b70cf356cdde33b47511dad7cbb95c",
@@ -11874,7 +12074,10 @@
     "arm every selftest control with TWO independent refusers (a shape fault beside a value fault, a run-id beside an agreement, the must-hold beside the skipped-search): a control that falls to the same blow as the witness it mirrors can no longer witness the count -- the register must cry \"refuseth N of N\" under every single rod, and the fifteenth rod's twin-metal lesson is that the installer's own nets (replace seen ONCE, find seen NOT, whole face compilable) are the sower's law before any row is laid",
     "let the audit eate upon the NEW metal, not upon the disk's hoard: exec the composed register in memory and judge the installed face there -- twice the reforging scripts died clean WITHOUT writing because a probe read the old file from disk; and uniqueness of the needle is not enough, the replacement must be singular in the installed whole: a replacement text that twins a line elsewhere in the file is unfaithful metal though the needle be unique",
     "swear workflow witnesses upon FULL invocation forms, not bare tokens: a comment's prose (the word --release in a remark) or a dormant step's shadow (a second inspector call elsewhere in the same job block) may shelter an amputated command from an assertIn of the token alone; the whole line -- flags, order and all -- is the only form a rod cannot forge",
-    "T61 seal lesson: the registered mac-native lane (swift test --package-path ios/Godstone) is blocked by the executor registry (mac-primary carrieth swift-host/swift-xcode, not mac-native) and beneath it by the absent machine-local vendor provisioning (third_party/llama.cpp git-ignored at .gitignore:42, README only); whole-package swift test buildeth GodstoneLLMBridge and perisheth at LlamaBridge.mm:3 (llama.h) -- the mirror road (ios/Packages/GodstoneFoundation) is the isle executable road; do not fixture the vendor; the lane awaiteth the provisioning lane own act"
+    "T61 seal lesson: the registered mac-native lane (swift test --package-path ios/Godstone) is blocked by the executor registry (mac-primary carrieth swift-host/swift-xcode, not mac-native) and beneath it by the absent machine-local vendor provisioning (third_party/llama.cpp git-ignored at .gitignore:42, README only); whole-package swift test buildeth GodstoneLLMBridge and perisheth at LlamaBridge.mm:3 (llama.h) -- the mirror road (ios/Packages/GodstoneFoundation) is the isle executable road; do not fixture the vendor; the lane awaiteth the provisioning lane own act",
+    "T77 boundary: ci/symbols.py --selftest FAILETH (rc=1, 'restored tree: 25 unresolved (BROKEN)'). PRE-EXISTING, not a T77 regression: reproduced identically in disposable worktrees at eaec822, 1ba129c, 3989c01 and c4c129c. It is recorded as FAILED in the L0 record and never dressed as green; the symbol-resolver selftest's restored-tree check belongs to whichever task owns that tool.",
+    "T77 next-task selection: T79, T80 and T81 are numerically lower than T84 and their dependencies are complete, but each carrieth an EXTERNAL REQUIREMENT with no artifact present (T79 APPROVED_INDEPENDENT_ARTIFACT behind A06; T80 APPROVED_CONTENT_HUMAN_REVIEW; T81 APPROVED_NATIVE_MODEL_ARTIFACTS). Their inputs are therefore unavailable, so the rule 'lowest numeric pending task with complete dependencies AND AVAILABLE INPUTS' selecteth T84 (dependencies T83, T40, T24 all complete; no external requirement).",
+    "docs/production-readiness/BUILD_STATE.md is STALE (last regenerated at the T23 metadata checkpoint, 5247f15) and has been through every task since. It is a generated human view and explicitly NOT a second authority, so no task's evidence dependeth on it; regenerating it is adjacent cleanup and is left to a task that owns the state tooling."
   ],
   "warnings_for_next_invocation": [
     "Android toolchain provisioned: JDK 17.0.20.1 + SDK 35 on mac-primary.",
