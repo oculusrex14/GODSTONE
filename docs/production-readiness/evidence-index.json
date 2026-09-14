@@ -1,183 +1,108 @@
 {
-  "evidence_root": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/T60",
+  "evidence_root": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/T67",
   "files": [
     {
-      "path": "T60/BUILDER_NOTE.md",
-      "sha256": "70307a6c797d841c3df2fa23b1b5b95b19658320bdb7877d1a667c032247d258",
-      "size": 4473
+      "path": "T67/BUILDER_NOTE.md",
+      "sha256": "cfd9381add7266f4b10b3d5285093e91d92f1c3456e1d41704f2eb8256cf3229",
+      "size": 5202
     },
     {
-      "path": "T60/commands.json",
-      "sha256": "8c50355a37ba7e4a805c127a897dbcf6ae0946936b69b7190befd4ddf911898c",
-      "size": 7938
+      "path": "T67/commands.json",
+      "sha256": "5f91f216c14970e18d897684fa7c317b9b660cf99ca3f6e5109ac38aee1bf090",
+      "size": 3529
     },
     {
-      "path": "T60/executed/T60-conductor-report.log",
-      "sha256": "768c7a4377fd1107c8117e573cbbf302c7aa0b9681ffee5a8bc8bacf2d8c3147",
-      "size": 747
+      "path": "T67/executed/T67-controls-full.log",
+      "sha256": "8bffcc10f73f80562a041525ce9a6a48ebd9014546810e1286c2eacbc52e2cc3",
+      "size": 3004
     },
     {
-      "path": "T60/executed/T60-diff-check.log",
+      "path": "T67/executed/T67-diff-check.log",
       "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
       "size": 0
     },
     {
-      "path": "T60/executed/T60-implementation-commit.log",
-      "sha256": "f48e57e62531219fc300116ca4b2c9ada48f34b652c604cd17a566c5c2138631",
-      "size": 4539
+      "path": "T67/executed/T67-harness-selftest.log",
+      "sha256": "e1f3c4cfb3e3fd46cb56e38158d8738448399582bae2d74407057fc2386e8402",
+      "size": 1148
     },
     {
-      "path": "T60/executed/T60-narrow-gradlew-executed.log",
-      "sha256": "113906e79840370a2c1eb89dfc1c725ae95866c20488ce25e1859ed0896409d0",
-      "size": 2363
+      "path": "T67/executed/T67-implementation-commit.log",
+      "sha256": "f68d7f369ae9c06affa0ec1984c27b243de17ae94032d838f517cbb683e6ca8e",
+      "size": 3507
     },
     {
-      "path": "T60/executed/T60-narrow-python-executed.log",
-      "sha256": "08c3f6dff6ba818e5c5cb178e01dfa5db084489e9eb73ffaa044e9569e04e12a",
-      "size": 1856
+      "path": "T67/executed/T67-narrow-python-executed.log",
+      "sha256": "96718ba4d80e9ae6ac13023a4594fa78b285e774bf08b58b772df7709f77739a",
+      "size": 3192
     },
     {
-      "path": "T60/executed/T60-narrow-swift-executed.log",
-      "sha256": "8dc944e43797bf1ece729e64cae28fd689323a5f2dc56ac9508e2a44d7aff38f",
-      "size": 3790
-    },
-    {
-      "path": "T60/executed/T60-structural-lineage.log",
+      "path": "T67/executed/T67-structural-lineage.log",
       "sha256": "3731a17d5b5ad7c7c6603f14622a2922fb12b8e105442e96b73c4cd33b67764d",
       "size": 903
     },
     {
-      "path": "T60/executed/T60-subsystem-gradlew-executed.log",
-      "sha256": "63434d25b053b6662b3198e9d6c3e2fc101d3042fdf32572837a8758c768e7c1",
-      "size": 2364
+      "path": "T67/executed/T67-subsystem-python-executed.log",
+      "sha256": "d76e48d6274979d3d066fcf94f8fe2ef9ccd1a6a7282edbb3402f6ce45dbdf08",
+      "size": 127330
     },
     {
-      "path": "T60/executed/T60-subsystem-python-executed.log",
-      "sha256": "3e516cfd1d92937291618518ca34bfc1a893933fed56877e582572df345db278",
-      "size": 76747
-    },
-    {
-      "path": "T60/executed/T60-subsystem-swift-executed.log",
-      "sha256": "79ffb8f0a5cf7c851b3accb39a47f4e84eb35aff727ccb07fe74ad0f61560eb1",
-      "size": 293255
-    },
-    {
-      "path": "T60/executed/T60-sync-check.log",
+      "path": "T67/executed/T67-sync-check.log",
       "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
       "size": 0
     },
     {
-      "path": "T60/logs/T60-controls-python3-002.log",
+      "path": "T67/logs/T67-controls-python3-002.log",
       "sha256": "604476d6f067a942c6e64efefd5ae147930eb142f02a903d28a598e72596a8a4",
       "size": 649
     },
     {
-      "path": "T60/logs/T60-controls-python3-003.log",
-      "sha256": "67493ebd28a55ece17214e55d318f34ba4af6ac7592268756f1b3dcc304afa21",
-      "size": 125
+      "path": "T67/logs/T67-controls-python3.log",
+      "sha256": "4cb18f41ddb9f8e17f7996d1a90390e8e192c961b836300b7a657700712003f5",
+      "size": 3105
     },
     {
-      "path": "T60/logs/T60-controls-python3.log",
-      "sha256": "d7c332b87cf060bb7c2d77d08303cea33d6ae10ab1091008d67dd5ff97fdd34c",
-      "size": 1883
+      "path": "T67/logs/T67-narrow-python3.log",
+      "sha256": "2a7d41d1123c519c506c6d72da9faf9c0ba5e48787fc1f2ffaadca2dc163096b",
+      "size": 3334
     },
     {
-      "path": "T60/logs/T60-narrow-gradlew.log",
-      "sha256": "6e361ecede797b5a190cc8634bc055645bfc9b628a725e6d18515a2d6fa2fa7c",
-      "size": 2513
+      "path": "T67/logs/T67-subsystem-python3.log",
+      "sha256": "1975686747475b73aad2cf91f496fdf0c6373050872f002da9cdae2d0aff8a71",
+      "size": 127457
     },
     {
-      "path": "T60/logs/T60-narrow-python3.log",
-      "sha256": "66ef6ad3c87d96a56d801250d92d0e825edd7f21145deba427d3a20ebd2c6fcf",
-      "size": 1998
+      "path": "T67/roster/logs/T67-C1-lifetime-bypass-an-expired-candidate-standeth.semantic.log",
+      "sha256": "cade9bff47e26a935fc52b1ca5a9fe6a08e47d59f622e098b7a408b5f75f1a69",
+      "size": 717
     },
     {
-      "path": "T60/logs/T60-narrow-swift.log",
-      "sha256": "b5e6f93878dc4547998b42cd84a07415756a3dc130ef05a127eb48fe4baa3647",
-      "size": 3945
+      "path": "T67/roster/logs/T67-C2-pre-auth-replay-commit.semantic.log",
+      "sha256": "ac3ca50fc9c937e8b3d25962184ee1a5979d57b8b4d69b09fbac3558c1b629ab",
+      "size": 694
     },
     {
-      "path": "T60/logs/T60-subsystem-gradlew.log",
-      "sha256": "3b6d5eec7686a8269070393984f5288318b108707324ac19e2adbdaaaebaa8e2",
-      "size": 2488
+      "path": "T67/roster/logs/T67-C3-ack-offered-before-the-persist.semantic.log",
+      "sha256": "73424dbb4fa035251fba7f25edb040e766b2219b9cd477050d373a8d0ccc2854",
+      "size": 703
     },
     {
-      "path": "T60/logs/T60-subsystem-python3.log",
-      "sha256": "9006e02ff6919a7349d922ff3cf7388a739e2b42ebcf221fc3d9782617a23792",
-      "size": 124364
+      "path": "T67/roster/logs/T67-C4-plaintext-fallback-accepted.semantic.log",
+      "sha256": "b818a3e7ffda70dd56b667f35fb588f20fb0b257fba1e42144ac8505a5f7d021",
+      "size": 699
     },
     {
-      "path": "T60/logs/T60-subsystem-swift.log",
-      "sha256": "7c7479470d488990ebcfdb9645ab9bc2d923c2a20eb3670a22fba2bd0b379e2e",
-      "size": 293378
+      "path": "T67/roster/logs/T67-C5-stale-status-evidence-accepted.semantic.log",
+      "sha256": "53047935f1fccc943bbab53b1db6f6143e493a6c18c2fce2b67bca985ea3d678",
+      "size": 1096
     },
     {
-      "path": "T60/roster/logs/T60-RC1-a-label-less-essential-control-is-accepted.semantic.log",
-      "sha256": "2cabd68930a6ec9d8d3b93c67c69a6f8a7908f4806033089bd1a9128f4b81f3b",
-      "size": 1343
-    },
-    {
-      "path": "T60/roster/logs/T60-RC10-android-the-colour-channel-standeth-alone.semantic.log",
-      "sha256": "c10a952a597cbed68ecfa6849cee96d2d474ac2e838626e3ff567368ea6b3ee6",
-      "size": 715
-    },
-    {
-      "path": "T60/roster/logs/T60-RC11-ios-a-clipped-status-is-accepted.semantic.log",
-      "sha256": "70ba3b79000dd2c55c128d39ac9787e3cd38d76ca79f2f876b2ad224ded2b133",
-      "size": 16029
-    },
-    {
-      "path": "T60/roster/logs/T60-RC12-ios-the-touch-target-minimum-vanish.semantic.log",
-      "sha256": "ac392bd6cf244770323e363bd6a0a72a43868fd85186294e1b724a8bc6e014de",
-      "size": 16029
-    },
-    {
-      "path": "T60/roster/logs/T60-RC2-a-clipped-status-is-accepted-at-large-text.semantic.log",
-      "sha256": "d76ace876ddd5a52f4acc8237f8f1d7f7de9c1f8a9c3f7e4506c96c083110d6d",
-      "size": 1256
-    },
-    {
-      "path": "T60/roster/logs/T60-RC3-a-colour-only-state-is-accepted.semantic.log",
-      "sha256": "3d3124ad576c64c57921a564f5877a28efcae5fa89fc3d73bb951d0952a5bb41",
-      "size": 993
-    },
-    {
-      "path": "T60/roster/logs/T60-RC4-a-undersized-target-is-accepted.semantic.log",
-      "sha256": "2a6fe62db4891ef1793fc98f80595c67efaddb4707101739712a5bded1acb585",
-      "size": 1154
-    },
-    {
-      "path": "T60/roster/logs/T60-RC5-a-gapped-reading-order-is-accepted.semantic.log",
-      "sha256": "12c9981968fbcc422ae6f3091fd78e1c4bc22e91990d14ccaabb509def6c583c",
-      "size": 1143
-    },
-    {
-      "path": "T60/roster/logs/T60-RC6-a-mirrored-meaning-is-accepted.semantic.log",
-      "sha256": "48aa4eccba105e2d20e08195d525597464348c0d16767448860282ee2fd3d21d",
-      "size": 1148
-    },
-    {
-      "path": "T60/roster/logs/T60-RC7-a-clipped-long-content-label-is-accepted.semantic.log",
-      "sha256": "491ab8f07dba55a006adbcfab6b0dc2d568e98fbc4e9bd89ddcfd1e2ae681bdf",
-      "size": 1217
-    },
-    {
-      "path": "T60/roster/logs/T60-RC8-android-a-label-less-control-is-accepted.semantic.log",
-      "sha256": "fce706ce86130f267e6b0cf3d081755527fdc03362a5a8c3fede9498ecf0ee7e",
-      "size": 713
-    },
-    {
-      "path": "T60/roster/logs/T60-RC9-android-a-clipped-status-is-accepted.semantic.log",
-      "sha256": "4af4535430137dc6750bc48fc54ad4dd53b385a379223d491812358b8613a439",
-      "size": 709
-    },
-    {
-      "path": "T60/roster/manifest.json",
-      "sha256": "4f9bbd7da91382efcf08962c63e7c1a2ac679a46def4a52573a37c9a0171bd66",
-      "size": 9808
+      "path": "T67/roster/manifest.json",
+      "sha256": "7c34c2ac8667de4e5129cb9e7dd63b7ce0d0e5303efac2ef7bb6d53a02d32ecb",
+      "size": 4096
     }
   ],
-  "note": "Complete evidence index for T60: the runner's command records and logs for the three declared stages at the implementation head d3e04323, the EXECUTED logs from ALL THREE LANES (the android mesh court 13/0 and its suite 1102/0, the iOS court 13/0 and its package 1140/0, the python court 13 ok and its suite 351), the conductor's own report, the roster manifest with its twelve per-rod logs (its failed_assertion field is authoritative; the log files are truncated tails), the control checkers' output, all three builder children's stat records, and the builder note carrying the counting rule, the three roster passes and their causes, and the explicit non-claims. No keys, no private content, no device result.",
+  "note": "Complete evidence index for T67: the runner's command records and logs for the three declared stages at the implementation head a9520f0d, the EXECUTED unittest logs the witness counts were read from (364, up from 351), the HARNESS'S OWN SELFTEST output, the roster manifest with its five per-rod logs for the production-path controls (its failed_assertion field is authoritative; the log files are truncated tails), the control checkers' output, all three builder children's stat records, and the builder note carrying the counting rule, the blind-spot the selftest found in its own table, the three controls that needed repair, and the explicit non-claims. No keys, no private content, no device result.",
   "schema_version": 1,
-  "task": "T60"
+  "task": "T67"
 }
