@@ -576,11 +576,17 @@ public final class ComposedRuntimeHarness {
     /// reconnect" -- the same frame the radio carried once, offered again.
     @discardableResult
     func replay(_ from: String, to: String, bytes: Data) -> Bool {
-        guard let a = nodes[from] else { return false }
+        guard let a = nodes[from], let b = nodes[to] else { return false }
         if !isLinked(from, to) { return false }
         trace.append(TraceEvent(kind: "replay", atMonoMillis: clock.monoMillis(),
                                 fields: ["from": from, "to": to, "bytes": String(bytes.count)]))
-        return hand(a, toLabel: to, bytes: bytes)
+        guard link.offer(fromLabel: a.label, toLabel: to, bytes: bytes) else { return false }
+        guard let frame = FrameV2.decode(bytes) else { return false }
+        // the replay RE-ENTERETH the receiving node's own statute
+        trace.append(TraceEvent(kind: "replay_ingested", atMonoMillis: clock.monoMillis(),
+                                fields: ["from": from, "to": to,
+                                         "msg_id": ComposedRuntimeHarness.hex(frame.msgId)]))
+        return b.node.ingestInbound(frame, receivedFrom: a.nodeId)
     }
 
     /// The durable checkpoint of one node's estate.

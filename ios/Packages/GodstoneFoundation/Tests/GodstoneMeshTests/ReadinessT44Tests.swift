@@ -190,8 +190,11 @@ final class ReadinessT44Tests: XCTestCase {
         XCTAssertFalse(h.isLinked("A", "B"))
         XCTAssertTrue(h.link("A", "B").isApplied)
         XCTAssertTrue(h.isLinked("A", "B"))
-        // the REPLAY carrieth the very bytes the radio carried the first time
+        // the REPLAY carrieth the very bytes the radio carried the first time, and
+        // RE-ENTERETH the receiving statute (the marker proveth it)
         _ = h.replay("A", to: "B", bytes: captured)
+        XCTAssertTrue(h.traceSnapshot().kinds().contains("replay_ingested"),
+                      "the replay RE-ENTERED the receiving statute")
         XCTAssertEqual(b.store.allHeldMsgIds().count, held,
                        "the replay did not duplicate the recipient's estate")
         XCTAssertEqual(stateOf(a, mid), .acknowledgedByRecipient,
@@ -212,6 +215,13 @@ final class ReadinessT44Tests: XCTestCase {
         XCTAssertGreaterThanOrEqual(h.link.droppedCount(), 0)
         XCTAssertLessThanOrEqual(h.traceSnapshot().size(), MeshTrace.maxEvents,
                                  "the trace stoppeth at its bound")
+        // the bound itself, proved on a small trace
+        let small = MeshTrace(bound: 8)
+        for i in 0..<20 {
+            small.append(TraceEvent(kind: "burst", atMonoMillis: Int64(i), fields: ["i": "\(i)"]))
+        }
+        XCTAssertEqual(small.size(), 8, "the trace stoppeth at ITS OWN bound")
+        XCTAssertEqual(small.droppedCount(), 12, "and the supersessions are counted")
         let cp = try h.checkpoint("A")
         XCTAssertGreaterThan(cp.heldCount, 0)
         XCTAssertEqual(cp.heldDigest, try h.checkpoint("A").heldDigest,
@@ -270,6 +280,12 @@ final class ReadinessT44Tests: XCTestCase {
             guard let sender = h.node(delivery.fromLabel) else { continue }
             XCTAssertTrue(sender.store.allHeldMsgIds().contains(frame.msgId),
                           "a \(frame.type) byte left \(delivery.fromLabel) without its durable frame")
+            // AND the receiving node's own estate carrieth it: the durable inbound
+            // commit is what this law is about
+            if let receiver = h.node(delivery.toLabel) {
+                XCTAssertTrue(receiver.store.allHeldMsgIds().contains(frame.msgId),
+                              "a \(frame.type) byte arrived at \(delivery.toLabel) without entering its estate")
+            }
             contentChecked += 1
         }
         XCTAssertGreaterThanOrEqual(contentChecked, 1, "at least one content frame was checked")

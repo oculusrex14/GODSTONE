@@ -249,8 +249,17 @@ class ReadinessT44Test {
         Assert.assertFalse(h.isLinked("A", "B"))
         h.link("A", "B")
         Assert.assertTrue(h.isLinked("A", "B"))
-        // the REPLAY carrieth the very bytes the radio carried the first time
+        // the REPLAY carrieth the very bytes the radio carried the first time, and
+        // RE-ENTERETH the statute: the verdict is the duplicate verdict (false),
+        // never a silent drop and never a fabricated acceptance
+        // The verdict of the re-ingest is NOT asserted here: this isle's statute
+        // answereth the delivery road's verdict, and the LAW this witness owneth is
+        // the ESTATE census below (a replay may not conjure a second row) plus the
+        // recorded re-entry. A replay that never reached the statute would leave no
+        // `replay_ingested` in the trace, which is what the marker proveth.
         h.replay("A", "B", captured)
+        Assert.assertTrue("the replay RE-ENTERED the receiving statute",
+            h.traceSnapshot().kinds().contains("replay_ingested"))
         Assert.assertEquals("the replayed frame did not duplicate the recipient's estate",
             held, b.store.allHeldMsgIds().size)
         Assert.assertEquals("and the terminal delivery claim survived the replay",
@@ -276,6 +285,14 @@ class ReadinessT44Test {
         Assert.assertTrue("and the supersessions are counted", h.link.droppedCount() >= 0)
         Assert.assertTrue("the trace stoppeth at its bound",
             h.traceSnapshot().size() <= MeshTrace.MAX_EVENTS)
+        // the bound itself, proved on a small trace so the law is exercised and not
+        // merely respected by a burst that never reacheth 4096
+        val small = MeshTrace(bound = 8)
+        repeat(20) { i -> small.append(io.godstone.mesh.runtime.TraceEvent("burst", i.toLong(),
+            mapOf("i" to i.toString()))) }
+        Assert.assertEquals("the trace stoppeth at ITS OWN bound", 8, small.size())
+        Assert.assertEquals("and the supersessions are counted", 12L, small.droppedCount())
+        Assert.assertEquals("the eldest are gone", "burst", small.events().first().kind)
         // the held estate is bounded by the store's own capacity law, not by luck
         val cp = h.checkpoint("A")
         Assert.assertTrue("the checkpoint carrieth a positive held count", cp.heldCount > 0)
@@ -379,6 +396,16 @@ class ReadinessT44Test {
                 "a " + frame.type + " byte left " + delivery.fromLabel +
                     " without its durable frame standing",
                 sender.store.allHeldMsgIds().any { it.contentEquals(frame.msgId) })
+            // AND the receiving node's own estate carrieth it: the durable inbound
+            // commit is what this law is about, and bypassing it is the card's
+            // named semantic negative
+            val receiver = h.node(delivery.toLabel)
+            if (receiver != null) {
+                Assert.assertTrue(
+                    "a " + frame.type + " byte arrived at " + delivery.toLabel +
+                        " without entering its durable estate",
+                    receiver.store.allHeldMsgIds().any { it.contentEquals(frame.msgId) })
+            }
             contentChecked++
         }
         Assert.assertTrue("at least one content frame was checked", contentChecked >= 1)

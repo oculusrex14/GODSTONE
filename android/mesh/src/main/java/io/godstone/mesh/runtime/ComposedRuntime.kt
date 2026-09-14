@@ -514,10 +514,17 @@ internal class ComposedRuntimeHarness(
      */
     suspend fun replay(from: String, to: String, bytes: ByteArray): Boolean {
         val a = nodes[from] ?: return false
+        val b = nodes[to] ?: return false
         if (!isLinked(from, to)) return false
         trace.append(TraceEvent("replay", clock.monoMillis(),
             mapOf("from" to from, "to" to to, "bytes" to bytes.size.toString())))
-        return send(a, to, bytes)
+        if (!link.offer(a.label, to, bytes)) return false
+        // the replay RE-ENTERETH the receiving node's own statute, which suppressth
+        // a held frame: the verdict is the duplicate verdict, never a silent drop
+        val frame = FrameV2.decode(bytes) ?: return false
+        trace.append(TraceEvent("replay_ingested", clock.monoMillis(),
+            mapOf("from" to from, "to" to to, "msg_id" to hex(frame.msgId))))
+        return b.node.ingestInbound(frame, a.nodeId)
     }
 
     /** The durable checkpoint of one node's estate. */
