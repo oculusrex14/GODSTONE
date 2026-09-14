@@ -1,148 +1,238 @@
 {
-  "evidence_root": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/T42",
+  "evidence_root": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/T43",
   "files": [
     {
-      "path": "T42/BUILDER_NOTE.md",
-      "sha256": "bc2e553a8f616037e2cae1daf7074b80bbdf4a1715484ca4318b612df6051770",
-      "size": 6724
+      "path": "T43/BUILDER_NOTE.md",
+      "sha256": "b20db40ca1123838b9e264b8e1e240add43b8842686ee89a9265103fe4024f16",
+      "size": 6399
     },
     {
-      "path": "T42/commands.json",
-      "sha256": "4a1093bdac1df8e8d2b244e56cda77c242f955b5e0a5052a3afa77986b3b5d43",
-      "size": 4363
+      "path": "T43/commands.json",
+      "sha256": "e5b9e2999644c2e72cfd4189279018ad49733a0a40e7938e1b8cd836c5be57a9",
+      "size": 18351
     },
     {
-      "path": "T42/executed/T42-diff-check.log",
+      "path": "T43/executed/T43-diff-check.log",
       "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
       "size": 0
     },
     {
-      "path": "T42/executed/T42-implementation-commit.log",
-      "sha256": "d8bed29daabe9434cc8a36fde470a7993e99b4a5b5e3a4eafc2757d732eb7a45",
-      "size": 6100
+      "path": "T43/executed/T43-implementation-commit.log",
+      "sha256": "0f174cfdc6daa3c1aebe52b41d81e5a0e7cbde259aa4940e5110d02d41baec8c",
+      "size": 6521
     },
     {
-      "path": "T42/executed/T42-narrow-swift-executed.log",
-      "sha256": "7068962edf3bd91ff5bd4c372bc407b1ee452938a584f7ac49513646d264af2a",
-      "size": 4583
+      "path": "T43/executed/T43-narrow-gradlew-executed.log",
+      "sha256": "79c00fbf74c46501dd495e4426e646f7c541e76d8b626170a4f79b3c8fba2000",
+      "size": 2363
     },
     {
-      "path": "T42/executed/T42-python-subsystem.log",
-      "sha256": "6c6a5d5fc6bfe54836cf044a27779a312a70345372aa0ec8aabfa84ef9c7d845",
+      "path": "T43/executed/T43-narrow-swift-executed.log",
+      "sha256": "59970d0eabb6dc7064d4099e24c40f2fd38069c30f2c41b0b095a4b88ec14144",
+      "size": 3818
+    },
+    {
+      "path": "T43/executed/T43-python-subsystem.log",
+      "sha256": "90fe7b67605b70ecb5b863e912fa3e8597520f19fd4ef2ab03ff309c7e5eda86",
       "size": 75603
     },
     {
-      "path": "T42/executed/T42-structural-lineage.log",
+      "path": "T43/executed/T43-structural-lineage.log",
       "sha256": "3731a17d5b5ad7c7c6603f14622a2922fb12b8e105442e96b73c4cd33b67764d",
       "size": 903
     },
     {
-      "path": "T42/executed/T42-subsystem-swift-executed.log",
-      "sha256": "c3d992d8767abe91355e4b963b36fee06d4b9c8e5a7e2ce871f87da0b28889e1",
-      "size": 277138
+      "path": "T43/executed/T43-subsystem-gradlew-executed.log",
+      "sha256": "7b76950b0d8b5c5a667415bfe61b392fba6c9725edd152c3832f023100c62a23",
+      "size": 2364
     },
     {
-      "path": "T42/executed/T42-sync-check.log",
+      "path": "T43/executed/T43-subsystem-swift-executed.log",
+      "sha256": "33d824b1fae553365b713b2aed56925ae39bf15a4057d951a119af99a027d09f",
+      "size": 280229
+    },
+    {
+      "path": "T43/executed/T43-sync-check.log",
       "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
       "size": 0
     },
     {
-      "path": "T42/logs/T42-controls-python3-002.log",
+      "path": "T43/logs/T43-controls-python3-002.log",
       "sha256": "9e55e672a2f881b2c58dfe0dbea8ac0b277a99a32536c35e9c1a9438529652a6",
       "size": 649
     },
     {
-      "path": "T42/logs/T42-controls-python3-003.log",
+      "path": "T43/logs/T43-controls-python3-003.log",
       "sha256": "67493ebd28a55ece17214e55d318f34ba4af6ac7592268756f1b3dcc304afa21",
       "size": 125
     },
     {
-      "path": "T42/logs/T42-controls-python3.log",
+      "path": "T43/logs/T43-controls-python3-004.log",
       "sha256": "17fc6741d8ea694b1c57d0cd9c209bd96b982e704cea430f47ef6b38bc509602",
       "size": 1764
     },
     {
-      "path": "T42/logs/T42-narrow-swift.log",
-      "sha256": "bc1bdea1f4c4bac204019930a9f0621f2e0b6c2d221902ad929e43041a5f238a",
-      "size": 4738
+      "path": "T43/logs/T43-controls-python3-005.log",
+      "sha256": "9e55e672a2f881b2c58dfe0dbea8ac0b277a99a32536c35e9c1a9438529652a6",
+      "size": 649
     },
     {
-      "path": "T42/logs/T42-subsystem-swift.log",
-      "sha256": "825c600bc2b7a85809f65aef52cd18b91804f8bde79bb9e3dcef7fc4c6f5f307",
-      "size": 277259
+      "path": "T43/logs/T43-controls-python3-006.log",
+      "sha256": "67493ebd28a55ece17214e55d318f34ba4af6ac7592268756f1b3dcc304afa21",
+      "size": 125
     },
     {
-      "path": "T42/roster/logs/T42-RC1-ios-store-failure-reported-accepted.semantic.log",
-      "sha256": "25e52d30441dde8c8e9966b4fc4a5d259b8a491eb474adcdeea7158e31aed6c7",
+      "path": "T43/logs/T43-controls-python3-007.log",
+      "sha256": "17fc6741d8ea694b1c57d0cd9c209bd96b982e704cea430f47ef6b38bc509602",
+      "size": 1764
+    },
+    {
+      "path": "T43/logs/T43-controls-python3-008.log",
+      "sha256": "9e55e672a2f881b2c58dfe0dbea8ac0b277a99a32536c35e9c1a9438529652a6",
+      "size": 649
+    },
+    {
+      "path": "T43/logs/T43-controls-python3-009.log",
+      "sha256": "67493ebd28a55ece17214e55d318f34ba4af6ac7592268756f1b3dcc304afa21",
+      "size": 125
+    },
+    {
+      "path": "T43/logs/T43-controls-python3.log",
+      "sha256": "17fc6741d8ea694b1c57d0cd9c209bd96b982e704cea430f47ef6b38bc509602",
+      "size": 1764
+    },
+    {
+      "path": "T43/logs/T43-narrow-gradlew-002.log",
+      "sha256": "9af10940793e3886be79ef0c0dd439f1bfa0490f989a24735b78661a7df5bcb4",
+      "size": 2527
+    },
+    {
+      "path": "T43/logs/T43-narrow-gradlew-003.log",
+      "sha256": "18e7df2a8674f8858101e39195b9e7654d8bb400114f000654168f1fb0a6a6bc",
+      "size": 2527
+    },
+    {
+      "path": "T43/logs/T43-narrow-gradlew.log",
+      "sha256": "4ed89dafc9c172fb30efe2da3436682af4b9f462bd28017e64fea5404a757ae3",
+      "size": 2527
+    },
+    {
+      "path": "T43/logs/T43-narrow-swift-002.log",
+      "sha256": "80280cad0627e10bed6910c8342a308c04dc1c175761bbe51c3b7935b8be77a7",
+      "size": 3973
+    },
+    {
+      "path": "T43/logs/T43-narrow-swift-003.log",
+      "sha256": "9cd6edd0ca376b1886255fd1b16451411ee67cdadb72dd84d3cb0d14231ce752",
+      "size": 3973
+    },
+    {
+      "path": "T43/logs/T43-narrow-swift.log",
+      "sha256": "5f79f51838f09f3962d129cc259b3dd6110263251efdd856925fbe4c11d24be9",
+      "size": 3746
+    },
+    {
+      "path": "T43/logs/T43-subsystem-gradlew-002.log",
+      "sha256": "4d62c842b13bb15a510f55383f6d6701925dea1f8881588214db81f78d6a4b21",
+      "size": 3002
+    },
+    {
+      "path": "T43/logs/T43-subsystem-gradlew-003.log",
+      "sha256": "43c684b5da5ee95b0627de46048e376b74d780974f06484ae5edb3ea7ef45b47",
+      "size": 2500
+    },
+    {
+      "path": "T43/logs/T43-subsystem-gradlew.log",
+      "sha256": "6d29c6aa18edd36f5f9c24ea728c3c0f5360fb7db3bbfab5c8b15c7852549214",
+      "size": 2500
+    },
+    {
+      "path": "T43/logs/T43-subsystem-swift-002.log",
+      "sha256": "cd4a47c7027e45e7565656e885eea9b8719323d4fb5f7068c0b9450f9d76ed7d",
+      "size": 280369
+    },
+    {
+      "path": "T43/logs/T43-subsystem-swift-003.log",
+      "sha256": "9e00067ddee320d3bf82f66a7418549a74ba99e253c9a46035d39bf7853f6ac2",
+      "size": 280366
+    },
+    {
+      "path": "T43/logs/T43-subsystem-swift.log",
+      "sha256": "5dc3e9786ff9cd2c17aab3db69a689b0f805b51fdec4ba44609ae5fb072fffd7",
+      "size": 280138
+    },
+    {
+      "path": "T43/roster/logs/T43-RC1-android-send-boolean-advanceth-the-label.semantic.log",
+      "sha256": "072ac95e2adf82f7ccbfed0ec7a7e38d0ce9397024173ff96af488b828148bfe",
+      "size": 713
+    },
+    {
+      "path": "T43/roster/logs/T43-RC10-ios-offer-labelled-delivered.semantic.log",
+      "sha256": "63038ab99954c4849db8ce4122e0a2f9ab272adeb81f224bb19e2eba2bd81a22",
       "size": 16029
     },
     {
-      "path": "T42/roster/logs/T42-RC10-ios-queue-bound-removed.semantic.log",
-      "sha256": "aa8ebe225e04a974cd07aab292215089f2c1931d088ce33732f163bc263b4ee8",
+      "path": "T43/roster/logs/T43-RC11-ios-legacy-row-read-as-custody.semantic.log",
+      "sha256": "9ac50626160e3aaf0e4522c211f77358209f50be65eeb9ce5ed7a6d4f25c63de",
       "size": 16029
     },
     {
-      "path": "T42/roster/logs/T42-RC11-ios-unsupported-type-reaches-the-road.semantic.log",
-      "sha256": "b83d0d3c34ab29a542b9cbb617b0f16c3ce548c81cc4d2142ea728265cde085c",
+      "path": "T43/roster/logs/T43-RC12-ios-migration-rewriteth-the-wrong-way.semantic.log",
+      "sha256": "3cf5ed36de802254c8d34f6882cccaed3d66acbae79190befee9f5461dccacc5",
       "size": 16029
     },
     {
-      "path": "T42/roster/logs/T42-RC12-ios-control-shepherd-sleepeth.semantic.log",
-      "sha256": "b16fd2d0d736d88843acaee74756ac26261d652b78318746a68dde3c6d8bd796",
+      "path": "T43/roster/logs/T43-RC13-ios-sos-send-advanceth-the-label.semantic.log",
+      "sha256": "2aa89f54e59c2d97d9edba4372c957ff63ece3d7822a2568649409c7014a778a",
       "size": 16029
     },
     {
-      "path": "T42/roster/logs/T42-RC13-ios-bloom-hint-ignored.semantic.log",
-      "sha256": "c7eb0b8ddcf7b6bc156a79fdb0d3aba226765a23917baa32d7693c8d54f9ee52",
+      "path": "T43/roster/logs/T43-RC2-android-sos-send-advanceth-the-label.semantic.log",
+      "sha256": "fceb930ec4b5210a6c5830a1defd17e8853f703b46d961e1f4d19091fbd1857f",
+      "size": 709
+    },
+    {
+      "path": "T43/roster/logs/T43-RC3-android-offer-labelled-delivered.semantic.log",
+      "sha256": "96915499d029ee701a7c7bdd5c25faaff2fc58dc6dba91650b5b9967c44c4062",
+      "size": 705
+    },
+    {
+      "path": "T43/roster/logs/T43-RC4-android-offer-cleareth-retryability.semantic.log",
+      "sha256": "93bb89afa62086692325df4067a1d05193950370bde09ecdf728b7cd8f04cbe2",
+      "size": 708
+    },
+    {
+      "path": "T43/roster/logs/T43-RC5-android-legacy-row-read-as-custody.semantic.log",
+      "sha256": "abf69cc1d03f838d91107a706ef7f0c0ac43ebe1c808746706741b97ae407937",
+      "size": 707
+    },
+    {
+      "path": "T43/roster/logs/T43-RC6-android-migration-rewriteth-the-wrong-way.semantic.log",
+      "sha256": "c3bcaa435b1e8601e1c7681c968b34723d4ff89b3eb00bc44a63a00ed1a7523e",
+      "size": 714
+    },
+    {
+      "path": "T43/roster/logs/T43-RC7-android-offer-ledger-unbounded.semantic.log",
+      "sha256": "2f4243643ee2c8270e5f26c752ee53ca6a0a856bcbd9bc82efb9857e66314ca5",
+      "size": 703
+    },
+    {
+      "path": "T43/roster/logs/T43-RC8-android-refused-offer-counted-as-admitted.semantic.log",
+      "sha256": "d3b0ee5c7d6d80c92c3fd6025d65c3be4eb90844eaf3a86a02fba507078f396c",
+      "size": 714
+    },
+    {
+      "path": "T43/roster/logs/T43-RC9-ios-send-boolean-advanceth-the-label.semantic.log",
+      "sha256": "96403dafc1681cc3c83232cc05edc15393460c85f3737ac20ba87d81cef27a58",
       "size": 16029
     },
     {
-      "path": "T42/roster/logs/T42-RC2-ios-send-before-persist.semantic.log",
-      "sha256": "46ec73b7718639f0ffd635d7b0ac811fb56c80684aa6209ffb3afc5ce465897c",
-      "size": 16029
-    },
-    {
-      "path": "T42/roster/logs/T42-RC3-ios-scheduler-unregistered.semantic.log",
-      "sha256": "4223be5a55fc0f88ca1f181f4ac7081e5ba4780285c1aaa808e942edfca8d499",
-      "size": 16029
-    },
-    {
-      "path": "T42/roster/logs/T42-RC4-ios-digest-never-scheduled.semantic.log",
-      "sha256": "3e5ac3e38bb766f79d61de9fc161b8479b15ff6e80130d0900152444c9ec30d5",
-      "size": 16029
-    },
-    {
-      "path": "T42/roster/logs/T42-RC5-ios-forward-copy-not-decremented.semantic.log",
-      "sha256": "5682ac082af81cda987ed919e13dae51d948bca44239925caa7b18a3ce8fed16",
-      "size": 16029
-    },
-    {
-      "path": "T42/roster/logs/T42-RC6-ios-echo-to-receivedfrom.semantic.log",
-      "sha256": "82a6c63e537e61259962863909394490543b7a800c0ddfd39056b604079b4cb9",
-      "size": 16029
-    },
-    {
-      "path": "T42/roster/logs/T42-RC7-ios-ttl-exhaustion-unchecked.semantic.log",
-      "sha256": "986422e8ba5d6ac991e79111da1b234d1a841ea47b5022c0d1782fdd36919f82",
-      "size": 16029
-    },
-    {
-      "path": "T42/roster/logs/T42-RC8-ios-priority-order-asleep.semantic.log",
-      "sha256": "b335ee5e4cfde7d0ef90ac9c20982a4b18e8a81049cb0b5925818dc0371b2212",
-      "size": 16029
-    },
-    {
-      "path": "T42/roster/logs/T42-RC9-ios-canonical-bits-replaced-by-a-type-table.semantic.log",
-      "sha256": "403bd226b2c2ac6fb8719898c16313d2204a706fc43191a7a97af80d350b8a88",
-      "size": 16029
-    },
-    {
-      "path": "T42/roster/manifest.json",
-      "sha256": "eb8b5cfd549777f46bc2aa5d9d4fa10955e597d42c62e8dc451c9e6523bc2537",
-      "size": 10534
+      "path": "T43/roster/manifest.json",
+      "sha256": "13584c280855eaa3cadfe9af16471bb4e6633b066a8ef2707c49d8abe0860898",
+      "size": 10773
     }
   ],
-  "note": "Complete evidence index for T42: the runner's command records and logs for the three declared stages at the implementation head 010a621e, the EXECUTED logs the positive counts were read from, the roster manifest with its thirteen per-rod logs (the manifest's failed_assertion field is authoritative: the log files are truncated tails), the control checkers' output, the implementation commit's stat record, and the builder note carrying the counting rule, the corrected pre-T42 assertion and its contradiction, the 40 mechanical construction-site updates, the two harness observations (the singular '1 failure' regex gap and the log truncation), the section-26 answers and the explicit non-claims. No keys, no private content, no device result.",
+  "note": "Complete evidence index for T43: the runner's command records and logs for the three declared stages at the implementation head 5cbb5b1, the EXECUTED logs the positive counts were read from, the roster manifest with its thirteen per-rod logs (its failed_assertion field is authoritative; the log files are truncated tails), the control checkers' output, both implementation commits' stat records, and the builder note carrying the counting rule, the two roster campaigns and their repairs, the seven corrected pre-T43 assertions with their contradiction named, and the explicit non-claims. No keys, no private content, no device result.",
   "schema_version": 1,
-  "task": "T42"
+  "task": "T43"
 }
