@@ -11786,7 +11786,16 @@
     "SIGNING"
   ],
   "failed_attempts": [],
-  "in_progress": null,
+  "in_progress": {
+    "claimed_head": "1ba129cc3b654a51b41ba649203e87780967aff7",
+    "claimed_utc": "2026-09-14T14:19:08+00:00",
+    "objective": {
+      "claimed_head": "1ba129cc3b654a51b41ba649203e87780967aff7",
+      "claimed_utc": "2026-09-14T14:19:08+00:00",
+      "objective": "Prove upgrade, failed-update and rollback recovery: execute the supported upgrade paths with content replacement and schema migration, an interrupted install and staging, and a wipe in progress, preserving the previous authoritative estate on every refusal and refusing an unsupported downgrade explicitly; a future schema opened and recreated empty must fail the preservation test."
+    },
+    "task": "T77"
+  },
   "last_code_head": "c96df9dfe5401c659b783bef2b2da53434e280a8",
   "last_observed_head": "c96df9dfe5401c659b783bef2b2da53434e280a8",
   "latest_verification": {
