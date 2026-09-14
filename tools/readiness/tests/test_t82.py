@@ -29,6 +29,7 @@ No external gate is closed; readiness stays false; no device is claimed.
 """
 from __future__ import annotations
 
+import dataclasses
 import json
 import shutil
 import sys
@@ -39,10 +40,32 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[3]
 sys.path.insert(0, str(ROOT / "tools" / "readiness"))
 
+import promises as promises_module  # noqa: E402
 from promises import (  # noqa: E402
     CAPABILITIES, Capability, Finding, Status, advertised, check, refused_promises,
     report,
 )
+
+
+class _PatchedLedger:
+    """A context manager that swappeth the module's ledger for a patched one, so a
+    witness can FEED the checker the very violation its rod striketh."""
+
+    def __init__(self, changes):
+        self.changes = changes
+
+    def __enter__(self):
+        patched = []
+        for capability in promises_module.CAPABILITIES:
+            change = self.changes.get(capability.id)
+            patched.append(dataclasses.replace(capability, **change) if change else capability)
+        self.original = promises_module.CAPABILITIES
+        promises_module.CAPABILITIES = tuple(patched)
+        return promises_module.CAPABILITIES
+
+    def __exit__(self, *exc):
+        promises_module.CAPABILITIES = self.original
+        return False
 
 #: The files the checker readeth: a corrupted fixture is a COPY of these.
 FIXTURE_FILES = (
@@ -99,6 +122,11 @@ class T82LedgerTest(unittest.TestCase):
         # the real repository carrieth no refused promise
         self.assertEqual((), refused_promises(),
                          "nothing advertised may be disabled, a stub or an open decision")
+        # ... and the witness FEEDETH the checker the very violation its rod striketh
+        with _PatchedLedger({"bulk_transfer": {"advertised_in": ("docs/packaging/TIERS.md",)}}):
+            findings = check(ROOT)
+            self.assertTrue(any(f.rule == "advertised-but-not-enabled" for f in findings),
+                            [str(f) for f in findings])
 
     def test_w03_advertising_bulk_transfer_is_refused_by_name(self):
         bulk = next(c for c in CAPABILITIES if c.id == "bulk_transfer")
@@ -171,7 +199,12 @@ class T82ProfileTest(unittest.TestCase):
             document["tiers"]["MEDIUM"]["shipping"] = True
             path.write_text(json.dumps(document, indent=2), encoding="utf-8")
             findings = check(target)
-            self.assertTrue(any(f.rule in ("tier-table-drift", "tier-promise") for f in findings),
+            # EACH clause separately: a witness that accepteth either rule would let
+            # one of them fall asleep behind the other (its rod escaped until this
+            # arm was split)
+            self.assertTrue(any(f.rule == "tier-table-drift" for f in findings),
+                            [str(f) for f in findings])
+            self.assertTrue(any(f.rule == "tier-promise" for f in findings),
                             [str(f) for f in findings])
 
 
@@ -241,6 +274,25 @@ class T82ClosureTest(unittest.TestCase):
         for capability in open_capabilities:
             self.assertNotEqual(Status.ENABLED, capability.status, capability.id)
         self.assertEqual([], [f for f in check(ROOT) if f.rule == "open-decision-unrecorded"])
+        # EVERY capability that NAMETH a decision must name one a register carrieth --
+        # not only the OPEN ones (a disabled tier nameth its own undecided design too)
+        for capability in CAPABILITIES:
+            if not capability.external_decision:
+                continue
+            token = capability.external_decision.upper()
+            self.assertTrue(token in blockers.upper() or token in gates.upper(),
+                            "%s nameth %s, which no register carrieth" % (capability.id, token))
+        # ... and a BOGUS decision is refused by name, on ANY capability that nameth one
+        with _PatchedLedger({"medium_tier": {"external_decision": "NOBODY_DECIDED_THIS"}}):
+            findings = check(ROOT)
+            self.assertTrue(any(f.rule == "open-decision-unrecorded" for f in findings),
+                            [str(f) for f in findings])
+        # ... and a CLOSED capability that nameth NO decision is refused too: a
+        # research-only tier that pointeth at nothing would look deliberately closed
+        with _PatchedLedger({"medium_tier": {"external_decision": ""}}):
+            findings = check(ROOT)
+            self.assertTrue(any(f.rule == "closure-without-decision" for f in findings),
+                            [str(f) for f in findings])
 
     def test_w11_no_advertised_capability_is_a_stub(self):
         for capability in CAPABILITIES:
@@ -250,6 +302,11 @@ class T82ClosureTest(unittest.TestCase):
         # the two incompatible stubs the card nameth are in the ledger
         stubs = {c.id for c in CAPABILITIES if c.status == Status.UNSUPPORTED_STUB}
         self.assertEqual({"wifi_aware_transport", "multipeer_transport"}, stubs)
+        # ... and an ADVERTISED stub is refused by name
+        with _PatchedLedger({"multipeer_transport": {"advertised_in": ("docs/packaging/TIERS.md",)}}):
+            findings = check(ROOT)
+            self.assertTrue(any(f.rule in ("stub-advertised", "advertised-but-not-enabled")
+                                for f in findings), [str(f) for f in findings])
 
 
 class T82RepositoryTest(unittest.TestCase):

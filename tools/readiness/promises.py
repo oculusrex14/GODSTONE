@@ -284,16 +284,23 @@ def check(root) -> list:
                 "ios-entitlement-advertised",
                 "the shipping entitlements must not grant %s" % forbidden))
 
-    # (8) EVERY OPEN DECISION MUST BE NAMED IN THE RELEASE MANIFEST, and none may be
-    #     CLOSED by this task: the ledger's EXTERNAL_DECISION_OPEN capabilities must
-    #     map to a gate that is OPEN or BLOCKED
+    # (8) EVERY OPEN DECISION MUST BE NAMED, AND EVERY NAME MUST BE RECORDED. The
+    #     rule covereth EVERY capability that nameth a decision -- not only the OPEN
+    #     ones, because a closed capability's note also pointeth at what would have to
+    #     change, and an unrecorded name is how a decided thing looketh undecided.
     for capability in CAPABILITIES:
-        if capability.status != Status.EXTERNAL_DECISION_OPEN:
-            continue
-        if not capability.external_decision:
+        if capability.status == Status.EXTERNAL_DECISION_OPEN and not capability.external_decision:
             findings.append(Finding(
                 "open-decision-unnamed",
                 "%s is externally open but nameth no decision" % capability.id))
+            continue
+        if capability.closed_in and not capability.external_decision:
+            findings.append(Finding(
+                "closure-without-decision",
+                "%s is closed in %s but nameth NO decision that would change it"
+                % (capability.id, ", ".join(capability.closed_in))))
+            continue
+        if not capability.external_decision:
             continue
         token = capability.external_decision.upper()
         if token not in gates.upper() and token not in blockers.upper():
