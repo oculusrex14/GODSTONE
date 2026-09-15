@@ -42,6 +42,39 @@ already carried. The audit's step 3 stays OPEN, with its two measured obstacles 
 | CRYPTO-003 | FIX_SUBMITTED | 4b | Destroyed retained controllers and primitive sessions st |
 | CRYPTO-006 | FIX_SUBMITTED | 4b | Duplicate journal admission is treated as success for a |
 
+## ROUND 111 — A CORRECTION I OWE, AND THE NEXT TARGET'S REAL BLOCKER
+
+ROUNDS 109–110 LABELLED THEIR LIMB "T09". THE LIFECYCLE AUTHORITY's frozen-availability defect is real
+and IS repaired (`UnifiedRuntimeLifecycle` now asketh the platform at each start; a revocation EVENT
+stayeth terminal; the pinned T28 law is green). BUT THE SUPPLEMENT'S **ANDROID-05-A NAMETH A DIFFERENT
+SCHEDULE, AND IT IS STILL OPEN**:
+
+    BleTransport.kt:200-209
+        override fun start() {
+            if (isStarted) return
+            isStarted = true                  // <-- set BEFORE the OS start SUCCEEDETH
+            val serverStarted = gattServer.start()
+            if (!serverStarted) return       // <-- a FALSE return leaveth isStarted TRUE
+            startAdvertising()
+        }
+    "isRunning can be false while retry is suppressed." -- and the supplement WARNS that
+    `isRunning == false` ALONE MISSETH the defect: the arm must observe whether the SECOND call
+    ATTEMPTETH GATT startup at all (count the attempts).
+
+MANDATORY CLOSURE (the supplement's own words): first GATT start fails -> the transport is completely
+non-started, with no advertising or stale owned server/lease/session state -> second start retries GATT
+and succeeds -> valid service readiness begins advertising EXACTLY ONCE. Deliver a delayed
+first-attempt callback before and after the retry; it has ZERO effect. Duplicate start/stop and stop
+during starting remain idempotent. Include partial allocation followed by failure AND a failure before
+allocation.
+
+THE BLOCKER IS STEP 1, AND IT IS A REFACTOR: "Add an injectable OS GATT boundary to the actual
+`BleTransport` construction path." `BleGattServer` is a FINAL class with a heavy constructor (context,
+uuids, provider lambdas), so the boundary meaneth extracting an INTERFACE over its public surface
+(start / stop / isRunning / isServiceReady / cancelConnection / isSubscribed / sendNotification / ...).
+That is a whole round, and it is why round 111 did NOT start it: a half-extracted interface would have
+left the :mesh lane red, which this work may never do.
+
 ## ROUND 105 — THE ANDROID LANE IS VERIFIED HERE, AND THE NEXT REPAIR IS NAMED
 
 Every OPEN HIGH finding left is a **Kotlin or Swift** repair, so this round measured the toolchain
