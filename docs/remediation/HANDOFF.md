@@ -46,7 +46,41 @@ already carried. The audit's step 3 stays OPEN, with its two measured obstacles 
 | CRYPTO-003 | FIX_SUBMITTED | 4b | Destroyed retained controllers and primitive sessions st |
 | CRYPTO-006 | FIX_SUBMITTED | 4b | Duplicate journal admission is treated as success for a |
 
-## DO THIS FIRST (round 164) — THE ISSUANCE BYPASS IS CLOSED ON BOTH ISLES, AND ONE OF THE THREE RED CONTROLS IS NOW GREEN
+## DO THIS FIRST (round 165) — THE SECOND RED CONTROL IS GREEN, AND FOR THE FIRST TIME ITS INSTRUMENT RUNS (55/55)
+
+`check_trusted_runtime_composition_controls` reported **four** errors (R01/R02/R05/R06) and its `--selftest`
+**aborted** on the unclean baseline — so its mutation battery never ran and the control proved nothing. It now
+reports **zero** errors and its selftest **passes with 55/55 mutations caught deterministically across R01–R30**.
+The repository stands at **17 controls green, ONE red**. Landed in `5924261`.
+
+**The diagnosis is the round's real result:** the law's properties were already present *under another
+vocabulary*. `SessionManager` owned a registry of per-**relation** slots, each owning exactly one
+`TrustedHandshakeController` (never a raw `NoiseSession`) **and its own lock**, with every operation running
+through `SessionSlot.serialize`. T08 renamed that map when it made the key a *relation* rather than a peer
+handle — and the control reads **code text with comments stripped**, so the names the contract requires
+(`controllers`, `peerLocks`/`getPeerLock`) had survived only in documentation the instrument deliberately
+ignores. The control was reporting a registry that does not exist.
+
+**The repair aligned the vocabulary and kept both the design and the instrument:** `controllers` on both isles,
+a new `getPeerLock` accessor that `isReady` *takes explicitly* (the same lock `serialize` acquires, so the name
+is load-bearing), and `SessionSlot.getPeerLock()` with `serialize` routed through it. **No rule was relaxed, no
+mutation removed, no check edited** — teaching the control to accept the old spelling was rejected as moving the
+goalposts for the gate's sake, and that refusal is recorded.
+
+**Assertion and behavioural twin:** the failing assertion was the control's own four errors (their RED is the
+round-163/164 sweeps, kept separate). The behavioural coverage already existed and the control itself names it:
+`SessionManagerConcurrencyTest(s)` for real per-peer serialisation and `ReadinessT08Test(s)` for the slot lease
+and reclamation law — all green in both lanes (Android BUILD SUCCESSFUL; iOS **1198 tests, 0 failures**).
+
+**NOT thereby closed:** CRYPTO-001 (relation-keyed session authority threaded through transport-owned work) and
+CRYPTO-002 (typed terminal retirement / READY expiry) — this round resolved the *control failure* and the
+*instrument*, and their deeper cards remain their own rounds.
+
+**NEXT:** the last red control, `check_ble_link_substrate_controls` (BL11/BL96/BL115/BL118/BL128/BL131/BL132 →
+IOS-04/IOS-06), whose selftest **also aborts on an unclean baseline** — repair its instrument first, then the code
+it names.
+
+## DO THIS FIRST (round 164, landed) — THE ISSUANCE BYPASS IS CLOSED ON BOTH ISLES
 
 `ci/check_local_identity_controls.py` — the best-instrumented of the three red repository controls — reported
 **TWO errors** on the audited tree (`SignedSosV1.kt`, `SignedSosV1.swift`). It now reports **NONE**: `PASS — all
