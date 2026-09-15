@@ -46,7 +46,32 @@ already carried. The audit's step 3 stays OPEN, with its two measured obstacles 
 | CRYPTO-003 | FIX_SUBMITTED | 4b | Destroyed retained controllers and primitive sessions st |
 | CRYPTO-006 | FIX_SUBMITTED | 4b | Duplicate journal admission is treated as success for a |
 
-## DO THIS FIRST (round 186) — ANDROID-07 / T26 STEP 1: A PRE-AUTH ADMISSION BUDGET CHARGED AT BOTH INGRESS DOORS
+## DO THIS FIRST (round 187) — ANDROID-07 / T26 STEP 3: THE GOVERNOR'S PRODUCTION DEFAULTS ARE NOW THE CARD'S (256 + MONOTONIC)
+
+**The bound, proved behaviourally:** W10 reads `PeerGovernor().maxTrackedPeersLimit()` and was RED at
+**`expected:<256> but was:<4096>`** on the unmodified tree — the audited default kept a registry **four times larger**
+than the card specifies, for identities that no longer exist. The repair sets `DEFAULT_MAX_TRACKED_PEERS = 256`,
+documented; the refusal **beyond** the bound already happened *before* allocation (the class's own `admitIdentity`), so
+no new policy was invented.
+
+**The clock, with an honest note about where its proof had to come from:** the audited default was
+`System::currentTimeMillis` — a **wall clock**, which a rollback (NTP, a user, a hostile environment) can step
+*backwards*, and the class's guards can only **extend** a refuse window, never refund a budget — so the refund law
+depended on the platform's honesty. It is now `System.nanoTime()`-derived milliseconds, and the class gains
+`usesTheMonotonicProductionClock()` so the production default is **answerable**: W11 asserts it true for the production
+instance and false for a court that injects its own clock. **W11 could not be written before the repair** — it asks about
+an accessor the repair adds — so it shipped **with** the change, as this programme's owner-contract repairs have done
+before, and that is stated rather than glossed.
+
+**The repair is safe because the courts never used the defaults:** every witness injects its own bound (8, 64) and its
+own controllable clock — which is precisely why the *default* is what production carries. Whole `:mesh` lane **1184
+tests, 0 failures, 0 errors** (1182 + W10/W11).
+
+**Remaining on ANDROID-07:** **step 2** — the post-AEAD charge against the **immutable full NodeID**, before full
+application payload decoding, with no MAC, hint or claimed-SOS evasion of the global cap; and **step 4's remainder** (the
+seven mislabeled governor-*unit* witnesses re-scoped or replaced, plus the downstream counters the card asks for).
+
+## DO THIS FIRST (round 186, landed) — ANDROID-07 / T26 STEP 1
 
 **The defect, measured rather than quoted:** `PeerGovernor` exists and is used — but in the **Router**
 (`router/Router.kt:36`), i.e. *after* reassembly, on a *claimed* identity, and only for traffic that survived parsing.

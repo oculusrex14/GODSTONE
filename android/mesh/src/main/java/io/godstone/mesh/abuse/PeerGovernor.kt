@@ -43,7 +43,12 @@ import kotlin.math.pow
  * everything SOS does not open an unbounded channel.
  */
 class PeerGovernor(
-    private val nowMillis: () -> Long = System::currentTimeMillis,
+    // ANDROID-07 / T26 (step 3): THE CLOCK IS MONOTONIC IN PRODUCTION. The audited default was
+    // `System::currentTimeMillis` -- a WALL clock, which a rollback (NTP, a user, a hostile
+    // environment) can step BACKWARDS, and the class's own guards can only extend a refuse window,
+    // never refund a budget: a wall clock therefore makes the refund law depend on the platform's
+    // honesty. `System.nanoTime()` is monotonic and its milliseconds serveth the same arithmetic.
+    private val nowMillis: () -> Long = MONOTONIC_PRODUCTION_CLOCK,
     private val maxTrackedPeers: Int = DEFAULT_MAX_TRACKED_PEERS,
     private val capacity: Map<Priority, Int> = DEFAULT_CAPACITY,
     private val refillPerSecond: Map<Priority, Double> = DEFAULT_REFILL,
@@ -179,13 +184,30 @@ class PeerGovernor(
     internal fun trackedPeerCount(): Int = tracked.get()
     internal fun maxTrackedPeersLimit(): Int = maxTrackedPeers
 
+    /**
+     * ANDROID-07 / T26 (step 3): whether THIS instance useth the production monotonic clock. A court
+     * that injecteth its own clock getteth FALSE -- the question is what PRODUCTION carrieth, which is
+     * the only thing a default can be asked about.
+     */
+    internal fun usesTheMonotonicProductionClock(): Boolean = nowMillis === MONOTONIC_PRODUCTION_CLOCK
+
     companion object {
         private const val BASE_BACKOFF_MS = 30_000L
         /** 30s, 1m, 2m, ... capped at ~8m. A neighbour with a flaky radio must
          *  be able to come back; only a persistent attacker stays excluded. */
         private const val MAX_STRIKES = 5
 
-        const val DEFAULT_MAX_TRACKED_PEERS = 4096
+        /**
+         * ANDROID-07 / T26 (step 3): THE SPECIFIED BOUND IS 256 TRACKED IDENTITIES. The audited
+         * default was 4096 -- a registry four times larger than the law alloweth, kept for identities
+         * that no longer exist. The courts all inject their own small bounds, so what production
+         * carrieth is this default; 256 is what the card specifieth, and a fresh identity beyond it is
+         * REFUSED BEFORE any entry is allocated (see [PeerGovernor.admitIdentity]).
+         */
+        const val DEFAULT_MAX_TRACKED_PEERS = 256
+
+        /** The production clock: MONOTONIC, in milliseconds, never a wall clock. */
+        val MONOTONIC_PRODUCTION_CLOCK: () -> Long = { System.nanoTime() / 1_000_000L }
         private const val DEFAULT_UNKNOWN_CAPACITY = 10
         private const val DEFAULT_UNKNOWN_REFILL = 0.25
 

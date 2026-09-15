@@ -58,6 +58,32 @@ class ReadinessT26Test {
      *  frames, from an address with NO connection, must be CHARGED and REFUSED at the ingress door.
      */
     @Test
+    fun testW10TheGovernorsProductionBoundIsTheSpecifiedTwoHundredFiftySix() {
+        // ANDROID-07 / T26 step 3: the card nameth the SPECIFIED bound -- 256 tracked identities --
+        // and the audited governor defaulted to FOUR THOUSAND NINETY-SIX, i.e. a much larger registry
+        // than the law alloweth. The courts all inject their own small bounds, so the DEFAULT is what
+        // production carrieth, and the default is what this arm readeth.
+        val production = PeerGovernor()
+        assertEquals(
+            "the production governor's bound must be the SPECIFIED 256, not 4096",
+            256, production.maxTrackedPeersLimit())
+        assertEquals("and it tracketh nothing until it serveth someone", 0, production.trackedPeerCount())
+    }
+
+    @Test
+    fun testW11TheProductionClockIsMonotonicNotAWallClock() {
+        // ANDROID-07 / T26 step 3, the CLOCK half. This arm could not be written before the repair:
+        // it asketh about an accessor the repair addeth, and an assertion about an API that doth not
+        // exist cannot compile. It shipeth WITH the change, as this programme's owner-contract
+        // repairs have done before.
+        assertTrue("production must use the MONOTONIC clock, not a wall clock a rollback can refund",
+            PeerGovernor().usesTheMonotonicProductionClock())
+        val injected = PeerGovernor(nowMillis = { t0 }, maxTrackedPeers = 8)
+        assertFalse("an injected clock is the court's own, and is reported as such",
+            injected.usesTheMonotonicProductionClock())
+    }
+
+    @Test
     fun testW08RawPreAuthTrafficIsChargedAndRefusedAtTheTransportIngress() {
         val transport = io.godstone.mesh.transport.BleTransport(
             serverStartAttempt = { true }, identity = identity())
