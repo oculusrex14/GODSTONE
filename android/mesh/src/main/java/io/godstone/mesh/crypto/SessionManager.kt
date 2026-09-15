@@ -185,6 +185,19 @@ class SessionManager internal constructor(
         return lock.withLock { slot.controller?.authenticatedNodeId }
     }
 
+    /**
+     * ANDROID-03 (T24) slice (a): the authenticated IDENTITY PUBLIC KEY for a relation, under the SAME lock
+     * discipline as the node-id accessor above -- the peer lock of the relation, read while the slot's controller
+     * answereth. It is the source `TrustedPeer.capture` needeth, and the node id IS its canonical derivation, so the
+     * two accessors can never disagree.
+     */
+    fun authenticatedIdentityPubOf(peerId: ByteArray): ByteArray? {
+        val rk = relationKey(peerId)
+        val slot = slotFor(rk) ?: return null
+        val lock = getPeerLock(rk) ?: return null
+        return lock.withLock { slot.controller?.authenticatedIdentityPub }
+    }
+
     fun isReady(peerId: ByteArray): Boolean {
         lifecycleRwLock.read {
             if (!isActive) return false

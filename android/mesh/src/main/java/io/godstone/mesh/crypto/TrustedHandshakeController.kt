@@ -104,6 +104,18 @@ internal class TrustedHandshakeController(
     @Volatile
     private var retainedNodeId: ByteArray? = null
 
+    /**
+     * ANDROID-03 (T24) slice (a): THE AUTHENTICATED IDENTITY PUBLIC KEY, RETAINED AT THE SAME MOMENT AND FOR THE SAME
+     * REASON AS THE NODE ID. `TrustedPeer.capture(relation, authenticatedIdentityPub32, trustVersion)` DERIVETH the
+     * node id from this key -- so that, in that factory's own words, 'a captured peer can never disagree with its own
+     * identity public key'. The transport can reach only a NODE ID without it, and the trusted publication cannot be
+     * constructed at the real publication moment.
+     */
+    @Volatile
+    private var retainedIdentityPub: ByteArray? = null
+    internal val authenticatedIdentityPub: ByteArray?
+        get() = retainedIdentityPub?.copyOf()
+
     /** The retained sixteen-octet NodeID, or null while trust was never validated. A COPY, always. */
     internal val authenticatedNodeId: ByteArray?
         get() = retainedNodeId?.copyOf()
@@ -154,6 +166,7 @@ internal class TrustedHandshakeController(
         // is applied -- the card's 'immutable full NodeID', which is NOT derivable from the static DH
         // key the remote static carrieth.
         retainedNodeId = validation.binding.nodeId
+        retainedIdentityPub = validation.binding.signingPublicKey
         val applyResult = trustAuthority.applyValidatedBinding(validation.binding)
         return when (applyResult) {
             is PeerTrustApplyResult.Accepted,
@@ -271,6 +284,7 @@ internal class TrustedHandshakeController(
         // is applied -- the card's 'immutable full NodeID', which is NOT derivable from the static DH
         // key the remote static carrieth.
         retainedNodeId = validation.binding.nodeId
+        retainedIdentityPub = validation.binding.signingPublicKey
         val applyResult = trustAuthority.applyValidatedBinding(validation.binding)
         return when (applyResult) {
             is PeerTrustApplyResult.Accepted,
@@ -327,6 +341,7 @@ internal class TrustedHandshakeController(
      */
     fun destroy() {
         retainedNodeId = null
+        retainedIdentityPub = null
         if (state == HandshakeTrustState.DESTROYED) return
         state = HandshakeTrustState.DESTROYED
         noiseSession.destroy()
