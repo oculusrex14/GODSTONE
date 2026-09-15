@@ -4512,6 +4512,19 @@
    "THIRTY green entries carried their path under a different key instead of 'log', so a tool reading 'log' saw None and my own audit script crashed on it: the path was moved to the 'log' key.",
    "STILL OPEN, recorded rather than papered over: 'my_red_case.log' is a STRING for some findings and a LIST for others, so an audit tool must handle both; and the counts above are lower bounds, because a malformed entry cannot be checked at all.",
    "ROUND 97: ONE ledger entry still stored its artifact path under the key 'path' instead of 'log', with a NULL digest (GS-CONTENT-003's mutation roster, T52/roster/manifest.json) -- the same class round 96 repaired, with one instance left. The key was corrected to 'log' and the digest was COMPUTED from the file on disk, with a note saying so: a measurement, not a fabrication, and nothing was deleted. A full recheck (round 97) of 156 log and red-case references resolved on disk found 0 remaining defects."
-  ]
+  ],
+  "round97_candidate_verification": {
+   "candidate_sha": "aa03830f6c530724ae38efdca4c90d2cec0f0cb9",
+   "candidate_tree_sha": "2c39ef81a87951f66c5af59c271f9df6ec6bac75",
+   "record": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/REMEDIATION/ROUND97/verification.json",
+   "auditor_probe_suite": "5 failures / 5 passes (was 8/2 at ae9905e and at the audit's own pin 33be0b0b)",
+   "canonical_readiness_suite": "493 tests, OK; runner selftest 10 checks OK",
+   "validate_state": "rc 0, 0 problems, 8 notes (run with the evidence root rebound explicitly; a bare detached worktree cannot run this control at all)",
+   "symbol_resolver": "rc 0, 213 Kotlin files, 0 unresolved",
+   "release_gate_checker": "rc 0, 8 gates represented, every mandatory lane still mandatory",
+   "t77": "selftest rc 0, rehearsal 12/12 agreed, court rc 0, git status EMPTY before and after",
+   "ledger_evidence_recheck": "157 log and red-case references resolved on disk, 0 digest defects",
+   "this_is_not_t78": "T78 final convergence requireth every applicable HOSTED job enabled, executed and green at one clean exact SHA; no hosted lane existeth in this environment, so T78 has NOT run and no readiness flag moved."
+  }
  }
 }
