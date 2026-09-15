@@ -178,7 +178,15 @@ class Diagnostics:
         self.lines.append(line)
 
     def relation(self, key=None) -> str:
-        """An EPHEMERAL relation id: per-process, opaque, never a node id."""
+        """An EPHEMERAL relation id: per-process, opaque, never a node id.
+
+        GS-DIAG-001: the MAP is bounded exactly as the ring is. The audit reproduced a
+        ten-thousand-peer churn retaining every historic key in a SECOND unbounded map
+        (`{"ring": 16, "retained_relation_keys": 10000}`): the ring dropped its lines while
+        the key map grew without limit, so the recorder's memory was bounded by the number
+        of peers ever seen, not by its capacity. An evicted key simply receiveth a FRESH
+        ordinal if it returneth -- ephemerality is the point.
+        """
         if key is None:
             self._relation_seq += 1
             return "r%d" % self._relation_seq
@@ -187,6 +195,10 @@ class Diagnostics:
         if key not in self._relation_by_key:
             self._relation_seq += 1
             self._relation_by_key[key] = "r%d" % self._relation_seq
+            while len(self._relation_by_key) > self.capacity:
+                eldest = next(iter(self._relation_by_key))
+                del self._relation_by_key[eldest]
+                self.superseded += 1
         return self._relation_by_key[key]
 
     @property

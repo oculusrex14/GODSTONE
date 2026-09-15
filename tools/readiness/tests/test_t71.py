@@ -277,5 +277,28 @@ class T71RedactionAndDeclarationsTest(unittest.TestCase):
             self.assertIn('"%s"' % metric, stext, metric)
 
 
+class T71BoundedRelationMapTest(unittest.TestCase):
+    """GS-DIAG-001 -- the relation-key MAP is bounded exactly as the ring is.
+
+    Adopted VERBATIM from the audit's final probe suite
+    (evidence/AUDIT-003/audit_final_negative_tests.py): a ten-thousand-peer churn retained
+    every historic key in a SECOND unbounded map (`{"ring": 16,
+    "retained_relation_keys": 10000}`), so the recorder's memory was bounded by the number
+    of peers ever seen rather than by its capacity.
+    """
+
+    def test_unique_peer_churn_does_not_retain_all_dead_relations(self):
+        d = Diagnostics(capacity=16)
+        d.enable()
+        for i in range(10_000):
+            d.count('peers_seen', relation_key='audit-peer-%d' % i)
+        self.assertLessEqual(len(d._relation_by_key), 16,
+                             'drop-oldest ring retains every historic peer key in a second '
+                             'unbounded map')
+        self.assertTrue(d.is_bounded)
+        # the ring's own bound is untouched
+        self.assertLessEqual(d.ring_size, d.capacity)
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

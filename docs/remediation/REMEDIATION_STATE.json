@@ -1909,19 +1909,29 @@
       "final_review": null,
       "impact": "Even with a bounded output ring, diagnostics memory grows with every distinct relation key for the process lifetime. It can retain identifiers long after their corresponding output was evicted.",
       "invalidated_dependents": [],
-      "my_fix_commit": null,
-      "my_logs": [],
+      "my_fix_commit": "PENDING",
+      "my_logs": [
+        {
+          "outcome": "the T71 court 14/14; the whole suite 474 OK; the android twin BUILD SUCCESSFUL; the probes down to four reds",
+          "path": "GS-DIAG-001/green/diag-001.log",
+          "sha256": "bba158ca05b4de58bebffb607963e824736230877985f7f9a9ae9ea17b82fd18",
+          "what": "the arm green in the canonical T71 court on all three lanes"
+        }
+      ],
       "my_red_case": {
-        "argv": "python3 -m unittest discover -s tools/readiness/tests -p test_audit_artifacts.py",
-        "case": "tools/readiness/tests/test_audit_artifacts.py -- the audit's own 12-case final probe suite, adopted with its assertions intact",
+        "argv": "python3 -m unittest discover -s tools/readiness/audit_probes",
+        "case": "the adopted audit probe arm test_unique_peer_churn_does_not_retain_all_dead_relations",
         "cwd": "/Users/oculus/Projects/GODSTONE_BUILDER",
         "log": "ADOPTED_PROBES/red/adopted-probes-2026-09-15.log",
         "log_sha256": "475be2fba47965b040d3b842274aba220dc165e83db99e3e5954f5c38243b6ea",
-        "outcome": "7 of 12 FAILED, which is the RED for four findings: GS-SUPPLY-001 (parent traversal and source symlink accepted), GS-DIAG-001 (unique peer churn retaineth all dead relations), GS-PACKAGE-001 (forbidden entitlements and an arm64 macOS binary accepted by iOS inspection) and GS-PACKAGE-002 (a corrupt or partial AAB native library set accepted)"
+        "outcome": "{\"ring\": 16, \"retained_relation_keys\": 10000} -- the ring dropped its lines while the key map grew without limit"
       },
-      "my_status": "OPEN",
-      "notes": "RED ADOPTED: the audit's own final probe suite now liveth in the canonical suite (tools/readiness/tests/test_audit_artifacts.py) with its assertions intact; the relevant arms are RED and the repair is the next round's work.",
-      "pending_proof": [],
+      "my_status": "FIX_SUBMITTED",
+      "notes": "FIX_SUBMITTED. The relation-key MAP is now bounded exactly as the ring is on ALL THREE LANES (the python conductor and both isle twins), and an evicted key receiveth a FRESH ordinal if it returneth -- ephemerality is the point. The audit's arm moved VERBATIM into the canonical T71 court, and the adopted probe suite is down from seven reds to four. Only an independent audit may write VERIFIED_FIXED.",
+      "pending_proof": [
+        "INDEPENDENT VERIFICATION: only an independent audit may mark this VERIFIED_FIXED",
+        "no hosted run URL/log was available, so hosted convergence remains pending"
+      ],
       "proof": "An enabled recorder with capacity 16 receives 10,000 distinct keys: ring size remains 16 while _relation_by_key retains 10,000 entries. The existing peer_churn_10k scenario recycles peer % 64, masking distinct-peer growth. Kotlin relationByKey.getOrPut and Swift relationByKey have the same unbounded insertion/reset-only design.",
       "remediation_report": "FINAL_REMEDIATION_DETAILS.md",
       "remediation_steps": [

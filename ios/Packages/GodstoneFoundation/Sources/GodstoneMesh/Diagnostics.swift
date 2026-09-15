@@ -158,6 +158,13 @@ public final class Diagnostics: @unchecked Sendable {
         relationSeq += 1
         let made = "r\(relationSeq)"
         relationByKey[key] = made
+        // GS-DIAG-001: the MAP is bounded exactly as the ring is -- the audit reproduced a
+        // ten-thousand-peer churn retaining every historic key in a second unbounded map.
+        // An evicted key simply receiveth a FRESH ordinal if it returneth.
+        while relationByKey.count > capacity, let eldest = relationByKey.keys.first {
+            relationByKey.removeValue(forKey: eldest)
+            superseded += 1
+        }
         return made
     }
 

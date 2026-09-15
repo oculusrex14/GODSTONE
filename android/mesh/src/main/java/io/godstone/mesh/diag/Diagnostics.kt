@@ -121,10 +121,20 @@ class Diagnostics(
             relationSeq++
             return "r$relationSeq"
         }
-        return relationByKey.getOrPut(key) {
-            relationSeq++
-            "r$relationSeq"
+        val existing = relationByKey[key]
+        if (existing != null) return existing
+        relationSeq++
+        val made = "r$relationSeq"
+        relationByKey[key] = made
+        // GS-DIAG-001: the MAP is bounded exactly as the ring is -- the audit reproduced a
+        // ten-thousand-peer churn retaining every historic key in a second unbounded map.
+        // An evicted key simply receiveth a FRESH ordinal if it returneth.
+        while (relationByKey.size > capacity) {
+            val eldest = relationByKey.keys.first()
+            relationByKey.remove(eldest)
+            superseded++
         }
+        return made
     }
 
     val ringSize: Int get() = lines.size
