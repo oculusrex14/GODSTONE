@@ -1302,13 +1302,35 @@
         "source_sha": "c683a2bf0b5bcdd4a662d98f7542351501b57b7c"
       },
       "impact": "The required launch → search → read whole document path stops at the matching passage. Search-hit cards have no click action; openPassage exists only on the ViewModel. A successful search with zero hits renders an empty list instead of the explicit NoResults state.",
-      "invalidated_dependents": [],
-      "my_fix_commit": null,
-      "my_logs": [],
-      "my_red_case": null,
-      "my_status": "OPEN",
-      "notes": null,
-      "pending_proof": [],
+      "invalidated_dependents": [
+        "android/app BrowseScreen.kt and BrowseViewModel.kt (every caller of the browse screen)",
+        "the T49 browse court (it exerciseth the view model's phases; unchanged and green)"
+      ],
+      "my_fix_commit": "28f5e5a",
+      "my_logs": [
+        {
+          "outcome": "BUILD SUCCESSFUL; the :app suite 51 tests, 0 failures (four of them this court)",
+          "path": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/REMEDIATION/GS-ARCHIVE-003/green/archive003-court.log",
+          "sha256": "eb3850d6068050acc5c7b41668a5600c5f0f08bb39324e51afd35ae4b757f1b0",
+          "what": "the court green on the live tree, and the app suite"
+        }
+      ],
+      "my_red_case": {
+        "argv": "./gradlew :app:testLightDebugUnitTest --tests '*ReadinessArchive003Test*'",
+        "case": "android/app/src/test/java/io/godstone/app/readiness/ReadinessArchive003Test.kt, run against the COMMITTED PRE-REPAIR PRODUCT (4e61ccc) in a disposable worktree",
+        "cwd": "/Users/oculus/Projects/GODSTONE_BUILDER/android",
+        "log": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/REMEDIATION/GS-ARCHIVE-003/red/archive003-RED.log",
+        "log_sha256": "1ed803750a6957443f814a5e3de4052469f6636438c6c7f54c0d9e7603780fc7",
+        "outcome": "all FOUR arms failed: no open action on the hit card, no accessible action, no openHit road, and the NoResults phase unhandled"
+      },
+      "my_status": "FIX_SUBMITTED",
+      "notes": "FIX_SUBMITTED. The hit card openeth its document (clickable, accessible, delegating to the same road the document list useth) and the honest NoResults phase is RENDERED with an action to clear the query. The card's Compose interaction test, the Dynamic-Type/TalkBack pass and the DOCUMENT-mode separation remain, and are named. Only an independent audit may write VERIFIED_FIXED.",
+      "pending_proof": [
+        "INDEPENDENT VERIFICATION: only an independent audit may mark this VERIFIED_FIXED",
+        "the card requireth a COMPOSE INTERACTION test (enter a query, tap a visible hit, read an unmatched passage from the same document) -- NOT written; the four witnesses are SOURCE assertions, which is the method the audit itself used for this source-confirmed finding",
+        "the card's Dynamic Type / TalkBack pass and the Android system-Back binding are NOT done; no emulator or device was used",
+        "the card's separation of full-document passage rendering from search-hit rendering (so tapping a paragraph in DOCUMENT mode does not reopen the same document) is NOT yet implemented"
+      ],
       "proof": "BrowseScreen renders every result as PassageCard(it). PassageCard uses the non-clickable Card overload and contains only text. It has no event callback or navigation link. Repository-wide main-source search finds no caller of openPassage. The screen tests loading and Unavailable but never BrowsePhase.NoResults. The source is unchanged at b439f35f. No emulator/TalkBack test was run; these are source-confirmed wiring omissions.",
       "remediation_report": "evidence/AUDIT-002/archive/ARCHIVE_REMEDIATION.md",
       "remediation_steps": [
