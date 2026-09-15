@@ -672,4 +672,30 @@ final class ReadinessT50Tests: XCTestCase {
         XCTAssertTrue(scene.phase == .noResults || scene.phase == .ready,
                       "the minimal road answereth an honest tale, got \(scene.phase)")
     }
+
+    // GS-ARCHIVE-005 -- THE RED ARM (corrected): the RESTORED door must carry the search identity
+    // into the road it returneth to. THE HANDLE MUST CARRY `openedDocumentId`, or `restore` falls
+    // back to `loadDocuments()` and `back()` never entereth the `returnScene` road at all -- the
+    // first version of this arm omitted it and proved nothing (it was green on BOTH revisions).
+    func testRestoreIntoAnOpenDocumentCarriethTheSearchIdentityIntoTheReturnRoad() async throws {
+        let fake = FakeReader()
+        let model = ArchiveReaderModel(library: fake)
+        let scene = ArchiveSceneModel(reading: fake, model: model)
+        let searched = "water"
+        let handle: [String: Any] = ["mode": "document", "query": searched,
+                                     "searchedQuery": searched,
+                                     "openedDocumentId": Int64(7),
+                                     "openedTitle": "Archive guide",
+                                     "anchorDocument": Int64(7), "anchorPassage": Int64(11)]
+        await scene.restore(from: handle)
+        XCTAssertEqual(scene.mode, .document,
+                       "the arm must restore INTO an open document, or it testeth another road")
+        scene.back()
+        XCTAssertEqual(scene.query, searched,
+                       "a reader returning from a RESTORED document must find its query: the old "
+                       + "restore built an EMPTY return scene (GS-ARCHIVE-005)")
+        XCTAssertEqual(scene.searchedQuery, searched,
+                       "and the published identity of the search it returned to")
+    }
+
 }
