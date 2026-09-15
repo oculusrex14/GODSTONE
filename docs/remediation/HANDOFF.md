@@ -42,6 +42,29 @@ already carried. The audit's step 3 stays OPEN, with its two measured obstacles 
 | CRYPTO-003 | FIX_SUBMITTED | 4b | Destroyed retained controllers and primitive sessions st |
 | CRYPTO-006 | FIX_SUBMITTED | 4b | Duplicate journal admission is treated as success for a |
 
+## ROUND 105 — THE ANDROID LANE IS VERIFIED HERE, AND THE NEXT REPAIR IS NAMED
+
+Every OPEN HIGH finding left is a **Kotlin or Swift** repair, so this round measured the toolchain
+instead of guessing at it:
+
+    cd android && ./gradlew :mesh:testDebugUnitTest --tests '*ReadinessT20Test*' --tests '*ReadinessT23Test*'
+    -> BUILD SUCCESSFUL, both courts pass, real 0m1.916s WITH THE GRADLE CACHE WARM (30 of 31 tasks
+       up-to-date). A COLD run will be far slower; do not quote 2s as the lane's cost from scratch.
+    JDK: Temurin 17.0.20.1. SDK: ~/Library/Android/sdk. `android/local.properties` IS PRESENT in
+    this worktree (a fresh `git worktree add` LACKS it and every Gradle command fails with
+    "SDK location not found" -- the known trap).
+
+NEXT TARGET, CHOSEN FOR THE CHEAPEST HONEST RED: **`ANDROID-04`** (wave 4f.2, HIGH) -- "Deadlines
+have no scheduled owner and use wall-clock time". Its card (now transcribed into the ledger) nameth
+two independent defects, and the SECOND is the cheapest to red on: `BleConnection.kt:31` defaults its
+clock to `System.currentTimeMillis()/1000L` while the handshake/confirmation/assembly deadlines
+consume it, and the card recordeth that **"a wall-clock rollback can extend the deadline further"**.
+A red can therefore be built WITHOUT a scheduler at all: drive an already-armed deadline, ROLL WALL
+TIME BACKWARD, and assert the deadline is not extended (monotonic behaviour). The FIRST defect
+(`BleTransport.kt:877` defers `sweepInboundLeases` with no production caller) needeth the full
+scheduler closure and belongeth to the same finding's later limb. Its card's own closure tests are in
+the ledger (`REMEDIATION_STATE.json`, `ANDROID-04.closure_tests`) -- read them before designing.
+
 ## ROUND 103 LANDED — THE BARRIER SCHEDULE, AND ONE REAL DEFECT AMONG FOUR ARMS (`c7754e7`)
 
 Four arms now kill a REAL process at each transition and restart the ACTUAL reader. Exactly ONE was
