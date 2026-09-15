@@ -54,16 +54,24 @@ class IosGovernorUnderRuntimeOwnerTest(unittest.TestCase):
                       "referenced nowhere in production but a comment, so there are TWO instruments where "
                       "the card asks for ONE governor configuration")
 
-    def test_both_collectors_charge_the_authenticated_priority_budget(self):
-        """The card's step 3: the identity/priority budget is charged AFTER AEAD and BEFORE delivery."""
+    def test_both_collectors_charge_the_authenticated_identity_at_the_gate(self):
+        """The card's step 3, as this isle CAN carry it -- THE COURSE WAS CHOSEN BY MEASUREMENT, NOT BY TASTE.
+
+        Round 201 attempted the governor's BUCKETS per value and withdrew the attempt on a contaminated
+        measurement; what the attempt EXPOSED is that those buckets are per-second FRAME buckets (DIRECT 60,
+        SOS 30, BROADCAST 20, BULK 10, unknown 10) while this gate sees WHOLE RECORDS (a 257-record wrap, a
+        64-fragment record), so charging them per value refuseth legitimate work. This arm therefore
+        asserteth the TRUST question per value (`admits`, which consumeth no tokens) -- an identity under a
+        refuse window is refused at the gate -- while RATE remaineth the router's own budget, where those
+        buckets were designed to live."""
         t = TRANSPORT.read_text(encoding="utf-8")
         for who in ("peerId", "centralId"):
             delivery = "delegate?.transportDidReceive(data: clear, peerId: " + who + ")"
             self.assertIn(delivery, t, "the delivery site for " + who + " must still exist")
-            self.assertIn("governor.allowInbound(", t,
+            self.assertIn("governor.admits(", t,
                           "the authenticated identity/priority budget -- the GOVERNOR's own buckets -- must be "
                           "charged in the collector for " + who + " before the payload leaves")
-        first_charge = t.index("governor.allowInbound(")
+        first_charge = t.index("governor.admits(")
         for who in ("peerId", "centralId"):
             delivery = t.index("delegate?.transportDidReceive(data: clear, peerId: " + who + ")")
             self.assertLess(

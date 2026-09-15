@@ -46,7 +46,36 @@ already carried. The audit's step 3 stays OPEN, with its two measured obstacles 
 | CRYPTO-003 | FIX_SUBMITTED | 4b | Destroyed retained controllers and primitive sessions st |
 | CRYPTO-006 | FIX_SUBMITTED | 4b | Duplicate journal admission is treated as success for a |
 
-## DO THIS FIRST (round 198) — IOS-05 / T27 STEP 3 LANDS: THE POST-AEAD CHARGE ON THE AUTHENTICATED IDENTITY
+## DO THIS FIRST (round 202) — IOS-05 / T27 STEP 1 LANDS BY MEASUREMENT: THE GOVERNOR IS UNDER THE RUNTIME OWNER
+
+**The choice, made on evidence.** Round 201 exposed that the governor's canonical buckets are **per-second frame
+buckets** (DIRECT 60, SOS 30, BROADCAST 20, BULK 10, unknown 10) while the post-AEAD gate sees **whole records** (a
+257-record wrap, a 64-fragment record) — so charging them **per value** refuses legitimate work, and that attempt was
+**withdrawn on a contaminated measurement** (a compile-failed attempt shared a log with a later run, so the three failing
+names were never captured and are therefore **not claimed**).
+
+**Course (a) is now implemented:** `BleTransport` owns the canonical `PeerGovernor` — default configuration, production
+clock **monotonic by construction** — and charges its **trust** question (`admits`, which consumes **no** tokens) per
+value at **both** post-AEAD gates, recording a refusal when an identity is under a refuse window, while **rate remains the
+router's own budget**, where those buckets were designed to live. The reasoning is written into the **field's docstring**,
+so a later reader meets the measurement rather than a bare choice.
+
+**The measurement is clean this time, which was the point:** ONE run, its own log, no earlier attempt sharing it —
+**Executed 1203 tests, with 0 failures (0 unexpected)**, 207.4s, **zero** XCTest failures.
+
+**The arm moved into the canonical suite** (`tools/readiness/tests/test_ios_governor_under_runtime_owner.py`), written and
+run red first, updated to the chosen course, and moved with the repair.
+
+**IOS-05 → FIX_SUBMITTED, with its pending proof stated:** steps 1, 2, 3 and 5 are carried; step 4's **substance** is
+measured (`PeerGovernor.swift` carries **zero** references to any durable surface, so its penalties can only touch its own
+in-memory records) while step 4's **witness** (a penalty storm, then assert a durable repository is untouched) is **owed
+and named**. No independent verification exists; only an independent audit may write `VERIFIED_FIXED`.
+
+**What the round proves about method:** a contaminated measurement was **withdrawn rather than shipped**, and the retry
+was designed so contamination is impossible (one run, one log, a precise failure grep) — and the chosen course needed no
+failing name at all, because it left the lane **green**.
+
+## DO THIS FIRST (round 198, landed) — IOS-05 / T27 STEP 3 LANDS
 
 **The five-site repair, exactly as specified:** (i)+(ii) `TrustedHandshakeController.swift` now **retains
 `binding.nodeId`** at **both** trust sites (immediately before `trustAuthority.applyValidatedBinding(binding)` in each

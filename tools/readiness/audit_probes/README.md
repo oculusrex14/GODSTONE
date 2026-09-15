@@ -144,3 +144,13 @@ BULK 10, unknown 10) while this gate sees **whole records** (a 257-record wrap, 
 was **withdrawn on a contaminated measurement** rather than shipped. The two courses (charge the governor's *trust* gate
 per value and leave rate to the router, or give the transport a documented transport-scoped configuration) are named in
 the ledger; the next attempt measures with the failing names captured in ONE clean run.
+
+## Python probe — `python/test_ios_governor_under_runtime_owner.py` (IOS-05 / T27 step 1): LANDED (round 202)
+
+Written and **run RED first** here (2 failures, W00 control passing), then **MOVED INTO `tools/readiness/tests/`** with the
+repair, per this directory's rule. Its history is the useful part: round 201 attempted the governor's **buckets** per value
+and **withdrew on a contaminated measurement** (a compile-failed attempt shared a log with a later run, so the three
+failing names were never captured — and were therefore **not claimed**); what that attempt exposed is that the canonical
+buckets are **per-second frame buckets** while the post-AEAD gate sees **whole records**. Round 202 therefore implemented
+**course (a)** — the governor's **trust** question per value (`admits`, no tokens consumed), leaving **rate** to the router
+— and proved it with **ONE clean run**: `Executed 1203 tests, with 0 failures`.

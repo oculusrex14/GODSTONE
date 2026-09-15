@@ -570,6 +570,19 @@ public final class BleTransport: NSObject, @unchecked Sendable {
     /// counters report ONE scope. Charged AFTER AEAD, before the plaintext leaveth for the application.
     private let authenticatedAdmissionBudget = AdmissionBudget()
 
+    /// IOS-05 / T27 (step 1): THE CANONICAL GOVERNOR, UNDER THE RUNTIME OWNER. Its configuration is the
+    /// shared default one (the specified 256 tracked identities and the priority capacity/refill tables)
+    /// and its production clock is MONOTONIC BY CONSTRUCTION (the production initialiser taketh no clock).
+    ///
+    /// WHAT IS CHARGED HERE, AND WHY NOT THE BUCKETS -- MEASURED AT ROUND 201: the governor's canonical
+    /// buckets are PER-SECOND TOKEN BUCKETS FOR FRAMES (DIRECT 60, SOS 30, BROADCAST 20, BULK 10, unknown
+    /// 10), while this gate seeth WHOLE RECORDS -- the courts drive a two-hundred-fifty-seven-record wrap
+    /// (T20) and a sixty-four-fragment record (T18) -- so a per-VALUE charge against those capacities
+    /// REFUSETH LEGITIMATE WORK. The gate therefore chargeth the governor's TRUST question per value
+    /// (`admits`, which consumeth NO tokens) and leaveth RATE to the router, where the buckets were
+    /// designed to live. The choice and its evidence are recorded in the ledger rather than guessed.
+    private let governor = PeerGovernor()
+
 
     public static let serviceUuid = CBUUID(string: FrameV2.serviceUuidString)
     // T10: every GATT identifier is the generated wire-contract value. The
@@ -3164,6 +3177,16 @@ public final class BleTransport: NSObject, @unchecked Sendable {
                         // the IMMUTABLE FULL NODE ID the trusted handshake validated (the crypto layer retaineth it); the
                         // relation's id is only the fallback for a relation whose trust was never marked.
                         let chargedIdentity = self.sessions?.authenticatedNodeIdOf(peerId) ?? Data()
+                        // IOS-05 / T27 (step 3): the AUTHENTICATED IDENTITY's TRUST question, charged before the
+                        // payload leaveth -- an identity under a refuse window is refused here, and the RATE remains
+                        // the router's own budget (the governor's buckets are per-second FRAME buckets, and charging
+                        // them per VALUE refused legitimate whole-record work when this was attempted).
+                        if !self.governor.admits(chargedIdentity) {
+                            self.recordRejection(peerId: peerId, site: "admission.budget.authenticated",
+                                                 reason: "authenticated identity under a refuse window")
+                            return
+                        }
+
                         if self.authenticatedAdmissionBudget.charge(
                             chargedIdentity.map { String(format: "%02x", $0) }.joined(),
                             bytes: clear.count) == .refused {
@@ -4163,6 +4186,16 @@ public final class BleTransport: NSObject, @unchecked Sendable {
                             // the IMMUTABLE FULL NODE ID the trusted handshake validated (the crypto layer retaineth it); the
                             // relation's id is only the fallback for a relation whose trust was never marked.
                             let chargedIdentity = self.sessions?.authenticatedNodeIdOf(centralId) ?? Data()
+                            // IOS-05 / T27 (step 3): the AUTHENTICATED IDENTITY's TRUST question, charged before the
+                            // payload leaveth -- an identity under a refuse window is refused here, and the RATE remains
+                            // the router's own budget (the governor's buckets are per-second FRAME buckets, and charging
+                            // them per VALUE refused legitimate whole-record work when this was attempted).
+                            if !self.governor.admits(chargedIdentity) {
+                                self.recordRejection(peerId: centralId, site: "admission.budget.authenticated",
+                                                     reason: "authenticated identity under a refuse window")
+                                return
+                            }
+
                             if self.authenticatedAdmissionBudget.charge(
                                 chargedIdentity.map { String(format: "%02x", $0) }.joined(),
                                 bytes: clear.count) == .refused {
