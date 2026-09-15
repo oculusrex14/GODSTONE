@@ -42,6 +42,36 @@ already carried. The audit's step 3 stays OPEN, with its two measured obstacles 
 | CRYPTO-003 | FIX_SUBMITTED | 4b | Destroyed retained controllers and primitive sessions st |
 | CRYPTO-006 | FIX_SUBMITTED | 4b | Duplicate journal admission is treated as success for a |
 
+## DO THIS FIRST (round 132) — THE MANDATORY LANES ARE RED, AND ONE OF THE THREE CONTROLS HAS A WORKING INSTRUMENT
+
+Round 129 ran EVERY `ci/check_*.py` control (18) for the first time in this session; round 130 corrected its
+own count (3 genuine failures, NOT 4 -- `check_parity` passes as the LANE runs it, `--scope repo`, and its
+exit 1 under the default scope is the EXTERNAL A-06 gate the audit REQUIRES stay open); round 131 found the
+sharper thing:
+
+    TWO OF THE THREE CONTROLS HAVE FAILING SELFTESTS, and repository-verification.yml runs `--selftest`
+    FIRST (lines 162-163, 170-171), so those lanes fail BEFORE the check itself runs. Each `--selftest`
+    demands a CLEAN BASELINE to measure mutations against; the baseline is unclean BECAUSE the checks
+    fail, so the selftest ABORTS and THE MUTATION BATTERY NEVER RUNS -- a control that cannot run its
+    battery PROVETH NOTHING.
+
+    * `check_trusted_runtime_composition_controls` -- selftest rc 1: R05/R06 (Android/iOS SessionManager
+      missing per-peer serialization locks) plus R01/R02 (TrustedHandshakeController registry).  -> CRYPTO-001/002, OPEN
+    * `check_ble_link_substrate_controls` -- selftest rc 1: BL11 (iOS updateValue with onSubscribedCentrals
+      missing), BL96 + BL118 (Android driver generation params), BL115 (TWO ANDROID TESTS MISSING from
+      BleLinkSubstrateTest); BL128/BL131/BL132 in the bare run.  -> IOS-04/IOS-06, OPEN
+    * `check_local_identity_controls` -- selftest PASSES (38/38 mutations caught): check rc 1 on
+      `SignedSosV1.kt:274` (`IdentityBindingV1.create(`) and `SignedSosV1.swift:257` (`IdentityBindingV1(`),
+      while the authority constructeth at `MeshIdentity.swift:72` / `IdentityBindingV1.kt:106`/`:127`.
+      -> GS-SOS-001, OPEN.  **THIS IS THE BEST FIRST TARGET: a red check WITH a working instrument behind it.**
+
+    AND FOR THE OTHER TWO, DECIDE WHAT YOU ARE FIXING FIRST: whether the missing items (BL115's two absent
+    Android tests, the SessionManager registry and locks) are INTENDED BASELINE REQUIREMENTS or STALE
+    CONTROL EXPECTATIONS. REPAIRING A CONTROL IS A DIFFERENT JOB FROM REPAIRING THE PRODUCT DEFECT IT NAMES.
+
+ALL OF THIS FAILED AT THE PRE-SESSION COMMIT ae9905e AS WELL: pre-existing, not a regression from this
+session. AND IT CORROBORATES, LOCALLY, THE EXTERNAL REVIEWER'S ATTRIBUTED REPORT OF RED HOSTED VERIFICATION.
+
 ## DO THIS FIRST (round 116) — THE LIVE FRONTIER IS `ANDROID-05`, AND IT HAS FOUR OWED PIECES IN DEPENDENCY ORDER
 
 Rounds 105-115 were spent on the warm Kotlin lane. `ANDROID-05` (wave 4c.2, HIGH) is PARTIAL and is
