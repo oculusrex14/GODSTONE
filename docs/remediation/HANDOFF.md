@@ -42,6 +42,67 @@ already carried. The audit's step 3 stays OPEN, with its two measured obstacles 
 | CRYPTO-003 | FIX_SUBMITTED | 4b | Destroyed retained controllers and primitive sessions st |
 | CRYPTO-006 | FIX_SUBMITTED | 4b | Duplicate journal admission is treated as success for a |
 
+## DO THIS FIRST (round 116) — THE LIVE FRONTIER IS `ANDROID-05`, AND IT HAS FOUR OWED PIECES IN DEPENDENCY ORDER
+
+Rounds 105-115 were spent on the warm Kotlin lane. `ANDROID-05` (wave 4c.2, HIGH) is PARTIAL and is
+the live frontier; these are its remaining pieces, and they are NOT interchangeable:
+
+**1. T18 — mid-record failure must terminate the REAL relation (ANDROID-05-B / ANDROID-06), the largest
+piece and the one an auditor will look for.** SOURCE_CONFIRMED: `BleTransport.sendThrough` (1089-1100)
+invokes `writer.failed`, removes an address-keyed writer and calls `markDisconnected` -- it does NOT
+invoke the driver terminal/action path, physically close the connection, unpublish the relation or
+destroy its trusted session; `RecordWriter.failed` (343-354) clears only its own staging, and writer
+construction at 1220/1232 HARD-CODES GENERATION `0L`. The supplement's seven ordered steps are
+transcribed into the ledger (`REMEDIATION_STATE.json`, ANDROID-05.pending_work) -- read them there
+before writing anything. THE TRAPS IT NAMES, WHICH ARE EASY TO GET WRONG:
+  * carry the ACTUAL captured relation/generation and session-slot token into the writer and every
+    operation, and REMOVE FABRICATED GENERATION ZERO; a completion must validate its operation token
+    before any terminal effect;
+  * NEVER resolve an old failure by looking up the NEWEST relation or session for the address/peer,
+    and note that a peer-only `destroyFor` lookup CAN DESTROY A REPLACEMENT SESSION (coordinate with
+    CRYPTO-001/002);
+  * route the first valid fatal completion to the SINGLE lifecycle/driver terminal authority -- do not
+    bolt a competing cleanup list into `sendThrough`;
+  * a `Closed` return value, an empty writer queue, or `markDisconnected()` ALONE IS INSUFFICIENT;
+  * durable verified messages, send intents, ACK obligations and retry metadata must SURVIVE REOPEN
+    and stay retriable -- release transient ciphertext/staging only, and remember that a physical
+    write completion is NOT delivery acknowledgement;
+  * reconnect the same address with a NEW generation and session, then deliver duplicate failure, late
+    success, disconnect and timer callbacks from the OLD relation: none may remove, unpublish, close
+    or destroy the SUCCESSOR. For an INBOUND failure the shared GATT server and other healthy clients
+    must remain operational.
+  ANDROID-06 keeps its own reservation red; do not let a teardown change close it.
+
+**2. The supplement's steps 3-5 depth on ANDROID-05-A** (the part repaired at round 113): a start-attempt
+IDENTITY with explicit stopped/starting/running states, and callbacks BOUND TO THE ATTEMPT, so a
+DELAYED first-attempt callback has zero effect on a successful successor; plus
+partial-allocation-then-failure and a failure before allocation.
+
+**3. The card's steps 1-2**: make the REAL `MeshNode`/lifecycle gate own exactly ONE transport
+lifecycle authority -- `UnifiedRuntimeLifecycle` is defined and NEVER CONSTRUCTED, and
+`MeshNode.kt:148/:185` still start directly while `:236` calls `ble.stop()`/`wifi.stop()` directly.
+
+**4. Two constants that still lie**: `resourcesReleased = 1` in the drain, and the real
+`LifecycleTransportAdapter`, which still inherits the default `awaitInFlight = 0` (so the round-108 law
+holds only for seams that implement it).
+
+**THEN: `ANDROID-07`** (wave 4f.2, HIGH) -- pre-auth record/byte budgets charged BEFORE parsing,
+reassembly and crypto, including malformed/rejected traffic; its card and closure tests are already in
+the ledger.
+
+### THE MEASUREMENT EVERY FUTURE REPAIR MUST CARRY
+The round-113 repair of `ANDROID-05-A` BROKE **69 TESTS ACROSS ~10 COURTS**, because 27 test
+construction sites built the real `BleTransport` with no boundary and therefore DEPENDED ON THE AUDITED
+DEFECT (`isStarted` set despite a failed host OS start). **THE HOST SUITE HAS BUGS BAKED INTO ITS
+FIXTURES.** Before repairing any owner, grep how many courts construct it and what they assume -- and
+repair those fixtures IN THE SAME CHANGE, as round 113 did.
+
+### TWO PARKED REDS, AND WHERE THEY LIVE
+  * `tools/readiness/audit_probes/python/audit004_operator_pair_probe.py` -- GS-CONTENT-002 step 4 (the
+    second pair-of-renames), with round 6's measured collision recorded inside it.
+  * `tools/readiness/audit_probes/kotlin/ReadinessAndroid05bTest.kt.txt` -- the LIFECYCLE-AUTHORITY
+    retry red, REPAIRED at round 110; kept as the record of the red and its recipe.
+
 ## ROUND 111 — A CORRECTION I OWE, AND THE NEXT TARGET'S REAL BLOCKER
 
 ROUNDS 109–110 LABELLED THEIR LIMB "T09". THE LIFECYCLE AUTHORITY's frozen-availability defect is real
