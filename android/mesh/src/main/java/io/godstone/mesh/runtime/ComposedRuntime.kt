@@ -311,7 +311,7 @@ internal class ComposedRuntimeHarness(
         // completing its composition -- not a fixture pretending to be a key. Without it the composed
         // runtime had NO signing authority, and a distress call through it would be refused (which is
         // exactly what the refusal repair exposed in `ReadinessT44Test`).
-        node.sosAuthority = SimulatedSosAuthority(ed.priv, dh.pub, rng)
+        node.sosAuthority = SimulatedSosAuthority(ed.priv, dh.pub, identity.issueIdentityBinding(), rng)
         val inbox = RecipientInboxRepository(
             router = node.router,
             ourNodeId = identity.nodeId,
@@ -687,11 +687,17 @@ internal class ComposedDeliveryRepository(
 private class SimulatedSosAuthority(
     private val seed: ByteArray,
     private val dhPublicKey: ByteArray,
+    // GS-SOS-001, second defect (round 163): the binding is ISSUED BY THE HARNESS'S OWN IDENTITY
+    // (`Identity.issueIdentityBinding()`, an authority file) and handed in -- this file is NOT an
+    // authority file, so constructing one here would be the very issuance bypass the local-identity
+    // control refuseth. The material above is the same ed/dh pair the identity was built from.
+    private val binding: io.godstone.mesh.identity.IdentityBindingV1,
     private val rng: java.security.SecureRandom,
 ) : io.godstone.mesh.wire.v2.SosSigningAuthority {
     override fun currentNonce(): ByteArray = ByteArray(16).also { rng.nextBytes(it) }
     override fun currentSigningSeed(): ByteArray? = seed.copyOf()
     override fun currentStaticDhPublicKey(): ByteArray? = dhPublicKey.copyOf()
-    override fun currentGeneration(): Long = 1L
+    override fun currentGeneration(): Long = binding.generation
+    override fun currentIdentityBinding(): io.godstone.mesh.identity.IdentityBindingV1 = binding
     override fun currentTimeEpochSeconds(): Long = 1_700_000_000L
 }

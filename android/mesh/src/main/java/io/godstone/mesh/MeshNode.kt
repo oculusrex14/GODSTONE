@@ -818,11 +818,11 @@ class MeshNode(
         else SosDispatchResult.HandedToRelays(handed)
     }
 
-    /** Author one signed SOS under the wired authority. An authority that
-     * cannot yield canonical material falls back to the structural shape --
-     * loud at the receiver (authentication refuses it), never silently trusted
-     * here. Non-canonical material throws; broadcastSos already wraps dispatch
-     * in try/catch to a typed Failed outcome. */
+    /** Author one signed SOS under the wired authority. GS-SOS-001 (both defects, rounds
+     * 155-162): an authority that cannot yield canonical material -- no seed, no static DHCP
+     * key, or NO ISSUED BINDING -- is a reason to REFUSE, and a null return meaneth
+     * REFUSED: no frame is built, nothing is queued and nothing is offered. The structural
+     * fallback and the private binding strike are both GONE from this path. */
     private fun authorSignedSos(
         authority: io.godstone.mesh.wire.v2.SosSigningAuthority,
         payload: ByteArray,
@@ -831,16 +831,21 @@ class MeshNode(
         // SEND. The audited form returned `router.buildSos(payload)` here -- an UNSIGNED structural frame
         // which the dispatch road then queued and offered to relays; the audit's card sayeth so verbatim:
         // "missing signing authority still queues and offers an unauthenticated SOS." A null return now
-        // meaneth REFUSED. (The NO-AUTHORITY case is left as it was: another arm in the SOS court pins
-        // that legacy shape, and reversing a pinned control must be a recorded act, not a side effect.)
+        // meaneth REFUSED.
         val seed = authority.currentSigningSeed() ?: return null
-        val dhPub = authority.currentStaticDhPublicKey() ?: return null
+        authority.currentStaticDhPublicKey() ?: return null
+        // GS-SOS-001, SECOND DEFECT (round 163): THE BINDING COMETH FROM THE AUTHORITY, NEVER FROM A
+        // PRIVATE RE-DERIVATION. `SignedSosV1.author` used to strike it here-adjacent from the seed and
+        // generation it was handed, which is the issuance bypass `check_local_identity_controls`
+        // refuseth by name. An authority that holdeth no binding is a reason to refuse, exactly as one
+        // that holdeth no seed is.
+        val binding = authority.currentIdentityBinding() ?: return null
         val nonce = authority.currentNonce()
         val clock = authority.currentTimeEpochSeconds()
         val quality = if (clock == 0L) io.godstone.mesh.wire.v2.TimeQuality.UNKNOWN
         else io.godstone.mesh.wire.v2.TimeQuality.USER_CONFIRMED
         return io.godstone.mesh.wire.v2.SignedSosV1.author(
-            seed, dhPub, authority.currentGeneration(), clock, quality, nonce, payload,
+            binding, seed, clock, quality, nonce, payload,
         )
     }
 

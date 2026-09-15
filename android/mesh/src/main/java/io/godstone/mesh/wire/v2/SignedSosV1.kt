@@ -128,6 +128,16 @@ interface SosSigningAuthority {
     /** The durable generation counter the binding is struck under. */
     fun currentGeneration(): Long
 
+    /**
+     * The identity binding ISSUED BY THIS AUTHORITY for the material it yieldeth,
+     * or null while it holdeth none. GS-SOS-001's second defect: the author path
+     * must OBTAIN the binding here rather than strike its own -- a private
+     * re-derivation is the issuance bypass `ci/check_local_identity_controls.py`
+     * refuseth by name. An authority that yieldeth no binding is a reason to
+     * REFUSE, exactly as an authority that yieldeth no seed is.
+     */
+    fun currentIdentityBinding(): io.godstone.mesh.identity.IdentityBindingV1?
+
     /** Wall clock in whole epoch seconds; 0 announces the unknown-time rule. */
     fun currentTimeEpochSeconds(): Long
 }
@@ -254,31 +264,38 @@ object SignedSosV1 {
     /* ---- author (sender side) ---- */
 
     /**
-     * Sign one distress call end to end: strike the identity binding with the
-     * local key (the T13 equation, reused not rewritten), assemble the
+     * Sign one distress call end to end: take the identity binding the AUTHORITY
+     * ISSUED for this material (never strike one here -- see below), assemble the
      * unsigned payload, derive msg_id over it, sign the transcript, and set
      * the outer fields exactly as the frozen tables record them: type SOS,
      * ACK_REQ|RELAY_OK required, ttl MAX_TTL, hop 0, broadcast routing tag.
+     *
+     * GS-SOS-001, second defect (the ISSUANCE BYPASS). The audited form STRUCK THE
+     * BINDING ITSELF from the raw seed, generation and static DH key it was handed,
+     * which `ci/check_local_identity_controls.py` refuseth by name ("outbound
+     * issuance bypass", section 29): a production file outside the authority files
+     * may neither call the binding's create() factory nor construct one directly.
+     * (That control is a TEXT match over production sources, so a comment quoting
+     * the forbidden spelling verbatim is itself a failure -- this file learned that
+     * the hard way, and the wording is deliberately indirect.) The binding arriveth
+     * as a PARAMETER, issued by the owner of the identity -- the authority -- and
+     * the sender only signeth
+     * the transcript over bytes it did not mint. The frozen T13 equation is
+     * UNCHANGED and the wire bytes are UNCHANGED, because the authority computeth
+     * the same equation over the same three values; the court's pinned golden
+     * vectors are the control that proveth it.
      */
-    fun author(signingSeed: ByteArray, staticDhPublicKey: ByteArray, generation: Long,
+    fun author(binding: IdentityBindingV1, signingSeed: ByteArray,
         createdAtEpochSeconds: Long, timeQuality: TimeQuality, messageNonce: ByteArray,
         bodyUtf8: ByteArray): FrameV2 {
         require(signingSeed.size == IDENTITY_BINDING_SIGNING_KEY_LENGTH) { "seed must be 32 bytes" }
-        require(staticDhPublicKey.size == IDENTITY_BINDING_STATIC_DH_KEY_LENGTH) { "dh pub must be 32 bytes" }
-        require(generation in 0L..0xFFFF_FFFFL) { "generation outside u32" }
-        val signingPublicKey = Ed25519Keys.publicKeyFromPrivate(signingSeed)
-        val bindingPreimage = IdentityBindingV1.signaturePreimage(
-            generation, signingPublicKey, staticDhPublicKey,
-        )
-        val bindingSignature = Ed25519Keys.sign(bindingPreimage, signingSeed)
-        val binding = IdentityBindingV1.create(
-            generation = generation,
-            signingPublicKey = signingPublicKey,
-            staticDhPublicKey = staticDhPublicKey,
-            signature = bindingSignature,
-        ).encode()
-        val unsigned = unsignedPayload(binding, createdAtEpochSeconds, timeQuality,
+        val bindingBytes = binding.encode()
+        require(bindingBytes.size == IDENTITY_BINDING_SERIALIZED_LENGTH) {
+            "binding must encode to the frozen 133 bytes"
+        }
+        val unsigned = unsignedPayload(bindingBytes, createdAtEpochSeconds, timeQuality,
             messageNonce, bodyUtf8)
+        val signingPublicKey = Ed25519Keys.publicKeyFromPrivate(signingSeed)
         val senderNodeId = IdentityBindingV1.deriveNodeId(signingPublicKey)
         val msgId = deriveMessageId(senderNodeId, createdAtEpochSeconds, messageNonce, unsigned)
         val signature = Ed25519Keys.sign(signatureTranscript(msgId, unsigned), signingSeed)

@@ -270,6 +270,22 @@ class ReadinessT38Test {
         override fun currentStaticDhPublicKey(): ByteArray = dhPub.copyOf()
         override fun currentGeneration(): Long = generation
         override fun currentTimeEpochSeconds(): Long = clock
+
+        /** GS-SOS-001, second defect: THE AUTHORITY issueth the binding. The construction is
+         *  legitimate HERE because this file liveth in TEST sources, which the repository
+         *  control doth not scan -- the bypass it refuseth is a construction in PRODUCTION. */
+        override fun currentIdentityBinding(): IdentityBindingV1 = issuedBinding()
+
+        fun issuedBinding(): IdentityBindingV1 {
+            val pub = Ed25519Keys.publicKeyFromPrivate(seed)
+            return IdentityBindingV1.create(
+                generation = generation,
+                signingPublicKey = pub,
+                staticDhPublicKey = dhPub,
+                signature = Ed25519Keys.sign(
+                    IdentityBindingV1.signaturePreimage(generation, pub, dhPub), seed),
+            )
+        }
     }
 
     private class Watcher : SosObserver {
@@ -301,7 +317,7 @@ class ReadinessT38Test {
             val transcript = SignedSosV1.signatureTranscript(mid, unsigned)
             Assert.assertEquals(v.name + ": transcript is msg_id || SOS1 || unsigned",
                 mid.size + 4 + unsigned.size, transcript.size)
-            val frame = SignedSosV1.author(v.seed, v.dhPub, v.generation, v.created,
+            val frame = SignedSosV1.author(t38Binding(v.seed, v.dhPub, v.generation), v.seed, v.created,
                 quality(v.timeQuality), v.nonce, v.body)
             Assert.assertArrayEquals(v.name + ": pinned signature", v.signature,
                 frame.payload.copyOfRange(4, 68))
@@ -520,7 +536,7 @@ class ReadinessT38Test {
     fun testUtf8BodyIsBoundAndBudgeted() {
         val v = locateVectors().first { it.name == "accept_signed_ok_max_body" }
         Assert.assertEquals("the pinned body is 398 bytes of multibyte text", 398, v.body.size)
-        val frame = SignedSosV1.author(v.seed, v.dhPub, v.generation, v.created,
+        val frame = SignedSosV1.author(t38Binding(v.seed, v.dhPub, v.generation), v.seed, v.created,
             quality(v.timeQuality), v.nonce, v.body)
         Assert.assertEquals("the envelope carries magic, seal and the whole body",
             4 + 64 + 157 + 398, frame.payload.size)
@@ -535,7 +551,7 @@ class ReadinessT38Test {
             ByteArray(401) { 0x61 })) {
             var refused = false
             try {
-                SignedSosV1.author(v.seed, v.dhPub, v.generation, 1700000201,
+                SignedSosV1.author(t38Binding(v.seed, v.dhPub, v.generation), v.seed, 1700000201,
                     TimeQuality.USER_CONFIRMED, v.nonce, bad)
             } catch (e: IllegalArgumentException) {
                 refused = true
@@ -557,9 +573,9 @@ class ReadinessT38Test {
     @Test
     fun testDuplicateLogicalSosResentIdempotent() = runTest {
         val v = locateVectors().first { it.name == "accept_signed_ok_min" }
-        val first = SignedSosV1.author(v.seed, v.dhPub, v.generation, v.created,
+        val first = SignedSosV1.author(t38Binding(v.seed, v.dhPub, v.generation), v.seed, v.created,
             quality(v.timeQuality), v.nonce, v.body)
-        val second = SignedSosV1.author(v.seed, v.dhPub, v.generation, v.created,
+        val second = SignedSosV1.author(t38Binding(v.seed, v.dhPub, v.generation), v.seed, v.created,
             quality(v.timeQuality), v.nonce, v.body)
         Assert.assertArrayEquals("the resend is bit-identical: the identity is immutable",
             first.msgId, second.msgId)
@@ -600,7 +616,7 @@ class ReadinessT38Test {
         val v = locateVectors().first { it.name == "accept_signed_ok_min" }
         var threwOne = false
         try {
-            SignedSosV1.author(v.seed, v.dhPub, v.generation, 0, TimeQuality.USER_CONFIRMED,
+            SignedSosV1.author(t38Binding(v.seed, v.dhPub, v.generation), v.seed, 0, TimeQuality.USER_CONFIRMED,
                 v.nonce, v.body)
         } catch (e: IllegalArgumentException) {
             threwOne = true
@@ -608,7 +624,7 @@ class ReadinessT38Test {
         Assert.assertTrue("zero clock with a claimed quality is not stricken", threwOne)
         var threwOther = false
         try {
-            SignedSosV1.author(v.seed, v.dhPub, v.generation, 1700000201, TimeQuality.UNKNOWN,
+            SignedSosV1.author(t38Binding(v.seed, v.dhPub, v.generation), v.seed, 1700000201, TimeQuality.UNKNOWN,
                 v.nonce, v.body)
         } catch (e: IllegalArgumentException) {
             threwOther = true
@@ -778,6 +794,25 @@ class ReadinessT38Test {
         override fun currentStaticDhPublicKey(): ByteArray = dhPub.copyOf()
         override fun currentGeneration(): Long = generation
         override fun currentTimeEpochSeconds(): Long = clock
+
+        override fun currentIdentityBinding(): IdentityBindingV1? = null    }
+
+    /** GS-SOS-001, second defect (round 163): MATERIAL BUT NO ISSUED BINDING. The sender may not
+     *  strike a binding itself -- that is the issuance bypass the local-identity control refuseth
+     *  by name -- so this authority must be REFUSED: no frame, no hold, no offer. */
+    private class BindinglessAuthority(
+        private val dhPub: ByteArray,
+        private val generation: Long,
+        private val clock: Long,
+        private val nonce: ByteArray,
+        private val seed: ByteArray = ByteArray(32) { (it + 0x77).toByte() },
+    ) : SosSigningAuthority {
+        override fun currentNonce(): ByteArray = nonce.copyOf()
+        override fun currentSigningSeed(): ByteArray = seed.copyOf()
+        override fun currentStaticDhPublicKey(): ByteArray = dhPub.copyOf()
+        override fun currentGeneration(): Long = generation
+        override fun currentTimeEpochSeconds(): Long = clock
+        override fun currentIdentityBinding(): IdentityBindingV1? = null
     }
 
     @Test
@@ -802,8 +837,69 @@ class ReadinessT38Test {
         Assert.assertEquals("nothing may be durably queued from a refused SOS", 0,
             store.allHeldMsgIds().count())
     }
+
+    @Test
+    fun testGS_SOS_001_anAuthorityThatIssuethNoBindingMayNotOfferASos() = runTest {
+        val v = locateVectors().first { it.name == "accept_signed_ok_min" }
+        val store = InMemoryMessageStore()
+        val node = MeshNode(
+            ctx = null,
+            identity = newIdentity(),
+            store = store,
+            deliveryTracker = DeliveryTracker(T38Journal(),
+                Ed25519AckAuthenticator(UnresolvedRecipientKeyResolver)),
+        )
+        node.sosAuthority = BindinglessAuthority(v.dhPub, v.generation, v.created, v.nonce)
+        node.injectPeerForTest(ByteArray(16) { 0x22.toByte() })
+        val sent = ArrayList<ByteArray>()
+        node.dispatchSos(ascii("mayday-mayday")) { _, bytes -> sent.add(bytes.copyOf()); true }
+        Assert.assertEquals(
+            "an authority that ISSUED NO BINDING still offered a distress call: the sender may not " +
+                "strike its own binding (the issuance bypass the local-identity control refuseth)",
+            0, sent.size)
+        Assert.assertEquals("nothing may be durably queued from a refused SOS", 0,
+            store.allHeldMsgIds().count())
+    }
+
+    @Test
+    fun testGS_SOS_001_theAuthoredFrameCarriethTheBindingTheAuthorityIssued() {
+        val v = locateVectors().first { it.name == "accept_signed_ok_min" }
+        val authority = SosTestAuthority(
+            seed = v.seed, dhPublicKey = v.dhPub, generation = v.generation,
+            clock = v.created, nonce = v.nonce,
+        )
+        val frame = SignedSosV1.author(
+            authority.issuedBinding(), v.seed, v.created, TimeQuality.USER_CONFIRMED,
+            v.nonce, ascii("mayday-mayday"),
+        )
+        // The unsigned payload is version || binding || created_at || quality || nonce || body, so the
+        // binding's offset cometh from the FROZEN public constants -- never from a hand-counted slice
+        // (a first attempt sliced at the version byte and compared a shifted window; the court caught it).
+        val issued = authority.issuedBinding().encode()
+        val start = SignedSosV1.SOS_MAGIC.size + SignedSosV1.SIGNATURE_BYTES + SignedSosV1.OFF_BINDING
+        val carried = IdentityBindingV1.parse(frame.payload.copyOfRange(start, start + issued.size))
+        Assert.assertArrayEquals(
+            "the frame must carry THE AUTHORITY'S binding, not a private re-derivation",
+            issued, carried.encode())
+        // and the RECEIVER readeth the same binding: the generation it reporteth is the authority's.
+        val seen = (SignedSosV1.verify(frame, expectedNodeId = IdentityBindingV1.deriveNodeId(
+            Ed25519Keys.publicKeyFromPrivate(v.seed),
+        )) as SosAuthResult.Authenticated).verified
+        Assert.assertEquals("the receiver must authenticate the authority's binding", v.generation,
+            seen.generation)
+    }
 }
 // (file-scoped helper appended below the class for this court only)
+private fun t38Binding(seed: ByteArray, dhPub: ByteArray, generation: Long): IdentityBindingV1 {
+    val pub = Ed25519Keys.publicKeyFromPrivate(seed)
+    return IdentityBindingV1.create(
+        generation = generation,
+        signingPublicKey = pub,
+        staticDhPublicKey = dhPub,
+        signature = Ed25519Keys.sign(
+            IdentityBindingV1.signaturePreimage(generation, pub, dhPub), seed),
+    )
+}
 private fun t38Repeat(unit: String, times: Int): String {
     val sb = StringBuilder(unit.length * times)
     for (k in 0 until times) sb.append(unit)

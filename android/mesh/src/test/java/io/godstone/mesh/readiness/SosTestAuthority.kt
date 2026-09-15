@@ -1,5 +1,7 @@
 package io.godstone.mesh.readiness
 
+import io.godstone.core.crypto.Ed25519Keys
+import io.godstone.mesh.identity.IdentityBindingV1
 import io.godstone.mesh.wire.v2.SosSigningAuthority
 
 /**
@@ -41,4 +43,23 @@ internal class SosTestAuthority(
     override fun currentStaticDhPublicKey(): ByteArray? = dhPublicKey.copyOf()
     override fun currentGeneration(): Long = generation
     override fun currentTimeEpochSeconds(): Long = clock
+
+    /** GS-SOS-001, second defect: the AUTHORITY issueth the binding, so the author path needeth
+     *  never strike one. Built here in TEST sources, where the construction is legitimate -- the
+     *  repository control scaneth production (main) files only. */
+    override fun currentIdentityBinding(): IdentityBindingV1 = bind()
+
+    /** The binding this fixture issueth; courts MAY compare it against what a frame carrieth. */
+    fun issuedBinding(): IdentityBindingV1 = bind()
+
+    private fun bind(): IdentityBindingV1 {
+        val pub = Ed25519Keys.publicKeyFromPrivate(seed)
+        return IdentityBindingV1.create(
+            generation = generation,
+            signingPublicKey = pub,
+            staticDhPublicKey = dhPublicKey,
+            signature = Ed25519Keys.sign(
+                IdentityBindingV1.signaturePreimage(generation, pub, dhPublicKey), seed),
+        )
+    }
 }
