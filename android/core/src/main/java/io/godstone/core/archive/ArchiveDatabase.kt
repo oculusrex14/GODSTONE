@@ -35,6 +35,40 @@ class ArchiveDatabase private constructor(
     fun integrityCheck(): String =
         query("PRAGMA integrity_check", { }) { st -> if (st.step()) st.getText(0) ?: "null" else "absent" }
 
+    /** One `archive_meta` value, or null when the key is absent. */
+    fun metaValue(key: String): String? = runCatching {
+        query("SELECT value FROM archive_meta WHERE key = ?", { st -> st.bindText(1, key) }) { st ->
+            if (st.step()) st.getText(0) else null
+        }
+    }.getOrNull()
+
+    /** The column names of a table (empty when the table is absent). */
+    fun columnsOf(table: String): Set<String> = runCatching {
+        query("PRAGMA table_info($table)", { }) { st ->
+            val names = linkedSetOf<String>()
+            while (st.step()) {
+                val name = st.getText(1)
+                if (name != null) names.add(name)
+            }
+            names
+        }
+    }.getOrDefault(emptySet())
+
+    /** True only for a REAL FTS5 virtual table: sqlite_master must carry the module. */
+    fun isFts5Index(name: String): Boolean = runCatching {
+        query("SELECT sql FROM sqlite_master WHERE type = 'table' AND name = ?",
+            { st -> st.bindText(1, name) }) { st ->
+            if (!st.step()) return@query false
+            val ddl = st.getText(0) ?: return@query false
+            ddl.contains("USING fts5", ignoreCase = true)
+        }
+    }.getOrDefault(false)
+
+    /** The number of rows in a table. */
+    fun rowCount(table: String): Long = runCatching {
+        query("SELECT COUNT(*) FROM $table", { }) { st -> if (st.step()) st.getLong(0) else 0L }
+    }.getOrDefault(0L)
+
     fun hasTable(name: String): Boolean =
         query("SELECT name FROM sqlite_master WHERE type IN ('table','view') AND name = ?",
             { st -> st.bindText(1, name) }) { st -> st.step() }
@@ -82,36 +116,42 @@ class ArchiveDatabase private constructor(
 
     /** Collect every row of a read query into lists of column values. */
     fun rows(sql: String, args: Array<out Any?>): List<List<Any?>> =
-        query(sql, { st ->
-            for ((index, value) in args.withIndex()) {
-                when (value) {
-                    null -> st.bindNull(index + 1)
-                    is Long -> st.bindLong(index + 1, value)
-                    is Int -> st.bindLong(index + 1, value.toLong())
-                    is Boolean -> st.bindLong(index + 1, if (value) 1L else 0L)
-                    is Double -> st.bindDouble(index + 1, value)
-                    is ByteArray -> st.bindBlob(index + 1, value)
-                    else -> st.bindText(index + 1, value.toString())
+        try {
+            query(sql, { st ->
+                for ((index, value) in args.withIndex()) {
+                    when (value) {
+                        null -> st.bindNull(index + 1)
+                        is Long -> st.bindLong(index + 1, value)
+                        is Int -> st.bindLong(index + 1, value.toLong())
+                        is Boolean -> st.bindLong(index + 1, if (value) 1L else 0L)
+                        is Double -> st.bindDouble(index + 1, value)
+                        is ByteArray -> st.bindBlob(index + 1, value)
+                        else -> st.bindText(index + 1, value.toString())
+                    }
                 }
-            }
-        }, { st ->
-            val out = ArrayList<List<Any?>>()
-            while (st.step()) {
-                val row = ArrayList<Any?>(st.getColumnCount())
-                for (col in 0 until st.getColumnCount()) {
-                    row.add(when (st.getColumnType(col)) {
-                    CODE_INTEGER -> st.getLong(col)
-                    CODE_FLOAT -> st.getDouble(col)
-                    CODE_TEXT -> st.getText(col)
-                    else -> if (st.isNull(col)) null
-                    else runCatching { st.getBlob(col) }.getOrNull()
-                        ?: runCatching { st.getText(col) }.getOrNull()
-                })
+            }, { st ->
+                val out = ArrayList<List<Any?>>()
+                while (st.step()) {
+                    val row = ArrayList<Any?>(st.getColumnCount())
+                    for (col in 0 until st.getColumnCount()) {
+                        row.add(when (st.getColumnType(col)) {
+                        CODE_INTEGER -> st.getLong(col)
+                        CODE_FLOAT -> st.getDouble(col)
+                        CODE_TEXT -> st.getText(col)
+                        else -> if (st.isNull(col)) null
+                        else runCatching { st.getBlob(col) }.getOrNull()
+                            ?: runCatching { st.getText(col) }.getOrNull()
+                    })
+                    }
+                    out.add(row)
                 }
-                out.add(row)
-            }
-            out
-        })
+                out
+            })
+        } catch (exc: ArchiveReadException) {
+            throw exc
+        } catch (exc: Throwable) {
+            throw ArchiveReadException("archive read failed: " + sql.take(80), exc)
+        }
 
     override fun close() {
         connection.close()
@@ -130,6 +170,24 @@ class ArchiveDatabase private constructor(
         /** The tables every conforming Archive must carry; the probe is
          * not complete without them. */
         val REQUIRED_TABLES: Set<String> = setOf("documents", "chunks", "chunks_fts")
+
+        /** GS-ARCHIVE-002: the SUPPORTED archive schema version. A file that carrieth
+         * another (or none) is refused by name -- the audit admitted a forged database
+         * whose `archive_meta` declared nothing at all. */
+        const val SUPPORTED_SCHEMA_VERSION = 3
+
+        /**
+         * The columns the EXACT browse, document and search SQL need. A table whose NAME
+         * is right and whose STRUCTURE is wrong answereth no honest row: the audit's forged
+         * fixture (`documents(document_id)`, `chunks(chunk_id)`, an ordinary
+         * `chunks_fts(not_an_index)`) was admitted Ready and returned empty lists.
+         */
+        val REQUIRED_COLUMNS: Map<String, Set<String>> = mapOf(
+            "documents" to setOf("document_id", "title", "domain", "is_critical",
+                                 "source_id", "revision"),
+            "chunks" to setOf("chunk_id", "document_id", "ordinal", "section", "text"),
+            "archive_meta" to setOf("key", "value"),
+        )
 
         /**
          * Open [file] read-only through the bundled driver and make it
@@ -161,6 +219,33 @@ class ArchiveDatabase private constructor(
                 if (missing.isNotEmpty()) {
                     throw IllegalStateException(
                         "archive is missing required table(s): " + missing.joinToString(", "))
+                }
+                // ---- GS-ARCHIVE-002: the STRUCTURE is judged, not merely the names ----
+                val schemaVersion = handle.metaValue("schema_version")?.toIntOrNull()
+                if (schemaVersion != SUPPORTED_SCHEMA_VERSION) {
+                    throw IllegalStateException(
+                        "archive schema_version is " +
+                            (schemaVersion?.toString() ?: "absent") +
+                            ", and only $SUPPORTED_SCHEMA_VERSION is served")
+                }
+                for ((table, wanted) in REQUIRED_COLUMNS) {
+                    val present = handle.columnsOf(table)
+                    val absent = wanted.filterNot { it in present }
+                    if (absent.isNotEmpty()) {
+                        throw IllegalStateException(
+                            "archive table $table wanteth column(s): " + absent.joinToString(", "))
+                    }
+                }
+                if (!handle.isFts5Index("chunks_fts")) {
+                    throw IllegalStateException(
+                        "chunks_fts is not an FTS5 index: a table of that NAME answereth no " +
+                            "honest search, and admitting it would report an empty result over " +
+                            "unindexed bytes")
+                }
+                if (handle.rowCount("documents") <= 0L || handle.rowCount("chunks") <= 0L) {
+                    throw IllegalStateException(
+                        "archive carrieth no documents or no chunks: an EMPTY archive is not a " +
+                            "conforming archive")
                 }
                 if (!handle.fts5Capable()) {
                     throw IllegalStateException(

@@ -4,6 +4,16 @@ import android.content.Context
 import java.io.File
 
 /**
+ * GS-ARCHIVE-002: a READ failure is a FAILURE, never an empty result.
+ *
+ * The audit reproduced `runCatching { ... }.getOrDefault(emptyList())` turning a broken
+ * schema or a vanished index into "no documents" while the status stayed Ready. Every read
+ * road now either answereth or raiseth this -- the caller (the view model) shows a sanitised
+ * Unavailable/ReadFailure with retry, and the handle's availability is judged separately.
+ */
+class ArchiveReadException(message: String, cause: Throwable? = null) : Exception(message, cause)
+
+/**
  * Read-only browser over the bundled Archive -- the SHIPPING survival-knowledge
  * path. Lives in `:core` (the single shipping module the LIGHT app links) so the
  * Archive-only release reaches it WITHOUT pulling in the non-shipping `:llm`
