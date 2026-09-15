@@ -1577,6 +1577,30 @@ class BleTransport(
 
     /** The owners hand, at the proving of the sealed round, publisheth the
      *  application LinkReady once and only once for a relation. */
+    /**
+     * ANDROID-03 (T24) slice (b): THE CAPTURED TRUSTED PEER, built at the sealed round from the AUTHENTICATED
+     * identity public key. Null when either half is not yet answerable -- an honest null rather than a fabricated
+     * peer, since `TrustedPeer.capture` REFUSETH bytes that are not a 32-octet identity key.
+     */
+    @Volatile
+    private var lastCapturedPeer: TrustedPeer? = null
+
+    /** Observation for courts: the peer captured at the last sealed round, if any. */
+    internal fun lastCapturedPeerForTest(): TrustedPeer? = lastCapturedPeer
+
+    private fun captureTrustedPeerLocked(conn: BleConnection) {
+        val pub = sessions?.authenticatedIdentityPubOf(conn.peerId) ?: return
+        if (pub.size != 32) return
+        // THE RELATION IS THE CONNECTION'S OWN: it carrieth the provider the driver installed, so no direction or
+        // address is invented here -- and if the provider is not yet installed, NOTHING is captured rather than a
+        // relation guessed.
+        // THE PROVIDER'S DEFAULT IS AN UNCLAIMED RELATION, so an unclaimed one is SKIPPED rather than captured: a
+        // peer that speaketh for no relation must not be published as if it did.
+        val relation = conn.relationKeyProvider()
+        if (relation.generation <= 0L) return
+        lastCapturedPeer = TrustedPeer.capture(relation, pub, relation.generation)
+    }
+
     private fun publishApplicationLinkReadyOnce(peerId: ByteArray): Boolean = synchronized(linkReadyPublishLock) {
         if (linkReadyPublished.any { it.contentEquals(peerId) }) return@synchronized false
         val copy = peerId.copyOf()
@@ -1676,6 +1700,13 @@ class BleTransport(
         // a response
         if (conn.keyConfirmation.matchesAndConsume(frame.challenge)) {
             conn.markKeyConfirmed()
+            // ANDROID-03 (T24) slice (b): THE TRUSTED PEER IS CAPTURED AT THE SEALED ROUND, WHILE THE RELATION OWNER
+            // IS HELD. The instrument already standeth (`TrustedPeer.capture` deriveth the node id from the
+            // authenticated public key, 'so a captured peer can never disagree with its own identity public key');
+            // what was missing was CONSTRUCTION on a real path. The trust epoch is the relation's own MONOTONIC
+            // generation -- the only monotonic trust epoch this isle carrieth at the transport -- and the capture is
+            // kept where a later event may carry it and a court may judge it.
+            captureTrustedPeerLocked(conn)
             publishApplicationLinkReadyOnce(conn.peerId)
         } else {
             recordDispatchViolation(conn.peerId, "hs.confirm", HandshakeDispatchViolation.FORGED_OR_STALE_ECHO)
