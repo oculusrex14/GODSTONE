@@ -75,7 +75,7 @@ class BleTransport(
      * attempts -- which `isRunning == false` ALONE can never show.
      */
     private val serverStartAttempt: (() -> Boolean)? = null
-) : Transport {
+) : Transport, InFlightAwareTransport {
 
     override val name = "BLE"
     override val isBulkCapable = false
@@ -1302,6 +1302,45 @@ class BleTransport(
     internal fun serverWriterForTest(address: String): RecordWriter? =
         synchronized(serverWriters) { serverWriters[address] }
 
+    /**
+     * ANDROID-05 (step 3): THE BOUNDED IN-FLIGHT DRAIN OF THE REAL RADIO -- MEASURED, NEVER A CONSTANT.
+     *
+     * The work this transport owneth and can see: the inbound-admission tasks and the provisional
+     * connection tasks (both `Job`s, by address), and the two writers' records still in flight.
+     * The method waiteth up to [boundMillis] for that count to reach zero and returneth HOW MANY are
+     * still running when the bound passeth -- so a drain that leaveth work behind CANNOT be reported
+     * as clean, which is precisely what the seam's do-nothing default made invisible.
+     */
+    override fun awaitInFlight(boundMillis: Long): Int {
+        val bound = boundMillis.coerceAtLeast(0L)
+        val deadline = System.nanoTime() + bound * 1_000_000L
+        while (true) {
+            val outstanding = inFlightWorkCount()
+            if (outstanding == 0) return 0
+            if (System.nanoTime() >= deadline) return outstanding
+            try {
+                Thread.sleep(POLL_MILLIS)
+            } catch (_: InterruptedException) {
+                Thread.currentThread().interrupt()
+                return outstanding
+            }
+        }
+    }
+
+    /** The MEASURED count of this transport's in-flight writer and session work. */
+    private fun inFlightWorkCount(): Int {
+        var n = 0
+        for (job in inboundJobs.values) if (job.isActive) n += 1
+        for (job in provisionalJobs.values) if (job.isActive) n += 1
+        synchronized(centralWriters) {
+            for (w in centralWriters.values) if (w.inFlightForTest() != null) n += 1
+        }
+        synchronized(serverWriters) {
+            for (w in serverWriters.values) if (w.inFlightForTest() != null) n += 1
+        }
+        return n
+    }
+
     private fun describeAdmission(error: AdmissionError): String = when (error) {
         is AdmissionError.NotEnoughCapacity ->
             "frame exceeds the payload ceiling: sealed " + error.sealedLength +
@@ -1862,6 +1901,8 @@ class BleTransport(
         const val MAX_DISCOVERED_PEERS = 64
         const val MAX_ACTIVE_CONNECTIONS = 7
         const val PROVISIONAL_TIMEOUT_MS = 10000L
+        /** ANDROID-05 (step 3): how oft the bounded drain re-measureth while it waiteth. */
+        internal const val POLL_MILLIS = 5L
         const val LINK_LAYER_READY = false
     }
 }

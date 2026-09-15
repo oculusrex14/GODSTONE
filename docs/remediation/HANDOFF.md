@@ -46,7 +46,37 @@ already carried. The audit's step 3 stays OPEN, with its two measured obstacles 
 | CRYPTO-003 | FIX_SUBMITTED | 4b | Destroyed retained controllers and primitive sessions st |
 | CRYPTO-006 | FIX_SUBMITTED | 4b | Duplicate journal admission is treated as success for a |
 
-## DO THIS FIRST (round 181) — ANDROID-05's T18 STEP: THE WRITER NO LONGER NAMES A RELATION THAT DOES NOT EXIST
+## DO THIS FIRST (round 183) — ANDROID-05's STEP 3 LANDED: THE REAL SEAM NOW OWNS A BOUNDED, MEASURED IN-FLIGHT DRAIN
+
+The three-file repair, exactly as named: **(i)** a new `transport/InFlightAwareTransport.kt` — the optional capability a
+concrete radio may offer, documented as *shape* and not a device claim; **(ii)** `LifecycleTransportAdapter.awaitInFlight`
+**overrides** the seam's default (whose own KDoc says "the REAL adapter must override it") and delegates through
+`as? InFlightAwareTransport`, answering 0 for a coarse transport exactly as before; **(iii)** `BleTransport` implements it
+with a **measured** count — `inFlightWorkCount()` over `inboundJobs`, `provisionalJobs` and **both** writers' in-flight
+fragments, re-measured every `POLL_MILLIS` until it reaches zero or the bound passes, **returning how many remain**. No
+constant appears anywhere in it.
+
+**The RED moved back, as its own rule required:** the four-arm suite left `tools/readiness/audit_probes/python/` and
+lives again in `tools/readiness/tests/test_lifecycle_inflight_drain.py`, **green**; the probes README records the
+landing. The RED itself stays on the record (`red-round182/red.log`: `Ran 4 tests, FAILED (failures=3)`, W00 passing),
+and the two logs are kept **separate**.
+
+**The behavioural half shipped with it, in the court that owns the finding:** W05 (the adapter **asks** an
+in-flight-aware transport — the measured count travels on, and the transport **recorded** being asked with the bound) and
+W06 (**negative control**: a coarse transport answers 0, unchanged).
+
+**A defect in my own arm, caught by the lane and recorded rather than erased:** the first W05 draft asserted
+`awaitInFlight(250L) == 250L` — **confusing the returned count with the bound**. The lane failed it; the correction
+(assert the count, prove the bound through what the transport recorded) is written into the arm. Second time in three
+rounds that a lane caught *my* error rather than the code's, and both are in the record.
+
+**Acceptance:** canonical arm suite OK; whole `:mesh` lane **1178 tests, 0 failures, 0 errors** (1176 + W05/W06).
+
+**Remaining on ANDROID-05 — one item:** `drainLocked()` still returns `resourcesReleased = 1` as a **constant**
+(`RuntimeLifecycle.kt:239`) while the law at `:77` requires `resourcesReleased >= 1 && inFlightOutstanding == 0`. The
+measured figure must come from what the drain **actually** released.
+
+## DO THIS FIRST (round 181, landed) — ANDROID-05's T18 STEP
 
 Both writer factories built their relation key as `RelationKey(direction, address, 0L)` — so a writer's relation identity
 named **generation 0, a generation that belongs to NO relation**: a licence that could never be matched, released or

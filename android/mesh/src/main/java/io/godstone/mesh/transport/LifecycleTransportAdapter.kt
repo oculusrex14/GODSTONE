@@ -42,6 +42,18 @@ class LifecycleTransportAdapter(private val transport: Transport) : TransportSea
         return 1
     }
 
+    /**
+     * ANDROID-05 (step 3): THE BOUNDED IN-FLIGHT DRAIN, at the REAL boundary. The seam's default
+     * answereth 0 for a seam that owneth no such work, and its own KDoc sayeth "the REAL adapter must
+     * override it" -- this is that override. A transport that offereth the capability is ASKED, and
+     * its MEASURED count is returned; a coarse transport answereth 0 exactly as before, so nothing
+     * that could not answer is pretended to have been drained.
+     */
+    override fun awaitInFlight(boundMillis: Long): Int {
+        val aware = transport as? InFlightAwareTransport ?: return 0
+        return aware.awaitInFlight(boundMillis)
+    }
+
     override fun resetResources() {
         // Duty-cycle tables and caches are reset by the concrete transport inside its
         // own stop(); the adapter carries no separate resource to release here.
