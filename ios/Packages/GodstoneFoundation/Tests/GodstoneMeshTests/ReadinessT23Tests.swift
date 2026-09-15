@@ -789,6 +789,7 @@ final class ReadinessT23Tests: XCTestCase {
         // IOS-04 (T24) STEP 2 (round 239): AND IT TRAVELLETH ON THE OWNED BOUNDED CONDUIT, its verdict OBSERVED.
         XCTAssertEqual(r.alice.lastTrustedPublicationVerdictForTest, .accepted,
                        "the captured peer must be OFFERED to the bounded conduit and ACCEPTED -- the audited road published nothing at all")
+
     }
 
     // MARK: - case the seventh-and-a-half: a late subscriber is replayed the present ready state (T24)

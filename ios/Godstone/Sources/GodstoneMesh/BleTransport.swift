@@ -2421,7 +2421,9 @@ public final class BleTransport: NSObject, @unchecked Sendable {
 
     internal func clearLinkReadyForTest() {
         lockTransport()
-        for peerId in capturedPeers.keys { publishTrustedLoss(peerId) }
+        // A SNAPSHOT OF THE KEYS, because `publishTrustedLoss` REMOVETH from the very dictionary being walked -- the
+        // same lesson the IOS-01 closing-peripherals capture taught: iterate a copy, never the live collection.
+        for peerId in Array(capturedPeers.keys) { publishTrustedLoss(peerId) }
         linkReadyPublished.removeAll()
         unlockTransport()
     }
