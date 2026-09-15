@@ -210,6 +210,18 @@ public final class MeshNode {
     }
 
     /// GS-SOS-002: a SUCCESSFUL cancellation invalidateth the message's dispatch lease.
+    ///
+    /// GS-SOS-002 (the audit's step-2 DURABLE half): the message must still be DISPATCHABLE by DURABLE
+    /// TRUTH -- so a cancellation committed by ANY path suppresseth the offers not yet made. PRESENCE IS
+    /// NOT ENOUGH: a terminal CAS KEEPS the row, so the STATE is what is tested. Absent, corrupt, invalid
+    /// or unreadable stops the loop: fail-closed, never a skip.
+    private func sosStillDispatchableByDurableTruth(_ msgId: Data) -> Bool {
+        switch deliveryTracker.lookup(msgId) {
+        case .found(let row): return !row.state.isTerminal
+        default: return false
+        }
+    }
+
     private func invalidateDispatchLease(_ msgId: Data) {
         dispatchLeaseLock.lock(); defer { dispatchLeaseLock.unlock() }
         dispatchLeases.removeValue(forKey: msgId)
@@ -543,9 +555,14 @@ public final class MeshNode {
         // GS-SOS-002: the lease is re-checked BEFORE every offer, so a cancellation committed
         // inside a send callback suppresseth the offers not yet made.
         let dispatchLease = mintDispatchLease(frame.msgId)
+        var dispatchOffers = 0
         var handed = 0
         for peer in currentPeers() {
             if !dispatchLeaseStands(frame.msgId, dispatchLease) { break }
+            // GS-SOS-002: durable truth gates the SECOND offer onwards, because this path may
+            // not have committed its row yet (the DIRECT path commits after offering).
+            if dispatchOffers > 0 && !sosStillDispatchableByDurableTruth(frame.msgId) { break }
+            dispatchOffers += 1
             let admitted = send(frame, peer)
             linkOffers.record(frame.msgId, linkId: Self.linkBytes(peer), admitted: admitted,
                               atMonoMillis: controlClock())
@@ -630,9 +647,14 @@ public final class MeshNode {
         // GS-SOS-002: the lease is re-checked BEFORE every offer, so a cancellation committed
         // inside a send callback suppresseth the offers not yet made.
         let dispatchLease = mintDispatchLease(msgId)
+        var retryOffers = 0
         var handed = 0
         for peer in currentPeers() {
             if !dispatchLeaseStands(msgId, dispatchLease) { break }
+            // GS-SOS-002: durable truth gates the SECOND offer onwards, because this path may
+            // not have committed its row yet (the DIRECT path commits after offering).
+            if retryOffers > 0 && !sosStillDispatchableByDurableTruth(msgId) { break }
+            retryOffers += 1
             let admitted = send(frame, peer)
             linkOffers.record(msgId, linkId: Self.linkBytes(peer), admitted: admitted,
                               atMonoMillis: controlClock())
@@ -771,9 +793,14 @@ public final class MeshNode {
         // GS-SOS-002: the lease is re-checked BEFORE every offer, so a cancellation committed
         // inside a send callback suppresseth the offers not yet made.
         let dispatchLease = mintDispatchLease(canonicalFrame.msgId)
+        var directOffers = 0
         var handed = 0
         for peer in currentPeers() {
             if !dispatchLeaseStands(canonicalFrame.msgId, dispatchLease) { break }
+            // GS-SOS-002: durable truth gates the SECOND offer onwards, because this path may
+            // not have committed its row yet (the DIRECT path commits after offering).
+            if directOffers > 0 && !sosStillDispatchableByDurableTruth(canonicalFrame.msgId) { break }
+            directOffers += 1
             let admitted = send(canonicalFrame, peer)
             linkOffers.record(canonicalFrame.msgId, linkId: Self.linkBytes(peer), admitted: admitted,
                               atMonoMillis: controlClock())

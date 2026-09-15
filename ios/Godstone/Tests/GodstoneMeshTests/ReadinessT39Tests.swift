@@ -579,3 +579,31 @@ extension ReadinessT39Tests {
             + "suppress the later offer already captured by the dispatch loop (offers=\(offers))")
     }
 }
+
+
+// MARK: - GS-SOS-002 (iOS twin): the offer loops must stop on DURABLE TRUTH
+
+extension ReadinessT39Tests {
+
+    /// The audit's step-2 durable half, on this isle: the durable row is retired through the TRACKER
+    /// DIRECTLY -- bypassing `handleSosCommand(.cancel)` entirely -- so only a read of durable truth can
+    /// suppress the later offer.
+    func testW27CancellationCommittedOutsideTheCommandDoorSuppressethTheLaterOffer() throws {
+        let r = try newRig()
+        r.node.transportDidConnect(peerId: UUID(uuidString: Self.peerUuid(0))!)
+        r.node.transportDidConnect(peerId: UUID(uuidString: Self.peerUuid(1))!)
+        var offers = 0
+        _ = r.node.dispatchSos(payload: Data("durable truth please".utf8)) { frame, _ in
+            offers += 1
+            if offers == 1 {
+                _ = r.tracker.cancelSosBroadcast(frame.msgId)   // the durable row is retired directly
+                return false
+            }
+            return true
+        }
+        XCTAssertEqual(
+            offers, 1,
+            "the durable row was retired during the first callback, so the later offer must not happen "
+            + "(offers=\(offers))")
+    }
+}
