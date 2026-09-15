@@ -1162,13 +1162,61 @@
     "source_sha": "c683a2bf0b5bcdd4a662d98f7542351501b57b7c"
    },
    "impact": "A crash or temporary signing-key outage before ACK generation changes the initial return-path hop budget from 12 to 4. An ACK that could return through a longer stable route when signed immediately may fail after restart. This is a nonshipping behavior mismatch; no real multi-hop device failure was executed.",
-   "invalidated_dependents": [],
-   "my_fix_commit": null,
-   "my_logs": [],
-   "my_red_case": null,
-   "my_status": "OPEN",
-   "notes": null,
-   "pending_proof": [],
+   "invalidated_dependents": [
+    "TWO PRE-EXISTING ARMS OF THE SAME COURT were invalidated and CORRECTED, and this is the most instructive part of the finding: their reference frames were built with the FROZEN BUILDER DEFAULT, so they asserted byte-identity with a restart frame that was itself wrong -- green on the defect. They now build the reference with ACK_INITIAL_TTL. Recorded inside the court at both sites.",
+    "AckFrame.build's default (ttl = 4, both isles) is NOT invalidated: the audit explicitly forbids changing it without the protocol authority. It is unchanged, and both builders now carry a note stating that production callers must pass the profile constant.",
+    "NOT invalidated: the signature preimage, the payload shape (signature || recipient), flags 0, hopCount 0, the routing tag, the ACK cache key, the verification-first self-check and the T83/T84 courts beside these -- all green."
+   ],
+   "my_fix_commit": "bae4eba",
+   "my_logs": [
+    {
+     "log": "GS-ACK-002/green/gs-ack-002-T83-GREEN.log",
+     "sha256": "4f84e7f0a392aec29ac467f4f1eb0608179fbe767ede06da0489c42505468724",
+     "what": "android ReadinessT83Test after the repair: BUILD SUCCESSFUL"
+    },
+    {
+     "log": "GS-ACK-002/green/gs-ack-002-ANDROID-FULL-3.log",
+     "sha256": "ba22ff4bf4cfeb35e5688928bb697e87c42f91de83a73927408f5bb145231741",
+     "what": "whole android :mesh lane: BUILD SUCCESSFUL (1142 tests) -- the passing run"
+    },
+    {
+     "log": "GS-ACK-002/green/gs-ack-002-ANDROID-FULL.log",
+     "sha256": "78212844b04af79cf6b080543133cd9514157a134ab46f1662b11cf04f9bd851",
+     "what": "PRIOR/OTHER RUN kept separate: the full lane red in a FIXTURE (ReadinessT17Test.makeTrustedPair, 'no ascending hint pair within 64 draws') -- see pending_proof"
+    },
+    {
+     "log": "GS-ACK-002/green/gs-ack-002-ANDROID-FULL-2.log",
+     "sha256": "dd8e4639146e9d14575b818b5922dd8dc77397c853d376f8458e39a9df1de61f",
+     "what": "PRIOR/OTHER RUN kept separate: the same fixture flake in a DIFFERENT court (ReadinessT18Test)"
+    },
+    {
+     "log": "GS-ACK-002/green/gs-ack-002-IOS-FULL.log",
+     "sha256": "4c4e49e185a66c05907da69cd52156db6f22e640e56a29d37dfe3bb2ec2129e5",
+     "what": "whole iOS package after the repair: Executed 1184 tests, with 0 failures"
+    },
+    {
+     "log": "GS-ACK-002/green/gs-ack-002-LANES.log",
+     "sha256": "4ea9ec4f924a6bb3defaaa4ce2a08fe161fcb5d8c1d2edcf8205db6ea75ccf8e",
+     "what": "readiness suite OK; adopted probes 12/0 OK; invariants passed=7 failed=0 all hold; repository VERDICT PASS; shipping rc=0; symbols 213 files 0 unresolved; iOS mirror --check rc=0; mutation selftest SELFTEST OK"
+    }
+   ],
+   "my_red_case": {
+    "case": "android/mesh/src/test/java/io/godstone/mesh/readiness/ReadinessT83Test.kt -- a new arm (testTheRestartRoadCarriethTheSameInitialMetadataAsTheImmediateRoad, MOVED into the canonical T83 court) PLUS two PRE-EXISTING courts of the same file whose references were built with the frozen builder default and therefore agreed with the defect (testCrashAfterInboxCommitBeforeSigningResumesDeterministically, testDuplicateValidMessageRegeneratesSameDeterministicAckNoDuplicateInbox).",
+    "argv": "(cd android && ./gradlew :mesh:testDebugUnitTest --tests '*ReadinessT83Test*')",
+    "cwd": "/Users/oculus/Projects/GODSTONE_BUILDER",
+    "log": "GS-ACK-002/red/gs-ack-002-RED.log",
+    "log_sha256": "401784e3f1fd0c9a7f436af2ac1b54a347af9d72432673bcb72d28d7c5bbec9e",
+    "outcome": "THREE arms RED on the untouched product, all three naming the same defect and two of them at BYTE level: 'canonical bytes survive the restart unchanged: arrays first differed at element [24]; expected:<12> but was:<4>' (element 24 IS the frame's TTL field) in the two pre-existing arms, and 'the restart reply must carry the profile's initial TTL expected:<12> but was:<4>' in the new one. The two existing references had to be corrected to the profile constant FIRST (they were green because the restart road and the reference were wrong the same way) -- that correction IS the red, and it is part of the repair, not a weakening."
+   },
+   "my_status": "FIX_SUBMITTED",
+   "notes": "FIX SUBMITTED (bae4eba) on both isles. THE LESSON THIS PAID FOR: a reference fixture built from the SAME default as the defective road is a court that cannot see the defect -- two arms of the very court that owns this subsystem were green for exactly that reason, and correcting them produced the cleanest RED of this whole session (a one-byte difference at the TTL field, element 24). ALSO RECORDED: an intermittent full-lane failure in a randomized readiness fixture (T17/T18 'no ascending hint pair within 64 draws') appeared twice and then vanished; it is NOT this repair's doing and NOT fixed, so the green lane is evidenced by the logged passing run rather than by an assumption of determinism.",
+   "pending_proof": [
+    "AN UNEXPLAINED, OPEN FLAKE IN THE ANDROID LANE, recorded rather than waved away: across three forced full-lane runs of the SAME tree, two runs failed in FIXTURE SETUP in two DIFFERENT courts with the same message -- 'no ascending hint pair within 64 draws' (ReadinessT17Test.makeTrustedPair, then ReadinessT18Test) -- and each court PASSED when re-run, with the third full run fully green (1142 tests). The assertion is in randomized identity drawing, BEFORE any code this finding touches, and 65 consecutive non-ascending draws from the shared SecureRandom is statistically implausible, so the mechanism is unexplained and looks like a fixture determinism bug. It is NOT fixed here (out of scope for this finding). Consequence for the evidence: 'the android lane is green' is true of the PASSING RUN (logged and checksummed); it is NOT a claim that every run is green.",
+    "NO DEVICE/EMULATOR/SIMULATOR/RADIO WAS USED. The TTL-12 return path's reach was NOT exercised over the air or across multiple hops; the repair is proven on the host, where the restart answer is byte-identical to the profile the immediate road builds.",
+    "The audit's steps 4-5 are only PARTLY done: the immediate and restart generation metadata ARE compared (byte-identical in two arms, field-by-field in a third), and the audit's caveat about a randomized host Ed25519 signer is respected by comparing metadata and payload rather than only whole encodings -- but the DOWNSTREAM relay forwarding (TTL decrement / hop increment exactly once per outgoing copy, and preservation of the outgoing copy on retries) is NOT verified here; the finding itself places that with T84 integration evidence.",
+    "The IMMEDIATE road is compared through its own SOURCE (the named constant it builds with) plus the byte-identity of the two files' references, rather than by driving a fully signed inbound container through RecipientInboxRepository in THIS court: that court's sender fixture carries no Ed25519 keys. Driving that road end to end is the T37 court's job, and it is separate evidence.",
+    "NO HOSTED LANE EXISTS in this environment: there is no CI run URL, run id or hosted log."
+   ],
    "proof": null,
    "remediation_report": "evidence/AUDIT-002/mesh_receive/findings.md",
    "remediation_steps": [
