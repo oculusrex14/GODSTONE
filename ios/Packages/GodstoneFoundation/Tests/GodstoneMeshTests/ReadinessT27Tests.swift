@@ -1,4 +1,5 @@
 import XCTest
+import CryptoKit
 @testable import GodstoneMesh
 
 // ---------------------------------------------------------------------------
@@ -249,6 +250,57 @@ final class ReadinessT27Tests: XCTestCase {
         XCTAssertEqual(nodeId?.count, 16, "the authenticated identity is SIXTEEN octets")
         XCTAssertEqual(nodeId, pair.bobIdentity.nodeId,
                        "and it IS the peer's own NodeID -- not the static DH key's derivative, and not a handle")
+    }
+
+
+    /// IOS-05 / T27 (step 4): LOCAL ABUSE PENALTIES ARE SEPARATE FROM DURABLE TRUST.
+    ///
+    /// The card's own words: "Keep local abuse penalties separate from durable trust; do not revoke an
+    /// identity because a traffic bucket is exhausted." The SUBSTANCE was measured in round 199
+    /// (`PeerGovernor.swift` carrieth ZERO references to any durable surface), and THIS is the WITNESS the
+    /// ledger named as owed: a penalty storm must leave the DURABLE repository exactly as it stood.
+    func testW14APenaltyStormLeavethDurableTrustUntouched() throws {
+        let url = FileManager.default.temporaryDirectory
+            .appendingPathComponent("t27-separation-" + UUID().uuidString + ".db")
+        defer { try? FileManager.default.removeItem(at: url) }
+        let repo = PeerIdentityRepository(store: try SqlitePeerIdentityStore(url: url))
+
+        // 1. the DURABLE side carrieth a validated binding for an identity (the T13 equation, struck here
+        //    in TEST sources as the courts' fixtures do).
+        let signingKey = try Curve25519.Signing.PrivateKey(rawRepresentation: Data(repeating: 0x5A, count: 32))
+        let signingPub = signingKey.publicKey.rawRepresentation
+        let dh = Data(repeating: 0x3C, count: 32)
+        let generation: UInt32 = 1
+        let preimage = IdentityBindingV1.signaturePreimage(
+            generation: generation, signingPublicKey: signingPub, staticDhPublicKey: dh)
+        let authored = IdentityBindingV1(
+            generation: generation, signingPublicKey: signingPub, staticDhPublicKey: dh,
+            signature: try signingKey.signature(for: preimage))
+        let nodeId = IdentityBindingV1.deriveNodeId(signingPublicKey: signingPub)
+        let nodeHint = nodeId.prefix(4)
+        guard case .valid(let validated) = IdentityBindingValidator.validate(
+            serialized: authored.encode(), authenticatedRemoteStaticKey: dh,
+            advertisedNodeHint: nodeHint) else {
+            return XCTFail("the fixture's binding must validate, or the witness proves nothing")
+        }
+        let applied = repo.applyValidatedBinding(validated)
+        XCTAssertTrue(applied == .accepted || applied == .firstSeenPinned,
+                      "the durable side must HOLD the binding before the storm: " + String(describing: applied))
+        let before = repo.lookup(nodeId)
+        guard case .verified = before else {
+            return XCTFail("the durable record must stand verified before the storm: " + String(describing: before))
+        }
+
+        // 2. THE STORM: a governor is hammered with penalties for the very same identity.
+        let governor = PeerGovernor(nowMillis: { 1_700_000_000_000 }, maxTrackedPeers: 8)
+        _ = governor.allowInbound(nodeId, priority: .direct)
+        for _ in 0..<200 { governor.penalise(nodeId, amount: 0.5) }
+        XCTAssertLessThan(governor.trustOf(nodeId), 1.0,
+                          "the governor's LOCAL trust must have felt the storm, or the witness proves nothing")
+
+        // 3. ... AND THE DURABLE TRUST IS EXACTLY AS IT STOOD.
+        XCTAssertEqual(repo.lookup(nodeId), before,
+                       "a LOCAL penalty storm must not revoke, quarantine or alter DURABLE trust")
     }
 
 }

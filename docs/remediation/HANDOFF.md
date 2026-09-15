@@ -46,7 +46,35 @@ already carried. The audit's step 3 stays OPEN, with its two measured obstacles 
 | CRYPTO-003 | FIX_SUBMITTED | 4b | Destroyed retained controllers and primitive sessions st |
 | CRYPTO-006 | FIX_SUBMITTED | 4b | Duplicate journal admission is treated as success for a |
 
-## DO THIS FIRST (round 202) — IOS-05 / T27 STEP 1 LANDS BY MEASUREMENT: THE GOVERNOR IS UNDER THE RUNTIME OWNER
+## DO THIS FIRST (round 203) — IOS-05 / T27 STEP 4's WITNESS LANDS: A PENALTY STORM LEAVES DURABLE TRUST UNTOUCHED
+
+**The witness owed since round 199 is written and green.** `ReadinessT27Tests.testW14APenaltyStormLeavethDurableTrustUntouched`
+builds a **real** durable repository (`SqlitePeerIdentityStore` over a temp file), authors and validates a **T13 binding**
+for an identity, **pins** it through `applyValidatedBinding` (asserting the durable result is `.accepted` or
+`.firstSeenPinned`), **snapshots** the durable record, then drives **two hundred penalties** against a governor for that
+very identity — asserting the governor's **local** trust **fell** (`trustOf` < 1.0, so the storm really happened) — and
+finally asserts the durable record is **exactly as it stood**. **Its positive control is inside it:** the storm is proven
+to have taken effect locally, so a witness that proved nothing could not pass.
+
+**Both halves are now evidence, not assertion:** the *substance* was measured in round 199 (`PeerGovernor.swift` carries
+**zero** references to any durable surface) and the *witness* now drives the claim against a real repository. The card's
+words are honoured in both senses: no local bucket exhaustion revokes an identity, and the proof says so about a durable
+record that really exists.
+
+**The card's five steps are now all carried on the iOS isle:** (1) the canonical governor under the runtime owner with a
+**structural** monotonic clock (202); (2) the pre-auth global/relation budget at the real doors (196); (3) the post-AEAD
+charge — the record/byte budget on the **immutable full NodeID** plus the governor's identity **trust** gate — before the
+payload leaves (198, 202); (4) the separation of local penalties from durable trust, **measured and witnessed** (199, 203);
+(5) the Trust mutations serialised under `registryLock` (194).
+
+**Acceptance:** the witness green (10 T27 tests) and the whole iOS lane **1204 tests, 0 failures (0 unexpected)**.
+**One fixture error of mine, recorded:** the witness first failed to **compile** (`cannot find 'Curve25519' in scope`) —
+a missing `import CryptoKit`; a compile failure is not a behavioural result, which is why it is recorded as such.
+
+**IOS-05 stays FIX_SUBMITTED** — as its Android isle-mate does — with **no independent verification** (only an independent
+audit may write `VERIFIED_FIXED`), readiness flags **false** and the five external gates **OPEN**.
+
+## DO THIS FIRST (round 202, landed) — IOS-05 / T27 STEP 1 LANDS BY MEASUREMENT
 
 **The choice, made on evidence.** Round 201 exposed that the governor's canonical buckets are **per-second frame
 buckets** (DIRECT 60, SOS 30, BROADCAST 20, BULK 10, unknown 10) while the post-AEAD gate sees **whole records** (a
