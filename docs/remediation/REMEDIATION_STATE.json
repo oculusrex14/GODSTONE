@@ -706,6 +706,37 @@
     "READINESS FLAGS STAY FALSE and the FIVE EXTERNAL GATES stay OPEN (A06, APPROVED_CONTENT, NATIVE_MODELS, HARDWARE, SIGNING) -- enforced by the blocked-external court, which passeth.",
     "CLOSURE EVIDENCE IS STALE FOR 31 FINDINGS whose card files changed after the audited SHA (computed, not asserted, at round 120 and still standing): staleness is a FLOOR on what a later closure could claim, not a clearance."
    ]
+  },
+  "candidate_verification_at_round_200": {
+   "candidate_sha": "44975422840fb4c52f3218953bf58bb6bc254866",
+   "tree_sha": "8e437d72abc75077feeea92ab50f5f781c1899c8",
+   "worktree": "clean at this sha",
+   "log": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/REMEDIATION/CANDIDATE_FINAL_44975422840fb4c52f3218953bf58bb6bc254866/verify.log",
+   "log_sha256": "6683b22294ddfbec108d717d65b3c85ff07179bdb8a57368dc1676b653144355",
+   "measured": {
+    "android_mesh_lane": "BUILD SUCCESSFUL; **1187 tests, 0 failures, 0 errors** (a FORCED re-run: `cleanTest`)",
+    "ios_lane_mirrored_package": "**Executed 1203 tests, with 0 failures (0 unexpected)**, 211.1s",
+    "python_readiness_suite": "OK",
+    "repository_controls": "EVERY ci/check_*.py rc 0; the ONLY non-zero is `check_parity` under its DEFAULT scope = the EXTERNAL A-06 arm ('independent vectors unavailable or unapproved ... A-06 stays OPEN'), and `--scope repo` is rc 0",
+    "ledger_court": "OK",
+    "symbols": "ci/symbols.py: 0 unresolved"
+   },
+   "per_declared_scope": {
+    "Mesh/Oracle": {
+     "findings": 40
+    },
+    "Both": {
+     "findings": 14
+    }
+   },
+   "since_round_178": "GS-CTRL-002's three RED controls were RESOLVED (rounds 177: ble_link_substrate 33 arms -> 0, battery 158/158); ANDROID-07's four card steps landed (186-193), including the retained full NodeID; ANDROID-05's T18 + measured drain + bounded in-flight drain landed (181-184); IOS-05's steps 2, 3 and 5 landed (194-199) with the iOS AdmissION budget and the behavioural full-NodeID witness; GS-ARCHIVE-005's App-layer blocker was classified as the NATIVE_MODELS external artifact (180)",
+   "NOT_CLAIMED_AND_WHY": [
+    "T78 CONVERGENCE IS NOT CLAIMED: its own requirement is that all applicable HOSTED lanes be enabled, executed and green AT THIS SHA, and NO hosted lane, run URL, run id or log exists in this environment.",
+    "NO FINDING IS VERIFIED_FIXED: only an INDEPENDENT AUDIT may write that word (live counts: 28 FIX_SUBMITTED, 20 OPEN, 6 PARTIAL).",
+    "READINESS FLAGS STAY FALSE and the FIVE EXTERNAL GATES stay OPEN (A06, APPROVED_CONTENT, NATIVE_MODELS, HARDWARE, SIGNING); NATIVE_MODELS additionally blocketh the iOS App layer and T78.",
+    "CLOSURE EVIDENCE IS STALE FOR 31 FINDINGS whose card files changed after the audited SHA -- a FLOOR on what a later closure could claim, not a clearance.",
+    "IOS-05 IS NOT COMPLETE: steps 2, 3 and 5 are carried, but STEP 1 (the existing `PeerGovernor` itself under the runtime owner with one shared configuration) and STEP 4's separated-penalty WITNESS remain -- this session built a purpose-built `AdmissionBudget` for the ingress rather than wiring the governor, and that design divergence is stated rather than hidden."
+   ]
   }
  },
  "counts": {

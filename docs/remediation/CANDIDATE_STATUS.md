@@ -52,3 +52,29 @@ half is complete and the missing half is stated rather than papered over. **No f
 independent audit may write that): live counts are **27 FIX_SUBMITTED, 5 PARTIAL, 22 OPEN**. Readiness flags stay
 **false** and the five external gates stay **OPEN**. **Closure evidence is stale for 31 findings** whose card files
 changed after the audited SHA — a *floor* on any later closure, not a clearance.
+
+## Candidate verification at `4497542` (ledger round 200) — measured, per declared scope
+
+| Item | Result at this exact SHA (tree `8e437d7`) |
+|---|---|
+| Android `:mesh` lane | **1187 tests, 0 failures, 0 errors** (forced re-run: `cleanTest`) |
+| iOS lane (mirrored package) | **1203 tests, 0 failures (0 unexpected)**, 211.1s |
+| Python readiness suite | **OK** |
+| Repository controls | **every `ci/check_*.py` rc 0**; only `check_parity` under its **default** scope is non-zero = the **external A-06 arm**; `--scope repo` rc 0 |
+| Ledger court | **OK** |
+| Symbols | `ci/symbols.py` — 0 unresolved |
+
+**Declared scopes, separately:** LIGHT Archive **14**; Mesh/Oracle **40**.
+
+**Since round 178:** GS-CTRL-002's three red controls were **resolved** (ble_link_substrate 33 arms → 0, battery 158/158);
+ANDROID-07's **four card steps** landed (186–193, including the retained full NodeID); ANDROID-05's T18, measured drain and
+bounded in-flight drain landed (181–184); IOS-05's steps 2, 3 and 5 landed (194–199) with the iOS admission budget and the
+behavioural full-NodeID witness; GS-ARCHIVE-005's App-layer blocker was classified as the **NATIVE_MODELS** external
+artifact (180).
+
+**Not claimed, and why:** **T78 convergence is NOT claimed** (no hosted lane/run URL/id/log exists here); **no finding is
+`VERIFIED_FIXED`** (28 FIX_SUBMITTED / 20 OPEN / 6 PARTIAL); readiness flags **false** and the five external gates
+**OPEN**; **closure evidence stale for 31 findings**. **IOS-05 is NOT complete:** steps 2, 3 and 5 are carried, but
+**step 1** (the existing `PeerGovernor` itself under the runtime owner with one shared configuration) and **step 4's
+separated-penalty witness** remain — this session built a purpose-built `AdmissionBudget` for the ingress rather than
+wiring the governor, and that divergence is stated rather than hidden.
