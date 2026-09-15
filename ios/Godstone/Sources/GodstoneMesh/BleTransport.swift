@@ -2054,13 +2054,29 @@ public final class BleTransport: NSObject, @unchecked Sendable {
         let registry = sessions
         let conn = outboundCentralConnections[peerId]
         unlockTransport()
-        let advertised = discoveryMetadata(for: peerId)?.nodeHint ?? Data()
         guard let registry else {
             recordRejection(peerId: peerId, site: "hs.read.initiator", reason: "no trusted session registry")
             return
         }
+        // IOS-03: the hint authority for an ALREADY-BOUND relation is the GATT-bound
+        // relation, and only that. This site used to re-read the hint from OPTIONAL
+        // advertising metadata, which canonically-advertising peers (UUID-only
+        // advertising, the intended interoperable case) do not carry at all -- so HS2
+        // received an empty hint and the trusted handshake was refused merely for lack of
+        // one -- while a stale or spoofed advertisement could equally OVERRIDE the real
+        // bound hint. The mandatory LinkInfo value was already captured into
+        // `pendingInitiatorRemoteHints` and bound onto this connection (which validates it
+        // as exactly `BleRoleElection.nodeHintBytes` at bind time), so the BOUND value is
+        // read here instead. Advertising data remains a DISCOVERY hint only, never
+        // authority for a bound relation, and NO zero-byte stand-in is substituted when
+        // the relation is unbound: that is its own refusal.
         guard let conn else {
             recordRejection(peerId: peerId, site: "hs.read.initiator", reason: "no connection")
+            return
+        }
+        guard let boundRemoteHint = conn.remoteNodeHint else {
+            recordRejection(peerId: peerId, site: "hs.read.initiator", reason: "no gatt-bound node hint")
+            closeInitiatorRelation(peerId)
             return
         }
         guard record.recordType == .hs2 else {
@@ -2080,7 +2096,7 @@ public final class BleTransport: NSObject, @unchecked Sendable {
                             reason: "hs2 duplicate hearkened not")
             return
         }
-        guard let hs3 = registry.initiatorProcessHs2(peerId, hs2: record.payload, advertisedRemoteHint: advertised) else {
+        guard let hs3 = registry.initiatorProcessHs2(peerId, hs2: record.payload, advertisedRemoteHint: boundRemoteHint) else {
             // trust rejected: HS3 is withheld and the exact relation closes
             recordRejection(peerId: peerId, site: "hs.read.initiator", reason: "hs2 rejected")
             closeInitiatorRelation(peerId)

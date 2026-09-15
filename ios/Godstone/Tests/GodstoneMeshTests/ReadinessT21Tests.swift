@@ -1036,4 +1036,70 @@ final class ReadinessT21Tests: XCTestCase {
             return Int64(held.count * 32)
         }
     }
+
+    // ---------------------------------------------------------------------------------
+    // IOS-03: the HS2 hint authority for an ALREADY-BOUND relation.
+    //
+    // The audit classifies this finding SOURCE_PROVEN_NOT_EXECUTED, and NO court in this
+    // tree drives BleTransport's inbound-handshake-record path (there is no transport
+    // harness in this environment and no radio), so this arm reads the CODE of the trust
+    // path instead of pretending to execute it. It asserts exactly the three things the
+    // audit demands, and it addresses the site BY NAME so a rename FAILS loudly rather
+    // than silently skipping:
+    //   (1) the discoveryMetadata lookup is GONE from the HS2 trust path (optional
+    //       advertising metadata is a discovery hint, never authority for a bound
+    //       relation);
+    //   (2) the GATT-BOUND hint is what HS2 receives;
+    //   (3) an unbound relation is REFUSED -- no zero-byte stand-in is substituted.
+    // ---------------------------------------------------------------------------------
+    func testW11TheHs2HintAuthorityIsTheGattBoundRelationNotTheAdvertisement() throws {
+        let body = try hs2InitiatorTrustPathBody()
+        // read CODE, never prose: the comment above legitimately NAMES the removed lookup,
+        // and an arm about wiring that accepts a spelling passes on exactly such a comment.
+        let code = body.split(separator: "\n", omittingEmptySubsequences: false)
+            .map { line -> Substring in
+                guard let cut = line.firstIndex(of: "/") else { return line }
+                return line[line.startIndex..<cut]
+            }
+            .joined(separator: "\n")
+        XCTAssertFalse(code.contains("discoveryMetadata"),
+                       "the HS2 trust path must NOT re-read the hint from optional advertising "
+                       + "metadata: canonical (UUID-only) advertising carries none, so a valid peer "
+                       + "is refused for lack of a hint, and a stale advertisement could override the "
+                       + "real bound hint (IOS-03)")
+        XCTAssertTrue(code.contains("remoteNodeHint"),
+                      "the HS2 trust path must take the hint from the GATT-BOUND relation (IOS-03)")
+        XCTAssertTrue(code.contains("advertisedRemoteHint: boundRemoteHint"),
+                      "the captured GATT-bound value must be the one passed through HS2 completion, "
+                      + "not a later re-read (IOS-03)")
+        XCTAssertFalse(code.contains("?? Data()"),
+                       "an unbound relation must be REFUSED, never fed a zero-byte hint stand-in (IOS-03)")
+    }
+
+    private func hs2InitiatorTrustPathBody() throws -> String {
+        var repo = URL(fileURLWithPath: #filePath)
+        var hops = 0
+        while repo.path != "/" && hops < 12 {
+            if FileManager.default.fileExists(atPath: repo.appendingPathComponent("ios").path) { break }
+            repo.deleteLastPathComponent(); hops += 1
+        }
+        let source = try String(contentsOf: repo.appendingPathComponent(
+            "ios/Godstone/Sources/GodstoneMesh/BleTransport.swift"), encoding: .utf8)
+        guard let start = source.range(of: "private func handleInboundHandshakeRecordInitiatorSide(") else {
+            XCTFail("the HS2 initiator trust path is no longer called "
+                    + "handleInboundHandshakeRecordInitiatorSide(_:peerId:): re-point this arm at its "
+                    + "new name rather than skipping (IOS-03)")
+            return ""
+        }
+        let tail = source[start.lowerBound...]
+        var depth = 0
+        var body = ""
+        for character in tail {
+            if character == "{" { depth += 1 }
+            if character == "}" { depth -= 1 }
+            body.append(character)
+            if depth == 0 && body.contains("{") { break }
+        }
+        return body
+    }
 }
