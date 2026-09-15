@@ -46,7 +46,31 @@ already carried. The audit's step 3 stays OPEN, with its two measured obstacles 
 | CRYPTO-003 | FIX_SUBMITTED | 4b | Destroyed retained controllers and primitive sessions st |
 | CRYPTO-006 | FIX_SUBMITTED | 4b | Duplicate journal admission is treated as success for a |
 
-## DO THIS FIRST (round 184) — ANDROID-05's LAST NAMED ITEM: THE DRAIN'S `resourcesReleased` NOW **MEASURES**
+## DO THIS FIRST (round 185) — ANDROID-05's FRONTIER IS GATED BY THE **FROZEN LINK-LAYER FLAG**, NOT BY MISSING WORK
+
+The remaining item ("one real lifecycle authority, composed") was measured before it was touched — and the measurement says
+**do not touch it blindly**:
+
+* `UnifiedRuntimeLifecycle(` appears **only in test sources** (ReadinessAndroid05Test ×4, 05b ×3, T28 ×1).
+* `LifecycleTransportAdapter(` has **one** production site — its own declaration — and the rest are courts.
+* `BleTransport(` is constructed **nowhere in main** either: only its own constructor declaration.
+* `di/MeshModule.kt` provides `DefaultRuntimeLifecycleGate` and binds **no** `Transport` and **no** `TransportSeam`.
+* **And `MeshService.onCreate()` does not get there**: its first act is
+  `if (!MeshNode.LINK_LAYER_READY) { Log.w("mesh service refused: M1-wire/M2-link not implemented"); stopSelf(); return }`
+  — with `LINK_LAYER_READY` **false by audit requirement** (the substrate control's BL23 arm asserts it must remain false).
+
+**So the frontier is BLOCKED BY A FROZEN INVARIANT, and "composing" the authority into the live service today would be
+either DEAD CODE or a BREACH.** The two honest courses, named rather than taken: **(a)** write the composition *behind
+the same guard* so it is correct for the day the flag flips, with a **testable factory** and a court that drives the
+wiring through a fake transport — neither of which turns the radio on; or **(b)** leave it and record the dependency,
+which is what this round does. **The flag's flip is external** (the hardware/A06 gates and their owners), and no
+self-generated fixture may stand in for it.
+
+**No production file was edited this round**, and the reason is the classification itself: a wiring written to "close" a
+finding gated by a frozen invariant would be the unverifiable-and-invariant-breaching change this programme refuses.
+**The deliverable is the measurement, the classification, and the two courses.**
+
+## DO THIS FIRST (round 184, landed) — ANDROID-05's LAST NAMED ITEM
 
 `drainLocked()` returned `resourcesReleased = 1` as a **constant** while the cleanliness law at `:77` requires
 `resourcesReleased >= 1 && inFlightOutstanding == 0` — so the law was satisfied **trivially**, by a figure that claims a
