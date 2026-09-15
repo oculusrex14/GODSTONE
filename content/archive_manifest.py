@@ -146,6 +146,10 @@ def create_manifest(
             "vectors": counts["vectors"],
         },
         "archive_meta": meta,
+        # the final chunk approvals are part of the production provenance: when the
+        # database carrieth their digest, the SIGNED manifest carrieth it too, so the
+        # signature bindeth the approvals to the exact bytes (GS-CONTENT-001).
+        "approvals_sha256": meta.get("approvals_sha256"),
         "embedding": None if embedding_model is None else {
             "model": embedding_model,
             "sha256": embedding_sha256,

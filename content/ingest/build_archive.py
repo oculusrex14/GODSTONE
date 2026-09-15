@@ -672,6 +672,22 @@ def build(tier: str, out_path: Path, embed: bool = True,
     rows_inserted, vectors_done, indexed, before_validate, after_validate,
     before_publish, after_publish.
     """
+    # ---- THE FINAL CHUNK APPROVALS ARE MANDATORY IN A RELEASE (GS-CONTENT-001) ----
+    # The audit reproduced that `release=True` without approvals_dir/reviewer_keyset
+    # PASSED and produced a database carrying no approvals_sha256, which then reached
+    # operator staging. The configuration is therefore checked at ENTRY, before a single
+    # byte of output existeth, and half a pair is refused exactly as before.
+    if release:
+        if approvals_dir is None or reviewer_keyset is None:
+            missing = [name for name, value in
+                       (("approvals_dir", approvals_dir),
+                        ("reviewer_keyset", reviewer_keyset)) if value is None]
+            raise SystemExit(
+                f"::error::REFUSING to build a release archive: the final chunk "
+                f"approvals are mandatory in a release, and {', '.join(missing)} "
+                f"{'is' if len(missing) == 1 else 'are'} absent. Supply BOTH "
+                f"--approvals-dir and --reviewer-keyset; a release archive may not be "
+                f"built without its approved chunks (GS-CONTENT-001).")
     if not isinstance(max_staged_bytes, int) or isinstance(
             max_staged_bytes, bool) or max_staged_bytes <= 0:
         raise TypeError("max_staged_bytes must be a positive integer")

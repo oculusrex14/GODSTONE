@@ -139,6 +139,11 @@ class UpgradeRecoveryCourt(unittest.TestCase):
             "source_manifest_sha256": hashlib.sha256(b"T77-FIXTURE-SOURCE").hexdigest(),
             "review_manifest_sha256": hashlib.sha256(b"T77-FIXTURE-REVIEW").hexdigest(),
             "release_manifest_set_sha256": hashlib.sha256(b"T77-FIXTURE-SET").hexdigest(),
+            # GS-CONTENT-001: the release-eligibility routine requyreth the final chunk
+            # approvals among the production provenance. This fixture DECLARES the digest
+            # rather than obtaining an approval -- it is a shape/binding fixture and
+            # closeth APPROVED_CONTENT for nothing.
+            "approvals_sha256": hashlib.sha256(b"T77-FIXTURE-APPROVALS").hexdigest(),
         }
         connection = sqlite3.connect(archive)
         try:

@@ -586,12 +586,81 @@ class WholePathWitness(T45Case):
             (self.manifests / f"{source_id}.yaml").write_text(
                 yaml.safe_dump(record, sort_keys=True), encoding="utf-8")
 
+    def _chunk_approvals(self, today) -> tuple[Path, Path]:
+        """GS-CONTENT-001: a release build now REQUIRES the final chunk approvals, so this
+        arm GENERATES them through the same helpers the T46 approval court useth -- the
+        whole path is then walked over a genuinely approved corpus."""
+        from content.release_gate import (chunk_final_hashes, make_test_keyset_entry,
+                                          set_digest, sign_final_approval_fields,
+                                          warning_sets_for, write_approvals_bundle,
+                                          write_test_keyset)
+        from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
+        approvals = self.root / "approvals"
+        approvals.mkdir(exist_ok=True)
+        keyset = self.root / "reviewer_keys.json"
+        credential = self.evidence / "README-do-not.txt"
+        if not credential.exists():
+            credential.parent.mkdir(parents=True, exist_ok=True)
+            credential.write_text(
+                "T45 FIXTURE CREDENTIAL -- not a real review, closes nothing\n",
+                encoding="utf-8")
+        for doc in ba.load_corpus("LIGHT", seed_root=self.seed_used):
+            rights = self.evidence / f"{doc.path.stem}.rights.txt"
+            if not rights.exists():
+                rights.write_text("T45 FIXTURE RIGHTS -- not evidence of any licence\n",
+                                  encoding="utf-8")
+        key = Ed25519PrivateKey.generate()
+        write_test_keyset(keyset, [make_test_keyset_entry(
+            key, key_id="RV-1", reviewer_id="t45-fixture-reviewer",
+            valid_from=date(2026, 1, 1), valid_until=date(2027, 6, 1))])
+        # the declared warning / contraindication SECTIONS come from the manifest records
+        # this arm writeth, exactly as the build readeth them
+        warn, contra = [], []
+        for record_path in sorted(self.manifests.glob("*.yaml")):
+            record = yaml.safe_load(record_path.read_text(encoding="utf-8")) or {}
+            warn.extend(record.get("warnings") or [])
+            contra.extend(record.get("contraindications") or [])
+        warn, contra = sorted(set(warn)), sorted(set(contra))
+        for doc in ba.load_corpus("LIGHT", seed_root=self.seed_used):
+            stem = doc.path.stem
+            chunks = list(ba.chunk_document(
+                doc.body, max_tokens=self.BASE_TIERS[0][1] if False else 220,
+                overlap_tokens=40))
+            source_id = f"T45-FIXTURE-{stem}"
+            document_sha256 = hashlib.sha256(doc.path.read_bytes()).hexdigest()
+            warnings = warning_sets_for(chunks, warning_sections=warn,
+                                        contraindication_sections=contra)[0]
+            contraindications = warning_sets_for(
+                chunks, warning_sections=warn,
+                contraindication_sections=contra)[1]
+            record = sign_final_approval_fields(
+                key, source_id=source_id,
+                document_sha256=document_sha256,
+                rights_sha256=hashlib.sha256(
+                    (self.evidence / f"{stem}.rights.txt").read_bytes()).hexdigest(),
+                reviewer_id="t45-fixture-reviewer",
+                reviewer_credential_evidence_file="README-do-not.txt",
+                reviewer_credential_sha256=hashlib.sha256(
+                    (self.evidence / "README-do-not.txt").read_bytes()).hexdigest(),
+                reviewed_on=today,
+                valid_from=date(2026, 1, 1), valid_until=date(2027, 6, 1),
+                warnings_sha256=set_digest(warnings),
+                contraindications_sha256=set_digest(contraindications),
+                chunk_final_sha256=chunk_final_hashes(
+                    source_id=source_id, document_sha256=document_sha256,
+                    chunks=chunks, warnings=warnings,
+                    contraindications=contraindications), key_id="RV-1")
+            write_approvals_bundle(approvals / f"T45-FIXTURE-{stem}.approvals.json", [record])
+        return approvals, keyset
+
     def testReleaseBuildTraversesTheWholePathToStagedVerification(self) -> None:
         today = date(2026, 8, 6)
+        approvals, keyset = self._chunk_approvals(today)
         result = self.build(seed_root=self.seed_used, embed=False,
                             release=True, today=today,
                             manifests_root=self.manifests,
-                            evidence_root=self.evidence)
+                            evidence_root=self.evidence,
+                            approvals_dir=approvals, reviewer_keyset=keyset)
 
         # the approval leg, verified independently of the build
         docs = ba.load_corpus("LIGHT", seed_root=self.seed_used)

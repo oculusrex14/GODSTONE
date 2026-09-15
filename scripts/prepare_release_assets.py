@@ -186,10 +186,15 @@ def _retain_previous_estate(output: Path, retention: Path, name: str) -> dict[st
 # The archive's own meta must carry these production review digests, and
 # the signed manifest must swear the same values: a development fixture
 # signed by a real key still lacks them and is refused.
+#: GS-CONTENT-001: the production review provenance a RELEASE archive must carry. The
+#: final chunk approvals are included, because an archive whose chunks were never approved
+#: is precisely what staged a release the audit reproduced: "an archive lacks production
+#: review provenance: approvals_sha256".
 PROVENANCE_FIELDS = (
     ("source_manifest_sha256", "source_manifest_sha256"),
     ("review_manifest_sha256", "review_manifest_sha256"),
     ("release_manifest_set_sha256", "corpus_manifest_sha256"),
+    ("approvals_sha256", "approvals_sha256"),
 )
 
 
