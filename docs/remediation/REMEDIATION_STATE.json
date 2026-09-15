@@ -594,6 +594,15 @@
    "package_only_or_missing": [],
    "verdict": "THE MIRROR MATCHES ITS SOURCES",
    "meaning": "The ios lane runneth the MIRROR, so its green means nothing unless the mirror equalleth the sources. This checketh that, and it matters for the ONLY unfinished LIGHT-scope finding (GS-ARCHIVE-005), whose repair must land in ios/Godstone AND be synced before it can be tested."
+  },
+  "light_exclusion_evidence_AT_ROUND_128": {
+   "candidate_sha": "16142563ef5556af46c85b413a313327c19dac5f",
+   "candidate_tree_sha": "fd55516fece290762894082eea50eb864a9797a5",
+   "record": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/REMEDIATION/ROUND128/light-exclusion-evidence.json",
+   "ci_check_shipping_path": "rc 0 -- PASS: LIGHT shipping path has no Mesh/GMP-1 or :llm dependency edge; android excludes io/godstone/app/ui/{mesh,sos,oracle}/** and depends on `core` alone; ios app depends on GodstoneCore alone. IT ALSO SAYETH OF ITSELF: (A-01 remains OPEN: a clean shipping path is not GMP/2.1 canonical-frame evidence.)",
+   "ci_check_lab_isolation": "rc 0 -- PASSED (0 errors, 6 notes)",
+   "what_it_covers": "the LIGHT candidate's EXCLUSION requirement, which the audit requireth be PROVED and not asserted",
+   "what_it_does_not": "it readeth the SHIPPING SOURCE GRAPH, not a built artifact; LIGHT's remaining boundary items (approved lexical content, trust/signing, applicable device/accessibility/security evidence, actual release artifacts) are untouched by it, and no gate moved."
   }
  },
  "counts": {
