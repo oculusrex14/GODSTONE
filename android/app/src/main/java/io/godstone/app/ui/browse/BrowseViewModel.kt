@@ -195,6 +195,16 @@ class BrowseViewModel(
 
     /** The journey's new door: a search hit openeth the WHOLE document, not
      *  only the matched passage (s17 'full document navigation'). */
+    /** GS-ARCHIVE-003: a search HIT openeth the whole document. It useth the same road the
+     * document list doth, so the two entrances cannot drift apart. */
+    fun openHit(passage: ArchivePassage) = openPassage(passage)
+
+    /** The honest NoResults action: clear the query and return to the document list. */
+    fun clearQuery() {
+        _state.value = _state.value.copy(query = "")
+        search()          // the road the query field already useth
+    }
+
     fun openPassage(passage: ArchivePassage) {
         stashScene()
         openDocumentInternal(passage.documentId, passage.documentTitle)

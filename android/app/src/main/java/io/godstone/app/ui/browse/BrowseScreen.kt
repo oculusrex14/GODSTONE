@@ -18,6 +18,8 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -110,7 +112,25 @@ fun BrowseScreen(vm: BrowseViewModel = hiltViewModel()) {
         } else {
             LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 items(state.documents, key = { it.id }) { DocumentCard(it, vm::open) }
-                items(state.passages, key = { it.chunkId }) { PassageCard(it) }
+                // GS-ARCHIVE-003: a search hit must OPEN its document -- the audit found that
+                // every result was a non-clickable card with no action, so a reader could never
+                // reach the full document from a search.
+                items(state.passages, key = { it.chunkId }) { PassageCard(it, vm::openHit) }
+                if (state.phase is BrowsePhase.NoResults) {
+                    item {
+                        // the honest empty phase, RENDERED: the archive is ready and answered
+                        // nothing -- with an action to change the query
+                        Column(Modifier.padding(16.dp),
+                            verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Text("No matches in the archive.")
+                            Text("Try a different word or a broader term.",
+                                style = MaterialTheme.typography.bodySmall)
+                            if (state.query.isNotBlank()) {
+                                Button(onClick = vm::clearQuery) { Text("Clear the query") }
+                            }
+                        }
+                    }
+                }
             }
         }
     }
@@ -131,12 +151,21 @@ private fun DocumentCard(document: ArchiveDocument, onOpen: (ArchiveDocument) ->
 }
 
 @Composable
-private fun PassageCard(passage: ArchivePassage) {
-    Card(modifier = Modifier.fillMaxWidth()) {
+private fun PassageCard(passage: ArchivePassage, onOpen: (ArchivePassage) -> Unit) {
+    // GS-ARCHIVE-003: the card is CLICKABLE and carrieth an ACCESSIBLE action naming what it
+    // doth, so a reader (including a screen-reader user) can open the whole document.
+    Card(
+        onClick = { onOpen(passage) },
+        modifier = Modifier.fillMaxWidth().semantics {
+            contentDescription = "Read the full document: " + passage.documentTitle
+        },
+    ) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Text(passage.documentTitle, fontWeight = FontWeight.Bold)
             if (passage.section.isNotBlank()) Text(passage.section, style = MaterialTheme.typography.bodyMedium)
             Text(passage.text, style = MaterialTheme.typography.bodyLarge)
+            Text("Read full document", style = MaterialTheme.typography.labelLarge,
+                color = MaterialTheme.colorScheme.primary)
         }
     }
 }
