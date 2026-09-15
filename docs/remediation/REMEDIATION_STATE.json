@@ -5884,7 +5884,8 @@
    },
    "this_round": "a candidate verification at ONE exact SHA after the session's TWO GS-SOS-001 repairs, with every component log hashed",
    "ALSO_RECORDED_AND_NOT_GLOSSED": "THREE GENUINE ci/check_*.py CONTROLS REMAIN RED at this candidate (check_ble_link_substrate_controls, check_local_identity_controls, check_trusted_runtime_composition_controls), two of them with broken mutation batteries; check_parity is NOT among them (it passes as the lane runs it, --scope repo).",
-   "this_is_not_t78": "no hosted lane existeth here, so T78 has NOT run and no readiness flag moved."
+   "this_is_not_t78": "no hosted lane existeth here, so T78 has NOT run and no readiness flag moved.",
+   "ios_swift_lane": "ADDED AT ROUND 159: Executed 1195 tests, with 0 failures (174.3s), via sync + swift test; the sync left ZERO uncommitted changes, independently confirming the mirror matches its sources at this SHA. The swift-testing summary's '0 tests in 0 suites' is an artifact -- grep for 'Executed '."
   }
  }
 }
