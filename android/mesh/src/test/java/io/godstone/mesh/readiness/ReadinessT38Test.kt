@@ -55,6 +55,7 @@ import io.godstone.mesh.wire.v2.VerifiedSos
 import io.godstone.mesh.wire.v2.TimeQuality
 import io.godstone.mesh.wire.v2.TypeV2
 import java.security.SecureRandom
+import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert
 import org.junit.Test
@@ -760,6 +761,55 @@ class ReadinessT38Test {
         Assert.assertEquals("the honest bytes authenticate again, idempotently", 2,
             observer.authenticated)
         Assert.assertEquals("and the refusal count stays at one", 1, observer.unauthenticated)
+    }
+    /**
+     * GS-SOS-001 -- an authority that YIELDETH NO MATERIAL may not offer an UNSIGNED SOS.
+     *
+     * The audit's card, verbatim: "missing signing authority still queues and offers an unauthenticated
+     * SOS". `MeshNode.authorSignedSos` did exactly that: when the authority yielded no seed or no static
+     * DH key it FELL BACK to `router.buildSos(payload)`, and the dispatch road queued that structural
+     * frame and handed it to relays. This arm drives the REAL `dispatchSos` road with an authority that
+     * yieldeth NO SEED and demands that NOTHING is offered.
+     *
+     * NOTE, AND IT IS DELIBERATE: this arm covereth the NULL-YIELD case only. The separate
+     * NO-AUTHORITY case is PINNED by another arm in this court ("the legacy arm: unwired authority, the
+     * structural shape still goes"), which is a control that current encodes the audited behaviour --
+     * reversing it is a deliberate act that must be recorded, not a silent side effect of this repair.
+     */
+    private class MissingMaterialAuthority(
+        private val dhPub: ByteArray,
+        private val generation: Long,
+        private val clock: Long,
+        private val nonce: ByteArray,
+    ) : SosSigningAuthority {
+        override fun currentNonce(): ByteArray = nonce.copyOf()
+        override fun currentSigningSeed(): ByteArray? = null
+        override fun currentStaticDhPublicKey(): ByteArray = dhPub.copyOf()
+        override fun currentGeneration(): Long = generation
+        override fun currentTimeEpochSeconds(): Long = clock
+    }
+
+    @Test
+    fun testGS_SOS_001_anAuthorityWithNoMaterialMayNotOfferAnUnsignedSos() = runTest {
+        val v = locateVectors().first { it.name == "accept_signed_ok_min" }
+        val store = InMemoryMessageStore()
+        val node = MeshNode(
+            ctx = null,
+            identity = newIdentity(),
+            store = store,
+            deliveryTracker = DeliveryTracker(T38Journal(),
+                Ed25519AckAuthenticator(UnresolvedRecipientKeyResolver)),
+        )
+        node.sosAuthority = MissingMaterialAuthority(v.dhPub, v.generation, v.created, v.nonce)
+        node.injectPeerForTest(ByteArray(16) { 0x21.toByte() })
+        val sent = ArrayList<ByteArray>()
+        node.dispatchSos(ascii("mayday-mayday")) { _, bytes -> sent.add(bytes.copyOf()); true }
+        Assert.assertEquals(
+            "an authority that yielded NO MATERIAL still OFFERED an unsigned SOS: a refusal is required, " +
+                "and the audited form built a structural frame and handed it to relays",
+            0, sent.size)
+        Assert.assertEquals("nothing may be durably queued from a refused SOS", 0,
+            store.allHeldMsgIds().count())
     }
 }
 // (file-scoped helper appended below the class for this court only)

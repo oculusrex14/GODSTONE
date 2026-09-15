@@ -769,8 +769,11 @@ class MeshNode(
         send: suspend (peerId: ByteArray, bytes: ByteArray) -> Boolean,
     ): SosDispatchResult {
         val authority = sosAuthority
-        val frame = if (authority != null) authorSignedSos(authority, payload)
-        else router.buildSos(payload) // legacy structural shape; runtime auth refuses it
+        val frame = if (authority != null) {
+            authorSignedSos(authority, payload) ?: return SosDispatchResult.Failed(
+                "the SOS signing authority yielded no signing material: refusing rather than offering " +
+                    "an unsigned distress call")
+        } else router.buildSos(payload) // legacy structural shape; runtime auth refuses it
         // T39: the held frame AND its NONE-mode delivery row commit as ONE durable
         // pair (section 14's both-or-neither law for the broadcast path). The
         // repository is the authority: the shared SQL engine runs the pair in one
@@ -824,9 +827,15 @@ class MeshNode(
     private fun authorSignedSos(
         authority: io.godstone.mesh.wire.v2.SosSigningAuthority,
         payload: ByteArray,
-    ): io.godstone.mesh.wire.v2.FrameV2 {
-        val seed = authority.currentSigningSeed() ?: return router.buildSos(payload)
-        val dhPub = authority.currentStaticDhPublicKey() ?: return router.buildSos(payload)
+    ): io.godstone.mesh.wire.v2.FrameV2? {
+        // GS-SOS-001: AN AUTHORITY THAT YIELDETH NO MATERIAL IS A REASON TO REFUSE, NEVER A REASON TO
+        // SEND. The audited form returned `router.buildSos(payload)` here -- an UNSIGNED structural frame
+        // which the dispatch road then queued and offered to relays; the audit's card sayeth so verbatim:
+        // "missing signing authority still queues and offers an unauthenticated SOS." A null return now
+        // meaneth REFUSED. (The NO-AUTHORITY case is left as it was: another arm in the SOS court pins
+        // that legacy shape, and reversing a pinned control must be a recorded act, not a side effect.)
+        val seed = authority.currentSigningSeed() ?: return null
+        val dhPub = authority.currentStaticDhPublicKey() ?: return null
         val nonce = authority.currentNonce()
         val clock = authority.currentTimeEpochSeconds()
         val quality = if (clock == 0L) io.godstone.mesh.wire.v2.TimeQuality.UNKNOWN
