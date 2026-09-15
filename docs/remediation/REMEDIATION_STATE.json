@@ -2835,8 +2835,15 @@
       "final_review": null,
       "impact": "A manifest can direct restoration outside dest_dir despite correct file hashes. Byte verification does not establish path authorization; restore also accepts a source symlink that bypasses the cache directory boundary.",
       "invalidated_dependents": [],
-      "my_fix_commit": null,
-      "my_logs": [],
+      "my_fix_commit": "PENDING-COMMIT",
+      "my_logs": [
+        {
+          "outcome": "8 tests OK (four arms + the shared fixture's own suite); the probes 12 tests, 5 failures (was 7)",
+          "path": "GS-SUPPLY-001/green/supply-001.log",
+          "sha256": "4108dc7cb212660c25dfe252cd6597ac112cc6b61756d10bda7ff445e5aba0ba",
+          "what": "the four audit cache arms green in the canonical lane; the probe suite down to five reds"
+        }
+      ],
       "my_red_case": {
         "argv": "python3 -m unittest discover -s tools/readiness/tests -p test_audit_artifacts.py",
         "case": "tools/readiness/tests/test_audit_artifacts.py -- the audit's own 12-case final probe suite, adopted with its assertions intact",
@@ -2845,9 +2852,12 @@
         "log_sha256": "475be2fba47965b040d3b842274aba220dc165e83db99e3e5954f5c38243b6ea",
         "outcome": "7 of 12 FAILED, which is the RED for four findings: GS-SUPPLY-001 (parent traversal and source symlink accepted), GS-DIAG-001 (unique peer churn retaineth all dead relations), GS-PACKAGE-001 (forbidden entitlements and an arm64 macOS binary accepted by iOS inspection) and GS-PACKAGE-002 (a corrupt or partial AAB native library set accepted)"
       },
-      "my_status": "OPEN",
-      "notes": "RED ADOPTED: the audit's own final probe suite now liveth in the canonical suite (tools/readiness/tests/test_audit_artifacts.py) with its assertions intact; the relevant arms are RED and the repair is the next round's work.",
-      "pending_proof": [],
+      "my_status": "FIX_SUBMITTED",
+      "notes": "FIX_SUBMITTED. The restore now refuseth a traversal NAME and a SYMLINK SOURCE before a byte is written, with the audit's own two red arms moved into the canonical lane beside their two positive controls. The arms inherit the AUDIT'S OWN FIXTURE verbatim rather than re-inventing it. Only an independent audit may write VERIFIED_FIXED.",
+      "pending_proof": [
+        "INDEPENDENT VERIFICATION: only an independent audit may mark this VERIFIED_FIXED",
+        "no hosted run URL/log was available, so hosted convergence remains pending"
+      ],
       "proof": "Within a disposable temporary tree, ../escape.whl passes validation and restore writes target/escape.whl outside target/cache. A symlink named safe.whl pointing outside the source cache is also accepted. Valid normal restoration and tampered-byte refusal controls pass. final-negative-probes-02.log contains the result; no real user file was targeted.",
       "remediation_report": "FINAL_REMEDIATION_DETAILS.md",
       "remediation_steps": [

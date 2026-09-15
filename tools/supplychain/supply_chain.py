@@ -1007,7 +1007,36 @@ def restore(document: Mapping[str, Any], source_dir: Path, dest_dir: Path, *,
     """Restore the cache into dest_dir, verifying bytes at every step."""
     source_dir, dest_dir = Path(source_dir), Path(dest_dir)
     plan = plan_restore(document, source_dir)
+    # GS-SUPPLY-001: a restore NAME must be a plain file name. The audit reproduced a manifest
+    # naming `../escape.whl` writing OUTSIDE the requested destination
+    # ({"rejected": false, "wrote_outside_destination": true}), and a SOURCE SYMLINK being
+    # followed into a file that is not the cache blob at all. Both are refused BEFORE a byte is
+    # written, by name.
+    dest_root = dest_dir.resolve()
+    for entry in plan:
+        name = entry["name"]
+        candidate = Path(name)
+        if candidate.is_absolute() or candidate.name != name or name in (".", "..") \
+                or ".." in candidate.parts:
+            raise SupplyChainError(
+                f"restore name {name!r} is not a plain file name: a traversal name may not "
+                f"write outside the destination (GS-SUPPLY-001)")
     dest_dir.mkdir(parents=True, exist_ok=True)
+    for entry in plan:
+        source = source_dir / entry["name"]
+        if source.is_symlink():
+            raise SupplyChainError(
+                f"the cache source {entry['name']!r} is a SYMLINK: a blob must be a real file "
+                f"in the cache, never a link to somewhere else (GS-SUPPLY-001)")
+        if source.exists() and source.resolve().parent != source_dir.resolve():
+            raise SupplyChainError(
+                f"the cache source {entry['name']!r} resolveth outside the cache directory "
+                f"(GS-SUPPLY-001)")
+        target = (dest_dir / entry["name"]).resolve()
+        if dest_root not in target.parents and target != dest_root:
+            raise SupplyChainError(
+                f"the restore target for {entry['name']!r} resolveth outside the destination "
+                f"(GS-SUPPLY-001)")
     lines = [f"restore lane={lane or 'all'} at {(clock or _clock_default)()}",
              f"source {source_dir} -> destination {dest_dir}",
              f"{len(plan)} blob(s) verified before any write"]
