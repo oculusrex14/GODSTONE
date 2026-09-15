@@ -4,7 +4,7 @@ Ledger `REMEDIATION_STATE.json` (AUTHORITATIVE); protocol `README.md`; external 
 `EXTERNAL_INPUT_REQUESTS.md`; accounting `STATUS_ACCOUNTING.md`. Audit source `c683a2bf0b5bcdd4a662d98f7542351501b57b7c` is READ-ONLY, and its own
 process keepeth writing into the original checkout, whose declared addition GROWS (the floor may only rise).
 
-## Status — 21 submitted (18 FIX_SUBMITTED, 3 PARTIAL), 33 OPEN
+## Status — 23 submitted (21 FIX_SUBMITTED, 2 PARTIAL), 31 OPEN
 
 Not one finding is `VERIFIED_FIXED`: only an INDEPENDENT AUDIT may write that, and the ledger court
 REFUSETH the word from this work.
@@ -31,7 +31,9 @@ REFUSETH the word from this work.
 | GS-DIAG-001 | FIX_SUBMITTED | 8 | Diagnostics retain an unbounded map of historic relation |
 | GS-STORE-003 | FIX_SUBMITTED | 4a | Actual message-store upgrades still drop durable tables |
 | CRYPTO-004 | FIX_SUBMITTED | 4b | The T35 low-order-DH negative tests exercise an unused hel |
-| IOS-03 | PARTIAL | 4d.1 | HS2 hint uses optional advertisement instead of GATT-bound |
+| IOS-03 | FIX_SUBMITTED | 4d.1 | HS2 hint uses optional advertisement instead of GATT-bound |
+| ANDROID-02 | FIX_SUBMITTED | 4d.2 | Canonical advertising makes the initiator's HS2 hint looku |
+| GS-ACK-002 | FIX_SUBMITTED | 5 | Restart ACK worker uses TTL 4 while immediate recipient AC |
 
 ## DO THIS FIRST — the wave 4a chain: `GS-STORE-004`, then `GS-STORE-005`, then `GS-STORE-006`
 
@@ -62,7 +64,7 @@ before editing:
 THEN, in order: the Android twin of `IOS-03` (`ANDROID-02`, wave 4d.2 -- the SAME law, and the reason
 `IOS-03` is only PARTIAL), the wave 4e start/publication chain, 4f, 5, 6, 7, 8.
 
-## The three submissions THIS session made, and what each still owes
+## The submissions THIS session made, and what each still owes
 
 - **`GS-STORE-003`** (FIX_SUBMITTED, `98c69c5`): the audit's older-version fixture is SYNTHETIC (no real
   v4/v5/v6 DDL survives anywhere -- the destructive road was the only thing that ever touched those
@@ -70,9 +72,30 @@ THEN, in order: the Android twin of `IOS-03` (`ANDROID-02`, wave 4d.2 -- the SAM
   a device, and no court injects a mid-step interruption through the store's own open road.
 - **`CRYPTO-004`** (FIX_SUBMITTED, `5c03d06`): the opener's bounded reject is witnessed on the host; the
   multi-hop relay forwarding of a refused frame stays with T37/T84, and no radio path was exercised.
-- **`IOS-03`** (PARTIAL, `19a4635`): iOS limb only -- `ANDROID-02` is unrepaired, the audit's adapter-driven
-  closure cases need a transport harness that does not exist here, wave 4e is what makes the path reachable,
-  and the parameter name `advertisedRemoteHint` now carries the BOUND hint and should be renamed.
+- **`IOS-03`** + **`ANDROID-02`** (FIX_SUBMITTED, `19a4635` + `098fcb2`): ONE law on both isles -- the hint
+  for an already-bound relation comes from the GATT-bound relation, never from optional advertising
+  metadata. The Android red is BEHAVIOURAL and reproduces the audit's schedule verbatim
+  (`hs.read.initiator|no remembered discovery hint`); the iOS arm reads CODE because that isle has no
+  transport harness. Still owed: the audit's adapter-driven closure case on the iOS isle, wave 4e
+  reachability, and renaming `advertisedRemoteHint` (~15 call sites) which now carries the BOUND hint.
+- **`GS-ACK-002`** (FIX_SUBMITTED, `bae4eba`): both restart ACK roads now pass the profile's named initial-TTL
+  constant. Still owed: the DOWNSTREAM relay forwarding check (TTL decrement / hop increment once per
+  outgoing copy, outgoing copy preserved on retries -- T84's evidence), and driving the IMMEDIATE road end
+  to end in THIS court (its sender fixture has no Ed25519 keys; T37 drives it).
+
+## A KNOWN FLAKE IN THE ANDROID LANE -- not fixed, and it weakens "the lane is green"
+
+Across three forced full-lane runs (`./gradlew :mesh:testDebugUnitTest --rerun-tasks`) of the SAME tree,
+two runs failed in FIXTURE SETUP in two DIFFERENT courts with the same message:
+
+    "no ascending hint pair within 64 draws"   -- ReadinessT17Test.makeTrustedPair, then ReadinessT18Test
+
+Each court PASSED when re-run and the third full run was fully green (1142 tests). The assertion is in
+randomized identity drawing, before any product code runs, and 65 consecutive non-ascending draws from the
+shared `SecureRandom` (`identityRng`) is statistically impossible -- so this looks like a FIXTURE
+DETERMINISM BUG, not bad luck, and probably shared state in the in-memory identity storage. It is NOT fixed.
+Do not report the Android lane as reliably green: report the logged passing run, and fix this fixture when
+a round has room (a deterministic draw, or a failure message that names what it observed).
 
 ## Other open PARTIALs, and what they owe
 
