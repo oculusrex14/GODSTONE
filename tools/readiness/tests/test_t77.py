@@ -847,3 +847,51 @@ class ResidueContractTest(unittest.TestCase):
             self.assertEqual(2, proc.returncode)
             self.assertFalse(os.path.exists(os.path.join(REPO, 'recovery-rehearsal.json')))
             self.assertEqual(before, self._status(), 'no path may dirty the tree')
+
+    def test_w_r6_the_external_report_is_uploaded_and_survives_a_later_failure(self):
+        """AUDIT-004 (GS-CTRL-002 step 1): a report left only on the runner is not evidence.
+
+        The rehearsal writeth OUTSIDE the source tree BY LAW, so the workflow must UPLOAD that
+        report -- and must retain it even when a LATER stage failleth, or a red stage would
+        destroy the evidence of the stage that produced it.
+
+        The expected path is DERIVED from the lane's own `env` and its own `--report` argument,
+        never hardcoded: a rehearsal moved elsewhere must move its upload with it, and an arm that
+        merely checketh a spelling would pass on a workflow that uploads the wrong file.
+        """
+        import re
+        import yaml
+        with open(os.path.join(REPO, self.WORKFLOW), encoding='utf-8') as handle:
+            doc = yaml.safe_load(handle)
+        jobs = doc['jobs']
+
+        run_dir_env = report_name = None
+        for job in jobs.values():
+            for step in job.get('steps') or []:
+                script = step.get('run') or ''
+                if 'upgrade_recovery.py rehearse' not in script:
+                    continue
+                run_dir_env = (step.get('env') or {}).get('T77_RUN_DIR')
+                found = re.search(r'--report\s+"?\$T77_RUN_DIR/([^"\s]+)"?', script)
+                report_name = found.group(1) if found else None
+        self.assertIsNotNone(run_dir_env,
+                             'the rehearsal step must carry the external run dir in its env')
+        self.assertIsNotNone(report_name,
+                             'the rehearsal step must write its report under $T77_RUN_DIR')
+        expected = f'{run_dir_env}/{report_name}'
+
+        uploads = [step for job in jobs.values() for step in job.get('steps') or []
+                   if str(step.get('uses') or '').startswith('actions/upload-artifact@')]
+        self.assertTrue(uploads, 'the lane must upload its artifacts at all')
+        matching = [step for step in uploads
+                    if expected in str((step.get('with') or {}).get('path', ''))]
+        self.assertTrue(
+            matching,
+            f'no artifact upload carrieth the external T77 report {expected!r}: the workflow '
+            f'declares the report path but never uploads it, so the evidence of the rehearsal '
+            f'never leaveth the runner (AUDIT-004, GS-CTRL-002)')
+        for step in matching:
+            self.assertEqual(
+                'always()', str(step.get('if', '')).strip(),
+                'the report upload must be `if: always()`: a LATER stage failing would otherwise '
+                'destroy the evidence of the earlier one')

@@ -273,6 +273,20 @@ jobs:
           python3 -m unittest discover -s tools/readiness/tests -p test_t77.py
       - name: provenance (final -- tree still clean)
         run: python ci/provenance.py --out provenance-final.json
+      # GS-CTRL-002 (AUDIT-004 step 1): the rehearsal's report liveth OUTSIDE the source tree
+      # by law, so the workflow must UPLOAD it -- a report left on the runner is not evidence.
+      # The audited revision declared the external path and never uploaded it, so the whole
+      # rehearsal left no retrievable artifact. `if: always()` is REQUIRED: without it a red
+      # stage BELOW would destroy the evidence of the stage that produced the report.
+      # The path is not spelled twice by hand -- it is the same `$T77_RUN_DIR` expression the
+      # rehearsal step useth, and the canonical court (test_t77.py W-R6) DERIVES it from that
+      # env and the step's own `--report` argument, so moving the rehearsal moveth the upload.
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: t77-recovery-rehearsal
+          path: ${{ runner.temp }}/t77-recovery/recovery-rehearsal.json
+          if-no-files-found: warn
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         if: always()
         with:
