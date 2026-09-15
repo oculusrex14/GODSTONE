@@ -94,4 +94,43 @@ class ReadinessAndroid05aTest {
         assertTrue("the retry's successful attempt must start the transport",
             transport.isStartedForTest())
     }
+
+    @Test
+    fun testW03AFailedAttemptMustLeaveNothingAdvertisingAndNothingStarted() {
+        // THE SUPPLEMENT'S OWN CLOSURE WORDS: "first GATT start fails -> transport is completely
+        // non-started, with no advertising or stale owned server/lease/session state". The
+        // observables below are the ones that cannot be faked by a local flag: the ADVERTISER's own
+        // call count, and the narrow lifecycle observation the supplement requireth.
+        val attempts = CountingAttempts(listOf(false))
+        val hooks = RecordingAdvertiser()
+        val transport = BleTransport(
+            identity = identity(), advertisingHooks = hooks,
+            serverStartAttempt = { attempts.next() })
+        transport.start()
+        assertEquals("the failing attempt was never attempted", 1, attempts.attempts)
+        assertFalse("a transport whose OS start FAILED must not be started",
+            transport.isStartedForTest())
+        assertFalse("a transport whose OS start FAILED is not running", transport.isRunning)
+        assertEquals(
+            "a FAILED start left advertising behind: nothing may be advertised from an attempt " +
+                "that never succeeded",
+            0, hooks.starts)
+    }
+
+    @Test
+    fun testW04TheRetryAfterAFailureAdvertisethAtMostOnce() {
+        // "second start retries GATT and succeeds" -- and the retry may not DOUBLE the advertiser.
+        val attempts = CountingAttempts(listOf(false, true))
+        val hooks = RecordingAdvertiser()
+        val transport = BleTransport(
+            identity = identity(), advertisingHooks = hooks,
+            serverStartAttempt = { attempts.next() })
+        transport.start()
+        transport.start()
+        assertEquals("the retry must attempt the OS start exactly once more", 2, attempts.attempts)
+        assertTrue("nothing may be advertised before an attempt succeedeth", hooks.starts <= 1)
+        transport.stop()
+        transport.stop()
+        assertEquals("stop must be idempotent", 2, attempts.attempts)
+    }
 }
