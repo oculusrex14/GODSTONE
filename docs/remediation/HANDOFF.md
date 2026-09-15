@@ -4,7 +4,7 @@ Ledger `REMEDIATION_STATE.json` (AUTHORITATIVE); protocol `README.md`; external 
 `EXTERNAL_INPUT_REQUESTS.md`; accounting `STATUS_ACCOUNTING.md`. Audit source `c683a2bf0b5bcdd4a662d98f7542351501b57b7c` is READ-ONLY, and its own
 process keepeth writing into the original checkout, whose declared addition GROWS (the floor may only rise).
 
-## Status — 18 submitted, 36 OPEN
+## Status — 21 submitted (18 FIX_SUBMITTED, 3 PARTIAL), 33 OPEN
 
 Not one finding is `VERIFIED_FIXED`: only an INDEPENDENT AUDIT may write that, and the ledger court
 REFUSETH the word from this work.
@@ -29,18 +29,50 @@ REFUSETH the word from this work.
 | GS-STORE-001 | FIX_SUBMITTED | 4a | T29 proves a fake SQLCipher classifier, not the actual A |
 | GS-STORE-002 | PARTIAL | 4a | iOS private stores still use ordinary SQLite without a s |
 | GS-DIAG-001 | FIX_SUBMITTED | 8 | Diagnostics retain an unbounded map of historic relation |
+| GS-STORE-003 | FIX_SUBMITTED | 4a | Actual message-store upgrades still drop durable tables |
+| CRYPTO-004 | FIX_SUBMITTED | 4b | The T35 low-order-DH negative tests exercise an unused hel |
+| IOS-03 | PARTIAL | 4d.1 | HS2 hint uses optional advertisement instead of GATT-bound |
 
-## DO THIS FIRST — `GS-STORE-003`
+## DO THIS FIRST — the wave 4a chain: `GS-STORE-004`, then `GS-STORE-005`, then `GS-STORE-006`
 
-Its RED is captured (three arms, all RED, parked in `tools/readiness/audit_probes/swift/` with their run
-recipe) and the repair is FULLY SPECIFIED in the ledger. READ THE ORDER OF WORK THERE BEFORE EDITING: an
-earlier attempt removed the four `DROP TABLE` statements first, and the experiment PROVED that wrong -- the
-drops WERE the migration mechanism, so removing them without the engine leaveth a stale file on its old
-schema. Sequence: (1) bind `SchemaMigrationEngine` through a `MigrationExecutor` over the sqlite handle;
-(2) THEN remove the drops; (3) THEN reverse the court that currently REQUIRETH them
-(`SqliteDeliveryRepositoryTests.testPragmaUserVersionMigrationDropsAndRecreatesOnStaleVersion`); (4) THEN add
-the audit's row-survival probe (caveat: a synthetic older-version fixture, not a claim about every historic
-schema).
+`GS-STORE-003` is DONE (FIX_SUBMITTED, commit `98c69c5`): the versioned reopen MIGRATES in order on both
+isles and deleteth nothing, the frozen fingerprint now carries each owner's own DDL, and the four
+`DROP TABLE` statements are gone. ITS MACHINERY IS WHAT THE REST OF 4a NEEDS -- read what it left behind
+before editing:
+
+- `StoreSchema.frozenFingerprint` / `allTables` / `immutableColumns` / `migrationPlan(from:creatingTables:supportedMax:)`
+  (both isles) and the handle-bound executor (`HandleMigrationExecutor` in `MessageStore.swift`,
+  `DatabaseMigrationExecutor` in `MessageStore.kt`) with the host twin `JdbcStoreDb` on the JVM side.
+- To add a schema revision (which `GS-STORE-004` requires) you ADD a real non-destructive step to the plan
+  (e.g. `ALTER TABLE held_frames ADD COLUMN ...`) and bump `dbVersion` / `DB_VERSION` together on BOTH
+  isles, updating the frozen column lists in the same commit. The migration engine then EXECUTES it on an
+  existing file, and `ReadinessStore003Tests` W04/W05/W06 already witness the surrounding law.
+- WATCH THE BLAST RADIUS: on Android the held-frame write goes through the `StoreDb` interface, which has
+  FOUR implementations (production `SqlcipherStoreDb`, the `JdbcStoreDb` host twin, and two delegating test
+  fakes in `SqliteDeliveryRepositoryTest`). A new checkpoint column written inside the existing
+  `inTransaction` seam avoids widening that interface; widening it does not.
+- `GS-STORE-004` also needs a per-platform monotonic/continuity adapter passed into the REAL store (the
+  policy already exists and is tested: `RetentionClock.swift` / `RetentionClock.kt`, `RetentionPolicy`,
+  `MonotonicClockAdapter`). A nil-default seam would repeat the exact defect the audit keeps finding --
+  the adapter must be a real platform adapter by default, with deterministic fakes only in courts.
+- `GS-STORE-005` additionally changes the observer API (`registerHeldSetObserver` returns no lease today)
+  and lands the quota/measurement path; `GS-STORE-006` is composition-wide (one runtime-owned wipe
+  authority that drains the transport BEFORE erasing keys).
+
+THEN, in order: the Android twin of `IOS-03` (`ANDROID-02`, wave 4d.2 -- the SAME law, and the reason
+`IOS-03` is only PARTIAL), the wave 4e start/publication chain, 4f, 5, 6, 7, 8.
+
+## The three submissions THIS session made, and what each still owes
+
+- **`GS-STORE-003`** (FIX_SUBMITTED, `98c69c5`): the audit's older-version fixture is SYNTHETIC (no real
+  v4/v5/v6 DDL survives anywhere -- the destructive road was the only thing that ever touched those
+  revisions), the Android production road is covered by source arms plus the JDBC host twin and nothing on
+  a device, and no court injects a mid-step interruption through the store's own open road.
+- **`CRYPTO-004`** (FIX_SUBMITTED, `5c03d06`): the opener's bounded reject is witnessed on the host; the
+  multi-hop relay forwarding of a refused frame stays with T37/T84, and no radio path was exercised.
+- **`IOS-03`** (PARTIAL, `19a4635`): iOS limb only -- `ANDROID-02` is unrepaired, the audit's adapter-driven
+  closure cases need a transport harness that does not exist here, wave 4e is what makes the path reachable,
+  and the parameter name `advertisedRemoteHint` now carries the BOUND hint and should be renamed.
 
 ## Other open PARTIALs, and what they owe
 
