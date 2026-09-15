@@ -1451,14 +1451,15 @@
         }
       ],
       "my_red_case": null,
-      "my_status": "PARTIAL",
-      "notes": "PARTIAL, one step of six. The restored return scene no longer starteth EMPTY: it carrieth the query and the searched query the handle kept, so a reader returning from a restored document no longer lands on an empty list. The remaining five steps are named as pending_work. Only an independent audit may write VERIFIED_FIXED.",
+      "my_status": "OPEN",
+      "notes": "NOT SUBMITTED. The card's step-5 first half is IMPLEMENTED (the restored return scene carrieth the search identity instead of being constructed empty) and the scene courts and the whole package are green -- BUT THE CHANGE CARRieth NO BEHAVIORAL RED, because it was made from the card's text rather than from a failing assertion. The ledger court REFUSED to let the finding move off OPEN without one, which is the discipline working. THE FIRST THING THE NEXT ROUND OWETH: write the arm (a restored scene whose handle carrieth a query returneth with that query, asserted against the PRE-REPAIR product so it is RED), then resubmit. The remaining five steps stay named in pending_work.",
       "pending_proof": [
         "INDEPENDENT VERIFICATION: only an independent audit may mark this VERIFIED_FIXED",
         "no simulator or device run: the scene courts are HOST tests, and the card's closure requireth an interaction test",
         "no hosted run URL/log was available, so hosted convergence remains pending"
       ],
       "pending_work": [
+        "FIRST: write the BEHAVIORAL RED for the step-5 change (against the pre-repair product) -- without it the finding may not be submitted",
         "STEP 1: choose ONE real document-selection owner on iOS and route destination selection through scene.open(document:) -- the app view still drives ArchiveDocumentReader directly",
         "STEP 2: load passages and source metadata for the SAME captured selected document identity, publishing only if that selection is still current",
         "STEP 3: persist small navigation identities on Android through SavedStateHandle in the Hilt view model (query, mode, document id, passage anchor)",
