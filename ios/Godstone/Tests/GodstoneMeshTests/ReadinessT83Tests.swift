@@ -711,3 +711,35 @@ final class ReadinessT83Tests: XCTestCase {
         XCTAssertEqual(idle.scanned + idle.signed + idle.retired + idle.keyUnavailable + idle.storageFailures, 0, "a restart finds nothing pending and claims nothing afresh")
     }
 }
+
+
+// MARK: - GS-ACK-001 (iOS twin): the recipient-key gate must be MANDATORY
+
+extension ReadinessT83Tests {
+
+    /// The audit's charge on this isle: "Missing recipient-key resolution bypasses ACK verification and
+    /// retires an invalid signing obligation." The restart worker verified its own freshly built frame
+    /// only WHEN the resolver produced a key (`if resolver.publicSigningKey(forNodeId: claimed) != nil`),
+    /// so a TEMPORARY resolution failure stored an unverified frame as VERIFIED_RECIPIENT and retired
+    /// the retryable obligation. No key, no verification, no retirement.
+    func testW25UnresolvableRecipientKeyLeavethTheObligationPendingAndStoresNothing() async throws {
+        let r = try rig(404)
+        // the recipient's OWN public key is deliberately NOT entered in the resolver's table, while the
+        // signer still holds the seed -- the exact "temporary key-resolution unavailability" case.
+        let frame = try await inboxFrame(r, 61)
+        XCTAssertTrue(isCommitted(commitInbound(r, frame, 7, 60000)), "the inbox commit must stand")
+
+        let report = try driverOf(r, TestSigner(r.me)).runPendingOnce(8)
+
+        XCTAssertEqual(report.keyUnavailable, 1,
+                       "the unresolvable key is a RETRYABLE unavailability, counted as such")
+        XCTAssertEqual(report.signed, 0, "nothing may be signed on an unverified frame")
+        XCTAssertEqual(r.store.ackStore.countFrames(), 0, "no VERIFIED_RECIPIENT row may be stored")
+        XCTAssertEqual(r.store.ackStore.countObligations(), 1, "the obligation must SURVIVE for a retry")
+        if case .found(let pending) = r.store.ackStore.lookupObligation(frame.msgId, recipientNodeId: r.me.id.nodeId) {
+            XCTAssertEqual(pending.state, .pending, "still pending, never retired")
+        } else {
+            XCTFail("the durable obligation must survive the unresolvable-key turn")
+        }
+    }
+}

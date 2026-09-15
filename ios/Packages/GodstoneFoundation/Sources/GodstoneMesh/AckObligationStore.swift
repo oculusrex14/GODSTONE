@@ -907,11 +907,17 @@ final class AckObligationDriver: @unchecked Sendable {
             let claimed = Data(frame.payload.suffix(16))
             // verification-first even for self-produced frames: a mis-signed reply
             // must never be stored and the obligation must survive it
-            if resolver.publicSigningKey(forNodeId: claimed) != nil {
-                guard authenticator.verify(originalMsgId: ob.msgId, expectedRecipientNodeId: claimed,
-                                           ackFrame: frame) else {
-                    failures += 1; continue
-                }
+            // GS-ACK-001: THE IDENTITY-BINDING GATE IS MANDATORY. An unresolvable key is a RETRYABLE
+            // UNAVAILABILITY -- the obligation stays PENDING for a later turn -- and never a licence to
+            // store an unverified frame as VERIFIED_RECIPIENT and retire the obligation. The
+            // verification is likewise no longer CONDITIONAL: the authenticator resolves the pinned key
+            // for the CLAIMED node id itself, so calling it is what binds the frame to that identity.
+            guard resolver.publicSigningKey(forNodeId: claimed) != nil else {
+                keyUnavailable += 1; continue
+            }
+            guard authenticator.verify(originalMsgId: ob.msgId, expectedRecipientNodeId: claimed,
+                                       ackFrame: frame) else {
+                failures += 1; continue
             }
             guard let ackKey = AckCacheKey.compute(msgId: ob.msgId, recipientNodeId: ob.recipientNodeId,
                                                    signature: signature) else {
