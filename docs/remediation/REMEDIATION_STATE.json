@@ -1593,13 +1593,43 @@
         "source_sha": "c683a2bf0b5bcdd4a662d98f7542351501b57b7c"
       },
       "impact": "The current task sequence does not leave its own control suite green. Blanket file hashes also encourage leaving required implementations as unused helpers to avoid changing previously accepted files.",
-      "invalidated_dependents": [],
-      "my_fix_commit": null,
-      "my_logs": [],
-      "my_red_case": null,
-      "my_status": "OPEN",
-      "notes": null,
-      "pending_proof": [],
+      "invalidated_dependents": [
+        "tools/readiness/tests/test_t01.py (the court itself: four arms adapted, one negative control added)",
+        "the T01 inventory evidence: re-captured with the declaration (the PRE-audit-bundle inventory preserved as inventory-pre-audit-bundle.json)",
+        "ci/check_repository.py and every lane that runneth the readiness suite"
+      ],
+      "my_fix_commit": "2513e6c865181340bdcf9bf9d8eb197065cb820d",
+      "my_logs": [
+        {
+          "outcome": "425 tests, 0 failures",
+          "path": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/REMEDIATION/GS-CTRL-002/green/readiness-suite-GREEN.log",
+          "sha256": "1bfb39c123e5dbee4769975f7fc54e8c883be2922bcf36c842111e977279c24d",
+          "what": "green after the repair"
+        },
+        {
+          "outcome": "a drifted declaration refused; an undeclared path refused; the real inventory verifies clean (live 428 = baseline 156 + declared 272)",
+          "path": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/REMEDIATION/GS-CTRL-002/negative/controls.log",
+          "sha256": "b92947b34d29cdc195d292b93750e0b1b3437177b7599b9f04cf9b348ff842b3",
+          "what": "negative + positive controls"
+        }
+      ],
+      "my_red_case": {
+        "argv": "python3 -m unittest discover -s tools/readiness/tests -v",
+        "case": "the canonical suite's four T01 preservation arms",
+        "cwd": "/Users/oculus/Projects/GODSTONE_BUILDER",
+        "log": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/REMEDIATION/GS-CTRL-002/red/readiness-suite-RED.log",
+        "log_sha256": "dccc0ab45a270819c9a38848fa8b9c7b873804a7537f255cf81c707ee7365619",
+        "outcome": "425 tests, 4 failures (test_inventory_matches_live_git_facts, test_original_status_unchanged, test_verify_reports_no_failures_on_intact_copy, test_original_evidence_still_intact_after_mutations)",
+        "source_sha_at_red": "c683a2bf0b5bcdd4a662d98f7542351501b57b7c"
+      },
+      "my_status": "PARTIAL",
+      "notes": "SUB-ITEM CLOSED, FINDING NOT CLOSED. The workspace-inventory failure is repaired by declaring the reviewed external addition and requiring the exact arithmetic; the finding's other requirements (symbols.py diagnostics, T77 residue, MeshNode blob classification, ancestry rule) remain PENDING. Only an independent audit may write VERIFIED_FIXED.",
+      "pending_proof": [
+        "the symbols.py cluster: 26 unresolved diagnostics (20 production, 6 test) must be classified and repaired, then ci/symbols.py and ci/symbols.py --selftest must pass in a disposable clean checkout with the negative controls still firing",
+        "the T77 residue: the rehearsal report and work area must move out of the source tree, with clean status before and after, and a test around the real CLI/workflow output contract",
+        "the MeshNode blob-drift arms and the claim-anchor/ancestry rule named by the original card (test_t03.py:145, run.py:463)",
+        "canonical Kotlin compilation and tests run independently of the resolver"
+      ],
       "proof": "Independent readiness unit run: 87 tests, 2 failures for Android/iOS MeshNode blob drift. validate-state exits 3 because the immutable T36 claimed_head differs from later task commits. T36 was legitimately in progress at the audit snapshot; a claim anchor being an ancestor is not by itself evidence corruption.",
       "remediation_report": "reports/CONTROL_REMEDIATION.md",
       "remediation_steps": [
@@ -2967,7 +2997,7 @@
     {
       "candidate_scope": "Both",
       "exit_requirement": "Reject failed/missing/stale evidence; retain valid controls. Resolve all symbol diagnostics and T77 residue. Keep final hosted convergence pending until repairs finish.",
-      "fixes_submitted": 0,
+      "fixes_submitted": 1,
       "name": "Evidence and convergence controls",
       "order": "1",
       "primary_findings": [
@@ -2975,7 +3005,7 @@
         "GS-CTRL-002",
         "GS-GATE-001"
       ],
-      "reds_written": 0,
+      "reds_written": 1,
       "status": "PENDING"
     },
     {
