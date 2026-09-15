@@ -4,7 +4,7 @@ Ledger `REMEDIATION_STATE.json` (AUTHORITATIVE); protocol `README.md`; external 
 `EXTERNAL_INPUT_REQUESTS.md`; accounting `STATUS_ACCOUNTING.md`. Audit source `c683a2bf0b5bcdd4a662d98f7542351501b57b7c` is READ-ONLY, and its own
 process keepeth writing into the original checkout, whose declared addition GROWS (the floor may only rise).
 
-## Status — 25 submitted (23 FIX_SUBMITTED, 2 PARTIAL), 29 OPEN
+## Status — 27 submitted (25 FIX_SUBMITTED, 2 PARTIAL), 27 OPEN
 
 Not one finding is `VERIFIED_FIXED`: only an INDEPENDENT AUDIT may write that, and the ledger court
 REFUSETH the word from this work.

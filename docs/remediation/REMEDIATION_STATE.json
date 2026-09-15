@@ -2788,7 +2788,7 @@
    "my_logs": [],
    "my_red_case": null,
    "my_status": "OPEN",
-   "notes": null,
+   "notes": "OPEN, with reconnaissance RECORDED and no arm written this round. The defect is source-confirmed and its shape is now exact: THREE offer loops (SOS dispatch :490, retry :667, DIRECT :734) iterate `knownPeers()` with no check between iterations, while `Cancel` commits a durable terminal CAS through the one command door -- so a cancellation committed inside a send callback is invisible to the loop already iterating, and the next peer is offered a call whose row was just retired. The audit's behavioral probe (cancel from the first pending send callback, return false, observe a second offer; expected 1, actual 2) is written out in the pending work together with the court's fixtures, so the next round writes the red in one pass instead of reconnoitring. NOTHING WAS EDITED: no arm was left red, no unverified production change was committed, and the tree is green.",
    "pending_proof": [],
    "proof": "The deterministic Android probe authors a valid signed SOS, supplies two peers, cancels successfully from the first pending send callback, returns false from that callback, and observes a second peer offer after cancellation. The expected offer count 1 is actually 2. Both peers are test outlets; this does not claim an on-device packet trace. The dispatch/retry loops retain encoded bytes across suspension and do not revalidate cancellation.",
    "remediation_report": "evidence/AUDIT-002/SOS_SYNC_MODEL_REMEDIATION.md",
@@ -2802,16 +2802,24 @@
    ],
    "severity": "HIGH",
    "source_refs": [
-    "android/mesh/src/main/java/io/godstone/mesh/MeshNode.kt:379",
-    "android/mesh/src/main/java/io/godstone/mesh/MeshNode.kt:404",
-    "android/mesh/src/main/java/io/godstone/mesh/MeshNode.kt:541",
-    "ios/Godstone/Sources/GodstoneMesh/MeshNode.swift:466"
+    "android/mesh/src/main/java/io/godstone/mesh/MeshNode.kt:490-497 -- the SOS dispatch offer loop: `for (peerId in knownPeers()) { val admitted = send(peerId, bytes); ... }` with NO check between iterations.",
+    "android/mesh/src/main/java/io/godstone/mesh/MeshNode.kt:667-671 -- the RETRY offer loop, the same shape and the same absence of a check.",
+    "android/mesh/src/main/java/io/godstone/mesh/MeshNode.kt:734-738 -- the DIRECT offer loop, likewise.",
+    "android/mesh/src/main/java/io/godstone/mesh/MeshNode.kt:541-547 -- `handleSosCommand`: Author/Retry/Cancel route through ONE door, and `Cancel` commits the durable terminal CAS -- which is why a cancel committed DURING a send callback is not seen by the loop that is already iterating.",
+    "ios/Godstone/Sources/GodstoneMesh/MeshNode.swift:466 -- the twin's site as the audit names it."
    ],
    "tasks": [
     "T39"
    ],
    "title": "Cancellation does not suppress later offers already captured by the dispatch/retry loop",
-   "wave": "5"
+   "wave": "5",
+   "pending_work": [
+    "THE RED IS READY TO WRITE IN ONE PASS, and here is everything it needs (verified this round): the canonical court is android/mesh/src/test/java/io/godstone/mesh/readiness/ReadinessT39Test.kt, whose fixtures are `newRig(failAt: String? = null): Rig` (store, tracker, node, auth), `peerOf(seedByte)`, `authorOnce(r, payload, peers)`, and the one command door `node.handleSosCommand(...)` with a `send: suspend (peerId, bytes) -> Boolean` lambda. THE AUDIT'S OWN RECIPE, to be written verbatim: author a SOS with TWO peers; in the send lambda, on the FIRST call, decode the frame's msgId and issue `SosCommand.Cancel(mid)` from INSIDE the callback, then return false for that handoff; count the offers. EXPECTED 1, ACTUAL 2 -- and the arm must also assert the durable row is CANCELLED, so the offer count and the durable truth are checked together.",
+    "ONE QUESTION THE ARM MUST ANSWER FIRST (not yet read): how the court registers N peers for `knownPeers()` -- `authorOnce(r, payload, peers)` implies a helper that feeds `PeerEvent.Found`, as the T41 court's `linkUp` does. Read `authorOnce` before writing.",
+    "THE FIX SHAPE, per the audit's steps 2-4: mint a per-message scheduling lease/generation when the dispatch begins, bind every queued record and peer offer to it, have a SUCCESSFUL cancellation transaction invalidate it, and check it BEFORE EVERY peer offer so captured local work can no longer be newly offered after the row was retired. A storage/read failure on that check is a FAIL-CLOSED result, not a skip.",
+    "A PROCESS-LOCAL LEASE ALONE IS NOT ENOUGH and must be stated as pending: the lease must be owned by the durable dispatch authority (the row's terminal CAS), because a restart mid-dispatch has no lease to consult -- the loop must ALSO be able to reject a terminal row from durable truth.",
+    "PORT TO THE iOS TWIN with the same arm once the Android limb lands."
+   ]
   },
   "GS-STORE-001": {
    "audit_status_at_snapshot": "OPEN",
