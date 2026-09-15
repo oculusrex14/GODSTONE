@@ -4,7 +4,11 @@ Ledger `REMEDIATION_STATE.json` (AUTHORITATIVE); protocol `README.md`; external 
 `EXTERNAL_INPUT_REQUESTS.md`; accounting `STATUS_ACCOUNTING.md`. Audit source `c683a2bf0b5bcdd4a662d98f7542351501b57b7c` is READ-ONLY, and its own
 process keepeth writing into the original checkout, whose declared addition GROWS (the floor may only rise).
 
-## Status — 29 submitted (27 FIX_SUBMITTED, 2 PARTIAL), 25 OPEN
+## Status — 32 submitted (27 FIX_SUBMITTED, 5 PARTIAL), 22 OPEN
+
+(Recomputed from the ledger at round 161: `{'OPEN': 22, 'FIX_SUBMITTED': 27, 'PARTIAL': 5}`, total 54. The
+`counts` block inside `REMEDIATION_STATE.json` is the AUDIT'S OWN snapshot (all 54 OPEN) and must not be
+mistaken for the live status, which liveth per finding in `my_status`.)
 
 Not one finding is `VERIFIED_FIXED`: only an INDEPENDENT AUDIT may write that, and the ledger court
 REFUSETH the word from this work.
@@ -42,7 +46,50 @@ already carried. The audit's step 3 stays OPEN, with its two measured obstacles 
 | CRYPTO-003 | FIX_SUBMITTED | 4b | Destroyed retained controllers and primitive sessions st |
 | CRYPTO-006 | FIX_SUBMITTED | 4b | Duplicate journal admission is treated as success for a |
 
-## DO THIS FIRST (round 132) — THE MANDATORY LANES ARE RED, AND ONE OF THE THREE CONTROLS HAS A WORKING INSTRUMENT
+## DO THIS FIRST (round 161) — THE iOS RED IS CAPTURED, PARKED OUTSIDE THE LANE, AND THE LAST UNKNOWN IS GONE
+
+GS-SOS-001's **iOS twin** is now red-proved and fully specified, so its repair is a MEASURED change rather
+than a search. The three signatures the previous round left open are answered: `T38Vec` is
+`{kind, name, fields: [String: String]}`, the court's repository argument is one of TWO private classes in
+the same file (`DeadDeliveryRepository` :257, `T38Journal` :273), and **`dispatchSos(payload:send:)` is
+SYNCHRONOUS** — every iOS court calleth it without `await`, so the arm is a plain `throws` test.
+
+**The RED, immutable, captured in a DETACHED PRE-REPAIR worktree at `95dc75e` where `MeshNode.swift` is
+UNTOUCHED:** `12 tests, with 6 failures (0 unexpected)`, `0 errors` — the build SUCCEEDED, so every failure is
+an assertion and the red is BEHAVIOURAL. Log:
+`REMEDIATION/GS-SOS-001/ios-red-round161/red.log`, sha256
+`5fdd9f3d960341ec7e9f10de446d2a5b1a4d91e67505fbe11dafa6927ba5c68c`.
+**Its limit is stated, not glossed:** with zero connected peers the `send` closure is never invoked even
+before the repair, so the arm's `sends == 0` assertion PASSES ON BOTH SIDES and proveth nothing; the teeth are
+the DURABLE HOLD (1 frame), the C6 ROW (1 recorded) and the RESULT (`queuedDurably` where a refusal is
+required). The arm also REVERSES the court's legacy arm *inside the arm*, with the reversal written into it.
+
+**The arm is PARKED so that every committed SHA keeps the iOS lane green**:
+`tools/readiness/audit_probes/swift/gs-sos-001-ios-twin.patch` (sha256
+`d9e2758326b3e01c880c9db298f4dbaec7403b3018d1bcdec05522299a7f4e81`), and the lane's test file was restored
+to HEAD. The repair RE-APPLIES the patch as part of ONE atomic change (test + production in one commit).
+
+**The blast radius is EIGHT UNSET RIGS, not eighteen assertions** (the round-144/149 pattern, re-measured on
+this isle): `ReadinessT39Tests.swift:134`, `:223`, `:440`; `ReadinessT43Tests.swift:86` (inside `rig(_:)`) and
+`:255`; `MeshNodeSosDispatchTests.swift:140` (`makeNode`); `MeshNodeDeliveryIntegrationTests.swift:215`
+(`makeNode`); and `ReadinessT44Tests` builds NO node — it driveth `ComposedRuntime`, so **`ComposedRuntime.addNode`
+(`ComposedRuntime.swift:330`) is ONE insertion that covereth all of its arms**. None of them asserteth the
+unauthenticated shape; all assert an outcome that REQUIRES a successful offer.
+
+**One fact has no Android analogue and it decideth the repair's shape:** the iOS isle carrieth **NO
+`SosSigningAuthority` implementation in main sources at all** (only the protocol at `SignedSosV1.swift:103` and
+the seam at `MeshNode.swift:169`), while Android carrieth `SimulatedSosAuthority` in main
+(`ComposedRuntime.kt:687`). So the repair must ADD one (identity-derived seed, harness-adjacent, documented as
+harness wiring), wire the eight sites, refuse in `dispatchSos`'s `else` branch BEFORE any persist/tracker/send,
+then run the whole lane (`sync_ios_foundation_package.py && swift test --package-path
+ios/Packages/GodstoneFoundation`, expect 1195 tests, grep `Executed `).
+
+**Separate observation, recorded and NOT claimed as repaired:** `ComposedRuntime.sendSos`
+(`ComposedRuntime.swift:523-533`) returneth `.applied(detail: "\(result)")` regardless of the result, so once
+the refusal landeth a REFUSED SOS would be reported to its caller as APPLIED with the failure buried in the
+detail string. That is the audit's own remediation step 6, and it is OWED.
+
+## DO THIS FIRST (round 132, still the open control question) — THE MANDATORY LANES ARE RED, AND ONE OF THE THREE CONTROLS HAS A WORKING INSTRUMENT
 
 Round 129 ran EVERY `ci/check_*.py` control (18) for the first time in this session; round 130 corrected its
 own count (3 genuine failures, NOT 4 -- `check_parity` passes as the LANE runs it, `--scope repo`, and its
