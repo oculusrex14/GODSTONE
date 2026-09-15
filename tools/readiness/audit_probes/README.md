@@ -96,3 +96,18 @@ duplicates a green one. Its captured red stayeth on the record at
 With both halves landed, `ci/check_local_identity_controls.py` (which reported TWO errors on the audited
 tree) reporteth NONE, and its selftest still catcheth 38 of 38 mutations -- so the instrument that was
 always working now agreeth with the code.
+
+## Python probe — `python/test_lifecycle_inflight_drain.py` (ANDROID-05, step 3)
+
+Red BY DESIGN, and parked here for the reason this directory exists: `tools/readiness/tests/` is a GREEN lane, and
+the arm's repair (a capability interface, the adapter's override, and `BleTransport`'s measured bounded drain) lands
+as one coherent change. It was **written in the canonical suite and run there RED first** — the immutable log
+(`REMEDIATION/ANDROID-05/red-round182/red.log`, `Ran 4 tests, FAILED (failures=3)` with the W00 positive control
+passing) records the run under its canonical module path — and then parked so that no committed SHA carries a red lane.
+**When the repair lands, the file MOVES BACK into `tools/readiness/tests/` and this section is deleted.**
+
+**What it asserts:** `TransportSeam.awaitInFlight` carries a default of 0 whose own KDoc says *"the REAL adapter must
+override it"* — and `LifecycleTransportAdapter` does **not**. So at the real transport boundary the drain always sees
+`inFlightOutstanding == 0`, and the courts that assert the drain's law all use **fakes** that do override it.
+
+**To run it:** `python3 -m unittest tools.readiness.audit_probes.python.test_lifecycle_inflight_drain`
