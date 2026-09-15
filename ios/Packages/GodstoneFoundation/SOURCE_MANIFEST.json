@@ -94,7 +94,7 @@
     "Sources/GodstoneMesh/SyncControlOwner.swift": "ecd8b3aa2f81a30fdfdf157b106e6c1373522c13db60c1baf3bbbc6039867a40",
     "Sources/GodstoneMesh/SyncPump.swift": "05e6ad959c9c7c5da46857e6f01c90e7f9874de7d96c670098d575ab99deeec6",
     "Sources/GodstoneMesh/TrustUXModel.swift": "391528fd79abdfdf5b652127286a1cb89212074879687edb38d864ab85b413fe",
-    "Sources/GodstoneMesh/TrustedHandshakeController.swift": "5128e04ccb04975f685b4fb0d8637912574470f66210aa1f632a9c80f6297c92",
+    "Sources/GodstoneMesh/TrustedHandshakeController.swift": "d9269e96dd221aa2bf74467a23de4de187c57f304bc2e9a02b2faaa7539964e2",
     "Sources/GodstoneMesh/TrustedPeerChannel.swift": "86eabac74cd00b7201f0967ce0afd07b51ea40925b86de7257dd1c3a4ce70333",
     "Sources/GodstoneMesh/UnifiedRuntimeLifecycle.swift": "1349bcab58ed7d47657bda51250cb0993a8bbf18c61fb28d9b458091a34a0a8b",
     "Sources/GodstoneMesh/WireV2.swift": "bac25e7bda845cdab3aa8c221dd693963be97c8ab313fba103a66b7308e6bf2e",

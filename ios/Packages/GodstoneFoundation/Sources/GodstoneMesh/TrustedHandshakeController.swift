@@ -132,6 +132,7 @@ internal final class TrustedHandshakeController: @unchecked Sendable {
         // IOS-05 / T27 step 3: RETAIN the identity the handshake VALIDATED, at the moment trust is
         // applied -- the card's 'immutable full NodeID', never a derivative of the static DH key.
         retainedNodeId = binding.nodeId
+        retainedIdentityPub = binding.signingPublicKey
         let applyResult = trustAuthority.applyValidatedBinding(binding)
         switch applyResult {
         case .accepted, .firstSeenPinned:
@@ -241,6 +242,7 @@ internal final class TrustedHandshakeController: @unchecked Sendable {
         // IOS-05 / T27 step 3: RETAIN the identity the handshake VALIDATED, at the moment trust is
         // applied -- the card's 'immutable full NodeID', never a derivative of the static DH key.
         retainedNodeId = binding.nodeId
+        retainedIdentityPub = binding.signingPublicKey
         let applyResult = trustAuthority.applyValidatedBinding(binding)
         switch applyResult {
         case .accepted, .firstSeenPinned:
@@ -292,11 +294,21 @@ internal final class TrustedHandshakeController: @unchecked Sendable {
     /// Single-writer (the trust sites) and read after trust, as on the android isle.
     private var retainedNodeId: Data?
 
+    /// IOS-04 (T24) slice (a): THE AUTHENTICATED IDENTITY PUBLIC KEY, RETAINED AT THE SAME TWO MOMENTS AND FOR THE SAME
+    /// REASON AS THE NODE ID. A `TrustedPeer` needeth this key -- `nodeId16` is DERIVED from it, so that (in the type's
+    /// own words) a captured peer 'can never disagree with its own identity public key' -- and without it the trusted
+    /// peer cannot be constructed at the authenticated binding at all. The twin of the android slice landed at round 225.
+    private var retainedIdentityPub: Data?
+
     /// The retained sixteen-octet NodeID, or nil while trust was never validated. A COPY, always.
     var authenticatedNodeId: Data? { retainedNodeId.map { Data($0) } }
 
+    /// The authenticated identity public key, handed out as a COPY -- a caller may not mutate the slot.
+    var authenticatedIdentityPub: Data? { retainedIdentityPub.map { Data($0) } }
+
     func destroy() {
         retainedNodeId = nil
+        retainedIdentityPub = nil
         if state == .destroyed { return }
         state = .destroyed
         noiseSession.destroy()
