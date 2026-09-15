@@ -42,6 +42,19 @@ already carried. The audit's step 3 stays OPEN, with its two measured obstacles 
 | CRYPTO-003 | FIX_SUBMITTED | 4b | Destroyed retained controllers and primitive sessions st |
 | CRYPTO-006 | FIX_SUBMITTED | 4b | Duplicate journal admission is treated as success for a |
 
+## ROUND 103 LANDED — THE BARRIER SCHEDULE, AND ONE REAL DEFECT AMONG FOUR ARMS (`c7754e7`)
+
+Four arms now kill a REAL process at each transition and restart the ACTUAL reader. Exactly ONE was
+a defect: **W15 (orphan cleanup)** was RED and is repaired -- a RESOLVED publication rmtree's its
+rollback directory. **W12 (prepared), W13 (committed) and W14 (failed rollback)** are COVERAGE of
+already-satisfied behaviour and were GREEN in the same pre-repair run; they are labelled as such and
+are NOT counted as repairs. The red was RE-CAPTURED in a detached worktree because the repair had
+already been applied when it was first observed -- a red is evidence, not a transcript line.
+
+STILL NOT EXERCISED from that same card (step 5): **READER OVERLAP** -- no arm runs a reader
+CONCURRENTLY with the publisher -- and the card's "two real processes with controlled barriers",
+whereas these arms kill one process per transition and restart the reader afterwards.
+
 ## DO THIS FIRST (round 102) — THE OPERATOR PAIR'S SECOND PAIR-OF-RENAMES, WITH ITS RED ALREADY CAPTURED
 
 `scripts/prepare_release_assets.py::publish_verified` replaceth its ARCHIVE and its APPROVED MANIFEST
