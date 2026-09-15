@@ -679,6 +679,37 @@ class ReadinessT41Test {
             0, stale.size,
         )
     }
+
+    /**
+     * GS-SYNC-002 (the audit's ordered step 4): a PER-DESTINATION bound beside the aggregate 64. One
+     * destination that keeps asking can otherwise hold the whole budget, so the control outbox is bounded per
+     * destination as well as in aggregate.
+     *
+     * THE OBSERVABLE IS A COUNT OF THE OUTBOX ALONE -- the no-argument drain, which carries no pump frames --
+     * so this arm asserts the BOUND itself and NOT starvation: a starvation claim would be a witness green on
+     * both revisions, because drop-oldest already means a flood cannot deny a LATER reply its admission. The
+     * bound is what is missing, so the bound is what is measured.
+     */
+    @Test
+    fun testASingleDestinationCannotMonopoliseTheControlOutbox() = runTest {
+        val w = world()
+        w.linkUp(w.a, w.r)
+        repeat(40) { i ->
+            val ping = ControlPayloadV1.frameFor(
+                ControlPayloadV1.ControlArm.PING,
+                ByteArray(16) { (it + 5).toByte() }, ByteArray(4) { (it + 1).toByte() },
+                ControlPayloadV1.ping(0, 100L + i).encode(),
+            )
+            Assert.assertTrue("ping " + i + " must be answered by A", w.a.node.handleControlFrame(ping, w.r.id))
+        }
+        val boxed = w.a.node.drainControlOutbox()
+        Assert.assertTrue(
+            "one destination must not hold more than the per-destination bound (held=" + boxed.size + ")",
+            boxed.size <= w.a.node.MAX_CONTROL_REPLIES_PER_DESTINATION,
+        )
+        Assert.assertTrue("and the destination's answer must still be there at all (held=" +
+            boxed.size + ")", boxed.isNotEmpty())
+    }
 }
 
 /** The pump's bounds, exposed for the witnesses (the production constants). */

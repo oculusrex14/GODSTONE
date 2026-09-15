@@ -284,14 +284,30 @@ class MeshNode(
     private val controlOutbox = ArrayList<ControlReply>()
     private val controlOutboxLock = Any()
 
-    /** Bounded at 64; drop-oldest, the freshest truth wins the slot (T37 outbox idiom). */
+    /** GS-SYNC-002 step 4: the PER-DESTINATION bound beside the aggregate 64. Internal so the court can
+     *  read the production value rather than mirror a literal. */
+    internal val MAX_CONTROL_REPLIES_PER_DESTINATION: Int = 16
+
+    /** Bounded at 64 in AGGREGATE and per destination; drop-oldest, the freshest truth wins the slot. */
     private fun offerControlFrames(
         frames: List<io.godstone.mesh.wire.v2.FrameV2>,
         destination: ByteArray,
     ) = synchronized(controlOutboxLock) {
         val epoch = currentRelationEpoch(destination)
         for (f in frames) {
+            // GS-SYNC-002 (the audit's ordered step 4): the AGGREGATE bound, unchanged...
             if (controlOutbox.size >= 64) controlOutbox.removeAt(0)
+            // ...and the PER-DESTINATION bound BESIDE it, so no single destination can hold the whole
+            // budget. Drop-oldest in both, the T37 idiom: the freshest truth wins the slot. This is a
+            // FAIRNESS/telemetry bound, not a memory one -- the aggregate cap already bounds memory, and
+            // drop-oldest already meaneth a flood cannot deny a LATER reply its admission, which is why the
+            // arm asserteth the BOUND and makes no starvation claim.
+            if (controlOutbox.count { it.destination.contentEquals(destination) } >=
+                MAX_CONTROL_REPLIES_PER_DESTINATION
+            ) {
+                val oldestMine = controlOutbox.indexOfFirst { it.destination.contentEquals(destination) }
+                if (oldestMine >= 0) controlOutbox.removeAt(oldestMine)
+            }
             // GS-SYNC-002 step 3: the answer is stamped with the RELATION it belongeth to.
             controlOutbox.add(ControlReply(destination.copyOf(), f, epoch))
         }

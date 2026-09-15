@@ -219,6 +219,10 @@ public final class MeshNode {
         relationEpochs.removeValue(forKey: peerId)
     }
 
+    /// GS-SYNC-002 step 4: the PER-DESTINATION bound beside the aggregate 64 (fairness/telemetry, not
+    /// memory: the aggregate cap bounds memory and drop-oldest already prevents admission starvation).
+    internal static let maxControlRepliesPerDestination: Int = 16
+
     private var controlOutbox: [ControlReply] = []
 
     /// GS-SOS-002: the per-message DISPATCH LEASE. Minted where an offer loop begins, INVALIDATED by a
@@ -266,7 +270,14 @@ public final class MeshNode {
         // GS-SYNC-002 step 3: the answer is stamped with the RELATION it belongs to.
         let epoch = currentRelationEpoch(destination)
         for f in frames {
+            // GS-SYNC-002 step 4: the AGGREGATE bound, unchanged, and the PER-DESTINATION bound BESIDE it,
+            // so no single destination can hold the whole budget. Drop-oldest in both (the T37 idiom).
             if controlOutbox.count >= 64 { controlOutbox.removeFirst() }
+            if controlOutbox.filter({ $0.destination == destination }).count
+                >= Self.maxControlRepliesPerDestination,
+               let oldestMine = controlOutbox.firstIndex(where: { $0.destination == destination }) {
+                controlOutbox.remove(at: oldestMine)
+            }
             controlOutbox.append(ControlReply(destination: destination, frame: f, relationEpoch: epoch))
         }
     }
