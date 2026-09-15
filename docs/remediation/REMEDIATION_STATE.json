@@ -1190,13 +1190,45 @@
         "source_sha": "c683a2bf0b5bcdd4a662d98f7542351501b57b7c"
       },
       "impact": "An incompatible archive can appear Ready but return no documents or matches. A real read failure after successful opening is also presented as an honest empty search. The BrowseViewModel failure branch cannot run when the repository has already discarded the error.",
-      "invalidated_dependents": [],
-      "my_fix_commit": null,
-      "my_logs": [],
-      "my_red_case": null,
-      "my_status": "OPEN",
-      "notes": null,
-      "pending_proof": [],
+      "invalidated_dependents": [
+        "android/core ArchiveDatabase.openReadOnly (every caller: ArchiveInstaller, ArchiveRepository, the T47 court)",
+        "the T47 court and any fixture that built an archive WITHOUT archive_meta.schema_version: the schema law now refuseth it, so those fixtures must declare it as the builder doth",
+        "ArchiveRepository.listDocuments/listDomains/passages/search (the swallowing remains and is named as pending)"
+      ],
+      "my_fix_commit": "7e64f3b",
+      "my_logs": [
+        {
+          "outcome": "core suite 14 tests, 0 failures; the court rc=0",
+          "path": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/REMEDIATION/GS-ARCHIVE-002/green/core-suite.log",
+          "sha256": "129d5cdbea23ca1a101c238a6fe8eb7315003cf3aaabda0048b6526990900dba",
+          "what": "the :core suite and the archive002 court after the repair"
+        },
+        {
+          "outcome": "3/3: the malformed schema refused, the read road refusing, the positive control",
+          "path": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/REMEDIATION/GS-ARCHIVE-002/green/archive002-court.log",
+          "sha256": "7e3d34d5731862a52e4e116db02c2d15a79f636f121a7be5197ce6469e134cc8",
+          "what": "the archive002 court alone"
+        }
+      ],
+      "my_red_case": {
+        "argv": "./gradlew :core:testDebugUnitTest --tests '*ReadinessArchive002Test*' (first run, before the repair)",
+        "case": "android/core/src/test/java/io/godstone/core/readiness/ReadinessArchive002Test.kt -- the audit's two schedules replayed through the real bundled AndroidX SQLite driver",
+        "cwd": "/Users/oculus/Projects/GODSTONE_BUILDER/android",
+        "log": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/REMEDIATION/GS-ARCHIVE-002/red/archive002-RED.log",
+        "log_sha256": "8ecb3808378365c3020908fb788033c6acbd4e16eb7a917829e463379bb47d90",
+        "outcome": "test_w01_a_malformed_schema_is_refused FAILED with 'a malformed schema was ADMITTED: the audit's reproduced defect'"
+      },
+      "my_status": "PARTIAL",
+      "notes": "PARTIAL. The STRUCTURE half and the handle's typed read refusal are repaired with a captured red and a positive control; the REPOSITORY half (the card's typed outcomes and the view model's sanitised failure) is NOT done and is named as pending work that belongeth with GS-ARCHIVE-001. Only an independent audit may write VERIFIED_FIXED.",
+      "pending_proof": [
+        "INDEPENDENT VERIFICATION: only an independent audit may mark this VERIFIED_FIXED",
+        "no emulator or device was used: the harness is the real bundled driver on the HOST, which is the same engine the shipping APK installeth, but it is not a device run",
+        "a second RED by reversal was attempted and left the file syntactically broken; a COMPILE FAILURE IS NOT A BEHAVIORAL RED, so it was NOT reported as one -- the first run's XML evidence is the red"
+      ],
+      "pending_work": [
+        "THE REPOSITORY HALF (the card's steps 3-6): replace `runCatching { ... }.getOrDefault(emptyList())` in listDocuments/listDomains/passages/search with the typed checked outcomes, keep handle availability separate from per-request success, and make BrowseViewModel show sanitised Unavailable/ReadFailure with retry (removing `getOrDefault(ArchiveState.Ready(origin=\"assumed\"))`). Its court arms need a SIGNED-MANIFEST fixture, which belongeth with GS-ARCHIVE-001's VerifiedArchiveDescriptor work",
+        "the card's step 1 also asketh the two negative schedules to be retained with the POSITIVE fixture built from the frozen schema.sql + indexes.sql and populated rows -- done here -- and a source-to-UI integration coverage arm through the real ArchiveRepository in the ViewModel (pending with the repository half)"
+      ],
       "proof": "Actual AndroidX bundled SQLite 2.5.2 harness: valid full-schema browse and FTS search controls pass; a database containing only documents(document_id), chunks(chunk_id) and an ordinary chunks_fts(not_an_index) table is admitted Ready and returns empty lists. Separately, after a good repository opens, a second SQLite connection drops chunks_fts; search returns [] without throwing and status remains Ready. Final android-probe.log: 4 cases, 2 failures. All involved Android production files have identical SHA256 at b439f35f; this is source-identity carry-forward, not a new Android runtime retest.",
       "remediation_report": "evidence/AUDIT-002/archive/ARCHIVE_REMEDIATION.md",
       "remediation_steps": [
