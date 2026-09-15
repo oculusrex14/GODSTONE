@@ -70,3 +70,62 @@ and green, with run URL/ID/attempt and immutable log hashes; applicable approved
 external inputs and physical acceptance real and bound to that candidate; fresh
 artifacts satisfying profile, dependency, payload and signing policy. Local probes
 never supersede a red hosted workflow, and a skipped lane is never green.
+
+
+---
+
+# THE PROTOCOL AS ENFORCED (added at round 53)
+
+The sections above describe the repair protocol. This section recordeth what the LEDGER COURT actually
+REFUSETH, because every rule here was learned by being stopped by it.
+
+## What the court refuseth (and it was right every time)
+
+1. **A finding may not move off `OPEN` without a BEHAVIOURAL RED.** A bare `FIX_SUBMITTED` with no red,
+   commit or evidence is REFUSED -- and so is a finding whose "red" is green on both revisions. Three
+   findings in this work were sent back for exactly that, and twice the red was a FALSE WITNESS that
+   passed on the pre-repair product too (`GS-ARCHIVE-005`, `GS-STORE-001`); both were reverted rather than
+   kept, and the episodes are recorded beside the findings.
+2. **A compile failure is NOT a red.** The pre-repair run must EXECUTE and FAIL on an assertion.
+3. **A SKIPPED arm proveth nothing.** An arm that cannot find the thing it addresses must FAIL on the
+   rename, never skip.
+4. **The audit bundle is READ-ONLY** and its digests are re-verified by `test_audit_evidence.py`; the
+   original checkout's declared addition GROWS and a SHRINK is refused.
+5. **`VERIFIED_FIXED` is not this work's to write.** Only an independent audit may write it.
+
+## What every submission carrieth
+
+- the finding ID; the changed files and functions; **the actual runtime caller**;
+- the red: its case name, argv, cwd, the OBSERVED outcome, and the immutable log with its sha256;
+- the green: the same, after the repair, with the negative cases and the POSITIVE CONTROL that came with
+  them; the canonical subsystem checks; and what the change INVALIDATED in dependent evidence;
+- an explicit `pending_proof` list. Unavailable proof is stated as unavailable -- never substituted.
+
+## Where a red liveth while it is red
+
+A red-by-design arm must NOT sit in a lane that is expected green: Gradle and Swift both run EVERY test
+source in a module, so a red arm inside one reddens that lane (and the audit's convergence requires the
+lanes green). The red liveth in `tools/readiness/audit_probes/` -- `kotlin/` or `swift/` for the compiled
+isles -- with its RUN RECIPE in that directory's README, and the repair MOVES it into the canonical lane.
+That move is part of the repair, not a preliminary.
+
+## The four arm defects this work paid for
+
+- An arm green on BOTH revisions proveth nothing.
+- An arm may read the CODE while its charge liveth in a COMMENT -- and the reverse: `GS-STORE-003`'s W01
+  FAILED on this work's own comment QUOTING `DROP TABLE`.
+- An arm about WIRING that accepteth a SPELLING will pass on a comment that merely NAMETH the thing.
+- A red that CANNOT BE SATISFIED is not a red (`GS-STORE-001`'s arm A first forbade the only native seam a
+  host court hath, which demanded the impossible).
+
+## A control that PROTECTS the bypass
+
+Expect to find one: `T52`'s deputy arms, `T61`'s null-artifact arm, `T29`'s stubbed native opener and the
+SQLite stale-version court all ASSERTED the behaviour the audit condemned. Reverse them, and record the
+reversal IN THE ARM so the next reader seeth what it once required.
+
+## What is NOT proven anywhere in this work
+
+No hosted lane (every result is a LOCAL reproduction), no device, no independent verification, and final
+convergence (T78) has not run: it requireth ONE clean exact SHA with fresh green canonical AND hosted
+controls. Readiness stayeth FALSE and the five external gates stay OPEN or BLOCKED.
