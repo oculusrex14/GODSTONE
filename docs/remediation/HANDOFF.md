@@ -46,7 +46,35 @@ already carried. The audit's step 3 stays OPEN, with its two measured obstacles 
 | CRYPTO-003 | FIX_SUBMITTED | 4b | Destroyed retained controllers and primitive sessions st |
 | CRYPTO-006 | FIX_SUBMITTED | 4b | Duplicate journal admission is treated as success for a |
 
-## DO THIS FIRST (round 177) — ★ ALL THREE RED CONTROLS ARE GREEN **AND ALL THREE INSTRUMENTS RUN** ★
+## DO THIS FIRST (round 179) — A STALE ENVIRONMENTAL ASSUMPTION CORRECTED, AND THE APP LAYER'S BLOCKER NAMED
+
+**An assumption this programme had been carrying was WRONG.** Rounds 125 and 138 recorded that GS-ARCHIVE-005's
+App-layer step and its app-level tests were unreachable because there was **no simulator**. The environment actually has
+**Xcode 26.6 (17F113)** and an **iPhone 17 Pro (iOS 26.3) simulator** — verified this round, not assumed. That stale
+assumption had been silently narrowing the programme, and it is corrected in the ledger.
+
+**And the App layer still cannot be built here — MEASURED:** `xcodebuild … -target Godstone -sdk iphonesimulator build`
+ends **rc 65** with `ios/Godstone/Sources/App/AppContainer.swift:3:8: error: unable to resolve module dependency:
+'GodstoneCore'` (4 errors, both architectures). The wiring context is recorded: a single
+`XCLocalSwiftPackageReference "Godstone"` (→ `ios/Godstone/Package.swift`), while the products are declared by the
+**mirror** package (`ios/Packages/GodstoneFoundation/Package.swift`), and `scripts/sync_ios_foundation_package.py`
+copies **only** `Sources/{GodstoneCore,GodstoneMesh}` — **the App directory is in NO lane**, which is why every round so
+far has been unable to see it.
+
+**So GS-ARCHIVE-005's step 1 (make the scene the owner of the load; let `ArchiveDocumentReader` render the scene's
+state, dropping its own `ArchiveReaderModel`) and its steps 6–7 remain OWED — no longer blocked by a missing simulator
+but by the app target's MODULE RESOLUTION**, a specific and diagnosable configuration problem.
+
+**NEXT STEP, NAMED:** build the local package directly (`swift build --package-path ios/Godstone` for the simulator SDK,
+or the `xcodebuild -scheme` equivalent) to learn whether `GodstoneCore` compiles for the simulator at all — if it does,
+the app's failure is a **wiring defect worth its own finding**; if it does not, the App layer is a build target this
+programme cannot yet reach, and **that must be said** rather than the finding being quietly deferred.
+
+**No production file was edited this round, and that is deliberate:** an App-layer refactor whose only verdict would be
+an `xcodebuild` that **cannot run** is exactly the unverifiable edit this programme refuses. GS-ARCHIVE-005 stays
+**PARTIAL**.
+
+## DO THIS FIRST (round 177, landed) — ★ ALL THREE RED CONTROLS ARE GREEN
 
 `check_ble_link_substrate_controls` — rc 1 with 33 arms nine rounds ago — is now **rc 0 (ALL PASSED BL01–BL135)**, and its
 `--selftest` reports **All 158 mutations caught deterministically**: the battery that **aborted for the whole of this
