@@ -790,6 +790,7 @@ final class ReadinessT23Tests: XCTestCase {
         XCTAssertEqual(r.alice.lastTrustedPublicationVerdictForTest, .accepted,
                        "the captured peer must be OFFERED to the bounded conduit and ACCEPTED -- the audited road published nothing at all")
 
+
     }
 
     // MARK: - case the seventh-and-a-half: a late subscriber is replayed the present ready state (T24)
