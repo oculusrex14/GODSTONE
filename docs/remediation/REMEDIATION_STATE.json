@@ -1545,13 +1545,42 @@
         "source_sha": "c683a2bf0b5bcdd4a662d98f7542351501b57b7c"
       },
       "impact": "BUILD_STATE cannot currently serve as an acceptance gate. A validator success does not prove that a completed task has a tested implementation. This does not establish that Qwen fabricated logs; it demonstrates that the checker would accept invalid evidence.",
-      "invalidated_dependents": [],
-      "my_fix_commit": null,
-      "my_logs": [],
-      "my_red_case": null,
-      "my_status": "OPEN",
-      "notes": null,
-      "pending_proof": [],
+      "invalidated_dependents": [
+        "tools/readiness/tests/test_t02.py (its mutation controls re-ran and caught a regression in the new early-return path)",
+        "every COMPLETE task's record: all 72 were revalidated under the stricter checker",
+        "ci/check_repository.py and every lane that runneth validate-state"
+      ],
+      "my_fix_commit": "9d39c36d1804aee294b2227d584686453418fd7b",
+      "my_logs": [
+        {
+          "outcome": "433 tests, 0 failures; validate-state rc=0 with 0 problems and 7 visible notes",
+          "path": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/REMEDIATION/GS-CTRL-001/green/audit-evidence-GREEN.log",
+          "sha256": "a6b1bb5c5e962a3c40f970ca6bb1f0bd3b4b13ff6140d0b2a4bb99cafb55ec2e",
+          "what": "green: the readiness suite and the stricter state validation"
+        },
+        {
+          "outcome": "8 tests, 0 failures -- each refused outcome and each tamper is seen to fail",
+          "path": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/REMEDIATION/GS-CTRL-001/negative/controls.log",
+          "sha256": "5345fd99f176af83dfca40b6ad49ea06d16d6c5a5ad8bf0cbcb42d5297aff63c",
+          "what": "the negative controls (tamper battery, refused outcomes, the build/test distinction)"
+        }
+      ],
+      "my_red_case": {
+        "argv": "python3 -m unittest discover -s tools/readiness/tests -p test_audit_evidence.py -v",
+        "case": "tests/test_audit_evidence.py -- the audit's three probes moved into the canonical suite, assertions intact, plus two further arms",
+        "cwd": "/Users/oculus/Projects/GODSTONE_BUILDER",
+        "log": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/REMEDIATION/GS-CTRL-001/red/audit-evidence-RED.log",
+        "log_sha256": "2e40c31179b8804a3cbff728b72236b565ad410009ad6f21dc45f6e1140d08b4",
+        "outcome": "8 tests, 5 failures before the repair"
+      },
+      "my_status": "FIX_SUBMITTED",
+      "notes": "FIX_SUBMITTED. The validator is strict, the legacy evidence is migrated in an explicit, refutable document, the gaps are visible as notes, and four historical records were repaired by RECOVERY from their recorded trees. The audit's rule stands: a repair is not a closure.",
+      "pending_proof": [
+        "INDEPENDENT VERIFICATION: only an independent audit may mark this VERIFIED_FIXED",
+        "the canonical Kotlin compilation and the full Gradle/Swift rosters rerun at the candidate SHA (a resolver cannot replace the compiler)",
+        "the two gapped T01/T05 records remain gaps: their claims are covered by other commands, and the independent audit must decide whether that coverage is sufficient",
+        "revalidation of every dependent suite after the validator change (every task's completion record is now judged by stricter rules)"
+      ],
       "proof": "Three independent Python acceptance tests fail: a FAILED command produces no validation problem; a PASSED entry naming a nonexistent log produces none; T01 with only status COMPLETE and no implementation/tree/commands produces none. See evidence/controls/audit-runner-tests.log.",
       "remediation_report": "reports/CONTROL_REMEDIATION.md",
       "remediation_steps": [
@@ -2997,7 +3026,7 @@
     {
       "candidate_scope": "Both",
       "exit_requirement": "Reject failed/missing/stale evidence; retain valid controls. Resolve all symbol diagnostics and T77 residue. Keep final hosted convergence pending until repairs finish.",
-      "fixes_submitted": 1,
+      "fixes_submitted": 2,
       "name": "Evidence and convergence controls",
       "order": "1",
       "primary_findings": [
