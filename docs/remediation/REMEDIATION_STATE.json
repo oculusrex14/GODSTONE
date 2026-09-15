@@ -2242,7 +2242,10 @@
         "source_sha": "c683a2bf0b5bcdd4a662d98f7542351501b57b7c"
       },
       "impact": "Strict lock/parser helpers do not protect the default runtime load path when trusted artifact metadata is optional. Corrupt or unpinned bytes can reach native loading without the promised digest/length/header checks, and transfer memory/size bounds disappear. This is a nonshipping model path; no native exploit or packaged model presence is asserted.",
-      "invalidated_dependents": [],
+      "invalidated_dependents": [
+        "android/llm ModelStaging + ModelManager (every caller: RagPipeline, the DI graph, the T61 court)",
+        "android/llm/src/test/.../ReadinessT61Test.kt (its arm ONCE required the manager to default its artifact to NULL -- it protected the bypass; it now requyreth the opposite)"
+      ],
       "my_fix_commit": "PENDING",
       "my_logs": [
         {
@@ -2250,6 +2253,12 @@
           "path": "GS-MODEL-001/green/model-001-GREEN.log",
           "sha256": "83912a8b1bcbc3b0ef23ae5e34fbd68b667dbba2a9a9b685d66b88a6474cb2f2",
           "what": "the :llm suite green with BOTH arms moved back into the module"
+        },
+        {
+          "outcome": "the :llm suite 42 tests, 0 failures; the model001 court 3/3",
+          "path": "GS-MODEL-001/green/model-001-both-halves.log",
+          "sha256": "76eae252978afd4b17f5791f5e649fb8a82e17e030e053e5ad00fa2a28b47987",
+          "what": "BOTH halves: the :llm suite green with the identity REQUIRED"
         }
       ],
       "my_red_case": {
@@ -2260,12 +2269,16 @@
         "log_sha256": "3690afbd40939bb4cc303f8603798076795b8cfdbab625d5f5114b50f2ecc416",
         "outcome": "BOTH arms RED on the untouched product: 'an EXISTING GARBAGE model was accepted without a sworn artifact: the audit's reproduced defect (GS-MODEL-001)' and 'an unpinned stream of 64 MiB was accepted whole'. The product is UNTOUCHED for this finding, so this IS the pre-repair red."
       },
-      "my_status": "PARTIAL",
-      "notes": "PARTIAL, first half done and PROVEN: the unpinned road is CLOSED AT ENTRY by name, so an existing garbage model can no longer be served and an unpinned stream carrieth no ceiling because it is never transferred. Both arms went RED on the untouched product (captured at 1965d60) and are GREEN now as :llm's permanent controls. The manager's optional identity and the iOS load path remain. Nothing here closeth NATIVE_MODELS, and no native inference or model download is claimed.",
-      "pending_proof": [],
+      "my_status": "FIX_SUBMITTED",
+      "notes": "FIX_SUBMITTED for the ANDROID path, both halves: `stage` REQUIRETH a sworn artifact (the unpinned road is closed at entry and the ceiling is structural, never Long.MAX_VALUE), and `ModelManager`'s identity is REQUIRED at construction, so a caller carrying none cannot build the manager at all. The red was captured BEFORE the change (both arms failed on the untouched product at 1965d60). THE iOS HALF REMAINS and is named. A control that PROTECTED the bypass was found and reversed: T61's arm asserted `artifact: ContentAddressedArtifact? = null`. No gate is closed; no native inference or model download is claimed.",
+      "pending_proof": [
+        "INDEPENDENT VERIFICATION: only an independent audit may mark this VERIFIED_FIXED",
+        "NO native inference, no model download and no device were used: the arms build synthetic files and a fixture artifact, and the pinned models are an EXTERNAL input (NATIVE_MODELS)",
+        "no hosted run URL/log was available, so hosted convergence remains pending"
+      ],
       "pending_work": [
-        "THE SECOND HALF OF THE FINDING: `ModelManager`'s `private val artifact: ContentAddressedArtifact? = null` (ModelManager.kt:21) and iOS `LlamaRunner`/`ModelManager` still treat the provenance identity as OPTIONAL, and existing callers omit `verifiedBy`. The staging law is now unconditional, so those callers will REFUSE at runtime -- the manager's API must be made to REQUIRE the identity at construction, and the iOS load path must verify before loading, or the model road is closed by construction rather than by accident.",
-        "THE DEAD CONDITIONS the compiler now flaggeth in ModelStaging.kt (lines 88, 98, 120: `if (artifact != null)` is ALWAYS TRUE once the null road refuseth at entry): simplify them so the code saith what it meaneth."
+        "THE iOS HALF: `ios/Godstone/Sources/GodstoneLLM/LlamaRunner.swift:47` and `ModelManager.swift:91` still treat the verification as OPTIONAL (`verifiedBy` omitted by existing callers). The Android law is now unconditional; the iOS load path must verify before loading, or it must refuse by name.",
+        "ONE DEAD CONDITION remaineth in ModelStaging.kt (line ~115: `if (artifact != null)` is always true now) and the compiler flaggeth it; simplify it."
       ],
       "proof": "Standalone Kotlin compiles the actual ModelLock/ModelStaging sources. The GGUF parser correctly rejects garbage (positive control), but ModelStaging.stage(..., artifact=null) accepts an existing garbage file and publishes a new garbage .gguf. The null path uses Long.MAX_VALUE as its transfer ceiling. ModelManager defaults to null; iOS LlamaRunner verification is also optional and existing ModelManager calls omit verifiedBy. No native inference or model download was performed.",
       "remediation_report": "evidence/AUDIT-002/SOS_SYNC_MODEL_REMEDIATION.md",

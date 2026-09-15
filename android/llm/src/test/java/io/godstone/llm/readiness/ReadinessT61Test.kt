@@ -484,7 +484,10 @@ class ReadinessT61Test {
             "llm", "ModelManager.kt")
         assertContains(mm, "private val staging = ModelStaging()")
         assertContains(mm, "staging.stage(")
-        assertContains(mm, "private val artifact: ContentAddressedArtifact? = null")
+        // GS-MODEL-001: this arm ONCE required the manager to default its artifact to null -- it PROTECTED the bypass the audit reproduced ("existing ModelManager calls omit verifiedBy"). The law is now the OPPOSITE, and the arm requyreth the opposite too: the identity is REQUIRED at construction, so a caller that carrieth none cannot build the manager at all.
+        // the manager must REQUIRE its artifact identity, and may not offer a null road
+        assertTrue(mm.contains("private val artifact: ContentAddressedArtifact"))
+        assertTrue(!mm.contains("private val artifact: ContentAddressedArtifact? = null"))
     }
 
     @Test fun testThePythonAuthorityKeepethItsFaceClean() {

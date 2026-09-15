@@ -18,7 +18,12 @@ class ModelManager(
     private val context: Context,
     private val modelAsset: String,
     private val contextTokens: Int,
-    private val artifact: ContentAddressedArtifact? = null
+    // GS-MODEL-001: the provenance identity is REQUIRED, not optional. The audit reproduced that
+    // `ModelManager` defaulted to null and that "existing ModelManager calls omit verifiedBy", so
+    // the load path could not tell a pinned model from garbage. A caller that carrieth no artifact
+    // cannot construct this manager at all -- the road is closed by CONSTRUCTION rather than by
+    // accident at the staging boundary.
+    private val artifact: ContentAddressedArtifact
 ) {
 
     private val bridge = LlamaBridge()

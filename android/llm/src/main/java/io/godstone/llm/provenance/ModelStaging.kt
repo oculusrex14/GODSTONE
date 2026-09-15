@@ -70,22 +70,17 @@ class ModelStaging {
      * promotion is at least atomic, so a perished copy can never masquerade
      * as a whole model again.
      */
-    fun stage(opener: (String) -> InputStream, destination: File, artifact: ContentAddressedArtifact?): File =
+    fun stage(opener: (String) -> InputStream, destination: File, artifact: ContentAddressedArtifact): File =
         synchronized(promotionLock) {
-            // GS-MODEL-001: THERE IS NO UNPINNED ROAD TO A USABLE MODEL. Without a sworn artifact
-            // identity the staging cannot tell a whole model from garbage, so it REFUSETH BY NAME
-            // rather than promoting whatever bytes are there. The audit reproduced the opposite:
-            // `stage(..., artifact = null)` ACCEPTED an existing garbage `.gguf` (its
+            // GS-MODEL-001: THERE IS NO UNPINNED ROAD TO A USABLE MODEL. The audit reproduced
+            // that `stage(..., artifact = null)` ACCEPTED an existing garbage `.gguf` (its
             // `if (artifact != null)` guard skipped verification and returned the destination) and
-            // transferreth an unpinned stream under `Long.MAX_VALUE`, i.e. under NO ceiling at all.
-            if (artifact == null) {
-                throw ProvenanceRefusal(
-                    "REFUSING to stage " + destination.name + ": no sworn artifact identity was " +
-                        "given, so the bytes cannot be told from garbage. A model may only be staged " +
-                        "against a pinned ContentAddressedArtifact (GS-MODEL-001).")
-            }
+            // transferreth an unpinned stream under `Long.MAX_VALUE`, i.e. under NO ceiling. The
+            // parameter is now REQUIRED, so those roads cannot be taken at all -- and a caller that
+            // can only produce a null artifact must not reach here, which `ModelManager`'s required
+            // constructor parameter enforceth one layer up.
             if (destination.exists()) {
-                if (artifact != null) {
+                run {
                     val cries = verifyContentAddressed(artifact, destination.readBytes())
                     if (cries.isNotEmpty())
                         throw ProvenanceRefusal(destination.name + " standeth corrupt and refuseth the restore: " + cries.joinToString("; "))
@@ -95,7 +90,7 @@ class ModelStaging {
             if (destination.parentFile != null) destination.parentFile!!.mkdirs()
             val part = File(destination.absolutePath + ".part")
             if (part.exists()) part.delete()
-            val ceiling = if (artifact != null) artifact.sizeBytes else Long.MAX_VALUE
+            val ceiling = artifact.sizeBytes   // GS-MODEL-001: structural, never Long.MAX_VALUE
             try {
                 var written = 0L
                 part.outputStream().use { sink ->
