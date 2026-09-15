@@ -584,6 +584,16 @@
    ],
    "record": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/REMEDIATION/ROUND123/ios-lane-baseline.json",
    "meaning": "Every remaining IOS-* finding and the only unfinished LIGHT-scope finding (GS-ARCHIVE-005) are Swift repairs; this lane is their host, and it is now verified with a measured baseline."
+  },
+  "ios_mirror_integrity_AT_ROUND_126": {
+   "checked_at_sha": "bd58b3b3294be69ed128362e62a3374b6029c700",
+   "method": "every .swift file under each source/test tree was hashed and compared with its counterpart in the package mirror; a package-only file is reported too",
+   "compared": 177,
+   "drifted_trees": [],
+   "differing_files": {},
+   "package_only_or_missing": [],
+   "verdict": "THE MIRROR MATCHES ITS SOURCES",
+   "meaning": "The ios lane runneth the MIRROR, so its green means nothing unless the mirror equalleth the sources. This checketh that, and it matters for the ONLY unfinished LIGHT-scope finding (GS-ARCHIVE-005), whose repair must land in ios/Godstone AND be synced before it can be tested."
   }
  },
  "counts": {
