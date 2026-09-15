@@ -16,8 +16,11 @@ final class ReadinessStore002Tests: XCTestCase {
                       "MeshRuntime must compose its private stores through EncryptedStoreFactory, so "
                       + "the per-install DEK is applied; today it constructeth SqliteMessageStore and "
                       + "SqlitePeerIdentityStore directly (GS-STORE-002)")
-        XCTAssertTrue(source.contains("StoreDEK") || source.contains("dek"),
-                      "and it must carry the store DEK into that composition")
+        XCTAssertTrue(source.contains("encryptedStores"),
+                      "and the factory must be a SEAM the composition carrieth, so a caller cannot "
+                      + "compose private stores without saying how they are encrypted")
+        XCTAssertTrue(source.contains("reopenExisting("),
+                      "the runtime must ASK the factory for the at-rest verdict before opening a store")
     }
 
     /// W02 -- the seam REFUSETH a plain database: a store opened without its DEK is not a private store.

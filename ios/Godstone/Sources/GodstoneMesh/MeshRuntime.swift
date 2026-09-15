@@ -99,6 +99,11 @@ public final class MeshRuntime {
 
     /// Create a standard non-shipping `MeshRuntime` after resuming any pending panic wipe.
     /// Associates the pending wipe with the exact `messageStoreUrl` and `peerStoreUrl` it will later open.
+    enum MeshRuntimeError: Error, Equatable {
+        /// GS-STORE-002: a private store that is not encrypted at rest is never composed.
+        case privateStoreNotEncrypted(String)
+    }
+
     public static func create(
         messageStoreUrl: URL,
         peerStoreUrl: URL,
@@ -123,7 +128,8 @@ public final class MeshRuntime {
         maxStoreBytes: Int64 = 64 * 1024 * 1024,
         journal: WipeJournal = UserDefaultsWipeJournal(),
         artifacts: WipeArtifacts? = nil,
-        keychain: any LocalIdentityKeychain
+        keychain: any LocalIdentityKeychain,
+        encryptedStores: EncryptedStoreFactory? = nil
     ) throws -> MeshRuntime {
         let effectiveArtifacts =
             artifacts ??
@@ -137,6 +143,25 @@ public final class MeshRuntime {
         try PanicWipe.resumeIfPending(journal: journal, artifacts: effectiveArtifacts)
 
         let identity = try MeshIdentity.loadOrCreate(keychain: keychain)
+        // ---- GS-STORE-002: the at-rest verdict BEFORE the store existeth -----------------------
+        // With a factory the runtime REQUIRETH an encrypted, available verdict for both private
+        // stores. The audit reproduced the opposite -- "MeshRuntime still instantiates both old
+        // stores", so the file carrieth the plain `SQLite format 3` header and "stock unkeyed sqlite3
+        // can prepare SELECT payload FROM held_frames" -- and the legacy default (no factory) at
+        // least SAYETH so now, instead of opening ordinary SQLite in silence.
+        if let factory = encryptedStores {
+            for (url, tag) in [(messageStoreUrl, "message-store"), (peerStoreUrl, "peer-identity-store")] {
+                switch factory.reopenExisting(path: url.path, tag: tag) {
+                case .available(let handle):
+                    guard handle.encryptedAtRest else {
+                        throw MeshRuntimeError.privateStoreNotEncrypted("GS-STORE-002: " + tag)
+                    }
+                case .locked, .corrupt, .unavailable, .unsupportedVersion:
+                    throw MeshRuntimeError.privateStoreNotEncrypted(
+                        "GS-STORE-002: " + tag + " did not open as an encrypted private store")
+                }
+            }
+        }
         let messageStore = SqliteMessageStore(url: messageStoreUrl, maxBytes: maxStoreBytes)
         let peerStore = try SqlitePeerIdentityStore(url: peerStoreUrl)
         return MeshRuntime(
