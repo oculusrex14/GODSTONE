@@ -2470,29 +2470,64 @@
     "tools/readiness/tests/test_t52.py (its shape arm now supplieth complete evidence and injecteth its resolver boundaries)",
     "the commit 44f83af left the suite RED for four arms; the adaptation commit e0e0fae is the one that is green, and the red is recorded rather than squashed"
    ],
-   "my_fix_commit": "e0e0fae",
+   "my_fix_commit": "e0e0fae + 1dcfbc1 (AUDIT-004 limb: a declared field must carry a VALUE; a statically false condition is a skipped job)",
    "my_logs": [
     {
      "outcome": "8/8 witnesses green; ci/check_release_gates_status.py rc=0 against the real document; all five external gates OPEN or BLOCKED with no closure evidence",
      "sha256": "3eddec593d7fdff98fc7eb9ce8355714fc9edd4ccd5782179b94a969f6c0811a",
      "what": "the repaired checker and the real document",
      "log": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/REMEDIATION/GS-GATE-001/green/gate-checker-GREEN.log"
+    },
+    {
+     "log": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/REMEDIATION/GS-GATE-001/green/audit-gates-adopted-GREEN-20260915T161007Z.log",
+     "sha256": "b262bae926465fcaf3ca6c48f9ff6030f18384bc12cc3a1ff1317fe4804c8c91",
+     "outcome": "13 tests, 0 failures -- the four adopted negatives now refused, the typed positive control retained",
+     "what": "the adopted canonical gate court after the repair (W09-W13 plus the retained W01-W08 arms)"
+    },
+    {
+     "log": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/REMEDIATION/GS-GATE-001/green/audit004-independent-probes-GREEN-20260915T161007Z.log",
+     "sha256": "ef1431a261a7f978253266083b3fae6323286e5ab68dcdbc1de06b9015dc72f7",
+     "outcome": "10 cases: 7 pass, 3 fail -- was 5/5; BOTH GS-GATE-001 probes now PASS",
+     "what": "THE AUDITOR'S OWN independent probe suite at the repaired SHA 1dcfbc1, in a detached worktree; the remaining three belong to GS-CONTENT-001, GS-CONTENT-002 and GS-CONTENT-003"
+    },
+    {
+     "log": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/REMEDIATION/GS-GATE-001/green/gate-checker-GREEN-20260915T161007Z.log",
+     "sha256": "5548e1399e418c8aab9d76ece8b8ff6704c385b15d71216b1a168dcd3f20a951",
+     "outcome": "rc 0 -- refuseth 15 of 15 evidence controls (was 11); 7 of 7 amputation controls; 8 gates represented; the real document valid; the five external gates OPEN/BLOCKED",
+     "what": "the repaired checker's own selftest battery and the real document"
+    },
+    {
+     "log": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/REMEDIATION/GS-GATE-001/green/readiness-suite-GREEN-20260915T161007Z.log",
+     "sha256": "a12b7cb43c9d9134b5bb1b35e9096b66775d9e92e7611d1cc92b02edd6782a87",
+     "outcome": "498 tests, OK",
+     "what": "the canonical readiness suite after the checker change (summary only)"
     }
    ],
    "my_red_case": {
-    "argv": "python3 -m unittest discover -s tools/readiness/tests -p test_audit_gates.py -v",
-    "case": "tests/test_audit_gates.py -- the audit's two gate-negative probes moved into the canonical suite, plus six further arms",
+    "argv": [
+     "python3 -m unittest discover -s tools/readiness/tests -p test_audit_gates.py -v",
+     "python3 -m unittest tools.readiness.tests.test_audit_gates -v"
+    ],
+    "case": "tests/test_audit_gates.py -- the audit's two gate-negative probes moved into the canonical suite, plus six further arms PLUS (AUDIT-004 steps 1-3, class AdoptedAudit004GateProbeTest): W10 a CLOSED device gate with every required KEY present and every VALUE null; W11 each required value nulled ALONE (and once removed, and an empty matrix); W12 a job disabled by `if: ${{ false }}`; W13 every disabling spelling, with the CONDITIONAL form the real workflow carrieth still enabled. The TYPED POSITIVE CONTROL W09 passed in the same run, and each negative changes ONE field of an otherwise-valid typed fixture.",
     "cwd": "/Users/oculus/Projects/GODSTONE_BUILDER",
-    "log": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/REMEDIATION/GS-GATE-001/red/gate-probes-RED.log",
-    "log_sha256": "721bda22d9da41308e020e1e0c45305842aef964be98226dca37d33da4f961d7",
-    "outcome": "4 failures before the repair: the schema-downgrade probe, the external-candidate probe, an external gate closed without approval evidence, and the real-document arm"
+    "log": [
+     "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/REMEDIATION/GS-GATE-001/red/gate-probes-RED.log",
+     "GS-GATE-001/red/audit004-gate-adopted-RED-20260915T160822Z.log"
+    ],
+    "log_sha256": [
+     "721bda22d9da41308e020e1e0c45305842aef964be98226dca37d33da4f961d7",
+     "5c4a78b688e20e8c47345cb9d2797310dc4e8a1754fb74f002e3d13b7be9bb74"
+    ],
+    "outcome": "4 failures before the repair: the schema-downgrade probe, the external-candidate probe, an external gate closed without approval evidence, and the real-document arm  ||  AUDIT-004 limb: 13 tests, 4 FAILURES before the repair, each on its OWN assertion, with W09/W03/W08 green."
    },
    "my_status": "FIX_SUBMITTED",
-   "notes": "FIX_SUBMITTED. A legacy file is MIGRATED and judged by the SAME strict rules; EVERY closed gate is judged (no unprofiled early return); every required external gate must carry its approval evidence and NAME its approving role; the register's own `not-runnable-in-ci` sentinel is honoured. The stricter path also exposed and fixed a REAL defect in my own repair (an unprofiled gate raised TypeError). Only an independent audit may write VERIFIED_FIXED.",
+   "notes": "FIX_SUBMITTED. A legacy file is MIGRATED and judged by the SAME strict rules; EVERY closed gate is judged (no unprofiled early return); every required external gate must carry its approval evidence and NAME its approving role; the register's own `not-runnable-in-ci` sentinel is honoured. The stricter path also exposed and fixed a REAL defect in my own repair (an unprofiled gate raised TypeError). Only an independent audit may write VERIFIED_FIXED. ROUND 98 (AUDIT-004 limb, 1dcfbc1): the review reproduced TWO bypasses the adopted arms missed -- a CLOSED device gate carrying every required KEY with every value NULL, and a job disabled by `if: ${{ false }}`. Both are now refused: every required field must carry a REAL value, every digest-shaped field is checked (not only apk/aab/corpus), a device matrix must NAME devices, and a statically false condition (in any spelling, on the job OR a required step) is a skipped job. The checker's own selftest battery grew from 11 to 15 refusals, and the auditor's probe suite moved 5 failures -> 3. TWO pre-existing controls were handled without weakening either: T53's 'skipped' assertion is preserved by wording, and T52's shape fixture was repaired from the free-text string 'matrix' to a typed matrix rather than relaxing the new law to keep an old fixture green (the change is recorded in the arm itself).",
    "pending_proof": [
     "INDEPENDENT VERIFICATION: only an independent audit may mark this VERIFIED_FIXED",
-    "the hosted lane: no hosted run URL/log was available, so the hosted convergence the R1 supplement requireth remains pending",
-    "the card's step 6 (historical vs current closure over the FULL gate inputs) is exercised by T53's classification witnesses and the drift boundary, but the ancestor-to-current mapping has not been revalidated against a real changed-input set for every gate"
+    "AUDIT-004 step 1 is PARTIAL: typed fixtures exist for the device and CI kinds, but 'actual matching report FILES and identities' are NOT yet bound, and a human approval still needeth no CI test roster (the audit asked that a human approval not be forced to invent one, and that a CI-backed closure carry one -- the second half is unproven for the external gates).",
+    "AUDIT-004 step 4 is NOT done: on a drift-read FAILURE the historical path still substituteth [] for the unavailable evidence instead of returning UNAVAILABLE, and the ancestor-to-current mapping has not been revalidated against a real changed-input set for every gate.",
+    "AUDIT-004 step 3's hosted half is PENDING: closure is NOT yet bound to an actual successful hosted run/job/step at the candidate SHA, because no hosted run URL, id or log existeth in this environment. Unknown applicability is therefore not yet distinguishable from established execution.",
+    "the card's step 6 (historical vs current closure over the FULL gate inputs) is exercised by T53's classification witnesses, but is not revalidated for every gate."
    ],
    "proof": "REPRODUCED at b439: schema_version=1 with an unknown CLOSED gate and nonexistent all-1 SHA, plus Android CLOSED without evidence, returns no errors despite an injected resolver that rejects every SHA. Under schema_version=2, A-06 set CLOSED at the candidate SHA with no evidence block and ci_job=\"release-gates.yml / nonexistent-job\" also returns no errors. The valid all-OPEN registry positive control remains accepted. Only Android and production-corpus have profiles; other CLOSED gates return before executor/result checking.",
    "remediation_report": "evidence/AUDIT-002/content/FINDINGS.md",

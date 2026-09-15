@@ -262,10 +262,81 @@ class HeldOutStagingTests(unittest.TestCase):
         self.assert_preserved()
 
     def test_the_deputy_face_refuseth_to_carry_an_evaluation(self):
+        """REVERSED AT ROUND 98 (GS-CONTENT-003 / AUDIT-004).
+
+        This arm once asserted the message "operator-selected face's law", which belonged to a
+        refusal raised AFTER a supplied trust store was already demanded -- so every supplied
+        held-out evaluation was refused, including VALID operator-selected input, and this arm
+        PINNED that regression. The refusal it protected is gone. The law the arm now holds is
+        the one that was always meant: the DEPUTY face (no operator trust store) may not carry
+        an evaluation at all, because the trust store is selected by the OPERATOR and never by
+        the bundle that is being judged. No trust assertion was dropped: the refusal is still
+        demanded, with its real reason named.
+        """
         manifest = self.manifest()
         self.sealed_record(manifest)
-        with self.assertRaisesRegex(ValueError, "operator-selected face's law"):
+        with self.assertRaisesRegex(ValueError, "selected by the operator"):
             assets.validate(self.manifest_path, heldout_evaluation=self.record_path)
+        self.assert_preserved()
+
+    def test_a_valid_operator_selected_evaluation_reaches_the_valid_verifier(self):
+        """THE ADOPTED REGRESSION ARM (AUDIT-004, GS-CONTENT-003).
+
+        The independent review reproduced this assertion PASSING on the prior baseline
+        (c683a2bf) and FAILING on the repaired source: public `validate` refused a VALID
+        operator-selected held-out evaluation before ever reaching the verifier that accepts
+        it. It is adopted here with its assertions INTACT.
+
+        The fixture's metadata is adapted to the new provenance-presence policy exactly as the
+        independent probe adapted it -- a SYNTHETIC approvals digest is installed so the signed
+        manifest can swear it -- and NO human approval is claimed: this proveth that the WRAPPER
+        reaches its verifier, not that any content was ever approved.
+        """
+        with sqlite3.connect(self.archive) as db:
+            db.execute("INSERT OR REPLACE INTO archive_meta VALUES('approvals_sha256',?)",
+                       ("4" * 64,))
+            db.execute("INSERT OR REPLACE INTO archive_meta VALUES('approvals_covered','1')")
+        self.refresh()
+        manifest = self.manifest()
+        self.sealed_record(manifest)
+        options = {"trust_store_path": self.trust,
+                   "heldout_evaluation": self.record_path,
+                   "heldout_manifest": self.plan_path}
+        data, _ = assets._validate_operator_selected(self.manifest_path, **options)
+        self.assertEqual("COMPLETE", data["_heldout_evaluation"]["status"],
+                         "the LOWER verifier is the positive control and must accept")
+        try:
+            data, _ = assets.validate(self.manifest_path, **options)
+        except ValueError as exc:
+            self.fail("outer validate rejects a valid operator-selected evaluation: %s" % exc)
+        self.assertEqual("COMPLETE", data["_heldout_evaluation"]["status"])
+
+    def test_check_only_binds_a_valid_evaluation_without_publishing(self):
+        """The audit's step 3: the CHECK-ONLY face must reach the same verifier for a valid
+        operator-selected evaluation, and must not PUBLISH anything while doing it.
+
+        HARNESS NOTE (round 98): the first form of this arm asserted `not staged` on
+        `validate`'s second return value and failed -- because that value is the PLAN of the
+        assets that WOULD be staged, not a publication. A harness misuse is not a product
+        defect, so the arm now asserts the real law with the court's own publication witness:
+        the previously published pair must be byte-identical afterwards.
+        """
+        with sqlite3.connect(self.archive) as db:
+            db.execute("INSERT OR REPLACE INTO archive_meta VALUES('approvals_sha256',?)",
+                       ("4" * 64,))
+            db.execute("INSERT OR REPLACE INTO archive_meta VALUES('approvals_covered','1')")
+        self.refresh()
+        manifest = self.manifest()
+        self.sealed_record(manifest)
+        try:
+            data, planned = assets.validate(
+                self.manifest_path, trust_store_path=self.trust,
+                heldout_evaluation=self.record_path, heldout_manifest=self.plan_path)
+        except ValueError as exc:
+            self.fail("check-only rejected a valid operator-selected evaluation: %s" % exc)
+        self.assertEqual("COMPLETE", data["_heldout_evaluation"]["status"])
+        self.assertEqual(["archive_light.db"], [name for _, name in planned],
+                         "the check-only plan must name the assets it WOULD stage")
         self.assert_preserved()
 
     def test_published_bytes_stay_deterministic_with_an_evaluation(self):

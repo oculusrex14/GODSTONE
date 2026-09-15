@@ -432,10 +432,15 @@ def validate(manifest_path: Path, *, trust_store_path: Path | None = None,
             "the trust store is selected by the operator, never by the manifest: pass "
             "--trust-store <operator trust store>; a bundle may not nominate the key that "
             "signeth it (the default release-validation path refuseth this by name)")
-    if heldout_evaluation is not None or require_heldout_evaluation:
-        raise ValueError(
-            "a held-out evaluation is the operator-selected face's law: staging "
-            "requireth --trust-store before an evaluation can be bound to it")
+    # GS-CONTENT-003 (AUDIT-004 step 2): THE OBSOLETE HELD-OUT REFUSAL STOOD HERE. It was
+    # written for the LEGACY DEPUTY BRANCH, where no operator trust store existed at all --
+    # but it ran AFTER the trust-store law above, so once an operator trust store WAS supplied
+    # every supplied held-out evaluation was refused BEFORE `_validate_operator_selected` (the
+    # verifier that accepts it) was ever called. The independent review reproduced the
+    # REGRESSION against the prior baseline: it passed at c683a2bf and failed on the repaired
+    # source. The refusal is REMOVED, not weakened -- the operator-selected face forwardeth the
+    # held-out arguments DIRECTLY to the lower verifier, which is left to enforce every
+    # missing, incomplete, mismatched or tampered evaluation requirement itself.
     return _validate_operator_selected(
         manifest_path, trust_store_path=trust_store_path,
         heldout_evaluation=heldout_evaluation, heldout_manifest=heldout_manifest,
