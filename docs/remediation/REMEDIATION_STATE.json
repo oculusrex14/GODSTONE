@@ -911,7 +911,20 @@
    "impact": "- `android/mesh/src/main/java/io/godstone/mesh/transport/BleTransport.kt:312` handles the successful central CCCD action by publishing `Found`, then stops. It does not call `beginTrustedHandshake`. - `BleTransport.kt:1739` defines `beginTrustedHandshake`. Searching both `android/mesh/src/main` and `android/app/src/main` finds its definition and no invocation (`production_entrypoints.txt`). Existing tests call it explicitly, e.g. `ReadinessT21Test.kt:321`. - `BleTransport.kt:1353` defines `beginKeyConfirmation`; every invocation found outside its definition is a test invocation (`keyconfirmation_callers.txt`). Completing HS3 at lines 1566/1623 only emits `handshakeReadyFlow`. - `MeshNode.kt:179` subscribes only to `peers()` and `received()`. It subscribes to neither handshake-ready nor application-link-ready events and does not perform D2/key confirmation itself. Failure schedule: two genuine devices finish discovery, LinkInfo exchange, and CCCD setup. The central produces `PublishFound`; no HS1 is sent. The responder cannot initiate Noise XX. Both remain physically bound without a trusted session. If a test or later caller manually starts D2, nothing automatically begins the mandatory encrypted confirmation round afterward.",
    "invalidated_dependents": [],
    "my_fix_commit": null,
-   "my_logs": [],
+   "my_logs": [
+    {
+     "log": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/REMEDIATION/ANDROID-01/red-round229.log",
+     "sha256": "30e770b16b95d7bfd3017c10a1eb91af8ca5f42959cc763ba18fb80979787c82",
+     "what": "ANDROID-01's canonical RED (ledger round 229): the transport must start D2 itself on the real trust transition",
+     "outcome": "captured with argv, source SHA and digest, PARKED in the probes directory (no committed SHA carrieth a red mandatory lane). The W00 control asserteth the D2 sending side and its encoder still stand; the defect arms assert a SECOND `beginKeyConfirmation(` call site existeth -- a PRODUCTION one, on a handshake transition -- and measure that today's only callers are the T23 courts"
+    },
+    {
+     "log": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/REMEDIATION/ANDROID-01/round229-orientation.log",
+     "sha256": "cb7c2af7980de92933e57c858d09b8184e08e83f593a332381c0ab5c0f87eff7",
+     "what": "ANDROID-01's orientation measured (ledger round 229): the D2 start's production reach",
+     "outcome": "**`beginKeyConfirmation` is called by NOTHING in production -- every caller is a court (`ReadinessT23Test:909, 940, 972, 1003, 1075`)** -- which is the card's step 5 verbatim. THE FOURTH FINDING OF ONE FAMILY (after ANDROID-04's sweep, IOS-07's deadline sweep and T24's trusted publication), EACH SETTLED BY COUNTING CALLERS. And its consequence was measured at round 228: the application LinkReady -- and ANDROID-03's captured peer -- is published ONLY upon the sealed key-confirmation round, so no real connection can become application-ready while D2 is never started. THE SCHEDULING SITES ARE NAMED: `markHandshakeEngaged()` at :1836/:2115, guarded by `state != ROLE_BOUND` at :1827/:2097, with the outbound publication at :421"
+    }
+   ],
    "my_red_case": null,
    "my_status": "OPEN",
    "notes": "ENRICHED AT ROUND 104 by TRANSCRIPTION from the audit's own card (android/findings.md#ANDROID-01): impact, remediation_steps, source_refs and closure_tests are the card's OWN words and its OWN file references, not a summary; the refs are relative to the audited snapshot. No status changed and nothing was claimed fixed.",
@@ -955,7 +968,10 @@
     "T24"
    ],
    "title": "The application never starts D2 or key confirmation",
-   "wave": "4e"
+   "wave": "4e",
+   "pending_work": [
+    "ROUND 229 (ANDROID-01: THE FOURTH FINDING OF ONE FAMILY, MEASURED BY COUNTING CALLERS -- AND ITS DEPENDENT, NAMED). (1) THE MEASUREMENT: `BleTransport.beginKeyConfirmation(peerId, supplied)` (:1660) ISSUETH a challenge, encodeth it and sendeth it as a sealed DATA record -- THE SENDING SIDE IS COMPLETE -- AND EVERY CALLER IS A COURT (`ReadinessT23Test:909, 940, 972, 1003, 1075`); THERE IS NOT ONE PRODUCTION CALLER. That is the card's step 5 verbatim: 'Remove the requirement that application/test code directly invoke D2 to make a connection progress.' (2) AND THE FAMILY IS NOW UNMISTAKABLE -- FOUR FINDINGS, TWO ISLES, ONE SHAPE: ANDROID-04's lease sweep (called by a court alone, round 204); IOS-07's deadline sweep (the same, round 213); T24's trusted publication (referenced in 0 production files, round 223); and ANDROID-01's D2 start (this round). EACH WAS SETTLED BY COUNTING CALLERS, AND THE TECHNIQUE HAS NEVER ONCE BEEN WRONG. IT IS NOW THE FIRST THING TRIED ON ANY 'IS IT WIRED?' FINDING. (3) AND ITS CONSEQUENCE REACHES A NEIGHBOUR, MEASURED AT ROUND 228: the application LinkReady -- and with it ANDROID-03's captured trusted peer -- is published ONLY upon the sealed key-confirmation round (the T23 law), SO WHILE D2 IS NEVER STARTED BY THE TRANSPORT NO REAL CONNECTION EVER BECOMES APPLICATION-READY. THE TWO FINDINGS ARE ONE DEPENDENCY, and the queue's wave order (4e for both) encodeth it. (4) THE RED IS CAPTURED AND PARKED: `tools/readiness/audit_probes/python/test_transport_starts_d2_itself.py` -- two defect arms RED, the W00 control PASSING (it asserteth the D2 sending side and its encoder still stand) -- so no committed SHA carrieth a red mandatory lane. (5) WHERE THE SCHEDULING BELONGS, MEASURED SO THE NEXT ROUND IS AN EDIT AND NOT A SEARCH: the handshake transitions are `conn.markHandshakeEngaged()` at :1836 and :2115, guarded by `conn.state != BleConnectionState.ROLE_BOUND` at :1827 and :2097, and the outbound relation is published at :421. THE CHALLENGE MUST BE SCHEDULED ONCE PER RELATION AT THE REAL HS3 ORDERED-WRITE/TRUST TRANSITION, with failure or backpressure treated as a BOUNDED RECORDED EVENT rather than as silence. (6) WHY THE SLICE WAS NOT ATTEMPTED THIS ROUND, STATED PLAINLY RATHER THAN DRESSED UP: the handshake state machine is intricate, a mis-placed edit there SILENCETH HANDSHAKES rather than failing a test, and the round's budget went to the measurement and the RED. ANDROID-01 STAYETH **OPEN**, its blocker-free next step is the scheduling above, and NOTHING IS CLAIMED BEYOND WHAT WAS MEASURED."
+   ]
   },
   "ANDROID-02": {
    "audit_status_at_snapshot": "OPEN",
