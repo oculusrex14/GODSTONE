@@ -109,8 +109,7 @@ class ReadinessT09Test {
     private fun newFixture(): Fixture {
         val identity = Identity.loadOrCreate(InMemoryIdentityStorage())
         val hooks = RecordingHooks()
-        val transport = BleTransport(
-            identity = identity,
+        val transport = BleTransport(serverStartAttempt = { true }, identity = identity,
             store = InMemoryMessageStore(),
             advertisingHooks = hooks
         )

@@ -216,10 +216,32 @@ class BleTransport(
 
     override fun start() {
         if (isStarted) return
-        isStarted = true
+        // ANDROID-05-A (the R1 supplement): RUNNING IS COMMITTED ONLY AFTER SUCCESSFUL SETUP. The
+        // audited form set `isStarted = true` BEFORE the OS start, so a FALSE return left the flag
+        // set and the SECOND call returned at the guard -- retry suppressed for ever, while
+        // `isRunning` read false. A failed attempt now RETIRES ITSELF and the very next start()
+        // attempteth the OS start again.
         val serverStarted = serverStartAttempt?.invoke() ?: gattServer.start()
-        if (!serverStarted) return
+        if (!serverStarted) {
+            retireFailedStartAttempt()
+            return
+        }
+        isStarted = true
         startAdvertising()
+    }
+
+    /**
+     * ANDROID-05-A: retire the exact FAILED start attempt -- close any partially opened server and
+     * cancel its work -- and return to a NON-STARTED state from which a retry is possible. Durable
+     * application data is untouched: nothing here reacheth a store.
+     */
+    private fun retireFailedStartAttempt() {
+        try {
+            gattServer.stop()
+        } catch (_: Throwable) {
+            // a platform that cannot even be stopped must not suppress the RETRY either
+        }
+        isStarted = false
     }
 
     override fun stop() {

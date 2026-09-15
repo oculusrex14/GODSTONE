@@ -75,7 +75,7 @@ class ReadinessT12Test {
 
     private fun makeTransport(): BleTransport {
         val identity = Identity.loadOrCreate(InMemoryIdentityStorage())
-        return BleTransport(identity = identity, store = InMemoryMessageStore())
+        return BleTransport(serverStartAttempt = { true }, identity = identity, store = InMemoryMessageStore())
     }
 
     private fun startedTransport(): BleTransport {

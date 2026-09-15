@@ -401,11 +401,9 @@ class ReadinessT22Test {
         val aliceOutlet = RecordingOutlet()
         val bobOutlet = RecordingOutlet()
         val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
-        val alice = BleTransport(
-            identity = pair.alice, store = pair.aliceStore,
+        val alice = BleTransport(serverStartAttempt = { true }, identity = pair.alice, store = pair.aliceStore,
             sessions = pair.smA, outletHooks = aliceOutlet)
-        val bob = BleTransport(
-            identity = pair.bob, store = pair.bobStore,
+        val bob = BleTransport(serverStartAttempt = { true }, identity = pair.bob, store = pair.bobStore,
             sessions = pair.smB, outletHooks = bobOutlet)
         kotlinx.coroutines.runBlocking { alice.start() }
         kotlinx.coroutines.runBlocking { bob.start() }
@@ -1095,11 +1093,9 @@ class ReadinessT22Test {
         val aliceOutlet = RecordingOutlet()
         val bobOutlet = RecordingOutlet()
         val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
-        val alice = BleTransport(
-            identity = pair.alice, store = pair.aliceStore,
+        val alice = BleTransport(serverStartAttempt = { true }, identity = pair.alice, store = pair.aliceStore,
             sessions = pair.smA, outletHooks = aliceOutlet)
-        val bob = BleTransport(
-            identity = pair.bob, store = pair.bobStore,
+        val bob = BleTransport(serverStartAttempt = { true }, identity = pair.bob, store = pair.bobStore,
             sessions = pair.smB, outletHooks = bobOutlet)
         kotlinx.coroutines.runBlocking { alice.start() }
         kotlinx.coroutines.runBlocking { bob.start() }

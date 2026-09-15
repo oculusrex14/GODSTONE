@@ -2055,8 +2055,7 @@ class BleLinkSubstrateTest {
     fun testTransportInboundAdmission_SchedulesExactGenerationTimeout() {
         val identity = makeIdentity()
         val store = InMemoryMessageStore()
-        val transport = BleTransport(
-            identity = identity,
+        val transport = BleTransport(serverStartAttempt = { true }, identity = identity,
             store = store
         )
         val peer = "11:22:33:44:55:60"
@@ -2070,8 +2069,7 @@ class BleLinkSubstrateTest {
     fun testTransportInboundTimeout_ReleasesExactRelation() {
         val identity = makeIdentity()
         val store = InMemoryMessageStore()
-        val transport = BleTransport(
-            identity = identity,
+        val transport = BleTransport(serverStartAttempt = { true }, identity = identity,
             store = store
         )
         val peer = "11:22:33:44:55:61"
@@ -2088,8 +2086,7 @@ class BleLinkSubstrateTest {
     fun testTransportPublication_UnpublishedDisconnectEmitsNoLost() {
         val identity = makeIdentity()
         val store = InMemoryMessageStore()
-        val transport = BleTransport(
-            identity = identity,
+        val transport = BleTransport(serverStartAttempt = { true }, identity = identity,
             store = store
         )
         val peer = "11:22:33:44:55:62"
@@ -2105,8 +2102,7 @@ class BleLinkSubstrateTest {
     fun testTransportPublication_CentralDisconnectEmitsExactlyOneLost() {
         val identity = makeIdentity()
         val store = InMemoryMessageStore()
-        val transport = BleTransport(
-            identity = identity,
+        val transport = BleTransport(serverStartAttempt = { true }, identity = identity,
             store = store
         )
         val peer = "11:22:33:44:55:63"
@@ -2126,8 +2122,7 @@ class BleLinkSubstrateTest {
     fun testTransportPublication_ServerDisconnectEmitsExactlyOneLost() {
         val identity = makeIdentity()
         val store = InMemoryMessageStore()
-        val transport = BleTransport(
-            identity = identity,
+        val transport = BleTransport(serverStartAttempt = { true }, identity = identity,
             store = store
         )
         val peer = "11:22:33:44:55:64"
@@ -2145,8 +2140,7 @@ class BleLinkSubstrateTest {
     fun testTransportPublication_CrossingOneDiesNoLost() {
         val identity = makeIdentity()
         val store = InMemoryMessageStore()
-        val transport = BleTransport(
-            identity = identity,
+        val transport = BleTransport(serverStartAttempt = { true }, identity = identity,
             store = store
         )
         val peer = "11:22:33:44:55:65"
@@ -2169,8 +2163,7 @@ class BleLinkSubstrateTest {
     fun testTransportPublication_FinalRelationDiesExactlyOneLost() {
         val identity = makeIdentity()
         val store = InMemoryMessageStore()
-        val transport = BleTransport(
-            identity = identity,
+        val transport = BleTransport(serverStartAttempt = { true }, identity = identity,
             store = store
         )
         val peer = "11:22:33:44:55:66"
@@ -2193,8 +2186,7 @@ class BleLinkSubstrateTest {
     fun testTransportPublication_StaleGenerationRemovalNoOp() {
         val identity = makeIdentity()
         val store = InMemoryMessageStore()
-        val transport = BleTransport(
-            identity = identity,
+        val transport = BleTransport(serverStartAttempt = { true }, identity = identity,
             store = store
         )
         val peer = "11:22:33:44:55:67"

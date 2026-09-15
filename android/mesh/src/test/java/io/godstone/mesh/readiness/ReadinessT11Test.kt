@@ -68,7 +68,18 @@ class ReadinessT11Test {
 
     private fun makeTransport(): BleTransport {
         val identity = Identity.loadOrCreate(InMemoryIdentityStorage())
-        return BleTransport(identity = identity, store = InMemoryMessageStore())
+        // ANDROID-05-A: THE CONTRACT CHANGED, SO THE FIXTURE DID TOO. A transport is started only
+        // after a SUCCESSFUL OS start, and on the host the real `gattServer.start()` returneth
+        // false -- this court therefore injects a succeeding ATTEMPT through the injectable OS
+        // boundary. Previously it relied on `isStarted` having been set despite a FAILED start,
+        // which is the audited defect; the court must exercise the LAW, not the bug.
+        // ANDROID-05-A: THE CONTRACT CHANGED, SO THE FIXTURE DID TOO. A transport is started only
+        // after a SUCCESSFUL OS start, and on the host the real `gattServer.start()` returneth
+        // false -- this court therefore injects a succeeding ATTEMPT through the injectable OS
+        // boundary. It previously relied on `isStarted` having been set despite a FAILED start,
+        // which is the audited defect; the court must exercise the LAW, not the bug.
+        return BleTransport(serverStartAttempt = { true }, identity = identity,
+            store = InMemoryMessageStore())
     }
 
     private fun startedTransport(): BleTransport {

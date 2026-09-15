@@ -341,11 +341,9 @@ class ReadinessT17Test {
         val aliceOutlet = RecordingOutlet()
         val bobOutlet = RecordingOutlet()
         val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
-        val alice = BleTransport(
-            identity = pair.alice, store = pair.aliceStore,
+        val alice = BleTransport(serverStartAttempt = { true }, identity = pair.alice, store = pair.aliceStore,
             sessions = pair.smA, outletHooks = aliceOutlet)
-        val bob = BleTransport(
-            identity = pair.bob, store = pair.bobStore,
+        val bob = BleTransport(serverStartAttempt = { true }, identity = pair.bob, store = pair.bobStore,
             sessions = pair.smB, outletHooks = bobOutlet)
         kotlinx.coroutines.runBlocking { alice.start() }
         kotlinx.coroutines.runBlocking { bob.start() }
@@ -387,8 +385,7 @@ class ReadinessT17Test {
     fun testTransportWithoutRegistryRefusesToShipAnything() {
         val pair = makeTrustedPair()
         val outlet = RecordingOutlet()
-        val bare = BleTransport(
-            identity = pair.alice, store = InMemoryMessageStore(), outletHooks = outlet)
+        val bare = BleTransport(serverStartAttempt = { true }, identity = pair.alice, store = InMemoryMessageStore(), outletHooks = outlet)
         kotlinx.coroutines.runBlocking { bare.start() }
         try {
             val peer = PeerId.fromAddress(macOf(pair.bob.nodeId, 0x90)) ?: error("no peer id")
@@ -419,8 +416,7 @@ class ReadinessT17Test {
         val pair = makeTrustedPair()
         val outlet = RecordingOutlet()
         val closed = SessionManager(pair.alice, FailClosedTrustAuthority())
-        val carol = BleTransport(
-            identity = pair.alice, store = InMemoryMessageStore(),
+        val carol = BleTransport(serverStartAttempt = { true }, identity = pair.alice, store = InMemoryMessageStore(),
             sessions = closed, outletHooks = outlet)
         kotlinx.coroutines.runBlocking { carol.start() }
         try {
