@@ -104,19 +104,24 @@ green' stops meaning 'the logged run was green'.
   outgoing copy, outgoing copy preserved on retries -- T84's evidence), and driving the IMMEDIATE road end
   to end in THIS court (its sender fixture has no Ed25519 keys; T37 drives it).
 
-## A KNOWN FLAKE IN THE ANDROID LANE -- not fixed, and it weakens "the lane is green"
+## THE ANDROID LANE FLAKE — ROOT-CAUSED AND FIXED (round 86), so "the lane is green" is a real claim again
 
-Across three forced full-lane runs (`./gradlew :mesh:testDebugUnitTest --rerun-tasks`) of the SAME tree,
-two runs failed in FIXTURE SETUP in two DIFFERENT courts with the same message:
+The former note said the failure was "statistically impossible" and blamed shared RNG state. That reading was
+WRONG, and the correction matters: the fixture redrew **`b` alone** until its hint sorted after a **fixed
+`a`**, so the acceptance probability per draw was `(255 - a.hint[0])/256` — **not one half**. When `a.hint[0]`
+landed at 254, each draw needed the 1/256 case `b.hint[0] == 255`, so sixty-five draws failed with
+probability ~78%. MEASURED, not guessed, by instrumenting the two loops in a detached worktree and running the
+filtered courts repeatedly:
 
-    "no ascending hint pair within 64 draws"   -- ReadinessT17Test.makeTrustedPair, then ReadinessT18Test
+    FLAKE-PROBE FAILED draws=65 a=254,25,59,239 b=67,174,80,195 identical=false aIdEqBId=false
+    FAILED testAttestTwentyTwentyCarriesTheFullDigest :: no ascending hint pair within 64 draws
 
-Each court PASSED when re-run and the third full run was fully green (1142 tests). The assertion is in
-randomized identity drawing, before any product code runs, and 65 consecutive non-ascending draws from the
-shared `SecureRandom` (`identityRng`) is statistically impossible -- so this looks like a FIXTURE
-DETERMINISM BUG, not bad luck, and probably shared state in the in-memory identity storage. It is NOT fixed.
-Do not report the Android lane as reliably green: report the logged passing run, and fix this fixture when
-a round has room (a deterministic draw, or a failure message that names what it observed).
+NINE of THIRTY filtered runs failed, all of them in FIXTURE SETUP, all in the two courts that carry the
+`b`-alone shape (`ReadinessT17Test`, `ReadinessT18Test`) — and the other five courts (`T20`, `T21`, `T22` ×2,
+`T23`) carry the both-redrawn shape, whose acceptance probability is ~1/2 per draw and whose 65-draw failure
+is genuinely impossible, so they never flaked. The repair ORDERS the drawn pair (and fails with a message
+naming the two hints if they are equal, which needs a 2^-32 collision) instead of fishing on the coin, and it
+is verified by the SAME thirty-iteration protocol that produced the nine failures.
 
 ## Other open PARTIALs, and what they owe
 

@@ -170,16 +170,28 @@ class ReadinessT18Test {
         val smB: SessionManager,
     )
 
-    /** A standing pair whose hints elect the first as initiator. */
+    /**
+     * A standing pair whose hints elect the first as initiator.
+     *
+     * GS-CTRL-002 (lane integrity): the ORDER of the drawn pair is CHOSEN, never fished for. The
+     * former loop redrew `b` ALONE until its hint sorted after a FIXED `a`, so a draw was accepted
+     * with probability (255 - a.hint[0])/256 -- NOT one half -- and ONE unlucky identity needed that
+     * 1/256 coin sixty-five times and failed the fixture. MEASURED before this repair on the twin
+     * court: `a=(254,25,59,239)`, 65 non-ascending draws, failing the fixture in ~1% of calls and
+     * NINE of THIRTY filtered runs. Ordering the pair satisfieth the law for EVERY draw, so no lane
+     * result can depend on that coin again.
+     */
     private fun makeTrustedPair(): TrustedPair {
-        val a = makeIdentity()
-        var b = makeIdentity()
-        var draws = 0
-        while (!hintAscending(a.nodeHint, b.nodeHint)) {
-            b = makeIdentity()
-            draws += 1
-            if (draws > 64) fail("no ascending hint pair within 64 draws")
+        val first = makeIdentity()
+        val second = makeIdentity()
+        val ascending = hintAscending(first.nodeHint, second.nodeHint)
+        if (!ascending && !hintAscending(second.nodeHint, first.nodeHint)) {
+            fail("the two drawn identities carry the SAME node hint (" +
+                first.nodeHint.joinToString(",") { (it.toInt() and 0xFF).toString() } +
+                "): no ordering of them can elect an initiator")
         }
+        val a = if (ascending) first else second
+        val b = if (ascending) second else first
         val accepted = PeerTrustApplyResult.Accepted
         val trustA = object : PeerBindingTrustAuthority {
             override fun applyValidatedBinding(binding: ValidatedPeerBinding): PeerTrustApplyResult = accepted

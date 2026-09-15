@@ -109,8 +109,17 @@ Touched, and therefore stale: `ANDROID-02`, `CRYPTO-003`, `CRYPTO-004`, `CRYPTO-
   with offer admission) therefore remains OPEN, and round 85 withdrew both an unred-gated serialization and
   an arm that would have overloaded that boolean rather than leave either claim in the tree unproven.
 
-## 6. Known limitation of the green-lane claim
+## 6. The green-lane claim, and the flake that used to weaken it
 
-The android lane carries an unexplained intermittent FIXTURE flake ('no ascending hint pair within 64
-draws', seen in ReadinessT17/T18 fixture setup across several rounds and green on re-run). It is unfixed,
-so 'the lane is green' means the LOGGED passing run, never every run.
+The android lane's intermittent FIXTURE flake ('no ascending hint pair within 64 draws') is ROOT-CAUSED and
+FIXED at round 86. The earlier reading — 65 non-ascending draws being "statistically impossible", therefore
+shared RNG state — was WRONG: the fixture in `ReadinessT17Test`/`ReadinessT18Test` redrew `b` ALONE against a
+FIXED `a`, so acceptance probability per draw was `(255 - a.hint[0])/256`, not one half; with `a.hint[0] = 254`
+it needed the 1/256 case 65 times and failed ~78% of the time. Measured: `a=(254,25,59,239)`, and NINE of
+THIRTY filtered runs failing in fixture setup. The two courts now ORDER the drawn pair instead of fishing on
+that coin, verified by the same thirty-iteration protocol; the other five courts carry the both-redrawn shape,
+whose acceptance probability is ~1/2 and whose 65-draw failure is genuinely impossible.
+
+The limitation this section used to state is therefore retired for THIS flake — 'the lane is green' now means
+the logged passing run AND a fixture that cannot fail on a 1/256 coin — while the older caveat still stands
+for anything not re-measured: every claim in this document is a LOCAL host reproduction.
