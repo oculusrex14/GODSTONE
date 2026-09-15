@@ -87,6 +87,46 @@ EXECUTOR = re.compile(r"release-gates\.yml / [a-z0-9-]+$")
 # split from the future embedded MEDIUM corpus (production corpus): the former
 # proveth the binary inspection, the latter proveth --release wiring and the
 # pinned corpus digest.
+#: The gates whose closure requireth an EXTERNAL human/device/independent artifact, and
+#: the evidence each must carry. GS-GATE-001: "unprofiled gates" returned before any
+#: executor or result check, which let an external gate be set CLOSED with no evidence
+#: block at all and a ci_job that existeth nowhere.
+EXTERNAL_GATE_REQUIREMENTS = {
+    "A-06-independent-noise-vectors": {
+        "approval_fields": ("source_commit", "source_sha256", "fixture_sha256",
+                            "reviewer_role", "review_date"),
+        "why": "an independently maintained Noise implementation/vector source, pinned and reviewed",
+    },
+    "production-corpus": {
+        "approval_fields": ("corpus_sha256", "reviewer_role", "review_date"),
+        "why": "the human-reviewed production corpus",
+    },
+    "model-native-stack": {
+        "approval_fields": ("revision", "artifact_sha256", "approved_role"),
+        "why": "the pinned native model stack, reproducibly restored",
+    },
+    "device-interoperability": {
+        "approval_fields": ("device_matrix", "operator_role", "result_sha256"),
+        "why": "the physical-device matrix, run by an operator",
+    },
+    "accessibility": {
+        "approval_fields": ("device_matrix", "operator_role", "result_sha256"),
+        "why": "the accessibility acceptance on real devices",
+    },
+    "battery-thermal": {
+        "approval_fields": ("device_matrix", "operator_role", "result_sha256"),
+        "why": "the battery and thermal acceptance on real devices",
+    },
+    "signing-store-approval": {
+        "approval_fields": ("signing_config_sha256", "approver_role", "approval_reference"),
+        "why": "the offline signing policy and store approval, held by the release owner",
+    },
+}
+
+#: Every gate this register REQUIRES must be judged: a gate present in the file but absent
+#: from this map is still judged, by the COMMON rules below.
+COMMON_CLOSED_REQUIREMENTS = ("executor", "test_results")
+
 PROFILE_REQUIREMENTS = {
     "android-archive-only-release": {
         "required": ("run_id", "executor", "apk_sha256", "aab_sha256",
@@ -217,17 +257,34 @@ def _validate_evidence_block(name: str, g: Mapping[str, Any], errors: list[str],
                           "(the record would claim what the gate denieth)")
         return
 
-    if profile is None:
-        return  # unprofiled CLOSED gates keep the v1 rules (pointer shape) only
-
-    # CLOSED + profiled: the evidence block is REQUIRED
+    # GS-GATE-001: a CLOSED gate is judged by the COMMON rules WHATEVER its profile.
+    # There is no early return for an "unprofiled" gate: that path is exactly how an
+    # external gate could be closed with no evidence block and a job that existeth nowhere.
+    external = EXTERNAL_GATE_REQUIREMENTS.get(name)
     if evidence is None:
-        errors.append(f"{name}: profiled gate CLOSED without its structured evidence block "
-                      f"(required fields: {', '.join(profile['required'])})")
+        wanted = list(profile["required"]) if profile else list(COMMON_CLOSED_REQUIREMENTS)
+        if external:
+            wanted += list(external["approval_fields"])
+        errors.append(
+            f"{name}: CLOSED without its structured evidence block (required fields: "
+            f"{', '.join(wanted)}); closure without its evidence is UNAVAILABLE, and "
+            f"UNAVAILABLE is never PASS")
         return
-    for field in profile["required"]:
+    for field in (profile["required"] if profile else COMMON_CLOSED_REQUIREMENTS):
         if field not in evidence:
             errors.append(f"{name}: evidence wanteth {field}")
+    if external:
+        for field in external["approval_fields"]:
+            if field not in evidence:
+                errors.append(
+                    f"{name}: an EXTERNAL gate CLOSED without {field!r} -- its closure "
+                    f"requireth {external['why']}")
+        role = evidence.get("reviewer_role") or evidence.get("operator_role") or \
+            evidence.get("approver_role") or evidence.get("approved_role")
+        if not isinstance(role, str) or not role.strip():
+            errors.append(
+                f"{name}: an EXTERNAL gate must NAME the human or independent role that "
+                f"approved it; a status alone is not an approval")
     for sha_field in ("apk_sha256", "aab_sha256", "corpus_sha256"):
         if sha_field in evidence:
             value = evidence[sha_field]
@@ -260,9 +317,16 @@ def _validate_evidence_block(name: str, g: Mapping[str, Any], errors: list[str],
         elif results["failed"] != 0 or results["executed"] <= 0:
             errors.append(f"{name}: test_results {dict(results)!r} may never be mapped to PASS "
                           "(executed must exceed nought and failed must be nought)")
-    elif classification == "candidate" and "test_results" in profile["candidate_required"]:
-        errors.append(f"{name}: a CANDIDATE closure must carry test results -- absent results "
-                      "are UNAVAILABLE and UNAVAILABLE is never PASS")
+    else:
+        if (classification == "candidate" and profile and
+                "test_results" in profile["candidate_required"]):
+            errors.append(f"{name}: a CANDIDATE closure must carry test results -- absent "
+                          "results are UNAVAILABLE and UNAVAILABLE is never PASS")
+        elif external and "test_results" not in evidence:
+            # an external closure proveth itself by its APPROVAL, not by a test roster, so
+            # it must carry the approval fields validated above; a CI-backed closure must
+            # carry results whatever its profile
+            pass
 
     # the workflow cross-checks (only when the text is at hand)
     if workflow_text is not None:
@@ -414,6 +478,36 @@ def selftest_repo_owned_lanes() -> int:
     return 0
 
 
+#: The gate ids this register REQUIRES, whatever the file version saith.
+REQUIRED_GATE_IDS = tuple(REQUIRED)
+
+
+def _migrate_legacy(data: Mapping, version: int) -> Mapping:
+    """GS-GATE-001: normalize a LEGACY (schema 1) register into the current shape.
+
+    The migration is EXPLICIT and loseth nothing: every gate keepeth its id and status,
+    and a CLOSED claim keepeth whatever evidence it carrieth -- so the strict rules that
+    follow judge the SAME facts. A legacy CLOSED gate without an evidence block therefore
+    FAILETH here rather than passing because its file version was older.
+    """
+    if version >= 2:
+        return data
+    migrated = dict(data)
+    gates = []
+    for gate in data.get("gates") or []:
+        if not isinstance(gate, Mapping):
+            gates.append(gate)
+            continue
+        normalized = dict(gate)
+        normalized.setdefault("migrated_from_schema", version)
+        # a legacy closure carrieth no `evidence` block: keep it absent so the required
+        # evidence rule fireth, and never invent one
+        gates.append(normalized)
+    migrated["gates"] = gates
+    migrated["schema_version"] = 2
+    return migrated
+
+
 def validate_status(data: Any, *,
                     resolve_evidence: Callable[[str], str] | None = None,
                     is_ancestor: Callable[[str], bool] | None = None,
@@ -428,9 +522,12 @@ def validate_status(data: Any, *,
         return [f"schema_version {version!r} is refused (only the accepted file versions "
                 f"{ACCEPTED_FILE_VERSIONS} are known; future or malformed styles are never auto-detected)"]
     errors.extend(_validate_document_fields(data))
-    if version == 1:
-        return errors
-    # ---- the v2 register: the v1 rules above, plus the exact-SHA regime ----
+    # GS-GATE-001: a LEGACY file (schema 1) is MIGRATED into the current in-memory
+    # register and then judged by the SAME rules. Returning early on schema 1 is what let
+    # an unknown CLOSED gate, a nonexistent all-1 SHA and an evidence-free Android closure
+    # pass: a schema downgrade must never buy weaker validation.
+    data = _migrate_legacy(data, version)
+    # ---- the register: the file rules above, plus the exact-SHA regime ----
     names = [gate.get("gate") for gate in data["gates"] if isinstance(gate, Mapping)]
     for name in sorted(set(names) - set(REQUIRED)):
         errors.append(f"unknown gate {name!r} is not in the register of required gates")
