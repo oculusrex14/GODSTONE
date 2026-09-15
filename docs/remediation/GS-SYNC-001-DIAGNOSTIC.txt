@@ -1,0 +1,1 @@
+no DIAG lines captured (the filtered test task did not re-execute and the -i log carries no test stdout)
