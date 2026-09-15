@@ -5408,7 +5408,7 @@
   }
  ],
  "evidence_audit": {
-  "round": 114,
+  "round": 120,
   "what": "round 97: the AUDIT-004 limb of GS-CTRL-001 landed; the auditor's own 10-case probe suite was rerun at the repaired SHA (8 failures -> 5) and its three GS-CTRL-001 probes now pass.",
   "verified": 96,
   "defects_found_and_what_happened": [
@@ -5528,6 +5528,27 @@
    "readiness_flags_all_false": true,
    "this_round": "A VERIFICATION BUNDLE at one exact SHA with the frozen invariants read FROM THE ARTEFACTS. No production change, no status change: 27 FIX_SUBMITTED / 4 PARTIAL / 23 OPEN, zero VERIFIED_FIXED.",
    "this_is_not_t78": "T78 requireth every applicable HOSTED job enabled, executed and green at one clean exact SHA; no hosted lane existeth here, so T78 has NOT run and no readiness flag moved.",
+   "this_is_not_a_closure": "only an independent audit may write VERIFIED_FIXED."
+  },
+  "round120_candidate_verification": {
+   "candidate_sha": "3c982e81b1df836902f3f60fa2839b3c42d3dee4",
+   "candidate_tree_sha": "a0549db46ba3f3942f9159faa6d5b9c891112996",
+   "record": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/REMEDIATION/ROUND120/verification.json",
+   "auditor_probe_suite": "10 tests OK (no regression)",
+   "canonical_readiness_suite": "OK",
+   "canonical_content_suite": "OK",
+   "kotlin_mesh_lane": "BUILD SUCCESSFUL, 1164 tests",
+   "validate_state": "rc 0",
+   "symbol_resolver": "217 Kotlin files, 0 unresolved",
+   "release_gate_checker": "rc 0",
+   "ledger_statuses": {
+    "OPEN": 23,
+    "FIX_SUBMITTED": 27,
+    "PARTIAL": 4
+   },
+   "external_gates": "all seven OPEN or BLOCKED",
+   "closure_evidence_entries": [],
+   "this_is_not_t78": "no hosted lane existeth here, so T78 has NOT run and no readiness flag moved.",
    "this_is_not_a_closure": "only an independent audit may write VERIFIED_FIXED."
   }
  }
