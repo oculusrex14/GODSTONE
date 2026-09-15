@@ -1035,9 +1035,21 @@ class BleTransport(
     internal fun publishedRelationsForTest(): List<RelationKey> =
         synchronized(publicationLock) { publishedRelations.toList() }
 
+    /**
+     * ANDROID-04 (round 209): WHAT THE SWEEP SAW. An INSTRUMENT, not a control: 'the sweep findeth nothing' is
+     * two very different claims -- 'it iterated no relation' and 'it iterated relations whose leases did not
+     * lapse' -- and this telleth them apart. The named next step of round 208, landed.
+     */
+    @Volatile internal var leaseSweepRelationsSeenForTest: Long = 0L
+        private set
+    @Volatile internal var leaseSweepLeasesLapsedForTest: Long = 0L
+        private set
+
     fun sweepInboundLeases() {
         for ((address, conn) in centralDriver.allActiveConnectionsForTest()) {
+            leaseSweepRelationsSeenForTest += 1L
             if (conn.sweepLeases()) {
+                leaseSweepLeasesLapsedForTest += 1L
                 val client = activeClientConnections[address]
                 if (client != null) {
                     handleCentralDisconnected(address, client.clientToken, client.gattGeneration)
@@ -1046,7 +1058,9 @@ class BleTransport(
             }
         }
         for ((address, conn) in serverDriver.allInboundConnectionsForTest()) {
+            leaseSweepRelationsSeenForTest += 1L
             if (conn.sweepLeases()) {
+                leaseSweepLeasesLapsedForTest += 1L
                 handleServerDisconnected(address, serverDriver.getClientGeneration(address))
                 serverWriters.remove(address)
             }

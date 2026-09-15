@@ -88,3 +88,26 @@
 // THE NEXT STEP: make BOTH sites monotonic (mirroring the governor's structural monotonic default), then
 // re-run this witness -- it should then trip, because the job's sweep will see the same clock the court
 // advanceth.
+
+// ------------------------------------------------------------------------------------------------
+// ROUND 209 -- THE SECOND DIAGNOSTIC DISPLACES THE SUSPICION: THE OWNED SWEEP WAS NEVER THE ONLY
+// DIFFERENCE; **THIS WITNESS'S SCENARIO IS NOT THE COURT'S WORKING ARM**.
+//
+// The sweep now COUNTS what it iterated (`leaseSweepRelationsSeenForTest`) and what lapsed
+// (`leaseSweepLeasesLapsedForTest`). THE MEASUREMENT:
+//
+//     ticks=14 seenJob=13 lapsed=0 retired=false | directSeen=1 retiredAfterDirect=false
+//
+// THE OWNED JOB TICKED 14 TIMES AND SAW 13 RELATIONS -- iteration and cross-thread visibility are FINE --
+// AND NO LEASE LAPSED. AND **THE DIRECT CALL, RUN INSIDE THIS WITNESS'S OWN SCENARIO, ALSO FAILED TO
+// RETIRE**. So this arm does not set up what the T20 court's working arm sets up, and the abandoned attempt
+// changed TWO things at once: the caller AND (unknowingly) the setup.
+//
+// THE REFINED WITNESS, NOW EXACTLY SPECIFIED: build it ON THE COURT'S OWN ARM, VERBATIM --
+// `rig.completeTrust()`, `rigNow = base`, `getClientGeneration`, `publishRelation`,
+// `sealFromInitiator(rig, 909, 600)`, `pushToResponder(frags.take(2))`,
+// `responderConnection().activeLeaseOf(seq)`, `rigNow = lease.deadlineMono` -- and differ in EXACTLY ONE
+// way: NOT calling `sweepInboundLeases()`. That is the controlled experiment.
+//
+// TWO HYPOTHESES REFUTED BY MEASUREMENT: the fixture clock's visibility (@Volatile changed nothing, round
+// 207) and the job's iteration/visibility (seenJob=13, round 209). Both plausible; neither true.

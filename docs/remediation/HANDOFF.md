@@ -46,7 +46,36 @@ already carried. The audit's step 3 stays OPEN, with its two measured obstacles 
 | CRYPTO-003 | FIX_SUBMITTED | 4b | Destroyed retained controllers and primitive sessions st |
 | CRYPTO-006 | FIX_SUBMITTED | 4b | Duplicate journal admission is treated as success for a |
 
-## DO THIS FIRST (round 208) — THE CARD'S STEP 1 LANDS FOR **CONNECTIONS** — AND THE SWEEP'S SILENCE SURVIVES IT, NARROWING THE DIAGNOSIS
+## DO THIS FIRST (round 209) — THE SECOND DIAGNOSTIC **DISPLACES** THE SUSPICION: THE OWNED SWEEP WAS NEVER THE ONLY DIFFERENCE
+
+**The instrument named in round 208 landed and spoke.** `sweepInboundLeases()` now **counts** what it iterated
+(`leaseSweepRelationsSeenForTest`) and what lapsed (`leaseSweepLeasesLapsedForTest`), so "finds nothing" can no longer
+hide two different claims. The measurement:
+
+> **`ticks=14 seenJob=13 lapsed=0 retired=false | directSeen=1 retiredAfterDirect=false`**
+
+**What it proves:** the owned job ticked **14** times and **saw 13 relations** — so **iteration and cross-thread
+visibility are fine**, and the "stale collection" hypothesis is refuted **by measurement rather than argument**. No lease
+lapsed — **and the direct call, run inside my own scenario, also failed to retire**.
+
+**So the owned sweep was never the only difference between my witness and the court's working arm: my scenario itself
+does not set up what that arm sets up.** The abandoned attempt changed **two** things at once — the caller **and**,
+unknowingly, the setup — which is exactly the error this diagnosis caught.
+
+**The refined witness, now exactly specified:** build it **on the court's own arm, verbatim**
+(`rig.completeTrust()`, `rigNow = base`, `getClientGeneration`, `publishRelation`, `sealFromInitiator(rig, 909, 600)`,
+`pushToResponder(frags.take(2))`, `responderConnection().activeLeaseOf(seq)`, `rigNow = lease.deadlineMono`) and then
+differ in **exactly one** way: **not** calling `sweepInboundLeases()`. That is the **controlled experiment**.
+
+**Two hypotheses refuted by measurement — the round's real value:** the fixture clock's visibility (`@Volatile` changed
+nothing, round 207) and the job's iteration/visibility (`seenJob=13`, round 209). Both were plausible; neither was true;
+and neither cost anything but an instrument.
+
+**Standing:** the counters are **kept** (instruments, not controls), the diagnostic arm was **withdrawn** so the lane is
+green (**1188 tests, 0 failures**), the diagnostic logs are kept with their measurements beside round 207's, and
+ANDROID-04 stays **FIX_SUBMITTED** with its time-based witness **owed but one controlled edit away**.
+
+## DO THIS FIRST (round 208, landed) — THE CARD'S STEP 1 LANDS FOR **CONNECTIONS**
 
 **The repair:** `BleOrchestrationDriver` creates every connection with a **monotonic** clock at **both** creation sites
 (`System.nanoTime() / 1_000_000_000L`, seconds stated explicitly), where the audited default was
