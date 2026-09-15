@@ -1,0 +1,16 @@
+# The audit's FINAL NEGATIVE PROBES, adopted into the canonical suite (waves 3a and 8)
+# argv: python3 -m unittest discover -s tools/readiness/tests -p test_audit_artifacts.py
+# source: AUDIT_FINAL_2026-09-15/evidence/AUDIT-003/audit_final_negative_tests.py (assertions intact)
+
++ FAIL
+ : forbidden actual signing entitlement is recorded without failing policy
+
+----------------------------------------------------------------------
+Ran 12 tests in 0.019s
+
+FAILED (failures=7)
+OBS corrupt AAB: {"verdict": "PASS", "AAB": {"path": "/var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/godstone-final-negative-l1o10ydk/bad.aab", "sha256": "bec5ce87ae8558ada87e2ede69197badc0c8254794b461e12b59ecc637736a4f", "abi": {"arm64-v8a": ["libgodstone_core.so", "libgodstone_sqlite.so"]}}}
+OBS cache traversal: {"rejected": false, "wrote_outside_destination": true}
+OBS diagnostics: {"ring": 16, "retained_relation_keys": 10000}
+OBS foreign platform: {"verdict": "PASS", "architectures": {"architectures": ["arm64"], "platform": "macos", "minimum_os": "16.0"}}
+OBS signed entitlement: {"verdict": "PASS", "entitlements": {"signed": true, "keys": ["com.apple.developer.networking.multicast", "get-task-allow"], "declared_keys": [], "forbidden": ["com.apple.developer.networking.multicast"]}}
