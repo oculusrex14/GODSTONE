@@ -46,7 +46,30 @@ already carried. The audit's step 3 stays OPEN, with its two measured obstacles 
 | CRYPTO-003 | FIX_SUBMITTED | 4b | Destroyed retained controllers and primitive sessions st |
 | CRYPTO-006 | FIX_SUBMITTED | 4b | Duplicate journal admission is treated as success for a |
 
-## DO THIS FIRST (round 173) — BL126 WAS **NOT** SUBSTANTIVE EITHER, AND THE ROUND LEARNED A LESSON ABOUT THE INSTRUMENT (6 ARMS → 5)
+## DO THIS FIRST (round 174) — BL81 AND BL131 CLEARED; **BL52 IS REFUSED BY THE CRITERION** (5 ARMS → 3)
+
+* **BL81 cleared:** the scan reducer **already** consulted the driver, but the pattern wants the hint **named** and the
+  event called `result`. The parameter was renamed (`event` → `result`, 7 tokens, positional at its one call site) and
+  the hint hoisted into `val metadata = result.metadata` + `val optionalHint = metadata?.nodeHint` before the **same**
+  call with the **same** three values. Android `:mesh` BUILD SUCCESSFUL.
+* **BL131 cleared:** the failed-to-connect reducer **snapshotted** the driver under the lock; the local now carries the
+  property's own name (`let centralDriver = centralDriver` — deliberate, documented shadowing) so the delegated call
+  reads `centralDriver?.onFailedToConnect`. Same reference, same call, same epoch discipline. iOS lane **1198 / 0**.
+
+**BL52 IS REFUSED — the first refusal that is neither a finding nor a spelling.** The pattern wants the literal
+`peerRssi[address] = result.rssi`, a map named `peerRssi` holding the raw scan RSSI. The code **observes** the RSSI (the
+law) through `captureScanEvent(…)` into a `ScanEvent` and then into the **bounded `discoveryIndex`**. Satisfying the
+literal would mean **adding a second store of the same fact** — the very divergence the audit's findings refuse
+elsewhere — so it would make the code **worse** while making the gate green. **The criterion forbids it**, and the honest
+options are named rather than the arm silently skipped: either **correct the instrument** to recognise the bounded index
+as the observer (requiring new mutations), or **rename the index** to the contract's vocabulary *if* that duplicates
+nothing — the second to be examined next round.
+
+**Standing: control 5 → 3 arms** — BL11, BL52, BL132 — from **33** fourteen rounds ago. BL11 and BL132 are each
+single-expression alignments whose law was verified present (the responder path **does** pass `onSubscribedCentrals`;
+`subscribedCentrals` **is** installed and removed by name).
+
+## DO THIS FIRST (round 173, landed) — BL126 WAS **NOT** SUBSTANTIVE EITHER
 
 The arm round 172 flagged for watching turned out to be **spelling**, and the reading proved it: `start()` **already**
 built its context with `epoch: currentTransportEpoch, transport: self`, and `ManagerContext` **already** built both

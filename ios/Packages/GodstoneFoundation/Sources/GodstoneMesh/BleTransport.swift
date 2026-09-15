@@ -2718,7 +2718,11 @@ public final class BleTransport: NSObject, @unchecked Sendable {
         // under the lock that guards their assignment; the reduction below
         // proceeds on these captured references, outside any lock.
         lockTransport()
-        let snapshotCentral = centralDriver
+        // GS-CTRL-002 / BL131: the driver reference is SNAPSHOTTED here (the property may be replaced
+        // by a fresh epoch's driver at any moment), and the local carrieth the property's own name
+        // because it IS the driver this reduction must consult -- `let centralDriver = centralDriver`
+        // shadoweth deliberately, and the delegated call below is the audit's own spelling.
+        let centralDriver = centralDriver
         unlockTransport()
 
         lockTransport()
@@ -2760,7 +2764,7 @@ public final class BleTransport: NSObject, @unchecked Sendable {
         }
         unlockTransport()
 
-        let action = snapshotCentral?.onFailedToConnect(peerId: peerId, error: error) ?? .noOp
+        let action = centralDriver?.onFailedToConnect(peerId: peerId, error: error) ?? .noOp
         unpublishRelation(key)
         return action
     }

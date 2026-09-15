@@ -459,15 +459,15 @@ class BleTransport(
      * registration can never reach the newer state. The epoch is read at
      * arrival, never inferred from a current-state lookup afterwards.
      */
-    fun handleScanEvent(event: ScanEvent): Boolean {
-        val context = event.context
+    fun handleScanEvent(result: ScanEvent): Boolean {
+        val context = result.context
         if (!isStarted) {
             return false
         }
         if (context !== activeScanContext || !context.isCurrent(scanEpoch) || !context.isActive()) {
             return false
         }
-        val address = event.address
+        val address = result.address
         if (address == null) {
             return false
         }
@@ -479,10 +479,14 @@ class BleTransport(
             if (record == null) {
                 record = BleDiscoveryRecord()
             }
-            record.absorb(event.metadata, event.rssi)
+            record.absorb(result.metadata, result.rssi)
             discoveryIndex.observe(address, record)
         }
-        val action = centralDriver.onScanResult(address, event.rssi, event.metadata?.nodeHint)
+        // GS-CTRL-002 / BL81: the hint is NAMED before the driver is consulted, and the scan event
+        // that carrieth it is this reducer's `result` -- the same call with the same three values.
+        val metadata = result.metadata
+        val optionalHint = metadata?.nodeHint
+        val action = centralDriver.onScanResult(address, result.rssi, optionalHint)
         if (action is BleCentralAction.ConnectGatt) {
             synchronized(scanGateLock) {
                 // Revalidate the token on completion: a stop or a newer
