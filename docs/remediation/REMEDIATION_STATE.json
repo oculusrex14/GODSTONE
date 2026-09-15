@@ -3436,12 +3436,39 @@
    "final_review": null,
    "impact": "Link-local PING, inventory and WANT responses lose their destination. An unrelated peer turn can consume the answer, leaving the requesting peer unanswered and mixing separate reconciliation runs.",
    "invalidated_dependents": [],
-   "my_fix_commit": null,
-   "my_logs": [],
-   "my_red_case": null,
-   "my_status": "OPEN",
-   "notes": "OPEN, with the defect CONFIRMED BY SOURCE and an INVALID ARM REVERTED. The outbox is one list of bare frames and the per-peer drain drains all of it (line anchors above), which is exactly the audit's charge; but the first arm could not prove it, because the frames it observed may have been the pump's own. Both the arm and a compiled repair attempt were REVERTED -- the tree is green and nothing unverified is committed. THE LESSON, and it is the fifth variant this session of the same family: an arm must ISOLATE the thing it names. Here the named thing (a control reply belonging to another peer) is indistinguishable, in a drain, from the frames the peer legitimately receives -- so the assertion must be rebuilt around the reply's IDENTITY, not the drain's emptiness. ROUND 69 ADDENDUM, and it matters: the reverted repair was very likely CORRECT -- the same arm failed pre-repair with 'got 2 frame(s)' and post-repair with 'got 1 frame(s)', i.e. the destination filter removed R's reply and left B's own pump frame. What was wrong was the ASSERTION (emptiness), not the repair. The repair was nevertheless left out of the tree because the arm could not yet confirm it, and the corrected arm (a differential: B drained first, then R's drain must carry its answer) is written out in the pending work above. This is recorded so the next round lands BOTH in one pass rather than repeating the experiment.",
-   "pending_proof": [],
+   "my_fix_commit": "bbe4ffb (Android limb)",
+   "my_logs": [
+    {
+     "log": "GS-SYNC-002/green/gs-sync-002-T41.log",
+     "sha256": "27dbd5e2d55fb4fd808c53bb743ed1ccd121a6bbf8819e5a97ee69eec5aea17b",
+     "what": "ReadinessT41Test after the repair: 15 tests, 0 failures with the differential arm passing"
+    },
+    {
+     "log": "GS-SYNC-002/green/gs-sync-002-ANDROID-FULL.log",
+     "sha256": "29701f7979f94fac4546a21d28fde85a3a7151b9365bea9026e3c5e107f2eb2d",
+     "what": "whole android :mesh lane: BUILD SUCCESSFUL"
+    },
+    {
+     "log": "GS-SYNC-002/green/gs-sync-002-LANES.log",
+     "sha256": "a4c3e49f68a1d6c2b3d7fa4873558bbceb8a0bc7993c33b68b0382376f7d66f0",
+     "what": "readiness suite OK; invariants all hold; repository VERDICT PASS; symbols 0 unresolved; iOS mirror --check rc=0; mutation selftest OK"
+    }
+   ],
+   "my_red_case": {
+    "case": "android/mesh/src/test/java/io/godstone/mesh/readiness/ReadinessT41Test.kt::testAControlReplyBelongethToItsOwnPeerAlone -- MOVED into the canonical T41 court. It is a DIFFERENTIAL: the same experiment runs twice (only R linked; then B linked with B's turn taken FIRST), so the pump's own frames cancel out and the difference is exactly the answer raised for R.",
+    "argv": "(cd android && ./gradlew :mesh:testDebugUnitTest --tests '*ReadinessT41Test*')",
+    "cwd": "/Users/oculus/Projects/GODSTONE_BUILDER",
+    "log": "GS-SYNC-002/red/gs-sync-002-RED.log",
+    "log_sha256": "83aed0a5b01906f268184ef97dcbcea3c8928aa49a480aba191fd7a7679325fb",
+    "outcome": "RED on the untouched product, execution proven (the runner names the arm): \"B's turn must NOT consume the answer raised for R: R must receive the same frames either way (control=2, after B's turn=1) expected:<2> but was:<1>\"."
+   },
+   "my_status": "PARTIAL",
+   "notes": "PARTIAL: the Android limb is repaired, verified and landed; the iOS port and audit steps 3-5 are owed. HOW THIS FINDING WAS WON, and it is the sixth variant this session of the same family: the first arm asserted the drain's EMPTINESS, which the pump's own frames made meaningless -- but comparing that arm's two runs (2 frames pre-repair, 1 post-repair) revealed that the REPAIR was right and only the ASSERTION was wrong. The differential arm (two identical runs, one with the other peer's turn taken first) then isolated the answer by construction and reproduced the defect cleanly. An arm must isolate the thing it names -- and sometimes the measurement that exposes a bad arm is also the measurement that vindicates the fix.",
+   "pending_proof": [
+    "ONLY THE ANDROID LIMB IS REPAIRED: the iOS twin still drains the whole control outbox for whichever peer asks, so the pair does not yet state one law on both isles -- the sole reason the status is PARTIAL rather than FIX_SUBMITTED.",
+    "NO DEVICE/EMULATOR/SIMULATOR/RADIO WAS USED: the differential is a host court driving the node's own entries with canonical control frames; no peer and no radio were involved.",
+    "THE ARM'S FIRST FORM WAS INVALID and is recorded: asserting that B's drain is EMPTY is meaningless because the drain also carries the pump's own frames for B (measured: 2 pre-repair, 1 with the repair applied -- which is how the repair was shown to work before this differential replaced the arm)."
+   ],
    "proof": "Audit003SyncTests sends a PING from B into A, drains A for C, then for B. C receives the sole PING reply; B receives zero. The same-peer positive control passes. Android has the same global control-outbox design. sync-final-probes.log records two failed assertions for this case.",
    "remediation_report": "FINAL_REMEDIATION_DETAILS.md",
    "remediation_steps": [
@@ -3466,9 +3493,10 @@
    "title": "A control reply for one peer is drained by another peer",
    "wave": "5",
    "pending_work": [
-    "THE ARM MUST BE REBUILT AROUND THE REPLY'S IDENTITY, and the measurements now say exactly how. Observed: on the UNTOUCHED product, a PING from peer R to node A followed by `drainSyncFramesForPeer(B)` yielded 2 frames; with the destination-carrying repair applied it yielded 1. The drain also carrieth the PUMP's own frames for B (`pumpFor().pump(peer).frames`), so emptiness asserteth nothing about ownership -- but the DIFFERENCE (2 -> 1) is the misplaced reply. THE CORRECTED ARM, ready to write: drain B FIRST, then drain R, and assert that R's drain CARRIES its own answer (pre-repair B has consumed it, so R's drain carrieth none) while B's drain carrieth only its own pump frames; or match the answer by its frame type/arm instead of counting.",
-    "THE REPAIR WAS APPLIED AND REVERTED UNVERIFIED: carrying the destination on an outbox element (`ControlReply(destination, frame)`), filtering the drain per peer and preserving other peers' entries is the shape the audit's steps 1-3 prescribe, and it compiled and ran -- but the confounded arm could not confirm it, so nothing was landed and the tree stays green.",
-    "AFTER THE RED IS VALID: bound per-destination and aggregate control memory (audit step 4), drop entries for retired generations on disconnect (step 3), and revalidate ownership at writer admission (step 5); then PORT to the iOS twin with the same arms."
+    "PORT TO THE iOS TWIN (ios/Godstone/Sources/GodstoneMesh/MeshNode.swift:138,182,205 named by the audit) with the SAME differential arm; only the Android limb is repaired here.",
+    "AUDIT STEP 4: bound per-destination AND aggregate control memory (the aggregate 64-entry cap is kept; a per-destination cap is not yet imposed).",
+    "AUDIT STEP 3 (remainder): drop entries for RETIRED generations on disconnect -- the destination is carried now, but a generation/relation identity is not, so a replacement relation could inherit an old answer.",
+    "AUDIT STEP 5: revalidate ownership at writer admission, as GS-RUNTIME-001 requires."
    ]
   },
   "GS-UX-001": {
