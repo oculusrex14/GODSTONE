@@ -509,6 +509,71 @@
     }
    },
    "what_this_means": "A finding whose named production owner CHANGED carrieth closure evidence -- or an audit review -- bound to a revision that no longer existeth. The audit itself sayeth \"source identity never proved the whole caller graph unchanged\"; the converse holdeth here: a CHANGED owner INVALIDATES dependent evidence until it is revalidated. This block is COMPUTED, not asserted, and it covereth the findings whose cards name FILES; for the rest the staleness is recorded in prose in STATUS_ACCOUNTING.md."
+  },
+  "mandatory_lanes_reverified_AT_ROUND_123": {
+   "verified_from": [
+    ".github/workflows/repository-verification.yml",
+    ".github/workflows/release-gates.yml"
+   ],
+   "checks": {
+    "mandatory_lanes_present": [
+     "constraints",
+     "invariants",
+     "content",
+     "meshsim",
+     "android",
+     "ios"
+    ],
+    "mandatory_lanes_missing": [],
+    "no_statically_disabled_job": true,
+    "t77_report_upload_still_declared": true,
+    "t77_upload_is_always": true,
+    "uploads_declared": [
+     {
+      "job": "constraints",
+      "path": "provenance-*.json",
+      "if": "always()"
+     },
+     {
+      "job": "invariants",
+      "path": "provenance-*.json",
+      "if": "always()"
+     },
+     {
+      "job": "content",
+      "path": "${{ runner.temp }}/t77-recovery/recovery-rehearsal.json",
+      "if": "always()"
+     },
+     {
+      "job": "content",
+      "path": "provenance-*.json",
+      "if": "always()"
+     },
+     {
+      "job": "meshsim",
+      "path": "provenance-*.json",
+      "if": "always()"
+     },
+     {
+      "job": "android",
+      "path": "**/build/reports/tests/**\nprovenance-*.json\n",
+      "if": "always()"
+     },
+     {
+      "job": "ios",
+      "path": "provenance-*.json",
+      "if": "always()"
+     }
+    ],
+    "release_gates_jobs": [
+     "android-archive-only-release",
+     "llm-native-stack",
+     "noise-conformance",
+     "production-corpus"
+    ]
+   },
+   "gate_checker_result": "ci/check_release_gates_status.py rc 0: \"2 repository-owned lanes carry every face they must hold; an amputated lane is refused by name\"",
+   "meaning": "A lane that was silently disabled or amputated would make every green claim above it worthless. This re-checketh, from the workflow artefacts themselves, that no job is statically disabled, that all six mandatory repository lanes of repository-verification.yml are present, and that the T77 external-report upload added at round 97 is STILL declared and STILL carryeth `if: always()` -- so a later edit did not quietly undo it."
   }
  },
  "counts": {
