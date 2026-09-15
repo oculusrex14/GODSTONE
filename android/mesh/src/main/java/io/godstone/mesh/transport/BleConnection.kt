@@ -45,7 +45,18 @@ class BleConnection(
     val peerId: ByteArray,
     initialMaxAttValueLength: Int = DEFAULT_MAX_ATT_VALUE_LENGTH,
     private val clock: () -> Long = MonoClock::seconds
-) {
+,
+    /**
+     * ANDROID-05 / T18 step 3: THE GENERATION OF THE RELATION THIS CONNECTION BELONGETH TO.
+     *
+     * The audit reproduced a FABRICATED GENERATION ZERO: the transport built each whole-record
+     * writer with `RelationKey(direction, address, 0L)`, so every writer lieth about which
+     * relation it speaketh for, and a completion could not be validated against the operation
+     * it belongeth to. The generation was ALREADY MINTED (`nextGen` outbound, `gen` inbound)
+     * and stored per address; it simply never reached the connection. This field carrieth it;
+     * the default keepeth every existing construction source-compatible.
+     */
+    val relationGeneration: Long = 0L) {
     init {
         require(peerId.isNotEmpty()) { "peerId must not be empty" }
     }

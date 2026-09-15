@@ -188,6 +188,7 @@ class BleCentralOrchestrationDriver(
         val conn = BleConnection(
             peerAddress.toByteArray(),
             clock = connectionClockForTest ?: { System.currentTimeMillis() / 1000L },
+            relationGeneration = nextGen,
         )
         activeConnections[peerAddress] = conn
         outboundSlots[peerAddress] = OutboundPeerSlot(OutboundPeerSlotState.ACTIVE, nextGen, peerAddress, lease)
@@ -574,6 +575,7 @@ class BleServerOrchestrationDriver(
         val conn = BleConnection(
             deviceAddress.toByteArray(),
             clock = connectionClockForTest ?: { System.currentTimeMillis() / 1000L },
+            relationGeneration = gen,
         )
         conn.transitionTo(BleConnectionState.PROVISIONAL_CONNECTED)
         inboundConnections[deviceAddress] = conn
