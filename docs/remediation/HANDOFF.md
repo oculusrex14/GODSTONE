@@ -91,6 +91,20 @@ green' stops meaning 'the logged run was green'.
 
 ## Then the wave 4a chain: `GS-STORE-004`, then `GS-STORE-005`, then `GS-STORE-006`
 
+## AND THEN, with its red already designed: `GS-SYNC-002` step 3 (retired control replies)
+
+Both isles carry `ControlReply(destination:frame:)` and a per-destination drain, but NOT a RELATION
+GENERATION, so an answer queued for a relation that was RETIRED can ride the REPLACEMENT relation when the
+same peer reconnects. RED, deterministic and host-executable in the two sync courts: enqueue one control reply
+for peer P, drive P's disconnect (retiring that relation), reconnect P as a NEW relation, then drain for P --
+expect ZERO frames and an outbox empty for P. Today the stale answer is handed over, so the arm reds on its
+own assertion. Fix shape: carry the generation in `ControlReply`, drop a destination's entries on relation
+retirement, and revalidate the captured generation at writer admission -- the same "revalidate what you
+captured before committing it" law the sync owner's step 4 asks for. Careful with step 4 itself: a
+per-destination cap is a FAIRNESS bound, not a memory one (the aggregate 64 already bounds memory, and
+drop-oldest means a flood cannot starve a later reply of admission), so an arm claiming starvation would be a
+witness green on both revisions.
+
 ## The submissions THIS session made, and what each still owes
 
 - **`GS-STORE-003`** (FIX_SUBMITTED, `98c69c5`): the audit's older-version fixture is SYNTHETIC (no real
