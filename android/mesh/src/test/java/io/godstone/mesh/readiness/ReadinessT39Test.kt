@@ -675,4 +675,51 @@ class ReadinessT39Test {
             1, offers,
         )
     }
+
+    /**
+     * GS-SOS-002 (the audit's ordered step 6): "Re-read the durable projection after a racing send/cancel;
+     * do not recreate an active-SOS UI projection from a stale local frame". A cancellation committed from
+     * inside the first send callback retireth the row; the dispatch arm then re-published its projection
+     * from the frame it had captured BEFORE the loop -- so the node claimed an ACTIVE distress call whose
+     * durable row is terminal. The iOS twin already readeth the row back (`rememberSosCommit`); this isle
+     * did not, so the two isles disagreed.
+     *
+     * REVERSAL RECORDED HERE (the house rule: an arm that refuseth the design is recorded IN the arm): the
+     * FIRST attempt at this limb claimed the opposite of a law this suite already holdeth. A cancellation
+     * requested from inside the writer callback DOES cross the submission boundary, but the writer hath not
+     * yet reported whether it admitted the bytes, and `SosCancelResult.wasRelayed` meaneth "bytes had
+     * ALREADY gone out" -- not "may be out". `testCancelVersusQueuedWriterNeverResurrects` (this court,
+     * pre-existing) pineth that to `!wasRelayed`, and it FAILED when this round overloaded the flag. The
+     * flag was therefore left as the repository's law hath it, and an explicit in-flight observable is the
+     * honest shape for the boundary (recorded as the remaining work, not smuggled into this boolean).
+     */
+    @Test
+    fun testACancelledDispatchLeavethNoActiveProjection() = runTest {
+        val r = newRig()
+        r.node.injectPeerForTest(peerOf(1))
+        r.node.injectPeerForTest(peerOf(2))
+        var offers = 0
+        var mid: ByteArray? = null
+        r.node.dispatchSos("no stale projection".toByteArray()) { _, bytes ->
+            offers++
+            if (offers == 1) {
+                val id = io.godstone.mesh.wire.v2.FrameV2.decode(bytes)?.msgId
+                mid = id
+                if (id != null) r.node.handleSosCommand(SosCommand.Cancel(id)) { _, _ -> true }
+                true                    // the crossing offer is admitted, so the handoff count is non-zero
+            } else true
+        }
+        Assert.assertEquals(
+            "the cancellation must have suppressed the later offer (offers=" + offers + ")", 1, offers)
+        val row = r.tracker.lookup(mid!!)
+        Assert.assertTrue("the durable row must be terminal, got " + row,
+            row is io.godstone.mesh.delivery.DeliveryLookup.Found &&
+                (row as io.godstone.mesh.delivery.DeliveryLookup.Found).record.state.isTerminal)
+        Assert.assertFalse(
+            "the row is terminal, so the node may not re-light an active-SOS projection from the frame it " +
+            "captured before the offer loop (hasActiveSos=" + r.node.hasActiveSos() + ")",
+            r.node.hasActiveSos(),
+        )
+        Assert.assertNull("the durable scan must agree with the darkness", r.node.activeSosSnapshot())
+    }
 }

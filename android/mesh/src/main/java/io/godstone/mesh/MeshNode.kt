@@ -546,14 +546,10 @@ class MeshNode(
             linkOffers.record(msgId, peerId, admitted, controlClock())
             if (admitted) handed++
         }
-        // T43: the remembered projection carrieth the DURABLE state -- a link
-        // offer is telemetry, so the SOS row standeth QUEUED_DURABLY whether or
-        // not a radio admitted its bytes.
-        if (handed > 0 && activeSosRow?.msgId?.contentEquals(msgId) == true) {
-            activeSosRow = ActiveSos(msgId.copyOf(), DeliveryState.QUEUED_DURABLY, frame,
-                activeSosRow?.committedAtMillis)
-        }
-        refreshSosStatusFromDurable()
+        // GS-SOS-002 (the audit's ordered step 6): the projection is re-derived from the DURABLE ROW,
+        // never from the frame captured before the offer loop -- a cancellation that landed mid-dispatch
+        // must not be re-lit as an active call. ONE law with the iOS twin's `rememberSosCommit`.
+        rememberSosCommit(frame, activeSosRow?.committedAtMillis)
         return if (handed == 0) SosDispatchResult.QueuedLocally
         else SosDispatchResult.HandedToRelays(handed)
     }
@@ -646,6 +642,32 @@ class MeshNode(
         _status.value = _status.value.copy(activeSos = activeSosRow != null)
     }
 
+    /**
+     * GS-SOS-002 (the audit's ordered step 6): remember the projection this node committed by reading the
+     * row back FROM the authority -- never from the frame captured before the offer loop, which a
+     * cancellation landing mid-dispatch maketh stale. A row that is absent, unreadable, not NONE-mode or
+     * terminal leaveth NO active projection: fail-closed, and the mirror goeth dark with it. The iOS twin
+     * (`rememberSosCommit`) already read the row back; this isle published from its captured frame, so the
+     * two isles disagreed until now.
+     */
+    private fun rememberSosCommit(
+        frame: io.godstone.mesh.wire.v2.FrameV2,
+        committedAtMillis: Long?,
+    ) {
+        val live = when (val row = deliveryTracker.lookup(frame.msgId)) {
+            is io.godstone.mesh.delivery.DeliveryLookup.Found ->
+                row.record
+                    .takeIf {
+                        it.ackMode == io.godstone.mesh.delivery.AckMode.NONE && !it.state.isTerminal
+                    }
+                    ?.state
+            else -> null
+        }
+        activeSosRow = if (live == null) null
+        else ActiveSos(frame.msgId.copyOf(), live, frame, committedAtMillis)
+        refreshSosStatusFromDurable()
+    }
+
     /** The authoritative route: scan the tables, re-derive the projection, and
      *  refresh the flag from what the store actually holds. This is what the
      *  restart cases exercise; it returns what it saw. */
@@ -732,16 +754,12 @@ class MeshNode(
         // T39 + T43: remember the projection this node committed, then publish the
         // observable flag FROM it -- the flag only says what the DURABLE row said.
         // A successful send is an ephemeral link offer, so the remembered state is
-        // QUEUED_DURABLY whether or not a radio admitted the bytes: the SOS row
-        // reacheth a terminal state only through cancellation or the durable
-        // estate (a NONE-mode call can never be acknowledged).
-        activeSosRow = ActiveSos(
-            frame.msgId.copyOf(),
-            DeliveryState.QUEUED_DURABLY,
-            frame,
-            System.currentTimeMillis(),
-        )
-        refreshSosStatusFromDurable()
+        // the row's own (QUEUED_DURABLY) whether or not a radio admitted the bytes:
+        // the SOS row reacheth a terminal state only through cancellation or the
+        // durable estate (a NONE-mode call can never be acknowledged).
+        // GS-SOS-002 (step 6): read the row BACK, so a cancellation that raced this
+        // dispatch leaveth no active projection behind.
+        rememberSosCommit(frame, System.currentTimeMillis())
         return if (handed == 0) SosDispatchResult.QueuedLocally
         else SosDispatchResult.HandedToRelays(handed)
     }

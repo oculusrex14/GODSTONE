@@ -607,3 +607,16 @@ extension ReadinessT39Tests {
             + "(offers=\(offers))")
     }
 }
+
+// GS-SOS-002 (the audit's ordered step 6) on this isle: NO arm is added here, and that is a MEASUREMENT,
+// not an omission. The iOS twin already re-deriveth its Active-SOS projection from the DURABLE ROW after a
+// racing send/cancel (`rememberSosCommit`, called from both `dispatchSos` and `retrySos` -- it cleareth the
+// memory whenever the row is absent or terminal), so the Android-only arm added this round FAILETH on the
+// other isle and the two would have disagreed in the wrong direction. `testCancelVersusQueuedWriterNever\
+// Resurrects` and `testTheFlagOnlyEverSaysWhatTheDurableRowSays` already cover this isle's half.
+//
+// A proposed arm claiming a mid-flight cancellation reports `wasRelayed == true` was WITHDRAWN: the writer
+// callback crosses the submission boundary but hath not yet reported whether it admitted the bytes, and
+// `SosCancelResult.wasRelayed` meaneth "bytes had ALREADY gone out". The pre-existing court on the Android
+// isle refused that overload, so the flag keeps the repository's law and the in-flight boundary stays
+// recorded as remaining work.
