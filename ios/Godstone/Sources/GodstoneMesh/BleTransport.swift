@@ -2435,6 +2435,16 @@ public final class BleTransport: NSObject, @unchecked Sendable {
     /// IOS-04 (T24) step 4: PUBLISH THE FALL OF THIS RELATION, THROUGH THE SAME BOUNDED CONDUIT AND WITH ITS OWN
     /// CAPTURED PEER -- the card's own words: 'Publish LinkLost exactly once'. The publisher suppresseth a duplicate
     /// idempotently, so a retirement that falleth twice is harmless; and the verdict is observed like every other.
+    /// IOS-04 (T24) step 4: a TEST SEAM THAT DRIVETH A REAL OUTBOUND DISCONNECT for one relation, using the
+    /// transport's OWN epoch and manager -- THE TWO THINGS NO COURT CAN REACH, and the measured reason four attempts at
+    /// the fall witness failed (rounds 242-243). It is `internal`, it changeth nothing unless a court asketh, and it is
+    /// the same kind of seam this isle already accepteth for its other laws (`refuseNextSealForTest`).
+    internal func forceOutboundDisconnectForTest(peerId: UUID) {
+        guard let manager = activeManagerContext?.central else { return }
+        _ = reductionProcessOutboundDisconnect(peerId: peerId, expectedGen: 0, peripheral: nil,
+                                               sourceEpoch: currentTransportEpoch, from: manager)
+    }
+
     private func publishTrustedLoss(_ peerId: UUID) {
         guard let captured = capturedPeers.removeValue(forKey: peerId) else { return }
         _ = peerEvents.publishLinkLost(captured)

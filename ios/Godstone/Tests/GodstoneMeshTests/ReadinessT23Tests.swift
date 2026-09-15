@@ -790,6 +790,13 @@ final class ReadinessT23Tests: XCTestCase {
         XCTAssertEqual(r.alice.lastTrustedPublicationVerdictForTest, .accepted,
                        "the captured peer must be OFFERED to the bounded conduit and ACCEPTED -- the audited road published nothing at all")
 
+        // IOS-04 (T24) STEP 4 (round 244): THE FALL WITNESS AT LAST -- driven through the ONE seam that carrieth the
+        // transport's own epoch and manager, which four attempts measured to be unreachable from a court. The relation
+        // here REALLY became link-ready and its peer REALLY was captured; now it falleth, and its fall must be told.
+        r.alice.forceOutboundDisconnectForTest(peerId: r.handleB)
+        XCTAssertTrue(r.alice.lostPeersForTest.contains(r.handleB),
+                      "the fall of a link-ready relation must publish LinkLost, with its own captured peer")
+
 
     }
 
