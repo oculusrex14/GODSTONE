@@ -1936,7 +1936,7 @@
     "the release-gates.yml content lane (pending, named above)",
     "ci/mutations.py is NOT affected (no rod struck the lines repaired here)"
    ],
-   "my_fix_commit": "d4dbd3a",
+   "my_fix_commit": "d4dbd3a + b5d6a4b (AUDIT-004 limb: zero/absent/non-numeric coverage refused; the content fixtures repaired to the new contract)",
    "my_logs": [
     {
      "outcome": "5 tests, OK: the entry refusal, the staging refusal by name, the CLI refusal, and the APPROVED positive control carrying its digest",
@@ -1949,22 +1949,58 @@
      "sha256": "74233ff5c17654e809247460a2e9b59f3cfd18e491d2e1f1e6d7a5495fa641af",
      "what": "the release lane obtaineth the external approvals and stoppeth when absent",
      "log": "GS-CONTENT-001/green/release-lane.log"
+    },
+    {
+     "log": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/REMEDIATION/GS-CONTENT-001/green/coverage-court-GREEN-20260915T161902Z.log",
+     "sha256": "50db4669a7e4e4551a066f460e64a0c1cceb777554118c431c04e24fb1d1f638",
+     "outcome": "25 tests, 0 failures in the release-asset court (was 10 failures and 6 errors)",
+     "what": "the canonical release-asset court after the repair AND the fixture convergence"
+    },
+    {
+     "log": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/REMEDIATION/GS-CONTENT-001/green/audit004-independent-probes-GREEN-20260915T161902Z.log",
+     "sha256": "775d5ea9efa2658941b763b16b4388f96f0ee16d472cfbcd9b89d479a4708111",
+     "outcome": "10 cases: 9 pass, 1 fail -- NINE of the auditor's ten reproduced failures are now repaired; only GS-CONTENT-002's process-death mixed pair remaineth",
+     "what": "THE AUDITOR'S OWN independent probe suite at the repaired SHA b5d6a4b, in a detached worktree"
+    },
+    {
+     "log": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/REMEDIATION/GS-CONTENT-001/green/content-suite-GREEN-20260915T161902Z.log",
+     "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+     "outcome": "75 cases, OK -- the canonical CONTENT suite is GREEN (69/14/10 at the audit, 71/13/10 after round 98)",
+     "what": "the canonical content suite, whose red was AUDIT-004's convergence item"
+    },
+    {
+     "log": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/REMEDIATION/GS-CONTENT-001/green/readiness-suite-GREEN-20260915T161902Z.log",
+     "sha256": "a12b7cb43c9d9134b5bb1b35e9096b66775d9e92e7611d1cc92b02edd6782a87",
+     "outcome": "498 tests, OK",
+     "what": "the readiness suite after the T77 shape fixture was repaired to the new contract"
     }
    ],
    "my_red_case": {
-    "argv": "python3 -m unittest discover -s tools/readiness/tests -p test_audit_content_release.py -v (in a disposable copy with the three repairs reversed)",
-    "case": "tests/test_audit_content_release.py -- the audit's probe test_audit_release_without_final_approvals_cannot_reach_operator_staging, final assertion intact",
+    "argv": [
+     "python3 -m unittest discover -s tools/readiness/tests -p test_audit_content_release.py -v (in a disposable copy with the three repairs reversed)",
+     "python3 -m unittest content.tests.test_prepare_release_assets.ReleaseAssetTests -v"
+    ],
+    "case": "tests/test_audit_content_release.py -- the audit's probe test_audit_release_without_final_approvals_cannot_reach_operator_staging, final assertion intact PLUS (AUDIT-004 step 1) the audit's own zero-coverage probe adopted assertion-intact (test_zero_approved_chunks_cannot_stage) with missing and non-numeric coverage arms, and THE POSITIVE CONTROL test_an_exact_coverage_claim_stages green on the untouched product. TWO ARMS WERE WITHDRAWN BEFORE COMMIT -- they demanded approvals_covered == the archive's chunk cardinality, which REFUSES the independent review's own valid fixture (approvals_covered='1' over a thirty-chunk archive); the withdrawal and its reason stand in the court where they were.",
     "cwd": "/Users/oculus/Projects/GODSTONE_BUILDER",
-    "log": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/REMEDIATION/GS-CONTENT-001/red/audit-content-release-RED.log",
-    "log_sha256": "6a5b1ff120634f2d8aebb04233ead5b1edc617e0e04d39600db986bed2511e40",
-    "outcome": "2 failures: the unapproved archive reached operator staging, and a release build without approvals succeeded"
+    "log": [
+     "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/REMEDIATION/GS-CONTENT-001/red/audit-content-release-RED.log",
+     "GS-CONTENT-001/red/audit004-coverage-adopted-RED-20260915T161602Z.log"
+    ],
+    "log_sha256": [
+     "6a5b1ff120634f2d8aebb04233ead5b1edc617e0e04d39600db986bed2511e40",
+     "710bd32bea431934e4d97e3930e8a7085b7e78ef997a7f8cc6605c191afd696d"
+    ],
+    "outcome": "2 failures: the unapproved archive reached operator staging, and a release build without approvals succeeded  ||  AUDIT-004 limb: the audit's own probe FAILED before the repair (staging accepted approvals_covered='0'); the court now runneth 25/25."
    },
    "my_status": "FIX_SUBMITTED",
-   "notes": "FIX_SUBMITTED. The approvals are mandatory at the BUILD entry, required by the staging provenance, and BOUND into the signed manifest. The court's W01 was found too weak in its first form (a bare assertRaises satisfied by an unrelated refusal) and now asserteth the reason. The card's step 4 (the release lane) is now done: it obtaineth the reviewer keyset and the approval-bundle home from repository configuration, passes both explicitly, and STOPPETH at the external content gate when they are absent, naming APPROVED_CONTENT. Only an independent audit may write VERIFIED_FIXED.",
+   "notes": "FIX_SUBMITTED. The approvals are mandatory at the BUILD entry, required by the staging provenance, and BOUND into the signed manifest. The court's W01 was found too weak in its first form (a bare assertRaises satisfied by an unrelated refusal) and now asserteth the reason. The card's step 4 (the release lane) is now done: it obtaineth the reviewer keyset and the approval-bundle home from repository configuration, passes both explicitly, and STOPPETH at the external content gate when they are absent, naming APPROVED_CONTENT. Only an independent audit may write VERIFIED_FIXED. ROUND 99 (AUDIT-004 limb, b5d6a4b): the review STAGED a signed synthetic database whose coverage claim was ZERO. The staging face now refuseth a zero, an absent and a non-numeric coverage claim by name. THE TWO ARMS THAT DEMANDED cardinality equality were WITHDRAWN BEFORE COMMIT, with the reason written where they stood, because that law refuses the auditor's OWN valid fixture -- a control that cannot be satisfied without failing the independent positive is not a control. The fixture convergence this unblocked closed AUDIT-004's canonical content-suite item OUTRIGHT: 69/14/10 at the audit, 71/13/10 after round 98, and 75/OK now. The auditor's own probe suite moved 2 failures -> 1: NINE of its ten reproduced failures are repaired.",
    "pending_proof": [
     "INDEPENDENT VERIFICATION: only an independent audit may mark this VERIFIED_FIXED",
-    "the card's step 3 (one validation date captured in main() from the production clock) and step 5 (ONE release-eligibility routine shared by manifest creation and staging) are partially done: the provenance fields are shared, but a single named routine exercising schema/tier/counts is not yet factored out",
-    "no hosted run URL/log was available, so hosted convergence remains pending"
+    "THE MATERIAL-LEVEL RELEASE-ELIGIBILITY VERIFICATION IS OWED, and the boundary is exact: this repair refuseth a ZERO, an ABSENT and a NON-NUMERIC coverage claim, but it doth NOT bind the VERIFIED covered-chunk cardinality or the approval receipts to the transformed corpus, the trust policy and the validation date. Staging is given neither the approvals bundles nor the reviewer keyset, and the two arms that demanded a cardinality equality were WITHDRAWN because they REFUSE THE INDEPENDENT REVIEW'S OWN VALID FIXTURE (approvals_covered='1' over a thirty-chunk archive). Reaching that boundary requireth those two inputs at the CLI.",
+    "the audit's step 1 tampered-coverage case is NOT added: without the approval material there is nothing whose tampering could be detected.",
+    "the audit's step 4 (ONE release-eligibility routine shared by manifest creation and staging, with a single production-clock validation date captured in main()) is not done: the provenance fields are shared, but a single named routine exercising schema/tier/counts is not factored out, and the production workflow still passes no approved reviewer/approval input path.",
+    "the hosted lane: no hosted run URL, run id or hosted log existeth, so hosted convergence remaineth PENDING.",
+    "NO human approval is claimed anywhere in this limb: every digest and count the fixtures install are SYNTHETIC, and they close the APPROVED_CONTENT gate for nothing."
    ],
    "proof": "REPRODUCED at both snapshots: release=True without approvals_dir/reviewer_keyset passes. At b439, the resulting DB has no approvals_sha256; after signing with a synthetic operator-selected release key, actual stage() still publishes the archive and APPROVED_ASSETS.json. The three old source/review/manifest digests satisfy staging. A positive correctly signed direct API build passes and tampered signatures are rejected. The actual CLI with valid signed approvals exits 2 with \"the build was given none\". Its workflow invocation passes --release alone.",
    "remediation_report": "evidence/AUDIT-002/content/FINDINGS.md",

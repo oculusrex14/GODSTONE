@@ -35,7 +35,15 @@ now PASS** (it was 2 of 10 at the audit's own pin and at ae9905e). Six of the ei
 failures are repaired, one per round. The two that remain are `GS-CONTENT-001`'s forged-digest
 staging and `GS-CONTENT-002`'s process-death mixed pair.
 
-The canonical CONTENT suite is STILL RED -- 71 cases, 13 assertion failures, 10 errors (it was
+AT ROUND 99 (`b5d6a4b`) the canonical CONTENT suite's long red is CLOSED: it was 69 cases with 14
+assertion failures and 10 errors at the audit, 71/13/10 after round 98, and **75 cases, OK** now. The
+repair was two-sided and neither side was a relaxation: the staging face refuseth a ZERO, an ABSENT
+and a NON-NUMERIC coverage claim for the final chunk approvals, and the FIXTURES were repaired to
+exercise the newly mandatory provenance instead of production validation being loosened to keep them
+green. THE AUDITOR'S OWN SUITE NOW REPORTS 1 FAILURE / 9 PASSES (it was 8/2 at the audit's pin):
+only `GS-CONTENT-002`'s process-death mixed pair remaineth.
+
+An earlier text of this section, kept for the record, said: the canonical CONTENT suite is STILL RED -- 71 cases, 13 assertion failures, 10 errors (it was
 69/14/10 before round 98, so nothing was made worse) -- and its root cause is now NAMED rather than
 guessed: the class fixtures omit the provenance metadata GS-CONTENT-001 made mandatory, so old
 POSITIVE cases fail too early. That is the CONVERGENCE failure AUDIT-004 recorded, not 23 new

@@ -51,27 +51,33 @@ detached worktree (never in the live tree) with `AUDIT_SOURCE_ROOT` naming that 
 `/Users/oculus/Projects/GODSTONE_AUDIT/evidence/AUDIT-002/content/venv/bin/python`. It needs its
 `schema_version` fixture, which v2 carrieth; there is NO `-v` flag, and passing one errors.
 
-    ROUND 98 MEASURED IT AT 8e9a8e9: **2 failures / 8 passes** — the audit's own pin was 8/2, and
-    ae9905e was also 8/2. SIX of its eight reproduced failures now pass, one per round:
+    ROUND 99 MEASURED IT AT b5d6a4b: **1 failure / 9 passes**. The audit's own pin was 8 failures /
+    2 passes, and ae9905e was also 8/2. NINE of its ten cases now behave correctly:
       | probe | finding | state |
       |---|---|---|
       | the three `EvidenceTests` | GS-CTRL-001 | PASS (round 97) |
       | `test_null_device_proof_is_rejected` | GS-GATE-001 | PASS (round 98) |
       | `test_expression_disabled_ci_job_is_rejected` | GS-GATE-001 | PASS (round 98) |
       | `test_operator_heldout_validation_reaches_valid_verifier` | GS-CONTENT-003 | PASS (round 98) |
-      | `test_forged_approval_digest_and_zero_coverage_cannot_stage` | GS-CONTENT-001 | **FAIL** |
+      | `test_forged_approval_digest_and_zero_coverage_cannot_stage` | GS-CONTENT-001 | PASS (round 99) |
       | `test_process_death_cannot_expose_mixed_archive_and_receipt` | GS-CONTENT-002 | **FAIL** |
-    THE TWO THAT REMAIN are the next rounds' work, each already a reproduced failing assertion:
-      * `GS-CONTENT-001` — a signed synthetic DB with a COPIED approvals digest and
-        `approvals_covered='0'` still STAGES. The repair requireth the common release-eligibility
-        verifier: bind approved final chunks and their review signatures to the exact transformed
-        corpus, trust policy, validation date and artifact -- validating ACTUAL chunk cardinality
-        and verified approval material, never claims copied from the DB, and never letting release
-        signing stand in for reviewer approval.
+    THE ONE THAT REMAINS is the next round's work, and it is the hardest of the ten:
       * `GS-CONTENT-002` — a real `os._exit(87)` between DB and receipt replacement leaveth a MIXED
-        pair. The repair requireth journal RECOVERY: durable staged and previous pairs, explicit
-        commit states, startup recovery before any reader or writer proceeds, one canonical
-        interprocess owner, and fsync in the correct order.
+        pair (an accepted receipt hash describing the OLD database beside the NEW one). The repair
+        requireth journal RECOVERY: a durable staged pair and a durable previous pair, explicit
+        commit states, startup recovery BEFORE any reader or new writer proceeds, one canonical
+        interprocess owner, fsync in the correct order (the backups and journal are not fully
+        fsynced before destructive promotion, and `_fsync_directory` swalloweth failures), a
+        `read_sidecar` that may not accept a stale receipt, and ONE publication owner shared by
+        build and operator staging (`scripts/prepare_release_assets.py:445` still replaces the
+        archive and the approved manifest INDEPENDENTLY). The audit's process-exit case must stay
+        a REAL process exit: do not replace it with a catchable exception, and do not move the
+        fault after both replacements.
+      * AND THE OWED BOUNDARY ON GS-CONTENT-001: binding the VERIFIED covered-chunk cardinality and
+        the approval receipts to the transformed corpus, trust policy and validation date. It
+        requireth the approvals bundles and the reviewer keyset at the CLI -- and note WHY the
+        cardinality-equality law cannot substitute: the auditor's own valid fixture carries
+        `approvals_covered='1'` over a thirty-chunk archive.
     Run the suite exactly as round 97 recorded: detached worktree, `AUDIT_SOURCE_ROOT` naming it,
     the audit venv, NO `-v` flag.
 
