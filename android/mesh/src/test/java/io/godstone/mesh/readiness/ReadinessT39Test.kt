@@ -152,6 +152,7 @@ class ReadinessT39Test {
             store = store,
             deliveryTracker = tracker,
         )
+        node.sosAuthority = SosTestAuthority()
         return Rig(store, tracker, node, auth)
     }
 
@@ -251,6 +252,7 @@ class ReadinessT39Test {
             store = r.store,
             deliveryTracker = DeliveryTracker(InMemoryStoreDeliveryRepository(r.store), RecordingAuthenticator()),
         )
+        node2.sosAuthority = SosTestAuthority()
         Assert.assertFalse("a cold node must not claim an active SOS from thin air", node2.hasActiveSos())
         var seen: ActiveSos? = null
         runTest { seen = node2.refreshSosStatusAfterScan() }
@@ -495,6 +497,7 @@ class ReadinessT39Test {
         val auth = RecordingAuthenticator()
         val tracker = DeliveryTracker(repo, auth)
         val node = MeshNode(ctx = null, identity = newIdentity(), store = store, deliveryTracker = tracker)
+        node.sosAuthority = SosTestAuthority()
         runTest { node.dispatchSos("one door".toByteArray()) { _, _ -> true } }
         Assert.assertEquals("exactly one authority call must commit the broadcast pair", 1, repo.pairCommitCalls)
         Assert.assertEquals("the two-step route must never be walked here", 0, repo.persistClosuresInvoked)

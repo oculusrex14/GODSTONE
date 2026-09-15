@@ -305,6 +305,13 @@ internal class ComposedRuntimeHarness(
         val repo = ComposedDeliveryRepository(store)
         val tracker = DeliveryTracker(repo, authenticator)
         val node = MeshNode(null, identity, store, tracker)
+        // GS-SOS-001: THE COMPOSED NODE SHIPS WITH ITS OWN SIGNING AUTHORITY. The harness already
+        // generates a REAL identity for every node it composes (`Ed25519Keys.generate(rng)` /
+        // `X25519Keys.generate(rng)` above), so wiring an authority OVER THOSE KEYS is the simulation
+        // completing its composition -- not a fixture pretending to be a key. Without it the composed
+        // runtime had NO signing authority, and a distress call through it would be refused (which is
+        // exactly what the refusal repair exposed in `ReadinessT44Test`).
+        node.sosAuthority = SimulatedSosAuthority(ed.priv, dh.pub, rng)
         val inbox = RecipientInboxRepository(
             router = node.router,
             ourNodeId = identity.nodeId,
@@ -670,4 +677,21 @@ internal class ComposedDeliveryRepository(
     }
 
     override fun clear(msgId: ByteArray) = io.godstone.mesh.delivery.ClearResult.AlreadyAbsent
+}
+
+/**
+ * GS-SOS-001: the signing authority of ONE simulated node, backed by the very key material the harness
+ * generated for it. It is TEST-SUPPORT code living in main so that tests may drive the real composition;
+ * it forges nothing, and every key it hands out belongs to the node it was built for.
+ */
+private class SimulatedSosAuthority(
+    private val seed: ByteArray,
+    private val dhPublicKey: ByteArray,
+    private val rng: java.security.SecureRandom,
+) : io.godstone.mesh.wire.v2.SosSigningAuthority {
+    override fun currentNonce(): ByteArray = ByteArray(16).also { rng.nextBytes(it) }
+    override fun currentSigningSeed(): ByteArray? = seed.copyOf()
+    override fun currentStaticDhPublicKey(): ByteArray? = dhPublicKey.copyOf()
+    override fun currentGeneration(): Long = 1L
+    override fun currentTimeEpochSeconds(): Long = 1_700_000_000L
 }

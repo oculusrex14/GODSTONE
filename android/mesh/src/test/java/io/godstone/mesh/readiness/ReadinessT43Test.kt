@@ -88,7 +88,9 @@ class ReadinessT43Test {
         val ed = Ed25519Keys.generate(rng)
         val dh = X25519Keys.generate(rng)
         val identity = Identity.fromKeyMaterial(ed.pub, ed.priv, dh.pub, dh.priv)
-        return Rig(store, keys, tracker, MeshNode(null, identity, store, tracker), auth)
+        val node = MeshNode(null, identity, store, tracker)
+        node.sosAuthority = SosTestAuthority()   // GS-SOS-001: a court that dispatcheth an SOS must wire an authority
+        return Rig(store, keys, tracker, node, auth)
     }
 
     private fun msgId(seed: Int): ByteArray = ByteArray(16) { ((it + seed) and 0xFF).toByte() }
@@ -273,6 +275,7 @@ class ReadinessT43Test {
             r.store,
             DeliveryTracker(InMemoryDeliveryRepositoryForT43(r.store), Ed25519AckAuthenticator(r.keys)),
         )
+        cold.sosAuthority = SosTestAuthority()
         val projection = cold.deliveryProjection(mid)
         Assert.assertEquals("the durable state surviveth", DeliveryState.QUEUED_DURABLY, projection.state)
         Assert.assertEquals("but the offer is GONE: the label falleth back to QUEUED",

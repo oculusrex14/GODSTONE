@@ -688,8 +688,11 @@ class ReadinessT38Test {
         Assert.assertEquals("and the projection saith OFFERED, never delivered",
             io.godstone.mesh.delivery.DeliveryLabel.OFFERED,
             node.deliveryProjection(frame.msgId).label)
-        // the legacy arm: unwired authority, the structural shape still goes
-        // out (documented) and the receiver refuses it by the named reason.
+        // REVERSED AT ROUND 143, RE-APPLIED AT ROUND 155, AND THE REVERSAL IS WRITTEN WHERE THE OLD LAW STOOD.
+        // This arm ONCE asserted that with an unwired authority "the structural shape still goes out" --
+        // requiring a LIVE frame (`legacy!!`), its decode, a PASSING structural gate, a receiver refusal by
+        // name AND a C6 ledger record: EVERY ONE of those asserted that an unauthenticated SOS is
+        // acceptable, which is what the audit condemned in GS-SOS-001. THE LAW IS THE OPPOSITE.
         val bareJournal = T38Journal()
         val bare = MeshNode(
             ctx = null,
@@ -701,20 +704,8 @@ class ReadinessT38Test {
         bare.injectPeerForTest(ByteArray(16) { 0x22.toByte() })
         var legacy: ByteArray? = null
         bare.dispatchSos(ascii("old-style")) { _, bytes -> legacy = bytes.copyOf(); true }
-        val legacyFrame = FrameV2.decode(legacy!!)
-        Assert.assertNotNull("the legacy shape still decodes", legacyFrame)
-        Assert.assertEquals("the structural gate passes it", SosFrameValidator.Verdict.OK,
-            SosFrameValidator.validate(legacyFrame!!))
-        // the legacy buildSos shape is thin: magic, an empty 64-byte slot and
-        // the bare user bytes -- it does not even carry the fixed signed
-        // structure, so the length gate (first among equals) refuses it as
-        // malformed before the seal is weighed. The well-formed zero-seal
-        // case, where the receiver must name the signature gate, is W2.
-        rejectWithReason(SignedSosV1.verify(legacyFrame, null), "malformed",
-            "the legacy structural shape is refused before the seal is weighed")
-        Assert.assertEquals("the legacy arm also keeps the C6 ledger", 1, bareJournal.records.size)
-        Assert.assertEquals("broadcast remains mode none on every arm", AckMode.NONE,
-            bareJournal.records.values.first().ackMode)
+        Assert.assertNull("an UNWIRED authority must produce NO frame at all", legacy)
+        Assert.assertEquals("and nothing may be durably queued from a refused SOS", 0, bareJournal.records.size)
     }
 
     // ------------------------------------------------------------------ W11 inbound relay truth

@@ -768,12 +768,11 @@ class MeshNode(
         payload: ByteArray,
         send: suspend (peerId: ByteArray, bytes: ByteArray) -> Boolean,
     ): SosDispatchResult {
-        val authority = sosAuthority
-        val frame = if (authority != null) {
-            authorSignedSos(authority, payload) ?: return SosDispatchResult.Failed(
-                "the SOS signing authority yielded no signing material: refusing rather than offering " +
-                    "an unsigned distress call")
-        } else router.buildSos(payload) // legacy structural shape; runtime auth refuses it
+        val authority = sosAuthority ?: return SosDispatchResult.Failed(
+            "no SOS signing authority: an unauthenticated distress call may not be offered")
+        val frame = authorSignedSos(authority, payload) ?: return SosDispatchResult.Failed(
+            "the SOS signing authority yielded no signing material: refusing rather than offering " +
+                "an unsigned distress call")
         // T39: the held frame AND its NONE-mode delivery row commit as ONE durable
         // pair (section 14's both-or-neither law for the broadcast path). The
         // repository is the authority: the shared SQL engine runs the pair in one

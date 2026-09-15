@@ -1,5 +1,6 @@
 package io.godstone.mesh
 
+import io.godstone.mesh.readiness.SosTestAuthority
 import io.godstone.core.crypto.Ed25519Keys
 import io.godstone.core.crypto.X25519Keys
 import io.godstone.mesh.delivery.AckFrame
@@ -257,6 +258,7 @@ class MeshNodeDeliveryIntegrationTest {
         val journal = InMemoryDeliveryRepository(store as? InMemoryMessageStore)
         val tracker = DeliveryTracker(journal, Ed25519AckAuthenticator(resolver))
         val node = MeshNode(ctx = null, identity = freshIdentity(), store = store, deliveryTracker = tracker)
+        node.sosAuthority = SosTestAuthority()
         return node to journal
     }
 
