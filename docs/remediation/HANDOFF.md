@@ -46,7 +46,39 @@ already carried. The audit's step 3 stays OPEN, with its two measured obstacles 
 | CRYPTO-003 | FIX_SUBMITTED | 4b | Destroyed retained controllers and primitive sessions st |
 | CRYPTO-006 | FIX_SUBMITTED | 4b | Duplicate journal admission is treated as success for a |
 
-## DO THIS FIRST (round 163) — THE ISSUANCE BYPASS IS CLOSED ON THE ANDROID ISLE (2 CONTROL ERRORS BECOME 1); THE iOS HALF IS STAGED AND NEXT
+## DO THIS FIRST (round 164) — THE ISSUANCE BYPASS IS CLOSED ON BOTH ISLES, AND ONE OF THE THREE RED CONTROLS IS NOW GREEN
+
+`ci/check_local_identity_controls.py` — the best-instrumented of the three red repository controls — reported
+**TWO errors** on the audited tree (`SignedSosV1.kt`, `SignedSosV1.swift`). It now reports **NONE**: `PASS — all
+local identity invariants and boundaries satisfied`, with `--selftest` still catching **38/38 mutations**, so the
+gate did not pass because its instrument weakened. The repository's red controls are down to **two**
+(`ble_link_substrate`, `trusted_runtime_composition` — both still abort on an unclean baseline, and therefore
+still prove nothing until their own selftests are repaired). Sweep: **16 pass / 2 red**, from 15/3. Landed in
+`d7b48c5`.
+
+The iOS repair mirrors round 163's shape for shape: `currentIdentityBinding()` on the protocol;
+`author(binding:signingSeed:…)` signing over bytes it did not mint; `MeshNode.dispatchSos` refusing when the
+authority holds none; the harness's `SimulatedSosAuthority` carrying a binding **its own identity issued**; the
+test-only `fixed()` path **deleted** in favour of a **test-side** `SosTestAuthority.swift` (the mirror of
+Android's fixture) because the control scans production only and a court must be able to simulate an authority.
+The parked iOS arm **moved into the canonical suite** beside its twin, and the probe file was deleted.
+
+**A defect in my own arm, kept in the record rather than erased:** the first iOS run failed ONE arm — and the
+failure was not in the repair. On this isle the binding's Ed25519 signature is **randomized (hedged)**, so two
+issuances of the same material differ; comparing them fails for a reason unrelated to the law under test. Both
+arms now ask the authority **once**, with the reason written into each arm. The failing run's log is kept
+**separate** from the green one.
+
+**Acceptance:** iOS lane **1198 tests, 0 failures, 0 errors** (149.7s); Android `:mesh` **1171 tests, 0
+failures, 0 errors**; `check_parity --scope repo` rc 0, `check_repository` rc 0, `ci/symbols.py` rc 0; whole
+Python readiness suite OK.
+
+**STILL OWED ON GS-SOS-001 (status stays PARTIAL):** the card's **step 2** — a *runtime-owned* authority supplied
+from the durable identity/generation owner and connected in the module/runtime (production presently **refuses**,
+which is the safe direction but not that step) — and **step 6** — the same failure semantics through retry/UI
+projection, since `ComposedRuntime.sendSos` still returns `.applied(detail:)` whatever the result.
+
+## DO THIS FIRST (round 163, landed) — THE ISSUANCE BYPASS IS CLOSED ON THE ANDROID ISLE
 
 The audit's local-identity control reported this defect at `SignedSosV1.kt:274`: `author(...)` **struck its
 own `IdentityBindingV1`** from the raw seed/generation/DH key it was handed. The binding is now a
