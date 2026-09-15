@@ -45,3 +45,31 @@
 //             rig.stop()
 //         }
 //     }
+
+// ------------------------------------------------------------------------------------------------
+// ROUND 192 -- THE CHAIN DIAGNOSED, AND THE FIX IS A RETENTION RATHER THAN A DERIVATION.
+//
+// MEASUREMENT 1, keyed on the AIR-ADDRESS handle: `ready=false slot=false chain=no-slot` -- the
+// registry is NOT keyed by the address-derived handle; it is keyed by what the transport actually
+// passeth, the CONNECTION's own `peerId`. (The first diagnostic named my own mistake precisely, which
+// is what a chain of assertions is FOR: `no-slot` cannot be confused with `no-key`.)
+//
+// MEASUREMENT 2, keyed on the connection's `peerId`:
+//     ready=true slot=true chain=key=32 nodeId=16 equalsPeerNodeId=FALSE
+//
+// So the relation IS ready, and the crypto layer DOES expose an authenticated thirty-two-octet key --
+// but it is the peer's STATIC DH KEY, and `IdentityBindingV1.deriveNodeId` is NOT the law for a DH key:
+// the NodeID deriveth from the SIGNING key (BLAKE2s-128 of it). Deriving from the DH key therefore
+// yieldeth SIXTEEN OCTETS OF A DIFFERENT IDENTITY -- which is exactly the shape of defect this
+// programme refuseth to ship: a charge claimed on "the full NodeID" that is in fact another id.
+//
+// WHERE THE NODE ID REALLY LIVETH: `ValidatedPeerBinding` (IdentityBindingV1.kt:185) carrieth
+// `nodeId` (sixteen octets) BESIDE `signingPublicKey` and `staticDhPublicKey` -- it is the binding the
+// TRUSTED HANDSHAKE validated, and `TrustedHandshakeController` consumeth it through
+// `applyValidatedBinding(...)` WITHOUT RETAINING IT.
+//
+// THE FIX, NAMED: (1) the controller (or the slot) RETAINS the validated binding's `nodeId` at the
+// moment trust is marked -- a retention, NOT a derivation; (2) `SessionManager.authenticatedNodeIdOf`
+// READETH that retained value under the peer lock and answereth NULL when trust was never marked;
+// (3) the collector's authenticated charge preferreth it (falling back to the handle); (4) THIS WITNESS,
+// unchanged, asserteth the identity is the peer's OWN sixteen-octet NodeID before and after trust.
