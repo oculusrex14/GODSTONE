@@ -651,12 +651,41 @@
    },
    "impact": "- Production search finds `UnifiedRuntimeLifecycle` and `LifecycleTransportAdapter` definitions, no constructions. `MeshNode.kt:148`/`:185` still starts directly, and `MeshNode.kt:236` destroys sessions and calls `ble.stop()`/`wifi.stop()` directly. - `BleTransport.stop` (`:213–255`) clears connections/drivers/publication maps, but never calls `centralWriterShutdown`/`serverWriterShutdown`, clears writer maps, or awaits writer completion. Its coroutine scope is not canceled or drained. - `centralWriters`/`serverWriters` at `:1209` are only lazily retired on later operations/disconnect paths. `RecordWriter.nextOut` at `RecordWriter.kt:275` tests its own `closed` flag, not connection activity; a running pump may retain/advance staged work unless its owner explicitly shuts it down. - `LifecycleTransportAdapter.disconnectAll` reports the literal `1`, described as a logical sweep; `DrainResult` therefore does not independently prove any asynchronous write or session work finished. The new authority is not owned by existing `RuntimeLifecycleGate` as required. Impact: T28 tests prove a parallel fake seam, not runtime stop/drain. Key erasure cannot use this as proof that actual transport/session work is quiescent. Source alone establishes no completion barrier; no claim is made here that a packet was observed on hardware after wipe.",
    "invalidated_dependents": [],
-   "my_fix_commit": null,
-   "my_logs": [],
-   "my_red_case": null,
-   "my_status": "OPEN",
-   "notes": "ENRICHED AT ROUND 104 by TRANSCRIPTION from the audit's own card (android/findings.md#ANDROID-05): impact, remediation_steps, source_refs and closure_tests are the card's OWN words and its OWN file references, not a summary; the refs are relative to the audited snapshot. No status changed and nothing was claimed fixed.",
-   "pending_proof": [],
+   "my_fix_commit": "694c523c7bbaaabd129061ce896cbe66b5c34f36 (the drain's typed in-flight outcome)",
+   "my_logs": [
+    {
+     "log": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/REMEDIATION/ANDROID-05/green/android-05-arm-GREEN-20260915T164930Z.log",
+     "sha256": "34bd90bf893a252ad74aae0cfff226c3665f8b873e63f28f9d8f5f600cf06b62",
+     "what": "the ANDROID-05 court after the repair (W01/W02)",
+     "outcome": "2 tests, 0 failures"
+    },
+    {
+     "log": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/REMEDIATION/ANDROID-05/green/android-05-mesh-lane-GREEN-20260915T164930Z.log",
+     "sha256": "87a1f5cbedd762dba8569aa1d3f0162a5219b29682d1331338e3621416755198",
+     "what": "the WHOLE :mesh lane at the repaired tree",
+     "outcome": "BUILD SUCCESSFUL in 24s -- the stricter isClean broke no existing court"
+    }
+   ],
+   "my_red_case": {
+    "case": "android/mesh/src/test/java/io/godstone/mesh/identity/ReadinessAndroid05Test.kt -- the authority's drain driven with a FAKE TransportSeam that reporteth TWO in-flight writer/session tasks still running when the bound passeth. W01 is the POSITIVE CONTROL (a drain with nothing in flight is clean); W02 is the red: the drain reported SUCCESS anyway.",
+    "argv": [
+     "./gradlew",
+     ":mesh:testDebugUnitTest",
+     "--tests",
+     "*ReadinessAndroid05Test*"
+    ],
+    "cwd": "/Users/oculus/Projects/GODSTONE_BUILDER/android",
+    "log": "ANDROID-05/red/android-05-constant-sweep-RED-20260915T164850Z.log",
+    "log_sha256": "ef79277a8e5178ff8017510d3e5103d0f57ef411816f38b35ede8e0331488856",
+    "outcome": "2 tests, 1 FAILURE before the repair (W02, its own assertion), W01 green"
+   },
+   "my_status": "PARTIAL",
+   "notes": "ENRICHED AT ROUND 104 by TRANSCRIPTION from the audit's own card (android/findings.md#ANDROID-05): impact, remediation_steps, source_refs and closure_tests are the card's OWN words and its OWN file references, not a summary; the refs are relative to the audited snapshot. No status changed and nothing was claimed fixed. ROUND 108 (ANDROID-05, the card's step 3): the drain could not SEE in-flight work at all, and its `isClean` was satisfied by `resourcesReleased >= 1` against a HARDCODED 1 -- so a sweep that left writers and sessions running was indistinguishable from a clean one. The seam now carrieth `awaitInFlight(bound)` (defaulted, source-compatible) and the result carrieth `inFlightOutstanding`; `isClean` refuseth while work remaineth. The SEAM CARRIERS WERE ADDED FIRST so the arm could fail BEHAVIOURALLY instead of at compile time, and they are NOT the repair -- said plainly here and in the red's own record. STILL PARTIAL: the real adapter MUST override `awaitInFlight`, `resourcesReleased` is still the constant, and the card's steps 1-2/4-5 (the single lifecycle authority, T09 retry-after-failed-start, T18 fatal-write teardown) are untouched.",
+   "pending_proof": [
+    "INDEPENDENT VERIFICATION: only an independent audit may mark this VERIFIED_FIXED.",
+    "the drain now REPORTETH in-flight outstanding work and refuseth to call itself clean while it remaineth; the SEAM that proveth it in production is NOT overridden by the real adapter, so the production answer is still the default 0 and THIS LIMB IS NOT PRODUCTION-COMPLETE. That is stated rather than hidden.",
+    "the ledger-visible defect the audit named ('a constant successful sweep') is closed for the SEAM CONTRACT; the hardcoded `resourcesReleased = 1` remaineth."
+   ],
    "proof": null,
    "remediation_report": "evidence/android/findings.md",
    "remediation_steps": [
@@ -688,7 +717,13 @@
     "T34"
    ],
    "title": "Unified Android lifecycle is unwired, failed startup suppresses retry, and write failure bypasses teardown",
-   "wave": "4c.2"
+   "wave": "4c.2",
+   "pending_work": [
+    "the card's step 1-2: make the REAL MeshNode/lifecycle gate own exactly one transport lifecycle authority (production search finds `UnifiedRuntimeLifecycle`/`LifecycleTransportAdapter` defined and NEVER constructed; `MeshNode.kt:148/:185` still starts directly and `:236` calls `ble.stop()`/`wifi.stop()` directly), and close admission/retire tokens before any OS call under that owner.",
+    "the card's step 3's REMAINING HALF: the BOUND is awaited through a seam whose `awaitInFlight` DEFAULTETH to 0, so the REAL LifecycleTransportAdapter must OVERRIDE it with its actual in-flight writer/session set -- otherwise the law holdeth only for seams that implement it. And `resourcesReleased` is STILL the hardcoded constant 1: its replacement with a real count needeth a seam that reporteth released resources, and is recorded rather than invented.",
+    "the card's step 4-5 and the R1 supplement's T09 (a failed start must not suppress retry) and T18 (a fatal write must reach full teardown) sub-cases: UNTOUCHED.",
+    "no device, emulator or radio was used: the seam is a fake and the court is a host JVM unit court."
+   ]
   },
   "ANDROID-06": {
    "audit_status_at_snapshot": "OPEN",

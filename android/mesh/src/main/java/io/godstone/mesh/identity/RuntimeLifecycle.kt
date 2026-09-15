@@ -56,8 +56,18 @@ data class DrainResult(
     val contextsRetired: Int,
     val outboundDrained: Int,
     val resourcesReleased: Int,
+    /** ANDROID-05: how much IN-FLIGHT writer/session work had NOT terminated when the drain
+     *  completed. A drain is not clean merely because admission closed. */
+    val inFlightOutstanding: Int = 0,
 ) {
-    val isClean: Boolean get() = admissionClosed && contextsRetired >= 0 && outboundDrained >= 0 && resourcesReleased >= 1
+    /**
+     * ANDROID-05 (the card's step 3): A DRAIN IS NOT CLEAN MERELY BECAUSE ADMISSION CLOSED. In-flight
+     * writer/session work that had NOT terminated within the bound maketh the sweep a FAILURE that
+     * sayeth so, instead of a constant success -- the audit's reproduced class of defect.
+     */
+    val isClean: Boolean
+        get() = admissionClosed && contextsRetired >= 0 && outboundDrained >= 0 &&
+            resourcesReleased >= 1 && inFlightOutstanding == 0
 }
 
 /** The OS boundary the authority drives. The court injects a fake that records every call. */
@@ -68,6 +78,14 @@ interface TransportSeam {
     fun stopAdvertising()
     fun disconnectAll(): Int
     fun resetResources()
+
+    /**
+     * ANDROID-05 (the card's step 3): wait up to [boundMillis] for the IN-FLIGHT writer and
+     * session tasks to terminate, and report HOW MANY are still running when the bound passeth.
+     * The default answereth 0 -- a seam that owneth no such work -- so every existing
+     * implementer stayeth source-compatible, and the REAL adapter must override it.
+     */
+    fun awaitInFlight(boundMillis: Long): Int = 0
 }
 
 /**
@@ -195,10 +213,15 @@ class UnifiedRuntimeLifecycle(
         seam.stopAdvertising()
         seam.stopScan()
         seam.resetResources()
-        return DrainResult(admissionClosed = true, contextsRetired = retired, outboundDrained = drained, resourcesReleased = 1)
+        val outstanding = seam.awaitInFlight(DRAIN_BOUND_MILLIS)
+        return DrainResult(admissionClosed = true, contextsRetired = retired,
+            outboundDrained = drained, resourcesReleased = 1, inFlightOutstanding = outstanding)
     }
 
     private companion object {
+        /** ANDROID-05: the BOUND the drain awaiteth in-flight work for. */
+        const val DRAIN_BOUND_MILLIS: Long = 5_000L
+
         // process-wide monotonic lease token sequence: every acquired lease is a globally unique
         // token, so a leaked or reused token can never collide with a live one across recreations.
         val LEASE_SEQ = AtomicLong(0)
