@@ -2675,7 +2675,14 @@
           "what": "the three arms green in the canonical Swift lane; the whole package green"
         }
       ],
-      "my_red_case": null,
+      "my_red_case": {
+        "argv": "swift test --package-path ios/Packages/GodstoneFoundation --filter ReadinessStore002Tests",
+        "case": "ios/Godstone/Tests/GodstoneMeshTests/ReadinessStore002Tests.swift -- three arms over the runtime's own composition",
+        "cwd": "/Users/oculus/Projects/GODSTONE_BUILDER",
+        "log": "GS-STORE-002/red/store-002-RED.log",
+        "log_sha256": "16cb627a18fb4377000d27e86ce145b196e39a8dc2a44153898267e7c829a47d",
+        "outcome": "W01 RED on the UNTOUCHED product: 'MeshRuntime must compose its private stores through EncryptedStoreFactory, so the per-install DEK is applied; today it constructeth SqliteMessageStore and SqlitePeerIdentityStore directly (GS-STORE-002)' -- the audit's reproduced defect made executable. Captured before the repair, at 0791d0e."
+      },
       "my_status": "PARTIAL",
       "notes": "PARTIAL, and the composition now REFUSETH: with a factory the runtime asketh for the at-rest verdict of BOTH private stores and throweth `privateStoreNotEncrypted` unless each is `available` with `encryptedAtRest` -- so a plain file can no longer become a private store on that road. The red was captured BEFORE the change (W01 failed on the untouched product) and the arms now live in the canonical Swift lane, with the whole package green. TWO LIMITS ARE NAMED, not hidden: the legacy default (`encryptedStores: nil`) still openeth as before, because making the parameter required would break every caller at once; and NO CONCRETE SQLCIPHER ENGINE existeth -- the device must inject one, and that artifact is external. No native encrypted store is claimed.",
       "pending_proof": [],
