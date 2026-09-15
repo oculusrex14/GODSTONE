@@ -53,7 +53,14 @@ piece and the one an auditor will look for.** ITS STEP 3 IS ALREADY LOCATED AND 
 `RelationKey(BleDirection.OUTBOUND|INBOUND, address, 0L)` -- A FABRICATED GENERATION ZERO, so every
 writer lieth about which relation it speaketh for. `BleConnection` carrieth NO generation, so it must be
 PLUMBED: the factories `centralWriterFor` / `serverWriterFor` need the captured generation, and their
-five call sites are `:1018`, `:1032`, `:1414`, `:1431`, `:1482`. THE GENERATIONS ALREADY EXIST in the
+five call sites are `:1018`, `:1032`, `:1414`, `:1431`, `:1482` -- AND THOSE SITES PASS A CONNECTION, NOT A
+GENERATION, WHICH IS WHY THE FABRICATED ZERO EXISTS AT ALL. THE ROUTE IS THEREFORE NOT TO PLUMB FIVE CALL
+SITES: ATTACH THE GENERATION TO THE CONNECTION WHEN THE RELATION IS ADMITTED (the admission road already
+receive-eth one -- `handleInboundClientAdmitted(peerAddress, generation)` at :665 -- and the outbound
+intent road carrieth `action.generation`), then let the two factories read
+`connection.relationGeneration`. The call sites stay as they are. THE RED IS CHEAP BECAUSE THE SEAMS
+ALREADY EXIST: `centralWriterForTest(address)` / `serverWriterForTest(address)` at :1280/:1283 return
+the writer, so an arm can assert its relation key carrieth the ADMITTED generation on BOTH directions. THE GENERATIONS ALREADY EXIST in the
 transport -- `inboundJobGenerations[address]` (set by `handleInboundClientAdmitted`, :665),
 `action.generation` on the outbound intent road (:358/:369/:376), and
 `captureRelationForTest?.relationGeneration` -- they are simply not attached to the connection. Pass the
