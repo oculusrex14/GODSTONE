@@ -46,7 +46,41 @@ already carried. The audit's step 3 stays OPEN, with its two measured obstacles 
 | CRYPTO-003 | FIX_SUBMITTED | 4b | Destroyed retained controllers and primitive sessions st |
 | CRYPTO-006 | FIX_SUBMITTED | 4b | Duplicate journal admission is treated as success for a |
 
-## DO THIS FIRST (round 165) — THE SECOND RED CONTROL IS GREEN, AND FOR THE FIRST TIME ITS INSTRUMENT RUNS (55/55)
+## DO THIS FIRST (round 166) — THE LAST RED CONTROL IS TRIAGED: 31 OF ITS 33 ARMS ARE SPELLINGS, TWO ARE REAL WORK
+
+`check_ble_link_substrate_controls` is rc 1 with **33 arm errors** across BL11/BL22/BL42/BL52/BL81/BL93/BL96/BL115/
+BL118/BL126/BL128/BL131/BL132, and its `--selftest` is rc 1 — it **aborts on the unclean baseline**, so its mutation
+battery never runs and the control proves nothing (the same broken-instrument defect round 165 repaired for its
+sibling). The RED is captured whole with its digest.
+
+**THE TRIAGE (every line READ, not inferred) — 31 arms are SPELLING APPROXIMATIONS of laws the code already
+implements, often MORE STRONGLY:**
+* **BL42** wants one line `s == LINK_INFO_WRITING || s == PROVISIONAL_CONNECTED`; `BleConnection.kt:298` has the De
+  Morgan equivalent. **BL93** wants `activeClient.clientToken != clientToken`; `BleTransport.kt:937` has
+  `client.clientToken != clientToken || client.gattGeneration != gattGen` — **strictly stronger**.
+* **BL11** wants `peripheral?.updateValue(`; `BleTransport.swift:1714` calls `pm.updateValue(…,
+  onSubscribedCentrals:)` — the law the message names **is present**. **BL131** wants `centralDriver?.onFailedToConnect`;
+  `:2729` delegates through a snapshot. **BL132** wants `guard let centralObj = subscribedCentrals[peerId]`; the
+  registry and getter exist (`:1075`, `:1152`).
+* **BL128** wants each `process*` to take `sourceEpoch`; **all five already do** (`:2625 :2679 :2734 :3295 :3384`)
+  with the validation line at `:906`. **BL126** wants `CurrentEpoch`/`self` spellings; the proxies are installed with
+  the epoch at `:184-185`. **BL96** wants a `= 0L` default; `BleOrchestrationDriver.kt:586` lacks only that token.
+  **BL118** wants `fun processConnectionStateChange(`; `GattServer.kt:130` **defines it** and forwards.
+* **BL52/BL81** want literal assignment spellings; the same work runs through `captureScanEvent`/`handleScanEvent`.
+
+**THE TWO SUBSTANTIVE ARMS (verified, not conflated with the noise):** **BL22** — the transports still call the
+production SessionManager handshake API directly (4 Android + 4 iOS sites; `registry` **is**
+`crypto.SessionManager`, `BleTransport.kt:1053`), so that law genuinely is violated. **BL115** — the two courts it
+names exist **nowhere** in `android/`, so they must be written and the behaviours they assert must be true.
+
+**THE DECISION, STATED SO IT IS TAKEN DELIBERATELY:** clearing this means EITHER aligning ~31 spellings in a FROZEN
+transport surface (**which would rewrite the stronger forms down to the pattern's shape**) OR repairing the
+instrument to test the law with NEW MUTATIONS proving it still refuses violations. **This round takes neither** — a
+33-arm instrument rewrite executed at the end of a round is exactly the unmeasured change this program refuses.
+What is unambiguous either way is the real work: **BL22** (route the handshake through the transport's own drivers)
+and **BL115** (two courts + their laws), which no spelling change can satisfy.
+
+## DO THIS FIRST (round 165, landed) — THE SECOND RED CONTROL IS GREEN
 
 `check_trusted_runtime_composition_controls` reported **four** errors (R01/R02/R05/R06) and its `--selftest`
 **aborted** on the unclean baseline — so its mutation battery never ran and the control proved nothing. It now
