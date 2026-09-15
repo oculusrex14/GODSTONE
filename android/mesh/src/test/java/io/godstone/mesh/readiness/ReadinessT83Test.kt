@@ -66,6 +66,15 @@ class ReadinessT83Test {
         private val table = LinkedHashMap<BytesKey, ByteArray>()
         var queries: Int = 0
             private set
+
+        /**
+         * GS-ACK-001 (step 4): when set, this table answereth [driftTo] for a node FROM ITS SECOND QUERY
+         * onward -- the "the resolver's answer changed between the gate that validated the key and the
+         * verification that used it" case, made deterministic. Left null, the table is a plain table.
+         */
+        var driftTo: ByteArray? = null
+        private val asked = LinkedHashMap<BytesKey, Int>()
+
         fun put(nodeId: ByteArray, key: ByteArray) {
             table[BytesKey(nodeId)] = key.copyOf()
         }
@@ -74,7 +83,12 @@ class ReadinessT83Test {
         }
         override fun publicSigningKey(nodeId: ByteArray): ByteArray? {
             queries++
-            return table[BytesKey(nodeId)]?.copyOf()
+            val k = BytesKey(nodeId)
+            val seen = (asked[k] ?: 0) + 1
+            asked[k] = seen
+            val drift = driftTo
+            if (drift != null && seen > 1) return drift.copyOf()
+            return table[k]?.copyOf()
         }
     }
 
@@ -919,5 +933,43 @@ class ReadinessT83Test {
         Assert.assertEquals("it is a FAILED verification", 1, report.storageFailures)
         Assert.assertEquals("nothing may be stored for a mismatched signer", 0, r.store.ackStore.countFrames())
         Assert.assertEquals("and the obligation must survive", 1, r.store.ackStore.countObligations())
+    }
+
+    /**
+     * GS-ACK-001 (the audit's ordered step 4): THE KEY THAT WAS VALIDATED MUST BE THE KEY THAT VERIFIETH.
+     * The store resolveth the pinned key ONCE and GATES on it -- size 32, and
+     * `Identity.nodeIdOf(key) == claimed` -- and then asketh the authenticator to verify, which resolveth
+     * the pinned key a SECOND time. The validated key and the used key are two different calls, so a
+     * resolver whose answer changes between them can hand a signature made under its LATER answer to a
+     * verifier that never re-checks it: the ATTACKER's frame is then stored as VERIFIED_RECIPIENT while
+     * the gate certified the RECIPIENT's key.
+     *
+     * WITHDRAWN FIRST ATTEMPT, recorded because it taught the shape: the arm was first written against the
+     * RESTART road, with the signer seam handing the attacker's seed. It came back GREEN on the PRE-REPAIR
+     * revision -- the restart road's seam never signs a frame the gate would distrust, so the arm isolated
+     * nothing. The forged frame must arrive through the ADMISSION road, where the bytes are ATTACKER-
+     * SUPPLIED. Log: GS-ACK-001/red/gs-ack-001-drift-WITHDRAWN-arm-GREEN-on-prerepair.log.
+     */
+    @Test
+    fun testAKeyThatDriftsBetweenTheGateAndTheVerificationIsRefused() = runTest {
+        val r = rig(406)
+        val frame = inboxFrame(r, 63)
+        // the RECIPIENT's true key: this is what the gate will validate
+        r.keys.put(r.me.id, r.me.pub)
+        val alien = newLocal()
+        // from the SECOND query for the recipient onward the resolver answereth the ALIEN's key
+        r.keys.driftTo = alien.pub
+        // the ATTACKER's frame: it names the TRUE recipient, and it is signed by the ALIEN's seed
+        val forged = AckFrame.build(frame.msgId, alien.seed, r.me.id, hintOf(r.me.id))
+        val d = driverOf(r, TestSigner(r.me))
+        val outcome = d.admitForeignCandidate(forged.encode(), r.originId)
+
+        Assert.assertFalse(
+            "the KEY THAT DRIFTED may not verify: the gate certified the recipient's captured key, so a " +
+            "frame signed under the resolver's LATER answer must never be stored as verified (outcome=" +
+            outcome + ")",
+            outcome is AckAdmissionResult.Stored,
+        )
+        Assert.assertEquals("no verified row may stand for a drifted key", 0, r.store.ackStore.countFrames())
     }
 }

@@ -99,6 +99,26 @@ interface AckAuthenticator {
         expectedRecipientNodeId: ByteArray,
         ackFrame: FrameV2,
     ): Boolean
+
+    /**
+     * GS-ACK-001 (the audit's ordered step 4): verify under the key the CALLER CAPTURED AND VALIDATED.
+     *
+     * The caller (the obligation store) resolveth the pinned key once and GATES on it -- size 32, and
+     * `Identity.nodeIdOf(key) == expectedRecipientNodeId` -- and only then asketh for a verification. If
+     * that request re-resolves the key instead of using the gated one, the key that was VALIDATED and the
+     * key that is USED are two different answers: a caller-controlled frame signed under the resolver's
+     * LATER answer is then accepted while the gate certified the earlier one.
+     *
+     * The default delegateth to [verify] so an existing double that answers the abstract method keepeth
+     * compiling; the production Ed25519 authenticator overrideth it to (a) fail closed when the resolver
+     * no longer names the captured key and (b) run the signature check under the CAPTURED key.
+     */
+    fun verifyWithCapturedKey(
+        originalMsgId: ByteArray,
+        expectedRecipientNodeId: ByteArray,
+        capturedKey: ByteArray,
+        ackFrame: FrameV2,
+    ): Boolean = verify(originalMsgId, expectedRecipientNodeId, ackFrame)
 }
 
 /**
@@ -123,25 +143,80 @@ class Ed25519AckAuthenticator(private val resolver: RecipientKeyResolver) : AckA
         expectedRecipientNodeId: ByteArray,
         ackFrame: FrameV2,
     ): Boolean {
+        // THE STRUCTURAL GUARDS RUN FIRST, AND WITHOUT ANY KEY LOOKUP. A pinned law of this repository:
+        // BoundRecipientKeyResolverTest.testBoundResolver_AckIntegration_PreResolverGuards_ZeroLookup
+        // requireth ZERO lookups for a wrong expected recipient or a wrong msg id. This round's first
+        // attempt inverted that order (resolving before the guards) and the FULL lane caught it -- the
+        // filtered court I had run did not. The resolution happeneth once, after the frame earned it.
+        val signature = acceptableSignature(originalMsgId, expectedRecipientNodeId, ackFrame) ?: return false
+        val pub = resolver.publicSigningKey(expectedRecipientNodeId) ?: return false
+        return verifySignature(signature, originalMsgId, expectedRecipientNodeId, pub)
+    }
+
+    /**
+     * GS-ACK-001 (the audit's ordered step 4): the CAPTURED key is the one that verifieth.
+     *
+     * (a) The resolver must still name that key for this recipient -- a binding that DRIFTED between the
+     * caller's gate and this verification is refused outright, fail-closed and never silently upgraded.
+     * (b) The signature is then checked under the CAPTURED key, so the key the caller validated is the
+     * key this verifier used, whatever the resolver answereth now.
+     */
+    override fun verifyWithCapturedKey(
+        originalMsgId: ByteArray,
+        expectedRecipientNodeId: ByteArray,
+        capturedKey: ByteArray,
+        ackFrame: FrameV2,
+    ): Boolean {
+        val signature = acceptableSignature(originalMsgId, expectedRecipientNodeId, ackFrame) ?: return false
+        if (capturedKey.size != 32) return false
+        val current = try {
+            resolver.publicSigningKey(expectedRecipientNodeId)
+        } catch (_e: Throwable) {
+            null
+        } ?: return false
+        if (!current.contentEquals(capturedKey)) return false
+        return verifySignature(signature, originalMsgId, expectedRecipientNodeId, capturedKey)
+    }
+
+    /**
+     * The structural guards that must decide a frame WITHOUT any key lookup, in their original order.
+     * Returns the signature when the frame is structurally acceptable, or null to refuse.
+     */
+    private fun acceptableSignature(
+        originalMsgId: ByteArray,
+        expectedRecipientNodeId: ByteArray,
+        ackFrame: FrameV2,
+    ): ByteArray? {
         // 1. type must be ACK
-        if (ackFrame.type != TypeV2.ACK) return false
+        if (ackFrame.type != TypeV2.ACK) return null
         // 2. the ACK must name the EXACT message id being acknowledged
-        if (!ackFrame.msgId.contentEquals(originalMsgId)) return false
+        if (!ackFrame.msgId.contentEquals(originalMsgId)) return null
         // 3. payload must be signature(64) + recipientNodeId(16)
         val payload = ackFrame.payload
-        if (payload.size != 80) return false
-        val signature = payload.copyOfRange(0, 64)
+        if (payload.size != 80) return null
         val ackRecipientNodeId = payload.copyOfRange(64, 80)
         // 4. C6.1: the ACK's claimed recipient MUST equal the durable expected
         //    recipient (independent of the ACK). No unbound fallback: a stranger
         //    naming themselves in the ACK cannot become the trusted recipient.
-        if (!ackRecipientNodeId.contentEquals(expectedRecipientNodeId)) return false
-        // 5. resolve the public key bound to the EXPECTED recipient node id
-        val pub = resolver.publicSigningKey(expectedRecipientNodeId) ?: return false
+        if (!ackRecipientNodeId.contentEquals(expectedRecipientNodeId)) return null
+        return payload.copyOfRange(0, 64)
+    }
+
+    /**
+     * The one signature check, under the key the CALLER decided upon -- the gated captured key from
+     * [verifyWithCapturedKey], or the freshly resolved one from [verify]. The key is NEVER re-resolved
+     * here: that divergence between the validated key and the used key is exactly the hole step 4 closeth.
+     */
+    private fun verifySignature(
+        signature: ByteArray,
+        originalMsgId: ByteArray,
+        expectedRecipientNodeId: ByteArray,
+        pub: ByteArray,
+    ): Boolean {
         if (pub.size != 32) return false
-        // 6. verify the signature over the canonical preimage for the EXPECTED
-        //    recipient (the one the recipient themselves signed, since for a
-        //    legitimate ACK their own node id == the expected recipient).
+        // verify the signature over the canonical preimage for the EXPECTED
+        // recipient (the one the recipient themselves signed, since for a
+        // legitimate ACK their own node id == the expected recipient).
         return Ed25519Keys.verify(
             AckFrame.preimage(originalMsgId, expectedRecipientNodeId), signature, pub,
         )

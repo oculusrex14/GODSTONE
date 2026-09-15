@@ -109,28 +109,65 @@ public final class Ed25519AckAuthenticator: AckAuthenticator {
     }
 
     public func verify(originalMsgId: Data, expectedRecipientNodeId: Data, ackFrame: FrameV2) -> Bool {
+        // THE STRUCTURAL GUARDS RUN FIRST, AND WITHOUT ANY KEY LOOKUP (a pinned law of this repository:
+        // a wrong expected recipient or a wrong msg id must query the lookup source ZERO times).
+        guard let signature = acceptableSignature(originalMsgId: originalMsgId,
+                                                 expectedRecipientNodeId: expectedRecipientNodeId,
+                                                 ackFrame: ackFrame) else { return false }
+        // 5. resolve the public key bound to the EXPECTED recipient node id
+        guard let pub = resolver.publicSigningKey(forNodeId: expectedRecipientNodeId),
+              pub.count == 32 else { return false }
+        return verifySignature(signature, originalMsgId: originalMsgId,
+                               expectedRecipientNodeId: expectedRecipientNodeId, pub: pub)
+    }
+
+    /// GS-ACK-001 (the audit's ordered step 4): the CAPTURED key is the one that verifies.
+    ///
+    /// (a) The resolver must still name that key for this recipient -- a binding that DRIFTED between the
+    /// caller's gate and this verification is refused outright, fail-closed and never silently upgraded.
+    /// (b) The signature is then checked under the CAPTURED key, so the key the caller validated is the key
+    /// this verifier used, whatever the resolver answers now. One law with the Android isle.
+    public func verifyWithCapturedKey(originalMsgId: Data, expectedRecipientNodeId: Data,
+                                      capturedKey: Data, ackFrame: FrameV2) -> Bool {
+        guard let signature = acceptableSignature(originalMsgId: originalMsgId,
+                                                 expectedRecipientNodeId: expectedRecipientNodeId,
+                                                 ackFrame: ackFrame) else { return false }
+        guard capturedKey.count == 32 else { return false }
+        guard let current = resolver.publicSigningKey(forNodeId: expectedRecipientNodeId) else {
+            return false
+        }
+        guard current == capturedKey else { return false }
+        return verifySignature(signature, originalMsgId: originalMsgId,
+                               expectedRecipientNodeId: expectedRecipientNodeId, pub: capturedKey)
+    }
+
+    /// The structural guards that must decide a frame WITHOUT any key lookup, in their original order.
+    private func acceptableSignature(originalMsgId: Data, expectedRecipientNodeId: Data,
+                                     ackFrame: FrameV2) -> Data? {
         // 1. type must be ack
-        guard ackFrame.type == .ack else { return false }
+        guard ackFrame.type == .ack else { return nil }
         // 2. the ACK must name the EXACT message id being acknowledged
-        guard ackFrame.msgId == originalMsgId else { return false }
+        guard ackFrame.msgId == originalMsgId else { return nil }
         // 3. payload must be signature(64) + recipientNodeId(16)
         let payload = ackFrame.payload
-        guard payload.count == 80 else { return false }
-        let signature = payload.prefix(64)
-        let ackRecipientNodeId = Data(payload.suffix(16))
+        guard payload.count == 80 else { return nil }
         // 4. C6.1: the ACK's claimed recipient MUST equal the durable expected
         //    recipient (independent of the ACK). No unbound fallback: a stranger
         //    naming themselves in the ACK cannot become the trusted recipient.
-        guard ackRecipientNodeId == expectedRecipientNodeId else { return false }
-        // 5. resolve the public key bound to the EXPECTED recipient node id
-        guard let pub = resolver.publicSigningKey(forNodeId: expectedRecipientNodeId), pub.count == 32 else {
-            return false
-        }
+        guard Data(payload.suffix(16)) == expectedRecipientNodeId else { return nil }
+        return Data(payload.prefix(64))
+    }
+
+    /// The one signature check, under the key the CALLER decided upon. The key is NEVER re-resolved here:
+    /// that divergence between the validated key and the used key is exactly the hole step 4 closes.
+    private func verifySignature(_ signature: Data, originalMsgId: Data,
+                                 expectedRecipientNodeId: Data, pub: Data) -> Bool {
+        guard pub.count == 32 else { return false }
         // 6. verify the signature over the canonical preimage for the EXPECTED
         //    recipient (the one the recipient themselves signed, since for a
         //    legitimate ACK their own node id == the expected recipient).
         guard let key = try? Curve25519.Signing.PublicKey(rawRepresentation: pub) else { return false }
         return key.isValidSignature(signature, for: AckFrame.preimage(msgId: originalMsgId,
-                                                                      recipientNodeId: expectedRecipientNodeId))
+                                                                     recipientNodeId: expectedRecipientNodeId))
     }
 }

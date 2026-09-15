@@ -946,7 +946,12 @@ internal class AckObligationDriver(
                 continue
             }
             val ok = try {
-                authenticator.verify(ob.msgId, claimed, frame)
+                // GS-ACK-001 (the audit's ordered step 4): THE KEY GATED ABOVE IS THE KEY THAT VERIFIETH.
+                // Asking for a plain `verify` here would re-resolve the pinned key, so a resolver whose
+                // answer changed between the gate and this call could have a frame signed under its LATER
+                // answer stored as VERIFIED_RECIPIENT. MEASURED before this repair: the attacker's frame
+                // came back `Stored(...)`.
+                authenticator.verifyWithCapturedKey(ob.msgId, claimed, ownKey, frame)
             } catch (_e: Throwable) {
                 false
             }
@@ -1007,7 +1012,9 @@ internal class AckObligationDriver(
         }
         val klass = if (key != null) {
             val ok = try {
-                authenticator.verify(frame.msgId, claimed, frame)
+                // GS-ACK-001 (step 4): the ADMISSION road takes ATTACKER-SUPPLIED bytes, so the key gated
+                // above must be the one that verifieth -- never whatever the resolver answereth next.
+                authenticator.verifyWithCapturedKey(frame.msgId, claimed, key, frame)
             } catch (_e: Throwable) {
                 false
             }

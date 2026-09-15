@@ -925,8 +925,15 @@ final class AckObligationDriver: @unchecked Sendable {
             guard SignedMessageV1.nodeIdOf(pinnedKey) == claimed else {
                 failures += 1; continue
             }
-            guard authenticator.verify(originalMsgId: ob.msgId, expectedRecipientNodeId: claimed,
-                                       ackFrame: frame) else {
+            // GS-ACK-001 (the audit's ordered step 4): THE KEY GATED ABOVE IS THE KEY THAT VERIFIETH.
+            // Asking for a plain `verify` here would re-resolve the pinned key, so a resolver whose answer
+            // changed between the gate and this call could have a frame signed under its LATER answer
+            // stored as verified. MEASURED on the Android isle before the repair: the attacker's frame came
+            // back `Stored(...)` there; this isle carrieth the same law through the same call shape.
+            guard authenticator.verifyWithCapturedKey(originalMsgId: ob.msgId,
+                                                      expectedRecipientNodeId: claimed,
+                                                      capturedKey: pinnedKey,
+                                                      ackFrame: frame) else {
                 failures += 1; continue
             }
             guard let ackKey = AckCacheKey.compute(msgId: ob.msgId, recipientNodeId: ob.recipientNodeId,
@@ -970,9 +977,13 @@ final class AckObligationDriver: @unchecked Sendable {
         let claimed = Data(frame.payload.suffix(16))
         let key = resolver.publicSigningKey(forNodeId: claimed)
         let klass: AckVerificationClass
-        if key != nil {
-            guard authenticator.verify(originalMsgId: frame.msgId, expectedRecipientNodeId: claimed,
-                                       ackFrame: frame) else {
+        if let capturedKey = key {
+            // GS-ACK-001 (step 4): the ADMISSION road takes ATTACKER-SUPPLIED bytes, so the key gated
+            // above must be the one that verifieth -- never whatever the resolver answereth next.
+            guard authenticator.verifyWithCapturedKey(originalMsgId: frame.msgId,
+                                                      expectedRecipientNodeId: claimed,
+                                                      capturedKey: capturedKey,
+                                                      ackFrame: frame) else {
                 return .refusedKnownInvalid
             }
             klass = .verifiedRecipiant

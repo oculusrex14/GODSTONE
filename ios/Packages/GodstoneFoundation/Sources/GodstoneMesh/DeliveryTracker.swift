@@ -544,6 +544,27 @@ public protocol AckAuthenticator: AnyObject {
     func verify(originalMsgId: Data, expectedRecipientNodeId: Data, ackFrame: FrameV2) -> Bool
 }
 
+public extension AckAuthenticator {
+    /// GS-ACK-001 (the audit's ordered step 4): verify under the key the CALLER CAPTURED AND VALIDATED.
+    ///
+    /// The caller (the obligation store) resolves the pinned key once and GATES on it -- size 32, and
+    /// `Identity.nodeIdOf(key) == expectedRecipientNodeId` -- and only then asks for a verification. If
+    /// that request re-resolves the key instead of using the gated one, the key that was VALIDATED and the
+    /// key that is USED are two different answers: a caller-controlled frame signed under the resolver's
+    /// LATER answer is then accepted while the gate certified the earlier one.
+    ///
+    /// The default delegates to `verify` so an existing double that answers the abstract method keeps
+    /// compiling; `Ed25519AckAuthenticator` overrides it to fail closed when the resolver no longer names
+    /// the captured key and to run the signature check under the CAPTURED key. One law with the Android
+    /// isle's `AckAuthenticator.verifyWithCapturedKey`.
+    func verifyWithCapturedKey(originalMsgId: Data, expectedRecipientNodeId: Data,
+                               capturedKey: Data, ackFrame: FrameV2) -> Bool {
+        verify(originalMsgId: originalMsgId,
+               expectedRecipientNodeId: expectedRecipientNodeId,
+               ackFrame: ackFrame)
+    }
+}
+
 /// High-level delivery state machine (ADR-004; ADR-005). Coordinates
 /// authenticated ACK verification against the durable `DeliveryRepository`.
 ///
