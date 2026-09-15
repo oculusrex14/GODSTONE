@@ -91,7 +91,16 @@ green' stops meaning 'the logged run was green'.
 
 ## Then the wave 4a chain: `GS-STORE-004`, then `GS-STORE-005`, then `GS-STORE-006`
 
-## AND THEN, with its red already designed: `GS-SYNC-002` step 3 (retired control replies)
+## AND THEN, with its red already designed: `GS-SYNC-002` step 3 (retired control replies) — ANDROID LANDED
+
+Round 86 landed the ANDROID limb: `ControlReply` is stamped with a per-peer RELATION EPOCH, the epoch is
+retired on `PeerEvent.Lost`, and both drains drop an entry whose epoch is no longer current. Still OWED: the
+**iOS twin** (same law, no epoch there yet). THREE OBSERVABLES WERE TRIED for this arm and two were withdrawn —
+read `GS-SYNC-002/red/gs-sync-002-withdrawn-observables.txt` before writing a similar arm: asserting the whole
+DRAIN is empty measures the PUMP (the new relation's own frames ride it, so the count went 2 → 1, not 2 → 0),
+and filtering by the ping's msg id matches nothing because the answer carries its OWN id — that arm **passed on
+the pre-repair revision** and proved nothing. The observable that isolates the named thing is the
+**no-argument `drainControlOutbox()`**, which carries only outbox entries.
 
 Both isles carry `ControlReply(destination:frame:)` and a per-destination drain, but NOT a RELATION
 GENERATION, so an answer queued for a relation that was RETIRED can ride the REPLACEMENT relation when the

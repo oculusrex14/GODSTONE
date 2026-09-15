@@ -643,6 +643,42 @@ class ReadinessT41Test {
             direct.size, afterB.size,
         )
     }
+
+    /**
+     * GS-SYNC-002 (the audit's ordered step 3, THE REMAINDER): an answer raised for a relation that was
+     * RETIRED must never ride the relation that REPLACED it. The outbox carrieth the DESTINATION now, but no
+     * generation/relation identity -- so when the same peer reconnecteth, the NEW relation inheriteth the
+     * OLD relation's answer, and a stale reply is handed to the pump as though it were fresh work.
+     */
+    @Test
+    fun testARetiredRelationsControlReplyIsNotHandedToTheReplacement() = runTest {
+        val w = world()
+        w.linkUp(w.a, w.r)
+        val ping = ControlPayloadV1.frameFor(
+            ControlPayloadV1.ControlArm.PING,
+            ByteArray(16) { (it + 5).toByte() }, ByteArray(4) { (it + 1).toByte() },
+            ControlPayloadV1.ping(0, 42L).encode(),
+        )
+        Assert.assertTrue("R's ping must be answered by A", w.a.node.handleControlFrame(ping, w.r.id))
+
+        // the relation is RETIRED, and the SAME peer returns as a NEW relation
+        w.linkDown(w.a, w.r)
+        w.linkUp(w.a, w.r)
+
+        // ISOLATE THE THING NAMED, and two observables were WITHDRAWN before this one because neither did:
+        //   (1) asserting the whole DRAIN was empty measured the pump -- the drain legitimately carries the
+        //       NEW relation's own frames, so the count went 2 -> 1 instead of 2 -> 0;
+        //   (2) filtering the drain by the PING's msg id matched nothing, because the answer is a frame with
+        //       its OWN id: the arm PASSED on the pre-repair revision and therefore proved nothing.
+        // The no-argument drain carrieth ONLY control-outbox entries -- no pump frames -- so an entry left
+        // over from the retired relation is visible in it and nothing else can be.
+        val stale = w.a.node.drainControlOutbox()
+        Assert.assertEquals(
+            "the answer raised BEFORE the relation was retired must not survive into the relation that " +
+            "replaced it (outbox frames=" + stale.size + ")",
+            0, stale.size,
+        )
+    }
 }
 
 /** The pump's bounds, exposed for the witnesses (the production constants). */

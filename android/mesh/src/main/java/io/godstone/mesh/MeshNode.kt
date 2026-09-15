@@ -214,7 +214,29 @@ class MeshNode(
     private class ControlReply(
         val destination: ByteArray,
         val frame: io.godstone.mesh.wire.v2.FrameV2,
+        /** GS-SYNC-002 step 3: the RELATION this answer was raised for. A relation that was RETIRED
+         *  (the peer was lost) hath its epoch retired with it, so the answer cannot be handed to the
+         *  relation that REPLACED it when the same peer returneth. */
+        val relationEpoch: Long,
     )
+
+    /**
+     * GS-SYNC-002 (the audit's ordered step 3): per-peer RELATION epochs. An epoch is created when a peer's
+     * relation is first spoken of and RETIRED when the relation is lost, so a reconnect produceth a DIFFERENT
+     * epoch and every answer raised under the old one is stale-by-construction. A peer that never had a
+     * relation event keepeth one epoch for the life of the node, so nothing that never lost a relation can be
+     * affected by this rule.
+     */
+    private val relationEpochs = java.util.concurrent.ConcurrentHashMap<String, Long>()
+    private val relationEpochSeq = java.util.concurrent.atomic.AtomicLong(0)
+
+    private fun currentRelationEpoch(peerId: ByteArray): Long =
+        relationEpochs.computeIfAbsent(leaseKey(peerId)) { relationEpochSeq.incrementAndGet() }
+
+    /** GS-SYNC-002 step 3: a LOST relation retireth its epoch, so its queued answers are stale from here. */
+    private fun retireRelationEpoch(peerId: ByteArray) {
+        relationEpochs.remove(leaseKey(peerId))
+    }
 
     /**
      * GS-SOS-002: the per-message DISPATCH LEASE. Minted when an offer loop beginneth, INVALIDATED by a
@@ -267,9 +289,11 @@ class MeshNode(
         frames: List<io.godstone.mesh.wire.v2.FrameV2>,
         destination: ByteArray,
     ) = synchronized(controlOutboxLock) {
+        val epoch = currentRelationEpoch(destination)
         for (f in frames) {
             if (controlOutbox.size >= 64) controlOutbox.removeAt(0)
-            controlOutbox.add(ControlReply(destination.copyOf(), f))
+            // GS-SYNC-002 step 3: the answer is stamped with the RELATION it belongeth to.
+            controlOutbox.add(ControlReply(destination.copyOf(), f, epoch))
         }
     }
 
@@ -280,14 +304,21 @@ class MeshNode(
      */
     private fun drainControlOutboxFor(peer: ByteArray): List<io.godstone.mesh.wire.v2.FrameV2> =
         synchronized(controlOutboxLock) {
+            // GS-SYNC-002 (the audit's ordered step 3): ownership is by destination AND RELATION. An answer
+            // raised under a RETIRED relation is dropped here, never handed to the replacement relation --
+            // the frame is refuse-and-forget, because a stale reply is not work for the new relation.
+            val current = currentRelationEpoch(peer)
             val mine = controlOutbox.filter { it.destination.contentEquals(peer) }
             if (mine.isNotEmpty()) controlOutbox.removeAll { it.destination.contentEquals(peer) }
-            mine.map { it.frame }
+            mine.filter { it.relationEpoch == current }.map { it.frame }
         }
 
-    /** Drain the bounded control outbox (T41's pump takes the route from here). */
+    /** Drain the bounded control outbox (T41's pump takes the route from here). GS-SYNC-002 step 3: an
+     *  entry whose relation was retired while it waited is DROPPED, not delivered. */
     internal fun drainControlOutbox(): List<io.godstone.mesh.wire.v2.FrameV2> = synchronized(controlOutboxLock) {
-        val out = controlOutbox.map { it.frame }
+        val out = controlOutbox
+            .filter { it.relationEpoch == currentRelationEpoch(it.destination) }
+            .map { it.frame }
         controlOutbox.clear()
         out
     }
@@ -421,7 +452,12 @@ class MeshNode(
         // peer lock: the pump owneth its own monitor and never nesteth one.
         when (event) {
             is PeerEvent.Found -> pumpFor().register(event.peerId)
-            is PeerEvent.Lost -> pumpFor().cancel(event.peerId)
+            is PeerEvent.Lost -> {
+                pumpFor().cancel(event.peerId)
+                // GS-SYNC-002 step 3: the RELATION is gone, so its epoch is retired with it and every
+                // answer it queued becometh stale-by-construction rather than inheritable by the next one.
+                retireRelationEpoch(event.peerId)
+            }
         }
     }
 
