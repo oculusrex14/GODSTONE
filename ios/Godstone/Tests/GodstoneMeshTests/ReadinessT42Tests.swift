@@ -710,3 +710,37 @@ extension ReadinessT42Tests {
             + "(control=\(direct.count), after B's turn=\(afterB.count))")
     }
 }
+
+// MARK: - GS-SYNC-002 step 3 (iOS): a retired relation's control reply must not ride its replacement
+
+extension ReadinessT42Tests {
+
+    /// The Android limb's law, on this isle: an answer raised for a relation that was RETIRED must not
+    /// survive into the relation that REPLACED it.
+    ///
+    /// THE OBSERVABLE IS THE ISOLATING ONE, learned the hard way on the other isle (see
+    /// GS-SYNC-002/red/gs-sync-002-withdrawn-observables.txt): `drainSyncFrames` also carries the PUMP's own
+    /// frames, so asserting on it measures the pump; and the answer is a frame with its OWN msg id, so
+    /// filtering by the ping's id matches nothing (that arm passed on the pre-repair revision and proved
+    /// nothing). The no-argument `drainControlOutbox()` carries ONLY control-outbox entries, so a leftover
+    /// from the retired relation is visible there and nothing else can be.
+    func testW29ARetiredRelationsControlReplyIsNotHandedToTheReplacement() throws {
+        let w = try world()
+        w.linkUp(w.a, w.r)
+        let ping = try ControlPayloadV1.ping(reply: 0, nonce: 42)
+        let frame = try ControlPayloadV1.frameFor(arm: .ping,
+            msgId: Data((0..<16).map { UInt8(($0 + 5) % 256) }),
+            routingTag: Data(repeating: 0, count: 4), payload: ping.encode())
+        XCTAssertTrue(w.a.node.handleControlFrame(frame, fromPeer: w.r.id),
+                      "R's ping must be answered by A")
+
+        // the relation is RETIRED, and the SAME peer returns as a NEW relation
+        w.linkDown(w.a, w.r)
+        w.linkUp(w.a, w.r)
+
+        let stale = w.a.node.drainControlOutbox()
+        XCTAssertEqual(stale.count, 0,
+                       "the answer raised BEFORE the relation was retired must not survive into the "
+                       + "relation that replaced it (outbox frames=\(stale.count))")
+    }
+}
