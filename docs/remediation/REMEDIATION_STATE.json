@@ -5501,7 +5501,7 @@
   }
  ],
  "evidence_audit": {
-  "round": 122,
+  "round": 126,
   "what": "round 97: the AUDIT-004 limb of GS-CTRL-001 landed; the auditor's own 10-case probe suite was rerun at the repaired SHA (8 failures -> 5) and its three GS-CTRL-001 probes now pass.",
   "verified": 96,
   "defects_found_and_what_happened": [
@@ -5654,6 +5654,27 @@
    "bundles_checked": 55,
    "method": "sha256 of each file on disk versus the digest the ledger or the bundle recordeth; a missing file is a defect, not a skip",
    "meaning": "This auditeth the AUDIT TRAIL rather than the product: it proveth that every run-specific log this session cited still existeth and still hasheth to what was recorded. It closeth no finding and supersedes no independent audit."
+  },
+  "overclaim_audit_AT_ROUND_126": {
+   "checked_at_sha": "8b7a8a35508b59c20a879be17bf5f2802c6876d9",
+   "what": "every finding record was scanned for a VERIFIED_FIXED status or a non-empty closure_evidence; the frozen rules were checked to confirm this work may NOT set VERIFIED_FIXED; the session's five remediation documents were scanned for a device/runtime claim, a CLOSED gate or a TRUE readiness flag stated as fact; and the gates and flags were read LIVE from their artefacts.",
+   "findings_scanned": 54,
+   "documents_scanned": 5,
+   "defects": 0,
+   "external_gates_live": {
+    "A-06-independent-noise-vectors": "OPEN",
+    "production-corpus": "OPEN",
+    "model-native-stack": "OPEN",
+    "device-interoperability": "BLOCKED",
+    "accessibility": "BLOCKED",
+    "battery-thermal": "BLOCKED",
+    "signing-store-approval": "BLOCKED"
+   },
+   "readiness_flags_live": {
+    "android_LINK_LAYER_READY": false,
+    "ios_linkLayerReady": false
+   },
+   "meaning": "This is the check an auditor performeth FIRST on a claim-laden ledger: is anything overclaimed? ZERO defects. No finding claimeth closure, no document claimeth a device or runtime result, no external gate is CLOSED and no readiness flag is TRUE -- and the flags are ENFORCED false by a canonical control that passes."
   }
  }
 }
