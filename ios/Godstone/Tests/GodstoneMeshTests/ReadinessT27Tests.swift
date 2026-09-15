@@ -224,4 +224,31 @@ final class ReadinessT27Tests: XCTestCase {
                        "and the production bound travelleth with the production clock")
     }
 
+
+    /// IOS-05 / T27 (step 3): THE AUTHENTICATED IDENTITY IS THE PEER'S FULL NODE ID, AND ONLY AFTER TRUST.
+    ///
+    /// THE BEHAVIOURAL HALF of the post-AEAD charge, and the POSITIVE CONTROL of the repair that landed in
+    /// round 198: the RED was the canonical arm in
+    /// `tools/readiness/tests/test_ios_post_aead_charge.py` (it asserteth the CHARGE, the RETENTION and
+    /// their ORDER), while THIS witness proveth them against a LIVE trusted handshake. The identity must
+    /// be the peer's OWN sixteen octets -- never a derivative of the static DH key, which is a DIFFERENT
+    /// identity (the android isle measured exactly that at round 192) -- and never a MAC or a hint.
+    func testTheAuthenticatedNodeIdIsThePeersFullIdentityAndOnlyAfterTrust() throws {
+        let pair = try ReadinessTrustedPairing.barePair()
+        defer { ReadinessTrustedPairing.tearDown(pair) }
+
+        XCTAssertNil(pair.aliceManager.authenticatedNodeIdOf(pair.viaBob),
+                     "before any trust there is NO authenticated identity to charge")
+
+        try ReadinessTrustedPairing.pairUp(pair, viaBob: pair.viaBob, viaAlice: pair.viaAlice,
+                                          aliceHint: pair.aliceIdentity.nodeHint,
+                                          bobHint: pair.bobIdentity.nodeHint)
+
+        let nodeId = pair.aliceManager.authenticatedNodeIdOf(pair.viaBob)
+        XCTAssertNotNil(nodeId, "after a trusted handshake the authenticated identity must be answerable")
+        XCTAssertEqual(nodeId?.count, 16, "the authenticated identity is SIXTEEN octets")
+        XCTAssertEqual(nodeId, pair.bobIdentity.nodeId,
+                       "and it IS the peer's own NodeID -- not the static DH key's derivative, and not a handle")
+    }
+
 }
