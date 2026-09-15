@@ -2784,12 +2784,40 @@
    },
    "impact": "The durable row can be CANCELLED and its held frame removed while captured local work is still being newly offered. This is distinct from already-relayed copies, which cannot be recalled.",
    "invalidated_dependents": [],
-   "my_fix_commit": null,
-   "my_logs": [],
-   "my_red_case": null,
-   "my_status": "OPEN",
-   "notes": "OPEN, with reconnaissance RECORDED and no arm written this round. The defect is source-confirmed and its shape is now exact: THREE offer loops (SOS dispatch :490, retry :667, DIRECT :734) iterate `knownPeers()` with no check between iterations, while `Cancel` commits a durable terminal CAS through the one command door -- so a cancellation committed inside a send callback is invisible to the loop already iterating, and the next peer is offered a call whose row was just retired. The audit's behavioral probe (cancel from the first pending send callback, return false, observe a second offer; expected 1, actual 2) is written out in the pending work together with the court's fixtures, so the next round writes the red in one pass instead of reconnoitring. NOTHING WAS EDITED: no arm was left red, no unverified production change was committed, and the tree is green.",
-   "pending_proof": [],
+   "my_fix_commit": "fc13b30 (Android limb)",
+   "my_logs": [
+    {
+     "log": "GS-SOS-002/green/gs-sos-002-T39.log",
+     "sha256": "723afab4ba14807ddddcdc3611957000dfbe699cf2eb549cd1bd1d73b579aa6b",
+     "what": "android ReadinessT39Test after the repair: 12 tests, 0 failures with the new arm passing"
+    },
+    {
+     "log": "GS-SOS-002/green/gs-sos-002-ANDROID-FULL.log",
+     "sha256": "e52cc6021f3160644afaa2a1ea3454d8ef844a5ecca75926be6b20388731eb00",
+     "what": "whole android :mesh lane: BUILD SUCCESSFUL"
+    },
+    {
+     "log": "GS-SOS-002/green/gs-sos-002-LANES.log",
+     "sha256": "a4c3e49f68a1d6c2b3d7fa4873558bbceb8a0bc7993c33b68b0382376f7d66f0",
+     "what": "readiness suite OK; invariants all hold; repository VERDICT PASS; symbols 0 unresolved; iOS mirror --check rc=0; mutation selftest OK"
+    }
+   ],
+   "my_red_case": {
+    "case": "android/mesh/src/test/java/io/godstone/mesh/readiness/ReadinessT39Test.kt::testCancellationSuppressethTheLaterOffersAlreadyCaptured -- MOVED into the canonical T39 court and driven through the node's own command door (`dispatchSos(payload, send)` and `handleSosCommand(SosCommand.Cancel(mid))`) with two registered peers.",
+    "argv": "(cd android && ./gradlew :mesh:testDebugUnitTest --tests '*ReadinessT39Test*')",
+    "cwd": "/Users/oculus/Projects/GODSTONE_BUILDER",
+    "log": "GS-SOS-002/red/gs-sos-002-RED.log",
+    "log_sha256": "8ba112c4ad9f7356ba9487f32a5a7102d721861976ad538828c9a7d47f6c85be",
+    "outcome": "RED on the untouched product, execution proven, and it is the audit's own reproduction: \"exactly ONE offer may stand: a cancellation committed inside the first callback must suppress the later offer already captured by the dispatch loop (offers=2) expected:<1> but was:<2>\". The cancellation itself SUCCEEDS (asserted first), so the row is retired and the second offer happens anyway."
+   },
+   "my_status": "PARTIAL",
+   "notes": "PARTIAL: the Android limb is repaired, verified and landed; the iOS port and the durable-authority ownership are owed. THIS WAS THE CHEAPEST REPAIR OF THE SESSION, and the reason is worth recording: last round deliberately spent itself on RECONNAISSANCE instead of an unfinished edit -- the offer loops at :490/:667/:734, the command door at :541, and the court's fixtures (`newRig`, `peerOf`, `injectPeerForTest`, `dispatchSos(payload, send)`) were all written into the ledger, so this round wrote the red from the written-out plan on the FIRST attempt and the defect reproduced exactly as the audit described it (offers=2 where 1 was expected). A WRITTEN-OUT RED PLAN CONVERTS A ROUND INTO A REPAIR. The one product surprise was small and mechanical: `hexOf` is not in scope in MeshNode, so the lease map is keyed by a local `leaseKey(msgId)`.",
+   "pending_proof": [
+    "ONLY THE ANDROID LIMB IS REPAIRED: the iOS twin's offer loops still iterate every known peer with no check, so the pair does not yet state one law on both isles -- the sole reason the status is PARTIAL rather than FIX_SUBMITTED.",
+    "THE LEASE IS PROCESS-LOCAL, NOT DURABLE-TRUTH-OWNED, and the audit's step 2 asks for the latter: a dispatch resumed after a restart cannot consult it, and no durable terminal-row check is made between offers.",
+    "NO DEVICE/EMULATOR/SIMULATOR/RADIO WAS USED: the red is a host court driving the node's own command door with a synthetic callback that cancels mid-dispatch; no peer and no radio were involved.",
+    "ALREADY-RELAYED COPIES are out of scope by the finding's own terms ('This is distinct from already-relayed copies, which cannot be recalled')."
+   ],
    "proof": "The deterministic Android probe authors a valid signed SOS, supplies two peers, cancels successfully from the first pending send callback, returns false from that callback, and observes a second peer offer after cancellation. The expected offer count 1 is actually 2. Both peers are test outlets; this does not claim an on-device packet trace. The dispatch/retry loops retain encoded bytes across suspension and do not revalidate cancellation.",
    "remediation_report": "evidence/AUDIT-002/SOS_SYNC_MODEL_REMEDIATION.md",
    "remediation_steps": [
@@ -2814,11 +2842,9 @@
    "title": "Cancellation does not suppress later offers already captured by the dispatch/retry loop",
    "wave": "5",
    "pending_work": [
-    "THE RED IS READY TO WRITE IN ONE PASS, and here is everything it needs (verified this round): the canonical court is android/mesh/src/test/java/io/godstone/mesh/readiness/ReadinessT39Test.kt, whose fixtures are `newRig(failAt: String? = null): Rig` (store, tracker, node, auth), `peerOf(seedByte)`, `authorOnce(r, payload, peers)`, and the one command door `node.handleSosCommand(...)` with a `send: suspend (peerId, bytes) -> Boolean` lambda. THE AUDIT'S OWN RECIPE, to be written verbatim: author a SOS with TWO peers; in the send lambda, on the FIRST call, decode the frame's msgId and issue `SosCommand.Cancel(mid)` from INSIDE the callback, then return false for that handoff; count the offers. EXPECTED 1, ACTUAL 2 -- and the arm must also assert the durable row is CANCELLED, so the offer count and the durable truth are checked together.",
-    "ONE QUESTION THE ARM MUST ANSWER FIRST (not yet read): how the court registers N peers for `knownPeers()` -- `authorOnce(r, payload, peers)` implies a helper that feeds `PeerEvent.Found`, as the T41 court's `linkUp` does. Read `authorOnce` before writing.",
-    "THE FIX SHAPE, per the audit's steps 2-4: mint a per-message scheduling lease/generation when the dispatch begins, bind every queued record and peer offer to it, have a SUCCESSFUL cancellation transaction invalidate it, and check it BEFORE EVERY peer offer so captured local work can no longer be newly offered after the row was retired. A storage/read failure on that check is a FAIL-CLOSED result, not a skip.",
-    "A PROCESS-LOCAL LEASE ALONE IS NOT ENOUGH and must be stated as pending: the lease must be owned by the durable dispatch authority (the row's terminal CAS), because a restart mid-dispatch has no lease to consult -- the loop must ALSO be able to reject a terminal row from durable truth.",
-    "PORT TO THE iOS TWIN with the same arm once the Android limb lands."
+    "PORT TO THE iOS TWIN (ios/Godstone/Sources/GodstoneMesh/MeshNode.swift:466 and its own offer loops) with the same arm -- only the Android limb is repaired here.",
+    "THE LEASE IS PROCESS-LOCAL AND THE AUDIT ASKS FOR MORE: it prescribes a lease 'owned by the durable dispatch authority', so the loop must ALSO be able to reject a TERMINAL ROW read from durable truth (and a storage/read failure on that check must be FAIL-CLOSED, not a skip). Today the lease is invalidated by a successful cancellation in the same process; a dispatch resumed after a restart has no lease to consult.",
+    "THE OFFER LOOP IS NOT SERIALIZED WITH CANCELLATION ADMISSION: the lease check narrows the window but does not make admission and cancellation one serialized transition (audit step 3), so a cancellation committing between the check and the send is still not suppressed."
    ]
   },
   "GS-STORE-001": {
