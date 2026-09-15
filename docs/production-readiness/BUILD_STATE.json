@@ -14795,6 +14795,222 @@
         "the L2-L4 ladder levels remain 'unavailable: no command manifest yet'"
       ]
     },
+    "T82": {
+      "case_results": {
+        "added_cases": {
+          "tools/readiness/tests/test_t82.py": [
+            "test_w01_every_capability_carrieth_its_enabling_code_and_status",
+            "test_w02_the_law_advertised_implies_enabled",
+            "test_w03_advertising_bulk_transfer_is_refused_by_name",
+            "test_w04_internet_in_the_archive_only_manifest_is_refused",
+            "test_w05_the_light_profile_declares_every_capability_false",
+            "test_w06_exactly_one_shipping_tier_and_it_is_light",
+            "test_w07_a_closed_tier_must_be_closed_in_words",
+            "test_w08_the_bulk_plane_is_closed_in_words",
+            "test_w09_the_ios_shipping_surface_advertises_no_bulk_capability",
+            "test_w10_every_open_decision_is_recorded",
+            "test_w11_no_advertised_capability_is_a_stub",
+            "test_w12_the_real_repository_passes",
+            "test_w13_the_ledger_claims_nothing_the_code_does_not_enable"
+          ]
+        },
+        "corrected_cases": {
+          "ledger_first_draft_errors": [
+            "it counted a document that DISCUSSES a capability in order to CLOSE it as an advertisement: `advertised_in` now meaneth promised-as-available and `closed_in` meaneth discussed-and-closed, with the closure asserted in the document's own words",
+            "it looked for the catalogue's long decision names in the release manifest alone, when the external-blocker register carrieth the canonical five (A06, APPROVED_CONTENT, NATIVE_MODELS, HARDWARE, SIGNING)"
+          ],
+          "note": "no pre-T82 assertion was changed. THREE campaign passes were needed, and every escape taught the same lesson in the checker's clothes: a witness asserted the LEDGER's data instead of FEEDING the checker the violation its rod striketh.",
+          "rod_field_repaired": "the named-negative rod named W12 (a case the mutant satisfieth either way) instead of W02, which feedeth the checker",
+          "rules_widened": [
+            "the recorded-decision rule now covereth every capability that nameth a decision (a closed tier's note pointeth at what would have to change just as an open one's doth)",
+            "a NEW rule refuseth a closed capability that nameth NO decision at all -- otherwise a research-only tier would look deliberately closed while pointing at nothing"
+          ],
+          "witness_arms_added": [
+            "W02 now advertises a DISABLED capability (in-process ledger patch) and requireth the refusal by name",
+            "W06 asserteth the tier-table drift AND the tier promise SEPARATELY: an either/or assertion let each rule hide behind its sibling",
+            "W10 now requireth EVERY named decision -- not only the OPEN ones -- to be recorded, refuseth a BOGUS name, and refuseth a CLOSED capability that nameth NO decision",
+            "W11 now advertises an UNSUPPORTED STUB and requireth the STUB rule alone"
+          ]
+        },
+        "counts": {
+          "narrow_python": 13,
+          "subsystem_python": 403
+        },
+        "counts_source": "the runner's own records at the implementation head (13/13 narrow, 403/403 subsystem), confirmed by the harness's artifacts: T82/executed/T82-narrow-python-executed.log carrieth 13 '... ok' lines for the T82 court alone and T82-subsystem-python-executed.log proclaymeth 'Ran 403 tests' for the whole readiness suite (up from 390).",
+        "courts": {
+          "controls": "ci/check_repository.py, ci/check_release_gates_status.py",
+          "ledger": "tools/readiness/promises.py (VERDICT: PASS on the live repository)",
+          "narrow": "tools/readiness/tests/test_t82.py (13 witnesses)",
+          "subsystem": "tools/readiness/tests (the whole python readiness suite)"
+        },
+        "deleted_cases": [],
+        "executed_scenarios": {
+          "bulk": "advertising bulk transfer while BULK_TRANSFER_ENABLED is false is refused by name; a document that mentions the closed tier without stating the closure is refused (W03, W07)",
+          "bulk_plane": "ADR-006 is OPEN and the iOS transport reporteth unavailable rather than pretending to send (W08)",
+          "device": "NOT EXECUTED: T82 is a declaration-consistency task; no device is involved",
+          "flags": "the four capability flags are FALSE in the LIGHT flavour, and a flipped flag is caught (W05)",
+          "internet": "an INTERNET permission on the Archive-only manifest (or granted by the lab's) is refused by name (W04)",
+          "ios_surface": "the shipping plist declares no local-network string, no background mode, and the entitlements grant no multipeer capability (W09)",
+          "offline": "the Archive-only product stayeth offline and the ledger claimeth nothing the code does not enable (W13)",
+          "open_decisions": "every externally-open capability nameth a decision a register carrieth; a bogus name is refused; and none is closed by this task (W10)",
+          "stubs": "the two incompatible stubs (Wi-Fi Aware, MultipeerConnectivity) are in the ledger and no advertised capability may be one (W11)",
+          "the_law": "a capability advertised as available must have its enabling code ENABLED; the real repository carrieth no refused promise, and a fed advertisement of a disabled capability is refused by name (W02)",
+          "the_repository": "the real repository passeth the check, and each injected defect is caught (W12)",
+          "tiers": "exactly one shipping tier, and it is LIGHT; MEDIUM and LARGE are research-only, and their documentation SAYETH SO (W06, W07)"
+        },
+        "produced_artifacts": {
+          "court": {
+            "path": "tools/readiness/tests/test_t82.py"
+          },
+          "ledger": {
+            "laws": "a capability may only be advertised if its enabling code is enabled; a closed capability must be closed IN WORDS; every named decision must be recorded; no advertised capability may be a stub",
+            "path": "tools/readiness/promises.py",
+            "types": [
+              "Capability",
+              "Status",
+              "Finding",
+              "CAPABILITIES",
+              "check",
+              "advertised",
+              "refused_promises",
+              "report"
+            ]
+          }
+        },
+        "roster_campaigns": {
+          "pass_1": {
+            "causes": "every escape was a witness asserting the ledger's DATA instead of feeding the checker its violation",
+            "repair": "8b51d4a7",
+            "rods": 12,
+            "tally": {
+              "ESCAPED": 6,
+              "KILLED": 6
+            }
+          },
+          "pass_2": {
+            "causes": "two either/or assertions let a rule hide behind its sibling, and the named-negative rod named a witness the mutant satisfieth",
+            "repair": "0d12eb4147537ea046ba4522fc22f0fd65ebbcea",
+            "rods": 12,
+            "tally": {
+              "ESCAPED": 3,
+              "KILLED": 9
+            }
+          },
+          "pass_3": {
+            "baseline": "8b51d4a7",
+            "note": "the final official pass ran with the ledger and court in exactly the state 0d12eb4147537ea046ba4522fc22f0fd65ebbcea commits",
+            "rods": 12,
+            "tally": {
+              "ESCAPED": 0,
+              "INVALID": 0,
+              "KILLED": 12,
+              "SKIPPED": 0,
+              "TIMEOUT": 0
+            }
+          }
+        }
+      },
+      "claim_commit": "15b4575ade5aa16a8e24f2560023e8fa4b64854c",
+      "commands": [
+        "T82-narrow-python3",
+        "T82-subsystem-python3",
+        "T82-controls-python3",
+        "T82-controls-python3-002"
+      ],
+      "device_gate_ids": [],
+      "file_hashes": {
+        "ci/mutations.py": "e8638243b69cb26d724bf1bae25609dabc0ae7e24b7582c460ae06e5dcfa418b",
+        "tools/readiness/promises.py": "ddd70ad739cd5bd8267328830e4513ac272b26376916edc9c33e4ecda2ab2673",
+        "tools/readiness/tests/test_t82.py": "a62f77e5851561d5592dc508c02c90a2f26aa3cf2073a2c4e29a4710bc988a81"
+      },
+      "implementation_commit": "0d12eb4147537ea046ba4522fc22f0fd65ebbcea",
+      "implementation_commits": [
+        "d77490879383a9652378d25183d247d555eda58a",
+        "af32987be8dc940bec3be8351de4d2bcd723e91b",
+        "8b51d4a79c007c98aa0020b363af9ae1bfa1d91e",
+        "0d12eb4147537ea046ba4522fc22f0fd65ebbcea"
+      ],
+      "inputs": {
+        "children_commit_order": [
+          "T82(claim)",
+          "T82(builder)",
+          "T82(builder-rods)",
+          "T82(builder-witness-repair)",
+          "T82(builder-witness-repair-2)",
+          "T82(M)"
+        ],
+        "claim_ordering_note": "the claim was taken at 15b4575ade5aa16a8e24f2560023e8fa4b64854c; the stages and the final roster were run at the implementation head 0d12eb4147537ea046ba4522fc22f0fd65ebbcea. Runner logs and executed logs live in distinct directories (T82/logs, T82/executed) so no pass can overwrite another.",
+        "governed_source": [
+          "tools/readiness/promises.py",
+          "tools/readiness/tests/test_t82.py",
+          "ci/mutations.py"
+        ],
+        "required_regression_paths": [
+          "tools/readiness/tests/test_t82.py"
+        ],
+        "sealed_hot_paths_untouched": [
+          "EVERYTHING the checker READETH: the manifests, the tier table, the tier documentation, the bulk-plane ADR, the transports, the iOS plist and entitlements, the release manifest and the blocker register -- all READ and asserted against, none CHANGED",
+          "the shipping LIGHT surface and its Archive-only contract: the flags were already false and the documents already stated the closures, so this task's value is that the agreement is now CHECKED",
+          "the five external gates and docs/production/RELEASE_GATES_STATUS.json: the three open decisions are NAMED, never resolved",
+          "the readiness statements: both flags stay false; A-01 stays OPEN"
+        ]
+      },
+      "ladder_boundary_commit": "0d12eb4147537ea046ba4522fc22f0fd65ebbcea",
+      "mutation_results": {
+        "attempts_archived": [
+          {
+            "baseline": "af32987b",
+            "pass": 1,
+            "repaired_in": "8b51d4a7",
+            "rods": 12,
+            "tally": {
+              "ESCAPED": 6,
+              "KILLED": 6
+            }
+          },
+          {
+            "baseline": "8b51d4a7",
+            "pass": 2,
+            "repaired_in": "0d12eb4147537ea046ba4522fc22f0fd65ebbcea",
+            "rods": 12,
+            "tally": {
+              "ESCAPED": 3,
+              "KILLED": 9
+            }
+          }
+        ],
+        "campaign_note": "the twelve rods ran in the FINAL official pass, fail-closed, at baseline 8b51d4a7 (with the ledger and court in the state 0d12eb4147537ea046ba4522fc22f0fd65ebbcea commits): 12 KILLED of 12, SKIPPED=0, INVALID=0, TIMEOUT=0, ESCAPED=0. The card's named semantic negative is RC1/RC2 ('Advertise bulk transfer or introduce INTERNET into Archive-only to solve it: profile/release constraint test fails'), struck on the promise law and on the INTERNET removal. THREE passes are recorded: pass 1 lost six rods to witnesses that asserted the ledger's data instead of feeding the checker, and pass 2 lost three to either/or assertions and a witness-field mismatch.",
+        "of": 12,
+        "roster_manifest": "T82/roster/manifest.json",
+        "semantic": {
+          "harness": "ci/mutations.py run_semantic (the ledger filtered to the T82- prefix)",
+          "platforms": [
+            "python"
+          ],
+          "work_parent": "/Users/oculus/.cache/godstone-mutation-worktrees-t82 (disposable; the live tree is never touched)"
+        },
+        "tally": {
+          "ESCAPED": 0,
+          "INVALID": 0,
+          "KILLED": 12,
+          "SKIPPED": 0,
+          "TIMEOUT": 0
+        }
+      },
+      "objective": {
+        "claimed_head": "15b4575ade5aa16a8e24f2560023e8fa4b64854c",
+        "claimed_utc": "2026-09-14T23:49:28+00:00",
+        "objective": "Close the unsupported tier and bulk-plane promises EXPLICITLY: keep bulk transfer, GROUP/BROADCAST authoring and the MEDIUM/LARGE store products DISABLED, map every ADVERTISED capability to the profile code that actually enableth it (or close it by name as an explicitly disabled, unsupported-stub or externally-open decision), prove that the shipping binary carrieth no bulk, model, tier or INTERNET edge, and make the documentation state the unresolved external decisions rather than promising media/tier delivery that no store-compatible design backeth -- across the manifests, the tier table, the bulk-plane ADR, the transport stubs and the release manifest -- so that advertising bulk transfer or introducing INTERNET into the Archive-only build falleth the profile/release constraint check."
+      },
+      "status": "COMPLETE",
+      "tested_tree_sha": "b3d4479dc6957af9942a4e8c1533651fb89cfe2d",
+      "unresolved": [
+        "THIS TASK CLOSES NO EXTERNAL GATE: the three open decisions (NATIVE_MODELS, A06, APPROVED_CONTENT) are named and recorded, never resolved.",
+        "it is a consistency checker over DECLARATIONS: it proves the documents, the flags, the tier table and the manifests agree that these capabilities are closed -- it proves nothing about a running build beyond what those declarations say.",
+        "MEDIUM and LARGE remain BUILDABLE research configurations (their archives are producible); what is closed is their SHIPPING.",
+        "no device is claimed; readiness stays false."
+      ]
+    },
     "T83": {
       "case_results": {
         "android_grand": {
@@ -15295,7 +15511,7 @@
       ]
     }
   },
-  "current_task": "T82",
+  "current_task": null,
   "external_blockers": [
     "A06",
     "APPROVED_CONTENT",
@@ -15304,54 +15520,45 @@
     "SIGNING"
   ],
   "failed_attempts": [],
-  "in_progress": {
-    "claimed_head": "15b4575ade5aa16a8e24f2560023e8fa4b64854c",
-    "claimed_utc": "2026-09-14T23:49:28+00:00",
-    "objective": {
-      "claimed_head": "15b4575ade5aa16a8e24f2560023e8fa4b64854c",
-      "claimed_utc": "2026-09-14T23:49:28+00:00",
-      "objective": "Close the unsupported tier and bulk-plane promises EXPLICITLY: keep bulk transfer, GROUP/BROADCAST authoring and the MEDIUM/LARGE store products DISABLED, map every ADVERTISED capability to the profile code that actually enableth it (or close it by name as an explicitly disabled, unsupported-stub or externally-open decision), prove that the shipping binary carrieth no bulk, model, tier or INTERNET edge, and make the documentation state the unresolved external decisions rather than promising media/tier delivery that no store-compatible design backeth -- across the manifests, the tier table, the bulk-plane ADR, the transport stubs and the release manifest -- so that advertising bulk transfer or introducing INTERNET into the Archive-only build falleth the profile/release constraint check."
-    },
-    "task": "T82"
-  },
-  "last_code_head": "85d071f54bde43e640e758f640a615de58ef7f3d",
-  "last_observed_head": "85d071f54bde43e640e758f640a615de58ef7f3d",
+  "in_progress": null,
+  "last_code_head": "0d12eb4147537ea046ba4522fc22f0fd65ebbcea",
+  "last_observed_head": "0d12eb4147537ea046ba4522fc22f0fd65ebbcea",
   "latest_verification": {
-    "at_utc": "2026-09-15T16:30:00+00:00",
-    "boundary_commit": "85d071f54bde43e640e758f640a615de58ef7f3d",
+    "at_utc": "2026-09-15T18:00:00+00:00",
+    "boundary_commit": "0d12eb4147537ea046ba4522fc22f0fd65ebbcea",
     "controls": {
       "boundary_records": 2,
       "outcomes": "2/2 PASSED at the boundary (check_repository rc=0 including the harness selftest, the release-gates checker rc=0)"
     },
     "isle_grands": {
-      "android_grand": "the T72 court 13/13 and the whole :mesh suite 1128/0 at the boundary (a green-retry after the documented T17 flake), genuinely EXECUTED",
-      "counts_source": "see completed_tasks.T72.case_results.counts_source",
-      "ios_grand": "the T72 court 13/13 and the whole package 1166/0 at the boundary (up from 1153)",
-      "python_grand": "the T72 court 13/13 and the readiness suite 390 OK (up from 377), the conductor's campaign line rc=0, structural lineage rc=0, diff clean, sync --check clean"
+      "android_grand": "no android court in this round: T82 READ the Android manifest and flavour and changed neither",
+      "counts_source": "see completed_tasks.T82.case_results.counts_source",
+      "ios_grand": "no iOS court either: the plist and entitlements were READ and asserted against",
+      "python_grand": "the readiness suite 403 OK (up from 390), the promise ledger rc=0 with VERDICT: PASS, structural lineage rc=0, diff clean, sync --check clean"
     },
     "ladder": {
       "L0": "1 PASSED (check_repository, including the harness selftest), 1 FAILED (ci/symbols.py --selftest: PRE-EXISTING)",
-      "L1": "PASSED (all three lanes plus the python readiness suite)",
+      "L1": "PASSED (the python readiness suite)",
       "L2_L4": "unavailable: no command manifest yet"
     },
     "narrow": {
       "errors": 0,
       "failures": 0,
-      "lane": "gradle :mesh --tests *ReadinessT72Test* / swift --filter ReadinessT72Tests / python -p test_t72.py",
-      "tests": 39
+      "lane": "python3 -m unittest discover -s tools/readiness/tests -p test_t82.py -v",
+      "tests": 13
     },
     "roster": {
-      "T72_killed": 12,
+      "T82_killed": 12,
       "of": 12
     },
     "subsystem": {
       "errors": 0,
       "failures": 0,
-      "lane": "gradle :mesh (1128) + swift package (1166) + python readiness (390)",
-      "tests": 2684
+      "lane": "python3 -m unittest discover -s tools/readiness/tests -v",
+      "tests": 403
     }
   },
-  "next_task": "T82",
+  "next_task": null,
   "phase": "P0",
   "plan_sha256": "685456b378662b0a40a53a6abc810041e37daf97b213f3efeb6cea879363934e",
   "planning_baseline_sha": "b5c3d3d394b70cf356cdde33b47511dad7cbb95c",
@@ -15453,7 +15660,9 @@
     "T71 boundary: the diagnostics recorder is NOT yet wired into the production call paths, and no device traffic was captured. The bounds and the redaction are asserted of the MODEL; the shipping manifest's INTERNET removal is the only end-to-end claim, and it is pre-existing.",
     "T72 boundary: a SHUTDOWN that released nothing was a NO-OP because every cycle already released its own resources. A lifecycle law needeth WORK IN FLIGHT at the moment it is tested, or the mutant that breaketh it changeth nothing. The campaign now leaveth its final cycle's resources held.",
     "T72 boundary: THE FINDING from pass 3 -- the census plateau resteth on the CAPACITY, not on the release discipline: an unreleased lease is still bounded by its capacity. A rod that striketh only the release cannot grow the census, so 'unbounded growth' requireth BOTH clauses removed.",
-    "T72 boundary: the campaign is a HOST conductor over a model of the production resources; no device, no adapter and no resident-set measurement is claimed. Its bounds and invariants are asserted of the model, not of the app."
+    "T72 boundary: the campaign is a HOST conductor over a model of the production resources; no device, no adapter and no resident-set measurement is claimed. Its bounds and invariants are asserted of the model, not of the app.",
+    "T82 boundary: a CHECKER's witness must FEED the checker the violation its rod striketh. Six T82 rods escaped because their witnesses asserted the LEDGER's own rows, which no rod toucheth -- and three more escaped behind either/or assertions, where one rule satisfied the assertion while its sibling slept. Feed the input; assert ONE rule.",
+    "T82 boundary: the promise ledger counteth a capability as ADVERTISED only where it is promised as AVAILABLE. A document that discusseth a closed capability in order to close it is `closed_in`, and its closure must be stated in the document's own words. That distinction was the ledger's own first-draft error."
   ],
   "warnings_for_next_invocation": [
     "T41 IS THE NEXT TASK (deps T40, T24, T26, T37, T39, T84 all complete; no external requirement). After T41 cometh T42, T43, T44, then T54 and the platform chain.",

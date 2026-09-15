@@ -14313,6 +14313,293 @@
         "the metric vocabulary is asserted as a SET: nothing structurally preventeth a future edit from adding a name that carrieth private data, though the court asserteth no name containeth 'body', 'key' or 'node'."
       ]
     },
+    "T72": {
+      "case_results": {
+        "added_cases": {
+          "android/mesh/src/test/java/io/godstone/mesh/readiness/ReadinessT72Test.kt": [
+            "test_w01_ten_thousand_cycles_over_multiple_peers",
+            "test_w02_zero_leaks_after_shutdown",
+            "test_w03_no_duplicate_inbox_row",
+            "test_w04_no_duplicate_delivery_under_the_retry_cap",
+            "test_w05_no_uncaught_malformed_input",
+            "test_w06_the_census_plateau_is_structural",
+            "test_w07_the_fault_schedule_is_bounded_and_deterministic",
+            "test_w08_the_five_faults_are_applied_at_their_steps",
+            "test_w09_each_defect_is_caught_by_name",
+            "test_w10_a_failed_seed_is_recorded_and_reproducible",
+            "test_w11_the_campaign_is_bounded_in_time",
+            "test_w12_the_isles_carry_the_same_invariants_and_faults",
+            "test_w13_the_conductor_never_claimeth_a_device"
+          ],
+          "ios/Godstone/Tests/GodstoneMeshTests/ReadinessT72Tests.swift": [
+            "testW01TenThousandCyclesOverMultiplePeers",
+            "testW02ZeroLeaksAfterShutdown",
+            "testW03NoDuplicateInboxRow",
+            "testW04NoDuplicateDeliveryUnderTheRetryCap",
+            "testW05NoUncaughtMalformedInput",
+            "testW06TheCensusPlateauIsStructural",
+            "testW07TheFaultScheduleIsBoundedAndDeterministic",
+            "testW08TheFiveFaultsAreAppliedAtTheirSteps",
+            "testW09EachDefectIsCaughtByName",
+            "testW10AFailedSeedIsRecordedAndReproducible",
+            "testW11TheCampaignIsBoundedInTime",
+            "testW12TheIslesCarryTheSameInvariantsAndFaults",
+            "testW13TheConductorNeverClaimethADevice"
+          ],
+          "tools/readiness/tests/test_t72.py": [
+            "test_w01_ten_thousand_lifecycle_cycles_over_multiple_peers",
+            "test_w02_zero_leaked_leases_timers_sessions_after_shutdown",
+            "test_w03_no_duplicate_inbox_row",
+            "test_w04_no_duplicate_delivery_under_the_retry_cap",
+            "test_w05_no_uncaught_malformed_input",
+            "test_w06_the_census_plateau_is_a_structural_formula",
+            "test_w07_the_fault_schedule_is_bounded_and_deterministic",
+            "test_w08_the_five_faults_are_applied_at_their_steps",
+            "test_w09_the_named_negative_each_defect_is_caught_by_name",
+            "test_w10_a_failed_seed_is_recorded_and_reproducible",
+            "test_w11_the_campaign_is_bounded_in_time",
+            "test_w12_the_two_isles_carry_the_same_invariants_and_faults",
+            "test_w13_the_matrix_keepeth_stress_apart_from_the_device_rows"
+          ]
+        },
+        "corrected_cases": {
+          "campaign_repairs": [
+            "RC1/RC8/RC11 ('shutdown releaseth nothing') ESCAPED because every cycle released its own resources, so the counters were ALREADY zero at shutdown and the mutant was a NO-OP. The campaign now carrieth WORK IN FLIGHT at shutdown (the final cycle leaveth its resources held), so the law has something to release",
+            "RC5 ('the census groweth with the cycles') ESCAPED because it struck the CAPACITY check while the per-cycle RELEASE still ran, so the lease count oscillated 0/1. THE FINDING: the plateau resteth on the CAPACITY, not on the release discipline -- an unreleased lease is still bounded -- so the rod now striketh BOTH clauses",
+            "restoring the capacity clause then stripped the UNBOUNDED_CENSUS defect of its force, which the plateau and named-negative witnesses caught immediately on all three lanes",
+            "the census plateau was first a MAGIC NUMBER (256) that a healthy run exceeded; it became the STRUCTURAL FORMULA (capacity + retry cap + 2 x distinct msg ids + 8)",
+            "the conductor's fault schedule was defined before its own Fault dataclass (a NameError at import)",
+            "the 'no device claim' witness tripped over its own docstring: it now strips docstrings and comments properly, on all three lanes"
+          ],
+          "note": "no pre-T72 assertion was changed. The CAMPAIGN ITSELF was repaired three times, and each repair taught a lesson about what a killable mutant requireth:"
+        },
+        "counts": {
+          "narrow_android": 13,
+          "narrow_ios": 13,
+          "narrow_python": 13,
+          "subsystem_android": 1128,
+          "subsystem_ios": 1166,
+          "subsystem_python": 390
+        },
+        "counts_source": "all three lanes genuinely EXECUTED at the implementation head: a TEST-*.xml walk of android/mesh/build/test-results/testDebugUnitTest after purging stale results and passing --no-build-cache (13/0 narrow; 1128/0 subsystem on the SECOND attempt -- the first hit the documented T17 randomized-draw flake), swift's own 'Executed N tests, with M failures' line (13/0 narrow, 1166/0 subsystem -- up from 1153), and the python harness's artifacts (13 '... ok' lines for the T72 court alone; 'Ran 390 tests' for the whole readiness suite, up from 377).",
+        "courts": {
+          "android": "android/mesh/src/test/java/io/godstone/mesh/readiness/ReadinessT72Test.kt (13 witnesses, driven by io.godstone.mesh.stress.StressCampaign)",
+          "controls": "ci/check_repository.py, ci/check_release_gates_status.py",
+          "ios": "ios/Godstone/Tests/GodstoneMeshTests/ReadinessT72Tests.swift (13 witnesses, the twin)",
+          "python": "tools/readiness/tests/test_t72.py (13 witnesses, driven by the real conductor)"
+        },
+        "deleted_cases": [],
+        "executed_scenarios": {
+          "cycles": "ten thousand lifecycle cycles over eight peers, deterministic under one seed, settling in well under the court's budget (W01, W11)",
+          "device": "NOT EXECUTED: this is a host conductor over a model of the production RESOURCES; the adapter/store/native failure modes on real hardware stay external (T73-T75)",
+          "faults": "each of the five faults is applied at its step: disk-full, corruption and malformed each count a refusal; a clock jump leaves no timer standing (W08)",
+          "inbox_dedup": "one msg_id entereth the inbox exactly once, however often the record arriveth (W03)",
+          "leaks": "zero leaked leases, timers and sessions after shutdown -- and the campaign carrieth work in flight, so the law is real (W02)",
+          "malformed": "a malformed record is refused and COUNTED; a defect that lets it escape is RECORDED rather than killing the conductor (W05)",
+          "named_negative": "EACH defect is caught BY NAME -- no lease release, no retry cap, no dedup, a malformed escape and an unbounded census -- and a healthy campaign carrieth none of those failures (W09)",
+          "plateau": "the census high-water stayeth under the structural bound, and the live resources are independent of the cycle count (W06)",
+          "reproducible_seed": "a failed seed is recorded with its first failure and replays EXACTLY; two different seeds give different traces (W10)",
+          "retry_cap": "the retry cap boundeth the delivery advances, and a defect that disables it is caught (W04)",
+          "schedule": "the fault schedule is bounded, deterministic under its seed, and carrieth every kind -- a dense schedule (every 64 steps) still passes (W07, W11)"
+        },
+        "produced_artifacts": {
+          "android": {
+            "note": "the twin in :mesh, with a shared deterministic generator",
+            "path": "android/mesh/src/main/java/io/godstone/mesh/stress/StressCampaign.kt"
+          },
+          "conductor": {
+            "laws": "10k cycles; zero leaked leases/timers/sessions; no duplicate inbox or delivery; no uncaught malformed input; a structurally bounded census; a recorded and reproducible failed seed",
+            "path": "tools/readiness/stress.py",
+            "types": [
+              "StressCampaign",
+              "FaultSchedule",
+              "Fault",
+              "FaultKind",
+              "Invariant",
+              "CampaignDefect",
+              "CampaignResult",
+              "run_campaign",
+              "campaign_report"
+            ]
+          },
+          "ios": {
+            "note": "the Swift twin, with the same generator and invariants",
+            "path": "ios/Godstone/Sources/GodstoneMesh/StressCampaign.swift"
+          }
+        },
+        "roster_campaigns": {
+          "pass_1": {
+            "causes": "the three shutdown rods were NO-OPS (resources were already zero at shutdown), and the census rod struck the capacity while the release still ran",
+            "repair": "c9b12e8d",
+            "rods": 12,
+            "tally": {
+              "ESCAPED": 4,
+              "KILLED": 8
+            }
+          },
+          "pass_2": {
+            "causes": "the census rod's needle moved when the capacity clause was restored",
+            "repair": "e742bb67",
+            "rods": 12,
+            "tally": {
+              "KILLED": 11,
+              "SKIPPED": 1
+            }
+          },
+          "pass_3": {
+            "causes": "the release-only mutant cannot grow the census: the CAPACITY boundeth it (the finding above)",
+            "repair": "85d071f54bde43e640e758f640a615de58ef7f3d",
+            "rods": 12,
+            "tally": {
+              "ESCAPED": 1,
+              "KILLED": 11
+            }
+          },
+          "pass_4": {
+            "baseline": "e742bb67",
+            "note": "the final official pass ran with the ledger in exactly the state 85d071f54bde43e640e758f640a615de58ef7f3d commits",
+            "rods": 12,
+            "tally": {
+              "ESCAPED": 0,
+              "INVALID": 0,
+              "KILLED": 12,
+              "SKIPPED": 0,
+              "TIMEOUT": 0
+            }
+          }
+        }
+      },
+      "claim_commit": "941999d20135b721212644a503816491ec93b5c8",
+      "commands": [
+        "T72-narrow-gradlew",
+        "T72-narrow-swift",
+        "T72-narrow-python3",
+        "T72-subsystem-gradlew",
+        "T72-subsystem-swift",
+        "T72-subsystem-python3",
+        "T72-controls-python3-002",
+        "T72-controls-python3-003"
+      ],
+      "device_gate_ids": [],
+      "file_hashes": {
+        "android/mesh/src/main/java/io/godstone/mesh/stress/StressCampaign.kt": "ddbafe48254d344502d2031ad734b837978d71342d92a763a04f2bbf585d380a",
+        "android/mesh/src/test/java/io/godstone/mesh/readiness/ReadinessT72Test.kt": "794d830c99deb69c8adbf126a96f6aff45784fdf3ae5bf38e7a429bf1ee49550",
+        "ci/mutations.py": "697d029bad8db96ce74ce87e6b85d1bc7b4966bb7896b82493a215300c8bb150",
+        "ios/Godstone/Sources/GodstoneMesh/StressCampaign.swift": "5734a0fa740fd421ddf84a773bc6cbf391c7b8a264699d260910f2347a23128c",
+        "ios/Godstone/Tests/GodstoneMeshTests/ReadinessT72Tests.swift": "79d7f88c15c9be49a1c568c8fc44ec57c41281e2573786b5c3130272f0d307b4",
+        "tools/readiness/stress.py": "72e8f85c946b9d1f35f1cd004ae19677f8dd0cd18f0b59fb92e77f3800e3d195",
+        "tools/readiness/tests/test_t72.py": "234c76ec724e50f77d2893fe9520899d0396c435e5bf628a689c5f6710f5561a"
+      },
+      "implementation_commit": "85d071f54bde43e640e758f640a615de58ef7f3d",
+      "implementation_commits": [
+        "2df60eceda4745855f145a0e6d75a3c51d6345e8",
+        "c9b12e8d476895c0da384a8f15d487521d58d614",
+        "e742bb674bc6f166d0eb1ee09e3caa689bc0c2d6",
+        "85d071f54bde43e640e758f640a615de58ef7f3d"
+      ],
+      "inputs": {
+        "children_commit_order": [
+          "T72(claim)",
+          "T72(builder)",
+          "T72(builder-repair)",
+          "T72(builder-rods-repair-2)",
+          "T72(builder-rods-repair-3)",
+          "T72(M)"
+        ],
+        "claim_ordering_note": "the claim was taken at 941999d20135b721212644a503816491ec93b5c8; the stages and the final roster were run at the implementation head 85d071f54bde43e640e758f640a615de58ef7f3d. Runner logs and executed logs live in distinct directories (T72/logs, T72/executed) so no pass can overwrite another.",
+        "governed_source": [
+          "tools/readiness/stress.py",
+          "tools/readiness/tests/test_t72.py",
+          "android/mesh/src/main/java/io/godstone/mesh/stress/StressCampaign.kt",
+          "android/mesh/src/test/java/io/godstone/mesh/readiness/ReadinessT72Test.kt",
+          "ios/Godstone/Sources/GodstoneMesh/StressCampaign.swift",
+          "ios/Godstone/Tests/GodstoneMeshTests/ReadinessT72Tests.swift",
+          "ci/mutations.py"
+        ],
+        "required_regression_paths": [
+          "android/mesh/src/test/java/io/godstone/mesh/readiness/ReadinessT72Test.kt",
+          "ios/Godstone/Tests/GodstoneMeshTests/ReadinessT72Tests.swift",
+          "tools/readiness/tests/test_t72.py"
+        ],
+        "sealed_hot_paths_untouched": [
+          "the verification-matrix documents: READ and asserted against, never changed",
+          "the shipping LIGHT surface and its manifests",
+          "the crypto, wire, identity and BLE contracts: the campaign consumeth none of them",
+          "the production compositions themselves: the campaign exerciseth a MODEL of the resources, not the real stores",
+          "the five external gates and docs/production/RELEASE_GATES_STATUS.json",
+          "the readiness statements: both flags stay false; A-01 stays OPEN"
+        ]
+      },
+      "ladder_boundary_commit": "85d071f54bde43e640e758f640a615de58ef7f3d",
+      "mutation_results": {
+        "attempts_archived": [
+          {
+            "baseline": "2df60ece",
+            "pass": 1,
+            "repaired_in": "c9b12e8d",
+            "rods": 12,
+            "tally": {
+              "ESCAPED": 4,
+              "KILLED": 8
+            }
+          },
+          {
+            "baseline": "c9b12e8d",
+            "pass": 2,
+            "repaired_in": "e742bb67",
+            "rods": 12,
+            "tally": {
+              "KILLED": 11,
+              "SKIPPED": 1
+            }
+          },
+          {
+            "baseline": "e742bb67",
+            "pass": 3,
+            "repaired_in": "85d071f54bde43e640e758f640a615de58ef7f3d",
+            "rods": 12,
+            "tally": {
+              "ESCAPED": 1,
+              "KILLED": 11
+            }
+          }
+        ],
+        "campaign_note": "the twelve rods ran in the FINAL official pass, fail-closed, at baseline e742bb67 (with the ledger in the state 85d071f54bde43e640e758f640a615de58ef7f3d commits): 12 KILLED of 12, SKIPPED=0, INVALID=0, TIMEOUT=0, ESCAPED=0. The card's named semantic negative is RC1/RC2 ('Disable one capacity release or retry cap: stress invariant fails'), struck on all three lanes. FOUR passes are recorded rather than folded away, and pass 3's escape is a FINDING, not a bookkeeping slip: the census plateau resteth on the CAPACITY, so a release-only defect cannot grow it.",
+        "of": 12,
+        "roster_manifest": "T72/roster/manifest.json",
+        "semantic": {
+          "harness": "ci/mutations.py run_semantic (the ledger filtered to the T72- prefix)",
+          "platforms": [
+            "python",
+            "jvm",
+            "swift"
+          ],
+          "work_parent": "/Users/oculus/.cache/godstone-mutation-worktrees-t72 (disposable; the live tree is never touched -- proven by the harness selftest)"
+        },
+        "tally": {
+          "ESCAPED": 0,
+          "INVALID": 0,
+          "KILLED": 12,
+          "SKIPPED": 0,
+          "TIMEOUT": 0
+        }
+      },
+      "objective": {
+        "claimed_head": "941999d20135b721212644a503816491ec93b5c8",
+        "claimed_utc": "2026-09-14T23:21:10+00:00",
+        "objective": "Run bounded production-path stress and deterministic fault campaigns: ten thousand lifecycle cycles over multiple peers with a SEED-RECORDED randomized trace, bounded fault schedules (clock discontinuities, disk-full, corruption, a slow ATT and malformed records) driven through the real compositions, and the invariants that a mesh simulation cannot cover -- ZERO leaked leases, timers or sessions after shutdown, a BOUNDED internal census plateau standing in for RSS, NO duplicate inbox or delivery row, NO uncaught malformed-input exception (malformed input is refused and counted), and a FAILED SEED recorded and REPRODUCIBLE so a red run can be replayed exactly -- on all three lanes, so that disabling one capacity release or one retry cap falleth the stress invariant."
+      },
+      "status": "COMPLETE",
+      "tested_tree_sha": "032158f48994b222e760c46afa67ea7aa56142be",
+      "unresolved": [
+        "NO DEVICE: this is a host conductor over a small model of the production RESOURCES; the adapter/store/native failure modes on real hardware stay external (T73-T75).",
+        "'Bounded RSS' is represented by a bounded INTERNAL CENSUS, not by a measured resident set: no process memory was sampled.",
+        "the resource model is small by design: it exerciseth lifecycle, capacity, dedup, retry and refusal, not the mesh's contents (their own courts own those).",
+        "the campaign is NOT wired into the app: the bounds and invariants are asserted of the model, exactly as T59's capability matrix, T60's journeys and T71's diagnostics are not yet consulted by the view-models.",
+        "THE FINDING from pass 3: the census plateau resteth on the CAPACITY. A campaign that released nothing but kept its capacity would still be bounded -- which is a truth about where the bound cometh from, recorded rather than hidden.",
+        "the android subsystem hit the documented T17 randomized-draw flake on its first run and passed on the retry (policy: green-retry to six, never a ledger rewrite)."
+      ]
+    },
     "T77": {
       "case_results": {
         "added_cases": {
@@ -15008,7 +15295,7 @@
       ]
     }
   },
-  "current_task": "T72",
+  "current_task": "T82",
   "external_blockers": [
     "A06",
     "APPROVED_CONTENT",
@@ -15018,29 +15305,29 @@
   ],
   "failed_attempts": [],
   "in_progress": {
-    "claimed_head": "941999d20135b721212644a503816491ec93b5c8",
-    "claimed_utc": "2026-09-14T23:21:10+00:00",
+    "claimed_head": "15b4575ade5aa16a8e24f2560023e8fa4b64854c",
+    "claimed_utc": "2026-09-14T23:49:28+00:00",
     "objective": {
-      "claimed_head": "941999d20135b721212644a503816491ec93b5c8",
-      "claimed_utc": "2026-09-14T23:21:10+00:00",
-      "objective": "Run bounded production-path stress and deterministic fault campaigns: ten thousand lifecycle cycles over multiple peers with a SEED-RECORDED randomized trace, bounded fault schedules (clock discontinuities, disk-full, corruption, a slow ATT and malformed records) driven through the real compositions, and the invariants that a mesh simulation cannot cover -- ZERO leaked leases, timers or sessions after shutdown, a BOUNDED internal census plateau standing in for RSS, NO duplicate inbox or delivery row, NO uncaught malformed-input exception (malformed input is refused and counted), and a FAILED SEED recorded and REPRODUCIBLE so a red run can be replayed exactly -- on all three lanes, so that disabling one capacity release or one retry cap falleth the stress invariant."
+      "claimed_head": "15b4575ade5aa16a8e24f2560023e8fa4b64854c",
+      "claimed_utc": "2026-09-14T23:49:28+00:00",
+      "objective": "Close the unsupported tier and bulk-plane promises EXPLICITLY: keep bulk transfer, GROUP/BROADCAST authoring and the MEDIUM/LARGE store products DISABLED, map every ADVERTISED capability to the profile code that actually enableth it (or close it by name as an explicitly disabled, unsupported-stub or externally-open decision), prove that the shipping binary carrieth no bulk, model, tier or INTERNET edge, and make the documentation state the unresolved external decisions rather than promising media/tier delivery that no store-compatible design backeth -- across the manifests, the tier table, the bulk-plane ADR, the transport stubs and the release manifest -- so that advertising bulk transfer or introducing INTERNET into the Archive-only build falleth the profile/release constraint check."
     },
-    "task": "T72"
+    "task": "T82"
   },
-  "last_code_head": "fbc2e0677a153f83bbc65b2419e4b5fb2dd1d76a",
-  "last_observed_head": "fbc2e0677a153f83bbc65b2419e4b5fb2dd1d76a",
+  "last_code_head": "85d071f54bde43e640e758f640a615de58ef7f3d",
+  "last_observed_head": "85d071f54bde43e640e758f640a615de58ef7f3d",
   "latest_verification": {
-    "at_utc": "2026-09-15T15:00:00+00:00",
-    "boundary_commit": "fbc2e0677a153f83bbc65b2419e4b5fb2dd1d76a",
+    "at_utc": "2026-09-15T16:30:00+00:00",
+    "boundary_commit": "85d071f54bde43e640e758f640a615de58ef7f3d",
     "controls": {
       "boundary_records": 2,
-      "outcomes": "2/2 PASSED at the boundary (check_repository rc=0, the release-gates checker rc=0, and the harness selftest rc=0 beside them)"
+      "outcomes": "2/2 PASSED at the boundary (check_repository rc=0 including the harness selftest, the release-gates checker rc=0)"
     },
     "isle_grands": {
-      "android_grand": "the T71 court 13/13 and the whole :mesh suite 1115/0 at the boundary, genuinely EXECUTED (--no-build-cache, stale results purged)",
-      "counts_source": "see completed_tasks.T71.case_results.counts_source",
-      "ios_grand": "the T71 court 13/13 and the whole package 1153/0 at the boundary (up from 1140)",
-      "python_grand": "the T71 court 13/13 and the readiness suite 377 OK (up from 364), the conductor's census rc=0, structural lineage rc=0, diff clean, sync --check clean"
+      "android_grand": "the T72 court 13/13 and the whole :mesh suite 1128/0 at the boundary (a green-retry after the documented T17 flake), genuinely EXECUTED",
+      "counts_source": "see completed_tasks.T72.case_results.counts_source",
+      "ios_grand": "the T72 court 13/13 and the whole package 1166/0 at the boundary (up from 1153)",
+      "python_grand": "the T72 court 13/13 and the readiness suite 390 OK (up from 377), the conductor's campaign line rc=0, structural lineage rc=0, diff clean, sync --check clean"
     },
     "ladder": {
       "L0": "1 PASSED (check_repository, including the harness selftest), 1 FAILED (ci/symbols.py --selftest: PRE-EXISTING)",
@@ -15050,21 +15337,21 @@
     "narrow": {
       "errors": 0,
       "failures": 0,
-      "lane": "gradle :mesh --tests *ReadinessT71Test* / swift --filter ReadinessT71Tests / python -p test_t71.py",
+      "lane": "gradle :mesh --tests *ReadinessT72Test* / swift --filter ReadinessT72Tests / python -p test_t72.py",
       "tests": 39
     },
     "roster": {
-      "T71_killed": 12,
+      "T72_killed": 12,
       "of": 12
     },
     "subsystem": {
       "errors": 0,
       "failures": 0,
-      "lane": "gradle :mesh (1115) + swift package (1153) + python readiness (377)",
-      "tests": 2645
+      "lane": "gradle :mesh (1128) + swift package (1166) + python readiness (390)",
+      "tests": 2684
     }
   },
-  "next_task": "T72",
+  "next_task": "T82",
   "phase": "P0",
   "plan_sha256": "685456b378662b0a40a53a6abc810041e37daf97b213f3efeb6cea879363934e",
   "planning_baseline_sha": "b5c3d3d394b70cf356cdde33b47511dad7cbb95c",
@@ -15163,7 +15450,10 @@
     "T67 boundary: the selftest's known-answer table carrieth a case that existeth BECAUSE the table was blind: a compile failure WITH test output, so the build rule can be seen falling asleep. A table whose cases can all be satisfied by another rule cannot see any of them.",
     "T71 boundary: a COURT FIXTURE may silently ignore its own argument -- the Android T71 court's live() built the recorder without passing the capacity, so a boundedness witness measured the default bound and passed for the wrong reason. When a fixture carrieth a parameter, assert the parameter is USED.",
     "T71 boundary: a 'must not contain X' scan must scan the CODE, not the prose: T71's transmission witness failed on its own KDoc, which NAMES the words it forbids. Filter comments before a forbidden-token scan.",
-    "T71 boundary: the diagnostics recorder is NOT yet wired into the production call paths, and no device traffic was captured. The bounds and the redaction are asserted of the MODEL; the shipping manifest's INTERNET removal is the only end-to-end claim, and it is pre-existing."
+    "T71 boundary: the diagnostics recorder is NOT yet wired into the production call paths, and no device traffic was captured. The bounds and the redaction are asserted of the MODEL; the shipping manifest's INTERNET removal is the only end-to-end claim, and it is pre-existing.",
+    "T72 boundary: a SHUTDOWN that released nothing was a NO-OP because every cycle already released its own resources. A lifecycle law needeth WORK IN FLIGHT at the moment it is tested, or the mutant that breaketh it changeth nothing. The campaign now leaveth its final cycle's resources held.",
+    "T72 boundary: THE FINDING from pass 3 -- the census plateau resteth on the CAPACITY, not on the release discipline: an unreleased lease is still bounded by its capacity. A rod that striketh only the release cannot grow the census, so 'unbounded growth' requireth BOTH clauses removed.",
+    "T72 boundary: the campaign is a HOST conductor over a model of the production resources; no device, no adapter and no resident-set measurement is claimed. Its bounds and invariants are asserted of the model, not of the app."
   ],
   "warnings_for_next_invocation": [
     "T41 IS THE NEXT TASK (deps T40, T24, T26, T37, T39, T84 all complete; no external requirement). After T41 cometh T42, T43, T44, then T54 and the platform chain.",
