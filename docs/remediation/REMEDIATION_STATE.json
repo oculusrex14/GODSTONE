@@ -4603,7 +4603,7 @@
   }
  ],
  "evidence_audit": {
-  "round": 98,
+  "round": 99,
   "what": "round 97: the AUDIT-004 limb of GS-CTRL-001 landed; the auditor's own 10-case probe suite was rerun at the repaired SHA (8 failures -> 5) and its three GS-CTRL-001 probes now pass.",
   "verified": 96,
   "defects_found_and_what_happened": [
@@ -4636,6 +4636,19 @@
    "symbol_resolver": "rc 0, 213 Kotlin files, 0 unresolved",
    "release_gate_checker": "rc 0; the evidence battery grew from 11 to 15 refusals; every mandatory lane still mandatory",
    "canonical_content_suite": "71 cases, 13 failures, 10 errors -- STILL RED (was 69/14/10), root cause NAMED: the fixtures omit the provenance metadata GS-CONTENT-001 made mandatory, so old positives fail too early",
+   "t77": "selftest rc 0, rehearsal rc 0 (12/12), git status EMPTY before and after",
+   "this_is_not_t78": "T78 final convergence requireth every applicable HOSTED job enabled, executed and green at one clean exact SHA; no hosted lane existeth here, so T78 has NOT run and no readiness flag moved."
+  },
+  "round99_candidate_verification": {
+   "candidate_sha": "d256ca58842acc3469fb74b876a8715c4a164626",
+   "candidate_tree_sha": "c51b936595782c15b3c45216766f535d1fca55eb",
+   "record": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/REMEDIATION/ROUND99/verification.json",
+   "auditor_probe_suite": "1 failure / 9 passes (was 8/2 at ae9905e and at the audit's own pin 33be0b0b); only GS-CONTENT-002 remaineth",
+   "canonical_readiness_suite": "498 tests, OK",
+   "canonical_content_suite": "75 tests, OK -- closed; it was 69 cases/14 failures/10 errors at the audit",
+   "validate_state": "rc 0, 0 problems, 8 notes",
+   "symbol_resolver": "rc 0, 213 Kotlin files, 0 unresolved",
+   "release_gate_checker": "rc 0; 15 of 15 evidence refusals; every mandatory lane mandatory; five external gates OPEN/BLOCKED",
    "t77": "selftest rc 0, rehearsal rc 0 (12/12), git status EMPTY before and after",
    "this_is_not_t78": "T78 final convergence requireth every applicable HOSTED job enabled, executed and green at one clean exact SHA; no hosted lane existeth here, so T78 has NOT run and no readiness flag moved."
   }
