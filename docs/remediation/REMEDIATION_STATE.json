@@ -2598,9 +2598,16 @@
           "what": "the byte-level classifier arms green in :mesh"
         }
       ],
-      "my_red_case": null,
+      "my_red_case": {
+        "argv": "python3 -m unittest discover -s tools/readiness/audit_probes -p test_store_evidence.py",
+        "case": "tools/readiness/audit_probes/test_store_evidence.py -- two court-quality arms over T29's own SOURCE",
+        "cwd": "/Users/oculus/Projects/GODSTONE_BUILDER",
+        "log": "GS-STORE-001/red/store-001-RED.log",
+        "log_sha256": "82554e2265d7afd3832c0d7ad2a2706528ec58b87b41982fceb81b5dd7dcf8f0",
+        "outcome": "BOTH arms RED: T29 stubbeth the NATIVE opener (`override fun openEncrypted(...) = facts()` at line 141 of the CODE) and deferreth its native proof in a COMMENT (line 15: 'wrong-key/corruption bytes on the real native are device evidence (T73-T75)')."
+      },
       "my_status": "OPEN",
-      "notes": "NOT SUBMITTED -- ADDED EVIDENCE, NO RED YET. Four arms now exercise the classifier over REAL FILE BYTES in `:mesh` (4/4 green: a real plain-magic file is Locked, a non-magic file is Available, a plain-magic file is refused whatever the handle saith, and the native seam is named as not-claimable), but they PASS on the first run because the CLASSIFIER is correct -- the audit's charge is against the COURT'S EVIDENCE (T29 proveth a fake), not against the classifier. They are therefore recorded as ADDED EVIDENCE, and the ledger court correctly refused to let the finding move off OPEN without a red. A FALSE WITNESS WAS ALSO PRODUCED AND REVERTED IN THE SAME ROUND: a probe arm asserting the T29 charge -- its second assertion stripped COMMENTS, and the audit's charge for that limb IS a comment ('the test comment moves actual native proof to T73-T75'), so the arm was blind to the very thing it claimed to check and passed; it was deleted rather than kept. THE RED THIS FINDING OWETH: an arm that FAILS on today's tree -- the honest shape is a court-quality assertion over T29's SOURCE that FAILS while T29 still (a) derives its at-rest facts from fields it setteth and (b) defers its native proof in a comment -- and it must be written so that it CANNOT pass by accident, which is what the deleted version did.",
+      "notes": "RED CONFIRMED AND RECORDED -- both arms fail on today's tree, and neither can pass by accident: one readeth the CODE (the stubbed native opener) and the other readeth the COMMENTS on purpose (the T73-T75 deferral), which is the limb the first version of this probe was blind to. The classifier itself is CORRECT; the charge is against the COURT'S EVIDENCE, and the four byte-level arms added last round are the positive control beside these two. NO native SQLCipher provisioning is claimed: it is the device lane and an external input.",
       "pending_proof": [],
       "pending_work": [
         "THE COURT'S HONESTY LIMIT (the card's second charge): T29's court still claimeth a classifier proof that its fakes cannot give -- its own comment moveth the native proof to T73-T75. The T29 court must either prove what it can (as this court doth, over real bytes) or SAY what it cannot prove; that rewrite is the remaining work.",
