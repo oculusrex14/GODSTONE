@@ -9,7 +9,7 @@
         "AUDIT_REPORT.md:40",
         "QWEN_REMEDIATION_QUEUE.md:85"
       ],
-      "entries": 288,
+      "entries": 314,
       "entries_floor_note": "measured 288 at the last re-measurement (the audit's own process keepeth writing); the floor may only RISE",
       "grows": true,
       "grows_note": "This folder is written by the AUDIT's own process, not by this builder, and it is still growing (its count moved 272 -> 279 -> 286 across three measurements). A frozen count would therefore fail the suite every time the audit produceth another output -- a control that punisheth the wrong party. The requirement is instead: the folder EXISTETH, its entries are all UNTRACKED, its count never FALLETH BELOW the declared floor, and the live tree MINUS it stayeth byte-identical to the saved baseline. The floor is raised when a measurement showeth it.",

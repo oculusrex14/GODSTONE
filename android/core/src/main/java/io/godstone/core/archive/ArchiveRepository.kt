@@ -159,6 +159,25 @@ class ArchiveRepository(
 
     private val arm: Arm by lazy { compute() }
 
+
+    /**
+     * GS-ARCHIVE-002: every read road passeth through here. A SQL failure becometh an
+     * [ArchiveReadException] NAMING the road, so the caller showeth Unavailable/ReadFailure
+     * with retry -- the audit reproduced `runCatching { ... }.getOrDefault(emptyList())`
+     * turning a broken schema or a vanished index into "no documents" while the state stayed
+     * Ready. The handle's AVAILABILITY is judged separately (the arm); a transient read
+     * failure never poisoneth a valid handle.
+     */
+    private inline fun <T> checkedRead(road: String, block: () -> List<T>): List<T> =
+        try {
+            block()
+        } catch (exc: ArchiveReadException) {
+            throw exc
+        } catch (exc: Throwable) {
+            throw ArchiveReadException("archive read failed on $road: " +
+                (exc.message ?: exc::class.simpleName), exc)
+        }
+
     private fun factsOfManifest(): Pair<ArchiveManifestFacts?, String?> {
         val text = bridge.assetBytes("$archiveAsset.manifest")?.decodeToString()
         if (text == null) {
@@ -277,7 +296,7 @@ class ArchiveRepository(
         val h = arm.handle ?: return emptyList()
         val where = if (domain.isNullOrBlank()) "" else "WHERE domain = ?"
         val args: Array<Any?> = if (domain.isNullOrBlank()) emptyArray() else arrayOf(domain)
-        return runCatching {
+        return checkedRead("listDocuments") {
             h.rows(
                 "SELECT document_id, title, domain, is_critical, source_id, revision " +
                     "FROM documents $where ORDER BY is_critical DESC, domain, title",
@@ -292,20 +311,20 @@ class ArchiveRepository(
                     revision = row[5] as String,
                 )
             }
-        }.getOrDefault(emptyList())
+        }
     }
 
     override fun listDomains(): List<String> {
         val h = arm.handle ?: return emptyList()
-        return runCatching {
+        return checkedRead("listDomains") {
             h.rows("SELECT DISTINCT domain FROM documents ORDER BY domain", emptyArray())
                 .map { it[0] as String }
-        }.getOrDefault(emptyList())
+        }
     }
 
     override fun passages(documentId: Long): List<ArchivePassage> {
         val h = arm.handle ?: return emptyList()
-        return runCatching {
+        return checkedRead("passages") {
             h.rows(
                 """
                 SELECT c.chunk_id, c.document_id, d.title, d.domain, c.section, c.text
@@ -315,7 +334,7 @@ class ArchiveRepository(
                 """.trimIndent(),
                 arrayOf(documentId),
             ).map { it.toPassage() }
-        }.getOrDefault(emptyList())
+        }
     }
 
     /** Bounded, tokenised, quoted FTS5 search. A refused query answereth no
@@ -327,7 +346,7 @@ class ArchiveRepository(
             return emptyList()
         }
         val match = built.match
-        return runCatching {
+        return checkedRead("search") {
             h.rows(
                 """
                 SELECT c.chunk_id, c.document_id, d.title, d.domain, c.section, c.text,
@@ -341,7 +360,7 @@ class ArchiveRepository(
                 """.trimIndent(),
                 arrayOf(match, SearchQuery.bound(limit).toLong()),
             ).map { it.toPassage(score = -(it[6] as Double)) }
-        }.getOrDefault(emptyList())
+        }
     }
 
     /** The typed verdict of a query without running it: what would answer,

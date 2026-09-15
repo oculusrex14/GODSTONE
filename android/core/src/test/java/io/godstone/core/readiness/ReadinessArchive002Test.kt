@@ -218,6 +218,50 @@ class ReadinessArchive002Test {
         assertTrue("no descriptor when the bytes do not match", repository.descriptor == null)
     }
 
+
+    /** THE POSITIVE ARM: a manifest that agreeth with the bytes yields Ready AND a descriptor,
+     * so the law that refuseth unapproved bytes is not one that refuseth everything. */
+    @Test fun test_archive001_a_matching_manifest_yields_ready_and_a_descriptor() {
+        val archive = conformingArchive("approved.db")
+        File(archive.parentFile, archive.name + ".manifest").writeText(
+            manifestJson(archive, tier = "LIGHT", fileName = archive.name), Charsets.UTF_8)
+        val repository = repositoryOver(archive, "approved")
+        assertTrue("a matching manifest must yield Ready, got " + repository.status(),
+            repository.isAvailable)
+        val descriptor = repository.descriptor
+        assertTrue("Ready without a descriptor is the audited defect",
+            descriptor != null)
+        assertEquals(archive.name, descriptor!!.fileName)
+        assertEquals("LIGHT", descriptor.tier)
+        assertEquals(archive.length(), descriptor.bytes)
+        assertEquals(1, repository.listDocuments().size)
+        assertTrue(repository.search("bandage", 5).isNotEmpty())
+    }
+
+    /** GS-ARCHIVE-002 (repository half): EVERY read road raiseth the typed refusal, and no
+     * road may SWALLOW a failure into an empty list. The behavioural arm for the handle live
+     * above (`test_w02_...`); this arm asserteth the CONTRACT of the repository's four roads,
+     * which is what the audit's `runCatching { ... }.getOrDefault(emptyList())` broke. */
+    @Test fun test_archive002_no_read_road_swalloweth_a_failure() {
+        val source = File(repoRoot(), "android/core/src/main/java/io/godstone/core/archive/ArchiveRepository.kt")
+            .readText()
+        val roads = listOf("listDocuments", "listDomains", "passages", "search")
+        for (road in roads) {
+            assertTrue("the $road road must pass through the checked read",
+                source.contains("checkedRead(\"$road\")"))
+        }
+        // the swallowing idiom is GONE from the code (it surviveth only in the comments that
+        // explain why it was removed)
+        val code = source.lines().filterNot { it.trimStart().startsWith("*") || it.trimStart().startsWith("//") }
+            .joinToString("\n")
+        assertFalse("a read road still swalloweth a failure into an empty list",
+            code.contains("runCatching {") && code.contains("getOrDefault(emptyList())") &&
+                code.contains("checkedRead") == false)
+        assertTrue("every swallowing site must be gone",
+            !Regex("runCatching \\{[^}]*getOrDefault\\(emptyList\\(\\)\\)", RegexOption.DOT_MATCHES_ALL)
+                .containsMatchIn(code))
+    }
+
     /** The manifest document this court writes (the shape the runtime readeth). */
     private fun manifestJson(archive: File, tier: String, fileName: String,
                              bytesOver: Long = 0L): String {
