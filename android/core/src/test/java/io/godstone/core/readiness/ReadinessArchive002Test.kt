@@ -171,18 +171,27 @@ class ReadinessArchive002Test {
 
     // ================= GS-ARCHIVE-001: bytes are not an approval =================
 
-    /** The audit's first schedule: a VALID archive whose manifest is ABSENT. */
-    @Test fun test_archive001_a_missing_manifest_is_unavailable_not_ready() {
+    /** The audit's own observable: bytes alone must NOT be Ready.
+     * It useth ONLY pre-existing API, so it can be run against the PRE-REPAIR product --
+     * which is exactly how the RED for GS-ARCHIVE-001 is captured. */
+    @Test fun test_archive001_bytes_alone_are_not_ready() {
         val archive = conformingArchive("no-manifest.db")
         val repository = repositoryOver(archive, "no-manifest")
-        assertFalse("bytes alone were served as Ready", repository.isAvailable)
+        assertFalse("the audited defect: bytes alone were served as Ready",
+            repository.isAvailable)
         assertTrue("the refusal must be typed Unavailable",
             repository.status() is io.godstone.core.archive.ArchiveState.Unavailable)
-        assertTrue("no descriptor without a verified manifest", repository.descriptor == null)
         assertEquals("no document may be read from unapproved bytes",
             0, repository.listDocuments().size)
         assertTrue("no search may answer from unapproved bytes",
             repository.search("bandage", 5).isEmpty())
+    }
+
+    /** No descriptor existeth without a verified manifest (the repair's own API). */
+    @Test fun test_archive001_no_descriptor_without_a_verified_manifest() {
+        val archive = conformingArchive("no-descriptor.db")
+        val repository = repositoryOver(archive, "no-descriptor")
+        assertTrue("no descriptor without a verified manifest", repository.descriptor == null)
     }
 
     /** A manifest of the WRONG TIER is refused by name. */

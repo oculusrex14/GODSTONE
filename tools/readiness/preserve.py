@@ -285,7 +285,15 @@ def verify_preservation(root: str, evidence_dir: str, inventory: dict) -> list[s
         expected = entry.get('declared_entries', entry.get('entries'))
         if not os.path.exists(os.path.join(root, entry['path'])):
             failures.append(f'declared addition absent: {entry["path"]}')
-        if len(matched) != expected:
+        grows = bool(entry.get('grows'))
+        if grows:
+            # a GROWING folder owned by another process: the count may rise, never fall
+            if len(matched) < expected:
+                failures.append(
+                    f'declared addition SHRANK: {entry["path"]} carrieth {len(matched)} '
+                    f'entries where the floor is {expected} -- removed audit evidence is a '
+                    f'failure, not a repair')
+        elif len(matched) != expected:
             failures.append(
                 f'declared addition drifted: {entry["path"]} nameth {expected} entries, '
                 f'the live tree carrieth {len(matched)} -- the declaration is a MEASURED '
