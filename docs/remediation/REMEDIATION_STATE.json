@@ -4654,7 +4654,7 @@
   }
  ],
  "evidence_audit": {
-  "round": 100,
+  "round": 101,
   "what": "round 97: the AUDIT-004 limb of GS-CTRL-001 landed; the auditor's own 10-case probe suite was rerun at the repaired SHA (8 failures -> 5) and its three GS-CTRL-001 probes now pass.",
   "verified": 96,
   "defects_found_and_what_happened": [
@@ -4716,6 +4716,27 @@
    "t77": "selftest rc 0, rehearsal rc 0 (12/12), git status EMPTY before and after",
    "this_is_not_t78": "T78 final convergence requireth every applicable HOSTED job enabled, executed and green at one clean exact SHA; no hosted lane existeth here, so T78 has NOT run and no readiness flag moved.",
    "this_is_not_a_closure": "A probe suite written BEFORE the repairs, now green, is NOT a closure. Only an independent audit may write VERIFIED_FIXED; the depth each finding still owes is recorded per finding."
+  },
+  "round101_candidate_verification": {
+   "candidate_sha": "06f9680dd1280dc753781683fbb9461b1cdf498b",
+   "candidate_tree_sha": "d8b73e68e21b25b24ba87aa8ce2989f2fe1b868c",
+   "record": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/REMEDIATION/ROUND101/verification.json",
+   "auditor_probe_suite": "10 tests, OK -- the auditor's ENTIRE suite, unchanged at 10/10 after the durability change",
+   "canonical_readiness_suite": "504 tests, OK",
+   "canonical_content_suite": "75 tests, OK",
+   "validate_state": "rc 0, 0 problems, 8 notes",
+   "symbol_resolver": "rc 0, 213 Kotlin files, 0 unresolved",
+   "release_gate_checker": "rc 0; 15 of 15 evidence refusals; five external gates OPEN/BLOCKED",
+   "t77": "selftest rc 0, rehearsal rc 0 (12/12), git status EMPTY before and after",
+   "this_round": "GS-CONTENT-002 / AUDIT-004 step 5 durability: RED 11 tests/3 failures/no errors; green court 11/11",
+   "still_owed": [
+    "the step 4/5 ONE PUBLICATION OWNER (a second pair-of-renames in scripts/prepare_release_assets.py)",
+    "the step 5 PROCESS schedule (barriers at each transition, reader overlap, failed rollback, orphan cleanup)",
+    "the generation-pointer design",
+    "GS-CONTENT-001's material-level release eligibility"
+   ],
+   "this_is_not_t78": "no hosted lane existeth here, so T78 has NOT run and no readiness flag moved.",
+   "this_is_not_a_closure": "a suite written before the repairs, now green, is not a closure; only an independent audit may write VERIFIED_FIXED."
   }
  }
 }
