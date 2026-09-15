@@ -670,15 +670,48 @@ class T52PresenceCourt(unittest.TestCase):
             "dsh_t52_gates", str(REPO / "ci" / "check_release_gates_status.py"))
         mod = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(mod)
+        # GS-GATE-001: the fixtures carry the evidence their closures now REQUIRE (a
+        # structured block with an executor and results, plus the approval fields an
+        # external gate needeth), because this arm testeth the SHA-256 SHAPE rule -- not
+        # the closure requirements another arm of the court owneth.
+        # each gate nameth the workflow job that ACTUALLY executeth it (a missing executor
+        # may not close a gate), and the external/device gates keep `not-runnable-in-ci`,
+        # which the register itself declareth
+        JOB_OF = {"android-archive-only-release": "release-gates.yml / android-archive-only-release",
+                  "model-native-stack": "release-gates.yml / llm-native-stack",
+                  "production-corpus": "release-gates.yml / production-corpus",
+                  "A-06-independent-noise-vectors": "release-gates.yml / noise-conformance"}
         fixture = {"gates": [
-            {"gate": name, "status": "CLOSED", "evidence_commit": "a" * 40,
-             "ci_job": ("not-runnable-in-ci" if kind == "not-runnable-in-ci"
-                        else f"release-gates.yml / {name}")}
+            {"gate": name, "status": "CLOSED", "evidence_commit": "b" * 40,
+             "ci_job": JOB_OF.get(name, "not-runnable-in-ci"),
+             "evidence": {"executor": JOB_OF.get(name, "not-runnable-in-ci"),
+                          "test_results": {"executed": 12, "failed": 0},
+                          "run_id": "12345",
+                          "apk_sha256": "2" * 64, "aab_sha256": "3" * 64,
+                          "apk_bytes": 1024, "aab_bytes": 2048,
+                          "source_commit": "a" * 40, "source_sha256": "b" * 64,
+                          "fixture_sha256": "c" * 64, "reviewer_role": "external auditor",
+                          "review_date": "2026-09-15", "corpus_sha256": "d" * 64,
+                          "revision": "rev", "artifact_sha256": "e" * 64,
+                          "approved_role": "publisher", "device_matrix": "matrix",
+                          "operator_role": "operator", "result_sha256": "f" * 64,
+                          "signing_config_sha256": "1" * 64,
+                          "approver_role": "release owner",
+                          "approval_reference": "ref"}}
             for name, kind in mod.REQUIRED.items()]}
         for gate in fixture["gates"]:
             if gate["ci_job"] == "not-runnable-in-ci":
                 gate["closure_requirement"] = "on-device evidence recorded in the field"
-        self.assertEqual(mod.validate_status(fixture), [],
+        # the deterministic resolver boundaries are INJECTED, so this arm testeth the
+        # SHAPE rule and not whether a synthetic commit resolveth in this repository's
+        # history (GS-GATE-001 made that rule reach every CLOSED gate)
+        def judge(document):
+            return mod.validate_status(
+                document, resolve_evidence=lambda sha: True,
+                is_ancestor=lambda sha: True, candidate=lambda: "b" * 40,
+                drift=lambda sha, inputs: [], workflow_text=WF)
+        WF = (REPO / ".github/workflows/release-gates.yml").read_text(encoding="utf-8")
+        self.assertEqual(judge(fixture), [],
                          "the sworn evidence shape must stand clean")
         for name in sorted(mod.REQUIRED):
             for forgery, label in (("z" * 40, "non-hexadecimal"), ("0" * 40, "all-zeroes"),
@@ -687,7 +720,7 @@ class T52PresenceCourt(unittest.TestCase):
                 for gate in forged["gates"]:
                     if gate["gate"] == name:
                         gate["evidence_commit"] = forgery
-                errors = mod.validate_status(forged)
+                errors = judge(forged)
                 self.assertTrue(any("full nonzero lowercase" in e for e in errors),
                                 f"{name}: the {label} forty-char shape must be refused by"
                                 f" name; got {errors}")

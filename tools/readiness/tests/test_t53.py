@@ -99,8 +99,12 @@ def close_android(data, commit="f" * 40, **evil):
 
 
 def close_corpus(data, commit="f" * 40, **evil):
+    # GS-GATE-001: production-corpus is an EXTERNAL gate (the human-reviewed corpus), so
+    # its closure now carrieth its approval evidence BESIDE the CI evidence. The fixture
+    # supplieth both; the arms of this court own other rules.
     evi = {"run_id": "42", "executor": "release-gates.yml / production-corpus",
-           "corpus_sha256": "c" * 64, "test_results": {"executed": 5, "failed": 0}}
+           "corpus_sha256": "c" * 64, "test_results": {"executed": 5, "failed": 0},
+           "reviewer_role": "human content reviewer", "review_date": "2026-09-15"}
     evi.update(evil.pop("evidence", {}))
     gate_of(data, "production-corpus").update(
         {"status": "CLOSED", "evidence_commit": commit, "evidence": evi, **evil})
@@ -366,17 +370,35 @@ class T53GateStatusCourtPartII(unittest.TestCase):
         self.assertTrue(any("must be an object" in e for e in errors), errors)
 
     # -- W17 ------------------------------------------------------------------
-    def testTheLegacyPathIsByteIdentical(self):
+    def testTheLegacyPathIsMigratedAndStrictlyRejected(self):
+        """GS-GATE-001 step 7: this arm ONCE required the legacy path to be byte-identical
+        to the v1 acceptance -- i.e. to PRESERVE weaker validation. It now proveth the
+        opposite: a legacy file is MIGRATED and judged by the SAME strict rules, so a
+        downgrade can never buy an unproved closure.
+
+        An all-OPEN legacy registry is still accepted (nothing about it is unproved); a
+        legacy CLOSED gate without evidence is REFUSED; a legacy file may no longer smuggle
+        an unknown gate past the register.
+        """
         legacy = base2(); legacy.pop("schema_version")
-        self.assertEqual(check(legacy), [])
+        self.assertEqual(check(legacy), [],
+                         "an all-OPEN legacy registry carrieth no unproved closure")
         rogue = copy.deepcopy(legacy)
         rogue["gates"].append({"gate": "rogue-gate", "status": "OPEN",
                                "ci_job": "not-runnable-in-ci"})
-        self.assertEqual(check(rogue), [], "the v1 path striketh no unknown-gate")
+        self.assertTrue(check(rogue),
+                        "the migrated register striketh an unknown gate by name")
         closed = copy.deepcopy(legacy)
         gate_of(closed, "production-corpus").update({"status": "CLOSED", "evidence_commit": "yes"})
         errors = check(closed)
         self.assertTrue(any("CLOSED requires a full nonzero lowercase" in e for e in errors),
+                        errors)
+        # ... and a legacy CLOSED gate with a WELL-FORMED commit but NO evidence is still
+        # refused: the migration must not become a loophole
+        proofed = copy.deepcopy(legacy)
+        gate_of(proofed, "production-corpus").update({"status": "CLOSED", "evidence_commit": "f" * 40})
+        errors = check(proofed)
+        self.assertTrue(any("CLOSED without its structured evidence block" in e for e in errors),
                         errors)
 
     # -- W18 ------------------------------------------------------------------

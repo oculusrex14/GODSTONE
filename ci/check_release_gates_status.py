@@ -299,9 +299,14 @@ def _validate_evidence_block(name: str, g: Mapping[str, Any], errors: list[str],
         value = evidence["run_id"]
         if not isinstance(value, str) or not RUNID.fullmatch(value):
             errors.append(f"{name}: run_id must be a string of digits (the workflow run identifier)")
+    not_runnable = str(g.get("ci_job", "")).strip() == NOT_RUNNABLE_SENTINEL
     if "executor" in evidence:
         value = evidence["executor"]
-        if not isinstance(value, str) or not EXECUTOR.fullmatch(value):
+        if not_runnable:
+            if not isinstance(value, str) or not value.strip():
+                errors.append(f"{name}: a gate that cannot run in CI must still NAME its "
+                              f"executor (the human or device role)")
+        elif not isinstance(value, str) or not EXECUTOR.fullmatch(value):
             errors.append(f"{name}: executor must name the release-gates.yml job (release-gates.yml / job-name)")
         elif isinstance(g.get("ci_job"), str) and value != g["ci_job"]:
             errors.append(f"{name}: the evidence executor {value!r} strieth not agree with the "
@@ -329,7 +334,7 @@ def _validate_evidence_block(name: str, g: Mapping[str, Any], errors: list[str],
             pass
 
     # the workflow cross-checks (only when the text is at hand)
-    if workflow_text is not None:
+    if workflow_text is not None and not not_runnable:
         job = (g.get("ci_job") or "").split(" / ", 1)[-1]
         block = _workflow_job_block(workflow_text, job)
         if not block:
@@ -339,15 +344,19 @@ def _validate_evidence_block(name: str, g: Mapping[str, Any], errors: list[str],
             errors.append(f"{name}: the job {job!r} is skipped (if: false) -- a skipped job "
                           "is UNAVAILABLE and UNAVAILABLE is never PASS")
         else:
-            for held in profile["workflow_must_hold"]:
+            for held in (profile or {}).get("workflow_must_hold", ()):
                 if held not in block:
                     errors.append(f"{name}: the job {job!r} wanteth {held!r} "
                                   "(the profiled wiring is cut away)")
 
     # the historical record: noted with the changed-inputs drift line
-    if classification == "ancestor-historical" and profile is not None:
+    # GS-GATE-001: an EXTERNAL gate carrieth the fields IT requireth (see
+    # EXTERNAL_GATE_REQUIREMENTS); a profiled gate carrieth its scope paths for the
+    # historical drift recomputation. An unprofiled gate hath neither, and must not raise.
+    if classification == "ancestor-historical":
         try:
-            changed = drift(str(g.get("evidence_commit")), profile["scope_paths"])
+            changed = drift(str(g.get("evidence_commit")),
+                            (profile or {}).get("scope_paths", ()))
         except Exception:
             changed = []
         evidence_note = dict(evidence.get("classification_note") or {})
@@ -477,6 +486,10 @@ def selftest_repo_owned_lanes() -> int:
         return 1
     return 0
 
+
+#: The register's OWN sentinel for a gate that cannot execute in CI (a device or human
+#: gate). Its closure proveth itself by its approval evidence, never by a workflow job.
+NOT_RUNNABLE_SENTINEL = "not-runnable-in-ci"
 
 #: The gate ids this register REQUIRES, whatever the file version saith.
 REQUIRED_GATE_IDS = tuple(REQUIRED)
