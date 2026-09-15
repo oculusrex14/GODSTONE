@@ -4,7 +4,7 @@ Ledger `REMEDIATION_STATE.json` (AUTHORITATIVE); protocol `README.md`; external 
 `EXTERNAL_INPUT_REQUESTS.md`; accounting `STATUS_ACCOUNTING.md`. Audit source `c683a2bf0b5bcdd4a662d98f7542351501b57b7c` is READ-ONLY, and its own
 process keepeth writing into the original checkout, whose declared addition GROWS (the floor may only rise).
 
-## Status — 23 submitted (21 FIX_SUBMITTED, 2 PARTIAL), 31 OPEN
+## Status — 24 submitted (22 FIX_SUBMITTED, 2 PARTIAL), 30 OPEN
 
 Not one finding is `VERIFIED_FIXED`: only an INDEPENDENT AUDIT may write that, and the ledger court
 REFUSETH the word from this work.
@@ -34,6 +34,7 @@ REFUSETH the word from this work.
 | IOS-03 | FIX_SUBMITTED | 4d.1 | HS2 hint uses optional advertisement instead of GATT-bound |
 | ANDROID-02 | FIX_SUBMITTED | 4d.2 | Canonical advertising makes the initiator's HS2 hint looku |
 | GS-ACK-002 | FIX_SUBMITTED | 5 | Restart ACK worker uses TTL 4 while immediate recipient AC |
+| CRYPTO-003 | FIX_SUBMITTED | 4b | Destroyed retained controllers and primitive sessions st |
 
 ## DO THIS FIRST — the wave 4a chain: `GS-STORE-004`, then `GS-STORE-005`, then `GS-STORE-006`
 
@@ -131,3 +132,14 @@ a round has room (a deterministic draw, or a failure message that names what it 
   the SQLite stale-version court) -- reverse it and record the reversal IN THE ARM.
 - A red that cannot be SATISFIED is not a red.
 - Never leave a lane red: park the red probe outside it.
+
+## Two things a round must not re-learn the hard way
+
+1. **A mandatory lane is not negotiable.** `ReadinessT17Test.testReleaseSymbolsCarryNoTestFactories`
+   refused a helper I added to `NoiseSession` for defense-in-depth (`installCiphersForTest` counts as an
+   exported test factory on a production type). The repair moved the guard inline into the two EXISTING
+   seams. Do not add an exemption to that court, and do not rename a seam to slip past it.
+2. **A court that asks the REGISTRY cannot see a defect in the OBJECT.** Both isles' T08 courts already had
+   `testDestroyedReferencesRemainTerminal`, and both were green on CRYPTO-003 -- because they asked the
+   manager (whose `isReady` is false once the slot is removed) instead of the RETAINED controller/session.
+   When a finding says "retained references still report X", the arm must hold the object and ask IT.
