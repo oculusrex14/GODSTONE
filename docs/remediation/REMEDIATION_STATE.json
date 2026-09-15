@@ -291,17 +291,22 @@
     "note": "Original proof retained. No independent fix closure. Source identity does not prove the whole caller graph unchanged.",
     "source_sha": "c683a2bf0b5bcdd4a662d98f7542351501b57b7c"
    },
-   "impact": null,
+   "impact": "The initiator's HS2 hint lookup FAILS under CANONICAL advertising: the hint is looked up from optional advertising metadata, which canonical advertising does not carry, so a valid peer is refused at the HS2 trust step (the Android twin of IOS-03).",
    "invalidated_dependents": [],
    "my_fix_commit": null,
    "my_logs": [],
    "my_red_case": null,
    "my_status": "OPEN",
-   "notes": null,
+   "notes": "OPEN. Thin at snapshot; ENRICHED on 2026-09-15 with its twin's law and its own dependency (4e unlocks reachability). No device, no radio, no advertising capture exists in this environment.",
    "pending_proof": [],
-   "proof": null,
+   "proof": "Source-confirmed, not device-reproduced (the audit's own classification is SOURCE_CONFIRMED_NOT_DEVICE_REPRODUCED). No radio, no advertising capture and no BLE callback was executed for this finding.",
    "remediation_report": "evidence/android/findings.md",
-   "remediation_steps": [],
+   "remediation_steps": [
+    "TAKE the HS2 hint from the GATT-bound relation (the mandatory LinkInfo value bound into the connection), not from optional advertising metadata -- the same law IOS-03 states for the other isle.",
+    "Do NOT substitute zero bytes and do NOT bypass hint validation; a hint that is not exactly four bytes stays a refusal.",
+    "Leave optional advertising data as a DISCOVERY hint only; it must never be authority for an already-bound relation.",
+    "Repair as ONE atomic change with IOS-03 (wave 4d), then re-run both isles' canonical lanes and record that the device proof is still pending."
+   ],
    "severity": "HIGH",
    "source_refs": [],
    "tasks": [
@@ -309,7 +314,12 @@
     "T21"
    ],
    "title": "Canonical advertising makes the initiator's HS2 hint lookup fail",
-   "wave": "4d.2"
+   "wave": "4d.2",
+   "pending_work": [
+    "PAIRED WITH IOS-03: repair both isles in one coherent change; the audit's card for this wave is 4d, and 4e (D2/key confirmation) is what makes the defect reachable on the normal path.",
+    "NOT HOST-EXECUTABLE: the BLE transport and advertising paths have no host harness here. Expect a SOURCE arm over the trust path plus any pure seam; device evidence stays deferred (T73-T75) and must be recorded as pending.",
+    "The audit bundle's Android findings file (evidence/android/findings.md) carries this finding's own wording; this entry was enriched from the iOS twin's section plus the queue's wave 4d card, and the next round should read the Android section verbatim before editing."
+   ]
   },
   "ANDROID-03": {
    "audit_status_at_snapshot": "OPEN",
@@ -3355,26 +3365,46 @@
     "note": "Original proof retained. No independent fix closure. Source identity does not prove the whole caller graph unchanged.",
     "source_sha": "c683a2bf0b5bcdd4a662d98f7542351501b57b7c"
    },
-   "impact": null,
+   "impact": "UUID-only advertising is the INTENDED interoperable case, and it carries no service data -- so with no optional advertisement the HS2 trust path receives an EMPTY hint, IdentityBindingV1 rejects anything not exactly four bytes, and the handshake is refused. A stale or spoofed advertising hint can equally OVERRIDE the real bound hint. IOS-02 currently masks this on the normal path, but the defect becomes reachable the moment the missing D2/key-confirmation start is wired.",
    "invalidated_dependents": [],
    "my_fix_commit": null,
    "my_logs": [],
    "my_red_case": null,
    "my_status": "OPEN",
-   "notes": null,
+   "notes": "OPEN. Thin at snapshot; ENRICHED from the audit bundle itself on 2026-09-15 so the next round writeth rather than re-readeth. The law is short: the hint for an ALREADY-BOUND relation belongeth to the GATT-bound relation, and optional advertising metadata is a discovery hint that must never override it.",
    "pending_proof": [],
-   "proof": null,
+   "proof": "Source-proven, not executed (the audit's own classification is SOURCE_PROVEN_NOT_EXECUTED): the only GATT-authoritative hint is captured in pendingInitiatorRemoteHints and bound into the connection, while the HS2 trust path re-reads the hint from optional ADVERTISING metadata instead.",
    "remediation_report": "evidence/ios/findings.md",
-   "remediation_steps": [],
+   "remediation_steps": [
+    "REMOVE the discoveryMetadata lookup from the HS2 trust path. Do NOT substitute zero bytes and do NOT bypass hint validation.",
+    "CAPTURE the GATT-bound hint from the connection's bound relation (the value read at LinkInfo into pendingInitiatorRemoteHints and bound in BleConnection) and treat that as the hint authority.",
+    "PASS that captured value through beginInitiator and HS2 completion, and revalidate the FULL relation token before applying the result.",
+    "Optional advertising data remains a DISCOVERY hint only -- never authority for an already-bound relation.",
+    "THE AUDIT'S CLOSURE TESTS (independent verification, not this work's to write): adapter-driven cases that never call beginTrustedHandshake / beginKeyConfirmation / feedHandshakeForTest / markReady directly; deliver only legitimate dependency/OS callback inputs and observe HS1 -> trusted HS2 -> queued HS3 -> encrypted challenge -> matching echo -> one LinkReady. Negative cases: missing duplex, role inversion / equal hints, repeated callbacks, invalid binding, rejected HS3 admission, lost HS3/echo, stop during crypto. Assert ZERO application-ready publications in every incomplete/failure case."
+   ],
    "severity": "HIGH",
-   "source_refs": [],
+   "source_refs": [
+    "ios/Godstone/Sources/GodstoneMesh/BleTransport.swift:2057 (handleInboundHandshakeRecordInitiatorSide reads discoveryMetadata(for: peerId)?.nodeHint ?? Data())",
+    "ios/Godstone/Sources/GodstoneMesh/BleTransport.swift:2084 (that value is supplied to initiatorProcessHs2)",
+    "ios/Godstone/Sources/GodstoneMesh/BleTransport.swift:2938-2943 (the MANDATORY GATT LinkInfo hint is read into pendingInitiatorRemoteHints)",
+    "ios/Godstone/Sources/GodstoneMesh/BleTransport.swift:3134 (consumed by the LinkInfo-write completion)",
+    "ios/Godstone/Sources/GodstoneMesh/BleConnection.swift:74-77, 334-338 (the hint is bound into the connection)",
+    "ios/Godstone/Sources/GodstoneMesh/BleTransport.swift:3734-3756 (discovery metadata is populated ONLY from OPTIONAL service data)",
+    "ios/Godstone/Sources/GodstoneMesh/IdentityBindingV1.swift:172-177 (a hint that is not exactly four bytes is rejected)",
+    "ios/Godstone/Sources/GodstoneMesh/TrustedHandshakeController.swift:115-123 (the handshake is then rejected)"
+   ],
    "tasks": [
     "T09",
     "T21",
     "T23"
    ],
    "title": "HS2 hint uses optional advertisement instead of GATT-bound relation",
-   "wave": "4d.1"
+   "wave": "4d.1",
+   "pending_work": [
+    "BOUND TO ITS NEIGHBOUR: this is the iOS side of the SAME defect the iOS findings file pairs with ANDROID-02 (the initiator's hint lookup failing under canonical advertising). Repair them as ONE atomic change across isles, in wave 4d.",
+    "NOT BOUND BY THIS ENTRY, and stated so the next round does not repeat the work: these are BLE-transport internals (BleTransport.swift/.kt) and are NOT host-executable -- no device/emulator/simulator/radio exists in this environment, so whatever arm is written here is a SOURCE arm over the trust path plus whatever pure seam (the bound-relation hint captured in BleConnection) can be driven on the host. The device proof stays deferred (T73-T75) and must be recorded as pending, never as a device result.",
+    "DEPENDENCY ORDER: the audit records that IOS-02 (the missing D2/key-confirmation start, wave 4e) currently MASKS this on the normal path, so the defect becomes reachable only once that start is wired -- which is why wave 4e is worked AFTER 4d. Do not claim runtime reachability that the audit explicitly says 4e is what unlocks."
+   ]
   },
   "IOS-04": {
    "audit_status_at_snapshot": "OPEN",
