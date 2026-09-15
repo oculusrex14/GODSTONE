@@ -2261,19 +2261,30 @@
       "final_review": null,
       "impact": "The artifact policy may report PASS for a bundle violating its own platform or entitlement restrictions. A successful inspector result therefore cannot establish the claimed release surface.",
       "invalidated_dependents": [],
-      "my_fix_commit": null,
-      "my_logs": [],
+      "my_fix_commit": "PENDING",
+      "my_logs": [
+        {
+          "outcome": "6 tests OK (the three arms plus the fixture's own); the readiness suite 480 OK; the probes 12 tests, 2 failures",
+          "path": "GS-PACKAGE-001/green/package-001.log",
+          "sha256": "df6d12538bf6882d99122d7ab8824afaef55ca6c8b1cf9c21c06fd05c3491107",
+          "what": "the iOS arms green in the canonical lane; the probes down to two reds"
+        }
+      ],
       "my_red_case": {
-        "argv": "python3 -m unittest discover -s tools/readiness/tests -p test_audit_artifacts.py",
-        "case": "tools/readiness/tests/test_audit_artifacts.py -- the audit's own 12-case final probe suite, adopted with its assertions intact",
+        "argv": "python3 -m unittest discover -s tools/readiness/audit_probes",
+        "case": "the adopted audit probe arms for the iOS inspector (signed entitlement and foreign platform)",
         "cwd": "/Users/oculus/Projects/GODSTONE_BUILDER",
         "log": "ADOPTED_PROBES/red/adopted-probes-2026-09-15.log",
         "log_sha256": "475be2fba47965b040d3b842274aba220dc165e83db99e3e5954f5c38243b6ea",
-        "outcome": "7 of 12 FAILED, which is the RED for four findings: GS-SUPPLY-001 (parent traversal and source symlink accepted), GS-DIAG-001 (unique peer churn retaineth all dead relations), GS-PACKAGE-001 (forbidden entitlements and an arm64 macOS binary accepted by iOS inspection) and GS-PACKAGE-002 (a corrupt or partial AAB native library set accepted)"
+        "outcome": "{\"verdict\": \"PASS\", \"forbidden\": [\"com.apple.developer.networking.multicast\"]} and {\"verdict\": \"PASS\", \"platform\": \"macos\"} -- both recorded faithfully and both PASSED"
       },
-      "my_status": "OPEN",
-      "notes": "RED ADOPTED: the audit's own final probe suite now liveth in the canonical suite (tools/readiness/tests/test_audit_artifacts.py) with its assertions intact; the relevant arms are RED and the repair is the next round's work.",
-      "pending_proof": [],
+      "my_status": "FIX_SUBMITTED",
+      "notes": "FIX_SUBMITTED. A FORBIDDEN entitlement in the SIGNATURE now FAILETH (and any non-empty signed entitlement set falleth with it, because an Archive-only release carrieth NO signed capability), and a slice built for ANOTHER PLATFORM is refused by name. The audit's arms moved VERBATIM into the canonical lane, and the adopted probe suite is down from seven reds to two. Only an independent audit may write VERIFIED_FIXED.",
+      "pending_proof": [
+        "INDEPENDENT VERIFICATION: only an independent audit may mark this VERIFIED_FIXED",
+        "no signed IPA, no real entitlement blob and no device were used: the arms mock ONLY the codesign OS boundary, and the inspector policy is real source",
+        "no hosted run URL/log was available, so hosted convergence remains pending"
+      ],
       "proof": "A synthetic arm64 Mach-O with LC_BUILD_VERSION platform=macos is reported PASS with platform macos. Separately, the codesign-result boundary returns get-task-allow and an explicitly forbidden multicast entitlement; inspect lists the forbidden entitlement but still returns PASS. The valid iOS source-bundle control passes. No real signing identity was used.",
       "remediation_report": "FINAL_REMEDIATION_DETAILS.md",
       "remediation_steps": [

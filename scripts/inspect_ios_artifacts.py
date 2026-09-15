@@ -369,6 +369,14 @@ def inspect(bundle: Path, *, expected_archive: Path | None = None,
                                 f"carrieth the excluded token {token!r}")
     if "arm64" not in architectures:
         failures.append(f"the release binary is not arm64: {architectures}")
+    # GS-PACKAGE-001: a slice built for ANOTHER PLATFORM (the audit packed an arm64 MACOS
+    # Mach-O and the inspection PASSED it) is not an iPhoneOS application at all.
+    foreign = sorted({entry["platform"] for entry in slices
+                      if entry["platform"] and entry["platform"] not in ("ios",)})
+    if foreign:
+        failures.append(f"the bundle carrieth slice(s) built for {foreign}: a release artifact "
+                        f"must be an iPhoneOS application, and an arm64 macOS binary is not one "
+                        f"(GS-PACKAGE-001)")
     simulator = [entry["arch"] for entry in slices
                  if entry["platform"] and "simulator" in entry["platform"]]
     if simulator:
@@ -460,6 +468,18 @@ def inspect(bundle: Path, *, expected_archive: Path | None = None,
             failures.append("the release entitlements must be empty for an "
                             "Archive-only release: "
                             f"{sorted(declared_entitlements)}")
+    # GS-PACKAGE-001: a FORBIDDEN entitlement in the SIGNATURE is a FAILURE, and so is any
+    # non-empty signed entitlement set: the Archive-only release carrieth NO signed capability,
+    # and recording the keys while passing the artifact is how a prohibited capability shipped.
+    signed_keys = sorted(signature_entitlements or {})
+    for key in FORBIDDEN_ENTITLEMENT_KEYS:
+        if key in (signature_entitlements or {}):
+            failures.append(f"the SIGNED entitlements carry the disabled capability {key} "
+                            f"(GS-PACKAGE-001): a prohibited signed entitlement may never "
+                            f"reach a release artifact")
+    if signature_entitlements:
+        failures.append("the signed release entitlements must be EMPTY for an Archive-only "
+                        f"release: {signed_keys}")
     entitlements = {"signed": signature_entitlements is not None,
                     "keys": sorted(signature_entitlements or {}),
                     "declared_keys": sorted(declared_entitlements or {}),
