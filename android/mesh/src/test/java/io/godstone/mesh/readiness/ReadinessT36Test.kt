@@ -25,6 +25,10 @@ import io.godstone.mesh.delivery.EnqueueResult
 import io.godstone.mesh.delivery.TransitionResult
 import io.godstone.mesh.delivery.IntentStateRank
 import io.godstone.mesh.delivery.InMemoryOutboundIntentJournal
+import io.godstone.mesh.delivery.JournalAdvanceResult
+import io.godstone.mesh.delivery.JournalEntry
+import io.godstone.mesh.delivery.JournalInsertResult
+import io.godstone.mesh.delivery.OutboundIntentJournal
 import io.godstone.mesh.delivery.LogicalIdentityFactory
 import io.godstone.mesh.delivery.PeerIdentityLookupSource
 import io.godstone.mesh.delivery.RecipientKeyResolver
@@ -595,6 +599,89 @@ class ReadinessT36Test {
         Assert.assertEquals("no identity was created", 0, f2.factory.creates)
         Assert.assertEquals("nothing crossed the link", 0, f2.router.framesPeerLacks(BloomDigest(), 32).size)
     }
+    // ------------------------------------------------------------------ CRYPTO-006
+
+    /**
+     * CRYPTO-006: THE RACE, made deterministic. The second caller read the ledger BEFORE
+     * the winner's row landed (its first `load` misseth), so it authored its own frame and
+     * then found the winner already inserted. That is exactly the interleaving the audit
+     * names -- "duplicate journal admission is treated as success for a DIFFERENT freshly
+     * authored frame" -- with no thread scheduling involved.
+     */
+    private class StaleReadJournal(private val inner: OutboundIntentJournal) : OutboundIntentJournal {
+        private var missedOnce = false
+        override fun load(intentId: ByteArray): JournalEntry? {
+            if (!missedOnce) { missedOnce = true; return null }
+            return inner.load(intentId)
+        }
+        override fun insertIfAbsent(entry: JournalEntry): JournalInsertResult = inner.insertIfAbsent(entry)
+        override fun advance(intentId: ByteArray, from: IntentStateRank, to: IntentStateRank): JournalAdvanceResult =
+            inner.advance(intentId, from, to)
+    }
+
+    @Test
+    fun testRacedAcceptorReusethTheWinningRowAndDiscardethTheLosingFrame() = runTest {
+        val f = fixture()
+        val bob = approvePeer(f)
+        val t = bytesOf(14, 16)
+        // THE WINNER: one full accept, which pins the token's row and commits its frame.
+        val winner = f.authority.sendDirect(cmd(t, bob.identity.nodeId, ascii("raced body")))
+            as SendDirectResult.DurablyEnqueued
+        Assert.assertEquals("the winner authored exactly one frame", 1, f.factory.creates)
+        Assert.assertEquals("one held row stands for the intent", 1, f.store.base.allHeldMsgIds().size)
+
+        // THE RACED CALLER: same token, same recipient, same body -- and a stale read.
+        val factory2 = RecordingIdentityFactory()
+        val authority2 = SendDirectAuthority(
+            identity = f.snd, signingKeys = f.signing, router = f.router, store = f.store,
+            // the SAME approved trust view: this arm is about the journal race, not about trust
+            trustResolver = io.godstone.mesh.delivery.TrustedPeerIdentityResolver(f.trust),
+            journal = StaleReadJournal(f.journal), identityFactory = factory2,
+            clock = FixedClock(1700000777L, TimeQuality.USER_CONFIRMED),
+        )
+        val raced = authority2.sendDirect(cmd(t, bob.identity.nodeId, ascii("raced body")))
+            as SendDirectResult.DurablyEnqueued
+
+        // THE LAW: ONE token, ONE logical message. The raced caller must return the WINNER's
+        // immutable logical id, and its own freshly authored frame must be DISCARDED -- never
+        // enqueued. A duplicate admission is not a licence to commit a different frame.
+        Assert.assertArrayEquals("the raced caller must resolve to the WINNER's logical id",
+                                 winner.logicalMessageId, raced.logicalMessageId)
+        Assert.assertEquals("the raced caller created its own frame", 1, factory2.creates)
+        Assert.assertEquals("exactly ONE held row may stand for the intent",
+                            1, f.store.base.allHeldMsgIds().size)
+        Assert.assertEquals("and the journal keeps ONE row for the token", 1, f.journal.size())
+        when (val row = f.journal.load(t)) {
+            null -> Assert.fail("the token's row must stand")
+            else -> Assert.assertArrayEquals("the row still pins the WINNER's logical id",
+                                             winner.logicalMessageId, row.logicalMessageId)
+        }
+    }
+
+    /**
+     * CRYPTO-006 (the audit's SEQUENTIAL regression, beside the race arm): the SAME command
+     * revision admitted twice through the ordinary road must resolve to ONE logical message, and
+     * the second admission must author NOTHING. This guard must hold BOTH before and after the
+     * race repair -- it is what the race repair is forbidden to break.
+     */
+    @Test
+    fun testSequentialRepeatOfTheSameRevisionResolvesToOneLogicalMessage() = runTest {
+        val f = fixture()
+        val bob = approvePeer(f)
+        val t = bytesOf(15, 16)
+        val first = f.authority.sendDirect(cmd(t, bob.identity.nodeId, ascii("sequential body")))
+            as SendDirectResult.DurablyEnqueued
+        val again = f.authority.sendDirect(cmd(t, bob.identity.nodeId, ascii("sequential body")))
+            as SendDirectResult.DurablyEnqueued
+        Assert.assertArrayEquals("the repeat must resolve to the SAME immutable logical id",
+                                 first.logicalMessageId, again.logicalMessageId)
+        Assert.assertTrue("and it must be recognised as a retry", again.fromRetry)
+        Assert.assertEquals("the repeat authored nothing", 1, f.factory.creates)
+        Assert.assertEquals("exactly one held row stands for the token",
+                            1, f.store.base.allHeldMsgIds().size)
+        Assert.assertEquals("and one journal row", 1, f.journal.size())
+    }
+
 }
 
 /** A 3-field record for the W10 cases (the Quad name marks the shape, three fields only). */

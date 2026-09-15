@@ -222,7 +222,23 @@ class JournalEntry private constructor(
         "JournalEntry(intent=${redactedHex(_intentId)}, msgId=${redactedHex(_logicalMessageId)}, gen=$acceptedGeneration, rank=${stateRank.name})"
 }
 
-enum class JournalInsertResult { Stored, Duplicate, StorageFailure }
+/**
+ * CRYPTO-006: the outcome of one atomic claim. A Duplicate is NOT "success": it carrieth the
+ * WINNING row, because a duplicate admission means a DIFFERENT caller already pinned this exact
+ * command revision, and the caller that lost must discard its own freshly authored frame and
+ * reuse the winner's immutable identity. A bare `Duplicate` is what let a raced caller commit a
+ * second logical message for one intent.
+ */
+sealed class JournalInsertResult {
+    /** Our revision won the token's row. */
+    object Stored : JournalInsertResult()
+
+    /** Another caller won THIS revision; [winning] is the row that governs. */
+    data class Duplicate(val winning: JournalEntry) : JournalInsertResult()
+
+    /** The ledger could not be written or read; typed, never folded into absence. */
+    object StorageFailure : JournalInsertResult()
+}
 enum class JournalAdvanceResult { Advanced, Stale, NoSuchEntry, StorageFailure }
 
 /**
@@ -259,9 +275,21 @@ class InMemoryOutboundIntentJournal : OutboundIntentJournal {
 
     override fun load(intentId: ByteArray): JournalEntry? = rows[IntentKey(intentId)]
 
+    /**
+     * CRYPTO-006: the claim is keyed by the COMMAND REVISION, not by the token alone. Only the
+     * SAME (token, canonicalCommandDigest) is a duplicate -- the case a retry or a race must
+     * resolve to the row that already governs. A DIFFERENT digest under one token is a NEW
+     * logical send (the preserved L8 behaviour), and it taKeth the row so that the row always
+     * MATCHETH what the authority committed: "do not retain a single token-only row while
+     * committing a different frame". The ledger keepeth the latest accept per token, which the
+     * W6 court witnesses.
+     */
     override fun insertIfAbsent(entry: JournalEntry): JournalInsertResult {
         val k = IntentKey(entry.intentId)
-        if (rows.containsKey(k)) return JournalInsertResult.Duplicate
+        val existing = rows[k]
+        if (existing != null && existing.bindingDigest.contentEquals(entry.bindingDigest)) {
+            return JournalInsertResult.Duplicate(existing)
+        }
         rows[k] = entry
         return JournalInsertResult.Stored
     }
@@ -575,8 +603,38 @@ internal class SendDirectAuthority(
             digest, msgIdentity.createdAtEpochSeconds, msgIdentity.messageNonce,
             priority.code, IntentStateRank.AUTHORED)
             ?: return SendDirectResult.Rejected(SendDirectRejection.IntentIdMalformed)
-        when (try { journal.insertIfAbsent(entry) } catch (_e: Throwable) { JournalInsertResult.StorageFailure }) {
-            JournalInsertResult.Stored, JournalInsertResult.Duplicate -> {}                   // raced acceptor: the idempotent store transaction below governs
+        when (val claimed = try { journal.insertIfAbsent(entry) } catch (_e: Throwable) { JournalInsertResult.StorageFailure }) {
+            JournalInsertResult.Stored -> {}   // OUR revision took the row: commit OUR frame below
+            is JournalInsertResult.Duplicate -> {
+                // CRYPTO-006: a DIFFERENT caller already pinned this exact command revision while
+                // we were authoring. Our freshly authored frame is DISCARDED -- never enqueued --
+                // and the WINNER governs, resolved exactly as the retry path resolves a pinned
+                // row. A duplicate admission is not a licence to commit a different frame.
+                val winning = claimed.winning
+                if (!winning.bindingDigest.contentEquals(digest) || !winning.verifyLogicalIdentity(identity.nodeId)) {
+                    // defensive: a revision or identity conflict is a typed refusal with NO
+                    // database, nonce, publication or send effect of its own.
+                    return SendDirectResult.Rejected(SendDirectRejection.EnqueueCanonicMismatch)
+                }
+                val winningFrame = FrameV2.decode(winning.canonicalFrameBytes)
+                    ?: return SendDirectResult.Rejected(SendDirectRejection.EnqueueCanonicMismatch)
+                if (winningFrame.type != TypeV2.MESSAGE || winningFrame.flags and FrameV2.SEALED == 0 ||
+                    !winningFrame.msgId.contentEquals(winning.logicalMessageId)) {
+                    return SendDirectResult.Rejected(SendDirectRejection.EnqueueCanonicMismatch)
+                }
+                val replay = try {
+                    store.enqueueDirectOutbound(winningFrame, winning.recipientNodeId, identity.nodeId)
+                } catch (_e: Throwable) {
+                    return SendDirectResult.Rejected(SendDirectRejection.EnqueueStorageFailure)
+                }
+                return when (replay) {
+                    is OutboundEnqueueResult.Created ->
+                        replayed(replay.canonicalFrame, winning.intentId, winning.stateRank, fromRetry = true)
+                    is OutboundEnqueueResult.AlreadyQueuedSameBinding ->
+                        replayed(replay.canonicalFrame, winning.intentId, winning.stateRank, fromRetry = true)
+                    else -> mapEnqueueRejection(replay)
+                }
+            }
             JournalInsertResult.StorageFailure -> return SendDirectResult.Rejected(SendDirectRejection.JournalStorageFailure)
         }
 
