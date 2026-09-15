@@ -313,13 +313,35 @@ jobs:
       # the model is independently verified and pinned.
       - name: restore pinned model (fails closed while UNPINNED)
         run: scripts/fetch_models.sh
+      # GS-CONTENT-001 (the card's step 4): the FINAL CHUNK APPROVALS are an EXTERNAL input.
+      # The builder now REFUSETH a release without them, so this lane must OBTAIN the
+      # independently configured reviewer keyset and approval-bundle home and pass BOTH
+      # explicitly -- and when they are absent it STOPPETH at the external content gate,
+      # naming the requirement rather than inventing a fixture or weakening the law.
+      - name: final chunk approvals (external input -- fail closed when absent)
+        id: approvals
+        env:
+          APPROVALS_DIR: ${{ vars.GODSTONE_APPROVALS_DIR }}
+          REVIEWER_KEYSET: ${{ secrets.GODSTONE_REVIEWER_KEYSET }}
+        run: |
+          if [ -z "$APPROVALS_DIR" ] || [ -z "$REVIEWER_KEYSET" ]; then
+            echo "::error::STOPPING at the external content gate: the final chunk approvals are an EXTERNAL input (APPROVED_CONTENT). Configure the repository variable GODSTONE_APPROVALS_DIR and the secret GODSTONE_REVIEWER_KEYSET with the independently reviewed approval bundles and the operator's reviewer keyset. A self-generated fixture is NOT an approval and must never substitute for one."
+            exit 1
+          fi
+          echo "approvals_dir=$APPROVALS_DIR" >> "$GITHUB_OUTPUT"
       - name: build MEDIUM archive with embeddings
+        env:
+          APPROVALS_DIR: ${{ vars.GODSTONE_APPROVALS_DIR }}
+          REVIEWER_KEYSET: ${{ secrets.GODSTONE_REVIEWER_KEYSET }}
         run: |
           # T53: production content jobs pass --release -- the builder refuseth examples,
           # missing approval coverage and unsealed provenance (the default mode warneth only);
           # the LIGHT no-embed gate build keepeth its own, separate lane above.
+          # GS-CONTENT-001: the approvals are passed EXPLICITLY, because a release without them
+          # is refused outright (the step above proveth they are present).
           python -m content.ingest.build_archive \
-            --tier MEDIUM --out dist/archive_medium.db --release
+            --tier MEDIUM --out dist/archive_medium.db --release \
+            --approvals-dir "$APPROVALS_DIR" --reviewer-keyset "$REVIEWER_KEYSET"
       - name: provenance (final -- tree still clean)
         run: python ci/provenance.py --out provenance-final.json
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02

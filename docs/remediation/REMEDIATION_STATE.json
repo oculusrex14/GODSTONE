@@ -1509,6 +1509,12 @@
           "path": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/REMEDIATION/GS-CONTENT-001/green/audit-content-release-court.log",
           "sha256": "22a8c15c685106f39541981eb4ffac4b6633cc9bfd09fa1f1638fd49b8fab610",
           "what": "the court green (5/5) on the live tree"
+        },
+        {
+          "outcome": "the court 6/6; the workflow still parses as YAML",
+          "path": "GS-CONTENT-001/green/release-lane.log",
+          "sha256": "74233ff5c17654e809247460a2e9b59f3cfd18e491d2e1f1e6d7a5495fa641af",
+          "what": "the release lane obtaineth the external approvals and stoppeth when absent"
         }
       ],
       "my_red_case": {
@@ -1520,10 +1526,9 @@
         "outcome": "2 failures: the unapproved archive reached operator staging, and a release build without approvals succeeded"
       },
       "my_status": "FIX_SUBMITTED",
-      "notes": "FIX_SUBMITTED. The approvals are mandatory at the BUILD entry, required by the staging provenance, and BOUND into the signed manifest. The court's W01 was found too weak in its first form (a bare assertRaises satisfied by an unrelated refusal) and now asserteth the reason. Only an independent audit may write VERIFIED_FIXED.",
+      "notes": "FIX_SUBMITTED. The approvals are mandatory at the BUILD entry, required by the staging provenance, and BOUND into the signed manifest. The court's W01 was found too weak in its first form (a bare assertRaises satisfied by an unrelated refusal) and now asserteth the reason. The card's step 4 (the release lane) is now done: it obtaineth the reviewer keyset and the approval-bundle home from repository configuration, passes both explicitly, and STOPPETH at the external content gate when they are absent, naming APPROVED_CONTENT. Only an independent audit may write VERIFIED_FIXED.",
       "pending_proof": [
         "INDEPENDENT VERIFICATION: only an independent audit may mark this VERIFIED_FIXED",
-        "the production-corpus lane in release-gates.yml must be given the independently configured reviewer keyset and approval-bundle paths (the card's step 4); with the approvals now mandatory, that lane must pass them explicitly or stop at the external content gate",
         "the card's step 3 (one validation date captured in main() from the production clock) and step 5 (ONE release-eligibility routine shared by manifest creation and staging) are partially done: the provenance fields are shared, but a single named routine exercising schema/tier/counts is not yet factored out",
         "no hosted run URL/log was available, so hosted convergence remains pending"
       ],

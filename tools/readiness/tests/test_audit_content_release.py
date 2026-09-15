@@ -142,5 +142,24 @@ class UnapprovedReleaseTest(ApprovalCourtCase):
         self.assertRegex(meta["approvals_sha256"], r"^[0-9a-f]{64}$")
 
 
+    def test_w06_the_release_lane_passes_the_approvals_and_stops_when_absent(self):
+        """GS-CONTENT-001 step 4: the production-corpus lane must OBTAIN the external
+        approvals and pass BOTH explicitly -- and STOP at the external content gate when
+        they are absent, never invent one. The COMMANDS are read, not the prose."""
+        workflow = (ROOT / ".github/workflows/release-gates.yml").read_text(encoding="utf-8")
+        joined = "\n".join(line for line in workflow.replace("\\\n", " ").splitlines()
+                           if not line.strip().startswith("#"))
+        self.assertTrue(any("build_archive" in line for line in joined.splitlines()),
+                        "the lane must build the archive")
+        self.assertIn("--approvals-dir", joined,
+                      "the release lane must pass the approval-bundle home explicitly")
+        self.assertIn("--reviewer-keyset", joined,
+                      "and the operator's reviewer keyset")
+        self.assertIn("STOPPING at the external content gate", joined,
+                      "when they are absent the lane must STOP and NAME the external input")
+        self.assertIn("must never substitute", joined,
+                      "and say that a self-generated fixture is not an approval")
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
