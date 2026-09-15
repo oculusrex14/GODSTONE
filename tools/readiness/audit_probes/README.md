@@ -29,3 +29,24 @@ Run them with:
 ```
 python3 -m unittest discover -s tools/readiness/audit_probes -v
 ```
+
+## Kotlin probes — `kotlin/ReadinessModel001Test.kt` (GS-MODEL-001)
+
+This file liveth OUTSIDE the Gradle test source sets **on purpose**: Gradle runneth every test source
+in a module, so a red-by-design Kotlin arm inside `android/llm/src/test/java/...` would redden the
+`:llm` lane and the android lane with it -- the same self-inflicted red this program eliminated for the
+python probes. It was RUN in its module to capture the red (the log is the finding's), and it is put
+back only when its repair landeth.
+
+**To run it (and it MUST be red before the repair):**
+
+```
+mkdir -p android/llm/src/test/java/io/godstone/llm/readiness
+cp tools/readiness/audit_probes/kotlin/ReadinessModel001Test.kt android/llm/src/test/java/io/godstone/llm/readiness/
+cd android && ./gradlew :llm:testDebugUnitTest --tests '*ReadinessModel001Test*' --no-daemon
+```
+
+**Captured red** (product untouched, `1965d60`): 2 tests, 2 failures --
+`an EXISTING GARBAGE model was accepted without a sworn artifact: the audit's reproduced defect
+(GS-MODEL-001)` and `an unpinned stream of 64 MiB was accepted whole`. When the repair landeth, the
+file MOVES BACK into the module as its permanent control, exactly as the python probes do.
