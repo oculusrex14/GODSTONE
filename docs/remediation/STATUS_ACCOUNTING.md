@@ -1,4 +1,4 @@
-# Status accounting — AUDIT-003-R1 (refreshed at round 88)
+# Status accounting — AUDIT-003-R1 (counts derived at round 88; narrative carried to round 97)
 
 The COUNTS and the class memberships are re-derived from `REMEDIATION_STATE.json`; the narrative
 sections are maintained by hand and say so. Nothing here is new evidence. It states the
@@ -6,6 +6,21 @@ classes the remediation requires, in the audit's own terms, and it is regenerate
 hand-edited so that a status cannot be quietly carried forward.
 
 **Ledger at this refresh: 27 `FIX_SUBMITTED`, 2 `PARTIAL`, 0 `RED_WRITTEN`, 25 `OPEN` — and ZERO `VERIFIED_FIXED`.** Only an independent audit may write `VERIFIED_FIXED`, and the ledger court refuseth the word from this work. NO finding carries any `closure_evidence`.
+
+AT ROUND 97 the AUDIT-004 limb of `GS-CTRL-001` landed (`bf839fa`) and changed NO status: it is a
+deeper limb of an already-submitted finding, so 27 `FIX_SUBMITTED` and 2 `PARTIAL` stand unchanged.
+What it changed is MEASURABLE: the independent review's own 10-case probe suite
+(`AUDIT_FINAL_2026-09-15/evidence/AUDIT-004/independent_repair_probes_v2.py`), which reported
+**8 failures / 2 passes** at ae9905e and at the audit's own pin 33be0b0b, now reporteth
+**5 failures / 5 passes** at `bf839fa` — its three GS-CTRL-001 probes pass, and the five that
+remain (two for `GS-GATE-001`, one each for `GS-CONTENT-001`, `GS-CONTENT-002` and the
+`GS-CONTENT-003` regression) are the next rounds' work, each already a reproduced failing assertion.
+
+The same limb exposed, by making the law stricter rather than looser, that **T05's mutation record
+was never evidence**: it carrieth no log, no failure roster, no source identity and no
+restored-green companion, so the mutation control it asserted is **NOT ESTABLISHED**. It is now
+recorded as an explicit evidence gap (never an exemption, and nothing deleted), and `validate-state`
+stayeth green with one new, named note.
 
 AT ROUND 88 the four landings of this session (GS-SOS-002 step 6, GS-ACK-001 step 4, GS-SYNC-002
 step 3 on BOTH isles, plus the android lane-flake fix) changed NO status: 27 `FIX_SUBMITTED` and

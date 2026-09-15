@@ -42,7 +42,56 @@ already carried. The audit's step 3 stays OPEN, with its two measured obstacles 
 | CRYPTO-003 | FIX_SUBMITTED | 4b | Destroyed retained controllers and primitive sessions st |
 | CRYPTO-006 | FIX_SUBMITTED | 4b | Duplicate journal admission is treated as success for a |
 
-## DO THIS FIRST — the one thing each of the three richest entries still owes
+## DO THIS FIRST (round 97) — THE AUDITOR'S OWN PROBE SUITE IS THE PRIORITY, AND IT IS EXECUTABLE
+
+`AUDIT_FINAL_2026-09-15/evidence/AUDIT-004/independent_repair_probes_v2.py` is the INDEPENDENT
+review's own 10-case suite, and it is the highest-signal measure of this work: it is the only
+executable artifact that says which auditor-reproduced defects are STILL THERE. Run it in a
+detached worktree (never in the live tree) with `AUDIT_SOURCE_ROOT` naming that worktree and
+`/Users/oculus/Projects/GODSTONE_AUDIT/evidence/AUDIT-002/content/venv/bin/python`. It needs its
+`schema_version` fixture, which v2 carrieth; there is NO `-v` flag, and passing one errors.
+
+    ROUND 97 MEASURED IT AT THE REPAIRED SHA bf839fa: **5 failures / 5 passes** (it was 8/2 at
+    ae9905e, and 8/2 at the audit's own pin 33be0b0b). The three GS-CTRL-001 probes now PASS.
+    THE FIVE THAT REMAIN, which are the next rounds' work:
+      * `test_null_device_proof_is_rejected`   (GS-GATE-001) — a CLOSED device gate with
+        `device_matrix=None`, `result_sha256=None`, `test_results=None` is ACCEPTED
+      * `test_expression_disabled_ci_job_is_rejected` (GS-GATE-001) — `if: ${{ false }}` on the
+        named CI job is ACCEPTED (the parser recogniseth only the literal `if: false`)
+      * `test_forged_approval_digest_and_zero_coverage_cannot_stage` (GS-CONTENT-001) — a signed
+        synthetic DB with a COPIED digest and `approvals_covered='0'` STAGES
+      * `test_operator_heldout_validation_reaches_valid_verifier` (GS-CONTENT-003) — a REGRESSION:
+        it PASSED on the prior baseline and failleth on the repaired source
+      * `test_process_death_cannot_expose_mixed_archive_and_receipt` (GS-CONTENT-002) — a real
+        `os._exit(87)` between DB and receipt replacement leaveth a MIXED pair
+    Each of the five is a REPRODUCED, currently-failing assertion: adopt it into the canonical
+    suite FIRST, one field changed per negative, and only then repair production.
+
+## ROUND 97 LANDED — `GS-CTRL-001`, the AUDIT-004 limb (`bf839fa`)
+
+The independent review of this finding's FIRST submission reproduced THREE bypasses that the
+adopted arms did NOT catch, because each of those arms changed SEVERAL fields at once and so
+passed for a defect other than the one it nameth. Its three probes are now adopted
+assertion-intact (class `AdoptedAudit004EvidenceTest`, each negative changing EXACTLY ONE field
+of an otherwise-valid record, with W09 the retained positive control), and the repair:
+
+  * made the roster law REACHABLE — it was entered only when `tests_executed` was ALREADY truthy,
+    so its own zero-executed check could never fire, and `tests_failed` was never validated;
+  * removed the MUTATION EARLY-RETURN — a nonempty `note` used to suffice beside exit 99, zero
+    executed and a nonexistent log. A lineage record is now validated AS ONE (source identity,
+    real log + sha256, a failure roster NAMED and FOUND in that log, and a restored-green
+    companion in the same manifest).
+
+WHAT THE STRICTER LAW EXPOSED: T05's mutation record carrieth NO log, NO roster field, NO source
+identity and NO restored-green companion, so it can never validate as a lineage record. It is NOT
+exempted and its claim is NOT reasserted — the `mutation_records` entry was REMOVED and the id
+reclassified into `evidence_absent_do_not_rely` as a gap, with the mutation control stated as NOT
+ESTABLISHED. Nothing was deleted; `validate-state` stayeth GREEN (rc 0, 8 notes, one of them new
+and named). STILL OWED on this finding: AUDIT-004 step 4 (source/tree BINDING) and the hosted lane.
+
+
+
+## THEN — the one thing each of the three richest entries still owes
 
 The session that ran rounds 57–82 landed TWELVE repairs (ledger: 27 `FIX_SUBMITTED`, 2 `PARTIAL`, 25 `OPEN`,
 zero `VERIFIED_FIXED`). What remains on the three most-specified findings is now ONE limb each — start here,
@@ -108,7 +157,12 @@ the arm. A round that starts on an unenriched entry spends itself on reconnaissa
 
 ## Then the wave 4a chain: `GS-STORE-004`, then `GS-STORE-005`, then `GS-STORE-006`
 
-## AND THEN, with its red already designed: `GS-SYNC-002` step 3 (retired control replies) — ANDROID LANDED
+## AND THEN, with its red already designed: `GS-SYNC-002` step 3 (retired control replies) — LANDED ON BOTH ISLES
+
+> CORRECTION (round 97): the paragraphs below were written when only the ANDROID limb had landed; the
+> **iOS twin landed at `bd98b26`**, its own arm at `fb75e78`, and the audit's step 4 (a per-destination
+> bound beside the aggregate cap) at `4b7ff26`/`c67ca79`. The LEDGER is authoritative where this prose
+> and it disagree.
 
 Round 86 landed the ANDROID limb: `ControlReply` is stamped with a per-peer RELATION EPOCH, the epoch is
 retired on `PeerEvent.Lost`, and both drains drop an entry whose epoch is no longer current. Still OWED: the

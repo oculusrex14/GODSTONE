@@ -2171,7 +2171,7 @@
     "every COMPLETE task's record: all 72 were revalidated under the stricter checker",
     "ci/check_repository.py and every lane that runneth validate-state"
    ],
-   "my_fix_commit": "9d39c36d1804aee294b2227d584686453418fd7b",
+   "my_fix_commit": "9d39c36 (first limb: strict completion validator + legacy migration) + bf839fa (AUDIT-004 limb: the roster law made reachable, the mutation exemption removed)",
    "my_logs": [
     {
      "outcome": "433 tests, 0 failures; validate-state rc=0 with 0 problems and 7 visible notes",
@@ -2184,23 +2184,52 @@
      "sha256": "5345fd99f176af83dfca40b6ad49ea06d16d6c5a5ad8bf0cbcb42d5297aff63c",
      "what": "the negative controls (tamper battery, refused outcomes, the build/test distinction)",
      "log": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/REMEDIATION/GS-CTRL-001/negative/controls.log"
+    },
+    {
+     "log": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/REMEDIATION/GS-CTRL-001/green/audit-evidence-adopted-GREEN-20260915T155840Z.log",
+     "sha256": "d99652e0f96f3a723094d38df953625505be191614d140f5cb916d3e5730d733",
+     "outcome": "12 tests, 0 failures -- the three adopted AUDIT-004 negatives now red and the positive control retained",
+     "what": "the adopted canonical evidence suite after the repair (W09-W12 plus the retained W01-W08 arms)"
+    },
+    {
+     "log": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/REMEDIATION/GS-CTRL-001/green/audit004-independent-probes-GREEN-20260915T155840Z.log",
+     "sha256": "2e0a493161ef748a220d1dd7ad7e13677a957ae6be5b2f6ed95cc86ece498b51",
+     "outcome": "10 cases: 5 pass, 5 fail -- was 2 pass / 8 fail; the three GS-CTRL-001 probes now PASS",
+     "what": "THE AUDITOR'S OWN independent probe suite (AUDIT-004) at the repaired SHA, in a detached worktree; the remaining five failures belong to GS-GATE-001 and GS-CONTENT-001/002/003"
+    },
+    {
+     "log": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/REMEDIATION/GS-CTRL-001/green/readiness-suite-GREEN-20260915T155843Z.log",
+     "sha256": "27e71a2a9dc2482373c38aa2b9fc682604787bf8190de440fa05033af6578e45",
+     "outcome": "492 tests, 0 failures; runner selftest 10 checks OK",
+     "what": "the canonical readiness suite after the validator change (summary only)"
     }
    ],
    "my_red_case": {
-    "argv": "python3 -m unittest discover -s tools/readiness/tests -p test_audit_evidence.py -v",
-    "case": "tests/test_audit_evidence.py -- the audit's three probes moved into the canonical suite, assertions intact, plus two further arms",
+    "argv": [
+     "python3 -m unittest discover -s tools/readiness/tests -p test_audit_evidence.py -v",
+     "python3 -m unittest tools.readiness.tests.test_audit_evidence -v"
+    ],
+    "case": "tests/test_audit_evidence.py -- the audit's three probes moved into the canonical suite, assertions intact, plus two further arms PLUS (AUDIT-004, the independent review's own three executed failures, adopted into the canonical suite with their assertions INTACT, class AdoptedAudit004EvidenceTest, each negative changing EXACTLY ONE field of an otherwise-valid record): W10 zero executed with a REAL log and a matching digest; W11 a nonzero tests_failed beside exit 0 and outcome PASSED; W12 MUTANT_KILLED with exit 99, zero executed, a nonexistent log and an arbitrary note. The retained positive control W09 PASSED in the same run, so no arm could pass for a defect other than the one it nameth.",
     "cwd": "/Users/oculus/Projects/GODSTONE_BUILDER",
-    "log": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/REMEDIATION/GS-CTRL-001/red/audit-evidence-RED.log",
-    "log_sha256": "2e40c31179b8804a3cbff728b72236b565ad410009ad6f21dc45f6e1140d08b4",
-    "outcome": "8 tests, 5 failures before the repair"
+    "log": [
+     "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/REMEDIATION/GS-CTRL-001/red/audit-evidence-RED.log",
+     "GS-CTRL-001/red/audit004-adopted-RED-20260915T155631Z.log"
+    ],
+    "log_sha256": [
+     "2e40c31179b8804a3cbff728b72236b565ad410009ad6f21dc45f6e1140d08b4",
+     "e1aa8a3fba3dda50b21e8f5aa3a1e4090bb7b7c1bc92596867884fd834197432"
+    ],
+    "outcome": "8 tests, 5 failures before the repair  ||  AUDIT-004 limb: 12 tests, 3 FAILURES before the repair (W10/W11/W12), each on its OWN assertion, with W09 green."
    },
    "my_status": "FIX_SUBMITTED",
-   "notes": "FIX_SUBMITTED. The validator is strict, the legacy evidence is migrated in an explicit, refutable document, the gaps are visible as notes, and four historical records were repaired by RECOVERY from their recorded trees. The audit's rule stands: a repair is not a closure.",
+   "notes": "FIX_SUBMITTED. The validator is strict, the legacy evidence is migrated in an explicit, refutable document, the gaps are visible as notes, and four historical records were repaired by RECOVERY from their recorded trees. The audit's rule stands: a repair is not a closure. ROUND 97 (AUDIT-004 limb, bf839fa): the independent review of the first submission reproduced THREE bypasses the adopted arms missed, because those arms changed SEVERAL fields at once and so passed for a defect other than the one each nameth. Its three probes are now adopted assertion-intact, one field changed per negative, and the production repair maketh the roster law REACHABLE (it was entered only when tests_executed was already truthy, so its own zero check could never fire) and removeth the mutation early-return in which a nonempty note sufficed beside exit 99 and a nonexistent log. A lineage record is now validated as one. The auditor's own suite moved 8 failures -> 5 at this SHA.",
    "pending_proof": [
     "INDEPENDENT VERIFICATION: only an independent audit may mark this VERIFIED_FIXED",
-    "the canonical Kotlin compilation and the full Gradle/Swift rosters rerun at the candidate SHA (a resolver cannot replace the compiler)",
-    "the two gapped T01/T05 records remain gaps: their claims are covered by other commands, and the independent audit must decide whether that coverage is sufficient",
-    "revalidation of every dependent suite after the validator change (every task's completion record is now judged by stricter rules)"
+    "AUDIT-004 step 4 is NOT done: source/tree BINDING beyond 'the commit object existeth'. The full validate_state path has not been exercised with an unrelated valid source commit, nor with a mismatched implementation plus a separate seal; both must fail and neither has been shown to.",
+    "AUDIT-004 step 6 / the hosted lane: no hosted run URL, run id or hosted log existeth in this environment, so hosted convergence remaineth PENDING. Every result here is a LOCAL reproduction.",
+    "the two gapped T01/T05 records remain gaps. The T05 MUTATION record was reclassified by the AUDIT-004 limb: its evidence was never retained, so the mutation control it asserted is NOT ESTABLISHED (recorded as a gap and as a visible note, never exempted). The independent audit must decide whether the remaining coverage is sufficient.",
+    "the canonical Kotlin compilation and the full Gradle/Swift rosters at the candidate SHA (a resolver cannot replace the compiler).",
+    "revalidation of every dependent suite after this validator change: every task's completion record is now judged by stricter rules than when it was written."
    ],
    "proof": "Three independent Python acceptance tests fail: a FAILED command produces no validation problem; a PASSED entry naming a nonexistent log produces none; T01 with only status COMPLETE and no implementation/tree/commands produces none. See evidence/controls/audit-runner-tests.log.",
    "remediation_report": "reports/CONTROL_REMEDIATION.md",
@@ -4446,8 +4475,8 @@
   }
  ],
  "evidence_audit": {
-  "round": 96,
-  "what": "every recorded red and green log was checked on disk against its recorded sha256",
+  "round": 97,
+  "what": "round 97: the AUDIT-004 limb of GS-CTRL-001 landed; the auditor's own 10-case probe suite was rerun at the repaired SHA (8 failures -> 5) and its three GS-CTRL-001 probes now pass.",
   "verified": 96,
   "defects_found_and_what_happened": [
    "THREE logs were cited TWICE with different digests (the GS-ACK-001 full-lane logs, whose files were rewritten after the first citation): the stale citation was removed and the citation whose digest matches the file was kept. Nothing was deleted from disk.",
