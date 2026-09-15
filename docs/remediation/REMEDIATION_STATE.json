@@ -4945,7 +4945,7 @@
   }
  ],
  "evidence_audit": {
-  "round": 101,
+  "round": 104,
   "what": "round 97: the AUDIT-004 limb of GS-CTRL-001 landed; the auditor's own 10-case probe suite was rerun at the repaired SHA (8 failures -> 5) and its three GS-CTRL-001 probes now pass.",
   "verified": 96,
   "defects_found_and_what_happened": [
@@ -5028,6 +5028,21 @@
    ],
    "this_is_not_t78": "no hosted lane existeth here, so T78 has NOT run and no readiness flag moved.",
    "this_is_not_a_closure": "a suite written before the repairs, now green, is not a closure; only an independent audit may write VERIFIED_FIXED."
+  },
+  "round104_candidate_verification": {
+   "candidate_sha": "ba4a064ec96d751a4b3119a022a12e4a6a38f4ff",
+   "candidate_tree_sha": "92413803700f62c89e4f9af940c586773a1f8414",
+   "record": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/REMEDIATION/ROUND104/verification.json",
+   "auditor_probe_suite": "10 tests, OK -- unchanged, no regression",
+   "canonical_readiness_suite": "OK",
+   "canonical_content_suite": "OK",
+   "validate_state": "rc 0 -- the ENRICHED ledger still validateth",
+   "release_gate_checker": "rc 0; five external gates OPEN/BLOCKED; every mandatory lane mandatory",
+   "t77": "selftest rc 0, rehearsal rc 0",
+   "this_round": "LEDGER ENRICHMENT of the eleven unenriched OPEN entries, transcribed from the audit's own cards behind a quality guard. NO production change and NO status change: 27 FIX_SUBMITTED / 2 PARTIAL / 25 OPEN, zero VERIFIED_FIXED.",
+   "unenriched_open_after": "0",
+   "this_is_not_t78": "no hosted lane existeth here, so T78 has NOT run and no readiness flag moved.",
+   "this_is_not_a_closure": "only an independent audit may write VERIFIED_FIXED."
   }
  }
 }
