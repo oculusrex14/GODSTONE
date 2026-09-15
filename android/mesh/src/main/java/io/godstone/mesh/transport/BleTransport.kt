@@ -66,7 +66,15 @@ class BleTransport(
     private val store: MessageStore? = null,
     private val coroutineScope: CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.IO),
     private val advertisingHooks: AdvertisingHooks? = null,
-    private val outletHooks: BleOutletHooks? = null
+    private val outletHooks: BleOutletHooks? = null,
+    /**
+     * ANDROID-05-A (the R1 supplement's step 1): THE INJECTABLE OS GATT BOUNDARY for the
+     * server-start ATTEMPT. The default is the real call, so production is unchanged; a court
+     * injecteth an attempt that failleth and then succeedeth, which is the schedule the supplement
+     * nameth ("its first server-start attempt fail and its second succeed"), and can COUNT the
+     * attempts -- which `isRunning == false` ALONE can never show.
+     */
+    private val serverStartAttempt: (() -> Boolean)? = null
 ) : Transport {
 
     override val name = "BLE"
@@ -182,6 +190,10 @@ class BleTransport(
     val isRunning: Boolean
         get() = isStarted && gattServer.isRunning
 
+    /** The narrow LIFECYCLE observation the R1 supplement requireth: the authoritative flag itself,
+     *  which is what a suppressed retry leaveth set while `isRunning` readeth false. */
+    internal fun isStartedForTest(): Boolean = isStarted
+
     init {
         snapshotAuthority.refresh()
     }
@@ -205,7 +217,7 @@ class BleTransport(
     override fun start() {
         if (isStarted) return
         isStarted = true
-        val serverStarted = gattServer.start()
+        val serverStarted = serverStartAttempt?.invoke() ?: gattServer.start()
         if (!serverStarted) return
         startAdvertising()
     }
