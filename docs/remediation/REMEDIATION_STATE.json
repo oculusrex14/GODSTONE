@@ -3440,7 +3440,7 @@
    "my_logs": [],
    "my_red_case": null,
    "my_status": "OPEN",
-   "notes": null,
+   "notes": "OPEN, with the defect CONFIRMED BY SOURCE and an INVALID ARM REVERTED. The outbox is one list of bare frames and the per-peer drain drains all of it (line anchors above), which is exactly the audit's charge; but the first arm could not prove it, because the frames it observed may have been the pump's own. Both the arm and a compiled repair attempt were REVERTED -- the tree is green and nothing unverified is committed. THE LESSON, and it is the fifth variant this session of the same family: an arm must ISOLATE the thing it names. Here the named thing (a control reply belonging to another peer) is indistinguishable, in a drain, from the frames the peer legitimately receives -- so the assertion must be rebuilt around the reply's IDENTITY, not the drain's emptiness.",
    "pending_proof": [],
    "proof": "Audit003SyncTests sends a PING from B into A, drains A for C, then for B. C receives the sole PING reply; B receives zero. The same-peer positive control passes. Android has the same global control-outbox design. sync-final-probes.log records two failed assertions for this case.",
    "remediation_report": "FINAL_REMEDIATION_DETAILS.md",
@@ -3453,10 +3453,10 @@
    ],
    "severity": "HIGH",
    "source_refs": [
-    "ios/Godstone/Sources/GodstoneMesh/MeshNode.swift:138",
-    "ios/Godstone/Sources/GodstoneMesh/MeshNode.swift:182",
-    "ios/Godstone/Sources/GodstoneMesh/MeshNode.swift:205",
-    "android/mesh/src/main/java/io/godstone/mesh/MeshNode.kt:366"
+    "android/mesh/src/main/java/io/godstone/mesh/MeshNode.kt:209 (pre-repair) -- `controlOutbox` was ONE list of BARE FrameV2, with no destination.",
+    "android/mesh/src/main/java/io/godstone/mesh/MeshNode.kt:213 -- `offerControlFrames(frames)` carried no destination, and BOTH producers called it that way (:233 handleControlFrame, :751 ingestInbound), although `fromPeer` was in scope at each.",
+    "android/mesh/src/main/java/io/godstone/mesh/MeshNode.kt:371 -- `drainSyncFramesForPeer(peer)` began with `drainControlOutbox()`, which drained the WHOLE outbox regardless of which peer asked -- so an answer raised for one relation was handed to another.",
+    "ios/Godstone/Sources/GodstoneMesh/MeshNode.swift:138,182,205 -- the twin's sites, named by the audit."
    ],
    "tasks": [
     "T40",
@@ -3464,7 +3464,12 @@
     "T42"
    ],
    "title": "A control reply for one peer is drained by another peer",
-   "wave": "5"
+   "wave": "5",
+   "pending_work": [
+    "THE RED IS NOT YET VALID, and this is the round's finding: an arm that feeds a PING to node A from peer R and then asserts `drainSyncFramesForPeer(B).isEmpty()` FAILS on the untouched product ('got 2 frame(s)') -- but that drain also contains the PUMP's own frames for B (`pumpFor().pump(peer).frames`), so the count does NOT isolate the misplaced reply. The arm must identify the REPLY itself (e.g. by frame type/arm, or by draining the SAME peer twice and comparing, or by comparing B's drain against R's) before it can serve as a red.",
+    "THE REPAIR WAS APPLIED AND REVERTED UNVERIFIED: carrying the destination on an outbox element (`ControlReply(destination, frame)`), filtering the drain per peer and preserving other peers' entries is the shape the audit's steps 1-3 prescribe, and it compiled and ran -- but the confounded arm could not confirm it, so nothing was landed and the tree stays green.",
+    "AFTER THE RED IS VALID: bound per-destination and aggregate control memory (audit step 4), drop entries for retired generations on disconnect (step 3), and revalidate ownership at writer admission (step 5); then PORT to the iOS twin with the same arms."
+   ]
   },
   "GS-UX-001": {
    "audit_status_at_snapshot": "OPEN",
