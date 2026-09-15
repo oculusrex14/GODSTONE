@@ -27,11 +27,14 @@ alone (content/requirements-dev.txt) and must never import llama-cpp.
 from __future__ import annotations
 
 import argparse
+import contextlib
+import fcntl
 import hashlib
 import itertools
 import json
 import os
 import re
+import shutil
 import sqlite3
 import sys
 import threading
@@ -446,6 +449,96 @@ def _canonical_json(value: Any) -> bytes:
                       ensure_ascii=False).encode("utf-8")
 
 
+@contextlib.contextmanager
+def _canonical_output_lock(reference: Path):
+    """GS-CONTENT-002: publication is serialized by CANONICAL OUTPUT IDENTITY, across
+    PROCESSES. The process-wide threading.Lock below cannot protect a database-plus-receipt
+    composition from a second CLI invocation, which is exactly how the audit interleaved two
+    builds and produced a receipt combining one build's corpus identity with another's
+    bytes."""
+    lock_path = reference.parent / f".{reference.name}.publish.lock"
+    lock_path.parent.mkdir(parents=True, exist_ok=True)
+    handle = os.open(lock_path, os.O_RDWR | os.O_CREAT, 0o644)
+    try:
+        fcntl.flock(handle, fcntl.LOCK_EX)
+        yield
+    finally:
+        try:
+            fcntl.flock(handle, fcntl.LOCK_UN)
+        finally:
+            os.close(handle)
+
+
+def _fsync_directory(directory: Path) -> None:
+    """A rename is durable only when the DIRECTORY is fsynced (card step 6)."""
+    try:
+        fd = os.open(directory, os.O_RDONLY)
+    except OSError:
+        return
+    try:
+        os.fsync(fd)
+    except OSError:
+        pass
+    finally:
+        os.close(fd)
+
+
+def _journal_path(destination: Path) -> Path:
+    return destination.parent / f".{destination.name}.publish-journal.json"
+
+
+def _write_journal(destination: Path, state: str, previous: Mapping[str, str]) -> None:
+    payload = {"schema": 1, "kind": "archive-publication", "state": state,
+               "destination": destination.name, "previous": dict(previous)}
+    path = _journal_path(destination)
+    tmp = path.with_name(f".{path.name}.tmp-{_next_token()}")
+    tmp.write_bytes(_canonical_json(payload) + b"\n")
+    os.replace(tmp, path)
+
+
+def publish_archive_pair(candidate, receipt: Mapping[str, Any]) -> Path:
+    """Publish the DATABASE and its RECEIPT as ONE generation (GS-CONTENT-002).
+
+    The card's step 3: prepare and validate the complete generation -- database plus sidecar
+    -- and publish it under one lock, so no reader ever meets a mismatched pair. Because the
+    public fixed paths cannot migrate to a generation pointer in one step, the card's step 4
+    is followed instead: a JOURNALED protocol with BACKUPS and explicit recovery states, in
+    which a failure RESTORES the previous pair rather than leaving half of it.
+    """
+    destination = candidate.destination
+    sidecar = Path(str(destination) + SIDECAR_SUFFIX)
+    with _canonical_output_lock(destination):
+        backups = destination.parent / f".{destination.name}.previous"
+        previous: dict[str, str] = {}
+        for path in (destination, sidecar):
+            if path.exists():
+                backups.mkdir(parents=True, exist_ok=True)
+                kept = backups / path.name
+                shutil.copy2(path, kept)
+                previous[path.name] = str(kept)
+        _write_journal(destination, "prepared", previous)
+        try:
+            candidate.publish()
+            write_sidecar(destination, receipt)
+            _fsync_directory(destination.parent)
+        except BaseException:
+            # RESTORE the previous PAIR: a failure never leaves a new database beside an old
+            # receipt (the audit's reproduced mismatch).
+            for path in (destination, sidecar):
+                kept = previous.get(path.name)
+                if kept and os.path.isfile(kept):
+                    shutil.copy2(kept, path)
+                elif path.exists() and not kept:
+                    path.unlink()
+            _fsync_directory(destination.parent)
+            _write_journal(destination, "rolled_back", previous)
+            raise
+        _write_journal(destination, "published", previous)
+        shutil.rmtree(backups, ignore_errors=True)
+        _fsync_directory(destination.parent)
+    return sidecar
+
+
 def write_sidecar(destination: Path, record: Mapping[str, Any]) -> Path:
     """Record the logical-content digest and the final byte hash beside the
     archive, versioned and atomic. Unknown future schema is refused."""
@@ -460,12 +553,30 @@ def write_sidecar(destination: Path, record: Mapping[str, Any]) -> Path:
     return sidecar
 
 
-def read_sidecar(sidecar: Path) -> dict[str, Any]:
+def read_sidecar(sidecar: Path, archive: Path | None = None) -> dict[str, Any]:
     """Read a sidecar; a tool of yesterday may understand it, an unknown
-    future schema may not be silently obeyed."""
+    future schema may not be silently obeyed.
+
+    GS-CONTENT-002: when the ARCHIVE is at hand, the pair is checked: a receipt whose byte
+    hash or byte count doth not describe the bytes beside it is REFUSED by name, so no
+    reader ever acts upon a mismatched pair.
+    """
     record = json.loads(sidecar.read_text(encoding="utf-8"))
     if not isinstance(record, dict):
         raise ArchiveBuildError(f"sidecar {sidecar} is not an object")
+    if archive is not None:
+        if not archive.is_file():
+            raise ArchiveBuildError(f"receipt {sidecar} has no archive beside it")
+        actual_bytes = archive.stat().st_size
+        actual_sha = _sha256_file(archive)
+        if record.get("archive_bytes") != actual_bytes:
+            raise ArchiveBuildError(
+                f"receipt {sidecar} claimeth {record.get('archive_bytes')!r} bytes while "
+                f"{archive.name} carrieth {actual_bytes}: the pair is MISMATCHED")
+        if record.get("archive_sha256") != actual_sha:
+            raise ArchiveBuildError(
+                f"receipt {sidecar} carrieth {record.get('archive_sha256')!r} while "
+                f"{archive.name} hasheth to {actual_sha}: the pair is MISMATCHED")
     version = record.get("schema")
     if version != SIDECAR_SCHEMA:
         raise ArchiveBuildError(
@@ -917,23 +1028,28 @@ def build(tier: str, out_path: Path, embed: bool = True,
               f"staged artifact is {size} bytes, over the ceiling of "
               f"{max_staged_bytes}")
 
-      fire("before_publish")
-      out.publish()
-      fire("after_publish")
-
-      final_bytes = destination.read_bytes()
-      archive_sha = hashlib.sha256(final_bytes).hexdigest()
-      sidecar = write_sidecar(destination, {
-        "schema": SIDECAR_SCHEMA,
-        "tier": tier,
-        "archive_file": destination.name,
-        "archive_bytes": len(final_bytes),
-        "archive_sha256": archive_sha,
-        "corpus_sha256": digest,
-        "document_count": len(docs),
+      # ---- prepare the WHOLE generation BEFORE any authoritative replacement ----------
+      # GS-CONTENT-002: the digest, the byte count and every receipt field are computed from
+      # the OPERATION'S OWN staged database, never by re-reading the shared destination --
+      # a re-read after the replacement is exactly how one build's corpus identity ended up
+      # in a receipt beside another build's bytes.
+      staged_bytes = out.temp.read_bytes()
+      archive_sha = hashlib.sha256(staged_bytes).hexdigest()
+      receipt = {
+          "schema": SIDECAR_SCHEMA,
+          "tier": tier,
+          "archive_file": destination.name,
+          "archive_bytes": len(staged_bytes),
+          "archive_sha256": archive_sha,
+          "corpus_sha256": digest,
+          "document_count": len(docs),
           "chunk_count": len(all_chunks),
           "vector_count": len(all_chunks) if embed else 0,
-      })
+      }
+      fire("before_publish")
+      sidecar = publish_archive_pair(out, receipt)
+      fire("after_publish")
+      final_bytes = staged_bytes
     except BaseException:
       # Nothing below the promotion may leave a residue: the temp is ours to
       # discard (idempotent, and a no-op once published); the destination was
