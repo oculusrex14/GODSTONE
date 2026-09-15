@@ -67,8 +67,10 @@ class RemediationLedgerTest(unittest.TestCase):
             # a finding carrieth its steps INLINE, or pointeth at its CARD
             self.assertTrue(entry["remediation_steps"] or entry["remediation_report"],
                             "%s carrieth neither steps nor a card" % fid)
+            # the AUDIT's snapshot status never changes; MY status moveth as work is
+            # done, and it must always come from the closed set this work may write
             self.assertEqual("OPEN", entry["audit_status_at_snapshot"], fid)
-            self.assertEqual("OPEN", entry["my_status"], fid)
+            self.assertIn(entry["my_status"], STATUSES_I_MAY_SET, fid)
 
     def test_w01b_every_referenced_card_exists_in_the_read_only_bundle(self):
         """A repair must start by READING its card: the ledger's card references must
@@ -136,10 +138,16 @@ class RemediationLedgerTest(unittest.TestCase):
         self.assertEqual(40, state["counts"]["by_candidate_scope"]["Mesh/Oracle"])
 
     def test_w06_a_bare_submission_is_refused(self):
-        """A FIX_SUBMITTED entry with no red, commit or evidence must be REFUSED."""
+        """A FIX_SUBMITTED entry with no red, commit or evidence must be REFUSED, and
+        any entry that hath MOVED off OPEN must carry the work it claimeth."""
         state = ledger()
         for fid, entry in state["findings"].items():
             self.assertEqual([], _findings(entry), "%s: %s" % (fid, _findings(entry)))
+            if entry["my_status"] != "OPEN":
+                self.assertTrue(entry["my_red_case"],
+                                "%s moved off OPEN without a behavioral red" % fid)
+                self.assertTrue(entry["my_logs"] or entry["my_fix_commit"],
+                                "%s moved off OPEN without evidence" % fid)
 
     def test_w07_the_frozen_rules_are_recorded(self):
         state = ledger()
