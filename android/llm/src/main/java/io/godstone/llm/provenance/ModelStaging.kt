@@ -72,6 +72,18 @@ class ModelStaging {
      */
     fun stage(opener: (String) -> InputStream, destination: File, artifact: ContentAddressedArtifact?): File =
         synchronized(promotionLock) {
+            // GS-MODEL-001: THERE IS NO UNPINNED ROAD TO A USABLE MODEL. Without a sworn artifact
+            // identity the staging cannot tell a whole model from garbage, so it REFUSETH BY NAME
+            // rather than promoting whatever bytes are there. The audit reproduced the opposite:
+            // `stage(..., artifact = null)` ACCEPTED an existing garbage `.gguf` (its
+            // `if (artifact != null)` guard skipped verification and returned the destination) and
+            // transferreth an unpinned stream under `Long.MAX_VALUE`, i.e. under NO ceiling at all.
+            if (artifact == null) {
+                throw ProvenanceRefusal(
+                    "REFUSING to stage " + destination.name + ": no sworn artifact identity was " +
+                        "given, so the bytes cannot be told from garbage. A model may only be staged " +
+                        "against a pinned ContentAddressedArtifact (GS-MODEL-001).")
+            }
             if (destination.exists()) {
                 if (artifact != null) {
                     val cries = verifyContentAddressed(artifact, destination.readBytes())
