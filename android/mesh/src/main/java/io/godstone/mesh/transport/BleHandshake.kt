@@ -194,11 +194,30 @@ class HandshakeDeadline(
     private var armedMono: Long = UNARMED
     private var fired: Boolean = false
 
+    /**
+     * ANDROID-04: THE HOUR OF THIS GLASS NEVER RUNNETH BACKWARD. The injected clock defaulteth to
+     * wall time (`BleConnection.kt:31`), and a wall clock is rolled back by a user-set clock, an
+     * NTP step or a correction -- whereupon `now() >= armedMono` became false again, LENGTHENING an
+     * armed bound and even UN-EXPIRING a spent one (the audit's "a wall-clock rollback can extend
+     * the deadline further"). The glass therefore readeth a HIGH-WATER mark: the greatest hour it
+     * hath yet been shown. A rollback findeth the mark where it stood, so a bound already reached
+     * stayeth reached and a spent glass may never be un-spent. The card's own step 1 (a MONOTONIC
+     * source injected into the composition, keeping wall time for persisted metadata only) remaineth
+     * owed; this guard maketh the bound proof against the rollback whatever clock is injected.
+     */
+    private var highWater: Long = Long.MIN_VALUE
+
+    private fun hour(): Long {
+        val shown = now()
+        if (shown > highWater) highWater = shown
+        return highWater
+    }
+
     /** The seat is bound; the glass is turn'd. It is armed but once; a
      *  redundant binding findeth it already turn'd and spareth the first hour. */
     fun arm() = synchronized(lock) {
         if (armedMono == UNARMED) {
-            armedMono = now() + seconds
+            armedMono = hour() + seconds
         }
     }
 
@@ -218,7 +237,7 @@ class HandshakeDeadline(
     /** Is the glass spent, with the hour yet to come? A stopt or unturn'd
      *  glass answereth false. */
     fun expired(): Boolean = synchronized(lock) {
-        armedMono != UNARMED && armedMono != STOPPED && now() >= armedMono
+        armedMono != UNARMED && armedMono != STOPPED && hour() >= armedMono
     }
 
     /** The hour the glass was set to, for the courts inspection: -1 unturn'd,
@@ -253,6 +272,17 @@ class KeyConfirmation(
     private var ourChallenge: ByteArray? = null
     private var issuedMono: Long = UNISSUED
     private var confirmed: Boolean = false
+
+    /** ANDROID-04: the echo bound is proof against a wall-clock rollback by the same
+     *  high-water rule as the handshake glass above -- a late echo may not be admitted
+     *  again merely because the device's clock was set back. */
+    private var highWater: Long = Long.MIN_VALUE
+
+    private fun hour(): Long {
+        val shown = now()
+        if (shown > highWater) highWater = shown
+        return highWater
+    }
 
     /** Whether the sealed round of this half is whole: an echo matched the
      *  standing challenge. The truth of KEY_CONFIRMED dwelleth here, in the
@@ -289,7 +319,7 @@ class KeyConfirmation(
     fun issue(challenge: ByteArray) = synchronized(lock) {
         require(challenge.size == CHALLENGE_BYTES) { "the key-confirmation challenge must be sixteen octets" }
         ourChallenge = challenge.copyOf()
-        issuedMono = now()
+        issuedMono = hour()
     }
 
     /** The challenge the half standeth upon, or null when none is abroad. */
@@ -313,7 +343,7 @@ class KeyConfirmation(
 
     /** The echo is past its hour. */
     fun echoLapsed(): Boolean = synchronized(lock) {
-        ourChallenge != null && issuedMono != UNISSUED && now() >= issuedMono + seconds
+        ourChallenge != null && issuedMono != UNISSUED && hour() >= issuedMono + seconds
     }
 
     /** A challenge goeth abroad and no echo hath yet matched it: the half doth
