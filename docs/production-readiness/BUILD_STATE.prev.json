@@ -15752,41 +15752,40 @@
   ],
   "failed_attempts": [],
   "in_progress": null,
-  "last_code_head": "0d12eb4147537ea046ba4522fc22f0fd65ebbcea",
+  "last_code_head": "cdb1ca4af25a2579323b2d1e0f767942ea5cf17f",
   "last_observed_head": "cdb1ca4af25a2579323b2d1e0f767942ea5cf17f",
   "latest_verification": {
-    "at_utc": "2026-09-15T18:00:00+00:00",
-    "boundary_commit": "0d12eb4147537ea046ba4522fc22f0fd65ebbcea",
+    "at_utc": "2026-09-15T19:30:00+00:00",
+    "boundary_commit": "cdb1ca4af25a2579323b2d1e0f767942ea5cf17f",
     "controls": {
       "boundary_records": 2,
-      "outcomes": "2/2 PASSED at the boundary (check_repository rc=0 including the harness selftest, the release-gates checker rc=0)"
+      "outcomes": "2/2 PASSED at the boundary: check_repository rc=0 (now RUNNING the frontier checker beside the harness selftest) and the release-gates checker rc=0"
     },
     "isle_grands": {
-      "android_grand": "no android court in this round: T82 READ the Android manifest and flavour and changed neither",
-      "counts_source": "see completed_tasks.T82.case_results.counts_source",
-      "ios_grand": "no iOS court either: the plist and entitlements were READ and asserted against",
-      "python_grand": "the readiness suite 403 OK (up from 390), the promise ledger rc=0 with VERDICT: PASS, structural lineage rc=0, diff clean, sync --check clean"
+      "android_grand": "unchanged this round (1128/0 at the T72 boundary); no android source was touched",
+      "counts_source": "the harness's own artifacts: FINAL_FRONTIER/executed/frontier-court-executed.log carrieth 10 '... ok' lines and readiness-suite-executed.log carrieth 'Ran 413 tests'",
+      "ios_grand": "unchanged this round (1166/0 at the T72 boundary); no iOS source was touched",
+      "python_grand": "the readiness suite 413 OK (up from 403: ten frontier witnesses), the frontier checker rc=0 with VERDICT: PASS, the promise ledger rc=0 with VERDICT: PASS, structural lineage rc=0, diff clean, sync --check clean"
     },
     "ladder": {
-      "L0": "1 PASSED (check_repository, including the harness selftest), 1 FAILED (ci/symbols.py --selftest: PRE-EXISTING)",
+      "L0": "1 PASSED (check_repository, including the harness selftest and the frontier checker), 1 FAILED (ci/symbols.py --selftest: PRE-EXISTING)",
       "L1": "PASSED (the python readiness suite)",
       "L2_L4": "unavailable: no command manifest yet"
     },
     "narrow": {
       "errors": 0,
       "failures": 0,
-      "lane": "python3 -m unittest discover -s tools/readiness/tests -p test_t82.py -v",
-      "tests": 13
+      "lane": "python3 -m unittest discover -s tools/readiness/tests -p test_blocked_external.py -v",
+      "tests": 10
     },
     "roster": {
-      "T82_killed": 12,
-      "of": 12
+      "note": "no new rod in the frontier round: the frontier carrieth no task-level mutation campaign, because no task ran. The last campaign was T82's (12 KILLED of 12)."
     },
     "subsystem": {
       "errors": 0,
       "failures": 0,
       "lane": "python3 -m unittest discover -s tools/readiness/tests -v",
-      "tests": 403
+      "tests": 413
     }
   },
   "next_task": null,
@@ -15893,7 +15892,9 @@
     "T72 boundary: THE FINDING from pass 3 -- the census plateau resteth on the CAPACITY, not on the release discipline: an unreleased lease is still bounded by its capacity. A rod that striketh only the release cannot grow the census, so 'unbounded growth' requireth BOTH clauses removed.",
     "T72 boundary: the campaign is a HOST conductor over a model of the production resources; no device, no adapter and no resident-set measurement is claimed. Its bounds and invariants are asserted of the model, not of the app.",
     "T82 boundary: a CHECKER's witness must FEED the checker the violation its rod striketh. Six T82 rods escaped because their witnesses asserted the LEDGER's own rows, which no rod toucheth -- and three more escaped behind either/or assertions, where one rule satisfied the assertion while its sibling slept. Feed the input; assert ONE rule.",
-    "T82 boundary: the promise ledger counteth a capability as ADVERTISED only where it is promised as AVAILABLE. A document that discusseth a closed capability in order to close it is `closed_in`, and its closure must be stated in the document's own words. That distinction was the ledger's own first-draft error."
+    "T82 boundary: the promise ledger counteth a capability as ADVERTISED only where it is promised as AVAILABLE. A document that discusseth a closed capability in order to close it is `closed_in`, and its closure must be stated in the document's own words. That distinction was the ledger's own first-draft error.",
+    "FINAL FRONTIER: the twelve pending tasks are BLOCKED_EXTERNAL and each carrieth its own record naming a register blocker, the required artifact, the approving human role, the verification command that would run on receipt, a NULL closure_evidence and an event-shaped recheck trigger. A fixture may never close one of these five gates; `tools/readiness/blockers.py` (now part of ci/check_repository.py) falleth if any blocker carrieth closure evidence or any externally-blocked release entry moveth to CLOSED.",
+    "FINAL FRONTIER: the ONE pre-existing CLOSED gate (android-archive-only-release, closed by T41/T42 on an ancestor-verified evidence commit) is registered in EXTERNAL_BLOCKERS.pre_existing_closed_gates. It is not one of the five external blockers, and the frontier checker requireth that any OTHER closed entry carry its own register record."
   ],
   "warnings_for_next_invocation": [
     "T41 IS THE NEXT TASK (deps T40, T24, T26, T37, T39, T84 all complete; no external requirement). After T41 cometh T42, T43, T44, then T54 and the platform chain.",

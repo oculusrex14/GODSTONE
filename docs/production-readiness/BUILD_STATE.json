@@ -1986,6 +1986,15 @@
         "ios/Godstone/Sources/GodstoneMesh/LifetimeControl.swift": "4852f2e83491be5a053edf58424cd52076b1af7e49f5d7894968ee8bbb2ba308",
         "ios/Godstone/Tests/GodstoneMeshTests/ReadinessT20Tests.swift": "2baa34d4aee24b8366d9a03b5a1aa2b83bd77f29eafcc061eb3c9958349c5fa2"
       },
+      "implementation_commit": "194ccb5c27a8440fae18327312b9148a088c718b",
+      "implementation_commit_recovered": {
+        "command": "git log --all --format='<sha> <tree> <subject>' filtered on the tree c1c281144f9e21c6a564263667a68d6e546ebcae",
+        "commit_subject": "T20: the twin's twelfth case renders the epoch as zero - exempt at the reduction's own clause, refused at the authenticator's, the court made singular",
+        "method": "the record's tested_tree_sha was matched against every commit tree in the repository's reachable history; EXACTLY ONE commit carrieth it, and its subject nameth the task",
+        "not_a_substitution": "the tested_tree_sha is unchanged; only the commit that carrieth it was named",
+        "tested_tree_sha": "c1c281144f9e21c6a564263667a68d6e546ebcae",
+        "why": "GS-CTRL-001 step 7: this record was written before the completion schema required the implementation commit. The commit is RECOVERED from the recorded tree rather than invented, and the recovery is recorded here with its method so an auditor can refute it."
+      },
       "implementation_commits": [
         "b8bba9a",
         "3e8105f",
@@ -2163,6 +2172,15 @@
         "ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/BleTransport.swift": "147616e0bbdd7528450ddb5c76cd6a35a8c1900de5b231096aee83b4fff4cad5",
         "ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/ReadinessT21Tests.swift": "d2c4115b3aa89419b2e08719627d845d7a057a03732d76f055dfcb4e67cd9f4e"
       },
+      "implementation_commit": "148dcbbca0e23e8d444e8ec4f75e27974dd70a72",
+      "implementation_commit_recovered": {
+        "command": "git log --all --format='<sha> <tree> <subject>' filtered on the tree f8222e0ba68bef08b46eb0d3221c5fb417e0ca78",
+        "commit_subject": "T21: the thirteenth twin learns the routers true law, and the whole island hears seven hundred seventy-two with none failing",
+        "method": "the record's tested_tree_sha was matched against every commit tree in the repository's reachable history; EXACTLY ONE commit carrieth it, and its subject nameth the task",
+        "not_a_substitution": "the tested_tree_sha is unchanged; only the commit that carrieth it was named",
+        "tested_tree_sha": "f8222e0ba68bef08b46eb0d3221c5fb417e0ca78",
+        "why": "GS-CTRL-001 step 7: this record was written before the completion schema required the implementation commit. The commit is RECOVERED from the recorded tree rather than invented, and the recovery is recorded here with its method so an auditor can refute it."
+      },
       "implementation_commits": [
         "32b5117",
         "7a0943d",
@@ -2272,6 +2290,15 @@
         "ios/Packages/GodstoneFoundation/SOURCE_MANIFEST.json": "b03612684b00c5b359ace6ffeb3f0cedd4dd3d486ac3489338c5bed0035670da",
         "ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/BleTransport.swift": "7d831c6b2815d188c540d7db9c6fd2e407ae32eed88eaa2ffcc31cbe1c6546e0",
         "ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/ReadinessT22Tests.swift": "9c22b906230b84cf0ceb523985f1fe7d4b9f680d5cd6d6cd1a8332d56aa92726"
+      },
+      "implementation_commit": "20725e6c497ea4beae5bc3832d054ff5ef2c3d0e",
+      "implementation_commit_recovered": {
+        "command": "git log --all --format='<sha> <tree> <subject>' filtered on the tree 8e72aa885acbad8b333e4f516205f4aeef28a8e8",
+        "commit_subject": "T22: the isle court heareth the responder whole: thirteen twins with none failing",
+        "method": "the record's tested_tree_sha was matched against every commit tree in the repository's reachable history; EXACTLY ONE commit carrieth it, and its subject nameth the task",
+        "not_a_substitution": "the tested_tree_sha is unchanged; only the commit that carrieth it was named",
+        "tested_tree_sha": "8e72aa885acbad8b333e4f516205f4aeef28a8e8",
+        "why": "GS-CTRL-001 step 7: this record was written before the completion schema required the implementation commit. The commit is RECOVERED from the recorded tree rather than invented, and the recovery is recorded here with its method so an auditor can refute it."
       },
       "implementation_commits": [
         "5bd4497",
@@ -2423,6 +2450,15 @@
         "ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/BleOrchestrationDriver.swift": "bdc5909ae26140aeabeefd0e2ac90a12ef5773e320601b5300268e57b54a0495",
         "ios/Packages/GodstoneFoundation/Sources/GodstoneMesh/BleTransport.swift": "1ba8d4b1ab890541d2b3eb67857fa396b6c157f9a293951c0caa9df2fcbfc763",
         "ios/Packages/GodstoneFoundation/Tests/GodstoneMeshTests/ReadinessT23Tests.swift": "dbdc2f373f5fed16d8ceff61079e9cccc44ab1af61673dda43e12f5346de7293"
+      },
+      "implementation_commit": "73704e7e8bf25b3f7aa64248ef7fe8ae1930c6b7",
+      "implementation_commit_recovered": {
+        "command": "git log --all --format='<sha> <tree> <subject>' filtered on the tree 2812b094d2509347e20ece3773d74bb9a57cb57f",
+        "commit_subject": "T23: ios - the handshake policy keeps its deadline, its transcript, and its confirmation",
+        "method": "the record's tested_tree_sha was matched against every commit tree in the repository's reachable history; EXACTLY ONE commit carrieth it, and its subject nameth the task",
+        "not_a_substitution": "the tested_tree_sha is unchanged; only the commit that carrieth it was named",
+        "tested_tree_sha": "2812b094d2509347e20ece3773d74bb9a57cb57f",
+        "why": "GS-CTRL-001 step 7: this record was written before the completion schema required the implementation commit. The commit is RECOVERED from the recorded tree rather than invented, and the recovery is recorded here with its method so an auditor can refute it."
       },
       "implementation_commits": [
         "6644c87",

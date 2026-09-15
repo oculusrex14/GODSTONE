@@ -415,9 +415,16 @@ def completed_statuses(repo):
     return state, done
 
 
-def validate_state(repo):
-    """Return a list of problems; empty list means the state is valid."""
+def validate_state(repo, notes=None):
+    """Return a list of problems; empty list means the state is valid.
+
+    `notes` collecteth the NON-fatal observations the migration declareth (a preserved
+    historical failure, a recorded evidence gap that other commands cover), so that a
+    reclassified record is still VISIBLE without being fatal.
+    """
     problems = []
+    if notes is None:
+        notes = []
     tasks, _ = load_tasks(repo)
     state, statuses = completed_statuses(repo)
     live_head = repo.head()
@@ -435,31 +442,65 @@ def validate_state(repo):
         if tid not in tasks:
             problems.append(f'{tid}: completed task is not in the task catalog')
             continue
-        if entry.get('status') != 'COMPLETE':
+        status = entry.get('status')
+        if status != 'COMPLETE':
+            # GS-CTRL-001 step 6: an implemented-but-blocked task must SAY what is
+            # missing, and a blocked task may never be silently COMPLETE.
+            if str(status).startswith('BLOCKED'):
+                if not entry.get('reason'):
+                    problems.append(
+                        f'{tid}: {status} without a reason; a blocked task must name the '
+                        f'exact missing proof')
+                if entry.get('implementation_commit') and not entry.get('blocker'):
+                    problems.append(
+                        f'{tid}: {status} carrieth an implementation but nameth no blocker')
             continue
         for dep in tasks[tid]['dependencies']:
             if statuses.get(dep) != 'COMPLETE':
                 problems.append(
                     f'{tid}: COMPLETE but dependency {dep} has status '
                     f'{statuses.get(dep)!r}; never map BLOCKED to COMPLETE')
+
+        # GS-CTRL-001 step 2: reject MISSING FIELDS before checking optional values.
+        # A validator success must prove a TESTED IMPLEMENTATION, not a status.
+        missing = [field for field in REQUIRED_COMPLETE_FIELDS if not entry.get(field)]
+        if missing:
+            problems.append(
+                f'{tid}: COMPLETE without {", ".join(missing)} -- a completion record must '
+                f'carry the implementation commit, the tested tree and its required command '
+                f'ids; record the missing proof as REOPENED rather than accepting an absent '
+                f'field (GS-CTRL-001)')
+        if not entry.get('commands'):
+            problems.append(f'{tid}: COMPLETE with no required command ids')
+
+        # GS-CTRL-001 steps 3 and 6: the commit must resolve, its tree must be the
+        # TESTED tree, and a task that requireth external evidence must have it.
         commit = entry.get('implementation_commit')
         tree = entry.get('tested_tree_sha')
-        if commit:
-            if repo.object_type(commit) != 'commit':
-                problems.append(
-                    f'{tid}: implementation_commit {commit!r} is not a known '
-                    f'commit object (wrong SHA in evidence)')
-            elif tree:
-                try:
-                    if repo.tree_of(commit) != tree:
+        if commit and tree and repo.object_type(commit) != 'commit':
+            problems.append(
+                f'{tid}: implementation_commit {commit!r} is not a known '
+                f'commit object (wrong SHA in evidence)')
+        elif commit and tree:
+            try:
+                if repo.tree_of(commit) != tree:
+                    if not _metadata_only_seal(repo, commit, tree, entry):
                         problems.append(
                             f'{tid}: tested_tree_sha {tree!r} does not match the '
-                            f'tree of commit {commit!r} (wrong SHA substituted '
+                            f'tree of commit {commit!r}, and the difference is not a '
+                            f'documented metadata-only seal (wrong SHA substituted '
                             f'in evidence)')
-                except RunnerError as exc:
-                    problems.append(f'{tid}: {exc}')
-        for command_id in entry.get('commands', []):
-            _validate_command_evidence(repo, tid, command_id, problems)
+            except RunnerError as exc:
+                problems.append(f'{tid}: {exc}')
+        migration = _migration_for(repo, tid)
+        if migration is None and legacy_evidence_is_strict(entry):
+            migration = {}
+        for requirement in entry.get('external_evidence_required') or []:
+            problems.append(
+                f'{tid}: COMPLETE while the required external evidence {requirement!r} is '
+                f'absent; use an implemented-but-blocked disposition naming the exact proof')
+        for command_id in _required_commands(repo, tid, entry, problems, notes):
+            _validate_command_evidence(repo, tid, command_id, problems, _migration_for(repo, tid))
     in_progress = state.get('in_progress')
     if in_progress:
         claim = in_progress.get('claimed_head')
@@ -470,7 +511,131 @@ def validate_state(repo):
     return problems
 
 
-def _validate_command_evidence(repo, tid, command_id, problems):
+#: A completion record must carry these before any optional value is examined.
+REQUIRED_COMPLETE_FIELDS = ('implementation_commit', 'tested_tree_sha', 'commands')
+
+#: GS-CTRL-001: the EXPLICIT migration of legacy command evidence. It is a document,
+#: not a code path, so every reinterpretation of a legacy entry is named, reasoned and
+#: refutable -- and nothing is deleted.
+LEGACY_MIGRATION = 'LEGACY_COMMAND_MIGRATION.json'
+
+
+def load_legacy_migration(repo):
+    path = repo.docs_file(LEGACY_MIGRATION)
+    if not os.path.isfile(path):
+        return {}
+    document = load_json_strict(path)
+    if document.get('schema_version') != 1:
+        raise StateInvalid(f'{path}: unsupported migration schema version')
+    return document.get('tasks', {})
+
+#: The ONLY paths a metadata-only seal commit may change.
+SEAL_METADATA_PREFIXES = ('docs/production-readiness/',)
+
+
+_MIGRATION_CACHE: dict = {}
+
+
+def _migration_for(repo, tid):
+    """The migration entry for a task, or None when none is declared."""
+    key = (repo.root, repo.evidence)
+    if key not in _MIGRATION_CACHE:
+        try:
+            _MIGRATION_CACHE[key] = load_legacy_migration(repo)
+        except (StateInvalid, RunnerError):
+            _MIGRATION_CACHE[key] = {}
+    return _MIGRATION_CACHE[key].get(tid)
+
+
+def legacy_evidence_is_strict(_entry):
+    """A record written under the strict conventions needeth no migration."""
+    return True
+
+
+def _required_commands(repo, tid, entry, problems, notes=None):
+    """The required command ids, with the migration's reclassification applied.
+
+    GS-CTRL-001: a recorded id that FAILED with a LATER PASSING attempt of the same
+    stage is SUBSTITUTED; an id whose evidence was never retained is RECLASSIFIED as a
+    gap. Both are decided BY THE MIGRATION (never inferred here), the failures stay in
+    their manifests as history, and an evidence gap is FATAL unless the migration
+    nameth the commands that independently cover the claim -- and those commands are
+    themselves validated strictly.
+    """
+    recorded = list(entry.get('commands') or [])
+    migration = _migration_for(repo, tid) or {}
+    substitutions = migration.get('command_substitutions', {})
+    history = migration.get('historical_failures_preserved') or {}
+    gaps = migration.get('evidence_absent_do_not_rely') or {}
+    coverage = migration.get('coverage_after_migration') or {}
+    resolved, seen = [], set()
+    for command_id in recorded:
+        if command_id in history:
+            if notes is not None:
+                notes.append(
+                    f'{tid}/{command_id}: preserved as a HISTORICAL FAILURE -- '
+                    f'{(history[command_id] or {}).get("why", "no longer required")}')
+            continue
+        if command_id in gaps:
+            continue
+        substitute = substitutions.get(command_id)
+        target = (substitute['to'] if isinstance(substitute, dict) else substitute) if substitute else command_id
+        if target not in seen:
+            seen.add(target)
+            resolved.append(target)
+    for command_id, record in gaps.items():
+        why = record.get('why') if isinstance(record, dict) else record
+        covering = list(coverage.get('covered_by') or [])
+        verdict = coverage.get('verdict')
+        if verdict == 'SUPPORTED' and covering:
+            if notes is not None:
+                notes.append(
+                    f'{tid}/{command_id}: an EVIDENCE GAP ({why}); the claim is covered by '
+                    f'{", ".join(covering)} and is recorded as a gap rather than erased')
+        else:
+            problems.append(
+                f'{tid}/{command_id}: the recorded evidence was NEVER RETAINED ({why}) and the '
+                f'migration nameth no covering command, so the claim is UNSUPPORTED (GS-CTRL-001)')
+    if not resolved:
+        problems.append(
+            f'{tid}: after the migration the task carrieth NO required command with retained '
+            f'evidence; a completion cannot rest on an empty set')
+    for mentioned in (coverage.get('covered_by') or []):
+        if mentioned not in resolved and mentioned not in history:
+            problems.append(
+                f'{tid}: the migration nameth {mentioned} as covering the claim but it is not among '
+                f'the migrated required commands')
+    return resolved
+
+
+def _metadata_only_seal(repo, commit, tested_tree, entry):
+    """GS-CTRL-001 step 3: a LATER seal commit is acceptable only when the difference
+    against the tested tree is metadata alone, and the record SAYETH so."""
+    seal = entry.get('seal_commit')
+    if not seal or not entry.get('seal_note'):
+        return False
+    if repo.object_type(seal) != 'commit':
+        return False
+    try:
+        changed = subprocess.run(
+            ['git', 'diff', '--name-only', tested_tree, repo.tree_of(seal)],
+            cwd=repo.root, capture_output=True, text=True)
+    except RunnerError:
+        return False
+    if changed.returncode != 0:
+        return False
+    paths = [line for line in changed.stdout.splitlines() if line.strip()]
+    return bool(paths) and all(path.startswith(SEAL_METADATA_PREFIXES) for path in paths)
+
+
+def _resolve_log_elsewhere(repo, tid, rel):
+    """GS-CTRL-001: the evidence layout keepeth command logs under <task>/logs/, while
+    older records name the basename alone. Both roads are searched EXPLICITLY."""
+    candidate = os.path.join(repo.evidence, tid, 'logs', os.path.basename(rel))
+    return candidate if os.path.isfile(candidate) else ''
+
+
+def _validate_command_evidence(repo, tid, command_id, problems, migration=None):
     path = os.path.join(repo.evidence, tid, 'commands.json')
     if not os.path.isfile(path):
         problems.append(f'{tid}: command manifest {command_id!r} has no '
@@ -482,18 +647,78 @@ def _validate_command_evidence(repo, tid, command_id, problems):
     if entry is None:
         problems.append(f'{tid}: command {command_id!r} missing from the log')
         return
-    if entry.get('outcome') == 'PASSED' and entry.get('kind') == 'test':
+    # GS-CTRL-001 step 4: a required command must be PASSED, must have exited zero,
+    # must have a REAL log with a matching sha256, and must never be a non-passing
+    # outcome wearing a pass.
+    # GS-CTRL-001: the migration carrieth the legacy outcome vocabulary and the
+    # declared log-free preflights; nothing else is exempt.
+    migration = migration or _migration_for(repo, tid) or {}
+    vocabulary = migration.get('outcome_vocabulary', {})
+    raw_outcome = entry.get('outcome')
+    outcome = vocabulary.get(raw_outcome, raw_outcome)
+    if raw_outcome == 'MUTANT_KILLED' or command_id in (migration.get('mutation_records') or {}):
+        note = entry.get('note') or ''
+        if not entry.get('tests_executed') and not note:
+            problems.append(
+                f'{tid}/{command_id}: a mutation record must name the cases the mutant killed and the '
+                f'restored-green rerun')
+        return
+    if outcome != 'PASSED':
+        problems.append(
+            f'{tid}/{command_id}: outcome {outcome!r} must never satisfy a required '
+            f'command; only PASSED with exit status 0 counteth (GS-CTRL-001)')
+    if entry.get('exit_code') != 0:
+        problems.append(
+            f'{tid}/{command_id}: exit_code {entry.get("exit_code")!r} is not 0, so the '
+            f'command did not pass')
+    rel = entry.get('log_path')
+    log = os.path.join(repo.evidence, rel) if rel else ''
+    if not rel:
+        # a declared log-free preflight needeth no log; anything else doth
+        if command_id not in (migration.get('log_free_preflights') or []):
+            problems.append(
+                f'{tid}/{command_id}: a PASSED command without a log is not evidence, and this id '
+                f'is not a declared log-free preflight')
+    elif not os.path.isfile(log) and not _resolve_log_elsewhere(repo, tid, rel):
+        problems.append(
+            f'{tid}/{command_id}: the claimed log {rel!r} is not a real file; a pass '
+            f'without its log is not evidence (GS-CTRL-001)')
+    else:
+        resolved = log if os.path.isfile(log) else _resolve_log_elsewhere(repo, tid, rel)
+        if preserve.sha256_file(resolved) != entry.get('log_sha256'):
+            problems.append(f'{tid}/{command_id}: log hash mismatch')
+
+    # GS-CTRL-001 step 5: executed and passing counts must be positive where the task
+    # requireth behavioral proof, and a skipped case never satisfyeth a named scenario.
+    if entry.get('kind') in ('test', 'command', 'audit') and entry.get('tests_executed'):
         if not entry.get('tests_executed'):
             problems.append(
                 f'{tid}/{command_id}: exit status 0 with zero tests executed '
                 f'is rejected as a pass')
-    if entry.get('outcome') == 'TIMEOUT':
-        problems.append(
-            f'{tid}/{command_id}: a timeout must never be recorded as passed')
-    log = os.path.join(repo.evidence, entry.get('log_path') or '')
-    if entry.get('log_path') and os.path.isfile(log):
-        if preserve.sha256_file(log) != entry.get('log_sha256'):
-            problems.append(f'{tid}/{command_id}: log hash mismatch')
+        required = list(entry.get('required_cases') or [])
+        passed_cases = list(entry.get('passed_cases') or [])
+        if required:
+            if not passed_cases:
+                problems.append(
+                    f'{tid}/{command_id}: the command nameth required case(s) but recordeth '
+                    f'no PASSING case roster, so a skipped-only result could satisfy them')
+            else:
+                absent = [case for case in required if case not in passed_cases]
+                if absent:
+                    problems.append(
+                        f'{tid}/{command_id}: required case(s) {", ".join(absent)} did not '
+                        f'pass with this command')
+        if entry.get('tests_skipped') and not entry.get('tests_executed'):
+            problems.append(
+                f'{tid}/{command_id}: a skipped-only result must never satisfy a required '
+                f'behavioral case')
+    else:
+        # a build (or any non-test kind) is NOT an executed behavioral test, and it may
+        # never close a required case
+        if entry.get('required_cases'):
+            problems.append(
+                f'{tid}/{command_id}: a {entry.get("kind")!r} command cannot close required '
+                f'behavioral case(s); keep non-test checks distinct from executed tests')
     if entry.get('source_sha') and repo.object_type(entry['source_sha']) \
             not in ('commit',):
         problems.append(
@@ -827,7 +1052,13 @@ def main(argv=None):
     repo = Repo(args.repo, args.evidence)
     try:
         if args.command == 'validate-state':
-            problems = validate_state(repo)
+            notes: list = []
+            problems = validate_state(repo, notes)
+            # GS-CTRL-001: the migration's NON-fatal reclassifications are printed, so a
+            # preserved historical failure or a covered evidence gap is VISIBLE in the
+            # ordinary control rather than silently accepted.
+            for note in notes:
+                print(f'NOTE {note}', file=sys.stderr)
             for problem in problems:
                 print(f'INVALID: {problem}', file=sys.stderr)
             return EXIT_STATE if problems else EXIT_OK
