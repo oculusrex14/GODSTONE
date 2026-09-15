@@ -46,7 +46,38 @@ already carried. The audit's step 3 stays OPEN, with its two measured obstacles 
 | CRYPTO-003 | FIX_SUBMITTED | 4b | Destroyed retained controllers and primitive sessions st |
 | CRYPTO-006 | FIX_SUBMITTED | 4b | Duplicate journal admission is treated as success for a |
 
-## DO THIS FIRST (round 211) — IOS-07 IS ANDROID-04'S TWIN: ITS RED IS CAPTURED AND THE REPAIR IS WRITTEN — AND WITHDRAWN FOR LACK OF A VERIFIED LANE
+## DO THIS FIRST (round 212) — IOS-07: THE PRODUCTION SET COMPILED, AND THE WITNESS'S ERROR WAS DIAGNOSED TO ITS **PRIMARY** CAUSE (THEN REVERTED AGAIN)
+
+**What was re-applied, exactly as round 211's plan said:** the **named** interval (`BleTransport.leaseSweepIntervalSeconds =
+1.0`) with an **injectable** parameter; the **owned** `leaseSweepJob` armed in `startInstalling()` past the `isStarted`
+guard and cancelled at the top of `stop()`; and the instruments (`leaseSweepTicksForTest`,
+`leaseSweepRelationsSeenForTest`, `hasLeaseSweepJob`). **It compiled** (`swift build` clean, no error lines).
+
+**And the witness's compile error was traced to its PRIMARY cause — the round's real result.** The visible error was
+`cannot infer contextual base in reference to member 'inboundPeripheral'` on a line **textually identical** to the court's
+own **working** line: a misleading **symptom**. The primary one, read from the log's **first** error, is:
+
+> **`argument 'leaseSweepInterval' must precede argument 'managerFactory'`**
+
+**Swift requires call-site arguments in declaration order**, and the new parameter was declared *before* `managerFactory`
+while every caller passes it after `clock:`. **So the fix is a one-line move: declare `leaseSweepInterval` LAST in the
+initialiser's parameter list.**
+
+**Why it was still reverted, and why that is this programme's own rule:** the round's budget ran out before a **green lane
+could be shown**, and the change **arms a sweep for every transport** — so the acceptance is the **whole** iOS lane, not the
+filtered court. **A production change whose lane run was never completed is not verified**, and no unverified production
+change is left behind: **the tree stands at the verified-green commit again.**
+
+**The next attempt is exactly two edits and one run:** (a) re-apply the production set with `leaseSweepInterval` **declared
+last** (anchors **and** the order rule are both recorded); (b) re-add the witness **verbatim** (its text is in this round's
+log; its typed-local form avoids the inference question entirely); (c) run the **whole** iOS lane as the acceptance; then
+move the canonical arm into `tools/readiness/tests/` and delete the parked one.
+
+**A method note worth keeping:** three compiler-aided corrections have now been spent on this isle's lifecycle insertion (a
+mis-placed statement, an argument order, a secondary inference symptom) — and **each was found by reading the FIRST error
+rather than the loudest one.** That habit turned a two-round stall into a two-edit plan.
+
+## DO THIS FIRST (round 211, landed) — IOS-07 IS ANDROID-04'S TWIN
 
 **The defect, read from the isle and identical in shape:** `BleTransport.sweepInboundLeases()` (`:2827`) walks the
 outbound and inbound lifetimes, asks each connection whether a lease lapsed, and retires the **owning** relation through its
