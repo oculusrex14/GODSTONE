@@ -1545,7 +1545,7 @@ class BleTransport(
                     return
                 }
                 conn.markHandshakeEngaged()
-                val hs2 = registry.responderProcessHs1(conn.peerId, hint, record.payload) ?: run {
+                val hs2 = handshake?.acceptInboundHandshake(conn.peerId, hint, record.payload) ?: run {
                     // trust refused: the counsel is not true; the relation
                     // becometh nothing, and the slot perisheth with it
                     recordRejection(conn.peerId, "hs.read.responder", "hs1 rejected")
@@ -1581,7 +1581,7 @@ class BleTransport(
                     closeResponderRelation(peerAddress)
                     return
                 }
-                if (!registry.responderProcessHs3(conn.peerId, record.payload, hint)) {
+                if (handshake?.completeInboundHandshake(conn.peerId, record.payload, hint) != true) {
                     recordRejection(conn.peerId, "hs.read.responder", "hs3 rejected")
                     closeResponderRelation(peerAddress)
                     return
@@ -1636,7 +1636,7 @@ class BleTransport(
             recordRejection(conn.peerId, "hs.read.initiator", "hs2 duplicate hearkened not")
             return
         }
-        val hs3 = registry.initiatorProcessHs2(conn.peerId, record.payload, boundRemoteHint) ?: run {
+        val hs3 = handshake?.continueOutboundHandshake(conn.peerId, record.payload, boundRemoteHint) ?: run {
             // trust rejected: HS3 is withheld and the exact relation closes
             recordRejection(conn.peerId, "hs.read.initiator", "hs2 rejected")
             closeInitiatorRelation(peerAddress)
@@ -1709,6 +1709,18 @@ class BleTransport(
 
     /** The responder's record writer: handshake fragments travel to the
      *  subscribed peer over the server's notification outlet. */
+    /**
+     * BL22: the SUBSTRATE'S handshake authority a court may substitute. Kept `internal` rather than
+     * a constructor parameter because this class is PUBLIC and a public constructor may not expose an
+     * internal type -- and widening the public surface for a test seam would be the wrong trade.
+     */
+    internal var handshakeAuthorityOverride: BleHandshakeAuthority? = null
+
+    /** BL22: every handshake step travelleth through this seam, never through the registry's surface. */
+    private val handshake: BleHandshakeAuthority?
+        get() = handshakeAuthorityOverride
+            ?: sessions?.let { SessionHandshakeAuthority(it) }
+
     private suspend fun writeHandshakeRecordViaServer(address: String, conn: BleConnection,
                                               type: BleRecordType,
                                               payload: ByteArray): TransportResult {
@@ -1806,7 +1818,7 @@ class BleTransport(
             recordRejection(peerId, "hs.begin", "hint order not ascendant")
             return TransportResult.Rejected("hint order not ascendant")
         }
-        val hs1 = registry.beginInitiator(conn.peerId, remoteHint) ?: run {
+        val hs1 = handshake?.startOutboundHandshake(conn.peerId, remoteHint) ?: run {
             recordRejection(peerId, "hs.begin", "begin initiator refused")
             return TransportResult.Rejected("begin initiator refused")
         }

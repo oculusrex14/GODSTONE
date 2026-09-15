@@ -46,7 +46,35 @@ already carried. The audit's step 3 stays OPEN, with its two measured obstacles 
 | CRYPTO-003 | FIX_SUBMITTED | 4b | Destroyed retained controllers and primitive sessions st |
 | CRYPTO-006 | FIX_SUBMITTED | 4b | Duplicate journal admission is treated as success for a |
 
-## DO THIS FIRST (round 167) — BL115 TAKEN, AND THE DEFECT BEHIND IT WAS REAL: THE CLOSING LIFECYCLE WAS UNREPRESENTABLE
+## DO THIS FIRST (round 168) — BL22's ANDROID HALF: THE TRANSPORT NOW SPEAKS THE SUBSTRATE'S HANDSHAKE AUTHORITY
+
+The control's BL22 arm forbids six SessionManager handshake names **anywhere in the transport file**, and the audit's
+drivers carry **no handshake API of their own** — so this was not a reroute onto an existing substrate method but the
+**introduction** of the substrate's authority. Four Android call sites were affected (`responderProcessHs1`,
+`responderProcessHs3`, `initiatorProcessHs2`, `beginInitiator`).
+
+**The repair:** a new `transport/BleHandshakeAuthority.kt` carries the substrate's vocabulary
+(`startOutboundHandshake`, `continueOutboundHandshake`, `acceptInboundHandshake`, `completeInboundHandshake`) with
+`SessionHandshakeAuthority` as the **one** adapter that speaks the registry's names. `BleTransport` now travels
+through the seam at all four sites, so the radio no longer couples to one implementation of trust establishment.
+
+**A design decision made by the compiler, recorded:** the seam was first written as a constructor parameter and the
+lane **refused to compile** — `BleTransport` is `public` and a public constructor may not expose an `internal` type.
+It is an `internal var` override instead: the public surface is **not** widened for a test seam.
+
+**What proves it:** the whole `:mesh` lane is green at **1174 tests, 0 failures, 0 errors**, and the readiness courts
+drive **real handshakes end-to-end** through the adapter — the positive control that the seam is behaviour-preserving
+(every method delegates to the call it replaced; wire bytes and trust table untouched). **Control: 31 → 27 arms**,
+all four Android BL22 arms cleared, **zero forbidden occurrences** left in the file.
+
+**OWED, stated rather than implied:** a court that drives the transport with a **fake** authority and **no** session
+manager — proving the *decoupling* directly rather than only the absence of forbidden names. Its entry point is a deep
+private path and was not taken this round.
+
+**NEXT:** the four **iOS** BL22 arms (the twin seam in `BleTransport.swift`, isle by isle as the SOS and issuance
+repairs were), then the remaining spelling arms and the still-open decision about them.
+
+## DO THIS FIRST (round 167, landed) — BL115 TAKEN
 
 Round 166 triaged the last red control's 33 arms into 31 spellings and **two substantive** ones. The first
 substantive arm (**BL115**) is now closed — and it was **not** a spelling. `ServerPeerSlotState.CLOSING` was
