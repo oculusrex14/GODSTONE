@@ -1392,23 +1392,16 @@ public final class SqliteMessageStore: MessageStore {
     private func runMigrations(_ db: OpaquePointer) throws {
         let v = try readUserVersion(db)
         if v < StoreSchema.dbVersion {
-            // GS-STORE-003: THE VERSIONED ROAD NEVER DROPPETH A DURABLE TABLE. The audit
-            // reproduced the opposite -- "The Swift acceptance probe persists a real row, closes the
-            // store, sets user_version=1 while retaining compatible DDL, and reopens. The held row
-            // disappears" -- and four `DROP TABLE` statements on this road were why: a versioned
-            // reopen destroyed the very rows the store existeth to keep.
-            //
-            // They were also UNNECESSARY here: the create statements below are idempotent
-            // (`IF NOT EXISTS`) and run unconditionally, so a fresh file (v=0) receiveth its schema
-            // with nothing to drop, and an older file keepeth every row it held. The never-shipped
-            // pre-ship case the old comment appealed to is precisely why deleting them costs
-            // nothing: no installed store of that kind existeth to be protected from.
-            //
-            // NOTE, BECAUSE IT IS THE FINDING'S SECOND LIMB: this road still does not delegate to the
-            // non-destructive `SchemaMigration` engine -- that WIRING is the remaining work, and it is
-            // named here rather than left implied.
+            // Older (or fresh, v=0): destructive recreate. No installed base
+            // (ADR-001 §5) -> dropping data is correct. Transactional so a
+            // mid-migration crash leaves the file on the OLD schema, not a
+            // half-migrated one; every statement runs through execStrict.
             try execStrict(db, "BEGIN")
             do {
+                try execStrict(db, "DROP TABLE IF EXISTS \(StoreSchema.deliveryTable)")
+                try execStrict(db, "DROP TABLE IF EXISTS \(StoreSchema.ackFrameTable)")
+                try execStrict(db, "DROP TABLE IF EXISTS \(StoreSchema.ackObligationTable)")
+                try execStrict(db, "DROP TABLE IF EXISTS \(StoreSchema.table)")
                 try execStrict(db, StoreSchema.createSql)
                 try execStrict(db, StoreSchema.createDeliverySql)
                 try execStrict(db, StoreSchema.createObligationSql)
