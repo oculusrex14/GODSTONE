@@ -385,10 +385,30 @@ def inspect(apk: Path, *, aab: Path | None = None,
                             f"{abi_name}: half the devices would install and fail at "
                             f"first use")
     if aab is not None:
+        # GS-PACKAGE-002: the AAB's native payload is INSPECTED, not merely counted. The audit
+        # reproduced a PASS for an AAB whose two libraries were literally `NOT-ELF`, and a PASS
+        # for one carrieth ONLY `libgodstone_core.so` (half the pair the APK carrieth). A name
+        # in an ABI list is not a working library.
         for required in REQUIRED_ABIS:
             if required not in aab_abi:
                 failures.append(f"the AAB carrieth no native library for the required "
                                 f"ABI {required}")
+        apk_libraries = set(libs)
+        aab_libraries = sorted({name for names in aab_abi.values() for name in names})
+        for library in sorted(apk_libraries - set(aab_libraries)):
+            failures.append(
+                f"the APK carrieth the native library {library} while the AAB doth not: the "
+                f"AAB must carry the SAME payload the APK proveth (GS-PACKAGE-002)")
+        with zipfile.ZipFile(aab) as container:
+            for entry in _container_entries(container, "the AAB"):
+                name = entry.filename
+                if not re.match(r"base/lib/[^/]+/[^/]+\.so$", name):
+                    continue
+                head = container.read(name)[:4]
+                if head != b"\x7fELF":
+                    failures.append(
+                        f"the AAB native library {name} is not an ELF image (magic {head!r}): "
+                        f"a name in an ABI list is not a working library (GS-PACKAGE-002)")
 
     # ---- the page size, from the ELF headers themselves -------------------
     page: dict[str, Any] = {}

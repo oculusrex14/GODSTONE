@@ -2321,20 +2321,33 @@
       "evidence_level": "REPRODUCED_PYTHON",
       "final_review": null,
       "impact": "A good APK can mask a broken App Bundle. Presence of the arm64 directory is insufficient evidence that the AAB includes every required native library, a valid ELF, or the approved Archive.",
-      "invalidated_dependents": [],
-      "my_fix_commit": null,
-      "my_logs": [],
+      "invalidated_dependents": [
+        "tools/readiness/tests/test_t70.py (its AAB fixture now carrieth the SAME library pair the APK proveth, with real ELF images -- the arm's own subject is untouched)"
+      ],
+      "my_fix_commit": "PENDING",
+      "my_logs": [
+        {
+          "outcome": "the probes 12 tests, 0 failures; the canonical courts green; the readiness suite 486 OK",
+          "path": "GS-PACKAGE-002/green/package-002.log",
+          "sha256": "34572ac7ff43f34a9c74a240a96cf87793503ca186a15a1365d7e9733dc9122c",
+          "what": "the Android arms green; the adopted probe suite fully green"
+        }
+      ],
       "my_red_case": {
-        "argv": "python3 -m unittest discover -s tools/readiness/tests -p test_audit_artifacts.py",
-        "case": "tools/readiness/tests/test_audit_artifacts.py -- the audit's own 12-case final probe suite, adopted with its assertions intact",
+        "argv": "python3 -m unittest discover -s tools/readiness/audit_probes",
+        "case": "the adopted audit probe arms for the Android AAB inspector (corrupt and partial native payloads)",
         "cwd": "/Users/oculus/Projects/GODSTONE_BUILDER",
         "log": "ADOPTED_PROBES/red/adopted-probes-2026-09-15.log",
         "log_sha256": "475be2fba47965b040d3b842274aba220dc165e83db99e3e5954f5c38243b6ea",
-        "outcome": "7 of 12 FAILED, which is the RED for four findings: GS-SUPPLY-001 (parent traversal and source symlink accepted), GS-DIAG-001 (unique peer churn retaineth all dead relations), GS-PACKAGE-001 (forbidden entitlements and an arm64 macOS binary accepted by iOS inspection) and GS-PACKAGE-002 (a corrupt or partial AAB native library set accepted)"
+        "outcome": "{\"verdict\": \"PASS\"} for an AAB whose two libraries were literally NOT-ELF, and PASS for one carrying only libgodstone_core.so"
       },
-      "my_status": "OPEN",
-      "notes": "RED ADOPTED: the audit's own final probe suite now liveth in the canonical suite (tools/readiness/tests/test_audit_artifacts.py) with its assertions intact; the relevant arms are RED and the repair is the next round's work.",
-      "pending_proof": [],
+      "my_status": "FIX_SUBMITTED",
+      "notes": "FIX_SUBMITTED. The AAB's native payload is INSPECTED: every library must be a real ELF image and must be the SAME SET the APK proveth. The audit's arms moved VERBATIM into the canonical lane, and the adopted probe suite -- which began with SEVEN reds -- is now fully green. Only an independent audit may write VERIFIED_FIXED.",
+      "pending_proof": [
+        "INDEPENDENT VERIFICATION: only an independent audit may mark this VERIFIED_FIXED",
+        "no real AAB or release artifact was inspected: the arms build SYNTHETIC containers confined to a TemporaryDirectory, and no device or bundle-toolchain run was performed",
+        "no hosted run URL/log was available, so hosted convergence remains pending"
+      ],
       "proof": "With a valid synthetic APK, an AAB whose two .so entries contain NOT-ELF still yields PASS. An AAB containing only the core library and omitting SQLite also yields PASS. The inspector only gathers AAB ABI filenames; ELF/page and Archive checks read the APK blobs. The valid APK control passes.",
       "remediation_report": "FINAL_REMEDIATION_DETAILS.md",
       "remediation_steps": [

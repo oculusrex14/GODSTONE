@@ -108,11 +108,14 @@ class AndroidReleaseCourt(unittest.TestCase):
         aab = self.root / "release.aab"
         with zipfile.ZipFile(aab, "w") as container:
             container.writestr("base/dex/classes.dex", b"Lio/godstone/app/MainActivity;")
-            container.writestr("base/lib/arm64-v8a/libgodstone_sqlite.so",
-                               A._synthetic_elf(A.PAGE_SIZE_16K))
+            # GS-PACKAGE-002: an AAB must carry the SAME native payload the APK proveth, and
+            # every library must be a REAL ELF image -- a name in an ABI list is not a library.
+            for library in ("libgodstone_sqlite.so", "libgodstone_core.so"):
+                container.writestr(f"base/lib/arm64-v8a/{library}",
+                                   A._synthetic_elf(A.PAGE_SIZE_16K))
         report = self.judge(self.apk(), aab=aab)
         self.assertEqual("PASS", report["verdict"])
-        self.assertEqual({"arm64-v8a": ["libgodstone_sqlite.so"]},
+        self.assertEqual({"arm64-v8a": ["libgodstone_core.so", "libgodstone_sqlite.so"]},
                          report["AAB"]["abi"])
         empty = self.root / "empty.aab"
         with zipfile.ZipFile(empty, "w") as container:
