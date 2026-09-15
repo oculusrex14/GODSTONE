@@ -71,4 +71,25 @@ class ReadinessAndroid04Test {
             confirmation.echoLapsed()
         )
     }
+
+    // -- the card's STEP 1: the COMPOSITION may not build a deadline on the wall clock ---------
+    // The guard in the glass proveth that a REACHED bound stayeth reached. It cannot invent back
+    // the real seconds a rollback destroyed, so the card's step 1 requireth the thing itself: a
+    // MONOTONIC source injected into the transport, "keeping wall time for persisted metadata
+    // only". The arm below therefore readeth the PRODUCTION DEFAULT at runtime and demandeth that
+    // it is not the wall clock. It is a PROPERTY of the shipped object, not a spelling in a file:
+    // it calles the very lambda the deadlines are built from.
+
+    @Test
+    fun testW05TheProductionDefaultDeadlineClockIsNotTheWallClock() {
+        val connection = BleConnection(byteArrayOf(1, 2, 3, 4))
+        val shipped = connection.defaultClockSecondsForTest()
+        val wall = System.currentTimeMillis() / 1000L
+        assertTrue(
+            "the composition still feedeth the hour-glasses the WALL clock (shipped=$shipped, " +
+                "wall=$wall): a rollback therefore still lengthens a bound by exactly the real " +
+                "seconds the lie destroyed",
+            shipped < wall - 86_400L
+        )
+    }
 }

@@ -542,7 +542,7 @@
    },
    "impact": "- `BleTransport.kt:877` defines `sweepInboundLeases`; production source search has no caller. - Handshake/key-confirmation expiration is checked only when another inbound packet enters `handleCentralInboundNotification` (`:698`, `:712`) or `handleServerInboundWrite` (`:785`, `:799`). `conn.leaseCountForTest()==0` suppresses these handshake checks while assembly exists. - The provisional job is canceled on physical-ready publication (`:313`) or subscription; it does not cover the subsequent handshake/assembly phases. - `BleConnection.kt:31` defaults its clock to `System.currentTimeMillis()/1000L`, while the new handshake/confirmation/assembly deadlines consume that clock. Failure schedule: peer reaches duplex, sends part of a record/HS, then becomes silent without disconnecting. No new ingress arrives, no sweep is scheduled, and no deadline effect runs; the link/assembly can retain resources beyond 10/30 seconds. A wall-clock rollback can extend the deadline further. Source comments describing a “heartbeat” or “monotonic” clock do not create either.",
    "invalidated_dependents": [],
-   "my_fix_commit": "6d66ed243c919599a5a2c91a1c5dcba707e6e296 (this commit)",
+   "my_fix_commit": "390472a6e532fab1016c61bdc6f9586318d8a154 (this commit: the composition's monotonic clock)",
    "my_logs": [
     {
      "log": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/REMEDIATION/ANDROID-04/green/android-04-arm-GREEN-20260915T164412Z.log",
@@ -555,27 +555,49 @@
      "sha256": "cb57b1e4a0215e8239d89b8990dd87060c55bae95ca851d4341dc57fb3d0c665",
      "what": "the WHOLE :mesh lane at the repaired tree",
      "outcome": "BUILD SUCCESSFUL in 23s -- no regression from the guard"
+    },
+    {
+     "log": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/REMEDIATION/ANDROID-04/green/android-04-mono-arm-GREEN-20260915T164633Z.log",
+     "sha256": "3356e3b0e26e74e3644b4983864b6a4970c17b193f8c7b802ddc7e8932e6c167",
+     "what": "the whole ANDROID-04 court after the composition repair (W01-W05)",
+     "outcome": "5 tests, 0 failures"
+    },
+    {
+     "log": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/REMEDIATION/ANDROID-04/green/android-04-mesh-lane-mono-GREEN-20260915T164633Z.log",
+     "sha256": "c5947b92a388325d09b78cd121470cde847ec8c4af940ebade13a22863a48cac",
+     "what": "the WHOLE :mesh lane at the repaired tree",
+     "outcome": "BUILD SUCCESSFUL in 23s -- the monotonic default broke no existing court, because the courts inject their own clock"
     }
    ],
    "my_red_case": {
-    "case": "android/mesh/src/test/java/io/godstone/mesh/transport/ReadinessAndroid04Test.kt -- the production HandshakeDeadline/KeyConfirmation driven with an injected clock that ROLLS BACK (what a user-set clock, an NTP step or a correction doeth on a device). W01 is the POSITIVE CONTROL; W03 (a spent glass may never un-EXPIRE) and W04 (a lapsed echo bound may not un-lapse) are the reds. W02 was WITHDRAWN, with its reason written where it stood: it demanded that a class handed a LYING clock recover the elapsed time the lie destroyed, which no class-local change can do -- the card's step 1 (a MONOTONIC source injected at the composition) is the only answer, and it is recorded as owed.",
+    "case": "android/mesh/src/test/java/io/godstone/mesh/transport/ReadinessAndroid04Test.kt -- the production HandshakeDeadline/KeyConfirmation driven with an injected clock that ROLLS BACK (what a user-set clock, an NTP step or a correction doeth on a device). W01 is the POSITIVE CONTROL; W03 (a spent glass may never un-EXPIRE) and W04 (a lapsed echo bound may not un-lapse) are the reds. W02 was WITHDRAWN, with its reason written where it stood: it demanded that a class handed a LYING clock recover the elapsed time the lie destroyed, which no class-local change can do -- the card's step 1 (a MONOTONIC source injected at the composition) is the only answer, and it is recorded as owed. PLUS (the card's STEP 1, round 107) W05: the PRODUCTION DEFAULT deadline clock must NOT be the wall clock -- the arm calleth the shipped lambda at runtime rather than reading a spelling, and it FAILED before the repair (the shipped clock WAS `System.currentTimeMillis()/1000L`). The withdrawn W02's demand is exactly what this step answereth: a class handed a lying clock cannot invent back the real seconds the lie destroyed, so the composition must not hand it one.",
     "argv": [
-     "./gradlew",
-     ":mesh:testDebugUnitTest",
-     "--tests",
-     "*ReadinessAndroid04Test*"
+     [
+      "./gradlew",
+      ":mesh:testDebugUnitTest",
+      "--tests",
+      "*ReadinessAndroid04Test*"
+     ],
+     "./gradlew :mesh:testDebugUnitTest --tests '*ReadinessAndroid04Test*'  # 5 tests: W05 FAILS pre-repair"
     ],
     "cwd": "/Users/oculus/Projects/GODSTONE_BUILDER/android",
-    "log": "ANDROID-04/red/android-04-wallclock-RED-20260915T164226Z.log",
-    "log_sha256": "e170d9f76b6ba0e496852ce541f2dde752ae252a34d6d9e2c4bb0708d5f092d1",
+    "log": [
+     "ANDROID-04/red/android-04-wallclock-RED-20260915T164226Z.log",
+     "ANDROID-04/red/android-04-mono-clock-RED-20260915T164540Z.log"
+    ],
+    "log_sha256": [
+     "e170d9f76b6ba0e496852ce541f2dde752ae252a34d6d9e2c4bb0708d5f092d1",
+     "ad6a8c254d42aab7ba2eb6fdcf698782a63e2902355edcf857c99d0870be7f76"
+    ],
     "outcome": "4 tests, 3 FAILURES before the repair (W02/W03/W04), each on its OWN assertion, W01 green"
    },
    "my_status": "PARTIAL",
-   "notes": "ENRICHED AT ROUND 104 by TRANSCRIPTION from the audit's own card (android/findings.md#ANDROID-04): impact, remediation_steps, source_refs and closure_tests are the card's OWN words and its OWN file references, not a summary; the refs are relative to the audited snapshot. No status changed and nothing was claimed fixed. ROUND 106 (ANDROID-04 limb): the card's SECOND defect is repaired on the host. The audit's own words -- 'a wall-clock rollback can extend the deadline further' -- are reproduced deterministically: a spent hour-glass UN-EXPIRED, and a lapsed key-confirmation echo bound UN-LAPSED, when the injected clock was set back. The glass now readeth a HIGH-WATER mark, so the hour never runneth backward. ONE ARM OF MINE WAS UNSATISFIABLE and was WITHDRAWN with its reason written where it stood: no class handed a lying clock can recover the elapsed time the lie destroyed, so W02's demand belongeth to the card's step 1 (the MONOTONIC injection at the composition), which remaineth owed. The whole :mesh lane passeth at the repaired tree.",
+   "notes": "ENRICHED AT ROUND 104 by TRANSCRIPTION from the audit's own card (android/findings.md#ANDROID-04): impact, remediation_steps, source_refs and closure_tests are the card's OWN words and its OWN file references, not a summary; the refs are relative to the audited snapshot. No status changed and nothing was claimed fixed. ROUND 106 (ANDROID-04 limb): the card's SECOND defect is repaired on the host. The audit's own words -- 'a wall-clock rollback can extend the deadline further' -- are reproduced deterministically: a spent hour-glass UN-EXPIRED, and a lapsed key-confirmation echo bound UN-LAPSED, when the injected clock was set back. The glass now readeth a HIGH-WATER mark, so the hour never runneth backward. ONE ARM OF MINE WAS UNSATISFIABLE and was WITHDRAWN with its reason written where it stood: no class handed a lying clock can recover the elapsed time the lie destroyed, so W02's demand belongeth to the card's step 1 (the MONOTONIC injection at the composition), which remaineth owed. The whole :mesh lane passeth at the repaired tree. ROUND 107 (the card's STEP 1): the composition no longer BUILDS a liveness bound on the wall clock. The arm calleth the shipped lambda at runtime (a test seam was added FIRST, because the arm's first form did not compile and a compile failure is not a behavioural red) and it FAILED before the repair. `MonoClock.seconds()` -- monotonic seconds with explicit units -- now feedeth the deadlines' default, while wall time stayeth for persisted metadata, which is what the card alloweth. THE WHOLE :mesh LANE PASSETH at 23s, so the change broke no existing court. This is what the withdrawn W02 demanded and could not get from a class-local guard. STILL PARTIAL: the scheduler, and the deep-sleep question, stay open.",
    "pending_proof": [
     "INDEPENDENT VERIFICATION: only an independent audit may mark this VERIFIED_FIXED.",
     "the second defect (wall-clock rollback un-expiring a spent glass) is repaired BY A GUARD; the FIRST defect (no scheduled owner) is untouched, so the finding stayeth PARTIAL and NOT fixed.",
-    "the composition-level monotonic injection remaineth OWED and is the only route to W02's demand."
+    "THE CARD'S STEP 1 IS NOW LANDED (`MonoClock`, monotonic seconds, with explicit units, feeding the deadlines' default; wall time stayeth for persisted metadata as the card alloweth). NOT device-verified: on a real device `System.nanoTime()` is CLOCK_MONOTONIC, which does not advance through deep sleep -- the card nameth `SystemClock.elapsedRealtime` as an alternative, and whether the deadline must survive deep sleep is a PRODUCT decision not taken here and recorded rather than assumed.",
+    "the FIRST defect (no scheduled owner) is untouched: no scheduler was written, so no arm yet advanceth a deterministic scheduler with zero further inbound packets."
    ],
    "proof": null,
    "remediation_report": "evidence/android/findings.md",
@@ -604,9 +626,9 @@
    "title": "Deadlines have no scheduled owner and use wall-clock time",
    "wave": "4f.2",
    "pending_work": [
-    "the card's step 1: inject a MONOTONIC clock into the actual transport/composition (SystemClock.elapsedRealtime or a canonical monotonic abstraction with explicit units), keeping wall time for persisted metadata only. THIS IS THE ANSWER TO W02's withdrawn demand: without it a wall-clock rollback still eats elapsed time, and the deadline is lengthened by exactly what the lie destroyed.",
     "the card's step 2-5 and its FIRST defect: `BleTransport.kt:877` defers `sweepInboundLeases` with NO production caller, so expiry runneth only when another inbound packet arriveth; a silent peer never trips it. That needeth the scheduler (a relation-owned deadline callback carrying the exact relation and timer generation, assembly expiry independent of future traffic, atomic release on expiry, and timer cancellation).",
-    "no device, emulator or radio was used: this is a host JVM unit court of the real production classes."
+    "no device, emulator or radio was used: this is a host JVM unit court of the real production classes.",
+    "the card's steps 2-5 AND the reason this finding stayeth PARTIAL: `BleTransport.kt:877` defers `sweepInboundLeases` with NO production caller, so expiry runneth only when another inbound packet arriveth and a SILENT peer never trippeth it. It needeth relation-owned deadline callbacks carrying the exact relation and timer generation, assembly expiry independent of future traffic, atomic release on expiry, and timer cancellation -- the SCHEDULER, which is the card's first defect and is untouched."
    ]
   },
   "ANDROID-05": {

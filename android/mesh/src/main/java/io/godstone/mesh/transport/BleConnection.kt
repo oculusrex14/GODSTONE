@@ -20,6 +20,22 @@ enum class BleConnectionState {
 }
 
 /**
+ * ANDROID-04 (the card's step 1): THE CANONICAL MONOTONIC SOURCE, with explicit units.
+ *
+ * The hour-glasses of the handshake, the key confirmation and the assembly are LIVENESS BOUNDS,
+ * so they must be measured against a clock that CANNOT BE SET: `System.currentTimeMillis()` is
+ * rolled back by a user-set clock, an NTP step or a correction, and a rollback LENGTHENS a bound
+ * by exactly the real seconds the lie destroyed. `System.nanoTime()` is monotonic on the JVM and
+ * on Android alike (and never jumps), so the seconds it yieldeth are the hours this file meaneth.
+ * WALL time stayeth where the card alloweth it -- persisted metadata -- and `BleConnection` still
+ * accepteth an INJECTED clock for courts, which is how the deadline behaviour is tested.
+ */
+internal object MonoClock {
+    /** Monotonic seconds. Explicit units: SECONDS, the unit of every bound in this package. */
+    fun seconds(): Long = System.nanoTime() / 1_000_000_000L
+}
+
+/**
  * Persistent duplex connection abstraction representing an active or in-flight BLE link.
  *
  * A provisional connection is constructible without remote node_hint or elected role.
@@ -28,7 +44,7 @@ enum class BleConnectionState {
 class BleConnection(
     val peerId: ByteArray,
     initialMaxAttValueLength: Int = DEFAULT_MAX_ATT_VALUE_LENGTH,
-    private val clock: () -> Long = { System.currentTimeMillis() / 1000L }
+    private val clock: () -> Long = MonoClock::seconds
 ) {
     init {
         require(peerId.isNotEmpty()) { "peerId must not be empty" }
@@ -105,6 +121,10 @@ class BleConnection(
 
     /** The 10-second monotonic hour-glass, turn'd upon the role binding and
      *  stopt at the trusted hour. */
+    /** ANDROID-04: the shipped deadline clock, read by the court so that the COMPOSITION'S
+     *  choice of source can be judged at runtime rather than by reading a spelling. */
+    internal fun defaultClockSecondsForTest(): Long = clock()
+
     internal val handshakeDeadline = HandshakeDeadline(clock)
 
     /** The standing key-confirmation of this half: the challenge it hath sent
