@@ -46,7 +46,31 @@ already carried. The audit's step 3 stays OPEN, with its two measured obstacles 
 | CRYPTO-003 | FIX_SUBMITTED | 4b | Destroyed retained controllers and primitive sessions st |
 | CRYPTO-006 | FIX_SUBMITTED | 4b | Duplicate journal admission is treated as success for a |
 
-## DO THIS FIRST (round 172) — BL128'S ELEVEN MESSAGES CLEARED BY **STRENGTHENING** THE CODE (18 ARMS → 6)
+## DO THIS FIRST (round 173) — BL126 WAS **NOT** SUBSTANTIVE EITHER, AND THE ROUND LEARNED A LESSON ABOUT THE INSTRUMENT (6 ARMS → 5)
+
+The arm round 172 flagged for watching turned out to be **spelling**, and the reading proved it: `start()` **already**
+built its context with `epoch: currentTransportEpoch, transport: self`, and `ManagerContext` **already** built both
+proxies from exactly those values — so the law (fresh epoch proxies installed on start, bound to this transport and the
+current epoch, managers born with `delegate: nil`, both cleared on stop) was satisfied, spelled through the context.
+Only **one** condition failed: the pattern's literal expression.
+
+**The alignment moved WHERE the proxies are built, not WHAT they are:** `ManagerContext.init` now **takes**
+`centralProxy`/`peripheralProxy` as parameters (its only construction site is `start()`'s scope; no court constructs it
+directly), and the transport builds them there. The objects are **identical** — same epoch value, same `self` — and the
+whole iOS lane at **1198 tests, 0 failures** proves it.
+
+**A lesson about the instrument, recorded because it will recur:** the first attempt wrote that expression across **two
+lines**, and the control's check — a **substring** match on text whose *comments* are stripped but whose *newlines* are
+not — reported it as **absent**. The alignment was invisible to the gate until the line was joined. This is the second
+fragility of the same family (round 163: a control whose text match counted **comments**, so a KDoc quoting the
+forbidden spelling re-broke the gate). Both are recorded as properties of the instrument, not as accidents.
+
+**Standing: control 6 → 5 arms** — BL11, BL52, BL81, BL131, BL132 — from **33** eleven rounds ago, with the iOS lane at
+1198/0 and the Android lane green. Each survivor is taken by the same criterion, and **none has yet been shown
+substantive — nor is that possibility dismissed**, because BL96 taught that a pattern *can* encode a real defect: the
+difference was **measured** every time, never assumed.
+
+## DO THIS FIRST (round 172, landed) — BL128'S ELEVEN MESSAGES
 
 The eleven messages were **two different claims**, exactly as round 170 predicted: six that the six callback reducers
 must **take** `sourceEpoch` with a default of 0, five that they must **validate**

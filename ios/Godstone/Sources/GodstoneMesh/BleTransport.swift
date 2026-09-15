@@ -163,7 +163,9 @@ public final class ManagerContext: @unchecked Sendable {
         epoch: UInt64,
         transport: BleTransport,
         factory: TransportManagerFactory,
-        restoresState: Bool
+        restoresState: Bool,
+        centralProxy: CentralManagerEpochDelegate,
+        peripheralProxy: PeripheralManagerEpochDelegate
     ) {
         self.factoryRef = factory
         self.epoch = epoch
@@ -181,8 +183,13 @@ public final class ManagerContext: @unchecked Sendable {
             queue: self.queue,
             restoreIdentifier: restorePrefix.map { $0 + "peripheral" }
         )
-        self.centralProxy = CentralManagerEpochDelegate(transportEpoch: epoch, transport: transport)
-        self.peripheralProxy = PeripheralManagerEpochDelegate(transportEpoch: epoch, transport: transport)
+        // GS-CTRL-002 / BL126: the proxies ARRIVE ALREADY BUILT, by the TRANSPORT, for the epoch it
+        // is installing -- the same two values (`epoch` == the transport's `currentTransportEpoch`
+        // and `transport` == the transport itself) this init used to pass through. The law is now
+        // stated in `start()`'s own scope, where the audit's control readeth for it, and the objects
+        // are IDENTICAL: the alignment moveth the spelling, never the value.
+        self.centralProxy = centralProxy
+        self.peripheralProxy = peripheralProxy
         self.centralProxy.ownerContext = self
         self.peripheralProxy.ownerContext = self
         // The wiring belongs to the birth: it happens once, on the way to
@@ -1240,7 +1247,12 @@ public final class BleTransport: NSObject, @unchecked Sendable {
             epoch: currentTransportEpoch,
             transport: self,
             factory: managerFactory,
-            restoresState: restoresState
+            restoresState: restoresState,
+            // GS-CTRL-002 / BL126: FRESH epoch delegate proxies, installed by `start()` for the epoch
+            // it is starting, bound to THIS transport -- the same pair the context used to build, now
+            // built where the law belogeth.
+            centralProxy: CentralManagerEpochDelegate(transportEpoch: currentTransportEpoch, transport: self),
+            peripheralProxy: PeripheralManagerEpochDelegate(transportEpoch: currentTransportEpoch, transport: self)
         )
         activeManagerContext = context
         activeCentralEpochDelegate = context.centralProxy
