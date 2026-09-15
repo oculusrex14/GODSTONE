@@ -46,6 +46,34 @@ already carried. The audit's step 3 stays OPEN, with its two measured obstacles 
 | CRYPTO-003 | FIX_SUBMITTED | 4b | Destroyed retained controllers and primitive sessions st |
 | CRYPTO-006 | FIX_SUBMITTED | 4b | Duplicate journal admission is treated as success for a |
 
+## DO THIS FIRST (round 217) — ANDROID-06's BEHAVIOURAL ARMS LAND: THE CARD'S STEPS 2, 3 AND 4 ARE WITNESSED AGAINST THE REAL WRITER
+
+**The arms, in the court's own idiom** (a bare `BleConnection` plus a mutable `maxAttValueLength` — both already used by
+the T18 court, so no new fixture was invented):
+
+* `testTheReservedSlotsAreBoundedAndCancellationReturnethTheSlot` takes **four reservations with no seal at all**, asserts
+  the **fifth is refused** as `TooManyAdmitted`, then asserts `cancel` **returns a slot it really held**, that a **second**
+  cancellation is **harmless** rather than a second refund, and that the slot is **reusable** afterwards.
+* `testTheMovedCapacityEpochRetirethTheReservationWithoutSealing` takes a reservation at 247 octets, **moves the
+  connection's capacity under it**, and asserts the seal is **refused with the sealer never spoken** (`sealerSpoken == 0`)
+  and that the retired reservation no longer holds a slot.
+
+**Why these arms are the finding, not decoration:** the audit's defect was that `reserve` merely **checked** a count of
+**seal-time** records, so a caller could reserve without sealing and the bound was **evadable**. The first arm takes four
+reservations and **no seals** — exactly the evasion the bound must now refuse — and under the repaired writer the fifth is
+refused. The second proves invalidation happens **before** the sealer, so **no nonce is burnt and no byte is staged** for a
+relation whose capacity moved.
+
+**One more self-inflicted correction, recorded with the others:** the arms first failed to **compile**
+(`Unresolved reference 'Reservation'`) because the court had only ever named `ReservationAnswer`; the type is now qualified
+explicitly. **A compile failure is not a behavioural result** — the distinction this programme keeps — and the run that
+followed was the first behavioural one.
+
+**Acceptance:** T18 court **11 tests, 0 failures**; whole `:mesh` lane **1191 tests, 0 failures** (1189 + the two arms).
+
+**Owed and named:** the transport-side **wiring** that would let a real operation **cancel** a reservation (the caller's half
+of step 2) is not yet exercised. Only an independent audit may write `VERIFIED_FIXED`.
+
 ## DO THIS FIRST (round 212) — IOS-07: THE PRODUCTION SET COMPILED, AND THE WITNESS'S ERROR WAS DIAGNOSED TO ITS **PRIMARY** CAUSE (THEN REVERTED AGAIN)
 
 **What was re-applied, exactly as round 211's plan said:** the **named** interval (`BleTransport.leaseSweepIntervalSeconds =

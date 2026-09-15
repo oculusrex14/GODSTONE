@@ -702,6 +702,68 @@ class ReadinessT18Test {
         }
     }
 
+    /**
+     * ANDROID-06 (round 217): A RESERVATION TAKETH A SLOT, AND CANCELLATION RETURNETH IT.
+     *
+     * The card's own steps: 'Maintain a bounded pending-ticket table ... Make queued/reserved/in-flight counts
+     * account for the SAME four-record bound; do not count only sealed fragments' (step 4) and 'provide
+     * cancellation that returns a slot' (step 2). The audit's own measurement was that `reserve` merely CHECKED
+     * `admitted.size` while `admitted` holdeth SEAL-time records -- so a caller could reserve WITHOUT sealing and
+     * the bound was evadable. THIS ARM PROVETH THE BOUND ON RESERVATIONS ALONE, and that the slot really cometh
+     * back.
+     */
+    @Test
+    fun testTheReservedSlotsAreBoundedAndCancellationReturnethTheSlot() {
+        val conn = BleConnection("AA:BB:CC:DD:EE:FF".toByteArray())
+        conn.maxAttValueLength = 247
+        val writer = RecordWriter(conn, RelationKey(BleDirection.OUTBOUND, "AA:BB:CC:DD:EE:FF", 7L))
+
+        // FOUR reservations stand WITHOUT a single seal -- and that is the whole point of step 4.
+        val held = mutableListOf<io.godstone.mesh.transport.Reservation>()
+        repeat(4) { i ->
+            val answer = writer.reserve(BleRecordType.DATA, 100)
+            assertTrue("reservation $i must stand", answer is ReservationAnswer.Admitted)
+            held += (answer as ReservationAnswer.Admitted).reservation
+        }
+        val fifth = writer.reserve(BleRecordType.DATA, 100)
+        assertTrue("the FIFTH reservation must be refused: the four-record bound counteth RESERVED records, not " +
+            "only sealed fragments",
+            fifth is ReservationAnswer.Refused &&
+                (fifth as ReservationAnswer.Refused).error is AdmissionError.TooManyAdmitted)
+
+        // ... AND CANCELLATION RETURNETH THE SLOT (step 2).
+        assertTrue("the cancellation must return a slot it really held", writer.cancel(held[1]))
+        assertFalse("a second cancellation of the same reservation must be HARMLESS, not a second refund",
+            writer.cancel(held[1]))
+        val sixth = writer.reserve(BleRecordType.DATA, 100)
+        assertTrue("the slot must be reusable after cancellation",
+            sixth is ReservationAnswer.Admitted)
+    }
+
+    /**
+     * ANDROID-06 step 3: A CHANGED CAPACITY EPOCH RETIRETH A PENDING RESERVATION **WITHOUT SEALING**.
+     * The sealer is a spy, and its silence is the assertion: no nonce may be burnt and no byte staged for a
+     * relation whose capacity moved under the reservation's feet.
+     */
+    @Test
+    fun testTheMovedCapacityEpochRetirethTheReservationWithoutSealing() {
+        val conn = BleConnection("AA:BB:CC:DD:EE:FF".toByteArray())
+        conn.maxAttValueLength = 247
+        val writer = RecordWriter(conn, RelationKey(BleDirection.OUTBOUND, "AA:BB:CC:DD:EE:FF", 7L))
+        val answer = writer.reserve(BleRecordType.DATA, 100)
+        assertTrue("the reservation must stand", answer is ReservationAnswer.Admitted)
+        val reservation = (answer as ReservationAnswer.Admitted).reservation
+
+        // the MTU moves AFTER the reservation was taken
+        conn.maxAttValueLength = 100
+
+        var sealerSpoken = 0
+        val seal = reservation.sealAndQueue(ByteArray(100)) { _ -> sealerSpoken += 1; ByteArray(116) }
+        assertTrue("the seal must be REFUSED when the capacity epoch moved", seal is SealAnswer.Refused)
+        assertEquals("the sealer must NEVER be spoken to for an invalidated reservation", 0, sealerSpoken)
+        assertFalse("and the retired reservation must not hold a slot afterwards", writer.cancel(reservation))
+    }
+
     /** Negative case: a payload that drifts from its reservation is
      * refused before the seal: the sealer is never spoken to, the sequence
      * number stands, and the refusal is told by name. */
