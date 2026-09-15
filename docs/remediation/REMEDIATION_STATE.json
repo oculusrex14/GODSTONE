@@ -737,6 +737,36 @@
     "CLOSURE EVIDENCE IS STALE FOR 31 FINDINGS whose card files changed after the audited SHA -- a FLOOR on what a later closure could claim, not a clearance.",
     "IOS-05 IS NOT COMPLETE: steps 2, 3 and 5 are carried, but STEP 1 (the existing `PeerGovernor` itself under the runtime owner with one shared configuration) and STEP 4's separated-penalty WITNESS remain -- this session built a purpose-built `AdmissionBudget` for the ingress rather than wiring the governor, and that design divergence is stated rather than hidden."
    ]
+  },
+  "candidate_verification_at_round_222": {
+   "candidate_sha": "1f110b154edc337246a072210366e049a4669b1b",
+   "tree_sha": "74b2dd8d4dd4e19d13e048c0c5905a47dc1fb47b",
+   "worktree": "clean at this sha",
+   "log": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/REMEDIATION/CANDIDATE_FINAL_1f110b154edc337246a072210366e049a4669b1b/verify.log",
+   "log_sha256": "4c8e420dd2fa0d43780b46f9b07e9a33593a5b80e5b6abeb7904510f9bb6f34c",
+   "measured": {
+    "android_mesh_lane": "**1192 tests, 0 failures, 0 errors**, and the run was FORCED (`--rerun-tasks`) after a first attempt finished in 2 s -- a cached green is not evidence",
+    "ios_lane_mirrored_package": "**Executed 1205 tests, with 0 failures (0 unexpected)**, 181.1s",
+    "python_readiness_suite": "OK",
+    "ledger_court": "OK",
+    "repository_controls": "EVERY ci/check_*.py rc 0; the ONLY non-zero is `check_parity` under its DEFAULT scope = the EXTERNAL A-06 arm, and `--scope repo` is rc 0",
+    "symbols": "ci/symbols.py: 0 unresolved"
+   },
+   "per_declared_scope": {
+    "Mesh/Oracle": {
+     "findings": 40
+    },
+    "Both": {
+     "findings": 14
+    }
+   },
+   "since_round_200": "ANDROID-04's scheduler was PROVEN by a controlled experiment (round 210: a silent peer tripped by TIME alone); IOS-05's steps 1-4 landed with a behavioural full-NodeID witness and a durable-trust separation witnessed against a real repository (202-203); IOS-07's owned deadline sweep landed with its own controlled-experiment witness (213); ANDROID-06's reservations were repaired (a slot TAKEN, a generation and capacity epoch CAPTURED, cancellation at the writer AND the caller, the bound counting RESERVED records) and its caller-side law was then WITNESSED behaviourally through a named seam (216-221); and the CONNECTION's lease clock was made MONOTONIC at both creation sites (208)",
+   "NOT_CLAIMED_AND_WHY": [
+    "T78 CONVERGENCE IS NOT CLAIMED: its requirement is that all applicable HOSTED lanes be enabled, executed and green AT THIS SHA, and NO hosted lane, run URL, run id or log exists in this environment.",
+    "NO FINDING IS VERIFIED_FIXED: only an INDEPENDENT AUDIT may write that word (live counts: 32 FIX_SUBMITTED, 18 OPEN, 4 PARTIAL).",
+    "READINESS FLAGS STAY FALSE and the FIVE EXTERNAL GATES STAY OPEN (A06, APPROVED_CONTENT, NATIVE_MODELS, HARDWARE, SIGNING).",
+    "CLOSURE EVIDENCE IS STALE FOR 31 FINDINGS whose card files changed after the audited SHA -- a FLOOR on what a later closure could claim, not a clearance."
+   ]
   }
  },
  "counts": {

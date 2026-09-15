@@ -78,3 +78,29 @@ artifact (180).
 **step 1** (the existing `PeerGovernor` itself under the runtime owner with one shared configuration) and **step 4's
 separated-penalty witness** remain — this session built a purpose-built `AdmissionBudget` for the ingress rather than
 wiring the governor, and that divergence is stated rather than hidden.
+
+## Candidate verification at `1f110b1` (ledger round 222) — measured, per declared scope
+
+| Item | Result at this exact SHA (tree `74b2dd8`) |
+|---|---|
+| Android `:mesh` lane | **1192 tests, 0 failures, 0 errors** — **forced** (`--rerun-tasks`) after a first attempt finished in 2 s |
+| iOS lane (mirrored package) | **1205 tests, 0 failures (0 unexpected)**, 181.1s |
+| Python readiness suite / ledger court | **OK / OK** |
+| Repository controls | every `ci/check_*.py` **rc 0**; only `check_parity` under its **default** scope non-zero = the external **A-06** arm; `--scope repo` rc 0 |
+| Symbols | `ci/symbols.py` — 0 unresolved |
+
+**A cached green is not evidence:** the first Android attempt returned in **2 s** (task up-to-date), so the lane was re-run
+**forced** and the count re-read from the run's XML. The number happened to be identical — but it was not *evidence* until
+it was fresh.
+
+**Since round 200:** ANDROID-04's scheduler **proven by a controlled experiment** (210 — a silent peer tripped by time
+alone); IOS-05's steps 1–4 landed with a behavioural full-NodeID witness and a durable-trust separation witnessed against
+a **real** repository (202–203); IOS-07's owned deadline sweep landed with its own controlled-experiment witness (213);
+ANDROID-06's reservations repaired (a slot **taken**, a generation and capacity epoch **captured**, cancellation at the
+**writer and the caller**, the bound counting **reserved** records) with its caller-side law then **witnessed
+behaviourally** through a named seam (216–221); and the **connection's lease clock made monotonic** at both creation
+sites (208).
+
+**Not claimed, and why:** **T78 is NOT claimed** (no hosted lane/run URL/id/log exists here); **no finding is
+`VERIFIED_FIXED`** (32 FIX_SUBMITTED / 18 OPEN / 4 PARTIAL); readiness flags **false** and the five external gates
+**OPEN**; **closure evidence stale for 31 findings**.
