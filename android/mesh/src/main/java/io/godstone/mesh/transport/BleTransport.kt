@@ -193,6 +193,18 @@ class BleTransport(
     internal fun authenticatedAdmissionChargesForTest(): Long = authenticatedAdmissionBudget.admittedCount()
     internal fun authenticatedAdmissionRefusalsForTest(): Long = authenticatedAdmissionBudget.refusedCount()
 
+    /**
+     * ANDROID-07 / T26 (the card's step 4): THE DOWNSTREAM COUNTERS -- EXACT, NOT THE LOSSY RING.
+     *
+     * The rejection census is a bounded ring of sixty-four events with a separate overflow count, so a
+     * flood of refusals can only be COUNTED through the budgets' own counters. These three expose the
+     * PRE-AUTH scope exactly; the authenticated scope has its own pair above; and a court that wanteth
+     * to know how many values a door really refused must read HERE, not the ring.
+     */
+    internal fun admissionRefusalsForTest(): Long = admissionBudget.refusedCount()
+    internal fun admissionAdmissionsForTest(): Long = admissionBudget.admittedCount()
+    internal fun admissionTrackedRelationsForTest(): Int = admissionBudget.trackedRelations()
+
     private val provisionalJobs = ConcurrentHashMap<String, Job>()
     private val inboundJobs = ConcurrentHashMap<String, Job>()
     /**

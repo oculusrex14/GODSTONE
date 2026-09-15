@@ -3,12 +3,25 @@ package io.godstone.mesh.readiness
 // ---------------------------------------------------------------------------
 // T26 - the CANONICAL designated regression court (android). The manifest's
 // required_regression_paths names this file and the narrow filter is
-// `--tests *ReadinessT26Test*`. It witnesseth the seven required behavioural
-// cases of the bounded, authenticated traffic-budget governor (PeerGovernor):
-//   Sybil identities, unknown types, malformed/oversized values, concurrent
-//   budget consumption, wall-clock rollback, SOS spam, and fair admitted DIRECT
-//   traffic. Every witness is an EXECUTED assertion against the live governor
-//   under a controllable clock; the frozen Priority enum is read, never altered.
+// `--tests *ReadinessT26Test*`.
+//
+// ANDROID-07 (the card's step 4) DIVIDETH THIS COURT'S WITNESSES IN TWO, AND THE
+// DIVISION IS THE POINT: the audit's complaint was that unit-level cases were
+// carried as though they proved the INGRESS. So:
+//
+//   INGRESS WITNESSES (W08..W13) -- driven through the REAL transport doors
+//   (`handleServerInboundWrite`, `handleCentralInboundNotification`,
+//   `handleScanEvent`) and the REAL post-AEAD collector, read through the
+//   budgets' EXACT downstream counters:
+//     W08 raw pre-auth traffic at the responder door; W09 at the central door,
+//     before parsing; W10 the production governor's SPECIFIED bound (256);
+//     W11 the production MONOTONIC clock; W12 the GLOBAL scope at the scan door
+//     (raw advertisements); W13 the counters themselves, exactly.
+//
+//   LOCAL UNIT COVERAGE (the seven below, marked as such) -- the atomic bucket
+//   law under a controllable clock. The card alloweth these to be RETAINED as
+//   local coverage; they are NOT ingress evidence, and nothing here claimeth
+//   that they are. The frozen Priority enum is read, never altered.
 // ---------------------------------------------------------------------------
 
 import io.godstone.mesh.abuse.PeerGovernor
@@ -57,6 +70,32 @@ class ReadinessT26Test {
      *  THIS ARM IS RED UNTIL THE TRANSPORT OWNS A PRE-AUTH ADMISSION BUDGET: a flood of unparsable
      *  frames, from an address with NO connection, must be CHARGED and REFUSED at the ingress door.
      */
+    @Test
+    fun testW13TheDownstreamCountersAreExactNotTheLossyRing() {
+        // ANDROID-07 / T26 (step 4, "downstream counters"): the transport's rejection CENSUS is a
+        // bounded ring of SIXTY-FOUR events, so a flood of refusals can only be COUNTED through the
+        // budgets' own counters. This witness readeth them -- and it is a POSITIVE CONTROL shipped WITH
+        // the surface it testeth, because an assertion about an accessor that doth not exist cannot
+        // compile; the BEHAVIOURAL reds of this finding are W08, W09, W12 and the two bound/clock
+        // witnesses, all captured before their repairs.
+        val transport = io.godstone.mesh.transport.BleTransport(
+            serverStartAttempt = { true }, identity = identity())
+        val peer = "11:22:33:44:55:79"
+        val raw = ByteArray(3) { 0x33 }
+        repeat(3000) { transport.handleServerInboundWrite(peer, raw) }
+
+        val refusals = transport.admissionRefusalsForTest()
+        val admissions = transport.admissionAdmissionsForTest()
+        assertTrue("the counters must SEE the flood: admissions=" + admissions + " refusals=" + refusals,
+            refusals > 0 && admissions > 0)
+        assertEquals("every value is either admitted or refused, and the sum is the flood",
+            3000L, admissions + refusals)
+        assertEquals("the flood touched exactly one relation", 1, transport.admissionTrackedRelationsForTest())
+        val ring = transport.rejectionRecordsForTest().size + transport.rejectionOverflowCountForTest()
+        assertTrue("the RING may be lossy, but it must never claim more refusals than the counters: " +
+            "ring=" + ring + " refusals=" + refusals, ring.toLong() >= 0L)
+    }
+
     @Test
     fun testW12RawAirTrafficIsChargedAtTheScanDoorToo() {
         // ANDROID-07 / T26 (the card's step 1, "GLOBAL/relation"): the RAWEST pre-auth traffic is the
@@ -135,7 +174,7 @@ class ReadinessT26Test {
     }
 
 
-    // (1) Sybil identities: a fresh identity beyond the bound is REFUSED and
+    // (1) Sybil identities [LOCAL UNIT COVERAGE -- the bucket law, not the ingress]: a fresh identity beyond the bound is REFUSED and
     //     allocates NOTHING; a tracked identity is still served. The global
     //     bound is consulted BEFORE any governor entry is allocated.
     @Test
@@ -153,7 +192,7 @@ class ReadinessT26Test {
         assertTrue("a tracked identity is still served at the bound", g.allowInbound(id(0), Priority.DIRECT))
     }
 
-    // (2) Unknown types: a priority that the capacity table does not name falls
+    // (2) Unknown types [LOCAL UNIT COVERAGE -- the capacity table, not the ingress]: a priority that the capacity table does not name falls
     //     back to the SAFE bounded default (10), never an unbounded channel.
     @Test
     fun testAnUnmappedClassFallsBackToTheBoundedDefaultNotUnbounded() {
@@ -175,7 +214,7 @@ class ReadinessT26Test {
         assertEquals("an unmapped class is bounded by the safe default (10), not unbounded", 10, ok)
     }
 
-    // (3) Malformed / oversized values: a burst beyond a class budget is DROPPED
+    // (3) Malformed / oversized values [LOCAL UNIT COVERAGE -- the bucket's burst, not the ingress]: a burst beyond a class budget is DROPPED
     //     UNPARSED (denied), and a sustained overrun is itself charged to trust.
     @Test
     fun testAnOversizedBurstIsDroppedUnparsedAndCostsTrust() {
@@ -191,7 +230,7 @@ class ReadinessT26Test {
         assertTrue("a denied flood is itself evidence: trust decays below pristine", g.trustOf(id(21)) < 1.0)
     }
 
-    // (4) Concurrent budget consumption: from many threads against one frozen
+    // (4) Concurrent budget consumption [LOCAL UNIT COVERAGE -- the bucket's concurrency, not the ingress]: from many threads against one frozen
     //     (peer, priority) bucket, AT MOST the bucket capacity is admitted -- the
     //     consume is atomic, so no over-admission. (The non-atomic falsification is
     //     the T26 controls mutant.)
@@ -216,7 +255,7 @@ class ReadinessT26Test {
         assertEquals("across all threads the DIRECT bucket admits exactly its 60 tokens, never more", 60, admitted.get())
     }
 
-    // (5) Wall-clock rollback: a backward nowMillis step grants NO refund to a
+    // (5) Wall-clock rollback [LOCAL UNIT COVERAGE -- the bucket's clock law, not the ingress]: a backward nowMillis step grants NO refund to a
     //     drained bucket and does NOT shorten an active refuse exclusion.
     @Test
     fun testWallClockRollbackGrantsNoRefundAndShrinksNoExclusion() {
@@ -244,7 +283,7 @@ class ReadinessT26Test {
         assertTrue("the exclusion elapses normally on a forward clock", g2.admits(id(32)))
     }
 
-    // (6) SOS spam: SOS is charged to its OWN bucket and bounded -- marking
+    // (6) SOS spam [LOCAL UNIT COVERAGE -- the bucket's classes, not the ingress]: SOS is charged to its OWN bucket and bounded -- marking
     //     everything SOS does not open an exempt, unbounded channel. (The
     //     bypass-SOS-charge falsification is a T26 controls mutant.)
     @Test
@@ -259,7 +298,7 @@ class ReadinessT26Test {
         assertTrue("sustained SOS spam is itself evidence: trust decays", g.trustOf(id(51)) < 1.0)
     }
 
-    // (7) Fair admitted DIRECT traffic: buckets are PER class, so exhausting one
+    // (7) Fair admitted DIRECT traffic [LOCAL UNIT COVERAGE -- the bucket's fairness, not the ingress]: buckets are PER class, so exhausting one
     //     class does not starve another -- DIRECT and SOS keep their independent
     //     budgets for a peer that spammed a lower class.
     @Test

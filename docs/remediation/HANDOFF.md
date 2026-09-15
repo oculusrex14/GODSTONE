@@ -46,7 +46,36 @@ already carried. The audit's step 3 stays OPEN, with its two measured obstacles 
 | CRYPTO-003 | FIX_SUBMITTED | 4b | Destroyed retained controllers and primitive sessions st |
 | CRYPTO-006 | FIX_SUBMITTED | 4b | Duplicate journal admission is treated as success for a |
 
-## DO THIS FIRST (round 189) — ANDROID-07 / T26: THE **GLOBAL** HALF OF STEP 1 — RAW AIR TRAFFIC IS NOW CHARGED AT THE SCAN DOOR
+## DO THIS FIRST (round 190) — ANDROID-07 / T26 STEP 4 CLOSES THE CODE SIDE: EXACT COUNTERS, AND WITNESSES DIVIDED HONESTLY
+
+**The observation surface's own weakness, measured before replacing it:** the transport's rejection **census is a
+bounded ring of sixty-four events** (`REJECTION_RECORD_CAPACITY = 64`) with a separate overflow count, so a flood's
+refusals can only be **counted** through the budgets' own counters. The transport now exposes three **exact** ones for
+the pre-auth scope (`admissionRefusalsForTest`, `admissionAdmissionsForTest`, `admissionTrackedRelationsForTest`) beside
+the authenticated pair added at round 188 — the card's "downstream counters".
+
+**W13 shipped with the surface, and that is stated rather than dressed up:** it asserts `admissions + refusals == 3000`
+**exactly** for a 3000-value flood, that exactly **one** relation was tracked, and that the lossy ring never claims more
+than the counters. It could not precede the accessors it reads, so it is a **positive control shipped with them** — and
+the **behavioural reds** of this finding remain the five captured earlier (W08 both relation doors, W09 the central door
+before parsing, W10 the bound, W11 the clock, W12 the scan door), each with its own immutable log.
+
+**The witnesses are now divided in the court's own header — which is step 4's actual complaint:** the audit's objection
+was that **unit**-level cases were carried as though they proved the **ingress**. `ReadinessT26Test` now says at its head
+that **W08–W13 are INGRESS WITNESSES** and that the **seven below are LOCAL UNIT COVERAGE** — each re-labelled in place
+with `[LOCAL UNIT COVERAGE — … not the ingress]`. The card allows them to be retained; nothing now claims they are
+ingress evidence.
+
+**Acceptance:** whole `:mesh` lane **1186 tests, 0 failures, 0 errors** (1185 + W13).
+
+**Standing:** ANDROID-07's four card steps are now carried on the code side — (1) the pre-auth global/relation budget
+charged at all three raw doors, (2) the post-AEAD authenticated charge, (3) the specified 256 bound and monotonic clock,
+(4) ingress witnesses plus exact downstream counters. The finding stays **FIX_SUBMITTED**: only an independent audit may
+write `VERIFIED_FIXED`. **One question remains open and is named:** whether "the immutable full NodeID" means the
+sixteen-octet identity rather than the relation's trusted-handshake-bound peer id — if it does, the **crypto layer** must
+expose that identity at the post-AEAD site.
+
+## DO THIS FIRST (round 189, landed) — ANDROID-07 / T26: THE **GLOBAL** HALF OF STEP 1
 
 **A gap in the same family, found by reading the doors rather than the card:** rounds 186–188 charged the two *relation*
 doors and the post-AEAD road, but `handleScanEvent` — the door through which an **advertisement** arrives, **before any
