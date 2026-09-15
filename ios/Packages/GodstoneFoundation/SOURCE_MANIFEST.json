@@ -123,7 +123,6 @@
     "Tests/GodstoneMeshTests/PortVectorTests.swift": "42e69e93f50ec27652cc45b4ddab6d646266d7049e0416b15a5c2a6513d55d43",
     "Tests/GodstoneMeshTests/ProofOfWorkTests.swift": "211617a5d9139e2f88cba17ff7e32ebc38169bacec7837db7e7df14f8be31c59",
     "Tests/GodstoneMeshTests/ReadinessArchive004Tests.swift": "5accd1bf90d1c5f83508d7dfbb39987afa7198029737405fb1bef448ae93fbdd",
-    "Tests/GodstoneMeshTests/ReadinessStore002Tests.swift": "ec1e1c6212435bcb133df9a28200cc9fab1c01168b924ed1bf87fbec3be7fe99",
     "Tests/GodstoneMeshTests/ReadinessT06Tests.swift": "a25b9bc7a6131c5f42c9aceb6e2bc011a2560b230b8a63fdcce91d3fcae0e574",
     "Tests/GodstoneMeshTests/ReadinessT07Tests.swift": "fcfcbe664c2dd562e3284cd06009a86fa088fccff0c887cc261239386acb05af",
     "Tests/GodstoneMeshTests/ReadinessT08Tests.swift": "e5ce1edc0ede9eedb9e3af4801b6ba26d4143473c4c351cbf999d9aaa8b0ed6f",
