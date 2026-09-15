@@ -73,7 +73,11 @@ class IosDeadlineSweepOwnerTest(unittest.TestCase):
     def test_the_interval_is_named_and_injectable(self):
         """A named constant for production AND an injectable value for the court that proveth it by time."""
         t = TRANSPORT.read_text(encoding="utf-8")
-        self.assertRegex(t, r"LEASE_SWEEP_INTERVAL\w*\s*[:=]", "the interval must be a NAMED constant")
+        # THE ISLE'S OWN NAMING: a first draft wrote the ANDROID convention (SCREAMING_CASE) and failed against
+        # the Swift constant -- the arm's error, not the code's, and the second such self-inflicted slip of this
+        # finding. The convention of the isle under judgment is the one that counteth.
+        self.assertRegex(t, r"static let leaseSweepIntervalSeconds\s*:\s*TimeInterval",
+                         "the production interval must be a NAMED constant")
         self.assertRegex(t, r"leaseSweepInterval\w*\s*:\s*(TimeInterval|Double|Int)",
                          "the interval must be INJECTABLE, so a court can witness expiry BY TIME rather than "
                          "by traffic (the seam the android isle's round 206 added for exactly this reason)")
