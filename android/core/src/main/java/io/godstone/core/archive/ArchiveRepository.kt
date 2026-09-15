@@ -47,6 +47,24 @@ data class ArchiveDocument(
     val revision: String = ""
 )
 
+/**
+ * GS-ARCHIVE-001: the descriptor of an archive whose TRUSTED MANIFEST was verified.
+ *
+ * The audit reproduced that the runtime served a usable archive from BYTES ALONE -- an
+ * absent manifest produced `Ready`, a document and a matching search result. This type can
+ * be produced ONLY by the verifier: a repository whose manifest is missing, unreadable,
+ * unsigned, wrong-tier or describing other bytes carrieth NO descriptor and is Unavailable.
+ */
+data class VerifiedArchiveDescriptor(
+    val fileName: String,
+    val tier: String,
+    val archiveSchema: Int,
+    val bytes: Long,
+    val sha256: String,
+    val manifestSchema: Int,
+    val approvalsSha256: String?,
+)
+
 /** The provenance projection shown when a document is opened whole (T49:
  *  'source/revision display'). A separate projection, that the sealed
  *  [ArchiveDocument] equality abideth undisturbed. */
@@ -116,11 +134,22 @@ private class AndroidArchiveBridge(context: Context) : ArchiveBridge {
 class ArchiveRepository(
     private val bridge: ArchiveBridge,
     private val archiveAsset: String,
+    /** GS-ARCHIVE-001: the identity this build serveth, declared by the composition root. */
+    private val expectedAsset: String = archiveAsset,
+    private val expectedTier: String = "LIGHT",
 ) : ArchiveReader {
 
-    constructor(context: Context, archiveAsset: String) : this(
+    /** The verified descriptor, or null when no approved archive is served. */
+    @Volatile
+    var descriptor: VerifiedArchiveDescriptor? = null
+        private set
+
+    constructor(context: Context, archiveAsset: String,
+                expectedTier: String = "LIGHT") : this(
         AndroidArchiveBridge(context),
         archiveAsset,
+        expectedAsset = archiveAsset,
+        expectedTier = expectedTier,
     )
 
     private val installer = ArchiveInstaller(bridge.cacheRoot())
@@ -132,7 +161,16 @@ class ArchiveRepository(
 
     private fun factsOfManifest(): Pair<ArchiveManifestFacts?, String?> {
         val text = bridge.assetBytes("$archiveAsset.manifest")?.decodeToString()
-        if (text == null) return null to null
+        if (text == null) {
+            // GS-ARCHIVE-001: this was the null-to-null SUCCESS path -- the audit opened a
+            // valid asset with no manifest at all and obtained Ready. Bytes are not an
+            // approval: without its trusted manifest the archive is UNAVAILABLE.
+            return null to ("the trusted manifest is missing: $archiveAsset.manifest -- the " +
+                "Archive may not be served from bytes alone (GS-ARCHIVE-001)")
+        }
+        if (text.isBlank()) {
+            return null to ("the trusted manifest is empty: $archiveAsset.manifest")
+        }
         val parsed = try {
             ArchiveManifestFacts.fromJson(text)
         } catch (exc: Throwable) {
@@ -146,6 +184,23 @@ class ArchiveRepository(
         val (facts, manifestFault) = factsOfManifest()
         if (manifestFault != null) {
             return Arm(ArchiveState.Unavailable(manifestFault), null)
+        }
+        if (facts == null) {
+            // a repository may not install unapproved bytes: the descriptor is the price of
+            // a usable handle (GS-ARCHIVE-001 steps 2-3).
+            return Arm(ArchiveState.Unavailable(
+                "the trusted manifest was not verified, so no descriptor existeth: " +
+                    "the Archive is UNAVAILABLE"), null)
+        }
+        if (facts.tier != expectedTier) {
+            return Arm(ArchiveState.Unavailable(
+                "the manifest declareth tier ${facts.tier} while this build serveth " +
+                    "$expectedTier -- a wrong-tier archive is never served"), null)
+        }
+        if (facts.fileName != expectedAsset) {
+            return Arm(ArchiveState.Unavailable(
+                "the manifest declareth ${facts.fileName} while this build serveth " +
+                    "$expectedAsset"), null)
         }
         val outcome = installer.install({ bridge.assetBytes(archiveAsset) }, facts)
         val verdict = when (outcome) {
@@ -165,6 +220,20 @@ class ArchiveRepository(
                         null,
                     )
                 }
+                if (facts.bytes != installer.currentFile().length() || facts.sha256 != sha) {
+                    runCatching { handle.close() }
+                    return Arm(ArchiveState.Unavailable(
+                        "the manifest describeth ${facts.bytes} bytes at ${facts.sha256}, " +
+                            "while the installed file carrieth " +
+                            "${installer.currentFile().length()} at $sha -- the descriptor " +
+                            "and the bytes MUST agree"), null)
+                }
+                descriptor = VerifiedArchiveDescriptor(
+                    fileName = facts.fileName, tier = facts.tier,
+                    archiveSchema = facts.archiveSchema, bytes = facts.bytes,
+                    sha256 = facts.sha256, manifestSchema = facts.schema,
+                    approvalsSha256 = facts.approvalsSha256,
+                )
                 ArchiveState.Ready(origin = installer.currentFile().absolutePath, sha256 = sha) to handle
             }
             is InstallOutcome.Rejected ->

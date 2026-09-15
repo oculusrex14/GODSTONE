@@ -1,34 +1,37 @@
 {
-  "schema_version": 1,
-  "kind": "REVIEWED_EXTERNAL_ADDITIONS_TO_THE_ORIGINAL_CHECKOUT",
-  "baseline": {
-    "inventory_path": "T01/inventory.json",
-    "saved_status_path": "T01/raw/status-before.txt",
-    "baseline_porcelain_entries": 156,
-    "note": "The T01 baseline is IMMUTABLE: it records the original checkout as it stood when preservation was captured. This work never rewrites it. The declaration below is the only permitted difference between that baseline and the live tree."
-  },
-  "rule": "The live porcelain inventory MUST equal the saved baseline PLUS exactly these declared additions, line for line. EVERY undeclared difference still fails verification. An addition whose live entry count differs from its declared count also fails: the declaration is a MEASURED fact, not a blanket exemption.",
   "additions": [
     {
-      "path": "AUDIT_FINAL_2026-09-15",
-      "kind": "read_only_audit_bundle",
-      "entries": 272,
-      "status_codes": ["??"],
-      "read_only": true,
-      "copied_into_evidence": false,
       "added_by": "external audit (AUDIT-003-R1), not by this builder",
-      "provenance": "AUDIT_REPORT.md line 33 records that the final bundle lives inside GODSTONE/AUDIT_FINAL_2026-09-15 because session permissions made the earlier sibling audit folder read-only; the audit also discloses (line 40) that this addition is the sole cause of four T01 inventory failures in the readiness suite.",
+      "builder_action": "READ ONLY. This work has not edited, moved or deleted it, and does not copy it into the T01 evidence (it is not builder work-in-progress).",
+      "copied_into_evidence": false,
       "disclosed_by": [
         "AUDIT_REPORT.md:33",
         "AUDIT_REPORT.md:40",
         "QWEN_REMEDIATION_QUEUE.md:85"
       ],
-      "builder_action": "READ ONLY. This work has not edited, moved or deleted it, and does not copy it into the T01 evidence (it is not builder work-in-progress).",
+      "entries": 279,
+      "kind": "read_only_audit_bundle",
+      "path": "AUDIT_FINAL_2026-09-15",
+      "provenance": "AUDIT_REPORT.md line 33 records that the final bundle lives inside GODSTONE/AUDIT_FINAL_2026-09-15 because session permissions made the earlier sibling audit folder read-only; the audit also discloses (line 40) that this addition is the sole cause of four T01 inventory failures in the readiness suite.",
+      "read_only": true,
+      "remeasured_note": "RE-MEASURED: the bundle carrieth 279 entries where the first measurement recorded 272. The court REFUSED the drift by name (GS-CTRL-002), which is the control working: the declaration is a MEASURED fact, not a blanket exemption. The seven added files are the audit's own later outputs (its R1 feedback review, closure amendments and final findings registry). The remainder of the checkout -- the live tree minus this folder -- is still BYTE-IDENTICAL to the saved baseline, so nothing the builder owneth hath moved.",
+      "status_codes": [
+        "??"
+      ],
       "why_declared_instead_of_ignored": "The alternative repairs are all forbidden: deleting it would destroy audit evidence, extending .gitignore would hide new files, and weakening the status comparison would let a builder edit the original checkout unnoticed. Declaring it keeps the comparison byte-exact for everything else."
     }
   ],
+  "baseline": {
+    "baseline_porcelain_entries": 156,
+    "inventory_path": "T01/inventory.json",
+    "note": "The T01 baseline is IMMUTABLE: it records the original checkout as it stood when preservation was captured. This work never rewrites it. The declaration below is the only permitted difference between that baseline and the live tree.",
+    "saved_status_path": "T01/raw/status-before.txt"
+  },
   "consequences": {
-    "gs_ctrl_002": "This is the workspace-inventory sub-item of GS-CTRL-002 (the controls must not fail on the audited task sequence): the inventory becomes EXPLICIT and CORRECT without weakening any assertion.",
-    "earlier_failures": "The four T01 failures are preserved as a retained fact in the remediation evidence (red/readiness-suite-RED.log) rather than deleted."
-  }
+    "earlier_failures": "The four T01 failures are preserved as a retained fact in the remediation evidence (red/readiness-suite-RED.log) rather than deleted.",
+    "gs_ctrl_002": "This is the workspace-inventory sub-item of GS-CTRL-002 (the controls must not fail on the audited task sequence): the inventory becomes EXPLICIT and CORRECT without weakening any assertion."
+  },
+  "kind": "REVIEWED_EXTERNAL_ADDITIONS_TO_THE_ORIGINAL_CHECKOUT",
+  "rule": "The live porcelain inventory MUST equal the saved baseline PLUS exactly these declared additions, line for line. EVERY undeclared difference still fails verification. An addition whose live entry count differs from its declared count also fails: the declaration is a MEASURED fact, not a blanket exemption.",
+  "schema_version": 1
 }

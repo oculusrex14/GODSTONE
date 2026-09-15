@@ -168,4 +168,69 @@ class ReadinessArchive002Test {
     }
 
 
+
+    // ================= GS-ARCHIVE-001: bytes are not an approval =================
+
+    /** The audit's first schedule: a VALID archive whose manifest is ABSENT. */
+    @Test fun test_archive001_a_missing_manifest_is_unavailable_not_ready() {
+        val archive = conformingArchive("no-manifest.db")
+        val repository = repositoryOver(archive, "no-manifest")
+        assertFalse("bytes alone were served as Ready", repository.isAvailable)
+        assertTrue("the refusal must be typed Unavailable",
+            repository.status() is io.godstone.core.archive.ArchiveState.Unavailable)
+        assertTrue("no descriptor without a verified manifest", repository.descriptor == null)
+        assertEquals("no document may be read from unapproved bytes",
+            0, repository.listDocuments().size)
+        assertTrue("no search may answer from unapproved bytes",
+            repository.search("bandage", 5).isEmpty())
+    }
+
+    /** A manifest of the WRONG TIER is refused by name. */
+    @Test fun test_archive001_a_wrong_tier_manifest_is_unavailable() {
+        val archive = conformingArchive("wrong-tier.db")
+        val manifest = File(archive.parentFile, archive.name + ".manifest")
+        manifest.writeText(
+            manifestJson(archive, tier = "MEDIUM", fileName = archive.name), Charsets.UTF_8)
+        val repository = repositoryOver(archive, "wrong-tier")
+        assertFalse("a wrong-tier manifest was accepted", repository.isAvailable)
+        assertTrue(repository.status() is io.godstone.core.archive.ArchiveState.Unavailable)
+        assertTrue("no descriptor from a wrong-tier manifest", repository.descriptor == null)
+    }
+
+    /** A manifest describing OTHER BYTES is refused: the descriptor and the bytes must agree. */
+    @Test fun test_archive001_a_manifest_of_other_bytes_is_unavailable() {
+        val archive = conformingArchive("other-bytes.db")
+        val manifest = File(archive.parentFile, archive.name + ".manifest")
+        manifest.writeText(
+            manifestJson(archive, tier = "LIGHT", fileName = archive.name,
+                bytesOver = 4096L), Charsets.UTF_8)
+        val repository = repositoryOver(archive, "other-bytes")
+        assertFalse("a manifest describing other bytes was accepted", repository.isAvailable)
+        assertTrue("no descriptor when the bytes do not match", repository.descriptor == null)
+    }
+
+    /** The manifest document this court writes (the shape the runtime readeth). */
+    private fun manifestJson(archive: File, tier: String, fileName: String,
+                             bytesOver: Long = 0L): String {
+        val digest = java.security.MessageDigest.getInstance("SHA-256")
+            .digest(archive.readBytes())
+            .joinToString("") { "%02x".format(it) }
+        return """
+        {
+          "schema": 1,
+          "archive_schema": 3,
+          "tier": "$tier",
+          "archive_file": "$fileName",
+          "archive_bytes": ${archive.length() + bytesOver},
+          "archive_sha256": "$digest",
+          "source_manifest_sha256": "${"a".repeat(64)}",
+          "review_manifest_sha256": "${"b".repeat(64)}",
+          "corpus_manifest_sha256": "${"c".repeat(64)}",
+          "build_tool_commit": "${"d".repeat(40)}",
+          "counts": {"documents": 1, "chunks": 1, "vectors": 0},
+          "signature": {"algorithm": "Ed25519", "key_id": "COURT-001", "value": "AA=="}
+        }
+        """.trimIndent()
+    }
+
 }
