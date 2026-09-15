@@ -295,7 +295,13 @@ class BleConnection(
         if (s == BleConnectionState.CLOSED || s == BleConnectionState.CLOSING || s == BleConnectionState.QUARANTINED) {
             return@synchronized false
         }
-        if (s != BleConnectionState.LINK_INFO_WRITING && s != BleConnectionState.PROVISIONAL_CONNECTED) {
+        // GS-CTRL-002 / BL42: the SAME gate in its POSITIVE form -- a role may be bound only while
+        // the link-info exchange is open or the connection is provisional. The negative form this
+        // replaceth was its exact De Morgan equivalent (s != A && s != B  <=>  !(s == A || s == B)),
+        // so NO behaviour changeth: the alignment is of the spelling, not of the law.
+        val bindableRoleState =
+            s == BleConnectionState.LINK_INFO_WRITING || s == BleConnectionState.PROVISIONAL_CONNECTED
+        if (!bindableRoleState) {
             return@synchronized false
         }
         _remoteNodeHint = hint.copyOf()

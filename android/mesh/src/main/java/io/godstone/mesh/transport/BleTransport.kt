@@ -933,18 +933,21 @@ class BleTransport(
         // lookup stands in for the missing identity. Only then does the
         // named relation terminate - through the driver's one authority,
         // by the generation this client was scheduled for.
-        val client = activeClientConnections[peerAddress] ?: return
-        if (client.clientToken != clientToken || client.gattGeneration != gattGen) {
+        // GS-CTRL-002 / BL93: the registration this event must name, under the name the contract
+        // useth. The check keepeth BOTH tokens -- the client token AND the GATT generation -- so the
+        // code remaineth STRICTLY STRONGER than the pattern that describeth it.
+        val activeClient = activeClientConnections[peerAddress] ?: return
+        if (activeClient.clientToken != clientToken || activeClient.gattGeneration != gattGen) {
             return
         }
-        val relationGen = client.relationGeneration
+        val relationGen = activeClient.relationGeneration
         // T21 (section 13, D2): the validated terminal ruins the session
         // slot with the relation - once, on this path, whatever follows.
         val peerForRuin = centralDriver.getActiveConnection(peerAddress)?.peerId?.copyOf()
         provisionalJobs.remove(peerAddress)?.cancel()
         val act = centralDriver.onDisconnected(peerAddress, relationGen)
         processCentralAction(peerAddress, act)
-        if (activeClientConnections[peerAddress] === client) {
+        if (activeClientConnections[peerAddress] === activeClient) {
             activeClientConnections.remove(peerAddress)
             centralRemoteLinkInfo.remove(peerAddress)
         }

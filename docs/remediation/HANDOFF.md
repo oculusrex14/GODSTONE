@@ -46,7 +46,37 @@ already carried. The audit's step 3 stays OPEN, with its two measured obstacles 
 | CRYPTO-003 | FIX_SUBMITTED | 4b | Destroyed retained controllers and primitive sessions st |
 | CRYPTO-006 | FIX_SUBMITTED | 4b | Duplicate journal admission is treated as success for a |
 
-## DO THIS FIRST (round 169) — BL22 IS CLEARED ON BOTH ISLES (33 ARMS → 23); THE REMAINING 23 ARE THE SPELLING DECISION
+## DO THIS FIRST (round 170) — THE SPELLING DECISION IS TAKEN **ARM BY ARM**, ON A WRITTEN CRITERION: BL42 AND BL93 CLEARED, BL96 REFUSED
+
+The earlier framing (align ~23 spellings vs rewrite the instrument) was replaced by a **per-arm judgement**, because
+the arms are not uniform. **The criterion:** an arm may be closed by aligning the code to the contract's spelling
+ONLY IF (i) the law the message names is already satisfied, (ii) the alignment is **provably** behaviour-neutral, and
+(iii) it **weakens nothing** — where the code is stronger than the pattern, the stronger form **stays** and only the
+name moves. An arm whose pattern implies a **semantic** rule may not be closed this way.
+
+* **BL42 cleared:** `BleConnection.bindRoleInternal` now carries the positive gate the pattern names, with the **De
+  Morgan identity written into the comment** (`s != A && s != B <=> !(s == A || s == B)`) so a later reader can verify
+  the neutrality rather than trust it.
+* **BL93 cleared without weakening:** the registration local was renamed (`client` → `activeClient`, three uses plus
+  the identity check that followed) and nothing else — the guard still tests **both** the client token and the GATT
+  generation, so the code stays **strictly stronger** than the pattern. (The first attempt failed to **compile**
+  because a fourth use sat outside the window my grep had covered; the lane caught it.)
+* **BL96 is the first arm the criterion REFUSES — and it is a finding, not a spelling.** The pattern wants
+  `onClientDisconnected(deviceAddress: String, expectedGen: Long = 0L)` **and** a GattServer forwarding that passes
+  **no** generation. Together those imply a **semantic rule the code does not have**: `expectedGen == 0L` must mean
+  "the caller knows not the generation" and the driver must then retire the slot's **own** generation — where today
+  `if (gen != expectedGen) return NoOp` means such a disconnect is **silently ignored and the relation stays ACTIVE
+  for ever**. That is the audited defect family (a terminal that never arrives), it cannot be closed by renaming, and
+  it needs its own RED + a decision on the sentinel (0L as "unspecified" vs a typed absence).
+
+**Acceptance:** whole `:mesh` lane **1174 tests, 0 failures, 0 errors** — the proof that nothing was weakened;
+**control 23 → 21 arms**.
+
+**NEXT:** BL96 as the substantive arm (RED + sentinel decision + courts), then the per-arm criterion on BL11, BL52,
+BL81, BL118, BL126, BL131, BL132 and BL128's **eleven** messages read individually — "must take `sourceEpoch`" and
+"must validate `sourceEpoch == currentTransportEpoch`" are **different claims**, and the methods do take the parameter.
+
+## DO THIS FIRST (round 169, landed) — BL22 IS CLEARED ON BOTH ISLES
 
 The iOS twin landed shape for shape: `BleHandshakeAuthority.swift` carries the substrate's vocabulary
 (`startOutboundHandshake`, `continueOutboundHandshake`, `acceptInboundHandshake`, `completeInboundHandshake`) with
