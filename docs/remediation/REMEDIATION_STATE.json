@@ -1158,8 +1158,9 @@
     },
     {
      "log": "CRYPTO-006/green/crypto-006-ANDROID-FULL.log",
-     "sha256": "see the evidence root",
-     "what": "PRIOR RUN kept separate: the same tree failed in the known randomized fixture (ReadinessT18Test, third court to exhibit it), green on re-run"
+     "sha256": "3344e2fee38b886f2be6d7833a00ec716fd2bbd4e75719ca0b5cfc7098e1bdad",
+     "what": "PRIOR RUN kept separate: the same tree failed in the known randomized fixture (ReadinessT18Test, third court to exhibit it), green on re-run",
+     "hash_note": "this field carried prose, not a digest, until round 96; the recorded digest was COMPUTED from the file at that time, which is a measurement, not a repair"
     }
    ],
    "my_red_case": {
@@ -1273,24 +1274,9 @@
      "what": "android ReadinessT83Test after the repair: 13 tests, 0 failures (nothing stored, nothing retired, obligation still PENDING)"
     },
     {
-     "log": "GS-ACK-001/green/gs-ack-001-ANDROID-FULL.log",
-     "sha256": "422b9a01847df6ee2404c92fb21bdba867d596ad18dc3177f2f578a0161bca16",
-     "what": "whole android :mesh lane: BUILD SUCCESSFUL"
-    },
-    {
      "log": "GS-ACK-001/green/gs-ack-001-IOS-T83.log",
      "sha256": "e203f29a56f62fd4494a125880e669732dadcca27b919f7aa7945d98484486e1",
      "what": "iOS ReadinessT83Tests after the port: 12 tests, 0 failures with the new arm passing"
-    },
-    {
-     "log": "GS-ACK-001/green/gs-ack-001-IOS-FULL.log",
-     "sha256": "e48e58bc61b6e52df6bdfd3f02d6360bd5bb83f2d907149660d6ada40b564dd9",
-     "what": "whole iOS package: Executed 1191 tests, with 0 failures (was 1190)"
-    },
-    {
-     "log": "GS-ACK-001/green/gs-ack-001-LANES.log",
-     "sha256": "a4c3e49f68a1d6c2b3d7fa4873558bbceb8a0bc7993c33b68b0382376f7d66f0",
-     "what": "readiness suite OK; invariants all hold; repository VERDICT PASS; symbols 0 unresolved; iOS mirror --check rc=0; mutation selftest OK"
     },
     {
      "log": "GS-ACK-001/green/gs-ack-001-T83-control.log",
@@ -1569,9 +1555,9 @@
    "my_logs": [
     {
      "outcome": "BUILD SUCCESSFUL; the :core suite 18 tests, 0 failures",
-     "path": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/REMEDIATION/GS-ARCHIVE-001/green/archive001-court.log",
      "sha256": "47606736333efa6d3e2138711fb3fe166e2dabb51fb86543aa9dc13edef3e3ea",
-     "what": "the court green on the repaired tree (seven witnesses)"
+     "what": "the court green on the repaired tree (seven witnesses)",
+     "log": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/REMEDIATION/GS-ARCHIVE-001/green/archive001-court.log"
     }
    ],
    "my_red_case": {
@@ -1644,21 +1630,21 @@
    "my_logs": [
     {
      "outcome": "core suite 14 tests, 0 failures; the court rc=0",
-     "path": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/REMEDIATION/GS-ARCHIVE-002/green/core-suite.log",
      "sha256": "129d5cdbea23ca1a101c238a6fe8eb7315003cf3aaabda0048b6526990900dba",
-     "what": "the :core suite and the archive002 court after the repair"
+     "what": "the :core suite and the archive002 court after the repair",
+     "log": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/REMEDIATION/GS-ARCHIVE-002/green/core-suite.log"
     },
     {
      "outcome": "3/3: the malformed schema refused, the read road refusing, the positive control",
-     "path": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/REMEDIATION/GS-ARCHIVE-002/green/archive002-court.log",
      "sha256": "7e3d34d5731862a52e4e116db02c2d15a79f636f121a7be5197ce6469e134cc8",
-     "what": "the archive002 court alone"
+     "what": "the archive002 court alone",
+     "log": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/REMEDIATION/GS-ARCHIVE-002/green/archive002-court.log"
     },
     {
      "outcome": "BUILD SUCCESSFUL; the :core suite 20 tests, 0 failures",
-     "path": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/REMEDIATION/GS-ARCHIVE-002/green/repository-half.log",
      "sha256": "5121cdc43506870024c392022ef31ee042402084b6110b5eb9dfc3fd254db160",
-     "what": "the repository half: the four roads checked, the swallowing idiom gone"
+     "what": "the repository half: the four roads checked, the swallowing idiom gone",
+     "log": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/REMEDIATION/GS-ARCHIVE-002/green/repository-half.log"
     }
    ],
    "my_red_case": {
@@ -1732,9 +1718,9 @@
    "my_logs": [
     {
      "outcome": "BUILD SUCCESSFUL; the :app suite 51 tests, 0 failures (four of them this court)",
-     "path": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/REMEDIATION/GS-ARCHIVE-003/green/archive003-court.log",
      "sha256": "eb3850d6068050acc5c7b41668a5600c5f0f08bb39324e51afd35ae4b757f1b0",
-     "what": "the court green on the live tree, and the app suite"
+     "what": "the court green on the live tree, and the app suite",
+     "log": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/REMEDIATION/GS-ARCHIVE-003/green/archive003-court.log"
     }
    ],
    "my_red_case": {
@@ -1803,9 +1789,9 @@
    "my_logs": [
     {
      "outcome": "5/5 on the live tree; the package 1171 tests -- run 1 reported one un-named failure, runs 2 and 3 are clean",
-     "path": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/REMEDIATION/GS-ARCHIVE-004/green/archive-004-green.log",
      "sha256": "2675f1434c9018974a18adfc44661023da036a45077bc3be10273183a8260b9d",
-     "what": "the court green (5/5) and the package suite"
+     "what": "the court green (5/5) and the package suite",
+     "log": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/REMEDIATION/GS-ARCHIVE-004/green/archive-004-green.log"
     }
    ],
    "my_red_case": {
@@ -1867,9 +1853,9 @@
    "my_logs": [
     {
      "outcome": "16 tests, 0 failures; the whole package green",
-     "path": "GS-ARCHIVE-005/green/archive-005-GREEN.log",
      "sha256": "e6e8316bcbe1080fc53a95505616279c52e8b06eed186f00b4231b1be156e62f",
-     "what": "the arm green on the repaired tree"
+     "what": "the arm green on the repaired tree",
+     "log": "GS-ARCHIVE-005/green/archive-005-GREEN.log"
     }
    ],
    "my_red_case": {
@@ -1954,15 +1940,15 @@
    "my_logs": [
     {
      "outcome": "5 tests, OK: the entry refusal, the staging refusal by name, the CLI refusal, and the APPROVED positive control carrying its digest",
-     "path": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/REMEDIATION/GS-CONTENT-001/green/audit-content-release-court.log",
      "sha256": "22a8c15c685106f39541981eb4ffac4b6633cc9bfd09fa1f1638fd49b8fab610",
-     "what": "the court green (5/5) on the live tree"
+     "what": "the court green (5/5) on the live tree",
+     "log": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/REMEDIATION/GS-CONTENT-001/green/audit-content-release-court.log"
     },
     {
      "outcome": "the court 6/6; the workflow still parses as YAML",
-     "path": "GS-CONTENT-001/green/release-lane.log",
      "sha256": "74233ff5c17654e809247460a2e9b59f3cfd18e491d2e1f1e6d7a5495fa641af",
-     "what": "the release lane obtaineth the external approvals and stoppeth when absent"
+     "what": "the release lane obtaineth the external approvals and stoppeth when absent",
+     "log": "GS-CONTENT-001/green/release-lane.log"
     }
    ],
    "my_red_case": {
@@ -2036,9 +2022,9 @@
    "my_logs": [
     {
      "outcome": "5 tests, OK: both probes, the reader's refusal, the positive control, and the protocol's properties",
-     "path": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/REMEDIATION/GS-CONTENT-002/green/publication-pair-court.log",
      "sha256": "48dd7f652d705b7718b83d68c659a30d81723bd1a80a2e63ef0dccd5870f99f9",
-     "what": "the court green (5/5)"
+     "what": "the court green (5/5)",
+     "log": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/REMEDIATION/GS-CONTENT-002/green/publication-pair-court.log"
     }
    ],
    "my_red_case": {
@@ -2112,9 +2098,9 @@
    "my_logs": [
     {
      "outcome": "3 tests, OK -- the refusal by name, the reason, and the default path",
-     "path": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/REMEDIATION/GS-CONTENT-003/green/audit-content-court.log",
      "sha256": "49a01a96ff49b5b04fa517ab4562a2cad9835fd3ad02193e5b65dc518a0eeea3",
-     "what": "the court green (3/3) on the live tree"
+     "what": "the court green (3/3) on the live tree",
+     "log": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/REMEDIATION/GS-CONTENT-003/green/audit-content-court.log"
     },
     {
      "outcome": "3 KILLED of 3 (SKIPPED 0, INVALID 0, ESCAPED 0) -- the mutation control proveth the NEW law",
@@ -2189,15 +2175,15 @@
    "my_logs": [
     {
      "outcome": "433 tests, 0 failures; validate-state rc=0 with 0 problems and 7 visible notes",
-     "path": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/REMEDIATION/GS-CTRL-001/green/audit-evidence-GREEN.log",
      "sha256": "a6b1bb5c5e962a3c40f970ca6bb1f0bd3b4b13ff6140d0b2a4bb99cafb55ec2e",
-     "what": "green: the readiness suite and the stricter state validation"
+     "what": "green: the readiness suite and the stricter state validation",
+     "log": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/REMEDIATION/GS-CTRL-001/green/audit-evidence-GREEN.log"
     },
     {
      "outcome": "8 tests, 0 failures -- each refused outcome and each tamper is seen to fail",
-     "path": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/REMEDIATION/GS-CTRL-001/negative/controls.log",
      "sha256": "5345fd99f176af83dfca40b6ad49ea06d16d6c5a5ad8bf0cbcb42d5297aff63c",
-     "what": "the negative controls (tamper battery, refused outcomes, the build/test distinction)"
+     "what": "the negative controls (tamper battery, refused outcomes, the build/test distinction)",
+     "log": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/REMEDIATION/GS-CTRL-001/negative/controls.log"
     }
    ],
    "my_red_case": {
@@ -2267,39 +2253,39 @@
    "my_logs": [
     {
      "outcome": "all invariants hold; [F] 208 Kotlin files, 0 unresolved; [E] C1/C2 ok; [C] the archive prerequisite built",
-     "path": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/REMEDIATION/GS-CTRL-002/green/invariants-lane-GREEN.log",
      "sha256": "ad104543e3be425766f7c0d16d6002e7a3d5d13574cbb61d231aa388893b4b34",
-     "what": "the mandatory invariants lane: passed=7 failed=0"
+     "what": "the mandatory invariants lane: passed=7 failed=0",
+     "log": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/REMEDIATION/GS-CTRL-002/green/invariants-lane-GREEN.log"
     },
     {
      "outcome": "0 unresolved; selftest rc=0 (15 findings on the removed members; the multi-class defect detected; restored tree clean)",
-     "path": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/REMEDIATION/GS-CTRL-002/green/symbols-ZERO.log",
      "sha256": "d731ac5ad138a2ce58afdfe9c83e4f11a7f527ac45bc161bf93ecc8bfe2dd335",
-     "what": "the resolver at zero, with both negative controls firing"
+     "what": "the resolver at zero, with both negative controls firing",
+     "log": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/REMEDIATION/GS-CTRL-002/green/symbols-ZERO.log"
     },
     {
      "outcome": "status 0 entries before and after; the audited relative form REFUSED (rc=2); the declared form agreed 12/12 with the report retained externally; the following provenance check rc=0",
-     "path": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/REMEDIATION/GS-CTRL-002/green/t77-residue-GREEN-clean.log",
      "sha256": "3042226f3fb89833b730eb421275257198f2e8f3c62dcd65b3cd186536c2bdeb",
-     "what": "the T77 residue, refused and then repaired in a DISPOSABLE CLEAN CHECKOUT"
+     "what": "the T77 residue, refused and then repaired in a DISPOSABLE CLEAN CHECKOUT",
+     "log": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/REMEDIATION/GS-CTRL-002/green/t77-residue-GREEN-clean.log"
     },
     {
      "outcome": "untracked recovery-rehearsal.json; provenance rc=1 'working tree is dirty'",
-     "path": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/REMEDIATION/GS-CTRL-002/red/t77-residue-RED.log",
      "sha256": "ea2b070531f267f63b8ff8cba7c68c2741fa92a5accde8e7b3207bd8057997d5",
-     "what": "the T77 residue RED (the audited workflow's own command)"
+     "what": "the T77 residue RED (the audited workflow's own command)",
+     "log": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/REMEDIATION/GS-CTRL-002/red/t77-residue-RED.log"
     },
     {
      "outcome": "425 tests, 0 failures",
-     "path": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/REMEDIATION/GS-CTRL-002/green/readiness-suite-GREEN.log",
      "sha256": "1bfb39c123e5dbee4769975f7fc54e8c883be2922bcf36c842111e977279c24d",
-     "what": "the workspace-inventory repair"
+     "what": "the workspace-inventory repair",
+     "log": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/REMEDIATION/GS-CTRL-002/green/readiness-suite-GREEN.log"
     },
     {
      "outcome": "every authority path classified with its boundary; each baseline carrieth the commit where its blob was recorded (recovered from history) and the current contract that exerciseth it; t03 20/20",
-     "path": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/REMEDIATION/GS-CTRL-002/green/blob-classification.log",
      "sha256": "9d78018f86f2b5a40195b9b04caa4ccd915c93fcffa63cef53c99fa87c65d99c",
-     "what": "the blob classification: 14 NORMATIVE + 4 BASELINE authority paths"
+     "what": "the blob classification: 14 NORMATIVE + 4 BASELINE authority paths",
+     "log": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/REMEDIATION/GS-CTRL-002/green/blob-classification.log"
     }
    ],
    "my_red_case": {
@@ -2361,9 +2347,9 @@
    "my_logs": [
     {
      "outcome": "the T71 court 14/14; the whole suite 474 OK; the android twin BUILD SUCCESSFUL; the probes down to four reds",
-     "path": "GS-DIAG-001/green/diag-001.log",
      "sha256": "bba158ca05b4de58bebffb607963e824736230877985f7f9a9ae9ea17b82fd18",
-     "what": "the arm green in the canonical T71 court on all three lanes"
+     "what": "the arm green in the canonical T71 court on all three lanes",
+     "log": "GS-DIAG-001/green/diag-001.log"
     }
    ],
    "my_red_case": {
@@ -2431,9 +2417,9 @@
    "my_logs": [
     {
      "outcome": "8/8 witnesses green; ci/check_release_gates_status.py rc=0 against the real document; all five external gates OPEN or BLOCKED with no closure evidence",
-     "path": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/REMEDIATION/GS-GATE-001/green/gate-checker-GREEN.log",
      "sha256": "3eddec593d7fdff98fc7eb9ce8355714fc9edd4ccd5782179b94a969f6c0811a",
-     "what": "the repaired checker and the real document"
+     "what": "the repaired checker and the real document",
+     "log": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/REMEDIATION/GS-GATE-001/green/gate-checker-GREEN.log"
     }
    ],
    "my_red_case": {
@@ -2672,15 +2658,15 @@
    "my_logs": [
     {
      "outcome": "BUILD SUCCESSFUL; the :llm suite green; the two arms now the module's permanent controls",
-     "path": "GS-MODEL-001/green/model-001-GREEN.log",
      "sha256": "83912a8b1bcbc3b0ef23ae5e34fbd68b667dbba2a9a9b685d66b88a6474cb2f2",
-     "what": "the :llm suite green with BOTH arms moved back into the module"
+     "what": "the :llm suite green with BOTH arms moved back into the module",
+     "log": "GS-MODEL-001/green/model-001-GREEN.log"
     },
     {
      "outcome": "the :llm suite 42 tests, 0 failures; the model001 court 3/3",
-     "path": "GS-MODEL-001/green/model-001-both-halves.log",
      "sha256": "76eae252978afd4b17f5791f5e649fb8a82e17e030e053e5ad00fa2a28b47987",
-     "what": "BOTH halves: the :llm suite green with the identity REQUIRED"
+     "what": "BOTH halves: the :llm suite green with the identity REQUIRED",
+     "log": "GS-MODEL-001/green/model-001-both-halves.log"
     }
    ],
    "my_red_case": {
@@ -2744,9 +2730,9 @@
    "my_logs": [
     {
      "outcome": "6 tests OK (the three arms plus the fixture's own); the readiness suite 480 OK; the probes 12 tests, 2 failures",
-     "path": "GS-PACKAGE-001/green/package-001.log",
      "sha256": "df6d12538bf6882d99122d7ab8824afaef55ca6c8b1cf9c21c06fd05c3491107",
-     "what": "the iOS arms green in the canonical lane; the probes down to two reds"
+     "what": "the iOS arms green in the canonical lane; the probes down to two reds",
+     "log": "GS-PACKAGE-001/green/package-001.log"
     }
    ],
    "my_red_case": {
@@ -2807,9 +2793,9 @@
    "my_logs": [
     {
      "outcome": "the probes 12 tests, 0 failures; the canonical courts green; the readiness suite 486 OK",
-     "path": "GS-PACKAGE-002/green/package-002.log",
      "sha256": "34572ac7ff43f34a9c74a240a96cf87793503ca186a15a1365d7e9733dc9122c",
-     "what": "the Android arms green; the adopted probe suite fully green"
+     "what": "the Android arms green; the adopted probe suite fully green",
+     "log": "GS-PACKAGE-002/green/package-002.log"
     }
    ],
    "my_red_case": {
@@ -3117,15 +3103,15 @@
    "my_logs": [
     {
      "outcome": "the store001 court 4/4; :mesh BUILD SUCCESSFUL",
-     "path": "GS-STORE-001/green/store-001-arms.log",
      "sha256": "c86cfcaf4d80bc7cae056b10b18da9b5000f81e0226471ab33f9f18c78191131",
-     "what": "the byte-level classifier arms green in :mesh"
+     "what": "the byte-level classifier arms green in :mesh",
+     "log": "GS-STORE-001/green/store-001-arms.log"
     },
     {
      "outcome": "the canonical court OK; T29 13 tests, 0 failures",
-     "path": "GS-STORE-001/green/store-001-GREEN.log",
      "sha256": "1deaf052fb45e7085b703758cdb71ae85d16ffdd5c9a39abc4f8243f1d131929",
-     "what": "the court-quality arms green in the CANONICAL lane, and T29's 13 arms"
+     "what": "the court-quality arms green in the CANONICAL lane, and T29's 13 arms",
+     "log": "GS-STORE-001/green/store-001-GREEN.log"
     }
    ],
    "my_red_case": {
@@ -3194,9 +3180,9 @@
    "my_logs": [
     {
      "outcome": "3/3 arms; the package green with the runtime's own callers unchanged",
-     "path": "GS-STORE-002/green/store-002-GREEN.log",
      "sha256": "21334cc60428b6cba9a8823ddc7b66370778d0a7eaed93044d33bab827f0b2e5",
-     "what": "the three arms green in the canonical Swift lane; the whole package green"
+     "what": "the three arms green in the canonical Swift lane; the whole package green",
+     "log": "GS-STORE-002/green/store-002-GREEN.log"
     }
    ],
    "my_red_case": {
@@ -3570,9 +3556,9 @@
    "my_logs": [
     {
      "outcome": "8 tests OK (four arms + the shared fixture's own suite); the probes 12 tests, 5 failures (was 7)",
-     "path": "GS-SUPPLY-001/green/supply-001.log",
      "sha256": "4108dc7cb212660c25dfe252cd6597ac112cc6b61756d10bda7ff445e5aba0ba",
-     "what": "the four audit cache arms green in the canonical lane; the probe suite down to five reds"
+     "what": "the four audit cache arms green in the canonical lane; the probe suite down to five reds",
+     "log": "GS-SUPPLY-001/green/supply-001.log"
     }
    ],
    "my_red_case": {
@@ -4458,5 +4444,16 @@
    "reds_written": 0,
    "status": "PENDING"
   }
- ]
+ ],
+ "evidence_audit": {
+  "round": 96,
+  "what": "every recorded red and green log was checked on disk against its recorded sha256",
+  "verified": 96,
+  "defects_found_and_what_happened": [
+   "THREE logs were cited TWICE with different digests (the GS-ACK-001 full-lane logs, whose files were rewritten after the first citation): the stale citation was removed and the citation whose digest matches the file was kept. Nothing was deleted from disk.",
+   "ONE sha256 field carried PROSE ('see the evidence...') instead of a digest (CRYPTO-006's android full-lane log): the digest was COMPUTED from the file and recorded, with a note saying so -- a measurement, not a fabrication.",
+   "THIRTY green entries carried their path under a different key instead of 'log', so a tool reading 'log' saw None and my own audit script crashed on it: the path was moved to the 'log' key.",
+   "STILL OPEN, recorded rather than papered over: 'my_red_case.log' is a STRING for some findings and a LIST for others, so an audit tool must handle both; and the counts above are lower bounds, because a malformed entry cannot be checked at all."
+  ]
+ }
 }
