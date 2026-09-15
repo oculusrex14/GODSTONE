@@ -917,16 +917,24 @@ internal class AckObligationDriver(
             } catch (_e: Throwable) {
                 null
             }
-            if (ownKey != null) {
-                val ok = try {
-                    authenticator.verify(ob.msgId, claimed, frame)
-                } catch (_e: Throwable) {
-                    false
-                }
-                if (!ok) {
-                    failures++
-                    continue
-                }
+            // GS-ACK-001: THE IDENTITY-BINDING GATE IS MANDATORY. An unresolvable key is a RETRYABLE
+            // UNAVAILABILITY -- the obligation stayeth PENDING for a later turn -- and never a licence
+            // to store an unverified frame as VERIFIED_RECIPIENT and retire the obligation. The
+            // verification is likewise no longer CONDITIONAL: the authenticator resolveth the pinned
+            // key for the CLAIMED node id itself, so calling it is what binds the frame to that
+            // identity, and a signer/key mismatch is refused here rather than silently accepted.
+            if (ownKey == null) {
+                keyUnavailable++
+                continue
+            }
+            val ok = try {
+                authenticator.verify(ob.msgId, claimed, frame)
+            } catch (_e: Throwable) {
+                false
+            }
+            if (!ok) {
+                failures++
+                continue
             }
             val ackKey = AckCacheKey.compute(ob.msgId, ob.recipientNodeId, signature)
             if (ackKey == null) {

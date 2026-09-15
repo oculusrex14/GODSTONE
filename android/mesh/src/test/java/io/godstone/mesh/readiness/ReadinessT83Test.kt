@@ -864,4 +864,37 @@ class ReadinessT83Test {
         Assert.assertNotNull("the filed reply must decode", decoded)
         return decoded!!
     }
+
+    // ------------------------------------------------------------------ GS-ACK-001
+
+    /**
+     * GS-ACK-001: "Missing recipient-key resolution bypasses ACK verification and retires an invalid
+     * signing obligation." The restart worker verified the frame it had just built only WHEN the
+     * resolver could produce a key (`if (ownKey != null) { ... }`) -- so a TEMPORARY resolution failure
+     * turned an unverified frame into a durable VERIFIED_RECIPIENT row and retired the retryable
+     * obligation. The identity-binding gate must be MANDATORY: no key, no verification, no retirement.
+     */
+    @Test
+    fun testUnresolvableRecipientKeyLeavethTheObligationPendingAndStoresNothing() = runTest {
+        val r = rig(404)
+        // the recipient's OWN public key is deliberately NOT entered in the resolver's table, while the
+        // signer still holdeth the seed -- the exact "temporary key-resolution unavailability" case.
+        val frame = inboxFrame(r, 61)
+        val c = commitInbound(r, frame, 7L, 60000L)
+        Assert.assertTrue("the inbox commit must stand", c is InboundCommitResult.Committed)
+
+        val report = driverOf(r, TestSigner(r.me)).runPendingOnce(8)
+
+        Assert.assertEquals("the unresolvable key is a RETRYABLE unavailability, counted as such",
+                            1, report.keyUnavailable)
+        Assert.assertEquals("nothing may be signed on an unverified frame", 0, report.signed)
+        Assert.assertEquals("no VERIFIED_RECIPIENT row may be stored", 0, r.store.ackStore.countFrames())
+        Assert.assertEquals("and the obligation must SURVIVE for a later retry",
+                            1, r.store.ackStore.countObligations())
+        when (val pending = r.store.ackStore.lookupObligation(frame.msgId, r.me.id)) {
+            is ObligationLookup.Found -> Assert.assertEquals(
+                "still pending, never retired", AckObligationState.PENDING, pending.obligation.state)
+            else -> Assert.fail("the durable obligation must survive the unresolvable-key turn")
+        }
+    }
 }
