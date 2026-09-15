@@ -208,3 +208,13 @@ injectable interval; a `leaseSweepJob` armed in `startInstalling()` (past the `i
 `hasLeaseSweepJob`). **Round 211 wrote and compiled that repair and then WITHDREW it**, because the controlled-experiment
 witness hit a compile error the round had no budget to settle — and a production change whose lane run was never completed is
 **not verified**. The three anchors and the witness's one obstacle are recorded in the ledger so the next attempt is an edit.
+
+## Python probe — `python/test_ios_deadline_sweep_owner.py` (IOS-07): LANDED (round 213)
+
+Written and **run RED first** here (3 failures, W00 control passing), then **MOVED INTO `tools/readiness/tests/`** with the
+repair. It judged the iOS isle's **silent-peer deadlines**: `BleTransport.sweepInboundLeases()` walked the outbound and
+inbound lifetimes and retired the **owning** relation through its **exact key** — and was called by **nothing** in
+production, so a silent peer's lapsed deadline waited for unrelated traffic for ever (the twin of ANDROID-04). The repair
+gave it a **production owner** (a named, injectable interval; a `leaseSweepJob` armed in `startInstalling()` and cancelled
+in `stop()`), and the **controlled-experiment witness** — the court's own working expiry arm **verbatim**, differing only in
+a 25 ms interval and in never calling the sweep — proved the owned job trips a silent peer **by time alone**.

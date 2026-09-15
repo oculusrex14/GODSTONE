@@ -60,9 +60,12 @@ class IosDeadlineSweepOwnerTest(unittest.TestCase):
 
     def test_the_owner_armeth_at_start_and_cancelleth_at_stop(self):
         t = TRANSPORT.read_text(encoding="utf-8")
+        # THE ARMING LIVETH IN THE INSTALL STEP, NOT IN start()'s OWN TEXT: `start()` quiesces the previous
+        # epoch and then calleth `startInstalling()`, which is the one place where a start is CERTAIN. A first
+        # draft of this arm looked only inside `start()` and failed on that -- its own assertion, not the code.
         self.assertIsNotNone(
-            re.search(r"public func start\(\)[\s\S]{0,6000}?leaseSweepJob\s*=", t),
-            "start() must ARM the sweep, or a silent peer is never swept")
+            re.search(r"private func startInstalling\(\)[\s\S]{0,900}?armLeaseSweepIfNeeded\(\)", t),
+            "the install step must ARM the sweep, or a silent peer is never swept")
         self.assertIsNotNone(
             re.search(r"public func stop\(\)[\s\S]{0,6000}?leaseSweepJob\?\.cancel", t),
             "stop() must CANCEL the owned sweep -- an orphan job outliveth the transport")

@@ -656,6 +656,64 @@ final class ReadinessT20Tests: XCTestCase {
         }
     }
 
+    /// IOS-07 (the card's own defect): THE OWNED SWEEP MUST TRIP A SILENT PEER BY TIME ALONE.
+    ///
+    /// A CONTROLLED EXPERIMENT, and the control is the SETUP: this arm carrieth the court's own working expiry
+    /// arm VERBATIM (same pair, same `now`, same transport construction, same `responderReady` lease clock,
+    /// same publication, same `sealRecords(marker: 909)`, the same TWO fragments, the same lease read, the same
+    /// `now = lease.deadlineMono`) AND DIFFERS IN TWO STATED WAYS: the sweep interval is 25 ms (needed to
+    /// observe a deadline BY TIME inside a test) and it NEVER calleth `sweepInboundLeases()` itself. Round 209
+    /// taught why the SETUP must be verbatim: an earlier draft on the android isle changed the caller AND the
+    /// setup at once and failed for the setup's sake alone.
+    func testTheOwnedSweepTrippethASilentPeerByTimeAlone() throws {
+        let pair = try ReadinessTrustedPairing.establish()
+        defer { ReadinessTrustedPairing.tearDown(pair) }
+        let centralId = pair.viaAlice
+        var now = TimeInterval(1_700_000_000)
+        let bob = BleTransport(identity: pair.bobIdentity, store: T17MessageStore(),
+                               sessions: pair.bobManager, managerFactory: CaptureFactory(),
+                               clock: TestClock(startingAt: 9_700),
+                               leaseSweepInterval: 0.025)
+        let (pm, why) = try responderReady(bob, centralId: centralId,
+                                       remoteHint: pair.aliceIdentity.nodeHint,
+                                       leaseClock: { now })
+        guard let pm = pm else { XCTFail("the responder never stood ready: " + why); return }
+        guard let conn = bob.connection(for: centralId) else {
+            XCTFail("the responder has no connection"); return
+        }
+        let gen = bob.peripheralDriver?.getCentralGeneration(centralId) ?? 0
+        bob.publishRelation(RelationKey(direction: .inboundPeripheral, peerId: centralId,
+                                        generation: gen))
+        XCTAssertTrue(bob.isRelationPublished(direction: .inboundPeripheral, peerId: centralId,
+                                              generation: gen),
+                      "the hand-standing publication is witnessed")
+        let (alice, capturePeer) = try standInitiator(pair)
+        let sealed = sealRecords(1, marker: 909, clearLen: 1100, via: alice,
+                                 peerId: pair.viaBob, capturePeer: capturePeer)
+        let seq = UInt8(sealed[0].seq)
+        for frag in sealed[0].frags.prefix(2) {
+            pushWrite(bob, pm, centralId: centralId, bytes: frag)
+        }
+        guard let lease = conn.activeLeaseOf(seq) else {
+            XCTFail("the admission left no lease"); return
+        }
+        XCTAssertTrue(bob.hasLeaseSweepJob, "the transport must OWN an armed sweep after start()")
+
+        // THE PEER FALLETH SILENT: the clock passeth the deadline and NOTHING ELSE ARRIVETH. NO call is made.
+        now = lease.deadlineMono
+
+        let waitUntil = Date().addingTimeInterval(5.0)
+        while Date() < waitUntil && bob.connection(for: centralId) != nil {
+            Thread.sleep(forTimeInterval: 0.01)
+        }
+        XCTAssertNil(bob.connection(for: centralId),
+                     "the OWNED sweep must trip a SILENT peer by TIME alone: no traffic and no test-thread call " +
+                         "may be required, and the audited road waited for unrelated traffic for ever")
+        let stillPublished: Bool = bob.isRelationPublished(direction: BleDirection.inboundPeripheral,
+                                                          peerId: centralId, generation: gen)
+        XCTAssertFalse(stillPublished, "the publication was withdrawn with it")
+    }
+
     func testTheAbsoluteTermExpiresTheDribbledAssemblyThoughTheSlidingWindowIsRefreshed() throws {
         let pair = try ReadinessTrustedPairing.establish()
         defer { ReadinessTrustedPairing.tearDown(pair) }

@@ -656,7 +656,33 @@ public final class BleTransport: NSObject, @unchecked Sendable {
     private var activeManagerContext: ManagerContext?
     private var lastRetiredManagerContext: ManagerContext?
     private let managerFactory: TransportManagerFactory
+    private let leaseSweepInterval: TimeInterval
     private let clock: MonotonicClock
+
+    /// IOS-07: THE OWNED DEADLINE SWEEP. Its interval is NAMED and INJECTABLE, so a court can witness expiry BY
+    /// TIME rather than by traffic (the seam the android isle added at round 206 for exactly this reason).
+    public static let leaseSweepIntervalSeconds: TimeInterval = 1.0
+    private var leaseSweepJob: Task<Void, Never>?
+
+    /// IOS-07: WHAT THE SWEEP SAW -- an INSTRUMENT, not a control: "the sweep findeth nothing" is two very
+    /// different claims ("it iterated no relation" and "it iterated relations whose leases did not lapse").
+    internal private(set) var leaseSweepTicksForTest: Int = 0
+    internal private(set) var leaseSweepRelationsSeenForTest: Int = 0
+    /// Whether the transport's OWN sweep is armed.
+    internal var hasLeaseSweepJob: Bool { leaseSweepJob.map { !$0.isCancelled } ?? false }
+
+    private func armLeaseSweepIfNeeded() {
+        guard leaseSweepJob == nil else { return }
+        let interval = leaseSweepInterval
+        leaseSweepJob = Task { [weak self] in
+            while !Task.isCancelled {
+                try? await Task.sleep(nanoseconds: UInt64(max(interval, 0.001) * 1_000_000_000))
+                guard let self, !Task.isCancelled else { return }
+                self.leaseSweepTicksForTest += 1
+                self.sweepInboundLeases()
+            }
+        }
+    }
 
     /// The pair of the active epoch, when one is open.
     private var central: CBCentralManager? {
@@ -1159,13 +1185,17 @@ public final class BleTransport: NSObject, @unchecked Sendable {
         sessions: SessionManager? = nil,
         provisionalTimeoutSeconds: TimeInterval = 10.0,
         managerFactory: TransportManagerFactory? = nil,
-        clock: MonotonicClock? = nil
+        clock: MonotonicClock? = nil,
+        /// IOS-07: the owned sweep's interval -- declared **LAST** because Swift requireth call-site arguments in
+        /// DECLARATION order, and the audit's own lesson arriveth here as a compile error rather than a puzzle.
+        leaseSweepInterval: TimeInterval = BleTransport.leaseSweepIntervalSeconds
     ) {
         self.identity = identity
         self.store = store
         self.sessions = sessions
         self.provisionalTimeoutSeconds = provisionalTimeoutSeconds
         self.managerFactory = managerFactory ?? DefaultTransportManagerFactory()
+        self.leaseSweepInterval = leaseSweepInterval
         self.clock = clock ?? SystemMonotonicClock()
         super.init()
         self.snapshotAuthority = LinkInfoSnapshotAuthority(
@@ -1232,6 +1262,11 @@ public final class BleTransport: NSObject, @unchecked Sendable {
             unlockTransport()
             return
         }
+        // IOS-07 (the twin of ANDROID-04's defect): ARM THE OWNED DEADLINE SWEEP. The audited road called
+        // `sweepInboundLeases()` NOWHERE in production -- only a court called it -- so a SILENT peer's lapsed
+        // handshake/assembly/confirmation deadline waited for unrelated traffic for EVER. Armed here, past the
+        // guard, where a start is certain; cancelled at the top of stop().
+        armLeaseSweepIfNeeded()
         installFreshContextLocked()
         let canAdv = isServiceRegistered && (peripheral?.state == .poweredOn)
         unlockTransport()
@@ -1334,6 +1369,9 @@ public final class BleTransport: NSObject, @unchecked Sendable {
     }
 
     public func stop() {
+        // IOS-07: the owned sweep is cancelled WITH the transport; an orphan job would outlive it.
+        leaseSweepJob?.cancel()
+        leaseSweepJob = nil
         // T14: the closing epoch is quiesced on its own serial
         // executor: in-flight reductions complete their one operation
         // before the reset, and nothing of them mutates the new state.
