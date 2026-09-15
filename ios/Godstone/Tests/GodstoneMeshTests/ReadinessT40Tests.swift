@@ -1276,3 +1276,60 @@ final class ReadinessT40Tests: XCTestCase {
 private extension UInt8 {
     init(ascii: Character) { self = ascii.asciiValue ?? 0x3F }  // ? sentinel: a non-ASCII slip speaks through the vector comparisons
 }
+
+
+// MARK: - GS-SYNC-001 (iOS twin): the RECEIVER'S OWN page budget
+//
+// Placed in a SAME-FILE EXTENSION on purpose: the arm must live INSIDE the court without hunting
+// for the class's closing brace (an earlier attempt anchored on the file's last `}` and landed
+// OUTSIDE the class, where the court's helpers are out of scope). Swift's `private` is file-scoped
+// for extensions of the same type, so the court's own fixtures remain reachable here.
+
+extension ReadinessT40Tests {
+
+    /// The audit's charge on this isle: "Inventory receiver accepts more than its bounded run page
+    /// budget." `SyncControlOwner.maxPagesPerRun` bounds the PRODUCER (:272) and the PUMP
+    /// (:384/:399) only; the receiver retains every verified page and advances `pagesReceived`
+    /// (:305) without consulting it. The bound must be imposed AT THIS BOUNDARY before any mutation.
+    func testW22TheReceiverRefusethTheFirstPageBeyondItsRunBudget() throws {
+        let store = InMemoryMessageStore()
+        let authority = InventorySnapshotAuthority(store: store, monotonicNowMillis: { 1_000 })
+        let owner = SyncControlOwner(store: store, authority: authority,
+                                     monotonicNowMillis: { 1_000 },
+                                     localNodeId: Data((0..<16).map { u8($0 + 9) }))
+        let thePeer = Data((0..<16).map { u8($0 + 7) })
+
+        let digest = try ControlDigest(snapshotId: 42, bloom: Data(repeating: 0, count: 512))
+        let df = try ControlPayloadV1.frameFor(arm: .digest,
+            msgId: Data((0..<16).map { u8($0 + 3) }),
+            routingTag: Data(repeating: 0, count: 4), payload: digest.encode())
+        guard case .accepted = owner.handleControlFrame(df, from: thePeer) else {
+            XCTFail("the digest must be adopted"); return
+        }
+        XCTAssertTrue(owner.startInventoryRun(thePeer), "the run opens")
+        let rel = owner.relation(for: thePeer)
+
+        var counters = ""
+        for k in 0..<(SyncControlOwner.maxPagesPerRun + 3) {
+            var id = Data(repeating: 0, count: 16)
+            id[0] = u8(((k + 1) >> 8) & 0xFF); id[1] = u8((k + 1) & 0xFF)
+            let page = try ControlInventoryPage(snapshotId: 42, done: 0, ids: [id])
+            let pf = try ControlPayloadV1.frameFor(arm: .inventoryPage,
+                msgId: Data((0..<16).map { u8($0 + 21 + k) }),
+                routingTag: Data(repeating: 0, count: 4), payload: page.encode())
+            let verdict = owner.handleControlFrame(pf, from: thePeer)
+            if k >= SyncControlOwner.maxPagesPerRun - 3 {
+                counters += "page=\(k + 1) verdict=\(verdict) delivered=\(rel.delivered.count) recv=\(rel.pagesReceived)\n"
+            }
+            if k == SyncControlOwner.maxPagesPerRun, case .accepted = verdict {
+                XCTFail("the page beyond the run budget must be REFUSED, not accepted "
+                        + "(delivered=\(rel.delivered.count), recv=\(rel.pagesReceived))\n" + counters)
+            }
+        }
+        try counters.write(toFile: "/tmp/gs-sync-001-ios-diag.txt", atomically: true, encoding: .utf8)
+        XCTAssertEqual(rel.delivered.count, SyncControlOwner.maxPagesPerRun,
+                       "nothing beyond the budget may be RETAINED\n" + counters)
+        XCTAssertEqual(rel.pagesReceived, SyncControlOwner.maxPagesPerRun,
+                       "nor may the run's received-page counter pass it\n" + counters)
+    }
+}

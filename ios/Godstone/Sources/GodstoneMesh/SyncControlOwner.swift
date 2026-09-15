@@ -286,6 +286,13 @@ public final class SyncControlOwner: @unchecked Sendable {
         if rel.runSid == 0 { return .ignored(reason: "unsolicited page") }
         if p.snapshotId != rel.runSid { return .refused(reason: "sequence_break") }
         if rel.runDone { return .refused(reason: "sequence_break") }       // the stream continues after the close
+        // GS-SYNC-001: the RECEIVER'S OWN page budget, imposed at THIS boundary BEFORE any
+        // mutation (no `delivered.append`, no cursor advance, no `pagesReceived += 1`).
+        // `maxPagesPerRun` bounds the PRODUCER and the PUMP only; without this the receiver
+        // retains every verified page and its counter passes the budget.
+        if rel.pagesReceived >= SyncControlOwner.maxPagesPerRun {
+            return .refused(reason: "page_budget_exhausted")
+        }
         if !p.ids.isEmpty {
             if !ControlPayloadV1.idsDistinct(p.ids) { return .refused(reason: "duplicate_ids") }
             for k in 1..<p.ids.count {
