@@ -4,7 +4,7 @@ Ledger `REMEDIATION_STATE.json` (AUTHORITATIVE); protocol `README.md`; external 
 `EXTERNAL_INPUT_REQUESTS.md`; accounting `STATUS_ACCOUNTING.md`. Audit source `c683a2bf0b5bcdd4a662d98f7542351501b57b7c` is READ-ONLY, and its own
 process keepeth writing into the original checkout, whose declared addition GROWS (the floor may only rise).
 
-## Status — 24 submitted (22 FIX_SUBMITTED, 2 PARTIAL), 30 OPEN
+## Status — 25 submitted (22 FIX_SUBMITTED, 2 PARTIAL), 1 RED_WRITTEN, 29 OPEN
 
 Not one finding is `VERIFIED_FIXED`: only an INDEPENDENT AUDIT may write that, and the ledger court
 REFUSETH the word from this work.
@@ -35,35 +35,25 @@ REFUSETH the word from this work.
 | ANDROID-02 | FIX_SUBMITTED | 4d.2 | Canonical advertising makes the initiator's HS2 hint looku |
 | GS-ACK-002 | FIX_SUBMITTED | 5 | Restart ACK worker uses TTL 4 while immediate recipient AC |
 | CRYPTO-003 | FIX_SUBMITTED | 4b | Destroyed retained controllers and primitive sessions st |
+| CRYPTO-006 | RED_WRITTEN | 4b | Duplicate journal admission is treated as success for a |
 
-## DO THIS FIRST — the wave 4a chain: `GS-STORE-004`, then `GS-STORE-005`, then `GS-STORE-006`
+## DO THIS FIRST — `CRYPTO-006`, whose red is captured and whose fix's shape is known by experiment
 
-`GS-STORE-003` is DONE (FIX_SUBMITTED, commit `98c69c5`): the versioned reopen MIGRATES in order on both
-isles and deleteth nothing, the frozen fingerprint now carries each owner's own DDL, and the four
-`DROP TABLE` statements are gone. ITS MACHINERY IS WHAT THE REST OF 4a NEEDS -- read what it left behind
-before editing:
+The red is parked as a paste-ready snippet: `tools/readiness/audit_probes/kotlin/ReadinessT36Crypto006Arm.kt.snippet`
+(it belongs at the end of `class ReadinessT36Test`; the recipe is in its header). It fails with: *"the raced
+caller must resolve to the WINNER's logical id: arrays first differed at element [0]; expected:<27> was:<-98>"*.
 
-- `StoreSchema.frozenFingerprint` / `allTables` / `immutableColumns` / `migrationPlan(from:creatingTables:supportedMax:)`
-  (both isles) and the handle-bound executor (`HandleMigrationExecutor` in `MessageStore.swift`,
-  `DatabaseMigrationExecutor` in `MessageStore.kt`) with the host twin `JdbcStoreDb` on the JVM side.
-- To add a schema revision (which `GS-STORE-004` requires) you ADD a real non-destructive step to the plan
-  (e.g. `ALTER TABLE held_frames ADD COLUMN ...`) and bump `dbVersion` / `DB_VERSION` together on BOTH
-  isles, updating the frozen column lists in the same commit. The migration engine then EXECUTES it on an
-  existing file, and `ReadinessStore003Tests` W04/W05/W06 already witness the surrounding law.
-- WATCH THE BLAST RADIUS: on Android the held-frame write goes through the `StoreDb` interface, which has
-  FOUR implementations (production `SqlcipherStoreDb`, the `JdbcStoreDb` host twin, and two delegating test
-  fakes in `SqliteDeliveryRepositoryTest`). A new checkpoint column written inside the existing
-  `inTransaction` seam avoids widening that interface; widening it does not.
-- `GS-STORE-004` also needs a per-platform monotonic/continuity adapter passed into the REAL store (the
-  policy already exists and is tested: `RetentionClock.swift` / `RetentionClock.kt`, `RetentionPolicy`,
-  `MonotonicClockAdapter`). A nil-default seam would repeat the exact defect the audit keeps finding --
-  the adapter must be a real platform adapter by default, with deterministic fakes only in courts.
-- `GS-STORE-005` additionally changes the observer API (`registerHeldSetObserver` returns no lease today)
-  and lands the quota/measurement path; `GS-STORE-006` is composition-wide (one runtime-owned wipe
-  authority that drains the transport BEFORE erasing keys).
+**A first repair was applied, measured and REVERTED — do not repeat it.** Making `insertIfAbsent` return the
+winning row and having the authority reuse it on Duplicate fixes the race arm but BREAKS
+`ReadinessT36Test.testChangedRecipientOrBodyOrPriorityCreatesNewLogicalSend`: with a **token-only** key the
+repaired authority rejects a second, *different* command under the same token, while the preserved law is
+that a changed recipient/body/priority is a NEW logical send (and that court asserts one current row per
+token). **The repair's first step is the audit's step 1: key the journal by the COMPOSITE
+`(intentToken, canonicalCommandDigest)`** and reconcile the "latest accepted row per token" semantic that
+W6 relies on deliberately. Then port the same correction to the other isle, add the audit's sequential
+regression beside the race arm, and MOVE the parked arm back into the canonical court.
 
-THEN, in order: the Android twin of `IOS-03` (`ANDROID-02`, wave 4d.2 -- the SAME law, and the reason
-`IOS-03` is only PARTIAL), the wave 4e start/publication chain, 4f, 5, 6, 7, 8.
+## Then the wave 4a chain: `GS-STORE-004`, then `GS-STORE-005`, then `GS-STORE-006`
 
 ## The submissions THIS session made, and what each still owes
 
@@ -143,3 +133,10 @@ a round has room (a deterministic draw, or a failure message that names what it 
    `testDestroyedReferencesRemainTerminal`, and both were green on CRYPTO-003 -- because they asked the
    manager (whose `isReady` is false once the slot is removed) instead of the RETAINED controller/session.
    When a finding says "retained references still report X", the arm must hold the object and ask IT.
+
+## A tooling trap that cost an edit this round
+
+Inserting an arm with `text.rstrip().rfind("\n}")` as the anchor DELETED the file's trailing top-level
+declaration: `ReadinessT36Test.kt` ends with `private data class Quad<A, B, C>(...)` AFTER the test class,
+so everything past the class's brace was cut and W10's `Quad(...)` calls stopped resolving. Anchor an
+insertion on something that is genuinely last, or re-read the file after editing it.
