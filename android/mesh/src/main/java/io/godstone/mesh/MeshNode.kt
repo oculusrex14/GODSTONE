@@ -206,20 +206,45 @@ class MeshNode(
         SyncControlOwner.OwnerDecision.Accepted
         private set
 
-    private val controlOutbox = ArrayList<io.godstone.mesh.wire.v2.FrameV2>()
+    /**
+     * GS-SYNC-002: a control reply with the DESTINATION it belongeth to. The outbox used to hold
+     * BARE frames, so an answer raised for one relation was handed to whichever peer asked first --
+     * the requesting peer went unanswered and two reconciliation runs were mixed.
+     */
+    private class ControlReply(
+        val destination: ByteArray,
+        val frame: io.godstone.mesh.wire.v2.FrameV2,
+    )
+
+    private val controlOutbox = ArrayList<ControlReply>()
     private val controlOutboxLock = Any()
 
     /** Bounded at 64; drop-oldest, the freshest truth wins the slot (T37 outbox idiom). */
-    private fun offerControlFrames(frames: List<io.godstone.mesh.wire.v2.FrameV2>) = synchronized(controlOutboxLock) {
+    private fun offerControlFrames(
+        frames: List<io.godstone.mesh.wire.v2.FrameV2>,
+        destination: ByteArray,
+    ) = synchronized(controlOutboxLock) {
         for (f in frames) {
             if (controlOutbox.size >= 64) controlOutbox.removeAt(0)
-            controlOutbox.add(f)
+            controlOutbox.add(ControlReply(destination.copyOf(), f))
         }
     }
 
+    /**
+     * GS-SYNC-002: drain ONLY the replies that belong to [peer]; every other live peer's answer is
+     * PRESERVED. Ownership is by destination, so one peer's turn can never consume another's answer
+     * and two reconciliation runs are never mixed.
+     */
+    private fun drainControlOutboxFor(peer: ByteArray): List<io.godstone.mesh.wire.v2.FrameV2> =
+        synchronized(controlOutboxLock) {
+            val mine = controlOutbox.filter { it.destination.contentEquals(peer) }
+            if (mine.isNotEmpty()) controlOutbox.removeAll { it.destination.contentEquals(peer) }
+            mine.map { it.frame }
+        }
+
     /** Drain the bounded control outbox (T41's pump takes the route from here). */
     internal fun drainControlOutbox(): List<io.godstone.mesh.wire.v2.FrameV2> = synchronized(controlOutboxLock) {
-        val out = controlOutbox.toList()
+        val out = controlOutbox.map { it.frame }
         controlOutbox.clear()
         out
     }
@@ -230,7 +255,7 @@ class MeshNode(
         if (verdict !is DispatchVerdict.Control) return false
         lastControlDecision = verdict.decision
         val replies = frameDispatcher.replies(verdict.decision)
-        if (replies.isNotEmpty()) offerControlFrames(replies)
+        if (replies.isNotEmpty()) offerControlFrames(replies, destination = fromPeer)
         return verdict.accepted
     }
     /**
@@ -368,7 +393,7 @@ class MeshNode(
         // reply) ride the control outbox T40 built; the pump addeth the schedule
         // and the epidemic forward copies. ONE call for the link writer, so no
         // caller has to remember two sources.
-        val out = ArrayList<io.godstone.mesh.wire.v2.FrameV2>(drainControlOutbox())
+        val out = ArrayList<io.godstone.mesh.wire.v2.FrameV2>(drainControlOutboxFor(peer))
         out.addAll(pumpFor().pump(peer).frames)
         return out
     }
@@ -748,7 +773,7 @@ class MeshNode(
             is DispatchVerdict.Control -> {
                 lastControlDecision = verdict.decision
                 val replies = frameDispatcher.replies(verdict.decision)
-                if (replies.isNotEmpty()) offerControlFrames(replies)
+                if (replies.isNotEmpty()) offerControlFrames(replies, destination = fromPeer)
                 return verdict.accepted
             }
             is DispatchVerdict.Ack -> return verdict.accepted

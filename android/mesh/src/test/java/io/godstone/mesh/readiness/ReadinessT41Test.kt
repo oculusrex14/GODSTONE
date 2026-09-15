@@ -39,6 +39,7 @@ import java.security.SecureRandom
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert
 import org.junit.Test
+import io.godstone.mesh.router.ControlPayloadV1
 
 class ReadinessT41Test {
     private val rng = SecureRandom()
@@ -599,6 +600,48 @@ class ReadinessT41Test {
         val stale = w.r.pump.pump(w.b.id)
         Assert.assertEquals("a cancelled relation emits NOTHING", 0, stale.total)
         Assert.assertEquals(SyncRefusal.NOT_REGISTERED, stale.refusals.keys.first())
+    }
+
+    // ------------------------------------------------------------ GS-SYNC-002
+
+    /**
+     * GS-SYNC-002: "A control reply for one peer is drained by another peer."
+     *
+     * ISOLATING BY CONSTRUCTION: the same experiment run twice -- once with only R linked, once with B
+     * linked too and B's turn taken FIRST. The drain also carrieth the pump's own frames, so the arm
+     * asserteth the DIFFERENCE between the two runs, which is exactly the answer raised for R. If B's
+     * turn can consume R's answer, R receives one frame fewer.
+     */
+    @Test
+    fun testAControlReplyBelongethToItsOwnPeerAlone() = runTest {
+        suspend fun pingFromR(w: World) {
+            val ping = ControlPayloadV1.frameFor(
+                ControlPayloadV1.ControlArm.PING,
+                ByteArray(16) { (it + 5).toByte() }, ByteArray(4) { (it + 1).toByte() },
+                ControlPayloadV1.ping(0, 42L).encode(),
+            )
+            Assert.assertTrue("R's ping must be answered by A", w.a.node.handleControlFrame(ping, w.r.id))
+        }
+
+        // CONTROL RUN: only R is linked, so R takes its own answer.
+        val control = world()
+        control.linkUp(control.a, control.r)
+        pingFromR(control)
+        val direct = control.a.node.drainSyncFramesForPeer(control.r.id)
+
+        // THE EXPERIMENT: B is linked too and draineth FIRST.
+        val raced = world()
+        raced.linkUp(raced.a, raced.r)
+        raced.linkUp(raced.a, raced.b)
+        pingFromR(raced)
+        raced.a.node.drainSyncFramesForPeer(raced.b.id)
+        val afterB = raced.a.node.drainSyncFramesForPeer(raced.r.id)
+
+        Assert.assertEquals(
+            "B's turn must NOT consume the answer raised for R: R must receive the same frames either way " +
+            "(control=" + direct.size + ", after B's turn=" + afterB.size + ")",
+            direct.size, afterB.size,
+        )
     }
 }
 
