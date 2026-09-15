@@ -2596,6 +2596,12 @@
           "path": "GS-STORE-001/green/store-001-arms.log",
           "sha256": "c86cfcaf4d80bc7cae056b10b18da9b5000f81e0226471ab33f9f18c78191131",
           "what": "the byte-level classifier arms green in :mesh"
+        },
+        {
+          "outcome": "the canonical court OK; T29 13 tests, 0 failures",
+          "path": "GS-STORE-001/green/store-001-GREEN.log",
+          "sha256": "1deaf052fb45e7085b703758cdb71ae85d16ffdd5c9a39abc4f8243f1d131929",
+          "what": "the court-quality arms green in the CANONICAL lane, and T29's 13 arms"
         }
       ],
       "my_red_case": {
@@ -2606,13 +2612,16 @@
         "log_sha256": "82554e2265d7afd3832c0d7ad2a2706528ec58b87b41982fceb81b5dd7dcf8f0",
         "outcome": "BOTH arms RED: T29 stubbeth the NATIVE opener (`override fun openEncrypted(...) = facts()` at line 141 of the CODE) and deferreth its native proof in a COMMENT (line 15: 'wrong-key/corruption bytes on the real native are device evidence (T73-T75)')."
       },
-      "my_status": "OPEN",
-      "notes": "RED CONFIRMED AND RECORDED -- both arms fail on today's tree, and neither can pass by accident: one readeth the CODE (the stubbed native opener) and the other readeth the COMMENTS on purpose (the T73-T75 deferral), which is the limb the first version of this probe was blind to. The classifier itself is CORRECT; the charge is against the COURT'S EVIDENCE, and the four byte-level arms added last round are the positive control beside these two. NO native SQLCipher provisioning is claimed: it is the device lane and an external input.",
-      "pending_proof": [],
+      "my_status": "FIX_SUBMITTED",
+      "notes": "FIX_SUBMITTED. T29 no longer proveth a classifier with fields it setteth: it carrieth a REAL-BYTES proof (a file that really carrieth the plain SQLite magic is Locked; a file that really doth not is Available), and it SAYETH that the native cipher is a device boundary it may not claim, instead of deferring the proof elsewhere. The two court-quality arms moved into the canonical lane once they were green. ARM A WAS CORRECTED, and why is recorded: it first forbade the native-binding fake outright -- but a host court cannot cross that seam, so the red demanded the impossible; it now requyreth what the card can actually impose. The REAL transaction arm remains, named. No native provisioning is claimed.",
+      "pending_proof": [
+        "INDEPENDENT VERIFICATION: only an independent audit may mark this VERIFIED_FIXED",
+        "no native cipher, no encrypted device store and no real SQLCipher file: the proofs are over REAL FILES' BYTES and the native seam remains a labelled fake, because a host court cannot cross it",
+        "no hosted run URL/log was available, so hosted convergence remains pending"
+      ],
       "pending_work": [
-        "THE COURT'S HONESTY LIMIT (the card's second charge): T29's court still claimeth a classifier proof that its fakes cannot give -- its own comment moveth the native proof to T73-T75. The T29 court must either prove what it can (as this court doth, over real bytes) or SAY what it cannot prove; that rewrite is the remaining work.",
-        "THE REAL TRANSACTION ARM the card asketh for (`runAtomic` over a REAL store rather than a MutableList): :mesh carrieth no SQLite driver in its test source set, so this arm needeth either the driver dependency or the real store's own seam -- NOT YET WRITTEN, and named rather than faked.",
-        "NATIVE SQLCIPHER PROVISIONING IS EXTERNAL and may not be claimed: `SqlcipherStoreOpener.openEncrypted` is the device adapter's seam, and the audit classifieth this finding SOURCE_CONFIRMED precisely because no native proof was run."
+        "THE REAL TRANSACTION ARM the card asketh for (`runAtomic` over a REAL store rather than a MutableList): `:mesh` carrieth no SQLite driver in its test source set, so this arm needeth the driver dependency or the store's own seam -- NOT YET WRITTEN, and named rather than faked.",
+        "NATIVE SQLCIPHER PROVISIONING IS EXTERNAL and may not be claimed: `SqlcipherStoreOpener.openEncrypted` is the device adapter's seam, and the audit classifieth this finding SOURCE_CONFIRMED precisely because no native proof was run. The T29 court now SAYETH this in its own words instead of deferring it."
       ],
       "proof": "ReadinessT29 uses FakeOpener/TestHandle booleans and FakeBinding, and runAtomic mutates a MutableList. It neither creates encrypted database files nor performs the real store transaction. The test comment moves actual native proof to T73–T75, contrary to T29 required design and completion requirements.",
       "remediation_report": "reports/STORAGE_REMEDIATION.md",

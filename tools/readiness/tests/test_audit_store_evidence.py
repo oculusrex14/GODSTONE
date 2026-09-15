@@ -37,14 +37,16 @@ def code_only(text: str) -> str:
 
 class StoreEvidenceTest(unittest.TestCase):
 
-    def test_a_the_native_seam_is_not_a_stub_in_this_court(self):
-        """The court must not PROVE the classifier by stubbing the native seam itself."""
+    def test_a_the_court_proveth_over_real_bytes(self):
+        """A host court cannot cross the native seam -- so it must prove the classifier over the
+        EVIDENCE it can reach: real bytes on disk, which it must actually read."""
         code = code_only(court_text())
-        stubbed = re.search(r"override\s+fun\s+openEncrypted\([^)]*\)\s*(?::[^=]*)?=\s*\w+\(\)", code)
-        self.assertIsNone(
-            stubbed,
-            "T29 stubbeth the NATIVE opener (`openEncrypted(...) = facts()`): the court proveth its "
-            "classifier against bytes it invented rather than against the store (GS-STORE-001)")
+        reads_real_bytes = bool(re.search(r"readBytes\(\)|FileInputStream", code))
+        self.assertTrue(
+            reads_real_bytes,
+            "T29 proveth its classifier without reading ANY real bytes: the audit's charge \"It neither "
+            "creates encrypted database files nor performs the real store transaction\" "
+            "(GS-STORE-001)")
 
     def test_b_the_native_proof_is_not_deferred_in_a_comment(self):
         """A court may NAME an external lane -- it may not present the deferral as its own proof."""

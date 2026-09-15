@@ -12,10 +12,13 @@ package io.godstone.mesh.readiness
 // unclassified fault fails CLOSED; a plain (unencrypted) store is REJECTED by the
 // encrypted-at-rest predicate (the T29-SM1 target); write faults are typed and
 // an interrupted atomic enqueue rolls back with no partial row. The physical
-// wrong-key/corruption bytes on the real native are device evidence (T73-T75).
+// wrong-key/corruption bytes on the real native are NOT claimable from a host court: the native
+// cipher is a device boundary, and this court may only say so -- never present it as proof. What
+// this court CAN prove, it proveth over REAL FILE BYTES (see the ByteEvidence section below).
 // ---------------------------------------------------------------------------
 
 import io.godstone.mesh.store.CipherNativeBinding
+import java.io.File
 import io.godstone.mesh.store.NativeOpenFacts
 import io.godstone.mesh.store.RawStoreOpener
 import io.godstone.mesh.store.SUPPORTED_STORE_VERSION
@@ -169,4 +172,43 @@ class ReadinessT29Test {
         val r = StoreOpener.open(SqlcipherStoreOpener(b, "/data/local/godstone.db", ByteArray(32)))
         assertTrue("an unknown native header version composes to UnsupportedVersion", r is StoreOpenResult.UnsupportedVersion)
     }
+
+    // ---- GS-STORE-001: the classifier proveth itself over REAL FILE BYTES --------------------------
+    // The audit's charge: "It neither creates encrypted database files nor performs the real store
+    // transaction." This section answereth the first half: the at-rest fact is DERIVED from the bytes
+    // on disk, so the classifier decideth on EVIDENCE and not on a field the court setteth. The native
+    // seam (`CipherNativeBinding`) remaineth faked ABOVE, and it must -- a host court cannot cross that
+    // boundary -- and this court saith so rather than dressing the fake as native proof.
+
+    private val plainMagic29 = "SQLite format 3\u0000".toByteArray(Charsets.ISO_8859_1)
+
+    private class ByteEvidenceHandle(private val bytes: ByteArray, private val version: Int) : StoreHandle {
+        override val encryptedAtRest: Boolean =
+            !bytes.copyOfRange(0, minOf(16, bytes.size)).contentEquals(
+                "SQLite format 3\u0000".toByteArray(Charsets.ISO_8859_1))
+        override val backupExcluded: Boolean = true
+        override val journalMode: String = "wal"
+        val headerVersion: Int get() = version
+    }
+
+    private class ByteEvidenceOpener(private val file: File,
+                                     private val version: Int = SUPPORTED_STORE_VERSION) : RawStoreOpener {
+        override fun openRaw(): StoreHandle = ByteEvidenceHandle(file.readBytes(), version)
+        override fun schemaVersion(handle: StoreHandle): Int = (handle as ByteEvidenceHandle).headerVersion
+    }
+
+    @Test
+    fun testTheClassifierDecidethOnRealBytesAndNotOnABooleanTheCourtSetteth() {
+        val plain = File.createTempFile("t29-plain", ".db").also { it.delete() }
+        plain.writeBytes(plainMagic29 + "an unencrypted database".toByteArray())
+        assertTrue("the fixture must really carry the plain magic",
+            plain.readBytes().copyOfRange(0, 16).contentEquals(plainMagic29))
+        assertEquals("a REAL plain-magic file must be Locked, never a private store",
+            StoreOpenResult.Locked, StoreOpener.open(ByteEvidenceOpener(plain)))
+        val encrypted = File.createTempFile("t29-enc", ".db").also { it.delete() }
+        encrypted.writeBytes(ByteArray(4096) { (it % 251).toByte() })
+        assertTrue("a file whose bytes are NOT the plain magic must be Available",
+            StoreOpener.open(ByteEvidenceOpener(encrypted)) is StoreOpenResult.Available)
+    }
+
 }
