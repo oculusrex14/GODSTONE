@@ -4,7 +4,7 @@ Ledger `REMEDIATION_STATE.json` (AUTHORITATIVE); protocol `README.md`; external 
 `EXTERNAL_INPUT_REQUESTS.md`; accounting `STATUS_ACCOUNTING.md`. Audit source `c683a2bf0b5bcdd4a662d98f7542351501b57b7c` is READ-ONLY, and its own
 process keepeth writing into the original checkout, whose declared addition GROWS (the floor may only rise).
 
-## Status — 25 submitted (22 FIX_SUBMITTED, 3 PARTIAL), 29 OPEN
+## Status — 25 submitted (23 FIX_SUBMITTED, 2 PARTIAL), 29 OPEN
 
 Not one finding is `VERIFIED_FIXED`: only an INDEPENDENT AUDIT may write that, and the ledger court
 REFUSETH the word from this work.
@@ -35,26 +35,23 @@ REFUSETH the word from this work.
 | ANDROID-02 | FIX_SUBMITTED | 4d.2 | Canonical advertising makes the initiator's HS2 hint looku |
 | GS-ACK-002 | FIX_SUBMITTED | 5 | Restart ACK worker uses TTL 4 while immediate recipient AC |
 | CRYPTO-003 | FIX_SUBMITTED | 4b | Destroyed retained controllers and primitive sessions st |
-| CRYPTO-006 | PARTIAL | 4b | Duplicate journal admission is treated as success for a |
+| CRYPTO-006 | FIX_SUBMITTED | 4b | Duplicate journal admission is treated as success for a |
 
-## DO THIS FIRST — PORT `CRYPTO-006` TO THE iOS ISLE (the Android limb is landed at `92104a7`)
+## DO THIS FIRST — the wave 4a chain: `GS-STORE-004`, then `GS-STORE-005`, then `GS-STORE-006`
 
-The law is settled and the Android limb proves it: **the journal claim is keyed by the COMMAND
-REVISION, not by the token alone.** `insertIfAbsent` returns a duplicate carrying the winning row
-**only when the stored row's `canonicalCommandDigest` equals the entrant's**; otherwise the row is
-TAKEN, so the row always matches what the authority committed, while the ledger keeps the latest
-accept per token. On a duplicate the authority DISCARDS its own freshly authored frame, validates
-the winner (digest, logical identity, decode, SEALED, msgId == logical id) and enqueues the WINNER.
+`CRYPTO-006` is DONE on both isles (`92104a7` android + `36c0cc6` iOS): the journal claim is keyed by
+the COMMAND REVISION, a duplicate carries the winning row, and a raced caller discards its own frame.
+What it still owes (in its ledger entry, not in this lane): the DURABLE journal (step 3 — the seam
+`CRYPTO-005` also needs), the relay/forwarding checks (step 5), and one unwitnessed defensive branch.
 
-- iOS sites: `ios/Godstone/Sources/GodstoneMesh/SendDirectAuthority.swift` — the
-  `JournalInsertResult { stored, duplicate, storageFailure }` enum (~159) and the
-  `case .stored, .duplicate: break` swallow (~517).
-- Port BOTH arms with it: the deterministic race (`StaleReadJournal` double) and the sequential
-  regression, into `ios/Godstone/Tests/GodstoneMeshTests/ReadinessT36Tests.swift`, then run the
-  iOS package. Capture the iOS red first (the port is a second isle's defect, not a formality).
-- **Do not use a token-only claim**: that was tried, measured and reverted — it breaks
-  `testChangedRecipientOrBodyOrPriorityCreatesNewLogicalSend`, the preserved law that a changed
-  recipient/body/priority is a NEW logical send.
+`GS-STORE-003`'s machinery is what 4a needs next — read what it left behind before editing:
+`StoreSchema.frozenFingerprint` / `migrationPlan(from:creatingTables:supportedMax:)` on both isles, the
+handle-bound executors (`HandleMigrationExecutor` / `DatabaseMigrationExecutor`), and the JVM host twin
+`JdbcStoreDb`. To add a schema revision you add a real non-destructive step (e.g. `ALTER TABLE ... ADD
+COLUMN`) and bump `dbVersion`/`DB_VERSION` TOGETHER on both isles, updating the frozen column lists in
+the same commit. WATCH THE BLAST RADIUS: on Android the held-frame write goes through the `StoreDb`
+interface, which has FOUR implementations, and `ReadinessT17Test.testReleaseSymbolsCarryNoTestFactories`
+refuseth any new exported test seam on a production type — a mandatory lane, not a negotiable one.
 
 ## Then the wave 4a chain: `GS-STORE-004`, then `GS-STORE-005`, then `GS-STORE-006`
 
