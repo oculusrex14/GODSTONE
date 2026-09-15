@@ -183,3 +183,15 @@ failing), then **MOVED INTO `tools/readiness/tests/`** with the repair. It judge
 monotonic (`System.nanoTime() / 1_000_000_000L`, seconds stated). The arm **strips comments before matching**, because a
 first draft banned the spelling across the whole file and tripped on the audit-trail comment the repair itself wrote —
 the same trap the repository's identity control taught at round 163.
+
+## Kotlin probe — ANDROID-04's time-based witness: LANDED (round 210)
+
+The parked witness **MOVED INTO `ReadinessT20Test`** as `testTheOwnedSweepTrippethASilentPeerByTimeAlone`, and the parked file
+was deleted with it. Its history is the useful part, and it is all in the ledger: the **seam** (an injectable 25 ms
+interval) landed in round 206; the first attempt was **RED**; round 207 **refuted** the fixture-clock hypothesis by making
+the fixture's clock `@Volatile` (no change) and then **found** the wall-clock connection default; round 208 **fixed** that
+(and the sweep's silence survived it); round 209's **counters** refuted the iteration/visibility hypothesis (`seenJob=13`)
+and **displaced** the suspicion onto the witness's own setup (`directSeen=1 retiredAfterDirect=false`); and round 210
+built the arm **verbatim on the court's own working setup, differing in exactly one way** — not calling
+`sweepInboundLeases()` — and it **PASSED**. **Two plausible hypotheses were refuted by measurement rather than argument,
+and neither cost anything but an instrument.**

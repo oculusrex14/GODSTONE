@@ -872,6 +872,49 @@ class ReadinessT20Test {
     }
 
     @Test
+    fun testTheOwnedSweepTrippethASilentPeerByTimeAlone() {
+        // ANDROID-04 (the card's first defect), AS A CONTROLLED EXPERIMENT -- and the control is the SETUP:
+        // this arm carrieth the court's OWN working expiry arm VERBATIM (same rig, same base, same generation,
+        // same publication, same seal offset 909, same two fragments, same lease read, same `rigNow =
+        // lease.deadlineMono`) AND DIFFERS IN EXACTLY ONE WAY: it never calleth `sweepInboundLeases()`.
+        // Round 209 measured why that matters: an earlier draft changed the caller AND the setup at once, and
+        // failed for the setup's sake alone (`directSeen=1 retiredAfterDirect=false`).
+        leaseSweepIntervalMillis = 25L
+        val rig = rig()
+        try {
+            rig.completeTrust()
+            rigNow = 1_700_000_000L
+            val gen = rig.bob.serverDriver.getClientGeneration(rig.aliceAddress)
+            rig.bob.publishRelation(RelationKey(BleDirection.INBOUND, rig.aliceAddress, gen), null)
+            val (seq, frags) = sealFromInitiator(rig, 909, 600)
+            rig.pushToResponder(frags.take(2))
+            val conn = rig.responderConnection()
+            val lease = conn.activeLeaseOf(seq) ?: error("the admission left no lease")
+            assertTrue("the hand-standing publication is witnessed",
+                       rig.bob.isRelationPublished(BleDirection.INBOUND, rig.aliceAddress, gen))
+
+            // THE ONE DIFFERENCE: the clock passeth the deadline and NOTHING ELSE ARRIVETH; no call is made.
+            rigNow = lease.deadlineMono
+
+            val waitUntil = System.nanoTime() + 5_000_000_000L
+            while (System.nanoTime() < waitUntil &&
+                rig.bob.serverDriver.getInboundConnection(rig.aliceAddress) != null) {
+                Thread.sleep(10L)
+            }
+            assertNull(
+                "the OWNED sweep must trip a SILENT peer by TIME alone -- no traffic and no test-thread call " +
+                    "may be required; the audited road waited for unrelated traffic for ever",
+                rig.bob.serverDriver.getInboundConnection(rig.aliceAddress))
+            assertFalse("the publication was withdrawn with the relation",
+                        rig.bob.isRelationPublished(BleDirection.INBOUND, rig.aliceAddress, gen))
+            assertEquals("nothing was admitted of the silent dribble", 0, rig.collected.size)
+        } finally {
+            leaseSweepIntervalMillis = 60_000L
+            rig.stop()
+        }
+    }
+
+    @Test
     fun testTheRaceAtTheDeadlineInstantSettlesTheSameBothWays() {
         val rig = rig()
         try {

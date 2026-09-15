@@ -46,7 +46,39 @@ already carried. The audit's step 3 stays OPEN, with its two measured obstacles 
 | CRYPTO-003 | FIX_SUBMITTED | 4b | Destroyed retained controllers and primitive sessions st |
 | CRYPTO-006 | FIX_SUBMITTED | 4b | Duplicate journal admission is treated as success for a |
 
-## DO THIS FIRST (round 209) — THE SECOND DIAGNOSTIC **DISPLACES** THE SUSPICION: THE OWNED SWEEP WAS NEVER THE ONLY DIFFERENCE
+## DO THIS FIRST (round 210) — ANDROID-04's SCHEDULER IS PROVEN BY A CONTROLLED EXPERIMENT: A SILENT PEER IS NOW TRIPPED BY TIME ALONE
+
+**The experiment and its control.** `ReadinessT20Test.testTheOwnedSweepTrippethASilentPeerByTimeAlone` carries the court's
+**own working expiry arm verbatim** — same rig, same base, same generation, same publication, same seal offset 909, the
+same two fragments, the same lease read, the same `rigNow = lease.deadlineMono` — and differs in **exactly one way**: it
+**never** calls `sweepInboundLeases()`. **The setup IS the control**, which is what round 209's displacement bought: an
+earlier draft changed the caller *and* the setup at once and failed for the setup's sake alone.
+
+**The result:** **the owned sweep tripped the silent peer by time alone** — an injected 25 ms interval, no traffic, no
+test-thread call — and the arm also asserts the publication was withdrawn with the relation and that nothing was admitted
+of the silent dribble. **The card's first defect is thereby closed on the code side and proven behaviourally: expiry no
+longer waits for unrelated traffic.**
+
+**Five rounds of method, all recorded:**
+* **206** the seam (injectable interval) landed; the first witness was RED;
+* **207** the fixture-clock hypothesis was **refuted by measurement** (`@Volatile` changed nothing) and the **wall-clock
+  connection default was found**;
+* **208** that default was **repaired** and the silence **survived** it;
+* **209** the counters **refuted** the iteration/visibility hypothesis (`seenJob=13`) and **displaced** the suspicion onto
+  the witness's own setup (`directSeen=1 retiredAfterDirect=false`);
+* **210** the controlled experiment **PASSED**.
+
+**Two plausible hypotheses were refuted by measurement rather than argument, and neither cost anything but an instrument**
+— and every abandoned attempt was **withdrawn rather than shipped**, so no committed SHA ever carried a red lane.
+
+**The instruments are kept, not discarded:** `leaseSweepTicksForTest`, `leaseSweepRelationsSeenForTest`,
+`leaseSweepLeasesLapsedForTest`, `hasLeaseSweepJob()`, and the job's **loud** failure (a throwable recorded in the
+transport's census, with cancellation rethrown). An "armed" scheduler can no longer be mistaken for a working one.
+
+**Acceptance:** whole `:mesh` lane **1189 tests, 0 failures** (1188 + the time-based arm). ANDROID-04 stays
+**FIX_SUBMITTED**.
+
+## DO THIS FIRST (round 209, landed) — THE SECOND DIAGNOSTIC **DISPLACES** THE SUSPICION
 
 **The instrument named in round 208 landed and spoke.** `sweepInboundLeases()` now **counts** what it iterated
 (`leaseSweepRelationsSeenForTest`) and what lapsed (`leaseSweepLeasesLapsedForTest`), so "finds nothing" can no longer
