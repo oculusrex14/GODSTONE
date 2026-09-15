@@ -89,6 +89,23 @@ ALSO WORTH A ROUND, and cheap: the android lane's unexplained FIXTURE flake ('no
 draws', seen in ReadinessT17/T18 fixture setup and green on re-run) — fix it deterministically so 'the lane is
 green' stops meaning 'the logged run was green'.
 
+## READ THIS BEFORE CHOOSING A FINDING: ELEVEN OPEN ENTRIES ARE UNENRICHED
+
+Verified at round 93 by inspecting the ledger, not by inference: of the 25 `OPEN` findings, these ELEVEN
+carry the audit's title and severity and NOTHING ELSE -- no `impact`, no `remediation_steps`, no
+`source_refs`:
+
+    ANDROID-01, ANDROID-03, ANDROID-04, ANDROID-05, ANDROID-07,
+    IOS-01, IOS-02, IOS-04, IOS-05, IOS-06, IOS-07
+
+`ANDROID-06` was in exactly that state until round 92, when its card was read verbatim
+(`AUDIT_FINAL_2026-09-15/evidence/android/findings.md`, the per-finding sections) and its fields filled --
+and the card immediately yielded the cheapest red AND its positive control, which no amount of staring at
+the title would have produced. That is the pattern to repeat: for any of the eleven, read the card in
+`evidence/android/findings.md` (Android) or the iOS findings file FIRST, fill `impact`,
+`remediation_steps`, `source_refs` and `closure_tests` from it, name the cheapest red, and only then design
+the arm. A round that starts on an unenriched entry spends itself on reconnaissance.
+
 ## Then the wave 4a chain: `GS-STORE-004`, then `GS-STORE-005`, then `GS-STORE-006`
 
 ## AND THEN, with its red already designed: `GS-SYNC-002` step 3 (retired control replies) — ANDROID LANDED
