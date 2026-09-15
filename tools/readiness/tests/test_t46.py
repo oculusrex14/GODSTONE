@@ -710,27 +710,26 @@ class W8Duplicates(ApprovalCourtCase):
             "schema": 1, "tier": "LIGHT", "application_id": "io.godstone.app",
             "status": "approved", "production_ready": True,
             "archive_manifest": "signed/archive_light.json",
-            "archive_trust_store": "signing/trust.json",
+            # the trust store is the OPERATOR's, passed by argument (GS-CONTENT-003): a
+            # document may not nominate the key that verifieth it
+            # the LIGHT law shippeth the archive ONLY (a model-bearing LIGHT document was
+            # valid only on the deputy face GS-CONTENT-003 removed)
             "assets": [
                 {"role": "archive", "name": "archive_light.db",
                  "source": "payload/archive_light.db",
                  **digest_of("archive_light.db")},
-                {"role": "generation_model", "name": "generation.gguf",
-                 "source": "payload/generation.gguf",
-                 **digest_of("generation.gguf")},
-                {"role": "embedding_model", "name": "embedding.gguf",
-                 "source": "payload/embedding.gguf",
-                 **digest_of("embedding.gguf")},
-            ],
+                                            ],
         }
         doc = root2.parent / "release.json"
         doc.write_bytes(rg.canonical_json(asset_doc) + b"\n")
-        data, staged = prep.validate(doc)
-        self.assertEqual(len(staged), 3, "the clean manifest stageth not")
+        data, staged = prep.validate(
+            doc, trust_store_path=self.root / "signing" / "trust.json")
+        self.assertEqual(len(staged), 1, "the clean manifest stageth not (LIGHT: archive only)")
+        self.assertEqual([name for _, name in staged], ["archive_light.db"])
         # (a) duplicate role / name / source at the asset face
         for fault, mutate in (
             ("duplicate asset", lambda d: d["assets"].append(
-                json.loads(json.dumps(d["assets"][1])))),
+                json.loads(json.dumps(d["assets"][0])))),
         ):
             with self.subTest(fault=fault):
                 clone = json.loads(json.dumps(asset_doc))
@@ -739,7 +738,9 @@ class W8Duplicates(ApprovalCourtCase):
                 probe.write_bytes(rg.canonical_json(clone) + b"\n")
                 try:
                     with self.assertRaises(ValueError) as caught:
-                        prep.validate(probe)
+                        prep.validate(
+                            probe,
+                            trust_store_path=self.root / "signing" / "trust.json")
                     for phrase in ("duplicate asset role",
                                    "duplicate asset name",
                                    "duplicate asset source"):
@@ -753,7 +754,9 @@ class W8Duplicates(ApprovalCourtCase):
         top = root2.parent / "smuggled-top.json"
         top.write_text(smuggled, encoding="utf-8")
         with self.assertRaises(ValueError) as caught:
-            prep.validate(top)
+            prep.validate(
+
+                top, trust_store_path=self.root / "signing" / "trust.json")
         self.assertRegex(str(caught.exception), "duplicate key")
         # craft a true duplicate of 'bytes' inside the first asset
         first = text.index('{', text.index('"assets"'))
@@ -767,7 +770,9 @@ class W8Duplicates(ApprovalCourtCase):
         bottom = root2.parent / "smuggled-deep.json"
         bottom.write_text(deep, encoding="utf-8")
         with self.assertRaises(ValueError) as caught:
-            prep.validate(bottom)
+            prep.validate(
+
+                bottom, trust_store_path=self.root / "signing" / "trust.json")
         self.assertRegex(str(caught.exception), "duplicate key")
         # (c) the archive manifest face refuseth the same smuggling
         mtext = manifest_path.read_text(encoding="utf-8")
@@ -799,8 +804,10 @@ class W8Duplicates(ApprovalCourtCase):
         finally:
             ypath.write_text(ytext, encoding="utf-8")
         # and the honest documents yet again give proof
-        data, staged = prep.validate(doc)
-        self.assertEqual(len(staged), 3)
+        data, staged = prep.validate(
+            doc, trust_store_path=self.root / "signing" / "trust.json")
+        self.assertEqual(len(staged), 1, "LIGHT shippeth the archive only")
+        self.assertEqual([name for _, name in staged], ["archive_light.db"])
 
 
 class W9Determinism(ApprovalCourtCase):
@@ -930,22 +937,19 @@ class W10WholeRoute(ApprovalCourtCase):
             "schema": 1, "tier": "LIGHT", "application_id": "io.godstone.app",
             "status": "approved", "production_ready": True,
             "archive_manifest": "signed/archive_light.json",
-            "archive_trust_store": "signing/trust.json",
+            # the LIGHT law shippeth the archive ONLY (a model-bearing LIGHT document was
+            # valid only on the deputy face GS-CONTENT-003 removed)
             "assets": [
                 {"role": "archive", "name": "archive_light.db",
                  "source": "payload/archive_light.db", **dig("archive_light.db")},
-                {"role": "generation_model", "name": "generation.gguf",
-                 "source": "payload/generation.gguf", **dig("generation.gguf")},
-                {"role": "embedding_model", "name": "embedding.gguf",
-                 "source": "payload/embedding.gguf", **dig("embedding.gguf")},
-            ],
+                                            ],
         }
         doc = self.root / "release.json"
         doc.write_bytes(rg.canonical_json(asset_doc) + b"\n")
-        data, staged = prep.validate(doc)
-        self.assertEqual({name for _, name in staged},
-                         {"archive_light.db", "generation.gguf",
-                          "embedding.gguf"})
+        data, staged = prep.validate(
+            doc, trust_store_path=self.root / "signing" / "trust.json")
+        self.assertEqual([name for _, name in staged], ["archive_light.db"],
+                         "LIGHT shippeth the archive only")
         # the absence felt: an empty approvals home refuseth the build
         emptied = self.root / "approvals-empty"
         emptied.mkdir()

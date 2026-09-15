@@ -653,25 +653,20 @@ class WholePathWitness(T45Case):
                  "source": "payload/archive_light.db",
                  "bytes": staged_archive.stat().st_size,
                  "sha256": _sha256(staged_archive)},
-                {"role": "generation_model", "name": "generation.gguf",
-                 "source": "payload/generation.gguf",
-                 "bytes": generation.stat().st_size,
-                 "sha256": _sha256(generation)},
-                {"role": "embedding_model", "name": "embedding.gguf",
-                 "source": "payload/embedding.gguf",
-                 "bytes": embedding.stat().st_size,
-                 "sha256": _sha256(embedding)},
-            ],
+                                            ],
             "archive_manifest": str(manifest_path.relative_to(self.root)),
-            "archive_trust_store": str(trust.relative_to(self.root)),
+            # the trust store is the OPERATOR's (GS-CONTENT-003): a document may not
+            # nominate the key that verifieth it
         }
         release_path = self.root / "release.json"
         release_path.write_text(json.dumps(release, sort_keys=True),
                                 encoding="utf-8")
-        data, staged = prepare_release_assets.validate(release_path)
-        self.assertEqual({name for _, name in staged},
-                         {"archive_light.db", "generation.gguf",
-                          "embedding.gguf"})
+        # GS-CONTENT-003: the whole route now REQUIRES the operator-selected trust store;
+        # this walk carrieth one (built above, OUT of the bundle), so it passeth it.
+        data, staged = prepare_release_assets.validate(release_path, trust_store_path=trust)
+        self.assertEqual([name for _, name in staged], ["archive_light.db"],
+                         "the LIGHT law shippeth the archive only (GS-CONTENT-003: the "
+                         "operator face enforceth it on every path)")
 
         # main --check-only is a walk that writes nothing
         out_dir = self.root / "staged"
@@ -679,17 +674,20 @@ class WholePathWitness(T45Case):
         try:
             sys.argv = ["prepare_release_assets", "--manifest",
                        str(release_path), "--out", str(out_dir),
-                       "--check-only"]
+                       "--check-only", "--trust-store", str(trust)]
             self.assertEqual(prepare_release_assets.main(), 0)
         finally:
             sys.argv = argv
         self.assertFalse(out_dir.exists(),
                          "check-only staging wrote to the world")
 
-        # and the absence leg: one forged byte must stop the staging
-        embedding.write_bytes(b"GGUF-FIXTURE-EMBEDDING-BLOB\n" * 5 + b"x")
+        # and the absence leg: one forged byte must stop the staging. The forged byte
+        # belongeth to the ARCHIVE, which is the asset LIGHT actually shippeth (the
+        # fixture's model assets were removed with the deputy face, GS-CONTENT-003).
+        with open(staged_archive, "ab") as stream:
+            stream.write(b"x")
         with self.assertRaisesRegex(ValueError, "SHA-256 mismatch"):
-            prepare_release_assets.validate(release_path)
+            prepare_release_assets.validate(release_path, trust_store_path=trust)
         self.assertFalse(out_dir.exists(),
                          "a forged blob was staged nonetheless")
 

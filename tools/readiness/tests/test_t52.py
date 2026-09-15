@@ -611,18 +611,22 @@ class T52PresenceCourt(unittest.TestCase):
         doc.write_text(json.dumps(document, sort_keys=True), encoding="utf-8")
         return doc
 
-    def testTheDeputyFaceReadethTheDocumentPointersLawfully(self):
-        # no pointer fields: the deputy's own named guard must fire, with the
-        # deputy's own words (the operator arm's shorter phrase is not this)
+    def testTheDeputyFaceIsGoneAndTheBundleMayNotNominateItsOwnTrust(self):
+        """GS-CONTENT-003: this arm ONCE required the "deputy" face -- the path that read
+        the trust store OUT OF THE BUNDLE -- to behave lawfully. That face IS the finding:
+        a bundle could nominate the key that signed it. The arm now requyreth the REFUSAL,
+        and the old face's removal is asserted by name."""
         with tempfile.TemporaryDirectory() as td:
-            doc = self._deputy_doc(Path(td), pointers=False)
+            doc = self._deputy_doc(Path(td), pointers=True)
             with self.assertRaises(ValueError) as caught:
-                prep.validate(doc)                       # the legacy face
-            self.assertIn("signed archive manifest and trust store are required",
+                prep.validate(doc)
+            self.assertIn("the trust store is selected by the operator, never by the manifest",
                           str(caught.exception))
-            with self.assertRaises(ValueError) as caught:
-                prep.validate(doc, trust_store_path=Path(td) / "whatever.json")   # operator face
-            self.assertNotIn("and trust store are required", str(caught.exception))
+        source = (REPO / "scripts" / "prepare_release_assets.py").read_text(encoding="utf-8")
+        self.assertNotIn("load_trust_store(refs[1])", source,
+                         "the deputy face's bundle-nominated trust resolution must be GONE, "
+                         "not merely renamed")
+
 
     def testTheOperatorFaceStillRefusethSelfNomination(self):
         # the T51 law, byte-identical upon the explicit face: a document that
@@ -634,9 +638,10 @@ class T52PresenceCourt(unittest.TestCase):
             self.assertIn("the trust store is selected by the operator, never by the manifest",
                           str(caught.exception))
 
-    def testTheCliDeputyFaceRunnethWithoutTheFlag(self):
-        # restoration proved: --trust-store is optional on --check-only (the
-        # deputy walketh), and still mandatory for staging (the lock holdeth)
+    def testTheCliDeputyFaceIsGoneAndStillRequirethTheFlagForStaging(self):
+        """GS-CONTENT-003: `--check-only` without `--trust-store` ONCE walked the deputy
+        face. It now REFUSETH by name (the trust store is the operator's), and staging
+        still requireth the flag -- the same law on both paths."""
         script = str(REPO / "scripts" / "prepare_release_assets.py")
         with tempfile.TemporaryDirectory() as td:
             doc = self._deputy_doc(Path(td), pointers=False)
@@ -644,14 +649,14 @@ class T52PresenceCourt(unittest.TestCase):
                                   "--out", str(Path(td) / "out"), "--check-only"],
                                  capture_output=True, text=True, cwd=str(REPO))
             self.assertEqual(proc.returncode, 1, msg=proc.stdout + proc.stderr)
-            self.assertNotIn("required: --trust-store", proc.stdout + proc.stderr)
-            self.assertIn("release assets rejected", proc.stdout)
+            self.assertIn("the trust store is selected by the operator", proc.stdout)
             proc = subprocess.run([sys.executable, "-B", script, "--manifest", str(doc),
                                   "--out", str(Path(td) / "out")],
                                  capture_output=True, text=True, cwd=str(REPO))
             self.assertEqual(proc.returncode, 2, msg=proc.stdout + proc.stderr)
             self.assertIn("staging requireth the operator-selected --trust-store",
                           proc.stdout + proc.stderr)
+
 
     # -- W32/W33 the checker observers ------------------------------------------
     def testTheGatesCheckerRefusethAllTwelveByName(self):

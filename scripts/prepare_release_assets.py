@@ -403,98 +403,16 @@ DEPUTY_ALLOWED_NAMES = {"archive_light.db", "generation.gguf", "embedding.gguf"}
 DEPUTY_ALLOWED_ROLES = {"archive", "generation_model", "embedding_model"}
 
 
-def _validate_legacy_deputy(manifest_path: Path) -> tuple[dict[str, Any], list[tuple[Path, str]]]:
-    """The verification route as the T46 builder sealed it (face 9c32c11),
-    restored verbatim under the T39 back-compatibility precedent for the
-    sealed T45/T46 courts whose fixtures record the pointer fields by their
-    own cards' law. It bindeth the same verifier: strict_json_loads,
-    load_trust_store + verify_manifest, tier LIGHT, archive schema 3, the
-    NUL/escape guards, the sources_seen census. No check is relaxed; this
-    face never stages, never publishes, never writes an output directory."""
-    ALLOWED_NAMES = DEPUTY_ALLOWED_NAMES
-    ALLOWED_ROLES = DEPUTY_ALLOWED_ROLES
-    root = manifest_path.resolve().parent
-    try:
-        data = strict_json_loads(manifest_path.read_text(encoding="utf-8"),
-                                  str(manifest_path))
-    except ArchiveManifestError as exc:
-        raise ValueError(str(exc)) from exc
-    if not isinstance(data, Mapping):
-        raise ValueError("asset manifest root must be an object")
-    errors: list[str] = []
-    if data.get("schema") != 1: errors.append("schema must be 1")
-    if data.get("tier") != "LIGHT": errors.append("only LIGHT is an approved initial tier")
-    if data.get("application_id") != "io.godstone.app": errors.append("application identity mismatch")
-    if data.get("status") != "approved" or data.get("production_ready") is not True:
-        errors.append("asset manifest is not approved for production")
-    assets = data.get("assets")
-    if not isinstance(assets, list):
-        errors.append("assets must be an array"); assets = []
-    staged: list[tuple[Path, str]] = []
-    roles: set[str] = set()
-    names: set[str] = set()
-    sources_seen: set[Path] = set()
-    archive_path: Path | None = None
-    for index, item in enumerate(assets):
-        if not isinstance(item, Mapping):
-            errors.append(f"assets[{index}] is not an object"); continue
-        role, name = str(item.get("role", "")), str(item.get("name", ""))
-        if role not in ALLOWED_ROLES: errors.append(f"assets[{index}].role is invalid")
-        if role in roles: errors.append(f"duplicate asset role: {role}")
-        roles.add(role)
-        if name not in ALLOWED_NAMES: errors.append(f"assets[{index}].name is invalid or cross-tier")
-        if name in names: errors.append(f"duplicate asset name: {name}")
-        names.add(name)
-        source_ref = str(item.get("source", ""))
-        if "\0" in source_ref:
-            errors.append(f"assets[{index}].source bears a NUL byte"); continue
-        source = (root / source_ref).resolve()
-        try: source.relative_to(root)
-        except ValueError: errors.append(f"assets[{index}].source escapes manifest directory"); continue
-        if source in sources_seen:
-            errors.append(f"duplicate asset source: {source_ref}"); continue
-        sources_seen.add(source)
-        if not source.is_file(): errors.append(f"missing asset: {source}"); continue
-        if int(item.get("bytes", -1)) != source.stat().st_size: errors.append(f"size mismatch: {name}")
-        expected = str(item.get("sha256", ""))
-        if len(expected) != 64 or sha256(source) != expected: errors.append(f"SHA-256 mismatch: {name}")
-        staged.append((source, name))
-        if role == "archive": archive_path = source
-    if roles != {"archive"} and "archive" not in roles:
-        errors.append("exactly one Archive is mandatory")
-    if archive_path is not None:
-        manifest_ref = data.get("archive_manifest")
-        trust_ref = data.get("archive_trust_store")
-        if not manifest_ref or not trust_ref:
-            errors.append("signed archive manifest and trust store are required")
-        else:
-            refs: list[Path] = []
-            for label, ref in (("archive_manifest", manifest_ref),
-                               ("archive_trust_store", trust_ref)):
-                text_ref = str(ref)
-                if "\0" in text_ref:
-                    errors.append(f"{label} bears a NUL byte"); break
-                candidate = (root / text_ref).resolve()
-                try:
-                    candidate.relative_to(root)
-                except ValueError:
-                    errors.append(f"{label} escapes the manifest directory")
-                    break
-                refs.append(candidate)
-            if len(refs) == 2:
-                try:
-                    result = verify_manifest(
-                        refs[0], archive_path, load_trust_store(refs[1]),
-                        expected_tier="LIGHT", expected_archive_schema=3,
-                    )
-                    errors.extend(result.errors)
-                except (OSError, json.JSONDecodeError,
-                        ArchiveManifestError) as exc:
-                    errors.append(f"archive signature evidence unreadable: {exc}")
-    if errors:
-        raise ValueError("release assets rejected:\n- " + "\n- ".join(errors))
-    # the deputy reporteth the staged pairs as the old courts received them
-    return dict(data), staged
+def _validate_legacy_deputy(manifest_path: Path):
+    """REMOVED BY GS-CONTENT-003. This face read `archive_manifest` and
+    `archive_trust_store` FROM THE BUNDLE ITSELF, so a bundle could nominate the key that
+    signed it. It is kept only as a REFUSAL, so that any caller which still reacheth it is
+    told why rather than silently obtaining the bypass the audit reproduced.
+    """
+    raise ValueError(
+        "the legacy deputy face is removed: a bundle may not nominate the trust store "
+        "that verifieth it (GS-CONTENT-003); select the trust store explicitly with "
+        "--trust-store")
 
 
 def validate(manifest_path: Path, *, trust_store_path: Path | None = None,
@@ -510,17 +428,26 @@ def validate(manifest_path: Path, *, trust_store_path: Path | None = None,
     document's own pointers and bindeth the same verifier. The deputy
     faceth never publish'th, so a held-out evaluation -- which existeth to
     be published beside staged bytes -- is refused there by name."""
-    if trust_store_path is not None:
-        return _validate_operator_selected(
-            manifest_path, trust_store_path=trust_store_path,
-            heldout_evaluation=heldout_evaluation, heldout_manifest=heldout_manifest,
-            model_lock_path=model_lock_path,
-            require_heldout_evaluation=require_heldout_evaluation)
+    if trust_store_path is None:
+        # GS-CONTENT-003: THE DEPUTY FACE IS GONE. It read the trust store FROM THE BUNDLE,
+        # which meant a bundle could nominate the very key that signed it -- the audit
+        # reproduced that `prep.validate(bundle)` returned successfully for a bundle naming
+        # `attacker-trust.json` signed by `ATTACKER-NOT-OPERATOR`. The T51 law is now
+        # unconditional on EVERY path, including --check-only: the trust store is selected
+        # by the operator, never by the manifest it is used to judge.
+        raise ValueError(
+            "the trust store is selected by the operator, never by the manifest: pass "
+            "--trust-store <operator trust store>; a bundle may not nominate the key that "
+            "signeth it (the default release-validation path refuseth this by name)")
     if heldout_evaluation is not None or require_heldout_evaluation:
         raise ValueError(
             "a held-out evaluation is the operator-selected face's law: staging "
             "requireth --trust-store before an evaluation can be bound to it")
-    return _validate_legacy_deputy(manifest_path)
+    return _validate_operator_selected(
+        manifest_path, trust_store_path=trust_store_path,
+        heldout_evaluation=heldout_evaluation, heldout_manifest=heldout_manifest,
+        model_lock_path=model_lock_path,
+        require_heldout_evaluation=require_heldout_evaluation)
 
 
 def publish_verified(name: str, source: Path, *, output: Path,
