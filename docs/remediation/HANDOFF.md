@@ -42,6 +42,32 @@ already carried. The audit's step 3 stays OPEN, with its two measured obstacles 
 | CRYPTO-003 | FIX_SUBMITTED | 4b | Destroyed retained controllers and primitive sessions st |
 | CRYPTO-006 | FIX_SUBMITTED | 4b | Duplicate journal admission is treated as success for a |
 
+## DO THIS FIRST (round 102) — THE OPERATOR PAIR'S SECOND PAIR-OF-RENAMES, WITH ITS RED ALREADY CAPTURED
+
+`scripts/prepare_release_assets.py::publish_verified` replaceth its ARCHIVE and its APPROVED MANIFEST
+with **TWO INDEPENDENT `os.replace` calls** (lines 536 and 548), with **no journal, no commit states
+and no recovery consumer**, while `build_archive.publish_archive_pair` has all three. A crash between
+them leaves an approved manifest describing bytes that are not there, **permanently**: the shared
+consumer (`build_archive.recover_publication`) cannot help, because no journal existeth for that pair.
+
+THE RED IS CAPTURED AND PARKED OUTSIDE THE LANES (a red arm may not sit in a lane expected green):
+
+    python3 tools/readiness/audit_probes/python/audit004_operator_pair_probe.py
+    -> 1 test, 1 FAILURE, on its OWN assertion ("the approved manifest describeth bytes that are
+       not there, and no journal existeth for the staging pair")
+    log: REMEDIATION/GS-CONTENT-002/red/audit004-second-pair-RED-*.log (sha256 17d7ce33...)
+
+THE ROUTE, AND THE TRAP MEASURED THE HARD WAY (round 102, code WITHDRAWN BEFORE COMMIT): routing the
+staging pair through the shared journal was implemented -- `write_publication_journal(companion=...)`,
+`clear_publication_state`, a companion-aware `recover_publication`, and `_restore_pair` in the staging
+face -- and it WORKED for its own arm. It was withdrawn because **the journal and the rollback
+directory land INSIDE the operator output directory**, which `stage()` enumerateth exactly and which
+the T77 rehearsal court asserteth at EVERY publication boundary: measured cost **5 failures + 6 errors
+in the readiness lane and 1 error in the content lane**. So the NEXT round must move the journal's
+LOCATION (or teach those courts what a publication-internal artifact is) TOGETHER WITH the change --
+not discover the collision again. Start with the T77 estate courts and
+`ReleaseAssetTests.test_source_mutation_during_copy_preserves_existing_output`.
+
 ## DO THIS FIRST (round 97) — THE AUDITOR'S OWN PROBE SUITE IS THE PRIORITY, AND IT IS EXECUTABLE
 
 `AUDIT_FINAL_2026-09-15/evidence/AUDIT-004/independent_repair_probes_v2.py` is the INDEPENDENT
