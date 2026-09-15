@@ -912,8 +912,18 @@ final class AckObligationDriver: @unchecked Sendable {
             // store an unverified frame as VERIFIED_RECIPIENT and retire the obligation. The
             // verification is likewise no longer CONDITIONAL: the authenticator resolves the pinned key
             // for the CLAIMED node id itself, so calling it is what binds the frame to that identity.
-            guard resolver.publicSigningKey(forNodeId: claimed) != nil else {
+            guard let pinnedKey = resolver.publicSigningKey(forNodeId: claimed) else {
                 keyUnavailable += 1; continue
+            }
+            // GS-ACK-001 step 3, IN FORM: the pinned key must be the SIZE of an Ed25519 signing public
+            // key, and it must DERIVE the claimed recipient's node id under the frozen BLAKE2s128
+            // binding. A malformed key is retryable unavailability; a key deriving a DIFFERENT node id
+            // is a MISMATCH and is refused.
+            guard pinnedKey.count == 32 else {
+                keyUnavailable += 1; continue
+            }
+            guard SignedMessageV1.nodeIdOf(pinnedKey) == claimed else {
+                failures += 1; continue
             }
             guard authenticator.verify(originalMsgId: ob.msgId, expectedRecipientNodeId: claimed,
                                        ackFrame: frame) else {

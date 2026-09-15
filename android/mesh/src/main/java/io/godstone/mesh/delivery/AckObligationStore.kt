@@ -927,6 +927,24 @@ internal class AckObligationDriver(
                 keyUnavailable++
                 continue
             }
+            // GS-ACK-001 step 3, IN FORM: the pinned key must be the SIZE of an Ed25519 signing public
+            // key (32), and it must DERIVE the claimed recipient's node id under the frozen BLAKE2s128
+            // binding. A malformed key is retryable unavailability; a key that derives a DIFFERENT node
+            // id is a MISMATCH and is refused.
+            // the frozen Ed25519 signing public-key size
+            if (ownKey.size != 32) {
+                keyUnavailable++
+                continue
+            }
+            val derivedNodeId = try {
+                io.godstone.mesh.identity.Identity.nodeIdOf(ownKey)
+            } catch (_e: Throwable) {
+                null
+            }
+            if (derivedNodeId == null || !derivedNodeId.contentEquals(claimed)) {
+                failures++
+                continue
+            }
             val ok = try {
                 authenticator.verify(ob.msgId, claimed, frame)
             } catch (_e: Throwable) {
