@@ -187,7 +187,12 @@ class BleCentralOrchestrationDriver(
         }
         val conn = BleConnection(
             peerAddress.toByteArray(),
-            clock = connectionClockForTest ?: { System.currentTimeMillis() / 1000L },
+            // ANDROID-04 (the card's step 1): THE CONNECTION'S LEASE CLOCK IS MONOTONIC. The audited default
+            // was `System.currentTimeMillis() / 1000L` -- A WALL CLOCK, against which every lease deadline on
+            // this isle is computed, and which can be stepped BACKWARDS (NTP, a user, a hostile environment).
+            // The units are SECONDS, explicitly, from a monotonic source. This session already replaced this
+            // very default in the GOVERNOR (rounds 187/195) and the ADMISSION BUDGET (round 186).
+            clock = connectionClockForTest ?: { System.nanoTime() / 1_000_000_000L },
             relationGeneration = nextGen,
         )
         activeConnections[peerAddress] = conn
@@ -598,7 +603,12 @@ class BleServerOrchestrationDriver(
         admittedDevices.add(deviceAddress)
         val conn = BleConnection(
             deviceAddress.toByteArray(),
-            clock = connectionClockForTest ?: { System.currentTimeMillis() / 1000L },
+            // ANDROID-04 (the card's step 1): THE CONNECTION'S LEASE CLOCK IS MONOTONIC. The audited default
+            // was `System.currentTimeMillis() / 1000L` -- A WALL CLOCK, against which every lease deadline on
+            // this isle is computed, and which can be stepped BACKWARDS (NTP, a user, a hostile environment).
+            // The units are SECONDS, explicitly, from a monotonic source. This session already replaced this
+            // very default in the GOVERNOR (rounds 187/195) and the ADMISSION BUDGET (round 186).
+            clock = connectionClockForTest ?: { System.nanoTime() / 1_000_000_000L },
             relationGeneration = gen,
         )
         conn.transitionTo(BleConnectionState.PROVISIONAL_CONNECTED)

@@ -173,3 +173,13 @@ while the T20 court's own arm trips the **same** relation with the **same** cloc
 the job's sweep **swallowing an IO-dispatcher exception**. Next step: make that failure **observable** (record the throwable
 into the transport's own rejection census) and read what it says — a measurement, not a guess. The `leaseSweepIntervalMillis`
 seam it needs **already landed** (round 206).
+
+## Python probe — `python/test_connection_clock_monotonic.py` (ANDROID-04 step 1): LANDED (round 208)
+
+Written and **run RED first** here (W00 control passing after it caught its **own** miscount; the two defect arms
+failing), then **MOVED INTO `tools/readiness/tests/`** with the repair. It judged the connection's lease clock: the
+`BleOrchestrationDriver` created **every** connection with `connectionClockForTest ?: { System.currentTimeMillis() /
+1000L }` — a **wall clock** against which every lease deadline is computed, at **two** sites. The repair makes both
+monotonic (`System.nanoTime() / 1_000_000_000L`, seconds stated). The arm **strips comments before matching**, because a
+first draft banned the spelling across the whole file and tripped on the audit-trail comment the repair itself wrote —
+the same trap the repository's identity control taught at round 163.

@@ -46,7 +46,36 @@ already carried. The audit's step 3 stays OPEN, with its two measured obstacles 
 | CRYPTO-003 | FIX_SUBMITTED | 4b | Destroyed retained controllers and primitive sessions st |
 | CRYPTO-006 | FIX_SUBMITTED | 4b | Duplicate journal admission is treated as success for a |
 
-## DO THIS FIRST (round 207) — THE OWNED SWEEP'S SILENCE DIAGNOSED BY INSTRUMENT — AND THE CARD'S STEP 1 FOUND STILL STANDING FOR **CONNECTIONS**
+## DO THIS FIRST (round 208) — THE CARD'S STEP 1 LANDS FOR **CONNECTIONS** — AND THE SWEEP'S SILENCE SURVIVES IT, NARROWING THE DIAGNOSIS
+
+**The repair:** `BleOrchestrationDriver` creates every connection with a **monotonic** clock at **both** creation sites
+(`System.nanoTime() / 1_000_000_000L`, seconds stated explicitly), where the audited default was
+`System.currentTimeMillis() / 1000L` — a **wall clock** against which **every lease deadline on this isle** is computed,
+and which can be stepped *backwards*. This session had already replaced that very default in the **governor** (187/195)
+and the **admission budget** (186); the **connections** were the last place it stood.
+
+**The RED was canonical, and its own control caught its author:** three arms run **first** in the probes directory — and
+the **W00 control failed on its own miscount** (it asserted two occurrences of the seam where the file carries four: two
+declarations, two uses) before the defect arms were allowed to speak. **That is what a positive control is for.** A second
+self-inflicted trap, the same one the repository's identity control taught at round 163: the arm's blanket ban on the
+wall-clock spelling tripped on the **audit-trail comment the repair itself had written** above each site — the arm now
+**strips comments first**.
+
+**The measurement that makes this round more than a repair:** the parked **time-based witness was re-run with the
+repair — and it still fails.** So the wall-clock default was **not** the cause of the owned sweep's silence (a genuine
+defect, worth its own repair, now fixed — but not this one). The diagnosis stands **narrower** than before: the job is
+**armed ✓ ticking (14 ticks / 400 ms at 25 ms) ✓ failing not ✓**, and the sweep **finds nothing**, while the same call on
+the **test** thread trips the same relation — **both now using the same monotonic connection clock**.
+
+**The next instrument is named:** have the sweep **count what it iterated** (relations seen, leases examined, leases
+lapsed), so that "finds nothing" becomes "saw N relations, swept 0 leases" — which tells whether the **iteration** or the
+**expiry law** is silent.
+
+**Acceptance:** canonical arm **OK** and moved into `tools/readiness/tests/`; whole `:mesh` lane **1188 tests, 0
+failures**. The witness stays **parked with both measurements**; ANDROID-04 stays **FIX_SUBMITTED** with the time-based
+witness explicitly **owed**.
+
+## DO THIS FIRST (round 207, landed) — THE OWNED SWEEP'S SILENCE DIAGNOSED
 
 **The instruments narrowed it, and the measurement is decisive:** the job now **records its own failure** in the
 transport's census (`CancellationException` rethrown, so its own cancellation is never mistaken for a failure) and
