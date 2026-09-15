@@ -577,6 +577,10 @@ def recover_publication(destination: Path) -> str:
             # terminal record): keep it rather than destroying a complete generation
             _write_journal(destination, "recovered", previous)
             _fsync_directory(destination.parent)
+            # ORPHAN CLEANUP (AUDIT-004 step 5): the resolved generation is WHOLE, so the
+            # rollback target of the interrupted one has no further role and must not linger.
+            shutil.rmtree(destination.parent / f".{destination.name}.previous",
+                          ignore_errors=True)
             return "clean"
         if not previous:
             return "unavailable"
@@ -592,6 +596,10 @@ def recover_publication(destination: Path) -> str:
         if _pair_is_consistent(destination, sidecar):
             _write_journal(destination, "recovered", previous)
             _fsync_directory(destination.parent)
+            # ORPHAN CLEANUP (AUDIT-004 step 5): the previous generation is BACK and whole, so
+            # the rollback target of the interrupted one is done with.
+            shutil.rmtree(destination.parent / f".{destination.name}.previous",
+                          ignore_errors=True)
             return "rolled_back"
     return "unavailable"
 
