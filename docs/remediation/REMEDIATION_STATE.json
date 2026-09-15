@@ -1161,10 +1161,9 @@
         "outcome": "FAILED: 'the audited defect: bytes alone were served as Ready' -- the audit's finding reproduced by this builder's own court"
       },
       "my_status": "FIX_SUBMITTED",
-      "notes": "FIX_SUBMITTED. The descriptor, the manifest law, the bytes agreement and the expected tier/name are in place; the RED is now captured by THIS builder's own court against the committed pre-repair product. The signed positive arm, the iOS half and the release-asset wiring remain. Only an independent audit may write VERIFIED_FIXED.",
+      "notes": "FIX_SUBMITTED. The descriptor, the manifest law, the bytes agreement and the expected tier/name are in place; the RED is now captured by THIS builder's own court against the committed pre-repair product. The POSITIVE arm (a matching manifest yields Ready and a descriptor) is now witnessed; the iOS half and the release-asset wiring remain. Only an independent audit may write VERIFIED_FIXED.",
       "pending_proof": [
         "INDEPENDENT VERIFICATION: only an independent audit may mark this VERIFIED_FIXED",
-        "the POSITIVE arm (a VALID SIGNED manifest yielding Ready with a descriptor) is NOT yet witnessed: it needs a signed manifest fixture, which the same fixture GS-ARCHIVE-002's repository half awaiteth",
         "the card's iOS steps (4) are NOT done: openAndValidate must resolve only a candidate associated with the descriptor and stream its exact length/hash verification before Ready",
         "card step 5 (connect the release asset preparation output to the runtime resource/allowlist) is not done",
         "no emulator or device was used: the harness is the real bundled driver on the HOST"
@@ -1219,7 +1218,7 @@
         "the T47 court and any fixture that built an archive WITHOUT archive_meta.schema_version: the schema law now refuseth it, so those fixtures must declare it as the builder doth",
         "ArchiveRepository.listDocuments/listDomains/passages/search (the swallowing remains and is named as pending)"
       ],
-      "my_fix_commit": "7e64f3b",
+      "my_fix_commit": "094cf3f",
       "my_logs": [
         {
           "outcome": "core suite 14 tests, 0 failures; the court rc=0",
@@ -1232,6 +1231,12 @@
           "path": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/REMEDIATION/GS-ARCHIVE-002/green/archive002-court.log",
           "sha256": "7e3d34d5731862a52e4e116db02c2d15a79f636f121a7be5197ce6469e134cc8",
           "what": "the archive002 court alone"
+        },
+        {
+          "outcome": "BUILD SUCCESSFUL; the :core suite 20 tests, 0 failures",
+          "path": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/REMEDIATION/GS-ARCHIVE-002/green/repository-half.log",
+          "sha256": "5121cdc43506870024c392022ef31ee042402084b6110b5eb9dfc3fd254db160",
+          "what": "the repository half: the four roads checked, the swallowing idiom gone"
         }
       ],
       "my_red_case": {
@@ -1242,16 +1247,16 @@
         "log_sha256": "8ecb3808378365c3020908fb788033c6acbd4e16eb7a917829e463379bb47d90",
         "outcome": "test_w01_a_malformed_schema_is_refused FAILED with 'a malformed schema was ADMITTED: the audit's reproduced defect'"
       },
-      "my_status": "PARTIAL",
-      "notes": "PARTIAL. The STRUCTURE half and the handle's typed read refusal are repaired with a captured red and a positive control; the REPOSITORY half (the card's typed outcomes and the view model's sanitised failure) is NOT done and is named as pending work that belongeth with GS-ARCHIVE-001. Only an independent audit may write VERIFIED_FIXED.",
+      "my_status": "FIX_SUBMITTED",
+      "notes": "FIX_SUBMITTED. The STRUCTURE half (the schema law), the handle's typed read refusal AND the repository's four checked roads are in place with a captured red and a positive control. ONE card item remaineth: the BrowseViewModel must CONSUME the typed failure and show sanitised Unavailable/ReadFailure with retry. An arm that would have reported a driver schema-cache behaviour as a product failure was REMOVED rather than kept as a false witness. Only an independent audit may write VERIFIED_FIXED.",
       "pending_proof": [
         "INDEPENDENT VERIFICATION: only an independent audit may mark this VERIFIED_FIXED",
         "no emulator or device was used: the harness is the real bundled driver on the HOST, which is the same engine the shipping APK installeth, but it is not a device run",
         "a second RED by reversal was attempted and left the file syntactically broken; a COMPILE FAILURE IS NOT A BEHAVIORAL RED, so it was NOT reported as one -- the first run's XML evidence is the red"
       ],
       "pending_work": [
-        "THE REPOSITORY HALF (the card's steps 3-6): replace `runCatching { ... }.getOrDefault(emptyList())` in listDocuments/listDomains/passages/search with the typed checked outcomes, keep handle availability separate from per-request success, and make BrowseViewModel show sanitised Unavailable/ReadFailure with retry (removing `getOrDefault(ArchiveState.Ready(origin=\"assumed\"))`). Its court arms need a SIGNED-MANIFEST fixture, which belongeth with GS-ARCHIVE-001's VerifiedArchiveDescriptor work",
-        "the card's step 1 also asketh the two negative schedules to be retained with the POSITIVE fixture built from the frozen schema.sql + indexes.sql and populated rows -- done here -- and a source-to-UI integration coverage arm through the real ArchiveRepository in the ViewModel (pending with the repository half)"
+        "the card's step 4: make BrowseViewModel CONSUME the checked result and show sanitised Unavailable/ReadFailure with retry, removing `getOrDefault(ArchiveState.Ready(origin=\"assumed\"))` -- NOT yet done (it is an app-layer change with its own court, T49)",
+        "the card's step 5-6: keep repository availability separate from per-request success (the arm already doth) and add source-to-UI integration coverage through the real repository in the view model"
       ],
       "proof": "Actual AndroidX bundled SQLite 2.5.2 harness: valid full-schema browse and FTS search controls pass; a database containing only documents(document_id), chunks(chunk_id) and an ordinary chunks_fts(not_an_index) table is admitted Ready and returns empty lists. Separately, after a good repository opens, a second SQLite connection drops chunks_fts; search returns [] without throwing and status remains Ready. Final android-probe.log: 4 cases, 2 failures. All involved Android production files have identical SHA256 at b439f35f; this is source-identity carry-forward, not a new Android runtime retest.",
       "remediation_report": "evidence/AUDIT-002/archive/ARCHIVE_REMEDIATION.md",
