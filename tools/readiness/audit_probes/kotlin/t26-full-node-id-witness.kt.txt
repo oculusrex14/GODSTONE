@@ -1,0 +1,47 @@
+// ANDROID-07 / T26 STEP 2 -- THE FULL-NODEID WITNESS, PARKED (ledger round 191).
+//
+// MEASURED, AND THE MEASUREMENT IS THE ROUND'S DELIVERABLE: the first attempt at charging authenticated
+// traffic on "the immutable FULL NodeID" added `SessionManager.authenticatedNodeIdOf(peerId)` -- deriving
+// the sixteen-octet NodeID from `TrustedHandshakeController.authenticatedRemoteStaticKey` under the peer
+// lock -- and this witness drove it through a REAL trusted handshake (ReadinessT17Test's rig):
+//
+//   * BEFORE trust: null  ✓ as designed;
+//   * AFTER `completeTrust()`: NULL TOO.
+//
+// So THE CRYPTO LAYER DOES NOT SURFACE THE AUTHENTICATED REMOTE STATIC KEY THROUGH THE SESSION MANAGER at
+// READY: the accessor's value is always null in practice, the collector's charge would therefore ALWAYS
+// fall back to the six-octet relation handle, and the "full NodeID" half would be DEAD CODE wearing the
+// card's own words. THAT IS WHY THE PRODUCTION EDITS WERE REVERTED RATHER THAN COMMITTED -- a charge
+// claimed on an identity that is never available would be an unverifiable claim, which this programme
+// refuseth.
+//
+// THE NEXT STEP, NAMED (a CRYPTO-layer change, not a transport one):
+//   1. find where the authenticated remote static key survives to READY: `NoiseSession.remoteStaticKey`
+//      (:74) is set during the handshake and CLEARED on `destroy` (:301); `TrustedHandshakeController`
+//      exponeth it (:91) and ALSO carrieth its own `authenticatedRemoteStaticKey` (:126) -- so the
+//      question is whether the SLOT's controller still holdeth a live session at READY, or whether the
+//      session is torn down once trust is marked (the T38/T23 courts may answer it);
+//   2. if the key is cleared by design, the SLOT must RETAIN the DERIVED NODE ID (sixteen octets, from
+//      `IdentityBindingV1.deriveNodeId`) at the moment trust is marked -- a small, honest addition that
+//      the transport can then charge on; if it is merely unreachable, expose it under the peer lock.
+//   3. THEN re-attempt this witness unchanged: it asserteth the authenticated identity is the PEER'S
+//      FULL NodeID (sixteen octets, equal to the peer's own identity) and NULL before trust.
+//
+// The witness text, unchanged from the attempt:
+//
+//     @Test
+//     fun testTheAuthenticatedNodeIdIsThePeersFullIdentityAndOnlyAfterTrust() {
+//         val rig = rig()
+//         try {
+//             val six = rig.peerIdTowardsBob()
+//             assertNull("before any trust there is NO authenticated identity to charge",
+//                 rig.pair.smA.authenticatedNodeIdOf(six))
+//             rig.completeTrust()
+//             val nodeId = rig.pair.smA.authenticatedNodeIdOf(six)
+//                 ?: error("after a trusted handshake the authenticated identity must be answerable")
+//             assertEquals(16, nodeId.size)
+//             assertEquals(rig.pair.bob.nodeId.toList(), nodeId.toList())
+//         } finally {
+//             rig.stop()
+//         }
+//     }

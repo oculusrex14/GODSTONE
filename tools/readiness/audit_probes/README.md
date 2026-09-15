@@ -106,3 +106,13 @@ file was deleted with the repair in the same round. Its captured red stays on th
 passing). The repair: a NEW `InFlightAwareTransport` capability, `LifecycleTransportAdapter.awaitInFlight`
 overriding the seam's do-nothing default and delegating through `as?`, and `BleTransport` implementing it with a
 MEASURED bounded count over its own in-flight work.
+
+## Kotlin probe — `kotlin/t26-full-node-id-witness.kt.txt` (ANDROID-07 / T26 step 2's full-NodeID half)
+
+Parked, **not** red-by-design: this witness was RUN (through `ReadinessT17Test`'s real trusted handshake) and it
+**failed on a measurement rather than on an absence** — `SessionManager.authenticatedNodeIdOf(peerId)` answers
+**null before AND after trust**, so the crypto layer does not surface the authenticated remote static key through the
+SessionManager at READY. The production edits it judged were therefore **reverted** (no red lane, no unverifiable
+claim), and the witness is kept here with its measurement and its named next step so the next attempt begins from a
+witness rather than a search. **When the crypto-layer step lands, this witness moves INTO `ReadinessT17Test`** — the
+court whose rig owns the real handshake — and this section is deleted.
