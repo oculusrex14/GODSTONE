@@ -260,12 +260,21 @@ class ReadinessT21Test {
             bob.serverDriver.getInboundConnection(aliceAddress) ?: error("the responder has no connection")
 
         /** The happy path of the initiator, through the transport's own entries. */
-        fun bringUpInitiatorLadder() {
+        /**
+         * [withScanMetadata] stands for the ADVERTISEMENT's shape: the 13-byte LinkInfo
+         * service data is OPTIONAL, and a canonical (UUID-only) advertiser -- the
+         * INTEROPERABLE case the audit names -- carries none, so the platform hands the
+         * scan callback null metadata. ANDROID-02: the GATT LinkInfo read is what binds
+         * the relation's hint in BOTH shapes.
+         */
+        fun bringUpInitiatorLadder(withScanMetadata: Boolean = true) {
             val ctx = alice.openScanContextForTest()
             assertTrue("the scan admission is accepted",
                        alice.handleScanEvent(ScanEvent(ctx, 1, bobAddress, -55,
-                                                      BleLinkInfoV1(nodeHint = pair.bob.nodeHint,
-                                                                    shortDigest = ByteArray(6)))))
+                                                      if (withScanMetadata)
+                                                          BleLinkInfoV1(nodeHint = pair.bob.nodeHint,
+                                                                        shortDigest = ByteArray(6))
+                                                      else null)))
             val driver = alice.centralDriver
             driver.onGattConnected(bobAddress, 1L, 1L)
             driver.onServicesDiscovered(bobAddress, true, 1L, 1L)
@@ -1101,4 +1110,35 @@ class ReadinessT21Test {
         }
     }
 
+
+    // ---------------------------------------------------------------------------------
+    // ANDROID-02: a CANONICAL advertisement carrieth no service data.
+    //
+    // The audit's failure schedule, verbatim in shape: canonical scan with null metadata
+    // -> a valid GATT LinkInfo read -> roles bound -> HS1 -> an authentic HS2 ->
+    // `no remembered discovery hint` -> the initiator closeth before HS3. The scan
+    // metadata (BleLinkInfoV1) exists ONLY when the advertisement carries the optional
+    // 13-byte LinkInfo service data; the GATT LinkInfo READ is what binds the relation's
+    // hint, and that is the authority. This arm drives the whole trusted exchange from a
+    // canonical advertisement, through the transport's own entries, and demands the
+    // trusted READY.
+    // ---------------------------------------------------------------------------------
+    @Test
+    fun testTheCanonicalAdvertisementWithoutServiceDataStillReachethTheTrustedReady() {
+        val rig = rig()
+        try {
+            rig.bringUpInitiatorLadder(withScanMetadata = false)
+            rig.bringUpResponderLadder()
+            assertEquals("the initiator must still stand role bound upon the GATT LinkInfo alone",
+                         BleConnectionState.ROLE_BOUND, rig.initiatorConnection().state)
+            assertTrue("the GATT-bound hint must be the relation's hint",
+                       rig.initiatorConnection().remoteNodeHint!!.contentEquals(rig.pair.bob.nodeHint))
+            // the whole trusted exchange: HS1 -> authentic HS2 -> HS3 -> both READY
+            driveToReady(rig)
+            assertTrue("the GATT-bound relation's hint must survive the exchange",
+                       rig.initiatorConnection().remoteNodeHint!!.contentEquals(rig.pair.bob.nodeHint))
+        } finally {
+            rig.stop()
+        }
+    }
 }

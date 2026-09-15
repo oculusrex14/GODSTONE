@@ -1580,10 +1580,19 @@ class BleTransport(
             closeInitiatorRelation(peerAddress)
             return
         }
-        val advertised = discoveryIndexMetadataHint(peerAddress) ?: run {
-            // the full immutable advertised hint is an item of the relation's
-            // trust: without it the exchange can not proceed
-            recordRejection(conn.peerId, "hs.read.initiator", "no remembered discovery hint")
+        // ANDROID-02: the hint authority for an ALREADY-BOUND relation is the GATT-bound
+        // relation, and only that. This site used to take the hint from the DISCOVERY
+        // INDEX metadata, which is populated SOLELY from the optional 13-byte LinkInfo
+        // service data in the ADVERTISEMENT -- and a canonical (UUID-only) advertiser, the
+        // INTEROPERABLE case this transport documents, carries none. So a valid peer was
+        // refused here with `no remembered discovery hint` and the initiator closed before
+        // HS3. The mandatory GATT LinkInfo value is what binds the relation
+        // (`bindInitiatorAfterLinkInfoWriteAck` -> `bindRoleInternal`, which validates it as
+        // exactly NODE_HINT_BYTES), so the BOUND value is read instead. Discovery metadata
+        // stays a DISCOVERY hint and is never authority for a bound relation, and the
+        // relation's own binding is refused -- not zero-filled -- when it is unbound.
+        val boundRemoteHint = conn.remoteNodeHint ?: run {
+            recordRejection(conn.peerId, "hs.read.initiator", "no gatt-bound node hint")
             closeInitiatorRelation(peerAddress)
             return
         }
@@ -1593,7 +1602,7 @@ class BleTransport(
             recordRejection(conn.peerId, "hs.read.initiator", "hs2 duplicate hearkened not")
             return
         }
-        val hs3 = registry.initiatorProcessHs2(conn.peerId, record.payload, advertised) ?: run {
+        val hs3 = registry.initiatorProcessHs2(conn.peerId, record.payload, boundRemoteHint) ?: run {
             // trust rejected: HS3 is withheld and the exact relation closes
             recordRejection(conn.peerId, "hs.read.initiator", "hs2 rejected")
             closeInitiatorRelation(peerAddress)
@@ -1663,9 +1672,6 @@ class BleTransport(
         handleCentralDisconnected(peerAddress, client.clientToken, client.gattGeneration)
         centralWriters.remove(peerAddress)
     }
-
-    private fun discoveryIndexMetadataHint(peerAddress: String): ByteArray? =
-        discoveredMetadataForTest(peerAddress)?.nodeHint?.copyOf()
 
     /** The responder's record writer: handshake fragments travel to the
      *  subscribed peer over the server's notification outlet. */
