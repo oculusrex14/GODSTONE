@@ -481,6 +481,15 @@ class BleTransport(
      * arrival, never inferred from a current-state lookup afterwards.
      */
     fun handleScanEvent(result: ScanEvent): Boolean {
+        // ANDROID-07 / T26 (the card's step 1, the GLOBAL half): THE RAWEST PRE-AUTH TRAFFIC IS THE
+        // ADVERTISEMENT -- it arriveth before any relation, any parse and any session. Charged FIRST,
+        // whatever its context: a flood of advisements is radio work whether or not it belongeth to the
+        // current scan epoch.
+        if (admissionBudget.chargeGlobal(RAW_ADVERTISEMENT_BYTES) == AdmissionBudget.Verdict.REFUSED) {
+            recordRejection(ByteArray(0), "admission.budget",
+                "global pre-auth admission budget exhausted at the scan door")
+            return false
+        }
         val context = result.context
         if (!isStarted) {
             return false
@@ -1954,6 +1963,8 @@ class BleTransport(
         const val MAX_DISCOVERED_PEERS = 64
         const val MAX_ACTIVE_CONNECTIONS = 7
         const val PROVISIONAL_TIMEOUT_MS = 10000L
+        /** ANDROID-07 / T26: what one RAW advertisement chargeth in the global budget. */
+        internal const val RAW_ADVERTISEMENT_BYTES = 64
         /** ANDROID-05 (step 3): how oft the bounded drain re-measureth while it waiteth. */
         internal const val POLL_MILLIS = 5L
         const val LINK_LAYER_READY = false

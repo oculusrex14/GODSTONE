@@ -46,7 +46,36 @@ already carried. The audit's step 3 stays OPEN, with its two measured obstacles 
 | CRYPTO-003 | FIX_SUBMITTED | 4b | Destroyed retained controllers and primitive sessions st |
 | CRYPTO-006 | FIX_SUBMITTED | 4b | Duplicate journal admission is treated as success for a |
 
-## DO THIS FIRST (round 188) — ANDROID-07 / T26 STEP 2: THE POST-AEAD CHARGE ON THE AUTHENTICATED IDENTITY
+## DO THIS FIRST (round 189) — ANDROID-07 / T26: THE **GLOBAL** HALF OF STEP 1 — RAW AIR TRAFFIC IS NOW CHARGED AT THE SCAN DOOR
+
+**A gap in the same family, found by reading the doors rather than the card:** rounds 186–188 charged the two *relation*
+doors and the post-AEAD road, but `handleScanEvent` — the door through which an **advertisement** arrives, **before any
+relation, any parse and any session** — charged **nothing**. A flood of advertisements was free radio work: the card's
+own phrase ("miss raw traffic") in its rawest form.
+
+**The RED is behavioural, through the real door:** W12 floods **70,000 advertisements** through `handleScanEvent` with a
+real scan context and reads the transport's own rejection census — **0 refusals** on the unmodified tree, captured with
+argv, source SHA and digest.
+
+**The measurement that sized the repair — and why it had to be a GLOBAL scope:** `ReadinessT11Test` drives **ten
+thousand** scan observations **twice** (lines 279, 314) — the DIAG-001 churn witnesses — so a *per-relation* bound (my
+256-relation bound, or any allowance below ten thousand) would have **refused legitimate host-side churn and broken those
+courts**. The card asks for a "GLOBAL/relation" budget, so the **global scope is the right instrument**: `chargeGlobal()`
+on `AdmissionBudget` with its own window, charged **first** in `handleScanEvent` whatever the context, and an allowance
+(**65,536 records / 64 MiB per window**) reasoned from **physical advertising rates** (tens per second per advertiser)
+rather than from a host loop — that reasoning is written into the constant.
+
+**Acceptance:** whole `:mesh` lane **1185 tests, 0 failures, 0 errors** (1184 + W12), **including T11's two
+ten-thousand-observation loops**.
+
+**Step 4's remainder, advanced rather than claimed done:** the T26 court now carries **five ingress-level witnesses**
+(W08 both relation doors, W09 the central door before parsing, W10 the production bound, W11 the production clock, W12 the
+scan door) beside the seven unit ones, which the card allows to be **retained as local coverage**. What remains:
+**re-labelling the seven** so no reader mistakes a unit witness for an ingress one, and the **downstream counters** the
+card asks for (the transport now exposes the authenticated-scope counters and `refusedCount`/`trackedRelations`; wiring
+them to a reported counter surface is the last piece).
+
+## DO THIS FIRST (round 188, landed) — ANDROID-07 / T26 STEP 2
 
 **The defect, pinned to the exact arm:** in `BleTransport.received()`'s collector, `openWithResult` decides and the
 `Authenticated` arm hands the plaintext to the key-confirmation door or to the application (`trySend`) — **charged

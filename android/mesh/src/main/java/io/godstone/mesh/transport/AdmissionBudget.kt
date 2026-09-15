@@ -29,12 +29,15 @@ class AdmissionBudget(
     private val maxTrackedRelations: Int = DEFAULT_MAX_TRACKED_RELATIONS,
     private val recordsPerRelation: Int = DEFAULT_RECORDS_PER_RELATION,
     private val bytesPerRelation: Long = DEFAULT_BYTES_PER_RELATION,
+    private val globalRecordsPerWindow: Int = DEFAULT_GLOBAL_RECORDS_PER_WINDOW,
+    private val globalBytesPerWindow: Long = DEFAULT_GLOBAL_BYTES_PER_WINDOW,
 ) {
     enum class Verdict { ADMITTED, REFUSED }
 
     private class Window(var records: Int, var bytes: Long, var sinceMillis: Long)
 
     private val windows = HashMap<String, Window>()
+    private val globalWindow = Window(0, 0L, 0L)
     private val refused = AtomicLong(0L)
     private val admittedValues = AtomicLong(0L)
 
@@ -83,6 +86,37 @@ class AdmissionBudget(
     fun chargeAuthenticated(authenticatedId: ByteArray, bytes: Int): Verdict =
         charge(AUTHENTICATED_PREFIX + authenticatedId.joinToString("") { "%02x".format(it) }, bytes)
 
+    /**
+     * ANDROID-07 / T26 (the card's "GLOBAL/relation"): THE GLOBAL SCOPE. Charged for RAW AIR TRAFFIC --
+     * an advertisement arriveth before any relation, before any parse and before any session, so it
+     * can be keyed by NOTHING but the fact of its arrival. Its allowance sitteth FAR ABOVE any physical
+     * rate (BLE advertising is tens of advertisements per second per advertiser) while still bounding a
+     * flood, and it is DELIBERATELY generous relative to the host-side churn witnesses, which drive ten
+     * thousand observations in a loop and are not air traffic at all.
+     */
+    fun chargeGlobal(bytes: Int): Verdict {
+        val now = nowMillis()
+        synchronized(globalWindow) {
+            if (now < globalWindow.sinceMillis) {
+                globalWindow.sinceMillis = now
+            } else if (now - globalWindow.sinceMillis >= WINDOW_MILLIS) {
+                globalWindow.sinceMillis = now
+                globalWindow.records = 0
+                globalWindow.bytes = 0L
+            }
+            val charge = if (bytes < 0) 0 else bytes
+            if (globalWindow.records + 1 > globalRecordsPerWindow ||
+                globalWindow.bytes + charge > globalBytesPerWindow) {
+                refused.incrementAndGet()
+                return Verdict.REFUSED
+            }
+            globalWindow.records += 1
+            globalWindow.bytes += charge
+            admittedValues.incrementAndGet()
+            return Verdict.ADMITTED
+        }
+    }
+
     /** Observation for courts and counters: how many values the budget admitted. */
     fun admittedCount(): Long = admittedValues.get()
 
@@ -102,6 +136,9 @@ class AdmissionBudget(
         const val DEFAULT_RECORDS_PER_RELATION = 2048
         const val DEFAULT_BYTES_PER_RELATION = 1024L * 1024L
         const val WINDOW_MILLIS = 1_000L
+        /** The GLOBAL scope's allowance: far above any physical advertising rate, still finite. */
+        const val DEFAULT_GLOBAL_RECORDS_PER_WINDOW = 65_536
+        const val DEFAULT_GLOBAL_BYTES_PER_WINDOW = 64L * 1024L * 1024L
         /** The authenticated scope key prefix: it may never collide with a pre-auth address. */
         const val AUTHENTICATED_PREFIX = "authenticated:"
     }

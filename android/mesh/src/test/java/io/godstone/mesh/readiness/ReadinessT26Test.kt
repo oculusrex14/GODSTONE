@@ -58,6 +58,27 @@ class ReadinessT26Test {
      *  frames, from an address with NO connection, must be CHARGED and REFUSED at the ingress door.
      */
     @Test
+    fun testW12RawAirTrafficIsChargedAtTheScanDoorToo() {
+        // ANDROID-07 / T26 (the card's step 1, "GLOBAL/relation"): the RAWEST pre-auth traffic is the
+        // ADVERTISEMENT -- it arriveth before any relation, before any parse, and before any session.
+        // The audited road chargeth nothing for it, so a flood of advertisements is free radio work.
+        val transport = io.godstone.mesh.transport.BleTransport(
+            serverStartAttempt = { true }, identity = identity())
+        transport.start()
+        val ctx = transport.openScanContextForTest()
+        for (i in 0 until 70_000) {
+            transport.handleScanEvent(io.godstone.mesh.transport.ScanEvent(
+                ctx, 1, "11:22:33:44:" + "%02X".format((i / 256) % 256) + ":" + "%02X".format(i % 256), -50, null))
+        }
+        val refusals = transport.rejectionRecordsForTest()
+            .count { it.site.contains("admission") || it.reason.contains("budget") }
+        assertTrue(
+            "a flood of RAW advertisements must be CHARGED at the scan door and eventually REFUSED; " +
+                "the audited road charged nothing for air traffic at all. Refusals seen: " + refusals,
+            refusals > 0)
+    }
+
+    @Test
     fun testW10TheGovernorsProductionBoundIsTheSpecifiedTwoHundredFiftySix() {
         // ANDROID-07 / T26 step 3: the card nameth the SPECIFIED bound -- 256 tracked identities --
         // and the audited governor defaulted to FOUR THOUSAND NINETY-SIX, i.e. a much larger registry
