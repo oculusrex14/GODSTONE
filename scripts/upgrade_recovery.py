@@ -1601,6 +1601,35 @@ def selftest() -> int:
     return 0
 
 
+def _repository_root() -> Path:
+    """The source tree this script liveth in (its own checkout, not the caller's cwd)."""
+    return Path(__file__).resolve().parents[1]
+
+
+def _refuse_report_inside_the_tree(report: Path, *, override: bool = False) -> str:
+    """The output contract: a run artifact belongeth OUTSIDE the source tree.
+
+    Returneth '' when the path is acceptable, else the refusal reason. A path that
+    resolveth INSIDE the repository (including a bare relative name, which the audited
+    workflow used) is refused BY NAME: it would leave untracked residue, dirty the tree
+    and fail the provenance check that followeth. The caller may place its outputs in
+    RUNNER_TEMP or any other directory outside the checkout.
+    """
+    if override:
+        return ''
+    root = _repository_root()
+    resolved = (Path.cwd() / report).resolve() if not report.is_absolute() else report.resolve()
+    try:
+        resolved.relative_to(root)
+    except ValueError:
+        return ''
+    return (f"the report path {str(report)!r} resolveth INSIDE the source tree "
+            f"({resolved}); a run artifact must be written OUTSIDE the checkout -- use "
+            f"RUNNER_TEMP (or any external directory) so the tree stayeth clean for the "
+            f"provenance check that followeth. Pass --allow-in-tree-report only for a "
+            f"local debugging run, never in CI.")
+
+
 def main(argv: Sequence[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     # --selftest is the form every other repository door speaketh; the
@@ -1616,6 +1645,8 @@ def main(argv: Sequence[str] | None = None) -> int:
     p_rehearse = sub.add_parser("rehearse", help="run the declared rehearsal against development fixtures")
     p_rehearse.add_argument("--work", type=Path, required=True)
     p_rehearse.add_argument("--report", type=Path, default=None)
+    p_rehearse.add_argument("--allow-in-tree-report", action="store_true",
+                            help="LOCAL DEBUGGING ONLY: permit a report inside the tree")
     p_resume = sub.add_parser("resume", help="resume an interrupted operation from its journal")
     p_resume.add_argument("--estate", type=Path, required=True)
     p_resume.add_argument("--work", type=Path, required=True)
@@ -1645,6 +1676,12 @@ def main(argv: Sequence[str] | None = None) -> int:
                              sort_keys=True, indent=2))
             return 0
         if args.command == "rehearse":
+            if args.report is not None:
+                refusal = _refuse_report_inside_the_tree(
+                    args.report, override=args.allow_in_tree_report)
+                if refusal:
+                    print(f"REFUSED: {refusal}", file=sys.stderr)
+                    return 2
             code, rows = _rehearse_declared(args.work, report=args.report)
             agreed = sum(1 for row in rows if row.get("agreed"))
             print(f"T77 RECOVERY REHEARSAL: {agreed} of {len(rows)} declared cases agreed "

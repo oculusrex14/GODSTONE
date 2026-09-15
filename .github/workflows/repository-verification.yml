@@ -253,11 +253,23 @@ jobs:
       # repo-owned and built from harmless, visibly labelled development
       # fixtures signed with a TEST-ONLY key; the report sayeth so, closes no
       # external gate and claims nothing about any device.
+      # GS-CTRL-002: the rehearsal's WORK AREA and REPORT are written OUTSIDE the source
+      # tree, under a run-specific directory in RUNNER_TEMP. The audited form wrote the
+      # report as a RELATIVE path (`--report recovery-rehearsal.json`), which left
+      # UNTRACKED residue in a clean checkout and made the provenance check below fail --
+      # and a red provenance check may not be repaired by ignoring the file, cleaning the
+      # tree or deleting the evidence. The provenance manifest itself stayeth under its
+      # REVIEWED ignore policy (.gitignore: it is a workflow artifact, never committed);
+      # only the untracked artifact moved. The CLI now REFUSETH an in-tree report path
+      # outright, so the contract is ENFORCED and not merely conventional.
       - name: archive update recovery (upgrade, rollback, interruption, wipe)
+        env:
+          T77_RUN_DIR: ${{ runner.temp }}/t77-recovery
         run: |
+          mkdir -p "$T77_RUN_DIR"
           python3 scripts/upgrade_recovery.py --selftest
           python3 scripts/upgrade_recovery.py rehearse \
-            --work "$(mktemp -d)/recovery-rehearsal" --report recovery-rehearsal.json
+            --work "$T77_RUN_DIR/work" --report "$T77_RUN_DIR/recovery-rehearsal.json"
           python3 -m unittest discover -s tools/readiness/tests -p test_t77.py
       - name: provenance (final -- tree still clean)
         run: python ci/provenance.py --out provenance-final.json

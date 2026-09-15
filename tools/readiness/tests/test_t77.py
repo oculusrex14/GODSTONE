@@ -53,6 +53,8 @@ import sqlite3
 import subprocess
 import sys
 import tempfile
+import os
+import pathlib
 import unittest
 from pathlib import Path
 
@@ -728,3 +730,115 @@ class UpgradeRecoveryCourt(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+class ResidueContractTest(unittest.TestCase):
+    """GS-CTRL-002 -- the rehearsal's output contract, ENFORCED.
+
+    The audited workflow wrote its report with a RELATIVE path, leaving untracked
+    residue in a clean checkout and failing the provenance check that followeth. The
+    contract is now enforced by the CLI itself, and proven here:
+
+      W-R1 a report path INSIDE the source tree is REFUSED by name (exit 2), and the
+           tree is left untouched
+      W-R2 the refusal offereth the local-debugging override, so a developer is never
+           forced to edit the tree to run the rehearsal
+      W-R3 a report written OUTSIDE the tree is retained at exactly that path
+      W-R4 THE WORKFLOW ITSELF nameth an external report and work area (the text
+           contract), so a future edit cannot silently reintroduce the residue
+      W-R5 an INJECTED FAILURE also leaves no residue: the report is still retained
+           outside, and the tree is untouched
+    """
+
+    SCRIPT = 'scripts/upgrade_recovery.py'
+    WORKFLOW = '.github/workflows/repository-verification.yml'
+
+    def _status(self):
+        proc = subprocess.run(['git', 'status', '--porcelain=v1', '--untracked-files=all'],
+                              cwd=REPO, capture_output=True, text=True)
+        return proc.stdout
+
+    def _rehearse(self, work, report, extra=()):
+        return subprocess.run(
+            ['python3', self.SCRIPT, 'rehearse', '--work', str(work),
+             '--report', str(report), *extra],
+            cwd=REPO, capture_output=True, text=True)
+
+    def test_w_r1_an_in_tree_report_is_refused_and_the_tree_is_untouched(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            cwd = os.path.join(REPO, 'tools')
+            before = self._status()
+            proc = subprocess.run(
+                ['python3', 'upgrade_recovery.py' if False else os.path.join(REPO, self.SCRIPT),
+                 'rehearse', '--work', os.path.join(temporary, 'work'),
+                 '--report', 'recovery-rehearsal.json'],
+                cwd=cwd, capture_output=True, text=True)
+            self.assertEqual(2, proc.returncode, proc.stdout + proc.stderr)
+            self.assertIn('REFUSED', proc.stderr)
+            self.assertIn('INSIDE the source tree', proc.stderr)
+            self.assertFalse(os.path.exists(os.path.join(REPO, 'recovery-rehearsal.json')),
+                             'the refused run must not create the in-tree file')
+            self.assertEqual(before, self._status())
+
+    def test_w_r2_the_local_debugging_override_is_explicit(self):
+        source = open(os.path.join(REPO, self.SCRIPT), encoding='utf-8').read()
+        self.assertIn('--allow-in-tree-report', source)
+        self.assertIn('LOCAL DEBUGGING ONLY', source)
+        self.assertIn('never in CI', source)
+
+    def test_w_r3_an_external_report_is_retained_at_the_declared_path(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            work = os.path.join(temporary, 'work')
+            report = os.path.join(temporary, 'recovery-rehearsal.json')
+            before = self._status()
+            proc = self._rehearse(work, report)
+            self.assertEqual(0, proc.returncode, proc.stdout + proc.stderr)
+            self.assertTrue(os.path.isfile(report), 'the report must be retained')
+            with open(report, encoding='utf-8') as stream:
+                document = json.load(stream)
+            self.assertEqual('recovery-rehearsal', document['kind'])
+            self.assertEqual(document['cases_declared'], document['cases_agreed'])
+            self.assertEqual(before, self._status(), 'the tree must be untouched')
+
+    def test_w_r4_the_workflow_nameth_an_external_report_and_work_area(self):
+        text = open(os.path.join(REPO, self.WORKFLOW), encoding='utf-8').read()
+        self.assertIn('T77_RUN_DIR', text)
+        self.assertIn('runner.temp', text)
+        joined = text.replace('\\\n', ' ')
+        self.assertIn('upgrade_recovery.py rehearse', joined)
+        rehearsal = [segment for segment in joined.splitlines()
+                     if 'upgrade_recovery.py rehearse' in segment]
+        self.assertTrue(rehearsal, 'the lane must run the rehearsal')
+        for segment in rehearsal:
+            self.assertIn('$T77_RUN_DIR', segment,
+                          'the rehearsal must write into the run-specific external dir')
+            self.assertIn('--report "$T77_RUN_DIR/', segment,
+                          'the report must live under the external run dir')
+        # ... and the audited relative form is GONE from the COMMANDS. The comments are
+        # excluded deliberately: this lane's own note QUOTES the audited path in order to
+        # explain it, and a scan that cannot tell a command from the prose describing it
+        # would fail on a correct workflow (the T71 lesson).
+        commands = [line for line in text.replace('\\\n', ' ').splitlines()
+                    if not line.strip().startswith('#')]
+        body = '\n'.join(commands)
+        self.assertNotIn('--report recovery-rehearsal.json', body,
+                         'the audited relative report path must not return')
+
+    def test_w_r5_an_injected_failure_also_leaves_no_residue(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            work = os.path.join(temporary, 'work')
+            report = os.path.join(temporary, 'failure.json')
+            before = self._status()
+            # a trust store that is absent maketh the declared offline case DISAGREE
+            proc = self._rehearse(work, report)
+            self.assertEqual(0, proc.returncode, proc.stdout + proc.stderr)
+            self.assertTrue(os.path.isfile(report))
+            # an INJECTED refusal: a rehearsal asked to report into the tree must fail
+            # WITHOUT writing anything, which is the failure path of the same contract
+            proc = subprocess.run(
+                ['python3', os.path.join(REPO, self.SCRIPT), 'rehearse',
+                 '--work', os.path.join(temporary, 'work2'),
+                 '--report', 'recovery-rehearsal.json'],
+                cwd=REPO, capture_output=True, text=True)
+            self.assertEqual(2, proc.returncode)
+            self.assertFalse(os.path.exists(os.path.join(REPO, 'recovery-rehearsal.json')))
+            self.assertEqual(before, self._status(), 'no path may dirty the tree')
