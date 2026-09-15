@@ -15,6 +15,20 @@ moved into the canonical suite with their assertions INTACT:
       is computed from the operation's own staged bytes (never re-read from the destination)
   W05 the protocol is SERIALIZED ACROSS PROCESSES (an interprocess lock), journalled, and
       fsynced -- a process-wide threading lock cannot protect a parallel CLI invocation
+
+AUDIT-004 (the independent review of the first GS-CONTENT-002 submission) reproduced a MIXED PAIR
+that survived a REAL PROCESS DEATH, and it is adopted below with its assertions INTACT:
+
+  W06 an `os._exit(87)` between the database's promotion and its receipt's write leaveth the new
+      database beside the OLD receipt, and the public reader `read_sidecar` -- called with NO
+      archive argument, exactly as the audit called it -- returned the STALE receipt. The pair
+      must be RESOLVED before any reader proceeds: the journal is now consumed, and the retained
+      complete previous generation is restored.
+  W07 THE POSITIVE CONTROL for that arm: an UNDISTURBED build still publishes a matching pair and
+      the reader still accepts it, so W06's demand cannot be satisfied by refusing everything.
+  W08 the reader may not SILENTLY skip the pair check: `read_sidecar` deriveth the archive from
+      the receipt's own name when no archive is furnished, so "archive=None" is no longer a way
+      to read a stale receipt unchallenged.
 """
 from __future__ import annotations
 
@@ -118,6 +132,62 @@ class PublicationPairTest(ApprovalCourtCase):
         # ... and the receipt is never computed by re-reading the shared destination
         self.assertNotIn("final_bytes = destination.read_bytes()", source,
                          "the receipt must be computed from the operation's OWN staged bytes")
+
+
+    def test_w06_a_real_process_death_cannot_expose_a_mixed_pair(self):
+        """THE AUDIT'S OWN PROBE, INTACT -- a REAL process exit, not a catchable exception.
+
+        The child replaces the database and then dies at the receipt-write boundary with
+        `os._exit(87)`, so NO handler of ours can run: that is the point. The parent then calls
+        the PUBLIC reader with NO archive argument, exactly as the audit did, and demands that
+        it never hand back a receipt describing bytes that are no longer there.
+        """
+        first = self.ordinary_build()
+        old_sidecar = json.loads(self.sidecar().read_text(encoding="utf-8"))
+        source = self.seed / "docs" / "a.md"
+        source.write_text(source.read_text().replace("two seconds", "three seconds"))
+        child = (
+            "import os,sys\n"
+            "from pathlib import Path\n"
+            "from content.ingest import build_archive as ba\n"
+            "ba.write_sidecar=lambda *a,**k:os._exit(87)\n"
+            "ba.build('LIGHT',Path(sys.argv[1]),embed=False,seed_root=Path(sys.argv[2]),"
+            "db_dir=Path(sys.argv[3]))\n")
+        env = dict(os.environ, PYTHONPATH=str(ROOT), PYTHONDONTWRITEBYTECODE="1")
+        proc = subprocess.run(
+            [sys.executable, "-c", child, str(self.out), str(self.seed), str(DB_DIR)],
+            cwd=ROOT, env=env, capture_output=True, text=True, timeout=90)
+        self.assertEqual(87, proc.returncode, proc.stdout + proc.stderr)
+        self.assertTrue(ba._journal_path(self.out).exists(),
+                        "the crash fixture must have reached the prepared journal")
+        # THE PUBLIC READER, with NO archive argument: it must not accept a stale receipt
+        receipt = ba.read_sidecar(self.sidecar())
+        actual = ba._sha256_file(self.out)
+        self.assertEqual(receipt["archive_sha256"], actual,
+                         "restart reader accepted the old receipt beside the newly published "
+                         "database after a real process death")
+        self.assertEqual(receipt["archive_bytes"], self.out.stat().st_size)
+        # ... and the pair it handed back is the COMPLETE PREVIOUS GENERATION, not a mixture
+        self.assertEqual(receipt["archive_sha256"], old_sidecar["archive_sha256"],
+                         "the resolved pair must be one COMPLETE generation, old or new")
+
+    def test_w07_an_undisturbed_build_still_publishes_a_readable_pair(self):
+        """THE POSITIVE CONTROL: the refusal W06 demandeth must not come from a reader that
+        could never accept anything."""
+        result = self.ordinary_build()
+        receipt = ba.read_sidecar(self.sidecar())
+        self.assertEqual(receipt["archive_sha256"], result.archive_sha256)
+        self.assertEqual(receipt["archive_bytes"], self.out.stat().st_size)
+
+    def test_w08_the_reader_deriveth_the_archive_from_the_receipts_own_name(self):
+        """`archive=None` may not be a way to read a stale receipt unchallenged."""
+        self.ordinary_build()
+        record = json.loads(self.sidecar().read_text(encoding="utf-8"))
+        record["archive_sha256"] = "0" * 64
+        self.sidecar().write_text(json.dumps(record), encoding="utf-8")
+        with self.assertRaises(ba.ArchiveBuildError) as caught:
+            ba.read_sidecar(self.sidecar())      # NO archive argument at all
+        self.assertIn("MISMATCHED", str(caught.exception))
 
 
 if __name__ == "__main__":

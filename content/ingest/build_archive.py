@@ -496,6 +496,87 @@ def _write_journal(destination: Path, state: str, previous: Mapping[str, str]) -
     os.replace(tmp, path)
 
 
+def _pair_is_consistent(destination: Path, sidecar: Path) -> bool:
+    """True when the receipt beside the archive describeth THOSE bytes exactly."""
+    if not (destination.is_file() and sidecar.is_file()):
+        return False
+    try:
+        record = json.loads(sidecar.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return False
+    if not isinstance(record, dict):
+        return False
+    return (record.get("archive_bytes") == destination.stat().st_size
+            and record.get("archive_sha256") == _sha256_file(destination))
+
+
+def recover_publication(destination: Path) -> str:
+    """Resolve an INTERRUPTED publication, so no reader ever meets a mixed pair.
+
+    GS-CONTENT-002 / AUDIT-004 step 2: `publish_archive_pair` recordeth EXPLICIT commit states
+    and retaineth the previous pair -- but NOTHING CONSUMED THAT JOURNAL, so a process that died
+    between the database's promotion and its receipt's write (a real `os._exit`, which no handler
+    of ours can catch) left the NEW database beside the OLD receipt FOREVER. This is the consumer
+    the audit requireth, and it runneth BEFORE ANY READER OR NEW WRITER PROCEEDETH.
+
+    The direction is ROLLBACK to the retained COMPLETE previous generation: a journal that did not
+    reach its terminal state provecth that both files of the new generation were never published,
+    so the previous pair is the last generation that is whole. Every step is safe to REPEAT after
+    a crash between an effect and its checkpoint, because it is derived from the files on disk
+    rather than from a progress counter.
+
+    Returns 'clean' (no journal, or a whole pair already standing), 'rolled_back' (the previous
+    generation restored), or 'unavailable' (a journal that cannot be resolved -- reported, never
+    silently ignored).
+    """
+    destination = Path(destination)
+    sidecar = Path(str(destination) + SIDECAR_SUFFIX)
+    journal = _journal_path(destination)
+    if not journal.is_file():
+        return "clean"
+    try:
+        record = json.loads(journal.read_text(encoding="utf-8"))
+    except (OSError, ValueError) as exc:
+        raise ArchiveBuildError(
+            f"publication journal {journal} is unreadable ({exc}); the pair cannot be "
+            f"resolved and must not be guessed at") from exc
+    if not isinstance(record, dict):
+        raise ArchiveBuildError(f"publication journal {journal} is not an object")
+    state = record.get("state")
+    previous = record.get("previous") or {}
+    # THE STATE DECIDETH, AND THE DIRECTION IS NOT SYMMETRIC. Only an INTERRUPTED publication --
+    # one that never reached its terminal state -- proveth that the new generation was never
+    # published, and only then may the retained previous generation be restored. A journal in
+    # `published` (or already `recovered`) means BOTH files were written: if the pair then looks
+    # inconsistent, that is TAMPERING or external damage, and the recovery path must not "repair"
+    # it by DELETING anything -- the reader's own pair check refuseth it by name instead.
+    if state in ("published", "recovered", "rolled_back"):
+        return "clean"
+    with _canonical_output_lock(destination):
+        if _pair_is_consistent(destination, sidecar):
+            # the new generation IS whole (the crash happened after both writes but before the
+            # terminal record): keep it rather than destroying a complete generation
+            _write_journal(destination, "recovered", previous)
+            _fsync_directory(destination.parent)
+            return "clean"
+        if not previous:
+            return "unavailable"
+        for path in (destination, sidecar):
+            kept = previous.get(path.name)
+            if not (kept and os.path.isfile(kept)):
+                # the retained previous generation is INCOMPLETE: nothing is deleted and nothing
+                # is guessed -- the pair is reported as unresolvable
+                return "unavailable"
+        for path in (destination, sidecar):
+            shutil.copy2(previous[path.name], path)
+        _fsync_directory(destination.parent)
+        if _pair_is_consistent(destination, sidecar):
+            _write_journal(destination, "recovered", previous)
+            _fsync_directory(destination.parent)
+            return "rolled_back"
+    return "unavailable"
+
+
 def publish_archive_pair(candidate, receipt: Mapping[str, Any]) -> Path:
     """Publish the DATABASE and its RECEIPT as ONE generation (GS-CONTENT-002).
 
@@ -507,6 +588,9 @@ def publish_archive_pair(candidate, receipt: Mapping[str, Any]) -> Path:
     """
     destination = candidate.destination
     sidecar = Path(str(destination) + SIDECAR_SUFFIX)
+    # AUDIT-004 step 2: a NEW WRITER must not proceed over an interrupted one either. The
+    # journal is consumed FIRST, so the writer's own "previous pair" is a WHOLE generation.
+    recover_publication(destination)
     with _canonical_output_lock(destination):
         backups = destination.parent / f".{destination.name}.previous"
         previous: dict[str, str] = {}
@@ -560,10 +644,35 @@ def read_sidecar(sidecar: Path, archive: Path | None = None) -> dict[str, Any]:
     GS-CONTENT-002: when the ARCHIVE is at hand, the pair is checked: a receipt whose byte
     hash or byte count doth not describe the bytes beside it is REFUSED by name, so no
     reader ever acts upon a mismatched pair.
+
+    AUDIT-004 steps 2-3: `archive=None` IS NO LONGER A WAY TO READ A STALE RECEIPT
+    UNCHALLENGED. The archive is DERIVED from the receipt's own name when the caller furnisheth
+    none -- the two files live at fixed, canonical paths -- and an INTERRUPTED PUBLICATION is
+    RESOLVED before the receipt is handed back, so a reader meeteth a complete generation or an
+    explicit refusal, never a mixture.
     """
+    sidecar = Path(sidecar)
+    if archive is None and str(sidecar).endswith(SIDECAR_SUFFIX):
+        derived = Path(str(sidecar)[:-len(SIDECAR_SUFFIX)])
+        if derived.is_file():
+            archive = derived
+    if archive is not None:
+        # the recovery consumer, BEFORE this reader proceedeth (it may itself be a no-op)
+        recover_publication(archive)
     record = json.loads(sidecar.read_text(encoding="utf-8"))
     if not isinstance(record, dict):
         raise ArchiveBuildError(f"sidecar {sidecar} is not an object")
+    # THE VERSION IS JUDGED FIRST, and the order is the law rather than a convenience: a receipt
+    # in a format this tool doth not understand may not be OBEYED, and its fields may not be
+    # interpreted as though the format were known -- comparing the bytes of an unknown schema
+    # would answer the wrong question with the wrong message. (A pre-existing court,
+    # SidecarTests.test_an_unknown_future_version_is_refused, pinreth exactly this.)
+    version = record.get("schema")
+    if version != SIDECAR_SCHEMA:
+        raise ArchiveBuildError(
+            f"sidecar {sidecar} schema {version!r} is not the supported "
+            f"{SIDECAR_SCHEMA}; refusing an unknown version rather than "
+            f"guessing")
     if archive is not None:
         if not archive.is_file():
             raise ArchiveBuildError(f"receipt {sidecar} has no archive beside it")
@@ -577,12 +686,6 @@ def read_sidecar(sidecar: Path, archive: Path | None = None) -> dict[str, Any]:
             raise ArchiveBuildError(
                 f"receipt {sidecar} carrieth {record.get('archive_sha256')!r} while "
                 f"{archive.name} hasheth to {actual_sha}: the pair is MISMATCHED")
-    version = record.get("schema")
-    if version != SIDECAR_SCHEMA:
-        raise ArchiveBuildError(
-            f"sidecar {sidecar} schema {version!r} is not the supported "
-            f"{SIDECAR_SCHEMA}; refusing an unknown version rather than "
-            f"guessing")
     return record
 
 
