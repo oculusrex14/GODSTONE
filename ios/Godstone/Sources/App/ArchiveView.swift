@@ -156,17 +156,30 @@ private struct ArchiveDocumentReader: View {
     }
 
     @ViewBuilder private func readingView(found: [ArchivePassage]) -> some View {
-        ScrollViewReader { _ in
-            LazyVStack(alignment: .leading, spacing: 24) {
-                Text(document.title).font(.title.bold()).accessibilityAddTraits(.isHeader)
-                provenanceLine()
-                ForEach(found) { passage in
-                    passageBlock(passage: passage)
+        // GS-ARCHIVE-004: the reader carrieth a SCROLLING CONTAINER, and the proxy is USED
+        // rather than discarded: a document longer than a screen must be readable, and a
+        // returning reader is placed at the passage the scene remembered -- or at the
+        // beginning when that passage no longer existeth in the selected archive.
+        ScrollViewReader { proxy in
+            ScrollView(.vertical) {
+                LazyVStack(alignment: .leading, spacing: 24) {
+                    Text(document.title).font(.title.bold()).accessibilityAddTraits(.isHeader)
+                    provenanceLine()
+                    ForEach(found) { passage in
+                        passageBlock(passage: passage)
+                            .id(passage.id)          // a STABLE passage identity for the proxy
+                    }
                 }
+                .padding()
+                .frame(maxWidth: 760)
+                .frame(maxWidth: .infinity)
             }
-            .padding()
-            .frame(maxWidth: 760)
-            .frame(maxWidth: .infinity)
+            .task(id: found.map(\.id)) {
+                guard let target = ArchiveReadingAnchor.target(
+                    passageIds: found.map(\.id),
+                    saved: scene.scrollAnchor?.passageId) else { return }
+                proxy.scrollTo(target, anchor: .top)
+            }
         }
     }
 
