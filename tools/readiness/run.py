@@ -659,6 +659,201 @@ def _resolve_log_elsewhere(repo, tid, rel):
     return candidate if os.path.isfile(candidate) else ''
 
 
+def _as_count(tid, command_id, entry, key, problems):
+    """A count field must be a real, nonnegative INTEGER -- never a boolean, never a label.
+
+    AUDIT-004 step 2: "validate integer, non-Boolean counts". `True` is an `int` in Python,
+    so it is refused EXPLICITLY rather than by luck.
+    """
+    value = entry.get(key)
+    if value is None:
+        return None
+    if isinstance(value, bool) or not isinstance(value, int):
+        problems.append(
+            f'{tid}/{command_id}: {key} {value!r} is not an integer count; a boolean or a '
+            f'label is not a measured roster (GS-CTRL-001)')
+        return None
+    if value < 0:
+        problems.append(f'{tid}/{command_id}: {key} {value!r} is negative')
+        return None
+    return value
+
+
+def _validate_behavioral_roster(tid, command_id, entry, problems):
+    """AUDIT-004 step 2: for a required behavioral TEST the roster is MANDATORY.
+
+    executed > 0, failed == 0, BOTH PRESENT (a missing count is never read as a zero one),
+    integral and non-Boolean, and the passed/skipped counts must add up when given.
+    """
+    executed = _as_count(tid, command_id, entry, 'tests_executed', problems)
+    failed = _as_count(tid, command_id, entry, 'tests_failed', problems)
+    passed = _as_count(tid, command_id, entry, 'tests_passed', problems)
+    skipped = _as_count(tid, command_id, entry, 'tests_skipped', problems)
+    if executed is None and entry.get('tests_executed') is None:
+        problems.append(
+            f'{tid}/{command_id}: a behavioral test record carrieth no tests_executed count, so '
+            f'its roster cannot be read at all (GS-CTRL-001)')
+    elif executed is not None and executed <= 0:
+        problems.append(
+            f'{tid}/{command_id}: exit status 0 with zero tests executed'
+            f' is rejected as a pass')
+    if failed is None and entry.get('tests_failed') is None:
+        problems.append(
+            f'{tid}/{command_id}: a behavioral test record carrieth no tests_failed count; a '
+            f'missing failure count is not a zero one (GS-CTRL-001)')
+    elif failed:
+        problems.append(
+            f'{tid}/{command_id}: tests_failed {failed} is not 0, so the command did not pass '
+            f'even though it reported success (GS-CTRL-001)')
+    if executed is not None and failed is not None and (passed is not None or skipped is not None):
+        accounted = failed + (passed or 0) + (skipped or 0)
+        if accounted != executed:
+            problems.append(
+                f'{tid}/{command_id}: the roster doeth not add up -- executed {executed} against '
+                f'failed {failed} + passed {passed or 0} + skipped {skipped or 0} (GS-CTRL-001)')
+
+
+def _validate_required_cases(tid, command_id, entry, problems):
+    """A named required case is satisfiable only by a NAMED PASSING case roster."""
+    required = list(entry.get('required_cases') or [])
+    passed_cases = list(entry.get('passed_cases') or [])
+    if not required:
+        return
+    if not passed_cases:
+        problems.append(
+            f'{tid}/{command_id}: the command nameth required case(s) but recordeth '
+            f'no PASSING case roster, so a skipped-only result could satisfy them')
+        return
+    absent = [case for case in required if case not in passed_cases]
+    if absent:
+        problems.append(
+            f'{tid}/{command_id}: required case(s) {", ".join(absent)} did not '
+            f'pass with this command')
+
+
+def _validate_contradictory_counts(tid, command_id, entry, outcome, problems):
+    """A non-behavioral record is not required to carry a roster -- but it may not LIE.
+
+    A success reported beside a nonzero failure count contradicteth itself, and a count that
+    is not an integer at all is not a measurement.
+    """
+    failed = _as_count(tid, command_id, entry, 'tests_failed', problems)
+    _as_count(tid, command_id, entry, 'tests_executed', problems)
+    _as_count(tid, command_id, entry, 'tests_passed', problems)
+    _as_count(tid, command_id, entry, 'tests_skipped', problems)
+    if failed and outcome == 'PASSED' and entry.get('exit_code') == 0:
+        problems.append(
+            f'{tid}/{command_id}: outcome PASSED with exit 0 beside tests_failed {failed} '
+            f'contradicteth itself (GS-CTRL-001)')
+
+
+def _validate_mutation_evidence(repo, tid, command_id, entry, problems, declared):
+    """AUDIT-004 step 3: a mutation LINEAGE record is validated AS ONE.
+
+    The label alone is never a semantic kill. Required: the mutation outcome; the source
+    identity the mutant was cut from; a REAL retained log whose digest match, with the killed
+    roster RE-READ from it; a measurable behavioral failure (at least one failing test, NAMED);
+    and restored-green evidence IN THE SAME MANIFEST. A compile or setup failure, an arbitrary
+    note, or a nonzero exit on its own is NOT a kill.
+    """
+    declared = declared or {}
+    if entry.get('outcome') != 'MUTANT_KILLED':
+        problems.append(
+            f'{tid}/{command_id}: declared a mutation record but its outcome '
+            f'{entry.get("outcome")!r} is not a mutation outcome (GS-CTRL-001)')
+    identity = entry.get('source_sha') or declared.get('source_sha')
+    if not identity:
+        problems.append(
+            f'{tid}/{command_id}: a mutation record nameth no source_sha, so the source the '
+            f'mutant was cut from is unidentified (GS-CTRL-001)')
+    elif repo.object_type(identity) != 'commit':
+        problems.append(
+            f'{tid}/{command_id}: mutation source_sha {identity!r} is not a known commit object')
+    rel = entry.get('log_path') or declared.get('log_path')
+    log = ''
+    if not rel:
+        problems.append(
+            f'{tid}/{command_id}: a mutation record with no retained log proveth nothing; the '
+            f'killed roster can never be re-read (GS-CTRL-001)')
+    else:
+        candidate = os.path.join(repo.evidence, rel)
+        log = candidate if os.path.isfile(candidate) else _resolve_log_elsewhere(repo, tid, rel)
+        if not log:
+            problems.append(
+                f'{tid}/{command_id}: the claimed mutation log {rel!r} is not a real file; a kill '
+                f'without its log is a claim, not evidence (GS-CTRL-001)')
+        else:
+            digest = entry.get('log_sha256') or declared.get('log_sha256')
+            if not digest:
+                problems.append(
+                    f'{tid}/{command_id}: the mutation log carrieth no sha256, so its bytes are '
+                    f'not immutable (GS-CTRL-001)')
+            elif preserve.sha256_file(log) != digest:
+                problems.append(f'{tid}/{command_id}: mutation log hash mismatch')
+    failed = _as_count(tid, command_id, entry, 'tests_failed', problems)
+    if not failed:
+        problems.append(
+            f'{tid}/{command_id}: a mutation record with tests_failed '
+            f'{entry.get("tests_failed")!r} killed nothing measurable; a compile or setup failure '
+            f'is not a semantic kill (GS-CTRL-001)')
+    killed = list(entry.get('failures') or declared.get('failures') or [])
+    if not killed:
+        problems.append(
+            f'{tid}/{command_id}: a mutation record must NAME the cases the mutant killed in its '
+            f'failure roster; free text (a note) is not a roster (GS-CTRL-001)')
+    elif log:
+        try:
+            with open(log, encoding='utf-8', errors='replace') as handle:
+                text = handle.read()
+        except OSError:
+            text = ''
+        absent = [case for case in killed if case not in text]
+        if absent:
+            problems.append(
+                f'{tid}/{command_id}: the killed case(s) {", ".join(absent)} are NAMED but do not '
+                f'appear in the retained log, so the roster is a CLAIM rather than a reading '
+                f'(GS-CTRL-001)')
+    restored = entry.get('restored_green') or declared.get('restored_green')
+    if not restored:
+        problems.append(
+            f'{tid}/{command_id}: a mutation record must name its RESTORED-GREEN rerun; a kill '
+            f'whose restoration is never shown is not a control (GS-CTRL-001)')
+    else:
+        _validate_restored_green(repo, tid, command_id, restored, problems)
+
+
+def _validate_restored_green(repo, tid, command_id, restored, problems):
+    """The restored-green companion: a command IN THE SAME MANIFEST that PASSED with exit 0
+    on the restored tree and carrieth its own real retained log."""
+    ids = [restored] if isinstance(restored, str) else list(restored)
+    try:
+        doc = load_json_strict(os.path.join(repo.evidence, tid, 'commands.json'))
+    except (StateInvalid, RunnerError):
+        doc = {}
+    entries = {c.get('id'): c for c in (doc.get('commands') or [])}
+    for rid in ids:
+        companion = entries.get(rid)
+        if companion is None:
+            problems.append(
+                f'{tid}/{command_id}: the named restored-green rerun {rid!r} is not in this '
+                f'manifest, so the restoration is unverifiable (GS-CTRL-001)')
+            continue
+        if companion.get('outcome') not in ('PASSED', 'PASS'):
+            problems.append(
+                f'{tid}/{command_id}: the restored-green rerun {rid!r} reporteth '
+                f'{companion.get("outcome")!r}, not a pass (GS-CTRL-001)')
+        if companion.get('exit_code') != 0:
+            problems.append(
+                f'{tid}/{command_id}: the restored-green rerun {rid!r} exited '
+                f'{companion.get("exit_code")!r}, not 0 (GS-CTRL-001)')
+        crel = companion.get('log_path')
+        clog = os.path.join(repo.evidence, crel) if crel else ''
+        if not crel or (not os.path.isfile(clog) and not _resolve_log_elsewhere(repo, tid, crel)):
+            problems.append(
+                f'{tid}/{command_id}: the restored-green rerun {rid!r} carrieth no retained log; '
+                f'a restoration without its log is not evidence (GS-CTRL-001)')
+
+
 def _validate_command_evidence(repo, tid, command_id, problems, migration=None):
     path = os.path.join(repo.evidence, tid, 'commands.json')
     if not os.path.isfile(path):
@@ -680,12 +875,13 @@ def _validate_command_evidence(repo, tid, command_id, problems, migration=None):
     vocabulary = migration.get('outcome_vocabulary', {})
     raw_outcome = entry.get('outcome')
     outcome = vocabulary.get(raw_outcome, raw_outcome)
+    # GS-CTRL-001 (AUDIT-004 step 3): a mutation record is a LINEAGE record, NOT an
+    # exemption. The early return that stood here accepted a bare `MUTANT_KILLED` label, an
+    # arbitrary note, exit 99 and a nonexistent log, and the independent review reproduced
+    # it. A lineage record is now validated AS ONE -- see _validate_mutation_evidence.
     if raw_outcome == 'MUTANT_KILLED' or command_id in (migration.get('mutation_records') or {}):
-        note = entry.get('note') or ''
-        if not entry.get('tests_executed') and not note:
-            problems.append(
-                f'{tid}/{command_id}: a mutation record must name the cases the mutant killed and the '
-                f'restored-green rerun')
+        _validate_mutation_evidence(repo, tid, command_id, entry, problems,
+                                    (migration.get('mutation_records') or {}).get(command_id))
         return
     if outcome != 'PASSED':
         problems.append(
@@ -712,33 +908,21 @@ def _validate_command_evidence(repo, tid, command_id, problems, migration=None):
         if preserve.sha256_file(resolved) != entry.get('log_sha256'):
             problems.append(f'{tid}/{command_id}: log hash mismatch')
 
-    # GS-CTRL-001 step 5: executed and passing counts must be positive where the task
-    # requireth behavioral proof, and a skipped case never satisfyeth a named scenario.
-    if entry.get('kind') in ('test', 'command', 'audit') and entry.get('tests_executed'):
-        if not entry.get('tests_executed'):
-            problems.append(
-                f'{tid}/{command_id}: exit status 0 with zero tests executed '
-                f'is rejected as a pass')
-        required = list(entry.get('required_cases') or [])
-        passed_cases = list(entry.get('passed_cases') or [])
-        if required:
-            if not passed_cases:
-                problems.append(
-                    f'{tid}/{command_id}: the command nameth required case(s) but recordeth '
-                    f'no PASSING case roster, so a skipped-only result could satisfy them')
-            else:
-                absent = [case for case in required if case not in passed_cases]
-                if absent:
-                    problems.append(
-                        f'{tid}/{command_id}: required case(s) {", ".join(absent)} did not '
-                        f'pass with this command')
-        if entry.get('tests_skipped') and not entry.get('tests_executed'):
-            problems.append(
-                f'{tid}/{command_id}: a skipped-only result must never satisfy a required '
-                f'behavioral case')
+    # GS-CTRL-001 steps 2 and 5 (AUDIT-004): the behavioral roster is MANDATORY for a
+    # required TEST, and its counts must be REAL integers. The branch below used to be
+    # entered only when `tests_executed` was ALREADY truthy, which made its own
+    # zero-executed check UNREACHABLE, and it never validated `tests_failed` at all --
+    # the independent review reproduced both bypasses. The law is now keyed on what the
+    # record DECLARES ITSELF TO BE (`kind == 'test'`), never on `required_cases` being
+    # supplied by the caller: a behavioral test carries a complete, consistent roster or
+    # it is not evidence.
+    if entry.get('kind') == 'test':
+        _validate_behavioral_roster(tid, command_id, entry, problems)
+        _validate_required_cases(tid, command_id, entry, problems)
     else:
         # a build (or any non-test kind) is NOT an executed behavioral test, and it may
-        # never close a required case
+        # never close a required case -- but it may still CONTRADICT itself
+        _validate_contradictory_counts(tid, command_id, entry, outcome, problems)
         if entry.get('required_cases'):
             problems.append(
                 f'{tid}/{command_id}: a {entry.get("kind")!r} command cannot close required '

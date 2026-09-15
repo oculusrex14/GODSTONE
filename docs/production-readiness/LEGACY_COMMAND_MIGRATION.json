@@ -9,7 +9,7 @@
       "<evidence>/<task>/<log_path>",
       "<evidence>/<task>/logs/<basename>"
     ],
-    "mutation_records": "a mutant-killed entry is a MUTATION lineage record; it is validated as such (killed, with the named cases, and a restored-green rerun) and may never be counted as a behavioral test pass",
+    "mutation_records": "a mutation record is a MUTATION LINEAGE record and is VALIDATED AS ONE by the checker (AUDIT-004): it must name the source identity, retain a real log whose sha256 match, name the killed cases in a failure roster that is RE-READ from that log, and name its restored-green rerun. The label alone, an arbitrary note, a nonzero exit or a compile failure is NOT a semantic kill. A mutation record whose evidence was NEVER RETAINED is an EVIDENCE GAP and is listed under evidence_absent_do_not_rely -- it is never an EXEMPTION and may never be counted as a behavioral test pass",
     "outcome_vocabulary": {
       "FAIL": "FAILED",
       "MUTANT_KILLED": "a MUTATION record, never a test pass",
@@ -79,8 +79,12 @@
         "verdict": "SUPPORTED",
         "why": "T05's behavioral claim is that the replay-window and AEAD ordering hold; that is carried by its retained narrow and subsystem gradle logs (with their executed counts) and by the control checks, all of which validate strictly. The two XML audits were summaries without a retained roster, so they are recorded as gaps and NOT relied upon."
       },
-      "coverage_note": "T05's behavioral evidence is its narrow and subsystem gradle logs (retained). The two XML audits were SUMMARIES written without a retained roster, so they are recorded as evidence_absent and are NOT relied upon. The mutant-killed entry is a mutation lineage record, validated as such.",
+      "coverage_note": "T05's behavioral evidence is its narrow and subsystem gradle logs (retained). The two XML audits were SUMMARIES written without a retained roster, so they are recorded as evidence_absent and are NOT relied upon. AUDIT-004 (step 5) removed the former `mutation_records` entry: that record's own evidence -- a log, a failure roster, a source identity and a restored-green rerun -- was NEVER RETAINED, so under the enforced law it cannot be validated as a mutation lineage record and is now recorded as the evidence gap it always was. The mutation control is therefore NOT ESTABLISHED by it, and nothing here claimeth that it is.",
       "evidence_absent_do_not_rely": {
+        "T05-mutation-commit-before-aead": {
+          "kind": "mutation_evidence_never_retained",
+          "why": "the mutant-killed lineage record carrieth NO retained log (log_path and log_sha256 are both null), NO failure roster field (the two killed case names live only in free-text `note`), NO source_sha/tree_sha identity and NO restored-green companion command. Under the law the checker now enforces (AUDIT-004 step 3) such a record can never be validated as a mutation lineage record. The MUTATION CONTROL IT ASSERTED IS THEREFORE NOT ESTABLISHED, and this migration doth not assert that it is: it is recorded as a gap, not exempted. T05's own behavioral claim -- that the replay-window / AEAD ordering holds -- is carried independently by the retained narrow and subsystem gradle logs and the control checks, none of which rest on this record."
+        },
         "T05-narrow-xml-audit": {
           "kind": "exit_code_and_roster_absent",
           "why": "outcome PASSED but exit_code None was never recorded, and no log was retained: the roster cannot be independently re-read"
@@ -88,18 +92,6 @@
         "T05-subsystem-xml-audit": {
           "kind": "exit_code_and_roster_absent",
           "why": "outcome PASSED but exit_code None was never recorded, and no log was retained: the roster cannot be independently re-read"
-        }
-      },
-      "mutation_records": {
-        "T05-mutation-commit-before-aead": {
-          "argv": [
-            "mutant",
-            "replayWindow.commit(plan) moved before AEAD decrypt"
-          ],
-          "note": "commit-before-AEAD mutant failed exactly testFailedAuthenticationConsumesNothing_RetransmissionRecovers and testForgedInPolicyNonce_AuthenticationFailureCommitsNothing; fixed code restored and re-run green (717/717)",
-          "tests_executed": 10,
-          "tests_passed": 8,
-          "validated_as": "a mutation lineage record: killed with named cases and a restored-green rerun"
         }
       },
       "required_commands": [

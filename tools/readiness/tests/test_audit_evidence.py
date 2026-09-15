@@ -23,6 +23,23 @@ ACCEPT valid evidence as well as refuse invalid evidence:
       not carry test counts, and it may NOT satisfy a required behavioral case
   W08 an implemented-but-blocked task is representable: COMPLETE with required
       external evidence absent FAILETH, while BLOCKED_EXTERNAL nameth the exact proof
+
+AUDIT-004 (the independent review of the first GS-CTRL-001 submission) reproduced THREE
+bypasses that the arms above did NOT catch, because each of those arms changed SEVERAL
+fields at once and so passed for a defect other than the one it nameth. Its three
+probes are adopted below with their assertions INTACT, and each negative changes
+EXACTLY ONE field of an otherwise-valid record:
+
+  W09 THE RETAINED POSITIVE CONTROL: the otherwise-valid record, unchanged, PASSETH --
+      a court that refuseth everything proveth nothing
+  W10 zero executed with a REAL log and matching digest is rejected (the count branch
+      used to be entered only when `tests_executed` was already truthy, which made its
+      own zero check unreachable)
+  W11 a nonzero tests_failed beside exit 0 and outcome PASSED is rejected (the failure
+      count was never validated at all)
+  W12 the mutation label cannot bypass the evidence laws: MUTANT_KILLED with exit 99,
+      zero executed, a nonexistent log and an arbitrary note is a LINEAGE record, and a
+      lineage record is validated as one -- never exempted
 """
 from __future__ import annotations
 
@@ -232,6 +249,50 @@ class BlockedVersusCompleteTest(unittest.TestCase):
         with patch.object(run, "recover_state", return_value=state):
             with self.assertRaises(Exception):
                 run.validate_state(evidence.repo())
+
+
+class AdoptedAudit004EvidenceTest(unittest.TestCase):
+    """W09-W12 -- AUDIT-004's three executed failures, adopted assertion-intact.
+
+    Every arm below is driven through ONE helper whose base record is valid: a real log
+    file with a matching sha256, outcome PASSED, exit_code 0, kind 'test' and a real
+    executed count. Each negative therefore changes exactly ONE field, so a pass can
+    never come from a DIFFERENT defect than the one the arm nameth -- the exact defect
+    that let the earlier arms through.
+    """
+
+    PAYLOAD = b"synthetic audit fixture: 2 cases, zero failures\n"
+
+    def check(self, **over):
+        """The audit's `EvidenceTests.check`, rebound to this repository's layout."""
+        evidence = _Evidence()
+        self.addCleanup(evidence.close)
+        rel = evidence.log("T01/logs/audit004.log", self.PAYLOAD)
+        digest = hashlib.sha256((evidence.root / rel).read_bytes()).hexdigest()
+        entry = _command(id="audit004", tests_executed=2, tests_failed=0,
+                         log_path=rel, log_sha256=digest)
+        entry.update(over)
+        (evidence.root / "T01" / "commands.json").write_text(
+            json.dumps({"schema_version": 1, "commands": [entry]}), encoding="utf-8")
+        problems = []
+        run._validate_command_evidence(evidence.repo(), "T01", "audit004", problems)
+        return problems
+
+    def test_w09_the_retained_passing_record_is_the_positive_control(self):
+        self.assertEqual([], self.check())
+
+    def test_w10_zero_executed_with_a_real_log_is_rejected(self):
+        self.assertTrue(self.check(tests_executed=0, tests_skipped=2),
+                        "zero executed accepted")
+
+    def test_w11_nonzero_test_failures_with_exit_zero_are_rejected(self):
+        self.assertTrue(self.check(tests_failed=1), "failed test count accepted")
+
+    def test_w12_mutation_label_cannot_bypass_missing_log_and_failed_exit(self):
+        self.assertTrue(self.check(outcome="MUTANT_KILLED", exit_code=99, tests_executed=0,
+                                   note="synthetic claim", log_path="missing.log",
+                                   log_sha256="0" * 64),
+                        "mutation label bypassed all evidence checks")
 
 
 if __name__ == "__main__":
