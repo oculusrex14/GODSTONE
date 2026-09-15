@@ -737,13 +737,58 @@
     "source_sha": "c683a2bf0b5bcdd4a662d98f7542351501b57b7c"
    },
    "impact": "Retained references give a false security state after teardown/wipe. Code added later can mistakenly reuse them; terminality must be a property of the owned object, not merely absence from a map. The current audit proves the false state, not post-destroy plaintext leakage or key recovery.",
-   "invalidated_dependents": [],
-   "my_fix_commit": null,
-   "my_logs": [],
-   "my_red_case": null,
-   "my_status": "OPEN",
-   "notes": null,
-   "pending_proof": [],
+   "invalidated_dependents": [
+    "MY OWN FIRST IMPLEMENTATION was invalidated by a MANDATORY repository lane, and that is recorded rather than hidden: ReadinessT17Test.testReleaseSymbolsCarryNoTestFactories refused the new private `installCiphersForTest` helper as an exported test factory on a production type (NoiseSession). The guard is now inline in the two EXISTING seams and no new test seam exists. The COURT WAS NOT WEAKENED and no exemption was added -- the repair changed instead.",
+    "The prior behaviour of NoiseSession.destroy / TrustedHandshakeController.destroy (leave readiness in place) is invalidated on both isles, including the iOS test hooks that could revive a destroyed session.",
+    "The comment on the nested SessionDestroyed exception in NoiseSession notes a deliberate placement (class-level, not companion-nested) -- unchanged and still honoured.",
+    "NOT invalidated: the T05/T06/T07 courts (replay commit-after-authenticate, budget retirement, fixture key hooks for their own fresh sessions), the T08 slot serialisation, lease generations, and every guard that was already there -- all green beside the change."
+   ],
+   "my_fix_commit": "565c14a",
+   "my_logs": [
+    {
+     "log": "CRYPTO-003/green/crypto-003-T08-GREEN.log",
+     "sha256": "ced80ea36f08debb48e81aad93b028c6e80498c27e9bdc3133e30fdee2924189",
+     "what": "android ReadinessT08Test after the repair: BUILD SUCCESSFUL"
+    },
+    {
+     "log": "CRYPTO-003/green/crypto-003-ANDROID-FULL.log",
+     "sha256": "f3abd886d748a74836e46db8a7ba98a2e5ef7c28dc58d216bd5a7719ad553d19",
+     "what": "whole android :mesh lane after the repair: BUILD SUCCESSFUL (1143 tests, including testReleaseSymbolsCarryNoTestFactories)"
+    },
+    {
+     "log": "CRYPTO-003/green/crypto-003-IOS-FULL.log",
+     "sha256": "1f1abed734fd3f0ffc127e79f0a84d2dce6d5c7cc3c5ead12226c8393a171ae5",
+     "what": "whole iOS package after the repair: Executed 1185 tests, with 0 failures (was 1184)"
+    },
+    {
+     "log": "CRYPTO-003/green/crypto-003-LANES.log",
+     "sha256": "4c17307b35614d3e6eb4dfbad13fc8e6e8f338005c4fa1decd7fe6abe878305f",
+     "what": "readiness suite OK; adopted probes 12/0 OK; invariants passed=7 failed=0 all hold; repository VERDICT PASS; shipping rc=0; symbols 213 files 0 unresolved; iOS mirror --check rc=0; mutation selftest SELFTEST OK"
+    }
+   ],
+   "my_red_case": {
+    "case": "BOTH canonical T08 courts, before any production edit: android/mesh/src/test/java/io/godstone/mesh/crypto/ReadinessT08Test.kt::testDestroyedRetainedPrimitivesReportTerminalNotReady and ios/Godstone/Tests/GodstoneMeshTests/ReadinessT08Tests.swift::testW13DestroyedRetainedPrimitivesReportTerminalNotReady. The objects are RETAINED on purpose (the existing arms of both courts only asked the MANAGER, whose isReady was already false because the slot had been removed).",
+    "argv": "(cd android && ./gradlew :mesh:testDebugUnitTest --tests '*ReadinessT08Test*')  ;  swift test --package-path ios/Packages/GodstoneFoundation --filter ReadinessT08Tests",
+    "cwd": "/Users/oculus/Projects/GODSTONE_BUILDER",
+    "log": [
+     "CRYPTO-003/red/crypto-003-RED.log",
+     "CRYPTO-003/red/crypto-003-IOS-RED.log"
+    ],
+    "log_sha256": [
+     "6f487869bb5d74f48a075c3d5239328cda74f55a4ecfec80b9a4e0ad598ab993",
+     "c1d5dce9cf8e75e5a6194370674df31d9a7a7452aa7fcbc369b58e1bf285b8ac"
+    ],
+    "outcome": "RED on the untouched product in both lanes, naming the defect exactly. Android: 'a DESTROYED retained session must not report established'. iOS: FOUR failures -- 'a DESTROYED retained session must not report established', 'a test-only install must NOT revive a destroyed session' (a REAL revival vector: installSendKeyForTest set isEstablished = true unconditionally), 'a DESTROYED controller's session must report terminal, not established', and the idempotence arm."
+   },
+   "my_status": "FIX_SUBMITTED",
+   "notes": "FIX SUBMITTED (565c14a) on both isles in one commit's worth of work. THE LESSON THIS PAID FOR, and it is the fourth time this session that a court caught me: a mandatory lane (T17's 'no exported test factories') refused a helper I introduced for defense-in-depth. The temptation was to add an exemption to that court; the repair instead moved the guard inline. A lane that is mandatory is not a lane to negotiate with. ALSO RECORDED: the audit's charge was that terminality lived in the registry rather than the object -- which is why BOTH isles' pre-existing T08 arms were green on it, since they only ever asked the manager.",
+   "pending_proof": [
+    "NO DEVICE/EMULATOR/SIMULATOR/RADIO WAS USED. Post-destroy PLAINTEXT LEAKAGE and KEY RECOVERY are NOT claimed: the audit itself records that its proof 'proves the false state, not post-destroy plaintext leakage or key recovery', and this repair proves the false state is gone (plus that the key-bearing state is dropped). Erasure of copies the platform made elsewhere (allocator reuse, GC) is not witnessed.",
+    "The iOS CONTROLLER arm witnesses a controller that never reached READY plus the terminality of the session it owns; the READY-state controller law (destroy from READY, then seal/open refused) is witnessed on the ANDROID isle only. Driving an iOS controller to READY through the real handshake in this court was not done.",
+    "The audit's steps 1 and 5 are only partly addressed: the terminal transition exists and is guarded, but the SESSION-MANAGER-level retained-reference cases (ordinary drop, expiry, destroyAll, wipe) beyond the existing T08 arms were NOT all added -- the existing 'testDestroyedReferencesRemainTerminal' arms already cover the manager's view, and the new arms cover the retained objects.",
+    "The ANDROID LANE'S KNOWN FIXTURE FLAKE is unchanged: two of three forced full-lane runs earlier failed in a randomized fixture ('no ascending hint pair within 64 draws', T17/T18) before any code this finding touches. This run was green (1143 tests); 'the lane is green' is again true of the logged run.",
+    "NO HOSTED LANE EXISTS in this environment: there is no CI run URL, run id or hosted log."
+   ],
    "proof": null,
    "remediation_report": "evidence/crypto/findings.md",
    "remediation_steps": [
