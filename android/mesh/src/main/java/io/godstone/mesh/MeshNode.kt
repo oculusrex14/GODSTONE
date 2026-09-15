@@ -216,6 +216,34 @@ class MeshNode(
         val frame: io.godstone.mesh.wire.v2.FrameV2,
     )
 
+    /**
+     * GS-SOS-002: the per-message DISPATCH LEASE. Minted when an offer loop beginneth, INVALIDATED by a
+     * successful cancellation (which retireth the durable row), and consulted BEFORE EVERY offer -- so
+     * captured local work cannot be newly offered after the row was retired. A lease that no longer
+     * standeth STOPPETH the loop.
+     */
+    private val dispatchLeases = java.util.concurrent.ConcurrentHashMap<String, Long>()
+    private val dispatchLeaseSeq = java.util.concurrent.atomic.AtomicLong(0)
+
+    /** GS-SOS-002: a stable key for one message id (the lease map's key). */
+    private fun leaseKey(msgId: ByteArray): String =
+        msgId.joinToString("") { b -> "%02x".format(b) }
+
+    private fun mintDispatchLease(msgId: ByteArray): Long {
+        val token = dispatchLeaseSeq.incrementAndGet()
+        dispatchLeases[leaseKey(msgId)] = token
+        return token
+    }
+
+    /** GS-SOS-002: the lease standeth only while NO successful cancellation hath retired the message. */
+    private fun dispatchLeaseStands(msgId: ByteArray, lease: Long): Boolean =
+        dispatchLeases[leaseKey(msgId)] == lease
+
+    /** GS-SOS-002: a SUCCESSFUL cancellation invalidateth the message's dispatch lease. */
+    private fun invalidateDispatchLease(msgId: ByteArray) {
+        dispatchLeases.remove(leaseKey(msgId))
+    }
+
     private val controlOutbox = ArrayList<ControlReply>()
     private val controlOutboxLock = Any()
 
@@ -487,7 +515,11 @@ class MeshNode(
         } ?: return SosDispatchResult.Failed("retry: no held frame to resume")
         val bytes = frame.encode()
         var handed = 0
+        val dispatchLease = mintDispatchLease(msgId)
         for (peerId in knownPeers()) {
+            // GS-SOS-002: the lease is re-checked BEFORE every offer, so a cancellation committed
+            // inside a send callback suppresseth the offers not yet made.
+            if (!dispatchLeaseStands(msgId, dispatchLease)) break
             val admitted = send(peerId, bytes)
             // T43: a LINK OFFER, not a custody claim. The durable row is NOT
             // advanced -- it standeth QUEUED_DURABLY until an intended
@@ -518,6 +550,9 @@ class MeshNode(
      */
     internal suspend fun cancelSos(msgId: ByteArray): SosCancelResult {
         val result = deliveryTracker.cancelSosBroadcast(msgId)
+        // GS-SOS-002: a SUCCESSFUL cancellation retireth the message's dispatch lease, so an offer
+        // loop already iterating cannot newly offer a call whose durable row was just retired.
+        if (result is SosCancelResult.Cancelled) invalidateDispatchLease(msgId)
         if (activeSosRow?.msgId?.contentEquals(msgId) == true) activeSosRow = null
         refreshSosStatusFromDurable()
         // T43: "wasRelayed" meaneth "copies MAY be out", and the only honest
@@ -664,7 +699,10 @@ class MeshNode(
         }
         val bytes = frame.encode()
         var handed = 0
+        val retryLease = mintDispatchLease(frame.msgId)
         for (peerId in knownPeers()) {
+            // GS-SOS-002: re-checked before every offer (a cancel committed during a callback stops the rest)
+            if (!dispatchLeaseStands(frame.msgId, retryLease)) break
             val admitted = send(peerId, bytes)
             linkOffers.record(frame.msgId, peerId, admitted, controlClock())
             if (admitted) handed++
@@ -731,7 +769,10 @@ class MeshNode(
 
         val bytes = canonicalFrame.encode()
         var handed = 0
+        val directLease = mintDispatchLease(canonicalFrame.msgId)
         for (peerId in knownPeers()) {
+            // GS-SOS-002: re-checked before every offer
+            if (!dispatchLeaseStands(canonicalFrame.msgId, directLease)) break
             val admitted = send(peerId, bytes)
             linkOffers.record(canonicalFrame.msgId, peerId, admitted, controlClock())
             if (admitted) handed++

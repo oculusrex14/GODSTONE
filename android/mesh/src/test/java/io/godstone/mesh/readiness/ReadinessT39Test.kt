@@ -612,4 +612,37 @@ class ReadinessT39Test {
         runTest { seen = r.node.activeSosSnapshot() }
         Assert.assertNull("the scan must agree with the darkness", seen)
     }
+
+    // ---------------------------------------------------------------- GS-SOS-002
+
+    /**
+     * GS-SOS-002: "Cancellation does not suppress later offers already captured by the dispatch/retry
+     * loop." The offer loop iterateth `knownPeers()` with NO check between iterations, while Cancel
+     * commiteth a durable terminal CAS through the one command door -- so a cancellation committed
+     * INSIDE a send callback is invisible to the loop already iterating, and the NEXT peer is offered a
+     * call whose row was just retired.
+     */
+    @Test
+    fun testCancellationSuppressethTheLaterOffersAlreadyCaptured() = runTest {
+        val r = newRig()
+        r.node.injectPeerForTest(peerOf(1))
+        r.node.injectPeerForTest(peerOf(2))
+        var offers = 0
+        var cancelled: SosCommandResult? = null
+        val dispatched = r.node.dispatchSos("cancel me now".toByteArray()) { _, bytes ->
+            offers++
+            if (offers == 1) {
+                val mid = io.godstone.mesh.wire.v2.FrameV2.decode(bytes)?.msgId
+                if (mid != null) cancelled = r.node.handleSosCommand(SosCommand.Cancel(mid)) { _, _ -> true }
+                false                      // the FIRST handoff is refused by the caller
+            } else true
+        }
+        Assert.assertTrue("the first callback must have cancelled the call, got " + cancelled,
+                          cancelled is SosCommandResult.Cancelled)
+        Assert.assertEquals(
+            "exactly ONE offer may stand: a cancellation committed inside the first callback must " +
+            "suppress the later offer already captured by the dispatch loop (offers=" + offers + ")",
+            1, offers,
+        )
+    }
 }
