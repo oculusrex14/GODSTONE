@@ -1288,13 +1288,36 @@
         "source_sha": "c683a2bf0b5bcdd4a662d98f7542351501b57b7c"
       },
       "impact": "Long documents are laid out in a LazyVStack without a ScrollView or List. Content beyond the viewport has no reading scroll action; the presence of ScrollViewReader only supplies a proxy and does not create scrolling. This blocks the core full-document journey, especially at accessibility text sizes.",
-      "invalidated_dependents": [],
-      "my_fix_commit": null,
-      "my_logs": [],
-      "my_red_case": null,
-      "my_status": "OPEN",
-      "notes": null,
-      "pending_proof": [],
+      "invalidated_dependents": [
+        "ios/Godstone/Sources/App/ArchiveView.swift (the reader; the app target is not host-tested here)",
+        "ios/Godstone/Sources/GodstoneCore/ArchiveReadingAnchor.swift (new) and its mirror in ios/Packages/GodstoneFoundation",
+        "ios/Godstone/Tests/GodstoneMeshTests/ReadinessArchive004Tests.swift (new court)",
+        "the T50 reading-journey court (it walketh the scene, not the view) remains valid and unchanged"
+      ],
+      "my_fix_commit": "ba0dd69",
+      "my_logs": [
+        {
+          "outcome": "5/5 on the live tree; the package 1171 tests -- run 1 reported one un-named failure, runs 2 and 3 are clean",
+          "path": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/REMEDIATION/GS-ARCHIVE-004/green/archive-004-green.log",
+          "sha256": "2675f1434c9018974a18adfc44661023da036a45077bc3be10273183a8260b9d",
+          "what": "the court green (5/5) and the package suite"
+        }
+      ],
+      "my_red_case": {
+        "argv": "swift test --package-path ios/Packages/GodstoneFoundation --filter ReadinessArchive004Tests",
+        "case": "ios/Godstone/Tests/GodstoneMeshTests/ReadinessArchive004Tests.swift -- the audited reader form restored in a disposable copy",
+        "cwd": "/Users/oculus/Projects/GODSTONE_BUILDER",
+        "log": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/REMEDIATION/GS-ARCHIVE-004/red/archive-004-RED.log",
+        "log_sha256": "4f46c846c7a9c9a22ce5d161295c7b05ef5ff4e77842bb7438c0aac8826a372a",
+        "outcome": "W01's four assertions red: no captured proxy, no scrolling container, the discarded-proxy form present"
+      },
+      "my_status": "FIX_SUBMITTED",
+      "notes": "FIX_SUBMITTED. The scrolling container existeth, the proxy is used for the restored anchor, and the fallback decision is a TESTED pure helper. The closure the card asketh for -- a real UI scroll test on a simulator at several Dynamic Type sizes -- is NOT claimed and is named as pending. Only an independent audit may write VERIFIED_FIXED.",
+      "pending_proof": [
+        "INDEPENDENT VERIFICATION: only an independent audit may mark this VERIFIED_FIXED",
+        "the card's closure requireth an ACTUAL iOS UI TEST: a document longer than several screens, scrolled to a unique final sentinel passage, repeated at Dynamic Type sizes with the reading order checked. NO simulator or physical gesture test was run here -- the container and the anchor decision are proven, the READING JOURNEY is not",
+        "no hosted run URL/log was available, so hosted convergence remains pending"
+      ],
       "proof": "readingView(found:) consists of ScrollViewReader { _ in LazyVStack ... } and returns directly into the loaded branch of the destination. No ancestor in this destination supplies a ScrollView/List. The complete file has no ScrollView declaration and is byte-identical at b439f35f. This is source proof; no simulator screenshot or physical gesture test is claimed.",
       "remediation_report": "evidence/AUDIT-002/archive/ARCHIVE_REMEDIATION.md",
       "remediation_steps": [
