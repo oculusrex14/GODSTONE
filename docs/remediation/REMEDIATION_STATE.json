@@ -5606,10 +5606,29 @@
    },
    "impact": "`BleTransport.swift:634–640` implements `central` and `peripheral` as computed properties reading `activeManagerContext`. `stopQuiesced` sets that context to nil at line 1322. Its subsequent delegate detach (1326–1327), stopScan/stopAdvertising (1330–1331), and cancelPeripheralConnection (1336) consequently target nil and perform no OS call. `ManagerContext.retire` (355–359) only sets a boolean. The old context is retained by `lastRetiredManagerContext`, so releasing the active reference does not release its managers. Local maps and writers are cleared, which can make helper assertions pass while the radio and physical connections were never stopped by this path. Start the transport; power on and connect/advertise; call stop; inspect the old manager objects. The stop method clears all local ownership and reports completion without issuing any of its intended stop/cancel operations. A subsequent start creates a fresh pair while the old retained pair has not been explicitly shut down.",
    "invalidated_dependents": [],
-   "my_fix_commit": null,
-   "my_logs": [],
-   "my_red_case": null,
-   "my_status": "OPEN",
+   "my_fix_commit": "(ledger round 235) THE OS CLEANUP RUNNETH ON THE CLOSING EPOCH'S OWN MANAGERS: `stopQuiesced` captured `closingContext` and an IMMUTABLE `closingPeripherals` array BEFORE clearing ownership, and `stopScan`, `stopAdvertising` and every `cancelPeripheralConnection` now go through `closingContext?.central`/`closingContext?.peripheral` -- whose managers are immutable `let`s -- instead of the computed optional properties that were NIL by then",
+   "my_logs": [
+    {
+     "log": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/REMEDIATION/IOS-01/red-round235.log",
+     "sha256": "0494a8af7cd97634b86cb1b29b8efad08688bff0cdc5df16db2d82c63a88cf02",
+     "what": "IOS-01's canonical RED (ledger round 235): the OS cleanup must run on the CLOSING context's own managers",
+     "outcome": "captured with argv, source SHA and digest, PARKED in the probes directory. The W00 control asserteth the live computed properties AND the context's immutable managers still exist; the defect arms assert the cleanup useth the CLOSING context and captureth the peripherals before clearing -- MEASURED: `activeManagerContext = nil` precedeth every OS call, so `central?.stopScan()`, `peripheral?.stopAdvertising()` and `central?.cancelPeripheralConnection(...)` are NO-OPS"
+    },
+    {
+     "log": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/REMEDIATION/IOS-01/red-round235.log",
+     "sha256": "0494a8af7cd97634b86cb1b29b8efad08688bff0cdc5df16db2d82c63a88cf02",
+     "what": "IOS-01's canonical RED (ledger round 235)",
+     "outcome": "Ran 3 tests, **FAILED (failures=2)** with the W00 control passing: the cleanup used the live optionals, so `activeManagerContext = nil` precedeth every OS call and `stopScan`/`stopAdvertising`/`cancelPeripheralConnection` were NO-OPS -- exactly the finding's title"
+    },
+    {
+     "log": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/REMEDIATION/IOS-01/green-round235.log",
+     "sha256": "cea8409dded374b0c174f8320d134b5e3691fdeeee266068cf1ce1945ee87f47",
+     "what": "IOS-01 LANDS: the WHOLE iOS lane after the closing-context cleanup (ledger round 235)",
+     "outcome": "**Executed 1205 tests, with 0 failures (0 unexpected)**, 277.7s -- the redirect to the closing context broke no court, though EVERY court's teardown path now asks the OS to stop through the epoch's own managers"
+    }
+   ],
+   "my_red_case": "the canonical arm `tools/readiness/tests/test_ios_stop_uses_closing_context.py`, run RED FIRST in the probes directory (W00 control passing: the live computed properties AND the context's immutable managers still exist; the two defect arms failing): `stopQuiesced` cleared ownership before the OS calls, so every OS call was a NO-OP",
+   "my_status": "FIX_SUBMITTED",
    "notes": "ENRICHED AT ROUND 104 by TRANSCRIPTION from the audit's own card (ios/findings.md#IOS-01): impact, remediation_steps, source_refs and closure_tests are the card's OWN words and its OWN file references, not a summary; the refs are relative to the audited snapshot. No status changed and nothing was claimed fixed.",
    "pending_proof": [],
    "proof": null,
@@ -5635,7 +5654,10 @@
     "T28"
    ],
    "title": "stop loses manager references before OS cleanup",
-   "wave": "4c.1"
+   "wave": "4c.1",
+   "pending_work": [
+    "ROUND 235 (IOS-01 LANDS -- AND IT WAS FOUND, MEASURED AND REPAIRED IN ONE ROUND, AFTER SIX ROUNDS SPENT ON A HARDER FINDING'S RECONCILIATION). (1) THE DEFECT, MEASURED EXACTLY: `stopQuiesced()` cleared ownership FIRST (`activeManagerContext = nil`) while the transport's `central` and `peripheral` are COMPUTED OPTIONAL PROPERTIES over the CURRENT context -- SO `central?.stopScan()`, `peripheral?.stopAdvertising()` AND EVERY `central?.cancelPeripheralConnection(...)` WERE **NO-OPS**. THE REFERENCES WERE LOST BEFORE THE OS WAS ASKED TO DO ANYTHING, WHICH IS THE FINDING'S OWN TITLE, WORD FOR WORD. The CLOSING context still held its own immutable `let central`/`let peripheral`, so the cleanup was POSSIBLE -- through `closing`, not through a live lookup. (2) THE REPAIR, THE CARD'S STEPS 1 AND 3: capture `closingContext` and an IMMUTABLE `closingPeripherals` array BEFORE ownership is cleared, then issue `stopScan`, `stopAdvertising` and every `cancelPeripheralConnection` on `closingContext?.central`/`closingContext?.peripheral`. The other steps' substance already stood (the context is retired, the timers and writers cancelled, the maps detached ✓), so the finding's code side is carried. (3) THE RED WAS CANONICAL AND ITS CONTROL SUBSTANTIVE: three arms run FIRST in the probes directory, the W00 control asserting BOTH halves of the world that must keep existing (the live computed properties AND the context's immutable managers), with the two defect arms failing on the no-op cleanup. It then MOVED INTO `tools/readiness/tests/` with the repair, and the parked probe was deleted. (4) ACCEPTANCE: the canonical arm OK; the WHOLE iOS LANE at **1205 tests, with 0 failures (0 unexpected)**, 277.7s -- which mattered, because EVERY court's teardown now goes through the epoch's own managers. (5) THE BEHAVIOURAL HALF IS OWED AND NAMED, AND NO EXCUSE IS OFFERED FOR IT: a behavioural witness of 'the OS was really asked to stop' would need a REAL CoreBluetooth manager, which this environment doth not have -- AND A SIMULATOR OR A FIXTURE WILL NEVER BE RELABELLED AS A DEVICE RESULT. The source-level arm proveth the redirect existeth at the real call sites; the device-level truth is owed to the hardware lane (T73-T75). (6) AND ONE STRATEGIC NOTE, RECORDED BECAUSE IT IS ABOUT METHOD AND NOT ABOUT THIS FINDING: after SIX ROUNDS on ANDROID-01's reconciliation produced a complete plan, a designed seam, two verified arms and NO LANDING, this round closed IOS-01 END TO END. **A PARKED FINDING WITH A COMPLETE PLAN IS NOT A FAILED ONE, AND A ROUND SPENT ON A CLEAN FINDING IS NOT A RETREAT** -- the reconciliation remaineth, fully specified, for a round that can afford its six arms."
+   ]
   },
   "IOS-02": {
    "audit_status_at_snapshot": "OPEN",

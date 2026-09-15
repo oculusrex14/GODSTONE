@@ -1396,6 +1396,14 @@ public final class BleTransport: NSObject, @unchecked Sendable {
         // FIRST: Invalidate active transport epoch
         isStarted = false
         currentTransportEpoch += 1
+        // IOS-01 (T13/T14/T16/T28): THE CLOSING EPOCH IS CAPTURED BEFORE ANY OWNERSHIP IS CLEARED -- the context
+        // ITSELF (whose `central` and `peripheral` are immutable `let`s) and an IMMUTABLE ARRAY of the peripherals it
+        // owneth. The audited road asked the OS to stop through `central?`/`peripheral?`, which are COMPUTED
+        // properties over the CURRENT context -- so after `activeManagerContext = nil` below they were NIL, and
+        // `stopScan`, `stopAdvertising` and every `cancelPeripheralConnection` were NO-OPS: the references were lost
+        // before the OS was asked to do anything. THIS IS THE FINDING'S OWN TITLE.
+        let closingContext = activeManagerContext
+        let closingPeripherals = Array(connectedPeripherals.values)
         // T13: the closing epoch retires its pair. The objects leave the
         // stage as they came; the next opening creates fresh ones.
         if let context = activeManagerContext {
@@ -1410,13 +1418,13 @@ public final class BleTransport: NSObject, @unchecked Sendable {
         peripheral?.delegate = nil
         #endif
 
-        central?.stopScan()
-        peripheral?.stopAdvertising()
+        closingContext?.central.stopScan()
+        closingContext?.peripheral.stopAdvertising()
 
         cancelAllTimerLeasesLocked()
 
-        for (_, p) in connectedPeripherals {
-            central?.cancelPeripheralConnection(p)
+        for p in closingPeripherals {
+            closingContext?.central.cancelPeripheralConnection(p)
         }
         connectedPeripherals.removeAll()
         inboxCharacteristics.removeAll()
