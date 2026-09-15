@@ -660,6 +660,23 @@
     "NOT a green claim about the repository: THREE GENUINE CONTROLS ARE RED and two of them have broken mutation batteries",
     "NOT a repair: nothing was fixed this round"
    ]
+  },
+  "repository_control_sweep_AT_ROUND_158": {
+   "candidate_sha": "93aaede40fef6219b75becdcce0d6f4021948538",
+   "why": "ROUND 155 CHANGED PRODUCTION CODE (`MeshNode.dispatchSos`, and the composed runtime now wiring an authority over the keys its harness generates). This sweep owed the same collateral check the FIRST repair got at round 142.",
+   "result": "15 controls PASS; the SAME FOUR report a non-zero exit as at rounds 129-131 and 142, and NOT ONE NEW FAILURE APPEARED",
+   "the_four_unchanged": {
+    "check_ble_link_substrate_controls": "genuine RED (BL132), pre-existing, selftest also broken",
+    "check_local_identity_controls": "genuine RED -- the SEPARATE issuance bypass (`SignedSosV1`, both isles), still open; its selftest passes 38/38",
+    "check_trusted_runtime_composition_controls": "genuine RED (R01/R02, R05/R06), pre-existing, selftest broken",
+    "check_parity": "NOT a repository failure -- passes as the mandatory lane runs it (`--scope repo`); its default-scope exit 1 IS the external A-06 gate the audit requires stay open"
+   },
+   "evidence_dir": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/REMEDIATION/ROUND158 (one log per control)",
+   "meaning": "BOTH of this session's GS-SOS-001 repairs are CONTROL-CLEAN: neither introduced a new failure in the repository controls, and the three genuine pre-existing reds stand exactly where they stood. An itemised record, not a count, because a count conflates a repository failure with an external gate correctly left open -- which is the error round 130 corrected.",
+   "what_this_is_not": [
+    "NOT a green claim about the repository: THREE GENUINE CONTROLS ARE RED, two with broken mutation batteries",
+    "NOT a repair: nothing was fixed this round"
+   ]
   }
  },
  "counts": {
@@ -5630,7 +5647,7 @@
   }
  ],
  "evidence_audit": {
-  "round": 157,
+  "round": 158,
   "what": "round 97: the AUDIT-004 limb of GS-CTRL-001 landed; the auditor's own 10-case probe suite was rerun at the repaired SHA (8 failures -> 5) and its three GS-CTRL-001 probes now pass.",
   "verified": 96,
   "defects_found_and_what_happened": [
