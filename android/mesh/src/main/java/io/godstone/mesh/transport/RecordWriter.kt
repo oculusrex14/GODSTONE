@@ -102,6 +102,16 @@ class Reservation internal constructor(
     internal val operationId: Long,
     internal val recordType: BleRecordType,
     internal val clearLength: Int,
+    /**
+     * ANDROID-06 step 1: THE RELATION THIS RESERVATION SPEAKETH FOR, CAPTURED AT RESERVE TIME. Without it a
+     * pending reservation could not be validated against a connection that had since been replaced.
+     */
+    internal val generation: Long,
+    /**
+     * ANDROID-06 step 1: THE CAPACITY/MTU EPOCH, also captured. The live value is read from the connection at
+     * reserve time, so a later change is DETECTABLE by comparing it against this one.
+     */
+    internal val capacityEpoch: Int,
 ) {
     /**
      * Seal [payload] with [sealer] (which returns null when the session
@@ -152,6 +162,15 @@ class RecordWriter(
     private val lock = Any()
     private val admitted = ArrayDeque<AdmittedRecord>()
 
+    /**
+     * ANDROID-06 steps 1 and 4: THE RESERVED SLOTS. The card's own words: 'Maintain a bounded pending-ticket
+     * table under the writer lock' and 'Make queued/reserved/in-flight counts account for the SAME four-record
+     * bound; DO NOT COUNT ONLY SEALED FRAGMENTS'. Measured before this repair: `reserve` merely CHECKED
+     * `admitted.size`, while `admitted` holdeth SEAL-time records -- so a caller could reserve WITHOUT EVER
+     * SEALING and the four-record bound was evadable, exactly as the audit sayeth.
+     */
+    private val reserved = LinkedHashMap<Long, Reservation>()
+
     /** The single value in flight for this direction, or null. */
     private var inFlight: WriteOperation? = null
 
@@ -195,7 +214,7 @@ class RecordWriter(
                 AdmissionError.NotEnoughCapacity(sealedLength, ceiling, fragmentCount)
             )
         }
-        if (admitted.size >= maxAdmittedRecords) {
+        if (admitted.size + reserved.size >= maxAdmittedRecords) {
             return@synchronized ReservationAnswer.Refused(AdmissionError.TooManyAdmitted(maxAdmittedRecords))
         }
         // The bound of sixteen staged values is an invariant of the
@@ -204,9 +223,10 @@ class RecordWriter(
 
         val operationId = nextOperationId++
         operationsIssued += 1
-        return@synchronized ReservationAnswer.Admitted(
-            Reservation(this, operationId, recordType, clearLength)
-        )
+        val reservation = Reservation(this, operationId, recordType, clearLength,
+                                      relationKey.generation, connection.maxAttValueLength)
+        reserved[operationId] = reservation
+        return@synchronized ReservationAnswer.Admitted(reservation)
     }
 
     /**
@@ -214,8 +234,32 @@ class RecordWriter(
      * sequence number. Called through [Reservation.sealAndQueue]; kept
      * here so the writer's lock is the single serialisation point.
      */
+    /**
+     * ANDROID-06 step 2: PER-RESERVATION CANCELLATION THAT RETURNETH THE SLOT. The card's own words: 'provide
+     * cancellation that returns a slot'. It is HARMLESS by construction: a reservation that was already
+     * sealed, queued or never admitted is simply not found, and the answer sayeth so without touching anything.
+     */
+    fun cancel(reservation: Reservation): Boolean = synchronized(lock) {
+        // HARMLESS BY CONSTRUCTION: a reservation already sealed, already cancelled or never admitted is simply
+        // not in the table, and the answer sayeth so without touching anything.
+        reserved.remove(reservation.operationId) != null
+    }
+
     internal fun sealAndQueueOf(reservation: Reservation, payload: ByteArray,
                                 sealer: (ByteArray) -> ByteArray?): SealAnswer = synchronized(lock) {
+        // ANDROID-06 step 3: EVERY REVOCABLE CHECK COMES BEFORE THE SEALER. A relation that was replaced, or a
+        // capacity/MTU epoch that moved, invalidateth a PENDING reservation -- and it is RETIRED HERE WITHOUT
+        // SEALING, so no nonce is burnt and no byte is staged for a relation that no longer speaketh.
+        if (reservation.generation != relationKey.generation) {
+            reserved.remove(reservation.operationId)
+            return@synchronized SealAnswer.Refused("the relation was replaced before the seal")
+        }
+        if (reservation.capacityEpoch != connection.maxAttValueLength) {
+            reserved.remove(reservation.operationId)
+            return@synchronized SealAnswer.Refused("the capacity epoch moved before the seal")
+        }
+        // A sealed or cancelled reservation no longer holdeth a slot; sealing twice is the sealer's own refusal.
+        if (reservation.operationId in reserved) reserved.remove(reservation.operationId)
         if (closed || !connection.isActive) {
             return@synchronized SealAnswer.Refused("the relation fell before the seal")
         }
@@ -356,6 +400,7 @@ class RecordWriter(
     /** The relation fell by other means (a disconnect, a quarantine):
      * release what was staged, accept nothing further. */
     fun shutdown() = synchronized(lock) {
+        reserved.clear()
         closed = true
         admitted.clear()
         inFlight = null
