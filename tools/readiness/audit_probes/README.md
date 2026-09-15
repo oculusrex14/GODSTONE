@@ -65,31 +65,22 @@ named in the ledger as the arm still owed.
 `python3 scripts/sync_ios_foundation_package.py`, then
 `swift test --package-path ios/Packages/GodstoneFoundation --filter ReadinessStore003Tests`.
 
-## Swift probe — `swift/gs-sos-001-ios-twin.patch` (GS-SOS-001, the iOS twin)
+## Swift probe — GS-SOS-001's iOS twin: LANDED, and the parked patch is gone (round 162)
 
-This probe is a PATCH and not a file, because the arm it carrieth is not a new court: it EDITS an existing
-one. It addeth a `MissingMaterialAuthority` fixture and one arm to
-`ios/Godstone/Tests/GodstoneMeshTests/ReadinessT38Tests.swift`, **and it REVERSES that court's legacy arm
-inside the arm itself** (the legacy arm used to assert that an UNWIRED node still emitted the structural SOS
-shape — the same defence the audit rejected). A standalone copied file could not express a reversal; a patch
-can, and it applieth to the lane's own file exactly.
+The arm that was parked here as `swift/gs-sos-001-ios-twin.patch` has **MOVED INTO THE CANONICAL SUITE**, as
+this directory's rule requireth: `MissingMaterialAuthority`, the behavioural arm, and the REVERSAL of
+`ReadinessT38Tests`' own legacy arm now live in
+`ios/Godstone/Tests/GodstoneMeshTests/ReadinessT38Tests.swift` (and its mirror), and the refusal liveth in
+`MeshNode.dispatchSos`'s `else` branch. The parked patch was deleted with the repair in the same round, so
+nothing here carrieth a red arm that duplicates a green one.
 
-**Captured red** (product untouched, detached pre-repair worktree at `95dc75e`, log
-`REMEDIATION/GS-SOS-001/ios-red-round161/red.log`): `12 tests, with 6 failures (0 unexpected)`, `0 errors` —
-the build succeeded, so every failure is an assertion. The null-yield arm reports one durably held frame, one
-C6 row and `queuedDurably` instead of a refusal; the reversed legacy arm reports the same for an unwired node.
-**The arm's `sends == 0` assertion passeth on BOTH sides of the repair** (zero peers means the send closure is
-never invoked), so the discriminating assertions are the durable hold, the C6 row and the typed refusal —
-stated so that a non-discriminating count is not later mistaken for evidence.
+**Its captured red stayeth on the record** (product untouched, detached pre-repair worktree at `95dc75e`,
+log `REMEDIATION/GS-SOS-001/ios-red-round161/red.log`): `12 tests, with 6 failures (0 unexpected)`,
+`0 errors` — the build succeeded, so every failure was an assertion. The null-yield arm reported one durably
+held frame, one C6 row and `queuedDurably` instead of a refusal; the reversed legacy arm reported the same for
+an unwired node. **The arm's `sends == 0` assertion passeth on BOTH sides of the repair** (zero peers means the
+send closure is never invoked), so the discriminating assertions were the durable hold, the C6 row and the
+typed refusal — stated so that a non-discriminating count is not later mistaken for evidence.
 
-**To run it (it MUST be red before the repair):**
-
-```
-git apply tools/readiness/audit_probes/swift/gs-sos-001-ios-twin.patch
-python3 scripts/sync_ios_foundation_package.py
-swift test --package-path ios/Packages/GodstoneFoundation --filter ReadinessT38Tests
-```
-
-When the refusal landeth in `ios/Godstone/Sources/GodstoneMesh/MeshNode.swift`, the patch is RE-APPLIED as
-part of that SAME atomic change (test + production in one commit) so that no committed SHA carrieth a red
-lane — the discipline Android's round 143 enforced by reverting.
+The repair's green, for the record: `Executed 1196 tests, with 0 failures (0 unexpected)`, `0 errors`
+(`REMEDIATION/GS-SOS-001/ios-green-round162/green.log`).

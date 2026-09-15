@@ -46,7 +46,7 @@ already carried. The audit's step 3 stays OPEN, with its two measured obstacles 
 | CRYPTO-003 | FIX_SUBMITTED | 4b | Destroyed retained controllers and primitive sessions st |
 | CRYPTO-006 | FIX_SUBMITTED | 4b | Duplicate journal admission is treated as success for a |
 
-## DO THIS FIRST (round 161) — THE iOS RED IS CAPTURED, PARKED OUTSIDE THE LANE, AND THE LAST UNKNOWN IS GONE
+## DO THIS FIRST (round 162) — GS-SOS-001's iOS TWIN IS REPAIRED AND THE WHOLE iOS LANE IS GREEN; THE NEXT TARGET IS THE ISSUANCE BYPASS
 
 GS-SOS-001's **iOS twin** is now red-proved and fully specified, so its repair is a MEASURED change rather
 than a search. The three signatures the previous round left open are answered: `T38Vec` is
@@ -64,10 +64,28 @@ before the repair, so the arm's `sends == 0` assertion PASSES ON BOTH SIDES and 
 the DURABLE HOLD (1 frame), the C6 ROW (1 recorded) and the RESULT (`queuedDurably` where a refusal is
 required). The arm also REVERSES the court's legacy arm *inside the arm*, with the reversal written into it.
 
-**The arm is PARKED so that every committed SHA keeps the iOS lane green**:
-`tools/readiness/audit_probes/swift/gs-sos-001-ios-twin.patch` (sha256
-`d9e2758326b3e01c880c9db298f4dbaec7403b3018d1bcdec05522299a7f4e81`), and the lane's test file was restored
-to HEAD. The repair RE-APPLIES the patch as part of ONE atomic change (test + production in one commit).
+**WHAT LANDED (round 162, commit `853a8df`, tree `299b954`):** `MeshNode.dispatchSos`'s `else` branch no longer
+buildeth the legacy structural frame — it returneth `"no SOS signing authority: an unauthenticated distress call
+may not be offered"`, byte-identical to Android's wording, BEFORE any persist, tracker row or send, with the seed
+consulted first so an empty authority consumes no nonce. `SimulatedSosAuthority` was added to main **beside the
+composed harness** (mirroring Android's `runtime/ComposedRuntime.kt:687`), because the iOS isle carried NO
+authority implementation in main at all; the harness wireth it over the seed IT generated for that node. FIVE of
+the eight measured sites needed an edit (T39 :134 and :440, T43 :86, SosDispatch `makeNode`, DeliveryIntegration
+`makeNode`); T39's `node2` (:223) and T43's `cold` (:255) dispatch nothing and were deliberately left unwired;
+T44's eighth site is the harness wiring itself. **No assertion had to be reversed** — every dependent was an
+unset rig, exactly as rounds 144/149 predicted for Android. Acceptance: `Executed 1196 tests, with 0 failures
+(0 unexpected)`, `0 errors`, 172.5s, with the signed-half positive control passing in the SAME run; and the
+repository controls swept at 15 pass with the SAME 3 red as the round-158 baseline — no new failure. The parked
+patch was DELETED with the repair: the arm and the reversed legacy arm now live in the canonical suite.
+
+**STILL OWED ON THIS FINDING, NAMED RATHER THAN IMPLIED:** the SEPARATE `SignedSosV1.author` issuance bypass
+(constructs/issueth its own `IdentityBindingV1` on BOTH isles — one of the three red controls, and the ONLY one
+whose selftest passes 38/38; the API is answered at round 133, the plumbing at round 134), and
+`ComposedRuntime.sendSos` returning `.applied(detail:)` whatever the dispatch result — so a REFUSED SOS would
+still be reported as APPLIED. No device, radio or emulator was used, and production `MeshRuntime` wireth no
+authority, so production REFUSES.
+
+**The round-161 RED stayeth on the record, with its limit:**
 
 **The blast radius is EIGHT UNSET RIGS, not eighteen assertions** (the round-144/149 pattern, re-measured on
 this isle): `ReadinessT39Tests.swift:134`, `:223`, `:440`; `ReadinessT43Tests.swift:86` (inside `rig(_:)`) and
@@ -76,18 +94,11 @@ this isle): `ReadinessT39Tests.swift:134`, `:223`, `:440`; `ReadinessT43Tests.sw
 (`ComposedRuntime.swift:330`) is ONE insertion that covereth all of its arms**. None of them asserteth the
 unauthenticated shape; all assert an outcome that REQUIRES a successful offer.
 
-**One fact has no Android analogue and it decideth the repair's shape:** the iOS isle carrieth **NO
+**One fact had no Android analogue and it decided the repair's shape (round 161):** the iOS isle carried **NO
 `SosSigningAuthority` implementation in main sources at all** (only the protocol at `SignedSosV1.swift:103` and
-the seam at `MeshNode.swift:169`), while Android carrieth `SimulatedSosAuthority` in main
-(`ComposedRuntime.kt:687`). So the repair must ADD one (identity-derived seed, harness-adjacent, documented as
-harness wiring), wire the eight sites, refuse in `dispatchSos`'s `else` branch BEFORE any persist/tracker/send,
-then run the whole lane (`sync_ios_foundation_package.py && swift test --package-path
-ios/Packages/GodstoneFoundation`, expect 1195 tests, grep `Executed `).
-
-**Separate observation, recorded and NOT claimed as repaired:** `ComposedRuntime.sendSos`
-(`ComposedRuntime.swift:523-533`) returneth `.applied(detail: "\(result)")` regardless of the result, so once
-the refusal landeth a REFUSED SOS would be reported to its caller as APPLIED with the failure buried in the
-detail string. That is the audit's own remediation step 6, and it is OWED.
+the seam at `MeshNode.swift:169`), while Android carried `SimulatedSosAuthority` in main
+(`ComposedRuntime.kt:687`) — so one had to be ADDED, over the harness's own generated material, and labelled
+harness support in its own docstring (round 162 did exactly that).
 
 ## DO THIS FIRST (round 132, still the open control question) — THE MANDATORY LANES ARE RED, AND ONE OF THE THREE CONTROLS HAS A WORKING INSTRUMENT
 
