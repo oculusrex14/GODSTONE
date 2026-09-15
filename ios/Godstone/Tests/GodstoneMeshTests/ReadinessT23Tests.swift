@@ -786,6 +786,9 @@ final class ReadinessT23Tests: XCTestCase {
                        "the captured node id IS the authenticated node id the handshake validated")
         XCTAssertEqual(captured.identityPub32, r.pair.aliceManager.authenticatedIdentityPubOf(r.handleB),
                        "and the captured key IS the authenticated identity public key -- the source the node id is derived from")
+        // IOS-04 (T24) STEP 2 (round 239): AND IT TRAVELLETH ON THE OWNED BOUNDED CONDUIT, its verdict OBSERVED.
+        XCTAssertEqual(r.alice.lastTrustedPublicationVerdictForTest, .accepted,
+                       "the captured peer must be OFFERED to the bounded conduit and ACCEPTED -- the audited road published nothing at all")
     }
 
     // MARK: - case the seventh-and-a-half: a late subscriber is replayed the present ready state (T24)

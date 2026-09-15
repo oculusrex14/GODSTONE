@@ -2432,6 +2432,16 @@ public final class BleTransport: NSObject, @unchecked Sendable {
     /// IOS-04 (T24) slice (b): THE TRUSTED PEER CAPTURED AT THE SEALED ROUND, and the seam a court judgeth it by.
     internal private(set) var capturedTrustedPeerForTest: TrustedPeer?
 
+    /// IOS-04 (T24) step 2: THE OWNED BOUNDED CONDUIT. The channel is BOUNDED and the publisher OBSERVETH every offer's
+    /// verdict -- a refused offer (a full bounded buffer) is NOT swallowed and doth NOT mark the relation published,
+    /// which is the contract this isle's four T24 courts already witness. Capacity 64, as those courts use.
+    private let peerEvents = PeerEventPublisher(channel: ReliablePeerEventChannel(capacity: 64))
+    /// The last verdict the bounded conduit gave -- the card's 'do not silently drop', made observable.
+    internal private(set) var lastTrustedPublicationVerdictForTest: OfferVerdict?
+
+    /// A consumer's ear upon the trusted publication -- the seam a real consumer useth.
+    func addTrustedPeerSink(_ sink: @escaping (LinkEvent) -> Void) { peerEvents.addSink(sink) }
+
     /// Capture the authenticated peer for this relation, WHILE THE RELATION OWNER IS HELD. Null when either half is not
     /// yet answerable -- an honest null rather than a fabricated peer, since `TrustedPeer`'s initialiser REFUSETH bytes
     /// that are not a sixteen-octet node id derived from a thirty-two-octet identity key.
@@ -2453,6 +2463,18 @@ public final class BleTransport: NSObject, @unchecked Sendable {
         // IOS-04 (T24) slice (b): THE REAL LINKREADY CAPTURETH THE PEER. The audited road told its watchers a BARE UUID
         // and never constructed a `TrustedPeer`, so no real consumer ever receiveth one -- the finding's own sentence.
         captureTrustedPeerLocked(peerId)
+        // IOS-04 (T24) step 2: AND THE CAPTURED PEER TRAVELETH ON THE OWNED BOUNDED CONDUIT, its verdict OBSERVED --
+        // never discarded, so a full channel is a visible event rather than a silent drop.
+        if let captured = capturedTrustedPeerForTest {
+            let verdict = peerEvents.publishLinkReady(captured)
+            lastTrustedPublicationVerdictForTest = verdict
+            if verdict != .accepted {
+                // THE VERDICT IS RECORDED, never discarded: a full bounded conduit is a VISIBLE event, and the
+                // relation is NOT marked published by a refused offer, so a later attempt may retry.
+                recordRejection(peerId: peerId, site: "t24.linkready",
+                                reason: "the bounded conduit refused the offer: " + String(describing: verdict))
+            }
+        }
         if linkReadyPublished.count >= BleTransport.maxActiveConnections {
             linkReadyPublished.removeFirst()
         }
