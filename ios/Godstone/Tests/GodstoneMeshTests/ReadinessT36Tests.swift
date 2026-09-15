@@ -665,3 +665,89 @@ final class ReadinessT36Tests: XCTestCase {
         }
     }
 }
+
+// MARK: - CRYPTO-006: the raced journal admission, and its sequential regression
+//
+// The iOS twin of the arms that settled this finding on the Android isle. The race is made
+// DETERMINISTIC by a journal whose FIRST load misses: the second caller read the ledger BEFORE
+// the winner's row landed, which is exactly the interleaving the audit names -- "duplicate
+// journal admission is treated as success for a DIFFERENT freshly authored frame" -- with no
+// thread scheduling involved.
+
+/// The race, deterministic: the loser's first read misses, everything else delegates.
+private final class StaleReadJournal: OutboundIntentJournal, @unchecked Sendable {
+    private let inner: OutboundIntentJournal
+    private var missedOnce = false
+
+    init(_ inner: OutboundIntentJournal) { self.inner = inner }
+
+    func load(_ intentId: Data) -> JournalEntry? {
+        if !missedOnce { missedOnce = true; return nil }
+        return inner.load(intentId)
+    }
+
+    func insertIfAbsent(_ entry: JournalEntry) -> JournalInsertResult { inner.insertIfAbsent(entry) }
+
+    func advance(intentId: Data, from: IntentStateRank, to: IntentStateRank) -> JournalAdvanceResult {
+        inner.advance(intentId: intentId, from: from, to: to)
+    }
+}
+
+extension ReadinessT36Tests {
+
+    /// CRYPTO-006: one token, ONE logical message. The raced caller must resolve to the WINNER's
+    /// immutable logical id, and its own freshly authored frame must be DISCARDED -- never
+    /// enqueued. A duplicate admission is not a licence to commit a different frame.
+    func testW20RacedAcceptorReusethTheWinningRowAndDiscardethTheLosingFrame() async throws {
+        var f = try fixture()
+        let bob = try approvePeer(&f, 0x31, 0x41)
+        let t = bytesOf(14, 16)
+        guard case .durablyEnqueued(let winnerId, _) = await f.authority.sendDirect(
+            try cmd(t, bob.nodeId, ascii("raced body"))) else {
+            XCTFail("the winner must be accepted"); return
+        }
+        XCTAssertEqual(f.factory.creates, 1, "the winner authored exactly one frame")
+        XCTAssertEqual(f.store.base.allHeldMsgIds().count, 1, "one held row for the intent")
+
+        // the raced caller: same token, same recipient, same body -- and a stale read
+        let factory2 = RecordingIdentityFactory()
+        let authority2 = SendDirectAuthority(
+            identity: f.id, signingKeys: f.signing, router: f.router, store: f.store,
+            trustResolver: TrustedPeerIdentityResolver(source: f.trust),
+            journal: StaleReadJournal(f.journal), identityFactory: factory2,
+            clock: FixedClock(created: 1_700_000_777, quality: .userConfirmed))
+        guard case .durablyEnqueued(let racedId, _) = await authority2.sendDirect(
+            try cmd(t, bob.nodeId, ascii("raced body"))) else {
+            XCTFail("the raced caller must resolve, not fail"); return
+        }
+
+        XCTAssertEqual(racedId, winnerId, "the raced caller must resolve to the WINNER's logical id")
+        XCTAssertEqual(factory2.creates, 1, "the raced caller authored its own frame")
+        XCTAssertEqual(f.store.base.allHeldMsgIds().count, 1,
+                       "exactly ONE held row may stand for the intent")
+        XCTAssertEqual(f.journal.size(), 1, "and the journal keeps ONE row for the token")
+        let row = try XCTUnwrap(f.journal.load(t), "the token's row must stand")
+        XCTAssertEqual(row.logicalMessageId, winnerId, "the row still pins the WINNER's logical id")
+    }
+
+    /// CRYPTO-006 (the audit's SEQUENTIAL regression, beside the race arm): the SAME command
+    /// revision admitted twice through the ordinary road must resolve to ONE logical message, and
+    /// the second admission must author NOTHING. This guard must hold BOTH before and after the
+    /// race repair -- it is what the race repair is forbidden to break.
+    func testW21SequentialRepeatOfTheSameRevisionResolvesToOneLogicalMessage() async throws {
+        var f = try fixture()
+        let bob = try approvePeer(&f, 0x32, 0x42)
+        let t = bytesOf(15, 16)
+        guard case .durablyEnqueued(let first, _) = await f.authority.sendDirect(
+            try cmd(t, bob.nodeId, ascii("sequential body"))),
+              case .durablyEnqueued(let again, let fromRetry) = await f.authority.sendDirect(
+                try cmd(t, bob.nodeId, ascii("sequential body"))) else {
+            XCTFail("both admissions must be accepted"); return
+        }
+        XCTAssertEqual(first, again, "the repeat must resolve to the SAME immutable logical id")
+        XCTAssertTrue(fromRetry, "and it must be recognised as a retry")
+        XCTAssertEqual(f.factory.creates, 1, "the repeat authored nothing")
+        XCTAssertEqual(f.store.base.allHeldMsgIds().count, 1, "one held row stands for the token")
+        XCTAssertEqual(f.journal.size(), 1, "and one journal row")
+    }
+}

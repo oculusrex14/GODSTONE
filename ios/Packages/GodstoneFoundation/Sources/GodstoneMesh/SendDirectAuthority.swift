@@ -156,9 +156,17 @@ public final class JournalEntry: Sendable, Equatable {
     }
 }
 
+/// CRYPTO-006: the outcome of one atomic claim. A duplicate is NOT "success": it carries the
+/// WINNING row, because a duplicate admission means a DIFFERENT caller already pinned this exact
+/// command revision, and the caller that lost must discard its own freshly authored frame and
+/// reuse the winner's immutable identity. A bare `duplicate` is what let a raced caller commit a
+/// second logical message for one intent.
 public enum JournalInsertResult: Sendable, Equatable {
+    /// Our revision took the token's row.
     case stored
-    case duplicate
+    /// Another caller won THIS revision; `winner` is the row that governs.
+    case duplicate(winner: JournalEntry)
+    /// The ledger could not be written or read; typed, never folded into absence.
     case storageFailure
 }
 
@@ -189,10 +197,19 @@ public final class InMemoryOutboundIntentJournal: OutboundIntentJournal, @unchec
         return rows[Key(bytes: [UInt8](intentId))]?.copied()
     }
 
+    /// CRYPTO-006: the claim is keyed by the COMMAND REVISION, not by the token alone. Only the
+    /// SAME (token, canonicalCommandDigest) is a duplicate -- the case a retry or a race must
+    /// resolve to the row that already governs. A DIFFERENT digest under one token is a NEW
+    /// logical send (the preserved behaviour), and it TAKES the row so that the row always
+    /// MATCHES what the authority committed: "do not retain a single token-only row while
+    /// committing a different frame". The ledger keeps the latest accept per token, which the W6
+    /// court witnesses.
     public func insertIfAbsent(_ entry: JournalEntry) -> JournalInsertResult {
         lock.lock(); defer { lock.unlock() }
         let k = Key(bytes: [UInt8](entry.intentId))
-        if rows[k] != nil { return .duplicate }
+        if let existing = rows[k], existing.bindingDigest == entry.bindingDigest {
+            return .duplicate(winner: existing.copied())
+        }
         rows[k] = entry
         return .stored
     }
@@ -515,7 +532,33 @@ public final class SendDirectAuthority: @unchecked Sendable {
             return .rejected(reason: .intentIdMalformed)
         }
         switch journal.insertIfAbsent(entry) {
-        case .stored, .duplicate: break   // raced or replayed: the store transaction governs
+        case .stored: break   // OUR revision took the row: commit OUR frame below
+        case .duplicate(let winner):
+            // CRYPTO-006: a DIFFERENT caller already pinned this exact command revision while we
+            // were authoring. Our freshly authored frame is DISCARDED -- never enqueued -- and the
+            // WINNER governs, resolved exactly as the retry path resolves a pinned row. A
+            // duplicate admission is not a licence to commit a different frame.
+            guard winner.bindingDigest == digest, winner.verifyLogicalIdentity(senderNodeId: identity.nodeId),
+                  let winnerFrame = FrameV2.decode(winner.canonicalFrameBytes), winnerFrame.type == .message,
+                  (winnerFrame.flags & UInt16(FrameV2.Flags.sealed)) != 0,
+                  winnerFrame.msgId == winner.logicalMessageId else {
+                // defensive: a revision or identity conflict is a typed refusal with NO database,
+                // nonce, publication or send effect of its own.
+                return .rejected(reason: .enqueueCanonicMismatch)
+            }
+            switch store.enqueueDirectOutbound(winnerFrame, expectedRecipient: winner.recipientNodeId,
+                                              localOriginNodeId: identity.nodeId) {
+            case .created, .alreadyQueuedSameBinding:
+                advanceQuietly(intentId: command.intentId, from: winner.stateRank, to: .committed)
+                return .durablyEnqueued(logicalMessageId: winner.logicalMessageId, fromRetry: true)
+            case .canonicalFrameMismatch: return .rejected(reason: .enqueueCanonicMismatch)
+            case .rejectedCapacity:       return .rejected(reason: .enqueueCapacity)
+            case .conflictRecipient:      return .rejected(reason: .enqueueConflictRecipient)
+            case .rejectedTerminalState:  return .rejected(reason: .enqueueTerminalState)
+            case .inconsistentState:      return .rejected(reason: .enqueueInconsistent)
+            case .storageFailure:         return .rejected(reason: .enqueueStorageFailure)
+            case .invalidArgument:        return .rejected(reason: .enqueueInvalidArgument)
+            }
         case .storageFailure: return .rejected(reason: .journalStorageFailure)
         }
 
