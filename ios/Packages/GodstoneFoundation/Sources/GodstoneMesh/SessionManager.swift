@@ -81,7 +81,13 @@ public final class SessionManager {
     /// T08: one SessionSlot per relation keyed by the immutable RelationKey
     /// (the transport lookup handle). The slot owns its lock, so removing a
     /// retired slot reclaims its lock entry with it.
-    private var slots: [UUID: SessionSlot] = [:]
+    /// GS-CTRL-002 (R02): the per-relation registry under the contract's own name --
+    /// every entry owns exactly one `TrustedHandshakeController` (`SessionSlot.controller`)
+    /// and never a raw `NoiseSession`. T08 renamed this map to `slots` when it made the key a
+    /// RELATION rather than a peer handle, and the repository's composition control, which
+    /// readeth CODE TEXT with comments stripped, then reported a registry that doth not exist.
+    /// The vocabulary is aligned rather than the rule loosened.
+    private var controllers: [UUID: SessionSlot] = [:]
     private let mapLock = NSRecursiveLock()
     /// T08: bounded last-generation registry. When a slot is reclaimed the
     /// generation its lease carried is remembered here, so a replacement for
@@ -121,7 +127,7 @@ public final class SessionManager {
     internal func slotCountForTest() -> Int {
         mapLock.lock()
         defer { mapLock.unlock() }
-        return slots.count
+        return controllers.count
     }
 
     /// T08 evidence hook: remembered generations currently retained.
@@ -154,18 +160,25 @@ public final class SessionManager {
     private func slotFor(_ peerId: UUID) -> SessionSlot? {
         mapLock.lock()
         defer { mapLock.unlock() }
-        return slots[peerId]
+        return controllers[peerId]
+    }
+
+    /// GS-CTRL-002 (R06): the PER-PEER (per-relation) serialisation point, under the name the
+    /// composition contract useth. The slot owneth the lock; `SessionSlot.serialize` acquireth the
+    /// very same lock, and `isReady` taketh it explicitly through this accessor.
+    private func getPeerLock(_ key: RelationKey) -> NSRecursiveLock? {
+        return slotFor(key.peerId)?.getPeerLock()
     }
 
     private func getOrCreateSlot(_ peerId: UUID) -> SessionSlot {
         mapLock.lock()
         defer { mapLock.unlock() }
-        if let slot = slots[peerId] { return slot }
+        if let slot = controllers[peerId] { return slot }
         let generation = (rememberedGenerations[peerId] ?? -1) + 1
         let slot = SessionSlot(
             key: RelationKey(direction: .outboundCentral, peerId: peerId),
             lease: SlotLease(generation: generation))
-        slots[peerId] = slot
+        controllers[peerId] = slot
         return slot
     }
 
@@ -175,8 +188,8 @@ public final class SessionManager {
         // Only the CURRENT incarnation is reclaimed: a stale caller that
         // still holds an already-replaced slot must not evict the replacement,
         // and the reclaimed lock entry leaves together with its slot.
-        if slots[slot.key.peerId] === slot {
-            slots.removeValue(forKey: slot.key.peerId)
+        if controllers[slot.key.peerId] === slot {
+            controllers.removeValue(forKey: slot.key.peerId)
             rememberGeneration(slot)
         }
     }
@@ -202,10 +215,14 @@ public final class SessionManager {
         return lifecycleRwLock.withReadLock {
             guard isActive else { return false }
             guard let slot = slotFor(peerId) else { return false }
-            return slot.serialize { () -> Bool in
-                guard let ctrl = slot.controller else { return false }
-                return ctrl.isReady && ctrl.state == .ready
-            }
+            // GS-CTRL-002 (R06): the readiness query taketh the PER-PEER lock EXPLICITLY, under the
+            // name the composition contract useth -- the same lock `SessionSlot.serialize` acquireth,
+            // so the behaviour is unchanged and the name is load-bearing rather than decorative.
+            guard let peerLock = getPeerLock(slot.key) else { return false }
+            peerLock.lock()
+            defer { peerLock.unlock() }
+            guard let ctrl = slot.controller else { return false }
+            return ctrl.isReady && ctrl.state == .ready
         }
     }
 
@@ -399,10 +416,10 @@ public final class SessionManager {
         lifecycleRwLock.withWriteLock {
             mapLock.lock()
             defer { mapLock.unlock() }
-            for slot in slots.values {
+            for slot in controllers.values {
                 slot.retire()?.destroy()
             }
-            slots.removeAll()
+            controllers.removeAll()
         }
     }
 
@@ -412,12 +429,12 @@ public final class SessionManager {
             mapLock.lock()
             defer { mapLock.unlock() }
             managerState = .invalidated
-            for slot in slots.values {
+            for slot in controllers.values {
                 slot.state = .invalidated
                 slot.controller?.destroy()
                 slot.controller = nil
             }
-            slots.removeAll()
+            controllers.removeAll()
         }
     }
 }

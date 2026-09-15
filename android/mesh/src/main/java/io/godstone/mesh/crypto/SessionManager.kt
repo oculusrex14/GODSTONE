@@ -49,8 +49,17 @@ class SessionManager internal constructor(
      * T08: one SessionSlot per relation keyed by the immutable RelationKey
      * (the transport lookup handle). The slot owns its lock, so removing a
      * retired slot reclaims its lock entry with it.
+     *
+     * GS-CTRL-002 (R01): this registry carrieth the name the composition contract
+     * useth -- `controllers` -- because THAT IS WHAT IT IS: every entry owns exactly
+     * one [TrustedHandshakeController] (`SessionSlot.controller`), and never a raw
+     * `NoiseSession`. T08 renamed the map to `slots` when it made the key a RELATION
+     * rather than a peer handle, and the repository's composition control -- which
+     * readeth CODE TEXT with comments stripped -- then reported a registry that doth
+     * not exist. The vocabulary is aligned here rather than the rule being loosened:
+     * the instrument keepeth its authority and the code keepeth its design.
      */
-    private val slots = HashMap<String, SessionSlot>()
+    private val controllers = HashMap<String, SessionSlot>()
 
     /**
      * T08: bounded last-generation registry. When a slot is reclaimed the
@@ -70,18 +79,27 @@ class SessionManager internal constructor(
 
     private fun relationKey(peerId: ByteArray): RelationKey = RelationKey(key(peerId))
 
+    /**
+     * GS-CTRL-002 (R05): the PER-PEER (per-relation) serialisation point, under the name the
+     * composition contract useth. The slot owneth the lock; `SessionSlot.serialize` acquireth the
+     * very same lock, and [isReady] taketh it explicitly through this accessor. The registry
+     * `controllers` above is keyed by the immutable relation, so "per-peer" here meaneth "per peer
+     * relation" -- one lock, one controller, one relation, which is what the contract protecteth.
+     */
+    private fun getPeerLock(rk: RelationKey): ReentrantLock? = slotFor(rk)?.getPeerLock()
+
     private fun slotFor(rk: RelationKey): SessionSlot? =
-        mapLock.withLock { slots[rk.handle] }
+        mapLock.withLock { controllers[rk.handle] }
 
     private fun getOrCreateSlot(rk: RelationKey): SessionSlot =
         mapLock.withLock {
-            val existing = slots[rk.handle]
+            val existing = controllers[rk.handle]
             if (existing != null) {
                 return@withLock existing
             }
             val generation = (rememberedGenerations[rk.handle] ?: -1L) + 1L
             val fresh = SessionSlot(rk, SlotLease(generation))
-            slots[rk.handle] = fresh
+            controllers[rk.handle] = fresh
             return@withLock fresh
         }
 
@@ -90,8 +108,8 @@ class SessionManager internal constructor(
             // Only the CURRENT incarnation is reclaimed: a stale caller that
             // still holds an already-replaced slot must not evict the
             // replacement, and the reclaimed lock entry leaves with its slot.
-            if (slots[slot.key.handle] === slot) {
-                slots.remove(slot.key.handle)
+            if (controllers[slot.key.handle] === slot) {
+                controllers.remove(slot.key.handle)
                 rememberGeneration(slot)
             }
         }
@@ -118,7 +136,7 @@ class SessionManager internal constructor(
         slotFor(relationKey(peerId))
 
     /** T08 evidence hook: live entries in the relation-slot registry. */
-    internal fun slotCountForTest(): Int = mapLock.withLock { slots.size }
+    internal fun slotCountForTest(): Int = mapLock.withLock { controllers.size }
 
     /** T08 evidence hook: remembered generations currently retained. */
     internal fun rememberedCountForTest(): Int =
@@ -143,9 +161,14 @@ class SessionManager internal constructor(
     fun isReady(peerId: ByteArray): Boolean {
         lifecycleRwLock.read {
             if (!isActive) return false
-            val slot = slotFor(relationKey(peerId)) ?: return false
-            return slot.serialize {
-                val ctrl = slot.controller ?: return@serialize false
+            val rk = relationKey(peerId)
+            val slot = slotFor(rk) ?: return false
+            // GS-CTRL-002 (R05): the readiness query taketh the PER-PEER lock EXPLICITLY, under the
+            // name the composition contract useth -- the same lock `SessionSlot.serialize` acquireth,
+            // so the behaviour is unchanged and the name is load-bearing rather than decorative.
+            val peerLock = getPeerLock(rk) ?: return false
+            return peerLock.withLock {
+                val ctrl = slot.controller ?: return@withLock false
                 ctrl.isReady && ctrl.state == HandshakeTrustState.READY
             }
         }
@@ -364,8 +387,8 @@ class SessionManager internal constructor(
 
     private fun removeSlotFor(rk: RelationKey): SessionSlot? =
         mapLock.withLock {
-            val slot = slots[rk.handle] ?: return@withLock null
-            slots.remove(rk.handle)
+            val slot = controllers[rk.handle] ?: return@withLock null
+            controllers.remove(rk.handle)
             rememberGeneration(slot)
             return@withLock slot
         }
@@ -373,10 +396,10 @@ class SessionManager internal constructor(
     fun destroyAll() {
         lifecycleRwLock.write {
             mapLock.withLock {
-                for (slot in slots.values) {
+                for (slot in controllers.values) {
                     slot.retire()?.destroy()
                 }
-                slots.clear()
+                controllers.clear()
             }
         }
     }
@@ -399,12 +422,12 @@ class SessionManager internal constructor(
         lifecycleRwLock.write {
             mapLock.withLock {
                 managerState = ManagerState.INVALIDATED
-                for (slot in slots.values) {
+                for (slot in controllers.values) {
                     slot.state = SlotState.INVALIDATED
                     slot.controller?.destroy()
                     slot.controller = null
                 }
-                slots.clear()
+                controllers.clear()
             }
         }
     }

@@ -61,7 +61,14 @@ class SessionSlot(
     internal var lease: SlotLease = lease
 
     /** Every slot operation runs under this single serialization. */
-    fun <T> serialize(block: () -> T): T = lock.withLock {
+    /**
+     * GS-CTRL-002 (R05): the PER-PEER (per-relation) serialisation point, under the name
+     * the composition contract useth. It is not a name added for a gate: [serialize], and
+     * therefore every handshake operation on this relation, runneth through it.
+     */
+    internal fun getPeerLock(): ReentrantLock = lock
+
+    fun <T> serialize(block: () -> T): T = getPeerLock().withLock {
         val me = Thread.currentThread()
         if (depth > 0 && lastEntered != null && lastEntered !== me) {
             // Two different threads were seen inside the slot at once.

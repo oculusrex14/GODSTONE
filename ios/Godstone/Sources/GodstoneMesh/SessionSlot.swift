@@ -55,8 +55,13 @@ public final class SessionSlot {
     }
 
     /// Every slot operation runs under this single serialization.
+    /// GS-CTRL-002 (R06): the PER-PEER (per-relation) serialisation point, under the name the
+    /// composition contract useth. It is not a name added for a gate: `serialize`, and therefore
+    /// every handshake operation on this relation, runneth through it.
+    internal func getPeerLock() -> NSRecursiveLock { lock }
+
     public func serialize<T>(_ block: () throws -> T) rethrows -> T {
-        lock.lock()
+        getPeerLock().lock()
         let me = pthread_self()
         if depth > 0, lastEntered != nil, lastEntered != me {
             // Two different threads were seen inside the slot at once.
