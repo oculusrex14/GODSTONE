@@ -744,3 +744,37 @@ extension ReadinessT42Tests {
                        + "relation that replaced it (outbox frames=\(stale.count))")
     }
 }
+
+// MARK: - GS-SYNC-002 step 4 (iOS): the per-destination control-outbox bound
+
+extension ReadinessT42Tests {
+
+    /// The Android limb's law on this isle: one destination may not hold more than the per-destination
+    /// bound, beside the aggregate cap of 64.
+    ///
+    /// THE LITERAL 16 IS DELIBERATE, and the reason is a rule of this repository: a COMPILE FAILURE IS NOT A
+    /// RED. The production constant (MeshNode.maxControlRepliesPerDestination, also 16) does not exist on the
+    /// PRE-REPAIR revision, so an arm naming it could not compile there and could not fail on its assertion.
+    /// The committed Android arm reads the production value; this one states the bound and names its source in
+    /// the failure message, so a drift between the two would be visible in a failing message rather than
+    /// silently agreed with.
+    func testW30ASingleDestinationCannotMonopoliseTheControlOutbox() throws {
+        let w = try world()
+        w.linkUp(w.a, w.r)
+        for i in 0..<40 {
+            // `nonce` is UInt64: the FIRST capture of this red failed to COMPILE on an Int, which is why
+            // it was labelled INVALID rather than counted -- a compile failure is not a red.
+            let ping = try ControlPayloadV1.ping(reply: 0, nonce: UInt64(100 + i))
+            let frame = try ControlPayloadV1.frameFor(arm: .ping,
+                msgId: Data((0..<16).map { UInt8(($0 + 5) % 256) }),
+                routingTag: Data(repeating: 0, count: 4), payload: ping.encode())
+            XCTAssertTrue(w.a.node.handleControlFrame(frame, fromPeer: w.r.id),
+                          "ping \(i) must be answered by A")
+        }
+        let boxed = w.a.node.drainControlOutbox()
+        XCTAssertTrue(boxed.count <= 16,
+                      "one destination must not hold more than the per-destination bound "
+                      + "(held=\(boxed.count), bound=16 = MeshNode.maxControlRepliesPerDestination)")
+        XCTAssertFalse(boxed.isEmpty, "and the destination's answer must still be there at all")
+    }
+}
