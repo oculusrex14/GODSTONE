@@ -46,7 +46,40 @@ already carried. The audit's step 3 stays OPEN, with its two measured obstacles 
 | CRYPTO-003 | FIX_SUBMITTED | 4b | Destroyed retained controllers and primitive sessions st |
 | CRYPTO-006 | FIX_SUBMITTED | 4b | Duplicate journal admission is treated as success for a |
 
-## DO THIS FIRST (round 194) — IOS-05 / T27: STEP 5 LANDS (THE TRUST MUTATIONS ARE SERIALISED); STEPS 1–4 ARE THE REMAINING CARD
+## DO THIS FIRST (round 195) — IOS-05 / T27: THE SPECIFIED BOUND AND A **STRUCTURAL** MONOTONIC CLOCK LAND ON THE iOS ISLE
+
+**Both defaults were the same two defects the Android twin carried** (round 187), found by reading the manifest:
+`PeerGovernor.defaultMaxTrackedPeers = 4096` where the card specifies **256**, and `nowMillis` defaulting to
+`Int64(Date().timeIntervalSince1970 * 1000)` — a **wall clock**, which a rollback can step *backwards* while this
+governor's guards can only *extend* a refuse window, never refund a budget.
+
+**The RED was behavioural and cheap:** an arm in the isle's own T27 court reading the production bound —
+`Executed 7 tests, 1 failure` on the unmodified tree, captured with argv, source SHA and digest.
+
+**The repair is STRONGER than the Android form, and that is the round's design result.** Instead of checking whether
+the default closure *is* the monotonic one (which Swift cannot compare), the iOS **production initialiser takes NO clock
+at all** — `PeerGovernor(maxTrackedPeers:capacity:refillPerSecond:)` delegates to a private designated init with the
+monotonic clock and `usesMonotonicProductionClock: true`. **So production cannot be wall-clocked by omission:** the
+wall-clock path is no longer a default, it is an explicit court-only choice. The court initialiser (`nowMillis:`) is
+marked `convenience` and reports `false`, so the accessor answers the question that matters — what *production* carries.
+
+**W11 shipped with the accessor**, stated rather than dressed up: true for production, false for an injected clock, and
+the production bound travels with the production clock. **The compiler corrected one thing in it:** the delegating
+initialiser first lacked `convenience`, and Swift refused `self.init` from a designated init — recorded because the fix
+was the *compiler's*, not a guess.
+
+**Acceptance:** whole iOS lane **1201 tests, 0 failures** (1199 + W10/W11).
+
+**What remains on IOS-05 — steps 2 and 4, the ACTUAL WIRING:** the iOS `PeerGovernor` is still referenced **nowhere in
+production except one comment** (`GodstoneCore/ProofOfWork.swift:14`), so **no charge happens at the ingress**. The cheap
+global/connection budget must be charged **before** allocating/parsing/DH/trust work at the transport's own doors (the
+peer is unauthenticated there; its hint may never serve as an identity); the authenticated identity/priority budget must
+be charged **after AEAD and before** application decode/store/router delivery, with the outcome **bound**; and local
+abuse penalties must stay **separate** from durable trust. **The Android isle already carries all of these (rounds
+186–193), including the exact scope split round 189 MEASURED rather than guessed** (a per-relation bound cannot serve raw
+air traffic, because the churn witnesses drive ten thousand observations).
+
+## DO THIS FIRST (round 194, landed) — IOS-05 / T27: STEP 5 LANDS
 
 **The defect, read from the code and not from the card:** `mutableTrust(_:)` takes `registryLock`, reads the `Trust`
 **reference** and **releases** the lock; `reward` and `penalise` then mutate that shared reference's fields (`score`,

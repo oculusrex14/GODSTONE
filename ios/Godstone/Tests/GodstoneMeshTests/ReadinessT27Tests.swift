@@ -196,4 +196,32 @@ final class ReadinessT27Tests: XCTestCase {
                        "three penalties of 0.2 from full trust are EXACTLY 0.4 when the mutations are serialised")
     }
 
+
+    /// IOS-05 / T27 (step 3): THE PRODUCTION GOVERNOR'S BOUND IS THE SPECIFIED 256.
+    ///
+    /// The card nameth the bound; the audited default was FOUR THOUSAND NINETY-SIX -- a registry four
+    /// times larger than the law alloweth, kept for identities that no longer exist. The court's other
+    /// witnesses all inject their OWN small bounds, so the DEFAULT is what production carrieth, and the
+    /// default is what this arm readeth. (The android twin's W10 is the same arm on the other isle.)
+    func testW10TheProductionGovernorsBoundIsTheSpecifiedTwoHundredFiftySix() {
+        XCTAssertEqual(256, PeerGovernor.defaultMaxTrackedPeers,
+                       "the production governor's bound must be the SPECIFIED 256, not 4096")
+    }
+
+
+    /// IOS-05 / T27 (step 1): THE PRODUCTION CLOCK IS MONOTONIC, AND THE CLOCK IS ANSWERABLE.
+    ///
+    /// This arm could not be written before the repair: it asketh about an accessor the repair addeth,
+    /// and an assertion about an API that doth not exist cannot compile -- so it SHIPPED WITH the change,
+    /// exactly as the android twin's W11 did. The BEHAVIOURAL red is W10 (the bound), captured first.
+    func testW11TheProductionClockIsMonotonicAndOnlyProductionSaysSo() {
+        XCTAssertTrue(PeerGovernor().usesTheMonotonicProductionClock,
+                      "production must use the MONOTONIC clock, never a wall clock a rollback can refund")
+        let injected = PeerGovernor(nowMillis: { 1_700_000_000_000 }, maxTrackedPeers: 8)
+        XCTAssertFalse(injected.usesTheMonotonicProductionClock,
+                       "an injected clock is the court's own, and is reported as such")
+        XCTAssertEqual(256, PeerGovernor().maxTrackedPeersLimit,
+                       "and the production bound travelleth with the production clock")
+    }
+
 }

@@ -46,21 +46,62 @@ public final class PeerGovernor: @unchecked Sendable {
     private let capacity: [Priority: Int]
     private let refillPerSecond: [Priority: Double]
 
+    /// Whether this instance carrieth the PRODUCTION monotonic clock (see the initialisers above).
+    internal let usesTheMonotonicProductionClock: Bool
+
+    /// The production clock: MONOTONIC, in milliseconds, never a wall clock.
+    public static let monotonicClock: @Sendable () -> Int64 = {
+        Int64(DispatchTime.now().uptimeNanoseconds / 1_000_000)
+    }
+
     private let registryLock = NSLock()
     private var buckets: [String: [Priority: Bucket]] = [:]
     private var trust: [String: Trust] = [:]
     private var trackedCount: Int = 0
 
-    public init(
-        nowMillis: @escaping @Sendable () -> Int64 = { Int64(Date().timeIntervalSince1970 * 1000) },
+    /// IOS-05 / T27 (step 1): THE PRODUCTION CLOCK IS MONOTONIC, AND STRUCTURALLY SO. This initialiser
+    /// taketh NO clock: production therefore CANNOT be wall-clocked by a caller who omitted one, which
+    /// is what the audited form allowed (`Int64(Date().timeIntervalSince1970 * 1000)` was the default).
+    /// A wall clock can be stepped BACKWARDS (NTP, a user, a hostile environment), and this governor's
+    /// guards can only EXTEND a refuse window -- never refund a budget -- so the refund law would
+    /// depend on the platform's honesty.
+    public convenience init(
         maxTrackedPeers: Int = PeerGovernor.defaultMaxTrackedPeers,
         capacity: [Priority: Int] = PeerGovernor.defaultCapacity,
         refillPerSecond: [Priority: Double] = PeerGovernor.defaultRefill
+    ) {
+        self.init(nowMillis: PeerGovernor.monotonicClock,
+                  maxTrackedPeers: maxTrackedPeers,
+                  capacity: capacity,
+                  refillPerSecond: refillPerSecond,
+                  usesMonotonicProductionClock: true)
+    }
+
+    /// The COURT initialiser: an INJECTED clock, reported as such. A court that driveth rollbacks
+    /// keepeth its own clock; the question `usesTheMonotonicProductionClock` answereth is what
+    /// PRODUCTION carrieth, and only the initialiser above can say yes.
+    public convenience init(
+        nowMillis: @escaping @Sendable () -> Int64,
+        maxTrackedPeers: Int = PeerGovernor.defaultMaxTrackedPeers,
+        capacity: [Priority: Int] = PeerGovernor.defaultCapacity,
+        refillPerSecond: [Priority: Double] = PeerGovernor.defaultRefill
+    ) {
+        self.init(nowMillis: nowMillis, maxTrackedPeers: maxTrackedPeers, capacity: capacity,
+                  refillPerSecond: refillPerSecond, usesMonotonicProductionClock: false)
+    }
+
+    private init(
+        nowMillis: @escaping @Sendable () -> Int64,
+        maxTrackedPeers: Int,
+        capacity: [Priority: Int],
+        refillPerSecond: [Priority: Double],
+        usesMonotonicProductionClock: Bool
     ) {
         self.nowMillis = nowMillis
         self.maxTrackedPeers = maxTrackedPeers
         self.capacity = capacity
         self.refillPerSecond = refillPerSecond
+        self.usesTheMonotonicProductionClock = usesMonotonicProductionClock
     }
 
     private func keyOf(_ id: Data) -> String {
@@ -212,7 +253,10 @@ public final class PeerGovernor: @unchecked Sendable {
     internal var maxTrackedPeersLimit: Int { maxTrackedPeers }
 
     // Mirrored EXACTLY from the sealed android companion constants.
-    public static let defaultMaxTrackedPeers = 4096
+    /// IOS-05 / T27 (step 3): THE SPECIFIED BOUND IS 256 TRACKED IDENTITIES. The audited default was
+    /// 4096 -- a registry four times larger than the law alloweth, kept for identities that no longer
+    /// exist. The courts all inject their own small bounds, so what production carrieth is THIS.
+    public static let defaultMaxTrackedPeers = 256
     private static let unknownCapacity = 10
     private static let unknownRefill = 0.25
     private static let baseBackoffMillis = 30_000
