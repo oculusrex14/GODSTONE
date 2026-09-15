@@ -86,3 +86,37 @@ It is not acquisition, not an approval, not a status change, and not evidence th
 close. **No external party has been contacted by this work**, and no artifact has been received.
 The register's own `frontier_note` and the task ledger remain the authority on the frontier; this
 document only maketh the REQUEST exact enough to act upon.
+
+---
+
+# RE-VERIFIED AT ROUND 119 (source `223592689021`, tree `0f3977a5f8b7`)
+
+This document was written when the lane was prepared; nothing has been acquired since, and this block
+recordeth that the lane was RE-CHECKED rather than assumed. Every fact below is READ FROM THE
+ARTEFACTS at that SHA, not remembered:
+
+* **NO EXTERNAL PARTY HAS BEEN CONTACTED and NO ARTIFACT HAS BEEN RECEIVED** — the ledger's own
+  `external_input_lane.audit_has_contacted_external_parties` is `False`.
+* **EVERY EXTERNAL GATE IS STILL OPEN OR BLOCKED** (read from
+  `docs/production/RELEASE_GATES_STATUS.json` at this SHA):
+  * `A-06-independent-noise-vectors` — **OPEN**
+  * `accessibility` — **BLOCKED**
+  * `battery-thermal` — **BLOCKED**
+  * `device-interoperability` — **BLOCKED**
+  * `model-native-stack` — **OPEN**
+  * `production-corpus` — **OPEN**
+  * `signing-store-approval` — **BLOCKED**
+* **NO FINDING CARRETH CLOSURE EVIDENCE** — the list is `[]` — so the five requests' own
+  "Closure evidence today" rows above remain `None`, and **ACQUISITION CLOSES NOTHING** stayeth the law.
+* **THE READINESS FLAGS ARE FALSE AND ENFORCED FALSE** by the canonical control
+  `tools/readiness/tests/test_blocked_external.py::test_w05_the_readiness_flags_stay_false`, which
+  PASSETH in the readiness suite at this SHA (`android_LINK_LAYER_READY = false`,
+  `ios_linkLayerReady = false`, read through `tools/readiness/blockers.py::readiness_flags`).
+* **THE LANE'S OWN ACCEPTANCE RULE STANDS**: "an approval of an older revision is stale the moment a
+  production owner changes" — and production owners HAVE changed repeatedly since the audited snapshot,
+  so any artifact that arriveth must be re-bound to the converged candidate SHA before it proveth
+  anything.
+
+WHAT THIS BLOCK IS NOT: it is not acquisition, not an approval, not a status change and not evidence
+that any gate may close. A self-generated fixture is still never a substitute for an approval
+(True).
