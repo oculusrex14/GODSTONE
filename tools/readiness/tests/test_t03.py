@@ -42,6 +42,13 @@ INVARIANTS = os.path.join(DR, 'ARCHITECTURE_INVARIANTS.json')
 PROFILES = os.path.join(DR, 'CAPABILITY_PROFILES.json')
 
 
+def git_at(commit, path):
+    """The blob a path carrieth at a commit (the baseline's proof in history)."""
+    proc = subprocess.run(['git', 'rev-parse', f'{commit}:{path}'], cwd=REPO,
+                          capture_output=True, text=True)
+    return proc.stdout.strip() if proc.returncode == 0 else None
+
+
 def git_blob(path):
     proc = subprocess.run(['git', 'hash-object', path], cwd=REPO,
                           capture_output=True, text=True)
@@ -135,17 +142,85 @@ class GeneratedConstantsTest(ReadinessTestCase):
 class ContractDocumentTest(ReadinessTestCase):
 
     def test_authority_blobs_match_recorded_shas(self):
+        """GS-CTRL-002: NORMATIVE artifacts must remain byte-identical in the working
+        tree; BASELINE artifacts must be PROVABLE at their recorded commit, with a named
+        current contract. Freezing implementation bytes was the wrong control: it made a
+        required production edit possible only by re-pinning a hash."""
         doc = json.load(open(INVARIANTS, encoding='utf-8'))
-        checked = 0
+        checked = {'normative': 0, 'baseline': 0}
         for entry in doc['entries']:
             for ref in entry.get('authority_paths', []):
                 full = os.path.join(REPO, ref['path'])
                 with self.subTest(authority=ref['path']):
                     self.assertPathExists(full)
-                    self.assertEqual(git_blob(full), ref['blob_sha1'],
-                                     msg=f'blob drift for {ref["path"]}')
-                    checked += 1
-        self.assertGreater(checked, 0)
+                    freeze = ref.get('freeze')
+                    self.assertIn(freeze, ('normative', 'baseline'),
+                                  msg=f'{ref["path"]} must be classified explicitly')
+                    if freeze == 'normative':
+                        self.assertEqual(git_blob(full), ref['blob_sha1'],
+                                         msg=f'NORMATIVE drift for {ref["path"]}')
+                    else:
+                        commit = ref.get('baseline_commit')
+                        self.assertTrue(commit, msg=f'{ref["path"]} nameth no baseline commit')
+                        at_commit = git_at(commit, ref['path'])
+                        self.assertEqual(at_commit, ref['blob_sha1'],
+                                         msg=f'{ref["path"]} at {commit} carrieth {at_commit}, '
+                                             f'the record saith {ref["blob_sha1"]}')
+                        self.assertTrue(ref.get('current_contract'),
+                                        msg=f'{ref["path"]} nameth no current contract')
+                        self.assertTrue(ref.get('boundary'),
+                                        msg=f'{ref["path"]} nameth no boundary')
+                    checked[freeze] += 1
+        self.assertGreater(checked['normative'], 0, 'at least one NORMATIVE artifact must be frozen')
+        self.assertGreater(checked['baseline'], 0, 'at least one BASELINE artifact must be recorded')
+
+    def test_a_baseline_may_evolve_but_a_normative_may_not(self):
+        """THE POINT OF THE REPAIR, proven in both directions on COPIES of the document."""
+        # (a) a BASELINE whose working-tree bytes differ STILL PASSES
+        with tempfile.TemporaryDirectory() as tmp:
+            target = os.path.join(tmp, 'ARCHITECTURE_INVARIANTS.json')
+            doc = json.load(open(INVARIANTS, encoding='utf-8'))
+            json.dump(doc, open(target, 'w', encoding='utf-8'))
+            baseline = next(r for e in doc['entries'] for r in e.get('authority_paths', [])
+                            if r.get('freeze') == 'baseline')
+            baseline['blob_sha1'] = 'b' * 40          # an evolved working tree
+            json.dump(doc, open(target, 'w', encoding='utf-8'))
+            problems = contract_check.validate_invariants(REPO, target)
+            self.assertEmpty([p for p in problems if 'BASELINE' in p and 'NOT what' not in p],
+                             msg='a baseline whose HISTORY is intact must not be frozen')
+        # (b) a NORMATIVE whose working-tree bytes differ FAILS
+        with tempfile.TemporaryDirectory() as tmp:
+            target = os.path.join(tmp, 'ARCHITECTURE_INVARIANTS.json')
+            doc = json.load(open(INVARIANTS, encoding='utf-8'))
+            normative = next(r for e in doc['entries'] for r in e.get('authority_paths', [])
+                             if r.get('freeze') == 'normative')
+            normative['blob_sha1'] = 'c' * 40
+            json.dump(doc, open(target, 'w', encoding='utf-8'))
+            problems = contract_check.validate_invariants(REPO, target)
+            self.assertNotEmpty([p for p in problems if 'NORMATIVE' in p],
+                                msg='a normative artifact must remain byte-identical')
+
+    def test_a_fabricated_baseline_is_refused(self):
+        """A baseline must be a MEASURED fact: a recorded commit that doth not carry the
+        recorded blob is refused, and an unclassified path is refused too."""
+        with tempfile.TemporaryDirectory() as tmp:
+            target = os.path.join(tmp, 'ARCHITECTURE_INVARIANTS.json')
+            doc = json.load(open(INVARIANTS, encoding='utf-8'))
+            baseline = next(r for e in doc['entries'] for r in e.get('authority_paths', [])
+                            if r.get('freeze') == 'baseline')
+            baseline['blob_sha1'] = 'd' * 40          # never in history
+            json.dump(doc, open(target, 'w', encoding='utf-8'))
+            problems = contract_check.validate_invariants(REPO, target)
+            self.assertNotEmpty([p for p in problems if 'NOT what its recorded commit carrieth' in p],
+                                msg='a fabricated baseline must be refused')
+        with tempfile.TemporaryDirectory() as tmp:
+            target = os.path.join(tmp, 'ARCHITECTURE_INVARIANTS.json')
+            doc = json.load(open(INVARIANTS, encoding='utf-8'))
+            doc['entries'][0]['authority_paths'][0].pop('freeze', None)
+            json.dump(doc, open(target, 'w', encoding='utf-8'))
+            problems = contract_check.validate_invariants(REPO, target)
+            self.assertNotEmpty([p for p in problems if 'freeze mode' in p],
+                                msg='an unclassified authority path must be refused')
 
     def test_profiles_match_shipping_exclusions(self):
         doc = json.load(open(PROFILES, encoding='utf-8'))

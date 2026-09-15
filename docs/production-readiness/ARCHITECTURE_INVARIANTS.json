@@ -33,15 +33,28 @@
       "authority_paths": [
         {
           "blob_sha1": "8a826dc611ab2642fdebd8ef665aa2f172ad907e",
-          "path": "docs/adr/ADR-002-ble-record-layer.md"
+          "boundary": "wire",
+          "freeze": "normative",
+          "path": "docs/adr/ADR-002-ble-record-layer.md",
+          "why": "this artifact DEFINES the contract (a normative decision record or the canonical wire reference/vectors), so it must remain BYTE-IDENTICAL: changing it would change the frozen wire, identity or shipping law itself"
         },
         {
+          "baseline_commit": "5be8cb9134ef5fea28e639b2541c2308725e92f0",
           "blob_sha1": "83e095b793e57da81cd3342b2c7dbb39c29063e7",
-          "path": "android/mesh/src/main/java/io/godstone/mesh/MeshNode.kt"
+          "boundary": "shipping",
+          "current_contract": "android/mesh/src/test/java/io/godstone/mesh/readiness (the :mesh courts) + tools/readiness/tests/test_t03.py (the readiness-false witnesses)",
+          "freeze": "baseline",
+          "path": "android/mesh/src/main/java/io/godstone/mesh/MeshNode.kt",
+          "why": "a recorded BASELINE of an implementation file the blueprint explicitly names as a MODIFICATION TARGET. Freezing its bytes in the working tree was the wrong control: it made a required production edit possible only by re-pinning a hash, and it encouraged leaving required implementations as unused helpers (the audit's own words). The baseline is proved AT ITS RECORDED COMMIT, and the current behaviour is exercised by its courts."
         },
         {
+          "baseline_commit": "5be8cb9134ef5fea28e639b2541c2308725e92f0",
           "blob_sha1": "53141deab495bfffa41feaab881508990481a342",
-          "path": "ios/Godstone/Sources/GodstoneMesh/MeshNode.swift"
+          "boundary": "shipping",
+          "current_contract": "ios/Godstone/Tests/GodstoneMeshTests + tools/readiness/tests/test_t03.py (the readiness-false witnesses)",
+          "freeze": "baseline",
+          "path": "ios/Godstone/Sources/GodstoneMesh/MeshNode.swift",
+          "why": "a recorded BASELINE of an implementation file the blueprint explicitly names as a MODIFICATION TARGET. Freezing its bytes in the working tree was the wrong control: it made a required production edit possible only by re-pinning a hash, and it encouraged leaving required implementations as unused helpers (the audit's own words). The baseline is proved AT ITS RECORDED COMMIT, and the current behaviour is exercised by its courts."
         }
       ],
       "device_case_ids": [],
@@ -73,15 +86,24 @@
       "authority_paths": [
         {
           "blob_sha1": "8a826dc611ab2642fdebd8ef665aa2f172ad907e",
-          "path": "docs/adr/ADR-002-ble-record-layer.md"
+          "boundary": "wire",
+          "freeze": "normative",
+          "path": "docs/adr/ADR-002-ble-record-layer.md",
+          "why": "this artifact DEFINES the contract (a normative decision record or the canonical wire reference/vectors), so it must remain BYTE-IDENTICAL: changing it would change the frozen wire, identity or shipping law itself"
         },
         {
           "blob_sha1": "e6e83de786ac93b1920001980f36f2bb9c5ec8ff",
-          "path": "wire/ble_record_reference.py"
+          "boundary": "wire",
+          "freeze": "normative",
+          "path": "wire/ble_record_reference.py",
+          "why": "this artifact DEFINES the contract (a normative decision record or the canonical wire reference/vectors), so it must remain BYTE-IDENTICAL: changing it would change the frozen wire, identity or shipping law itself"
         },
         {
           "blob_sha1": "ae6f49a8ebcfc3c482e119cdf2bbe11b9e5af494",
-          "path": "wire/ble_record_vectors.json"
+          "boundary": "wire",
+          "freeze": "normative",
+          "path": "wire/ble_record_vectors.json",
+          "why": "this artifact DEFINES the contract (a normative decision record or the canonical wire reference/vectors), so it must remain BYTE-IDENTICAL: changing it would change the frozen wire, identity or shipping law itself"
         }
       ],
       "device_case_ids": [],
@@ -112,11 +134,17 @@
       "authority_paths": [
         {
           "blob_sha1": "8a826dc611ab2642fdebd8ef665aa2f172ad907e",
-          "path": "docs/adr/ADR-002-ble-record-layer.md"
+          "boundary": "wire",
+          "freeze": "normative",
+          "path": "docs/adr/ADR-002-ble-record-layer.md",
+          "why": "this artifact DEFINES the contract (a normative decision record or the canonical wire reference/vectors), so it must remain BYTE-IDENTICAL: changing it would change the frozen wire, identity or shipping law itself"
         },
         {
           "blob_sha1": "ab3659b2e91d8a8b3e9b8bfb79027936043e1061",
-          "path": "wire/ble_link_info_reference.py"
+          "boundary": "wire",
+          "freeze": "normative",
+          "path": "wire/ble_link_info_reference.py",
+          "why": "this artifact DEFINES the contract (a normative decision record or the canonical wire reference/vectors), so it must remain BYTE-IDENTICAL: changing it would change the frozen wire, identity or shipping law itself"
         }
       ],
       "device_case_ids": [],
@@ -150,11 +178,17 @@
       "authority_paths": [
         {
           "blob_sha1": "999164a77cd0e5ef8ce6cf50482a9c7907393548",
-          "path": "docs/adr/ADR-007-cipher-suite.md"
+          "boundary": "wire",
+          "freeze": "normative",
+          "path": "docs/adr/ADR-007-cipher-suite.md",
+          "why": "this artifact DEFINES the contract (a normative decision record or the canonical wire reference/vectors), so it must remain BYTE-IDENTICAL: changing it would change the frozen wire, identity or shipping law itself"
         },
         {
           "blob_sha1": "7491a9f652309dc52a51b8433d497cb738415396",
-          "path": "docs/adr/ADR-003-identity-and-sealed-sender.md"
+          "boundary": "identity",
+          "freeze": "normative",
+          "path": "docs/adr/ADR-003-identity-and-sealed-sender.md",
+          "why": "this artifact DEFINES the contract (a normative decision record or the canonical wire reference/vectors), so it must remain BYTE-IDENTICAL: changing it would change the frozen wire, identity or shipping law itself"
         }
       ],
       "device_case_ids": [],
@@ -182,16 +216,29 @@
       ],
       "authority_paths": [
         {
+          "baseline_commit": "b36490e6403206a7463fee771217b515cb7da54f",
           "blob_sha1": "a39beb2622fb176d3bc34bf2ad99ecf651e360b6",
-          "path": "ios/Godstone/Sources/GodstoneMesh/AckAuthenticator.swift"
+          "boundary": "trust",
+          "current_contract": "the ACK twin courts in GodstoneMeshTests",
+          "freeze": "baseline",
+          "path": "ios/Godstone/Sources/GodstoneMesh/AckAuthenticator.swift",
+          "why": "a recorded BASELINE of an implementation file the blueprint explicitly names as a MODIFICATION TARGET. Freezing its bytes in the working tree was the wrong control: it made a required production edit possible only by re-pinning a hash, and it encouraged leaving required implementations as unused helpers (the audit's own words). The baseline is proved AT ITS RECORDED COMMIT, and the current behaviour is exercised by its courts."
         },
         {
+          "baseline_commit": "b36490e6403206a7463fee771217b515cb7da54f",
           "blob_sha1": "f02923aaed6cc555580195241fc4a47188fd6934",
-          "path": "android/mesh/src/main/java/io/godstone/mesh/delivery/AckAuthenticator.kt"
+          "boundary": "trust",
+          "current_contract": "the ACK courts (ReadinessT35Test/ReadinessT42Test/ReadinessT43Test/ReadinessT84Test)",
+          "freeze": "baseline",
+          "path": "android/mesh/src/main/java/io/godstone/mesh/delivery/AckAuthenticator.kt",
+          "why": "a recorded BASELINE of an implementation file the blueprint explicitly names as a MODIFICATION TARGET. Freezing its bytes in the working tree was the wrong control: it made a required production edit possible only by re-pinning a hash, and it encouraged leaving required implementations as unused helpers (the audit's own words). The baseline is proved AT ITS RECORDED COMMIT, and the current behaviour is exercised by its courts."
         },
         {
           "blob_sha1": "eb4016ce56c0c5be546217b5619f65666439249f",
-          "path": "docs/adr/ADR-005-sos-and-lifecycle.md"
+          "boundary": "lifecycle",
+          "freeze": "normative",
+          "path": "docs/adr/ADR-005-sos-and-lifecycle.md",
+          "why": "this artifact DEFINES the contract (a normative decision record or the canonical wire reference/vectors), so it must remain BYTE-IDENTICAL: changing it would change the frozen wire, identity or shipping law itself"
         }
       ],
       "device_case_ids": [],
@@ -220,7 +267,10 @@
       "authority_paths": [
         {
           "blob_sha1": "8adc6626c2b935da6749532891dfa36e2cfa5569",
-          "path": "docs/architecture/ADR-0002-initial-release-surface.md"
+          "boundary": "shipping",
+          "freeze": "normative",
+          "path": "docs/architecture/ADR-0002-initial-release-surface.md",
+          "why": "this artifact DEFINES the contract (a normative decision record or the canonical wire reference/vectors), so it must remain BYTE-IDENTICAL: changing it would change the frozen wire, identity or shipping law itself"
         }
       ],
       "device_case_ids": [],
@@ -251,7 +301,10 @@
       "authority_paths": [
         {
           "blob_sha1": "7491a9f652309dc52a51b8433d497cb738415396",
-          "path": "docs/adr/ADR-003-identity-and-sealed-sender.md"
+          "boundary": "identity",
+          "freeze": "normative",
+          "path": "docs/adr/ADR-003-identity-and-sealed-sender.md",
+          "why": "this artifact DEFINES the contract (a normative decision record or the canonical wire reference/vectors), so it must remain BYTE-IDENTICAL: changing it would change the frozen wire, identity or shipping law itself"
         }
       ],
       "device_case_ids": [],
@@ -277,7 +330,10 @@
       "authority_paths": [
         {
           "blob_sha1": "8a826dc611ab2642fdebd8ef665aa2f172ad907e",
-          "path": "docs/adr/ADR-002-ble-record-layer.md"
+          "boundary": "wire",
+          "freeze": "normative",
+          "path": "docs/adr/ADR-002-ble-record-layer.md",
+          "why": "this artifact DEFINES the contract (a normative decision record or the canonical wire reference/vectors), so it must remain BYTE-IDENTICAL: changing it would change the frozen wire, identity or shipping law itself"
         }
       ],
       "device_case_ids": [],
@@ -303,7 +359,10 @@
       "authority_paths": [
         {
           "blob_sha1": "7491a9f652309dc52a51b8433d497cb738415396",
-          "path": "docs/adr/ADR-003-identity-and-sealed-sender.md"
+          "boundary": "identity",
+          "freeze": "normative",
+          "path": "docs/adr/ADR-003-identity-and-sealed-sender.md",
+          "why": "this artifact DEFINES the contract (a normative decision record or the canonical wire reference/vectors), so it must remain BYTE-IDENTICAL: changing it would change the frozen wire, identity or shipping law itself"
         }
       ],
       "device_case_ids": [],
@@ -330,7 +389,10 @@
       "authority_paths": [
         {
           "blob_sha1": "59d76e337c0f32e3e71cf1992bb36d868eade29c",
-          "path": "docs/adr/ADR-004-durable-store.md"
+          "boundary": "storage",
+          "freeze": "normative",
+          "path": "docs/adr/ADR-004-durable-store.md",
+          "why": "this artifact DEFINES the contract (a normative decision record or the canonical wire reference/vectors), so it must remain BYTE-IDENTICAL: changing it would change the frozen wire, identity or shipping law itself"
         }
       ],
       "device_case_ids": [],

@@ -33,6 +33,16 @@ def _blob_sha1(repo_root, path):
     return proc.stdout.strip()
 
 
+def _blob_at_commit(repo_root, commit, path):
+    """The blob a path carrieth AT A COMMIT -- the baseline's proof in history."""
+    proc = subprocess.run(['git', 'rev-parse', f'{commit}:{path}'], cwd=repo_root,
+                          capture_output=True, text=True)
+    return proc.stdout.strip() if proc.returncode == 0 else None
+
+
+FREEZE_MODES = ('normative', 'baseline')
+
+
 def validate_invariants(repo_root, path):
     """Return problems; empty means the invariants document is valid."""
     problems = []
@@ -94,12 +104,52 @@ def validate_invariants(repo_root, path):
             if not os.path.isfile(full):
                 problems.append(f'{entry_id}: authority file missing {ref_path}')
                 continue
-            actual = _blob_sha1(repo_root, full)
-            if actual != ref.get('blob_sha1'):
+            # GS-CTRL-002 (the original card's steps 1-2): an authority path is EITHER
+            #   normative -- the artifact that DEFINES the contract, which must remain
+            #     byte-identical in the working tree; or
+            #   baseline  -- an implementation file the blueprint names as a MODIFICATION
+            #     TARGET, whose recorded blob must be PROVABLE at its recorded commit
+            #     while the current behaviour is exercised by its courts.
+            # Freezing implementation bytes in the working tree made a required production
+            # edit possible only by re-pinning a hash, and encouraged leaving required
+            # implementations as unused helpers.
+            freeze = ref.get('freeze')
+            if freeze not in FREEZE_MODES:
                 problems.append(
-                    f'{entry_id}: authority blob drift for {ref_path} '
-                    f'(recorded {ref.get("blob_sha1")}, actual {actual}); '
-                    f're-record after review, never silently')
+                    f'{entry_id}: authority path {ref_path} carrieth no freeze mode '
+                    f'({freeze!r}); every authority path must be classified normative or '
+                    f'baseline, explicitly')
+                continue
+            if freeze == 'normative':
+                actual = _blob_sha1(repo_root, full)
+                if actual != ref.get('blob_sha1'):
+                    problems.append(
+                        f'{entry_id}: NORMATIVE authority blob drift for {ref_path} '
+                        f'(recorded {ref.get("blob_sha1")}, actual {actual}); this artifact '
+                        f'DEFINES the contract and must remain byte-identical -- re-record '
+                        f'after review, never silently')
+                continue
+            commit = ref.get('baseline_commit')
+            if not commit:
+                problems.append(
+                    f'{entry_id}: BASELINE authority {ref_path} nameth no baseline_commit, so '
+                    f'its recorded blob cannot be proved in history')
+                continue
+            at_commit = _blob_at_commit(repo_root, commit, ref_path)
+            if at_commit is None:
+                problems.append(
+                    f'{entry_id}: BASELINE authority {ref_path} did not exist at its recorded '
+                    f'commit {commit}')
+                continue
+            if at_commit != ref.get('blob_sha1'):
+                problems.append(
+                    f'{entry_id}: BASELINE authority blob {ref_path} is NOT what its recorded '
+                    f'commit carrieth (recorded {ref.get("blob_sha1")}, at {commit} '
+                    f'{at_commit}); a baseline must be a MEASURED fact, never an assertion')
+            if not ref.get('current_contract'):
+                problems.append(
+                    f'{entry_id}: BASELINE authority {ref_path} nameth no current_contract, so '
+                    f'the evolving behaviour would be frozen by nothing')
         if entry.get('status') == 'ACCEPTED' and not (
                 entry.get('evidence') or {}).get('case_ids'):
             problems.append(
