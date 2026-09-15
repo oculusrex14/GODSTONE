@@ -64,6 +64,15 @@ sharper thing:
       `SignedSosV1.kt:274` (`IdentityBindingV1.create(`) and `SignedSosV1.swift:257` (`IdentityBindingV1(`),
       while the authority constructeth at `MeshIdentity.swift:72` / `IdentityBindingV1.kt:106`/`:127`.
       -> GS-SOS-001, OPEN.  **THIS IS THE BEST FIRST TARGET: a red check WITH a working instrument behind it.**
+      THE API IT EXPECTETH IS NO LONGER A QUESTION (round 133, read from the control itself): a production
+      file outside the AUTHORITY FILES (Android: Identity.kt, IdentityBindingV1.kt, LocalIdentityStateV1.kt,
+      Ed25519Keys.kt, X25519Keys.kt; iOS: MeshIdentity.swift, IdentityBindingV1.swift,
+      LocalIdentityStateV1.swift) may contain NEITHER `IdentityBindingV1.create(` NOR any `IdentityBindingV1(`
+      construction. Its own mutations name the defect as an ISSUANCE BYPASS, and THE AUTHORITY ALREADY
+      CARRIETH `fun issueIdentityBinding(): IdentityBindingV1` -- so the repair is: OBTAIN the binding FROM
+      THE AUTHORITY at `SignedSosV1.kt:274` and `SignedSosV1.swift:257`, never construct one. THE CONTRACTS
+      STAY FROZEN: what change is WHO ISSUES the binding, not how it is computed or serialized. CHECK FIRST
+      whether those sites already hold the authority reference (two edits) or need it plumbed (an owner change).
 
     AND FOR THE OTHER TWO, DECIDE WHAT YOU ARE FIXING FIRST: whether the missing items (BL115's two absent
     Android tests, the SessionManager registry and locks) are INTENDED BASELINE REQUIREMENTS or STALE
