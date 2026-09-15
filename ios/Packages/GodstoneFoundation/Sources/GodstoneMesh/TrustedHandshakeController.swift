@@ -11,6 +11,9 @@ internal enum HandshakeTrustState: Equatable, Sendable {
     case securityReject
     case corrupt
     case storageFailure
+    /// CRYPTO-003: TERMINAL. A destroyed controller can never return to any other state,
+    /// so every guarded step refuses it permanently.
+    case destroyed
 }
 
 internal protocol PeerBindingTrustAuthority: Sendable {
@@ -61,6 +64,9 @@ internal final class TrustedHandshakeController: @unchecked Sendable {
     private(set) var state: HandshakeTrustState = .initial
 
     var isReady: Bool { state == .ready }
+
+    /// CRYPTO-003: the controller is terminally destroyed (see HandshakeTrustState.destroyed).
+    var isDestroyed: Bool { state == .destroyed }
 
     var authenticatedRemoteStaticKey: Data? {
         noiseSession.remoteStaticKey
@@ -265,7 +271,15 @@ internal final class TrustedHandshakeController: @unchecked Sendable {
         return try? noiseSession.decrypt(ciphertext)
     }
 
+    /// CRYPTO-003: mark the controller TERMINAL first, then destroy its session.
+    ///
+    /// The audit's charge was that a destroyed controller held by reference still reported
+    /// ready, because destroy() only tore down the Noise session and left `state` where it
+    /// was. The mark is set FIRST so no window exists in which a half-destroyed controller
+    /// looks usable, and a repeated call is a no-op.
     func destroy() {
+        if state == .destroyed { return }
+        state = .destroyed
         noiseSession.destroy()
     }
 

@@ -19,7 +19,14 @@ enum class HandshakeTrustState {
     QUARANTINED,
     SECURITY_REJECT,
     CORRUPT,
-    STORAGE_FAILURE
+    STORAGE_FAILURE,
+
+    /**
+     * CRYPTO-003: DESTROYED is TERMINAL. A destroyed controller can never return to
+     * any other state, so every guarded step below refuses it permanently -- including
+     * the steps that would otherwise be legal from the state it held when destroyed.
+     */
+    DESTROYED
 }
 
 /**
@@ -76,6 +83,9 @@ internal class TrustedHandshakeController(
         private set
 
     val isReady: Boolean get() = state == HandshakeTrustState.READY
+
+    /** CRYPTO-003: the controller is terminally destroyed (see HandshakeTrustState.DESTROYED). */
+    val isDestroyed: Boolean get() = state == HandshakeTrustState.DESTROYED
 
     val authenticatedRemoteStaticKey: ByteArray?
         get() = noiseSession.remoteStaticKey
@@ -281,7 +291,17 @@ internal class TrustedHandshakeController(
         return noiseSession.decrypt(ciphertext)
     }
 
+    /**
+     * CRYPTO-003: mark the controller TERMINAL first, then destroy its session.
+     *
+     * The audit's charge was that a destroyed controller held by reference still reported
+     * ready, because destroy() only tore down the Noise session and left `state` where it
+     * was. The terminal mark is set FIRST so no window exists in which a half-destroyed
+     * controller looks usable, and a repeated call is a no-op: nothing can move DESTROYED.
+     */
     fun destroy() {
+        if (state == HandshakeTrustState.DESTROYED) return
+        state = HandshakeTrustState.DESTROYED
         noiseSession.destroy()
     }
 

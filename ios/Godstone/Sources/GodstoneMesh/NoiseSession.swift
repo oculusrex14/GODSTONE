@@ -87,6 +87,11 @@ public final class NoiseSession {
     public private(set) var remoteStaticKey: Data?
     public private(set) var isEstablished = false
 
+    /// CRYPTO-003: TERMINAL. Terminality belongs to the OBJECT, not to the registry that
+    /// removed it: a destroyed session held by reference must never report established
+    /// again, and no fixture hook may revive it.
+    public private(set) var isDestroyed = false
+
     private static let protocolName = "Noise_XX_25519_ChaChaPoly_BLAKE2s"
     private static let tagLen = 16
     private static let dhLen = 32
@@ -451,16 +456,29 @@ public final class NoiseSession {
     /// never real secrets) so the exporter/verifier exercises the real
     /// session codec without a live handshake.
     func installSendKeyForTest(_ key: SymmetricKey) {
+        // CRYPTO-003: a destroyed session is terminal for EVERY caller, this fixture included
+        // (the audit's step 4: a readiness hook must never resurrect a destroyed object).
+        guard !isDestroyed else { return }
         sendKey = key
         isEstablished = true
     }
 
     func installReceiveKeyForTest(_ key: SymmetricKey) {
+        guard !isDestroyed else { return }
         receiveKey = key
         isEstablished = true
     }
 
+    /// CRYPTO-003: destroy the session's key material and mark it TERMINAL.
+    ///
+    /// The mark is set FIRST, so nothing observes a half-destroyed session as live, and
+    /// `isEstablished` is cleared -- it used to survive the destroy, which is why a
+    /// destroyed session held by reference still reported an established session. A
+    /// repeated call is a no-op: nothing can move a terminal session back.
     public func destroy() {
+        if isDestroyed { return }
+        isDestroyed = true
+        isEstablished = false
         sendKey = nil
         receiveKey = nil
         chainingKey = Data()

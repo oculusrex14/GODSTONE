@@ -354,4 +354,59 @@ class ReadinessT08Test {
             opened.contentEquals("live".toByteArray())
         )
     }
+
+    // ------------------------------------------------------------------ CRYPTO-003
+
+    /**
+     * A DESTROYED object still HELD BY REFERENCE must report TERMINAL.
+     *
+     * The audit's charge, in its own words: "Destroyed retained controllers and primitive
+     * sessions still report ready or established." Terminality was a property of the
+     * REGISTRY -- the manager's slot was removed, so the manager's isReady went false --
+     * and NOT of the object, so any code that kept the reference saw a live, ready,
+     * established thing. Both objects are retained here on purpose and asked directly.
+     */
+    @Test
+    fun testDestroyedRetainedPrimitivesReportTerminalNotReady() {
+        // (a) A PRIMITIVE SESSION, established through the REAL handshake, then destroyed
+        //     while the reference is kept.
+        val identityI = MeshIdentity.generate()
+        val identityR = MeshIdentity.generate()
+        val i = NoiseSession.initiator(identityI, identityI.nodeHint, identityR.nodeHint)
+        val r = NoiseSession.responder(identityR, identityI.nodeHint, identityR.nodeHint)
+        r.readHandshakeMessage(i.writeHandshakeMessage())
+        i.readHandshakeMessage(r.writeHandshakeMessage())
+        r.readHandshakeMessage(i.writeHandshakeMessage())
+        assertTrue("the retained session stands established before the destroy", i.isEstablished)
+        val sealedBefore = i.encrypt("before the destroy".toByteArray())
+        i.destroy()
+        assertFalse("a DESTROYED retained session must not report established", i.isEstablished)
+        assertNull("...and must drop its authenticated remote static key", i.remoteStaticKey)
+        var refused = 0
+        try { i.encrypt(ByteArray(4)) } catch (_e: Throwable) { refused++ }
+        try { i.decrypt(sealedBefore) } catch (_e: Throwable) { refused++ }
+        try { i.writeHandshakeMessage() } catch (_e: Throwable) { refused++ }
+        assertEquals("every key operation must be refused after the destroy", 3, refused)
+        i.destroy()
+        i.destroy()
+        assertFalse("the destroy is idempotent, never a resurrection", i.isEstablished)
+
+        // (b) A CONTROLLER retained out of the slot it was retired from.
+        val session = readyManagers()
+        val slot = session.initiator.slotForTest(session.peer)
+            ?: throw AssertionError("the slot must stand for the ready relation")
+        val live = slot.controller ?: throw AssertionError("the slot must hold its controller")
+        assertTrue("the retained controller stands ready before the destroy", live.isReady)
+        val sealedByController = live.seal("before the destroy".toByteArray())
+            ?: throw AssertionError("the ready controller must seal")
+        live.destroy()
+        assertFalse("a DESTROYED retained controller must not report ready", live.isReady)
+        assertNull("...and must withhold seal after the destroy",
+                   live.seal("after the destroy".toByteArray()))
+        assertNull("...and must withhold open after the destroy", live.open(sealedByController))
+        assertFalse("...while the primitive session it owns reports terminal too",
+                    live.noiseSession.isEstablished)
+        live.destroy()
+        assertFalse("the controller destroy is idempotent too", live.isReady)
+    }
 }

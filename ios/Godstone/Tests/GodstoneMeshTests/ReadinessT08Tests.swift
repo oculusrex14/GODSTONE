@@ -1,4 +1,5 @@
 import XCTest
+import CryptoKit
 @testable import GodstoneCore
 @testable import GodstoneMesh
 
@@ -323,5 +324,50 @@ final class ReadinessT08Tests: XCTestCase {
         let live = try XCTUnwrap(session.initiator.seal(session.peer, Data("live".utf8)))
         let openedLive = try XCTUnwrap(session.responder.open(session.peer, live))
         XCTAssertEqual(openedLive, Data("live".utf8))
+    }
+
+    // ------------------------------------------------------------------ CRYPTO-003
+
+    /// A DESTROYED object still HELD BY REFERENCE must report TERMINAL.
+    ///
+    /// The audit's charge, in its own words: "Destroyed retained controllers and primitive
+    /// sessions still report ready or established." Terminality was a property of the
+    /// REGISTRY -- the manager's slot was removed, so the manager's isReady went false --
+    /// and NOT of the object. The objects are retained here on purpose and asked directly,
+    /// and the TEST-ONLY install hook is asked whether it can revive one.
+    func testW13DestroyedRetainedPrimitivesReportTerminalNotReady() throws {
+        // (a) A PRIMITIVE SESSION established by the fixture hook, then destroyed while held.
+        let session = NoiseSession(role: .initiator,
+                                   staticKey: Curve25519.KeyAgreement.PrivateKey(),
+                                   localHint: Data([1, 2, 3, 4]), remoteHint: Data([5, 6, 7, 8]))
+        session.installSendKeyForTest(SymmetricKey(size: .bits256))
+        XCTAssertTrue(session.isEstablished, "the fixture-installed session stands established before the destroy")
+        session.destroy()
+        XCTAssertFalse(session.isEstablished, "a DESTROYED retained session must not report established")
+        XCTAssertNil(session.remoteStaticKey, "...and must drop its authenticated remote static key")
+
+        // (b) THE TEST-ONLY INSTALL HOOK MUST NOT REVIVE IT (the audit's step 4: fixture
+        //     readiness hooks are test support and may never resurrect a destroyed
+        //     production object).
+        session.installSendKeyForTest(SymmetricKey(size: .bits256))
+        XCTAssertFalse(session.isEstablished, "a test-only install must NOT revive a destroyed session")
+
+        // (c) A CONTROLLER and the session it owns: the destroy must reach BOTH.
+        let ctrlSession = NoiseSession(role: .responder,
+                                       staticKey: Curve25519.KeyAgreement.PrivateKey(),
+                                       localHint: Data([9, 9, 9, 9]), remoteHint: Data([8, 8, 8, 8]))
+        ctrlSession.installReceiveKeyForTest(SymmetricKey(size: .bits256))
+        XCTAssertTrue(ctrlSession.isEstablished, "the controller's session stands established before the destroy")
+        let identity = try MeshIdentity.generateAndStore(keychain: InMemoryKeychain())
+        let ctrl = TrustedHandshakeController(noiseSession: ctrlSession,
+                                              trustAuthority: AcceptingAuthority(),
+                                              localIdentity: identity)
+        XCTAssertFalse(ctrl.isReady, "a controller that never reached READY must not report ready")
+        ctrl.destroy()
+        XCTAssertFalse(ctrl.noiseSession.isEstablished,
+                       "a DESTROYED controller's session must report terminal, not established")
+        XCTAssertFalse(ctrl.isReady, "...and the controller must not report ready after the destroy")
+        ctrl.destroy()
+        XCTAssertFalse(ctrl.noiseSession.isEstablished, "the controller destroy is idempotent too")
     }
 }

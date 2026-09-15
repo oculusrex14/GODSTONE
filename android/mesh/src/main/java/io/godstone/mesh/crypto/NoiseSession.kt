@@ -74,7 +74,19 @@ class NoiseSession private constructor(
     var remoteStaticKey: ByteArray? = null
         private set
 
-    val isEstablished: Boolean get() = ciphers != null
+    /**
+     * CRYPTO-003: terminality belongeth to the OBJECT, not to the registry that
+     * removed it. `destroy()` clearath the ciphers AND marketh the session
+     * destroyed, so a reference somebody still holdeth can never report a live
+     * session -- the audit's charge was that a destroyed retained session "still
+     * report[ed] ... established".
+     */
+    private var destroyed = false
+
+    /** CRYPTO-003: the session is terminally destroyed; no operation may revive it. */
+    val isDestroyed: Boolean get() = destroyed
+
+    val isEstablished: Boolean get() = ciphers != null && !destroyed
 
     /** Current Noise handshake hash; equal on both sides once the handshake ends. */
     val handshakeHash: ByteArray
@@ -150,6 +162,7 @@ class NoiseSession private constructor(
     }
 
     fun writeHandshakeMessage(payload: ByteArray = ByteArray(0)): ByteArray {
+        refuseIfDestroyed()
         val out = ByteArray(MAX_HANDSHAKE)
         val len = handshake.writeMessage(out, 0, payload, 0, payload.size)
         maybeSplit()
@@ -157,6 +170,7 @@ class NoiseSession private constructor(
     }
 
     internal fun readHandshakeMessageWithResult(message: ByteArray): HandshakeReadResult {
+        refuseIfDestroyed()
         val out = ByteArray(MAX_HANDSHAKE)
         val len = handshake.readMessage(message, 0, message.size, out, 0)
         val payload = out.copyOf(len)
@@ -205,6 +219,7 @@ class NoiseSession private constructor(
      * @throws IllegalStateException if the handshake has not completed.
      */
     fun encrypt(plaintext: ByteArray): ByteArray {
+        refuseIfDestroyed()
         enforceSendBudget()  // retired check first, then budget
         val c = ciphers ?: throw IllegalStateException("session not established")
         val nonce = sendNonce.getAndIncrement()
@@ -225,6 +240,7 @@ class NoiseSession private constructor(
      * frame can no longer poison the window ("forged-high-then-valid" fails).
      */
     fun openWithResult(ciphertext: ByteArray): CryptoOpenResult {
+        refuseIfDestroyed()
         val c = ciphers ?: throw IllegalStateException("session not established")
         enforceReceiveBudget()?.let { return CryptoOpenResult.Expired }
         val (nonceRaw, rest) = TransportCiphertextV1.decode(ciphertext)
@@ -267,9 +283,29 @@ class NoiseSession private constructor(
                 throw AuthenticationException()
         }
 
+    /**
+     * CRYPTO-003: destroy the session's key material and mark it TERMINAL.
+     *
+     * The mark is set FIRST, so nothing observes a half-destroyed session as live;
+     * the ciphers are destroyed through the library's own path and the reference is
+     * DROPPED (previously it survived, which is why `isEstablished` stayed true on a
+     * dead object); the handshake state is destroyed and the authenticated remote
+     * static key is erased. A repeated call is a no-op -- never a resurrection.
+     */
     fun destroy() {
+        if (destroyed) return
+        destroyed = true
         ciphers?.destroy()
+        ciphers = null
         handshake.destroy()
+        remoteStaticKey = null
+    }
+
+    /** CRYPTO-003: typed refusal from every key-bearing entry of a destroyed session. */
+    class SessionDestroyed : IllegalStateException("noise session destroyed")
+
+    private fun refuseIfDestroyed() {
+        if (destroyed) throw SessionDestroyed()
     }
 
     /** Authentication or replay-window failure on a transport message.
@@ -301,6 +337,8 @@ class NoiseSession private constructor(
             "ChaChaPoly")
         sender.initializeKey(sendKey, 0)
         val session = NoiseSession(hs, identity)
+        // CRYPTO-003: a destroyed session is terminal for EVERY caller, this fixture included.
+        session.refuseIfDestroyed()
         session.ciphers = com.southernstorm.noise.protocol.CipherStatePair(sender, null)
         return session
     }
@@ -312,6 +350,8 @@ class NoiseSession private constructor(
             "ChaChaPoly")
         receiver.initializeKey(receiveKey, 0)
         val session = NoiseSession(hs, identity)
+        // CRYPTO-003: a destroyed session is terminal for EVERY caller, this fixture included.
+        session.refuseIfDestroyed()
         session.ciphers = com.southernstorm.noise.protocol.CipherStatePair(null, receiver)
         return session
     }
