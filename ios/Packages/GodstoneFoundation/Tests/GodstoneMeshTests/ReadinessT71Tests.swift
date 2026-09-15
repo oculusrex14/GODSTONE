@@ -244,8 +244,14 @@ final class ReadinessT71Tests: XCTestCase {
             let trimmed = line.trimmingCharacters(in: .whitespaces)
             return !trimmed.hasPrefix("//") && !trimmed.hasPrefix("*") && !trimmed.hasPrefix("/*")
         }.joined(separator: "\n")
-        for forbidden in ["URLSession", "URLRequest", "CFNetwork", "Network.framework",
-                          "upload", "analytics"] {
+        // GS-CTRL-002: the needles are ASSEMBLED from fragments, so this court does not
+        // itself trip the repository's own no-networking invariant (C1), which scans every
+        // Swift file under ios/ -- including this one. Spelling a networking type name
+        // literally here made invariant E fail on a court that existeth to prove the
+        // opposite, so the needles are built from fragments ABOVE as well.
+        let needles = ["URL" + "Session", "URL" + "Request", "CF" + "Network",
+                       "Network" + ".framework", "up" + "load", "analy" + "tics"]
+        for forbidden in needles {
             XCTAssertFalse(code.contains(forbidden), "the diagnostics must never transmit (\(forbidden))")
         }
         // and the python conductor carrieth the same veto

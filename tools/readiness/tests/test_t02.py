@@ -21,11 +21,13 @@ Mutations (task card):
 """
 import json
 import os
+import pathlib
 import shutil
 import subprocess
 import sys
 import tempfile
 import unittest
+from unittest.mock import patch
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 TOOLS_DIR = os.path.dirname(HERE)
@@ -476,3 +478,73 @@ class SelftestCliTest(ReadinessTestCase):
 
 if globals().get('__name__') == '__main__':
     unittest.main(verbosity=2)
+
+class InProgressClaimTest(unittest.TestCase):
+    """GS-CTRL-002 -- the claim is an IMMUTABLE ANCHOR, and legitimate work under it
+    must still validate.
+
+      W-C1 a task claimed at HEAD, with an implementation commit made AFTER the claim,
+           still validates as legitimately IN_PROGRESS
+      W-C2 a claim from UNRELATED or REWRITTEN history is rejected by name
+      W-C3 closing a task compares the EXACT tested tree (a substituted tree is refused)
+    """
+
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.tmp.cleanup)
+        self.root = pathlib.Path(self.tmp.name) / 'checkout'
+        (self.root / 'docs' / 'production-readiness').mkdir(parents=True)
+        (self.root / 'tools' / 'readiness').mkdir(parents=True)
+        shutil.copyfile(pathlib.Path(REPO) / 'docs/production-readiness/TASKS.json',
+                        self.root / 'docs' / 'production-readiness' / 'TASKS.json')
+        (self.root / 'docs' / 'production-readiness' / 'PLANNING_VALIDATION.json').write_text(
+            json.dumps({"topological_order": []}), encoding='utf-8')
+        self._git('init', '-q')
+        self._git('config', 'user.email', 'court@example.invalid')
+        self._git('config', 'user.name', 'court')
+        self._git('commit', '-q', '--allow-empty', '-m', 'baseline')
+        self.claim = self._git('rev-parse', 'HEAD').strip()
+        self.evidence = pathlib.Path(self.tmp.name) / 'evidence'
+        (self.evidence / 'T01').mkdir(parents=True)
+        (self.evidence / 'T01' / 'commands.json').write_text(
+            json.dumps({"schema_version": 1, "commands": []}), encoding='utf-8')
+        self.repo = run.Repo(str(self.root), str(self.evidence))
+
+    def _git(self, *argv):
+        proc = subprocess.run(['git', *argv], cwd=self.root, capture_output=True, text=True)
+        return proc.stdout
+
+    def _state(self, **in_progress):
+        return {"schema_version": 1, "last_observed_head": self._git('rev-parse', 'HEAD').strip(),
+                "completed_tasks": {}, "in_progress": dict(in_progress)}
+
+    def test_w_c1_an_implementation_commit_under_a_claim_still_validates(self):
+        state = self._state(task='T01', claimed_head=self.claim)
+        with patch.object(run, 'recover_state', return_value=state):
+            self.assertEqual([], run.validate_state(self.repo),
+                             'a claim at the task start must survive its own implementation commit')
+        self._git('commit', '-q', '--allow-empty', '-m', 'the implementation')
+        state['last_observed_head'] = self._git('rev-parse', 'HEAD').strip()
+        notes = []
+        with patch.object(run, 'recover_state', return_value=state):
+            problems = run.validate_state(self.repo, notes)
+        self.assertEqual([], problems, problems)
+        self.assertTrue(any('ancestor of the live head' in note for note in notes),
+                        'the legitimate in-progress state must be RECORDED, not silent')
+
+    def test_w_c2_unrelated_or_rewritten_history_is_rejected(self):
+        state = self._state(task='T01', claimed_head='f' * 40)
+        with patch.object(run, 'recover_state', return_value=state):
+            problems = run.validate_state(self.repo)
+        self.assertTrue(any('NOT an ancestor' in p or 'stale claim' in p for p in problems),
+                        problems)
+
+    def test_w_c3_closing_compares_the_exact_tested_tree(self):
+        head = self._git('rev-parse', 'HEAD').strip()
+        tree = self._git('rev-parse', 'HEAD^{tree}').strip()
+        state = self._state()
+        state['completed_tasks'] = {'T01': {'status': 'COMPLETE', 'implementation_commit': head,
+                                            'tested_tree_sha': 'a' * 40, 'commands': ['probe']}}
+        with patch.object(run, 'recover_state', return_value=state):
+            problems = run.validate_state(self.repo)
+        self.assertTrue(any('does not match the tree' in p for p in problems), problems)

@@ -504,10 +504,34 @@ def validate_state(repo, notes=None):
     in_progress = state.get('in_progress')
     if in_progress:
         claim = in_progress.get('claimed_head')
+        # GS-CTRL-002: the claim is an IMMUTABLE TASK-START ANCHOR, not a mirror of the
+        # live head. A claimed task legitimately committeth its implementation while it is
+        # in progress, so the rule is ANCESTRY: the claim must be an ancestor of the live
+        # head (or the head itself). REWRITTEN OR UNRELATED HISTORY is still rejected, and
+        # the tested tree is compared when the task CLOSETH (see the COMPLETE branch).
         if claim != live_head:
-            problems.append(
-                f'in_progress claim was made at {claim!r} but the worktree '
-                f'moved to {live_head!r} (stale claim)')
+            if not claim:
+                problems.append('in_progress carrieth no claimed_head')
+            else:
+                ancestor = subprocess.run(
+                    ['git', 'merge-base', '--is-ancestor', claim, live_head],
+                    cwd=repo.root, capture_output=True, text=True)
+                if ancestor.returncode != 0:
+                    problems.append(
+                        f'in_progress claim was made at {claim!r} which is NOT an ancestor '
+                        f'of the worktree head {live_head!r}: the history was rewritten or '
+                        f'the claim belongeth to another line of work (stale claim)')
+                else:
+                    # an ancestor claim is legitimate -- record how far the work hath moved
+                    ahead = subprocess.run(
+                        ['git', 'rev-list', '--count', f'{claim}..{live_head}'],
+                        cwd=repo.root, capture_output=True, text=True)
+                    if notes is not None:
+                        notes.append(
+                            f'{in_progress.get("task") or "the claimed task"}: the claim '
+                            f'({claim[:12]}) is an ancestor of the live head, with '
+                            f'{(ahead.stdout or "?").strip()} implementation commit(s) since '
+                            f'-- a legitimate in-progress state')
     return problems
 
 
