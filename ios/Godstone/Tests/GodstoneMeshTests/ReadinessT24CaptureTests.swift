@@ -40,6 +40,17 @@ final class ReadinessT24CaptureTests: XCTestCase {
 
     // The heart of the law: capture DERIVETH the node id from the identity, so it
     // cannot be coaxed into carrying an inconsistent one.
+    func testTheRealLinkReadyCapturesTheTrustedPeer() throws {
+        let pair = try ReadinessTrustedPairing.establish()
+        defer { ReadinessTrustedPairing.tearDown(pair) }
+        let captured = pair.alice.capturedTrustedPeerForTest
+        XCTAssertNotNil(captured, "the sealed round must capture a trusted peer -- the audited road told its watchers a bare UUID")
+        guard let peer = captured else { return }
+        XCTAssertEqual(16, peer.nodeId16.count, "the captured node id is sixteen octets")
+        XCTAssertEqual(32, peer.identityPub32.count, "the captured identity key is thirty-two octets")
+        XCTAssertEqual(peer.nodeId16, pair.bobIdentity.nodeId, "it IS the peer's own authenticated node id")
+    }
+
     func testCaptureDerivetheTheNodeIdFromTheAuthenticatedIdentity() throws {
         let pub = identityPub(11)
         let canonical = IdentityBindingV1.deriveNodeId(signingPublicKey: pub)

@@ -2429,12 +2429,30 @@ public final class BleTransport: NSObject, @unchecked Sendable {
     /// application LinkReady once and only once for a relation. The register is
     /// key'd by the relations peer, so an elder relation echo that come again
     /// after the confirmation can not win a selfsame publication twice.
+    /// IOS-04 (T24) slice (b): THE TRUSTED PEER CAPTURED AT THE SEALED ROUND, and the seam a court judgeth it by.
+    internal private(set) var capturedTrustedPeerForTest: TrustedPeer?
+
+    /// Capture the authenticated peer for this relation, WHILE THE RELATION OWNER IS HELD. Null when either half is not
+    /// yet answerable -- an honest null rather than a fabricated peer, since `TrustedPeer`'s initialiser REFUSETH bytes
+    /// that are not a sixteen-octet node id derived from a thirty-two-octet identity key.
+    private func captureTrustedPeerLocked(_ peerId: UUID) {
+        guard let pub = sessions?.authenticatedIdentityPubOf(peerId), let nodeId = sessions?.authenticatedNodeIdOf(peerId)
+        else { return }
+        guard let relation = (activeOutboundLifetimes[peerId]?.relationKey ?? activeInboundLifetimes[peerId]?.relationKey)
+        else { return }
+        capturedTrustedPeerForTest = TrustedPeer(relation: relation, nodeId16: nodeId,
+                                                identityPub32: pub, trustVersion: Int(relation.generation))
+    }
+
     private func publishApplicationLinkReadyOnce(_ peerId: UUID) -> Bool {
         lockTransport()
         if linkReadyPublished.contains(peerId) {
             unlockTransport()
             return false
         }
+        // IOS-04 (T24) slice (b): THE REAL LINKREADY CAPTURETH THE PEER. The audited road told its watchers a BARE UUID
+        // and never constructed a `TrustedPeer`, so no real consumer ever receiveth one -- the finding's own sentence.
+        captureTrustedPeerLocked(peerId)
         if linkReadyPublished.count >= BleTransport.maxActiveConnections {
             linkReadyPublished.removeFirst()
         }

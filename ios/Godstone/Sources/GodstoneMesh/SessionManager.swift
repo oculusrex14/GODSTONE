@@ -166,6 +166,14 @@ public final class SessionManager {
         return slot.serialize { slot.controller?.authenticatedNodeId }
     }
 
+    /// IOS-04 (T24) slice (b): the authenticated IDENTITY PUBLIC KEY for a relation, under the SAME slot-serialisation
+    /// discipline as the node-id accessor above. It is the source a `TrustedPeer` needeth -- `nodeId16` is DERIVED from
+    /// this key -- and the twin of the android accessor added at round 225.
+    func authenticatedIdentityPubOf(_ peerId: UUID) -> Data? {
+        guard let slot = slotFor(peerId) else { return nil }
+        return slot.serialize { slot.controller?.authenticatedIdentityPub }
+    }
+
     private func slotFor(_ peerId: UUID) -> SessionSlot? {
         mapLock.lock()
         defer { mapLock.unlock() }
