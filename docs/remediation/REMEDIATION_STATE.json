@@ -88,7 +88,7 @@
    "required_inputs": [
     "T80 final approved lexical LIGHT corpus and trust/signing inputs",
     "Applicable T76 signing policy and real candidate signing evidence",
-    "Applicable T73\u201375 Archive device/accessibility/security acceptance"
+    "Applicable T73–75 Archive device/accessibility/security acceptance"
    ],
    "required_wave_orders": [
     "1",
@@ -143,8 +143,8 @@
    "final_task": "T78 after all applicable internal and external gates",
    "required_inputs": [
     "T79 independent protocol fixture approval and cross-engine evidence",
-    "T81 approved native/model artifacts and T62\u201365 actual acceptance",
-    "T73\u201375 applicable physical-device, security, resource and accessibility evidence",
+    "T81 approved native/model artifacts and T62–65 actual acceptance",
+    "T73–75 applicable physical-device, security, resource and accessibility evidence",
     "T76 applicable signing and final artifact evidence"
    ],
    "shared_findings_to_revalidate": [
@@ -1620,7 +1620,7 @@
     "note": "Original proof retained. No independent fix closure. Source identity does not prove the whole caller graph unchanged.",
     "source_sha": "c683a2bf0b5bcdd4a662d98f7542351501b57b7c"
    },
-   "impact": "The required launch \u2192 search \u2192 read whole document path stops at the matching passage. Search-hit cards have no click action; openPassage exists only on the ViewModel. A successful search with zero hits renders an empty list instead of the explicit NoResults state.",
+   "impact": "The required launch → search → read whole document path stops at the matching passage. Search-hit cards have no click action; openPassage exists only on the ViewModel. A successful search with zero hits renders an empty list instead of the explicit NoResults state.",
    "invalidated_dependents": [
     "android/app BrowseScreen.kt and BrowseViewModel.kt (every caller of the browse screen)",
     "the T49 browse court (it exerciseth the view model's phases; unchanged and green)"
@@ -1746,7 +1746,7 @@
    "candidate_scope": "Both",
    "closure_evidence": [],
    "closure_tests": [
-    "iOS actual navigation: browse \u2192 open document and search \u2192 open document must each display the correct source/revision/licence and never metadata from a previous selection.",
+    "iOS actual navigation: browse → open document and search → open document must each display the correct source/revision/licence and never metadata from a previous selection.",
     "Both platforms: submit query A, edit but do not submit B, open a result of A, recreate the process/scene, then Back. Verify restored document identity, preserved submitted query A/results and explicitly intended treatment of unsent B.",
     "Repeat recreation after archive revision changes or selected document removal; no stale metadata/content should be mislabeled as the new archive. Capture native UI evidence separately from host model tests."
    ],
@@ -2122,7 +2122,7 @@
     "In _validate_command_evidence require outcome PASSED, exit_code 0, a real regular log file, and matching SHA256. Reject FAILED, REJECTED, TIMEOUT, DRYRUN, missing status, and missing log. Keep non-test checks distinct from executed behavioral tests.",
     "Require test execution and passing counts greater than zero where the task requires behavioral proof. Parse XCTest and Gradle XML rosters as well as Python summaries. Skipped cases must not satisfy required named scenarios.",
     "Make completion fail when any required integration or external evidence is absent. Allow a separate implemented-but-blocked state with the exact missing proof; never silently convert it to COMPLETE.",
-    "Revalidate historical T01\u2013T36 claims using the stricter checker. Preserve old logs and status history; record reopened claims and missing evidence instead of deleting failures or manufacturing replacement success records."
+    "Revalidate historical T01–T36 claims using the stricter checker. Preserve old logs and status history; record reopened claims and missing evidence instead of deleting failures or manufacturing replacement success records."
    ],
    "severity": "HIGH",
    "source_refs": [
@@ -2602,7 +2602,7 @@
    "proof": "Standalone Kotlin compiles the actual ModelLock/ModelStaging sources. The GGUF parser correctly rejects garbage (positive control), but ModelStaging.stage(..., artifact=null) accepts an existing garbage file and publishes a new garbage .gguf. The null path uses Long.MAX_VALUE as its transfer ceiling. ModelManager defaults to null; iOS LlamaRunner verification is also optional and existing ModelManager calls omit verifiedBy. No native inference or model download was performed.",
    "remediation_report": "evidence/AUDIT-002/SOS_SYNC_MODEL_REMEDIATION.md",
    "remediation_steps": [
-    "Preserve the two staging refusals plus the parser positive control as canonical tests. Add equivalent iOS tests around the actual loader\u2019s dependency boundary.",
+    "Preserve the two staging refusals plus the parser positive control as canonical tests. Add equivalent iOS tests around the actual loader’s dependency boundary.",
     "Require a verified artifact descriptor on every runtime staging/load entry point. Resolve it from the app-owned pinned model/native lock and selected tier. Missing/UNPINNED/incompatible metadata returns typed Unavailable before creating a temporary file or entering native code.",
     "Remove default-null provenance parameters and optional verification branches from ModelManager/ModelStaging/LlamaRunner. If tooling needs raw staging, give it a separate developer-only API that is not reachable from runtime construction.",
     "Stream the file through exact expected-size and hash checks with a bounded chunk buffer; validate the supported GGUF structure and ABI/tokenizer/embedding metadata. Do not load the whole multi-gigabyte candidate into memory merely to hash it.",
@@ -2667,7 +2667,7 @@
     "Validate every Mach-O slice: require the supported iOS device platform and executable file type, with consistent minimum OS and architectures. Reject missing/unknown platform metadata; a non-simulator platform is not automatically iOS.",
     "Apply the same explicit entitlement policy to actual signed entitlements and declared entitlements. Append a failure for every prohibited signed capability; forbid get-task-allow in release artifacts.",
     "Define permitted signing identity/team/application entitlements separately from capability grants, so a legitimate signed app is not rejected merely for required signature metadata. Compare declared and actual grants and reject unexplained additions.",
-    "Inspect the exact app bundle\u2019s signature. Do not borrow entitlements from its parent directory. Return distinct unsigned, unreadable, invalid-signature and verified-signature states; unavailable verification cannot satisfy a signed-release claim.",
+    "Inspect the exact app bundle’s signature. Do not borrow entitlements from its parent directory. Return distinct unsigned, unreadable, invalid-signature and verified-signature states; unavailable verification cannot satisfy a signed-release claim.",
     "Keep content approval, platform correctness, signature policy and physical installation as separate explicit gates. A source-only PASS must not be labelled a releasable application.",
     "Add these cases to test_t69.py and invoke the strengthened inspector on a newly built artifact at the candidate source SHA."
    ],
@@ -2727,9 +2727,9 @@
    "proof": "With a valid synthetic APK, an AAB whose two .so entries contain NOT-ELF still yields PASS. An AAB containing only the core library and omitting SQLite also yields PASS. The inspector only gathers AAB ABI filenames; ELF/page and Archive checks read the APK blobs. The valid APK control passes.",
    "remediation_report": "FINAL_REMEDIATION_DETAILS.md",
    "remediation_steps": [
-    "Treat APK and AAB as separately inspected products. Enumerate every base and relevant feature module\u2019s native entries; validate required libraries for each declared ABI, rather than checking only that the ABI name exists.",
+    "Treat APK and AAB as separately inspected products. Enumerate every base and relevant feature module’s native entries; validate required libraries for each declared ABI, rather than checking only that the ABI name exists.",
     "Run the ELF parser and page/layout policy on each AAB library payload, not the corresponding APK library. Validate machine/class, header bounds, load segments and compatibility data; reject malformed or absent libraries by artifact/module/path.",
-    "Validate exact approved Archive bytes and tier in base/assets for the AAB as well as assets for the APK. Inspect each artifact\u2019s own manifest/classpath/dex surface with tools appropriate to that container.",
+    "Validate exact approved Archive bytes and tier in base/assets for the AAB as well as assets for the APK. Inspect each artifact’s own manifest/classpath/dex surface with tools appropriate to that container.",
     "Do not let a supplied clean merged-manifest file or APK grant PASS to an unrelated AAB. Bind auxiliary build evidence to the same artifact/source/build invocation with checksums.",
     "Report per-artifact verdicts and fail the combined gate if any required artifact fails or was not inspected. Keep signing/device-install claims separate and explicit.",
     "Add the two AAB regressions to test_t70.py and run the inspector on newly produced APK/AAB artifacts at the final candidate SHA."
@@ -2752,7 +2752,7 @@
    "candidate_scope": "Mesh/Oracle",
    "closure_evidence": [],
    "closure_tests": [
-    "From OS-facade callbacks only, establish A\u2013R\u2013B and deliver DIRECT plus return recipient ACK. The test must never call drainSyncFrames, turnAcks, synthetic PeerFound or a readiness setter directly.",
+    "From OS-facade callbacks only, establish A–R–B and deliver DIRECT plus return recipient ACK. The test must never call drainSyncFrames, turnAcks, synthetic PeerFound or a readiness setter directly.",
     "An idle live link performs the initial and five-minute inventory work using an injected monotonic clock. Link replacement, stop, wipe and cancellation cannot submit stale work.",
     "Close and reopen real databases; a refused link offer and process restart preserve queued message/ACK work. Assert packet events, not only queue lengths."
    ],
@@ -2861,7 +2861,7 @@
    },
    "impact": "The durable row can be CANCELLED and its held frame removed while captured local work is still being newly offered. This is distinct from already-relayed copies, which cannot be recalled.",
    "invalidated_dependents": [],
-   "my_fix_commit": "fc13b30 (android limb) + 3a807de (iOS limb) + 74f0331 (durable-truth half, android) + c5b8a23 (durable-truth half, iOS)",
+   "my_fix_commit": "fc13b30 (android limb) + 3a807de (iOS limb) + 74f0331 (durable-truth half, android) + c5b8a23 (durable-truth half, iOS) + 71003b7 (round 85: the Android Active-SOS projection re-derived from the durable row -- audit step 6)",
    "my_logs": [
     {
      "log": "GS-SOS-002/green/gs-sos-002-T39.log",
@@ -2907,33 +2907,61 @@
      "log": "GS-SOS-002/green/gs-sos-002-IOS-FULL-durable.log",
      "sha256": "9130a3eb2fa072eb35823567ecf02f9147d539252392f5cd8c0284bbe4ec6cb2",
      "what": "whole iOS package: Executed 1193 tests, with 0 failures (was 1192)"
+    },
+    {
+     "log": "GS-SOS-002/green/gs-sos-002-projection-T39.log",
+     "sha256": "607de719eea45f6a88424381789581d05ff384ee2315b7424c72f8b5007679cd",
+     "what": "android ReadinessT39Test after the step-6 repair: 14 testcases, 0 failures, the new arm NAMED AND RAN in the XML"
+    },
+    {
+     "log": "GS-SOS-002/green/gs-sos-002-ANDROID-FULL-projection.log",
+     "sha256": "07190bdc502370591bed347bc7b3a5d6ac4a93cfb63c3b650ea8d9fb1b177b3c",
+     "what": "whole android :mesh lane (--rerun-tasks): rc=0, XML totals testcases=1152 failures=0 -- the negative cases (live row still lights the projection) and the valid positive control are inside this run"
+    },
+    {
+     "log": "GS-SOS-002/green/gs-sos-002-IOS-FULL-projection.log",
+     "sha256": "9f5dd635c6be1c265b10bf334a77231effe834d5fa8dc8f431282177f5b03720",
+     "what": "whole iOS package: Executed 1193 tests, with 0 failures -- UNCHANGED, and that is the expected result: this round changed NO iOS source (its twin already carried the law)"
+    },
+    {
+     "log": "GS-SOS-002/green/gs-sos-002-LANES-projection.log",
+     "sha256": "19667f30bea8e41c0a377cff1f2a340a6ae9a43554cd8cf61c88d671a6cb2f9f",
+     "what": "every repository-wide mandatory lane, all rc=0: readiness suite OK; audit_probes OK; invariants 7/0 all hold; repository VERDICT PASS; shipping path rc=0; ci/symbols.py 213 Kotlin files 0 unresolved; mutations SELFTEST OK; readiness validate-state OK; iOS mirror --check rc=0"
+    },
+    {
+     "log": "GS-SOS-002/green/gs-sos-002-LANES-final.log",
+     "sha256": "59c271b561d938288d209fdf9a3bd3c463a266f0c61ac2cd2cabdb9b877f9dc1",
+     "what": "every repository-wide mandatory lane RE-RUN after the ledger/handoff/accounting edits: nine lanes, nine rc=0 (readiness suite, audit_probes, invariants, repository, shipping path, symbols 213/0, mutation selftest, readiness validate-state, iOS mirror --check)"
     }
    ],
    "my_red_case": {
-    "case": "BOTH canonical T39 courts, each captured before its isle's edit, from the audit's OWN recipe: android ReadinessT39Test::testCancellationSuppressethTheLaterOffersAlreadyCaptured and ios ReadinessT39Tests::testW24CancellationSuppressethTheLaterOffersAlreadyCaptured (same-file extension). Two peers; inside the send callback on the FIRST offer the call is CANCELLED and that handoff refused; the later offer must not happen. PLUS, from this round, android ReadinessT39Test::testCancellationCommittedOutsideTheCommandDoorSuppressethTheLaterOffer -- the durable row is retired through the TRACKER DIRECTLY (bypassing the node's command door), so only a read of durable truth can suppress the later offer. PLUS the DURABLE half on BOTH isles: android ReadinessT39Test and ios ReadinessT39Tests::testW27CancellationCommittedOutsideTheCommandDoorSuppressethTheLaterOffer -- the durable row is retired through the TRACKER DIRECTLY (bypassing the command door), so only a reading of durable truth can suppress the later offer.",
+    "case": "BOTH canonical T39 courts, each captured before its isle's edit, from the audit's OWN recipe: android ReadinessT39Test::testCancellationSuppressethTheLaterOffersAlreadyCaptured and ios ReadinessT39Tests::testW24CancellationSuppressethTheLaterOffersAlreadyCaptured (same-file extension). Two peers; inside the send callback on the FIRST offer the call is CANCELLED and that handoff refused; the later offer must not happen. PLUS, from this round, android ReadinessT39Test::testCancellationCommittedOutsideTheCommandDoorSuppressethTheLaterOffer -- the durable row is retired through the TRACKER DIRECTLY (bypassing the node's command door), so only a read of durable truth can suppress the later offer. PLUS the DURABLE half on BOTH isles: android ReadinessT39Test and ios ReadinessT39Tests::testW27CancellationCommittedOutsideTheCommandDoorSuppressethTheLaterOffer -- the durable row is retired through the TRACKER DIRECTLY (bypassing the command door), so only a reading of durable truth can suppress the later offer. PLUS (round 85, the audit's ordered step 6) android ReadinessT39Test::testACancelledDispatchLeavethNoActiveProjection -- the audit's own interleaving (a cancellation committed from INSIDE the first send callback, that handoff admitted) followed by the assertion that the node must NOT re-light an Active-SOS projection from the frame it captured before the offer loop.",
     "argv": "(cd android && ./gradlew :mesh:testDebugUnitTest --tests '*ReadinessT39Test*')  ;  swift test --package-path ios/Packages/GodstoneFoundation --filter ReadinessT39Tests",
     "cwd": "/Users/oculus/Projects/GODSTONE_BUILDER",
     "log": [
      "GS-SOS-002/red/gs-sos-002-RED.log",
      "GS-SOS-002/red/gs-sos-002-IOS-RED.log",
      "GS-SOS-002/red/gs-sos-002-durable-RED.log",
-     "GS-SOS-002/red/gs-sos-002-IOS-durable-RED.log"
+     "GS-SOS-002/red/gs-sos-002-IOS-durable-RED.log",
+     "GS-SOS-002/red/gs-sos-002-projection-RED.log"
     ],
     "log_sha256": [
      "8ba112c4ad9f7356ba9487f32a5a7102d721861976ad538828c9a7d47f6c85be",
      "a2abe3b535ee202ebedeac2df9043d64f39069560803dccdb55ab0ec8b63a003",
      "15655910a8da06530da4ed9033ae07f69ed2332e41721b38a095264293507f78",
-     "f2cd5f413b3c2961a15e4085f02432cd69874bb616325e08a750cf9cf9f08d1e"
+     "f2cd5f413b3c2961a15e4085f02432cd69874bb616325e08a750cf9cf9f08d1e",
+     "36ccce2cf5618d3ec162395ce40a16631456919efa03597394430ffc81cc55ca"
     ],
-    "outcome": "RED on BOTH isles with IDENTICAL numbers and execution proven: '(offers=2) expected:<1> but was:<2>' on android and '(\"2\") is not equal to (\"1\") ... (offers=2)' on ios. The cancellation itself SUCCEEDS (asserted first), so the durable row is retired and the later offer happens anyway."
+    "outcome": "RED on BOTH isles with IDENTICAL numbers and execution proven: '(offers=2) expected:<1> but was:<2>' on android and '(\"2\") is not equal to (\"1\") ... (offers=2)' on ios. The cancellation itself SUCCEEDS (asserted first), so the durable row is retired and the later offer happens anyway. ROUND 85 (the ordered step 6 on the Android isle): captured in a DETACHED WORKTREE of f37b8b8 (/tmp/gs-sos-002-prerepair, production UNTOUCHED, `rememberSosCommit` absent from it) with the arm NAMED among the court's XML testcases, so it RAN: '14 tests completed, 1 failed' and the failure is the ARM'S OWN ASSERTION -- 'the row is terminal, so the node may not re-light an active-SOS projection from the frame it captured before the offer loop (hasActiveSos=true)'. A compile failure is not a red and a skipped arm proves nothing; this is neither."
    },
    "my_status": "FIX_SUBMITTED",
-   "notes": "FIX_SUBMITTED on both isles (fc13b30 android + 3a807de iOS). The Android limb took ONE round because the previous round had written the red plan out in full; the iOS port took one more, and its one product surprise is recorded: the twin's offer loops were `currentPeers().reduce(into:)` -- a REDUCE, which cannot break -- so the repair converted them to `for` loops rather than inserting a check into an existing loop. The reds are the audit's own reproduction on both isles, with identical numbers. Placement remained structural (same-file extension on the Swift side). ROUND 79: the audit's step-2 DURABLE half is landed on the Android isle, and the two facts that made it correct were both learned by measurement -- presence is not enough (a terminal CAS keeps the row, so the STATE must be tested) and the FIRST offer must be exempt (the DIRECT path commits its row after offering; gating it broke C6_6_1, which the full lane caught). This is the same family of lesson as the rest of the session: the assertion/edge that looks obvious is the one the repository's existing courts will refuse. ROUND 80: the durable half is on BOTH isles, and the iOS port needed no rediscovery because the two constraints (test the STATE, exempt the FIRST offer) were carried over from the Android measurement. The remaining gap on this finding is now exactly one thing -- serialization of offer admission with cancellation -- which is written at the top of its pending work rather than left as a general caveat.",
+   "notes": "FIX_SUBMITTED on both isles (fc13b30 android + 3a807de iOS). The Android limb took ONE round because the previous round had written the red plan out in full; the iOS port took one more, and its one product surprise is recorded: the twin's offer loops were `currentPeers().reduce(into:)` -- a REDUCE, which cannot break -- so the repair converted them to `for` loops rather than inserting a check into an existing loop. The reds are the audit's own reproduction on both isles, with identical numbers. Placement remained structural (same-file extension on the Swift side). ROUND 79: the audit's step-2 DURABLE half is landed on the Android isle, and the two facts that made it correct were both learned by measurement -- presence is not enough (a terminal CAS keeps the row, so the STATE must be tested) and the FIRST offer must be exempt (the DIRECT path commits its row after offering; gating it broke C6_6_1, which the full lane caught). This is the same family of lesson as the rest of the session: the assertion/edge that looks obvious is the one the repository's existing courts will refuse. ROUND 80: the durable half is on BOTH isles, and the iOS port needed no rediscovery because the two constraints (test the STATE, exempt the FIRST offer) were carried over from the Android measurement. The remaining gap on this finding is now exactly one thing -- serialization of offer admission with cancellation -- which is written at the top of its pending work rather than left as a general caveat. ROUND 85: the audit's ordered step 6 is landed on the ANDROID isle, and the two isles now carry ONE law here instead of disagreeing: `dispatchSos` re-published its projection UNCONDITIONALLY from the frame captured before the offer loop, and `retrySos` re-published it whenever the handoff count was non-zero -- both from that stale local frame, so a cancellation committed inside a send callback had its durable retirement overwritten in memory and the node claimed an active distress call whose row is terminal. Both tails now funnel through one `rememberSosCommit`, which reads the row BACK from the authority and leaves NO projection when the row is absent, unreadable, not NONE-mode or terminal. That is exactly the law the iOS twin's own `rememberSosCommit` already carried, so NO iOS source was changed and the iOS package count is UNCHANGED (1193) -- an honest asymmetry, not an omission. A WITHDRAWN ARM IS RECORDED IN THE COURTS RATHER THAN DELETED, because a pre-existing MANDATORY court refused it: this round first also asserted that a cancellation issued from inside the writer callback must report `wasRelayed = true` (on the theory that entering the writer crosses the submission boundary). `testCancelVersusQueuedWriterNeverResurrects` FAILED on that overload -- it pins a mid-flight cancel to `!wasRelayed`, because `SosCancelResult.wasRelayed` meaneth 'bytes had ALREADY gone out' and the writer hath not yet reported whether it admitted them. The court was NOT weakened, exempted or renamed; the overload was dropped and the reversal is written into BOTH courts (the Swift one too, as a note) so the next round does not re-propose it. THE ROUND'S FIRST CAPTURE IS KEPT AND LABELLED: red/gs-sos-002-boundary-RED.log (sha256 ad77ebe4469e56b8be3d916fe67c71cf32d888c34a2b5905880e299ec0fcc545) is a MIXED artifact -- (a) the withdrawn crossing-offer arm's GENUINE assertion failure ('wasRelayed=false') and (b) a MALFORMED projection arm (nested `runTest` -> IllegalStateException: a harness misuse, NOT an assertion failure, so it proved nothing). The valid red was re-captured in the pre-repair worktree as red/gs-sos-002-projection-RED.log. Prior failures are kept separate and nothing was deleted. NOT CLAIMED: the audit's ordered step 3 (serialize cancel with offer admission) stays OPEN. It was implemented, measured and WITHDRAWN BEFORE COMMIT: no deterministic arm isolates the race window it closes (the deterministic interleavings this court can express are already satisfied by the landed lease and durable-truth checks), so landing it would have put an unproven claim in the tree -- a red that cannot be satisfied is not a red, and the honest shape for the unresolved in-flight boundary is an EXPLICIT in-flight observable rather than the `wasRelayed` boolean (see pending_work).",
    "pending_proof": [
-    "OFFER ADMISSION IS NOT SERIALIZED WITH CANCELLATION (audit step 3): the lease check narrows the window but a cancellation committing between the check and the send is still not suppressed.",
-    "NO DEVICE/EMULATOR/SIMULATOR/RADIO WAS USED: both reds are host courts driving each node's own command door with a synthetic callback that cancels mid-dispatch; no peer and no radio were involved.",
+    "OFFER ADMISSION IS NOT SERIALIZED WITH CANCELLATION (audit step 3): unchanged and still the finding's one open limb -- the checks narrow the race but do not close it.",
+    "NO DEVICE/EMULATOR/SIMULATOR/RADIO WAS USED: the red and every green are HOST courts driving each node's own command door with a synthetic callback that cancels mid-dispatch; no peer and no radio were involved, and no hosted lane exists in this environment.",
+    "THE IN-FLIGHT BOUNDARY IS NOT REPORTED: `wasRelayed` still meaneth 'bytes had already gone out', so a cancellation racing an offer that has crossed the submission boundary but whose writer outcome is not yet known reports the SILENT-side answer (false). That is this repository's pinned law, not a claim of mine.",
     "ALREADY-RELAYED COPIES are out of scope by the finding's own terms ('This is distinct from already-relayed copies, which cannot be recalled').",
-    "OFFER ADMISSION IS NOT SERIALIZED WITH CANCELLATION on either isle (the audit's step 3): the checks narrow the race but do not close it, and the finding's own scope note stands -- already-relayed copies cannot be recalled."
+    "STEP 6 IS PROVEN ON THE HOST ONLY for the Android isle; the iOS half rests on its own pre-existing courts (`testCancelVersusQueuedWriterNeverResurrects`, `testTheFlagOnlyEverSaysWhatTheDurableRowSays`), not on a new independent arm."
    ],
    "proof": "The deterministic Android probe authors a valid signed SOS, supplies two peers, cancels successfully from the first pending send callback, returns false from that callback, and observes a second peer offer after cancellation. The expected offer count 1 is actually 2. Both peers are test outlets; this does not claim an on-device packet trace. The dispatch/retry loops retain encoded bytes across suspension and do not revalidate cancellation.",
    "remediation_report": "evidence/AUDIT-002/SOS_SYNC_MODEL_REMEDIATION.md",
@@ -2959,10 +2987,9 @@
    "title": "Cancellation does not suppress later offers already captured by the dispatch/retry loop",
    "wave": "5",
    "pending_work": [
-    "AUDIT STEP 3, THE LAST LIMB: offer ADMISSION must be serialized WITH cancellation -- today the lease/durable check narrows the window, but a cancellation committing between the check and the send is still not suppressed. Neither isle has that serialization.",
-    "PORT TO THE iOS TWIN (ios/Godstone/Sources/GodstoneMesh/MeshNode.swift:466 and its own offer loops) with the same arm -- only the Android limb is repaired here.",
-    "THE OFFER LOOP IS NOT SERIALIZED WITH CANCELLATION ADMISSION: the lease check narrows the window but does not make admission and cancellation one serialized transition (audit step 3), so a cancellation committing between the check and the send is still not suppressed.",
-    "TWO THINGS THE ANDROID FIX PAID FOR, to be ported with it: (a) PRESENCE IS NOT ENOUGH -- a terminal CAS keeps the row, so the check must test the row's STATE (`!state.isTerminal`); (b) THE FIRST OFFER IS EXEMPT, because the DIRECT path commits its delivery row AFTER offering, and gating the first offer broke MeshNodeDeliveryIntegrationTest.C6_6_1."
+    "AUDIT STEP 3 (the one limb this finding still owes): offer ADMISSION must be serialized WITH cancellation. Today the lease check and the durable-truth check narrow the window but a cancellation committing between the check and the send is not suppressed. The design attempt of round 85 and its MEASURED obstacles are recorded here so the next round does not repeat them: (i) a per-message admission transition holding one monitor, taken by both the admission (lease + durable truth + the crossing mark) and the successful cancellation's invalidation, was IMPLEMENTED and reverted unred-gated; (ii) the audit's own step 5 asks for the in-flight boundary to be reported as 'possibly relayed', but `SosCancelResult.wasRelayed` CANNOT carry that -- a pre-existing mandatory court (`testCancelVersusQueuedWriterNeverResurrects`) pins a mid-flight cancellation to `!wasRelayed`, because 'had already gone out' is not established until the writer reports; (iii) therefore the honest shape is a NEW explicit in-flight observable (an accessor or a typed arm) rather than an overload of the existing boolean, and that API change is the next round's work.",
+    "THE IN-FLIGHT BOUNDARY IS STILL NOT EXPRESSED: nothing in the current result taxonomy distinguishes 'an offer is in flight right now, outcome unknown' from 'no offer ever crossed'.",
+    "NO iOS CHANGE WAS NEEDED FOR STEP 6 and none was made -- but the iOS isle shares the step-3 gap, and any in-flight observable must be added to BOTH isles together or the two will disagree again."
    ]
   },
   "GS-STORE-001": {
@@ -3017,7 +3044,7 @@
     "THE REAL TRANSACTION ARM the card asketh for (`runAtomic` over a REAL store rather than a MutableList): `:mesh` carrieth no SQLite driver in its test source set, so this arm needeth the driver dependency or the store's own seam -- NOT YET WRITTEN, and named rather than faked.",
     "NATIVE SQLCIPHER PROVISIONING IS EXTERNAL and may not be claimed: `SqlcipherStoreOpener.openEncrypted` is the device adapter's seam, and the audit classifieth this finding SOURCE_CONFIRMED precisely because no native proof was run. The T29 court now SAYETH this in its own words instead of deferring it."
    ],
-   "proof": "ReadinessT29 uses FakeOpener/TestHandle booleans and FakeBinding, and runAtomic mutates a MutableList. It neither creates encrypted database files nor performs the real store transaction. The test comment moves actual native proof to T73\u2013T75, contrary to T29 required design and completion requirements.",
+   "proof": "ReadinessT29 uses FakeOpener/TestHandle booleans and FakeBinding, and runAtomic mutates a MutableList. It neither creates encrypted database files nor performs the real store transaction. The test comment moves actual native proof to T73–T75, contrary to T29 required design and completion requirements.",
    "remediation_report": "reports/STORAGE_REMEDIATION.md",
    "remediation_steps": [
     "Keep the useful classifier unit tests, but label them as unit tests. Add an Android instrumentation source set and runner for the mesh module if absent.",
@@ -3199,8 +3226,8 @@
     "The audit's third closure test (mirror on real Android SQLCipher) cannot be witnessed without the encrypted engine, which is the external GS-STORE-002 artifact."
    ],
    "pending_work": [
-    "THE BINDING'S LAST PIECE IS READ TOO, so the next round WRITETH rather than read eth. `internal enum StoreSchema` liveth INSIDE `MessageStore.swift` (line 189) with `static let dbVersion: Int32 = 7` (line 208) and the four tables: `table = \"held_frames\"` (209), `deliveryTable = \"delivery_state\"` (322), `ackObligationTable = \"ack_obligations\"` (391), `ackFrameTable = \"ack_frames\"` (398); the DDL live at `createSql` (230) and `createSqlIfNotExists` (247). SO THE PATCH IS: (1) a `HandleMigrationExecutor` built INSIDE `runMigrations` from closures that capture the handle and the store -- `checkpointedThrough() { Int(try! readUserVersion(db)) }`, `execute(step:statements:) { try execStrict(db, \"BEGIN\"); for s in statements { try execStrict(db, s) }; try execStrict(db, \"COMMIT\") }` (with a ROLLBACK on throw, so the engine's transactional promise is kept honestly), `observeFingerprint()` from `PRAGMA table_info` over the four tables, `immutableDigest()` from the frozen expectations, `markCheckpointed(step) { try? setUserVersion(db, Int32(step.to)) }`; (2) a `[MigrationStep]` plan ending at `StoreSchema.dbVersion`; (3) call `SchemaMigrationEngine(...).migrate(currentVersion:observed:executor:)` and SWITCH on the result -- `.upgraded`/`.alreadyCurrent` proceed, and `.unsupportedVersion`/`.repairRequired`/`.failed` THROW so the init closeth the handle (no half-migrated store) \u2713 which is the store's existing discipline. (4) ONLY THEN remove the four drops, reverse the protecting court, and add the audit's row-survival probe. THE FINGERPRINT IS THE ONE PLACE WHERE FAKING IS TEMPTING AND FORBIDDEN: passing the OBSERVED fingerprint back as the frozen one would make `matches` trivially true and silently disable the drift law -- so the frozen expectations must come from `StoreSchema`'s own DDL, and the drift law must be witnessed by a court.",
-    "THE BINDING (W02) IS NOW FULLY SPECIFIED -- the executor surface was the last unknown, and it is read. THE ENGINE: `SchemaMigrationEngine(steps: [MigrationStep], supportedMax: Int, fingerprint: SchemaFingerprint)` with `migrate(currentVersion:observed:executor:) -> MigrationResult` (`SchemaMigration.swift:73-110`), returning `.upgraded(from:to:)`, `.alreadyCurrent(at:)`, `.unsupportedVersion`, `.repairRequired(reason:)` or `.failed(stage:rolledBack:versionPreserved:)`. THE SEAM THE STORE MUST IMPLEMENT: `public protocol MigrationExecutor: AnyObject` with FIVE methods -- `checkpointedThrough() -> Int`, `execute(step: MigrationStep, statements: [String]) throws`, `observeFingerprint() -> SchemaFingerprint`, `immutableDigest() -> String`, `markCheckpointed(step: MigrationStep)`. OVER A SQLITE HANDLE those map cleanly and each mapping is a decision the court must witness: checkpoint \u2192 `PRAGMA user_version` (the store already readeth and stampeth it); execute \u2192 `execStrict` per statement inside the step's own BEGIN..COMMIT (the engine promiseth transactional and idempotent steps); observeFingerprint \u2192 the live table columns from `PRAGMA table_info`, compared against `TableFingerprint`/`SchemaFingerprint`; markCheckpointed \u2192 `setUserVersion`. THE PLAN: `StoreSchema`'s revisions, each step `from -> to` with the statements that advance it, ending at `StoreSchema.dbVersion`. THE ORDER OF WORK, established by experiment last round: BIND THE ENGINE FIRST (and keep the drops unreachable for the never-shipped pre-ship case ONLY), THEN REMOVE the four drops, THEN REVERSE `SqliteDeliveryRepositoryTests.testPragmaUserVersionMigrationDropsAndRecreatesOnStaleVersion` (which currently REQUIRETH the destructive behaviour), THEN add the audit's row-survival probe.",
+    "THE BINDING'S LAST PIECE IS READ TOO, so the next round WRITETH rather than read eth. `internal enum StoreSchema` liveth INSIDE `MessageStore.swift` (line 189) with `static let dbVersion: Int32 = 7` (line 208) and the four tables: `table = \"held_frames\"` (209), `deliveryTable = \"delivery_state\"` (322), `ackObligationTable = \"ack_obligations\"` (391), `ackFrameTable = \"ack_frames\"` (398); the DDL live at `createSql` (230) and `createSqlIfNotExists` (247). SO THE PATCH IS: (1) a `HandleMigrationExecutor` built INSIDE `runMigrations` from closures that capture the handle and the store -- `checkpointedThrough() { Int(try! readUserVersion(db)) }`, `execute(step:statements:) { try execStrict(db, \"BEGIN\"); for s in statements { try execStrict(db, s) }; try execStrict(db, \"COMMIT\") }` (with a ROLLBACK on throw, so the engine's transactional promise is kept honestly), `observeFingerprint()` from `PRAGMA table_info` over the four tables, `immutableDigest()` from the frozen expectations, `markCheckpointed(step) { try? setUserVersion(db, Int32(step.to)) }`; (2) a `[MigrationStep]` plan ending at `StoreSchema.dbVersion`; (3) call `SchemaMigrationEngine(...).migrate(currentVersion:observed:executor:)` and SWITCH on the result -- `.upgraded`/`.alreadyCurrent` proceed, and `.unsupportedVersion`/`.repairRequired`/`.failed` THROW so the init closeth the handle (no half-migrated store) ✓ which is the store's existing discipline. (4) ONLY THEN remove the four drops, reverse the protecting court, and add the audit's row-survival probe. THE FINGERPRINT IS THE ONE PLACE WHERE FAKING IS TEMPTING AND FORBIDDEN: passing the OBSERVED fingerprint back as the frozen one would make `matches` trivially true and silently disable the drift law -- so the frozen expectations must come from `StoreSchema`'s own DDL, and the drift law must be witnessed by a court.",
+    "THE BINDING (W02) IS NOW FULLY SPECIFIED -- the executor surface was the last unknown, and it is read. THE ENGINE: `SchemaMigrationEngine(steps: [MigrationStep], supportedMax: Int, fingerprint: SchemaFingerprint)` with `migrate(currentVersion:observed:executor:) -> MigrationResult` (`SchemaMigration.swift:73-110`), returning `.upgraded(from:to:)`, `.alreadyCurrent(at:)`, `.unsupportedVersion`, `.repairRequired(reason:)` or `.failed(stage:rolledBack:versionPreserved:)`. THE SEAM THE STORE MUST IMPLEMENT: `public protocol MigrationExecutor: AnyObject` with FIVE methods -- `checkpointedThrough() -> Int`, `execute(step: MigrationStep, statements: [String]) throws`, `observeFingerprint() -> SchemaFingerprint`, `immutableDigest() -> String`, `markCheckpointed(step: MigrationStep)`. OVER A SQLITE HANDLE those map cleanly and each mapping is a decision the court must witness: checkpoint → `PRAGMA user_version` (the store already readeth and stampeth it); execute → `execStrict` per statement inside the step's own BEGIN..COMMIT (the engine promiseth transactional and idempotent steps); observeFingerprint → the live table columns from `PRAGMA table_info`, compared against `TableFingerprint`/`SchemaFingerprint`; markCheckpointed → `setUserVersion`. THE PLAN: `StoreSchema`'s revisions, each step `from -> to` with the statements that advance it, ending at `StoreSchema.dbVersion`. THE ORDER OF WORK, established by experiment last round: BIND THE ENGINE FIRST (and keep the drops unreachable for the never-shipped pre-ship case ONLY), THEN REMOVE the four drops, THEN REVERSE `SqliteDeliveryRepositoryTests.testPragmaUserVersionMigrationDropsAndRecreatesOnStaleVersion` (which currently REQUIRETH the destructive behaviour), THEN add the audit's row-survival probe.",
     "THE REPAIR WAS ATTEMPTED, DIAGNOSED, AND REVERTED -- and the diagnosis is the valuable part, so it is recorded rather than retried blind. (1) Removing the four `DROP TABLE` statements from the versioned road (iOS) DID make the durable row survive (`found(r2, mid)` no longer `notFound`), which is the audit's own probe answered. (2) But the pre-existing court `SqliteDeliveryRepositoryTests.testPragmaUserVersionMigrationDropsAndRecreatesOnStaleVersion` then still failed on the SCHEMA: with the drops gone and NO ENGINE BOUND, the stale file keepeth its old schema -- the CHECK constraint the version is supposed to bring never arriveth. THAT is why the drops existed: they were the whole (destructive) migration mechanism. (3) THE CONCLUSION, and the reason the revert is not a retreat: THE DROPS CANNOT BE REMOVED WITHOUT THE ENGINE BINDING FIRST -- the two limbs of this finding are ONE repair, and W02 (the binding) must land BEFORE W01 (the drops) is meaningful. The order was wrong; this finding needeth the engine wired, then the drops removed, then the courts reconciled.",
     "A PRE-EXISTING CONTROL PROTECTS THE BYPASS, CONFIRMED BY RUNNING IT: `testPragmaUserVersionMigrationDropsAndRecreatesOnStaleVersion` asserteth `XCTAssertEqual(DeliveryLookup.notFound, r2.get(mid), \"stale-version migration drops the table\")` -- it REQUIRES the destructive behaviour the audit raiseth as HIGH. It was reversed to the new law, and that reversal is PART of this finding's repair (the same class as T52's deputy arms, T61's null-artifact arm and T29's stub). It was reverted WITH the product change so that the tree stayeth green, and it must be reversed AGAIN when the binding landeth.",
     "TWO ARM DEFECTS were found and fixed for this finding: W01 FAILED on my own comment QUOTING `DROP TABLE` (an arm about CODE that read prose), and W02 PASSED on a comment NAMING the engine (an arm about WIRING that accepted a spelling). W01 now readeth the code of the upgrade body; W02 requyreth the engine in that code and is RED."
@@ -3406,7 +3433,7 @@
     "Read resource census from the owners that allocate timers, writer reservations, sessions, observers, inventory leases, ACK work and database rows. Measure quiescent retained memory with a fixed resource budget; do not allow the acceptance bound to increase with elapsed cycle count.",
     "Inject disk-full/corruption at actual store calls, malformed bytes at the real decode ingress, and stalled ATT completions at the actual OS send facade. Preserve thrown failures and timed-out runs as failures.",
     "Run at least 10,000 lifecycle cycles, drain/shut down the real runtime, then compare census against baseline and configured maxima. Record peak and post-quiescence values, seed and exact replay sequence.",
-    "Mutate a real release/capacity/retry guard, compile the mutant, and prove this runtime stress lane detects it. A mutation confined to StressCampaign\u2019s local bookkeeping cannot close the production negative control."
+    "Mutate a real release/capacity/retry guard, compile the mutant, and prove this runtime stress lane detects it. A mutation confined to StressCampaign’s local bookkeeping cannot close the production negative control."
    ],
    "severity": "HIGH",
    "source_refs": [
@@ -3545,7 +3572,7 @@
     "NO DEVICE/EMULATOR/SIMULATOR/RADIO WAS USED: both arms drive the owner's real control-frame entry on the host with canonical frames; no peer, no radio.",
     "The known android fixture flake ('no ascending hint pair within 64 draws') remains unfixed; it caused a full-lane failure I first MISREAD as a conflict with the repair (recorded and corrected)."
    ],
-   "proof": "Independent Android owner probe adopts a digest, opens a run, and sends 65 valid increasing one-ID pages with done=0. The 65th is Accepted. The receiver appends to delivered and increments pagesReceived without checking MAX_PAGES_PER_RUN or an outstanding request. The sender-side pump limit does not constrain a peer\u2019s incoming pages. Swift has the matching unchecked append.",
+   "proof": "Independent Android owner probe adopts a digest, opens a run, and sends 65 valid increasing one-ID pages with done=0. The 65th is Accepted. The receiver appends to delivered and increments pagesReceived without checking MAX_PAGES_PER_RUN or an outstanding request. The sender-side pump limit does not constrain a peer’s incoming pages. Swift has the matching unchecked append.",
    "remediation_report": "evidence/AUDIT-002/SOS_SYNC_MODEL_REMEDIATION.md",
    "remediation_steps": [
     "Keep inventoryReceiverMustEnforce64PageRunLimit as a receiver-boundary regression; do not call pump helpers to enforce limits on behalf of the remote peer.",
@@ -3582,7 +3609,7 @@
    "closure_tests": [
     "Port testPingReplyRemainsBoundToRequestingPeer and retain both assertions: C receives zero PING replies, B still receives one. Keep testSamePeerPingPositiveControl green.",
     "Interleave B/C inventory pages, WANTs and RESET replies and verify each goes to its own relation. Disconnect/reconnect B before drain and prove the old generation emits nothing.",
-    "Flood one peer to its limit; another peer\u2019s valid pending control reply remains deliverable within the aggregate cap."
+    "Flood one peer to its limit; another peer’s valid pending control reply remains deliverable within the aggregate cap."
    ],
    "evidence_level": "REPRODUCED_SWIFT_HOST",
    "final_review": null,
@@ -3645,7 +3672,7 @@
     "Change the outbox element from FrameV2 alone to a control reply containing destination NodeID, immutable relation identity/generation and frame. Set these fields at the ingress decision, while the requesting relation is known.",
     "Change offerControlFrames to require that destination context. Pass it from handleControlFrame/ingestInbound and every other response producer. Do not recover the recipient later from whichever peer is being drained.",
     "Drain only entries belonging to the requested current relation. Preserve replies for other live peers. Drop entries for retired generations on disconnect; never migrate old replies to a replacement relation with the same NodeID.",
-    "Bound both per-peer entries/bytes and aggregate control memory. Document refusal/backpressure when full; do not silently erase another peer\u2019s progress to make room.",
+    "Bound both per-peer entries/bytes and aggregate control memory. Document refusal/backpressure when full; do not silently erase another peer’s progress to make room.",
     "Revalidate ownership at writer admission as in GS-RUNTIME-001. Apply the same types and semantics to Android and Swift."
    ],
    "severity": "HIGH",
@@ -3693,7 +3720,7 @@
    "remediation_report": "FINAL_REMEDIATION_DETAILS.md",
    "remediation_steps": [
     "After GS-LAB-001, put the usable lab UI in the lab target or a UI module explicitly included there. Do not enable mesh in the shipping Archive graph.",
-    "Implement TrustPort/MeshPort (and Swift authority ports) as adapters to the one runtime\u2019s real durable identity, delivery, inbox and wipe owners. Translate typed failures; never mutate a UI-only map as a substitute for the repository CAS.",
+    "Implement TrustPort/MeshPort (and Swift authority ports) as adapters to the one runtime’s real durable identity, delivery, inbox and wipe owners. Translate typed failures; never mutate a UI-only map as a substitute for the repository CAS.",
     "Expose observable state: StateFlow collected with lifecycle on Compose, and MainActor observable state consumed by SwiftUI. Refresh after durable events and lifecycle restoration, and unsubscribe when the owner ends.",
     "Add a real recipient selector, UTF-8-bounded text input and Send action. Wire retry, explicit fingerprint compare/confirm, exact rotation-candidate approval and revoke actions to their existing command types.",
     "Implement SOS as an actual cancellable hold gesture with a monotonic confirmation threshold and accessible alternative. A label reading Hold is not a gesture. Release/cancel before threshold must not author a call; active cancel must show the relay-copy limitation.",

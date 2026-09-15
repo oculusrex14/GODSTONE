@@ -1,4 +1,4 @@
-# Status accounting — AUDIT-003-R1 (refreshed at round 81)
+# Status accounting — AUDIT-003-R1 (refreshed at round 85)
 
 Regenerated from `REMEDIATION_STATE.json` programmatically; nothing here is new evidence. It states the
 classes the remediation requires, in the audit's own terms, and it is regenerated rather than
@@ -77,7 +77,7 @@ any artifact, and every blocker still carries `closure_evidence` = NONE.
 | `GS-MODEL-001` | NO native inference, no model download and no device were used: the arms build synthetic files and a fixture artifact, and the pinned models |
 | `GS-PACKAGE-001` | no signed IPA, no real entitlement blob and no device were used: the arms mock ONLY the codesign OS boundary, and the inspector policy is re |
 | `GS-PACKAGE-002` | no real AAB or release artifact was inspected: the arms build SYNTHETIC containers confined to a TemporaryDirectory, and no device or bundle |
-| `GS-SOS-002` | NO DEVICE/EMULATOR/SIMULATOR/RADIO WAS USED: both reds are host courts driving each node's own command door with a synthetic callback that c |
+| `GS-SOS-002` | NO DEVICE/EMULATOR/SIMULATOR/RADIO WAS USED: the red and every green are HOST courts driving each node's own command door with a synthetic callback that c |
 | `GS-STORE-001` | no native cipher, no encrypted device store and no real SQLCipher file: the proofs are over REAL FILES' BYTES and the native seam remains a  |
 | `GS-STORE-003` | NO DEVICE/EMULATOR/SIMULATOR/RADIO WAS USED. The Android PRODUCTION road (SQLiteOpenHelper.onUpgrade + DatabaseMigrationExecutor over SQLite |
 | `GS-SUPPLY-001` | no hosted run URL/log was available, so hosted convergence remains pending |
@@ -102,6 +102,12 @@ Touched, and therefore stale: `ANDROID-02`, `CRYPTO-003`, `CRYPTO-004`, `CRYPTO-
 - T78 final convergence is NOT run: it needs ONE clean exact candidate SHA with fresh green canonical AND
   hosted controls, and the hosted controls do not exist here.
 - Readiness flags stay FALSE and both declared candidates stay `NO_GO` (LIGHT Archive and Mesh/Oracle).
+- The in-flight dispatch boundary is NOT expressed anywhere: nothing in the current result taxonomy
+  distinguishes "an offer is crossing the writer right now, its outcome unknown" from "no offer ever
+  crossed", because `SosCancelResult.wasRelayed` means "bytes had ALREADY gone out" and a pre-existing
+  mandatory court pins a mid-flight cancellation to `false`. `GS-SOS-002`'s ordered step 3 (serialize cancel
+  with offer admission) therefore remains OPEN, and round 85 withdrew both an unred-gated serialization and
+  an arm that would have overloaded that boolean rather than leave either claim in the tree unproven.
 
 ## 6. Known limitation of the green-lane claim
 

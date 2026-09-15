@@ -9,6 +9,11 @@ process keepeth writing into the original checkout, whose declared addition GROW
 Not one finding is `VERIFIED_FIXED`: only an INDEPENDENT AUDIT may write that, and the ledger court
 REFUSETH the word from this work.
 
+ROUND 85 landed `GS-SOS-002`'s ordered STEP 6 on the Android isle (commit `71003b7`, red captured in a
+detached pre-repair worktree and failing on its OWN assertion with `hasActiveSos=true`): the Active-SOS
+projection is now re-derived from the durable row through one `rememberSosCommit`, the law the iOS twin
+already carried. The audit's step 3 stays OPEN, with its two measured obstacles written into item 1 below.
+
 | Finding | Status | Wave | Title |
 |---|---|---|---|
 | GS-CTRL-001 | FIX_SUBMITTED | 1 | Completion validator accepts failed commands, missing lo |
@@ -44,11 +49,24 @@ zero `VERIFIED_FIXED`). What remains on the three most-specified findings is now
 because the red design and the measured constraints are already written down:
 
 1. **`GS-SOS-002` step 3 — serialize offer admission with cancellation.** The lease (both isles) and the
-   DURABLE-TRUTH check (both isles) are landed, and both reds are captured and proven executed. What is not
-   closed is the race between the check and the `send`: a cancellation committing in that window is still not
-   suppressed. Carry the two measured constraints with any change: the check must test the row's STATE (a
-   terminal CAS KEEPS the row) and the FIRST offer is exempt (the DIRECT path commits its row after offering —
-   gating it broke `MeshNodeDeliveryIntegrationTest.C6_6_1`).
+   DURABLE-TRUTH check (both isles) are landed, and both reds are captured and proven executed. ROUND 85
+   landed the audit's ordered STEP 6 on the Android isle (the projection is now re-derived from the durable
+   row via one `rememberSosCommit`, the law the iOS twin already carried — so no iOS source changed and the
+   iOS package count stayed at 1193). What is NOT closed is step 3, and round 85 measured TWO obstacles that
+   must not be re-discovered:
+   - A per-message ADMISSION TRANSITION (one monitor taken by both the admission — lease + durable truth +
+     the crossing mark — and the successful cancellation's invalidation) was IMPLEMENTED, measured and
+     WITHDRAWN BEFORE COMMIT, because **no deterministic arm isolates the race window it closes**: every
+     interleaving this court can express is already satisfied by the landed lease and durable-truth checks,
+     so the red would have been a witness green on both revisions.
+   - The audit's step 5 asks that in-flight bytes be reported as "possibly relayed", but
+     `SosCancelResult.wasRelayed` CANNOT carry that: a PRE-EXISTING mandatory court
+     (`ReadinessT39Test.testCancelVersusQueuedWriterNeverResurrects`) pins a mid-flight cancellation to
+     `!wasRelayed` and FAILED when round 85 overloaded the flag. Do not weaken, exempt or rename that court.
+     The honest shape is a NEW explicit in-flight observable on BOTH isles together.
+   Carry the two older measured constraints too: the check must test the row's STATE (a terminal CAS KEEPS
+   the row) and the FIRST offer is exempt (the DIRECT path commits its row after offering — gating it broke
+   `MeshNodeDeliveryIntegrationTest.C6_6_1`).
 2. **`GS-ACK-001` step 4 — the captured bound public key.** Steps 1 and 3 are complete in FORM on both isles
    (availability gate, size requirement, explicit BLAKE2s128 derivation, and the wrong-key control beside the
    no-resolver arm). Step 4 asks that the CAPTURED key be the one used to verify before assigning
@@ -121,7 +139,15 @@ a round has room (a deterministic draw, or a failure message that names what it 
 2. Copy ONLY the court in, and write its RED arms against PRE-EXISTING API only.
 3. Swift: run `python3 scripts/sync_ios_foundation_package.py` AFTER every source edit, or `swift test`
    runneth the OLD copy and reports 0 tests.
-4. A COMPILE FAILURE IS NOT A RED.
+4. A COMPILE FAILURE IS NOT A RED — and neither is a HARNESS MISUSE. Round 85 lost a capture to a nested
+   `runTest { }` inside a `= runTest { }` body: the arm failed with
+   `IllegalStateException: Only a single call to runTest can be performed during one test`, which proves
+   NOTHING about the product. Call the suspend function directly inside the body. A red must fail on the
+   ARM'S OWN ASSERTION, and the arm must be NAMED in the court's XML/runner output.
+5. CAPTURE THE RED IN A PRE-REPAIR WORKTREE, not only in the working tree: `git worktree add --force --detach
+   /tmp/<name> <PRE-REPAIR SHA>`, copy the court in, copy `android/local.properties`, run, and record the
+   worktree path, the SHA and the fact that production was untouched. Round 85's valid red was captured this
+   way and its log names the worktree.
 
 ## Traps that have each cost a round
 
