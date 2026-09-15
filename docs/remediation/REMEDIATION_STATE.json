@@ -766,13 +766,57 @@
     "source_sha": "c683a2bf0b5bcdd4a662d98f7542351501b57b7c"
    },
    "impact": "When the recipient opens attacker-controlled sealed payloads, invalid DH input can escape the advertised null-on-failure API and terminate its caller unless separately guarded. A passing helper test gives no evidence of receiver continuity. iOS actual opener already catches agreement failure; do not weaken that behavior or infer both platforms crash.",
-   "invalidated_dependents": [],
-   "my_fix_commit": null,
-   "my_logs": [],
-   "my_red_case": null,
-   "my_status": "OPEN",
-   "notes": null,
-   "pending_proof": [],
+   "invalidated_dependents": [
+    "android/mesh/src/main/java/io/godstone/mesh/wire/v2/SignedMessageV1.kt -- the helper's doc claimed 'malformed DH/public keys cannot throw out of the receiver loop' while nothing in production called it; the claim is now attributed to the opener (which really does bound the failure) and the helper is documented as incomplete policy.",
+    "ios/Godstone/Sources/GodstoneMesh/SignedMessageV1.swift -- same doc clarification, so the two isles describe one contract.",
+    "NOT invalidated, checked by running it: the pinned cross-platform vectors, the frozen envelope/KDF/AEAD and every other T35 arm are untouched and green; the android :mesh lane and the whole iOS package are green beside them.",
+    "NO existing court required the throwing behaviour, so unlike GS-STORE-003 this finding needed no court reversal -- which is itself worth recording: the defect was invisible because no court drove the opener with hostile input at all."
+   ],
+   "my_fix_commit": "5c03d069506de0dded390071ec9937d8395a94bc",
+   "my_logs": [
+    {
+     "log": "CRYPTO-004/green/crypto-004-ANDROID-FULL.log",
+     "sha256": "13d21d3bd3673d6ce637209a9c44e4e54582c345b4567310d124115bfb72f7b5",
+     "what": "whole android :mesh lane after the repair: BUILD SUCCESSFUL"
+    },
+    {
+     "log": "CRYPTO-004/green/crypto-004-GREEN.log",
+     "sha256": "d107bf2e8e8275ca26c460696385b85ceafa2deccfb7e4c41f4c49eb53566550",
+     "what": "android ReadinessT35Test (narrow run) after the repair: BUILD SUCCESSFUL"
+    },
+    {
+     "log": "CRYPTO-004/green/crypto-004-IOS-GREEN.log",
+     "sha256": "2b90acc450347f8eb2a159e7221f3610a56ddc6402bc3033643d016d89cb3d05",
+     "what": "iOS ReadinessT35Tests narrow run: Executed 10 tests, 0 failures"
+    },
+    {
+     "log": "CRYPTO-004/green/crypto-004-IOS-FULL.log",
+     "sha256": "bc41c11109d6bf0df19ee1d53917c8a313e62303ff8ee709d9140d298070dbad",
+     "what": "whole iOS package: Executed 1183 tests, with 0 failures (was 1182)"
+    },
+    {
+     "log": "CRYPTO-004/green/crypto-004-LANES.log",
+     "sha256": "30ae4087ac581cfcbe1d7305fa199c71500cd65a297c942e0a60851ea8536611",
+     "what": "readiness suite OK; adopted probes 12/0 OK; invariants passed=7 failed=0 all hold; repository VERDICT PASS; shipping path read (A-01 remains OPEN); symbols 213 files 0 unresolved; validate-state notes only; iOS mirror --check clean; mutation selftest SELFTEST OK"
+    }
+   ],
+   "my_red_case": {
+    "case": "android/mesh/src/test/java/io/godstone/mesh/readiness/ReadinessT35Test.kt::testTheActualSealedOpenerReturnethOneBoundedRejectAndNeverThroweth (MOVED into the canonical T35 court; the audit's own charge was that this court's low-order arms exercised an unused helper). The iOS twin's equivalent arm was added at the same time to ios/Godstone/Tests/GodstoneMeshTests/ReadinessT35Tests.swift (10), where it PASSES untouched -- the audit records that isle's opener already rejects these, so it is a parity witness and a control, not a red.",
+    "argv": "(cd android && ./gradlew :mesh:testDebugUnitTest --tests '*ReadinessT35Test*')",
+    "cwd": "/Users/oculus/Projects/GODSTONE_BUILDER",
+    "log": "CRYPTO-004/red/crypto-004-RED.log",
+    "log_sha256": "d691f2f22ce1f7a230c70742dbce49f5f3afc163c16697b401e3b1211a3553fd",
+    "outcome": "RED on the untouched product, and the failure names the defect exactly: java.lang.IllegalStateException: X25519 agreement failed at org.bouncycastle.crypto.params.X25519PrivateKeyParameters.generateSecret -> X25519Agreement.calculateAgreement -> SealedSender.agree(SealedSender.kt:129) -> SealedSender.open(SealedSender.kt:110). Attacker-controlled u = 0 did NOT return the advertised null: it threw out of the receiver loop. The wrong-length-key arms were red for the same reason."
+   },
+   "my_status": "FIX_SUBMITTED",
+   "notes": "FIX SUBMITTED (5c03d06). ORDER RECORDED HONESTLY: this is wave 4b, taken while wave 4a still has GS-STORE-004/005/006 OPEN. The queue's order expresses DEPENDENCIES, and those three each need a schema bump plus runtime composition (GS-STORE-005 additionally changes the StoreDb interface implemented by four types on one isle alone); this finding depends on none of them, its blast radius is one boundary, and it was therefore completable, verifiable and submittable in one coherent atomic repair -- which GS-STORE-004 is not within one round. The 4a chain remains the next work and its order is unchanged. THE LESSON THIS FINDING PAID FOR: a filter with passing tests is not a guarantee, and an unused production helper with a confident doc comment is the most convincing kind of decoy -- the audit's word for it was 'no receiver-continuity evidence', and the red run proved it by naming the line where the receiver actually dies.",
+   "pending_proof": [
+    "NO DEVICE/EMULATOR/SIMULATOR/RADIO WAS USED. A hostile sealed frame arriving over a real radio path is not exercised; every result here is a LOCAL host reproduction of the opener boundary.",
+    "The MULTI-HOP relay forwarding of a refused frame (the outgoing copy's TTL decrement / hop increment / retry preservation) is NOT part of this repair; the finding itself places that integration under T37, and the later T84 integration evidence is deliberately kept separate.",
+    "The iOS arm is a PARITY WITNESS, not a reproduction of the audit's defect: the audit states that isle's opener already catches agreement failure, and this work neither weakened nor re-derived that. No claim is made that both platforms ever crashed.",
+    "The canonical-encoding filter remains an INCOMPLETE low-order list by construction (u = 1 is not on it). That is now stated in the code on both isles: the GUARANTEE is the opener's bounded reject (agreement failure plus the authenticated seal), not the filter. Refusing u = 1 therefore depends on BouncyCastle/CryptoKit reporting the agreement failure or the AEAD refusing the derived key -- witnessed on the host, unproven against any other provider implementation.",
+    "NO HOSTED LANE EXISTS in this environment: there is no CI run URL, run id or hosted log for any of this."
+   ],
    "proof": null,
    "remediation_report": "evidence/crypto/findings.md",
    "remediation_steps": [
