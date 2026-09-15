@@ -51,21 +51,47 @@ detached worktree (never in the live tree) with `AUDIT_SOURCE_ROOT` naming that 
 `/Users/oculus/Projects/GODSTONE_AUDIT/evidence/AUDIT-002/content/venv/bin/python`. It needs its
 `schema_version` fixture, which v2 carrieth; there is NO `-v` flag, and passing one errors.
 
-    ROUND 97 MEASURED IT AT THE REPAIRED SHA bf839fa: **5 failures / 5 passes** (it was 8/2 at
-    ae9905e, and 8/2 at the audit's own pin 33be0b0b). The three GS-CTRL-001 probes now PASS.
-    THE FIVE THAT REMAIN, which are the next rounds' work:
-      * `test_null_device_proof_is_rejected`   (GS-GATE-001) — a CLOSED device gate with
-        `device_matrix=None`, `result_sha256=None`, `test_results=None` is ACCEPTED
-      * `test_expression_disabled_ci_job_is_rejected` (GS-GATE-001) — `if: ${{ false }}` on the
-        named CI job is ACCEPTED (the parser recogniseth only the literal `if: false`)
-      * `test_forged_approval_digest_and_zero_coverage_cannot_stage` (GS-CONTENT-001) — a signed
-        synthetic DB with a COPIED digest and `approvals_covered='0'` STAGES
-      * `test_operator_heldout_validation_reaches_valid_verifier` (GS-CONTENT-003) — a REGRESSION:
-        it PASSED on the prior baseline and failleth on the repaired source
-      * `test_process_death_cannot_expose_mixed_archive_and_receipt` (GS-CONTENT-002) — a real
-        `os._exit(87)` between DB and receipt replacement leaveth a MIXED pair
-    Each of the five is a REPRODUCED, currently-failing assertion: adopt it into the canonical
-    suite FIRST, one field changed per negative, and only then repair production.
+    ROUND 98 MEASURED IT AT 8e9a8e9: **2 failures / 8 passes** — the audit's own pin was 8/2, and
+    ae9905e was also 8/2. SIX of its eight reproduced failures now pass, one per round:
+      | probe | finding | state |
+      |---|---|---|
+      | the three `EvidenceTests` | GS-CTRL-001 | PASS (round 97) |
+      | `test_null_device_proof_is_rejected` | GS-GATE-001 | PASS (round 98) |
+      | `test_expression_disabled_ci_job_is_rejected` | GS-GATE-001 | PASS (round 98) |
+      | `test_operator_heldout_validation_reaches_valid_verifier` | GS-CONTENT-003 | PASS (round 98) |
+      | `test_forged_approval_digest_and_zero_coverage_cannot_stage` | GS-CONTENT-001 | **FAIL** |
+      | `test_process_death_cannot_expose_mixed_archive_and_receipt` | GS-CONTENT-002 | **FAIL** |
+    THE TWO THAT REMAIN are the next rounds' work, each already a reproduced failing assertion:
+      * `GS-CONTENT-001` — a signed synthetic DB with a COPIED approvals digest and
+        `approvals_covered='0'` still STAGES. The repair requireth the common release-eligibility
+        verifier: bind approved final chunks and their review signatures to the exact transformed
+        corpus, trust policy, validation date and artifact -- validating ACTUAL chunk cardinality
+        and verified approval material, never claims copied from the DB, and never letting release
+        signing stand in for reviewer approval.
+      * `GS-CONTENT-002` — a real `os._exit(87)` between DB and receipt replacement leaveth a MIXED
+        pair. The repair requireth journal RECOVERY: durable staged and previous pairs, explicit
+        commit states, startup recovery before any reader or writer proceeds, one canonical
+        interprocess owner, and fsync in the correct order.
+    Run the suite exactly as round 97 recorded: detached worktree, `AUDIT_SOURCE_ROOT` naming it,
+    the audit venv, NO `-v` flag.
+
+## ROUND 98 ALSO, AND IT IS THE BIGGEST SINGLE CONVERGENCE LEVER
+
+`GS-CONTENT-003`'s obsolete refusal was removed from `scripts/prepare_release_assets.py::validate`
+(it ran AFTER the trust-store law, so every valid operator-selected held-out evaluation was refused
+before its verifier ran — a regression the auditor proved against the prior baseline). **A
+canonical arm that PINNED that regression was reversed** (`test_the_deputy_face_refuseth_to_carry_an_
+evaluation`) with its trust assertion retained and the reversal written INTO the arm.
+
+THE CANONICAL CONTENT SUITE IS STILL RED, AND ITS ROOT CAUSE IS NOW NAMED: **71 cases, 13 assertion
+failures, 10 errors** (was 69/14/10 before the repair — nothing was made worse). AUDIT-004 called
+this a CONVERGENCE failure, not 23 new product defects: the class fixture in
+`content/tests/test_heldout_staging.py` and `content/tests/test_prepare_release_assets.py` omits the
+provenance metadata GS-CONTENT-001 made mandatory (`approvals_sha256` / `approvals_covered` in the
+archive's own meta, which the signed manifest must then swear), so old POSITIVE cases fail too early.
+THE FIXTURES MUST BE REPAIRED TO EXERCISE THE NEW CONTRACT — a synthetic digest installed exactly as
+the independent probe did, claiming no human approval — and production validation must NOT be
+relaxed to make them green. That is the single highest-value next round.
 
 ## ROUND 97 ALSO LANDED — `GS-CTRL-002`, the AUDIT-004 limb (`7c04539`)
 

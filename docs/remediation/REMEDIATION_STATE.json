@@ -2094,7 +2094,7 @@
     "tests/test_audit_content.py (new canonical court for this finding)",
     "ci/mutations.py (T52-SM22/23/24)"
    ],
-   "my_fix_commit": "dbbc0b4",
+   "my_fix_commit": "dbbc0b4 + 8e9a8e9 (AUDIT-004 limb: the obsolete held-out refusal removed; the regression arm adopted)",
    "my_logs": [
     {
      "outcome": "3 tests, OK -- the refusal by name, the reason, and the default path",
@@ -2107,22 +2107,51 @@
      "sha256": "a81d1841cbf3df3e107e49903413367cd764ac9e4a32f1c539e00d8cf48daaaa",
      "what": "the three re-anchored mutation rods (the mutation roster manifest; the digest was COMPUTED from the file at round 97's evidence audit -- a measurement, not a fabrication, and nothing was deleted)",
      "log": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/T52/roster/manifest.json"
+    },
+    {
+     "log": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/REMEDIATION/GS-CONTENT-003/green/heldout-court-GREEN-20260915T161254Z.log",
+     "sha256": "44e0d6915d94695e9f887152997587e9234b32cfe1c4e69a297c1146db50e78e",
+     "outcome": "the three arms OK (adopted regression, check-only, reversed deputy face)",
+     "what": "the canonical held-out court after the repair"
+    },
+    {
+     "log": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/REMEDIATION/GS-CONTENT-003/green/audit004-independent-probes-GREEN-20260915T161254Z.log",
+     "sha256": "817307f71fc02a3d46ef6bc5f55291c6f8df1c7e01fbc86dd309c9ca7587f62a",
+     "outcome": "10 cases: 8 pass, 2 fail -- was 3/7; the GS-CONTENT-003 probe now PASSES",
+     "what": "THE AUDITOR'S OWN independent probe suite at the repaired SHA 8e9a8e9, in a detached worktree; the remaining two belong to GS-CONTENT-001 and GS-CONTENT-002"
+    },
+    {
+     "log": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/REMEDIATION/GS-CONTENT-003/green/content-suite-summary-20260915T161254Z.log",
+     "sha256": "a918adcee458e8ee56fb9ab46581eb322f49a73ddfcbd4b6ff159d3e132a9402",
+     "outcome": "71 cases, 13 assertion failures, 10 errors -- was 69/14/10 before this change",
+     "what": "the canonical content suite's summary at this SHA (the remaining reds are the fixture-provenance CONVERGENCE failure, disclosed and NOT caused by this repair)"
     }
    ],
    "my_red_case": {
-    "argv": "python3 -m unittest discover -s tools/readiness/tests -p test_audit_content.py -v",
-    "case": "tests/test_audit_content.py -- the audit's probe test_bundle_selected_signing_trust_must_be_rejected, assertion intact",
+    "argv": [
+     "python3 -m unittest discover -s tools/readiness/tests -p test_audit_content.py -v",
+     "python3 -m unittest content.tests.test_heldout_staging.HeldOutStagingTests -v"
+    ],
+    "case": "tests/test_audit_content.py -- the audit's probe test_bundle_selected_signing_trust_must_be_rejected, assertion intact PLUS (AUDIT-004 steps 1-3) the REPRODUCED REGRESSION, adopted assertion-intact into the canonical content suite: test_a_valid_operator_selected_evaluation_reaches_the_valid_verifier (the audit's own probe, which PASSED at the prior baseline c683a2bf) and test_check_only_binds_a_valid_evaluation_without_publishing. PLUS the REVERSAL of test_the_deputy_face_refuseth_to_carry_an_evaluation, which PINNED the obsolete refusal and now holds the real law (no operator trust store => no evaluation), with its trust assertion retained and the reversal recorded in the arm.",
     "cwd": "/Users/oculus/Projects/GODSTONE_BUILDER (a disposable copy for the RED)",
-    "log": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/REMEDIATION/GS-CONTENT-003/red/audit-content-RED.log",
-    "log_sha256": "ef25a1f585fa62e030fb6d645a0f730dc30a95e0345375ed439b57b498553997",
-    "outcome": "3 errors: the bundle-nominated trust store was ACCEPTED"
+    "log": [
+     "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/REMEDIATION/GS-CONTENT-003/red/audit-content-RED.log",
+     "GS-CONTENT-003/red/audit004-heldout-regression-RED-20260915T161144Z.log"
+    ],
+    "log_sha256": [
+     "ef25a1f585fa62e030fb6d645a0f730dc30a95e0345375ed439b57b498553997",
+     "7b01500175add6825c2de338e0156bdeb61f92e4f7eeb1807de171fe95b7071f"
+    ],
+    "outcome": "3 errors: the bundle-nominated trust store was ACCEPTED  ||  AUDIT-004 limb: 2 adopted arms FAILED on their own assertions before the repair (14 reds in the class), both green after."
    },
    "my_status": "FIX_SUBMITTED",
-   "notes": "FIX_SUBMITTED. The trust store is now selected by the OPERATOR on EVERY path, including --check-only; the deputy face that read the bundle's own pointers is DELETED (not renamed), and a bundle that nominate th its own key is refused BY NAME. A rod over the deleted face could never be killed, so it was re-anchored onto a LIVE guard and the dead code removed. Only an independent audit may write VERIFIED_FIXED.",
+   "notes": "FIX_SUBMITTED. The trust store is now selected by the OPERATOR on EVERY path, including --check-only; the deputy face that read the bundle's own pointers is DELETED (not renamed), and a bundle that nominate th its own key is refused BY NAME. A rod over the deleted face could never be killed, so it was re-anchored onto a LIVE guard and the dead code removed. Only an independent audit may write VERIFIED_FIXED. ROUND 98 (AUDIT-004 limb, 8e9a8e9): the independent review reproduced a REGRESSION this work introduced -- a refusal written for the legacy deputy branch ran AFTER the trust-store law, so every valid operator-selected held-out evaluation was refused before reaching its verifier. It PASSED at the prior baseline c683a2bf and FAILED on the repaired source. The block is REMOVED, not weakened; a canonical arm that PINNED the regression (the deputy-face arm) was reversed with its trust assertion retained and the reversal recorded in the arm. The auditor's own probe suite moved 3 failures -> 2, i.e. 8 passes of its 10 cases.",
    "pending_proof": [
     "INDEPENDENT VERIFICATION: only an independent audit may mark this VERIFIED_FIXED",
-    "the release lane in release-gates.yml must be updated to pass the operator trust store explicitly (the repair maketh the absence fatal on every path); the workflow edit belongs with the content-lane work of GS-CONTENT-001",
-    "no hosted run URL/log was available, so hosted convergence remains pending"
+    "AUDIT-004 step 3's canonical cases are ADOPTED for the valid-evaluation arm and the check-only arm, but the CLI-level cases (actual check-only CLI and stage invocations, wrong corpus/hash, incomplete review, missing required evaluation, absent operator trust) are NOT yet added end to end.",
+    "the canonical content suite remaineth RED at 71/13/10, and its root cause is NAMED: the class fixture omiteth the newly required provenance metadata, so old positive and fault cases fail TOO EARLY. Repairing those FIXTURES to exercise the new contract is the next round's work; production validation was NOT relaxed to make them green.",
+    "the hosted lane: no hosted run URL, run id or hosted log existeth, so hosted convergence remaineth PENDING. Every result here is a LOCAL reproduction.",
+    "no human approval is claimed anywhere in this limb: the synthetic approvals digest the arms install proveth only that the wrapper reaches its verifier."
    ],
    "proof": "REPRODUCED at both snapshots: create an unreviewed fixture DB, attacker key/trust file, signed manifest and asset manifest naming attacker-trust.json; prep.validate(bundle) returns successfully. At b439 this executes the deliberately retained legacy deputy path. T52 tests/mutations explicitly protect the no-operator-trust success route. Source main() calls it for --check-only without --trust-store and prints release assets verified.",
    "remediation_report": "evidence/AUDIT-002/content/FINDINGS.md",

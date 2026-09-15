@@ -28,6 +28,20 @@ artifact. The canonical court now DERIVES the expected upload path from the lane
 rehearsal's own `--report` argument and requires `if: always()`. Every mandatory lane stayeth
 mandatory (the gate checker still refuseth an amputated lane by name).
 
+AT ROUND 98 two more AUDIT-004 limbs landed and changed NO status either (`1dcfbc1` for
+`GS-GATE-001`, `8e9a8e9` for `GS-CONTENT-003`): both are deeper limbs of already-submitted findings.
+What they changed is MEASURABLE, and it is the auditor's own suite that says so: **8 of its 10 cases
+now PASS** (it was 2 of 10 at the audit's own pin and at ae9905e). Six of the eight reproduced
+failures are repaired, one per round. The two that remain are `GS-CONTENT-001`'s forged-digest
+staging and `GS-CONTENT-002`'s process-death mixed pair.
+
+The canonical CONTENT suite is STILL RED -- 71 cases, 13 assertion failures, 10 errors (it was
+69/14/10 before round 98, so nothing was made worse) -- and its root cause is now NAMED rather than
+guessed: the class fixtures omit the provenance metadata GS-CONTENT-001 made mandatory, so old
+POSITIVE cases fail too early. That is the CONVERGENCE failure AUDIT-004 recorded, not 23 new
+product defects, and it is the next round's highest-value work: repair the FIXTURES to exercise the
+new contract, never relax production validation to make them green.
+
 A ledger-wide evidence recheck at round 97 resolved **157** log and red-case references on disk and
 found **0 defects** -- round 96 had left one instance (a path under the wrong key with a NULL
 digest), which was corrected by MEASURING the file, not by asserting it.
