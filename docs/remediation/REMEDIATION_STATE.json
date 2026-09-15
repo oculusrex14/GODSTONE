@@ -1496,13 +1496,42 @@
         "source_sha": "c683a2bf0b5bcdd4a662d98f7542351501b57b7c"
       },
       "impact": "A self-signed unapproved bundle receives a successful release validation result when trust_store_path is omitted. Current staging does require an explicit operator-selected trust store, so this is presently a false approval/checker result, not an established bypass of the new stage() trust requirement.",
-      "invalidated_dependents": [],
-      "my_fix_commit": null,
-      "my_logs": [],
-      "my_red_case": null,
-      "my_status": "OPEN",
-      "notes": null,
-      "pending_proof": [],
+      "invalidated_dependents": [
+        "tests/test_t52.py (two arms that REQUIRED the removed deputy face were rewritten as refusal arms; three mutation rods re-anchored)",
+        "tests/test_t45.py and tests/test_t46.py (their whole-route fixtures now pass the operator store and obey the LIGHT asset law)",
+        "tests/test_audit_content.py (new canonical court for this finding)",
+        "ci/mutations.py (T52-SM22/23/24)"
+      ],
+      "my_fix_commit": "dbbc0b4",
+      "my_logs": [
+        {
+          "outcome": "3 tests, OK -- the refusal by name, the reason, and the default path",
+          "path": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/REMEDIATION/GS-CONTENT-003/green/audit-content-court.log",
+          "sha256": "49a01a96ff49b5b04fa517ab4562a2cad9835fd3ad02193e5b65dc518a0eeea3",
+          "what": "the court green (3/3) on the live tree"
+        },
+        {
+          "outcome": "3 KILLED of 3 (SKIPPED 0, INVALID 0, ESCAPED 0) -- the mutation control proveth the NEW law",
+          "path": "T52/roster/manifest.json",
+          "sha256": null,
+          "what": "the three re-anchored mutation rods"
+        }
+      ],
+      "my_red_case": {
+        "argv": "python3 -m unittest discover -s tools/readiness/tests -p test_audit_content.py -v",
+        "case": "tests/test_audit_content.py -- the audit's probe test_bundle_selected_signing_trust_must_be_rejected, assertion intact",
+        "cwd": "/Users/oculus/Projects/GODSTONE_BUILDER (a disposable copy for the RED)",
+        "log": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/REMEDIATION/GS-CONTENT-003/red/audit-content-RED.log",
+        "log_sha256": "ef25a1f585fa62e030fb6d645a0f730dc30a95e0345375ed439b57b498553997",
+        "outcome": "3 errors: the bundle-nominated trust store was ACCEPTED"
+      },
+      "my_status": "FIX_SUBMITTED",
+      "notes": "FIX_SUBMITTED. The trust store is now selected by the OPERATOR on EVERY path, including --check-only; the deputy face that read the bundle's own pointers is DELETED (not renamed), and a bundle that nominate th its own key is refused BY NAME. A rod over the deleted face could never be killed, so it was re-anchored onto a LIVE guard and the dead code removed. Only an independent audit may write VERIFIED_FIXED.",
+      "pending_proof": [
+        "INDEPENDENT VERIFICATION: only an independent audit may mark this VERIFIED_FIXED",
+        "the release lane in release-gates.yml must be updated to pass the operator trust store explicitly (the repair maketh the absence fatal on every path); the workflow edit belongs with the content-lane work of GS-CONTENT-001",
+        "no hosted run URL/log was available, so hosted convergence remains pending"
+      ],
       "proof": "REPRODUCED at both snapshots: create an unreviewed fixture DB, attacker key/trust file, signed manifest and asset manifest naming attacker-trust.json; prep.validate(bundle) returns successfully. At b439 this executes the deliberately retained legacy deputy path. T52 tests/mutations explicitly protect the no-operator-trust success route. Source main() calls it for --check-only without --trust-store and prints release assets verified.",
       "remediation_report": "evidence/AUDIT-002/content/FINDINGS.md",
       "remediation_steps": [

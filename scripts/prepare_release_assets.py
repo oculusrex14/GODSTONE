@@ -403,18 +403,6 @@ DEPUTY_ALLOWED_NAMES = {"archive_light.db", "generation.gguf", "embedding.gguf"}
 DEPUTY_ALLOWED_ROLES = {"archive", "generation_model", "embedding_model"}
 
 
-def _validate_legacy_deputy(manifest_path: Path):
-    """REMOVED BY GS-CONTENT-003. This face read `archive_manifest` and
-    `archive_trust_store` FROM THE BUNDLE ITSELF, so a bundle could nominate the key that
-    signed it. It is kept only as a REFUSAL, so that any caller which still reacheth it is
-    told why rather than silently obtaining the bypass the audit reproduced.
-    """
-    raise ValueError(
-        "the legacy deputy face is removed: a bundle may not nominate the trust store "
-        "that verifieth it (GS-CONTENT-003); select the trust store explicitly with "
-        "--trust-store")
-
-
 def validate(manifest_path: Path, *, trust_store_path: Path | None = None,
              heldout_evaluation: Path | None = None,
              heldout_manifest: Path | None = None,

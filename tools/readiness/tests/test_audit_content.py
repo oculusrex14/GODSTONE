@@ -91,8 +91,11 @@ class BundleNominatedTrustTest(ApprovalCourtCase):
         """`--check-only` calleth validate() with no operator trust store: the same
         refusal must hold there, so the default path is not a softer door."""
         source = (ROOT / "scripts" / "prepare_release_assets.py").read_text(encoding="utf-8")
-        self.assertIn("_validate_legacy_deputy", source,
-                      "the audit must have removed the deputy face, not merely renamed it")
+        self.assertNotIn("_validate_legacy_deputy", source,
+                         "the deputy face must be GONE, not merely renamed: no caller may "
+                         "reach a path that readeth the trust store out of the bundle")
+        self.assertNotIn("load_trust_store(refs[1])", source,
+                         "the bundle-nominated trust resolution must be removed")
         manifest = self.make_asset_bundle()
         with self.assertRaises(ValueError):
             prep.validate(manifest, trust_store_path=None)
