@@ -195,3 +195,16 @@ and **displaced** the suspicion onto the witness's own setup (`directSeen=1 reti
 built the arm **verbatim on the court's own working setup, differing in exactly one way** — not calling
 `sweepInboundLeases()` — and it **PASSED**. **Two plausible hypotheses were refuted by measurement rather than argument,
 and neither cost anything but an instrument.**
+
+## Python probe — `python/test_ios_deadline_sweep_owner.py` (IOS-07)
+
+Red BY DESIGN, parked while the repair lands. It asserts that `BleTransport.sweepInboundLeases()` (:2827) — which walks the
+outbound and inbound lifetimes, asks each connection whether a lease lapsed, and retires the **owning** relation through its
+**exact key** — has a **scheduled production owner**; today it is called by **nothing** in production (its only caller is a
+court, `ReadinessT20Tests:1000`), so a **silent** peer's lapsed handshake/assembly/confirmation deadline waits for unrelated
+traffic for ever. **This is the same defect ANDROID-04 closed at round 210**, and the repair is the same shape: a named,
+injectable interval; a `leaseSweepJob` armed in `startInstalling()` (past the `isStarted` guard) and cancelled at the top of
+`stop()`; and the instruments five rounds of Android method proved necessary (ticks / relations seen / leases lapsed, plus
+`hasLeaseSweepJob`). **Round 211 wrote and compiled that repair and then WITHDREW it**, because the controlled-experiment
+witness hit a compile error the round had no budget to settle — and a production change whose lane run was never completed is
+**not verified**. The three anchors and the witness's one obstacle are recorded in the ledger so the next attempt is an edit.

@@ -46,7 +46,37 @@ already carried. The audit's step 3 stays OPEN, with its two measured obstacles 
 | CRYPTO-003 | FIX_SUBMITTED | 4b | Destroyed retained controllers and primitive sessions st |
 | CRYPTO-006 | FIX_SUBMITTED | 4b | Duplicate journal admission is treated as success for a |
 
-## DO THIS FIRST (round 210) — ANDROID-04's SCHEDULER IS PROVEN BY A CONTROLLED EXPERIMENT: A SILENT PEER IS NOW TRIPPED BY TIME ALONE
+## DO THIS FIRST (round 211) — IOS-07 IS ANDROID-04'S TWIN: ITS RED IS CAPTURED AND THE REPAIR IS WRITTEN — AND WITHDRAWN FOR LACK OF A VERIFIED LANE
+
+**The defect, read from the isle and identical in shape:** `BleTransport.sweepInboundLeases()` (`:2827`) walks the
+outbound and inbound lifetimes, asks each connection whether a lease lapsed, and retires the **owning** relation through its
+**exact key** — **and it is called by nothing in production.** Its only caller anywhere is a court
+(`ReadinessT20Tests:1000`). So a **silent** peer's lapsed handshake/assembly/confirmation deadline waits for unrelated
+traffic for ever: **exactly the defect ANDROID-04 closed at round 210.**
+
+**The RED is canonical and immutable:** `tools/readiness/audit_probes/python/test_ios_deadline_sweep_owner.py` (four arms)
+— `Ran 4 tests, FAILED (failures=3)` with the W00 positive control passing — parked in the probes directory, so no
+committed SHA carries a red mandatory lane.
+
+**The repair was written and it compiled** (`swift build` clean): a **named** interval
+(`BleTransport.leaseSweepIntervalSeconds = 1.0`) with an **injectable** `leaseSweepInterval` parameter; an **owned**
+`leaseSweepJob` armed inside `startInstalling()` (past the `isStarted` guard, where a start is certain) and cancelled at
+the top of `stop()`; and the instruments five rounds of Android method proved necessary
+(`leaseSweepTicksForTest`, `leaseSweepRelationsSeenForTest`, `leaseSweepLeasesLapsedForTest`, `hasLeaseSweepJob`).
+
+**Why it was still withdrawn — discipline, not nerves:** the **controlled-experiment witness** (the court's own working
+expiry arm **verbatim**, differing only in a 25 ms interval and in never calling the sweep) hit a **compile error the
+round had no budget left to settle**: `cannot infer contextual base in reference to member 'inboundPeripheral'` on a line
+**textually identical** to the court's own working line — the inference depends on context this arm does not yet supply.
+**A production change whose lane run was never completed is not verified**, and this programme leaves no unverified
+production change behind. The edits were **reverted** and **the tree stands at round 210's verified-green commit**.
+
+**The next round's four steps, named:** (a) re-apply the production set (its three anchors are in the ledger); (b) settle
+the witness's one error by qualifying the enum (`direction: BleDirection.inboundPeripheral`); (c) run the **whole** iOS
+lane (the job arms for every transport, so the lane is the acceptance, not the filtered court); (d) move the canonical arm
+into `tools/readiness/tests/` and delete the parked one.
+
+## DO THIS FIRST (round 210, landed) — ANDROID-04's SCHEDULER IS PROVEN
 
 **The experiment and its control.** `ReadinessT20Test.testTheOwnedSweepTrippethASilentPeerByTimeAlone` carries the court's
 **own working expiry arm verbatim** — same rig, same base, same generation, same publication, same seal offset 909, the

@@ -5920,7 +5920,14 @@
    "impact": "Handshake and key-confirmation deadlines are inspected at inbound DATA/HS ingress (`BleTransport.swift:2963–3001` and `3961–3994`). The public `sweepInboundLeases` (2734) has no caller anywhere in canonical Sources; it sweeps assembly leases, not the handshake/confirmation deadlines. At physical duplex the provisional timer is cancelled (3186), and inbound subscription cancels its timer (3427). `HandshakeDeadline` and `KeyConfirmation` store/check clock values but schedule no timer. Consequently a peer that sends nothing after HS1 or after receiving the challenge need not trigger timeout teardown at all. A stalled partial assembly likewise needs another ingress or an externally invoked sweep.",
    "invalidated_dependents": [],
    "my_fix_commit": null,
-   "my_logs": [],
+   "my_logs": [
+    {
+     "log": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/REMEDIATION/IOS-07/red-round211/red.log",
+     "sha256": "f1d05adba1c80662a2bf12189a24fab8c8c19893ce413c4c2d315b943d58c627",
+     "what": "IOS-07's canonical RED (ledger round 211): the silent-peer deadline sweep must have a SCHEDULED PRODUCTION OWNER",
+     "outcome": "Ran 4 tests, **FAILED (failures=3)** with the W00 positive control passing: `sweepInboundLeases()` (:2827) is called by NOTHING in production -- its only caller anywhere is a court (`ReadinessT20Tests:1000`) -- so a SILENT peer's lapsed handshake/assembly/confirmation deadline waits for unrelated traffic for ever. THE SAME DEFECT THE ANDROID ISLE CLOSED AT ROUND 210."
+    }
+   ],
    "my_red_case": null,
    "my_status": "OPEN",
    "notes": "ENRICHED AT ROUND 104 by TRANSCRIPTION from the audit's own card (ios/findings.md#IOS-07): impact, remediation_steps, source_refs and closure_tests are the card's OWN words and its OWN file references, not a summary; the refs are relative to the audited snapshot. No status changed and nothing was claimed fixed.",
@@ -5946,7 +5953,10 @@
     "T23"
    ],
    "title": "silent-peer deadlines have no scheduled production caller",
-   "wave": "4f.2"
+   "wave": "4f.2",
+   "pending_work": [
+    "ROUND 211 (IOS-07's RED IS CAPTURED AND ITS REPAIR FULLY SPECIFIED; THE ATTEMPT WAS WITHDRAWN BECAUSE THE ROUND'S BUDGET RAN OUT MID-COMPILE -- AND NOTHING UNVERIFIED WAS LEFT IN THE TREE). (1) THE DEFECT, READ FROM THE ISLE AND IDENTICAL IN SHAPE TO ANDROID-04's: `BleTransport.sweepInboundLeases()` (:2827) walketh the outbound and inbound lifetimes, asketh each connection whether a lease lapsed, and retires the OWNING relation through its exact key -- AND IT IS CALLED BY NOTHING IN PRODUCTION. The only caller anywhere is a court (`ReadinessT20Tests:1000`). A SILENT peer's lapsed deadline therefore waiteth for unrelated traffic for ever. (2) THE RED IS CANONICAL AND IMMUTABLE: `tools/readiness/audit_probes/python/test_ios_deadline_sweep_owner.py` (four arms) -- `Ran 4 tests, FAILED (failures=3)` with the W00 positive control passing, captured with argv, source SHA and digest, and PARKED in the probes directory so no committed SHA carrieth a red mandatory lane. (3) THE REPAIR WAS WRITTEN AND IS FULLY SPECIFIED, AND ITS LAST STEP WAS THE ONLY ONE LEFT: a NAMED interval (`BleTransport.leaseSweepIntervalSeconds = 1.0`) with an INJECTABLE `leaseSweepInterval` initialiser parameter; an OWNED `leaseSweepJob` armed inside `startInstalling()` (past the `isStarted` guard, where a start is certain) and cancelled at the top of `stop()`; and the INSTRUMENTS the android isle's five rounds proved necessary (`leaseSweepTicksForTest`, `leaseSweepRelationsSeenForTest`, `leaseSweepLeasesLapsedForTest`, `hasLeaseSweepJob`). THE PRODUCTION EDITS COMPILED (`swift build` clean). (4) WHY THEY WERE STILL WITHDRAWN, WHICH IS THE DISCIPLINE AND NOT A FAILURE OF NERVE: the CONTROLLED-EXPERIMENT WITNESS -- the court's own working expiry arm VERBATIM (same pair, same `now`, same transport construction, same `responderReady` lease clock, same publication, same `sealRecords(marker: 909)`, the same TWO fragments, same lease read, same `now = lease.deadlineMono`) differing in the two STATED ways (a 25 ms interval, and never calling the sweep) -- hit a COMPILE ERROR the round had no budget left to settle (`cannot infer contextual base in reference to member 'inboundPeripheral'` on a line textually identical to the court's own working line 978, which is itself the interesting part: the inference depends on context this arm does not yet supply). A PRODUCTION CHANGE WHOSE LANE RUN WAS NEVER COMPLETED IS NOT VERIFIED, and this programme leaveth no unverified production change behind: the edits were REVERTED, `swift build` and the mirror re-synced, and THE TREE STANDETH AT ROUND 210's VERIFIED-GREEN COMMIT. (5) WHAT THE NEXT ROUND NEEDS, NAMED SO IT IS AN EDIT AND NOT A SEARCH: (a) re-apply the production set above (its three patch anchors are recorded in this entry); (b) settle the witness's one compile error by giving `isRelationPublished` its `BleDirection` EXPLICITLY (`direction: BleDirection.inboundPeripheral` -- the inference is the ONLY obstacle); (c) run the WHOLE iOS lane (the job arms for every transport, so the lane is the acceptance, not the filtered court); (d) then move the canonical arm into `tools/readiness/tests/` and delete the parked one, as the probes directory's rule requireth."
+   ]
   }
  },
  "kind": "REMEDIATION_LEDGER",
