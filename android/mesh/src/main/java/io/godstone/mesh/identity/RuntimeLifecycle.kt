@@ -153,9 +153,9 @@ class UnifiedRuntimeLifecycle(
     fun stop() {
         synchronized(this) {
             if (!started) return
+            // ANDROID-05: the drain owneth the ONE lease release and MEASURETH it; a second release
+            // in the caller would be a claim about a release that already happened.
             drainLocked()
-            lease?.releaseOnce()
-            started = false
         }
     }
 
@@ -171,7 +171,6 @@ class UnifiedRuntimeLifecycle(
     fun onPowerLoss() {
         synchronized(this) {
             drainLocked()
-            if (started) { lease?.releaseOnce(); started = false }
             capability = CapabilityStatus.TERMINAL_UNAVAILABLE
         }
     }
@@ -180,7 +179,6 @@ class UnifiedRuntimeLifecycle(
     fun onPermissionRemoved() {
         synchronized(this) {
             drainLocked()
-            if (started) { lease?.releaseOnce(); started = false }
             capability = CapabilityStatus.TERMINAL_PERMISSION_REVOKED
             permissionRevoked = true
         }
@@ -202,9 +200,7 @@ class UnifiedRuntimeLifecycle(
     /** The wipe path drains (retires contexts, releases resources) BEFORE platform key erasure. */
     fun drainForWipe(): DrainResult {
         synchronized(this) {
-            val d = drainLocked()
-            if (started) { lease?.releaseOnce(); started = false }
-            return d
+            return drainLocked()
         }
     }
 
@@ -230,13 +226,24 @@ class UnifiedRuntimeLifecycle(
             if (c.retireOnce()) retired += 1
         }
         contexts.clear()
+        // ANDROID-05 (the card's last step): THE FIGURE IS MEASURED, NEVER A CONSTANT. The runtime's
+        // own lease is released HERE, inside the one atomic drain, and the winning release is counted
+        // (1) -- the audited form released it in the FOUR callers and then reported a hardcoded 1, so
+        // a drain that released nothing claimed a release it never made, which is exactly the class
+        // the card nameth ("reporting a constant successful sweep").
+        val leaseReleased = if (started && lease?.releaseOnce() == true) 1 else 0
+        started = false
         val drained = seam.disconnectAll()
         seam.stopAdvertising()
         seam.stopScan()
         seam.resetResources()
         val outstanding = seam.awaitInFlight(DRAIN_BOUND_MILLIS)
+        // What the drain ACTUALLY released: the lease (1 when a live one was really released), the
+        // contexts it really retired, and the seam's OWN reported sweep count.
+        val resourcesReleased = leaseReleased + retired + drained
         return DrainResult(admissionClosed = true, contextsRetired = retired,
-            outboundDrained = drained, resourcesReleased = 1, inFlightOutstanding = outstanding)
+            outboundDrained = drained, resourcesReleased = resourcesReleased,
+            inFlightOutstanding = outstanding)
     }
 
     private companion object {

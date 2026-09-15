@@ -46,7 +46,34 @@ already carried. The audit's step 3 stays OPEN, with its two measured obstacles 
 | CRYPTO-003 | FIX_SUBMITTED | 4b | Destroyed retained controllers and primitive sessions st |
 | CRYPTO-006 | FIX_SUBMITTED | 4b | Duplicate journal admission is treated as success for a |
 
-## DO THIS FIRST (round 183) — ANDROID-05's STEP 3 LANDED: THE REAL SEAM NOW OWNS A BOUNDED, MEASURED IN-FLIGHT DRAIN
+## DO THIS FIRST (round 184) — ANDROID-05's LAST NAMED ITEM: THE DRAIN'S `resourcesReleased` NOW **MEASURES**
+
+`drainLocked()` returned `resourcesReleased = 1` as a **constant** while the cleanliness law at `:77` requires
+`resourcesReleased >= 1 && inFlightOutstanding == 0` — so the law was satisfied **trivially**, by a figure that claims a
+release whatever happened. The card names the class: *"reporting a constant successful sweep"*.
+
+**The RED was two-sided and behavioural:** W07 (a drain over a seam reporting **three** sweeps must report the **sum**) and
+W08 (the **negative**: a never-started drain, which released nothing, may not claim a release). Both RED on the
+unmodified tree — `expected:<4> but was:<1>` and `expected:<0> but was:<1>`.
+
+**The repair, one coherent change:** the runtime's **one** lease release moved **into** the atomic drain, where the
+winning release is **counted**; the four callers (`stop`, `onPowerLoss`, `onPermissionRemoved`, `drainForWipe`) no longer
+release it themselves; and `resourcesReleased = leaseReleased + retired + drained` — the lease, the contexts *really*
+retired, and the seam's *own* reported sweep count. **No constant survives.**
+
+**And my own arithmetic was wrong — caught by the lane and recorded rather than erased:** W07's first expectation was
+**4** (lease + sweep), but `start()` **had opened a context**, so the drain truly retired one: the measured figure is
+**5** (lease 1 + context 1 + sweep 3). The correction is written into the arm with its reasoning, and `contextsRetired`
+is asserted too. **Third time in four rounds that the lane caught an error of mine rather than the code's** — a measured
+figure is only as good as the reading of what was actually released.
+
+**Acceptance:** whole `:mesh` lane **1180 tests, 0 failures, 0 errors** (1178 + W07/W08).
+
+**Remaining on ANDROID-05, named:** `UnifiedRuntimeLifecycle` is defined and **driven by courts** but **constructed
+nowhere in production** — the runtime composition must bind it to the real seam. That is the finding's remaining frontier,
+and it is a **wiring** step.
+
+## DO THIS FIRST (round 183, landed) — ANDROID-05's STEP 3
 
 The three-file repair, exactly as named: **(i)** a new `transport/InFlightAwareTransport.kt` — the optional capability a
 concrete radio may offer, documented as *shape* and not a device claim; **(ii)** `LifecycleTransportAdapter.awaitInFlight`

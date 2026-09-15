@@ -67,6 +67,38 @@ class ReadinessAndroid05Test {
     }
 
     @Test
+    fun testW07TheDrainReportethTheResourcesItACTUALLYReleased() {
+        // A CONSTANT figure cannot tell a drain that released nothing from one that swept three
+        // relations: `resourcesReleased` must MEASURE what actually left. Here: the runtime's own
+        // lease (1) plus the seam's own reported sweep (3).
+        val seam = FakeSeam(3)
+        val authority = UnifiedRuntimeLifecycle(seam, { 1_000L })
+        authority.start()
+        val result = authority.drainForWipe()
+        // THE ARITHMETIC IS THE MEASUREMENT, and the first draft of this arm got it WRONG: the
+        // expectation was 4 (lease + sweep), but `start()` HAD OPENED A CONTEXT, so the drain really
+        // retired one too -- lease 1 + context 1 + sweep 3 = 5. The lane caught the mis-expectation,
+        // and the correction is written here rather than erased: a measured figure is only as good as
+        // the reading of what was actually released.
+        assertEquals("lease (1) + the context start() opened (1) + the seam's own sweep (3)", 5,
+            result.resourcesReleased)
+        assertEquals("and the drain nameth the context it retired", 1, result.contextsRetired)
+        assertEquals("the seam's sweep count travelleth on unchanged", 3, result.outboundDrained)
+    }
+
+    @Test
+    fun testW08ADrainThatReleasedNothingMayNotClaimARelease() {
+        // THE NEGATIVE CONTROL: never started, so there is NO lease to release and NO sweep to report.
+        // The old constant `1` claimed a release that never happened, which is precisely the audited
+        // shape ("reporting a constant successful sweep").
+        val seam = FakeSeam(0)
+        val authority = UnifiedRuntimeLifecycle(seam, { 1_000L })
+        val result = authority.drainForWipe()
+        assertEquals("nothing was released, so nothing may be claimed", 0, result.resourcesReleased)
+        assertFalse("and such a drain is NOT clean", result.isClean)
+    }
+
+    @Test
     fun testW05TheRealAdapterAsksAnInFlightAwareTransportAndReportethItsMeasuredCount() {
         // The seam's default answereth 0 -- its own KDoc sayeth the REAL adapter must override it.
         // The override ASKETH a transport that can answer, and its MEASURED count travelleth on, so a
