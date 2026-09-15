@@ -678,6 +678,10 @@ class BleGattServer(
     fun stop() {
         var gen = serverGeneration
         if (orchestrationDriver != null) {
+            // GS-CTRL-002 / BL115: mark the connected clients CLOSING BEFORE the epoch bump, so the
+            // teardown is represented and a connection arriving during the close is REFUSED (and its
+            // disconnect retires the exact generation) rather than admitted as a replacement.
+            orchestrationDriver.beginServerClose()
             gen = orchestrationDriver.startNewServerEpoch()
             serverGeneration = gen
         } else {

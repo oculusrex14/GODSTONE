@@ -2679,6 +2679,116 @@ class BleLinkSubstrateTest {
     }
 
     @Test
+    fun testServerLifecycle_StopMarksConnectedClientsClosing() {
+        // GS-CTRL-002 / BL115 witness through the REAL caller. The audited `BleGattServer.stop()`
+        // bumpeth the server epoch, which CLEARETH the driver's peer slots -- so a connection event
+        // arriving during the teardown findeth NO slot, the CLOSING guards are dead code, and the
+        // event can be ADMITTED as a replacement of a relation that was never retired. This arm
+        // asserteth the state the closing lifecycle must leave behind.
+        val authority = BleGlobalCapacityAuthority(maxTotalPeers = 7)
+        val localHint = byteArrayOf(0x01, 0x00, 0x00, 0x00)
+        val serverDriver = BleServerOrchestrationDriver(
+            localHint = localHint,
+            localLinkInfoProvider = { ByteArray(13) },
+            globalCapacity = authority
+        )
+        val server = BleGattServer(context = null, orchestrationDriver = serverDriver)
+        val peer = "11:22:33:44:55:95"
+        server.start()
+        server.dispatchServiceAdded(android.bluetooth.BluetoothGatt.GATT_SUCCESS,
+            android.bluetooth.BluetoothGattService(BleTransport.SERVICE_UUID,
+                android.bluetooth.BluetoothGattService.SERVICE_TYPE_PRIMARY))
+        server.processConnectionStateChange(peer, android.bluetooth.BluetoothGatt.GATT_SUCCESS,
+            android.bluetooth.BluetoothProfile.STATE_CONNECTED)
+        assertTrue(server.isDeviceAdmitted(peer))
+        assertEquals(ServerPeerSlotState.ACTIVE, serverDriver.getPeerSlotState(peer))
+
+        server.stop()
+
+        assertEquals(
+            "a stopped server that carrieth NO CLOSING slot can never refuse a late connection: " +
+                "the closing lifecycle is UNREPRESENTED and the guard that rejecteth it is dead code",
+            ServerPeerSlotState.CLOSING, serverDriver.getPeerSlotState(peer))
+        assertEquals("the closing slot keepeth the EXACT generation it was retiring",
+            1L, serverDriver.getClientGeneration(peer))
+    }
+
+    @Test
+    fun testServerLifecycle_ConnectedWhileClosingCannotAdmitReplacement() {
+        // BL115 / Section 8 & 9: a client arriving while the SERVER IS CLOSING must not be admitted
+        // as a REPLACEMENT. Driven through the real `BleGattServer.stop()` caller, whose close now
+        // marketh the connected slot CLOSING before the epoch bump.
+        val authority = BleGlobalCapacityAuthority(maxTotalPeers = 7)
+        val localHint = byteArrayOf(0x01, 0x00, 0x00, 0x00)
+        val serverDriver = BleServerOrchestrationDriver(
+            localHint = localHint,
+            localLinkInfoProvider = { ByteArray(13) },
+            globalCapacity = authority
+        )
+        val server = BleGattServer(context = null, orchestrationDriver = serverDriver)
+        val peer = "11:22:33:44:55:96"
+        server.start()
+        server.dispatchServiceAdded(android.bluetooth.BluetoothGatt.GATT_SUCCESS,
+            android.bluetooth.BluetoothGattService(BleTransport.SERVICE_UUID,
+                android.bluetooth.BluetoothGattService.SERVICE_TYPE_PRIMARY))
+        server.processConnectionStateChange(peer, android.bluetooth.BluetoothGatt.GATT_SUCCESS,
+            android.bluetooth.BluetoothProfile.STATE_CONNECTED)
+        assertTrue(server.isDeviceAdmitted(peer))
+        assertEquals(1L, serverDriver.getClientGeneration(peer))
+
+        server.stop()
+        assertEquals(ServerPeerSlotState.CLOSING, serverDriver.getPeerSlotState(peer))
+
+        // A CONNECTION DURING THE CLOSE: refused, no replacement admitted, the generation unharmed.
+        server.processConnectionStateChange(peer, android.bluetooth.BluetoothGatt.GATT_SUCCESS,
+            android.bluetooth.BluetoothProfile.STATE_CONNECTED)
+        assertEquals(
+            "a connection while CLOSING must NOT be admitted as a replacement of the closing relation",
+            ServerPeerSlotState.CLOSING, serverDriver.getPeerSlotState(peer))
+        assertEquals("the closing relation's generation must not be renumbered",
+            1L, serverDriver.getClientGeneration(peer))
+        assertEquals("no replacement may be admitted while closing",
+            0, serverDriver.getAdmittedCount())
+    }
+
+    @Test
+    fun testServerLifecycle_ClosingDisconnectRetiresExactGeneration() {
+        // BL115 / Section 8 & 9: the disconnect that closeth a CLOSING relation must retire EXACTLY
+        // the generation the close was retiring; a foreign generation changeth NOTHING.
+        val authority = BleGlobalCapacityAuthority(maxTotalPeers = 7)
+        val localHint = byteArrayOf(0x01, 0x00, 0x00, 0x00)
+        val serverDriver = BleServerOrchestrationDriver(
+            localHint = localHint,
+            localLinkInfoProvider = { ByteArray(13) },
+            globalCapacity = authority
+        )
+        val server = BleGattServer(context = null, orchestrationDriver = serverDriver)
+        val peer = "11:22:33:44:55:97"
+        server.start()
+        server.dispatchServiceAdded(android.bluetooth.BluetoothGatt.GATT_SUCCESS,
+            android.bluetooth.BluetoothGattService(BleTransport.SERVICE_UUID,
+                android.bluetooth.BluetoothGattService.SERVICE_TYPE_PRIMARY))
+        server.processConnectionStateChange(peer, android.bluetooth.BluetoothGatt.GATT_SUCCESS,
+            android.bluetooth.BluetoothProfile.STATE_CONNECTED)
+        server.stop()
+        assertEquals(ServerPeerSlotState.CLOSING, serverDriver.getPeerSlotState(peer))
+
+        // A FOREIGN generation is refused and changeth nothing.
+        assertTrue(serverDriver.onClientDisconnected(peer, 2L) is BleServerAction.NoOp)
+        assertEquals(ServerPeerSlotState.CLOSING, serverDriver.getPeerSlotState(peer))
+        assertEquals(1L, serverDriver.getClientGeneration(peer))
+
+        // The EXACT generation is retired: physical teardown named with that generation, slot
+        // QUARANTINED (terminal), generation preserved for the ledger.
+        val action = serverDriver.onClientDisconnected(peer, 1L)
+        assertTrue(action is BleServerAction.TearDownPhysicalChannel)
+        assertEquals(1L, (action as BleServerAction.TearDownPhysicalChannel).generation)
+        assertEquals(ServerPeerSlotState.QUARANTINED, serverDriver.getPeerSlotState(peer))
+        assertEquals(1L, serverDriver.getClientGeneration(peer))
+        assertEquals(0, serverDriver.getAdmittedCount())
+    }
+
+    @Test
     fun testServerLinkInfo_SameHintDifferentFlagsRejected() {
         val authority = BleGlobalCapacityAuthority(maxTotalPeers = 7)
         val localHint = byteArrayOf(0x02, 0x00, 0x00, 0x00)

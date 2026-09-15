@@ -46,7 +46,41 @@ already carried. The audit's step 3 stays OPEN, with its two measured obstacles 
 | CRYPTO-003 | FIX_SUBMITTED | 4b | Destroyed retained controllers and primitive sessions st |
 | CRYPTO-006 | FIX_SUBMITTED | 4b | Duplicate journal admission is treated as success for a |
 
-## DO THIS FIRST (round 166) — THE LAST RED CONTROL IS TRIAGED: 31 OF ITS 33 ARMS ARE SPELLINGS, TWO ARE REAL WORK
+## DO THIS FIRST (round 167) — BL115 TAKEN, AND THE DEFECT BEHIND IT WAS REAL: THE CLOSING LIFECYCLE WAS UNREPRESENTABLE
+
+Round 166 triaged the last red control's 33 arms into 31 spellings and **two substantive** ones. The first
+substantive arm (**BL115**) is now closed — and it was **not** a spelling. `ServerPeerSlotState.CLOSING` was
+**checked in three guards** (`onClientConnected`, `onLinkInfoWriteRequest`, `onDescriptorWriteRequest`) and
+**assigned nowhere**: dead code. The cause was found through the **real caller**: `BleGattServer.stop()` bumps the
+server epoch, and `startNewServerEpoch()` **clears `peerSlots`** — so a client arriving during the teardown finds
+**no slot**, the guards cannot fire, and the event can be **admitted as a replacement of a relation that was never
+retired**.
+
+**The RED is behavioural and through the real caller** (not a fixture): admit a client, call `BleGattServer.stop()`,
+then read the driver's state — `AssertionError` at `BleLinkSubstrateTest.kt:2708` on the unmodified tree, captured
+with argv, source SHA and digest. (The first attempt failed to **compile** — JUnit puts the message FIRST — and
+that is recorded too, because a compile error is not a behavioural red.)
+
+**The repair** (one coherent change, one real caller): `beginServerClose()` moves every ACTIVE slot to CLOSING
+keeping its **exact** generation; `startNewServerEpoch()` now **preserves** CLOSING slots
+(`peerSlots.entries.removeAll { it.value.state != CLOSING }`) while clearing every other state as before; and
+`GattServer.stop()` calls the transition **before** the epoch bump.
+
+**Two courts BL115 names now exist and assert the laws, not the names:** `…ConnectedWhileClosingCannotAdmitReplacement`
+(no admission, no renumbering, zero admitted) and `…ClosingDisconnectRetiresExactGeneration` (a **foreign**
+generation is `NoOp` and changes nothing; the **exact** one yields `TearDownPhysicalChannel` naming that generation
+and a terminal QUARANTINED slot). A third witness keeps the RED arm as a permanent control.
+
+**Acceptance:** whole `:mesh` lane **1174 tests, 0 failures, 0 errors** (1171 + 3) — preserving CLOSING slots broke
+nothing, including T12's reconnect-after-epoch court which depends on a QUARANTINED slot still being cleared; and the
+control fell from **33 to 31** arms with BL115 cleared.
+
+**STILL OPEN:** the other 31 arms remain the spelling approximations triaged at round 166, and the decision between
+aligning them and repairing the instrument stays deliberate. **BL22** is the next substantive arm — the transports
+still calling the production SessionManager handshake API directly (4 Android + 4 iOS sites) — and unlike BL115 it is
+an **architectural reroute**, not a missing transition.
+
+## DO THIS FIRST (round 166, landed) — THE LAST RED CONTROL IS TRIAGED
 
 `check_ble_link_substrate_controls` is rc 1 with **33 arm errors** across BL11/BL22/BL42/BL52/BL81/BL93/BL96/BL115/
 BL118/BL126/BL128/BL131/BL132, and its `--selftest` is rc 1 — it **aborts on the unclean baseline**, so its mutation

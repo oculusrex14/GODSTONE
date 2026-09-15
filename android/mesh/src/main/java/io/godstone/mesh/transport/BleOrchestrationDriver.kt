@@ -504,6 +504,26 @@ class BleServerOrchestrationDriver(
         }
     }
 
+    /**
+     * GS-CTRL-002 / BL115: BEGIN THE SERVER'S CLOSE. Every ACTIVE client slot moveth to CLOSING and
+     * KEEPETH its exact generation, so the teardown is REPRESENTED in the state machine instead of
+     * being erased by the epoch bump. The guards that reject a connection, a write or a descriptor
+     * request on a CLOSING slot were DEAD CODE while nothing could ever set that state: a client
+     * arriving during the close found no slot at all and could be admitted as a REPLACEMENT of a
+     * relation that was never retired. The platform's own disconnect callback retires each CLOSING
+     * slot (exact generation) through [onClientDisconnected].
+     */
+    fun beginServerClose(): List<String> = synchronized(lock) {
+        val closing = ArrayList<String>()
+        for ((address, slot) in peerSlots) {
+            if (slot.state == ServerPeerSlotState.ACTIVE) {
+                peerSlots[address] = slot.copy(state = ServerPeerSlotState.CLOSING)
+                closing.add(address)
+            }
+        }
+        closing
+    }
+
     fun startNewServerEpoch(): Long = synchronized(lock) {
         isPoisoned = false
         isServerReady = false
@@ -519,7 +539,11 @@ class BleServerOrchestrationDriver(
         inboundConnections.clear()
         acceptedRemoteLinkInfo.clear()
         publishedFound.clear()
-        peerSlots.clear()
+        // GS-CTRL-002 / BL115: a CLOSING slot SURVIVETH the epoch bump. It is not a leftover of the
+        // old epoch but a relation still awaiting its platform disconnect; erasing it here is exactly
+        // what made a late connection admittable as a replacement. Every other state is cleared as
+        // before -- the T12 arm that reconnects after an epoch (a QUARANTINED slot) still passeth.
+        peerSlots.entries.removeAll { it.value.state != ServerPeerSlotState.CLOSING }
         pendingNotificationAddress = null
         globalCapacity?.releaseAllInbound()
         serverCallbackEpoch
