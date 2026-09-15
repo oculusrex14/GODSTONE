@@ -603,6 +603,22 @@
    "ci_check_lab_isolation": "rc 0 -- PASSED (0 errors, 6 notes)",
    "what_it_covers": "the LIGHT candidate's EXCLUSION requirement, which the audit requireth be PROVED and not asserted",
    "what_it_does_not": "it readeth the SHIPPING SOURCE GRAPH, not a built artifact; LIGHT's remaining boundary items (approved lexical content, trust/signing, applicable device/accessibility/security evidence, actual release artifacts) are untouched by it, and no gate moved."
+  },
+  "repository_control_sweep_AT_ROUND_129": {
+   "candidate_sha": "2002d21278830858ff5d76b6deda369495bd3b71",
+   "record": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/REMEDIATION/ROUND129/control-sweep.json",
+   "result": "18 ci/check_*.py controls run: 14 PASS, 4 FAIL",
+   "failed": [
+    "check_ble_link_substrate_controls (BL132: iOS send responder branch must guard on subscribedCentrals[peerId])",
+    "check_local_identity_controls (2 issues)",
+    "check_parity (FAILED: D)",
+    "check_trusted_runtime_composition_controls (4 issues)"
+   ],
+   "pre_existing": "ALL FOUR FAILED AT THE PRE-SESSION COMMIT ae9905e AS WELL (logs saved): they are PRE-EXISTING, not regressions from this session",
+   "wired_into_mandatory_lanes": "yes -- all four appear in .github/workflows/repository-verification.yml, so those lanes would FAIL if run",
+   "measured_improvement_this_session": "check_parity moved from 'FAILED: C, D' to 'FAILED: D' -- one failure removed, the control STILL RED",
+   "corroborates": "the external reviewer's attributed report of RED HOSTED VERIFICATION at the audited SHA, locally and independently",
+   "meaning": "A structural 'the lanes are mandatory and not disabled' claim is NOT a green claim. Any green statement about this repository must name WHICH controls were run; this sweep nameth 18 and recordeth that four of them FAIL, pre-existing, one of them inside the mandatory lanes."
   }
  },
  "counts": {
