@@ -10,6 +10,7 @@ import java.security.SecureRandom
 import javax.crypto.Cipher
 import javax.crypto.spec.GCMParameterSpec
 import javax.crypto.spec.SecretKeySpec
+import io.godstone.mesh.wire.v2.SignedMessageV1
 
 /**
  * Sealed sender (L4). PROTOCOL.md section 6, documented in full and never implemented.
@@ -45,6 +46,9 @@ import javax.crypto.spec.SecretKeySpec
 object SealedSender {
 
     private const val EPHEMERAL_LEN = 32
+    /** X25519 private scalar length. CRYPTO-004: validated at the open boundary so a
+     *  wrong-length key is the advertised bounded reject, not a library exception. */
+    private const val PRIV_LEN = 32
     private const val TAG_LEN = 16
     private const val NODE_ID_LEN = 16
     const val ROUTING_TAG_LEN = 4
@@ -98,24 +102,50 @@ object SealedSender {
 
     /**
      * Attempt to open a sealed payload. Returns null on ANY failure -- wrong
-     * recipient, tag collision, tampering -- with no distinction between them,
-     * because distinguishing them is itself an oracle.
+     * recipient, tag collision, tampering, malformed key material -- with no
+     * distinction between them, because distinguishing them is itself an oracle.
+     *
+     * CRYPTO-004: `sealedPayload` is ATTACKER-CONTROLLED, and this API promises null
+     * on ANY failure, so nothing here may throw. The vetted X25519 implementation
+     * signals invalid key material and a low-order / all-zero agreement with UNCHECKED
+     * exceptions -- BouncyCastle raises `IllegalArgumentException` for a bad key length
+     * and `IllegalStateException("X25519 agreement failed")` when the agreed secret is
+     * the all-zero point (u = 0) -- so an unguarded open terminated the receiver loop on
+     * a hostile frame. The whole operation is therefore wrapped, and every library
+     * failure collapses into the SAME bounded reject. `Error`s (OOM and the like) are
+     * deliberately NOT swallowed.
+     *
+     * The canonical-encoding gate below is POLICY, not the guarantee: it refuses the
+     * encodings that are provably not a real u-coordinate, while the agreement failure
+     * and the authenticated seal remain what actually refuses a low-order point (u = 1
+     * is not on any short list). It is deliberately NOT presented as cryptographic
+     * validation.
      */
     fun open(sealedPayload: ByteArray, recipientStaticPriv: ByteArray): Opened? {
+        if (recipientStaticPriv.size != PRIV_LEN) return null
         if (sealedPayload.size < EPHEMERAL_LEN + 12 + TAG_LEN + NODE_ID_LEN) return null
         val eph = sealedPayload.copyOfRange(0, EPHEMERAL_LEN)
-        val nonce = sealedPayload.copyOfRange(EPHEMERAL_LEN, EPHEMERAL_LEN + 12)
-        val ct = sealedPayload.copyOfRange(EPHEMERAL_LEN + 12, sealedPayload.size)
+        if (!SignedMessageV1.acceptableSealedDhPublicKey(eph)) return null
 
-        val shared = agree(recipientStaticPriv, eph)
-        val kSeal = kdf(shared, "godstone-seal-v2")
-        val inner = aeadOpen(kSeal, nonce, ct) ?: return null
-        if (inner.size < NODE_ID_LEN) return null
+        return try {
+            val nonce = sealedPayload.copyOfRange(EPHEMERAL_LEN, EPHEMERAL_LEN + 12)
+            val ct = sealedPayload.copyOfRange(EPHEMERAL_LEN + 12, sealedPayload.size)
 
-        return Opened(
-            senderNodeId = inner.copyOfRange(0, NODE_ID_LEN),
-            plaintext = inner.copyOfRange(NODE_ID_LEN, inner.size)
-        )
+            val shared = agree(recipientStaticPriv, eph)
+            val kSeal = kdf(shared, "godstone-seal-v2")
+            val inner = aeadOpen(kSeal, nonce, ct) ?: return null
+            if (inner.size < NODE_ID_LEN) return null
+
+            Opened(
+                senderNodeId = inner.copyOfRange(0, NODE_ID_LEN),
+                plaintext = inner.copyOfRange(NODE_ID_LEN, inner.size)
+            )
+        } catch (_e: RuntimeException) {
+            // one bounded reject for every library-defined invalid-key / agreement /
+            // authentication failure (see the doc above); never a throw out of the
+            // receiver loop.
+            null
+        }
     }
 
     data class Opened(val senderNodeId: ByteArray, val plaintext: ByteArray)

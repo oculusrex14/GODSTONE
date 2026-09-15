@@ -354,4 +354,47 @@ final class ReadinessT35Tests: XCTestCase {
                            "and its msgID differs from any structural (zero-signature) msgId")
         }
     }
+
+    // (10) CRYPTO-004 (iOS twin): THE ACTUAL OPENER, driven by the same hostile inputs the
+    //      android arm drives. The audit records that THIS isle's opener already rejects them
+    //      (it uses `try?` throughout) -- these arms turn that into a witnessed law on BOTH
+    //      isles rather than a claim about one, and they must NEVER be weakened by a change
+    //      that lets an attacker-controlled frame throw out of the receiver loop.
+    func testW10TheActualSealedOpenerReturnethOneBoundedRejectAndNeverThroweth() throws {
+        let recipient = Curve25519.KeyAgreement.PrivateKey()
+        let genuine = try SealedSender.seal(plaintext: Data("a genuine inner body".utf8),
+                                            senderNodeId: Self.NOD,
+                                            recipientStaticPub: recipient.publicKey.rawRepresentation)
+        // POSITIVE CONTROL first: the harness must be able to PASS.
+        let opened = SealedSender.open(sealedPayload: genuine, recipientStaticPriv: recipient.rawRepresentation)
+        XCTAssertNotNil(opened, "a genuine sealed message must open")
+        XCTAssertEqual(Self.NOD, opened?.senderNodeId, "and it carries the sealing sender's node id")
+
+        // hostile / malformed ephemeral DH inputs: ONE bounded reject, never a throw.
+        var nonCanonicalP = [UInt8](repeating: 0xFF, count: 32); nonCanonicalP[0] = 0xED; nonCanonicalP[31] = 0x7F
+        var uOne = [UInt8](repeating: 0, count: 32); uOne[0] = 1
+        let cases: [(String, [UInt8])] = [
+            ("u = 0 (the identity element) must be ONE bounded reject, not a throw", [UInt8](repeating: 0, count: 32)),
+            ("u = 1 (a low-order point the helper does NOT name) must be ONE bounded reject, not a throw", uOne),
+            ("u = p (non-canonical field encoding) must be ONE bounded reject, not a throw", nonCanonicalP),
+            ("u = 2^255-1 (masked high bit set) must be ONE bounded reject, not a throw", [UInt8](repeating: 0xFF, count: 32)),
+        ]
+        for (why, u) in cases {
+            var sealed = [UInt8](genuine)
+            sealed.replaceSubrange(0..<32, with: u)
+            XCTAssertNil(SealedSender.open(sealedPayload: Data(sealed), recipientStaticPriv: recipient.rawRepresentation), why)
+        }
+        var tampered = [UInt8](genuine); tampered[tampered.count - 1] ^= 0x01
+        XCTAssertNil(SealedSender.open(sealedPayload: Data(tampered), recipientStaticPriv: recipient.rawRepresentation),
+                     "a tampered authenticated seal must be refused")
+        XCTAssertNil(SealedSender.open(sealedPayload: Data([0, 1, 2, 3]), recipientStaticPriv: recipient.rawRepresentation),
+                     "a payload shorter than the frozen layout must be refused")
+        // KEY MATERIAL OF THE WRONG LENGTH: the API promiseth null on ANY failure.
+        XCTAssertNil(SealedSender.open(sealedPayload: genuine, recipientStaticPriv: recipient.rawRepresentation.prefix(31)),
+                     "a 31-byte private key must be a bounded reject")
+        XCTAssertNil(SealedSender.open(sealedPayload: genuine, recipientStaticPriv: recipient.rawRepresentation + Data([0])),
+                     "an oversized private key must be a bounded reject")
+        XCTAssertNil(SealedSender.open(sealedPayload: genuine, recipientStaticPriv: Data()),
+                     "an empty private key must be a bounded reject")
+    }
 }

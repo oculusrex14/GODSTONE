@@ -3,6 +3,7 @@ package io.godstone.mesh.readiness
 import io.godstone.core.crypto.Ed25519Keys
 import io.godstone.core.crypto.KeyPair
 import io.godstone.core.crypto.X25519Keys
+import io.godstone.mesh.seal.SealedSender
 import io.godstone.mesh.wire.v2.MessageId
 import io.godstone.mesh.wire.v2.Priority
 import io.godstone.mesh.wire.v2.SenderVerificationResult
@@ -315,5 +316,60 @@ public class ReadinessT35Test {
         Assert.assertTrue("the signed-DIRECT family still authenticates", genuine is SenderVerificationResult.Verified)
         Assert.assertFalse("and its msgID differs from any structural (zero-signature) msgId",
             MessageId.derive(NOD, CREAT, NON, zeroSig).contentEquals((genuine as SenderVerificationResult.Verified).message.msgId))
+    }
+
+    // (10) CRYPTO-004: THE ACTUAL OPENER -- not the canonical-encoding helper. The
+    //      audit's charge is exact: the low-order arms above exercise
+    //      `acceptableSealedDhPublicKey`, which NOTHING in production calls, while the
+    //      real `SealedSender.open` runs the vetted X25519 agreement on
+    //      attacker-controlled bytes and can let its unchecked invalid-key/agreement
+    //      exceptions escape the advertised null-on-failure API and terminate the
+    //      receiver loop. These arms drive the OPENER, and they demand ONE bounded
+    //      reject: never a throw, for any input.
+    @Test
+    fun testTheActualSealedOpenerReturnethOneBoundedRejectAndNeverThroweth() {
+        val recipient = X25519Keys.generate(SecureRandom())
+        val genuine = SealedSender.seal("a genuine inner body".toByteArray(Charsets.UTF_8), NOD, recipient.pub)
+
+        // POSITIVE CONTROL first: the harness must be able to PASS, and a genuine sealed
+        // message must still open under the key that sealed it.
+        val opened = SealedSender.open(genuine, recipient.priv)
+        Assert.assertNotNull("a genuine sealed message must open", opened)
+        Assert.assertArrayEquals("and it carries the sealing sender's node id", NOD, opened!!.senderNodeId)
+        Assert.assertEquals("and its inner body survives", "a genuine inner body",
+            String(opened.plaintext, Charsets.UTF_8))
+
+        // NEGATIVE: hostile / malformed ephemeral DH inputs. Each must be a NULL and must
+        // not throw. (u = 1 and u = 2^255-1 are INCOMPLETE-blacklist probes on purpose:
+        // the canonical-encoding helper does not name them, so only the agreement plus
+        // authenticated-seal path can refuse them.)
+        val nonCanonicalP = ByteArray(32).also {
+            it[0] = 0xED.toByte(); for (j in 1..30) it[j] = 0xFF.toByte(); it[31] = 0x7F.toByte()
+        }
+        val cases = listOf(
+            "u = 0 (the identity element)" to ByteArray(32),
+            "u = 1 (a low-order point the helper does NOT name)" to ByteArray(32).also { it[0] = 1 },
+            "u = p (non-canonical field encoding)" to nonCanonicalP,
+            "u = 2^255-1 (masked high bit set)" to ByteArray(32) { 0xFF.toByte() },
+        )
+        for ((why, u) in cases) {
+            val sealed = genuine.copyOf().also { System.arraycopy(u, 0, it, 0, 32) }
+            Assert.assertNull("$why must be ONE bounded reject, not a throw", SealedSender.open(sealed, recipient.priv))
+        }
+
+        // NEGATIVE: a tampered authenticated seal, and a short payload.
+        val tampered = genuine.copyOf().also { it[it.size - 1] = (it[it.size - 1].toInt() xor 0x01).toByte() }
+        Assert.assertNull("a tampered seal must be refused by the AEAD", SealedSender.open(tampered, recipient.priv))
+        Assert.assertNull("a payload shorter than the frozen layout must be refused",
+            SealedSender.open(ByteArray(4), recipient.priv))
+
+        // NEGATIVE: KEY MATERIAL OF THE WRONG LENGTH. The API promiseth null on ANY
+        // failure, and this is where an unchecked library exception escapes today.
+        Assert.assertNull("a 31-byte private key must be a bounded reject",
+            SealedSender.open(genuine, recipient.priv.copyOfRange(0, 31)))
+        Assert.assertNull("an oversized private key must be a bounded reject",
+            SealedSender.open(genuine, recipient.priv + ByteArray(1)))
+        Assert.assertNull("an empty private key must be a bounded reject",
+            SealedSender.open(genuine, ByteArray(0)))
     }
 }

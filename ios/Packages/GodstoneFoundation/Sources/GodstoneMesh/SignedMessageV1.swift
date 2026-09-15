@@ -215,6 +215,12 @@ public enum SignedMessageV1 {
     /// non-canonical field encoding; the sign/masking bit must be clear in a canonical
     /// u encoding. None of these seals a real shared secret; accepting one is a hostile
     /// downgrade of the sealed layer, so they are refused fail-closed.
+    ///
+    /// CRYPTO-004: this is POLICY, NOT the guarantee, and it is an INCOMPLETE low-order list
+    /// (u = 1 is not on it). The guarantee that malformed DH input cannot terminate the
+    /// receiver loop lives in `SealedSender.open`, which validates the key length and rejects
+    /// every library-reported invalid-key/agreement failure. Do not cite this helper as
+    /// cryptographic validation.
     public static func acceptableSealedDhPublicKey(_ pub: Data) -> Bool {
         guard pub.count == pubLen else { return false }
         let b = [UInt8](pub)

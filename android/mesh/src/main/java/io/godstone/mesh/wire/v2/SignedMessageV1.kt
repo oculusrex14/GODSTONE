@@ -221,12 +221,16 @@ object SignedMessageV1 {
     // ---- sealed DH input guard -------------------------------------------------------------
 
     /**
-     * Reject policy for X25519 public inputs before any agreement runs (section15 row 5:
-     * malformed DH/public keys cannot throw out of the receiver loop). The all-zero encoding
-     * is the identity (low-order) element; u >= p (2^255 - 19) is a non-canonical field
-     * encoding; a set high bit on an otherwise-zero tail is the classic small-order probe
-     * encoding. None of these seals a real shared secret; accepting one is a hostile downgrade
-     * of the sealed layer, so they are refused fail-closed rather than passed downward.
+     * Canonical-encoding POLICY for X25519 public inputs: the all-zero encoding is the
+     * identity (low-order) element; u >= p (2^255 - 19) is a non-canonical field encoding; a
+     * set high bit on an otherwise-zero tail is the classic small-order probe encoding. None
+     * of these seals a real shared secret, so they are refused rather than passed downward.
+     *
+     * CRYPTO-004: this is POLICY, NOT the guarantee, and it is an INCOMPLETE low-order list
+     * (u = 1 is not on it). The guarantee that malformed DH input cannot terminate the
+     * receiver loop lives in `SealedSender.open`, which validates the key length and
+     * collapses every library-defined invalid-key/agreement failure into ONE bounded reject.
+     * Do not cite this helper as cryptographic validation.
      */
     fun acceptableSealedDhPublicKey(pub: ByteArray): Boolean {
         if (pub.size != PUB_LEN) return false
