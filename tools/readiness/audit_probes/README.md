@@ -132,3 +132,15 @@ control then **caught its own author**, having asserted the Android spelling whe
 which is what a positive control is for). It judged the iOS post-AEAD road: two collectors handing the plaintext to the
 delegate **uncharged**, and a controller consuming the validated binding **without retaining it**. The five-site repair
 landed in round 198 and the arm **MOVED INTO `tools/readiness/tests/`** with it, as this directory's rule requires.
+
+## Python probe — `python/test_ios_governor_under_runtime_owner.py` (IOS-05 / T27 step 1)
+
+Red BY DESIGN, parked here while the decision it exposes is made. It asserts the card's step 1 in its own words —
+"one governor configuration ... under the runtime owner" — and the isle currently carries **two** instruments: the
+purpose-built `AdmissionBudget` (rounds 196–198) and a `PeerGovernor` **referenced nowhere in production but one
+comment**, whose identity/priority buckets are charged at **no** gate. An attempt to wire it (round 201) exposed a real
+design tension — the governor's canonical buckets are **per-second frame buckets** (DIRECT 60, SOS 30, BROADCAST 20,
+BULK 10, unknown 10) while this gate sees **whole records** (a 257-record wrap, a 64-fragment record) — and the attempt
+was **withdrawn on a contaminated measurement** rather than shipped. The two courses (charge the governor's *trust* gate
+per value and leave rate to the router, or give the transport a documented transport-scoped configuration) are named in
+the ledger; the next attempt measures with the failing names captured in ONE clean run.
