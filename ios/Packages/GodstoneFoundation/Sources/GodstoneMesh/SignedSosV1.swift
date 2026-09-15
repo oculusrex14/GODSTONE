@@ -109,6 +109,12 @@ public protocol SosSigningAuthority: AnyObject {
     func currentStaticDhPublicKey() -> Data?
     /// The durable generation counter the binding is struck under.
     func currentGeneration() -> UInt32
+    /// The identity binding ISSUED BY THIS AUTHORITY for the material it yieldeth, or nil
+    /// while it holdeth none. GS-SOS-001's second defect: the author path must OBTAIN the
+    /// binding here rather than strike its own -- a private re-derivation is the issuance
+    /// bypass the repository's local-identity control refuseth by name. An authority that
+    /// yieldeth no binding is a reason to REFUSE, exactly as one that yieldeth no seed is.
+    func currentIdentityBinding() -> IdentityBindingV1?
     /// Wall clock in whole epoch seconds; 0 announces the unknown-time rule.
     func currentTimeEpochSeconds() -> Int64
 }
@@ -227,16 +233,29 @@ public enum SignedSosV1 {
 
     // ------------------------------------------------------------------ author
 
-    /// Sign one distress call end to end: strike the identity binding under
-    /// the local key (the T13 equation, reused not rewritten), assemble the
+    /// Sign one distress call end to end: take the identity binding the AUTHORITY
+    /// ISSUED for this material (never strike one here -- see below), assemble the
     /// unsigned payload, derive msg_id over it, sign the transcript, and set
     /// the outer fields exactly as the frozen tables record them.
-    public static func author(signingSeed: Data, staticDhPublicKey: Data,
-                              generation: UInt32, createdAtEpochSeconds: Int64,
+    ///
+    /// GS-SOS-001, second defect (the ISSUANCE BYPASS). The audited form STRUCK THE
+    /// BINDING ITSELF from the raw seed, generation and static DH key it was handed,
+    /// which the repository's local-identity control refuseth by name ("outbound
+    /// issuance bypass"): a production file outside the AUTHORITY files may neither
+    /// call the binding's factory nor construct one directly -- and because that
+    /// control is a TEXT match over production sources, a comment quoting the
+    /// forbidden spelling verbatim is itself a failure. (This isle learned that the
+    /// hard way one commit earlier, on its Android twin.) The binding therefore
+    /// arriveth as a PARAMETER, issued by the owner of the identity, and the sender
+    /// only signeth the transcript over bytes it did not mint. The frozen T13
+    /// equation and the WIRE BYTES are unchanged, because the authority computeth
+    /// the same equation over the same three values; the court's pinned golden
+    /// vectors are the control that proveth it.
+    public static func author(binding: IdentityBindingV1, signingSeed: Data,
+                              createdAtEpochSeconds: Int64,
                               timeQuality: TimeQuality, messageNonce: Data,
                               bodyUtf8: Data) throws -> FrameV2 {
         guard signingSeed.count == identityBindingSigningKeyLength,
-              staticDhPublicKey.count == identityBindingStaticDhKeyLength,
               messageNonce.count == nonceBytes,
               bodyUtf8.count <= bodyBudgetMax,
               createdAtEpochSeconds >= 0, createdAtEpochSeconds <= Int64(UInt32.max)
@@ -254,16 +273,11 @@ public enum SignedSosV1 {
         guard signingPublicKey.count == identityBindingSigningKeyLength else {
             throw SosAuthorError("derived signing public key is not 32 bytes")
         }
-        let binding = IdentityBindingV1(
-            version: identityBindingVersion,
-            generation: generation,
-            signingPublicKey: signingPublicKey,
-            staticDhPublicKey: staticDhPublicKey,
-            signature: try pair.signature(for: IdentityBindingV1.signaturePreimage(
-                generation: generation,
-                signingPublicKey: signingPublicKey,
-                staticDhPublicKey: staticDhPublicKey)))
-        guard let unsigned = unsignedPayload(binding: binding.encode(),
+        let bindingBytes = binding.encode()
+        guard bindingBytes.count == offCreatedLe - offBinding else {
+            throw SosAuthorError("binding must encode to the frozen 133 bytes")
+        }
+        guard let unsigned = unsignedPayload(binding: bindingBytes,
                                              createdAtEpochSeconds: createdAtEpochSeconds,
                                              timeQuality: timeQuality,
                                              messageNonce: messageNonce,

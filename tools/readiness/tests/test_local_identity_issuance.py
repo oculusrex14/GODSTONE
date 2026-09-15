@@ -122,5 +122,17 @@ class LocalIdentityIssuanceTest(unittest.TestCase):
 
 
 
+    def test_the_ios_signed_sos_author_takes_the_issued_binding_and_issues_none(self):
+        """GS-SOS-001's second defect on the iOS isle, landed in round 164. Kept as its own arm
+        so that each isle's repair can carry its own red and its own green."""
+        self.assertEqual(
+            [], [n for n in ios_issuance_offenders() if n == "SignedSosV1.swift"],
+            "SignedSosV1.swift still constructs an IdentityBindingV1: an authority that "
+            "holdeth the binding is bypassed by the sender's own re-derivation")
+        self.assertTrue(
+            _declares_binding_parameter(
+                IOS_AUTHOR, r"static func author\(([\s\S]*?)\)\s*(?:throws)?\s*->"),
+            "SignedSosV1.author() must take the ISSUED binding as a parameter")
+
 if __name__ == "__main__":  # pragma: no cover
     sys.exit(0 if unittest.main(exit=False).result.wasSuccessful() else 1)

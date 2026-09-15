@@ -868,14 +868,20 @@ class ReadinessT38Test {
             seed = v.seed, dhPublicKey = v.dhPub, generation = v.generation,
             clock = v.created, nonce = v.nonce,
         )
+        // ONE ISSUANCE, DELIBERATELY (the iOS twin learned this the hard way in round 164): on the
+        // iOS isle the binding's Ed25519 signature is RANDOMIZED, so comparing TWO issuances of the
+        // same material would differ for a reason unrelated to the law under test. This court asketh
+        // once, as the author path doth, and the arm is kept symmetric so that a future randomized
+        // Android implementation cannot silently make it meaningless.
+        val binding = authority.issuedBinding()
         val frame = SignedSosV1.author(
-            authority.issuedBinding(), v.seed, v.created, TimeQuality.USER_CONFIRMED,
+            binding, v.seed, v.created, TimeQuality.USER_CONFIRMED,
             v.nonce, ascii("mayday-mayday"),
         )
         // The unsigned payload is version || binding || created_at || quality || nonce || body, so the
         // binding's offset cometh from the FROZEN public constants -- never from a hand-counted slice
         // (a first attempt sliced at the version byte and compared a shifted window; the court caught it).
-        val issued = authority.issuedBinding().encode()
+        val issued = binding.encode()
         val start = SignedSosV1.SOS_MAGIC.size + SignedSosV1.SIGNATURE_BYTES + SignedSosV1.OFF_BINDING
         val carried = IdentityBindingV1.parse(frame.payload.copyOfRange(start, start + issued.size))
         Assert.assertArrayEquals(

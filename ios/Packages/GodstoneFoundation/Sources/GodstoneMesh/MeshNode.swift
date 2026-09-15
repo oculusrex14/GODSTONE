@@ -531,14 +531,19 @@ public final class MeshNode {
         let frame: FrameV2
         if let authority = sosAuthority,
            let seed = authority.currentSigningSeed(),
-           let dhPub = authority.currentStaticDhPublicKey() {
+           authority.currentStaticDhPublicKey() != nil,
+           // GS-SOS-001, SECOND DEFECT (round 164): THE BINDING COMETH FROM THE AUTHORITY, never
+           // from a private re-derivation -- `SignedSosV1.author` used to strike it here-adjacent
+           // from the material it was handed, which is the issuance bypass the repository's
+           // local-identity control refuseth. An authority that holdeth no binding is a reason to
+           // refuse, exactly as one that holdeth no seed is.
+           let binding = authority.currentIdentityBinding() {
             let clock = authority.currentTimeEpochSeconds()
             let quality: TimeQuality = (clock == 0) ? .unknown : .userConfirmed
             do {
                 frame = try SignedSosV1.author(
+                    binding: binding,
                     signingSeed: seed,
-                    staticDhPublicKey: dhPub,
-                    generation: authority.currentGeneration(),
                     createdAtEpochSeconds: clock,
                     timeQuality: quality,
                     messageNonce: authority.currentNonce(),

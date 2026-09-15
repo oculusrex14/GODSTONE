@@ -141,7 +141,7 @@ final class MeshNodeSosDispatchTests: XCTestCase {
         // rig that SENDS distress carrieth a signing authority. SIMULATED, PUBLIC
         // material -- harness support, never a device result.
         let node = MeshNode(identity: identity, store: store, deliveryTracker: tracker)
-        node.sosAuthority = SimulatedSosAuthority.fixed()
+        node.sosAuthority = SosTestAuthority()
         return node
     }
 

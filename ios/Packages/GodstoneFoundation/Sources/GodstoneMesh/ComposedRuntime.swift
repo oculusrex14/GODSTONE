@@ -342,6 +342,11 @@ public final class ComposedRuntimeHarness {
             seed: seed,
             dhPublicKey: identity.staticDhPublicKey,
             generation: identity.bindingGeneration,
+            // GS-SOS-001, second defect (round 164): the binding is ISSUED BY THE HARNESS'S OWN
+            // IDENTITY (`MeshIdentity.issueIdentityBinding()`, an AUTHORITY file) and handed in --
+            // this file is not an authority file, so constructing one here would be the very
+            // issuance bypass the local-identity control refuseth.
+            binding: try identity.issueIdentityBinding(),
             clock: { [clock] in Int64(clock.wallSeconds()) })
         let ackDriver = AckObligationDriver(store: ackStore,
                                             signer: TestAckSigner(nodeId: identity.nodeId, seed: seed),
@@ -679,35 +684,28 @@ final class SimulatedSosAuthority: SosSigningAuthority, @unchecked Sendable {
     private let seed: Data
     private let dhPublicKey: Data
     private let generation: UInt32
+    private let issuedBinding: IdentityBindingV1
     private let clock: () -> Int64
     private let nonce: () -> Data
 
     init(seed: Data, dhPublicKey: Data, generation: UInt32,
+         binding: IdentityBindingV1,
          clock: @escaping () -> Int64 = { Int64(Date().timeIntervalSince1970) },
          nonce: @escaping () -> Data = { MessageId.generateNonce() }) {
         self.seed = seed
         self.dhPublicKey = dhPublicKey
         self.generation = generation
+        self.issuedBinding = binding
         self.clock = clock
         self.nonce = nonce
-    }
-
-    /// Fixed, deliberately-public material for a court that driveth a live SOS
-    /// through a node it built from an identity it cannot read a seed out of.
-    /// The material is not secret and MUST NOT be used where a court asserteth
-    /// the frame's authenticity under that node's identity.
-    static func fixed(generation: UInt32 = 1, epochSeconds: Int64 = 1_700_000_000) -> SimulatedSosAuthority {
-        SimulatedSosAuthority(
-            seed: Data(repeating: 0x5A, count: 32),
-            dhPublicKey: Data(repeating: 0x3C, count: 32),
-            generation: generation,
-            clock: { epochSeconds })
     }
 
     func currentNonce() -> Data { nonce() }
     func currentSigningSeed() -> Data? { seed }
     func currentStaticDhPublicKey() -> Data? { dhPublicKey }
     func currentGeneration() -> UInt32 { generation }
+    /// GS-SOS-001, second defect: the authority ISSUETH; the sender never strikes its own.
+    func currentIdentityBinding() -> IdentityBindingV1? { issuedBinding }
     func currentTimeEpochSeconds() -> Int64 { clock() }
 }
 

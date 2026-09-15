@@ -89,7 +89,7 @@ final class ReadinessT43Tests: XCTestCase {
         // GS-SOS-001: the SOS road refuseth to offer an unauthenticated frame, so a
         // rig that SENDS distress carrieth a signing authority. SIMULATED, PUBLIC
         // material -- harness support, never a device result.
-        node.sosAuthority = SimulatedSosAuthority.fixed()
+        node.sosAuthority = SosTestAuthority()
         return Rig(store: store, keys: keys, tracker: tracker, node: node, auth: auth)
     }
 

@@ -52,6 +52,21 @@ private func t38Hx(_ s: String) -> Data {
 
 private func t38Ascii(_ s: String) -> Data { Data(s.utf8) }
 
+/// GS-SOS-001, second defect: a TEST-SIDE issuance, which is what the author path now taketh.
+/// Legitimate here because the repository's local-identity control scaneth PRODUCTION sources
+/// only; a court must be able to simulate an authority that holds material.
+func t38Binding(_ seed: Data, _ dhPub: Data, _ generation: UInt32) -> IdentityBindingV1 {
+    let key = try! Curve25519.Signing.PrivateKey(rawRepresentation: seed)
+    let pub = key.publicKey.rawRepresentation
+    let preimage = IdentityBindingV1.signaturePreimage(
+        generation: generation, signingPublicKey: pub, staticDhPublicKey: dhPub)
+    return IdentityBindingV1(
+        generation: generation,
+        signingPublicKey: pub,
+        staticDhPublicKey: dhPub,
+        signature: try! key.signature(for: preimage))
+}
+
 private func t38Flipped(_ source: Data, _ at: Int) -> Data {
     var b = t38U(source)
     b[at] ^= 0x01
@@ -235,6 +250,23 @@ final class ReadinessT38Tests: XCTestCase {
         func currentStaticDhPublicKey() -> Data? { dhV }
         func currentGeneration() -> UInt32 { generationV }
         func currentTimeEpochSeconds() -> Int64 { clockV }
+
+        /// GS-SOS-001, second defect: THE AUTHORITY issueth the binding. Construction is
+        /// legitimate HERE because this file liveth in TEST sources -- the repository control
+        /// scaneth PRODUCTION only, and the bypass it refuseth is a production construction.
+        func currentIdentityBinding() -> IdentityBindingV1? { issuedBinding() }
+
+        func issuedBinding() -> IdentityBindingV1 {
+            let key = try! Curve25519.Signing.PrivateKey(rawRepresentation: seedV)
+            let pub = key.publicKey.rawRepresentation
+            let preimage = IdentityBindingV1.signaturePreimage(
+                generation: generationV, signingPublicKey: pub, staticDhPublicKey: dhV)
+            return IdentityBindingV1(
+                generation: generationV,
+                signingPublicKey: pub,
+                staticDhPublicKey: dhV,
+                signature: try! key.signature(for: preimage))
+        }
     }
 
     /// GS-SOS-001 fixture: an authority that IS wired but yields NO material.
@@ -257,6 +289,29 @@ final class ReadinessT38Tests: XCTestCase {
         func currentStaticDhPublicKey() -> Data? { dhV }
         func currentGeneration() -> UInt32 { generationV }
         func currentTimeEpochSeconds() -> Int64 { clockV }
+        func currentIdentityBinding() -> IdentityBindingV1? { nil }
+    }
+
+    /// GS-SOS-001, second defect: MATERIAL BUT NO ISSUED BINDING. The sender may not strike a
+    /// binding itself -- that is the issuance bypass the local-identity control refuseth by
+    /// name -- so this authority must be REFUSED: no frame, no hold, no offer.
+    private final class BindinglessAuthority: SosSigningAuthority, @unchecked Sendable {
+        private let seedV: Data
+        private let dhV: Data
+        private let generationV: UInt32
+        private let clockV: Int64
+        private let nonceV: Data
+        init(dhPub: Data, generation: UInt32, clock: Int64, nonce: Data,
+             seed: Data = Data(repeating: 0x77, count: 32)) {
+            self.seedV = seed; self.dhV = dhPub; self.generationV = generation
+            self.clockV = clock; self.nonceV = nonce
+        }
+        func currentNonce() -> Data { nonceV }
+        func currentSigningSeed() -> Data? { seedV }
+        func currentStaticDhPublicKey() -> Data? { dhV }
+        func currentGeneration() -> UInt32 { generationV }
+        func currentTimeEpochSeconds() -> Int64 { clockV }
+        func currentIdentityBinding() -> IdentityBindingV1? { nil }
     }
 
     private final class Watcher: SosObserver, @unchecked Sendable {
@@ -406,7 +461,7 @@ final class ReadinessT38Tests: XCTestCase {
                 v.name + ": the JVM-struck signature verifies on this isle")
             // fresh authorship: structure and acceptance, not byte equality
             let frame = try XCTUnwrap(try? SignedSosV1.author(
-                signingSeed: v.seed, staticDhPublicKey: v.dhPub, generation: v.generation,
+                binding: t38Binding(v.seed, v.dhPub, v.generation), signingSeed: v.seed,
                 createdAtEpochSeconds: v.created, timeQuality: t38Quality(v.timeQuality),
                 messageNonce: v.nonce, bodyUtf8: v.body), v.name + ": authoring succeeds")
             let p = t38U(frame.payload)
@@ -650,7 +705,7 @@ final class ReadinessT38Tests: XCTestCase {
         let v = vec("accept_signed_ok_max_body")
         XCTAssertEqual(v.body.count, 398, "the pinned body is 398 bytes of multibyte text")
         let frame = try XCTUnwrap(try? SignedSosV1.author(
-            signingSeed: v.seed, staticDhPublicKey: v.dhPub, generation: v.generation,
+            binding: t38Binding(v.seed, v.dhPub, v.generation), signingSeed: v.seed,
             createdAtEpochSeconds: v.created, timeQuality: t38Quality(v.timeQuality),
             messageNonce: v.nonce, bodyUtf8: v.body), "max-body authoring succeeds")
         XCTAssertEqual(frame.payload.count, 4 + 64 + 157 + 398,
@@ -667,7 +722,7 @@ final class ReadinessT38Tests: XCTestCase {
         for bad in badBodies {
             // the author refuses to strike a non-canonical body
             XCTAssertThrowsError(try SignedSosV1.author(
-                signingSeed: v.seed, staticDhPublicKey: v.dhPub, generation: v.generation,
+                binding: t38Binding(v.seed, v.dhPub, v.generation), signingSeed: v.seed,
                 createdAtEpochSeconds: 1700000201, timeQuality: .userConfirmed,
                 messageNonce: v.nonce, bodyUtf8: bad))
         }
@@ -688,11 +743,11 @@ final class ReadinessT38Tests: XCTestCase {
     func testDuplicateLogicalSosResentIdempotent() throws {
         let v = vec("accept_signed_ok_min")
         let first = try XCTUnwrap(try? SignedSosV1.author(
-            signingSeed: v.seed, staticDhPublicKey: v.dhPub, generation: v.generation,
+            binding: t38Binding(v.seed, v.dhPub, v.generation), signingSeed: v.seed,
             createdAtEpochSeconds: v.created, timeQuality: t38Quality(v.timeQuality),
             messageNonce: v.nonce, bodyUtf8: v.body), "first authoring")
         let second = try XCTUnwrap(try? SignedSosV1.author(
-            signingSeed: v.seed, staticDhPublicKey: v.dhPub, generation: v.generation,
+            binding: t38Binding(v.seed, v.dhPub, v.generation), signingSeed: v.seed,
             createdAtEpochSeconds: v.created, timeQuality: t38Quality(v.timeQuality),
             messageNonce: v.nonce, bodyUtf8: v.body), "second authoring")
         // Two hand-offs of one logical distress under this isle's randomized
@@ -733,12 +788,12 @@ final class ReadinessT38Tests: XCTestCase {
         let v = vec("accept_signed_ok_min")
         // zero clock with a claimed quality is not stricken
         XCTAssertThrowsError(try SignedSosV1.author(
-            signingSeed: v.seed, staticDhPublicKey: v.dhPub, generation: v.generation,
+            binding: t38Binding(v.seed, v.dhPub, v.generation), signingSeed: v.seed,
             createdAtEpochSeconds: 0, timeQuality: .userConfirmed,
             messageNonce: v.nonce, bodyUtf8: v.body))
         // a running clock with UNKNOWN is not stricken
         XCTAssertThrowsError(try SignedSosV1.author(
-            signingSeed: v.seed, staticDhPublicKey: v.dhPub, generation: v.generation,
+            binding: t38Binding(v.seed, v.dhPub, v.generation), signingSeed: v.seed,
             createdAtEpochSeconds: 1700000201, timeQuality: .unknown,
             messageNonce: v.nonce, bodyUtf8: v.body))
         let unpaired = vec("reject_unknown_time_pairing")
@@ -908,4 +963,61 @@ final class ReadinessT38Tests: XCTestCase {
         XCTAssertTrue(why.contains("no SOS signing authority"),
             "the refusal names the missing authority: " + why)
     }
+    /// GS-SOS-001, second defect: the sender may not STRIKE ITS OWN binding, so an authority
+    /// that holdeth material but issueth NO binding must be REFUSED -- no frame, no hold, no
+    /// offer. (The behavioural twin cannot compile against the audited tree, which is why this
+    /// repair's RED was the source-level arm in the canonical readiness suite.)
+    func testGSSOS001AnAuthorityThatIssuethNoBindingMayNotOfferASos() throws {
+        let v = vec("accept_signed_ok_min")
+        let store = InMemoryMessageStore()
+        let journal = T38Journal()
+        let node = try composingNode(store, nil, repo: journal)
+        node.sosAuthority = BindinglessAuthority(dhPub: v.dhPub, generation: v.generation,
+                                                 clock: v.created, nonce: v.nonce)
+        var sends = 0
+        let result = node.dispatchSos(payload: t38Ascii("mayday-mayday")) { _, _ in
+            sends += 1
+            return true
+        }
+        XCTAssertEqual(sends, 0,
+            "an authority that ISSUED NO BINDING still offered a distress call: the sender may not strike its own binding (the issuance bypass the local-identity control refuseth)")
+        XCTAssertTrue(store.allHeldOrderedByPriority().isEmpty,
+            "nothing may be durably queued from a refused SOS")
+        XCTAssertEqual(journal.records.count, 0, "and no C6 row may be recorded for a refusal")
+        guard case .failed(let why) = result else {
+            return XCTFail("a refusal is required, not " + String(describing: result))
+        }
+        XCTAssertTrue(why.contains("no SOS signing authority"),
+            "the refusal names the missing authority: " + why)
+    }
+
+    /// GS-SOS-001, second defect -- the POSITIVE half: a frame authored under an authority
+    /// carrieth THAT AUTHORITY'S binding byte for byte, read through the FROZEN public offsets
+    /// (the payload is version || binding || created_at || quality || nonce || body).
+    func testGSSOS001TheAuthoredFrameCarriethTheBindingTheAuthorityIssued() throws {
+        let v = vec("accept_signed_ok_min")
+        let authority = SosTestAuthority(seed: v.seed, dhPublicKey: v.dhPub,
+                                        generation: v.generation, clock: v.created, nonce: v.nonce)
+        // ONE ISSUANCE, DELIBERATELY: on this isle the binding's Ed25519 signature is RANDOMIZED
+        // (hedged), so a SECOND call to the authority yieldeth different signature bytes for the
+        // same material -- comparing two issuances would fail for a reason that hath nothing to do
+        // with the law under test. The court asked once, as the author path doth.
+        let binding = try XCTUnwrap(authority.currentIdentityBinding())
+        let issued = binding.encode()
+        let frame = try SignedSosV1.author(
+            binding: binding,
+            signingSeed: v.seed,
+            createdAtEpochSeconds: v.created, timeQuality: t38Quality(v.timeQuality),
+            messageNonce: v.nonce, bodyUtf8: v.body)
+        let start = SignedSosV1.magic.count + SignedSosV1.signatureBytes + SignedSosV1.offBinding
+        let carried = try IdentityBindingV1.parse(
+            Data(frame.payload[start..<(start + issued.count)]))
+        XCTAssertEqual([UInt8](carried.encode()), [UInt8](issued),
+            "the frame must carry THE AUTHORITY'S binding, not a private re-derivation")
+        let seen = try XCTUnwrap(viewOf(SignedSosV1.verify(frame, expectedNodeId: v.node)),
+            "the receiver must authenticate the frame struck over the authority's binding")
+        XCTAssertEqual(seen.generation, v.generation,
+            "and it readeth the authority's generation from that binding")
+    }
+
 }

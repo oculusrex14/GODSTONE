@@ -139,7 +139,7 @@ final class ReadinessT39Tests: XCTestCase {
         // GS-SOS-001: the SOS road refuseth to offer an unauthenticated frame, so a
         // rig that SENDS distress carrieth a signing authority. SIMULATED, PUBLIC
         // material -- harness support, never a device result.
-        node.sosAuthority = SimulatedSosAuthority.fixed()
+        node.sosAuthority = SosTestAuthority()
         return Rig(store: store, tracker: tracker, node: node, auth: auth)
     }
 
@@ -445,7 +445,7 @@ final class ReadinessT39Tests: XCTestCase {
         // GS-SOS-001: the SOS road refuseth to offer an unauthenticated frame, so a
         // rig that SENDS distress carrieth a signing authority. SIMULATED, PUBLIC
         // material -- harness support, never a device result.
-        node.sosAuthority = SimulatedSosAuthority.fixed()
+        node.sosAuthority = SosTestAuthority()
         _ = node.dispatchSos(payload: Data("one door".utf8)) { _, _ in true }
         XCTAssertEqual(repo.pairCommitCalls, 1, "exactly one authority call must commit the broadcast pair")
         XCTAssertEqual(repo.persistClosuresInvoked, 0, "the two-step route must never be walked here")

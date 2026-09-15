@@ -85,17 +85,14 @@ typed refusal — stated so that a non-discriminating count is not later mistake
 The repair's green, for the record: `Executed 1196 tests, with 0 failures (0 unexpected)`, `0 errors`
 (`REMEDIATION/GS-SOS-001/ios-green-round162/green.log`).
 
-## Python probe -- `python/test_local_identity_issuance_ios.py` (GS-SOS-001's issuance bypass, the iOS half)
+## Python probe -- GS-SOS-001's issuance bypass, the iOS half: LANDED (round 164)
 
-Red BY DESIGN. The ARM that belongeth in `tools/readiness/tests/test_local_identity_issuance.py`
-cannot live there yet: that directory is a GREEN lane, and each isle's repair must leave its own
-lane green on its own commit. The Android twin already MOVED IN and its arm passeth there; this
-file carrieth the iOS arm until the refusal landeth in
-`ios/Godstone/Sources/GodstoneMesh/SignedSosV1.swift`, at which point the arm moves in beside its
-twin and this file is deleted. It IMPORTETH the scan and the signature check from the canonical
-module, so the law hath one implementation and no second copy to drift.
+The parked iOS arm has **MOVED INTO THE CANONICAL SUITE** beside its Android twin
+(`tools/readiness/tests/test_local_identity_issuance.py`), as this directory's rule requireth, and the
+parked file was deleted with the repair in the same round -- so nothing here carrieth a red arm that
+duplicates a green one. Its captured red stayeth on the record at
+`REMEDIATION/GS-SOS-001/issuance-red-round163/ios-parked-red.log`.
 
-**Captured red** (`REMEDIATION/GS-SOS-001/issuance-red-round163/ios-parked-red.log`): 1 test,
-1 failure -- `SignedSosV1.swift` still constructs its own `IdentityBindingV1`.
-
-**To run it:** `python3 -m unittest tools.readiness.audit_probes.python.test_local_identity_issuance_ios`
+With both halves landed, `ci/check_local_identity_controls.py` (which reported TWO errors on the audited
+tree) reporteth NONE, and its selftest still catcheth 38 of 38 mutations -- so the instrument that was
+always working now agreeth with the code.
