@@ -1191,7 +1191,7 @@
    },
    "impact": "Temporary key-resolution unavailability can convert a signer/key mismatch into a falsely verified durable ACK and lose the retryable obligation. The origin should still reject the invalid signature; this defect can suppress delivery confirmation and pollute recipient ACK restoration, rather than independently forging origin DELIVERED. The same stored VERIFIED classification is trusted by the immediate receipt restore path without a fresh signature check.",
    "invalidated_dependents": [],
-   "my_fix_commit": "6f7d08c (android limb) + 40c5b91 (iOS limb)",
+   "my_fix_commit": "6f7d08c (android limb) + 40c5b91 (iOS limb) + bcf9d67 (the audit's step 3 in form, both isles)",
    "my_logs": [
     {
      "log": "GS-ACK-001/green/gs-ack-001-T83.log",
@@ -1232,6 +1232,21 @@
      "log": "GS-ACK-001/green/gs-ack-001-IOS-FULL-control.log",
      "sha256": "dc26bdd3df72911ea8c6b2db00292d8955d975176bd60055b7aaa6e76bb9562a",
      "what": "whole iOS package: Executed 1192 tests, with 0 failures (was 1191)"
+    },
+    {
+     "log": "GS-ACK-001/green/gs-ack-001-T83-step3.log",
+     "sha256": "bf09cea9c06a61921ceb8efa9c2a56d7e170219714d1db28c16078400298de9e",
+     "what": "android T83 after step 3: 14 tests, 0 failures, BOTH arms passing (unresolvable and mismatched)"
+    },
+    {
+     "log": "GS-ACK-001/green/gs-ack-001-ANDROID-FULL-step3.log",
+     "sha256": "2f4dfdd7699ea6cc64e270c889a774e6f5fe67748005ad911bb1e14d82189f39",
+     "what": "whole android :mesh lane: BUILD SUCCESSFUL"
+    },
+    {
+     "log": "GS-ACK-001/green/gs-ack-001-IOS-FULL-step3.log",
+     "sha256": "b613335a3349a1284c73b7a570d00472e006310067363735a190b6d4d6b54bf8",
+     "what": "whole iOS package: Executed 1192 tests, with 0 failures"
     }
    ],
    "my_red_case": {
@@ -1249,10 +1264,10 @@
     "outcome": "RED on BOTH isles, execution proven. Android failed at the first assertion: 'the unresolvable key is a RETRYABLE unavailability, counted as such expected:<1> but was:<0>' -- resolution failure was never treated as unavailability at all. iOS failed five times, the last reporting that the durable obligation had NOT survived the turn. On both isles the worker stored an unverified frame as VERIFIED_RECIPIENT and retired the retryable obligation."
    },
    "my_status": "FIX_SUBMITTED",
-   "notes": "FIX_SUBMITTED on both isles (6f7d08c android + 40c5b91 iOS). THE DEFECT WAS ONE CONDITIONAL AWAY FROM A CORRECT GATE on both isles: `if key != nil { verify }` converted a temporary resolution failure into a durable VERIFIED_RECIPIENT row and a retired obligation. The Android red failed at its FIRST assertion -- the counter that should have recorded unavailability recorded ZERO, because the code never treated resolution failure as unavailability; the iOS red failed five times, ending with the obligation not surviving. WHAT REMAINS IS THE COMPLEMENTARY CONTROL the audit names, not a second repair: a present-but-WRONG key must be refused as a mismatch rather than folded into unavailability, and the explicit NodeID derivation is prescribed in form. Both are recorded as owed. ROUND 77: the audit's step-1 control was added on BOTH isles in one pass and it PASSES everywhere (keyUnavailable 0, storageFailures 1, nothing stored, obligation survives), so the repair's two branches are now both witnessed -- the arm that went red and the control that protects what the repair did not touch. A control that passes on both revisions is exactly what step 1 asked for, and it is recorded as a CONTROL, not as a red.",
+   "notes": "FIX_SUBMITTED on both isles (6f7d08c android + 40c5b91 iOS). THE DEFECT WAS ONE CONDITIONAL AWAY FROM A CORRECT GATE on both isles: `if key != nil { verify }` converted a temporary resolution failure into a durable VERIFIED_RECIPIENT row and a retired obligation. The Android red failed at its FIRST assertion -- the counter that should have recorded unavailability recorded ZERO, because the code never treated resolution failure as unavailability; the iOS red failed five times, ending with the obligation not surviving. WHAT REMAINS IS THE COMPLEMENTARY CONTROL the audit names, not a second repair: a present-but-WRONG key must be refused as a mismatch rather than folded into unavailability, and the explicit NodeID derivation is prescribed in form. Both are recorded as owed. ROUND 77: the audit's step-1 control was added on BOTH isles in one pass and it PASSES everywhere (keyUnavailable 0, storageFailures 1, nothing stored, obligation survives), so the repair's two branches are now both witnessed -- the arm that went red and the control that protects what the repair did not touch. A control that passes on both revisions is exactly what step 1 asked for, and it is recorded as a CONTROL, not as a red. ROUND 78: THE AUDIT'S STEP 3 IS DONE IN FORM -- the pinned key must now be 32 bytes AND must derive the claimed recipient's node id under the frozen BLAKE2s128 binding, with the three failure classes (unresolvable / malformed / mismatched) separately enforced and separately witnessed. Combined with round 77's control, steps 1 and 3 of this finding's remediation list are complete on both isles. ONE MECHANICAL CORRECTION: the first Android form referenced a constant whose insertion did not land, so the size check is a literal 32 with its comment; the compile error was the correction.",
    "pending_proof": [
-    "THE AUDIT'S STEP 1 IS NOW COMPLETE ON BOTH ISLES: the no-resolver arm (the red) and the present-but-WRONG-key control (added this round) stand side by side, and they prove the two failure classes are distinguishable -- retryable unavailability versus a refused mismatch.",
-    "THE AUDIT'S STEP 3 IS SATISFIED IN SUBSTANCE, NOT IN FORM: the gate requires the key to be PRESENT and the authenticator binds by resolving the pinned key for the claimed node id, but the explicit NodeID BLAKE2s128 DERIVATION check (that the pinned key's node id IS the claimed recipient) and a key-SIZE requirement are not separate checks.",
+    "THE AUDIT'S STEPS 1 AND 3 ARE NOW COMPLETE IN FORM ON BOTH ISLES: the availability gate, the size requirement, the explicit BLAKE2s128 derivation, and the wrong-key control beside the no-resolver arm -- all witnessed in the canonical T83 courts.",
+    "THE AUDIT'S STEP 4 (the complete generated ACK verified with the captured bound public key before assigning VERIFIED_RECIPIENT) is satisfied by the authenticator's pinned-key lookup, which calls verify with the resolved key; the audit's wording asks that the CAPTURED key be the one used, which is the same key object in this implementation -- recorded as satisfied in substance.",
     "NO DEVICE/EMULATOR/SIMULATOR/RADIO WAS USED: the arms drive the real inbox commit and the real restart worker on the host; no peer and no radio were involved."
    ],
    "proof": null,
@@ -1303,9 +1318,7 @@
    "wave": "5",
    "pending_work": [
     "PORT TO THE iOS TWIN: ios/Godstone/Sources/GodstoneMesh/AckObligationStore.swift carries the same conditional verification block in its own runPendingOnce, and the audit names it explicitly. Only the Android limb is repaired here.",
-    "THE AUDIT'S STEP 3 IS ONLY PARTLY DONE: the gate requires the key to be PRESENT, and the authenticator performs the binding by resolving the pinned key for the claimed node id -- but the audit also asks for the NodeID BLAKE2s128 DERIVATION to be checked explicitly (derive/verify that the pinned key's node id IS the claimed recipient), and a correctly-SIZED key is not separately required.",
-    "THE AUDIT'S STEP 2 mentions the same replacement in BOTH AckObligationDriver.runPendingOnce implementations -- the iOS one remains.",
-    "ADD THE EXPLICIT NodeID BLAKE2s128 DERIVATION CHECK (and a key-size requirement) so the audit's step 3 is satisfied in the form it prescribes, not only in substance."
+    "THE AUDIT'S STEP 2 mentions the same replacement in BOTH AckObligationDriver.runPendingOnce implementations -- the iOS one remains."
    ]
   },
   "GS-ACK-002": {
