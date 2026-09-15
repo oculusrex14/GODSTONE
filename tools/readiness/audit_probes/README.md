@@ -124,3 +124,11 @@ Written and **run RED first** in this directory (`Ran 3 tests, FAILED (failures=
 `PeerGovernor`: `reward`/`penalise` mutated a **shared `Trust` reference** after `mutableTrust` had released
 `registryLock` — and its third arm asserted the repair must add a **lock-held** lookup, because the lock is an `NSLock`
 (not recursive) and a naive fix would **deadlock**. That arm is why the repair was written once instead of twice.
+
+## Python probe — `python/test_ios_post_aead_charge.py` (IOS-05 / T27 step 3): LANDED (round 198)
+
+Written and **run RED first** in this directory (`Ran 4 tests, FAILED (failures=3)`, W00 control passing — and that
+control then **caught its own author**, having asserted the Android spelling where the isle writes `.authenticated(`),
+which is what a positive control is for). It judged the iOS post-AEAD road: two collectors handing the plaintext to the
+delegate **uncharged**, and a controller consuming the validated binding **without retaining it**. The five-site repair
+landed in round 198 and the arm **MOVED INTO `tools/readiness/tests/`** with it, as this directory's rule requires.

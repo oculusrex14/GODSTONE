@@ -157,6 +157,15 @@ public final class SessionManager {
         return RelationKey(direction: .outboundCentral, peerId: peerId)
     }
 
+    /// IOS-05 / T27 (step 3): THE IMMUTABLE FULL NODE ID OF A RELATION -- the sixteen octets the
+    /// TRUSTED HANDSHAKE validated and the controller RETAINED. Never derived from the static DH key
+    /// (a DIFFERENT identity), never a MAC, a hint or a station handle; nil while trust was never
+    /// marked, which is what maketh the PRE-AUTH budget the right instrument for everything earlier.
+    func authenticatedNodeIdOf(_ peerId: UUID) -> Data? {
+        guard let slot = slotFor(peerId) else { return nil }
+        return slot.serialize { slot.controller?.authenticatedNodeId }
+    }
+
     private func slotFor(_ peerId: UUID) -> SessionSlot? {
         mapLock.lock()
         defer { mapLock.unlock() }

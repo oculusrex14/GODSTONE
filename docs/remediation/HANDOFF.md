@@ -46,7 +46,43 @@ already carried. The audit's step 3 stays OPEN, with its two measured obstacles 
 | CRYPTO-003 | FIX_SUBMITTED | 4b | Destroyed retained controllers and primitive sessions st |
 | CRYPTO-006 | FIX_SUBMITTED | 4b | Duplicate journal admission is treated as success for a |
 
-## DO THIS FIRST (round 196) — IOS-05 / T27 STEP 2 LANDS: THE iOS INGRESS IS NO LONGER UNCHARGED (AND THE LANE CAUGHT ME OVER-APPLYING THE CARD'S 256)
+## DO THIS FIRST (round 198) — IOS-05 / T27 STEP 3 LANDS: THE POST-AEAD CHARGE ON THE AUTHENTICATED IDENTITY
+
+**The five-site repair, exactly as specified:** (i)+(ii) `TrustedHandshakeController.swift` now **retains
+`binding.nodeId`** at **both** trust sites (immediately before `trustAuthority.applyValidatedBinding(binding)` in each
+direction); (iii) clears it in `destroy()` and answers it through `authenticatedNodeId` (a copy, always); (iv)
+`SessionManager.authenticatedNodeIdOf(_:)` reads `slot.controller?.authenticatedNodeId` **inside the slot's own
+`serialize { }`** — the isle's own locking discipline, the same one `isReady` uses; (v) `BleTransport` owns a **second**
+`AdmissionBudget` for the authenticated scope and charges it in **both** post-AEAD collectors **immediately before**
+`delegate?.transportDidReceive(…)`, keyed on the authenticated identity with the relation's id as the documented
+fallback, recording a refusal under `admission.budget.authenticated` and **dropping** the plaintext.
+
+**The RED moved into the canonical suite**, as its own rule required: `tools/readiness/tests/test_ios_post_aead_charge.py`
+(written and run red first in the probes directory, then moved with the repair).
+
+**Acceptance:** the arm suite **OK**; whole iOS lane **1202 tests, 0 failures (0 unexpected)**.
+
+**THE TRUNCATION BUG RECURRED, AND THAT IS THE ROUND'S MOST IMPORTANT RECORD:** the patch script that added the
+SessionManager accessor wrote the file with `open(path,'w')` **before** reading it in the same expression, so
+`SessionManager.swift` was **emptied to zero lines for the second time** (the first was round 191 — same pattern, same
+class of edit). Caught by `wc -l`, restored with `git checkout --`, re-applied **reading first**. **Two cascades hid it
+again** (the compiler blamed an unrelated file: `cannot find type 'SessionManager' in scope`). **The rule is now absolute
+and recorded as such: EVERY patch goes through the helper that reads first and writes second, and a `wc -l` sanity check
+follows every multi-file patch script.**
+
+**Two smaller errors:** the collector anchors assumed the wrong indentation (then extracted **programmatically** from the
+file rather than typed), and my own arm's W00 control asserted the **Android** spelling where the isle writes
+`.authenticated(` — the control caught its own author.
+
+**A context lesson:** an assertion whose failure message embeds a whole source file dumped hundreds of lines into the
+record **twice**; the arms now use short messages and **positional** comparisons (`t.index(charge) < t.index(delivery)`).
+
+**What remains on IOS-05:** step 4's separation of local abuse penalties from **durable** trust, and the **behavioural
+witness** of step 3 that the Android isle carries (a real trusted handshake answering the peer's **own** sixteen-octet
+NodeID) — the canonical arm proves the charge and the retention exist and are **ordered**; a court witness would prove
+them against a live handshake, and that is **owed**, not implied.
+
+## DO THIS FIRST (round 196, landed) — IOS-05 / T27 STEP 2 LANDS
 
 **The defect was absolute on this isle:** `PeerGovernor` is referenced **nowhere in production except one comment**
 (`GodstoneCore/ProofOfWork.swift:14`), so **no charge happened at any ingress** — raw advertisements, malformed values

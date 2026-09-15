@@ -129,6 +129,9 @@ internal final class TrustedHandshakeController: @unchecked Sendable {
             return nil
         }
 
+        // IOS-05 / T27 step 3: RETAIN the identity the handshake VALIDATED, at the moment trust is
+        // applied -- the card's 'immutable full NodeID', never a derivative of the static DH key.
+        retainedNodeId = binding.nodeId
         let applyResult = trustAuthority.applyValidatedBinding(binding)
         switch applyResult {
         case .accepted, .firstSeenPinned:
@@ -235,6 +238,9 @@ internal final class TrustedHandshakeController: @unchecked Sendable {
         // Transition controller to .noiseEstablished before applying trust.
         state = .noiseEstablished
 
+        // IOS-05 / T27 step 3: RETAIN the identity the handshake VALIDATED, at the moment trust is
+        // applied -- the card's 'immutable full NodeID', never a derivative of the static DH key.
+        retainedNodeId = binding.nodeId
         let applyResult = trustAuthority.applyValidatedBinding(binding)
         switch applyResult {
         case .accepted, .firstSeenPinned:
@@ -277,7 +283,20 @@ internal final class TrustedHandshakeController: @unchecked Sendable {
     /// ready, because destroy() only tore down the Noise session and left `state` where it
     /// was. The mark is set FIRST so no window exists in which a half-destroyed controller
     /// looks usable, and a repeated call is a no-op.
+    /// IOS-05 / T27 (step 3): THE IMMUTABLE FULL NODE ID, **RETAINED** AT THE MOMENT TRUST IS VALIDATED.
+    ///
+    /// The Noise remote static key is the peer's STATIC DH KEY, and the NodeID deriveth from the SIGNING
+    /// key -- so a derivation from it would name a DIFFERENT identity (the android isle measured exactly
+    /// that at round 192). The identity the handshake really authenticated liveth in the VALIDATED
+    /// BINDING, which both directions already receive and previously CONSUMED WITHOUT RETAINING.
+    /// Single-writer (the trust sites) and read after trust, as on the android isle.
+    private var retainedNodeId: Data?
+
+    /// The retained sixteen-octet NodeID, or nil while trust was never validated. A COPY, always.
+    var authenticatedNodeId: Data? { retainedNodeId.map { Data($0) } }
+
     func destroy() {
+        retainedNodeId = nil
         if state == .destroyed { return }
         state = .destroyed
         noiseSession.destroy()

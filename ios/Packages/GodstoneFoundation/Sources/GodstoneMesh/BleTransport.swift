@@ -566,6 +566,10 @@ public final class BleTransport: NSObject, @unchecked Sendable {
     /// parsing, reassembly, DH or trust work. The iOS twin of the android isle's `AdmissionBudget`.
     private let admissionBudget = AdmissionBudget()
 
+    /// IOS-05 / T27 (step 3): THE AUTHENTICATED BUDGET -- a SEPARATE instance, so that each scope's
+    /// counters report ONE scope. Charged AFTER AEAD, before the plaintext leaveth for the application.
+    private let authenticatedAdmissionBudget = AdmissionBudget()
+
 
     public static let serviceUuid = CBUUID(string: FrameV2.serviceUuidString)
     // T10: every GATT identifier is the generated wire-contract value. The
@@ -3156,6 +3160,17 @@ public final class BleTransport: NSObject, @unchecked Sendable {
                         if self.takeInboundKeyConfirmation(peerId: peerId, opened: clear) {
                             return
                         }
+                        // IOS-05 / T27 (step 3): THE POST-AEAD CHARGE, BEFORE THE PAYLOAD LEAVETH. The identity charged is
+                        // the IMMUTABLE FULL NODE ID the trusted handshake validated (the crypto layer retaineth it); the
+                        // relation's id is only the fallback for a relation whose trust was never marked.
+                        let chargedIdentity = self.sessions?.authenticatedNodeIdOf(peerId) ?? Data()
+                        if self.authenticatedAdmissionBudget.charge(
+                            chargedIdentity.map { String(format: "%02x", $0) }.joined(),
+                            bytes: clear.count) == .refused {
+                            self.recordRejection(peerId: peerId, site: "admission.budget.authenticated",
+                                                 reason: "authenticated admission budget exhausted")
+                            return
+                        }
                         self.delegate?.transportDidReceive(data: clear, peerId: peerId)
                     }
                 case .rejected:
@@ -4142,6 +4157,17 @@ public final class BleTransport: NSObject, @unchecked Sendable {
                             // control is hearkened by D2 and never carrieth to the
                             // application; all else moveth on.
                             if self.takeInboundKeyConfirmation(peerId: centralId, opened: clear) {
+                                return
+                            }
+                            // IOS-05 / T27 (step 3): THE POST-AEAD CHARGE, BEFORE THE PAYLOAD LEAVETH. The identity charged is
+                            // the IMMUTABLE FULL NODE ID the trusted handshake validated (the crypto layer retaineth it); the
+                            // relation's id is only the fallback for a relation whose trust was never marked.
+                            let chargedIdentity = self.sessions?.authenticatedNodeIdOf(centralId) ?? Data()
+                            if self.authenticatedAdmissionBudget.charge(
+                                chargedIdentity.map { String(format: "%02x", $0) }.joined(),
+                                bytes: clear.count) == .refused {
+                                self.recordRejection(peerId: centralId, site: "admission.budget.authenticated",
+                                                     reason: "authenticated admission budget exhausted")
                                 return
                             }
                             self.delegate?.transportDidReceive(data: clear, peerId: centralId)
