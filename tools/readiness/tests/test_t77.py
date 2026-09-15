@@ -135,6 +135,14 @@ class UpgradeRecoveryCourt(unittest.TestCase):
         payload.mkdir(parents=True, exist_ok=True)
         archive = payload / U.ESTATE_ARCHIVE_NAME
         shutil.copyfile(self.world["archives"][variant], archive)
+        # GS-CONTENT-001 (convergence, round 99): the coverage count became part of the
+        # release-eligibility shape, so this SHAPE fixture carrieth it too -- MEASURED from
+        # the archive's own bytes, never asserted. It closeth APPROVED_CONTENT for nothing.
+        _connected = sqlite3.connect(archive)
+        try:
+            _covered = str(_connected.execute("SELECT COUNT(*) FROM chunks").fetchone()[0])
+        finally:
+            _connected.close()
         digests = {
             "source_manifest_sha256": hashlib.sha256(b"T77-FIXTURE-SOURCE").hexdigest(),
             "review_manifest_sha256": hashlib.sha256(b"T77-FIXTURE-REVIEW").hexdigest(),
@@ -144,6 +152,7 @@ class UpgradeRecoveryCourt(unittest.TestCase):
             # rather than obtaining an approval -- it is a shape/binding fixture and
             # closeth APPROVED_CONTENT for nothing.
             "approvals_sha256": hashlib.sha256(b"T77-FIXTURE-APPROVALS").hexdigest(),
+            "approvals_covered": _covered,
         }
         connection = sqlite3.connect(archive)
         try:

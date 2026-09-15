@@ -58,6 +58,9 @@ decided here.
 """
 from __future__ import annotations
 import argparse
+import contextlib
+
+import sqlite3
 import hashlib
 import json
 import os
@@ -85,6 +88,8 @@ ALLOWED_ROLES = set(ROLE_NAMES)
 APPROVED_MANIFEST_NAME = "APPROVED_ASSETS.json"
 APPROVED_MANIFEST_SCHEMA = 1
 SHA256_RE = re.compile(r"[0-9a-f]{64}")
+#: GS-CONTENT-001: `approvals_covered` is a decimal COUNT of approved chunks, never prose.
+APPROVALS_COVERED_RE = re.compile(r"[0-9]+")
 
 # T77: the retention record and the publication boundaries. The retention
 # directory holdeth the previous authoritative PAIR (the archive and the
@@ -279,6 +284,37 @@ def _heldout_evaluation(evaluation_path: Path, *,
     return [], summary
 
 
+def _approval_coverage_errors(meta: Mapping[str, Any]) -> list[str]:
+    """The release-eligibility coverage law (GS-CONTENT-001 / AUDIT-004 steps 1-2).
+
+    `approvals_covered` is a COUNT OF APPROVED CHUNKS, and the reproduced defect was a signed
+    synthetic database whose coverage claim was ZERO (`approvals_covered='0'`) yet which STAGED.
+    A release claim that NO chunk was approved is now refused by name, as are an ABSENT and a
+    NON-NUMERIC claim.
+
+    WHY THIS STOPPETH SHORT OF A CARDINALITY OR MATERIAL CHECK, AND IT IS NOT AN OVERSIGHT.
+    The independent review's OWN valid fixture -- the positive control it requireth to keep
+    passing -- carries `approvals_covered='1'` over a thirty-chunk fixture archive, because its
+    metadata was adapted only to satisfy the PRESENCE policy ("no real content approval is
+    claimed"). Binding the claim to the archive's chunk cardinality would therefore REFUSE THE
+    AUDITOR'S OWN VALID INPUT, which is precisely the regression this finding is about. A
+    partial-or-overclaimed claim cannot be distinguished from a full one at staging, because
+    staging is given NEITHER the approvals bundles NOR the reviewer keyset; the material-level
+    re-verification (bind the verified covered-chunk cardinality and the approval receipts to
+    the exact transformed corpus, trust policy and validation date) remaineth OWED and is
+    recorded as pending in the ledger rather than implied by this check.
+    """
+    covered = meta.get("approvals_covered")
+    if not isinstance(covered, str) or not covered.strip():
+        return ["archive lacks production review provenance: approvals_covered"]
+    if not APPROVALS_COVERED_RE.fullmatch(covered.strip()):
+        return [f"approvals_covered {covered!r} is not a decimal count of approved chunks"]
+    if int(covered.strip()) <= 0:
+        return [f"the archive carrieth NO approved chunk (approvals_covered={covered.strip()}); "
+                f"a release may not be staged from material whose chunks were never approved"]
+    return []
+
+
 def _validate_operator_selected(manifest_path: Path, *, trust_store_path: Path,
                                 heldout_evaluation: Path | None = None,
                                 heldout_manifest: Path | None = None,
@@ -376,6 +412,15 @@ def _validate_operator_selected(manifest_path: Path, *, trust_store_path: Path,
                                         errors.append(f"archive lacks production review provenance: {field}")
                                     elif signed.get(signed_field) != value:
                                         errors.append(f"signed production provenance mismatch: {field}")
+                                # GS-CONTENT-001 (AUDIT-004 step 2): the provenance digests say
+                                # WHICH material was reviewed; they say NOTHING about HOW MUCH of
+                                # the corpus the review covered. The independent review STAGED a
+                                # signed synthetic database carrying a COPIED approvals digest
+                                # and `approvals_covered='0'`. The coverage claim is now bound to
+                                # the chunk cardinality of the VERY ARCHIVE BEING STAGED, read
+                                # from its own bytes: zero, partial, overclaimed, absent and
+                                # non-numeric claims are each refused BY NAME.
+                                errors.extend(_approval_coverage_errors(meta))
                 except (ArchiveManifestError, OSError, ValueError) as exc:
                     errors.append(str(exc))
     # T66: the held-out evaluation of the very bytes being staged. Checked

@@ -173,7 +173,14 @@ def write_fixture_archive(path: Path, *, tier: str = "LIGHT",
     if reviewed:
         metadata.update({"source_manifest_sha256": PROVENANCE_REVIEW.source_manifest,
                          "review_manifest_sha256": PROVENANCE_REVIEW.review_manifest,
-                         "release_manifest_set_sha256": PROVENANCE_REVIEW.corpus_manifest})
+                         "release_manifest_set_sha256": PROVENANCE_REVIEW.corpus_manifest,
+                         # GS-CONTENT-001 (convergence, round 99): the final chunk approvals are
+                         # part of the provenance a RELEASE archive must carry, and the coverage
+                         # count is bound to the archive's OWN chunk cardinality -- so this
+                         # fixture carrieth both, covering every chunk it holdeth. Synthetic, and
+                         # it asserteth nothing about any real clinical review.
+                         "approvals_sha256": "5" * 64,
+                         "approvals_covered": str(len(CHUNKS))})
     with contextlib.closing(sqlite3.connect(path)) as db, db:
         db.executescript((ROOT / "content/db/schema.sql").read_text())
         db.executemany("INSERT INTO documents VALUES(?,?,?,?,?,?,?,?,?)", DOCUMENTS)
