@@ -46,6 +46,32 @@ already carried. The audit's step 3 stays OPEN, with its two measured obstacles 
 | CRYPTO-003 | FIX_SUBMITTED | 4b | Destroyed retained controllers and primitive sessions st |
 | CRYPTO-006 | FIX_SUBMITTED | 4b | Duplicate journal admission is treated as success for a |
 
+## DO THIS FIRST (round 218) — ANDROID-06's CALLER HALF: A REFUSED SEAL NOW RETURNS ITS SLOT (A LEAK FOUND BY READING THE CALLER AFTER CHANGING THE CALLEE)
+
+**The leak, and why it was mine as much as the audit's.** Round 216 made the four-record bound count **RESERVED**
+records, as the card's step 4 demands — and **that change turned an unnoticed caller behaviour into a defect**:
+`BleTransport.sendThrough`'s `SealAnswer.Refused ->` branch records the refusal and **returns, never cancelling the
+reservation**. With the new reserved-slot table, **every refused seal leaks one slot, and four refused seals would exhaust
+the relation's bound and silence it for ever.** The audit's step 2 asks for *"cancellation that returns a slot"*; the
+callee now offers it and **the caller never took it**.
+
+**The fix is one line in the right place:** `writer.cancel(answer.reservation)` at the head of that branch, so **every**
+refusal reason is covered by one cancellation — and it is **harmless by construction**, because the writer's own epoch
+checks already remove an invalidated reservation, so the call simply returns false and touches nothing in that case.
+
+**The RED was source-level and the reason is stated:** the repair adds a call inside one branch, and a behavioural arm of it
+needs a **full session whose sealer refuses** — and **no court has one** (nothing in the suite so much as mentions a refused
+seal). **The behavioural half is therefore owed and named**, not implied.
+
+**Acceptance:** canonical arm OK and moved into `tools/readiness/tests/`; whole `:mesh` lane **1191 tests, 0 failures** —
+which mattered, because the refusal branches are *"told in the voices the recorded expectations know"*, i.e. courts **do**
+assert them, and the cancellation broke none.
+
+**The methodological point worth keeping:** **a repair that tightens a bound must be followed by a reading of every caller
+of that bound.** Round 216 tightened it in the writer; round 218 read the one caller and found a leak the tightening had
+made lethal. The audit's steps 1–5 were written as a list; **the list is a dependency graph**, and the caller of step 4 is
+the subject of step 2.
+
 ## DO THIS FIRST (round 217) — ANDROID-06's BEHAVIOURAL ARMS LAND: THE CARD'S STEPS 2, 3 AND 4 ARE WITNESSED AGAINST THE REAL WRITER
 
 **The arms, in the court's own idiom** (a bare `BleConnection` plus a mutable `maxAttValueLength` — both already used by

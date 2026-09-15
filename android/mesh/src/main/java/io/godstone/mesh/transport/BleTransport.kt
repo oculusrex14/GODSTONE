@@ -1216,6 +1216,13 @@ class BleTransport(
                         registry.seal(key, clear)
                     }) {
                     is SealAnswer.Refused -> {
+                        // ANDROID-06 step 2 AT THE CALLER: A REFUSED SEAL RETURNETH ITS SLOT. Without this, the
+                        // reserved-slot table landed at round 216 LEAKETH one slot per refusal -- and since that
+                        // table is what maketh the four-record bound count RESERVED records (the card's own step
+                        // 4), FOUR REFUSED SEALS WOULD EXHAUST THE RELATION AND SILENCE IT FOR EVER. The writer's
+                        // own epoch checks already remove an invalidated reservation, so this cancellation is
+                        // HARMLESS BY CONSTRUCTION: it returneth false and touches nothing when there is no slot.
+                        writer.cancel(answer.reservation)
                         // The refusals of the seal are told in the voices the
                         // recorded expectations know: the seal itself, the
                         // fragmentation, the station of the relation.
