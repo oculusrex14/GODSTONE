@@ -3348,12 +3348,44 @@
    },
    "impact": "A peer can exceed the intended bound on retained page descriptors and IDs for one open run. Per-frame decoding limits do not bound aggregate run memory. Existing traffic-governor and deadline gaps make a receiver-owned cap especially necessary, but this defect exists independently of their fixes.",
    "invalidated_dependents": [],
-   "my_fix_commit": null,
-   "my_logs": [],
+   "my_fix_commit": "5b1ace9 (Android limb)",
+   "my_logs": [
+    {
+     "log": "GS-SYNC-001/red/gs-sync-001-RED.log",
+     "sha256": "642defb644af49a0643cdf9de044580614f726c572f9487ab22c1c01ce2f61a1",
+     "what": "the RED: the arm is named in the test-results XML and fails with 'the page beyond the run budget must be REFUSED, not accepted (delivered=65, recv=65)'"
+    },
+    {
+     "log": "GS-SYNC-001/red/gs-sync-001-COUNTERS.txt",
+     "sha256": "see the evidence root",
+     "what": "the decisive counters: pages 61..67 all Accepted, final delivered=67 recv=67 against MAX_PAGES_PER_RUN=64"
+    },
+    {
+     "log": "GS-SYNC-001/green/gs-sync-001-T40-GREEN.log",
+     "sha256": "8db793153bf1f0cc2f15d7520b0bdfc8ec7d59d036a2d0fe931c041ededf7508",
+     "what": "ReadinessT40Test after the repair: 12 tests, 0 failures (the new arm passes)"
+    },
+    {
+     "log": "GS-SYNC-001/green/gs-sync-001-ANDROID-FULL.log",
+     "sha256": "8f65d7bbec7731205455795ce53b32cc3bcf0e5f2615ce96b21e78ee6188a27f",
+     "what": "whole android :mesh lane with the repair applied: BUILD SUCCESSFUL, zero failures"
+    },
+    {
+     "log": "GS-SYNC-001/green/gs-sync-001-LANES.log",
+     "sha256": "see the evidence root",
+     "what": "readiness suite OK; invariants all hold; repository VERDICT PASS; symbols 213 files 0 unresolved; mutation selftest OK"
+    }
+   ],
    "my_red_case": null,
-   "my_status": "OPEN",
-   "notes": "OPEN, with reconnaissance RECORDED and a REVERTED invalid arm. This round attempted the Android limb: the receiver-side hole is confirmed by source, but the arm written for it PASSED against the untouched product -- 64 pages accepted and the 65th refused -- which means the refusal came from a different law (the run's own sequence/close law or the pump's requester bound) rather than from any receiver budget. By this session's own rule (a witness green on BOTH revisions proves nothing) that arm was worthless as a red, so it was REVERTED rather than kept: nothing misleading is committed and the tree is green. WHAT THE NEXT ROUND MUST DO FIRST: find WHICH law refused the 65th page (print the OwnerDecision reason in the arm), then write an arm whose failure on the untouched product can only be explained by the missing receiver bound -- e.g. assert that `rel.delivered.size` may exceed MAX_PAGES_PER_RUN today. Recorded here so the same dead end is not re-entered: the constant IS enforced on the producer and pump sides, so an arm that merely pushes pages through the ordinary handshake can be satisfied by those bounds accidentally. ROUND 64: a DIAGNOSTIC arm was inserted (driving MAX_PAGES_PER_RUN+3 synthetic ascending single-id pages and PRINTING every OwnerDecision with the receiver's counters), run twice (once with --rerun-tasks), and then REMOVED from the canonical court -- the diagnostic asserts nothing, so it could not live there. What it captured is kept verbatim at docs/remediation/GS-SYNC-001-DIAGNOSTIC.txt: no DIAG lines captured (the filtered test task did not re-execute and the -i log carries no test stdout) ... If that file shows the run's page-by-page verdicts, the next round has the refusing law's NAME and can write the isolating red immediately; if it is empty (the filtered test task may be treated as up-to-date even with --rerun-tasks, and the -i log may not carry test stdout), the next round must capture the diagnostic properly -- write the verdicts to a FILE from the arm itself (or run without the --tests filter) rather than relying on stdout in the log. ROUND 65 CORRECTION, and the record is corrected rather than left standing: an earlier note in THIS round claimed that 'a filtered Gradle run can report success while running NOTHING'. THAT IS FALSE and is RETRACTED -- the test-results XML for ReadinessT40Test WAS present after the forced run, the suite reports 11 testcases, and the diagnostic arm is NOT listed among them, so the arm did NOT execute; the diagnostic dump file was nevertheless not written where the caller looked, so the capture failed for a reason not yet established. WHAT IS ACTUALLY KNOWN: the arm's run produced no usable diagnostic; nothing about WHICH law refuses a page beyond MAX_PAGES_PER_RUN is established; and round 63's inference that 'the arm passed on the untouched product' remains UNSUPPORTED, because a GREEN outcome was concluded from BUILD SUCCESSFUL rather than from an assertion-level result -- the house rule that a build is not an executed test applies to passes as much as to failures.",
-   "pending_proof": [],
+   "my_status": "PARTIAL",
+   "notes": "PARTIAL: the Android limb is repaired, verified and landed (5b1ace9); the iOS port, step 4 and step 6 are owed. THE RED IS REAL AND ITS EXECUTION IS PROVEN -- the counters it captured (67 pages retained against a budget of 64, produced by the receiver itself, not by a pump) are the finding's cleanest evidence yet. TWO OF MY OWN ERRORS ARE CORRECTED IN THE RECORD RATHER THAN BURIED: (1) three rounds of 'no red' were tooling -- the arm compiled into a trailing helper class and never ran, and BUILD SUCCESSFUL was read as a pass; (2) a full-lane failure was misread as 'a pre-existing court feeds more than 64 pages', when the failing tests were ReadinessT17Test/ReadinessT18Test failing in fixture setup with the KNOWN intermittent flake -- on re-application the whole lane is green. The production edit was reverted on that misreading and then re-applied; the correcting commit says so in the open.",
+   "pending_proof": [
+    "ONLY THE ANDROID LIMB IS REPAIRED: the iOS twin (ios/Godstone/Sources/GodstoneMesh/SyncControlOwner.swift) still has no receiver-side page budget, so the pair does not yet state one law on both isles -- this is the sole reason the status is PARTIAL rather than FIX_SUBMITTED.",
+    "THE AUDIT'S STEP 4 IS OWED: page admission, cursor advancement, pending-want calculation and token revalidation must be ONE serialized transition, with a read that suspends staging its result and revalidating the captured relation generation before commit. A boundary check alone does not provide that.",
+    "THE AUDIT'S STEP 6 IS OWED: a bounded NEXT-TURN CONTINUATION that preserves reconciliation progress for larger inventories 'rather than repeatedly restarting at the first page'. The landed bound refuses the over-budget page; the continuation that keeps the walk's progress is not implemented.",
+    "NO DEVICE/EMULATOR/SIMULATOR/RADIO WAS USED: the run drives the owner's real control-frame entry (handleControlFrame) on the host with canonical frames, not a radio, and no peer was involved.",
+    "THE KNOWN ANDROID FIXTURE FLAKE ('no ascending hint pair within 64 draws', ReadinessT17Test/ReadinessT18Test) remains unfixed and unexplained; it caused a full-lane failure in this very round that I FIRST MISREAD as a conflict with the repair. The green lane is evidenced by the logged passing run."
+   ],
    "proof": "Independent Android owner probe adopts a digest, opens a run, and sends 65 valid increasing one-ID pages with done=0. The 65th is Accepted. The receiver appends to delivered and increments pagesReceived without checking MAX_PAGES_PER_RUN or an outstanding request. The sender-side pump limit does not constrain a peer\u2019s incoming pages. Swift has the matching unchecked append.",
    "remediation_report": "evidence/AUDIT-002/SOS_SYNC_MODEL_REMEDIATION.md",
    "remediation_steps": [
@@ -3378,10 +3410,9 @@
    "title": "Inventory receiver accepts more than its bounded run page budget",
    "wave": "5",
    "pending_work": [
-    "PROVE THE ARM RUNS BEFORE BELIEVING IT: the filtered Gradle run reports success while producing no test-results XML for the class, so the next round must confirm execution (XML present and naming the arm, or an unfiltered lane) BEFORE drawing any conclusion from a pass or a fail.",
-    "THEN produce the diagnostic dump (the arm writes the per-page OwnerDecision and the receiver's counters to a FILE) and read WHICH law refuses a page beyond MAX_PAGES_PER_RUN.",
-    "THEN write the isolating red: the receiver must refuse the FIRST over-budget page at the boundary BEFORE any mutation (no delivered.add, no cursor advance, no pagesReceived++), with a typed reason, and bound the per-run retained-ID/want growth beside it; port the same law and arms to ios/Godstone/Sources/GodstoneMesh/SyncControlOwner.swift.",
-    "The audit's step 4 (admission, cursor advancement, pending-want calculation and token revalidation as ONE serialized transition with generation revalidation before commit) remains owed beyond a boundary check."
+    "PORT THE LAW TO THE iOS TWIN and re-run both lanes (the audit's steps 2-3 of its remediation order).",
+    "IMPLEMENT STEP 4 (one serialized transition with generation revalidation) and STEP 6 (bounded continuation preserving progress) beside the landed bound.",
+    "RE-READ THE LESSON THIS FINDING PAID FOR, twice over: (a) an arm is not evidence until the test-results XML NAMES it -- three rounds were spent believing a run that never executed, and the insertion anchor was closing a trailing helper class; (b) a lane failure is not evidence about your change until its FAILURE MESSAGE is read -- the full-lane failure I blamed on the repair was the known fixture flake in FIXTURE SETUP, and the repair was reverted on that misreading before being re-applied and shown green."
    ]
   },
   "GS-SYNC-002": {
