@@ -618,7 +618,18 @@
    "wired_into_mandatory_lanes": "yes -- all four appear in .github/workflows/repository-verification.yml, so those lanes would FAIL if run",
    "measured_improvement_this_session": "check_parity moved from 'FAILED: C, D' to 'FAILED: D' -- one failure removed, the control STILL RED",
    "corroborates": "the external reviewer's attributed report of RED HOSTED VERIFICATION at the audited SHA, locally and independently",
-   "meaning": "A structural 'the lanes are mandatory and not disabled' claim is NOT a green claim. Any green statement about this repository must name WHICH controls were run; this sweep nameth 18 and recordeth that four of them FAIL, pre-existing, one of them inside the mandatory lanes."
+   "meaning": "A structural 'the lanes are mandatory and not disabled' claim is NOT a green claim. Any green statement about this repository must name WHICH controls were run; this sweep nameth 18 and recordeth that four of them FAIL, pre-existing, one of them inside the mandatory lanes.",
+   "CORRECTED_AT_ROUND_130": {
+    "correction": "`check_parity` was WRONGLY counted as a repository failure: run as the mandatory lane runs it (--scope repo) it PASSES 7/7, and its exit 1 under the DEFAULT scope reflecteth the EXTERNAL A-06 gate the audit REQUIRES stay open. THREE genuine failures, not four.",
+    "genuine_failures_and_the_open_findings_they_state": {
+     "check_local_identity_controls": "SignedSosV1.kt/.swift construct IdentityBindingV1 outside the identity authority -> GS-SOS-001 (OPEN)",
+     "check_trusted_runtime_composition_controls": "SessionManager must own the TrustedHandshakeController registry (R01/R02) and per-peer serialization locks (R05/R06) -> CRYPTO-001/002 (OPEN)",
+     "check_ble_link_substrate_controls": "iOS BL128 sourceEpoch validation, BL131 fail-to-connect delegation, BL132 responder-branch guard -> IOS-04/IOS-06 (OPEN)"
+    },
+    "why_it_matters": "these three are the repository's OWN executable statements of OPEN findings: structural source controls that already name the exact files and members, and that already red when the repair is absent -- ready instruments for the next rounds",
+    "measurement_slip_recorded": "an rc printed from the tail of a pipeline is TAIL's status, not the script's; authoritative codes come from raw-rc runs only",
+    "evidence": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/REMEDIATION/ROUND129/control-sweep-correction.json"
+   }
   }
  },
  "counts": {
