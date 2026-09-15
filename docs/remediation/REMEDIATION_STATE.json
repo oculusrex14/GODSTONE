@@ -1670,13 +1670,15 @@
         "outcome": "exit 1, 208 Kotlin files scanned, 26 unresolved; the T77 rehearsal leaves recovery-rehearsal.json untracked",
         "source_sha_at_red": "3bc1a31"
       },
-      "my_status": "FIX_SUBMITTED",
-      "notes": "FIX_SUBMITTED for BOTH exact-SHA control failures the audit reproduced: the resolver (26 -> 0, with the negative controls intact and the compiler green) and the T77 rehearsal residue (now REFUSED in-tree, with the workflow writing into RUNNER_TEMP and the following provenance check green in a clean checkout). The mandatory lane reporteth all invariants holding. TWO ITEMS REMAIN: the MeshNode blob-drift classification, and the hosted-lane evidence no local run can supply. Only an independent audit may write VERIFIED_FIXED.",
+      "my_status": "PARTIAL",
+      "notes": "PARTIAL, and precisely so: the two exact-SHA control failures the audit reproduced are REPAIRED (resolver 26 -> 0 with its negative controls intact and the compiler green; the T77 rehearsal residue now refused in-tree with the workflow writing into RUNNER_TEMP and the following provenance check green in a clean checkout), the mandatory invariants lane reporteth passed=7 failed=0, and the workspace inventory is explicit. ONE CARD ITEM REMAINS UNREPAIRED -- the MeshNode blob-drift classification (pending_work) -- together with the hosted-lane evidence and the independent verification (pending_proof). Only an independent audit may write VERIFIED_FIXED.",
       "pending_proof": [
         "INDEPENDENT VERIFICATION: only an independent audit may mark this VERIFIED_FIXED",
-        "the MeshNode blob-drift classification (the original card's steps 1-2): the authority-blob check still freezeth the WORKING TREE, so the repair must split it into a baseline check that readeth each blob AT ITS RECORDED COMMIT and a current-contract check that exerciseth behaviour -- otherwise a required production edit (MessageStore/MeshRuntime/MeshModule are named blueprint modification targets) can only be accommodated by re-pinning hashes",
         "the hosted lane: no hosted run URL/log was available to this work, so every result here is a LOCAL reproduction of the constituent commands; the R1 supplement requireth enabled/executed/green hosted jobs at the candidate SHA, which remains pending",
         "the resolver's skips (163 types whose inheritance leaveth the project, 7 unread in full) are a VISIBLE limitation: the compiler is the authority for those, and the canonical Kotlin compilation must be rerun at the candidate SHA"
+      ],
+      "pending_work": [
+        "the MeshNode blob-drift classification (the original card's steps 1-2): the authority-blob check still freezeth the WORKING TREE, so the repair must split it into a baseline check that readeth each blob AT ITS RECORDED COMMIT and a current-contract check that exerciseth behaviour -- otherwise a required production edit (MessageStore/MeshRuntime/MeshModule are named blueprint modification targets) can only be accommodated by re-pinning hashes"
       ],
       "proof": "Independent readiness unit run: 87 tests, 2 failures for Android/iOS MeshNode blob drift. validate-state exits 3 because the immutable T36 claimed_head differs from later task commits. T36 was legitimately in progress at the audit snapshot; a claim anchor being an ancestor is not by itself evidence corruption.",
       "remediation_report": "reports/CONTROL_REMEDIATION.md",
