@@ -677,6 +677,35 @@
     "NOT a green claim about the repository: THREE GENUINE CONTROLS ARE RED, two with broken mutation batteries",
     "NOT a repair: nothing was fixed this round"
    ]
+  },
+  "candidate_verification_at_round_178": {
+   "candidate_sha": "03fd92b714c0111b56761e559aa8bf16d5e7af8f",
+   "tree_sha": "d4abed57fde7543f38b5765353f3ba7b352edd35",
+   "worktree": "clean at this sha",
+   "log": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/REMEDIATION/CANDIDATE_FINAL_03fd92b714c0111b56761e559aa8bf16d5e7af8f/verify.log",
+   "log_sha256": "27c6ad3af6f4022886ea8e18129abbbd070bf33adf7192dcb6ec2781c30386cc",
+   "measured": {
+    "android_mesh_lane": "BUILD SUCCESSFUL; 1175 tests, 0 failures, 0 errors (a FORCED re-run: cleanTest, because a cached task is not evidence)",
+    "ios_lane_mirrored_package": "Executed 1198 tests, with 0 failures (0 unexpected), 155.3s",
+    "python_readiness_suite": "OK",
+    "repository_controls": "EVERY ci/check_*.py rc 0; the ONLY non-zero is `check_parity` under its DEFAULT scope, which is the EXTERNAL A-06 arm ('independent vectors unavailable or unapproved ... A-06 stays OPEN') and `--scope repo` (the lane's own invocation) is rc 0",
+    "controls_with_verified_instruments": "local_identity 38/38, trusted_runtime_composition 55/55, ble_link_substrate 158/158 -- ALL THREE of the audit's red controls are green AND their mutation batteries RUN",
+    "symbols": "ci/symbols.py rc 0: 219 Kotlin files scanned, 0 unresolved (GS-CTRL-002's own named item)"
+   },
+   "per_declared_scope": {
+    "Mesh/Oracle": {
+     "findings": 40
+    },
+    "Both": {
+     "findings": 14
+    }
+   },
+   "NOT_CLAIMED_AND_WHY": [
+    "T78 CONVERGENCE IS NOT CLAIMED: its own requirement is that ALL APPLICABLE HOSTED LANES be enabled, executed and green AT THIS SHA -- and NO hosted lane, run URL, run id or log exists in this environment. The repository-side evidence above is complete; the hosted half is absent, and the absence is stated rather than papered over.",
+    "NO FINDING IS VERIFIED_FIXED: only an INDEPENDENT AUDIT may write that word, and the ledger court refuseth it from this work. The live counts are 27 FIX_SUBMITTED, 5 PARTIAL, 22 OPEN.",
+    "READINESS FLAGS STAY FALSE and the FIVE EXTERNAL GATES stay OPEN (A06, APPROVED_CONTENT, NATIVE_MODELS, HARDWARE, SIGNING) -- enforced by the blocked-external court, which passeth.",
+    "CLOSURE EVIDENCE IS STALE FOR 31 FINDINGS whose card files changed after the audited SHA (computed, not asserted, at round 120 and still standing): staleness is a FLOOR on what a later closure could claim, not a clearance."
+   ]
   }
  },
  "counts": {

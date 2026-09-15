@@ -32,3 +32,23 @@ control; THE FIVE EXTERNAL GATES REMAIN OPEN OR BLOCKED; NO finding carrieth `cl
 * **No human content approval is claimed**: every digest and coverage count the fixtures install is SYNTHETIC and closeth APPROVED_CONTENT for nothing.
 * **Closure evidence is stale by construction wherever an owner changed** — COMPUTED, not asserted (see the ledger's `closure_evidence_staleness_COMPUTED_AT_ROUND_120`), and that block also recordeth why a computed verdict is a FLOOR and not a clearance.
 * **Only an independent audit may write VERIFIED_FIXED**, and the ledger recordeth ZERO.
+
+## Candidate verification at `03fd92b` (ledger round 178) — measured, per declared scope
+
+| Item | Result at this exact SHA (tree `d4abed5`) |
+|---|---|
+| Android `:mesh` lane | **1175 tests, 0 failures, 0 errors** (forced re-run: `cleanTest`) |
+| iOS lane (mirrored package) | **1198 tests, 0 failures (0 unexpected)**, 155.3s |
+| Python readiness suite | **OK** |
+| Repository controls | **every `ci/check_*.py` rc 0**; the only non-zero is `check_parity` under its **default** scope = the **external A-06 arm**, and `--scope repo` is rc 0 |
+| Control instruments | `local_identity` **38/38**, `trusted_runtime_composition` **55/55**, `ble_link_substrate` **158/158** — all three of the audit's red controls green **and** their batteries run |
+| Symbols (GS-CTRL-002's own item) | `ci/symbols.py` rc 0 — 219 Kotlin files, **0 unresolved** |
+
+**Declared scopes, reported separately:** LIGHT Archive **14** findings; Mesh/Oracle **40** findings.
+
+**Not claimed, and why:** **T78 convergence is NOT claimed** — its requirement is that all applicable **hosted** lanes be
+enabled, executed and green at this SHA, and **no hosted lane, run URL, run id or log exists here**; the repository-side
+half is complete and the missing half is stated rather than papered over. **No finding is `VERIFIED_FIXED`** (only an
+independent audit may write that): live counts are **27 FIX_SUBMITTED, 5 PARTIAL, 22 OPEN**. Readiness flags stay
+**false** and the five external gates stay **OPEN**. **Closure evidence is stale for 31 findings** whose card files
+changed after the audited SHA — a *floor* on any later closure, not a clearance.
