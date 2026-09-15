@@ -38,6 +38,34 @@ class PreservationError(RuntimeError):
     """Raised when a preservation or verification step cannot be trusted."""
 
 
+#: Reviewed additions to the ORIGINAL checkout made by other parties after the T01
+#: baseline was captured. GS-CTRL-002: the inventory must be EXPLICIT and CORRECT
+#: without weakening the comparison -- the live tree must equal the saved baseline
+#: PLUS exactly these declared additions, line for line.
+DECLARATIONS_PATH = os.path.join(
+    os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))),
+    'docs', 'production-readiness', 'ORIGINAL_CHECKOUT_ADDITIONS.json')
+
+
+def load_declared_additions(path: str = '') -> list[dict]:
+    """The reviewed external additions, or an empty list when none is declared."""
+    path = path or DECLARATIONS_PATH
+    if not os.path.isfile(path):
+        return []
+    with open(path, encoding='utf-8') as stream:
+        document = json.load(stream)
+    additions = []
+    for entry in document.get('additions', []):
+        if not entry.get('path') or 'entries' not in entry:
+            raise PreservationError(f'declaration entry incomplete: {entry!r}')
+        additions.append(dict(entry))
+    return additions
+
+
+def _declared_prefixes(additions: list[dict]) -> tuple[str, ...]:
+    return tuple(entry['path'].rstrip('/') + '/' for entry in additions)
+
+
 def sha256_file(path: str) -> str:
     digest = hashlib.sha256()
     with open(path, 'rb') as stream:
@@ -91,8 +119,13 @@ def atomic_write_json(path: str, payload: object) -> None:
     os.replace(tmp, path)
 
 
-def build_inventory(root: str) -> dict:
-    """Collect the BaselineInventory structure from a live checkout."""
+def build_inventory(root: str, additions: list[dict] | None = None) -> dict:
+    """Collect the BaselineInventory structure from a live checkout.
+
+    Declared external additions are EXCLUDED from the copied work-in-progress (they
+    are not builder work), and their live entry counts are MEASURED and recorded so
+    that verification can require the exact arithmetic.
+    """
     root = os.path.abspath(root)
     head = _git(root, ['rev-parse', 'HEAD']).strip()
     parent = _git(root, ['rev-parse', 'HEAD^']).strip()
@@ -101,6 +134,10 @@ def build_inventory(root: str) -> dict:
         _git(root, ['diff', '--name-only', 'HEAD']).splitlines())
     untracked = sorted(
         _git(root, ['ls-files', '--others', '--exclude-standard']).splitlines())
+    additions = load_declared_additions() if additions is None else additions
+    prefixes = _declared_prefixes(additions)
+    untracked = [path for path in untracked
+                 if not path.replace(os.sep, '/').startswith(prefixes)]
     ignored_all = sorted(
         _git(root, ['ls-files', '--others', '--ignored',
                    '--exclude-standard']).splitlines())
@@ -111,6 +148,24 @@ def build_inventory(root: str) -> dict:
         raise PreservationError('git diff --binary HEAD failed')
     patch_hash = hashlib.sha256(patch_proc.stdout).hexdigest()
     status = _git(root, ['status', '--porcelain=v1', '--untracked-files=all'])
+    declared: list[dict] = []
+    for entry in additions:
+        prefix = entry['path'].rstrip('/') + '/'
+        lines = [line for line in status.splitlines()
+                 if line[3:].startswith(prefix) or line[3:].strip() == entry['path'].rstrip('/')]
+        declared.append({
+            'path': entry['path'],
+            'kind': entry.get('kind'),
+            'entries': len(lines),
+            'declared_entries': entry['entries'],
+            'read_only': entry.get('read_only', True),
+            'copied_into_evidence': False,
+            'added_by': entry.get('added_by'),
+            'provenance': entry.get('provenance'),
+            'disclosed_by': entry.get('disclosed_by', []),
+            'measured_matches_declaration': len(lines) == entry['entries'],
+            'status_codes': sorted({line[:2] for line in lines}),
+        })
 
     def file_entries(paths: list[str], extra: dict | None = None) -> list[dict]:
         entries = []
@@ -133,6 +188,9 @@ def build_inventory(root: str) -> dict:
         'branch': branch,
         'tracked_patch_hash': patch_hash,
         'porcelain_entries': len(status.splitlines()),
+        'porcelain_baseline_entries': len(status.splitlines())
+                                     - sum(entry['entries'] for entry in declared),
+        'declared_additions': declared,
         'tracked_wip_files': file_entries(modified),
         'untracked_files': file_entries(untracked),
         'ignored_fixture_files': file_entries(
@@ -145,8 +203,14 @@ def capture_raw_probes(root: str, evidence_dir: str) -> None:
     """Persist the raw command probes named by the T01 command list."""
     raw = os.path.join(evidence_dir, 'raw')
     os.makedirs(raw, exist_ok=True)
+    # GS-CTRL-002: the baseline is IMMUTABLE. A capture that would overwrite an
+    # existing status-before.txt is written BESIDE it instead, so the original
+    # baseline keepeth its force for ever.
+    status_name = 'status-before.txt'
+    if os.path.isfile(os.path.join(evidence_dir, 'raw', status_name)):
+        status_name = 'status-recaptured.txt'
     probes = {
-        'status-before.txt': ['status', '--porcelain=v1', '--untracked-files=all'],
+        status_name: ['status', '--porcelain=v1', '--untracked-files=all'],
         'head.txt': ['rev-parse', 'HEAD'],
         'parent.txt': ['rev-parse', 'HEAD^'],
         'head-fuller.txt': ['show', '--no-patch', '--format=fuller', 'HEAD'],
@@ -208,12 +272,36 @@ def verify_preservation(root: str, evidence_dir: str, inventory: dict) -> list[s
     elif sha256_file(patch) != inventory['tracked_patch_hash']:
         failures.append('tracked patch hash drift')
     live = _git(root, ['status', '--porcelain=v1', '--untracked-files=all'])
+    additions = inventory.get('declared_additions')
+    if additions is None:
+        additions = [{'path': entry['path'], 'declared_entries': entry['entries']}
+                     for entry in load_declared_additions()]
+    stripped: list[str] = []
+    for entry in additions:
+        prefix = entry['path'].rstrip('/') + '/'
+        matched = [line for line in live.splitlines()
+                   if line[3:].startswith(prefix)
+                   or line[3:].strip() == entry['path'].rstrip('/')]
+        expected = entry.get('declared_entries', entry.get('entries'))
+        if not os.path.exists(os.path.join(root, entry['path'])):
+            failures.append(f'declared addition absent: {entry["path"]}')
+        if len(matched) != expected:
+            failures.append(
+                f'declared addition drifted: {entry["path"]} nameth {expected} entries, '
+                f'the live tree carrieth {len(matched)} -- the declaration is a MEASURED '
+                f'fact, not a blanket exemption')
+        stripped.extend(matched)
     saved = os.path.join(evidence_dir, 'raw', 'status-before.txt')
     if os.path.isfile(saved):
         with open(saved, encoding='utf-8') as stream:
             baseline = stream.read()
-        if live != baseline:
-            failures.append('original checkout status changed during preservation')
+        remainder = [line for line in live.splitlines() if line not in stripped]
+        if remainder != baseline.splitlines():
+            failures.append(
+                'original checkout status changed during preservation: the live tree '
+                'minus the declared additions must equal the saved baseline line for line '
+                f'(live-minus-declared={len(remainder)}, baseline='
+                f'{len(baseline.splitlines())})')
     return failures
 
 

@@ -90,8 +90,30 @@ class InventoryFactsTest(ReadinessTestCase):
         self.assertEqual(self.inventory['head'], live_head)
         self.assertEqual(self.inventory['parent'], live_parent)
         self.assertEqual(self.inventory['branch'], live_branch)
+        # GS-CTRL-002: the comparison is made EXPLICIT rather than relaxed. The live
+        # tree must equal the saved baseline PLUS exactly the reviewed additions that
+        # ORIGINAL_CHECKOUT_ADDITIONS.json declareth, and each declared addition's
+        # count must be MEASURED live, not assumed.
         self.assertEqual(self.inventory['porcelain_entries'],
                         len(porcelain.splitlines()))
+        declared = self.inventory.get('declared_additions', [])
+        self.assertEqual(
+            self.inventory['porcelain_entries'],
+            self.inventory['porcelain_baseline_entries']
+            + sum(entry['entries'] for entry in declared),
+            msg='the live inventory must be the baseline PLUS the declared additions')
+        for entry in declared:
+            prefix = entry['path'].rstrip('/') + '/'
+            live = [line for line in porcelain.decode('utf-8').splitlines()
+                    if line[3:].startswith(prefix)]
+            self.assertEqual(entry['entries'], len(live),
+                             msg='declared addition %s drifted' % entry['path'])
+            self.assertTrue(entry['measured_matches_declaration'],
+                            msg='declared addition %s was not measured' % entry['path'])
+            self.assertTrue(entry['read_only'],
+                            msg='a declared addition must be read-only')
+            self.assertFalse(entry['copied_into_evidence'],
+                            msg='an external addition is NOT builder work-in-progress')
 
     def test_inventory_counts_are_positive(self):
         self.assertGreater(len(self.inventory['tracked_wip_files']), 0)
@@ -199,18 +221,73 @@ class OriginalPreservationTest(ReadinessTestCase):
     """The whole run must leave the original working tree untouched."""
 
     def test_original_status_unchanged(self):
+        """The immutable baseline, PLUS exactly the declared additions, and nothing
+        else. GS-CTRL-002: every undeclared difference still fails."""
         saved_path = os.path.join(EVIDENCE, 'raw', 'status-before.txt')
         with open(saved_path, encoding='utf-8') as stream:
             saved = stream.read()
         live = git(REPO, ['status', '--porcelain=v1', '--untracked-files=all'],
                   capture_bytes_out=True).decode('utf-8')
-        self.assertPathsEqual(live, saved,
-                              msg='original checkout was modified by the run')
+        declared = load_inventory().get('declared_additions', [])
+        stripped_paths = []
+        for entry in declared:
+            prefix = entry['path'].rstrip('/') + '/'
+            matched = [line for line in live.splitlines()
+                       if line[3:].startswith(prefix)]
+            self.assertEqual(entry['entries'], len(matched),
+                             msg='declared addition %s drifted' % entry['path'])
+            stripped_paths.extend(matched)
+        remainder = [line for line in live.splitlines() if line not in stripped_paths]
+        self.assertPathsEqual('\n'.join(remainder), saved.rstrip('\n'),
+                              msg='original checkout was modified by the run beyond the '
+                                  'declared additions')
 
     def test_verify_reports_no_failures_on_intact_copy(self):
         inventory = load_inventory()
         failures = preserve.verify_preservation(REPO, EVIDENCE, inventory)
         self.assertEmpty(failures)
+
+    def test_undeclared_addition_is_still_refused(self):
+        """THE NEGATIVE CONTROL: the declaration must not have weakened anything. An
+        undeclared new path in the original checkout, or a declared addition whose
+        count drifteth, must FAIL verification."""
+        inventory = load_inventory()
+        # (a) a declared addition whose live count no longer matches its declaration
+        tampered = json.loads(json.dumps(inventory))
+        for entry in tampered.get('declared_additions', []):
+            entry['declared_entries'] = entry['entries'] + 1
+        failures = preserve.verify_preservation(REPO, EVIDENCE, tampered)
+        self.assertNotEmpty([f for f in failures if 'drifted' in f],
+                            msg='a drifted declaration must be refused')
+        # (b) an UNDECLARED path present in the live tree
+        with tempfile.TemporaryDirectory() as tmp:
+            root = os.path.join(tmp, 'checkout')
+            os.makedirs(root)
+            subprocess.run(['git', 'init', '-q'], cwd=root, check=True)
+            subprocess.run(['git', 'commit', '-q', '--allow-empty', '-m', 'baseline'],
+                           cwd=root, check=True)
+            evidence = os.path.join(tmp, 'evidence')
+            os.makedirs(os.path.join(evidence, 'raw'))
+            baseline = subprocess.run(
+                ['git', 'status', '--porcelain=v1', '--untracked-files=all'],
+                cwd=root, capture_output=True, text=True, check=True).stdout
+            with open(os.path.join(evidence, 'raw', 'status-before.txt'), 'w',
+                      encoding='utf-8') as stream:
+                stream.write(baseline)
+            # the fixture carrieth its OWN patch copy, so the control's first arm
+            # (a clean checkout must PASS) is not defeated by an unrelated missing file
+            patch = os.path.join(evidence, 'tracked-patch.bin')
+            with open(patch, 'wb') as stream:
+                stream.write(b'fixture patch')
+            probe = {'untracked_files': [], 'ignored_fixture_files': [],
+                     'tracked_patch_hash': preserve.sha256_file(patch),
+                     'declared_additions': []}
+            # a clean checkout first: the control must PASS before it can fail
+            self.assertEmpty(preserve.verify_preservation(root, evidence, probe))
+            open(os.path.join(root, 'undeclared-intruder.txt'), 'w').close()
+            failures = preserve.verify_preservation(root, evidence, probe)
+            self.assertNotEmpty([f for f in failures if 'status changed' in f],
+                                msg='an undeclared path must still fail verification')
 
 
 class FixtureClassificationTest(ReadinessTestCase):
