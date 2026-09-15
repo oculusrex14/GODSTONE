@@ -48,7 +48,18 @@ Rounds 105-115 were spent on the warm Kotlin lane. `ANDROID-05` (wave 4c.2, HIGH
 the live frontier; these are its remaining pieces, and they are NOT interchangeable:
 
 **1. T18 — mid-record failure must terminate the REAL relation (ANDROID-05-B / ANDROID-06), the largest
-piece and the one an auditor will look for.** SOURCE_CONFIRMED: `BleTransport.sendThrough` (1089-1100)
+piece and the one an auditor will look for.** ITS STEP 3 IS ALREADY LOCATED AND BOUNDED, so start there:
+`BleTransport.kt:1254` and `:1266` build the two whole-record writers with
+`RelationKey(BleDirection.OUTBOUND|INBOUND, address, 0L)` -- A FABRICATED GENERATION ZERO, so every
+writer lieth about which relation it speaketh for. `BleConnection` carrieth NO generation, so it must be
+PLUMBED: the factories `centralWriterFor` / `serverWriterFor` need the captured generation, and their
+five call sites are `:1018`, `:1032`, `:1414`, `:1431`, `:1482`. THE GENERATIONS ALREADY EXIST in the
+transport -- `inboundJobGenerations[address]` (set by `handleInboundClientAdmitted`, :665),
+`action.generation` on the outbound intent road (:358/:369/:376), and
+`captureRelationForTest?.relationGeneration` -- they are simply not attached to the connection. Pass the
+generation each call site ACTUALLY has; never a fabricated zero, and never a lookup of the newest
+relation for the address (the supplement forbiddeth it). A red needs no new seam: assert the writer's
+relation key carrieth the generation the relation was admitted with. SOURCE_CONFIRMED: `BleTransport.sendThrough` (1089-1100)
 invokes `writer.failed`, removes an address-keyed writer and calls `markDisconnected` -- it does NOT
 invoke the driver terminal/action path, physically close the connection, unpublish the relation or
 destroy its trusted session; `RecordWriter.failed` (343-354) clears only its own staging, and writer
