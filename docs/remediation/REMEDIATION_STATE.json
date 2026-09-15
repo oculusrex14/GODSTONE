@@ -4567,7 +4567,7 @@
   }
  ],
  "evidence_audit": {
-  "round": 97,
+  "round": 98,
   "what": "round 97: the AUDIT-004 limb of GS-CTRL-001 landed; the auditor's own 10-case probe suite was rerun at the repaired SHA (8 failures -> 5) and its three GS-CTRL-001 probes now pass.",
   "verified": 96,
   "defects_found_and_what_happened": [
@@ -4589,6 +4589,19 @@
    "t77": "selftest rc 0, rehearsal 12/12 agreed, court rc 0, git status EMPTY before and after",
    "ledger_evidence_recheck": "157 log and red-case references resolved on disk, 0 digest defects",
    "this_is_not_t78": "T78 final convergence requireth every applicable HOSTED job enabled, executed and green at one clean exact SHA; no hosted lane existeth in this environment, so T78 has NOT run and no readiness flag moved."
+  },
+  "round98_candidate_verification": {
+   "candidate_sha": "c18253ad85ec8224b4d278459b192a5d258b5299",
+   "candidate_tree_sha": "b71818ec4d1d6c4013828efd8453227388a52859",
+   "record": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/REMEDIATION/ROUND98/verification.json",
+   "auditor_probe_suite": "2 failures / 8 passes (was 8/2 at ae9905e and at the audit's own pin 33be0b0b): the three GS-CTRL-001 probes and both GS-GATE-001 probes and the GS-CONTENT-003 regression now pass",
+   "canonical_readiness_suite": "498 tests, OK; runner selftest 10 checks OK",
+   "validate_state": "rc 0, 0 problems, 8 notes",
+   "symbol_resolver": "rc 0, 213 Kotlin files, 0 unresolved",
+   "release_gate_checker": "rc 0; the evidence battery grew from 11 to 15 refusals; every mandatory lane still mandatory",
+   "canonical_content_suite": "71 cases, 13 failures, 10 errors -- STILL RED (was 69/14/10), root cause NAMED: the fixtures omit the provenance metadata GS-CONTENT-001 made mandatory, so old positives fail too early",
+   "t77": "selftest rc 0, rehearsal rc 0 (12/12), git status EMPTY before and after",
+   "this_is_not_t78": "T78 final convergence requireth every applicable HOSTED job enabled, executed and green at one clean exact SHA; no hosted lane existeth here, so T78 has NOT run and no readiness flag moved."
   }
  }
 }
