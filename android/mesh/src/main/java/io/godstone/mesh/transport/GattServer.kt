@@ -167,7 +167,17 @@ class BleGattServer(
             // it exactly and treats a foreign or already terminal slot as an
             // idempotent no-op.
             val driver = orchestrationDriver
-            val action = driver?.let { it.onClientDisconnected(address, it.getClientGeneration(address)) }
+            // GS-CTRL-002 / BL96: the generation WE recorded at admission is the one this facade may
+            // name; asking the driver for its CURRENT generation would make the match unfailable and
+            // would let a disconnect belonging to a REPLACED registration retire its successor. When
+            // no generation was recorded, the platform's own vocabulary is used -- an ADDRESS -- and
+            // the driver retireth the relation it owneth (the unspecified-generation law).
+            val recordedGen = peerGenerations[address]
+            val action = if (recordedGen == null || recordedGen == 0L) {
+                orchestrationDriver?.onClientDisconnected(address)
+            } else {
+                driver?.onClientDisconnected(address, recordedGen)
+            }
             if (action is BleServerAction.TearDownPhysicalChannel) {
                 val retiredGen = action.generation
                 peerGenerations.remove(address)

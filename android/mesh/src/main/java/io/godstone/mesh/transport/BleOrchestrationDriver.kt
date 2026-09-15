@@ -607,7 +607,7 @@ class BleServerOrchestrationDriver(
         BleServerAction.AdmitConnection(deviceAddress, gen)
     }
 
-    fun onClientDisconnected(deviceAddress: String, expectedGen: Long): BleServerAction = synchronized(lock) {
+    fun onClientDisconnected(deviceAddress: String, expectedGen: Long = 0L): BleServerAction = synchronized(lock) {
         // T12: the event names the exact registration it terminates. A
         // terminal slot (IDLE or QUARANTINED) makes the event idempotent;
         // a foreign generation is refused and changes nothing.
@@ -619,7 +619,13 @@ class BleServerOrchestrationDriver(
             return BleServerAction.NoOp
         }
         val gen = slot.generation
-        if (gen != expectedGen) {
+        // GS-CTRL-002 / BL96: 0L IS THE SENTINEL FOR "THE CALLER KNOWETH NOT THE GENERATION IT
+        // TERMINATETH" -- the platform's disconnect carrieth an ADDRESS, not a registration. The
+        // slot's OWN generation is then retired, and ONLY that one: any other value must match
+        // EXACTLY, so a disconnect that nameth ANOTHER relation remaineth a no-op and the audited
+        // hole (a terminal that never arriveth because nothing matched) is closed without letting a
+        // stale event retire a successor.
+        if (expectedGen != 0L && gen != expectedGen) {
             return BleServerAction.NoOp
         }
         admittedDevices.remove(deviceAddress)

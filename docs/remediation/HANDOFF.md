@@ -46,7 +46,37 @@ already carried. The audit's step 3 stays OPEN, with its two measured obstacles 
 | CRYPTO-003 | FIX_SUBMITTED | 4b | Destroyed retained controllers and primitive sessions st |
 | CRYPTO-006 | FIX_SUBMITTED | 4b | Duplicate journal admission is treated as success for a |
 
-## DO THIS FIRST (round 170) — THE SPELLING DECISION IS TAKEN **ARM BY ARM**, ON A WRITTEN CRITERION: BL42 AND BL93 CLEARED, BL96 REFUSED
+## DO THIS FIRST (round 171) — BL96 TAKEN AS A FINDING: A TERMINAL THAT NEVER ARRIVED IS NOW TERMINAL (21 ARMS → 18)
+
+Round 170 refused BL96 as a spelling and named it a finding. This round **confirmed the defect by reading**:
+`onClientDisconnected(deviceAddress, expectedGen)` refused every value that was not the slot's own, and the GattServer
+helped by asking the driver for **its own current generation** — a round-trip whose match could **never fail**. Two
+audited consequences: (i) the platform's disconnect carries an **address**, not a registration, so a caller holding no
+generation had **no way to make the terminal arrive**; and (ii) because the match could not fail, a disconnect
+belonging to a **replaced** registration would retire its **successor** — CRYPTO-001's own sentence.
+
+**A third kind of RED, and it compiles:** the arm calls `onClientDisconnected(peer, 0L)` **explicitly** — legal
+against the audited signature — and asserts the sentinel retires the slot's own relation. The audited driver answers
+`NoOp`, so it failed at `BleLinkSubstrateTest.kt:2818` on the unmodified tree, captured with argv, source SHA and
+digest. (Not a compile failure like the issuance repair, not a missing name like the control arms, but a **legal call
+whose answer is the defect**.)
+
+**The repair** — one coherent change with its real caller: the driver gains `expectedGen: Long = 0L` with the law at
+the guard (`if (expectedGen != 0L && gen != expectedGen) return NoOp`), so the sentinel retires the slot's **own**
+generation and **only** that one (T12's exact-match law preserved for every other value); and the GattServer now
+forwards **the generation it recorded at admission**, falling back to the generation-less form only when it recorded
+none.
+
+**Acceptance:** whole `:mesh` lane **1175 tests, 0 failures, 0 errors** (1174 + the new witness) — including every
+T12/T14 terminal court. **Control 21 → 18**: BL96's two arms **and BL118's** forwarding arm, since the same edit
+carries the generation-less forwarding form in a **real branch** rather than as decoration — the distinction this
+criterion exists to enforce.
+
+**REMAINING: 18 arms** — BL11, BL52, BL81, BL126, BL128 (×11), BL131, BL132. **BL128's eleven messages are the next
+read**, because "must take `sourceEpoch`" and "must validate `sourceEpoch == currentTransportEpoch`" are **different
+claims** and the methods already take the parameter.
+
+## DO THIS FIRST (round 170, landed) — THE SPELLING DECISION IS TAKEN **ARM BY ARM**
 
 The earlier framing (align ~23 spellings vs rewrite the instrument) was replaced by a **per-arm judgement**, because
 the arms are not uniform. **The criterion:** an arm may be closed by aligning the code to the contract's spelling

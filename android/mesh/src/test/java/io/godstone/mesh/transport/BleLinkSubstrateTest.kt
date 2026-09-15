@@ -2789,6 +2789,43 @@ class BleLinkSubstrateTest {
     }
 
     @Test
+    fun testServerLifecycle_UnspecifiedGenerationRetiresTheSlotsOwnRelation() {
+        // GS-CTRL-002 / BL96 witness. Generation 0 is the sentinel for "the caller knoweth not the
+        // generation it is terminating" -- the platform's disconnect carrieth an ADDRESS, not a
+        // registration. The audited driver refuseth ANY value that is not the slot's own generation
+        // (`if (gen != expectedGen) return NoOp`), so such a disconnect is SILENTLY IGNORED and the
+        // relation stayeth ACTIVE for ever: a terminal that never arriveth. The unspecified form must
+        // retire the slot's OWN generation -- and ONLY that one, so a foreign value stayeth a no-op.
+        val authority = BleGlobalCapacityAuthority(maxTotalPeers = 7)
+        val localHint = byteArrayOf(0x01, 0x00, 0x00, 0x00)
+        val serverDriver = BleServerOrchestrationDriver(
+            localHint = localHint,
+            localLinkInfoProvider = { ByteArray(13) },
+            globalCapacity = authority
+        )
+        val peer = "11:22:33:44:55:98"
+        serverDriver.startNewServerEpoch()
+        serverDriver.onServiceAdded(1, true)
+        serverDriver.onClientConnected(peer, 1)
+        assertEquals(ServerPeerSlotState.ACTIVE, serverDriver.getPeerSlotState(peer))
+
+        // A FOREIGN generation remaineth a no-op: naming another relation may not retire this one.
+        assertTrue(serverDriver.onClientDisconnected(peer, 9L) is BleServerAction.NoOp)
+        assertEquals(ServerPeerSlotState.ACTIVE, serverDriver.getPeerSlotState(peer))
+
+        // The UNSPECIFIED generation (0) must retire the slot's OWN relation.
+        val action = serverDriver.onClientDisconnected(peer, 0L)
+        assertTrue(
+            "an UNSPECIFIED-generation disconnect was SILENTLY IGNORED: the platform nameth an " +
+                "address, not a registration, so the terminal never arriveth and the relation " +
+                "stayeth ACTIVE for ever. Got " + action,
+            action is BleServerAction.TearDownPhysicalChannel)
+        assertEquals(1L, (action as BleServerAction.TearDownPhysicalChannel).generation)
+        assertEquals(ServerPeerSlotState.QUARANTINED, serverDriver.getPeerSlotState(peer))
+        assertEquals(0, serverDriver.getAdmittedCount())
+    }
+
+    @Test
     fun testServerLinkInfo_SameHintDifferentFlagsRejected() {
         val authority = BleGlobalCapacityAuthority(maxTotalPeers = 7)
         val localHint = byteArrayOf(0x02, 0x00, 0x00, 0x00)
