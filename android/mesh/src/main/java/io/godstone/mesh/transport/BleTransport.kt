@@ -1602,15 +1602,33 @@ class BleTransport(
     internal fun lastCapturedPeerForTest(): TrustedPeer? = lastCapturedPeer
 
     private fun captureTrustedPeerLocked(conn: BleConnection) {
-        val pub = sessions?.authenticatedIdentityPubOf(conn.peerId) ?: return
-        if (pub.size != 32) return
+        // ANDROID-03 (round 228): WHY A CAPTURE DID NOT HAPPEN IS RECORDED, not left to inference. A silent capture
+        // is the exact shape that cost rounds 207-209 on the android isle's sweep, and an instrument is cheaper than
+        // a hypothesis.
+        val manager = sessions
+        if (manager == null) {
+            recordRejection(conn.peerId, "t24.capture", "no session manager on this transport")
+            return
+        }
+        val pub = manager.authenticatedIdentityPubOf(conn.peerId)
+        if (pub == null) {
+            recordRejection(conn.peerId, "t24.capture", "the authenticated identity public key is not answerable")
+            return
+        }
+        if (pub.size != 32) {
+            recordRejection(conn.peerId, "t24.capture", "the authenticated key is not thirty-two octets")
+            return
+        }
         // THE RELATION IS THE CONNECTION'S OWN: it carrieth the provider the driver installed, so no direction or
         // address is invented here -- and if the provider is not yet installed, NOTHING is captured rather than a
         // relation guessed.
         // THE PROVIDER'S DEFAULT IS AN UNCLAIMED RELATION, so an unclaimed one is SKIPPED rather than captured: a
         // peer that speaketh for no relation must not be published as if it did.
         val relation = conn.relationKeyProvider()
-        if (relation.generation <= 0L) return
+        if (relation.generation <= 0L) {
+            recordRejection(conn.peerId, "t24.capture", "the relation is unclaimed")
+            return
+        }
         lastCapturedPeer = TrustedPeer.capture(relation, pub, relation.generation)
     }
 
