@@ -2054,30 +2054,65 @@
     "tools/readiness/tests/test_audit_content_publication.py (new canonical court)",
     "every reader of the sidecar: read_sidecar keepeth its old signature and gaineth the optional archive argument"
    ],
-   "my_fix_commit": "bd28128",
+   "my_fix_commit": "bd28128 + 1a31f47 (AUDIT-004 limb: the journal gains a CONSUMER; read_sidecar deriveth the archive and resolveth before reading)",
    "my_logs": [
     {
      "outcome": "5 tests, OK: both probes, the reader's refusal, the positive control, and the protocol's properties",
      "sha256": "48dd7f652d705b7718b83d68c659a30d81723bd1a80a2e63ef0dccd5870f99f9",
      "what": "the court green (5/5)",
      "log": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/REMEDIATION/GS-CONTENT-002/green/publication-pair-court.log"
+    },
+    {
+     "log": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/REMEDIATION/GS-CONTENT-002/green/publication-court-GREEN-20260915T162416Z.log",
+     "sha256": "36a5fd491fadc61372172845a919e1489a51e2d1b7a2777ae2ac0e6af9eabdd5",
+     "outcome": "8 tests, 0 failures -- W01-W08 including the real-process-exit arm and its control",
+     "what": "the canonical publication court after the repair"
+    },
+    {
+     "log": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/REMEDIATION/GS-CONTENT-002/green/audit004-independent-probes-GREEN-20260915T162416Z.log",
+     "sha256": "9837a0de247acd193cb1d88cae5fdcabae69009b426396db3b9cba77c4799d48",
+     "outcome": "10 cases: **10 PASS, 0 FAIL** -- THE AUDITOR'S ENTIRE INDEPENDENT SUITE IS GREEN (it was 8 failures / 2 passes at ae9905e and at the audit's own pin 33be0b0b)",
+     "what": "THE AUDITOR'S OWN independent probe suite at the repaired SHA 1a31f47, in a detached worktree"
+    },
+    {
+     "log": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/REMEDIATION/GS-CONTENT-002/green/content-suite-GREEN-20260915T162416Z.log",
+     "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+     "outcome": "75 tests, OK",
+     "what": "the canonical content suite"
+    },
+    {
+     "log": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/REMEDIATION/GS-CONTENT-002/green/readiness-suite-GREEN-20260915T162416Z.log",
+     "sha256": "a12b7cb43c9d9134b5bb1b35e9096b66775d9e92e7611d1cc92b02edd6782a87",
+     "outcome": "501 tests, OK",
+     "what": "the canonical readiness suite"
     }
    ],
    "my_red_case": {
-    "argv": "python3 -m unittest discover -s tools/readiness/tests -p test_audit_content_publication.py -v (disposable copy, pre-repair order restored)",
-    "case": "tests/test_audit_content_publication.py -- the audit's two probes, assertions intact",
+    "argv": [
+     "python3 -m unittest discover -s tools/readiness/tests -p test_audit_content_publication.py -v (disposable copy, pre-repair order restored)",
+     "python3 -m unittest tools.readiness.tests.test_audit_content_publication -v"
+    ],
+    "case": "tests/test_audit_content_publication.py -- the audit's two probes, assertions intact PLUS (AUDIT-004 steps 1-3) the audit's REAL-PROCESS-EXIT schedule adopted assertion-intact: W06 a subprocess that calleth os._exit(87) at the receipt-write boundary (no handler can run), after which the PUBLIC reader is called with NO archive argument and must not hand back the stale receipt; W08 the reader deriveth the archive from the receipt's own canonical name; W07 the POSITIVE CONTROL (an undisturbed build still publishes a readable pair) green on the untouched product.",
     "cwd": "/Users/oculus/Projects/GODSTONE_BUILDER",
-    "log": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/REMEDIATION/GS-CONTENT-002/red/publication-pair-RED.log",
-    "log_sha256": "fed5bdc07dbff358dbf786b77d5de46d2ec3ba5580193b6efb2845be2c33235c",
-    "outcome": "3 failures: the receipt failure replaced the database, the interleaved build mismatched the pair, and no interprocess protocol existed"
+    "log": [
+     "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/REMEDIATION/GS-CONTENT-002/red/publication-pair-RED.log",
+     "GS-CONTENT-002/red/audit004-process-death-RED-20260915T162212Z.log"
+    ],
+    "log_sha256": [
+     "fed5bdc07dbff358dbf786b77d5de46d2ec3ba5580193b6efb2845be2c33235c",
+     "dbcad61146e0e65415dce8337086cab4f5a2dfa1fc7e418f5205716819245db0"
+    ],
+    "outcome": "3 failures: the receipt failure replaced the database, the interleaved build mismatched the pair, and no interprocess protocol existed  ||  AUDIT-004 limb: 8 tests, 2 FAILURES before the repair (W06/W08), each on its OWN assertion."
    },
    "my_status": "FIX_SUBMITTED",
-   "notes": "FIX_SUBMITTED. The three named defects are repaired (the destination re-read, the separate publication of database and receipt, and thread-only serialization), the reader refuseth a mismatched pair, and the journal restores the previous pair on failure. The generation-pointer design of the card's step 3 is named as PENDING rather than claimed. Only an independent audit may write VERIFIED_FIXED.",
+   "notes": "FIX_SUBMITTED. The three named defects are repaired (the destination re-read, the separate publication of database and receipt, and thread-only serialization), the reader refuseth a mismatched pair, and the journal restores the previous pair on failure. The generation-pointer design of the card's step 3 is named as PENDING rather than claimed. Only an independent audit may write VERIFIED_FIXED. ROUND 100 (AUDIT-004 limb, 1a31f47): the audit killed a build with a REAL os._exit(87) at the receipt boundary and then called the public reader with no archive argument -- and got the OLD receipt beside the NEW database. The journal written since the first submission had NEVER BEEN CONSUMED. `recover_publication` is now that consumer, called by the reader and by every new writer; `read_sidecar` deriveth the archive from the receipt's own canonical name; the version is judged BEFORE the bytes; and recovery NEVER deletes (an incomplete retained generation is reported as unavailable). The direction is asymmetric because a `published` journal means BOTH files were written, so an inconsistent pair there is tampering: the first form of the function rolled back a `published` journal and DELETED a file, and W03/W08 caught it before commit. THE AUDITOR'S ENTIRE TEN-CASE SUITE NOW PASSES -- 8 failures repaired, one per round, from 2/10 at the audit's own pin.",
    "pending_proof": [
-    "INDEPENDENT VERIFICATION: only an independent audit may mark this VERIFIED_FIXED",
-    "the card's step 3 names an IMMUTABLE GENERATION DIRECTORY plus ONE atomically replaced POINTER; this repair implementeth the card's permitted alternative (step 4: a journaled publication protocol with backups and explicit recovery states) because the public fixed paths cannot migrate in one step. The generation-pointer migration remains PENDING and is the stronger design",
-    "the interprocess lock is proven by construction (fcntl.flock + the court's source assertions) but NOT by a genuine two-PROCESS race; the interleaving witness drives two builds in ONE process (as the audit's own probe does)",
-    "no hosted run URL/log was available, so hosted convergence remains pending"
+    "INDEPENDENT VERIFICATION: only an independent audit may mark this VERIFIED_FIXED. THE AUDITOR'S OWN SUITE IS GREEN AT THIS SHA -- and it is STILL the audit that must close the finding; a probe suite that was written before this repair is NOT a closure.",
+    "AUDIT-004 step 5 is OWED: two REAL PROCESSES with controlled barriers killed at EACH transition (prepared / promoted / committed), with reader overlap, a FAILED rollback and orphan cleanup. This limb proveth ONE transition (the receipt boundary) through ONE real process.",
+    "AUDIT-004 step 2's STRONGER design -- an immutable complete generation plus ONE atomically replaced current pointer -- is NOT implemented: the public fixed paths cannot migrate to it in one step, so the journaled alternative was completed instead.",
+    "A SECOND PAIR-OF-RENAMES STILL EXISTS: scripts/prepare_release_assets.py replaceth its archive and its approved manifest INDEPENDENTLY, so the audit's 'one publication owner shared by build and operator staging' is not yet satisfied.",
+    "the fsync order the audit named is only partly addressed: the backups and the journal are not FULLY fsynced before the destructive promotion, and `_fsync_directory` swalloweth its failures.",
+    "the hosted lane: no hosted run URL, run id or hosted log existeth, so hosted convergence remaineth PENDING."
    ],
    "proof": "REPRODUCED: injecting disk-full at write_sidecar replaces old DB before throwing; old sidecar survives. Deterministically scheduling build B at A.after_publish produces a final sidecar containing A corpus_sha256 with B archive_sha256. At b439, faulting only the APPROVED_ASSETS.json os.replace leaves the new archive with the previous approved manifest. T51 improved the earlier rmtree/copy behavior: current copy-failure preservation probe passes, so the old directory deletion finding is not asserted as current.",
    "remediation_report": "evidence/AUDIT-002/content/FINDINGS.md",

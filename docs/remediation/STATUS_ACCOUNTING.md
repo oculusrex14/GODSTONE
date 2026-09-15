@@ -35,6 +35,14 @@ now PASS** (it was 2 of 10 at the audit's own pin and at ae9905e). Six of the ei
 failures are repaired, one per round. The two that remain are `GS-CONTENT-001`'s forged-digest
 staging and `GS-CONTENT-002`'s process-death mixed pair.
 
+AT ROUND 100 (`1a31f47`) THE AUDITOR'S OWN TEN-CASE SUITE WENT FULLY GREEN: **10 pass, 0 fail**,
+where the audit's pin was 8 failures and 2 passes. All eight reproduced failures are repaired, one
+finding-limb per round, across rounds 97-100 (GS-CTRL-001's three evidence bypasses, GS-GATE-001's
+two gate bypasses, GS-CONTENT-003's regression, GS-CONTENT-001's zero-coverage staging, and
+GS-CONTENT-002's process-death mixed pair). THIS IS NOT A CLOSURE: the suite was written before the
+repairs, only an independent audit may write `VERIFIED_FIXED`, and the depth each finding still owes
+is stated per finding in the ledger.
+
 AT ROUND 99 (`b5d6a4b`) the canonical CONTENT suite's long red is CLOSED: it was 69 cases with 14
 assertion failures and 10 errors at the audit, 71/13/10 after round 98, and **75 cases, OK** now. The
 repair was two-sided and neither side was a relaxation: the staging face refuseth a ZERO, an ABSENT

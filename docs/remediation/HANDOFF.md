@@ -51,8 +51,9 @@ detached worktree (never in the live tree) with `AUDIT_SOURCE_ROOT` naming that 
 `/Users/oculus/Projects/GODSTONE_AUDIT/evidence/AUDIT-002/content/venv/bin/python`. It needs its
 `schema_version` fixture, which v2 carrieth; there is NO `-v` flag, and passing one errors.
 
-    ROUND 99 MEASURED IT AT b5d6a4b: **1 failure / 9 passes**. The audit's own pin was 8 failures /
-    2 passes, and ae9905e was also 8/2. NINE of its ten cases now behave correctly:
+    ROUND 100 MEASURED IT AT 1a31f47: **10 PASS, 0 FAIL — THE ENTIRE SUITE IS GREEN.** The audit's
+    own pin was 8 failures / 2 passes, and ae9905e was also 8/2. ALL EIGHT reproduced failures are
+    repaired, one finding-limb per round:
       | probe | finding | state |
       |---|---|---|
       | the three `EvidenceTests` | GS-CTRL-001 | PASS (round 97) |
@@ -60,8 +61,19 @@ detached worktree (never in the live tree) with `AUDIT_SOURCE_ROOT` naming that 
       | `test_expression_disabled_ci_job_is_rejected` | GS-GATE-001 | PASS (round 98) |
       | `test_operator_heldout_validation_reaches_valid_verifier` | GS-CONTENT-003 | PASS (round 98) |
       | `test_forged_approval_digest_and_zero_coverage_cannot_stage` | GS-CONTENT-001 | PASS (round 99) |
-      | `test_process_death_cannot_expose_mixed_archive_and_receipt` | GS-CONTENT-002 | **FAIL** |
-    THE ONE THAT REMAINS is the next round's work, and it is the hardest of the ten:
+      | `test_process_death_cannot_expose_mixed_archive_and_receipt` | GS-CONTENT-002 | PASS (round 100) |
+    **A GREEN PROBE SUITE IS NOT A CLOSED FINDING** — it is a suite written BEFORE the repairs, and
+    only an independent audit may write `VERIFIED_FIXED`. THE DEPTH STILL OWED ON GS-CONTENT-002:
+    two REAL processes with controlled barriers killed at EACH transition (prepared / promoted /
+    committed), reader overlap, a FAILED rollback, orphan cleanup; ONE publication owner shared by
+    build and operator staging (`scripts/prepare_release_assets.py` still replaces archive and
+    approved manifest INDEPENDENTLY); full fsync of backups and journal BEFORE the destructive
+    promotion (`_fsync_directory` still swalloweth failures); and the stronger generation-pointer
+    design the card preferreth.
+
+## THE FORMER "ONE THAT REMAINS" — KEPT FOR THE RECORD, NOW REPAIRED
+
+    The text that stood here said:
       * `GS-CONTENT-002` — a real `os._exit(87)` between DB and receipt replacement leaveth a MIXED
         pair (an accepted receipt hash describing the OLD database beside the NEW one). The repair
         requireth journal RECOVERY: a durable staged pair and a durable previous pair, explicit
