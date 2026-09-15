@@ -3742,6 +3742,7 @@ public final class BleTransport: NSObject, @unchecked Sendable {
             unlockTransport()
             return .rejectStaleUnsubscribe(centralId)
         }
+        publishTrustedLoss(centralId)
         activeInboundLifetimes.removeValue(forKey: centralId)
         cancelTimerLocked(matching: key)
         inboundPeripheralConnections.removeValue(forKey: centralId)?.markDisconnected()
@@ -3794,6 +3795,7 @@ public final class BleTransport: NSObject, @unchecked Sendable {
         let effectiveGen = (generation != 0) ? generation : currentGen
         driver.onInboundTimeout(centralId: centralId, expectedGen: effectiveGen)
         lockTransport()
+        publishTrustedLoss(centralId)
         activeInboundLifetimes.removeValue(forKey: centralId)
         inboundPeripheralConnections.removeValue(forKey: centralId)?.markDisconnected()
         subscribedCentrals.removeValue(forKey: centralId)
