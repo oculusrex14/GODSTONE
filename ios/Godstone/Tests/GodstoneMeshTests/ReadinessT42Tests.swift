@@ -665,3 +665,48 @@ final class ReadinessT42Tests: XCTestCase {
         XCTAssertTrue(heldIds(w.a).isEmpty)
     }
 }
+
+
+// MARK: - GS-SYNC-002 (iOS twin): a control reply belongeth to its own peer alone
+//
+// Declared in a SAME-FILE EXTENSION on purpose: the arm is inside the court (Swift's `private` is
+// file-scoped for extensions of the same type) without hunting for the class's closing brace -- an
+// anchor that has already misplaced an arm twice in this work.
+
+extension ReadinessT42Tests {
+
+    /// The audit's charge on this isle: "A control reply for one peer is drained by another peer."
+    ///
+    /// ISOLATING BY CONSTRUCTION: the same experiment run twice -- once with only R linked, once with B
+    /// linked too and B's turn taken FIRST. The drain also carries the pump's own frames, so the arm
+    /// asserts the DIFFERENCE between the two runs, which is exactly the answer raised for R.
+    func testW23AControlReplyBelongethToItsOwnPeerAlone() throws {
+        func pingFromR(_ w: World) throws {
+            let ping = try ControlPayloadV1.ping(reply: 0, nonce: 42)
+            let frame = try ControlPayloadV1.frameFor(arm: .ping,
+                msgId: Data((0..<16).map { UInt8(($0 + 5) % 256) }),
+                routingTag: Data(repeating: 0, count: 4), payload: ping.encode())
+            XCTAssertTrue(w.a.node.handleControlFrame(frame, fromPeer: w.r.id),
+                          "R's ping must be answered by A")
+        }
+
+        // CONTROL RUN: only R is linked, so R takes its own answer.
+        let control = try world()
+        control.linkUp(control.a, control.r)
+        try pingFromR(control)
+        let direct = control.a.node.drainSyncFrames(for: control.r.id)
+
+        // THE EXPERIMENT: B is linked too and draineth FIRST.
+        let raced = try world()
+        raced.linkUp(raced.a, raced.r)
+        raced.linkUp(raced.a, raced.b)
+        try pingFromR(raced)
+        _ = raced.a.node.drainSyncFrames(for: raced.b.id)
+        let afterB = raced.a.node.drainSyncFrames(for: raced.r.id)
+
+        XCTAssertEqual(
+            direct.count, afterB.count,
+            "B's turn must NOT consume the answer raised for R: R must receive the same frames either way "
+            + "(control=\(direct.count), after B's turn=\(afterB.count))")
+    }
+}

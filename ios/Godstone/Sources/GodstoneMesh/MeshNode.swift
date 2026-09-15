@@ -136,7 +136,7 @@ public final class MeshNode {
     /// pump addeth the schedule and the epidemic forward copies. ONE call, so no
     /// caller has to remember two sources.
     internal func drainSyncFrames(for nodeId: Data) -> [FrameV2] {
-        var out = drainControlOutbox()
+        var out = drainControlOutbox(for: nodeId)
         out.append(contentsOf: pumpFor().turn(peer: nodeId).frames)
         return out
     }
@@ -179,24 +179,41 @@ public final class MeshNode {
     /// The owner's last decision -- the observation face of the courts.
     internal var lastControlDecision: SyncControlOwner.OwnerDecision = .accepted
 
-    private var controlOutbox: [FrameV2] = []
+    /// GS-SYNC-002: a control reply with the DESTINATION it belongs to. The outbox used to hold BARE
+    /// frames, so an answer raised for one relation was handed to whichever peer asked first -- the
+    /// requesting peer went unanswered and two reconciliation runs were mixed.
+    private struct ControlReply {
+        let destination: Data
+        let frame: FrameV2
+    }
+
+    private var controlOutbox: [ControlReply] = []
     private let controlOutboxLock = NSLock()
 
     /// Bounded at 64; drop-oldest, the freshest truth wins the slot (the house outbox idiom).
-    private func offerControlFrames(_ frames: [FrameV2]) {
+    private func offerControlFrames(_ frames: [FrameV2], destination: Data) {
         controlOutboxLock.lock(); defer { controlOutboxLock.unlock() }
         for f in frames {
             if controlOutbox.count >= 64 { controlOutbox.removeFirst() }
-            controlOutbox.append(f)
+            controlOutbox.append(ControlReply(destination: destination, frame: f))
         }
     }
 
     /// Drain the bounded control outbox (T41's pump takes the route from here).
     internal func drainControlOutbox() -> [FrameV2] {
         controlOutboxLock.lock(); defer { controlOutboxLock.unlock() }
-        let out = controlOutbox
+        let out = controlOutbox.map { $0.frame }
         controlOutbox.removeAll()
         return out
+    }
+
+    /// GS-SYNC-002: drain ONLY the replies that belong to `peer`; every other live peer's answer is
+    /// PRESERVED. Ownership is by destination, so one peer's turn can never consume another's answer.
+    private func drainControlOutbox(for peer: Data) -> [FrameV2] {
+        controlOutboxLock.lock(); defer { controlOutboxLock.unlock() }
+        let mine = controlOutbox.filter { $0.destination == peer }
+        if !mine.isEmpty { controlOutbox.removeAll { $0.destination == peer } }
+        return mine.map { $0.frame }
     }
 
     /// One ingress control frame: the owner decides; any answer rides back out.
@@ -207,7 +224,7 @@ public final class MeshNode {
         guard case .control(let decision, let accepted) = verdict else { return false }
         lastControlDecision = decision
         let replies = frameDispatcher.replies(decision)
-        if !replies.isEmpty { offerControlFrames(replies) }
+        if !replies.isEmpty { offerControlFrames(replies, destination: fromPeer) }
         return accepted
     }
 
@@ -746,7 +763,7 @@ public final class MeshNode {
         case .control(let decision, let accepted):
             lastControlDecision = decision
             let replies = frameDispatcher.replies(decision)
-            if !replies.isEmpty { offerControlFrames(replies) }
+            if !replies.isEmpty { offerControlFrames(replies, destination: receivedFrom) }
             return accepted
         case .ack(let dispatch):
             return dispatch.accepted
