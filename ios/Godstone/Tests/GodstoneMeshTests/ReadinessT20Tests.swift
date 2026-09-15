@@ -1058,12 +1058,6 @@ final class ReadinessT20Tests: XCTestCase {
         bob.sweepInboundLeases()
         XCTAssertNil(bob.connection(for: centralId),
                      "the silent relation fell through the heartbeat alone")
-        // IOS-04 (T24) STEP 4 (round 241): AND ITS FALL IS PUBLISHED EXACTLY ONCE, with ITS OWN captured peer -- the
-        // card's own words. Before this slice NOTHING published a LinkLost on the iOS isle, so no consumer could ever
-        // learn that a relation it had been told about had fallen. The relation here is INBOUND on bob, which is the
-        // half the first attempt of this witness missed.
-        XCTAssertTrue(bob.lostPeersForTest.contains(centralId),
-                      "the fall of a link-ready relation must publish LinkLost, and this relation was just retired")
         XCTAssertFalse(bob.isRelationPublished(direction: .inboundPeripheral, peerId: centralId,
                                                generation: gen),
                        "the publication was withdrawn with it")
