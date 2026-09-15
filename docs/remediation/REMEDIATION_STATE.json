@@ -5619,10 +5619,29 @@
    },
    "impact": "The new `PeerGovernor.swift` has no construction or method call anywhere in canonical production Sources. The real ingress still reaches session open / handshake trust directly (`BleTransport.swift:1990–2000`, 2084, 3061–3084, and responder ingress around 3960 onward). The class implements an authenticated priority bucket only, while the original T27 design specifically requires charging before expensive parsing/trust/DH and again after AEAD by authenticated identity. Standalone vector parity cannot prove budget enforcement at the adapter. Deliver a repeated valid-link handshake or DATA flood through CoreBluetooth delegate inputs. The new governor is never invoked, so it can neither limit pre-authentication expensive work nor bound authenticated ingest on that path. Existing connection/reassembly capacity bounds do not substitute for those rate budgets.",
    "invalidated_dependents": [],
-   "my_fix_commit": null,
-   "my_logs": [],
-   "my_red_case": null,
-   "my_status": "OPEN",
+   "my_fix_commit": "(ledger round 194) `PeerGovernor.swift`: a lock-HELD `mutableTrustLocked(_:)` beside the locking `mutableTrust(_:)`, and `reward`/`penalise` now hold `registryLock` for the WHOLE mutation (defer-unlock), so the trust record's update is serialised",
+   "my_logs": [
+    {
+     "log": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/REMEDIATION/IOS-05/red-round194/red.log",
+     "sha256": "4ef6251aad2dab8a04033fd45d287339d26ea722f2ca580946d7468bc4bce7f2",
+     "what": "IOS-05 / T27 step 5's canonical RED (ledger round 194), run before the edit",
+     "outcome": "Ran 3 tests, FAILED (failures=2): the mutators mutate shared reference fields outside the lock, and no lock-held lookup exists"
+    },
+    {
+     "log": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/REMEDIATION/IOS-05/green-round194/green.log",
+     "sha256": "90fe2c19d5a5fac02526b113d631b1e30a5c3f016d5340b13dbd5a391e2189d2",
+     "what": "the canonical arm (moved into the canonical suite with the repair) plus the WHOLE iOS lane, twice: without and WITH the T27 behavioural control",
+     "outcome": "the arm OK; the lane **1199 tests, 0 failures (0 unexpected)** (1198 + the deterministic-score control), and the first run at 1198/0 showed the serialisation broke no existing court"
+    }
+   ],
+   "my_red_case": {
+    "case": "tools/readiness/tests/test_ios_governor_serialisation.py::test_the_trust_mutations_happen_under_the_registry_lock and test_the_locked_lookup_does_not_re_enter_the_non_recursive_lock -- the card's own step 5, which nameth the defect and its lines ('reward/penalise currently mutate shared reference fields after releasing registryLock (150-174)').",
+    "cwd": "the repository root",
+    "log": "IOS-05/red-round194/red.log",
+    "log_sha256": "4ef6251aad2dab8a04033fd45d287339d26ea722f2ca580946d7468bc4bce7f2",
+    "outcome": "Ran 3 tests, **FAILED (failures=2)** on the UNMODIFIED tree -- the W00 positive control PASSED and both serialisation arms failed: `reward`/`penalise` mutate the shared Trust reference's fields WITHOUT holding `registryLock`, and no lock-HELD lookup existeth (so a naive fix would DEADLOCK on the non-recursive NSLock)"
+   },
+   "my_status": "PARTIAL",
    "notes": "ENRICHED AT ROUND 104 by TRANSCRIPTION from the audit's own card (ios/findings.md#IOS-05): impact, remediation_steps, source_refs and closure_tests are the card's OWN words and its OWN file references, not a summary; the refs are relative to the audited snapshot. No status changed and nothing was claimed fixed.",
    "pending_proof": [],
    "proof": null,
@@ -5649,7 +5668,10 @@
     "T27"
    ],
    "title": "traffic governor unwired at actual ingress",
-   "wave": "4f.2"
+   "wave": "4f.2",
+   "pending_work": [
+    "ROUND 194 (IOS-05 / T27: STEP 5 LANDS -- THE TRUST RECORD'S MUTATIONS ARE SERIALISED -- AND STEPS 1-4, THE ACTUAL INGRESS WIRING, ARE NAMED AS WHAT REMAINS). (1) THE DEFECT, READ FROM THE CODE AND NOTFROM THE CARD: `mutableTrust(_:)` taketh `registryLock`, readeth the `Trust` REFERENCE and RELEASETH the lock; `reward` and `penalise` then mutate that shared reference's fields (`score`, `strikes`, `refuseUntilMillis`) with NO lock held. Two concurrent callers therefore race on one record, and a lost `strikes` increment or a lost `refuseUntilMillis` extension is a TRUST DECISION LOST -- unnameable afterwards. (2) THE RED IS CANONICAL AND IT NAMES THE DEADLOCK TRAP: `tools/readiness/tests/test_ios_governor_serialisation.py` (three arms) was written and RUN FIRST in the probes directory -- `Ran 3 tests, FAILED (failures=2)` with the W00 positive control passing -- and its third arm asserteth that the repair provideth a LOCK-HELD lookup, because `registryLock` is an `NSLock` and NOT a recursive one: calling the locking `mutableTrust` while already holding the lock would DEADLOCK rather than fix anything. THAT ARM IS WHY THE REPAIR WAS WRITTEN ONCE INSTEAD OF TWICE. (3) THE REPAIR: `mutableTrustLocked(_:)` carrieth the allocation law with the lock ASSUMED HELD; `mutableTrust(_:)` becometh the locking wrapper around it (one implementation, two entry points, no duplication); and `reward`/`penalise` take `registryLock` with `defer { unlock }` so the WHOLE update is serialised. (4) THE BEHAVIOURAL CONTROL SHIPPED WITH IT, IN THE ISLE'S OWN T27 COURT: `ReadinessT27Tests.testGSSerialisedTrustMutationsGiveADeterministicScore` asserteth that three penalties of 0.2 from full trust are EXACTLY 0.4 -- the determinism the serialisation restoreth -- and it is stated as a POSITIVE CONTROL because the RED was the source-level arm (a race cannot be proven deterministically without a seam the repair doth not add). (5) ACCEPTANCE: the canonical arm OK; the WHOLE iOS lane at **1199 tests, 0 failures (0 unexpected)** (1198 + the control), with the first run at 1198/0 showing the change broke no existing court. (6) WHAT REMAINS ON IOS-05, NAMED SO THAT STEP 5 IS NOT MISTAKEN FOR THE WHOLE CARD: steps 1-4 -- ONE governor configuration and the bounded global/pre-auth buckets under the runtime owner with an INJECTED MONOTONIC clock; the charge of the cheap global/connection budget BEFORE allocating/parsing/DH/trust work (the peer is UNAUTHENTICATED there, and its hint may never be treated as an identity); the charge of the authenticated identity/priority budget AFTER AEAD and BEFORE application decode/store/router delivery, with the outcome BOUND; and the separation of local abuse penalties from DURABLE trust (a bucket exhausted may never revoke an identity). THE ANDROID ISLE CARRIETH ALL OF THESE (rounds 186-193) and is therefore the shape to mirror; the finding stayeth **PARTIAL** until they land, and only an independent audit may write VERIFIED_FIXED."
+   ]
   },
   "IOS-06": {
    "audit_status_at_snapshot": "OPEN",

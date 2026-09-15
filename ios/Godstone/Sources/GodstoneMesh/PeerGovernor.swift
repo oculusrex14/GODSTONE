@@ -87,12 +87,22 @@ public final class PeerGovernor: @unchecked Sendable {
     /// The trust record for [k], allocating it only if global admission permits.
     private func mutableTrust(_ k: String) -> Trust? {
         registryLock.lock()
-        if let t = trust[k] { registryLock.unlock(); return t }
-        if trackedCount >= maxTrackedPeers { registryLock.unlock(); return nil }
+        defer { registryLock.unlock() }
+        return mutableTrustLocked(k)
+    }
+
+    /// IOS-05 / T27 (step 5): THE LOCK-HELD LOOKUP. `reward`/`penalise` mutate a SHARED REFERENCE's
+    /// fields, so they must HOLD `registryLock` for the whole mutation -- and the lock is an `NSLock`,
+    /// NOT a recursive one, so they cannot call [mutableTrust] (which taketh the lock itself) while
+    /// holding it: they call THIS instead. The audited form released the lock inside `mutableTrust` and
+    /// then mutated outside it, so two concurrent callers raced on one record and a lost `strikes`
+    /// increment or a lost `refuseUntilMillis` extension was unnameable afterwards.
+    private func mutableTrustLocked(_ k: String) -> Trust? {
+        if let t = trust[k] { return t }
+        if trackedCount >= maxTrackedPeers { return nil }
         let t = Trust()
         trust[k] = t
         trackedCount += 1
-        registryLock.unlock()
         return t
     }
 
@@ -150,7 +160,11 @@ public final class PeerGovernor: @unchecked Sendable {
 
     /// Well-formed, useful traffic slowly restores trust.
     public func reward(_ authenticatedNodeId: Data) {
-        guard let t = mutableTrust(keyOf(authenticatedNodeId)) else { return }
+        let k = keyOf(authenticatedNodeId)
+        // IOS-05 / T27 step 5: THE MUTATION IS SERIALISED -- the lock is held for the WHOLE update.
+        registryLock.lock()
+        defer { registryLock.unlock() }
+        guard let t = mutableTrustLocked(k) else { return }
         t.score = min(1.0, t.score + 0.01)
         if t.score > 0.5 { t.strikes = 0 }
     }
@@ -160,7 +174,12 @@ public final class PeerGovernor: @unchecked Sendable {
     /// transient fault cannot permanently partition an honest neighbour. The window
     /// only ever EXTENDS.
     public func penalise(_ authenticatedNodeId: Data, amount: Double = 0.2) {
-        guard let t = mutableTrust(keyOf(authenticatedNodeId)) else { return }
+        let k = keyOf(authenticatedNodeId)
+        // IOS-05 / T27 step 5: the same serialisation for the backoff law's own record: a lost
+        // `strikes` increment or a lost `refuseUntilMillis` extension is a trust decision lost.
+        registryLock.lock()
+        defer { registryLock.unlock() }
+        guard let t = mutableTrustLocked(k) else { return }
         t.score -= amount
         if t.score <= 0.25 {
             t.strikes = min(t.strikes + 1, PeerGovernor.maxStrikes)

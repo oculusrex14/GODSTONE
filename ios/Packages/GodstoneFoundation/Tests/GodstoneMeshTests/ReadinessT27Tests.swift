@@ -169,4 +169,31 @@ final class ReadinessT27Tests: XCTestCase {
         XCTAssertEqual(xs, 10, "distinct authenticated id with a 1-byte hint keeps its own BULK budget")
         XCTAssertEqual(ys, 10, "distinct authenticated id with a nil hint keeps its OWN separate BULK budget")
     }
+
+    /// IOS-05 / T27 (step 5): THE SERIALISED ORDER GIVETH A DETERMINISTIC SCORE.
+    ///
+    /// The card's fifth step serialiseth `reward`/`penalise`, which previously mutated a SHARED Trust
+    /// reference AFTER `mutableTrust` had released `registryLock`. This witness is the POSITIVE CONTROL
+    /// of that repair: with the lock held for the whole mutation the arithmetic is observable exactly --
+    /// and it shipped WITH the repair, because the behavioural proof of a serialisation is the
+    /// determinism it restoreth (the RED was the source-level arm in
+    /// `tools/readiness/tests/test_ios_governor_serialisation.py`, run before the edit).
+    func testGSSerialisedTrustMutationsGiveADeterministicScore() {
+        let clock: () -> Int64 = { 1_700_000_000_000 }
+        let g = PeerGovernor(nowMillis: clock, maxTrackedPeers: 8)
+        let id = Data(repeating: 0x5A, count: 16)
+
+        XCTAssertTrue(g.allowInbound(id, priority: .direct), "the first frame allocateth the record")
+        XCTAssertEqual(1.0, g.trustOf(id), accuracy: 0.0001, "a fresh identity beginneth at full trust")
+
+        g.reward(id)
+        XCTAssertEqual(1.0, g.trustOf(id), accuracy: 0.0001, "reward is capped at full trust")
+
+        g.penalise(id, amount: 0.2)
+        g.penalise(id, amount: 0.2)
+        g.penalise(id, amount: 0.2)
+        XCTAssertEqual(0.4, g.trustOf(id), accuracy: 0.0001,
+                       "three penalties of 0.2 from full trust are EXACTLY 0.4 when the mutations are serialised")
+    }
+
 }

@@ -116,3 +116,11 @@ from the live session (the Noise remote static is the peer's STATIC DH key, and 
 key), and that the identity lives in the VALIDATED BINDING the controller consumed without retaining it. Round 193
 added the retention, and the witness — keyed on the CONNECTION's `peerId`, a correction the diagnosis itself produced
 — now asserts the identity is the peer's OWN sixteen-octet NodeID, after trust and never before.
+
+## Python probe — `python/test_ios_governor_serialisation.py` (IOS-05 / T27 step 5): LANDED (round 194)
+
+Written and **run RED first** in this directory (`Ran 3 tests, FAILED (failures=2)`, W00 control passing) and then
+**MOVED INTO `tools/readiness/tests/`** with the repair, as this directory's rule requires. It judged the iOS
+`PeerGovernor`: `reward`/`penalise` mutated a **shared `Trust` reference** after `mutableTrust` had released
+`registryLock` — and its third arm asserted the repair must add a **lock-held** lookup, because the lock is an `NSLock`
+(not recursive) and a naive fix would **deadlock**. That arm is why the repair was written once instead of twice.

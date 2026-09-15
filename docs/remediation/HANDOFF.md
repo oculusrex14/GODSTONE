@@ -46,7 +46,38 @@ already carried. The audit's step 3 stays OPEN, with its two measured obstacles 
 | CRYPTO-003 | FIX_SUBMITTED | 4b | Destroyed retained controllers and primitive sessions st |
 | CRYPTO-006 | FIX_SUBMITTED | 4b | Duplicate journal admission is treated as success for a |
 
-## DO THIS FIRST (round 193) — ANDROID-07 / T26 STEP 2 COMPLETE: THE IMMUTABLE FULL NODE ID IS **RETAINED**, READ, CHARGED — AND WITNESSED
+## DO THIS FIRST (round 194) — IOS-05 / T27: STEP 5 LANDS (THE TRUST MUTATIONS ARE SERIALISED); STEPS 1–4 ARE THE REMAINING CARD
+
+**The defect, read from the code and not from the card:** `mutableTrust(_:)` takes `registryLock`, reads the `Trust`
+**reference** and **releases** the lock; `reward` and `penalise` then mutate that shared reference's fields (`score`,
+`strikes`, `refuseUntilMillis`) with **no lock held**. Two concurrent callers race on one record, and a lost `strikes`
+increment or a lost `refuseUntilMillis` extension is a **trust decision lost** — unnameable afterwards.
+
+**The RED is canonical and it names the deadlock trap:** `tools/readiness/tests/test_ios_governor_serialisation.py`
+(three arms) was written and **run first in the probes directory** — `Ran 3 tests, FAILED (failures=2)` with the W00
+positive control passing — and its third arm asserts the repair must provide a **lock-held** lookup, because
+`registryLock` is an `NSLock` and **not recursive**: calling the locking `mutableTrust` while holding the lock would
+**deadlock** rather than fix anything. **That arm is why the repair was written once instead of twice.**
+
+**The repair:** `mutableTrustLocked(_:)` carries the allocation law with the lock **assumed held**; `mutableTrust(_:)`
+becomes the locking wrapper around it (one implementation, two entry points); and `reward`/`penalise` take the lock with
+`defer { unlock }`, so the **whole** update is serialised.
+
+**The behavioural control shipped with it**, in the isle's own T27 court: three penalties of 0.2 from full trust are
+**exactly 0.4** — the determinism the serialisation restored. It is stated as a **positive control**, because the RED was
+the source-level arm (a race cannot be proven deterministically without a seam the repair does not add).
+
+**Acceptance:** the canonical arm **OK**; whole iOS lane **1199 tests, 0 failures** (1198 + the control), with the first
+run at 1198/0 showing the change broke no existing court.
+
+**What remains on IOS-05 — steps 1–4 of the card:** one governor configuration with the bounded global/pre-auth buckets
+under the runtime owner and an **injected monotonic clock**; the charge of the cheap global/connection budget **before**
+allocating/parsing/DH/trust work (the peer is unauthenticated there and its hint may never be treated as an identity); the
+charge of the authenticated identity/priority budget **after AEAD and before** application decode/store/router delivery,
+with the outcome **bound**; and the separation of local abuse penalties from **durable** trust. **The Android isle already
+carries all of these (rounds 186–193) and is the shape to mirror.** IOS-05 stays **PARTIAL**.
+
+## DO THIS FIRST (round 193, landed) — ANDROID-07 / T26 STEP 2 COMPLETE
 
 **The repair is a retention, exactly as the round-192 diagnosis prescribed:** `TrustedHandshakeController` carries
 `retainedNodeId` and **sets it at both trust sites** (immediately before `applyValidatedBinding` in each direction),
