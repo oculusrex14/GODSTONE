@@ -1585,6 +1585,19 @@ class BleTransport(
     @Volatile
     private var lastCapturedPeer: TrustedPeer? = null
 
+    /**
+     * ANDROID-03 (T24) slice (c): THE OWNED EVENT CONDUIT. The channel is BOUNDED and the publisher OBSERVETH every
+     * offer's verdict -- a refused offer (a full bounded buffer) is NOT swallowed and doth NOT mark the relation
+     * published, which is the contract FOUR courts already witness. The capacity is the courts' own (64).
+     */
+    private val peerEventChannel = ReliablePeerEventChannel(capacity = 64)
+    private val peerEvents = PeerEventPublisher(peerEventChannel)
+
+    /** A consumer's ear upon the trusted publication -- the seam a real consumer useth. */
+    internal fun addTrustedPeerSink(sink: (LinkEvent) -> Unit) = peerEvents.addSink(sink)
+
+    internal fun removeTrustedPeerSink(sink: (LinkEvent) -> Unit) = peerEvents.removeSink(sink)
+
     /** Observation for courts: the peer captured at the last sealed round, if any. */
     internal fun lastCapturedPeerForTest(): TrustedPeer? = lastCapturedPeer
 
@@ -1707,6 +1720,15 @@ class BleTransport(
             // generation -- the only monotonic trust epoch this isle carrieth at the transport -- and the capture is
             // kept where a later event may carry it and a court may judge it.
             captureTrustedPeerLocked(conn)
+            // ANDROID-03 (T24) slice (c): THE CAPTURED PEER TRAVELETH ON THE EVENT. The offer's verdict is OBSERVED,
+            // never discarded: a refused offer (the bounded buffer full) is recorded in the transport's own census
+            // and leaveth the relation UNpublished, so a later attempt may retry -- the contract the T24 courts hold.
+            lastCapturedPeer?.let { captured ->
+                val verdict = peerEvents.publishLinkReady(captured)
+                if (verdict != OfferVerdict.Accepted) {
+                    recordRejection(conn.peerId, "t24.linkready", "the bounded conduit refused the offer")
+                }
+            }
             publishApplicationLinkReadyOnce(conn.peerId)
         } else {
             recordDispatchViolation(conn.peerId, "hs.confirm", HandshakeDispatchViolation.FORGED_OR_STALE_ECHO)
