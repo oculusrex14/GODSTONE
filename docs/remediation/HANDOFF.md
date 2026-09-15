@@ -46,7 +46,37 @@ already carried. The audit's step 3 stays OPEN, with its two measured obstacles 
 | CRYPTO-003 | FIX_SUBMITTED | 4b | Destroyed retained controllers and primitive sessions st |
 | CRYPTO-006 | FIX_SUBMITTED | 4b | Duplicate journal admission is treated as success for a |
 
-## DO THIS FIRST (round 190) — ANDROID-07 / T26 STEP 4 CLOSES THE CODE SIDE: EXACT COUNTERS, AND WITNESSES DIVIDED HONESTLY
+## DO THIS FIRST (round 193) — ANDROID-07 / T26 STEP 2 COMPLETE: THE IMMUTABLE FULL NODE ID IS **RETAINED**, READ, CHARGED — AND WITNESSED
+
+**The repair is a retention, exactly as the round-192 diagnosis prescribed:** `TrustedHandshakeController` carries
+`retainedNodeId` and **sets it at both trust sites** (immediately before `applyValidatedBinding` in each direction),
+with a copy-on-read getter and a clearing in `destroy()`. `SessionManager.authenticatedNodeIdOf(peerId)` **reads** it
+under the peer lock — **no derivation from the remote static key**, which round 192 *proved* to be the peer's **static
+DH key** and therefore a different identity. The collector's authenticated charge prefers it, falling back to the
+six-octet handle only when trust was never marked, and that fallback is stated in the code rather than relied upon.
+
+**The witness moved home from the parked probe**, and the probe file was **deleted with the repair** (this repository's
+own rule). It lives now in `ReadinessT17Test` — the court whose rig owns the **real** trusted handshake — asserting:
+null before trust, and after `completeTrust()` an identity of **sixteen octets equal to the peer's own NodeID**. Its
+key is the **connection's** `peerId` — the diagnosis's own correction, since the registry is keyed by what the
+transport really passes and *not* by the air-address handle (`no-slot` named the mistake rather than a guess).
+
+**Acceptance:** whole `:mesh` lane **1187 tests, 0 failures, 0 errors** (1186 + the witness). **Three measurements now
+stand together as a chain of evidence:** round 191 (the accessor answers null when derived from the live session),
+round 192 (the chain diagnosed link by link — the DH key is *not* the identity, the validated binding *is*), round 193
+(the retention, with the witness proving the identity is the peer's own).
+
+**ANDROID-07's four card steps are now all carried on the code side:** (1) the pre-auth global/relation budget at all
+three raw doors; (2) the post-AEAD charge on the immutable full NodeID, before the payload leaves; (3) the specified
+256 bound and monotonic production clock; (4) ingress witnesses plus exact downstream counters. The finding stays
+**FIX_SUBMITTED**: only an independent audit may write `VERIFIED_FIXED`.
+
+**My own error this round, recorded:** the first patch script assumed the code after `applyValidatedBinding` was an
+`if` — it is a `when`, so the script aborted and **only the first patch had landed**; the lane then reported BUILD
+SUCCESSFUL from a tree carrying a field and a getter that nothing used. **A partial green is not evidence** — the run
+took 33 s on the partial tree, and only diffing what was applied showed how much was missing.
+
+## DO THIS FIRST (round 190, landed) — ANDROID-07 / T26 STEP 4
 
 **The observation surface's own weakness, measured before replacing it:** the transport's rejection **census is a
 bounded ring of sixty-four events** (`REJECTION_RECORD_CAPACITY = 64`) with a separate overflow count, so a flood's

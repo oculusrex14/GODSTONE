@@ -91,6 +91,24 @@ internal class TrustedHandshakeController(
         get() = noiseSession.remoteStaticKey
 
     /**
+     * ANDROID-07 / T26 STEP 2: THE IMMUTABLE FULL NODE ID, **RETAINED** AT THE MOMENT TRUST IS
+     * VALIDATED -- the card's own phrase, and its own word 'full' is load-bearing.
+     *
+     * The Noise remote static key is the peer's STATIC DH key, and `IdentityBindingV1.deriveNodeId` is
+     * NOT the law for a DH key (the NodeID deriveth from the SIGNING key, BLAKE2s-128 of it), so a
+     * derivation from it would name a DIFFERENT identity. The identity the handshake really
+     * authenticated liveth in the VALIDATED BINDING (`ValidatedPeerBinding.nodeId`), which both
+     * directions already receive and previously CONSUMED WITHOUT RETAINING. It is retained now, and
+     * cleared with the controller.
+     */
+    @Volatile
+    private var retainedNodeId: ByteArray? = null
+
+    /** The retained sixteen-octet NodeID, or null while trust was never validated. A COPY, always. */
+    internal val authenticatedNodeId: ByteArray?
+        get() = retainedNodeId?.copyOf()
+
+    /**
      * Initiator step 1: write HS1 (32 bytes with empty payload).
      */
     fun initiatorWriteMessage1(): ByteArray {
@@ -132,6 +150,10 @@ internal class TrustedHandshakeController(
             return null
         }
 
+        // ANDROID-07 / T26 step 2: RETAIN the identity the handshake VALIDATED, at the moment trust
+        // is applied -- the card's 'immutable full NodeID', which is NOT derivable from the static DH
+        // key the remote static carrieth.
+        retainedNodeId = validation.binding.nodeId
         val applyResult = trustAuthority.applyValidatedBinding(validation.binding)
         return when (applyResult) {
             is PeerTrustApplyResult.Accepted,
@@ -245,6 +267,10 @@ internal class TrustedHandshakeController(
         // Transition controller to NOISE_ESTABLISHED before applying trust.
         state = HandshakeTrustState.NOISE_ESTABLISHED
 
+        // ANDROID-07 / T26 step 2: RETAIN the identity the handshake VALIDATED, at the moment trust
+        // is applied -- the card's 'immutable full NodeID', which is NOT derivable from the static DH
+        // key the remote static carrieth.
+        retainedNodeId = validation.binding.nodeId
         val applyResult = trustAuthority.applyValidatedBinding(validation.binding)
         return when (applyResult) {
             is PeerTrustApplyResult.Accepted,
@@ -300,6 +326,7 @@ internal class TrustedHandshakeController(
      * controller looks usable, and a repeated call is a no-op: nothing can move DESTROYED.
      */
     fun destroy() {
+        retainedNodeId = null
         if (state == HandshakeTrustState.DESTROYED) return
         state = HandshakeTrustState.DESTROYED
         noiseSession.destroy()

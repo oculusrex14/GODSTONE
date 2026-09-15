@@ -35,6 +35,7 @@ import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Assert.fail
 import org.junit.Test
@@ -724,4 +725,30 @@ class ReadinessT17Test {
                          139 - rig.bob.rejectionRecordCapacity, rig.bob.rejectionOverflowCountForTest())
         } finally { rig.stop() }
     }
+
+    /** ANDROID-07 / T26 (step 2): THE AUTHENTICATED IDENTITY IS THE PEER'S FULL NODE ID, AND ONLY
+     *  AFTER TRUST. Never a MAC, a hint, a station handle -- and never derived from the static DH key,
+     *  which is a DIFFERENT identity. Read through a REAL trusted handshake.
+     *
+     *  THE KEY IS THE CONNECTION'S OWN peerId: the registry is keyed by what the transport really
+     *  passeth, NOT by the air-address handle. A first draft asked with the address handle, and the
+     *  diagnostic answered `no-slot` -- which is how the mistake was NAMED rather than guessed at. */
+    @Test
+    fun testTheAuthenticatedNodeIdIsThePeersFullIdentityAndOnlyAfterTrust() {
+        val rig = rig()
+        try {
+            assertNull("before any trust there is NO authenticated identity to charge",
+                rig.pair.smA.authenticatedNodeIdOf(rig.peerIdTowardsBob()))
+            rig.completeTrust()
+            val key = rig.initiatorConnection().peerId
+            val nodeId = rig.pair.smA.authenticatedNodeIdOf(key)
+                ?: error("after a trusted handshake the authenticated identity must be answerable")
+            assertEquals("the authenticated identity is SIXTEEN octets", 16, nodeId.size)
+            assertEquals("and it IS the peer's own NodeID, not the DH key's derivative",
+                rig.pair.bob.nodeId.toList(), nodeId.toList())
+        } finally {
+            rig.stop()
+        }
+    }
+
 }

@@ -107,12 +107,12 @@ passing). The repair: a NEW `InFlightAwareTransport` capability, `LifecycleTrans
 overriding the seam's do-nothing default and delegating through `as?`, and `BleTransport` implementing it with a
 MEASURED bounded count over its own in-flight work.
 
-## Kotlin probe — `kotlin/t26-full-node-id-witness.kt.txt` (ANDROID-07 / T26 step 2's full-NodeID half)
+## Kotlin probe — ANDROID-07 / T26 step 2's full-NodeID witness: LANDED (round 193)
 
-Parked, **not** red-by-design: this witness was RUN (through `ReadinessT17Test`'s real trusted handshake) and it
-**failed on a measurement rather than on an absence** — `SessionManager.authenticatedNodeIdOf(peerId)` answers
-**null before AND after trust**, so the crypto layer does not surface the authenticated remote static key through the
-SessionManager at READY. The production edits it judged were therefore **reverted** (no red lane, no unverifiable
-claim), and the witness is kept here with its measurement and its named next step so the next attempt begins from a
-witness rather than a search. **When the crypto-layer step lands, this witness moves INTO `ReadinessT17Test`** — the
-court whose rig owns the real handshake — and this section is deleted.
+The parked witness has **MOVED INTO `ReadinessT17Test`** (the court whose rig owns the real trusted handshake), and
+the parked file was deleted with the repair. Its story is worth keeping, because the witness judged a MEASUREMENT and
+not an absence: rounds 191–192 established that `SessionManager.authenticatedNodeIdOf` could not derive the identity
+from the live session (the Noise remote static is the peer's STATIC DH key, and the NodeID derives from the SIGNING
+key), and that the identity lives in the VALIDATED BINDING the controller consumed without retaining it. Round 193
+added the retention, and the witness — keyed on the CONNECTION's `peerId`, a correction the diagnosis itself produced
+— now asserts the identity is the peer's OWN sixteen-octet NodeID, after trust and never before.

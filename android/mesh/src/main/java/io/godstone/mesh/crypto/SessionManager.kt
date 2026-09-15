@@ -158,6 +158,21 @@ class SessionManager internal constructor(
      * True IFF the peer has an active TrustedHandshakeController in HandshakeTrustState.READY
      * and the manager is not invalidated.
      */
+    /**
+     * ANDROID-07 / T26 STEP 2: THE IMMUTABLE FULL NODE ID OF A RELATION -- the sixteen octets the
+     * TRUSTED HANDSHAKE validated and the controller RETAINED. Never a value derived from the static DH
+     * key (which is a DIFFERENT identity), never a MAC, a hint or a station handle. NULL until the
+     * relation is trusted, which is what maketh the PRE-AUTH budget the right instrument for everything
+     * that arriveth earlier; and because the IDENTITY is charged rather than the handle, a peer cannot
+     * evade a budget by arriving under another handle.
+     */
+    fun authenticatedNodeIdOf(peerId: ByteArray): ByteArray? {
+        val rk = relationKey(peerId)
+        val slot = slotFor(rk) ?: return null
+        val lock = getPeerLock(rk) ?: return null
+        return lock.withLock { slot.controller?.authenticatedNodeId }
+    }
+
     fun isReady(peerId: ByteArray): Boolean {
         lifecycleRwLock.read {
             if (!isActive) return false

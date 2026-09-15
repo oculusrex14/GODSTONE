@@ -1232,7 +1232,13 @@ class BleTransport(
                             // no longer spend the transport's memory and CPU unmeasured, and the router's
                             // downstream governor (keyed on the CLAIMED sender and priority) is no longer
                             // the only authenticated-side budget.
-                            if (authenticatedAdmissionBudget.chargeAuthenticated(peerId, outcome.plaintext.size)
+                            // ANDROID-07 / T26 (step 2): the identity charged is the IMMUTABLE FULL NODE ID
+                            // the trusted handshake validated and the controller retained; the six-octet
+                            // relation handle is only the fallback for a relation whose trust was never
+                            // marked, and that fallback is stated here rather than relied upon.
+                            val chargedIdentity = sessions?.authenticatedNodeIdOf(peerId) ?: peerId
+                            if (authenticatedAdmissionBudget.chargeAuthenticated(
+                                    chargedIdentity, outcome.plaintext.size)
                                 == AdmissionBudget.Verdict.REFUSED) {
                                 recordRejection(peerId, "admission.budget.authenticated",
                                     "authenticated admission budget exhausted")
