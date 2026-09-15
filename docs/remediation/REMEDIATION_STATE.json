@@ -2861,7 +2861,7 @@
    },
    "impact": "The durable row can be CANCELLED and its held frame removed while captured local work is still being newly offered. This is distinct from already-relayed copies, which cannot be recalled.",
    "invalidated_dependents": [],
-   "my_fix_commit": "fc13b30 (android limb) + 3a807de (iOS limb)",
+   "my_fix_commit": "fc13b30 (android limb) + 3a807de (iOS limb) + 74f0331 (durable-truth half, android)",
    "my_logs": [
     {
      "log": "GS-SOS-002/green/gs-sos-002-T39.log",
@@ -2887,29 +2887,41 @@
      "log": "GS-SOS-002/green/gs-sos-002-LANES.log",
      "sha256": "a4c3e49f68a1d6c2b3d7fa4873558bbceb8a0bc7993c33b68b0382376f7d66f0",
      "what": "readiness suite OK; invariants all hold; repository VERDICT PASS; symbols 0 unresolved; iOS mirror --check rc=0; mutation selftest OK"
+    },
+    {
+     "log": "GS-SOS-002/green/gs-sos-002-durable-T39.log",
+     "sha256": "66592d452a93ca8a924ed9ab75d82de51f1e32800a0fc76a75df154498e5a98f",
+     "what": "android ReadinessT39Test after the durable check: 13 tests, 0 failures with BOTH arms passing"
+    },
+    {
+     "log": "GS-SOS-002/green/gs-sos-002-ANDROID-FULL-durable.log",
+     "sha256": "c68b14d8d0ac800f9e5ed003c4b18cb326d306f0cc58acfa7e42e2ee0691ec06",
+     "what": "whole android :mesh lane: ZERO failures"
     }
    ],
    "my_red_case": {
-    "case": "BOTH canonical T39 courts, each captured before its isle's edit, from the audit's OWN recipe: android ReadinessT39Test::testCancellationSuppressethTheLaterOffersAlreadyCaptured and ios ReadinessT39Tests::testW24CancellationSuppressethTheLaterOffersAlreadyCaptured (same-file extension). Two peers; inside the send callback on the FIRST offer the call is CANCELLED and that handoff refused; the later offer must not happen.",
+    "case": "BOTH canonical T39 courts, each captured before its isle's edit, from the audit's OWN recipe: android ReadinessT39Test::testCancellationSuppressethTheLaterOffersAlreadyCaptured and ios ReadinessT39Tests::testW24CancellationSuppressethTheLaterOffersAlreadyCaptured (same-file extension). Two peers; inside the send callback on the FIRST offer the call is CANCELLED and that handoff refused; the later offer must not happen. PLUS, from this round, android ReadinessT39Test::testCancellationCommittedOutsideTheCommandDoorSuppressethTheLaterOffer -- the durable row is retired through the TRACKER DIRECTLY (bypassing the node's command door), so only a read of durable truth can suppress the later offer.",
     "argv": "(cd android && ./gradlew :mesh:testDebugUnitTest --tests '*ReadinessT39Test*')  ;  swift test --package-path ios/Packages/GodstoneFoundation --filter ReadinessT39Tests",
     "cwd": "/Users/oculus/Projects/GODSTONE_BUILDER",
     "log": [
      "GS-SOS-002/red/gs-sos-002-RED.log",
-     "GS-SOS-002/red/gs-sos-002-IOS-RED.log"
+     "GS-SOS-002/red/gs-sos-002-IOS-RED.log",
+     "GS-SOS-002/red/gs-sos-002-durable-RED.log"
     ],
     "log_sha256": [
      "8ba112c4ad9f7356ba9487f32a5a7102d721861976ad538828c9a7d47f6c85be",
-     "a2abe3b535ee202ebedeac2df9043d64f39069560803dccdb55ab0ec8b63a003"
+     "a2abe3b535ee202ebedeac2df9043d64f39069560803dccdb55ab0ec8b63a003",
+     "15655910a8da06530da4ed9033ae07f69ed2332e41721b38a095264293507f78"
     ],
     "outcome": "RED on BOTH isles with IDENTICAL numbers and execution proven: '(offers=2) expected:<1> but was:<2>' on android and '(\"2\") is not equal to (\"1\") ... (offers=2)' on ios. The cancellation itself SUCCEEDS (asserted first), so the durable row is retired and the later offer happens anyway."
    },
    "my_status": "FIX_SUBMITTED",
-   "notes": "FIX_SUBMITTED on both isles (fc13b30 android + 3a807de iOS). The Android limb took ONE round because the previous round had written the red plan out in full; the iOS port took one more, and its one product surprise is recorded: the twin's offer loops were `currentPeers().reduce(into:)` -- a REDUCE, which cannot break -- so the repair converted them to `for` loops rather than inserting a check into an existing loop. The reds are the audit's own reproduction on both isles, with identical numbers. Placement remained structural (same-file extension on the Swift side).",
+   "notes": "FIX_SUBMITTED on both isles (fc13b30 android + 3a807de iOS). The Android limb took ONE round because the previous round had written the red plan out in full; the iOS port took one more, and its one product surprise is recorded: the twin's offer loops were `currentPeers().reduce(into:)` -- a REDUCE, which cannot break -- so the repair converted them to `for` loops rather than inserting a check into an existing loop. The reds are the audit's own reproduction on both isles, with identical numbers. Placement remained structural (same-file extension on the Swift side). ROUND 79: the audit's step-2 DURABLE half is landed on the Android isle, and the two facts that made it correct were both learned by measurement -- presence is not enough (a terminal CAS keeps the row, so the STATE must be tested) and the FIRST offer must be exempt (the DIRECT path commits its row after offering; gating it broke C6_6_1, which the full lane caught). This is the same family of lesson as the rest of the session: the assertion/edge that looks obvious is the one the repository's existing courts will refuse.",
    "pending_proof": [
-    "THE LEASE IS PROCESS-LOCAL ON BOTH ISLES, NOT DURABLE-TRUTH-OWNED, and the audit's step 2 asks for the latter: a dispatch resumed after a restart cannot consult it, and no durable terminal-row check is made between offers (a read failure on such a check must be fail-closed, never a skip).",
     "OFFER ADMISSION IS NOT SERIALIZED WITH CANCELLATION (audit step 3): the lease check narrows the window but a cancellation committing between the check and the send is still not suppressed.",
     "NO DEVICE/EMULATOR/SIMULATOR/RADIO WAS USED: both reds are host courts driving each node's own command door with a synthetic callback that cancels mid-dispatch; no peer and no radio were involved.",
-    "ALREADY-RELAYED COPIES are out of scope by the finding's own terms ('This is distinct from already-relayed copies, which cannot be recalled')."
+    "ALREADY-RELAYED COPIES are out of scope by the finding's own terms ('This is distinct from already-relayed copies, which cannot be recalled').",
+    "THE iOS TWIN STILL LACKS the durable-truth check (and its loops' first-offer semantics have not been examined on that isle), so the two isles do not yet state the same law here -- recorded rather than assumed."
    ],
    "proof": "The deterministic Android probe authors a valid signed SOS, supplies two peers, cancels successfully from the first pending send callback, returns false from that callback, and observes a second peer offer after cancellation. The expected offer count 1 is actually 2. Both peers are test outlets; this does not claim an on-device packet trace. The dispatch/retry loops retain encoded bytes across suspension and do not revalidate cancellation.",
    "remediation_report": "evidence/AUDIT-002/SOS_SYNC_MODEL_REMEDIATION.md",
@@ -2935,9 +2947,10 @@
    "title": "Cancellation does not suppress later offers already captured by the dispatch/retry loop",
    "wave": "5",
    "pending_work": [
+    "PORT THE DURABLE-TRUTH CHECK TO THE iOS TWIN: its loops carry the lease only (the reduce->for conversion), so a cancellation committed outside the node's command door is still invisible to an iOS offer loop.",
     "PORT TO THE iOS TWIN (ios/Godstone/Sources/GodstoneMesh/MeshNode.swift:466 and its own offer loops) with the same arm -- only the Android limb is repaired here.",
-    "THE LEASE IS PROCESS-LOCAL AND THE AUDIT ASKS FOR MORE: it prescribes a lease 'owned by the durable dispatch authority', so the loop must ALSO be able to reject a TERMINAL ROW read from durable truth (and a storage/read failure on that check must be FAIL-CLOSED, not a skip). Today the lease is invalidated by a successful cancellation in the same process; a dispatch resumed after a restart has no lease to consult.",
-    "THE OFFER LOOP IS NOT SERIALIZED WITH CANCELLATION ADMISSION: the lease check narrows the window but does not make admission and cancellation one serialized transition (audit step 3), so a cancellation committing between the check and the send is still not suppressed."
+    "THE OFFER LOOP IS NOT SERIALIZED WITH CANCELLATION ADMISSION: the lease check narrows the window but does not make admission and cancellation one serialized transition (audit step 3), so a cancellation committing between the check and the send is still not suppressed.",
+    "TWO THINGS THE ANDROID FIX PAID FOR, to be ported with it: (a) PRESENCE IS NOT ENOUGH -- a terminal CAS keeps the row, so the check must test the row's STATE (`!state.isTerminal`); (b) THE FIRST OFFER IS EXEMPT, because the DIRECT path commits its delivery row AFTER offering, and gating the first offer broke MeshNodeDeliveryIntegrationTest.C6_6_1."
    ]
   },
   "GS-STORE-001": {
