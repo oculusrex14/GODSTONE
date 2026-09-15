@@ -2736,8 +2736,15 @@
       },
       "impact": "Opening an older private schema still deletes held messages and delivery state. The new migration engine and its in-memory executor do not replace the actual open/upgrade methods.",
       "invalidated_dependents": [],
-      "my_fix_commit": null,
-      "my_logs": [],
+      "my_fix_commit": "PENDING",
+      "my_logs": [
+        {
+          "outcome": "the versioned road no longer droppeth durable tables in CODE; the engine binding remains",
+          "path": "GS-STORE-003/green/store-003-partial.log",
+          "sha256": "c47af25ed2de7c23ca141092ff75857fe90b37c4c256adf471e2879e9d417403",
+          "what": "W01 and W03 green; W02 red by design (the engine is not yet called)"
+        }
+      ],
       "my_red_case": {
         "argv": "swift test --package-path ios/Packages/GodstoneFoundation --filter ReadinessStore003Tests (the arm copied into the package first)",
         "case": "tools/readiness/audit_probes/swift/ReadinessStore003Tests.swift -- three source arms over the production upgrade path",
@@ -2746,13 +2753,13 @@
         "log_sha256": "a0ae99d88f0c3313d635b13f198baabc277736e6b1470adbabb4638a3216294f",
         "outcome": "ALL THREE RED on the untouched product: the versioned migration `DROP TABLE`s durable tables; `SchemaMigration` is not bound to it; and the destructive path is not named as the never-shipped pre-ship case. (W01 was SKIPPED in its first form -- it addressed the method by a name that no longer existed, and a SKIPPED arm proveth nothing; it now FAILETH on a rename instead.)"
       },
-      "my_status": "OPEN",
-      "notes": "NOT STARTED -- the targets are read and the repair is a WIRING rather than a new mechanism. Both isles DROP durable tables on the VERSIONED upgrade path (four drops each), while `SchemaMigration` (and its iOS twin) carrieth the non-destructive contract and SAYETH it is what the runtime must bind onUpgrade to. The red is the audit's own reproduction: a real row, a versioned reopen, the row GONE. Its caveat -- a synthetic older-version fixture, not a claim about every historic schema -- is recorded with it.",
+      "my_status": "PARTIAL",
+      "notes": "PARTIAL, and the part that landed is the behavioural one: the VERSIONED road on iOS no longer DROP TABLEs a durable table, so a versioned reopen keepeth the rows the store existeth to keep -- proven by W01 and W03 going green from red, and by the observation that the four drops were UNNECESSARY there (the create statements are idempotent and run unconditionally). TWO LIMITS NAMED: the engine binding (W02, still RED BY DESIGN, and the arm was STRENGTHENED rather than allowed to pass on a comment) and the Kotlin twin, which still droppeth (four drops at 1762-1765) and is untouched. The audit's synthetic-fixture caveat is carried with the owed behavioural probe.",
       "pending_proof": [],
       "pending_work": [
-        "THE TARGETS ARE NOW READ EXACTLY. THE DEFECT: the VERSIONED upgrade path DROPPETH durable tables on BOTH isles, while the migration contract that REPLACES it existeth and is not bound to the upgrade. ANDROID: `MessageStore.kt:1754 override fun onUpgrade(db, oldVersion, newVersion)` droppeth `StoreSchema.TABLE`, `DELIVERY_TABLE`, `ACK_OBLIGATION_TABLE` and `ACK_FRAME_TABLE` at lines 1762-1765 (four `DROP TABLE IF EXISTS`). iOS: `MessageStore.swift:1401-1404` executeth the same four drops through `execStrict`. THE ALREADY-BUILT REPLACEMENT: `android/mesh/src/main/java/io/godstone/mesh/store/SchemaMigration.kt` (its iOS twin `Sources/GodstoneMesh/SchemaMigration.swift`) state th its own law in its header -- \"It REPLACES the destructive drop-and-recreate on the VERSIONED upgrade path (the sealed MessageStore.onUpgrade drop path stays for the never-shipped pre-ship case ... the engine is what the runtime binds onUpgrade to once installs must survive)\". SO THE REPAIR IS A WIRING, not a new mechanism: bind onUpgrade (both isles) to the migration engine, and keep the destructive path ONLY for the never-shipped pre-ship case it was written for -- with a witness that a persisted row SURVIVES an actual versioned upgrade.",
-        "THE RED, as the audit itself reproduced it: \"The Swift acceptance probe persists a real row, closes the store, sets user_version=1 while retaining compatible DDL, and reopens. The held row disappears.\" Write that as the arm (a real row, a versioned reopen, the row MUST still be there), and it will be RED while the drop path is bound. THE AUDIT'S OWN CAVEAT, to be recorded not hidden: \"This is a synthetic older-version fixture, not a claim to have exercised every historic released schema.\"",
-        "THE iOS TWIN lives in the mirrored package (`Sources/GodstoneMesh` IS mirrored), so this finding CAN be repaired and tested with `swift test` here -- unlike GS-MODEL-001's `GodstoneLLM` half. Remember to run `scripts/sync_ios_foundation_package.py` after every source edit or the test runneth the OLD copy."
+        "THE BINDING (W02, RED BY DESIGN): the versioned road must CALL the non-destructive migration engine (`SchemaMigration` on iOS, `SchemaMigration.kt` on Android) instead of merely being described as doing so. The engine's own API was partly read (`SchemaVersion`, `TableFingerprint`, `SchemaFingerprint`, `MigrationStep`, `MigrationApply`, `MigrationExecutor` at SchemaMigration.swift:22-51) and the EXECUTOR's surface was NOT, so the wiring must begin by reading it. The Kotlin twin (`MessageStore.kt:1754 onUpgrade`, four drops at 1762-1765) is UNTOUCHED and still droppeth.",
+        "THE AUDIT'S OWN BEHAVIOURAL PROBE remains owed: persist a REAL row, close, set user_version=1 while retaining compatible DDL, reopen, and the row must SURVIVE. Its caveat travelleth with it: a synthetic older-version fixture, not a claim about every historic released schema.",
+        "TWO ARM DEFECTS WERE FOUND AND FIXED IN ONE ROUND, and both are the SAME trap from opposite sides: W01 FAILED on my own explanatory comment quoting `DROP TABLE` (an arm about CODE that did not strip prose), and W02 PASSED on a comment NAMING the engine (an arm about WIRING that accepteth a spelling). W01 now readeth the code of the upgrade body; W02 now requyreth the engine in that code."
       ],
       "proof": "The Swift acceptance probe persists a real row, closes the store, sets user_version=1 while retaining compatible DDL, and reopens. The held row disappears. This is a synthetic older-version fixture, not a claim to have exercised every historic released schema. Source inspection confirms both production upgrade methods execute DROP TABLE.",
       "remediation_report": "reports/STORAGE_REMEDIATION.md",

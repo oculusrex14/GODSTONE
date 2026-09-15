@@ -16,16 +16,30 @@ final class ReadinessStore003Tests: XCTestCase {
     func testW01TheVersionedUpgradeDothNotDropDurableTables() throws {
         let source = try storeSource()
         let upgrade = try upgradeBody(source)
-        XCTAssertFalse(upgrade.contains("DROP TABLE"),
+        let code = upgrade.split(separator: "\n", omittingEmptySubsequences: false)
+            .map { line -> Substring in
+                guard let cut = line.firstIndex(of: "/") else { return line }
+                return line[line.startIndex..<cut]
+            }
+            .joined(separator: "\n")
+        XCTAssertFalse(code.contains("DROP TABLE"),
                        "the production onUpgrade executeth DROP TABLE: a versioned reopen loseth the "
                        + "held rows the store existeth to keep (GS-STORE-003)")
     }
 
     /// W02 -- the migration engine that REPLACES the drop path must be the one BOUND to onUpgrade.
     func testW02TheMigrationEngineIsBoundToTheUpgrade() throws {
-        let source = try storeSource()
-        XCTAssertTrue(source.contains("SchemaMigration"),
-                      "MessageStore must bind the non-destructive SchemaMigration engine to onUpgrade; "
+        let upgrade = try upgradeBody(try storeSource())
+        // the CODE of the road, never the prose: a comment that NAMEth the engine proveth nothing, and
+        // the first form of this arm passed on exactly such a comment.
+        let code = upgrade.split(separator: "\n", omittingEmptySubsequences: false)
+            .map { line -> Substring in
+                guard let cut = line.firstIndex(of: "/") else { return line }
+                return line[line.startIndex..<cut]
+            }
+            .joined(separator: "\n")
+        XCTAssertTrue(code.contains("SchemaMigration") || code.contains("migrationEngine"),
+                      "MessageStore must CALL the non-destructive migration engine on its upgrade road; "
                       + "its own contract sayeth 'the engine is what the runtime binds onUpgrade to once "
                       + "installs must survive' (GS-STORE-003)")
     }

@@ -58,7 +58,7 @@
     "Sources/GodstoneMesh/MeshNode.swift": "81a7bb21b6ac707367d5c31b4eec1469a297e448d205cae19e77bdc7f918c008",
     "Sources/GodstoneMesh/MeshRuntime.swift": "20b56b2cabfb43b3da963e13cfbfab8953dfb4470a377dcf4c008e1ab160b8f2",
     "Sources/GodstoneMesh/MeshUXModel.swift": "2f37d7606a62208579c8161fdb1b85dfa0581d938378f0d2b816cba469a4b3ab",
-    "Sources/GodstoneMesh/MessageStore.swift": "572eeb7ab115e40ce5de30c0788134dc0c825edb7add782d0ba4462d2eda7edb",
+    "Sources/GodstoneMesh/MessageStore.swift": "a1bce3fc799e0f77cf39705c9ebc15e43f7e612ce9048a7214ebaa3d65513f28",
     "Sources/GodstoneMesh/NoiseSession.swift": "12760ada83245333053b2dc6617e088d258929d8b31e2fd23971f20e068fb196",
     "Sources/GodstoneMesh/PanicWipe.swift": "4e8f2db73a0d1c4588dcdce561bff4a4bcbe2657e4f326ebaf03f9301927ad1b",
     "Sources/GodstoneMesh/PeerEventPublisher.swift": "f38e104d35d3943c7cb56a62bf2696ebeebd3c6de2ceff27cd9996b5de5c8858",
