@@ -62,14 +62,24 @@ detached worktree (never in the live tree) with `AUDIT_SOURCE_ROOT` naming that 
       | `test_operator_heldout_validation_reaches_valid_verifier` | GS-CONTENT-003 | PASS (round 98) |
       | `test_forged_approval_digest_and_zero_coverage_cannot_stage` | GS-CONTENT-001 | PASS (round 99) |
       | `test_process_death_cannot_expose_mixed_archive_and_receipt` | GS-CONTENT-002 | PASS (round 100) |
+    ROUND 101 (`ee68ee0`) LANDED THE DURABILITY LIMB of GS-CONTENT-002's step 5, and it was a real
+    hole: `_fsync_directory` SWALLOWED its failures, the retained backups and the journal were
+    NEVER fsynced, and a refused terminal journal record escaped as a bare OSError while the
+    generation WAS published. Durability failures now PROPAGATE, `_write_journal` is durable
+    (bytes fsynced before the rename, the directory entry before the caller proceedeth), each
+    retained backup is fsynced BEFORE the destructive promotion, and a failed terminal record
+    raises the product's OWN error naming the true state. Three arms (W09-W11) hold it; the
+    refusal is aimed at a DIRECTORY fsync only, so no arm can pass on an unrelated failure.
+
     **A GREEN PROBE SUITE IS NOT A CLOSED FINDING** — it is a suite written BEFORE the repairs, and
     only an independent audit may write `VERIFIED_FIXED`. THE DEPTH STILL OWED ON GS-CONTENT-002:
     two REAL processes with controlled barriers killed at EACH transition (prepared / promoted /
-    committed), reader overlap, a FAILED rollback, orphan cleanup; ONE publication owner shared by
-    build and operator staging (`scripts/prepare_release_assets.py` still replaces archive and
-    approved manifest INDEPENDENTLY); full fsync of backups and journal BEFORE the destructive
-    promotion (`_fsync_directory` still swalloweth failures); and the stronger generation-pointer
-    design the card preferreth.
+    committed), reader overlap, a FAILED rollback, orphan cleanup (the durability boundaries are
+    now proven by INJECTION, not by process death at every barrier); ONE publication owner shared
+    by build and operator staging (`scripts/prepare_release_assets.py` STILL replaces archive and
+    approved manifest INDEPENDENTLY -- a second pair-of-renames with no journal and no recovery
+    consumer); and the stronger generation-pointer design the card preferreth. (The fsync order
+    itself is now repaired -- see round 101 above.)
 
 ## THE FORMER "ONE THAT REMAINS" — KEPT FOR THE RECORD, NOW REPAIRED
 
