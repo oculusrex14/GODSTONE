@@ -2104,9 +2104,9 @@
     },
     {
      "outcome": "3 KILLED of 3 (SKIPPED 0, INVALID 0, ESCAPED 0) -- the mutation control proveth the NEW law",
-     "path": "T52/roster/manifest.json",
-     "sha256": null,
-     "what": "the three re-anchored mutation rods"
+     "sha256": "a81d1841cbf3df3e107e49903413367cd764ac9e4a32f1c539e00d8cf48daaaa",
+     "what": "the three re-anchored mutation rods (the mutation roster manifest; the digest was COMPUTED from the file at round 97's evidence audit -- a measurement, not a fabrication, and nothing was deleted)",
+     "log": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/T52/roster/manifest.json"
     }
    ],
    "my_red_case": {
@@ -2278,7 +2278,7 @@
     "tools/readiness/tests/test_t02.py (three new claim witnesses) and every lane that runneth the readiness suite (441 tests)",
     "the content lane of repository-verification.yml (the rehearsal now writeth under RUNNER_TEMP)"
    ],
-   "my_fix_commit": "50fc81b",
+   "my_fix_commit": "50fc81b + 7c04539 (AUDIT-004 limb: the external T77 report is uploaded, if: always())",
    "my_logs": [
     {
      "outcome": "all invariants hold; [F] 208 Kotlin files, 0 unresolved; [E] C1/C2 ok; [C] the archive prerequisite built",
@@ -2315,23 +2315,51 @@
      "sha256": "9d78018f86f2b5a40195b9b04caa4ccd915c93fcffa63cef53c99fa87c65d99c",
      "what": "the blob classification: 14 NORMATIVE + 4 BASELINE authority paths",
      "log": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/REMEDIATION/GS-CTRL-002/green/blob-classification.log"
+    },
+    {
+     "log": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/REMEDIATION/GS-CTRL-002/green/t77-upload-arm-GREEN-20260915T160223Z.log",
+     "sha256": "220b7a20e458b4f4094de57c15c058204204131fecb742de1e88c7472f2ae48b",
+     "outcome": "the arm and the whole T77 court OK at the repaired tree",
+     "what": "W-R6 green, plus the full T77 court and the workflow's own T77 sequence"
+    },
+    {
+     "log": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/REMEDIATION/GS-CTRL-002/green/t77-residue-GREEN-clean-20260915T160223Z.log",
+     "sha256": "eb4380e46cf4a40019698b987b072ea544e0ed773370737a9d8d235c340d12be",
+     "outcome": "selftest rc 0; rehearsal rc 0 (12/12 cases agreed); git status unchanged before and after",
+     "what": "the workflow's own T77 sequence run verbatim with the report OUTSIDE the tree (the residue control at this SHA)"
+    },
+    {
+     "log": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/REMEDIATION/GS-CTRL-002/green/gate-checker-GREEN-20260915T160223Z.log",
+     "sha256": "5548e1399e418c8aab9d76ece8b8ff6704c385b15d71216b1a168dcd3f20a951",
+     "outcome": "rc 0 -- 8 gates represented; every mandatory lane still carries every face it must hold",
+     "what": "the release-gate checker after the workflow change (every mandatory lane stayeth mandatory)"
     }
    ],
    "my_red_case": {
-    "argv": "python3 ci/symbols.py",
-    "case": "the two exact-SHA control failures the audit reproduced: python3 ci/symbols.py (26 unresolved) and the T77 rehearsal residue",
+    "argv": [
+     "python3 ci/symbols.py",
+     "python3 -m unittest tools.readiness.tests.test_t77 -k w_r6 -v"
+    ],
+    "case": "the two exact-SHA control failures the audit reproduced: python3 ci/symbols.py (26 unresolved) and the T77 rehearsal residue PLUS (AUDIT-004 step 1) ios/tools/readiness/tests/test_t77.py ResidueContractTest::W-R6 -- the workflow must UPLOAD the rehearsal's report, and with `if: always()`; the expected path is DERIVED from the lane's own T77_RUN_DIR env and the rehearsal step's own --report argument, never hardcoded.",
     "cwd": "/Users/oculus/Projects/GODSTONE_BUILDER",
-    "log": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/REMEDIATION/GS-CTRL-002/red/symbols-BEFORE-26.log",
-    "log_sha256": "4cc54126d074ab191d4490f900bfdc4769254efd5784f0356175c87ff1e8578d",
-    "outcome": "exit 1, 208 Kotlin files scanned, 26 unresolved; the T77 rehearsal leaves recovery-rehearsal.json untracked",
+    "log": [
+     "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/REMEDIATION/GS-CTRL-002/red/symbols-BEFORE-26.log",
+     "GS-CTRL-002/red/t77-upload-RED-20260915T160140Z.log"
+    ],
+    "log_sha256": [
+     "4cc54126d074ab191d4490f900bfdc4769254efd5784f0356175c87ff1e8578d",
+     "c5f6e169a84f98cb20f02c0a6a0c8c210033e6d1ce4adda4082ebd9638bf0bf9"
+    ],
+    "outcome": "exit 1, 208 Kotlin files scanned, 26 unresolved; the T77 rehearsal leaves recovery-rehearsal.json untracked  ||  AUDIT-004 limb: 1 test, 1 FAILURE before the repair, on its own assertion.",
     "source_sha_at_red": "3bc1a31"
    },
    "my_status": "FIX_SUBMITTED",
-   "notes": "PARTIAL, and precisely so: the two exact-SHA control failures the audit reproduced are REPAIRED (resolver 26 -> 0 with its negative controls intact and the compiler green; the T77 rehearsal residue now refused in-tree with the workflow writing into RUNNER_TEMP and the following provenance check green in a clean checkout), the mandatory invariants lane reporteth passed=7 failed=0, and the workspace inventory is explicit. ONE CARD ITEM REMAINS UNREPAIRED -- the MeshNode blob-drift classification (pending_work) -- together with the hosted-lane evidence and the independent verification (pending_proof). Only an independent audit may write VERIFIED_FIXED. ROUND 86 -- A REPOSITORY-CONTROL REPAIR RECORDED HERE BECAUSE THIS ENTRY IS THE CONTROL-INTEGRITY ONE (it is NOT an extension of the audit's charge against this finding, and the finding's own limbs are unaffected): the android lane's intermittent FIXTURE flake 'no ascending hint pair within 64 draws' is ROOT-CAUSED and FIXED. The earlier reading -- 65 non-ascending draws being 'statistically impossible', therefore shared RNG state -- was WRONG, and the correction is the point: the fixture in ReadinessT17Test and ReadinessT18Test redrew `b` ALONE against a FIXED `a`, so a draw was accepted with probability (255 - a.hint[0])/256, NOT one half. With a.hint[0] = 254 (1 call in 256) each redraw needed the 1/256 case b.hint[0] == 255, so sixty-five draws failed with probability ~78%. MEASURED, not guessed: the two loops were instrumented in a DETACHED WORKTREE of 5e87add (production byte-identical to it) and the filtered courts were run repeatedly, catching 'FLAKE-PROBE FAILED draws=65 a=254,25,59,239 b=67,174,80,195 identical=false aIdEqBId=false' in testAttestTwentyTwentyCarriesTheFullDigest, with NINE of THIRTY runs failing, all in FIXTURE SETUP. The other five courts (T20, T21, T22 x2, T23) redraw BOTH identities, so their acceptance probability is ~1/2 per draw and their 65-draw failure is genuinely impossible -- which is exactly why only these two courts ever flaked, and why they alone were changed. The repair ORDERS the drawn pair by hint instead of fishing on the coin (and fails with a message naming the two hints only if they are equal, a 2^-32 collision). Evidence, kept immutable and NOT entered in my_logs because it belongs to the lane rather than to this finding's own fix: GS-CTRL-002/red/lane-flake-REPRODUCED.log (sha256 bb6bca35e84113b8d288bc624ce75343d7efa1093e4b0b0ce188e77ed2cea077 -- nine failures in thirty runs plus the caught diagnostic), GS-CTRL-002/green/lane-flake-FIXED-30runs.log (sha256 c217117cb218ba4c9f3c5818d17a6e1e16fef3de7b416c97617de9a546f272a2 -- THIRTY of THIRTY green under the same protocol), GS-CTRL-002/green/lane-flake-ANDROID-FULL.log (sha256 b1bc4c849d19aea5fd3fe633827da46b4174b122820c5f9e59570b393f95481a -- whole :mesh lane rc=0, XML testcases=1152 failures=0) and GS-CTRL-002/green/lane-flake-LANES.log (sha256 983a1e5923133048ffb260c9fac8490264cd13bec9d591da97eaa06ca7fa6ead -- nine repository lanes, nine rc=0). Every lane stays MANDATORY: nothing was skipped, filtered out, retried, exempted or renamed, and no court was weakened. What this does NOT do: it does not make any previously logged run retroactively valid, and it proves nothing about a device or a hosted lane -- every result is a LOCAL host reproduction.",
+   "notes": "PARTIAL, and precisely so: the two exact-SHA control failures the audit reproduced are REPAIRED (resolver 26 -> 0 with its negative controls intact and the compiler green; the T77 rehearsal residue now refused in-tree with the workflow writing into RUNNER_TEMP and the following provenance check green in a clean checkout), the mandatory invariants lane reporteth passed=7 failed=0, and the workspace inventory is explicit. ONE CARD ITEM REMAINS UNREPAIRED -- the MeshNode blob-drift classification (pending_work) -- together with the hosted-lane evidence and the independent verification (pending_proof). Only an independent audit may write VERIFIED_FIXED. ROUND 86 -- A REPOSITORY-CONTROL REPAIR RECORDED HERE BECAUSE THIS ENTRY IS THE CONTROL-INTEGRITY ONE (it is NOT an extension of the audit's charge against this finding, and the finding's own limbs are unaffected): the android lane's intermittent FIXTURE flake 'no ascending hint pair within 64 draws' is ROOT-CAUSED and FIXED. The earlier reading -- 65 non-ascending draws being 'statistically impossible', therefore shared RNG state -- was WRONG, and the correction is the point: the fixture in ReadinessT17Test and ReadinessT18Test redrew `b` ALONE against a FIXED `a`, so a draw was accepted with probability (255 - a.hint[0])/256, NOT one half. With a.hint[0] = 254 (1 call in 256) each redraw needed the 1/256 case b.hint[0] == 255, so sixty-five draws failed with probability ~78%. MEASURED, not guessed: the two loops were instrumented in a DETACHED WORKTREE of 5e87add (production byte-identical to it) and the filtered courts were run repeatedly, catching 'FLAKE-PROBE FAILED draws=65 a=254,25,59,239 b=67,174,80,195 identical=false aIdEqBId=false' in testAttestTwentyTwentyCarriesTheFullDigest, with NINE of THIRTY runs failing, all in FIXTURE SETUP. The other five courts (T20, T21, T22 x2, T23) redraw BOTH identities, so their acceptance probability is ~1/2 per draw and their 65-draw failure is genuinely impossible -- which is exactly why only these two courts ever flaked, and why they alone were changed. The repair ORDERS the drawn pair by hint instead of fishing on the coin (and fails with a message naming the two hints only if they are equal, a 2^-32 collision). Evidence, kept immutable and NOT entered in my_logs because it belongs to the lane rather than to this finding's own fix: GS-CTRL-002/red/lane-flake-REPRODUCED.log (sha256 bb6bca35e84113b8d288bc624ce75343d7efa1093e4b0b0ce188e77ed2cea077 -- nine failures in thirty runs plus the caught diagnostic), GS-CTRL-002/green/lane-flake-FIXED-30runs.log (sha256 c217117cb218ba4c9f3c5818d17a6e1e16fef3de7b416c97617de9a546f272a2 -- THIRTY of THIRTY green under the same protocol), GS-CTRL-002/green/lane-flake-ANDROID-FULL.log (sha256 b1bc4c849d19aea5fd3fe633827da46b4174b122820c5f9e59570b393f95481a -- whole :mesh lane rc=0, XML testcases=1152 failures=0) and GS-CTRL-002/green/lane-flake-LANES.log (sha256 983a1e5923133048ffb260c9fac8490264cd13bec9d591da97eaa06ca7fa6ead -- nine repository lanes, nine rc=0). Every lane stays MANDATORY: nothing was skipped, filtered out, retried, exempted or renamed, and no court was weakened. What this does NOT do: it does not make any previously logged run retroactively valid, and it proves nothing about a device or a hosted lane -- every result is a LOCAL host reproduction. ROUND 97 (AUDIT-004 limb, 7c04539): the review found that the content lane uploaded only provenance-*.json and never the rehearsal's external report, so the whole rehearsal left no retrievable artifact. The canonical court now DERIVES the expected upload path from the lane's own env and the rehearsal's own --report argument, and the workflow upload carrieth `if: always()` so a LATER red stage cannot destroy the report. The T77 sequence was rerun verbatim at this SHA with the report outside the tree: 12/12 agreed and NO residue; the gate checker stayeth green with every mandatory lane mandatory.",
    "pending_proof": [
     "INDEPENDENT VERIFICATION: only an independent audit may mark this VERIFIED_FIXED",
     "the hosted lane: no hosted run URL/log was available to this work, so every result here is a LOCAL reproduction of the constituent commands; the R1 supplement requireth enabled/executed/green hosted jobs at the candidate SHA, which remains pending",
-    "the resolver's skips (163 types whose inheritance leaveth the project, 7 unread in full) are a VISIBLE limitation: the compiler is the authority for those, and the canonical Kotlin compilation must be rerun at the candidate SHA"
+    "the resolver's skips (163 types whose inheritance leaveth the project, 7 unread in full) are a VISIBLE limitation: the compiler is the authority for those, and the canonical Kotlin compilation must be rerun at the candidate SHA",
+    "AUDIT-004 step 1 landeth locally, but the UPLOAD itself has NEVER BEEN OBSERVED: no hosted run URL, id or log existeth in this environment, so the artifact's retrieval on a real runner remaineth PENDING and is never substituted."
    ],
    "pending_work": [],
    "proof": "Independent readiness unit run: 87 tests, 2 failures for Android/iOS MeshNode blob drift. validate-state exits 3 because the immutable T36 claimed_head differs from later task commits. T36 was legitimately in progress at the audit snapshot; a claim anchor being an ancestor is not by itself evidence corruption.",
@@ -4482,7 +4510,8 @@
    "THREE logs were cited TWICE with different digests (the GS-ACK-001 full-lane logs, whose files were rewritten after the first citation): the stale citation was removed and the citation whose digest matches the file was kept. Nothing was deleted from disk.",
    "ONE sha256 field carried PROSE ('see the evidence...') instead of a digest (CRYPTO-006's android full-lane log): the digest was COMPUTED from the file and recorded, with a note saying so -- a measurement, not a fabrication.",
    "THIRTY green entries carried their path under a different key instead of 'log', so a tool reading 'log' saw None and my own audit script crashed on it: the path was moved to the 'log' key.",
-   "STILL OPEN, recorded rather than papered over: 'my_red_case.log' is a STRING for some findings and a LIST for others, so an audit tool must handle both; and the counts above are lower bounds, because a malformed entry cannot be checked at all."
+   "STILL OPEN, recorded rather than papered over: 'my_red_case.log' is a STRING for some findings and a LIST for others, so an audit tool must handle both; and the counts above are lower bounds, because a malformed entry cannot be checked at all.",
+   "ROUND 97: ONE ledger entry still stored its artifact path under the key 'path' instead of 'log', with a NULL digest (GS-CONTENT-003's mutation roster, T52/roster/manifest.json) -- the same class round 96 repaired, with one instance left. The key was corrected to 'log' and the digest was COMPUTED from the file on disk, with a note saying so: a measurement, not a fabrication, and nothing was deleted. A full recheck (round 97) of 156 log and red-case references resolved on disk found 0 remaining defects."
   ]
  }
 }

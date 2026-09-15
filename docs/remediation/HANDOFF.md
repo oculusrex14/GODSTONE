@@ -67,6 +67,21 @@ detached worktree (never in the live tree) with `AUDIT_SOURCE_ROOT` naming that 
     Each of the five is a REPRODUCED, currently-failing assertion: adopt it into the canonical
     suite FIRST, one field changed per negative, and only then repair production.
 
+## ROUND 97 ALSO LANDED — `GS-CTRL-002`, the AUDIT-004 limb (`7c04539`)
+
+The review found the content lane declared the rehearsal's external report path and NEVER uploaded
+it, so the whole rehearsal left no retrievable artifact (the report liveth outside the source tree
+BY LAW). The canonical court (`test_t77.py` W-R6) DERIVES the expected upload path from the lane's
+own `T77_RUN_DIR` env and the rehearsal step's own `--report` argument -- never a hardcoded spelling
+-- and requires `if: always()`, so a LATER red stage cannot destroy the report. The workflow gains
+one pinned upload step. Rerun verbatim at this SHA: selftest rc 0, rehearsal 12/12 agreed, court
+rc 0, `git status` unchanged, gate checker rc 0 with every mandatory lane still mandatory.
+
+AND ONE LEDGER DEFECT, FOUND AND FIXED BY MEASUREMENT: a full recheck of **157** log and red-case
+references resolved on disk (round 96 had left one instance) found GS-CONTENT-003's mutation roster
+stored under the key `path` with a NULL digest. The key was corrected and the digest COMPUTED from
+the file -- a measurement, not a fabrication. The recheck now finds **0 defects**.
+
 ## ROUND 97 LANDED — `GS-CTRL-001`, the AUDIT-004 limb (`bf839fa`)
 
 The independent review of this finding's FIRST submission reproduced THREE bypasses that the

@@ -22,6 +22,16 @@ restored-green companion, so the mutation control it asserted is **NOT ESTABLISH
 recorded as an explicit evidence gap (never an exemption, and nothing deleted), and `validate-state`
 stayeth green with one new, named note.
 
+`GS-CTRL-002`'s AUDIT-004 limb also landed at round 97 (`7c04539`): the content lane declared the
+rehearsal's external report path but NEVER uploaded it, so the rehearsal left no retrievable
+artifact. The canonical court now DERIVES the expected upload path from the lane's own env and the
+rehearsal's own `--report` argument and requires `if: always()`. Every mandatory lane stayeth
+mandatory (the gate checker still refuseth an amputated lane by name).
+
+A ledger-wide evidence recheck at round 97 resolved **157** log and red-case references on disk and
+found **0 defects** -- round 96 had left one instance (a path under the wrong key with a NULL
+digest), which was corrected by MEASURING the file, not by asserting it.
+
 AT ROUND 88 the four landings of this session (GS-SOS-002 step 6, GS-ACK-001 step 4, GS-SYNC-002
 step 3 on BOTH isles, plus the android lane-flake fix) changed NO status: 27 `FIX_SUBMITTED` and
 2 `PARTIAL` stand, no gate moved, and `GS-SYNC-002` is the first finding with a captured red on
