@@ -26,14 +26,39 @@ public struct SchemaVersion: Comparable, Sendable {
     public static func < (lhs: SchemaVersion, rhs: SchemaVersion) -> Bool { lhs.revision < rhs.revision }
 }
 
+/// Collapse runs of whitespace and trim, so a DDL fingerprint is a fingerprint of the
+/// SCHEMA rather than of its formatting. GS-STORE-003: the store's own `SqliteMessageStore`
+/// `normalizeSql` and this helper MUST agree, so both sides of a fingerprint comparison
+/// normalize the same way; the DDL text is the only thing that distinguishes a table whose
+/// COLUMNS match but whose CHECK/NOT NULL constraints are older (the pre-C6.4 shape the
+/// destructive recreate used to "handle" by deleting every row).
+public func normalizedDdl(_ sql: String) -> String {
+    sql.split(whereSeparator: { $0.isWhitespace }).joined(separator: " ")
+}
+
 /// The frozen accepted fingerprint of one table (name + columns + the immutable-field definitions).
+///
+/// `ddl` is OPTIONAL and ADDITIVE (GS-STORE-003): a caller that owns a real physical schema
+/// (the message store) supplies the table's CREATE text, so the fingerprint distinguishes a
+/// column-identical table whose constraints drifted. When it is nil the canonical form is
+/// byte-identical to the pre-GS-STORE-003 form, so every existing court's comparison is
+/// unchanged. The frozen value must ALWAYS come from the owner's own DDL constant -- never
+/// from the file being observed, which would make `matches` trivially true and silently
+/// disable the drift law.
 public struct TableFingerprint: Sendable {
     public let name: String
     public let columns: [String]
     public let immutableColumns: Set<String>
-    public init(name: String, columns: [String], immutableColumns: Set<String>) { self.name = name; self.columns = columns; self.immutableColumns = immutableColumns }
+    public let ddl: String?
+    public init(name: String, columns: [String], immutableColumns: Set<String>, ddl: String? = nil) {
+        self.name = name; self.columns = columns; self.immutableColumns = immutableColumns; self.ddl = ddl
+    }
     /// Canonical, order-insensitive form so two equal schemas compare equal regardless of collection order.
-    public func canonical() -> String { "\(name)(\(columns.sorted().joined(separator: ","))|@\(immutableColumns.sorted().joined(separator: ",")))" }
+    public func canonical() -> String {
+        let base = "\(name)(\(columns.sorted().joined(separator: ","))|@\(immutableColumns.sorted().joined(separator: ",")))"
+        guard let ddl = ddl else { return base }
+        return base + "|#" + normalizedDdl(ddl)
+    }
 }
 
 public struct SchemaFingerprint: Sendable {

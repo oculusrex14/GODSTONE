@@ -417,6 +417,131 @@ internal object StoreSchema {
     val CREATE_ACK_FRAME_SQL_IF_NOT_EXISTS: String =
         CREATE_ACK_FRAME_SQL.replace("CREATE TABLE ", "CREATE TABLE IF NOT EXISTS ")
 
+    // ------------------------------------------------------------------
+    // GS-STORE-003: the FROZEN schema fingerprint and the ordered migration plan
+    // the versioned upgrade road drives. The frozen side is built from the DDL
+    // constants ABOVE and NEVER from the file being observed -- feeding the
+    // observed values back as the expectation would make every comparison
+    // trivially true and silently disable the drift law. The iOS twin
+    // (StoreSchema in MessageStore.swift) carries the same law.
+    // ------------------------------------------------------------------
+
+    /** Every table this file owns. */
+    val ALL_TABLES: List<String> = listOf(TABLE, DELIVERY_TABLE, ACK_OBLIGATION_TABLE, ACK_FRAME_TABLE)
+
+    /** The frozen columns, named by the SAME constants the DDL interpolates. A drift
+     *  between these lists and the DDL cannot pass unnoticed: a fresh file is created
+     *  FROM the DDL and then fingerprinted, so the brand-new-file control fails if
+     *  either side is wrong. */
+    val HELD_FRAME_COLUMNS: List<String> = listOf(
+        COL_MSG_ID, COL_TYPE, COL_TTL, COL_HOP_COUNT, COL_FLAGS,
+        COL_PRIORITY, COL_ROUTING_TAG, COL_PAYLOAD, COL_RECEIVED_FROM, COL_RECEIVED_AT,
+    )
+    val DELIVERY_COLUMNS: List<String> = listOf(COL_D_MSG_ID, COL_D_STATE, COL_D_ACK_MODE, COL_D_EXPECTED)
+    val OBLIGATION_COLUMNS: List<String> =
+        listOf(COL_O_MSG_ID, COL_O_RECIPIENT, COL_O_GENERATION, COL_O_REMAINING, COL_O_STATE)
+    val ACK_FRAME_COLUMNS: List<String> = listOf(
+        COL_K_ACK_KEY, COL_K_MSG_ID, COL_K_RECIPIENT, COL_K_SIGNATURE,
+        COL_K_ENCODED, COL_K_RECEIVED_FROM, COL_K_REMAINING, COL_K_CLASS,
+    )
+
+    /** The immutable-column domain per table: the cells a migration may NEVER rewrite
+     *  (message ids, signed bytes, the recipient binding, ACK signatures). The digest
+     *  the executor reports is taken over exactly these cells. */
+    val IMMUTABLE_COLUMNS: Map<String, Set<String>> = mapOf(
+        TABLE to setOf(COL_MSG_ID, COL_PAYLOAD),
+        DELIVERY_TABLE to setOf(COL_D_MSG_ID, COL_D_EXPECTED),
+        ACK_OBLIGATION_TABLE to setOf(COL_O_MSG_ID, COL_O_RECIPIENT),
+        ACK_FRAME_TABLE to setOf(COL_K_ACK_KEY, COL_K_MSG_ID, COL_K_RECIPIENT, COL_K_SIGNATURE),
+    )
+
+    fun immutableColumnsOf(name: String): Set<String> = IMMUTABLE_COLUMNS[name] ?: emptySet()
+
+    /** The frozen accepted fingerprint: names + columns + immutable domain + the exact
+     *  DDL, every part read from THIS object's own constants. */
+    val FROZEN_FINGERPRINT: SchemaFingerprint = SchemaFingerprint(
+        listOf(
+            TableFingerprint(TABLE, HELD_FRAME_COLUMNS, immutableColumnsOf(TABLE), CREATE_SQL),
+            TableFingerprint(DELIVERY_TABLE, DELIVERY_COLUMNS, immutableColumnsOf(DELIVERY_TABLE), CREATE_DELIVERY_SQL),
+            TableFingerprint(ACK_OBLIGATION_TABLE, OBLIGATION_COLUMNS, immutableColumnsOf(ACK_OBLIGATION_TABLE), CREATE_OBLIGATION_SQL),
+            TableFingerprint(ACK_FRAME_TABLE, ACK_FRAME_COLUMNS, immutableColumnsOf(ACK_FRAME_TABLE), CREATE_ACK_FRAME_SQL),
+        ),
+    )
+
+    /** The ordered plan from an observed revision to the current one: ONE edge per
+     *  revision, because [MigrationStep] requires `to == from + 1` and both isles
+     *  drive one contract. `creatingTables` puts the CREATE statements on the FIRST
+     *  edge -- the brand-new-file case, where creating IS the migration. An EXISTING
+     *  file's edges carry no DDL statements: this build supports exactly one schema,
+     *  so an existing file either already satisfies the frozen fingerprint (and needs
+     *  only its revision advanced) or drifts from it and is refused before any write. */
+    fun migrationPlan(from: Int, creatingTables: Boolean, supportedMax: Int): List<MigrationStep> {
+        if (from >= supportedMax) return emptyList()
+        val creates = listOf(CREATE_SQL, CREATE_DELIVERY_SQL, CREATE_OBLIGATION_SQL, CREATE_ACK_FRAME_SQL)
+        return (from until supportedMax).map { revision ->
+            MigrationStep(
+                from = revision,
+                to = revision + 1,
+                statements = if (revision == from && creatingTables) creates else emptyList(),
+            )
+        }
+    }
+
+    /** How many of this store's four tables exist in the file. A file with none of them
+     *  is a brand-new (or empty) database: creating the schema loses nothing. A file
+     *  with SOME of them is partially migrated and is treated as an existing file
+     *  (refused if it drifts). */
+    fun existingTableCount(db: SQLiteDatabase): Int =
+        ALL_TABLES.count { liveDdl(db, it) != null }
+
+    /** The live CREATE text of [name], or null when the table does not exist. */
+    fun liveDdl(db: SQLiteDatabase, name: String): String? =
+        db.rawQuery("SELECT sql FROM sqlite_master WHERE type = 'table' AND name = ?", arrayOf(name)).use { c ->
+            if (c.moveToFirst() && !c.isNull(0)) c.getString(0) else null
+        }
+
+    /** The live column names of [name] (from `PRAGMA table_info`). */
+    fun liveColumns(db: SQLiteDatabase, name: String): List<String> =
+        db.rawQuery("PRAGMA table_info($name)", null).use { c ->
+            val out = mutableListOf<String>()
+            while (c.moveToNext()) out.add(c.getString(1))
+            out
+        }
+
+    /** The OBSERVED fingerprint of the live file: the real columns, the real CREATE text
+     *  and the immutable domain the frozen schema DECLARES for that table. The immutable
+     *  domain is a contract (which fields may never be rewritten), not a fact to be read
+     *  off a file -- so it legitimately comes from the frozen side while columns and DDL
+     *  come from the file. An absent table yields no DDL, so it cannot match. */
+    fun observeFingerprint(db: SQLiteDatabase): SchemaFingerprint = SchemaFingerprint(
+        ALL_TABLES.map { name ->
+            TableFingerprint(name, liveColumns(db, name), immutableColumnsOf(name), liveDdl(db, name))
+        },
+    )
+
+    /** The immutable-cell digest of the live file, read from the SAME connection. The fold
+     *  itself is [immutableDigestOf] (pure stdlib, witnessed on the host); this only reads
+     *  the rows. It reads REAL bytes: a constant would make the comparison vacuous. */
+    fun immutableDigest(db: SQLiteDatabase): String {
+        val tables = mutableMapOf<String, List<List<ByteArray?>>>()
+        for (name in ALL_TABLES) {
+            val columns = immutableColumnsOf(name).sorted()
+            if (columns.isEmpty()) continue
+            val rows = mutableListOf<List<ByteArray?>>()
+            runCatching {
+                db.rawQuery("SELECT ${columns.joinToString(", ")} FROM $name", null).use { c ->
+                    while (c.moveToNext()) {
+                        rows.add(columns.indices.map { i -> if (c.isNull(i)) null else c.getBlob(i) })
+                    }
+                }
+            }
+            // An absent / unreadable table contributes no cells (there is nothing in it
+            // to protect), rather than failing a digest the migration does not gate on.
+            tables[name] = rows
+        }
+        return immutableDigestOf(tables)
+    }
+
     /** Insert a fresh obligation; ON CONFLICT of the pair key DO NOTHING (the
      *  inbox re-delivery is idempotent -- the EXISTING row, its generation pin
      *  and its remaining lifetime are NEVER updated). Bind: (1) msg,
@@ -601,6 +726,45 @@ internal object StoreSchema {
                 throw IllegalStateException("store schema validation: DDL mismatch for $name")
             }
         }
+    }
+}
+
+/**
+ * GS-STORE-003: the [SQLiteDatabase]-bound migration seam. It drives the SAME
+ * connection the store owns (never a second connection -- a second one could not
+ * share the transaction owner and would approximate atomicity instead of having
+ * it) and maps the durable checkpoint onto `PRAGMA user_version`.
+ */
+internal class DatabaseMigrationExecutor(
+    private val db: SQLiteDatabase,
+    checkpoint: Int,
+) : MigrationExecutor {
+    private var checkpoint: Int = checkpoint
+
+    /** The checkpoint mirrors `PRAGMA user_version`, seeded from the version the
+     *  upgrade road read (never a default: a silent 0 would look like a fresh file). */
+    override fun checkpointedThrough(): Int = checkpoint
+
+    override fun markCheckpointed(step: MigrationStep) {
+        if (step.to > checkpoint) {
+            db.execSQL("PRAGMA user_version = ${step.to}")
+            checkpoint = step.to
+        }
+    }
+
+    override fun observeFingerprint(): SchemaFingerprint = StoreSchema.observeFingerprint(db)
+
+    override fun immutableDigest(): String = StoreSchema.immutableDigest(db)
+
+    /** ONE transaction per step IS the caller's transaction: SQLiteOpenHelper wraps
+     *  onCreate/onUpgrade/onDowngrade in a single transaction on its OWN connection,
+     *  so a fault here aborts the whole upgrade -- no second connection and no
+     *  approximated atomicity, exactly as the audit demands ("use the same
+     *  transaction owner as the store"). A nested `beginTransaction` on this session
+     *  would be a no-op marker and would NOT give an independent rollback, so it is
+     *  deliberately not used. */
+    override fun execute(step: MigrationStep, statements: List<String>) {
+        for (statement in statements) db.execSQL(statement)
     }
 }
 
@@ -1752,18 +1916,45 @@ internal class SqlcipherStoreDb(ctx: Context) : StoreDb {
         }
 
         override fun onUpgrade(db: SQLiteDatabase, oldVersion: Int, newVersion: Int) {
-            // ADR-001 §5: GMP/1 was never shipped (no installed base, V3 never
-            // shipped on either platform), so there is nothing to migrate. Drop
-            // the old table and recreate the schema. This is the one case where
-            // a destructive onUpgrade is correct: a non-destructive migration of
-            // a schema that was never deployed would be invented code defending
-            // data that does not exist.
+            // GS-STORE-003 replaced the destructive road: an OLDER file is no longer
+            // dropped and recreated (that path DELETED held frames and delivery state
+            // on every versioned reopen). Instead:
+            //
+            //  * a BRAND-NEW file has no tables at all -- creating them IS the
+            //    migration, and nothing is deleted because nothing exists;
+            //  * an EXISTING older file whose live DDL already satisfies the frozen
+            //    fingerprint is MIGRATED (its revision advances, no DDL executes, no
+            //    row is touched);
+            //  * an EXISTING file whose live DDL drifts from the frozen fingerprint is
+            //    REFUSED, thrown from here so the open fails closed, and it stays
+            //    byte-preserved: not re-stamped, not altered, not emptied;
+            //  * a FUTURE file never reaches this method (SQLiteOpenHelper dispatches
+            //    it to the default `onDowngrade`, which throws).
+            //
+            // ADR-001 §5 (no installed base) is why the DESTRUCTIVE recreate was ever
+            // defensible: it was correct ONLY for the never-shipped pre-ship case, and
+            // a brand-new file needs no deletion at all -- so the drops are gone.
             if (oldVersion == newVersion) return
-            db.execSQL("DROP TABLE IF EXISTS ${StoreSchema.TABLE}")
-            db.execSQL("DROP TABLE IF EXISTS ${StoreSchema.DELIVERY_TABLE}")
-            db.execSQL("DROP TABLE IF EXISTS ${StoreSchema.ACK_OBLIGATION_TABLE}")
-            db.execSQL("DROP TABLE IF EXISTS ${StoreSchema.ACK_FRAME_TABLE}")
-            onCreate(db)
+
+            val present = StoreSchema.existingTableCount(db)
+            if (present > 0) {
+                check(StoreSchema.FROZEN_FINGERPRINT.matches(StoreSchema.observeFingerprint(db))) {
+                    "refusing to upgrade a store whose schema drifts from the frozen fingerprint " +
+                        "(user_version=$oldVersion): migrating it would require inventing DDL for a " +
+                        "schema this build does not know, and recreating it would delete durable rows"
+                }
+            }
+
+            val executor = DatabaseMigrationExecutor(db, oldVersion)
+            val engine = SchemaMigrationEngine(
+                steps = StoreSchema.migrationPlan(oldVersion, creatingTables = present == 0, supportedMax = StoreSchema.DB_VERSION),
+                supportedMax = StoreSchema.DB_VERSION,
+                fingerprint = StoreSchema.FROZEN_FINGERPRINT,
+            )
+            val result = engine.migrate(oldVersion, StoreSchema.observeFingerprint(db), executor)
+            // A typed refusal is a REFUSAL, not a licence to delete: throwing here
+            // closes the open and leaves the file as it was found.
+            check(result.isOk) { "store migration refused: $result (user_version=$oldVersion)" }
         }
 
         // C6.4.1-C/F: a FUTURE user_version (oldVersion > newVersion) is

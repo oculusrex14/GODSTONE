@@ -29,9 +29,11 @@ import GodstoneCore
 ///  * 16-byte msg_id (C6.4-D): the schema `CHECK (length(msg_id) = 16)` on BOTH
 ///    tables + a repository input guard; every method rejects a non-16-byte msg_id
 ///    with `.invalidArgument` before any SQL.
-///  * PRAGMA user_version versioning (C6.4-E): a stale `user_version` is
-///    recreated (drop+recreate) and stamped; the logical revision matches Android
-///    `DB_VERSION`.
+///  * PRAGMA user_version versioning (C6.4-E): a stale `user_version` is MIGRATED
+///    in order through the bound `SchemaMigrationEngine` and stamped, preserving
+///    durable rows (GS-STORE-003 REVERSED this court: it used to require the
+///    destructive drop+recreate, which the audit raised as a HIGH data-loss
+///    finding); the logical revision matches Android `DB_VERSION`.
 ///  * Real SQL CAS (C6.4-F/G): `transition` is a guarded `UPDATE ... WHERE msg_id
 ///    AND state IN (...)` decided by the affected row count; the repository owns
 ///    the truth-table (`DeliveryTransition`).
@@ -1024,8 +1026,16 @@ final class SqliteDeliveryRepositoryTests: XCTestCase {
     }
 
     // MARK: - C6.4-E: PRAGMA user_version schema versioning
-
-    func testPragmaUserVersionMigrationDropsAndRecreatesOnStaleVersion() throws {
+    //
+    // GS-STORE-003 REVERSED THIS COURT. It used to REQUIRE the destructive
+    // behaviour -- `testPragmaUserVersionMigrationDropsAndRecreatesOnStaleVersion`
+    // asserted `DeliveryLookup.notFound` after a stale-version reopen, i.e. it
+    // PROTECTED the data-loss bypass the audit raised as HIGH. The law is now the
+    // audit's: an older file is MIGRATED in order through the bound
+    // `SchemaMigrationEngine`, its durable rows survive and its revision advances.
+    // The reversal is part of the repair, not a weakening of the court: the
+    // assertion that the schema invariants still hold is retained.
+    func testPragmaUserVersionMigrationMigratesAndPreservesDurableRows() throws {
         let url = URL(fileURLWithPath: NSTemporaryDirectory()).appendingPathComponent("godstone-d-\(UUID().uuidString).db")
         defer { try? FileManager.default.removeItem(at: url) }
         // boot 1: current schema, stamp user_version=6, insert a row.
@@ -1035,20 +1045,22 @@ final class SqliteDeliveryRepositoryTests: XCTestCase {
         XCTAssertEqual(EnqueueResult.created, r1!.enqueue(mid, ackMode: .singleRecipient, expectedRecipient: nodeA()))
         XCTAssertEqual(.queuedDurably, found(r1!, mid).state)
         // Force the file's user_version down to 4 (simulate a stale dev file from a
-        // prior schema revision -- pre-C6.4 CHECKs).
+        // prior schema revision).
         try s1!.execRawSql("PRAGMA user_version = 4")
         r1 = nil; s1 = nil // close + flush
-        // boot 2: current code sees user_version 4 < 6 -> drop+recreate -> stamp 6.
+        // boot 2: current code sees user_version 4 < 6 -> MIGRATE, never delete.
         let s2 = SqliteMessageStore(url: url, maxBytes: .max, fileProtection: .complete)
         let r2 = SqliteDeliveryRepository(s2)
-        // The row was dropped by the destructive migration.
-        XCTAssertEqual(DeliveryLookup.notFound, r2.get(mid), "stale-version migration drops the table")
-        // The new state CHECK is present: a state=0 plant WITHOUT
+        // GS-STORE-003 (REVERSED): the durable row SURVIVES the versioned reopen --
+        // this court used to require that it was dropped.
+        XCTAssertNotEqual(DeliveryLookup.notFound, r2.get(mid),
+                          "a stale-version reopen must MIGRATE the file, not drop its durable rows")
+        XCTAssertEqual(.queuedDurably, found(r2, mid).state, "the bound state survives intact")
+        // The state CHECK is still present: a state=0 plant WITHOUT
         // ignore_check_constraints is rejected (0 rows changed), proving the
-        // recreated table has the C6.4-C CHECK.
-        _ = r2.enqueue(mid, ackMode: .singleRecipient, expectedRecipient: nodeA())
+        // migrated table still carries the C6.4-C CHECK.
         let changed = s2.execRawUpdate("UPDATE delivery_state SET state = 0 WHERE msg_id = ?", [mid])
-        XCTAssertEqual(0, changed, "new state CHECK rejects state=0 without ignore_check_constraints")
+        XCTAssertEqual(0, changed, "state CHECK rejects state=0 without ignore_check_constraints")
         XCTAssertEqual(.queuedDurably, found(r2, mid).state, "row unchanged after rejected plant")
     }
 

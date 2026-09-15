@@ -33,11 +33,39 @@ data class SchemaVersion(val revision: Int, val minimumRollbackCompatibleApp: In
     init { require(revision >= 0) { "revision must be non-negative" } }
 }
 
-/** The frozen accepted fingerprint of the current table set (names + columns + immutable-field definitions). */
-data class TableFingerprint(val name: String, val columns: List<String>, val immutableColumns: Set<String>) {
+/**
+ * Normalise a DDL string to a single-spaced token sequence, so a fingerprint is a
+ * fingerprint of the SCHEMA and not of its formatting. GS-STORE-003: identical in
+ * effect to `StoreSchema.normalizeSql` -- the DDL text is the only thing that
+ * distinguishes a table whose COLUMNS match but whose CHECK / NOT NULL constraints
+ * are older (the pre-C6.4 shape the destructive recreate used to "handle" by
+ * deleting every row).
+ */
+fun normalizeDdl(sql: String): String =
+    sql.split(Regex("\\s+")).filter { it.isNotEmpty() }.joinToString(" ")
+
+/**
+ * The frozen accepted fingerprint of the current table set (names + columns + immutable-field definitions).
+ *
+ * [ddl] is OPTIONAL and ADDITIVE (GS-STORE-003): a caller that owns a real physical
+ * schema (the message store) supplies the table's CREATE text, so the fingerprint
+ * distinguishes a column-identical table whose constraints drifted. When it is null
+ * the canonical form is byte-identical to the pre-GS-STORE-003 form, so every
+ * existing court's comparison is unchanged. The frozen value must ALWAYS come from
+ * the owner's own DDL constant -- never from the file being observed, which would
+ * make [SchemaFingerprint.matches] trivially true and silently disable the drift law.
+ */
+data class TableFingerprint(
+    val name: String,
+    val columns: List<String>,
+    val immutableColumns: Set<String>,
+    val ddl: String? = null,
+) {
     /** Canonical, order-sensitive form so two equal schemas compare equal regardless of map iteration. */
-    fun canonical(): String =
-        "$name(" + columns.sorted().joinToString(",") + "|@" + immutableColumns.sorted().joinToString(",") + ")"
+    fun canonical(): String {
+        val base = "$name(" + columns.sorted().joinToString(",") + "|@" + immutableColumns.sorted().joinToString(",") + ")"
+        return if (ddl == null) base else "$base|#" + normalizeDdl(ddl)
+    }
 }
 
 data class SchemaFingerprint(val tables: List<TableFingerprint>) {
@@ -45,6 +73,49 @@ data class SchemaFingerprint(val tables: List<TableFingerprint>) {
     fun matches(observed: SchemaFingerprint): Boolean = canonical() == observed.canonical()
     /** The union of every immutable column name across all tables -- the byte-identity guarantee's domain. */
     fun immutableColumnNames(): Set<String> = tables.flatMap { it.immutableColumns }.toSet()
+}
+
+// ---------------------------------------------------------------------------
+// GS-STORE-003: the immutable-cell digest. Pure stdlib (no android.database), so
+// BOTH the production binding and a host court compute the SAME fold; the store
+// only supplies the rows it reads from the file.
+// ---------------------------------------------------------------------------
+
+private const val FNV_OFFSET: Long = -3750763034362895579L   // 0xcbf29ce484222325
+private const val FNV_PRIME: Long = 1099511628211L           // 0x100000001b3
+
+/** FNV-1a over one cell: length-prefixed so "ab"+"c" cannot collide with "a"+"bc",
+ *  and NULL gets its own marker so a NULL cannot collide with an empty blob. */
+fun mixImmutableCell(hash: Long, bytes: ByteArray?): Long {
+    var h = hash
+    if (bytes == null) return (h xor 0xff) * FNV_PRIME
+    var length = bytes.size.toLong()
+    repeat(8) { h = (h xor (length and 0xff)) * FNV_PRIME; length = length shr 8 }
+    for (b in bytes) h = (h xor (b.toLong() and 0xff)) * FNV_PRIME
+    return h
+}
+
+/** The rows of ONE table, folded ORDER-INDEPENDENTLY (each row's hash is XOR-folded),
+ *  so the digest does not depend on the order the engine happened to return rows in. */
+fun immutableTableDigest(rows: List<List<ByteArray?>>): Long {
+    var folded = FNV_OFFSET
+    for (row in rows) {
+        var rowHash = FNV_OFFSET
+        for (cell in row) rowHash = mixImmutableCell(rowHash, cell)
+        folded = folded xor rowHash
+    }
+    return folded
+}
+
+/** The whole-file digest: table name + its folded row digest, in NAME order, so the
+ *  value is stable across runs and across a migration that preserves the bytes. */
+fun immutableDigestOf(tables: Map<String, List<List<ByteArray?>>>): String {
+    var whole = FNV_OFFSET
+    for (name in tables.keys.sorted()) {
+        val folded = immutableTableDigest(tables.getValue(name))
+        whole = mixImmutableCell(whole, "$name#$folded".toByteArray(Charsets.UTF_8))
+    }
+    return whole.toString(16)
 }
 
 /** One ordered migration edge from -> to, expressed as the statements (and/or a code apply) that advance it. */

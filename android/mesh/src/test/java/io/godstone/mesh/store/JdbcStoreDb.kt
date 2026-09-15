@@ -32,11 +32,11 @@ internal class JdbcStoreDb(file: File) : StoreDb {
         // C6.4.1-BCDEFG: fail-closed version + schema-integrity logic, mirroring
         // the iOS StoreSchema runMigrations and the production Helper. The old
         // unconditional `CREATE ... IF NOT EXISTS` open is GONE: a file is now
-        // rejected (throws) on a future version, a stale version is transactionally
-        // dropped+recreated (no installed base -> destructive, ADR-001 §5), and a
-        // current-version file is DDL-fingerprint-validated (a tampered /
-        // partially-migrated file with the right version stamp but wrong DDL is
-        // rejected, never silently opened).
+        // rejected (throws) on a future version, a stale version is MIGRATED in
+        // order (GS-STORE-003 REPLACED the destructive drop+recreate that deleted
+        // durable rows, ADR-001 §5), and a current-version file is
+        // DDL-fingerprint-validated (a tampered / partially-migrated file with the
+        // right version stamp but wrong DDL is rejected, never silently opened).
         runMigrations()
     }
 
@@ -49,44 +49,141 @@ internal class JdbcStoreDb(file: File) : StoreDb {
         }
 
     /**
-     * Stale (< DB_VERSION) -> transactional DROP + CREATE both tables, then stamp
-     * DB_VERSION AFTER the commit (a `PRAGMA user_version = N` inside a
-     * sqlite-jdbc transaction is not guaranteed to be durable, so it runs outside
-     * the txn; if the stamp fails the file simply re-migrates idempotently on the
-     * next open -- no half-migrated schema, since the tables are already current).
-     * Current (== DB_VERSION) -> DDL-fingerprint validate (throws on mismatch).
-     * Future (> DB_VERSION) -> throw (fail closed, no silent downgrade).
+     * GS-STORE-003 replaced the destructive road: an OLDER file is no longer dropped
+     * and recreated (that path deleted held frames on every versioned reopen, which is
+     * the HIGH data-loss finding the audit reproduced). This mirrors the production
+     * [MessageStore.Helper.onUpgrade] one-for-one:
+     *
+     *  * a BRAND-NEW file has no tables -- creating them IS the migration (nothing to
+     *    delete because nothing exists);
+     *  * an EXISTING older file whose live DDL satisfies the frozen fingerprint is
+     *    MIGRATED (revision advances, no DDL, no row touched);
+     *  * an EXISTING file whose live DDL drifts is REFUSED (throws) before any write,
+     *    so it stays byte-preserved: not re-stamped, not altered, not emptied;
+     *  * a file claiming the current version is DDL-fingerprint validated (unchanged);
+     *  * a FUTURE version throws (fail closed, no silent downgrade -- unchanged).
+     *
+     * The stamp runs OUTSIDE the step transaction (sqlite-jdbc does not guarantee a
+     * `PRAGMA user_version` inside a transaction is durable); the engine calls
+     * `markCheckpointed` only after `execute` committed, so that ordering is kept, and
+     * a failed stamp simply re-migrates idempotently on the next open.
      */
     private fun runMigrations() {
         val v = readUserVersion()
-        when {
-            v < StoreSchema.DB_VERSION -> {
-                val wasAuto = conn.autoCommit
-                conn.autoCommit = false
-                try {
-                    conn.createStatement().use { it.execute("DROP TABLE IF EXISTS ${StoreSchema.DELIVERY_TABLE}") }
-                    conn.createStatement().use { it.execute("DROP TABLE IF EXISTS ${StoreSchema.ACK_FRAME_TABLE}") }
-                    conn.createStatement().use { it.execute("DROP TABLE IF EXISTS ${StoreSchema.ACK_OBLIGATION_TABLE}") }
-                    conn.createStatement().use { it.execute("DROP TABLE IF EXISTS ${StoreSchema.TABLE}") }
-                    conn.createStatement().use { it.execute(StoreSchema.CREATE_SQL) }
-                    conn.createStatement().use { it.execute(StoreSchema.CREATE_DELIVERY_SQL) }
-                    conn.createStatement().use { it.execute(StoreSchema.CREATE_OBLIGATION_SQL) }
-                    conn.createStatement().use { it.execute(StoreSchema.CREATE_ACK_FRAME_SQL) }
-                    conn.commit()
-                } catch (e: Throwable) {
-                    runCatching { conn.rollback() }
-                    throw e
-                } finally {
-                    conn.autoCommit = wasAuto
-                }
-                // Stamp outside the txn (see method doc).
-                conn.createStatement().use { it.execute("PRAGMA user_version = ${StoreSchema.DB_VERSION}") }
-            }
-            v == StoreSchema.DB_VERSION -> validateSchema()
-            else -> throw IllegalStateException(
+        if (v > StoreSchema.DB_VERSION) {
+            throw IllegalStateException(
                 "refusing to open future store schema: user_version=$v > DB_VERSION=${StoreSchema.DB_VERSION}"
             )
         }
+        if (v == StoreSchema.DB_VERSION) {
+            validateSchema()
+            return
+        }
+        val present = existingTableCount()
+        if (present > 0) {
+            check(StoreSchema.FROZEN_FINGERPRINT.matches(observeFingerprint())) {
+                "refusing to upgrade a store whose schema drifts from the frozen fingerprint " +
+                    "(user_version=$v): migrating it would require inventing DDL for a schema this " +
+                    "build does not know, and recreating it would delete durable rows"
+            }
+        }
+        val engine = SchemaMigrationEngine(
+            StoreSchema.migrationPlan(v, creatingTables = present == 0, supportedMax = StoreSchema.DB_VERSION),
+            StoreSchema.DB_VERSION,
+            StoreSchema.FROZEN_FINGERPRINT,
+        )
+        val result = engine.migrate(v, observeFingerprint(), JdbcMigrationExecutor(v))
+        check(result.isOk) { "store migration refused: $result (user_version=$v)" }
+    }
+
+    /** GS-STORE-003: the JDBC-bound migration seam -- the SAME connection, one
+     *  transaction per step, the checkpoint mirrored onto `PRAGMA user_version`. */
+    private inner class JdbcMigrationExecutor(checkpoint: Int) : MigrationExecutor {
+        private var checkpoint: Int = checkpoint
+
+        override fun checkpointedThrough(): Int = checkpoint
+
+        override fun markCheckpointed(step: MigrationStep) {
+            if (step.to > checkpoint) {
+                synchronized(conn) {
+                    conn.createStatement().use { it.execute("PRAGMA user_version = ${step.to}") }
+                }
+                checkpoint = step.to
+            }
+        }
+
+        override fun observeFingerprint(): SchemaFingerprint = this@JdbcStoreDb.observeFingerprint()
+
+        override fun immutableDigest(): String = this@JdbcStoreDb.immutableDigest()
+
+        override fun execute(step: MigrationStep, statements: List<String>) {
+            val wasAuto = conn.autoCommit
+            conn.autoCommit = false
+            try {
+                for (statement in statements) {
+                    conn.createStatement().use { it.execute(statement) }
+                }
+                conn.commit()
+            } catch (t: Throwable) {
+                runCatching { conn.rollback() }
+                throw t
+            } finally {
+                conn.autoCommit = wasAuto
+            }
+        }
+    }
+
+    /** How many of the four tables exist. None of them means a brand-new (or empty)
+     *  database, where creating the schema loses nothing. */
+    private fun existingTableCount(): Int = StoreSchema.ALL_TABLES.count { liveDdl(it) != null }
+
+    private fun liveDdl(name: String): String? = synchronized(conn) {
+        conn.prepareStatement("SELECT sql FROM sqlite_master WHERE type = 'table' AND name = ?").use { ps ->
+            ps.setString(1, name)
+            ps.executeQuery().use { rs -> if (rs.next()) rs.getString(1) else null }
+        }
+    }
+
+    private fun liveColumns(name: String): List<String> = synchronized(conn) {
+        conn.createStatement().use { st ->
+            st.executeQuery("PRAGMA table_info($name)").use { rs ->
+                val out = mutableListOf<String>()
+                while (rs.next()) out.add(rs.getString(2))
+                out
+            }
+        }
+    }
+
+    /** The OBSERVED fingerprint of the live file: real columns + real DDL, with the
+     *  immutable domain the frozen schema DECLARES (a contract, not a file fact). */
+    private fun observeFingerprint(): SchemaFingerprint = SchemaFingerprint(
+        StoreSchema.ALL_TABLES.map { name ->
+            TableFingerprint(name, liveColumns(name), StoreSchema.immutableColumnsOf(name), liveDdl(name))
+        },
+    )
+
+    /** The immutable-cell digest of the live file, folded by the SAME pure
+     *  [immutableDigestOf] the production binding uses. */
+    private fun immutableDigest(): String {
+        val tables = mutableMapOf<String, List<List<ByteArray?>>>()
+        for (name in StoreSchema.ALL_TABLES) {
+            val columns = StoreSchema.immutableColumnsOf(name).sorted()
+            if (columns.isEmpty()) continue
+            val rows = mutableListOf<List<ByteArray?>>()
+            runCatching {
+                synchronized(conn) {
+                    conn.createStatement().use { st ->
+                        st.executeQuery("SELECT ${columns.joinToString(", ")} FROM $name").use { rs ->
+                            while (rs.next()) {
+                                rows.add(columns.indices.map { i -> rs.getBytes(i + 1) })
+                            }
+                        }
+                    }
+                }
+            }
+            tables[name] = rows
+        }
+        return immutableDigestOf(tables)
     }
 
     /** DDL-fingerprint validation against `sqlite_master` for ALL FOUR tables

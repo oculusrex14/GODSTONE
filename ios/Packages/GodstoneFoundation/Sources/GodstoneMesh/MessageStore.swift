@@ -198,12 +198,18 @@ internal enum StoreSchema {
     /// `NOT NULL` makes the invariant legible in the DDL fingerprint and forces a
     /// destructive recreate of any v5 file). The store stamps this into
     /// `PRAGMA user_version`; on open a file whose user_version is OLDER is
-    /// transactionally recreated (C6.4.1-D), a CURRENT file is DDL-fingerprint
+    /// MIGRATED through the ordered `SchemaMigrationEngine` -- never deleted from
+    /// (GS-STORE-003: the destructive drop+recreate that used to sit on this road
+    /// deleted held frames and delivery state on every versioned reopen; a
+    /// brand-new empty file still creates its tables, because it has no rows to
+    /// lose) -- a CURRENT file is DDL-fingerprint
     /// validated (C6.4.1-E), and a FUTURE file is rejected fail-closed untouched
     /// (C6.4.1-C). No installed base to preserve (ADR-001 §5).
     /// T83-A: bumped 6 -> 7 to add the two section 14 recipient-ACK namespaces
-    /// (ack_obligations + ack_frames) to the same db file, on the same
-    /// destructive-recreate doctrine (no installed base, ADR-001 §5). Android
+    /// (ack_obligations + ack_frames) to the same db file, reached by the same
+    /// ordered-migration road as every other revision -- the destructive recreate
+    /// that once served this bump was correct ONLY for the never-shipped pre-ship
+    /// case and is gone (GS-STORE-003). Android
     /// `StoreSchema.DB_VERSION` is the same 7 (byte-identical schema contract).
     static let dbVersion: Int32 = 7
     static let table = "held_frames"
@@ -450,6 +456,70 @@ internal enum StoreSchema {
     static let createAckFrameSqlIfNotExists =
         createAckFrameSql.replacingOccurrences(of: "CREATE TABLE ", with: "CREATE TABLE IF NOT EXISTS ")
 
+    // ------------------------------------------------------------------
+    // GS-STORE-003: the FROZEN schema fingerprint and the ordered migration plan
+    // the versioned upgrade road drives. The frozen side is built from the DDL
+    // constants ABOVE and NEVER from the file being observed -- feeding the
+    // observed values back as the expectation would make every comparison
+    // trivially true and silently disable the drift law.
+    // ------------------------------------------------------------------
+
+    /// Every table this file owns.
+    static let allTables = [table, deliveryTable, ackObligationTable, ackFrameTable]
+
+    /// The frozen columns, named by the SAME constants the DDL interpolates. A drift
+    /// between these lists and the DDL cannot pass unnoticed: a fresh file is created
+    /// FROM the DDL and then fingerprinted, so the brand-new-file control fails if
+    /// either side is wrong.
+    static let heldFrameColumns = [colMsgId, colType, colTtl, colHopCount, colFlags,
+                                   colPriority, colRoutingTag, colPayload, colReceivedFrom, colReceivedAt]
+    static let deliveryColumns = [colDMsgId, colDState, colDAckMode, colDExpected]
+    static let obligationColumns = [colOMsgId, colORecipient, colOGeneration, colORemaining, colOState]
+    static let ackFrameColumns = [colKAckKey, colKMsgId, colKRecipient, colKSignature,
+                                  colKEncoded, colKReceivedFrom, colKRemain, colKClass]
+
+    /// The immutable-column domain per table: the cells a migration may NEVER rewrite
+    /// (message ids, signed bytes, the recipient binding, ACK signatures). The digest
+    /// the executor reports is taken over exactly these cells.
+    static let immutableColumns: [String: Set<String>] = [
+        table: [colMsgId, colPayload],
+        deliveryTable: [colDMsgId, colDExpected],
+        ackObligationTable: [colOMsgId, colORecipient],
+        ackFrameTable: [colKAckKey, colKMsgId, colKRecipient, colKSignature],
+    ]
+
+    static func immutableColumnsOf(_ name: String) -> Set<String> { immutableColumns[name] ?? [] }
+
+    /// The frozen accepted fingerprint: names + columns + immutable domain + the exact
+    /// DDL, every part read from THIS type's own constants.
+    static let frozenFingerprint = SchemaFingerprint(tables: [
+        TableFingerprint(name: table, columns: heldFrameColumns,
+                         immutableColumns: immutableColumnsOf(table), ddl: createSql),
+        TableFingerprint(name: deliveryTable, columns: deliveryColumns,
+                         immutableColumns: immutableColumnsOf(deliveryTable), ddl: createDeliverySql),
+        TableFingerprint(name: ackObligationTable, columns: obligationColumns,
+                         immutableColumns: immutableColumnsOf(ackObligationTable), ddl: createObligationSql),
+        TableFingerprint(name: ackFrameTable, columns: ackFrameColumns,
+                         immutableColumns: immutableColumnsOf(ackFrameTable), ddl: createAckFrameSql),
+    ])
+
+    /// The ordered plan from an observed revision to the current one: ONE edge per
+    /// revision, because the Kotlin twin's `MigrationStep` requires `to == from + 1`
+    /// and both isles drive one contract. `creatingTables` puts the CREATE statements
+    /// on the FIRST edge -- the brand-new-file case, where creating IS the migration.
+    /// An EXISTING file's edges carry no DDL statements: this build supports exactly
+    /// one schema, so an existing file either already satisfies the frozen
+    /// fingerprint (and needs only its revision advanced) or drifts from it and is
+    /// refused before any write.
+    static func migrationPlan(from: Int, creatingTables: Bool, supportedMax: Int) -> [MigrationStep] {
+        guard from < supportedMax else { return [] }
+        let creates = [createSql, createDeliverySql, createObligationSql, createAckFrameSql]
+        return (from..<supportedMax).map { revision in
+            MigrationStep(from: revision, to: revision + 1,
+                          statements: (revision == from && creatingTables) ? creates : [])
+        }
+    }
+
     /// Insert a fresh obligation; ON CONFLICT of the pair key DO NOTHING (the
     /// inbox re-delivery is idempotent -- the EXISTING row, its generation pin and
     /// its remaining lifetime are NEVER updated). Bind: (1) msg, (2) recipient,
@@ -643,15 +713,17 @@ public final class SqliteMessageStore: MessageStore {
         // unwrap once so the migration helpers receive a non-optional `OpaquePointer`.
         guard let db = db else { return }
         handle = db
-        // C6.4-E / C6.4.1-B/C/D/E: PRAGMA user_version schema versioning -- the
-        // iOS twin of Android's `SQLiteOpenHelper.onUpgrade`. The store reads
-        // `PRAGMA user_version` (THROWS on a read failure, C6.4.1-B -- never
-        // 0-on-failure); an OLDER file is transactionally drop+recreated and
-        // stamped (C6.4.1-D); a CURRENT file is DDL-fingerprint validated
-        // (C6.4.1-E); a FUTURE file is rejected fail-closed untouched
-        // (C6.4.1-C). On ANY migration/validation failure the handle is closed
-        // and `handle` is set nil so the store is unusable (every op fails
-        // closed) rather than opened against a half-migrated / wrong schema. No
+        // C6.4-E / C6.4.1-B/C/D/E + GS-STORE-003: PRAGMA user_version schema
+        // versioning -- the iOS twin of Android's `SQLiteOpenHelper.onUpgrade`. The
+        // store reads `PRAGMA user_version` (THROWS on a read failure, C6.4.1-B --
+        // never 0-on-failure); an OLDER file is MIGRATED in order and NEVER deleted
+        // from (GS-STORE-003: the destructive drop+recreate that used to sit here
+        // lost held frames and delivery state on every versioned reopen); a CURRENT
+        // file is DDL-fingerprint validated (C6.4.1-E); a FUTURE file is rejected
+        // fail-closed untouched (C6.4.1-C). On ANY migration/validation failure the
+        // handle is closed and `handle` is set nil so the store is
+        // unusable (every op fails closed) rather than opened against a half-migrated
+        // / wrong schema, and a refused file is left exactly as it was found. No
         // installed base (ADR-001 §5: GMP/1 was never shipped). The logical
         // revision number (dbVersion) matches Android DB_VERSION.
         do {
@@ -1317,7 +1389,7 @@ public final class SqliteMessageStore: MessageStore {
     // No installed base (ADR-001 §5) -> destructive recreate is correct. The
     // logical revision matches Android `StoreSchema.DB_VERSION`.
 
-    private enum StoreError: Error { case handleMissing, prepareFailed, stepFailed, execFailed, schemaMismatch }
+    private enum StoreError: Error { case handleMissing, prepareFailed, stepFailed, execFailed, schemaMismatch, migrationRefused }
 
     /// C6.4.1-B: read `PRAGMA user_version`. THROWS on a prepare/step failure --
     /// never returns 0-on-failure (a read that silently returns 0 looks like a
@@ -1386,35 +1458,36 @@ public final class SqliteMessageStore: MessageStore {
         sql.split(whereSeparator: { $0.isWhitespace }).joined(separator: " ")
     }
 
-    /// C6.4.1-B/C/D: schema versioning + migration. See the MARK comment above.
-    /// Throws on any failure; the init closes the handle on throw so the store
-    /// is unusable rather than half-migrated.
+    /// C6.4.1-B/C/D + GS-STORE-003: schema versioning + migration. See the MARK
+    /// comment above. Throws on any failure; the init closes the handle on throw so
+    /// the store is unusable rather than half-migrated.
+    ///
+    /// GS-STORE-003 replaced the destructive road: an OLDER file is no longer
+    /// drop+recreated (that path deleted held frames and delivery state on every
+    /// versioned reopen). Instead:
+    ///
+    ///  * a BRAND-NEW file has no tables at all -- creating them IS the migration,
+    ///    and nothing is deleted because nothing exists;
+    ///  * an EXISTING older file whose live DDL already satisfies the frozen
+    ///    fingerprint is MIGRATED (its revision advances, no DDL is executed, no
+    ///    row is touched);
+    ///  * an EXISTING file whose live DDL drifts from the frozen fingerprint is
+    ///    REFUSED with a typed failure BEFORE any write, so it stays
+    ///    byte-preserved: not re-stamped, not altered, not emptied;
+    ///  * a FUTURE file is refused untouched (C6.4.1-C).
+    ///
+    /// The ordered, transactional, idempotent engine owns the ordering and the
+    /// rollback; the handle-bound executor below owns the transaction owner (the
+    /// SAME connection, never a second one) and the durable checkpoint.
     private func runMigrations(_ db: OpaquePointer) throws {
-        let v = try readUserVersion(db)
-        if v < StoreSchema.dbVersion {
-            // Older (or fresh, v=0): destructive recreate. No installed base
-            // (ADR-001 §5) -> dropping data is correct. Transactional so a
-            // mid-migration crash leaves the file on the OLD schema, not a
-            // half-migrated one; every statement runs through execStrict.
-            try execStrict(db, "BEGIN")
-            do {
-                try execStrict(db, "DROP TABLE IF EXISTS \(StoreSchema.deliveryTable)")
-                try execStrict(db, "DROP TABLE IF EXISTS \(StoreSchema.ackFrameTable)")
-                try execStrict(db, "DROP TABLE IF EXISTS \(StoreSchema.ackObligationTable)")
-                try execStrict(db, "DROP TABLE IF EXISTS \(StoreSchema.table)")
-                try execStrict(db, StoreSchema.createSql)
-                try execStrict(db, StoreSchema.createDeliverySql)
-                try execStrict(db, StoreSchema.createObligationSql)
-                try execStrict(db, StoreSchema.createAckFrameSql)
-                try setUserVersion(db, StoreSchema.dbVersion)
-                try execStrict(db, "COMMIT")
-            } catch {
-                sqlite3_exec(db, "ROLLBACK", nil, nil, nil)
-                throw error
-            }
-            return
+        let observed = Int(try readUserVersion(db))
+        let supported = Int(StoreSchema.dbVersion)
+        if observed > supported {
+            // v > current: a FUTURE schema. Fail closed, leave the file untouched.
+            // No invented downgrade of a schema this build cannot read.
+            throw StoreError.schemaMismatch
         }
-        if v == StoreSchema.dbVersion {
+        if observed == supported {
             // Current: validate the DDL fingerprint. A current-version file
             // with a non-matching schema is rejected fail-closed -- the belt-
             // and-suspenders IF NOT EXISTS creates are NOT run here, so a
@@ -1422,9 +1495,202 @@ public final class SqliteMessageStore: MessageStore {
             try validateSchema(db)
             return
         }
-        // v > current: a FUTURE schema. Fail closed, leave the file untouched.
-        // No invented downgrade of a schema this build cannot read.
-        throw StoreError.schemaMismatch
+
+        let present = try existingTableCount(db)
+        if present > 0 {
+            // An EXISTING durable file. Refuse BEFORE any write when its schema
+            // drifts from the frozen fingerprint, so a mismatched file is left
+            // exactly as it was found.
+            guard StoreSchema.frozenFingerprint.matches(observeFingerprint(db)) else {
+                throw StoreError.migrationRefused
+            }
+        }
+        let executor = HandleMigrationExecutor(store: self, db: db, checkpoint: observed)
+        let engine = SchemaMigrationEngine(
+            steps: StoreSchema.migrationPlan(from: observed, creatingTables: present == 0,
+                                             supportedMax: supported),
+            supportedMax: supported,
+            fingerprint: StoreSchema.frozenFingerprint)
+        switch engine.migrate(currentVersion: observed, observed: observeFingerprint(db), executor: executor) {
+        case .upgraded, .alreadyCurrent:
+            return
+        case .unsupportedVersion, .repairRequired, .failed:
+            // The engine's own verdicts are typed refusals, not reasons to delete:
+            // a refused file keeps its rows, its schema and its stamp.
+            throw StoreError.migrationRefused
+        }
+    }
+
+    // ------------------------------------------------------------------
+    // GS-STORE-003: the handle-bound migration seam. The executor drives the SAME
+    // connection the store owns (never a second connection -- a second one could not
+    // share the transaction owner and would approximate atomicity instead of having
+    // it), maps the durable checkpoint onto `PRAGMA user_version`, and reports the
+    // live schema by observation.
+    // ------------------------------------------------------------------
+
+    private final class HandleMigrationExecutor: MigrationExecutor {
+        private unowned let store: SqliteMessageStore
+        private let db: OpaquePointer
+        private var checkpoint: Int
+
+        init(store: SqliteMessageStore, db: OpaquePointer, checkpoint: Int) {
+            self.store = store
+            self.db = db
+            self.checkpoint = checkpoint
+        }
+
+        /// The durable checkpoint mirrors `PRAGMA user_version`. Its INITIAL value is
+        /// the strictly-read version (a failed read throws in `runMigrations` rather
+        /// than being laundered into a default here -- a silent 0 would look like a
+        /// fresh file).
+        func checkpointedThrough() -> Int { checkpoint }
+
+        func markCheckpointed(step: MigrationStep) {
+            // Stamped through `setUserVersion`, which THROWS on failure; the engine's
+            // contract marks without reporting, so a failed stamp is left to the
+            // caller's post-migration observation rather than swallowed into a
+            // success this code cannot prove. Best-effort is honest here only
+            // because the version is re-read and re-validated on every open.
+            if step.to > checkpoint {
+                try? store.setUserVersion(db, Int32(step.to))
+                checkpoint = step.to
+            }
+        }
+
+        func observeFingerprint() -> SchemaFingerprint { store.observeFingerprint(db) }
+
+        func immutableDigest() -> String { store.durableImmutableDigest(db) }
+
+        /// ONE transaction per step on the store's own connection: a fault at any
+        /// statement rolls the WHOLE step back (the engine's transactional promise),
+        /// so a crash mid-migration leaves the file on its previous revision.
+        func execute(step: MigrationStep, statements: [String]) throws {
+            try store.execStrict(db, "BEGIN")
+            do {
+                for statement in statements { try store.execStrict(db, statement) }
+                try store.execStrict(db, "COMMIT")
+            } catch {
+                sqlite3_exec(db, "ROLLBACK", nil, nil, nil)
+                throw error
+            }
+        }
+    }
+
+    /// How many of this store's four tables exist in the file. A file with none of
+    /// them is a brand-new (or empty) database: creating the schema loses nothing.
+    /// A file with SOME of them is partially migrated and is treated as an existing
+    /// file (refused if it drifts).
+    private func existingTableCount(_ db: OpaquePointer) throws -> Int {
+        var count = 0
+        for name in StoreSchema.allTables where (try? liveDdl(db, name: name)) != nil { count += 1 }
+        return count
+    }
+
+    /// The live CREATE text of `table`, or nil when the table does not exist.
+    private func liveDdl(_ db: OpaquePointer, name: String) throws -> String? {
+        // name is an internal constant, not user input -> interpolation is safe.
+        let sql = "SELECT sql FROM sqlite_master WHERE type = 'table' AND name = '\(name)'"
+        var stmt: OpaquePointer?
+        guard sqlite3_prepare_v2(db, sql, -1, &stmt, nil) == SQLITE_OK else {
+            sqlite3_finalize(stmt); throw StoreError.prepareFailed
+        }
+        defer { sqlite3_finalize(stmt) }
+        guard sqlite3_step(stmt) == SQLITE_ROW, let raw = sqlite3_column_text(stmt, 0) else { return nil }
+        return String(cString: raw)
+    }
+
+    /// The live column names of `table` (from `PRAGMA table_info`), or [] when absent.
+    private func liveColumns(_ db: OpaquePointer, name: String) throws -> [String] {
+        var stmt: OpaquePointer?
+        guard sqlite3_prepare_v2(db, "PRAGMA table_info(\(name))", -1, &stmt, nil) == SQLITE_OK else {
+            sqlite3_finalize(stmt); throw StoreError.prepareFailed
+        }
+        defer { sqlite3_finalize(stmt) }
+        var columns: [String] = []
+        while sqlite3_step(stmt) == SQLITE_ROW {
+            if let raw = sqlite3_column_text(stmt, 1) { columns.append(String(cString: raw)) }
+        }
+        return columns
+    }
+
+    /// The OBSERVED fingerprint of the live file: the real columns, the real CREATE
+    /// text and the immutable domain the frozen schema DECLARES for that table. The
+    /// immutable domain is a contract (which fields may never be rewritten), not a
+    /// fact to be read off a file -- so it legitimately comes from the frozen side
+    /// while columns and DDL come from the file. An absent table yields no DDL, so it
+    /// cannot match the frozen fingerprint.
+    private func observeFingerprint(_ db: OpaquePointer) -> SchemaFingerprint {
+        SchemaFingerprint(tables: StoreSchema.allTables.map { name in
+            TableFingerprint(name: name,
+                             columns: (try? liveColumns(db, name: name)) ?? [],
+                             immutableColumns: StoreSchema.immutableColumnsOf(name),
+                             ddl: try? liveDdl(db, name: name))
+        })
+    }
+
+    /// Test seam (GS-STORE-003): the executor's immutable-cell digest over the SAME
+    /// connection, so a court can prove the immutable bytes survived a migration
+    /// without opening a second connection.
+    internal func durableImmutableDigest() -> String { withDb { db in durableImmutableDigest(db) } ?? "<no-handle>" }
+
+    /// FNV-1a over the immutable cells of every table, combined order-independently
+    /// (each ROW contributes one hash, XOR-folded; tables are folded in name order).
+    /// Length-prefixed so `"ab"+"c"` cannot collide with `"a"+"bc"`, and NULL gets its
+    /// own marker so a NULL cannot collide with an empty blob. This reads REAL bytes
+    /// from the file: a constant would make the comparison vacuous.
+    private func durableImmutableDigest(_ db: OpaquePointer) -> String {
+        var whole: UInt64 = 0xcbf29ce484222325
+        for name in StoreSchema.allTables.sorted() {
+            let columns = StoreSchema.immutableColumnsOf(name).sorted()
+            guard !columns.isEmpty else { continue }
+            var perTable: UInt64 = 0
+            for row in immutableCells(db, table: name, columns: columns) {
+                var rowHash: UInt64 = 0xcbf29ce484222325
+                for cell in row { mix(&rowHash, cell) }
+                perTable ^= rowHash
+            }
+            mix(&whole, Array("\(name)#\(perTable)".utf8))
+        }
+        return String(whole, radix: 16)
+    }
+
+    /// The immutable cells of every row, as `[nil]` for a NULL and the raw blob bytes
+    /// otherwise. Unreadable/absent tables contribute nothing (a pre-migration file
+    /// that lacks a table has no cells to protect in it).
+    private func immutableCells(_ db: OpaquePointer, table: String, columns: [String]) -> [[[UInt8]?]] {
+        let select = "SELECT \(columns.joined(separator: ", ")) FROM \(table)"
+        var stmt: OpaquePointer?
+        guard sqlite3_prepare_v2(db, select, -1, &stmt, nil) == SQLITE_OK else {
+            sqlite3_finalize(stmt); return []
+        }
+        defer { sqlite3_finalize(stmt) }
+        var rows: [[[UInt8]?]] = []
+        while sqlite3_step(stmt) == SQLITE_ROW {
+            var cells: [[UInt8]?] = []
+            for index in 0..<Int32(columns.count) {
+                if sqlite3_column_type(stmt, index) == SQLITE_NULL {
+                    cells.append(nil)
+                } else if let blob = sqlite3_column_blob(stmt, index) {
+                    let length = Int(sqlite3_column_bytes(stmt, index))
+                    cells.append(Array(UnsafeBufferPointer(
+                        start: blob.assumingMemoryBound(to: UInt8.self), count: length)))
+                } else if let text = sqlite3_column_text(stmt, index) {
+                    cells.append(Array(String(cString: text).utf8))
+                } else {
+                    cells.append([])
+                }
+            }
+            rows.append(cells)
+        }
+        return rows
+    }
+
+    private func mix(_ hash: inout UInt64, _ bytes: [UInt8]?) {
+        guard let bytes = bytes else { hash ^= 0xff; hash = hash &* 0x100000001b3; return }
+        var length = UInt64(bytes.count)
+        for _ in 0..<8 { hash ^= length & 0xff; hash = hash &* 0x100000001b3; length >>= 8 }
+        for byte in bytes { hash ^= UInt64(byte); hash = hash &* 0x100000001b3 }
     }
 
     // MARK: - Stage 4C.1 / C6.1 / C6.4 delivery_state row (throwing primitives)
