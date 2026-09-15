@@ -46,7 +46,33 @@ already carried. The audit's step 3 stays OPEN, with its two measured obstacles 
 | CRYPTO-003 | FIX_SUBMITTED | 4b | Destroyed retained controllers and primitive sessions st |
 | CRYPTO-006 | FIX_SUBMITTED | 4b | Duplicate journal admission is treated as success for a |
 
-## DO THIS FIRST (round 174) — BL81 AND BL131 CLEARED; **BL52 IS REFUSED BY THE CRITERION** (5 ARMS → 3)
+## DO THIS FIRST (round 175) — BL11 CLEARED, **BL132 REFUSED TOO**, AND THE CODE-SIDE PATH IS EXHAUSTED AT **2 ARMS**
+
+**BL11 cleared:** the responder pump unwrapped the manager into a local named `pm`; the unwrap now reads
+`let peripheral = peripheral` (the property shadowed deliberately, documented in place) and the call reads
+`peripheral.updateValue(…, onSubscribedCentrals: [centralObj])` — the same reference, the same law. iOS lane
+**1198 tests, 0 failures**.
+
+**BL132 refused, and the reason is a design the control itself names elsewhere:** the pattern wants
+`guard let centralObj = subscribedCentrals[peerId]`, while the code takes its central from **the relation's lease**
+(`activeInboundLifetimes[peerId]?.retainedCentral`). The lease is kept **fresh** (carried forward on rotation, set to
+the current central on subscribe) and is **relation-scoped** — *stronger* than a map keyed only by central identifier.
+Switching would weaken the guard; adding the map as a conjunction would **break the T16 retained-handle path**
+(`viaRetained: true`), because after an unsubscribe the map holds no entry while the lease still retains the handle.
+Either road makes the code worse while making the gate green.
+
+**THE CODE-SIDE PATH IS EXHAUSTED, AND THAT IS THE ROUND'S REAL FINDING.** Of the **33** arms this control reported
+nine rounds ago, **31 were closed by code** — 8 substantive or mixed (BL96's sentinel terminal, BL115's two courts,
+BL22's eight forbidden calls, the CLOSING lifecycle) and 23 by provably-neutral alignment — and the **last two are
+conditions whose law the code satisfies MORE STRONGLY**. They are instrument approximations, and the honest closure is
+the **instrument, with new mutations** proving it still refuses a transport that observes no RSSI and a send branch
+that guards on nothing. **And it is now cheaper to verify than ever: once both rules are corrected the baseline is
+clean, so `--selftest` runs its battery for the first time** and can prove the new mutations are caught.
+
+**Standing: control 2 arms** (BL52, BL132) from 33; iOS 1198/0; Android green; readiness flags false; five external
+gates OPEN.
+
+## DO THIS FIRST (round 174, landed) — BL81 AND BL131 CLEARED
 
 * **BL81 cleared:** the scan reducer **already** consulted the driver, but the pattern wants the hint **named** and the
   event called `result`. The parameter was renamed (`event` → `result`, 7 tokens, positional at its one call site) and

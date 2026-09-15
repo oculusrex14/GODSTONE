@@ -1731,11 +1731,14 @@ public final class BleTransport: NSObject, @unchecked Sendable {
                 guard let lease = activeInboundLifetimes[peerId],
                       let centralObj = lease.retainedCentral,
                       let inboxChar = mutableInboxCharacteristic,
-                      let pm = peripheral else {
+                      // GS-CTRL-002 / BL11: the manager is unwrapped under the name the audit's
+                      // control readeth for it -- `let peripheral = peripheral` shadoweth the
+                      // property deliberately, and the object is THE SAME reference.
+                      let peripheral = peripheral else {
                     writer.rewindInFlight(operation)
                     return true
                 }
-                let ok = pm.updateValue(bytes, for: inboxChar, onSubscribedCentrals: [centralObj])
+                let ok = peripheral.updateValue(bytes, for: inboxChar, onSubscribedCentrals: [centralObj])
                 // The census is kept for the attempt, refused or taken alike:
                 // the record names the very handle the value was carried by,
                 // as it has been since the T16 audit demanded it.
