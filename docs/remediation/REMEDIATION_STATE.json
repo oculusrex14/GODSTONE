@@ -5675,6 +5675,46 @@
     "ios_linkLayerReady": false
    },
    "meaning": "This is the check an auditor performeth FIRST on a claim-laden ledger: is anything overclaimed? ZERO defects. No finding claimeth closure, no document claimeth a device or runtime result, no external gate is CLOSED and no readiness flag is TRUE -- and the flags are ENFORCED false by a canonical control that passes."
+  },
+  "session_close_AT_ROUND_127": {
+   "candidate_sha": "daaa1e936d3b92c89007830a75f6d9261319aba1",
+   "candidate_tree_sha": "eb73390142acd574fa0ca7c474b252b1abb55588",
+   "written_utc": "2026-09-15T17:29:39.649201+00:00",
+   "controls_at_close": {
+    "readiness_rc": 0,
+    "content_rc": 0,
+    "validate_state_rc": 0,
+    "gate_checker_rc": 0,
+    "kotlin_mesh_lane_rc": 0
+   },
+   "ledger_statuses": {
+    "OPEN": 23,
+    "FIX_SUBMITTED": 27,
+    "PARTIAL": 4
+   },
+   "findings_carrying_closure_evidence": [],
+   "what_this_session_achieved": [
+    "the independent auditor's own ten-case suite: 8 failures -> 0 (GS-CTRL-001 x3, GS-GATE-001 x2, GS-CONTENT-003, GS-CONTENT-001, GS-CONTENT-002)",
+    "the canonical content suite's long red CLOSED: 69 cases/14 failures/10 errors -> 75 tests OK",
+    "ANDROID-04: rollback-proof hour-glasses (a spent glass could be UN-EXPIRED) and the monotonic composition clock",
+    "ANDROID-05: the drain's typed in-flight outcome (a constant successful sweep), the lifecycle authority's retryability, and ANDROID-05-A's start ordering WITH 27 fixtures repaired",
+    "a CORRECTION this work owed: two rounds mislabelled their limb T09 while the supplement named a different schedule; recorded, then actually repaired",
+    "three repairs WITHDRAWN WITH MEASUREMENTS rather than leaving a red lane (the operator pair, the lifecycle retry arm, the permission/availability re-judge)",
+    "the ios lane baselined green (1195 XCTest tests, ~138s) and its MIRROR verified to match its sources (177 files, 0 drift)",
+    "closure-evidence staleness COMPUTED per finding (31 name a changed owner), the mandatory lanes re-verified as mandatory, the external-input lane re-verified, and an OVERCLAIM AUDIT with 0 defects over 54 findings and 5 documents"
+   ],
+   "what_remains_AND_THE_FIRST_ACTION": [
+    "GS-ARCHIVE-005 (the ONLY unfinished LIGHT-scope finding): rewire ArchiveDocumentReader onto scene.phase/passages/error/canRetry, DROP its own ArchiveReaderModel, drive the destination with scene.open(document:) -- then sync the mirror and run the ios lane ONCE (~138s, expect 1195 tests; grep 'Executed ', NOT the swift-testing summary). A PARTIAL redirect would DOUBLE-LOAD and is forbidden; that was PROVEN in round 125.",
+    "T18 step 3: the relationGeneration carrier is already landed INERT (BleConnection.relationGeneration, set at both creation sites); write the writer red through the existing centralWriterForTest/serverWriterForTest seams, then the two-line consumer edit at BleTransport.kt:1254/:1266. Count first how many courts construct BleConnection (this suite has baked audited bugs into fixtures before: 27 of them).",
+    "ANDROID-07 next: pre-auth record/byte budgets charged BEFORE parsing, reassembly and crypto, including malformed/rejected traffic.",
+    "T78 STAYS UNREACHABLE HERE: it requireth every applicable HOSTED job enabled, executed and green at one clean exact SHA; no hosted lane, run URL, run id or hosted log existeth in this environment."
+   ],
+   "what_is_NOT_claimed": [
+    "no finding is VERIFIED_FIXED (only an independent audit may write it)",
+    "no device, emulator, simulator, radio, native-inference or signing operation was performed, and no fixture was relabelled as a device result",
+    "no human content approval",
+    "the readiness flags are FALSE and enforced false; the five external gates are OPEN or BLOCKED; no closure evidence existeth anywhere"
+   ]
   }
  }
 }
