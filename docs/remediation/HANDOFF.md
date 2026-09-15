@@ -37,21 +37,33 @@ REFUSETH the word from this work.
 | CRYPTO-003 | FIX_SUBMITTED | 4b | Destroyed retained controllers and primitive sessions st |
 | CRYPTO-006 | FIX_SUBMITTED | 4b | Duplicate journal admission is treated as success for a |
 
-## DO THIS FIRST — the wave 4a chain: `GS-STORE-004`, then `GS-STORE-005`, then `GS-STORE-006`
+## DO THIS FIRST — the one thing each of the three richest entries still owes
 
-`CRYPTO-006` is DONE on both isles (`92104a7` android + `36c0cc6` iOS): the journal claim is keyed by
-the COMMAND REVISION, a duplicate carries the winning row, and a raced caller discards its own frame.
-What it still owes (in its ledger entry, not in this lane): the DURABLE journal (step 3 — the seam
-`CRYPTO-005` also needs), the relay/forwarding checks (step 5), and one unwitnessed defensive branch.
+The session that ran rounds 57–82 landed TWELVE repairs (ledger: 27 `FIX_SUBMITTED`, 2 `PARTIAL`, 25 `OPEN`,
+zero `VERIFIED_FIXED`). What remains on the three most-specified findings is now ONE limb each — start here,
+because the red design and the measured constraints are already written down:
 
-`GS-STORE-003`'s machinery is what 4a needs next — read what it left behind before editing:
-`StoreSchema.frozenFingerprint` / `migrationPlan(from:creatingTables:supportedMax:)` on both isles, the
-handle-bound executors (`HandleMigrationExecutor` / `DatabaseMigrationExecutor`), and the JVM host twin
-`JdbcStoreDb`. To add a schema revision you add a real non-destructive step (e.g. `ALTER TABLE ... ADD
-COLUMN`) and bump `dbVersion`/`DB_VERSION` TOGETHER on both isles, updating the frozen column lists in
-the same commit. WATCH THE BLAST RADIUS: on Android the held-frame write goes through the `StoreDb`
-interface, which has FOUR implementations, and `ReadinessT17Test.testReleaseSymbolsCarryNoTestFactories`
-refuseth any new exported test seam on a production type — a mandatory lane, not a negotiable one.
+1. **`GS-SOS-002` step 3 — serialize offer admission with cancellation.** The lease (both isles) and the
+   DURABLE-TRUTH check (both isles) are landed, and both reds are captured and proven executed. What is not
+   closed is the race between the check and the `send`: a cancellation committing in that window is still not
+   suppressed. Carry the two measured constraints with any change: the check must test the row's STATE (a
+   terminal CAS KEEPS the row) and the FIRST offer is exempt (the DIRECT path commits its row after offering —
+   gating it broke `MeshNodeDeliveryIntegrationTest.C6_6_1`).
+2. **`GS-ACK-001` step 4 — the captured bound public key.** Steps 1 and 3 are complete in FORM on both isles
+   (availability gate, size requirement, explicit BLAKE2s128 derivation, and the wrong-key control beside the
+   no-resolver arm). Step 4 asks that the CAPTURED key be the one used to verify before assigning
+   VERIFIED_RECIPIENT; today the authenticator re-resolves the pinned key, which is the same key object in this
+   implementation — make that identity explicit rather than incidental.
+3. **`GS-STORE-004`** (the wave 4a chain's next link) — the retention checkpoint: a REAL non-destructive
+   migration step plus the persisted checkpoint and the reopen debit. `GS-STORE-003` left the machinery
+   (`frozenFingerprint`, `migrationPlan`, the handle-bound executors, the `JdbcStoreDb` twin); adding a schema
+   revision means a real `ALTER TABLE ... ADD COLUMN` step and a `dbVersion`/`DB_VERSION` bump TOGETHER on both
+   isles, watching the four-implementation `StoreDb` interface and the mandatory
+   `testReleaseSymbolsCarryNoTestFactories` lane.
+
+ALSO WORTH A ROUND, and cheap: the android lane's unexplained FIXTURE flake ('no ascending hint pair within 64
+draws', seen in ReadinessT17/T18 fixture setup and green on re-run) — fix it deterministically so 'the lane is
+green' stops meaning 'the logged run was green'.
 
 ## Then the wave 4a chain: `GS-STORE-004`, then `GS-STORE-005`, then `GS-STORE-006`
 
