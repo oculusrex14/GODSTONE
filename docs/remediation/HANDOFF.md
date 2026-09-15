@@ -4,7 +4,7 @@ Ledger `REMEDIATION_STATE.json` (AUTHORITATIVE); protocol `README.md`; external 
 `EXTERNAL_INPUT_REQUESTS.md`; accounting `STATUS_ACCOUNTING.md`. Audit source `c683a2bf0b5bcdd4a662d98f7542351501b57b7c` is READ-ONLY, and its own
 process keepeth writing into the original checkout, whose declared addition GROWS (the floor may only rise).
 
-## Status — 25 submitted (22 FIX_SUBMITTED, 2 PARTIAL), 1 RED_WRITTEN, 29 OPEN
+## Status — 25 submitted (22 FIX_SUBMITTED, 3 PARTIAL), 29 OPEN
 
 Not one finding is `VERIFIED_FIXED`: only an INDEPENDENT AUDIT may write that, and the ledger court
 REFUSETH the word from this work.
@@ -35,23 +35,26 @@ REFUSETH the word from this work.
 | ANDROID-02 | FIX_SUBMITTED | 4d.2 | Canonical advertising makes the initiator's HS2 hint looku |
 | GS-ACK-002 | FIX_SUBMITTED | 5 | Restart ACK worker uses TTL 4 while immediate recipient AC |
 | CRYPTO-003 | FIX_SUBMITTED | 4b | Destroyed retained controllers and primitive sessions st |
-| CRYPTO-006 | RED_WRITTEN | 4b | Duplicate journal admission is treated as success for a |
+| CRYPTO-006 | PARTIAL | 4b | Duplicate journal admission is treated as success for a |
 
-## DO THIS FIRST — `CRYPTO-006`, whose red is captured and whose fix's shape is known by experiment
+## DO THIS FIRST — PORT `CRYPTO-006` TO THE iOS ISLE (the Android limb is landed at `92104a7`)
 
-The red is parked as a paste-ready snippet: `tools/readiness/audit_probes/kotlin/ReadinessT36Crypto006Arm.kt.snippet`
-(it belongs at the end of `class ReadinessT36Test`; the recipe is in its header). It fails with: *"the raced
-caller must resolve to the WINNER's logical id: arrays first differed at element [0]; expected:<27> was:<-98>"*.
+The law is settled and the Android limb proves it: **the journal claim is keyed by the COMMAND
+REVISION, not by the token alone.** `insertIfAbsent` returns a duplicate carrying the winning row
+**only when the stored row's `canonicalCommandDigest` equals the entrant's**; otherwise the row is
+TAKEN, so the row always matches what the authority committed, while the ledger keeps the latest
+accept per token. On a duplicate the authority DISCARDS its own freshly authored frame, validates
+the winner (digest, logical identity, decode, SEALED, msgId == logical id) and enqueues the WINNER.
 
-**A first repair was applied, measured and REVERTED — do not repeat it.** Making `insertIfAbsent` return the
-winning row and having the authority reuse it on Duplicate fixes the race arm but BREAKS
-`ReadinessT36Test.testChangedRecipientOrBodyOrPriorityCreatesNewLogicalSend`: with a **token-only** key the
-repaired authority rejects a second, *different* command under the same token, while the preserved law is
-that a changed recipient/body/priority is a NEW logical send (and that court asserts one current row per
-token). **The repair's first step is the audit's step 1: key the journal by the COMPOSITE
-`(intentToken, canonicalCommandDigest)`** and reconcile the "latest accepted row per token" semantic that
-W6 relies on deliberately. Then port the same correction to the other isle, add the audit's sequential
-regression beside the race arm, and MOVE the parked arm back into the canonical court.
+- iOS sites: `ios/Godstone/Sources/GodstoneMesh/SendDirectAuthority.swift` — the
+  `JournalInsertResult { stored, duplicate, storageFailure }` enum (~159) and the
+  `case .stored, .duplicate: break` swallow (~517).
+- Port BOTH arms with it: the deterministic race (`StaleReadJournal` double) and the sequential
+  regression, into `ios/Godstone/Tests/GodstoneMeshTests/ReadinessT36Tests.swift`, then run the
+  iOS package. Capture the iOS red first (the port is a second isle's defect, not a formality).
+- **Do not use a token-only claim**: that was tried, measured and reverted — it breaks
+  `testChangedRecipientOrBodyOrPriorityCreatesNewLogicalSend`, the preserved law that a changed
+  recipient/body/priority is a NEW logical send.
 
 ## Then the wave 4a chain: `GS-STORE-004`, then `GS-STORE-005`, then `GS-STORE-006`
 
