@@ -5414,7 +5414,7 @@
   }
  ],
  "evidence_audit": {
-  "round": 120,
+  "round": 122,
   "what": "round 97: the AUDIT-004 limb of GS-CTRL-001 landed; the auditor's own 10-case probe suite was rerun at the repaired SHA (8 failures -> 5) and its three GS-CTRL-001 probes now pass.",
   "verified": 96,
   "defects_found_and_what_happened": [
@@ -5556,6 +5556,17 @@
    "closure_evidence_entries": [],
    "this_is_not_t78": "no hosted lane existeth here, so T78 has NOT run and no readiness flag moved.",
    "this_is_not_a_closure": "only an independent audit may write VERIFIED_FIXED."
+  },
+  "round122_self_audit": {
+   "what": "every log and red-case reference in this ledger, plus every control log cited by the round bundles, was re-read from disk and its recorded digest compared",
+   "checked": 252,
+   "defects": 0,
+   "entries_without_a_digest": 0,
+   "defects_detail": [],
+   "without_digest_detail": [],
+   "bundles_checked": 55,
+   "method": "sha256 of each file on disk versus the digest the ledger or the bundle recordeth; a missing file is a defect, not a skip",
+   "meaning": "This auditeth the AUDIT TRAIL rather than the product: it proveth that every run-specific log this session cited still existeth and still hasheth to what was recorded. It closeth no finding and supersedes no independent audit."
   }
  }
 }
