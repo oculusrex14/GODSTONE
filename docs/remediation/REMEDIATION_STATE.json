@@ -2738,7 +2738,14 @@
       "invalidated_dependents": [],
       "my_fix_commit": null,
       "my_logs": [],
-      "my_red_case": null,
+      "my_red_case": {
+        "argv": "swift test --package-path ios/Packages/GodstoneFoundation --filter ReadinessStore003Tests (the arm copied into the package first)",
+        "case": "tools/readiness/audit_probes/swift/ReadinessStore003Tests.swift -- three source arms over the production upgrade path",
+        "cwd": "/Users/oculus/Projects/GODSTONE_BUILDER",
+        "log": "GS-STORE-003/red/store-003-RED.log",
+        "log_sha256": "a0ae99d88f0c3313d635b13f198baabc277736e6b1470adbabb4638a3216294f",
+        "outcome": "ALL THREE RED on the untouched product: the versioned migration `DROP TABLE`s durable tables; `SchemaMigration` is not bound to it; and the destructive path is not named as the never-shipped pre-ship case. (W01 was SKIPPED in its first form -- it addressed the method by a name that no longer existed, and a SKIPPED arm proveth nothing; it now FAILETH on a rename instead.)"
+      },
       "my_status": "OPEN",
       "notes": "NOT STARTED -- the targets are read and the repair is a WIRING rather than a new mechanism. Both isles DROP durable tables on the VERSIONED upgrade path (four drops each), while `SchemaMigration` (and its iOS twin) carrieth the non-destructive contract and SAYETH it is what the runtime must bind onUpgrade to. The red is the audit's own reproduction: a real row, a versioned reopen, the row GONE. Its caveat -- a synthetic older-version fixture, not a claim about every historic schema -- is recorded with it.",
       "pending_proof": [],

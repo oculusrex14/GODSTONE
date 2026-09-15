@@ -50,3 +50,17 @@ cd android && ./gradlew :llm:testDebugUnitTest --tests '*ReadinessModel001Test*'
 `an EXISTING GARBAGE model was accepted without a sworn artifact: the audit's reproduced defect
 (GS-MODEL-001)` and `an unpinned stream of 64 MiB was accepted whole`. When the repair landeth, the
 file MOVES BACK into the module as its permanent control, exactly as the python probes do.
+
+## Swift probes — `swift/ReadinessStore003Tests.swift` (GS-STORE-003)
+
+Red by design, and parked OUTSIDE the mirrored package for the same reason as the STORE-002 probe: `swift
+test` is the only runnable Swift lane here, and a red arm inside it would redden the package lane.
+
+**Captured red** (product untouched): 3 tests, 3 failures -- the versioned migration `DROP TABLE`s durable
+tables, `SchemaMigration` is NOT bound to it, and the destructive path is not named as the never-shipped
+pre-ship case. The audit's own behavioural probe (persist a real row, versioned reopen, the row VANISHES) is
+named in the ledger as the arm still owed.
+
+**To run it:** copy into `ios/Godstone/Tests/GodstoneMeshTests/`, run
+`python3 scripts/sync_ios_foundation_package.py`, then
+`swift test --package-path ios/Packages/GodstoneFoundation --filter ReadinessStore003Tests`.
