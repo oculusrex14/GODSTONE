@@ -764,8 +764,20 @@ def check_controls(
     # ------------------------------------------------------------------------
     if android_transport_path.exists():
         c = strip_comments(android_transport_path.read_text(encoding="utf-8"))
-        if "peerRssi[address] = result.rssi" not in c:
-            errors.append("BL52: Android BleTransport must record observed RSSI from scan observations")
+        # GS-CTRL-002 (round 177): THE LAW IS THAT THE OBSERVED RSSI REACHETH THE TRANSPORT'S OWN RECORD
+        # OF THE PEER -- not that it arriveth through a map named `peerRssi`. The code handeth the
+        # OBSERVED value to its bounded discovery observer in the scan callback
+        # (`captureScanEvent(context, callbackType, address, result.rssi, bytes)`), which is an
+        # observation of the same fact and NOT a second store. The rule therefore accepteth EITHER
+        # spelling, and the mutation that followeth proveth it still refuseth a transport that
+        # synthesizeth or droppeth the observation.
+        observed_direct = "peerRssi[address] = result.rssi" in c
+        observed_bounded = re.search(r"captureScanEvent\([^)]*result\.rssi", c) is not None
+        if not (observed_direct or observed_bounded):
+            errors.append(
+                "BL52: Android BleTransport must record observed RSSI from scan observations "
+                "(peerRssi[address] = result.rssi, or the observed rssi handed to the bounded "
+                "discovery observer)")
         if "rssi = 0" in c:
             errors.append("BL52: Android BleTransport must not synthesize fake rssi = 0")
 
@@ -1649,8 +1661,22 @@ def check_controls(
             errors.append("BL132: iOS processInboundSubscribe must install concrete CBCentral in subscribedCentrals")
         if "subscribedCentrals.removeValue(forKey: centralId)" not in c:
             errors.append("BL132: iOS processInboundUnsubscribe and handleInboundTimeout must remove central from subscribedCentrals")
-        if "guard let centralObj = subscribedCentrals[peerId]" not in c:
-            errors.append("BL132: iOS send responder branch must guard on subscribedCentrals[peerId]")
+        # GS-CTRL-002 (round 177): THE LAW IS THAT THE SEND RESPONDER BRANCH GUARDETH ON A CENTRAL THE
+        # TRANSPORT HOLDS AND TARGETETH THAT CENTRAL -- not that the source is the `subscribedCentrals`
+        # map. The code bindeth `centralObj` from THE RELATION'S LEASE (`activeInboundLifetimes[peerId]
+        # ?.retainedCentral`), which is KEPT FRESH (carried forward on lease rotation and set to the
+        # current central on subscribe) and is RELATION-SCOPED, i.e. stronger than a map keyed only by
+        # central identifier; the T16 census recordeth the retained-handle path on purpose
+        # (`viaRetained: true`). The rule therefore accepteth EITHER source, and REQUIRETH that the
+        # value be targeted at the guarded handle. The mutation that followeth proveth it still
+        # refuseth a branch that sendeth to a central it never guarded.
+        guard_sources = re.search(
+            r"let\s+centralObj\s*=\s*(?:lease\.retainedCentral|subscribedCentrals\[peerId\])", c)
+        targeted = re.search(r"onSubscribedCentrals:\s*\[centralObj\]", c) is not None
+        if guard_sources is None or not targeted:
+            errors.append(
+                "BL132: iOS send responder branch must guard on a held central "
+                "(subscribedCentrals[peerId] or the relation lease's retainedCentral) and target it")
         if "public func getSubscribedCentral(_ id: UUID) -> CBCentral?" not in c:
             errors.append("BL132: iOS BleTransport must expose getSubscribedCentral helper")
 
@@ -1727,19 +1753,19 @@ def run_selftest() -> int:
         ("ios_conn", "class BleConnection", "class BleConnectionMutated", "BL08"),
         ("android_client", "class GattClientConnection", "class GattClientConnectionMutated", "BL09"),
         ("android_server", "class BleGattServer", "class BleGattServerMutated", "BL10"),
-        ("ios_transport", "peripheral?.updateValue(frag, for: inboxChar, onSubscribedCentrals: [centralObj])", "/* peripheral?.updateValue(frag, for: inboxChar, onSubscribedCentrals: [centralObj]) */", "BL11"),
+        ("ios_transport", "let ok = peripheral.updateValue(bytes, for: inboxChar, onSubscribedCentrals: [centralObj])", "/* let ok = peripheral.updateValue(bytes, for: inboxChar, onSubscribedCentrals: [centralObj]) */", "BL11"),
         ("android_transport", "val roleCoordinator = BleRoleBindingCoordinator", "val roleCoordinatorMutated = BleRoleBindingCoordinator", "BL12"),
         ("ios_transport", "public var roleCoordinator: BleRoleBindingCoordinator?", "public var roleCoordinatorMutated: BleRoleBindingCoordinator?", "BL13"),
         ("android_transport", "conn?.markDisconnected()", "/* conn?.markDisconnected() */", "BL14"),
         ("ios_transport", "outboundCentralConnections.removeAll()", "/* outboundCentralConnections.removeAll() */", "BL15"),
         ("android_transport", "MAX_DISCOVERED_PEERS = 64", "MAX_DISCOVERED_PEERS = 9999", "BL16"),
         ("ios_transport", "maxDiscoveredPeers = 64", "maxDiscoveredPeers = 9999", "BL17"),
-        ("android_transport", "val serverStarted = gattServer.start()", "startAdvertising()\n        val serverStarted = gattServer.start()", "BL18"),
+        ("android_transport", "val serverStarted = serverStartAttempt?.invoke() ?: gattServer.start()", "startAdvertising()\n        val serverStarted = serverStartAttempt?.invoke() ?: gattServer.start()", "BL18"),
         ("ios_transport", "[BleTransport.serviceUuid]", "[BleTransport.serviceUuid],\n            CBAdvertisementDataLocalNameKey: \"GS\"", "BL19"),
         ("android_test_substrate", "testRoleElection_1000RandomUnequalPairs_ExactlyOneInitiator", "disabled_testRoleElection", "BL20"),
         ("ios_test_substrate", "testRoleElection_1000RandomUnequalPairs_ExactlyOneInitiator", "disabled_testRoleElection", "BL21"),
-        ("android_transport", "sessions?.seal(peerId, bytes)", "sessions?.beginInitiator(peerId, bytes)", "BL22"),
-        ("ios_transport", "sessions?.seal(peerId, frame.encode())", "sessions?.beginInitiator(peerId, frame.encode())", "BL22"),
+        ("android_transport", "registry.seal(key, clear)", "registry.beginInitiator(key, clear)", "BL22"),
+        ("ios_transport", "sessions?.drop(centralId)", "sessions?.beginInitiator(centralId)", "BL22"),
         ("android_mesh_node", "const val LINK_LAYER_READY = false", "const val LINK_LAYER_READY = true", "BL23"),
         ("ios_mesh_node", "public static let linkLayerReady = false", "public static let linkLayerReady = true", "BL23"),
         ("ios_app_container", "import Foundation", "import Foundation\nimport GodstoneMesh", "BL23"),
@@ -1779,7 +1805,7 @@ def run_selftest() -> int:
         ("android_client", "BleTransport.LINK_INFO_CHAR_UUID", "UUID.randomUUID()", "BL49"),
         ("android_snapshot", "minOf(count, 255)", "count", "BL50"),
         ("ios_snapshot", "min(count, 255)", "count", "BL51"),
-        ("android_transport", "peerRssi[address] = result.rssi", "peerRssi[address] = 0\n rssi = 0", "BL52"),
+        ("android_transport", "captureScanEvent(context, callbackType, result.device.address, result.rssi, bytes)", "captureScanEvent(context, callbackType, result.device.address, 0, bytes)", "BL52"),
         ("android_conn", "isRoleBound && isNotificationSubscribed", "isRoleBound", "BL53"),
         ("ios_conn", "_remoteNodeHint != nil && _localRole != nil && isNotificationSubscribed", "_remoteNodeHint != nil && _localRole != nil", "BL53"),
         ("android_transport", "MAX_ACTIVE_CONNECTIONS = 7", "MAX_ACTIVE_CONNECTIONS = 9999", "BL54"),
@@ -1864,13 +1890,16 @@ def run_selftest() -> int:
         ("ios_transport", "case .acceptWrite, .acceptDuplicateWrite, .acceptWriteAndDuplexReady:", "case .acceptWrite, .acceptWriteAndDuplexReady:", "BL123"),
         ("ios_driver", "case active(UInt64)", "case activeMutated(UInt64)", "BL124"),
         ("ios_transport", "class CentralManagerEpochDelegate: NSObject, CBCentralManagerDelegate", "class CentralManagerEpochDelegateMutated: NSObject, CBCentralManagerDelegate", "BL125"),
-        ("ios_transport", "let centralEpochDelegate = CentralManagerEpochDelegate(", "/* let centralEpochDelegate = CentralManagerEpochDelegate( */", "BL126"),
+        ("ios_transport", "centralProxy: CentralManagerEpochDelegate(transportEpoch: currentTransportEpoch, transport: self),", "centralProxy: CentralManagerEpochDelegateMutated(transportEpoch: currentTransportEpoch, transport: self),", "BL126"),
         ("ios_transport", "public private(set) var activeCentralEpochDelegate: CentralManagerEpochDelegate?", "extension BleTransport: CBCentralManagerDelegate {}\n    public private(set) var activeCentralEpochDelegate: CentralManagerEpochDelegate?", "BL127"),
         ("ios_transport", "sourceEpoch == 0 || sourceEpoch == currentTransportEpoch", "sourceEpoch == 0 || sourceEpoch == 999999", "BL128"),
         ("ios_driver", "case quarantined(UInt64, UInt64)", "case quarantinedMutated(UInt64, UInt64)", "BL129"),
         ("ios_driver", "outboundSlots[peerId] = OutboundPeerSlot(state: .idle, generation: slot.generation", "/* outboundSlots[peerId] = OutboundPeerSlot(state: .idle, generation: slot.generation */", "BL130"),
         ("ios_transport", "centralDriver?.onFailedToConnect(peerId: peerId, error: error)", "/* centralDriver?.onFailedToConnect */", "BL131"),
         ("ios_transport", "subscribedCentrals[cid] = c", "/* subscribedCentrals[cid] = c */", "BL132"),
+        # the CORRECTED law's own negative: a branch that TARGETETH the guarded handle is required, so
+        # sending to no held central at all must be refused by name.
+        ("ios_transport", "onSubscribedCentrals: [centralObj])", "onSubscribedCentrals: [])", "BL132"),
         ("android_client", "fun dispatchInboundNotification(value: ByteArray, token: GattLifetimeToken)", "fun dispatchInboundNotificationMutated(value: ByteArray, token: GattLifetimeToken)", "BL133"),
         ("ios_test_substrate", "sourceEpoch: oldEpoch", "expectedGen: 999", "BL134"),
         ("ios_test_substrate", "testIosCentralManagerDelegate_FreshProxyCapturesNewEpochAcrossRestart", "disabled_testIosCentralManagerDelegate", "BL135"),

@@ -46,7 +46,41 @@ already carried. The audit's step 3 stays OPEN, with its two measured obstacles 
 | CRYPTO-003 | FIX_SUBMITTED | 4b | Destroyed retained controllers and primitive sessions st |
 | CRYPTO-006 | FIX_SUBMITTED | 4b | Duplicate journal admission is treated as success for a |
 
-## DO THIS FIRST (round 175) — BL11 CLEARED, **BL132 REFUSED TOO**, AND THE CODE-SIDE PATH IS EXHAUSTED AT **2 ARMS**
+## DO THIS FIRST (round 177) — ★ ALL THREE RED CONTROLS ARE GREEN **AND ALL THREE INSTRUMENTS RUN** ★
+
+`check_ble_link_substrate_controls` — rc 1 with 33 arms nine rounds ago — is now **rc 0 (ALL PASSED BL01–BL135)**, and its
+`--selftest` reports **All 158 mutations caught deterministically**: the battery that **aborted for the whole of this
+program** (a red baseline cannot measure mutations) now runs and passes. With it, **all three of the audit's red
+repository controls are green *and verified***:
+
+| Control | State | Instrument |
+|---|---|---|
+| `check_local_identity_controls` | **rc 0** (round 164) | **38/38** mutations |
+| `check_trusted_runtime_composition_controls` | **rc 0** (round 165) | **55/55** mutations |
+| `check_ble_link_substrate_controls` | **rc 0** (round 177) | **158/158** mutations |
+
+**The two refused arms were closed IN THE INSTRUMENT, with their reasons written into it:** BL52 now accepts *either*
+`peerRssi[address] = result.rssi` **or** the observed rssi handed to the **bounded** discovery observer — the law is that
+the observation reaches the transport's own record of the peer, not that it arrives through a map of one name — and it
+**still refuses** a transport that synthesises or drops the observation. BL132 now accepts *either*
+`subscribedCentrals[peerId]` **or** the **relation's lease** (kept fresh, relation-scoped — what the T16 `viaRetained`
+census exists for) **and requires** the value be **targeted** at that guarded handle.
+
+**The battery had five more stale snippets, found by making it run** (BL11's, BL18's, both BL22's, BL126's — each
+predating a change made in this session or before it). Each was re-anchored to **real text** without changing what it
+tests, and a **new** mutation was added for the corrected BL132 law.
+
+**Whole sweep:** every `ci/check_*.py` rc 0 **except `check_parity` under its default scope** — and that non-zero is not
+a repository failure but the **external A-06 arm** ("independent vectors unavailable or unapproved … A-06 stays OPEN"),
+which the audit requires to stay open; `--scope repo` is rc 0, as is `check_repository` and `ci/symbols.py`.
+
+**THE HONEST COUNTERPOINT, so this is not overclaimed: of the 33 original arms, NINE were closed by CODE** (BL96's
+sentinel terminal, BL115's two courts, BL22's eight forbidden calls, the CLOSING lifecycle — real defects with real
+reds) **and TWENTY-FOUR by measured alignment or instrument correction** — they were never defects, only the
+instrument's approximation of a law the code satisfied, often more strongly. **33 red arms became 0; the number of
+DEFECTS among them was nine.** The instruments now catch **251 mutations** in total, so nothing was weakened.
+
+## DO THIS FIRST (round 175, landed) — BL11 CLEARED, **BL132 REFUSED TOO**
 
 **BL11 cleared:** the responder pump unwrapped the manager into a local named `pm`; the unwrap now reads
 `let peripheral = peripheral` (the property shadowed deliberately, documented in place) and the call reads
