@@ -46,7 +46,34 @@ already carried. The audit's step 3 stays OPEN, with its two measured obstacles 
 | CRYPTO-003 | FIX_SUBMITTED | 4b | Destroyed retained controllers and primitive sessions st |
 | CRYPTO-006 | FIX_SUBMITTED | 4b | Duplicate journal admission is treated as success for a |
 
-## DO THIS FIRST (round 168) — BL22's ANDROID HALF: THE TRANSPORT NOW SPEAKS THE SUBSTRATE'S HANDSHAKE AUTHORITY
+## DO THIS FIRST (round 169) — BL22 IS CLEARED ON BOTH ISLES (33 ARMS → 23); THE REMAINING 23 ARE THE SPELLING DECISION
+
+The iOS twin landed shape for shape: `BleHandshakeAuthority.swift` carries the substrate's vocabulary
+(`startOutboundHandshake`, `continueOutboundHandshake`, `acceptInboundHandshake`, `completeInboundHandshake`) with
+`SessionHandshakeAuthority` as the **one** adapter speaking the registry's names, and `BleTransport.swift` travels
+through the seam at all four sites. **Zero forbidden occurrences remain on either isle.**
+
+**The design lesson was carried across rather than re-learned:** the iOS seam is an `internal var` override from the
+start — the Android draft learned from the compiler that a **public** class may not expose an `internal` type in its
+public surface, and widening that surface for a test seam would be the wrong trade.
+
+**Proof:** whole iOS lane **1198 tests, 0 failures** (unchanged count) with the readiness courts driving **real
+handshakes end-to-end** through the adapter — every adapter method delegates to the registry call it replaced, so
+wire bytes, trust table and refusal semantics are untouched. **Control: 27 → 23 arms**; BL115's two inventory arms
+and **all eight** BL22 arms are cleared.
+
+**THE REMAINING 23 ARE THE SPELLING APPROXIMATIONS** triaged at round 166 — BL11, BL42, BL52, BL81, BL93, BL96 (×2),
+BL118, BL126, BL128 (×11), BL131, BL132 — and **the decision they force is still open and still deliberate**: align
+~23 spellings in a frozen transport surface (several of which would **rewrite stronger code down to a pattern's
+shape**) **or** repair the instrument to test the law, with NEW MUTATIONS proving it still refuses violations. Round
+165 refused a comparable shortcut for a 4-arm case and aligned the code; the calculus differs here and that is
+recorded rather than assumed.
+
+**Also owed (cheaper now, and not dropped):** a court that drives the transport with a **fake** handshake authority
+and **no** session manager — proving the *decoupling* directly on either isle. Both seams now exist, so it needs an
+entry point into the handshake road, not new production wiring.
+
+## DO THIS FIRST (round 168, landed) — BL22's ANDROID HALF
 
 The control's BL22 arm forbids six SessionManager handshake names **anywhere in the transport file**, and the audit's
 drivers carry **no handshake API of their own** — so this was not a reroute onto an existing substrate method but the

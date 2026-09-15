@@ -1109,6 +1109,18 @@ public final class BleTransport: NSObject, @unchecked Sendable {
             refreshLocalLinkInfoSnapshotSync()
         }
     }
+    /// BL22: the SUBSTRATE'S handshake authority a court may substitute. Kept `internal` rather than
+    /// a public property because this class is PUBLIC and widening its surface for a test seam would
+    /// be the wrong trade (the Android twin's first draft learned that from the compiler).
+    internal var handshakeAuthorityOverride: BleHandshakeAuthority?
+
+    /// BL22: every handshake step travelleth through this seam, never through the registry's surface.
+    private var handshake: BleHandshakeAuthority? {
+        if let override = handshakeAuthorityOverride { return override }
+        guard let sessions = sessions else { return nil }
+        return SessionHandshakeAuthority(sessions: sessions)
+    }
+
     public var sessions: SessionManager?
     public private(set) var snapshotAuthority: LinkInfoSnapshotAuthority!
     private let provisionalTimeoutSeconds: TimeInterval
@@ -1985,7 +1997,7 @@ public final class BleTransport: NSObject, @unchecked Sendable {
             // T23: the exchange is ENGAGED - the first counsel of it is heard at
             // the door and answerd; the hour-glass may now fell a stalled half.
             conn.markHandshakeEngaged()
-            guard let hs2 = registry.responderProcessHs1(centralId, remoteHint: hint, hs1: record.payload) else {
+            guard let hs2 = handshake?.acceptInboundHandshake(peerId: centralId, remoteHint: hint, hs1: record.payload) else {
                 // trust refused: the counsel is not true; the relation
                 // becometh nothing, and the slot perisheth with it
                 recordRejection(peerId: centralId, site: "hs.read.responder", reason: "hs1 rejected")
@@ -2024,7 +2036,7 @@ public final class BleTransport: NSObject, @unchecked Sendable {
                 closeResponderRelation(centralId)
                 return
             }
-            guard registry.responderProcessHs3(centralId, hs3: record.payload, advertisedRemoteHint: hint) else {
+            guard handshake?.completeInboundHandshake(peerId: centralId, hs3: record.payload, advertisedRemoteHint: hint) == true else {
                 recordRejection(peerId: centralId, site: "hs.read.responder", reason: "hs3 rejected")
                 closeResponderRelation(centralId)
                 return
@@ -2096,7 +2108,7 @@ public final class BleTransport: NSObject, @unchecked Sendable {
                             reason: "hs2 duplicate hearkened not")
             return
         }
-        guard let hs3 = registry.initiatorProcessHs2(peerId, hs2: record.payload, advertisedRemoteHint: boundRemoteHint) else {
+        guard let hs3 = handshake?.continueOutboundHandshake(peerId: peerId, hs2: record.payload, advertisedRemoteHint: boundRemoteHint) else {
             // trust rejected: HS3 is withheld and the exact relation closes
             recordRejection(peerId: peerId, site: "hs.read.initiator", reason: "hs2 rejected")
             closeInitiatorRelation(peerId)
@@ -2220,7 +2232,7 @@ public final class BleTransport: NSObject, @unchecked Sendable {
             return .rejected("hint order not ascendant")
         }
         recordTrustWorkForTest("seal")
-        guard let hs1 = registry.beginInitiator(peerId, remoteHint: remoteHint) else {
+        guard let hs1 = handshake?.startOutboundHandshake(peerId: peerId, remoteHint: remoteHint) else {
             recordRejection(peerId: peerId, site: "hs.begin", reason: "begin initiator refused")
             return .rejected("begin initiator refused")
         }
