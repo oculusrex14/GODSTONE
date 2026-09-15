@@ -46,7 +46,42 @@ already carried. The audit's step 3 stays OPEN, with its two measured obstacles 
 | CRYPTO-003 | FIX_SUBMITTED | 4b | Destroyed retained controllers and primitive sessions st |
 | CRYPTO-006 | FIX_SUBMITTED | 4b | Duplicate journal admission is treated as success for a |
 
-## DO THIS FIRST (round 187) — ANDROID-07 / T26 STEP 3: THE GOVERNOR'S PRODUCTION DEFAULTS ARE NOW THE CARD'S (256 + MONOTONIC)
+## DO THIS FIRST (round 188) — ANDROID-07 / T26 STEP 2: THE POST-AEAD CHARGE ON THE AUTHENTICATED IDENTITY
+
+**The defect, pinned to the exact arm:** in `BleTransport.received()`'s collector, `openWithResult` decides and the
+`Authenticated` arm hands the plaintext to the key-confirmation door or to the application (`trySend`) — **charged
+nothing**. The only authenticated-side budget was the **Router's** governor, which sits **downstream of the frame
+decode** and keys on the **claimed** sender and the **claimed** priority — so authenticated ciphertext spends the
+transport's memory and CPU unmeasured, and a claimed SOS priority is what chooses a bucket.
+
+**The RED is canonical and immutable:** three arms, written and **run first in the probes directory**
+(`Ran 3 tests, FAILED (failures=2)` with the **W00 positive control passing** — the Authenticated arm still exists to be
+charged), then **moved into `tools/readiness/tests/` with the repair**, per that directory's own rule.
+
+**The repair:** `AdmissionBudget.chargeAuthenticated()` — the authenticated scope, with a **prefixed key space**
+(`authenticated:`) so an authenticated identity can never collide with a pre-auth address — and the transport owns a
+**second** budget instance so each scope's counters report **one** scope. Charged in the `Authenticated` arm **before**
+`takeInboundKeyConfirmation`/`trySend`; a refusal is **recorded** (`admission.budget.authenticated`) and the payload
+**dropped**.
+
+**The honest limit, named rather than glossed:** the identity available at that site is the **relation's authenticated
+peer id** — bound by the trusted handshake, hence authenticated material, never a MAC or a hint. *If* the audit's phrase
+"the immutable full NodeID" means the **sixteen-octet** identity rather than the relation's bound handle, then the
+**crypto layer must expose that identity at this site** — a named further step, not an assumption made here.
+
+**Three of my own errors, all caught and all recorded:** (i) the first patch script died at **parse time** on a quote
+collision, so **nothing was applied** while the lane reported "SUCCESSFUL in 2s" from an up-to-date task — **a cached
+green is not evidence**, and the empty diff was what revealed it; (ii) the budget's new accessor collided with its own
+field name (`admittedCount()` vs `admittedCount`) — the compiler caught it; (iii) the new arm's regex demanded a variable
+name (`authenticatedBudget`) the code did not use (`authenticatedAdmissionBudget`), so the arm failed against code that
+**was** correct — **the arm was widened to match the SCOPE, not the name.**
+
+**Acceptance:** canonical arm suite OK; whole `:mesh` lane **1184 tests, 0 failures, 0 errors**.
+
+**Remaining on ANDROID-07:** step 4's remainder (the seven mislabeled governor-**unit** witnesses re-scoped or replaced
+with ingress-level ones, plus the downstream counters) and the full-NodeID question above.
+
+## DO THIS FIRST (round 187, landed) — ANDROID-07 / T26 STEP 3
 
 **The bound, proved behaviourally:** W10 reads `PeerGovernor().maxTrackedPeersLimit()` and was RED at
 **`expected:<256> but was:<4096>`** on the unmodified tree — the audited default kept a registry **four times larger**

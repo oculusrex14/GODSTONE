@@ -36,7 +36,7 @@ class AdmissionBudget(
 
     private val windows = HashMap<String, Window>()
     private val refused = AtomicLong(0L)
-    private val admittedCount = AtomicLong(0L)
+    private val admittedValues = AtomicLong(0L)
 
     /** Charge ONE arriving value against its relation's pre-auth allowance. */
     fun charge(relation: String, bytes: Int): Verdict {
@@ -66,10 +66,25 @@ class AdmissionBudget(
             }
             w.records += 1
             w.bytes += charge
-            admittedCount.incrementAndGet()
+            admittedValues.incrementAndGet()
             return Verdict.ADMITTED
         }
     }
+
+    /**
+     * ANDROID-07 / T26 STEP 2: THE AUTHENTICATED SCOPE. Charged AFTER AEAD, keyed on the identity the
+     * trusted handshake BOUND to the relation -- never on a MAC, a hint or a claimed SOS priority,
+     * which all arrive BEFORE authentication and may not choose a bucket or a key. Its key space is
+     * PREFIXED so that an authenticated identity can never collide with a pre-auth address.
+     *
+     * The transport keepeth a SECOND instance for this scope, so each instance's counters report one
+     * scope cleanly rather than two mixed together.
+     */
+    fun chargeAuthenticated(authenticatedId: ByteArray, bytes: Int): Verdict =
+        charge(AUTHENTICATED_PREFIX + authenticatedId.joinToString("") { "%02x".format(it) }, bytes)
+
+    /** Observation for courts and counters: how many values the budget admitted. */
+    fun admittedCount(): Long = admittedValues.get()
 
     /** Observation for courts and counters: how many values the budget refused. */
     fun refusedCount(): Long = refused.get()
@@ -87,5 +102,7 @@ class AdmissionBudget(
         const val DEFAULT_RECORDS_PER_RELATION = 2048
         const val DEFAULT_BYTES_PER_RELATION = 1024L * 1024L
         const val WINDOW_MILLIS = 1_000L
+        /** The authenticated scope key prefix: it may never collide with a pre-auth address. */
+        const val AUTHENTICATED_PREFIX = "authenticated:"
     }
 }

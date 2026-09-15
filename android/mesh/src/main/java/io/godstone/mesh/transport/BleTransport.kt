@@ -184,6 +184,15 @@ class BleTransport(
      */
     private val admissionBudget = AdmissionBudget(nowMillis = { admissionClockMillis() })
 
+    /**
+     * ANDROID-07 / T26 (step 2): THE AUTHENTICATED BUDGET -- a SEPARATE instance, so that each scope's
+     * counters report ONE scope. Charged AFTER AEAD on the identity the trusted handshake bound.
+     */
+    private val authenticatedAdmissionBudget = AdmissionBudget(nowMillis = { admissionClockMillis() })
+
+    internal fun authenticatedAdmissionChargesForTest(): Long = authenticatedAdmissionBudget.admittedCount()
+    internal fun authenticatedAdmissionRefusalsForTest(): Long = authenticatedAdmissionBudget.refusedCount()
+
     private val provisionalJobs = ConcurrentHashMap<String, Job>()
     private val inboundJobs = ConcurrentHashMap<String, Job>()
     /**
@@ -1196,9 +1205,19 @@ class BleTransport(
                     }
                     when (outcome) {
                         is io.godstone.mesh.crypto.NoiseSession.CryptoOpenResult.Authenticated -> {
-                            // T23: a sealed key-confirmation control is hearkened by D2
-                            // and never carrieth to the application; all else moveth on.
-                            if (!takeInboundKeyConfirmation(peerId, outcome.plaintext)) {
+                            // ANDROID-07 / T26 (step 2): THE POST-AEAD CHARGE, BEFORE THE PAYLOAD LEAVETH.
+                            // Charged on the identity the trusted handshake BOUND to this relation -- never
+                            // on a MAC, a hint or a claimed SOS priority -- so authenticated ciphertext can
+                            // no longer spend the transport's memory and CPU unmeasured, and the router's
+                            // downstream governor (keyed on the CLAIMED sender and priority) is no longer
+                            // the only authenticated-side budget.
+                            if (authenticatedAdmissionBudget.chargeAuthenticated(peerId, outcome.plaintext.size)
+                                == AdmissionBudget.Verdict.REFUSED) {
+                                recordRejection(peerId, "admission.budget.authenticated",
+                                    "authenticated admission budget exhausted")
+                            } else if (!takeInboundKeyConfirmation(peerId, outcome.plaintext)) {
+                                // T23: a sealed key-confirmation control is hearkened by D2
+                                // and never carrieth to the application; all else moveth on.
                                 trySend(peerId to outcome.plaintext)
                             }
                         }
