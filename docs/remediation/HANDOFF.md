@@ -46,7 +46,35 @@ already carried. The audit's step 3 stays OPEN, with its two measured obstacles 
 | CRYPTO-003 | FIX_SUBMITTED | 4b | Destroyed retained controllers and primitive sessions st |
 | CRYPTO-006 | FIX_SUBMITTED | 4b | Duplicate journal admission is treated as success for a |
 
-## DO THIS FIRST (round 204) — ANDROID-04: THE LEASE SWEEP GETS A PRODUCTION OWNER (THE SCHEDULER, WHICH WAS THE CARD'S FIRST DEFECT)
+## DO THIS FIRST (round 205) — ANDROID-04's STEPS 2/4/5 **HOLD** (MEASURED); ONE TIME-BASED WITNESS REMAINS, ONE EDIT AWAY
+
+**Three of the card's five steps needed no repair at all — only evidence.** Read from the code and from the courts that
+already witness them:
+
+* **step 2 holds:** `sweepInboundLeases()` closes every lapsed relation through
+  `handleCentralDisconnected(address, client.clientToken, client.gattGeneration)` and
+  `handleServerDisconnected(address, serverDriver.getClientGeneration(address))` — **the exact relation and the exact
+  generation travel** (T12's law), and the *absolute deadline* is the connection's own lease term, swept at the
+  **connection's own monotonic, injectable clock**.
+* **step 4 holds through the same arms:** they verify the token, clear handshake/writer/session state, retire the slot
+  (releasing capacity through the driver) and close **only** the captured relation.
+* **step 5 holds:** the transport cancels jobs at eight sites, including the **new** `leaseSweepJob` at `stop()`; and
+  "a queued stale timer must still be harmless after cancellation" is the T20/T23 courts' own witness.
+
+**What remains is proof by TIME, not by traffic** — the owned sweep is witnessed as **armed** and **cancelled**, never as
+actually **tripping**. Its two seams are named: **(a)** `LEASE_SWEEP_INTERVAL_MS` is a **constant** and must become an
+**injectable constructor parameter** so a court can drive 25 ms; **(b)** the **connection clock is already injectable** in
+the T20 rig (`alice.centralDriver.connectionClockForTest = { rigNow }`, same for bob) — so **no new production seam is
+needed** for it.
+
+**The witness is therefore one edit away:** admit a relation, advance the injected clock past its absolute term, wait past
+one interval **with no further traffic**, and assert the relation **retired**.
+
+**Why it was not written this round:** the budget went to *measuring* steps 2/4/5 — which turned out to hold — and a
+**timing-dependent test written in haste is exactly the flake this programme refuses**. Next round lands it with the seams
+already named.
+
+## DO THIS FIRST (round 204, landed) — ANDROID-04: THE LEASE SWEEP GETS A PRODUCTION OWNER
 
 **The defect, in the finding's own words:** `BleTransport.sweepInboundLeases()` was called **only** by a court
 (`ReadinessT20Test`), so the absolute lease expiry ran **only** when some other inbound packet arrived and tripped the
