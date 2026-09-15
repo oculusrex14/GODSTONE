@@ -12,6 +12,7 @@ package io.godstone.mesh.readiness
 
 import io.godstone.core.crypto.Ed25519Keys
 import io.godstone.core.crypto.X25519Keys
+import io.godstone.mesh.delivery.ACK_INITIAL_TTL
 import io.godstone.mesh.delivery.AckAdmissionResult
 import io.godstone.mesh.delivery.AckCacheKey
 import io.godstone.mesh.delivery.AckFrame
@@ -24,10 +25,12 @@ import io.godstone.mesh.delivery.AckVerificationClass
 import io.godstone.mesh.delivery.Ed25519AckAuthenticator
 import io.godstone.mesh.delivery.FrameCommitResult
 import io.godstone.mesh.delivery.FrameLookup
+import io.godstone.mesh.delivery.InboxCommitResult
 import io.godstone.mesh.delivery.InboundCommitResult
 import io.godstone.mesh.delivery.InMemoryAckStore
 import io.godstone.mesh.delivery.ObligationAdvanceResult
 import io.godstone.mesh.delivery.ObligationInsertResult
+import io.godstone.mesh.delivery.RecipientInboxRepository
 import io.godstone.mesh.delivery.ObligationLookup
 import io.godstone.mesh.delivery.PairList
 import io.godstone.mesh.delivery.PendingList
@@ -75,13 +78,14 @@ class ReadinessT83Test {
         }
     }
 
-    private class Local(val id: ByteArray, val seed: ByteArray, val pub: ByteArray, val dhPub: ByteArray)
+    private class Local(val id: ByteArray, val seed: ByteArray, val pub: ByteArray, val dhPub: ByteArray,
+                        val dhPriv: ByteArray)
 
     private fun newLocal(): Local {
         val ed = Ed25519Keys.generate(rng)
         val dh = X25519Keys.generate(rng)
         val idn = Identity.fromKeyMaterial(ed.pub, ed.priv, dh.pub, dh.priv)
-        return Local(idn.nodeId, ed.priv, ed.pub, dh.pub)
+        return Local(idn.nodeId, ed.priv, ed.pub, dh.pub, dh.priv)
     }
 
     private class TestSigner(private val local: Local?) : AckSignerSeam {
@@ -189,7 +193,12 @@ class ReadinessT83Test {
         Assert.assertEquals("claiming nothing else", 0, report.keyUnavailable + report.storageFailures + report.idempotent + report.refusedQuota)
         Assert.assertEquals("the obligation table drains empty", 0, r.store.ackStore.countObligations())
         // the resumed outcome is byte-identical to the canonical one built directly
-        val reference = AckFrame.build(frame.msgId, r.me.seed, r.me.id, hintOf(r.me.id))
+        // GS-ACK-002: the reference is built with the SAME initial-TTL profile the two
+        // PRODUCTION roads use. Built with the frozen builder default instead, these
+        // assertions were green BECAUSE the restart road and the reference were wrong in
+        // exactly the same way.
+        val reference = AckFrame.build(frame.msgId, r.me.seed, r.me.id, hintOf(r.me.id),
+                                        ttl = ACK_INITIAL_TTL)
         val key = AckCacheKey.compute(frame.msgId, r.me.id, reference.payload.copyOfRange(0, 64))
         if (key == null) {
             Assert.fail("the local cache key must be computable")
@@ -468,7 +477,12 @@ class ReadinessT83Test {
         }
         val rep = driverOf(r, TestSigner(r.me)).runPendingOnce(8)
         Assert.assertEquals("one signed", 1, rep.signed)
-        val reference = AckFrame.build(frame.msgId, r.me.seed, r.me.id, hintOf(r.me.id))
+        // GS-ACK-002: the reference is built with the SAME initial-TTL profile the two
+        // PRODUCTION roads use. Built with the frozen builder default instead, these
+        // assertions were green BECAUSE the restart road and the reference were wrong in
+        // exactly the same way.
+        val reference = AckFrame.build(frame.msgId, r.me.seed, r.me.id, hintOf(r.me.id),
+                                        ttl = ACK_INITIAL_TTL)
         val expectedKey = AckCacheKey.compute(frame.msgId, r.me.id, reference.payload.copyOfRange(0, 64))
         if (expectedKey == null) {
             Assert.fail("the deterministic key must be computable")
@@ -766,5 +780,88 @@ class ReadinessT83Test {
             "a restart finds nothing pending and claims nothing afresh",
             0, idle.scanned + idle.signed + idle.retired + idle.keyUnavailable + idle.storageFailures,
         )
+    }
+
+    // ------------------------------------------------------------------ GS-ACK-002
+
+    /**
+     * THE IMMEDIATE ROAD AND THE RESTART ROAD MUST PUT THE SAME METADATA ON THE WIRE.
+     *
+     * The audit's charge: the recipient's IMMEDIATE reply is generated with the ACK
+     * profile's initial TTL, while the RESTART worker (`runPendingOnce`, which signs an
+     * obligation that survived a crash or a key outage) built its frame WITHOUT that TTL
+     * and so fell back to the frozen builder default -- a DIFFERENT hop budget for the
+     * same reply, decided by nothing but WHEN it was signed. Both roads are driven here
+     * through their real entries, and the metadata they produce is compared.
+     */
+    @Test
+    fun testTheRestartRoadCarriethTheSameInitialMetadataAsTheImmediateRoad() = runTest {
+        val r = rig(303)
+        r.keys.put(r.me.id, r.me.pub)
+
+        // THE IMMEDIATE ROAD: the reply a verified inbound frame receives AT ONCE is built by
+        // RecipientInboxRepository with the ACK profile's NAMED initial-TTL constant. That
+        // road is driven end to end by the T37 court (it needs a fully signed container,
+        // which this court's sender fixture does not carry), so what is read here is its own
+        // SOURCE: the constant it builds with.
+        val immediateSource = recipientInboxSource()
+        Assert.assertTrue("the immediate road must build its reply with the named profile constant "
+                          + "(ttl = ACK_INITIAL_TTL), never with a bare literal or the builder default",
+                          immediateSource.contains("ttl = ACK_INITIAL_TTL"))
+
+        // THE RESTART ROAD, driven through its real entry: an obligation that survived (as
+        // after a crash or a key outage) is signed later by the bounded worker.
+        val restartMsg = inboxFrame(r, 42)
+        val c2 = commitInbound(r, restartMsg, 7L, 60000L)
+        Assert.assertTrue("the inbox commit must stand", c2 is InboundCommitResult.Committed)
+        val report = driverOf(r, TestSigner(r.me)).runPendingOnce(8)
+        Assert.assertEquals("the restart worker must sign the pending one", 1, report.signed)
+        val restarted = filedReply(r, restartMsg.msgId)
+
+        // THE LAW: WHEN a reply is signed must not change WHAT it is. The restart reply
+        // carrieth the same metadata the immediate road's profile dictates -- not the frozen
+        // builder default, which is a DIFFERENT hop budget for the same answer.
+        Assert.assertEquals("the restart reply must carry the profile's initial TTL",
+                            ACK_INITIAL_TTL, restarted.ttl)
+        Assert.assertEquals("the same hop count the immediate road leaves", 0, restarted.hopCount)
+        Assert.assertEquals("the same flags the immediate road leaves", 0, restarted.flags)
+        Assert.assertArrayEquals("the same routing tag (the recipient's hint)",
+                                 hintOf(r.me.id), restarted.routingTag)
+        // and it matches, field for field and payload for payload, the frame the immediate
+        // road's own expression builds (the two existing arms assert whole-encoding identity
+        // beside this, which is where the byte-level law is witnessed).
+        val immediateExpression = AckFrame.build(restartMsg.msgId, r.me.seed, r.me.id,
+                                                 hintOf(r.me.id), ttl = ACK_INITIAL_TTL)
+        Assert.assertEquals("the same reply type", immediateExpression.type, restarted.type)
+        Assert.assertEquals("the same TTL as the immediate road's own expression",
+                            immediateExpression.ttl, restarted.ttl)
+        Assert.assertArrayEquals("the same signed payload (signature || recipient)",
+                                 immediateExpression.payload, restarted.payload)
+    }
+
+    /** The immediate road's source, read from the repository's own file. */
+    private fun recipientInboxSource(): String {
+        var dir: java.io.File? = java.io.File(System.getProperty("user.dir")).absoluteFile
+        var hops = 0
+        while (dir != null && hops < 8) {
+            if (java.io.File(dir, "android").isDirectory) break
+            dir = dir.parentFile
+            hops++
+        }
+        val file = java.io.File(dir, "android/mesh/src/main/java/io/godstone/mesh/delivery/RecipientInboxRepository.kt")
+        Assert.assertTrue("the immediate road's file must be readable: " + file, file.isFile)
+        return file.readText()
+    }
+
+    /** The reply filed for [msgId] in the ACK namespace, decoded from its stored bytes. */
+    private fun filedReply(r: Rig, msgId: ByteArray): FrameV2 {
+        val rows = when (val listed = r.store.ackStore.candidatesForPair(msgId, r.me.id, 8)) {
+            is PairList.Records -> listed.records
+            else -> emptyList()
+        }
+        Assert.assertEquals("exactly one reply must stand filed for this message", 1, rows.size)
+        val decoded = FrameV2.decode(rows[0].encodedFrame)
+        Assert.assertNotNull("the filed reply must decode", decoded)
+        return decoded!!
     }
 }

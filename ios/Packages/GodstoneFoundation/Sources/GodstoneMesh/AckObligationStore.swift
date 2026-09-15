@@ -886,10 +886,16 @@ final class AckObligationDriver: @unchecked Sendable {
             try fault?("signing")
             var frame: FrameV2
             do {
+                // GS-ACK-002: the restart road must carry the SAME initial metadata the
+                // immediate road carries. Built without this argument, the frame fell back to
+                // the frozen builder default (4) and the reply's hop budget depended on
+                // nothing but WHEN it happened to be signed -- a crash or a key outage
+                // silently cut the return path's reach.
                 frame = try AckFrame.build(
                     msgId: ob.msgId, recipientSigningPrivKey: seed,
                     recipientNodeId: ob.recipientNodeId,
-                    routingTag: Data(ob.recipientNodeId.prefix(4))
+                    routingTag: Data(ob.recipientNodeId.prefix(4)),
+                    ttl: ackInitialTtl
                 )
             } catch {
                 failures += 1; continue

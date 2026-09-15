@@ -887,8 +887,14 @@ internal class AckObligationDriver(
             }
             fault?.invoke("signing")
             val frame = try {
+                // GS-ACK-002: the restart road must carry the SAME initial metadata the
+                // immediate road carrieth. Built without this argument, the frame fell back
+                // to the frozen builder default (4) and the reply's hop budget depended on
+                // nothing but WHEN it happened to be signed -- a crash or a key outage
+                // silently halved the return path's reach.
                 AckFrame.build(ob.msgId, seed, ob.recipientNodeId,
-                    ob.recipientNodeId.copyOfRange(0, ACK_HINT_LEN))
+                    ob.recipientNodeId.copyOfRange(0, ACK_HINT_LEN),
+                    ttl = ACK_INITIAL_TTL)
             } catch (_e: Throwable) {
                 failures++
                 continue

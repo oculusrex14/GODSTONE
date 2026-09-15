@@ -52,6 +52,12 @@ public final class UnresolvedRecipientKeyResolver: RecipientKeyResolver {
 public enum AckFrame {
 
     /// Build an authenticated ACK for `msgId`, signed by the recipient.
+    /// GS-ACK-002: `ttl` defaults to the FROZEN builder profile (4) and that default is
+    /// deliberately UNCHANGED -- the protocol authority owns it. PRODUCTION callers must
+    /// pass the ACK profile's initial TTL explicitly (`ackInitialTtl`, the same constant the
+    /// immediate road uses), so that WHENCE a reply is generated never changes what it
+    /// carries. Relying on this default on a production road is the defect this note exists
+    /// to prevent.
     public static func build(
         msgId: Data,
         recipientSigningPrivKey: Data,

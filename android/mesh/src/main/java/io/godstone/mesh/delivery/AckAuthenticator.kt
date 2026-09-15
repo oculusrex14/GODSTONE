@@ -54,7 +54,16 @@ object UnresolvedRecipientKeyResolver : RecipientKeyResolver {
 /** Builds and verifies authenticated ACK frames (see file header for the model). */
 object AckFrame {
 
-    /** Build an authenticated ACK for `msgId`, signed by the recipient. */
+    /**
+     * Build an authenticated ACK for `msgId`, signed by the recipient.
+     *
+     * GS-ACK-002: `ttl` defaulteth to the FROZEN builder profile (4) and that default is
+     * deliberately UNCHANGED -- the protocol authority owneth it. PRODUCTION callers must
+     * pass the ACK profile's initial TTL explicitly (`ACK_INITIAL_TTL`, the same constant
+     * the immediate road useth), so that WHENCE a reply is generated never changeth what it
+     * carrieth. Relying on this default on a production road is the defect this note exists
+     * to prevent.
+     */
     fun build(
         msgId: ByteArray,
         recipientSigningPrivKey: ByteArray,
