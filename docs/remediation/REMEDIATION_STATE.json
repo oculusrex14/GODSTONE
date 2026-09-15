@@ -1056,10 +1056,23 @@
    "impact": "A retry creates duplicate messages instead of returning the immutable prior logical ID. The same flaw can duplicate ordinary concurrent retries and leaves durable held messages without matching intent records. Local send success cannot be correlated reliably to the original user intent.",
    "invalidated_dependents": [],
    "my_fix_commit": null,
-   "my_logs": [],
-   "my_red_case": null,
-   "my_status": "OPEN",
-   "notes": null,
+   "my_logs": [
+    {
+     "log": "CRYPTO-006/green/crypto-006-T36-RESTORED.log",
+     "sha256": "c7c5703226943cda10dffcf888890b551c559baf3cf1c2a023b97d9a84ec7888",
+     "what": "the T36 court is GREEN again after the revert of the attempt below -- the canonical lane is NOT left red while this finding is RED_WRITTEN"
+    }
+   ],
+   "my_red_case": {
+    "case": "android/mesh/src/test/java/io/godstone/mesh/readiness/ReadinessT36Test.kt::testRacedAcceptorReusethTheWinningRowAndDiscardethTheLosingFrame -- moved into the canonical T36 court (which drives the REAL SendDirectAuthority, store and journal). The arm is now PARKED as a paste-ready snippet at tools/readiness/audit_probes/kotlin/ReadinessT36Crypto006Arm.kt.snippet with its run recipe, because the repair is owed and a red arm inside a module reddens the whole lane.",
+    "argv": "(cd android && ./gradlew :mesh:testDebugUnitTest --tests '*ReadinessT36Test*')",
+    "cwd": "/Users/oculus/Projects/GODSTONE_BUILDER",
+    "log": "CRYPTO-006/red/crypto-006-RED.log",
+    "log_sha256": "289a2f61bb23ecb35f1fb20679647d03fe033ccf885e528759dc6e3b4e308b98",
+    "outcome": "RED on the untouched product, and it is the audit's charge exactly: 'the raced caller must resolve to the WINNER's logical id: arrays first differed at element [0]; expected:<27> but was:<-98>' -- a duplicate journal admission let the LOSING caller commit its OWN freshly authored frame, so one intent produced TWO logical messages. The race is made DETERMINISTIC by a journal double whose FIRST load misseth (StaleReadJournal): the exact interleaving the audit names, with no thread scheduling."
+   },
+   "my_status": "RED_WRITTEN",
+   "notes": "RED_WRITTEN (no production change landed). THE RED IS CAPTURED and the arm is parked with its recipe; the tree and the canonical lane are GREEN. A FIRST REPAIR WAS APPLIED, MEASURED AND REVERTED, and the measurement is the valuable part: (1) making JournalInsertResult a sealed class whose Duplicate carrieth the winning row, and having the authority reuse the winner on Duplicate, made the new race arm PASS but broke the PRE-EXISTING W6 court -- because with a token-only key the authority then rejected a SECOND, DIFFERENT command under the same token with EnqueueCanonicMismatch, whereas the preserved law is that a changed recipient/body/priority is a NEW logical send. (2) That is exactly why the audit's step 1 prescribes a COMPOSITE (intentToken, canonicalCommandDigest) key: the duplicate case and the changed-revision case are only distinguishable once the digest is part of the key. (3) The attempt and its revert are recorded rather than hidden, and the tree is the audited source again (verified: the T36 court is green at c7c570322694...). A TOOLING TRAP PAID FOR HERE: inserting an arm with `rfind('\\n}')` DELETED the file's trailing top-level declaration (`private data class Quad`, which lives AFTER the test class and is used by W10) -- the arm was inserted at the class's brace and everything after it was cut. Restored before any run that mattered; the lesson is to anchor insertions on a declaration that is actually last in the file, or to re-read the file after editing.",
    "pending_proof": [],
    "proof": null,
    "remediation_report": "evidence/crypto/findings.md",
@@ -1113,7 +1126,14 @@
     "T36"
    ],
    "title": "Duplicate journal admission is treated as success for a different freshly authored frame, breaking idempotent retry",
-   "wave": "4b"
+   "wave": "4b",
+   "pending_work": [
+    "THE FIX'S SHAPE IS NOW KNOWN BY EXPERIMENT, and a first attempt was REVERTED (see notes) -- read that before writing: with a TOKEN-ONLY journal key, making insertIfAbsent return the winning row and having the authority reuse it makes the authority REJECT a changed command revision, breaking the preserved law that a changed recipient/body/priority is a NEW logical send (ReadinessT36Test.testChangedRecipientOrBodyOrPriorityCreatesNewLogicalSend, which also asserts ONE current row per token).",
+    "STEP 1 OF THE AUDIT IS THE ACTUAL REPAIR: key the durable journal by the COMPOSITE (intentToken, canonicalCommandDigest). Repeating a digest must load/reuse that SAME row; a changed digest must create a SEPARATE row. Then reconcile -- deliberately, in the court and in the code -- the 'latest accepted row per token' semantic that W6 relies on (its `journal.size() == 1` and its loaded row being the CURRENT accept), because a composite key changes what `load(intentId)` can return.",
+    "THEN: insertIfAbsent returns a claim carrying the canonical winning row (JournalInsertResult.Duplicate(winning) on android / .duplicate(winner:) on iOS); on Duplicate the authority DISCARDS its own freshly authored frame, validates the winner (bindingDigest equality, verifyLogicalIdentity, decode, msgId == logicalMessageId, SEALED) and enqueues the WINNER -- never its own -- exactly as the retry path resolves a pinned row. A digest/key/version conflict is a TYPED rejection with no DB, nonce, publication or send effect.",
+    "ALSO OWED: the audit's SEQUENTIAL regression (same digest twice must return the same logical id) beside the race arm, and the SAME correction PORTED to the other isle (android and iOS twins both carry the journal and the same defect); the audit's step 6 explicitly anticipates the port.",
+    "THE PARKED ARM MUST BE MOVED BACK INTO THE CANONICAL T36 COURT as part of the repair, and the snippet deleted, so the assertion that went red is the one that runs."
+   ]
   },
   "GS-ACK-001": {
    "audit_status_at_snapshot": "OPEN",
