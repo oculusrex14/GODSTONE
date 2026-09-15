@@ -3366,13 +3366,43 @@
     "source_sha": "c683a2bf0b5bcdd4a662d98f7542351501b57b7c"
    },
    "impact": "UUID-only advertising is the INTENDED interoperable case, and it carries no service data -- so with no optional advertisement the HS2 trust path receives an EMPTY hint, IdentityBindingV1 rejects anything not exactly four bytes, and the handshake is refused. A stale or spoofed advertising hint can equally OVERRIDE the real bound hint. IOS-02 currently masks this on the normal path, but the defect becomes reachable the moment the missing D2/key-confirmation start is wired.",
-   "invalidated_dependents": [],
-   "my_fix_commit": null,
-   "my_logs": [],
-   "my_red_case": null,
-   "my_status": "OPEN",
-   "notes": "OPEN. Thin at snapshot; ENRICHED from the audit bundle itself on 2026-09-15 so the next round writeth rather than re-readeth. The law is short: the hint for an ALREADY-BOUND relation belongeth to the GATT-bound relation, and optional advertising metadata is a discovery hint that must never override it.",
-   "pending_proof": [],
+   "invalidated_dependents": [
+    "The prior behaviour of this site -- and any evidence that leaned on the advertisement's hint being authoritative for a bound relation -- is invalidated. No existing court exercised the path, so NO court needed reversal (checked by running the whole iOS package: 1184/0).",
+    "ios/Godstone/Sources/GodstoneMesh/BleTransport.swift's HS2 trust path comment, which described the advertisement read as the hint source, is replaced.",
+    "NOT invalidated: BleConnection's one-way bindRole binding, the T21/T23 handshake courts, the frozen record format and the hint-validation rules (none bypassed)."
+   ],
+   "my_fix_commit": "19a4635",
+   "my_logs": [
+    {
+     "log": "IOS-03/green/ios-03-GREEN-full-package.log",
+     "sha256": "8d93f82a713f80ea81d0367aff266095f1319c8a35e20d8658e172ee2effa9dd",
+     "what": "whole iOS package after the repair: Executed 1184 tests, with 0 failures (was 1183)"
+    },
+    {
+     "log": "IOS-03/green/ios-03-LANES.log",
+     "sha256": "d50515fd345ffd6061a5f7a41f766b3cbf37fb3fe79d996b69b4571d1ced0679",
+     "what": "readiness suite OK; adopted probes 12/0 OK; invariants passed=7 failed=0 all hold; repository VERDICT PASS; shipping rc=0; symbols 213 files 0 unresolved; iOS mirror --check rc=0; mutation selftest SELFTEST OK"
+    }
+   ],
+   "my_red_case": {
+    "case": "ios/Godstone/Tests/GodstoneMeshTests/ReadinessT21Tests.swift::testW11TheHs2HintAuthorityIsTheGattBoundRelationNotTheAdvertisement -- MOVED into the canonical T21 court (the handshake card court for HS2/HS3).",
+    "argv": "swift test --package-path ios/Packages/GodstoneFoundation --filter ReadinessT21Tests",
+    "cwd": "/Users/oculus/Projects/GODSTONE_BUILDER",
+    "log": "IOS-03/red/ios-03-RED.log",
+    "log_sha256": "259f88bfe5386204c41cc84aac11152d8d9b44eb11f61305c7cf95a9db14c5f3",
+    "outcome": "RED on the untouched product: all FOUR assertions of the arm fail -- the HS2 trust path DOES read discoveryMetadata, it does NOT pass the GATT-bound hint, and it DOES substitute a zero-byte stand-in (`?? Data()`). Captured by reverting ONLY the production file (git checkout of BleTransport.swift, patch kept), running the arm, then re-applying the fix and re-running green -- so the same assertion that went red is the one that now runs."
+   },
+   "my_status": "PARTIAL",
+   "notes": "PARTIAL, iOS limb landed (19a4635) and submitted with the red, the green sweep and its checksums. The order of the work in THIS session is recorded honestly in the ledger: GS-STORE-003 (4a) and CRYPTO-004 (4b) are FIX_SUBMITTED; the remaining 4a chain (GS-STORE-004/005/006) needs a schema bump plus runtime composition and could not be completed and verified within one round, so 4d.1's iOS limb was taken instead -- it is dependency-free, its law was fully specified by the audit, and the blast radius was one site. WHAT THIS REPAIR PAID FOR: a source arm is the honest instrument when the path has no host harness, and it must read CODE (the arm's own explanatory comment NAMES the removed lookup) and address the site BY NAME so a rename fails loudly instead of skipping.",
+   "pending_proof": [
+    "THE ARM READS CODE, IT DOES NOT EXECUTE THE PATH -- and that is stated in the arm itself. No court in this tree drives BleTransport's inbound-handshake-record path (handleInboundHandshakeRecordInitiatorSide), there is no transport harness in this environment, and there is no device/emulator/simulator/radio. The audit's own classification for this finding is SOURCE_PROVEN_NOT_EXECUTED.",
+    "THE ANDROID TWIN (ANDROID-02, wave 4d.2) IS NOT REPAIRED. This is the only reason the status is PARTIAL rather than FIX_SUBMITTED: the two findings are the same defect seen from the two isles, and the law must hold on both.",
+    "The audit's CLOSURE TESTS are not written: adapter-driven cases that never call beginTrustedHandshake / beginKeyConfirmation / feedHandshakeForTest / markReady directly, observing HS1 -> trusted HS2 -> queued HS3 -> encrypted challenge -> matching echo -> one LinkReady, with zero application-ready publications in every incomplete/failure case. Those need a transport harness that does not exist here.",
+    "REACHABILITY IS STILL GATED BY WAVE 4e: the audit records that IOS-02 currently MASKS this defect on the normal path, so no claim is made that the repaired path is reachable at runtime today.",
+    "The parameter name `advertisedRemoteHint` in SessionManager.initiatorProcessHs2/responderProcessHs3 now carries the BOUND hint and is MISLEADING. It was deliberately NOT renamed in this repair because ~15 call sites across SessionManagerTests/SessionManagerConcurrencyTests (and the Android twin) would be touched -- a naming lie recorded as pending work rather than bundled silently into a behavioural fix.",
+    "NO HOSTED LANE EXISTS in this environment: there is no CI run URL, run id or hosted log.",
+    "A stale or spoofed advertisement can no longer override the bound hint on the iOS isle -- but that is asserted from the CODE of the trust path, not observed on a radio."
+   ],
    "proof": "Source-proven, not executed (the audit's own classification is SOURCE_PROVEN_NOT_EXECUTED): the only GATT-authoritative hint is captured in pendingInitiatorRemoteHints and bound into the connection, while the HS2 trust path re-reads the hint from optional ADVERTISING metadata instead.",
    "remediation_report": "evidence/ios/findings.md",
    "remediation_steps": [
