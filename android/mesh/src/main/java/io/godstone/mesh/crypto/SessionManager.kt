@@ -43,6 +43,18 @@ class SessionManager internal constructor(
     @Volatile private var managerState = ManagerState.ACTIVE
 
     internal var testOperationHook: ((String) -> Unit)? = null
+
+    /**
+     * ANDROID-06 (round 221): A NAMED TEST SEAM THAT MAKETH THE NEXT SEAL REFUSE **ONCE**.
+     *
+     * Why it is a PRODUCTION file and not a fixture trick: the caller-side law under witness -- 'a refused seal
+     * returneth its slot to the relation' -- liveth in `sendThrough`'s refusal branch, which is reached through a
+     * PRIVATE method, and every refusal condition of `seal` is INTERNAL (the manager not active, no slot for the
+     * relation, the slot not ACTIVE). No court could therefore force a refusal ON COMMAND, and the law could only
+     * be READ. This seam is the smallest honest way to DRIVE it: it is `internal`, it is consumed by the very
+     * next seal, and it changeth nothing unless a court asketh for it.
+     */
+    internal var refuseNextSealForTest: Boolean = false
     internal var testInvalidationAttemptHook: (() -> Unit)? = null
 
     /**
@@ -337,6 +349,11 @@ class SessionManager internal constructor(
      * Returns ciphertext IFF session is READY and manager is active.
      */
     fun seal(peerId: ByteArray, frameBytes: ByteArray): ByteArray? {
+        // ANDROID-06 (round 221): the named seam, consumed by this very call.
+        if (refuseNextSealForTest) {
+            refuseNextSealForTest = false
+            return null
+        }
         lifecycleRwLock.read {
             if (!isActive) return null
             testOperationHook?.invoke("seal")

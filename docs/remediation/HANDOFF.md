@@ -46,6 +46,33 @@ already carried. The audit's step 3 stays OPEN, with its two measured obstacles 
 | CRYPTO-003 | FIX_SUBMITTED | 4b | Destroyed retained controllers and primitive sessions st |
 | CRYPTO-006 | FIX_SUBMITTED | 4b | Duplicate journal admission is treated as success for a |
 
+## DO THIS FIRST (round 221) — ANDROID-06's CALLER-SIDE LAW IS WITNESSED: A REFUSED SEAL RETURNS THE SLOT
+
+**Route (a) was taken, deliberately, with its justification written where it lives:** a **named test seam**,
+`SessionManager.refuseNextSealForTest`, consumed by the very next `seal` call. The reason it is a **production** file and
+not a fixture trick is stated in its own docstring: the law lives in `sendThrough`'s refusal branch, reached through a
+**private** method, and every refusal condition of `seal` is **internal** — so **no court could force a refusal on
+command**, and the law could only be *read*. The seam is `internal`, consumes itself, and changes nothing unless a court
+asks.
+
+**The witness, and the assertion that matters:** `ReadinessT18Test.testARefusedSealReturnethTheSlotToTheRelation`
+establishes trust, sends normally (proving the relation works), **then** sets the seam so the seal refuses **once**, asserts
+the verdict is not an admission **and** that the refusal is told in the seal's own voice (the census carries the `seal`
+site), **and then reserves four times**: the relation **still takes its full four reservations**, and the **fifth** is
+refused as ever. **Without** the round-218 cancellation the reserved table would hold a leaked slot and **four refusals
+would have silenced the relation** — so this arm is exactly the assertion that the leak is gone.
+
+**One more self-inflicted correction, recorded with the others:** the arm first failed to **compile**
+(`Unresolved reference 'assertNotEquals'`), and `rejectionRecordsForTest` was **confirmed** to exist before it was used
+rather than assumed.
+
+**Acceptance:** T18 court green; whole `:mesh` lane **1192 tests, 0 failures** (1191 + the witness).
+
+**ANDROID-06's ledger now carries a complete account:** five card steps carried; four endings covered (normal seal,
+refused seal at the caller, invalidation at the writer, relation retirement through `shutdown`); the canonical arm in
+`tools/readiness/tests/`; and a behavioural witness for the caller's half. **What remains is not work but verdict**:
+ANDROID-06 stays **FIX_SUBMITTED** — only an independent audit may write `VERIFIED_FIXED`.
+
 ## DO THIS FIRST (round 218) — ANDROID-06's CALLER HALF: A REFUSED SEAL NOW RETURNS ITS SLOT (A LEAK FOUND BY READING THE CALLER AFTER CHANGING THE CALLEE)
 
 **The leak, and why it was mine as much as the audit's.** Round 216 made the four-record bound count **RESERVED**

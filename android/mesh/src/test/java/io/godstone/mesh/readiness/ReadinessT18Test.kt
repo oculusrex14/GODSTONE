@@ -703,6 +703,55 @@ class ReadinessT18Test {
     }
 
     /**
+     * ANDROID-06 step 2 AT THE CALLER, WITNESSED BEHAVIOURALLY (round 221): A REFUSED SEAL RETURNETH ITS SLOT.
+     *
+     * The source-level RED of round 218 proved that `sendThrough`'s refusal branch carried no cancellation; the
+     * repair added one; and THIS arm DRIVES the law rather than reading it, through the named seam
+     * `SessionManager.refuseNextSealForTest`. The assertion that mattereth is the LAST one: after a refused seal,
+     * the relation can STILL TAKE ITS FULL FOUR RESERVATIONS. Without the cancellation that table would hold a
+     * leaked slot, and four refusals would silence the relation for good.
+     */
+    @Test
+    fun testARefusedSealReturnethTheSlotToTheRelation() {
+        val rig = rig()
+        try {
+            rig.completeTrust()
+            val peerId = rig.peerIdTowardsBob()
+            val first = kotlinx.coroutines.runBlocking {
+                rig.alice.send(peerId, ByteArray(24) { (it + 1).toByte() })
+            }
+            assertEquals("the relation must be sending normally first", TransportResult.Admitted, first)
+            val writer = rig.alice.centralWriterForTest(rig.bobAddress)
+                ?: error("the writer must stand for the relation")
+
+            // THE SEAL REFUSETH, ON COMMAND, EXACTLY ONCE.
+            rig.pair.smA.refuseNextSealForTest = true
+            val refused = kotlinx.coroutines.runBlocking {
+                rig.alice.send(peerId, ByteArray(24) { (it + 2).toByte() })
+            }
+            assertTrue("the refused seal must not be told as an admission", refused != TransportResult.Admitted)
+            assertTrue("the refusal must be told in the seal's own voice",
+                rig.alice.rejectionRecordsForTest().any { it.site == "seal" })
+
+            // ... AND THE SLOT CAME BACK: the full four stand, and the FIFTH is refused as ever.
+            val held = mutableListOf<io.godstone.mesh.transport.Reservation>()
+            repeat(4) { i ->
+                val answer = writer.reserve(BleRecordType.DATA, 16)
+                assertTrue("reservation " + i + " must stand after a refused seal: the slot must have been RETURNED",
+                    answer is ReservationAnswer.Admitted)
+                held += (answer as ReservationAnswer.Admitted).reservation
+            }
+            val fifth = writer.reserve(BleRecordType.DATA, 16)
+            assertTrue("the FIFTH must still be refused -- the four-record bound counteth RESERVED records",
+                fifth is ReservationAnswer.Refused)
+            held.forEach { writer.cancel(it) }
+        } finally {
+            rig.pair.smA.refuseNextSealForTest = false
+            rig.stop()
+        }
+    }
+
+    /**
      * ANDROID-06 (round 217): A RESERVATION TAKETH A SLOT, AND CANCELLATION RETURNETH IT.
      *
      * The card's own steps: 'Maintain a bounded pending-ticket table ... Make queued/reserved/in-flight counts
