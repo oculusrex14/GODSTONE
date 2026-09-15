@@ -285,6 +285,14 @@ class SyncControlOwner(
         if (rel.runSid == 0L) return OwnerDecision.Ignored("unsolicited page")
         if (p.snapshotId != rel.runSid) return OwnerDecision.Refused("sequence_break")
         if (rel.runDone) return OwnerDecision.Refused("sequence_break")     // the stream continues after the close
+        // GS-SYNC-001: the RECEIVER'S OWN page budget, imposed at THIS boundary BEFORE any mutation
+        // (no `delivered.add`, no cursor advance, no `pagesReceived++`). MAX_PAGES_PER_RUN boundeth
+        // the PRODUCER (`producerPagesSent`) and the PUMP (`pagesRequested`) only; without this check
+        // the receiver retaineth every verified page and its counter passeth the budget, so a peer
+        // could grow one open run's retained page descriptors without limit.
+        if (rel.pagesReceived >= MAX_PAGES_PER_RUN) {
+            return OwnerDecision.Refused("page_budget_exhausted")
+        }
         if (p.ids.isNotEmpty()) {
             if (!ControlPayloadV1.idsDistinct(p.ids)) return OwnerDecision.Refused("duplicate_ids")
             for (k in 1 until p.ids.size) {
