@@ -469,16 +469,30 @@ def _canonical_output_lock(reference: Path):
             os.close(handle)
 
 
-def _fsync_directory(directory: Path) -> None:
-    """A rename is durable only when the DIRECTORY is fsynced (card step 6)."""
-    try:
-        fd = os.open(directory, os.O_RDONLY)
-    except OSError:
-        return
+def _fsync_file(path: Path) -> None:
+    """A FILE's bytes are durable only when the FILE is fsynced.
+
+    AUDIT-004 step 5: the publication retained the previous pair and wrote the journal, but
+    NEITHER was fsynced, so a crash after the destructive promotion could leave a pair whose
+    ROLLBACK TARGET had never reached the disk -- a rollback to a file that was never there.
+    """
+    fd = os.open(path, os.O_RDONLY)
     try:
         os.fsync(fd)
-    except OSError:
-        pass
+    finally:
+        os.close(fd)
+
+
+def _fsync_directory(directory: Path) -> None:
+    """A rename is durable only when the DIRECTORY is fsynced (card step 6).
+
+    AUDIT-004 step 5: a REQUIRED durability failure PROPAGATETH. The earlier form swallowed BOTH
+    the open failure and the fsync failure, so a publication whose rename never reached the disk
+    was indistinguishable from one that did -- SUCCESS REPORTED OVER AN UNPROVEN BOUNDARY.
+    """
+    fd = os.open(directory, os.O_RDONLY)
+    try:
+        os.fsync(fd)
     finally:
         os.close(fd)
 
@@ -488,12 +502,17 @@ def _journal_path(destination: Path) -> Path:
 
 
 def _write_journal(destination: Path, state: str, previous: Mapping[str, str]) -> None:
+    """Write ONE COMMIT STATE durably: the record's bytes reach the disk before it is renamed
+    into place, and the directory entry is fsynced before the caller proceedeth -- a journal
+    that liveth only in the page cache recovereth nothing."""
     payload = {"schema": 1, "kind": "archive-publication", "state": state,
                "destination": destination.name, "previous": dict(previous)}
     path = _journal_path(destination)
     tmp = path.with_name(f".{path.name}.tmp-{_next_token()}")
     tmp.write_bytes(_canonical_json(payload) + b"\n")
+    _fsync_file(tmp)
     os.replace(tmp, path)
+    _fsync_directory(path.parent)
 
 
 def _pair_is_consistent(destination: Path, sidecar: Path) -> bool:
@@ -599,6 +618,9 @@ def publish_archive_pair(candidate, receipt: Mapping[str, Any]) -> Path:
                 backups.mkdir(parents=True, exist_ok=True)
                 kept = backups / path.name
                 shutil.copy2(path, kept)
+                # AUDIT-004 step 5: THE ROLLBACK TARGET MUST BE DURABLE BEFORE THE DESTRUCTIVE
+                # PROMOTION. A copy that liveth only in the page cache is not a rollback target.
+                _fsync_file(kept)
                 previous[path.name] = str(kept)
         _write_journal(destination, "prepared", previous)
         try:
@@ -617,7 +639,18 @@ def publish_archive_pair(candidate, receipt: Mapping[str, Any]) -> Path:
             _fsync_directory(destination.parent)
             _write_journal(destination, "rolled_back", previous)
             raise
-        _write_journal(destination, "published", previous)
+        # AUDIT-004 step 5: "Handle a failed journal-finalization write without leaving
+        # success/failure ambiguity." The generation IS published at this point, so a bare
+        # failure here would be a LIE in the other direction. The error NAMETH the true state,
+        # and the recovery consumer will accept the consistent pair from the `prepared` record.
+        try:
+            _write_journal(destination, "published", previous)
+        except OSError as exc:
+            raise ArchiveBuildError(
+                f"the generation is published beside {destination}, but its TERMINAL journal "
+                f"record could not be written durably ({exc}); the journal still carrieth the "
+                f"`prepared` state, which recovery resolveth to the CONSISTENT pair now on "
+                f"disk -- do not retry the build blindly") from exc
         shutil.rmtree(backups, ignore_errors=True)
         _fsync_directory(destination.parent)
     return sidecar

@@ -189,6 +189,86 @@ class PublicationPairTest(ApprovalCourtCase):
             ba.read_sidecar(self.sidecar())      # NO archive argument at all
         self.assertIn("MISMATCHED", str(caught.exception))
 
+    # -- GS-CONTENT-002 step 5: DURABILITY (AUDIT-004) --------------------------------
+    # "Fsync required staged/backup/journal files and directory transitions in the correct
+    # order. Required durability failures must propagate; do not swallow them and report
+    # success. Handle a failed journal-finalization write without leaving success/failure
+    # ambiguity." Each arm below injects ONE refusal at a durability boundary and demands a
+    # BEHAVIOURAL outcome, never a spelling.
+
+    def _directory_fsync_guard(self):
+        """fsync that REFUSES for a DIRECTORY fd and behaves normally for a file fd.
+
+        The refusal is aimed at the exact boundary the card nameth, so an arm cannot pass
+        merely because some unrelated fsync failed anywhere in the process.
+        """
+        import stat as _stat
+        real = os.fsync
+
+        def guarded(fd):
+            if _stat.S_ISDIR(os.fstat(fd).st_mode):
+                raise OSError("audit: directory fsync refused")
+            return real(fd)
+        return guarded
+
+    def test_w09_a_required_durability_failure_must_propagate(self):
+        """A refusal at the durability boundary may not be SWALLOWED and reported as success."""
+        with patch.object(ba.os, "fsync", side_effect=OSError("audit: fsync refused")):
+            with self.assertRaises(OSError):
+                ba._fsync_directory(self.out.parent)
+
+    def test_w10_a_refused_durability_boundary_leaveth_the_destination_untouched(self):
+        """The ROLLBACK TARGET and the JOURNAL must be durable BEFORE the destructive
+        promotion: if that boundary is refused, the publication must not proceed to replace
+        the very bytes it could no longer roll back to."""
+        self.ordinary_build()
+        before = self.out.read_bytes()
+        source = self.seed / "docs" / "a.md"
+        source.write_text(source.read_text().replace("two seconds", "three seconds"))
+        with patch.object(ba.os, "fsync", self._directory_fsync_guard()):
+            with self.assertRaises(OSError):
+                self.ordinary_build()
+        self.assertEqual(before, self.out.read_bytes(),
+                         "a publication whose durability boundary was REFUSED still replaced "
+                         "the destination: the rollback target was not durable first")
+
+    def test_w11_a_failed_terminal_journal_write_is_unambiguous_and_recoverable(self):
+        """The pair IS published when the TERMINAL journal record fails: the caller must be
+        told exactly that -- not handed a bare failure -- and a later reader must still find a
+        MATCHING pair. A raw exception here leaveth success/failure AMBIGUOUS."""
+        self.ordinary_build()
+        source = self.seed / "docs" / "a.md"
+        source.write_text(source.read_text().replace("two seconds", "three seconds"))
+        real = ba._write_journal
+        state = {"terminal_refused": False}
+
+        def refusing(destination, journal_state, previous):
+            if journal_state == "published":
+                state["terminal_refused"] = True
+                raise OSError("audit: terminal journal record refused")
+            return real(destination, journal_state, previous)
+
+        raised = None
+        with patch.object(ba, "_write_journal", refusing):
+            try:
+                self.ordinary_build()
+            except Exception as exc:          # whatever the product raised: judged below
+                raised = exc
+            else:
+                self.fail("a REFUSED terminal journal write reported SUCCESS")
+        self.assertTrue(state["terminal_refused"], "the fixture never reached the terminal record")
+        self.assertIsInstance(
+            raised, ba.ArchiveBuildError,
+            "the failure must be the product's OWN named error, not a bare OSError: %r" % (raised,))
+        message = str(raised)
+        self.assertIn("published", message,
+                      "the error must say that the generation IS published and that only the "
+                      "terminal record failed; a bare failure is ambiguous")
+        receipt = ba.read_sidecar(self.sidecar())
+        self.assertEqual(receipt["archive_sha256"], ba._sha256_file(self.out),
+                         "after an ambiguous terminal write the reader must still resolve a "
+                         "MATCHING pair")
+
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)
