@@ -330,6 +330,19 @@ public final class ComposedRuntimeHarness {
         let node = MeshNode(identity: identity, store: store, deliveryTracker: tracker,
                             sessions: SessionManager(identity: identity,
                                                      trustAuthority: ComposedTrustAuthority()))
+        // GS-SOS-001 (the iOS twin): the SOS road may no longer fall back to an
+        // UNSIGNED structural frame, so a composed node that is meant to send
+        // distress MUST carry a signing authority. This harness generateth its
+        // own keys for every node (see `seed`/`xSeed` above), so it wireth a
+        // SIMULATED authority over THAT generated material -- the same material
+        // its own TestAckSigner already useth. It is HARNESS SUPPORT AND NOT A
+        // DEVICE RESULT: production carries no authority yet and therefore
+        // REFUSES to offer an unauthenticated distress call.
+        node.sosAuthority = SimulatedSosAuthority(
+            seed: seed,
+            dhPublicKey: identity.staticDhPublicKey,
+            generation: identity.bindingGeneration,
+            clock: { [clock] in Int64(clock.wallSeconds()) })
         let ackDriver = AckObligationDriver(store: ackStore,
                                             signer: TestAckSigner(nodeId: identity.nodeId, seed: seed),
                                             authenticator: authenticator, resolver: keys)
@@ -649,6 +662,54 @@ public final class ComposedRuntimeHarness {
 }
 
 // ---------------------------------------------------------------- seams
+
+/// GS-SOS-001 (the iOS isle): the SOS signing authority for the COMPOSED and
+/// COURT roads. It is **test and harness support that liveth in main only
+/// because the composed harness is itself main-side**, mirroring the Android
+/// isle's `SimulatedSosAuthority` (`runtime/ComposedRuntime.kt`).
+///
+/// WHAT IT IS NOT: it is NOT a device, radio or production result. The
+/// `fixed()` material is public by construction and is used only by courts that
+/// assert delivery/queueing outcomes and never authenticate the frame under a
+/// node's own binding; the harness instead passeth the seed IT generated for the
+/// node, so the composed arms sign with the same material the harness already
+/// trusts for ACKs. Production wireth no authority at all, and therefore
+/// REFUSES to offer an unauthenticated distress call (the card's own law).
+final class SimulatedSosAuthority: SosSigningAuthority, @unchecked Sendable {
+    private let seed: Data
+    private let dhPublicKey: Data
+    private let generation: UInt32
+    private let clock: () -> Int64
+    private let nonce: () -> Data
+
+    init(seed: Data, dhPublicKey: Data, generation: UInt32,
+         clock: @escaping () -> Int64 = { Int64(Date().timeIntervalSince1970) },
+         nonce: @escaping () -> Data = { MessageId.generateNonce() }) {
+        self.seed = seed
+        self.dhPublicKey = dhPublicKey
+        self.generation = generation
+        self.clock = clock
+        self.nonce = nonce
+    }
+
+    /// Fixed, deliberately-public material for a court that driveth a live SOS
+    /// through a node it built from an identity it cannot read a seed out of.
+    /// The material is not secret and MUST NOT be used where a court asserteth
+    /// the frame's authenticity under that node's identity.
+    static func fixed(generation: UInt32 = 1, epochSeconds: Int64 = 1_700_000_000) -> SimulatedSosAuthority {
+        SimulatedSosAuthority(
+            seed: Data(repeating: 0x5A, count: 32),
+            dhPublicKey: Data(repeating: 0x3C, count: 32),
+            generation: generation,
+            clock: { epochSeconds })
+    }
+
+    func currentNonce() -> Data { nonce() }
+    func currentSigningSeed() -> Data? { seed }
+    func currentStaticDhPublicKey() -> Data? { dhPublicKey }
+    func currentGeneration() -> UInt32 { generation }
+    func currentTimeEpochSeconds() -> Int64 { clock() }
+}
 
 /// A per-node key directory: a node resolveth only the keys it was trusted with.
 final class MutableKeyTable: RecipientKeyResolver, @unchecked Sendable {

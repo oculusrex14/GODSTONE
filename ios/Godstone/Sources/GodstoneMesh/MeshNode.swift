@@ -520,9 +520,14 @@ public final class MeshNode {
         // Android Router.buildSos / MessageId.derive (see MessageIdTests).
         // T38: with the authority wired, the distress call is authored through
         // the single signed-SOS authority (section 15 layout, cross-isle byte
-        // parity). Without it the node emits the legacy structural shape --
-        // documented, refused by the receiver's runtime authentication, and
-        // unreachable for real radios while the link layer stays closed.
+        // parity). GS-SOS-001 (the iOS twin of the Android repair): WITHOUT
+        // usable signing material the node REFUSETH -- it emiteth no legacy
+        // structural shape and offereth nothing, because a receiver refusing a
+        // frame the SENDER was willing to offer is not a control, it is a hope.
+        // The refusal happeneth BEFORE any durable hold, any C6 row and any
+        // send, so a refused distress leaveth no trace that could be mistaken
+        // for a queued one. `currentSigningSeed()` is consulted first, so an
+        // authority that yieldeth no material consumes no nonce.
         let frame: FrameV2
         if let authority = sosAuthority,
            let seed = authority.currentSigningSeed(),
@@ -542,23 +547,14 @@ public final class MeshNode {
                 return .failed("SOS authoring refused non-canonical material")
             }
         } else {
-            let createdAt = Int64(Date().timeIntervalSince1970)
-            let messageNonce = MessageId.generateNonce()
-            let msgId = MessageId.derive(
-                senderNodeId: identity.nodeId,
-                createdAtEpochSeconds: createdAt,
-                messageNonce: messageNonce,
-                payload: payload)
-            let magic = Data("SOS1".utf8)
-            let sealed = magic + Data(repeating: 0, count: 64) + payload
-            frame = FrameV2(
-                type: .sos,
-                msgId: msgId,
-                routingTag: identity.nodeHint,
-                ttl: FrameV2.maxTtl,
-                hopCount: 0,
-                flags: UInt16(FrameV2.Flags.ack_req | FrameV2.Flags.relay_ok),
-                payload: sealed)
+            // GS-SOS-001: the audited form built the legacy structural shape here
+            // -- a zeroed seal with the payload in the clear -- and handed it to
+            // relays as though it were a distress call. The card's law is a TYPED
+            // REFUSAL: no frame, no hold, no C6 row, no send. The wording is
+            // IDENTICAL to the Android isle's (`SosDispatchResult.Failed`), so a
+            // court that asserteth the refusal by name passeth on both isles.
+            return .failed(
+                "no SOS signing authority: an unauthenticated distress call may not be offered")
         }
 
         // T39: the held frame AND its NONE-mode delivery row commit as ONE durable

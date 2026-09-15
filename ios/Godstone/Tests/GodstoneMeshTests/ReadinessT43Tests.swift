@@ -86,6 +86,10 @@ final class ReadinessT43Tests: XCTestCase {
         let node = MeshNode(identity: identity.id, store: store, deliveryTracker: tracker,
                             sessions: SessionManager(identity: identity.id,
                                                      trustAuthority: FailClosedTrust()))
+        // GS-SOS-001: the SOS road refuseth to offer an unauthenticated frame, so a
+        // rig that SENDS distress carrieth a signing authority. SIMULATED, PUBLIC
+        // material -- harness support, never a device result.
+        node.sosAuthority = SimulatedSosAuthority.fixed()
         return Rig(store: store, keys: keys, tracker: tracker, node: node, auth: auth)
     }
 

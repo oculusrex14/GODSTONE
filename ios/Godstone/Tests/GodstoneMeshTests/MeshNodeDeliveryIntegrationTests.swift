@@ -212,7 +212,11 @@ final class MeshNodeDeliveryIntegrationTests: XCTestCase {
         let journal = InMemoryDeliveryRepository(store: store)
         let tracker = DeliveryTracker(repo: journal,
                                       authenticator: Ed25519AckAuthenticator(resolver: resolver))
+        // GS-SOS-001: the SOS road refuseth to offer an unauthenticated frame, so a
+        // rig that SENDS distress carrieth a signing authority. SIMULATED, PUBLIC
+        // material -- harness support, never a device result.
         let node = MeshNode(identity: identity, store: store, deliveryTracker: tracker)
+        node.sosAuthority = SimulatedSosAuthority.fixed()
         return (node, journal)
     }
 
