@@ -162,3 +162,14 @@ repair. It judged the transport's lease sweep: `sweepInboundLeases()` was called
 lapsed absolute term waited for unrelated traffic. The repair gave the sweep a **production owner** — armed at `start()`,
 cancelled at `stop()`, a named generous interval — and the arm now also asserts the interval is named and **not** short
 enough to sweep frozen-clock courts mid-witness.
+
+## Kotlin probe — `kotlin/t20-owned-sweep-time-witness.kt.txt` (ANDROID-04, the time-based witness)
+
+Parked with its **measurement**, not merely its failure. The witness drives the owned lease sweep by **time alone** (an
+injected clock past the lease's deadline, a **25 ms** interval, **no** traffic) and asserts the silent relation retires. It
+was RED — and **its diagnostic assertion passed**, proving the job **is armed** (`hasLeaseSweepJob()` true) and ticking —
+while the T20 court's own arm trips the **same** relation with the **same** clock by calling `sweepInboundLeases()`
+**directly**. **The difference is therefore the caller's thread**, and the leading hypothesis is the `runCatching` around
+the job's sweep **swallowing an IO-dispatcher exception**. Next step: make that failure **observable** (record the throwable
+into the transport's own rejection census) and read what it says — a measurement, not a guess. The `leaseSweepIntervalMillis`
+seam it needs **already landed** (round 206).

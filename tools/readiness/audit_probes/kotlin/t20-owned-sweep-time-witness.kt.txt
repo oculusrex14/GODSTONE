@@ -1,0 +1,62 @@
+// ANDROID-04 (round 206-207) -- THE TIME-BASED WITNESS, PARKED WITH ITS MEASUREMENT.
+//
+// MEASURED, AND NOT YET EXPLAINED -- which is why this file is a probe and not a court arm:
+//   * the transport IS armed: `hasLeaseSweepJob()` returned TRUE inside the arm (a diagnostic assertion
+//     PASSED), so the owned job existeth and runneth on the transport's coroutineScope;
+//   * and yet the sweep trippeth NOTHING: with the injected clock advanced past the lease's deadline and a
+//     25 ms interval, the silent relation stayed standing for five seconds;
+//   * WHILE THE T20 COURT'S OWN ARM, with the SAME rig and the SAME clock, trippeth it by calling
+//     `sweepInboundLeases()` DIRECTLY on the test thread.
+//
+// THE DIFFERENCE IS THEREFORE THE CALLER'S THREAD, AND THE LEADING HYPOTHESIS IS THE `runCatching` AROUND
+// THE SWEEP IN THE JOB: an exception thrown on the IO dispatcher (a concurrent-modification while the test
+// thread works, or a lock discipline the sweep expects from its own thread) would be SWALLOWED, and the job
+// would keep ticking while tripping nothing. THE NEXT STEP IS NOT A GUESS BUT A MEASUREMENT: make the job's
+// failure OBSERVABLE (record the throwable into the transport's own rejection census instead of swallowing
+// it) and read what it sayeth. If it is silent, instrument the sweep's own iteration.
+//
+// THE WITNESS TEXT, UNCHANGED:
+    @Test
+    fun testTheOwnedSweepTrippethASilentPeerByTimeAlone() {
+        // ANDROID-04 (the card's first defect, proven BY TIME): the OWNED sweep must trip a relation whose
+        // absolute term hath lapsed while the peer falleth SILENT -- WITHOUT any further traffic, and WITHOUT
+        // this arm calling `sweepInboundLeases()` at all. The RED was the canonical arm of round 204 (the
+        // sweep had no production caller); THIS is its behavioural half, which could not compile before the
+        // interval became injectable.
+        leaseSweepIntervalMillis = 25L
+        val rig = rig()
+        try {
+            rig.completeTrust()
+            rigNow = 1_700_000_000L
+            val gen = rig.bob.serverDriver.getClientGeneration(rig.aliceAddress)
+            rig.bob.publishRelation(RelationKey(BleDirection.INBOUND, rig.aliceAddress, gen), null)
+            val (seq, frags) = sealFromInitiator(rig, 913, 600)
+            rig.pushToResponder(frags.take(2))
+            val lease = rig.responderConnection().activeLeaseOf(seq)
+                ?: error("the admission left no lease")
+            assertTrue("the relation stands published before its deadline",
+                       rig.bob.isRelationPublished(BleDirection.INBOUND, rig.aliceAddress, gen))
+
+            // THE PEER FALLETH SILENT: the clock passeth the deadline and NOTHING ELSE ARRIVETH.
+            rigNow = lease.deadlineMono + 1L
+
+            // NO `sweepInLeases()` CALL HERE -- the OWNED job must do it, by TIME alone.
+            assertTrue("DIAGNOSTIC: the transport must OWN an armed sweep after start()",
+                       rig.bob.hasLeaseSweepJob())
+            val waitUntil = System.nanoTime() + 5_000_000_000L
+            while (System.nanoTime() < waitUntil &&
+                rig.bob.serverDriver.getInboundConnection(rig.aliceAddress) != null) {
+                Thread.sleep(10L)
+            }
+            assertNull(
+                "the OWNED sweep must trip a SILENT peer by TIME alone: no traffic may be required, and the " +
+                    "audited road waited for unrelated traffic for ever",
+                rig.bob.serverDriver.getInboundConnection(rig.aliceAddress))
+            assertFalse("the publication was withdrawn with the relation",
+                        rig.bob.isRelationPublished(BleDirection.INBOUND, rig.aliceAddress, gen))
+        } finally {
+            leaseSweepIntervalMillis = 60_000L
+            rig.stop()
+        }
+    }
+

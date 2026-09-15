@@ -81,6 +81,12 @@ class BleTransport(
      * defaulted to a wall clock, which a rollback can refund.
      */
     private val admissionClockMillis: () -> Long = { System.nanoTime() / 1_000_000L },
+    /**
+     * ANDROID-04 (round 206): the OWNED lease sweep's interval, INJECTABLE so a court can witness expiry BY
+     * TIME rather than by traffic. Production keepeth the named constant; a court that driveth it short
+     * proveth that the scheduler itself trippeth a silent peer.
+     */
+    private val leaseSweepIntervalMillis: Long = LEASE_SWEEP_INTERVAL_MS,
 ) : Transport, InFlightAwareTransport {
 
     override val name = "BLE"
@@ -269,7 +275,7 @@ class BleTransport(
                 // the `runCatching` below covereth ONLY the sweep -- so a cancelled job cannot be swallowed
                 // by its own error handling and spin.
                 while (true) {
-                    kotlinx.coroutines.delay(LEASE_SWEEP_INTERVAL_MS)
+                    kotlinx.coroutines.delay(leaseSweepIntervalMillis)
                     runCatching { sweepInboundLeases() }
                 }
             }

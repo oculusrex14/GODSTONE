@@ -46,7 +46,34 @@ already carried. The audit's step 3 stays OPEN, with its two measured obstacles 
 | CRYPTO-003 | FIX_SUBMITTED | 4b | Destroyed retained controllers and primitive sessions st |
 | CRYPTO-006 | FIX_SUBMITTED | 4b | Duplicate journal admission is treated as success for a |
 
-## DO THIS FIRST (round 205) — ANDROID-04's STEPS 2/4/5 **HOLD** (MEASURED); ONE TIME-BASED WITNESS REMAINS, ONE EDIT AWAY
+## DO THIS FIRST (round 206) — ANDROID-04's TIME-BASED WITNESS ATTEMPTED: IT IS RED, AND THE DIAGNOSTIC NARROWED THE CAUSE
+
+**The seam landed and stays:** `BleTransport` gains `leaseSweepIntervalMillis` (defaulting to the named constant, so
+**production is unchanged**), and the T20 rig threads it through with a **long** court default (60 s) so no existing arm
+is ever swept mid-witness.
+
+**The witness is RED — with a diagnostic that narrowed the cause.** With the injected connection clock advanced past the
+lease's deadline and a **25 ms** interval, the **silent relation stayed standing for five seconds** — and its diagnostic
+assertion (`hasLeaseSweepJob()`) **passed**, so the owned job **is armed and ticking**. The **same rig and clock**, in the
+T20 court's own arm, trips the **same** relation when `sweepInboundLeases()` is called **directly on the test thread**.
+
+**So the difference is the caller's thread**, and the leading hypothesis is named rather than acted on: the job wraps its
+sweep in `runCatching`, which would **swallow** an IO-dispatcher exception (a concurrent modification while the test thread
+works, or a lock discipline the sweep expects from its own thread) and keep ticking while tripping nothing. **The next step
+is a measurement, not a guess:** make the job's failure **observable** — record the throwable into the transport's own
+rejection census instead of swallowing it — and **read** what it says; if it is silent, instrument the sweep's own
+iteration.
+
+**The witness was withdrawn, not shipped red:** the lane is green again (whole `:mesh` lane **1188 tests, 0 failures**), and
+the witness is parked with its measurement at
+`tools/readiness/audit_probes/kotlin/t20-owned-sweep-time-witness.kt.txt`. **The red log is kept separate and carries the
+diagnostic's PASS** — which is what makes it valuable rather than merely a failure.
+
+**Why this is progress rather than a setback:** round 205 named a seam; round 206 landed it *and* turned "the scheduler
+works" from an assumption into a **measured question with a narrowed cause**. A scheduler that is **armed but trips
+nothing** is exactly the defect a green arming-witness would have hidden.
+
+## DO THIS FIRST (round 205, landed) — ANDROID-04's STEPS 2/4/5 **HOLD**
 
 **Three of the card's five steps needed no repair at all — only evidence.** Read from the code and from the courts that
 already witness them:

@@ -77,6 +77,13 @@ class ReadinessT20Test {
     /** The instant the lifetime suites stand their clocks at. */
     private var rigNow: Long = 1_700_000_000L
 
+    /**
+     * ANDROID-04 (round 206): the OWNED sweep's interval for this court's rigs. LONG by default, so no arm is
+     * ever swept mid-witness by the scheduler; the TIME-BASED witness setteth it SHORT and proveth that the
+     * scheduler itself trippeth a silent peer.
+     */
+    private var leaseSweepIntervalMillis: Long = 60_000L
+
     // MARK: - the rig, harvested from the T17 witness and parameterised
 
     private class InMemoryIdentityStorage : IdentityStorage {
@@ -401,9 +408,11 @@ class ReadinessT20Test {
         val bobOutlet = RecordingOutlet()
         val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
         val alice = BleTransport(serverStartAttempt = { true }, identity = pair.alice, store = pair.aliceStore,
-            sessions = pair.smA, outletHooks = aliceOutlet)
+            sessions = pair.smA, outletHooks = aliceOutlet,
+            leaseSweepIntervalMillis = leaseSweepIntervalMillis)
         val bob = BleTransport(serverStartAttempt = { true }, identity = pair.bob, store = pair.bobStore,
-            sessions = pair.smB, outletHooks = bobOutlet)
+            sessions = pair.smB, outletHooks = bobOutlet,
+            leaseSweepIntervalMillis = leaseSweepIntervalMillis)
         kotlinx.coroutines.runBlocking { alice.start() }
         kotlinx.coroutines.runBlocking { bob.start() }
         alice.centralDriver.connectionClockForTest = { rigNow }
