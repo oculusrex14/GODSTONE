@@ -60,3 +60,31 @@
         }
     }
 
+
+// ------------------------------------------------------------------------------------------------
+// ROUND 207 -- THE MEASUREMENT THAT NARROWED IT, AND THE REAL DEFECT THE GREP THEN FOUND.
+//
+// The job was made LOUD (its failure is recorded in the transport's census, with a CancellationException
+// rethrown so the job's own cancellation is never mistaken for a failure) and it was given a TICK COUNTER
+// (`leaseSweepTicksForTest`). THE MEASUREMENT:
+//
+//     retired=false ticks=14 armedAtEnd=true sweepFailures=0
+//
+// SO THE JOB IS ARMED, TICKING (14 ticks over 400 ms at a 25 ms interval) AND FAILING NOT -- and the
+// relation is still not retired. The sweep RUNNETH and findeth NOTHING, while the same call on the test
+// thread trips the same relation. One hypothesis was TESTED AND REFUTED rather than assumed: `@Volatile`
+// on the fixture's clock changed nothing, so the stale read is not there.
+//
+// AND THE GREP FOUND THE REAL DEFECT, WHICH IS THE CARD'S OWN STEP 1:
+//
+//     BleOrchestrationDriver:  clock = connectionClockForTest ?: { System.currentTimeMillis() / 1000L }
+//
+// AT **TWO** CREATION SITES (:190 and :601) -- A WALL CLOCK IS THE DEFAULT FOR THE LEASE CLOCK OF A REAL
+// CONNECTION. The card asks for a monotonic clock in the actual transport/composition, with wall time kept
+// only for the app; this session already did that for the GOVERNOR (rounds 187/195) and the ADMISSION
+// BUDGET (round 186), but NOT for the connections -- and every lease deadline on this isle is computed
+// against that clock.
+//
+// THE NEXT STEP: make BOTH sites monotonic (mirroring the governor's structural monotonic default), then
+// re-run this witness -- it should then trip, because the job's sweep will see the same clock the court
+// advanceth.

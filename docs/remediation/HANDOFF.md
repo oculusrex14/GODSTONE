@@ -46,7 +46,38 @@ already carried. The audit's step 3 stays OPEN, with its two measured obstacles 
 | CRYPTO-003 | FIX_SUBMITTED | 4b | Destroyed retained controllers and primitive sessions st |
 | CRYPTO-006 | FIX_SUBMITTED | 4b | Duplicate journal admission is treated as success for a |
 
-## DO THIS FIRST (round 206) — ANDROID-04's TIME-BASED WITNESS ATTEMPTED: IT IS RED, AND THE DIAGNOSTIC NARROWED THE CAUSE
+## DO THIS FIRST (round 207) — THE OWNED SWEEP'S SILENCE DIAGNOSED BY INSTRUMENT — AND THE CARD'S STEP 1 FOUND STILL STANDING FOR **CONNECTIONS**
+
+**The instruments narrowed it, and the measurement is decisive:** the job now **records its own failure** in the
+transport's census (`CancellationException` rethrown, so its own cancellation is never mistaken for a failure) and
+**counts its ticks** (`leaseSweepTicksForTest`). The measurement:
+
+> **`retired=false ticks=14 armedAtEnd=true sweepFailures=0`**
+
+**The job is armed, ticking (14 ticks over 400 ms at a 25 ms interval) and failing not — and the relation is still not
+retired.** The sweep *runs and finds nothing*, while the same call on the test thread trips the same relation. One
+hypothesis was **tested and refuted** rather than assumed: `@Volatile` on the fixture's clock changed nothing, so the
+stale read is not there.
+
+**And the grep then found the real defect — the card's own step 1:**
+
+```kotlin
+BleOrchestrationDriver:  clock = connectionClockForTest ?: { System.currentTimeMillis() / 1000L }
+```
+
+at **two** creation sites (`:190`, `:601`) — **a wall clock is the default for the lease clock of a real connection**.
+The card asks for a monotonic clock in the actual transport/composition with wall time kept only for the app; this
+session did that for the **governor** (rounds 187/195) and the **admission budget** (186) — but **not for the
+connections**, and every lease deadline on this isle is computed against that clock.
+
+**Kept:** the loud job and the tick counter (both are improvements: "armed" and "working" are now distinguishable, and a
+tick that fails is visible). **Withdrawn:** the diagnostic arm, so the lane is green (**1188 tests, 0 failures**); the
+diagnostic log is kept with its measurement.
+
+**Next round is a one-line-per-site repair with a named test:** make **both** connection-creation sites monotonic, then
+re-run the parked witness — it should then trip, because the job's sweep will see the same clock the court advances.
+
+## DO THIS FIRST (round 206, landed) — ANDROID-04's TIME-BASED WITNESS ATTEMPTED
 
 **The seam landed and stays:** `BleTransport` gains `leaseSweepIntervalMillis` (defaulting to the named constant, so
 **production is unchanged**), and the T20 rig threads it through with a **long** court default (60 s) so no existing arm

@@ -276,7 +276,19 @@ class BleTransport(
                 // by its own error handling and spin.
                 while (true) {
                     kotlinx.coroutines.delay(leaseSweepIntervalMillis)
-                    runCatching { sweepInboundLeases() }
+                    leaseSweepTicksForTest += 1L
+                    try {
+                        sweepInboundLeases()
+                    } catch (e: kotlinx.coroutines.CancellationException) {
+                        throw e                    // THE JOB'S OWN CANCELLATION IS NEVER A FAILURE
+                    } catch (t: Throwable) {
+                        // ANDROID-04 (round 207): A SWEEP THAT FAILS WHILE TICKING IS THE WORST SHAPE OF THIS
+                        // DEFECT -- the scheduler looketh armed and trippeth nothing. Its failure is therefore
+                        // RECORDED in the transport's own census rather than swallowed, so that a court (and a
+                        // reader of the census) can see it.
+                        recordRejection(ByteArray(0), "lease.sweep",
+                            "the owned sweep failed: " + (t::class.simpleName ?: "?") + ": " + (t.message ?: ""))
+                    }
                 }
             }
         }
@@ -757,6 +769,15 @@ class BleTransport(
 
     /** Observation for courts: is the transport's OWN sweep armed? (the shape of [hasInboundJob]) */
     internal fun hasLeaseSweepJob(): Boolean = leaseSweepJob?.isActive == true
+
+    /**
+     * ANDROID-04 (round 207): HOW MANY TIMES THE OWNED SWEEP HATH TICKED. An instrument, not a control: an
+     * 'armed' job that never ticketh is the exact shape this defect hideth in, and a tick count telleth that
+     * apart from a sweep that runneth and findeth nothing to sweep.
+     */
+    @Volatile
+    internal var leaseSweepTicksForTest: Long = 0L
+        private set
 
     fun handleInboundTimeout(peerAddress: String, generation: Long) {
         // T12: the provisional job carries the exact generation it was

@@ -75,6 +75,15 @@ import java.util.concurrent.CopyOnWriteArrayList
 class ReadinessT20Test {
 
     /** The instant the lifetime suites stand their clocks at. */
+    /**
+     * ANDROID-04 (round 207): THE FIXTURE'S CLOCK MUST BE **VOLATILE**. The owned sweep ticketh on the
+     * transport's IO dispatcher and readeth this value through the injected clock lambda; a PLAIN `var`
+     * permitteth the sweeping thread to keep reading a STALE value indefinitely (the JMM giveth no
+     * visibility without a barrier), so the scheduler looked armed and tripped nothing while a DIRECT call
+     * from the test thread -- which obviously seeth the new value -- tripped the same relation. The
+     * diagnostic measured exactly that: `retired=false sweepFailures=0`.
+     */
+    @Volatile
     private var rigNow: Long = 1_700_000_000L
 
     /**
