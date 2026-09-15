@@ -81,6 +81,13 @@ FULL40 = re.compile(r"[0-9a-f]{40}")
 SHA256 = re.compile(r"[0-9a-f]{64}")
 RUNID = re.compile(r"[0-9]+")
 EXECUTOR = re.compile(r"release-gates\.yml / [a-z0-9-]+$")
+REVIEW_DATE = re.compile(r"\d{4}-\d{2}-\d{2}")
+
+#: GS-GATE-001 (AUDIT-004 step 2): every digest-shaped field, wherever it appeareth. The first
+#: repair checked only apk/aab/corpus, so `result_sha256: null` on a device gate was invisible.
+DIGEST_FIELDS = ("apk_sha256", "aab_sha256", "corpus_sha256", "result_sha256",
+                 "source_sha256", "fixture_sha256", "artifact_sha256",
+                 "signing_config_sha256")
 
 # The profiled gates and the fields their evidence block must complete when
 # CLOSED. The LIGHT no-embed corpus (android archive-only release) is hereby
@@ -290,6 +297,52 @@ def _validate_evidence_block(name: str, g: Mapping[str, Any], errors: list[str],
             value = evidence[sha_field]
             if not isinstance(value, str) or not SHA256.fullmatch(value):
                 errors.append(f"{name}: {sha_field} must be a full lower-case SHA-256 (64 hex digits)")
+    # GS-GATE-001 (AUDIT-004 step 2): every digest-shaped field is checked, not only the
+    # three the first repair remembered -- the review closed a device gate with
+    # `result_sha256=None` and was ACCEPTED because that field was never examined.
+    for sha_field in DIGEST_FIELDS:
+        if sha_field in evidence and sha_field not in ("apk_sha256", "aab_sha256", "corpus_sha256"):
+            value = evidence[sha_field]
+            if not isinstance(value, str) or not SHA256.fullmatch(value):
+                errors.append(f"{name}: {sha_field} must be a full lower-case SHA-256 "
+                              f"(64 hex digits); a NULL digest proveth nothing")
+    # ... and a REQUIRED field must carry a VALUE, not a placeholder. AUDIT-004 reproduced a
+    # CLOSED device gate carrying every required KEY with every value None.
+    wanted_fields = list(profile["required"] if profile else COMMON_CLOSED_REQUIREMENTS)
+    if external:
+        wanted_fields += list(external["approval_fields"])
+    for field in wanted_fields:
+        if field in evidence and _is_placeholder(evidence[field]):
+            errors.append(
+                f"{name}: evidence {field!r} is a NULL or EMPTY placeholder; a declared field "
+                f"with no value is not proof, and UNAVAILABLE is never PASS (GS-GATE-001)")
+    # a device matrix must NAME devices: an absent, empty or non-list matrix is not a device run
+    if "device_matrix" in evidence:
+        matrix = evidence["device_matrix"]
+        if isinstance(matrix, Mapping):
+            devices = list(matrix)
+        elif isinstance(matrix, (list, tuple)):
+            devices = list(matrix)
+        else:
+            devices = None
+        if devices is None:
+            errors.append(f"{name}: device_matrix must be a LIST of devices or an OBJECT keyed "
+                          f"by device, not {type(matrix).__name__}")
+        elif not [d for d in devices
+                  if (isinstance(d, str) and d.strip()) or isinstance(d, Mapping)]:
+            errors.append(f"{name}: device_matrix nameth no device; an empty matrix is not a "
+                          f"physical device run (GS-GATE-001)")
+    if "review_date" in evidence:
+        value = evidence["review_date"]
+        if not isinstance(value, str) or not REVIEW_DATE.fullmatch(value.strip()):
+            errors.append(f"{name}: review_date must be an ISO date (YYYY-MM-DD)")
+    if "source_commit" in evidence:
+        value = evidence["source_commit"]
+        if not isinstance(value, str) or not FULL40.fullmatch(value):
+            errors.append(f"{name}: source_commit must be a full lowercase 40-hex commit id")
+        elif not resolve(value):
+            errors.append(f"{name}: source_commit {value!r} resolveth to no commit in this "
+                          f"repository history")
     for byte_field in ("apk_bytes", "aab_bytes"):
         if byte_field in evidence:
             value = evidence[byte_field]
@@ -340,14 +393,25 @@ def _validate_evidence_block(name: str, g: Mapping[str, Any], errors: list[str],
         if not block:
             errors.append(f"{name}: the job {job!r} is missing from release-gates.yml "
                           "(a missing executor may not close a gate)")
-        elif re.search(r"^\s*if:\s*false\s*$", block, re.M):
-            errors.append(f"{name}: the job {job!r} is skipped (if: false) -- a skipped job "
-                          "is UNAVAILABLE and UNAVAILABLE is never PASS")
+        elif _disabled_condition(block):
+            errors.append(f"{name}: the job {job!r} is skipped -- its condition "
+                          f"({_disabled_condition(block)!r}) is statically false, and a "
+                          f"skipped job is UNAVAILABLE and UNAVAILABLE is never PASS "
+                          f"(GS-GATE-001)")
         else:
             for held in (profile or {}).get("workflow_must_hold", ()):
                 if held not in block:
                     errors.append(f"{name}: the job {job!r} wanteth {held!r} "
                                   "(the profiled wiring is cut away)")
+                    continue
+                # AUDIT-004 step 3: a REQUIRED STEP can be disabled by its own condition,
+                # which cutteth the profiled wiring away just as surely as deleting it
+                holder = next((s for s in _step_blocks(block) if held in s), "")
+                if holder and _disabled_condition(holder):
+                    errors.append(
+                        f"{name}: the step holding {held!r} in job {job!r} is DISABLED by its "
+                        f"condition ({_disabled_condition(holder)!r}) -- the profiled wiring is "
+                        f"cut away")
 
     # the historical record: noted with the changed-inputs drift line
     # GS-GATE-001: an EXTERNAL gate carrieth the fields IT requireth (see
@@ -375,6 +439,45 @@ def _workflow_job_block(text: str, job: str) -> str:
     rest = text[match.end():]
     nxt = re.search(r"^  [a-z0-9-]+:", rest, re.M)
     return rest[:nxt.start()] if nxt else rest
+
+
+def _step_blocks(block: str) -> list[str]:
+    """The job block's individual steps, split on the step list marker."""
+    parts = re.split(r"^\s*-\s+", block, flags=re.M)
+    return parts[1:] if len(parts) > 1 else []
+
+
+#: GS-GATE-001 (AUDIT-004 step 3): the DEMONSTRABLY DISABLED condition forms. The audited
+#: parser recognised only the literal `if: false`, so `if: ${{ false }}` -- which GitHub
+#: evaluateth to the same thing -- closed a gate. Only STATICALLY FALSE forms are here: a
+#: CONDITIONAL job (`if: inputs.gate == 'open'`, which the real workflow carrieth) is not
+#: statically disabled and must stay enabled, or the control would refuse a correct workflow.
+_DISABLED_CONDITION = re.compile(
+    r"^(?:\$\{\{\s*)?(!\s*true|false)(?:\s*\}\})?$", re.IGNORECASE)
+
+
+def _disabled_condition(block: str) -> str:
+    """The block's own `if:` condition when it is DEMONSTRABLY disabled, else ''."""
+    for match in re.finditer(r"^\s*if:\s*(.+?)\s*$", block, re.M):
+        raw = match.group(1).strip().strip("'\"")
+        if _DISABLED_CONDITION.match(raw):
+            return match.group(1).strip()
+    return ""
+
+
+def _is_placeholder(value: Any) -> bool:
+    """True when a declared field carrieth no proof in substance.
+
+    AUDIT-004 step 2: the independent review closed a device gate carrying every required KEY
+    with every value None, and the checker accepted it because it asked only for the NAME.
+    """
+    if value is None:
+        return True
+    if isinstance(value, str):
+        return not value.strip()
+    if isinstance(value, (list, tuple, dict, set)):
+        return len(value) == 0
+    return False
 
 
 # ---------------------------------------------------------------------------

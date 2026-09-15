@@ -698,7 +698,14 @@ class T52PresenceCourt(unittest.TestCase):
                           "fixture_sha256": "c" * 64, "reviewer_role": "external auditor",
                           "review_date": "2026-09-15", "corpus_sha256": "d" * 64,
                           "revision": "rev", "artifact_sha256": "e" * 64,
-                          "approved_role": "publisher", "device_matrix": "matrix",
+                          "approved_role": "publisher",
+                          # The SHAPE fixture carried the free-text string "matrix" until
+                          # round 98, when GS-GATE-001's AUDIT-004 law began requiring a
+                          # device matrix that NAMES devices (a nonempty list, or an object
+                          # keyed by device). The assertion above is untouched: only the
+                          # fixture was repaired to exercise the contract the checker now
+                          # holds, so this control tests the NEW law rather than an old shape.
+                          "device_matrix": ["synthetic-device-a", "synthetic-device-b"],
                           "operator_role": "operator", "result_sha256": "f" * 64,
                           "signing_config_sha256": "1" * 64,
                           "approver_role": "release owner",
