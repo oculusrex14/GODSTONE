@@ -743,3 +743,28 @@ extension ReadinessT83Tests {
         }
     }
 }
+
+
+// MARK: - GS-ACK-001 (iOS twin): the step-1 control beside the no-resolver arm
+
+extension ReadinessT83Tests {
+
+    /// A key that IS present in the resolver's table but belongs to a DIFFERENT signer must be REFUSED
+    /// as a MISMATCH -- counted among the failures, never folded into retryable unavailability -- and
+    /// the obligation must survive it. This is the control the audit asks for "so fixing one branch does
+    /// not hide another": it protects the branch the repair did NOT change.
+    func testW26PresentButWrongRecipientKeyIsRefusedAsAMismatchNotUnavailability() async throws {
+        let r = try rig(405)
+        // the resolver HOLDS a key for the recipient, but it is not the signer's key
+        r.keys.put(r.me.id.nodeId, Data((0..<32).map { UInt8(($0 * 7 + 3) & 0xFF) }))
+        let frame = try await inboxFrame(r, 62)
+        XCTAssertTrue(isCommitted(commitInbound(r, frame, 7, 60000)), "the inbox commit must stand")
+
+        let report = try driverOf(r, TestSigner(r.me)).runPendingOnce(8)
+
+        XCTAssertEqual(report.keyUnavailable, 0, "a wrong key is NOT retryable unavailability")
+        XCTAssertEqual(report.storageFailures, 1, "it is a FAILED verification")
+        XCTAssertEqual(r.store.ackStore.countFrames(), 0, "nothing may be stored for a mismatched signer")
+        XCTAssertEqual(r.store.ackStore.countObligations(), 1, "and the obligation must survive")
+    }
+}

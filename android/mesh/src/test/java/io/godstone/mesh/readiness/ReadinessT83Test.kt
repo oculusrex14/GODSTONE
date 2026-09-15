@@ -897,4 +897,27 @@ class ReadinessT83Test {
             else -> Assert.fail("the durable obligation must survive the unresolvable-key turn")
         }
     }
+
+    /**
+     * GS-ACK-001 (the audit's step-1 control, BESIDE the no-resolver arm "so fixing one branch does not
+     * hide another"): a key that IS present in the resolver's table but belongeth to a DIFFERENT signer
+     * must be REFUSED as a MISMATCH -- counted among the failures, never folded into retryable
+     * unavailability -- and the obligation must survive it.
+     */
+    @Test
+    fun testPresentButWrongRecipientKeyIsRefusedAsAMismatchNotUnavailability() = runTest {
+        val r = rig(405)
+        // the resolver HOLDS a key for the recipient, but it is not the signer's key
+        r.keys.put(r.me.id, ByteArray(32) { b -> ((b * 7 + 3) and 0xFF).toByte() })
+        val frame = inboxFrame(r, 62)
+        val c = commitInbound(r, frame, 7L, 60000L)
+        Assert.assertTrue("the inbox commit must stand", c is InboundCommitResult.Committed)
+
+        val report = driverOf(r, TestSigner(r.me)).runPendingOnce(8)
+
+        Assert.assertEquals("a wrong key is NOT retryable unavailability", 0, report.keyUnavailable)
+        Assert.assertEquals("it is a FAILED verification", 1, report.storageFailures)
+        Assert.assertEquals("nothing may be stored for a mismatched signer", 0, r.store.ackStore.countFrames())
+        Assert.assertEquals("and the obligation must survive", 1, r.store.ackStore.countObligations())
+    }
 }
