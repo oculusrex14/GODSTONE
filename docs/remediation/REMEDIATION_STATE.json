@@ -303,7 +303,13 @@
    "audit_status_at_snapshot": "OPEN",
    "candidate_scope": "Mesh/Oracle",
    "closure_evidence": [],
-   "closure_tests": null,
+   "closure_tests": [
+    "compose two real `BleTransport` objects with fake OS outlets and feed only the actual scan/GATT callback boundary events.",
+    "Use canonical UUID-only advertisements.",
+    "Assert HS1, HS2, HS3, confirmation challenge/response, and one authenticated LinkReady occur without calling `beginTrustedHandshake`, `beginKeyConfirmation`, or marking connections ready in the test.",
+    "Add immediate callbacks, duplicate CCCD callbacks, disconnect-before-HS1, failed HS3 write, and missing echo.",
+    "Mutation removing either production trigger must fail this test."
+   ],
    "evidence_level": "SOURCE_CONFIRMED_NOT_DEVICE_REPRODUCED",
    "final_review": {
     "audit_id": "AUDIT-003",
@@ -312,19 +318,46 @@
     "note": "Original proof retained. No independent fix closure. Source identity does not prove the whole caller graph unchanged.",
     "source_sha": "c683a2bf0b5bcdd4a662d98f7542351501b57b7c"
    },
-   "impact": null,
+   "impact": "- `android/mesh/src/main/java/io/godstone/mesh/transport/BleTransport.kt:312` handles the successful central CCCD action by publishing `Found`, then stops. It does not call `beginTrustedHandshake`. - `BleTransport.kt:1739` defines `beginTrustedHandshake`. Searching both `android/mesh/src/main` and `android/app/src/main` finds its definition and no invocation (`production_entrypoints.txt`). Existing tests call it explicitly, e.g. `ReadinessT21Test.kt:321`. - `BleTransport.kt:1353` defines `beginKeyConfirmation`; every invocation found outside its definition is a test invocation (`keyconfirmation_callers.txt`). Completing HS3 at lines 1566/1623 only emits `handshakeReadyFlow`. - `MeshNode.kt:179` subscribes only to `peers()` and `received()`. It subscribes to neither handshake-ready nor application-link-ready events and does not perform D2/key confirmation itself. Failure schedule: two genuine devices finish discovery, LinkInfo exchange, and CCCD setup. The central produces `PublishFound`; no HS1 is sent. The responder cannot initiate Noise XX. Both remain physically bound without a trusted session. If a test or later caller manually starts D2, nothing automatically begins the mandatory encrypted confirmation round afterward.",
    "invalidated_dependents": [],
    "my_fix_commit": null,
    "my_logs": [],
    "my_red_case": null,
    "my_status": "OPEN",
-   "notes": null,
+   "notes": "ENRICHED AT ROUND 104 by TRANSCRIPTION from the audit's own card (android/findings.md#ANDROID-01): impact, remediation_steps, source_refs and closure_tests are the card's OWN words and its OWN file references, not a summary; the refs are relative to the audited snapshot. No status changed and nothing was claimed fixed.",
    "pending_proof": [],
    "proof": null,
    "remediation_report": "evidence/android/findings.md",
-   "remediation_steps": [],
+   "remediation_steps": [
+    "Add one internal effect for the exact successful outbound relation generation, e.g. `BeginHandshake(RelationKey)`, in the relation owner. Trigger it exactly once after ROLE_BOUND and physical duplex are both true.",
+    "Capture the remote LinkInfo hint from that same relation (see ANDROID-02). Pass the captured relation and hint to the asynchronous handshake send path. Do not publish an application peer here.",
+    "On the real HS3 ordered-write/trust transition, schedule one encrypted confirmation challenge per relation through the record writer. Treat failure/backpressure as an owned pending effect or terminal transition; do not ignore it.",
+    "On a valid authenticated response, publish the immutable trusted peer through the T24 channel. Keep HS3-before-DATA ordering and readiness flags false.",
+    "Remove the requirement that application/test code directly invoke D2 to make a connection progress."
+   ],
    "severity": "HIGH",
-   "source_refs": [],
+   "source_refs": [
+    {
+     "card": "android/findings.md",
+     "ref": "android/mesh/src/main/java/io/godstone/mesh/transport/BleTransport.kt:312"
+    },
+    {
+     "card": "android/findings.md",
+     "ref": "BleTransport.kt:1739"
+    },
+    {
+     "card": "android/findings.md",
+     "ref": "ReadinessT21Test.kt:321"
+    },
+    {
+     "card": "android/findings.md",
+     "ref": "BleTransport.kt:1353"
+    },
+    {
+     "card": "android/findings.md",
+     "ref": "MeshNode.kt:179"
+    }
+   ],
    "tasks": [
     "T21",
     "T22",
@@ -421,7 +454,11 @@
    "audit_status_at_snapshot": "OPEN",
    "candidate_scope": "Mesh/Oracle",
    "closure_evidence": [],
-   "closure_tests": null,
+   "closure_tests": [
+    "production composed immediate callback during start; zero subscribers; full channel; blocked consumer; stop/replacement during delayed delivery; same hint/different identities; same MAC/new generation; exactly one Ready/Lost per generation.",
+    "Assert actual MeshNode state/router input, not only an isolated `PeerEventPublisher`.",
+    "Mutation returning successful emission while dropping an event must fail."
+   ],
    "evidence_level": "SOURCE_CONFIRMED_NOT_DEVICE_REPRODUCED",
    "final_review": {
     "audit_id": "AUDIT-003",
@@ -430,19 +467,55 @@
     "note": "Original proof retained. No independent fix closure. Source identity does not prove the whole caller graph unchanged.",
     "source_sha": "c683a2bf0b5bcdd4a662d98f7542351501b57b7c"
    },
-   "impact": null,
+   "impact": "- `PeerEventPublisher.kt:47` and `TrustedPeerChannel.kt` implement new types. Production source search finds no instantiation of `PeerEventPublisher` and no `TrustedPeer.capture` call. - `BleTransport.kt:589` adds a relation to `publishedRelations` and at line 596 performs unchecked `peerEventsFlow.tryEmit(PeerEvent.Found(peerMacBytes,...))`. This is invoked at physical readiness, before authentication. `unpublishRelation` at line 614 similarly ignores Lost emission failure. - `MeshNode.kt:199` keys its peer map from `event.peerId` and line 181 forwards `received()` pairs into `handleInboundFrame`. `Transport.kt` still exposes `Flow<Pair<ByteArray, ByteArray>>`, not an authenticated relation-bearing frame. - `BleTransport.kt:1118` decrypts using the queued byte-array peer handle and line 1127 calls unchecked `trySend(peerId to plaintext)`. It carries no immutable authenticated identity/trust version for delayed delivery. - Even the separate `publishApplicationLinkReadyOnce` at line 1328 uses a replay-zero SharedFlow. A `tryEmit` can return true with no subscribers and retain no event; checking its Boolean does not make this a durable/reliable channel. The confirmed-response caller ignores its returned Boolean at line 1427. - `MeshNode.attachConsumers` uses `launchIn(scope)`, which schedules collection; calling it before `openAdapters` does not prove collectors have actually subscribed. The existing T21 fixture explicitly sends sentinels up to 400 times to wait for attachment (`ReadinessT21Test.kt:365` onward), hiding this startup gap from the happy path. Impact: physical peers count as application peers before trust; authentication does not change the representation. Full channels/early callbacks can silently lose authoritative presence or frames, and there is no immutable authenticated relation available to reject delayed traffic from a replaced peer. The central T24 goal remains unmet despite separate publisher tests.",
    "invalidated_dependents": [],
    "my_fix_commit": null,
    "my_logs": [],
    "my_red_case": null,
    "my_status": "OPEN",
-   "notes": null,
+   "notes": "ENRICHED AT ROUND 104 by TRANSCRIPTION from the audit's own card (android/findings.md#ANDROID-03): impact, remediation_steps, source_refs and closure_tests are the card's OWN words and its OWN file references, not a summary; the refs are relative to the audited snapshot. No status changed and nothing was claimed fixed.",
    "pending_proof": [],
    "proof": null,
    "remediation_report": "evidence/android/findings.md",
-   "remediation_steps": [],
+   "remediation_steps": [
+    "Replace the mesh transport's authoritative events with `LinkReady(TrustedPeer)`, `LinkLost(TrustedPeer)`, and `AuthenticatedFrame(TrustedPeer, FrameV2/rawBytes)`; keep discovery metadata separately if needed.",
+    "Construct TrustedPeer from the successful trust authority's authenticated public key and version while holding the relation owner; deep-copy identity fields and do not expose mutable arrays directly.",
+    "Use one bounded consumer channel with an explicit accepted/backpressured/closed contract. Retain ownership of an event until accepted; on terminal failure close its relation. Remove old MAC Found/Lost as a source of router/app truth.",
+    "Make consumer registration synchronous or awaited before starting the OS adapter. Avoid nested `launch` plus callbackFlow registration races.",
+    "Key MeshNode/router/governor by full authenticated NodeID; keep MAC only inside transport routing. Revalidate the captured relation token before forwarding delayed authenticated data.",
+    "Ensure Lost and stop remove the exact generation and a reconnect can publish again. Do not track LinkReady dedup only by reusable MAC bytes."
+   ],
    "severity": "HIGH",
-   "source_refs": [],
+   "source_refs": [
+    {
+     "card": "android/findings.md",
+     "ref": "PeerEventPublisher.kt:47"
+    },
+    {
+     "card": "android/findings.md",
+     "ref": "TrustedPeerChannel.kt"
+    },
+    {
+     "card": "android/findings.md",
+     "ref": "BleTransport.kt:589"
+    },
+    {
+     "card": "android/findings.md",
+     "ref": "MeshNode.kt:199"
+    },
+    {
+     "card": "android/findings.md",
+     "ref": "Transport.kt"
+    },
+    {
+     "card": "android/findings.md",
+     "ref": "BleTransport.kt:1118"
+    },
+    {
+     "card": "android/findings.md",
+     "ref": "ReadinessT21Test.kt:365"
+    }
+   ],
    "tasks": [
     "T24"
    ],
@@ -453,7 +526,12 @@
    "audit_status_at_snapshot": "OPEN",
    "candidate_scope": "Mesh/Oracle",
    "closure_evidence": [],
-   "closure_tests": null,
+   "closure_tests": [
+    "advance a deterministic monotonic scheduler with zero further inbound packets, for stalled HS1/HS2, partial assembly, and missing confirmation.",
+    "Assert physical cancel and released capacity at the specified bound.",
+    "Roll wall time backward while advancing monotonic time; behavior must be unchanged.",
+    "Deliver old timer after reconnect and assert the successor survives."
+   ],
    "evidence_level": "SOURCE_CONFIRMED_NOT_DEVICE_REPRODUCED",
    "final_review": {
     "audit_id": "AUDIT-003",
@@ -462,19 +540,34 @@
     "note": "Original proof retained. No independent fix closure. Source identity does not prove the whole caller graph unchanged.",
     "source_sha": "c683a2bf0b5bcdd4a662d98f7542351501b57b7c"
    },
-   "impact": null,
+   "impact": "- `BleTransport.kt:877` defines `sweepInboundLeases`; production source search has no caller. - Handshake/key-confirmation expiration is checked only when another inbound packet enters `handleCentralInboundNotification` (`:698`, `:712`) or `handleServerInboundWrite` (`:785`, `:799`). `conn.leaseCountForTest()==0` suppresses these handshake checks while assembly exists. - The provisional job is canceled on physical-ready publication (`:313`) or subscription; it does not cover the subsequent handshake/assembly phases. - `BleConnection.kt:31` defaults its clock to `System.currentTimeMillis()/1000L`, while the new handshake/confirmation/assembly deadlines consume that clock. Failure schedule: peer reaches duplex, sends part of a record/HS, then becomes silent without disconnecting. No new ingress arrives, no sweep is scheduled, and no deadline effect runs; the link/assembly can retain resources beyond 10/30 seconds. A wall-clock rollback can extend the deadline further. Source comments describing a “heartbeat” or “monotonic” clock do not create either.",
    "invalidated_dependents": [],
    "my_fix_commit": null,
    "my_logs": [],
    "my_red_case": null,
    "my_status": "OPEN",
-   "notes": null,
+   "notes": "ENRICHED AT ROUND 104 by TRANSCRIPTION from the audit's own card (android/findings.md#ANDROID-04): impact, remediation_steps, source_refs and closure_tests are the card's OWN words and its OWN file references, not a summary; the refs are relative to the audited snapshot. No status changed and nothing was claimed fixed.",
    "pending_proof": [],
    "proof": null,
    "remediation_report": "evidence/android/findings.md",
-   "remediation_steps": [],
+   "remediation_steps": [
+    "Inject a monotonic clock into the actual transport/composition (`SystemClock.elapsedRealtime` or a canonical monotonic abstraction with explicit units); keep wall time only for appropriate persisted metadata.",
+    "Arm deadline callbacks from the relation owner at the specified transition. Each callback must carry the exact relation and timer generation, plus an absolute deadline.",
+    "Schedule assembly expiration independently of future peer traffic. Preserve the frozen codec's vectors by retaining the separate absolute lease policy.",
+    "On expiry, atomically verify the token, clear assembly/handshake/writer/session state, release capacity, and close only the captured physical relation.",
+    "Cancel owned timers on completion/stop; a queued stale timer must still be harmless after cancellation."
+   ],
    "severity": "HIGH",
-   "source_refs": [],
+   "source_refs": [
+    {
+     "card": "android/findings.md",
+     "ref": "BleTransport.kt:877"
+    },
+    {
+     "card": "android/findings.md",
+     "ref": "BleConnection.kt:31"
+    }
+   ],
    "tasks": [
     "T20",
     "T23"
@@ -487,8 +580,10 @@
    "candidate_scope": "Mesh/Oracle",
    "closure_evidence": [],
    "closure_tests": [
-    "Actual BleTransport first GATT start fails: completely stopped, no server/lease/session residue or advertising. Second start succeeds and service readiness advertises once. Partial allocation and stale first-attempt callbacks do not leak or affect successor.",
-    "Actual mid-record outbound write/inbound notification failure terminates exact RelationKey/generation through the owner: physical connection closed, slot removed, capacity released, peer unpublished and captured session destroyed exactly once. Preserve durable application data across reopen/retry; stale completions cannot affect successor or other inbound clients."
+    "inject a pending real outlet completion into a composed MeshNode, begin stop/wipe, then release a stale completion.",
+    "Verify no additional fragment is submitted, every writer/session/timer/lease is gone, and key erasure happens strictly after drain completion.",
+    "Repeat stop; restart with fresh generation; exercise unavailable adapter and revoked permission.",
+    "Test the real lifecycle composition, not a new fake-only state machine."
    ],
    "evidence_level": "SOURCE_CONFIRMED_NOT_DEVICE_REPRODUCED",
    "final_review": {
@@ -498,23 +593,37 @@
     "note": "Original proof retained. No independent fix closure. Source identity does not prove the whole caller graph unchanged.",
     "source_sha": "c683a2bf0b5bcdd4a662d98f7542351501b57b7c"
    },
-   "impact": null,
+   "impact": "- Production search finds `UnifiedRuntimeLifecycle` and `LifecycleTransportAdapter` definitions, no constructions. `MeshNode.kt:148`/`:185` still starts directly, and `MeshNode.kt:236` destroys sessions and calls `ble.stop()`/`wifi.stop()` directly. - `BleTransport.stop` (`:213–255`) clears connections/drivers/publication maps, but never calls `centralWriterShutdown`/`serverWriterShutdown`, clears writer maps, or awaits writer completion. Its coroutine scope is not canceled or drained. - `centralWriters`/`serverWriters` at `:1209` are only lazily retired on later operations/disconnect paths. `RecordWriter.nextOut` at `RecordWriter.kt:275` tests its own `closed` flag, not connection activity; a running pump may retain/advance staged work unless its owner explicitly shuts it down. - `LifecycleTransportAdapter.disconnectAll` reports the literal `1`, described as a logical sweep; `DrainResult` therefore does not independently prove any asynchronous write or session work finished. The new authority is not owned by existing `RuntimeLifecycleGate` as required. Impact: T28 tests prove a parallel fake seam, not runtime stop/drain. Key erasure cannot use this as proof that actual transport/session work is quiescent. Source alone establishes no completion barrier; no claim is made here that a packet was observed on hardware after wipe.",
    "invalidated_dependents": [],
    "my_fix_commit": null,
    "my_logs": [],
    "my_red_case": null,
    "my_status": "OPEN",
-   "notes": null,
+   "notes": "ENRICHED AT ROUND 104 by TRANSCRIPTION from the audit's own card (android/findings.md#ANDROID-05): impact, remediation_steps, source_refs and closure_tests are the card's OWN words and its OWN file references, not a summary; the refs are relative to the audited snapshot. No status changed and nothing was claimed fixed.",
    "pending_proof": [],
    "proof": null,
    "remediation_report": "evidence/android/findings.md",
-   "remediation_steps": [],
+   "remediation_steps": [
+    "Make the real MeshNode/lifecycle gate own exactly one transport lifecycle authority and expose an awaitable `stopAndDrain` result.",
+    "Under the owner, close admission and retire context/relation tokens first. Remove every writer from maps and call shutdown; cancel/signal pending GATT waits and timers for the captured handles.",
+    "Await bounded in-flight writer/session tasks to terminate before completing the drain; use typed timeout/failure instead of reporting a constant successful sweep.",
+    "Close adapters and release their leases only after the above invariant is established. Route stop, permission loss, power loss, and wipe through this path.",
+    "Make wipe wait for successful drain before key erasure; failure leaves a resumable fail-closed state. Preserve readiness=false."
+   ],
    "severity": "HIGH",
    "source_refs": [
-    "android/mesh/src/main/java/io/godstone/mesh/transport/BleTransport.kt:200",
-    "android/mesh/src/main/java/io/godstone/mesh/transport/BleTransport.kt:1089",
-    "android/mesh/src/main/java/io/godstone/mesh/transport/BleTransport.kt:1220",
-    "android/mesh/src/main/java/io/godstone/mesh/transport/RecordWriter.kt:343"
+    {
+     "card": "android/findings.md",
+     "ref": "MeshNode.kt:148"
+    },
+    {
+     "card": "android/findings.md",
+     "ref": "MeshNode.kt:236"
+    },
+    {
+     "card": "android/findings.md",
+     "ref": "RecordWriter.kt:275"
+    }
    ],
    "tasks": [
     "T09",
@@ -581,7 +690,19 @@
    "audit_status_at_snapshot": "OPEN",
    "candidate_scope": "Mesh/Oracle",
    "closure_evidence": [],
-   "closure_tests": null,
+   "closure_tests": [
+    "flood malformed headers, unknown record/wire types, overlong values, bad tags, valid SOS claims, and many valid identities through the real adapter seam.",
+    "Assert maximum parsing/AEAD calls and exact charged bytes/records; assert tracked identity count ≤256 and active identities survive pressure.",
+    "Combine wall-clock rollback with monotonic advance and verify admitted DIRECT still receives its fair budget. ## Audit coverage and builder guidance Do not mark all 35 completed tasks failed solely because this focused review found these issues.",
+    "Reopen the affected implementation gates and dependency gates; retain existing evidence as local-unit proof.",
+    "T09 canonical advertising and T10 generated UUIDs are actually used by adapters, but their end-to-end interaction with T21 currently fails.",
+    "T11/T12 were inspected for context and terminal handling; this pass does not establish exhaustive correctness or absence of further races.",
+    "T17 crypto internals are audited by another reviewer.",
+    "T25 storage snapshot correctness belongs to the storage review.",
+    "Recommended remediation order: ANDROID-06 writer ownership and ANDROID-04 timers/ANDROID-05 lifecycle foundation; ANDROID-02 relation hint; ANDROID-01 composed D2 and ANDROID-03 authenticated events; ANDROID-07 admission budgets.",
+    "These can be split into bounded child commits, but parent acceptance stays open until actual composed tests pass.",
+    "Never change readiness flags to make a test enter the mesh; use an injected nonshipping composition gate for tests."
+   ],
    "evidence_level": "SOURCE_CONFIRMED_NOT_DEVICE_REPRODUCED",
    "final_review": {
     "audit_id": "AUDIT-003",
@@ -590,19 +711,45 @@
     "note": "Original proof retained. No independent fix closure. Source identity does not prove the whole caller graph unchanged.",
     "source_sha": "c683a2bf0b5bcdd4a662d98f7542351501b57b7c"
    },
-   "impact": null,
+   "impact": "- Original T26 required pre-auth record and byte budgets on the transport executor, bounded raw-header classification, charging every rejected packet, a 256-entry pinned authenticated cache, and monotonic time. - No AdmissionBudget or raw byte/record governor is called in GATT ingress, `BleConnection.ingestInboundAttValue`, or `BleTransport.received`. The latter authenticates/decrypts at `BleTransport.kt:1118`; MeshNode fully decodes the frame at `MeshNode.kt:223`; only then does Router call `governor.allowInbound` (`Router.kt:64`). Invalid AEAD/fragment/frame traffic returns before the governor. - `PeerGovernor.kt:46` defaults to wall time and `:188` defaults to 4096, not 256. Its maps have no active-entry pinning/eviction policy. `allowInbound` does charge accepted priority classes and synchronizes bucket debit; that useful local fix does not implement the earlier raw admission gate. - `ReadinessT26Test.kt:72–89` calls an excess count of valid BULK priority requests “Malformed / oversized values”; no malformed or oversized bytes are supplied to an actual transport. Its “unknown types” test removes BULK from an injected capacity map, which does not exercise an unknown wire type. Failure schedule: one already-admitted peer sends repeated malformed fragments, invalid tags, or undecodable authenticated frames. Decoder/reassembly/AEAD work occurs repeatedly, but none of these failures spends the advertised authenticated governor budget; there is no earlier record/byte budget to limit the work. Connection-count limits do not rate-limit a connected peer.",
    "invalidated_dependents": [],
    "my_fix_commit": null,
    "my_logs": [],
    "my_red_case": null,
    "my_status": "OPEN",
-   "notes": null,
+   "notes": "ENRICHED AT ROUND 104 by TRANSCRIPTION from the audit's own card (android/findings.md#ANDROID-07): impact, remediation_steps, source_refs and closure_tests are the card's OWN words and its OWN file references, not a summary; the refs are relative to the audited snapshot. No status changed and nothing was claimed fixed.",
    "pending_proof": [],
    "proof": null,
    "remediation_report": "evidence/android/findings.md",
-   "remediation_steps": [],
+   "remediation_steps": [
+    "Implement one pre-auth global/relation record-and-byte AdmissionBudget owned by the transport executor. Charge before parsing/reassembly/crypto, including empty, malformed, unknown-type, oversize, and rejected traffic. Use bounded metadata inspection only.",
+    "After AEAD, charge authenticated traffic against immutable full NodeID, before full application payload decoding. Do not use MAC, hint, or claimed SOS to evade the global cap.",
+    "Use the specified monotonic clock and 256-entry bound; pin active identities and choose a deterministic bounded eviction/refusal policy for inactive identities. Preserve the approved priority capacities/refills.",
+    "Replace mislabeled governor-unit cases with byte-level tests through GATT/transport ingress and downstream counters. Retain existing atomic bucket tests as local coverage."
+   ],
    "severity": "HIGH",
-   "source_refs": [],
+   "source_refs": [
+    {
+     "card": "android/findings.md",
+     "ref": "BleTransport.kt:1118"
+    },
+    {
+     "card": "android/findings.md",
+     "ref": "MeshNode.kt:223"
+    },
+    {
+     "card": "android/findings.md",
+     "ref": "Router.kt:64"
+    },
+    {
+     "card": "android/findings.md",
+     "ref": "PeerGovernor.kt:46"
+    },
+    {
+     "card": "android/findings.md",
+     "ref": "ReadinessT26Test.kt:72–89"
+    }
+   ],
    "tasks": [
     "T26"
    ],
@@ -4090,7 +4237,12 @@
    "audit_status_at_snapshot": "OPEN",
    "candidate_scope": "Mesh/Oracle",
    "closure_evidence": [],
-   "closure_tests": null,
+   "closure_tests": [
+    "Through actual BleTransport.start/stop, assert one stopScan and stopAdvertising on the *old* managers and one cancellation per owned connection; assert a second stop performs zero extra effects.",
+    "Stop/start must target different manager pairs and leave no old scan, advertisement, subscription, writer, timer, or session.",
+    "Deliver old callbacks after restart and prove zero effects on the new pair.",
+    "Retain on-device radio cessation as a separate physical evidence gate."
+   ],
    "evidence_level": "SOURCE_PROVEN_NOT_EXECUTED",
    "final_review": {
     "audit_id": "AUDIT-003",
@@ -4099,19 +4251,30 @@
     "note": "Original proof retained. No independent fix closure. Source identity does not prove the whole caller graph unchanged.",
     "source_sha": "c683a2bf0b5bcdd4a662d98f7542351501b57b7c"
    },
-   "impact": null,
+   "impact": "`BleTransport.swift:634–640` implements `central` and `peripheral` as computed properties reading `activeManagerContext`. `stopQuiesced` sets that context to nil at line 1322. Its subsequent delegate detach (1326–1327), stopScan/stopAdvertising (1330–1331), and cancelPeripheralConnection (1336) consequently target nil and perform no OS call. `ManagerContext.retire` (355–359) only sets a boolean. The old context is retained by `lastRetiredManagerContext`, so releasing the active reference does not release its managers. Local maps and writers are cleared, which can make helper assertions pass while the radio and physical connections were never stopped by this path. Start the transport; power on and connect/advertise; call stop; inspect the old manager objects. The stop method clears all local ownership and reports completion without issuing any of its intended stop/cancel operations. A subsequent start creates a fresh pair while the old retained pair has not been explicitly shut down.",
    "invalidated_dependents": [],
    "my_fix_commit": null,
    "my_logs": [],
    "my_red_case": null,
    "my_status": "OPEN",
-   "notes": null,
+   "notes": "ENRICHED AT ROUND 104 by TRANSCRIPTION from the audit's own card (ios/findings.md#IOS-01): impact, remediation_steps, source_refs and closure_tests are the card's OWN words and its OWN file references, not a summary; the refs are relative to the audited snapshot. No status changed and nothing was claimed fixed.",
    "pending_proof": [],
    "proof": null,
    "remediation_report": "evidence/ios/findings.md",
-   "remediation_steps": [],
+   "remediation_steps": [
+    "In `stopQuiesced`, capture the exact closing `ManagerContext` and an immutable array of its connected peripherals before clearing ownership. Do not use the computed `central`/`peripheral` accessors for cleanup after this point.",
+    "While on the closing context's serial executor, close admission and retire that context; detach/clear local maps and cancel owned timers/writers using exact relation identities. Retiring callbacks must happen before any asynchronous completion can re-enter active state.",
+    "Issue stopScan, stopAdvertising, and cancelPeripheralConnection on `closing.central`/`closing.peripheral`, including only peripherals owned by that context. Keep OS calls outside the transport lock if they can callback/re-enter. Do not start a replacement until this teardown ordering is established.",
+    "Reset context-specific service registration and characteristic references; otherwise a new manager can inherit `isServiceRegistered` from the previous manager. Keep teardown idempotent. Do not alter frozen readiness flags.",
+    "Expose OS operations through a small injectable boundary if CoreBluetooth cannot be observed reliably in unit tests. The fake must be injected into the actual `BleTransport.stop` call path; a fake standalone lifecycle helper is insufficient."
+   ],
    "severity": "HIGH",
-   "source_refs": [],
+   "source_refs": [
+    {
+     "card": "ios/findings.md",
+     "ref": "BleTransport.swift:634–640"
+    }
+   ],
    "tasks": [
     "T13",
     "T14",
@@ -4125,7 +4288,12 @@
    "audit_status_at_snapshot": "OPEN",
    "candidate_scope": "Mesh/Oracle",
    "closure_evidence": [],
-   "closure_tests": null,
+   "closure_tests": [
+    "Add adapter-driven cases that never call beginTrustedHandshake, beginKeyConfirmation, feedHandshakeForTest, or markReady directly.",
+    "Deliver only legitimate dependency/OS callback inputs and observe HS1 → trusted HS2 → queued HS3 → encrypted challenge → matching echo → one LinkReady.",
+    "Negative cases: missing duplex, role inversion/equal hints, repeated callbacks, invalid binding, rejected HS3 admission, lost HS3/echo, and stop during crypto.",
+    "Assert zero application-ready publications in every incomplete/failure case."
+   ],
    "evidence_level": "SOURCE_PROVEN_NOT_EXECUTED",
    "final_review": {
     "audit_id": "AUDIT-003",
@@ -4134,19 +4302,38 @@
     "note": "Original proof retained. No independent fix closure. Source identity does not prove the whole caller graph unchanged.",
     "source_sha": "c683a2bf0b5bcdd4a662d98f7542351501b57b7c"
    },
-   "impact": null,
+   "impact": "An exhaustive search of canonical Sources finds `beginTrustedHandshake(` only at its declaration (`BleTransport.swift:2177`); likewise `beginKeyConfirmation(` only at its declaration (2353). On notification success, the real adapter's physical-duplex branch (3184–3188) only calls `publishRelation`. That publishes physical/connected delegate callbacks (2516–2524); MeshNode does not implement physical-duplex or handshake-ready callbacks, and their default implementations do nothing (4210–4213). A trusted HS2/HS3 completion calls the default-no-op handshake-ready delegate (2046/2111), not key confirmation. The tests explicitly start these missing stages themselves (`ReadinessT21Tests.swift:560`, `ReadinessT23Tests.swift:754` and other confirmation cases). Drive a valid UUID discovery, GATT discovery, LinkInfo read/write, and notification enable through the real delegate adapters. Stop delivering synthetic actions. No HS1 is emitted. If a test explicitly starts HS1 and completes Noise, no PING challenge is emitted automatically. This is absent wiring, not a device limitation.",
    "invalidated_dependents": [],
    "my_fix_commit": null,
    "my_logs": [],
    "my_red_case": null,
    "my_status": "OPEN",
-   "notes": null,
+   "notes": "ENRICHED AT ROUND 104 by TRANSCRIPTION from the audit's own card (ios/findings.md#IOS-02): impact, remediation_steps, source_refs and closure_tests are the card's OWN words and its OWN file references, not a summary; the refs are relative to the audited snapshot. No status changed and nothing was claimed fixed.",
    "pending_proof": [],
    "proof": null,
    "remediation_report": "evidence/ios/findings.md",
-   "remediation_steps": [],
+   "remediation_steps": [
+    "Keep one relation-owned D2 driver; enter it from the actual physical-duplex reducer, after ROLE_BOUND, localHint < remoteHint, and complete duplex validation. Call the existing trusted SessionManager entry, not raw Noise.",
+    "Capture the relation key and immutable GATT-bound remote hint from that connection. Ensure duplicate notification callbacks do not create a second SessionSlot or repeat beginInitiator.",
+    "Queue HS1 via the existing whole-record writer. Treat actual reservation rejection as terminal for that relation; retain and resume already-admitted records under backpressure instead of inventing success.",
+    "At trusted HS2 completion, queue HS3 before DATA. At the proper trusted-ready transition, automatically initiate the specified encrypted challenge/echo procedure using the existing DATA writer. Keep controller-ready and application-LinkReady distinct.",
+    "Publish authenticated application readiness only after matching confirmation. MeshNode's route-eligible peers must be populated from that event, not physical duplex. Preserve readiness=false for shipping."
+   ],
    "severity": "HIGH",
-   "source_refs": [],
+   "source_refs": [
+    {
+     "card": "ios/findings.md",
+     "ref": "BleTransport.swift:2177"
+    },
+    {
+     "card": "ios/findings.md",
+     "ref": "ReadinessT21Tests.swift:560"
+    },
+    {
+     "card": "ios/findings.md",
+     "ref": "ReadinessT23Tests.swift:754"
+    }
+   ],
    "tasks": [
     "T21",
     "T22",
@@ -4243,7 +4430,13 @@
    "audit_status_at_snapshot": "OPEN",
    "candidate_scope": "Mesh/Oracle",
    "closure_evidence": [],
-   "closure_tests": null,
+   "closure_tests": [
+    "Observe a real decrypted DATA record at Router with the exact authenticated sender nodeId.",
+    "Prove no application peer is published at physical duplex or crypto-ready alone.",
+    "Delay delivery, replace the UUID mapping, and show the original captured peer remains intact or the stale relation is refused.",
+    "Confirm old LinkReady is not replayed after disconnect/stop; reconnecting the same UUID/new generation publishes exactly one new ready.",
+    "Fill the event channel and prove each event is delivered once or fails explicitly without losing LinkLost."
+   ],
    "evidence_level": "SOURCE_PROVEN_NOT_EXECUTED",
    "final_review": {
     "audit_id": "AUDIT-003",
@@ -4252,19 +4445,38 @@
     "note": "Original proof retained. No independent fix closure. Source identity does not prove the whole caller graph unchanged.",
     "source_sha": "c683a2bf0b5bcdd4a662d98f7542351501b57b7c"
    },
-   "impact": null,
+   "impact": "`PeerEventPublisher.swift:44–46` explicitly states that nothing in the transport path calls it; canonical-source searches confirm no construction or use of the new publisher/channel. Real transport delegates still carry only UUID (`BleTransport.swift:4195–4206`). `MeshNode.swift:344–357` decodes real inbound data and passes `receivedFrom: Data()` into routing, while its own comment defers the authenticated identity integration. `publishRelation` calls transportDidConnect at physical duplex before authentication (2516–2524), and MeshNode adds that UUID to its peer set (329–331).",
    "invalidated_dependents": [],
    "my_fix_commit": null,
    "my_logs": [],
    "my_red_case": null,
    "my_status": "OPEN",
-   "notes": null,
+   "notes": "ENRICHED AT ROUND 104 by TRANSCRIPTION from the audit's own card (ios/findings.md#IOS-04): impact, remediation_steps, source_refs and closure_tests are the card's OWN words and its OWN file references, not a summary; the refs are relative to the audited snapshot. No status changed and nothing was claimed fixed.",
    "pending_proof": [],
    "proof": null,
    "remediation_report": "evidence/ios/findings.md",
-   "remediation_steps": [],
+   "remediation_steps": [
+    "At authenticated binding, capture `TrustedPeer(relation, nodeId16, identityPub32, trustVersion)` from the trusted controller/repository result. Do not derive identity from a CBPeripheral UUID, advertised hint, payload claim, or current handle lookup at delivery.",
+    "Replace the UUID-only application event path with one bounded, authoritative event path carrying that immutable peer. Wire the existing publisher only after reviewing its actual owner checks and drain behavior; merely constructing the helper is not closure.",
+    "Register consumers before opening the adapter. Route inbound frames with `capturedPeer.nodeId16` as `receivedFrom`. Keep physical-duplex bookkeeping separate from authenticated routing eligibility.",
+    "Key readiness by the full relation token, not UUID. Remove that relation on disconnect and all owned relations on stop. Publish LinkLost exactly once with the same captured peer. A fresh generation on the same UUID must obtain its own LinkReady.",
+    "Give event subscriptions removable leases. Handle a full channel with an explicit bounded retry/drain or terminal action; do not silently drop offers or leave accepted events permanently queued. Eliminate redundant legacy readiness arrays after migration."
+   ],
    "severity": "HIGH",
-   "source_refs": [],
+   "source_refs": [
+    {
+     "card": "ios/findings.md",
+     "ref": "PeerEventPublisher.swift:44–46"
+    },
+    {
+     "card": "ios/findings.md",
+     "ref": "BleTransport.swift:4195–4206"
+    },
+    {
+     "card": "ios/findings.md",
+     "ref": "MeshNode.swift:344–357"
+    }
+   ],
    "tasks": [
     "T24"
    ],
@@ -4275,7 +4487,12 @@
    "audit_status_at_snapshot": "OPEN",
    "candidate_scope": "Mesh/Oracle",
    "closure_evidence": [],
-   "closure_tests": null,
+   "closure_tests": [
+    "Through the real adapter, exceed each pre-auth and authenticated budget and observe downstream parse, DH, trust, decrypt, store and router call counts.",
+    "No excess work may proceed; valid traffic resumes after monotonic refill.",
+    "Test many spoofed identities and equal hints, concurrent budget use, clock rollback, and stop/start.",
+    "Replay shared Android/iOS vectors through the actual integrated path as well as the pure helper."
+   ],
    "evidence_level": "SOURCE_PROVEN_NOT_EXECUTED",
    "final_review": {
     "audit_id": "AUDIT-003",
@@ -4284,19 +4501,34 @@
     "note": "Original proof retained. No independent fix closure. Source identity does not prove the whole caller graph unchanged.",
     "source_sha": "c683a2bf0b5bcdd4a662d98f7542351501b57b7c"
    },
-   "impact": null,
+   "impact": "The new `PeerGovernor.swift` has no construction or method call anywhere in canonical production Sources. The real ingress still reaches session open / handshake trust directly (`BleTransport.swift:1990–2000`, 2084, 3061–3084, and responder ingress around 3960 onward). The class implements an authenticated priority bucket only, while the original T27 design specifically requires charging before expensive parsing/trust/DH and again after AEAD by authenticated identity. Standalone vector parity cannot prove budget enforcement at the adapter. Deliver a repeated valid-link handshake or DATA flood through CoreBluetooth delegate inputs. The new governor is never invoked, so it can neither limit pre-authentication expensive work nor bound authenticated ingest on that path. Existing connection/reassembly capacity bounds do not substitute for those rate budgets.",
    "invalidated_dependents": [],
    "my_fix_commit": null,
    "my_logs": [],
    "my_red_case": null,
    "my_status": "OPEN",
-   "notes": null,
+   "notes": "ENRICHED AT ROUND 104 by TRANSCRIPTION from the audit's own card (ios/findings.md#IOS-05): impact, remediation_steps, source_refs and closure_tests are the card's OWN words and its OWN file references, not a summary; the refs are relative to the audited snapshot. No status changed and nothing was claimed fixed.",
    "pending_proof": [],
    "proof": null,
    "remediation_report": "evidence/ios/findings.md",
-   "remediation_steps": [],
+   "remediation_steps": [
+    "Put one governor configuration and the required bounded global/pre-auth buckets under the runtime owner, using the canonical shared configuration and an injected monotonic clock. Do not use Date wall time for live budget refill.",
+    "Charge the appropriate cheap global/connection budget before allocating/parsing/DH/trust work. At this stage the peer is not authenticated; never pretend its hint is an authenticated identity.",
+    "After AEAD succeeds and a trusted peer is available, charge its authenticated identity/priority budget before application decode/store/router delivery. Bind budget outcomes to the actual admission path.",
+    "Keep local abuse penalties separate from durable trust; do not revoke an identity because a traffic bucket is exhausted. Release/reset only the intended runtime-owned budgets during teardown.",
+    "Serialize the Trust record mutations too: `reward`/`penalise` currently mutate shared reference fields after releasing `registryLock` (150–174); wiring concurrent callers without fixing ownership introduces races despite @unchecked Sendable."
+   ],
    "severity": "HIGH",
-   "source_refs": [],
+   "source_refs": [
+    {
+     "card": "ios/findings.md",
+     "ref": "PeerGovernor.swift"
+    },
+    {
+     "card": "ios/findings.md",
+     "ref": "BleTransport.swift:1990–2000"
+    }
+   ],
    "tasks": [
     "T27"
    ],
@@ -4307,7 +4539,13 @@
    "audit_status_at_snapshot": "OPEN",
    "candidate_scope": "Mesh/Oracle",
    "closure_evidence": [],
-   "closure_tests": null,
+   "closure_tests": [
+    "Starting through the actual composition creates exactly one transport lease/context; repeated start/stop remains idempotent.",
+    "Deliver real manager-state inputs for power loss and unauthorized state after an active handshake and queued ciphertext.",
+    "Assert no ready peers/sessions/timers/writers remain and no future OS effects occur from old callbacks.",
+    "Wipe must observe actual transport drain before erasure.",
+    "Recreating the process must not inherit session/lease state."
+   ],
    "evidence_level": "SOURCE_PROVEN_NOT_EXECUTED",
    "final_review": {
     "audit_id": "AUDIT-003",
@@ -4316,19 +4554,38 @@
     "note": "Original proof retained. No independent fix closure. Source identity does not prove the whole caller graph unchanged.",
     "source_sha": "c683a2bf0b5bcdd4a662d98f7542351501b57b7c"
    },
-   "impact": null,
+   "impact": "There are no production constructors or uses of `UnifiedRuntimeLifecycle` or `LifecycleTransportAdapter`. The adapter comment says concrete BleTransport/MeshNode conform to its `Transport` protocol (`LifecycleTransportAdapter.swift:5–18`), but no such conformance exists in production source. MeshNode directly invokes BleTransport.start/stop (`MeshNode.swift:124–135`); MeshRuntime owns only the prior DefaultRuntimeLifecycleGate. Actual central power callbacks only start scanning when poweredOn and do nothing on power loss (`BleTransport.swift:3676–3691`); actual peripheral callbacks simply return when not poweredOn (3773–3787). Thus the standalone helper's lease/drain/power/permission tests do not cover real runtime behavior.",
    "invalidated_dependents": [],
    "my_fix_commit": null,
    "my_logs": [],
    "my_red_case": null,
    "my_status": "OPEN",
-   "notes": null,
+   "notes": "ENRICHED AT ROUND 104 by TRANSCRIPTION from the audit's own card (ios/findings.md#IOS-06): impact, remediation_steps, source_refs and closure_tests are the card's OWN words and its OWN file references, not a summary; the refs are relative to the audited snapshot. No status changed and nothing was claimed fixed.",
    "pending_proof": [],
    "proof": null,
    "remediation_report": "evidence/ios/findings.md",
-   "remediation_steps": [],
+   "remediation_steps": [
+    "Choose one runtime owner for lifecycle and connect it to the actual MeshRuntime/MeshNode graph. Avoid maintaining a second independent `started`/capability machine that production bypasses.",
+    "Adapt the actual BLE transport to the lifecycle boundary, with real teardown results rather than hard-coded `disconnectAll() == 1` and `resourcesReleased == 1` as proof of a clean drain.",
+    "Send poweredOff/resetting/unauthorized/unsupported and permission removal from the real manager delegates into that owner. Atomically close admission, retire the exact manager context, cancel timers and outbound work, drop sessions and trusted peers, and then stop/release OS resources.",
+    "Wire panic wipe into the same drain result before key erasure. Root storage/wipe review owns the complete wipe remediation; do not claim this helper alone supplies it.",
+    "Handle reactivation as an explicit fresh runtime/context transition according to the task's capability policy. A background callback must not revive a stopped or terminal runtime. Preserve shipping flags and Apple background limits."
+   ],
    "severity": "HIGH",
-   "source_refs": [],
+   "source_refs": [
+    {
+     "card": "ios/findings.md",
+     "ref": "LifecycleTransportAdapter.swift:5–18"
+    },
+    {
+     "card": "ios/findings.md",
+     "ref": "MeshNode.swift:124–135"
+    },
+    {
+     "card": "ios/findings.md",
+     "ref": "BleTransport.swift:3676–3691"
+    }
+   ],
    "tasks": [
     "T28"
    ],
@@ -4339,7 +4596,21 @@
    "audit_status_at_snapshot": "OPEN",
    "candidate_scope": "Mesh/Oracle",
    "closure_evidence": [],
-   "closure_tests": null,
+   "closure_tests": [
+    "Drive the adapter to HS1 emitted, then advance the injectable scheduler with no further packet input; deadline alone must tear down the relation.",
+    "Repeat with an admitted partial fragment and with a missing confirmation echo.",
+    "Test fire-vs-stop and old-fire-after-reconnect schedules and prove the new relation survives.",
+    "Assert all timer/assembly/session/writer capacity is released, not just a recorded rejection. ## Scope and follow-up Reviewed source wiring and high-impact failure paths for T13–16/T19–28, with explicit checks of the original T21/T23/T24/T27/T28 requirements.",
+    "This was not exhaustive validation of RecordWriter arithmetic, every manager-context race, snapshot-cache consistency, reassembly vectors, or CoreBluetooth state restoration.",
+    "No task in this audit slice is certified fully passed.",
+    "Positive source observation: new RecordWriter objects are actually owned and used by BleTransport, and LinkInfoSnapshotAuthority is constructed by the transport; they are not all sidecars.",
+    "Those facts are narrower than correctness certification.",
+    "For each fix, add the described regression in canonical iOS tests, regenerate Foundation mirrors, then run `python3 scripts/sync_ios_foundation_package.py --check` and `swift test --package-path ios/Packages/GodstoneFoundation --filter <exact-new-test-class>` in an isolated checked-out fixed SHA.",
+    "Record the exact command, executor, exit code and nonzero test count.",
+    "Retain failures rather than rerunning until green.",
+    "Only after these tests should relevant existing suites be run.",
+    "Device behavior remains a separately tracked gate."
+   ],
    "evidence_level": "SOURCE_PROVEN_NOT_EXECUTED",
    "final_review": {
     "audit_id": "AUDIT-003",
@@ -4348,19 +4619,29 @@
     "note": "Original proof retained. No independent fix closure. Source identity does not prove the whole caller graph unchanged.",
     "source_sha": "c683a2bf0b5bcdd4a662d98f7542351501b57b7c"
    },
-   "impact": null,
+   "impact": "Handshake and key-confirmation deadlines are inspected at inbound DATA/HS ingress (`BleTransport.swift:2963–3001` and `3961–3994`). The public `sweepInboundLeases` (2734) has no caller anywhere in canonical Sources; it sweeps assembly leases, not the handshake/confirmation deadlines. At physical duplex the provisional timer is cancelled (3186), and inbound subscription cancels its timer (3427). `HandshakeDeadline` and `KeyConfirmation` store/check clock values but schedule no timer. Consequently a peer that sends nothing after HS1 or after receiving the challenge need not trigger timeout teardown at all. A stalled partial assembly likewise needs another ingress or an externally invoked sweep.",
    "invalidated_dependents": [],
    "my_fix_commit": null,
    "my_logs": [],
    "my_red_case": null,
    "my_status": "OPEN",
-   "notes": null,
+   "notes": "ENRICHED AT ROUND 104 by TRANSCRIPTION from the audit's own card (ios/findings.md#IOS-07): impact, remediation_steps, source_refs and closure_tests are the card's OWN words and its OWN file references, not a summary; the refs are relative to the audited snapshot. No status changed and nothing was claimed fixed.",
    "pending_proof": [],
    "proof": null,
    "remediation_report": "evidence/ios/findings.md",
-   "remediation_steps": [],
+   "remediation_steps": [
+    "Extend the existing exact-key timer lease mechanism with relation-owned handshake, assembly and confirmation deadline operations, each carrying transport epoch, relation generation, operation id and absolute monotonic deadline.",
+    "Arm handshake timeout at ROLE_BOUND without silently extending it on retries. Arm the fixed assembly lease on the first accepted fragment and confirmation timeout when the challenge is committed to the outbound record.",
+    "Fire each timeout on its captured manager context's executor; revalidate the full operation key before touching state. Close/drop only that owning relation and its SessionSlot/writer/assemblies. Never resolve a stale fire by looking up the newest relation for a UUID.",
+    "Cancel owned timers on success/disconnect/stop and ensure cancellation of an old lease cannot cancel a replacement. Keep existing ingress checks as defense in depth, not the sole timer mechanism."
+   ],
    "severity": "HIGH",
-   "source_refs": [],
+   "source_refs": [
+    {
+     "card": "ios/findings.md",
+     "ref": "BleTransport.swift:2963–3001"
+    }
+   ],
    "tasks": [
     "T15",
     "T20",

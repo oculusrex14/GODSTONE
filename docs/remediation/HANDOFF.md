@@ -246,7 +246,24 @@ ALSO WORTH A ROUND, and cheap: the android lane's unexplained FIXTURE flake ('no
 draws', seen in ReadinessT17/T18 fixture setup and green on re-run) — fix it deterministically so 'the lane is
 green' stops meaning 'the logged run was green'.
 
-## READ THIS BEFORE CHOOSING A FINDING: ELEVEN OPEN ENTRIES ARE UNENRICHED
+## READ THIS BEFORE CHOOSING A FINDING: THE ELEVEN ARE NOW ENRICHED (round 104)
+
+The eleven OPEN entries that carried ONLY a title and a severity -- `ANDROID-01`, `ANDROID-03`,
+`ANDROID-04`, `ANDROID-05`, `ANDROID-07`, `IOS-01`, `IOS-02`, `IOS-04`, `IOS-05`, `IOS-06`,
+`IOS-07` -- now carry `impact`, `remediation_steps`, `source_refs` and `closure_tests`, TRANSCRIBED
+FROM THE AUDIT'S OWN CARD (`evidence/android/findings.md#, evidence/ios/findings.md#`), not
+summarised and not invented. A round can therefore start designing an arm IMMEDIATELY instead of
+spending itself on reconnaissance. The `source_refs` are the card's own explicit `file:line`
+citations and are RELATIVE TO THE AUDITED SNAPSHOT; where a card also cites bare line ranges inside
+the one file it nameth, those ranges are still only in the card -- read it.
+
+WHAT THAT UNLOCKED, AS AN EXAMPLE OF THE PATTERN: `ANDROID-06` was in exactly this state until
+round 92, when its card was read verbatim -- and the card immediately yielded the cheapest red AND
+its positive control, which no amount of staring at the title would have produced. Read the CARD
+first for any of the eleven, name the cheapest red from its `closure_tests`, and only then design
+the arm.
+
+## (HISTORICAL) READ THIS BEFORE CHOOSING A FINDING: ELEVEN OPEN ENTRIES WERE UNENRICHED
 
 Verified at round 93 by inspecting the ledger, not by inference: of the 25 `OPEN` findings, these ELEVEN
 carry the audit's title and severity and NOTHING ELSE -- no `impact`, no `remediation_steps`, no
