@@ -188,6 +188,32 @@ public final class MeshNode {
     }
 
     private var controlOutbox: [ControlReply] = []
+
+    /// GS-SOS-002: the per-message DISPATCH LEASE. Minted where an offer loop begins, INVALIDATED by a
+    /// successful cancellation (which retires the durable row), and RE-CHECKED BEFORE EVERY OFFER -- so
+    /// captured local work cannot be newly offered after its row was retired.
+    private var dispatchLeases: [Data: UInt64] = [:]
+    private var dispatchLeaseSeq: UInt64 = 0
+    private let dispatchLeaseLock = NSLock()
+
+    private func mintDispatchLease(_ msgId: Data) -> UInt64 {
+        dispatchLeaseLock.lock(); defer { dispatchLeaseLock.unlock() }
+        dispatchLeaseSeq += 1
+        dispatchLeases[msgId] = dispatchLeaseSeq
+        return dispatchLeaseSeq
+    }
+
+    /// GS-SOS-002: the lease stands only while NO successful cancellation hath retired the message.
+    private func dispatchLeaseStands(_ msgId: Data, _ lease: UInt64) -> Bool {
+        dispatchLeaseLock.lock(); defer { dispatchLeaseLock.unlock() }
+        return dispatchLeases[msgId] == lease
+    }
+
+    /// GS-SOS-002: a SUCCESSFUL cancellation invalidateth the message's dispatch lease.
+    private func invalidateDispatchLease(_ msgId: Data) {
+        dispatchLeaseLock.lock(); defer { dispatchLeaseLock.unlock() }
+        dispatchLeases.removeValue(forKey: msgId)
+    }
     private let controlOutboxLock = NSLock()
 
     /// Bounded at 64; drop-oldest, the freshest truth wins the slot (the house outbox idiom).
@@ -514,11 +540,16 @@ public final class MeshNode {
         // T43: each send records an EPHEMERAL link offer, never a custody claim.
         // The durable row standeth QUEUED_DURABLY until an intended recipient's
         // authenticated ACK moveth it.
-        let handed = currentPeers().reduce(into: 0) { count, peer in
+        // GS-SOS-002: the lease is re-checked BEFORE every offer, so a cancellation committed
+        // inside a send callback suppresseth the offers not yet made.
+        let dispatchLease = mintDispatchLease(frame.msgId)
+        var handed = 0
+        for peer in currentPeers() {
+            if !dispatchLeaseStands(frame.msgId, dispatchLease) { break }
             let admitted = send(frame, peer)
             linkOffers.record(frame.msgId, linkId: Self.linkBytes(peer), admitted: admitted,
                               atMonoMillis: controlClock())
-            if admitted { count += 1 }
+            if admitted { handed += 1 }
         }
         rememberSosCommit(frame: frame)
         return handed == 0 ? .queuedDurably : .handedToRelays(handed)
@@ -596,11 +627,16 @@ public final class MeshNode {
         }) else {
             return .failed("retry: no held frame to resume")
         }
-        let handed = currentPeers().reduce(into: 0) { count, peer in
+        // GS-SOS-002: the lease is re-checked BEFORE every offer, so a cancellation committed
+        // inside a send callback suppresseth the offers not yet made.
+        let dispatchLease = mintDispatchLease(msgId)
+        var handed = 0
+        for peer in currentPeers() {
+            if !dispatchLeaseStands(msgId, dispatchLease) { break }
             let admitted = send(frame, peer)
             linkOffers.record(msgId, linkId: Self.linkBytes(peer), admitted: admitted,
                               atMonoMillis: controlClock())
-            if admitted { count += 1 }
+            if admitted { handed += 1 }
         }
         rememberSosCommit(frame: frame)
         return handed == 0 ? .queuedDurably : .handedToRelays(handed)
@@ -616,6 +652,9 @@ public final class MeshNode {
     @discardableResult
     internal func cancelSos(_ msgId: Data) -> SosCancelResult {
         let outcome = deliveryTracker.cancelSosBroadcast(msgId)
+        // GS-SOS-002: a SUCCESSFUL cancellation retireth the message's dispatch lease, so an offer
+        // loop already iterating cannot newly offer a call whose durable row was just retired.
+        if case .cancelled = outcome { invalidateDispatchLease(msgId) }
         sosRowLock.lock()
         if let seen = sosRowMemory, seen.msgId == msgId { sosRowMemory = nil }
         sosRowLock.unlock()
@@ -729,11 +768,16 @@ public final class MeshNode {
             return .rejected(enqueueRes)
         }
 
-        let handed = currentPeers().reduce(into: 0) { count, peer in
+        // GS-SOS-002: the lease is re-checked BEFORE every offer, so a cancellation committed
+        // inside a send callback suppresseth the offers not yet made.
+        let dispatchLease = mintDispatchLease(canonicalFrame.msgId)
+        var handed = 0
+        for peer in currentPeers() {
+            if !dispatchLeaseStands(canonicalFrame.msgId, dispatchLease) { break }
             let admitted = send(canonicalFrame, peer)
             linkOffers.record(canonicalFrame.msgId, linkId: Self.linkBytes(peer), admitted: admitted,
                               atMonoMillis: controlClock())
-            if admitted { count += 1 }
+            if admitted { handed += 1 }
         }
         return handed == 0 ? .queuedLocally : .handedToRelays(handed)
     }

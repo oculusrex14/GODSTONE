@@ -546,3 +546,36 @@ final class ReadinessT39Tests: XCTestCase {
         XCTAssertNil(r.node.activeSosSnapshot(), "the scan must agree with the darkness")
     }
 }
+
+
+// MARK: - GS-SOS-002 (iOS twin): a cancellation suppresseth the offers not yet made
+//
+// Same-file extension: the arm is inside the court without hunting for the class's brace.
+
+extension ReadinessT39Tests {
+
+    /// The audit's charge on this isle: "Cancellation does not suppress later offers already captured by
+    /// the dispatch/retry loop." Two peers; inside the send callback on the FIRST offer the call is
+    /// CANCELLED (retiring the durable row) and that handoff is refused -- the later offer must not happen.
+    func testW24CancellationSuppressethTheLaterOffersAlreadyCaptured() throws {
+        let r = try newRig()
+        r.node.transportDidConnect(peerId: UUID(uuidString: Self.peerUuid(0))!)
+        r.node.transportDidConnect(peerId: UUID(uuidString: Self.peerUuid(1))!)
+        var offers = 0
+        var cancelIssued = false
+        _ = r.node.dispatchSos(payload: Data("cancel me now".utf8)) { frame, _ in
+            offers += 1
+            if offers == 1 {
+                _ = r.node.handleSosCommand(.cancel(frame.msgId)) { _, _ in true }
+                cancelIssued = true
+                return false                      // the FIRST handoff is refused by the caller
+            }
+            return true
+        }
+        XCTAssertTrue(cancelIssued, "the first callback must have issued the cancellation")
+        XCTAssertEqual(
+            offers, 1,
+            "exactly ONE offer may stand: a cancellation committed inside the first callback must "
+            + "suppress the later offer already captured by the dispatch loop (offers=\(offers))")
+    }
+}
