@@ -251,6 +251,13 @@ def header_body_start(src: str, from_index: int) -> int:
     """
     depth = 0
     index = from_index
+    # the TYPE_DECL match's `^\s*` can swallow the PREVIOUS line's newline, so the walk
+    # must begin at the first non-whitespace character -- otherwise the walker meeteth
+    # its own declaration line and terminateth before finding the body (which made every
+    # such type unparsed: `StoreDb`, `FakeAuthority` and `MappedHandle` among them).
+    while index < len(src) and src[index].isspace():
+        index += 1
+    decl_start = index          # THIS declaration's own first character
     quote = ''
     line_start = True
     while index < len(src):
@@ -294,7 +301,7 @@ def header_body_start(src: str, from_index: int) -> int:
             # a NEW declaration at depth zero terminateth a BRACELESS one
             line_end = src.find(chr(10), index)
             line = src[index:len(src) if line_end == -1 else line_end]
-            if TYPE_DECL.match(line) and index != from_index:
+            if TYPE_DECL.match(line) and index != decl_start:
                 return -1
         if not ch.isspace():
             line_start = False
@@ -369,6 +376,26 @@ def parse_types(files: list[Path]) -> tuple[dict, dict, set]:
                 if candidate in declared:
                     members.setdefault(candidate, set()).add(em.group(2))
     return members, supers, declared
+
+
+def brace_pairs(src: str) -> list:
+    """Every brace pair, innermost included."""
+    pairs, stack = [], []
+    for index, ch in enumerate(src):
+        if ch == '{':
+            stack.append(index)
+        elif ch == '}' and stack:
+            pairs.append((stack.pop(), index))
+    return pairs
+
+
+def enclosing_span(pairs: list, offset: int):
+    """The INNERMOST brace pair containing `offset`, or None."""
+    best = None
+    for start, end in pairs:
+        if start < offset < end and (best is None or start > best[0]):
+            best = (start, end)
+    return best
 
 
 def _matching_paren(src: str, opening: int) -> int:
@@ -469,7 +496,15 @@ def resolve(root: Path) -> list[str]:
                     for q in range(max(0, start - opening - 1), min(end - opening, len(masked))):
                         masked[q] = chr(10)
                 own_names = {fm.group('name') for fm in FUN_DECL.finditer(''.join(masked))}
-                if own_names - members.get(m.group(1), set()):
+                known = set(own_names) | set(ANY_OVERRIDABLE)
+                if any(dm.group(1) == m.group(1) for dm in DATA_CLASS.finditer(src)):
+                    known |= DATA_SYNTHETIC
+                for base in supers.get(m.group(1), []):
+                    known |= all_members(base, members, supers)
+                parsed = members.get(m.group(1), set())
+                if (own_names - parsed) or (parsed - known):
+                    # a member MISSING from the type, or a member that belongeth to
+                    # somebody else: either way the set is not to be trusted
                     INCOMPLETE_PARSED.add(m.group(1))
 
         # -- R1: an override must override something in a supertype ----------
@@ -523,6 +558,12 @@ def resolve(root: Path) -> list[str]:
             if not declarations:
                 continue
             declarations.sort()
+            # LEXICAL SCOPING: a declaration is visible at a call only when its own
+            # innermost enclosing block CONTAINETH the call. Without this, a property of
+            # one class typed a receiver inside another (`val node: ComposedNode` beside
+            # `val node: MeshNode`), which produced the last five false positives at the
+            # audited SHA.
+            pairs = brace_pairs(scope_src)
             # D4: the branches in which a SMART CAST maketh another type available
             cast_spans = []
             for cast in SMART_CAST.finditer(scope_src):
@@ -543,8 +584,22 @@ def resolve(root: Path) -> list[str]:
                 cast_spans.append((cast.start(), opening, closing, cast.group(1), cast.group(2)))
             for call in CALL.finditer(scope_src):
                 recv, method = call.group(1), call.group(2)
-                visible = [entry for entry in declarations
-                           if entry[1] == recv and entry[0] < call.start()]
+                # A CHAINED receiver (`a.node.dispatchDirect(...)`) is not judgeable: the
+                # resolver modellth no FIELD types, so `node` here is a property of `a` and
+                # not the `node` declared anywhere in scope. Treating it as the latter is
+                # how the last five false positives at the audited SHA were born.
+                before = scope_src[max(0, call.start() - 3):call.start()]
+                if before.rstrip().endswith(('.', '?.')) or before.strip().endswith('.'):
+                    continue
+                call_span = enclosing_span(pairs, call.start())
+                visible = []
+                for entry in declarations:
+                    if entry[1] != recv or entry[0] >= call.start():
+                        continue
+                    span = enclosing_span(pairs, entry[0])
+                    if span is None or call_span is None or span == call_span \
+                            or (span[0] <= call.start() <= span[1]):
+                        visible.append(entry)
                 t = visible[-1][2] if visible else None
                 if not t:
                     continue
