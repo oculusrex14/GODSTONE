@@ -255,11 +255,23 @@ class OriginalPreservationTest(ReadinessTestCase):
         # (a) a declared addition whose live count no longer matches its declaration
         tampered = json.loads(json.dumps(inventory))
         for entry in tampered.get('declared_additions', []):
+            # the FROZEN rule: a declaration that is not marked as growing refuseth any drift
+            entry.pop('grows', None)
             entry['declared_entries'] = entry['entries'] + 1
         failures = preserve.verify_preservation(REPO, EVIDENCE, tampered)
         self.assertNotEmpty([f for f in failures if 'drifted' in f],
                             msg='a drifted declaration must be refused')
-        # (b) an UNDECLARED path present in the live tree
+        # (b) a GROWING declaration whose folder SHRANK must fail: removed audit evidence is
+        # a failure, never a repair
+        shrunken = json.loads(json.dumps(inventory))
+        for entry in shrunken.get('declared_additions', []):
+            if entry.get('grows'):
+                entry['declared_entries'] = entry['entries'] + 1000
+        failures = preserve.verify_preservation(REPO, EVIDENCE, shrunken)
+        self.assertNotEmpty([f for f in failures if 'SHRANK' in f],
+                            msg='a growing addition that lost entries must be refused')
+
+        # (c) an UNDECLARED path present in the live tree
         with tempfile.TemporaryDirectory() as tmp:
             root = os.path.join(tmp, 'checkout')
             os.makedirs(root)

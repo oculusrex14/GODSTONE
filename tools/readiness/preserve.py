@@ -164,6 +164,7 @@ def build_inventory(root: str, additions: list[dict] | None = None) -> dict:
             'provenance': entry.get('provenance'),
             'disclosed_by': entry.get('disclosed_by', []),
             'measured_matches_declaration': len(lines) == entry['entries'],
+            'grows': bool(entry.get('grows')),
             'status_codes': sorted({line[:2] for line in lines}),
         })
 
