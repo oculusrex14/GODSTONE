@@ -629,6 +629,19 @@
     "why_it_matters": "these three are the repository's OWN executable statements of OPEN findings: structural source controls that already name the exact files and members, and that already red when the repair is absent -- ready instruments for the next rounds",
     "measurement_slip_recorded": "an rc printed from the tail of a pipeline is TAIL's status, not the script's; authoritative codes come from raw-rc runs only",
     "evidence": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/REMEDIATION/ROUND129/control-sweep-correction.json"
+   },
+   "BROKEN_INSTRUMENTS_AT_ROUND_131": {
+    "finding": "TWO of the three red controls have FAILING SELFTESTS, and the mandatory lane runs --selftest FIRST (yml:162-163, :170-171) -- so those lanes fail before the check even runs. A control whose mutation battery cannot run proves nothing.",
+    "why": "each --selftest demands a CLEAN BASELINE to measure mutations against; the baseline is unclean because the real checks fail, so the selftest aborts and the battery never runs",
+    "broken": {
+     "check_trusted_runtime_composition_controls": "selftest rc 1 -- R05/R06 per-peer serialization locks (plus R01/R02)",
+     "check_ble_link_substrate_controls": "selftest rc 1 -- BL11 iOS updateValue/onSubscribedCentrals; BL96 and BL118 Android driver generation params; BL115 TWO ANDROID TESTS MISSING from BleLinkSubstrateTest"
+    },
+    "working": {
+     "check_local_identity_controls": "selftest rc 0 -- 38/38 mutations caught deterministically: the ONLY one of the three with a working instrument"
+    },
+    "best_first_target": "check_local_identity_controls (GS-SOS-001): its check FAILS and its instrument WORKS, so a repair can be measured against it. For the other two, the next round must first decide whether the missing items are intended baseline requirements or stale control expectations -- repairing the CONTROL is a different job from repairing the product defect it names.",
+    "evidence": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/REMEDIATION/ROUND129/broken-instruments.json"
    }
   }
  },
