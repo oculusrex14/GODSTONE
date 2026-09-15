@@ -154,3 +154,11 @@ failing names were never captured — and were therefore **not claimed**); what 
 buckets are **per-second frame buckets** while the post-AEAD gate sees **whole records**. Round 202 therefore implemented
 **course (a)** — the governor's **trust** question per value (`admits`, no tokens consumed), leaving **rate** to the router
 — and proved it with **ONE clean run**: `Executed 1203 tests, with 0 failures`.
+
+## Python probe — `python/test_lease_sweep_owner.py` (ANDROID-04): LANDED (round 204)
+
+Written and **run RED first** here (3 failures, W00 control passing), then **MOVED INTO `tools/readiness/tests/`** with the
+repair. It judged the transport's lease sweep: `sweepInboundLeases()` was called **only by a court**, so a **silent** peer's
+lapsed absolute term waited for unrelated traffic. The repair gave the sweep a **production owner** — armed at `start()`,
+cancelled at `stop()`, a named generous interval — and the arm now also asserts the interval is named and **not** short
+enough to sweep frozen-clock courts mid-witness.

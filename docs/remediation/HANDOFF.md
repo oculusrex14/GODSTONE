@@ -46,7 +46,41 @@ already carried. The audit's step 3 stays OPEN, with its two measured obstacles 
 | CRYPTO-003 | FIX_SUBMITTED | 4b | Destroyed retained controllers and primitive sessions st |
 | CRYPTO-006 | FIX_SUBMITTED | 4b | Duplicate journal admission is treated as success for a |
 
-## DO THIS FIRST (round 203) — IOS-05 / T27 STEP 4's WITNESS LANDS: A PENALTY STORM LEAVES DURABLE TRUST UNTOUCHED
+## DO THIS FIRST (round 204) — ANDROID-04: THE LEASE SWEEP GETS A PRODUCTION OWNER (THE SCHEDULER, WHICH WAS THE CARD'S FIRST DEFECT)
+
+**The defect, in the finding's own words:** `BleTransport.sweepInboundLeases()` was called **only** by a court
+(`ReadinessT20Test`), so the absolute lease expiry ran **only** when some other inbound packet arrived and tripped the
+ingress — **a silent peer therefore never tripped it**, and a relation whose absolute term had lapsed stayed pinned until
+unrelated traffic happened by.
+
+**The RED was canonical and immutable:** `tools/readiness/tests/test_lease_sweep_owner.py` (four arms, written and run
+**first** in the probes directory at 3 failures with the W00 control passing) asserts the card's step 3 — *"schedule
+assembly expiration **independently of future peer traffic**"* — and also that the interval be **named** and **generous**
+(≥ 250 ms) so a frozen-clock court is never swept mid-witness.
+
+**The repair:** `BleTransport` now **owns** `leaseSweepJob`, armed **inside `start()`** (guarded against double-arming)
+with `LEASE_SWEEP_INTERVAL_MS = 1000L` as a named constant, and **cancelled in `stop()`**. The loop's **delay is the
+cancellation point** and the `runCatching` covers **only** the sweep, so a cancelled job cannot be swallowed by its own
+error handling and spin — the reasoning is written into the code. `hasLeaseSweepJob()` is its observation seam, the shape
+of the existing `hasInboundJob`.
+
+**The behavioural witness shipped with it:** `testTransportOwnsALeaseSweepArmedAtStartAndCancelledAtStop` asserts no sweep
+before start, a sweep after `start()`, and no sweep after `stop()` — the owner is proven **in the lifecycle**, not merely
+in the source.
+
+**Two insertion failures of mine, both caught by the compiler and recorded:** the first attempt inserted the arming block
+between a KDoc and its declaration (11 errors); the second brace-matched `start()`'s end **naively** — a scan fooled by
+braces inside strings and comments — and left a **statement** at class level (11 errors again, then 1). The third anchored
+on a **unique three-line tail inside `start()`** and compiled; `isActive` was then unresolved and was replaced by
+`while (true)` with the delay as the documented cancellation point. **Three compiler-aided corrections, one clean green
+run.**
+
+**Acceptance:** whole `:mesh` lane green **1188 tests, 0 failures** with the witness; the canonical arm OK; the RED kept
+separate. **ANDROID-04 → FIX_SUBMITTED** — but only an independent audit may write `VERIFIED_FIXED`, and the remaining
+card steps (each callback carrying the exact relation and timer generation, the atomic release on expiry, and
+queued-stale-timer harmlessness) are the **next** round's measured work, not this round's claim.
+
+## DO THIS FIRST (round 203, landed) — IOS-05 / T27 STEP 4's WITNESS LANDS
 
 **The witness owed since round 199 is written and green.** `ReadinessT27Tests.testW14APenaltyStormLeavethDurableTrustUntouched`
 builds a **real** durable repository (`SqlitePeerIdentityStore` over a temp file), authors and validates a **T13 binding**

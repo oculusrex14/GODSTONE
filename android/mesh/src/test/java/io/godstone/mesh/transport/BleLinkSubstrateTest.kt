@@ -2066,6 +2066,23 @@ class BleLinkSubstrateTest {
     }
 
     @Test
+    fun testTransportOwnsALeaseSweepArmedAtStartAndCancelledAtStop() {
+        // ANDROID-04 (the card's first defect): the lease sweep USED TO HAVE NO PRODUCTION CALLER -- only a
+        // court called it -- so a SILENT peer's lapsed relation awaited unrelated traffic. The transport now
+        // OWNS the sweep: armed at start, cancelled at stop, harmless after cancellation.
+        val identity = makeIdentity()
+        val store = InMemoryMessageStore()
+        val transport = BleTransport(serverStartAttempt = { true }, identity = identity, store = store)
+        assertFalse("no sweep is armed before start", transport.hasLeaseSweepJob())
+        transport.start()
+        assertTrue("the transport must OWN a lease sweep, or a silent peer is never swept",
+            transport.hasLeaseSweepJob())
+        transport.stop()
+        assertFalse("the sweep must be cancelled WITH the transport, never outlive it",
+            transport.hasLeaseSweepJob())
+    }
+
+    @Test
     fun testTransportInboundTimeout_ReleasesExactRelation() {
         val identity = makeIdentity()
         val store = InMemoryMessageStore()

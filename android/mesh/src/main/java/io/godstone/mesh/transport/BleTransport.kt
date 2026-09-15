@@ -261,7 +261,21 @@ class BleTransport(
         }
         isStarted = true
         startAdvertising()
+        // ANDROID-04: ARM the owned lease sweep, so a SILENT peer's lapsed relation is swept without waiting
+        // for unrelated traffic. The interval is generous, so a frozen-clock court is never swept mid-witness.
+        if (leaseSweepJob?.isActive != true) {
+            leaseSweepJob = coroutineScope.launch {
+                // THE DELAY IS THE CANCELLATION POINT: cancelling this job throweth at the suspension, and
+                // the `runCatching` below covereth ONLY the sweep -- so a cancelled job cannot be swallowed
+                // by its own error handling and spin.
+                while (true) {
+                    kotlinx.coroutines.delay(LEASE_SWEEP_INTERVAL_MS)
+                    runCatching { sweepInboundLeases() }
+                }
+            }
+        }
     }
+
 
     /**
      * ANDROID-05-A: retire the exact FAILED start attempt -- close any partially opened server and
@@ -280,6 +294,9 @@ class BleTransport(
     override fun stop() {
         val wasStarted = isStarted
         isStarted = false
+        // ANDROID-04: CANCEL the owned sweep with the transport; an orphan job would outlive it.
+        leaseSweepJob?.cancel()
+        leaseSweepJob = null
         if (wasStarted) {
             stopAdvertising()
             scanCallback?.let {
@@ -336,6 +353,7 @@ class BleTransport(
      * manufacturer data, no local name and no identity hint ever ride the
      * air; the full 13-octet LinkInfo record is served by GATT.
      */
+
     fun canonicalAdvertisingPayload(): BleAdvertisingPayload =
         BleAdvertisingPayload.canonical(SERVICE_UUID)
 
@@ -719,6 +737,20 @@ class BleTransport(
     }
 
     fun hasInboundJob(peerAddress: String): Boolean = inboundJobs.containsKey(peerAddress)
+
+    /**
+     * ANDROID-04 (T20/T23, the card's first defect): THE LEASE SWEEP'S SCHEDULED OWNER.
+     *
+     * `sweepInboundLeases()` USED TO HAVE NO PRODUCTION CALLER -- only a court called it -- so the absolute
+     * lease expiry ran ONLY when some other inbound packet arrived and tripped the ingress, and a SILENT
+     * peer's lapsed relation stayed pinned until unrelated traffic happened by. The card's own words: "schedule
+     * assembly expiration INDEPENDENTLY OF FUTURE PEER TRAFFIC." This job is armed at [start] and cancelled at
+     * [stop], so expiry is owned by the transport and a silent peer trips it like any other.
+     */
+    private var leaseSweepJob: kotlinx.coroutines.Job? = null
+
+    /** Observation for courts: is the transport's OWN sweep armed? (the shape of [hasInboundJob]) */
+    internal fun hasLeaseSweepJob(): Boolean = leaseSweepJob?.isActive == true
 
     fun handleInboundTimeout(peerAddress: String, generation: Long) {
         // T12: the provisional job carries the exact generation it was
@@ -1981,6 +2013,8 @@ class BleTransport(
         const val MAX_DISCOVERED_PEERS = 64
         const val MAX_ACTIVE_CONNECTIONS = 7
         const val PROVISIONAL_TIMEOUT_MS = 10000L
+        /** ANDROID-04: how oft the OWNED lease sweep runneth; generous, so frozen-clock courts are safe. */
+        internal const val LEASE_SWEEP_INTERVAL_MS = 1000L
         /** ANDROID-07 / T26: what one RAW advertisement chargeth in the global budget. */
         internal const val RAW_ADVERTISEMENT_BYTES = 64
         /** ANDROID-05 (step 3): how oft the bounded drain re-measureth while it waiteth. */
