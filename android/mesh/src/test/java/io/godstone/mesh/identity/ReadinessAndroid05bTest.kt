@@ -68,31 +68,3 @@ class ReadinessAndroid05bTest {
             authority.isReady())
     }
 }
-
-// ---------------------------------------------------------------------------------------------
-// RUN RECIPE (this probe lives OUTSIDE the :mesh module ON PURPOSE: it is RED on the current
-// product, and a lane that is expected green may never carry a red arm).
-//
-//   1. cp tools/readiness/audit_probes/kotlin/ReadinessAndroid05bTest.kt.txt \
-//         android/mesh/src/test/java/io/godstone/mesh/identity/ReadinessAndroid05bTest.kt
-//   2. add the availability PROVIDERS to UnifiedRuntimeLifecycle (carriers only):
-//         private val adapterAvailable: () -> Boolean = { adapterPresent },
-//         private val permissionAvailable: () -> Boolean = { permissionGranted },
-//   3. cd android && ./gradlew :mesh:testDebugUnitTest --tests '*ReadinessAndroid05bTest*'
-//        -> W01 PASSES (positive control); W02 and W03 FAIL on their OWN assertions.
-//
-// CAPTURED RED: REMEDIATION/ANDROID-05/red/android-05-retry-suppressed-RED-*.log
-//   (sha256 45fbf775...), 3 tests, 2 failures, 0 errors.
-//
-// REPAIRED AT ROUND 110 (commit 8xxx): the distinction the withdrawal named WAS the work. The
-// probe is kept here as the RECORD of the red and its recipe; the LIVE arms now sit in the lane at
-// android/mesh/src/test/java/io/godstone/mesh/identity/ReadinessAndroid05bTest.kt.
-//
-// WHY THE REPAIR WAS WITHDRAWN AT ROUND 109 -- MEASURED, NOT GUESSED: making start() re-ask the
-// platform BROKE A PINNED PRODUCTION LAW: `ReadinessT28Test.testPermissionRemovalIsTerminalNeverReady`
-// FAILED, because a permission REVOCATION must stay TERMINAL for ever, while a permission merely
-// NOT YET GRANTED must be retryable. `CapabilityStatus` hath NO member for "suspended, no
-// permission" (only SUSPENDED_NO_ADAPTER, ACTIVE_READY, TERMINAL_UNAVAILABLE,
-// TERMINAL_PERMISSION_REVOKED), so the repair must FIRST distinguish an EVENT (onPermissionRemoved)
-// from an ABSENT input -- either by a revocation flag or by a new suspended member -- and must keep
-// T28 green while doing it. That distinction, not the wiring, is the work.

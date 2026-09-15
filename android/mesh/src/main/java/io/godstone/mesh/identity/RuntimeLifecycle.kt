@@ -24,6 +24,13 @@ import java.util.concurrent.atomic.AtomicLong
 /** The typed capability ladder. Terminal/suspended states are never READY. */
 enum class CapabilityStatus {
     SUSPENDED_NO_ADAPTER,   // radio absent / not yet started: never READY
+    /**
+     * ANDROID-05 / T09: PERMISSION NOT YET GRANTED is SUSPENDED, not terminal -- the operator may
+     * grant it, and the very next start must then succeed. It is deliberately DISTINCT from
+     * TERMINAL_PERMISSION_REVOKED: a REVOCATION is an EVENT that is terminal for ever
+     * (`onPermissionRemoved`), while an ABSENT input is a state that may change.
+     */
+    SUSPENDED_NO_PERMISSION,
     ACTIVE_READY,           // started with adapter + permission present
     TERMINAL_UNAVAILABLE,   // powered off / radio gone: terminal, never returns to READY
     TERMINAL_PERMISSION_REVOKED,   // permission removed: terminal, never returns to READY
@@ -102,8 +109,15 @@ class UnifiedRuntimeLifecycle(
     private val nowMillis: () -> Long,
     private val adapterPresent: Boolean = true,
     private val permissionGranted: Boolean = true,
+    /** ANDROID-05 (T09): availability AS THE PLATFORM REPORTETH IT, asked at EACH start attempt
+     *  rather than frozen when the authority was built. The defaults preserve the construction
+     *  flags, so every existing caller stayeth source-compatible. */
+    private val adapterAvailable: () -> Boolean = { adapterPresent },
+    private val permissionAvailable: () -> Boolean = { permissionGranted },
 ) {
     private var started: Boolean = false
+    /** T09: a REVOCATION EVENT is terminal for ever, however the platform later answereth. */
+    private var permissionRevoked: Boolean = false
     private var capability: CapabilityStatus =
         if (!permissionGranted) CapabilityStatus.TERMINAL_PERMISSION_REVOKED
         else CapabilityStatus.SUSPENDED_NO_ADAPTER
@@ -114,9 +128,15 @@ class UnifiedRuntimeLifecycle(
     /** start subscribes, creates exactly one context, and (only when admissible) begins the OS work. */
     fun start() {
         synchronized(this) {
-            if (capability == CapabilityStatus.TERMINAL_UNAVAILABLE || capability == CapabilityStatus.TERMINAL_PERMISSION_REVOKED) return
-            if (!adapterPresent) { capability = CapabilityStatus.SUSPENDED_NO_ADAPTER; return }
+            // ANDROID-05 / T09: A FAILED START MAY NOT SUPPRESS RETRY -- unless the failure was a
+            // TERMINAL EVENT. A permission REVOKED by `onPermissionRemoved` stayeth revoked for
+            // ever (the pinned T28 law); a permission merely NOT YET GRANTED is SUSPENDED, and the
+            // next start after it arriveth must succeed. Power-off stayeth terminal likewise.
+            if (permissionRevoked) { capability = CapabilityStatus.TERMINAL_PERMISSION_REVOKED; return }
+            if (capability == CapabilityStatus.TERMINAL_UNAVAILABLE) return
             if (started) return                                     // idempotent: one context, one lease, one scan
+            if (!permissionAvailable()) { capability = CapabilityStatus.SUSPENDED_NO_PERMISSION; return }
+            if (!adapterAvailable()) { capability = CapabilityStatus.SUSPENDED_NO_ADAPTER; return }
             val live = lease
             if (live == null || live.isReleased) {
                 lease = RuntimeTransportLease(LEASE_SEQ.incrementAndGet()) { }
@@ -162,6 +182,7 @@ class UnifiedRuntimeLifecycle(
             drainLocked()
             if (started) { lease?.releaseOnce(); started = false }
             capability = CapabilityStatus.TERMINAL_PERMISSION_REVOKED
+            permissionRevoked = true
         }
     }
 
