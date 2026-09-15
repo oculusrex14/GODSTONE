@@ -2634,7 +2634,7 @@ public final class BleTransport: NSObject, @unchecked Sendable {
         return action
     }
 
-    public func processCentralConnect(peerId: UUID, peripheral: CBPeripheral? = nil, sourceEpoch: UInt64, from manager: CBCentralManager) -> BleCentralAction {
+    public func processCentralConnect(peerId: UUID, peripheral: CBPeripheral? = nil, sourceEpoch: UInt64 = 0, from manager: CBCentralManager) -> BleCentralAction {
         // T14: the whole reduction of this event - validation, transition,
         // effect scheduling - is one operation on the epoch serial executor.
         return onExecutor {
@@ -2659,7 +2659,12 @@ public final class BleTransport: NSObject, @unchecked Sendable {
             unlockTransport()
             return .noOp
         }
-        guard let lifetime = activeOutboundLifetimes[peerId], (sourceEpoch == 0 || lifetime.transportEpoch == sourceEpoch) else {
+        // GS-CTRL-002 / BL128: a NAMED sourceEpoch must match the LIVE transport epoch AND this
+        // relation's own lifetime epoch -- the second check is STRONGER than the pattern that
+        // describeth it -- while 0 remaineth the sentinel for "the caller nameth no epoch".
+        guard let lifetime = activeOutboundLifetimes[peerId],
+              (sourceEpoch == 0 || sourceEpoch == currentTransportEpoch),
+              (sourceEpoch == 0 || lifetime.transportEpoch == sourceEpoch) else {
             unlockTransport()
             return .noOp
         }
@@ -2688,7 +2693,7 @@ public final class BleTransport: NSObject, @unchecked Sendable {
         return action
     }
 
-    public func processCentralFailToConnect(peerId: UUID, error: Error? = nil, peripheral: CBPeripheral? = nil, sourceEpoch: UInt64, from manager: CBCentralManager) -> BleCentralAction {
+    public func processCentralFailToConnect(peerId: UUID, error: Error? = nil, peripheral: CBPeripheral? = nil, sourceEpoch: UInt64 = 0, from manager: CBCentralManager) -> BleCentralAction {
         // T14: the whole reduction of this event - validation, transition,
         // effect scheduling - is one operation on the epoch serial executor.
         return onExecutor {
@@ -2713,7 +2718,12 @@ public final class BleTransport: NSObject, @unchecked Sendable {
             unlockTransport()
             return .noOp
         }
-        guard let lifetime = activeOutboundLifetimes[peerId], (sourceEpoch == 0 || lifetime.transportEpoch == sourceEpoch) else {
+        // GS-CTRL-002 / BL128: a NAMED sourceEpoch must match the LIVE transport epoch AND this
+        // relation's own lifetime epoch -- the second check is STRONGER than the pattern that
+        // describeth it -- while 0 remaineth the sentinel for "the caller nameth no epoch".
+        guard let lifetime = activeOutboundLifetimes[peerId],
+              (sourceEpoch == 0 || sourceEpoch == currentTransportEpoch),
+              (sourceEpoch == 0 || lifetime.transportEpoch == sourceEpoch) else {
             unlockTransport()
             return .noOp
         }
@@ -2743,7 +2753,7 @@ public final class BleTransport: NSObject, @unchecked Sendable {
         return action
     }
 
-    public func processOutboundDisconnect(peerId: UUID, expectedGen: UInt64, peripheral: CBPeripheral? = nil, sourceEpoch: UInt64, from manager: CBCentralManager) -> BleCentralAction {
+    public func processOutboundDisconnect(peerId: UUID, expectedGen: UInt64, peripheral: CBPeripheral? = nil, sourceEpoch: UInt64 = 0, from manager: CBCentralManager) -> BleCentralAction {
         // T14: the whole reduction of this event - validation, transition,
         // effect scheduling - is one operation on the epoch serial executor.
         return onExecutor {
@@ -2810,7 +2820,12 @@ public final class BleTransport: NSObject, @unchecked Sendable {
             unlockTransport()
             return .noOp
         }
-        guard let lifetime = activeOutboundLifetimes[peerId], (sourceEpoch == 0 || lifetime.transportEpoch == sourceEpoch) else {
+        // GS-CTRL-002 / BL128: a NAMED sourceEpoch must match the LIVE transport epoch AND this
+        // relation's own lifetime epoch -- the second check is STRONGER than the pattern that
+        // describeth it -- while 0 remaineth the sentinel for "the caller nameth no epoch".
+        guard let lifetime = activeOutboundLifetimes[peerId],
+              (sourceEpoch == 0 || sourceEpoch == currentTransportEpoch),
+              (sourceEpoch == 0 || lifetime.transportEpoch == sourceEpoch) else {
             unlockTransport()
             return .noOp
         }
@@ -3304,7 +3319,7 @@ public final class BleTransport: NSObject, @unchecked Sendable {
         }
     }
 
-    public func processInboundWrite(centralId: UUID, rawData: Data, sourceEpoch: UInt64, from manager: CBPeripheralManager) -> BlePeripheralAction {
+    public func processInboundWrite(centralId: UUID, rawData: Data, sourceEpoch: UInt64 = 0, from manager: CBPeripheralManager) -> BlePeripheralAction {
         // T14: the whole reduction of this event - validation, transition,
         // effect scheduling - is one operation on the epoch serial executor.
         return onExecutor {
@@ -3393,7 +3408,7 @@ public final class BleTransport: NSObject, @unchecked Sendable {
         return action
     }
 
-    public func processInboundSubscribe(centralId: UUID, central: CBCentral? = nil, characteristic: CBUUID = BleTransport.inboxCharacteristicUuid, maxUpdateLength: Int = 512, sourceEpoch: UInt64, from manager: CBPeripheralManager) -> BlePeripheralAction {
+    public func processInboundSubscribe(centralId: UUID, central: CBCentral? = nil, characteristic: CBUUID = BleTransport.inboxCharacteristicUuid, maxUpdateLength: Int = 512, sourceEpoch: UInt64 = 0, from manager: CBPeripheralManager) -> BlePeripheralAction {
         // T14: the whole reduction of this event - validation, transition,
         // effect scheduling - is one operation on the epoch serial executor.
         return onExecutor {
@@ -3478,7 +3493,7 @@ public final class BleTransport: NSObject, @unchecked Sendable {
         return action
     }
 
-    public func processInboundUnsubscribe(centralId: UUID, expectedGen: UInt64, characteristic: CBUUID? = nil, sourceEpoch: UInt64, from manager: CBPeripheralManager) -> BlePeripheralAction {
+    public func processInboundUnsubscribe(centralId: UUID, expectedGen: UInt64, characteristic: CBUUID? = nil, sourceEpoch: UInt64 = 0, from manager: CBPeripheralManager) -> BlePeripheralAction {
         // T14: the whole reduction of this event - validation, transition,
         // effect scheduling - is one operation on the epoch serial executor.
         return onExecutor {
@@ -3504,7 +3519,11 @@ public final class BleTransport: NSObject, @unchecked Sendable {
             unlockTransport()
             return .noOp
         }
-        guard let lifetime = activeInboundLifetimes[centralId], (sourceEpoch == 0 || lifetime.transportEpoch == sourceEpoch) else {
+        // GS-CTRL-002 / BL128: the same law on the inbound side -- the live epoch AND the lifetime's
+        // epoch for a NAMED sourceEpoch, with 0 as the sentinel for an unspecified one.
+        guard let lifetime = activeInboundLifetimes[centralId],
+              (sourceEpoch == 0 || sourceEpoch == currentTransportEpoch),
+              (sourceEpoch == 0 || lifetime.transportEpoch == sourceEpoch) else {
             unlockTransport()
             return .noOp
         }

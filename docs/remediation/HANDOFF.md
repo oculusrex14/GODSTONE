@@ -46,7 +46,34 @@ already carried. The audit's step 3 stays OPEN, with its two measured obstacles 
 | CRYPTO-003 | FIX_SUBMITTED | 4b | Destroyed retained controllers and primitive sessions st |
 | CRYPTO-006 | FIX_SUBMITTED | 4b | Duplicate journal admission is treated as success for a |
 
-## DO THIS FIRST (round 171) — BL96 TAKEN AS A FINDING: A TERMINAL THAT NEVER ARRIVED IS NOW TERMINAL (21 ARMS → 18)
+## DO THIS FIRST (round 172) — BL128'S ELEVEN MESSAGES CLEARED BY **STRENGTHENING** THE CODE (18 ARMS → 6)
+
+The eleven messages were **two different claims**, exactly as round 170 predicted: six that the six callback reducers
+must **take** `sourceEpoch` with a default of 0, five that they must **validate**
+`sourceEpoch == 0 || sourceEpoch == currentTransportEpoch`. Reading showed both satisfied in substance and spelled
+differently: every reducer took `sourceEpoch` **without** a default, and every guard checked the **per-relation
+lifetime epoch** — *stronger* than the transport-global epoch the pattern names — while the shared authenticity helper
+required `sourceEpoch == context.epoch` **and** `context.epoch == currentTransportEpoch`.
+
+**The alignment ADDED the sentinel default (6 declarations) and STRENGTHENED the four existing guards** to require
+**both** the live transport epoch **and** the relation's own lifetime epoch for a **named** value: the pattern's clause
+is now real code and the check is strictly stronger than either form alone. `0` stays the sentinel, the same law round
+171 gave the Android driver.
+
+**Stated rather than glossed:** the control's regex for a method's validation clause is **unbounded** after that
+method's declaration, so the strengthened guard in the inbound family serves three earlier declarations
+(`processInboundWrite`/`Subscribe`/`Unsubscribe`) — those three enforce the epoch law in their own bodies through
+`managerEventIsAuthenticLocked`, which is why the alignment was safe rather than invented per method.
+
+**Acceptance:** whole iOS lane **1198 tests, 0 failures** (unchanged count); **control 18 → 6 arms**.
+
+**THE SIX SURVIVORS ARE NOW THE WHOLE OF IT:** BL11 (`pm.updateValue` vs the pattern's `peripheral`), BL52 (the RSSI
+assignment's spelling), BL81 (the scan-result action's spelling), BL126 (`start()` installing fresh epoch proxies),
+BL131 (the failed-to-connect delegation's local name), BL132 (the responder branch's central lookup) — each by the same
+criterion. **BL126 is the one to watch: it may be the second SUBSTANTIVE arm**, since the proxies are built in the
+**initializer** while the message says `start()` must install them **fresh per epoch**.
+
+## DO THIS FIRST (round 171, landed) — BL96 TAKEN AS A FINDING
 
 Round 170 refused BL96 as a spelling and named it a finding. This round **confirmed the defect by reading**:
 `onClientDisconnected(deviceAddress, expectedGen)` refused every value that was not the slot's own, and the GattServer
