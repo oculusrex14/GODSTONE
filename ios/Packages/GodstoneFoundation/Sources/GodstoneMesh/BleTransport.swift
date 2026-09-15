@@ -2421,6 +2421,7 @@ public final class BleTransport: NSObject, @unchecked Sendable {
 
     internal func clearLinkReadyForTest() {
         lockTransport()
+        for peerId in capturedPeers.keys { publishTrustedLoss(peerId) }
         linkReadyPublished.removeAll()
         unlockTransport()
     }
@@ -2429,8 +2430,22 @@ public final class BleTransport: NSObject, @unchecked Sendable {
     /// application LinkReady once and only once for a relation. The register is
     /// key'd by the relations peer, so an elder relation echo that come again
     /// after the confirmation can not win a selfsame publication twice.
-    /// IOS-04 (T24) slice (b): THE TRUSTED PEER CAPTURED AT THE SEALED ROUND, and the seam a court judgeth it by.
-    internal private(set) var capturedTrustedPeerForTest: TrustedPeer?
+    /// IOS-04 (T24) step 4: PUBLISH THE FALL OF THIS RELATION, THROUGH THE SAME BOUNDED CONDUIT AND WITH ITS OWN
+    /// CAPTURED PEER -- the card's own words: 'Publish LinkLost exactly once'. The publisher suppresseth a duplicate
+    /// idempotently, so a retirement that falleth twice is harmless; and the verdict is observed like every other.
+    private func publishTrustedLoss(_ peerId: UUID) {
+        guard let captured = capturedPeers.removeValue(forKey: peerId) else { return }
+        _ = peerEvents.publishLinkLost(captured)
+        if !lostPeersForTest.contains(peerId) { lostPeersForTest.append(peerId) }
+    }
+
+    /// IOS-04 (T24) slice (b) and step 4: THE TRUSTED PEERS CAPTURED AT THE SEALED ROUND, KEYED BY THE RELATION'S OWN
+    /// HANDLE -- so a relation's fall can publish ITS OWN peer rather than whatever was captured last.
+    private var capturedPeers: [UUID: TrustedPeer] = [:]
+    /// The peers whose LinkLost hath been published -- the seam a court judgeth step 4's exactly-once law by.
+    internal private(set) var lostPeersForTest: [UUID] = []
+    /// The captured peer of the sole relation, for a court with one (the round-238 witness's seam, kept).
+    internal var capturedTrustedPeerForTest: TrustedPeer? { capturedPeers.values.first }
 
     /// IOS-04 (T24) step 2: THE OWNED BOUNDED CONDUIT. The channel is BOUNDED and the publisher OBSERVETH every offer's
     /// verdict -- a refused offer (a full bounded buffer) is NOT swallowed and doth NOT mark the relation published,
@@ -2450,8 +2465,9 @@ public final class BleTransport: NSObject, @unchecked Sendable {
         else { return }
         guard let relation = (activeOutboundLifetimes[peerId]?.relationKey ?? activeInboundLifetimes[peerId]?.relationKey)
         else { return }
-        capturedTrustedPeerForTest = TrustedPeer(relation: relation, nodeId16: nodeId,
-                                                identityPub32: pub, trustVersion: Int(relation.generation))
+        let captured = TrustedPeer(relation: relation, nodeId16: nodeId,
+                                   identityPub32: pub, trustVersion: Int(relation.generation))
+        if let captured { capturedPeers[peerId] = captured }
     }
 
     private func publishApplicationLinkReadyOnce(_ peerId: UUID) -> Bool {
@@ -2465,7 +2481,7 @@ public final class BleTransport: NSObject, @unchecked Sendable {
         captureTrustedPeerLocked(peerId)
         // IOS-04 (T24) step 2: AND THE CAPTURED PEER TRAVELETH ON THE OWNED BOUNDED CONDUIT, its verdict OBSERVED --
         // never discarded, so a full channel is a visible event rather than a silent drop.
-        if let captured = capturedTrustedPeerForTest {
+        if let captured = capturedPeers[peerId] {
             let verdict = peerEvents.publishLinkReady(captured)
             lastTrustedPublicationVerdictForTest = verdict
             if verdict != .accepted {
@@ -2873,6 +2889,7 @@ public final class BleTransport: NSObject, @unchecked Sendable {
             return .noOp
         }
         let key = lifetime.relationKey
+        publishTrustedLoss(peerId)
         activeOutboundLifetimes.removeValue(forKey: peerId)
         relationDelegates.removeValue(forKey: peerId)
         cancelTimerLocked(matching: key)
@@ -2979,6 +2996,7 @@ public final class BleTransport: NSObject, @unchecked Sendable {
             unlockTransport()
             return .noOp
         }
+        publishTrustedLoss(peerId)
         activeOutboundLifetimes.removeValue(forKey: peerId)
         relationDelegates.removeValue(forKey: peerId)
         cancelTimerLocked(matching: key)
@@ -3451,6 +3469,7 @@ public final class BleTransport: NSObject, @unchecked Sendable {
         let effectiveGen = (generation != 0) ? generation : currentGen
         let action = driver.onProvisionalTimeout(peerId: peerId, expectedGen: effectiveGen)
         lockTransport()
+        publishTrustedLoss(peerId)
         activeOutboundLifetimes.removeValue(forKey: peerId)
         relationDelegates.removeValue(forKey: peerId)
         let p = connectedPeripherals.removeValue(forKey: peerId)
