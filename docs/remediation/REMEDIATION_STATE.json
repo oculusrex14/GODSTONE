@@ -1191,12 +1191,40 @@
    },
    "impact": "Temporary key-resolution unavailability can convert a signer/key mismatch into a falsely verified durable ACK and lose the retryable obligation. The origin should still reject the invalid signature; this defect can suppress delivery confirmation and pollute recipient ACK restoration, rather than independently forging origin DELIVERED. The same stored VERIFIED classification is trusted by the immediate receipt restore path without a fresh signature check.",
    "invalidated_dependents": [],
-   "my_fix_commit": null,
-   "my_logs": [],
-   "my_red_case": null,
-   "my_status": "OPEN",
-   "notes": null,
-   "pending_proof": [],
+   "my_fix_commit": "6f7d08c (Android limb)",
+   "my_logs": [
+    {
+     "log": "GS-ACK-001/green/gs-ack-001-T83.log",
+     "sha256": "f93bd1f137e65259b9528730140e44f4f034e5d6e429d70add7f65ca70cc710b",
+     "what": "android ReadinessT83Test after the repair: 13 tests, 0 failures with the new arm passing (nothing stored, nothing retired, obligation still PENDING)"
+    },
+    {
+     "log": "GS-ACK-001/green/gs-ack-001-ANDROID-FULL.log",
+     "sha256": "422b9a01847df6ee2404c92fb21bdba867d596ad18dc3177f2f578a0161bca16",
+     "what": "whole android :mesh lane: BUILD SUCCESSFUL"
+    },
+    {
+     "log": "GS-ACK-001/green/gs-ack-001-LANES.log",
+     "sha256": "a4c3e49f68a1d6c2b3d7fa4873558bbceb8a0bc7993c33b68b0382376f7d66f0",
+     "what": "readiness suite OK; invariants all hold; repository VERDICT PASS; symbols 0 unresolved; iOS mirror --check rc=0; mutation selftest OK"
+    }
+   ],
+   "my_red_case": {
+    "case": "android/mesh/src/test/java/io/godstone/mesh/readiness/ReadinessT83Test.kt::testUnresolvableRecipientKeyLeavethTheObligationPendingAndStoresNothing -- MOVED into the canonical T83 court, driving the REAL recipient-inbox commit and the REAL restart worker (`runPendingOnce`) with the recipient's own public key deliberately ABSENT from the resolver's table while the signer still holds the seed.",
+    "argv": "(cd android && ./gradlew :mesh:testDebugUnitTest --tests '*ReadinessT83Test*')",
+    "cwd": "/Users/oculus/Projects/GODSTONE_BUILDER",
+    "log": "GS-ACK-001/red/gs-ack-001-RED.log",
+    "log_sha256": "1d773ddb6fd0736a13a46f6d7e92242a14a61411f01c61b226c9a12b9b4fbb2d",
+    "outcome": "RED on the untouched product, execution proven: 'the unresolvable key is a RETRYABLE unavailability, counted as such expected:<1> but was:<0>' -- the worker did not count an unavailability at all, because `if (ownKey != null)` SKIPPED the verification and then stored the frame as VERIFIED_RECIPIENT and retired the obligation."
+   },
+   "my_status": "PARTIAL",
+   "notes": "PARTIAL: the Android limb is repaired, verified and landed; the iOS port, the wrong-seed control and the explicit NodeID derivation check are owed. THE DEFECT WAS ONE CONDITIONAL AWAY FROM A CORRECT GATE: `if (ownKey != null) { verify }` turned a temporary resolution failure into a durable VERIFIED_RECIPIENT row and a retired obligation. The red is the audit's own case, driven through the real commit and the real worker, and it failed at the FIRST assertion (keyUnavailable 0 where 1 was required) -- the cleanest kind: the counter that should have recorded unavailability recorded nothing, because the code never treated it as unavailability.",
+   "pending_proof": [
+    "ONLY THE ANDROID LIMB IS REPAIRED: the iOS twin still skips verification when its resolver cannot produce a key, so the pair does not yet state one law on both isles -- the sole reason the status is PARTIAL rather than FIX_SUBMITTED.",
+    "THE RESOLVED-WRONG-SEED CONTROL (a present but WRONG key) is not yet written, so the two failure classes -- temporary unavailability (retryable) versus a real mismatch (refused) -- are witnessed only on the first.",
+    "NO DEVICE/EMULATOR/SIMULATOR/RADIO WAS USED: the red drives the real inbox commit and the real worker on the host; no peer and no radio were involved.",
+    "The NodeID BLAKE2s128 derivation check is not explicit in the repaired gate (the authenticator's pinned-key lookup performs the binding), so the audit's step 3 is satisfied only in substance, not in the form it prescribes."
+   ],
    "proof": null,
    "remediation_report": "evidence/AUDIT-002/mesh_receive/findings.md",
    "remediation_steps": [
@@ -1242,7 +1270,13 @@
     "T37"
    ],
    "title": "Missing recipient-key resolution bypasses ACK verification and retires an invalid signing obligation",
-   "wave": "5"
+   "wave": "5",
+   "pending_work": [
+    "PORT TO THE iOS TWIN: ios/Godstone/Sources/GodstoneMesh/AckObligationStore.swift carries the same conditional verification block in its own runPendingOnce, and the audit names it explicitly. Only the Android limb is repaired here.",
+    "THE AUDIT'S STEP 3 IS ONLY PARTLY DONE: the gate requires the key to be PRESENT, and the authenticator performs the binding by resolving the pinned key for the claimed node id -- but the audit also asks for the NodeID BLAKE2s128 DERIVATION to be checked explicitly (derive/verify that the pinned key's node id IS the claimed recipient), and a correctly-SIZED key is not separately required.",
+    "THE AUDIT'S STEP 1 ASKS FOR A RESOLVED-WRONG-SEED CONTROL beside the no-resolver arm, so that fixing one branch does not hide another: a present-but-WRONG key must stay refused and must NOT be counted as mere unavailability. That control is not written yet.",
+    "THE AUDIT'S STEP 2 mentions the same replacement in BOTH AckObligationDriver.runPendingOnce implementations -- the iOS one remains."
+   ]
   },
   "GS-ACK-002": {
    "audit_status_at_snapshot": "OPEN",
