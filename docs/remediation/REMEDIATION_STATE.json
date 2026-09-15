@@ -1146,26 +1146,25 @@
       "my_fix_commit": "719772b",
       "my_logs": [
         {
-          "outcome": "the court 6/6 on the live tree; the :core suite 14 tests, 0 failures",
-          "path": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/REMEDIATION/GS-ARCHIVE-002/green/core-suite.log",
-          "sha256": "129d5cdbea23ca1a101c238a6fe8eb7315003cf3aaabda0048b6526990900dba",
-          "what": "the archive court (six witnesses: three for this finding) and the :core suite"
+          "outcome": "BUILD SUCCESSFUL; the :core suite 18 tests, 0 failures",
+          "path": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/REMEDIATION/GS-ARCHIVE-001/green/archive001-court.log",
+          "sha256": "47606736333efa6d3e2138711fb3fe166e2dabb51fb86543aa9dc13edef3e3ea",
+          "what": "the court green on the repaired tree (seven witnesses)"
         }
       ],
       "my_red_case": {
-        "argv": "the audit's Android bundled-SQLite probe",
-        "case": "the audit's own probe (cited in the card; its refusal assertion failed at BOTH audited SHAs 90a577c4 and b439f35f)",
-        "cwd": "the audit's own harness",
+        "argv": "./gradlew :core:testDebugUnitTest --tests '*ReadinessArchive002Test*' in a disposable worktree at 33be0b0 with android/local.properties supplied",
+        "case": "the court's revision-portable arm test_archive001_bytes_alone_are_not_ready, run against the COMMITTED PRE-REPAIR PRODUCT (33be0b0)",
+        "cwd": "/Users/oculus/Projects/GODSTONE_BUILDER/android",
         "log": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/REMEDIATION/GS-ARCHIVE-001/red/archive001-RED.log",
-        "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-        "outcome": "THE REPRODUCED RED. Reversal-based reds were attempted four times and every attempt produced a COMPILE FAILURE -- not a behavioral red, so none is reported as one. The pre-repair-copy route was interrupted by an environment prerequisite (a fresh worktree lacks android/local.properties): it is the FIRST thing the next round completes."
+        "log_sha256": "40d04ec96a5a7a772d51aec3decf326b7d8488542ef384a8e599de331565f5f0",
+        "outcome": "FAILED: 'the audited defect: bytes alone were served as Ready' -- the audit's finding reproduced by this builder's own court"
       },
       "my_status": "FIX_SUBMITTED",
-      "notes": "FIX_SUBMITTED, with the red honestly attributed: the audit's own reproduced probe is the red; my four reversal attempts each compile-failed and are NOT reported as behavioral reds. The descriptor, the manifest law, the bytes agreement and the expected tier/name are in place and witnessed on three arms; the signed positive arm, the iOS half and the release-asset wiring remain. Only an independent audit may write VERIFIED_FIXED.",
+      "notes": "FIX_SUBMITTED. The descriptor, the manifest law, the bytes agreement and the expected tier/name are in place; the RED is now captured by THIS builder's own court against the committed pre-repair product. The signed positive arm, the iOS half and the release-asset wiring remain. Only an independent audit may write VERIFIED_FIXED.",
       "pending_proof": [
         "INDEPENDENT VERIFICATION: only an independent audit may mark this VERIFIED_FIXED",
-        "A RED BY MY OWN COURT IS NOT YET CAPTURED for this finding: the audit's reproduced probe is the red, and the pre-repair run (committed product + this court, with android/local.properties supplied) is pending",
-        "the POSITIVE arm (a VALID SIGNED manifest yielding Ready with a descriptor) is NOT yet witnessed: it needs a signed manifest fixture, which is the same fixture GS-ARCHIVE-002's repository half awaiteth",
+        "the POSITIVE arm (a VALID SIGNED manifest yielding Ready with a descriptor) is NOT yet witnessed: it needs a signed manifest fixture, which the same fixture GS-ARCHIVE-002's repository half awaiteth",
         "the card's iOS steps (4) are NOT done: openAndValidate must resolve only a candidate associated with the descriptor and stream its exact length/hash verification before Ready",
         "card step 5 (connect the release asset preparation output to the runtime resource/allowlist) is not done",
         "no emulator or device was used: the harness is the real bundled driver on the HOST"
