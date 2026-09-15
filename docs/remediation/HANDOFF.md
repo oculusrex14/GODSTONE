@@ -46,7 +46,40 @@ already carried. The audit's step 3 stays OPEN, with its two measured obstacles 
 | CRYPTO-003 | FIX_SUBMITTED | 4b | Destroyed retained controllers and primitive sessions st |
 | CRYPTO-006 | FIX_SUBMITTED | 4b | Duplicate journal admission is treated as success for a |
 
-## DO THIS FIRST (round 179) — A STALE ENVIRONMENTAL ASSUMPTION CORRECTED, AND THE APP LAYER'S BLOCKER NAMED
+## DO THIS FIRST (round 180) — THE APP LAYER'S ROOT CAUSE FOUND: IT DEPENDS ON THE **NATIVE_MODELS** ARTIFACT, NOT ON WIRING
+
+Round 179 named the app target's failure a *module-resolution* problem. **That was wrong, and the correction is recorded
+rather than left standing.** Measured twice:
+
+* `swift build --package-path ios/Godstone` fails at the app package's **own native target** —
+  `Sources/GodstoneLLMBridge/LlamaBridge.mm:3:10: fatal error: 'llama.h' file not found`.
+* The manifest points that target's header search paths into `../../third_party/llama.cpp/…`, and **`third_party/llama.cpp`
+  does not exist** (`third_party/` carries only a README).
+
+So the app target's `unable to resolve module dependency: 'GodstoneCore'` (xcodebuild rc 65) is a **downstream symptom**
+of the package producing no products.
+
+**Why no earlier round could see it — now explained:** the mirror package used by the SwiftPM lane **omits the
+native-dependent targets entirely** (`ios/Packages/GodstoneFoundation/Package.swift`: **0** references to
+`GodstoneLLM`/`GodstoneLLMBridge`; the app's own `ios/Godstone/Package.swift`: **3**), and the App directory is in **no
+lane**.
+
+**The classification, in the objective's own vocabulary:** GS-ARCHIVE-005's App-layer steps (reader/scene ownership,
+visible passage anchors, app-level kill/recreate tests) are **DEPENDENT ON AN EXTERNAL ARTIFACT** — the `NATIVE_MODELS`
+gate ("hash-pinned binaries with license metadata", owner: native build owner), whose row already names T62–T65, **T78**
+and T81. **This is not a self-supplied fixture and must not be treated as one:** the programme may not vendor, stub or
+synthesize `llama.cpp` to make its own app build, exactly as it may not manufacture an approval.
+
+**Two honest paths, written down rather than taken:** (a) wait for the T81 artifact and take the steps then, with the
+build as their verdict; or (b) add an app-layer lane that **excludes** the native targets so the UI code becomes
+verifiable *without* the model artifact — a repository change to be weighed against the rule that no mandatory lane may
+be weakened, and against whether such a lane proves anything the audit accepts.
+
+**No production file was edited in rounds 179–180**, deliberately: an App-layer edit whose only verdict would be an
+`xcodebuild` that cannot run is exactly the unverifiable change this programme refuses. GS-ARCHIVE-005 stays **PARTIAL**,
+now recorded as **external-dependent** rather than indefinitely deferred.
+
+## DO THIS FIRST (round 179, landed) — A STALE ENVIRONMENTAL ASSUMPTION CORRECTED
 
 **An assumption this programme had been carrying was WRONG.** Rounds 125 and 138 recorded that GS-ARCHIVE-005's
 App-layer step and its app-level tests were unreachable because there was **no simulator**. The environment actually has

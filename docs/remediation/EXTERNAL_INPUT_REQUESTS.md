@@ -120,3 +120,22 @@ ARTEFACTS at that SHA, not remembered:
 WHAT THIS BLOCK IS NOT: it is not acquisition, not an approval, not a status change and not evidence
 that any gate may close. A self-generated fixture is still never a substitute for an approval
 (True).
+
+## NATIVE_MODELS — a newly identified dependent (ledger round 180)
+
+**`GS-ARCHIVE-005`'s iOS App-layer steps join the dependents of this gate.** Measured, twice: `swift build --package-path
+ios/Godstone` fails at the app package's own native target — `ios/Godstone/Sources/GodstoneLLMBridge/LlamaBridge.mm:3:10:
+fatal error: 'llama.h' file not found` — and **`third_party/llama.cpp` does not exist** (`third_party/` carries only a
+README). The app target's `unable to resolve module dependency: 'GodstoneCore'` is the **downstream symptom** of the
+package producing no products, not a wiring defect.
+
+**Why no earlier round could see it:** the mirror package used by the SwiftPM lane **omits the native-dependent targets
+entirely** (`ios/Packages/GodstoneFoundation/Package.swift`: 0 references to `GodstoneLLM`/`GodstoneLLMBridge`; the app's
+own `ios/Godstone/Package.swift`: 3), and the App directory is in no lane.
+
+**Consequence, stated in the gate's own terms:** the App-layer steps (the reader/scene ownership change, visible passage
+anchors, and the app-level kill/recreate tests) **cannot be verified until this artifact arrives** — their verdict would
+be an `xcodebuild` that cannot run. **The programme may not vendor, stub or synthesize `llama.cpp` to make its own app
+build**, exactly as it may not manufacture an approval. Adding an app-layer lane that excludes the native targets is a
+possible second path, and it is written down rather than taken: it would have to be weighed against the audit's rule that
+no mandatory lane may be weakened, and against whether such a lane proves anything the audit accepts.
