@@ -1107,6 +1107,62 @@ class ReadinessT40Test {
         is SyncControlOwner.OwnerDecision.Refused -> d.reason
         else -> "accepted"
     }
+
+    /**
+     * GS-SYNC-001 (the audit's charge): "Inventory receiver accepts more than its bounded run page
+     * budget." The receiver retains every verified page and advances `pagesReceived` without
+     * consulting MAX_PAGES_PER_RUN -- which boundeth the PRODUCER (:271) and the PUMP (:385/:400)
+     * only. The bound must be imposed AT THIS BOUNDARY, before any mutation.
+     */
+    @Test
+    fun testTheReceiverRefusethTheFirstPageBeyondItsRunBudget() = runTest {
+        val out = StringBuilder()
+        val store = InMemoryMessageStore()
+        val authority = InventorySnapshotAuthority(store, { 1_000L })
+        val owner = SyncControlOwner(store, authority, { 1_000L }, ByteArray(16) { (it + 9).toByte() })
+        val peer = ByteArray(16) { (it + 7).toByte() }
+        // the court's OWN digest vector: the bloom must be the payload-bound size
+        val t = table()
+        val basic = t.payloadVectors.first { jStr(it.req("name")) == "digest_basic" }
+        val bloom = unhex(jStr(jObj(basic.req("input")).req("bloom")))
+        val digestFrame = ControlPayloadV1.frameFor(
+            ControlPayloadV1.ControlArm.DIGEST,
+            ByteArray(16) { (it + 3).toByte() }, ByteArray(4) { (it + 1).toByte() },
+            ControlPayloadV1.digest(42L, bloom).encode(),
+        )
+        val adopted = owner.handleControlFrame(digestFrame, peer)
+        val opened = owner.startInventoryRun(peer)
+        val rel = owner.relationFor(peer)
+        out.appendLine("adopted=$adopted opened=$opened runSid=${rel.runSid}")
+        for (k in 0 until SyncControlOwner.MAX_PAGES_PER_RUN + 3) {
+            val id = ByteArray(16).also { b -> b[0] = ((k + 1) ushr 8).toByte(); b[1] = ((k + 1) and 0xFF).toByte() }
+            val payload = ControlPayloadV1.inventoryPage(rel.runSid, 0, listOf(id)).encode()
+            val frame = ControlPayloadV1.frameFor(
+                ControlPayloadV1.ControlArm.INVENTORY_PAGE,
+                ByteArray(16) { (it + 21 + k).toByte() }, ByteArray(4) { (it + 2).toByte() }, payload,
+            )
+            val verdict = owner.handleControlFrame(frame, peer)
+            if (k >= SyncControlOwner.MAX_PAGES_PER_RUN - 4) {
+                out.appendLine("page=${k + 1} verdict=$verdict delivered=${rel.delivered.size} recv=${rel.pagesReceived} runDone=${rel.runDone}")
+            }
+            // GS-SYNC-001: the RECEIVER's own bound. The FIRST page beyond MAX_PAGES_PER_RUN must be
+            // REFUSED at this boundary, BEFORE any mutation -- the receiver may not retain more page
+            // descriptors than the run's budget, and MAX_PAGES_PER_RUN already boundeth only the
+            // PRODUCER (`producerPagesSent`) and the PUMP (`pagesRequested`), never `pagesReceived`.
+            if (k == SyncControlOwner.MAX_PAGES_PER_RUN) {
+                Assert.assertFalse(
+                    "the page beyond the run budget must be REFUSED, not accepted (delivered=${rel.delivered.size}, recv=${rel.pagesReceived})",
+                    verdict is SyncControlOwner.OwnerDecision.Accepted,
+                )
+            }
+        }
+        out.appendLine("final delivered=${rel.delivered.size} recv=${rel.pagesReceived}")
+        java.io.File("/tmp/gs-sync-001-diag.txt").writeText(out.toString())
+        Assert.assertEquals("nothing beyond the budget may be RETAINED",
+                            SyncControlOwner.MAX_PAGES_PER_RUN, rel.delivered.size)
+        Assert.assertEquals("nor may the run's received-page counter pass it",
+                            SyncControlOwner.MAX_PAGES_PER_RUN, rel.pagesReceived)
+    }
 }
 
 // ----------------------------------------------------------------------
