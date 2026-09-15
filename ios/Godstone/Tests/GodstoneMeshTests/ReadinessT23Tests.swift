@@ -772,6 +772,20 @@ final class ReadinessT23Tests: XCTestCase {
                       "the application must not be told of the control itself")
         XCTAssertTrue(r.bobSpy.received.isEmpty,
                       "nor was the control forward'd at the responders application either")
+
+        // IOS-04 (T24) slice (b), WITNESSED AT THE VERY MOMENT IT HAPPENETH (round 238): THE PUBLICATION CAPTURETH THE
+        // PEER. The audited road told its watchers a bare UUID and never constructed a `TrustedPeer`, so no real
+        // consumer ever receiveth one. The captured node id must equal the manager's OWN authenticated answer for that
+        // relation -- so the capture cannot disagree with the identity the handshake validated.
+        guard let captured = r.alice.capturedTrustedPeerForTest else {
+            return XCTFail("the sealed round must CAPTURE a trusted peer for the relation it just made ready")
+        }
+        XCTAssertEqual(16, captured.nodeId16.count, "the captured node id is sixteen octets")
+        XCTAssertEqual(32, captured.identityPub32.count, "the captured identity key is thirty-two octets")
+        XCTAssertEqual(captured.nodeId16, r.pair.aliceManager.authenticatedNodeIdOf(r.handleB),
+                       "the captured node id IS the authenticated node id the handshake validated")
+        XCTAssertEqual(captured.identityPub32, r.pair.aliceManager.authenticatedIdentityPubOf(r.handleB),
+                       "and the captured key IS the authenticated identity public key -- the source the node id is derived from")
     }
 
     // MARK: - case the seventh-and-a-half: a late subscriber is replayed the present ready state (T24)
