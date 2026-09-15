@@ -1516,10 +1516,33 @@
    },
    "impact": "- Original T26 required pre-auth record and byte budgets on the transport executor, bounded raw-header classification, charging every rejected packet, a 256-entry pinned authenticated cache, and monotonic time. - No AdmissionBudget or raw byte/record governor is called in GATT ingress, `BleConnection.ingestInboundAttValue`, or `BleTransport.received`. The latter authenticates/decrypts at `BleTransport.kt:1118`; MeshNode fully decodes the frame at `MeshNode.kt:223`; only then does Router call `governor.allowInbound` (`Router.kt:64`). Invalid AEAD/fragment/frame traffic returns before the governor. - `PeerGovernor.kt:46` defaults to wall time and `:188` defaults to 4096, not 256. Its maps have no active-entry pinning/eviction policy. `allowInbound` does charge accepted priority classes and synchronizes bucket debit; that useful local fix does not implement the earlier raw admission gate. - `ReadinessT26Test.kt:72–89` calls an excess count of valid BULK priority requests “Malformed / oversized values”; no malformed or oversized bytes are supplied to an actual transport. Its “unknown types” test removes BULK from an injected capacity map, which does not exercise an unknown wire type. Failure schedule: one already-admitted peer sends repeated malformed fragments, invalid tags, or undecodable authenticated frames. Decoder/reassembly/AEAD work occurs repeatedly, but none of these failures spends the advertised authenticated governor budget; there is no earlier record/byte budget to limit the work. Connection-count limits do not rate-limit a connected peer.",
    "invalidated_dependents": [],
-   "my_fix_commit": null,
-   "my_logs": [],
-   "my_red_case": null,
-   "my_status": "OPEN",
+   "my_fix_commit": "(ledger round 186) NEW `transport/AdmissionBudget.kt` (monotonic INJECTABLE clock, the card's 256-relation bound, per-relation record+byte allowance) charged FIRST at BOTH ingress doors -- before the connection lookup, the parse, the reassembly and the crypto -- with a named refusal in the transport's own census; `BleTransport` gaineth the injectable monotonic clock parameter",
+   "my_logs": [
+    {
+     "log": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/REMEDIATION/ANDROID-07/red-round186/red.log",
+     "sha256": "b2be75d75cb5c5270da63118fc7b6bdf4162ad473609c5d4a5ea0afc8cd59ffb",
+     "what": "the byte-level RED through the real ingress doors (ledger round 186)",
+     "outcome": "9 tests, 2 failures, both `refusals seen: 0` on the UNMODIFIED tree"
+    },
+    {
+     "log": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/REMEDIATION/ANDROID-07/green-round186/green.log",
+     "sha256": "9241ad0c1a1a075c0ed4e931addacfebabe66270627059b989ad43252e988508",
+     "what": "the WHOLE Android `:mesh` lane after the pre-auth budget landed",
+     "outcome": "BUILD SUCCESSFUL; **1182 tests, 0 failures, 0 errors** (1180 + W08/W09) -- the fair-traffic courts (T17 burst, T18 sixty-four-fragment record, T20 two-hundred-fifty-seven-record wrap) all pass, so the allowance boundeth floods WITHOUT refusing whole-record work"
+    }
+   ],
+   "my_red_case": {
+    "case": "android/mesh/src/test/java/io/godstone/mesh/readiness/ReadinessT26Test.kt::testW08RawPreAuthTrafficIsChargedAndRefusedAtTheTransportIngress and testW09TheIngressBudgetChargethBeforeParsingAndNotOnlyForKnownPeers -- BYTE-LEVEL witnesses through BOTH real ingress doors (`handleServerInboundWrite` and `handleCentralInboundNotification`) with unparsable three-octet frames; the card's own step 4 asketh for exactly this shape ('tests through GATT/transport ingress and downstream counters').",
+    "argv": [
+     "-m",
+     "unittest"
+    ],
+    "cwd": "android/ (gradlew :mesh:testDebugUnitTest --tests '*ReadinessT26Test*')",
+    "log": "ANDROID-07/red-round186/red.log",
+    "log_sha256": "b2be75d75cb5c5270da63118fc7b6bdf4162ad473609c5d4a5ea0afc8cd59ffb",
+    "outcome": "9 tests, 2 FAILURES before the repair -- both arms observed `refusals seen: 0`: RAW pre-auth traffic is charged NOTHING today, on either door"
+   },
+   "my_status": "FIX_SUBMITTED",
    "notes": "ENRICHED AT ROUND 104 by TRANSCRIPTION from the audit's own card (android/findings.md#ANDROID-07): impact, remediation_steps, source_refs and closure_tests are the card's OWN words and its OWN file references, not a summary; the refs are relative to the audited snapshot. No status changed and nothing was claimed fixed.",
    "pending_proof": [],
    "proof": null,
@@ -1557,7 +1580,10 @@
     "T26"
    ],
    "title": "T26 budgets are still after expensive decoding, use wrong bounds/time, and miss raw traffic",
-   "wave": "4f.2"
+   "wave": "4f.2",
+   "pending_work": [
+    "ROUND 186 (ANDROID-07 / T26 STEP 1 LANDS: THE PRE-AUTH BUDGET IS CHARGED AT BOTH INGRESS DOORS -- BEFORE THE LOOKUP, THE PARSE, THE REASSEMBLY AND THE CRYPTO). (1) THE DEFECT, MEASURED RATHER THAN QUOTED: `PeerGovernor` existeth and is used -- but in the ROUTER (`router/Router.kt:36`), i.e. AFTER reassembly, on a CLAIMED identity, and only for traffic that survived parsing. SO RAW, malformed, unknown-type, over-sized and NO-CONNECTION traffic is charged NOTHING, and a flood of it is free. Its own defaults are also not the card's: `DEFAULT_MAX_TRACKED_PEERS = 4096` where the card specifieth **256**, and its clock defaulteth to `System::currentTimeMillis` -- a WALL clock, which a rollback can refund. (2) THE RED, BYTE-LEVEL AND THROUGH BOTH REAL DOORS: `ReadinessT26Test` (the designated T26 court) gaineth W08 and W09 -- a flood of unparsable three-octet frames driven through `handleServerInboundWrite` (an address with NO connection) and through `handleCentralInboundNotification`, asserting the transport's OWN rejection census nameth a budget refusal. On the unmodified tree both observed **`refusals seen: 0`** -- the card's step 4 asketh for exactly this shape ('tests through GATT/transport ingress and downstream counters') instead of the seven unit-level witnesses the court carrieth. (3) THE REPAIR: a NEW `transport/AdmissionBudget.kt` -- a MONOTONIC, INJECTABLE clock (`System.nanoTime()` by default, and the transport gaineth the parameter so a court can drive rollbacks), the card's **256**-relation bound with a DETERMINISTIC refusal for a relation beyond it (never silent growth for a flood's sake), and a per-relation record+byte allowance in a bounded window. It is charged **FIRST** in both doors: before the connection is looked up, before `ingestInboundAttValue` reassembles anything, and before any crypto -- and a refusal is RECORDED in the transport's own census under the site `admission.budget`, so it is observable, not silent. (4) MY OWN FIRST ALLOWANCE WAS WRONG, CAUGHT BY THE LANE AND RECORDED: sixty-four records and 64 KiB per window REFUSED FAIR TRAFFIC -- the lane failed FOUR courts (T18's sixty-four-fragment whole record, T20's two-hundred-fifty-seven-record wrap and its ledger arm, T17's bounded burst). The allowance is now 2048 records and 1 MiB per window with the reasoning written into it, and the RED's floods were widened to 5000 frames so they still exceed any fair allowance. THE LESSON: a pre-auth bound that is too tight is indistinguishable from a denial of service the transport inflicteth on its own peers. (5) ACCEPTANCE: the WHOLE `:mesh` lane at **1182 tests, 0 failures, 0 errors** (1180 + W08/W09). (6) REMAINING ON ANDROID-07, NAMED: step 2 (the POST-AEAD charge against the immutable full NodeID before payload decoding, with no MAC/hint/claimed-SOS evasion of the global cap); step 3's router-side alignment (the 256 bound and the monotonic clock in the ROUTER's own governor); and step 4's remainder (the mislabeled unit witnesses replaced or re-scoped, plus downstream counters)."
+   ]
   },
   "CRYPTO-001": {
    "audit_status_at_snapshot": "OPEN",

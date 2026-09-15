@@ -74,7 +74,13 @@ class BleTransport(
      * nameth ("its first server-start attempt fail and its second succeed"), and can COUNT the
      * attempts -- which `isRunning == false` ALONE can never show.
      */
-    private val serverStartAttempt: (() -> Boolean)? = null
+    private val serverStartAttempt: (() -> Boolean)? = null,
+    /**
+     * ANDROID-07 / T26: the MONOTONIC clock the pre-auth admission budget useth. `System.nanoTime()`
+     * is monotonic, and the value is injectable so a court can drive rollbacks. The audited governor
+     * defaulted to a wall clock, which a rollback can refund.
+     */
+    private val admissionClockMillis: () -> Long = { System.nanoTime() / 1_000_000L },
 ) : Transport, InFlightAwareTransport {
 
     override val name = "BLE"
@@ -172,6 +178,12 @@ class BleTransport(
     private val publishedRelations = ConcurrentHashMap.newKeySet<RelationKey>()
 
     private val activeClientConnections = ConcurrentHashMap<String, GattClientConnection>()
+    /**
+     * ANDROID-07 / T26: THE PRE-AUTH ADMISSION BUDGET, owned by the transport and charged at the
+     * ingress doors BEFORE parsing, reassembly or crypto.
+     */
+    private val admissionBudget = AdmissionBudget(nowMillis = { admissionClockMillis() })
+
     private val provisionalJobs = ConcurrentHashMap<String, Job>()
     private val inboundJobs = ConcurrentHashMap<String, Job>()
     /**
@@ -724,6 +736,17 @@ class BleTransport(
     }
 
     fun handleCentralInboundNotification(peerAddress: String, value: ByteArray) {
+        // ANDROID-07 / T26: THE PRE-AUTH CHARGE COMETH FIRST -- before the connection is even looked
+        // up, and whatever arriveth: an empty value, a malformed one, an unknown type, an over-sized
+        // one, or a value from an address with NO connection at all. The audited road charged nothing
+        // for any of it (its governor liveth in the Router, downstream of reassembly), so a flood of
+        // raw traffic was free.
+        if (admissionBudget.charge(peerAddress, value.size) == AdmissionBudget.Verdict.REFUSED) {
+            recordRejection(ByteArray(0), "admission.budget",
+                "pre-auth admission budget exhausted for " + peerAddress)
+            return
+        }
+
         val conn = centralDriver.getActiveConnection(peerAddress) ?: return
         if (!conn.isRoleBound) return
         activeClientConnections[peerAddress]?.let { client ->
@@ -812,6 +835,17 @@ class BleTransport(
     }
 
     fun handleServerInboundWrite(peerAddress: String, value: ByteArray) {
+        // ANDROID-07 / T26: THE PRE-AUTH CHARGE COMETH FIRST -- before the connection is even looked
+        // up, and whatever arriveth: an empty value, a malformed one, an unknown type, an over-sized
+        // one, or a value from an address with NO connection at all. The audited road charged nothing
+        // for any of it (its governor liveth in the Router, downstream of reassembly), so a flood of
+        // raw traffic was free.
+        if (admissionBudget.charge(peerAddress, value.size) == AdmissionBudget.Verdict.REFUSED) {
+            recordRejection(ByteArray(0), "admission.budget",
+                "pre-auth admission budget exhausted for " + peerAddress)
+            return
+        }
+
         val conn = serverDriver.getInboundConnection(peerAddress) ?: return
         if (!conn.isRoleBound) return
         serverDriver.getClientGeneration(peerAddress)?.let { gen ->

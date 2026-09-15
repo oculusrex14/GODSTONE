@@ -46,7 +46,39 @@ already carried. The audit's step 3 stays OPEN, with its two measured obstacles 
 | CRYPTO-003 | FIX_SUBMITTED | 4b | Destroyed retained controllers and primitive sessions st |
 | CRYPTO-006 | FIX_SUBMITTED | 4b | Duplicate journal admission is treated as success for a |
 
-## DO THIS FIRST (round 185) — ANDROID-05's FRONTIER IS GATED BY THE **FROZEN LINK-LAYER FLAG**, NOT BY MISSING WORK
+## DO THIS FIRST (round 186) — ANDROID-07 / T26 STEP 1: A PRE-AUTH ADMISSION BUDGET CHARGED AT BOTH INGRESS DOORS
+
+**The defect, measured rather than quoted:** `PeerGovernor` exists and is used — but in the **Router**
+(`router/Router.kt:36`), i.e. *after* reassembly, on a *claimed* identity, and only for traffic that survived parsing.
+So **raw, malformed, unknown-type, over-sized and no-connection traffic is charged nothing**, and a flood of it is free.
+Its own defaults are not the card's either: `DEFAULT_MAX_TRACKED_PEERS = 4096` where the card specifies **256**, and its
+clock defaults to `System::currentTimeMillis` — a **wall clock**, which a rollback can refund.
+
+**The RED, byte-level through both real doors:** `ReadinessT26Test` (the designated T26 court) gains W08 and W09 — a
+flood of unparsable three-octet frames driven through `handleServerInboundWrite` (an address with **no** connection) and
+through `handleCentralInboundNotification`, asserting the transport's **own rejection census** names a budget refusal.
+On the unmodified tree both observed **`refusals seen: 0`**. This is the shape the card's step 4 asks for ("tests through
+GATT/transport ingress and downstream counters") instead of the seven unit-level witnesses the court carries.
+
+**The repair:** a new `transport/AdmissionBudget.kt` — a **monotonic, injectable** clock (`System.nanoTime()` by
+default; the transport gains the parameter so a court can drive rollbacks), the card's **256**-relation bound with a
+**deterministic refusal** beyond it, and a per-relation record+byte allowance in a bounded window. Charged **first** in
+both doors — before the connection lookup, before `ingestInboundAttValue` reassembles anything, before any crypto — with
+a recorded refusal under the site `admission.budget`, so it is observable rather than silent.
+
+**My own first allowance was wrong, caught by the lane and recorded:** 64 records / 64 KiB per window **refused fair
+traffic** — the lane failed **four** courts (T18's 64-fragment record, T20's 257-record wrap and its ledger arm, T17's
+burst). The allowance is now 2048 records / 1 MiB with the reasoning written in, and the RED's floods were widened to
+5000 frames. **A pre-auth bound that is too tight is indistinguishable from a denial of service the transport inflicts
+on its own peers.**
+
+**Acceptance:** whole `:mesh` lane **1182 tests, 0 failures, 0 errors**. **ANDROID-07 → FIX_SUBMITTED.**
+
+**Remaining on ANDROID-07:** step 2 (the post-AEAD charge against the immutable full NodeID before payload decoding, with
+no MAC/hint/claimed-SOS evasion of the global cap); step 3's router-side alignment (256 bound + monotonic clock in the
+Router's own governor); step 4's remainder (the mislabeled unit witnesses re-scoped, plus downstream counters).
+
+## DO THIS FIRST (round 185, landed) — ANDROID-05's FRONTIER
 
 The remaining item ("one real lifecycle authority, composed") was measured before it was touched — and the measurement says
 **do not touch it blindly**:

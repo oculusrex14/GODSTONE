@@ -27,7 +27,66 @@ class ReadinessT26Test {
 
     private class Clock(var t: Long)
 
+    /** The in-memory identity storage the sibling courts use; no device, no prefs. */
+    private class InMemoryIdentityStorage : io.godstone.mesh.identity.IdentityStorage {
+        private var v1: ByteArray? = null
+        private var legacy: io.godstone.mesh.identity.LegacyIdentityMaterial? = null
+        override fun readV1State(): ByteArray? = v1?.copyOf()
+        override fun readLegacyMaterial(): io.godstone.mesh.identity.LegacyIdentityMaterial? = legacy
+        override fun hasPartialLegacy(): Boolean = false
+        override fun writeV1State(state: ByteArray): Boolean { v1 = state.copyOf(); return true }
+        override fun migrateLegacyToV1(state: ByteArray): Boolean {
+            v1 = state.copyOf(); legacy = null; return true
+        }
+        override fun clear(): Boolean { v1 = null; legacy = null; return true }
+    }
+
     private fun id(n: Int): ByteArray = ByteArray(16) { n.toByte() }
+
+    private fun identity(): io.godstone.mesh.identity.Identity =
+        io.godstone.mesh.identity.Identity.loadOrCreate(InMemoryIdentityStorage())
+
+    /** ANDROID-07 / T26 (the card's steps 1 and 4): BYTE-LEVEL WITNESSES THROUGH THE TRANSPORT INGRESS.
+     *
+     *  The seven arms above drive the governor DIRECTLY -- the card calleth such cases "mislabeled
+     *  governor-unit cases" and asketh for tests "through GATT/transport ingress and downstream
+     *  counters", because the audited governor is charged in the ROUTER: AFTER reassembly, on a
+     *  claimed identity, and only for traffic that survived parsing. So raw, malformed, unknown-type
+     *  and no-connection traffic is NEVER CHARGED AT ALL, and a flood of it is free.
+     *
+     *  THIS ARM IS RED UNTIL THE TRANSPORT OWNS A PRE-AUTH ADMISSION BUDGET: a flood of unparsable
+     *  frames, from an address with NO connection, must be CHARGED and REFUSED at the ingress door.
+     */
+    @Test
+    fun testW08RawPreAuthTrafficIsChargedAndRefusedAtTheTransportIngress() {
+        val transport = io.godstone.mesh.transport.BleTransport(
+            serverStartAttempt = { true }, identity = identity())
+        val peer = "11:22:33:44:55:77"
+        val raw = ByteArray(3) { 0x7F }        // too short to be any record: unparsable, unauthenticated
+        repeat(5000) { transport.handleServerInboundWrite(peer, raw) }
+        val budgetRefusals = transport.rejectionRecordsForTest()
+            .count { it.site.contains("admission") || it.reason.contains("budget") }
+        assertTrue(
+            "raw pre-auth traffic from an address with NO connection must be CHARGED and REFUSED at " +
+                "the ingress door; the audited road charged NOTHING for it (the governor liveth in the " +
+                "router, downstream of reassembly). Budget refusals seen: " + budgetRefusals,
+            budgetRefusals > 0)
+    }
+
+    @Test
+    fun testW09TheIngressBudgetChargethBeforeParsingAndNotOnlyForKnownPeers() {
+        // The SAME door, with a connection present: the charge must happen BEFORE reassembly, so a
+        // flood of raw fragments is bounded however well-formed the relation is.
+        val transport = io.godstone.mesh.transport.BleTransport(
+            serverStartAttempt = { true }, identity = identity())
+        val peer = "11:22:33:44:55:78"
+        repeat(5000) { transport.handleCentralInboundNotification(peer, ByteArray(3) { 0x11 }) }
+        val budgetRefusals = transport.rejectionRecordsForTest()
+            .count { it.site.contains("admission") || it.reason.contains("budget") }
+        assertTrue("the central door must charge too, before parsing; refusals seen: " + budgetRefusals,
+            budgetRefusals > 0)
+    }
+
 
     // (1) Sybil identities: a fresh identity beyond the bound is REFUSED and
     //     allocates NOTHING; a tracked identity is still served. The global
