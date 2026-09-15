@@ -574,6 +574,16 @@
    },
    "gate_checker_result": "ci/check_release_gates_status.py rc 0: \"2 repository-owned lanes carry every face they must hold; an amputated lane is refused by name\"",
    "meaning": "A lane that was silently disabled or amputated would make every green claim above it worthless. This re-checketh, from the workflow artefacts themselves, that no job is statically disabled, that all six mandatory repository lanes of repository-verification.yml are present, and that the T77 external-report upload added at round 97 is STILL declared and STILL carryeth `if: always()` -- so a later edit did not quietly undo it."
+  },
+  "ios_lane_baseline_AT_ROUND_123": {
+   "command": "python3 scripts/sync_ios_foundation_package.py && swift test --package-path ios/Packages/GodstoneFoundation",
+   "result": "1195 XCTest tests, 0 failures, ~138s -- the iOS lane RUNS and is GREEN at this SHA",
+   "traps": [
+    "swift test printeth TWO summaries; the swift-testing one sayeth '0 tests in 0 suites' because the suite is XCTest -- grep for 'Executed '",
+    "the package is a MIRROR: sync AFTER every source edit, or swift test runneth the old copy (and an edit inside the package is silently overwritten)"
+   ],
+   "record": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/REMEDIATION/ROUND123/ios-lane-baseline.json",
+   "meaning": "Every remaining IOS-* finding and the only unfinished LIGHT-scope finding (GS-ARCHIVE-005) are Swift repairs; this lane is their host, and it is now verified with a measured baseline."
   }
  },
  "counts": {
