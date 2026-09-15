@@ -67,28 +67,17 @@ because the red design and the measured constraints are already written down:
    Carry the two older measured constraints too: the check must test the row's STATE (a terminal CAS KEEPS
    the row) and the FIRST offer is exempt (the DIRECT path commits its row after offering — gating it broke
    `MeshNodeDeliveryIntegrationTest.C6_6_1`).
-2. **`GS-ACK-001` step 4 — the captured bound public key.** Steps 1 and 3 are complete in FORM on both isles
-   (availability gate, size requirement, explicit BLAKE2s128 derivation, and the wrong-key control beside the
-   no-resolver arm). Round 83 called step 4 "satisfied by construction" because the authenticator never takes
-   a caller-supplied key. READING THE STORE AGAIN AT ROUND 86 SHOWS A REAL HOLE, and the design is written
-   out so the next round is one landing, not one reconnaissance:
-   - `AckObligationStore` resolves the pinned key ONCE (`resolver.publicSigningKey(claimed)`) and GATES on it
-     — size 32, and `Identity.nodeIdOf(ownKey) == claimed` — and then calls `authenticator.verify(...)`,
-     which resolves the pinned key a SECOND time. The key that was VALIDATED and the key that is USED are
-     two different calls: a resolver (or a racing rotation) that answers differently on the second call gets
-     a signature made under the SECOND key accepted as `VERIFIED_RECIPIENT`, while the gate above certified
-     the FIRST.
-   - RED, and it is deterministic: a fixture resolver that answers the true recipient key on call 1 and an
-     ATTACKER key on call 2, driven by an ACK frame the attacker signed and that names the true recipient.
-     Today the store stores it and retires the obligation; the arm demands a typed refusal instead. Positive
-     control in the same court: a stable resolver plus a correctly-signed ACK is still accepted.
-   - SHAPE OF THE FIX, chosen for blast radius: add `verifyWithCapturedKey(msgId, recipient, capturedKey,
-     frame)` to the `AckAuthenticator` interface with a DEFAULT that delegates to `verify(...)`, so every
-     test double in the mandatory lanes keeps compiling; override it in `Ed25519AckAuthenticator` to (a)
-     fail closed when the resolver no longer names the captured key and (b) run the Ed25519 pipeline under
-     the CAPTURED key. Do NOT change `verify`'s signature. Mirror the default-extension shape on the Swift
-     isle and re-run `scripts/sync_ios_foundation_package.py`. Watch
-     `testReleaseSymbolsCarryNoTestFactories`: no exported test seam.
+2. **`GS-ACK-001` step 4 — LANDED ON BOTH ISLES at round 86 (`f77f6d9`), and it was a REAL hole.** Round 83's
+   "satisfied by construction" was WRONG: the store gated on the pinned key and then asked for a verification
+   that re-resolved it, so a resolver answering differently on the second call had a frame signed under its
+   LATER answer filed as `VERIFIED_RECIPIENT`. The red proved it with an attacker-supplied frame on the
+   ADMISSION road (`Stored(ackKey=...)`). Fixed with a defaulted `verifyWithCapturedKey` on both isles.
+   TWO THINGS TO CARRY FORWARD FROM IT: (a) the first arm (restart road, signer seam) came back GREEN on the
+   pre-repair tree and proved nothing — a forged frame must arrive where the bytes are attacker-supplied;
+   (b) the first refactor inverted a PINNED pre-resolver-guard law (zero key lookups for a structurally
+   invalid frame, `BoundRecipientKeyResolverTest`), which only the WHOLE lane caught — run the lane, not the
+   court you happened to touch. Still owed: the tracker road's absence of this hole is an INSPECTION, not an
+   arm, and the iOS limb carries no arm of its own.
 3. **`GS-STORE-004`** (the wave 4a chain's next link) — the retention checkpoint: a REAL non-destructive
    migration step plus the persisted checkpoint and the reopen debit. `GS-STORE-003` left the machinery
    (`frozenFingerprint`, `migrationPlan`, the handle-bound executors, the `JdbcStoreDb` twin); adding a schema
