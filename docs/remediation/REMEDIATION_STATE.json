@@ -474,9 +474,11 @@
    "candidate_scope": "Mesh/Oracle",
    "closure_evidence": [],
    "closure_tests": [
-    "Retain original reservation reds and atomic fix, then rerun ANDROID-05-B through actual sendThrough and the authoritative runtime owner. Helper wiring/local queue state is insufficient."
+    "(from android) ./gradlew :mesh:testDebugUnitTest --tests '*AuditAndroidRecordWriterTest*' --tests '*ReadinessT18Test*'",
+    "Concurrent reservations versus stop/MTU change; cancellation returns exactly one slot; repeated ticket consumption invokes the sealer once IN TOTAL; a stale/duplicate completion cannot finish the next record; queue-full retry pumps the already-admitted record without reserving another copy.",
+    "Mutations that remove ticket state or capacity ownership must be killed by compiling behavioural tests."
    ],
-   "evidence_level": "REPRODUCED_ANDROID_WRITER",
+   "evidence_level": "REPRODUCED (audit root ran AuditAndroidRecordWriterTest.kt plus T18: 11 tests, 8 passed, all 3 independent probes failed)",
    "final_review": {
     "audit_id": "AUDIT-003",
     "classification": "SOURCE_ANCHORS_IDENTICAL_NO_RUNTIME_RETEST",
@@ -484,26 +486,39 @@
     "note": "Original proof retained. No independent fix closure. Source identity does not prove the whole caller graph unchanged.",
     "source_sha": "c683a2bf0b5bcdd4a662d98f7542351501b57b7c"
    },
-   "impact": null,
+   "impact": "Whole-record reservations do not reserve capacity or enforce single consumption: `RecordWriter.reserve` checks only already-SEALED `admitted.size` and returns a ticket without recording outstanding reservations, and `sealAndQueueOf` has no consumed/cancelled ticket check -- it invokes the sealer BEFORE rechecking the full admitted queue. Three reproduced schedules: (1) seal one ticket twice and both calls enqueue with the same operation id and different sequence/nonces, so completions cannot distinguish repeated ticket ownership; (2) reserve five tickets before sealing any and all five are admitted although the whole-record limit is four; (3) hold a reservation, fill the four slots through other reservations, then seal the held one -- the sealer runs (consuming a nonce) before the capacity refusal, so admission was not a guarantee and refusal was not free of cryptographic work.",
    "invalidated_dependents": [],
    "my_fix_commit": null,
    "my_logs": [],
    "my_red_case": null,
    "my_status": "OPEN",
-   "notes": "ROUND 89 (record integrity, before any work on it): THIS ENTRY IS UNENRICHED -- impact, remediation_steps and source_refs are EMPTY, so it carrieth the audit's title and severity and nothing else. A round that starts here must read the audit's own repair card for ANDROID-06 VERBATIM (evidence/AUDIT-002/ cards listed through QWEN_REMEDIATION_QUEUE.md's wave 4f.1) and fill these fields BEFORE designing a red, because the title alone cannot say which seam the reservation law lives on. Recorded by measurement: the fields were inspected and are null/empty, not merely unread by me.",
+   "notes": "ROUND 92: THIS ENTRY IS NOW ENRICHED FROM THE AUDIT'S OWN CARD, VERBATIM (evidence/android/findings.md, section 'ANDROID-06', read this round). Before this, impact, remediation_steps and source_refs were EMPTY, which is how a round spends itself on reconnaissance instead of a landing. THE CHEAPEST RED IS ALREADY NAMED, and it is the card's own FAILURE SCHEDULE 2: reserve FIVE tickets before sealing any, when the configured whole-record limit is FOUR -- the fifth reservation must be REFUSED, and today all five are admitted because `reserve` never counts outstanding reservations. That is a two-line arm at the writer seam `RecordWriter.reserve`, host-executable, with no device and no radio, and it isolateth exactly the thing the finding names (capacity, not sealing). THE POSITIVE CONTROL must sit beside it in the same court: reserving exactly FOUR and sealing all four must still succeed, so a fix that simply refuses the fifth by refusing everything cannot pass. Schedules 1 and 3 are the follow-on arms (repeated consumption invokes the sealer ONCE in total; capacity refusal happens BEFORE the sealer runs), and schedule 3's observable -- a nonce consumed by a refusal -- needs a sealer spy the court must be checked for FIRST.",
    "pending_proof": [],
    "proof": null,
    "remediation_report": "evidence/android/findings.md",
-   "remediation_steps": [],
+   "remediation_steps": [
+    "Maintain a bounded pending-ticket table under the writer lock; `reserve` must atomically allocate ONE record slot and capture exact connection generation, capacity/MTU epoch, type and length.",
+    "Give each reservation a state RESERVED -> SEALING -> QUEUED or CANCELED; reject any SECOND consumption before invoking the sealer; provide cancellation that returns a slot.",
+    "Perform every revocable admission/lifetime check BEFORE sealing; if a connection/MTU change invalidates a pending reservation, retire it without sealing; after a seal succeeds, retain responsibility for the record or explicitly close the relation.",
+    "Make queued/reserved/in-flight counts account for the SAME four-record bound; do not count only sealed fragments.",
+    "Bind operation tokens to the real generation rather than `RelationKey(..., 0L)` at BleTransport.kt:1220/1232."
+   ],
    "severity": "HIGH",
-   "source_refs": [],
+   "source_refs": [
+    "android/mesh/src/main/java/io/godstone/mesh/transport/RecordWriter.kt:174-210 -- `reserve` checks only already-sealed `admitted.size` and records no outstanding reservation.",
+    "android/mesh/src/main/java/io/godstone/mesh/transport/RecordWriter.kt:217-267 -- `sealAndQueueOf` has no consumed/cancelled ticket check and invokes the sealer at :226 BEFORE rechecking the full queue at :246.",
+    "android/mesh/src/main/java/io/godstone/mesh/transport/BleTransport.kt:1220,1232 -- operation tokens bound to `RelationKey(..., 0L)` rather than the real generation."
+   ],
    "tasks": [
     "T18"
    ],
    "title": "Whole-record reservations do not reserve capacity or enforce single consumption",
    "wave": "4f.1",
    "pending_work": [
-    "ENRICH THIS ENTRY FIRST (impact, ordered remediation, source refs read from the audit bundle), then design the red for whole-record reservation capacity + single consumption."
+    "STEP 1 (one round, red designed): the card's failure schedule 2 -- reserve five when the bound is four -- as a behavioural RED at `RecordWriter.reserve`, with reserving-and-sealing exactly four beside it as the POSITIVE CONTROL. Do not write the arm against `sealAndQueueOf` alone: the finding names CAPACITY, so the arm must isolate reservation capacity.",
+    "STEP 2: the pending-ticket table with states RESERVED/SEALING/QUEUED/CANCELED under the writer lock, then schedules 1 and 3 as arms (single consumption; refusal before any sealer work).",
+    "STEP 3: the same four-record bound for queued/reserved/in-flight counts, and the operation-token generation binding at BleTransport.kt:1220/1232.",
+    "NOT YET MEASURED: whether the court that would hold these arms (ReadinessT18Test and/or AuditAndroidRecordWriterTest's canonical home) has a sealer spy, and whether the audit's own probe suite (tools/readiness/audit_probes) already carries a parked version of schedule 2."
    ]
   },
   "ANDROID-07": {
