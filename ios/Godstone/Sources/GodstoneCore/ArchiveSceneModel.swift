@@ -335,7 +335,7 @@ public final class ArchiveSceneModel: ObservableObject {
         let anchorDocument = handle["anchorDocument"] as? Int64
         let anchorPassage = handle["anchorPassage"] as? Int64
         scrollAnchor = ArchiveScrollAnchor(documentId: anchorDocument, passageId: anchorPassage)
-        returnScene = Scene(mode: .documents, query: "", searchedQuery: nil,
+        returnScene = Scene(mode: .documents, query: query, searchedQuery: searchedQuery,
                              documents: [], passages: [],
                              openedDocumentId: nil, openedTitle: nil, openedSource: nil)
         phase = .loading

@@ -5,7 +5,7 @@
     "Sources/GodstoneCore/ArchiveReaderModel.swift": "3919494499f8a29432202d019524e17187a55a636b2564ca193a2bc49cd4c892",
     "Sources/GodstoneCore/ArchiveReadingAnchor.swift": "bfce94742eea9eb45233ce920c1548427cabec4f9ee686cc9319dacfe16fec29",
     "Sources/GodstoneCore/ArchiveRepository.swift": "a0b4829fcd2d625ffd00d90d4f8396126b29ab3c2d7dd5521293356036082e79",
-    "Sources/GodstoneCore/ArchiveSceneModel.swift": "badc1a8782c1547bc19cae34bd9198c45a8fc856a700887ec98b22a57b61f55d",
+    "Sources/GodstoneCore/ArchiveSceneModel.swift": "ec3acb145bd7c874997c5667be9ed039f66174906b5a9824d680e39db78d094a",
     "Sources/GodstoneCore/Bip39.swift": "257bb27f26f19d2410a0e5f13a258b031d75bdc8e647c05205fb0060ea5a87a4",
     "Sources/GodstoneCore/Blake2s.swift": "45f06f51b8bbed97787d56b834df5ebb2730e140c9e4723dfe0da6cc993febcc",
     "Sources/GodstoneCore/BloomDigest.swift": "efb3505b4f84a23183b15c6682ae3810c2369b572b06525c9d57c1dc8f517e85",

@@ -1442,11 +1442,30 @@
       "impact": "iOS document destinations load a separate reader model without selecting the document on ArchiveSceneModel, so openedSource/openedDocumentId remain unset and the required document provenance line is absent. Both apps implement snapshot/restore methods but no production caller persists/restores them; process recreation loses the promised query/document place. iOS has an unbound NavigationStack and only @State query fields.",
       "invalidated_dependents": [],
       "my_fix_commit": null,
-      "my_logs": [],
+      "my_logs": [
+        {
+          "outcome": "the scene courts green (15/15, 13/13) and the whole package green",
+          "path": "GS-ARCHIVE-005/green/archive-005-step5.log",
+          "sha256": "171a370768c8a3408d6f67f5eee7398cc4524f7e5f1e189d29f05f000c0381fd",
+          "what": "the restored return scene carrieth the search identity (the card's step 5, first half)"
+        }
+      ],
       "my_red_case": null,
-      "my_status": "OPEN",
-      "notes": null,
-      "pending_proof": [],
+      "my_status": "PARTIAL",
+      "notes": "PARTIAL, one step of six. The restored return scene no longer starteth EMPTY: it carrieth the query and the searched query the handle kept, so a reader returning from a restored document no longer lands on an empty list. The remaining five steps are named as pending_work. Only an independent audit may write VERIFIED_FIXED.",
+      "pending_proof": [
+        "INDEPENDENT VERIFICATION: only an independent audit may mark this VERIFIED_FIXED",
+        "no simulator or device run: the scene courts are HOST tests, and the card's closure requireth an interaction test",
+        "no hosted run URL/log was available, so hosted convergence remains pending"
+      ],
+      "pending_work": [
+        "STEP 1: choose ONE real document-selection owner on iOS and route destination selection through scene.open(document:) -- the app view still drives ArchiveDocumentReader directly",
+        "STEP 2: load passages and source metadata for the SAME captured selected document identity, publishing only if that selection is still current",
+        "STEP 3: persist small navigation identities on Android through SavedStateHandle in the Hilt view model (query, mode, document id, passage anchor)",
+        "STEP 4: persist the equivalent Codable scene record on iOS and bind it to NavigationStack",
+        "STEP 5 (second half): the return road must RE-FETCH its rows when it returneth with an identity but no rows; only the identity travelleth today",
+        "STEP 6: record REAL visible passage anchors from the scroll view (noteScroll(documentId:) records no passage position) and restore only after the matching document and layout exist"
+      ],
       "proof": "NavigationLink drives ArchiveDocumentReader, whose task calls its own model.load(.document) and onAppear only calls scene.noteScroll. The sole population of scene.openedSource/documentId is openDocumentInternal reached from scene.open/openPassage, neither called by the app view. Production rg finds snapshotTo/restoreFrom only declarations on Android and no calls to scene.snapshot/restore on iOS. Both UI paths and model persistence helpers are unchanged at b439f35f. No process-kill UI test was executed.",
       "remediation_report": "evidence/AUDIT-002/archive/ARCHIVE_REMEDIATION.md",
       "remediation_steps": [
