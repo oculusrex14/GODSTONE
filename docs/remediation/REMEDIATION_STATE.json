@@ -240,7 +240,63 @@
    "T79",
    "T80",
    "T81"
-  ]
+  ],
+  "gates": [
+   {
+    "id": "A06",
+    "kind": "independent-review",
+    "owner": "recorded in docs/remediation/EXTERNAL_INPUT_REQUESTS.md (this lane does not re-state it, to avoid two copies drifting)",
+    "status": "OPEN",
+    "closure_evidence": "NONE",
+    "source": "docs/remediation/EXTERNAL_INPUT_REQUESTS.md",
+    "what_the_fixture_or_artifact_must_still_satisfy": "see the section in the source document",
+    "note": "ACQUISITION CLOSES NOTHING: this gate stays OPEN whatever arrives, and no self-generated fixture may substitute for the approval. It is listed here so the constraint is CHECKABLE rather than prose-only; the acceptance requirements themselves live in the source document."
+   },
+   {
+    "id": "APPROVED_CONTENT",
+    "kind": "content",
+    "owner": "recorded in docs/remediation/EXTERNAL_INPUT_REQUESTS.md (this lane does not re-state it, to avoid two copies drifting)",
+    "status": "OPEN",
+    "closure_evidence": "NONE",
+    "source": "docs/remediation/EXTERNAL_INPUT_REQUESTS.md",
+    "what_the_fixture_or_artifact_must_still_satisfy": "see the section in the source document",
+    "note": "ACQUISITION CLOSES NOTHING: this gate stays OPEN whatever arrives, and no self-generated fixture may substitute for the approval. It is listed here so the constraint is CHECKABLE rather than prose-only; the acceptance requirements themselves live in the source document."
+   },
+   {
+    "id": "NATIVE_MODELS",
+    "kind": "native",
+    "owner": "recorded in docs/remediation/EXTERNAL_INPUT_REQUESTS.md (this lane does not re-state it, to avoid two copies drifting)",
+    "status": "OPEN",
+    "closure_evidence": "NONE",
+    "source": "docs/remediation/EXTERNAL_INPUT_REQUESTS.md",
+    "what_the_fixture_or_artifact_must_still_satisfy": "see the section in the source document",
+    "note": "ACQUISITION CLOSES NOTHING: this gate stays OPEN whatever arrives, and no self-generated fixture may substitute for the approval. It is listed here so the constraint is CHECKABLE rather than prose-only; the acceptance requirements themselves live in the source document."
+   },
+   {
+    "id": "HARDWARE",
+    "kind": "device",
+    "owner": "recorded in docs/remediation/EXTERNAL_INPUT_REQUESTS.md (this lane does not re-state it, to avoid two copies drifting)",
+    "status": "OPEN",
+    "closure_evidence": "NONE",
+    "source": "docs/remediation/EXTERNAL_INPUT_REQUESTS.md",
+    "what_the_fixture_or_artifact_must_still_satisfy": "see the section in the source document",
+    "note": "ACQUISITION CLOSES NOTHING: this gate stays OPEN whatever arrives, and no self-generated fixture may substitute for the approval. It is listed here so the constraint is CHECKABLE rather than prose-only; the acceptance requirements themselves live in the source document."
+   },
+   {
+    "id": "SIGNING",
+    "kind": "release",
+    "owner": "recorded in docs/remediation/EXTERNAL_INPUT_REQUESTS.md (this lane does not re-state it, to avoid two copies drifting)",
+    "status": "OPEN",
+    "closure_evidence": "NONE",
+    "source": "docs/remediation/EXTERNAL_INPUT_REQUESTS.md",
+    "what_the_fixture_or_artifact_must_still_satisfy": "see the section in the source document",
+    "note": "ACQUISITION CLOSES NOTHING: this gate stays OPEN whatever arrives, and no self-generated fixture may substitute for the approval. It is listed here so the constraint is CHECKABLE rather than prose-only; the acceptance requirements themselves live in the source document."
+   }
+  ],
+  "gates_are_machine_checkable_since": "round 95 (AUDIT-003-R1 remediation ledger)",
+  "acquisition_closes_nothing": true,
+  "no_self_generated_fixture_may_substitute_for_an_approval": true,
+  "why_this_is_now_structured": "Round 95: the five gates were recorded as a frozen rule plus narrative, so \"the gates stay open\" could only be checked by reading prose. Each gate now carries id, kind, status, closure_evidence and a source pointer, so a court or a script can assert that none of them has moved and that none carries closure evidence."
  },
  "findings": {
   "ANDROID-01": {
@@ -4122,7 +4178,8 @@
    "the five external gates stay OPEN or BLOCKED",
    "no fixture may close an external gate",
    "the audit bundle is read-only",
-   "T78's recorded builder status stays BLOCKED_EXTERNAL"
+   "T78's recorded builder status stays BLOCKED_EXTERNAL",
+   "every entry in external_input_lane.gates stays status=OPEN with closure_evidence=NONE"
   ],
   "per_repair_requirements": [
    "name the finding id, the changed files/functions, the actual runtime caller and the invalidated dependent evidence",
