@@ -291,15 +291,49 @@
     "note": "Original proof retained. No independent fix closure. Source identity does not prove the whole caller graph unchanged.",
     "source_sha": "c683a2bf0b5bcdd4a662d98f7542351501b57b7c"
    },
-   "impact": "The initiator's HS2 hint lookup FAILS under CANONICAL advertising: the hint is looked up from optional advertising metadata, which canonical advertising does not carry, so a valid peer is refused at the HS2 trust step (the Android twin of IOS-03).",
-   "invalidated_dependents": [],
-   "my_fix_commit": null,
-   "my_logs": [],
-   "my_red_case": null,
-   "my_status": "OPEN",
-   "notes": "OPEN. Thin at snapshot; ENRICHED on 2026-09-15 with its twin's law and its own dependency (4e unlocks reachability). No device, no radio, no advertising capture exists in this environment.",
-   "pending_proof": [],
-   "proof": "Source-confirmed, not device-reproduced (the audit's own classification is SOURCE_CONFIRMED_NOT_DEVICE_REPRODUCED). No radio, no advertising capture and no BLE callback was executed for this finding.",
+   "impact": "A canonically-advertising (UUID-only) peer could never complete the trusted handshake on the Android isle: the scan is admitted, the GATT LinkInfo read binds the roles correctly, HS1 is emitted, an authentic HS2 arrives, and the initiator then closes before HS3 with `no remembered discovery hint` -- for lack of a hint the advertisement was never obligated to carry. The audit records this as a blocker that REMAINS after ANDROID-01 is fixed.",
+   "invalidated_dependents": [
+    "THE COURT ARM THAT PROTECTED THE BYPASS: ReadinessT21Test's ladder supplied BleLinkInfoV1(nodeHint=...) in the ScanEvent for every arm, so the defect could not be seen. The ladder now takes `withScanMetadata`, existing arms keep the metadata they need, and the new arm covers the canonical shape. No existing arm had to be reversed (all are green beside the new one) -- the gap was an absent case, not a wrong assertion.",
+    "android/mesh/src/main/java/io/godstone/mesh/transport/BleTransport.kt -- the `discoveryIndexMetadataHint` helper is REMOVED (its only caller was the HS2 trust path) and the trust path's comment is replaced.",
+    "Any evidence that leaned on the discovery index's metadata being the hint authority for an already-bound relation is invalidated.",
+    "NOT invalidated: the discovery index itself (still the discovery hint), the LinkInfo binding and its NODE_HINT_BYTES validation, the T23 duplicate/stage gates, and the record format -- all unchanged and green."
+   ],
+   "my_fix_commit": "098fcb2",
+   "my_logs": [
+    {
+     "log": "ANDROID-02/green/android-02-T21-GREEN.log",
+     "sha256": "65bebbed0aac1c0b6521d7466a67a2d0bc18f3fa262a1e38abd925a639cfa911",
+     "what": "android ReadinessT21Test after the repair: BUILD SUCCESSFUL (the canonical case now reaches both READY)"
+    },
+    {
+     "log": "ANDROID-02/green/android-02-ANDROID-FULL.log",
+     "sha256": "9f747511ebff9f4937a95cd2546371e5895672ca9941fa6906f34dcb76443bfe",
+     "what": "whole android :mesh lane after the repair: BUILD SUCCESSFUL"
+    },
+    {
+     "log": "ANDROID-02/green/android-02-LANES.log",
+     "sha256": "5ec9607063113d9f233f28d8b794031c7f90cd4afa89fd848adff602efbcaaf0",
+     "what": "readiness suite OK; adopted probes 12/0 OK; invariants passed=7 failed=0 all hold; repository VERDICT PASS; shipping rc=0; symbols 213 files 0 unresolved; iOS mirror --check rc=0; mutation selftest SELFTEST OK"
+    }
+   ],
+   "my_red_case": {
+    "case": "android/mesh/src/test/java/io/godstone/mesh/readiness/ReadinessT21Test.kt::testTheCanonicalAdvertisementWithoutServiceDataStillReachethTheTrustedReady -- MOVED into the canonical T21 court, which drives the REAL transport (scan admission, central-driver callbacks, record ingest) rather than a model of it. The court's `bringUpInitiatorLadder` gained a `withScanMetadata` parameter because every existing arm supplied advertisement metadata that a canonical advertiser does not have.",
+    "argv": "(cd android && ./gradlew :mesh:testDebugUnitTest --tests '*ReadinessT21Test*')",
+    "cwd": "/Users/oculus/Projects/GODSTONE_BUILDER",
+    "log": "ANDROID-02/red/android-02-RED.log",
+    "log_sha256": "41e7b348224c240b5def27c88f4299c901ff3153e225b4d7d21c9ab4d1fd0a51",
+    "outcome": "RED on the untouched product, reproducing the audit's failure schedule exactly and in its own words: java.lang.IllegalStateException: the HS3 must answer the true HS2 at the initiator outlet; ring: hs.read.initiator|no remembered discovery hint (ReadinessT21Test.awaitNonEmpty:432 <- driveToReady:667). The ladder itself SUCCEEDED: the scan was admitted with null metadata, the GATT LinkInfo read bound the roles, HS1 travelled and the authentic HS2 arrived -- only the hint lookup failed, which is precisely the audit's charge."
+   },
+   "my_status": "FIX_SUBMITTED",
+   "notes": "FIX SUBMITTED (098fcb2) as the twin of IOS-03 (19a4635): the SAME law on both isles -- the hint for an already-bound relation cometh from the GATT-bound relation, and optional advertising metadata is never its authority. What made this isle stronger: its court drives the REAL transport, so the red is behavioural and reproduces the audit's schedule verbatim (including the `no remembered discovery hint` string at the site the audit named), whereas the Swift twin has no transport harness and its arm therefore reads code. THE LESSON THIS PAID FOR: a court that supplies RICHER inputs than the real platform ever hands over can be green on a defect indefinitely -- the missing case was the canonical one, and the fix to the HARNESS (`withScanMetadata`) was as important as the fix to the product.",
+   "pending_proof": [
+    "NO DEVICE/EMULATOR/SIMULATOR/RADIO WAS USED. No real advertisement was scanned and no radio delivered HS2; the whole exchange runs through the transport's own entries with the platform boundary stood in for by the court (which is the harness the audit's own Android evidence uses).",
+    "REACHABILITY STILL GATED BY WAVE 4e: the audit records that ANDROID-01 (the composed D2/key-confirmation start) is what makes the path reachable on the normal road, so no runtime-reachability claim is made here.",
+    "The audit's recommended remediation order for the Android isle (ANDROID-06 writer ownership, ANDROID-04 timers, ANDROID-05 lifecycle, then ANDROID-02's relation hint) is NOT followed by this repair: this one was taken out of that order deliberately, because it was dependency-free, fully specified and completable atomically. Recorded rather than hidden.",
+    "The parameter name `advertisedRemoteHint` in SessionManager.initiatorProcessHs2 / responderProcessHs3 (and TrustedHandshakeController.initiatorProcessMessage2) now carries the BOUND hint and is misleading on BOTH isles; renaming it touches ~15 call sites and their Swift twins, so it is recorded as pending work rather than bundled silently into a behavioural fix.",
+    "NO HOSTED LANE EXISTS in this environment: there is no CI run URL, run id or hosted log."
+   ],
+   "proof": "Behaviourally REPRODUCED on the host through the transport's own entries (not merely source-confirmed): scan with null metadata -> GATT LinkInfo read -> role bound -> HS1 -> authentic HS2 -> `hs.read.initiator|no remembered discovery hint` -> no HS3, relation closed. The audit's own schedule, in its own words, at the exact site it named.",
    "remediation_report": "evidence/android/findings.md",
    "remediation_steps": [
     "TAKE the HS2 hint from the GATT-bound relation (the mandatory LinkInfo value bound into the connection), not from optional advertising metadata -- the same law IOS-03 states for the other isle.",
@@ -308,7 +342,13 @@
     "Repair as ONE atomic change with IOS-03 (wave 4d), then re-run both isles' canonical lanes and record that the device proof is still pending."
    ],
    "severity": "HIGH",
-   "source_refs": [],
+   "source_refs": [
+    "android/mesh/src/main/java/io/godstone/mesh/transport/BleTransport.kt:1583 (handleInitiatorHandshakeRecord obtained the HS2 hint from discoveryIndexMetadataHint)",
+    "android/mesh/src/main/java/io/godstone/mesh/transport/BleTransport.kt:1667 (that helper read ONLY discoveredMetadataForTest(...).nodeHint -- no GATT/connection fallback)",
+    "android/mesh/src/main/java/io/godstone/mesh/transport/BleTransport.kt:266,361 (UUID-only advertising is documented as the canonical shape; scan metadata is extracted SOLELY from 13-byte service data, null for canonical advertisements)",
+    "android/mesh/src/main/java/io/godstone/mesh/transport/BleTransport.kt:518 and BleConnection.kt:49 (the GATT callback stores the decoded remote LinkInfo in centralRemoteLinkInfo; the role owner has the bound remoteNodeHint)",
+    "android/mesh/src/test/java/io/godstone/mesh/readiness/ReadinessT21Test.kt:266 (the court supplied BleLinkInfoV1(nodeHint=...) directly in the ScanEvent -- metadata canonical T09 advertisements do not contain -- which is why the defect stayed green in the court)"
+   ],
    "tasks": [
     "T09",
     "T21"
