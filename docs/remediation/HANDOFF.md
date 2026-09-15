@@ -46,7 +46,42 @@ already carried. The audit's step 3 stays OPEN, with its two measured obstacles 
 | CRYPTO-003 | FIX_SUBMITTED | 4b | Destroyed retained controllers and primitive sessions st |
 | CRYPTO-006 | FIX_SUBMITTED | 4b | Duplicate journal admission is treated as success for a |
 
-## DO THIS FIRST (round 162) — GS-SOS-001's iOS TWIN IS REPAIRED AND THE WHOLE iOS LANE IS GREEN; THE NEXT TARGET IS THE ISSUANCE BYPASS
+## DO THIS FIRST (round 163) — THE ISSUANCE BYPASS IS CLOSED ON THE ANDROID ISLE (2 CONTROL ERRORS BECOME 1); THE iOS HALF IS STAGED AND NEXT
+
+The audit's local-identity control reported this defect at `SignedSosV1.kt:274`: `author(...)` **struck its
+own `IdentityBindingV1`** from the raw seed/generation/DH key it was handed. The binding is now a
+**PARAMETER** — `SosSigningAuthority.currentIdentityBinding()` — obtained from the authority, and
+`MeshNode.authorSignedSos` **refuses** (null → no frame, no hold, no offer) when the authority holds none.
+The frozen T13 equation and the **wire bytes are unchanged**: the court's pinned golden vectors stayed green,
+which is the control that proves byte-identity. Landed in `b229c3b`.
+
+**The red, and why it is source-level (stated, not glossed):** the repair is an OWNER-CONTRACT change, so a
+behavioural arm of the new law **cannot compile** against the audited tree — the API it must exercise does not
+exist yet. The independent failing assertion is therefore the control's own, moved into the canonical suite as
+`tools/readiness/tests/test_local_identity_issuance.py` and run RED **before** the edit: 3 tests, 2 failures
+(one per isle), with `W00`'s positive control (the authority files still issue) **passing**, so the scan proves
+it read the tree rather than finding nothing. Two behavioural arms ship with the repair in the SOS court: an
+authority with material but **no issued binding** must offer nothing, and a frame must carry **that
+authority's** binding byte for byte (read through the frozen public offsets — a first attempt hand-counted the
+slice and compared a shifted window, and the court caught it).
+
+**A discovery worth keeping:** that control is a **text match over production sources, and it counts
+comments**. The first attempt failed it with the code already correct, because the new KDoc quoted the
+forbidden spelling verbatim. The wording is now deliberately indirect and the lesson is written into the
+comment, because a reader who documents the law by quoting it will re-break the gate.
+
+**Acceptance:** `:mesh` lane **1171 tests, 0 failures, 0 errors, 0 skipped** (1169 before + the two new arms);
+`check_local_identity_controls` **2 errors → 1**; every other control unchanged (same 3 red as baseline,
+`check_parity --scope repo` rc 0, `ci/symbols.py` rc 0); the whole Python readiness suite OK.
+
+**NEXT (exactly written out):** the iOS half — give the iOS protocol `currentIdentityBinding()`, make
+`SignedSosV1.author` take the issued binding, obtain it in `MeshNode.dispatchSos` (refusing when absent), have
+the iOS harness's `SimulatedSosAuthority` receive the binding its own identity issued, update the court
+fixtures (`FakeAuthority`, `MissingMaterialAuthority`, and the `fixed()` path the five rigs use), then **MOVE
+the parked arm** `tools/readiness/audit_probes/python/test_local_identity_issuance_ios.py` **into the canonical
+suite** beside its twin and run the whole iOS lane (expect ~1196 tests, grep `Executed `).
+
+## DO THIS FIRST (round 162, landed) — GS-SOS-001's iOS TWIN IS REPAIRED AND THE WHOLE iOS LANE IS GREEN
 
 GS-SOS-001's **iOS twin** is now red-proved and fully specified, so its repair is a MEASURED change rather
 than a search. The three signatures the previous round left open are answered: `T38Vec` is
