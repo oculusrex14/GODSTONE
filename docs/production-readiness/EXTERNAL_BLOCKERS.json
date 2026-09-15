@@ -1,17 +1,21 @@
 {
+  "blocked_external_count": 12,
   "blockers": [
     {
       "approved_source_or_human_role": "external auditor",
       "class": "independent-review",
       "closure_evidence": null,
       "dependent_tasks": [
-        "T79",
         "T73",
         "T75",
-        "T78"
+        "T78",
+        "T79"
+      ],
+      "frontier_tasks": [
+        "T79"
       ],
       "id": "A06",
-      "internal_prerequisites_completed": false,
+      "internal_prerequisites_completed": true,
       "reason": "Independent Noise/conformance review artifact not supplied. The ExternalNoiseLockV1 validator (T04) is ready; the gate stays UNAVAILABLE until a real fixture + lock arrive. T79 (consume independently approved A-06 fixtures) is the task that consumes them, and T73/T75/T78 inherit the block.",
       "recheck_trigger": "receipt of reviewed artifact",
       "required_artifact_schema": "structured PINNED/matched-case conformance report + tamper controls",
@@ -27,36 +31,48 @@
       "class": "content",
       "closure_evidence": null,
       "dependent_tasks": [
-        "T80",
-        "T78"
+        "T78",
+        "T80"
+      ],
+      "frontier_tasks": [
+        "T80"
       ],
       "id": "APPROVED_CONTENT",
-      "internal_prerequisites_completed": false,
+      "internal_prerequisites_completed": true,
       "reason": "No approved content corpus or trust bundle supplied.",
       "recheck_trigger": "approved manifest staged",
       "required_artifact_schema": "release manifest + independent trust store",
       "status": "BLOCKED_EXTERNAL",
-      "verification_commands": []
+      "verification_commands": [
+        "python3 -m tools.readiness.run task T80 --stage narrow",
+        "python3 ci/check_release_gates_status.py"
+      ]
     },
     {
       "approved_source_or_human_role": "native build owner",
       "class": "native",
       "closure_evidence": null,
       "dependent_tasks": [
-        "T81",
         "T62",
         "T63",
         "T64",
         "T65",
-        "T78"
+        "T78",
+        "T81"
+      ],
+      "frontier_tasks": [
+        "T81"
       ],
       "id": "NATIVE_MODELS",
-      "internal_prerequisites_completed": false,
+      "internal_prerequisites_completed": true,
       "reason": "No approved native model/runtime binaries supplied.",
       "recheck_trigger": "binary drop received",
       "required_artifact_schema": "hash-pinned binaries with license metadata",
       "status": "BLOCKED_EXTERNAL",
-      "verification_commands": []
+      "verification_commands": [
+        "python3 -m tools.readiness.run task T81 --stage narrow",
+        "python3 -m tools.readiness.promises"
+      ]
     },
     {
       "approved_source_or_human_role": "device lab",
@@ -69,13 +85,19 @@
         "T76",
         "T78"
       ],
+      "frontier_tasks": [
+        "T74"
+      ],
       "id": "HARDWARE",
-      "internal_prerequisites_completed": false,
+      "internal_prerequisites_completed": true,
       "reason": "Physical iOS/Android devices and BLE radios unavailable in this environment.",
       "recheck_trigger": "device access established",
       "required_artifact_schema": "device matrix results",
       "status": "BLOCKED_HARDWARE",
-      "verification_commands": []
+      "verification_commands": [
+        "python3 -m tools.readiness.run task T74 --stage narrow",
+        "python3 ci/check_release_gates_status.py"
+      ]
     },
     {
       "approved_source_or_human_role": "release owner",
@@ -85,15 +107,29 @@
         "T76",
         "T78"
       ],
+      "frontier_tasks": [],
       "id": "SIGNING",
       "internal_prerequisites_completed": false,
       "reason": "Signing keys, keystore and store credentials are external and secret.",
       "recheck_trigger": "credentials provisioned",
       "required_artifact_schema": "signing metadata without key material",
       "status": "BLOCKED_EXTERNAL",
-      "verification_commands": []
+      "verification_commands": [
+        "python3 -m tools.readiness.run task T76 --stage narrow",
+        "python3 ci/check_release_gates_status.py"
+      ]
     }
   ],
-  "frontier_note": "Recomputed after T84 (08e5694): every still-pending task is blocked by one of these five artifacts, directly or transitively. T41 is the ONLY pending task with complete dependencies and no external requirement, and it is the next the loop selecteth.",
+  "completed_task_count": 72,
+  "frontier_note": "Recomputed after T82 (cdb1ca4): SEVENTY-TWO of eighty-four tasks are COMPLETE and the remaining TWELVE are BLOCKED_EXTERNAL, each carrying its own record in BUILD_STATE.completed_tasks with the blocker, the required artifact, the approving role, the verification command, a null closure_evidence and a recheck trigger. NO internally-runnable task remaineth: every pending task is blocked by one of these five artifacts, directly or transitively. The four FRONTIER tasks (T74, T79, T80, T81) have COMPLETE internal prerequisites and await only their artifact; T62-T65 inherit NATIVE_MODELS, T73/T75 inherit HARDWARE through T79/T73, T76 inheriteth SIGNING through T74, and T78 inheriteth every one of them.",
+  "pre_existing_closed_gates": [
+    {
+      "ancestor_of_head": true,
+      "closed_by_task": "T41/T42 (the Archive-only release lane), before the blocked-external frontier",
+      "evidence_commit": "3ddb6f68368a3877afacc189d348b0dde8a9941e",
+      "gate": "android-archive-only-release",
+      "note": "this gate is CLOSED on evidence that an ancestor of the head carrieth. It is NOT one of the five external blockers, and the blocked-external discipline neither closed it nor may re-close anything: it asserteth only that the FIVE remain OPEN or BLOCKED."
+    }
+  ],
   "schema_version": 1
 }

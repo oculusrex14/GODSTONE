@@ -1,143 +1,58 @@
 {
-  "evidence_root": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/T82",
+  "evidence_root": "/Users/oculus/Projects/GODSTONE_BUILDER_EVIDENCE/FINAL_FRONTIER",
   "files": [
     {
-      "path": "T82/BUILDER_NOTE.md",
-      "sha256": "b0460948dc8aa1bb8dd725d0e740a1abd1b289157f3ca563ebc054908877ae98",
-      "size": 4592
+      "path": "FINAL_FRONTIER/executed/blocked-records.json",
+      "sha256": "ec2a069fe369248a6a47997f7c9f9057e0db04229245e5da3ec77abf310ab107",
+      "size": 13576
     },
     {
-      "path": "T82/commands.json",
-      "sha256": "106783a26e6b267d58502663dd8cf51498a274248b77168f17e68341885b3314",
-      "size": 3529
+      "path": "FINAL_FRONTIER/executed/controls-full.log",
+      "sha256": "1cbe70b534ab3b12f8fe433e8bce18279c3d5a4ea683afee8b918b39b380c6c7",
+      "size": 3474
     },
     {
-      "path": "T82/executed/T82-controls-full.log",
-      "sha256": "8bffcc10f73f80562a041525ce9a6a48ebd9014546810e1286c2eacbc52e2cc3",
-      "size": 3004
-    },
-    {
-      "path": "T82/executed/T82-diff-check.log",
+      "path": "FINAL_FRONTIER/executed/diff-check.log",
       "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
       "size": 0
     },
     {
-      "path": "T82/executed/T82-implementation-commit.log",
-      "sha256": "1640ea9f3c1b82bd803763b115fed020d32b95b4e86a39cd0c5c14971e0c2c3e",
-      "size": 6073
+      "path": "FINAL_FRONTIER/executed/frontier-court-executed.log",
+      "sha256": "8d7e3fee2d8f4bafcf73f1cda7a1efa1201127c0a248dbc79ea950c7c4f788bb",
+      "size": 1681
     },
     {
-      "path": "T82/executed/T82-narrow-python-executed.log",
-      "sha256": "48d4c25a248b4ac5d3a0f90b4a8141a39adfacb3329c28520d6bf52074a40acc",
-      "size": 1861
+      "path": "FINAL_FRONTIER/executed/frontier-report.log",
+      "sha256": "c4659e633d23718808173b916346deed5b0661a646d1baa95b1db31340bf760b",
+      "size": 395
     },
     {
-      "path": "T82/executed/T82-promise-ledger.log",
+      "path": "FINAL_FRONTIER/executed/promise-ledger.log",
       "sha256": "eeadc0b099436caf7d2217db77997d746b7a18249a5cf4796857b1f4469b5f84",
       "size": 987
     },
     {
-      "path": "T82/executed/T82-structural-lineage.log",
+      "path": "FINAL_FRONTIER/executed/readiness-suite-executed.log",
+      "sha256": "a735ef7b3faf9a5e90b8404d110c9c87d957d5ef8ef2db66bff6adec7d7ea3a7",
+      "size": 134296
+    },
+    {
+      "path": "FINAL_FRONTIER/executed/release-gates-check.log",
+      "sha256": "e54c991a822d39637c8757168bab7278faafcceab57341ebb44d4f70ec13aa61",
+      "size": 538
+    },
+    {
+      "path": "FINAL_FRONTIER/executed/structural-lineage.log",
       "sha256": "3731a17d5b5ad7c7c6603f14622a2922fb12b8e105442e96b73c4cd33b67764d",
       "size": 903
     },
     {
-      "path": "T82/executed/T82-subsystem-python-executed.log",
-      "sha256": "17de9b8336f4f6b72de6c911c79c33f4c9fe9b2e9bc2fcc123f96e8e1bb58220",
-      "size": 132714
-    },
-    {
-      "path": "T82/executed/T82-sync-check.log",
+      "path": "FINAL_FRONTIER/executed/sync-check.log",
       "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
       "size": 0
-    },
-    {
-      "path": "T82/logs/T82-controls-python3-002.log",
-      "sha256": "604476d6f067a942c6e64efefd5ae147930eb142f02a903d28a598e72596a8a4",
-      "size": 649
-    },
-    {
-      "path": "T82/logs/T82-controls-python3.log",
-      "sha256": "4cb18f41ddb9f8e17f7996d1a90390e8e192c961b836300b7a657700712003f5",
-      "size": 3105
-    },
-    {
-      "path": "T82/logs/T82-narrow-python3.log",
-      "sha256": "979d1c2d758d87cf23159f0434a56bb5ec080913a41d09e5892f50d97bbd4557",
-      "size": 2003
-    },
-    {
-      "path": "T82/logs/T82-subsystem-python3.log",
-      "sha256": "6db4d80d3440c294914a319091e229d59c3ffba246e32056792dd7b9d07ecedb",
-      "size": 132841
-    },
-    {
-      "path": "T82/roster/logs/T82-RC1-an-advertised-promise-is-not-checked.semantic.log",
-      "sha256": "f15c5b3c622f3af93aea76d0f3b07224ecaae50a82f250d49901629857eda36e",
-      "size": 1282
-    },
-    {
-      "path": "T82/roster/logs/T82-RC10-the-ledger-forgetteth-the-bulk-plane.semantic.log",
-      "sha256": "f8e62afb787cee4c551f73d06679ae0826a264968846c372ac187b7573a80dcf",
-      "size": 1565
-    },
-    {
-      "path": "T82/roster/logs/T82-RC11-the-media-tier-promise-is-silent.semantic.log",
-      "sha256": "6a4cc1288aba49898c5f3c76a87c5b3ae12617a7764ba95e23c8922e27a8b87b",
-      "size": 1288
-    },
-    {
-      "path": "T82/roster/logs/T82-RC12-a-media-tier-may-be-marked-shipping.semantic.log",
-      "sha256": "88080537e666fa005dda575163cd976cf718a600959db069d4e4ef299153d23f",
-      "size": 1393
-    },
-    {
-      "path": "T82/roster/logs/T82-RC2-the-internet-removal-is-not-checked.semantic.log",
-      "sha256": "5e362092c7a2441e7a31fc8ea91bf16d561e510cd49e74ac50486fc311d3177b",
-      "size": 1366
-    },
-    {
-      "path": "T82/roster/logs/T82-RC3-the-profile-flags-are-not-checked.semantic.log",
-      "sha256": "54f1ba8caaa023ed9890839e761aa5bf9b443af7f8da1097219847ab750927fd",
-      "size": 1385
-    },
-    {
-      "path": "T82/roster/logs/T82-RC4-the-tier-table-may-carry-two-shipping-tiers.semantic.log",
-      "sha256": "6d09f99b55c95e91a5e55de80f1f9143e30ce118ea16517dd8fa01043da98d98",
-      "size": 1390
-    },
-    {
-      "path": "T82/roster/logs/T82-RC5-a-closed-capability-need-not-be-closed-in-words.semantic.log",
-      "sha256": "1f4c620e1a9f98423789b051c76fa728f2e01686e020ad607b7c73203fba162d",
-      "size": 1401
-    },
-    {
-      "path": "T82/roster/logs/T82-RC6-the-bulk-stub-may-pretend-to-send.semantic.log",
-      "sha256": "c4aac87a8bd821b06880684ff36e76472af9076814a99890175ddcf9e285519d",
-      "size": 1255
-    },
-    {
-      "path": "T82/roster/logs/T82-RC7-the-ios-surface-may-advertise-bulk.semantic.log",
-      "sha256": "15d1b631151b0066783b3d5d31b67c03321143510519c97a39fe7fe9a87d4c5c",
-      "size": 1421
-    },
-    {
-      "path": "T82/roster/logs/T82-RC8-an-open-decision-need-not-be-recorded.semantic.log",
-      "sha256": "1da97ed90bcb609331868e51e7474007431cc260ab3bb0287464a0c7c5b1582d",
-      "size": 1261
-    },
-    {
-      "path": "T82/roster/logs/T82-RC9-a-stub-may-be-advertised.semantic.log",
-      "sha256": "c5bb0820d8e4a9c7f4debd1572e8a8715cc963bd8dbc611ec201f3448b2827d9",
-      "size": 1439
-    },
-    {
-      "path": "T82/roster/manifest.json",
-      "sha256": "d1e5f992f4a140f9a5988ed6978a0f2197aa35c59281a37454f0a9d4539ef31d",
-      "size": 9885
     }
   ],
-  "note": "Complete evidence index for T82: the runner's command records and logs for the three declared stages at the implementation head 0d12eb41, the EXECUTED unittest logs the witness counts were read from (403, up from 390), the promise ledger's own verdict line, the roster manifest with its twelve per-rod logs (its failed_assertion field is authoritative; the log files are truncated tails), the control checkers' output, all four builder children's stat records, and the builder note carrying the counting rule, the three campaign passes and their shared lesson, the two widened rules, the ledger's own two first-draft errors, and the explicit non-claims. No keys, no private content, no device result.",
+  "note": "Evidence for the final frontier: the twelve BLOCKED_EXTERNAL records (dumped verbatim from BUILD_STATE), the blocked-external court's EXECUTED log (10 witnesses, and a full readiness suite of 413), the frontier report, the ordinary controls (which now RUN the frontier checker), the release-gates checker, the promise ledger, the structural lineage, diff hygiene and sync. It proveth the frontier is RECORDED and honest -- that no blocker carrieth closure evidence and no gate was closed with a fixture -- and it proveth NOTHING about the artifacts themselves, which do not exist.",
   "schema_version": 1,
-  "task": "T82"
+  "task": "FINAL_FRONTIER"
 }

@@ -25,6 +25,11 @@ CHECKS = [
     # EXECUTETH the disposable-worktree rule: a worktree is created, used and
     # removed, and the live tree's HEAD and status are compared before and after.
     [sys.executable, "ci/mutations.py", "--selftest"],
+    # The blocked-external frontier: every pending task must carry a record naming a
+    # register blocker, no blocker may carry closure evidence (a fixture can never
+    # close an external gate), the readiness flags must stay false, and the five
+    # externally-blocked release entries must stay OPEN or BLOCKED.
+    [sys.executable, "tools/readiness/blockers.py"],
 ]
 
 
