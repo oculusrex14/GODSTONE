@@ -562,6 +562,10 @@ public struct SystemMonotonicClock: MonotonicClock {
 }
 
 public final class BleTransport: NSObject, @unchecked Sendable {
+    /// IOS-05 / T27 (steps 1-2): THE PRE-AUTH ADMISSION BUDGET, charged at the ingress doors BEFORE
+    /// parsing, reassembly, DH or trust work. The iOS twin of the android isle's `AdmissionBudget`.
+    private let admissionBudget = AdmissionBudget()
+
 
     public static let serviceUuid = CBUUID(string: FrameV2.serviceUuidString)
     // T10: every GATT identifier is the generated wire-contract value. The
@@ -1831,6 +1835,13 @@ public final class BleTransport: NSObject, @unchecked Sendable {
         unlockTransport()
     }
 
+    /// IOS-05 / T27 (step 4): the DOWNSTREAM COUNTERS -- exact, not the lossy rejection ring.
+    internal func admissionRefusalsForTest() -> Int { admissionBudget.refusedCount() }
+    internal func admissionTrackedRelationsForTest() -> Int { admissionBudget.trackedRelationCount() }
+
+    /// IOS-05 / T27: what one RAW advertisement chargeth in the global budget.
+    internal static let rawAdvertisementBytes = 64
+
     internal func rejectionRecordsForTest() -> [RejectionRecord] {
         lockTransport()
         let value = pendingRejections
@@ -2588,6 +2599,14 @@ public final class BleTransport: NSObject, @unchecked Sendable {
         serviceDataHint: Data? = nil,
         peripheral: CBPeripheral? = nil,
         sourceEpoch: UInt64, from manager: CBCentralManager) -> BleCentralAction {
+        // IOS-05 / T27 (step 2, the GLOBAL half): THE RAWEST PRE-AUTH TRAFFIC IS THE ADVERTISEMENT --
+        // it arriveth before any relation, any parse and any session, so it is charged FIRST, whatever
+        // its epoch, and refused traffic never reacheth the reduction.
+        if admissionBudget.chargeGlobal(bytes: BleTransport.rawAdvertisementBytes) == .refused {
+            recordRejection(peerId: peerId, site: "admission.budget",
+                            reason: "global pre-auth admission budget exhausted at the scan door")
+            return .noOp
+        }
         // T14: the whole reduction of this event - validation, transition,
         // effect scheduling - is one operation on the epoch serial executor.
         return onExecutor {
@@ -3339,6 +3358,14 @@ public final class BleTransport: NSObject, @unchecked Sendable {
     }
 
     public func processInboundWrite(centralId: UUID, rawData: Data, sourceEpoch: UInt64 = 0, from manager: CBPeripheralManager) -> BlePeripheralAction {
+        // IOS-05 / T27 (step 2, the RELATION half): the value is charged for the RELATION it arriveth
+        // on -- the only identity that existeth before authentication -- BEFORE any parse or session work,
+        // and a refusal never reacheth the reduction.
+        if admissionBudget.charge(centralId.uuidString, bytes: rawData.count) == .refused {
+            recordRejection(peerId: centralId, site: "admission.budget",
+                            reason: "pre-auth admission budget exhausted for the relation")
+            return .noOp
+        }
         // T14: the whole reduction of this event - validation, transition,
         // effect scheduling - is one operation on the epoch serial executor.
         return onExecutor {

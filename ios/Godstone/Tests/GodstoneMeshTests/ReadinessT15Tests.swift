@@ -277,4 +277,34 @@ final class ReadinessT15Tests: XCTestCase {
         transport.stop()
         XCTAssertEqual(transport.timerLeaseCountForTest(), 0, "no timer is retained past the boundary")
     }
+
+    /// IOS-05 / T27 (step 2's global half): RAW AIR TRAFFIC MUST BE CHARGED AT THE SCAN DOOR.
+    ///
+    /// The card's own words: charge the cheap global/connection budget BEFORE allocating/parsing/DH/trust
+    /// work, and never pretend an unauthenticated peer's hint is an identity. The audited iOS isle
+    /// chargeth NOTHING: `PeerGovernor` is referenced NOWHERE in production except one comment, so a flood
+    /// of advertisements is free radio work. This witness driveth the REAL door (`processOutboundDiscover`)
+    /// and readeth the transport's OWN rejection census.
+    func testRawAdvertisementsAreChargedAndRefusedAtTheScanDoor() throws {
+        let clock = TestClock(startingAt: 5_000)
+        let transport = BleTransport(identity: try makeIdentity(), store: nil, clock: clock)
+        transport.start()
+        let cm = transport.requireContextCentralForTest()
+        let epoch = transport.currentTransportEpoch
+        for i in 0..<70_000 {
+            _ = transport.processOutboundDiscover(
+                peerId: UUID(), rssi: -50, serviceDataHint: nil, peripheral: nil,
+                sourceEpoch: epoch, from: cm
+            )
+            _ = i
+        }
+        let budgetRefusals = transport.rejectionRecordsForTest()
+            .filter { $0.site.contains("admission") || $0.reason.contains("budget") }.count
+        XCTAssertTrue(
+            budgetRefusals > 0,
+            "a flood of RAW advertisements must be CHARGED at the scan door and eventually REFUSED; the "
+                + "audited road charged nothing for air traffic at all. Refusals seen: " + String(budgetRefusals)
+        )
+    }
+
 }

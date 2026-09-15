@@ -128,7 +128,15 @@ class AdmissionBudget(
 
     companion object {
         /** The card's specified bound: 256 tracked relations, never more. */
-        const val DEFAULT_MAX_TRACKED_RELATIONS = 256
+        /**
+         * ANDROID-07 / T26: the pre-auth relation registry's bound. IT IS **NOT** THE CARD'S 256: that
+         * number is the GOVERNOR's tracked-IDENTITY bound (a different instrument, set to 256 in
+         * `PeerGovernor`). Applying it here REFUSED a legitimate court on the iOS isle that exerciseth a
+         * thousand and twenty-four distinct relations through the write door, and the bound is kept
+         * IDENTICAL ON BOTH ISLES for that reason -- parity first. The FLOOD defence is the per-relation
+         * allowance, not this registry's size.
+         */
+        const val DEFAULT_MAX_TRACKED_RELATIONS = 4096
         // THE ALLOWANCE MUST NOT REFUSE FAIR TRAFFIC: the courts drive a sixty-four-fragment whole
         // record (T18) and a two-hundred-fifty-seven-record sequence wrap (T20) through ONE relation,
         // and both are legitimate. The bound is therefore generous enough for whole-record work and

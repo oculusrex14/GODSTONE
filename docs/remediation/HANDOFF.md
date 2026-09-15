@@ -46,7 +46,45 @@ already carried. The audit's step 3 stays OPEN, with its two measured obstacles 
 | CRYPTO-003 | FIX_SUBMITTED | 4b | Destroyed retained controllers and primitive sessions st |
 | CRYPTO-006 | FIX_SUBMITTED | 4b | Duplicate journal admission is treated as success for a |
 
-## DO THIS FIRST (round 195) — IOS-05 / T27: THE SPECIFIED BOUND AND A **STRUCTURAL** MONOTONIC CLOCK LAND ON THE iOS ISLE
+## DO THIS FIRST (round 196) — IOS-05 / T27 STEP 2 LANDS: THE iOS INGRESS IS NO LONGER UNCHARGED (AND THE LANE CAUGHT ME OVER-APPLYING THE CARD'S 256)
+
+**The defect was absolute on this isle:** `PeerGovernor` is referenced **nowhere in production except one comment**
+(`GodstoneCore/ProofOfWork.swift:14`), so **no charge happened at any ingress** — raw advertisements, malformed values
+and no-relation traffic were all free.
+
+**The RED was behavioural, through the real door:** a witness in `ReadinessT15Tests` (the court that owns a transport
+and its manager fakes) floods **70,000 advertisements** through `processOutboundDiscover` and reads the transport's own
+rejection census — `Executed 6 tests, 1 failure`, **`Refusals seen: 0`**, on the unmodified tree, with argv, source SHA
+and digest.
+
+**The repair:** a new `ios/Godstone/Sources/GodstoneMesh/AdmissionBudget.swift` — the iOS twin of the Android class,
+with the **relation scope** (keyed by the relation, the only identity that exists before authentication) and the
+**global scope** (raw air traffic, which arrives before any relation), a **monotonic injected clock**, an `NSLock`, and
+**exact counters** — charged **first** at `processOutboundDiscover` (global, whatever the epoch, refusing with `.noOp`
+before the reduction) and at `processInboundWrite` (the relation, before any parse or session work). The transport now
+exposes the downstream counters through `admissionRefusalsForTest` and `admissionTrackedRelationsForTest`.
+
+**My own over-application, caught by the lane and corrected on BOTH isles:** I had set the pre-auth **relation**
+registry's bound to the card's **256** — but that number is the **governor's tracked-identity bound** (a different
+instrument, and it *is* 256 there, rounds 187/195). Applying it here **refused a legitimate court** that exercises
+**1024 distinct relations** through the write door (ReadinessT16's quarantine-metadata witness: `256` where it expected
+`1024`, and its own refusal counter `0` where it expected `976`, because *my* budget refused the values before its logic
+ran). The bound is now **4096 on both isles** — parity first — with the reasoning written into both constants. **A
+pre-auth bound that is too tight is indistinguishable from a denial of service the transport inflicts on its own peers**
+(the lesson round 189 learned for the global scope).
+
+**A compile error of my own, also recorded:** the budget field was first inserted at the first occurrence of the anchor
+comment, which lives **before** the class declaration — so `admissionBudget` was out of scope at the doors. The lane
+named it and it was **moved inside** the class.
+
+**Acceptance:** whole iOS lane **1202 tests, 0 failures** (1201 + the witness); Android `:mesh` lane re-run for the parity
+change — BUILD SUCCESSFUL.
+
+**Remaining on IOS-05:** step 3's **post-AEAD** charge (after AEAD, before application decode/store/router delivery, on
+the **authenticated** identity and priority, with the outcome **bound** — the Android isle carries it, including the
+retained full NodeID of round 193); and step 4's separation of local abuse penalties from **durable** trust.
+
+## DO THIS FIRST (round 195, landed) — IOS-05 / T27: THE SPECIFIED BOUND
 
 **Both defaults were the same two defects the Android twin carried** (round 187), found by reading the manifest:
 `PeerGovernor.defaultMaxTrackedPeers = 4096` where the card specifies **256**, and `nowMillis` defaulting to
