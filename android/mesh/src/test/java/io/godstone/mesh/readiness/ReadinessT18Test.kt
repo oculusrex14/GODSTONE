@@ -434,6 +434,35 @@ class ReadinessT18Test {
         }
     }
 
+    /** GS-CTRL-002 / T18 (round 181): THE RECORD WRITER'S RELATION KEY MUST CARRY THE CONNECTION'S OWN
+     *  GENERATION. The audited factories fabricated `0L` for both directions, so the writer's relation
+     *  identity named a generation that belongeth to NO relation -- a licence that could never be
+     *  matched, released or audited against the relation it was made for. */
+    @Test
+    fun testTheRecordWriterCarriethTheConnectionsOwnRelationGeneration() {
+        val rig = rig()
+        try {
+            rig.completeTrust()
+            val conn = rig.initiatorConnection()
+            // the writer is born with the first record of the relation (T18)
+            val verdict = kotlinx.coroutines.runBlocking {
+                rig.alice.send(rig.peerIdTowardsBob(), ByteArray(24) { (it + 3).toByte() })
+            }
+            assertEquals("the record must be admitted before the writer can be read",
+                         TransportResult.Admitted, verdict)
+            val writer = rig.alice.centralWriterForTest(rig.bobAddress)
+                ?: error("the writer must stand for the relation")
+            assertTrue("the relation carrieth a REAL generation (the driver assigned one)",
+                       conn.relationGeneration > 0L)
+            assertEquals(
+                "the writer's relation key must carry the CONNECTION's own generation, " +
+                    "not a fabricated 0 -- the writer named a relation that doth not exist",
+                conn.relationGeneration, writer.relationKey.generation)
+        } finally {
+            rig.stop()
+        }
+    }
+
     /** Required case: a record of sixty four whole fractions is admitted
      * and delivered; the flight never exceeds one value and the record
      * retires whole. */

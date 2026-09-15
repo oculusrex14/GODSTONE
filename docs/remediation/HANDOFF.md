@@ -46,7 +46,32 @@ already carried. The audit's step 3 stays OPEN, with its two measured obstacles 
 | CRYPTO-003 | FIX_SUBMITTED | 4b | Destroyed retained controllers and primitive sessions st |
 | CRYPTO-006 | FIX_SUBMITTED | 4b | Duplicate journal admission is treated as success for a |
 
-## DO THIS FIRST (round 180) — THE APP LAYER'S ROOT CAUSE FOUND: IT DEPENDS ON THE **NATIVE_MODELS** ARTIFACT, NOT ON WIRING
+## DO THIS FIRST (round 181) — ANDROID-05's T18 STEP: THE WRITER NO LONGER NAMES A RELATION THAT DOES NOT EXIST
+
+Both writer factories built their relation key as `RelationKey(direction, address, 0L)` — so a writer's relation identity
+named **generation 0, a generation that belongs to NO relation**: a licence that could never be matched, released or
+audited against the relation it was made for — while the connection itself carries a real generation
+(`BleConnection.relationGeneration`, assigned by the orchestration driver at both creation sites).
+
+**The RED, behavioural, and a setup failure recorded alongside it:** the arm reads `writer.relationKey.generation` against
+`initiatorConnection().relationGeneration` after `completeTrust()` and one admitted record. The **first** attempt failed
+in *setup* (`the writer must stand for the relation`) — which is how the court learned that **a writer is born with the
+first record of the relation** — and that failure is **kept in the ledger** rather than erased, because a setup failure
+is not a behavioural red. The second run is the RED: **`expected:<1> but was:<0>`** on the unmodified tree, with argv,
+source SHA and digest.
+
+**The repair:** both factories now pass `connection.relationGeneration` — the same reference the writer was already made
+for — so the key and the connection's relation identity agree **by construction** rather than by hope.
+
+**Acceptance:** whole `:mesh` lane **1176 tests, 0 failures, 0 errors** (1175 + the new witness), so every T18
+fragmentation court, the capacity-lease courts and the substrate courts still hold — and the new witness is a permanent
+control.
+
+**What remains on ANDROID-05:** the `resourcesReleased = 1` constant (a reported figure that must be *measured*, not
+asserted) and the **real** `LifecycleTransportAdapter.awaitInFlight` override (the adapter's coarse `stop()` versus a true
+in-flight drain).
+
+## DO THIS FIRST (round 180, landed) — THE APP LAYER'S ROOT CAUSE FOUND
 
 Round 179 named the app target's failure a *module-resolution* problem. **That was wrong, and the correction is recorded
 rather than left standing.** Measured twice:

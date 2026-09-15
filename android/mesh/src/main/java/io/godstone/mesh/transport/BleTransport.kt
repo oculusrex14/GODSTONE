@@ -1258,7 +1258,14 @@ class BleTransport(
                 // A fresh session brings fresh writers: what stood under the
                 // old connection is released, the durable store is not touched.
                 standing?.shutdown()
-                val fresh = RecordWriter(connection, RelationKey(BleDirection.OUTBOUND, address, 0L))
+                // GS-CTRL-002 / T18: the writer's relation key carrieth THE CONNECTION'S OWN
+                // GENERATION. The audited form fabricated `0L`, so the writer's relation identity
+                // named a generation that belongeth to NO relation -- a licence that could never be
+                // matched, released or audited against the relation it was made for.
+                val fresh = RecordWriter(
+                    connection,
+                    RelationKey(BleDirection.OUTBOUND, address, connection.relationGeneration),
+                )
                 centralWriters[address] = fresh
                 fresh
             }
@@ -1270,7 +1277,12 @@ class BleTransport(
             if (standing != null && standing.connection === connection) standing
             else {
                 standing?.shutdown()
-                val fresh = RecordWriter(connection, RelationKey(BleDirection.INBOUND, address, 0L))
+                // GS-CTRL-002 / T18: the inbound twin -- the responder's writer nameth ITS
+                // connection's generation, never a fabricated 0.
+                val fresh = RecordWriter(
+                    connection,
+                    RelationKey(BleDirection.INBOUND, address, connection.relationGeneration),
+                )
                 serverWriters[address] = fresh
                 fresh
             }
