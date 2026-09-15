@@ -645,4 +645,34 @@ class ReadinessT39Test {
             1, offers,
         )
     }
+
+    /**
+     * GS-SOS-002 (the audit's step-2 DURABLE-AUTHORITY half): the offer loop must stop on DURABLE TRUTH,
+     * not only on the in-process lease. Here the cancellation is committed through the TRACKER DIRECTLY --
+     * bypassing the node's command door entirely -- so no lease of mine is invalidated, and only a read
+     * of the durable row can suppress the later offer.
+     */
+    @Test
+    fun testCancellationCommittedOutsideTheCommandDoorSuppressethTheLaterOffer() = runTest {
+        val r = newRig()
+        r.node.injectPeerForTest(peerOf(1))
+        r.node.injectPeerForTest(peerOf(2))
+        var offers = 0
+        val dispatched = r.node.dispatchSos("durable truth please".toByteArray()) { _, bytes ->
+            offers++
+            if (offers == 1) {
+                val mid = io.godstone.mesh.wire.v2.FrameV2.decode(bytes)?.msgId
+                if (mid != null) {
+                    // the durable row is retired WITHOUT the node's own cancellation path
+                    r.tracker.cancelSosBroadcast(mid)
+                }
+                false
+            } else true
+        }
+        Assert.assertEquals(
+            "the durable row was retired during the first callback, so the later offer must not happen " +
+            "(offers=" + offers + ")",
+            1, offers,
+        )
+    }
 }

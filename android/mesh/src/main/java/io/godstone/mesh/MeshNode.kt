@@ -225,6 +225,21 @@ class MeshNode(
     private val dispatchLeases = java.util.concurrent.ConcurrentHashMap<String, Long>()
     private val dispatchLeaseSeq = java.util.concurrent.atomic.AtomicLong(0)
 
+    /**
+     * GS-SOS-002 (the audit's step 2, the DURABLE half): the message must still be DISPATCHABLE by
+     * DURABLE TRUTH before the next offer -- so a cancellation committed by ANY path (not merely through
+     * this node's command door) suppresseth the offers not yet made. An absent, corrupt, invalid, or
+     * UNREADABLE row STOPPETH the loop: fail-closed, never a skip.
+     */
+    private fun sosStillDispatchableByDurableTruth(msgId: ByteArray): Boolean =
+        when (val row = deliveryTracker.lookup(msgId)) {
+            // a row that standeth but hath reached a TERMINAL state (cancelled, expired, acknowledged)
+            // is no longer dispatchable: the durable terminal CAS keepeth the row, so PRESENCE alone
+            // would not suppress the later offer
+            is io.godstone.mesh.delivery.DeliveryLookup.Found -> !row.record.state.isTerminal
+            else -> false
+        }
+
     /** GS-SOS-002: a stable key for one message id (the lease map's key). */
     private fun leaseKey(msgId: ByteArray): String =
         msgId.joinToString("") { b -> "%02x".format(b) }
@@ -516,10 +531,14 @@ class MeshNode(
         val bytes = frame.encode()
         var handed = 0
         val dispatchLease = mintDispatchLease(msgId)
+        var offersAttempted = 0
         for (peerId in knownPeers()) {
             // GS-SOS-002: the lease is re-checked BEFORE every offer, so a cancellation committed
-            // inside a send callback suppresseth the offers not yet made.
+            // inside a send callback suppresseth the offers not yet made. Durable truth is consulted
+            // only from the SECOND offer on, because this path may not have committed its row yet.
             if (!dispatchLeaseStands(msgId, dispatchLease)) break
+            if (offersAttempted > 0 && !sosStillDispatchableByDurableTruth(msgId)) break
+            offersAttempted++
             val admitted = send(peerId, bytes)
             // T43: a LINK OFFER, not a custody claim. The durable row is NOT
             // advanced -- it standeth QUEUED_DURABLY until an intended
@@ -700,9 +719,12 @@ class MeshNode(
         val bytes = frame.encode()
         var handed = 0
         val retryLease = mintDispatchLease(frame.msgId)
+        var retryOffers = 0
         for (peerId in knownPeers()) {
-            // GS-SOS-002: re-checked before every offer (a cancel committed during a callback stops the rest)
+            // GS-SOS-002: re-checked before every offer; durable truth from the SECOND offer on
             if (!dispatchLeaseStands(frame.msgId, retryLease)) break
+            if (retryOffers > 0 && !sosStillDispatchableByDurableTruth(frame.msgId)) break
+            retryOffers++
             val admitted = send(peerId, bytes)
             linkOffers.record(frame.msgId, peerId, admitted, controlClock())
             if (admitted) handed++
@@ -770,9 +792,13 @@ class MeshNode(
         val bytes = canonicalFrame.encode()
         var handed = 0
         val directLease = mintDispatchLease(canonicalFrame.msgId)
+        var directOffers = 0
         for (peerId in knownPeers()) {
-            // GS-SOS-002: re-checked before every offer
+            // GS-SOS-002: re-checked before every offer; durable truth from the SECOND offer on, because
+            // THIS path commits its delivery row only after the offers are made.
             if (!dispatchLeaseStands(canonicalFrame.msgId, directLease)) break
+            if (directOffers > 0 && !sosStillDispatchableByDurableTruth(canonicalFrame.msgId)) break
+            directOffers++
             val admitted = send(peerId, bytes)
             linkOffers.record(canonicalFrame.msgId, peerId, admitted, controlClock())
             if (admitted) handed++
