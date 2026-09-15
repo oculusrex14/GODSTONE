@@ -1,10 +1,16 @@
-# Status accounting — AUDIT-003-R1 (refreshed at round 85)
+# Status accounting — AUDIT-003-R1 (refreshed at round 88)
 
-Regenerated from `REMEDIATION_STATE.json` programmatically; nothing here is new evidence. It states the
+The COUNTS and the class memberships are re-derived from `REMEDIATION_STATE.json`; the narrative
+sections are maintained by hand and say so. Nothing here is new evidence. It states the
 classes the remediation requires, in the audit's own terms, and it is regenerated rather than
 hand-edited so that a status cannot be quietly carried forward.
 
 **Ledger at this refresh: 27 `FIX_SUBMITTED`, 2 `PARTIAL`, 0 `RED_WRITTEN`, 25 `OPEN` — and ZERO `VERIFIED_FIXED`.** Only an independent audit may write `VERIFIED_FIXED`, and the ledger court refuseth the word from this work. NO finding carries any `closure_evidence`.
+
+AT ROUND 88 the four landings of this session (GS-SOS-002 step 6, GS-ACK-001 step 4, GS-SYNC-002
+step 3 on BOTH isles, plus the android lane-flake fix) changed NO status: 27 `FIX_SUBMITTED` and
+2 `PARTIAL` stand, no gate moved, and `GS-SYNC-002` is the first finding with a captured red on
+BOTH isles for the same law.
 
 ## 1. Submitted and awaiting INDEPENDENT verification — 29
 

@@ -490,7 +490,7 @@
    "my_logs": [],
    "my_red_case": null,
    "my_status": "OPEN",
-   "notes": null,
+   "notes": "ROUND 89 (record integrity, before any work on it): THIS ENTRY IS UNENRICHED -- impact, remediation_steps and source_refs are EMPTY, so it carrieth the audit's title and severity and nothing else. A round that starts here must read the audit's own repair card for ANDROID-06 VERBATIM (evidence/AUDIT-002/ cards listed through QWEN_REMEDIATION_QUEUE.md's wave 4f.1) and fill these fields BEFORE designing a red, because the title alone cannot say which seam the reservation law lives on. Recorded by measurement: the fields were inspected and are null/empty, not merely unread by me.",
    "pending_proof": [],
    "proof": null,
    "remediation_report": "evidence/android/findings.md",
@@ -501,7 +501,10 @@
     "T18"
    ],
    "title": "Whole-record reservations do not reserve capacity or enforce single consumption",
-   "wave": "4f.1"
+   "wave": "4f.1",
+   "pending_work": [
+    "ENRICH THIS ENTRY FIRST (impact, ordered remediation, source refs read from the audit bundle), then design the red for whole-record reservation capacity + single consumption."
+   ]
   },
   "ANDROID-07": {
    "audit_status_at_snapshot": "OPEN",
