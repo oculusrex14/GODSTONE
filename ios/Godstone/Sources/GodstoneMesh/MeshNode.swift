@@ -128,7 +128,13 @@ public final class MeshNode {
     /// resumes.
     @discardableResult
     internal func trustedPeerDidDisconnect(nodeId: Data) -> Bool {
-        pumpFor().cancel(nodeId)
+        // GS-SYNC-002 step 3: the RELATION is gone, so its epoch is retired with it and every answer it
+        // queued becomes stale by construction rather than inheritable by the next relation. One law with
+        // the Android isle's `retireRelationEpoch` on `PeerEvent.Lost`.
+        // (The explicit `return` is required now that this body has two statements: the single-expression
+        // implicit return the original relied on is gone.)
+        retireRelationEpoch(nodeId)
+        return pumpFor().cancel(nodeId)
     }
 
     /// T42: one bounded sync/forward turn for `nodeId` -- the link writer's
@@ -185,6 +191,32 @@ public final class MeshNode {
     private struct ControlReply {
         let destination: Data
         let frame: FrameV2
+        /// GS-SYNC-002 step 3: the RELATION this answer was raised for. A relation that was RETIRED (the
+        /// peer was lost) has its epoch retired with it, so the answer cannot be handed to the relation that
+        /// REPLACED it when the same peer returns. One law with the Android isle.
+        let relationEpoch: UInt64
+    }
+
+    /// GS-SYNC-002 (the audit's ordered step 3): per-peer RELATION epochs. An epoch is created when a peer's
+    /// relation is first spoken of and RETIRED when the relation is lost, so a reconnect produces a DIFFERENT
+    /// epoch and every answer raised under the old one is stale by construction. A peer that never had a
+    /// relation event keeps one epoch for the life of the node, so nothing else can be affected.
+    private var relationEpochs: [Data: UInt64] = [:]
+    private var relationEpochSeq: UInt64 = 0
+    private let relationEpochLock = NSLock()
+
+    private func currentRelationEpoch(_ peerId: Data) -> UInt64 {
+        relationEpochLock.lock(); defer { relationEpochLock.unlock() }
+        if let known = relationEpochs[peerId] { return known }
+        relationEpochSeq += 1
+        relationEpochs[peerId] = relationEpochSeq
+        return relationEpochSeq
+    }
+
+    /// GS-SYNC-002 step 3: a LOST relation retires its epoch, so its queued answers are stale from here.
+    private func retireRelationEpoch(_ peerId: Data) {
+        relationEpochLock.lock(); defer { relationEpochLock.unlock() }
+        relationEpochs.removeValue(forKey: peerId)
     }
 
     private var controlOutbox: [ControlReply] = []
@@ -231,27 +263,37 @@ public final class MeshNode {
     /// Bounded at 64; drop-oldest, the freshest truth wins the slot (the house outbox idiom).
     private func offerControlFrames(_ frames: [FrameV2], destination: Data) {
         controlOutboxLock.lock(); defer { controlOutboxLock.unlock() }
+        // GS-SYNC-002 step 3: the answer is stamped with the RELATION it belongs to.
+        let epoch = currentRelationEpoch(destination)
         for f in frames {
             if controlOutbox.count >= 64 { controlOutbox.removeFirst() }
-            controlOutbox.append(ControlReply(destination: destination, frame: f))
+            controlOutbox.append(ControlReply(destination: destination, frame: f, relationEpoch: epoch))
         }
     }
 
-    /// Drain the bounded control outbox (T41's pump takes the route from here).
+    /// Drain the bounded control outbox (T41's pump takes the route from here). GS-SYNC-002 step 3: an
+    /// entry whose relation was retired while it waited is DROPPED, not delivered.
     internal func drainControlOutbox() -> [FrameV2] {
         controlOutboxLock.lock(); defer { controlOutboxLock.unlock() }
-        let out = controlOutbox.map { $0.frame }
+        let out = controlOutbox
+            .filter { $0.relationEpoch == currentRelationEpoch($0.destination) }
+            .map { $0.frame }
         controlOutbox.removeAll()
         return out
     }
 
     /// GS-SYNC-002: drain ONLY the replies that belong to `peer`; every other live peer's answer is
     /// PRESERVED. Ownership is by destination, so one peer's turn can never consume another's answer.
+    ///
+    /// GS-SYNC-002 step 3: ownership is by destination AND RELATION. An answer raised under a RETIRED
+    /// relation is dropped here, never handed to the replacement relation -- refuse and forget, because a
+    /// stale reply is not work for the new relation. One law with the Android isle.
     private func drainControlOutbox(for peer: Data) -> [FrameV2] {
         controlOutboxLock.lock(); defer { controlOutboxLock.unlock() }
+        let current = currentRelationEpoch(peer)
         let mine = controlOutbox.filter { $0.destination == peer }
         if !mine.isEmpty { controlOutbox.removeAll { $0.destination == peer } }
-        return mine.map { $0.frame }
+        return mine.filter { $0.relationEpoch == current }.map { $0.frame }
     }
 
     /// One ingress control frame: the owner decides; any answer rides back out.
